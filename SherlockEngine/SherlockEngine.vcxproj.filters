@@ -25,6 +25,9 @@
     <Filter Include="01. Graphics\Device">
       <UniqueIdentifier>{2a2d55da-b0f0-49dd-8caf-c07178982f89}</UniqueIdentifier>
     </Filter>
+    <Filter Include="02.App">
+      <UniqueIdentifier>{b2224a2d-cafe-4ec6-b566-4de7f50daf89}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -36,6 +39,12 @@
     <ClCompile Include="Device.cpp">
       <Filter>01. Graphics\Device</Filter>
     </ClCompile>
+    <ClCompile Include="AppBase.cpp">
+      <Filter>02.App</Filter>
+    </ClCompile>
+    <ClCompile Include="TestApp.cpp">
+      <Filter>02.App</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -43,6 +52,12 @@
     </ClInclude>
     <ClInclude Include="Device.h">
       <Filter>01. Graphics\Device</Filter>
+    </ClInclude>
+    <ClInclude Include="AppBase.h">
+      <Filter>02.App</Filter>
+    </ClInclude>
+    <ClInclude Include="TestApp.h">
+      <Filter>02.App</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

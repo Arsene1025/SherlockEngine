@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <tchar.h>
 #include <stdio.h>
-
+#include <iostream>
 //DX라이브러리
 #include <d3d11.h>
 #pragma comment(lib, "d3d11.lib")
