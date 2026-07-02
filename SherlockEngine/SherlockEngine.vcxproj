@@ -126,15 +126,19 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AppBase.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="TestApp.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AppBase.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="TestApp.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
