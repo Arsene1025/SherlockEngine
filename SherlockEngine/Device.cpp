@@ -2,7 +2,7 @@
 #include "Device.h"
 #include "AppBase.h"
 
-bool Device::InitDevice(HWND hWnd, int width, int height)
+bool Device::InitDevice(HWND hWnd, int width, int height, AppBase* app)
 {
     m_mainWindow = hWnd;
     m_screenWidth = width;
@@ -15,6 +15,8 @@ bool Device::InitDevice(HWND hWnd, int width, int height)
     SetViewport();
 
     return true;
+
+    appBase = app;
 }
 
 void Device::ReleaseDevice()
@@ -26,6 +28,7 @@ void Device::ReleaseDevice()
     }
     m_renderTargetView.Reset();
     m_swapChain.Reset();
+    m_DSView.Reset();
     m_context.Reset();
     m_device.Reset();
 }
@@ -40,11 +43,8 @@ void Device::Clear()
         0.1f, 0.1f, 0.3f, 1.0f
     };
 
-    m_context->ClearRenderTargetView
-    (
-        m_renderTargetView.Get(),
-        clearColor
-    );
+    m_context->ClearRenderTargetView(m_renderTargetView.Get(), clearColor);
+    //m_context->
 }
 
 void Device::Present()
@@ -99,6 +99,62 @@ void Device::Resize(int width, int height)
     }
     // Viewport도 새 크기로 다시 설정
     SetViewport();
+}
+
+void Device::CreateConstBuffer(int size, ID3D11Buffer** ppCB)
+{
+    D3D11_BUFFER_DESC bd = {};
+    bd.Usage = D3D11_USAGE_DEFAULT;
+    bd.ByteWidth = sizeof(ConstBuffer);
+    bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+    ID3D11Buffer* pCB = nullptr;
+    HRESULT hr = m_device->CreateBuffer(&bd, nullptr, &pCB);
+    if (FAILED(hr))
+    {
+        std::cout << "[실패] 상수 버퍼 생성 실패" << std::endl;
+    }
+    *ppCB = pCB;
+}
+
+void Device::CreateVertexBuffer(LPVOID pData, UINT size, UINT stride, ID3D11Buffer** ppVB)
+{
+    //정점버퍼 설정하기
+    D3D11_BUFFER_DESC bd = {};
+    bd.Usage = D3D11_USAGE_DEFAULT;
+    bd.ByteWidth = size;
+    bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+    bd.CPUAccessFlags = 0;
+
+    D3D11_SUBRESOURCE_DATA rd;
+    ZeroMemory(&rd, sizeof(rd));
+    rd.pSysMem = pData;
+
+    //정점버퍼 생성
+    ID3D11Buffer* pVB = nullptr;
+    HRESULT hr = m_device->CreateBuffer(&bd, &rd, &pVB);
+    if (FAILED(hr))
+    {
+        std::cout << "[실패] 정점버퍼 생성 실패" << std::endl;
+    }
+    *ppVB = pVB;
+}
+
+void Device::CreateInputLayout(D3D11_INPUT_ELEMENT_DESC* desc, DWORD num, ID3DBlob* pVSCode, ID3D11InputLayout** ppLayout)
+{
+    //함께 사용될 셰이더가 필요함
+    ID3D11InputLayout* pLayout = nullptr;
+    HRESULT hr = m_device->CreateInputLayout(desc, num, pVSCode->GetBufferPointer(), pVSCode->GetBufferSize(), &pLayout);
+    if (FAILED(hr))
+    {
+        std::cout << "[실패] 정점 입력 레이아웃 생성 실패" << std::endl;
+    }
+    *ppLayout = pLayout;
+}
+
+void Device::CreateRenderState()
+{
+
 }
 
 bool Device::InitDirect3D()

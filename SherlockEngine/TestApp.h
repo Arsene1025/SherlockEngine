@@ -7,7 +7,7 @@ public:
 
     virtual bool Initialize() override;
     virtual void UpdateGUI() override;
-    virtual void Update(float dt) override;
+    virtual void Update() override;
     virtual void Render() override;
 };
 

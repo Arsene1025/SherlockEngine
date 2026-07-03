@@ -3,6 +3,10 @@
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
 #include "Device.h"
+#include "Renderer.h"
+#include "Shader.h"
+
+class GameTimer;
 
 class AppBase 
 {
@@ -16,7 +20,7 @@ class AppBase
 
         virtual bool Initialize();
         virtual void UpdateGUI() = 0;
-        virtual void Update(float dt) = 0;
+        virtual void Update() = 0;
         virtual void Render() = 0;
 
         virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -24,13 +28,21 @@ class AppBase
     protected: // 상속 받은 클래스에서도 접근 가능
         bool InitMainWindow();
         bool InitDevice();
+        bool InitRenderer();
         bool InitGUI();
+        bool InitShaderClass();
 
         void SetViewport();
         bool CreateRenderTargetView();
 
     public:
-        Device m_device;
+        static GameTime gameTime;
+
+        Device graphicsDevice;
+        Renderer renderer;
+        Shader shaderClass;
+        GameTimer gameTimer;
+
 
         int m_screenWidth; // 렌더링할 최종 화면의 해상도
         int m_screenHeight;
