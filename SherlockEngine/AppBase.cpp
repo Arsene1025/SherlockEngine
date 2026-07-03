@@ -47,11 +47,16 @@ int AppBase::Run()
         }
         else 
         {
-            float dt = ImGui::GetIO().DeltaTime;
-            Update(dt);
+            GameTime gameTime;
+            gameTimer.Tick();
+            gameTime.deltaTime = gameTimer.DeltaTime();
+            gameTime.totalTime = gameTimer.TotalTime();
+
+            //float dt = ImGui::GetIO().DeltaTime;
+            Update();
 
 
-            m_device.Clear();
+            graphicsDevice.Clear();
 
 
             ImGui_ImplDX11_NewFrame();
@@ -83,7 +88,7 @@ int AppBase::Run()
             Render(); //실제 렌더링
             ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); // GUI 렌더링
             //ImGui RenderDrawData() 다음에 Present() 호출 해야함
-            m_device.Present();
+            graphicsDevice.Present();
         }
     }
 
@@ -96,7 +101,18 @@ bool AppBase::Initialize()
 
     if (!InitDevice()) return false;
 
+    if (!InitShaderClass()) return false;
+    shaderClass.ShaderCreate();
+
+    if (!InitRenderer()) return false;
+    renderer.DataLoading();
+    
     if (!InitGUI()) return false;
+
+
+
+    gameTimer.Reset();
+    gameTimer.Start();
 
     SetForegroundWindow(m_mainWindow);
     return true;
@@ -108,14 +124,14 @@ LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     switch (msg)
     {
         case WM_SIZE:
-            if (m_device.GetSwapChain())
+            if (graphicsDevice.GetSwapChain())
             {
                 int width = LOWORD(lParam);
                 int height = HIWORD(lParam);
 
                 if (wParam != SIZE_MINIMIZED)
                 {
-                    m_device.Resize(width, height);
+                    graphicsDevice.Resize(width, height);
                 }
             }
             break;
@@ -189,9 +205,29 @@ bool AppBase::InitMainWindow()
 
 bool AppBase::InitDevice()
 {
-    if (!m_device.InitDevice(m_mainWindow, m_screenWidth, m_screenHeight))
+    if (!graphicsDevice.InitDevice(m_mainWindow, m_screenWidth, m_screenHeight, this))
     {
         std::cout << "Device 초기화 실패" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool AppBase::InitRenderer()
+{
+    if (!renderer.Initialize(&graphicsDevice, this))
+    {
+        std::cout << "Renderer 초기화 실패" << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool AppBase::InitShaderClass()
+{
+    if (!shaderClass.Initalize(&graphicsDevice, this))
+    {
+        std::cout << "Shader클래스 초기화 실패" << std::endl;
         return false;
     }
     return true;
@@ -207,7 +243,7 @@ bool AppBase::InitGUI()
     ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
-    if (!ImGui_ImplDX11_Init(m_device.GetDevice(), m_device.GetContext())) 
+    if (!ImGui_ImplDX11_Init(graphicsDevice.GetDevice(), graphicsDevice.GetContext())) 
     {
         return false;
     }
@@ -217,4 +253,6 @@ bool AppBase::InitGUI()
     }
     return true;
 }
+
+
 

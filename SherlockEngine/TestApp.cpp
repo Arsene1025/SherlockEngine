@@ -17,12 +17,12 @@ void TestApp::UpdateGUI()
 
 }
 
-void TestApp::Update(float dt)
+void TestApp::Update()
 {
-
+	//gameTime 전역변수
 }
 
 void TestApp::Render()
 {
-
+	renderer.Render();
 }
