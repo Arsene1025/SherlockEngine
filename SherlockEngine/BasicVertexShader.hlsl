@@ -1,4 +1,4 @@
-cbuffer ConstBuffer
+cbuffer ConstBuffer : register(b0)
 {
     matrix mWorld;
     matrix mView;
@@ -22,10 +22,10 @@ VSOutput VS_Main(VSInput vsInput)
 {
     VSOutput vsOutput = (VSOutput)0;
     
-    //vsInput.position.w = 1.0f;
+    vsInput.position.w = 1.0f;
     
     //º¯È¯
-    //vsInput.position = mul(vsInput.position, mWVP);
+    vsInput.position = mul(vsInput.position, mWVP);
     //vsInput.position = mul(vsInput.position, mWorld);
     //vsInput.position = mul(vsInput.position, mView);
     //vsInput.position = mul(vsInput.position, mProj);

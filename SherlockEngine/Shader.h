@@ -20,6 +20,7 @@ public:
 	ID3D11VertexShader* GetVertexShader() const { return pVS; }
 	ID3D11PixelShader* GetPixtexShader() const { return pPS; }
 	ID3DBlob* GetVSCode() const { return pVSCode; }
+	ID3D11Buffer* GetCBBuffer() { return pCB; }
 
 private:
 

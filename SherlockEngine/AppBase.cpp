@@ -63,7 +63,7 @@ int AppBase::Run()
             ImGui_ImplWin32_NewFrame();
 
             ImGui::NewFrame(); //Imgui 렌더링 시작
-            ImGui::Begin("Scene Control");
+            ImGui::Begin("Information");
 
             //Imgui에서 자체적으로 프레임 계산함
             ImGui::Text
@@ -164,7 +164,7 @@ bool AppBase::InitMainWindow()
     // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerclassa?redirectedfrom=MSDN
     if (!RegisterClassEx(&wc)) 
     {
-        std::cout << "RegisterClassEx() 실패" << std::endl;
+        std::cout << "[실패] RegisterClassEx() 실패" << std::endl;
         return false;
     }
 
@@ -193,7 +193,7 @@ bool AppBase::InitMainWindow()
 
     if (!m_mainWindow) 
     {
-        std::cout << "CreateWindow() failed." << std::endl;
+        std::cout << "[실패] CreateWindow() failed." << std::endl;
         return false;
     }
 
@@ -207,7 +207,7 @@ bool AppBase::InitDevice()
 {
     if (!graphicsDevice.InitDevice(m_mainWindow, m_screenWidth, m_screenHeight, this))
     {
-        std::cout << "Device 초기화 실패" << std::endl;
+        std::cout << "[실패] Device 초기화 실패" << std::endl;
         return false;
     }
     return true;
@@ -217,7 +217,7 @@ bool AppBase::InitRenderer()
 {
     if (!renderer.Initialize(&graphicsDevice, this))
     {
-        std::cout << "Renderer 초기화 실패" << std::endl;
+        std::cout << "[실패] Renderer 초기화 실패" << std::endl;
         return false;
     }
     return true;
@@ -227,7 +227,7 @@ bool AppBase::InitShaderClass()
 {
     if (!shaderClass.Initalize(&graphicsDevice, this))
     {
-        std::cout << "Shader클래스 초기화 실패" << std::endl;
+        std::cout << "[실패] Shader클래스 초기화 실패" << std::endl;
         return false;
     }
     return true;

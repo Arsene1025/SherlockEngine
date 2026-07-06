@@ -19,6 +19,7 @@ bool Renderer::Initialize(Device* device, AppBase* app)
 
 	graphicsDevice = device;
 	appBase = app;
+	graphicsShader = &appBase->shaderClass;
 
 	//DataLoading();
 	return true;
@@ -42,8 +43,9 @@ void Renderer::DataRelease()
 void Renderer::Render()
 {
 	ObjUpdate();
-	//graphicsDevice->Clear();
+	graphicsDevice->Clear();
 	ObjDraw();
+	//graphicsDevice->Present();
 }
 
 void Renderer::RasterStateCreate()
@@ -110,7 +112,7 @@ void Renderer::RenderModeUpdate()
 
 int Renderer::ObjLoad()
 {
-	VERTEX	verts[] = 
+	VERTEX	verts[] =
 	{
 		{ -0.6f, -0.5f, 0.0f,	1, 0, 0, 1 },
 		{  0.0f,  0.5f, 0.0f,  0, 1, 0, 1 },
@@ -135,16 +137,42 @@ void Renderer::ObjRelease()
 
 void Renderer::ObjUpdate()
 {
-	//갱신
+
+	//상수 버퍼 갱신
+	ConstBuffer cb = {};
+	XMMATRIX world = XMMatrixIdentity();
+	XMMATRIX view = XMMatrixIdentity();
+	//XMMatrixLookAtLH() 으로 view행렬 만들어야함 #TODO
+	XMMATRIX proj = XMMatrixIdentity();
+	//XMMatrixPerspectiveFovLH()로 proj행렬 만들어야 함 #TODO
+
+	XMMATRIX wvp = world * view * proj;
+
+	cb.mWorld = XMMatrixTranspose(world);
+	cb.mView = XMMatrixTranspose(view);
+	cb.mProj = XMMatrixTranspose(proj);
+	cb.mWVP = XMMatrixTranspose(wvp);
+
+	//상수 버퍼 업데이트 -> 일단 여기서 처리
+	graphicsDevice->GetContext()->UpdateSubresource(graphicsShader->GetCBBuffer(), 0, nullptr, &cb, 0, 0);
+
 }
 
 void Renderer::ObjDraw()
 {
 	UINT stride = sizeof(VERTEX);
 	UINT offset = 0;
+	//Vertex버퍼 설정
 	graphicsDevice->GetContext()->IASetVertexBuffers(0, 1, &g_vertexBuffer, &stride, &offset);
+	//입력 레이아웃 설정
 	graphicsDevice->GetContext()->IASetInputLayout(g_vertexBufferLayout);
+	//기하 구조 설정
 	graphicsDevice->GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	//여기서 셰이더 설정
+
+
+	//그리기
 	graphicsDevice->GetContext()->Draw(3, 0);
 }
 #pragma endregion

@@ -14,7 +14,9 @@
 #pragma comment(lib, "dxgi.lib")
 
 #include <DirectXMath.h> //XNA 수학 라이브러리
+#include <directxtk/SimpleMath.h>
 using namespace DirectX;
+using namespace DirectX::SimpleMath;
 
 //DX확장 라이브러리
 // DXTK
@@ -22,7 +24,6 @@ using namespace DirectX;
 #include <directxtk/SpriteFont.h>
 #include <directxtk/WICTextureLoader.h>
 #include <directxtk/DDSTextureLoader.h>
-#include <directxtk/SimpleMath.h>
 #include <directxtk/CommonStates.h>
 
 // DirectXTex

@@ -24,5 +24,7 @@ void TestApp::Update()
 
 void TestApp::Render()
 {
+	shaderClass.ShaderUpdate();
+	renderer.RenderModeUpdate();
 	renderer.Render();
 }
