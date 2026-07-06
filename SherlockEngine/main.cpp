@@ -7,7 +7,7 @@ int main()
 
     if (!testApp.Initialize())
     {
-        std::cout << "초기화 실패!" << std::endl;
+        std::cout << "[실패] App 초기화 실패!" << std::endl;
         return -1;
     }
 

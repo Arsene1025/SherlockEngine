@@ -26,7 +26,11 @@ void Shader::ShaderUpdate()
 	//장치에 셰이더 설정
 	graphicsDevice->GetContext()->VSSetShader(pVS, nullptr, 0);
 	graphicsDevice->GetContext()->PSSetShader(pPS, nullptr, 0);
+	
 	//셰이더 상수 버퍼 갱신
+	//상수 버퍼를 여기서 업데이트 하는것이 맞나? 
+	//우선 여기서 업데이트 하고 추후에 Mesh랑 Material분리할 때 분리하기
+
 
 	//셰이더 상수 버퍼 설정
 	graphicsDevice->GetContext()->VSSetConstantBuffers(0, 1, &pCB);
@@ -55,7 +59,7 @@ HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* t
 	HRESULT hr = ShaderCompile(fxname, entry, target, &pCode);
 	if (FAILED(hr))
 	{
-		std::cout << "셰이더 컴파일 실패 : " << "파일 경로 : " << fxname << " 진입점 : " << entry << " 모델 : " << target << std::endl ;
+		std::cout <<"[실패] 셰이더 컴파일 실패 : " << "파일 경로 : " << fxname << " 진입점 : " << entry << " 모델 : " << target << std::endl;
 		return hr;
 	}
 
@@ -66,7 +70,7 @@ HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* t
 	{
 		pCode->Release();
 		pCode = nullptr;
-		std::cout << "셰이더 객체 생성 실패 : " << "파일 경로 : " << fxname << " 진입점 : " << entry << " 모델 : " << target << std::endl;
+		std::cout << "[실패] 셰이더 객체 생성 실패 : " << "파일 경로 : " << fxname << " 진입점 : " << entry << " 모델 : " << target << std::endl;
 		return hr;
 	}
 	//완료 후 생성된 셰이더와 객체 반환
@@ -83,7 +87,7 @@ HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* t
 	HRESULT hr = ShaderCompile(fxname, entry, target, &pCode);
 	if (FAILED(hr))
 	{
-		std::cout << "셰이더 컴파일 실패 : " << "파일 경로 : " << fxname << " 진입점 : " << entry << " 모델 : " << target << std::endl;
+		std::cout << "[실패] 셰이더 컴파일 실패 : " << "파일 경로 : " << fxname << " 진입점 : " << entry << " 모델 : " << target << std::endl;
 		return hr;
 	}
 
@@ -93,7 +97,7 @@ HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* t
 	{
 		pCode->Release();
 		pCode = nullptr;
-		std::cout << "셰이더 객체 생성 실패 : " << "파일 경로 : " << fxname << " 진입점 : " << entry << " 모델 : " << target << std::endl;
+		std::cout << "[실패] 셰이더 객체 생성 실패 : " << "파일 경로 : " << fxname << " 진입점 : " << entry << " 모델 : " << target << std::endl;
 		return hr;
 	}
 
@@ -129,7 +133,7 @@ HRESULT Shader::ShaderCompile(const TCHAR* FileName, const CHAR* EntryPoint, con
 	hr = D3DCompileFromFile(FileName, 0, 0, EntryPoint, ShaderModel, 0, 0, ppCode, &pError);
 	if (FAILED(hr))
 	{
-		std::cout << "셰이더 컴파일 실패 : " << "파일 경로 : " << FileName << " 진입점 : " << EntryPoint << " 모델 : " << ShaderModel << std::endl;
+		std::cout << "[실패] 셰이더 컴파일 실패 : " << "파일 경로 : " << FileName << " 진입점 : " << EntryPoint << " 모델 : " << ShaderModel << std::endl;
 	}
 
 	if (pError)

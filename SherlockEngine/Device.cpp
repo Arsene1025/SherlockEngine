@@ -87,14 +87,14 @@ void Device::Resize(int width, int height)
 
     if (FAILED(hr))
     {
-        std::cout << "ResizeBuffers() 실패." << std::endl;
+        std::cout << "[실패] ResizeBuffers() 실패." << std::endl;
         return;
     }
 
     // 변경된 BackBuffer로 RenderTargetView 다시 생성
     if (!CreateRenderTargetView())
     {
-        std::cout << "Resize 후 RenderTargetView 재생성 실패." << std::endl;
+        std::cout << "[실패] Resize 후 RenderTargetView 재생성 실패." << std::endl;
         return;
     }
     // Viewport도 새 크기로 다시 설정
@@ -163,9 +163,9 @@ bool Device::InitDirect3D()
 
     UINT createDeviceFlags = 0;
 
-//#if defined(DEBUG) || defined(_DEBUG)
-//    createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
-//#endif
+#if defined(DEBUG) || defined(_DEBUG)
+    createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
 
     const D3D_FEATURE_LEVEL featureLevels[] =
     {
@@ -232,11 +232,11 @@ bool Device::InitDirect3D()
 
     if (FAILED(hr) || m_numQualityLevels <= 0)
     {
-        std::cout << "4X MSAA 지원 안 됨." << std::endl;
+        std::cout << "[경고] 4X MSAA 지원 안 됨." << std::endl;
     }
     else
     {
-        std::cout << "4X MSAA 지원됨. QualityLevels: " << m_numQualityLevels << std::endl;
+        std::cout << "[정보] 4X MSAA 지원됨. QualityLevels: " << m_numQualityLevels << std::endl;
     }
     return true;
 }
@@ -254,7 +254,7 @@ bool Device::CreateRenderTargetView()
 
     if (FAILED(hr))
     {
-        std::cout << "SwapChain BackBuffer 가져오기 실패." << std::endl;
+        std::cout << "[실패] SwapChain BackBuffer 가져오기 실패." << std::endl;
         return false;
     }
 
@@ -266,7 +266,7 @@ bool Device::CreateRenderTargetView()
 
     if (FAILED(hr))
     {
-        std::cout << "CreateRenderTargetView() 실패." << std::endl;
+        std::cout << "[실패] CreateRenderTargetView() 실패." << std::endl;
         return false;
     }
 
