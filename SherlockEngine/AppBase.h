@@ -5,6 +5,7 @@
 #include "Device.h"
 #include "Renderer.h"
 #include "Shader.h"
+#include "Camera.h"
 
 class GameTimer;
 
@@ -41,6 +42,7 @@ class AppBase
         Device graphicsDevice;
         Renderer renderer;
         Shader shaderClass;
+        Camera camera;
         GameTimer gameTimer;
 
 

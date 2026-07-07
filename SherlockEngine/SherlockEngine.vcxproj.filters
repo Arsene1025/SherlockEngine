@@ -46,6 +46,9 @@
     <Filter Include="97. ShaderFiles\BasicShader">
       <UniqueIdentifier>{ea0b2568-df32-4d08-b331-fe2c562b04d4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="03. GameObject">
+      <UniqueIdentifier>{0daac1b8-d7a9-4d5b-b83d-1789184214c2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -71,6 +74,9 @@
     </ClCompile>
     <ClCompile Include="Shader.cpp">
       <Filter>01. Graphics\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>03. GameObject</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -103,6 +109,9 @@
     </ClInclude>
     <ClInclude Include="helper.h">
       <Filter>98. Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>03. GameObject</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

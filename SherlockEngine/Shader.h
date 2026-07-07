@@ -1,12 +1,11 @@
 #pragma once
 class Device;
-class AppBase;
 
 class Shader
 {
 public:
 	
-	bool Initalize(Device* device, AppBase* app);
+	bool Initalize(Device* device);
 
 	void ShaderCreate();
 	void ShaderUpdate();
@@ -39,6 +38,5 @@ private:
 
 	//Device
 	Device* graphicsDevice = nullptr;
-	AppBase* appBase = nullptr;
 };
 

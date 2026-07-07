@@ -1,8 +1,7 @@
 #include "pch.h"
 #include "Device.h"
-#include "AppBase.h"
 
-bool Device::InitDevice(HWND hWnd, int width, int height, AppBase* app)
+bool Device::InitDevice(HWND hWnd, int width, int height)
 {
     m_mainWindow = hWnd;
     m_screenWidth = width;
@@ -15,8 +14,6 @@ bool Device::InitDevice(HWND hWnd, int width, int height, AppBase* app)
     SetViewport();
 
     return true;
-
-    appBase = app;
 }
 
 void Device::ReleaseDevice()
@@ -44,7 +41,7 @@ void Device::Clear()
     };
 
     m_context->ClearRenderTargetView(m_renderTargetView.Get(), clearColor);
-    //m_context->
+   
 }
 
 void Device::Present()

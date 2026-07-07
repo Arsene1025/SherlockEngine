@@ -100,6 +100,7 @@ bool AppBase::Initialize()
     if (!InitMainWindow()) return false;
 
     if (!InitDevice()) return false;
+    camera.SetLens(XM_PIDIV4, GetAspectRatio(), 0.1f, 1000.0f);
 
     if (!InitShaderClass()) return false;
     shaderClass.ShaderCreate();
@@ -124,6 +125,7 @@ LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     switch (msg)
     {
         case WM_SIZE:
+            //맨 처음 시작때는 Resize호출하지 않기
             if (graphicsDevice.GetSwapChain())
             {
                 int width = LOWORD(lParam);
@@ -132,6 +134,7 @@ LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 if (wParam != SIZE_MINIMIZED)
                 {
                     graphicsDevice.Resize(width, height);
+                    camera.SetAspectRatio(float(width) / float(height));
                 }
             }
             break;
@@ -205,7 +208,7 @@ bool AppBase::InitMainWindow()
 
 bool AppBase::InitDevice()
 {
-    if (!graphicsDevice.InitDevice(m_mainWindow, m_screenWidth, m_screenHeight, this))
+    if (!graphicsDevice.InitDevice(m_mainWindow, m_screenWidth, m_screenHeight))
     {
         std::cout << "[실패] Device 초기화 실패" << std::endl;
         return false;
@@ -215,7 +218,7 @@ bool AppBase::InitDevice()
 
 bool AppBase::InitRenderer()
 {
-    if (!renderer.Initialize(&graphicsDevice, this))
+    if (!renderer.Initialize(&graphicsDevice, &shaderClass, &camera))
     {
         std::cout << "[실패] Renderer 초기화 실패" << std::endl;
         return false;
@@ -225,7 +228,7 @@ bool AppBase::InitRenderer()
 
 bool AppBase::InitShaderClass()
 {
-    if (!shaderClass.Initalize(&graphicsDevice, this))
+    if (!shaderClass.Initalize(&graphicsDevice))
     {
         std::cout << "[실패] Shader클래스 초기화 실패" << std::endl;
         return false;

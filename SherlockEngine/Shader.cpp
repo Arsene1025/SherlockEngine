@@ -1,12 +1,11 @@
 #include "pch.h"
 #include "Shader.h"
 #include "Device.h"
-#include "AppBase.h"
 
-bool Shader::Initalize(Device* device, AppBase* app)
+
+bool Shader::Initalize(Device* device)
 {
 	graphicsDevice = device;
-	appBase = app;
 	//ShaderCreate();
 	return true;
 }
