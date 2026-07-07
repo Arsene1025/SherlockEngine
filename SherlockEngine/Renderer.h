@@ -23,7 +23,7 @@
 
 class Device;
 class Shader;
-class AppBase;
+class Camera;
 
 class Renderer
 {
@@ -31,7 +31,7 @@ public:
 	Renderer();
 	~Renderer();
 
-	bool Initialize(Device* device, AppBase* app);
+	bool Initialize(Device* device, Shader* shader, Camera* camera);
 
 	//일단 public으로 몰아넣기
 	//***************D3D수업자료 기반***************
@@ -84,6 +84,6 @@ public:
 private:
 	Device* graphicsDevice = nullptr;
 	Shader* graphicsShader = nullptr;
-	AppBase* appBase = nullptr;
+    Camera* mainCamera = nullptr;
 };
 

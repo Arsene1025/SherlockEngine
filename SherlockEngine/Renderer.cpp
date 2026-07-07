@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "Renderer.h"
 #include "Device.h"
-#include "AppBase.h"
+#include "Shader.h"
+#include "Camera.h"
 
 Renderer::Renderer()
 {
@@ -13,13 +14,13 @@ Renderer::~Renderer()
 
 }
 
-bool Renderer::Initialize(Device* device, AppBase* app)
+bool Renderer::Initialize(Device* device, Shader* shader, Camera* camera)
 {
-	if (device == nullptr) return false;
+	if (device == nullptr || shader == nullptr || camera == nullptr) return false;
 
 	graphicsDevice = device;
-	appBase = app;
-	graphicsShader = &appBase->shaderClass;
+	graphicsShader = shader;
+    mainCamera = camera;
 
 	//DataLoading();
 	return true;
@@ -60,8 +61,8 @@ void Renderer::RasterStateCreate()
 	rd.SlopeScaledDepthBias = 0;
 	rd.DepthClipEnable = true;
 	rd.ScissorEnable = false;
-	rd.MultisampleEnable = false;
-	rd.AntialiasedLineEnable = false;
+	rd.MultisampleEnable = true;
+	rd.AntialiasedLineEnable = true;
 	//레스터라이져 객체 생성.
 	graphicsDevice->GetDevice()->CreateRasterizerState(&rd, &g_RState[RS_SOLID]);
 
@@ -112,11 +113,16 @@ void Renderer::RenderModeUpdate()
 
 int Renderer::ObjLoad()
 {
-	VERTEX	verts[] =
-	{
-		{ -0.6f, -0.5f, 0.0f,	1, 0, 0, 1 },
-		{  0.0f,  0.5f, 0.0f,  0, 1, 0, 1 },
-		{  0.6f, -0.5f, 0.0f,  0, 1, 1, 1 },
+	VERTEX	verts[] = {
+		{ -10.0f,  0.0f, 0.0f, 1, 0, 0, 1 },
+		{   0.0f, 10.0f, 0.0f, 0, 1, 0, 1 },
+		{  10.0f,  0.0f, 0.0f, 0, 1, 1, 1 },
+		{ -6.0f,  8.0f, 0.0f,  0, 0.5f, 1, 1 },
+		{  0.0f, 18.0f, 0.0f,  1, 1.0f, 1, 1 }, 
+		{  6.0f,  8.0f, 0.0f,  0, 0.5f, 1, 1 },
+		{ 0.0f,  0.0f, 10.0f,  1, 1, 0, 1 },
+		{ 0.0f, 10.0f,  0.0f,  0, 1, 0, 1 }, 
+		{ 0.0f,  0.0f,-10.0f,  1, 1, 0, 1 },
 	};
 	graphicsDevice->CreateVertexBuffer(verts, sizeof(verts), sizeof(VERTEX), &g_vertexBuffer);
 
@@ -125,7 +131,7 @@ int Renderer::ObjLoad()
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
-	graphicsDevice->CreateInputLayout(layout, ARRAYSIZE(layout), appBase->shaderClass.GetVSCode(), &g_vertexBufferLayout);
+	graphicsDevice->CreateInputLayout(layout, ARRAYSIZE(layout), graphicsShader->GetVSCode(), &g_vertexBufferLayout);
 	return 0;
 }
 
@@ -141,10 +147,8 @@ void Renderer::ObjUpdate()
 	//상수 버퍼 갱신
 	ConstBuffer cb = {};
 	XMMATRIX world = XMMatrixIdentity();
-	XMMATRIX view = XMMatrixIdentity();
-	//XMMatrixLookAtLH() 으로 view행렬 만들어야함 #TODO
-	XMMATRIX proj = XMMatrixIdentity();
-	//XMMatrixPerspectiveFovLH()로 proj행렬 만들어야 함 #TODO
+	XMMATRIX view = mainCamera->GetViewMatrix();
+	XMMATRIX proj = mainCamera->GetProjectionMatrix();
 
 	XMMATRIX wvp = world * view * proj;
 
@@ -173,7 +177,7 @@ void Renderer::ObjDraw()
 
 
 	//그리기
-	graphicsDevice->GetContext()->Draw(3, 0);
+	graphicsDevice->GetContext()->Draw(9, 0);
 }
 #pragma endregion
 
