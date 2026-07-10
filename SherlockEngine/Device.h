@@ -18,6 +18,7 @@ public:
     //생성 함수
     void CreateConstBuffer(int size, ID3D11Buffer** ppCB);
     void CreateVertexBuffer(LPVOID pData, UINT size, UINT stride, ID3D11Buffer** ppVB);
+    void CreateIndexBuffer(LPVOID pData, UINT size, ID3D11Buffer** ppIB);
     void CreateInputLayout(D3D11_INPUT_ELEMENT_DESC* desc, DWORD num, ID3DBlob* pVSCode, ID3D11InputLayout** ppLayout);
     void CreateRenderState();
 
