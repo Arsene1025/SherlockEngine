@@ -137,6 +137,27 @@ void Device::CreateVertexBuffer(LPVOID pData, UINT size, UINT stride, ID3D11Buff
     *ppVB = pVB;
 }
 
+void Device::CreateIndexBuffer(LPVOID pData, UINT size, ID3D11Buffer** ppIB)
+{
+    D3D11_BUFFER_DESC bd = {};
+    bd.Usage = D3D11_USAGE_DEFAULT;
+    bd.ByteWidth = size;
+    bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    bd.CPUAccessFlags = 0;
+
+    D3D11_SUBRESOURCE_DATA rd;
+    ZeroMemory(&rd, sizeof(rd));
+    rd.pSysMem = pData;
+
+    ID3D11Buffer* pIB = nullptr;
+    HRESULT hr = m_device->CreateBuffer(&bd, &rd, &pIB);
+    if (FAILED(hr))
+    {
+        std::cout << "[실패] 인덱스버퍼 생성 실패" << std::endl;
+    }
+    *ppIB = pIB;
+}
+
 void Device::CreateInputLayout(D3D11_INPUT_ELEMENT_DESC* desc, DWORD num, ID3DBlob* pVSCode, ID3D11InputLayout** ppLayout)
 {
     //함께 사용될 셰이더가 필요함

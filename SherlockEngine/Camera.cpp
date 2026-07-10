@@ -2,13 +2,15 @@
 #include "Camera.h"
 
 Camera::Camera() //일단 임의의 기본 값.
-	: cameraEye(10, 20, -45), 
+	: cameraEye(10, 20, -45),
 	  cameraLookAt(0, 5, 0),
 	  cameraUp(0.0f, 1.0f, 0.0f),
 	  cameraFovY(XM_PIDIV4),
 	  cameraAspect(16.0f / 9.0f),
 	  cameraNearZ(0.1f),
 	  cameraFarZ(1000.0f),
+	  cameraOrthoHeight(25.0f),
+	  bUsePerspectiveProjection(true),
 	  bIsActive(true)
 {
 	XMStoreFloat4x4(&cameraView, XMMatrixIdentity());
@@ -43,6 +45,12 @@ void Camera::SetLens(float fovY, float aspect, float zn, float zf)
 void Camera::SetAspectRatio(float aspect)
 {
 	cameraAspect = aspect;
+	UpdateProjectionMatrix();
+}
+
+void Camera::SetUsePerspectiveProjection(bool usePerspective)
+{
+	bUsePerspectiveProjection = usePerspective;
 	UpdateProjectionMatrix();
 }
 
@@ -82,6 +90,15 @@ void Camera::UpdateProjectionMatrix()
 		aspect = 1.0f;
 	}
 
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(cameraFovY, aspect, cameraNearZ, cameraFarZ);
+	XMMATRIX proj = XMMatrixIdentity();
+	if (bUsePerspectiveProjection)
+	{
+		proj = XMMatrixPerspectiveFovLH(cameraFovY, aspect, cameraNearZ, cameraFarZ);
+	}
+	else
+	{
+		proj = XMMatrixOrthographicLH(cameraOrthoHeight * aspect, cameraOrthoHeight, cameraNearZ, cameraFarZ);
+	}
+
 	XMStoreFloat4x4(&cameraProj, proj);
 }

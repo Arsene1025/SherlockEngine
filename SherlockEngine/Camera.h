@@ -11,6 +11,9 @@ public:
 	void SetLens(float fovY = XM_PIDIV4, float aspect = 16.0f / 9.0f, float zn = 0.1f, float zf = 1000.0f);
 	//화면 비율
 	void SetAspectRatio(float aspect);
+	//원근/평행 투영 선택
+	void SetUsePerspectiveProjection(bool usePerspective);
+	bool IsUsePerspectiveProjection() const { return bUsePerspectiveProjection; }
 
 	XMMATRIX GetViewMatrix() const;
 	XMMATRIX GetProjectionMatrix() const;
@@ -45,6 +48,10 @@ private:
 	float cameraAspect;
 	float cameraNearZ;
 	float cameraFarZ;
+	float cameraOrthoHeight;
+
+	//원근 투영을 사용할지 여부. false면 평행 투영.
+	bool bUsePerspectiveProjection;
 
 	//활정화 되어 있는지 여부
 	bool bIsActive;

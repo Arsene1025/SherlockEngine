@@ -6,6 +6,7 @@ struct VERTEX
 {
 	float x, y, z; 			//좌표(Position)
 	float r, g, b, a;		//색상(Diffuse Color)
+	float nx, ny, nz;		//노멀(Normal)
 };
 
 struct GameTime
