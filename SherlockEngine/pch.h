@@ -43,6 +43,6 @@ using std::vector;
 #include "GameTimer.h"
 
 //내가 추가한 헤더들
-#include "struct.h"
 #include "enum.h"
+#include "struct.h"
 #include "helper.h"

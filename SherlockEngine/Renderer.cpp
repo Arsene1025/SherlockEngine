@@ -3,6 +3,7 @@
 #include "Device.h"
 #include "Shader.h"
 #include "Camera.h"
+#include <imgui.h>
 
 Renderer::Renderer()
 {
@@ -47,6 +48,23 @@ void Renderer::Render()
 	ObjUpdate();
 	graphicsDevice->Clear();
 	ObjDraw();
+}
+
+void Renderer::UpdateGUI()
+{
+	//조명 정보를 업데이트
+	static const char* lightTypeNames[] = { "Directional", "Point", "Spot" };
+	int selectedType = static_cast<int>(lights[0].type);
+
+	ImGui::Separator();
+	ImGui::Text("Light");
+	if (ImGui::Combo("Type", &selectedType, lightTypeNames, ARRAYSIZE(lightTypeNames)))
+	{
+		lights[0].type = static_cast<UINT>(selectedType);
+	}
+
+	ImGui::SliderFloat3("Position", &lights[0].position.x, -30.0f, 30.0f);
+	ImGui::DragFloat3("Direction", &lights[0].direction.x, 0.01f, -1.0f, 1.0f);
 }
 
 void Renderer::RasterStateCreate()
@@ -122,6 +140,42 @@ void Renderer::ObjRelease()
 void Renderer::ObjUpdate()
 {
 	sphereRenderer.UpdateConstantBuffer(sphereObject.GetTransform().GetWorldMatrix(), mainCamera);
+	UpdateLightConstantBuffer();
+}
+
+void Renderer::UpdateLightConstantBuffer()
+{
+	if (graphicsDevice == nullptr || graphicsShader == nullptr || mainCamera == nullptr ||
+		graphicsShader->GetLightCBBuffer() == nullptr)
+	{
+		return;
+	}
+
+	LightBuffer lightBuffer = {};
+	lightBuffer.lightCount = (lightCount < MAX_LIGHTS) ? lightCount : MAX_LIGHTS;
+	lightBuffer.cameraPosition = mainCamera->GetEye();
+	lightBuffer.ambientColor = ambientColor;
+	lightBuffer.specularColor = specularColor;
+	lightBuffer.shininess = shininess;
+
+	for (UINT i = 0; i < lightBuffer.lightCount; ++i)
+	{
+		lightBuffer.lights[i] = lights[i];
+
+		const XMVECTOR direction = XMLoadFloat3(&lightBuffer.lights[i].direction);
+		const float lengthSquared = XMVectorGetX(XMVector3LengthSq(direction));
+		if (lengthSquared > 0.000001f)
+		{
+			XMStoreFloat3(&lightBuffer.lights[i].direction, XMVector3Normalize(direction));
+		}
+		else
+		{
+			lightBuffer.lights[i].direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
+		}
+	}
+
+	graphicsDevice->GetContext()->UpdateSubresource(
+		graphicsShader->GetLightCBBuffer(), 0, nullptr, &lightBuffer, 0, 0);
 }
 
 void Renderer::ObjDraw()

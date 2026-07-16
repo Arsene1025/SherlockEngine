@@ -74,6 +74,8 @@ void MeshRenderer::UpdateConstantBuffer(const XMMATRIX& world, Camera* camera)
 	XMMATRIX wvp = world * view * proj;
 
 	cb.mWorld = XMMatrixTranspose(world);
+	const XMMATRIX worldInverseTranspose = XMMatrixTranspose(XMMatrixInverse(nullptr, world));
+	cb.mWorldInverseTranspose = XMMatrixTranspose(worldInverseTranspose);
 	cb.mView = XMMatrixTranspose(view);
 	cb.mProj = XMMatrixTranspose(proj);
 	cb.mWVP = XMMatrixTranspose(wvp);
