@@ -14,7 +14,7 @@ bool TestApp::Initialize()
 
 void TestApp::UpdateGUI()
 {
-
+	renderer.UpdateGUI();
 }
 
 void TestApp::Update()

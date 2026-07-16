@@ -19,3 +19,11 @@ enum
 	RM_DEFAULT = RM_SOLID | RM_CULLBACK,
 
 };
+
+enum class LightType : UINT
+{
+	Directional = 0,
+	Point = 1,
+	Spot = 2
+};
+constexpr UINT MAX_LIGHTS = 8;

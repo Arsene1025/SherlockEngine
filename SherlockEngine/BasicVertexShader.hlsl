@@ -1,6 +1,7 @@
 cbuffer ConstBuffer : register(b0)
 {
     matrix mWorld;
+    matrix mWorldInverseTranspose;
     matrix mView;
     matrix mProj;
     matrix mWVP;
@@ -18,6 +19,7 @@ struct VSOutput
     float4 position : SV_POSITION;
     float4 col : COLOR0;
     float3 normal : NORMAL0;
+    float3 worldPosition : TEXCOORD0;
 };
 
 VSOutput VS_Main(VSInput vsInput)
@@ -28,7 +30,8 @@ VSOutput VS_Main(VSInput vsInput)
 
     vsOutput.position = mul(vsInput.position, mWVP);
     vsOutput.col = vsInput.col;
-    vsOutput.normal = normalize(mul(float4(vsInput.normal, 0.0f), mWorld).xyz);
+    vsOutput.worldPosition = mul(vsInput.position, mWorld).xyz;
+    vsOutput.normal = normalize(mul(float4(vsInput.normal, 0.0f), mWorldInverseTranspose).xyz);
 
     return vsOutput;
 }

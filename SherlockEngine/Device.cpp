@@ -100,9 +100,15 @@ void Device::Resize(int width, int height)
 
 void Device::CreateConstBuffer(int size, ID3D11Buffer** ppCB)
 {
+	if (ppCB == nullptr || size <= 0)
+	{
+		return;
+	}
+
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof(ConstBuffer);
+	// D3D11 상수 버퍼 크기는 16바이트 단위여야함
+	bd.ByteWidth = static_cast<UINT>((size + 15) & ~15);
     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 
     ID3D11Buffer* pCB = nullptr;
@@ -110,6 +116,8 @@ void Device::CreateConstBuffer(int size, ID3D11Buffer** ppCB)
     if (FAILED(hr))
     {
         std::cout << "[실패] 상수 버퍼 생성 실패" << std::endl;
+		*ppCB = nullptr;
+		return;
     }
     *ppCB = pCB;
 }

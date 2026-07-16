@@ -18,6 +18,8 @@ void Shader::ShaderCreate()
 
 	//상수버퍼 생성
 	graphicsDevice->CreateConstBuffer(sizeof(ConstBuffer), &pCB);
+	//조명 상수버퍼 생성함
+	graphicsDevice->CreateConstBuffer(sizeof(LightBuffer), &pLightCB);
 }
 
 void Shader::ShaderUpdate()
@@ -31,8 +33,12 @@ void Shader::ShaderUpdate()
 	//우선 여기서 업데이트 하고 추후에 Mesh랑 Material분리할 때 분리하기
 
 
+
+
 	//셰이더 상수 버퍼 설정
 	graphicsDevice->GetContext()->VSSetConstantBuffers(0, 1, &pCB);
+	//조명 데이터 상수버퍼
+	graphicsDevice->GetContext()->PSSetConstantBuffers(1, 1, &pLightCB);
 }
 
 void Shader::ShaderRelease()
@@ -41,6 +47,7 @@ void Shader::ShaderRelease()
 	SafeRelease(pPS);
 	SafeRelease(pVSCode);
 	SafeRelease(pCB);
+	SafeRelease(pLightCB);
 
 }
 

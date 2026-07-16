@@ -19,11 +19,13 @@ public:
 	void DataRelease();
 	void Render();
 	void RenderModeUpdate();
+	void UpdateGUI();
 
 	int ObjLoad();
 	void ObjRelease();
 	void ObjUpdate();
 	void ObjDraw();
+	void UpdateLightConstantBuffer();
 
 	void RasterStateCreate();
 	void RasterStateRelease();
@@ -45,4 +47,10 @@ private:
 	GameObject sphereObject;
 	Mesh sphereMesh;
 	MeshRenderer sphereRenderer;
+
+	LightData lights[MAX_LIGHTS];
+	UINT lightCount = 1;
+	XMFLOAT3 ambientColor = XMFLOAT3(0.12f, 0.12f, 0.12f);
+	XMFLOAT3 specularColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
+	float shininess = 32.0f;
 };

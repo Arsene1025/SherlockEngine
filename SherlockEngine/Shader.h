@@ -20,6 +20,7 @@ public:
 	ID3D11PixelShader* GetPixtexShader() const { return pPS; }
 	ID3DBlob* GetVSCode() const { return pVSCode; }
 	ID3D11Buffer* GetCBBuffer() { return pCB; }
+	ID3D11Buffer* GetLightCBBuffer() { return pLightCB; }
 
 private:
 
@@ -35,6 +36,7 @@ private:
 
 	//상수버퍼
 	ID3D11Buffer* pCB = nullptr;
+	ID3D11Buffer* pLightCB = nullptr;
 
 	//Device
 	Device* graphicsDevice = nullptr;
