@@ -97,32 +97,3 @@ out/
 *.VC.db
 *.VC.opendb
 *.log
-
-# Visual Studio / C++ build artifacts
-.vs/
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-bin/
-obj/
-build/
-out/
-
-# User-specific files
-*.user
-*.suo
-
-# Compiler / linker outputs
-*.obj
-*.o
-*.exe
-*.dll
-*.lib
-*.pdb
-*.ilk
-*.idb
-*.ipch
-*.VC.db
-*.VC.opendb
-*.log

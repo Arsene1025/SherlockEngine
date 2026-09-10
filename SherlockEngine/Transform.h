@@ -1,25 +1,26 @@
-#pragma once
+﻿#pragma once
+#include <DirectXMath.h>
 
 class Transform
 {
 public:
 	Transform();
 
-	void SetPosition(const XMFLOAT3& value);
+	void SetPosition(const DirectX::XMFLOAT3& value);
 	void SetPosition(float x, float y, float z);
-	void SetRotation(const XMFLOAT3& value);
+	void SetRotation(const DirectX::XMFLOAT3& value);
 	void SetRotation(float x, float y, float z);
-	void SetScale(const XMFLOAT3& value);
+	void SetScale(const DirectX::XMFLOAT3& value);
 	void SetScale(float x, float y, float z);
 
-	const XMFLOAT3& GetPosition() const { return position; }
-	const XMFLOAT3& GetRotation() const { return rotation; }
-	const XMFLOAT3& GetScale() const { return scale; }
+	const DirectX::XMFLOAT3& GetPosition() const { return position; }
+	const DirectX::XMFLOAT3& GetRotation() const { return rotation; }
+	const DirectX::XMFLOAT3& GetScale() const { return scale; }
 
-	XMMATRIX GetWorldMatrix() const;
+	DirectX::XMMATRIX GetWorldMatrix() const;
 
 private:
-	XMFLOAT3 position;
-	XMFLOAT3 rotation;
-	XMFLOAT3 scale;
+	DirectX::XMFLOAT3 position;
+	DirectX::XMFLOAT3 rotation;
+	DirectX::XMFLOAT3 scale;
 };

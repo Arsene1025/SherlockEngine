@@ -1,5 +1,7 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "Transform.h"
+
+using namespace DirectX;   // 이 파일 안에서만
 
 Transform::Transform()
 	: position(0.0f, 0.0f, 0.0f),

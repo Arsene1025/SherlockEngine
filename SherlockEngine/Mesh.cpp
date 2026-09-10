@@ -1,6 +1,8 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include <cmath>
 #include "Mesh.h"
+
+using namespace DirectX;   // 이 파일 안에서만
 
 Mesh Mesh::CreateSphere(float radius, UINT sliceCount, UINT stackCount, const XMFLOAT4& color)
 {

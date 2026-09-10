@@ -1,4 +1,5 @@
-#pragma once
+﻿#pragma once
+#include <DirectXMath.h>
 
 class Device;
 class Shader;
@@ -13,7 +14,7 @@ public:
 
 	bool Initialize(Device* device, Shader* shader, Mesh* mesh);
 	void Release();
-	void UpdateConstantBuffer(const XMMATRIX& world, Camera* camera);
+	void UpdateConstantBuffer(const DirectX::XMMATRIX& world, Camera* camera);
 	void Draw();
 
 private:
@@ -21,7 +22,7 @@ private:
 	Shader* graphicsShader = nullptr;
 	Mesh* mesh = nullptr;
 
-	ID3D11Buffer* vertexBuffer = nullptr;
-	ID3D11Buffer* indexBuffer = nullptr;
-	ID3D11InputLayout* inputLayout = nullptr;
+	ComPtr<ID3D11Buffer> vertexBuffer;
+	ComPtr<ID3D11Buffer> indexBuffer;
+	ComPtr<ID3D11InputLayout> inputLayout;
 };

@@ -1,4 +1,4 @@
-//***************************************************************************************
+﻿//***************************************************************************************
 // GameTimer.h by Frank Luna (C) 2011 All Rights Reserved.
 //***************************************************************************************
 
@@ -13,7 +13,7 @@ public:
 	float TotalTime()const; // in seconds
 	float DeltaTime()const; // in seconds
 
-	float DeltaTimeMS()const; // in mili-seconds, �߰�
+	float DeltaTimeMS()const; // in mili-seconds, 추가
 
 	void Reset(); // Call before message loop.
 	void Start(); // Call when unpaused.

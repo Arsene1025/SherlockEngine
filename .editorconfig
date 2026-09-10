@@ -1,0 +1,33 @@
+; SherlockEngine 편집기 설정
+; C++ 소스는 UTF-8 BOM. BOM이 있어야 MSVC와 Visual Studio가 인코딩을 확실히 인식한다.
+; HLSL은 BOM을 붙이면 안 된다. D3DCompileFromFile이 BOM을
+; "error X3000: Illegal character in shader file" 로 거부한다.
+
+root = true
+
+[*]
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = tab
+
+[*.{h,hpp,c,cpp,inl}]
+charset = utf-8-bom
+
+[*.{hlsl,hlsli,fx}]
+charset = utf-8
+indent_style = space
+indent_size = 4
+
+[*.{json,md,yml,yaml}]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+[*.{vcxproj,filters,sln,props,targets}]
+charset = utf-8
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false

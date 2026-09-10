@@ -1,7 +1,9 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "Camera.h"
 
-Camera::Camera() //ÀÏ´Ü ÀÓÀÇÀÇ ±âº» °ª.
+using namespace DirectX;   // ì´ íŒŒì¼ ì•ˆì—ì„œë§Œ
+
+Camera::Camera() //ì¼ë‹¨ ì„ì˜ì˜ ê¸°ë³¸ ê°’.
 	: cameraEye(10, 20, -45),
 	  cameraLookAt(0, 5, 0),
 	  cameraUp(0.0f, 1.0f, 0.0f),
@@ -24,7 +26,7 @@ Camera::~Camera()
 {
 }
 
-//Ä«¸Ş¶ó ¼³Á¤
+//ì¹´ë©”ë¼ ì„¤ì •
 void Camera::SetLookAt(const XMFLOAT3& eye, const XMFLOAT3& lookAt, const XMFLOAT3& up)
 {
 	cameraEye = eye;
@@ -71,7 +73,7 @@ XMMATRIX Camera::GetViewProjectionMatrix() const
 }
 
 
-//Çà·Ä ¾÷µ¥ÀÌÆ®
+//í–‰ë ¬ ì—…ë°ì´íŠ¸
 void Camera::UpdateViewMatrix()
 {
 	XMVECTOR eye = XMLoadFloat3(&cameraEye);

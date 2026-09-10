@@ -1,44 +1,44 @@
-#pragma once
+﻿#pragma once
 class Device;
 
 class Shader
 {
 public:
 	
-	bool Initalize(Device* device);
+	bool Initialize(Device* device);
 
-	void ShaderCreate();
+	bool ShaderCreate();
 	void ShaderUpdate();
-	void ShaderRelease();
 	bool ShaderLoad();
-	HRESULT ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* target, ID3D11VertexShader** ppPS, ID3DBlob** ppCode = NULL);
-	HRESULT ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* target, ID3D11PixelShader** ppPS);
+	HRESULT ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* target, ComPtr<ID3D11VertexShader>& outVS, ComPtr<ID3DBlob>& outCode);
+	HRESULT ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* target, ComPtr<ID3D11PixelShader>& outPS);
 																					//out
-	HRESULT ShaderCompile(const TCHAR* FileName, const CHAR* EntryPoint, const CHAR* ShaderModel, ID3DBlob** ppCode);
+	HRESULT ShaderCompile(const TCHAR* FileName, const CHAR* EntryPoint, const CHAR* ShaderModel, ComPtr<ID3DBlob>& outCode);
 
-	ID3D11VertexShader* GetVertexShader() const { return pVS; }
-	ID3D11PixelShader* GetPixtexShader() const { return pPS; }
-	ID3DBlob* GetVSCode() const { return pVSCode; }
-	ID3D11Buffer* GetCBBuffer() { return pCB; }
-	ID3D11Buffer* GetLightCBBuffer() { return pLightCB; }
+	// 아래 게터는 소유하지 않는 참조를 돌려준다. 수명은 Shader가 관리한다.
+	ID3D11VertexShader* GetVertexShader() const { return pVS.Get(); }
+	ID3D11PixelShader* GetPixtexShader() const { return pPS.Get(); }
+	ID3DBlob* GetVSCode() const { return pVSCode.Get(); }
+	ID3D11Buffer* GetCBBuffer() { return pCB.Get(); }
+	ID3D11Buffer* GetLightCBBuffer() { return pLightCB.Get(); }
 
 private:
 
 public:
 
 private:
-	//���̴�
-	ID3D11VertexShader* pVS = nullptr;
-	ID3D11PixelShader* pPS = nullptr;
+	//셰이더
+	ComPtr<ID3D11VertexShader> pVS;
+	ComPtr<ID3D11PixelShader> pPS;
 
-	//���ؽ� ���̴� ������ �ڵ� �ӽ�
-	ID3DBlob* pVSCode = nullptr;
+	//버텍스 셰이더 컴파일 코드 임시
+	ComPtr<ID3DBlob> pVSCode;
 
-	//�������
-	ID3D11Buffer* pCB = nullptr;
-	ID3D11Buffer* pLightCB = nullptr;
+	//상수버퍼
+	ComPtr<ID3D11Buffer> pCB;
+	ComPtr<ID3D11Buffer> pLightCB;
 
-	//Device
+	//Device (소유하지 않는 참조)
 	Device* graphicsDevice = nullptr;
 };
 

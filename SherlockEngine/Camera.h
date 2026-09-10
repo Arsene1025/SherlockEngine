@@ -1,30 +1,31 @@
-#pragma once
+ï»¿#pragma once
+#include <DirectXMath.h>
 class Camera
 {
 public:
 	Camera();
 	~Camera();
 
-	//½Ã¾ß°¢
-	void SetLookAt(const XMFLOAT3& eye, const XMFLOAT3& lookAt, const XMFLOAT3& up = XMFLOAT3(0.0f, 1.0f, 0.0f));
-	//½Ã¾ß ¼³Á¤
-	void SetLens(float fovY = XM_PIDIV4, float aspect = 16.0f / 9.0f, float zn = 0.1f, float zf = 1000.0f);
-	//È­¸é ºñÀ²
+	//ì‹œì•¼ê°
+	void SetLookAt(const DirectX::XMFLOAT3& eye, const DirectX::XMFLOAT3& lookAt, const DirectX::XMFLOAT3& up = DirectX::XMFLOAT3(0.0f, 1.0f, 0.0f));
+	//ì‹œì•¼ ì„¤ì •
+	void SetLens(float fovY = DirectX::XM_PIDIV4, float aspect = 16.0f / 9.0f, float zn = 0.1f, float zf = 1000.0f);
+	//í™”ë©´ ë¹„ìœ¨
 	void SetAspectRatio(float aspect);
-	//¿ø±Ù/ÆòÇà Åõ¿µ ¼±ÅÃ
+	//ì›ê·¼/í‰í–‰ íˆ¬ì˜ ì„ íƒ
 	void SetUsePerspectiveProjection(bool usePerspective);
 	bool IsUsePerspectiveProjection() const { return bUsePerspectiveProjection; }
 
-	XMMATRIX GetViewMatrix() const;
-	XMMATRIX GetProjectionMatrix() const;
-	XMMATRIX GetViewProjectionMatrix() const;
+	DirectX::XMMATRIX GetViewMatrix() const;
+	DirectX::XMMATRIX GetProjectionMatrix() const;
+	DirectX::XMMATRIX GetViewProjectionMatrix() const;
 
-	//Ä«¸Ş¶ó Á¤º¸ ¹İÈ¯
-	const XMFLOAT3& GetEye() const { return cameraEye; }
-	const XMFLOAT3& GetLookAt() const { return cameraLookAt; }
-	const XMFLOAT3& GetUp() const { return cameraUp; }
+	//ì¹´ë©”ë¼ ì •ë³´ ë°˜í™˜
+	const DirectX::XMFLOAT3& GetEye() const { return cameraEye; }
+	const DirectX::XMFLOAT3& GetLookAt() const { return cameraLookAt; }
+	const DirectX::XMFLOAT3& GetUp() const { return cameraUp; }
 
-	//È°¼ºÈ­ °ü·Ã ÄÚµå
+	//í™œì„±í™” ê´€ë ¨ ì½”ë“œ
 	void SetActive(bool active) { bIsActive = active; }
 	bool IsActive() const { return bIsActive; }
 
@@ -33,26 +34,26 @@ private:
 	void UpdateProjectionMatrix();
 
 private:
-	XMFLOAT3 cameraEye;
-	XMFLOAT3 cameraLookAt;
-	XMFLOAT3 cameraUp;
+	DirectX::XMFLOAT3 cameraEye;
+	DirectX::XMFLOAT3 cameraLookAt;
+	DirectX::XMFLOAT3 cameraUp;
 
-	//ViewÇà·Ä
-	XMFLOAT4X4 cameraView;
+	//Viewí–‰ë ¬
+	DirectX::XMFLOAT4X4 cameraView;
 
-	//ProjÇà·Ä
-	XMFLOAT4X4 cameraProj;
+	//Projí–‰ë ¬
+	DirectX::XMFLOAT4X4 cameraProj;
 
-	//Ä«¸Ş¶ó Á¤º¸µé
+	//ì¹´ë©”ë¼ ì •ë³´ë“¤
 	float cameraFovY;
 	float cameraAspect;
 	float cameraNearZ;
 	float cameraFarZ;
 	float cameraOrthoHeight;
 
-	//¿ø±Ù Åõ¿µÀ» »ç¿ëÇÒÁö ¿©ºÎ. false¸é ÆòÇà Åõ¿µ.
+	//ì›ê·¼ íˆ¬ì˜ì„ ì‚¬ìš©í• ì§€ ì—¬ë¶€. falseë©´ í‰í–‰ íˆ¬ì˜.
 	bool bUsePerspectiveProjection;
 
-	//È°Á¤È­ µÇ¾î ÀÖ´ÂÁö ¿©ºÎ
+	//í™œì •í™” ë˜ì–´ ìˆëŠ”ì§€ ì—¬ë¶€
 	bool bIsActive;
 };
