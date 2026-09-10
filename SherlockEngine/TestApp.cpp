@@ -1,4 +1,4 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "TestApp.h"
 
 TestApp::TestApp()
@@ -19,7 +19,7 @@ void TestApp::UpdateGUI()
 
 void TestApp::Update()
 {
-	//gameTime Àü¿ªº¯¼ö
+	//gameTime ì „ì—­ë³€ìˆ˜
 }
 
 void TestApp::Render()

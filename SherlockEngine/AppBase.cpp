@@ -1,8 +1,11 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "AppBase.h"
+#include "Log.h"
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
+
+using namespace DirectX;   // ì´ íŒŒì¼ ì•ˆì—ì„œë§Œ
 
 
 
@@ -11,6 +14,12 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,UINT msg,
 AppBase* g_appBase = nullptr;
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+    // ì†Œë©¸ ì¤‘ì´ê±°ë‚˜ ì•„ì§ ìƒì„± ì „ì´ë©´ g_appBaseê°€ ì—†ë‹¤.
+    // DestroyWindowê°€ ë³´ë‚´ëŠ” WM_DESTROYë„ ì´ ê²½ë¡œë¡œ ì˜¨ë‹¤.
+    if (g_appBase == nullptr)
+    {
+        return ::DefWindowProc(hWnd, msg, wParam, lParam);
+    }
     return g_appBase->MsgProc(hWnd, msg, wParam, lParam);
 }
 
@@ -21,12 +30,29 @@ AppBase::AppBase() : m_screenWidth(1280), m_screenHeight(720), m_mainWindow(0), 
 
 AppBase::~AppBase()
 {
-	g_appBase = nullptr;
-	ImGui_ImplDX11_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
-	DestroyWindow(m_mainWindow);
+	// ì°½ì„ ë¨¼ì € íŒŒê´´í•œë‹¤. DestroyWindowëŠ” WM_DESTROYë¥¼ ë™ê¸°ì ìœ¼ë¡œ ë³´ë‚´ë¯€ë¡œ
+	// g_appBaseê°€ ì•„ì§ ì‚´ì•„ ìˆì–´ì•¼ í•œë‹¤.
+	if (m_mainWindow != nullptr)
+	{
+		DestroyWindow(m_mainWindow);
+		m_mainWindow = nullptr;
+	}
 
+	g_appBase = nullptr;
+
+	// ì´ˆê¸°í™”í•œ ê²ƒë§Œ, ì´ˆê¸°í™”ì˜ ì—­ìˆœìœ¼ë¡œ ë˜ëŒë¦°ë‹¤.
+	if (m_guiInitialized)
+	{
+		ImGui_ImplDX11_Shutdown();
+	}
+	if (m_guiWin32Initialized)
+	{
+		ImGui_ImplWin32_Shutdown();
+	}
+	if (m_guiContextCreated)
+	{
+		ImGui::DestroyContext();
+	}
 }
 
 float AppBase::GetAspectRatio() const
@@ -62,10 +88,10 @@ int AppBase::Run()
             ImGui_ImplDX11_NewFrame();
             ImGui_ImplWin32_NewFrame();
 
-            ImGui::NewFrame(); //Imgui ·»´õ¸µ ½ÃÀÛ
+            ImGui::NewFrame(); //Imgui ë Œë”ë§ ì‹œì‘
             ImGui::Begin("Information");
 
-            //Imgui¿¡¼­ ÀÚÃ¼ÀûÀ¸·Î ÇÁ·¹ÀÓ °è»êÇÔ
+            //Imguiì—ì„œ ìì²´ì ìœ¼ë¡œ í”„ë ˆì„ ê³„ì‚°í•¨
             ImGui::Text
             (
                 "Average %.3f ms/frame (%.1f FPS)",
@@ -73,21 +99,21 @@ int AppBase::Run()
                 ImGui::GetIO().Framerate
             );
 
-            UpdateGUI(); //GUIÃß°¡ÇÏ·Á¸é ¿©±â¿¡
+            UpdateGUI(); //GUIì¶”ê°€í•˜ë ¤ë©´ ì—¬ê¸°ì—
 
             m_guiWidth = 0;
-            // È­¸éÀ» Å©°Ô ¾²±â À§ÇØ ±â´É Á¤Áö
+            // í™”ë©´ì„ í¬ê²Œ ì“°ê¸° ìœ„í•´ ê¸°ëŠ¥ ì •ì§€
             // ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
             // m_guiWidth = int(ImGui::GetWindowWidth());
 
             ImGui::End();
             ImGui::Render();
 
-            //Update(ImGui::GetIO().DeltaTime); //º¯È­
+            //Update(ImGui::GetIO().DeltaTime); //ë³€í™”
 
-            Render(); //½ÇÁ¦ ·»´õ¸µ
-            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); // GUI ·»´õ¸µ
-            //ImGui RenderDrawData() ´ÙÀ½¿¡ Present() È£Ãâ ÇØ¾ßÇÔ
+            Render(); //ì‹¤ì œ ë Œë”ë§
+            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); // GUI ë Œë”ë§
+            //ImGui RenderDrawData() ë‹¤ìŒì— Present() í˜¸ì¶œ í•´ì•¼í•¨
             graphicsDevice.Present();
         }
     }
@@ -103,10 +129,18 @@ bool AppBase::Initialize()
     camera.SetLens(XM_PIDIV4, GetAspectRatio(), 0.1f, 1000.0f);
 
     if (!InitShaderClass()) return false;
-    shaderClass.ShaderCreate();
+    if (!shaderClass.ShaderCreate())
+    {
+        Log::Error("ì…°ì´ë” ìƒì„± ì‹¤íŒ¨");
+        return false;
+    }
 
     if (!InitRenderer()) return false;
-    renderer.DataLoading();
+    if (!renderer.DataLoading())
+    {
+        Log::Error("ë Œë” ë°ì´í„° ë¡œë“œ ì‹¤íŒ¨");
+        return false;
+    }
     
     if (!InitGUI()) return false;
 
@@ -121,11 +155,16 @@ bool AppBase::Initialize()
 
 LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))  return true;
+    // ImGui Win32 ë°±ì—”ë“œê°€ ì¤€ë¹„ë˜ê¸° ì „ì´ë‚˜ ì¢…ë£Œëœ ë’¤ì—ëŠ” ë„˜ê¸°ë©´ ì•ˆ ëœë‹¤.
+    if (m_guiWin32Initialized &&
+        ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
+    {
+        return true;
+    }
     switch (msg)
     {
         case WM_SIZE:
-            //¸Ç Ã³À½ ½ÃÀÛ¶§´Â ResizeÈ£ÃâÇÏÁö ¾Ê±â
+            //ë§¨ ì²˜ìŒ ì‹œì‘ë•ŒëŠ” Resizeí˜¸ì¶œí•˜ì§€ ì•Šê¸°
             if (graphicsDevice.GetSwapChain())
             {
                 int width = LOWORD(lParam);
@@ -167,36 +206,36 @@ bool AppBase::InitMainWindow()
     // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerclassa?redirectedfrom=MSDN
     if (!RegisterClassEx(&wc)) 
     {
-        std::cout << "[½ÇÆĞ] RegisterClassEx() ½ÇÆĞ" << std::endl;
+        Log::Error("RegisterClassEx() ì‹¤íŒ¨");
         return false;
     }
 
-    // Åø¹Ù±îÁö Æ÷ÇÔÇÑ À©µµ¿ì ÀüÃ¼ ÇØ»óµµ°¡ ¾Æ´Ï¶ó
-    // ¿ì¸®°¡ ½ÇÁ¦·Î ±×¸®´Â ÇØ»óµµ°¡ width x height°¡ µÇ·Á¸é
-    // À©µµ¿ì¸¦ ¸¸µé ÇØ»óµµ¸¦ ´Ù½Ã °è»êÇØ¼­ CreateWindow()¿¡¼­ »ç¿ëÇØ¾ßÇÔ
-    // ·»´õ°¡ ±×·ÁÁú Å©±â
+    // íˆ´ë°”ê¹Œì§€ í¬í•¨í•œ ìœˆë„ìš° ì „ì²´ í•´ìƒë„ê°€ ì•„ë‹ˆë¼
+    // ìš°ë¦¬ê°€ ì‹¤ì œë¡œ ê·¸ë¦¬ëŠ” í•´ìƒë„ê°€ width x heightê°€ ë˜ë ¤ë©´
+    // ìœˆë„ìš°ë¥¼ ë§Œë“¤ í•´ìƒë„ë¥¼ ë‹¤ì‹œ ê³„ì‚°í•´ì„œ CreateWindow()ì—ì„œ ì‚¬ìš©í•´ì•¼í•¨
+    // ë Œë”ê°€ ê·¸ë ¤ì§ˆ í¬ê¸°
     RECT wr = { 0, 0, m_screenWidth, m_screenHeight };
 
-    // ÇÊ¿äÇÑ À©µµ¿ì Å©±â(ÇØ»óµµ) °è»ê
-    // wrÀÇ °ªÀÌ ¹Ù²ñ
+    // í•„ìš”í•œ ìœˆë„ìš° í¬ê¸°(í•´ìƒë„) ê³„ì‚°
+    // wrì˜ ê°’ì´ ë°”ë€œ
     AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, false);
 
-    // À©µµ¿ì¸¦ ¸¸µé¶§ À§¿¡¼­ °è»êÇÑ wr »ç¿ë
+    // ìœˆë„ìš°ë¥¼ ë§Œë“¤ë•Œ ìœ„ì—ì„œ ê³„ì‚°í•œ wr ì‚¬ìš©
     m_mainWindow = CreateWindow
     (
         wc.lpszClassName, 
         L"SherlockEngine",
         WS_OVERLAPPEDWINDOW,
-        100, // À©µµ¿ì ÁÂÃø »ó´ÜÀÇ x ÁÂÇ¥
-        100, // À©µµ¿ì ÁÂÃø »ó´ÜÀÇ y ÁÂÇ¥
-        wr.right - wr.left, // À©µµ¿ì °¡·Î ¹æÇâ ÇØ»óµµ
-        wr.bottom - wr.top, // À©µµ¿ì ¼¼·Î ¹æÇâ ÇØ»óµµ
+        100, // ìœˆë„ìš° ì¢Œì¸¡ ìƒë‹¨ì˜ x ì¢Œí‘œ
+        100, // ìœˆë„ìš° ì¢Œì¸¡ ìƒë‹¨ì˜ y ì¢Œí‘œ
+        wr.right - wr.left, // ìœˆë„ìš° ê°€ë¡œ ë°©í–¥ í•´ìƒë„
+        wr.bottom - wr.top, // ìœˆë„ìš° ì„¸ë¡œ ë°©í–¥ í•´ìƒë„
         NULL, NULL, wc.hInstance, NULL
     );
 
     if (!m_mainWindow) 
     {
-        std::cout << "[½ÇÆĞ] CreateWindow() failed." << std::endl;
+        Log::Error("CreateWindow() ì‹¤íŒ¨");
         return false;
     }
 
@@ -210,7 +249,7 @@ bool AppBase::InitDevice()
 {
     if (!graphicsDevice.InitDevice(m_mainWindow, m_screenWidth, m_screenHeight))
     {
-        std::cout << "[½ÇÆĞ] Device ÃÊ±âÈ­ ½ÇÆĞ" << std::endl;
+        Log::Error("Device ì´ˆê¸°í™” ì‹¤íŒ¨");
         return false;
     }
     return true;
@@ -220,7 +259,7 @@ bool AppBase::InitRenderer()
 {
     if (!renderer.Initialize(&graphicsDevice, &shaderClass, &camera))
     {
-        std::cout << "[½ÇÆĞ] Renderer ÃÊ±âÈ­ ½ÇÆĞ" << std::endl;
+        Log::Error("Renderer ì´ˆê¸°í™” ì‹¤íŒ¨");
         return false;
     }
     return true;
@@ -228,9 +267,9 @@ bool AppBase::InitRenderer()
 
 bool AppBase::InitShaderClass()
 {
-    if (!shaderClass.Initalize(&graphicsDevice))
+    if (!shaderClass.Initialize(&graphicsDevice))
     {
-        std::cout << "[½ÇÆĞ] ShaderÅ¬·¡½º ÃÊ±âÈ­ ½ÇÆĞ" << std::endl;
+        Log::Error("Shader í´ë˜ìŠ¤ ì´ˆê¸°í™” ì‹¤íŒ¨");
         return false;
     }
     return true;
@@ -240,20 +279,25 @@ bool AppBase::InitGUI()
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    m_guiContextCreated = true;
     ImGuiIO& io = ImGui::GetIO();
     (void)io;
     io.DisplaySize = ImVec2(float(m_screenWidth), float(m_screenHeight));
     ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
-    if (!ImGui_ImplDX11_Init(graphicsDevice.GetDevice(), graphicsDevice.GetContext())) 
+    if (!ImGui_ImplDX11_Init(graphicsDevice.GetDevice(), graphicsDevice.GetContext()))
     {
+        Log::Error("ImGui DX11 ë°±ì—”ë“œ ì´ˆê¸°í™” ì‹¤íŒ¨");
         return false;
     }
-    if (!ImGui_ImplWin32_Init(m_mainWindow)) 
+    m_guiInitialized = true;
+    if (!ImGui_ImplWin32_Init(m_mainWindow))
     {
+        Log::Error("ImGui Win32 ë°±ì—”ë“œ ì´ˆê¸°í™” ì‹¤íŒ¨");
         return false;
     }
+    m_guiWin32Initialized = true;
     return true;
 }
 

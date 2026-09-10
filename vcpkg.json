@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "sherlockengine",
+  "version": "0.1.0",
+  "description": "DirectX 11 rendering engine, heading toward an RHI with PSO-style pipeline state.",
+  "builtin-baseline": "1f5e0348089e8a9b187f57d42866ebc871e815da",
+  "dependencies": [
+    "directxmath",
+    "directxtk",
+    {
+      "name": "directxtex",
+      "features": [ "dx11" ]
+    },
+    {
+      "name": "imgui",
+      "features": [ "dx11-binding", "win32-binding" ]
+    }
+  ]
+}

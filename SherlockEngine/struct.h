@@ -1,12 +1,15 @@
-#pragma once
+Ôªø#pragma once
+#include <windows.h>       // UINT
+#include <DirectXMath.h>   // DirectX::XMMATRIX, DirectX::XMFLOAT3
+#include "enum.h"          // LightType, MAX_LIGHTS
 
 
-//Vertex±∏¡∂√º
+//VertexÍµ¨Ï°∞Ï≤¥
 struct VERTEX
 {
-	float x, y, z; 			//¡¬«•(Position)
-	float r, g, b, a;		//ªˆªÛ(Diffuse Color)
-	float nx, ny, nz;		//≥Î∏÷(Normal)
+	float x, y, z; 			//Ï¢åÌëú(Position)
+	float r, g, b, a;		//ÏÉâÏÉÅ(Diffuse Color)
+	float nx, ny, nz;		//ÎÖ∏Î©Ä(Normal)
 };
 
 struct GameTime
@@ -22,49 +25,49 @@ struct GameTime
 
 struct ConstBuffer
 {
-	XMMATRIX mWorld;
-	XMMATRIX mWorldInverseTranspose;
-	XMMATRIX mView;
-	XMMATRIX mProj;
-	XMMATRIX mWVP;
+	DirectX::XMMATRIX mWorld;
+	DirectX::XMMATRIX mWorldInverseTranspose;
+	DirectX::XMMATRIX mView;
+	DirectX::XMMATRIX mProj;
+	DirectX::XMMATRIX mWVP;
 };
 
 
 
-//16πŸ¿Ã∆Æ ¡§∑ƒ
+//16Î∞îÏù¥Ìä∏ Ï†ïÎ†¨
 struct alignas(16) LightData
 {
-	XMFLOAT3 position = XMFLOAT3(0.0f, 10.0f, -10.0f);
+	DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.0f, 10.0f, -10.0f);
 	float intensity = 1.0f;
 
-	// ∫˚¿Ã ¡¯«‡«œ¥¬ πÊ«‚. ºŒ¿Ã¥ı¿« «•∏È πÊ«‚ ∫§≈Õ L¿∫ π›¥Î πÊ«‚¿ª ªÁøÎ
-	XMFLOAT3 direction = XMFLOAT3(0.0f, -0.4472136f, 0.8944272f);
+	// ÎπõÏù¥ ÏßÑÌñâÌïòÎäî Î∞©Ìñ•. ÏÖ∞Ïù¥ÎçîÏùò ÌëúÎ©¥ Î∞©Ìñ• Î≤°ÌÑ∞ LÏùÄ Î∞òÎåÄ Î∞©Ìñ•ÏùÑ ÏÇ¨Ïö©
+	DirectX::XMFLOAT3 direction = DirectX::XMFLOAT3(0.0f, -0.4472136f, 0.8944272f);
 	float range = 50.0f;
 
-	XMFLOAT3 color = XMFLOAT3(1.0f, 1.0f, 1.0f);
+	DirectX::XMFLOAT3 color = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
 	UINT type = static_cast<UINT>(LightType::Directional);
 
 	// constant, linear, quadratic attenuation
-	XMFLOAT3 attenuation = XMFLOAT3(1.0f, 0.045f, 0.0075f);
+	DirectX::XMFLOAT3 attenuation = DirectX::XMFLOAT3(1.0f, 0.045f, 0.0075f);
 	float innerConeCos = 0.9238795f; // cos(22.5 degrees)
 
 	float outerConeCos = 0.8660254f; // cos(30 degrees)
-	XMFLOAT3 padding = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	DirectX::XMFLOAT3 padding = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
 };
 
 struct alignas(16) LightBuffer
 {
 	LightData lights[MAX_LIGHTS];
 
-	XMFLOAT3 cameraPosition = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	DirectX::XMFLOAT3 cameraPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
 	UINT lightCount = 0;
 
-	XMFLOAT3 ambientColor = XMFLOAT3(0.12f, 0.12f, 0.12f);
+	DirectX::XMFLOAT3 ambientColor = DirectX::XMFLOAT3(0.12f, 0.12f, 0.12f);
 	float shininess = 32.0f;
 
-	XMFLOAT3 specularColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
+	DirectX::XMFLOAT3 specularColor = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
 	float padding = 0.0f;
 };
 
-static_assert(sizeof(LightData) % 16 == 0, "[∞Ê∞Ì] LightData must be 16-byte aligned for HLSL.");
-static_assert(sizeof(LightBuffer) % 16 == 0, "[∞Ê∞Ì] LightBuffer must be 16-byte aligned for HLSL.");
+static_assert(sizeof(LightData) % 16 == 0, "[Í≤ΩÍ≥†] LightData must be 16-byte aligned for HLSL.");
+static_assert(sizeof(LightBuffer) % 16 == 0, "[Í≤ΩÍ≥†] LightBuffer must be 16-byte aligned for HLSL.");

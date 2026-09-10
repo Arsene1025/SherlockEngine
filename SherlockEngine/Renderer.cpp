@@ -1,9 +1,12 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "Renderer.h"
 #include "Device.h"
 #include "Shader.h"
 #include "Camera.h"
+#include "Log.h"
 #include <imgui.h>
+
+using namespace DirectX;   // 이 파일 안에서만
 
 Renderer::Renderer()
 {
@@ -25,16 +28,20 @@ bool Renderer::Initialize(Device* device, Shader* shader, Camera* camera)
 	return true;
 }
 
-int Renderer::DataLoading()
+bool Renderer::DataLoading()
 {
-	if (ObjLoad() == 0)
+	if (!ObjLoad())
 	{
-		return 0;
+		Log::Error("DataLoading : 오브젝트 로드 실패.");
+		return false;
 	}
 
-	RasterStateCreate();
+	if (!RasterStateCreate())
+	{
+		return false;
+	}
 
-	return 1;
+	return true;
 }
 
 void Renderer::DataRelease()
@@ -46,13 +53,12 @@ void Renderer::DataRelease()
 void Renderer::Render()
 {
 	ObjUpdate();
-	graphicsDevice->Clear();
 	ObjDraw();
 }
 
 void Renderer::UpdateGUI()
 {
-	//���� ������ ������Ʈ
+	//조명 정보를 업데이트
 	static const char* lightTypeNames[] = { "Directional", "Point", "Spot" };
 	int selectedType = static_cast<int>(lights[0].type);
 
@@ -67,9 +73,15 @@ void Renderer::UpdateGUI()
 	ImGui::DragFloat3("Direction", &lights[0].direction.x, 0.01f, -1.0f, 1.0f);
 }
 
-void Renderer::RasterStateCreate()
+bool Renderer::RasterStateCreate()
 {
-	D3D11_RASTERIZER_DESC rd;
+	if (graphicsDevice == nullptr)
+	{
+		Log::Error("RasterStateCreate : Device가 없음.");
+		return false;
+	}
+
+	D3D11_RASTERIZER_DESC rd = {};
 	rd.FillMode = D3D11_FILL_SOLID;
 	rd.CullMode = D3D11_CULL_NONE;
 	rd.FrontCounterClockwise = false;
@@ -80,26 +92,40 @@ void Renderer::RasterStateCreate()
 	rd.ScissorEnable = false;
 	rd.MultisampleEnable = true;
 	rd.AntialiasedLineEnable = true;
-	graphicsDevice->GetDevice()->CreateRasterizerState(&rd, &g_RState[RS_SOLID]);
 
-	rd.FillMode = D3D11_FILL_WIREFRAME;
-	rd.CullMode = D3D11_CULL_NONE;
-	graphicsDevice->GetDevice()->CreateRasterizerState(&rd, &g_RState[RS_WIREFRM]);
+	// 네 상태를 같은 방식으로 만든다. 하나라도 실패하면 렌더 모드가 깨지므로 중단.
+	struct StateDesc { int slot; D3D11_FILL_MODE fill; D3D11_CULL_MODE cull; const char* name; };
+	const StateDesc descs[] =
+	{
+		{ RS_SOLID,        D3D11_FILL_SOLID,     D3D11_CULL_NONE, "RS_SOLID" },
+		{ RS_WIREFRM,      D3D11_FILL_WIREFRAME, D3D11_CULL_NONE, "RS_WIREFRM" },
+		{ RS_CULLBACK,     D3D11_FILL_SOLID,     D3D11_CULL_BACK, "RS_CULLBACK" },
+		{ RS_WIRECULLBACK, D3D11_FILL_WIREFRAME, D3D11_CULL_BACK, "RS_WIRECULLBACK" },
+	};
 
-	rd.FillMode = D3D11_FILL_SOLID;
-	rd.CullMode = D3D11_CULL_BACK;
-	graphicsDevice->GetDevice()->CreateRasterizerState(&rd, &g_RState[RS_CULLBACK]);
+	for (const StateDesc& d : descs)
+	{
+		rd.FillMode = d.fill;
+		rd.CullMode = d.cull;
 
-	rd.FillMode = D3D11_FILL_WIREFRAME;
-	rd.CullMode = D3D11_CULL_BACK;
-	graphicsDevice->GetDevice()->CreateRasterizerState(&rd, &g_RState[RS_WIRECULLBACK]);
+		HRESULT hr = graphicsDevice->GetDevice()->CreateRasterizerState(
+			&rd, g_RState[d.slot].ReleaseAndGetAddressOf());
+
+		if (FAILED(hr))
+		{
+			Log::Error("RasterizerState 생성 실패 : %s. %s", d.name, Log::HrToString(hr).c_str());
+			return false;
+		}
+	}
+
+	return true;
 }
 
 void Renderer::RasterStateRelease()
 {
 	for (int i = 0; i < RS_MAX_; i++)
 	{
-		SafeRelease(g_RState[i]);
+		g_RState[i].Reset();
 	}
 }
 
@@ -109,27 +135,33 @@ void Renderer::RenderModeUpdate()
 	{
 	default:
 	case RM_SOLID:
-		graphicsDevice->GetContext()->RSSetState(g_RState[RS_SOLID]);
+		graphicsDevice->GetContext()->RSSetState(g_RState[RS_SOLID].Get());
 		break;
 	case RM_WIREFRAME:
-		graphicsDevice->GetContext()->RSSetState(g_RState[RS_WIREFRM]);
+		graphicsDevice->GetContext()->RSSetState(g_RState[RS_WIREFRM].Get());
 		break;
 	case RM_CULLBACK:
-		graphicsDevice->GetContext()->RSSetState(g_RState[RS_CULLBACK]);
+		graphicsDevice->GetContext()->RSSetState(g_RState[RS_CULLBACK].Get());
 		break;
 	case RM_WIREFRAME | RM_CULLBACK:
-		graphicsDevice->GetContext()->RSSetState(g_RState[RS_WIRECULLBACK]);
+		graphicsDevice->GetContext()->RSSetState(g_RState[RS_WIRECULLBACK].Get());
 		break;
 	}
 }
 
-int Renderer::ObjLoad()
+bool Renderer::ObjLoad()
 {
 	sphereMesh = Mesh::CreateSphere(5.0f, 32, 16, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
 	sphereObject.GetTransform().SetPosition(0.0f, 5.0f, 0.0f);
 	sphereObject.GetTransform().SetScale(1.0f, 1.0f, 1.0f);
 
-	return sphereRenderer.Initialize(graphicsDevice, graphicsShader, &sphereMesh) ? 1 : 0;
+	if (!sphereRenderer.Initialize(graphicsDevice, graphicsShader, &sphereMesh))
+	{
+		Log::Error("ObjLoad : 구 MeshRenderer 초기화 실패.");
+		return false;
+	}
+
+	return true;
 }
 
 void Renderer::ObjRelease()

@@ -51,6 +51,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Log.cpp">
+      <Filter>98. Utils</Filter>
+    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>00. Main</Filter>
     </ClCompile>
@@ -119,9 +122,6 @@
     <ClInclude Include="Shader.h">
       <Filter>01. Graphics\Shader</Filter>
     </ClInclude>
-    <ClInclude Include="helper.h">
-      <Filter>98. Utils</Filter>
-    </ClInclude>
     <ClInclude Include="Camera.h">
       <Filter>03. GameObject</Filter>
     </ClInclude>
@@ -130,6 +130,9 @@
     </ClInclude>
     <ClInclude Include="GameObject.h">
       <Filter>03. GameObject</Filter>
+    </ClInclude>
+    <ClInclude Include="Log.h">
+      <Filter>98. Utils</Filter>
     </ClInclude>
     <ClInclude Include="Mesh.h">
       <Filter>03. GameObject</Filter>

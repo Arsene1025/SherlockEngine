@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "AppBase.h"
 class TestApp : public AppBase
 {

@@ -1,4 +1,6 @@
-#pragma once
+﻿#pragma once
+#include "enum.h"     // RS_MAX_, RM_DEFAULT, MAX_LIGHTS
+#include "struct.h"   // LightData
 #include "GameObject.h"
 #include "Mesh.h"
 #include "MeshRenderer.h"
@@ -15,28 +17,26 @@ public:
 
 	bool Initialize(Device* device, Shader* shader, Camera* camera);
 
-	int DataLoading();
+	bool DataLoading();
 	void DataRelease();
 	void Render();
 	void RenderModeUpdate();
 	void UpdateGUI();
 
-	int ObjLoad();
+	bool ObjLoad();
 	void ObjRelease();
 	void ObjUpdate();
 	void ObjDraw();
 	void UpdateLightConstantBuffer();
 
-	void RasterStateCreate();
+	bool RasterStateCreate();
 	void RasterStateRelease();
 
 public:
 	BOOL g_bCullback = FALSE;
 	BOOL g_bWireFrame = FALSE;
 
-	XMFLOAT4 g_ClearColor = XMFLOAT4(0.0f, 0.125f, 0.3f, 1.0f);
-
-	ID3D11RasterizerState* g_RState[RS_MAX_] = { NULL, };
+	ComPtr<ID3D11RasterizerState> g_RState[RS_MAX_];
 	DWORD g_RMode = RM_DEFAULT;
 
 private:
@@ -50,7 +50,7 @@ private:
 
 	LightData lights[MAX_LIGHTS];
 	UINT lightCount = 1;
-	XMFLOAT3 ambientColor = XMFLOAT3(0.12f, 0.12f, 0.12f);
-	XMFLOAT3 specularColor = XMFLOAT3(1.0f, 1.0f, 1.0f);
+	DirectX::XMFLOAT3 ambientColor = DirectX::XMFLOAT3(0.12f, 0.12f, 0.12f);
+	DirectX::XMFLOAT3 specularColor = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
 	float shininess = 32.0f;
 };

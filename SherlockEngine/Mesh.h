@@ -1,10 +1,11 @@
-#pragma once
+﻿#pragma once
+#include "struct.h"   // VERTEX
 #include <vector>
 
 class Mesh
 {
 public:
-	static Mesh CreateSphere(float radius, UINT sliceCount, UINT stackCount, const XMFLOAT4& color);
+	static Mesh CreateSphere(float radius, UINT sliceCount, UINT stackCount, const DirectX::XMFLOAT4& color);
 
 	const std::vector<VERTEX>& GetVertices() const { return vertices; }
 	const std::vector<UINT>& GetIndices() const { return indices; }

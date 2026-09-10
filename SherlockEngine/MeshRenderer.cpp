@@ -1,9 +1,12 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "MeshRenderer.h"
 #include "Device.h"
 #include "Shader.h"
 #include "Camera.h"
+#include "struct.h"   // VERTEX, ConstBuffer
 #include "Mesh.h"
+
+using namespace DirectX;   // 이 파일 안에서만
 
 MeshRenderer::MeshRenderer()
 {
@@ -28,16 +31,14 @@ bool MeshRenderer::Initialize(Device* device, Shader* shader, Mesh* sourceMesh)
 	const std::vector<VERTEX>& vertices = mesh->GetVertices();
 	const std::vector<UINT>& indices = mesh->GetIndices();
 
-	graphicsDevice->CreateVertexBuffer(
-		const_cast<VERTEX*>(vertices.data()),
+	vertexBuffer = graphicsDevice->CreateVertexBuffer(
+		vertices.data(),
 		static_cast<UINT>(sizeof(VERTEX) * vertices.size()),
-		sizeof(VERTEX),
-		&vertexBuffer);
+		sizeof(VERTEX));
 
-	graphicsDevice->CreateIndexBuffer(
-		const_cast<UINT*>(indices.data()),
-		static_cast<UINT>(sizeof(UINT) * indices.size()),
-		&indexBuffer);
+	indexBuffer = graphicsDevice->CreateIndexBuffer(
+		indices.data(),
+		static_cast<UINT>(sizeof(UINT) * indices.size()));
 
 	D3D11_INPUT_ELEMENT_DESC layout[] =
 	{
@@ -45,16 +46,16 @@ bool MeshRenderer::Initialize(Device* device, Shader* shader, Mesh* sourceMesh)
 		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 28, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
-	graphicsDevice->CreateInputLayout(layout, ARRAYSIZE(layout), graphicsShader->GetVSCode(), &inputLayout);
+	inputLayout = graphicsDevice->CreateInputLayout(layout, ARRAYSIZE(layout), graphicsShader->GetVSCode());
 
 	return vertexBuffer != nullptr && indexBuffer != nullptr && inputLayout != nullptr;
 }
 
 void MeshRenderer::Release()
 {
-	SafeRelease(vertexBuffer);
-	SafeRelease(indexBuffer);
-	SafeRelease(inputLayout);
+	vertexBuffer.Reset();
+	indexBuffer.Reset();
+	inputLayout.Reset();
 
 	graphicsDevice = nullptr;
 	graphicsShader = nullptr;
@@ -93,9 +94,9 @@ void MeshRenderer::Draw()
 	UINT stride = sizeof(VERTEX);
 	UINT offset = 0;
 
-	graphicsDevice->GetContext()->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
-	graphicsDevice->GetContext()->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
-	graphicsDevice->GetContext()->IASetInputLayout(inputLayout);
+	graphicsDevice->GetContext()->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
+	graphicsDevice->GetContext()->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+	graphicsDevice->GetContext()->IASetInputLayout(inputLayout.Get());
 	graphicsDevice->GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	graphicsDevice->GetContext()->DrawIndexed(mesh->GetIndexCount(), 0, 0);
 }

@@ -1,5 +1,6 @@
-#include "pch.h"
+Ôªø#include "pch.h"
 #include "Device.h"
+#include "Log.h"
 
 bool Device::InitDevice(HWND hWnd, int width, int height)
 {
@@ -10,6 +11,10 @@ bool Device::InitDevice(HWND hWnd, int width, int height)
     if (!InitDirect3D()) return false;
 
     if (!CreateRenderTargetView()) return false;
+
+    if (!CreateDepthStencilView()) return false;
+
+    BindRenderTargets();
 
     SetViewport();
 
@@ -26,6 +31,7 @@ void Device::ReleaseDevice()
     m_renderTargetView.Reset();
     m_swapChain.Reset();
     m_DSView.Reset();
+    m_depthStencilBuffer.Reset();
     m_context.Reset();
     m_device.Reset();
 }
@@ -41,7 +47,15 @@ void Device::Clear()
     };
 
     m_context->ClearRenderTargetView(m_renderTargetView.Get(), clearColor);
-   
+
+    if (m_DSView)
+    {
+        m_context->ClearDepthStencilView(
+            m_DSView.Get(),
+            D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL,
+            1.0f,
+            0);
+    }
 }
 
 void Device::Present()
@@ -49,10 +63,10 @@ void Device::Present()
     if (!m_swapChain)
         return;
 
-    //60«¡∑π¿” ¡¶«—
+    //60ÌîÑÎ†àÏûÑ Ï†úÌïú
     //m_swapChain->Present(1, 0);
 
-    //¡¶«— æ¯¿Ω
+    //Ï†úÌïú ÏóÜÏùå
     m_swapChain->Present(0, 0);
 }
 
@@ -65,117 +79,152 @@ void Device::Resize(int width, int height)
     m_screenWidth = width;
     m_screenHeight = height;
 
-    // ±‚¡∏ ∑ª¥ı ≈∏±Í πŸ¿Œµ˘ «ÿ¡¶
+    // Í∏∞Ï°¥ Î†åÎçî ÌÉÄÍπÉ Î∞îÏù∏Îî© Ìï¥Ï†ú
     ID3D11RenderTargetView* nullRTV = nullptr;
     m_context->OMSetRenderTargets(1, &nullRTV, nullptr);
 
-    // ±‚¡∏ RenderTargetView «ÿ¡¶
+    // Í∏∞Ï°¥ RenderTargetViewÏôÄ ÍπäÏù¥ Î≤ÑÌçº Ìï¥Ï†ú
     m_renderTargetView.Reset();
-    
-    // SwapChain πÈπˆ∆€ ≈©±‚ ∫Ø∞Ê
+    m_DSView.Reset();
+    m_depthStencilBuffer.Reset();
+
+    // SwapChain Î∞±Î≤ÑÌçº ÌÅ¨Í∏∞ Î≥ÄÍ≤Ω
     HRESULT hr = m_swapChain->ResizeBuffers
     (
-        0,                          // ±‚¡∏ BufferCount ¿Ø¡ˆ
+        0,                          // Í∏∞Ï°¥ BufferCount Ïú†ÏßÄ
         m_screenWidth,
         m_screenHeight,
-        DXGI_FORMAT_UNKNOWN,        // ±‚¡∏ ∆˜∏À ¿Ø¡ˆ
+        DXGI_FORMAT_UNKNOWN,        // Í∏∞Ï°¥ Ìè¨Îß∑ Ïú†ÏßÄ
         0
     );
 
     if (FAILED(hr))
     {
-        std::cout << "[Ω«∆–] ResizeBuffers() Ω«∆–." << std::endl;
+        Log::Error("ResizeBuffers() Ïã§Ìå®.");
         return;
     }
 
-    // ∫Ø∞Êµ» BackBuffer∑Œ RenderTargetView ¥ŸΩ√ ª˝º∫
+    // Î≥ÄÍ≤ΩÎêú BackBufferÎ°ú RenderTargetView Îã§Ïãú ÏÉùÏÑ±
     if (!CreateRenderTargetView())
     {
-        std::cout << "[Ω«∆–] Resize »ƒ RenderTargetView ¿Áª˝º∫ Ω«∆–." << std::endl;
+        Log::Error("Resize ÌõÑ RenderTargetView Ïû¨ÏÉùÏÑ± Ïã§Ìå®.");
         return;
     }
-    // Viewportµµ ªı ≈©±‚∑Œ ¥ŸΩ√ º≥¡§
+
+    // ÏÉà ÌÅ¨Í∏∞Ïóê ÎßûÏ∂∞ ÍπäÏù¥ Î≤ÑÌçºÎèÑ Îã§Ïãú ÏÉùÏÑ±
+    if (!CreateDepthStencilView())
+    {
+        Log::Error("Resize ÌõÑ DepthStencilView Ïû¨ÏÉùÏÑ± Ïã§Ìå®.");
+        return;
+    }
+
+    BindRenderTargets();
+
+    // ViewportÎèÑ ÏÉà ÌÅ¨Í∏∞Î°ú Îã§Ïãú ÏÑ§Ï†ï
     SetViewport();
 }
 
-void Device::CreateConstBuffer(int size, ID3D11Buffer** ppCB)
+ComPtr<ID3D11Buffer> Device::CreateConstBuffer(UINT size)
 {
-	if (ppCB == nullptr || size <= 0)
-	{
-		return;
-	}
+    ComPtr<ID3D11Buffer> buffer;
+
+    if (size == 0)
+    {
+        return buffer;
+    }
 
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
-	// D3D11 ªÛºˆ πˆ∆€ ≈©±‚¥¬ 16πŸ¿Ã∆Æ ¥‹¿ßø©æﬂ«‘
-	bd.ByteWidth = static_cast<UINT>((size + 15) & ~15);
+    // D3D11 ÏÉÅÏàò Î≤ÑÌçº ÌÅ¨Í∏∞Îäî 16Î∞îÏù¥Ìä∏ Îã®ÏúÑÏó¨ÏïºÌï®
+    bd.ByteWidth = (size + 15) & ~15u;
     bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 
-    ID3D11Buffer* pCB = nullptr;
-    HRESULT hr = m_device->CreateBuffer(&bd, nullptr, &pCB);
+    HRESULT hr = m_device->CreateBuffer(&bd, nullptr, buffer.GetAddressOf());
     if (FAILED(hr))
     {
-        std::cout << "[Ω«∆–] ªÛºˆ πˆ∆€ ª˝º∫ Ω«∆–" << std::endl;
-		*ppCB = nullptr;
-		return;
+        Log::Error("ÏÉÅÏàò Î≤ÑÌçº ÏÉùÏÑ± Ïã§Ìå®. %s", Log::HrToString(hr).c_str());
+        buffer.Reset();
     }
-    *ppCB = pCB;
+
+    return buffer;
 }
 
-void Device::CreateVertexBuffer(LPVOID pData, UINT size, UINT stride, ID3D11Buffer** ppVB)
+ComPtr<ID3D11Buffer> Device::CreateVertexBuffer(const void* pData, UINT size, UINT stride)
 {
-    //¡§¡°πˆ∆€ º≥¡§«œ±‚
+    ComPtr<ID3D11Buffer> buffer;
+
+    //Ï†ïÏ†êÎ≤ÑÌçº ÏÑ§Ï†ïÌïòÍ∏∞
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = size;
     bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     bd.CPUAccessFlags = 0;
 
-    D3D11_SUBRESOURCE_DATA rd;
-    ZeroMemory(&rd, sizeof(rd));
+    D3D11_SUBRESOURCE_DATA rd = {};
     rd.pSysMem = pData;
 
-    //¡§¡°πˆ∆€ ª˝º∫
-    ID3D11Buffer* pVB = nullptr;
-    HRESULT hr = m_device->CreateBuffer(&bd, &rd, &pVB);
+    // strideÎäî Î≤ÑÌçº ÏÉùÏÑ±ÏóêÎäî Ïì∞Ïù¥ÏßÄ ÏïäÎäîÎã§. Î∞îÏù∏Îî©Ìï† Îïå IASetVertexBuffersÎ°ú ÎÑòÍ∏¥Îã§.
+    (void)stride;
+
+    //Ï†ïÏ†êÎ≤ÑÌçº ÏÉùÏÑ±
+    HRESULT hr = m_device->CreateBuffer(&bd, &rd, buffer.GetAddressOf());
     if (FAILED(hr))
     {
-        std::cout << "[Ω«∆–] ¡§¡°πˆ∆€ ª˝º∫ Ω«∆–" << std::endl;
+        Log::Error("Ï†ïÏ†êÎ≤ÑÌçº ÏÉùÏÑ± Ïã§Ìå®. %s", Log::HrToString(hr).c_str());
+        buffer.Reset();
     }
-    *ppVB = pVB;
+
+    return buffer;
 }
 
-void Device::CreateIndexBuffer(LPVOID pData, UINT size, ID3D11Buffer** ppIB)
+ComPtr<ID3D11Buffer> Device::CreateIndexBuffer(const void* pData, UINT size)
 {
+    ComPtr<ID3D11Buffer> buffer;
+
     D3D11_BUFFER_DESC bd = {};
     bd.Usage = D3D11_USAGE_DEFAULT;
     bd.ByteWidth = size;
     bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
     bd.CPUAccessFlags = 0;
 
-    D3D11_SUBRESOURCE_DATA rd;
-    ZeroMemory(&rd, sizeof(rd));
+    D3D11_SUBRESOURCE_DATA rd = {};
     rd.pSysMem = pData;
 
-    ID3D11Buffer* pIB = nullptr;
-    HRESULT hr = m_device->CreateBuffer(&bd, &rd, &pIB);
+    HRESULT hr = m_device->CreateBuffer(&bd, &rd, buffer.GetAddressOf());
     if (FAILED(hr))
     {
-        std::cout << "[Ω«∆–] ¿Œµ¶Ω∫πˆ∆€ ª˝º∫ Ω«∆–" << std::endl;
+        Log::Error("Ïù∏Îç±Ïä§Î≤ÑÌçº ÏÉùÏÑ± Ïã§Ìå®. %s", Log::HrToString(hr).c_str());
+        buffer.Reset();
     }
-    *ppIB = pIB;
+
+    return buffer;
 }
 
-void Device::CreateInputLayout(D3D11_INPUT_ELEMENT_DESC* desc, DWORD num, ID3DBlob* pVSCode, ID3D11InputLayout** ppLayout)
+ComPtr<ID3D11InputLayout> Device::CreateInputLayout(const D3D11_INPUT_ELEMENT_DESC* desc, UINT num, ID3DBlob* pVSCode)
 {
-    //«‘≤≤ ªÁøÎµ… ºŒ¿Ã¥ı∞° « ø‰«‘
-    ID3D11InputLayout* pLayout = nullptr;
-    HRESULT hr = m_device->CreateInputLayout(desc, num, pVSCode->GetBufferPointer(), pVSCode->GetBufferSize(), &pLayout);
+    ComPtr<ID3D11InputLayout> layout;
+
+    //Ìï®Íªò ÏÇ¨Ïö©Îê† ÏÖ∞Ïù¥ÎçîÏùò Î∞îÏù¥Ìä∏ÏΩîÎìúÍ∞Ä ÌïÑÏöîÌï®
+    if (pVSCode == nullptr)
+    {
+        Log::Error("Ï†ïÏ†ê ÏûÖÎ†• Î†àÏù¥ÏïÑÏõÉ ÏÉùÏÑ± Ïã§Ìå® : Ï†ïÏ†ê ÏÖ∞Ïù¥Îçî Î∞îÏù¥Ìä∏ÏΩîÎìúÍ∞Ä ÏóÜÏùå");
+        return layout;
+    }
+
+    HRESULT hr = m_device->CreateInputLayout(
+        desc,
+        num,
+        pVSCode->GetBufferPointer(),
+        pVSCode->GetBufferSize(),
+        layout.GetAddressOf());
+
     if (FAILED(hr))
     {
-        std::cout << "[Ω«∆–] ¡§¡° ¿‘∑¬ ∑π¿Ãæ∆øÙ ª˝º∫ Ω«∆–" << std::endl;
+        Log::Error("Ï†ïÏ†ê ÏûÖÎ†• Î†àÏù¥ÏïÑÏõÉ ÏÉùÏÑ± Ïã§Ìå®. %s", Log::HrToString(hr).c_str());
+        layout.Reset();
     }
-    *ppLayout = pLayout;
+
+    return layout;
 }
 
 void Device::CreateRenderState()
@@ -214,7 +263,7 @@ bool Device::InitDirect3D()
     sd.OutputWindow = m_mainWindow;
     sd.Windowed = TRUE;
 
-    // ¿œ¥‹ MSAA æ¯¿Ã Ω√¿€«œ¥¬ πˆ¿¸
+    // ÏùºÎã® MSAA ÏóÜÏù¥ ÏãúÏûëÌïòÎäî Î≤ÑÏ†Ñ
     sd.SampleDesc.Count = 1;
     sd.SampleDesc.Quality = 0;
 
@@ -222,9 +271,9 @@ bool Device::InitDirect3D()
     sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
     HRESULT hr = D3D11CreateDeviceAndSwapChain(
-        nullptr,                        // ±‚∫ª ±◊∑°«» æÓ¥≈Õ
-        driverType,                     // «œµÂø˛æÓ µÂ∂Û¿Ãπˆ
-        nullptr,                        // º“«¡∆Æø˛æÓ ∑°Ω∫≈Õ∂Û¿Ã¿˙ ªÁøÎ æ» «‘
+        nullptr,                        // Í∏∞Î≥∏ Í∑∏ÎûòÌîΩ Ïñ¥ÎåëÌÑ∞
+        driverType,                     // ÌïòÎìúÏõ®Ïñ¥ ÎìúÎùºÏù¥Î≤Ñ
+        nullptr,                        // ÏÜåÌîÑÌä∏Ïõ®Ïñ¥ ÎûòÏä§ÌÑ∞ÎùºÏù¥Ï†Ä ÏÇ¨Ïö© Ïïà Ìï®
         createDeviceFlags,
         featureLevels,
         ARRAYSIZE(featureLevels),
@@ -238,17 +287,17 @@ bool Device::InitDirect3D()
 
     if (FAILED(hr))
     {
-        std::cout << "D3D11CreateDeviceAndSwapChain() Ω«∆–." << std::endl;
+        Log::Error("D3D11CreateDeviceAndSwapChain() Ïã§Ìå®. %s", Log::HrToString(hr).c_str());
         return false;
     }
 
     if (featureLevel != D3D_FEATURE_LEVEL_11_0)
     {
-        std::cout << "D3D Feature Level 11_0 ¡ˆø¯ æ» «‘." << std::endl;
+        Log::Error("D3D Feature Level 11_0 ÏßÄÏõê Ïïà Ìï®.");
         return false;
     }
 
-    // 4X MSAA ¡ˆø¯ ø©∫Œ»Æ¿Œ
+    // 4X MSAA ÏßÄÏõê Ïó¨Î∂ÄÌôïÏù∏
     hr = m_device->CheckMultisampleQualityLevels
     (
         DXGI_FORMAT_R8G8B8A8_UNORM,
@@ -258,11 +307,11 @@ bool Device::InitDirect3D()
 
     if (FAILED(hr) || m_numQualityLevels <= 0)
     {
-        std::cout << "[∞Ê∞Ì] 4X MSAA ¡ˆø¯ æ» µ ." << std::endl;
+        Log::Warn("4X MSAA ÏßÄÏõê Ïïà Îê®.");
     }
     else
     {
-        std::cout << "[¡§∫∏] 4X MSAA ¡ˆø¯µ . QualityLevels: " << m_numQualityLevels << std::endl;
+        Log::Info("4X MSAA ÏßÄÏõêÎê®. QualityLevels: %u", m_numQualityLevels);
     }
     return true;
 }
@@ -280,29 +329,78 @@ bool Device::CreateRenderTargetView()
 
     if (FAILED(hr))
     {
-        std::cout << "[Ω«∆–] SwapChain BackBuffer ∞°¡Æø¿±‚ Ω«∆–." << std::endl;
+        Log::Error("SwapChain BackBuffer Í∞ÄÏ†∏Ïò§Í∏∞ Ïã§Ìå®. %s", Log::HrToString(hr).c_str());
         return false;
     }
 
     hr = m_device->CreateRenderTargetView(
         backBuffer.Get(),
         nullptr,
-        m_renderTargetView.GetAddressOf()
+        m_renderTargetView.ReleaseAndGetAddressOf()
     );
 
     if (FAILED(hr))
     {
-        std::cout << "[Ω«∆–] CreateRenderTargetView() Ω«∆–." << std::endl;
+        Log::Error("CreateRenderTargetView() Ïã§Ìå®. %s", Log::HrToString(hr).c_str());
         return false;
     }
+
+    return true;
+}
+
+bool Device::CreateDepthStencilView()
+{
+    // ÍπäÏù¥¬∑Ïä§ÌÖêÏã§ ÌÖçÏä§Ï≤ò. ÌÅ¨Í∏∞ÏôÄ ÏÉòÌîå ÏàòÎäî Î∞±Î≤ÑÌçºÏôÄ ÏùºÏπòÌï¥Ïïº ÌïúÎã§.
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width = m_screenWidth;
+    desc.Height = m_screenHeight;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    desc.SampleDesc.Count = 1;      // Ïä§ÏôëÏ≤¥Ïù∏Í≥º ÎèôÏùº (MSAA ÎØ∏ÏÇ¨Ïö©)
+    desc.SampleDesc.Quality = 0;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+    desc.CPUAccessFlags = 0;
+    desc.MiscFlags = 0;
+
+    HRESULT hr = m_device->CreateTexture2D(
+        &desc,
+        nullptr,
+        m_depthStencilBuffer.ReleaseAndGetAddressOf()
+    );
+
+    if (FAILED(hr))
+    {
+        Log::Error("ÍπäÏù¥ Ïä§ÌÖêÏã§ ÌÖçÏä§Ï≤ò ÏÉùÏÑ± Ïã§Ìå®. %s", Log::HrToString(hr).c_str());
+        return false;
+    }
+
+    hr = m_device->CreateDepthStencilView(
+        m_depthStencilBuffer.Get(),
+        nullptr,
+        m_DSView.ReleaseAndGetAddressOf()
+    );
+
+    if (FAILED(hr))
+    {
+        Log::Error("CreateDepthStencilView() Ïã§Ìå®. %s", Log::HrToString(hr).c_str());
+        return false;
+    }
+
+    return true;
+}
+
+void Device::BindRenderTargets()
+{
+    if (!m_context)
+        return;
 
     m_context->OMSetRenderTargets(
         1,
         m_renderTargetView.GetAddressOf(),
-        nullptr
+        m_DSView.Get()
     );
-
-    return true;
 }
 
 void Device::SetViewport()

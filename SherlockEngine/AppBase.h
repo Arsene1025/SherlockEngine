@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
@@ -6,8 +6,9 @@
 #include "Renderer.h"
 #include "Shader.h"
 #include "Camera.h"
+#include "GameTimer.h"   // ê°’ ë©¤ë²„ë¼ ì™„ì „í•œ íƒ€ì… í•„ìš”
+#include "struct.h"      // GameTime
 
-class GameTimer;
 
 class AppBase 
 {
@@ -26,7 +27,7 @@ class AppBase
 
         virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-    protected: // »ó¼Ó ¹ŞÀº Å¬·¡½º¿¡¼­µµ Á¢±Ù °¡´É
+    protected: // ìƒì† ë°›ì€ í´ë˜ìŠ¤ì—ì„œë„ ì ‘ê·¼ ê°€ëŠ¥
         bool InitMainWindow();
         bool InitDevice();
         bool InitRenderer();
@@ -46,16 +47,18 @@ class AppBase
         GameTimer gameTimer;
 
 
-        int m_screenWidth; // ·»´õ¸µÇÒ ÃÖÁ¾ È­¸éÀÇ ÇØ»óµµ
+        int m_screenWidth; // ë Œë”ë§í•  ìµœì¢… í™”ë©´ì˜ í•´ìƒë„
         int m_screenHeight;
         int m_guiWidth = 0;
         HWND m_mainWindow;
+
+        // ì´ˆê¸°í™”ê°€ ë„ì¤‘ì— ì‹¤íŒ¨í•´ë„ ì†Œë©¸ìê°€ ì•ˆì „í•˜ë„ë¡,
+        // ì‹¤ì œë¡œ ì´ˆê¸°í™”ëœ ê²ƒë§Œ ê¸°ë¡í•´ ê·¸ë§Œí¼ë§Œ ë˜ëŒë¦°ë‹¤.
+        bool m_guiInitialized = false;
+        bool m_guiWin32Initialized = false;
+        bool m_guiContextCreated = false;
         
 
-        /*ComPtr<ID3D11Device> device;
-        ComPtr<ID3D11DeviceContext> context;
-        ComPtr<ID3D11RenderTargetView> renderTargetView;
-        ComPtr<IDXGISwapChain> swapChain;*/
 
 
         D3D11_VIEWPORT m_screenViewport;

@@ -1,152 +1,201 @@
-#include "pch.h"
+ï»¿#include "pch.h"
 #include "Shader.h"
+#include "Log.h"
+#include "struct.h"   // ConstBuffer, LightBuffer
 #include "Device.h"
 
-
-bool Shader::Initalize(Device* device)
+bool Shader::Initialize(Device* device)
 {
 	graphicsDevice = device;
 	//ShaderCreate();
 	return true;
 }
 
-void Shader::ShaderCreate()
+bool Shader::ShaderCreate()
 {
-	ShaderLoad();
-	graphicsDevice->GetContext()->VSSetShader(pVS, nullptr, 0);
-	graphicsDevice->GetContext()->PSSetShader(pPS, nullptr, 0);
+	if (graphicsDevice == nullptr)
+	{
+		Log::Error("ShaderCreate : Deviceê°€ ì—†ìŒ. Initializeë¥¼ ë¨¼ì € í˜¸ì¶œí•  ê²ƒ.");
+		return false;
+	}
 
-	//»ó¼ö¹öÆÛ »ı¼º
-	graphicsDevice->CreateConstBuffer(sizeof(ConstBuffer), &pCB);
-	//Á¶¸í »ó¼ö¹öÆÛ »ı¼ºÇÔ
-	graphicsDevice->CreateConstBuffer(sizeof(LightBuffer), &pLightCB);
+	if (!ShaderLoad())
+	{
+		return false;
+	}
+
+	graphicsDevice->GetContext()->VSSetShader(pVS.Get(), nullptr, 0);
+	graphicsDevice->GetContext()->PSSetShader(pPS.Get(), nullptr, 0);
+
+	//ìƒìˆ˜ë²„í¼ ìƒì„±
+	pCB = graphicsDevice->CreateConstBuffer(sizeof(ConstBuffer));
+	//ì¡°ëª… ìƒìˆ˜ë²„í¼ ìƒì„±í•¨
+	pLightCB = graphicsDevice->CreateConstBuffer(sizeof(LightBuffer));
+
+	if (!pCB || !pLightCB)
+	{
+		Log::Error("ShaderCreate : ìƒìˆ˜ë²„í¼ ìƒì„± ì‹¤íŒ¨.");
+		return false;
+	}
+
+	return true;
 }
 
 void Shader::ShaderUpdate()
 {
-	//ÀåÄ¡¿¡ ¼ÎÀÌ´õ ¼³Á¤
-	graphicsDevice->GetContext()->VSSetShader(pVS, nullptr, 0);
-	graphicsDevice->GetContext()->PSSetShader(pPS, nullptr, 0);
+	//ì¥ì¹˜ì— ì…°ì´ë” ì„¤ì •
+	graphicsDevice->GetContext()->VSSetShader(pVS.Get(), nullptr, 0);
+	graphicsDevice->GetContext()->PSSetShader(pPS.Get(), nullptr, 0);
 	
-	//¼ÎÀÌ´õ »ó¼ö ¹öÆÛ °»½Å
-	//»ó¼ö ¹öÆÛ¸¦ ¿©±â¼­ ¾÷µ¥ÀÌÆ® ÇÏ´Â°ÍÀÌ ¸Â³ª? 
-	//¿ì¼± ¿©±â¼­ ¾÷µ¥ÀÌÆ® ÇÏ°í ÃßÈÄ¿¡ Mesh¶û MaterialºĞ¸®ÇÒ ¶§ ºĞ¸®ÇÏ±â
+	//ì…°ì´ë” ìƒìˆ˜ ë²„í¼ ê°±ì‹ 
+	//ìƒìˆ˜ ë²„í¼ë¥¼ ì—¬ê¸°ì„œ ì—…ë°ì´íŠ¸ í•˜ëŠ”ê²ƒì´ ë§ë‚˜? 
+	//ìš°ì„  ì—¬ê¸°ì„œ ì—…ë°ì´íŠ¸ í•˜ê³  ì¶”í›„ì— Meshë‘ Materialë¶„ë¦¬í•  ë•Œ ë¶„ë¦¬í•˜ê¸°
 
 
 
 
-	//¼ÎÀÌ´õ »ó¼ö ¹öÆÛ ¼³Á¤
-	graphicsDevice->GetContext()->VSSetConstantBuffers(0, 1, &pCB);
-	//Á¶¸í µ¥ÀÌÅÍ »ó¼ö¹öÆÛ
-	graphicsDevice->GetContext()->PSSetConstantBuffers(1, 1, &pLightCB);
-}
-
-void Shader::ShaderRelease()
-{
-	SafeRelease(pVS);
-	SafeRelease(pPS);
-	SafeRelease(pVSCode);
-	SafeRelease(pCB);
-	SafeRelease(pLightCB);
-
+	//ì…°ì´ë” ìƒìˆ˜ ë²„í¼ ì„¤ì •
+	graphicsDevice->GetContext()->VSSetConstantBuffers(0, 1, pCB.GetAddressOf());
+	//ì¡°ëª… ë°ì´í„° ìƒìˆ˜ë²„í¼
+	graphicsDevice->GetContext()->PSSetConstantBuffers(1, 1, pLightCB.GetAddressOf());
 }
 
 bool Shader::ShaderLoad()
 {
-	ShaderLoad(L"BasicVertexShader.hlsl", "VS_Main", "vs_5_0", &pVS, &pVSCode);
-	ShaderLoad(L"BasicPixelShader.hlsl", "PS_Main", "ps_5_0", &pPS);
+	// HRESULTë¥¼ ì—¬ê¸°ì„œ boolë¡œ ë°”ê¿” ì˜¬ë¦°ë‹¤. ì‹¤íŒ¨ë¥¼ ì‚¼í‚¤ì§€ ì•ŠëŠ”ë‹¤.
+	if (FAILED(ShaderLoad(L"BasicVertexShader.hlsl", "VS_Main", "vs_5_0", pVS, pVSCode)))
+	{
+		return false;
+	}
+	if (FAILED(ShaderLoad(L"BasicPixelShader.hlsl", "PS_Main", "ps_5_0", pPS)))
+	{
+		return false;
+	}
 	return true;
 }
 
-HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* target, ID3D11VertexShader** ppVS, ID3DBlob** ppCode)
+HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* target, ComPtr<ID3D11VertexShader>& outVS, ComPtr<ID3DBlob>& outCode)
 {
-	// ¼ÎÀÌ´õ ÄÄÆÄÀÏ.
-	ID3DBlob* pCode = nullptr;
-	HRESULT hr = ShaderCompile(fxname, entry, target, &pCode);
+	// ì…°ì´ë” ì»´íŒŒì¼.
+	ComPtr<ID3DBlob> pCode;
+	HRESULT hr = ShaderCompile(fxname, entry, target, pCode);
 	if (FAILED(hr))
 	{
-		std::cout <<"[½ÇÆĞ] ¼ÎÀÌ´õ ÄÄÆÄÀÏ ½ÇÆĞ : " << "ÆÄÀÏ °æ·Î : " << fxname << " ÁøÀÔÁ¡ : " << entry << " ¸ğµ¨ : " << target << std::endl;
 		return hr;
 	}
 
-	//Á¤Á¡ ¼ÎÀÌ´õ °´Ã¼ »ı¼º
-	ID3D11VertexShader* pVs = nullptr;
-	hr = graphicsDevice->GetDevice()->CreateVertexShader(pCode->GetBufferPointer(), pCode->GetBufferSize(), nullptr, &pVS);
+	//ì •ì  ì…°ì´ë” ê°ì²´ ìƒì„±
+	ComPtr<ID3D11VertexShader> pVs;
+	hr = graphicsDevice->GetDevice()->CreateVertexShader(pCode->GetBufferPointer(), pCode->GetBufferSize(), nullptr, pVs.GetAddressOf());
 	if (FAILED(hr))
 	{
-		pCode->Release();
-		pCode = nullptr;
-		std::cout << "[½ÇÆĞ] ¼ÎÀÌ´õ °´Ã¼ »ı¼º ½ÇÆĞ : " << "ÆÄÀÏ °æ·Î : " << fxname << " ÁøÀÔÁ¡ : " << entry << " ¸ğµ¨ : " << target << std::endl;
+		Log::Error("ì…°ì´ë” ê°ì²´ ìƒì„± ì‹¤íŒ¨ : íŒŒì¼ ê²½ë¡œ : %s ì§„ì…ì  : %s íƒ€ê¹ƒ : %s. %s",
+			Log::ToUtf8(fxname).c_str(), entry, target, Log::HrToString(hr).c_str());
 		return hr;
 	}
-	//¿Ï·á ÈÄ »ı¼ºµÈ ¼ÎÀÌ´õ¿Í °´Ã¼ ¹İÈ¯
-	*ppVS = pVS;
-	*ppCode = pCode;
+	//ì™„ë£Œ í›„ ìƒì„±ëœ ì…°ì´ë”ì™€ ë°”ì´íŠ¸ì½”ë“œ ë°˜í™˜
+	outVS = pVs;
+	outCode = pCode;
 
 	return hr;
 }
 
-HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* target, ID3D11PixelShader** ppPS)
+HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* target, ComPtr<ID3D11PixelShader>& outPS)
 {
-	//¼ÎÀÌ´õ ÄÄÆÄÀÏ
-	ID3DBlob* pCode = nullptr;
-	HRESULT hr = ShaderCompile(fxname, entry, target, &pCode);
+	//ì…°ì´ë” ì»´íŒŒì¼
+	ComPtr<ID3DBlob> pCode;
+	HRESULT hr = ShaderCompile(fxname, entry, target, pCode);
 	if (FAILED(hr))
 	{
-		std::cout << "[½ÇÆĞ] ¼ÎÀÌ´õ ÄÄÆÄÀÏ ½ÇÆĞ : " << "ÆÄÀÏ °æ·Î : " << fxname << " ÁøÀÔÁ¡ : " << entry << " ¸ğµ¨ : " << target << std::endl;
 		return hr;
 	}
 
-	ID3D11PixelShader* pPS = nullptr;
-	hr = graphicsDevice->GetDevice()->CreatePixelShader(pCode->GetBufferPointer(), pCode->GetBufferSize(), nullptr, &pPS);
+	ComPtr<ID3D11PixelShader> pPs;
+	hr = graphicsDevice->GetDevice()->CreatePixelShader(pCode->GetBufferPointer(), pCode->GetBufferSize(), nullptr, pPs.GetAddressOf());
 	if (FAILED(hr))
 	{
-		pCode->Release();
-		pCode = nullptr;
-		std::cout << "[½ÇÆĞ] ¼ÎÀÌ´õ °´Ã¼ »ı¼º ½ÇÆĞ : " << "ÆÄÀÏ °æ·Î : " << fxname << " ÁøÀÔÁ¡ : " << entry << " ¸ğµ¨ : " << target << std::endl;
+		Log::Error("ì…°ì´ë” ê°ì²´ ìƒì„± ì‹¤íŒ¨ : íŒŒì¼ ê²½ë¡œ : %s ì§„ì…ì  : %s íƒ€ê¹ƒ : %s. %s",
+			Log::ToUtf8(fxname).c_str(), entry, target, Log::HrToString(hr).c_str());
 		return hr;
 	}
 
-	pCode->Release();
-	pCode = nullptr;
-	if (FAILED(hr))	return hr;
-
-	*ppPS = pPS;
+	// í”½ì…€ ì…°ì´ë”ëŠ” ë°”ì´íŠ¸ì½”ë“œë¥¼ ë³´ê´€í•˜ì§€ ì•ŠëŠ”ë‹¤. pCodeëŠ” ì—¬ê¸°ì„œ ìë™ í•´ì œëœë‹¤.
+	outPS = pPs;
 	return hr;
 }
 
-HRESULT Shader::ShaderCompile(const TCHAR* FileName, const CHAR* EntryPoint, const CHAR* ShaderModel, ID3DBlob** ppCode)
+HRESULT Shader::ShaderCompile(const TCHAR* FileName, const CHAR* EntryPoint, const CHAR* ShaderModel, ComPtr<ID3DBlob>& outCode)
 {
-	// ¼ÎÀÌ´õ ÄÄÆÄÀÏ ¹æ¹ı °ø½Ä MS¹®¼­
+	// ì…°ì´ë” ì»´íŒŒì¼ ë°©ë²• ê´€ë ¨ MSë¬¸ì„œ
 	// https://docs.microsoft.com/en-us/windows/win32/direct3d11/how-to--compile-a-shader
 
-	ID3DBlob* pError = nullptr;
+	ComPtr<ID3DBlob> pError;
 	HRESULT hr;
-	
+
+	// ì»´íŒŒì¼ ì˜µì…˜. Debug ë¹Œë“œì—ì„œëŠ” ë””ë²„ê·¸ ì •ë³´ë¥¼ ë‚¨ê¸°ê³  ìµœì í™”ë¥¼ ëˆë‹¤.
+	// ê·¸ë˜ì•¼ RenderDocÂ·PIXì—ì„œ HLSL ì›ë³¸ ì¤„ ë‹¨ìœ„ë¡œ ë”°ë¼ê°ˆ ìˆ˜ ìˆë‹¤.
+	UINT compileFlags = 0;
+#if defined(_DEBUG)
+	compileFlags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+	compileFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
+#endif
+
 	/*HRESULT D3DCompileFromFile
 	(
-		LPCWSTR pFileName,                   //ÄÄÆÄÀÏÇÒ ¼ÎÀÌ´õ °æ·Î
-		const D3D_SHADER_MACRO * pDefines,	 //ÄÄÆÄÀÏ ½Ã »ç¿ëÇÒ ¸ÅÅ©·Î Á¤ÀÇ
-		ID3DInclude * pInclude,				 //HLSL ÆÄÀÏ ¾È¿¡¼­ #include¸¦ »ç¿ëÇÒ ¶§ include ÆÄÀÏÀ» ¾î¶»°Ô Ã£À»Áö
-		LPCSTR pEntrypoint,					 //¼ÎÀÌ´õ ÄÚµå ½ÃÀÛ ÇÔ¼ö ÀÌ¸§
-		LPCSTR pTarget,						 //¼ÎÀÌÅÍ Å¸ÀÔ°ú ¹öÀü
-		UINT Flags1,						 //ÄÄÆÄÀÏ ¿É¼Ç https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/d3dcompile-constants
-		UINT Flags2,					     //Effect°ü·Ã ¿É¼Ç https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/d3dcompile-effect-constants
-		ID3DBlob * *ppCode,					 //ÄÄÆÄÀÏ ¼º°ø½Ã ÀúÀåµÉ ¹ÙÀÌÆ® ÄÚµå º¯¼ö
-		ID3DBlob * *ppErrorMsgs				 //½ÇÆĞ½Ã ¿¡·¯ ¸Ş½ÃÁö ¼ö½ÅÇÏ´Â Blob
+		LPCWSTR pFileName,                   //ì»´íŒŒì¼í•  ì…°ì´ë” ê²½ë¡œ
+		const D3D_SHADER_MACRO * pDefines,	 //ì»´íŒŒì¼ ì‹œ ì ìš©í•  ë§¤í¬ë¡œ ì •ì˜
+		ID3DInclude * pInclude,				 //HLSL íŒŒì¼ ì•ˆì—ì„œ #includeë¥¼ ì‚¬ìš©í•  ë•Œ include íŒŒì¼ì„ ì–´ë””ì„œ ì°¾ì„ì§€
+		LPCSTR pEntrypoint,					 //ì…°ì´ë” ì½”ë“œ ì‹œì‘ í•¨ìˆ˜ ì´ë¦„
+		LPCSTR pTarget,						 //ì»´íŒŒì¼ íƒ€ì…ê³¼ ë²„ì „
+		UINT Flags1,						 //ì»´íŒŒì¼ ì˜µì…˜ https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/d3dcompile-constants
+		UINT Flags2,					     //EffectíŒŒì¼ ì˜µì…˜ https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/d3dcompile-effect-constants
+		ID3DBlob * *ppCode,					 //ì»´íŒŒì¼ ì„±ê³µì‹œ ê²°ê³¼ì¸ ë°”ì´íŠ¸ ì½”ë“œ ì €ì¥
+		ID3DBlob * *ppErrorMsgs				 //ì‹¤íŒ¨ì‹œ ì—ëŸ¬ ë©”ì‹œì§€ ì €ì¥í•˜ëŠ” Blob
 	);*/
 
-	hr = D3DCompileFromFile(FileName, 0, 0, EntryPoint, ShaderModel, 0, 0, ppCode, &pError);
+	hr = D3DCompileFromFile(
+		FileName,
+		nullptr,
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,   // HLSL ì•ˆì˜ #includeë¥¼ íŒŒì¼ ê¸°ì¤€ìœ¼ë¡œ ì°¾ëŠ”ë‹¤
+		EntryPoint,
+		ShaderModel,
+		compileFlags,
+		0,
+		outCode.ReleaseAndGetAddressOf(),
+		pError.GetAddressOf());
+
+	// ì»´íŒŒì¼ëŸ¬ê°€ ë‚¨ê¸´ ë©”ì‹œì§€. ì‹¤íŒ¨í•˜ë©´ ì›ì¸ì´, ì„±ê³µí•´ë„ ê²½ê³ ê°€ ë“¤ì–´ ìˆì„ ìˆ˜ ìˆë‹¤.
+	// ì—¬ê¸°ì— "íŒŒì¼(ì¤„,ì—´): error X____: ì„¤ëª…" í˜•íƒœë¡œ ì¤„ ë²ˆí˜¸ê°€ ë“¤ì–´ ìˆë‹¤.
+	const char* compilerText = nullptr;
+	if (pError && pError->GetBufferSize() > 0)
+	{
+		compilerText = static_cast<const char*>(pError->GetBufferPointer());
+	}
+
 	if (FAILED(hr))
 	{
-		std::cout << "[½ÇÆĞ] ¼ÎÀÌ´õ ÄÄÆÄÀÏ ½ÇÆĞ : " << "ÆÄÀÏ °æ·Î : " << FileName << " ÁøÀÔÁ¡ : " << EntryPoint << " ¸ğµ¨ : " << ShaderModel << std::endl;
-	}
+		Log::Error("ì…°ì´ë” ì»´íŒŒì¼ ì‹¤íŒ¨ : íŒŒì¼ ê²½ë¡œ : %s ì§„ì…ì  : %s íƒ€ê¹ƒ : %s",
+			Log::ToUtf8(FileName).c_str(), EntryPoint, ShaderModel);
 
-	if (pError)
+		if (compilerText != nullptr)
+		{
+			// ì»´íŒŒì¼ëŸ¬ í…ìŠ¤íŠ¸ì— %ê°€ ë“¤ì–´ ìˆì„ ìˆ˜ ìˆìœ¼ë¯€ë¡œ ì¸ìë¡œ ë„˜ê¸´ë‹¤.
+			Log::Error("%s", compilerText);
+		}
+		else
+		{
+			// Blobì´ ì—†ìœ¼ë©´ ë³´í†µ íŒŒì¼ì„ ëª» ì°¾ì€ ê²½ìš°ë‹¤. HRESULTë¥¼ ê·¸ëŒ€ë¡œ ë³´ì—¬ì¤€ë‹¤.
+			Log::Error("  (ì»´íŒŒì¼ëŸ¬ ë©”ì‹œì§€ ì—†ìŒ. HRESULT = %s. ì…°ì´ë” íŒŒì¼ ê²½ë¡œë¥¼ í™•ì¸í•  ê²ƒ.)",
+				Log::HrToString(hr).c_str());
+		}
+	}
+	else if (compilerText != nullptr)
 	{
-		pError->Release();
+		Log::Warn("ì…°ì´ë” ì»´íŒŒì¼ ê²½ê³  : %s", Log::ToUtf8(FileName).c_str());
+		Log::Warn("%s", compilerText);
 	}
-	pError = nullptr;
 
+	// pErrorëŠ” ComPtrì´ë¯€ë¡œ ì—¬ê¸°ì„œ ìë™ í•´ì œëœë‹¤.
 	return hr;
 }
