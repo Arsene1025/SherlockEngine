@@ -4,6 +4,15 @@
 #include <cstdarg>
 #include <cstdio>
 
+// 이름 없는 namespace(anonymous namespace).
+//
+// Log.h의 namespace Log가 이름을 묶어 구분하는 쪽이라면, 이쪽은 정반대로
+// 이름을 이 파일 안에 가두는 쪽이다. 여기 들어간 것은 내부 링키지를 얻어
+// 다른 번역 단위에서 이름으로 참조할 수 없게 되므로, 다른 .cpp에 우연히
+// 같은 이름의 헬퍼가 있어도 충돌하지 않는다. C의 파일 지역 static과 같은
+// 역할이고, C++에서는 이쪽이 권장되는 방식이다.
+//
+// 아래 셋은 Log의 구현 세부일 뿐 바깥에 보일 이유가 없으므로 여기에 둔다.
 namespace
 {
     // UTF-8 바이트열을 UTF-16으로 바꿔 OutputDebugStringW에 넘긴다.
@@ -59,6 +68,10 @@ namespace
     }
 }
 
+// 같은 namespace는 여러 파일에서 몇 번이든 다시 열 수 있다. Log.h가 선언을,
+// 여기가 정의를 담당하는 이 분업이 가능한 이유다. 클래스의 정적 멤버 함수로
+// 묶었다면 선언 전체가 한 곳에 고정되고 상속·인스턴스화 같은 필요 없는
+// 의미까지 딸려온다. 상태 없는 자유 함수 묶음에는 namespace가 맞다.
 namespace Log
 {
     void Init()
