@@ -15,8 +15,8 @@ bool PipelineState::Create(Device& device, const PipelineStateDesc& desc)
 	}
 
 	// 셰이더. 핸들을 풀에서 실제 객체로 바꾼다.
-	const Device::ShaderEntry* vs = device.GetShader(desc.vs);
-	const Device::ShaderEntry* ps = device.GetShader(desc.ps);
+	const D3D11Shader* vs = device.GetShader(desc.vs);
+	const D3D11Shader* ps = device.GetShader(desc.ps);
 	if (vs == nullptr || vs->stage != ShaderStage::Vertex || !vs->vs)
 	{
 		Log::Error("PipelineState::Create : 정점 셰이더 핸들이 유효하지 않음.");
@@ -31,7 +31,7 @@ bool PipelineState::Create(Device& device, const PipelineStateDesc& desc)
 	m_ps = ps->ps;
 
 	// 입력 레이아웃. D3D11은 정점 셰이더 바이트코드로 시그니처를 검증하므로
-	// 셰이더의 바이트코드 사본이 필요하다. 그래서 ShaderEntry가 바이트코드를 보관한다.
+	// 셰이더의 바이트코드 사본이 필요하다. 그래서 D3D11Shader가 바이트코드를 보관한다.
 	if (desc.vertexLayout.attributeCount == 0 || desc.vertexLayout.attributeCount > kMaxVertexAttributes)
 	{
 		Log::Error("PipelineState::Create : 정점 속성 개수가 잘못됨 (%u).", desc.vertexLayout.attributeCount);

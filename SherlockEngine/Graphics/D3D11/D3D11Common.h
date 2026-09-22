@@ -17,5 +17,6 @@
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "dxguid.lib")   // WKPDID_D3DDebugObjectName 등 GUID 정의
 
 using Microsoft::WRL::ComPtr;

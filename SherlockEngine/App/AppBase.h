@@ -1,10 +1,8 @@
 ﻿#pragma once
 #include <imgui.h>
-#include <imgui_impl_dx11.h>
 #include <imgui_impl_win32.h>
 #include "Graphics/D3D11/Device.h"
 #include "Graphics/Renderer.h"
-#include "Graphics/D3D11/Shader.h"
 #include "Scene/Camera.h"
 #include "Core/GameTimer.h"   // 값 멤버라 완전한 타입 필요
 #include "Core/Input.h"
@@ -39,15 +37,15 @@ class AppBase
         bool InitDevice();
         bool InitRenderer();
         bool InitGUI();
-        bool InitShaderClass();
 
         // Reset() 이후 누적 시간(초). 셰이더의 time 상수 등에 쓴다.
         float m_totalTime = 0.0f;
 
     public:
+        // 선언 순서 = 생성 순서, 파괴는 역순. Renderer가 Device보다 뒤에 있어야
+        // Renderer가 먼저 파괴되며 자기 버퍼 핸들을 Device에 돌려준다.
         Device graphicsDevice;
         Renderer renderer;
-        Shader shaderClass;
         Camera camera;
         GameTimer gameTimer;
         Input input;
