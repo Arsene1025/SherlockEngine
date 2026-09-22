@@ -1,152 +1,127 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- 필터는 디스크의 폴더 구조를 그대로 따른다.
+       Graphics\D3D11 아래에만 d3d11.h를 include하는 파일을 둔다. -->
   <ItemGroup>
-    <Filter Include="소스 파일">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="헤더 파일">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
-    <Filter Include="리소스 파일">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="99. ETC">
-      <UniqueIdentifier>{1f00749d-fc04-452f-8555-89f9d6c30694}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="00. Main">
-      <UniqueIdentifier>{2a7932b1-d9ec-4e64-83dd-d96e8f81d991}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01. Graphics">
-      <UniqueIdentifier>{0aa83911-1fa1-4769-84ef-01536c8bcac6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01. Graphics\Device">
-      <UniqueIdentifier>{2a2d55da-b0f0-49dd-8caf-c07178982f89}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="02.App">
+    <Filter Include="App">
       <UniqueIdentifier>{b2224a2d-cafe-4ec6-b566-4de7f50daf89}</UniqueIdentifier>
     </Filter>
-    <Filter Include="99. ETC\pch">
-      <UniqueIdentifier>{95effff6-2a23-4fe2-92b4-5f6cbee843f4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="01. Graphics\Render">
-      <UniqueIdentifier>{02bded70-ae52-435d-8d4b-4da1c07a428d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="98. Utils">
+    <Filter Include="Core">
       <UniqueIdentifier>{c41fe42a-6770-4776-99aa-e77269ca6a38}</UniqueIdentifier>
     </Filter>
-    <Filter Include="01. Graphics\Shader">
-      <UniqueIdentifier>{5354b8c8-218d-4427-a449-3f49bb4a235c}</UniqueIdentifier>
+    <Filter Include="Graphics">
+      <UniqueIdentifier>{0aa83911-1fa1-4769-84ef-01536c8bcac6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="97. ShaderFiles">
-      <UniqueIdentifier>{72c939d5-1f84-4d43-af2b-3ac097b37210}</UniqueIdentifier>
+    <Filter Include="Graphics\D3D11">
+      <UniqueIdentifier>{2a2d55da-b0f0-49dd-8caf-c07178982f89}</UniqueIdentifier>
     </Filter>
-    <Filter Include="97. ShaderFiles\BasicShader">
-      <UniqueIdentifier>{ea0b2568-df32-4d08-b331-fe2c562b04d4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="03. GameObject">
+    <Filter Include="Scene">
       <UniqueIdentifier>{0daac1b8-d7a9-4d5b-b83d-1789184214c2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{72c939d5-1f84-4d43-af2b-3ac097b37210}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Log.cpp">
-      <Filter>98. Utils</Filter>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="App\AppBase.cpp">
+      <Filter>App</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>00. Main</Filter>
+    <ClCompile Include="App\TestApp.cpp">
+      <Filter>App</Filter>
     </ClCompile>
-    <ClCompile Include="Device.cpp">
-      <Filter>01. Graphics\Device</Filter>
+    <ClCompile Include="Core\GameTimer.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="AppBase.cpp">
-      <Filter>02.App</Filter>
+    <ClCompile Include="Core\Log.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="TestApp.cpp">
-      <Filter>02.App</Filter>
+    <ClCompile Include="Core\Paths.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="pch.cpp">
-      <Filter>99. ETC\pch</Filter>
+    <ClCompile Include="Graphics\D3D11\Device.cpp">
+      <Filter>Graphics\D3D11</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer.cpp">
-      <Filter>01. Graphics\Render</Filter>
+    <ClCompile Include="Graphics\D3D11\Shader.cpp">
+      <Filter>Graphics\D3D11</Filter>
     </ClCompile>
-    <ClCompile Include="GameTimer.cpp">
-      <Filter>98. Utils</Filter>
+    <ClCompile Include="Graphics\Mesh.cpp">
+      <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Shader.cpp">
-      <Filter>01. Graphics\Shader</Filter>
+    <ClCompile Include="Graphics\MeshRenderer.cpp">
+      <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Camera.cpp">
-      <Filter>03. GameObject</Filter>
+    <ClCompile Include="Graphics\Renderer.cpp">
+      <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Transform.cpp">
-      <Filter>03. GameObject</Filter>
+    <ClCompile Include="Scene\Camera.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="GameObject.cpp">
-      <Filter>03. GameObject</Filter>
+    <ClCompile Include="Scene\GameObject.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Mesh.cpp">
-      <Filter>03. GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="MeshRenderer.cpp">
-      <Filter>01. Graphics\Render</Filter>
+    <ClCompile Include="Scene\Transform.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Device.h">
-      <Filter>01. Graphics\Device</Filter>
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="App\AppBase.h">
+      <Filter>App</Filter>
     </ClInclude>
-    <ClInclude Include="AppBase.h">
-      <Filter>02.App</Filter>
+    <ClInclude Include="App\TestApp.h">
+      <Filter>App</Filter>
     </ClInclude>
-    <ClInclude Include="TestApp.h">
-      <Filter>02.App</Filter>
+    <ClInclude Include="Core\GameTimer.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="pch.h">
-      <Filter>99. ETC\pch</Filter>
+    <ClInclude Include="Core\Log.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="struct.h">
-      <Filter>99. ETC</Filter>
+    <ClInclude Include="Core\Paths.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="enum.h">
-      <Filter>99. ETC</Filter>
+    <ClInclude Include="Graphics\D3D11\D3D11Common.h">
+      <Filter>Graphics\D3D11</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer.h">
-      <Filter>01. Graphics\Render</Filter>
+    <ClInclude Include="Graphics\D3D11\Device.h">
+      <Filter>Graphics\D3D11</Filter>
     </ClInclude>
-    <ClInclude Include="GameTimer.h">
-      <Filter>98. Utils</Filter>
+    <ClInclude Include="Graphics\D3D11\Shader.h">
+      <Filter>Graphics\D3D11</Filter>
     </ClInclude>
-    <ClInclude Include="Shader.h">
-      <Filter>01. Graphics\Shader</Filter>
+    <ClInclude Include="Graphics\enum.h">
+      <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Camera.h">
-      <Filter>03. GameObject</Filter>
+    <ClInclude Include="Graphics\Mesh.h">
+      <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Transform.h">
-      <Filter>03. GameObject</Filter>
+    <ClInclude Include="Graphics\MeshRenderer.h">
+      <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="GameObject.h">
-      <Filter>03. GameObject</Filter>
+    <ClInclude Include="Graphics\Renderer.h">
+      <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Log.h">
-      <Filter>98. Utils</Filter>
+    <ClInclude Include="Graphics\struct.h">
+      <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Mesh.h">
-      <Filter>03. GameObject</Filter>
+    <ClInclude Include="Scene\Camera.h">
+      <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="MeshRenderer.h">
-      <Filter>01. Graphics\Render</Filter>
+    <ClInclude Include="Scene\GameObject.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Transform.h">
+      <Filter>Scene</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="BasicPixelShader.hlsl">
-      <Filter>97. ShaderFiles\BasicShader</Filter>
-    </FxCompile>
-    <FxCompile Include="BasicVertexShader.hlsl">
-      <Filter>97. ShaderFiles\BasicShader</Filter>
-    </FxCompile>
+    <CopyFileToFolders Include="Shaders\BasicVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="Shaders\BasicPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

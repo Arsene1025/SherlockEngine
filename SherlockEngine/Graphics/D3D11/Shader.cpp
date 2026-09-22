@@ -1,8 +1,9 @@
 ﻿#include "pch.h"
-#include "Shader.h"
-#include "Log.h"
-#include "struct.h"   // ConstBuffer, LightBuffer
-#include "Device.h"
+#include "Graphics/D3D11/Shader.h"
+#include "Core/Log.h"
+#include "Core/Paths.h"
+#include "Graphics/struct.h"   // ConstBuffer, LightBuffer
+#include "Graphics/D3D11/Device.h"
 
 bool Shader::Initialize(Device* device)
 {
@@ -62,12 +63,17 @@ void Shader::ShaderUpdate()
 
 bool Shader::ShaderLoad()
 {
+	// 경로는 exe 기준 절대 경로다. 절대 경로여야 HLSL 안의 #include도
+	// D3D_COMPILE_STANDARD_FILE_INCLUDE가 셰이더 파일 위치 기준으로 찾는다.
+	const std::wstring vsPath = Paths::GetShaderPath(L"BasicVertexShader.hlsl");
+	const std::wstring psPath = Paths::GetShaderPath(L"BasicPixelShader.hlsl");
+
 	// HRESULT를 여기서 bool로 바꿔 올린다. 실패를 삼키지 않는다.
-	if (FAILED(ShaderLoad(L"BasicVertexShader.hlsl", "VS_Main", "vs_5_0", pVS, pVSCode)))
+	if (FAILED(ShaderLoad(vsPath.c_str(), "VS_Main", "vs_5_0", pVS, pVSCode)))
 	{
 		return false;
 	}
-	if (FAILED(ShaderLoad(L"BasicPixelShader.hlsl", "PS_Main", "ps_5_0", pPS)))
+	if (FAILED(ShaderLoad(psPath.c_str(), "PS_Main", "ps_5_0", pPS)))
 	{
 		return false;
 	}

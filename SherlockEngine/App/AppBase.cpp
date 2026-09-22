@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
-#include "AppBase.h"
-#include "Log.h"
+#include "App/AppBase.h"
+#include "Core/Log.h"
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
@@ -23,7 +23,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return g_appBase->MsgProc(hWnd, msg, wParam, lParam);
 }
 
-AppBase::AppBase() : m_screenWidth(1280), m_screenHeight(720), m_mainWindow(0), m_screenViewport(D3D11_VIEWPORT())
+AppBase::AppBase() : m_screenWidth(1280), m_screenHeight(720), m_mainWindow(0)
 {
 	g_appBase = this;
 }
@@ -71,15 +71,16 @@ int AppBase::Run()
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        else 
+        else
         {
-            GameTime gameTime;
+            // 시간은 여기서 한 번만 읽고 dt로 넘긴다. 예전의 static GameTime
+            // 멤버는 정의가 없어 링크가 안 됐고, 지역 변수는 프레임 끝에
+            // 사라져 아무도 읽지 못했다.
             gameTimer.Tick();
-            gameTime.deltaTime = gameTimer.DeltaTime();
-            gameTime.totalTime = gameTimer.TotalTime();
+            const float dt = gameTimer.DeltaTime();
+            m_totalTime = gameTimer.TotalTime();
 
-            //float dt = ImGui::GetIO().DeltaTime;
-            Update();
+            Update(dt);
 
 
             graphicsDevice.Clear();
@@ -108,8 +109,6 @@ int AppBase::Run()
 
             ImGui::End();
             ImGui::Render();
-
-            //Update(ImGui::GetIO().DeltaTime); //변화
 
             Render(); //실제 렌더링
             ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); // GUI 렌더링

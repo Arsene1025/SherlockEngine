@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
-#include "Device.h"
-#include "Log.h"
+#include "Graphics/D3D11/Device.h"
+#include "Core/Log.h"
 
 bool Device::InitDevice(HWND hWnd, int width, int height)
 {

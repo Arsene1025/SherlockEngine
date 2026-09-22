@@ -4,7 +4,7 @@
 
 #include "pch.h"
 #include <windows.h>
-#include "GameTimer.h"
+#include "Core/GameTimer.h"
 
 
 GameTimer::GameTimer()

@@ -1,9 +1,9 @@
 ﻿#include "pch.h"
-#include "Renderer.h"
-#include "Device.h"
-#include "Shader.h"
-#include "Camera.h"
-#include "Log.h"
+#include "Graphics/Renderer.h"
+#include "Graphics/D3D11/Device.h"
+#include "Graphics/D3D11/Shader.h"
+#include "Scene/Camera.h"
+#include "Core/Log.h"
 #include <imgui.h>
 
 using namespace DirectX;   // 이 파일 안에서만
