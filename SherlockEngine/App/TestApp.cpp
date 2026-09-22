@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
-#include "TestApp.h"
+#include "App/TestApp.h"
+#include <imgui.h>
 
 TestApp::TestApp()
 {
@@ -14,12 +15,13 @@ bool TestApp::Initialize()
 
 void TestApp::UpdateGUI()
 {
+	ImGui::Text("dt %.3f ms  total %.1f s", m_lastDt * 1000.0f, m_totalTime);
 	renderer.UpdateGUI();
 }
 
-void TestApp::Update()
+void TestApp::Update(float dt)
 {
-	//gameTime 전역변수
+	m_lastDt = dt;
 }
 
 void TestApp::Render()

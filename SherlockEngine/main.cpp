@@ -1,6 +1,6 @@
-#include "pch.h"
-#include "Log.h"
-#include "TestApp.h"
+﻿#include "pch.h"
+#include "Core/Log.h"
+#include "App/TestApp.h"
 
 int main()
 {

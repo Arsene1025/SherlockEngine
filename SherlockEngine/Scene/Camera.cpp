@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "Camera.h"
+#include "Scene/Camera.h"
 
 using namespace DirectX;   // 이 파일 안에서만
 

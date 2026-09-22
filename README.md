@@ -28,16 +28,22 @@ msbuild SherlockEngine.sln /p:Configuration=Debug /p:Platform=x64 /m
 
 ## 실행
 
-셰이더는 빌드할 때가 아니라 실행할 때 `D3DCompileFromFile`로 컴파일합니다. `.hlsl` 파일을 상대 경로로 찾으므로 **작업 디렉터리를 `SherlockEngine\`으로 두고 실행해야 합니다.** Visual Studio에서 F5로 실행하면 기본 작업 디렉터리가 프로젝트 폴더라 그대로 동작합니다.
+셰이더는 빌드할 때가 아니라 실행할 때 `D3DCompileFromFile`로 컴파일합니다. 빌드가 `SherlockEngine\Shaders\*.hlsl`을 `x64\<구성>\Shaders\`로 복사하고, 실행 파일은 `Core/Paths.h`로 **자기 위치 기준**의 그 폴더를 찾습니다. 작업 디렉터리는 상관없으므로 탐색기에서 `x64\Debug\SherlockEngine.exe`를 직접 실행해도 됩니다.
 
-탐색기에서 `x64\Debug\SherlockEngine.exe`를 직접 실행하면 셰이더를 찾지 못해 다음처럼 실패하고 종료합니다.
+exe 옆 `Shaders\` 폴더가 없으면(셰이더만 고치고 빌드하지 않은 경우) 소스 트리의 `SherlockEngine\Shaders\`로 폴백하고 `[경고]` 로그를 한 줄 남깁니다.
 
-```
-[실패] 셰이더 컴파일 실패 : 파일 경로 : BasicVertexShader.hlsl 진입점 : VS_Main 타깃 : vs_5_0
-[실패]   (컴파일러 메시지 없음. HRESULT = 0x80070002 (지정된 파일을 찾을 수 없습니다.). 셰이더 파일 경로를 확인할 것.)
-```
+## 소스 폴더
 
-실행 파일 기준 경로로 바꾸는 작업은 아직 하지 않았습니다.
+| 폴더 | 내용 |
+|---|---|
+| `App/` | 창·메시지 루프·ImGui 프레임(`AppBase`), 데모 앱(`TestApp`) |
+| `Core/` | 로그, 타이머, 경로 등 그래픽스와 무관한 유틸리티 |
+| `Graphics/` | 렌더러, 메시, API 중립 타입 |
+| `Graphics/D3D11/` | **`d3d11.h`를 include하는 파일은 이 폴더에만 둡니다.** |
+| `Scene/` | 카메라, 트랜스폼, 게임 오브젝트 |
+| `Shaders/` | HLSL |
+
+`#include`는 프로젝트 루트 기준으로 씁니다. 예: `#include "Graphics/D3D11/Device.h"`.
 
 ## 소스 규약
 

@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include <cmath>
-#include "Mesh.h"
+#include "Graphics/Mesh.h"
 
 using namespace DirectX;   // 이 파일 안에서만
 

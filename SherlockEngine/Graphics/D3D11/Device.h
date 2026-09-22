@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Graphics/D3D11/D3D11Common.h"
 
 class Device
 {

@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "Log.h"
+#include "Core/Log.h"
 
 #include <cstdarg>
 #include <cstdio>

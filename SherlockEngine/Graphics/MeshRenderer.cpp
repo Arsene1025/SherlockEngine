@@ -1,10 +1,10 @@
 ﻿#include "pch.h"
-#include "MeshRenderer.h"
-#include "Device.h"
-#include "Shader.h"
-#include "Camera.h"
-#include "struct.h"   // VERTEX, ConstBuffer
-#include "Mesh.h"
+#include "Graphics/MeshRenderer.h"
+#include "Graphics/D3D11/Device.h"
+#include "Graphics/D3D11/Shader.h"
+#include "Scene/Camera.h"
+#include "Graphics/struct.h"   // VERTEX, ConstBuffer
+#include "Graphics/Mesh.h"
 
 using namespace DirectX;   // 이 파일 안에서만
 

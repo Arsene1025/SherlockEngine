@@ -1,9 +1,9 @@
 ﻿#pragma once
-#include "enum.h"     // RS_MAX_, RM_DEFAULT, MAX_LIGHTS
-#include "struct.h"   // LightData
-#include "GameObject.h"
-#include "Mesh.h"
-#include "MeshRenderer.h"
+#include "Graphics/enum.h"     // RS_MAX_, RM_DEFAULT, MAX_LIGHTS
+#include "Graphics/struct.h"   // LightData
+#include "Scene/GameObject.h"
+#include "Graphics/Mesh.h"
+#include "Graphics/MeshRenderer.h"
 
 class Device;
 class Shader;
