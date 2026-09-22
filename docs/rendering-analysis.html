@@ -195,10 +195,10 @@ td .fix b{color:var(--ok);font-weight:600}
     <li><a href="#s8">8. 고민하고 수정해야 할 설계 지점</a></li>
     <li class="sub"><a href="#d1">D1~D20 설계 결정 목록</a></li>
     <li><a href="#s9">9. 발전 로드맵 — RHI와 PSO를 향해</a></li>
-    <li class="sub"><a href="#p0">0단계 · 기반 정리</a></li>
-    <li class="sub"><a href="#p1">1단계 · 깊이 버퍼와 PSO 에뮬레이션</a></li>
-    <li class="sub"><a href="#p2">2단계 · 입력과 카메라</a></li>
-    <li class="sub"><a href="#p3">3단계 · Scene과 리소스 래퍼</a></li>
+    <li class="sub"><a href="#p0">0단계 · 기반 정리</a> <a href="phase-0.html" title="상세 문서">↗</a></li>
+    <li class="sub"><a href="#p1">1단계 · 깊이 버퍼와 PSO 에뮬레이션</a> <a href="phase-1.html" title="상세 문서">↗</a></li>
+    <li class="sub"><a href="#p2">2단계 · 입력과 카메라</a> <a href="phase-2.html" title="상세 문서">↗</a></li>
+    <li class="sub"><a href="#p3">3단계 · Scene과 리소스 래퍼</a> <a href="phase-3.html" title="상세 문서">↗</a></li>
     <li class="sub"><a href="#p4">4단계 · Material과 바인딩 레이아웃</a></li>
     <li class="sub"><a href="#p5">5단계 · 텍스처와 색공간</a></li>
     <li class="sub"><a href="#p6">6단계 · 그림자 · RenderPass · CommandList</a></li>
@@ -815,6 +815,12 @@ DSV has (w:1280,h:360).</code></pre>
     <li><code>~AppBase</code>가 ImGui 초기화 여부와 무관하게 <code>ImGui_ImplDX11_Shutdown()</code>을 부르고, <code>MsgProc</code>도 <code>ImGui_ImplWin32_WndProcHandler</code>를 무조건 불렀습니다. GUI 초기화 전에 실패하면 컨텍스트가 없어 단언에 걸립니다.</li>
   </ol>
   <p>고친 방법: <code>WndProc</code>에 널 가드를 두고 없으면 <code>DefWindowProc</code>으로 넘깁니다. 소멸자는 <strong>창을 먼저 파괴한 뒤</strong> <code>g_appBase</code>를 지웁니다. 초기화 단계별로 <code>bool</code> 플래그를 남겨 실제로 초기화한 것만 되돌리고, <code>MsgProc</code>도 그 플래그를 보고 ImGui에 넘깁니다.</p>
+  <p><span class="pill ok">수정됨</span> <b>2026-09-22 코드 대조 확인</b> — 세 가지 모두 커밋 <code>9e85adf</code>(2026-09-10)의 <code>AppBase.cpp</code>·<code>AppBase.h</code>에 반영되어 있고, 이후 추가 수정은 필요하지 않았습니다.</p>
+  <ol>
+    <li><code>WndProc</code>(<code>AppBase.cpp:15</code>)이 <code>g_appBase == nullptr</code>이면 <code>::DefWindowProc</code>으로 바로 반환합니다.</li>
+    <li><code>~AppBase</code>(<code>AppBase.cpp:31</code>)가 <code>m_mainWindow</code>가 있으면 <code>DestroyWindow</code>를 먼저 부르고 그 <em>다음에</em> <code>g_appBase = nullptr</code>을 합니다. 동기적으로 오는 <code>WM_DESTROY</code>가 살아 있는 포인터를 봅니다.</li>
+    <li><code>AppBase.h</code>에 <code>m_guiContextCreated</code> / <code>m_guiInitialized</code>(DX11 백엔드) / <code>m_guiWin32Initialized</code> 세 플래그가 있고, <code>InitGUI</code>가 각 단계를 성공한 직후에만 <code>true</code>로 세웁니다. 소멸자는 플래그가 선 것만 <code>ImGui_ImplDX11_Shutdown</code> → <code>ImGui_ImplWin32_Shutdown</code> → <code>ImGui::DestroyContext</code> 순으로 되돌리고, <code>MsgProc</code>(<code>AppBase.cpp:156</code>)은 <code>m_guiWin32Initialized</code>일 때만 <code>ImGui_ImplWin32_WndProcHandler</code>에 넘깁니다.</li>
+  </ol>
 </div>
 
 <h3>8. vcpkg 매니페스트 (D20)</h3>
@@ -1284,7 +1290,7 @@ exit code: -1</code></pre>
 </div>
 
 <div class="phase" id="p0">
-  <header><span class="pn">PHASE 0</span><h3>기반 정리</h3><span class="pill amber">즉시 · 하루</span><span class="pill ok">7항목 중 6개 완료 · 2026-09-10</span></header>
+  <header><span class="pn">PHASE 0</span><h3>기반 정리</h3><span class="pill amber">즉시 · 하루</span><span class="pill ok">7항목 중 6개 완료 · 2026-09-10</span><span class="pill ok">잔여 완료 · 2026-09-23</span></header>
   <p class="why">7절의 치명·주의 항목과 8절의 저비용 항목(D1, D17, D18, D20)을 함께 처리합니다. RHI 관점에서 특히 중요한 것은 <strong>ComPtr 통일</strong>입니다. 백엔드가 리소스를 핸들 뒤에 숨기려면 수명 관리가 자동이어야 합니다.</p>
   <div class="cols">
     <div><h5>작업</h5><ul>
@@ -1309,10 +1315,14 @@ exit code: -1</code></pre>
     <p>작업 목록에서 <strong>남은 것은 두 가지</strong>입니다. <strong>#5</strong>(static gameTime 제거와 <code>Update(float dt)</code>)와 <strong>#8</strong>(셰이더 경로를 실행 파일 기준으로). 소스 폴더를 <code>Graphics/D3D11/</code>로 옮기는 RHI 관점 메모도 아직입니다. 이 셋은 1단계 PSO 작업과 병행해도 무방합니다.</p>
     <p>자세한 수행 방법은 <a href="#applied">적용 기록</a>에 있습니다.</p>
   </div>
+  <div class="applied">
+    <div class="t">잔여 완료 — 2026-09-23</div>
+    <p>남아 있던 셋을 처리했습니다. <code>static GameTime</code> 제거 + <code>Update(float dt)</code>, <code>Core/Paths</code>로 exe 기준 셰이더 경로(빌드가 <code>Shaders\</code>를 exe 옆으로 복사), <code>App/ Core/ Graphics/ Graphics/D3D11/ Scene/ Shaders/</code> 폴더 재배치. 커밋 adb1f86. <strong>상세: <a href="phase-0.html">phase-0.html</a></strong></p>
+  </div>
 </div>
 
 <div class="phase" id="p1">
-  <header><span class="pn">PHASE 1</span><h3>깊이 버퍼와 PSO 에뮬레이션</h3><span class="pill info">2~3일</span><span class="pill ok">깊이 버퍼 완료 · 2026-09-10</span></header>
+  <header><span class="pn">PHASE 1</span><h3>깊이 버퍼와 PSO 에뮬레이션</h3><span class="pill info">2~3일</span><span class="pill ok">깊이 버퍼 완료 · 2026-09-10</span><span class="pill ok">PSO 완료 · 2026-09-23</span></header>
   <p class="why">이전 로드맵의 "RenderState 클래스"를 <strong>PipelineState</strong>로 대체합니다. D3D11에는 PSO가 없지만, 셰이더·InputLayout·Rasterizer·DepthStencil·Blend·Topology를 하나의 Desc로 받아 내부적으로 D3D11 상태 객체들을 만들어 묶고, 캐시하고, 한 번의 Bind로 전부 설정하는 클래스는 만들 수 있습니다. 이것이 RHI의 첫 조각이고, 이후 모든 드로우는 PSO를 통해서만 상태를 바꿉니다.</p>
   <div class="cols">
     <div><h5>작업</h5><ul>
@@ -1336,10 +1346,14 @@ exit code: -1</code></pre>
     <p><b>DepthStencilState를 일부러 만들지 않은 이유</b>가 여기에 있습니다. D3D11 기본 상태만으로 깊이 테스트가 동작하므로, 명시적 상태 객체는 <code>PipelineState</code>가 <code>DepthStencilDesc</code>로 소유하게 두는 편이 낫습니다. 지금 <code>OMSetDepthStencilState</code>를 개별 호출로 넣으면 PSO 작업에서 다시 걷어내야 합니다.</p>
     <p>완료 기준의 "구 두 개" 검증은 씬에 물체가 하나뿐이라 <em>아직 못 했습니다.</em> 대신 깊이 버퍼 크기를 일부러 어긋낸 실험판으로 DSV가 실제로 OM에 바인딩됨을 확인했습니다. <a href="#applied">적용 기록</a>의 검증 방법 참고.</p>
   </div>
+  <div class="applied">
+    <div class="t">PSO 완료 — 2026-09-23</div>
+    <p><code>PipelineStateDesc</code>(D3D12 필드 구성, 필드 단위 해시·비교) → <code>PipelineState</code>(IL·VS·PS·RS·DSS·BS, <code>Bind()</code> 한 번) → <code>PipelineStateCache</code>. 래스터 상태 4개·<code>RenderModeUpdate</code>·<code>ShaderUpdate</code>의 셰이더 바인딩·MeshRenderer의 InputLayout을 전부 흡수. 개별 상태 호출은 <code>PipelineState.cpp</code>에만 남음. 관통하는 구 두 개로 깊이 검증. 커밋 d2cf740. <strong>상세: <a href="phase-1.html">phase-1.html</a></strong></p>
+  </div>
 </div>
 
 <div class="phase" id="p2">
-  <header><span class="pn">PHASE 2</span><h3>입력과 카메라 컨트롤러</h3><span class="pill info">1~2일</span></header>
+  <header><span class="pn">PHASE 2</span><h3>입력과 카메라 컨트롤러</h3><span class="pill info">1~2일</span><span class="pill ok">완료 · 2026-09-23</span></header>
   <p class="why">RHI와 무관한 단계지만 이후 모든 단계의 디버깅 효율을 결정합니다. 8절 D8에 따라 카메라를 위치+회전(쿼터니언 또는 yaw/pitch) 방식으로 전환합니다.</p>
   <div class="cols">
     <div><h5>작업</h5><ul>
@@ -1350,10 +1364,14 @@ exit code: -1</code></pre>
     <div><h5>관련 파일</h5><ul><li>새 파일 Input.h/.cpp</li><li>Camera.h/.cpp, AppBase.cpp, TestApp.cpp</li></ul></div>
   </div>
   <div class="done"><b>완료 기준</b> — 회전하는 구 주위를 카메라로 자유롭게 돌면서 볼 수 있다.</div>
+  <div class="applied">
+    <div class="t">완료 — 2026-09-23</div>
+    <p><code>Core/Input</code>(프레임 단위 키·마우스 상태), 위치 + yaw/pitch 카메라(뷰행렬 = <code>inverse(R·T)</code>, Debug에서 <code>LookToLH</code>와 대조), WASD/QE + 우클릭 드래그(캡처·커서 숨김·재중앙화), F1/F2/F3 렌더 토글, 공전하는 구로 dt 검증. ImGui 백엔드가 먼저 <code>SetCapture</code>해 <code>WM_CAPTURECHANGED</code>가 자기 자신에게 오는 문제를 처리. 커밋 aa1f50d. <strong>상세: <a href="phase-2.html">phase-2.html</a></strong></p>
+  </div>
 </div>
 
 <div class="phase" id="p3">
-  <header><span class="pn">PHASE 3</span><h3>Scene과 리소스 래퍼</h3><span class="pill info">3~4일</span></header>
+  <header><span class="pn">PHASE 3</span><h3>Scene과 리소스 래퍼</h3><span class="pill info">3~4일</span><span class="pill ok">완료 · 2026-09-23</span></header>
   <p class="why">이전 로드맵의 "상수버퍼 3분할 + ConstantBuffer&lt;T&gt;"를 확장해, <strong>모든 GPU 리소스를 통일된 Desc → 핸들 방식</strong>으로 만듭니다. Renderer·MeshRenderer·Material이 <code>ID3D11Buffer*</code>를 직접 들지 않게 되는 단계입니다. 아직 가상 인터페이스는 없고, D3D11 전용 클래스지만 이름과 시그니처는 RHI 최종형과 같게 짓습니다.</p>
   <div class="cols">
     <div><h5>작업</h5><ul>
@@ -1371,10 +1389,14 @@ exit code: -1</code></pre>
     </ul></div>
   </div>
   <div class="done"><b>완료 기준</b> — 바닥 평면 위에 구·큐브가 여러 개 다른 변환으로 움직이고, <code>Graphics/D3D11/</code> 폴더 밖에서 <code>ID3D11</code>이라는 문자열이 검색되지 않는다.</div>
+  <div class="applied">
+    <div class="t">완료 — 2026-09-23</div>
+    <p>핸들·풀(<code>ResourcePool</code>), <code>BufferDesc/TextureDesc/ShaderDesc → 핸들</code>, 상수버퍼 3분할(b0 208B · b1 128B · b2 672B, <code>D3DReflect</code> 대조), <code>Scene</code>과 <code>Renderer::Render(Scene, Camera)</code>, Cube·Plane·Cylinder 프리미티브, <code>pch.h</code>에서 D3D 헤더 제거. 완료 기준 두 가지 모두 충족(바닥 위 7개 오브젝트, <code>Graphics/D3D11/</code> 밖 <code>ID3D11</code> 0건). 커밋 de4d935. <strong>상세: <a href="phase-3.html">phase-3.html</a></strong></p>
+  </div>
 </div>
 
 <div class="phase" id="p4">
-  <header><span class="pn">PHASE 4</span><h3>Material과 바인딩 레이아웃</h3><span class="pill info">3~4일</span></header>
+  <header><span class="pn">PHASE 4</span><h3>Material과 바인딩 레이아웃</h3><span class="pill info">3~4일</span><span class="pill ok">완료 · 2026-09-23</span></header>
   <p class="why">D3D12의 루트 시그니처에 해당하는 <strong>BindingLayout</strong>을 도입합니다. "이 파이프라인은 상수버퍼 b0·b1·b2, 텍스처 t0·t1, 샘플러 s0을 쓴다"를 선언하고, Material은 그 선언에 맞는 <strong>ResourceSet</strong>(실제 핸들 목록)을 채웁니다. D3D11 백엔드에서는 선언이 슬롯 번호표일 뿐이지만, D3D12에서는 이것이 루트 시그니처와 디스크립터 테이블로 변합니다.</p>
   <div class="cols">
     <div><h5>작업</h5><ul>

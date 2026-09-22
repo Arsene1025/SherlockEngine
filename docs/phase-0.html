@@ -1,0 +1,382 @@
+<title>0단계 · 기반 정리 잔여 — SherlockEngine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EEF0F7; --line:#D6D9E6; --line-strong:#B9BDD0;
+  --ink:#171A2B; --ink-2:#4A4F66; --muted:#7A7F96;
+  --accent:#232767; --accent-ink:#FFFFFF; --accent-soft:#E3E5F5;
+  --amber:#B8781A; --amber-soft:#FBF0DB;
+  --ok:#2E7D4F; --ok-soft:#E1F2E7; --warn:#A6620C; --warn-soft:#FBEDD6; --crit:#B23A3A; --crit-soft:#F9E1E1;
+  --code-bg:#1B1D33; --code-ink:#E7E9F5; --code-kw:#9BA3FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(23,26,43,.06),0 8px 24px rgba(23,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+    --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+    --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+    --amber:#F0B650; --amber-soft:#3D3560;
+    --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+    --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+  --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+  --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+  --amber:#F0B650; --amber-soft:#3D3560;
+  --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+  --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+code,pre,.mono{font-family:"IBM Plex Mono",Consolas,"D2Coding",monospace}
+code{font-size:.875em;background:var(--surface-2);padding:.1em .4em;border-radius:4px;color:var(--ink)}
+pre{background:var(--code-bg);color:var(--code-ink);padding:18px 20px;border-radius:8px;overflow-x:auto;font-size:13.5px;line-height:1.6;margin:18px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+.kw{color:var(--code-kw)} .str{color:var(--code-str)} .cm{color:var(--code-cm)}
+
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto;padding:0 32px;gap:48px}
+@media (max-width:960px){.shell{grid-template-columns:minmax(0,1fr);padding:0 20px;gap:0}}
+
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0 40px;font-size:13.5px}
+nav.toc .brand{font-weight:600;letter-spacing:.02em;color:var(--ink);margin-bottom:6px}
+nav.toc .meta{color:var(--muted);font-size:12px;margin-bottom:24px;line-height:1.5}
+nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+nav.toc li a{display:block;padding:5px 14px;color:var(--ink-2);border-left:2px solid transparent;margin-left:-1px;border-bottom:none;line-height:1.45}
+nav.toc li a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+nav.toc li.sub a{padding-left:28px;font-size:12.5px;color:var(--muted)}
+@media (max-width:960px){nav.toc{position:static;height:auto;padding:28px 0 8px}nav.toc ol{display:none}}
+
+main{padding:40px 0 96px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1{font-size:clamp(30px,4vw,42px);line-height:1.2;margin:6px 0 14px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{font-size:18px;color:var(--ink-2);max-width:66ch;margin:0 0 28px}
+h2{font-size:26px;line-height:1.3;margin:72px 0 16px;padding-top:24px;border-top:1px solid var(--line);font-weight:600;letter-spacing:-.005em;text-wrap:balance}
+h2 .num{display:inline-block;min-width:2.2em;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+h3{font-size:19px;margin:40px 0 10px;font-weight:600;text-wrap:balance}
+h4{font-size:16px;margin:28px 0 8px;font-weight:600}
+p{margin:0 0 16px;max-width:72ch}
+ul,ol{max-width:72ch;padding-left:1.4em;margin:0 0 16px}
+li{margin:4px 0}
+li>ul,li>ol{margin-top:4px}
+strong{font-weight:600}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:28px 0}
+.facts>div{background:var(--surface);padding:14px 16px}
+.facts .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.facts .v{font-size:15px;font-weight:600;line-height:1.35}
+.facts .v small{display:block;font-weight:400;color:var(--ink-2);font-size:12.5px;margin-top:2px}
+
+.callout{border-left:3px solid var(--accent);background:var(--surface);padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;max-width:72ch}
+.callout.amber{border-left-color:var(--amber);background:var(--amber-soft)}
+.callout.crit{border-left-color:var(--crit);background:var(--crit-soft)}
+.callout p:last-child{margin-bottom:0}
+.callout .t{font-weight:600;font-size:14px;margin-bottom:4px}
+
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.mono,th.mono{font-size:13px}
+td .n{font-variant-numeric:tabular-nums}
+
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.pill.amber{background:var(--amber-soft);color:var(--amber)}
+.pill.none{background:var(--surface-2);color:var(--muted)}
+td .sub{display:block;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.35}
+
+.fig{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.fig svg{display:block;min-width:640px;width:100%;height:auto;font-family:"IBM Plex Sans KR",system-ui,sans-serif}
+.fig .cap{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+svg .box{fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1}
+svg .box.acc{fill:var(--accent);stroke:var(--accent)}
+svg .box.acc text{fill:var(--accent-ink)}
+svg .box.amb{fill:var(--amber-soft);stroke:var(--amber)}
+svg text{fill:var(--ink);font-size:12.5px}
+svg text.s{font-size:11px;fill:var(--ink-2)}
+svg text.m{font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+svg text.acc{fill:var(--accent-ink)}
+svg .ln{stroke:var(--line-strong);stroke-width:1.2;fill:none}
+svg .ln.acc{stroke:var(--accent);stroke-width:1.6}
+svg .ln.amb{stroke:var(--amber);stroke-width:1.6;stroke-dasharray:4 3}
+svg .lane{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+
+.stage{display:grid;grid-template-columns:52px minmax(0,1fr);gap:16px;margin:26px 0;padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.stage .tag{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;color:var(--accent);padding-top:3px}
+.stage h4{margin:0 0 6px}
+.stage p:last-child,.stage ul:last-child{margin-bottom:0}
+
+.phase{margin:28px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
+.phase header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.phase .pn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--amber);font-weight:500}
+.phase h3{margin:0;font-size:20px}
+.phase .why{color:var(--ink-2);margin-bottom:12px}
+.phase .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.phase .cols h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.phase .cols ul{margin:0;padding-left:1.2em;font-size:14.5px}
+.phase .done{margin-top:14px;padding:10px 14px;background:var(--ok-soft);border-radius:6px;font-size:14px;color:var(--ink)}
+.phase .done b{color:var(--ok)}
+
+.layout{font-family:"IBM Plex Mono",monospace;font-size:12.5px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;margin:16px 0;min-width:480px}
+.layout>div{background:var(--surface-2);padding:6px 8px;border-radius:3px;text-align:center;line-height:1.35;border:1px solid var(--line)}
+.layout>div.pad{background:transparent;color:var(--muted);border-style:dashed}
+.layout>div.row{grid-column:1/-1;text-align:left;background:transparent;border:0;color:var(--muted);padding:6px 0 0;font-size:11px;letter-spacing:.06em}
+.layout>div.m4{grid-column:span 4;background:var(--accent-soft)}
+
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 18px;font-size:14.5px;margin:14px 0 18px;max-width:72ch}
+.kv dt{color:var(--muted);font-weight:500}
+.kv dd{margin:0}
+
+.decision{margin:26px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.decision header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.decision .dn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--accent);font-weight:500}
+.decision h3{margin:0;font-size:19px}
+.decision .now{font-size:14.5px;color:var(--ink-2);background:var(--surface-2);border-radius:6px;padding:10px 14px;margin:0 0 14px;max-width:none}
+.decision .now b{color:var(--ink);margin-right:6px}
+.decision p{max-width:none}
+.decision p b{font-weight:600}
+.decision .pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:6px}
+.decision .pc>div{padding:12px 16px;border-radius:6px;border:1px solid var(--line)}
+.decision .pc>div:first-child{border-color:var(--ok);background:var(--ok-soft)}
+.decision .pc>div:last-child{border-color:var(--warn);background:var(--warn-soft)}
+.decision .pc h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.decision .pc>div:first-child h5{color:var(--ok)}
+.decision .pc>div:last-child h5{color:var(--warn)}
+.decision .pc ul{margin:0;padding-left:1.2em;font-size:14px;max-width:none}
+.decision .pc li{margin:3px 0}
+.applied{margin:14px 0 0;padding:12px 16px 14px;border:1px solid var(--ok);background:var(--ok-soft);border-radius:6px;font-size:14.5px}
+.applied .t{font-weight:600;color:var(--ok);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.applied p{margin:0 0 8px;max-width:none}
+.applied p:last-child{margin-bottom:0}
+.applied ul{margin:0;padding-left:1.2em;max-width:none;font-size:14px}
+.applied li{margin:3px 0}
+.applied code{background:var(--surface)}
+td .fix{display:block;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line-strong);color:var(--ink-2)}
+td .fix b{color:var(--ok);font-weight:600}
+.phase li.done-item{color:var(--ink-2)}
+.phase li.done-item::marker{color:var(--ok)}
+.footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+<div class="shell">
+<nav class="toc" aria-label="목차">
+  <div class="brand">0단계 · 기반 정리 잔여</div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>커밋 adb1f86 (2026/09/23)<br><a href="rendering-analysis.html#p0">rendering-analysis.html → PHASE 0</a></div>
+  <ol>
+    <li><a href="#s1">1. 요약</a></li>
+    <li><a href="#s2">2. 왜 이 세 가지가 남아 있었나</a></li>
+    <li><a href="#s3">3. dt 전달</a></li>
+    <li class="sub"><a href="#s3-1">3.1 정의 없는 static 멤버가 컴파일된 이유</a></li>
+    <li class="sub"><a href="#s3-2">3.2 설계: 인자로 넘기는 dt</a></li>
+    <li class="sub"><a href="#s3-3">3.3 가변 스텝을 택한 이유와 한계</a></li>
+    <li><a href="#s4">4. exe 기준 셰이더 경로</a></li>
+    <li class="sub"><a href="#s4-1">4.1 작업 디렉터리는 믿을 수 없다</a></li>
+    <li class="sub"><a href="#s4-2">4.2 Paths 구현</a></li>
+    <li class="sub"><a href="#s4-3">4.3 빌드가 셰이더를 복사하게</a></li>
+    <li class="sub"><a href="#s4-4">4.4 #include 해석 위치</a></li>
+    <li><a href="#s5">5. 폴더 재배치</a></li>
+    <li class="sub"><a href="#s5-1">5.1 배치와 규칙</a></li>
+    <li class="sub"><a href="#s5-2">5.2 프로젝트 파일</a></li>
+    <li class="sub"><a href="#s5-3">5.3 인코딩·줄바꿈 함정</a></li>
+    <li><a href="#s6">6. 검증</a></li>
+    <li><a href="#s7">7. 참고 문헌</a></li>
+  </ol>
+</nav>
+
+<main>
+<div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
+<h1>0단계 · 기반 정리 잔여</h1>
+<p class="lede"><a href="rendering-analysis.html#p0">rendering-analysis.html</a>의 0단계는 2026-09-10에 7항목 중 6개가 끝났고, <strong>dt 전달</strong>, <strong>exe 기준 셰이더 경로</strong>, <strong>Graphics/D3D11/ 폴더 이동</strong> 세 가지가 남아 있었습니다. 이 문서는 그 셋을 2026-09-23에 어떻게 처리했는지, 그리고 원문이 한 줄로만 적었던 이유와 함정을 자세히 풀어 씁니다.</p>
+
+<div class="facts">
+  <div><div class="k">대상 커밋</div><div class="v">adb1f86<small>2026/09/23, 0단계 잔여 정리</small></div></div>
+  <div><div class="k">새 파일</div><div class="v">3개<small>Core/Paths.h·.cpp, Graphics/D3D11/D3D11Common.h</small></div></div>
+  <div><div class="k">이동한 파일</div><div class="v">28개<small>git rename 감지 26건</small></div></div>
+  <div><div class="k">삭제한 것</div><div class="v">static GameTime<small>정의가 없어 참조하면 링크 에러였음</small></div></div>
+  <div><div class="k">완료 기준</div><div class="v"><span class="pill ok">충족</span><small>탐색기에서 exe 더블클릭으로 실행됨</small></div></div>
+</div>
+
+<div class="callout">
+  <div class="t">한 줄 요약</div>
+  <p>시간은 <code>Update(float dt)</code> 인자 하나로 흐르고, 셰이더는 <code>GetModuleFileNameW</code>로 얻은 exe 폴더 아래 <code>Shaders\</code>에서 찾으며, D3D11 헤더를 include하는 파일은 <code>Graphics/D3D11/</code> 안에만 둡니다. 세 가지 모두 "나중에 하면 더 비싸지는" 종류의 정리였습니다. dt 없이는 2단계 카메라를, 절대 경로 없이는 3단계 HLSL <code>#include</code>를, 폴더 규칙 없이는 3단계 완료 기준(<code>ID3D11</code> 격리)을 만들 수 없습니다.</p>
+</div>
+
+<h2 id="s1"><span class="num">1.</span>요약</h2>
+<div class="tbl"><table>
+<thead><tr><th>항목</th><th>이전</th><th>이후</th></tr></thead>
+<tbody>
+<tr><td class="mono">AppBase::Update()</td><td><code>static GameTime gameTime</code> 멤버(정의 없음)와 루프 안의 같은 이름 지역 변수. <code>Update()</code>는 시간을 받지 못함</td><td><code>virtual void Update(float dt)</code>. <code>Run()</code>이 <code>GameTimer::Tick()</code> 직후 dt와 누적 시간(<code>m_totalTime</code>)을 채워 넘김</td></tr>
+<tr><td class="mono">셰이더 경로</td><td><code>L"BasicVertexShader.hlsl"</code> 상대 경로. 작업 디렉터리가 프로젝트 폴더일 때만 동작</td><td><code>Paths::GetShaderPath(L"…")</code> — exe 폴더 + <code>Shaders\</code>. 없으면 소스 트리로 폴백하고 경고 1회</td></tr>
+<tr><td class="mono">.hlsl 빌드 항목</td><td><code>FxCompile</code> + <code>ExcludedFromBuild</code>(편집기 등록용)</td><td><code>CopyFileToFolders</code> → <code>$(OutDir)Shaders</code>. 빌드마다 exe 옆으로 복사</td></tr>
+<tr><td class="mono">소스 배치</td><td>31개 파일이 프로젝트 루트에 평평하게</td><td><code>App/ Core/ Graphics/ Graphics/D3D11/ Scene/ Shaders/</code>. include는 프로젝트 루트 기준</td></tr>
+<tr><td class="mono">D3D 헤더</td><td><code>pch.h</code>가 전역 include</td><td><code>Graphics/D3D11/D3D11Common.h</code> 신설. (pch.h의 전역 include는 3단계 3.6에서 제거)</td></tr>
+</tbody></table></div>
+
+<h2 id="s2"><span class="num">2.</span>왜 이 세 가지가 남아 있었나</h2>
+<p>원문 0단계의 <a href="rendering-analysis.html#p0">진행 상황</a>은 "이 셋은 1단계 PSO 작업과 병행해도 무방하다"고 적었습니다. 맞는 판단이었지만, 1~3단계를 한 번에 진행하기로 하면서 순서가 바뀌었습니다. 세 항목은 각각 뒤 단계의 <em>전제</em>이기 때문입니다.</p>
+<ul>
+  <li><strong>dt</strong> — 2단계 카메라는 "초당 10단위"로 움직여야 합니다. 프레임당 고정량으로 움직이면 VSync를 켜고 끌 때 속도가 60배 달라집니다. dt가 <code>Update</code>까지 오지 않으면 카메라 컨트롤러를 만들 수 없습니다.</li>
+  <li><strong>절대 경로</strong> — 3단계는 상수버퍼 정의를 <code>Common.hlsli</code>로 뽑아 VS·PS가 <code>#include</code>합니다. 셰이더 파일을 상대 경로로 열면 include 파일도 그 상대 경로 기준으로 찾게 되어 작업 디렉터리에 따라 컴파일이 되거나 안 됩니다(4.4절).</li>
+  <li><strong>폴더</strong> — 3단계 완료 기준은 "<code>Graphics/D3D11/</code> 폴더 밖에서 <code>ID3D11</code>이라는 문자열이 검색되지 않는다"입니다. 폴더가 먼저 있어야 grep으로 검사할 경계가 생깁니다.</li>
+</ul>
+
+<h2 id="s3"><span class="num">3.</span>dt 전달</h2>
+
+<h3 id="s3-1">3.1 정의 없는 static 멤버가 컴파일된 이유</h3>
+<p>원문 4절 T-1이 지적한 대로 <code>AppBase.h</code>에는 <code>static GameTime gameTime;</code>이 <em>선언</em>만 있었고 <code>.cpp</code>에 <code>GameTime AppBase::gameTime;</code> <em>정의</em>가 없었습니다. 그런데도 빌드가 됐습니다. C++에서 정적 데이터 멤버의 선언은 클래스 안에서 하고 정의는 밖에서 하는데, 아무 코드도 그 멤버를 <em>odr-use</em>(주소를 취하거나 참조로 묶거나 값을 읽는 일)하지 않으면 링커는 그 심볼을 찾을 필요가 없습니다. <code>Run()</code> 안의 <code>GameTime gameTime;</code>은 같은 이름의 <strong>지역 변수</strong>라 정적 멤버를 가렸고(shadowing), <code>TestApp::Update()</code>는 비어 있었습니다. 즉 정적 멤버는 이름만 존재했습니다. 어느 파생 클래스가 <code>gameTime.deltaTime</code>을 읽는 순간 <code>LNK2001</code>이 났을 것입니다.</p>
+
+<h3 id="s3-2">3.2 설계: 인자로 넘기는 dt</h3>
+<p>고칠 방법은 셋 중 하나였습니다. (a) 정의를 추가해 전역 상태로 살린다. (b) <code>ImGui::GetIO().DeltaTime</code>을 쓴다(주석에 흔적이 남아 있었습니다). (c) <code>Update(float dt)</code>로 넘긴다. (c)를 택했습니다.</p>
+<ul>
+  <li>(a)는 "누가 언제 갱신했는가"를 호출 순서에 숨깁니다. 시간이 <code>Update</code>보다 먼저 갱신되어야 한다는 규칙이 코드에 드러나지 않습니다. 인자로 넘기면 <code>Run()</code>의 한 줄이 그 규칙 자체입니다.</li>
+  <li>(b)는 ImGui가 프레임 시작에서 계산하는 값이라 <code>ImGui::NewFrame()</code> 이후에만 유효하고, ImGui를 뺀 빌드(10단계의 헤드리스 도구 등)에서는 존재하지 않습니다. 렌더러의 시간이 UI 라이브러리에 묶이는 것은 방향이 거꾸로입니다.</li>
+  <li>(c)는 함수 시그니처가 문서 역할을 합니다. Luna의 <code>D3DApp::UpdateScene(float dt)</code><sup><a href="#ref-1">[1]</a></sup>와 같은 형태이며, 10단계에서 <code>Time</code> 클래스(고정 스텝)를 넣을 때도 <code>Update</code>의 시그니처는 그대로입니다.</li>
+</ul>
+<pre><code><span class="cm">// App/AppBase.cpp — Run() 의 유휴(idle) 분기</span>
+gameTimer.Tick();
+<span class="kw">const float</span> dt = gameTimer.DeltaTime();
+m_totalTime = gameTimer.TotalTime();
+
+ImGuiBackend::NewFrame();          <span class="cm">// (2단계에서 Update 앞으로 옮김. phase-2.html 3.3절)</span>
+ImGui_ImplWin32_NewFrame();
+ImGui::NewFrame();
+
+Update(dt);</code></pre>
+<p><code>m_totalTime</code>은 <code>protected</code> 멤버로 두어 파생 클래스가 "시작 후 경과 시간"이 필요할 때(3단계의 애니메이션, 셰이더의 <code>time</code> 상수) 읽습니다. 프레임마다 dt를 스스로 누적하면 부동소수점 오차가 쌓이므로 <code>GameTimer::TotalTime()</code>에서 직접 가져옵니다. <code>GameTimer</code>는 <code>QueryPerformanceCounter</code>의 정수 틱을 <code>__int64</code>로 누적하고 초로 바꿀 때만 <code>double</code> 곱을 하므로 오차가 누적되지 않습니다.</p>
+<p><code>TestApp</code>은 <code>Update(float dt)</code>가 ImGui 창 밖에서 불린다는 점 때문에 dt를 <code>m_lastDt</code>에 보관했다가 <code>UpdateGUI()</code>에서 표시합니다. 표시된 값이 ImGui 자체의 <code>1000 / Framerate</code>와 일치하는지가 첫 검증이었습니다(6절).</p>
+
+<h3 id="s3-3">3.3 가변 스텝을 택한 이유와 한계</h3>
+<p>지금의 <code>Update(dt)</code>는 <em>가변 시간 스텝</em>입니다. 프레임이 길면 dt가 크고, 물체는 그만큼 더 움직입니다. Fiedler의 <em>Fix Your Timestep!</em><sup><a href="#ref-2">[2]</a></sup>이 설명하듯 가변 스텝은 물리 시뮬레이션에서 결정론이 깨지고(같은 입력이라도 프레임 시간이 다르면 결과가 다름) 아주 긴 프레임에서는 물체가 벽을 통과합니다. 지금 이 엔진은 물리가 없고 카메라 이동과 데모 애니메이션만 있으므로 가변 스텝이 정답입니다. Nystrom의 <em>Game Loop</em> 장<sup><a href="#ref-3">[3]</a></sup>이 정리한 세 가지 루프 중 "가변 스텝"이며, 고정 스텝 + 보간은 10단계의 <code>Time</code> 클래스 몫으로 남겨 두었습니다. 그때도 <code>Update(float dt)</code>의 dt가 "고정된 값"으로 바뀔 뿐 시그니처는 같습니다.</p>
+<div class="callout amber">
+  <div class="t">dt가 커지는 순간</div>
+  <p>창을 드래그하거나 최소화하면 메시지 루프가 모달 상태에 들어가 수백 ms 동안 프레임이 멈춥니다. 복귀한 첫 프레임의 dt는 그 시간 전체입니다. 2단계 카메라는 "속도 × dt"만큼 순간이동하고, 3단계 공전은 한 번에 큰 각도를 돕니다. 지금은 허용했지만 물리를 넣을 때는 dt 상한(예: 0.1초)을 두거나 고정 스텝으로 바꿔야 합니다.</p>
+</div>
+
+<h2 id="s4"><span class="num">4.</span>exe 기준 셰이더 경로</h2>
+
+<h3 id="s4-1">4.1 작업 디렉터리는 믿을 수 없다</h3>
+<p>상대 경로 <code>L"BasicVertexShader.hlsl"</code>은 프로세스의 <strong>현재 작업 디렉터리</strong> 기준으로 열립니다. 그 값은 실행 방법에 따라 다릅니다. Visual Studio F5는 프로젝트 폴더(<code>$(ProjectDir)</code>), 탐색기 더블클릭은 exe 폴더, 명령줄은 셸의 현재 위치, 작업 스케줄러는 <code>System32</code>입니다. README가 "작업 디렉터리를 <code>SherlockEngine\</code>으로 두고 실행할 것"이라고 적어야 했던 이유이고, 원문 7절이 <code>0x80070002 (지정된 파일을 찾을 수 없습니다)</code> 로그를 인용한 이유입니다.</p>
+<p>반면 exe의 위치는 프로세스가 살아 있는 동안 변하지 않고 <code>GetModuleFileNameW(nullptr, …)</code><sup><a href="#ref-4">[4]</a></sup>로 언제든 얻을 수 있습니다. 에셋을 exe 기준으로 찾는 것은 게임 런타임의 표준 관행입니다.</p>
+
+<h3 id="s4-2">4.2 Paths 구현</h3>
+<pre><code><span class="cm">// Core/Paths.h</span>
+<span class="kw">namespace</span> Paths
+{
+    <span class="kw">const</span> std::wstring&amp; GetExecutableDir();          <span class="cm">// 끝에 백슬래시. 첫 호출에서 계산해 캐시</span>
+    std::wstring GetShaderPath(<span class="kw">const wchar_t</span>* fileName); <span class="cm">// exe\Shaders\&lt;file&gt;, 없으면 소스 트리 폴백</span>
+}</code></pre>
+<pre><code><span class="cm">// Core/Paths.cpp — 핵심만</span>
+std::wstring QueryExecutableDir()
+{
+    <span class="kw">wchar_t</span> buffer[MAX_PATH] = {};
+    <span class="kw">const</span> DWORD length = GetModuleFileNameW(<span class="kw">nullptr</span>, buffer, MAX_PATH);
+    <span class="kw">if</span> (length == 0 || length &gt;= MAX_PATH) { Log::Error(<span class="str">"GetModuleFileNameW 실패…"</span>); <span class="kw">return</span> L<span class="str">".\\"</span>; }
+    std::wstring path(buffer, length);
+    <span class="kw">const size_t</span> lastSlash = path.find_last_of(L<span class="str">"\\/"</span>);
+    <span class="kw">return</span> path.substr(0, lastSlash + 1);
+}
+
+std::wstring Paths::GetShaderPath(<span class="kw">const wchar_t</span>* fileName)
+{
+    <span class="kw">const</span> std::wstring primary = GetExecutableDir() + L<span class="str">"Shaders\\"</span> + fileName;
+    <span class="kw">if</span> (FileExists(primary)) <span class="kw">return</span> primary;
+
+    <span class="cm">// exe는 &lt;repo&gt;\x64\&lt;Config&gt;\ 에 있으므로 두 단계 위가 저장소 루트다.</span>
+    <span class="kw">const</span> std::wstring fallback = Canonicalize(GetExecutableDir() + L<span class="str">"..\\..\\SherlockEngine\\Shaders\\"</span> + fileName);
+    <span class="kw">if</span> (FileExists(fallback)) { <span class="cm">/* 한 번만 Log::Warn */</span> <span class="kw">return</span> fallback; }
+
+    Log::Error(<span class="str">"셰이더 파일을 찾지 못함: %s"</span>, …);
+    <span class="kw">return</span> primary;   <span class="cm">// D3DCompileFromFile이 "파일 없음"으로 실패하게 둔다</span>
+}</code></pre>
+<p>세부 결정 몇 가지.</p>
+<ul>
+  <li><strong>반환값 검사.</strong> <code>GetModuleFileNameW</code>는 버퍼가 모자라면 <code>nSize</code>를 돌려주고 문자열을 잘라 버립니다<sup><a href="#ref-4">[4]</a></sup>. 그래서 <code>length &gt;= MAX_PATH</code>도 실패로 봅니다. 260자를 넘는 경로는 이 프로젝트에서 나올 일이 없어 긴 경로 API(<code>\\?\</code>)는 쓰지 않았습니다.</li>
+  <li><strong>폴백.</strong> 셰이더만 고치고 빌드하지 않은 채 F5를 누르면 exe 옆 사본이 옛것입니다. 이때 소스 트리의 원본을 쓰면 "고쳤는데 반영이 안 된다"는 혼란은 줄지만, 반대로 "빌드 없이도 되네"라는 착각을 부를 수 있어 경고를 남깁니다. <code>GetFullPathNameW</code>로 <code>..\..</code>을 정리한 경로를 로그에 찍어 어느 파일을 열었는지 바로 보이게 했습니다.</li>
+  <li><strong>정적 캐시.</strong> <code>GetExecutableDir()</code>은 함수 지역 <code>static</code>으로 한 번만 계산합니다. C++11부터 지역 정적 변수 초기화는 스레드 안전합니다.</li>
+</ul>
+
+<h3 id="s4-3">4.3 빌드가 셰이더를 복사하게</h3>
+<p>exe 옆에 <code>Shaders\</code>가 있으려면 빌드가 만들어 줘야 합니다. 이전 vcxproj는 <code>.hlsl</code>을 <code>FxCompile</code> 항목으로 두고 <code>ExcludedFromBuild</code>로 꺼 두었습니다. 오직 Visual Studio 편집기에서 파일을 열기 위한 등록이었습니다. 이것을 Visual C++ 프로젝트의 <strong>"파일 복사"</strong> 항목 형식(<code>CopyFileToFolders</code>)으로 바꿨습니다.</p>
+<pre><code>&lt;ItemGroup&gt;
+  &lt;CopyFileToFolders Include="Shaders\BasicVertexShader.hlsl"&gt;
+    &lt;DestinationFolders&gt;$(OutDir)Shaders&lt;/DestinationFolders&gt;
+  &lt;/CopyFileToFolders&gt;
+  …
+&lt;/ItemGroup&gt;</code></pre>
+<p>MSBuild가 입력·출력 타임스탬프를 추적하므로 바뀐 파일만 복사되고, 정리(Clean) 시 함께 지워집니다. 사후 빌드 이벤트(<code>xcopy</code>)보다 나은 점입니다. 문법 강조는 확장자로 결정되므로 <code>FxCompile</code>을 버려도 편집기는 그대로입니다. 3단계에서 <code>Common.hlsli</code>도 같은 항목으로 추가했습니다.</p>
+
+<h3 id="s4-4">4.4 #include 해석 위치</h3>
+<p><code>D3DCompileFromFile</code>에 <code>D3D_COMPILE_STANDARD_FILE_INCLUDE</code>를 넘기면 기본 include 핸들러가 붙습니다. Microsoft 문서는 이 핸들러가 "현재 디렉터리 기준으로 파일을 찾는다"고 적고 있습니다<sup><a href="#ref-5">[5]</a></sup>. 그러나 3단계에서 실측한 결과는 다릅니다. 작업 디렉터리를 <code>x64\Debug</code>로 두고(거기에는 <code>Common.hlsli</code>가 없음) 절대 경로 <code>x64\Debug\Shaders\BasicVertexShader.hlsl</code>을 컴파일했을 때 <code>#include "Common.hlsli"</code>가 <code>x64\Debug\Shaders\Common.hlsli</code>를 찾아 성공했습니다. 즉 <code>D3DCompileFromFile</code>은 <strong>원본 파일이 있는 디렉터리</strong>를 먼저 봅니다(<code>D3DCompile</code>에 <code>pSourceName</code> 없이 메모리 문자열을 넘길 때는 정말로 현재 디렉터리만 봅니다). 어느 쪽이든 셰이더를 절대 경로로 여는 편이 두 경우를 모두 안전하게 만듭니다. 이것이 0단계에서 경로를 먼저 정리한 이유입니다.</p>
+
+<h2 id="s5"><span class="num">5.</span>폴더 재배치</h2>
+
+<h3 id="s5-1">5.1 배치와 규칙</h3>
+<div class="tbl"><table>
+<thead><tr><th>폴더</th><th>파일</th><th>규칙</th></tr></thead>
+<tbody>
+<tr><td class="mono">(루트)</td><td>main.cpp, pch.h/.cpp</td><td>PCH 이름은 <code>&lt;PrecompiledHeaderFile&gt;pch.h&lt;/…&gt;</code>와 <code>#include "pch.h"</code> 문자열이 정확히 같아야 하므로 루트에 둔다</td></tr>
+<tr><td class="mono">App/</td><td>AppBase, TestApp, (3단계) DebugUI</td><td>창·메시지 루프·ImGui 프레임. 그래픽 API를 모른다</td></tr>
+<tr><td class="mono">Core/</td><td>Log, GameTimer, Paths, (2단계) Input</td><td>그래픽스와 무관한 유틸리티. 어느 폴더에서도 include 가능</td></tr>
+<tr><td class="mono">Graphics/</td><td>Renderer, Mesh, (1단계) Handle·PipelineTypes·VertexTypes, (3단계) ResourceDesc·ShaderConstants·GraphicsConfig</td><td>API 중립. D3D 헤더 include 금지</td></tr>
+<tr><td class="mono">Graphics/D3D11/</td><td>Device, D3D11Common, (1단계) PipelineState·PipelineStateCache·D3D11Convert, (3단계) ResourcePool·D3D11Resources·ShaderCompiler·ImGuiBackend</td><td><strong><code>d3d11.h</code>·<code>dxgi.h</code>·<code>d3dcompiler.h</code>·<code>ID3D11*</code>는 여기에만</strong>. 7단계에서 <code>RHI/D3D11/</code>이 된다</td></tr>
+<tr><td class="mono">Scene/</td><td>Camera, Transform, GameObject, (3단계) Light·Scene</td><td>CPU 데이터. GPU 자원을 갖지 않는다</td></tr>
+<tr><td class="mono">Shaders/</td><td>*.hlsl, *.hlsli</td><td>빌드 시 <code>$(OutDir)Shaders</code>로 복사</td></tr>
+</tbody></table></div>
+<p>원문 0단계 RHI 관점 메모가 요구한 것은 <code>Graphics/D3D11/</code> 하나였지만, 그 폴더만 만들면 나머지가 루트에 남아 "왜 이것만 폴더인가"가 됩니다. 10단계 항목의 "폴더 재배치: Core/, RHI/, Graphics/, Scene/, Assets/"를 미리 절반쯤 당겨 온 형태입니다. <code>Scene/</code>에 카메라를 둔 것은 원문 D8의 "카메라도 Transform을 가진 GameObject로 취급"하는 방향과 맞추기 위해서입니다.</p>
+<p><code>#include</code>는 <strong>프로젝트 루트 기준</strong>으로 씁니다. <code>#include "Graphics/D3D11/Device.h"</code>처럼 경로가 곧 "어느 계층의 것인가"를 말해 줍니다. 같은 폴더의 헤더도 <code>"Scene/Transform.h"</code>로 씁니다. 따옴표 include는 먼저 include하는 파일의 폴더를 보고, 그다음 <code>AdditionalIncludeDirectories</code>를 보므로 <code>$(ProjectDir)</code>을 추가하면 어디서든 같은 문자열이 통합니다.</p>
+<pre><code><span class="cm">// Graphics/D3D11/D3D11Common.h — D3D 헤더의 유일한 자리</span>
+#include &lt;d3d11.h&gt;
+#include &lt;dxgi.h&gt;
+#include &lt;d3dcompiler.h&gt;
+#include &lt;wrl/client.h&gt;
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "dxguid.lib")   <span class="cm">// (3단계에서 추가. WKPDID_D3DDebugObjectName)</span>
+<span class="kw">using</span> Microsoft::WRL::ComPtr;</code></pre>
+<p>이 시점에는 <code>pch.h</code>도 여전히 <code>d3d11.h</code>를 include했습니다. 폴더 규칙은 "선언"만 된 상태이고, 실제 강제는 3단계 3.6에서 <code>pch.h</code>를 비우고 grep으로 확인하면서 이루어집니다(<a href="phase-3.html#s9">phase-3.html 9절</a>).</p>
+
+<h3 id="s5-2">5.2 프로젝트 파일</h3>
+<p><code>git mv</code>로 옮겼으므로 히스토리가 이어집니다(<code>git diff -M --name-status</code>에서 26건이 <code>R</code>). <code>.vcxproj</code>의 <code>ClInclude</code>/<code>ClCompile</code> 경로를 전부 새 위치로 바꾸고, 네 구성(<code>Debug|Release × Win32|x64</code>) 모두에 <code>&lt;AdditionalIncludeDirectories&gt;$(ProjectDir);%(…)&lt;/…&gt;</code>를 넣었습니다. <code>.filters</code>는 숫자 접두어(<code>01. Graphics</code> 등)를 버리고 물리 폴더와 같은 이름으로 다시 만들었습니다. 필터가 디스크 구조와 다르면 "Visual Studio에서 보이는 위치"와 "실제 파일 위치"를 따로 기억해야 하고, 새 파일을 추가할 때 두 곳을 맞춰야 합니다.</p>
+
+<h3 id="s5-3">5.3 인코딩·줄바꿈 함정</h3>
+<p>include 경로를 바꾸느라 Git Bash의 GNU <code>sed -i</code>를 썼는데, 이것이 모든 파일의 CRLF를 LF로 바꿔 놓았습니다. 저장소는 <code>core.autocrlf=true</code>라 커밋에는 영향이 없지만, 디스크 파일이 <code>.editorconfig</code>(CRLF, C++는 UTF-8 BOM, HLSL은 BOM 없음)와 어긋납니다. 그래서 작업용 스크립트 하나를 만들어 매 빌드 전에 돌렸습니다. 요지는 <code>.h/.cpp</code>는 BOM을 붙이고, <code>.hlsl/.hlsli</code>는 BOM을 떼고, 전부 CRLF로 통일하는 것입니다. 원래 <code>main.cpp</code>만 BOM이 없었던 것도 이때 잡혔습니다. HLSL의 BOM은 <code>D3DCompileFromFile</code>이 <code>error X3000</code>으로 거부하므로 이 스크립트가 없으면 셰이더가 갑자기 컴파일되지 않는 사고가 납니다.</p>
+
+<h2 id="s6"><span class="num">6.</span>검증</h2>
+<div class="applied">
+  <div class="t">적용 결과 — 2026-09-23</div>
+  <ul>
+    <li><b>완료 기준</b> "새 PC에서 클론 후 바로 빌드됨"은 이미 충족되어 있었고, 이번에 "탐색기에서 exe를 직접 실행해도 셰이더를 찾는다"가 추가로 충족되었습니다. <code>x64\Debug\</code>를 작업 디렉터리로 두고 실행해 4초 이상 정상 렌더링을 확인했습니다. 이전에는 이 경로에서 <code>0x80070002</code>로 종료했습니다.</li>
+    <li><code>x64\Debug\Shaders\</code>에 <code>BasicVertexShader.hlsl</code>(815B)·<code>BasicPixelShader.hlsl</code>(3,706B)이 복사되었습니다.</li>
+    <li>Information 패널의 <code>dt</code> 값이 ImGui의 <code>ms/frame</code>과 같은 자릿수로 움직입니다(0.1~0.5ms, 수천 FPS).</li>
+    <li>Debug·Release x64 빌드 성공. 경고 0.</li>
+    <li>콘솔 출력을 파일로 리다이렉트하면 <code>std::cout</code>이 완전 버퍼링되어, 프로세스를 강제 종료했을 때 로그가 비어 있었습니다. <code>WM_CLOSE</code>로 정상 종료시키면 남습니다. 자동화 검증 시 주의할 점입니다.</li>
+  </ul>
+</div>
+
+<h2 id="s7"><span class="num">7.</span>참고 문헌</h2>
+<ol>
+  <li id="ref-1">Frank Luna, <em>Introduction to 3D Game Programming with DirectX 11</em>, Mercury Learning, 2012. 4장 "Direct3D Initialization"의 <code>GameTimer</code>와 <code>D3DApp::UpdateScene(float dt)</code>. 이 프로젝트의 <code>GameTimer</code>는 그 코드 그대로입니다. <a href="https://www.d3dcoder.net/d3d11.htm">d3dcoder.net/d3d11.htm</a></li>
+  <li id="ref-2">Glenn Fiedler, <em>Fix Your Timestep!</em> — 가변 스텝·고정 스텝·보간의 장단점. <a href="https://gafferongames.com/post/fix_your_timestep/">gafferongames.com/post/fix_your_timestep</a></li>
+  <li id="ref-3">Robert Nystrom, <em>Game Programming Patterns</em>, "Game Loop" 장. <a href="https://gameprogrammingpatterns.com/game-loop.html">gameprogrammingpatterns.com/game-loop.html</a></li>
+  <li id="ref-4">Microsoft Learn, <em>GetModuleFileNameW function (libloaderapi.h)</em> — 버퍼 부족 시 <code>nSize</code>를 돌려주고 잘린다는 반환값 규약. <a href="https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulefilenamew">learn.microsoft.com/…/nf-libloaderapi-getmodulefilenamew</a></li>
+  <li id="ref-5">Microsoft Learn, <em>D3DCompileFromFile function (d3dcompiler.h)</em> — <code>D3D_COMPILE_STANDARD_FILE_INCLUDE</code> 설명. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3dcompiler/nf-d3dcompiler-d3dcompilefromfile">learn.microsoft.com/…/nf-d3dcompiler-d3dcompilefromfile</a></li>
+</ol>
+
+<div class="footer">
+  대상: SherlockEngine 커밋 adb1f86 (2026/09/23). 다음 문서: <a href="phase-1.html">1단계 · 깊이 버퍼와 PSO 에뮬레이션</a>. 원본 로드맵: <a href="rendering-analysis.html#p0">rendering-analysis.html PHASE 0</a>.
+</div>
+</main>
+</div>
