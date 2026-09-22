@@ -40,11 +40,23 @@
     <ClCompile Include="Core\Paths.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\D3D11\D3D11Convert.cpp">
+      <Filter>Graphics\D3D11</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\D3D11\Device.cpp">
+      <Filter>Graphics\D3D11</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\D3D11\PipelineState.cpp">
+      <Filter>Graphics\D3D11</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\D3D11\PipelineStateCache.cpp">
       <Filter>Graphics\D3D11</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\D3D11\Shader.cpp">
       <Filter>Graphics\D3D11</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\PipelineTypes.cpp">
+      <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\Mesh.cpp">
       <Filter>Graphics</Filter>
@@ -85,11 +97,29 @@
     <ClInclude Include="Graphics\D3D11\D3D11Common.h">
       <Filter>Graphics\D3D11</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\D3D11\D3D11Convert.h">
+      <Filter>Graphics\D3D11</Filter>
+    </ClInclude>
     <ClInclude Include="Graphics\D3D11\Device.h">
+      <Filter>Graphics\D3D11</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\D3D11\PipelineState.h">
+      <Filter>Graphics\D3D11</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\D3D11\PipelineStateCache.h">
       <Filter>Graphics\D3D11</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\D3D11\Shader.h">
       <Filter>Graphics\D3D11</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Handle.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\PipelineTypes.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\VertexTypes.h">
+      <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\enum.h">
       <Filter>Graphics</Filter>

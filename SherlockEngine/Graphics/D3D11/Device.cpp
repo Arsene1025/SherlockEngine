@@ -28,12 +28,66 @@ void Device::ReleaseDevice()
         m_context->ClearState();
         m_context->Flush();
     }
+    // 장치가 만든 객체를 먼저 놓는다. 장치보다 오래 살면 Live Object 경고가 난다.
+    m_pipelines.Clear();
+    m_shaders.clear();
+
     m_renderTargetView.Reset();
     m_swapChain.Reset();
     m_DSView.Reset();
     m_depthStencilBuffer.Reset();
     m_context.Reset();
+
+#if defined(_DEBUG)
+    // 장치만 남은 시점에 살아 있는 객체를 보고시킨다. 깨끗하면
+    // "Live ID3D11Device ... Refcount: 2" (우리 ComPtr + 아래 debug 인터페이스) 한 줄만 나온다.
+    if (m_device)
+    {
+        ComPtr<ID3D11Debug> debug;
+        if (SUCCEEDED(m_device.As(&debug)))
+        {
+            debug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL);
+        }
+        DumpDebugLayerMessages();
+    }
+#endif
     m_device.Reset();
+}
+
+void Device::DumpDebugLayerMessages()
+{
+#if defined(_DEBUG)
+    if (!m_device) return;
+
+    ComPtr<ID3D11InfoQueue> queue;
+    if (FAILED(m_device.As(&queue))) return;   // Debug Layer가 없으면(SDK 미설치) 조용히 넘어간다.
+
+    const UINT64 count = queue->GetNumStoredMessages();
+    std::vector<char> buffer;
+    for (UINT64 i = 0; i < count; ++i)
+    {
+        SIZE_T length = 0;
+        if (FAILED(queue->GetMessage(i, nullptr, &length)) || length == 0) continue;
+        buffer.resize(length);
+        D3D11_MESSAGE* message = reinterpret_cast<D3D11_MESSAGE*>(buffer.data());
+        if (FAILED(queue->GetMessage(i, message, &length))) continue;
+
+        switch (message->Severity)
+        {
+        case D3D11_MESSAGE_SEVERITY_CORRUPTION:
+        case D3D11_MESSAGE_SEVERITY_ERROR:
+            Log::Error("D3D11: %.*s", static_cast<int>(message->DescriptionByteLength), message->pDescription);
+            break;
+        case D3D11_MESSAGE_SEVERITY_WARNING:
+            Log::Warn("D3D11: %.*s", static_cast<int>(message->DescriptionByteLength), message->pDescription);
+            break;
+        default:
+            Log::Info("D3D11: %.*s", static_cast<int>(message->DescriptionByteLength), message->pDescription);
+            break;
+        }
+    }
+    queue->ClearStoredMessages();
+#endif
 }
 
 void Device::Clear()
@@ -63,11 +117,80 @@ void Device::Present()
     if (!m_swapChain)
         return;
 
-    //60프레임 제한
-    //m_swapChain->Present(1, 0);
+    // SyncInterval 1 = 수직 동기화(모니터 주사율로 제한), 0 = 제한 없음.
+    m_swapChain->Present(m_vsync ? 1 : 0, 0);
 
-    //제한 없음
-    m_swapChain->Present(0, 0);
+    // 이 프레임에 쌓인 Debug Layer 메시지를 콘솔로. 비어 있으면 비용이 거의 없다.
+    DumpDebugLayerMessages();
+}
+
+ShaderHandle Device::CreateShader(ShaderStage stage, const void* bytecode, size_t size)
+{
+    if (!m_device || bytecode == nullptr || size == 0)
+    {
+        Log::Error("CreateShader : 장치가 없거나 바이트코드가 비어 있음.");
+        return ShaderHandle{};
+    }
+
+    ShaderEntry entry;
+    entry.stage = stage;
+    HRESULT hr = S_OK;
+    switch (stage)
+    {
+    case ShaderStage::Vertex:
+        hr = m_device->CreateVertexShader(bytecode, size, nullptr, entry.vs.GetAddressOf());
+        break;
+    case ShaderStage::Pixel:
+        hr = m_device->CreatePixelShader(bytecode, size, nullptr, entry.ps.GetAddressOf());
+        break;
+    default:
+        Log::Error("CreateShader : 알 수 없는 ShaderStage %d", static_cast<int>(stage));
+        return ShaderHandle{};
+    }
+    if (FAILED(hr))
+    {
+        Log::Error("CreateShader : 셰이더 객체 생성 실패. %s", Log::HrToString(hr).c_str());
+        return ShaderHandle{};
+    }
+
+    // 입력 레이아웃 검증용 사본. PS는 필요 없지만 대칭을 위해 같이 둔다(크기 작음).
+    const uint8_t* bytes = static_cast<const uint8_t*>(bytecode);
+    entry.bytecode.assign(bytes, bytes + size);
+
+    const uint32_t index = static_cast<uint32_t>(m_shaders.size());
+    m_shaders.push_back(std::move(entry));
+    return ShaderHandle{ index, 1 };   // 1단계에서는 세대가 항상 1. 3단계에서 풀로 바뀐다.
+}
+
+const Device::ShaderEntry* Device::GetShader(ShaderHandle handle) const
+{
+    if (!handle.IsValid() || handle.index >= m_shaders.size() || handle.generation != 1)
+    {
+        return nullptr;
+    }
+    return &m_shaders[handle.index];
+}
+
+PipelineHandle Device::CreatePipeline(const PipelineStateDesc& desc)
+{
+    return m_pipelines.GetOrCreate(*this, desc);
+}
+
+void Device::BindPipeline(PipelineHandle handle)
+{
+    const PipelineState* state = m_pipelines.Get(handle);
+    if (state == nullptr)
+    {
+        // 매 프레임 찍히면 로그가 넘치므로 한 번만.
+        static bool warned = false;
+        if (!warned)
+        {
+            warned = true;
+            Log::Error("BindPipeline : 유효하지 않은 PipelineHandle {%u, %u}.", handle.index, handle.generation);
+        }
+        return;
+    }
+    state->Bind(m_context.Get());
 }
 
 void Device::Resize(int width, int height)
@@ -198,38 +321,6 @@ ComPtr<ID3D11Buffer> Device::CreateIndexBuffer(const void* pData, UINT size)
     }
 
     return buffer;
-}
-
-ComPtr<ID3D11InputLayout> Device::CreateInputLayout(const D3D11_INPUT_ELEMENT_DESC* desc, UINT num, ID3DBlob* pVSCode)
-{
-    ComPtr<ID3D11InputLayout> layout;
-
-    //함께 사용될 셰이더의 바이트코드가 필요함
-    if (pVSCode == nullptr)
-    {
-        Log::Error("정점 입력 레이아웃 생성 실패 : 정점 셰이더 바이트코드가 없음");
-        return layout;
-    }
-
-    HRESULT hr = m_device->CreateInputLayout(
-        desc,
-        num,
-        pVSCode->GetBufferPointer(),
-        pVSCode->GetBufferSize(),
-        layout.GetAddressOf());
-
-    if (FAILED(hr))
-    {
-        Log::Error("정점 입력 레이아웃 생성 실패. %s", Log::HrToString(hr).c_str());
-        layout.Reset();
-    }
-
-    return layout;
-}
-
-void Device::CreateRenderState()
-{
-
 }
 
 bool Device::InitDirect3D()

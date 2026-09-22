@@ -26,7 +26,6 @@ void TestApp::Update(float dt)
 
 void TestApp::Render()
 {
-	shaderClass.ShaderUpdate();
-	renderer.RenderModeUpdate();
+	shaderClass.BindConstantBuffers();
 	renderer.Render();
 }

@@ -7,8 +7,12 @@
 
 bool Shader::Initialize(Device* device)
 {
+	if (device == nullptr)
+	{
+		Log::Error("Shader::Initialize : Device가 없음.");
+		return false;
+	}
 	graphicsDevice = device;
-	//ShaderCreate();
 	return true;
 }
 
@@ -25,9 +29,6 @@ bool Shader::ShaderCreate()
 		return false;
 	}
 
-	graphicsDevice->GetContext()->VSSetShader(pVS.Get(), nullptr, 0);
-	graphicsDevice->GetContext()->PSSetShader(pPS.Get(), nullptr, 0);
-
 	//상수버퍼 생성
 	pCB = graphicsDevice->CreateConstBuffer(sizeof(ConstBuffer));
 	//조명 상수버퍼 생성함
@@ -42,19 +43,8 @@ bool Shader::ShaderCreate()
 	return true;
 }
 
-void Shader::ShaderUpdate()
+void Shader::BindConstantBuffers()
 {
-	//장치에 셰이더 설정
-	graphicsDevice->GetContext()->VSSetShader(pVS.Get(), nullptr, 0);
-	graphicsDevice->GetContext()->PSSetShader(pPS.Get(), nullptr, 0);
-	
-	//셰이더 상수 버퍼 갱신
-	//상수 버퍼를 여기서 업데이트 하는것이 맞나? 
-	//우선 여기서 업데이트 하고 추후에 Mesh랑 Material분리할 때 분리하기
-
-
-
-
 	//셰이더 상수 버퍼 설정
 	graphicsDevice->GetContext()->VSSetConstantBuffers(0, 1, pCB.GetAddressOf());
 	//조명 데이터 상수버퍼
@@ -69,18 +59,18 @@ bool Shader::ShaderLoad()
 	const std::wstring psPath = Paths::GetShaderPath(L"BasicPixelShader.hlsl");
 
 	// HRESULT를 여기서 bool로 바꿔 올린다. 실패를 삼키지 않는다.
-	if (FAILED(ShaderLoad(vsPath.c_str(), "VS_Main", "vs_5_0", pVS, pVSCode)))
+	if (FAILED(ShaderLoad(vsPath.c_str(), "VS_Main", "vs_5_0", ShaderStage::Vertex, m_vs)))
 	{
 		return false;
 	}
-	if (FAILED(ShaderLoad(psPath.c_str(), "PS_Main", "ps_5_0", pPS)))
+	if (FAILED(ShaderLoad(psPath.c_str(), "PS_Main", "ps_5_0", ShaderStage::Pixel, m_ps)))
 	{
 		return false;
 	}
 	return true;
 }
 
-HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* target, ComPtr<ID3D11VertexShader>& outVS, ComPtr<ID3DBlob>& outCode)
+HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* target, ShaderStage stage, ShaderHandle& outHandle)
 {
 	// 셰이더 컴파일.
 	ComPtr<ID3DBlob> pCode;
@@ -90,44 +80,17 @@ HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* t
 		return hr;
 	}
 
-	//정점 셰이더 객체 생성
-	ComPtr<ID3D11VertexShader> pVs;
-	hr = graphicsDevice->GetDevice()->CreateVertexShader(pCode->GetBufferPointer(), pCode->GetBufferSize(), nullptr, pVs.GetAddressOf());
-	if (FAILED(hr))
+	// 셰이더 객체는 Device의 풀이 만들고 소유한다. 여기는 핸들만 받는다.
+	outHandle = graphicsDevice->CreateShader(stage, pCode->GetBufferPointer(), pCode->GetBufferSize());
+	if (!outHandle.IsValid())
 	{
-		Log::Error("셰이더 객체 생성 실패 : 파일 경로 : %s 진입점 : %s 타깃 : %s. %s",
-			Log::ToUtf8(fxname).c_str(), entry, target, Log::HrToString(hr).c_str());
-		return hr;
-	}
-	//완료 후 생성된 셰이더와 바이트코드 반환
-	outVS = pVs;
-	outCode = pCode;
-
-	return hr;
-}
-
-HRESULT Shader::ShaderLoad(const TCHAR* fxname, const CHAR* entry, const CHAR* target, ComPtr<ID3D11PixelShader>& outPS)
-{
-	//셰이더 컴파일
-	ComPtr<ID3DBlob> pCode;
-	HRESULT hr = ShaderCompile(fxname, entry, target, pCode);
-	if (FAILED(hr))
-	{
-		return hr;
+		Log::Error("셰이더 객체 생성 실패 : 파일 경로 : %s 진입점 : %s 타깃 : %s",
+			Log::ToUtf8(fxname).c_str(), entry, target);
+		return E_FAIL;
 	}
 
-	ComPtr<ID3D11PixelShader> pPs;
-	hr = graphicsDevice->GetDevice()->CreatePixelShader(pCode->GetBufferPointer(), pCode->GetBufferSize(), nullptr, pPs.GetAddressOf());
-	if (FAILED(hr))
-	{
-		Log::Error("셰이더 객체 생성 실패 : 파일 경로 : %s 진입점 : %s 타깃 : %s. %s",
-			Log::ToUtf8(fxname).c_str(), entry, target, Log::HrToString(hr).c_str());
-		return hr;
-	}
-
-	// 픽셀 셰이더는 바이트코드를 보관하지 않는다. pCode는 여기서 자동 해제된다.
-	outPS = pPs;
-	return hr;
+	// pCode는 ComPtr이므로 여기서 자동 해제된다. 바이트코드 사본은 풀에 있다.
+	return S_OK;
 }
 
 HRESULT Shader::ShaderCompile(const TCHAR* FileName, const CHAR* EntryPoint, const CHAR* ShaderModel, ComPtr<ID3DBlob>& outCode)
