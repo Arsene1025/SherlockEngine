@@ -1,5 +1,6 @@
 ﻿#pragma once
-#include "Graphics/struct.h"   // VERTEX
+#include "Graphics/VertexTypes.h"   // VERTEX
+#include <DirectXMath.h>
 #include <vector>
 
 class Mesh

@@ -2,6 +2,7 @@
 #include "Graphics/Renderer.h"
 #include "Graphics/D3D11/Device.h"
 #include "Graphics/D3D11/Shader.h"
+#include "Graphics/VertexTypes.h"
 #include "Scene/Camera.h"
 #include "Core/Log.h"
 #include <imgui.h>
@@ -36,8 +37,17 @@ bool Renderer::DataLoading()
 		return false;
 	}
 
-	if (!RasterStateCreate())
+	// PSO의 고정 부분. 셰이더 핸들과 정점 레이아웃은 설정과 무관하다.
+	// 나머지(깊이 테스트 켬, 불투명, 트라이앵글 리스트)는 Desc의 기본값이다.
+	baseDesc = PipelineStateDesc{};
+	baseDesc.vs = graphicsShader->GetVS();
+	baseDesc.ps = graphicsShader->GetPS();
+	baseDesc.vertexLayout = GetVertexLayoutPCN();
+
+	// 첫 프레임 전에 기본 PSO를 만들어 두어 생성 실패를 초기화 단계에서 잡는다.
+	if (!GetPipelineForSettings().IsValid())
 	{
+		Log::Error("DataLoading : 기본 PSO 생성 실패.");
 		return false;
 	}
 
@@ -47,17 +57,46 @@ bool Renderer::DataLoading()
 void Renderer::DataRelease()
 {
 	ObjRelease();
-	RasterStateRelease();
 }
 
 void Renderer::Render()
 {
-	ObjUpdate();
-	ObjDraw();
+	if (graphicsDevice == nullptr || mainCamera == nullptr) return;
+
+	// 파이프라인 상태는 매 프레임 PSO 하나로 설정한다.
+	// ImGui의 DX11 백엔드가 자기 상태를 복원하긴 하지만, 그것에 기대지 않는다.
+	graphicsDevice->BindPipeline(GetPipelineForSettings());
+
+	UpdateLightConstantBuffer();
+
+	for (int i = 0; i < kObjectCount; ++i)
+	{
+		sphereRenderer.UpdateConstantBuffer(objects[i].GetTransform().GetWorldMatrix(), mainCamera);
+		sphereRenderer.Draw();
+	}
+}
+
+PipelineHandle Renderer::GetPipelineForSettings()
+{
+	PipelineStateDesc desc = baseDesc;
+	desc.rasterizer.fill = settings.wireframe ? FillMode::Wireframe : FillMode::Solid;
+	desc.rasterizer.cull = settings.cullBack ? CullMode::Back : CullMode::None;
+	return graphicsDevice->CreatePipeline(desc);
 }
 
 void Renderer::UpdateGUI()
 {
+	ImGui::Separator();
+	ImGui::Text("Pipeline");
+	ImGui::Checkbox("Wireframe", &settings.wireframe);
+	ImGui::Checkbox("Cull back faces", &settings.cullBack);
+	bool vsync = graphicsDevice->IsVSync();
+	if (ImGui::Checkbox("VSync", &vsync))
+	{
+		graphicsDevice->SetVSync(vsync);
+	}
+	ImGui::Text("PSO cache: %zu", graphicsDevice->GetPipelineCount());
+
 	//조명 정보를 업데이트
 	static const char* lightTypeNames[] = { "Directional", "Point", "Spot" };
 	int selectedType = static_cast<int>(lights[0].type);
@@ -73,87 +112,14 @@ void Renderer::UpdateGUI()
 	ImGui::DragFloat3("Direction", &lights[0].direction.x, 0.01f, -1.0f, 1.0f);
 }
 
-bool Renderer::RasterStateCreate()
-{
-	if (graphicsDevice == nullptr)
-	{
-		Log::Error("RasterStateCreate : Device가 없음.");
-		return false;
-	}
-
-	D3D11_RASTERIZER_DESC rd = {};
-	rd.FillMode = D3D11_FILL_SOLID;
-	rd.CullMode = D3D11_CULL_NONE;
-	rd.FrontCounterClockwise = false;
-	rd.DepthBias = 0;
-	rd.DepthBiasClamp = 0;
-	rd.SlopeScaledDepthBias = 0;
-	rd.DepthClipEnable = true;
-	rd.ScissorEnable = false;
-	rd.MultisampleEnable = true;
-	rd.AntialiasedLineEnable = true;
-
-	// 네 상태를 같은 방식으로 만든다. 하나라도 실패하면 렌더 모드가 깨지므로 중단.
-	struct StateDesc { int slot; D3D11_FILL_MODE fill; D3D11_CULL_MODE cull; const char* name; };
-	const StateDesc descs[] =
-	{
-		{ RS_SOLID,        D3D11_FILL_SOLID,     D3D11_CULL_NONE, "RS_SOLID" },
-		{ RS_WIREFRM,      D3D11_FILL_WIREFRAME, D3D11_CULL_NONE, "RS_WIREFRM" },
-		{ RS_CULLBACK,     D3D11_FILL_SOLID,     D3D11_CULL_BACK, "RS_CULLBACK" },
-		{ RS_WIRECULLBACK, D3D11_FILL_WIREFRAME, D3D11_CULL_BACK, "RS_WIRECULLBACK" },
-	};
-
-	for (const StateDesc& d : descs)
-	{
-		rd.FillMode = d.fill;
-		rd.CullMode = d.cull;
-
-		HRESULT hr = graphicsDevice->GetDevice()->CreateRasterizerState(
-			&rd, g_RState[d.slot].ReleaseAndGetAddressOf());
-
-		if (FAILED(hr))
-		{
-			Log::Error("RasterizerState 생성 실패 : %s. %s", d.name, Log::HrToString(hr).c_str());
-			return false;
-		}
-	}
-
-	return true;
-}
-
-void Renderer::RasterStateRelease()
-{
-	for (int i = 0; i < RS_MAX_; i++)
-	{
-		g_RState[i].Reset();
-	}
-}
-
-void Renderer::RenderModeUpdate()
-{
-	switch (g_RMode)
-	{
-	default:
-	case RM_SOLID:
-		graphicsDevice->GetContext()->RSSetState(g_RState[RS_SOLID].Get());
-		break;
-	case RM_WIREFRAME:
-		graphicsDevice->GetContext()->RSSetState(g_RState[RS_WIREFRM].Get());
-		break;
-	case RM_CULLBACK:
-		graphicsDevice->GetContext()->RSSetState(g_RState[RS_CULLBACK].Get());
-		break;
-	case RM_WIREFRAME | RM_CULLBACK:
-		graphicsDevice->GetContext()->RSSetState(g_RState[RS_WIRECULLBACK].Get());
-		break;
-	}
-}
-
 bool Renderer::ObjLoad()
 {
 	sphereMesh = Mesh::CreateSphere(5.0f, 32, 16, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f));
-	sphereObject.GetTransform().SetPosition(0.0f, 5.0f, 0.0f);
-	sphereObject.GetTransform().SetScale(1.0f, 1.0f, 1.0f);
+
+	// 반지름 5짜리 구 두 개를 x = ±3에 두면 서로 관통한다.
+	// 깊이 버퍼가 제대로 동작하면 교선이 깨끗한 원호로 보인다.
+	objects[0].GetTransform().SetPosition(-3.0f, 5.0f, 0.0f);
+	objects[1].GetTransform().SetPosition(3.0f, 5.0f, 0.0f);
 
 	if (!sphereRenderer.Initialize(graphicsDevice, graphicsShader, &sphereMesh))
 	{
@@ -167,12 +133,6 @@ bool Renderer::ObjLoad()
 void Renderer::ObjRelease()
 {
 	sphereRenderer.Release();
-}
-
-void Renderer::ObjUpdate()
-{
-	sphereRenderer.UpdateConstantBuffer(sphereObject.GetTransform().GetWorldMatrix(), mainCamera);
-	UpdateLightConstantBuffer();
 }
 
 void Renderer::UpdateLightConstantBuffer()
@@ -208,9 +168,4 @@ void Renderer::UpdateLightConstantBuffer()
 
 	graphicsDevice->GetContext()->UpdateSubresource(
 		graphicsShader->GetLightCBBuffer(), 0, nullptr, &lightBuffer, 0, 0);
-}
-
-void Renderer::ObjDraw()
-{
-	sphereRenderer.Draw();
 }

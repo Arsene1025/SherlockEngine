@@ -1,6 +1,8 @@
 ﻿#pragma once
-#include "Graphics/enum.h"     // RS_MAX_, RM_DEFAULT, MAX_LIGHTS
+#include "Graphics/enum.h"     // MAX_LIGHTS
 #include "Graphics/struct.h"   // LightData
+#include "Graphics/Handle.h"
+#include "Graphics/PipelineTypes.h"
 #include "Scene/GameObject.h"
 #include "Graphics/Mesh.h"
 #include "Graphics/MeshRenderer.h"
@@ -8,6 +10,14 @@
 class Device;
 class Shader;
 class Camera;
+
+// ImGui에서 바꾸는 렌더 설정. 매 프레임 이 값으로 PipelineStateDesc를 만들고
+// 캐시에서 PSO를 얻는다. 예전의 RM_* 비트 플래그와 RasterizerState 4개를 대체한다.
+struct RenderSettings
+{
+	bool wireframe = false;
+	bool cullBack = true;
+};
 
 class Renderer
 {
@@ -20,31 +30,29 @@ public:
 	bool DataLoading();
 	void DataRelease();
 	void Render();
-	void RenderModeUpdate();
 	void UpdateGUI();
 
+	RenderSettings& GetSettings() { return settings; }
+
+private:
 	bool ObjLoad();
 	void ObjRelease();
-	void ObjUpdate();
-	void ObjDraw();
 	void UpdateLightConstantBuffer();
 
-	bool RasterStateCreate();
-	void RasterStateRelease();
-
-public:
-	BOOL g_bCullback = FALSE;
-	BOOL g_bWireFrame = FALSE;
-
-	ComPtr<ID3D11RasterizerState> g_RState[RS_MAX_];
-	DWORD g_RMode = RM_DEFAULT;
+	// settings에 맞는 PSO 핸들. 캐시가 있으므로 매 프레임 불러도 된다.
+	PipelineHandle GetPipelineForSettings();
 
 private:
 	Device* graphicsDevice = nullptr;
 	Shader* graphicsShader = nullptr;
 	Camera* mainCamera = nullptr;
 
-	GameObject sphereObject;
+	RenderSettings settings;
+	PipelineStateDesc baseDesc;   // 셰이더·정점 레이아웃 등 고정 부분
+
+	// 1단계 검증용 씬: 같은 메시로 서로 관통하는 구 두 개.
+	static constexpr int kObjectCount = 2;
+	GameObject objects[kObjectCount];
 	Mesh sphereMesh;
 	MeshRenderer sphereRenderer;
 

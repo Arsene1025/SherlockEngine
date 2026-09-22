@@ -3,14 +3,7 @@
 #include <DirectXMath.h>   // DirectX::XMMATRIX, DirectX::XMFLOAT3
 #include "Graphics/enum.h"          // LightType, MAX_LIGHTS
 
-
-//Vertex구조체
-struct VERTEX
-{
-	float x, y, z; 			//좌표(Position)
-	float r, g, b, a;		//색상(Diffuse Color)
-	float nx, ny, nz;		//노멀(Normal)
-};
+// VERTEX는 Graphics/VertexTypes.h로 옮겼다 (정점 레이아웃 기술과 함께 둔다).
 
 struct ConstBuffer
 {
