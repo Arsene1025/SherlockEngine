@@ -7,6 +7,7 @@
 #include "Graphics/D3D11/Shader.h"
 #include "Scene/Camera.h"
 #include "Core/GameTimer.h"   // 값 멤버라 완전한 타입 필요
+#include "Core/Input.h"
 
 
 class AppBase
@@ -29,6 +30,11 @@ class AppBase
         virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
     protected: // 상속 받은 클래스에서도 접근 가능
+        // WM_KILLFOCUS / WM_CAPTURECHANGED. 마우스 캡처·커서 숨김 같은 상태를 되돌릴 기회.
+        virtual void OnFocusLost() {}
+
+        HWND GetWindow() const { return m_mainWindow; }
+
         bool InitMainWindow();
         bool InitDevice();
         bool InitRenderer();
@@ -44,6 +50,7 @@ class AppBase
         Shader shaderClass;
         Camera camera;
         GameTimer gameTimer;
+        Input input;
 
 
         int m_screenWidth; // 렌더링할 최종 화면의 해상도

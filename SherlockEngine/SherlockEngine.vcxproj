@@ -153,6 +153,7 @@
     <ClInclude Include="App\AppBase.h" />
     <ClInclude Include="App\TestApp.h" />
     <ClInclude Include="Core\GameTimer.h" />
+    <ClInclude Include="Core\Input.h" />
     <ClInclude Include="Core\Log.h" />
     <ClInclude Include="Core\Paths.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Common.h" />
@@ -181,6 +182,7 @@
     <ClCompile Include="App\AppBase.cpp" />
     <ClCompile Include="App\TestApp.cpp" />
     <ClCompile Include="Core\GameTimer.cpp" />
+    <ClCompile Include="Core\Input.cpp" />
     <ClCompile Include="Core\Log.cpp" />
     <ClCompile Include="Core\Paths.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11Convert.cpp" />

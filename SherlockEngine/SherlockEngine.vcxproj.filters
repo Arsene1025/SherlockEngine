@@ -34,6 +34,9 @@
     <ClCompile Include="Core\GameTimer.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="Core\Input.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
     <ClCompile Include="Core\Log.cpp">
       <Filter>Core</Filter>
     </ClCompile>
@@ -86,6 +89,9 @@
       <Filter>App</Filter>
     </ClInclude>
     <ClInclude Include="Core\GameTimer.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Input.h">
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="Core\Log.h">
