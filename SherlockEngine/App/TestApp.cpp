@@ -1,5 +1,7 @@
 ﻿#include "pch.h"
 #include "App/TestApp.h"
+#include "App/DebugUI.h"
+#include "Graphics/Mesh.h"
 #include <imgui.h>
 #include <cmath>
 
@@ -13,23 +15,48 @@ TestApp::TestApp()
 bool TestApp::Initialize()
 {
 	if (!AppBase::Initialize()) return false;
+
+	BuildScene();
+	graphicsDevice.SetClearColor(m_scene.clearColor[0], m_scene.clearColor[1], m_scene.clearColor[2], m_scene.clearColor[3]);
 	return true;
+}
+
+void TestApp::BuildScene()
+{
+	// 3단계 완료 기준: 바닥 평면 위에 구·큐브가 여러 개 다른 변환으로 움직인다.
+	Mesh* floor = m_scene.AddMesh(Mesh::CreatePlane(40.0f, 40.0f, 21, 21, XMFLOAT4(0.55f, 0.55f, 0.6f, 1.0f)));
+	Mesh* sphere = m_scene.AddMesh(Mesh::CreateSphere(2.5f, 32, 16, XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f)));
+	Mesh* cube = m_scene.AddMesh(Mesh::CreateCube(3.0f, XMFLOAT4(0.9f, 0.5f, 0.3f, 1.0f)));
+	Mesh* cylinder = m_scene.AddMesh(Mesh::CreateCylinder(1.5f, 1.0f, 4.0f, 24, 4, XMFLOAT4(0.4f, 0.8f, 0.5f, 1.0f)));
+
+	m_scene.AddObject(floor, "Floor");
+
+	m_scene.AddObject(sphere, "SphereCenter").GetTransform().SetPosition(0.0f, 2.5f, 0.0f);
+	m_orbitSphere = m_scene.GetObjects().size();
+	m_scene.AddObject(sphere, "SphereOrbit").GetTransform().SetPosition(8.0f, 2.5f, 0.0f);
+	m_pulseSphere = m_scene.GetObjects().size();
+	m_scene.AddObject(sphere, "SpherePulse").GetTransform().SetPosition(-10.0f, 2.5f, 8.0f);
+
+	m_scene.AddObject(cube, "CubeStatic").GetTransform().SetPosition(10.0f, 1.5f, 10.0f);
+	m_bobCube = m_scene.GetObjects().size();
+	m_scene.AddObject(cube, "CubeBob").GetTransform().SetPosition(-8.0f, 3.0f, -8.0f);
+
+	m_spinCylinder = m_scene.GetObjects().size();
+	m_scene.AddObject(cylinder, "Cylinder").GetTransform().SetPosition(8.0f, 2.0f, -10.0f);
+
+	// 기본 조명: 흰색 방향광 하나 (LightData 기본값).
+	m_scene.GetLights().push_back(LightData{});
+
+	// 첫 시점: 씬 전체가 보이도록 조금 뒤에서.
+	camera.SetLookAt(XMFLOAT3(18.0f, 16.0f, -28.0f), XMFLOAT3(0.0f, 2.0f, 0.0f));
 }
 
 void TestApp::UpdateGUI()
 {
-	ImGui::Text("dt %.3f ms  total %.1f s", m_lastDt * 1000.0f, m_totalTime);
-
-	ImGui::Separator();
-	ImGui::Text("Camera  (WASD/QE move, RMB drag look, Shift fast)");
-	const XMFLOAT3& p = camera.GetPosition();
-	ImGui::Text("pos   %.2f  %.2f  %.2f", p.x, p.y, p.z);
-	ImGui::Text("yaw   %.1f deg   pitch %.1f deg",
-		XMConvertToDegrees(camera.GetYaw()), XMConvertToDegrees(camera.GetPitch()));
-	ImGui::SliderFloat("Speed", &m_moveSpeed, 1.0f, 50.0f);
-	ImGui::Text("F1 wireframe  F2 cull  F3 vsync");
-
-	renderer.UpdateGUI();
+	ImGui::Text("dt %.3f ms  total %.1f s  objects %zu", m_lastDt * 1000.0f, m_totalTime, m_scene.GetObjects().size());
+	DebugUI::DrawCameraPanel(camera, m_moveSpeed);
+	DebugUI::DrawRenderSettingsPanel(renderer, graphicsDevice);
+	DebugUI::DrawLightPanel(m_scene);
 }
 
 void TestApp::Update(float dt)
@@ -46,13 +73,19 @@ void TestApp::Update(float dt)
 		if (input.IsKeyPressed(VK_F3)) graphicsDevice.SetVSync(!graphicsDevice.IsVSync());
 	}
 
-	// 두 번째 구를 첫 구 주위로 공전시킨다. 각속도 1 rad/s 이므로 VSync를 켜고
-	// 끄거나 프레임 속도가 달라져도 한 바퀴에 약 6.28초가 걸려야 한다.
-	m_orbitAngle += dt;
-	if (m_orbitAngle > XM_2PI) m_orbitAngle -= XM_2PI;
-	const float orbitRadius = 9.0f;
-	renderer.GetObject(1).GetTransform().SetPosition(
-		-3.0f + orbitRadius * cosf(m_orbitAngle), 5.0f, orbitRadius * sinf(m_orbitAngle));
+	// ---- 애니메이션. 전부 dt 또는 누적 시간에 비례하므로 프레임 속도와 무관하다. ----
+	std::vector<GameObject>& objects = m_scene.GetObjects();
+	const float t = m_totalTime;
+
+	// 공전: 각속도 1 rad/s → 한 바퀴 6.28초
+	objects[m_orbitSphere].GetTransform().SetPosition(8.0f * cosf(t), 2.5f, 8.0f * sinf(t));
+	// 상하 진동
+	objects[m_bobCube].GetTransform().SetPosition(-8.0f, 3.0f + 1.5f * sinf(2.0f * t), -8.0f);
+	// 자전 (Y축) + 살짝 기울임
+	objects[m_spinCylinder].GetTransform().SetRotation(0.3f, t, 0.0f);
+	// 크기 맥동
+	const float pulse = 1.0f + 0.3f * sinf(3.0f * t);
+	objects[m_pulseSphere].GetTransform().SetScale(pulse, pulse, pulse);
 }
 
 void TestApp::UpdateCamera(float dt)
@@ -149,6 +182,5 @@ void TestApp::OnFocusLost()
 
 void TestApp::Render()
 {
-	shaderClass.BindConstantBuffers();
-	renderer.Render();
+	renderer.Render(m_scene, camera, m_totalTime);
 }

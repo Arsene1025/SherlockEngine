@@ -3,7 +3,7 @@
 #include "Core/Log.h"
 #include <imgui.h>
 #include <imgui_impl_win32.h>
-#include <imgui_impl_dx11.h>
+#include "Graphics/D3D11/ImGuiBackend.h"
 #include <windowsx.h>   // GET_X_LPARAM / GET_Y_LPARAM
 
 using namespace DirectX;   // 이 파일 안에서만
@@ -44,7 +44,7 @@ AppBase::~AppBase()
 	// 초기화한 것만, 초기화의 역순으로 되돌린다.
 	if (m_guiInitialized)
 	{
-		ImGui_ImplDX11_Shutdown();
+		ImGuiBackend::Shutdown();
 	}
 	if (m_guiWin32Initialized)
 	{
@@ -84,7 +84,7 @@ int AppBase::Run()
             // ImGui 프레임을 Update보다 먼저 연다. io.WantCaptureMouse/Keyboard는
             // ImGui::NewFrame에서 갱신되므로, 그 뒤에 Update가 읽어야 "이번 프레임"
             // 값을 본다. 반대 순서면 한 프레임 늦은 값으로 판단한다.
-            ImGui_ImplDX11_NewFrame();
+            ImGuiBackend::NewFrame();
             ImGui_ImplWin32_NewFrame();
             ImGui::NewFrame(); //Imgui 렌더링 시작
 
@@ -110,11 +110,11 @@ int AppBase::Run()
             ImGui::End();
             ImGui::Render();
 
-            graphicsDevice.Clear();
+            // BeginFrame: 백버퍼·깊이 버퍼 바인딩 + 클리어 + 뷰포트. 프레임 인덱스 갱신.
+            graphicsDevice.BeginFrame();
             Render(); //실제 렌더링
-            ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); // GUI 렌더링
-            //ImGui RenderDrawData() 다음에 Present() 호출 해야함
-            graphicsDevice.Present();
+            ImGuiBackend::Render(); // GUI 렌더링. Present(EndFrame) 전에.
+            graphicsDevice.EndFrame();
 
             // 프레임 끝. Pressed/Released 판정용 이전 상태를 넘기고 마우스 델타를 비운다.
             input.EndFrame();
@@ -131,20 +131,9 @@ bool AppBase::Initialize()
     if (!InitDevice()) return false;
     camera.SetLens(XM_PIDIV4, GetAspectRatio(), 0.1f, 1000.0f);
 
-    if (!InitShaderClass()) return false;
-    if (!shaderClass.ShaderCreate())
-    {
-        Log::Error("셰이더 생성 실패");
-        return false;
-    }
-
+    // Renderer가 셰이더 컴파일·상수버퍼·기본 PSO까지 만든다. 씬은 파생 클래스 몫.
     if (!InitRenderer()) return false;
-    if (!renderer.DataLoading())
-    {
-        Log::Error("렌더 데이터 로드 실패");
-        return false;
-    }
-    
+
     if (!InitGUI()) return false;
 
 
@@ -207,7 +196,7 @@ LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         case WM_SIZE:
             //맨 처음 시작때는 Resize호출하지 않기
-            if (graphicsDevice.GetSwapChain())
+            if (graphicsDevice.IsInitialized())
             {
                 int width = LOWORD(lParam);
                 int height = HIWORD(lParam);
@@ -299,19 +288,9 @@ bool AppBase::InitDevice()
 
 bool AppBase::InitRenderer()
 {
-    if (!renderer.Initialize(&graphicsDevice, &shaderClass, &camera))
+    if (!renderer.Initialize(&graphicsDevice))
     {
         Log::Error("Renderer 초기화 실패");
-        return false;
-    }
-    return true;
-}
-
-bool AppBase::InitShaderClass()
-{
-    if (!shaderClass.Initialize(&graphicsDevice))
-    {
-        Log::Error("Shader 클래스 초기화 실패");
         return false;
     }
     return true;
@@ -328,9 +307,8 @@ bool AppBase::InitGUI()
     ImGui::StyleColorsLight();
 
     // Setup Platform/Renderer backends
-    if (!ImGui_ImplDX11_Init(graphicsDevice.GetDevice(), graphicsDevice.GetContext()))
+    if (!ImGuiBackend::Init(graphicsDevice))
     {
-        Log::Error("ImGui DX11 백엔드 초기화 실패");
         return false;
     }
     m_guiInitialized = true;

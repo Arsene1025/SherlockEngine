@@ -151,6 +151,7 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App\AppBase.h" />
+    <ClInclude Include="App\DebugUI.h" />
     <ClInclude Include="App\TestApp.h" />
     <ClInclude Include="Core\GameTimer.h" />
     <ClInclude Include="Core\Input.h" />
@@ -158,20 +159,25 @@
     <ClInclude Include="Core\Paths.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Common.h" />
     <ClInclude Include="Graphics\D3D11\D3D11Convert.h" />
+    <ClInclude Include="Graphics\D3D11\D3D11Resources.h" />
     <ClInclude Include="Graphics\D3D11\Device.h" />
+    <ClInclude Include="Graphics\D3D11\ImGuiBackend.h" />
     <ClInclude Include="Graphics\D3D11\PipelineState.h" />
     <ClInclude Include="Graphics\D3D11\PipelineStateCache.h" />
-    <ClInclude Include="Graphics\D3D11\Shader.h" />
-    <ClInclude Include="Graphics\enum.h" />
+    <ClInclude Include="Graphics\D3D11\ResourcePool.h" />
+    <ClInclude Include="Graphics\D3D11\ShaderCompiler.h" />
+    <ClInclude Include="Graphics\GraphicsConfig.h" />
     <ClInclude Include="Graphics\Handle.h" />
     <ClInclude Include="Graphics\Mesh.h" />
-    <ClInclude Include="Graphics\MeshRenderer.h" />
     <ClInclude Include="Graphics\PipelineTypes.h" />
     <ClInclude Include="Graphics\Renderer.h" />
-    <ClInclude Include="Graphics\struct.h" />
+    <ClInclude Include="Graphics\ResourceDesc.h" />
+    <ClInclude Include="Graphics\ShaderConstants.h" />
     <ClInclude Include="Graphics\VertexTypes.h" />
     <ClInclude Include="Scene\Camera.h" />
     <ClInclude Include="Scene\GameObject.h" />
+    <ClInclude Include="Scene\Light.h" />
+    <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Scene\Transform.h" />
   </ItemGroup>
   <ItemGroup>
@@ -180,6 +186,7 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="App\AppBase.cpp" />
+    <ClCompile Include="App\DebugUI.cpp" />
     <ClCompile Include="App\TestApp.cpp" />
     <ClCompile Include="Core\GameTimer.cpp" />
     <ClCompile Include="Core\Input.cpp" />
@@ -187,20 +194,24 @@
     <ClCompile Include="Core\Paths.cpp" />
     <ClCompile Include="Graphics\D3D11\D3D11Convert.cpp" />
     <ClCompile Include="Graphics\D3D11\Device.cpp" />
+    <ClCompile Include="Graphics\D3D11\ImGuiBackend.cpp" />
     <ClCompile Include="Graphics\D3D11\PipelineState.cpp" />
     <ClCompile Include="Graphics\D3D11\PipelineStateCache.cpp" />
-    <ClCompile Include="Graphics\D3D11\Shader.cpp" />
+    <ClCompile Include="Graphics\D3D11\ShaderCompiler.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
-    <ClCompile Include="Graphics\MeshRenderer.cpp" />
     <ClCompile Include="Graphics\PipelineTypes.cpp" />
     <ClCompile Include="Graphics\Renderer.cpp" />
     <ClCompile Include="Scene\Camera.cpp" />
     <ClCompile Include="Scene\GameObject.cpp" />
+    <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Scene\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
     <!-- 셰이더는 런타임에 D3DCompileFromFile로 컴파일한다. 빌드 시 FXC는 돌리지 않고
          exe 옆 Shaders\ 폴더로 복사만 한다. 실행 파일은 Core/Paths.h로 이 폴더를 찾는다. -->
+    <CopyFileToFolders Include="Shaders\Common.hlsli">
+      <DestinationFolders>$(OutDir)Shaders</DestinationFolders>
+    </CopyFileToFolders>
     <CopyFileToFolders Include="Shaders\BasicVertexShader.hlsl">
       <DestinationFolders>$(OutDir)Shaders</DestinationFolders>
     </CopyFileToFolders>

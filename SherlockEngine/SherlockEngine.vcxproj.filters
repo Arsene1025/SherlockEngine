@@ -28,6 +28,9 @@
     <ClCompile Include="App\AppBase.cpp">
       <Filter>App</Filter>
     </ClCompile>
+    <ClCompile Include="App\DebugUI.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
     <ClCompile Include="App\TestApp.cpp">
       <Filter>App</Filter>
     </ClCompile>
@@ -49,22 +52,22 @@
     <ClCompile Include="Graphics\D3D11\Device.cpp">
       <Filter>Graphics\D3D11</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\D3D11\ImGuiBackend.cpp">
+      <Filter>Graphics\D3D11</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\D3D11\PipelineState.cpp">
       <Filter>Graphics\D3D11</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\D3D11\PipelineStateCache.cpp">
       <Filter>Graphics\D3D11</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\D3D11\Shader.cpp">
+    <ClCompile Include="Graphics\D3D11\ShaderCompiler.cpp">
       <Filter>Graphics\D3D11</Filter>
-    </ClCompile>
-    <ClCompile Include="Graphics\PipelineTypes.cpp">
-      <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\Mesh.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\MeshRenderer.cpp">
+    <ClCompile Include="Graphics\PipelineTypes.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\Renderer.cpp">
@@ -76,6 +79,9 @@
     <ClCompile Include="Scene\GameObject.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Scene\Scene.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Scene\Transform.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
@@ -83,6 +89,9 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App\AppBase.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\DebugUI.h">
       <Filter>App</Filter>
     </ClInclude>
     <ClInclude Include="App\TestApp.h">
@@ -106,7 +115,13 @@
     <ClInclude Include="Graphics\D3D11\D3D11Convert.h">
       <Filter>Graphics\D3D11</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\D3D11\D3D11Resources.h">
+      <Filter>Graphics\D3D11</Filter>
+    </ClInclude>
     <ClInclude Include="Graphics\D3D11\Device.h">
+      <Filter>Graphics\D3D11</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\D3D11\ImGuiBackend.h">
       <Filter>Graphics\D3D11</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\D3D11\PipelineState.h">
@@ -115,31 +130,34 @@
     <ClInclude Include="Graphics\D3D11\PipelineStateCache.h">
       <Filter>Graphics\D3D11</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\D3D11\Shader.h">
+    <ClInclude Include="Graphics\D3D11\ResourcePool.h">
       <Filter>Graphics\D3D11</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\D3D11\ShaderCompiler.h">
+      <Filter>Graphics\D3D11</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\GraphicsConfig.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
     <ClInclude Include="Graphics\Handle.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\PipelineTypes.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\VertexTypes.h">
-      <Filter>Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="Graphics\enum.h">
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Mesh.h">
       <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\MeshRenderer.h">
+    <ClInclude Include="Graphics\PipelineTypes.h">
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Renderer.h">
       <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\struct.h">
+    <ClInclude Include="Graphics\ResourceDesc.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\ShaderConstants.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\VertexTypes.h">
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Scene\Camera.h">
@@ -148,11 +166,20 @@
     <ClInclude Include="Scene\GameObject.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\Light.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Scene.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\Transform.h">
       <Filter>Scene</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <CopyFileToFolders Include="Shaders\Common.hlsli">
+      <Filter>Shaders</Filter>
+    </CopyFileToFolders>
     <CopyFileToFolders Include="Shaders\BasicVertexShader.hlsl">
       <Filter>Shaders</Filter>
     </CopyFileToFolders>
