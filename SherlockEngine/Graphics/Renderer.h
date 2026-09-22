@@ -34,6 +34,9 @@ public:
 
 	RenderSettings& GetSettings() { return settings; }
 
+	// 2단계 임시 접근자. 3단계에서 Scene이 오브젝트를 소유하면 사라진다.
+	GameObject& GetObject(int index) { return objects[index]; }
+
 private:
 	bool ObjLoad();
 	void ObjRelease();

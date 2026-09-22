@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
+#include <windowsx.h>   // GET_X_LPARAM / GET_Y_LPARAM
 
 using namespace DirectX;   // 이 파일 안에서만
 
@@ -80,16 +81,15 @@ int AppBase::Run()
             const float dt = gameTimer.DeltaTime();
             m_totalTime = gameTimer.TotalTime();
 
-            Update(dt);
-
-
-            graphicsDevice.Clear();
-
-
+            // ImGui 프레임을 Update보다 먼저 연다. io.WantCaptureMouse/Keyboard는
+            // ImGui::NewFrame에서 갱신되므로, 그 뒤에 Update가 읽어야 "이번 프레임"
+            // 값을 본다. 반대 순서면 한 프레임 늦은 값으로 판단한다.
             ImGui_ImplDX11_NewFrame();
             ImGui_ImplWin32_NewFrame();
-
             ImGui::NewFrame(); //Imgui 렌더링 시작
+
+            Update(dt);
+
             ImGui::Begin("Information");
 
             //Imgui에서 자체적으로 프레임 계산함
@@ -110,10 +110,14 @@ int AppBase::Run()
             ImGui::End();
             ImGui::Render();
 
+            graphicsDevice.Clear();
             Render(); //실제 렌더링
             ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); // GUI 렌더링
             //ImGui RenderDrawData() 다음에 Present() 호출 해야함
             graphicsDevice.Present();
+
+            // 프레임 끝. Pressed/Released 판정용 이전 상태를 넘기고 마우스 델타를 비운다.
+            input.EndFrame();
         }
     }
 
@@ -162,6 +166,45 @@ LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     switch (msg)
     {
+        // ---- 입력 공급. ImGui가 소비하는지와 무관하게 항상 넣는다 (Input.h 참고). ----
+        case WM_KEYDOWN:
+        case WM_SYSKEYDOWN:   // Alt 조합. break 뒤 DefWindowProc로 흘러야 Alt+F4가 동작한다.
+            input.OnKeyDown(static_cast<uint32_t>(wParam));
+            break;
+        case WM_KEYUP:
+        case WM_SYSKEYUP:
+            input.OnKeyUp(static_cast<uint32_t>(wParam));
+            break;
+        case WM_LBUTTONDOWN: input.OnMouseButton(MouseButton::Left, true);    break;
+        case WM_LBUTTONUP:   input.OnMouseButton(MouseButton::Left, false);   break;
+        case WM_RBUTTONDOWN: input.OnMouseButton(MouseButton::Right, true);   break;
+        case WM_RBUTTONUP:   input.OnMouseButton(MouseButton::Right, false);  break;
+        case WM_MBUTTONDOWN: input.OnMouseButton(MouseButton::Middle, true);  break;
+        case WM_MBUTTONUP:   input.OnMouseButton(MouseButton::Middle, false); break;
+        case WM_MOUSEMOVE:
+            // LOWORD/HIWORD가 아니라 GET_X_LPARAM. 캡처 중에는 창 밖 좌표가 음수로 온다.
+            input.OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            break;
+        case WM_MOUSEWHEEL:
+            input.OnMouseWheel(static_cast<float>(GET_WHEEL_DELTA_WPARAM(wParam)) / WHEEL_DELTA);
+            break;
+        case WM_KILLFOCUS:
+            // Alt-Tab 중에 키를 떼면 KeyUp이 오지 않는다. 전부 초기화한다.
+            input.OnFocusLost();
+            OnFocusLost();
+            break;
+        case WM_CAPTURECHANGED:
+            // lParam은 캡처를 새로 얻은 창이다. 이미 캡처를 가진 창에서 SetCapture를
+            // 다시 부르면(ImGui 백엔드가 버튼 다운에서 먼저 잡고, 우리가 BeginLook에서
+            // 또 잡는다) 자기 자신에게도 이 메시지가 온다. 그것은 상실이 아니다.
+            if (reinterpret_cast<HWND>(lParam) != hwnd)
+            {
+                // 다른 창이 캡처를 가져갔다. ButtonUp이 오지 않을 수 있으므로 버튼 상태만 비운다.
+                input.OnCaptureLost();
+                OnFocusLost();
+            }
+            break;
+
         case WM_SIZE:
             //맨 처음 시작때는 Resize호출하지 않기
             if (graphicsDevice.GetSwapChain())
