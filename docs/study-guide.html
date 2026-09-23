@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 순서 · 문서와 소스 읽기 가이드 — SherlockEngine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EEF0F7; --line:#D6D9E6; --line-strong:#B9BDD0;
+  --ink:#171A2B; --ink-2:#4A4F66; --muted:#7A7F96;
+  --accent:#232767; --accent-ink:#FFFFFF; --accent-soft:#E3E5F5;
+  --amber:#B8781A; --amber-soft:#FBF0DB;
+  --ok:#2E7D4F; --ok-soft:#E1F2E7; --warn:#A6620C; --warn-soft:#FBEDD6; --crit:#B23A3A; --crit-soft:#F9E1E1;
+  --code-bg:#1B1D33; --code-ink:#E7E9F5; --code-kw:#9BA3FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(23,26,43,.06),0 8px 24px rgba(23,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+    --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+    --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+    --amber:#F0B650; --amber-soft:#3D3560;
+    --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+    --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+  --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+  --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+  --amber:#F0B650; --amber-soft:#3D3560;
+  --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+  --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+code,pre,.mono{font-family:"IBM Plex Mono",Consolas,"D2Coding",monospace}
+code{font-size:.875em;background:var(--surface-2);padding:.1em .4em;border-radius:4px;color:var(--ink);overflow-wrap:anywhere}
+pre{background:var(--code-bg);color:var(--code-ink);padding:18px 20px;border-radius:8px;overflow-x:auto;font-size:13.5px;line-height:1.6;margin:18px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+.kw{color:var(--code-kw)} .str{color:var(--code-str)} .cm{color:var(--code-cm)}
+
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto;padding:0 32px;gap:48px}
+@media (max-width:960px){.shell{grid-template-columns:minmax(0,1fr);padding:0 20px;gap:0}}
+
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0 40px;font-size:13.5px}
+nav.toc .brand{font-weight:600;letter-spacing:.02em;color:var(--ink);margin-bottom:6px}
+nav.toc .meta{color:var(--muted);font-size:12px;margin-bottom:24px;line-height:1.5}
+nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+nav.toc li a{display:block;padding:5px 14px;color:var(--ink-2);border-left:2px solid transparent;margin-left:-1px;border-bottom:none;line-height:1.45}
+nav.toc li a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+nav.toc li.sub a{padding-left:28px;font-size:12.5px;color:var(--muted)}
+@media (max-width:960px){nav.toc{position:static;height:auto;padding:28px 0 8px}nav.toc ol{display:none}}
+
+main{padding:40px 0 96px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1{font-size:clamp(30px,4vw,42px);line-height:1.2;margin:6px 0 14px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{font-size:18px;color:var(--ink-2);max-width:66ch;margin:0 0 28px}
+h2{font-size:26px;line-height:1.3;margin:72px 0 16px;padding-top:24px;border-top:1px solid var(--line);font-weight:600;letter-spacing:-.005em;text-wrap:balance}
+h2 .num{display:inline-block;min-width:2.2em;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+h3{font-size:19px;margin:40px 0 10px;font-weight:600;text-wrap:balance}
+h4{font-size:16px;margin:28px 0 8px;font-weight:600}
+p{margin:0 0 16px;max-width:72ch}
+ul,ol{max-width:72ch;padding-left:1.4em;margin:0 0 16px}
+li{margin:4px 0}
+li>ul,li>ol{margin-top:4px}
+strong{font-weight:600}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:28px 0}
+.facts>div{background:var(--surface);padding:14px 16px}
+.facts .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.facts .v{font-size:15px;font-weight:600;line-height:1.35}
+.facts .v small{display:block;font-weight:400;color:var(--ink-2);font-size:12.5px;margin-top:2px}
+
+.callout{border-left:3px solid var(--accent);background:var(--surface);padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;max-width:72ch}
+.callout.amber{border-left-color:var(--amber);background:var(--amber-soft)}
+.callout p:last-child{margin-bottom:0}
+.callout .t{font-weight:600;font-size:14px;margin-bottom:4px}
+
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td .sub{display:block;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.35}
+td .n{font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.pill.amber{background:var(--amber-soft);color:var(--amber)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.none{background:var(--surface-2);color:var(--muted)}
+
+.fig{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.fig svg{display:block;min-width:640px;width:100%;height:auto;font-family:"IBM Plex Sans KR",system-ui,sans-serif}
+.fig .cap{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+svg .box{fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1}
+svg .box.acc{fill:var(--accent);stroke:var(--accent)}
+svg .box.amb{fill:var(--amber-soft);stroke:var(--amber)}
+svg text{fill:var(--ink);font-size:12.5px}
+svg text.s{font-size:11px;fill:var(--ink-2)}
+svg text.m{font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+svg text.acc{fill:var(--accent-ink)}
+svg .ln{stroke:var(--line-strong);stroke-width:1.2;fill:none}
+svg .ln.acc{stroke:var(--accent);stroke-width:1.6}
+svg .badge{fill:var(--amber);stroke:none}
+svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex Mono",monospace}
+
+.stage{display:grid;grid-template-columns:52px minmax(0,1fr);gap:16px;margin:26px 0;padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
+.stage .tag{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;color:var(--accent);padding-top:3px}
+.stage h4{margin:0 0 4px;font-size:17px}
+.stage .why{color:var(--ink-2);font-size:14.5px;margin-bottom:12px}
+.stage .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.stage .cols h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.stage .cols ul{margin:0;padding-left:1.2em;font-size:14px;max-width:none}
+.stage .cols li{margin:3px 0}
+.stage .check{margin-top:14px;padding:10px 14px;background:var(--ok-soft);border-radius:6px;font-size:14px;color:var(--ink)}
+.stage .check b{color:var(--ok)}
+.stage .time{font-size:12.5px;color:var(--muted);margin-left:8px;font-weight:400}
+
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 18px;font-size:14.5px;margin:14px 0 18px;max-width:72ch}
+.kv dt{color:var(--muted);font-weight:500}
+.kv dd{margin:0}
+.footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="목차">
+  <div class="brand">공부 순서 가이드</div>
+  <div class="meta">SherlockEngine 읽기 가이드<br>2026/09/23 15:05 작성<br><a href="rendering-analysis.html">rendering-analysis.html</a> · <a href="../README.md">README.md</a></div>
+  <ol>
+    <li><a href="#s1">1. 요약: 전체 순서</a></li>
+    <li><a href="#s2">2. 읽기 원칙</a></li>
+    <li class="sub"><a href="#s2-1">2.1 문서 두 종류의 구조</a></li>
+    <li class="sub"><a href="#s2-2">2.2 소스를 읽는 법</a></li>
+    <li class="sub"><a href="#s2-3">2.3 문서와 현재 경로의 차이</a></li>
+    <li><a href="#s3">3. 스텝 0~2: 지도와 골격</a></li>
+    <li><a href="#s4">4. 스텝 3~7: RHI 조각 다섯 개</a></li>
+    <li><a href="#s5">5. 스텝 8~9: 인터페이스와 D3D12</a></li>
+    <li><a href="#s6">6. 스텝 10~12: 모델·코어·에디터</a></li>
+    <li><a href="#s7">7. 스텝 13: 되돌아보기</a></li>
+    <li><a href="#s8">8. 실행하며 확인하기</a></li>
+    <li><a href="#s9">9. 시간별 코스</a></li>
+  </ol>
+</nav>
+
+<main>
+<div class="eyebrow">SherlockEngine 읽기 가이드</div>
+<h1>프로젝트를 문서와 함께 읽는 순서</h1>
+<p class="lede"><code>docs/</code>에는 렌더러 해부와 로드맵(<a href="rendering-analysis.html">rendering-analysis.html</a>) 한 편과 단계별 상세 문서(<a href="phase-0.html">phase-0</a> ~ <a href="phase-11.html">phase-11</a>) 열두 편이 있습니다. 문서는 단계 순서로 쓰였고 소스도 그 순서로 자랐으므로, <strong>로드맵으로 지도를 펴고 → 앱 골격을 잡은 뒤 → 단계 문서를 번호 순으로 소스와 짝지어</strong> 읽는 것이 가장 덜 헤매는 길입니다. 이 문서는 그 길을 14개 스텝으로 나누고, 스텝마다 "먼저 읽을 문서 → 함께 볼 소스 → 확인 포인트"를 적었습니다.</p>
+
+<div class="facts">
+  <div><div class="k">문서</div><div class="v">13편<small>해부·로드맵 1 + 단계 문서 12</small></div></div>
+  <div><div class="k">소스</div><div class="v">96 파일 · 약 14,000줄<small>App · Core · Graphics · Scene · RHI · Shaders</small></div></div>
+  <div><div class="k">스텝</div><div class="v">14개 (0~13)<small>단계 문서 순서와 거의 같음</small></div></div>
+  <div><div class="k">권장 기간</div><div class="v">정독 2주<small>하루 코스는 9절</small></div></div>
+  <div><div class="k">백엔드</div><div class="v">D3D11 · D3D12<small>engine.ini 한 줄로 전환</small></div></div>
+</div>
+
+<div class="callout">
+  <div class="t">한 줄 요약</div>
+  <p>단계 문서 한 편은 항상 같은 네 박자로 읽습니다. <strong>① 1절 요약 표와 "한 줄 요약" → ② 그 단계가 만든 헤더의 맨 위 주석 → ③ .cpp의 핵심 함수 두세 개 → ④ 실행해서 완료 기준을 눈으로 확인.</strong> 문서 본문(설계 근거·함정·참고 문헌)은 ③에서 "왜 이렇게 했지?"가 생겼을 때 돌아가서 읽습니다.</p>
+</div>
+
+<h2 id="s1"><span class="num">1.</span>요약: 전체 순서</h2>
+<p>스텝 번호는 단계 번호와 다릅니다. 앱 골격은 10단계에서 만들어졌지만 가장 먼저 읽어야 하고, 2단계(입력·카메라)는 RHI와 무관하니 골격 바로 뒤에 붙였습니다. 나머지는 단계 번호 순서 그대로입니다.</p>
+<div class="tbl"><table>
+  <thead><tr><th>스텝</th><th>주제</th><th>먼저 읽을 문서</th><th>함께 볼 소스</th><th>시간</th></tr></thead>
+  <tbody>
+    <tr><td class="n">0</td><td>지도 펴기</td><td>README · rendering-analysis <a href="rendering-analysis.html#s1">§1</a> · <a href="rendering-analysis.html#s9">§9 단계 구성 표</a></td><td>폴더 트리, <code>vcpkg.json</code>, <code>Assets/Config/engine.ini</code></td><td class="n">1h</td></tr>
+    <tr><td class="n">1</td><td>앱 골격과 프레임 루프</td><td><a href="phase-10.html#s5">phase-10 §5</a> · <a href="phase-0.html">phase-0</a> · rendering-analysis <a href="rendering-analysis.html#s3">§3</a>·<a href="rendering-analysis.html#s4">§4</a></td><td><code>main.cpp</code> · <code>App/AppBase</code> · <code>Core/Engine</code> · <code>App/TestApp.h</code> · <code>Core/Config</code> · <code>Core/Time</code> · <code>Core/Paths</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">2</td><td>입력과 카메라</td><td><a href="phase-2.html">phase-2</a></td><td><code>Core/Input</code> · <code>Scene/Camera</code> · <code>Scene/Transform</code> · <code>TestApp::UpdateCamera</code></td><td class="n">2h</td></tr>
+    <tr><td class="n">3</td><td>핸들·Desc·PSO (RHI 어휘)</td><td><a href="phase-1.html">phase-1</a> · <a href="phase-3.html">phase-3 §2~§6</a> · <a href="rendering-analysis.html#d21">D21</a>·<a href="rendering-analysis.html#d22">D22</a></td><td><code>RHI/Handle.h</code> · <code>RHI/ResourcePool.h</code> · <code>RHI/PipelineTypes.h</code> · <code>RHI/ResourceDesc.h</code> · <code>RHI/D3D11/PipelineState*</code></td><td class="n">4h</td></tr>
+    <tr><td class="n">4</td><td>씬과 렌더러</td><td><a href="phase-3.html#s7">phase-3 §7</a> · <a href="rendering-analysis.html#d2">D2</a>·<a href="rendering-analysis.html#d3">D3</a></td><td><code>Scene/Scene.h</code> · <code>Scene/GameObject.h</code> · <code>Graphics/Mesh.h</code> · <code>Graphics/Renderer.h</code> · <code>Graphics/ShaderConstants.h</code> ↔ <code>Shaders/Common.hlsli</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">5</td><td>바인딩 레이아웃과 재질</td><td><a href="phase-4.html">phase-4</a></td><td><code>RHI/BindingTypes.h</code> · <code>Scene/Material.h</code> · <code>Graphics/VertexTypes.h</code> · <code>RHI/ShaderCompiler.h</code> · <code>Renderer::GetOrCreateGpuMaterial / GetPipelineFor / ValidateBindings</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">6</td><td>텍스처와 색공간</td><td><a href="phase-5.html">phase-5</a></td><td><code>Graphics/TextureLoader</code> · <code>Renderer::GetOrLoadTexture / CreateSamplers</code> · <code>D3D11Device</code> 스왑체인·sRGB 뷰</td><td class="n">2h</td></tr>
+    <tr><td class="n">7</td><td>렌더 패스·커맨드 리스트·그림자</td><td><a href="phase-6.html">phase-6</a> · <a href="rendering-analysis.html#d4">D4</a></td><td><code>RHI/RenderPassTypes.h</code> · <code>RHI/CommandList.h</code> · <code>RHI/D3D11/D3D11CommandList.cpp</code> · <code>Renderer::Render / RenderShadowPass / RenderMainPass</code> · <code>Shaders/*.hlsl</code></td><td class="n">4h</td></tr>
+    <tr><td class="n">8</td><td>RHI 인터페이스 추출</td><td><a href="phase-7.html">phase-7</a></td><td><code>RHI/RHI.h/.cpp</code> · <code>RHI/Device.h</code> 전체 · <code>RHI/D3D11/D3D11Device.h</code> · <code>D3D11Convert</code></td><td class="n">2h</td></tr>
+    <tr><td class="n">9</td><td>D3D12 백엔드로 검증</td><td><a href="phase-8.html">phase-8</a></td><td><code>RHI/D3D12/*</code> — D3D11 구현과 같은 함수를 나란히 놓고 비교</td><td class="n">5h</td></tr>
+    <tr><td class="n">10</td><td>모델 로딩</td><td><a href="phase-9.html">phase-9</a> · <a href="rendering-analysis.html#d10">D10</a></td><td><code>Graphics/Model</code> · <code>Scene::AddModel</code> · <code>Renderer::BuildDrawList</code>의 서브메시 · <code>Assets/Models/</code></td><td class="n">2h</td></tr>
+    <tr><td class="n">11</td><td>엔진 코어 나머지</td><td><a href="phase-10.html">phase-10 §2·§6~§9</a> · <a href="rendering-analysis.html#d16">D16</a>·<a href="rendering-analysis.html#d19">D19</a></td><td><code>Core/Log</code> · <code>Core/Profiler</code> · <code>Core/AssetManager</code> · <code>App/DebugUI</code></td><td class="n">2h</td></tr>
+    <tr><td class="n">12</td><td>에디터와 씬 직렬화</td><td><a href="phase-11.html">phase-11</a></td><td><code>App/Editor</code> · <code>Scene/SceneSerializer</code> · <code>Renderer::SetSceneTarget</code> · <code>TestApp</code> 자동 검증 · <code>Assets/Scenes/floor_cube.json</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">13</td><td>되돌아보기</td><td>rendering-analysis <a href="rendering-analysis.html#s7">§7</a> · <a href="rendering-analysis.html#applied">적용 기록</a> · <a href="rendering-analysis.html#s8">§8 D1~D22</a> · <a href="rendering-analysis.html#s10">§10 부록</a> · <code>logs/*.md</code></td><td>다시 <code>Graphics/Renderer.cpp</code> 전체를 위에서 아래로</td><td class="n">3h</td></tr>
+  </tbody>
+</table></div>
+
+<div class="fig">
+<svg viewBox="0 0 900 340" role="img" aria-label="계층별 소스 폴더와 그것을 읽는 스텝 번호">
+  <!-- lanes -->
+  <rect class="box" x="20" y="20" width="200" height="70" rx="8"/>
+  <text x="34" y="44" font-weight="600">App/</text>
+  <text class="s" x="34" y="64">AppBase · TestApp · Editor · DebugUI</text>
+  <circle class="badge" cx="196" cy="36" r="11"/><text class="badge" x="190" y="40">1</text>
+  <circle class="badge" cx="170" cy="36" r="11"/><text class="badge" x="162" y="40">12</text>
+
+  <rect class="box" x="240" y="20" width="200" height="70" rx="8"/>
+  <text x="254" y="44" font-weight="600">Core/</text>
+  <text class="s" x="254" y="64">Engine · Config · Time · Input · Log</text>
+  <circle class="badge" cx="416" cy="36" r="11"/><text class="badge" x="410" y="40">1</text>
+  <circle class="badge" cx="390" cy="36" r="11"/><text class="badge" x="384" y="40">2</text>
+  <circle class="badge" cx="364" cy="36" r="11"/><text class="badge" x="356" y="40">11</text>
+
+  <rect class="box" x="460" y="20" width="200" height="70" rx="8"/>
+  <text x="474" y="44" font-weight="600">Scene/</text>
+  <text class="s" x="474" y="64">Scene · Camera · Material · Serializer</text>
+  <circle class="badge" cx="636" cy="36" r="11"/><text class="badge" x="630" y="40">2</text>
+  <circle class="badge" cx="610" cy="36" r="11"/><text class="badge" x="604" y="40">4</text>
+  <circle class="badge" cx="584" cy="36" r="11"/><text class="badge" x="578" y="40">5</text>
+
+  <rect class="box" x="680" y="20" width="200" height="70" rx="8"/>
+  <text x="694" y="44" font-weight="600">Shaders/</text>
+  <text class="s" x="694" y="64">Common.hlsli · Basic VS/PS · Shadow VS</text>
+  <circle class="badge" cx="856" cy="36" r="11"/><text class="badge" x="850" y="40">4</text>
+  <circle class="badge" cx="830" cy="36" r="11"/><text class="badge" x="824" y="40">7</text>
+
+  <rect class="box amb" x="240" y="120" width="420" height="70" rx="8"/>
+  <text x="254" y="144" font-weight="600">Graphics/  — RHI 위의 렌더러 층</text>
+  <text class="s" x="254" y="164">Renderer · Mesh · Model · TextureLoader · ShaderConstants · VertexTypes</text>
+  <circle class="badge" cx="636" cy="136" r="11"/><text class="badge" x="630" y="140">4</text>
+  <circle class="badge" cx="610" cy="136" r="11"/><text class="badge" x="604" y="140">6</text>
+  <circle class="badge" cx="584" cy="136" r="11"/><text class="badge" x="578" y="140">7</text>
+  <circle class="badge" cx="558" cy="136" r="11"/><text class="badge" x="550" y="140">10</text>
+
+  <rect class="box acc" x="240" y="220" width="420" height="52" rx="8"/>
+  <text class="acc" x="254" y="242" font-weight="600">RHI/  — 선언만 (핸들 · Desc · 순수 가상 Device · CommandList)</text>
+  <text class="acc s" x="254" y="260" style="fill:var(--accent-ink);opacity:.85">Handle · PipelineTypes · ResourceDesc · BindingTypes · RenderPassTypes · Device · CommandList · RHI</text>
+  <circle class="badge" cx="636" cy="236" r="11"/><text class="badge" x="630" y="240">3</text>
+  <circle class="badge" cx="610" cy="236" r="11"/><text class="badge" x="604" y="240">5</text>
+  <circle class="badge" cx="584" cy="236" r="11"/><text class="badge" x="578" y="240">7</text>
+  <circle class="badge" cx="558" cy="236" r="11"/><text class="badge" x="552" y="240">8</text>
+
+  <rect class="box" x="240" y="292" width="200" height="40" rx="8"/>
+  <text x="254" y="317" font-weight="600">RHI/D3D11/</text>
+  <circle class="badge" cx="416" cy="312" r="11"/><text class="badge" x="410" y="316">3</text>
+  <circle class="badge" cx="390" cy="312" r="11"/><text class="badge" x="384" y="316">7</text>
+
+  <rect class="box" x="460" y="292" width="200" height="40" rx="8"/>
+  <text x="474" y="317" font-weight="600">RHI/D3D12/</text>
+  <circle class="badge" cx="636" cy="312" r="11"/><text class="badge" x="630" y="316">9</text>
+
+  <!-- arrows: who depends on whom -->
+  <path class="ln" d="M120 90 V120 H240"/>
+  <path class="ln" d="M340 90 V120"/>
+  <path class="ln" d="M560 90 V120"/>
+  <path class="ln" d="M780 90 V105 H600 V120"/>
+  <path class="ln acc" d="M450 190 V220"/>
+  <path class="ln" d="M340 272 V292"/>
+  <path class="ln" d="M560 272 V292"/>
+</svg>
+<div class="cap">그림 1. 폴더는 위가 아래를 쓰고, 아래는 위를 모릅니다. 숫자 배지는 그 폴더를 주로 읽는 스텝입니다. 순서가 "위→아래"가 아니라 1(App·Core) → 3(RHI 선언) → 4(Graphics) → … 로 오가는 이유는, 렌더러를 읽으려면 먼저 핸들·Desc 어휘가 있어야 하기 때문입니다.</div>
+</div>
+
+<h2 id="s2"><span class="num">2.</span>읽기 원칙</h2>
+
+<h3 id="s2-1">2.1 문서 두 종류의 구조</h3>
+<p><strong>rendering-analysis.html</strong>은 한 편이지만 시점이 셋입니다. §1~§7은 2026년 7월의 초기 코드를 해부한 <em>스냅샷</em>이라 지금 소스와 이름이 다릅니다(<code>Shader</code>·<code>MeshRenderer</code>·<code>struct.h</code>는 이제 없습니다). <a href="rendering-analysis.html#applied">적용 기록</a>과 §8의 설계 결정 D1~D22는 "무엇을 왜 바꾸기로 했나"이고, §9 로드맵의 PHASE 카드 12장은 각 단계의 요구·완료 기준·완료 보고를 담은 <em>현재까지의 지도</em>입니다. 그래서 처음에는 §1과 §9의 단계 구성 표만 읽고, 나머지는 각 스텝에서 필요한 D 항목과 PHASE 카드만 찾아 읽은 뒤, 마지막 스텝에서 통독합니다.</p>
+<p><strong>phase-N.html</strong>은 전부 같은 뼈대입니다. 상단 <em>facts</em> 격자(상태·파일 수·완료 기준), "한 줄 요약" 콜아웃, <strong>1절 요약</strong>(이전 단계 vs 이 단계의 표), 설계 절들, <strong>함정과 해결</strong>, <strong>검증과 스크린샷</strong>, 참고 문헌. 요약 표와 함정 절만 읽어도 그 단계가 코드에 남긴 흔적을 알 수 있고, 설계 절은 소스를 읽다가 이유가 궁금할 때 돌아오면 됩니다. 검증 절의 스크린샷은 <code>images/2026-09-23-phaseN-*.png</code>에 있으니 직접 실행한 화면과 비교하세요.</p>
+
+<h3 id="s2-2">2.2 소스를 읽는 법</h3>
+<ul>
+  <li><strong>헤더 맨 위 주석이 설계 문서입니다.</strong> <code>RHI/Device.h</code>, <code>Graphics/Renderer.h</code>, <code>Scene/Scene.h</code>, <code>Core/Engine.h</code>의 첫 20줄은 그 클래스가 무엇을 소유하고 무엇을 소유하지 않는지, 어느 단계·어느 D 항목에서 왔는지를 적어 둡니다. 헤더를 다 읽고 .cpp로 갑니다.</li>
+  <li><strong>"N단계" 주석으로 검색하세요.</strong> 소스 곳곳에 <code>// 6단계:</code>, <code>// 11단계 (D19)</code> 같은 표시가 있습니다. 스텝을 읽을 때 <code>grep -rn "6단계" SherlockEngine/</code>으로 그 단계가 손댄 자리를 한 번에 모을 수 있습니다.</li>
+  <li><strong>큰 파일은 함수 단위로.</strong> <code>Renderer.cpp</code>(1,109줄), <code>D3D11Device.cpp</code>(934줄), <code>D3D12Device.cpp</code>(1,428줄)는 통째로 읽지 말고 각 스텝이 지목한 함수만 읽습니다. 스텝 13에서 <code>Renderer.cpp</code>만 처음부터 끝까지 다시 읽습니다.</li>
+  <li><strong>백엔드는 항상 두 개를 나란히.</strong> 스텝 9부터는 같은 이름의 함수를 <code>D3D11Device.cpp</code>와 <code>D3D12Device.cpp</code>에서 나란히 열어 두고 비교합니다. RHI가 감춘 것이 무엇인지 그 차이에서 보입니다.</li>
+  <li><strong>실행 파일을 켜 두고 읽으세요.</strong> Debug|x64로 빌드해 두면 Debug Layer 메시지, ImGui 콘솔, Stats 패널이 코드의 주장을 즉시 확인해 줍니다(8절).</li>
+</ul>
+
+<h3 id="s2-3">2.3 문서와 현재 경로의 차이</h3>
+<p>1~6단계 문서는 7단계의 폴더 분리 이전에 쓰였습니다. 그 문서가 가리키는 경로는 아래처럼 읽어야 합니다.</p>
+<div class="tbl"><table>
+  <thead><tr><th>문서(1~6단계)의 이름</th><th>지금 위치</th><th>바뀐 단계</th></tr></thead>
+  <tbody>
+    <tr><td><code>Graphics/D3D11/Device</code>, <code>class Device</code></td><td><code>RHI/D3D11/D3D11Device</code> (<code>RHI::Device</code>를 구현)</td><td>7</td></tr>
+    <tr><td><code>Graphics/D3D11/CommandList</code></td><td><code>RHI/D3D11/D3D11CommandList</code></td><td>7</td></tr>
+    <tr><td><code>Graphics/D3D11/PipelineState</code>, <code>PipelineStateCache</code>, <code>ResourcePool</code></td><td><code>RHI/D3D11/PipelineState*</code>, <code>RHI/ResourcePool.h</code></td><td>7</td></tr>
+    <tr><td><code>Graphics/Handle.h</code>, <code>PipelineTypes.h</code>, <code>ResourceDesc.h</code>, <code>BindingTypes.h</code>, <code>RenderPassTypes.h</code></td><td>전부 <code>RHI/</code></td><td>7</td></tr>
+    <tr><td><code>Graphics/D3D11/ShaderCompiler.cpp</code></td><td><code>RHI/DXBC/ShaderCompiler.cpp</code> (선언은 <code>RHI/ShaderCompiler.h</code>)</td><td>7 → 8</td></tr>
+    <tr><td><code>Graphics/D3D11/ImGuiBackend</code></td><td><code>RHI::Device</code>의 <code>InitImGui / RenderImGui …</code> 어댑터</td><td>7</td></tr>
+    <tr><td><code>GameTimer</code>, <code>Update(float dt)</code></td><td><code>Core/Time</code>(고정 스텝 누적기) — <code>GameTimer</code>는 남아 있지만 앱 골격은 <code>Time</code>을 씁니다</td><td>10</td></tr>
+    <tr><td>TestApp이 Device·Renderer·Scene을 직접 소유</td><td><code>Core/Engine</code>이 소유, TestApp은 <code>GetEngine()</code>으로 접근</td><td>10</td></tr>
+    <tr><td><code>DebugUI</code> 패널 안의 조명·재질 편집</td><td><code>App/Editor</code>의 Lights·Materials·Inspector 창 (DebugUI는 남아 있음)</td><td>11</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="s3"><span class="num">3.</span>스텝 0~2: 지도와 골격</h2>
+
+<div class="stage">
+  <div class="tag">S0</div>
+  <div>
+    <h4>지도 펴기 <span class="time">약 1시간</span></h4>
+    <div class="why">코드를 한 줄도 읽기 전에, 무엇이 어디에 있고 어떤 순서로 만들어졌는지 알아 둡니다. 빌드가 되는 상태를 여기서 확보합니다.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="../README.md">README.md</a> 전체 — 빌드 준비, 실행, 소스 폴더 표, 소스 규약(UTF-8 BOM, ComPtr, bool 반환)</li>
+        <li>rendering-analysis <a href="rendering-analysis.html#s1">§1 프로젝트 현재 상태</a> — 파일 표는 옛 것이니 "역할" 열만</li>
+        <li>rendering-analysis <a href="rendering-analysis.html#s9">§9</a>의 "단계 구성" 표와 12장의 PHASE 카드 <em>제목·완료 줄만</em></li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li>폴더 트리 한 번 훑기: <code>App/ Core/ Graphics/ Scene/ RHI/ RHI/D3D11/ RHI/D3D12/ RHI/DXBC/ Shaders/ Assets/</code></li>
+        <li><code>vcpkg.json</code> — 의존성 목록(DirectXTK·DirectXTex·ImGui·cgltf 등)</li>
+        <li><code>Assets/Config/engine.ini</code> — 백엔드·씬·로그 레벨을 고르는 곳</li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — Debug|x64 빌드가 성공하고 <code>x64\Debug\SherlockEngine.exe</code>를 탐색기에서 직접 실행해도 데모 씬이 뜬다. <code>engine.ini</code>의 <code>backend</code>를 <code>d3d12</code>로 바꾸면 창 제목·Stats 패널의 백엔드 이름이 바뀐다.</div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="tag">S1</div>
+  <div>
+    <h4>앱 골격과 프레임 루프 <span class="time">약 3시간</span></h4>
+    <div class="why">"프로그램이 켜져서 한 프레임을 그리고 꺼지기까지"를 따라갑니다. 이 뼈대를 알아야 이후 스텝에서 읽는 모든 클래스가 어느 시점에 불리는지 알 수 있습니다. 골격은 10단계에서 지금 모양이 됐으므로 10단계 문서의 해당 절을 먼저 봅니다.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-10.html#s5">phase-10 §5 Engine과 AppBase (D14)</a>, <a href="phase-10.html#s3">§3 Config</a>, <a href="phase-10.html#s4">§4 Time: 고정 스텝 누적기</a></li>
+        <li><a href="phase-0.html">phase-0</a> 전체 — dt 전달, exe 기준 셰이더 경로(<code>Core/Paths</code>), 폴더 재배치. 짧고 기초적</li>
+        <li>rendering-analysis <a href="rendering-analysis.html#s3">§3 초기화 과정</a>·<a href="rendering-analysis.html#s4">§4 프레임 루프</a> — 옛 코드 기준이지만 "초기화 순서와 실패 시 false" 규약은 그대로</li>
+        <li><a href="rendering-analysis.html#d14">D14</a>(전역 g_appBase와 앱 골격), <a href="rendering-analysis.html#d13">D13</a>(가변/고정 스텝)</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>main.cpp</code> → <code>App/AppBase.h</code>(헤더 주석) → <code>AppBase.cpp</code>의 <code>Initialize</code>·<code>Run</code>·<code>MsgProc</code></li>
+        <li><code>Core/Engine.h</code> 전체(멤버 선언 순서 = 생성 순서 주석) → <code>Engine.cpp</code>의 <code>Initialize</code>·<code>BeginFrame</code>·<code>Render</code>·<code>EndFrame</code></li>
+        <li><code>App/TestApp.h</code>만 — <code>OnInitialize / OnUpdate / OnFixedUpdate / OnGUI</code> 네 훅과 자동 검증 인자 목록. .cpp는 아직</li>
+        <li><code>Core/Config.h</code>, <code>Core/Time.h</code>, <code>Core/Paths.h</code>, <code>pch.h</code>(D3D 헤더가 없음을 확인)</li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — <code>Engine::Render</code>에 적힌 순서(<code>Device::BeginFrame</code> → 그림자·메인 → UI 패스 → <code>EndFrame</code>)를 종이에 그릴 수 있다. <code>engine.ini</code>의 <code>fixedstep</code>을 0.1로 바꾸면 패널의 OnFixedUpdate 호출 수가 초당 10회로 준다. 로그 파일이 exe 옆 <code>Logs\</code>에 생긴다.</div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="tag">S2</div>
+  <div>
+    <h4>입력과 카메라 <span class="time">약 2시간</span></h4>
+    <div class="why">RHI와 무관하지만 이후 모든 검증을 "카메라를 움직여 본다"로 하므로 먼저 익혀 둡니다. 뷰행렬을 역행렬로 만드는 수학과 Win32 마우스 캡처의 함정이 핵심입니다.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-2.html">phase-2</a> 전체. 특히 §2.2 "공급은 무조건, 소비 측에서 판단", §3.2 "뷰행렬 = 카메라 월드 변환의 역행렬", §4.2 <code>WM_CAPTURECHANGED</code></li>
+        <li><a href="rendering-analysis.html#d8">D8</a> 오일러 각과 LookAt 카메라 · 부록 <a href="rendering-analysis.html#s10">B. 좌표계와 행렬 규약</a></li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>Core/Input.h/.cpp</code> — 메시지 → 프레임 상태(<code>IsKeyPressed</code> vs <code>IsKeyDown</code>), <code>EndFrame</code>이 델타를 지우는 자리</li>
+        <li><code>Scene/Camera.h/.cpp</code> — <code>Rotate</code>·<code>Move</code>·뷰행렬 계산, Debug에서 <code>LookToLH</code>와 대조하는 검사</li>
+        <li><code>Scene/Transform.h/.cpp</code> — 월드행렬 = S·R·T</li>
+        <li><code>App/TestApp.cpp</code>의 <code>UpdateCamera</code>·<code>BeginLook</code>·<code>EndLook</code>·<code>OnFocusLost</code>, <code>AppBase::MsgProc</code>의 마우스 메시지 분기</li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — WASD/QE와 우클릭 드래그로 공전하는 구 주위를 돈다. Alt-Tab 후 돌아와도 키가 고착되지 않는다. ImGui 창 위에서 드래그하면 카메라가 돌지 않는다(<code>WantCaptureMouse</code>). <code>images/2026-09-23-phase2-*.png</code>와 비교.</div>
+  </div>
+</div>
+
+<h2 id="s4"><span class="num">4.</span>스텝 3~7: RHI 조각 다섯 개</h2>
+<p>로드맵이 강조한 1·3·4·6단계(그리고 텍스처를 실전에 쓰는 5단계)는 각각 RHI의 조각 하나를 만듭니다. PSO → 핸들·Desc → 바인딩 레이아웃 → 텍스처·샘플러 → 렌더 패스·커맨드 리스트. 이 다섯 스텝을 지나면 <code>RHI/</code>의 헤더 전부와 <code>Renderer.cpp</code>의 대부분을 읽은 셈이 됩니다.</p>
+
+<div class="stage">
+  <div class="tag">S3</div>
+  <div>
+    <h4>핸들 · Desc · PSO: RHI의 어휘 <span class="time">약 4시간</span></h4>
+    <div class="why">이 프로젝트의 모든 GPU 리소스는 <code>{index, generation}</code> 값 핸들이고, 생성은 Desc 구조체 하나로, 파이프라인 상태는 PSO Desc 하나로 통합돼 있습니다. 이 어휘를 먼저 익히지 않으면 Renderer를 읽을 수 없습니다. 1단계(PSO)와 3단계(핸들·풀·Dynamic 버퍼 링)를 묶었습니다.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-1.html">phase-1</a> §2 "D3D11의 상태 모델과 D3D12의 PSO", §3 PipelineStateDesc 설계(값 타입·해시), §5 D3D11 구현</li>
+        <li><a href="phase-3.html">phase-3</a> §2 핸들과 풀(세대 카운터·free list), §3 Desc → 핸들 API, §4 프레임과 Dynamic 버퍼 링, §6 텍스처</li>
+        <li><a href="rendering-analysis.html#d21">D21</a> RHI 추상화의 형태, <a href="rendering-analysis.html#d22">D22</a> D3D11 위 PSO 에뮬레이션, <a href="rendering-analysis.html#d1">D1</a> ComPtr</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>RHI/Handle.h</code> → <code>RHI/ResourcePool.h</code> — 세대가 use-after-free를 어떻게 잡는지</li>
+        <li><code>RHI/PipelineTypes.h/.cpp</code> — <code>Format</code>·<code>CullMode</code> 열거, <code>PipelineStateDesc</code>와 해시·비교</li>
+        <li><code>RHI/ResourceDesc.h</code>, <code>RHI/GraphicsConfig.h</code>(<code>kFrameCount</code>)</li>
+        <li><code>RHI/D3D11/PipelineState.h/.cpp</code>, <code>PipelineStateCache.h/.cpp</code> — D3D11 상태 객체 5개를 하나로 묶는 자리</li>
+        <li><code>RHI/D3D11/D3D11Resources.h</code>, <code>D3D11Device.cpp</code>의 <code>CreateBuffer</code>·<code>UpdateBuffer</code>·<code>CreateTexture</code>·<code>BeginFrame</code>만</li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — F1(와이어프레임)·F2(컬링)를 누르면 Stats 패널의 PSO 수가 늘고, 같은 조합으로 돌아오면 늘지 않는다(캐시). Debug Layer가 종료 시 Live Object를 보고하지 않는다. <code>PipelineState.cpp</code> 밖에서 <code>RSSetState</code>가 검색되지 않는다.</div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="tag">S4</div>
+  <div>
+    <h4>씬과 렌더러 <span class="time">약 3시간</span></h4>
+    <div class="why">CPU 데이터(Scene·Mesh·Material)와 GPU 캐시(Renderer의 GpuMesh·GpuMaterial)의 경계, 상수버퍼 3분할(b0·b1·b2)과 HLSL 패킹 규칙이 여기 있습니다. Renderer가 씬을 소유하지 않고 입력으로 받는 이유(D3)도 함께.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-3.html#s5">phase-3 §5 상수버퍼 3분할</a>(패킹 규칙, 세 겹의 검사, 행렬 전치 관례), <a href="phase-3.html#s7">§7 Scene · GameObject · Renderer</a></li>
+        <li><a href="rendering-analysis.html#d2">D2</a> 상수버퍼 갱신, <a href="rendering-analysis.html#d3">D3</a> Renderer의 소유, <a href="rendering-analysis.html#d5">D5</a> 전치 업로드 vs row_major</li>
+        <li>rendering-analysis <a href="rendering-analysis.html#s5">§5 GPU 파이프라인 단계별 추적</a> — IA·RS·OM 설명은 지금도 유효</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>Scene/Scene.h</code>(헤더 주석) · <code>Scene/GameObject.h</code> · <code>Scene/Light.h</code></li>
+        <li><code>Graphics/Mesh.h</code>, <code>Mesh.cpp</code>의 프리미티브 하나(<code>CreateSphere</code>)</li>
+        <li><code>Graphics/ShaderConstants.h</code>를 <code>Shaders/Common.hlsli</code>와 <strong>나란히</strong> — <code>static_assert</code>의 오프셋과 cbuffer 선언을 한 줄씩 대응</li>
+        <li><code>Graphics/Renderer.h</code> 전체 → <code>Renderer.cpp</code>의 <code>Render</code>·<code>BuildDrawList</code>·<code>UploadObjectConstants</code>·<code>GetOrCreateGpuMesh</code></li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — <code>PerFrameConstants</code>의 크기 304B를 손으로 계산해 <code>static_assert</code>와 맞춘다. 데모 씬에서 바닥 위 오브젝트 7개가 각자 다른 변환으로 움직인다. <code>RHI/D3D11/</code>·<code>RHI/D3D12/</code> 밖에서 <code>ID3D11</code>이 검색되지 않는다.</div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="tag">S5</div>
+  <div>
+    <h4>바인딩 레이아웃과 재질 <span class="time">약 3시간</span></h4>
+    <div class="why">D3D12의 루트 시그니처를 D3D11 위에 미리 그린 <code>BindingLayout</code>/<code>ResourceSet</code>, 재질이 PSO와 셋으로 풀리는 과정, 리플렉션으로 셰이더 선언을 대조하는 검사, 핫리로드. 이후 D3D12 스텝에서 이것이 진짜 루트 시그니처가 됩니다.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-4.html">phase-4</a> §2 루트 시그니처를 D3D11에 미리 그리기(갱신 빈도별 셋 세 개, 64 DWORD 예산), §3 Material, §5 리플렉션, §6 .cso와 핫리로드, §7 드로우 정렬</li>
+        <li><a href="rendering-analysis.html#d9">D9</a> 정점 구조체와 InputLayout, <a href="rendering-analysis.html#d12">D12</a> 런타임 컴파일 vs .cso</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>RHI/BindingTypes.h</code> — 헤더 주석과 레지스터 상한 상수</li>
+        <li><code>Scene/Material.h</code> — 텍스처를 핸들이 아닌 "이름"으로 드는 이유</li>
+        <li><code>Graphics/VertexTypes.h</code>, <code>RHI/ShaderCompiler.h</code> → <code>RHI/DXBC/ShaderCompiler.cpp</code>의 리플렉션 함수</li>
+        <li><code>Renderer.cpp</code>의 <code>Initialize</code>(레이아웃 세 개 선언) · <code>LoadShaders</code> · <code>ValidateBindings</code> · <code>CheckHotReload</code> · <code>GetOrCreateGpuMaterial</code> · <code>GetPipelineFor</code> · <code>RenderMainPass</code>의 정렬 루프</li>
+        <li><code>Shaders/BasicVertexShader.hlsl</code>, <code>BasicPixelShader.hlsl</code>의 cbuffer·register 선언부</li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — <code>BasicPixelShader.hlsl</code>의 색을 바꿔 저장하면 Debug 실행 중 1초 안에 화면이 바뀌고, 문법 오류를 내면 이전 셰이더가 유지되며 콘솔에 줄 번호가 찍힌다(F4는 수동 리로드). Stats의 pipelineSwitches·resourceSetSwitches가 드로우 수보다 훨씬 작다(정렬 효과).</div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="tag">S6</div>
+  <div>
+    <h4>텍스처와 색공간 <span class="time">약 2시간</span></h4>
+    <div class="why">sRGB 전달 함수와 "두 번 어두워지기", 백버퍼는 UNORM으로 만들되 씬은 sRGB 뷰에 그리고 ImGui는 UNORM 뷰에 그리는 이유, CPU 밉 생성. 실무에서 가장 자주 틀리는 부분이라 검증 방법(회색 128)을 꼭 따라 해 보세요.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-5.html">phase-5</a> §2 색공간(§2.4 회색 128 검증), §3 flip 모델 스왑체인, §4 텍스처 로더와 밉맵(§4.3 DirectXTex 함정), §5 샘플러</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>Graphics/TextureLoader.h/.cpp</code> — <code>TextureImage</code>와 밉 체인 생성(sRGB는 선형에서 평균)</li>
+        <li><code>Renderer.cpp</code>의 <code>CreateSamplers</code>·<code>CreateBuiltinTextures</code>·<code>GetOrLoadTexture</code>(캐시 키에 <code>|srgb</code>)</li>
+        <li><code>RHI/D3D11/D3D11Device.cpp</code>의 스왑체인 생성과 백버퍼 sRGB/UNORM 두 뷰, <code>Renderer::BeginUIPass</code></li>
+        <li><code>Scene/Material.h</code>의 <code>SamplerPreset</code></li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — F5(sRGB 출력 토글)로 화면이 밝아졌다 어두워졌다 한다. <code>builtin:gray128</code>을 unlit 재질로 그려 스크린샷 픽셀이 128인지(끄면 55) 확인. F6으로 샘플러를 PointNoMip까지 돌리면 먼 바닥에 모아레가 생긴다. <code>images/2026-09-23-phase5-srgb-compare.png</code>·<code>mip-compare.png</code>와 대조.</div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="tag">S7</div>
+  <div>
+    <h4>렌더 패스 · 커맨드 리스트 · 그림자 <span class="time">약 4시간</span></h4>
+    <div class="why">RHI의 마지막 조각입니다. 프레임이 <code>BeginFrame → [Shadow → Main → UI] → EndFrame</code>으로 고정되고, 모든 GPU 명령이 <code>CommandList</code>를 지나며, 그림자 맵이 "DSV로 쓰고 SRV로 읽는" 첫 리소스라 <code>Barrier</code>가 등장합니다. D3D11에서는 빈 함수지만 D3D12로 갈 자리를 코드에 미리 적어 둔 것입니다.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-6.html">phase-6</a> §2 RenderPass(Load/Store, SRV 충돌), §3 CommandList와 Barrier, §4 그림자 매핑(TYPELESS 깊이, 비교 샘플러와 PCF, 광원 행렬), §5 노멀 매핑과 탄젠트</li>
+        <li><a href="rendering-analysis.html#d4">D4</a> 프레임 시작/끝의 소유권, <a href="rendering-analysis.html#d6">D6</a> 매 프레임 재바인딩</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>RHI/RenderPassTypes.h</code>(<code>LoadOp</code>·<code>ResourceState</code>) → <code>RHI/CommandList.h</code></li>
+        <li><code>RHI/D3D11/D3D11CommandList.cpp</code> 전체(284줄) — SRV 슬롯 추적과 <code>Barrier</code>의 상태 검사</li>
+        <li><code>Renderer.cpp</code>의 <code>CreateShadowResources</code>·<code>ComputeLightViewProj</code>·<code>RenderShadowPass</code>·<code>RenderMainPass</code>·<code>EndUIPass</code>(Present 전이)</li>
+        <li><code>Shaders/ShadowVertexShader.hlsl</code>, <code>BasicPixelShader.hlsl</code>의 PCF 루프와 TBN, <code>Common.hlsli</code>의 t8·s4</li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — 바닥에 그림자가 떨어지고 F7(광원 공전)로 그림자가 따라온다. F8·F9로 그림자·노멀 매핑을 끄고 켠다. Stats의 renderPasses = 3, barriers = 4(프레임당). Debug Layer에 "SRV를 강제로 unbind" 경고가 없다. 에디터 Render Settings의 그림자 맵 미리보기.</div>
+  </div>
+</div>
+
+<h2 id="s5"><span class="num">5.</span>스텝 8~9: 인터페이스와 D3D12</h2>
+
+<div class="stage">
+  <div class="tag">S8</div>
+  <div>
+    <h4>RHI 인터페이스 추출 <span class="time">약 2시간</span></h4>
+    <div class="why">기능 추가가 없는 단계라 읽을 것도 적지만, "무엇이 RHI이고 무엇이 아닌가"의 경계를 폴더로 긋는 규칙과 팩토리는 여기서 확정됩니다. 앞 스텝에서 이미 <code>RHI/</code> 헤더를 다 읽었으니 <code>Device.h</code>를 처음부터 끝까지 다시 읽으며 "왜 이 메서드는 있고 저것은 없나"를 생각해 보세요.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-7.html">phase-7</a> §2 무엇이 RHI인가(폴더 트리), §3.3 핸들은 값·Device만 가상, §4 폴더 규칙과 팩토리, §7 ImGui 어댑터의 선택</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>RHI/RHI.h</code> → <code>RHI/RHI.cpp</code>(백엔드 헤더를 include하는 유일한 파일)</li>
+        <li><code>RHI/Device.h</code> 전체 — 특히 "D3D11에서만 편한 것은 넣지 않았다"는 주석</li>
+        <li><code>RHI/D3D11/D3D11Device.h</code>, <code>D3D11Common.h</code>, <code>D3D11Convert.h/.cpp</code>(열거 → DXGI 매핑 표)</li>
+        <li><code>Core/Engine.cpp</code>의 <code>CreateDevice</code> 호출 한 줄</li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — 아래 검색이 <code>RHI/D3D11/</code>·<code>RHI/D3D12/</code>·<code>RHI/RHI.cpp</code>·<code>RHI/DXBC/</code> 밖에서 0건이다.
+      <pre style="margin:10px 0 0"><code>grep -rnE "d3d11.h|d3d12.h|dxgi.h|ID3D11|ID3D12|ComPtr" SherlockEngine --include=*.h --include=*.cpp | grep -vE "RHI/(D3D11|D3D12|DXBC)/|RHI/RHI.cpp"</code></pre></div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="tag">S9</div>
+  <div>
+    <h4>D3D12 백엔드로 검증 <span class="time">약 5시간</span></h4>
+    <div class="why">가장 긴 스텝입니다. 앞에서 "D3D12를 미리 고려한" 자리(프레임 인덱스, 갱신 빈도별 셋, Barrier, PSO Desc의 RTV 포맷·샘플 수)가 전부 실제 코드가 됩니다. D3D12를 처음 본다면 문서의 절 순서대로 <code>D3D12Device.cpp</code>의 함수를 하나씩 짝지어 읽고, 같은 이름의 D3D11 함수를 옆에 둡니다.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-8.html">phase-8</a> §2 두 번째 백엔드가 검증하는 것 → §3 장치·큐·스왑체인·프레임 자원 → §4 메모리와 업로드(동기 업로드, 업로드 링과 루트 CBV, 지연 해제) → §5 디스크립터 힙과 ResourceSet → §6 BindingLayout → 루트 시그니처 → §7 PSO → §8 배리어 → §10 Debug Layer / GBV</li>
+        <li>rendering-analysis <a href="rendering-analysis.html#s9">§9</a>의 "개념 대응표"(D3D11 ↔ RHI ↔ D3D12)를 옆에 펴 두기</li>
+      </ul></div>
+      <div><h5>함께 볼 소스 (문서 절 ↔ 함수)</h5><ul>
+        <li>§3 ↔ <code>D3D12Device::InitDevice</code>·<code>InitSwapChain</code>·<code>InitFrameResources</code>·<code>WaitForGpu</code>·<code>BeginFrame</code>·<code>EndFrame</code></li>
+        <li>§4 ↔ <code>CreateBuffer</code>·<code>UpdateBuffer</code>·<code>ExecuteUploadSync</code>·<code>CreateTexture</code>·<code>DeferRelease</code>·<code>ReleaseGarbage</code></li>
+        <li>§5 ↔ <code>D3D12DescriptorHeap.h</code>, <code>CreateResourceSet</code>·<code>CreateSampler</code></li>
+        <li>§6·§7 ↔ <code>CreateBindingLayout</code>, <code>D3D12PipelineState.cpp</code>, <code>D3D12Convert.cpp</code></li>
+        <li>§8 ↔ <code>D3D12CommandList.cpp</code>의 <code>Barrier</code>·<code>BeginRenderPass</code>·<code>SetResourceSet</code></li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — <code>engine.ini</code>에서 <code>backend = d3d12</code>로 실행하고 F10으로 애니메이션을 고정한 뒤 두 백엔드 스크린샷을 비교한다(<code>images/2026-09-23-phase8-backend-compare.png</code>). Debug 빌드에서 D3D12 Debug Layer·GBV 메시지가 0건. Resize해도 멈추지 않는다. <code>Stats</code>의 barriers 수가 D3D11과 같다.</div>
+  </div>
+</div>
+
+<h2 id="s6"><span class="num">6.</span>스텝 10~12: 모델·코어·에디터</h2>
+<p>RHI 위에 얹힌 기능들입니다. 앞 스텝을 끝냈다면 이 셋은 각각 반나절이면 됩니다. 순서는 바꿔도 됩니다.</p>
+
+<div class="stage">
+  <div class="tag">S10</div>
+  <div>
+    <h4>모델 로딩 (glTF) <span class="time">약 2시간</span></h4>
+    <div class="why">실제 에셋(DamagedHelmet·Sponza)이 들어오면서 생긴 문제들: 오른손 → 왼손 좌표계, 탄젠트 생성, 서브메시와 16/32비트 인덱스, 알파 컷아웃, 이미지 바이트를 씬이 들고 Renderer가 색공간을 정하는 경계.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-9.html">phase-9</a> §4 Model의 모양과 경계, §5 좌표계, §6 탄젠트, §7 서브메시, §9 이미지, §10 씬 전환과 캐시 무효화</li>
+        <li><a href="rendering-analysis.html#d10">D10</a> 32비트 인덱스, <a href="rendering-analysis.html#d15">D15</a> GameObject 소유 모델</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>Graphics/Model.h</code> → <code>Model.cpp</code>의 cgltf 순회와 좌표 변환</li>
+        <li><code>Scene.cpp</code>의 <code>AddModel</code>·<code>AddModelImages</code>·<code>Clear</code>, <code>Renderer::InvalidateScene</code></li>
+        <li><code>Renderer.cpp</code>의 <code>BuildDrawList</code>(서브메시 범위)와 <code>GetOrCreateGpuMesh</code>(R16/R32 선택)</li>
+        <li><code>TestApp.cpp</code>의 <code>LoadSceneMode</code>·<code>BuildModelScene</code></li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — F11로 데모 → 헬멧 → Sponza를 순환한다. 헬멧의 노멀 매핑을 F9로 껐다 켜 본다. Stats의 triangles·재질 수가 문서의 숫자(Sponza 재질 25개)와 맞는다. 씬을 전환해도 Live Object 경고가 없다.</div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="tag">S11</div>
+  <div>
+    <h4>엔진 코어 나머지 <span class="time">약 2시간</span></h4>
+    <div class="why">S1에서 골격만 읽고 남겨 둔 것들: 로그 싱크 세 개, Windows 서브시스템과 콘솔, CPU 구간 + GPU 타임스탬프 프로파일러, 에셋 캐시, ImGui 콘솔·한글 폰트. 프로파일러는 RHI에 <code>WriteTimestamp</code>를 더한 사례라 "RHI를 얇게 확장하는 법"의 예로 읽습니다.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-10.html#s2">phase-10 §2 Logger</a>, <a href="phase-10.html#s6">§6 Windows 서브시스템과 콘솔</a>, <a href="phase-10.html#s7">§7 Profiler</a>(§7.1 RHI 확장, §7.2·§7.3 두 백엔드의 쿼리), §8 AssetManager, §9 콘솔과 한글 폰트</li>
+        <li><a href="rendering-analysis.html#d16">D16</a> 반환 규약과 로그, <a href="rendering-analysis.html#d19">D19</a> 콘솔 서브시스템</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>Core/Log.h/.cpp</code>, <code>main.cpp</code>의 <code>wWinMain</code> 주석</li>
+        <li><code>Core/Profiler.h</code>(<code>ProfileScope</code>·<code>GpuProfileScope</code>) → <code>RHI/CommandList.h</code>의 <code>WriteTimestamp</code> → <code>D3D11Device</code>·<code>D3D12Device</code>의 <code>GetTimestampResults</code></li>
+        <li><code>Core/AssetManager.h/.cpp</code>, <code>App/DebugUI.cpp</code>(콘솔 창)</li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — 명령줄에서 실행하면 부모 콘솔에 로그가 붙고, 탐색기에서 실행하면 Debug만 콘솔이 열린다. Profiler 패널에서 CPU 구간과 GPU 구간이 계층으로 보이고 GPU 시간이 CPU 시간과 다르다. 같은 모델을 다시 로드하면 AssetManager 캐시 적중이 늘어난다.</div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="tag">S12</div>
+  <div>
+    <h4>에디터와 씬 직렬화 <span class="time">약 3시간</span></h4>
+    <div class="why">씬 뷰를 오프스크린 텍스처에 그리고(백엔드 둘 다 TYPELESS 색 텍스처), 클릭 선택(광선·AABB), ImGuizmo, Hierarchy·Inspector, JSON 저장/로드, 그리고 OS 입력 주입 없이 에디터 경로를 검증하는 실행 인자. 마지막 스텝이면서 앞의 모든 것을 한 화면에서 쓰는 곳입니다.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-11.html">phase-11</a> §3 씬 뷰(§3.1 TYPELESS, §3.2 타깃 선택과 배리어), §4 클릭 선택, §5 ImGuizmo, §7 씬 저장/로드, §8 자동 검증</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>App/Editor.h</code>(콜백 구조: 소유하지 않는다) → <code>Editor.cpp</code>의 <code>DrawSceneView</code>·<code>Pick</code>·<code>DrawGizmo</code>·<code>DrawInspector</code></li>
+        <li><code>Renderer::SetSceneTarget</code>과 <code>RenderMainPass</code>의 타깃 분기, <code>Graphics/Screenshot</code></li>
+        <li><code>Scene/SceneSerializer.cpp</code>와 <code>Assets/Scenes/floor_cube.json</code>을 나란히, <code>Scene.h</code>의 <code>MeshSource</code></li>
+        <li><code>TestApp.cpp</code>의 <code>ParseAutomation</code>·<code>RunAutomation</code></li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — 아래 한 줄로 창을 띄우지 않고 선택·이동·저장·스크린샷이 되면 에디터 경로 전체를 이해한 것입니다.
+      <pre style="margin:10px 0 0"><code>SherlockEngine.exe --backend=d3d12 --exit-after=30 --pick=0.5,0.5 --set-position=1,2,3 --save=out.json --dump-objects --screenshot=out.png</code></pre></div>
+  </div>
+</div>
+
+<h2 id="s7"><span class="num">7.</span>스텝 13: 되돌아보기</h2>
+<div class="stage">
+  <div class="tag">S13</div>
+  <div>
+    <h4>처음 문서를 끝에서 다시 <span class="time">약 3시간</span></h4>
+    <div class="why">S0에서 건너뛴 rendering-analysis의 나머지를 이제 읽습니다. 7월의 문제점 목록과 설계 결정 22개는, 지금 코드가 왜 그 모양인지에 대한 답이 전부 적힌 곳입니다. 코드를 다 본 뒤에 읽어야 "그래서 이렇게 됐구나"가 됩니다.</div>
+    <div class="cols">
+      <div><h5>읽을 문서</h5><ul>
+        <li>rendering-analysis <a href="rendering-analysis.html#s7">§7 발견된 문제점</a> → <a href="rendering-analysis.html#applied">적용 기록</a> → <a href="rendering-analysis.html#s8">§8 D1~D22</a> 통독 → <a href="rendering-analysis.html#s6">§6 리소스 수명</a></li>
+        <li><a href="rendering-analysis.html#s10">§10 부록</a> A(프레임당 D3D11 API 호출 전체 목록 — 옛 코드 기준이지만 파이프라인 감각에 좋음), B(좌표계와 행렬 규약), C(참고 자료)</li>
+        <li><code>logs/2026-07-*.md</code> — 처음 2주의 작업 로그. 소유 원칙("Device는 아무것도 소유하지 않는다")이 어디서 나왔는지</li>
+        <li><a href="rendering-analysis.html#p12">PHASE 12 고급 렌더링</a> 카드와 "가장 가까운 다음 목표" — 이 다음에 무엇이 오는지</li>
+      </ul></div>
+      <div><h5>다시 볼 소스</h5><ul>
+        <li><code>Graphics/Renderer.cpp</code>를 처음부터 끝까지, 이번엔 건너뛰지 않고</li>
+        <li>단계 문서 12편의 "함정과 해결" 절만 이어서 — 같은 종류의 함정(BOM, TYPELESS, 세대 카운터, ImGui 캡처)이 반복되는 것이 보입니다</li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — D1~D22 각각에 대해 "지금 코드의 어느 파일이 그 결정의 결과인가"를 한 줄씩 적을 수 있다. 예: D21 → <code>RHI/Handle.h</code>·<code>RHI/Device.h</code>, D2 → <code>ShaderConstants.h</code>, D4 → <code>Engine::Render</code>.</div>
+  </div>
+</div>
+
+<h2 id="s8"><span class="num">8.</span>실행하며 확인하기</h2>
+<p>모든 스텝의 확인 포인트는 실행 중인 앱에서 합니다. 단축키는 <code>TestApp.cpp</code>의 <code>OnUpdate</code>에 모여 있고, 실행 인자는 <code>TestApp.h</code>의 <code>Automation</code> 주석에 있습니다.</p>
+<div class="tbl"><table>
+  <thead><tr><th>키</th><th>동작</th><th>관련 스텝</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">F1 / F2</td><td>와이어프레임 / 뒷면 컬링 토글 (PSO 캐시 확인)</td><td>S3</td></tr>
+    <tr><td class="mono">F3</td><td>VSync 토글</td><td>S6 (flip 모델·tearing)</td></tr>
+    <tr><td class="mono">F4</td><td>셰이더 수동 리로드 (Debug는 자동 감시)</td><td>S5</td></tr>
+    <tr><td class="mono">F5</td><td>sRGB 출력 토글</td><td>S6</td></tr>
+    <tr><td class="mono">F6</td><td>샘플러 프리셋 덮어쓰기 순환 (−1 = 재질대로)</td><td>S6</td></tr>
+    <tr><td class="mono">F7</td><td>방향광 0 공전</td><td>S7</td></tr>
+    <tr><td class="mono">F8 / F9</td><td>그림자 / 노멀 매핑 토글</td><td>S7, S10</td></tr>
+    <tr><td class="mono">F10</td><td>애니메이션 고정 (백엔드 픽셀 비교용)</td><td>S8, S9</td></tr>
+    <tr><td class="mono">F11</td><td>씬 순환: 데모 → 헬멧 → Sponza</td><td>S10</td></tr>
+    <tr><td class="mono">F12</td><td>ImGui 콘솔 창 토글</td><td>S11</td></tr>
+    <tr><td class="mono">WASD · QE · 우클릭 드래그 · Shift</td><td>카메라 이동·회전·4배속</td><td>S2</td></tr>
+  </tbody>
+</table></div>
+<dl class="kv">
+  <dt>백엔드 전환</dt><dd><code>Assets/Config/engine.ini</code>의 <code>backend = d3d11 | d3d12</code>, 또는 실행 인자 <code>--backend=d3d12</code></dd>
+  <dt>시작 씬</dt><dd><code>scene = demo | helmet | sponza</code>, 또는 <code>--scene=</code></dd>
+  <dt>로그</dt><dd><code>[log]</code>의 <code>level</code>·<code>file</code>·<code>console</code>. 파일은 exe 기준 <code>Logs\SherlockEngine.log</code></dd>
+  <dt>Debug Layer</dt><dd>Debug 빌드에서 켜짐. 종료 시 Live Object 보고가 0인지, 실행 중 경고가 없는지가 대부분의 스텝의 합격 기준</dd>
+  <dt>스크린샷</dt><dd><code>--screenshot=path</code> (Device 리드백이라 창이 가려져 있어도 정확). 문서의 스크린샷과 나란히 비교</dd>
+</dl>
+
+<h2 id="s9"><span class="num">9.</span>시간별 코스</h2>
+<h3>하루 코스 (약 8시간): 구조만 잡기</h3>
+<ol>
+  <li>S0 → S1을 그대로 (4시간). 프레임 루프와 소유 관계가 목표.</li>
+  <li>S3에서 <code>RHI/Handle.h</code>·<code>RHI/Device.h</code>·<code>RHI/CommandList.h</code> 세 헤더만 (1시간).</li>
+  <li>S4·S7에서 <code>Renderer.h</code> 헤더 주석과 <code>Renderer::Render</code>·<code>RenderMainPass</code>만 (2시간).</li>
+  <li>S8의 phase-7 §2 폴더 트리와 grep 검사 (30분). 나머지 스텝은 단계 문서의 "한 줄 요약"만 12개 읽고 마침 (30분).</li>
+</ol>
+<h3>2주 코스: 정독</h3>
+<p>1절 표의 시간 합계가 약 39시간이므로 하루 3시간이면 13일입니다. 하루에 스텝 하나가 기준이고, S9(D3D12)만 이틀을 줍니다. 각 스텝의 확인 포인트를 통과하기 전에는 다음 스텝으로 넘어가지 않는 것이 규칙입니다. 확인이 안 되면 그 단계 문서의 "함정과 해결" 절로 돌아가세요.</p>
+<h3>D3D12를 모르는 경우</h3>
+<p>S9 전에 phase-8 §2와 rendering-analysis §9의 개념 대응표를 먼저 읽고, 문서의 참고 문헌(Microsoft의 "D3D12 for D3D11 programmers" 계열)을 하루 곁들이면 됩니다. 이 프로젝트는 D3D12의 개념(PSO·루트 시그니처·디스크립터 테이블·배리어·펜스)을 1~6단계에서 D3D11 위에 미리 그려 두었으므로, S3~S7을 충실히 지나왔다면 낯선 것은 API 이름뿐입니다.</p>
+<h3>이미 D3D11을 잘 아는 경우</h3>
+<p>S2·S6은 문서의 1절 요약과 확인 포인트만 하고 지나가도 됩니다. 대신 S3의 D21·D22, S5의 §2(루트 시그니처를 D3D11에 미리 그리기), S7의 Barrier 설계, S8·S9 전체에 시간을 몰아 주세요. 이 프로젝트의 고유한 부분이 거기 있습니다.</p>
+
+<div class="footer">
+  SherlockEngine 읽기 가이드 · 2026/09/23 15:05 · 문서 기준: rendering-analysis.html과 phase-0 ~ phase-11 (11단계 완료 시점) · 소스 기준: 커밋 2884fff 작업 트리
+</div>
+</main>
+</div>
+</body>
+</html>
