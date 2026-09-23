@@ -22,6 +22,9 @@ public:
 		std::function<void(int)> switchScene;                  // 0 데모, 1 헬멧, 2 Sponza
 		std::function<bool(const std::wstring&)> saveScene;
 		std::function<bool(const std::wstring&)> loadScene;
+		std::function<void()> newScene;                       // 바닥만 있는 새 씬
+		std::function<void(int)> addPrimitive;                 // 0 구, 1 큐브, 2 원기둥, 3 평면 — 원점 위에 기본 재질로
+		std::function<void(int)> deleteObject;                 // 오브젝트 인덱스
 	};
 
 	Editor();
@@ -50,7 +53,7 @@ private:
 	void DrawMenuBar(Engine& engine, const Callbacks& callbacks);
 	void BuildDefaultLayout(uint32_t dockspaceId);
 	void DrawSceneView(Engine& engine);
-	void DrawHierarchy(Engine& engine);
+	void DrawHierarchy(Engine& engine, const Callbacks& callbacks);
 	void DrawInspector(Engine& engine);
 	void DrawRenderSettings(Engine& engine);
 	void DrawStats(Engine& engine, const char* sceneName, const ModelStats& modelStats);

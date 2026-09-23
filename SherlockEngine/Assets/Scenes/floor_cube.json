@@ -1,0 +1,188 @@
+{
+  "ambientColor": [
+    0.15000000596046448,
+    0.15000000596046448,
+    0.15000000596046448
+  ],
+  "camera": {
+    "pitch": 0.39812877774238586,
+    "position": [
+      18.0,
+      16.0,
+      -28.0
+    ],
+    "yaw": -0.5713375210762024
+  },
+  "clearColor": [
+    0.10000000149011612,
+    0.10000000149011612,
+    0.30000001192092896,
+    1.0
+  ],
+  "lights": [
+    {
+      "attenuation": [
+        1.0,
+        0.04500000178813934,
+        0.007499999832361937
+      ],
+      "color": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "direction": [
+        0.0,
+        -0.4472135901451111,
+        0.8944271802902222
+      ],
+      "innerConeCos": 0.9238795042037964,
+      "intensity": 1.0,
+      "outerConeCos": 0.8660253882408142,
+      "position": [
+        0.0,
+        10.0,
+        -10.0
+      ],
+      "range": 50.0,
+      "type": 0
+    }
+  ],
+  "materials": [
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "builtin:checker",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.949999988079071,
+        1.0
+      ],
+      "doubleSided": false,
+      "name": "Floor",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "sampler": 2,
+      "shininess": 8.0,
+      "specularColor": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224
+      ],
+      "unlit": false,
+      "uvScale": [
+        8.0,
+        8.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.75,
+        0.75,
+        0.800000011920929,
+        1.0
+      ],
+      "doubleSided": false,
+      "name": "Default",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "sampler": 0,
+      "shininess": 32.0,
+      "specularColor": [
+        0.30000001192092896,
+        0.30000001192092896,
+        0.30000001192092896
+      ],
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    }
+  ],
+  "meshes": [
+    {
+      "a": 21,
+      "b": 21,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        40.0,
+        40.0,
+        0.0,
+        0.0
+      ],
+      "type": "plane"
+    },
+    {
+      "a": 0,
+      "b": 0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        3.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "type": "cube"
+    }
+  ],
+  "objects": [
+    {
+      "material": 0,
+      "mesh": 0,
+      "name": "Floor",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "material": 1,
+      "mesh": 1,
+      "name": "Cube 1",
+      "position": [
+        0.0,
+        1.5,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  ],
+  "version": 1
+}

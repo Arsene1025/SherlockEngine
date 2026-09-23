@@ -29,4 +29,8 @@ namespace Paths
 	// exe\Assets\<relative> (예: L"Textures\\uv_checker.png"). 빌드가 Assets\ 를 exe 옆으로 복사한다.
 	// 없으면 소스 트리의 Assets\ 로 폴백.
 	std::wstring GetAssetPath(const wchar_t* relative);
+
+	// 11단계: 씬 파일 폴더. 소스 트리(SherlockEngineAssetsScenes)가 있으면 거기 — 저장한 씬이 저장소에 남는다.
+	// 소스 트리가 없으면(배포 환경) exeScenes. 끝에 백슬래시가 붙는다. 폴더는 없으면 만든다.
+	std::wstring GetSceneDir();
 }

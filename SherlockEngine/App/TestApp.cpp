@@ -26,6 +26,9 @@ bool TestApp::OnInitialize()
 	m_editorCallbacks.switchScene = [this](int mode) { LoadSceneMode(static_cast<SceneMode>(mode)); };
 	m_editorCallbacks.saveScene = [this](const std::wstring& path) { return SaveSceneFile(path); };
 	m_editorCallbacks.loadScene = [this](const std::wstring& path) { return LoadSceneFile(path); };
+	m_editorCallbacks.newScene = [this]() { BuildEmptyScene(); };
+	m_editorCallbacks.addPrimitive = [this](int type) { AddPrimitive(type); };
+	m_editorCallbacks.deleteObject = [this](int index) { DeleteObject(index); };
 
 	SceneMode mode = SceneMode::Demo;
 	const std::string option = GetConfig().GetString("engine.scene", "demo");
@@ -33,7 +36,7 @@ bool TestApp::OnInitialize()
 	{
 		// 11단계: 저장한 씬 파일. 실패하면 데모 씬.
 		std::wstring path(option.begin(), option.end());
-		if (path.find(L':') == std::wstring::npos && path.find(L'\\') != 0) path = Paths::GetExecutableDir() + path;
+		if (path.find(L':') == std::wstring::npos && path[0] != L'\\') path = Paths::GetSceneDir() + path;   // 상대 경로는 씬 폴더 기준
 		m_editor.scenePath = path;
 		if (LoadSceneFile(path)) return true;
 	}
@@ -361,6 +364,7 @@ void TestApp::OnUpdate(float dt)
 
 	// ---- 애니메이션 (데모 씬만). 전부 dt 또는 누적 시간에 비례하므로 프레임 속도와 무관하다. ----
 	if (m_sceneMode != SceneMode::Demo) return;
+	if (m_pulseSphere >= scene.GetObjects().size() || m_spinCylinder >= scene.GetObjects().size()) return;   // 오브젝트를 지웠으면 애니메이션도 멈춘다
 	std::vector<GameObject>& objects = scene.GetObjects();
 	const float t = m_freeze ? 0.0f : totalTime;
 
@@ -512,13 +516,15 @@ void TestApp::ParseAutomation()
 	auto resolve = [](const std::wstring& path) -> std::wstring
 	{
 		if (path.empty() || path.find(L':') != std::wstring::npos || path[0] == L'\\') return path;
-		return Paths::GetExecutableDir() + path;
+		return Paths::GetSceneDir() + path;   // 상대 경로는 씬 폴더 기준
 	};
 	m_auto.savePath = resolve(GetCommandLineOption(L"save"));
 	m_auto.loadPath = resolve(GetCommandLineOption(L"load"));
 	m_auto.screenshotPath = resolve(GetCommandLineOption(L"screenshot"));
 	m_auto.dumpObjects = !GetCommandLineOption(L"dump-objects").empty();
 	m_auto.debugView = _wtoi(GetCommandLineOption(L"debug-view").c_str());
+	m_auto.newScene = !GetCommandLineOption(L"new-scene").empty();
+	m_auto.addPrimitive = GetCommandLineOption(L"add").empty() ? -1 : _wtoi(GetCommandLineOption(L"add").c_str());
 	Log::Info("자동 검증: exit-after %llu, pick %d, set-position %d, save '%s', load '%s', screenshot '%s', dump %d",
 		m_auto.exitAfter, m_auto.pick ? 1 : 0, m_auto.setPosition ? 1 : 0, Log::ToUtf8(m_auto.savePath.c_str()).c_str(),
 		Log::ToUtf8(m_auto.loadPath.c_str()).c_str(), Log::ToUtf8(m_auto.screenshotPath.c_str()).c_str(), m_auto.dumpObjects ? 1 : 0);
@@ -531,6 +537,8 @@ void TestApp::RunAutomation()
 	const uint64_t frame = engine.GetTime().GetFrameCount();
 
 	if (frame == 2 && m_auto.debugView != 0) engine.GetRenderer().GetSettings().debugView = m_auto.debugView;
+	if (frame == 3 && m_auto.newScene) BuildEmptyScene();
+	if (frame == 4 && m_auto.addPrimitive >= 0) { AddPrimitive(m_auto.addPrimitive); m_editor.SetSelectedObject(static_cast<int>(scene.GetObjects().size()) - 1); }
 	if (frame == 5 && m_auto.pick)
 	{
 		const int picked = m_editor.PickAt(scene, engine.GetCamera(), m_auto.pickU, m_auto.pickV);
@@ -564,4 +572,88 @@ void TestApp::RunAutomation()
 		Log::Info("자동 검증: %llu 프레임 뒤 종료", frame);
 		PostQuitMessage(0);
 	}
+}
+
+// ------------------------------------------------------------------ 11단계: 새 씬 · 오브젝트 추가/삭제
+
+void TestApp::BuildEmptyScene()
+{
+	Engine& engine = GetEngine();
+	Scene& scene = engine.GetScene();
+	engine.GetRenderer().InvalidateScene(scene, true);
+	m_editor.ClearSelection();
+	scene.Clear();
+	m_sceneMode = SceneMode::File;
+	m_modelStats = ModelStats{};
+
+	// 바닥 하나, 방향광 하나. 나머지는 Hierarchy 의 + 버튼으로.
+	const XMFLOAT4 white(1.0f, 1.0f, 1.0f, 1.0f);
+	Mesh* floor = scene.AddMesh(Mesh::CreatePlane(40.0f, 40.0f, 21, 21, white), MeshSource::Plane(40.0f, 40.0f, 21, 21, white));
+	Material floorMat;
+	floorMat.name = "Floor";
+	floorMat.baseColor = XMFLOAT4(0.9f, 0.9f, 0.95f, 1.0f);
+	floorMat.specularColor = XMFLOAT3(0.2f, 0.2f, 0.2f);
+	floorMat.shininess = 8.0f;
+	floorMat.albedoTexture = "builtin:checker";
+	floorMat.uvScale = XMFLOAT2(8.0f, 8.0f);
+	floorMat.sampler = SamplerPreset::AnisotropicWrap;
+	scene.AddObject(floor, scene.AddMaterial(floorMat), "Floor");
+	scene.GetLights().push_back(LightData{});
+	scene.ambientColor = XMFLOAT3(0.15f, 0.15f, 0.15f);
+	scene.clearColor[0] = 0.1f; scene.clearColor[1] = 0.1f; scene.clearColor[2] = 0.3f; scene.clearColor[3] = 1.0f;
+
+	RenderSettings& settings = engine.GetRenderer().GetSettings();
+	settings.shadowOrthoSize = 60.0f;
+	settings.shadowDistance = 40.0f;
+	settings.shadowBias = 0.0015f;
+	engine.GetCamera().SetLookAt(XMFLOAT3(18.0f, 16.0f, -28.0f), XMFLOAT3(0.0f, 2.0f, 0.0f));
+	m_moveSpeed = 10.0f;
+	Log::Info("씬 전환: New (바닥 1, 방향광 1)");
+}
+
+void TestApp::AddPrimitive(int type)
+{
+	Scene& scene = GetEngine().GetScene();
+	const XMFLOAT4 white(1.0f, 1.0f, 1.0f, 1.0f);
+	Mesh* mesh = nullptr;
+	const char* name = "Object";
+	float y = 0.0f;
+	switch (type)
+	{
+	case 0: mesh = scene.AddMesh(Mesh::CreateSphere(1.5f, 32, 16, white), MeshSource::Sphere(1.5f, 32, 16, white)); name = "Sphere"; y = 1.5f; break;
+	case 1: mesh = scene.AddMesh(Mesh::CreateCube(3.0f, white), MeshSource::Cube(3.0f, white)); name = "Cube"; y = 1.5f; break;
+	case 2: mesh = scene.AddMesh(Mesh::CreateCylinder(1.5f, 1.0f, 4.0f, 24, 4, white), MeshSource::Cylinder(1.5f, 1.0f, 4.0f, 24, 4, white)); name = "Cylinder"; y = 2.0f; break;
+	default: mesh = scene.AddMesh(Mesh::CreatePlane(10.0f, 10.0f, 2, 2, white), MeshSource::Plane(10.0f, 10.0f, 2, 2, white)); name = "Plane"; y = 0.01f; break;
+	}
+
+	// 기본 재질: 씬에 "Default" 가 있으면 재사용, 없으면 하나 만든다.
+	const Material* material = nullptr;
+	for (const auto& m : scene.GetMaterials()) if (m->name == "Default") material = m.get();
+	if (material == nullptr)
+	{
+		Material defaultMat;
+		defaultMat.name = "Default";
+		defaultMat.baseColor = XMFLOAT4(0.75f, 0.75f, 0.8f, 1.0f);
+		defaultMat.specularColor = XMFLOAT3(0.3f, 0.3f, 0.3f);
+		defaultMat.shininess = 32.0f;
+		material = scene.AddMaterial(defaultMat);
+	}
+
+	// 이름은 "Sphere 1", "Sphere 2" ... 처럼 번호를 붙인다.
+	int count = 1;
+	for (const GameObject& object : scene.GetObjects()) if (object.GetName().rfind(name, 0) == 0) ++count;
+	const std::string uniqueName = std::string(name) + " " + std::to_string(count);
+	scene.AddObject(mesh, material, uniqueName.c_str()).GetTransform().SetPosition(0.0f, y, 0.0f);
+	if (m_sceneMode == SceneMode::Demo) m_sceneMode = SceneMode::File;   // 데모 애니메이션 인덱스와 어긋나지 않게
+	Log::Info("오브젝트 추가: %s", uniqueName.c_str());
+}
+
+void TestApp::DeleteObject(int index)
+{
+	Scene& scene = GetEngine().GetScene();
+	std::vector<GameObject>& objects = scene.GetObjects();
+	if (index < 0 || index >= static_cast<int>(objects.size())) return;
+	Log::Info("오브젝트 삭제: %s", objects[index].GetName().c_str());
+	objects.erase(objects.begin() + index);   // 메시·재질은 씬이 계속 소유한다 (다른 오브젝트가 쓸 수 있다)
+	if (m_sceneMode == SceneMode::Demo) m_sceneMode = SceneMode::File;
 }

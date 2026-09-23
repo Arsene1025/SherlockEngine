@@ -33,6 +33,9 @@ private:
     bool BuildModelScene(SceneMode mode);
     bool SaveSceneFile(const std::wstring& path);   // 11단계
     bool LoadSceneFile(const std::wstring& path);
+    void BuildEmptyScene();          // 바닥만 있는 새 씬 (File 모드)
+    void AddPrimitive(int type);     // 0 구, 1 큐브, 2 원기둥, 3 평면
+    void DeleteObject(int index);
     const char* GetSceneName() const;
 
     // WASD/QE 이동 + 우클릭 드래그 회전. ImGui가 입력을 쓰는 동안은 무시한다.
@@ -62,6 +65,8 @@ private:
         std::wstring savePath, loadPath, screenshotPath;
         bool dumpObjects = false;
         int debugView = 0;          // --debug-view=N (2 프레임째 Render Settings 의 디버그 뷰)
+        bool newScene = false;      // --new-scene=1 (3 프레임째 바닥만 있는 새 씬)
+        int addPrimitive = -1;      // --add=0..3 (4 프레임째 오브젝트 추가)
     } m_auto;
     void ParseAutomation();
     void RunAutomation();

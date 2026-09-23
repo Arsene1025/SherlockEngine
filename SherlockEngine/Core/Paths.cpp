@@ -104,3 +104,12 @@ std::wstring Paths::GetShaderSourcePath(const wchar_t* fileName)
 	}
 	return GetExecutableDir() + L"Shaders\\" + fileName;
 }
+
+std::wstring Paths::GetSceneDir()
+{
+	const std::wstring marker = Canonicalize(GetExecutableDir() + L"..\\..\\SherlockEngine\\Assets\\Config\\engine.ini");
+	std::wstring dir = FileExists(marker) ? Canonicalize(GetExecutableDir() + L"..\\..\\SherlockEngine\\Assets\\Scenes") : GetExecutableDir() + L"Scenes";
+	if (dir.empty() || dir.back() != L'\\') dir += L'\\';
+	CreateDirectoryW(dir.c_str(), nullptr);
+	return dir;
+}
