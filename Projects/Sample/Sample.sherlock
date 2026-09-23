@@ -1,0 +1,6 @@
+{
+  "name": "Sample",
+  "startScene": "demo_components.json",
+  "engineRoot": "",
+  "format": 1
+}

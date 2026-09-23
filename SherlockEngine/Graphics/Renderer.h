@@ -96,6 +96,12 @@ public:
 	uint32_t GetSceneWidth() const { return m_sceneWidth; }
 	uint32_t GetSceneHeight() const { return m_sceneHeight; }
 
+	// 11-C단계: 카메라 미리보기. 에디터가 선택한 카메라 오브젝트의 시점으로 메인 패스를 한 번 더 (같은 그림자 맵, 같은 드로우 목록)
+	// 작은 텍스처에 그린다. 카메라 포인터는 Render 가 끝날 때까지 유효해야 한다. nullptr 또는 0×0 이면 그리지 않는다.
+	void SetPreviewTarget(uint32_t width, uint32_t height);
+	void SetPreviewCamera(const Camera* camera) { m_previewCamera = camera; }
+	TextureHandle GetPreviewTexture() const { return m_previewColor; }
+
 	// 메시/재질이 파괴되거나 내용이 바뀌면 캐시 항목을 버린다.
 	void InvalidateMesh(const Mesh* mesh);
 	void InvalidateMaterial(const Material* material);
@@ -143,8 +149,11 @@ private:
 	bool CreateShadowResources();
 
 	void BuildDrawList(const Scene& scene);
+	void UploadPerFrameConstants(const Camera& camera, float totalTime);   // b0: view/proj 는 이 카메라, 나머지는 프레임 값
 	void RenderShadowPass(RHI::CommandList& cmd);
 	void RenderMainPass(RHI::CommandList& cmd, const Scene& scene);
+	void RenderPreviewPass(RHI::CommandList& cmd, const Scene& scene);    // 11-C단계
+	void DrawItems(RHI::CommandList& cmd, const Scene& scene);            // 메인/미리보기 패스 공통 드로우 루프
 	void UploadObjectConstants(const GameObject& object);
 	DirectX::XMMATRIX ComputeLightViewProj(const LightData& light) const;
 
@@ -200,6 +209,13 @@ private:
 	uint32_t m_sceneWidth = 0;
 	uint32_t m_sceneHeight = 0;
 	ResourceState m_sceneColorState = ResourceState::Common;
+	// 11-C단계: 카메라 미리보기 타깃
+	TextureHandle m_previewColor;
+	TextureHandle m_previewDepth;
+	uint32_t m_previewWidth = 0;
+	uint32_t m_previewHeight = 0;
+	ResourceState m_previewColorState = ResourceState::Common;
+	const Camera* m_previewCamera = nullptr;
 	bool m_shadowEnabledThisFrame = false;
 	DirectX::XMFLOAT4X4 m_lightViewProj;
 

@@ -34,8 +34,25 @@ private:
     bool SaveSceneFile(const std::wstring& path);   // 11단계
     bool LoadSceneFile(const std::wstring& path);
     void BuildEmptyScene();          // 바닥만 있는 새 씬 (File 모드)
-    void AddPrimitive(int type);     // 0 구, 1 큐브, 2 원기둥, 3 평면
+    void AddPrimitive(int type);     // 0 구, 1 큐브, 2 원기둥, 3 평면, 4 카메라 오브젝트 (11-C)
+    GameObject& AddCameraObject(const char* name);   // 11-C: 메시 없는 오브젝트 + CameraComponent, 현재 에디터 시점에
     void DeleteObject(int index);
+    // 11-B단계: 콘텐츠 브라우저 드롭. 모델(Assets 상대 경로)을 position 에 놓는다 — 바닥면이 position.y 에 닿게.
+    void PlaceModel(const std::wstring& relativePath, const DirectX::XMFLOAT3& position);
+
+    // 11-C단계: 재생 (에디터의 ▶). Play 는 씬+카메라를 JSON 문자열로 스냅샷하고 Scene::BeginPlay, Stop 은 스냅샷을 되돌린다.
+    enum class PlayState : uint8_t { Editing, Playing, Paused };
+    void StartPlay();
+    void StopPlay();
+    void TogglePause();
+    void StepFrame();   // Paused 에서 고정 스텝 한 번
+
+    // 11-E단계: 프로젝트
+    bool OpenProjectAndScene(const std::wstring& pathOrDir);            // AppBase::OpenProject + 에디터 갱신 + 시작 씬 로드 + 최근 목록
+    bool CreateProject(const std::wstring& parentDir, const std::string& name, std::string& error);   // 폴더·스크립트 예제·솔루션·Main.json
+    void BuildAndLaunchProjectEditor();                                  // MSBuild <Name>Editor → 실행 → 종료
+    void SyncProjectInfo();                                              // Editor::project 채우기 + 창 제목
+    const wchar_t* GetWindowTitle() const override { return L"SherlockEditor"; }
     const char* GetSceneName() const;
 
     // WASD/QE 이동 + 우클릭 드래그 회전. ImGui가 입력을 쓰는 동안은 무시한다.
@@ -56,6 +73,15 @@ private:
     //   --save=path           12 프레임째 씬 저장,   --load=path  16 프레임째 씬 로드
     //   --dump-objects        20 프레임째 오브젝트 이름·위치를 로그로
     //   --screenshot=path     N−1 프레임째 백버퍼 PNG
+    // 11-B단계:
+    //   --browse=relDir       2 프레임째 콘텐츠 브라우저 폴더 이동 (스크린샷용)
+    //   --drop=rel;x,y,z      6 프레임째 PlaceModel — 씬 뷰 드롭과 같은 코드 경로
+    //   --drop-uv=u,v         --drop 의 위치 대신 씬 뷰 (u,v) 광선의 히트점 (Editor::RaycastScene)
+    //   --drop-texture=rel    7 프레임째 선택 오브젝트 재질의 알베도 ← 텍스처 에셋 (드롭과 같은 이름 규칙)
+    // 11-C단계:
+    //   --play=1              9 프레임째 StartPlay (▶ 와 같은 경로)
+    //   --stop-at=N           N 프레임째 StopPlay (스냅샷 복원)
+    //   --add-component=Name  10 프레임째 선택 오브젝트에 컴포넌트 추가 (Inspector 의 Add Component 와 같은 경로)
     struct Automation
     {
         bool active = false;
@@ -67,22 +93,30 @@ private:
         int debugView = 0;          // --debug-view=N (2 프레임째 Render Settings 의 디버그 뷰)
         bool newScene = false;      // --new-scene=1 (3 프레임째 바닥만 있는 새 씬)
         int addPrimitive = -1;      // --add=0..3 (4 프레임째 오브젝트 추가)
+        std::wstring browseDir;     // 11-B단계
+        std::wstring dropPath; DirectX::XMFLOAT3 dropPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+        bool dropUv = false; float dropU = 0.5f, dropV = 0.5f;
+        std::wstring dropTexture;
+        bool play = false; uint64_t stopAt = 0; std::string addComponent;   // 11-C단계
+        std::string newScript;      // --new-script=Name (2 프레임째 ScriptCreator::Create — Inspector 의 New Script 와 같은 경로, 열지는 않는다)
+        std::string buildGame;      // --build-game=Name (3 프레임째 GameBuilder::Build — 에셋 전부, 폴더 열지 않음, 시작 씬 = --build-scene 또는 프로젝트 시작 씬)
+        std::string buildScene;
+        std::string newProject;     // --new-project=Name (2 프레임째 CreateProject in <repo>\Projects\, 11-E)
+        bool buildProject = false;  // --build-project=1 (4 프레임째 프로젝트 솔루션의 에디터 타깃을 MSBuild — 실행하지는 않는다)
+        bool launcher = false;      // --launcher=1 (2 프레임째 File > Projects 런처 팝업을 연다 — 문서 스크린샷용)
     } m_auto;
     void ParseAutomation();
     void RunAutomation();
 
-    // 애니메이션 대상. Scene의 오브젝트 벡터는 BuildScene 이후 크기가 바뀌지 않으므로 인덱스로 든다.
-    size_t m_orbitSphere = 0;
-    size_t m_bobCube = 0;
-    size_t m_spinCylinder = 0;
-    size_t m_pulseSphere = 0;
+    // 11-C단계: 데모 씬의 애니메이션은 Game/ 의 컴포넌트(Orbit·Bob·Spin·Pulse)가 됐고 재생 중에만 돈다.
+    PlayState m_playState = PlayState::Editing;
+    std::string m_playSnapshot;   // 재생 전 씬 JSON (SceneSerializer::SaveToString)
+    float m_timeScale = 1.0f;
+    bool m_stepOnce = false;
 
     // 6단계: F7 로 방향광 0 을 Y축 둘레로 돌린다.
     bool m_lightOrbit = false;
     float m_lightAngle = 0.0f;
-
-    // 7단계: F10 으로 애니메이션을 t = 0 에 고정한다 (픽셀 비교용 결정적 상태).
-    bool m_freeze = false;
 
     // 10단계: 고정 스텝 검증용 카운터 (패널에 표시). OnFixedUpdate 호출 수 / 누적 시간.
     uint32_t m_fixedUpdates = 0;

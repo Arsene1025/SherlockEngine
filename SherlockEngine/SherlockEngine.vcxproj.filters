@@ -1,34 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- 필터는 디스크의 폴더 구조를 그대로 따른다.
-       Graphics\D3D11 아래에만 d3d11.h를 include하는 파일을 둔다. -->
+  <!-- 필터는 디스크의 폴더 구조를 그대로 따른다 (파일을 옮기면 여기도 같이). 새 스크립트는 에디터의 New Script 가 등록한다. -->
   <ItemGroup>
     <Filter Include="App">
       <UniqueIdentifier>{b2224a2d-cafe-4ec6-b566-4de7f50daf89}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Core">
-      <UniqueIdentifier>{c41fe42a-6770-4776-99aa-e77269ca6a38}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Graphics">
-      <UniqueIdentifier>{0aa83911-1fa1-4769-84ef-01536c8bcac6}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="RHI">
-      <UniqueIdentifier>{7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="RHI\D3D12">
-      <UniqueIdentifier>{8d2e3f4a-5b6c-4d7e-9f0a-1b2c3d4e5f60}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="RHI\DXBC">
-      <UniqueIdentifier>{9e3f4a5b-6c7d-4e8f-a0b1-2c3d4e5f6071}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="RHI\D3D11">
-      <UniqueIdentifier>{2a2d55da-b0f0-49dd-8caf-c07178982f89}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Scene">
-      <UniqueIdentifier>{0daac1b8-d7a9-4d5b-b83d-1789184214c2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Shaders">
-      <UniqueIdentifier>{72c939d5-1f84-4d43-af2b-3ac097b37210}</UniqueIdentifier>
     </Filter>
     <Filter Include="Assets">
       <UniqueIdentifier>{5a1c2b3d-4e5f-4a6b-9c7d-8e9f0a1b2c3d}</UniqueIdentifier>
@@ -36,26 +11,55 @@
     <Filter Include="Assets\Config">
       <UniqueIdentifier>{a1e5c2d0-0c11-4b3e-9a6f-1a2b3c4d5e01}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Assets\Scenes">
-      <UniqueIdentifier>{a1e5c2d0-0c11-4b3e-9a6f-1a2b3c4d5e02}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Assets\Models">
       <UniqueIdentifier>{a1e5c2d0-0c11-4b3e-9a6f-1a2b3c4d5e03}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Assets\Models\DamagedHelmet">
+      <UniqueIdentifier>{b33b7434-fb91-4563-a0c2-792242add4dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets\Models\Sponza">
+      <UniqueIdentifier>{06cbff44-88df-4ff0-bc86-103005c0c68b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets\Textures">
+      <UniqueIdentifier>{1d3f5ef4-4bf0-4701-a8f3-18c042006f6a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core">
+      <UniqueIdentifier>{c41fe42a-6770-4776-99aa-e77269ca6a38}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game">
+      <UniqueIdentifier>{7c2e5d8a-4b1f-4e1e-9c3a-11c0ffee0b0c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Game\Components">
+      <UniqueIdentifier>{7c2e5d8a-4b1f-4e1e-9c3a-11c0ffee0b0d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics">
+      <UniqueIdentifier>{0aa83911-1fa1-4769-84ef-01536c8bcac6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RHI">
+      <UniqueIdentifier>{7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RHI\D3D11">
+      <UniqueIdentifier>{2a2d55da-b0f0-49dd-8caf-c07178982f89}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RHI\D3D12">
+      <UniqueIdentifier>{8d2e3f4a-5b6c-4d7e-9f0a-1b2c3d4e5f60}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RHI\DXBC">
+      <UniqueIdentifier>{9e3f4a5b-6c7d-4e8f-a0b1-2c3d4e5f6071}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Scene">
+      <UniqueIdentifier>{0daac1b8-d7a9-4d5b-b83d-1789184214c2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{72c939d5-1f84-4d43-af2b-3ac097b37210}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="App\AppBase.cpp">
       <Filter>App</Filter>
     </ClCompile>
-    <ClCompile Include="App\DebugUI.cpp">
-      <Filter>App</Filter>
-    </ClCompile>
-    <ClCompile Include="App\Editor.cpp">
-      <Filter>App</Filter>
-    </ClCompile>
-    <ClCompile Include="App\TestApp.cpp">
+    <ClCompile Include="App\GameApp.cpp">
       <Filter>App</Filter>
     </ClCompile>
     <ClCompile Include="Core\GameTimer.cpp">
@@ -68,6 +72,9 @@
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="Core\Paths.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Project.cpp">
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="Core\Config.cpp">
@@ -124,10 +131,10 @@
     <ClCompile Include="Graphics\Screenshot.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\RHI.cpp">
+    <ClCompile Include="RHI\PipelineTypes.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
-    <ClCompile Include="RHI\PipelineTypes.cpp">
+    <ClCompile Include="RHI\RHI.cpp">
       <Filter>RHI</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\Renderer.cpp">
@@ -145,6 +152,21 @@
     <ClCompile Include="Scene\Scene.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Scene\Behaviour.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\CameraComponent.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Script.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Components\Rigidbody.cpp">
+      <Filter>Game\Components</Filter>
+    </ClCompile>
+    <ClCompile Include="Game\Components\FollowTarget.cpp">
+      <Filter>Game\Components</Filter>
+    </ClCompile>
     <ClCompile Include="Scene\SceneSerializer.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
@@ -157,13 +179,7 @@
     <ClInclude Include="App\AppBase.h">
       <Filter>App</Filter>
     </ClInclude>
-    <ClInclude Include="App\DebugUI.h">
-      <Filter>App</Filter>
-    </ClInclude>
-    <ClInclude Include="App\Editor.h">
-      <Filter>App</Filter>
-    </ClInclude>
-    <ClInclude Include="App\TestApp.h">
+    <ClInclude Include="App\GameApp.h">
       <Filter>App</Filter>
     </ClInclude>
     <ClInclude Include="Core\GameTimer.h">
@@ -176,6 +192,9 @@
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="Core\Paths.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Project.h">
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="Core\Config.h">
@@ -247,6 +266,9 @@
     <ClInclude Include="RHI\GraphicsConfig.h">
       <Filter>RHI</Filter>
     </ClInclude>
+    <ClInclude Include="RHI\Handle.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
     <ClInclude Include="RHI\Device.h">
       <Filter>RHI</Filter>
     </ClInclude>
@@ -254,9 +276,6 @@
       <Filter>RHI</Filter>
     </ClInclude>
     <ClInclude Include="RHI\RHI.h">
-      <Filter>RHI</Filter>
-    </ClInclude>
-    <ClInclude Include="RHI\Handle.h">
       <Filter>RHI</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Mesh.h">
@@ -304,6 +323,18 @@
     <ClInclude Include="Scene\Scene.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\Behaviour.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\CameraComponent.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Script.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Game\Components\Rigidbody.h">
+      <Filter>Game\Components</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\SceneSerializer.h">
       <Filter>Scene</Filter>
     </ClInclude>
@@ -321,26 +352,25 @@
     <FxCompile Include="Shaders\ShadowVertexShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
     <None Include="Shaders\Common.hlsli">
       <Filter>Shaders</Filter>
     </None>
     <None Include="Assets\Textures\uv_checker.png">
-      <Filter>Assets</Filter>
+      <Filter>Assets\Textures</Filter>
     </None>
     <None Include="Assets\Textures\bumps_normal.png">
-      <Filter>Assets</Filter>
+      <Filter>Assets\Textures</Filter>
     </None>
     <None Include="Assets\Config\engine.ini">
       <Filter>Assets\Config</Filter>
     </None>
-    <None Include="Assets\Scenes\floor_cube.json">
-      <Filter>Assets\Scenes</Filter>
-    </None>
     <None Include="Assets\Models\DamagedHelmet\DamagedHelmet.glb">
-      <Filter>Assets\Models</Filter>
+      <Filter>Assets\Models\DamagedHelmet</Filter>
     </None>
     <None Include="Assets\Models\Sponza\Sponza.gltf">
-      <Filter>Assets\Models</Filter>
+      <Filter>Assets\Models\Sponza</Filter>
     </None>
   </ItemGroup>
 </Project>

@@ -1,9 +1,23 @@
 ﻿#include "pch.h"
 #include "Scene/Scene.h"
+#include "Scene/Camera.h"
+#include "Core/Log.h"
 #include "Graphics/Mesh.h"   // unique_ptr<Mesh> 소멸에 완전한 타입 필요
 #include "Graphics/Model.h"
+#include <algorithm>
+#include <cmath>
 
 using namespace DirectX;   // 이 파일 안에서만
+
+namespace
+{
+	float WrapAngle(float a)
+	{
+		while (a > XM_PI) a -= XM_2PI;
+		while (a < -XM_PI) a += XM_2PI;
+		return a;
+	}
+}
 
 Scene::Scene()
 {
@@ -83,8 +97,135 @@ Material* Scene::AddMaterial(const Material& material)
 
 GameObject& Scene::AddObject(const Mesh* mesh, const Material* material, const char* name)
 {
-	m_objects.emplace_back(mesh, material, name);
-	return m_objects.back();
+	m_objects.push_back(std::make_unique<GameObject>(mesh, material, name));
+	return *m_objects.back();
+}
+
+GameObject* Scene::FindObject(const std::string& name)
+{
+	for (auto& object : m_objects) if (object->GetName() == name) return object.get();
+	return nullptr;
+}
+
+void Scene::RemoveObject(size_t index)
+{
+	if (index < m_objects.size()) m_objects.erase(m_objects.begin() + index);   // 메시·재질은 씬이 계속 소유한다 (다른 오브젝트가 쓸 수 있다)
+}
+
+// ------------------------------------------------------------------ 11-C단계: 재생
+
+void Scene::BeginPlay(Input* input, Camera* camera)
+{
+	m_playContext = PlayContext{};
+	m_playContext.scene = this;
+	m_playContext.input = input;
+	m_playContext.camera = camera;
+	m_playing = true;
+	for (auto& object : m_objects)
+		for (auto& behaviour : object->GetBehaviours()) behaviour->BeginPlay(&m_playContext);
+}
+
+void Scene::Update(float dt)
+{
+	if (!m_playing) return;
+	m_playContext.totalTime += dt;
+	m_playContext.cameraDriven = false;
+	// 인덱스 순회: 컴포넌트가 재생 중 오브젝트를 추가해도(벡터 재할당) 안전하다. 삭제는 순회 중에 하지 말 것.
+	for (size_t i = 0; i < m_objects.size(); ++i)
+	{
+		auto& behaviours = m_objects[i]->GetBehaviours();
+		for (size_t b = 0; b < behaviours.size(); ++b)
+		{
+			Behaviour& behaviour = *behaviours[b];
+			if (!behaviour.HasStarted())
+			{
+				behaviour.BeginPlay(&m_playContext);   // 재생 중 추가된 컴포넌트
+				behaviour.MarkStarted();
+				behaviour.Start();
+			}
+			if (behaviour.enabled) behaviour.Update(dt);
+		}
+	}
+	ApplyActiveCamera(dt);   // 모든 컴포넌트가 움직인 뒤 (FollowTarget 이 카메라 오브젝트를 옮긴 뒤) 카메라를 쓴다
+}
+
+CameraComponent* Scene::FindActiveCamera()
+{
+	CameraComponent* best = nullptr;
+	for (auto& object : m_objects)
+	{
+		for (auto& behaviour : object->GetBehaviours())
+		{
+			CameraComponent* camera = dynamic_cast<CameraComponent*>(behaviour.get());
+			if (camera == nullptr || !camera->enabled) continue;
+			if (best == nullptr || camera->priority > best->priority) best = camera;
+		}
+	}
+	return best;
+}
+
+void Scene::ApplyActiveCamera(float dt)
+{
+	Camera* camera = m_playContext.camera;
+	CameraComponent* next = FindActiveCamera();
+	if (camera == nullptr || next == nullptr)
+	{
+		m_activeCamera = nullptr;   // 카메라 오브젝트가 없으면 에디터 카메라 그대로 (cameraDriven 도 false)
+		return;
+	}
+	if (next != m_activeCamera)
+	{
+		// 전환. 첫 활성화(재생 시작)는 즉시, 그 뒤는 새 카메라의 blendTime 동안 현재 시점에서 보간.
+		m_blendFrom.position = camera->GetPosition();
+		m_blendFrom.yaw = camera->GetYaw();
+		m_blendFrom.pitch = camera->GetPitch();
+		m_blendFrom.fovY = camera->GetFovY();
+		m_blendDuration = m_activeCamera != nullptr ? (std::max)(0.0f, next->blendTime) : 0.0f;
+		m_blendElapsed = 0.0f;
+		m_activeCamera = next;
+		Log::Info("활성 카메라: %s (priority %d%s)", next->GetOwner().GetName().c_str(), next->priority,
+			m_blendDuration > 0.0f ? ", 블렌드" : "");
+	}
+
+	CameraPose pose = next->GetPose();
+	if (m_blendDuration > 0.0f && m_blendElapsed < m_blendDuration)
+	{
+		m_blendElapsed += dt;
+		const float x = (std::min)(1.0f, m_blendElapsed / m_blendDuration);
+		const float t = x * x * (3.0f - 2.0f * x);   // smoothstep
+		pose.position.x = m_blendFrom.position.x + (pose.position.x - m_blendFrom.position.x) * t;
+		pose.position.y = m_blendFrom.position.y + (pose.position.y - m_blendFrom.position.y) * t;
+		pose.position.z = m_blendFrom.position.z + (pose.position.z - m_blendFrom.position.z) * t;
+		pose.yaw = m_blendFrom.yaw + WrapAngle(pose.yaw - m_blendFrom.yaw) * t;   // 짧은 쪽으로
+		pose.pitch = m_blendFrom.pitch + (pose.pitch - m_blendFrom.pitch) * t;
+		pose.fovY = m_blendFrom.fovY + (pose.fovY - m_blendFrom.fovY) * t;
+	}
+	camera->SetPosition(pose.position);
+	camera->SetYawPitch(pose.yaw, pose.pitch);
+	camera->SetLens(pose.fovY, camera->GetAspect(), next->nearZ, next->farZ);
+	m_playContext.cameraDriven = true;
+}
+
+void Scene::FixedUpdate(float fixedDt)
+{
+	if (!m_playing) return;
+	for (size_t i = 0; i < m_objects.size(); ++i)
+	{
+		auto& behaviours = m_objects[i]->GetBehaviours();
+		for (size_t b = 0; b < behaviours.size(); ++b)
+		{
+			Behaviour& behaviour = *behaviours[b];
+			if (behaviour.HasStarted() && behaviour.enabled) behaviour.FixedUpdate(fixedDt);   // Start 전에는 돌지 않는다 (Update 가 먼저 Start)
+		}
+	}
+}
+
+void Scene::EndPlay()
+{
+	m_playing = false;
+	m_activeCamera = nullptr;
+	for (auto& object : m_objects)
+		for (auto& behaviour : object->GetBehaviours()) behaviour->EndPlay();
 }
 
 size_t Scene::AddModel(Model&& model, const Transform& transform)
@@ -128,6 +269,8 @@ size_t Scene::AddModel(Model&& model, const Transform& transform)
 
 void Scene::Clear()
 {
+	m_playing = false;
+	m_activeCamera = nullptr;
 	m_objects.clear();
 	m_lights.clear();
 	m_images.clear();

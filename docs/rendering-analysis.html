@@ -207,6 +207,10 @@ td .fix b{color:var(--ok);font-weight:600}
     <li class="sub"><a href="#p9">9단계 · 모델 로딩</a> <a href="phase-9.html" title="상세 문서">↗</a></li>
     <li class="sub"><a href="#p10">10단계 · 엔진 코어</a> <a href="phase-10.html" title="상세 문서">↗</a></li>
     <li class="sub"><a href="#p11">11단계 · 에디터</a> <a href="phase-11.html" title="상세 문서">↗</a></li>
+    <li class="sub"><a href="#p11b">11-B단계 · 콘텐츠 브라우저</a> <a href="phase-11b.html" title="상세 문서">↗</a></li>
+    <li class="sub"><a href="#p11c">11-C단계 · 재생 모드와 컴포넌트</a> <a href="phase-11c.html" title="상세 문서">↗</a></li>
+    <li class="sub"><a href="#p11d">11-D단계 · 게임 빌드와 런타임 분리</a> <a href="phase-11d.html" title="상세 문서">↗</a></li>
+    <li class="sub"><a href="#p11e">11-E단계 · 프로젝트 시스템</a> <a href="phase-11e.html" title="상세 문서">↗</a></li>
     <li class="sub"><a href="#p12">12단계 · 고급 렌더링</a></li>
     <li><a href="#s10">10. 부록</a></li>
   </ol>
@@ -1095,7 +1099,7 @@ exit code: -1</code></pre>
     <div><h5>단점 · 주의</h5><ul><li>명시적 멤버는 종류가 5~6개를 넘으면 GameObject가 비대해지고 대부분 nullptr인 멤버가 생김. 그 시점이 컴포넌트 전환 신호</li><li>컴포넌트 목록은 <code>GetComponent</code>가 선형 탐색이라 매 프레임 호출하면 느림. 렌더러는 별도 리스트(MeshRenderer 목록)를 유지해야 함</li><li>ECS로 나중에 전환하는 비용은 크지만, 필요 없는 프로젝트가 대부분</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계 형태(단계적 결정의 첫 단계): <code>GameObject</code> 는 값으로 소유하고 Mesh·Material 은 Scene 의 <code>unique_ptr</code> 을 포인터로 참조한다. 9단계에 서브메시 재질 슬롯, 11단계에 계층·인스펙터·JSON 직렬화가 이 형태 위에 얹혔다. 컴포넌트/ECS 는 필요가 생기지 않아 도입하지 않았다. 상세: <a href="phase-3.html">3단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계 형태(단계적 결정의 첫 단계): <code>GameObject</code> 는 값으로 소유하고 Mesh·Material 은 Scene 의 <code>unique_ptr</code> 을 포인터로 참조한다. 9단계에 서브메시 재질 슬롯, 11단계에 계층·인스펙터·JSON 직렬화가 이 형태 위에 얹혔다. 컴포넌트/ECS 는 필요가 생기지 않아 도입하지 않았다. 상세: <a href="phase-3.html">3단계</a> · <b>11-C단계 (2026-09-23)</b>: 재생 모드가 들어오며 "필요" 가 생겨 두 번째 단계로 갔다 — <code>GameObject</code> 를 <code>unique_ptr</code> 로 바꾸고 <code>Behaviour</code> 컴포넌트 목록을 달았다. ECS 는 여전히 아니다(오브젝트 수십 개, 캐시 친화보다 작성 편의). 상세: <a href="phase-11c.html">11-C단계</a></div>
 
 <!-- D16 -->
 <div class="decision" id="d16">
@@ -1580,6 +1584,74 @@ exit code: -1</code></pre>
   </div>
   <div class="done"><b>완료 기준</b> — 오브젝트를 클릭해 편집하고 저장한 씬을 다시 불러올 수 있다.</div>
   <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>App/Editor</code>: ImGui 도킹(첫 실행 DockBuilder 배치) 위에 Scene(오프스크린 씬 텍스처 + ImGuizmo 이동/회전/크기 + 광선-AABB 클릭 선택)·Hierarchy·Inspector(Transform·재질 편집)·Render Settings(백엔드·PSO 통계·디버그 뷰 알베도/노멀/깊이/그림자/UV·그림자 맵)·Lights·Materials·Stats(드로우·PSO 전환·GPU 시간)·Console. <code>Scene/SceneSerializer</code>(nlohmann-json) 이 메시 출처(프리미티브 인자 또는 모델 경로)·재질·조명·오브젝트·카메라를 저장/로드. 씬 뷰 텍스처는 TYPELESS(sRGB RTV + UNORM SRV), 두 백엔드. RHI 에 백버퍼 리드백을 더해 <code>--screenshot</code>·<code>--pick</code>·<code>--save/--load</code> 자동 검증이 OS 입력 없이 돈다: 클릭 선택 → 위치 편집 → 저장 → 재시작 로드에서 편집값(y = 6) 복원. 상세: <a href="phase-11.html">phase-11.html</a></div>
+</div>
+
+<div class="phase" id="p11b">
+  <header><span class="pn">PHASE 11-B</span><h3>콘텐츠 브라우저와 드래그 앤 드롭</h3><span class="pill info">에디터 확장</span><span class="pill ok">완료 · 2026-09-23</span></header>
+  <p class="why">11단계 에디터에는 에셋을 보는 창이 없었습니다. 상용 엔진처럼 Assets 폴더를 브라우저로 보여 주고, 모델을 Scene 뷰로 끌어다 커서 아래에 놓습니다. 11단계의 선택 광선(Pick)과 콜백 구조 위에 얹혀 렌더러는 텍스처 이름 규칙 한 줄만 바뀝니다.</p>
+  <div class="cols">
+    <div><h5>작업</h5><ul>
+      <li>Content Browser 창: 폴더 트리 + 타일 그리드 + 브레드크럼 + 검색, 더블클릭·우클릭 메뉴</li>
+      <li>드래그 페이로드(POD) → Scene 뷰 드롭: 모델은 광선 히트점(오브젝트 AABB 또는 바닥면)에 배치, 씬 .json 은 로드, 텍스처는 맞은 오브젝트 재질의 알베도</li>
+      <li>호버 중 고스트 마커(놓일 점 + 모델 AABB), Esc 취소, 드래그 중 기즈모·카메라 룩 차단</li>
+      <li>텍스처 썸네일(DirectXTex Resize, UNORM, 프레임당 1장, 상한 256) — 렌더러 캐시와 분리</li>
+      <li><code>asset:&lt;상대 경로&gt;</code> 텍스처 이름, <code>Paths::GetAssetRoot</code>, 자동 검증 <code>--drop / --drop-uv / --drop-texture / --browse</code></li>
+    </ul></div>
+    <div><h5>주의</h5><ul><li>드래그 중에는 다른 아이템의 <code>IsItemHovered()</code> 가 false 다 — 드롭 판정은 <code>BeginDragDropTarget</code> 으로만</li><li><code>Scene::AddModel</code> 은 드롭마다 메시를 복사한다. 메시 공유는 12단계 인스턴싱과 함께</li></ul></div>
+  </div>
+  <div class="done"><b>완료 기준</b> — 브라우저의 모델을 Scene 뷰에 끌어다 놓으면 커서 아래에 놓이고, 저장한 씬을 다시 불러오면 그 자리에 있다.</div>
+  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>App/ContentBrowser</code>(std::filesystem 열거, ImDrawList 아이콘, ListClipper 그리드, 썸네일 캐시) + <code>Editor</code>(Scene 뷰 드롭 타깃, <code>ScreenToRay</code>/<code>RaycastScene</code>, 고스트 마커, Stats 노드에 FirstUseEver 도킹) + <code>TestApp::PlaceModel</code>(바닥면 = 놓은 점, 번호 이름). 자동 검증: 헬멧 드롭 (2, 0, −1) → 위치 (2, 0.90, −1) → 저장 → 재시작 로드 복원; 바닥면·Sponza 표면 히트; <code>uv_checker.png</code> 와 <code>asset:Models\Sponza\…png</code> 텍스처 드롭; Sponza 폴더 썸네일; D3D11·D3D12·Release 동일. 상세: <a href="phase-11b.html">phase-11b.html</a></div>
+</div>
+
+<div class="phase" id="p11c">
+  <header><span class="pn">PHASE 11-C</span><h3>재생 모드와 C++ 컴포넌트</h3><span class="pill info">에디터 확장</span><span class="pill ok">완료 · 2026-09-23</span></header>
+  <p class="why">언리얼의 Play In Editor 처럼 Play 를 눌러야 게임이 돌고, 오브젝트 로직은 Game/ 폴더의 C++ 클래스입니다. 데모 씬의 하드코딩 애니메이션(TestApp::OnUpdate)이 컴포넌트로 옮겨져 편집 중에는 아무것도 움직이지 않습니다. D15 의 "컴포넌트는 필요가 생기면" 이 여기서 생겼습니다.</p>
+  <div class="cols">
+    <div><h5>작업</h5><ul>
+      <li><code>Scene/Behaviour</code>: Start/Update/FixedUpdate, <code>Reflect(PropertyVisitor&amp;)</code>, 이름 레지스트리 + <code>SHERLOCK_BEHAVIOUR</code> 매크로</li>
+      <li><code>Scene::BeginPlay/Update/FixedUpdate/EndPlay</code> + <code>PlayContext</code>(Input·Camera·누적 시간·cameraDriven); GameObject 를 unique_ptr 로</li>
+      <li>Play/Pause/Step/Stop 툴바, 시간 배율, Ctrl+P, 재생 테두리 — Play 는 씬+카메라를 JSON 문자열로 스냅샷, Stop 이 되돌린다</li>
+      <li>Inspector 컴포넌트 편집(enabled·삭제·필드·Add Component), 씬 파일 버전 2 <code>"components"</code></li>
+      <li><code>Scene/Script</code>(MonoBehaviour): 사용자가 <code>Game/Scripts/*.cpp</code> 에 움직임을 직접 쓴다 — Translate/Rotate/LookAt/GetInput/GetComponent 헬퍼, <code>SHERLOCK_SCRIPT</code>. 예제 PlayerController(방향키+점프)·Rotator. Inspector 의 New Script... 가 템플릿 .cpp 를 만들어 vcxproj 에 등록하고 열어 준다(빌드 후 재실행). 엔진 컴포넌트는 <code>Game/Components</code> 의 Rigidbody(AddImpulse·IsGrounded)·FollowTarget</li>
+      <li><code>Scene/CameraComponent</code>: 씬 안의 카메라 오브젝트("Main Camera", "+ Camera"), 프러스텀 아이콘, Look through / Align to view, 선택한 카메라의 시점 미리보기(Renderer PreviewPass), 재생 중 priority 최대 카메라로 렌더링(시작은 즉시, 도중 전환은 blendTime 보간)</li>
+    </ul></div>
+    <div><h5>주의</h5><ul><li>재생 중 오브젝트 삭제는 인덱스를 밀어낸다 — 지연 삭제 API 가 다음 단계</li><li>Rigidbody 는 물리 엔진의 자리표시자(오브젝트 간 충돌 없음)</li></ul></div>
+  </div>
+  <div class="done"><b>완료 기준</b> — Play 를 눌러야 컴포넌트가 돌고, Stop 을 누르면 재생 전 씬으로 정확히 돌아온다. C++ 클래스 하나를 추가해 빌드하면 Inspector 에 나타난다.</div>
+  <div class="applied"><b>적용 결과 — 2026-09-23</b> · 자동 검증: 재생 20 프레임째 CubeStatic(Rigidbody)이 움직이고 스크립트가 붙은 오브젝트가 "(playing)", Stop 뒤 재생 전 좌표로 복원; 컴포넌트·스크립트 저장 → 재시작 로드 복원; 재생 중 Add Component(Rotator) 즉시 동작; 재생 중 Main Camera 로 즉시 전환, 카메라 선택 시 미리보기; D3D11·D3D12·Release 동일. 상세: <a href="phase-11c.html">phase-11c.html</a></div>
+</div>
+
+<div class="phase" id="p11d">
+  <header><span class="pn">PHASE 11-D</span><h3>게임 빌드와 런타임 분리</h3><span class="pill info">에디터 확장</span><span class="pill ok">완료 · 2026-09-23</span></header>
+  <p class="why">상용 엔진의 Package Project. 스크립트가 엔진과 함께 컴파일되고 에셋이 파일이라, 빌드는 "에디터 없는 런타임 모드" 하나와 "복사" 로 끝납니다. 그 김에 하나였던 프로젝트를 엔진 정적 라이브러리 · 에디터 exe · 게임 exe 로 나눴습니다.</p>
+  <div class="cols">
+    <div><h5>작업</h5><ul>
+      <li>솔루션 3 프로젝트: <code>SherlockEngine.lib</code>(엔진·Game·셰이더·에셋 복사), <code>SherlockEditor.exe</code>, <code>SherlockGame.exe</code> — exe 는 <code>/WHOLEARCHIVE</code> 로 스크립트 정적 등록을 지킨다</li>
+      <li><code>App/GameApp</code>: ImGui 없이(<code>WantsGUI false</code>) <code>[game] startScene</code> 로드 → 바로 재생, 백버퍼 직접 렌더링, ESC 종료</li>
+      <li>File &gt; Build Game...: 이름·시작 씬·에셋 전부/참조만·Release(vswhere → MSBuild) → <code>Build\&lt;이름&gt;\</code> 에 exe·DLL·Shaders·Assets + engine.ini [game]</li>
+      <li>AppBase 에 COM 초기화(WIC), <code>.filters</code> 생성 스크립트로 통일</li>
+    </ul></div>
+    <div><h5>주의</h5><ul><li>게임 exe 에 imgui.lib 는 링크되지만 실행되지 않는다. 완전히 떼려면 Device 백엔드의 ImGui 코드를 조건부로</li><li>에셋 쿠킹(DDS·바이너리 모델)은 로딩 시간이 문제될 때</li></ul></div>
+  </div>
+  <div class="done"><b>완료 기준</b> — Build 폴더를 통째로 복사한 곳에서 SherlockGame.exe 가 소스 트리 없이 시작 씬을 재생한다.</div>
+  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>--build-game=TestBuild</code> 86 파일 → <code>Build\TestBuild\SherlockGame.exe</code> 가 자기 옆 engine.ini·.cso·씬만으로 재생(Rigidbody 상승, 활성 카메라 Main Camera, 스크린샷). 런타임 단독·D3D12 Release 동일. 세 프로젝트 Debug·Release 경고 0. 첫 실행의 WIC E_NOINTERFACE 는 CoInitializeEx 로 해결. 상세: <a href="phase-11d.html">phase-11d.html</a></div>
+</div>
+
+<div class="phase" id="p11e">
+  <header><span class="pn">PHASE 11-E</span><h3>프로젝트 시스템</h3><span class="pill info">에디터 확장</span><span class="pill ok">완료 · 2026-09-24</span></header>
+  <p class="why">씬이 아니라 게임을 분리합니다. 언리얼의 .uproject 처럼 프로젝트 = 폴더(<code>.sherlock</code> + Assets + Scripts)이고, 에디터가 그 폴더에 에디터·게임 타깃의 솔루션을 생성합니다. 엔진 컴포넌트와 엔진 콘텐츠는 엔진에 남아 모든 프로젝트에서 쓰입니다 (A안: 프로젝트별 에디터 exe. B안 DLL 은 다음).</p>
+  <div class="cols">
+    <div><h5>작업</h5><ul>
+      <li><code>Core/Project</code>(.sherlock, FindUpwards), <code>Paths</code> 세 루트(엔진·프로젝트·exe)와 프로젝트 → 엔진 → exe 에셋 해석, <code>AppBase::ResolveProject</code></li>
+      <li>콘텐츠 브라우저 Project / Engine 두 트리, ScriptCreator·GameBuilder·GameApp 프로젝트 기준</li>
+      <li><code>App/ProjectGenerator</code>: <code>&lt;이름&gt;.sln</code> + Editor/Game vcxproj (와일드카드 Scripts, SHERLOCK_PROJECT_NAME, 엔진 lib 참조·공유, vcpkg 매니페스트 루트)</li>
+      <li><code>App/ProjectLauncher</code> + Editor: File &gt; Projects(최근·열기·새로), Project Settings, "스크립트 없는 에디터" 배너 → Build and switch</li>
+      <li>예제 프로젝트 <code>Projects\Sample</code> (옛 Game\Scripts · Assets\Scenes)</li>
+    </ul></div>
+    <div><h5>주의</h5><ul><li>프로젝트를 바꾸면 그 프로젝트의 에디터 exe 가 필요하다 (배너가 빌드·전환한다)</li><li>에디터 소스 목록은 ProjectGenerator 와 SherlockEditor.vcxproj 두 곳</li></ul></div>
+  </div>
+  <div class="done"><b>완료 기준</b> — 런처에서 새 프로젝트를 만들고 빌드하면 그 에디터에서 프로젝트 스크립트와 엔진 컴포넌트를 함께 쓰고, 패키징한 게임이 단독으로 돈다.</div>
+  <div class="applied"><b>적용 결과 — 2026-09-24</b> · <code>--new-project=TestGame --build-project=1</code>: 폴더·솔루션 생성, MSBuild 성공(lib 공유로 5 초). <code>TestGameEditor.exe</code> 가 exe 위쪽의 .sherlock 을 찾아 "컴파일된 프로젝트 TestGame", Main.json 로드, 프로젝트 스크립트 Rotator 부착·재생. 엔진 에디터로 열면 배너. 상세: <a href="phase-11e.html">phase-11e.html</a></div>
 </div>
 
 <div class="phase" id="p12">

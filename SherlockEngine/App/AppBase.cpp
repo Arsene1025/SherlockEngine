@@ -51,6 +51,7 @@ AppBase::~AppBase()
     }
     Log::Info("종료.");
     Log::Shutdown();
+    if (m_comInitialized) CoUninitialize();
 }
 
 std::wstring AppBase::GetCommandLineOption(const wchar_t* name)
@@ -69,6 +70,50 @@ std::wstring AppBase::GetCommandLineOption(const wchar_t* name)
     }
     LocalFree(argv);
     return result;
+}
+
+namespace
+{
+    std::string s_compiledProjectName;
+}
+
+void AppBase::SetCompiledProjectName(const char* name)
+{
+    s_compiledProjectName = name ? name : "";
+}
+
+const char* AppBase::GetCompiledProjectName()
+{
+    return s_compiledProjectName.c_str();
+}
+
+std::wstring AppBase::GetDefaultProjectDir()
+{
+    if (!Paths::HasEngineSourceTree()) return L"";
+    // 엔진 루트 = <repo>\SherlockEngine 폴더 → <repo>\Projects\Sample 폴더 (주석 끝의 백슬래시는 줄 연속이 되므로 피한다)
+    const std::wstring engine = Paths::GetEngineRoot();
+    const size_t slash = engine.find_last_of(L'\\', engine.size() - 2);
+    if (slash == std::wstring::npos) return L"";
+    return engine.substr(0, slash + 1) + L"Projects\\Sample\\";
+}
+
+void AppBase::ResolveProject()
+{
+    std::wstring path = GetCommandLineOption(L"project");
+    if (path.empty()) path = Project::FindUpwards(Paths::GetExecutableDir(), 3);   // Binaries\Debug\ → 프로젝트, 배포 폴더 → 옆의 .sherlock
+    if (path.empty()) path = GetDefaultProjectDir();
+    if (path.empty()) return;
+    OpenProject(path);
+}
+
+bool AppBase::OpenProject(const std::wstring& pathOrDir)
+{
+    Project project;
+    if (!project.Load(pathOrDir)) return false;
+    m_project = project;
+    Paths::SetEngineRoot(m_project.engineRoot);
+    Paths::SetProjectRoot(m_project.GetRoot());
+    return true;
 }
 
 bool AppBase::LoadConfig()
@@ -107,11 +152,9 @@ void AppBase::InitLogger()
 {
     Log::InitDesc desc;
     desc.console = m_config.GetBool("log.console", true);
-#ifdef _DEBUG
-    desc.allocConsole = true;    // D19: Windows 서브시스템이라 콘솔이 없다. Debug 에서만 하나 연다
-#else
-    desc.allocConsole = false;
-#endif
+    // D19: Windows 서브시스템이라 콘솔이 없다. 예전에는 Debug 에서 하나 열었지만(10단계) 11단계부터 에디터의 Console 창과 로그 파일이 있어
+    // 검은 콘솔 창은 띄우지 않는다. 명령줄에서 실행하면 부모 콘솔에는 여전히 붙는다. 필요하면 engine.ini 의 log.allocConsole = true.
+    desc.allocConsole = m_config.GetBool("log.allocConsole", false);
     const std::string file = m_config.GetString("log.file", "Logs\\SherlockEngine.log");
     if (!file.empty())
     {
@@ -126,8 +169,21 @@ void AppBase::InitLogger()
 
 bool AppBase::Initialize()
 {
+    // 11-D단계: COM 을 명시적으로 연다. DirectXTex 의 WIC(PNG/JPG 읽기, 스크린샷 저장)가 COM 팩토리를 만든다.
+    // 에디터는 ImGui 쪽에서 우연히 초기화되어 동작했지만, 게임 런타임(ImGui 없음)에서는 텍스처 로드가 E_NOINTERFACE 로 실패했다.
+    const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    m_comInitialized = SUCCEEDED(com);
+    if (FAILED(com) && com != RPC_E_CHANGED_MODE) Log::Warn("CoInitializeEx 실패 (0x%08X)", static_cast<unsigned>(com));
+
+    ResolveProject();   // 11-E단계: 설정(engine.ini)보다 먼저 — 에셋 루트가 여기서 정해진다
     const bool configLoaded = LoadConfig();
     InitLogger();
+    if (m_project.IsLoaded())
+    {
+        Log::Info("프로젝트 루트: %s (엔진 루트 %s%s, 컴파일된 프로젝트 %s)", Log::ToUtf8(Paths::GetProjectRoot().c_str()).c_str(),
+            Log::ToUtf8(Paths::GetEngineRoot().c_str()).c_str(), Paths::HasEngineSourceTree() ? "" : ", 배포", GetCompiledProjectName());
+    }
+    else Log::Info("프로젝트 없음: 엔진 콘텐츠만 (%s)", Log::ToUtf8(Paths::GetEngineAssetRoot().c_str()).c_str());
     if (configLoaded) Log::Info("설정 파일: %s (%zu 항목)", Log::ToUtf8(m_config.GetPath().c_str()).c_str(), m_config.GetAll().size());
     else Log::Warn("설정 파일 Assets\\Config\\engine.ini 를 찾지 못해 기본값으로 실행.");
     if (!m_config.GetErrors().empty()) Log::Warn("설정 파일 파싱 오류:\n%s", m_config.GetErrors().c_str());
@@ -135,7 +191,8 @@ bool AppBase::Initialize()
     if (!InitMainWindow()) return false;
 
     // ImGui 컨텍스트는 Engine 보다 먼저 (Engine 이 렌더러 백엔드를 붙인다), Win32 백엔드는 창이 있으니 지금.
-    if (!InitGUI()) return false;
+    // 11-D단계: 게임 런타임(WantsGUI false)은 컨텍스트를 만들지 않는다 → Engine 이 ImGui 렌더러 백엔드도 건너뛴다.
+    if (WantsGUI() && !InitGUI()) return false;
 
     Engine::Desc desc;
     desc.windowHandle = m_mainWindow;
@@ -143,12 +200,15 @@ bool AppBase::Initialize()
     desc.height = m_screenHeight;
     if (!m_engine.Initialize(m_config, desc)) return false;
 
-    if (!ImGui_ImplWin32_Init(m_mainWindow))
+    if (WantsGUI())
     {
-        Log::Error("ImGui Win32 백엔드 초기화 실패");
-        return false;
+        if (!ImGui_ImplWin32_Init(m_mainWindow))
+        {
+            Log::Error("ImGui Win32 백엔드 초기화 실패");
+            return false;
+        }
+        m_guiWin32Initialized = true;
     }
-    m_guiWin32Initialized = true;
 
     if (!OnInitialize()) return false;
 
@@ -172,9 +232,13 @@ int AppBase::Run()
         // 시간·프로파일러·ImGui 렌더러 프레임. ImGui 프레임을 Update보다 먼저 연다:
         // io.WantCaptureMouse/Keyboard 는 ImGui::NewFrame 에서 갱신되므로 그 뒤에 Update 가 읽어야 "이번 프레임" 값을 본다.
         const float dt = m_engine.BeginFrame();
-        ImGui_ImplWin32_NewFrame();
-        ImGui::NewFrame();
-        ImGuizmo::BeginFrame();   // 11단계
+        const bool gui = m_guiWin32Initialized;   // 11-D단계: 게임 런타임은 ImGui 프레임이 없다
+        if (gui)
+        {
+            ImGui_ImplWin32_NewFrame();
+            ImGui::NewFrame();
+            ImGuizmo::BeginFrame();   // 11단계
+        }
 
         {
             ProfileScope scope("Update");
@@ -186,6 +250,7 @@ int AppBase::Run()
             OnUpdate(dt);
         }
 
+        if (gui)
         {
             ProfileScope scope("GUI");
             OnGUI();   // 11단계: 앱(에디터)이 창을 직접 만든다. 도킹 공간도 거기서.
@@ -279,7 +344,7 @@ bool AppBase::InitMainWindow()
     // 11단계: 자동 검증 모드에서는 창을 화면 밖에, 활성화 없이 만든다 — 스크린샷은 Device 리드백으로 찍으므로 보일 필요가 없다.
     const bool automation = !GetCommandLineOption(L"exit-after").empty();
     const int windowX = automation ? -3000 : 100;
-    m_mainWindow = CreateWindow(wc.lpszClassName, L"SherlockEngine", WS_OVERLAPPEDWINDOW,
+    m_mainWindow = CreateWindow(wc.lpszClassName, GetWindowTitle(), WS_OVERLAPPEDWINDOW,
         windowX, 100, wr.right - wr.left, wr.bottom - wr.top, NULL, NULL, wc.hInstance, NULL);
     if (!m_mainWindow)
     {

@@ -8,6 +8,7 @@
 // 텍스처는 핸들이 아니라 "이름"으로 참조한다. Scene은 Device를 모르므로 파일을 열 수 없고,
 // Renderer의 텍스처 캐시가 이름 → TextureHandle 을 맡는다.
 //   - 파일 경로: Assets/Textures/ 기준 상대 경로 ("uv_checker.png")
+//   - 에셋 경로: "asset:Models\Sponza\lion.jpg" — Assets/ 기준 상대 경로 (11-B단계, 콘텐츠 브라우저 드롭)
 //   - 내장:      "builtin:white", "builtin:checker", "builtin:gray128", "builtin:flatnormal"
 //   - 빈 문자열: 텍스처 없음 (알베도는 1×1 흰색, 노멀 맵은 평평한 노멀로 대체)
 
