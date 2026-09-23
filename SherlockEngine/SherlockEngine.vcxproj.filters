@@ -12,7 +12,16 @@
     <Filter Include="Graphics">
       <UniqueIdentifier>{0aa83911-1fa1-4769-84ef-01536c8bcac6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Graphics\D3D11">
+    <Filter Include="RHI">
+      <UniqueIdentifier>{7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RHI\D3D12">
+      <UniqueIdentifier>{8d2e3f4a-5b6c-4d7e-9f0a-1b2c3d4e5f60}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RHI\DXBC">
+      <UniqueIdentifier>{9e3f4a5b-6c7d-4e8f-a0b1-2c3d4e5f6071}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="RHI\D3D11">
       <UniqueIdentifier>{2a2d55da-b0f0-49dd-8caf-c07178982f89}</UniqueIdentifier>
     </Filter>
     <Filter Include="Scene">
@@ -20,6 +29,9 @@
     </Filter>
     <Filter Include="Shaders">
       <UniqueIdentifier>{72c939d5-1f84-4d43-af2b-3ac097b37210}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets">
+      <UniqueIdentifier>{5a1c2b3d-4e5f-4a6b-9c7d-8e9f0a1b2c3d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -29,6 +41,9 @@
       <Filter>App</Filter>
     </ClCompile>
     <ClCompile Include="App\DebugUI.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App\Editor.cpp">
       <Filter>App</Filter>
     </ClCompile>
     <ClCompile Include="App\TestApp.cpp">
@@ -46,31 +61,70 @@
     <ClCompile Include="Core\Paths.cpp">
       <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\D3D11\D3D11Convert.cpp">
-      <Filter>Graphics\D3D11</Filter>
+    <ClCompile Include="Core\Config.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\D3D11\Device.cpp">
-      <Filter>Graphics\D3D11</Filter>
+    <ClCompile Include="Core\Time.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\D3D11\ImGuiBackend.cpp">
-      <Filter>Graphics\D3D11</Filter>
+    <ClCompile Include="Core\Profiler.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\D3D11\PipelineState.cpp">
-      <Filter>Graphics\D3D11</Filter>
+    <ClCompile Include="Core\AssetManager.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\D3D11\PipelineStateCache.cpp">
-      <Filter>Graphics\D3D11</Filter>
+    <ClCompile Include="Core\Engine.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\D3D11\ShaderCompiler.cpp">
-      <Filter>Graphics\D3D11</Filter>
+    <ClCompile Include="RHI\D3D11\D3D11Convert.cpp">
+      <Filter>RHI\D3D11</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\D3D11\D3D11Device.cpp">
+      <Filter>RHI\D3D11</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\D3D11\PipelineState.cpp">
+      <Filter>RHI\D3D11</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\D3D11\PipelineStateCache.cpp">
+      <Filter>RHI\D3D11</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\D3D11\D3D11CommandList.cpp">
+      <Filter>RHI\D3D11</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\D3D12\D3D12Convert.cpp">
+      <Filter>RHI\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\D3D12\D3D12PipelineState.cpp">
+      <Filter>RHI\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\D3D12\D3D12CommandList.cpp">
+      <Filter>RHI\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\D3D12\D3D12Device.cpp">
+      <Filter>RHI\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\DXBC\ShaderCompiler.cpp">
+      <Filter>RHI\DXBC</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\Mesh.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\PipelineTypes.cpp">
+    <ClCompile Include="Graphics\Model.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\Screenshot.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\RHI.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
+    <ClCompile Include="RHI\PipelineTypes.cpp">
+      <Filter>RHI</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\Renderer.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\TextureLoader.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Camera.cpp">
@@ -80,6 +134,9 @@
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Scene.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SceneSerializer.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Transform.cpp">
@@ -92,6 +149,9 @@
       <Filter>App</Filter>
     </ClInclude>
     <ClInclude Include="App\DebugUI.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\Editor.h">
       <Filter>App</Filter>
     </ClInclude>
     <ClInclude Include="App\TestApp.h">
@@ -109,52 +169,112 @@
     <ClInclude Include="Core\Paths.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\D3D11\D3D11Common.h">
-      <Filter>Graphics\D3D11</Filter>
+    <ClInclude Include="Core\Config.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\D3D11\D3D11Convert.h">
-      <Filter>Graphics\D3D11</Filter>
+    <ClInclude Include="Core\Time.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\D3D11\D3D11Resources.h">
-      <Filter>Graphics\D3D11</Filter>
+    <ClInclude Include="Core\Profiler.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\D3D11\Device.h">
-      <Filter>Graphics\D3D11</Filter>
+    <ClInclude Include="Core\AssetManager.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\D3D11\ImGuiBackend.h">
-      <Filter>Graphics\D3D11</Filter>
+    <ClInclude Include="Core\Engine.h">
+      <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\D3D11\PipelineState.h">
-      <Filter>Graphics\D3D11</Filter>
+    <ClInclude Include="RHI\D3D11\D3D11Common.h">
+      <Filter>RHI\D3D11</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\D3D11\PipelineStateCache.h">
-      <Filter>Graphics\D3D11</Filter>
+    <ClInclude Include="RHI\D3D11\D3D11Convert.h">
+      <Filter>RHI\D3D11</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\D3D11\ResourcePool.h">
-      <Filter>Graphics\D3D11</Filter>
+    <ClInclude Include="RHI\D3D11\D3D11Resources.h">
+      <Filter>RHI\D3D11</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\D3D11\ShaderCompiler.h">
-      <Filter>Graphics\D3D11</Filter>
+    <ClInclude Include="RHI\D3D11\D3D11Device.h">
+      <Filter>RHI\D3D11</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\GraphicsConfig.h">
-      <Filter>Graphics</Filter>
+    <ClInclude Include="RHI\D3D11\PipelineState.h">
+      <Filter>RHI\D3D11</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\Handle.h">
-      <Filter>Graphics</Filter>
+    <ClInclude Include="RHI\D3D11\PipelineStateCache.h">
+      <Filter>RHI\D3D11</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\D3D11\D3D11CommandList.h">
+      <Filter>RHI\D3D11</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\D3D12\D3D12Common.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\D3D12\D3D12Convert.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\D3D12\D3D12DescriptorHeap.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\D3D12\D3D12Resources.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\D3D12\D3D12PipelineState.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\D3D12\D3D12CommandList.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\D3D12\D3D12Device.h">
+      <Filter>RHI\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\ResourcePool.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\ShaderCompiler.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\BindingTypes.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\GraphicsConfig.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\Device.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\CommandList.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\RHI.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\Handle.h">
+      <Filter>RHI</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Mesh.h">
       <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\PipelineTypes.h">
+    <ClInclude Include="Graphics\Model.h">
       <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Screenshot.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\PipelineTypes.h">
+      <Filter>RHI</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Renderer.h">
       <Filter>Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="Graphics\ResourceDesc.h">
-      <Filter>Graphics</Filter>
+    <ClInclude Include="RHI\RenderPassTypes.h">
+      <Filter>RHI</Filter>
+    </ClInclude>
+    <ClInclude Include="RHI\ResourceDesc.h">
+      <Filter>RHI</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\ShaderConstants.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\TextureLoader.h">
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\VertexTypes.h">
@@ -169,7 +289,13 @@
     <ClInclude Include="Scene\Light.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\Material.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\Scene.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SceneSerializer.h">
       <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="Scene\Transform.h">
@@ -177,14 +303,23 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="Shaders\Common.hlsli">
+    <FxCompile Include="Shaders\BasicVertexShader.hlsl">
       <Filter>Shaders</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="Shaders\BasicVertexShader.hlsl">
+    </FxCompile>
+    <FxCompile Include="Shaders\BasicPixelShader.hlsl">
       <Filter>Shaders</Filter>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="Shaders\BasicPixelShader.hlsl">
+    </FxCompile>
+    <FxCompile Include="Shaders\ShadowVertexShader.hlsl">
       <Filter>Shaders</Filter>
-    </CopyFileToFolders>
+    </FxCompile>
+    <None Include="Shaders\Common.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Assets\Textures\uv_checker.png">
+      <Filter>Assets</Filter>
+    </None>
+    <None Include="Assets\Textures\bumps_normal.png">
+      <Filter>Assets</Filter>
+    </None>
   </ItemGroup>
 </Project>

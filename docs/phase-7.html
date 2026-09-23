@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7단계 · RHI 인터페이스 추출 — SherlockEngine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EEF0F7; --line:#D6D9E6; --line-strong:#B9BDD0;
+  --ink:#171A2B; --ink-2:#4A4F66; --muted:#7A7F96;
+  --accent:#232767; --accent-ink:#FFFFFF; --accent-soft:#E3E5F5;
+  --amber:#B8781A; --amber-soft:#FBF0DB;
+  --ok:#2E7D4F; --ok-soft:#E1F2E7; --warn:#A6620C; --warn-soft:#FBEDD6; --crit:#B23A3A; --crit-soft:#F9E1E1;
+  --code-bg:#1B1D33; --code-ink:#E7E9F5; --code-kw:#9BA3FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(23,26,43,.06),0 8px 24px rgba(23,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+    --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+    --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+    --amber:#F0B650; --amber-soft:#3D3560;
+    --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+    --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+  --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+  --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+  --amber:#F0B650; --amber-soft:#3D3560;
+  --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+  --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+code,pre,.mono{font-family:"IBM Plex Mono",Consolas,"D2Coding",monospace}
+code{font-size:.875em;background:var(--surface-2);padding:.1em .4em;border-radius:4px;color:var(--ink)}
+pre{background:var(--code-bg);color:var(--code-ink);padding:18px 20px;border-radius:8px;overflow-x:auto;font-size:13.5px;line-height:1.6;margin:18px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+.kw{color:var(--code-kw)} .str{color:var(--code-str)} .cm{color:var(--code-cm)}
+
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto;padding:0 32px;gap:48px}
+@media (max-width:960px){.shell{grid-template-columns:minmax(0,1fr);padding:0 20px;gap:0}}
+
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0 40px;font-size:13.5px}
+nav.toc .brand{font-weight:600;letter-spacing:.02em;color:var(--ink);margin-bottom:6px}
+nav.toc .meta{color:var(--muted);font-size:12px;margin-bottom:24px;line-height:1.5}
+nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+nav.toc li a{display:block;padding:5px 14px;color:var(--ink-2);border-left:2px solid transparent;margin-left:-1px;border-bottom:none;line-height:1.45}
+nav.toc li a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+nav.toc li.sub a{padding-left:28px;font-size:12.5px;color:var(--muted)}
+@media (max-width:960px){nav.toc{position:static;height:auto;padding:28px 0 8px}nav.toc ol{display:none}}
+
+main{padding:40px 0 96px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1{font-size:clamp(30px,4vw,42px);line-height:1.2;margin:6px 0 14px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{font-size:18px;color:var(--ink-2);max-width:66ch;margin:0 0 28px}
+h2{font-size:26px;line-height:1.3;margin:72px 0 16px;padding-top:24px;border-top:1px solid var(--line);font-weight:600;letter-spacing:-.005em;text-wrap:balance}
+h2 .num{display:inline-block;min-width:2.2em;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+h3{font-size:19px;margin:40px 0 10px;font-weight:600;text-wrap:balance}
+h4{font-size:16px;margin:28px 0 8px;font-weight:600}
+p{margin:0 0 16px;max-width:72ch}
+ul,ol{max-width:72ch;padding-left:1.4em;margin:0 0 16px}
+li{margin:4px 0}
+li>ul,li>ol{margin-top:4px}
+strong{font-weight:600}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:28px 0}
+.facts>div{background:var(--surface);padding:14px 16px}
+.facts .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.facts .v{font-size:15px;font-weight:600;line-height:1.35}
+.facts .v small{display:block;font-weight:400;color:var(--ink-2);font-size:12.5px;margin-top:2px}
+
+.callout{border-left:3px solid var(--accent);background:var(--surface);padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;max-width:72ch}
+.callout.amber{border-left-color:var(--amber);background:var(--amber-soft)}
+.callout.crit{border-left-color:var(--crit);background:var(--crit-soft)}
+.callout p:last-child{margin-bottom:0}
+.callout .t{font-weight:600;font-size:14px;margin-bottom:4px}
+
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.mono,th.mono{font-size:13px}
+td .n{font-variant-numeric:tabular-nums}
+
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.pill.amber{background:var(--amber-soft);color:var(--amber)}
+.pill.none{background:var(--surface-2);color:var(--muted)}
+td .sub{display:block;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.35}
+
+.fig{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.fig svg{display:block;min-width:640px;width:100%;height:auto;font-family:"IBM Plex Sans KR",system-ui,sans-serif}
+.fig .cap{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+svg .box{fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1}
+svg .box.acc{fill:var(--accent);stroke:var(--accent)}
+svg .box.acc text{fill:var(--accent-ink)}
+svg .box.amb{fill:var(--amber-soft);stroke:var(--amber)}
+svg text{fill:var(--ink);font-size:12.5px}
+svg text.s{font-size:11px;fill:var(--ink-2)}
+svg text.m{font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+svg text.acc{fill:var(--accent-ink)}
+svg .ln{stroke:var(--line-strong);stroke-width:1.2;fill:none}
+svg .ln.acc{stroke:var(--accent);stroke-width:1.6}
+svg .ln.amb{stroke:var(--amber);stroke-width:1.6;stroke-dasharray:4 3}
+svg .lane{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+
+.stage{display:grid;grid-template-columns:52px minmax(0,1fr);gap:16px;margin:26px 0;padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.stage .tag{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;color:var(--accent);padding-top:3px}
+.stage h4{margin:0 0 6px}
+.stage p:last-child,.stage ul:last-child{margin-bottom:0}
+
+.phase{margin:28px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
+.phase header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.phase .pn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--amber);font-weight:500}
+.phase h3{margin:0;font-size:20px}
+.phase .why{color:var(--ink-2);margin-bottom:12px}
+.phase .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.phase .cols h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.phase .cols ul{margin:0;padding-left:1.2em;font-size:14.5px}
+.phase .done{margin-top:14px;padding:10px 14px;background:var(--ok-soft);border-radius:6px;font-size:14px;color:var(--ink)}
+.phase .done b{color:var(--ok)}
+
+.layout{font-family:"IBM Plex Mono",monospace;font-size:12.5px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;margin:16px 0;min-width:480px}
+.layout>div{background:var(--surface-2);padding:6px 8px;border-radius:3px;text-align:center;line-height:1.35;border:1px solid var(--line)}
+.layout>div.pad{background:transparent;color:var(--muted);border-style:dashed}
+.layout>div.row{grid-column:1/-1;text-align:left;background:transparent;border:0;color:var(--muted);padding:6px 0 0;font-size:11px;letter-spacing:.06em}
+.layout>div.m4{grid-column:span 4;background:var(--accent-soft)}
+
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 18px;font-size:14.5px;margin:14px 0 18px;max-width:72ch}
+.kv dt{color:var(--muted);font-weight:500}
+.kv dd{margin:0}
+
+.decision{margin:26px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.decision header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.decision .dn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--accent);font-weight:500}
+.decision h3{margin:0;font-size:19px}
+.decision .now{font-size:14.5px;color:var(--ink-2);background:var(--surface-2);border-radius:6px;padding:10px 14px;margin:0 0 14px;max-width:none}
+.decision .now b{color:var(--ink);margin-right:6px}
+.decision p{max-width:none}
+.decision p b{font-weight:600}
+.decision .pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:6px}
+.decision .pc>div{padding:12px 16px;border-radius:6px;border:1px solid var(--line)}
+.decision .pc>div:first-child{border-color:var(--ok);background:var(--ok-soft)}
+.decision .pc>div:last-child{border-color:var(--warn);background:var(--warn-soft)}
+.decision .pc h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.decision .pc>div:first-child h5{color:var(--ok)}
+.decision .pc>div:last-child h5{color:var(--warn)}
+.decision .pc ul{margin:0;padding-left:1.2em;font-size:14px;max-width:none}
+.decision .pc li{margin:3px 0}
+.applied{margin:14px 0 0;padding:12px 16px 14px;border:1px solid var(--ok);background:var(--ok-soft);border-radius:6px;font-size:14.5px}
+.applied .t{font-weight:600;color:var(--ok);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.applied p{margin:0 0 8px;max-width:none}
+.applied p:last-child{margin-bottom:0}
+.applied ul{margin:0;padding-left:1.2em;max-width:none;font-size:14px}
+.applied li{margin:3px 0}
+.applied code{background:var(--surface)}
+td .fix{display:block;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line-strong);color:var(--ink-2)}
+td .fix b{color:var(--ok);font-weight:600}
+.phase li.done-item{color:var(--ink-2)}
+.phase li.done-item::marker{color:var(--ok)}
+.footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="목차">
+  <div class="brand">7단계 · RHI 인터페이스 추출</div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/23 (작업 트리, 미커밋)<br><a href="rendering-analysis.html#p7">rendering-analysis.html → PHASE 7</a></div>
+  <ol>
+    <li><a href="#s1">1. 요약</a></li>
+    <li><a href="#s2">2. 무엇이 RHI이고 무엇이 아닌가</a></li>
+    <li><a href="#s3">3. 인터페이스</a></li>
+    <li class="sub"><a href="#s3-1">3.1 RHI::Device</a></li>
+    <li class="sub"><a href="#s3-2">3.2 RHI::CommandList</a></li>
+    <li class="sub"><a href="#s3-3">3.3 핸들은 값, Device만 가상</a></li>
+    <li><a href="#s4">4. 폴더 규칙과 백엔드 팩토리</a></li>
+    <li><a href="#s5">5. D3D11 백엔드</a></li>
+    <li><a href="#s6">6. 셰이더 컴파일러의 자리</a></li>
+    <li><a href="#s7">7. ImGui 어댑터</a></li>
+    <li><a href="#s8">8. 호출 코드는 무엇이 바뀌었나</a></li>
+    <li><a href="#s9">9. 함정과 해결</a></li>
+    <li><a href="#s10">10. 검증과 스크린샷</a></li>
+    <li><a href="#s11">11. 참고 문헌</a></li>
+  </ol>
+</nav>
+
+<main>
+<div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
+<h1>7단계 · RHI 인터페이스 추출</h1>
+<p class="lede">1·3·4·5·6단계에서 만든 조각(PipelineState, Buffer/Texture/Shader/Sampler, BindingLayout/ResourceSet, RenderPass/CommandList)은 이미 RHI의 모양을 하고 있었지만 D3D11 클래스였습니다. 이 단계는 <strong>API 중립 선언</strong>(<code>RHI/</code>: Desc, 핸들, 열거, 순수 가상 <code>RHI::Device</code>·<code>RHI::CommandList</code>)과 <strong>D3D11 구현</strong>(<code>RHI/D3D11/</code>)을 물리적으로 분리한 것입니다. 기능 추가는 없습니다. 분리 뒤 화면은 F10으로 애니메이션을 고정한 채 픽셀 단위로 비교했고, 씬 영역은 완전히 같습니다.</p>
+
+<div class="facts">
+  <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
+  <div><div class="k">RHI/</div><div class="v">헤더 10 · cpp 2<small>Device.h, CommandList.h, RHI.h/.cpp 신설</small></div></div>
+  <div><div class="k">RHI/D3D11/</div><div class="v">파일 12<small>D3D11Device, D3D11CommandList 로 개명</small></div></div>
+  <div><div class="k">Graphics/</div><div class="v">파일 8<small>Renderer·Mesh·VertexTypes·ShaderConstants·TextureLoader</small></div></div>
+  <div><div class="k">픽셀 비교</div><div class="v">794,880 중 12<small>전부 창 모서리(둥근 테두리). 씬 영역 0</small></div></div>
+  <div><div class="k">완료 기준</div><div class="v"><span class="pill ok">충족</span><small>RHI/D3D11 밖 d3d11.h 0건, 같은 화면</small></div></div>
+</div>
+
+<div class="callout">
+  <div class="t">한 줄 요약</div>
+  <p>Renderer·Material·Mesh는 <code>RHI::Device*</code>와 핸들·Desc만 봅니다. 어느 백엔드인지는 <code>RHI::CreateDevice(Backend::D3D11, desc)</code> 한 줄이 정하고, 그 이름은 <code>RHI/RHI.cpp</code>와 <code>RHI/D3D11/</code> 안에만 있습니다. rendering-analysis D21이 권한 "리소스는 핸들, Device와 CommandList만 가상"이 그대로 코드가 됐습니다. 3단계부터 이름과 시그니처를 RHI 최종형으로 잡아 둔 덕에 Renderer.cpp의 변경은 include 경로와 타입 이름(<code>Device*</code> → <code>RHI::Device*</code>)뿐입니다.</p>
+</div>
+
+<h2 id="s1"><span class="num">1.</span>요약</h2>
+<div class="tbl"><table>
+  <thead><tr><th>항목</th><th>6단계까지</th><th>7단계</th></tr></thead>
+  <tbody>
+    <tr><td>폴더</td><td><code>Graphics/</code>(Desc·핸들·Renderer 섞임), <code>Graphics/D3D11/</code></td><td><code>RHI/</code>(선언만) · <code>RHI/D3D11/</code>(구현) · <code>Graphics/</code>(렌더러 층만)</td></tr>
+    <tr><td>Device</td><td><code>class Device</code> — D3D11 구현이자 유일한 API</td><td><code>RHI::Device</code> 순수 가상 + <code>D3D11Device final</code></td></tr>
+    <tr><td>CommandList</td><td><code>class CommandList</code> — D3D11 구현</td><td><code>RHI::CommandList</code> 순수 가상 + <code>D3D11CommandList final</code></td></tr>
+    <tr><td>생성</td><td><code>Device graphicsDevice;</code> 값 멤버, <code>InitDevice(hwnd, w, h)</code></td><td><code>std::unique_ptr&lt;RHI::Device&gt;</code> = <code>RHI::CreateDevice(Backend, DeviceDesc)</code></td></tr>
+    <tr><td>ImGui 렌더러</td><td><code>ImGuiBackend</code> 네임스페이스(D3D11 폴더)</td><td><code>RHI::Device</code>의 <code>InitImGui / NewFrameImGui / RenderImGui / ShutdownImGui / GetImGuiTextureId</code></td></tr>
+    <tr><td>ShaderCompiler</td><td>선언·구현 모두 D3D11 폴더</td><td>선언 <code>RHI/ShaderCompiler.h</code>, 구현 <code>RHI/D3D11/ShaderCompiler.cpp</code>(fxc/DXBC)</td></tr>
+    <tr><td>격리 규칙</td><td><code>Graphics/D3D11/</code> 밖 D3D 헤더 0건</td><td><code>RHI/D3D11/</code> 밖 D3D 헤더 0건 (로드맵의 "RHI/ 밖"보다 엄격)</td></tr>
+    <tr><td>Renderer 변경</td><td>—</td><td>include 경로, <code>Device*</code> → <code>RHI::Device*</code>, <code>CommandList&amp;</code> → <code>RHI::CommandList&amp;</code>. 로직 0줄</td></tr>
+    <tr><td>단축키</td><td>F1–F9</td><td>+ F10 애니메이션 고정(픽셀 비교용)</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="s2"><span class="num">2.</span>무엇이 RHI이고 무엇이 아닌가</h2>
+<p>RHI(Render Hardware Interface)는 <em>API 차이만</em> 감추는 층입니다. 리소스 생성, 파이프라인 상태, 바인딩, 렌더 패스, 드로우, 상태 전이 — 즉 D3D11과 D3D12가 서로 다르게 표현하는 것들입니다. 재질 시스템, 드로우 정렬, 텍스처 캐시, 그림자 패스의 순서는 RHI 위 Renderer의 일이고, 두 백엔드 어디서나 같은 코드로 돕니다. 이 경계를 폴더로 그었습니다.</p>
+<pre><code>SherlockEngine/
+  RHI/                 선언만. D3D 헤더 include 금지.
+    Handle.h           {index, generation} 핸들 7종
+    PipelineTypes.h    Format·CullMode·… 열거, PipelineStateDesc(+.cpp 해시)
+    ResourceDesc.h     BufferDesc·TextureDesc·SamplerDesc·ShaderDesc
+    BindingTypes.h     BindingLayoutDesc·ResourceSetDesc
+    RenderPassTypes.h  RenderPassDesc·ResourceState
+    GraphicsConfig.h   kFrameCount
+    Device.h           RHI::Device (순수 가상)
+    CommandList.h      RHI::CommandList (순수 가상)
+    ShaderCompiler.h   컴파일·리플렉션 함수 선언
+    RHI.h / RHI.cpp    Backend, DeviceDesc, CreateDevice 팩토리 (.cpp 만 백엔드 헤더 include)
+  RHI/D3D11/           D3D11 구현. d3d11.h·dxgi.h·d3dcompiler.h·imgui_impl_dx11 은 여기만.
+    D3D11Device.h/.cpp, D3D11CommandList.h/.cpp, D3D11Common.h, D3D11Convert.h/.cpp,
+    D3D11Resources.h, ResourcePool.h, PipelineState.h/.cpp, PipelineStateCache.h/.cpp, ShaderCompiler.cpp
+  Graphics/            렌더러 층. RHI 위에서 씬을 그린다.
+    Renderer.h/.cpp, Mesh.h/.cpp, VertexTypes.h, ShaderConstants.h, TextureLoader.h/.cpp
+  Scene/  App/  Core/  Shaders/  Assets/</code></pre>
+<p>같은 모양의 라이브러리가 여럿 있습니다. NVRHI는 D3D11·D3D12·Vulkan 위에 가상 인터페이스와 리소스 핸들을 두고<sup><a href="#ref-2">2</a></sup>, sokol_gfx는 Desc 구조체와 세대 카운터가 있는 풀·정수 id를 씁니다<sup><a href="#ref-3">3</a></sup>. bgfx<sup><a href="#ref-4">4</a></sup>와 Diligent Engine<sup><a href="#ref-9">9</a></sup>도 같은 부류입니다. 우리 RHI는 그것들의 축소판이며, 인터페이스 표면은 이 프로젝트가 실제로 쓰는 것만 담습니다.</p>
+
+<h2 id="s3"><span class="num">3.</span>인터페이스</h2>
+<h3 id="s3-1">3.1 RHI::Device</h3>
+<p>6단계 <code>Device</code>의 공개 "핸들 API"를 그대로 순수 가상으로 옮겼습니다. 메서드 하나도 더하거나 빼지 않았고, D3D11에서만 편한 것(즉시 Map, 자동 밉 생성, 암묵적 동기화)은 원래부터 인터페이스에 없었습니다. <code>UpdateBuffer</code>는 "이 프레임 슬롯의 내용을 통째로 교체한다"만 약속하므로 D3D12의 링 버퍼로도 같은 의미를 지킬 수 있습니다.</p>
+<pre><code><span class="cm">// RHI/Device.h</span>
+<span class="kw">namespace</span> RHI
+{
+    <span class="kw">enum class</span> Backend : uint8_t { D3D11 /*, D3D12 (8단계) */ };
+    <span class="kw">struct</span> DeviceDesc { <span class="kw">void</span>* windowHandle; <span class="kw">int</span> width, height; <span class="kw">bool</span> enableDebugLayer; };   <span class="cm">// HWND 대신 void*</span>
+
+    <span class="kw">class</span> Device
+    {
+    <span class="kw">public</span>:
+        <span class="kw">virtual</span> ~Device() = <span class="kw">default</span>;
+        <span class="kw">virtual</span> Backend GetBackend() <span class="kw">const</span> = 0;
+        <span class="kw">virtual</span> uint32_t BeginFrame() = 0;                  <span class="cm">// 프레임 인덱스만</span>
+        <span class="kw">virtual void</span> EndFrame() = 0;                        <span class="cm">// Present</span>
+        <span class="kw">virtual</span> CommandList&amp; GetCommandList() = 0;
+        <span class="kw">virtual void</span> Resize(<span class="kw">int</span>, <span class="kw">int</span>) = 0;
+        <span class="kw">virtual</span> BufferHandle  CreateBuffer(<span class="kw">const</span> BufferDesc&amp;, <span class="kw">const void</span>* = <span class="kw">nullptr</span>) = 0;
+        <span class="kw">virtual void</span> UpdateBuffer(BufferHandle, <span class="kw">const void</span>*, uint32_t) = 0;
+        <span class="kw">virtual</span> TextureHandle CreateTexture(<span class="kw">const</span> TextureDesc&amp;, <span class="kw">const</span> TextureSubresource* = <span class="kw">nullptr</span>, uint32_t = 0) = 0;
+        <span class="kw">virtual</span> SamplerHandle CreateSampler(<span class="kw">const</span> SamplerDesc&amp;) = 0;
+        <span class="kw">virtual</span> ShaderHandle  CreateShader(<span class="kw">const</span> ShaderDesc&amp;) = 0;
+        <span class="kw">virtual</span> PipelineHandle CreatePipeline(<span class="kw">const</span> PipelineStateDesc&amp;) = 0;
+        <span class="kw">virtual</span> BindingLayoutHandle CreateBindingLayout(<span class="kw">const</span> BindingLayoutDesc&amp;) = 0;
+        <span class="kw">virtual</span> ResourceSetHandle CreateResourceSet(<span class="kw">const</span> ResourceSetDesc&amp;) = 0;
+        <span class="cm">// Destroy* 6종, GetBackBuffer/GetDepthBuffer, InvalidatePipelines, VSync/Tearing …</span>
+        <span class="cm">// ImGui 어댑터 5종 (7절)</span>
+    };
+}</code></pre>
+
+<h3 id="s3-2">3.2 RHI::CommandList</h3>
+<p>6단계 메서드 집합 그대로입니다: <code>BeginRenderPass / EndRenderPass / SetPipelineState / SetResourceSet / SetVertexBuffer / SetIndexBuffer / DrawIndexed / Barrier / CopyBuffer</code> + <code>Stats</code>. D3D11 백엔드에서는 ImmediateContext 래퍼, D3D12에서는 <code>ID3D12GraphicsCommandList</code> 기록입니다. D3D12가 D3D11과 가장 크게 다른 세 가지 — 명시적 동기화, PSO, 커맨드 리스트와 디스크립터 테이블<sup><a href="#ref-5">5</a></sup> — 가 이미 인터페이스 어휘(Barrier, PipelineStateDesc, CommandList, ResourceSet)로 들어와 있습니다.</p>
+
+<h3 id="s3-3">3.3 핸들은 값, Device만 가상</h3>
+<p>D21이 비교한 세 형태 — (a) 리소스마다 가상 인터페이스, (b) 핸들 + 백엔드 풀, (c) 컴파일 타임 선택 — 중 (b)를 리소스에, (a)를 Device/CommandList에 씁니다. 리소스가 <code>{index, generation}</code> 값이면 호출 코드에 포인터가 안 보이고, 세대 카운터가 해제 후 사용을 "항상 널"로 바꿉니다<sup><a href="#ref-1">1</a></sup>. 드로우콜당 가상 호출 몇 개는 D3D API 호출 비용에 묻힙니다. 런타임 백엔드 전환(<code>Backend</code> 값 하나)이 되므로 8단계에서 두 백엔드를 같은 실행 파일에서 나란히 비교할 수 있습니다.</p>
+
+<h2 id="s4"><span class="num">4.</span>폴더 규칙과 백엔드 팩토리</h2>
+<p>규칙은 grep으로 강제합니다. <code>RHI/D3D11/</code> 밖에서 <code>ID3D11 | d3d11.h | dxgi.h | d3dcompiler.h | imgui_impl_dx11 | ComPtr</code>가 주석에라도 나오면 위반입니다. 로드맵의 완료 기준은 "<code>RHI/</code> 밖"이지만 한 단계 더 좁혀 <code>RHI/</code>의 선언 헤더도 D3D를 모르게 했습니다. 예외는 하나, 백엔드 팩토리입니다.</p>
+<pre><code><span class="cm">// RHI/RHI.cpp — RHI/ 안에서 백엔드 헤더를 include 하는 유일한 파일</span>
+std::unique_ptr&lt;Device&gt; CreateDevice(Backend backend, <span class="kw">const</span> DeviceDesc&amp; desc)
+{
+    <span class="kw">switch</span> (backend)
+    {
+    <span class="kw">case</span> Backend::D3D11:
+    {
+        <span class="kw">auto</span> device = std::make_unique&lt;D3D11Device&gt;();
+        <span class="kw">if</span> (!device-&gt;Init(desc)) <span class="kw">return nullptr</span>;
+        Log::Info(<span class="str">"RHI : 백엔드 %s"</span>, ToString(backend));
+        <span class="kw">return</span> device;
+    }
+    <span class="kw">default</span>: <span class="kw">return nullptr</span>;
+    }
+}</code></pre>
+<p>새 백엔드는 <code>case</code> 하나와 <code>RHI/&lt;backend&gt;/</code> 폴더 하나입니다. <code>DeviceDesc::windowHandle</code>이 <code>void*</code>인 것도 같은 이유로, RHI 헤더가 <code>windows.h</code>에 기대지 않게 하기 위해서입니다.</p>
+
+<h2 id="s5"><span class="num">5.</span>D3D11 백엔드</h2>
+<p><code>Device</code> → <code>D3D11Device final : public RHI::Device</code>, <code>CommandList</code> → <code>D3D11CommandList final : public RHI::CommandList</code>. 메서드 본문은 6단계와 같고 <code>override</code>가 붙었을 뿐입니다. <code>final</code>은 가상 호출을 디바이러추얼라이즈할 여지를 컴파일러에 주고, 이 클래스를 더 상속할 이유가 없다는 선언이기도 합니다. 리소스 풀(<code>ResourcePool&lt;T, Handle&gt;</code>, free list + 세대)은 3단계 그대로이며, <code>Desc::debugName</code>은 <code>SetPrivateData(WKPDID_D3DDebugObjectName)</code>으로 D3D 객체에 붙어 Debug Layer 누수 보고와 RenderDoc에 이름으로 나옵니다<sup><a href="#ref-7">7</a></sup>.</p>
+<p>내부 접근자(<code>GetDevice / GetContext / GetTexture / GetPipeline …</code>)는 인터페이스에 없고 <code>D3D11Device</code>의 공개 메서드입니다. <code>D3D11CommandList</code>와 <code>PipelineState</code>만 부르며, 둘 다 같은 폴더에 있습니다. 폴더 밖 코드는 <code>RHI::Device*</code>만 갖고 있어 부를 수 없습니다.</p>
+
+<h2 id="s6"><span class="num">6.</span>셰이더 컴파일러의 자리</h2>
+<p>셰이더 바이트코드는 백엔드별입니다. fxc는 DXBC(SM 5.x), dxc는 DXIL(SM 6.x)을 냅니다<sup><a href="#ref-8">8</a></sup>. 그래서 <code>ShaderCompiler.h</code>(컴파일·로드·리플렉션 함수 선언, <code>BindingTypes</code>만 의존)는 <code>RHI/</code>에, 구현(<code>D3DCompile</code>·<code>D3DReflect</code>)은 <code>RHI/D3D11/ShaderCompiler.cpp</code>에 있습니다. 8단계에서 D3D12 백엔드가 오면 같은 선언에 dxc 구현이 붙고, 캐시 키에 백엔드가 들어갑니다. 지금은 구현이 하나라 <code>Backend</code> 인자가 없습니다 — 필요해질 때 넣는 것이 "얇게" 유지하는 방법입니다.</p>
+
+<h2 id="s7"><span class="num">7.</span>ImGui 어댑터</h2>
+<p>로드맵은 두 길을 제시했습니다: RHI 위에 자체 ImGui 렌더러를 쓰거나(권장, 소형), 백엔드별로 <code>imgui_impl_*</code>을 갈아 끼우는 얇은 어댑터. <strong>후자</strong>를 택했습니다. Dear ImGui 문서 자체가 "표준 백엔드는 검증되어 있고, 직접 만든 렌더러 백엔드가 프로젝트에 가치를 더할 가능성은 낮다"고 말합니다<sup><a href="#ref-6">6</a></sup>. 자체 렌더러를 쓰려면 RHI에 시저 사각형과 동적 정점 버퍼 갱신 경로를 더해야 하는데, 지금 RHI에 그 이유가 그것뿐이라면 RHI를 두껍게 만드는 일입니다.</p>
+<pre><code><span class="cm">// RHI/Device.h — ImGui 렌더러는 Device 가 고른다</span>
+<span class="kw">virtual bool</span> InitImGui() = 0;
+<span class="kw">virtual void</span> NewFrameImGui() = 0;
+<span class="kw">virtual void</span> RenderImGui() = 0;      <span class="cm">// Renderer::BeginUIPass / EndUIPass 사이</span>
+<span class="kw">virtual void</span> ShutdownImGui() = 0;
+<span class="kw">virtual</span> uint64_t GetImGuiTextureId(TextureHandle) = 0;   <span class="cm">// ImTextureID(ImU64) 로 캐스팅</span>
+
+<span class="cm">// RHI/D3D11/D3D11Device.cpp</span>
+<span class="kw">bool</span> D3D11Device::InitImGui() { <span class="kw">return</span> ImGui_ImplDX11_Init(m_device.Get(), m_context.Get()); }
+uint64_t D3D11Device::GetImGuiTextureId(TextureHandle h)
+{
+    ID3D11ShaderResourceView* srv = …;   <span class="cm">// 그림자 맵 미리보기가 쓴다</span>
+    <span class="kw">return</span> <span class="kw">static_cast</span>&lt;uint64_t&gt;(<span class="kw">reinterpret_cast</span>&lt;uintptr_t&gt;(srv));
+}</code></pre>
+<p><code>GetImGuiTextureId</code>가 <code>uint64_t</code>를 돌려주는 것은 RHI 헤더에 <code>imgui.h</code>를 끌어오지 않기 위해서입니다. ImGui 1.92의 <code>ImTextureID</code>는 <code>ImU64</code>라 캐스팅 한 번으로 맞습니다. 6단계의 <code>ImGuiBackend.h/.cpp</code>는 삭제됐고, App은 ImGui 컨텍스트와 Win32 백엔드만 다룹니다. D3D12 백엔드는 <code>imgui_impl_dx12</code>를 같은 다섯 메서드 뒤에 둡니다.</p>
+
+<h2 id="s8"><span class="num">8.</span>호출 코드는 무엇이 바뀌었나</h2>
+<div class="tbl"><table>
+  <thead><tr><th>파일</th><th>변경</th></tr></thead>
+  <tbody>
+    <tr><td><code>App/AppBase.h</code></td><td><code>Device graphicsDevice;</code> → <code>std::unique_ptr&lt;RHI::Device&gt; graphicsDevice;</code> + <code>RHI::Backend m_backend</code>. Renderer가 그 뒤에 선언되어 먼저 파괴된다(핸들 반납 후 장치 해제).</td></tr>
+    <tr><td><code>App/AppBase.cpp</code></td><td><code>InitDevice</code>가 <code>RHI::CreateDevice</code>. <code>ImGuiBackend::*</code> → <code>graphicsDevice-&gt;*ImGui()</code>. <code>.</code> → <code>-&gt;</code>. 프레임 루프의 순서는 6단계 그대로.</td></tr>
+    <tr><td><code>App/TestApp.cpp</code>, <code>DebugUI</code></td><td><code>Device&amp;</code> → <code>RHI::Device&amp;</code>, <code>*graphicsDevice</code> 전달, 그림자 맵 미리보기는 <code>device.GetImGuiTextureId()</code>.</td></tr>
+    <tr><td><code>Graphics/Renderer.h/.cpp</code></td><td>include 경로(<code>Graphics/D3D11/Device.h</code> → <code>RHI/Device.h</code> 등), <code>Device*</code> → <code>RHI::Device*</code>, <code>CommandList&amp;</code> → <code>RHI::CommandList&amp;</code>. <b>로직 변경 0줄.</b></td></tr>
+    <tr><td><code>Graphics/Mesh</code>, <code>VertexTypes</code>, <code>TextureLoader</code>, <code>Scene/*</code></td><td>include 경로만 (<code>Graphics/Handle.h</code> → <code>RHI/Handle.h</code> 등). Material·Scene은 그것조차 없음.</td></tr>
+  </tbody>
+</table></div>
+<p>로드맵의 "Renderer·Material·Mesh 코드가 변경 없이 컴파일" 기준에 대해 정직하게 적으면, Renderer는 이전에 <em>구체 클래스 이름</em>(<code>Device</code>)을 썼으므로 타입 이름 치환 없이는 불가능했습니다. 3~6단계에서 인터페이스가 될 이름과 시그니처를 미리 잡아 둔 결과, 그 치환이 전부였습니다.</p>
+
+<h2 id="s9"><span class="num">9.</span>함정과 해결</h2>
+<ul>
+  <li><strong>이름 충돌.</strong> 인터페이스를 <code>RHI::Device</code>로 두면 전역 <code>Device</code>가 같은 이름이 됩니다. D3D11 클래스를 <code>D3D11Device</code>·<code>D3D11CommandList</code>로 개명해 "이름에 백엔드가 있으면 구현, 없으면 인터페이스" 규칙을 세웠습니다.</li>
+  <li><strong>파괴 순서.</strong> <code>unique_ptr</code>로 바뀐 장치는 AppBase 멤버 선언 순서상 Renderer보다 앞이라 뒤에 파괴됩니다(핸들 반납 → 장치 해제). ImGui 종료는 AppBase 소멸자에서 장치가 살아 있을 때 부르고, <code>D3D11Device::ReleaseDevice</code>도 아직 초기화되어 있으면 한 번 더 안전하게 닫습니다.</li>
+  <li><strong>RHI 헤더에 imgui.h·windows.h 넣지 않기.</strong> <code>ImTextureID</code>는 <code>uint64_t</code>로, <code>HWND</code>는 <code>void*</code>로. 헤더가 가벼워야 8단계 D3D12 폴더가 같은 헤더를 그대로 씁니다.</li>
+  <li><strong>팩토리의 예외.</strong> <code>RHI/RHI.cpp</code>는 백엔드 헤더를 include 해야 합니다. 텍스트 grep 규칙(<code>d3d11.h</code> 등)에는 걸리지 않지만, 문서에 예외로 적어 두었습니다.</li>
+  <li><strong>ShaderCompiler.h 의 필터.</strong> 파일은 <code>RHI/</code>로 옮겼는데 vcxproj 필터가 <code>RHI\D3D11</code>로 남아 있었습니다. 빌드에는 영향이 없지만 IDE 트리가 거짓말을 하므로 고쳤습니다.</li>
+  <li><strong>CRLF 소스와 perl.</strong> 6단계와 같은 함정. 파일 이동은 <code>mv</code>, include 치환은 <code>sed</code>(줄 단위라 CRLF 무관), 여러 줄 편집은 Edit 도구.</li>
+  <li><strong>결정적 비교.</strong> 애니메이션(공전·bob·자전·맥동)이 시간에 걸려 있어 두 실행의 화면이 같을 수 없었습니다. F10이 <code>t = 0</code>으로 고정하고 광원 공전을 끕니다. 비교 대상은 클라이언트 영역이며 ImGui 헤더 행도 포함해 0건이었습니다.</li>
+</ul>
+
+<h2 id="s10"><span class="num">10.</span>검증과 스크린샷</h2>
+<div class="applied">
+  <div class="t">적용 결과 — 2026-09-23</div>
+  <ul>
+    <li><b>완료 기준 ①</b> "<code>RHI/</code> 밖에서 <code>d3d11.h</code>·<code>dxgi.h</code> include 0건" — <code>RHI/D3D11/</code> 밖 기준으로 <code>ID3D11 | d3d11.h | dxgi.h | d3dcompiler.h | imgui_impl_dx11 | ComPtr</code> 0건(주석 포함). <code>RHI/</code>의 선언 헤더 10개는 D3D를 전혀 모른다.</li>
+    <li><b>완료 기준 ②</b> "Renderer·Material·Mesh 코드가 변경 없이 컴파일" — Material·Scene 무변경. Mesh·VertexTypes·TextureLoader는 include 경로만. Renderer는 include 경로 + 타입 이름(8절). Debug·Release x64 빌드 통과.</li>
+    <li><b>완료 기준 ③</b> "이전 단계와 같은 화면" — F10 고정 상태에서 리팩터 전(6단계 코드 + F10)과 후를 같은 스크립트로 캡처. 비교 영역 794,880 픽셀 중 12픽셀 차이, 전부 창 오른쪽 아래 모서리(x 1281–1287, y 746–750; Windows 11 둥근 창 모서리가 바탕화면과 섞이는 곳), 채널 합 최대 차이 4/765. 씬과 ImGui 헤더 영역은 0픽셀. 그림 1.</li>
+    <li>로그: <code>RHI : 백엔드 D3D11</code>. 리플렉션·바인딩 대조·PSO 생성 로그는 6단계와 동일.</li>
+    <li>리사이즈 1500×900 ↔ 900×500 6회 + 최소화/복원: Debug Layer 메시지 0. 셰이더 핫리로드: 편집 → 세대 2, 에러 → 유지, 복구 → 세대 3(스크립트 재실행).</li>
+    <li>종료 시 자식 Live Object 0건(<code>D3D11Device::ReleaseDevice</code> 순서 유지).</li>
+  </ul>
+</div>
+
+<div class="fig">
+  <img src="../images/2026-09-23-phase7-after-refactor.png" alt="RHI 추출 후 F10으로 고정한 씬" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 1. RHI 추출 후, F10으로 t = 0에 고정한 화면. 추출 전 캡처(images/2026-09-23-phase7-before-refactor.png)와 씬 영역이 픽셀 단위로 같다. 두 파일을 나란히 열어도 차이를 볼 수 없어 한 장만 싣는다.</div>
+</div>
+
+<h2 id="s11"><span class="num">11.</span>참고 문헌</h2>
+<ol>
+  <li id="ref-1">Andre Weissflog, <em>Handles are the better pointers</em>, 2018 — 인덱스 핸들 + 세대 카운터로 use-after-free 를 잡는 설계. <a href="https://floooh.github.io/2018/06/17/handles-vs-pointers.html">floooh.github.io/2018/06/17/handles-vs-pointers.html</a></li>
+  <li id="ref-2">NVIDIA, <em>NVRHI</em> — D3D11·D3D12·Vulkan 위의 공통 추상화, 가상 인터페이스 + 리소스 핸들. <a href="https://github.com/NVIDIA-RTX/NVRHI">github.com/NVIDIA-RTX/NVRHI</a></li>
+  <li id="ref-3">Andre Weissflog, <em>sokol_gfx.h</em> — Desc 구조체 → 정수 id, 세대 풀, 다중 백엔드의 단일 헤더 구현. <a href="https://github.com/floooh/sokol/blob/master/sokol_gfx.h">github.com/floooh/sokol/blob/master/sokol_gfx.h</a></li>
+  <li id="ref-4">Branimir Karadžić, <em>bgfx Overview</em> — 다중 백엔드 핸들 기반 렌더링 라이브러리. <a href="https://bkaradzic.github.io/bgfx/overview.html">bkaradzic.github.io/bgfx/overview.html</a></li>
+  <li id="ref-5">Microsoft Learn, <em>Important Changes from Direct3D 11 to Direct3D 12</em> — 명시적 동기화, PSO, 커맨드 리스트, 디스크립터 힙. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/important-changes-from-directx-11-to-directx-12">learn.microsoft.com/…/important-changes-from-directx-11-to-directx-12</a></li>
+  <li id="ref-6">Dear ImGui, <em>docs/BACKENDS.md</em> — 표준 백엔드 사용 권고, 자체 렌더러 백엔드의 가치. <a href="https://github.com/ocornut/imgui/blob/master/docs/BACKENDS.md">github.com/ocornut/imgui/blob/master/docs/BACKENDS.md</a></li>
+  <li id="ref-7">Microsoft Learn, <em>ID3D11DeviceChild::SetPrivateData</em> — WKPDID_D3DDebugObjectName 으로 디버그 이름. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicechild-setprivatedata">learn.microsoft.com/…/nf-d3d11-id3d11devicechild-setprivatedata</a></li>
+  <li id="ref-8">Microsoft, <em>DirectX Shader Compiler</em> — HLSL → DXIL(dxc). fxc 의 DXBC 와 대비. <a href="https://github.com/microsoft/DirectXShaderCompiler">github.com/microsoft/DirectXShaderCompiler</a></li>
+  <li id="ref-9">Diligent Graphics, <em>Diligent Engine</em> — D3D11/12·Vulkan·Metal·OpenGL·WebGPU 추상화 층. <a href="https://github.com/DiligentGraphics/DiligentEngine">github.com/DiligentGraphics/DiligentEngine</a></li>
+  <li>SherlockEngine, <em>rendering-analysis.html</em> D21 — RHI 추상화의 형태와 도입 시점. <a href="rendering-analysis.html#d21">rendering-analysis.html#d21</a></li>
+</ol>
+
+<div class="footer">
+  대상: SherlockEngine 작업 트리 (2026/09/23, 6단계 위에 연속). 이전: <a href="phase-6.html">6단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p7">rendering-analysis.html PHASE 7</a>. 스크린샷은 <code>images/2026-09-23-phase7-*.png</code>.
+</div>
+</main>
+</div>
+</body>
+</html>

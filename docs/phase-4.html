@@ -1,0 +1,474 @@
+<title>4단계 · Material과 바인딩 레이아웃 — SherlockEngine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EEF0F7; --line:#D6D9E6; --line-strong:#B9BDD0;
+  --ink:#171A2B; --ink-2:#4A4F66; --muted:#7A7F96;
+  --accent:#232767; --accent-ink:#FFFFFF; --accent-soft:#E3E5F5;
+  --amber:#B8781A; --amber-soft:#FBF0DB;
+  --ok:#2E7D4F; --ok-soft:#E1F2E7; --warn:#A6620C; --warn-soft:#FBEDD6; --crit:#B23A3A; --crit-soft:#F9E1E1;
+  --code-bg:#1B1D33; --code-ink:#E7E9F5; --code-kw:#9BA3FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(23,26,43,.06),0 8px 24px rgba(23,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+    --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+    --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+    --amber:#F0B650; --amber-soft:#3D3560;
+    --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+    --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+  --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+  --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+  --amber:#F0B650; --amber-soft:#3D3560;
+  --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+  --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+code,pre,.mono{font-family:"IBM Plex Mono",Consolas,"D2Coding",monospace}
+code{font-size:.875em;background:var(--surface-2);padding:.1em .4em;border-radius:4px;color:var(--ink)}
+pre{background:var(--code-bg);color:var(--code-ink);padding:18px 20px;border-radius:8px;overflow-x:auto;font-size:13.5px;line-height:1.6;margin:18px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+.kw{color:var(--code-kw)} .str{color:var(--code-str)} .cm{color:var(--code-cm)}
+
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto;padding:0 32px;gap:48px}
+@media (max-width:960px){.shell{grid-template-columns:minmax(0,1fr);padding:0 20px;gap:0}}
+
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0 40px;font-size:13.5px}
+nav.toc .brand{font-weight:600;letter-spacing:.02em;color:var(--ink);margin-bottom:6px}
+nav.toc .meta{color:var(--muted);font-size:12px;margin-bottom:24px;line-height:1.5}
+nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+nav.toc li a{display:block;padding:5px 14px;color:var(--ink-2);border-left:2px solid transparent;margin-left:-1px;border-bottom:none;line-height:1.45}
+nav.toc li a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+nav.toc li.sub a{padding-left:28px;font-size:12.5px;color:var(--muted)}
+@media (max-width:960px){nav.toc{position:static;height:auto;padding:28px 0 8px}nav.toc ol{display:none}}
+
+main{padding:40px 0 96px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1{font-size:clamp(30px,4vw,42px);line-height:1.2;margin:6px 0 14px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{font-size:18px;color:var(--ink-2);max-width:66ch;margin:0 0 28px}
+h2{font-size:26px;line-height:1.3;margin:72px 0 16px;padding-top:24px;border-top:1px solid var(--line);font-weight:600;letter-spacing:-.005em;text-wrap:balance}
+h2 .num{display:inline-block;min-width:2.2em;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+h3{font-size:19px;margin:40px 0 10px;font-weight:600;text-wrap:balance}
+h4{font-size:16px;margin:28px 0 8px;font-weight:600}
+p{margin:0 0 16px;max-width:72ch}
+ul,ol{max-width:72ch;padding-left:1.4em;margin:0 0 16px}
+li{margin:4px 0}
+li>ul,li>ol{margin-top:4px}
+strong{font-weight:600}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:28px 0}
+.facts>div{background:var(--surface);padding:14px 16px}
+.facts .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.facts .v{font-size:15px;font-weight:600;line-height:1.35}
+.facts .v small{display:block;font-weight:400;color:var(--ink-2);font-size:12.5px;margin-top:2px}
+
+.callout{border-left:3px solid var(--accent);background:var(--surface);padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;max-width:72ch}
+.callout.amber{border-left-color:var(--amber);background:var(--amber-soft)}
+.callout.crit{border-left-color:var(--crit);background:var(--crit-soft)}
+.callout p:last-child{margin-bottom:0}
+.callout .t{font-weight:600;font-size:14px;margin-bottom:4px}
+
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.mono,th.mono{font-size:13px}
+td .n{font-variant-numeric:tabular-nums}
+
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.pill.amber{background:var(--amber-soft);color:var(--amber)}
+.pill.none{background:var(--surface-2);color:var(--muted)}
+td .sub{display:block;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.35}
+
+.fig{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.fig svg{display:block;min-width:640px;width:100%;height:auto;font-family:"IBM Plex Sans KR",system-ui,sans-serif}
+.fig .cap{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+svg .box{fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1}
+svg .box.acc{fill:var(--accent);stroke:var(--accent)}
+svg .box.acc text{fill:var(--accent-ink)}
+svg .box.amb{fill:var(--amber-soft);stroke:var(--amber)}
+svg text{fill:var(--ink);font-size:12.5px}
+svg text.s{font-size:11px;fill:var(--ink-2)}
+svg text.m{font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+svg text.acc{fill:var(--accent-ink)}
+svg .ln{stroke:var(--line-strong);stroke-width:1.2;fill:none}
+svg .ln.acc{stroke:var(--accent);stroke-width:1.6}
+svg .ln.amb{stroke:var(--amber);stroke-width:1.6;stroke-dasharray:4 3}
+svg .lane{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+
+.stage{display:grid;grid-template-columns:52px minmax(0,1fr);gap:16px;margin:26px 0;padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.stage .tag{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;color:var(--accent);padding-top:3px}
+.stage h4{margin:0 0 6px}
+.stage p:last-child,.stage ul:last-child{margin-bottom:0}
+
+.phase{margin:28px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
+.phase header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.phase .pn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--amber);font-weight:500}
+.phase h3{margin:0;font-size:20px}
+.phase .why{color:var(--ink-2);margin-bottom:12px}
+.phase .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.phase .cols h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.phase .cols ul{margin:0;padding-left:1.2em;font-size:14.5px}
+.phase .done{margin-top:14px;padding:10px 14px;background:var(--ok-soft);border-radius:6px;font-size:14px;color:var(--ink)}
+.phase .done b{color:var(--ok)}
+
+.layout{font-family:"IBM Plex Mono",monospace;font-size:12.5px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;margin:16px 0;min-width:480px}
+.layout>div{background:var(--surface-2);padding:6px 8px;border-radius:3px;text-align:center;line-height:1.35;border:1px solid var(--line)}
+.layout>div.pad{background:transparent;color:var(--muted);border-style:dashed}
+.layout>div.row{grid-column:1/-1;text-align:left;background:transparent;border:0;color:var(--muted);padding:6px 0 0;font-size:11px;letter-spacing:.06em}
+.layout>div.m4{grid-column:span 4;background:var(--accent-soft)}
+
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 18px;font-size:14.5px;margin:14px 0 18px;max-width:72ch}
+.kv dt{color:var(--muted);font-weight:500}
+.kv dd{margin:0}
+
+.decision{margin:26px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.decision header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.decision .dn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--accent);font-weight:500}
+.decision h3{margin:0;font-size:19px}
+.decision .now{font-size:14.5px;color:var(--ink-2);background:var(--surface-2);border-radius:6px;padding:10px 14px;margin:0 0 14px;max-width:none}
+.decision .now b{color:var(--ink);margin-right:6px}
+.decision p{max-width:none}
+.decision p b{font-weight:600}
+.decision .pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:6px}
+.decision .pc>div{padding:12px 16px;border-radius:6px;border:1px solid var(--line)}
+.decision .pc>div:first-child{border-color:var(--ok);background:var(--ok-soft)}
+.decision .pc>div:last-child{border-color:var(--warn);background:var(--warn-soft)}
+.decision .pc h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.decision .pc>div:first-child h5{color:var(--ok)}
+.decision .pc>div:last-child h5{color:var(--warn)}
+.decision .pc ul{margin:0;padding-left:1.2em;font-size:14px;max-width:none}
+.decision .pc li{margin:3px 0}
+.applied{margin:14px 0 0;padding:12px 16px 14px;border:1px solid var(--ok);background:var(--ok-soft);border-radius:6px;font-size:14.5px}
+.applied .t{font-weight:600;color:var(--ok);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.applied p{margin:0 0 8px;max-width:none}
+.applied p:last-child{margin-bottom:0}
+.applied ul{margin:0;padding-left:1.2em;max-width:none;font-size:14px}
+.applied li{margin:3px 0}
+.applied code{background:var(--surface)}
+td .fix{display:block;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line-strong);color:var(--ink-2)}
+td .fix b{color:var(--ok);font-weight:600}
+.phase li.done-item{color:var(--ink-2)}
+.phase li.done-item::marker{color:var(--ok)}
+.footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+<div class="shell">
+<nav class="toc" aria-label="목차">
+  <div class="brand">4단계 · Material과 바인딩 레이아웃</div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/23 (작업 트리, 미커밋)<br><a href="rendering-analysis.html#p4">rendering-analysis.html → PHASE 4</a></div>
+  <ol>
+    <li><a href="#s1">1. 요약</a></li>
+    <li><a href="#s2">2. 루트 시그니처를 D3D11에 미리 그리기</a></li>
+    <li class="sub"><a href="#s2-1">2.1 BindingLayout과 ResourceSet</a></li>
+    <li class="sub"><a href="#s2-2">2.2 갱신 빈도별 셋 세 개</a></li>
+    <li class="sub"><a href="#s2-3">2.3 D3D12의 64 DWORD 예산</a></li>
+    <li><a href="#s3">3. Material</a></li>
+    <li><a href="#s4">4. 정점 포맷 열거</a></li>
+    <li><a href="#s5">5. 리플렉션으로 선언 대조</a></li>
+    <li><a href="#s6">6. .cso 사전 컴파일과 핫리로드</a></li>
+    <li class="sub"><a href="#s6-1">6.1 빌드: fxc</a></li>
+    <li class="sub"><a href="#s6-2">6.2 런타임: 무엇을 로드할까</a></li>
+    <li class="sub"><a href="#s6-3">6.3 핫리로드와 PSO 캐시 세대</a></li>
+    <li><a href="#s7">7. 드로우 정렬과 상태 캐시</a></li>
+    <li><a href="#s8">8. 함정과 해결</a></li>
+    <li><a href="#s9">9. 검증과 스크린샷</a></li>
+    <li><a href="#s10">10. 참고 문헌</a></li>
+  </ol>
+</nav>
+
+<main>
+<div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
+<h1>4단계 · Material과 바인딩 레이아웃</h1>
+<p class="lede">D3D12의 <strong>루트 시그니처</strong>에 해당하는 <code>BindingLayout</code>과 <strong>디스크립터 테이블</strong>에 해당하는 <code>ResourceSet</code>을 D3D11 위에 미리 만들고, 그 위에 <code>Material</code>을 올린 단계입니다. 함께 정점 포맷을 열거형으로 바꾸고, 셰이더가 실제로 쓰는 슬롯을 리플렉션으로 읽어 선언과 대조하고, 빌드가 <code>.cso</code>를 만들되 Debug에서는 HLSL을 저장하는 순간 다시 컴파일되어 화면에 반영되게 했습니다. 드로우는 PSO → Material → Mesh 순으로 정렬됩니다.</p>
+
+<div class="facts">
+  <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
+  <div><div class="k">새 파일</div><div class="v">2개<small>Graphics/BindingTypes.h, Scene/Material.h</small></div></div>
+  <div><div class="k">상수버퍼</div><div class="v">b0 208 · b1 128 · b2 656 · b3 32<small>specular·shininess가 Lights에서 Material로</small></div></div>
+  <div><div class="k">.cso</div><div class="v">fxc, 빌드 시<small>Debug 22KB/48KB, Release 1.8KB/7.6KB</small></div></div>
+  <div><div class="k">핫리로드</div><div class="v">0.5초 폴링<small>실패 시 이전 셰이더 유지</small></div></div>
+  <div><div class="k">완료 기준</div><div class="v"><span class="pill ok">충족</span><small>같은 구에 재질 3개, 저장 즉시 반영</small></div></div>
+</div>
+
+<div class="callout">
+  <div class="t">한 줄 요약</div>
+  <p>"이 파이프라인은 b0·b1·b2·b3을 쓴다"는 선언(<code>BindingLayoutDesc</code>)이 PSO Desc에 들어가고, 각 슬롯에 무엇을 꽂을지는 <code>ResourceSet</code>이 정합니다. D3D11에서 <code>SetResourceSet</code>은 슬롯마다 <code>*SSetConstantBuffers</code>를 부르는 것뿐이지만, D3D12에서는 같은 호출이 디스크립터 테이블 하나를 세팅합니다. Material은 재질 상수버퍼 하나와 재질 ResourceSet 하나이고, 옵션(와이어프레임·양면)에 따라 다른 PSO를 고릅니다. 셰이더는 빌드 시 <code>.cso</code>로 컴파일되지만 Debug에서 소스가 바뀌면 다시 컴파일되어 PSO 캐시가 세대를 올리며 재생성됩니다.</p>
+</div>
+
+<h2 id="s1"><span class="num">1.</span>요약</h2>
+<div class="tbl"><table>
+<thead><tr><th>구성 요소</th><th>파일</th><th>역할</th></tr></thead>
+<tbody>
+<tr><td class="mono">BindingLayoutDesc / ResourceSetDesc</td><td>Graphics/BindingTypes.h</td><td>슬롯 {타입 CBV/SRV/Sampler, 스테이지 마스크, 레지스터} 배열과, 그 슬롯에 꽂을 핸들 배열. 상한 CBV 8 · SRV 16 · Sampler 8</td></tr>
+<tr><td class="mono">Device::CreateBindingLayout / CreateResourceSet / SetResourceSet</td><td>Graphics/D3D11/Device.cpp</td><td>선언 검증(중복·상한·스테이지 0), 셋 생성 시 핸들 종류 검증, 바인딩 시 슬롯별 D3D11 호출</td></tr>
+<tr><td class="mono">PipelineStateDesc.bindingLayouts[4]</td><td>Graphics/PipelineTypes.h</td><td>D3D12 <code>pRootSignature</code> 자리. 해시·비교에 포함</td></tr>
+<tr><td class="mono">Material</td><td>Scene/Material.h</td><td>baseColor·specularColor·shininess·wireframe·doubleSided. CPU 데이터</td></tr>
+<tr><td class="mono">MaterialConstants (b3)</td><td>Graphics/ShaderConstants.h, Shaders/Common.hlsli</td><td>32바이트. <code>LightConstants</code>는 672 → 656</td></tr>
+<tr><td class="mono">VertexFormat</td><td>Graphics/VertexTypes.h</td><td>열거형 + <code>GetVertexLayout(format)</code>. Mesh가 자기 포맷을 말한다</td></tr>
+<tr><td class="mono">ShaderCompiler::ReflectBindings / LoadOrCompile</td><td>Graphics/D3D11/ShaderCompiler.cpp</td><td>b#/t#/s# 리플렉션, .cso ↔ 소스 선택</td></tr>
+<tr><td class="mono">PipelineStateCache::Clear + 세대</td><td>Graphics/D3D11/PipelineStateCache.cpp</td><td>핫리로드 후 이전 핸들을 무효화</td></tr>
+<tr><td class="mono">Renderer</td><td>Graphics/Renderer.cpp</td><td>레이아웃 3개·셋 2개 생성, GpuMaterial 캐시, 드로우 목록 정렬, 상태 캐시, 파일 감시</td></tr>
+<tr><td class="mono">FxCompile 항목 + 타깃 2개</td><td>SherlockEngine.vcxproj</td><td>.cso 생성, 출력 폴더 생성, 소스 사본 복사</td></tr>
+</tbody></table></div>
+
+<h2 id="s2"><span class="num">2.</span>루트 시그니처를 D3D11에 미리 그리기</h2>
+
+<h3 id="s2-1">2.1 BindingLayout과 ResourceSet</h3>
+<p>D3D12의 루트 시그니처는 "파이프라인에 어떤 종류의 리소스가 어떤 슬롯으로 바인딩되는가"를 정의합니다<sup><a href="#ref-1">[1]</a></sup>. 셰이더의 <code>register(b0)</code> 같은 가상 레지스터는 루트 시그니처를 통해 디스크립터 힙의 실제 위치로 연결되고, 디스크립터 테이블은 "논리적으로 디스크립터의 배열"입니다<sup><a href="#ref-2">[2]</a></sup>. D3D11에는 이 개념이 없습니다. <code>VSSetConstantBuffers(0, 1, &amp;buffer)</code>처럼 슬롯에 직접 꽂습니다. 그래서 4단계는 D3D11 위에 두 개념을 <em>이름만</em> 먼저 만듭니다.</p>
+<pre><code><span class="cm">// Graphics/BindingTypes.h</span>
+<span class="kw">enum class</span> BindingType : uint8_t { ConstantBuffer, ShaderResource, Sampler };   <span class="cm">// b# / t# / s#</span>
+<span class="kw">struct</span> BindingSlot { BindingType type; uint8_t stageMask; uint8_t reg; };
+<span class="kw">struct</span> BindingLayoutDesc { BindingSlot slots[16]; uint8_t slotCount; <span class="kw">const char</span>* debugName;
+                           BindingLayoutDesc&amp; Add(BindingType, uint8_t stageMask, uint8_t reg); };
+<span class="kw">struct</span> ResourceBinding { BufferHandle buffer; TextureHandle texture; };   <span class="cm">// 슬롯 타입에 따라 하나만</span>
+<span class="kw">struct</span> ResourceSetDesc  { BindingLayoutHandle layout; ResourceBinding bindings[16]; <span class="kw">const char</span>* debugName; };</code></pre>
+<pre><code><span class="cm">// Graphics/D3D11/Device.cpp — SetResourceSet. D3D12라면 SetGraphicsRootDescriptorTable 한 번.</span>
+<span class="kw">for</span> (i &lt; layout-&gt;desc.slotCount)
+{
+    <span class="kw">const</span> BindingSlot&amp; slot = layout-&gt;desc.slots[i];
+    <span class="kw">const</span> ResourceBinding&amp; binding = set-&gt;desc.bindings[i];
+    <span class="kw">switch</span> (slot.type)
+    {
+    <span class="kw">case</span> BindingType::ConstantBuffer:
+        ID3D11Buffer* b = m_buffers.Get(binding.buffer)-&gt;Get(m_frameIndex);   <span class="cm">// Dynamic 링의 이번 프레임 복제본</span>
+        <span class="kw">if</span> (slot.stageMask &amp; ShaderStageMask_Vertex) m_context-&gt;VSSetConstantBuffers(slot.reg, 1, &amp;b);
+        <span class="kw">if</span> (slot.stageMask &amp; ShaderStageMask_Pixel)  m_context-&gt;PSSetConstantBuffers(slot.reg, 1, &amp;b);
+        <span class="kw">break</span>;
+    <span class="kw">case</span> BindingType::ShaderResource:   <span class="cm">// t#: 텍스처의 SRV. 5단계에서 실제로 쓰인다</span>
+        …VSSetShaderResources / PSSetShaderResources…
+    }
+}</code></pre>
+<p>검증은 생성 시점에 합니다. <code>CreateBindingLayout</code>은 슬롯 상한, 스테이지 마스크 0, 같은 (타입, 레지스터)가 같은 스테이지에 두 번 선언되는 경우(뒤가 앞을 덮어 조용히 틀림)를 거부합니다. <code>CreateResourceSet</code>은 슬롯 타입에 맞는 종류의 핸들(상수버퍼 슬롯에 <code>BufferBind_Constant</code> 버퍼, SRV 슬롯에 <code>TextureBind_ShaderResource</code> 텍스처)이 꽂혀 있는지 확인합니다. 드로우마다 검사하지 않기 위해서입니다. 3단계까지 있던 <code>BindConstantBuffer(slot, handle, stageMask)</code>는 지웠습니다. 남겨 두면 레이아웃을 우회하는 길이 되기 때문입니다.</p>
+
+<h3 id="s2-2">2.2 갱신 빈도별 셋 세 개</h3>
+<div class="tbl"><table>
+<thead><tr><th>레이아웃 / 셋</th><th>슬롯</th><th>갱신</th><th>바인딩</th><th>D3D12 대응</th></tr></thead>
+<tbody>
+<tr><td class="mono">Layout_Frame / Set_Frame</td><td>b0 PerFrame (VS|PS), b2 Lights (PS)</td><td>프레임 1회</td><td>프레임 초 1회</td><td>루트 파라미터 0 — 가장 드물게 바뀜</td></tr>
+<tr><td class="mono">Layout_Object / Set_Object</td><td>b1 PerObject (VS)</td><td>드로우마다 <em>내용</em>만 Map</td><td>프레임 초 1회</td><td>루트 CBV 또는 링 버퍼 오프셋</td></tr>
+<tr><td class="mono">Layout_Material / Set_Material×N</td><td>b3 Material (PS)</td><td>재질당 프레임 1회</td><td>재질이 바뀔 때</td><td>재질 디스크립터 테이블. 5단계에서 t0·s0이 여기 붙는다</td></tr>
+</tbody></table></div>
+<p>세 레이아웃은 <code>PipelineStateDesc::bindingLayouts[0..2]</code>에 순서대로 들어갑니다. D3D12에서는 이 배열이 루트 시그니처 하나의 루트 파라미터 목록이 됩니다. Microsoft는 "자주 바뀌는 파라미터를 앞에 두라"고 하는데<sup><a href="#ref-3">[3]</a></sup>, 지금 순서(프레임 → 오브젝트 → 재질)는 원문 4단계의 "프레임마다 바뀌는 것과 재질마다 바뀌는 것을 다른 ResourceSet으로"를 따른 것이고, 8단계에서 루트 시그니처를 만들 때 순서를 성능에 맞게 재배치해도 Renderer는 셋을 바인딩할 뿐이라 바뀌지 않습니다.</p>
+<p>오브젝트 셋을 "프레임 초 1회"만 바인딩할 수 있는 이유는 3단계의 Dynamic 버퍼 의미론 덕분입니다. <code>UpdateBuffer</code>가 <code>Map(WRITE_DISCARD)</code>로 내용을 바꿔도 D3D11 객체(<code>ID3D11Buffer*</code>)는 같으므로 바인딩은 유효하고, 드라이버가 드로우마다 다른 메모리를 가리키게 합니다. D3D12에서는 이 자리가 링 버퍼 오프셋 갱신(루트 CBV 주소 변경)이 됩니다.</p>
+
+<h3 id="s2-3">2.3 D3D12의 64 DWORD 예산</h3>
+<p>루트 시그니처는 최대 64 DWORD이고 디스크립터 테이블은 1 DWORD, 루트 상수는 1 DWORD, 루트 디스크립터는 2 DWORD를 씁니다<sup><a href="#ref-3">[3]</a></sup>. 세 테이블이면 3 DWORD로 여유가 많지만, 슬롯을 무한정 늘릴 수 없다는 사실을 <code>BindingTypes.h</code>의 상한(CBV 8, SRV 16, Sampler 8)으로 지금부터 드러냈습니다. D3D11 자체 한도(CBV 14, SRV 128, Sampler 16)보다 좁습니다. 원문 4단계가 제안한 값(CBV 4, SRV 16, Sampler 8)에서 CBV만 8로 늘렸는데, 이미 b0~b3 넷을 쓰고 있어 4는 여유가 없기 때문입니다. 일부 하드웨어는 루트 인자 공간이 16 DWORD로 고정되어 넘치면 느린 메모리로 흘러넘친다는 점도 같은 문서에 있습니다.</p>
+
+<h2 id="s3"><span class="num">3.</span>Material</h2>
+<pre><code><span class="cm">// Scene/Material.h — CPU 데이터</span>
+<span class="kw">struct</span> Material
+{
+    std::string name;
+    XMFLOAT4 baseColor{1,1,1,1};       <span class="cm">// 정점 색에 곱해진다</span>
+    XMFLOAT3 specularColor{1,1,1};
+    <span class="kw">float</span> shininess = 32.0f;
+    <span class="kw">bool</span> wireframe = <span class="kw">false</span>;             <span class="cm">// 파이프라인 상태에 영향 → 다른 PSO</span>
+    <span class="kw">bool</span> doubleSided = <span class="kw">false</span>;
+};
+
+<span class="cm">// Graphics/Renderer.h — GPU 쪽 캐시 (Mesh → GpuMesh 와 같은 경계)</span>
+<span class="kw">struct</span> GpuMaterial { BufferHandle constants; ResourceSetHandle set; uint64_t uploadedFrame; };
+std::unordered_map&lt;<span class="kw">const</span> Material*, GpuMaterial&gt; m_gpuMaterials;</code></pre>
+<p>원문은 "Material = PipelineHandle + ResourceSet + MaterialConstants(Buffer)"라고 했습니다. 두 가지를 바꿨습니다. 첫째, <strong>PipelineHandle을 저장하지 않습니다.</strong> PSO는 Desc가 캐시 키이므로 매 프레임 <code>GetPipelineFor(material, vertexFormat)</code>으로 Desc를 만들어 캐시에 물으면 되고, 그래야 핫리로드로 캐시가 비워졌을 때 stale 핸들이 남지 않습니다. 둘째, <strong>CPU 데이터(<code>Scene/Material.h</code>)와 GPU 캐시(<code>Renderer</code>)를 분리</strong>했습니다. 3단계에서 Mesh에 적용한 경계와 같습니다. <code>Scene::AddMaterial</code>이 <code>unique_ptr</code>로 소유하고 <code>GameObject</code>는 <code>const Material*</code>를 듭니다. 재질이 <code>nullptr</code>이면 Renderer의 기본 재질(흰색, 광택 32)을 씁니다.</p>
+<p><code>specularColor</code>와 <code>shininess</code>는 <code>LightConstants</code>에서 나와 <code>MaterialConstants</code>(b3, 32바이트)로 갔습니다. 조명 버퍼는 672 → 656바이트가 되었고 <code>static_assert</code>와 <code>Common.hlsli</code>를 같이 고쳤습니다. 픽셀 셰이더의 변경은 두 줄입니다.</p>
+<pre><code><span class="cm">// Shaders/BasicPixelShader.hlsl</span>
+<span class="kw">const</span> float4 surface = input.col * baseColor;   <span class="cm">// 재질의 기본색 × 정점 색</span>
+<span class="kw">const</span> float3 albedo = surface.rgb;
+…
+<span class="kw">return</span> float4(finalColor, surface.a);</code></pre>
+<p>재질 상수는 <strong>프레임에 재질당 한 번</strong> 올립니다. 같은 재질을 여러 오브젝트가 쓰면 첫 드로우에서만 <code>Map</code>합니다(<code>uploadedFrame</code> 스탬프). 매 프레임 올리는 이유는 ImGui 재질 패널의 편집이 즉시 반영되어야 하기 때문이고, 32바이트 × 재질 수라 비용은 없습니다.</p>
+
+<h2 id="s4"><span class="num">4.</span>정점 포맷 열거</h2>
+<p>원문 D9가 권한 (a) "정점 타입 열거 + <code>offsetof</code> 레이아웃"입니다. 1단계에서 이미 <code>GetVertexLayoutPCN()</code>이 <code>offsetof</code>를 썼으므로, 남은 것은 <em>메시가 자기 포맷을 말하게</em> 하는 것이었습니다.</p>
+<pre><code><span class="cm">// Graphics/VertexTypes.h</span>
+<span class="kw">enum class</span> VertexFormat : uint8_t { PositionColorNormal };   <span class="cm">// 5단계 PNT, 6단계 PNTT 추가 예정</span>
+<span class="kw">inline</span> VertexLayoutDesc GetVertexLayout(VertexFormat format);
+<span class="kw">inline</span> uint32_t GetVertexStride(VertexFormat format);
+
+<span class="cm">// Graphics/Mesh.h</span>
+VertexFormat GetVertexFormat() <span class="kw">const</span>;
+
+<span class="cm">// Graphics/Renderer.cpp</span>
+desc.vertexLayout = GetVertexLayout(vertexFormat);   <span class="cm">// PSO Desc의 일부 → 포맷이 다르면 다른 PSO</span>
+vbDesc.stride = GetVertexStride(mesh.GetVertexFormat());</code></pre>
+<p>InputLayout은 여전히 PSO 안에서만 만들어집니다(1단계). 리플렉션(D9의 (b))은 5절에서 바인딩 검사에 썼고, 입력 시그니처 검사는 <code>CreateInputLayout</code>이 이미 하므로(시맨틱이 맞지 않으면 실패) 따로 하지 않았습니다.</p>
+
+<h2 id="s5"><span class="num">5.</span>리플렉션으로 선언 대조</h2>
+<p><code>BindingLayout</code>은 손으로 선언합니다. 셰이더에 <code>cbuffer Extra : register(b4)</code>를 추가하고 레이아웃에 넣는 것을 잊으면 D3D11은 아무 말 없이 b4에 널이 바인딩된 채 그립니다(전부 0으로 읽힘). 이것을 초기화 시점에 잡습니다.</p>
+<pre><code><span class="cm">// Graphics/D3D11/ShaderCompiler.cpp</span>
+<span class="kw">bool</span> ReflectBindings(<span class="kw">const</span> std::vector&lt;uint8_t&gt;&amp; bytecode, std::vector&lt;ReflectedBinding&gt;&amp; out)
+{
+    D3DReflect(bytecode.data(), bytecode.size(), IID_PPV_ARGS(&amp;reflection));
+    reflection-&gt;GetDesc(&amp;shaderDesc);
+    <span class="kw">for</span> (i &lt; shaderDesc.BoundResources)
+    {
+        reflection-&gt;GetResourceBindingDesc(i, &amp;bind);          <span class="cm">// D3D11_SHADER_INPUT_BIND_DESC</span>
+        <span class="kw">switch</span> (bind.Type) { <span class="kw">case</span> D3D_SIT_CBUFFER: … ConstantBuffer; <span class="kw">case</span> D3D_SIT_TEXTURE: … ShaderResource; <span class="kw">case</span> D3D_SIT_SAMPLER: … Sampler; }
+        out.push_back({ type, bind.BindPoint, bind.Name });
+    }
+}</code></pre>
+<p><code>ID3D11ShaderReflection::GetResourceBindingDesc</code>는 "리소스 하나가 셰이더 입력으로 어떻게 바인딩되는지"를 돌려줍니다<sup><a href="#ref-4">[4]</a></sup>. <code>Renderer::ValidateBindings</code>는 VS와 PS 각각에 대해 리플렉션 결과의 모든 (타입, 레지스터)가 세 레이아웃의 합집합 안에 <em>그 스테이지로</em> 선언되어 있는지 확인합니다. Debug에서는 불일치가 초기화 실패이고, Release는 경고입니다. 로그:</p>
+<pre><code>[정보] 바인딩 대조: VS b0 ('PerFrame') OK
+[정보] 바인딩 대조: VS b1 ('PerObject') OK
+[정보] 바인딩 대조: PS b0 ('PerFrame') OK
+[정보] 바인딩 대조: PS b2 ('Lights') OK
+[정보] 바인딩 대조: PS b3 ('Material') OK</code></pre>
+<p>원문은 "리플렉션으로 BindingLayout 자동 생성"이라고 했지만 <em>대조</em>에 그쳤습니다. 자동 생성하면 "셰이더가 쓰는 것"이 곧 레이아웃이 되어 검사가 사라지고, 셰이더 두 개가 같은 레이아웃을 공유해야 한다는(PSO 캐시 히트의 조건) 제약을 표현할 수 없습니다. 레이아웃은 <strong>의도</strong>이고 리플렉션은 <strong>사실</strong>이며, 둘을 비교하는 것이 검사입니다. 반대 방향 검사(선언했지만 아무 셰이더도 안 쓰는 슬롯)는 Info 로그로만 남겨도 되지만 지금은 하지 않습니다.</p>
+<p>리플렉션 데이터는 <code>.cso</code>에 남아 있어야 하므로 fxc의 <code>/Qstrip_reflect</code>를 켜지 않습니다<sup><a href="#ref-5">[5]</a></sup>. D12에서 예고한 대로입니다.</p>
+
+<h2 id="s6"><span class="num">6.</span>.cso 사전 컴파일과 핫리로드</h2>
+
+<h3 id="s6-1">6.1 빌드: fxc</h3>
+<pre><code>&lt;FxCompile Include="Shaders\BasicVertexShader.hlsl"&gt;
+  &lt;ShaderType&gt;Vertex&lt;/ShaderType&gt;
+  &lt;ShaderModel&gt;5.0&lt;/ShaderModel&gt;
+  &lt;EntryPointName&gt;VS_Main&lt;/EntryPointName&gt;
+  &lt;ObjectFileOutput&gt;$(OutDir)Shaders\%(Filename).cso&lt;/ObjectFileOutput&gt;
+  &lt;EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'"&gt;true&lt;/EnableDebuggingInformation&gt;
+  &lt;DisableOptimizations       Condition="'$(Configuration)'=='Debug'"&gt;true&lt;/DisableOptimizations&gt;
+&lt;/FxCompile&gt;
+&lt;None Include="Shaders\Common.hlsli" /&gt;
+
+&lt;Target Name="EnsureShaderOutputDir" BeforeTargets="FxCompile"&gt;
+  &lt;MakeDir Directories="$(OutDir)Shaders" /&gt;         <span class="cm">&lt;!-- fxc는 출력 폴더를 만들지 않는다 --&gt;</span>
+&lt;/Target&gt;
+&lt;Target Name="CopyShaderSources" AfterTargets="Build"&gt;
+  &lt;Copy SourceFiles="@(ShaderSourceFiles)" DestinationFolder="$(OutDir)Shaders" SkipUnchangedFiles="true" /&gt;
+&lt;/Target&gt;</code></pre>
+<p>Visual C++의 HLSL 속성 페이지가 이 항목들(Shader Type, Entrypoint Name, Object File Name, Disable Optimizations, Enable Debugging Information)을 fxc 인자 <code>/T</code>, <code>/E</code>, <code>/Fo</code>, <code>/Od</code>, <code>/Zi</code>로 옮깁니다<sup><a href="#ref-6">[6]</a></sup>. 0단계의 <code>FxCompile + ExcludedFromBuild</code>(편집기 등록용)와 반대로 이제 진짜로 컴파일합니다. HLSL 오류가 <strong>빌드 시점에</strong> 잡히는 것이 첫 이득입니다. 3단계까지는 실행해야 알 수 있었습니다. <code>Common.hlsli</code>는 <code>None</code> 항목입니다. include 전용이라 컴파일 대상이 아닙니다. 0단계의 <code>CopyFileToFolders</code>는 같은 파일을 두 항목 타입으로 두면 Solution Explorer에 두 번 보이므로 Copy 타깃으로 바꿨습니다.</p>
+<div class="callout amber">
+  <div class="t">원문의 register space 가정은 틀렸다</div>
+  <p>원문 4단계는 "<code>register(b0, space0)</code> 표기는 D3D11 fxc가 무시하므로 지금부터 써도 된다"고 했습니다. 실제로는 SM 5.0 프로파일에서 fxc가 <code>error X3721: space is only supported for shader targets 5.1 and higher</code>로 거부합니다. <code>space</code>는 Shader Model 5.1이 도입한 문법이며 D3D12는 모든 하드웨어에서 5.1을 지원합니다<sup><a href="#ref-7">[7]</a></sup>. 8단계에서 프로파일을 5.1(또는 dxc 6.0)로 올릴 때 넣습니다. <code>Common.hlsli</code> 머리에 이 정정을 적어 두었습니다.</p>
+</div>
+
+<h3 id="s6-2">6.2 런타임: 무엇을 로드할까</h3>
+<pre><code><span class="cm">// Graphics/D3D11/ShaderCompiler.cpp — LoadOrCompile</span>
+csoPath    = exe\Shaders\&lt;name&gt;.cso
+#if _DEBUG
+sourcePath = 소스 트리\Shaders\&lt;name&gt;.hlsl      <span class="cm">// Paths::GetShaderSourcePath. 없으면 exe 옆 사본</span>
+<span class="kw">if</span> (source exists &amp;&amp; (cso missing || max(source, Common.hlsli) newer than cso))
+    → CompileFromFile(sourcePath)               <span class="cm">// "빌드 없이 셰이더만 고치고 F5"</span>
+#endif
+<span class="kw">if</span> (cso exists) → LoadFile(csoPath)
+<span class="kw">else</span>            → 경고 후 exe 옆 .hlsl 런타임 컴파일 (폴백)</code></pre>
+<p>D12의 방향 그대로입니다. Release는 <code>.cso</code>만 씁니다(없으면 폴백). Debug는 <code>.cso</code>와 소스의 수정 시각을 비교해 새것을 씁니다. <code>Common.hlsli</code>의 시각도 보는 이유는, 헤더만 고치면 <code>.hlsl</code>은 그대로인데 결과가 달라지기 때문입니다. 로그가 어느 파일을 썼는지 남깁니다: <code>셰이더 로드: VS …\x64\Debug\Shaders\BasicVertexShader.cso, PS …\SherlockEngine\Shaders\BasicPixelShader.hlsl</code>처럼 VS는 <code>.cso</code>, PS는 소스인 혼합 상태도 정상입니다.</p>
+
+<h3 id="s6-3">6.3 핫리로드와 PSO 캐시 세대</h3>
+<p>Debug 빌드에서 <code>Renderer::CheckHotReload</code>가 0.5초마다 세 파일(VS, PS, Common.hlsli)의 수정 시각을 <code>GetFileAttributesExW</code>로 읽습니다. 하나라도 바뀌면 <code>ReloadShaders()</code>:</p>
+<ol>
+  <li>소스에서 VS·PS를 컴파일한다. <strong>하나라도 실패하면 이전 셰이더를 유지</strong>하고 경고를 남긴다(컴파일러 메시지에 줄 번호가 있다). 실패해도 수정 시각은 갱신해 같은 파일로 매 0.5초 재시도하지 않게 한다. 다시 저장하면 다시 시도한다.</li>
+  <li>5절의 cbuffer 크기·바인딩 대조를 다시 한다. 셰이더를 고치면서 레이아웃을 깨뜨리는 것도 여기서 잡힌다.</li>
+  <li>새 <code>ShaderHandle</code>을 만들고 이전 핸들을 풀에서 지운다. PSO가 이전 셰이더 객체를 ComPtr로 붙들고 있으므로 이 시점에 사라지지는 않는다.</li>
+  <li><code>m_baseDesc.vs/ps</code>를 새 핸들로 바꾸고 <code>Device::InvalidatePipelines()</code> → <code>PipelineStateCache::Clear()</code>. 캐시가 비고 <strong>세대 번호가 1 오른다.</strong></li>
+</ol>
+<pre><code><span class="cm">// Graphics/D3D11/PipelineStateCache.cpp</span>
+PipelineHandle GetOrCreate(…) { … <span class="kw">return</span> PipelineHandle{ index, m_generation }; }
+<span class="kw">const</span> PipelineState* Get(PipelineHandle h) <span class="kw">const</span>
+{
+    <span class="kw">if</span> (!h.IsValid() || h.index &gt;= m_states.size() || h.generation != m_generation) <span class="kw">return</span> <span class="kw">nullptr</span>;
+    …
+}
+<span class="kw">void</span> Clear() { m_lookup.clear(); m_states.clear(); ++m_generation; <span class="kw">if</span> (m_generation == 0) m_generation = 1; }</code></pre>
+<p>세대가 없으면 위험합니다. 캐시를 비운 뒤 인덱스는 0부터 다시 시작하므로, 누군가 들고 있던 옛 핸들 <code>{0, 1}</code>이 새로 만들어진 전혀 다른 PSO를 가리키게 됩니다. 1단계에서 "PSO는 개별 삭제하지 않으므로 세대가 항상 1"이라고 한 것이 4단계에서 무너지는 지점이고, 3단계의 <code>ResourcePool</code>과 같은 해법(세대 불일치 → <code>nullptr</code>)을 캐시 전체 단위로 적용했습니다. 이 때문에 <code>GpuMaterial</code>이 PSO 핸들을 저장하지 않는 것입니다(3절). 로그는 <code>PSO 생성 #0 (…, gen=2)</code>처럼 세대를 찍습니다.</p>
+<p>ImGui의 "Reload shaders" 버튼과 F4 키가 <code>ReloadShaders()</code>를 수동으로 부릅니다. Release에서는 폴링이 꺼져 있지만 수동 호출은 됩니다(소스 트리가 없으면 exe 옆 사본을 컴파일).</p>
+
+<h2 id="s7"><span class="num">7.</span>드로우 정렬과 상태 캐시</h2>
+<p>원문 D5는 "3단계에서 드로우 루프가 생기면 (a) 정렬, (b) 마지막 바인딩을 기억해 건너뛰는 얇은 캐시"를 권했고, 4단계 작업 항목이 "PSO → Material → Mesh 순"을 정했습니다. Ericson의 잘 알려진 글<sup><a href="#ref-8">[8]</a></sup>이 같은 생각을 정렬 키 하나로 표현합니다. 여기서는 키를 만들지 않고 비교 함수로 썼습니다.</p>
+<pre><code><span class="cm">// Graphics/Renderer.cpp — Render()</span>
+<span class="kw">struct</span> DrawItem { PipelineHandle pipeline; <span class="kw">const</span> Material* material; <span class="kw">const</span> Mesh* mesh; <span class="kw">const</span> GameObject* object; };
+<span class="cm">// 수집: 오브젝트마다 재질·정점 포맷으로 PSO 핸들을 얻는다 (캐시 히트)</span>
+std::sort(m_drawList…, [](a, b) {
+    <span class="kw">if</span> (a.pipeline.index != b.pipeline.index) <span class="kw">return</span> a.pipeline.index &lt; b.pipeline.index;
+    <span class="kw">if</span> (a.material != b.material)              <span class="kw">return</span> a.material &lt; b.material;
+    <span class="kw">return</span> a.mesh &lt; b.mesh;
+});
+<span class="cm">// 드로우: "직전"과 다를 때만 바인딩. 직전 기억은 이 함수 안에서만 산다.</span>
+<span class="kw">for</span> (item : m_drawList)
+{
+    <span class="kw">if</span> (item.pipeline != lastPipeline) { BindPipeline; ++stats.pipelineSwitches; }
+    <span class="kw">if</span> (item.material != lastMaterial) { SetResourceSet(gpuMaterial.set); ++stats.resourceSetSwitches; }
+    <span class="kw">if</span> (item.mesh != lastMesh)         { BindVertexBuffer; BindIndexBuffer; ++stats.meshSwitches; }
+    UpdateBuffer(m_perObjectCB, world…);   <span class="cm">// 드로우마다</span>
+    DrawIndexed(…);
+}</code></pre>
+<p>D5가 경고한 "캐시는 누군가 몰래 상태를 바꾼 것을 모른다"는 <code>lastPipeline</code> 등이 <code>Render()</code>의 지역 변수라는 것으로 해결됩니다. 프레임마다 새로 시작하므로 ImGui 백엔드가 프레임 끝에 상태를 건드려도 다음 프레임 첫 드로우는 항상 바인딩합니다. 투명 오브젝트(뒤→앞 거리순)는 별도 큐가 필요하다는 경고도 유효하며 5단계 이후의 몫입니다.</p>
+<p>데모 씬(7 오브젝트, 재질 6, 메시 4, PSO 2)의 실측: <strong>draws 7, PSO switches 2, set switches 6, mesh switches 5</strong>. 같은 PSO·재질·메시가 연속되도록 정렬된 결과입니다. 정렬 없이는 각각 7이었을 것입니다. 이 숫자는 ImGui 패널에 매 프레임 표시되며 11단계 Stats 패널의 원형입니다.</p>
+
+<h2 id="s8"><span class="num">8.</span>함정과 해결</h2>
+<ul>
+  <li><strong>SM 5.0의 <code>space</code>.</strong> 6.1절. 원문의 가정을 검증 없이 따라 썼다가 첫 빌드에서 잡혔습니다. fxc가 빌드 단계에 들어와서 잡힌 것이기도 합니다.</li>
+  <li><strong>fxc가 출력 폴더를 만들지 않는다.</strong> 깨끗한 <code>x64\Debug</code>에서 <code>/Fo x64\Debug\Shaders\…</code>는 폴더가 없어 실패합니다. <code>BeforeTargets="FxCompile"</code>에 <code>MakeDir</code> 타깃을 두었습니다.</li>
+  <li><strong>Renderer.h가 <code>VertexFormat</code>을 모른다.</strong> <code>VertexTypes.h</code> include와 <code>class GameObject;</code> 전방선언 누락. 1단계와 같은 종류의 실수입니다.</li>
+  <li><strong>ImGui 패널이 씬을 가린다.</strong> 재질 패널이 붙자 패널이 화면 절반을 덮어 스크린샷에 물체가 안 보였습니다. 캡처 스크립트가 패널 헤더를 클릭해 접습니다. 11단계 Dockspace 전까지의 임시 대응입니다.</li>
+  <li><strong>PowerShell 5.1은 스크립트를 ANSI로 읽는다.</strong> 핫리로드 검증 스크립트에 한글 정규식을 넣었더니 깨져서 실패했습니다. 검증 스크립트는 ASCII만 씁니다. 엔진과 무관하지만 같은 실수를 반복하지 않기 위해 적습니다.</li>
+  <li><strong>첫 실행에 "소스가 .cso보다 새로움".</strong> 검증 스크립트가 소스를 건드렸다가 되돌리면 수정 시각이 <code>.cso</code>보다 새로워져 다음 실행은 소스를 컴파일합니다. 의도된 동작이지만, "왜 .cso를 안 쓰지?"라고 놀랄 수 있어 로그에 이유를 찍게 했습니다.</li>
+</ul>
+
+<h2 id="s9"><span class="num">9.</span>검증과 스크린샷</h2>
+<div class="applied">
+  <div class="t">적용 결과 — 2026-09-23</div>
+  <ul>
+    <li><b>완료 기준 ①</b> "같은 구 메시를 다른 Material로 여러 개 그린다" — 구 메시 하나를 RedShiny(광택 128), BlueMatte(스페큘러 0.1, 광택 4), GoldWire(와이어프레임) 세 재질로 그렸습니다. 아래 첫 그림. 빨간 구의 작은 하이라이트와 파란 구의 넓고 흐린 음영이 광택 차이입니다.</li>
+    <li><b>완료 기준 ②</b> "HLSL 저장 시 PSO가 재생성되어 즉시 반영된다" — 실행 중 픽셀 셰이더에 <code>.bgra</code> 채널 스왑을 저장 → 2.5초 뒤 캡처에서 빨강↔파랑이 바뀜, 로그에 세대 2 PSO 재생성. 세미콜론을 지운 저장 → <code>error X3000</code> 로그, 화면은 직전(스왑된) 셰이더 유지. 원본 복구 → 세대 3. 아래 둘째·셋째 그림.</li>
+    <li>리플렉션: cbuffer 5건 크기 일치(208/128/208/656/32), 바인딩 대조 5건 OK.</li>
+    <li>정렬: draws 7 / PSO 2 / set 6 / mesh 5.</li>
+    <li>Debug·Release x64 빌드. Release <code>.cso</code>는 최적화되어 VS 1,844B / PS 7,640B(Debug 21,944 / 47,704).</li>
+    <li>종료: 자식 Live Object 0건.</li>
+  </ul>
+</div>
+
+<div class="fig">
+  <img src="../images/2026-09-23-phase4-materials.png" alt="같은 구 메시를 세 재질로: 빨간 광택 구, 파란 무광 구, 금색 와이어프레임 구" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 1. 같은 구 메시 세 개 — RedShiny · BlueMatte · GoldWire. 오렌지 큐브 둘은 같은 재질을 공유하고, 실린더는 Green 재질이다. ImGui 패널은 접었다. (images/2026-09-23-phase4-materials.png)</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase4-hotreload-edited.png" alt="픽셀 셰이더 저장 후 채널이 바뀐 화면" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 2. 실행 중 <code>BasicPixelShader.hlsl</code>에 <code>.bgra</code> 스왑을 저장한 뒤. 빨강 구가 파랑, 파랑 구가 주황, 오렌지 큐브가 파랑이 되었다. 빌드 없이 파일 저장만으로 반영된다. (images/2026-09-23-phase4-hotreload-edited.png)</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase4-hotreload-broken-kept-previous.png" alt="컴파일 에러가 있는 저장 후에도 이전 셰이더가 유지된 화면" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 3. 이어서 세미콜론을 지운 채 저장. 컴파일 에러(X3000)가 로그에 찍히고 화면은 그림 2의 셰이더를 그대로 유지한다. 잘못된 저장이 화면을 깨뜨리지 않는다. (images/2026-09-23-phase4-hotreload-broken-kept-previous.png)</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase4-material-panel.png" alt="재질 패널과 통계가 보이는 ImGui 화면" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 4. 패널을 펼친 상태. Pipeline 줄의 draws/PSO switches/set switches/mesh switches와 Materials 목록. (images/2026-09-23-phase4-material-panel.png)</div>
+</div>
+
+<h2 id="s10"><span class="num">10.</span>참고 문헌</h2>
+<ol>
+  <li id="ref-1">Microsoft Learn, <em>Root Signatures</em> (Direct3D 12) — 루트 시그니처가 정의하는 것. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signatures">learn.microsoft.com/…/root-signatures</a></li>
+  <li id="ref-2">Microsoft Learn, <em>Descriptor Tables</em> — 디스크립터 테이블 = 디스크립터의 논리적 배열. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/descriptor-tables">learn.microsoft.com/…/descriptor-tables</a></li>
+  <li id="ref-3">Microsoft Learn, <em>Root Signature Limits</em> — 64 DWORD, 테이블 1 / 상수 1 / 디스크립터 2 DWORD, 자주 바뀌는 파라미터를 앞에. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signature-limits">learn.microsoft.com/…/root-signature-limits</a></li>
+  <li id="ref-4">Microsoft Learn, <em>ID3D11ShaderReflection::GetResourceBindingDesc</em>. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11shader/nf-d3d11shader-id3d11shaderreflection-getresourcebindingdesc">learn.microsoft.com/…/nf-d3d11shader-id3d11shaderreflection-getresourcebindingdesc</a></li>
+  <li id="ref-5">Microsoft Learn, <em>fxc Syntax</em> — <code>/Fo</code>, <code>/Zi</code>, <code>/Od</code>, <code>/Qstrip_reflect</code>. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3dtools/dx-graphics-tools-fxc-syntax">learn.microsoft.com/…/dx-graphics-tools-fxc-syntax</a></li>
+  <li id="ref-6">Microsoft Learn, <em>HLSL Property Pages</em> (Visual C++) — FxCompile 항목의 속성과 fxc 인자의 대응. <a href="https://learn.microsoft.com/en-us/cpp/build/reference/hlsl-property-pages">learn.microsoft.com/…/hlsl-property-pages</a></li>
+  <li id="ref-7">Microsoft Learn, <em>Resource binding in HLSL</em> — Shader Model 5.1의 <code>register(t3, space0)</code> 문법. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/resource-binding-in-hlsl">learn.microsoft.com/…/resource-binding-in-hlsl</a></li>
+  <li id="ref-8">Christer Ericson, <em>Order your graphics draw calls around!</em>, 2008 — 상태를 정렬 키로 묶어 드로우를 정렬하는 고전. <a href="https://realtimecollisiondetection.net/blog/?p=86">realtimecollisiondetection.net/blog/?p=86</a></li>
+  <li>Microsoft Learn, <em>Managing Graphics Pipeline State in Direct3D 12</em> — 루트 시그니처가 PSO의 일부라는 점(1단계 문서 참고 1). <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/managing-graphics-pipeline-state-in-direct3d-12">learn.microsoft.com/…/managing-graphics-pipeline-state-in-direct3d-12</a></li>
+  <li>Microsoft Learn, <em>D3DReflect</em> (3단계 문서 참고 10). <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3dcompiler/nf-d3dcompiler-d3dreflect">learn.microsoft.com/…/nf-d3dcompiler-d3dreflect</a></li>
+</ol>
+
+<div class="footer">
+  대상: SherlockEngine 작업 트리 (2026/09/23, 3단계 커밋 de4d935 이후). 이전: <a href="phase-3.html">3단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p4">rendering-analysis.html PHASE 4</a>. 스크린샷은 <code>images/2026-09-23-phase4-*.png</code>.
+</div>
+</main>
+</div>

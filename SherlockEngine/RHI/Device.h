@@ -1,0 +1,110 @@
+﻿#pragma once
+#include <cstdint>
+#include <cstddef>
+#include <vector>
+#include "RHI/Handle.h"
+#include "RHI/PipelineTypes.h"
+#include "RHI/ResourceDesc.h"
+#include "RHI/BindingTypes.h"
+#include "RHI/RenderPassTypes.h"
+#include "RHI/CommandList.h"
+
+// RHI::Device — 리소스 생성과 프레임 경계. 7단계에서 3~6단계 D3D11 Device 의 공개 "핸들 API"를
+// 그대로 가상 인터페이스로 뽑았다 (rendering-analysis D21: 리소스는 핸들, Device/CommandList 만 가상).
+//
+// 규칙:
+//   - 이 헤더와 RHI/ 의 다른 헤더는 D3D 헤더를 include 하지 않는다. 구현은 RHI/D3D11/ 에만.
+//   - 호출 코드(Graphics/Renderer, App)는 핸들과 Desc 만 본다. 백엔드 클래스 이름을 알 필요가 없다.
+//   - 백엔드 선택은 RHI/RHI.h 의 CreateDevice(Backend, DeviceDesc) 팩토리.
+//
+// D3D11 에서만 편한 것(즉시 Map, 자동 밉 생성, 암묵적 동기화)은 인터페이스에 넣지 않았다.
+// UpdateBuffer 는 "이 프레임 슬롯의 내용을 통째로 교체"라는 D3D12 에서도 지킬 수 있는 의미만 약속한다.
+namespace RHI
+{
+	enum class Backend : uint8_t
+	{
+		D3D11,
+		D3D12,   // 8단계
+
+	};
+
+	struct DeviceDesc
+	{
+		void* windowHandle = nullptr;   // HWND. RHI 헤더에 windows.h 를 끌어오지 않기 위해 void*
+		int width = 0;
+		int height = 0;
+		bool enableDebugLayer = true;   // Debug 빌드에서만 실제로 켜진다
+	};
+
+	class Device
+	{
+	public:
+		virtual ~Device() = default;
+
+		virtual Backend GetBackend() const = 0;
+		virtual const char* GetBackendName() const = 0;
+		virtual bool IsInitialized() const = 0;
+
+		// ---- 프레임 ----
+		// 프레임 인덱스를 갱신하고 돌려준다. Dynamic 버퍼는 이 인덱스의 복제본을 쓴다 (GraphicsConfig.h).
+		// 타깃 바인딩·클리어는 하지 않는다. CommandList::BeginRenderPass 의 몫이다.
+		// 프레임 구조: BeginFrame → [ShadowPass → MainPass → UIPass] → EndFrame(Present).
+		virtual uint32_t BeginFrame() = 0;
+		virtual void EndFrame() = 0;   // Present. 열린 렌더 패스가 있으면 에러 로그 후 닫는다.
+		virtual uint32_t GetFrameIndex() const = 0;
+		virtual CommandList& GetCommandList() = 0;
+
+		// 10단계: 가장 최근에 완료된 프레임의 타임스탬프. ticks[i] = 그 프레임에서 slot i 에 기록한 값 (기록 안 했으면 0),
+		// frequency = 초당 틱. 아직 어떤 프레임도 끝나지 않았으면 false. CPU 를 기다리지 않는다 (D3D12: 펜스가 이미 지난 슬롯, D3D11: 2프레임 전 쿼리).
+		virtual bool GetTimestampResults(uint64_t* ticks, uint32_t count, uint64_t& frequency, uint64_t& frameNumber) = 0;
+
+		// 11단계: 다음 EndFrame 에서 Present 직전의 백버퍼를 CPU 로 읽는다 (스크린샷). 동기: 그 프레임의 EndFrame 이 GPU 를 기다린다.
+		// TakeReadbackResult 는 준비된 결과(RGBA8, 위→아래, 행 간격 = width*4)를 한 번 돌려주고 비운다.
+		virtual void RequestBackBufferReadback() = 0;
+		virtual bool TakeReadbackResult(std::vector<uint8_t>& rgba, uint32_t& width, uint32_t& height) = 0;
+
+		virtual void Resize(int width, int height) = 0;
+		virtual void SetVSync(bool enabled) = 0;
+		virtual bool IsVSync() const = 0;
+		virtual bool IsTearingSupported() const = 0;
+
+		// ---- 리소스: Desc → 핸들 ----
+		virtual BufferHandle CreateBuffer(const BufferDesc& desc, const void* initialData = nullptr) = 0;
+		virtual void DestroyBuffer(BufferHandle handle) = 0;
+		// Dynamic: 이 프레임 슬롯의 내용을 통째로 교체 (size ≤ desc.size). Default: 전체 크기만.
+		virtual void UpdateBuffer(BufferHandle handle, const void* data, uint32_t size) = 0;
+
+		// subresources 는 밉 레벨마다 하나(desc.mipLevels 개). nullptr 이면 빈 텍스처.
+		// DepthStencil | ShaderResource 조합(그림자 맵)은 백엔드가 TYPELESS + 포맷별 뷰로 만든다.
+		virtual TextureHandle CreateTexture(const TextureDesc& desc, const TextureSubresource* subresources = nullptr, uint32_t subresourceCount = 0) = 0;
+		virtual void DestroyTexture(TextureHandle handle) = 0;
+		// Resize 마다 새로 만들어진다. 프레임을 넘겨 보관하지 말 것.
+		virtual TextureHandle GetBackBuffer() const = 0;
+		virtual TextureHandle GetDepthBuffer() const = 0;
+
+		virtual SamplerHandle CreateSampler(const SamplerDesc& desc) = 0;
+		virtual void DestroySampler(SamplerHandle handle) = 0;
+
+		virtual ShaderHandle CreateShader(const ShaderDesc& desc) = 0;   // 바이트코드는 백엔드별 (DXBC / DXIL)
+		virtual void DestroyShader(ShaderHandle handle) = 0;
+
+		virtual PipelineHandle CreatePipeline(const PipelineStateDesc& desc) = 0;   // 같은 Desc 는 같은 핸들(캐시)
+		virtual size_t GetPipelineCount() const = 0;
+		virtual void InvalidatePipelines() = 0;   // 캐시를 전부 버린다. 이전 핸들은 무효. 셰이더 핫리로드 뒤에.
+
+		virtual BindingLayoutHandle CreateBindingLayout(const BindingLayoutDesc& desc) = 0;
+		virtual void DestroyBindingLayout(BindingLayoutHandle handle) = 0;
+		virtual ResourceSetHandle CreateResourceSet(const ResourceSetDesc& desc) = 0;
+		virtual void DestroyResourceSet(ResourceSetHandle handle) = 0;
+
+		// ---- ImGui 렌더러 어댑터 ----
+		// ImGui 렌더러 구현(DX11/DX12)은 API 전용이라 어느 것을 쓸지는 Device 가 정한다
+		// (로드맵 7단계의 두 선택지 중 "얇은 어댑터"). App 은 ImGui 컨텍스트와 Win32 백엔드만 다룬다.
+		// GetImGuiTextureId 는 ImTextureID(ImU64) 로 캐스팅해 ImGui::Image 에 넘긴다. 유효하지 않으면 0.
+		virtual bool InitImGui() = 0;
+		virtual void NewFrameImGui() = 0;
+		virtual void RenderImGui() = 0;      // Renderer::BeginUIPass / EndUIPass 사이에서
+		virtual void ShutdownImGui() = 0;
+		virtual uint64_t GetImGuiTextureId(TextureHandle texture) = 0;
+	};
+}

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>6단계 · 그림자 · RenderPass · CommandList — SherlockEngine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EEF0F7; --line:#D6D9E6; --line-strong:#B9BDD0;
+  --ink:#171A2B; --ink-2:#4A4F66; --muted:#7A7F96;
+  --accent:#232767; --accent-ink:#FFFFFF; --accent-soft:#E3E5F5;
+  --amber:#B8781A; --amber-soft:#FBF0DB;
+  --ok:#2E7D4F; --ok-soft:#E1F2E7; --warn:#A6620C; --warn-soft:#FBEDD6; --crit:#B23A3A; --crit-soft:#F9E1E1;
+  --code-bg:#1B1D33; --code-ink:#E7E9F5; --code-kw:#9BA3FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(23,26,43,.06),0 8px 24px rgba(23,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+    --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+    --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+    --amber:#F0B650; --amber-soft:#3D3560;
+    --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+    --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+  --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+  --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+  --amber:#F0B650; --amber-soft:#3D3560;
+  --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+  --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+code,pre,.mono{font-family:"IBM Plex Mono",Consolas,"D2Coding",monospace}
+code{font-size:.875em;background:var(--surface-2);padding:.1em .4em;border-radius:4px;color:var(--ink)}
+pre{background:var(--code-bg);color:var(--code-ink);padding:18px 20px;border-radius:8px;overflow-x:auto;font-size:13.5px;line-height:1.6;margin:18px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+.kw{color:var(--code-kw)} .str{color:var(--code-str)} .cm{color:var(--code-cm)}
+
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto;padding:0 32px;gap:48px}
+@media (max-width:960px){.shell{grid-template-columns:minmax(0,1fr);padding:0 20px;gap:0}}
+
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0 40px;font-size:13.5px}
+nav.toc .brand{font-weight:600;letter-spacing:.02em;color:var(--ink);margin-bottom:6px}
+nav.toc .meta{color:var(--muted);font-size:12px;margin-bottom:24px;line-height:1.5}
+nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+nav.toc li a{display:block;padding:5px 14px;color:var(--ink-2);border-left:2px solid transparent;margin-left:-1px;border-bottom:none;line-height:1.45}
+nav.toc li a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+nav.toc li.sub a{padding-left:28px;font-size:12.5px;color:var(--muted)}
+@media (max-width:960px){nav.toc{position:static;height:auto;padding:28px 0 8px}nav.toc ol{display:none}}
+
+main{padding:40px 0 96px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1{font-size:clamp(30px,4vw,42px);line-height:1.2;margin:6px 0 14px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{font-size:18px;color:var(--ink-2);max-width:66ch;margin:0 0 28px}
+h2{font-size:26px;line-height:1.3;margin:72px 0 16px;padding-top:24px;border-top:1px solid var(--line);font-weight:600;letter-spacing:-.005em;text-wrap:balance}
+h2 .num{display:inline-block;min-width:2.2em;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+h3{font-size:19px;margin:40px 0 10px;font-weight:600;text-wrap:balance}
+h4{font-size:16px;margin:28px 0 8px;font-weight:600}
+p{margin:0 0 16px;max-width:72ch}
+ul,ol{max-width:72ch;padding-left:1.4em;margin:0 0 16px}
+li{margin:4px 0}
+li>ul,li>ol{margin-top:4px}
+strong{font-weight:600}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:28px 0}
+.facts>div{background:var(--surface);padding:14px 16px}
+.facts .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.facts .v{font-size:15px;font-weight:600;line-height:1.35}
+.facts .v small{display:block;font-weight:400;color:var(--ink-2);font-size:12.5px;margin-top:2px}
+
+.callout{border-left:3px solid var(--accent);background:var(--surface);padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;max-width:72ch}
+.callout.amber{border-left-color:var(--amber);background:var(--amber-soft)}
+.callout.crit{border-left-color:var(--crit);background:var(--crit-soft)}
+.callout p:last-child{margin-bottom:0}
+.callout .t{font-weight:600;font-size:14px;margin-bottom:4px}
+
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.mono,th.mono{font-size:13px}
+td .n{font-variant-numeric:tabular-nums}
+
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.pill.amber{background:var(--amber-soft);color:var(--amber)}
+.pill.none{background:var(--surface-2);color:var(--muted)}
+td .sub{display:block;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.35}
+
+.fig{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.fig svg{display:block;min-width:640px;width:100%;height:auto;font-family:"IBM Plex Sans KR",system-ui,sans-serif}
+.fig .cap{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+svg .box{fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1}
+svg .box.acc{fill:var(--accent);stroke:var(--accent)}
+svg .box.acc text{fill:var(--accent-ink)}
+svg .box.amb{fill:var(--amber-soft);stroke:var(--amber)}
+svg text{fill:var(--ink);font-size:12.5px}
+svg text.s{font-size:11px;fill:var(--ink-2)}
+svg text.m{font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+svg text.acc{fill:var(--accent-ink)}
+svg .ln{stroke:var(--line-strong);stroke-width:1.2;fill:none}
+svg .ln.acc{stroke:var(--accent);stroke-width:1.6}
+svg .ln.amb{stroke:var(--amber);stroke-width:1.6;stroke-dasharray:4 3}
+svg .lane{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+
+.stage{display:grid;grid-template-columns:52px minmax(0,1fr);gap:16px;margin:26px 0;padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.stage .tag{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;color:var(--accent);padding-top:3px}
+.stage h4{margin:0 0 6px}
+.stage p:last-child,.stage ul:last-child{margin-bottom:0}
+
+.phase{margin:28px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
+.phase header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.phase .pn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--amber);font-weight:500}
+.phase h3{margin:0;font-size:20px}
+.phase .why{color:var(--ink-2);margin-bottom:12px}
+.phase .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.phase .cols h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.phase .cols ul{margin:0;padding-left:1.2em;font-size:14.5px}
+.phase .done{margin-top:14px;padding:10px 14px;background:var(--ok-soft);border-radius:6px;font-size:14px;color:var(--ink)}
+.phase .done b{color:var(--ok)}
+
+.layout{font-family:"IBM Plex Mono",monospace;font-size:12.5px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;margin:16px 0;min-width:480px}
+.layout>div{background:var(--surface-2);padding:6px 8px;border-radius:3px;text-align:center;line-height:1.35;border:1px solid var(--line)}
+.layout>div.pad{background:transparent;color:var(--muted);border-style:dashed}
+.layout>div.row{grid-column:1/-1;text-align:left;background:transparent;border:0;color:var(--muted);padding:6px 0 0;font-size:11px;letter-spacing:.06em}
+.layout>div.m4{grid-column:span 4;background:var(--accent-soft)}
+
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 18px;font-size:14.5px;margin:14px 0 18px;max-width:72ch}
+.kv dt{color:var(--muted);font-weight:500}
+.kv dd{margin:0}
+
+.decision{margin:26px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.decision header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.decision .dn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--accent);font-weight:500}
+.decision h3{margin:0;font-size:19px}
+.decision .now{font-size:14.5px;color:var(--ink-2);background:var(--surface-2);border-radius:6px;padding:10px 14px;margin:0 0 14px;max-width:none}
+.decision .now b{color:var(--ink);margin-right:6px}
+.decision p{max-width:none}
+.decision p b{font-weight:600}
+.decision .pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:6px}
+.decision .pc>div{padding:12px 16px;border-radius:6px;border:1px solid var(--line)}
+.decision .pc>div:first-child{border-color:var(--ok);background:var(--ok-soft)}
+.decision .pc>div:last-child{border-color:var(--warn);background:var(--warn-soft)}
+.decision .pc h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.decision .pc>div:first-child h5{color:var(--ok)}
+.decision .pc>div:last-child h5{color:var(--warn)}
+.decision .pc ul{margin:0;padding-left:1.2em;font-size:14px;max-width:none}
+.decision .pc li{margin:3px 0}
+.applied{margin:14px 0 0;padding:12px 16px 14px;border:1px solid var(--ok);background:var(--ok-soft);border-radius:6px;font-size:14.5px}
+.applied .t{font-weight:600;color:var(--ok);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.applied p{margin:0 0 8px;max-width:none}
+.applied p:last-child{margin-bottom:0}
+.applied ul{margin:0;padding-left:1.2em;max-width:none;font-size:14px}
+.applied li{margin:3px 0}
+.applied code{background:var(--surface)}
+td .fix{display:block;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line-strong);color:var(--ink-2)}
+td .fix b{color:var(--ok);font-weight:600}
+.phase li.done-item{color:var(--ink-2)}
+.phase li.done-item::marker{color:var(--ok)}
+.footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="목차">
+  <div class="brand">6단계 · 그림자 · RenderPass · CommandList</div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/23 (작업 트리, 미커밋)<br><a href="rendering-analysis.html#p6">rendering-analysis.html → PHASE 6</a></div>
+  <ol>
+    <li><a href="#s1">1. 요약</a></li>
+    <li><a href="#s2">2. RenderPass: 타깃과 Load/Store</a></li>
+    <li class="sub"><a href="#s2-1">2.1 왜 "패스"라는 단위가 필요한가</a></li>
+    <li class="sub"><a href="#s2-2">2.2 D3D11 구현과 SRV 충돌</a></li>
+    <li class="sub"><a href="#s2-3">2.3 프레임 구조</a></li>
+    <li><a href="#s3">3. CommandList와 Barrier</a></li>
+    <li><a href="#s4">4. 그림자 매핑</a></li>
+    <li class="sub"><a href="#s4-1">4.1 두 패스 알고리즘</a></li>
+    <li class="sub"><a href="#s4-2">4.2 깊이 텍스처를 읽기: TYPELESS</a></li>
+    <li class="sub"><a href="#s4-3">4.3 깊이 전용 PSO와 바이어스</a></li>
+    <li class="sub"><a href="#s4-4">4.4 비교 샘플러와 PCF</a></li>
+    <li class="sub"><a href="#s4-5">4.5 광원 행렬</a></li>
+    <li><a href="#s5">5. 노멀 매핑과 탄젠트</a></li>
+    <li><a href="#s6">6. 조명 편집</a></li>
+    <li><a href="#s7">7. 함정과 해결</a></li>
+    <li><a href="#s8">8. 검증과 스크린샷</a></li>
+    <li><a href="#s9">9. 참고 문헌</a></li>
+  </ol>
+</nav>
+
+<main>
+<div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
+<h1>6단계 · 그림자 · RenderPass · CommandList</h1>
+<p class="lede">RHI의 마지막 두 조각을 만든 단계입니다. <strong>RenderPass</strong>는 "어느 타깃에, 어떤 클리어로 시작하고, 끝날 때 무엇을 남기는가"를, <strong>CommandList</strong>는 "GPU 명령을 어디에 기록하는가"를 추상화합니다. Device에서 즉시 바인딩·드로우 함수가 전부 사라지고 CommandList로 옮겨 갔으며, Renderer의 GPU 호출은 예외 없이 그것을 통과합니다. 첫 실전 사용은 방향광 그림자 맵(2048², D32, PCF 3×3)이고, 이것은 동시에 첫 렌더-투-텍스처이자 "DSV로 쓰고 → SRV로 읽는" 상태 전이가 있는 첫 리소스라 <code>Barrier</code> 호출이 코드에 들어왔습니다. 정점에 탄젠트가 붙어 노멀 매핑이 되고, 조명 8개를 전부 ImGui에서 편집합니다.</p>
+
+<div class="facts">
+  <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
+  <div><div class="k">새 파일</div><div class="v">4개 + 에셋 1<small>RenderPassTypes.h, D3D11/CommandList.h/.cpp, ShadowVertexShader.hlsl, bumps_normal.png</small></div></div>
+  <div><div class="k">프레임</div><div class="v">패스 3 · 배리어 4<small>Shadow → Main → UI</small></div></div>
+  <div><div class="k">그림자 맵</div><div class="v">2048² D32_FLOAT<small>R32_TYPELESS + DSV + SRV, PCF 3×3</small></div></div>
+  <div><div class="k">정점 · b0</div><div class="v">64B · 288B<small>탄젠트 float4 · lightViewProj + shadowParams</small></div></div>
+  <div><div class="k">완료 기준</div><div class="v"><span class="pill ok">충족</span><small>바닥 그림자, 광원 따라 이동, Renderer에 D3D 호출 없음</small></div></div>
+</div>
+
+<div class="callout">
+  <div class="t">한 줄 요약</div>
+  <p>프레임은 <code>BeginFrame → [ShadowPass → MainPass → UIPass] → EndFrame(Present)</code>로 고정됐습니다. 패스마다 <code>RenderPassDesc</code>(타깃 + Load/Store + 뷰포트)를 <code>CommandList::BeginRenderPass</code>에 넘기고, D3D11은 그것을 <code>OMSetRenderTargets + Clear + RSSetViewports</code>로 풉니다. 그림자 맵은 패스 앞뒤로 <code>Barrier(DepthWrite ↔ ShaderResource)</code>가 붙는데 D3D11에서는 상태 추적만 하고, D3D12에서는 그 자리가 실제 <code>ResourceBarrier</code>가 됩니다. 같은 텍스처가 SRV에 남아 있으면 D3D11이 경고와 함께 강제로 풀어 버리므로, CommandList가 SRV 슬롯을 추적해 타깃으로 잡기 전에 먼저 풉니다 — 이 세션의 Debug Layer 경고는 0건입니다.</p>
+</div>
+
+<h2 id="s1"><span class="num">1.</span>요약</h2>
+<div class="tbl"><table>
+  <thead><tr><th>항목</th><th>5단계까지</th><th>6단계</th></tr></thead>
+  <tbody>
+    <tr><td>타깃 바인딩·클리어</td><td><code>Device::BeginFrame</code>이 백버퍼+깊이를 걸고 클리어, <code>BeginUIPass</code>가 UNORM 뷰로 교체</td><td><code>RenderPassDesc</code> → <code>CommandList::BeginRenderPass/EndRenderPass</code>. Device는 프레임 인덱스와 Present만</td></tr>
+    <tr><td>바인딩·드로우</td><td><code>Device::BindPipeline / SetResourceSet / BindVertexBuffer / BindIndexBuffer / DrawIndexed</code></td><td>전부 <code>CommandList</code>로. Device에서 삭제. Renderer는 <code>GetCommandList()</code>로 받는다</td></tr>
+    <tr><td>상태 전이</td><td>없음 (D3D11이 알아서)</td><td><code>Barrier(texture, before, after)</code>. D3D11: 텍스처의 <code>state</code> 추적 + Debug 검증. 프레임당 4회</td></tr>
+    <tr><td>렌더 타깃 텍스처</td><td>백버퍼·깊이만</td><td>그림자 맵 2048² <code>D32_FLOAT</code>, <code>DepthStencil | ShaderResource</code> → TYPELESS 리소스 + 포맷별 뷰</td></tr>
+    <tr><td>PSO</td><td>VS+PS 필수</td><td>PS 없는 깊이 전용 PSO 허용 (<code>rtvCount 0</code>, <code>dsvFormat D32</code>, 깊이 바이어스)</td></tr>
+    <tr><td>정점</td><td>48B (P C N T)</td><td>64B, <code>float4 tangent</code> (xyz = u 방향, w = 손잡이). 모든 프리미티브에 해석적 탄젠트</td></tr>
+    <tr><td>b0 PerFrame</td><td>208B</td><td>288B: <code>lightViewProj</code>, <code>shadowParams</code>(텍셀 크기·바이어스·세기·사용)</td></tr>
+    <tr><td>재질 셋</td><td>b3 · t0 · s0</td><td>b3 · t0 알베도 · t1 노멀 · s0. 프레임 셋에 t8 그림자 맵 · s4 비교 샘플러</td></tr>
+    <tr><td>조명 UI</td><td>0번만 편집</td><td>8개 전부: 추가/삭제, 타입, 위치, 방향, 색, 세기, 범위, 원뿔, 감쇠. 씬에 점광·스포트 추가</td></tr>
+    <tr><td>단축키</td><td>F1–F6</td><td>+ F7 광원 공전, F8 그림자, F9 노멀 맵</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="s2"><span class="num">2.</span>RenderPass: 타깃과 Load/Store</h2>
+<h3 id="s2-1">2.1 왜 "패스"라는 단위가 필요한가</h3>
+<p>D3D11에서 렌더 타깃은 그냥 상태입니다. <code>OMSetRenderTargets</code>를 부르면 그때부터 그리로 그려지고, 클리어는 별개의 명령이며, 이전 내용을 유지할지는 클리어를 부르지 않으면 그만입니다. 이 자유로움이 문제가 되는 곳은 두 군데입니다. 하나는 타일 기반 GPU(모바일, 그리고 최근 데스크톱의 일부)로, 타일 메모리에 올릴 때 이전 내용을 읽어 와야 하는지(Load), 끝난 뒤 메인 메모리에 써야 하는지(Store)를 미리 알면 대역폭을 크게 아낍니다. 다른 하나는 D3D12/Vulkan/Metal 같은 명시적 API로, 타깃이 "언제 쓰이기 시작해 언제 끝나는지"가 드라이버가 아니라 애플리케이션의 선언이 됩니다.</p>
+<p>Vulkan은 이것을 <code>VkAttachmentLoadOp</code>(LOAD / CLEAR / DONT_CARE)와 <code>VkAttachmentStoreOp</code>로 정의했고<sup><a href="#ref-11">11</a></sup>, D3D12는 Windows 10 1809에서 <code>ID3D12GraphicsCommandList4::BeginRenderPass</code>를 추가해 같은 개념을 <code>D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE</code>(DISCARD / PRESERVE / CLEAR / NO_ACCESS)과 <code>ENDING_ACCESS_TYPE</code>(DISCARD / PRESERVE / RESOLVE / NO_ACCESS)으로 표현합니다<sup><a href="#ref-1">1</a>,<a href="#ref-12">12</a></sup>. D3D12 문서는 렌더 패스 안에서 "쓴 것을 같은 패스에서 읽을 수 없다"는 제약과 함께, 현재 바인딩된 타깃에 대한 배리어를 패스 안에 넣으면 안 된다고 명시합니다<sup><a href="#ref-1">1</a></sup>. 우리 <code>RenderPassDesc</code>는 이 교집합입니다.</p>
+<pre><code><span class="cm">// Graphics/RenderPassTypes.h</span>
+<span class="kw">enum class</span> LoadOp : uint8_t { Load, Clear, DontCare };
+<span class="kw">enum class</span> StoreOp : uint8_t { Store, DontCare };
+
+<span class="kw">struct</span> ColorAttachment { TextureHandle texture; LoadOp load; StoreOp store; <span class="kw">bool</span> srgbView; <span class="kw">float</span> clearColor[4]; };
+<span class="kw">struct</span> DepthAttachment { TextureHandle texture; LoadOp load; StoreOp store; <span class="kw">float</span> clearDepth; uint8_t clearStencil; };
+<span class="kw">struct</span> Viewport { <span class="kw">float</span> x, y, width, height, minDepth, maxDepth; };   <span class="cm">// width 0 = attachment 크기</span>
+
+<span class="kw">struct</span> RenderPassDesc
+{
+    ColorAttachment colors[kMaxRenderTargets];
+    uint8_t colorCount;
+    DepthAttachment depth;        <span class="cm">// texture 가 비면 깊이 없음 (UI 패스)</span>
+    Viewport viewport;
+    <span class="kw">const char</span>* debugName;
+};</code></pre>
+
+<h3 id="s2-2">2.2 D3D11 구현과 SRV 충돌</h3>
+<p><code>CommandList::BeginRenderPass</code>는 다섯 단계입니다. (1) attachment 텍스처가 SRV 슬롯에 남아 있으면 먼저 푼다, (2) RTV/DSV를 모으고 뷰포트 기본 크기를 첫 attachment에서 얻는다, (3) <code>OMSetRenderTargets</code>, (4) <code>LoadOp::Clear</code>인 것만 <code>Clear*View</code>, (5) <code>RSSetViewports</code>. <code>EndRenderPass</code>는 <code>OMSetRenderTargets(0, nullptr, nullptr)</code>로 타깃을 풉니다 — 문서가 명시하듯 이 호출은 바인딩된 모든 타깃을 해제합니다<sup><a href="#ref-6">6</a></sup>. Store op는 D3D11에서 할 일이 없습니다.</p>
+<p>(1)이 이 단계의 핵심 함정입니다. 같은 리소스가 SRV(읽기)와 RTV/DSV(쓰기)에 동시에 바인딩되면 D3D11은 읽기 쪽을 강제로 NULL로 만들고 경고를 냅니다<sup><a href="#ref-6">6</a></sup>. 그림자 맵이 정확히 이 경우입니다: 메인 패스에서 t8로 읽고, 다음 프레임 그림자 패스에서 DSV로 씁니다. 원문 로드맵도 이 점을 지적했습니다. 해결은 CommandList가 <code>SetResourceSet</code>에서 슬롯마다 어떤 텍스처 핸들을 넣었는지 기억하고(<code>m_psSrv[16]</code>, <code>m_vsSrv[16]</code>), <code>BeginRenderPass</code>가 attachment와 같은 핸들이 있는 슬롯을 NULL로 바꾸는 것입니다. 우리가 먼저 하면 경고가 없고, 추적도 정확해집니다.</p>
+<pre><code><span class="cm">// Graphics/D3D11/CommandList.cpp</span>
+<span class="kw">void</span> CommandList::UnbindShaderResourcesOf(TextureHandle texture)
+{
+    ID3D11ShaderResourceView* nullSrv = <span class="kw">nullptr</span>;
+    <span class="kw">for</span> (uint32_t slot = 0; slot &lt; kMaxSrvRegister; ++slot)
+    {
+        <span class="kw">if</span> (m_psSrv[slot] == texture) { context-&gt;PSSetShaderResources(slot, 1, &amp;nullSrv); m_psSrv[slot] = TextureHandle{}; ++m_stats.srvUnbinds; }
+        <span class="kw">if</span> (m_vsSrv[slot] == texture) { context-&gt;VSSetShaderResources(slot, 1, &amp;nullSrv); m_vsSrv[slot] = TextureHandle{}; ++m_stats.srvUnbinds; }
+    }
+}</code></pre>
+<p>이것의 귀결이 바인딩 순서입니다. 프레임 셋(b0·b2·t8·s4)을 <em>그림자 패스 전에</em> 바인딩하면 BeginRenderPass가 t8을 풀고, 그림자 패스는 b0·b1만 쓰므로 문제없이 그려지고, 메인 패스가 시작할 때 프레임 셋을 <em>다시</em> 바인딩해 t8을 되살립니다. 순서를 바꿔 그림자 패스 안에서 프레임 셋을 바인딩하면 t8 SRV와 DSV가 충돌합니다.</p>
+
+<h3 id="s2-3">2.3 프레임 구조</h3>
+<pre><code><span class="cm">// App/AppBase.cpp — Run()</span>
+graphicsDevice.BeginFrame();      <span class="cm">// 프레임 인덱스만</span>
+Render();                         <span class="cm">// Renderer: ShadowPass → MainPass</span>
+renderer.BeginUIPass();           <span class="cm">// 백버퍼 UNORM 뷰, Load, 깊이 없음</span>
+ImGuiBackend::Render();
+renderer.EndUIPass();             <span class="cm">// EndRenderPass + Barrier(RenderTarget → Present)</span>
+graphicsDevice.EndFrame();        <span class="cm">// Present</span>
+
+<span class="cm">// Graphics/Renderer.cpp — 메인 패스</span>
+cmd.Barrier(backBuffer, ResourceState::Present, ResourceState::RenderTarget);
+RenderPassDesc pass;
+pass.colorCount = 1;
+pass.colors[0].texture = backBuffer;
+pass.colors[0].load = LoadOp::Clear;
+pass.colors[0].srgbView = m_settings.srgbOutput;    <span class="cm">// 5단계의 sRGB 뷰가 여기로</span>
+pass.depth.texture = m_device-&gt;GetDepthBuffer();
+pass.depth.load = LoadOp::Clear;
+pass.debugName = <span class="str">"MainPass"</span>;
+cmd.BeginRenderPass(pass);
+cmd.SetResourceSet(m_frameSet);   <span class="cm">// t8 되살림</span>
+cmd.SetResourceSet(m_objectSet);
+<span class="cm">// … 정렬된 드로우 …</span>
+cmd.EndRenderPass();</code></pre>
+<p>이것으로 rendering-analysis의 D4("프레임 시작/끝의 소유권")가 마무리됩니다. 클리어 색·sRGB 여부·타깃은 전부 Renderer가 만드는 <code>RenderPassDesc</code>에 있고, AppBase는 순서만 압니다. Device의 <code>SetClearColor</code>·<code>SetSrgbOutput</code>·<code>BeginUIPass</code>는 삭제됐습니다.</p>
+
+<h2 id="s3"><span class="num">3.</span>CommandList와 Barrier</h2>
+<p><code>CommandList</code>는 D3D11에서 ImmediateContext의 얇은 래퍼라 "기록"이 곧 실행입니다. D3D12에서는 <code>ID3D12GraphicsCommandList</code>에 쌓였다가 <code>ExecuteCommandLists</code>로 제출되지만, 호출 코드는 같은 메서드를 같은 순서로 부릅니다. 7단계에서 이 공개 API가 그대로 <code>RHI::CommandList</code> 가상 인터페이스가 됩니다.</p>
+<div class="tbl"><table>
+  <thead><tr><th>CommandList</th><th>D3D11 (지금)</th><th>D3D12 (8단계)</th></tr></thead>
+  <tbody>
+    <tr><td><code>BeginRenderPass(desc)</code></td><td>SRV 언바인드 + OMSetRenderTargets + Clear + RSSetViewports</td><td>OMSetRenderTargets + Clear (또는 BeginRenderPass)</td></tr>
+    <tr><td><code>EndRenderPass()</code></td><td>OMSetRenderTargets(0)</td><td>EndRenderPass / 없음</td></tr>
+    <tr><td><code>SetPipelineState(h)</code></td><td>PipelineState::Bind — 7개 호출</td><td>SetPipelineState + IASetPrimitiveTopology</td></tr>
+    <tr><td><code>SetResourceSet(h)</code></td><td>슬롯마다 *SSetConstantBuffers / ShaderResources / Samplers</td><td>SetGraphicsRootDescriptorTable</td></tr>
+    <tr><td><code>SetVertexBuffer / SetIndexBuffer</code></td><td>IASetVertexBuffers / IASetIndexBuffer</td><td>IASetVertexBuffers / IASetIndexBuffer (뷰 구조체)</td></tr>
+    <tr><td><code>DrawIndexed</code></td><td>DrawIndexed (패스 밖이면 에러 로그 후 무시)</td><td>DrawIndexedInstanced</td></tr>
+    <tr><td><code>Barrier(tex, before, after)</code></td><td><b>no-op</b> + 상태 추적. Debug: before ≠ 추적 상태면 경고</td><td>ResourceBarrier(Transition)</td></tr>
+    <tr><td><code>CopyBuffer(dst, src)</code></td><td>CopyResource</td><td>CopyResource + 상태 전이</td></tr>
+  </tbody>
+</table></div>
+<p>Barrier를 지금 넣는 이유는 원문 로드맵의 말 그대로입니다: D3D12로 갈 때 "어디에 배리어가 필요한지"가 이미 코드에 적혀 있게 됩니다. D3D12는 리소스별 상태 관리를 드라이버에서 애플리케이션으로 옮겼고, 연속된 배리어의 before/after가 맞지 않으면 Debug Layer가 잡습니다<sup><a href="#ref-2">2</a></sup>. 그래서 D3D11 백엔드도 <code>D3D11Texture::state</code>를 두고 호출 코드가 적은 <code>before</code>와 비교해 Debug에서 경고합니다 — D3D12에서 에러가 될 자리를 미리 잡는 것입니다. 상태 열거는 <code>D3D12_RESOURCE_STATES</code>의 부분집합(Common, RenderTarget, DepthWrite, ShaderResource, CopySource, CopyDest, Present)입니다<sup><a href="#ref-13">13</a></sup>. 스왑체인 버퍼는 D3D12 관례대로 <code>Present</code>로 시작하고, 프레임마다 <code>Present → RenderTarget → Present</code>를 오갑니다. 이 세션의 배리어 4회는 그림자 맵 2회, 백버퍼 2회입니다.</p>
+
+<h2 id="s4"><span class="num">4.</span>그림자 매핑</h2>
+<h3 id="s4-1">4.1 두 패스 알고리즘</h3>
+<p>Williams가 1978년에 제안한 방법<sup><a href="#ref-10">10</a></sup>은 두 패스입니다. 첫 패스는 광원의 눈으로 씬을 그려 깊이만 남깁니다(그림자 맵). 둘째 패스는 각 픽셀의 월드 위치를 같은 광원 행렬로 변환해, 그 위치의 깊이가 그림자 맵에 기록된 깊이보다 멀면 "광원과 그 픽셀 사이에 무언가 있다" = 그림자로 판정합니다<sup><a href="#ref-3">3</a></sup>. 정점 셰이더가 위치를 두 번 변환하는 것이 특징입니다.</p>
+<pre><code><span class="cm">// BasicVertexShader.hlsl</span>
+vsOutput.position = mul(worldPosition, viewProj);           <span class="cm">// 카메라</span>
+vsOutput.shadowPosition = mul(worldPosition, lightViewProj); <span class="cm">// 광원 (PS 가 UV 로 바꾼다)</span>
+
+<span class="cm">// ShadowVertexShader.hlsl — 그림자 패스. 픽셀 셰이더 없음.</span>
+<span class="kw">float4</span> VS_Shadow(ShadowVSInput input) : SV_POSITION
+{
+    <span class="kw">const float4</span> worldPosition = mul(<span class="kw">float4</span>(input.position, 1.0f), world);
+    <span class="kw">return</span> mul(worldPosition, lightViewProj);
+}</code></pre>
+<p>그림자 VS는 POSITION만 읽지만 입력 레이아웃은 메인 패스의 64B VERTEX를 그대로 씁니다. <code>CreateInputLayout</code>은 VS 시그니처를 레이아웃과 대조하는데, 레이아웃에 셰이더가 읽지 않는 원소가 더 있는 것은 허용됩니다<sup><a href="#ref-16">16</a></sup>. 그래서 PSO가 하나 더 늘 뿐(캐시 3개) 정점 버퍼는 공유합니다.</p>
+
+<h3 id="s4-2">4.2 깊이 텍스처를 읽기: TYPELESS</h3>
+<p>깊이 버퍼를 셰이더에서 읽으려면 같은 비트를 두 방식으로 해석해야 합니다: DSV는 <code>D32_FLOAT</code>로, SRV는 <code>R32_FLOAT</code>로. D3D는 이것을 리소스를 <code>R32_TYPELESS</code>로 만들고 뷰마다 완전한 포맷을 지정하는 방식으로 허용합니다<sup><a href="#ref-14">14</a></sup>. D3D12도 정확히 같은 규칙입니다. <code>Device::CreateTexture</code>는 <code>DepthStencil | ShaderResource</code> 조합을 보면 리소스를 TYPELESS로 만들고 <code>D3D11Texture::typeless</code>를 세우며, <code>GetDSV/GetSRV</code>가 명시적 뷰 포맷을 씁니다. 호출 코드(Renderer)는 <code>Format::D32_FLOAT</code>와 bind 플래그만 적습니다.</p>
+<pre><code><span class="cm">// Graphics/D3D11/D3D11Resources.h</span>
+<span class="kw">namespace</span> D3D11DepthFormat
+{
+    Typeless(D32_FLOAT) = R32_TYPELESS;        Typeless(D24_UNORM_S8_UINT) = R24G8_TYPELESS;
+    ShaderView(D32_FLOAT) = R32_FLOAT;         ShaderView(D24_UNORM_S8_UINT) = R24_UNORM_X8_TYPELESS;
+}
+<span class="cm">// GetSRV: typeless 면 D3D11_SHADER_RESOURCE_VIEW_DESC{ Format = ShaderView(…), TEXTURE2D, MipLevels } 로 명시</span></code></pre>
+
+<h3 id="s4-3">4.3 깊이 전용 PSO와 바이어스</h3>
+<p>그림자 패스는 색을 쓰지 않으므로 픽셀 셰이더가 없습니다. <code>PSSetShader(nullptr)</code>는 그 스테이지를 끄는 정식 방법이고<sup><a href="#ref-15">15</a></sup>, D3D12 PSO는 PS 바이트코드를 비워 두면 됩니다. <code>PipelineState::Create</code>가 빈 <code>ps</code> 핸들을 허용하게 바꿨고, Desc는 <code>rtvCount = 0</code>, <code>dsvFormat = D32_FLOAT</code>입니다.</p>
+<p>가장 흔한 그림자 아티팩트 두 가지는 <em>shadow acne</em>(표면이 자기 자신에게 그림자를 드리워 생기는 모아레)와 <em>Peter Panning</em>(바이어스가 커서 그림자가 물체에서 떨어지는 것)입니다<sup><a href="#ref-3">3</a></sup>. acne는 그림자 맵 텍셀 하나가 깊이 하나로 양자화되는데 수신 픽셀은 그 위를 연속으로 지나가기 때문에 생깁니다. 대응은 두 층입니다. 래스터라이저의 <code>DepthBias</code>·<code>SlopeScaledDepthBias</code>가 그림자 맵을 쓸 때 표면을 광원에서 조금 밀어내고, 셰이더가 비교 시 수신자 깊이에서 작은 값을 뺍니다. 부동소수점 깊이 버퍼에서 DepthBias 한 단위는 <code>2^(지수 − 23)</code>이라 z ≈ 0.5에서 약 6e-8입니다<sup><a href="#ref-5">5</a></sup>. 그래서 2000 같은 큰 정수가 정상이고, 기울기 비례 항이 비스듬한 면을 맡으며, <code>DepthBiasClamp</code>가 극단적 각도에서 폭주를 막습니다.</p>
+<pre><code><span class="cm">// Renderer.cpp — 그림자 PSO 의 고정 부분</span>
+m_shadowDesc.ps = ShaderHandle{};                    <span class="cm">// 깊이 전용</span>
+m_shadowDesc.rtvCount = 0;
+m_shadowDesc.dsvFormat = Format::D32_FLOAT;
+m_shadowDesc.rasterizer.depthBias = 2000;            <span class="cm">// × 2^(e−23)</span>
+m_shadowDesc.rasterizer.slopeScaledDepthBias = 2.0f;
+m_shadowDesc.rasterizer.depthBiasClamp = 0.01f;
+<span class="cm">// 셰이더 쪽: shadowParams.y = 0.0015 (ImGui 슬라이더)</span></code></pre>
+
+<h3 id="s4-4">4.4 비교 샘플러와 PCF</h3>
+<p>비교는 셰이더에서 <code>if (depth &gt; stored)</code>로 할 수도 있지만, 하드웨어에는 그것을 대신하고 이웃 텍셀과 보간까지 해 주는 <em>비교 샘플러</em>가 있습니다. <code>D3D11_FILTER_COMPARISON_*</code>에 <code>ComparisonFunc</code>를 주면 <code>SampleCmp</code>가 텍셀마다 비교 결과(0/1)를 만들고 그것을 선형 보간해 돌려줍니다<sup><a href="#ref-4">4</a></sup>. 이것이 2×2 하드웨어 PCF입니다. 우리는 그 위에 3×3 오프셋을 더해 9번 샘플하고 평균 냅니다 — Percentage-Closer Filtering의 가장 단순한 형태입니다<sup><a href="#ref-9">9</a></sup>. <code>SampleCmpLevelZero</code>는 밉 0만 보는 판본이고, 정수 오프셋 인자로 이웃 텍셀을 지정합니다<sup><a href="#ref-4">4</a></sup>.</p>
+<pre><code><span class="cm">// BasicPixelShader.hlsl</span>
+<span class="kw">const float3</span> p = shadowPosition.xyz / shadowPosition.w;
+<span class="kw">const float2</span> uv = <span class="kw">float2</span>(p.x * 0.5f + 0.5f, -p.y * 0.5f + 0.5f);   <span class="cm">// NDC → 텍스처 (v 는 아래로)</span>
+<span class="kw">const float</span> depth = p.z - shadowParams.y;
+<span class="kw">float</span> lit = 0.0f;
+[unroll] <span class="kw">for</span> (<span class="kw">int</span> dy = -1; dy &lt;= 1; ++dy)
+[unroll] <span class="kw">for</span> (<span class="kw">int</span> dx = -1; dx &lt;= 1; ++dx)
+    lit += shadowMap.SampleCmpLevelZero(shadowSampler, uv, depth, <span class="kw">int2</span>(dx, dy));
+lit /= 9.0f;
+<span class="kw">return</span> lerp(1.0f, lit, shadowParams.z);</code></pre>
+<p>샘플러 주소 모드는 Border, 테두리 색 1입니다. 광원 직교 상자 밖으로 나간 픽셀은 "빛을 받음"으로 처리해 맵 가장자리에 그림자 띠가 생기지 않게 합니다. 로드맵의 <code>ShadowCompare</code> 샘플러가 5단계에서 미뤄 둔 그것입니다.</p>
+
+<h3 id="s4-5">4.5 광원 행렬</h3>
+<p>방향광에는 위치가 없으므로 씬 중심에서 빛의 반대 방향으로 물러난 곳에 눈을 두고(<code>LookAtLH</code>), 직교 투영(<code>OrthographicLH</code>)으로 60×60 영역을 봅니다. 빛이 거의 수직이면 up = +Y가 시선과 평행해져 LookAt이 무너지므로 그때는 +Z를 up으로 씁니다. Microsoft의 그림자 기법 문서가 권하는 다음 단계 — 카메라 절두체에 맞춘 타이트한 투영, 텍셀 단위로 반올림한 원점(가장자리 떨림 방지), 캐스케이드 — 는 넣지 않았습니다<sup><a href="#ref-3">3</a></sup>. 씬이 40×40 바닥 하나라 고정 상자로 충분하고, ImGui 슬라이더로 크기와 거리를 바꿀 수 있습니다.</p>
+
+<h2 id="s5"><span class="num">5.</span>노멀 매핑과 탄젠트</h2>
+<p>노멀 맵은 표면의 미세한 기울기를 텍스처에 저장한 것입니다. 값은 표면 로컬의 <em>탄젠트 공간</em>(T = u가 증가하는 방향, B = v가 증가하는 방향, N = 표면 노멀)에 있고, (0.5, 0.5, 1)이 "평평"입니다. 조명은 월드 공간에서 하므로 픽셀마다 TBN 행렬로 되돌립니다<sup><a href="#ref-8">8</a></sup>. 그러려면 정점에 T가 있어야 하고, B는 <code>cross(N, T)</code>로 만들되 UV가 뒤집힌 면에서는 방향이 반대라 <em>손잡이</em>(±1)를 정점에 함께 저장합니다 — Lengyel이 정리한 방식입니다<sup><a href="#ref-7">7</a></sup>.</p>
+<pre><code><span class="cm">// Graphics/Mesh.cpp — 프리미티브는 T, B 를 해석적으로 안다</span>
+t = normalize(T − N·dot(N, T));                                   <span class="cm">// Gram-Schmidt</span>
+w = dot(cross(N, t), B) &lt; 0 ? −1 : +1;                             <span class="cm">// 손잡이</span>
+vertex.tangent = (t.x, t.y, t.z, w);
+
+<span class="cm">// BasicPixelShader.hlsl</span>
+<span class="kw">const float3</span> T = SafeNormalize(input.tangent.xyz - N * dot(N, input.tangent.xyz), …);
+<span class="kw">const float3</span> B = cross(N, T) * input.tangent.w;
+<span class="kw">float3</span> tn = normalTexture.Sample(albedoSampler, input.uv).xyz * 2.0f - 1.0f;
+tn.xy *= normalStrength;
+<span class="kw">const float3</span> normal = SafeNormalize(tn.x * T + tn.y * B + tn.z * N, N);</code></pre>
+<div class="tbl"><table>
+  <thead><tr><th>프리미티브</th><th>T (u+)</th><th>B (v+)</th></tr></thead>
+  <tbody>
+    <tr><td>구</td><td>∂P/∂θ = (−sin θ, 0, cos θ)</td><td>∂P/∂φ = (cos φ cos θ, −sin φ, cos φ sin θ)</td></tr>
+    <tr><td>큐브</td><td>면마다 u+ 의 월드 방향 (예: 앞면 +X)</td><td>면마다 v+ 의 월드 방향 (예: 앞면 −Y)</td></tr>
+    <tr><td>평면</td><td>+X</td><td>−Z</td></tr>
+    <tr><td>실린더 옆면</td><td>(−sin θ, 0, cos θ)</td><td>(Δr cos θ, −h, Δr sin θ) — 원뿔대의 빗면을 따라 아래로</td></tr>
+  </tbody>
+</table></div>
+<p>검증용 노멀 맵(<code>bumps_normal.png</code>)은 반구 높이장 8×8 타일에서 <code>n = normalize(−∂h/∂x, −∂h/∂y, 1)</code>로 만들었습니다. 여기서 y는 이미지 행 방향 = v가 자라는 방향 = B이므로, 정점 쪽 B 정의와 맞습니다. 외부 노멀 맵을 쓸 때는 이 "녹색 채널 방향"(DirectX 관례 = v 아래, OpenGL 관례 = 반대)을 확인해야 하며, 틀리면 요철이 뒤집혀 보입니다.</p>
+
+<h2 id="s6"><span class="num">6.</span>조명 편집</h2>
+<p><code>DebugUI::DrawLightPanel</code>이 <code>Scene::GetLights()</code>의 모든 원소를 트리로 보여 줍니다. 타입 콤보, 위치(방향광 제외), 방향(점광 제외) + 정규화 버튼, 색, 세기, 범위, 스포트의 안/밖 원뿔 각(도 단위 ↔ cos 변환), 감쇠 계수, 삭제. "Add point light"로 8개까지 추가합니다. 0번이 방향광일 때만 그림자를 만든다는 안내가 붙어 있습니다. 데모 씬에는 방향광 하나에 주황 점광(−6, 5, −4)과 파란 스포트라이트(10, 10, 2 → 아래)를 더했습니다. 그림 1 바닥의 주황 번짐과 파란 원이 그것입니다.</p>
+
+<h2 id="s7"><span class="num">7.</span>함정과 해결</h2>
+<ul>
+  <li><strong>SRV/DSV 충돌.</strong> 2.2절. 그림자 맵을 t8에 둔 채 DSV로 잡으면 D3D11이 SRV를 강제로 풀고 경고를 냅니다. CommandList의 SRV 추적 + BeginRenderPass 언바인드로 해결. 프레임 셋을 그림자 패스 <em>전에</em> 바인딩하고 메인 패스에서 <em>다시</em> 바인딩하는 순서가 필요합니다.</li>
+  <li><strong>깊이 텍스처는 TYPELESS.</strong> 4.2절. <code>D32_FLOAT</code>로 만든 텍스처에는 SRV를 만들 수 없습니다. Device가 bind 플래그 조합을 보고 알아서 TYPELESS + 뷰 포맷으로 바꿉니다.</li>
+  <li><strong>PS 없는 PSO.</strong> <code>PipelineState::Create</code>가 픽셀 셰이더 핸들을 필수로 검사하고 있었습니다. 빈 핸들이면 <code>PSSetShader(nullptr)</code>.</li>
+  <li><strong>b3을 VS가 읽는 채로 남았고, t/s 레지스터가 셋끼리 겹친다.</strong> D3D11의 t#/s#는 스테이지마다 하나의 공간이라 재질 셋(t0·t1·s0)과 프레임 셋(t8·s4)의 번호가 겹치면 안 됩니다. 셋마다 구간을 배정했습니다(재질 t0–7/s0–3, 프레임 t8–15/s4–7). D3D12에서는 이 구간이 그대로 디스크립터 테이블 범위가 됩니다.</li>
+  <li><strong>수직광에서 LookAt 붕괴.</strong> 4.5절. up 벡터가 시선과 평행하면 뷰 행렬이 특이해집니다. |dir.y| &gt; 0.99면 up = +Z.</li>
+  <li><strong>Unlit 물체의 그림자.</strong> 감마 검증 카드는 조명을 받지 않으므로 그림자도 드리우지 않게 그림자 패스에서 건너뜁니다. 로드맵에 없는 결정이지만 "unlit"의 뜻에 맞습니다.</li>
+  <li><strong>CRLF 파일을 perl로 패치.</strong> 소스가 CRLF라 <code>\n</code> 패턴이 맞지 않아 여러 패치가 조용히 실패했습니다. 엔진과 무관하지만 다음 단계를 위해 적습니다: 파일 편집은 Edit 도구로.</li>
+</ul>
+
+<h2 id="s8"><span class="num">8.</span>검증과 스크린샷</h2>
+<div class="applied">
+  <div class="t">적용 결과 — 2026-09-23</div>
+  <ul>
+    <li><b>완료 기준 ①</b> "바닥에 그림자가 떨어진다" — 구·큐브·실린더·와이어 구가 체커 바닥에 그림자를 드리운다. F8로 끄면 사라진다. 그림 1·2.</li>
+    <li><b>완료 기준 ②</b> "광원을 움직이면 따라온다" — F7로 방향광 0을 Y축 둘레로 돌리며 2.5초·5.5초에 캡처. 그림자가 반대 방향으로 옮겨 간다. 그림 3.</li>
+    <li><b>완료 기준 ③</b> "Renderer가 ID3D11DeviceContext를 직접 참조하지 않는다" — 격리 grep 0건. 나아가 Renderer가 Device에 부르는 것은 Create*/Destroy*/UpdateBuffer/GetBackBuffer/GetDepthBuffer/GetCommandList/GetPipelineCount/InvalidatePipelines 뿐이며, 바인딩·드로우·패스·배리어는 전부 CommandList.</li>
+    <li>노멀 매핑: 오렌지 큐브·초록 실린더·바닥에 반구 범프. F9로 끄면 평평해진다. 그림 4.</li>
+    <li>그림자 맵 미리보기(ImGui::Image, R32_FLOAT을 빨강으로): 광원 시점의 깊이가 보인다. 그림 5.</li>
+    <li>리플렉션: cbuffer 8건 일치(PerFrame 288 ×3, PerObject 128 ×2, Lights 656, Material 48 ×2). 바인딩 대조 13건 OK — VS b0·b1·b3, PS s0·s4·t0·t1·t8·b0·b2·b3, ShadowVS b0·b1.</li>
+    <li>통계: draws 8 (+7 shadow), PSO 캐시 3(메인 solid/wire + 그림자), passes 2 + UI, barriers 4/프레임, textures 6.</li>
+    <li>Debug Layer: 프레임 중 메시지 0건 (SRV/DSV 충돌 경고 없음). 리사이즈 1500×900 ↔ 900×500 6회 + 최소화/복원 0건.</li>
+    <li>핫리로드 회귀: 셰이더 3개 감시. 편집 → 세대 2, 에러 → 유지, 복구 → 세대 3(4단계 스크립트 재실행).</li>
+    <li>Debug·Release x64 빌드, Release 실행 동일 화면. 종료 시 자식 Live Object 0건.</li>
+  </ul>
+</div>
+
+<div class="fig">
+  <img src="../images/2026-09-23-phase6-scene.png" alt="그림자와 노멀 매핑이 적용된 씬" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 1. 6단계 기본 씬. 방향광 그림자(구·큐브·실린더 뒤 바닥), 노멀 맵 범프(오렌지 큐브·초록 실린더·바닥), 주황 점광과 파란 스포트라이트. (images/2026-09-23-phase6-scene.png)</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase6-shadow-compare.png" alt="그림자 켬/끔 비교 크롭" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 2. 같은 자리의 그림자 켬(왼쪽)과 F8로 끈 상태(오른쪽). (images/2026-09-23-phase6-shadow-compare.png)</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase6-light-orbit-compare.png" alt="광원을 돌렸을 때 그림자가 따라오는 두 순간" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 3. F7 광원 공전. 왼쪽 t = 2.5 s(빛이 +Z 쪽으로), 오른쪽 t = 5.5 s(빛이 −X 쪽으로). 그림자가 광원을 따라 반대편으로 옮겨 갔다. 전체 화면은 images/2026-09-23-phase6-light-orbit.png.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase6-normalmap-compare.png" alt="노멀 맵 켬/끔 오렌지 큐브 크롭" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 4. 오렌지 큐브 크롭. 왼쪽 노멀 맵 켬, 오른쪽 F9로 끔(normalStrength 0). 지오메트리는 같고 픽셀 노멀만 다르다. (images/2026-09-23-phase6-normalmap-compare.png)</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase6-shadowmap-preview.png" alt="패널에 표시된 그림자 맵" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 5. 패널의 그림자 맵 미리보기. R32_FLOAT SRV를 ImGui가 빨강 채널로 그린다 — 클리어된 1.0은 빨강, 바닥과 물체는 어둡다. 60×60 직교 상자 안에 40×40 바닥이 보인다. (images/2026-09-23-phase6-shadowmap-preview.png)</div>
+</div>
+
+<h2 id="s9"><span class="num">9.</span>참고 문헌</h2>
+<ol>
+  <li id="ref-1">Microsoft Learn, <em>Direct3D 12 render passes</em> — 렌더 패스의 정의, BEGINNING/ENDING_ACCESS, 패스 안 배리어 제약. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/direct3d-12-render-passes">learn.microsoft.com/…/direct3d-12-render-passes</a></li>
+  <li id="ref-2">Microsoft Learn, <em>Using Resource Barriers to Synchronize Resource States in Direct3D 12</em> — 상태 관리가 앱의 책임, before/after 일관성, 그림자 맵 예제(DEPTH_WRITE ↔ PIXEL_SHADER_RESOURCE). <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-resource-barriers-to-synchronize-resource-states-in-direct3d-12">learn.microsoft.com/…/using-resource-barriers-to-synchronize-resource-states-in-direct3d-12</a></li>
+  <li id="ref-3">Microsoft Learn, <em>Common Techniques to Improve Shadow Depth Maps</em> — 두 패스 알고리즘, acne·Peter Panning, 기울기 비례 바이어스, 타이트한 투영, 텍셀 단위 이동. <a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/common-techniques-to-improve-shadow-depth-maps">learn.microsoft.com/…/common-techniques-to-improve-shadow-depth-maps</a></li>
+  <li id="ref-4">Microsoft Learn, <em>SampleCmpLevelZero (HLSL Texture Object)</em>. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-to-samplecmplevelzero">learn.microsoft.com/…/dx-graphics-hlsl-to-samplecmplevelzero</a></li>
+  <li id="ref-5">Microsoft Learn, <em>Depth Bias</em> — UNORM과 부동소수점 깊이 버퍼의 바이어스 공식, DepthBiasClamp. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d11/d3d10-graphics-programming-guide-output-merger-stage-depth-bias">learn.microsoft.com/…/d3d10-graphics-programming-guide-output-merger-stage-depth-bias</a></li>
+  <li id="ref-6">Microsoft Learn, <em>ID3D11DeviceContext::OMSetRenderTargets</em> — 읽기로 바인딩된 서브리소스는 NULL로 풀림, (0, nullptr, nullptr)이 전부 해제. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-omsetrendertargets">learn.microsoft.com/…/nf-d3d11-id3d11devicecontext-omsetrendertargets</a></li>
+  <li id="ref-7">Eric Lengyel, <em>Computing Tangent Space Basis Vectors for an Arbitrary Mesh</em>, 2004 — 탄젠트 직교화와 정점별 손잡이. <a href="https://terathon.com/blog/tangent-space.html">terathon.com/blog/tangent-space.html</a></li>
+  <li id="ref-8">LearnOpenGL, <em>Normal Mapping</em> — TBN 기저 변환. <a href="https://learnopengl.com/Advanced-Lighting/Normal-Mapping">learnopengl.com/Advanced-Lighting/Normal-Mapping</a></li>
+  <li id="ref-9">LearnOpenGL, <em>Shadow Mapping</em> — acne와 바이어스, PCF. <a href="https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping">learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping</a></li>
+  <li id="ref-10">Wikipedia, <em>Shadow mapping</em> — Lance Williams, "Casting curved shadows on curved surfaces" (1978). <a href="https://en.wikipedia.org/wiki/Shadow_mapping">en.wikipedia.org/wiki/Shadow_mapping</a></li>
+  <li id="ref-11">Vulkan Documentation, <em>VkAttachmentLoadOp</em> — LOAD / CLEAR / DONT_CARE. <a href="https://docs.vulkan.org/refpages/latest/refpages/source/VkAttachmentLoadOp.html">docs.vulkan.org/…/VkAttachmentLoadOp.html</a></li>
+  <li id="ref-12">Microsoft Learn, <em>ID3D12GraphicsCommandList4::BeginRenderPass</em>. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist4-beginrenderpass">learn.microsoft.com/…/nf-d3d12-id3d12graphicscommandlist4-beginrenderpass</a></li>
+  <li id="ref-13">Microsoft Learn, <em>D3D12_RESOURCE_STATES</em> — DEPTH_WRITE, PIXEL_SHADER_RESOURCE, RENDER_TARGET, PRESENT(= COMMON). <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resource_states">learn.microsoft.com/…/ne-d3d12-d3d12_resource_states</a></li>
+  <li id="ref-14">Microsoft Learn, <em>DXGI_FORMAT</em> — TYPELESS 포맷과 뷰 포맷의 관계. <a href="https://learn.microsoft.com/en-us/windows/win32/api/dxgiformat/ne-dxgiformat-dxgi_format">learn.microsoft.com/…/ne-dxgiformat-dxgi_format</a></li>
+  <li id="ref-15">Microsoft Learn, <em>ID3D11DeviceContext::PSSetShader</em> — NULL이면 스테이지 비활성. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-pssetshader">learn.microsoft.com/…/nf-d3d11-id3d11devicecontext-pssetshader</a></li>
+  <li id="ref-16">Microsoft Learn, <em>ID3D11Device::CreateInputLayout</em> — VS 입력 시그니처와 레이아웃의 검증. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11device-createinputlayout">learn.microsoft.com/…/nf-d3d11-id3d11device-createinputlayout</a></li>
+  <li>Microsoft Learn, <em>Managing Graphics Pipeline State in Direct3D 12</em> — PSO 밖의 동적 상태(뷰포트·시저·스텐실 참조·블렌드 팩터). 1단계 문서 참고. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/managing-graphics-pipeline-state-in-direct3d-12">learn.microsoft.com/…/managing-graphics-pipeline-state-in-direct3d-12</a></li>
+</ol>
+
+<div class="footer">
+  대상: SherlockEngine 작업 트리 (2026/09/23, 5단계 위에 연속). 이전: <a href="phase-5.html">5단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p6">rendering-analysis.html PHASE 6</a>. 스크린샷은 <code>images/2026-09-23-phase6-*.png</code>.
+</div>
+</main>
+</div>
+</body>
+</html>

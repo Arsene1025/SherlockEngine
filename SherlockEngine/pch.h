@@ -4,7 +4,7 @@
 // 특정 기능에만 필요한 헤더는 그것을 쓰는 .cpp에서 직접 include할 것.
 //
 // Direct3D 헤더(d3d11 / dxgi / d3dcompiler)는 여기에 없다. 3단계에서 뺐다.
-// Graphics/D3D11/D3D11Common.h 가 유일한 자리이고, 그 폴더 안의 파일만 include한다.
+// RHI/D3D11/D3D11Common.h 가 유일한 자리이고, 그 폴더 안의 파일만 include한다.
 // 폴더 밖에서 D3D 타입이 필요해지면 그것이 곧 추상화가 새는 지점이다.
 
 //기본
