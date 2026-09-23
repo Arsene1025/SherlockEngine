@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>11-D단계 · 게임 빌드와 런타임 분리 — SherlockEngine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EEF0F7; --line:#D6D9E6; --line-strong:#B9BDD0;
+  --ink:#171A2B; --ink-2:#4A4F66; --muted:#7A7F96;
+  --accent:#232767; --accent-ink:#FFFFFF; --accent-soft:#E3E5F5;
+  --amber:#B8781A; --amber-soft:#FBF0DB;
+  --ok:#2E7D4F; --ok-soft:#E1F2E7; --warn:#A6620C; --warn-soft:#FBEDD6; --crit:#B23A3A; --crit-soft:#F9E1E1;
+  --code-bg:#1B1D33; --code-ink:#E7E9F5; --code-kw:#9BA3FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(23,26,43,.06),0 8px 24px rgba(23,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+    --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+    --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+    --amber:#F0B650; --amber-soft:#3D3560;
+    --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+    --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+  --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+  --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+  --amber:#F0B650; --amber-soft:#3D3560;
+  --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+  --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+code,pre,.mono{font-family:"IBM Plex Mono",Consolas,"D2Coding",monospace}
+code{font-size:.875em;background:var(--surface-2);padding:.1em .4em;border-radius:4px;color:var(--ink)}
+pre{background:var(--code-bg);color:var(--code-ink);padding:18px 20px;border-radius:8px;overflow-x:auto;font-size:13.5px;line-height:1.6;margin:18px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+.kw{color:var(--code-kw)} .str{color:var(--code-str)} .cm{color:var(--code-cm)}
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto;padding:0 32px;gap:48px}
+@media (max-width:960px){.shell{grid-template-columns:minmax(0,1fr);padding:0 20px;gap:0}}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0 40px;font-size:13.5px}
+nav.toc .brand{font-weight:600;letter-spacing:.02em;color:var(--ink);margin-bottom:6px}
+nav.toc .meta{color:var(--muted);font-size:12px;margin-bottom:24px;line-height:1.5}
+nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+nav.toc li a{display:block;padding:5px 14px;color:var(--ink-2);border-left:2px solid transparent;margin-left:-1px;border-bottom:none;line-height:1.45}
+nav.toc li a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+nav.toc li.sub a{padding-left:28px;font-size:12.5px;color:var(--muted)}
+@media (max-width:960px){nav.toc{position:static;height:auto;padding:28px 0 8px}nav.toc ol{display:none}}
+main{padding:40px 0 96px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1{font-size:clamp(30px,4vw,42px);line-height:1.2;margin:6px 0 14px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{font-size:18px;color:var(--ink-2);max-width:66ch;margin:0 0 28px}
+h2{font-size:26px;line-height:1.3;margin:72px 0 16px;padding-top:24px;border-top:1px solid var(--line);font-weight:600;letter-spacing:-.005em;text-wrap:balance}
+h2 .num{display:inline-block;min-width:2.2em;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+h3{font-size:19px;margin:40px 0 10px;font-weight:600;text-wrap:balance}
+p{margin:0 0 16px;max-width:72ch}
+ul,ol{max-width:72ch;padding-left:1.4em;margin:0 0 16px}
+li{margin:4px 0}
+strong{font-weight:600}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:28px 0}
+.facts>div{background:var(--surface);padding:14px 16px}
+.facts .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.facts .v{font-size:15px;font-weight:600;line-height:1.35}
+.facts .v small{display:block;font-weight:400;color:var(--ink-2);font-size:12.5px;margin-top:2px}
+.callout{border-left:3px solid var(--accent);background:var(--surface);padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;max-width:72ch}
+.callout p:last-child{margin-bottom:0}
+.callout .t{font-weight:600;font-size:14px;margin-bottom:4px}
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.fig{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.fig .cap{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+.applied{margin:14px 0 0;padding:12px 16px 14px;border:1px solid var(--ok);background:var(--ok-soft);border-radius:6px;font-size:14.5px}
+.applied .t{font-weight:600;color:var(--ok);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.applied ul{margin:0;padding-left:1.2em;max-width:none;font-size:14px}
+.applied li{margin:3px 0}
+.applied code{background:var(--surface)}
+.footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="목차">
+  <div class="brand">11-D단계 · 게임 빌드</div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/23 (작업 트리, 미커밋)<br><a href="rendering-analysis.html#p11d">rendering-analysis.html → PHASE 11-D</a></div>
+  <ol>
+    <li><a href="#s1">1. 요약</a></li>
+    <li><a href="#s2">2. 세 프로젝트: lib · Editor · Game</a></li>
+    <li class="sub"><a href="#s2-1">2.1 정적 라이브러리와 /WHOLEARCHIVE</a></li>
+    <li class="sub"><a href="#s2-2">2.2 같은 OutDir, 하나의 pch, 파일은 제자리</a></li>
+    <li><a href="#s3">3. 게임 런타임 GameApp</a></li>
+    <li><a href="#s4">4. Build Game: 패키징</a></li>
+    <li><a href="#s5">5. 자동 검증</a></li>
+    <li><a href="#s6">6. 함정과 해결</a></li>
+    <li><a href="#s7">7. 검증과 스크린샷</a></li>
+    <li><a href="#s8">8. 다음 단계</a></li>
+    <li><a href="#s9">9. 참고 문헌</a></li>
+  </ol>
+</nav>
+
+<main>
+<div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
+<h1>11-D단계 · 게임 빌드와 런타임 분리</h1>
+<p class="lede">상용 엔진의 "Package Project" 입니다. 에디터의 File &gt; Build Game... 이 <code>Build\&lt;이름&gt;\</code> 에 게임 런타임 exe · DLL · 셰이더 · 에셋을 모아 넣고 시작 씬을 적어 주면, 폴더를 통째로 다른 PC 에 복사해 더블클릭으로 게임이 뜹니다. 그러기 위해 하나였던 프로젝트를 엔진 정적 라이브러리 · 에디터 exe · 게임 exe 셋으로 나눴고, 게임 exe 는 ImGui 컨텍스트 없이 백버퍼에 직접 그립니다.</p>
+
+<div class="facts">
+  <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
+  <div><div class="k">프로젝트</div><div class="v">3<small>SherlockEngine.lib · SherlockEditor.exe · SherlockGame.exe</small></div></div>
+  <div><div class="k">새 파일</div><div class="v">6<small>App/GameApp, App/GameBuilder (.h/.cpp), EditorMain.cpp, GameMain.cpp</small></div></div>
+  <div><div class="k">패키지</div><div class="v">86 파일<small>데모 씬, 에셋 전부 (Sponza 제외 옵션 있음)</small></div></div>
+  <div><div class="k">완료 기준</div><div class="v"><span class="pill ok">충족</span><small>Build 폴더의 exe 가 소스 트리 없이 실행</small></div></div>
+</div>
+
+<div class="callout">
+  <div class="t">한 줄 요약</div>
+  <p>게임 로직(스크립트)이 이미 엔진과 함께 컴파일되고 에셋이 파일이라, "빌드" 는 <em>런타임 모드 하나</em>(<code>GameApp</code>: 에디터 UI 없이 시작 씬을 로드해 <code>BeginPlay</code>)와 <em>복사</em>(<code>GameBuilder</code>)로 끝납니다. 프로젝트 분리의 유일한 함정은 정적 라이브러리에서 스크립트의 정적 등록 .obj 가 링크에서 빠지는 것이고, <code>/WHOLEARCHIVE</code> 한 줄이 막습니다.</p>
+</div>
+
+<h2 id="s1"><span class="num">1.</span>요약</h2>
+<div class="tbl"><table>
+  <thead><tr><th>항목</th><th>구현</th><th>확인</th></tr></thead>
+  <tbody>
+    <tr><td>프로젝트 분리</td><td><code>SherlockEngine.vcxproj</code> → StaticLibrary(엔진 전부 + Game/ + 셰이더 컴파일 + Assets 복사), <code>SherlockEditor</code>(TestApp·Editor·ContentBrowser·ScriptCreator·GameBuilder·DebugUI + EditorMain), <code>SherlockGame</code>(GameMain). 두 exe 는 ProjectReference + <code>/WHOLEARCHIVE:SherlockEngine.lib</code></td><td>세 프로젝트 Debug·Release 빌드 경고 0</td></tr>
+    <tr><td>게임 런타임</td><td><code>App/GameApp</code>: <code>WantsGUI() = false</code>(ImGui 컨텍스트·백엔드 생략), <code>[game] startScene</code> 로드 → <code>Scene::BeginPlay</code>, 매 프레임 <code>Update/FixedUpdate</code>, ESC 종료, 창 제목 <code>[game] title</code></td><td>그림 1 (백버퍼 직접 렌더링, 활성 카메라 Main Camera)</td></tr>
+    <tr><td>Build Game</td><td>File &gt; Build Game...: 이름·시작 씬(<code>Assets\Scenes\*.json</code>)·에셋 전부/참조만·Release 빌드(vswhere → MSBuild)·폴더 열기. <code>App/GameBuilder</code> 가 <code>Build\&lt;이름&gt;\</code> 에 exe·DLL·Shaders·Assets 복사 + engine.ini 에 <code>[game]</code> 추가</td><td>자동 검증 <code>--build-game</code> (5절), 그림 2</td></tr>
+    <tr><td>AppBase</td><td><code>WantsGUI / GetWindowTitle</code> 가상 함수, COM 초기화(<code>CoInitializeEx</code>), 콘솔 창 없음(11-C)</td><td>게임 exe 에서 WIC 텍스처·PNG 스크린샷 동작</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="s2"><span class="num">2.</span>세 프로젝트: lib · Editor · Game</h2>
+<pre><code>SherlockEngine.sln
+├─ SherlockEngine\SherlockEngine.vcxproj   StaticLibrary → x64\&lt;구성&gt;\SherlockEngine.lib
+│    Core · Graphics · RHI · Scene · Game(Components·Scripts) · App\AppBase · App\GameApp · Shaders(fxc) · Assets 복사
+├─ SherlockEditor\SherlockEditor.vcxproj   Application  → SherlockEditor.exe
+│    EditorMain.cpp + ..\SherlockEngine\App\{TestApp, Editor, ContentBrowser, ScriptCreator, GameBuilder, DebugUI}
+└─ SherlockGame\SherlockGame.vcxproj       Application  → SherlockGame.exe
+     GameMain.cpp (GameApp 는 lib 에)</code></pre>
+<h3 id="s2-1">2.1 정적 라이브러리와 /WHOLEARCHIVE</h3>
+<p>스크립트와 컴포넌트는 <code>SHERLOCK_SCRIPT</code> 매크로의 정적 객체가 생성자에서 레지스트리에 자기를 등록합니다(11-C 3.2절). 정적 라이브러리에서 링커는 <em>참조되는 심볼이 있는 .obj 만</em> 가져오므로, 아무도 이름으로 참조하지 않는 <code>Rotator.obj</code> 같은 파일은 빠지고 등록도 사라집니다 — 11-C 문서가 예고한 그 함정입니다. 두 exe 프로젝트의 링커 옵션 <code>/WHOLEARCHIVE:SherlockEngine.lib</code> 이 라이브러리의 모든 .obj 를 넣게 해 등록이 살아남습니다. 엔진은 어차피 전부 쓰이므로 크기 손해도 없습니다. 검증: 에디터 자동 검증에서 <code>components=[Rigidbody,PlayerController]</code>, <code>[Rotator]</code> 가 그대로 보인다.</p>
+<h3 id="s2-2">2.2 같은 OutDir, 하나의 pch, 파일은 제자리</h3>
+<ul>
+  <li>세 프로젝트의 OutDir 은 기본값 그대로 <code>$(SolutionDir)x64\&lt;구성&gt;\</code> 하나입니다. 그래서 라이브러리 프로젝트의 fxc 셰이더 컴파일과 <code>Shaders\</code>·<code>Assets\</code> 복사 타깃이 한 번만 돌고, 두 exe 가 그 결과를 같이 씁니다. vcpkg 의 DLL 배치(DirectXTex.dll)는 exe 프로젝트마다 됩니다.</li>
+  <li>에디터 소스 파일은 <code>SherlockEngine\App\</code> 에 그대로 두고 에디터 프로젝트가 <code>..\SherlockEngine\App\Editor.cpp</code> 로 참조합니다. include 경로는 세 프로젝트 모두 <code>$(SolutionDir)SherlockEngine</code> 이라 <code>#include "App/Editor.h"</code> 가 그대로입니다. 문서·스크립트 생성기(<code>ScriptCreator</code> 가 <code>SherlockEngine.vcxproj</code> 에 등록)도 손댈 것이 없습니다.</li>
+  <li>pch 는 프로젝트마다 자기 것을 만듭니다: exe 프로젝트가 <code>..\SherlockEngine\pch.cpp</code> 를 Create 로 포함합니다.</li>
+  <li>에디터의 디버그 시작 폴더를 <code>$(SolutionDir)SherlockEngine</code> 으로 두어(vcxproj 안) 추적 중인 <code>imgui.ini</code> 를 그대로 씁니다. VS 에서는 SherlockEditor 를 시작 프로젝트로.</li>
+</ul>
+
+<h2 id="s3"><span class="num">3.</span>게임 런타임 GameApp</h2>
+<pre><code><span class="cm">// AppBase — 앱이 GUI 를 원하지 않으면 ImGui 컨텍스트를 만들지 않는다 → Engine::Initialize 가 렌더러 백엔드도 건너뛴다 (GetCurrentContext 검사, 10단계)</span>
+<span class="kw">virtual bool</span> WantsGUI() <span class="kw">const</span> { <span class="kw">return true</span>; }
+<span class="kw">if</span> (WantsGUI() &amp;&amp; !InitGUI()) …;   <span class="kw">if</span> (gui) { ImGui_ImplWin32_NewFrame(); ImGui::NewFrame(); … OnGUI(); ImGui::Render(); }
+
+<span class="cm">// GameApp::OnInitialize — 시작 씬 로드 후 바로 재생. 씬 뷰 텍스처를 요청하지 않으므로 메인 패스는 백버퍼에 (11단계 IsOffscreen false 경로)</span>
+path = Paths::GetAssetPath(L<span class="str">"Scenes\\"</span> + config[<span class="str">"game.startScene"</span>]);
+SceneSerializer::Load(scene, camera, assets, path);
+scene.BeginPlay(&amp;input, &amp;camera);          <span class="cm">// 카메라 오브젝트가 있으면 첫 Update 에서 그 시점 (11-C ApplyActiveCamera)</span>
+OnUpdate: scene.Update(dt); ESC → PostQuitMessage.   OnFixedUpdate: scene.FixedUpdate(fixedDt);</code></pre>
+<p>11-C 의 재생 루프가 그대로이고 스냅샷·Stop 만 없습니다. 게임 exe 도 <code>--exit-after / --screenshot / --dump-objects</code> 를 받아 창 없이 검증할 수 있습니다. ImGui 라이브러리 자체는 엔진 lib 의 Device 백엔드 코드가 참조하므로 링크되지만, 컨텍스트가 없어 아무것도 실행되지 않습니다(완전히 떼는 것은 8절).</p>
+
+<h2 id="s4"><span class="num">4.</span>Build Game: 패키징</h2>
+<pre><code>Build\&lt;이름&gt;\
+├─ SherlockGame.exe          x64\Debug (에디터 옆) 또는 Release 빌드를 켰으면 x64\Release
+├─ DirectXTex.dll            런타임 폴더의 *.dll
+├─ Shaders\  *.cso *.hlsl    cso 우선, 없으면 런타임 컴파일 폴백 (4단계 규칙 그대로)
+└─ Assets\   Config · Scenes · Textures · Models   (전부, 또는 시작 씬이 참조하는 것만)
+     Config\engine.ini  ← 끝에 [game] startScene = …, title = &lt;이름&gt; 을 덧붙인다 (같은 키는 마지막 값이 이긴다)</code></pre>
+<ul>
+  <li><strong>참조만 복사</strong>: 시작 씬 JSON 의 <code>meshes[].path</code> 에서 모델 폴더(<code>Models\DamagedHelmet</code>)를, 재질의 <code>albedoTexture/normalTexture</code> 에서 텍스처를 모읍니다. 데모 재질이 쓰는 <code>bumps_normal.png</code> 처럼 이름만 있는 파일은 <code>Textures\</code> 전체를 넣어 안전하게 갑니다. Sponza(수십 MB)를 빼는 용도.</li>
+  <li><strong>Release 빌드</strong>: <code>vswhere -latest -find MSBuild\**\Bin\MSBuild.exe</code> → <code>MSBuild SherlockEngine.sln /t:SherlockGame /p:Configuration=Release</code> 를 창 없이 동기로 돌리고 <code>Build\msbuild.log</code> 에 출력을 남깁니다. 에디터는 그동안 멈춥니다(수십 초).</li>
+  <li>패키지 안에는 소스 트리가 없으므로 <code>Paths</code> 의 폴백이 전부 exe 옆 사본으로 갑니다 — 10·11-B 에서 이미 그렇게 설계된 경로가 처음으로 실제 쓰였습니다. 로그는 <code>Build\&lt;이름&gt;\Logs\</code>.</li>
+</ul>
+
+<h2 id="s5"><span class="num">5.</span>자동 검증</h2>
+<pre><code><span class="cm"># 에디터 (스크립트 등록이 /WHOLEARCHIVE 로 살아 있나)</span>
+SherlockEditor.exe --scene=demo --exit-after=30 --play=1 --dump-objects=1
+<span class="cm"># 게임 런타임 단독 (x64\Debug, engine.ini 의 [game] startScene = demo_components.json)</span>
+SherlockGame.exe --exit-after=90 --dump-objects=1 --screenshot=...phase11d-game.png
+<span class="cm"># 패키징 (File &gt; Build Game 과 같은 경로, 에셋 전부, 폴더 열지 않음) → Build\TestBuild\</span>
+SherlockEditor.exe --scene=demo --exit-after=20 --build-game=TestBuild [--build-scene=floor_cube.json]
+<span class="cm"># 패키지 실행 (소스 트리 없음)</span>
+Build\TestBuild\SherlockGame.exe --exit-after=90 --dump-objects=1 --screenshot=...phase11d-packaged.png</code></pre>
+
+<h2 id="s6"><span class="num">6.</span>함정과 해결</h2>
+<ul>
+  <li><strong>COM 초기화.</strong> 게임 exe 의 첫 실행에서 PNG 텍스처 로드와 스크린샷 저장이 <code>0x80004002 (E_NOINTERFACE)</code> 로 실패했다. DirectXTex 의 WIC 팩토리는 COM 이 필요한데, 에디터는 ImGui 쪽 초기화 중에 우연히 COM 이 열려 있어 몰랐던 것. <code>AppBase::Initialize</code> 맨 앞에 <code>CoInitializeEx(COINIT_MULTITHREADED)</code>, 소멸자에 <code>CoUninitialize</code>.</li>
+  <li><strong>정적 초기화 탈락.</strong> 2.1절. <code>/WHOLEARCHIVE</code>. 이름으로만 접근하는 것(스크립트)이 정적 라이브러리에서 사라지는 전형적 함정.</li>
+  <li><strong>솔루션 탐색기가 평평해짐.</strong> 11-C 에서 <code>.filters</code> 를 여러 번 손으로 고치다 항목이 빠져 VS 가 전부 루트에 보였다. <code>.vcxproj</code> 항목에서 <code>.filters</code> 를 생성하는 스크립트로 통일했고(필터 = 실제 폴더), 새 프로젝트의 filters 도 같은 방식으로 만들었다.</li>
+  <li><strong>이름 변경.</strong> 실행 파일이 <code>SherlockEngine.exe</code> 에서 <code>SherlockEditor.exe</code> 가 됐다. 이전 단계 문서의 명령은 이름만 바꿔 읽는다. 옛 exe 는 빌드 폴더에 남아 있었으므로 지웠다.</li>
+  <li><strong>engine.ini 의 [game] 키 중복.</strong> Build 는 원본 ini 를 복사한 뒤 끝에 <code>[game]</code> 을 덧붙인다. <code>Config</code> 는 키 → 값 맵이라 마지막 값이 이겨, 개발용 시작 씬과 패키지의 시작 씬이 자연히 분리된다.</li>
+</ul>
+
+<h2 id="s7"><span class="num">7.</span>검증과 스크린샷</h2>
+<div class="applied">
+  <div class="t">적용 결과 — 2026-09-23</div>
+  <ul>
+    <li><b>완료 기준</b> "Build 폴더의 exe 가 소스 트리 없이 실행된다" — <code>--build-game=TestBuild</code>: 86 파일, 0.3 초. <code>Build\TestBuild\SherlockGame.exe</code> 가 자기 옆의 engine.ini(16 항목)·셰이더 .cso·씬을 읽어 "게임 시작: … 오브젝트 9, 컴포넌트 5, 카메라 Main Camera", CubeStatic 이 Rigidbody 로 y = 2.60 까지 상승, 스크린샷 저장 (그림 2).</li>
+    <li>런타임 단독(x64\Debug): 텍스처 로드 정상, 활성 카메라 Main Camera, 90 프레임 뒤 종료 (그림 1). D3D12 Release 도 같다.</li>
+    <li>에디터: 스크립트 등록 유지 (<code>[Rigidbody,PlayerController]</code>, <code>[Rotator]</code>), 재생·스냅샷 복원 그대로. 세 프로젝트 Debug·Release 빌드 경고 0, 오류 0.</li>
+  </ul>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase11d-game.png" alt="게임 런타임" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 1. SherlockGame.exe (x64\Debug). 에디터 창이 없고 씬이 백버퍼에 직접 그려진다. Main Camera 시점, 스크립트가 도는 중 (Rotator·Rigidbody).</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase11d-packaged.png" alt="패키징된 게임" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 2. Build\TestBuild\SherlockGame.exe — 소스 트리 없이 자기 폴더의 Shaders·Assets 만으로 같은 화면.</div>
+</div>
+
+<h2 id="s8"><span class="num">8.</span>다음 단계</h2>
+<ul>
+  <li><strong>ImGui 를 게임 exe 에서 완전히 떼기.</strong> Device 백엔드의 ImGui 코드를 <code>#ifdef SHERLOCK_EDITOR</code> 로 나누면 게임 exe 가 imgui.lib 를 링크하지 않는다. 지금은 링크만 되고 실행되지 않는다.</li>
+  <li><strong>에셋 쿠킹.</strong> 텍스처를 DDS(BC 압축)로, glTF 를 미리 파싱한 바이너리로. Sponza 로딩(수 초)이 문제될 때.</li>
+  <li><strong>비동기 빌드.</strong> MSBuild 를 스레드에서 돌리고 진행 상황을 팝업에.</li>
+  <li><strong>전체화면·해상도·입력 재매핑, 메인 메뉴 씬 전환</strong> — 게임 쪽 기능. 씬 전환 API(<code>Scene::LoadScene(name)</code>)가 첫 항목.</li>
+</ul>
+
+<h2 id="s9"><span class="num">9.</span>참고 문헌</h2>
+<ol>
+  <li>Microsoft Learn, <em>/WHOLEARCHIVE (Include All Library Object Files)</em>. <a href="https://learn.microsoft.com/en-us/cpp/build/reference/wholearchive-include-all-library-object-files">learn.microsoft.com/…/wholearchive-include-all-library-object-files</a></li>
+  <li>Microsoft Learn, <em>CoInitializeEx</em> — WIC 등 COM 컴포넌트 사용 전 스레드별 초기화. <a href="https://learn.microsoft.com/en-us/windows/win32/api/combaseapi/nf-combaseapi-coinitializeex">learn.microsoft.com/…/nf-combaseapi-coinitializeex</a></li>
+  <li>Microsoft, <em>vswhere</em> — 설치된 Visual Studio / MSBuild 찾기. <a href="https://github.com/microsoft/vswhere">github.com/microsoft/vswhere</a></li>
+  <li>Microsoft Learn, <em>ProjectReference / static library linking in MSBuild</em>. <a href="https://learn.microsoft.com/en-us/cpp/build/reference/vcxproj-file-structure">learn.microsoft.com/…/vcxproj-file-structure</a></li>
+</ol>
+
+<div class="footer">
+  대상: SherlockEngine 작업 트리 (2026/09/23, 11-C 위에 연속). 이전: <a href="phase-11c.html">11-C단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11d">rendering-analysis.html PHASE 11-D</a>. 스크린샷은 <code>images/2026-09-23-phase11d-*.png</code>. 12단계(고급 렌더링)는 시작하지 않았다.
+</div>
+</main>
+</div>
+</body>
+</html>

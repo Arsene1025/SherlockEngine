@@ -1,0 +1,617 @@
+{
+  "ambientColor": [
+    0.11999999731779099,
+    0.11999999731779099,
+    0.11999999731779099
+  ],
+  "camera": {
+    "pitch": 0.39812877774238586,
+    "position": [
+      18.0,
+      16.0,
+      -28.0
+    ],
+    "yaw": -0.5713375210762024
+  },
+  "clearColor": [
+    0.10000000149011612,
+    0.10000000149011612,
+    0.30000001192092896,
+    1.0
+  ],
+  "lights": [
+    {
+      "attenuation": [
+        1.0,
+        0.04500000178813934,
+        0.007499999832361937
+      ],
+      "color": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "direction": [
+        0.0,
+        -0.4472135901451111,
+        0.8944271802902222
+      ],
+      "innerConeCos": 0.9238795042037964,
+      "intensity": 1.0,
+      "outerConeCos": 0.8660253882408142,
+      "position": [
+        0.0,
+        10.0,
+        -10.0
+      ],
+      "range": 50.0,
+      "type": 0
+    },
+    {
+      "attenuation": [
+        1.0,
+        0.04500000178813934,
+        0.007499999832361937
+      ],
+      "color": [
+        1.0,
+        0.550000011920929,
+        0.3499999940395355
+      ],
+      "direction": [
+        0.0,
+        -0.4472135901451111,
+        0.8944271802902222
+      ],
+      "innerConeCos": 0.9238795042037964,
+      "intensity": 3.0,
+      "outerConeCos": 0.8660253882408142,
+      "position": [
+        -6.0,
+        5.0,
+        -4.0
+      ],
+      "range": 18.0,
+      "type": 1
+    },
+    {
+      "attenuation": [
+        1.0,
+        0.04500000178813934,
+        0.007499999832361937
+      ],
+      "color": [
+        0.4000000059604645,
+        0.6000000238418579,
+        1.0
+      ],
+      "direction": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "innerConeCos": 0.9238795042037964,
+      "intensity": 4.0,
+      "outerConeCos": 0.8660253882408142,
+      "position": [
+        10.0,
+        10.0,
+        2.0
+      ],
+      "range": 25.0,
+      "type": 2
+    }
+  ],
+  "materials": [
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "builtin:checker",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.8999999761581421,
+        0.8999999761581421,
+        0.949999988079071,
+        1.0
+      ],
+      "doubleSided": false,
+      "name": "Floor",
+      "normalStrength": 0.6000000238418579,
+      "normalTexture": "bumps_normal.png",
+      "sampler": 2,
+      "shininess": 8.0,
+      "specularColor": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224
+      ],
+      "unlit": false,
+      "uvScale": [
+        8.0,
+        8.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "uv_checker.png",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "doubleSided": false,
+      "name": "UVChecker",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "sampler": 0,
+      "shininess": 32.0,
+      "specularColor": [
+        0.30000001192092896,
+        0.30000001192092896,
+        0.30000001192092896
+      ],
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "builtin:checker",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.20000000298023224,
+        0.3499999940395355,
+        0.8999999761581421,
+        1.0
+      ],
+      "doubleSided": false,
+      "name": "BlueMatte",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "sampler": 0,
+      "shininess": 4.0,
+      "specularColor": [
+        0.10000000149011612,
+        0.10000000149011612,
+        0.10000000149011612
+      ],
+      "unlit": false,
+      "uvScale": [
+        2.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        0.800000011920929,
+        0.20000000298023224,
+        1.0
+      ],
+      "doubleSided": false,
+      "name": "GoldWire",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "sampler": 0,
+      "shininess": 32.0,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": true
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.8999999761581421,
+        0.5,
+        0.30000001192092896,
+        1.0
+      ],
+      "doubleSided": false,
+      "name": "Orange",
+      "normalStrength": 1.5,
+      "normalTexture": "bumps_normal.png",
+      "sampler": 0,
+      "shininess": 32.0,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.4000000059604645,
+        0.800000011920929,
+        0.5,
+        1.0
+      ],
+      "doubleSided": false,
+      "name": "Green",
+      "normalStrength": 1.0,
+      "normalTexture": "bumps_normal.png",
+      "sampler": 0,
+      "shininess": 24.0,
+      "specularColor": [
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579
+      ],
+      "unlit": false,
+      "uvScale": [
+        4.0,
+        2.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "builtin:gray128",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "doubleSided": false,
+      "name": "GrayCard128",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "sampler": 0,
+      "shininess": 32.0,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "unlit": true,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    }
+  ],
+  "meshes": [
+    {
+      "a": 21,
+      "b": 21,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        40.0,
+        40.0,
+        0.0,
+        0.0
+      ],
+      "type": "plane"
+    },
+    {
+      "a": 32,
+      "b": 16,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        2.5,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "type": "sphere"
+    },
+    {
+      "a": 0,
+      "b": 0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        3.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "type": "cube"
+    },
+    {
+      "a": 24,
+      "b": 4,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        1.5,
+        1.0,
+        4.0,
+        0.0
+      ],
+      "type": "cylinder"
+    }
+  ],
+  "objects": [
+    {
+      "material": 0,
+      "mesh": 0,
+      "name": "Floor",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "components": [
+        {
+          "bounciness": 0.6000000238418579,
+          "drag": 0.10000000149011612,
+          "enabled": true,
+          "gravity": -9.800000190734863,
+          "groundY": 0.0,
+          "initialVelocity": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "radius": 2.5,
+          "type": "Rigidbody"
+        },
+        {
+          "boost": 3.0,
+          "enabled": true,
+          "jumpSpeed": 7.0,
+          "speed": 6.0,
+          "type": "PlayerController"
+        }
+      ],
+      "material": 1,
+      "mesh": 1,
+      "name": "SphereCenter",
+      "position": [
+        0.0,
+        2.5,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "material": 2,
+      "mesh": 1,
+      "name": "SphereOrbit",
+      "position": [
+        8.0,
+        2.5,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "material": 3,
+      "mesh": 1,
+      "name": "SpherePulse",
+      "position": [
+        -10.0,
+        2.5,
+        8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "components": [
+        {
+          "bounciness": 0.6000000238418579,
+          "drag": 0.10000000149011612,
+          "enabled": true,
+          "gravity": -9.800000190734863,
+          "groundY": 0.0,
+          "initialVelocity": [
+            0.0,
+            9.0,
+            0.0
+          ],
+          "radius": 1.5,
+          "type": "Rigidbody"
+        }
+      ],
+      "material": 1,
+      "mesh": 2,
+      "name": "CubeStatic",
+      "position": [
+        10.0,
+        1.5,
+        10.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "material": 4,
+      "mesh": 2,
+      "name": "CubeBob",
+      "position": [
+        -8.0,
+        3.0,
+        -8.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "components": [
+        {
+          "degreesPerSecond": [
+            0.0,
+            60.0,
+            0.0
+          ],
+          "enabled": true,
+          "type": "Rotator"
+        }
+      ],
+      "material": 5,
+      "mesh": 3,
+      "name": "Cylinder",
+      "position": [
+        8.0,
+        2.0,
+        -10.0
+      ],
+      "rotation": [
+        0.30000001192092896,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "material": 6,
+      "mesh": 2,
+      "name": "GrayCard",
+      "position": [
+        14.0,
+        1.5,
+        -14.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "components": [
+        {
+          "blendTime": 0.5,
+          "enabled": true,
+          "farZ": 1000.0,
+          "fovY": 45.0,
+          "nearZ": 0.10000000149011612,
+          "priority": 0,
+          "type": "CameraComponent"
+        }
+      ],
+      "material": -1,
+      "mesh": -1,
+      "name": "Main Camera",
+      "position": [
+        18.0,
+        16.0,
+        -28.0
+      ],
+      "rotation": [
+        0.39812877774238586,
+        -0.5713375210762024,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  ],
+  "version": 2
+}

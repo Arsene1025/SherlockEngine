@@ -8,6 +8,7 @@
 #include "Core/Log.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <iterator>
 #include <unordered_map>
 
 using json = nlohmann::json;
@@ -15,7 +16,7 @@ using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
-	constexpr int kVersion = 1;
+	constexpr int kVersion = 2;   // 2: 11-C단계 컴포넌트. 1 파일도 그대로 읽힌다 (components 없음)
 
 	json ToJson(const XMFLOAT3& v) { return json::array({ v.x, v.y, v.z }); }
 	json ToJson(const XMFLOAT4& v) { return json::array({ v.x, v.y, v.z, v.w }); }
@@ -145,9 +146,63 @@ namespace
 		l.outerConeCos = j.value("outerConeCos", l.outerConeCos);
 		return l;
 	}
+
+	// 11-C단계: 컴포넌트 필드 ↔ JSON. Reflect 가 열거하는 이름·값을 그대로 키로 쓴다.
+	class JsonWriteVisitor : public PropertyVisitor
+	{
+	public:
+		explicit JsonWriteVisitor(json& j) : m_j(j) {}
+		void Float(const char* name, float& value, float) override { m_j[name] = value; }
+		void Int(const char* name, int& value) override { m_j[name] = value; }
+		void Bool(const char* name, bool& value) override { m_j[name] = value; }
+		void Float3(const char* name, XMFLOAT3& value, float) override { m_j[name] = ToJson(value); }
+		void String(const char* name, std::string& value) override { m_j[name] = value; }
+	private:
+		json& m_j;
+	};
+	class JsonReadVisitor : public PropertyVisitor
+	{
+	public:
+		explicit JsonReadVisitor(const json& j) : m_j(j) {}
+		void Float(const char* name, float& value, float) override { if (m_j.contains(name) && m_j[name].is_number()) value = m_j[name].get<float>(); }
+		void Int(const char* name, int& value) override { if (m_j.contains(name) && m_j[name].is_number()) value = m_j[name].get<int>(); }
+		void Bool(const char* name, bool& value) override { if (m_j.contains(name) && m_j[name].is_boolean()) value = m_j[name].get<bool>(); }
+		void Float3(const char* name, XMFLOAT3& value, float) override { if (m_j.contains(name)) value = ToFloat3(m_j[name], value); }
+		void String(const char* name, std::string& value) override { if (m_j.contains(name) && m_j[name].is_string()) value = m_j[name].get<std::string>(); }
+	private:
+		const json& m_j;
+	};
+
+	json ComponentsToJson(const GameObject& object)
+	{
+		json components = json::array();
+		for (const auto& behaviour : object.GetBehaviours())
+		{
+			json c;
+			c["type"] = behaviour->GetTypeName();
+			c["enabled"] = behaviour->enabled;
+			JsonWriteVisitor writer(c);
+			const_cast<Behaviour&>(*behaviour).Reflect(writer);   // Reflect 는 편집용이라 non-const. 쓰기 방문자는 값을 바꾸지 않는다
+			components.push_back(c);
+		}
+		return components;
+	}
+
+	void ComponentsFromJson(GameObject& object, const json& components)
+	{
+		if (!components.is_array()) return;
+		for (const json& c : components)
+		{
+			Behaviour* behaviour = object.AddBehaviour(c.value("type", ""));
+			if (behaviour == nullptr) continue;   // 모르는 타입은 경고 뒤 건너뜀 (레지스트리)
+			behaviour->enabled = c.value("enabled", true);
+			JsonReadVisitor reader(c);
+			behaviour->Reflect(reader);
+		}
+	}
 }
 
-bool SceneSerializer::Save(const Scene& scene, const Camera& camera, const std::wstring& path)
+std::string SceneSerializer::SaveToString(const Scene& scene, const Camera& camera)
 {
 	json root;
 	root["version"] = kVersion;
@@ -202,8 +257,9 @@ bool SceneSerializer::Save(const Scene& scene, const Camera& camera, const std::
 	root["lights"] = lights;
 
 	json objects = json::array();
-	for (const GameObject& object : scene.GetObjects())
+	for (const auto& objectPtr : scene.GetObjects())
 	{
+		const GameObject& object = *objectPtr;
 		json j;
 		j["name"] = object.GetName();
 		auto mi = meshIndex.find(object.GetMesh());
@@ -230,10 +286,16 @@ bool SceneSerializer::Save(const Scene& scene, const Camera& camera, const std::
 			XMStoreFloat4x4(&pre, t.GetPreTransform());
 			j["preTransform"] = ToJson(pre);
 		}
+		if (!object.GetBehaviours().empty()) j["components"] = ComponentsToJson(object);   // 11-C단계
 		objects.push_back(j);
 	}
 	root["objects"] = objects;
+	return root.dump(2);
+}
 
+bool SceneSerializer::Save(const Scene& scene, const Camera& camera, const std::wstring& path)
+{
+	const std::string text = SaveToString(scene, camera);
 	const size_t slash = path.find_last_of(L"\\/");
 	if (slash != std::wstring::npos) CreateDirectoryW(path.substr(0, slash).c_str(), nullptr);
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
@@ -242,7 +304,7 @@ bool SceneSerializer::Save(const Scene& scene, const Camera& camera, const std::
 		Log::Error("씬 저장 실패: 파일을 열 수 없음 (%s)", ToUtf8(path).c_str());
 		return false;
 	}
-	file << root.dump(2);
+	file << text;
 	Log::Info("씬 저장: %s (오브젝트 %zu, 메시 %zu, 재질 %zu, 조명 %zu)", ToUtf8(path).c_str(),
 		scene.GetObjects().size(), scene.GetMeshes().size(), scene.GetMaterials().size(), scene.GetLights().size());
 	return true;
@@ -256,17 +318,23 @@ bool SceneSerializer::Load(Scene& scene, Camera& camera, AssetManager& assets, c
 		Log::Error("씬 로드 실패: 파일을 열 수 없음 (%s)", ToUtf8(path).c_str());
 		return false;
 	}
+	const std::string text((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	return LoadFromString(scene, camera, assets, text, ToUtf8(path).c_str());
+}
+
+bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager& assets, const std::string& text, const char* label)
+{
 	json root;
 	try
 	{
-		root = json::parse(file);
+		root = json::parse(text);
 	}
 	catch (const std::exception& e)
 	{
-		Log::Error("씬 로드 실패: JSON 파싱 오류 (%s): %s", ToUtf8(path).c_str(), e.what());
+		Log::Error("씬 로드 실패: JSON 파싱 오류 (%s): %s", label, e.what());
 		return false;
 	}
-	if (root.value("version", 0) != kVersion)
+	if (root.value("version", 0) > kVersion)
 	{
 		Log::Warn("씬 파일 버전 %d (지원 %d). 계속 시도한다.", root.value("version", 0), kVersion);
 	}
@@ -352,6 +420,7 @@ bool SceneSerializer::Load(Scene& scene, Camera& camera, AssetManager& assets, c
 			for (int r = 0; r < 4; ++r) for (int c = 0; c < 4; ++c) pre.m[r][c] = j["preTransform"][r * 4 + c].get<float>();
 			t.SetPreTransform(XMLoadFloat4x4(&pre));
 		}
+		if (j.contains("components")) ComponentsFromJson(object, j["components"]);   // 11-C단계
 	}
 
 	scene.ambientColor = ToFloat3(root.value("ambientColor", json()), scene.ambientColor);
@@ -365,7 +434,7 @@ bool SceneSerializer::Load(Scene& scene, Camera& camera, AssetManager& assets, c
 		camera.SetYawPitch(cam.value("yaw", camera.GetYaw()), cam.value("pitch", camera.GetPitch()));
 	}
 
-	Log::Info("씬 로드: %s (오브젝트 %zu, 메시 %zu, 재질 %zu, 조명 %zu, 모델 %zu)", ToUtf8(path).c_str(),
+	Log::Info("씬 로드: %s (오브젝트 %zu, 메시 %zu, 재질 %zu, 조명 %zu, 모델 %zu)", label,
 		scene.GetObjects().size(), scene.GetMeshes().size(), scene.GetMaterials().size(), scene.GetLights().size(), loadedModels.size());
 	return true;
 }

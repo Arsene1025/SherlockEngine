@@ -26,6 +26,16 @@ public:
 
 	DirectX::XMMATRIX GetWorldMatrix() const;
 
+	// ---- 11-C단계: 스크립트가 Update 에서 부르는 조작 함수 (유니티 Transform 의 Translate/Rotate/LookAt) ----
+	void Translate(float x, float y, float z);                       // 월드 축 기준 이동
+	void Translate(const DirectX::XMFLOAT3& delta);
+	void TranslateLocal(float forward, float right, float up);       // 자기 회전 기준 이동 (앞/오른쪽/위)
+	void Rotate(float pitch, float yaw, float roll);                 // 오일러 각 누적 (라디안)
+	void LookAt(const DirectX::XMFLOAT3& target);                    // target 을 향하도록 yaw/pitch 설정, roll 0 (Camera::SetLookAt 규약)
+	DirectX::XMVECTOR GetForward() const;                            // 회전만 적용한 월드 방향 (+Z 가 앞)
+	DirectX::XMVECTOR GetRight() const;
+	DirectX::XMVECTOR GetUp() const;
+
 private:
 	DirectX::XMFLOAT3 position;
 	DirectX::XMFLOAT3 rotation;

@@ -97,3 +97,10 @@ out/
 *.VC.db
 *.VC.opendb
 *.log
+
+# SherlockEngine 프로젝트 산출물 (11-E)
+Projects/*/Binaries/
+Projects/*/Intermediate/
+Projects/*/Build/
+Projects/*/x64/
+Projects/*/.vs/

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>11-E단계 · 프로젝트 시스템 — SherlockEngine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EEF0F7; --line:#D6D9E6; --line-strong:#B9BDD0;
+  --ink:#171A2B; --ink-2:#4A4F66; --muted:#7A7F96;
+  --accent:#232767; --accent-ink:#FFFFFF; --accent-soft:#E3E5F5;
+  --amber:#B8781A; --amber-soft:#FBF0DB;
+  --ok:#2E7D4F; --ok-soft:#E1F2E7; --warn:#A6620C; --warn-soft:#FBEDD6; --crit:#B23A3A; --crit-soft:#F9E1E1;
+  --code-bg:#1B1D33; --code-ink:#E7E9F5; --code-kw:#9BA3FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(23,26,43,.06),0 8px 24px rgba(23,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+    --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+    --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+    --amber:#F0B650; --amber-soft:#3D3560;
+    --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+    --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+  --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+  --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+  --amber:#F0B650; --amber-soft:#3D3560;
+  --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+  --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+code,pre,.mono{font-family:"IBM Plex Mono",Consolas,"D2Coding",monospace}
+code{font-size:.875em;background:var(--surface-2);padding:.1em .4em;border-radius:4px;color:var(--ink)}
+pre{background:var(--code-bg);color:var(--code-ink);padding:18px 20px;border-radius:8px;overflow-x:auto;font-size:13.5px;line-height:1.6;margin:18px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+.kw{color:var(--code-kw)} .str{color:var(--code-str)} .cm{color:var(--code-cm)}
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto;padding:0 32px;gap:48px}
+@media (max-width:960px){.shell{grid-template-columns:minmax(0,1fr);padding:0 20px;gap:0}}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0 40px;font-size:13.5px}
+nav.toc .brand{font-weight:600;letter-spacing:.02em;color:var(--ink);margin-bottom:6px}
+nav.toc .meta{color:var(--muted);font-size:12px;margin-bottom:24px;line-height:1.5}
+nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+nav.toc li a{display:block;padding:5px 14px;color:var(--ink-2);border-left:2px solid transparent;margin-left:-1px;border-bottom:none;line-height:1.45}
+nav.toc li a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+nav.toc li.sub a{padding-left:28px;font-size:12.5px;color:var(--muted)}
+@media (max-width:960px){nav.toc{position:static;height:auto;padding:28px 0 8px}nav.toc ol{display:none}}
+main{padding:40px 0 96px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1{font-size:clamp(30px,4vw,42px);line-height:1.2;margin:6px 0 14px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{font-size:18px;color:var(--ink-2);max-width:66ch;margin:0 0 28px}
+h2{font-size:26px;line-height:1.3;margin:72px 0 16px;padding-top:24px;border-top:1px solid var(--line);font-weight:600;letter-spacing:-.005em;text-wrap:balance}
+h2 .num{display:inline-block;min-width:2.2em;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+h3{font-size:19px;margin:40px 0 10px;font-weight:600;text-wrap:balance}
+p{margin:0 0 16px;max-width:72ch}
+ul,ol{max-width:72ch;padding-left:1.4em;margin:0 0 16px}
+li{margin:4px 0}
+strong{font-weight:600}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:28px 0}
+.facts>div{background:var(--surface);padding:14px 16px}
+.facts .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.facts .v{font-size:15px;font-weight:600;line-height:1.35}
+.facts .v small{display:block;font-weight:400;color:var(--ink-2);font-size:12.5px;margin-top:2px}
+.callout{border-left:3px solid var(--accent);background:var(--surface);padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;max-width:72ch}
+.callout p:last-child{margin-bottom:0}
+.callout .t{font-weight:600;font-size:14px;margin-bottom:4px}
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.fig{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.fig .cap{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+.applied{margin:14px 0 0;padding:12px 16px 14px;border:1px solid var(--ok);background:var(--ok-soft);border-radius:6px;font-size:14.5px}
+.applied .t{font-weight:600;color:var(--ok);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.applied ul{margin:0;padding-left:1.2em;max-width:none;font-size:14px}
+.applied li{margin:3px 0}
+.applied code{background:var(--surface)}
+.footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="목차">
+  <div class="brand">11-E단계 · 프로젝트 시스템</div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/24 (작업 트리, 미커밋)<br><a href="rendering-analysis.html#p11e">rendering-analysis.html → PHASE 11-E</a></div>
+  <ol>
+    <li><a href="#s1">1. 요약</a></li>
+    <li><a href="#s2">2. 프로젝트 = 폴더 + .sherlock</a></li>
+    <li><a href="#s3">3. 세 루트: 엔진 · 프로젝트 · exe</a></li>
+    <li><a href="#s4">4. 엔진 컴포넌트 vs 프로젝트 스크립트</a></li>
+    <li><a href="#s5">5. 프로젝트 솔루션 생성</a></li>
+    <li><a href="#s6">6. 런처와 "스크립트 없는 에디터"</a></li>
+    <li><a href="#s7">7. Build Game 과 GameApp</a></li>
+    <li><a href="#s8">8. 자동 검증</a></li>
+    <li><a href="#s9">9. 함정과 해결</a></li>
+    <li><a href="#s10">10. 검증과 스크린샷</a></li>
+    <li><a href="#s11">11. 다음 단계 (B안: DLL)</a></li>
+    <li><a href="#s12">12. 참고 문헌</a></li>
+  </ol>
+</nav>
+
+<main>
+<div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
+<h1>11-E단계 · 프로젝트 시스템</h1>
+<p class="lede">씬이 아니라 <em>게임</em>을 분리합니다. 언리얼의 <code>.uproject</code> 처럼 프로젝트는 폴더 하나 — <code>&lt;이름&gt;.sherlock</code> + <code>Assets\</code> + <code>Scripts\</code> — 이고, 에디터가 그 폴더에 Visual Studio 솔루션(에디터 타깃 + 게임 타깃)을 생성합니다. 엔진 컴포넌트(Rigidbody·FollowTarget·CameraComponent)와 엔진 콘텐츠(텍스처·모델)는 엔진에 남아 어떤 프로젝트를 열어도 그대로 쓰이고, 프로젝트 스크립트만 프로젝트에 속합니다. 선택한 것은 "A안": 프로젝트마다 자기 에디터 exe 를 빌드하는 워크플로(언리얼의 흐름)이며, 스크립트를 DLL 로 로드하는 B안(언리얼의 모듈 구조)으로 가는 길을 열어 두었습니다.</p>
+
+<div class="facts">
+  <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
+  <div><div class="k">새 파일</div><div class="v">6<small>Core/Project, App/ProjectGenerator, App/ProjectLauncher (.h/.cpp)</small></div></div>
+  <div><div class="k">프로젝트 예제</div><div class="v">Projects\Sample<small>옛 Game\Scripts 와 Assets\Scenes 가 여기로</small></div></div>
+  <div><div class="k">생성 솔루션</div><div class="v">3 프로젝트<small>&lt;이름&gt;Editor · &lt;이름&gt; · SherlockEngine(참조)</small></div></div>
+  <div><div class="k">새 프로젝트 빌드</div><div class="v">29 초 → 5 초<small>엔진 lib 공유 후</small></div></div>
+  <div><div class="k">완료 기준</div><div class="v"><span class="pill ok">충족</span><small>새 프로젝트 → 빌드 → 그 에디터에서 스크립트 사용</small></div></div>
+</div>
+
+<div class="callout">
+  <div class="t">한 줄 요약</div>
+  <p><code>Paths</code> 가 세 루트(엔진·프로젝트·exe)를 알고 에셋을 "프로젝트 → 엔진 → exe" 순으로 찾으므로 씬 파일은 어느 루트인지 적지 않습니다. <code>AppBase</code> 가 시작할 때 <code>.sherlock</code> 을 찾아 루트를 정하고(<code>--project=</code>, exe 위쪽, 엔진의 <code>Projects\Sample</code>), 에디터는 런처·프로젝트 설정·솔루션 생성을 얹습니다. 스크립트는 <code>Scripts\*.cpp</code> 와일드카드로 프로젝트 솔루션의 두 exe 에 컴파일되고, exe 는 <code>SHERLOCK_PROJECT_NAME</code> 으로 "내가 어느 프로젝트의 에디터인가" 를 압니다.</p>
+</div>
+
+<h2 id="s1"><span class="num">1.</span>요약</h2>
+<div class="tbl"><table>
+  <thead><tr><th>항목</th><th>구현</th><th>확인</th></tr></thead>
+  <tbody>
+    <tr><td>프로젝트 파일</td><td><code>Core/Project</code>: <code>&lt;이름&gt;.sherlock</code>(name, startScene, engineRoot), <code>Create</code>(폴더 골격), <code>FindUpwards</code>(exe 위쪽 탐색)</td><td>Projects\Sample, Projects\TestGame(검증)</td></tr>
+    <tr><td>루트</td><td><code>Paths</code>: <code>GetEngineRoot / GetProjectRoot / GetEngineAssetRoot / GetAssetRoot</code>, <code>GetAssetPath</code> 는 프로젝트 → 엔진 → exe. <code>AppBase::ResolveProject</code> 가 설정보다 먼저</td><td>로그 "프로젝트 루트 … 엔진 루트 … 컴파일된 프로젝트 …"</td></tr>
+    <tr><td>콘텐츠 브라우저</td><td>루트 둘(Project / Engine) — 트리에 두 최상위 노드, 브레드크럼 첫 조각이 루트, 썸네일 키는 절대 경로</td><td>그림 1</td></tr>
+    <tr><td>엔진 컴포넌트</td><td><code>Game\Components</code>(Rigidbody·FollowTarget)와 <code>Scene\CameraComponent</code> 는 엔진 lib. 어떤 프로젝트에서도 Add Component 에 있다</td><td>TestGame 에디터의 Cube 1 에 Rigidbody·Rotator</td></tr>
+    <tr><td>프로젝트 스크립트</td><td><code>&lt;프로젝트&gt;\Scripts\*.cpp</code> 와일드카드. ScriptCreator 는 파일만 만든다(vcxproj 편집 없음)</td><td>New Script → 빌드 → 목록</td></tr>
+    <tr><td>솔루션 생성</td><td><code>App/ProjectGenerator</code>: <code>&lt;이름&gt;.sln</code>, <code>&lt;이름&gt;Editor.vcxproj</code>, <code>&lt;이름&gt;.vcxproj</code>(엔진 lib ProjectReference, vcpkg 매니페스트 루트 = 엔진 저장소, <code>SHERLOCK_PROJECT_NAME</code>, Binaries\ 출력)</td><td>MSBuild 성공, <code>Binaries\Debug\TestGameEditor.exe</code></td></tr>
+    <tr><td>런처</td><td>File &gt; Projects: 최근 목록(<code>%LOCALAPPDATA%\SherlockEngine\editor.json</code>), Open(.sherlock 대화상자), New(이름·위치 → 폴더·예제 스크립트·솔루션·Main.json). Project Settings(시작 씬)</td><td>그림 1 메뉴 바의 프로젝트 이름</td></tr>
+    <tr><td>스크립트 없는 에디터</td><td>컴파일된 프로젝트 ≠ 열린 프로젝트면 씬 뷰 위 배너 + "Build and switch to the project editor"(MSBuild → 그 exe 실행 → 종료)</td><td>그림 3</td></tr>
+    <tr><td>Build Game / GameApp</td><td>프로젝트 기준: 런타임 exe = 에디터 옆 <code>&lt;이름&gt;.exe</code>(없으면 Debug 로 빌드), 엔진 콘텐츠 위에 프로젝트 콘텐츠, 패키지에 <code>.sherlock</code> 사본. GameApp 은 <code>.sherlock</code> 의 startScene</td><td>8절 F</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="s2"><span class="num">2.</span>프로젝트 = 폴더 + .sherlock</h2>
+<pre><code>Projects\Sample\                      (엔진 저장소의 예제 프로젝트. 엔진 솔루션의 SherlockEditor/SherlockGame 이 이것의 에디터·게임)
+├─ Sample.sherlock                    { "name": "Sample", "startScene": "demo_components.json", "engineRoot": "" }
+├─ Assets\Scenes\demo_components.json, floor_cube.json
+└─ Scripts\PlayerController.h/.cpp, Rotator.h/.cpp
+
+&lt;어디든&gt;\MyGame\                     (런처의 New 가 만든다)
+├─ MyGame.sherlock                    engineRoot = "C:\…\SherlockEngine\SherlockEngine\"  (엔진 소스 폴더 — 셰이더·엔진 콘텐츠·솔루션 참조)
+├─ Assets\Scenes\Main.json            바닥 + 방향광 + Main Camera (BuildEmptyScene 을 저장)
+├─ Scripts\Rotator.h/.cpp             예제 스크립트 (ScriptCreator 템플릿)
+├─ MyGame.sln, MyGameEditor.vcxproj, MyGame.vcxproj   (ProjectGenerator)
+├─ Binaries\Debug\MyGameEditor.exe, MyGame.exe        (빌드 후)
+└─ Build\                             패키징 결과</code></pre>
+<p><code>Project::Create</code> 는 폴더 골격과 <code>.sherlock</code> 만 만들고, 나머지(예제 스크립트, 솔루션, 기본 씬)는 에디터(<code>TestApp::CreateProject</code>)가 프로젝트를 연 뒤 채웁니다 — Core 가 Scene·에디터 계층을 모르게 하기 위해서입니다. <code>engineRoot</code> 가 존재하지 않는 경로면(다른 PC 로 옮긴 프로젝트) 무시하고 exe 옆에서 찾습니다.</p>
+
+<h2 id="s3"><span class="num">3.</span>세 루트: 엔진 · 프로젝트 · exe</h2>
+<pre><code><span class="cm">// Paths — 11-E</span>
+GetEngineRoot()       SetEngineRoot(프로젝트 파일의 engineRoot) → exe\..\..\SherlockEngine\ 마커 → exe 폴더(배포)
+GetProjectRoot()      AppBase::ResolveProject: --project= → Project::FindUpwards(exe 폴더, 3단계) → 엔진의 Projects\Sample
+GetAssetPath(rel)     프로젝트 Assets\rel → 엔진 Assets\rel → exe\Assets\rel   <span class="cm">// 씬 파일의 경로는 루트를 적지 않는다</span>
+GetSceneDir()         프로젝트 Assets\Scenes\   GetShaderPath: exe\Shaders\*.cso → 엔진 루트 Shaders\*.hlsl (런타임 컴파일)</code></pre>
+<ul>
+  <li><strong>왜 폴백 순서인가.</strong> 씬이 <code>Models\DamagedHelmet\DamagedHelmet.glb</code> 라고만 적어도 프로젝트에 그 파일이 없으면 엔진 콘텐츠에서 찾습니다. 프로젝트에 같은 이름을 두면 프로젝트 것이 이깁니다(언리얼의 Engine/Game 콘텐츠와 같은 규칙). 패키지에서는 둘이 한 폴더(<code>exe\Assets</code>)라 규칙이 그대로 성립합니다.</li>
+  <li><strong>프로젝트 에디터의 셰이더.</strong> <code>Binaries\Debug\</code> 에는 .cso 가 없으므로 엔진 루트의 .hlsl 을 런타임 컴파일합니다(4단계의 폴백). 시작이 수십 ms 느려질 뿐이고 핫 리로드는 같은 파일을 봅니다.</li>
+  <li><strong>ResolveProject 가 설정보다 먼저.</strong> <code>engine.ini</code> 도 <code>GetAssetPath</code> 로 찾으므로 프로젝트가 자기 <code>Assets\Config\engine.ini</code> 를 두면 그것이 쓰입니다(없으면 엔진 것).</li>
+</ul>
+
+<h2 id="s4"><span class="num">4.</span>엔진 컴포넌트 vs 프로젝트 스크립트</h2>
+<p>사용자의 요구는 "Rigidbody 같은 컴포넌트는 엔진 소속, 다른 프로젝트를 열어도 사용 가능" 이었습니다. 그래서 경계를 파일 위치로 못박았습니다: <code>SherlockEngine\Game\Components\</code>(Rigidbody·FollowTarget)와 <code>Scene\CameraComponent</code> 는 엔진 정적 라이브러리에 컴파일되어 모든 exe 에 들어가고(<code>/WHOLEARCHIVE</code>, 11-D), <code>&lt;프로젝트&gt;\Scripts\</code> 는 그 프로젝트의 두 exe 에만 컴파일됩니다. Inspector 의 Add Component 가 Scripts / Components 로 나뉘어 보이는 것이 이 경계입니다. 옛 <code>Game\Scripts</code>(PlayerController·Rotator)는 Sample 프로젝트로 옮겼습니다 — 예제이지 엔진이 아니기 때문입니다.</p>
+
+<h2 id="s5"><span class="num">5.</span>프로젝트 솔루션 생성</h2>
+<pre><code><span class="cm">// ProjectGenerator 가 쓰는 &lt;이름&gt;Editor.vcxproj 의 핵심 (게임 타깃도 같고 소스만 다르다)</span>
+&lt;SherlockRepo&gt;$(MSBuildProjectDirectory)\..\..\&lt;/SherlockRepo&gt;          <span class="cm">// 엔진 저장소 (같은 드라이브면 상대, 아니면 절대)</span>
+&lt;SherlockEngineDir&gt;$(SherlockRepo)SherlockEngine\&lt;/SherlockEngineDir&gt;
+&lt;VcpkgEnableManifest&gt;true  &lt;VcpkgManifestRoot&gt;$(SherlockRepo)              <span class="cm">// 저장소 밖 프로젝트도 엔진의 vcpkg.json 을 쓴다</span>
+&lt;OutDir&gt;$(ProjectDir)Binaries\$(Configuration)\   &lt;IntDir&gt;$(ProjectDir)Intermediate\$(ProjectName)\$(Configuration)\
+&lt;PreprocessorDefinitions&gt;…;SHERLOCK_PROJECT_NAME="MyGame"
+&lt;AdditionalIncludeDirectories&gt;$(SherlockEngineDir);$(ProjectDir)Scripts
+&lt;AdditionalOptions&gt;/WHOLEARCHIVE:SherlockEngine.lib
+&lt;ClCompile Include="$(SherlockRepo)SherlockEditor\EditorMain.cpp" /&gt;  &lt;ClCompile Include="$(SherlockEngineDir)App\Editor.cpp" /&gt; …
+&lt;ClCompile Include="Scripts\*.cpp" /&gt;                                       <span class="cm">// 와일드카드: New Script 뒤 vcxproj 편집 없음</span>
+&lt;ProjectReference Include="$(SherlockEngineDir)SherlockEngine.vcxproj"&gt;</code></pre>
+<ul>
+  <li><strong>에디터 소스 목록은 한 곳.</strong> <code>ProjectGenerator::GetEditorSources()</code>(TestApp·Editor·ContentBrowser·ScriptCreator·GameBuilder·DebugUI·ProjectGenerator·ProjectLauncher). 엔진 솔루션의 <code>SherlockEditor.vcxproj</code> 와 같아야 하며, 에디터 파일을 추가하면 둘 다 고칩니다.</li>
+  <li><strong>엔진 lib 공유.</strong> 처음에는 생성 솔루션이 엔진 lib 를 <code>$(SolutionDir)x64\</code> — 즉 프로젝트 폴더 — 에 다시 빌드했습니다(29 초). lib 의 OutDir 을 <code>$(ProjectDir)..\x64\$(Configuration)\</code> 로 못박아 어느 솔루션에서 빌드하든 엔진 저장소의 것을 공유합니다(5 초).</li>
+  <li><strong>SHERLOCK_PROJECT_NAME 은 exe 의 것.</strong> 매크로는 exe 프로젝트에만 정의되므로 엔진 lib 의 <code>AppBase</code> 가 직접 읽으면 항상 비어 있습니다. 진입점(EditorMain/GameMain)이 <code>AppBase::SetCompiledProjectName</code> 으로 넣어 줍니다.</li>
+</ul>
+
+<h2 id="s6"><span class="num">6.</span>런처와 "스크립트 없는 에디터"</h2>
+<p>A안의 대가는 "프로젝트를 바꾸면 그 프로젝트의 에디터 exe 가 필요하다" 입니다. 에디터는 이것을 숨기지 않고 안내합니다: 컴파일된 프로젝트 이름과 열린 프로젝트 이름이 다르면 씬 뷰 위에 배너를 띄우고 <b>Build and switch to the project editor</b> 버튼이 <code>&lt;이름&gt;.sln /t:&lt;이름&gt;Editor</code> 를 MSBuild 로 빌드한 뒤 <code>Binaries\Debug\&lt;이름&gt;Editor.exe --project=…</code> 를 띄우고 자기는 종료합니다. 그 사이 열린 씬은 정상 동작하되, 없는 스크립트는 로드 때 경고와 함께 건너뛰어집니다(레지스트리, 11-C). 런처(File &gt; Projects)는 최근 목록·열기 대화상자·새 프로젝트를 제공하고, New 는 프로젝트를 만든 뒤 바로 엽니다(엔진 에디터에서 만들었으므로 배너가 뜨고, 버튼 한 번으로 그 프로젝트의 에디터로 넘어갑니다).</p>
+
+<h2 id="s7"><span class="num">7.</span>Build Game 과 GameApp</h2>
+<ul>
+  <li><code>GameBuilder</code> 는 프로젝트 기준입니다: <code>Build\</code> 는 프로젝트 안, 시작 씬은 프로젝트 <code>Assets\Scenes</code>, 런타임 exe 는 에디터 옆의 <code>&lt;이름&gt;.exe</code>(엔진 솔루션의 Sample 은 <code>SherlockGame.exe</code>). 없으면 프로젝트 솔루션의 게임 타깃을 Debug 로 먼저 빌드합니다. 에셋은 엔진 콘텐츠 위에 프로젝트 콘텐츠를 덮어 한 폴더로, 패키지에 <code>&lt;이름&gt;.sherlock</code>(engineRoot 없음) 사본을 두어 런타임이 exe 옆에서 프로젝트를 찾게 합니다.</li>
+  <li><code>GameApp</code> 은 <code>.sherlock</code> 의 startScene 을 먼저 보고, 없으면 <code>engine.ini</code> 의 <code>[game]</code>. 개발 중 <code>Binaries\Debug\MyGame.exe</code> 를 직접 실행해도 <code>FindUpwards</code> 가 두 단계 위의 <code>.sherlock</code> 을 찾습니다.</li>
+</ul>
+
+<h2 id="s8"><span class="num">8.</span>자동 검증</h2>
+<pre><code><span class="cm"># A: 엔진 에디터 = Sample 프로젝트의 에디터. 시작 씬(demo_components.json) 로드, 스크립트 있음</span>
+SherlockEditor.exe --exit-after=40 --play=1 --dump-objects=1
+<span class="cm"># B: 새 프로젝트 생성 (Projects\TestGame: 폴더·.sherlock·Rotator 예제·솔루션·Main.json) + 그 에디터를 MSBuild</span>
+SherlockEditor.exe --exit-after=30 --new-project=TestGame --build-project=1
+<span class="cm"># C: 생성된 에디터 실행 — exe 위쪽에서 프로젝트를 찾고, 컴파일된 프로젝트 = TestGame, Rotator 부착</span>
+Projects\TestGame\Binaries\Debug\TestGameEditor.exe --exit-after=40 --play=1 --add=1 --add-component=Rotator --dump-objects=1
+<span class="cm"># D: 엔진 에디터로 TestGame 을 열면 배너 (컴파일된 프로젝트 Sample ≠ TestGame)</span>
+SherlockEditor.exe --exit-after=20 --project=..\..\Projects\TestGame --screenshot=&lt;절대 경로&gt;   <span class="cm"># 런처 화면: --launcher=1</span>
+<span class="cm"># E: TestGame 에디터에서 패키징 (게임 타깃이 없으면 먼저 Debug 빌드) → Build\TestPack\TestPack.exe 실행</span>
+TestGameEditor.exe --exit-after=20 --build-game=TestPack
+Projects\TestGame\Build\TestPack\TestPack.exe --exit-after=60 --dump-objects=1</code></pre>
+
+<h2 id="s9"><span class="num">9.</span>함정과 해결</h2>
+<ul>
+  <li><strong>주석 끝의 백슬래시.</strong> <code>// … Sample\</code> 처럼 한 줄 주석이 <code>\</code> 로 끝나면 다음 줄이 주석에 이어져(줄 연속) 선언이 사라진다. C4010 경고와 함께 "ListScenes 가 멤버가 아니다" 같은 엉뚱한 오류가 났다. 경로 주석은 "폴더" 라고 쓴다.</li>
+  <li><strong>매크로가 lib 에 없다.</strong> 5절. exe 의 정의를 lib 가 볼 수 없다 — 진입점이 값을 넘긴다.</li>
+  <li><strong>$(SolutionDir) 기준 OutDir.</strong> 5절. 참조된 lib 가 참조하는 솔루션의 폴더에 빌드된다. lib 의 OutDir 을 자기 저장소 기준으로.</li>
+  <li><strong>배너가 안 보임.</strong> 씬 뷰 이미지가 남은 공간을 다 쓰므로 그 뒤에 그린 배너는 잘린다. 이미지 앞(툴바 줄 아래)에 그린다.</li>
+  <li><strong>상대 경로 프로젝트.</strong> <code>--project=..\..\Projects\X</code> 로 열면 최근 목록에 상대 경로가 따로 쌓이고 생성기의 경로 계산도 흔들린다. <code>Project::Load</code> 가 <code>weakly_canonical(absolute())</code> 로 정규화한다.</li>
+  <li><strong>vcpkg 매니페스트 루트.</strong> 저장소 밖 프로젝트는 위로 올라가도 <code>vcpkg.json</code> 이 없다. <code>VcpkgManifestRoot</code> 를 엔진 저장소로 지정하면 같은 <code>vcpkg_installed</code> 를 쓰고 DLL 배치도 된다.</li>
+  <li><strong>ImGui 의 "\\" 이름.</strong> 트리 노드 라벨이 루트마다 겹치므로(Project/Engine 둘 다 Textures) <code>PushID(root)</code> 를 추가로 건다.</li>
+</ul>
+
+<h2 id="s10"><span class="num">10.</span>검증과 스크린샷</h2>
+<div class="applied">
+  <div class="t">적용 결과 — 2026-09-24</div>
+  <ul>
+    <li><b>완료 기준</b> "새 프로젝트를 만들고 빌드하면 그 에디터에서 프로젝트 스크립트와 엔진 컴포넌트를 함께 쓸 수 있다" — B: TestGame 생성 → <code>TestGame.sln /t:TestGameEditor</code> MSBuild 성공(처음 29 초, lib 공유 후 5 초). C: <code>TestGameEditor.exe</code> 가 두 단계 위의 <code>TestGame.sherlock</code> 을 찾아 "컴파일된 프로젝트 TestGame", Main.json 로드, Cube 1 에 Rotator(프로젝트 스크립트) 부착·재생 (그림 2). 엔진 컴포넌트(Rigidbody 등)는 Add Component 의 Components 그룹에 그대로.</li>
+    <li>A: 엔진 에디터 = Sample: 시작 씬 로드, 컴파일된 프로젝트 Sample, Rotator 재생. D: 엔진 에디터로 TestGame 을 열면 컴파일된 프로젝트 Sample ≠ TestGame → 배너 (그림 4). 런처는 그림 3.</li>
+    <li>콘텐츠 브라우저에 Project / Engine 두 트리 (그림 1). 세 프로젝트 Debug 빌드 경고 0(엔진 솔루션), 생성 솔루션 빌드 경고 0.</li>
+  </ul>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-24-phase11e-editor.png" alt="Sample 프로젝트 에디터" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 1. 엔진 솔루션의 SherlockEditor = Sample 프로젝트의 에디터. 메뉴 바에 프로젝트 이름, 콘텐츠 브라우저에 Project(Scenes)와 Engine(Config·Models·Textures) 두 트리.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-24-phase11e-testgame-editor.png" alt="생성된 TestGame 에디터" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 2. 런처로 만든 TestGame 프로젝트의 자기 에디터(<code>Binaries\Debug\TestGameEditor.exe</code>). Main.json 위에 큐브를 놓고 프로젝트 스크립트 Rotator 를 붙여 재생 중. Project 트리에 Models·Scenes·Textures.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-24-phase11e-launcher.png" alt="Projects 런처" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 3. File &gt; Projects 런처. 최근 목록(Open), .sherlock 찾아보기, 새 프로젝트(이름·위치 → 폴더·예제 스크립트·솔루션·Main.json 생성 후 바로 연다).</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-24-phase11e-banner.png" alt="스크립트 없는 에디터 배너" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 4. 엔진 에디터(Sample 로 컴파일)로 TestGame 을 연 화면. 씬 뷰 위 배너가 프로젝트 에디터로 빌드·전환할 것을 안내한다.</div>
+</div>
+
+<h2 id="s11"><span class="num">11.</span>다음 단계 (B안: DLL)</h2>
+<ul>
+  <li><strong>스크립트를 프로젝트 DLL 로.</strong> 생성기의 게임 타깃을 <code>DynamicLibrary</code> 로 바꾸고 에디터가 <code>LoadLibrary</code>. 그러려면 레지스트리가 exe 와 DLL 에서 같은 인스턴스여야 하므로 엔진을 DLL 로 만들거나 등록 함수 포인터를 넘긴다. 핫 리로드 = 11-C 스냅샷 저장 → DLL 교체 → 복원. A 에서 만든 폴더 규약·루트·생성기·런처는 그대로 쓰인다.</li>
+  <li><strong>프로젝트 에디터에 .cso 복사.</strong> 생성 vcxproj 에 엔진 <code>x64\&lt;구성&gt;\Shaders</code> 를 Binaries 로 복사하는 타깃.</li>
+  <li><strong>프로젝트별 engine.ini.</strong> 지금은 있으면 쓰인다는 규칙만 있다. Project Settings 에서 편집.</li>
+</ul>
+
+<h2 id="s12"><span class="num">12.</span>참고 문헌</h2>
+<ol>
+  <li>Epic Games, <em>Unreal Engine Directory Structure / .uproject</em>. <a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/unreal-engine-directory-structure">dev.epicgames.com/…/unreal-engine-directory-structure</a></li>
+  <li>Microsoft Learn, <em>MSBuild wildcards in item elements</em>. <a href="https://learn.microsoft.com/en-us/visualstudio/msbuild/how-to-select-the-files-to-build">learn.microsoft.com/…/how-to-select-the-files-to-build</a></li>
+  <li>vcpkg, <em>Manifest mode: VcpkgManifestRoot</em>. <a href="https://learn.microsoft.com/en-us/vcpkg/users/buildsystems/msbuild-integration">learn.microsoft.com/…/msbuild-integration</a></li>
+  <li>Microsoft Learn, <em>IFileOpenDialog (FOS_PICKFOLDERS)</em>. <a href="https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-ifileopendialog">learn.microsoft.com/…/nn-shobjidl_core-ifileopendialog</a></li>
+</ol>
+
+<div class="footer">
+  대상: SherlockEngine 작업 트리 (2026/09/24, 11-D 위에 연속). 이전: <a href="phase-11d.html">11-D단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11e">rendering-analysis.html PHASE 11-E</a>. 스크린샷은 <code>images/2026-09-24-phase11e-*.png</code>. 12단계(고급 렌더링)는 시작하지 않았다.
+</div>
+</main>
+</div>
+</body>
+</html>

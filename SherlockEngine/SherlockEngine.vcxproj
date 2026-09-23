@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -18,6 +18,10 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <!-- 11-D단계: 엔진은 정적 라이브러리(SherlockEngine.lib). 에디터(SherlockEditor)와 게임 런타임(SherlockGame)이 링크한다.
+       셰이더 컴파일과 Shaders\/Assets\ 복사는 여기서 한 번 한다 (세 프로젝트의 OutDir 이 같다: x64\<구성>\). -->
+  <!-- 11-D단계: 엔진은 정적 라이브러리(SherlockEngine.lib). 에디터(SherlockEditor)와 게임 런타임(SherlockGame)이 링크한다.
+       셰이더 컴파일과 Shaders\/Assets\ 복사는 여기서 한 번 한다 (세 프로젝트의 OutDir 이 같다: x64\<구성>\). -->
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -29,26 +33,26 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -72,6 +76,11 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <!-- 11-E단계: 라이브러리 산출물은 솔루션이 어디든 엔진 저장소의 x64\<구성>\ 에 둔다 — 생성된 프로젝트 솔루션(Projects\<이름>\<이름>.sln)이
+       엔진 lib 를 참조할 때 프로젝트 폴더에 엔진을 다시 빌드하지 않고 여기 것을 공유한다. -->
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <OutDir>$(ProjectDir)..\x64\$(Configuration)\</OutDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -151,13 +160,12 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App\AppBase.h" />
-    <ClInclude Include="App\DebugUI.h" />
-    <ClInclude Include="App\Editor.h" />
-    <ClInclude Include="App\TestApp.h" />
+    <ClInclude Include="App\GameApp.h" />
     <ClInclude Include="Core\GameTimer.h" />
     <ClInclude Include="Core\Input.h" />
     <ClInclude Include="Core\Log.h" />
     <ClInclude Include="Core\Paths.h" />
+    <ClInclude Include="Core\Project.h" />
     <ClInclude Include="Core\Config.h" />
     <ClInclude Include="Core\Time.h" />
     <ClInclude Include="Core\Profiler.h" />
@@ -200,22 +208,24 @@
     <ClInclude Include="Scene\Light.h" />
     <ClInclude Include="Scene\Material.h" />
     <ClInclude Include="Scene\Scene.h" />
+    <ClInclude Include="Scene\Behaviour.h" />
+    <ClInclude Include="Scene\CameraComponent.h" />
+    <ClInclude Include="Scene\Script.h" />
+    <ClInclude Include="Game\Components\Rigidbody.h" />
     <ClInclude Include="Scene\SceneSerializer.h" />
     <ClInclude Include="Scene\Transform.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="App\AppBase.cpp" />
-    <ClCompile Include="App\DebugUI.cpp" />
-    <ClCompile Include="App\Editor.cpp" />
-    <ClCompile Include="App\TestApp.cpp" />
+    <ClCompile Include="App\GameApp.cpp" />
     <ClCompile Include="Core\GameTimer.cpp" />
     <ClCompile Include="Core\Input.cpp" />
     <ClCompile Include="Core\Log.cpp" />
     <ClCompile Include="Core\Paths.cpp" />
+    <ClCompile Include="Core\Project.cpp" />
     <ClCompile Include="Core\Config.cpp" />
     <ClCompile Include="Core\Time.cpp" />
     <ClCompile Include="Core\Profiler.cpp" />
@@ -241,6 +251,11 @@
     <ClCompile Include="Scene\Camera.cpp" />
     <ClCompile Include="Scene\GameObject.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
+    <ClCompile Include="Scene\Behaviour.cpp" />
+    <ClCompile Include="Scene\CameraComponent.cpp" />
+    <ClCompile Include="Scene\Script.cpp" />
+    <ClCompile Include="Game\Components\Rigidbody.cpp" />
+    <ClCompile Include="Game\Components\FollowTarget.cpp" />
     <ClCompile Include="Scene\SceneSerializer.cpp" />
     <ClCompile Include="Scene\Transform.cpp" />
   </ItemGroup>
@@ -276,7 +291,6 @@
     <None Include="Assets\Textures\uv_checker.png" />
     <None Include="Assets\Textures\bumps_normal.png" />
     <None Include="Assets\Config\engine.ini" />
-    <None Include="Assets\Scenes\floor_cube.json" />
     <None Include="Assets\Models\DamagedHelmet\DamagedHelmet.glb" />
     <None Include="Assets\Models\Sponza\Sponza.gltf" />
   </ItemGroup>

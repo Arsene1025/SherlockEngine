@@ -297,7 +297,11 @@ TextureHandle Renderer::GetOrLoadTexture(const std::string& name, bool srgb, con
 	}
 	else
 	{
-		const std::wstring path = Paths::GetAssetPath((L"Textures\\" + ToWide(name)).c_str());
+		// 11-B단계: "asset:<Assets 기준 상대 경로>" 는 Textures\ 밖의 파일 (콘텐츠 브라우저에서 놓은 Sponza 이미지 등).
+		static const char* kAssetPrefix = "asset:";
+		const std::wstring path = name.rfind(kAssetPrefix, 0) == 0
+			? Paths::GetAssetPath(ToWide(name.substr(6)).c_str())
+			: Paths::GetAssetPath((L"Textures\\" + ToWide(name)).c_str());
 		ok = TextureLoader::LoadFromFile(path, srgb, true, image);
 	}
 
@@ -525,6 +529,8 @@ void Renderer::Shutdown()
 	m_whiteTexture = TextureHandle{};
 	m_flatNormalTexture = TextureHandle{};
 	SetSceneTarget(0, 0);   // 11단계
+	SetPreviewTarget(0, 0);   // 11-C단계
+	m_previewCamera = nullptr;
 	m_device->DestroyTexture(m_shadowMap);
 	m_device->DestroySampler(m_shadowSampler);
 	m_shadowMap = TextureHandle{};
@@ -639,19 +645,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
 	XMStoreFloat4x4(&m_lightViewProj, lightViewProj);
 
 	// ---- b0 PerFrame ----
-	// HLSL은 column_major로 읽고 셰이더는 mul(v, M)을 쓰므로 전치해서 올린다 (ShaderConstants.h).
-	const XMMATRIX view = camera.GetViewMatrix();
-	const XMMATRIX proj = camera.GetProjectionMatrix();
-	PerFrameConstants perFrame = {};
-	XMStoreFloat4x4(&perFrame.view, XMMatrixTranspose(view));
-	XMStoreFloat4x4(&perFrame.proj, XMMatrixTranspose(proj));
-	XMStoreFloat4x4(&perFrame.viewProj, XMMatrixTranspose(view * proj));
-	XMStoreFloat4x4(&perFrame.lightViewProj, XMMatrixTranspose(lightViewProj));
-	perFrame.cameraPosition = camera.GetPosition();
-	perFrame.time = totalTime;
-	perFrame.shadowParams = XMFLOAT4(1.0f / kShadowMapSize, m_settings.shadowBias, m_settings.shadowStrength, m_shadowEnabledThisFrame ? 1.0f : 0.0f);
-	perFrame.debugParams = XMFLOAT4(static_cast<float>(m_settings.debugView), m_settings.debugDepthRange, 0.0f, 0.0f);
-	m_device->UpdateBuffer(m_perFrameCB, &perFrame, sizeof(perFrame));
+	UploadPerFrameConstants(camera, totalTime);
 
 	// ---- b2 Lights ----
 	LightConstants lights = {};
@@ -691,6 +685,13 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
 		GpuProfileScope gpuScope(cmd, "MainPass");
 		RenderMainPass(cmd, scene);
 	}
+	if (m_previewCamera != nullptr && m_previewColor.IsValid())
+	{
+		// 11-C단계: 선택한 카메라 오브젝트의 시점. b0 만 그 카메라로 바꿔 같은 드로우 목록을 작은 타깃에 다시 그린다.
+		GpuProfileScope gpuScope(cmd, "PreviewPass");
+		UploadPerFrameConstants(*m_previewCamera, totalTime);
+		RenderPreviewPass(cmd, scene);
+	}
 
 	m_stats.renderPasses = cmd.GetStats().renderPasses;
 	m_stats.barriers = cmd.GetStats().barriers;
@@ -699,8 +700,9 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
 void Renderer::BuildDrawList(const Scene& scene)
 {
 	m_drawList.clear();
-	for (const GameObject& object : scene.GetObjects())
+	for (const auto& objectPtr : scene.GetObjects())
 	{
+		const GameObject& object = *objectPtr;   // 11-C단계: 씬이 unique_ptr 로 갖는다
 		const Mesh* mesh = object.GetMesh();
 		if (mesh == nullptr || !mesh->IsValid()) continue;
 
@@ -824,8 +826,42 @@ void Renderer::RenderMainPass(RHI::CommandList& cmd, const Scene& scene)
 	pass.depth.load = LoadOp::Clear;
 	pass.debugName = "MainPass";
 	cmd.BeginRenderPass(pass);
+	DrawItems(cmd, scene);
+	cmd.EndRenderPass();
 
-	// 그림자 패스가 t8 을 풀었으므로 프레임 셋을 다시 건다 (이제 그림자 맵은 SRV 상태).
+	if (IsOffscreen())
+	{
+		// ImGui 가 이 텍스처를 샘플한다. D3D12 에서는 실제 배리어, D3D11 에서는 추적.
+		cmd.Barrier(m_sceneColor, ResourceState::RenderTarget, ResourceState::ShaderResource);
+		m_sceneColorState = ResourceState::ShaderResource;
+	}
+}
+
+void Renderer::RenderPreviewPass(RHI::CommandList& cmd, const Scene& scene)
+{
+	cmd.Barrier(m_previewColor, m_previewColorState, ResourceState::RenderTarget);
+	m_previewColorState = ResourceState::RenderTarget;
+
+	RenderPassDesc pass;
+	pass.colorCount = 1;
+	pass.colors[0].texture = m_previewColor;
+	pass.colors[0].load = LoadOp::Clear;
+	pass.colors[0].srgbView = m_settings.srgbOutput;
+	for (int i = 0; i < 4; ++i) pass.colors[0].clearColor[i] = scene.clearColor[i];
+	pass.depth.texture = m_previewDepth;
+	pass.depth.load = LoadOp::Clear;
+	pass.debugName = "PreviewPass";
+	cmd.BeginRenderPass(pass);
+	DrawItems(cmd, scene);
+	cmd.EndRenderPass();
+
+	cmd.Barrier(m_previewColor, ResourceState::RenderTarget, ResourceState::ShaderResource);
+	m_previewColorState = ResourceState::ShaderResource;
+}
+
+void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene)
+{
+	// 그림자 패스가 t8 을 풀었으므로 프레임 셋을 다시 건다 (이제 그림자 맵은 SRV 상태). 패스마다 새로 건다.
 	cmd.SetResourceSet(m_frameSet);
 	cmd.SetResourceSet(m_objectSet);
 
@@ -868,14 +904,61 @@ void Renderer::RenderMainPass(RHI::CommandList& cmd, const Scene& scene)
 		m_stats.triangles += item.indexCount / 3;
 		++m_stats.draws;
 	}
+}
 
-	cmd.EndRenderPass();
+void Renderer::UploadPerFrameConstants(const Camera& camera, float totalTime)
+{
+	// HLSL은 column_major로 읽고 셰이더는 mul(v, M)을 쓰므로 전치해서 올린다 (ShaderConstants.h).
+	// 11-C단계: 미리보기 패스가 다른 카메라로 한 번 더 부른다 (업로드 링이라 프레임 안에서 여러 번 올려도 된다, 8단계).
+	const XMMATRIX view = camera.GetViewMatrix();
+	const XMMATRIX proj = camera.GetProjectionMatrix();
+	PerFrameConstants perFrame = {};
+	XMStoreFloat4x4(&perFrame.view, XMMatrixTranspose(view));
+	XMStoreFloat4x4(&perFrame.proj, XMMatrixTranspose(proj));
+	XMStoreFloat4x4(&perFrame.viewProj, XMMatrixTranspose(view * proj));
+	XMStoreFloat4x4(&perFrame.lightViewProj, XMMatrixTranspose(XMLoadFloat4x4(&m_lightViewProj)));
+	perFrame.cameraPosition = camera.GetPosition();
+	perFrame.time = totalTime;
+	perFrame.shadowParams = XMFLOAT4(1.0f / kShadowMapSize, m_settings.shadowBias, m_settings.shadowStrength, m_shadowEnabledThisFrame ? 1.0f : 0.0f);
+	perFrame.debugParams = XMFLOAT4(static_cast<float>(m_settings.debugView), m_settings.debugDepthRange, 0.0f, 0.0f);
+	m_device->UpdateBuffer(m_perFrameCB, &perFrame, sizeof(perFrame));
+}
 
-	if (IsOffscreen())
+void Renderer::SetPreviewTarget(uint32_t width, uint32_t height)
+{
+	if (m_device == nullptr) return;
+	if (width == m_previewWidth && height == m_previewHeight) return;
+	if (m_previewColor.IsValid()) m_device->DestroyTexture(m_previewColor);
+	if (m_previewDepth.IsValid()) m_device->DestroyTexture(m_previewDepth);
+	m_previewColor = TextureHandle{};
+	m_previewDepth = TextureHandle{};
+	m_previewWidth = width;
+	m_previewHeight = height;
+	m_previewColorState = ResourceState::Common;
+	if (width == 0 || height == 0) return;
+
+	TextureDesc color;
+	color.width = width;
+	color.height = height;
+	color.format = Format::R8G8B8A8_UNORM;   // 씬 뷰와 같은 TYPELESS 규칙 (sRGB RTV + UNORM SRV)
+	color.mipLevels = 1;
+	color.bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource;
+	color.debugName = "CameraPreview_Color";
+	m_previewColor = m_device->CreateTexture(color);
+
+	TextureDesc depth;
+	depth.width = width;
+	depth.height = height;
+	depth.format = Format::D24_UNORM_S8_UINT;
+	depth.mipLevels = 1;
+	depth.bindFlags = TextureBind_DepthStencil;
+	depth.debugName = "CameraPreview_Depth";
+	m_previewDepth = m_device->CreateTexture(depth);
+
+	if (!m_previewColor.IsValid() || !m_previewDepth.IsValid())
 	{
-		// ImGui 가 이 텍스처를 샘플한다. D3D12 에서는 실제 배리어, D3D11 에서는 추적.
-		cmd.Barrier(m_sceneColor, ResourceState::RenderTarget, ResourceState::ShaderResource);
-		m_sceneColorState = ResourceState::ShaderResource;
+		Log::Error("카메라 미리보기 텍스처 생성 실패 (%ux%u).", width, height);
+		SetPreviewTarget(0, 0);
 	}
 }
 

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Sample Scripts">
+      <UniqueIdentifier>{a0c2e1f0-5c11-4b3e-9a6f-1a2b3c4d5e21}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="GameMain.cpp" />
+    <ClCompile Include="..\SherlockEngine\pch.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\Projects\Sample\Scripts\*.cpp">
+      <Filter>Sample Scripts</Filter>
+    </ClCompile>
+    <ClInclude Include="..\Projects\Sample\Scripts\*.h">
+      <Filter>Sample Scripts</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

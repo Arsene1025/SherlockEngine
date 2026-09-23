@@ -94,31 +94,41 @@ namespace
 	}
 }
 
+namespace
+{
+	// 파일 → ScratchImage. 확장자가 .dds 면 DDS, 아니면 WIC. LoadFromFile 과 LoadThumbnail 이 같이 쓴다.
+	bool LoadScratchFromFile(const std::wstring& path, DirectX::ScratchImage& image)
+	{
+		DirectX::TexMetadata meta = {};
+		HRESULT hr;
+
+		const size_t dot = path.find_last_of(L'.');
+		std::wstring ext = (dot == std::wstring::npos) ? L"" : path.substr(dot);
+		std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
+
+		if (ext == L".dds")
+		{
+			hr = DirectX::LoadFromDDSFile(path.c_str(), DirectX::DDS_FLAGS_NONE, &meta, image);
+		}
+		else
+		{
+			// WIC: PNG, JPG, BMP, TIFF, GIF. 알파 없는 파일도 RGBA로 확장한다.
+			// IGNORE_SRGB: 파일의 색공간 메타데이터로 포맷을 *_SRGB로 바꾸지 않는다. 라벨은 우리가 붙인다.
+			hr = DirectX::LoadFromWICFile(path.c_str(), DirectX::WIC_FLAGS_FORCE_RGB | DirectX::WIC_FLAGS_IGNORE_SRGB, &meta, image);
+		}
+		if (FAILED(hr))
+		{
+			Log::Error("TextureLoader : 파일 로드 실패 %s. %s", Log::ToUtf8(path.c_str()).c_str(), Log::HrToString(hr).c_str());
+			return false;
+		}
+		return true;
+	}
+}
+
 bool TextureLoader::LoadFromFile(const std::wstring& path, bool srgb, bool generateMips, TextureImage& out)
 {
 	DirectX::ScratchImage image;
-	DirectX::TexMetadata meta = {};
-	HRESULT hr;
-
-	const size_t dot = path.find_last_of(L'.');
-	std::wstring ext = (dot == std::wstring::npos) ? L"" : path.substr(dot);
-	std::transform(ext.begin(), ext.end(), ext.begin(), ::towlower);
-
-	if (ext == L".dds")
-	{
-		hr = DirectX::LoadFromDDSFile(path.c_str(), DirectX::DDS_FLAGS_NONE, &meta, image);
-	}
-	else
-	{
-		// WIC: PNG, JPG, BMP, TIFF, GIF. 알파 없는 파일도 RGBA로 확장한다.
-		// IGNORE_SRGB: 파일의 색공간 메타데이터로 포맷을 *_SRGB로 바꾸지 않는다. 라벨은 우리가 붙인다.
-		hr = DirectX::LoadFromWICFile(path.c_str(), DirectX::WIC_FLAGS_FORCE_RGB | DirectX::WIC_FLAGS_IGNORE_SRGB, &meta, image);
-	}
-	if (FAILED(hr))
-	{
-		Log::Error("TextureLoader : 파일 로드 실패 %s. %s", Log::ToUtf8(path.c_str()).c_str(), Log::HrToString(hr).c_str());
-		return false;
-	}
+	if (!LoadScratchFromFile(path, image)) return false;
 
 	if (!FinishImage(image, srgb, generateMips, out))
 	{
@@ -169,6 +179,49 @@ bool TextureLoader::CreateSolid(uint32_t size, const uint8_t rgba[4], bool srgb,
 		}
 	}
 	return FinishImage(image, srgb, false, out);
+}
+
+bool TextureLoader::LoadThumbnail(const std::wstring& path, uint32_t maxSize, TextureImage& out)
+{
+	DirectX::ScratchImage image;
+	if (!LoadScratchFromFile(path, image)) return false;
+
+	// 블록 압축(BC1~7)은 Resize/Convert 가 못 다루므로 먼저 푼다.
+	DirectX::ScratchImage decompressed;
+	const DirectX::ScratchImage* current = &image;
+	if (DirectX::IsCompressed(image.GetMetadata().format))
+	{
+		const HRESULT hr = DirectX::Decompress(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DXGI_FORMAT_R8G8B8A8_UNORM, decompressed);
+		if (FAILED(hr))
+		{
+			Log::Warn("TextureLoader : 썸네일용 압축 해제 실패 %s. %s", Log::ToUtf8(path.c_str()).c_str(), Log::HrToString(hr).c_str());
+			return false;
+		}
+		current = &decompressed;
+	}
+
+	// 밉 0 만 쓴다. 긴 변을 maxSize 로 (비율 유지).
+	const DirectX::Image* base = current->GetImage(0, 0, 0);
+	if (base == nullptr) return false;
+	DirectX::ScratchImage resized;
+	const size_t longest = (std::max)(base->width, base->height);
+	if (maxSize > 0 && longest > maxSize)
+	{
+		const size_t w = (std::max<size_t>)(1, base->width * maxSize / longest);
+		const size_t h = (std::max<size_t>)(1, base->height * maxSize / longest);
+		const HRESULT hr = DirectX::Resize(*base, w, h, DirectX::TEX_FILTER_DEFAULT, resized);
+		if (FAILED(hr))
+		{
+			Log::Warn("TextureLoader : 썸네일 축소 실패 %s. %s", Log::ToUtf8(path.c_str()).c_str(), Log::HrToString(hr).c_str());
+			return false;
+		}
+		base = resized.GetImage(0, 0, 0);
+	}
+
+	// 밉 0 하나짜리 ScratchImage 로 옮겨 FinishImage 의 포맷 통일을 거친다. srgb=false: UNORM 라벨 (헤더 주석).
+	DirectX::ScratchImage single;
+	if (FAILED(single.InitializeFromImage(*base))) return false;
+	return FinishImage(single, false, false, out);
 }
 
 bool TextureLoader::LoadFromMemory(const uint8_t* data, size_t size, bool srgb, bool generateMips, TextureImage& out)

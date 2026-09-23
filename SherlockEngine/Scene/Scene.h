@@ -5,6 +5,7 @@
 #include <vector>
 #include <DirectXMath.h>
 #include "Scene/GameObject.h"
+#include "Scene/CameraComponent.h"
 #include "Scene/Light.h"
 #include "Scene/Material.h"
 
@@ -67,8 +68,26 @@ public:
 	// 먼저 Renderer::InvalidateScene 을 불러야 한다.
 	void Clear();
 
-	std::vector<GameObject>& GetObjects() { return m_objects; }
-	const std::vector<GameObject>& GetObjects() const { return m_objects; }
+	// 11-C단계: GameObject 는 unique_ptr — 벡터가 늘어도 주소가 안정적이라 컴포넌트가 소유자를 가리킬 수 있다.
+	// 인덱스는 여전히 에디터 선택의 식별자다 (RemoveObject 가 뒤 인덱스를 밀어낸다).
+	std::vector<std::unique_ptr<GameObject>>& GetObjects() { return m_objects; }
+	const std::vector<std::unique_ptr<GameObject>>& GetObjects() const { return m_objects; }
+	GameObject* GetObject(size_t index) { return index < m_objects.size() ? m_objects[index].get() : nullptr; }
+	GameObject* FindObject(const std::string& name);
+	void RemoveObject(size_t index);
+
+	// ---- 11-C단계: 재생 (에디터의 ▶). 재생 중에만 컴포넌트의 Start/Update/FixedUpdate 가 돈다 ----
+	void BeginPlay(Input* input, Camera* camera);
+	void Update(float dt);          // Start 를 아직 안 받은 컴포넌트(재생 중 추가 포함)는 먼저 Start
+	void FixedUpdate(float fixedDt);
+	void EndPlay();
+	bool IsPlaying() const { return m_playing; }
+	PlayContext& GetPlayContext() { return m_playContext; }
+
+	// 11-C단계: 씬 안의 카메라. priority 가 가장 높은 enabled CameraComponent 가 활성이고 재생 중 매 프레임 엔진 Camera 에
+	// 자세를 쓴다 (Update 끝에서). 카메라가 바뀌면 새 카메라의 blendTime 동안 이전 시점에서 보간한다. 없으면 에디터 카메라 그대로.
+	CameraComponent* FindActiveCamera();
+	CameraComponent* GetActiveCamera() const { return m_activeCamera; }
 
 	std::vector<std::unique_ptr<Mesh>>& GetMeshes() { return m_meshes; }
 	const std::vector<std::unique_ptr<Mesh>>& GetMeshes() const { return m_meshes; }
@@ -92,7 +111,16 @@ private:
 	std::vector<std::unique_ptr<Mesh>> m_meshes;
 	std::vector<MeshSource> m_meshSources;   // m_meshes 와 같은 인덱스
 	std::vector<std::unique_ptr<Material>> m_materials;
-	std::vector<GameObject> m_objects;
+	std::vector<std::unique_ptr<GameObject>> m_objects;
 	std::vector<LightData> m_lights;
 	std::unordered_map<std::string, std::vector<uint8_t>> m_images;
+
+	// 11-C단계
+	void ApplyActiveCamera(float dt);
+	bool m_playing = false;
+	PlayContext m_playContext;
+	CameraComponent* m_activeCamera = nullptr;
+	CameraPose m_blendFrom;          // 전환 시작 시점의 카메라 자세
+	float m_blendElapsed = 0.0f;
+	float m_blendDuration = 0.0f;
 };

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>11-B단계 · 콘텐츠 브라우저와 드래그 앤 드롭 — SherlockEngine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EEF0F7; --line:#D6D9E6; --line-strong:#B9BDD0;
+  --ink:#171A2B; --ink-2:#4A4F66; --muted:#7A7F96;
+  --accent:#232767; --accent-ink:#FFFFFF; --accent-soft:#E3E5F5;
+  --amber:#B8781A; --amber-soft:#FBF0DB;
+  --ok:#2E7D4F; --ok-soft:#E1F2E7; --warn:#A6620C; --warn-soft:#FBEDD6; --crit:#B23A3A; --crit-soft:#F9E1E1;
+  --code-bg:#1B1D33; --code-ink:#E7E9F5; --code-kw:#9BA3FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(23,26,43,.06),0 8px 24px rgba(23,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+    --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+    --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+    --amber:#F0B650; --amber-soft:#3D3560;
+    --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+    --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+  --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+  --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+  --amber:#F0B650; --amber-soft:#3D3560;
+  --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+  --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+code,pre,.mono{font-family:"IBM Plex Mono",Consolas,"D2Coding",monospace}
+code{font-size:.875em;background:var(--surface-2);padding:.1em .4em;border-radius:4px;color:var(--ink)}
+pre{background:var(--code-bg);color:var(--code-ink);padding:18px 20px;border-radius:8px;overflow-x:auto;font-size:13.5px;line-height:1.6;margin:18px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+.kw{color:var(--code-kw)} .str{color:var(--code-str)} .cm{color:var(--code-cm)}
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto;padding:0 32px;gap:48px}
+@media (max-width:960px){.shell{grid-template-columns:minmax(0,1fr);padding:0 20px;gap:0}}
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0 40px;font-size:13.5px}
+nav.toc .brand{font-weight:600;letter-spacing:.02em;color:var(--ink);margin-bottom:6px}
+nav.toc .meta{color:var(--muted);font-size:12px;margin-bottom:24px;line-height:1.5}
+nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+nav.toc li a{display:block;padding:5px 14px;color:var(--ink-2);border-left:2px solid transparent;margin-left:-1px;border-bottom:none;line-height:1.45}
+nav.toc li a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+nav.toc li.sub a{padding-left:28px;font-size:12.5px;color:var(--muted)}
+@media (max-width:960px){nav.toc{position:static;height:auto;padding:28px 0 8px}nav.toc ol{display:none}}
+main{padding:40px 0 96px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1{font-size:clamp(30px,4vw,42px);line-height:1.2;margin:6px 0 14px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{font-size:18px;color:var(--ink-2);max-width:66ch;margin:0 0 28px}
+h2{font-size:26px;line-height:1.3;margin:72px 0 16px;padding-top:24px;border-top:1px solid var(--line);font-weight:600;letter-spacing:-.005em;text-wrap:balance}
+h2 .num{display:inline-block;min-width:2.2em;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+h3{font-size:19px;margin:40px 0 10px;font-weight:600;text-wrap:balance}
+p{margin:0 0 16px;max-width:72ch}
+ul,ol{max-width:72ch;padding-left:1.4em;margin:0 0 16px}
+li{margin:4px 0}
+strong{font-weight:600}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:28px 0}
+.facts>div{background:var(--surface);padding:14px 16px}
+.facts .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.facts .v{font-size:15px;font-weight:600;line-height:1.35}
+.facts .v small{display:block;font-weight:400;color:var(--ink-2);font-size:12.5px;margin-top:2px}
+.callout{border-left:3px solid var(--accent);background:var(--surface);padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;max-width:72ch}
+.callout.amber{border-left-color:var(--amber);background:var(--amber-soft)}
+.callout p:last-child{margin-bottom:0}
+.callout .t{font-weight:600;font-size:14px;margin-bottom:4px}
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.fig{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.fig .cap{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+.applied{margin:14px 0 0;padding:12px 16px 14px;border:1px solid var(--ok);background:var(--ok-soft);border-radius:6px;font-size:14.5px}
+.applied .t{font-weight:600;color:var(--ok);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.applied ul{margin:0;padding-left:1.2em;max-width:none;font-size:14px}
+.applied li{margin:3px 0}
+.applied code{background:var(--surface)}
+.footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="목차">
+  <div class="brand">11-B단계 · 콘텐츠 브라우저</div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/23 (작업 트리, 미커밋)<br><a href="rendering-analysis.html#p11b">rendering-analysis.html → PHASE 11-B</a></div>
+  <ol>
+    <li><a href="#s1">1. 요약</a></li>
+    <li><a href="#s2">2. 콘텐츠 브라우저 창</a></li>
+    <li class="sub"><a href="#s2-1">2.1 에셋 루트와 열거</a></li>
+    <li class="sub"><a href="#s2-2">2.2 타일 그리드와 아이콘</a></li>
+    <li><a href="#s3">3. 드래그 페이로드</a></li>
+    <li><a href="#s4">4. Scene 뷰 드롭: 광선과 바닥면</a></li>
+    <li><a href="#s5">5. 모델 배치: PlaceModel</a></li>
+    <li><a href="#s6">6. 텍스처 썸네일</a></li>
+    <li><a href="#s7">7. 텍스처 드롭과 <code>asset:</code> 이름</a></li>
+    <li><a href="#s8">8. 도킹 배치와 imgui.ini</a></li>
+    <li><a href="#s9">9. 자동 검증</a></li>
+    <li><a href="#s10">10. 함정과 해결</a></li>
+    <li><a href="#s11">11. 검증과 스크린샷</a></li>
+    <li><a href="#s12">12. 다음 단계</a></li>
+    <li><a href="#s13">13. 참고 문헌</a></li>
+  </ol>
+</nav>
+
+<main>
+<div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
+<h1>11-B단계 · 콘텐츠 브라우저와 드래그 앤 드롭</h1>
+<p class="lede">11단계 에디터에는 에셋을 보는 창이 없었습니다. 모델은 File 메뉴의 고정 항목으로만 불러오고 새 오브젝트는 원점에만 생겼습니다. 이 단계는 상용 엔진의 콘텐츠 브라우저처럼 <code>Assets\</code> 폴더를 폴더 트리 + 타일 그리드로 보여 주고, 타일을 Scene 뷰로 끌어다 놓으면 커서 아래 표면(오브젝트 AABB 또는 바닥면)에 모델을 배치하고, 씬 파일을 놓으면 로드하고, 텍스처를 오브젝트에 놓으면 그 재질의 알베도가 됩니다.</p>
+
+<div class="facts">
+  <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
+  <div><div class="k">새 파일</div><div class="v">2<small>App/ContentBrowser (.h/.cpp)</small></div></div>
+  <div><div class="k">의존성 추가</div><div class="v">0<small>std::filesystem, DirectXTex Resize (이미 링크)</small></div></div>
+  <div><div class="k">드롭 대상</div><div class="v">Scene 뷰<small>모델 → 배치, 씬 → 로드, 텍스처 → 재질</small></div></div>
+  <div><div class="k">썸네일</div><div class="v">텍스처만<small>128px UNORM, 프레임당 1장, 상한 256</small></div></div>
+  <div><div class="k">완료 기준</div><div class="v"><span class="pill ok">충족</span><small>드롭 → 커서 아래 배치 → 저장 → 로드 복원</small></div></div>
+</div>
+
+<div class="callout">
+  <div class="t">한 줄 요약</div>
+  <p>브라우저는 파일 시스템을 읽기만 하고 GPU 자원은 썸네일뿐입니다. 드래그는 ImGui 의 drag &amp; drop 페이로드(POD 구조체 하나)로, 드롭은 Scene 뷰 이미지 아이템의 <code>BeginDragDropTarget</code> 에서 받아 11단계의 선택 광선(<code>Pick</code>)을 그대로 써서 놓을 점을 구하고, 실제 배치는 11단계 콜백 규칙대로 앱(<code>TestApp::PlaceModel</code>)에 넘깁니다. 렌더러는 <code>asset:</code> 텍스처 이름 한 줄만 바뀌었습니다.</p>
+</div>
+
+<h2 id="s1"><span class="num">1.</span>요약</h2>
+<div class="tbl"><table>
+  <thead><tr><th>항목</th><th>구현</th><th>확인</th></tr></thead>
+  <tbody>
+    <tr><td>콘텐츠 브라우저 창</td><td><code>App/ContentBrowser</code>: 툴바(Up·Refresh·검색·타일 크기·Hidden), 폴더 트리, 브레드크럼, 타일 그리드(ListClipper), 상태줄, 우클릭 메뉴(원점에 배치·씬 로드·경로 복사·탐색기), 더블클릭(폴더·씬·모델)</td><td>그림 1·2</td></tr>
+    <tr><td>드래그 → Scene 뷰 드롭</td><td>페이로드 <code>AssetDragPayload{type, relativePath[260]}</code>, Scene 뷰 이미지 뒤 <code>BeginDragDropTarget</code>, 호버 중 고스트 마커(놓일 점 + 모델 AABB), 릴리스 프레임에 <code>HandleAssetDrop</code></td><td>자동 검증 A·C (9절)</td></tr>
+    <tr><td>놓을 점</td><td><code>Editor::RaycastScene</code>: 광선이 오브젝트 AABB 에 맞으면 그 점, 아니면 y = 0 바닥면. 모델은 <code>bounds.min.y</code> 만큼 올려 바닥면이 닿게</td><td>헬멧 y = 0.90 (바닥), Sponza 표면 위 y = 2.49</td></tr>
+    <tr><td>텍스처 썸네일</td><td><code>TextureLoader::LoadThumbnail</code>(DirectXTex Resize, UNORM), 브라우저가 소유하는 텍스처 캐시, 보이는 타일만·프레임당 1장</td><td>그림 3 (Sponza 70장 폴더), Stats 의 렌더러 텍스처 수 불변</td></tr>
+    <tr><td>텍스처 이름 규칙</td><td><code>Textures\x.png</code> → <code>"x.png"</code>(기존), 그 밖은 <code>"asset:&lt;상대 경로&gt;"</code> — <code>Renderer::GetOrLoadTexture</code> 가 접두어를 푼다</td><td>Sponza 이미지를 구에 드롭 (그림 5)</td></tr>
+    <tr><td>두 백엔드</td><td>Device 의 <code>CreateTexture/DestroyTexture/GetImGuiTextureId</code> 만 쓴다</td><td>그림 4 (D3D12)</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="s2"><span class="num">2.</span>콘텐츠 브라우저 창</h2>
+<h3 id="s2-1">2.1 에셋 루트와 열거</h3>
+<p><code>Paths::GetAssetRoot()</code> 가 새로 생겼습니다. 11단계 <code>GetSceneDir()</code> 과 같은 마커(<code>exe\..\..\SherlockEngine\Assets\Config\engine.ini</code>)로 소스 트리를 찾아 <em>저장소의</em> <code>Assets\</code> 를 보여 주고, 없으면(배포) <code>exe\Assets\</code> 입니다. 그래서 브라우저에서 보이는 파일이 곧 저장소의 파일이고, 브라우저가 놓은 모델 경로(<code>Models\DamagedHelmet\DamagedHelmet.glb</code>)는 <code>AssetManager::GetModel</code> 과 씬 파일의 <code>MeshSource::modelPath</code> 가 쓰는 상대 경로 그대로입니다.</p>
+<p>열거는 C++17 <code>std::filesystem</code> 이고 예외를 던지지 않는 <code>error_code</code> 오버로드만 씁니다(정션·잠긴 파일·긴 경로). 폴더 먼저, 이름은 대소문자 무시 정렬. 라벨은 <code>Log::ToUtf8</code> 로 한 번만 변환해 둡니다(한글 경로). 분류는 확장자로: <code>.gltf/.glb</code> Model, <code>.png/.jpg/.jpeg/.bmp/.dds/.tga</code> Texture, <code>Scenes\</code> 아래 <code>.json</code> Scene, 나머지 Other. <code>.bin/.ini/.log</code> 는 숨김이라 <code>Sponza.bin</code>·<code>engine.ini</code> 가 그리드를 어지럽히지 않습니다(Hidden 토글로 회색 표시). 폴더 수정 시각을 1초마다 비교해 탐색기에서 파일을 넣으면 저절로 다시 읽습니다.</p>
+<h3 id="s2-2">2.2 타일 그리드와 아이콘</h3>
+<p>타일 하나는 <code>InvisibleButton</code> 하나입니다 — 호버·클릭·더블클릭·드래그 소스·컨텍스트 메뉴가 전부 그 아이템에 붙고, 그림(배경·썸네일 또는 아이콘·확장자 배지·잘라낸 라벨)은 <code>ImDrawList</code> 로 그 위에 그립니다. 행은 <code>ImGuiListClipper</code> 로 보이는 것만 제출하므로 썸네일 요청도 보이는 타일에서만 나옵니다. 아이콘은 에셋 파일 없이 <code>ImDrawList</code> 도형입니다: 폴더(탭 + 몸통), 모델(등각 정육면체 세 면), 씬(문서 + 줄 + 작은 큐브), 텍스처 자리표시자(체커 4칸).</p>
+
+<h2 id="s3"><span class="num">3.</span>드래그 페이로드</h2>
+<pre><code><span class="cm">// ImGui 가 memcpy 로 복사하므로 POD 고정 크기. 16B 를 넘으면 힙 버퍼에 복사되어 크기 제한은 사실상 없다 [1]</span>
+<span class="kw">struct</span> AssetDragPayload { AssetType type; <span class="kw">wchar_t</span> relativePath[260]; };   <span class="cm">// ≈524 B</span>
+<span class="kw">constexpr const char</span>* kAssetPayloadType = <span class="str">"SHERLOCK_ASSET"</span>;
+
+<span class="cm">// 소스 (타일의 InvisibleButton 직후)</span>
+<span class="kw">if</span> (ImGui::BeginDragDropSource()) {
+    ImGui::SetDragDropPayload(kAssetPayloadType, &amp;payload, <span class="kw">sizeof</span>(payload), ImGuiCond_Once);
+    <span class="cm">/* 미리보기: 썸네일/아이콘 + 이름 + 타입 */</span>
+    <span class="kw">if</span> (ImGui::IsKeyPressed(ImGuiKey_Escape)) m_dragCancelled = <span class="kw">true</span>;   <span class="cm">// ImGui 에는 Esc 취소가 없다</span>
+    ImGui::EndDragDropSource(); }</code></pre>
+<p>페이로드 타입 문자열 하나에 구조체 하나 — 받는 쪽은 <code>type</code> 으로 분기합니다. 절대 경로가 아니라 <em>Assets 기준 상대 경로</em>를 실어, 그대로 <code>AssetManager</code>·<code>MeshSource</code>·<code>Paths::GetAssetPath</code> 에 넘길 수 있습니다. 받는 쪽은 <code>DataSize == sizeof(AssetDragPayload)</code> 를 확인하고 마지막 문자를 0 으로 막습니다. 폴더·Other·260자 이상 경로는 드래그 소스를 만들지 않습니다.</p>
+
+<h2 id="s4"><span class="num">4.</span>Scene 뷰 드롭: 광선과 바닥면</h2>
+<p>드롭 타깃은 씬 뷰 <code>ImGui::Image</code> 아이템 <em>바로 뒤</em>(기즈모 앞)에 있어야 합니다. <code>AcceptBeforeDelivery</code> 플래그로 호버 중 매 프레임 페이로드를 받아 고스트 마커를 그리고, <code>IsDelivery()</code> 인 프레임(마우스 릴리스)에만 실제로 놓습니다.</p>
+<pre><code><span class="kw">if</span> (ImGui::BeginDragDropTarget()) {
+    <span class="kw">const</span> ImGuiPayload* p = ImGui::AcceptDragDropPayload(kAssetPayloadType, AcceptBeforeDelivery | AcceptNoDrawDefaultRect);
+    <span class="kw">if</span> (p &amp;&amp; p-&gt;DataSize == <span class="kw">sizeof</span>(AssetDragPayload) &amp;&amp; !m_contentBrowser.IsDragCancelled()) {
+        u, v ← (mouse − imagePos) / size;
+        <span class="kw">const int</span> hitObject = RaycastScene(scene, camera, u, v, point);   <span class="cm">// AABB 히트점 또는 y=0 바닥</span>
+        DrawDropGhost(...);                                               <span class="cm">// 테두리, 점·십자, 모델 AABB, 라벨</span>
+        <span class="kw">if</span> (p-&gt;IsDelivery()) HandleAssetDrop(engine, callbacks, asset, point, hitObject);
+    }
+    ImGui::EndDragDropTarget(); }</code></pre>
+<p>11단계의 <code>Pick</code> 은 픽셀→광선을 함수 안에 갖고 있었고 히트 거리를 돌려주지 않았습니다. 그 여섯 줄을 <code>ScreenToRay(camera, u, v)</code> 로 뽑고 <code>Pick</code> 에 <code>float* outDistance</code> 를 더했습니다(<code>bestT</code> 는 이미 월드 거리). <code>RaycastScene</code> 은 <code>Pick</code> 이 맞으면 <code>origin + direction × t</code>, 아니면 y = 0 평면과의 교점 <code>t = −o.y / d.y</code>(앞쪽일 때만), 둘 다 아니면(하늘을 보며 놓음) 광선 위 10 단위 점입니다. 같은 함수를 <code>--drop-uv</code> 자동 검증이 씁니다.</p>
+<p>고스트 마커는 히트점을 <code>XMVector3Transform</code>(<code>Coord</code> 가 아님 — w 를 남겨 카메라 뒤의 점을 거른다)으로 투영해 씬 뷰 좌표로 바꾸고, 점·바닥면 십자·라벨("DamagedHelmet → (x, y, z) on Floor")을 그립니다. 모델이면 <code>AssetManager::IsModelCached</code> 일 때만 놓일 자리의 AABB 12 모서리를 그립니다 — 호버 중에 <code>GetModel</code> 을 부르면 Sponza 를 몇 초 동안 파싱하게 됩니다. 드래그 중에는 <code>ImGuizmo::Enable(false)</code> 로 기즈모를 끄고, 클릭 선택도 건너뜁니다.</p>
+
+<h2 id="s5"><span class="num">5.</span>모델 배치: PlaceModel</h2>
+<p>에디터는 11단계 규칙대로 씬을 바꾸지 않고 콜백 <code>Editor::Callbacks::placeModel(relativePath, position)</code> 으로 앱에 넘깁니다. <code>TestApp::PlaceModel</code> 은 <code>AddPrimitive</code> 의 형제입니다.</p>
+<pre><code><span class="kw">const</span> Model* model = assets.GetModel(relativePath);              <span class="cm">// 첫 드롭은 동기 파싱, 두 번째부터 캐시</span>
+Transform placement;
+placement.SetPosition(position.x, position.y - model-&gt;bounds.min.y, position.z);   <span class="cm">// 바닥면이 놓은 점에 닿게 (9단계 헬멧 씬 규칙)</span>
+<span class="kw">const size_t</span> created = scene.AddModel(*model, placement);        <span class="cm">// 노드마다 GameObject, pre-transform = 노드 행렬</span>
+<span class="cm">// 이름 "DamagedHelmet 1", 노드가 여럿이면 "Sponza 1/&lt;노드&gt;". 마지막 오브젝트 선택. 씬 모드는 그대로 (아래).</span></code></pre>
+<p>씬 모드는 바꾸지 않습니다. 처음에는 <code>AddPrimitive</code> 처럼 Demo → File 로 바꿨는데, 그러면 데모 씬에 헬멧을 놓는 순간 <code>OnUpdate</code> 의 애니메이션(Demo 모드에서만 돈다)이 멈춥니다. 끝에 추가하는 것은 애니메이션 인덱스(<code>m_orbitSphere</code> 등)를 건드리지 않으므로 전환할 이유가 없고, 인덱스를 밀어내는 것은 삭제뿐이라 <code>DeleteObject</code> 만 File 로 바꿉니다. <code>AddPrimitive</code> 도 같은 이유로 모드를 유지하게 고쳤습니다.</p>
+<p><code>Scene::AddModel(const Model&amp;)</code> 은 캐시 모델의 메시·재질·이미지를 <em>복사</em>합니다(10단계). 같은 모델을 두 번 놓으면 CPU 메시와 GPU 버퍼가 두 벌입니다. 헬멧 두 개(그림 2)는 문제없지만 Sponza 를 여러 번 놓는 것은 다음 단계의 메시 공유(12절)로 미룹니다. 저장은 바꿀 것이 없습니다 — <code>MeshSource::FromModel(path, index)</code> 가 이미 경로로 저장하고 로드가 <code>AssetManager</code> 에서 다시 받습니다(자동 검증 B).</p>
+
+<h2 id="s6"><span class="num">6.</span>텍스처 썸네일</h2>
+<pre><code><span class="cm">// TextureLoader::LoadThumbnail — 밉 0 만, 긴 변이 maxSize 를 넘으면 DirectXTex Resize [2], 블록 압축 DDS 는 Decompress 먼저</span>
+<span class="kw">bool</span> LoadThumbnail(<span class="kw">const</span> std::wstring&amp; path, uint32_t maxSize, TextureImage&amp; out);   <span class="cm">// srgb=false → R8G8B8A8_UNORM 라벨</span></code></pre>
+<p>왜 UNORM 인가: 11단계 씬 뷰 텍스처와 같은 이유입니다. UI 패스는 백버퍼의 UNORM 뷰에 그리고 ImGui 는 픽셀을 그대로 옮기므로, 파일의 sRGB 바이트를 sRGB 라벨로 만들면 샘플할 때 선형으로 풀려 화면에서 두 번 인코딩되어 바랩니다. 밉맵도 만들지 않습니다(128px 를 96px 타일에 그리므로 축소비가 작다).</p>
+<p>캐시는 브라우저의 것입니다(<code>상대 경로 → {TextureHandle, failed, lastUsedFrame}</code>). 렌더러의 <code>m_textureCache</code> 에 넣지 않는 이유: <code>Renderer::InvalidateScene(…, true)</code> 가 씬을 바꿀 때마다 파일 텍스처를 전부 지웁니다. 타일이 처음 보이면 자리표시자를 넣고 큐에 올리고, <code>Draw</code> 시작에서 프레임당 한 장만 디코딩합니다 — 2048² JPEG 디코드+축소가 10~30 ms 라 한 장씩이면 히치가 한 프레임에 그치고 Sponza 70장 폴더는 1초 남짓에 채워집니다. 스크롤로 사라진 타일은 큐에서 건너뛰고(다시 보이면 재요청), 상한 256 장(128² RGBA 64 KB × 256 = 16 MB)을 넘으면 오래 안 쓴 것부터 <code>DestroyTexture</code> 합니다 — D3D12 의 shader-visible SRV 힙(4096, <code>GetImGuiTextureId</code> 가 텍스처마다 하나 잡는다)도 그래서 안전합니다. 소멸자가 마지막 <code>Draw</code> 의 Device 로 전부 파괴합니다: <code>~TestApp</code>(→ Editor → 브라우저)이 <code>AppBase</code> 의 <code>Engine::Shutdown</code> 보다 먼저 돕니다.</p>
+
+<h2 id="s7"><span class="num">7.</span>텍스처 드롭과 <code>asset:</code> 이름</h2>
+<p>재질의 텍스처는 5단계부터 <code>Assets\Textures\</code> 기준 파일명("uv_checker.png")이었습니다. Sponza 의 이미지 70장은 <code>Models\Sponza\</code> 에 있어 이 규칙으로는 못 씁니다. 그래서 <code>Renderer::GetOrLoadTexture</code> 의 파일 분기에 접두어 하나를 더했습니다:</p>
+<pre><code><span class="kw">const</span> std::wstring path = name.rfind(<span class="str">"asset:"</span>, 0) == 0
+    ? Paths::GetAssetPath(ToWide(name.substr(6)).c_str())                 <span class="cm">// "asset:Models\Sponza\lion.png"</span>
+    : Paths::GetAssetPath((L<span class="str">"Textures\\"</span> + ToWide(name)).c_str());     <span class="cm">// "uv_checker.png" (기존)</span></code></pre>
+<p><code>ContentBrowser::ToMaterialTextureName</code> 이 이 규칙을 만듭니다: <code>Textures\</code> 바로 아래면 파일명만(예전 씬 파일과 같은 형태), 아니면 <code>asset:</code> + 상대 경로. <code>SceneSerializer</code> 는 이름을 그대로 저장하므로 바꿀 것이 없고, 재질 이름이 바뀌면 <code>GetOrCreateGpuMaterial</code> 이 다음 프레임에 ResourceSet 을 다시 만드므로 무효화 호출도 없습니다. 드롭은 광선이 맞은 오브젝트의 재질 알베도에 들어갑니다. 재질은 공유될 수 있어(프리미티브의 "Default") 같은 재질의 오브젝트가 함께 바뀌며 메뉴 바 메시지로 알립니다. 서브메시 슬롯 재질을 쓰는 모델 오브젝트는 <code>material</code> 이 그려지지 않으므로 받지 않고 Materials 창으로 안내합니다.</p>
+
+<h2 id="s8"><span class="num">8.</span>도킹 배치와 imgui.ini</h2>
+<p><code>BuildDefaultLayout</code> 은 "Content Browser" 를 Console/Stats 와 같은 하단 노드에 넣고, 3 프레임 동안 <code>SetWindowFocus</code> 를 불러 활성 탭으로 만듭니다(첫 프레임에는 뒤에 처음 나타나는 Console 창이 포커스를 가져가므로 한 프레임으로는 부족합니다). 문제는 저장소에 추적되는 <code>SherlockEngine\imgui.ini</code> 입니다 — 11단계 레이아웃이 들어 있고 이 창의 항목이 없어, 그대로면 새 창이 떠다닙니다. 두 가지로 해결했습니다: (1) <code>DrawContentBrowser</code> 가 <code>FindWindowByName("Stats")-&gt;DockId</code> 로 <code>SetNextWindowDockID(…, ImGuiCond_FirstUseEver)</code> 를 걸어 ini 에 항목이 없는 첫 실행에 Stats 옆 탭으로 붙입니다(항목이 생긴 뒤에는 사용자가 옮긴 자리를 존중), (2) 추적 중인 ini 에 <code>[Window][Content Browser] DockId=0x00000006,1</code> 블록을 넣었습니다. 도킹 공간 ID 는 바꾸지 않았습니다 — 바꾸면 모든 사용자의 노드 트리가 버려집니다.</p>
+
+<h2 id="s9"><span class="num">9.</span>자동 검증</h2>
+<p>11단계의 실행 인자 방식 그대로입니다. 새 인자는 씬 뷰 드롭과 <em>같은 코드 경로</em>(<code>PlaceModel</code>, <code>RaycastScene</code>, <code>ToMaterialTextureName</code>)를 지납니다.</p>
+<pre><code><span class="cm"># A: 새 씬, 헬멧을 (2, 0, −1) 에 드롭 → 이름·위치 덤프 → 저장 → 스크린샷</span>
+SherlockEngine.exe --exit-after=40 --new-scene=1 "--drop=Models\DamagedHelmet\DamagedHelmet.glb;2,0,-1" --dump-objects=1 --save=drop_helmet.json --screenshot=...
+<span class="cm"># B: 재시작해서 로드 → 같은 이름·위치 (2, 0.90, −1)</span>
+SherlockEngine.exe --exit-after=30 --load=drop_helmet.json --dump-objects=1
+<span class="cm"># C: 씬 뷰 (0.5, 0.5) 광선의 히트점에 드롭 (바닥면 또는 Sponza 표면)</span>
+SherlockEngine.exe --exit-after=30 --new-scene=1 "--drop=Models\DamagedHelmet\DamagedHelmet.glb;0,0,0" --drop-uv=0.5,0.5 --dump-objects=1
+<span class="cm"># D: 선택 오브젝트 재질 알베도 ← 텍스처 (Textures\ 규칙 / asset: 규칙)</span>
+SherlockEngine.exe --exit-after=30 --new-scene=1 --add=1 "--drop-texture=Textures\uv_checker.png" --dump-objects=1
+SherlockEngine.exe --exit-after=30 --new-scene=1 --add=0 "--drop-texture=Models\Sponza\16275776544635328252.png" --dump-objects=1
+<span class="cm"># E: 브라우저를 폴더로 이동해 활성 탭으로 → 썸네일이 채워진 뒤 스크린샷.  --backend=d3d12 로 같은 것</span>
+SherlockEngine.exe --exit-after=150 --scene=helmet "--browse=Models\Sponza" --screenshot=...</code></pre>
+
+<h2 id="s10"><span class="num">10.</span>함정과 해결</h2>
+<ul>
+  <li><strong>드래그 중 <code>IsItemHovered()</code> 는 false.</strong> ImGui 는 활성 소스 아이템이 있는 동안 다른 아이템의 호버를 막습니다. 그래서 <code>m_sceneHovered</code> 는 드래그 중 저절로 false 가 되어 RMB 카메라 룩이 시작되지 않는 대신, 드롭 판정을 호버에 걸면 절대 맞지 않습니다 — <code>BeginDragDropTarget/AcceptDragDropPayload</code> 만이 소스를 뚫고 봅니다. 카메라 쪽에는 <code>IsAssetDragActive()</code> 검사를 명시해 두었습니다(<code>IsDragDropActive</code> 는 internal 이라 <code>GetDragDropPayload()</code> 로 판단).</li>
+  <li><strong>Esc 취소가 없다.</strong> ImGui 에는 드래그 취소 키가 없습니다. 소스에서 Esc 를 보고 플래그를 세우고, 타깃은 그 플래그가 참이면 받지 않으며, 마우스를 놓으면 플래그가 풀립니다.</li>
+  <li><strong>마지막 아이템 ID.</strong> <code>BeginDragDropSource</code>·<code>BeginPopupContextItem</code> 은 "마지막 아이템" 을 씁니다. 툴팁 창(<code>SetTooltip</code>)이 그것을 바꾸므로 순서는 InvisibleButton → 드래그 소스 → 컨텍스트 메뉴 → 툴팁.</li>
+  <li><strong>첫 프레임 포커스.</strong> 8절. 같은 프레임에 뒤에서 처음 나타난 창이 포커스를 가져간다. 3 프레임 반복.</li>
+  <li><strong>썸네일 색공간.</strong> 6절. sRGB 라벨을 붙이면 UNORM 백버퍼 뷰에서 두 번 인코딩된다. UNORM 으로.</li>
+  <li><strong>호버 중 모델 파싱.</strong> 4절. AABB 고스트는 <code>IsModelCached</code> 일 때만. 첫 드롭의 동기 파싱(Sponza 수 초)은 이번 범위에서 그대로 두고 로그로 알린다.</li>
+  <li><strong><code>GetAssetPath</code> 는 exe 사본 우선.</strong> 브라우저는 소스 트리를 보이지만 로드는 exe 옆 사본이 먼저다. 소스 트리에서 <em>수정</em>한 파일은 다음 빌드(CopyAssets)까지 옛 것이 읽히고, <em>추가</em>한 파일은 폴백으로 바로 보인다. <code>Paths.h</code> 주석에 적어 두었다.</li>
+  <li><strong>MSYS 인자 변환.</strong> Git Bash 에서 <code>msbuild /p:Configuration=Debug</code> 의 <code>/p:</code> 가 경로로 바뀌어 "프로젝트를 하나만 지정할 수 있습니다" 가 났다. PowerShell 로 빌드한다.</li>
+</ul>
+
+<h2 id="s11"><span class="num">11.</span>검증과 스크린샷</h2>
+<div class="applied">
+  <div class="t">적용 결과 — 2026-09-23</div>
+  <ul>
+    <li><b>완료 기준</b> "브라우저의 모델을 Scene 뷰에 끌어다 놓으면 커서 아래에 놓이고, 저장한 씬을 다시 불러오면 그 자리에 있다" — A: 로그 "모델 배치: DamagedHelmet 1 ×1 at (2.00, 0.00, −1.00)", 덤프 <code>DamagedHelmet 1</code> 위치 (2.00, 0.90, −1.00) = 놓은 점 + (−bounds.min.y 0.90), <code>Assets\Scenes\drop_helmet.json</code> 저장(오브젝트 2, 메시 2, 재질 3). B: 새 프로세스 로드 → 같은 이름·위치 복원.</li>
+    <li>C (바닥면): 새 씬, (0.5, 0.5) → 히트 (−2.57, 0.00, 4.00) Floor, 배치 y = 0.90. C (오브젝트 표면, Release Sponza): (0.5, 0.6) → 히트 (6.11, 1.59, 1.39) <code>Sponza/node0</code>, 배치 y = 2.49 — 헬멧이 Sponza 바닥 위에 선다 (그림 6).</li>
+    <li>D: 큐브 재질 "Default" 알베도 → <code>uv_checker.png</code>, 텍스처 로드 로그 <code>Assets\Textures\uv_checker.png</code> (그림 5 왼쪽 규칙). 구 재질 알베도 → <code>asset:Models\Sponza\16275776544635328252.png</code>, 로드 로그 <code>Assets\Models\Sponza\…png (1024x1024)</code> — 접두어 분기 확인.</li>
+    <li>E: Sponza 폴더 70 items, 보이는 타일 4장만 썸네일 로드("thumbnails 4"), 렌더러 텍스처 수 불변. D3D11·D3D12 같은 화면 (그림 3·4). Debug Layer 메시지 0 (종료 시 Live Device Refcount 3 은 1단계부터 있던 것).</li>
+    <li>기본 배치: <code>imgui.ini</code> 없이 실행 → 새 ini 에 <code>[Window][Content Browser] DockId=0x00000006,1</code>(하단 노드). 추적 중인 ini 에도 같은 블록 추가.</li>
+    <li>Debug·Release 빌드 경고 0, 오류 0. 새 파일 <code>App/ContentBrowser.h/.cpp</code> 를 vcxproj·filters 에 추가.</li>
+  </ul>
+</div>
+
+<div class="fig">
+  <img src="../images/2026-09-23-phase11b-layout.png" alt="기본 레이아웃: 하단에 Content Browser 탭" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 1. imgui.ini 없이 첫 실행한 기본 배치 (D3D11, 데모 씬). 하단 노드에 Stats · Content Browser · Console 탭.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase11b-drop-helmet-scene.png" alt="헬멧 씬에 헬멧을 하나 더 드롭" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 2. 헬멧 씬에 <code>DamagedHelmet.glb</code> 를 (2, 0, −1) 에 드롭한 뒤. 새 오브젝트 "DamagedHelmet 1" 이 바닥 위(y = 0.90)에 서고 선택된다. 메시·재질은 복사되어 Materials 가 5개.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase11b-sponza-thumbnails.png" alt="콘텐츠 브라우저: Sponza 텍스처 폴더" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 3. 콘텐츠 브라우저 (D3D11). 왼쪽 폴더 트리, 브레드크럼 Assets &gt; Models &gt; Sponza, 타일 그리드에 JPG 썸네일과 확장자 배지, 상태줄 "70 items … thumbnails 4" — 보이는 타일만 로드됐다.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase11b-d3d12.png" alt="D3D12: 드롭과 썸네일" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 4. D3D12 백엔드. 같은 드롭(헬멧 (2, 0, −1), Inspector 위치 (2.000, 0.901, −1.000))과 같은 썸네일. 브라우저는 Device 인터페이스만 쓴다.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase11b-drop-texture.png" alt="텍스처 드롭: 큐브에 uv_checker" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 5. 텍스처 드롭 (자동 검증 D). 큐브의 "Default" 재질 알베도가 <code>uv_checker.png</code> 가 됐다. 콘솔에 이름 규칙과 텍스처 로드 로그.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase11b-release-sponza.png" alt="Release Sponza: 표면 위에 헬멧 드롭" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 6. Release 빌드, Sponza. (0.5, 0.6) 광선이 Sponza 의 AABB 에 맞은 점 (6.11, 1.59, 1.39) 에 헬멧을 놓아 표면 위에 선다. 브라우저는 Sponza 폴더.</div>
+</div>
+
+<h2 id="s12"><span class="num">12.</span>다음 단계</h2>
+<ul>
+  <li><strong>메시 공유.</strong> <code>Scene::AddModel</code> 이 드롭마다 복사한다. <code>MeshSource</code>(경로 + 인덱스)가 같은 메시를 씬 안에서 재사용하면 같은 모델 N 개가 GPU 버퍼 한 벌이 된다 — 12단계 인스턴싱의 전제이기도 하다.</li>
+  <li><strong>비동기 로드.</strong> 첫 드롭의 동기 파싱(Sponza 수 초). 스레드에서 파싱해 자리표시자를 먼저 놓는다.</li>
+  <li><strong>Hierarchy·Inspector 드롭, 브라우저 안 파일 이동, 모델 썸네일(오프스크린 렌더).</strong> 이번 범위에서 뺀 것. 페이로드와 <code>HandleAssetDrop</code> 이 그대로 쓰인다.</li>
+  <li><strong>되돌리기(Undo).</strong> 드롭·삭제·기즈모 편집이 모두 즉시 적용된다. 명령 스택이 필요해지는 첫 지점.</li>
+</ul>
+
+<h2 id="s13"><span class="num">13.</span>참고 문헌</h2>
+<ol>
+  <li id="ref-1">Dear ImGui, <em>imgui.h — Drag and Drop</em> — BeginDragDropSource/SetDragDropPayload(힙 복사)/BeginDragDropTarget/AcceptDragDropPayload, ImGuiDragDropFlags_AcceptBeforeDelivery·AcceptNoDrawDefaultRect, ImGuiPayload::IsDelivery. <a href="https://github.com/ocornut/imgui/blob/master/imgui.h">github.com/ocornut/imgui/blob/master/imgui.h</a></li>
+  <li id="ref-2">Microsoft, <em>DirectXTex — Resize / Decompress</em> — 이미지 축소 필터와 블록 압축 해제. <a href="https://github.com/microsoft/DirectXTex/wiki/Resize">github.com/microsoft/DirectXTex/wiki/Resize</a></li>
+  <li id="ref-3">cppreference, <em>std::filesystem::directory_iterator</em> — error_code 오버로드. <a href="https://en.cppreference.com/w/cpp/filesystem/directory_iterator">en.cppreference.com/w/cpp/filesystem/directory_iterator</a></li>
+  <li id="ref-4">Dear ImGui Wiki, <em>Docking</em> — SetNextWindowDockID, ImGuiCond_FirstUseEver, DockBuilder. <a href="https://github.com/ocornut/imgui/wiki/Docking">github.com/ocornut/imgui/wiki/Docking</a></li>
+  <li id="ref-5">Dear ImGui, <em>ImGuiListClipper</em> — 보이는 행만 제출. <a href="https://github.com/ocornut/imgui/blob/master/imgui.h">imgui.h</a></li>
+</ol>
+
+<div class="footer">
+  대상: SherlockEngine 작업 트리 (2026/09/23, 11단계 위에 연속). 이전: <a href="phase-11.html">11단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11b">rendering-analysis.html PHASE 11-B</a>. 스크린샷은 <code>images/2026-09-23-phase11b-*.png</code> (전부 리드백 스크린샷). 12단계(고급 렌더링)는 시작하지 않았다.
+</div>
+</main>
+</div>
+</body>
+</html>

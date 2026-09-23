@@ -32,6 +32,11 @@ namespace TextureLoader
 	// 9단계: 메모리의 파일 내용(PNG/JPG/DDS 바이트)에서 읽는다. 모델에 내장된 이미지용.
 	bool LoadFromMemory(const uint8_t* data, size_t size, bool srgb, bool generateMips, TextureImage& out);
 
+	// 11-B단계: 에디터 썸네일. 긴 변이 maxSize 를 넘으면 DirectXTex Resize 로 줄인다. 밉 없음.
+	// 포맷은 UNORM 라벨 — ImGui 는 백버퍼의 UNORM 뷰에 그리므로 sRGB 라벨을 붙이면 두 번 인코딩되어 바랜다.
+	// 블록 압축 DDS 는 먼저 푼다. 로그는 실패할 때만 (폴더 하나에 수십 장이 있다).
+	bool LoadThumbnail(const std::wstring& path, uint32_t maxSize, TextureImage& out);
+
 	// 절차적 텍스처. 파일 없이 검증할 때 쓴다.
 	// 체커: cellsPerSide×cellsPerSide 격자, 두 색 교대.
 	bool CreateChecker(uint32_t size, uint32_t cellsPerSide, const uint8_t colorA[4], const uint8_t colorB[4],
