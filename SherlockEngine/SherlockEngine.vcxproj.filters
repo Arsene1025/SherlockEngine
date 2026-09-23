@@ -33,6 +33,15 @@
     <Filter Include="Assets">
       <UniqueIdentifier>{5a1c2b3d-4e5f-4a6b-9c7d-8e9f0a1b2c3d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Assets\Config">
+      <UniqueIdentifier>{a1e5c2d0-0c11-4b3e-9a6f-1a2b3c4d5e01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets\Scenes">
+      <UniqueIdentifier>{a1e5c2d0-0c11-4b3e-9a6f-1a2b3c4d5e02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets\Models">
+      <UniqueIdentifier>{a1e5c2d0-0c11-4b3e-9a6f-1a2b3c4d5e03}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -320,6 +329,18 @@
     </None>
     <None Include="Assets\Textures\bumps_normal.png">
       <Filter>Assets</Filter>
+    </None>
+    <None Include="Assets\Config\engine.ini">
+      <Filter>Assets\Config</Filter>
+    </None>
+    <None Include="Assets\Scenes\floor_cube.json">
+      <Filter>Assets\Scenes</Filter>
+    </None>
+    <None Include="Assets\Models\DamagedHelmet\DamagedHelmet.glb">
+      <Filter>Assets\Models</Filter>
+    </None>
+    <None Include="Assets\Models\Sponza\Sponza.gltf">
+      <Filter>Assets\Models</Filter>
     </None>
   </ItemGroup>
 </Project>

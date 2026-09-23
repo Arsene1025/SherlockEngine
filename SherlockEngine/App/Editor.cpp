@@ -98,7 +98,7 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 		if (ImGui::IsKeyPressed(ImGuiKey_3, false)) m_gizmoOperation = 2;
 	}
 	DrawSceneView(engine);
-	DrawHierarchy(engine);
+	DrawHierarchy(engine, callbacks);
 	DrawInspector(engine);
 	DrawRenderSettings(engine);
 	DrawStats(engine, sceneName, modelStats);
@@ -164,6 +164,8 @@ void Editor::DrawMenuBar(Engine& engine, const Callbacks& callbacks)
 			m_lastMessage = callbacks.loadScene(scenePath) ? "loaded" : "load failed";
 			m_selected = -1;
 		}
+		ImGui::Separator();
+		if (ImGui::MenuItem("New scene (floor only)") && callbacks.newScene) { callbacks.newScene(); m_selected = -1; m_lastMessage = "new scene"; }
 		ImGui::Separator();
 		if (ImGui::MenuItem("Demo scene") && callbacks.switchScene) { callbacks.switchScene(0); m_selected = -1; }
 		if (ImGui::MenuItem("DamagedHelmet") && callbacks.switchScene) { callbacks.switchScene(1); m_selected = -1; }
@@ -324,12 +326,24 @@ int Editor::Pick(Scene& scene, const Camera& camera, float u, float v) const
 	return best;
 }
 
-void Editor::DrawHierarchy(Engine& engine)
+void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 {
 	ImGui::Begin("Hierarchy");
 	Scene& scene = engine.GetScene();
 	std::vector<GameObject>& objects = scene.GetObjects();
 	ImGui::Text("Objects %zu   Lights %zu", objects.size(), scene.GetLights().size());
+	// 추가/삭제. 새 오브젝트는 원점 위에 기본 재질로 생기고 바로 선택된다.
+	if (ImGui::SmallButton("+ Sphere") && callbacks.addPrimitive) { callbacks.addPrimitive(0); m_selected = static_cast<int>(objects.size()) - 1; }
+	ImGui::SameLine();
+	if (ImGui::SmallButton("+ Cube") && callbacks.addPrimitive) { callbacks.addPrimitive(1); m_selected = static_cast<int>(objects.size()) - 1; }
+	ImGui::SameLine();
+	if (ImGui::SmallButton("+ Cylinder") && callbacks.addPrimitive) { callbacks.addPrimitive(2); m_selected = static_cast<int>(objects.size()) - 1; }
+	ImGui::SameLine();
+	if (ImGui::SmallButton("+ Plane") && callbacks.addPrimitive) { callbacks.addPrimitive(3); m_selected = static_cast<int>(objects.size()) - 1; }
+	const bool canDelete = m_selected >= 0 && m_selected < static_cast<int>(objects.size());
+	const bool deleteKey = canDelete && (m_sceneFocused || ImGui::IsWindowFocused()) && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Delete, false);
+	if (canDelete) { ImGui::SameLine(); }
+	if (canDelete && (ImGui::SmallButton("Delete (Del)") || deleteKey) && callbacks.deleteObject) { callbacks.deleteObject(m_selected); m_selected = -1; }
 	ImGui::Separator();
 	for (int i = 0; i < static_cast<int>(objects.size()); ++i)
 	{

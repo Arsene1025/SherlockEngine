@@ -275,6 +275,10 @@
     <None Include="Shaders\Common.hlsli" />
     <None Include="Assets\Textures\uv_checker.png" />
     <None Include="Assets\Textures\bumps_normal.png" />
+    <None Include="Assets\Config\engine.ini" />
+    <None Include="Assets\Scenes\floor_cube.json" />
+    <None Include="Assets\Models\DamagedHelmet\DamagedHelmet.glb" />
+    <None Include="Assets\Models\Sponza\Sponza.gltf" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <!-- fxc는 출력 폴더를 만들어 주지 않는다. -->
