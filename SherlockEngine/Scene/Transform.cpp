@@ -8,6 +8,7 @@ Transform::Transform()
 	  rotation(0.0f, 0.0f, 0.0f),
 	  scale(1.0f, 1.0f, 1.0f)
 {
+	XMStoreFloat4x4(&preTransform, XMMatrixIdentity());
 }
 
 void Transform::SetPosition(const XMFLOAT3& value)
@@ -40,11 +41,22 @@ void Transform::SetScale(float x, float y, float z)
 	scale = XMFLOAT3(x, y, z);
 }
 
+void Transform::SetPreTransform(const XMMATRIX& value)
+{
+	XMStoreFloat4x4(&preTransform, value);
+	hasPreTransform = true;
+}
+
 XMMATRIX Transform::GetWorldMatrix() const
 {
 	XMMATRIX scaleMatrix = XMMatrixScaling(scale.x, scale.y, scale.z);
 	XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z);
 	XMMATRIX translationMatrix = XMMatrixTranslation(position.x, position.y, position.z);
 
-	return scaleMatrix * rotationMatrix * translationMatrix;
+	XMMATRIX world = scaleMatrix * rotationMatrix * translationMatrix;
+	if (hasPreTransform)
+	{
+		world = XMLoadFloat4x4(&preTransform) * world;
+	}
+	return world;
 }

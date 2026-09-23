@@ -49,6 +49,10 @@ public:
 	DirectX::XMMATRIX GetViewMatrix() const;
 	DirectX::XMMATRIX GetProjectionMatrix() const;
 	DirectX::XMMATRIX GetViewProjectionMatrix() const;
+	float GetFovY() const { return m_fovY; }
+	float GetAspect() const { return m_aspect; }
+	float GetNearZ() const { return m_nearZ; }
+	float GetFarZ() const { return m_farZ; }
 
 private:
 	DirectX::XMMATRIX GetRotationMatrix() const;

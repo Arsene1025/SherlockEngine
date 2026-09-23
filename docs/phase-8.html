@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>8단계 · D3D12 백엔드 — SherlockEngine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EEF0F7; --line:#D6D9E6; --line-strong:#B9BDD0;
+  --ink:#171A2B; --ink-2:#4A4F66; --muted:#7A7F96;
+  --accent:#232767; --accent-ink:#FFFFFF; --accent-soft:#E3E5F5;
+  --amber:#B8781A; --amber-soft:#FBF0DB;
+  --ok:#2E7D4F; --ok-soft:#E1F2E7; --warn:#A6620C; --warn-soft:#FBEDD6; --crit:#B23A3A; --crit-soft:#F9E1E1;
+  --code-bg:#1B1D33; --code-ink:#E7E9F5; --code-kw:#9BA3FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(23,26,43,.06),0 8px 24px rgba(23,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+    --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+    --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+    --amber:#F0B650; --amber-soft:#3D3560;
+    --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+    --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+  --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+  --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+  --amber:#F0B650; --amber-soft:#3D3560;
+  --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+  --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+code,pre,.mono{font-family:"IBM Plex Mono",Consolas,"D2Coding",monospace}
+code{font-size:.875em;background:var(--surface-2);padding:.1em .4em;border-radius:4px;color:var(--ink)}
+pre{background:var(--code-bg);color:var(--code-ink);padding:18px 20px;border-radius:8px;overflow-x:auto;font-size:13.5px;line-height:1.6;margin:18px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+.kw{color:var(--code-kw)} .str{color:var(--code-str)} .cm{color:var(--code-cm)}
+
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto;padding:0 32px;gap:48px}
+@media (max-width:960px){.shell{grid-template-columns:minmax(0,1fr);padding:0 20px;gap:0}}
+
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0 40px;font-size:13.5px}
+nav.toc .brand{font-weight:600;letter-spacing:.02em;color:var(--ink);margin-bottom:6px}
+nav.toc .meta{color:var(--muted);font-size:12px;margin-bottom:24px;line-height:1.5}
+nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+nav.toc li a{display:block;padding:5px 14px;color:var(--ink-2);border-left:2px solid transparent;margin-left:-1px;border-bottom:none;line-height:1.45}
+nav.toc li a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+nav.toc li.sub a{padding-left:28px;font-size:12.5px;color:var(--muted)}
+@media (max-width:960px){nav.toc{position:static;height:auto;padding:28px 0 8px}nav.toc ol{display:none}}
+
+main{padding:40px 0 96px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1{font-size:clamp(30px,4vw,42px);line-height:1.2;margin:6px 0 14px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{font-size:18px;color:var(--ink-2);max-width:66ch;margin:0 0 28px}
+h2{font-size:26px;line-height:1.3;margin:72px 0 16px;padding-top:24px;border-top:1px solid var(--line);font-weight:600;letter-spacing:-.005em;text-wrap:balance}
+h2 .num{display:inline-block;min-width:2.2em;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+h3{font-size:19px;margin:40px 0 10px;font-weight:600;text-wrap:balance}
+h4{font-size:16px;margin:28px 0 8px;font-weight:600}
+p{margin:0 0 16px;max-width:72ch}
+ul,ol{max-width:72ch;padding-left:1.4em;margin:0 0 16px}
+li{margin:4px 0}
+li>ul,li>ol{margin-top:4px}
+strong{font-weight:600}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:28px 0}
+.facts>div{background:var(--surface);padding:14px 16px}
+.facts .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.facts .v{font-size:15px;font-weight:600;line-height:1.35}
+.facts .v small{display:block;font-weight:400;color:var(--ink-2);font-size:12.5px;margin-top:2px}
+
+.callout{border-left:3px solid var(--accent);background:var(--surface);padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;max-width:72ch}
+.callout.amber{border-left-color:var(--amber);background:var(--amber-soft)}
+.callout.crit{border-left-color:var(--crit);background:var(--crit-soft)}
+.callout p:last-child{margin-bottom:0}
+.callout .t{font-weight:600;font-size:14px;margin-bottom:4px}
+
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.mono,th.mono{font-size:13px}
+td .n{font-variant-numeric:tabular-nums}
+
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.pill.amber{background:var(--amber-soft);color:var(--amber)}
+.pill.none{background:var(--surface-2);color:var(--muted)}
+td .sub{display:block;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.35}
+
+.fig{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.fig svg{display:block;min-width:640px;width:100%;height:auto;font-family:"IBM Plex Sans KR",system-ui,sans-serif}
+.fig .cap{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+svg .box{fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1}
+svg .box.acc{fill:var(--accent);stroke:var(--accent)}
+svg .box.acc text{fill:var(--accent-ink)}
+svg .box.amb{fill:var(--amber-soft);stroke:var(--amber)}
+svg text{fill:var(--ink);font-size:12.5px}
+svg text.s{font-size:11px;fill:var(--ink-2)}
+svg text.m{font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+svg text.acc{fill:var(--accent-ink)}
+svg .ln{stroke:var(--line-strong);stroke-width:1.2;fill:none}
+svg .ln.acc{stroke:var(--accent);stroke-width:1.6}
+svg .ln.amb{stroke:var(--amber);stroke-width:1.6;stroke-dasharray:4 3}
+svg .lane{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+
+.stage{display:grid;grid-template-columns:52px minmax(0,1fr);gap:16px;margin:26px 0;padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.stage .tag{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;color:var(--accent);padding-top:3px}
+.stage h4{margin:0 0 6px}
+.stage p:last-child,.stage ul:last-child{margin-bottom:0}
+
+.phase{margin:28px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
+.phase header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.phase .pn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--amber);font-weight:500}
+.phase h3{margin:0;font-size:20px}
+.phase .why{color:var(--ink-2);margin-bottom:12px}
+.phase .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.phase .cols h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.phase .cols ul{margin:0;padding-left:1.2em;font-size:14.5px}
+.phase .done{margin-top:14px;padding:10px 14px;background:var(--ok-soft);border-radius:6px;font-size:14px;color:var(--ink)}
+.phase .done b{color:var(--ok)}
+
+.layout{font-family:"IBM Plex Mono",monospace;font-size:12.5px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;margin:16px 0;min-width:480px}
+.layout>div{background:var(--surface-2);padding:6px 8px;border-radius:3px;text-align:center;line-height:1.35;border:1px solid var(--line)}
+.layout>div.pad{background:transparent;color:var(--muted);border-style:dashed}
+.layout>div.row{grid-column:1/-1;text-align:left;background:transparent;border:0;color:var(--muted);padding:6px 0 0;font-size:11px;letter-spacing:.06em}
+.layout>div.m4{grid-column:span 4;background:var(--accent-soft)}
+
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 18px;font-size:14.5px;margin:14px 0 18px;max-width:72ch}
+.kv dt{color:var(--muted);font-weight:500}
+.kv dd{margin:0}
+
+.decision{margin:26px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.decision header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.decision .dn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--accent);font-weight:500}
+.decision h3{margin:0;font-size:19px}
+.decision .now{font-size:14.5px;color:var(--ink-2);background:var(--surface-2);border-radius:6px;padding:10px 14px;margin:0 0 14px;max-width:none}
+.decision .now b{color:var(--ink);margin-right:6px}
+.decision p{max-width:none}
+.decision p b{font-weight:600}
+.decision .pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:6px}
+.decision .pc>div{padding:12px 16px;border-radius:6px;border:1px solid var(--line)}
+.decision .pc>div:first-child{border-color:var(--ok);background:var(--ok-soft)}
+.decision .pc>div:last-child{border-color:var(--warn);background:var(--warn-soft)}
+.decision .pc h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.decision .pc>div:first-child h5{color:var(--ok)}
+.decision .pc>div:last-child h5{color:var(--warn)}
+.decision .pc ul{margin:0;padding-left:1.2em;font-size:14px;max-width:none}
+.decision .pc li{margin:3px 0}
+.applied{margin:14px 0 0;padding:12px 16px 14px;border:1px solid var(--ok);background:var(--ok-soft);border-radius:6px;font-size:14.5px}
+.applied .t{font-weight:600;color:var(--ok);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.applied p{margin:0 0 8px;max-width:none}
+.applied p:last-child{margin-bottom:0}
+.applied ul{margin:0;padding-left:1.2em;max-width:none;font-size:14px}
+.applied li{margin:3px 0}
+.applied code{background:var(--surface)}
+td .fix{display:block;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line-strong);color:var(--ink-2)}
+td .fix b{color:var(--ok);font-weight:600}
+.phase li.done-item{color:var(--ink-2)}
+.phase li.done-item::marker{color:var(--ok)}
+.footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="목차">
+  <div class="brand">8단계 · D3D12 백엔드 (RHI 검증)</div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/23 (작업 트리, 미커밋)<br><a href="rendering-analysis.html#p8">rendering-analysis.html → PHASE 8</a></div>
+  <ol>
+    <li><a href="#s1">1. 요약</a></li>
+    <li><a href="#s2">2. 두 번째 백엔드가 검증하는 것</a></li>
+    <li><a href="#s3">3. 장치 · 큐 · 스왑체인 · 프레임 자원</a></li>
+    <li><a href="#s4">4. 메모리와 업로드</a></li>
+    <li class="sub"><a href="#s4-1">4.1 Default 버퍼와 텍스처: 동기 업로드</a></li>
+    <li class="sub"><a href="#s4-2">4.2 Dynamic 버퍼: 업로드 링과 드로우마다 루트 CBV</a></li>
+    <li class="sub"><a href="#s4-3">4.3 지연 해제</a></li>
+    <li><a href="#s5">5. 디스크립터 힙과 ResourceSet</a></li>
+    <li><a href="#s6">6. BindingLayout → 루트 시그니처</a></li>
+    <li><a href="#s7">7. PSO: 1단계의 빈칸이 채워지다</a></li>
+    <li><a href="#s8">8. 배리어와 상태</a></li>
+    <li><a href="#s9">9. 셰이더: DXBC 그대로</a></li>
+    <li><a href="#s10">10. ImGui와 Debug Layer / GBV</a></li>
+    <li><a href="#s11">11. 함정과 해결</a></li>
+    <li><a href="#s12">12. 검증과 스크린샷</a></li>
+    <li><a href="#s13">13. 참고 문헌</a></li>
+  </ol>
+</nav>
+
+<main>
+<div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
+<h1>8단계 · D3D12 백엔드 (RHI 검증)</h1>
+<p class="lede">RHI가 정말 API를 감추는지는 두 번째 백엔드를 붙여 봐야 압니다. <code>RHI/D3D12/</code>에 <code>D3D12Device</code>·<code>D3D12CommandList</code>를 구현하고 <code>--backend=d3d12</code>로 같은 씬을 그렸습니다. Renderer·Material·Mesh·Scene·App 코드는 한 줄도 바뀌지 않았고(PSO Desc에 렌더 타깃 포맷을 채우는 세 줄이 유일한 Renderer 변경), F10으로 애니메이션을 고정한 두 백엔드의 화면은 <strong>904,392픽셀 중 0픽셀</strong> 차이입니다. Debug Layer와 GPU 기반 검증(GBV)을 켠 채 메시지 0건입니다. PSO·루트 시그니처·배리어·펜스라는 로드맵의 목표 개념이 이 단계에서 처음으로 "에뮬레이션"이 아니라 네이티브가 됩니다.</p>
+
+<div class="facts">
+  <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
+  <div><div class="k">RHI/D3D12/</div><div class="v">파일 11<small>Device·CommandList·PipelineState·DescriptorHeap·Resources·Convert·Common</small></div></div>
+  <div><div class="k">호출 코드 변경</div><div class="v">Renderer 3줄<small>rtvFormats·dsvFormat 채우기. Material·Mesh·Scene·App 0줄</small></div></div>
+  <div><div class="k">픽셀 비교</div><div class="v">904,392 중 0<small>D3D11 vs D3D12, F10 고정</small></div></div>
+  <div><div class="k">Debug Layer + GBV</div><div class="v">0건<small>클리어 값 힌트 2종만 필터</small></div></div>
+  <div><div class="k">완료 기준</div><div class="v"><span class="pill ok">충족</span><small>같은 씬(그림자 포함) 픽셀 동일, 경고 0</small></div></div>
+</div>
+
+<div class="callout">
+  <div class="t">한 줄 요약</div>
+  <p>3단계의 프레임 인덱스가 펜스와 업로드 링의 기준이 되고, 4단계의 BindingLayout이 루트 시그니처가 되고, ResourceSet이 디스크립터 테이블이 되고, 6단계의 Barrier가 진짜 <code>ResourceBarrier</code>가 되고, 1단계에 넣어 둔 RTV/DSV 포맷이 PSO 생성의 필수 항목이 됩니다. 셰이더는 fxc가 만든 DXBC를 그대로 씁니다 — D3D12는 DXBC를 받고, 두 백엔드가 같은 바이트코드를 쓰니 픽셀 비교가 의미를 가집니다. D3D11에서 드라이버가 몰래 해 주던 세 가지(자원 이름 바꾸기, 수명 관리, 상태 전이)를 전부 우리가 하게 됐고, 그 자리마다 6단계까지 미리 파 둔 구멍이 있었습니다.</p>
+</div>
+
+<h2 id="s1"><span class="num">1.</span>요약</h2>
+<div class="tbl"><table>
+  <thead><tr><th>RHI 개념</th><th>D3D11 백엔드</th><th>D3D12 백엔드</th></tr></thead>
+  <tbody>
+    <tr><td>Device 생성</td><td><code>D3D11CreateDevice</code> + 팩토리</td><td>어댑터 열거 → <code>D3D12CreateDevice</code>(FL 11_0), 직접 커맨드 큐, Debug Layer + GBV</td></tr>
+    <tr><td>스왑체인</td><td>FLIP_DISCARD 2장, 장치가 pDevice</td><td>FLIP_DISCARD 3장, <em>큐</em>가 pDevice. 백버퍼마다 텍스처 핸들, <code>GetCurrentBackBufferIndex</code></td></tr>
+    <tr><td>프레임 경계</td><td>Present. 동기화는 드라이버</td><td>슬롯(<code>kFrameCount</code>=2)마다 커맨드 할당자·펜스 값·업로드 링·가비지. BeginFrame이 N−2 완료를 기다림</td></tr>
+    <tr><td>CommandList</td><td>ImmediateContext 래퍼</td><td><code>ID3D12GraphicsCommandList</code> 기록, EndFrame에서 Execute</td></tr>
+    <tr><td>Buffer (Default)</td><td><code>CreateBuffer</code> + 초기 데이터</td><td>DEFAULT 힙 + UPLOAD 스테이징 + <code>CopyBufferRegion</code> (동기)</td></tr>
+    <tr><td>Buffer (Dynamic)</td><td>프레임 수만큼 복제, <code>Map(WRITE_DISCARD)</code></td><td>리소스 없음. <code>UpdateBuffer</code>가 프레임 링에서 256B 정렬 조각 → 드로우마다 루트 CBV 주소</td></tr>
+    <tr><td>Texture</td><td>초기 데이터 배열 → <code>CreateTexture2D</code></td><td><code>GetCopyableFootprints</code> → 업로드 힙 행 복사 → <code>CopyTextureRegion</code> 밉마다 → 배리어</td></tr>
+    <tr><td>뷰</td><td><code>ID3D11*View</code> 객체</td><td>디스크립터 힙 슬롯. CPU 힙(RTV·DSV·스테이징) + 셰이더 가시 힙(SRV·샘플러)</td></tr>
+    <tr><td>BindingLayout</td><td>슬롯 번호표</td><td>루트 시그니처(루트 CBV + SRV/샘플러 테이블), 레이아웃 조합별 캐시</td></tr>
+    <tr><td>ResourceSet</td><td>슬롯마다 <code>*SSet*</code></td><td>셰이더 가시 힙의 영구 테이블 범위. 드로우 시 <code>SetGraphicsRootDescriptorTable</code></td></tr>
+    <tr><td>PSO</td><td>상태 객체 5개 + Bind 7호출</td><td><code>D3D12_GRAPHICS_PIPELINE_STATE_DESC</code> 하나. RTV/DSV 포맷 필수</td></tr>
+    <tr><td>Barrier</td><td>추적 + Debug 검증</td><td><code>ResourceBarrier</code>(Transition). 추적 상태가 before</td></tr>
+    <tr><td>파괴</td><td><code>ComPtr</code> 해제</td><td>슬롯 가비지에 넣고 그 프레임의 펜스 뒤에 해제 (리소스·PSO·디스크립터)</td></tr>
+    <tr><td>ImGui</td><td><code>imgui_impl_dx11</code></td><td><code>imgui_impl_dx12</code> + 우리 SRV 힙의 alloc/free 콜백</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="s2"><span class="num">2.</span>두 번째 백엔드가 검증하는 것</h2>
+<p>D3D11에서 D3D12로 가면 세 가지가 애플리케이션의 책임이 됩니다: CPU/GPU 동기화, 리소스 수명과 상태, 자원 바인딩<sup><a href="#ref-9">9</a>,<a href="#ref-11">11</a></sup>. D3D11의 <code>Map(WRITE_DISCARD)</code>는 드라이버가 "무한한 메모리"처럼 이름을 바꿔 주지만 D3D12에서는 우리가 링 버퍼와 펜스로 같은 일을 해야 합니다<sup><a href="#ref-1">1</a>,<a href="#ref-9">9</a></sup>. 7단계까지의 RHI가 이 차이를 인터페이스 밖으로 새지 않게 만들었는지가 이 단계의 질문이었고, 답은 "Renderer 세 줄"이었습니다. 그 세 줄도 새로운 개념이 아니라 1단계에 "D3D11은 안 쓰지만 D3D12는 필수"라고 적어 둔 필드에 실제 값을 넣는 것이었습니다.</p>
+<p>선택으로 표시된 단계였지만 건너뛰면 RHI는 "D3D11 래퍼"에 머뭅니다. 특히 다음 세 가지는 D3D12를 붙이기 전에는 맞는지 알 수 없었습니다: (1) 3단계의 <code>kFrameCount</code> 복제가 실제 프레임 지연 동기화와 맞물리는가, (2) 6단계의 Barrier 호출 위치가 GBV를 통과하는가, (3) 4단계의 레지스터 배정(재질 t0–7/s0–3, 프레임 t8–/s4–)이 루트 시그니처로 그대로 옮겨지는가. 셋 다 통과했습니다.</p>
+
+<h2 id="s3"><span class="num">3.</span>장치 · 큐 · 스왑체인 · 프레임 자원</h2>
+<p>장치는 DXGI 팩토리로 어댑터를 열거해(WARP 제외) FL 11_0으로 만듭니다. D3D12에는 <code>D3D11CreateDeviceAndSwapChain</code> 같은 것이 없고, 스왑체인의 <code>pDevice</code> 자리에 <em>커맨드 큐</em>가 들어갑니다<sup><a href="#ref-9">9</a></sup>. 5단계에서 장치와 스왑체인을 분리해 둔 덕에 스왑체인 코드는 그대로이고, 백버퍼가 3장이 되어 각각 텍스처 핸들을 갖습니다. D3D11은 백버퍼 0 하나만 보이지만 D3D12는 회전이 명시적이라 <code>GetCurrentBackBufferIndex</code>로 이번 프레임의 버퍼를 고릅니다.</p>
+<pre><code><span class="cm">// D3D12Device::BeginFrame — 3단계의 프레임 인덱스가 여기서 펜스의 기준이 된다</span>
+m_frameIndex = m_frameCounter % kFrameCount;
+<span class="kw">if</span> (m_fenceValues[m_frameIndex] != 0 &amp;&amp; m_fence-&gt;GetCompletedValue() &lt; m_fenceValues[m_frameIndex])
+{
+    m_fence-&gt;SetEventOnCompletion(m_fenceValues[m_frameIndex], m_fenceEvent);   <span class="cm">// 프레임 N−2 가 끝날 때까지</span>
+    WaitForSingleObject(m_fenceEvent, INFINITE);
+}
+ReleaseGarbage(m_frameIndex);       <span class="cm">// 그 프레임이 쓰던 리소스·디스크립터를 이제 놓는다</span>
+m_rings[m_frameIndex].offset = 0;   <span class="cm">// 그 프레임의 업로드 링도 재사용</span>
+m_allocators[m_frameIndex]-&gt;Reset();
+m_list-&gt;Reset(m_allocators[m_frameIndex].Get(), <span class="kw">nullptr</span>);
+m_list-&gt;SetDescriptorHeaps(2, heaps);   <span class="cm">// SRV 힙 + 샘플러 힙. 프레임에 하나씩만</span>
+m_backBufferIndex = m_swapChain-&gt;GetCurrentBackBufferIndex();
+
+<span class="cm">// EndFrame</span>
+m_list-&gt;Close();
+m_queue-&gt;ExecuteCommandLists(1, lists);
+m_swapChain-&gt;Present(vsync, flags);
+m_queue-&gt;Signal(m_fence.Get(), m_nextFenceValue);
+m_fenceValues[m_frameIndex] = m_nextFenceValue++;</code></pre>
+<p>프레임 슬롯은 <code>kFrameCount</code>(2)개이고 각 슬롯이 커맨드 할당자, 펜스 값, 업로드 링, 가비지 목록을 갖습니다. 백버퍼 3장은 이것과 별개입니다 — 슬롯은 "CPU가 얼마나 앞서 갈 수 있는가", 백버퍼 수는 "컴포지터가 얼마나 들고 있는가"입니다. Microsoft의 펜스 기반 자원 관리 문서가 설명하는 링 버퍼 시나리오가 정확히 이 구조입니다<sup><a href="#ref-1">1</a></sup>.</p>
+
+<h2 id="s4"><span class="num">4.</span>메모리와 업로드</h2>
+<h3 id="s4-1">4.1 Default 버퍼와 텍스처: 동기 업로드</h3>
+<p>D3D12에는 힙 종류가 셋입니다: DEFAULT(GPU 전용), UPLOAD(CPU 쓰기 → GPU 읽기), READBACK<sup><a href="#ref-3">3</a>,<a href="#ref-8">8</a></sup>. 정점·인덱스 버퍼와 텍스처는 DEFAULT 힙에 만들고, 초기 데이터는 UPLOAD 힙의 스테이징 버퍼에 써서 <code>CopyBufferRegion</code>/<code>CopyTextureRegion</code>으로 옮깁니다. 이 복사는 별도의 업로드 커맨드 리스트에 기록해 즉시 실행하고 완료를 기다립니다(<code>ExecuteUploadSync</code>). 로드 시점에만 쓰는 경로라 동기여도 됩니다. 텍스처는 <code>GetCopyableFootprints</code>가 알려 주는 밉별 오프셋과 256바이트 정렬된 행 간격(RowPitch)에 맞춰 행 단위로 복사합니다 — 원본의 rowPitch와 다르기 때문입니다<sup><a href="#ref-5">5</a></sup>.</p>
+<p>버퍼는 배리어 없이 씁니다. 버퍼는 COMMON에서 COPY_DEST로 암묵 승격되고 <code>ExecuteCommandLists</code>가 끝나면 COMMON으로 돌아오므로(decay), 다음에 정점 버퍼로 쓸 때 다시 승격됩니다<sup><a href="#ref-12">12</a></sup>. 텍스처는 승격되지 않으므로 업로드 뒤 명시적으로 <code>COPY_DEST → PIXEL_SHADER_RESOURCE | NON_PIXEL_SHADER_RESOURCE</code> 배리어를 겁니다.</p>
+
+<h3 id="s4-2">4.2 Dynamic 버퍼: 업로드 링과 드로우마다 루트 CBV</h3>
+<p>여기가 8단계에서 가장 중요한 설계 결정입니다. 3~4단계의 Renderer는 오브젝트 상수버퍼 하나를 드로우마다 <code>UpdateBuffer</code>합니다. D3D11에서는 <code>Map(WRITE_DISCARD)</code>가 호출마다 새 메모리를 주므로 각 드로우가 자기 데이터를 봅니다. D3D12에서 "프레임 슬롯마다 버퍼 하나"로 흉내 내면 한 프레임의 모든 드로우가 <em>마지막</em> 데이터를 보게 됩니다 — GPU는 나중에 실행되기 때문입니다. 로드맵이 "Map 후 즉시 사용이 D3D12에서는 프레임 지연을 고려해야 한다"고 경고한 지점입니다.</p>
+<p>해법은 Dynamic 버퍼에 리소스를 두지 않는 것입니다. 프레임 슬롯마다 8 MB UPLOAD 링(영구 매핑)을 두고, <code>UpdateBuffer</code>가 256바이트 정렬 조각을 잘라 데이터를 복사한 뒤 그 <em>GPU 가상 주소</em>를 버퍼 핸들에 기억합니다. 드로우 직전에 CommandList가 현재 루트 시그니처의 CB 슬롯마다 <code>SetGraphicsRootConstantBufferView(root, 주소)</code>를 다시 겁니다. 루트 디스크립터는 드라이버가 드로우마다 버전을 관리하므로<sup><a href="#ref-6">6</a></sup> 이 패턴이 정확히 D3D11의 이름 바꾸기와 같은 결과를 냅니다. 링은 BeginFrame에서 슬롯이 재사용될 때(N−2 프레임 완료 뒤) 리셋됩니다.</p>
+<pre><code><span class="cm">// D3D12Device::UpdateBuffer (Dynamic)</span>
+uint8_t* dst = AllocateUpload(buffer-&gt;desc.size, address);   <span class="cm">// (offset + 255) &amp; ~255</span>
+std::memcpy(dst, data, size);
+buffer-&gt;gpuAddress = address;
+buffer-&gt;updatedFrame = m_frameCounter;
+
+<span class="cm">// D3D12CommandList::ApplyBindings — DrawIndexed 직전</span>
+<span class="kw">for</span> (각 셋 s : 현재 루트 시그니처)
+    <span class="kw">for</span> (CB 슬롯 i) m_list-&gt;SetGraphicsRootConstantBufferView(binding.cbvRoot[i], buffer-&gt;gpuAddress);
+    <span class="kw">if</span> (테이블이 dirty) SetGraphicsRootDescriptorTable(srvTableRoot / samplerTableRoot, …);</code></pre>
+<p>Dynamic 버퍼는 "쓰는 프레임에 반드시 갱신"이 계약입니다. 이전 프레임의 링 조각은 재사용될 수 있기 때문입니다. Debug에서는 <code>updatedFrame</code>이 현재 프레임이 아니면 한 번 경고합니다. Renderer는 원래부터 모든 Dynamic 버퍼를 매 프레임 올리므로(D3D11의 WRITE_DISCARD도 사실상 같은 계약) 경고가 난 적은 없습니다.</p>
+
+<h3 id="s4-3">4.3 지연 해제</h3>
+<p>D3D11에서 <code>ComPtr</code>을 놓으면 드라이버가 GPU가 끝날 때까지 객체를 붙들어 줍니다. D3D12는 참조 카운트를 인터페이스 수명에만 쓰고, GPU가 쓰는 동안 리소스가 살아 있게 하는 것은 앱의 책임입니다<sup><a href="#ref-11">11</a></sup>. 그래서 <code>Destroy*</code>는 객체와 디스크립터 범위를 현재 슬롯의 가비지 목록에 넣고, 그 슬롯의 펜스가 지나간 BeginFrame에서 놓습니다. PSO 캐시의 <code>Clear</code>(셰이더 핫리로드)도 같은 길을 갑니다 — 이전 세대의 PSO가 아직 실행 중인 커맨드 리스트에 걸려 있을 수 있습니다. Resize와 종료는 <code>WaitForGpu</code>로 비운 뒤 즉시 놓습니다.</p>
+
+<h2 id="s5"><span class="num">5.</span>디스크립터 힙과 ResourceSet</h2>
+<p>D3D12의 뷰는 객체가 아니라 디스크립터 힙 안의 슬롯입니다<sup><a href="#ref-2">2</a></sup>. CPU 전용 힙 네 개(RTV 64, DSV 16, 스테이징 SRV 1024, 스테이징 샘플러 64)에 뷰를 만들어 두고, 셰이더가 읽을 것은 셰이더 가시 힙 두 개(CBV/SRV/UAV 4096, 샘플러 256)로 <code>CopyDescriptorsSimple</code>합니다. 힙은 bump + free list 할당기입니다(<code>D3D12DescriptorHeap</code>).</p>
+<p><code>ResourceSet</code>은 생성 시 셰이더 가시 힙에서 SRV 슬롯 수만큼, 샘플러 슬롯 수만큼 연속 범위를 <em>영구</em> 할당받고 스테이징 뷰를 복사해 둡니다. 드로우 때는 테이블 시작 GPU 핸들 하나만 겁니다. 셋은 값이라 바뀌지 않으므로(4단계: 텍스처가 바뀌면 셋을 새로 만든다) 프레임마다 복사할 이유가 없습니다. 파괴 시 범위는 지연 해제됩니다.</p>
+<p>슬롯 순서와 테이블 순서가 같아야 합니다. 루트 시그니처의 SRV 테이블은 슬롯마다 range 하나(<code>NumDescriptors 1</code>, <code>OffsetInDescriptorsFromTableStart = APPEND</code>)를 선언 순서대로 쌓고, 셋도 같은 순서로 복사합니다. 재질 셋의 t0·t1이 연속이든(체커·노멀) 프레임 셋의 t8이 혼자든 같은 규칙입니다.</p>
+
+<h2 id="s6"><span class="num">6.</span>BindingLayout → 루트 시그니처</h2>
+<p>4단계가 "루트 시그니처의 D3D11 미리 그리기"라고 부른 것이 여기서 진짜가 됩니다. PSO Desc의 <code>bindingLayouts[]</code>(프레임/오브젝트/재질) 순서대로 루트 파라미터를 쌓습니다: CB 슬롯은 루트 CBV(GPU 주소, 4.2절), SRV 슬롯들은 디스크립터 테이블 하나, 샘플러 슬롯들은 테이블 하나. 루트 시그니처의 세 파라미터 종류(루트 상수, 루트 디스크립터, 테이블) 중 루트 디스크립터는 CBV·raw/structured 버퍼만 가능하고 텍스처 SRV는 테이블이어야 합니다<sup><a href="#ref-6">6</a></sup> — 4단계가 정한 "CBV는 루트 디스크립터, SRV/Sampler는 테이블"이 그 제약입니다. 가시성은 슬롯의 스테이지 마스크에서(VS만·PS만·둘 다 = ALL). 레지스터 space는 전부 0입니다 — SM 5.0 DXBC는 space를 모릅니다(4단계의 X3721).</p>
+<pre><code><span class="cm">// 결과: 3셋 → 루트 파라미터 8개</span>
+[0] CBV b0 (ALL)     [1] CBV b2 (PS)     [2] SRV 테이블 { t8 } (PS)     [3] 샘플러 테이블 { s4 } (PS)     <span class="cm">// 프레임 셋</span>
+[4] CBV b1 (VS)                                                                                          <span class="cm">// 오브젝트 셋</span>
+[5] CBV b3 (ALL)     [6] SRV 테이블 { t0, t1 } (PS)     [7] 샘플러 테이블 { s0 } (PS)                     <span class="cm">// 재질 셋</span>
+<span class="cm">// 그림자 PSO(2셋) → 5개. 레이아웃 조합이 같으면 루트 시그니처를 공유한다 (Device 캐시).</span></code></pre>
+<p>루트 시그니처가 바뀌면 루트 파라미터가 전부 무효가 되므로 CommandList는 그때 모든 테이블을 dirty로 표시합니다. 4단계의 "셋끼리 레지스터가 겹치지 않는다" 검증이 없었다면 여기서 <code>D3D12SerializeRootSignature</code>가 거부했을 것입니다.</p>
+
+<h2 id="s7"><span class="num">7.</span>PSO: 1단계의 빈칸이 채워지다</h2>
+<p><code>D3D12_GRAPHICS_PIPELINE_STATE_DESC</code>는 1단계 <code>PipelineStateDesc</code>의 D3D12 원형이라 변환이 필드 대 필드입니다. 다른 점 하나: D3D12 PSO는 토폴로지의 "종류"(점·선·삼각형)만 알고 리스트/스트립은 커맨드 리스트가 정하므로 <code>SetPipelineState</code>가 <code>IASetPrimitiveTopology</code>도 같이 부릅니다. 픽셀 셰이더가 없는 깊이 전용 PSO는 <code>PS = {nullptr, 0}</code>, <code>NumRenderTargets = 0</code>입니다.</p>
+<p>첫 실행은 <code>DrawIndexedInstanced</code> 에러로 시작했습니다: "PSO의 렌더 타깃 포맷(R8G8B8A8_UNORM)이 RTV 포맷(R8G8B8A8_UNORM_SRGB)과 다르다". 메인 패스는 5단계부터 백버퍼의 sRGB <em>뷰</em>에 그리는데 PSO Desc의 <code>rtvFormats[0]</code>은 1단계 기본값 UNORM이었습니다. D3D11은 이 필드를 보지 않아 4단계 동안 아무 일도 없었던 것입니다. Renderer의 <code>GetPipelineFor</code>가 <code>rtvFormats[0] = srgbOutput ? SRGB : UNORM</code>, <code>dsvFormat = D24S8</code>을 채우는 세 줄이 8단계의 유일한 Renderer 변경이고, F5로 sRGB를 끄면 UNORM 변형 PSO가 하나 더 생깁니다.</p>
+
+<h2 id="s8"><span class="num">8.</span>배리어와 상태</h2>
+<p>6단계에서 no-op으로 넣어 둔 <code>Barrier(texture, before, after)</code>가 <code>ResourceBarrier</code>(Transition)가 됩니다. before는 호출 코드가 적은 값이 아니라 텍스처의 추적 상태를 씁니다 — 6단계에서 D3D11 백엔드가 그 둘이 어긋나면 경고하게 해 두었고, 실제로 어긋난 곳이 없어 여기서 그대로 통과했습니다. 상태 열거 <code>ResourceState</code>는 <code>D3D12_RESOURCE_STATES</code>의 부분집합으로 설계했으므로 변환은 1:1이고 <code>ShaderResource</code>만 <code>PIXEL | NON_PIXEL</code> 둘을 합칩니다<sup><a href="#ref-13">13</a></sup>.</p>
+<p>초기 상태가 6단계의 추적 시작점과 같아야 합니다. 스왑체인 버퍼는 COMMON(=PRESENT)으로 시작하고<sup><a href="#ref-12">12</a></sup> Renderer는 매 프레임 <code>Present → RenderTarget → Present</code>를 겁니다. 메인 깊이 버퍼는 Renderer가 배리어를 걸지 않으므로 DEPTH_WRITE로 만듭니다. 그림자 맵은 Renderer의 첫 배리어가 <code>Common → DepthWrite</code>이므로 COMMON으로 만듭니다(깊이 텍스처는 승격되지 않아 이 명시적 전이가 필요합니다). 초기 데이터가 있는 텍스처는 COPY_DEST로 만들어 업로드 뒤 SRV 상태로 옮깁니다. 프레임당 배리어 4회는 D3D11과 같습니다.</p>
+
+<h2 id="s9"><span class="num">9.</span>셰이더: DXBC 그대로</h2>
+<p>로드맵은 dxc로 DXIL(SM 6.0)을 제안했지만, D3D12는 fxc가 만든 DXBC(SM 5.0/5.1)도 받습니다<sup><a href="#ref-9">9</a></sup>. 두 백엔드가 <em>같은 .cso</em>를 쓰면 픽셀 비교가 컴파일러 차이 없이 RHI만 비교하게 되므로 이쪽을 택했습니다. <code>ShaderCompiler</code>의 구현(<code>D3DCompile</code>·<code>D3DReflect</code>)은 그래픽스 API가 아니라 바이트코드 형식에 묶인 것이라 <code>RHI/DXBC/</code>로 옮겼고 두 백엔드가 공유합니다. 4단계의 리플렉션 대조와 핫리로드도 그대로 D3D12에서 동작합니다. DXIL은 SM 6 기능(웨이브 연산, 메시 셰이더)이 필요할 때 <code>RHI/DXIL/</code>로 들어오면 됩니다. D3D12는 셰이더 객체가 없으므로 <code>D3D12Shader</code>는 바이트코드 사본일 뿐이고 PSO 생성 시 <code>D3D12_SHADER_BYTECODE</code>로 넘깁니다.</p>
+
+<h2 id="s10"><span class="num">10.</span>ImGui와 Debug Layer / GBV</h2>
+<p><code>imgui_impl_dx12</code>는 셰이더 가시 SRV 힙 하나와 그 안의 슬롯 할당·해제 콜백을 요구합니다(1.91.5부터의 <code>InitInfo</code> 방식)<sup><a href="#ref-14">14</a></sup>. 우리 SRV 힙과 <code>D3D12DescriptorHeap::Allocate/Free</code>를 그대로 줍니다. 그래야 프레임에 힙이 하나만 바인딩되고, ImGui가 내부에서 <code>SetDescriptorHeaps</code>를 불러도 상태가 바뀌지 않습니다. 7단계의 어댑터 다섯 메서드 뒤에 들어갔으므로 App은 여전히 어느 백엔드인지 모릅니다. 그림자 맵 미리보기의 <code>GetImGuiTextureId</code>는 텍스처마다 셰이더 가시 SRV를 하나 영구 할당해 그 GPU 핸들 값을 돌려줍니다.</p>
+<p>Debug 빌드는 Debug Layer에 더해 GPU 기반 검증(GBV)과 동기화 큐 검증을 켭니다. GBV는 셰이더를 패치해 실행 시점에 "잘못된 상태의 리소스 접근, 해제된 리소스의 디스크립터, 힙 범위 밖 인덱싱"을 잡습니다<sup><a href="#ref-4">4</a></sup>. 이 세션에서 GBV를 켠 채 531 FPS가 나왔고 메시지는 0건입니다. 필터로 거른 것은 <code>CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE</code>·<code>CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE</code> 둘뿐입니다 — 스왑체인 백버퍼에는 최적화 클리어 값을 줄 수 없어 항상 나는 성능 힌트입니다. 메시지는 D3D11과 같이 프레임마다 InfoQueue에서 콘솔로 옮기고, 종료 시 <code>ReportLiveDeviceObjects</code>를 찍습니다.</p>
+
+<h2 id="s11"><span class="num">11.</span>함정과 해결</h2>
+<ul>
+  <li><strong>PSO 렌더 타깃 포맷.</strong> 7절. D3D11이 4단계 동안 무시해 준 필드. Renderer가 sRGB 뷰에 맞춰 채운다.</li>
+  <li><strong>드로우마다 갱신되는 상수버퍼.</strong> 4.2절. 프레임 슬롯 복제로는 부족하고 링 + 드로우마다 루트 CBV 재바인딩이 답. D3D11의 WRITE_DISCARD가 감춰 온 것.</li>
+  <li><strong>비교 함수가 붙은 일반 샘플러.</strong> <code>SamplerDesc::compareFunc</code> 기본값 LessEqual이 비등방·선형 샘플러에도 들어가 Debug Layer가 "의도가 아닐 것"이라 5번 경고. Comparison 필터일 때만 지정하도록 두 백엔드 모두 수정.</li>
+  <li><strong>F10은 시스템 키.</strong> F10 혼자 눌러도 WM_SYSKEYDOWN이고 DefWindowProc가 메뉴 모드에 들어가 다음 키(F5)를 삼켰다. 첫 sRGB 토글 검증이 128을 돌려준 이유. 메뉴가 없으므로 F10을 DefWindowProc에 넘기지 않게 했다.</li>
+  <li><strong>d3dx12.h 없음.</strong> <code>CD3DX12_*</code> 헬퍼는 SDK가 아니라 DirectX-Headers 패키지에 있다<sup><a href="#ref-10">10</a></sup>. 의존성을 더하는 대신 필요한 셋(힙 속성, 버퍼 Desc, 전이 배리어)을 <code>D3D12Convert</code>에 직접 적었다.</li>
+  <li><strong>수명.</strong> 4.3절. 텍스처를 놓을 때 디스크립터 다섯 종(RTV·sRGB RTV·DSV·스테이징 SRV·ImGui용 SRV)도 함께 지연 해제해야 힙이 새지 않는다.</li>
+  <li><strong>시저.</strong> D3D12는 시저 사각형이 없으면 아무것도 그리지 않는다(경고도 없다). <code>BeginRenderPass</code>가 뷰포트와 같은 크기로 건다.</li>
+  <li><strong>프레임 셋 t8과 그림자 패스.</strong> 6단계의 "SRV 언바인드" 논리는 D3D12에서 필요 없지만(자동 언바인드가 없다) 배리어가 대신 hazard를 정의한다. GBV가 <code>DEPTH_WRITE</code> 상태의 그림자 맵을 SRV로 읽는 드로우가 없음을 확인해 준 셈이다.</li>
+</ul>
+
+<h2 id="s12"><span class="num">12.</span>검증과 스크린샷</h2>
+<div class="applied">
+  <div class="t">적용 결과 — 2026-09-23</div>
+  <ul>
+    <li><b>완료 기준 ①</b> "<code>--backend=d3d12</code>로 같은 씬(그림자 포함)이 픽셀 단위로 같게" — F10으로 고정한 D3D11 캡처와 D3D12 캡처를 클라이언트 영역(ImGui 헤더 포함) 904,392픽셀 비교: <b>0픽셀</b> 차이. 그림 1.</li>
+    <li><b>완료 기준 ②</b> "Debug Layer·GBV 경고 0건" — GBV + 동기화 큐 검증을 켠 Debug 실행에서 시작 안내 1건 외 메시지 0. 필터는 클리어 값 힌트 2종뿐.</li>
+    <li>sRGB 토글(F5): D3D12에서 회색 카드 128 → 55, 배경 (89,89,149) → (25,25,76). 5단계 D3D11 값과 동일 — UNORM 변형 PSO와 UNORM RTV 뷰가 맞물린다.</li>
+    <li>리사이즈 1500×900 ↔ 900×500 6회 + 최소화/복원: <code>WaitForGpu</code> → 백버퍼 3장·깊이 즉시 해제 → <code>ResizeBuffers</code> → 재생성. 메시지 0.</li>
+    <li>셰이더 핫리로드: 편집 → 세대 2, 에러 → 유지, 복구 → 세대 3(4단계 스크립트에 <code>--backend=d3d12</code>). PSO 지연 해제로 실행 중인 커맨드 리스트가 깨지지 않는다.</li>
+    <li>패널: backend D3D12, 531 FPS(GBV 켬), passes 2, barriers 3, PSO 3, 루트 시그니처 2(8·5 파라미터). Release 빌드에서 <code>--backend=d3d12</code> 실행 확인.</li>
+    <li>D3D11 회귀: 샘플러 수정 뒤 D3D11 고정 캡처가 이전과 동일(D3D12와 0픽셀 차이).</li>
+    <li>격리 grep: <code>RHI/D3D12/</code> 밖 <code>ID3D12 | d3d12.h | dxgi1_6.h | imgui_impl_dx12</code> 0건, <code>RHI/D3D11|D3D12|DXBC</code> 밖 D3D11 기호 0건(주석 포함). 종료 시 Live Object: 장치 1건만.</li>
+  </ul>
+</div>
+
+<div class="fig">
+  <img src="../images/2026-09-23-phase8-backend-compare.png" alt="D3D11과 D3D12 백엔드의 같은 씬 크롭 나란히" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 1. 같은 실행 파일, 같은 씬(F10 고정). 왼쪽 <code>--backend=d3d11</code>, 오른쪽 <code>--backend=d3d12</code>. 전체 화면 비교에서 차이 픽셀 0. 원본은 images/2026-09-23-phase8-d3d11-frozen.png / -d3d12-frozen.png.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase8-d3d12-panel.png" alt="D3D12 백엔드로 실행한 패널" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 2. D3D12 백엔드의 패널. Pipeline 줄에 backend: D3D12, GBV를 켠 채 531 FPS. 통계(passes·barriers·PSO)는 D3D11과 같다 — 같은 Renderer가 같은 명령을 내기 때문이다. (images/2026-09-23-phase8-d3d12-panel.png)</div>
+</div>
+
+<h2 id="s13"><span class="num">13.</span>참고 문헌</h2>
+<ol>
+  <li id="ref-1">Microsoft Learn, <em>Fence-Based Resource Management</em> — 펜스로 프레임 진행을 추적해 업로드 힙 링 버퍼를 재사용. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/fence-based-resource-management">learn.microsoft.com/…/fence-based-resource-management</a></li>
+  <li id="ref-2">Microsoft Learn, <em>Descriptor Heaps</em>. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/descriptor-heaps">learn.microsoft.com/…/descriptor-heaps</a></li>
+  <li id="ref-3">Microsoft Learn, <em>Uploading different types of resources</em> — 업로드 버퍼 하나에 서브할당, D3D11 과의 비교, 256 정렬. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/uploading-resources">learn.microsoft.com/…/uploading-resources</a></li>
+  <li id="ref-4">Microsoft Learn, <em>GPU-based validation and the Direct3D 12 Debug Layer</em> — GBV 가 잡는 오류와 비용. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-d3d12-debug-layer-gpu-based-validation">learn.microsoft.com/…/using-d3d12-debug-layer-gpu-based-validation</a></li>
+  <li id="ref-5">Microsoft Learn, <em>ID3D12Device::GetCopyableFootprints</em> — 밉별 오프셋·행 수·행 크기, RowPitch 256 정렬. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-getcopyablefootprints">learn.microsoft.com/…/nf-d3d12-id3d12device-getcopyablefootprints</a></li>
+  <li id="ref-6">Microsoft Learn, <em>Root Signatures Overview</em> — 루트 상수·루트 디스크립터·테이블, 드로우마다 버전 관리. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signatures-overview">learn.microsoft.com/…/root-signatures-overview</a></li>
+  <li id="ref-7">Microsoft, <em>DirectX-Graphics-Samples</em> — D3D12 샘플(HelloWorld, Multithreading 의 그림자 맵 배리어 등). <a href="https://github.com/microsoft/DirectX-Graphics-Samples">github.com/microsoft/DirectX-Graphics-Samples</a></li>
+  <li id="ref-8">Microsoft Learn, <em>Memory Management in Direct3D 12</em>. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/memory-management">learn.microsoft.com/…/memory-management</a></li>
+  <li id="ref-9">Microsoft Learn, <em>Porting from Direct3D 11 to Direct3D 12</em> — 장치 생성, 업로드, PSO, 커맨드 리스트, 동기화, 바인딩, 상태, 스왑체인, DXBC 지원. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/porting-from-direct3d-11-to-direct3d-12">learn.microsoft.com/…/porting-from-direct3d-11-to-direct3d-12</a></li>
+  <li id="ref-10">Microsoft Learn, <em>Direct3D 12 programming environment setup</em> — SDK 헤더·라이브러리, d3dx12.h 는 별도 배포. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/directx-12-programming-environment-set-up">learn.microsoft.com/…/directx-12-programming-environment-set-up</a></li>
+  <li id="ref-11">Microsoft Learn, <em>Important Changes from Direct3D 11 to Direct3D 12</em> — 명시적 동기화, 수명, PSO, 커맨드 리스트, 디스크립터. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/important-changes-from-directx-11-to-directx-12">learn.microsoft.com/…/important-changes-from-directx-11-to-directx-12</a></li>
+  <li id="ref-12">Microsoft Learn, <em>Using Resource Barriers to Synchronize Resource States in Direct3D 12</em> — 승격·붕괴 규칙, 백버퍼 초기 상태. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-resource-barriers-to-synchronize-resource-states-in-direct3d-12">learn.microsoft.com/…/using-resource-barriers-to-synchronize-resource-states-in-direct3d-12</a></li>
+  <li id="ref-13">Microsoft Learn, <em>D3D12_RESOURCE_STATES</em>. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d12/ne-d3d12-d3d12_resource_states">learn.microsoft.com/…/ne-d3d12-d3d12_resource_states</a></li>
+  <li id="ref-14">Dear ImGui, <em>docs/BACKENDS.md</em> — 표준 백엔드 사용 권고. <code>imgui_impl_dx12.h</code> 의 <code>ImGui_ImplDX12_InitInfo</code>(SRV 힙 + 할당 콜백). <a href="https://github.com/ocornut/imgui/blob/master/docs/BACKENDS.md">github.com/ocornut/imgui/blob/master/docs/BACKENDS.md</a></li>
+</ol>
+
+<div class="footer">
+  대상: SherlockEngine 작업 트리 (2026/09/23, 7단계 위에 연속). 이전: <a href="phase-7.html">7단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p8">rendering-analysis.html PHASE 8</a>. 스크린샷은 <code>images/2026-09-23-phase8-*.png</code>.
+</div>
+</main>
+</div>
+</body>
+</html>

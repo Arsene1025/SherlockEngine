@@ -74,3 +74,33 @@ std::wstring Paths::GetShaderPath(const wchar_t* fileName)
 	Log::Error("셰이더 파일을 찾지 못함: %s", Log::ToUtf8(primary.c_str()).c_str());
 	return primary;
 }
+
+std::wstring Paths::GetShaderBinaryPath(const wchar_t* fileName)
+{
+	return GetExecutableDir() + L"Shaders\\" + fileName;
+}
+
+std::wstring Paths::GetAssetPath(const wchar_t* relative)
+{
+	const std::wstring primary = GetExecutableDir() + L"Assets\\" + relative;
+	if (FileExists(primary))
+	{
+		return primary;
+	}
+	const std::wstring fallback = Canonicalize(GetExecutableDir() + L"..\\..\\SherlockEngine\\Assets\\" + relative);
+	if (FileExists(fallback))
+	{
+		return fallback;
+	}
+	return primary;
+}
+
+std::wstring Paths::GetShaderSourcePath(const wchar_t* fileName)
+{
+	const std::wstring source = Canonicalize(GetExecutableDir() + L"..\\..\\SherlockEngine\\Shaders\\" + fileName);
+	if (FileExists(source))
+	{
+		return source;
+	}
+	return GetExecutableDir() + L"Shaders\\" + fileName;
+}

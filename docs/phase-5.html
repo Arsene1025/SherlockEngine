@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>5단계 · 텍스처와 색공간 — SherlockEngine</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EEF0F7; --line:#D6D9E6; --line-strong:#B9BDD0;
+  --ink:#171A2B; --ink-2:#4A4F66; --muted:#7A7F96;
+  --accent:#232767; --accent-ink:#FFFFFF; --accent-soft:#E3E5F5;
+  --amber:#B8781A; --amber-soft:#FBF0DB;
+  --ok:#2E7D4F; --ok-soft:#E1F2E7; --warn:#A6620C; --warn-soft:#FBEDD6; --crit:#B23A3A; --crit-soft:#F9E1E1;
+  --code-bg:#1B1D33; --code-ink:#E7E9F5; --code-kw:#9BA3FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(23,26,43,.06),0 8px 24px rgba(23,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+    --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+    --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+    --amber:#F0B650; --amber-soft:#3D3560;
+    --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+    --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+  --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+  --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+  --amber:#F0B650; --amber-soft:#3D3560;
+  --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+  --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+code,pre,.mono{font-family:"IBM Plex Mono",Consolas,"D2Coding",monospace}
+code{font-size:.875em;background:var(--surface-2);padding:.1em .4em;border-radius:4px;color:var(--ink)}
+pre{background:var(--code-bg);color:var(--code-ink);padding:18px 20px;border-radius:8px;overflow-x:auto;font-size:13.5px;line-height:1.6;margin:18px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+.kw{color:var(--code-kw)} .str{color:var(--code-str)} .cm{color:var(--code-cm)}
+
+.shell{display:grid;grid-template-columns:260px minmax(0,1fr);max-width:1240px;margin:0 auto;padding:0 32px;gap:48px}
+@media (max-width:960px){.shell{grid-template-columns:minmax(0,1fr);padding:0 20px;gap:0}}
+
+nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:40px 0 40px;font-size:13.5px}
+nav.toc .brand{font-weight:600;letter-spacing:.02em;color:var(--ink);margin-bottom:6px}
+nav.toc .meta{color:var(--muted);font-size:12px;margin-bottom:24px;line-height:1.5}
+nav.toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+nav.toc li a{display:block;padding:5px 14px;color:var(--ink-2);border-left:2px solid transparent;margin-left:-1px;border-bottom:none;line-height:1.45}
+nav.toc li a:hover{color:var(--ink);border-left-color:var(--line-strong)}
+nav.toc li.sub a{padding-left:28px;font-size:12.5px;color:var(--muted)}
+@media (max-width:960px){nav.toc{position:static;height:auto;padding:28px 0 8px}nav.toc ol{display:none}}
+
+main{padding:40px 0 96px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h1{font-size:clamp(30px,4vw,42px);line-height:1.2;margin:6px 0 14px;font-weight:700;letter-spacing:-.01em;text-wrap:balance}
+.lede{font-size:18px;color:var(--ink-2);max-width:66ch;margin:0 0 28px}
+h2{font-size:26px;line-height:1.3;margin:72px 0 16px;padding-top:24px;border-top:1px solid var(--line);font-weight:600;letter-spacing:-.005em;text-wrap:balance}
+h2 .num{display:inline-block;min-width:2.2em;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+h3{font-size:19px;margin:40px 0 10px;font-weight:600;text-wrap:balance}
+h4{font-size:16px;margin:28px 0 8px;font-weight:600}
+p{margin:0 0 16px;max-width:72ch}
+ul,ol{max-width:72ch;padding-left:1.4em;margin:0 0 16px}
+li{margin:4px 0}
+li>ul,li>ol{margin-top:4px}
+strong{font-weight:600}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:28px 0}
+.facts>div{background:var(--surface);padding:14px 16px}
+.facts .k{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.facts .v{font-size:15px;font-weight:600;line-height:1.35}
+.facts .v small{display:block;font-weight:400;color:var(--ink-2);font-size:12.5px;margin-top:2px}
+
+.callout{border-left:3px solid var(--accent);background:var(--surface);padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;max-width:72ch}
+.callout.amber{border-left-color:var(--amber);background:var(--amber-soft)}
+.callout.crit{border-left-color:var(--crit);background:var(--crit-soft)}
+.callout p:last-child{margin-bottom:0}
+.callout .t{font-weight:600;font-size:14px;margin-bottom:4px}
+
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.mono,th.mono{font-size:13px}
+td .n{font-variant-numeric:tabular-nums}
+
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.pill.crit{background:var(--crit-soft);color:var(--crit)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.pill.amber{background:var(--amber-soft);color:var(--amber)}
+.pill.none{background:var(--surface-2);color:var(--muted)}
+td .sub{display:block;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.35}
+
+.fig{margin:24px 0;padding:18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.fig svg{display:block;min-width:640px;width:100%;height:auto;font-family:"IBM Plex Sans KR",system-ui,sans-serif}
+.fig .cap{font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5}
+svg .box{fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1}
+svg .box.acc{fill:var(--accent);stroke:var(--accent)}
+svg .box.acc text{fill:var(--accent-ink)}
+svg .box.amb{fill:var(--amber-soft);stroke:var(--amber)}
+svg text{fill:var(--ink);font-size:12.5px}
+svg text.s{font-size:11px;fill:var(--ink-2)}
+svg text.m{font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+svg text.acc{fill:var(--accent-ink)}
+svg .ln{stroke:var(--line-strong);stroke-width:1.2;fill:none}
+svg .ln.acc{stroke:var(--accent);stroke-width:1.6}
+svg .ln.amb{stroke:var(--amber);stroke-width:1.6;stroke-dasharray:4 3}
+svg .lane{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4}
+
+.stage{display:grid;grid-template-columns:52px minmax(0,1fr);gap:16px;margin:26px 0;padding:20px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.stage .tag{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;color:var(--accent);padding-top:3px}
+.stage h4{margin:0 0 6px}
+.stage p:last-child,.stage ul:last-child{margin-bottom:0}
+
+.phase{margin:28px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface);box-shadow:var(--shadow)}
+.phase header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.phase .pn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--amber);font-weight:500}
+.phase h3{margin:0;font-size:20px}
+.phase .why{color:var(--ink-2);margin-bottom:12px}
+.phase .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.phase .cols h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.phase .cols ul{margin:0;padding-left:1.2em;font-size:14.5px}
+.phase .done{margin-top:14px;padding:10px 14px;background:var(--ok-soft);border-radius:6px;font-size:14px;color:var(--ink)}
+.phase .done b{color:var(--ok)}
+
+.layout{font-family:"IBM Plex Mono",monospace;font-size:12.5px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;margin:16px 0;min-width:480px}
+.layout>div{background:var(--surface-2);padding:6px 8px;border-radius:3px;text-align:center;line-height:1.35;border:1px solid var(--line)}
+.layout>div.pad{background:transparent;color:var(--muted);border-style:dashed}
+.layout>div.row{grid-column:1/-1;text-align:left;background:transparent;border:0;color:var(--muted);padding:6px 0 0;font-size:11px;letter-spacing:.06em}
+.layout>div.m4{grid-column:span 4;background:var(--accent-soft)}
+
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 18px;font-size:14.5px;margin:14px 0 18px;max-width:72ch}
+.kv dt{color:var(--muted);font-weight:500}
+.kv dd{margin:0}
+
+.decision{margin:26px 0;padding:22px 24px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.decision header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.decision .dn{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--accent);font-weight:500}
+.decision h3{margin:0;font-size:19px}
+.decision .now{font-size:14.5px;color:var(--ink-2);background:var(--surface-2);border-radius:6px;padding:10px 14px;margin:0 0 14px;max-width:none}
+.decision .now b{color:var(--ink);margin-right:6px}
+.decision p{max-width:none}
+.decision p b{font-weight:600}
+.decision .pc{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:6px}
+.decision .pc>div{padding:12px 16px;border-radius:6px;border:1px solid var(--line)}
+.decision .pc>div:first-child{border-color:var(--ok);background:var(--ok-soft)}
+.decision .pc>div:last-child{border-color:var(--warn);background:var(--warn-soft)}
+.decision .pc h5{margin:0 0 6px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.decision .pc>div:first-child h5{color:var(--ok)}
+.decision .pc>div:last-child h5{color:var(--warn)}
+.decision .pc ul{margin:0;padding-left:1.2em;font-size:14px;max-width:none}
+.decision .pc li{margin:3px 0}
+.applied{margin:14px 0 0;padding:12px 16px 14px;border:1px solid var(--ok);background:var(--ok-soft);border-radius:6px;font-size:14.5px}
+.applied .t{font-weight:600;color:var(--ok);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.applied p{margin:0 0 8px;max-width:none}
+.applied p:last-child{margin-bottom:0}
+.applied ul{margin:0;padding-left:1.2em;max-width:none;font-size:14px}
+.applied li{margin:3px 0}
+.applied code{background:var(--surface)}
+td .fix{display:block;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line-strong);color:var(--ink-2)}
+td .fix b{color:var(--ok);font-weight:600}
+.phase li.done-item{color:var(--ink-2)}
+.phase li.done-item::marker{color:var(--ok)}
+.footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="목차">
+  <div class="brand">5단계 · 텍스처와 색공간</div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/23 (작업 트리, 미커밋)<br><a href="rendering-analysis.html#p5">rendering-analysis.html → PHASE 5</a></div>
+  <ol>
+    <li><a href="#s1">1. 요약</a></li>
+    <li><a href="#s2">2. 색공간: 왜 선형에서 계산하는가</a></li>
+    <li class="sub"><a href="#s2-1">2.1 sRGB 전달 함수와 "두 번 어두워지기"</a></li>
+    <li class="sub"><a href="#s2-2">2.2 SRV와 RTV의 _SRGB 뷰</a></li>
+    <li class="sub"><a href="#s2-3">2.3 ImGui는 UNORM 뷰에</a></li>
+    <li class="sub"><a href="#s2-4">2.4 회색 128 검증</a></li>
+    <li><a href="#s3">3. 스왑체인: flip 모델과 tearing</a></li>
+    <li><a href="#s4">4. 텍스처 로더와 밉맵</a></li>
+    <li class="sub"><a href="#s4-1">4.1 API 중립 TextureImage</a></li>
+    <li class="sub"><a href="#s4-2">4.2 밉맵을 CPU에서 만드는 이유</a></li>
+    <li class="sub"><a href="#s4-3">4.3 라벨과 변환 — DirectXTex 함정</a></li>
+    <li><a href="#s5">5. 샘플러</a></li>
+    <li><a href="#s6">6. UV와 프리미티브</a></li>
+    <li><a href="#s7">7. 재질 셋에 t0·s0</a></li>
+    <li><a href="#s8">8. 함정과 해결</a></li>
+    <li><a href="#s9">9. 검증과 스크린샷</a></li>
+    <li><a href="#s10">10. 참고 문헌</a></li>
+  </ol>
+</nav>
+
+<main>
+<div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
+<h1>5단계 · 텍스처와 색공간</h1>
+<p class="lede">3단계의 <code>Texture</code> 래퍼를 실제 에셋으로 채우고 감마를 잡은 단계입니다. 정점에 UV가 붙고, WIC/DDS 로더가 밉 체인을 CPU에서 만들어 올리고, <code>SamplerDesc</code>가 핸들이 되고, 재질 ResourceSet에 <code>t0</code>·<code>s0</code>이 들어갑니다. 스왑체인은 flip 모델로 바뀌었고 백버퍼는 UNORM으로 만들되 <strong>sRGB 뷰</strong>에 그립니다. 조명 계산은 이제 선형 공간에서 일어나고, 화면에 나가는 순간에만 인코딩됩니다. "sRGB 128 회색을 조명 없이 그리면 화면 픽셀이 128이어야 한다"는 검사로 전 과정을 수치로 확인했습니다.</p>
+
+<div class="facts">
+  <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
+  <div><div class="k">새 파일</div><div class="v">2개 + 에셋 1<small>Graphics/TextureLoader.h/.cpp, Assets/Textures/uv_checker.png</small></div></div>
+  <div><div class="k">정점</div><div class="v">48B<small>PositionColorNormalTexcoord (UV 추가)</small></div></div>
+  <div><div class="k">상수버퍼</div><div class="v">b3 32 → 48<small>uvScale · unlit. b3은 VS·PS 모두</small></div></div>
+  <div><div class="k">스왑체인</div><div class="v">FLIP_DISCARD × 2<small>tearing 지원, 백버퍼 UNORM + sRGB RTV</small></div></div>
+  <div><div class="k">완료 기준</div><div class="v"><span class="pill ok">충족</span><small>감마 정확(128 → 128), 밉맵으로 원거리 모아레 없음</small></div></div>
+</div>
+
+<div class="callout">
+  <div class="t">한 줄 요약</div>
+  <p>텍스처 바이트는 파일에 든 그대로(sRGB 인코딩)이고, <code>*_SRGB</code> 포맷은 "샘플할 때 풀어라"는 <strong>라벨</strong>입니다. 셰이더는 선형 값으로 조명을 계산하고, 백버퍼의 sRGB 뷰가 쓰는 순간 다시 인코딩합니다. 이 두 지점 사이에 있는 모든 것(정점 색, 재질 색, 클리어 색, 조명)은 선형입니다. ImGui만 예외라 UNORM 뷰에 따로 그립니다. 밉맵은 D3D12에 <code>GenerateMips</code>가 없으므로 CPU(DirectXTex)에서 만들어 초기 데이터로 올리고, 그 배열(<code>TextureSubresource[]</code>)이 D3D12의 업로드 힙 경로와 같은 모양이 되게 했습니다.</p>
+</div>
+
+<h2 id="s1"><span class="num">1.</span>요약</h2>
+<div class="tbl"><table>
+  <thead><tr><th>항목</th><th>4단계까지</th><th>5단계</th></tr></thead>
+  <tbody>
+    <tr><td>정점</td><td><code>VERTEX</code> 40B (pos·color·normal)</td><td>48B, <code>u,v</code> 추가. <code>VertexFormat::PositionColorNormalTexcoord</code>, 4개 속성</td></tr>
+    <tr><td>텍스처 생성</td><td><code>CreateTexture(desc)</code> — 빈 텍스처만(백버퍼·깊이)</td><td><code>CreateTexture(desc, subresources, count)</code> — 밉 레벨마다 <code>{data, rowPitch}</code></td></tr>
+    <tr><td>로더</td><td>없음</td><td><code>TextureLoader</code>: WIC(PNG/JPG/BMP…)·DDS, R8G8B8A8로 통일, CPU 밉 생성, 절차적 체커·단색</td></tr>
+    <tr><td>샘플러</td><td>없음 (셰이더에 <code>SamplerState</code> 없음)</td><td><code>SamplerDesc</code> → <code>SamplerHandle</code>. 프리셋 5개, <code>ResourceSet</code> 슬롯 타입 <code>Sampler</code> 지원</td></tr>
+    <tr><td>재질 셋</td><td>b3 (PS)</td><td>b3 (VS|PS) · t0 (PS) · s0 (PS). 텍스처·샘플러가 바뀌면 셋 재생성</td></tr>
+    <tr><td>재질</td><td>baseColor·specular·shininess·wireframe·doubleSided</td><td>+ <code>albedoTexture</code>(이름), <code>albedoSrgb</code>, <code>sampler</code>, <code>uvScale</code>, <code>unlit</code></td></tr>
+    <tr><td>스왑체인</td><td><code>D3D11CreateDeviceAndSwapChain</code>, DISCARD(blt)</td><td><code>CreateSwapChainForHwnd</code>, FLIP_DISCARD, tearing 확인, <code>NO_ALT_ENTER</code></td></tr>
+    <tr><td>색공간</td><td>전부 UNORM. 조명 결과가 그대로 화면으로(감마 무시)</td><td>텍스처 sRGB 라벨, 백버퍼 sRGB 뷰, 선형 조명. 토글(F5)로 비교 가능</td></tr>
+    <tr><td>UI 패스</td><td>ImGui가 씬과 같은 RTV에</td><td><code>BeginUIPass()</code>: 백버퍼 UNORM 뷰, 깊이 없음</td></tr>
+    <tr><td>디버그 UI</td><td>—</td><td>sRGB 토글, 샘플러 덮어쓰기 콤보, 텍스처 수, 재질별 샘플러·UV 배율·unlit. F5·F6</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="s2"><span class="num">2.</span>색공간: 왜 선형에서 계산하는가</h2>
+<h3 id="s2-1">2.1 sRGB 전달 함수와 "두 번 어두워지기"</h3>
+<p>PNG에 저장된 128은 "밝기 50%"가 아닙니다. sRGB는 사람 눈이 어두운 쪽에 민감한 것을 이용해 8비트를 어두운 쪽에 더 배정하는 <strong>인코딩</strong>이고, 전달 함수는 다음과 같습니다<sup><a href="#ref-3">3</a></sup>.</p>
+<pre><code><span class="cm">// sRGB(0..1) → 선형</span>
+linear = srgb / 12.92                          (srgb ≤ 0.04045)
+linear = ((srgb + 0.055) / 1.055) ^ 2.4        (그 외)
+
+<span class="cm">// 128/255 = 0.502 → 0.2158.   즉 "128 회색"은 물리적으로 21.6% 밝기다.</span></code></pre>
+<p>조명은 물리량의 덧셈과 곱셈입니다. 인코딩된 값끼리 더하고 곱하면 결과는 인코딩된 값도 선형 값도 아닌 것이 됩니다. 그래서 GPU Gems 3의 24장은 "모든 계산은 선형에서, 화면에 낼 때만 인코딩"을 원칙으로 세웁니다<sup><a href="#ref-2">2</a></sup>. Microsoft의 지침도 같습니다: 부동소수점 연산은 선형에서, 화면에는 sRGB로<sup><a href="#ref-1">1</a></sup>.</p>
+<p>4단계까지의 우리 엔진은 이 원칙을 어겼습니다. 정점 색·재질 색을 그대로 조명에 넣고, 결과를 UNORM 백버퍼에 그대로 썼습니다. 텍스처가 없어서 "인코딩된 값을 선형으로 오해"하는 첫 번째 오류는 없었지만, "선형 결과를 인코딩 없이 화면에" 내는 두 번째 오류가 있었습니다. 그림 2의 오른쪽(sRGB 끔)이 그 결과입니다. 회색 카드 128이 55로 나옵니다 — 0.2158 × 255 = 55. 화면은 그 값을 sRGB로 해석하므로 실제 밝기는 3.8%가 됩니다. 이것이 "두 번 어두워지기"입니다.</p>
+
+<h3 id="s2-2">2.2 SRV와 RTV의 _SRGB 뷰</h3>
+<p>변환은 셰이더 코드가 아니라 <strong>하드웨어</strong>가 합니다. <code>DXGI_FORMAT_R8G8B8A8_UNORM_SRGB</code> 텍스처를 <code>Sample</code>하면 필터링 전에 각 텍셀이 선형으로 풀리고, 같은 포맷의 RTV에 픽셀 셰이더가 출력하면 블렌딩 뒤에 인코딩됩니다<sup><a href="#ref-1">1</a></sup>. 셰이더는 아무것도 모릅니다. 그래서 <code>BasicPixelShader.hlsl</code>의 조명 코드는 4단계와 한 줄도 다르지 않고, 텍스처 샘플 한 줄만 늘었습니다.</p>
+<pre><code><span class="cm">// Common.hlsli — 재질 셋의 t0 / s0</span>
+Texture2D albedoTexture : <span class="kw">register</span>(t0);
+SamplerState albedoSampler : <span class="kw">register</span>(s0);
+
+<span class="cm">// BasicPixelShader.hlsl — 여기서부터 모든 색은 선형이다</span>
+<span class="kw">const</span> float4 texel = albedoTexture.Sample(albedoSampler, input.uv);
+<span class="kw">const</span> float4 surface = input.col * baseColor * texel;
+<span class="kw">if</span> (unlit &gt; 0.5f) <span class="kw">return</span> float4(surface.rgb, surface.a);   <span class="cm">// 감마 검증용</span></code></pre>
+<p>백버퍼 쪽에는 제약이 하나 있습니다. flip 모델 스왑체인은 백버퍼 포맷으로 <code>*_SRGB</code>를 받지 않습니다 — 허용 포맷은 R16G16B16A16_FLOAT, B8G8R8A8_UNORM, R8G8B8A8_UNORM, R10G10B10A2_UNORM 뿐입니다<sup><a href="#ref-7">7</a></sup>. 대신 문서가 명시한 예외가 있습니다: <strong>UNORM으로 만든 스왑체인 백버퍼에 <code>*_SRGB</code> RTV를 만들 수 있다</strong>. 보통 뷰 포맷을 리소스 포맷과 다르게 하려면 리소스가 TYPELESS여야 하는데, 백버퍼만 이 규칙에서 면제됩니다<sup><a href="#ref-1">1</a></sup>. <code>D3D11Texture</code>가 두 RTV를 지연 생성합니다<sup><a href="#ref-20">20</a></sup>.</p>
+<pre><code><span class="cm">// D3D11Resources.h — 같은 백버퍼의 UNORM 뷰와 sRGB 뷰</span>
+ID3D11RenderTargetView* GetRTV(ID3D11Device* device, <span class="kw">bool</span> srgbView = <span class="kw">false</span>)
+{
+    ComPtr&lt;ID3D11RenderTargetView&gt;&amp; target = srgbView ? rtvSrgb : rtv;
+    <span class="kw">if</span> (!target)
+    {
+        <span class="kw">if</span> (srgbView)
+        {
+            D3D11_RENDER_TARGET_VIEW_DESC viewDesc = {};
+            viewDesc.Format = ToSrgb(D3D11Convert::ToDXGI(desc.format));   <span class="cm">// R8G8B8A8_UNORM → _UNORM_SRGB</span>
+            viewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+            device-&gt;CreateRenderTargetView(texture.Get(), &amp;viewDesc, target.GetAddressOf());
+        }
+        <span class="kw">else</span> device-&gt;CreateRenderTargetView(texture.Get(), <span class="kw">nullptr</span>, target.GetAddressOf());
+    }
+    <span class="kw">return</span> target.Get();
+}</code></pre>
+<p><code>Device::BeginFrame</code>은 <code>m_srgbOutput</code>에 따라 둘 중 하나를 바인딩하고 클리어합니다. 클리어 색 (0.1, 0.1, 0.3)은 선형 값이고, sRGB 뷰를 클리어하면 인코딩된 (89, 89, 149)가 저장됩니다. 2.4절의 측정값이 정확히 이 숫자입니다.</p>
+
+<h3 id="s2-3">2.3 ImGui는 UNORM 뷰에</h3>
+<p>Dear ImGui는 스타일 색을 sRGB로 인코딩된 값으로 취급하고, 렌더러 백엔드는 그것을 그대로 출력합니다. 선형/sRGB 프레임버퍼 문제는 오래된 이슈이고 라이브러리 차원의 해법은 아직 없습니다<sup><a href="#ref-19">19</a></sup>. sRGB 뷰에 ImGui를 그리면 인코딩된 값이 한 번 더 인코딩되어 패널이 희게 떠 보입니다. 그래서 <code>AppBase::Run</code>이 씬 렌더 뒤에 <code>Device::BeginUIPass()</code>를 부르고, 그것이 백버퍼의 UNORM 뷰를 깊이 없이 바인딩합니다. 6단계의 <code>RenderPassDesc</code>가 생기면 "UI 패스"는 그 첫 번째 사용자가 됩니다.</p>
+<pre><code><span class="cm">// AppBase.cpp</span>
+graphicsDevice.BeginFrame();      <span class="cm">// sRGB 뷰 + 깊이, 클리어</span>
+Render();
+graphicsDevice.BeginUIPass();     <span class="cm">// UNORM 뷰, 깊이 없음</span>
+ImGuiBackend::Render();
+graphicsDevice.EndFrame();        <span class="cm">// Present</span></code></pre>
+
+<h3 id="s2-4">2.4 회색 128 검증</h3>
+<p>원문 로드맵의 "중간 회색 128 검증"을 그대로 했습니다. 4×4 픽셀의 (128,128,128) 텍스처를 sRGB 라벨로 만들고(<code>builtin:gray128</code>), <code>unlit</code> 재질로 큐브에 입혀 화면 픽셀을 읽었습니다. 배경(클리어 색)도 함께 읽어 예측값과 대조했습니다.</p>
+<div class="tbl"><table>
+  <thead><tr><th>측정 지점</th><th>선형 값</th><th>예측 (sRGB 켬)</th><th>측정 (켬)</th><th>예측 (끔)</th><th>측정 (끔)</th></tr></thead>
+  <tbody>
+    <tr><td>회색 카드 (텍스처 128, 조명 없음)</td><td>0.2158</td><td>128</td><td><b>128</b></td><td>55</td><td><b>55</b></td></tr>
+    <tr><td>배경 R, G (클리어 0.1)</td><td>0.1</td><td>89</td><td><b>89</b></td><td>25</td><td><b>25</b></td></tr>
+    <tr><td>배경 B (클리어 0.3)</td><td>0.3</td><td>149</td><td><b>149</b></td><td>76</td><td><b>76</b></td></tr>
+  </tbody>
+</table></div>
+<p>여섯 값이 전부 맞습니다. 디코딩(SRV) → 통과(셰이더) → 인코딩(RTV)의 왕복이 손실 없이 128을 돌려주고, 인코딩을 끄면 정확히 선형 값 × 255가 나옵니다. 첫 시도에서는 188이 나왔는데, 그 원인은 4.3절에 있습니다.</p>
+
+<h2 id="s3"><span class="num">3.</span>스왑체인: flip 모델과 tearing</h2>
+<p>sRGB 백버퍼 뷰를 위해 스왑체인을 다시 만들면서 blt 모델(<code>DXGI_SWAP_EFFECT_DISCARD</code>)을 flip 모델로 바꿨습니다. 옛 <code>D3D11CreateDeviceAndSwapChain</code>은 <code>DXGI_SWAP_CHAIN_DESC</code>(구버전)만 받아 tearing 확인이나 <code>CreateSwapChainForHwnd</code>를 쓸 수 없으므로, 장치를 먼저 만들고 그 장치의 어댑터에서 <code>IDXGIFactory2</code>를 얻어 스왑체인을 따로 만듭니다<sup><a href="#ref-8">8</a></sup>.</p>
+<p>blt 모델은 <code>Present</code>마다 백버퍼를 DWM의 리다이렉션 표면으로 복사합니다. flip 모델은 백버퍼 자체를 DWM과 공유해 복사가 없고, 창 모드에서도 전체화면급 성능이 납니다<sup><a href="#ref-4">4</a></sup>. Microsoft는 blt 모델을 "이제 그만 쓰라"고 명시합니다<sup><a href="#ref-5">5</a></sup>. flip 모델의 요구 사항과 우리가 한 일은 다음과 같습니다<sup><a href="#ref-5">5</a>,<a href="#ref-7">7</a></sup>.</p>
+<div class="tbl"><table>
+  <thead><tr><th>요구</th><th>구현</th></tr></thead>
+  <tbody>
+    <tr><td>버퍼 2개 이상</td><td><code>BufferCount = 2</code></td></tr>
+    <tr><td>MSAA 불가 (<code>SampleDesc.Count = 1</code>)</td><td>백버퍼 MSAA 미사용. MSAA는 나중에 오프스크린 타깃 + Resolve로</td></tr>
+    <tr><td>Present 뒤 백버퍼를 다시 바인딩</td><td><code>BeginFrame</code>이 매 프레임 <code>OMSetRenderTargets</code> (3단계부터 이미 그랬음)</td></tr>
+    <tr><td>백버퍼 포맷은 UNORM (sRGB 불가)</td><td><code>R8G8B8A8_UNORM</code> + sRGB RTV 뷰 (2.2절)</td></tr>
+    <tr><td>HWND당 flip 스왑체인 하나</td><td>스왑체인 하나. <code>MakeWindowAssociation(NO_ALT_ENTER)</code>로 DXGI의 전체화면 전환 차단</td></tr>
+  </tbody>
+</table></div>
+<p>VSync를 끈 무제한 프레임은 flip 모델에서 한 가지 조건이 더 붙습니다. 창 모드에서 컴포지터에 막히지 않으려면 <code>DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING</code>으로 만들고 <code>Present(0, DXGI_PRESENT_ALLOW_TEARING)</code>으로 내야 하며, 지원 여부는 <code>IDXGIFactory5::CheckFeatureSupport</code>로 먼저 물어야 합니다. 이 플래그는 <code>ResizeBuffers</code>에도 <strong>같은 값</strong>으로 넘겨야 합니다<sup><a href="#ref-6">6</a></sup>. 그래서 <code>m_swapChainFlags</code>를 멤버로 보관합니다.</p>
+<pre><code><span class="cm">// Device.cpp — InitDirect3D 발췌</span>
+ComPtr&lt;IDXGIFactory5&gt; factory5;
+<span class="kw">if</span> (SUCCEEDED(factory.As(&amp;factory5)))
+{
+    BOOL allowTearing = FALSE;
+    <span class="kw">if</span> (SUCCEEDED(factory5-&gt;CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &amp;allowTearing, <span class="kw">sizeof</span>(allowTearing))))
+        m_tearingSupported = (allowTearing != FALSE);
+}
+m_swapChainFlags = m_tearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+
+DXGI_SWAP_CHAIN_DESC1 sd = {};
+sd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;   <span class="cm">// flip 모델은 *_SRGB 불가. 뷰로 해결</span>
+sd.SampleDesc.Count = 1;
+sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+sd.BufferCount = 2;
+sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+sd.Flags = m_swapChainFlags;
+factory-&gt;CreateSwapChainForHwnd(m_device.Get(), m_mainWindow, &amp;sd, <span class="kw">nullptr</span>, <span class="kw">nullptr</span>, m_swapChain.GetAddressOf());
+
+<span class="cm">// EndFrame</span>
+<span class="kw">const</span> UINT flags = (!m_vsync &amp;&amp; m_tearingSupported) ? DXGI_PRESENT_ALLOW_TEARING : 0;
+m_swapChain-&gt;Present(m_vsync ? 1 : 0, flags);
+
+<span class="cm">// Resize — 생성 때와 같은 플래그</span>
+m_swapChain-&gt;ResizeBuffers(0, w, h, DXGI_FORMAT_UNKNOWN, m_swapChainFlags);</code></pre>
+<p>이 기기는 tearing을 지원했고(로그 "tearing 지원", 패널 "(tearing OK)"), VSync를 끈 상태에서 약 2,000 FPS가 나옵니다. 3단계의 리사이즈 순서(언바인드 → 백버퍼·깊이 텍스처 파괴 → <code>ResizeBuffers</code> → 재생성)는 flip 모델에서도 그대로 통과했습니다. 6회 반복 + 최소화/복원에 Debug Layer 메시지 0건입니다.</p>
+
+<h2 id="s4"><span class="num">4.</span>텍스처 로더와 밉맵</h2>
+<h3 id="s4-1">4.1 API 중립 TextureImage</h3>
+<p>로더는 <code>Graphics/TextureLoader</code>에 있고 D3D 헤더를 include하지 않습니다(DirectXTex는 <code>DXGI_FORMAT</code>만 쓰는 독립 라이브러리입니다). 결과물은 <code>TextureDesc</code> + 픽셀 버퍼 + 밉 레벨마다 하나인 <code>TextureSubresource{data, rowPitch}</code> 배열입니다. D3D11에서는 이 배열이 <code>D3D11_SUBRESOURCE_DATA[]</code>로 옮겨져 <code>CreateTexture2D</code>의 초기 데이터가 됩니다 — 서브리소스 하나가 밉 레벨 하나이고, 배열 순서가 밉 순서입니다<sup><a href="#ref-11">11</a></sup>. D3D12에서는 같은 배열이 업로드 힙에 복사되고 <code>CopyTextureRegion</code> + 배리어로 GPU 텍스처에 들어갑니다. 호출 코드(<code>Renderer::GetOrLoadTexture</code>)는 바뀌지 않습니다.</p>
+<pre><code><span class="cm">// ResourceDesc.h</span>
+<span class="kw">struct</span> TextureSubresource { <span class="kw">const void</span>* data; uint32_t rowPitch; };   <span class="cm">// 밉 레벨마다 하나</span>
+
+<span class="cm">// Device.h</span>
+TextureHandle CreateTexture(<span class="kw">const</span> TextureDesc&amp; desc, <span class="kw">const</span> TextureSubresource* subresources = <span class="kw">nullptr</span>, uint32_t subresourceCount = 0);
+
+<span class="cm">// Device.cpp — 초기 데이터가 밉 수보다 적으면 거부한다. 모자란 밉은 쓰레기가 들어가 원거리에서 이상한 색이 난다.</span>
+<span class="kw">if</span> (subresourceCount &lt; descIn.mipLevels) { Log::Error(...); <span class="kw">return</span> TextureHandle{}; }
+<span class="kw">for</span> (uint32_t mip = 0; mip &lt; descIn.mipLevels; ++mip)
+{
+    init[mip].pSysMem = subresources[mip].data;
+    init[mip].SysMemPitch = subresources[mip].rowPitch;
+}</code></pre>
+<p>로드맵 원문은 <code>UploadTexture(handle, data)</code> 별도 함수를 제안했는데, 지금은 생성과 업로드를 한 호출로 묶었습니다. 텍스처가 전부 불변(immutable)이고 스트리밍이 없으므로 생성 시 초기 데이터가 가장 단순하고, D3D12에서 초기 데이터가 있는 <code>CreateTexture</code>는 내부적으로 업로드 힙 경로를 타면 됩니다. 실행 중 갱신이 필요해지면(비디오, 스트리밍) 그때 <code>UploadTexture</code>를 추가합니다.</p>
+
+<h3 id="s4-2">4.2 밉맵을 CPU에서 만드는 이유</h3>
+<p>밉맵은 텍스처를 절반씩 줄인 피라미드입니다. 각 레벨은 위 레벨의 절반이고 1×1까지 내려가며, 홀수 크기는 내림합니다<sup><a href="#ref-13">13</a></sup>(512 → 10레벨). 샘플러는 화면 픽셀 하나가 텍셀 몇 개를 덮는지 계산해 맞는 레벨을 고릅니다. 먼 바닥처럼 픽셀 하나가 텍셀 수십 개를 덮는 곳에서 밉 없이 최근접 샘플을 하면 프레임마다 다른 텍셀이 뽑혀 반짝이고(shimmer) 모아레가 생깁니다. Williams가 1983년에 "multum in parvo"에서 이름을 따 제안한 기법입니다<sup><a href="#ref-17">17</a></sup>. 그림 3이 같은 바닥을 밉 있음/없음으로 비교한 것입니다.</p>
+<p>D3D11에는 <code>ID3D11DeviceContext::GenerateMips</code>가 있지만 리소스를 <code>RENDER_TARGET | SHADER_RESOURCE</code> + <code>MISC_GENERATE_MIPS</code>로 만들어야 하고, 지원 포맷이 아니면 조용히 실패합니다<sup><a href="#ref-12">12</a></sup>. D3D12에는 이 함수가 아예 없어 컴퓨트 셰이더를 직접 써야 합니다. 그래서 백엔드 중립적인 길은 <strong>CPU(또는 오프라인)</strong>에서 밉을 만들어 초기 데이터로 올리는 것입니다. DirectXTex의 <code>GenerateMipMaps</code>가 그 일을 합니다<sup><a href="#ref-15">15</a></sup>.</p>
+<p>한 가지 더: sRGB 텍스처의 밉은 <strong>선형 공간에서 평균</strong>내야 합니다. 인코딩된 값끼리 평균하면 밉이 어두워집니다. 체커의 230과 40을 절반씩 섞으면 선형 평균은 sRGB로 약 170이지만 인코딩 값 평균은 135입니다. 멀리 갈수록 바닥이 어두워지는 흔한 버그입니다. DirectXTex는 <code>TEX_FILTER_SRGB</code>(= <code>SRGB_IN | SRGB_OUT</code>) 플래그로 "풀어서 평균 내고 다시 인코딩"을 해 줍니다<sup><a href="#ref-14">14</a></sup>.</p>
+<pre><code><span class="cm">// TextureLoader.cpp — FinishImage 발췌</span>
+<span class="kw">const</span> DirectX::TEX_FILTER_FLAGS filter = srgb ? DirectX::TEX_FILTER_SRGB : DirectX::TEX_FILTER_DEFAULT;
+DirectX::GenerateMipMaps(current-&gt;GetImages(), current-&gt;GetImageCount(), current-&gt;GetMetadata(), filter, 0, mipped);
+<span class="cm">// 0 = 1×1까지 전부. 512 → 10 레벨.</span></code></pre>
+
+<h3 id="s4-3">4.3 라벨과 변환 — DirectXTex 함정</h3>
+<p>첫 실행에서 회색 카드가 128이 아니라 <strong>188</strong>로 읽혔습니다. 188은 0.502를 sRGB로 인코딩한 값(0.735 × 255)입니다. 즉 텍스처에 128이 아니라 188이 들어가 있었고, 128을 "선형 0.502"로 오해해 인코딩한 무언가가 있었습니다.</p>
+<p>범인은 <code>DirectXTex::Convert</code>입니다<sup><a href="#ref-16">16</a></sup>. 로더는 WIC가 준 <code>R8G8B8A8_UNORM</code>을 <code>R8G8B8A8_UNORM_SRGB</code>로 "변환"했는데, DirectXTex는 대상이 <code>*_SRGB</code> 포맷이면 <code>TEX_FILTER_SRGB_OUT</code>을 <strong>암시</strong>하고 입력을 선형으로 간주해 인코딩합니다<sup><a href="#ref-14">14</a></sup>. 라이브러리 관점에서는 일관된 동작이지만, 우리 바이트는 이미 인코딩된 값이었습니다.</p>
+<p>본질은 이것입니다: <strong><code>*_SRGB</code>는 변환이 아니라 라벨입니다.</strong> 바이트는 그대로 두고 "샘플할 때 풀어라"라고 표시만 해야 합니다. 그래서 로더는 색공간 변환이 없는 <code>UNORM → UNORM</code> 변환만 하고, 라벨은 <code>desc.format</code>에만 붙입니다. 반대 방향의 함정도 막았습니다. DDS 파일이 이미 <code>*_SRGB</code> 포맷이면 <code>Convert</code>가 이번엔 <em>디코딩</em>을 하므로, <code>ScratchImage::OverrideFormat</code>으로 라벨을 먼저 떼어 냅니다(픽셀은 건드리지 않고 포맷 필드만 바꾸는 함수입니다).</p>
+<pre><code><span class="cm">// TextureLoader.cpp — FinishImage</span>
+<span class="kw">if</span> (DirectX::IsSRGB(base.GetMetadata().format))
+    base.OverrideFormat(DirectX::MakeLinear(base.GetMetadata().format));   <span class="cm">// 라벨만 제거</span>
+
+<span class="kw">const</span> DXGI_FORMAT target = DXGI_FORMAT_R8G8B8A8_UNORM;                  <span class="cm">// 색공간 변환 없음</span>
+<span class="kw">if</span> (base.GetMetadata().format != target)
+    DirectX::Convert(..., target, DirectX::TEX_FILTER_DEFAULT, DirectX::TEX_THRESHOLD_DEFAULT, converted);
+
+<span class="cm">// (밉 생성)</span>
+<span class="kw">return</span> FromScratchImage(*current, srgb ? Format::R8G8B8A8_UNORM_SRGB : Format::R8G8B8A8_UNORM, out);   <span class="cm">// 라벨은 여기서</span></code></pre>
+<p>WIC 로드에도 <code>WIC_FLAGS_IGNORE_SRGB</code>를 줍니다. PNG의 색공간 메타데이터로 포맷이 <code>*_SRGB</code>로 바뀌는 것을 막고, 라벨은 재질의 <code>albedoSrgb</code>가 결정하게 합니다. 색 텍스처는 sRGB, 노멀 맵·마스크 같은 데이터 텍스처는 선형 — 이 결정은 파일이 아니라 <strong>용도</strong>가 하는 것이기 때문입니다.</p>
+
+<h2 id="s5"><span class="num">5.</span>샘플러</h2>
+<p><code>SamplerDesc</code>는 <code>D3D11_SAMPLER_DESC</code>의 필드를 API 중립 열거로 옮긴 것입니다<sup><a href="#ref-9">9</a></sup>. 필터는 D3D11의 조합형 열거(<code>MIN_MAG_MIP_*</code>)를 그대로 노출하지 않고 네 가지로 좁혔습니다. 축소·확대에 다른 필터를 섞으면 어느 쪽이 적용될지 모호한 경우 동작이 정의되지 않는다는 문서의 경고 때문입니다<sup><a href="#ref-10">10</a></sup>.</p>
+<div class="tbl"><table>
+  <thead><tr><th>프리셋</th><th>필터</th><th>주소</th><th>maxLod</th><th>용도</th></tr></thead>
+  <tbody>
+    <tr><td><code>LinearWrap</code></td><td>3선형</td><td>Wrap</td><td>1000</td><td>기본값</td></tr>
+    <tr><td><code>LinearClamp</code></td><td>3선형</td><td>Clamp</td><td>1000</td><td>UI·룩업 텍스처(가장자리 번짐 방지)</td></tr>
+    <tr><td><code>AnisotropicWrap</code></td><td>비등방 16×</td><td>Wrap</td><td>1000</td><td>바닥처럼 비스듬히 보는 면</td></tr>
+    <tr><td><code>PointWrap</code></td><td>최근접</td><td>Wrap</td><td>1000</td><td>픽셀 아트. 밉은 씀</td></tr>
+    <tr><td><code>PointNoMip</code></td><td>최근접</td><td>Wrap</td><td><b>0</b></td><td>"밉이 없으면"의 대조군</td></tr>
+  </tbody>
+</table></div>
+<p><code>maxLod = 0</code>이 밉맵을 끄는 방법입니다. LOD 범위를 [minLod, maxLod]로 클램프하므로 0이면 레벨 0만 샘플합니다<sup><a href="#ref-9">9</a></sup>. 텍스처를 밉 없이 다시 만들 필요가 없어서, F6으로 실행 중에 바꿔 가며 비교할 수 있습니다. 로드맵의 <code>ShadowCompare</code>는 <code>SamplerFilter::Comparison</code> 열거값과 변환만 두고 프리셋은 6단계(그림자)에서 만듭니다.</p>
+<p>D3D12를 고려한 점: D3D12는 샘플러가 디스크립터 힙(최대 2048)에 들어가거나 루트 시그니처의 <strong>정적 샘플러</strong>가 됩니다. 프리셋 다섯 개는 정적 샘플러로 옮기기 좋은 형태이고, <code>ResourceSet</code>에 샘플러 핸들을 넣는 지금 구조는 디스크립터 힙 경로와 대응합니다. D3D11에서는 <code>SetResourceSet</code>이 <code>PSSetSamplers</code> 한 번으로 풉니다.</p>
+
+<h2 id="s6"><span class="num">6.</span>UV와 프리미티브</h2>
+<p><code>VERTEX</code>에 <code>u, v</code>가 붙어 48바이트가 되었고, 입력 레이아웃은 <code>TEXCOORD0 R32G32_FLOAT</code> 속성이 하나 늘었습니다. 정점 셰이더가 <code>uv × uvScale</code>을 넘기므로 바닥 같은 큰 면은 재질의 <code>uvScale</code>(8×8)로 타일링합니다. 그래서 <code>b3 Material</code>은 이제 VS도 읽고, 재질 레이아웃의 b3 슬롯이 <code>VS|PS</code>가 되었습니다. 리플렉션 대조가 이것을 잡아 줍니다 — b3을 PS에만 선언한 채로 두면 초기화가 "VS가 b3을 쓰지만 선언되지 않음"으로 실패합니다.</p>
+<p>Direct3D의 텍스처 공간은 (0,0)이 왼쪽 위, u가 오른쪽, v가 <strong>아래</strong>로 갑니다<sup><a href="#ref-18">18</a></sup>. OpenGL 교재의 그림과 반대이므로 검증 텍스처(<code>uv_checker.png</code>)에 코너 마커를 넣었습니다: 빨강 = (0,0), 초록 = u+ 방향, 파랑 = v+ 방향. 그림 4의 큐브 면에서 빨강이 왼쪽 위, 초록이 오른쪽 위, 파랑이 왼쪽 아래에 있으면 UV와 이미지 행 순서가 맞는 것입니다.</p>
+<div class="tbl"><table>
+  <thead><tr><th>프리미티브</th><th>u</th><th>v</th><th>비고</th></tr></thead>
+  <tbody>
+    <tr><td>구</td><td>θ / 2π (경도)</td><td>φ / π (위도, 북극 0)</td><td>링마다 sliceCount+1 정점 — 마지막이 첫 정점의 복제라 u=1 이음새가 생김. 극점은 u=0.5</td></tr>
+    <tr><td>큐브</td><td>면마다 0→1</td><td>면마다 0→1</td><td>면의 정점 순서가 (0,1)(0,0)(1,0)(1,1)이 되게 시계 방향. 여섯 면 모두 텍스처가 "바로 선" 방향</td></tr>
+    <tr><td>평면</td><td>x 방향 0→1</td><td>뒤(+z)에서 앞(−z)으로 0→1</td><td>재질 uvScale로 타일링</td></tr>
+    <tr><td>실린더 옆면</td><td>둘레 0→1</td><td>위 0, 아래 1</td><td>옆면도 이음새 정점 복제</td></tr>
+    <tr><td>실린더 뚜껑</td><td colspan="2">원판을 위에서 본 평면 투영 (0.5 + 0.5·cos, 0.5 − 0.5·sin)</td><td>중심 (0.5, 0.5)</td></tr>
+  </tbody>
+</table></div>
+
+<h2 id="s7"><span class="num">7.</span>재질 셋에 t0·s0</h2>
+<p>4단계에서 재질 ResourceSet은 b3 하나였습니다. 이제 t0(알베도 SRV)과 s0(샘플러)이 더해집니다. <code>Device::CreateResourceSet</code>이 4단계에서 거부하던 <code>Sampler</code> 슬롯을 받고, <code>SetResourceSet</code>이 <code>PSSetShaderResources</code>·<code>PSSetSamplers</code>로 풉니다. 3단계 <code>D3D11Texture::GetSRV</code>의 지연 생성이 여기서 처음 실전에 쓰입니다.</p>
+<p>ResourceSet은 <strong>값</strong>이라 갱신이 없습니다(D3D12 디스크립터 테이블도 다시 써야 합니다). 재질의 텍스처 이름이나 샘플러가 바뀌면(ImGui 편집, 샘플러 덮어쓰기) <code>GetOrCreateGpuMaterial</code>이 마지막으로 셋에 넣은 핸들과 비교해 셋을 다시 만듭니다. 상수버퍼 핸들은 그대로이므로 상수 업로드 경로는 4단계와 같습니다.</p>
+<pre><code><span class="cm">// Renderer.cpp — GetOrCreateGpuMaterial 발췌</span>
+<span class="kw">const</span> TextureHandle texture = GetOrLoadTexture(material.albedoTexture, material.albedoSrgb);
+<span class="kw">const</span> SamplerHandle sampler = GetSampler(preset);   <span class="cm">// preset = 덮어쓰기 ?: 재질 설정</span>
+<span class="kw">if</span> (!gpuMaterial-&gt;set.IsValid() || gpuMaterial-&gt;boundTexture != texture || gpuMaterial-&gt;boundSampler != sampler)
+{
+    m_device-&gt;DestroyResourceSet(gpuMaterial-&gt;set);
+    ResourceSetDesc setDesc;
+    setDesc.layout = m_materialLayout;
+    setDesc.bindings[0].buffer  = gpuMaterial-&gt;constants;   <span class="cm">// b3</span>
+    setDesc.bindings[1].texture = texture;                  <span class="cm">// t0</span>
+    setDesc.bindings[2].sampler = sampler;                  <span class="cm">// s0</span>
+    gpuMaterial-&gt;set = m_device-&gt;CreateResourceSet(setDesc);
+    gpuMaterial-&gt;boundTexture = texture;
+    gpuMaterial-&gt;boundSampler = sampler;
+}</code></pre>
+<p>재질은 텍스처를 핸들이 아니라 <strong>이름</strong>으로 가리킵니다. <code>Scene</code>은 <code>Device</code>를 모르므로 파일을 열 수 없고, Renderer의 캐시(이름 + "|srgb"/"|linear" → <code>TextureHandle</code>)가 이름을 핸들로 바꿉니다. 이름 규칙은 세 가지입니다: <code>Assets/Textures/</code> 기준 파일 이름("uv_checker.png"), <code>builtin:white</code> / <code>builtin:checker</code> / <code>builtin:gray128</code>(절차적), 빈 문자열(텍스처 없음 → 1×1 흰색, <code>baseColor</code>만 남음). 로드에 실패하면 경고 후 흰색으로 대체해 화면이 깨지지 않습니다. 에셋은 vcxproj의 <code>CopyAssets</code> 타깃이 exe 옆 <code>Assets\</code>로 복사하고 <code>Paths::GetAssetPath</code>가 찾습니다(없으면 소스 트리 폴백).</p>
+
+<h2 id="s8"><span class="num">8.</span>함정과 해결</h2>
+<ul>
+  <li><strong>DirectXTex Convert가 인코딩을 한다.</strong> 4.3절. 회색 128이 188로. 해법은 "변환하지 말고 라벨만". 이 버그는 감마 검증 없이는 "텍스처가 조금 밝네" 정도로 지나갔을 것입니다. 로드맵이 128 검증을 완료 기준 옆에 둔 이유가 여기서 증명됐습니다.</li>
+  <li><strong>ImGui가 희게 뜬다.</strong> 2.3절. sRGB 뷰에 ImGui를 그리면 이중 인코딩. UNORM 뷰의 UI 패스로 분리.</li>
+  <li><strong>flip 모델은 sRGB 백버퍼를 거부한다.</strong> <code>CreateSwapChainForHwnd</code>가 <code>DXGI_ERROR_INVALID_CALL</code>. 문서의 예외 규칙(UNORM 백버퍼에 sRGB RTV)으로 해결. 이 예외는 백버퍼에만 적용되고 일반 텍스처는 TYPELESS로 만들어야 합니다.</li>
+  <li><strong>ALLOW_TEARING은 세 곳에 같은 값.</strong> 생성 플래그, <code>ResizeBuffers</code> 플래그, <code>Present</code> 플래그. 하나라도 빠지면 리사이즈에서 <code>DXGI_ERROR_INVALID_CALL</code>. 멤버 <code>m_swapChainFlags</code>로 한 곳에서 관리.</li>
+  <li><strong>b3을 VS가 읽는다.</strong> uvScale을 VS에서 곱하므로 재질 레이아웃의 b3 슬롯을 <code>VS|PS</code>로 바꿔야 했습니다. 4단계의 리플렉션 대조가 초기화 시점에 잡았습니다.</li>
+  <li><strong>빈 텍스처 이름이 흰색을 하나 더 만든다.</strong> 캐시 키가 ""|srgb 와 builtin:white|linear 로 달라 흰색 1×1이 두 개. 빈 이름은 캐시를 거치지 않고 <code>m_whiteTexture</code>를 돌려주게 수정. 텍스처 수 5 → 4.</li>
+  <li><strong>격리 grep이 주석에 걸렸다.</strong> Renderer.cpp의 주석 속 "ComPtr". 3단계와 같은 종류. 문구 수정.</li>
+  <li><strong>검증 텍스처의 글자.</strong> uv_checker.png에 "u+"/"v+" 글자를 넣으려 했으나 생성 스크립트의 글꼴 렌더링이 실패해 색 마커만 남았습니다. 검증에는 마커로 충분합니다.</li>
+</ul>
+
+<h2 id="s9"><span class="num">9.</span>검증과 스크린샷</h2>
+<div class="applied">
+  <div class="t">적용 결과 — 2026-09-23</div>
+  <ul>
+    <li><b>완료 기준 ①</b> "텍스처 큐브·구가 올바른 감마로 표시된다" — 회색 128 카드가 화면에서 128, 배경 (89,89,149)가 클리어 색 (0.1,0.1,0.3)의 인코딩과 일치(2.4절 표). sRGB를 끄면(F5) 55 / (25,25,76)로 선형 값이 그대로 나옴. 그림 2.</li>
+    <li><b>완료 기준 ②</b> "밉맵이 원거리에서 반짝임 없이 보인다" — 기본(AnisotropicWrap, 밉 10레벨)은 먼 바닥이 매끈. F6으로 PointNoMip로 바꾸면 같은 자리에 모아레. 그림 3.</li>
+    <li>UV 방향: uv_checker.png 코너 마커가 큐브 면에서 빨강 좌상·초록 우상·파랑 좌하. 구는 경도/위도 매핑, 극점 수렴 확인. 그림 4.</li>
+    <li>리플렉션: cbuffer 6건 일치(208/128/48 · 208/656/48), 바인딩 대조 8건 OK(VS b0·b1·b3, PS s0·t0·b0·b2·b3).</li>
+    <li>텍스처 로드 로그: uv_checker.png 512×512, 밉 10, sRGB. 스왑체인 로그: FLIP_DISCARD, 버퍼 2, tearing 지원.</li>
+    <li>통계: draws 8 / PSO 2 / set 7 / mesh 5~7(재질 포인터 순서에 따라 실행마다 다름), GPU 재질 7, 텍스처 4(흰색·체커·uv_checker·gray128).</li>
+    <li>핫리로드 회귀: <code>Common.hlsli</code>가 바뀐 뒤에도 편집 → 세대 2, 에러 → 유지, 복구 → 세대 3(4단계 스크립트 재실행).</li>
+    <li>리사이즈 1500×900 ↔ 900×500 6회 + 최소화/복원: Debug Layer 메시지 0. flip 모델의 <code>ResizeBuffers(…, ALLOW_TEARING)</code> 통과.</li>
+    <li>격리 grep(<code>ID3D11|d3d11.h|dxgi.h|d3dcompiler.h|imgui_impl_dx11|ComPtr</code>, Graphics/D3D11 밖): 0건. Debug·Release x64 빌드, Release 실행 동일 화면. 종료 시 자식 Live Object 0건.</li>
+  </ul>
+</div>
+
+<div class="fig">
+  <img src="../images/2026-09-23-phase5-scene.png" alt="체커 바닥 위에 UV 체커 구·큐브, 파란 체커 구, 회색 카드가 있는 씬" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 1. 5단계 기본 씬. 바닥은 절차적 체커 8×8 타일(비등방 16×), 가운데 구와 오른쪽 큐브는 uv_checker.png, 파란 구는 체커 2×1, 오른쪽 아래 회색 사각형이 unlit 128 카드. 조명은 선형에서 계산되고 sRGB 뷰로 나간다. (images/2026-09-23-phase5-scene.png)</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase5-srgb-compare.png" alt="sRGB 출력 켬/끔 비교 크롭" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 2. 같은 자리의 sRGB 출력 켬(왼쪽, 카드 128)과 끔(오른쪽, 카드 55). 오른쪽이 4단계까지의 상태다 — 선형 결과를 인코딩 없이 내보내 전체가 어둡다. 전체 화면은 images/2026-09-23-phase5-srgb-off.png.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase5-mip-compare.png" alt="비등방 밉맵과 밉 없는 최근접 샘플의 먼 바닥 비교 크롭" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 3. 먼 바닥 크롭. 왼쪽 AnisotropicWrap(밉 10레벨), 오른쪽 PointNoMip(레벨 0만). 오른쪽의 모아레가 픽셀 하나가 텍셀 수십 개를 덮을 때 밉 없이 생기는 앨리어싱이다. 전체 화면은 images/2026-09-23-phase5-sampler-pointnomip.png.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase5-uv-closeup.png" alt="UV 체커 구와 큐브를 가까이서 본 화면" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 4. W로 전진한 근접 화면. 오른쪽 큐브 면: 빨강(0,0) 왼쪽 위, 초록(u+) 오른쪽 위, 파랑(v+) 왼쪽 아래 — D3D 텍스처 공간과 일치. 가운데 구는 경도/위도 매핑으로 극점에서 셀이 모인다. (images/2026-09-23-phase5-uv-closeup.png)</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-23-phase5-panel.png" alt="sRGB·샘플러 옵션과 텍스처 수가 보이는 ImGui 패널" style="width:100%;height:auto;border-radius:6px">
+  <div class="cap">그림 5. 패널. Pipeline 줄에 sRGB output 체크박스, "(tearing OK)", Sampler override 콤보, textures 수. 재질 트리를 펼치면 Sampler·UV scale·Unlit을 편집할 수 있다. (images/2026-09-23-phase5-panel.png)</div>
+</div>
+
+<h2 id="s10"><span class="num">10.</span>참고 문헌</h2>
+<ol>
+  <li id="ref-1">Microsoft Learn, <em>Converting data for the color space</em> — 선형에서 계산·sRGB로 표시, _SRGB SRV/RTV의 자동 변환, UNORM 백버퍼에 _SRGB RTV를 만들 수 있는 예외. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/converting-data-color-space">learn.microsoft.com/…/converting-data-color-space</a></li>
+  <li id="ref-2">Larry Gritz, Eugene d'Eon, <em>The Importance of Being Linear</em>, GPU Gems 3, 24장 — 감마를 무시한 조명이 왜 틀리는지. <a href="https://developer.nvidia.com/gpugems/gpugems3/part-iv-image-effects/chapter-24-importance-being-linear">developer.nvidia.com/gpugems/gpugems3/…/chapter-24-importance-being-linear</a></li>
+  <li id="ref-3">Wikipedia, <em>sRGB</em> — 전달 함수(0.04045 / 12.92 / 2.4). <a href="https://en.wikipedia.org/wiki/SRGB">en.wikipedia.org/wiki/SRGB</a></li>
+  <li id="ref-4">Microsoft Learn, <em>DXGI flip model</em> — blt 모델과의 차이(복사 없음), 요구 사항(버퍼 2~16, 포맷, MSAA 불가), HWND당 하나. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/dxgi-flip-model">learn.microsoft.com/…/dxgi-flip-model</a></li>
+  <li id="ref-5">Microsoft Learn, <em>For best performance, use DXGI flip model</em> — "blt 모델은 그만", Present 뒤 백버퍼 재바인딩, ALLOW_TEARING과 CheckFeatureSupport. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/for-best-performance--use-dxgi-flip-model">learn.microsoft.com/…/for-best-performance--use-dxgi-flip-model</a></li>
+  <li id="ref-6">Microsoft Learn, <em>Variable refresh rate displays</em> — ALLOW_TEARING을 생성·ResizeBuffers·Present에 같은 값으로, sync interval 0에서만. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/variable-refresh-rate-displays">learn.microsoft.com/…/variable-refresh-rate-displays</a></li>
+  <li id="ref-7">Microsoft Learn, <em>DXGI_SWAP_CHAIN_DESC1</em> — flip 모델의 허용 포맷 네 가지(_SRGB 없음). <a href="https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_2/ns-dxgi1_2-dxgi_swap_chain_desc1">learn.microsoft.com/…/ns-dxgi1_2-dxgi_swap_chain_desc1</a></li>
+  <li id="ref-8">Microsoft Learn, <em>IDXGIFactory2::CreateSwapChainForHwnd</em>. <a href="https://learn.microsoft.com/en-us/windows/win32/api/dxgi1_2/nf-dxgi1_2-idxgifactory2-createswapchainforhwnd">learn.microsoft.com/…/nf-dxgi1_2-idxgifactory2-createswapchainforhwnd</a></li>
+  <li id="ref-9">Microsoft Learn, <em>D3D11_SAMPLER_DESC</em> — MinLOD/MaxLOD 클램프, MaxAnisotropy 1~16, 기본값 표. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ns-d3d11-d3d11_sampler_desc">learn.microsoft.com/…/ns-d3d11-d3d11_sampler_desc</a></li>
+  <li id="ref-10">Microsoft Learn, <em>D3D11_FILTER</em> — MIN/MAG/MIP 조합, min·mag가 다르면 정의되지 않는 경우, 비교 필터. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_filter">learn.microsoft.com/…/ne-d3d11-d3d11_filter</a></li>
+  <li id="ref-11">Microsoft Learn, <em>D3D11_SUBRESOURCE_DATA</em> — 서브리소스 = 밉 레벨 하나, SysMemPitch. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ns-d3d11-d3d11_subresource_data">learn.microsoft.com/…/ns-d3d11-d3d11_subresource_data</a></li>
+  <li id="ref-12">Microsoft Learn, <em>ID3D11DeviceContext::GenerateMips</em> — RENDER_TARGET + SHADER_RESOURCE + MISC_GENERATE_MIPS 요구, 미지원 포맷은 조용히 실패. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-generatemips">learn.microsoft.com/…/nf-d3d11-id3d11devicecontext-generatemips</a></li>
+  <li id="ref-13">Microsoft Learn, <em>Introduction To Textures in Direct3D 11</em> — 밉 체인은 1×1까지, 홀수 크기는 내림. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-textures-intro">learn.microsoft.com/…/overviews-direct3d-11-resources-textures-intro</a></li>
+  <li id="ref-14">DirectXTex Wiki, <em>Filter Flags</em> — TEX_FILTER_SRGB_IN/OUT, _SRGB 포맷이면 암시됨. <a href="https://github.com/microsoft/DirectXTex/wiki/Filter-Flags">github.com/microsoft/DirectXTex/wiki/Filter-Flags</a></li>
+  <li id="ref-15">DirectXTex Wiki, <em>GenerateMipMaps</em>. <a href="https://github.com/microsoft/DirectXTex/wiki/GenerateMipMaps">github.com/microsoft/DirectXTex/wiki/GenerateMipMaps</a></li>
+  <li id="ref-16">DirectXTex Wiki, <em>Convert</em>. <a href="https://github.com/microsoft/DirectXTex/wiki/Convert">github.com/microsoft/DirectXTex/wiki/Convert</a></li>
+  <li id="ref-17">Wikipedia, <em>Mipmap</em> — Lance Williams, "Pyramidal Parametrics" (1983), multum in parvo. <a href="https://en.wikipedia.org/wiki/Mipmap">en.wikipedia.org/wiki/Mipmap</a></li>
+  <li id="ref-18">Microsoft Learn, <em>Texture Coordinates (Direct3D 9)</em> — 텍스처 공간의 원점과 u·v 방향. D3D11에서도 같다. <a href="https://learn.microsoft.com/en-us/windows/win32/direct3d9/texture-coordinates">learn.microsoft.com/…/direct3d9/texture-coordinates</a></li>
+  <li id="ref-19">Dear ImGui, Issue #578 <em>Color correct (sRGB / linear) rendering</em> — ImGui 색과 sRGB 프레임버퍼의 이중 인코딩 문제. <a href="https://github.com/ocornut/imgui/issues/578">github.com/ocornut/imgui/issues/578</a></li>
+  <li id="ref-20">Microsoft Learn, <em>D3D11_RENDER_TARGET_VIEW_DESC</em> — 뷰 포맷 지정. <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ns-d3d11-d3d11_render_target_view_desc">learn.microsoft.com/…/ns-d3d11-d3d11_render_target_view_desc</a></li>
+</ol>
+
+<div class="footer">
+  대상: SherlockEngine 작업 트리 (2026/09/23, 4단계 위에 연속). 이전: <a href="phase-4.html">4단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p5">rendering-analysis.html PHASE 5</a>. 스크린샷은 <code>images/2026-09-23-phase5-*.png</code>.
+</div>
+</main>
+</div>
+</body>
+</html>

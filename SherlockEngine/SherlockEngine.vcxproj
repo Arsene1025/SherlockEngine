@@ -86,7 +86,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -106,7 +106,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -124,7 +124,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -144,7 +144,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
+      <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
@@ -152,32 +152,55 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="App\AppBase.h" />
     <ClInclude Include="App\DebugUI.h" />
+    <ClInclude Include="App\Editor.h" />
     <ClInclude Include="App\TestApp.h" />
     <ClInclude Include="Core\GameTimer.h" />
     <ClInclude Include="Core\Input.h" />
     <ClInclude Include="Core\Log.h" />
     <ClInclude Include="Core\Paths.h" />
-    <ClInclude Include="Graphics\D3D11\D3D11Common.h" />
-    <ClInclude Include="Graphics\D3D11\D3D11Convert.h" />
-    <ClInclude Include="Graphics\D3D11\D3D11Resources.h" />
-    <ClInclude Include="Graphics\D3D11\Device.h" />
-    <ClInclude Include="Graphics\D3D11\ImGuiBackend.h" />
-    <ClInclude Include="Graphics\D3D11\PipelineState.h" />
-    <ClInclude Include="Graphics\D3D11\PipelineStateCache.h" />
-    <ClInclude Include="Graphics\D3D11\ResourcePool.h" />
-    <ClInclude Include="Graphics\D3D11\ShaderCompiler.h" />
-    <ClInclude Include="Graphics\GraphicsConfig.h" />
-    <ClInclude Include="Graphics\Handle.h" />
+    <ClInclude Include="Core\Config.h" />
+    <ClInclude Include="Core\Time.h" />
+    <ClInclude Include="Core\Profiler.h" />
+    <ClInclude Include="Core\AssetManager.h" />
+    <ClInclude Include="Core\Engine.h" />
+    <ClInclude Include="RHI\D3D11\D3D11Common.h" />
+    <ClInclude Include="RHI\D3D11\D3D11Convert.h" />
+    <ClInclude Include="RHI\D3D11\D3D11Resources.h" />
+    <ClInclude Include="RHI\D3D11\D3D11Device.h" />
+    <ClInclude Include="RHI\D3D11\PipelineState.h" />
+    <ClInclude Include="RHI\D3D11\PipelineStateCache.h" />
+    <ClInclude Include="RHI\D3D11\D3D11CommandList.h" />
+    <ClInclude Include="RHI\D3D12\D3D12Common.h" />
+    <ClInclude Include="RHI\D3D12\D3D12Convert.h" />
+    <ClInclude Include="RHI\D3D12\D3D12DescriptorHeap.h" />
+    <ClInclude Include="RHI\D3D12\D3D12Resources.h" />
+    <ClInclude Include="RHI\D3D12\D3D12PipelineState.h" />
+    <ClInclude Include="RHI\D3D12\D3D12CommandList.h" />
+    <ClInclude Include="RHI\D3D12\D3D12Device.h" />
+    <ClInclude Include="RHI\ResourcePool.h" />
+    <ClInclude Include="RHI\ShaderCompiler.h" />
+    <ClInclude Include="RHI\BindingTypes.h" />
+    <ClInclude Include="RHI\GraphicsConfig.h" />
+    <ClInclude Include="RHI\Handle.h" />
+    <ClInclude Include="RHI\Device.h" />
+    <ClInclude Include="RHI\CommandList.h" />
+    <ClInclude Include="RHI\RHI.h" />
     <ClInclude Include="Graphics\Mesh.h" />
-    <ClInclude Include="Graphics\PipelineTypes.h" />
+    <ClInclude Include="Graphics\Model.h" />
+    <ClInclude Include="Graphics\Screenshot.h" />
+    <ClInclude Include="RHI\PipelineTypes.h" />
     <ClInclude Include="Graphics\Renderer.h" />
-    <ClInclude Include="Graphics\ResourceDesc.h" />
+    <ClInclude Include="RHI\RenderPassTypes.h" />
+    <ClInclude Include="RHI\ResourceDesc.h" />
     <ClInclude Include="Graphics\ShaderConstants.h" />
+    <ClInclude Include="Graphics\TextureLoader.h" />
     <ClInclude Include="Graphics\VertexTypes.h" />
     <ClInclude Include="Scene\Camera.h" />
     <ClInclude Include="Scene\GameObject.h" />
     <ClInclude Include="Scene\Light.h" />
+    <ClInclude Include="Scene\Material.h" />
     <ClInclude Include="Scene\Scene.h" />
+    <ClInclude Include="Scene\SceneSerializer.h" />
     <ClInclude Include="Scene\Transform.h" />
   </ItemGroup>
   <ItemGroup>
@@ -187,39 +210,92 @@
     </ClCompile>
     <ClCompile Include="App\AppBase.cpp" />
     <ClCompile Include="App\DebugUI.cpp" />
+    <ClCompile Include="App\Editor.cpp" />
     <ClCompile Include="App\TestApp.cpp" />
     <ClCompile Include="Core\GameTimer.cpp" />
     <ClCompile Include="Core\Input.cpp" />
     <ClCompile Include="Core\Log.cpp" />
     <ClCompile Include="Core\Paths.cpp" />
-    <ClCompile Include="Graphics\D3D11\D3D11Convert.cpp" />
-    <ClCompile Include="Graphics\D3D11\Device.cpp" />
-    <ClCompile Include="Graphics\D3D11\ImGuiBackend.cpp" />
-    <ClCompile Include="Graphics\D3D11\PipelineState.cpp" />
-    <ClCompile Include="Graphics\D3D11\PipelineStateCache.cpp" />
-    <ClCompile Include="Graphics\D3D11\ShaderCompiler.cpp" />
+    <ClCompile Include="Core\Config.cpp" />
+    <ClCompile Include="Core\Time.cpp" />
+    <ClCompile Include="Core\Profiler.cpp" />
+    <ClCompile Include="Core\AssetManager.cpp" />
+    <ClCompile Include="Core\Engine.cpp" />
+    <ClCompile Include="RHI\D3D11\D3D11Convert.cpp" />
+    <ClCompile Include="RHI\D3D11\D3D11Device.cpp" />
+    <ClCompile Include="RHI\D3D11\PipelineState.cpp" />
+    <ClCompile Include="RHI\D3D11\PipelineStateCache.cpp" />
+    <ClCompile Include="RHI\D3D11\D3D11CommandList.cpp" />
+    <ClCompile Include="RHI\D3D12\D3D12Convert.cpp" />
+    <ClCompile Include="RHI\D3D12\D3D12PipelineState.cpp" />
+    <ClCompile Include="RHI\D3D12\D3D12CommandList.cpp" />
+    <ClCompile Include="RHI\D3D12\D3D12Device.cpp" />
+    <ClCompile Include="RHI\DXBC\ShaderCompiler.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
-    <ClCompile Include="Graphics\PipelineTypes.cpp" />
+    <ClCompile Include="Graphics\Model.cpp" />
+    <ClCompile Include="Graphics\Screenshot.cpp" />
+    <ClCompile Include="RHI\PipelineTypes.cpp" />
+    <ClCompile Include="RHI\RHI.cpp" />
     <ClCompile Include="Graphics\Renderer.cpp" />
+    <ClCompile Include="Graphics\TextureLoader.cpp" />
     <ClCompile Include="Scene\Camera.cpp" />
     <ClCompile Include="Scene\GameObject.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
+    <ClCompile Include="Scene\SceneSerializer.cpp" />
     <ClCompile Include="Scene\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <!-- 셰이더는 런타임에 D3DCompileFromFile로 컴파일한다. 빌드 시 FXC는 돌리지 않고
-         exe 옆 Shaders\ 폴더로 복사만 한다. 실행 파일은 Core/Paths.h로 이 폴더를 찾는다. -->
-    <CopyFileToFolders Include="Shaders\Common.hlsli">
-      <DestinationFolders>$(OutDir)Shaders</DestinationFolders>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="Shaders\BasicVertexShader.hlsl">
-      <DestinationFolders>$(OutDir)Shaders</DestinationFolders>
-    </CopyFileToFolders>
-    <CopyFileToFolders Include="Shaders\BasicPixelShader.hlsl">
-      <DestinationFolders>$(OutDir)Shaders</DestinationFolders>
-    </CopyFileToFolders>
+    <!-- 4단계(D12): 빌드가 fxc로 .cso를 만들어 exe 옆 Shaders\ 에 둔다. 런타임은 .cso를 우선 로드하고,
+         Debug 빌드에서 소스 .hlsl이 더 새로우면 런타임 컴파일로 대체하며 파일 변경을 감시해 핫리로드한다.
+         리플렉션(D9)에 쓰므로 /Qstrip_reflect 는 켜지 않는다. -->
+    <FxCompile Include="Shaders\BasicVertexShader.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>VS_Main</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\BasicPixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>PS_Main</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ShadowVertexShader.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>VS_Shadow</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <None Include="Shaders\Common.hlsli" />
+    <None Include="Assets\Textures\uv_checker.png" />
+    <None Include="Assets\Textures\bumps_normal.png" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <!-- fxc는 출력 폴더를 만들어 주지 않는다. -->
+  <Target Name="EnsureShaderOutputDir" BeforeTargets="FxCompile">
+    <MakeDir Directories="$(OutDir)Shaders" />
+  </Target>
+  <!-- 소스 .hlsl/.hlsli 사본도 exe 옆에 둔다. .cso가 없을 때의 런타임 컴파일 폴백과
+       소스 트리가 없는 환경(배포)에서의 핫리로드 대상이다. -->
+  <Target Name="CopyShaderSources" AfterTargets="Build">
+    <ItemGroup>
+      <ShaderSourceFiles Include="$(ProjectDir)Shaders\*.hlsl;$(ProjectDir)Shaders\*.hlsli" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ShaderSourceFiles)" DestinationFolder="$(OutDir)Shaders" SkipUnchangedFiles="true" />
+  </Target>
+  <!-- 5단계: 에셋(텍스처)을 exe 옆 Assets\ 로 복사. 실행 파일은 Core/Paths::GetAssetPath 로 찾는다. -->
+  <Target Name="CopyAssets" AfterTargets="Build">
+    <ItemGroup>
+      <AssetFiles Include="$(ProjectDir)Assets\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AssetFiles)" DestinationFiles="@(AssetFiles->'$(OutDir)Assets\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>

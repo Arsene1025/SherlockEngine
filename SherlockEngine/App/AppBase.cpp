@@ -1,22 +1,22 @@
 ﻿#include "pch.h"
 #include "App/AppBase.h"
 #include "Core/Log.h"
+#include "Core/Paths.h"
+#include "Core/Profiler.h"
 #include <imgui.h>
 #include <imgui_impl_win32.h>
-#include "Graphics/D3D11/ImGuiBackend.h"
+#include <ImGuizmo.h>
 #include <windowsx.h>   // GET_X_LPARAM / GET_Y_LPARAM
+#include <shellapi.h>   // CommandLineToArgvW
 
 using namespace DirectX;   // 이 파일 안에서만
 
-
-
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,UINT msg,WPARAM wParam,LPARAM lParam);
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 AppBase* g_appBase = nullptr;
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    // 소멸 중이거나 아직 생성 전이면 g_appBase가 없다.
-    // DestroyWindow가 보내는 WM_DESTROY도 이 경로로 온다.
+    // 소멸 중이거나 아직 생성 전이면 g_appBase가 없다. DestroyWindow가 보내는 WM_DESTROY도 이 경로로 온다.
     if (g_appBase == nullptr)
     {
         return ::DefWindowProc(hWnd, msg, wParam, lParam);
@@ -24,46 +24,141 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return g_appBase->MsgProc(hWnd, msg, wParam, lParam);
 }
 
-AppBase::AppBase() : m_screenWidth(1280), m_screenHeight(720), m_mainWindow(0)
+AppBase::AppBase()
 {
-	g_appBase = this;
+    g_appBase = this;
 }
 
 AppBase::~AppBase()
 {
-	// 창을 먼저 파괴한다. DestroyWindow는 WM_DESTROY를 동기적으로 보내므로
-	// g_appBase가 아직 살아 있어야 한다.
-	if (m_mainWindow != nullptr)
-	{
-		DestroyWindow(m_mainWindow);
-		m_mainWindow = nullptr;
-	}
+    // 창을 먼저 파괴한다. DestroyWindow는 WM_DESTROY를 동기적으로 보내므로 g_appBase가 아직 살아 있어야 한다.
+    if (m_mainWindow != nullptr)
+    {
+        DestroyWindow(m_mainWindow);
+        m_mainWindow = nullptr;
+    }
+    g_appBase = nullptr;
 
-	g_appBase = nullptr;
-
-	// 초기화한 것만, 초기화의 역순으로 되돌린다.
-	if (m_guiInitialized)
-	{
-		ImGuiBackend::Shutdown();
-	}
-	if (m_guiWin32Initialized)
-	{
-		ImGui_ImplWin32_Shutdown();
-	}
-	if (m_guiContextCreated)
-	{
-		ImGui::DestroyContext();
-	}
+    // 초기화한 것만, 초기화의 역순으로: Engine(Device·ImGui 렌더러) → ImGui Win32 → ImGui 컨텍스트 → Logger.
+    m_engine.Shutdown();
+    if (m_guiWin32Initialized)
+    {
+        ImGui_ImplWin32_Shutdown();
+    }
+    if (m_guiContextCreated)
+    {
+        ImGui::DestroyContext();
+    }
+    Log::Info("종료.");
+    Log::Shutdown();
 }
 
-float AppBase::GetAspectRatio() const
+std::wstring AppBase::GetCommandLineOption(const wchar_t* name)
 {
-	return float(m_screenWidth - m_guiWidth) / m_screenHeight;
+    std::wstring result;
+    int argc = 0;
+    LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (argv == nullptr) return result;
+    const std::wstring prefix = std::wstring(L"--") + name + L"=";
+    for (int i = 1; i < argc; ++i)
+    {
+        if (_wcsnicmp(argv[i], prefix.c_str(), prefix.size()) == 0)
+        {
+            result = argv[i] + prefix.size();
+        }
+    }
+    LocalFree(argv);
+    return result;
+}
+
+bool AppBase::LoadConfig()
+{
+    // Logger 보다 먼저다 (로그 파일 경로가 여기서 나온다). 그래서 이 함수는 로그를 남기지 않고 결과만 돌려준다.
+    const std::wstring path = Paths::GetAssetPath(L"Config\\engine.ini");
+    const bool loaded = m_config.LoadFromFile(path);
+
+    // 실행 인자 덮어쓰기: --backend=, --scene= 는 8~9단계의 이름 그대로, 그 밖의 --section.key=value 는 일반형.
+    int argc = 0;
+    LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (argv != nullptr)
+    {
+        for (int i = 1; i < argc; ++i)
+        {
+            const std::wstring arg = argv[i];
+            if (arg.size() < 3 || arg[0] != L'-' || arg[1] != L'-') continue;
+            const size_t equals = arg.find(L'=');
+            if (equals == std::wstring::npos) continue;
+            std::string key = Log::ToUtf8(arg.substr(2, equals - 2).c_str());
+            const std::string value = Log::ToUtf8(arg.substr(equals + 1).c_str());
+            if (key == "backend") key = "engine.backend";
+            else if (key == "scene") key = "engine.scene";
+            m_config.Set(key, value);
+        }
+        LocalFree(argv);
+    }
+    m_screenWidth = m_config.GetInt("engine.width", 1280);
+    m_screenHeight = m_config.GetInt("engine.height", 720);
+    if (m_screenWidth < 64) m_screenWidth = 64;
+    if (m_screenHeight < 64) m_screenHeight = 64;
+    return loaded;
+}
+
+void AppBase::InitLogger()
+{
+    Log::InitDesc desc;
+    desc.console = m_config.GetBool("log.console", true);
+#ifdef _DEBUG
+    desc.allocConsole = true;    // D19: Windows 서브시스템이라 콘솔이 없다. Debug 에서만 하나 연다
+#else
+    desc.allocConsole = false;
+#endif
+    const std::string file = m_config.GetString("log.file", "Logs\\SherlockEngine.log");
+    if (!file.empty())
+    {
+        std::wstring wide(file.begin(), file.end());   // 경로는 ASCII 라고 가정 (설정 파일의 우리 값)
+        for (wchar_t& c : wide) if (c == L'/') c = L'\\';
+        desc.filePath = Paths::GetExecutableDir() + wide;
+    }
+    Log::Level level = Log::Level::Info;
+    if (Log::ParseLevel(m_config.GetString("log.level", "info"), level)) desc.minLevel = level;
+    Log::Init(desc);
+}
+
+bool AppBase::Initialize()
+{
+    const bool configLoaded = LoadConfig();
+    InitLogger();
+    if (configLoaded) Log::Info("설정 파일: %s (%zu 항목)", Log::ToUtf8(m_config.GetPath().c_str()).c_str(), m_config.GetAll().size());
+    else Log::Warn("설정 파일 Assets\\Config\\engine.ini 를 찾지 못해 기본값으로 실행.");
+    if (!m_config.GetErrors().empty()) Log::Warn("설정 파일 파싱 오류:\n%s", m_config.GetErrors().c_str());
+
+    if (!InitMainWindow()) return false;
+
+    // ImGui 컨텍스트는 Engine 보다 먼저 (Engine 이 렌더러 백엔드를 붙인다), Win32 백엔드는 창이 있으니 지금.
+    if (!InitGUI()) return false;
+
+    Engine::Desc desc;
+    desc.windowHandle = m_mainWindow;
+    desc.width = m_screenWidth;
+    desc.height = m_screenHeight;
+    if (!m_engine.Initialize(m_config, desc)) return false;
+
+    if (!ImGui_ImplWin32_Init(m_mainWindow))
+    {
+        Log::Error("ImGui Win32 백엔드 초기화 실패");
+        return false;
+    }
+    m_guiWin32Initialized = true;
+
+    if (!OnInitialize()) return false;
+
+    // 11단계: 자동 검증 모드(--exit-after)에서는 포커스를 가져오지 않는다. 사용자가 다른 창(게임 등)을 쓰는 중일 수 있다.
+    if (GetCommandLineOption(L"exit-after").empty()) SetForegroundWindow(m_mainWindow);
+    return true;
 }
 
 int AppBase::Run()
 {
-    // Main message loop
     MSG msg = { 0 };
     while (WM_QUIT != msg.message)
     {
@@ -71,98 +166,59 @@ int AppBase::Run()
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
+            continue;
         }
-        else
+
+        // 시간·프로파일러·ImGui 렌더러 프레임. ImGui 프레임을 Update보다 먼저 연다:
+        // io.WantCaptureMouse/Keyboard 는 ImGui::NewFrame 에서 갱신되므로 그 뒤에 Update 가 읽어야 "이번 프레임" 값을 본다.
+        const float dt = m_engine.BeginFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+        ImGuizmo::BeginFrame();   // 11단계
+
         {
-            // 시간은 여기서 한 번만 읽고 dt로 넘긴다. 예전의 static GameTime
-            // 멤버는 정의가 없어 링크가 안 됐고, 지역 변수는 프레임 끝에
-            // 사라져 아무도 읽지 못했다.
-            gameTimer.Tick();
-            const float dt = gameTimer.DeltaTime();
-            m_totalTime = gameTimer.TotalTime();
-
-            // ImGui 프레임을 Update보다 먼저 연다. io.WantCaptureMouse/Keyboard는
-            // ImGui::NewFrame에서 갱신되므로, 그 뒤에 Update가 읽어야 "이번 프레임"
-            // 값을 본다. 반대 순서면 한 프레임 늦은 값으로 판단한다.
-            ImGuiBackend::NewFrame();
-            ImGui_ImplWin32_NewFrame();
-            ImGui::NewFrame(); //Imgui 렌더링 시작
-
-            Update(dt);
-
-            ImGui::Begin("Information");
-
-            //Imgui에서 자체적으로 프레임 계산함
-            ImGui::Text
-            (
-                "Average %.3f ms/frame (%.1f FPS)",
-                1000.0f / ImGui::GetIO().Framerate,
-                ImGui::GetIO().Framerate
-            );
-
-            UpdateGUI(); //GUI추가하려면 여기에
-
-            m_guiWidth = 0;
-            // 화면을 크게 쓰기 위해 기능 정지
-            // ImGui::SetWindowPos(ImVec2(0.0f, 0.0f));
-            // m_guiWidth = int(ImGui::GetWindowWidth());
-
-            ImGui::End();
-            ImGui::Render();
-
-            // BeginFrame: 백버퍼·깊이 버퍼 바인딩 + 클리어 + 뷰포트. 프레임 인덱스 갱신.
-            graphicsDevice.BeginFrame();
-            Render(); //실제 렌더링
-            ImGuiBackend::Render(); // GUI 렌더링. Present(EndFrame) 전에.
-            graphicsDevice.EndFrame();
-
-            // 프레임 끝. Pressed/Released 판정용 이전 상태를 넘기고 마우스 델타를 비운다.
-            input.EndFrame();
+            ProfileScope scope("Update");
+            Time& time = m_engine.GetTime();
+            while (time.ConsumeFixedStep())
+            {
+                OnFixedUpdate(time.GetFixedStep());
+            }
+            OnUpdate(dt);
         }
+
+        {
+            ProfileScope scope("GUI");
+            OnGUI();   // 11단계: 앱(에디터)이 창을 직접 만든다. 도킹 공간도 거기서.
+            ImGui::Render();
+        }
+
+        m_engine.Render();
+        m_engine.EndFrame();
     }
-
     return 0;
-}
-
-bool AppBase::Initialize()
-{
-    if (!InitMainWindow()) return false;
-
-    if (!InitDevice()) return false;
-    camera.SetLens(XM_PIDIV4, GetAspectRatio(), 0.1f, 1000.0f);
-
-    // Renderer가 셰이더 컴파일·상수버퍼·기본 PSO까지 만든다. 씬은 파생 클래스 몫.
-    if (!InitRenderer()) return false;
-
-    if (!InitGUI()) return false;
-
-
-
-    gameTimer.Reset();
-    gameTimer.Start();
-
-    SetForegroundWindow(m_mainWindow);
-    return true;
 }
 
 LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     // ImGui Win32 백엔드가 준비되기 전이나 종료된 뒤에는 넘기면 안 된다.
-    if (m_guiWin32Initialized &&
-        ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
+    if (m_guiWin32Initialized && ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
     {
         return true;
     }
+    Input& input = m_engine.GetInput();
     switch (msg)
     {
         // ---- 입력 공급. ImGui가 소비하는지와 무관하게 항상 넣는다 (Input.h 참고). ----
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:   // Alt 조합. break 뒤 DefWindowProc로 흘러야 Alt+F4가 동작한다.
             input.OnKeyDown(static_cast<uint32_t>(wParam));
+            // F10 은 혼자 눌러도 WM_SYSKEYDOWN 으로 오고, DefWindowProc 가 메뉴 모드에 들어가 다음 키 입력을 삼킨다.
+            if (wParam == VK_F10) return 0;
             break;
         case WM_KEYUP:
         case WM_SYSKEYUP:
             input.OnKeyUp(static_cast<uint32_t>(wParam));
+            if (wParam == VK_F10) return 0;
             break;
         case WM_LBUTTONDOWN: input.OnMouseButton(MouseButton::Left, true);    break;
         case WM_LBUTTONUP:   input.OnMouseButton(MouseButton::Left, false);   break;
@@ -183,29 +239,19 @@ LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             OnFocusLost();
             break;
         case WM_CAPTURECHANGED:
-            // lParam은 캡처를 새로 얻은 창이다. 이미 캡처를 가진 창에서 SetCapture를
-            // 다시 부르면(ImGui 백엔드가 버튼 다운에서 먼저 잡고, 우리가 BeginLook에서
-            // 또 잡는다) 자기 자신에게도 이 메시지가 온다. 그것은 상실이 아니다.
+            // lParam은 캡처를 새로 얻은 창이다. 자기 자신이면 상실이 아니다 (BeginLook 의 SetCapture).
             if (reinterpret_cast<HWND>(lParam) != hwnd)
             {
-                // 다른 창이 캡처를 가져갔다. ButtonUp이 오지 않을 수 있으므로 버튼 상태만 비운다.
                 input.OnCaptureLost();
                 OnFocusLost();
             }
             break;
 
         case WM_SIZE:
-            //맨 처음 시작때는 Resize호출하지 않기
-            if (graphicsDevice.IsInitialized())
+            // 맨 처음 시작때는 Resize호출하지 않기
+            if (m_engine.IsInitialized() && wParam != SIZE_MINIMIZED)
             {
-                int width = LOWORD(lParam);
-                int height = HIWORD(lParam);
-
-                if (wParam != SIZE_MINIMIZED)
-                {
-                    graphicsDevice.Resize(width, height);
-                    camera.SetAspectRatio(float(width) / float(height));
-                }
+                m_engine.OnResize(LOWORD(lParam), HIWORD(lParam));
             }
             break;
 
@@ -216,83 +262,32 @@ LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     return ::DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-
-
 bool AppBase::InitMainWindow()
 {
-    WNDCLASSEX wc = { sizeof(WNDCLASSEX),
-                     CS_CLASSDC,
-                     WndProc,
-                     0L,
-                     0L,
-                     GetModuleHandle(NULL),
-                     NULL,
-                     NULL,
-                     NULL,
-                     NULL,
-                     L"SherlockEngine",
-                     NULL };
-
-
-    // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerclassa?redirectedfrom=MSDN
-    if (!RegisterClassEx(&wc)) 
+    WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL),
+                      NULL, NULL, NULL, NULL, L"SherlockEngine", NULL };
+    if (!RegisterClassEx(&wc))
     {
         Log::Error("RegisterClassEx() 실패");
         return false;
     }
 
-    // 툴바까지 포함한 윈도우 전체 해상도가 아니라
-    // 우리가 실제로 그리는 해상도가 width x height가 되려면
-    // 윈도우를 만들 해상도를 다시 계산해서 CreateWindow()에서 사용해야함
-    // 렌더가 그려질 크기
+    // 클라이언트 영역이 width x height 가 되도록 창 크기를 다시 계산한다.
     RECT wr = { 0, 0, m_screenWidth, m_screenHeight };
-
-    // 필요한 윈도우 크기(해상도) 계산
-    // wr의 값이 바뀜
     AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, false);
 
-    // 윈도우를 만들때 위에서 계산한 wr 사용
-    m_mainWindow = CreateWindow
-    (
-        wc.lpszClassName, 
-        L"SherlockEngine",
-        WS_OVERLAPPEDWINDOW,
-        100, // 윈도우 좌측 상단의 x 좌표
-        100, // 윈도우 좌측 상단의 y 좌표
-        wr.right - wr.left, // 윈도우 가로 방향 해상도
-        wr.bottom - wr.top, // 윈도우 세로 방향 해상도
-        NULL, NULL, wc.hInstance, NULL
-    );
-
-    if (!m_mainWindow) 
+    // 11단계: 자동 검증 모드에서는 창을 화면 밖에, 활성화 없이 만든다 — 스크린샷은 Device 리드백으로 찍으므로 보일 필요가 없다.
+    const bool automation = !GetCommandLineOption(L"exit-after").empty();
+    const int windowX = automation ? -3000 : 100;
+    m_mainWindow = CreateWindow(wc.lpszClassName, L"SherlockEngine", WS_OVERLAPPEDWINDOW,
+        windowX, 100, wr.right - wr.left, wr.bottom - wr.top, NULL, NULL, wc.hInstance, NULL);
+    if (!m_mainWindow)
     {
         Log::Error("CreateWindow() 실패");
         return false;
     }
-
-    ShowWindow(m_mainWindow, SW_SHOWDEFAULT);
+    ShowWindow(m_mainWindow, automation ? SW_SHOWNOACTIVATE : SW_SHOWDEFAULT);
     UpdateWindow(m_mainWindow);
-
-    return true;
-}
-
-bool AppBase::InitDevice()
-{
-    if (!graphicsDevice.InitDevice(m_mainWindow, m_screenWidth, m_screenHeight))
-    {
-        Log::Error("Device 초기화 실패");
-        return false;
-    }
-    return true;
-}
-
-bool AppBase::InitRenderer()
-{
-    if (!renderer.Initialize(&graphicsDevice))
-    {
-        Log::Error("Renderer 초기화 실패");
-        return false;
-    }
     return true;
 }
 
@@ -302,24 +297,19 @@ bool AppBase::InitGUI()
     ImGui::CreateContext();
     m_guiContextCreated = true;
     ImGuiIO& io = ImGui::GetIO();
-    (void)io;
-    io.DisplaySize = ImVec2(float(m_screenWidth), float(m_screenHeight));
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   // 11단계: 에디터 창 도킹
     ImGui::StyleColorsLight();
 
-    // Setup Platform/Renderer backends
-    if (!ImGuiBackend::Init(graphicsDevice))
+    // 10단계: 로그 콘솔이 한글을 보여야 하므로 시스템의 맑은 고딕을 얹는다. 없으면 기본 폰트(ASCII 만).
+    // ImGui 1.92 는 글리프를 필요할 때 만들므로 글리프 범위를 미리 주지 않아도 된다.
+    if (GetFileAttributesW(L"C:/Windows/Fonts/malgun.ttf") != INVALID_FILE_ATTRIBUTES)
     {
-        return false;
+        ImFontConfig fontConfig;
+        fontConfig.OversampleH = 2;
+        if (io.Fonts->AddFontFromFileTTF("C:/Windows/Fonts/malgun.ttf", 15.0f, &fontConfig) == nullptr)
+        {
+            Log::Warn("맑은 고딕 폰트를 읽지 못해 ImGui 기본 폰트를 쓴다 (한글은 ? 로 보인다).");
+        }
     }
-    m_guiInitialized = true;
-    if (!ImGui_ImplWin32_Init(m_mainWindow))
-    {
-        Log::Error("ImGui Win32 백엔드 초기화 실패");
-        return false;
-    }
-    m_guiWin32Initialized = true;
     return true;
 }
-
-
-
