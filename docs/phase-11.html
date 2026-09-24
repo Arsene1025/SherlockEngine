@@ -202,7 +202,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <main>
 <div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
 <h1>11단계 · 에디터 도구</h1>
-<p class="lede">렌더러와 RHI가 굳은 뒤라 UI 코드가 구조를 왜곡하지 않습니다. 씬은 오프스크린 텍스처에 그려져 ImGui 도킹 창 안에 뜨고, 클릭으로 오브젝트를 고르고, ImGuizmo 로 옮기고, Inspector 에서 Transform·재질을 편집하고, JSON 으로 저장해 다시 불러옵니다. 로드맵이 예고한 대로 "씬을 텍스처에 그려 ImGui 창에 표시"는 Renderer 의 타깃 선택 한 곳으로 끝났습니다 — 6단계의 <code>RenderPassDesc</code> 가 attachment 를 값으로 받기 때문입니다. 덤으로 RHI 에 백버퍼 리드백을 더해 OS 입력 주입 없이 에디터 경로(선택 → 편집 → 저장 → 로드)를 자동 검증합니다.</p>
+<p class="lede">렌더러와 RHI가 굳은 뒤라 UI 코드가 구조를 왜곡하지 않습니다. 씬은 오프스크린 텍스처에 그려져 ImGui 도킹 창 안에 뜹니다. 그 안에서 클릭으로 오브젝트를 고르고, ImGuizmo 로 옮기고, Inspector 에서 Transform·재질을 편집하고, JSON 으로 저장해 다시 불러옵니다. 로드맵이 예고한 대로 "씬을 텍스처에 그려 ImGui 창에 표시"는 Renderer 의 타깃 선택 한 곳을 고치는 것으로 끝났습니다 — 6단계의 <code>RenderPassDesc</code> 가 attachment 를 값으로 받기 때문입니다. 덤으로 RHI 에 백버퍼 리드백을 더해 OS 입력 주입 없이 에디터 경로(선택 → 편집 → 저장 → 로드)를 자동 검증합니다.</p>
 
 <div class="facts">
   <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
@@ -215,7 +215,7 @@ td .fix b{color:var(--ok);font-weight:600}
 
 <div class="callout">
   <div class="t">한 줄 요약</div>
-  <p>에디터는 <code>App/Editor</code> 한 클래스이고 아무것도 소유하지 않습니다 — 씬·카메라·렌더러는 Engine 의 것이고 씬 전환·저장·로드는 콜백으로 앱에 넘깁니다(3단계 DebugUI 의 "패널은 편집만" 규칙 그대로). 씬 뷰는 Renderer 가 백버퍼 대신 그리는 텍스처 하나이고, 선택은 씬 뷰 픽셀에서 쏜 광선과 각 메시의 로컬 AABB 검사, 기즈모는 ImGuizmo 가 준 월드 행렬에서 노드 pre-transform 을 벗겨 S·R·T 로 분해한 것입니다. 저장은 정점 데이터가 아니라 메시의 <em>출처</em>(프리미티브 인자 또는 모델 경로 + 인덱스)를 적습니다.</p>
+  <p>에디터는 <code>App/Editor</code> 한 클래스이고 아무것도 소유하지 않습니다 — 씬·카메라·렌더러는 Engine 의 것이고 씬 전환·저장·로드는 콜백으로 앱에 넘깁니다(3단계 DebugUI 의 "패널은 편집만" 규칙 그대로). 씬 뷰는 Renderer 가 백버퍼 대신 그리는 텍스처 하나이고, 선택은 씬 뷰 픽셀에서 쏜 광선으로 각 메시의 로컬 AABB 를 검사하는 것이고, 기즈모는 ImGuizmo 가 준 월드 행렬에서 노드 pre-transform 을 벗겨 S·R·T 로 분해하는 것입니다. 저장은 정점 데이터가 아니라 메시의 <em>출처</em>(프리미티브 인자 또는 모델 경로 + 인덱스)를 적습니다.</p>
 </div>
 
 <h2 id="s1"><span class="num">1.</span>요약</h2>
@@ -225,19 +225,19 @@ td .fix b{color:var(--ok);font-weight:600}
     <tr><td>Scene Hierarchy, Inspector(Transform·Material 편집), Light 패널</td><td>Hierarchy 창(선택), Inspector 창(위치·회전(도)·크기, 메시 출처, 재질 콤보 + 재질 필드), Lights·Materials 창(6단계 패널 재사용)</td><td>그림 1: SphereCenter 선택, Inspector 의 위치 (0, 6, 0)</td></tr>
     <tr><td>Render Settings: 백엔드 표시, PSO 캐시 통계, 디버그 뷰(노멀/깊이/그림자맵)</td><td>Render Settings 창: 4·5·6·10단계 패널 + 디버그 뷰 콤보(Lit/Albedo/World normal/Depth/Shadow factor/UV) + 그림자 맵 미리보기</td><td>그림 4·5: 노멀·깊이 뷰</td></tr>
     <tr><td>Stats: 드로우콜, PSO 전환 수, GPU 시간</td><td>Stats 창: FPS, 드로우·삼각형·PSO/셋/메시 전환·PSO 캐시, 모델 통계, 10단계 프로파일러(CPU/GPU)</td><td>PSO 전환 수가 4단계 정렬의 효과를 보여 준다</td></tr>
-    <tr><td>씬 뷰를 오프스크린 텍스처로 렌더링 → ImGui Dockspace</td><td><code>Renderer::SetSceneTarget(w, h)</code>: TYPELESS UNORM 색 + D24S8 깊이, 메인 패스가 거기에, UI 패스가 백버퍼를 지운다. <code>ImGui::Image</code> + DockBuilder 기본 배치</td><td>그림 1~3, 두 백엔드</td></tr>
+    <tr><td>씬 뷰를 오프스크린 텍스처로 렌더링 → ImGui Dockspace</td><td><code>Renderer::SetSceneTarget(w, h)</code>: TYPELESS UNORM 색 + D24S8 깊이, 메인 패스는 거기에 그리고 UI 패스가 백버퍼를 지운다. <code>ImGui::Image</code> + DockBuilder 기본 배치</td><td>그림 1~3, 두 백엔드</td></tr>
     <tr><td>씬 저장/로드(JSON), ImGuizmo</td><td><code>SceneSerializer</code>(nlohmann-json, 메시 출처·재질·조명·오브젝트·카메라), ImGuizmo 이동/회전/크기 + 월드/로컬, 1/2/3 키, Ctrl+S/Ctrl+L</td><td>저장 → 재시작 로드에서 편집값 복원 (그림 2)</td></tr>
     <tr><td>완료 기준</td><td>클릭 선택(광선-AABB) → Inspector/기즈모 편집 → 저장 → 로드</td><td>자동 검증 A/B (8절)</td></tr>
   </tbody>
 </table></div>
 
 <h2 id="s2"><span class="num">2.</span>도킹 공간과 기본 배치</h2>
-<p>vcpkg 의 imgui 에 <code>docking-experimental</code> 기능을 켜면 같은 1.92 의 docking 브랜치가 옵니다<sup><a href="#ref-2">2</a></sup>. <code>io.ConfigFlags |= ImGuiConfigFlags_DockingEnable</code> 뒤 <code>DockSpaceOverViewport</code> 가 메인 뷰포트(메뉴 바 아래)를 도킹 공간으로 만듭니다. 첫 실행(imgui.ini 없음)의 배치는 <code>imgui_internal.h</code> 의 DockBuilder 로 만듭니다 — 왼쪽 18% Hierarchy, 오른쪽 30% Inspector/Render Settings/Lights/Materials(탭), 아래 28% Console/Stats, 가운데 Scene. 저자가 "곧 다시 설계할 API" 라고 적어 둔 실험 API 이므로<sup><a href="#ref-2">2</a></sup> 호출은 <code>Editor::BuildDefaultLayout</code> 한 함수에 가둡니다. 그 뒤로는 imgui.ini 가 배치를 기억하고 View → Reset layout 이 되돌립니다.</p>
-<p><code>AppBase::Run</code> 의 "Information" 창은 사라졌습니다. 앱(OnGUI)이 자기 창을 만들고, 10단계 <code>Engine::Render</code> 는 그대로입니다. 화면 전체가 ImGui 라 <code>io.WantCaptureKeyboard</code> 는 늘 참이 되어, 단축키는 <code>WantTextInput</code> 으로만 막고 카메라 이동은 씬 뷰가 포커스/호버일 때만 받습니다.</p>
+<p>vcpkg 의 imgui 에 <code>docking-experimental</code> 기능을 켜면 같은 1.92 버전의 docking 브랜치를 받습니다<sup><a href="#ref-2">2</a></sup>. <code>io.ConfigFlags |= ImGuiConfigFlags_DockingEnable</code> 을 설정한 뒤 <code>DockSpaceOverViewport</code> 가 메인 뷰포트(메뉴 바 아래)를 도킹 공간으로 만듭니다. 첫 실행(imgui.ini 없음)의 배치는 <code>imgui_internal.h</code> 의 DockBuilder 로 만듭니다 — 왼쪽 18% Hierarchy, 오른쪽 30% Inspector/Render Settings/Lights/Materials(탭), 아래 28% Console/Stats, 가운데 Scene. ImGui 저자가 "곧 다시 설계할 API" 라고 적어 둔 실험 API 이므로<sup><a href="#ref-2">2</a></sup> 호출은 <code>Editor::BuildDefaultLayout</code> 한 함수에 가둡니다. 그 뒤로는 imgui.ini 가 배치를 기억하고, View → Reset layout 으로 되돌릴 수 있습니다.</p>
+<p><code>AppBase::Run</code> 의 "Information" 창은 사라졌습니다. 앱(OnGUI)이 자기 창을 만들고, 10단계 <code>Engine::Render</code> 는 그대로입니다. 화면 전체가 ImGui 라 <code>io.WantCaptureKeyboard</code> 가 늘 참이 됩니다. 그래서 단축키는 <code>WantTextInput</code> 일 때만 막고, 카메라 이동은 씬 뷰가 포커스/호버 상태일 때만 받습니다.</p>
 
 <h2 id="s3"><span class="num">3.</span>씬 뷰: 오프스크린 텍스처 하나</h2>
 <h3 id="s3-1">3.1 TYPELESS 색 텍스처 (두 백엔드)</h3>
-<p>씬 뷰 텍스처는 두 가지 뷰가 필요합니다: 메인 패스가 그릴 sRGB RTV(5단계의 감마 규칙 유지)와 ImGui 가 샘플할 UNORM SRV(ImGui 는 픽셀 값을 그대로 UNORM 백버퍼에 옮기므로 sRGB 로 인코딩된 바이트를 그대로 읽어야 색이 맞습니다). 타입이 정해진 리소스는 같은 포맷의 뷰만 만들 수 있고, 스왑체인 백버퍼만 예외입니다. 그래서 <code>RenderTarget | ShaderResource</code> 인 UNORM 색 텍스처를 두 백엔드 모두 <code>R8G8B8A8_TYPELESS</code> 로 만들고 뷰에서 포맷을 정합니다<sup><a href="#ref-6">6</a></sup> — 6단계 그림자 맵(D32 TYPELESS)이 낸 길 그대로입니다.</p>
+<p>씬 뷰 텍스처는 두 가지 뷰가 필요합니다: 메인 패스가 그릴 sRGB RTV(5단계의 감마 규칙 유지)와 ImGui 가 샘플할 UNORM SRV(ImGui 는 픽셀 값을 그대로 UNORM 백버퍼에 옮기므로 sRGB 로 인코딩된 바이트를 그대로 읽어야 색이 맞습니다). 타입이 정해진 리소스는 같은 포맷의 뷰만 만들 수 있고, 스왑체인 백버퍼만 예외입니다. 그래서 <code>RenderTarget | ShaderResource</code> 인 UNORM 색 텍스처를 두 백엔드 모두 <code>R8G8B8A8_TYPELESS</code> 로 만들고 뷰에서 포맷을 정합니다<sup><a href="#ref-6">6</a></sup> — 6단계 그림자 맵(D32 TYPELESS)에서 쓴 방법 그대로입니다.</p>
 <pre><code><span class="cm">// D3D11Device::CreateTexture (D3D12 도 같은 규칙)</span>
 <span class="kw">const bool</span> colorRtAndSrv = (bind &amp; RenderTarget) &amp;&amp; (bind &amp; ShaderResource) &amp;&amp; format == R8G8B8A8_UNORM;
 texture.typeless = (depthAndSrv &amp;&amp; IsDepth(format)) || colorRtAndSrv;
@@ -254,13 +254,13 @@ cmd.EndRenderPass();
 <span class="kw">if</span> (IsOffscreen()) cmd.Barrier(m_sceneColor, RenderTarget, ShaderResource);   <span class="cm">// ImGui 가 샘플한다</span>
 
 <span class="cm">// BeginUIPass — 오프스크린이면 백버퍼는 여기서 처음 쓰인다: Present → RenderTarget + Clear(에디터 배경)</span></code></pre>
-<p>씬 창의 내용 영역 크기가 바뀌면 <code>SetSceneTarget</code> 이 텍스처를 다시 만듭니다. 이전 텍스처의 파괴는 8단계의 지연 해제를 지나므로(D3D12) 실행 중인 프레임의 ImGui 드로우가 아직 읽어도 안전하고, D3D11 은 참조 카운트가 지켜 줍니다. 카메라의 종횡비는 씬 뷰 크기를 따릅니다. 프레임당 배리어가 4 → 6 (씬 텍스처 왕복) 이 되었고 Stats 에 보입니다.</p>
+<p>씬 창의 내용 영역 크기가 바뀌면 <code>SetSceneTarget</code> 이 텍스처를 다시 만듭니다. D3D12 에서는 이전 텍스처의 파괴가 8단계의 지연 해제를 거치므로 아직 실행 중인 프레임의 ImGui 드로우가 읽어도 안전하고, D3D11 에서는 참조 카운트가 지켜 줍니다. 카메라의 종횡비는 씬 뷰 크기를 따릅니다. 프레임당 배리어는 4 → 6 개로 늘었고(씬 텍스처 왕복) Stats 에서 볼 수 있습니다.</p>
 
 <h2 id="s4"><span class="num">4.</span>클릭 선택: 광선과 AABB</h2>
-<p>씬 뷰 이미지 위의 클릭(기즈모 위가 아닐 때)을 정규화 픽셀 (u, v) 로 바꾸고, NDC 의 near·far 점을 <code>(view × proj)⁻¹</code> 로 역투영해 월드 광선을 만듭니다. 오브젝트마다 광선을 <code>world⁻¹</code> 로 로컬 공간에 옮겨(회전·스케일·노드 pre-transform 이 있어도 정확) 9단계 메시의 로컬 AABB 와 slab 검사<sup><a href="#ref-4">4</a></sup>를 하고, 로컬 t 를 방향 벡터 길이로 월드 거리로 바꿔 가장 가까운 것을 고릅니다. AABB 라서 헬멧처럼 빈 공간이 많은 메시는 상자 근처 클릭도 잡힙니다 — 삼각형 정밀 선택은 필요해지면 같은 자리에 넣습니다.</p>
+<p>씬 뷰 이미지 위의 클릭(기즈모 위가 아닐 때)을 정규화 픽셀 (u, v) 로 바꾸고, NDC 의 near·far 점을 <code>(view × proj)⁻¹</code> 로 역투영해 월드 광선을 만듭니다. 오브젝트마다 광선을 <code>world⁻¹</code> 로 로컬 공간에 옮겨(회전·스케일·노드 pre-transform 이 있어도 정확) 9단계 메시의 로컬 AABB 와 slab 검사<sup><a href="#ref-4">4</a></sup>를 하고, 로컬 t 에 방향 벡터 길이를 곱해 월드 거리로 바꾼 뒤 가장 가까운 것을 고릅니다. AABB 라서 헬멧처럼 빈 공간이 많은 메시는 상자 근처 클릭도 잡힙니다 — 삼각형 정밀 선택은 필요해지면 같은 자리에 넣습니다.</p>
 
 <h2 id="s5"><span class="num">5.</span>ImGuizmo: 행렬 배치와 분해</h2>
-<p>ImGuizmo<sup><a href="#ref-1">1</a></sup> 는 열우선 메모리의 4×4 float 를 받습니다. DirectXMath 의 행벡터 행렬은 메모리 배치가 그것과 같습니다(이동이 [12..14] 에 있는 것이 증거) — 그래서 <code>XMFLOAT4X4</code> 를 그대로 넘깁니다. 프레임마다 <code>ImGuizmo::BeginFrame</code>(AppBase::Run, ImGui::NewFrame 직후), 씬 창 안에서 <code>SetDrawlist</code> + <code>SetRect(이미지 위치·크기)</code> 뒤 <code>Manipulate(view, proj, op, mode, world)</code>.</p>
+<p>ImGuizmo<sup><a href="#ref-1">1</a></sup> 는 열우선 메모리의 4×4 float 를 받습니다. DirectXMath 의 행벡터 행렬은 메모리 배치가 그것과 같습니다(이동이 [12..14] 에 있는 것이 증거) — 그래서 <code>XMFLOAT4X4</code> 를 그대로 넘깁니다. 프레임마다 <code>ImGuizmo::BeginFrame</code>(AppBase::Run, ImGui::NewFrame 직후)를 부르고, 씬 창 안에서 <code>SetDrawlist</code> + <code>SetRect(이미지 위치·크기)</code> 뒤에 <code>Manipulate(view, proj, op, mode, world)</code> 를 부릅니다.</p>
 <pre><code><span class="cm">// Manipulate 가 world 를 바꿨으면: world = pre × S·R·T  ⇒  S·R·T = pre⁻¹ × world</span>
 XMMATRIX local = XMLoadFloat4x4(&amp;world);
 <span class="kw">if</span> (t.HasPreTransform()) local = XMMatrixInverse(<span class="kw">nullptr</span>, t.GetPreTransform()) * local;
@@ -269,7 +269,7 @@ t.SetScale(scale);  t.SetRotation(EulerFromRotation(rotationMatrix));  t.SetPosi
 <p>Transform 이 오일러 각(<code>XMMatrixRotationRollPitchYaw(pitch, yaw, roll)</code> = Rz·Rx·Ry, 행벡터)을 쓰므로 회전 행렬에서 각을 되찾아야 합니다: m[2][1] = −sin p, m[2][0] = cos p·sin y, m[2][2] = cos p·cos y, m[0][1] = sin r·cos p, m[1][1] = cos r·cos p. pitch = asin(−m[2][1]), yaw = atan2(m[2][0], m[2][2]), roll = atan2(m[0][1], m[1][1]); cos p ≈ 0 이면 yaw 를 0 으로 두고 roll 에 몰아줍니다. 모델 노드(Sponza 전체가 오브젝트 하나)도 pre-transform 을 벗기므로 기즈모가 정상 동작합니다(그림 3).</p>
 
 <h2 id="s6"><span class="num">6.</span>Hierarchy · Inspector · Stats · 디버그 뷰</h2>
-<p>Hierarchy 는 오브젝트 이름 목록(Selectable)이고 빈 곳 클릭이 선택을 지웁니다. Inspector 는 선택 오브젝트의 이름, 위치/회전(도)/크기 DragFloat3, 메시 출처(sphere/plane/model + 경로·인덱스), 재질 콤보(씬의 재질 중 고름)와 그 재질의 필드(기본색·스페큘러·광택·UV 배율·노멀 세기·알파 컷아웃·unlit·와이어·양면)입니다. 재질 편집은 4단계 캐시가 다음 프레임에 상수를 다시 올리고, 텍스처가 바뀌면 ResourceSet 을 다시 만듭니다. Stats 는 10단계 프로파일러와 Renderer 통계를 한 창에 모았습니다.</p>
+<p>Hierarchy 는 오브젝트 이름 목록(Selectable)이고, 빈 곳을 클릭하면 선택이 해제됩니다. Inspector 는 선택 오브젝트의 이름, 위치/회전(도)/크기 DragFloat3, 메시 출처(sphere/plane/model + 경로·인덱스), 재질 콤보(씬의 재질 중 고름)와 그 재질의 필드(기본색·스페큘러·광택·UV 배율·노멀 세기·알파 컷아웃·unlit·와이어·양면)입니다. 재질을 편집하면 4단계 캐시가 다음 프레임에 상수를 다시 올리고, 텍스처가 바뀌면 ResourceSet 을 다시 만듭니다. Stats 는 10단계 프로파일러와 Renderer 통계를 한 창에 모았습니다.</p>
 <p>디버그 뷰는 PerFrame 상수버퍼에 <code>debugParams</code>(288 → 304 B) 를 더하고 픽셀 셰이더가 조명 직전에 분기합니다: 알베도, 월드 노멀(×0.5+0.5, 노멀 맵 적용 뒤), 깊이(카메라 거리 / 범위), 그림자 계수, UV. 셰이더 상수 하나라 PSO 변형이 늘지 않습니다. 그림자 맵 미리보기는 6단계 것 그대로입니다.</p>
 
 <h2 id="s7"><span class="num">7.</span>씬 저장/로드 (JSON)</h2>
@@ -278,10 +278,10 @@ t.SetScale(scale);  t.SetRotation(EulerFromRotation(rotationMatrix));  t.SetPosi
   "materials": [ {name, baseColor, specularColor, shininess, albedoTexture, albedoSrgb, sampler, uvScale, unlit, normalTexture, normalStrength, alphaCutoff, wireframe, doubleSided} ],
   "lights":    [ {type, position, direction, color, intensity, range, attenuation, innerConeCos, outerConeCos} ],
   "objects":   [ {name, mesh, material, slotMaterials?, position, rotation, scale, preTransform?} ] }</code></pre>
-<p>메시는 정점이 아니라 <em>출처</em>로 저장합니다. <code>Scene::AddMesh(mesh, MeshSource)</code> 가 출처를 같이 받고(프리미티브 인자, 또는 모델 경로 + 메시 번호 — <code>AssetManager</code> 가 <code>Model::sourcePath</code> 를 채웁니다), 로드는 프리미티브를 다시 만들거나 AssetManager 에서 모델을 받아 그 메시를 복사하고 이미지 바이트(<code>AddModelImages</code>)를 씬에 넣습니다. 재질은 JSON 값이 우선이라 편집이 살아남고, 이미지 이름은 9단계 규칙("<모델>/<번호> <uri>")이라 다시 읽은 모델과 맞습니다. 출처를 모르는 메시는 경고와 함께 빈 자리로 남습니다. 로드 순서는 9단계 씬 전환과 같습니다: <code>Renderer::InvalidateScene</code> → <code>Scene::Clear</code> → 채우기(포인터 키 캐시). 파일은 nlohmann-json<sup><a href="#ref-3">3</a></sup> 의 <code>dump(2)</code> / <code>parse</code>, 값 접근은 <code>value(key, default)</code> 라 필드가 빠져도 기본값으로 읽힙니다.</p>
+<p>메시는 정점이 아니라 <em>출처</em>로 저장합니다. <code>Scene::AddMesh(mesh, MeshSource)</code> 가 출처를 같이 받고(프리미티브 인자, 또는 모델 경로 + 메시 번호 — <code>AssetManager</code> 가 <code>Model::sourcePath</code> 를 채웁니다), 로드는 프리미티브를 다시 만들거나 AssetManager 에서 모델을 받아 그 메시를 복사하고 이미지 바이트(<code>AddModelImages</code>)를 씬에 넣습니다. 재질은 JSON 값이 우선이라 편집이 살아남고, 이미지 이름은 9단계 규칙("&lt;모델&gt;/&lt;번호&gt; &lt;uri&gt;")을 따르므로 다시 읽은 모델과 맞습니다. 출처를 모르는 메시는 경고와 함께 빈 자리로 남습니다. 로드 순서는 9단계 씬 전환과 같습니다: <code>Renderer::InvalidateScene</code> → <code>Scene::Clear</code> → 채우기(포인터 키 캐시). 파일 입출력은 nlohmann-json<sup><a href="#ref-3">3</a></sup> 의 <code>dump(2)</code> / <code>parse</code> 로 하고, 값은 <code>value(key, default)</code> 로 읽으므로 필드가 빠져도 기본값이 들어갑니다.</p>
 
 <h2 id="s8"><span class="num">8.</span>자동 검증: 입력 주입 없이</h2>
-<p>이전 단계의 검증 스크립트는 화면을 캡처하고 키·마우스를 OS 에 주입했습니다. 이 단계 도중 사용자가 전체 화면 게임을 하고 있어 그 캡처가 게임 화면을 찍었고, 주입한 F10·F11·클릭이 게임으로 갔을 가능성이 있습니다(11절). 그래서 검증 방식을 바꿨습니다: (1) RHI 에 <code>RequestBackBufferReadback / TakeReadbackResult</code> 를 더해 Present 직전의 백버퍼를 CPU 로 읽고(D3D11: STAGING + <code>Map(READ)</code><sup><a href="#ref-7">7</a></sup>, D3D12: 커맨드 리스트에 COPY_SOURCE 전이 + 리드백 힙 복사, 펜스 뒤 Map<sup><a href="#ref-8">8</a></sup>) DirectXTex 로 PNG 를 씁니다(<code>Graphics/Screenshot</code>). 창이 가려져 있거나 화면 밖이어도 정확한 프레임입니다. (2) TestApp 의 실행 인자가 에디터 경로를 프레임 번호로 재생합니다 — <code>--pick=u,v</code> 는 클릭과 같은 <code>Editor::Pick</code>, <code>--set-position</code> 은 Inspector 편집과 같은 <code>Transform::SetPosition</code>, <code>--save/--load</code> 는 메뉴와 같은 콜백. (3) <code>--exit-after</code> 가 있으면 창을 화면 밖(x = −3000)에 활성화 없이 만들고 포커스를 가져오지 않습니다.</p>
+<p>이전 단계의 검증 스크립트는 화면을 캡처하고 키·마우스를 OS 에 주입했습니다. 이 단계 도중 사용자가 전체 화면 게임을 하고 있어 그 캡처가 게임 화면을 찍었고, 주입한 F10·F11·클릭이 게임으로 갔을 가능성이 있습니다(9절). 그래서 검증 방식을 바꿨습니다: (1) RHI 에 <code>RequestBackBufferReadback / TakeReadbackResult</code> 를 더해 Present 직전의 백버퍼를 CPU 로 읽고(D3D11: STAGING + <code>Map(READ)</code><sup><a href="#ref-7">7</a></sup>, D3D12: 커맨드 리스트에 COPY_SOURCE 전이 + 리드백 힙 복사, 펜스 뒤 Map<sup><a href="#ref-8">8</a></sup>) DirectXTex 로 PNG 를 씁니다(<code>Graphics/Screenshot</code>). 창이 가려져 있거나 화면 밖이어도 정확한 프레임입니다. (2) TestApp 의 실행 인자가 에디터 경로를 프레임 번호로 재생합니다 — <code>--pick=u,v</code> 는 클릭과 같은 <code>Editor::Pick</code>, <code>--set-position</code> 은 Inspector 편집과 같은 <code>Transform::SetPosition</code>, <code>--save/--load</code> 는 메뉴와 같은 콜백을 부릅니다. (3) <code>--exit-after</code> 가 있으면 창을 화면 밖(x = −3000)에 활성화 없이 만들고 포커스를 가져오지 않습니다.</p>
 <pre><code><span class="cm"># A: 데모 씬, 씬 뷰 중앙 클릭 → 선택 → y = 6 으로 → 저장 → 스크린샷</span>
 SherlockEngine.exe --scene=demo --exit-after=60 --pick=0.5,0.5 --set-position=0,6,0 --save=Scenes\test.json --screenshot=a.png
 <span class="cm"># B: 재시작해서 그 파일을 로드 → 스크린샷 (구가 y = 6 에 있다)</span>
@@ -293,9 +293,9 @@ SherlockEngine.exe --scene=Scenes\test.json --exit-after=60 --screenshot=b.png
   <li><strong>TYPELESS 뷰.</strong> 3.1절. 타입이 정해진 UNORM 텍스처에 sRGB RTV 를 만들면 실패한다(백버퍼만 예외). RT+SRV 색 텍스처는 TYPELESS, 뷰마다 포맷 명시.</li>
   <li><strong>백버퍼가 안 지워짐.</strong> 오프스크린이면 메인 패스가 백버퍼를 건드리지 않으므로 UI 패스가 Present → RenderTarget 전이와 Clear 를 맡는다.</li>
   <li><strong>ImGuizmo 회전을 오일러로.</strong> 5절. 분해 순서(Rz·Rx·Ry)가 틀리면 기즈모를 놓는 순간 물체가 튄다. 노드 pre-transform 은 먼저 벗긴다.</li>
-  <li><strong>WantCaptureKeyboard 가 늘 참.</strong> 2절. 도킹으로 화면 전체가 ImGui 창이라 F 키·WASD 가 막혔다. 텍스트 입력 중(<code>WantTextInput</code>)에만 막고, 이동은 씬 뷰 포커스/호버 조건.</li>
+  <li><strong>WantCaptureKeyboard 가 늘 참.</strong> 2절. 도킹으로 화면 전체가 ImGui 창이라 F 키·WASD 가 막혔다. 텍스트 입력 중(<code>WantTextInput</code>)에만 막고, 이동은 씬 뷰가 포커스/호버 상태일 때만 받는다.</li>
   <li><strong>검증 도구가 사용자 화면을 침범.</strong> 8절. 화면 캡처와 입력 주입을 버리고 리드백 스크린샷 + 실행 인자 재생으로. 자동 모드는 창을 화면 밖에, 포커스 없이.</li>
-  <li><strong>백슬래시 리터럴.</strong> 도구 경유 편집에서 <code>L'\\'</code> 가 두 번 <code>L'\'</code> 로 깨졌다(MSYS 인자 변환). 빌드 오류로 바로 잡혔지만 기록해 둔다.</li>
+  <li><strong>백슬래시 리터럴.</strong> 도구를 거친 편집에서 <code>L'\\'</code> 가 <code>L'\'</code> 로 깨진 일이 두 번 있었다(MSYS 인자 변환). 빌드 오류로 바로 잡혔지만 기록해 둔다.</li>
   <li><strong><code>--dump-objects</code>.</strong> 인자 파서가 <code>--이름=값</code> 형식만 알아 값 없는 플래그는 무시된다. <code>--dump-objects=1</code> 로 쓴다.</li>
 </ul>
 

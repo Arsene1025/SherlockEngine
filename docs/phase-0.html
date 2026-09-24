@@ -174,7 +174,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <div class="shell">
 <nav class="toc" aria-label="목차">
   <div class="brand">0단계 · 기반 정리 잔여</div>
-  <div class="meta">SherlockEngine 단계별 상세 문서<br>커밋 adb1f86 (2026/09/23)<br><a href="rendering-analysis.html#p0">rendering-analysis.html → PHASE 0</a></div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>커밋 8338842 (2026/09/23)<br><a href="rendering-analysis.html#p0">rendering-analysis.html → PHASE 0</a></div>
   <ol>
     <li><a href="#s1">1. 요약</a></li>
     <li><a href="#s2">2. 왜 이 세 가지가 남아 있었나</a></li>
@@ -199,10 +199,10 @@ td .fix b{color:var(--ok);font-weight:600}
 <main>
 <div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
 <h1>0단계 · 기반 정리 잔여</h1>
-<p class="lede"><a href="rendering-analysis.html#p0">rendering-analysis.html</a>의 0단계는 2026-09-10에 7항목 중 6개가 끝났고, <strong>dt 전달</strong>, <strong>exe 기준 셰이더 경로</strong>, <strong>Graphics/D3D11/ 폴더 이동</strong> 세 가지가 남아 있었습니다. 이 문서는 그 셋을 2026-09-23에 어떻게 처리했는지, 그리고 원문이 한 줄로만 적었던 이유와 함정을 자세히 풀어 씁니다.</p>
+<p class="lede"><a href="rendering-analysis.html#p0">rendering-analysis.html</a>의 0단계는 2026-09-10에 7개 항목 중 6개가 끝났고, <strong>dt 전달</strong>, <strong>exe 기준 셰이더 경로</strong>, <strong>Graphics/D3D11/ 폴더 이동</strong> 세 가지가 남아 있었습니다. 이 문서는 그 셋을 2026-09-23에 어떻게 처리했는지, 그리고 원문이 한 줄로만 적었던 이유와 함정을 자세히 풀어 씁니다.</p>
 
 <div class="facts">
-  <div><div class="k">대상 커밋</div><div class="v">adb1f86<small>2026/09/23, 0단계 잔여 정리</small></div></div>
+  <div><div class="k">대상 커밋</div><div class="v">8338842<small>2026/09/23, 0단계 잔여 정리</small></div></div>
   <div><div class="k">새 파일</div><div class="v">3개<small>Core/Paths.h·.cpp, Graphics/D3D11/D3D11Common.h</small></div></div>
   <div><div class="k">이동한 파일</div><div class="v">28개<small>git rename 감지 26건</small></div></div>
   <div><div class="k">삭제한 것</div><div class="v">static GameTime<small>정의가 없어 참조하면 링크 에러였음</small></div></div>
@@ -211,7 +211,7 @@ td .fix b{color:var(--ok);font-weight:600}
 
 <div class="callout">
   <div class="t">한 줄 요약</div>
-  <p>시간은 <code>Update(float dt)</code> 인자 하나로 흐르고, 셰이더는 <code>GetModuleFileNameW</code>로 얻은 exe 폴더 아래 <code>Shaders\</code>에서 찾으며, D3D11 헤더를 include하는 파일은 <code>Graphics/D3D11/</code> 안에만 둡니다. 세 가지 모두 "나중에 하면 더 비싸지는" 종류의 정리였습니다. dt 없이는 2단계 카메라를, 절대 경로 없이는 3단계 HLSL <code>#include</code>를, 폴더 규칙 없이는 3단계 완료 기준(<code>ID3D11</code> 격리)을 만들 수 없습니다.</p>
+  <p>시간은 <code>Update(float dt)</code> 인자 하나로 흐르고, 셰이더는 <code>GetModuleFileNameW</code>로 얻은 exe 폴더 아래 <code>Shaders\</code>에서 찾으며, D3D11 헤더를 include하는 파일은 <code>Graphics/D3D11/</code> 안에만 둡니다. 세 가지 모두 "나중에 하면 더 비싸지는" 종류의 정리였습니다. dt가 없으면 2단계 카메라를, 절대 경로가 없으면 3단계 HLSL <code>#include</code>를 만들 수 없고, 폴더 규칙이 없으면 3단계 완료 기준(<code>ID3D11</code> 격리)을 확인할 수 없습니다.</p>
 </div>
 
 <h2 id="s1"><span class="num">1.</span>요약</h2>
@@ -221,7 +221,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <tr><td class="mono">AppBase::Update()</td><td><code>static GameTime gameTime</code> 멤버(정의 없음)와 루프 안의 같은 이름 지역 변수. <code>Update()</code>는 시간을 받지 못함</td><td><code>virtual void Update(float dt)</code>. <code>Run()</code>이 <code>GameTimer::Tick()</code> 직후 dt와 누적 시간(<code>m_totalTime</code>)을 채워 넘김</td></tr>
 <tr><td class="mono">셰이더 경로</td><td><code>L"BasicVertexShader.hlsl"</code> 상대 경로. 작업 디렉터리가 프로젝트 폴더일 때만 동작</td><td><code>Paths::GetShaderPath(L"…")</code> — exe 폴더 + <code>Shaders\</code>. 없으면 소스 트리로 폴백하고 경고 1회</td></tr>
 <tr><td class="mono">.hlsl 빌드 항목</td><td><code>FxCompile</code> + <code>ExcludedFromBuild</code>(편집기 등록용)</td><td><code>CopyFileToFolders</code> → <code>$(OutDir)Shaders</code>. 빌드마다 exe 옆으로 복사</td></tr>
-<tr><td class="mono">소스 배치</td><td>31개 파일이 프로젝트 루트에 평평하게</td><td><code>App/ Core/ Graphics/ Graphics/D3D11/ Scene/ Shaders/</code>. include는 프로젝트 루트 기준</td></tr>
+<tr><td class="mono">소스 배치</td><td>31개 파일이 폴더 없이 모두 프로젝트 루트에</td><td><code>App/ Core/ Graphics/ Graphics/D3D11/ Scene/ Shaders/</code>. include는 프로젝트 루트 기준</td></tr>
 <tr><td class="mono">D3D 헤더</td><td><code>pch.h</code>가 전역 include</td><td><code>Graphics/D3D11/D3D11Common.h</code> 신설. (pch.h의 전역 include는 3단계 3.6에서 제거)</td></tr>
 </tbody></table></div>
 
@@ -229,7 +229,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <p>원문 0단계의 <a href="rendering-analysis.html#p0">진행 상황</a>은 "이 셋은 1단계 PSO 작업과 병행해도 무방하다"고 적었습니다. 맞는 판단이었지만, 1~3단계를 한 번에 진행하기로 하면서 순서가 바뀌었습니다. 세 항목은 각각 뒤 단계의 <em>전제</em>이기 때문입니다.</p>
 <ul>
   <li><strong>dt</strong> — 2단계 카메라는 "초당 10단위"로 움직여야 합니다. 프레임당 고정량으로 움직이면 VSync를 켜고 끌 때 속도가 60배 달라집니다. dt가 <code>Update</code>까지 오지 않으면 카메라 컨트롤러를 만들 수 없습니다.</li>
-  <li><strong>절대 경로</strong> — 3단계는 상수버퍼 정의를 <code>Common.hlsli</code>로 뽑아 VS·PS가 <code>#include</code>합니다. 셰이더 파일을 상대 경로로 열면 include 파일도 그 상대 경로 기준으로 찾게 되어 작업 디렉터리에 따라 컴파일이 되거나 안 됩니다(4.4절).</li>
+  <li><strong>절대 경로</strong> — 3단계는 상수버퍼 정의를 <code>Common.hlsli</code>로 뽑아 VS·PS가 <code>#include</code>합니다. 셰이더 파일을 상대 경로로 열면 include 파일도 그 상대 경로 기준으로 찾게 되어 작업 디렉터리에 따라 컴파일이 되기도 하고 안 되기도 합니다(4.4절).</li>
   <li><strong>폴더</strong> — 3단계 완료 기준은 "<code>Graphics/D3D11/</code> 폴더 밖에서 <code>ID3D11</code>이라는 문자열이 검색되지 않는다"입니다. 폴더가 먼저 있어야 grep으로 검사할 경계가 생깁니다.</li>
 </ul>
 
@@ -239,10 +239,10 @@ td .fix b{color:var(--ok);font-weight:600}
 <p>원문 4절 T-1이 지적한 대로 <code>AppBase.h</code>에는 <code>static GameTime gameTime;</code>이 <em>선언</em>만 있었고 <code>.cpp</code>에 <code>GameTime AppBase::gameTime;</code> <em>정의</em>가 없었습니다. 그런데도 빌드가 됐습니다. C++에서 정적 데이터 멤버의 선언은 클래스 안에서 하고 정의는 밖에서 하는데, 아무 코드도 그 멤버를 <em>odr-use</em>(주소를 취하거나 참조로 묶거나 값을 읽는 일)하지 않으면 링커는 그 심볼을 찾을 필요가 없습니다. <code>Run()</code> 안의 <code>GameTime gameTime;</code>은 같은 이름의 <strong>지역 변수</strong>라 정적 멤버를 가렸고(shadowing), <code>TestApp::Update()</code>는 비어 있었습니다. 즉 정적 멤버는 이름만 존재했습니다. 어느 파생 클래스가 <code>gameTime.deltaTime</code>을 읽는 순간 <code>LNK2001</code>이 났을 것입니다.</p>
 
 <h3 id="s3-2">3.2 설계: 인자로 넘기는 dt</h3>
-<p>고칠 방법은 셋 중 하나였습니다. (a) 정의를 추가해 전역 상태로 살린다. (b) <code>ImGui::GetIO().DeltaTime</code>을 쓴다(주석에 흔적이 남아 있었습니다). (c) <code>Update(float dt)</code>로 넘긴다. (c)를 택했습니다.</p>
+<p>고치는 방법은 세 가지였습니다. (a) 정의를 추가해 전역 상태로 살린다. (b) <code>ImGui::GetIO().DeltaTime</code>을 쓴다(주석에 흔적이 남아 있었습니다). (c) <code>Update(float dt)</code>로 넘긴다. (c)를 택했습니다.</p>
 <ul>
-  <li>(a)는 "누가 언제 갱신했는가"를 호출 순서에 숨깁니다. 시간이 <code>Update</code>보다 먼저 갱신되어야 한다는 규칙이 코드에 드러나지 않습니다. 인자로 넘기면 <code>Run()</code>의 한 줄이 그 규칙 자체입니다.</li>
-  <li>(b)는 ImGui가 프레임 시작에서 계산하는 값이라 <code>ImGui::NewFrame()</code> 이후에만 유효하고, ImGui를 뺀 빌드(10단계의 헤드리스 도구 등)에서는 존재하지 않습니다. 렌더러의 시간이 UI 라이브러리에 묶이는 것은 방향이 거꾸로입니다.</li>
+  <li>(a)는 "누가 언제 갱신했는가"를 호출 순서에 숨깁니다. 시간이 <code>Update</code>보다 먼저 갱신되어야 한다는 규칙이 코드에 드러나지 않습니다. 인자로 넘기면 <code>Run()</code>의 한 줄이 곧 그 규칙이 됩니다.</li>
+  <li>(b)는 ImGui가 프레임 시작에서 계산하는 값이라 <code>ImGui::NewFrame()</code> 이후에만 유효하고, ImGui를 뺀 빌드(10단계의 헤드리스 도구 등)에서는 존재하지 않습니다. 렌더러의 시간이 UI 라이브러리에 묶이는 것은 의존 방향이 거꾸로입니다.</li>
   <li>(c)는 함수 시그니처가 문서 역할을 합니다. Luna의 <code>D3DApp::UpdateScene(float dt)</code><sup><a href="#ref-1">[1]</a></sup>와 같은 형태이며, 10단계에서 <code>Time</code> 클래스(고정 스텝)를 넣을 때도 <code>Update</code>의 시그니처는 그대로입니다.</li>
 </ul>
 <pre><code><span class="cm">// App/AppBase.cpp — Run() 의 유휴(idle) 분기</span>
@@ -250,16 +250,16 @@ gameTimer.Tick();
 <span class="kw">const float</span> dt = gameTimer.DeltaTime();
 m_totalTime = gameTimer.TotalTime();
 
-ImGuiBackend::NewFrame();          <span class="cm">// (2단계에서 Update 앞으로 옮김. phase-2.html 3.3절)</span>
+ImGui_ImplDX11_NewFrame();         <span class="cm">// (2단계에서 Update 앞으로 옮김. phase-2.html 2.3절)</span>
 ImGui_ImplWin32_NewFrame();
 ImGui::NewFrame();
 
 Update(dt);</code></pre>
-<p><code>m_totalTime</code>은 <code>protected</code> 멤버로 두어 파생 클래스가 "시작 후 경과 시간"이 필요할 때(3단계의 애니메이션, 셰이더의 <code>time</code> 상수) 읽습니다. 프레임마다 dt를 스스로 누적하면 부동소수점 오차가 쌓이므로 <code>GameTimer::TotalTime()</code>에서 직접 가져옵니다. <code>GameTimer</code>는 <code>QueryPerformanceCounter</code>의 정수 틱을 <code>__int64</code>로 누적하고 초로 바꿀 때만 <code>double</code> 곱을 하므로 오차가 누적되지 않습니다.</p>
+<p><code>m_totalTime</code>은 <code>protected</code> 멤버로 두어 파생 클래스가 "시작 후 경과 시간"이 필요할 때(3단계의 애니메이션, 셰이더의 <code>time</code> 상수) 읽습니다. 프레임마다 dt를 스스로 누적하면 부동소수점 오차가 쌓이므로 <code>GameTimer::TotalTime()</code>에서 직접 가져옵니다. <code>GameTimer</code>는 <code>QueryPerformanceCounter</code>의 정수 틱을 <code>__int64</code>로 누적하고 초로 바꿀 때만 <code>double</code> 곱셈을 하므로 오차가 누적되지 않습니다.</p>
 <p><code>TestApp</code>은 <code>Update(float dt)</code>가 ImGui 창 밖에서 불린다는 점 때문에 dt를 <code>m_lastDt</code>에 보관했다가 <code>UpdateGUI()</code>에서 표시합니다. 표시된 값이 ImGui 자체의 <code>1000 / Framerate</code>와 일치하는지가 첫 검증이었습니다(6절).</p>
 
 <h3 id="s3-3">3.3 가변 스텝을 택한 이유와 한계</h3>
-<p>지금의 <code>Update(dt)</code>는 <em>가변 시간 스텝</em>입니다. 프레임이 길면 dt가 크고, 물체는 그만큼 더 움직입니다. Fiedler의 <em>Fix Your Timestep!</em><sup><a href="#ref-2">[2]</a></sup>이 설명하듯 가변 스텝은 물리 시뮬레이션에서 결정론이 깨지고(같은 입력이라도 프레임 시간이 다르면 결과가 다름) 아주 긴 프레임에서는 물체가 벽을 통과합니다. 지금 이 엔진은 물리가 없고 카메라 이동과 데모 애니메이션만 있으므로 가변 스텝이 정답입니다. Nystrom의 <em>Game Loop</em> 장<sup><a href="#ref-3">[3]</a></sup>이 정리한 세 가지 루프 중 "가변 스텝"이며, 고정 스텝 + 보간은 10단계의 <code>Time</code> 클래스 몫으로 남겨 두었습니다. 그때도 <code>Update(float dt)</code>의 dt가 "고정된 값"으로 바뀔 뿐 시그니처는 같습니다.</p>
+<p>지금의 <code>Update(dt)</code>는 <em>가변 시간 스텝</em>입니다. 프레임이 길면 dt가 크고, 물체는 그만큼 더 움직입니다. Fiedler의 <em>Fix Your Timestep!</em><sup><a href="#ref-2">[2]</a></sup>이 설명하듯 가변 스텝은 물리 시뮬레이션에서 결정론이 깨지고(같은 입력이라도 프레임 시간이 다르면 결과가 다름) 아주 긴 프레임에서는 물체가 벽을 통과합니다. 지금 이 엔진은 물리가 없고 카메라 이동과 데모 애니메이션만 있으므로 가변 스텝이 정답입니다. Nystrom의 <em>Game Loop</em> 장<sup><a href="#ref-3">[3]</a></sup>이 정리한 세 가지 루프 중 "가변 스텝"에 해당하며, 고정 스텝 + 보간은 10단계의 <code>Time</code> 클래스 몫으로 남겨 두었습니다. 그때도 <code>Update(float dt)</code>의 dt가 "고정된 값"으로 바뀔 뿐 시그니처는 같습니다.</p>
 <div class="callout amber">
   <div class="t">dt가 커지는 순간</div>
   <p>창을 드래그하거나 최소화하면 메시지 루프가 모달 상태에 들어가 수백 ms 동안 프레임이 멈춥니다. 복귀한 첫 프레임의 dt는 그 시간 전체입니다. 2단계 카메라는 "속도 × dt"만큼 순간이동하고, 3단계 공전은 한 번에 큰 각도를 돕니다. 지금은 허용했지만 물리를 넣을 때는 dt 상한(예: 0.1초)을 두거나 고정 스텝으로 바꿔야 합니다.</p>
@@ -304,12 +304,12 @@ std::wstring Paths::GetShaderPath(<span class="kw">const wchar_t</span>* fileNam
 <p>세부 결정 몇 가지.</p>
 <ul>
   <li><strong>반환값 검사.</strong> <code>GetModuleFileNameW</code>는 버퍼가 모자라면 <code>nSize</code>를 돌려주고 문자열을 잘라 버립니다<sup><a href="#ref-4">[4]</a></sup>. 그래서 <code>length &gt;= MAX_PATH</code>도 실패로 봅니다. 260자를 넘는 경로는 이 프로젝트에서 나올 일이 없어 긴 경로 API(<code>\\?\</code>)는 쓰지 않았습니다.</li>
-  <li><strong>폴백.</strong> 셰이더만 고치고 빌드하지 않은 채 F5를 누르면 exe 옆 사본이 옛것입니다. 이때 소스 트리의 원본을 쓰면 "고쳤는데 반영이 안 된다"는 혼란은 줄지만, 반대로 "빌드 없이도 되네"라는 착각을 부를 수 있어 경고를 남깁니다. <code>GetFullPathNameW</code>로 <code>..\..</code>을 정리한 경로를 로그에 찍어 어느 파일을 열었는지 바로 보이게 했습니다.</li>
+  <li><strong>폴백.</strong> 셰이더만 고치고 빌드하지 않은 채 F5를 누르면 exe 옆 사본은 옛 버전입니다. 이때 소스 트리의 원본을 쓰면 "고쳤는데 반영이 안 된다"는 혼란은 줄지만, 반대로 "빌드 없이도 되네"라는 착각을 부를 수 있어 경고를 남깁니다. <code>GetFullPathNameW</code>로 <code>..\..</code>을 정리한 경로를 로그에 찍어 어느 파일을 열었는지 바로 보이게 했습니다.</li>
   <li><strong>정적 캐시.</strong> <code>GetExecutableDir()</code>은 함수 지역 <code>static</code>으로 한 번만 계산합니다. C++11부터 지역 정적 변수 초기화는 스레드 안전합니다.</li>
 </ul>
 
 <h3 id="s4-3">4.3 빌드가 셰이더를 복사하게</h3>
-<p>exe 옆에 <code>Shaders\</code>가 있으려면 빌드가 만들어 줘야 합니다. 이전 vcxproj는 <code>.hlsl</code>을 <code>FxCompile</code> 항목으로 두고 <code>ExcludedFromBuild</code>로 꺼 두었습니다. 오직 Visual Studio 편집기에서 파일을 열기 위한 등록이었습니다. 이것을 Visual C++ 프로젝트의 <strong>"파일 복사"</strong> 항목 형식(<code>CopyFileToFolders</code>)으로 바꿨습니다.</p>
+<p>exe 옆에 <code>Shaders\</code>가 있으려면 빌드가 만들어 줘야 합니다. 이전 vcxproj는 <code>.hlsl</code>을 <code>FxCompile</code> 항목으로 두고 <code>ExcludedFromBuild</code>로 꺼 두었습니다. Visual Studio 편집기에서 파일을 열기 위한 등록일 뿐이었습니다. 이것을 Visual C++ 프로젝트의 <strong>"파일 복사"</strong> 항목 형식(<code>CopyFileToFolders</code>)으로 바꿨습니다.</p>
 <pre><code>&lt;ItemGroup&gt;
   &lt;CopyFileToFolders Include="Shaders\BasicVertexShader.hlsl"&gt;
     &lt;DestinationFolders&gt;$(OutDir)Shaders&lt;/DestinationFolders&gt;
@@ -319,7 +319,7 @@ std::wstring Paths::GetShaderPath(<span class="kw">const wchar_t</span>* fileNam
 <p>MSBuild가 입력·출력 타임스탬프를 추적하므로 바뀐 파일만 복사되고, 정리(Clean) 시 함께 지워집니다. 사후 빌드 이벤트(<code>xcopy</code>)보다 나은 점입니다. 문법 강조는 확장자로 결정되므로 <code>FxCompile</code>을 버려도 편집기는 그대로입니다. 3단계에서 <code>Common.hlsli</code>도 같은 항목으로 추가했습니다.</p>
 
 <h3 id="s4-4">4.4 #include 해석 위치</h3>
-<p><code>D3DCompileFromFile</code>에 <code>D3D_COMPILE_STANDARD_FILE_INCLUDE</code>를 넘기면 기본 include 핸들러가 붙습니다. Microsoft 문서는 이 핸들러가 "현재 디렉터리 기준으로 파일을 찾는다"고 적고 있습니다<sup><a href="#ref-5">[5]</a></sup>. 그러나 3단계에서 실측한 결과는 다릅니다. 작업 디렉터리를 <code>x64\Debug</code>로 두고(거기에는 <code>Common.hlsli</code>가 없음) 절대 경로 <code>x64\Debug\Shaders\BasicVertexShader.hlsl</code>을 컴파일했을 때 <code>#include "Common.hlsli"</code>가 <code>x64\Debug\Shaders\Common.hlsli</code>를 찾아 성공했습니다. 즉 <code>D3DCompileFromFile</code>은 <strong>원본 파일이 있는 디렉터리</strong>를 먼저 봅니다(<code>D3DCompile</code>에 <code>pSourceName</code> 없이 메모리 문자열을 넘길 때는 정말로 현재 디렉터리만 봅니다). 어느 쪽이든 셰이더를 절대 경로로 여는 편이 두 경우를 모두 안전하게 만듭니다. 이것이 0단계에서 경로를 먼저 정리한 이유입니다.</p>
+<p><code>D3DCompileFromFile</code>에 <code>D3D_COMPILE_STANDARD_FILE_INCLUDE</code>를 넘기면 기본 include 핸들러가 붙습니다. Microsoft 문서는 이 핸들러가 "현재 디렉터리 기준으로 파일을 찾는다"고 적고 있습니다<sup><a href="#ref-5">[5]</a></sup>. 그러나 3단계에서 실측한 결과는 다릅니다. 작업 디렉터리를 <code>x64\Debug</code>로 두고(거기에는 <code>Common.hlsli</code>가 없음) 절대 경로 <code>x64\Debug\Shaders\BasicVertexShader.hlsl</code>을 컴파일했을 때 <code>#include "Common.hlsli"</code>가 <code>x64\Debug\Shaders\Common.hlsli</code>를 찾아 성공했습니다. 즉 <code>D3DCompileFromFile</code>은 <strong>원본 파일이 있는 디렉터리</strong>를 먼저 봅니다(<code>D3DCompile</code>에 <code>pSourceName</code> 없이 메모리 문자열을 넘길 때는 정말로 현재 디렉터리만 봅니다). 어느 쪽이든 셰이더를 절대 경로로 열면 두 경우 모두 안전합니다. 이것이 0단계에서 경로를 먼저 정리한 이유입니다.</p>
 
 <h2 id="s5"><span class="num">5.</span>폴더 재배치</h2>
 
@@ -335,7 +335,7 @@ std::wstring Paths::GetShaderPath(<span class="kw">const wchar_t</span>* fileNam
 <tr><td class="mono">Scene/</td><td>Camera, Transform, GameObject, (3단계) Light·Scene</td><td>CPU 데이터. GPU 자원을 갖지 않는다</td></tr>
 <tr><td class="mono">Shaders/</td><td>*.hlsl, *.hlsli</td><td>빌드 시 <code>$(OutDir)Shaders</code>로 복사</td></tr>
 </tbody></table></div>
-<p>원문 0단계 RHI 관점 메모가 요구한 것은 <code>Graphics/D3D11/</code> 하나였지만, 그 폴더만 만들면 나머지가 루트에 남아 "왜 이것만 폴더인가"가 됩니다. 10단계 항목의 "폴더 재배치: Core/, RHI/, Graphics/, Scene/, Assets/"를 미리 절반쯤 당겨 온 형태입니다. <code>Scene/</code>에 카메라를 둔 것은 원문 D8의 "카메라도 Transform을 가진 GameObject로 취급"하는 방향과 맞추기 위해서입니다.</p>
+<p>원문 0단계 RHI 관점 메모가 요구한 것은 <code>Graphics/D3D11/</code> 하나였지만, 그 폴더만 만들면 나머지가 루트에 남아 "왜 이것만 폴더인가"라는 의문이 생깁니다. 10단계 항목의 "폴더 재배치: Core/, RHI/, Graphics/, Scene/, Assets/"를 미리 절반쯤 당겨 온 형태입니다. <code>Scene/</code>에 카메라를 둔 것은 원문 D8의 "카메라도 Transform을 가진 GameObject로 취급"하는 방향과 맞추기 위해서입니다.</p>
 <p><code>#include</code>는 <strong>프로젝트 루트 기준</strong>으로 씁니다. <code>#include "Graphics/D3D11/Device.h"</code>처럼 경로가 곧 "어느 계층의 것인가"를 말해 줍니다. 같은 폴더의 헤더도 <code>"Scene/Transform.h"</code>로 씁니다. 따옴표 include는 먼저 include하는 파일의 폴더를 보고, 그다음 <code>AdditionalIncludeDirectories</code>를 보므로 <code>$(ProjectDir)</code>을 추가하면 어디서든 같은 문자열이 통합니다.</p>
 <pre><code><span class="cm">// Graphics/D3D11/D3D11Common.h — D3D 헤더의 유일한 자리</span>
 #include &lt;d3d11.h&gt;
@@ -376,7 +376,7 @@ std::wstring Paths::GetShaderPath(<span class="kw">const wchar_t</span>* fileNam
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 커밋 adb1f86 (2026/09/23). 다음 문서: <a href="phase-1.html">1단계 · 깊이 버퍼와 PSO 에뮬레이션</a>. 원본 로드맵: <a href="rendering-analysis.html#p0">rendering-analysis.html PHASE 0</a>.
+  대상: SherlockEngine 커밋 8338842 (2026/09/23). 다음 문서: <a href="phase-1.html">1단계 · 깊이 버퍼와 PSO 에뮬레이션</a>. 원본 로드맵: <a href="rendering-analysis.html#p0">rendering-analysis.html PHASE 0</a>.
 </div>
 </main>
 </div>

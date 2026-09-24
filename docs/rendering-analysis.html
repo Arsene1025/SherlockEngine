@@ -219,7 +219,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <main>
 <div class="eyebrow">DirectX 11 렌더러 분석 보고서</div>
 <h1>SherlockEngine 렌더링 해부</h1>
-<p class="lede">윈도우가 열리는 순간부터 백버퍼가 화면에 표시되는 순간까지, 현재 코드가 실제로 수행하는 모든 단계를 소스 기준으로 추적했습니다. 그 위에서 발견한 결함, 지금은 문제없지만 다시 고민해야 할 설계 선택, 그리고 최종 목표인 RHI(Render Hardware Interface)와 PSO(Pipeline State Object)까지 엔진을 키워 나갈 순서를 제안합니다.</p>
+<p class="lede">윈도우가 열리는 순간부터 백버퍼가 화면에 표시되는 순간까지, 현재 코드가 실제로 수행하는 모든 단계를 소스 기준으로 추적했습니다. 그 과정에서 발견한 결함과 지금은 문제없지만 다시 고민해야 할 설계 선택을 정리하고, 최종 목표인 RHI(Render Hardware Interface)와 PSO(Pipeline State Object)까지 엔진을 키워 나갈 순서를 제안합니다.</p>
 
 <div class="facts">
   <div><div class="k">소스 파일</div><div class="v">15 .cpp/.h 쌍<small>+ HLSL 2개, 총 약 1,300줄</small></div></div>
@@ -233,7 +233,7 @@ td .fix b{color:var(--ok);font-weight:600}
 
 <div class="callout">
   <div class="t">한 줄 요약</div>
-  <p>구조는 이미 <code>Device → Shader → Renderer → MeshRenderer → Mesh/Transform/Camera</code>로 잘 갈라져 있고, 한 프레임에 필요한 D3D11 호출 순서도 전부 갖춰져 있습니다. 다만 <strong>깊이 버퍼가 없고</strong>, 프레임당 <strong>Clear가 두 번</strong> 일어나고, 셰이더 컴파일 에러 메시지가 버려지는 등 다음 단계(물체 여러 개, 텍스처, 그림자)로 가기 전에 반드시 정리해야 할 기반 문제가 몇 가지 있습니다. 로드맵은 이 정리 작업을 0단계로 두고 시작하며, 최종 목표인 RHI와 PSO는 1단계의 PSO 에뮬레이션부터 조각을 쌓아 7단계에서 인터페이스로 묶는 순서로 배치했습니다.</p>
+  <p>구조는 이미 <code>Device → Shader → Renderer → MeshRenderer → Mesh/Transform/Camera</code>로 잘 나뉘어 있고, 한 프레임에 필요한 D3D11 호출 순서도 전부 갖춰져 있습니다. 다만 <strong>깊이 버퍼가 없고</strong>, 프레임당 <strong>Clear가 두 번</strong> 일어나고, 셰이더 컴파일 에러 메시지가 버려지는 등 다음 단계(물체 여러 개, 텍스처, 그림자)로 가기 전에 반드시 정리해야 할 기반 문제가 몇 가지 있습니다. 로드맵은 이 정리 작업을 0단계로 두고 시작하며, 최종 목표인 RHI와 PSO는 1단계의 PSO 에뮬레이션부터 조각을 쌓아 7단계에서 인터페이스로 묶는 순서로 배치했습니다.</p>
 </div>
 
 <div class="callout" style="border-left-color:var(--ok);background:var(--ok-soft)">
@@ -269,12 +269,12 @@ td .fix b{color:var(--ok);font-weight:600}
   <li><strong>C++17, v143 툴셋, PCH 사용.</strong> 단, PCH 설정과 <code>stdcpp17</code>이 Debug|x64 구성에만 들어가 있습니다. 다른 구성은 기본값으로 빌드됩니다.</li>
   <li><strong>HLSL은 런타임 컴파일.</strong> <code>D3DCompileFromFile</code>이 상대 경로 <code>L"BasicVertexShader.hlsl"</code>을 읽습니다. Visual Studio에서 실행할 때는 작업 디렉터리가 프로젝트 폴더라서 동작하지만, <code>x64/Debug</code>의 exe를 직접 실행하면 파일을 찾지 못합니다.</li>
   <li><strong>FxCompile 제외가 Debug|x64에만 적용됨.</strong> 두 .hlsl 파일의 <code>ExcludedFromBuild</code>가 Debug|x64에만 설정되어 있어, Release 구성으로 빌드하면 MSBuild가 fxc로 기본 진입점 <code>main</code>을 찾다가 실패합니다.</li>
-  <li><strong>vcpkg 매니페스트 없음.</strong> DirectXTK/DirectXTex/ImGui가 vcpkg 전역 설치에 의존해 저장소만으로는 재현 빌드가 안 됩니다.</li>
+  <li><strong>vcpkg 매니페스트 없음.</strong> DirectXTK/DirectXTex/ImGui가 vcpkg 전역 설치에 의존해 저장소만으로는 빌드를 재현할 수 없습니다.</li>
   <li><strong>Debug Layer 활성.</strong> <code>_DEBUG</code>에서 <code>D3D11_CREATE_DEVICE_DEBUG</code>를 켭니다. 리소스 누수·바인딩 경고가 출력 창에 나오니 활용할 가치가 큽니다.</li>
 </ul>
 
 <h2 id="s2"><span class="num">2.</span>클래스 구조와 소유 관계</h2>
-<p>2026/07/07 로그에 정리된 소유 원칙("AppBase가 Device·Renderer·Shader를 소유하고, Device는 아무것도 소유하지 않는다")이 코드에 그대로 반영되어 있습니다. 화살표는 <em>값 소유</em>(멤버로 보유)와 <em>참조</em>(포인터만 보유)를 구분했습니다.</p>
+<p>2026/07/07 로그에 정리된 소유 원칙("AppBase가 Device·Renderer·Shader를 소유하고, Device는 아무것도 소유하지 않는다")이 코드에 그대로 반영되어 있습니다. 화살표는 <em>값 소유</em>(멤버로 보유)와 <em>참조</em>(포인터만 보유)를 구분해 그렸습니다.</p>
 
 <div class="fig">
 <svg viewBox="0 0 900 420" role="img" aria-label="클래스 소유 관계 다이어그램">
@@ -324,13 +324,13 @@ td .fix b{color:var(--ok);font-weight:600}
 <dl class="kv">
   <dt>AppBase</dt><dd>OS 경계. 창·메시지·ImGui·프레임 루프. 어떤 D3D 호출도 직접 하지 않고 <code>graphicsDevice.Clear()/Present()</code>만 부릅니다.</dd>
   <dt>Device</dt><dd>D3D11 객체 팩토리 겸 스왑체인 소유자. <code>ComPtr</code>로 관리되는 유일한 계층입니다.</dd>
-  <dt>Shader</dt><dd>셰이더 바이트코드와 파이프라인 상수버퍼를 함께 들고 있습니다. 상수버퍼 <em>생성</em>은 여기, <em>내용 갱신</em>은 MeshRenderer와 Renderer가 각각 담당해 책임이 갈라져 있습니다.</dd>
+  <dt>Shader</dt><dd>셰이더 바이트코드와 파이프라인 상수버퍼를 함께 들고 있습니다. 상수버퍼 <em>생성</em>은 여기, <em>내용 갱신</em>은 MeshRenderer와 Renderer가 각각 담당해 책임이 나뉘어 있습니다.</dd>
   <dt>Renderer</dt><dd>씬 소유자. 조명 상태와 ImGui 조명 패널이 여기 있어 "렌더러"라기보다 "씬 + 렌더 설정" 역할입니다.</dd>
   <dt>MeshRenderer</dt><dd>GPU 리소스(VB/IB/IL)를 실제로 만들고 Draw를 발행하는 유일한 지점입니다.</dd>
 </dl>
 
 <h2 id="s3"><span class="num">3.</span>초기화 과정</h2>
-<p><code>main()</code>이 <code>TestApp::Initialize()</code>를 부르면 <code>AppBase::Initialize()</code>가 아래 순서로 실행됩니다. 어느 단계라도 실패하면 <code>false</code>가 돌아와 프로그램이 종료됩니다.</p>
+<p><code>main()</code>이 <code>TestApp::Initialize()</code>를 부르면 <code>AppBase::Initialize()</code>가 아래 순서로 실행됩니다. <code>Init*</code> 단계 중 하나라도 실패하면 <code>false</code>가 돌아와 프로그램이 종료됩니다(<code>ShaderCreate</code>와 <code>DataLoading</code>의 결과는 검사하지 않습니다).</p>
 
 <div class="fig">
 <svg viewBox="0 0 900 150" role="img" aria-label="초기화 순서">
@@ -354,8 +354,8 @@ td .fix b{color:var(--ok);font-weight:600}
 
 <h3 id="s3-1">3.1 윈도우 생성 <span class="mono" style="font-size:13px;color:var(--muted)">AppBase::InitMainWindow</span></h3>
 <ul>
-  <li><code>WNDCLASSEX</code>를 <code>CS_CLASSDC</code> 스타일로 등록합니다. 윈도우 프로시저는 전역 함수 <code>WndProc</code>이고, 이것이 전역 포인터 <code>g_appBase</code>를 통해 멤버 함수 <code>MsgProc</code>으로 위임합니다.</li>
-  <li>클라이언트 영역이 정확히 1280×720이 되도록 <code>AdjustWindowRect</code>로 프레임 두께를 보정한 뒤 <code>CreateWindow</code>합니다.</li>
+  <li><code>WNDCLASSEX</code>를 <code>CS_CLASSDC</code> 스타일로 등록합니다. 윈도우 프로시저는 전역 함수 <code>WndProc</code>이고, 이 함수가 전역 포인터 <code>g_appBase</code>를 통해 멤버 함수 <code>MsgProc</code>에 처리를 위임합니다.</li>
+  <li>클라이언트 영역이 정확히 1280×720이 되도록 <code>AdjustWindowRect</code>로 프레임 두께를 보정한 뒤 <code>CreateWindow</code>로 창을 만듭니다.</li>
   <li><code>MsgProc</code>은 ImGui의 Win32 핸들러에 먼저 메시지를 넘기고, <code>WM_SIZE</code>에서 스왑체인이 있을 때만 <code>Device::Resize</code>와 <code>Camera::SetAspectRatio</code>를 호출합니다. 최소화(<code>SIZE_MINIMIZED</code>)는 건너뜁니다.</li>
 </ul>
 
@@ -371,7 +371,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <tr><td class="mono">Flags</td><td class="mono">ALLOW_MODE_SWITCH</td><td>전체화면 전환 허용</td></tr>
 <tr><td class="mono">FeatureLevels</td><td>11_0, 9_3</td><td>배열에 9_3이 있지만 결과가 11_0이 아니면 실패 처리하므로 사실상 11_0 전용입니다.</td></tr>
 </tbody></table></div>
-<p>이어서 <code>CreateRenderTargetView</code>가 백버퍼 0번을 얻어 RTV를 만들고 <strong>즉시 <code>OMSetRenderTargets(1, &amp;rtv, nullptr)</code>로 바인딩</strong>합니다. 세 번째 인자가 <code>nullptr</code>이라는 점이 중요합니다. <code>m_DSView</code> 멤버는 선언만 되어 있고 어디에서도 생성되지 않으므로, 이 렌더러에는 <strong>깊이 테스트가 존재하지 않습니다</strong>. 지금 화면에 나오는 구가 올바르게 보이는 이유는 구가 볼록한 단일 물체이고 후면 컬링이 켜져 있어서일 뿐입니다. 물체가 둘 이상 되면 그리는 순서대로 덮어써집니다.</p>
+<p>이어서 <code>CreateRenderTargetView</code>가 백버퍼 0번을 얻어 RTV를 만들고 <strong>즉시 <code>OMSetRenderTargets(1, &amp;rtv, nullptr)</code>로 바인딩</strong>합니다. 세 번째 인자가 <code>nullptr</code>이라는 점이 중요합니다. <code>m_DSView</code> 멤버는 선언만 되어 있고 어디에서도 생성되지 않으므로, 이 렌더러에는 <strong>깊이 테스트가 존재하지 않습니다</strong>. 지금 화면에 나오는 구가 올바르게 보이는 이유는 구가 볼록한 단일 물체이고 후면 컬링이 켜져 있어서일 뿐입니다. 물체가 둘 이상이 되면 그리는 순서대로 덮어쓰게 됩니다.</p>
 <p>마지막으로 <code>SetViewport</code>가 화면 전체 크기의 뷰포트(깊이 0~1)를 <code>RSSetViewports</code>로 설정합니다.</p>
 
 <h3 id="s3-3">3.3 셰이더 컴파일과 상수버퍼 <span class="mono" style="font-size:13px;color:var(--muted)">Shader::ShaderCreate</span></h3>
@@ -394,7 +394,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <h3 id="s3-4">3.4 구 메시와 GPU 버퍼 <span class="mono" style="font-size:13px;color:var(--muted)">Renderer::DataLoading → ObjLoad</span></h3>
 <p><code>Mesh::CreateSphere(5.0f, 32, 16, white)</code>가 CPU 메모리에 정점·인덱스 배열을 만듭니다. 구조는 Frank Luna의 GeometryGenerator와 같은 방식입니다.</p>
 <div class="kv">
-  <dt>정점 수</dt><dd>북극 1 + 링 15개 × (32+1) + 남극 1 = <span class="n">497</span>개. 각 링에서 마지막 정점은 첫 정점과 위치가 같은 이음새 복제입니다(UV를 붙일 때를 위한 구조).</dd>
+  <dt>정점 수</dt><dd>북극 1 + 링 15개 × (32+1) + 남극 1 = <span class="n">497</span>개. 각 링에서 마지막 정점은 첫 정점과 위치가 같은 이음새 복제입니다(나중에 UV를 붙이기 위한 구조).</dd>
   <dt>인덱스 수</dt><dd>상단 캡 32×3 + 몸통 14링 × 32 × 6 + 하단 캡 32×3 = <span class="n">2,880</span>개 → 960 삼각형</dd>
   <dt>정점 포맷</dt><dd><code>VERTEX</code> = float3 위치(12B) + float4 색(16B) + float3 노멀(12B) = 40바이트. 노멀은 단위구 좌표 그대로라 정확합니다.</dd>
   <dt>감기 방향</dt><dd>상단 캡이 <code>(0, i+1, i)</code> 순서라 왼손 좌표계에서 밖을 향하는 면이 시계 방향(CW)이 되고, <code>FrontCounterClockwise=false</code>인 RasterizerState와 맞아 후면 컬링이 정상 동작합니다.</dd>
@@ -451,7 +451,7 @@ td .fix b{color:var(--ok);font-weight:600}
   <g class="box amb"><rect x="14" y="492" width="112" height="26" rx="4"/><text x="70" y="510" text-anchor="middle" class="m">ImGui RenderDrawData</text></g>
   <path class="ln acc" d="M70 534H842" marker-end="url(#ar4)"/><text x="80" y="530" class="s">graphicsDevice.Present(0, 0)</text>
 </svg>
-<div class="cap">그림 2. 한 프레임의 호출 시퀀스. ①과 ②에서 같은 렌더타깃을 두 번 클리어합니다. ①은 아무것도 그려지기 전이라 무해하지만, 두 Clear 사이에 무언가를 그리기 시작하면(예: 스카이박스, 배경 패스) ②가 그 결과를 지워 버립니다. 색도 다릅니다. Device는 (0.1, 0.1, 0.3)을 쓰고 Renderer의 <code>g_ClearColor</code>(0, 0.125, 0.3)는 사용되지 않습니다.</div>
+<div class="cap">그림 2. 한 프레임의 호출 시퀀스. ①과 ②에서 같은 렌더타깃을 두 번 클리어합니다. ①은 아무것도 그려지기 전이라 무해하지만, 두 Clear 사이에 무언가를 그리기 시작하면(예: 스카이박스, 배경 패스) ②가 그 결과를 지워 버립니다. 클리어 색 상수도 두 곳에 따로 있습니다. Device는 (0.1, 0.1, 0.3)을 쓰고 Renderer의 <code>g_ClearColor</code>(0, 0.125, 0.3)는 사용되지 않습니다.</div>
 </div>
 
 <h3>프레임 단계별 설명</h3>
@@ -477,7 +477,7 @@ td .fix b{color:var(--ok);font-weight:600}
 </div>
 <div class="stage">
   <div class="tag">T-6</div>
-  <div><h4>ImGui 드로우와 Present</h4><p><code>ImGui_ImplDX11_RenderDrawData</code>가 UI를 같은 백버퍼 위에 그리고, <code>Present(0, 0)</code>이 백버퍼를 화면에 넘깁니다. SyncInterval 0이라 프레임 페이싱이 없어 GPU 사용률이 100%에 붙습니다. 학습 중에는 FPS 수치가 보여 편리하지만, 노트북에서는 발열·소음의 원인이 되므로 ImGui 토글로 <code>Present(1, 0)</code>을 선택할 수 있게 해두는 편이 좋습니다.</p></div>
+  <div><h4>ImGui 드로우와 Present</h4><p><code>ImGui_ImplDX11_RenderDrawData</code>가 UI를 같은 백버퍼 위에 그리고, <code>Present(0, 0)</code>이 백버퍼를 화면에 넘깁니다. SyncInterval 0이라 프레임 페이싱이 없어 GPU 사용률이 100%까지 올라갑니다. 학습 중에는 FPS 수치가 보여 편리하지만, 노트북에서는 발열·소음의 원인이 되므로 ImGui 토글로 <code>Present(1, 0)</code>을 선택할 수 있게 해두는 편이 좋습니다.</p></div>
 </div>
 
 <h2 id="s5"><span class="num">5.</span>GPU 파이프라인 단계별 추적</h2>
@@ -523,7 +523,7 @@ td .fix b{color:var(--ok);font-weight:600}
 </div>
 
 <h3>Input Assembler</h3>
-<p><code>MeshRenderer::Draw</code>가 슬롯 0에 정점버퍼(stride 40, offset 0), 32비트 인덱스버퍼, InputLayout, 삼각형 리스트 토폴로지를 설정합니다. IA는 인덱스 3개씩 읽어 정점버퍼에서 40바이트 레코드를 가져오고, InputLayout에 따라 <code>POSITION</code>은 float3, <code>COLOR0</code>은 float4, <code>NORMAL0</code>은 float3로 풀어 VS 입력 시그니처에 전달합니다. HLSL 쪽 <code>VSInput.position</code>이 <code>float4</code>로 선언되어 있어도 문제없습니다. IA가 없는 성분은 <code>(0,0,0,1)</code> 규칙으로 채우고, VS가 다시 <code>w = 1</code>을 명시합니다.</p>
+<p><code>MeshRenderer::Draw</code>가 슬롯 0에 정점버퍼(stride 40, offset 0), 32비트 인덱스버퍼, InputLayout, 삼각형 리스트 토폴로지를 설정합니다. IA는 인덱스 3개씩 읽어 정점버퍼에서 40바이트 레코드를 가져오고, InputLayout에 따라 <code>POSITION</code>은 float3, <code>COLOR0</code>은 float4, <code>NORMAL0</code>은 float3로 풀어 VS 입력 시그니처에 전달합니다. HLSL 쪽 <code>VSInput.position</code>이 <code>float4</code>로 선언되어 있어도 문제없습니다. IA가 빠진 성분을 <code>(0,0,0,1)</code> 규칙으로 채우고, VS가 다시 <code>w = 1</code>을 명시합니다.</p>
 
 <h3>Vertex Shader <span class="mono" style="font-size:13px;color:var(--muted)">BasicVertexShader.hlsl</span></h3>
 <pre><code><span class="kw">VSOutput</span> VS_Main(<span class="kw">VSInput</span> vsInput)
@@ -588,10 +588,10 @@ td .fix b{color:var(--ok);font-weight:600}
 </div>
 </div>
 <p>마지막 <code>outerConeCos</code>가 다섯 번째 레지스터를 열고 <code>float3 padding</code>이 나머지 12바이트를 채웁니다. 이 패딩을 명시하지 않으면 C++ 구조체는 68바이트, HLSL 배열 원소는 80바이트가 되어 두 번째 조명부터 어긋납니다. 따라서 <code>LightBuffer</code>는 80 × 8 + 48 = <strong>688바이트</strong>이며, C++의 <code>alignas(16)</code> 구조체 크기도 같아 CPU/GPU가 일치합니다. 뒤따르는 <code>cameraPosition + lightCount</code>, <code>ambientColor + shininess</code>, <code>specularColor + padding</code> 세 레지스터도 같은 규칙으로 짝을 맞췄습니다.</p>
-<p><code>ConstBuffer</code>(b0)는 <code>XMMATRIX</code> 5개 = 320바이트로 패딩 이슈가 없습니다. 다만 <code>mView</code>, <code>mProj</code>는 셰이더에서 읽지 않으며, <code>mWVP</code>가 있으므로 프레임 단위(View/Proj)와 오브젝트 단위(World/WIT) 버퍼로 나누는 것이 3단계 로드맵의 핵심 작업입니다.</p>
+<p><code>ConstBuffer</code>(b0)는 <code>XMMATRIX</code> 5개 = 320바이트로 패딩 이슈가 없습니다. 다만 <code>mWVP</code>가 따로 있어서 <code>mView</code>, <code>mProj</code>는 셰이더에서 읽지 않습니다. 이 버퍼를 프레임 단위(View/Proj)와 오브젝트 단위(World/WIT)로 나누는 것이 3단계 로드맵의 핵심 작업입니다.</p>
 
 <h2 id="s6"><span class="num">6.</span>리소스 수명과 해제</h2>
-<p>D3D11 객체 관리 방식이 계층마다 다릅니다. <code>Device</code>는 <code>ComPtr</code>로 자동 해제하고, <code>Shader</code>·<code>Renderer</code>·<code>MeshRenderer</code>는 생 포인터와 <code>SafeRelease</code> 템플릿을 씁니다. 종료 시 실제로 일어나는 일은 다음 순서입니다.</p>
+<p>D3D11 객체 관리 방식이 계층마다 다릅니다. <code>Device</code>는 <code>ComPtr</code>로 자동 해제하고, <code>Shader</code>·<code>Renderer</code>·<code>MeshRenderer</code>는 생 포인터와 <code>SafeRelease</code> 템플릿을 씁니다. 종료 시 실제로 일어나는 일을 순서대로 적으면 다음과 같습니다.</p>
 <ol>
   <li><code>main()</code>이 반환되며 <code>TestApp</code> 소멸자 → <code>AppBase</code> 소멸자 본문 실행: ImGui DX11/Win32 셧다운, 컨텍스트 파괴, <code>DestroyWindow</code>.</li>
   <li>멤버가 선언 역순으로 소멸: <code>gameTimer</code> → <code>camera</code> → <code>shaderClass</code> → <code>renderer</code> → <code>graphicsDevice</code>.</li>
@@ -603,7 +603,7 @@ td .fix b{color:var(--ok);font-weight:600}
 
 <div class="applied">
   <div class="t">적용 결과 — 2026-09-10</div>
-  <p>위 5단계 중 3번이 사라졌습니다. 모든 계층이 <code>ComPtr</code>을 쓰고 <code>SafeRelease</code>와 <code>helper.h</code>는 삭제됐습니다. <code>Shader</code>는 소멸자를 추가하지 않았습니다. 멤버가 ComPtr이라 필요 없고, 호출처가 없던 <code>ShaderRelease()</code>는 지웠습니다. 4번의 <code>Renderer</code> 소멸자는 남아 있으나 이제 <code>Reset()</code>만 부르므로 Device 생존 여부와 무관하게 안전합니다.</p>
+  <p>위 5단계 중 3번이 사라졌습니다. 모든 계층이 <code>ComPtr</code>을 쓰고 <code>SafeRelease</code>와 <code>helper.h</code>는 삭제됐습니다. <code>Shader</code>에는 소멸자를 추가하지 않았습니다. 멤버가 ComPtr이라 필요 없고, 호출처가 없던 <code>ShaderRelease()</code>는 지웠습니다. 4번의 <code>Renderer</code> 소멸자는 남아 있으나 이제 <code>Reset()</code>만 부르므로 Device 생존 여부와 무관하게 안전합니다.</p>
   <p>종료 시 Live Object가 <strong>D3D11 31개·DXGI 1개에서 둘 다 0개</strong>가 되었습니다. 커밋 867c380을 별도 worktree에 빌드해 직접 비교한 수치입니다. 5번의 <code>ReleaseDevice()</code>가 호출되지 않는 점은 그대로지만, ComPtr이 전부 정리하므로 누수는 없습니다.</p>
 </div>
 
@@ -620,7 +620,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <tr><td class="n">5</td><td><span class="pill warn">주의</span> <span class="pill ok">해결됨</span></td><td class="mono">AppBase.h:40 / AppBase.cpp:50</td><td><code>static GameTime gameTime</code> 정의 없음, <code>Run()</code>의 지역 변수가 이를 가림</td><td><code>Update()</code>가 델타타임을 받을 수 없음. 정적 멤버를 제거하고 <code>Update(float dt)</code>로 전달하거나 비정적 멤버로 변경.<span class="fix"><b>phase-0.html</b> <a href="">자세히</a></span></td></tr>
 <tr><td class="n">6</td><td><span class="pill warn">주의</span> <span class="pill ok">해결됨</span></td><td class="mono">Shader.h</td><td>소멸자 없음, <code>ShaderRelease()</code> 미호출</td><td>VS/PS/Blob/CB 누수. ComPtr로 전환하면 자연히 해결.<span class="fix"><b>적용 (2026-09-10)</b> — ComPtr 전환으로 해결. 종료 시 Live Object 31개에서 0개. <a href="#applied">자세히</a></span></td></tr>
 <tr><td class="n">7</td><td><span class="pill warn">주의</span> <span class="pill ok">해결됨</span></td><td class="mono">SherlockEngine.vcxproj</td><td>HLSL <code>ExcludedFromBuild</code>가 Debug|x64에만 설정</td><td>Release 빌드 실패. 모든 구성에 적용하거나, 반대로 FxCompile로 .cso를 만들고 런타임 로딩으로 전환.<span class="fix"><b>적용 (2026-09-10)</b> — <code>ExcludedFromBuild</code>를 무조건부로 바꿔 전 구성에서 제외. Release|x64 빌드·실행 확인. <a href="#applied">자세히</a></span></td></tr>
-<tr><td class="n">8</td><td><span class="pill warn">주의</span> <span class="pill ok">해결됨</span></td><td class="mono">Shader.cpp:56</td><td>셰이더 경로가 작업 디렉터리 상대 경로</td><td>VS 밖에서 실행하면 컴파일 실패. 실행 파일 기준 경로 계산 또는 빌드 후 복사 단계 추가.<span class="fix"><b>phase-0.html</b> <a href="">자세히</a></span></td></tr>
+<tr><td class="n">8</td><td><span class="pill warn">주의</span> <span class="pill ok">해결됨</span></td><td class="mono">Shader.cpp:56</td><td>셰이더 경로가 작업 디렉터리 상대 경로</td><td>Visual Studio 밖에서 실행하면 컴파일 실패. 실행 파일 기준 경로 계산 또는 빌드 후 복사 단계 추가.<span class="fix"><b>phase-0.html</b> <a href="">자세히</a></span></td></tr>
 <tr><td class="n">9</td><td><span class="pill warn">주의</span> <span class="pill ok">해결됨</span></td><td class="mono">Device.cpp:56</td><td><code>Present(0, 0)</code> 고정</td><td>GPU 100% 점유. VSync 토글 제공.<span class="fix"><b>phase-1.html</b> <a href="">자세히</a></span></td></tr>
 <tr><td class="n">10</td><td><span class="pill info">개선</span> <span class="pill ok">해결됨</span></td><td class="mono">Device.cpp:196</td><td>FeatureLevel 배열에 9_3이 있으나 11_0 외에는 실패 처리</td><td>의도가 11_0 전용이면 배열을 11_0 하나로, 아니면 10_0/10_1 폴백 허용.<span class="fix"><b>phase-11.html</b> <a href="">자세히</a></span></td></tr>
 <tr><td class="n">11</td><td><span class="pill info">개선</span> <span class="pill ok">해결됨</span></td><td class="mono">Device.cpp:221</td><td><code>DXGI_SWAP_EFFECT_DISCARD</code></td><td><code>FLIP_DISCARD</code> + <code>DXGI_SWAP_CHAIN_DESC1</code>/<code>CreateSwapChainForHwnd</code>로 전환하면 지연 감소. Resize 로직도 함께 점검.<span class="fix"><b>phase-5.html</b> <a href="">자세히</a></span></td></tr>
@@ -657,7 +657,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <tr><td class="n">#18 자기 참조 매크로</td><td><span class="pill ok">해결됨</span></td><td><code>helper.h</code> 파일 자체를 삭제</td></tr>
 <tr><td class="n">#19 도달 불가 코드</td><td><span class="pill ok">해결됨</span></td><td>PS 로드 함수 재작성 과정에서 삭제</td></tr>
 <tr><td class="n">D1 ComPtr 통일</td><td><span class="pill ok">해결됨</span></td><td>소유 핸들 12개 전환, <code>SafeRelease</code> 폐기</td></tr>
-<tr><td class="n">D4 프레임 소유권</td><td><span class="pill ok">6단계 완료</span></td><td>중복 Clear 제거(초기). 6단계에서 <code>BeginFrame → [ShadowPass → MainPass → UIPass] → EndFrame</code>으로 재구성. 타깃·클리어는 Renderer의 <code>RenderPassDesc</code>가 정한다 (<a href="phase-6.html">phase-6.html</a>)</td></tr>
+<tr><td class="n">D4 프레임 소유권</td><td><span class="pill ok">6단계 완료</span></td><td>중복 Clear 제거(초기). 6단계에서 <code>BeginFrame → [ShadowPass → MainPass → UIPass] → EndFrame</code>으로 재구성. 타깃·클리어는 Renderer의 <code>RenderPassDesc</code>가 결정 (<a href="phase-6.html">phase-6.html</a>)</td></tr>
 <tr><td class="n">D16 반환 규약·로그</td><td><span class="pill warn">일부</span></td><td>0단계 몫만. Log 파사드와 bool 통일. Logger 본체는 10단계</td></tr>
 <tr><td class="n">D17 소스 인코딩</td><td><span class="pill ok">해결됨</span></td><td>UTF-8(BOM) 변환, <code>/utf-8</code>, <code>.editorconfig</code>, 콘솔 코드페이지</td></tr>
 <tr><td class="n">D18 PCH 정리</td><td><span class="pill ok">해결됨</span></td><td>미사용 헤더 7개와 전역 <code>using namespace</code> 제거. 수학은 DirectXMath로 확정</td></tr>
@@ -675,11 +675,11 @@ td .fix b{color:var(--ok);font-weight:600}
 <p><code>Device</code>에 <code>ComPtr&lt;ID3D11Texture2D&gt; m_depthStencilBuffer</code>를 추가하고, 선언만 있던 <code>m_DSView</code>를 실제로 채우도록 <code>CreateDepthStencilView()</code>와 <code>BindRenderTargets()</code> 두 함수를 새로 만들었습니다.</p>
 <ul>
   <li><b>포맷과 크기</b> — <code>D24_UNORM_S8_UINT</code>, 크기는 <code>m_screenWidth</code>·<code>m_screenHeight</code>, <code>SampleDesc</code>는 카운트 1·품질 0으로 스왑체인과 맞췄습니다. 이 셋 중 하나라도 백버퍼와 다르면 <code>OMSetRenderTargets</code>가 거부합니다.</li>
-  <li><b>바인딩 분리</b> — 기존에는 <code>CreateRenderTargetView()</code>가 생성과 <code>OMSetRenderTargets</code>를 같이 했습니다. 바인딩을 <code>BindRenderTargets()</code>로 떼어내, RTV와 DSV가 <em>둘 다</em> 준비된 뒤에 한 번만 묶어 걸도록 했습니다.</li>
+  <li><b>바인딩 분리</b> — 기존에는 <code>CreateRenderTargetView()</code>가 생성과 <code>OMSetRenderTargets</code>를 같이 했습니다. 바인딩을 <code>BindRenderTargets()</code>로 떼어내, RTV와 DSV가 <em>둘 다</em> 준비된 뒤에 한 번만 바인딩하도록 했습니다.</li>
   <li><b>Resize</b> — 기존 순서(RTV 언바인드, 해제, <code>ResizeBuffers</code>, 재생성)에 DSV를 끼워 넣었습니다. RTV를 <code>Reset()</code>하는 자리에서 <code>m_DSView</code>와 깊이 텍스처도 함께 <code>Reset()</code>하고, 재생성 뒤 다시 바인딩합니다.</li>
   <li><b>Clear</b> — <code>Device::Clear()</code>에 깊이 1.0, 스텐실 0으로 <code>ClearDepthStencilView</code>를 추가했습니다.</li>
 </ul>
-<p><b>DepthStencilState는 일부러 만들지 않았습니다.</b> D3D11 기본 상태가 이미 깊이 테스트 켜짐, 비교 함수 LESS, 쓰기 전체 허용이라 DSV만 걸리면 바로 동작합니다. 명시적 상태 객체는 1단계의 PSO 에뮬레이션이 소유할 물건이므로, 지금 개별 <code>OMSetDepthStencilState</code> 호출을 넣으면 나중에 되돌려야 합니다.</p>
+<p><b>DepthStencilState는 일부러 만들지 않았습니다.</b> D3D11 기본 상태가 이미 깊이 테스트 켜짐, 비교 함수 LESS, 쓰기 전체 허용이라 DSV만 걸리면 바로 동작합니다. 명시적 상태 객체는 1단계의 PSO 에뮬레이션이 소유할 대상이므로, 지금 개별 <code>OMSetDepthStencilState</code> 호출을 넣으면 나중에 되돌려야 합니다.</p>
 
 <h3>2. 프레임당 Clear 한 번 (#2)</h3>
 <p><code>Renderer::Render()</code> 안의 <code>Clear()</code> 호출 한 줄을 지웠습니다. 이제 이 함수는 오브젝트 갱신과 드로우만 합니다. 어디서도 읽지 않던 <code>Renderer::g_ClearColor</code>도 함께 제거해, 클리어 색 상수가 <code>Device::Clear()</code> 한 곳에만 남도록 했습니다.</p>
@@ -687,7 +687,7 @@ td .fix b{color:var(--ok);font-weight:600}
 
 <h3>3. ComPtr 통일 (D1, #4, #6, #18, #19)</h3>
 <p><code>Shader</code> 5개, <code>MeshRenderer</code> 3개, <code>Renderer</code>의 래스터라이저 상태 배열 4개까지 소유 핸들 12개를 전부 <code>ComPtr</code>로 바꾸고 <code>helper.h</code>를 삭제했습니다. <code>pch.h</code>에 <code>wrl/client.h</code>와 <code>using Microsoft::WRL::ComPtr;</code>이 이미 있어 추가 include는 필요 없었습니다.</p>
-<p>세운 규칙은 한 줄입니다. <strong>소유하면 ComPtr, 생 포인터면 소유하지 않음.</strong> 그래서 <code>Device*</code>·<code>Shader*</code>·<code>Camera*</code>·<code>Mesh*</code> 같은 역참조와, 게터가 돌려주는 <code>ID3D11Device*</code>는 생 포인터 그대로 두었습니다. 게터는 반환형을 바꾸지 않고 본문에서 <code>.Get()</code>만 붙였으므로 호출부는 손대지 않았습니다.</p>
+<p>세운 규칙은 한 줄입니다. <strong>소유하면 ComPtr, 생 포인터면 소유하지 않음.</strong> 그래서 <code>Device*</code>·<code>Shader*</code>·<code>Camera*</code>·<code>Mesh*</code> 같은 비소유 참조와, 게터가 돌려주는 <code>ID3D11Device*</code>는 생 포인터 그대로 두었습니다. 게터는 반환형을 바꾸지 않고 본문에서 <code>.Get()</code>만 붙였으므로 호출부는 손대지 않았습니다.</p>
 <h4>생성 함수 시그니처</h4>
 <p><code>Device</code>의 네 팩토리를 이중 포인터 출력 인자에서 <strong><code>ComPtr&lt;T&gt;</code> 값 반환</strong>으로 바꿨습니다. 실패하면 비어 있는 ComPtr을 돌려줍니다.</p>
 <pre><code><span class="cm">// 이전</span>
@@ -698,9 +698,9 @@ ComPtr&lt;ID3D11Buffer&gt; CreateConstBuffer(UINT size);
 ComPtr&lt;ID3D11Buffer&gt; CreateVertexBuffer(<span class="kw">const</span> <span class="kw">void</span>* pData, UINT size, UINT stride);
 ComPtr&lt;ID3D11Buffer&gt; CreateIndexBuffer(<span class="kw">const</span> <span class="kw">void</span>* pData, UINT size);
 ComPtr&lt;ID3D11InputLayout&gt; CreateInputLayout(<span class="kw">const</span> D3D11_INPUT_ELEMENT_DESC* desc, UINT num, ID3DBlob* pVSCode);</code></pre>
-<p>참조 출력 인자 대신 값 반환을 고른 이유는 7단계에서 <code>BufferHandle CreateBuffer(desc)</code> 형태로 옮기기 가장 자연스럽기 때문입니다. 앞으로 텍스처·샘플러·깊이 상태 생성 함수를 추가할 때도 같은 형태를 따릅니다. 덤으로 호출부에서 <code>const_cast</code>가 사라졌습니다. 팩토리가 <code>const void*</code>를 받기 때문입니다.</p>
+<p>참조 출력 인자 대신 값 반환을 고른 이유는 7단계에서 <code>BufferHandle CreateBuffer(desc)</code> 형태로 옮기기에 가장 자연스럽기 때문입니다. 앞으로 텍스처·샘플러·깊이 상태 생성 함수를 추가할 때도 같은 형태를 따릅니다. 덤으로 호출부에서 <code>const_cast</code>가 사라졌습니다. 팩토리가 <code>const void*</code>를 받기 때문입니다.</p>
 <h4>가장 조심한 지점</h4>
-<p>D1이 경고한 대로 <code>GetAddressOf()</code>와 <code>ReleaseAndGetAddressOf()</code>를 가르는 일이 실제로 제일 위험했습니다. 기준은 <strong>API가 그 자리에 값을 쓰느냐, 읽느냐</strong>입니다.</p>
+<p>D1이 경고한 대로 <code>GetAddressOf()</code>와 <code>ReleaseAndGetAddressOf()</code>를 구분하는 일이 실제로 제일 위험했습니다. 기준은 <strong>API가 그 자리에 값을 쓰느냐, 읽느냐</strong>입니다.</p>
 <div class="tbl"><table>
 <thead><tr><th>쓰임</th><th>메서드</th><th>실제 적용한 곳</th></tr></thead>
 <tbody>
@@ -708,7 +708,7 @@ ComPtr&lt;ID3D11InputLayout&gt; CreateInputLayout(<span class="kw">const</span> 
 <tr><td>입력 배열</td><td class="mono">GetAddressOf()</td><td><code>VSSetConstantBuffers</code>, <code>PSSetConstantBuffers</code>, <code>IASetVertexBuffers</code>, <code>OMSetRenderTargets</code></td></tr>
 <tr><td>단일 인자</td><td class="mono">Get()</td><td><code>VSSetShader</code>, <code>IASetIndexBuffer</code>, <code>IASetInputLayout</code>, <code>RSSetState</code></td></tr>
 </tbody></table></div>
-<p>입력 배열 세 곳에 <code>ReleaseAndGetAddressOf()</code>를 쓰면 바인딩 직전에 버퍼가 해제되고 널이 걸립니다. 컴파일은 통과하므로 눈으로 걸러야 하는 자리입니다.</p>
+<p>입력 배열 네 곳에 <code>ReleaseAndGetAddressOf()</code>를 쓰면 바인딩 직전에 버퍼가 해제되고 널이 걸립니다. 컴파일은 통과하므로 눈으로 걸러야 하는 자리입니다.</p>
 <h4>함께 사라진 버그</h4>
 <p>#4의 지역 변수 <code>pVs</code>와 멤버 <code>pVS</code>의 대소문자 충돌은 로드 함수를 참조 출력 인자로 재작성하면서 없어졌습니다. 지역 ComPtr에 생성한 뒤 출력 인자에 대입하는 형태라 애초에 충돌할 이름이 없습니다. #19의 도달 불가 조기 반환도 같은 재작성에서 빠졌습니다. 호출처가 없던 <code>ShaderRelease()</code>는 삭제했고, 소멸자는 추가하지 않았습니다. ComPtr이 대신합니다.</p>
 
@@ -722,7 +722,7 @@ ComPtr&lt;ID3D11InputLayout&gt; CreateInputLayout(<span class="kw">const</span> 
 BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4</code></pre>
 <ul>
   <li><b>경로 출력</b> — <code>WideCharToMultiByte</code>로 UTF-8 변환하는 파일 지역 헬퍼 <code>ToUtf8()</code>를 <code>Shader.cpp</code>에 두고 씁니다.</li>
-  <li><b>Blob 출력</b> — 실패하면 컴파일러 메시지를 그대로 찍습니다. Blob이 아예 없으면 보통 파일을 못 찾은 경우라, HRESULT를 16진수로 보여주는 대체 문구를 냅니다. <code>0x80070002</code>가 파일 없음입니다.</li>
+  <li><b>Blob 출력</b> — 실패하면 컴파일러 메시지를 그대로 찍습니다. Blob이 아예 없으면 보통 파일을 못 찾은 경우라, HRESULT를 16진수로 보여주는 대체 문구를 출력합니다. <code>0x80070002</code>가 파일 없음입니다.</li>
   <li><b>경고도 출력</b> — 컴파일이 성공해도 Blob에 내용이 있으면 경고로 찍습니다.</li>
   <li><b>중복 제거</b> — <code>ShaderCompile</code>과 <code>ShaderLoad</code>가 같은 문구를 두 번 찍고 있었습니다. 이제 컴파일 실패는 <code>ShaderCompile</code>이 한 번만 보고합니다.</li>
   <li><b>컴파일 플래그 (#16)</b> — Debug에서 <code>D3DCOMPILE_DEBUG</code>와 <code>D3DCOMPILE_SKIP_OPTIMIZATION</code>, Release에서 <code>D3DCOMPILE_OPTIMIZATION_LEVEL3</code>을 줍니다. include 핸들러도 널에서 <code>D3D_COMPILE_STANDARD_FILE_INCLUDE</code>로 바꿔, 앞으로 HLSL 안에서 <code>#include</code>를 쓸 수 있게 했습니다.</li>
@@ -730,7 +730,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4</co
 
 <h3>5. Release 빌드 (#7)</h3>
 <p><code>ExcludedFromBuild</code>가 Debug|x64에만 걸려 있어, 다른 구성에서는 MSBuild가 HLSL을 기본 진입점으로 컴파일하려다 <code>error X3501: entrypoint not found</code>로 실패했습니다. 셰이더는 런타임에 <code>D3DCompileFromFile</code>로 컴파일하므로 빌드 시 FXC를 돌릴 이유가 없습니다. 조건을 없애고 전 구성에서 제외했습니다.</p>
-<p>7절이 제시한 다른 선택지, 즉 FxCompile로 .cso를 굽고 런타임 로딩으로 전환하는 방향은 고르지 않았습니다. 셰이더 핫리로드를 남겨 두는 편이 지금 단계에 맞고, .cso 전환은 경로 정책과 함께 결정할 문제이기 때문입니다.</p>
+<p>7절이 제시한 다른 선택지, 즉 FxCompile로 .cso를 굽고 런타임 로딩으로 전환하는 방향은 고르지 않았습니다. 셰이더 핫리로드 여지를 남겨 두는 편이 지금 단계에 맞고, .cso 전환은 경로 정책과 함께 결정할 문제이기 때문입니다.</p>
 
 <h3>검증 방법</h3>
 <p>눈으로 보는 것만으로는 부족한 항목이 있어서 A/B 비교를 썼습니다.</p>
@@ -747,21 +747,21 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4</co
 <pre><code>D3D11 ERROR: OMSetRenderTargets: The RenderTargetView at slot 0 is not
 compatible with the DepthStencilView. RTV has (w:1280,h:720),
 DSV has (w:1280,h:360).</code></pre>
-<p>실제 DSV의 치수를 읽어서 보고했다는 것은 널이 아닌 뷰가 OM에 들어갔다는 뜻입니다. 정상 빌드에서는 1280×720으로 일치해 이 오류가 없습니다. 창 크기를 900×600, 1400×900, 640×480, 1280×720으로 연달아 바꾸는 동안에도 오류나 멈춤이 없어 Resize 재생성 경로도 확인했습니다.</p>
+<p>실제 DSV의 치수를 읽어서 보고했다는 것은 널이 아닌 뷰가 OM에 들어갔다는 뜻입니다. 정상 빌드에서는 1280×720으로 일치해 이 오류가 없습니다. 창 크기를 900×600, 1400×900, 640×480, 1280×720으로 연달아 바꾸는 동안에도 오류나 멈춤이 없어 Resize 재생성 경로도 확인됐습니다.</p>
 <h4>셰이더 진단 — 오타 넣어 보기</h4>
 <p>정점 셰이더의 타입 이름 철자를 일부러 틀려 실행해 줄·열 번호가 찍히는지 보고, 셰이더가 없는 디렉터리에서 실행해 HRESULT 대체 문구가 나오는지 봤습니다. 확인 뒤 셰이더 파일은 원래 바이트로 되돌렸습니다.</p>
 <h4>빌드</h4>
 <p>Debug|x64와 Release|x64를 각각 전체 재빌드했습니다. 둘 다 경고 0건이며, Release 실행 파일도 정상 실행 후 종료합니다. 인코딩 변환 뒤 C4819 코드 페이지 경고가 사라졌습니다.</p>
 
 <h3>6. PCH 정리와 이름공간 (D18)</h3>
-<p><code>pch.h</code>가 48줄에서 30줄로 줄었습니다. 지운 것과 남긴 기준은 이렇습니다.</p>
+<p><code>pch.h</code>가 48줄에서 30줄로 줄었습니다. 지운 것과 그 기준은 다음과 같습니다.</p>
 <ul>
   <li><b>DirectXTK 5개와 DirectXTex</b> — SpriteBatch, SpriteFont, WICTextureLoader, DDSTextureLoader, CommonStates, DirectXTex. 전 소스에서 심볼 사용 0건이었습니다. 링크 수준에서도 두 실행 파일 모두 해당 DLL을 import하지 않았고 <code>vcpkg.applocal.log</code>가 0바이트였습니다. 실제로 죽은 include였습니다.</li>
   <li><b>SimpleMath</b> — 헤더와 <code>using namespace DirectX::SimpleMath;</code>를 함께 지웠습니다. <code>Vector3</code>·<code>Matrix</code>·<code>Color</code> 같은 타입이 코드에 <strong>단 한 번도</strong> 나오지 않았습니다. 수학은 전부 DirectXMath(<code>XM*</code>) 88줄입니다.</li>
   <li><b><code>&lt;stdio.h&gt;</code>, <code>&lt;tchar.h&gt;</code></b> — printf 계열 사용 0건, <code>TCHAR</code>는 <code>windows.h</code>가 이미 제공합니다.</li>
   <li><b><code>dxgi.lib</code> pragma</b> — 직접 부르는 dxgi export가 없습니다. 스왑체인은 <code>D3D11CreateDeviceAndSwapChain</code>이 만들어 주므로 <code>d3d11.dll</code>만 있으면 됩니다. 헤더는 남겼습니다.</li>
   <li><b><code>using std::shared_ptr;</code>, <code>using std::vector;</code></b> — 접두어 없이 쓰는 곳이 0건이었습니다.</li>
-  <li><b>추가한 것</b> — <code>&lt;string&gt;</code>, <code>&lt;vector&gt;</code>, <code>&lt;memory&gt;</code>. 특히 <code>&lt;string&gt;</code>은 <code>Shader.cpp</code>가 쓰면서도 <code>&lt;iostream&gt;</code>을 타고 우연히 들어오던 상태였습니다. 잠재적 파손이라 명시했습니다.</li>
+  <li><b>추가한 것</b> — <code>&lt;string&gt;</code>, <code>&lt;vector&gt;</code>, <code>&lt;memory&gt;</code>. 특히 <code>&lt;string&gt;</code>은 <code>Shader.cpp</code>가 쓰면서도 <code>&lt;iostream&gt;</code>을 타고 우연히 들어오던 상태였습니다. 언제든 깨질 수 있는 의존이라 명시적으로 넣었습니다.</li>
 </ul>
 <h4>수학 타입은 DirectXMath로 확정</h4>
 <p>문서가 "SimpleMath를 주 수학 타입으로 쓸지 DirectXMath 원형을 쓸지 하나를 정하라"고 했는데, <strong>DirectXMath로 정했습니다.</strong> 코드가 이미 전부 그쪽이고 SimpleMath 사용이 0건이라 결정이랄 것도 없었습니다. 문서가 걱정한 <code>XMFLOAT3 ↔ Vector3</code> 변환 코드는 애초에 생기지 않았습니다.</p>
@@ -771,31 +771,31 @@ DSV has (w:1280,h:360).</code></pre>
   <li><b>헤더 6개</b>(<code>struct.h</code>, <code>Camera.h</code>, <code>Transform.h</code>, <code>Renderer.h</code>, <code>Mesh.h</code>, <code>MeshRenderer.h</code>)는 <code>DirectX::</code> 접두어를 붙였습니다. 55개 심볼입니다.</li>
   <li><b>.cpp 6개</b>는 include 아래에 파일 지역 <code>using namespace DirectX;</code>를 한 줄 두었습니다. 본문은 손대지 않았습니다.</li>
 </ul>
-<p>이제 헤더가 이름공간을 새지 않으므로, 나중에 자체 <code>Color</code>나 <code>Plane</code> 타입을 만들어도 모호성 오류가 나지 않습니다. 문서가 걱정한 "수십 곳에 접두어가 붙어 코드가 길어짐"은 헤더 선언부에만 생겼고 구현부는 그대로입니다.</p>
+<p>이제 헤더에서 이름공간이 새어 나가지 않으므로, 나중에 자체 <code>Color</code>나 <code>Plane</code> 타입을 만들어도 모호성 오류가 나지 않습니다. 문서가 걱정한 "수십 곳에 접두어가 붙어 코드가 길어짐"은 헤더 선언부에만 생겼고 구현부는 그대로입니다.</p>
 <h4>헤더 자립화</h4>
 <p><code>pch.h</code>에서 <code>GameTimer.h</code>·<code>enum.h</code>·<code>struct.h</code>를 빼면서 숨어 있던 의존성이 드러났습니다. <code>struct.h</code>는 <code>LightType</code>·<code>MAX_LIGHTS</code>·<code>XMMATRIX</code>를 쓰면서 <code>enum.h</code>도 <code>DirectXMath.h</code>도 include하지 않고 있었습니다. <code>pch.h</code>의 include 순서 덕에 우연히 컴파일되던 것입니다. <code>enum.h</code>도 <code>UINT</code> 때문에 <code>windows.h</code>가 필요했습니다. 각 헤더가 자기 의존성을 직접 include하도록 고쳤습니다.</p>
-<p><b>후속 (2026-09-10) — <code>Log.h</code>가 이 검사에서 빠져 있었습니다.</b> 같은 세션에서 새로 만든 파일이라 위 자립화 점검 대상에 들어가지 않았고, <code>&lt;string&gt;</code>만 include한 채 <code>HrToString(HRESULT)</code>에서 <code>HRESULT</code>를 쓰고 있었습니다. <code>HRESULT</code>는 <code>windows.h</code>에서 오고 그것은 <code>pch.h</code>에만 있으므로, <code>struct.h</code>가 그랬던 것과 똑같이 "<code>pch.h</code>가 먼저 include된 상태"에 우연히 기대고 있던 헤더였습니다. <code>windows.h</code>를 통째로 끌어오는 대신 <code>&lt;winerror.h&gt;</code> 하나를 넣어 해결했습니다. <code>HRESULT</code>의 typedef가 <code>_HRESULT_DEFINED</code> 가드 안에 거기 있고, <code>winerror.h</code>는 SAL 주석 때문에 필요한 <code>specstrings.h</code>를 스스로 include하므로 단독으로 성립합니다.</p>
-<p>확인은 <code>pch.h</code> 없이 <code>Log.h</code>만 include하는 파일을 만들어 <code>cl /std:c++17 /utf-8 /EHsc /c</code>로 컴파일해 봤습니다. 오브젝트 파일이 경고 없이 나왔습니다. 이런 종류의 의존은 빌드가 성공하는 한 드러나지 않으므로, <strong>새 헤더를 추가할 때마다 pch 없이 단독 컴파일되는지 확인하는 것</strong>이 가장 확실합니다.</p>
+<p><b>후속 (2026-09-10) — <code>Log.h</code>가 이 검사에서 빠져 있었습니다.</b> 같은 세션에서 새로 만든 파일이라 위 자립화 점검 대상에 들어가지 않았고, <code>&lt;string&gt;</code>만 include한 채 <code>HrToString(HRESULT)</code>에서 <code>HRESULT</code>를 쓰고 있었습니다. <code>HRESULT</code>는 <code>windows.h</code>에서 오고 <code>windows.h</code>는 <code>pch.h</code>에서만 include되므로, <code>struct.h</code>가 그랬던 것과 똑같이 "<code>pch.h</code>가 먼저 include된 상태"에 우연히 기대고 있던 헤더였습니다. <code>windows.h</code>를 통째로 끌어오는 대신 <code>&lt;winerror.h&gt;</code> 하나를 넣어 해결했습니다. <code>winerror.h</code> 안에 <code>HRESULT</code>의 typedef가 <code>_HRESULT_DEFINED</code> 가드로 들어 있고, <code>winerror.h</code>는 SAL 주석 때문에 필요한 <code>specstrings.h</code>를 스스로 include하므로 단독으로 성립합니다.</p>
+<p>확인을 위해 <code>pch.h</code> 없이 <code>Log.h</code>만 include하는 파일을 만들어 <code>cl /std:c++17 /utf-8 /EHsc /c</code>로 컴파일해 봤습니다. 오브젝트 파일이 경고 없이 나왔습니다. 이런 종류의 의존은 빌드가 성공하는 한 드러나지 않으므로, <strong>새 헤더를 추가할 때마다 pch 없이 단독 컴파일되는지 확인하는 것</strong>이 가장 확실합니다.</p>
 <h4>덤으로 잡은 구성 불일치</h4>
-<p>PCH를 손대다 보니 <code>LanguageStandard</code>와 <code>PrecompiledHeader</code> 설정이 <strong>Debug|x64에만</strong> 있는 것이 보였습니다. Release|x64는 조용히 C++14로, PCH 없이 빌드되고 있었습니다. 같은 코드를 다른 표준으로 컴파일해 배포하는 셈이라 네 구성 모두에 <code>stdcpp17</code>과 PCH를 넣어 통일했습니다. 빌드 로그(<code>CL.command.1.tlog</code>)로 Release에 <code>/std:c++17</code>과 <code>/Yu"pch.h"</code>가 들어간 것을 확인했습니다.</p>
+<p>PCH를 손보다 보니 <code>LanguageStandard</code>와 <code>PrecompiledHeader</code> 설정이 <strong>Debug|x64에만</strong> 있는 것이 보였습니다. Release|x64는 조용히 C++14로, PCH 없이 빌드되고 있었습니다. 같은 코드를 다른 표준으로 컴파일해 배포하는 셈이라 네 구성 모두에 <code>stdcpp17</code>과 PCH를 넣어 통일했습니다. 빌드 로그(<code>CL.command.1.tlog</code>)로 Release에 <code>/std:c++17</code>과 <code>/Yu"pch.h"</code>가 들어간 것을 확인했습니다.</p>
 
 <h3>7. 로그와 반환 규약 (D16 0단계 몫, D17 잔여)</h3>
 <p>D16은 문서가 "0단계 일부, 10단계"로 나눠 둔 항목입니다. <strong>이번에는 0단계 몫만</strong> 했습니다. 레벨 필터, 파일 싱크, ImGui 콘솔, <code>ThrowIfFailed</code>류 예외 정책은 10단계에 그대로 남깁니다.</p>
 <h4>Log 파사드</h4>
-<p><code>Log.h</code>/<code>Log.cpp</code>를 만들고 <code>std::cout</code> 29곳을 전부 옮겼습니다. 싱글턴 객체가 아니라 <strong>자유 함수 네임스페이스</strong>입니다. 지금 필요한 것은 "직접 호출을 한 곳으로 모으는 것"뿐이고, 10단계에서 Logger 클래스로 바꿀 때 호출부를 다시 안 고치려면 이 형태가 낫습니다.</p>
+<p><code>Log.h</code>/<code>Log.cpp</code>를 만들고 <code>std::cout</code> 29곳을 전부 옮겼습니다. 싱글턴 객체가 아니라 <strong>자유 함수 네임스페이스</strong>입니다. 지금 필요한 것은 "직접 호출을 한 곳으로 모으는 것"뿐이고, 10단계에서 Logger 클래스로 바꿀 때 호출부를 다시 고치지 않으려면 이 형태가 낫습니다.</p>
 <ul>
   <li><code>Log::Info</code> / <code>Warn</code> / <code>Error</code> — printf 서식. 접두어 <code>[정보]</code> / <code>[경고]</code> / <code>[실패]</code>를 자동으로 붙입니다.</li>
-  <li>출력은 콘솔과 <code>OutputDebugStringW</code> 양쪽으로 갑니다. VS 출력 창에서 D3D Debug Layer 메시지와 같은 곳에 나옵니다. <code>OutputDebugStringA</code>는 시스템 ANSI 코드페이지로 해석해 한글이 깨지므로 UTF-16으로 변환해 W 버전을 씁니다.</li>
+  <li>출력은 콘솔과 <code>OutputDebugStringW</code> 양쪽으로 갑니다. Visual Studio 출력 창에서 D3D Debug Layer 메시지와 함께 보입니다. <code>OutputDebugStringA</code>는 시스템 ANSI 코드페이지로 해석해 한글이 깨지므로 UTF-16으로 변환해 W 버전을 씁니다.</li>
   <li><code>Log::HrToString(hr)</code> — <code>FormatMessageW</code>로 <code>0x80070002 (지정된 파일을 찾을 수 없습니다.)</code> 형태를 만듭니다. HRESULT를 찍던 자리에 전부 적용했습니다.</li>
   <li><code>Log::ToUtf8</code> — <code>Shader.cpp</code>의 익명 네임스페이스 헬퍼를 여기로 옮겼습니다.</li>
 </ul>
 <p><b>추가 (2026-09-10)</b> — <code>Log.h</code>의 <code>namespace Log</code>, <code>Log.cpp</code>의 이름 없는 namespace, 그리고 <code>Log.cpp</code>에서 <code>namespace Log</code>를 다시 여는 자리 세 곳에 <strong>namespace를 왜 이렇게 썼는지</strong>를 주석으로 남겼습니다. 요지는 세 가지입니다. (1) namespace는 전역 함수를 만드는 장치가 아니라 이미 전역인 이름을 묶어 충돌을 막는 장치이며, 저장 기간과 링키지는 건드리지 않는다. (2) 그러므로 가시성을 넓히지 않는다 — <code>Log.h</code>를 include하지 않은 번역 단위에서는 <code>Log::</code>를 쓸 수 없고, <code>Log.h</code>는 <code>pch.h</code>에 없으므로 쓰는 <code>.cpp</code>마다 직접 include해야 한다. (3) <code>Log.cpp</code> 위쪽의 이름 없는 namespace는 정반대로 이름을 파일 안에 가두는 쪽이고(내부 링키지), 상태 없는 자유 함수 묶음에 클래스 정적 멤버 대신 namespace를 고른 이유는 같은 namespace를 헤더와 <code>.cpp</code>에서 나눠 열 수 있기 때문이다.</p>
 <div class="callout amber">
   <div class="t">서식 문자열 함정</div>
-  <p>컴파일러가 뱉은 텍스트를 <code>Log::Error(compilerText)</code>처럼 넘기면 안 됩니다. 메시지에 <code>%</code>가 들어 있으면 서식 지정자로 해석됩니다. <code>Log::Error("%s", compilerText)</code>로 인자에 실어 보냅니다.</p>
+  <p>컴파일러가 출력한 텍스트를 <code>Log::Error(compilerText)</code>처럼 넘기면 안 됩니다. 메시지에 <code>%</code>가 들어 있으면 서식 지정자로 해석됩니다. <code>Log::Error("%s", compilerText)</code>로 인자에 실어 보냅니다.</p>
 </div>
 <h4>콘솔 코드페이지 (D17 잔여)</h4>
-<p><code>Log::Init()</code>이 <code>SetConsoleOutputCP(CP_UTF8)</code>를 한 번 부르고, <code>main()</code> 첫 줄에서 호출합니다. 소스가 <code>/utf-8</code>로 컴파일되어 문자열 리터럴이 UTF-8 바이트인데 콘솔은 CP949였으므로, 그동안 한글 로그가 실제로 깨지고 있었습니다. D17의 "발전 방향"에 적혀 있던 마지막 조각입니다. <code>.editorconfig</code>도 함께 추가해 새로 만드는 파일이 같은 인코딩을 따르게 했습니다. <strong>HLSL만 BOM 없음</strong>이라는 규칙을 파일에 명시했습니다.</p>
+<p><code>Log::Init()</code>이 <code>SetConsoleOutputCP(CP_UTF8)</code>를 한 번 부르며, <code>main()</code> 첫 줄에서 호출됩니다. 소스가 <code>/utf-8</code>로 컴파일되어 문자열 리터럴이 UTF-8 바이트인데 콘솔은 CP949였으므로, 그동안 한글 로그가 실제로 깨지고 있었습니다. D17의 "발전 방향"에 적혀 있던 마지막 조각입니다. <code>.editorconfig</code>도 함께 추가해 새로 만드는 파일이 같은 인코딩을 따르게 했습니다. <strong>HLSL만 BOM 없음</strong>이라는 규칙을 파일에 명시했습니다.</p>
 <h4>반환 규약</h4>
 <p>규칙을 한 줄로 정했습니다. <strong>엔진 API는 <code>bool</code>, HRESULT는 D3D 호출 직후 지역에서 검사·로그하고 bool로 바꿔 올린다, ComPtr 팩토리는 빈 값이 실패, 예외는 쓰지 않는다.</strong></p>
 <div class="tbl"><table>
@@ -809,13 +809,13 @@ DSV has (w:1280,h:360).</code></pre>
 <tr><td class="mono">Renderer::RasterStateCreate()</td><td><code>void</code>, HRESULT 4개 미검사</td><td><code>bool</code>, 넷 다 검사하고 실패한 상태 이름을 로그</td></tr>
 <tr><td class="mono">AppBase::InitGUI</td><td>실패 경로에 로그 없음</td><td>둘 다 로그</td></tr>
 </tbody></table></div>
-<p><code>RasterStateCreate</code>는 같은 코드가 네 번 반복되던 것을 desc 배열 순회로 바꿨습니다. 어느 상태에서 실패했는지 이름으로 찍힙니다.</p>
+<p><code>RasterStateCreate</code>에서 네 번 반복되던 같은 코드를 desc 배열 순회로 바꿨습니다. 어느 상태에서 실패했는지 이름으로 찍힙니다.</p>
 <div class="callout crit">
   <div class="t">실패를 전달했더니 드러난 잠재 버그</div>
   <p>초기화 실패가 실제로 <code>main</code>까지 올라가자 <strong>종료할 때 죽었습니다.</strong> 원인이 셋이었고 모두 이전부터 있던 문제입니다. 그동안은 <code>Initialize</code>가 사실상 항상 성공한 셈이라 이 경로에 도달한 적이 없었을 뿐입니다.</p>
   <ol>
     <li><code>WndProc</code>이 전역 <code>g_appBase</code>를 널 검사 없이 역참조합니다.</li>
-    <li><code>~AppBase</code>가 <code>g_appBase = nullptr</code>을 먼저 하고 <code>DestroyWindow</code>를 불렀습니다. <code>DestroyWindow</code>는 <code>WM_DESTROY</code>를 <em>동기적으로</em> 보내므로 방금 널로 만든 포인터를 건드립니다. Release에서 접근 위반(0xC0000005)이었습니다.</li>
+    <li><code>~AppBase</code>가 <code>g_appBase = nullptr</code>을 먼저 하고 <code>DestroyWindow</code>를 불렀습니다. <code>DestroyWindow</code>는 <code>WM_DESTROY</code>를 <em>동기적으로</em> 보내므로 방금 널로 만든 포인터를 건드립니다. Release 빌드에서는 접근 위반(0xC0000005)으로 죽었습니다.</li>
     <li><code>~AppBase</code>가 ImGui 초기화 여부와 무관하게 <code>ImGui_ImplDX11_Shutdown()</code>을 부르고, <code>MsgProc</code>도 <code>ImGui_ImplWin32_WndProcHandler</code>를 무조건 불렀습니다. GUI 초기화 전에 실패하면 컨텍스트가 없어 단언에 걸립니다.</li>
   </ol>
   <p>고친 방법: <code>WndProc</code>에 널 가드를 두고 없으면 <code>DefWindowProc</code>으로 넘깁니다. 소멸자는 <strong>창을 먼저 파괴한 뒤</strong> <code>g_appBase</code>를 지웁니다. 초기화 단계별로 <code>bool</code> 플래그를 남겨 실제로 초기화한 것만 되돌리고, <code>MsgProc</code>도 그 플래그를 보고 ImGui에 넘깁니다.</p>
@@ -846,12 +846,12 @@ DSV has (w:1280,h:360).</code></pre>
 /LIBPATH:"...\SHERLOCKENGINE\VCPKG_INSTALLED\X64-WINDOWS\X64-WINDOWS\DEBUG\LIB"
 "...\SHERLOCKENGINE\VCPKG_INSTALLED\X64-WINDOWS\X64-WINDOWS\DEBUG\LIB\*.LIB"</code></pre>
 <p>이 PC의 전역 vcpkg에는 이 프로젝트와 무관한 boost 55개와 glm이 설치되어 있었고, <code>*.LIB</code> 와일드카드가 그것들까지 링커에 넘기고 있었습니다. 매니페스트로 바꾸면서 자연히 사라졌습니다.</p>
-<p>문서가 우려한 "첫 빌드 시 로컬에 다시 빌드해 시간이 걸림"은 실제로는 문제가 되지 않았습니다. vcpkg 바이너리 캐시가 이미 있어 6개 패키지를 130ms만에 복원했습니다. 캐시가 없는 새 PC에서는 여전히 몇 분 걸립니다.</p>
-<p>곁들여 <code>.gitignore</code>에서 통째로 두 번 반복되던 Visual Studio 아티팩트 블록을 정리하고 끝에 개행을 넣었습니다. <code>README.md</code>에는 빌드 준비 절차, 작업 디렉터리 주의, 소스 인코딩·소유권 규약을 적었습니다.</p>
+<p>문서가 우려한 "첫 빌드 시 로컬에 다시 빌드해 시간이 걸림"은 실제로는 문제가 되지 않았습니다. vcpkg 바이너리 캐시가 이미 있어 6개 패키지를 130ms 만에 복원했습니다. 캐시가 없는 새 PC에서는 여전히 몇 분 걸립니다.</p>
+<p>덧붙여 <code>.gitignore</code>에서 통째로 두 번 반복되던 Visual Studio 아티팩트 블록을 하나로 정리하고 파일 끝에 개행을 넣었습니다. <code>README.md</code>에는 빌드 준비 절차, 작업 디렉터리 주의, 소스 인코딩·소유권 규약을 적었습니다.</p>
 
 <h3>2차 검증 방법</h3>
 <h4>새 클론 시뮬레이션</h4>
-<p><code>vcpkg_installed/</code>를 통째로 지우고 빌드해 매니페스트만으로 복원되는지 봤습니다. MSBuild가 스스로 vcpkg를 불러 6개 패키지를 설치하고 빌드까지 마쳤습니다. 0단계 완료 기준의 마지막 항목인 "새 PC에서 클론 후 바로 빌드됨"이 이걸로 충족됩니다.</p>
+<p><code>vcpkg_installed/</code>를 통째로 지우고 빌드해 매니페스트만으로 복원되는지 봤습니다. MSBuild가 스스로 vcpkg를 불러 6개 패키지를 설치하고 빌드까지 마쳤습니다. 0단계 완료 기준의 마지막 항목인 "새 PC에서 클론 후 바로 빌드됨"이 이것으로 충족됩니다.</p>
 <h4>실패 전달</h4>
 <p>셰이더가 없는 디렉터리에서 실행해 Debug·Release 모두 다음을 확인했습니다. 이전에는 셰이더 없이도 창이 뜨고 검은 화면으로 계속 돌았습니다.</p>
 <pre><code>[실패] 셰이더 컴파일 실패 : 파일 경로 : BasicVertexShader.hlsl 진입점 : VS_Main 타깃 : vs_5_0
@@ -865,12 +865,12 @@ exit code: -1</code></pre>
 
 <div class="callout amber">
   <div class="t">이번에 손대지 않은 것</div>
-  <p>7절의 <strong>#5</strong>(static gameTime), <strong>#8</strong>(셰이더 경로가 작업 디렉터리 기준), <strong>#9</strong>(Present 고정), <strong>#10</strong>·<strong>#11</strong>·<strong>#13</strong>~<strong>#15</strong>·<strong>#17</strong>·<strong>#20</strong>은 그대로입니다. #12는 <code>g_ClearColor</code>만 지웠고 <code>g_bCullback</code>·<code>g_bWireFrame</code>·<code>Device::CreateRenderState</code>는 남아 있습니다. 8절에서는 <strong>D4</strong>의 프레임 경계 재구성과 <strong>D16</strong>의 본체(Logger, 예외 정책)가 남았습니다. 둘 다 각각 6단계와 10단계 몫입니다. <strong>0단계를 끝내려면 이제 #5와 #8 두 가지입니다.</strong> 소스 폴더를 <code>Graphics/D3D11/</code>로 옮기는 메모도 아직입니다.</p>
+  <p>7절의 <strong>#5</strong>(static gameTime), <strong>#8</strong>(셰이더 경로가 작업 디렉터리 기준), <strong>#9</strong>(Present 고정), <strong>#10</strong>·<strong>#11</strong>·<strong>#13</strong>~<strong>#15</strong>·<strong>#17</strong>·<strong>#20</strong>은 그대로입니다. #12는 <code>g_ClearColor</code>만 지웠고 <code>g_bCullback</code>·<code>g_bWireFrame</code>·<code>Device::CreateRenderState</code>는 남아 있습니다. 8절에서는 <strong>D4</strong>의 프레임 경계 재구성과 <strong>D16</strong>의 본체(Logger, 예외 정책)가 남았습니다. 둘 다 각각 6단계와 10단계 몫입니다. <strong>0단계를 끝내려면 이제 #5와 #8 두 가지만 남았습니다.</strong> 소스 폴더를 <code>Graphics/D3D11/</code>로 옮기자는 메모도 아직 처리하지 않았습니다.</p>
 </div>
 
 <h2 id="s8"><span class="num">8.</span>고민하고 수정해야 할 설계 지점</h2>
 <p>7절은 "고치지 않으면 곧 오동작하는 것"이었습니다. 이 절은 다릅니다. 지금은 문제없이 돌아가지만, 코드가 커질수록 비용이 불어나거나 나중에 되돌리기 어려워지는 <strong>설계 선택</strong>들입니다. 항목마다 현재 상태, 왜 지금 고민해야 하는지, 갈 수 있는 방향, 그리고 그 방향의 장단점을 함께 적었습니다. 모두 바꿔야 한다는 뜻은 아닙니다. 몇 개는 "지금 방식이 맞으니 유지하되 한계를 알고 있자"는 결론입니다.</p>
-<p><b>수정 여부 열</b>은 2026-09-10 작업과 2026-09-23 의 0~11단계 반영 결과입니다. <span class="pill none">해당 없음</span>은 권장이 "유지"라서 고칠 것이 없다는 뜻이고, <span class="pill none">미착수</span>는 아직 손대지 않았다는 뜻입니다. 어떤 방법으로 고쳤는지는 <a href="#applied">적용 기록</a>과 각 항목의 적용 결과 상자에 있습니다.</p>
+<p><b>수정 여부 열</b>은 2026-09-10 작업과 2026-09-23의 0~11단계 작업을 반영한 결과입니다. <span class="pill none">해당 없음</span>은 권장이 "유지"라서 고칠 것이 없다는 뜻이고, <span class="pill none">미착수</span>는 아직 손대지 않았다는 뜻입니다. 어떤 방법으로 고쳤는지는 <a href="#applied">적용 기록</a>과 각 항목의 적용 결과 상자에 있습니다.</p>
 
 <div class="tbl"><table>
 <thead><tr><th>#</th><th>영역</th><th>주제</th><th>권장</th><th>시점</th><th>수정 여부</th></tr></thead>
@@ -928,7 +928,7 @@ exit code: -1</code></pre>
     <div><h5>단점 · 주의</h5><ul><li>슬롯 번호를 C++와 HLSL 양쪽에서 맞춰야 하는 계약이 하나 늘어남. 공용 헤더(<code>ShaderSlots.h</code>)에 상수로 두고 HLSL에서 <code>#include</code>하는 방식으로 완화</li><li>버퍼가 여러 클래스에 흩어지면 "이 프레임에 무엇이 바인딩되어 있나"를 추적하기 어려워짐. RenderDoc 활용 전제</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계: Renderer 가 상수버퍼 세 개(b0/b1/b2, 4단계 b3)를 만들고 올린다. <code>Shader</code> 클래스는 사라지고 <code>ShaderCompiler</code> + 셰이더 핸들만 남았다. 상세: <a href="phase-3.html">3단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계: Renderer가 상수버퍼 세 개(b0/b1/b2, 4단계부터 b3 추가)를 만들고 갱신한다. <code>Shader</code> 클래스는 사라지고 <code>ShaderCompiler</code>와 셰이더 핸들만 남았다. 상세: <a href="phase-3.html">3단계</a></div>
 
 <!-- D3 -->
 <div class="decision" id="d3">
@@ -941,7 +941,7 @@ exit code: -1</code></pre>
     <div><h5>단점 · 주의</h5><ul><li>파일이 3~4개 늘고 초기에 "왜 이렇게 나눴지"가 부담스러울 수 있음</li><li>Scene이 렌더 자원(GPU 버퍼)까지 소유하면 다시 결합됨. Scene은 CPU 데이터, GPU 자원은 Renderer 측 캐시(Mesh → GpuMesh)로 두는 경계가 필요</li><li>과추상화 위험. Scene 하나, 카메라 하나로 시작하고 인터페이스는 만들지 않는 것이 안전</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계: <code>Scene</code>(오브젝트·조명·재질·클리어 색, CPU 데이터), <code>Renderer</code>(GPU 캐시와 그리기), <code>DebugUI</code>(App 계층의 편집 패널) 로 나뉘었다. 11단계 에디터도 같은 경계 위에 있다. 상세: <a href="phase-3.html">3단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계: <code>Scene</code>(오브젝트·조명·재질·클리어 색, CPU 데이터), <code>Renderer</code>(GPU 캐시와 그리기), <code>DebugUI</code>(App 계층의 편집 패널)로 나뉘었다. 11단계 에디터도 같은 경계 위에 있다. 상세: <a href="phase-3.html">3단계</a></div>
 
 <!-- D4 -->
 <div class="decision" id="d4">
@@ -960,7 +960,7 @@ exit code: -1</code></pre>
     <p>그래서 이 항목은 <b>여전히 열려 있습니다.</b> 물체가 여러 개가 되거나 패스가 둘 이상이 되기 전에 처리해야 합니다.</p>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계 <code>BeginFrame/EndFrame</code> 이 프레임 경계, 6단계 <code>RenderPassDesc</code> 의 Load/Store 가 Clear 를 패스의 속성으로, 10단계 <code>Engine::Render</code> 가 그림자 → 메인 → UI → Present 순서를 소유. 상세: <a href="phase-6.html">6단계</a>, <a href="phase-10.html#s5">10단계 §5</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계에서 <code>BeginFrame/EndFrame</code>이 프레임 경계가 되었고, 6단계에서 <code>RenderPassDesc</code>의 Load/Store가 Clear를 패스의 속성으로 만들었으며, 10단계에서 <code>Engine::Render</code>가 그림자 → 메인 → UI → Present 순서를 소유하게 되었다. 상세: <a href="phase-6.html">6단계</a>, <a href="phase-10.html#s5">10단계 §5</a></div>
 
 <!-- D5 -->
 <div class="decision" id="d5">
@@ -985,7 +985,7 @@ exit code: -1</code></pre>
     <div><h5>단점 · 주의</h5><ul><li>Map 실패(디바이스 제거 등) 처리 코드가 필요</li><li><code>WRITE_DISCARD</code>는 전체를 다시 써야 함. 일부만 갱신하려고 <code>WRITE_NO_OVERWRITE</code>를 쓰면 동기화 책임이 코드로 넘어옴</li><li>지금 규모에서는 측정 가능한 차이가 없음. "오브젝트 수가 늘었을 때"라는 조건을 붙인 이유</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계: Dynamic 버퍼는 <code>Map(WRITE_DISCARD)</code> 에 프레임 슬롯(<code>kFrameCount</code>) 복제, Default 는 초기 데이터. 8단계 D3D12 에서 이 계약이 업로드 링 + 드로우마다 루트 CBV 로 그대로 이어졌다. 상세: <a href="phase-3.html">3단계</a>, <a href="phase-8.html#s4-2">8단계 §4.2</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계: Dynamic 버퍼는 <code>Map(WRITE_DISCARD)</code>에 프레임 슬롯(<code>kFrameCount</code>)만큼 복제하고, Default 버퍼는 초기 데이터로 만든다. 8단계 D3D12에서는 이 계약이 업로드 링 + 드로우마다 루트 CBV로 그대로 이어졌다. 상세: <a href="phase-3.html">3단계</a>, <a href="phase-8.html#s4-2">8단계 §4.2</a></div>
 
 <!-- D7 -->
 <div class="decision" id="d7">
@@ -1010,7 +1010,7 @@ exit code: -1</code></pre>
     <div><h5>단점 · 주의</h5><ul><li>쿼터니언 → 오일러 변환은 유일하지 않아 Inspector 값이 튈 수 있음. 에디터는 오일러 값을 별도로 저장해 두는 것이 관례</li><li>디버깅 시 값을 읽기 어려움</li><li>현재 Camera API(<code>SetLookAt</code>)를 쓰는 코드는 초기화 한 곳뿐이라 전환 비용은 낮음</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 2단계: 위치 + yaw/pitch 카메라, 뷰행렬 = 카메라 월드 변환의 역행렬, pitch 클램프로 짐벌락 없음. 11단계 에디터의 씬 뷰 카메라도 같은 클래스. 상세: <a href="phase-2.html">2단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 2단계: 위치 + yaw/pitch 카메라, 뷰행렬 = 카메라 월드 변환의 역행렬, pitch 클램프로 짐벌락 없음. 11단계 에디터의 씬 뷰 카메라도 같은 클래스를 쓴다. 상세: <a href="phase-2.html">2단계</a></div>
 
 <!-- D9 -->
 <div class="decision" id="d9">
@@ -1023,7 +1023,7 @@ exit code: -1</code></pre>
     <div><h5>단점 · 주의</h5><ul><li>정점 타입이 늘면 Mesh 생성 코드가 템플릿이 되거나 타입별로 갈라짐. Mesh는 CPU 측에서 "전부 가진 정점"으로 만들고 GPU 업로드 시 필요한 필드만 뽑는 방식이 절충안</li><li>리플렉션은 D3DCompiler DLL 의존이 런타임에 남음 (.cso 사전 컴파일 시에도 리플렉션 데이터를 strip하지 않아야 함)</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 1단계: <code>VertexLayoutDesc</code> 를 <code>offsetof</code> 로 만들고 PSO 가 InputLayout 을 소유. 4단계: <code>VertexFormat</code> 열거로 Mesh 가 자기 포맷을 말한다. 5·6단계에 UV·탄젠트가 같은 경로로 추가됐다. 상세: <a href="phase-4.html">4단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 1단계: <code>VertexLayoutDesc</code>를 <code>offsetof</code>로 만들고 PSO가 InputLayout을 소유. 4단계: <code>VertexFormat</code> 열거로 Mesh가 자기 정점 포맷을 밝힌다. 5·6단계에 UV·탄젠트가 같은 경로로 추가됐다. 상세: <a href="phase-4.html">4단계</a></div>
 
 <!-- D10 -->
 <div class="decision" id="d10">
@@ -1035,7 +1035,7 @@ exit code: -1</code></pre>
     <div><h5>장점</h5><ul><li>큰 씬에서 메모리·대역폭 절감. 특히 모바일/통합 GPU에서 체감</li></ul></div>
     <div><h5>단점 · 주의</h5><ul><li>Draw 시 포맷 분기가 하나 생김. Mesh가 포맷을 들고 있으면 MeshRenderer는 그대로 넘기기만 하면 됨</li><li>현재 규모에서는 이득이 0에 가까움. 9단계 모델 임포터를 쓸 때 함께 처리</li></ul></div>
   </div>
-  <div class="applied"><b>적용 — 2026-09-23 (9단계)</b> · 발전 방향 그대로: CPU 쪽 <code>Mesh::indices</code> 는 32비트, Renderer 의 <code>GetOrCreateGpuMesh</code> 가 정점 수 ≤ 65,535 면 16비트로 변환해 올리고 <code>GpuMesh::indexFormat</code>(R16/R32_UINT) 을 <code>SetIndexBuffer</code> 에 넘긴다. DamagedHelmet(14,556 정점) 은 16비트, Sponza(192,496 정점) 는 32비트. 상세: <a href="phase-9.html#s7">phase-9.html §7</a></div>
+  <div class="applied"><b>적용 — 2026-09-23 (9단계)</b> · 발전 방향 그대로: CPU 쪽 <code>Mesh::indices</code>는 32비트로 두고, Renderer의 <code>GetOrCreateGpuMesh</code>가 정점 수 ≤ 65,535이면 16비트로 변환해 올린 뒤 <code>GpuMesh::indexFormat</code>(R16/R32_UINT)을 <code>SetIndexBuffer</code>에 넘긴다. DamagedHelmet(정점 14,556개)은 16비트, Sponza(정점 192,496개)는 32비트. 상세: <a href="phase-9.html#s7">phase-9.html §7</a></div>
 </div>
 
 <!-- D11 -->
@@ -1061,7 +1061,7 @@ exit code: -1</code></pre>
     <div><h5>단점 · 주의</h5><ul><li>경로 관리가 두 벌(.hlsl 소스, .cso 출력)이 되어 PathManager(10단계)가 있어야 깔끔함</li><li>FxCompile은 진입점·모델을 파일별 속성으로 설정해야 하고, 한 .hlsl에 VS/PS를 함께 둘 수 없음(지금처럼 파일을 나눈 구조면 문제없음)</li><li>매크로 변형(permutation)이 늘면 사전 컴파일 조합 수가 폭발함. 그때는 uber-shader 대신 동적 분기나 런타임 컴파일 캐시로 회귀</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 4단계: 빌드가 FxCompile 로 .cso 를 만들고 Renderer 는 .cso 를 먼저 읽는다. Debug 에서는 소스 수정 시각을 감시해 <code>D3DCompile</code> 로 핫리로드(F4) — 병행 결론 그대로. 8단계에서 같은 DXBC 를 D3D12 도 쓴다. 상세: <a href="phase-4.html">4단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 4단계: 빌드가 FxCompile로 .cso를 만들고 Renderer는 .cso를 먼저 읽는다. Debug에서는 소스 수정 시각을 감시해 <code>D3DCompileFromFile</code>로 핫리로드한다(F4). 병행이라는 결론 그대로다. 8단계에서는 D3D12도 같은 DXBC를 쓴다. 상세: <a href="phase-4.html">4단계</a></div>
 
 <!-- D13 -->
 <div class="decision" id="d13">
@@ -1082,11 +1082,11 @@ exit code: -1</code></pre>
   <p><b>왜 고민해야 하나.</b> 전역 포인터는 창이 하나인 한 아무 문제가 없고, Luna 교재와 홍정모 강의 코드가 같은 패턴입니다. 진짜 고민거리는 <em>public 멤버 노출</em>입니다. TestApp이 <code>renderer.Render()</code>, <code>shaderClass.ShaderUpdate()</code>를 직접 부르는 지금 구조에서는 "앱이 엔진 내부 순서를 알아야" 합니다. 10단계에서 엔진과 앱을 분리하려면 이 노출을 줄여야 합니다.</p>
   <p><b>발전 방향.</b> 전역 포인터는 유지하되(대안인 <code>SetWindowLongPtr(GWLP_USERDATA)</code>는 다중 창에서만 이득) <code>Engine</code> 클래스가 Device·Renderer·Scene·Input·Time을 소유하고, AppBase는 <code>Engine&amp;</code>만 protected로 제공합니다. TestApp은 <code>OnUpdate(dt)</code>에서 씬을 조작하고 <code>OnGUI()</code>에서 위젯만 추가하며, 렌더 순서는 Engine이 정합니다.</p>
   <div class="pc">
-    <div><h5>장점</h5><ul><li>앱 코드가 "무엇을" 만 쓰고 "어떤 순서로 그리는지"를 몰라도 됨</li><li>샘플 앱을 여러 개 만들어 기능별로 시험하기 쉬워짐</li></ul></div>
+    <div><h5>장점</h5><ul><li>앱 코드가 "무엇을"만 쓰고 "어떤 순서로 그리는지"를 몰라도 됨</li><li>샘플 앱을 여러 개 만들어 기능별로 시험하기 쉬워짐</li></ul></div>
     <div><h5>단점 · 주의</h5><ul><li>학습 단계에서는 public 노출이 "모든 것이 보여서" 오히려 이해에 도움. 지금 바꿀 이유는 없음</li><li>Engine이 God object가 될 위험. 소유는 하되 로직은 각 시스템에 남기는 규율 필요</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23 (10단계)</b> · 발전 방향 그대로: 전역 <code>g_appBase</code> 는 유지, <code>Engine</code> 이 Device·Renderer·Scene·Camera·Input·Time·AssetManager·Config 를 소유하고 <code>AppBase</code> 는 창·메시지 루프·ImGui 컨텍스트만 갖는다. 앱은 <code>OnInitialize/OnUpdate/OnFixedUpdate/OnGUI</code> 를 구현하고 렌더 순서는 <code>Engine::Render</code> 가 정한다. Engine 에는 소유와 프레임 순서만 있고 로직은 각 시스템에 남긴다. 상세: <a href="phase-10.html#s5">phase-10.html §5</a></div>
+  <div class="applied"><b>적용 — 2026-09-23 (10단계)</b> · 발전 방향 그대로: 전역 <code>g_appBase</code>는 유지하고, <code>Engine</code>이 Device·Renderer·Scene·Camera·Input·Time·AssetManager·Config를 소유하며 <code>AppBase</code>는 창·메시지 루프·ImGui 컨텍스트만 갖는다. 앱은 <code>OnInitialize/OnUpdate/OnFixedUpdate/OnGUI</code>를 구현하고 렌더 순서는 <code>Engine::Render</code>가 정한다. Engine에는 소유와 프레임 순서만 두고 로직은 각 시스템에 남긴다. 상세: <a href="phase-10.html#s5">phase-10.html §5</a></div>
 
 <!-- D15 -->
 <div class="decision" id="d15">
@@ -1099,7 +1099,7 @@ exit code: -1</code></pre>
     <div><h5>단점 · 주의</h5><ul><li>명시적 멤버는 종류가 5~6개를 넘으면 GameObject가 비대해지고 대부분 nullptr인 멤버가 생김. 그 시점이 컴포넌트 전환 신호</li><li>컴포넌트 목록은 <code>GetComponent</code>가 선형 탐색이라 매 프레임 호출하면 느림. 렌더러는 별도 리스트(MeshRenderer 목록)를 유지해야 함</li><li>ECS로 나중에 전환하는 비용은 크지만, 필요 없는 프로젝트가 대부분</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계 형태(단계적 결정의 첫 단계): <code>GameObject</code> 는 값으로 소유하고 Mesh·Material 은 Scene 의 <code>unique_ptr</code> 을 포인터로 참조한다. 9단계에 서브메시 재질 슬롯, 11단계에 계층·인스펙터·JSON 직렬화가 이 형태 위에 얹혔다. 컴포넌트/ECS 는 필요가 생기지 않아 도입하지 않았다. 상세: <a href="phase-3.html">3단계</a> · <b>11-C단계 (2026-09-23)</b>: 재생 모드가 들어오며 "필요" 가 생겨 두 번째 단계로 갔다 — <code>GameObject</code> 를 <code>unique_ptr</code> 로 바꾸고 <code>Behaviour</code> 컴포넌트 목록을 달았다. ECS 는 여전히 아니다(오브젝트 수십 개, 캐시 친화보다 작성 편의). 상세: <a href="phase-11c.html">11-C단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계 형태(단계적 결정의 첫 단계): <code>GameObject</code>는 값으로 소유하고 Mesh·Material은 Scene이 가진 <code>unique_ptr</code>을 포인터로 참조한다. 9단계에 서브메시 재질 슬롯, 11단계에 계층·인스펙터·JSON 직렬화가 이 형태 위에 얹혔다. 컴포넌트/ECS는 필요가 생기지 않아 도입하지 않았다. 상세: <a href="phase-3.html">3단계</a> · <b>11-C단계 (2026-09-23)</b>: 재생 모드가 들어오면서 "필요"가 생겨 두 번째 단계로 넘어갔다. <code>GameObject</code>를 <code>unique_ptr</code>로 바꾸고 <code>Behaviour</code> 컴포넌트 목록을 달았다. ECS는 여전히 도입하지 않는다(오브젝트는 수십 개이고, 캐시 친화성보다 작성 편의가 중요하다). 상세: <a href="phase-11c.html">11-C단계</a></div>
 
 <!-- D16 -->
 <div class="decision" id="d16">
@@ -1115,12 +1115,12 @@ exit code: -1</code></pre>
     <div class="t">적용 결과 — 0단계 몫 완료, 본체는 10단계</div>
     <p>이 항목은 문서가 "0단계 일부, 10단계"로 나눠 둔 것입니다. <strong>0단계 몫을 끝냈습니다.</strong></p>
     <p><b>반환 규약.</b> "현재"에 적힌 혼용이 거의 정리됐습니다. void 생성 함수는 D1에서 <code>ComPtr&lt;T&gt;</code> 반환이 되었고, <code>DataLoading</code>의 <code>int</code>와 <code>ShaderCreate</code>의 <code>void</code>는 <code>bool</code>이 되었으며, <code>ShaderLoad()</code>가 HRESULT 둘을 버리던 것과 <code>CreateRasterizerState</code> 4개를 검사하지 않던 것도 고쳤습니다. 규칙은 <strong>엔진 API는 bool, HRESULT는 호출 직후 지역에서 bool로 바꿔 올린다</strong>입니다. 예외는 쓰지 않기로 했습니다. 문서가 지적한 "두 영역을 나눠야 한다"는 고민은, 지금 규모에서는 전부 반환값 쪽으로 통일하는 편이 단순해서 그렇게 정했습니다.</p>
-    <p><b>로그.</b> <code>std::cout</code> 29곳이 전부 <code>Log::Info</code>/<code>Warn</code>/<code>Error</code>로 바뀌었고, 콘솔과 <code>OutputDebugString</code> 양쪽으로 나갑니다. 문서가 기대한 "VS 출력 창에서 D3D Debug Layer 메시지와 같은 곳에 나타남"이 이걸로 됩니다. <code>Log::HrToString</code>이 HRESULT를 사람이 읽는 문장으로 바꿔 줍니다.</p>
+    <p><b>로그.</b> <code>std::cout</code> 29곳이 전부 <code>Log::Info</code>/<code>Warn</code>/<code>Error</code>로 바뀌었고, 콘솔과 <code>OutputDebugString</code> 양쪽으로 나갑니다. 문서가 기대한 "VS 출력 창에서 D3D Debug Layer 메시지와 같은 곳에 나타남"이 이것으로 이루어집니다. <code>Log::HrToString</code>이 HRESULT를 사람이 읽는 문장으로 바꿔 줍니다.</p>
     <p><b>아직 없는 것.</b> 레벨 필터, 파일 싱크, ImGui 콘솔, <code>ThrowIfFailed</code>류 매크로는 만들지 않았습니다. Logger를 싱글턴 클래스가 아니라 자유 함수 네임스페이스로 둔 것도 의도입니다. 10단계에서 클래스로 바꿀 때 호출부를 다시 고치지 않으려면 이 형태가 낫습니다.</p>
     <p>실패를 실제로 전달하기 시작하자 종료 경로에서 죽는 잠재 버그 세 개가 드러났습니다. <a href="#applied">적용 기록</a>에 적었습니다.</p>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23 (10단계, 본체)</b> · Log 파사드 뒤에 Logger 본체가 들어왔다: 레벨(Debug/Info/Warn/Error) 필터, 싱크 네 개(콘솔·OutputDebugString·파일·메모리 히스토리), 뮤텍스. 호출부(<code>Log::Info/Warn/Error</code>)는 바뀌지 않았다 — 0단계에서 자유 함수 네임스페이스로 둔 이유가 그것이었다. ImGui 콘솔(F12)은 히스토리를 레벨·문자열로 거른다. ThrowIfFailed 류 매크로는 여전히 쓰지 않는다(반환값 통일 유지). 상세: <a href="phase-10.html#s2">phase-10.html §2</a></div>
+  <div class="applied"><b>적용 — 2026-09-23 (10단계, 본체)</b> · Log 파사드 뒤에 Logger 본체가 들어왔다: 레벨(Debug/Info/Warn/Error) 필터, 싱크 네 개(콘솔·OutputDebugString·파일·메모리 히스토리), 뮤텍스. 호출부(<code>Log::Info/Warn/Error</code>)는 바뀌지 않았다. 0단계에서 자유 함수 네임스페이스로 둔 이유가 바로 이것이었다. ImGui 콘솔(F12)은 히스토리를 레벨·문자열로 거른다. ThrowIfFailed류 매크로는 여전히 쓰지 않는다(반환값 통일 유지). 상세: <a href="phase-10.html#s2">phase-10.html §2</a></div>
 
 <!-- D17 -->
 <div class="decision" id="d17">
@@ -1136,7 +1136,7 @@ exit code: -1</code></pre>
     <div class="t">적용 결과</div>
     <p><code>SherlockEngine/</code>의 소스 30개를 UTF-8(BOM)으로 변환하고 vcxproj 네 구성 모두에 <code>/utf-8</code>을 넣었습니다. 21개가 CP949였습니다. 변환 뒤 C4819 경고가 사라졌고 Debug·Release 모두 경고 0건입니다.</p>
     <p><strong>위 서술에서 빠져 있던 함정이 하나 있었습니다.</strong> "모든 소스"에 HLSL을 포함시키면 안 됩니다. <code>D3DCompileFromFile</code>은 BOM이 붙은 셰이더를 <code>error X3000: Illegal character in shader file</code>로 거부합니다. 실제로 이 실수를 했다가 되돌렸습니다. <strong>C++ 소스만 BOM, HLSL은 BOM 없이</strong>가 이 프로젝트의 규칙입니다.</p>
-    <p><b>남아 있던 두 조각도 끝냈습니다.</b> <code>.editorconfig</code>를 추가해 새 파일이 같은 인코딩으로 만들어지게 했고, HLSL만 BOM을 붙이지 않는다는 규칙을 파일에 명시했습니다. <code>SetConsoleOutputCP(CP_UTF8)</code>는 예상대로 D16 작업과 함께 처리해 <code>Log::Init()</code>이 <code>main()</code>에서 한 번 부릅니다. 그전까지는 UTF-8로 컴파일된 한글 리터럴이 CP949 콘솔로 나가 실제로 깨지고 있었습니다.</p>
+    <p><b>남아 있던 두 조각도 끝냈습니다.</b> <code>.editorconfig</code>를 추가해 새 파일이 같은 인코딩으로 만들어지게 했고, HLSL만 BOM을 붙이지 않는다는 규칙을 파일에 명시했습니다. <code>SetConsoleOutputCP(CP_UTF8)</code>는 예상대로 D16 작업과 함께 처리해, <code>main()</code>에서 한 번 불리는 <code>Log::Init()</code>이 호출합니다. 그전까지는 UTF-8로 컴파일된 한글 리터럴이 CP949 콘솔로 나가 실제로 깨지고 있었습니다.</p>
     <p>다만 <code>.gitattributes</code>는 두지 않았고 줄바꿈도 정규화하지 않았습니다. 소스 27개 중 11개가 CRLF, 16개가 LF로 섞여 있습니다. 별도 커밋으로 다룰 문제입니다.</p>
   </div>
 </div>
@@ -1153,7 +1153,7 @@ exit code: -1</code></pre>
   </div>
   <div class="applied">
     <div class="t">적용 결과</div>
-    <p><code>pch.h</code>가 48줄에서 30줄이 되었습니다. DirectXTK 5개와 DirectXTex를 지웠고, 이들은 심볼 사용이 0건이었을 뿐 아니라 링크 수준에서도 두 실행 파일이 해당 DLL을 import하지 않던 것으로 확인됐습니다.</p>
+    <p><code>pch.h</code>가 48줄에서 30줄이 되었습니다. DirectXTK 5개와 DirectXTex를 지웠습니다. 이들은 심볼 사용이 0건이었을 뿐 아니라, 링크 수준에서도 두 실행 파일 모두 해당 DLL을 import하지 않는 것으로 확인됐습니다.</p>
     <p><b>수학 타입은 DirectXMath로 확정했습니다.</b> 문서가 남겨 둔 이 선택은 고민할 것이 없었습니다. SimpleMath 타입이 코드에 한 번도 나오지 않고 88줄이 전부 <code>XM*</code>였기 때문입니다. SimpleMath 헤더와 using을 함께 지웠고, 덕분에 문서가 걱정한 <code>XMFLOAT3 ↔ Vector3</code> 변환 문제는 생기지 않았습니다.</p>
     <p><b>전역 using 제거가 이 항목의 본체였습니다.</b> 헤더 6개는 <code>DirectX::</code> 접두어를 붙이고(55개 심볼), .cpp 6개는 include 아래에 파일 지역 <code>using namespace DirectX;</code>를 한 줄 두었습니다. 구현부 코드는 한 글자도 길어지지 않았습니다. 단점으로 적힌 "수십 곳이 길어짐"은 헤더 선언부에만 해당했습니다.</p>
     <p>부수적으로 <code>struct.h</code>가 <code>enum.h</code>와 <code>DirectXMath.h</code>에 의존하면서 include하지 않던 문제가 드러나 헤더들을 자립시켰습니다. 또 <code>stdcpp17</code>과 PCH 설정이 Debug|x64에만 있어 <strong>Release가 조용히 C++14로 빌드되고 있던 것</strong>을 발견해 네 구성 모두 통일했습니다. 이건 D18과 무관하지만 PCH를 건드리다 보인 문제입니다.</p>
@@ -1171,7 +1171,7 @@ exit code: -1</code></pre>
     <div><h5>단점</h5><ul><li>Logger 없이 바꾸면 로그를 볼 곳이 없어짐. 순서가 중요</li><li><code>wWinMain</code>의 <code>hInstance</code>를 창 생성에 넘겨야 하므로 <code>GetModuleHandle(NULL)</code> 코드가 약간 바뀜</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23 (10단계)</b> · 발전 방향 그대로: <code>SubSystem=Windows</code> + <code>wWinMain</code>. Logger 가 부모 콘솔에 붙거나(<code>AttachConsole</code>) Debug 빌드에서 <code>AllocConsole</code> 로 하나 열고, stdout 이 이미 파이프면 그대로 쓴다. 로그는 파일·OutputDebugString·ImGui 콘솔로도 가므로 Release 는 콘솔 없이 실행된다. 상세: <a href="phase-10.html#s6">phase-10.html §6</a></div>
+  <div class="applied"><b>적용 — 2026-09-23 (10단계)</b> · 발전 방향 그대로: <code>SubSystem=Windows</code> + <code>wWinMain</code>. Logger가 부모 콘솔에 붙거나(<code>AttachConsole</code>) Debug 빌드에서 <code>AllocConsole</code>로 하나 열고, stdout이 이미 파이프면 그대로 쓴다. 로그는 파일·OutputDebugString·ImGui 콘솔로도 가므로 Release는 콘솔 없이 실행된다. 상세: <a href="phase-10.html#s6">phase-10.html §6</a></div>
 
 <!-- D20 -->
 <div class="decision" id="d20">
@@ -1186,8 +1186,8 @@ exit code: -1</code></pre>
   <div class="applied">
     <div class="t">적용 결과</div>
     <p>문서가 제시한 그대로 <code>vcpkg.json</code>과 <code>VcpkgEnableManifest=true</code>를 넣었습니다. <code>builtin-baseline</code>은 작업 시점 vcpkg HEAD인 <code>1f5e0348089e8a9b187f57d42866ebc871e815da</code>입니다. 작업량이 30분 수준이라는 예상도 맞았습니다.</p>
-    <p>효과가 예상보다 하나 더 있었습니다. 전역 설치를 쓸 때는 링커가 <code>installed\x64-windows\lib\*.lib</code> 와일드카드로 <strong>이 PC에 깔린 boost 55개와 glm까지</strong> 링커에 넘기고 있었습니다. 매니페스트로 바꾸니 이 프로젝트가 선언한 네 개만 남았습니다.</p>
-    <p>단점으로 적힌 "첫 빌드에 시간이 걸림"은 이 PC에서는 문제가 되지 않았습니다. vcpkg 바이너리 캐시가 이미 있어 6개 패키지를 130ms만에 복원했습니다. 캐시가 없는 새 PC에서는 여전히 몇 분 걸립니다.</p>
+    <p>예상하지 못한 효과가 하나 더 있었습니다. 전역 설치를 쓸 때는 <code>installed\x64-windows\lib\*.lib</code> 와일드카드 때문에 <strong>이 PC에 깔린 boost 55개와 glm까지</strong> 링커에 넘어가고 있었습니다. 매니페스트로 바꾸니 이 프로젝트가 선언한 네 개만 남았습니다.</p>
+    <p>단점으로 적힌 "첫 빌드에 시간이 걸림"은 이 PC에서는 문제가 되지 않았습니다. vcpkg 바이너리 캐시가 이미 있어 6개 패키지를 130ms 만에 복원했습니다. 캐시가 없는 새 PC에서는 여전히 몇 분 걸립니다.</p>
     <p><code>directxtk</code>와 <code>directxtex</code>는 D18에서 include를 다 지워 지금 코드가 쓰지 않지만 매니페스트에는 남겼습니다. 5단계 텍스처 작업에서 바로 필요하고, 그때 버전이 이미 고정되어 있는 편이 낫습니다.</p>
     <p>검증은 <code>vcpkg_installed/</code>를 통째로 지우고 빌드해 새 클론을 흉내 내는 방식으로 했습니다. MSBuild가 스스로 vcpkg를 불러 설치하고 빌드까지 마쳤습니다.</p>
   </div>
@@ -1204,7 +1204,7 @@ exit code: -1</code></pre>
     <div><h5>단점 · 주의</h5><ul><li>핸들 → 객체 조회가 매 호출마다 배열 인덱싱 한 번. 무시할 비용이지만 코드가 한 줄 늘어남</li><li>RHI가 두꺼워지는 유혹. 재질·정렬·프레임 그래프는 RHI 위에 두고 RHI는 "API 차이만" 감춰야 두 백엔드 모두에 자연스럽게 맞음</li><li>D3D11에만 있는 편의(즉시 Map, 자동 밉맵 생성, 암묵적 동기화)를 인터페이스에 넣으면 D3D12 구현이 억지스러워짐. 반대로 D3D12에만 있는 것(다중 큐, 번들)은 RHI 밖에</li><li>ImGui 공식 백엔드가 API별이라 RHI 위 자체 ImGui 렌더러(약 300줄)가 필요하거나 백엔드별 어댑터를 유지해야 함</li><li>너무 일찍 인터페이스를 뽑으면 D3D11 편향이 굳음. 6단계까지는 "RHI 모양의 D3D11 클래스"에 머무는 것이 안전</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 7단계: <code>RHI/</code> 에 <code>Device</code>·<code>CommandList</code> 가상 인터페이스와 핸들·Desc 타입, 팩토리 <code>RHI::CreateDevice(Backend)</code>. 백엔드 헤더는 <code>RHI/D3D11/</code>·<code>RHI/D3D12/</code> 안에서만(grep 강제). 8단계 D3D12 백엔드가 Renderer 세 줄 변경으로 붙어 추상화가 새지 않음을 확인. 상세: <a href="phase-7.html">7단계</a>, <a href="phase-8.html">8단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 7단계: <code>RHI/</code>에 <code>Device</code>·<code>CommandList</code> 가상 인터페이스와 핸들·Desc 타입, 팩토리 <code>RHI::CreateDevice(Backend)</code>를 두었다. 백엔드 헤더는 <code>RHI/D3D11/</code>·<code>RHI/D3D12/</code> 안에서만 include한다(grep으로 강제). 8단계 D3D12 백엔드가 Renderer 세 줄 변경만으로 붙어 추상화가 새지 않음을 확인했다. 상세: <a href="phase-7.html">7단계</a>, <a href="phase-8.html">8단계</a></div>
 
 <!-- D22 -->
 <div class="decision" id="d22">
@@ -1222,7 +1222,7 @@ exit code: -1</code></pre>
   <div class="t">우선순위 정리</div>
   <p>22개 중 <strong>지금 당장</strong> 손대면 좋은 것은 비용이 낮고 되돌릴 일이 없는 D1(ComPtr 통일), D17(UTF-8), D20(vcpkg 매니페스트), D18(PCH 정리)입니다. <span class="pill ok">네 가지 모두 2026-09-10에 적용됨</span> D2·D3·D4·D9는 로드맵 3~4단계의 핵심 작업 그 자체이고, D5·D11·D13·D14·D19는 지금 방식이 옳으니 한계만 기억해 두면 됩니다. D6·D7·D10·D15는 "규모가 커지면"이라는 조건이 붙는 항목으로, 측정 없이 미리 바꾸면 복잡도만 늘어납니다. RHI 목표와 직접 연결된 D21·D22는 각각 7단계와 1단계의 핵심 작업이며, 특히 D22(PSO 에뮬레이션)는 1단계에서 바로 시작해야 이후 모든 단계가 그 위에 쌓입니다.</p>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 1단계: <code>PipelineStateDesc</code>(래스터·깊이·블렌드·레이아웃·셰이더·RTV/DSV 포맷) 를 필드 단위로 해시해 캐시하고, D3D11 백엔드는 상태 객체 5개와 Bind 7호출로 에뮬레이션. 8단계 D3D12 에서 같은 Desc 가 <code>D3D12_GRAPHICS_PIPELINE_STATE_DESC</code> 하나가 되었다. 상세: <a href="phase-1.html">1단계</a>, <a href="phase-8.html#s7">8단계 §7</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 1단계: <code>PipelineStateDesc</code>(래스터·깊이·블렌드·레이아웃·셰이더·RTV/DSV 포맷)를 필드 단위로 해시해 캐시하고, D3D11 백엔드는 상태 객체 5개와 Bind 한 번의 Set 호출 7개로 에뮬레이션한다. 8단계 D3D12에서는 같은 Desc가 <code>D3D12_GRAPHICS_PIPELINE_STATE_DESC</code> 하나가 되었다. 상세: <a href="phase-1.html">1단계</a>, <a href="phase-8.html#s7">8단계 §7</a></div>
 
 <h2 id="s9"><span class="num">9.</span>발전 로드맵 — RHI와 PSO를 향해</h2>
 <p>이 프로젝트의 최종 목표는 <strong>RHI</strong>(Render Hardware Interface, 그래픽 API를 감추는 추상화 층)와 <strong>PSO</strong>(Pipeline State Object, 파이프라인 상태를 하나의 불변 객체로 묶는 구조)입니다. 이 목표는 로드맵의 <em>순서</em>보다 <em>각 단계를 어떤 모양으로 만드는가</em>를 바꿉니다. 깊이 버퍼, Material, 텍스처, 그림자는 어차피 필요하지만, 그것들을 "D3D11 호출을 직접 부르는 코드"로 만들면 나중에 RHI로 옮길 때 전부 다시 써야 합니다. 반대로 처음부터 RHI 모양의 래퍼 뒤에서 만들면 RHI 추출은 인터페이스를 뽑아내는 작업으로 끝납니다.</p>
@@ -1330,12 +1330,12 @@ exit code: -1</code></pre>
     <div class="t">진행 상황 — 2026-09-10</div>
     <p><strong>완료 기준 네 가지를 모두 충족했습니다.</strong> Release|x64가 빌드·실행되고, 종료 시 Live Object가 0개이며, HLSL 오타가 줄·열 번호와 함께 콘솔에 찍히고, <code>vcpkg_installed/</code>를 지운 뒤 빌드하면 매니페스트만으로 의존성이 복원됩니다.</p>
     <p>이 단계의 핵심으로 지목된 <strong>ComPtr 통일</strong>은 D1에서 끝났습니다. 함께 처리한 저비용 항목 D17·D18·D20도 모두 반영했고, D16은 0단계 몫만 했습니다.</p>
-    <p>작업 목록에서 <strong>남은 것은 두 가지</strong>입니다. <strong>#5</strong>(static gameTime 제거와 <code>Update(float dt)</code>)와 <strong>#8</strong>(셰이더 경로를 실행 파일 기준으로). 소스 폴더를 <code>Graphics/D3D11/</code>로 옮기는 RHI 관점 메모도 아직입니다. 이 셋은 1단계 PSO 작업과 병행해도 무방합니다.</p>
+    <p>작업 목록에서 <strong>남은 것은 두 가지</strong>입니다. <strong>#5</strong>(static gameTime 제거와 <code>Update(float dt)</code>)와 <strong>#8</strong>(셰이더 경로를 실행 파일 기준으로). 소스 폴더를 <code>Graphics/D3D11/</code>로 옮기자는 RHI 관점 메모도 아직 반영하지 않았습니다. 이 셋은 1단계 PSO 작업과 병행해도 무방합니다.</p>
     <p>자세한 수행 방법은 <a href="#applied">적용 기록</a>에 있습니다.</p>
   </div>
   <div class="applied">
     <div class="t">잔여 완료 — 2026-09-23</div>
-    <p>남아 있던 셋을 처리했습니다. <code>static GameTime</code> 제거 + <code>Update(float dt)</code>, <code>Core/Paths</code>로 exe 기준 셰이더 경로(빌드가 <code>Shaders\</code>를 exe 옆으로 복사), <code>App/ Core/ Graphics/ Graphics/D3D11/ Scene/ Shaders/</code> 폴더 재배치. 커밋 adb1f86. <strong>상세: <a href="phase-0.html">phase-0.html</a></strong></p>
+    <p>남아 있던 셋을 처리했습니다. <code>static GameTime</code> 제거 + <code>Update(float dt)</code>, <code>Core/Paths</code>로 exe 기준 셰이더 경로(빌드가 <code>Shaders\</code>를 exe 옆으로 복사), <code>App/ Core/ Graphics/ Graphics/D3D11/ Scene/ Shaders/</code> 폴더 재배치. 커밋 8338842. <strong>상세: <a href="phase-0.html">phase-0.html</a></strong></p>
   </div>
 </div>
 
@@ -1366,7 +1366,7 @@ exit code: -1</code></pre>
   </div>
   <div class="applied">
     <div class="t">PSO 완료 — 2026-09-23</div>
-    <p><code>PipelineStateDesc</code>(D3D12 필드 구성, 필드 단위 해시·비교) → <code>PipelineState</code>(IL·VS·PS·RS·DSS·BS, <code>Bind()</code> 한 번) → <code>PipelineStateCache</code>. 래스터 상태 4개·<code>RenderModeUpdate</code>·<code>ShaderUpdate</code>의 셰이더 바인딩·MeshRenderer의 InputLayout을 전부 흡수. 개별 상태 호출은 <code>PipelineState.cpp</code>에만 남음. 관통하는 구 두 개로 깊이 검증. 커밋 d2cf740. <strong>상세: <a href="phase-1.html">phase-1.html</a></strong></p>
+    <p><code>PipelineStateDesc</code>(D3D12 필드 구성, 필드 단위 해시·비교) → <code>PipelineState</code>(IL·VS·PS·RS·DSS·BS, <code>Bind()</code> 한 번) → <code>PipelineStateCache</code>. 래스터 상태 4개·<code>RenderModeUpdate</code>·<code>ShaderUpdate</code>의 셰이더 바인딩·MeshRenderer의 InputLayout을 전부 흡수. 개별 상태 호출은 <code>PipelineState.cpp</code>에만 남음. 관통하는 구 두 개로 깊이 검증. 커밋 c856ca8. <strong>상세: <a href="phase-1.html">phase-1.html</a></strong></p>
   </div>
 </div>
 
@@ -1384,7 +1384,7 @@ exit code: -1</code></pre>
   <div class="done"><b>완료 기준</b> — 회전하는 구 주위를 카메라로 자유롭게 돌면서 볼 수 있다.</div>
   <div class="applied">
     <div class="t">완료 — 2026-09-23</div>
-    <p><code>Core/Input</code>(프레임 단위 키·마우스 상태), 위치 + yaw/pitch 카메라(뷰행렬 = <code>inverse(R·T)</code>, Debug에서 <code>LookToLH</code>와 대조), WASD/QE + 우클릭 드래그(캡처·커서 숨김·재중앙화), F1/F2/F3 렌더 토글, 공전하는 구로 dt 검증. ImGui 백엔드가 먼저 <code>SetCapture</code>해 <code>WM_CAPTURECHANGED</code>가 자기 자신에게 오는 문제를 처리. 커밋 aa1f50d. <strong>상세: <a href="phase-2.html">phase-2.html</a></strong></p>
+    <p><code>Core/Input</code>(프레임 단위 키·마우스 상태), 위치 + yaw/pitch 카메라(뷰행렬 = <code>inverse(R·T)</code>, Debug에서 <code>LookToLH</code>와 대조), WASD/QE + 우클릭 드래그(캡처·커서 숨김·재중앙화), F1/F2/F3 렌더 토글, 공전하는 구로 dt 검증. ImGui 백엔드가 먼저 <code>SetCapture</code>해 <code>WM_CAPTURECHANGED</code>가 자기 자신에게 오는 문제를 처리. 커밋 6e6b146. <strong>상세: <a href="phase-2.html">phase-2.html</a></strong></p>
   </div>
 </div>
 
@@ -1409,7 +1409,7 @@ exit code: -1</code></pre>
   <div class="done"><b>완료 기준</b> — 바닥 평면 위에 구·큐브가 여러 개 다른 변환으로 움직이고, <code>Graphics/D3D11/</code> 폴더 밖에서 <code>ID3D11</code>이라는 문자열이 검색되지 않는다.</div>
   <div class="applied">
     <div class="t">완료 — 2026-09-23</div>
-    <p>핸들·풀(<code>ResourcePool</code>), <code>BufferDesc/TextureDesc/ShaderDesc → 핸들</code>, 상수버퍼 3분할(b0 208B · b1 128B · b2 672B, <code>D3DReflect</code> 대조), <code>Scene</code>과 <code>Renderer::Render(Scene, Camera)</code>, Cube·Plane·Cylinder 프리미티브, <code>pch.h</code>에서 D3D 헤더 제거. 완료 기준 두 가지 모두 충족(바닥 위 7개 오브젝트, <code>Graphics/D3D11/</code> 밖 <code>ID3D11</code> 0건). 커밋 de4d935. <strong>상세: <a href="phase-3.html">phase-3.html</a></strong></p>
+    <p>핸들·풀(<code>ResourcePool</code>), <code>BufferDesc/TextureDesc/ShaderDesc → 핸들</code>, 상수버퍼 3분할(b0 208B · b1 128B · b2 672B, <code>D3DReflect</code> 대조), <code>Scene</code>과 <code>Renderer::Render(Scene, Camera)</code>, Cube·Plane·Cylinder 프리미티브, <code>pch.h</code>에서 D3D 헤더 제거. 완료 기준 두 가지 모두 충족(바닥 위 7개 오브젝트, <code>Graphics/D3D11/</code> 밖 <code>ID3D11</code> 0건). 커밋 1f89e4b. <strong>상세: <a href="phase-3.html">phase-3.html</a></strong></p>
   </div>
 </div>
 
@@ -1456,7 +1456,7 @@ exit code: -1</code></pre>
   <div class="done"><b>완료 기준</b> — 텍스처 큐브·구가 올바른 감마로 표시되고 밉맵이 원거리에서 반짝임 없이 보인다.</div>
   <div class="applied">
     <div class="t">완료 — 2026-09-23</div>
-    <p><code>Graphics/TextureLoader</code>(DirectXTex: WIC/DDS 로드, R8G8B8A8 통일, CPU 밉 생성 — sRGB는 선형 공간에서 평균) → <code>TextureDesc</code> + 밉마다 <code>TextureSubresource{data, rowPitch}</code> → <code>Device::CreateTexture(desc, subresources, count)</code>. <code>SamplerDesc</code> → <code>SamplerHandle</code>, 프리셋 5개(LinearWrap/Clamp, AnisotropicWrap, PointWrap, PointNoMip). 재질 셋이 b3(VS|PS)·t0·s0. <code>VERTEX</code>에 UV(48B), 모든 프리미티브에 UV, 재질 <code>uvScale</code>. 스왑체인을 <code>CreateSwapChainForHwnd</code> + FLIP_DISCARD + ALLOW_TEARING으로 바꾸고, 백버퍼는 UNORM으로 만들되 씬은 <strong>sRGB RTV 뷰</strong>에, ImGui는 <code>BeginUIPass</code>의 UNORM 뷰에 그린다. 검증: sRGB 128 회색을 unlit로 그려 화면 픽셀 <b>128</b>(끄면 55), 배경 (89,89,149) = 클리어 (0.1,0.1,0.3)의 인코딩. PointNoMip 덮어쓰기(F6)로 먼 바닥에 모아레, 기본 비등방 밉은 매끈. 함정: DirectXTex <code>Convert</code>(UNORM→_SRGB)가 값을 인코딩해 128이 188로 — "_SRGB는 라벨"로 정정. "ShadowCompare" 샘플러 프리셋은 6단계로. 상세: <a href="phase-5.html">phase-5.html</a>.</p>
+    <p><code>Graphics/TextureLoader</code>(DirectXTex: WIC/DDS 로드, R8G8B8A8 통일, CPU 밉 생성 — sRGB는 선형 공간에서 평균) → <code>TextureDesc</code> + 밉마다 <code>TextureSubresource{data, rowPitch}</code> → <code>Device::CreateTexture(desc, subresources, count)</code>. <code>SamplerDesc</code> → <code>SamplerHandle</code>, 프리셋 5개(LinearWrap/Clamp, AnisotropicWrap, PointWrap, PointNoMip). 재질 셋이 b3(VS|PS)·t0·s0. <code>VERTEX</code>에 UV(48B), 모든 프리미티브에 UV, 재질 <code>uvScale</code>. 스왑체인을 <code>CreateSwapChainForHwnd</code> + FLIP_DISCARD + ALLOW_TEARING으로 바꾸고, 백버퍼는 UNORM으로 만들되 씬은 <strong>sRGB RTV 뷰</strong>에, ImGui는 <code>BeginUIPass</code>의 UNORM 뷰에 그린다. 검증: sRGB 128 회색을 unlit로 그려 화면 픽셀 <b>128</b>(끄면 55), 배경 (89,89,149) = 클리어 (0.1,0.1,0.3)의 인코딩. PointNoMip 덮어쓰기(F6)로 먼 바닥에 모아레, 기본 비등방 밉은 매끈. 함정: DirectXTex <code>Convert</code>(UNORM→_SRGB)가 값을 다시 인코딩해 128이 188이 되었다. "_SRGB는 변환이 아니라 라벨"로 정정. "ShadowCompare" 샘플러 프리셋은 6단계로. 상세: <a href="phase-5.html">phase-5.html</a>.</p>
   </div>
 </div>
 
@@ -1479,7 +1479,7 @@ exit code: -1</code></pre>
   <div class="done"><b>완료 기준</b> — 바닥에 그림자가 떨어지고 광원을 움직이면 따라오며, Renderer 코드가 <code>ID3D11DeviceContext</code>를 직접 참조하지 않는다.</div>
   <div class="applied">
     <div class="t">완료 — 2026-09-23</div>
-    <p><code>Graphics/RenderPassTypes.h</code>(LoadOp/StoreOp, Color/DepthAttachment, Viewport, <code>RenderPassDesc</code>, <code>ResourceState</code>)와 <code>Graphics/D3D11/CommandList</code>(BeginRenderPass/EndRenderPass, SetPipelineState, SetResourceSet, SetVertexBuffer/IndexBuffer, DrawIndexed, Barrier, CopyBuffer). Device의 Bind*/Draw*/BeginUIPass/SetClearColor는 삭제되고 <code>GetCommandList()</code>만 남았다. 프레임은 <code>BeginFrame → [ShadowPass → MainPass → UIPass] → EndFrame</code>(D4 마무리). 그림자: 2048² <code>D32_FLOAT</code>를 <code>DepthStencil|ShaderResource</code>로 만들면 Device가 TYPELESS + DSV/SRV로, PS 없는 깊이 전용 PSO(DepthBias 2000 / slope 2.0), 광원 직교 ViewProj가 b0에, 비교 샘플러(Border 1, LessEqual) + <code>SampleCmpLevelZero</code> 3×3 PCF. <code>Barrier(DepthWrite ↔ ShaderResource)</code>·<code>Barrier(Present ↔ RenderTarget)</code>가 프레임당 4회, D3D11에서는 상태 추적 + Debug 검증. CommandList가 SRV 슬롯을 추적해 렌더 패스 시작 시 attachment와 겹치는 SRV를 먼저 풀어 D3D11 경고 0건. 정점 64B(float4 tangent, 손잡이 w), 모든 프리미티브에 해석적 T/B, 노멀 매핑(t1), 조명 8개 전부 ImGui 편집(점광·스포트 추가). 검증: 바닥 그림자, F7 광원 공전 시 그림자 이동, F8/F9 토글, 그림자 맵 미리보기, Debug Layer 0, 격리 grep 0. 상세: <a href="phase-6.html">phase-6.html</a>.</p>
+    <p><code>Graphics/RenderPassTypes.h</code>(LoadOp/StoreOp, Color/DepthAttachment, Viewport, <code>RenderPassDesc</code>, <code>ResourceState</code>)와 <code>Graphics/D3D11/CommandList</code>(BeginRenderPass/EndRenderPass, SetPipelineState, SetResourceSet, SetVertexBuffer/IndexBuffer, DrawIndexed, Barrier, CopyBuffer). Device의 Bind*/Draw*/BeginUIPass/SetClearColor는 삭제되고 <code>GetCommandList()</code>만 남았다. 프레임은 <code>BeginFrame → [ShadowPass → MainPass → UIPass] → EndFrame</code>(D4 마무리). 그림자: 2048² <code>D32_FLOAT</code>를 <code>DepthStencil|ShaderResource</code>로 만들면 Device가 TYPELESS + DSV/SRV로, PS 없는 깊이 전용 PSO(DepthBias 2000 / slope 2.0), 광원 직교 ViewProj가 b0에, 비교 샘플러(Border 1, LessEqual) + <code>SampleCmpLevelZero</code> 3×3 PCF. <code>Barrier(DepthWrite ↔ ShaderResource)</code>·<code>Barrier(Present ↔ RenderTarget)</code>가 프레임당 4회, D3D11에서는 상태 추적 + Debug 검증. CommandList가 SRV 슬롯을 추적해 렌더 패스 시작 시 attachment와 겹치는 SRV를 먼저 풀어 D3D11 경고 0건. 정점 64B(float4 tangent, w는 handedness 부호), 모든 프리미티브에 해석적 T/B, 노멀 매핑(t1), 조명 8개 전부 ImGui 편집(점광·스포트 추가). 검증: 바닥 그림자, F7 광원 공전 시 그림자 이동, F8/F9 토글, 그림자 맵 미리보기, Debug Layer 0, 격리 grep 0. 상세: <a href="phase-6.html">phase-6.html</a>.</p>
   </div>
 </div>
 
@@ -1533,7 +1533,7 @@ exit code: -1</code></pre>
     </ul></div>
   </div>
   <div class="done"><b>완료 기준</b> — 실행 인자 <code>--backend=d3d12</code>로 같은 씬(그림자 포함)이 픽셀 단위로 같게 나오고, Debug Layer·GBV 경고가 0건이다.</div>
-  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>RHI/D3D12/</code>에 두 번째 백엔드 완성. 프레임 슬롯마다 할당자·펜스·8 MB 업로드 링·지연 해제 목록, Dynamic 버퍼는 링 조각 + 드로우마다 루트 CBV, BindingLayout → 루트 시그니처(루트 CBV + SRV/샘플러 테이블) 캐시, ResourceSet → 셰이더 가시 힙의 영구 테이블, Barrier → <code>ResourceBarrier</code>, fxc DXBC 를 두 백엔드가 공유. Renderer 변경은 PSO 의 RTV/DSV 포맷 3줄뿐. <code>--backend=d3d12</code> 와 D3D11 의 F10 고정 화면 904,392 픽셀 중 0 차이, Debug Layer + GBV 메시지 0. 상세: <a href="phase-8.html">phase-8.html</a></div>
+  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>RHI/D3D12/</code>에 두 번째 백엔드 완성. 프레임 슬롯마다 할당자·펜스·8 MB 업로드 링·지연 해제 목록, Dynamic 버퍼는 링 조각 + 드로우마다 루트 CBV, BindingLayout → 루트 시그니처(루트 CBV + SRV/샘플러 테이블) 캐시, ResourceSet → 셰이더 가시 힙의 영구 테이블, Barrier → <code>ResourceBarrier</code>, fxc DXBC는 두 백엔드가 공유. Renderer 변경은 PSO의 RTV/DSV 포맷 3줄뿐. <code>--backend=d3d12</code>와 D3D11의 F10 고정 화면을 비교해 904,392픽셀 중 차이 0, Debug Layer + GBV 메시지 0. 상세: <a href="phase-8.html">phase-8.html</a></div>
 </div>
 
 <div class="phase" id="p9">
@@ -1549,7 +1549,7 @@ exit code: -1</code></pre>
     <div><h5>테스트 에셋</h5><ul><li>Khronos glTF Sample Models의 DamagedHelmet, Sponza</li></ul></div>
   </div>
   <div class="done"><b>완료 기준</b> — glTF 모델이 텍스처·노멀맵·그림자와 함께 두 백엔드에서 같게 표시된다.</div>
-  <div class="applied"><b>적용 결과 — 2026-09-23</b> · cgltf(vcpkg) 로더가 <code>Graphics/Model</code> 을 채운다: 메시(서브메시 인덱스 범위 + 재질 슬롯)·재질·이미지 바이트·노드 인스턴스·바운드. Z 뒤집기로 왼손 좌표계, 탄젠트 없으면 생성(glTF 초록=위 관례), 정점 65,536 미만이면 16비트 인덱스(D10), 알파 컷아웃. Scene 이 이미지를 들고 Renderer 텍스처 캐시가 재질 색공간으로 디코딩. DamagedHelmet(.glb, 15,452 삼각형)과 Sponza(.gltf, 103 서브메시·26 재질·69 이미지·262,267 삼각형)가 텍스처·노멀 맵·그림자와 함께 두 백엔드에서 각각 1픽셀·7픽셀(Δ≤7) 차이로 표시된다. tinygltf 는 vcpkg 포트 해시 불일치로 설치되지 않아 cgltf 로 대체. 상세: <a href="phase-9.html">phase-9.html</a></div>
+  <div class="applied"><b>적용 결과 — 2026-09-23</b> · cgltf(vcpkg) 로더가 <code>Graphics/Model</code>을 채운다: 메시(서브메시 인덱스 범위 + 재질 슬롯)·재질·이미지 바이트·노드 인스턴스·바운드. Z 뒤집기로 왼손 좌표계, 탄젠트 없으면 생성(glTF 초록=위 관례), 정점 65,536 미만이면 16비트 인덱스(D10), 알파 컷아웃. Scene이 이미지를 들고, Renderer 텍스처 캐시가 재질 색공간에 맞춰 디코딩. DamagedHelmet(.glb, 15,452 삼각형)과 Sponza(.gltf, 103 서브메시·26 재질·69 이미지·262,267 삼각형)가 텍스처·노멀 맵·그림자와 함께 두 백엔드에서 각각 1픽셀·7픽셀(Δ≤7) 차이로 표시된다. tinygltf는 vcpkg 포트 해시 불일치로 설치되지 않아 cgltf로 대체. 상세: <a href="phase-9.html">phase-9.html</a></div>
 </div>
 
 <div class="phase" id="p10">
@@ -1566,7 +1566,7 @@ exit code: -1</code></pre>
     <div><h5>관련 파일</h5><ul><li>폴더 재배치: Core/, RHI/, Graphics/, Scene/, Assets/</li></ul></div>
   </div>
   <div class="done"><b>완료 기준</b> — 설정 파일의 백엔드 값만 바꿔 D3D11/D3D12로 실행되고, 로그가 파일과 ImGui 콘솔에 남는다.</div>
-  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>Core/</code> 에 Logger(레벨·파일·콘솔·OutputDebugString·ImGui 콘솔 히스토리), Config(INI), Time(고정 스텝 누적기), Profiler(CPU 구간 + RHI 타임스탬프 쿼리로 GPU 구간, 두 백엔드), AssetManager(모델 캐시), Engine(Device·Renderer·Scene·Camera·Input·Time 소유, 프레임 순서). AppBase 는 창·루프·ImGui 컨텍스트만 갖고 앱은 OnInitialize/OnUpdate/OnFixedUpdate/OnGUI 를 구현. SubSystem Windows + wWinMain, Debug 는 AllocConsole. <code>AssetsConfigengine.ini</code> 의 <code>backend</code> 값만 바꿔 D3D12 로 실행됨을 확인, 로그는 <code>LogsSherlockEngine.log</code> 와 F12 콘솔 창에 남는다. 상세: <a href="phase-10.html">phase-10.html</a></div>
+  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>Core/</code>에 Logger(레벨·파일·콘솔·OutputDebugString·ImGui 콘솔 히스토리), Config(INI), Time(고정 스텝 누적기), Profiler(CPU 구간 + RHI 타임스탬프 쿼리로 GPU 구간, 두 백엔드), AssetManager(모델 캐시), Engine(Device·Renderer·Scene·Camera·Input·Time 소유, 프레임 순서). AppBase는 창·루프·ImGui 컨텍스트만 갖고 앱은 OnInitialize/OnUpdate/OnFixedUpdate/OnGUI를 구현. SubSystem Windows + wWinMain, Debug는 AllocConsole. <code>Assets\Config\engine.ini</code>의 <code>backend</code> 값만 바꿔 D3D12로 실행됨을 확인했고, 로그는 <code>Logs\SherlockEngine.log</code>와 F12 콘솔 창에 남는다. 상세: <a href="phase-10.html">phase-10.html</a></div>
 </div>
 
 <div class="phase" id="p11">
@@ -1583,7 +1583,7 @@ exit code: -1</code></pre>
     <div><h5>주의</h5><ul><li>PSO 전환 수는 이 시점부터 성능 지표로 추적할 가치가 있습니다. 드로우 정렬(4단계)의 효과를 눈으로 확인하는 수단입니다</li></ul></div>
   </div>
   <div class="done"><b>완료 기준</b> — 오브젝트를 클릭해 편집하고 저장한 씬을 다시 불러올 수 있다.</div>
-  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>App/Editor</code>: ImGui 도킹(첫 실행 DockBuilder 배치) 위에 Scene(오프스크린 씬 텍스처 + ImGuizmo 이동/회전/크기 + 광선-AABB 클릭 선택)·Hierarchy·Inspector(Transform·재질 편집)·Render Settings(백엔드·PSO 통계·디버그 뷰 알베도/노멀/깊이/그림자/UV·그림자 맵)·Lights·Materials·Stats(드로우·PSO 전환·GPU 시간)·Console. <code>Scene/SceneSerializer</code>(nlohmann-json) 이 메시 출처(프리미티브 인자 또는 모델 경로)·재질·조명·오브젝트·카메라를 저장/로드. 씬 뷰 텍스처는 TYPELESS(sRGB RTV + UNORM SRV), 두 백엔드. RHI 에 백버퍼 리드백을 더해 <code>--screenshot</code>·<code>--pick</code>·<code>--save/--load</code> 자동 검증이 OS 입력 없이 돈다: 클릭 선택 → 위치 편집 → 저장 → 재시작 로드에서 편집값(y = 6) 복원. 상세: <a href="phase-11.html">phase-11.html</a></div>
+  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>App/Editor</code>: ImGui 도킹(첫 실행 DockBuilder 배치) 위에 Scene(오프스크린 씬 텍스처 + ImGuizmo 이동/회전/크기 + 광선-AABB 클릭 선택)·Hierarchy·Inspector(Transform·재질 편집)·Render Settings(백엔드·PSO 통계·디버그 뷰 알베도/노멀/깊이/그림자/UV·그림자 맵)·Lights·Materials·Stats(드로우·PSO 전환·GPU 시간)·Console. <code>Scene/SceneSerializer</code>(nlohmann-json)가 메시 출처(프리미티브 인자 또는 모델 경로)·재질·조명·오브젝트·카메라를 저장/로드. 씬 뷰 텍스처는 TYPELESS(sRGB RTV + UNORM SRV)이며 두 백엔드 모두 지원. RHI에 백버퍼 리드백을 더해 <code>--screenshot</code>·<code>--pick</code>·<code>--save/--load</code> 자동 검증이 OS 입력 없이 돈다: 클릭 선택 → 위치 편집 → 저장 → 재시작 후 로드했을 때 편집값(y = 6) 복원. 상세: <a href="phase-11.html">phase-11.html</a></div>
 </div>
 
 <div class="phase" id="p11b">
@@ -1592,54 +1592,54 @@ exit code: -1</code></pre>
   <div class="cols">
     <div><h5>작업</h5><ul>
       <li>Content Browser 창: 폴더 트리 + 타일 그리드 + 브레드크럼 + 검색, 더블클릭·우클릭 메뉴</li>
-      <li>드래그 페이로드(POD) → Scene 뷰 드롭: 모델은 광선 히트점(오브젝트 AABB 또는 바닥면)에 배치, 씬 .json 은 로드, 텍스처는 맞은 오브젝트 재질의 알베도</li>
+      <li>드래그 페이로드(POD) → Scene 뷰 드롭: 모델은 광선 히트점(오브젝트 AABB 또는 바닥면)에 배치, 씬 .json은 로드, 텍스처는 맞은 오브젝트 재질의 알베도</li>
       <li>호버 중 고스트 마커(놓일 점 + 모델 AABB), Esc 취소, 드래그 중 기즈모·카메라 룩 차단</li>
       <li>텍스처 썸네일(DirectXTex Resize, UNORM, 프레임당 1장, 상한 256) — 렌더러 캐시와 분리</li>
       <li><code>asset:&lt;상대 경로&gt;</code> 텍스처 이름, <code>Paths::GetAssetRoot</code>, 자동 검증 <code>--drop / --drop-uv / --drop-texture / --browse</code></li>
     </ul></div>
-    <div><h5>주의</h5><ul><li>드래그 중에는 다른 아이템의 <code>IsItemHovered()</code> 가 false 다 — 드롭 판정은 <code>BeginDragDropTarget</code> 으로만</li><li><code>Scene::AddModel</code> 은 드롭마다 메시를 복사한다. 메시 공유는 12단계 인스턴싱과 함께</li></ul></div>
+    <div><h5>주의</h5><ul><li>드래그 중에는 다른 아이템의 <code>IsItemHovered()</code>가 false다. 드롭 판정은 <code>BeginDragDropTarget</code>으로만 한다</li><li><code>Scene::AddModel</code>은 드롭마다 메시를 복사한다. 메시 공유는 12단계 인스턴싱과 함께</li></ul></div>
   </div>
   <div class="done"><b>완료 기준</b> — 브라우저의 모델을 Scene 뷰에 끌어다 놓으면 커서 아래에 놓이고, 저장한 씬을 다시 불러오면 그 자리에 있다.</div>
-  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>App/ContentBrowser</code>(std::filesystem 열거, ImDrawList 아이콘, ListClipper 그리드, 썸네일 캐시) + <code>Editor</code>(Scene 뷰 드롭 타깃, <code>ScreenToRay</code>/<code>RaycastScene</code>, 고스트 마커, Stats 노드에 FirstUseEver 도킹) + <code>TestApp::PlaceModel</code>(바닥면 = 놓은 점, 번호 이름). 자동 검증: 헬멧 드롭 (2, 0, −1) → 위치 (2, 0.90, −1) → 저장 → 재시작 로드 복원; 바닥면·Sponza 표면 히트; <code>uv_checker.png</code> 와 <code>asset:Models\Sponza\…png</code> 텍스처 드롭; Sponza 폴더 썸네일; D3D11·D3D12·Release 동일. 상세: <a href="phase-11b.html">phase-11b.html</a></div>
+  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>App/ContentBrowser</code>(std::filesystem 열거, ImDrawList 아이콘, ListClipper 그리드, 썸네일 캐시) + <code>Editor</code>(Scene 뷰 드롭 타깃, <code>ScreenToRay</code>/<code>RaycastScene</code>, 고스트 마커, Stats 노드에 FirstUseEver 도킹) + <code>TestApp::PlaceModel</code>(바닥면 = 놓은 점, 번호 이름). 자동 검증: 헬멧 드롭 (2, 0, −1) → 위치 (2, 0.90, −1) → 저장 → 재시작 로드 복원; 바닥면·Sponza 표면 히트; <code>uv_checker.png</code>와 <code>asset:Models\Sponza\…png</code> 텍스처 드롭; Sponza 폴더 썸네일; D3D11·D3D12·Release 동일. 상세: <a href="phase-11b.html">phase-11b.html</a></div>
 </div>
 
 <div class="phase" id="p11c">
   <header><span class="pn">PHASE 11-C</span><h3>재생 모드와 C++ 컴포넌트</h3><span class="pill info">에디터 확장</span><span class="pill ok">완료 · 2026-09-23</span></header>
-  <p class="why">언리얼의 Play In Editor 처럼 Play 를 눌러야 게임이 돌고, 오브젝트 로직은 Game/ 폴더의 C++ 클래스입니다. 데모 씬의 하드코딩 애니메이션(TestApp::OnUpdate)이 컴포넌트로 옮겨져 편집 중에는 아무것도 움직이지 않습니다. D15 의 "컴포넌트는 필요가 생기면" 이 여기서 생겼습니다.</p>
+  <p class="why">언리얼의 Play In Editor처럼 Play를 눌러야 게임이 돌고, 오브젝트 로직은 Game/ 폴더의 C++ 클래스입니다. 데모 씬의 하드코딩 애니메이션(TestApp::OnUpdate)이 컴포넌트로 옮겨져 편집 중에는 아무것도 움직이지 않습니다. D15에서 "컴포넌트는 필요가 생기면"이라고 했던 그 필요가 여기서 생겼습니다.</p>
   <div class="cols">
     <div><h5>작업</h5><ul>
       <li><code>Scene/Behaviour</code>: Start/Update/FixedUpdate, <code>Reflect(PropertyVisitor&amp;)</code>, 이름 레지스트리 + <code>SHERLOCK_BEHAVIOUR</code> 매크로</li>
-      <li><code>Scene::BeginPlay/Update/FixedUpdate/EndPlay</code> + <code>PlayContext</code>(Input·Camera·누적 시간·cameraDriven); GameObject 를 unique_ptr 로</li>
-      <li>Play/Pause/Step/Stop 툴바, 시간 배율, Ctrl+P, 재생 테두리 — Play 는 씬+카메라를 JSON 문자열로 스냅샷, Stop 이 되돌린다</li>
+      <li><code>Scene::BeginPlay/Update/FixedUpdate/EndPlay</code> + <code>PlayContext</code>(Input·Camera·누적 시간·cameraDriven); GameObject를 unique_ptr로</li>
+      <li>Play/Pause/Step/Stop 툴바, 시간 배율, Ctrl+P, 재생 테두리. Play는 씬+카메라를 JSON 문자열로 스냅샷하고, Stop이 그 상태로 되돌린다</li>
       <li>Inspector 컴포넌트 편집(enabled·삭제·필드·Add Component), 씬 파일 버전 2 <code>"components"</code></li>
-      <li><code>Scene/Script</code>(MonoBehaviour): 사용자가 <code>Game/Scripts/*.cpp</code> 에 움직임을 직접 쓴다 — Translate/Rotate/LookAt/GetInput/GetComponent 헬퍼, <code>SHERLOCK_SCRIPT</code>. 예제 PlayerController(방향키+점프)·Rotator. Inspector 의 New Script... 가 템플릿 .cpp 를 만들어 vcxproj 에 등록하고 열어 준다(빌드 후 재실행). 엔진 컴포넌트는 <code>Game/Components</code> 의 Rigidbody(AddImpulse·IsGrounded)·FollowTarget</li>
+      <li><code>Scene/Script</code>(MonoBehaviour): 사용자가 <code>Game/Scripts/*.cpp</code>에 움직임을 직접 쓴다. Translate/Rotate/LookAt/GetInput/GetComponent 헬퍼, <code>SHERLOCK_SCRIPT</code>. 예제 PlayerController(방향키+점프)·Rotator. Inspector의 New Script...가 템플릿 .cpp를 만들어 vcxproj에 등록하고 열어 준다(빌드 후 재실행). 엔진 컴포넌트는 <code>Game/Components</code>의 Rigidbody(AddImpulse·IsGrounded)·FollowTarget</li>
       <li><code>Scene/CameraComponent</code>: 씬 안의 카메라 오브젝트("Main Camera", "+ Camera"), 프러스텀 아이콘, Look through / Align to view, 선택한 카메라의 시점 미리보기(Renderer PreviewPass), 재생 중 priority 최대 카메라로 렌더링(시작은 즉시, 도중 전환은 blendTime 보간)</li>
     </ul></div>
-    <div><h5>주의</h5><ul><li>재생 중 오브젝트 삭제는 인덱스를 밀어낸다 — 지연 삭제 API 가 다음 단계</li><li>Rigidbody 는 물리 엔진의 자리표시자(오브젝트 간 충돌 없음)</li></ul></div>
+    <div><h5>주의</h5><ul><li>재생 중에 오브젝트를 삭제하면 인덱스가 밀린다. 지연 삭제 API는 다음 단계</li><li>Rigidbody는 물리 엔진의 자리표시자(오브젝트 간 충돌 없음)</li></ul></div>
   </div>
-  <div class="done"><b>완료 기준</b> — Play 를 눌러야 컴포넌트가 돌고, Stop 을 누르면 재생 전 씬으로 정확히 돌아온다. C++ 클래스 하나를 추가해 빌드하면 Inspector 에 나타난다.</div>
-  <div class="applied"><b>적용 결과 — 2026-09-23</b> · 자동 검증: 재생 20 프레임째 CubeStatic(Rigidbody)이 움직이고 스크립트가 붙은 오브젝트가 "(playing)", Stop 뒤 재생 전 좌표로 복원; 컴포넌트·스크립트 저장 → 재시작 로드 복원; 재생 중 Add Component(Rotator) 즉시 동작; 재생 중 Main Camera 로 즉시 전환, 카메라 선택 시 미리보기; D3D11·D3D12·Release 동일. 상세: <a href="phase-11c.html">phase-11c.html</a></div>
+  <div class="done"><b>완료 기준</b> — Play를 눌러야 컴포넌트가 돌고, Stop을 누르면 재생 전 씬으로 정확히 돌아온다. C++ 클래스 하나를 추가해 빌드하면 Inspector에 나타난다.</div>
+  <div class="applied"><b>적용 결과 — 2026-09-23</b> · 자동 검증: 재생 20 프레임째 CubeStatic(Rigidbody)이 움직이고 스크립트가 붙은 오브젝트가 "(playing)", Stop 뒤 재생 전 좌표로 복원; 컴포넌트·스크립트 저장 → 재시작 로드 복원; 재생 중 Add Component(Rotator) 즉시 동작; 재생 중 Main Camera로 즉시 전환, 카메라 선택 시 미리보기; D3D11·D3D12·Release 동일. 상세: <a href="phase-11c.html">phase-11c.html</a></div>
 </div>
 
 <div class="phase" id="p11d">
   <header><span class="pn">PHASE 11-D</span><h3>게임 빌드와 런타임 분리</h3><span class="pill info">에디터 확장</span><span class="pill ok">완료 · 2026-09-23</span></header>
-  <p class="why">상용 엔진의 Package Project. 스크립트가 엔진과 함께 컴파일되고 에셋이 파일이라, 빌드는 "에디터 없는 런타임 모드" 하나와 "복사" 로 끝납니다. 그 김에 하나였던 프로젝트를 엔진 정적 라이브러리 · 에디터 exe · 게임 exe 로 나눴습니다.</p>
+  <p class="why">상용 엔진의 Package Project. 스크립트가 엔진과 함께 컴파일되고 에셋이 파일이라, 빌드는 "에디터 없는 런타임 모드" 하나와 "복사"로 끝납니다. 이 김에 하나였던 프로젝트를 엔진 정적 라이브러리 · 에디터 exe · 게임 exe로 나눴습니다.</p>
   <div class="cols">
     <div><h5>작업</h5><ul>
-      <li>솔루션 3 프로젝트: <code>SherlockEngine.lib</code>(엔진·Game·셰이더·에셋 복사), <code>SherlockEditor.exe</code>, <code>SherlockGame.exe</code> — exe 는 <code>/WHOLEARCHIVE</code> 로 스크립트 정적 등록을 지킨다</li>
+      <li>솔루션 3 프로젝트: <code>SherlockEngine.lib</code>(엔진·Game·셰이더·에셋 복사), <code>SherlockEditor.exe</code>, <code>SherlockGame.exe</code>. exe는 <code>/WHOLEARCHIVE</code>로 스크립트 정적 등록이 링크에서 빠지지 않게 한다</li>
       <li><code>App/GameApp</code>: ImGui 없이(<code>WantsGUI false</code>) <code>[game] startScene</code> 로드 → 바로 재생, 백버퍼 직접 렌더링, ESC 종료</li>
-      <li>File &gt; Build Game...: 이름·시작 씬·에셋 전부/참조만·Release(vswhere → MSBuild) → <code>Build\&lt;이름&gt;\</code> 에 exe·DLL·Shaders·Assets + engine.ini [game]</li>
-      <li>AppBase 에 COM 초기화(WIC), <code>.filters</code> 생성 스크립트로 통일</li>
+      <li>File &gt; Build Game...: 이름·시작 씬·에셋 전부/참조만·Release(vswhere → MSBuild) → <code>Build\&lt;이름&gt;\</code>에 exe·DLL·Shaders·Assets + engine.ini [game]</li>
+      <li>AppBase에 COM 초기화(WIC), <code>.filters</code> 생성 스크립트로 통일</li>
     </ul></div>
-    <div><h5>주의</h5><ul><li>게임 exe 에 imgui.lib 는 링크되지만 실행되지 않는다. 완전히 떼려면 Device 백엔드의 ImGui 코드를 조건부로</li><li>에셋 쿠킹(DDS·바이너리 모델)은 로딩 시간이 문제될 때</li></ul></div>
+    <div><h5>주의</h5><ul><li>게임 exe에 imgui.lib는 링크되지만 실행되지 않는다. 완전히 떼려면 Device 백엔드의 ImGui 코드를 조건부로</li><li>에셋 쿠킹(DDS·바이너리 모델)은 로딩 시간이 문제될 때</li></ul></div>
   </div>
-  <div class="done"><b>완료 기준</b> — Build 폴더를 통째로 복사한 곳에서 SherlockGame.exe 가 소스 트리 없이 시작 씬을 재생한다.</div>
-  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>--build-game=TestBuild</code> 86 파일 → <code>Build\TestBuild\SherlockGame.exe</code> 가 자기 옆 engine.ini·.cso·씬만으로 재생(Rigidbody 상승, 활성 카메라 Main Camera, 스크린샷). 런타임 단독·D3D12 Release 동일. 세 프로젝트 Debug·Release 경고 0. 첫 실행의 WIC E_NOINTERFACE 는 CoInitializeEx 로 해결. 상세: <a href="phase-11d.html">phase-11d.html</a></div>
+  <div class="done"><b>완료 기준</b> — Build 폴더를 통째로 복사한 곳에서 SherlockGame.exe가 소스 트리 없이 시작 씬을 재생한다.</div>
+  <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>--build-game=TestBuild</code>로 파일 86개 출력 → <code>Build\TestBuild\SherlockGame.exe</code>가 자기 옆의 engine.ini·.cso·씬만으로 재생(Rigidbody 상승, 활성 카메라 Main Camera, 스크린샷). 런타임 단독·D3D12 Release 동일. 세 프로젝트 Debug·Release 경고 0. 첫 실행의 WIC E_NOINTERFACE는 CoInitializeEx로 해결. 상세: <a href="phase-11d.html">phase-11d.html</a></div>
 </div>
 
 <div class="phase" id="p11e">
   <header><span class="pn">PHASE 11-E</span><h3>프로젝트 시스템</h3><span class="pill info">에디터 확장</span><span class="pill ok">완료 · 2026-09-24</span></header>
-  <p class="why">씬이 아니라 게임을 분리합니다. 언리얼의 .uproject 처럼 프로젝트 = 폴더(<code>.sherlock</code> + Assets + Scripts)이고, 에디터가 그 폴더에 에디터·게임 타깃의 솔루션을 생성합니다. 엔진 컴포넌트와 엔진 콘텐츠는 엔진에 남아 모든 프로젝트에서 쓰입니다 (A안: 프로젝트별 에디터 exe. B안 DLL 은 다음).</p>
+  <p class="why">씬이 아니라 게임을 분리합니다. 언리얼의 .uproject처럼 프로젝트 = 폴더(<code>.sherlock</code> + Assets + Scripts)이고, 에디터가 그 폴더에 에디터·게임 타깃의 솔루션을 생성합니다. 엔진 컴포넌트와 엔진 콘텐츠는 엔진에 남아 모든 프로젝트에서 쓰입니다(A안: 프로젝트별 에디터 exe. B안인 DLL 방식은 다음 단계).</p>
   <div class="cols">
     <div><h5>작업</h5><ul>
       <li><code>Core/Project</code>(.sherlock, FindUpwards), <code>Paths</code> 세 루트(엔진·프로젝트·exe)와 프로젝트 → 엔진 → exe 에셋 해석, <code>AppBase::ResolveProject</code></li>
@@ -1648,10 +1648,10 @@ exit code: -1</code></pre>
       <li><code>App/ProjectLauncher</code> + Editor: File &gt; Projects(최근·열기·새로), Project Settings, "스크립트 없는 에디터" 배너 → Build and switch</li>
       <li>예제 프로젝트 <code>Projects\Sample</code> (옛 Game\Scripts · Assets\Scenes)</li>
     </ul></div>
-    <div><h5>주의</h5><ul><li>프로젝트를 바꾸면 그 프로젝트의 에디터 exe 가 필요하다 (배너가 빌드·전환한다)</li><li>에디터 소스 목록은 ProjectGenerator 와 SherlockEditor.vcxproj 두 곳</li></ul></div>
+    <div><h5>주의</h5><ul><li>프로젝트를 바꾸면 그 프로젝트의 에디터 exe가 필요하다(배너에서 빌드·전환한다)</li><li>에디터 소스 목록은 ProjectGenerator와 SherlockEditor.vcxproj 두 곳에 있다</li></ul></div>
   </div>
   <div class="done"><b>완료 기준</b> — 런처에서 새 프로젝트를 만들고 빌드하면 그 에디터에서 프로젝트 스크립트와 엔진 컴포넌트를 함께 쓰고, 패키징한 게임이 단독으로 돈다.</div>
-  <div class="applied"><b>적용 결과 — 2026-09-24</b> · <code>--new-project=TestGame --build-project=1</code>: 폴더·솔루션 생성, MSBuild 성공(lib 공유로 5 초). <code>TestGameEditor.exe</code> 가 exe 위쪽의 .sherlock 을 찾아 "컴파일된 프로젝트 TestGame", Main.json 로드, 프로젝트 스크립트 Rotator 부착·재생. 엔진 에디터로 열면 배너. 상세: <a href="phase-11e.html">phase-11e.html</a></div>
+  <div class="applied"><b>적용 결과 — 2026-09-24</b> · <code>--new-project=TestGame --build-project=1</code>: 폴더·솔루션 생성, MSBuild 성공(lib 공유로 5초). <code>TestGameEditor.exe</code>가 exe 위쪽 폴더에서 .sherlock을 찾아 "컴파일된 프로젝트 TestGame"으로 뜨고, Main.json 로드, 프로젝트 스크립트 Rotator 부착·재생. 엔진 에디터로 열면 배너가 뜬다. 상세: <a href="phase-11e.html">phase-11e.html</a></div>
 </div>
 
 <div class="phase" id="p12">
@@ -1717,7 +1717,7 @@ exit code: -1</code></pre>
   <dt>상수버퍼 업로드</dt><dd>모든 행렬을 <code>XMMatrixTranspose</code>해서 올림 (HLSL 기본 column-major 대응). 대안: HLSL에 <code>#pragma pack_matrix(row_major)</code>를 선언하면 전치를 없앨 수 있음.</dd>
   <dt>깊이 범위</dt><dd>0(near) ~ 1(far). 뷰포트 MinDepth/MaxDepth. 2026-09-10부터 <code>D24_UNORM_S8_UINT</code> 깊이 버퍼 사용, Clear 값 1.0.</dd>
   <dt>NDC</dt><dd>x, y ∈ [-1, 1], y는 위가 +. 뷰포트 변환에서 y 반전.</dd>
-  <dt>카메라 초기값</dt><dd>eye (10, 20, -45), target (0, 5, 0), FOV 45°, near 0.1, far 1000. 구 중심 (0, 5, 0)을 정면에서 약간 위에서 내려다봄.</dd>
+  <dt>카메라 초기값</dt><dd>eye (10, 20, -45), target (0, 5, 0), FOV 45°, near 0.1, far 1000. 구 중심 (0, 5, 0)을 정면 약간 위에서 내려다봄.</dd>
   <dt>조명 초기값</dt><dd>Directional, 방향 (0, -0.447, 0.894) 정규화, 색 (1,1,1), 강도 1. 카메라 뒤 위쪽에서 구를 비춤.</dd>
 </dl>
 

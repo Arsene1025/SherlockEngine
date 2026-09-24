@@ -140,7 +140,7 @@ tr:last-child td{border-bottom:0}
     <tr><td>프로젝트 파일</td><td><code>Core/Project</code>: <code>&lt;이름&gt;.sherlock</code>(name, startScene, engineRoot), <code>Create</code>(폴더 골격), <code>FindUpwards</code>(exe 위쪽 탐색)</td><td>Projects\Sample, Projects\TestGame(검증)</td></tr>
     <tr><td>루트</td><td><code>Paths</code>: <code>GetEngineRoot / GetProjectRoot / GetEngineAssetRoot / GetAssetRoot</code>, <code>GetAssetPath</code> 는 프로젝트 → 엔진 → exe. <code>AppBase::ResolveProject</code> 가 설정보다 먼저</td><td>로그 "프로젝트 루트 … 엔진 루트 … 컴파일된 프로젝트 …"</td></tr>
     <tr><td>콘텐츠 브라우저</td><td>루트 둘(Project / Engine) — 트리에 두 최상위 노드, 브레드크럼 첫 조각이 루트, 썸네일 키는 절대 경로</td><td>그림 1</td></tr>
-    <tr><td>엔진 컴포넌트</td><td><code>Game\Components</code>(Rigidbody·FollowTarget)와 <code>Scene\CameraComponent</code> 는 엔진 lib. 어떤 프로젝트에서도 Add Component 에 있다</td><td>TestGame 에디터의 Cube 1 에 Rigidbody·Rotator</td></tr>
+    <tr><td>엔진 컴포넌트</td><td><code>Game\Components</code>(Rigidbody·FollowTarget)와 <code>Scene\CameraComponent</code> 는 엔진 lib. 어떤 프로젝트에서도 Add Component 에 나온다</td><td>TestGame 에디터의 Cube 1 에 Rigidbody·Rotator</td></tr>
     <tr><td>프로젝트 스크립트</td><td><code>&lt;프로젝트&gt;\Scripts\*.cpp</code> 와일드카드. ScriptCreator 는 파일만 만든다(vcxproj 편집 없음)</td><td>New Script → 빌드 → 목록</td></tr>
     <tr><td>솔루션 생성</td><td><code>App/ProjectGenerator</code>: <code>&lt;이름&gt;.sln</code>, <code>&lt;이름&gt;Editor.vcxproj</code>, <code>&lt;이름&gt;.vcxproj</code>(엔진 lib ProjectReference, vcpkg 매니페스트 루트 = 엔진 저장소, <code>SHERLOCK_PROJECT_NAME</code>, Binaries\ 출력)</td><td>MSBuild 성공, <code>Binaries\Debug\TestGameEditor.exe</code></td></tr>
     <tr><td>런처</td><td>File &gt; Projects: 최근 목록(<code>%LOCALAPPDATA%\SherlockEngine\editor.json</code>), Open(.sherlock 대화상자), New(이름·위치 → 폴더·예제 스크립트·솔루션·Main.json). Project Settings(시작 씬)</td><td>그림 1 메뉴 바의 프로젝트 이름</td></tr>
@@ -192,18 +192,18 @@ GetSceneDir()         프로젝트 Assets\Scenes\   GetShaderPath: exe\Shaders\*
 &lt;ClCompile Include="Scripts\*.cpp" /&gt;                                       <span class="cm">// 와일드카드: New Script 뒤 vcxproj 편집 없음</span>
 &lt;ProjectReference Include="$(SherlockEngineDir)SherlockEngine.vcxproj"&gt;</code></pre>
 <ul>
-  <li><strong>에디터 소스 목록은 한 곳.</strong> <code>ProjectGenerator::GetEditorSources()</code>(TestApp·Editor·ContentBrowser·ScriptCreator·GameBuilder·DebugUI·ProjectGenerator·ProjectLauncher). 엔진 솔루션의 <code>SherlockEditor.vcxproj</code> 와 같아야 하며, 에디터 파일을 추가하면 둘 다 고칩니다.</li>
+  <li><strong>에디터 소스 목록은 한 곳.</strong> <code>ProjectGenerator::GetEditorSources()</code>(TestApp·Editor·ContentBrowser·ScriptCreator·GameBuilder·DebugUI·ProjectGenerator·ProjectLauncher). 엔진 솔루션의 <code>SherlockEditor.vcxproj</code> 와 같아야 하며, 에디터 파일을 추가하면 둘 다 고쳐야 합니다.</li>
   <li><strong>엔진 lib 공유.</strong> 처음에는 생성 솔루션이 엔진 lib 를 <code>$(SolutionDir)x64\</code> — 즉 프로젝트 폴더 — 에 다시 빌드했습니다(29 초). lib 의 OutDir 을 <code>$(ProjectDir)..\x64\$(Configuration)\</code> 로 못박아 어느 솔루션에서 빌드하든 엔진 저장소의 것을 공유합니다(5 초).</li>
   <li><strong>SHERLOCK_PROJECT_NAME 은 exe 의 것.</strong> 매크로는 exe 프로젝트에만 정의되므로 엔진 lib 의 <code>AppBase</code> 가 직접 읽으면 항상 비어 있습니다. 진입점(EditorMain/GameMain)이 <code>AppBase::SetCompiledProjectName</code> 으로 넣어 줍니다.</li>
 </ul>
 
 <h2 id="s6"><span class="num">6.</span>런처와 "스크립트 없는 에디터"</h2>
-<p>A안의 대가는 "프로젝트를 바꾸면 그 프로젝트의 에디터 exe 가 필요하다" 입니다. 에디터는 이것을 숨기지 않고 안내합니다: 컴파일된 프로젝트 이름과 열린 프로젝트 이름이 다르면 씬 뷰 위에 배너를 띄우고 <b>Build and switch to the project editor</b> 버튼이 <code>&lt;이름&gt;.sln /t:&lt;이름&gt;Editor</code> 를 MSBuild 로 빌드한 뒤 <code>Binaries\Debug\&lt;이름&gt;Editor.exe --project=…</code> 를 띄우고 자기는 종료합니다. 그 사이 열린 씬은 정상 동작하되, 없는 스크립트는 로드 때 경고와 함께 건너뛰어집니다(레지스트리, 11-C). 런처(File &gt; Projects)는 최근 목록·열기 대화상자·새 프로젝트를 제공하고, New 는 프로젝트를 만든 뒤 바로 엽니다(엔진 에디터에서 만들었으므로 배너가 뜨고, 버튼 한 번으로 그 프로젝트의 에디터로 넘어갑니다).</p>
+<p>A안의 대가는 "프로젝트를 바꾸면 그 프로젝트의 에디터 exe 가 필요하다" 입니다. 에디터는 이것을 숨기지 않고 안내합니다: 컴파일된 프로젝트 이름과 열린 프로젝트 이름이 다르면 씬 뷰 위에 배너를 띄우고 <b>Build and switch to the project editor</b> 버튼이 <code>&lt;이름&gt;.sln /t:&lt;이름&gt;Editor</code> 를 MSBuild 로 빌드한 뒤 <code>Binaries\Debug\&lt;이름&gt;Editor.exe --project=…</code> 를 띄우고 자기는 종료합니다. 그 사이에도 열린 씬은 정상 동작하며, 없는 스크립트는 로드할 때 경고를 남기고 건너뜁니다(레지스트리, 11-C). 런처(File &gt; Projects)는 최근 목록·열기 대화상자·새 프로젝트를 제공하고, New 는 프로젝트를 만든 뒤 바로 엽니다(엔진 에디터에서 만들었으므로 배너가 뜨고, 버튼 한 번으로 그 프로젝트의 에디터로 넘어갑니다).</p>
 
 <h2 id="s7"><span class="num">7.</span>Build Game 과 GameApp</h2>
 <ul>
-  <li><code>GameBuilder</code> 는 프로젝트 기준입니다: <code>Build\</code> 는 프로젝트 안, 시작 씬은 프로젝트 <code>Assets\Scenes</code>, 런타임 exe 는 에디터 옆의 <code>&lt;이름&gt;.exe</code>(엔진 솔루션의 Sample 은 <code>SherlockGame.exe</code>). 없으면 프로젝트 솔루션의 게임 타깃을 Debug 로 먼저 빌드합니다. 에셋은 엔진 콘텐츠 위에 프로젝트 콘텐츠를 덮어 한 폴더로, 패키지에 <code>&lt;이름&gt;.sherlock</code>(engineRoot 없음) 사본을 두어 런타임이 exe 옆에서 프로젝트를 찾게 합니다.</li>
-  <li><code>GameApp</code> 은 <code>.sherlock</code> 의 startScene 을 먼저 보고, 없으면 <code>engine.ini</code> 의 <code>[game]</code>. 개발 중 <code>Binaries\Debug\MyGame.exe</code> 를 직접 실행해도 <code>FindUpwards</code> 가 두 단계 위의 <code>.sherlock</code> 을 찾습니다.</li>
+  <li><code>GameBuilder</code> 는 프로젝트 기준입니다: <code>Build\</code> 는 프로젝트 안, 시작 씬은 프로젝트 <code>Assets\Scenes</code>, 런타임 exe 는 에디터 옆의 <code>&lt;이름&gt;.exe</code>(엔진 솔루션의 Sample 은 <code>SherlockGame.exe</code>). 없으면 프로젝트 솔루션의 게임 타깃을 Debug 로 먼저 빌드합니다. 에셋은 엔진 콘텐츠 위에 프로젝트 콘텐츠를 덮어써 한 폴더로 모으고, 패키지에 <code>&lt;이름&gt;.sherlock</code>(engineRoot 없음) 사본을 두어 런타임이 exe 옆에서 프로젝트를 찾게 합니다.</li>
+  <li><code>GameApp</code> 은 <code>.sherlock</code> 의 startScene 을 먼저 보고, 없으면 <code>engine.ini</code> 의 <code>[game]</code> 을 봅니다. 개발 중 <code>Binaries\Debug\MyGame.exe</code> 를 직접 실행해도 <code>FindUpwards</code> 가 두 단계 위의 <code>.sherlock</code> 을 찾습니다.</li>
 </ul>
 
 <h2 id="s8"><span class="num">8.</span>자동 검증</h2>
@@ -221,10 +221,10 @@ Projects\TestGame\Build\TestPack\TestPack.exe --exit-after=60 --dump-objects=1</
 
 <h2 id="s9"><span class="num">9.</span>함정과 해결</h2>
 <ul>
-  <li><strong>주석 끝의 백슬래시.</strong> <code>// … Sample\</code> 처럼 한 줄 주석이 <code>\</code> 로 끝나면 다음 줄이 주석에 이어져(줄 연속) 선언이 사라진다. C4010 경고와 함께 "ListScenes 가 멤버가 아니다" 같은 엉뚱한 오류가 났다. 경로 주석은 "폴더" 라고 쓴다.</li>
+  <li><strong>주석 끝의 백슬래시.</strong> <code>// … Sample\</code> 처럼 한 줄 주석이 <code>\</code> 로 끝나면 다음 줄이 주석에 이어져(줄 연속) 선언이 사라진다. C4010 경고와 함께 "ListScenes 가 멤버가 아니다" 같은 엉뚱한 오류가 났다. 경로 주석은 백슬래시로 끝내지 않고 "폴더" 라고 쓴다.</li>
   <li><strong>매크로가 lib 에 없다.</strong> 5절. exe 의 정의를 lib 가 볼 수 없다 — 진입점이 값을 넘긴다.</li>
   <li><strong>$(SolutionDir) 기준 OutDir.</strong> 5절. 참조된 lib 가 참조하는 솔루션의 폴더에 빌드된다. lib 의 OutDir 을 자기 저장소 기준으로.</li>
-  <li><strong>배너가 안 보임.</strong> 씬 뷰 이미지가 남은 공간을 다 쓰므로 그 뒤에 그린 배너는 잘린다. 이미지 앞(툴바 줄 아래)에 그린다.</li>
+  <li><strong>배너가 안 보임.</strong> 씬 뷰 이미지가 남은 공간을 다 쓰므로 그 뒤에 그린 배너는 잘린다. 배너를 이미지 앞(툴바 줄 아래)에 그린다.</li>
   <li><strong>상대 경로 프로젝트.</strong> <code>--project=..\..\Projects\X</code> 로 열면 최근 목록에 상대 경로가 따로 쌓이고 생성기의 경로 계산도 흔들린다. <code>Project::Load</code> 가 <code>weakly_canonical(absolute())</code> 로 정규화한다.</li>
   <li><strong>vcpkg 매니페스트 루트.</strong> 저장소 밖 프로젝트는 위로 올라가도 <code>vcpkg.json</code> 이 없다. <code>VcpkgManifestRoot</code> 를 엔진 저장소로 지정하면 같은 <code>vcpkg_installed</code> 를 쓰고 DLL 배치도 된다.</li>
   <li><strong>ImGui 의 "\\" 이름.</strong> 트리 노드 라벨이 루트마다 겹치므로(Project/Engine 둘 다 Textures) <code>PushID(root)</code> 를 추가로 건다.</li>
@@ -258,9 +258,9 @@ Projects\TestGame\Build\TestPack\TestPack.exe --exit-after=60 --dump-objects=1</
 
 <h2 id="s11"><span class="num">11.</span>다음 단계 (B안: DLL)</h2>
 <ul>
-  <li><strong>스크립트를 프로젝트 DLL 로.</strong> 생성기의 게임 타깃을 <code>DynamicLibrary</code> 로 바꾸고 에디터가 <code>LoadLibrary</code>. 그러려면 레지스트리가 exe 와 DLL 에서 같은 인스턴스여야 하므로 엔진을 DLL 로 만들거나 등록 함수 포인터를 넘긴다. 핫 리로드 = 11-C 스냅샷 저장 → DLL 교체 → 복원. A 에서 만든 폴더 규약·루트·생성기·런처는 그대로 쓰인다.</li>
+  <li><strong>스크립트를 프로젝트 DLL 로.</strong> 생성기의 게임 타깃을 <code>DynamicLibrary</code> 로 바꾸고 에디터가 <code>LoadLibrary</code>. 그러려면 레지스트리가 exe 와 DLL 에서 같은 인스턴스여야 하므로 엔진을 DLL 로 만들거나 등록 함수 포인터를 넘긴다. 핫 리로드 = 11-C 스냅샷 저장 → DLL 교체 → 복원. A안에서 만든 폴더 규약·루트·생성기·런처는 그대로 쓰인다.</li>
   <li><strong>프로젝트 에디터에 .cso 복사.</strong> 생성 vcxproj 에 엔진 <code>x64\&lt;구성&gt;\Shaders</code> 를 Binaries 로 복사하는 타깃.</li>
-  <li><strong>프로젝트별 engine.ini.</strong> 지금은 있으면 쓰인다는 규칙만 있다. Project Settings 에서 편집.</li>
+  <li><strong>프로젝트별 engine.ini.</strong> 지금은 있으면 쓰인다는 규칙만 있다. Project Settings 에서 편집하게 한다.</li>
 </ul>
 
 <h2 id="s12"><span class="num">12.</span>참고 문헌</h2>
