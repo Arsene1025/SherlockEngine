@@ -122,7 +122,7 @@ tr:last-child td{border-bottom:0}
 <main>
 <div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
 <h1>11-B단계 · 콘텐츠 브라우저와 드래그 앤 드롭</h1>
-<p class="lede">11단계 에디터에는 에셋을 보는 창이 없었습니다. 모델은 File 메뉴의 고정 항목으로만 불러오고 새 오브젝트는 원점에만 생겼습니다. 이 단계는 상용 엔진의 콘텐츠 브라우저처럼 <code>Assets\</code> 폴더를 폴더 트리 + 타일 그리드로 보여 주고, 타일을 Scene 뷰로 끌어다 놓으면 커서 아래 표면(오브젝트 AABB 또는 바닥면)에 모델을 배치하고, 씬 파일을 놓으면 로드하고, 텍스처를 오브젝트에 놓으면 그 재질의 알베도가 됩니다.</p>
+<p class="lede">11단계 에디터에는 에셋을 보는 창이 없었습니다. 모델은 File 메뉴의 고정 항목으로만 불러오고 새 오브젝트는 원점에만 생겼습니다. 이 단계에서는 상용 엔진의 콘텐츠 브라우저처럼 <code>Assets\</code> 폴더를 폴더 트리 + 타일 그리드로 보여 줍니다. 타일을 Scene 뷰로 끌어다 놓으면 모델은 커서 아래 표면(오브젝트 AABB 또는 바닥면)에 배치되고, 씬 파일은 로드되며, 오브젝트에 놓은 텍스처는 그 재질의 알베도가 됩니다.</p>
 
 <div class="facts">
   <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
@@ -135,7 +135,7 @@ tr:last-child td{border-bottom:0}
 
 <div class="callout">
   <div class="t">한 줄 요약</div>
-  <p>브라우저는 파일 시스템을 읽기만 하고 GPU 자원은 썸네일뿐입니다. 드래그는 ImGui 의 drag &amp; drop 페이로드(POD 구조체 하나)로, 드롭은 Scene 뷰 이미지 아이템의 <code>BeginDragDropTarget</code> 에서 받아 11단계의 선택 광선(<code>Pick</code>)을 그대로 써서 놓을 점을 구하고, 실제 배치는 11단계 콜백 규칙대로 앱(<code>TestApp::PlaceModel</code>)에 넘깁니다. 렌더러는 <code>asset:</code> 텍스처 이름 한 줄만 바뀌었습니다.</p>
+  <p>브라우저는 파일 시스템을 읽기만 하고 GPU 자원은 썸네일뿐입니다. 드래그는 ImGui 의 drag &amp; drop 페이로드(POD 구조체 하나)로 전달합니다. 드롭은 Scene 뷰 이미지 아이템의 <code>BeginDragDropTarget</code> 에서 받아 11단계의 선택 광선(<code>Pick</code>)을 그대로 써서 놓을 점을 구하고, 실제 배치는 11단계 콜백 규칙대로 앱(<code>TestApp::PlaceModel</code>)에 넘깁니다. 렌더러에서 바뀐 것은 <code>asset:</code> 텍스처 이름 한 줄뿐입니다.</p>
 </div>
 
 <h2 id="s1"><span class="num">1.</span>요약</h2>
@@ -153,10 +153,10 @@ tr:last-child td{border-bottom:0}
 
 <h2 id="s2"><span class="num">2.</span>콘텐츠 브라우저 창</h2>
 <h3 id="s2-1">2.1 에셋 루트와 열거</h3>
-<p><code>Paths::GetAssetRoot()</code> 가 새로 생겼습니다. 11단계 <code>GetSceneDir()</code> 과 같은 마커(<code>exe\..\..\SherlockEngine\Assets\Config\engine.ini</code>)로 소스 트리를 찾아 <em>저장소의</em> <code>Assets\</code> 를 보여 주고, 없으면(배포) <code>exe\Assets\</code> 입니다. 그래서 브라우저에서 보이는 파일이 곧 저장소의 파일이고, 브라우저가 놓은 모델 경로(<code>Models\DamagedHelmet\DamagedHelmet.glb</code>)는 <code>AssetManager::GetModel</code> 과 씬 파일의 <code>MeshSource::modelPath</code> 가 쓰는 상대 경로 그대로입니다.</p>
-<p>열거는 C++17 <code>std::filesystem</code> 이고 예외를 던지지 않는 <code>error_code</code> 오버로드만 씁니다(정션·잠긴 파일·긴 경로). 폴더 먼저, 이름은 대소문자 무시 정렬. 라벨은 <code>Log::ToUtf8</code> 로 한 번만 변환해 둡니다(한글 경로). 분류는 확장자로: <code>.gltf/.glb</code> Model, <code>.png/.jpg/.jpeg/.bmp/.dds/.tga</code> Texture, <code>Scenes\</code> 아래 <code>.json</code> Scene, 나머지 Other. <code>.bin/.ini/.log</code> 는 숨김이라 <code>Sponza.bin</code>·<code>engine.ini</code> 가 그리드를 어지럽히지 않습니다(Hidden 토글로 회색 표시). 폴더 수정 시각을 1초마다 비교해 탐색기에서 파일을 넣으면 저절로 다시 읽습니다.</p>
+<p><code>Paths::GetAssetRoot()</code> 가 새로 생겼습니다. 11단계 <code>GetSceneDir()</code> 과 같은 마커(<code>exe\..\..\SherlockEngine\Assets\Config\engine.ini</code>)로 소스 트리를 찾아 <em>저장소의</em> <code>Assets\</code> 를 보여 주고, 없으면(배포) <code>exe\Assets\</code> 를 씁니다. 그래서 브라우저에서 보이는 파일이 곧 저장소의 파일이고, 브라우저가 놓은 모델 경로(<code>Models\DamagedHelmet\DamagedHelmet.glb</code>)는 <code>AssetManager::GetModel</code> 과 씬 파일의 <code>MeshSource::modelPath</code> 가 쓰는 상대 경로 그대로입니다.</p>
+<p>열거에는 C++17 <code>std::filesystem</code> 을 쓰고, 예외를 던지지 않는 <code>error_code</code> 오버로드만 씁니다(정션·잠긴 파일·긴 경로). 정렬은 폴더가 먼저이고, 이름은 대소문자를 무시합니다. 라벨은 <code>Log::ToUtf8</code> 로 한 번만 변환해 둡니다(한글 경로). 분류는 확장자로: <code>.gltf/.glb</code> Model, <code>.png/.jpg/.jpeg/.bmp/.dds/.tga</code> Texture, <code>Scenes\</code> 아래 <code>.json</code> Scene, 나머지 Other. <code>.bin/.ini/.log</code> 는 숨김이라 <code>Sponza.bin</code>·<code>engine.ini</code> 가 그리드를 어지럽히지 않습니다(Hidden 토글로 회색 표시). 폴더 수정 시각을 1초마다 비교하므로, 탐색기에서 파일을 넣으면 저절로 다시 읽습니다.</p>
 <h3 id="s2-2">2.2 타일 그리드와 아이콘</h3>
-<p>타일 하나는 <code>InvisibleButton</code> 하나입니다 — 호버·클릭·더블클릭·드래그 소스·컨텍스트 메뉴가 전부 그 아이템에 붙고, 그림(배경·썸네일 또는 아이콘·확장자 배지·잘라낸 라벨)은 <code>ImDrawList</code> 로 그 위에 그립니다. 행은 <code>ImGuiListClipper</code> 로 보이는 것만 제출하므로 썸네일 요청도 보이는 타일에서만 나옵니다. 아이콘은 에셋 파일 없이 <code>ImDrawList</code> 도형입니다: 폴더(탭 + 몸통), 모델(등각 정육면체 세 면), 씬(문서 + 줄 + 작은 큐브), 텍스처 자리표시자(체커 4칸).</p>
+<p>타일 하나는 <code>InvisibleButton</code> 하나입니다 — 호버·클릭·더블클릭·드래그 소스·컨텍스트 메뉴가 전부 그 아이템에 붙고, 그림(배경·썸네일 또는 아이콘·확장자 배지·잘라낸 라벨)은 <code>ImDrawList</code> 로 그 위에 그립니다. 행은 <code>ImGuiListClipper</code> 로 보이는 것만 제출하므로 썸네일 요청도 보이는 타일에서만 나옵니다. 아이콘은 에셋 파일 없이 <code>ImDrawList</code> 도형으로 그립니다: 폴더(탭 + 몸통), 모델(등각 정육면체 세 면), 씬(문서 + 줄 + 작은 큐브), 텍스처 자리표시자(체커 4칸).</p>
 
 <h2 id="s3"><span class="num">3.</span>드래그 페이로드</h2>
 <pre><code><span class="cm">// ImGui 가 memcpy 로 복사하므로 POD 고정 크기. 16B 를 넘으면 힙 버퍼에 복사되어 크기 제한은 사실상 없다 [1]</span>
@@ -182,7 +182,7 @@ tr:last-child td{border-bottom:0}
         <span class="kw">if</span> (p-&gt;IsDelivery()) HandleAssetDrop(engine, callbacks, asset, point, hitObject);
     }
     ImGui::EndDragDropTarget(); }</code></pre>
-<p>11단계의 <code>Pick</code> 은 픽셀→광선을 함수 안에 갖고 있었고 히트 거리를 돌려주지 않았습니다. 그 여섯 줄을 <code>ScreenToRay(camera, u, v)</code> 로 뽑고 <code>Pick</code> 에 <code>float* outDistance</code> 를 더했습니다(<code>bestT</code> 는 이미 월드 거리). <code>RaycastScene</code> 은 <code>Pick</code> 이 맞으면 <code>origin + direction × t</code>, 아니면 y = 0 평면과의 교점 <code>t = −o.y / d.y</code>(앞쪽일 때만), 둘 다 아니면(하늘을 보며 놓음) 광선 위 10 단위 점입니다. 같은 함수를 <code>--drop-uv</code> 자동 검증이 씁니다.</p>
+<p>11단계의 <code>Pick</code> 은 픽셀→광선 변환이 함수 안에 들어 있었고 히트 거리를 돌려주지 않았습니다. 그 여섯 줄을 <code>ScreenToRay(camera, u, v)</code> 로 분리하고 <code>Pick</code> 에 <code>float* outDistance</code> 를 더했습니다(<code>bestT</code> 는 이미 월드 거리). <code>RaycastScene</code> 은 <code>Pick</code> 이 맞으면 <code>origin + direction × t</code> 를, 아니면 y = 0 평면과의 교점 <code>t = −o.y / d.y</code>(앞쪽일 때만)를, 둘 다 아니면(하늘을 보며 놓음) 광선 위 10 단위 점을 돌려줍니다. <code>--drop-uv</code> 자동 검증도 같은 함수를 씁니다.</p>
 <p>고스트 마커는 히트점을 <code>XMVector3Transform</code>(<code>Coord</code> 가 아님 — w 를 남겨 카메라 뒤의 점을 거른다)으로 투영해 씬 뷰 좌표로 바꾸고, 점·바닥면 십자·라벨("DamagedHelmet → (x, y, z) on Floor")을 그립니다. 모델이면 <code>AssetManager::IsModelCached</code> 일 때만 놓일 자리의 AABB 12 모서리를 그립니다 — 호버 중에 <code>GetModel</code> 을 부르면 Sponza 를 몇 초 동안 파싱하게 됩니다. 드래그 중에는 <code>ImGuizmo::Enable(false)</code> 로 기즈모를 끄고, 클릭 선택도 건너뜁니다.</p>
 
 <h2 id="s5"><span class="num">5.</span>모델 배치: PlaceModel</h2>
@@ -192,24 +192,24 @@ Transform placement;
 placement.SetPosition(position.x, position.y - model-&gt;bounds.min.y, position.z);   <span class="cm">// 바닥면이 놓은 점에 닿게 (9단계 헬멧 씬 규칙)</span>
 <span class="kw">const size_t</span> created = scene.AddModel(*model, placement);        <span class="cm">// 노드마다 GameObject, pre-transform = 노드 행렬</span>
 <span class="cm">// 이름 "DamagedHelmet 1", 노드가 여럿이면 "Sponza 1/&lt;노드&gt;". 마지막 오브젝트 선택. 씬 모드는 그대로 (아래).</span></code></pre>
-<p>씬 모드는 바꾸지 않습니다. 처음에는 <code>AddPrimitive</code> 처럼 Demo → File 로 바꿨는데, 그러면 데모 씬에 헬멧을 놓는 순간 <code>OnUpdate</code> 의 애니메이션(Demo 모드에서만 돈다)이 멈춥니다. 끝에 추가하는 것은 애니메이션 인덱스(<code>m_orbitSphere</code> 등)를 건드리지 않으므로 전환할 이유가 없고, 인덱스를 밀어내는 것은 삭제뿐이라 <code>DeleteObject</code> 만 File 로 바꿉니다. <code>AddPrimitive</code> 도 같은 이유로 모드를 유지하게 고쳤습니다.</p>
-<p><code>Scene::AddModel(const Model&amp;)</code> 은 캐시 모델의 메시·재질·이미지를 <em>복사</em>합니다(10단계). 같은 모델을 두 번 놓으면 CPU 메시와 GPU 버퍼가 두 벌입니다. 헬멧 두 개(그림 2)는 문제없지만 Sponza 를 여러 번 놓는 것은 다음 단계의 메시 공유(12절)로 미룹니다. 저장은 바꿀 것이 없습니다 — <code>MeshSource::FromModel(path, index)</code> 가 이미 경로로 저장하고 로드가 <code>AssetManager</code> 에서 다시 받습니다(자동 검증 B).</p>
+<p>씬 모드는 바꾸지 않습니다. 처음에는 <code>AddPrimitive</code> 처럼 Demo → File 로 바꿨는데, 그러면 데모 씬에 헬멧을 놓는 순간 <code>OnUpdate</code> 의 애니메이션(Demo 모드에서만 돈다)이 멈춥니다. 오브젝트를 끝에 추가하는 것은 애니메이션 인덱스(<code>m_orbitSphere</code> 등)를 건드리지 않으므로 모드를 전환할 이유가 없습니다. 인덱스를 밀어내는 것은 삭제뿐이므로 <code>DeleteObject</code> 에서만 File 로 바꿉니다. <code>AddPrimitive</code> 도 같은 이유로 모드를 유지하게 고쳤습니다.</p>
+<p><code>Scene::AddModel(const Model&amp;)</code> 은 캐시 모델의 메시·재질·이미지를 <em>복사</em>합니다(10단계). 같은 모델을 두 번 놓으면 CPU 메시와 GPU 버퍼가 두 벌이 됩니다. 헬멧 두 개(그림 2)는 문제없지만, Sponza 를 여러 번 놓는 경우는 다음 단계의 메시 공유(12절)로 미룹니다. 저장 쪽은 바꿀 것이 없습니다 — <code>MeshSource::FromModel(path, index)</code> 가 이미 경로로 저장하고, 로드할 때 <code>AssetManager</code> 에서 다시 받습니다(자동 검증 B).</p>
 
 <h2 id="s6"><span class="num">6.</span>텍스처 썸네일</h2>
 <pre><code><span class="cm">// TextureLoader::LoadThumbnail — 밉 0 만, 긴 변이 maxSize 를 넘으면 DirectXTex Resize [2], 블록 압축 DDS 는 Decompress 먼저</span>
 <span class="kw">bool</span> LoadThumbnail(<span class="kw">const</span> std::wstring&amp; path, uint32_t maxSize, TextureImage&amp; out);   <span class="cm">// srgb=false → R8G8B8A8_UNORM 라벨</span></code></pre>
 <p>왜 UNORM 인가: 11단계 씬 뷰 텍스처와 같은 이유입니다. UI 패스는 백버퍼의 UNORM 뷰에 그리고 ImGui 는 픽셀을 그대로 옮기므로, 파일의 sRGB 바이트를 sRGB 라벨로 만들면 샘플할 때 선형으로 풀려 화면에서 두 번 인코딩되어 바랩니다. 밉맵도 만들지 않습니다(128px 를 96px 타일에 그리므로 축소비가 작다).</p>
-<p>캐시는 브라우저의 것입니다(<code>상대 경로 → {TextureHandle, failed, lastUsedFrame}</code>). 렌더러의 <code>m_textureCache</code> 에 넣지 않는 이유: <code>Renderer::InvalidateScene(…, true)</code> 가 씬을 바꿀 때마다 파일 텍스처를 전부 지웁니다. 타일이 처음 보이면 자리표시자를 넣고 큐에 올리고, <code>Draw</code> 시작에서 프레임당 한 장만 디코딩합니다 — 2048² JPEG 디코드+축소가 10~30 ms 라 한 장씩이면 히치가 한 프레임에 그치고 Sponza 70장 폴더는 1초 남짓에 채워집니다. 스크롤로 사라진 타일은 큐에서 건너뛰고(다시 보이면 재요청), 상한 256 장(128² RGBA 64 KB × 256 = 16 MB)을 넘으면 오래 안 쓴 것부터 <code>DestroyTexture</code> 합니다 — D3D12 의 shader-visible SRV 힙(4096, <code>GetImGuiTextureId</code> 가 텍스처마다 하나 잡는다)도 그래서 안전합니다. 소멸자가 마지막 <code>Draw</code> 의 Device 로 전부 파괴합니다: <code>~TestApp</code>(→ Editor → 브라우저)이 <code>AppBase</code> 의 <code>Engine::Shutdown</code> 보다 먼저 돕니다.</p>
+<p>캐시는 브라우저가 소유합니다(<code>상대 경로 → {TextureHandle, failed, lastUsedFrame}</code>). 렌더러의 <code>m_textureCache</code> 에 넣지 않는 것은 <code>Renderer::InvalidateScene(…, true)</code> 가 씬을 바꿀 때마다 파일 텍스처를 전부 지우기 때문입니다. 타일이 처음 보이면 자리표시자를 넣고 큐에 올린 뒤, <code>Draw</code> 시작 시점에 프레임당 한 장만 디코딩합니다 — 2048² JPEG 디코드+축소가 10~30 ms 라 한 장씩이면 히치가 한 프레임에 그치고 Sponza 70장 폴더는 1초 남짓에 채워집니다. 스크롤로 사라진 타일은 큐에서 건너뛰고(다시 보이면 재요청), 상한 256 장(128² RGBA 64 KB × 256 = 16 MB)을 넘으면 오래 안 쓴 것부터 <code>DestroyTexture</code> 합니다 — D3D12 의 shader-visible SRV 힙(4096, <code>GetImGuiTextureId</code> 가 텍스처마다 하나 잡는다)도 그래서 안전합니다. 소멸자가 마지막 <code>Draw</code> 의 Device 로 전부 파괴합니다: <code>~TestApp</code>(→ Editor → 브라우저)이 <code>AppBase</code> 의 <code>Engine::Shutdown</code> 보다 먼저 실행됩니다.</p>
 
 <h2 id="s7"><span class="num">7.</span>텍스처 드롭과 <code>asset:</code> 이름</h2>
 <p>재질의 텍스처는 5단계부터 <code>Assets\Textures\</code> 기준 파일명("uv_checker.png")이었습니다. Sponza 의 이미지 70장은 <code>Models\Sponza\</code> 에 있어 이 규칙으로는 못 씁니다. 그래서 <code>Renderer::GetOrLoadTexture</code> 의 파일 분기에 접두어 하나를 더했습니다:</p>
 <pre><code><span class="kw">const</span> std::wstring path = name.rfind(<span class="str">"asset:"</span>, 0) == 0
     ? Paths::GetAssetPath(ToWide(name.substr(6)).c_str())                 <span class="cm">// "asset:Models\Sponza\lion.png"</span>
     : Paths::GetAssetPath((L<span class="str">"Textures\\"</span> + ToWide(name)).c_str());     <span class="cm">// "uv_checker.png" (기존)</span></code></pre>
-<p><code>ContentBrowser::ToMaterialTextureName</code> 이 이 규칙을 만듭니다: <code>Textures\</code> 바로 아래면 파일명만(예전 씬 파일과 같은 형태), 아니면 <code>asset:</code> + 상대 경로. <code>SceneSerializer</code> 는 이름을 그대로 저장하므로 바꿀 것이 없고, 재질 이름이 바뀌면 <code>GetOrCreateGpuMaterial</code> 이 다음 프레임에 ResourceSet 을 다시 만드므로 무효화 호출도 없습니다. 드롭은 광선이 맞은 오브젝트의 재질 알베도에 들어갑니다. 재질은 공유될 수 있어(프리미티브의 "Default") 같은 재질의 오브젝트가 함께 바뀌며 메뉴 바 메시지로 알립니다. 서브메시 슬롯 재질을 쓰는 모델 오브젝트는 <code>material</code> 이 그려지지 않으므로 받지 않고 Materials 창으로 안내합니다.</p>
+<p><code>ContentBrowser::ToMaterialTextureName</code> 이 이 규칙에 따라 이름을 만듭니다: <code>Textures\</code> 바로 아래면 파일명만(예전 씬 파일과 같은 형태), 아니면 <code>asset:</code> + 상대 경로. <code>SceneSerializer</code> 는 이름을 그대로 저장하므로 바꿀 것이 없고, 재질 이름이 바뀌면 <code>GetOrCreateGpuMaterial</code> 이 다음 프레임에 ResourceSet 을 다시 만드므로 무효화 호출도 없습니다. 드롭은 광선이 맞은 오브젝트의 재질 알베도에 들어갑니다. 재질은 공유될 수 있으므로(프리미티브의 "Default") 같은 재질을 쓰는 오브젝트가 함께 바뀌고, 이를 메뉴 바 메시지로 알립니다. 서브메시 슬롯 재질을 쓰는 모델 오브젝트는 <code>material</code> 이 그리기에 쓰이지 않으므로 드롭을 받지 않고 Materials 창으로 안내합니다.</p>
 
 <h2 id="s8"><span class="num">8.</span>도킹 배치와 imgui.ini</h2>
-<p><code>BuildDefaultLayout</code> 은 "Content Browser" 를 Console/Stats 와 같은 하단 노드에 넣고, 3 프레임 동안 <code>SetWindowFocus</code> 를 불러 활성 탭으로 만듭니다(첫 프레임에는 뒤에 처음 나타나는 Console 창이 포커스를 가져가므로 한 프레임으로는 부족합니다). 문제는 저장소에 추적되는 <code>SherlockEngine\imgui.ini</code> 입니다 — 11단계 레이아웃이 들어 있고 이 창의 항목이 없어, 그대로면 새 창이 떠다닙니다. 두 가지로 해결했습니다: (1) <code>DrawContentBrowser</code> 가 <code>FindWindowByName("Stats")-&gt;DockId</code> 로 <code>SetNextWindowDockID(…, ImGuiCond_FirstUseEver)</code> 를 걸어 ini 에 항목이 없는 첫 실행에 Stats 옆 탭으로 붙입니다(항목이 생긴 뒤에는 사용자가 옮긴 자리를 존중), (2) 추적 중인 ini 에 <code>[Window][Content Browser] DockId=0x00000006,1</code> 블록을 넣었습니다. 도킹 공간 ID 는 바꾸지 않았습니다 — 바꾸면 모든 사용자의 노드 트리가 버려집니다.</p>
+<p><code>BuildDefaultLayout</code> 은 "Content Browser" 를 Console/Stats 와 같은 하단 노드에 넣고, 3 프레임 동안 <code>SetWindowFocus</code> 를 불러 활성 탭으로 만듭니다(첫 프레임에는 뒤에 처음 나타나는 Console 창이 포커스를 가져가므로 한 프레임으로는 부족합니다). 문제는 저장소에서 추적 중인 <code>SherlockEngine\imgui.ini</code> 입니다 — 11단계 레이아웃이 들어 있고 이 창의 항목이 없어서, 그대로 두면 새 창이 도킹되지 않고 떠다닙니다. 두 가지로 해결했습니다: (1) <code>DrawContentBrowser</code> 가 <code>FindWindowByName("Stats")-&gt;DockId</code> 로 <code>SetNextWindowDockID(…, ImGuiCond_FirstUseEver)</code> 를 걸어 ini 에 항목이 없는 첫 실행에 Stats 옆 탭으로 붙입니다(항목이 생긴 뒤에는 사용자가 옮긴 자리를 존중), (2) 추적 중인 ini 에 <code>[Window][Content Browser] DockId=0x00000006,1</code> 블록을 넣었습니다. 도킹 공간 ID 는 바꾸지 않았습니다 — 바꾸면 모든 사용자의 노드 트리가 버려집니다.</p>
 
 <h2 id="s9"><span class="num">9.</span>자동 검증</h2>
 <p>11단계의 실행 인자 방식 그대로입니다. 새 인자는 씬 뷰 드롭과 <em>같은 코드 경로</em>(<code>PlaceModel</code>, <code>RaycastScene</code>, <code>ToMaterialTextureName</code>)를 지납니다.</p>
@@ -227,14 +227,14 @@ SherlockEngine.exe --exit-after=150 --scene=helmet "--browse=Models\Sponza" --sc
 
 <h2 id="s10"><span class="num">10.</span>함정과 해결</h2>
 <ul>
-  <li><strong>드래그 중 <code>IsItemHovered()</code> 는 false.</strong> ImGui 는 활성 소스 아이템이 있는 동안 다른 아이템의 호버를 막습니다. 그래서 <code>m_sceneHovered</code> 는 드래그 중 저절로 false 가 되어 RMB 카메라 룩이 시작되지 않는 대신, 드롭 판정을 호버에 걸면 절대 맞지 않습니다 — <code>BeginDragDropTarget/AcceptDragDropPayload</code> 만이 소스를 뚫고 봅니다. 카메라 쪽에는 <code>IsAssetDragActive()</code> 검사를 명시해 두었습니다(<code>IsDragDropActive</code> 는 internal 이라 <code>GetDragDropPayload()</code> 로 판단).</li>
+  <li><strong>드래그 중 <code>IsItemHovered()</code> 는 false.</strong> ImGui 는 활성 소스 아이템이 있는 동안 다른 아이템의 호버를 막습니다. 그래서 <code>m_sceneHovered</code> 가 드래그 중 저절로 false 가 되어 RMB 카메라 룩은 시작되지 않지만, 드롭 판정을 호버에 걸면 절대 성립하지 않습니다 — <code>BeginDragDropTarget/AcceptDragDropPayload</code> 만이 소스를 뚫고 봅니다. 카메라 쪽에는 <code>IsAssetDragActive()</code> 검사를 명시해 두었습니다(<code>IsDragDropActive</code> 는 internal 이라 <code>GetDragDropPayload()</code> 로 판단).</li>
   <li><strong>Esc 취소가 없다.</strong> ImGui 에는 드래그 취소 키가 없습니다. 소스에서 Esc 를 보고 플래그를 세우고, 타깃은 그 플래그가 참이면 받지 않으며, 마우스를 놓으면 플래그가 풀립니다.</li>
   <li><strong>마지막 아이템 ID.</strong> <code>BeginDragDropSource</code>·<code>BeginPopupContextItem</code> 은 "마지막 아이템" 을 씁니다. 툴팁 창(<code>SetTooltip</code>)이 그것을 바꾸므로 순서는 InvisibleButton → 드래그 소스 → 컨텍스트 메뉴 → 툴팁.</li>
   <li><strong>첫 프레임 포커스.</strong> 8절. 같은 프레임에 뒤에서 처음 나타난 창이 포커스를 가져간다. 3 프레임 반복.</li>
   <li><strong>썸네일 색공간.</strong> 6절. sRGB 라벨을 붙이면 UNORM 백버퍼 뷰에서 두 번 인코딩된다. UNORM 으로.</li>
   <li><strong>호버 중 모델 파싱.</strong> 4절. AABB 고스트는 <code>IsModelCached</code> 일 때만. 첫 드롭의 동기 파싱(Sponza 수 초)은 이번 범위에서 그대로 두고 로그로 알린다.</li>
-  <li><strong><code>GetAssetPath</code> 는 exe 사본 우선.</strong> 브라우저는 소스 트리를 보이지만 로드는 exe 옆 사본이 먼저다. 소스 트리에서 <em>수정</em>한 파일은 다음 빌드(CopyAssets)까지 옛 것이 읽히고, <em>추가</em>한 파일은 폴백으로 바로 보인다. <code>Paths.h</code> 주석에 적어 두었다.</li>
-  <li><strong>MSYS 인자 변환.</strong> Git Bash 에서 <code>msbuild /p:Configuration=Debug</code> 의 <code>/p:</code> 가 경로로 바뀌어 "프로젝트를 하나만 지정할 수 있습니다" 가 났다. PowerShell 로 빌드한다.</li>
+  <li><strong><code>GetAssetPath</code> 는 exe 사본 우선.</strong> 브라우저는 소스 트리를 보여 주지만 로드는 exe 옆 사본이 먼저다. 소스 트리에서 <em>수정</em>한 파일은 다음 빌드(CopyAssets)까지 옛 것이 읽히고, <em>추가</em>한 파일은 폴백으로 바로 보인다. <code>Paths.h</code> 주석에 적어 두었다.</li>
+  <li><strong>MSYS 인자 변환.</strong> Git Bash 에서 <code>msbuild /p:Configuration=Debug</code> 의 <code>/p:</code> 가 경로로 바뀌어 "프로젝트를 하나만 지정할 수 있습니다" 오류가 났다. PowerShell 로 빌드한다.</li>
 </ul>
 
 <h2 id="s11"><span class="num">11.</span>검증과 스크린샷</h2>
@@ -277,7 +277,7 @@ SherlockEngine.exe --exit-after=150 --scene=helmet "--browse=Models\Sponza" --sc
 
 <h2 id="s12"><span class="num">12.</span>다음 단계</h2>
 <ul>
-  <li><strong>메시 공유.</strong> <code>Scene::AddModel</code> 이 드롭마다 복사한다. <code>MeshSource</code>(경로 + 인덱스)가 같은 메시를 씬 안에서 재사용하면 같은 모델 N 개가 GPU 버퍼 한 벌이 된다 — 12단계 인스턴싱의 전제이기도 하다.</li>
+  <li><strong>메시 공유.</strong> <code>Scene::AddModel</code> 이 드롭마다 복사한다. <code>MeshSource</code>(경로 + 인덱스)로 같은 메시를 씬 안에서 재사용하면 같은 모델 N 개가 GPU 버퍼 한 벌이 된다 — 12단계 인스턴싱의 전제이기도 하다.</li>
   <li><strong>비동기 로드.</strong> 첫 드롭의 동기 파싱(Sponza 수 초). 스레드에서 파싱해 자리표시자를 먼저 놓는다.</li>
   <li><strong>Hierarchy·Inspector 드롭, 브라우저 안 파일 이동, 모델 썸네일(오프스크린 렌더).</strong> 이번 범위에서 뺀 것. 페이로드와 <code>HandleAssetDrop</code> 이 그대로 쓰인다.</li>
   <li><strong>되돌리기(Undo).</strong> 드롭·삭제·기즈모 편집이 모두 즉시 적용된다. 명령 스택이 필요해지는 첫 지점.</li>

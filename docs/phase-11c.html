@@ -104,7 +104,7 @@ tr:last-child td{border-bottom:0}
     <li><a href="#s1">1. 요약</a></li>
     <li><a href="#s2">2. 왜 필요했나: 켜자마자 움직이는 씬</a></li>
     <li><a href="#s3">3. Behaviour: C++ 로 쓰는 오브젝트 로직</a></li>
-    <li class="sub"><a href="#s3-1">3.1 클래스 하나 = 컴포넌트 하나</a></li>
+    <li class="sub"><a href="#s3-1">3.1 클래스 하나 = 스크립트 하나</a></li>
     <li class="sub"><a href="#s3-2">3.2 레지스트리와 SHERLOCK_BEHAVIOUR</a></li>
     <li class="sub"><a href="#s3-3">3.3 PropertyVisitor: 저장과 Inspector 를 한 번에</a></li>
     <li class="sub"><a href="#s3-4">3.4 에디터에서 새 스크립트 만들기 · 편집</a></li>
@@ -125,7 +125,7 @@ tr:last-child td{border-bottom:0}
 <main>
 <div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
 <h1>11-C단계 · 재생 모드와 C++ 컴포넌트</h1>
-<p class="lede">언리얼의 Play In Editor 처럼, 씬 뷰의 <b>Play</b> 를 눌러야 게임이 돕니다. 오브젝트의 로직은 <code>Game/</code> 폴더의 C++ 클래스(<code>Behaviour</code>)이고, Visual Studio 에서 클래스를 하나 추가해 빌드하면 Inspector 의 "Add Component" 목록에 나타나 씬 파일에 이름으로 저장됩니다. Stop 은 재생 전 스냅샷을 되돌리므로 편집 중인 씬은 재생에 오염되지 않습니다.</p>
+<p class="lede">언리얼의 Play In Editor 처럼, 씬 뷰의 <b>Play</b> 를 눌러야 게임이 돕니다. 오브젝트의 로직은 <code>Game/</code> 폴더의 C++ 클래스(<code>Behaviour</code>)이고, Visual Studio 에서 클래스를 하나 추가해 빌드하면 Inspector 의 "Add Component" 목록에 나타나고, 씬 파일에는 이름으로 저장됩니다. Stop 은 재생 전 스냅샷으로 되돌리므로 재생 중에 바뀐 것이 편집 중인 씬에 남지 않습니다.</p>
 
 <div class="facts">
   <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
@@ -138,7 +138,7 @@ tr:last-child td{border-bottom:0}
 
 <div class="callout">
   <div class="t">한 줄 요약</div>
-  <p>게임 로직은 <code>Behaviour</code> 를 상속한 C++ 클래스이고, <code>SHERLOCK_BEHAVIOUR(클래스)</code> 한 줄이 이름 → 생성 함수를 레지스트리에 등록합니다. <code>Reflect(PropertyVisitor&amp;)</code> 가 열거한 필드를 SceneSerializer 는 JSON 으로, Editor 는 ImGui 위젯으로 씁니다(Scene 계층은 ImGui 를 모릅니다). Play 는 씬+카메라를 JSON 문자열로 스냅샷하고 <code>Scene::BeginPlay</code>, Stop 은 그 문자열을 다시 로드합니다 — 11단계 SceneSerializer 위에 얹혀 렌더러는 한 줄도 바뀌지 않았습니다.</p>
+  <p>게임 로직은 <code>Behaviour</code> 를 상속한 C++ 클래스이고, <code>SHERLOCK_BEHAVIOUR(클래스)</code> 한 줄이 이름 → 생성 함수를 레지스트리에 등록합니다. <code>Reflect(PropertyVisitor&amp;)</code> 가 열거한 필드를 SceneSerializer 는 JSON 으로, Editor 는 ImGui 위젯으로 씁니다(Scene 계층은 ImGui 를 모릅니다). Play 는 씬+카메라를 JSON 문자열로 스냅샷한 뒤 <code>Scene::BeginPlay</code> 를 부르고, Stop 은 그 문자열을 다시 로드합니다 — 11단계 SceneSerializer 위에 얹은 구조라 재생을 위해 렌더러를 고친 곳은 없습니다.</p>
 </div>
 
 <h2 id="s1"><span class="num">1.</span>요약</h2>
@@ -146,22 +146,22 @@ tr:last-child td{border-bottom:0}
   <thead><tr><th>항목</th><th>구현</th><th>확인</th></tr></thead>
   <tbody>
     <tr><td>Play / Pause / Step / Stop</td><td>씬 뷰 툴바 버튼 + 시간 배율 슬라이더, Ctrl+P, F10(일시정지). <code>TestApp::StartPlay/StopPlay/TogglePause/StepFrame</code></td><td>자동 검증 A·B (9절), 그림 1·2</td></tr>
-    <tr><td>C++ 스크립트 / 컴포넌트</td><td><code>Scene/Behaviour.h</code>: <code>Behaviour</code>(Start/Update/FixedUpdate/Reflect), <code>PropertyVisitor</code>, <code>BehaviourRegistry</code>. <code>Scene/Script.h</code>: 사용자 스크립트 기반(MonoBehaviour) — Translate/Rotate/LookAt/GetInput/Find/GetComponent 헬퍼, <code>SHERLOCK_SCRIPT</code> 매크로. 엔진 컴포넌트는 <code>SHERLOCK_BEHAVIOUR</code></td><td>Inspector 의 Add Component 가 Scripts / Components 로 나뉘어 뜬다</td></tr>
+    <tr><td>C++ 스크립트 / 컴포넌트</td><td><code>Scene/Behaviour.h</code>: <code>Behaviour</code>(Start/Update/FixedUpdate/Reflect), <code>PropertyVisitor</code>, <code>BehaviourRegistry</code>. <code>Scene/Script.h</code>: 사용자 스크립트의 기반 클래스(MonoBehaviour) — Translate/Rotate/LookAt/GetInput/Find/GetComponent 헬퍼, <code>SHERLOCK_SCRIPT</code> 매크로. 엔진 컴포넌트는 <code>SHERLOCK_BEHAVIOUR</code></td><td>Inspector 의 Add Component 가 Scripts / Components 로 나뉘어 뜬다</td></tr>
     <tr><td>재생 루프</td><td><code>Scene::BeginPlay(input, camera)</code> → 매 프레임 <code>Update(dt×배율)</code>, 고정 스텝마다 <code>FixedUpdate</code> → <code>EndPlay</code>. 편집 중에는 부르지 않는다</td><td>Play 전 정지, Play 뒤 이동 (그림 2 vs 1)</td></tr>
     <tr><td>스냅샷</td><td><code>SceneSerializer::SaveToString / LoadFromString</code> — 파일 버전과 같은 JSON</td><td>Stop 뒤 위치가 정확히 복원 (B)</td></tr>
-    <tr><td>직렬화</td><td>오브젝트마다 <code>"components": [{"type","enabled", …Reflect 필드}]</code>, 버전 2 (1도 읽힘)</td><td>저장 → 재시작 로드에서 컴포넌트 복원 (C)</td></tr>
-    <tr><td>내장 것</td><td>엔진 컴포넌트: Rigidbody(중력·바닥 반발·AddImpulse), FollowTarget(추적), CameraComponent. 예제 스크립트: PlayerController(방향키 이동 + Space 점프), Rotator(자전 한 줄)</td><td>데모 씬의 움직임이 전부 스크립트로 (7절)</td></tr>
+    <tr><td>직렬화</td><td>오브젝트마다 <code>"components": [{"type","enabled", …Reflect 필드}]</code>, 버전 2 (버전 1도 읽힘)</td><td>저장 → 재시작 로드에서 컴포넌트 복원 (C)</td></tr>
+    <tr><td>기본 제공</td><td>엔진 컴포넌트: Rigidbody(중력·바닥 반발·AddImpulse), FollowTarget(추적), CameraComponent. 예제 스크립트: PlayerController(방향키 이동 + Space 점프), Rotator(자전 한 줄)</td><td>데모 씬의 움직임을 모두 스크립트로 (7절)</td></tr>
     <tr><td>씬 안의 카메라</td><td><code>Scene/CameraComponent</code>: 카메라 오브젝트("Main Camera")를 기즈모로 배치, 재생 중 priority 가 가장 높은 카메라로 렌더링(Play 시작은 즉시, 재생 도중 전환은 blendTime 보간). Hierarchy "+ Camera", 프러스텀 아이콘, Look through / Align to view, 선택한 카메라의 시점 미리보기(씬 뷰 우측 하단, <code>Renderer</code> PreviewPass)</td><td>자동 검증 E·F (9절), 그림 1·5·6</td></tr>
     <tr><td>Inspector</td><td>컴포넌트 목록(enabled 체크·삭제·필드 편집), Add Component 콤보, 재생 중 배너</td><td>그림 3</td></tr>
   </tbody>
 </table></div>
 
 <h2 id="s2"><span class="num">2.</span>왜 필요했나: 켜자마자 움직이는 씬</h2>
-<p>11단계까지 데모 씬의 공전·진동·회전·맥동은 <code>TestApp::OnUpdate</code> 가 오브젝트 인덱스(<code>m_orbitSphere</code> 등)로 직접 위치를 쓰는 하드코딩이었습니다. 앱을 켜면 바로 움직였고, 오브젝트에는 "로직" 이라는 개념이 없어 사용자가 새 움직임을 붙일 방법도 없었습니다. 상용 엔진의 방식은 두 가지가 합쳐진 것입니다: (1) 로직을 오브젝트에 붙는 컴포넌트로 만들고, (2) 에디터가 "편집" 과 "재생" 을 구분해 재생 중에만 로직을 돌리고 끝나면 되돌린다. 이 단계는 그 둘을 11단계의 콜백 구조와 SceneSerializer 위에 얹습니다.</p>
+<p>11단계까지 데모 씬의 공전·진동·회전·맥동은 <code>TestApp::OnUpdate</code> 가 오브젝트 인덱스(<code>m_orbitSphere</code> 등)로 직접 위치를 쓰는 하드코딩이었습니다. 앱을 켜면 바로 움직였고, 오브젝트에는 "로직" 이라는 개념이 없어 사용자가 새 움직임을 붙일 방법도 없었습니다. 상용 엔진은 두 가지를 함께 씁니다: (1) 로직을 오브젝트에 붙는 컴포넌트로 만들고, (2) 에디터가 "편집" 과 "재생" 을 구분해 재생 중에만 로직을 돌리고 끝나면 되돌립니다. 이 단계는 그 둘을 11단계의 콜백 구조와 SceneSerializer 위에 얹습니다.</p>
 
 <h2 id="s3"><span class="num">3.</span>Behaviour: C++ 로 쓰는 오브젝트 로직</h2>
 <h3 id="s3-1">3.1 클래스 하나 = 스크립트 하나 (유니티 MonoBehaviour)</h3>
-<p>오브젝트의 움직임·규칙은 사용자가 직접 씁니다. 언리얼처럼 <code>Game/Scripts/&lt;이름&gt;.h</code>(선언) + <code>.cpp</code>(구현 + <code>SHERLOCK_SCRIPT</code>) 한 쌍이고, Inspector 의 New Script... 가 만들어 줍니다(3.4절). 헤더를 두는 이유는 <em>스크립트끼리 서로 부르기</em> 위해서입니다 — 부착·저장은 레지스트리의 이름으로만 일어나므로 헤더 없이도 되지만, 다른 스크립트가 <code>#include</code> 뒤 <code>Find("Cylinder")-&gt;GetBehaviour&lt;Rotator&gt;()-&gt;Toggle()</code> 처럼 타입으로 접근하려면 선언이 보여야 합니다(PlayerController 가 R 키로 그렇게 합니다). 처음의 시안에는 Orbit·Bob·Spin·Pulse 같은 기성 움직임 컴포넌트가 있었지만, "움직임은 내가 짠다" 가 목적이므로 없앴습니다. 대신 그런 움직임에 필요한 조작은 <code>Transform</code> 의 함수(<code>Translate / TranslateLocal / Rotate / LookAt / GetForward</code>)와 <code>Script</code> 의 단축(<code>SetPosition / SetScale / GetInput / GetTime / Find / GetComponent&lt;T&gt;</code>)으로 두어 Update 에서 부릅니다.</p>
+<p>오브젝트의 움직임·규칙은 사용자가 직접 씁니다. 언리얼처럼 <code>Game/Scripts/&lt;이름&gt;.h</code>(선언) + <code>.cpp</code>(구현 + <code>SHERLOCK_SCRIPT</code>) 한 쌍이고, Inspector 의 New Script... 가 만들어 줍니다(3.4절). 헤더를 두는 이유는 <em>스크립트끼리 서로 부르기</em> 위해서입니다 — 부착·저장은 레지스트리의 이름으로만 일어나므로 헤더 없이도 되지만, 다른 스크립트가 <code>#include</code> 한 뒤 <code>Find("Cylinder")-&gt;GetBehaviour&lt;Rotator&gt;()-&gt;Toggle()</code> 처럼 타입으로 접근하려면 선언이 보여야 합니다(PlayerController 가 R 키로 그렇게 합니다). 처음 시안에는 Orbit·Bob·Spin·Pulse 같은 기성 움직임 컴포넌트가 있었지만, "움직임은 내가 짠다" 가 목적이므로 없앴습니다. 대신 그런 움직임에 필요한 조작은 <code>Transform</code> 의 함수(<code>Translate / TranslateLocal / Rotate / LookAt / GetForward</code>)와 <code>Script</code> 의 단축 함수(<code>SetPosition / SetScale / GetInput / GetTime / Find / GetComponent&lt;T&gt;</code>)으로 두어 Update 에서 부릅니다.</p>
 <pre><code><span class="cm">// Game/Scripts/Rotator.h — 선언. 다른 스크립트가 include 해서 Toggle/SetSpeed 를 부른다</span>
 #pragma once
 #include <span class="str">"Scene/Script.h"</span>
@@ -198,7 +198,7 @@ SHERLOCK_SCRIPT(Rotator)   <span class="cm">// 이름 "Rotator" 로 등록. 빌�
         <span class="kw">if</span> (Rigidbody* body = GetComponent&lt;Rigidbody&gt;()) <span class="kw">if</span> (body-&gt;IsGrounded()) body-&gt;AddImpulse(0, jumpSpeed, 0);
     <span class="kw">if</span> (input.IsKeyPressed(<span class="str">'R'</span>) &amp;&amp; m_rotator) m_rotator-&gt;Toggle();   <span class="cm">// 스크립트 → 스크립트</span>
 }</code></pre>
-<p>스크립트끼리 참조할 때의 규칙: 상대 포인터는 <code>Start</code> 에서 찾아 멤버에 둔다(오브젝트는 <code>unique_ptr</code> 라 재생 중 주소가 안정적). Stop 은 씬을 스냅샷에서 다시 만들므로 이전 재생의 포인터는 무효이고, 재생마다 <code>Start</code> 가 다시 불리니 거기서 다시 찾으면 된다. 상대가 아직 <code>Start</code> 전일 수 있으므로(오브젝트 순서) 상대의 초기화 결과에 의존하면 첫 <code>Update</code> 에서 찾는다. 헤더끼리는 서로 include 하지 않고 전방 선언 + 포인터.</p>
+<p>스크립트끼리 참조할 때의 규칙: 상대 포인터는 <code>Start</code> 에서 찾아 멤버에 둔다(오브젝트는 <code>unique_ptr</code> 라 재생 중 주소가 안정적). Stop 은 씬을 스냅샷에서 다시 만들므로 이전 재생의 포인터는 무효이고, 재생마다 <code>Start</code> 가 다시 불리니 거기서 다시 찾으면 된다. 상대가 아직 <code>Start</code> 전일 수 있으므로(오브젝트 순서) 상대의 초기화 결과에 의존한다면 첫 <code>Update</code> 에서 찾는다. 헤더끼리는 서로 include 하지 않고 전방 선언 + 포인터를 쓴다.</p>
 <p>생명주기는 유니티의 MonoBehaviour 와 같습니다: <code>Start</code>(재생 시작 뒤 첫 프레임, 재생 중 추가된 것도 그 다음 프레임에), <code>Update(dt)</code>(매 프레임, 시간 배율 반영), <code>FixedUpdate(fixedDt)</code>(10단계 고정 스텝 — Rigidbody 가 쓴다). <code>enabled</code> 가 false 면 Update/FixedUpdate 를 받지 않습니다. <code>Script</code> 는 <code>Behaviour</code>(모든 컴포넌트의 기반)의 얇은 하위 클래스로 헬퍼만 더합니다 — 엔진 컴포넌트(Rigidbody·CameraComponent·FollowTarget)는 <code>Behaviour</code> 를 직접 상속하고 <code>SHERLOCK_BEHAVIOUR</code> 로 등록하며, 스크립트에서 <code>GetComponent&lt;Rigidbody&gt;()</code> 로 찾아 쓸 수 있게 헤더(<code>Game/Components/Rigidbody.h</code>)를 갖습니다.</p>
 
 <h3 id="s3-2">3.2 레지스트리와 SHERLOCK_BEHAVIOUR</h3>
@@ -214,12 +214,12 @@ SHERLOCK_SCRIPT(Rotator)   <span class="cm">// 이름 "Rotator" 로 등록. 빌�
 
 <span class="cm">// SceneSerializer.cpp — JsonWriteVisitor: m_j[name] = value / JsonReadVisitor: if (contains) value = m_j[name]</span>
 <span class="cm">// Editor.cpp        — ImGuiPropertyVisitor: ImGui::DragFloat(name, &amp;value, speed) …</span>
-<span class="cm">// TestApp.cpp       — 데모 씬 구성에서도 방문자로 초기값을 넣는다 (Rigidbody.initialVelocity)</span></code></pre>
-<p>필드를 하나 더하면 <code>Reflect</code> 한 줄로 저장·로드·편집이 같이 생깁니다. 반사(reflection)의 가장 작은 형태입니다.</p>
+<span class="cm">// TestApp.cpp       — 데모 씬 구성은 방문자를 거치지 않고 AddBehaviour 뒤 필드에 초기값을 직접 넣는다 (Rigidbody.initialVelocity)</span></code></pre>
+<p>필드를 하나 더하면 <code>Reflect</code> 한 줄로 저장·로드·편집이 같이 생깁니다. 리플렉션(reflection)의 가장 작은 형태입니다.</p>
 
 <h3 id="s3-4">3.4 에디터에서 새 스크립트 만들기 · 편집</h3>
-<p>유니티의 Create &gt; C# Script 에 해당합니다. Inspector 의 <b>New Script...</b> 에 클래스 이름을 넣으면 <code>App/ScriptCreator</code> 가 (1) <code>Game/Scripts/&lt;이름&gt;.h</code>(선언: Reflect·Start·Update, 필드)와 <code>&lt;이름&gt;.cpp</code>(구현 골격, 쓸 수 있는 함수 목록 주석, <code>SHERLOCK_SCRIPT</code>)를 템플릿으로 만들고, (2) <code>SherlockEngine.vcxproj</code> 와 <code>.filters</code> 의 마지막 <code>Game\Scripts</code> 항목 뒤에 <code>&lt;ClInclude&gt;</code>·<code>&lt;ClCompile&gt;</code> 줄을 끼워 넣고(줄 끝·BOM 은 파일을 따른다), (3) 두 파일을 연결 프로그램(보통 Visual Studio)으로 엽니다 — 언리얼의 New C++ Class 와 같은 결과. 스크립트 컴포넌트 헤더의 <b>Edit</b> 버튼은 그 .h/.cpp 를 바로 엽니다.</p>
-<p>에디터는 컴파일하지 않습니다 — C++ 이므로 만들거나 고친 뒤 Visual Studio 에서 빌드(Ctrl+Shift+B)하고 앱을 다시 실행해야 Add Component 의 Scripts 목록에 나타납니다(팝업과 상태 메시지가 안내). 소스 트리가 있는 저장소 빌드(<code>x64\Debug</code>)에서만 되고, 배포 빌드에서는 버튼이 "source tree not found" 를 보입니다. 자동 검증 <code>--new-script=TestScript</code> 로 같은 경로를 창 없이 돌려, 생성된 .h/.cpp 가 그대로 컴파일되고 재실행 뒤 <code>--add-component=TestScript</code> 가 붙는 것을 확인했습니다(검증 뒤 파일과 항목은 지웠다). 데모 재생에서 PlayerController 가 Cylinder 의 Rotator 를 찾는다(경고 없음). 라이브 코딩(실행 중 재컴파일)은 12절.</p>
+<p>유니티의 Create &gt; C# Script 에 해당합니다. Inspector 의 <b>New Script...</b> 에 클래스 이름을 넣으면 <code>App/ScriptCreator</code> 가 (1) <code>Game/Scripts/&lt;이름&gt;.h</code>(선언: Reflect·Start·Update, 필드)와 <code>&lt;이름&gt;.cpp</code>(구현 골격, 쓸 수 있는 함수 목록 주석, <code>SHERLOCK_SCRIPT</code>)를 템플릿으로 만들고, (2) <code>SherlockEngine.vcxproj</code> 와 <code>.filters</code> 의 마지막 <code>Game\Scripts</code> 항목 뒤에 <code>&lt;ClInclude&gt;</code>·<code>&lt;ClCompile&gt;</code> 줄을 끼워 넣고(줄 끝·BOM 은 파일을 따른다), (3) 두 파일을 연결 프로그램(보통 Visual Studio)으로 엽니다. 결과는 언리얼의 New C++ Class 와 같습니다. 스크립트 컴포넌트 헤더의 <b>Edit</b> 버튼은 그 .h/.cpp 를 바로 엽니다.</p>
+<p>에디터는 컴파일하지 않습니다 — C++ 이므로 만들거나 고친 뒤 Visual Studio 에서 빌드(Ctrl+Shift+B)하고 앱을 다시 실행해야 Add Component 의 Scripts 목록에 나타납니다(팝업과 상태 메시지로 안내합니다). 소스 트리가 있는 저장소 빌드(<code>x64\Debug</code>)에서만 동작하고, 배포 빌드에서는 버튼이 "source tree not found" 를 표시합니다. 자동 검증 <code>--new-script=TestScript</code> 로 같은 경로를 창 없이 돌려, 생성된 .h/.cpp 가 그대로 컴파일되고 재실행 뒤 <code>--add-component=TestScript</code> 가 붙는 것을 확인했습니다(검증 뒤 파일과 항목은 지웠습니다). 데모 재생에서는 PlayerController 가 Cylinder 의 Rotator 를 찾습니다(경고 없음). 라이브 코딩(실행 중 재컴파일)은 12절에서 다룹니다.</p>
 
 <h2 id="s4"><span class="num">4.</span>재생 루프: Scene::Update 와 PlayContext</h2>
 <pre><code><span class="cm">// Scene — 재생 중에만 컴포넌트를 부른다. 컨텍스트는 씬이 하나 들고 컴포넌트가 포인터로 본다.</span>
@@ -231,7 +231,7 @@ SHERLOCK_SCRIPT(Rotator)   <span class="cm">// 이름 "Rotator" 로 등록. 빌�
 <span class="cm">// TestApp — AppBase 루프에서 (10단계 순서 그대로)</span>
 OnFixedUpdate: <span class="kw">if</span> (Playing) scene.FixedUpdate(fixedDt * m_timeScale);
 OnUpdate:      <span class="kw">if</span> (Playing) scene.Update(dt * m_timeScale);  <span class="kw">else if</span> (m_stepOnce) { FixedUpdate(step); Update(step); }</code></pre>
-<p>순회는 인덱스로 합니다 — 컴포넌트가 재생 중 오브젝트를 추가해 벡터가 재할당돼도 안전합니다(삭제는 순회 중 금지, 6절). <code>PlayContext::cameraDriven</code> 은 GameCamera 같은 컴포넌트가 카메라를 움직였다는 표시로, <code>TestApp::UpdateCamera</code> 가 참이면 WASD/RMB 를 건너뜁니다. 시간 배율은 dt 에 곱하므로 0 이면 멈춘 채 재생 상태이고, 고정 스텝에도 곱해 Rigidbody 가 같은 비율로 느려집니다.</p>
+<p>순회는 인덱스로 합니다 — 컴포넌트가 재생 중 오브젝트를 추가해 벡터가 재할당돼도 안전합니다(삭제는 순회 중 금지, 6절). <code>PlayContext::cameraDriven</code> 은 활성 CameraComponent 가 카메라를 움직였다는 표시로, 이 값이 참이면 <code>TestApp::UpdateCamera</code> 가 WASD/RMB 를 건너뜁니다. 시간 배율은 dt 에 곱하므로 0 이면 재생 상태인 채로 멈추고, 고정 스텝에도 곱해 Rigidbody 가 같은 비율로 느려집니다.</p>
 
 <h2 id="s5"><span class="num">5.</span>Play / Pause / Step / Stop: 스냅샷</h2>
 <pre><code><span class="cm">// StartPlay: 편집 씬을 문자열로 적어 두고 재생 시작</span>
@@ -243,10 +243,10 @@ scene.EndPlay();
 renderer.InvalidateScene(scene, <span class="kw">false</span>);          <span class="cm">// 메시·재질 포인터 키 캐시. 텍스처는 유지 (다시 읽지 않는다)</span>
 SceneSerializer::LoadFromString(scene, camera, assets, m_playSnapshot, <span class="str">"play snapshot"</span>);
 m_editor.SetSelectedObject(selected);            <span class="cm">// 오브젝트 순서가 같으므로 선택 인덱스는 그대로</span></code></pre>
-<p>유니티가 하는 방식 그대로입니다. 재생 중의 편집(기즈모·Inspector)은 막지 않고 Inspector 에 "Playing: edits are discarded on Stop" 배너를 띄웁니다 — 언리얼 PIE 도 같은 동작이고, 재생 중 값을 만져 보는 것이 튜닝에 유용하기 때문입니다. Pause 는 Update 를 부르지 않을 뿐이고, Step 은 일시정지 상태에서 고정 스텝(1/60 s) 한 번을 FixedUpdate + Update 로 돌립니다. 스냅샷이 씬 로드와 같은 경로라, 저장되지 않는 것(GPU 자원, 렌더 설정)은 재생에도 영향받지 않는다는 규칙이 자동으로 지켜집니다.</p>
+<p>유니티가 하는 방식 그대로입니다. 재생 중의 편집(기즈모·Inspector)은 막지 않고 Inspector 에 "Playing: edits are discarded on Stop" 배너를 띄웁니다. 언리얼 PIE 도 같게 동작하며, 막지 않는 이유는 재생 중 값을 만져 보는 것이 튜닝에 유용하기 때문입니다. Pause 는 Update 를 부르지 않을 뿐이고, Step 은 일시정지 상태에서 고정 스텝(1/60 s) 한 번을 FixedUpdate + Update 로 돌립니다. 스냅샷이 씬 로드와 같은 경로라, 저장되지 않는 것(GPU 자원, 렌더 설정)은 재생에도 영향받지 않는다는 규칙이 자동으로 지켜집니다.</p>
 
 <h2 id="s6"><span class="num">6.</span>GameObject 를 unique_ptr 로</h2>
-<p>이 단계의 가장 큰 파급입니다. <code>Scene::m_objects</code> 는 <code>std::vector&lt;GameObject&gt;</code>(값)였습니다. 컴포넌트가 <code>GameObject*</code> 소유자를 들면 벡터가 늘어날 때(재생 중 오브젝트 추가, 모델 드롭) 주소가 바뀌어 댕글링이 됩니다. 그래서 <code>std::vector&lt;std::unique_ptr&lt;GameObject&gt;&gt;</code> 로 바꾸고 <code>GameObject</code> 의 복사를 지웠습니다. 메시·재질은 3단계부터 이미 <code>unique_ptr</code> 라 렌더러의 포인터 키 캐시는 영향이 없고, 바뀐 곳은 <code>GetObjects()[i].</code> → <code>-&gt;</code> 인 Editor·TestApp·Renderer·SceneSerializer 의 순회 30여 곳입니다. 인덱스는 여전히 에디터 선택의 식별자이고 <code>Scene::RemoveObject</code> 만 뒤 인덱스를 밀어냅니다(그래서 삭제만 Demo → File 모드 전환).</p>
+<p>이 단계의 가장 큰 파급입니다. <code>Scene::m_objects</code> 는 <code>std::vector&lt;GameObject&gt;</code>(값)였습니다. 컴포넌트가 소유자 포인터(<code>GameObject*</code>)를 들고 있으면 벡터가 늘어날 때(재생 중 오브젝트 추가, 모델 드롭) 주소가 바뀌어 댕글링 포인터가 됩니다. 그래서 <code>std::vector&lt;std::unique_ptr&lt;GameObject&gt;&gt;</code> 로 바꾸고 <code>GameObject</code> 의 복사를 지웠습니다. 메시·재질은 3단계부터 이미 <code>unique_ptr</code> 라 렌더러의 포인터 키 캐시는 영향이 없고, 바뀐 곳은 <code>GetObjects()[i].</code> 를 <code>-&gt;</code> 로 고친 Editor·TestApp·Renderer·SceneSerializer 의 순회 30여 곳입니다. 인덱스는 여전히 에디터 선택의 식별자이고, <code>Scene::RemoveObject</code> 만 뒤 인덱스를 밀어냅니다(그래서 삭제할 때만 Demo → File 모드로 전환).</p>
 
 <h2 id="s7"><span class="num">7.</span>내장 컴포넌트 (Game/)</h2>
 <div class="tbl"><table>
@@ -258,10 +258,10 @@ m_editor.SetSelectedObject(selected);            <span class="cm">// 오브젝�
     <tr><td><code>Rigidbody</code></td><td>initialVelocity, gravity, bounciness, radius, groundY, drag</td><td>FixedUpdate: 중력·적분·바닥 반발 (오브젝트 간 충돌 없음)</td><td>CubeStatic (위로 9 m/s)</td></tr>
   </tbody>
 </table></div>
-<p>데모 씬의 움직임은 이제 스크립트 두 개뿐입니다: Play 를 누르면 방향키로 가운데 구를 움직이고 Space 로 점프하며(PlayerController + Rigidbody), 원기둥이 자전하고(Rotator), CubeStatic 이 튀어 올랐다 떨어집니다(Rigidbody 초기 속도). 나머지 오브젝트는 가만히 있습니다 — 공전·진동·맥동 같은 움직임은 이제 사용자가 스크립트를 써서 붙입니다. PlayerController 가 WASD 가 아니라 방향키를 쓰는 것은 WASD 가 에디터 카메라(2단계)의 것이기 때문입니다. Rigidbody 는 물리 엔진의 자리표시자입니다 — 바닥과만 반발하고 오브젝트끼리는 충돌하지 않습니다(<code>IsGrounded / AddImpulse / SetVelocity</code> 가 스크립트용 API).</p>
+<p>데모 씬의 움직임은 이제 스크립트 두 개뿐입니다: Play 를 누르면 방향키로 가운데 구를 움직이고 Space 로 점프하며(PlayerController + Rigidbody), 원기둥이 자전하고(Rotator), CubeStatic 이 튀어 올랐다 떨어집니다(Rigidbody 초기 속도). 나머지 오브젝트는 가만히 있습니다 — 공전·진동·맥동 같은 움직임은 이제 사용자가 스크립트를 써서 붙입니다. PlayerController 가 WASD 가 아니라 방향키를 쓰는 것은 WASD 를 에디터 카메라(2단계)가 쓰기 때문입니다. Rigidbody 는 물리 엔진의 자리표시자입니다 — 바닥과만 반발하고 오브젝트끼리는 충돌하지 않습니다(<code>IsGrounded / AddImpulse / SetVelocity</code> 가 스크립트용 API).</p>
 
 <h3 id="s7-1">7.1 씬 안의 카메라: CameraComponent</h3>
-<p>처음 버전은 "GameCamera" 컴포넌트가 오프셋으로 엔진 카메라를 직접 움직였습니다. 그러면 사용자가 카메라를 씬에서 <em>배치</em>할 수 없습니다. 유니티의 Main Camera 처럼 카메라도 오브젝트여야 합니다. 그래서 <code>Scene/CameraComponent</code>(Game/ 이 아니라 Scene/ — 에디터와 씬이 타입을 알아야 하므로)를 두었습니다.</p>
+<p>처음 버전은 "GameCamera" 컴포넌트가 오프셋으로 엔진 카메라를 직접 움직였습니다. 이렇게 하면 사용자가 카메라를 씬에서 <em>배치</em>할 수 없습니다. 유니티의 Main Camera 처럼 카메라도 오브젝트여야 합니다. 그래서 <code>Scene/CameraComponent</code>(Game/ 이 아니라 Scene/ — 에디터와 씬이 타입을 알아야 하므로)를 두었습니다.</p>
 <pre><code><span class="cm">// 카메라 = 메시 없는 GameObject + CameraComponent. 자세는 그 오브젝트의 Transform (position 이 눈, rotation.x pitch, rotation.y yaw)</span>
 <span class="kw">class</span> CameraComponent : <span class="kw">public</span> Behaviour {
     <span class="kw">float</span> fovYDegrees = 45, nearZ = 0.1f, farZ = 1000;
@@ -279,9 +279,9 @@ m_editor.SetSelectedObject(selected);            <span class="cm">// 오브젝�
     camera-&gt;SetPosition / SetYawPitch / SetLens(fov, 종횡비 유지, near, far);  m_playContext.cameraDriven = <span class="kw">true</span>;
 }</code></pre>
 <ul>
-  <li><strong>편집 중</strong>: 에디터 카메라로 본다. 카메라 오브젝트는 씬 뷰에 프러스텀 아이콘(1.5 단위 앞 단면 + 위 삼각형 + 이름)으로 보이고, 메시가 없어도 1 단위 상자로 클릭 선택된다. Hierarchy 의 "+ Camera" 는 지금 에디터 시점에 "Camera N" 을 만든다. Inspector 의 <b>Look through</b>(에디터 시점 ← 카메라)와 <b>Align to view</b>(카메라 ← 에디터 시점)로 자리를 잡는다.</li>
-  <li><strong>재생 중</strong>: 활성 카메라의 자세가 매 프레임 엔진 카메라에 쓰인다. Play 시작은 언제나 <em>즉시</em> — 에디터 시점에서 카메라로 미끄러지지 않는다(<code>blendTime</code> 은 재생 도중 카메라끼리 전환할 때만). Stop 은 스냅샷의 에디터 카메라를 되돌린다. 데모 씬의 Main Camera 는 놓아 둔 자리에 그대로 있다. 처음에는 <code>FollowTarget(SphereCenter)</code> 을 달아 두었는데, Play 를 누르면 카메라가 배치한 자리에서 구 뒤로 이동해 "엉뚱한 카메라로 간다" 로 보여서 뺐다 — 추적 카메라를 원하면 Inspector 에서 붙인다.</li>
-  <li><strong>미리보기</strong>: 카메라 오브젝트를 선택하면 씬 뷰 우측 하단(폭의 32%)에 그 카메라의 시점이 뜬다(유니티의 Camera Preview). <code>Renderer</code> 가 메인 패스 뒤에 <code>PreviewPass</code> 를 하나 더 돈다: b0 PerFrame 만 그 카메라의 view/proj 로 다시 올리고(업로드 링이라 프레임 안에서 여러 번 가능), 같은 그림자 맵·같은 드로우 목록으로 작은 TYPELESS 타깃에 그린 뒤 ImGui 가 샘플한다. 에디터는 <code>CameraComponent::ApplyTo</code> 로 채운 임시 <code>Camera</code> 를 넘기고, 선택이 풀리면 타깃을 돌려준다.</li>
+  <li><strong>편집 중</strong>: 에디터 카메라로 본다. 카메라 오브젝트는 씬 뷰에 프러스텀 아이콘(1.5 단위 앞 단면 + 위 삼각형 + 이름)으로 보이고, 메시가 없어도 1 단위 상자로 클릭 선택된다. Hierarchy 의 "+ Camera" 는 현재 에디터 시점에 "Camera N" 을 만든다. Inspector 의 <b>Look through</b>(에디터 시점 ← 카메라)와 <b>Align to view</b>(카메라 ← 에디터 시점)로 자리를 잡는다.</li>
+  <li><strong>재생 중</strong>: 활성 카메라의 자세가 매 프레임 엔진 카메라에 쓰인다. Play 시작은 언제나 <em>즉시</em> — 에디터 시점에서 카메라로 미끄러지지 않는다(<code>blendTime</code> 은 재생 도중 카메라끼리 전환할 때만). Stop 은 스냅샷의 에디터 카메라를 되돌린다. 데모 씬의 Main Camera 는 놓아 둔 자리에 그대로 있다. 처음에는 <code>FollowTarget(SphereCenter)</code> 를 달아 두었는데, Play 를 누르면 카메라가 배치한 자리에서 구 뒤로 이동해 "엉뚱한 카메라로 간다" 처럼 보여서 뺐다 — 추적 카메라를 원하면 Inspector 에서 붙인다.</li>
+  <li><strong>미리보기</strong>: 카메라 오브젝트를 선택하면 씬 뷰 우측 하단(폭의 32%)에 그 카메라의 시점이 뜬다(유니티의 Camera Preview). <code>Renderer</code> 가 메인 패스 뒤에 <code>PreviewPass</code> 를 하나 더 돌린다: b0 PerFrame 만 그 카메라의 view/proj 로 다시 올리고(업로드 링이라 프레임 안에서 여러 번 가능), 같은 그림자 맵·같은 드로우 목록으로 작은 TYPELESS 타깃에 그린 뒤 ImGui 가 샘플한다. 에디터는 <code>CameraComponent::ApplyTo</code> 로 채운 임시 <code>Camera</code> 를 넘기고, 선택이 풀리면 타깃을 돌려준다.</li>
   <li><strong>카메라 전환(앞으로)</strong>: 카메라를 여러 개 두고 재생 중 <code>priority</code> 를 올리거나 <code>enabled</code> 를 켜면 그 카메라로 넘어가며 <code>blendTime</code> 동안 위치·yaw(짧은 쪽)·pitch·fov 를 smoothstep 으로 보간한다. 컷씬이나 "문을 열면 고정 카메라" 같은 연출은 컴포넌트가 다른 오브젝트의 CameraComponent 를 찾아(<code>FindObject</code> → <code>GetBehaviour&lt;CameraComponent&gt;</code>) priority 를 바꾸는 것으로 충분하다. 언리얼의 <code>SetViewTargetWithBlend</code>, 유니티 Cinemachine 의 우선순위 방식과 같은 골격이다.</li>
   <li>모든 씬(데모·헬멧·Sponza·새 씬)에 처음 시점 위치의 "Main Camera" 가 하나씩 생긴다. 씬 파일에는 메시 −1 오브젝트 + components 로 저장된다(버전 2, 형식 변경 없음).</li>
 </ul>
@@ -291,7 +291,7 @@ m_editor.SetSelectedObject(selected);            <span class="cm">// 오브젝�
   <li><strong>씬 뷰 툴바</strong>: [Play] 또는 [Stop], [Pause/Resume], [Step], 시간 배율 슬라이더(x0 ~ x4). 상태는 앱이 갖고(<code>TestApp::m_playState</code>) 에디터에는 매 프레임 표시용으로 넣어 줍니다 — 11단계 "에디터는 소유하지 않는다" 규칙.</li>
   <li><strong>재생 표시</strong>: 씬 뷰 테두리 초록(재생)/노랑(일시정지) + "PLAYING" 라벨, Inspector 배너. 언리얼 PIE 의 색 테두리와 같은 의도.</li>
   <li><strong>Inspector 컴포넌트</strong>: 컴포넌트마다 [x](삭제) [☑](enabled) 접이식 헤더 + Reflect 필드 위젯, 아래 "Add Component..." 콤보(레지스트리 이름). Hierarchy 이름 뒤 <code>[n]</code> 은 컴포넌트 수.</li>
-  <li><strong>단축키</strong>: Ctrl+P 재생/정지(에디터), F10 일시정지(앱 — 7단계의 "고정" 키가 이 뜻이 됐다).</li>
+  <li><strong>단축키</strong>: Ctrl+P 재생/정지(에디터), F10 일시정지(앱 — 7단계의 "고정" 키를 이 용도로 바꿨다).</li>
 </ul>
 
 <h2 id="s9"><span class="num">9.</span>자동 검증</h2>
@@ -317,10 +317,10 @@ SherlockEngine.exe --scene=demo --exit-after=20 --add=4 --set-position=6,5,-12 -
   <li><strong>Reflect 는 non-const.</strong> Inspector 가 값을 바꾸므로 참조를 받는다. 저장 방문자도 같은 함수를 쓰므로 <code>ComponentsToJson</code> 에서 <code>const_cast</code> 한 번 — 쓰기 방문자는 값을 바꾸지 않는다는 약속.</li>
   <li><strong>Stop 뒤 렌더러 캐시.</strong> 스냅샷 로드는 새 Mesh/Material 포인터를 만든다. <code>InvalidateScene(scene, false)</code> 로 메시·재질 캐시만 버리고 텍스처는 남긴다(다시 디코딩하지 않는다). 11단계 <code>LoadSceneFile</code> 과 같은 순서.</li>
   <li><strong>재생 중 카메라 충돌.</strong> 활성 CameraComponent 가 카메라를 쓰는 프레임에 에디터의 WASD/RMB 도 쓰면 떨린다. <code>cameraDriven</code> 플래그로 에디터 컨트롤러를 끄고, RMB 룩이 켜져 있었으면 <code>EndLook</code>. 카메라 오브젝트가 없는 씬은 플래그가 false 라 재생 중에도 에디터 카메라를 조종할 수 있다.</li>
-  <li><strong>에디터 눈과 겹친 프러스텀.</strong> "Align to view" 직후의 카메라는 에디터 눈과 같은 자리라 프러스텀이 화면 테두리와 일치하고 apex 의 w 가 0 이다. 눈과 0.1 단위 안이면 아이콘을 건너뛰고, 그리기는 이미지 클립 사각형 안으로 제한한다(툴바로 선이 새지 않게).</li>
-  <li><strong>ImGui 폰트에 ▶ 가 없다.</strong> 한글 글리프 범위(10단계 Malgun Gothic)에 U+25B6 은 없어 네모로 나온다. 버튼은 글자 "Play/Stop" 로.</li>
+  <li><strong>에디터 눈과 겹친 프러스텀.</strong> "Align to view" 직후의 카메라는 에디터 눈과 같은 자리라 프러스텀이 화면 테두리와 일치하고 apex 의 w 가 0 이다. 눈과의 거리가 0.1 단위 이내면 아이콘을 건너뛰고, 그리기는 이미지 클립 사각형 안으로 제한한다(툴바로 선이 새지 않게).</li>
+  <li><strong>ImGui 폰트에 ▶ 가 없다.</strong> 한글 글리프 범위(10단계 Malgun Gothic)에 U+25B6 이 없어 네모로 나온다. 버튼은 글자 "Play/Stop" 으로.</li>
   <li><strong>검은 콘솔 창.</strong> 10단계부터 Debug 빌드는 로그용 콘솔(AllocConsole)을 하나 열었다. 에디터의 Console 창(F12)과 로그 파일이 그 역할을 하므로 이제 열지 않는다 — <code>engine.ini</code> 의 <code>log.allocConsole = true</code> 로 되살릴 수 있고, 명령줄에서 실행하면 부모 콘솔에는 여전히 붙는다.</li>
-  <li><strong>F10 의 뜻이 바뀜.</strong> 7단계의 "애니메이션 t=0 고정" 은 편집 중에 아무것도 움직이지 않게 된 지금 의미가 없어 일시정지로 바꿨다. 8단계의 픽셀 비교는 편집 상태가 곧 결정적 상태다.</li>
+  <li><strong>F10 의 뜻이 바뀜.</strong> 7단계의 "애니메이션 t=0 고정" 은 편집 중에 아무것도 움직이지 않게 된 지금 의미가 없어 일시정지로 바꿨다. 8단계의 픽셀 비교에서는 편집 상태가 곧 결정적 상태다.</li>
 </ul>
 
 <h2 id="s11"><span class="num">11.</span>검증과 스크린샷</h2>
@@ -331,7 +331,7 @@ SherlockEngine.exe --scene=demo --exit-after=20 --add=4 --set-position=6,5,-12 -
     <li>C: <code>demo_components.json</code>(버전 2) 저장 → 재시작 로드에서 components 가 전부 복원(Rigidbody, PlayerController / Rigidbody / Rotator / CameraComponent).</li>
     <li>D: 새 씬의 Cube 1 에 재생 중 Rotator 스크립트 추가 → 다음 프레임에 Start 를 받고 Update 가 돈다.</li>
     <li>D3D12: 같은 A 가 같은 결과(그림 4), 종료 시 Debug Layer 메시지 0. Release: 재생 → 100 프레임째 Stop 복원 확인. Debug·Release 빌드 경고 0, 오류 0.</li>
-    <li>편집 중 스크린샷(그림 3)에서 데모 씬이 정지해 있고 Main Camera 가 선택되어 Inspector 에 CameraComponent 필드와 우측 하단 미리보기가 보인다. 재생 스크린샷(그림 1)에서 Main Camera 로 보고 있고, PLAYING 테두리, Hierarchy 의 [n].</li>
+    <li>편집 중 스크린샷(그림 3)에서 데모 씬이 정지해 있고 Main Camera 가 선택되어 Inspector 에 CameraComponent 필드와 우측 하단 미리보기가 보인다. 재생 스크린샷(그림 1)에서 Main Camera 로 보고 있고, PLAYING 테두리와 Hierarchy 의 [n] 이 보인다.</li>
     <li>E: 재생 시작 로그 "활성 카메라: Main Camera (priority 0)", 20 프레임째 엔진 카메라 = Main Camera 오브젝트 위치 (18, 16, −28) — 배치한 자리 그대로, 보간 없음. Stop 뒤 활성 카메라 "(editor)". D3D12 Release 도 같다. F: "Camera 1" 이 에디터 시점에 생겨 (6, 5, −12) 로 이동, 프러스텀 아이콘과 우측 하단 미리보기 (그림 5·6), D3D12 동일.</li>
   </ul>
 </div>

@@ -217,7 +217,7 @@ td .fix b{color:var(--ok);font-weight:600}
 
 <div class="callout">
   <div class="t">한 줄 요약</div>
-  <p>0단계에 자유 함수로 둔 <code>Log::Info/Warn/Error</code> 뒤에 Logger 본체(레벨·싱크·히스토리)를 넣었고, 8단계의 <code>--backend=</code> 는 설정 파일 값을 덮어쓰는 형태로 남았습니다. Engine 은 소유와 프레임 순서만 갖습니다 — Device·Renderer·Scene·Camera·Input·Time 을 만들고 <code>BeginFrame → Render → EndFrame</code> 을 정할 뿐, 로직은 각 시스템에 그대로입니다. 프로파일러의 GPU 구간은 6단계 CommandList 에 <code>WriteTimestamp(slot)</code> 하나를 더한 것으로, D3D11 은 쿼리 세트 여섯 개를 돌려 쓰고 D3D12 는 쿼리 힙을 프레임 슬롯의 펜스 뒤에 읽습니다.</p>
+  <p>0단계에 자유 함수로 둔 <code>Log::Info/Warn/Error</code> 뒤에 Logger 본체(레벨·싱크·히스토리)를 넣었고, 8단계의 <code>--backend=</code> 는 설정 파일 값을 덮어쓰는 형태로 남았습니다. Engine 은 소유와 프레임 순서만 갖습니다 — Device·Renderer·Scene·Camera·Input·Time 을 만들고 <code>BeginFrame → Render → EndFrame</code> 을 정할 뿐, 로직은 각 시스템에 그대로 남아 있습니다. 프로파일러의 GPU 구간은 6단계 CommandList 에 <code>WriteTimestamp(slot)</code> 하나를 더한 것으로, D3D11 은 쿼리 세트 여섯 개를 돌려 쓰고 D3D12 는 프레임 슬롯의 펜스를 지난 뒤에 쿼리 힙을 읽습니다.</p>
 </div>
 
 <h2 id="s1"><span class="num">1.</span>요약</h2>
@@ -234,7 +234,7 @@ td .fix b{color:var(--ok);font-weight:600}
 </table></div>
 
 <h2 id="s2"><span class="num">2.</span>Logger (D16 본체)</h2>
-<p>0단계는 <code>std::cout</code> 29곳을 <code>Log::Info/Warn/Error</code> 로 모으고 "클래스가 아니라 자유 함수 네임스페이스로 둔 것은 10단계에서 호출부를 다시 고치지 않기 위해서"라고 적어 두었습니다. 그대로 됐습니다 — 호출부 100여 곳은 한 줄도 바뀌지 않았고 <code>Log.cpp</code> 의 <code>Emit</code> 뒤만 채웠습니다.</p>
+<p>0단계는 <code>std::cout</code> 29곳을 <code>Log::Info/Warn/Error</code> 로 모으고 "클래스가 아니라 자유 함수 네임스페이스로 둔 것은 10단계에서 호출부를 다시 고치지 않기 위해서"라고 적어 두었습니다. 실제로 그렇게 됐습니다 — 호출부 100여 곳은 한 줄도 바뀌지 않았고 <code>Log.cpp</code> 의 <code>Emit</code> 뒤만 채웠습니다.</p>
 <pre><code><span class="cm">// Core/Log.h — 파사드는 그대로, 뒤에 본체</span>
 <span class="kw">enum class</span> Level : uint8_t { Debug, Info, Warn, Error };
 <span class="kw">struct</span> InitDesc { <span class="kw">bool</span> console, allocConsole; std::wstring filePath; Level minLevel; size_t historyCapacity; };
@@ -249,7 +249,7 @@ std::lock_guard&lt;std::mutex&gt; lock(s.mutex);
 WriteToDebugger(line);                             <span class="cm">// OutputDebugStringW — VS 출력 창, D3D Debug Layer 와 같은 곳</span>
 <span class="kw">if</span> (s.file.is_open()) { s.file &lt;&lt; stamp &lt;&lt; line; s.file.flush(); }   <span class="cm">// 크래시 직전 줄이 남아야 로그다</span>
 s.history.push_back({ level, time, body }); ++s.historyVersion;      <span class="cm">// ImGui 콘솔</span></code></pre>
-<p>파일에는 초 단위 시각을 붙이고(<code>[    7.257]</code>), UTF-8 BOM 으로 시작해 메모장이 한글을 바로 읽습니다. 줄마다 flush 하는 비용은 초당 수백 줄 수준에서 보이지 않았고, 크래시 직전 줄이 남는 쪽이 더 중요합니다. 히스토리는 <code>deque</code> 링(4,000줄)이고 버전 번호로 콘솔이 "새 줄이 왔는지"만 보고 복사합니다. 레벨 필터는 어디에도 내보내지 않는 필터라 <code>Debug</code> 는 기본(<code>info</code>)에서 서식 비용조차 들지 않습니다. 예외·<code>ThrowIfFailed</code> 는 여전히 쓰지 않습니다 — 0단계의 "엔진 API 는 bool" 결정 유지.</p>
+<p>파일에는 초 단위 시각을 붙이고(<code>[    7.257]</code>), UTF-8 BOM 으로 시작해 메모장이 한글을 바로 읽습니다. 줄마다 flush 하는 비용은 초당 수백 줄 수준에서 보이지 않았고, 크래시 직전 줄이 남는 쪽이 더 중요합니다. 히스토리는 <code>deque</code> 링(4,000줄)이고, 콘솔은 버전 번호로 "새 줄이 왔는지"를 확인한 뒤에만 복사합니다. 레벨 필터는 최소 레벨 미만을 어디에도 내보내지 않으므로, 기본 레벨(<code>info</code>)에서는 <code>Debug</code> 로그의 서식 비용조차 들지 않습니다. 예외·<code>ThrowIfFailed</code> 는 여전히 쓰지 않습니다 — 0단계의 "엔진 API 는 bool" 결정을 유지했습니다.</p>
 
 <h2 id="s3"><span class="num">3.</span>Config: 백엔드는 설정 파일이 고른다</h2>
 <pre><code><span class="cm">; Assets\Config\engine.ini — exe 옆으로 복사된다 (CopyAssets)</span>
@@ -268,12 +268,12 @@ console = true</code></pre>
 <p><code>Core/Config</code> 는 "<code>key = value</code>" 와 "<code>[section]</code>" 만 아는 INI 파서입니다. 키는 <code>section.key</code> 로 평탄화하고 소문자로 저장하며, 값은 문자열로 두고 <code>GetInt/GetFloat/GetBool</code> 이 변환합니다. 파싱은 로그를 남기지 않습니다 — Logger 보다 먼저 읽히기 때문입니다(로그 파일 경로가 여기서 나옵니다). 오류는 모아 두었다가 Logger 가 열린 뒤 경고로 냅니다. 실행 인자 <code>--backend=</code>·<code>--scene=</code> 는 8~9단계의 이름 그대로 설정 값을 덮어쓰고, 그 밖의 <code>--section.key=value</code> 도 일반형으로 받습니다. 설정 파일이 없으면 기본값으로 계속 실행합니다(경고 한 줄).</p>
 
 <h2 id="s4"><span class="num">4.</span>Time: 고정 스텝 누적기</h2>
-<p>Luna 의 <code>GameTimer</code>(QueryPerformanceCounter)를 시계로 두고 <code>Core/Time</code> 이 그 위에 (1) 델타 클램프(0.25 s — 디버거 정지·창 이동 뒤의 거대한 dt 를 자른다), (2) 0.5 초 창 FPS, (3) 고정 스텝 누적기를 얹습니다. Fiedler 의 "Fix Your Timestep"<sup><a href="#ref-3">3</a></sup> 그대로입니다: 렌더가 시간을 만들고 고정 갱신이 <code>fixedStep</code> 단위로 소비하며, 남는 시간은 다음 프레임으로 넘어가고 보간 알파(<code>accumulator / fixedStep</code>)를 제공합니다. 한 프레임에 여덟 번까지만 따라잡고 그 이상은 누적을 버려 죽음의 나선을 막습니다.</p>
+<p>Luna 의 <code>GameTimer</code>(QueryPerformanceCounter)를 시계로 두고 <code>Core/Time</code> 이 그 위에 (1) 델타 클램프(0.25 s — 디버거 정지·창 이동 뒤의 거대한 dt 를 자른다), (2) 0.5 초 창 FPS, (3) 고정 스텝 누적기를 얹습니다. Fiedler 의 "Fix Your Timestep"<sup><a href="#ref-3">3</a></sup> 그대로입니다: 렌더가 시간을 만들고 고정 갱신이 <code>fixedStep</code> 단위로 소비하며, 남은 시간은 다음 프레임으로 넘기고 보간 알파(<code>accumulator / fixedStep</code>)도 제공합니다. 한 프레임에 여덟 번까지만 따라잡고 그 이상은 누적을 버려 죽음의 나선을 막습니다.</p>
 <pre><code><span class="cm">// AppBase::Run</span>
 <span class="kw">const float</span> dt = m_engine.BeginFrame();          <span class="cm">// Time.Tick + Profiler 프레임 + ImGui 렌더러 NewFrame</span>
 <span class="kw">while</span> (time.ConsumeFixedStep()) OnFixedUpdate(time.GetFixedStep());   <span class="cm">// 0..8 회</span>
 OnUpdate(dt);</code></pre>
-<p>TestApp 의 <code>OnFixedUpdate</code> 는 아직 호출 수와 누적 시간만 셉니다(패널 "fixed updates 456 (7.6 s)" — 60 Hz). 물리가 들어오면 여기가 그 자리입니다. 애니메이션은 지금까지처럼 가변 dt 의 <code>OnUpdate</code> 에 있습니다.</p>
+<p>TestApp 의 <code>OnFixedUpdate</code> 는 아직 호출 수와 누적 시간만 셉니다(패널 "fixed updates 456 (7.6 s)" — 60 Hz). 물리가 들어오면 이 자리에 들어갑니다. 애니메이션은 지금까지처럼 가변 dt 의 <code>OnUpdate</code> 에 있습니다.</p>
 
 <h2 id="s5"><span class="num">5.</span>Engine 과 AppBase (D14)</h2>
 <pre><code><span class="cm">// Core/Engine.h — 소유와 프레임 순서만</span>
@@ -294,10 +294,10 @@ m_device-&gt;BeginFrame();
   m_renderer.Render(m_scene, m_camera, m_time.GetTotalTime());      <span class="cm">// 그림자 + 메인 (안에서 GPU 구간)</span>
   m_renderer.BeginUIPass();  m_device-&gt;RenderImGui();  m_renderer.EndUIPass(); }
 m_device-&gt;EndFrame();</code></pre>
-<p><code>AppBase</code> 에 남은 것은 창 등록·생성, 메시지 루프, ImGui 컨텍스트와 Win32 백엔드, 설정·Logger 초기화 순서입니다. 앱이 구현하는 것은 <code>OnInitialize / OnUpdate / OnFixedUpdate / OnGUI / OnFocusLost</code> 다섯 개이고 <code>GetEngine()</code> 으로 시스템에 닿습니다. 전역 <code>g_appBase</code> 는 D14 의 결론대로 유지했습니다(창이 하나인 한 이득이 없는 변경). Engine 이 God object 가 되지 않도록 지키는 규율은 "소유와 순서만": 씬 구성은 앱, 그리기는 Renderer, 캐시는 AssetManager 와 Renderer 캐시가 각각 합니다. 초기화 순서가 하나 바뀌었습니다 — ImGui 컨텍스트를 Engine 보다 먼저 만듭니다. Engine 이 Device 의 ImGui 렌더러 백엔드를 붙이기 때문입니다.</p>
+<p><code>AppBase</code> 에 남은 것은 창 등록·생성, 메시지 루프, ImGui 컨텍스트와 Win32 백엔드, 설정·Logger 초기화 순서입니다. 앱이 구현하는 것은 <code>OnInitialize / OnUpdate / OnFixedUpdate / OnGUI / OnFocusLost</code> 다섯 개이고, <code>GetEngine()</code> 으로 시스템에 접근합니다. 전역 <code>g_appBase</code> 는 D14 의 결론대로 유지했습니다(창이 하나인 동안에는 바꿔도 얻는 것이 없습니다). Engine 이 God object 가 되지 않도록 지키는 규율은 "소유와 순서만"입니다. 씬 구성은 앱이, 그리기는 Renderer 가, 캐시는 AssetManager 와 Renderer 캐시가 각각 맡습니다. 초기화 순서가 하나 바뀌었습니다 — ImGui 컨텍스트를 Engine 보다 먼저 만듭니다. Engine 이 Device 의 ImGui 렌더러 백엔드를 붙이기 때문입니다.</p>
 
 <h2 id="s6"><span class="num">6.</span>Windows 서브시스템과 콘솔 (D19)</h2>
-<p>D19 의 발전 방향 그대로: <code>SubSystem=Windows</code> + <code>wWinMain</code><sup><a href="#ref-5">5</a></sup>. 콘솔은 Logger 가 처리합니다. <code>GetStdHandle(STD_OUTPUT_HANDLE)</code> 이 이미 유효하면(캡처 스크립트가 파이프로 리다이렉트한 경우 — 핸들 상속) 그대로 쓰고, 아니면 <code>AttachConsole(ATTACH_PARENT_PROCESS)</code><sup><a href="#ref-4">4</a></sup> 로 부모 콘솔(명령줄에서 실행)에 붙고, 그것도 없으면 <code>allocConsole</code>(Debug 빌드)일 때 <code>AllocConsole</code> 로 하나 엽니다. 어느 경우든 <code>freopen_s(CONOUT$)</code> 로 stdout 을 다시 연결하고 UTF-8 코드페이지를 맞춥니다. Release 는 탐색기에서 두 번 클릭하면 렌더 창 하나만 뜨고, 로그는 파일과 VS 출력 창과 F12 콘솔에 남습니다(11절에서 확인).</p>
+<p>D19 의 발전 방향 그대로입니다: <code>SubSystem=Windows</code> + <code>wWinMain</code><sup><a href="#ref-5">5</a></sup>. 콘솔은 Logger 가 처리합니다. <code>GetStdHandle(STD_OUTPUT_HANDLE)</code> 이 이미 유효하면(캡처 스크립트가 파이프로 리다이렉트한 경우 — 핸들 상속) 그대로 쓰고, 아니면 <code>AttachConsole(ATTACH_PARENT_PROCESS)</code><sup><a href="#ref-4">4</a></sup> 로 부모 콘솔(명령줄에서 실행)에 붙고, 그것도 없으면 <code>allocConsole</code>(Debug 빌드)일 때 <code>AllocConsole</code> 로 하나 엽니다. 콘솔에 붙거나 새로 연 경우에는 <code>freopen_s(CONOUT$)</code> 로 stdout 을 다시 연결하고, UTF-8 코드페이지를 맞춥니다. Release 빌드는 탐색기에서 더블클릭하면 렌더 창 하나만 뜨고, 로그는 파일과 VS 출력 창과 F12 콘솔에 남습니다(11절에서 확인).</p>
 
 <h2 id="s7"><span class="num">7.</span>Profiler: CPU 구간 + GPU 타임스탬프</h2>
 <p>CPU 구간은 <code>ProfileScope scope("Update")</code> RAII 로 감싸고 QueryPerformanceCounter 로 잽니다. 중첩 깊이를 함께 저장해 패널이 들여쓰기로 보여 줍니다. 프레임마다 목록을 만들고 <code>Profiler::BeginFrame</code> 에서 "직전 프레임"으로 넘기므로 패널은 항상 완성된 프레임을 봅니다. GPU 구간은 <code>GpuProfileScope(cmd, "MainPass")</code> 가 시작·끝 슬롯 두 개를 소비하고, Device 가 몇 프레임 뒤에 돌려주는 틱을 프레임 번호로 짝지어 밀리초로 바꿉니다. 그래서 GPU 결과는 CPU 결과보다 2~6 프레임 늦고 패널이 그 프레임 번호를 같이 보여 줍니다.</p>
@@ -307,10 +307,10 @@ m_device-&gt;EndFrame();</code></pre>
 <span class="kw">virtual void</span> WriteTimestamp(uint32_t slot) = 0;   <span class="cm">// 0 ≤ slot &lt; kMaxTimestamps(32), 프레임 안에서 증가 순서</span>
 <span class="cm">// RHI/Device.h — 가장 최근에 완료된 프레임의 틱. CPU 를 기다리지 않는다</span>
 <span class="kw">virtual bool</span> GetTimestampResults(uint64_t* ticks, uint32_t count, uint64_t&amp; frequency, uint64_t&amp; frameNumber) = 0;</code></pre>
-<p>인터페이스가 이 둘뿐인 이유는 "기록은 커맨드 리스트, 읽기는 장치"라는 두 API 의 공통점만 남긴 것입니다. 타임스탬프는 두 API 모두 명령 스트림의 그 지점을 GPU 가 지날 때(bottom-of-pipe) 찍히고<sup><a href="#ref-1">1</a></sup>, 틱을 주파수로 나눠 초를 얻습니다. 슬롯을 프레임 안에서 순서대로 쓰게 한 것은 D3D12 에서 "기록된 범위만 Resolve" 하기 위해서입니다.</p>
+<p>인터페이스가 이 둘뿐인 것은 "기록은 커맨드 리스트, 읽기는 장치"라는 두 API 의 공통점만 남겼기 때문입니다. 타임스탬프는 두 API 모두 명령 스트림의 그 지점을 GPU 가 지날 때(bottom-of-pipe) 찍히고<sup><a href="#ref-1">1</a></sup>, 틱을 주파수로 나눠 초를 얻습니다. 슬롯을 프레임 안에서 순서대로 쓰게 한 것은 D3D12 에서 "기록된 범위만 Resolve" 하기 위해서입니다.</p>
 
 <h3 id="s7-2">7.2 D3D11: 쿼리 세트 6개</h3>
-<p><code>D3D11_QUERY_TIMESTAMP</code> 는 <code>End</code> 만 부르고, <code>D3D11_QUERY_TIMESTAMP_DISJOINT</code> 가 프레임을 <code>Begin/End</code> 로 감싸 주파수와 "이 구간의 틱을 믿어도 되는지"를 줍니다<sup><a href="#ref-2">2</a></sup>. 세트 하나 = DISJOINT 1 + TIMESTAMP 32. 처음에는 세트 3개로 "두 프레임 전"을 읽었는데 Debug Layer 가 프레임마다 "End is being invoked on a Query, where the previous results have not been obtained yet" 를 냈습니다 — DXGI 가 최대 3 프레임을 큐에 둘 수 있어 두 프레임 전 쿼리가 아직 GPU 에 있는 일이 잦고, 결과를 안 읽은 쿼리에 다시 <code>End</code> 하면 경고입니다. 세트 6개로 늘리고 <em>다시 쓰기 직전</em>(6 프레임 뒤)에 <code>GetData(DONOTFLUSH)</code> 로 읽으니 경고 0 입니다. 준비되지 않았으면(S_FALSE) 그 세트는 버리고 계속합니다 — 기다리면 그것이 곧 GPU 동기화라 프로파일러가 측정 대상을 바꿔 버립니다.</p>
+<p><code>D3D11_QUERY_TIMESTAMP</code> 는 <code>End</code> 만 부르고, <code>D3D11_QUERY_TIMESTAMP_DISJOINT</code> 가 프레임을 <code>Begin/End</code> 로 감싸 주파수와 "이 구간의 틱을 믿어도 되는지"를 줍니다<sup><a href="#ref-2">2</a></sup>. 세트 하나 = DISJOINT 1 + TIMESTAMP 32. 처음에는 세트 3개로 "두 프레임 전"을 읽었는데 Debug Layer 가 프레임마다 "End is being invoked on a Query, where the previous results have not been obtained yet" 를 냈습니다 — DXGI 가 최대 3 프레임을 큐에 둘 수 있어 두 프레임 전 쿼리가 아직 GPU 에 있는 일이 잦고, 결과를 안 읽은 쿼리에 다시 <code>End</code> 하면 경고입니다. 세트 6개로 늘리고 <em>다시 쓰기 직전</em>(6 프레임 뒤)에 <code>GetData(DONOTFLUSH)</code> 로 읽으니 경고가 0 이 되었습니다. 준비되지 않았으면(S_FALSE) 그 세트는 버리고 계속합니다 — 기다리면 그것이 곧 GPU 동기화라 프로파일러가 측정 대상을 바꿔 버립니다.</p>
 
 <h3 id="s7-3">7.3 D3D12: 쿼리 힙 + 리드백</h3>
 <pre><code><span class="cm">// 힙: kFrameCount × 32 개. 리드백 버퍼: 같은 배치의 uint64</span>
@@ -318,22 +318,22 @@ WriteTimestamp: m_list-&gt;EndQuery(heap, TIMESTAMP, frameIndex * 32 + slot);   
 EndFrame:       m_list-&gt;ResolveQueryData(heap, TIMESTAMP, frameIndex * 32, written, readback, frameIndex * 32 * 8);   <span class="cm">// Close 직전</span>
 BeginFrame:     펜스 대기 → ReleaseGarbage → ReadTimestamps(frameIndex)   <span class="cm">// Map(READBACK) 이 곧 읽기. 프레임 N − 2 의 결과</span>
 frequency:      m_queue-&gt;GetTimestampFrequency()</code></pre>
-<p>8단계의 프레임 슬롯 구조가 그대로 쓰입니다: 슬롯을 재사용하는 <code>BeginFrame</code> 은 이미 그 프레임의 펜스를 지났으므로 리드백 버퍼를 읽어도 안전합니다. 기록하지 않은 쿼리를 Resolve 하면 값이 정의되지 않으므로(그리고 Debug Layer 가 지적하므로) 기록된 범위 <code>[0, written)</code> 만 Resolve 합니다. GBV 를 켠 채 메시지 0 입니다. 쿼리 힙과 리드백 버퍼는 <code>ReleaseDevice</code> 에서 힙보다 먼저 놓습니다.</p>
+<p>8단계의 프레임 슬롯 구조가 그대로 쓰입니다: 슬롯을 재사용하는 <code>BeginFrame</code> 은 이미 그 프레임의 펜스를 지났으므로 리드백 버퍼를 읽어도 안전합니다. 기록하지 않은 쿼리를 Resolve 하면 값이 정의되지 않으므로(그리고 Debug Layer 가 지적하므로) 기록된 범위 <code>[0, written)</code> 만 Resolve 합니다. GBV 를 켜도 메시지는 0 입니다. 쿼리 힙과 리드백 버퍼는 <code>ReleaseDevice</code> 에서 디스크립터 힙보다 먼저 놓습니다.</p>
 
 <h2 id="s8"><span class="num">8.</span>AssetManager</h2>
-<p><code>Core/AssetManager</code> 는 "경로 → CPU 리소스" 캐시입니다. <code>GetModel(L"Models\\Sponza\\Sponza.gltf")</code> 는 처음엔 9단계의 <code>ModelLoader::LoadGltf</code> 를 부르고 두 번째부터는 캐시를 돌려줍니다. 씬 전환 헬멧 → Sponza → 데모 → 헬멧에서 로드 2·적중 1 이 패널에 보입니다(그림 3). <code>Scene::AddModel(const Model&amp;)</code> 오버로드가 캐시의 모델을 복사해 넣습니다 — 정점·인덱스·이미지 바이트 복사이고 Sponza 가 56 MB 라 씬 전환 한 번에 수십 ms 입니다. GPU 자원은 여기 없습니다: 그것은 Renderer 캐시의 몫이고 이 계층은 "파일 → 메모리"만 맡습니다. 텍스처 파일은 재질의 색공간을 알아야 디코딩할 수 있어 아직 Scene 이미지 바이트 경로(9단계)에 남았습니다. 통계(로드·적중·바이트·시간)는 패널의 Assets 줄입니다.</p>
+<p><code>Core/AssetManager</code> 는 "경로 → CPU 리소스" 캐시입니다. <code>GetModel(L"Models\\Sponza\\Sponza.gltf")</code> 는 처음엔 9단계의 <code>ModelLoader::LoadGltf</code> 를 부르고 두 번째부터는 캐시를 돌려줍니다. 씬 전환 헬멧 → Sponza → 데모 → 헬멧에서 로드 2·적중 1 이 패널에 보입니다(그림 3). <code>Scene::AddModel(const Model&amp;)</code> 오버로드가 캐시의 모델을 복사해 넣습니다 — 정점·인덱스·이미지 바이트를 복사하므로, Sponza(56 MB)는 씬 전환 한 번에 수십 ms 가 걸립니다. GPU 자원은 여기서 다루지 않습니다. 그것은 Renderer 캐시의 몫이고 이 계층은 "파일 → 메모리"만 맡습니다. 텍스처 파일은 재질의 색공간을 알아야 디코딩할 수 있어 아직 Scene 이미지 바이트 경로(9단계)에 남았습니다. 통계(로드·적중·바이트·시간)는 패널의 Assets 줄입니다.</p>
 
 <h2 id="s9"><span class="num">9.</span>ImGui 콘솔과 한글 폰트</h2>
-<p><code>DebugUI::DrawLogConsole</code> 은 별도 창 "Console (F12)" 입니다: 레벨 체크박스 네 개, 문자열 필터, 최소 레벨 콤보(<code>Log::SetMinLevel</code>), 자동 스크롤, Clear. 히스토리는 버전이 바뀔 때만 복사합니다. 처음 띄우자 한글이 전부 <code>?</code> 였습니다 — ImGui 기본 폰트(ProggyClean)에 한글 글리프가 없습니다. <code>AddFontFromFileTTF("C:/Windows/Fonts/malgun.ttf", 15)</code> 로 맑은 고딕을 얹었고, ImGui 1.92 는 글리프를 필요할 때 만들므로 글리프 범위를 미리 줄 필요가 없습니다<sup><a href="#ref-6">6</a></sup>. 폰트가 커져 패널 폭이 조금 늘었지만 두 백엔드에서 같으므로 픽셀 비교에는 영향이 없습니다.</p>
+<p><code>DebugUI::DrawLogConsole</code> 은 별도 창 "Console (F12)" 를 그립니다: 레벨 체크박스 네 개, 문자열 필터, 최소 레벨 콤보(<code>Log::SetMinLevel</code>), 자동 스크롤, Clear. 히스토리는 버전이 바뀔 때만 복사합니다. 처음 띄우자 한글이 전부 <code>?</code> 로 나왔습니다 — ImGui 기본 폰트(ProggyClean)에 한글 글리프가 없습니다. <code>AddFontFromFileTTF("C:/Windows/Fonts/malgun.ttf", 15)</code> 로 맑은 고딕을 얹었고, ImGui 1.92 는 글리프를 필요할 때 만들므로 글리프 범위를 미리 줄 필요가 없습니다<sup><a href="#ref-6">6</a></sup>. 폰트가 커져 패널 폭이 조금 늘었지만 두 백엔드에서 같으므로 픽셀 비교에는 영향이 없습니다.</p>
 
 <h2 id="s10"><span class="num">10.</span>함정과 해결</h2>
 <ul>
-  <li><strong>D3D11 쿼리 재사용 경고.</strong> 7.2절. 세트 3 → 6, 읽기 시점을 "두 프레임 뒤"에서 "다시 쓰기 직전"으로. 그리고 <code>ReleaseDevice</code> 가 쿼리를 놓기 전에 <code>ReportLiveDeviceObjects</code> 를 불러 Live ID3D11Query 99개가 찍혔다 — 풀 비우기 옆에서 함께 놓는다.</li>
+  <li><strong>D3D11 쿼리 재사용 경고.</strong> 7.2절. 세트 3 → 6, 읽기 시점을 "두 프레임 뒤"에서 "다시 쓰기 직전"으로. 그리고 <code>ReleaseDevice</code> 가 쿼리를 놓기 전에 <code>ReportLiveDeviceObjects</code> 를 불러 Live ID3D11Query 99개가 찍혔다 — 이제 풀을 비우는 곳에서 함께 놓는다.</li>
   <li><strong>ImGui 한글.</strong> 9절. 시스템 폰트 로드. 파일이 없으면 기본 폰트로 계속(경고 한 줄).</li>
-  <li><strong><code>unique_ptr&lt;Model&gt;</code> 과 불완전 타입.</strong> AssetManager 헤더는 Model 을 전방 선언만 하므로 소멸자를 .cpp 에 둬야 한다 — 헤더에 암묵 소멸자가 있으면 include 한 모든 TU 에서 <code>static_assert(can't delete an incomplete type)</code>.</li>
+  <li><strong><code>unique_ptr&lt;Model&gt;</code> 과 불완전 타입.</strong> AssetManager 헤더는 Model 을 전방 선언만 하므로 소멸자를 .cpp 에 둬야 한다 — 헤더에 암묵 소멸자가 있으면 include 한 모든 TU 에서 <code>static_assert(can't delete an incomplete type)</code> 가 걸린다.</li>
   <li><strong>Logger 보다 먼저 읽는 설정.</strong> 3절. 로그 파일 경로가 설정에서 오므로 Config 는 로그를 남기지 않고 오류를 모아 둔다.</li>
-  <li><strong>Profiler 프레임 번호.</strong> GPU 구간 목록은 <code>BeginFrame</code> 에서 "직전 프레임" 것으로 보관되므로 번호는 <code>frameCounter − 1</code>. 하나 어긋나면 D3D12 의 결과(프레임 N − 2)와 영영 짝이 맞지 않아 GPU 열이 비어 있다.</li>
-  <li><strong>자동화 키 입력.</strong> Sponza 로드(Debug 2~3 s) 중에 보낸 F11 의 down·up 이 같은 프레임에 처리되면 Pressed 가 되지 않는다. 캡처 스크립트는 키를 더 오래 누른다. 사람의 손가락은 문제없다.</li>
+  <li><strong>Profiler 프레임 번호.</strong> GPU 구간 목록은 <code>BeginFrame</code> 에서 "직전 프레임" 것으로 보관되므로 번호는 <code>frameCounter − 1</code>. 하나 어긋나면 D3D12 의 결과(프레임 N − 2)와 영영 짝이 맞지 않아 GPU 열이 비게 된다.</li>
+  <li><strong>자동화 키 입력.</strong> Sponza 로드(Debug 2~3 s) 중에 보낸 F11 의 down·up 이 같은 프레임에 처리되면 Pressed 가 되지 않는다. 캡처 스크립트는 키를 더 오래 누른다. 사람이 직접 누를 때는 문제없다.</li>
 </ul>
 
 <h2 id="s11"><span class="num">11.</span>검증과 스크린샷</h2>
@@ -342,7 +342,7 @@ frequency:      m_queue-&gt;GetTimestampFrequency()</code></pre>
   <ul>
     <li><b>완료 기준 ①</b> "설정 파일의 백엔드 값만 바꿔 D3D11/D3D12로 실행" — exe 옆 <code>engine.ini</code> 의 <code>backend = d3d11</code> 을 <code>d3d12</code> 로 바꾸고 인자 없이 실행: 로그 "Engine : 백엔드 D3D12", 패널 "backend D3D12 (engine.backend = d3d12)", Debug Layer·GBV 메시지 0 (그림 2). 되돌리면 D3D11.</li>
     <li><b>완료 기준 ②</b> "로그가 파일과 ImGui 콘솔에 남는다" — <code>x64\Debug\Logs\SherlockEngine.log</code> 551줄(시각 접두어, UTF-8 BOM), F12 콘솔 창에 같은 줄이 레벨 색으로(그림 1). Release 도 <code>x64\Release\Logs\</code> 에 79줄.</li>
-    <li>Windows 서브시스템: Release 를 리다이렉트 없이 실행하면 콘솔 창 없이 렌더 창만 뜨고 정상 종료 로그 "종료." 가 파일에 남는다. Debug 는 부모 콘솔에 붙거나 새 콘솔을 연다. 캡처 스크립트의 stdout 파이프도 그대로(핸들 상속).</li>
+    <li>Windows 서브시스템: Release 를 리다이렉트 없이 실행하면 콘솔 창 없이 렌더 창만 뜨고 정상 종료 로그 "종료." 가 파일에 남는다. Debug 는 부모 콘솔에 붙거나 새 콘솔을 연다. 캡처 스크립트의 stdout 파이프도 그대로 동작한다(핸들 상속).</li>
     <li>Profiler: D3D11 데모 씬 CPU 0.63 ms(GUI 0.32, Render 0.31), GPU Frame 0.101 ms(Shadow 0.007, Main 0.087, UI 0.007); Release Sponza GPU Frame 0.393 ms(Main 0.325). D3D12 도 같은 열이 채워진다. D3D11 Debug Layer 경고 0(세트 6개 이후), 종료 시 Live Object 장치 1건만.</li>
     <li>AssetManager: 헬멧 → Sponza → 데모 → 헬멧 전환에서 "모델 로드" 로그는 헬멧·Sponza 각 1회, 마지막 헬멧은 캐시 적중(그림 3의 Assets 줄: loads 2, hits 1). 캐시 57 MB.</li>
     <li>Time: 고정 스텝 16.67 ms, 7.6 s 동안 456회(60 Hz), 프레임당 0~1회; dt 클램프·FPS 창 평균 패널 표시.</li>

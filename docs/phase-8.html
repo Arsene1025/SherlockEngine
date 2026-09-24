@@ -205,7 +205,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <main>
 <div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
 <h1>8단계 · D3D12 백엔드 (RHI 검증)</h1>
-<p class="lede">RHI가 정말 API를 감추는지는 두 번째 백엔드를 붙여 봐야 압니다. <code>RHI/D3D12/</code>에 <code>D3D12Device</code>·<code>D3D12CommandList</code>를 구현하고 <code>--backend=d3d12</code>로 같은 씬을 그렸습니다. Renderer·Material·Mesh·Scene·App 코드는 한 줄도 바뀌지 않았고(PSO Desc에 렌더 타깃 포맷을 채우는 세 줄이 유일한 Renderer 변경), F10으로 애니메이션을 고정한 두 백엔드의 화면은 <strong>904,392픽셀 중 0픽셀</strong> 차이입니다. Debug Layer와 GPU 기반 검증(GBV)을 켠 채 메시지 0건입니다. PSO·루트 시그니처·배리어·펜스라는 로드맵의 목표 개념이 이 단계에서 처음으로 "에뮬레이션"이 아니라 네이티브가 됩니다.</p>
+<p class="lede">RHI가 정말 API를 감추는지는 두 번째 백엔드를 붙여 봐야 압니다. <code>RHI/D3D12/</code>에 <code>D3D12Device</code>·<code>D3D12CommandList</code>를 구현하고 <code>--backend=d3d12</code>로 같은 씬을 그렸습니다. Renderer·Material·Mesh·Scene·App 코드는 한 줄도 바뀌지 않았고(PSO Desc에 렌더 타깃 포맷을 채우는 세 줄이 유일한 Renderer 변경), F10으로 애니메이션을 고정한 두 백엔드의 화면은 <strong>904,392픽셀 중 0픽셀</strong> 차이입니다. Debug Layer와 GPU 기반 검증(GBV)을 켠 상태에서도 메시지는 0건입니다. PSO·루트 시그니처·배리어·펜스라는 로드맵의 목표 개념이 이 단계에서 처음으로 "에뮬레이션"이 아니라 네이티브가 됩니다.</p>
 
 <div class="facts">
   <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
@@ -243,11 +243,11 @@ td .fix b{color:var(--ok);font-weight:600}
 </table></div>
 
 <h2 id="s2"><span class="num">2.</span>두 번째 백엔드가 검증하는 것</h2>
-<p>D3D11에서 D3D12로 가면 세 가지가 애플리케이션의 책임이 됩니다: CPU/GPU 동기화, 리소스 수명과 상태, 자원 바인딩<sup><a href="#ref-9">9</a>,<a href="#ref-11">11</a></sup>. D3D11의 <code>Map(WRITE_DISCARD)</code>는 드라이버가 "무한한 메모리"처럼 이름을 바꿔 주지만 D3D12에서는 우리가 링 버퍼와 펜스로 같은 일을 해야 합니다<sup><a href="#ref-1">1</a>,<a href="#ref-9">9</a></sup>. 7단계까지의 RHI가 이 차이를 인터페이스 밖으로 새지 않게 만들었는지가 이 단계의 질문이었고, 답은 "Renderer 세 줄"이었습니다. 그 세 줄도 새로운 개념이 아니라 1단계에 "D3D11은 안 쓰지만 D3D12는 필수"라고 적어 둔 필드에 실제 값을 넣는 것이었습니다.</p>
+<p>D3D11에서 D3D12로 가면 세 가지가 애플리케이션의 책임이 됩니다: CPU/GPU 동기화, 리소스 수명과 상태, 자원 바인딩<sup><a href="#ref-9">9</a>,<a href="#ref-11">11</a></sup>. D3D11의 <code>Map(WRITE_DISCARD)</code>에서는 드라이버가 "무한한 메모리"처럼 자원 이름을 바꿔 주지만, D3D12에서는 우리가 링 버퍼와 펜스로 같은 일을 해야 합니다<sup><a href="#ref-1">1</a>,<a href="#ref-9">9</a></sup>. 7단계까지의 RHI가 이 차이를 인터페이스 밖으로 새지 않게 만들었는지가 이 단계의 질문이었고, 답은 "Renderer 세 줄"이었습니다. 그 세 줄도 새로운 개념이 아니라 1단계에 "D3D11은 안 쓰지만 D3D12는 필수"라고 적어 둔 필드에 실제 값을 넣는 것이었습니다.</p>
 <p>선택으로 표시된 단계였지만 건너뛰면 RHI는 "D3D11 래퍼"에 머뭅니다. 특히 다음 세 가지는 D3D12를 붙이기 전에는 맞는지 알 수 없었습니다: (1) 3단계의 <code>kFrameCount</code> 복제가 실제 프레임 지연 동기화와 맞물리는가, (2) 6단계의 Barrier 호출 위치가 GBV를 통과하는가, (3) 4단계의 레지스터 배정(재질 t0–7/s0–3, 프레임 t8–/s4–)이 루트 시그니처로 그대로 옮겨지는가. 셋 다 통과했습니다.</p>
 
 <h2 id="s3"><span class="num">3.</span>장치 · 큐 · 스왑체인 · 프레임 자원</h2>
-<p>장치는 DXGI 팩토리로 어댑터를 열거해(WARP 제외) FL 11_0으로 만듭니다. D3D12에는 <code>D3D11CreateDeviceAndSwapChain</code> 같은 것이 없고, 스왑체인의 <code>pDevice</code> 자리에 <em>커맨드 큐</em>가 들어갑니다<sup><a href="#ref-9">9</a></sup>. 5단계에서 장치와 스왑체인을 분리해 둔 덕에 스왑체인 코드는 그대로이고, 백버퍼가 3장이 되어 각각 텍스처 핸들을 갖습니다. D3D11은 백버퍼 0 하나만 보이지만 D3D12는 회전이 명시적이라 <code>GetCurrentBackBufferIndex</code>로 이번 프레임의 버퍼를 고릅니다.</p>
+<p>장치는 DXGI 팩토리로 어댑터를 열거해(WARP 제외) FL 11_0으로 만듭니다. D3D12에는 <code>D3D11CreateDeviceAndSwapChain</code> 같은 것이 없고, 스왑체인의 <code>pDevice</code> 자리에 <em>커맨드 큐</em>가 들어갑니다<sup><a href="#ref-9">9</a></sup>. 5단계에서 장치와 스왑체인을 분리해 둔 덕에 스왑체인 코드는 그대로이고, 백버퍼가 3장이 되어 각각 텍스처 핸들을 갖습니다. D3D11에서는 백버퍼 0 하나만 보이지만 D3D12는 회전이 명시적이라 <code>GetCurrentBackBufferIndex</code>로 이번 프레임의 버퍼를 고릅니다.</p>
 <pre><code><span class="cm">// D3D12Device::BeginFrame — 3단계의 프레임 인덱스가 여기서 펜스의 기준이 된다</span>
 m_frameIndex = m_frameCounter % kFrameCount;
 <span class="kw">if</span> (m_fenceValues[m_frameIndex] != 0 &amp;&amp; m_fence-&gt;GetCompletedValue() &lt; m_fenceValues[m_frameIndex])
@@ -273,7 +273,7 @@ m_fenceValues[m_frameIndex] = m_nextFenceValue++;</code></pre>
 <h2 id="s4"><span class="num">4.</span>메모리와 업로드</h2>
 <h3 id="s4-1">4.1 Default 버퍼와 텍스처: 동기 업로드</h3>
 <p>D3D12에는 힙 종류가 셋입니다: DEFAULT(GPU 전용), UPLOAD(CPU 쓰기 → GPU 읽기), READBACK<sup><a href="#ref-3">3</a>,<a href="#ref-8">8</a></sup>. 정점·인덱스 버퍼와 텍스처는 DEFAULT 힙에 만들고, 초기 데이터는 UPLOAD 힙의 스테이징 버퍼에 써서 <code>CopyBufferRegion</code>/<code>CopyTextureRegion</code>으로 옮깁니다. 이 복사는 별도의 업로드 커맨드 리스트에 기록해 즉시 실행하고 완료를 기다립니다(<code>ExecuteUploadSync</code>). 로드 시점에만 쓰는 경로라 동기여도 됩니다. 텍스처는 <code>GetCopyableFootprints</code>가 알려 주는 밉별 오프셋과 256바이트 정렬된 행 간격(RowPitch)에 맞춰 행 단위로 복사합니다 — 원본의 rowPitch와 다르기 때문입니다<sup><a href="#ref-5">5</a></sup>.</p>
-<p>버퍼는 배리어 없이 씁니다. 버퍼는 COMMON에서 COPY_DEST로 암묵 승격되고 <code>ExecuteCommandLists</code>가 끝나면 COMMON으로 돌아오므로(decay), 다음에 정점 버퍼로 쓸 때 다시 승격됩니다<sup><a href="#ref-12">12</a></sup>. 텍스처는 승격되지 않으므로 업로드 뒤 명시적으로 <code>COPY_DEST → PIXEL_SHADER_RESOURCE | NON_PIXEL_SHADER_RESOURCE</code> 배리어를 겁니다.</p>
+<p>버퍼는 배리어 없이 씁니다. 버퍼는 COMMON에서 COPY_DEST로 암묵적으로 승격되고 <code>ExecuteCommandLists</code>가 끝나면 COMMON으로 돌아오므로(decay), 다음에 정점 버퍼로 쓸 때 다시 승격됩니다<sup><a href="#ref-12">12</a></sup>. 텍스처는 승격되지 않으므로 업로드 뒤 명시적으로 <code>COPY_DEST → PIXEL_SHADER_RESOURCE | NON_PIXEL_SHADER_RESOURCE</code> 배리어를 겁니다.</p>
 
 <h3 id="s4-2">4.2 Dynamic 버퍼: 업로드 링과 드로우마다 루트 CBV</h3>
 <p>여기가 8단계에서 가장 중요한 설계 결정입니다. 3~4단계의 Renderer는 오브젝트 상수버퍼 하나를 드로우마다 <code>UpdateBuffer</code>합니다. D3D11에서는 <code>Map(WRITE_DISCARD)</code>가 호출마다 새 메모리를 주므로 각 드로우가 자기 데이터를 봅니다. D3D12에서 "프레임 슬롯마다 버퍼 하나"로 흉내 내면 한 프레임의 모든 드로우가 <em>마지막</em> 데이터를 보게 됩니다 — GPU는 나중에 실행되기 때문입니다. 로드맵이 "Map 후 즉시 사용이 D3D12에서는 프레임 지연을 고려해야 한다"고 경고한 지점입니다.</p>
@@ -288,10 +288,10 @@ buffer-&gt;updatedFrame = m_frameCounter;
 <span class="kw">for</span> (각 셋 s : 현재 루트 시그니처)
     <span class="kw">for</span> (CB 슬롯 i) m_list-&gt;SetGraphicsRootConstantBufferView(binding.cbvRoot[i], buffer-&gt;gpuAddress);
     <span class="kw">if</span> (테이블이 dirty) SetGraphicsRootDescriptorTable(srvTableRoot / samplerTableRoot, …);</code></pre>
-<p>Dynamic 버퍼는 "쓰는 프레임에 반드시 갱신"이 계약입니다. 이전 프레임의 링 조각은 재사용될 수 있기 때문입니다. Debug에서는 <code>updatedFrame</code>이 현재 프레임이 아니면 한 번 경고합니다. Renderer는 원래부터 모든 Dynamic 버퍼를 매 프레임 올리므로(D3D11의 WRITE_DISCARD도 사실상 같은 계약) 경고가 난 적은 없습니다.</p>
+<p>Dynamic 버퍼의 계약은 "쓰는 프레임에 반드시 갱신한다"입니다. 이전 프레임의 링 조각은 재사용될 수 있기 때문입니다. Debug에서는 <code>updatedFrame</code>이 현재 프레임이 아니면 한 번 경고합니다. Renderer는 원래부터 모든 Dynamic 버퍼를 매 프레임 올리므로(D3D11의 WRITE_DISCARD도 사실상 같은 계약) 경고가 난 적은 없습니다.</p>
 
 <h3 id="s4-3">4.3 지연 해제</h3>
-<p>D3D11에서 <code>ComPtr</code>을 놓으면 드라이버가 GPU가 끝날 때까지 객체를 붙들어 줍니다. D3D12는 참조 카운트를 인터페이스 수명에만 쓰고, GPU가 쓰는 동안 리소스가 살아 있게 하는 것은 앱의 책임입니다<sup><a href="#ref-11">11</a></sup>. 그래서 <code>Destroy*</code>는 객체와 디스크립터 범위를 현재 슬롯의 가비지 목록에 넣고, 그 슬롯의 펜스가 지나간 BeginFrame에서 놓습니다. PSO 캐시의 <code>Clear</code>(셰이더 핫리로드)도 같은 길을 갑니다 — 이전 세대의 PSO가 아직 실행 중인 커맨드 리스트에 걸려 있을 수 있습니다. Resize와 종료는 <code>WaitForGpu</code>로 비운 뒤 즉시 놓습니다.</p>
+<p>D3D11에서 <code>ComPtr</code>을 놓으면 드라이버가 GPU가 끝날 때까지 객체를 붙들어 줍니다. D3D12는 참조 카운트를 인터페이스 수명에만 쓰고, GPU가 쓰는 동안 리소스가 살아 있게 하는 것은 앱의 책임입니다<sup><a href="#ref-11">11</a></sup>. 그래서 <code>Destroy*</code>는 객체와 디스크립터 범위를 현재 슬롯의 가비지 목록에 넣고, 그 슬롯의 펜스가 지나간 BeginFrame에서 놓습니다. PSO 캐시의 <code>Clear</code>(셰이더 핫리로드)도 같은 경로를 거칩니다 —이전 세대의 PSO가 아직 실행 중인 커맨드 리스트에 걸려 있을 수 있습니다. Resize와 종료는 <code>WaitForGpu</code>로 비운 뒤 즉시 놓습니다.</p>
 
 <h2 id="s5"><span class="num">5.</span>디스크립터 힙과 ResourceSet</h2>
 <p>D3D12의 뷰는 객체가 아니라 디스크립터 힙 안의 슬롯입니다<sup><a href="#ref-2">2</a></sup>. CPU 전용 힙 네 개(RTV 64, DSV 16, 스테이징 SRV 1024, 스테이징 샘플러 64)에 뷰를 만들어 두고, 셰이더가 읽을 것은 셰이더 가시 힙 두 개(CBV/SRV/UAV 4096, 샘플러 256)로 <code>CopyDescriptorsSimple</code>합니다. 힙은 bump + free list 할당기입니다(<code>D3D12DescriptorHeap</code>).</p>
@@ -299,7 +299,7 @@ buffer-&gt;updatedFrame = m_frameCounter;
 <p>슬롯 순서와 테이블 순서가 같아야 합니다. 루트 시그니처의 SRV 테이블은 슬롯마다 range 하나(<code>NumDescriptors 1</code>, <code>OffsetInDescriptorsFromTableStart = APPEND</code>)를 선언 순서대로 쌓고, 셋도 같은 순서로 복사합니다. 재질 셋의 t0·t1이 연속이든(체커·노멀) 프레임 셋의 t8이 혼자든 같은 규칙입니다.</p>
 
 <h2 id="s6"><span class="num">6.</span>BindingLayout → 루트 시그니처</h2>
-<p>4단계가 "루트 시그니처의 D3D11 미리 그리기"라고 부른 것이 여기서 진짜가 됩니다. PSO Desc의 <code>bindingLayouts[]</code>(프레임/오브젝트/재질) 순서대로 루트 파라미터를 쌓습니다: CB 슬롯은 루트 CBV(GPU 주소, 4.2절), SRV 슬롯들은 디스크립터 테이블 하나, 샘플러 슬롯들은 테이블 하나. 루트 시그니처의 세 파라미터 종류(루트 상수, 루트 디스크립터, 테이블) 중 루트 디스크립터는 CBV·raw/structured 버퍼만 가능하고 텍스처 SRV는 테이블이어야 합니다<sup><a href="#ref-6">6</a></sup> — 4단계가 정한 "CBV는 루트 디스크립터, SRV/Sampler는 테이블"이 그 제약입니다. 가시성은 슬롯의 스테이지 마스크에서(VS만·PS만·둘 다 = ALL). 레지스터 space는 전부 0입니다 — SM 5.0 DXBC는 space를 모릅니다(4단계의 X3721).</p>
+<p>4단계가 "루트 시그니처의 D3D11 미리 그리기"라고 부른 것이 여기서 진짜가 됩니다. PSO Desc의 <code>bindingLayouts[]</code>(프레임/오브젝트/재질) 순서대로 루트 파라미터를 쌓습니다: CB 슬롯은 루트 CBV(GPU 주소, 4.2절), SRV 슬롯들은 디스크립터 테이블 하나, 샘플러 슬롯들은 테이블 하나. 루트 시그니처의 세 파라미터 종류(루트 상수, 루트 디스크립터, 테이블) 중 루트 디스크립터는 CBV·raw/structured 버퍼만 가능하고 텍스처 SRV는 테이블이어야 합니다<sup><a href="#ref-6">6</a></sup> — 4단계가 정한 "CBV는 루트 디스크립터, SRV/Sampler는 테이블"은 이 제약을 따른 것입니다. 가시성은 슬롯의 스테이지 마스크로 정합니다(VS만·PS만·둘 다 = ALL). 레지스터 space는 전부 0입니다 — SM 5.0 DXBC는 space를 모릅니다(4단계의 X3721).</p>
 <pre><code><span class="cm">// 결과: 3셋 → 루트 파라미터 8개</span>
 [0] CBV b0 (ALL)     [1] CBV b2 (PS)     [2] SRV 테이블 { t8 } (PS)     [3] 샘플러 테이블 { s4 } (PS)     <span class="cm">// 프레임 셋</span>
 [4] CBV b1 (VS)                                                                                          <span class="cm">// 오브젝트 셋</span>
@@ -308,11 +308,11 @@ buffer-&gt;updatedFrame = m_frameCounter;
 <p>루트 시그니처가 바뀌면 루트 파라미터가 전부 무효가 되므로 CommandList는 그때 모든 테이블을 dirty로 표시합니다. 4단계의 "셋끼리 레지스터가 겹치지 않는다" 검증이 없었다면 여기서 <code>D3D12SerializeRootSignature</code>가 거부했을 것입니다.</p>
 
 <h2 id="s7"><span class="num">7.</span>PSO: 1단계의 빈칸이 채워지다</h2>
-<p><code>D3D12_GRAPHICS_PIPELINE_STATE_DESC</code>는 1단계 <code>PipelineStateDesc</code>의 D3D12 원형이라 변환이 필드 대 필드입니다. 다른 점 하나: D3D12 PSO는 토폴로지의 "종류"(점·선·삼각형)만 알고 리스트/스트립은 커맨드 리스트가 정하므로 <code>SetPipelineState</code>가 <code>IASetPrimitiveTopology</code>도 같이 부릅니다. 픽셀 셰이더가 없는 깊이 전용 PSO는 <code>PS = {nullptr, 0}</code>, <code>NumRenderTargets = 0</code>입니다.</p>
-<p>첫 실행은 <code>DrawIndexedInstanced</code> 에러로 시작했습니다: "PSO의 렌더 타깃 포맷(R8G8B8A8_UNORM)이 RTV 포맷(R8G8B8A8_UNORM_SRGB)과 다르다". 메인 패스는 5단계부터 백버퍼의 sRGB <em>뷰</em>에 그리는데 PSO Desc의 <code>rtvFormats[0]</code>은 1단계 기본값 UNORM이었습니다. D3D11은 이 필드를 보지 않아 4단계 동안 아무 일도 없었던 것입니다. Renderer의 <code>GetPipelineFor</code>가 <code>rtvFormats[0] = srgbOutput ? SRGB : UNORM</code>, <code>dsvFormat = D24S8</code>을 채우는 세 줄이 8단계의 유일한 Renderer 변경이고, F5로 sRGB를 끄면 UNORM 변형 PSO가 하나 더 생깁니다.</p>
+<p><code>D3D12_GRAPHICS_PIPELINE_STATE_DESC</code>는 1단계 <code>PipelineStateDesc</code>의 D3D12 원형이라 필드 대 필드로 변환됩니다. 다른 점 하나: D3D12 PSO는 토폴로지의 "종류"(점·선·삼각형)만 알고 리스트/스트립은 커맨드 리스트가 정하므로 <code>SetPipelineState</code>가 <code>IASetPrimitiveTopology</code>도 같이 부릅니다. 픽셀 셰이더가 없는 깊이 전용 PSO는 <code>PS = {nullptr, 0}</code>, <code>NumRenderTargets = 0</code>입니다.</p>
+<p>첫 실행은 <code>DrawIndexedInstanced</code> 에러로 시작했습니다: "PSO의 렌더 타깃 포맷(R8G8B8A8_UNORM)이 RTV 포맷(R8G8B8A8_UNORM_SRGB)과 다르다". 메인 패스는 5단계부터 백버퍼의 sRGB <em>뷰</em>에 그리는데 PSO Desc의 <code>rtvFormats[0]</code>은 1단계 기본값 UNORM이었습니다. D3D11은 이 필드를 보지 않아서 네 단계 동안 아무 문제도 없었던 것입니다. Renderer의 <code>GetPipelineFor</code>가 <code>rtvFormats[0] = srgbOutput ? SRGB : UNORM</code>, <code>dsvFormat = D24S8</code>을 채우는 세 줄이 8단계의 유일한 Renderer 변경이고, F5로 sRGB를 끄면 UNORM 변형 PSO가 하나 더 생깁니다.</p>
 
 <h2 id="s8"><span class="num">8.</span>배리어와 상태</h2>
-<p>6단계에서 no-op으로 넣어 둔 <code>Barrier(texture, before, after)</code>가 <code>ResourceBarrier</code>(Transition)가 됩니다. before는 호출 코드가 적은 값이 아니라 텍스처의 추적 상태를 씁니다 — 6단계에서 D3D11 백엔드가 그 둘이 어긋나면 경고하게 해 두었고, 실제로 어긋난 곳이 없어 여기서 그대로 통과했습니다. 상태 열거 <code>ResourceState</code>는 <code>D3D12_RESOURCE_STATES</code>의 부분집합으로 설계했으므로 변환은 1:1이고 <code>ShaderResource</code>만 <code>PIXEL | NON_PIXEL</code> 둘을 합칩니다<sup><a href="#ref-13">13</a></sup>.</p>
+<p>6단계에서 no-op으로 넣어 둔 <code>Barrier(texture, before, after)</code>가 <code>ResourceBarrier</code>(Transition)가 됩니다. before에는 호출 코드가 적은 값 대신 텍스처의 추적 상태를 씁니다 — 6단계에서 D3D11 백엔드가 그 둘이 어긋나면 경고하게 해 두었고, 실제로 어긋난 곳이 없어 여기서 그대로 통과했습니다. 상태 열거 <code>ResourceState</code>는 <code>D3D12_RESOURCE_STATES</code>의 부분집합으로 설계했으므로 변환은 1:1이고 <code>ShaderResource</code>만 <code>PIXEL | NON_PIXEL</code> 둘을 합칩니다<sup><a href="#ref-13">13</a></sup>.</p>
 <p>초기 상태가 6단계의 추적 시작점과 같아야 합니다. 스왑체인 버퍼는 COMMON(=PRESENT)으로 시작하고<sup><a href="#ref-12">12</a></sup> Renderer는 매 프레임 <code>Present → RenderTarget → Present</code>를 겁니다. 메인 깊이 버퍼는 Renderer가 배리어를 걸지 않으므로 DEPTH_WRITE로 만듭니다. 그림자 맵은 Renderer의 첫 배리어가 <code>Common → DepthWrite</code>이므로 COMMON으로 만듭니다(깊이 텍스처는 승격되지 않아 이 명시적 전이가 필요합니다). 초기 데이터가 있는 텍스처는 COPY_DEST로 만들어 업로드 뒤 SRV 상태로 옮깁니다. 프레임당 배리어 4회는 D3D11과 같습니다.</p>
 
 <h2 id="s9"><span class="num">9.</span>셰이더: DXBC 그대로</h2>
@@ -320,11 +320,11 @@ buffer-&gt;updatedFrame = m_frameCounter;
 
 <h2 id="s10"><span class="num">10.</span>ImGui와 Debug Layer / GBV</h2>
 <p><code>imgui_impl_dx12</code>는 셰이더 가시 SRV 힙 하나와 그 안의 슬롯 할당·해제 콜백을 요구합니다(1.91.5부터의 <code>InitInfo</code> 방식)<sup><a href="#ref-14">14</a></sup>. 우리 SRV 힙과 <code>D3D12DescriptorHeap::Allocate/Free</code>를 그대로 줍니다. 그래야 프레임에 힙이 하나만 바인딩되고, ImGui가 내부에서 <code>SetDescriptorHeaps</code>를 불러도 상태가 바뀌지 않습니다. 7단계의 어댑터 다섯 메서드 뒤에 들어갔으므로 App은 여전히 어느 백엔드인지 모릅니다. 그림자 맵 미리보기의 <code>GetImGuiTextureId</code>는 텍스처마다 셰이더 가시 SRV를 하나 영구 할당해 그 GPU 핸들 값을 돌려줍니다.</p>
-<p>Debug 빌드는 Debug Layer에 더해 GPU 기반 검증(GBV)과 동기화 큐 검증을 켭니다. GBV는 셰이더를 패치해 실행 시점에 "잘못된 상태의 리소스 접근, 해제된 리소스의 디스크립터, 힙 범위 밖 인덱싱"을 잡습니다<sup><a href="#ref-4">4</a></sup>. 이 세션에서 GBV를 켠 채 531 FPS가 나왔고 메시지는 0건입니다. 필터로 거른 것은 <code>CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE</code>·<code>CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE</code> 둘뿐입니다 — 스왑체인 백버퍼에는 최적화 클리어 값을 줄 수 없어 항상 나는 성능 힌트입니다. 메시지는 D3D11과 같이 프레임마다 InfoQueue에서 콘솔로 옮기고, 종료 시 <code>ReportLiveDeviceObjects</code>를 찍습니다.</p>
+<p>Debug 빌드는 Debug Layer에 더해 GPU 기반 검증(GBV)과 동기화 큐 검증을 켭니다. GBV는 셰이더를 패치해 실행 시점에 "잘못된 상태의 리소스 접근, 해제된 리소스의 디스크립터, 힙 범위 밖 인덱싱"을 잡습니다<sup><a href="#ref-4">4</a></sup>. 이 세션에서 GBV를 켠 채 531 FPS가 나왔고 메시지는 0건입니다. 필터로 거른 것은 <code>CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE</code>·<code>CLEARDEPTHSTENCILVIEW_MISMATCHINGCLEARVALUE</code> 둘뿐입니다 — 스왑체인 백버퍼에는 최적화 클리어 값을 줄 수 없어 항상 발생하는 성능 힌트입니다. 메시지는 D3D11과 마찬가지로 프레임마다 InfoQueue에서 콘솔로 옮기고, 종료 시 <code>ReportLiveDeviceObjects</code>를 출력합니다.</p>
 
 <h2 id="s11"><span class="num">11.</span>함정과 해결</h2>
 <ul>
-  <li><strong>PSO 렌더 타깃 포맷.</strong> 7절. D3D11이 4단계 동안 무시해 준 필드. Renderer가 sRGB 뷰에 맞춰 채운다.</li>
+  <li><strong>PSO 렌더 타깃 포맷.</strong> 7절. D3D11이 네 단계 동안 무시해 준 필드. Renderer가 sRGB 뷰에 맞춰 채운다.</li>
   <li><strong>드로우마다 갱신되는 상수버퍼.</strong> 4.2절. 프레임 슬롯 복제로는 부족하고 링 + 드로우마다 루트 CBV 재바인딩이 답. D3D11의 WRITE_DISCARD가 감춰 온 것.</li>
   <li><strong>비교 함수가 붙은 일반 샘플러.</strong> <code>SamplerDesc::compareFunc</code> 기본값 LessEqual이 비등방·선형 샘플러에도 들어가 Debug Layer가 "의도가 아닐 것"이라 5번 경고. Comparison 필터일 때만 지정하도록 두 백엔드 모두 수정.</li>
   <li><strong>F10은 시스템 키.</strong> F10 혼자 눌러도 WM_SYSKEYDOWN이고 DefWindowProc가 메뉴 모드에 들어가 다음 키(F5)를 삼켰다. 첫 sRGB 토글 검증이 128을 돌려준 이유. 메뉴가 없으므로 F10을 DefWindowProc에 넘기지 않게 했다.</li>

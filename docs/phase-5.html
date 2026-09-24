@@ -206,7 +206,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <main>
 <div class="eyebrow">SherlockEngine 단계별 상세 문서</div>
 <h1>5단계 · 텍스처와 색공간</h1>
-<p class="lede">3단계의 <code>Texture</code> 래퍼를 실제 에셋으로 채우고 감마를 잡은 단계입니다. 정점에 UV가 붙고, WIC/DDS 로더가 밉 체인을 CPU에서 만들어 올리고, <code>SamplerDesc</code>가 핸들이 되고, 재질 ResourceSet에 <code>t0</code>·<code>s0</code>이 들어갑니다. 스왑체인은 flip 모델로 바뀌었고 백버퍼는 UNORM으로 만들되 <strong>sRGB 뷰</strong>에 그립니다. 조명 계산은 이제 선형 공간에서 일어나고, 화면에 나가는 순간에만 인코딩됩니다. "sRGB 128 회색을 조명 없이 그리면 화면 픽셀이 128이어야 한다"는 검사로 전 과정을 수치로 확인했습니다.</p>
+<p class="lede">3단계의 <code>Texture</code> 래퍼를 실제 에셋으로 채우고 감마를 잡은 단계입니다. 정점에 UV가 붙고, WIC/DDS 로더가 CPU에서 밉 체인을 만들어 올립니다. <code>SamplerDesc</code>로 샘플러 핸들을 만들고, 재질 ResourceSet에는 <code>t0</code>·<code>s0</code>이 들어갑니다. 스왑체인은 flip 모델로 바뀌었고 백버퍼는 UNORM으로 만들되 <strong>sRGB 뷰</strong>에 그립니다. 조명 계산은 이제 선형 공간에서 일어나고, 화면에 나가는 순간에만 인코딩됩니다. "sRGB 128 회색을 조명 없이 그리면 화면 픽셀이 128이어야 한다"는 검사로 전 과정을 수치로 확인했습니다.</p>
 
 <div class="facts">
   <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
@@ -219,7 +219,7 @@ td .fix b{color:var(--ok);font-weight:600}
 
 <div class="callout">
   <div class="t">한 줄 요약</div>
-  <p>텍스처 바이트는 파일에 든 그대로(sRGB 인코딩)이고, <code>*_SRGB</code> 포맷은 "샘플할 때 풀어라"는 <strong>라벨</strong>입니다. 셰이더는 선형 값으로 조명을 계산하고, 백버퍼의 sRGB 뷰가 쓰는 순간 다시 인코딩합니다. 이 두 지점 사이에 있는 모든 것(정점 색, 재질 색, 클리어 색, 조명)은 선형입니다. ImGui만 예외라 UNORM 뷰에 따로 그립니다. 밉맵은 D3D12에 <code>GenerateMips</code>가 없으므로 CPU(DirectXTex)에서 만들어 초기 데이터로 올리고, 그 배열(<code>TextureSubresource[]</code>)이 D3D12의 업로드 힙 경로와 같은 모양이 되게 했습니다.</p>
+  <p>텍스처 바이트는 파일에 든 그대로(sRGB 인코딩)이고, <code>*_SRGB</code> 포맷은 "샘플할 때 풀어라"는 <strong>라벨</strong>입니다. 셰이더는 선형 값으로 조명을 계산하고, 백버퍼의 sRGB 뷰에 쓰는 순간 다시 인코딩됩니다. 이 두 지점 사이에 있는 모든 것(정점 색, 재질 색, 클리어 색, 조명)은 선형입니다. ImGui만 예외라 UNORM 뷰에 따로 그립니다. D3D12에는 <code>GenerateMips</code>가 없으므로 밉맵은 CPU(DirectXTex)에서 만들어 초기 데이터로 올리고, 그 배열(<code>TextureSubresource[]</code>)이 D3D12의 업로드 힙 경로와 같은 모양이 되게 했습니다.</p>
 </div>
 
 <h2 id="s1"><span class="num">1.</span>요약</h2>
@@ -241,7 +241,7 @@ td .fix b{color:var(--ok);font-weight:600}
 
 <h2 id="s2"><span class="num">2.</span>색공간: 왜 선형에서 계산하는가</h2>
 <h3 id="s2-1">2.1 sRGB 전달 함수와 "두 번 어두워지기"</h3>
-<p>PNG에 저장된 128은 "밝기 50%"가 아닙니다. sRGB는 사람 눈이 어두운 쪽에 민감한 것을 이용해 8비트를 어두운 쪽에 더 배정하는 <strong>인코딩</strong>이고, 전달 함수는 다음과 같습니다<sup><a href="#ref-3">3</a></sup>.</p>
+<p>PNG에 저장된 128은 "밝기 50%"가 아닙니다. sRGB는 사람 눈이 어두운 영역에 민감하다는 점을 이용해 8비트 값을 어두운 쪽에 더 많이 배정하는 <strong>인코딩</strong>이고, 전달 함수는 다음과 같습니다<sup><a href="#ref-3">3</a></sup>.</p>
 <pre><code><span class="cm">// sRGB(0..1) → 선형</span>
 linear = srgb / 12.92                          (srgb ≤ 0.04045)
 linear = ((srgb + 0.055) / 1.055) ^ 2.4        (그 외)
@@ -251,7 +251,7 @@ linear = ((srgb + 0.055) / 1.055) ^ 2.4        (그 외)
 <p>4단계까지의 우리 엔진은 이 원칙을 어겼습니다. 정점 색·재질 색을 그대로 조명에 넣고, 결과를 UNORM 백버퍼에 그대로 썼습니다. 텍스처가 없어서 "인코딩된 값을 선형으로 오해"하는 첫 번째 오류는 없었지만, "선형 결과를 인코딩 없이 화면에" 내는 두 번째 오류가 있었습니다. 그림 2의 오른쪽(sRGB 끔)이 그 결과입니다. 회색 카드 128이 55로 나옵니다 — 0.2158 × 255 = 55. 화면은 그 값을 sRGB로 해석하므로 실제 밝기는 3.8%가 됩니다. 이것이 "두 번 어두워지기"입니다.</p>
 
 <h3 id="s2-2">2.2 SRV와 RTV의 _SRGB 뷰</h3>
-<p>변환은 셰이더 코드가 아니라 <strong>하드웨어</strong>가 합니다. <code>DXGI_FORMAT_R8G8B8A8_UNORM_SRGB</code> 텍스처를 <code>Sample</code>하면 필터링 전에 각 텍셀이 선형으로 풀리고, 같은 포맷의 RTV에 픽셀 셰이더가 출력하면 블렌딩 뒤에 인코딩됩니다<sup><a href="#ref-1">1</a></sup>. 셰이더는 아무것도 모릅니다. 그래서 <code>BasicPixelShader.hlsl</code>의 조명 코드는 4단계와 한 줄도 다르지 않고, 텍스처 샘플 한 줄만 늘었습니다.</p>
+<p>변환은 셰이더 코드가 아니라 <strong>하드웨어</strong>가 합니다. <code>DXGI_FORMAT_R8G8B8A8_UNORM_SRGB</code> 텍스처를 <code>Sample</code>하면 필터링 전에 각 텍셀이 선형으로 풀리고, 같은 포맷의 RTV에 픽셀 셰이더가 출력하면 블렌딩 뒤에 인코딩됩니다<sup><a href="#ref-1">1</a></sup>. 셰이더는 이 변환을 전혀 모릅니다. 그래서 <code>BasicPixelShader.hlsl</code>의 조명 코드는 4단계와 한 줄도 다르지 않고, 텍스처 샘플 한 줄만 늘었습니다.</p>
 <pre><code><span class="cm">// Common.hlsli — 재질 셋의 t0 / s0</span>
 Texture2D albedoTexture : <span class="kw">register</span>(t0);
 SamplerState albedoSampler : <span class="kw">register</span>(s0);
@@ -260,7 +260,7 @@ SamplerState albedoSampler : <span class="kw">register</span>(s0);
 <span class="kw">const</span> float4 texel = albedoTexture.Sample(albedoSampler, input.uv);
 <span class="kw">const</span> float4 surface = input.col * baseColor * texel;
 <span class="kw">if</span> (unlit &gt; 0.5f) <span class="kw">return</span> float4(surface.rgb, surface.a);   <span class="cm">// 감마 검증용</span></code></pre>
-<p>백버퍼 쪽에는 제약이 하나 있습니다. flip 모델 스왑체인은 백버퍼 포맷으로 <code>*_SRGB</code>를 받지 않습니다 — 허용 포맷은 R16G16B16A16_FLOAT, B8G8R8A8_UNORM, R8G8B8A8_UNORM, R10G10B10A2_UNORM 뿐입니다<sup><a href="#ref-7">7</a></sup>. 대신 문서가 명시한 예외가 있습니다: <strong>UNORM으로 만든 스왑체인 백버퍼에 <code>*_SRGB</code> RTV를 만들 수 있다</strong>. 보통 뷰 포맷을 리소스 포맷과 다르게 하려면 리소스가 TYPELESS여야 하는데, 백버퍼만 이 규칙에서 면제됩니다<sup><a href="#ref-1">1</a></sup>. <code>D3D11Texture</code>가 두 RTV를 지연 생성합니다<sup><a href="#ref-20">20</a></sup>.</p>
+<p>백버퍼 쪽에는 제약이 하나 있습니다. flip 모델 스왑체인은 백버퍼 포맷으로 <code>*_SRGB</code>를 받지 않습니다 — 허용 포맷은 R16G16B16A16_FLOAT, B8G8R8A8_UNORM, R8G8B8A8_UNORM, R10G10B10A2_UNORM뿐입니다<sup><a href="#ref-7">7</a></sup>. 대신 문서가 명시한 예외가 있습니다: <strong>UNORM으로 만든 스왑체인 백버퍼에 <code>*_SRGB</code> RTV를 만들 수 있다</strong>. 보통 뷰 포맷을 리소스 포맷과 다르게 하려면 리소스가 TYPELESS여야 하는데, 백버퍼만 이 규칙에서 면제됩니다<sup><a href="#ref-1">1</a></sup>. <code>D3D11Texture</code>가 두 RTV를 지연 생성합니다<sup><a href="#ref-20">20</a></sup>.</p>
 <pre><code><span class="cm">// D3D11Resources.h — 같은 백버퍼의 UNORM 뷰와 sRGB 뷰</span>
 ID3D11RenderTargetView* GetRTV(ID3D11Device* device, <span class="kw">bool</span> srgbView = <span class="kw">false</span>)
 {
@@ -290,7 +290,7 @@ ImGuiBackend::Render();
 graphicsDevice.EndFrame();        <span class="cm">// Present</span></code></pre>
 
 <h3 id="s2-4">2.4 회색 128 검증</h3>
-<p>원문 로드맵의 "중간 회색 128 검증"을 그대로 했습니다. 4×4 픽셀의 (128,128,128) 텍스처를 sRGB 라벨로 만들고(<code>builtin:gray128</code>), <code>unlit</code> 재질로 큐브에 입혀 화면 픽셀을 읽었습니다. 배경(클리어 색)도 함께 읽어 예측값과 대조했습니다.</p>
+<p>원문 로드맵의 "중간 회색 128 검증"을 그대로 수행했습니다. 4×4 픽셀의 (128,128,128) 텍스처를 sRGB 라벨로 만들고(<code>builtin:gray128</code>), <code>unlit</code> 재질로 큐브에 입혀 화면 픽셀을 읽었습니다. 배경(클리어 색)도 함께 읽어 예측값과 대조했습니다.</p>
 <div class="tbl"><table>
   <thead><tr><th>측정 지점</th><th>선형 값</th><th>예측 (sRGB 켬)</th><th>측정 (켬)</th><th>예측 (끔)</th><th>측정 (끔)</th></tr></thead>
   <tbody>
@@ -299,7 +299,7 @@ graphicsDevice.EndFrame();        <span class="cm">// Present</span></code></pre
     <tr><td>배경 B (클리어 0.3)</td><td>0.3</td><td>149</td><td><b>149</b></td><td>76</td><td><b>76</b></td></tr>
   </tbody>
 </table></div>
-<p>여섯 값이 전부 맞습니다. 디코딩(SRV) → 통과(셰이더) → 인코딩(RTV)의 왕복이 손실 없이 128을 돌려주고, 인코딩을 끄면 정확히 선형 값 × 255가 나옵니다. 첫 시도에서는 188이 나왔는데, 그 원인은 4.3절에 있습니다.</p>
+<p>여섯 값이 전부 맞습니다. 디코딩(SRV) → 통과(셰이더) → 인코딩(RTV)의 왕복이 손실 없이 128을 돌려주고, 인코딩을 끄면 정확히 선형 값 × 255가 나옵니다. 첫 시도에서는 188이 나왔는데, 그 원인은 4.3절에서 다룹니다.</p>
 
 <h2 id="s3"><span class="num">3.</span>스왑체인: flip 모델과 tearing</h2>
 <p>sRGB 백버퍼 뷰를 위해 스왑체인을 다시 만들면서 blt 모델(<code>DXGI_SWAP_EFFECT_DISCARD</code>)을 flip 모델로 바꿨습니다. 옛 <code>D3D11CreateDeviceAndSwapChain</code>은 <code>DXGI_SWAP_CHAIN_DESC</code>(구버전)만 받아 tearing 확인이나 <code>CreateSwapChainForHwnd</code>를 쓸 수 없으므로, 장치를 먼저 만들고 그 장치의 어댑터에서 <code>IDXGIFactory2</code>를 얻어 스왑체인을 따로 만듭니다<sup><a href="#ref-8">8</a></sup>.</p>
@@ -314,7 +314,7 @@ graphicsDevice.EndFrame();        <span class="cm">// Present</span></code></pre
     <tr><td>HWND당 flip 스왑체인 하나</td><td>스왑체인 하나. <code>MakeWindowAssociation(NO_ALT_ENTER)</code>로 DXGI의 전체화면 전환 차단</td></tr>
   </tbody>
 </table></div>
-<p>VSync를 끈 무제한 프레임은 flip 모델에서 한 가지 조건이 더 붙습니다. 창 모드에서 컴포지터에 막히지 않으려면 <code>DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING</code>으로 만들고 <code>Present(0, DXGI_PRESENT_ALLOW_TEARING)</code>으로 내야 하며, 지원 여부는 <code>IDXGIFactory5::CheckFeatureSupport</code>로 먼저 물어야 합니다. 이 플래그는 <code>ResizeBuffers</code>에도 <strong>같은 값</strong>으로 넘겨야 합니다<sup><a href="#ref-6">6</a></sup>. 그래서 <code>m_swapChainFlags</code>를 멤버로 보관합니다.</p>
+<p>VSync를 끄고 프레임을 무제한으로 돌리려면 flip 모델에서는 조건이 하나 더 붙습니다. 창 모드에서 컴포지터에 막히지 않으려면 <code>DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING</code>으로 만들고 <code>Present(0, DXGI_PRESENT_ALLOW_TEARING)</code>으로 내야 하며, 지원 여부는 <code>IDXGIFactory5::CheckFeatureSupport</code>로 먼저 확인해야 합니다. 이 플래그는 <code>ResizeBuffers</code>에도 <strong>같은 값</strong>으로 넘겨야 합니다<sup><a href="#ref-6">6</a></sup>. 그래서 <code>m_swapChainFlags</code>를 멤버로 보관합니다.</p>
 <pre><code><span class="cm">// Device.cpp — InitDirect3D 발췌</span>
 ComPtr&lt;IDXGIFactory5&gt; factory5;
 <span class="kw">if</span> (SUCCEEDED(factory.As(&amp;factory5)))
@@ -340,7 +340,7 @@ m_swapChain-&gt;Present(m_vsync ? 1 : 0, flags);
 
 <span class="cm">// Resize — 생성 때와 같은 플래그</span>
 m_swapChain-&gt;ResizeBuffers(0, w, h, DXGI_FORMAT_UNKNOWN, m_swapChainFlags);</code></pre>
-<p>이 기기는 tearing을 지원했고(로그 "tearing 지원", 패널 "(tearing OK)"), VSync를 끈 상태에서 약 2,000 FPS가 나옵니다. 3단계의 리사이즈 순서(언바인드 → 백버퍼·깊이 텍스처 파괴 → <code>ResizeBuffers</code> → 재생성)는 flip 모델에서도 그대로 통과했습니다. 6회 반복 + 최소화/복원에 Debug Layer 메시지 0건입니다.</p>
+<p>이 기기는 tearing을 지원했고(로그 "tearing 지원", 패널 "(tearing OK)"), VSync를 끈 상태에서 약 2,000 FPS가 나옵니다. 3단계의 리사이즈 순서(언바인드 → 백버퍼·깊이 텍스처 파괴 → <code>ResizeBuffers</code> → 재생성)는 flip 모델에서도 그대로 통과했습니다. 6회 반복과 최소화/복원에서 Debug Layer 메시지는 0건입니다.</p>
 
 <h2 id="s4"><span class="num">4.</span>텍스처 로더와 밉맵</h2>
 <h3 id="s4-1">4.1 API 중립 TextureImage</h3>
@@ -358,20 +358,20 @@ TextureHandle CreateTexture(<span class="kw">const</span> TextureDesc&amp; desc,
     init[mip].pSysMem = subresources[mip].data;
     init[mip].SysMemPitch = subresources[mip].rowPitch;
 }</code></pre>
-<p>로드맵 원문은 <code>UploadTexture(handle, data)</code> 별도 함수를 제안했는데, 지금은 생성과 업로드를 한 호출로 묶었습니다. 텍스처가 전부 불변(immutable)이고 스트리밍이 없으므로 생성 시 초기 데이터가 가장 단순하고, D3D12에서 초기 데이터가 있는 <code>CreateTexture</code>는 내부적으로 업로드 힙 경로를 타면 됩니다. 실행 중 갱신이 필요해지면(비디오, 스트리밍) 그때 <code>UploadTexture</code>를 추가합니다.</p>
+<p>로드맵 원문은 별도의 <code>UploadTexture(handle, data)</code> 함수를 제안했지만, 지금은 생성과 업로드를 한 호출로 묶었습니다. 텍스처가 전부 불변(immutable)이고 스트리밍이 없으므로 생성 시 초기 데이터로 넘기는 방식이 가장 단순합니다. D3D12에서는 초기 데이터가 있는 <code>CreateTexture</code>가 내부적으로 업로드 힙 경로를 타면 됩니다. 실행 중 갱신이 필요해지면(비디오, 스트리밍) 그때 <code>UploadTexture</code>를 추가합니다.</p>
 
 <h3 id="s4-2">4.2 밉맵을 CPU에서 만드는 이유</h3>
 <p>밉맵은 텍스처를 절반씩 줄인 피라미드입니다. 각 레벨은 위 레벨의 절반이고 1×1까지 내려가며, 홀수 크기는 내림합니다<sup><a href="#ref-13">13</a></sup>(512 → 10레벨). 샘플러는 화면 픽셀 하나가 텍셀 몇 개를 덮는지 계산해 맞는 레벨을 고릅니다. 먼 바닥처럼 픽셀 하나가 텍셀 수십 개를 덮는 곳에서 밉 없이 최근접 샘플을 하면 프레임마다 다른 텍셀이 뽑혀 반짝이고(shimmer) 모아레가 생깁니다. Williams가 1983년에 "multum in parvo"에서 이름을 따 제안한 기법입니다<sup><a href="#ref-17">17</a></sup>. 그림 3이 같은 바닥을 밉 있음/없음으로 비교한 것입니다.</p>
-<p>D3D11에는 <code>ID3D11DeviceContext::GenerateMips</code>가 있지만 리소스를 <code>RENDER_TARGET | SHADER_RESOURCE</code> + <code>MISC_GENERATE_MIPS</code>로 만들어야 하고, 지원 포맷이 아니면 조용히 실패합니다<sup><a href="#ref-12">12</a></sup>. D3D12에는 이 함수가 아예 없어 컴퓨트 셰이더를 직접 써야 합니다. 그래서 백엔드 중립적인 길은 <strong>CPU(또는 오프라인)</strong>에서 밉을 만들어 초기 데이터로 올리는 것입니다. DirectXTex의 <code>GenerateMipMaps</code>가 그 일을 합니다<sup><a href="#ref-15">15</a></sup>.</p>
-<p>한 가지 더: sRGB 텍스처의 밉은 <strong>선형 공간에서 평균</strong>내야 합니다. 인코딩된 값끼리 평균하면 밉이 어두워집니다. 체커의 230과 40을 절반씩 섞으면 선형 평균은 sRGB로 약 170이지만 인코딩 값 평균은 135입니다. 멀리 갈수록 바닥이 어두워지는 흔한 버그입니다. DirectXTex는 <code>TEX_FILTER_SRGB</code>(= <code>SRGB_IN | SRGB_OUT</code>) 플래그로 "풀어서 평균 내고 다시 인코딩"을 해 줍니다<sup><a href="#ref-14">14</a></sup>.</p>
+<p>D3D11에는 <code>ID3D11DeviceContext::GenerateMips</code>가 있지만 리소스를 <code>RENDER_TARGET | SHADER_RESOURCE</code> + <code>MISC_GENERATE_MIPS</code>로 만들어야 하고, 지원 포맷이 아니면 조용히 실패합니다<sup><a href="#ref-12">12</a></sup>. D3D12에는 이 함수가 아예 없어 컴퓨트 셰이더를 직접 써야 합니다. 그래서 백엔드에 중립적인 방법은 <strong>CPU(또는 오프라인)</strong>에서 밉을 만들어 초기 데이터로 올리는 것입니다. DirectXTex의 <code>GenerateMipMaps</code>가 그 일을 합니다<sup><a href="#ref-15">15</a></sup>.</p>
+<p>한 가지 더: sRGB 텍스처의 밉은 <strong>선형 공간에서 평균</strong> 내야 합니다. 인코딩된 값끼리 평균을 내면 밉이 어두워집니다. 체커의 230과 40을 절반씩 섞으면 선형 평균은 sRGB로 약 170이지만 인코딩 값 평균은 135입니다. 멀리 갈수록 바닥이 어두워지는 흔한 버그입니다. DirectXTex는 <code>TEX_FILTER_SRGB</code>(= <code>SRGB_IN | SRGB_OUT</code>) 플래그로 "풀어서 평균 내고 다시 인코딩"을 해 줍니다<sup><a href="#ref-14">14</a></sup>.</p>
 <pre><code><span class="cm">// TextureLoader.cpp — FinishImage 발췌</span>
 <span class="kw">const</span> DirectX::TEX_FILTER_FLAGS filter = srgb ? DirectX::TEX_FILTER_SRGB : DirectX::TEX_FILTER_DEFAULT;
 DirectX::GenerateMipMaps(current-&gt;GetImages(), current-&gt;GetImageCount(), current-&gt;GetMetadata(), filter, 0, mipped);
 <span class="cm">// 0 = 1×1까지 전부. 512 → 10 레벨.</span></code></pre>
 
 <h3 id="s4-3">4.3 라벨과 변환 — DirectXTex 함정</h3>
-<p>첫 실행에서 회색 카드가 128이 아니라 <strong>188</strong>로 읽혔습니다. 188은 0.502를 sRGB로 인코딩한 값(0.735 × 255)입니다. 즉 텍스처에 128이 아니라 188이 들어가 있었고, 128을 "선형 0.502"로 오해해 인코딩한 무언가가 있었습니다.</p>
-<p>범인은 <code>DirectXTex::Convert</code>입니다<sup><a href="#ref-16">16</a></sup>. 로더는 WIC가 준 <code>R8G8B8A8_UNORM</code>을 <code>R8G8B8A8_UNORM_SRGB</code>로 "변환"했는데, DirectXTex는 대상이 <code>*_SRGB</code> 포맷이면 <code>TEX_FILTER_SRGB_OUT</code>을 <strong>암시</strong>하고 입력을 선형으로 간주해 인코딩합니다<sup><a href="#ref-14">14</a></sup>. 라이브러리 관점에서는 일관된 동작이지만, 우리 바이트는 이미 인코딩된 값이었습니다.</p>
+<p>첫 실행에서 회색 카드가 128이 아니라 <strong>188</strong>로 읽혔습니다. 188은 0.502를 sRGB로 인코딩한 값(0.735 × 255)입니다. 즉 텍스처에 128이 아니라 188이 들어가 있었고, 어딘가에서 128을 "선형 0.502"로 오해해 인코딩한 것입니다.</p>
+<p>범인은 <code>DirectXTex::Convert</code>입니다<sup><a href="#ref-16">16</a></sup>. 로더는 WIC가 준 <code>R8G8B8A8_UNORM</code>을 <code>R8G8B8A8_UNORM_SRGB</code>로 "변환"했는데, DirectXTex는 대상이 <code>*_SRGB</code> 포맷이면 <code>TEX_FILTER_SRGB_OUT</code>을 <strong>암묵적으로 적용</strong>해 입력을 선형으로 간주하고 인코딩합니다<sup><a href="#ref-14">14</a></sup>. 라이브러리 관점에서는 일관된 동작이지만, 우리 바이트는 이미 인코딩된 값이었습니다.</p>
 <p>본질은 이것입니다: <strong><code>*_SRGB</code>는 변환이 아니라 라벨입니다.</strong> 바이트는 그대로 두고 "샘플할 때 풀어라"라고 표시만 해야 합니다. 그래서 로더는 색공간 변환이 없는 <code>UNORM → UNORM</code> 변환만 하고, 라벨은 <code>desc.format</code>에만 붙입니다. 반대 방향의 함정도 막았습니다. DDS 파일이 이미 <code>*_SRGB</code> 포맷이면 <code>Convert</code>가 이번엔 <em>디코딩</em>을 하므로, <code>ScratchImage::OverrideFormat</code>으로 라벨을 먼저 떼어 냅니다(픽셀은 건드리지 않고 포맷 필드만 바꾸는 함수입니다).</p>
 <pre><code><span class="cm">// TextureLoader.cpp — FinishImage</span>
 <span class="kw">if</span> (DirectX::IsSRGB(base.GetMetadata().format))
@@ -383,10 +383,10 @@ DirectX::GenerateMipMaps(current-&gt;GetImages(), current-&gt;GetImageCount(), c
 
 <span class="cm">// (밉 생성)</span>
 <span class="kw">return</span> FromScratchImage(*current, srgb ? Format::R8G8B8A8_UNORM_SRGB : Format::R8G8B8A8_UNORM, out);   <span class="cm">// 라벨은 여기서</span></code></pre>
-<p>WIC 로드에도 <code>WIC_FLAGS_IGNORE_SRGB</code>를 줍니다. PNG의 색공간 메타데이터로 포맷이 <code>*_SRGB</code>로 바뀌는 것을 막고, 라벨은 재질의 <code>albedoSrgb</code>가 결정하게 합니다. 색 텍스처는 sRGB, 노멀 맵·마스크 같은 데이터 텍스처는 선형 — 이 결정은 파일이 아니라 <strong>용도</strong>가 하는 것이기 때문입니다.</p>
+<p>WIC 로드에도 <code>WIC_FLAGS_IGNORE_SRGB</code>를 줍니다. PNG의 색공간 메타데이터로 포맷이 <code>*_SRGB</code>로 바뀌는 것을 막고, 라벨은 재질의 <code>albedoSrgb</code>가 결정하게 합니다. 색 텍스처는 sRGB, 노멀 맵·마스크 같은 데이터 텍스처는 선형 — 이 결정은 파일이 아니라 <strong>용도</strong>로 정해지기 때문입니다.</p>
 
 <h2 id="s5"><span class="num">5.</span>샘플러</h2>
-<p><code>SamplerDesc</code>는 <code>D3D11_SAMPLER_DESC</code>의 필드를 API 중립 열거로 옮긴 것입니다<sup><a href="#ref-9">9</a></sup>. 필터는 D3D11의 조합형 열거(<code>MIN_MAG_MIP_*</code>)를 그대로 노출하지 않고 네 가지로 좁혔습니다. 축소·확대에 다른 필터를 섞으면 어느 쪽이 적용될지 모호한 경우 동작이 정의되지 않는다는 문서의 경고 때문입니다<sup><a href="#ref-10">10</a></sup>.</p>
+<p><code>SamplerDesc</code>는 <code>D3D11_SAMPLER_DESC</code>의 필드를 API 중립 열거로 옮긴 것입니다<sup><a href="#ref-9">9</a></sup>. 필터는 D3D11의 조합형 열거(<code>MIN_MAG_MIP_*</code>)를 그대로 노출하지 않고 네 가지로 좁혔습니다. 축소와 확대에 서로 다른 필터를 섞으면, 어느 쪽이 적용될지 모호한 경우 동작이 정의되지 않는다고 문서가 경고하기 때문입니다<sup><a href="#ref-10">10</a></sup>.</p>
 <div class="tbl"><table>
   <thead><tr><th>프리셋</th><th>필터</th><th>주소</th><th>maxLod</th><th>용도</th></tr></thead>
   <tbody>
@@ -398,10 +398,10 @@ DirectX::GenerateMipMaps(current-&gt;GetImages(), current-&gt;GetImageCount(), c
   </tbody>
 </table></div>
 <p><code>maxLod = 0</code>이 밉맵을 끄는 방법입니다. LOD 범위를 [minLod, maxLod]로 클램프하므로 0이면 레벨 0만 샘플합니다<sup><a href="#ref-9">9</a></sup>. 텍스처를 밉 없이 다시 만들 필요가 없어서, F6으로 실행 중에 바꿔 가며 비교할 수 있습니다. 로드맵의 <code>ShadowCompare</code>는 <code>SamplerFilter::Comparison</code> 열거값과 변환만 두고 프리셋은 6단계(그림자)에서 만듭니다.</p>
-<p>D3D12를 고려한 점: D3D12는 샘플러가 디스크립터 힙(최대 2048)에 들어가거나 루트 시그니처의 <strong>정적 샘플러</strong>가 됩니다. 프리셋 다섯 개는 정적 샘플러로 옮기기 좋은 형태이고, <code>ResourceSet</code>에 샘플러 핸들을 넣는 지금 구조는 디스크립터 힙 경로와 대응합니다. D3D11에서는 <code>SetResourceSet</code>이 <code>PSSetSamplers</code> 한 번으로 풉니다.</p>
+<p>D3D12를 고려한 점: D3D12에서는 샘플러가 디스크립터 힙(최대 2048)에 들어가거나 루트 시그니처의 <strong>정적 샘플러</strong>가 됩니다. 프리셋 다섯 개는 정적 샘플러로 옮기기 좋은 형태이고, <code>ResourceSet</code>에 샘플러 핸들을 넣는 지금 구조는 디스크립터 힙 경로와 대응합니다. D3D11에서는 <code>SetResourceSet</code>이 <code>PSSetSamplers</code> 한 번으로 풉니다.</p>
 
 <h2 id="s6"><span class="num">6.</span>UV와 프리미티브</h2>
-<p><code>VERTEX</code>에 <code>u, v</code>가 붙어 48바이트가 되었고, 입력 레이아웃은 <code>TEXCOORD0 R32G32_FLOAT</code> 속성이 하나 늘었습니다. 정점 셰이더가 <code>uv × uvScale</code>을 넘기므로 바닥 같은 큰 면은 재질의 <code>uvScale</code>(8×8)로 타일링합니다. 그래서 <code>b3 Material</code>은 이제 VS도 읽고, 재질 레이아웃의 b3 슬롯이 <code>VS|PS</code>가 되었습니다. 리플렉션 대조가 이것을 잡아 줍니다 — b3을 PS에만 선언한 채로 두면 초기화가 "VS가 b3을 쓰지만 선언되지 않음"으로 실패합니다.</p>
+<p><code>VERTEX</code>에 <code>u, v</code>가 붙어 48바이트가 되었고, 입력 레이아웃에는 <code>TEXCOORD0 R32G32_FLOAT</code> 속성이 하나 늘었습니다. 정점 셰이더가 <code>uv × uvScale</code>을 넘기므로 바닥 같은 큰 면은 재질의 <code>uvScale</code>(8×8)로 타일링합니다. 그래서 <code>b3 Material</code>은 이제 VS도 읽고, 재질 레이아웃의 b3 슬롯이 <code>VS|PS</code>가 되었습니다. 리플렉션 대조가 이것을 잡아 줍니다 — b3을 PS에만 선언한 채로 두면 초기화가 "VS가 b3을 쓰지만 선언되지 않음"으로 실패합니다.</p>
 <p>Direct3D의 텍스처 공간은 (0,0)이 왼쪽 위, u가 오른쪽, v가 <strong>아래</strong>로 갑니다<sup><a href="#ref-18">18</a></sup>. OpenGL 교재의 그림과 반대이므로 검증 텍스처(<code>uv_checker.png</code>)에 코너 마커를 넣었습니다: 빨강 = (0,0), 초록 = u+ 방향, 파랑 = v+ 방향. 그림 4의 큐브 면에서 빨강이 왼쪽 위, 초록이 오른쪽 위, 파랑이 왼쪽 아래에 있으면 UV와 이미지 행 순서가 맞는 것입니다.</p>
 <div class="tbl"><table>
   <thead><tr><th>프리미티브</th><th>u</th><th>v</th><th>비고</th></tr></thead>
@@ -432,7 +432,7 @@ DirectX::GenerateMipMaps(current-&gt;GetImages(), current-&gt;GetImageCount(), c
     gpuMaterial-&gt;boundTexture = texture;
     gpuMaterial-&gt;boundSampler = sampler;
 }</code></pre>
-<p>재질은 텍스처를 핸들이 아니라 <strong>이름</strong>으로 가리킵니다. <code>Scene</code>은 <code>Device</code>를 모르므로 파일을 열 수 없고, Renderer의 캐시(이름 + "|srgb"/"|linear" → <code>TextureHandle</code>)가 이름을 핸들로 바꿉니다. 이름 규칙은 세 가지입니다: <code>Assets/Textures/</code> 기준 파일 이름("uv_checker.png"), <code>builtin:white</code> / <code>builtin:checker</code> / <code>builtin:gray128</code>(절차적), 빈 문자열(텍스처 없음 → 1×1 흰색, <code>baseColor</code>만 남음). 로드에 실패하면 경고 후 흰색으로 대체해 화면이 깨지지 않습니다. 에셋은 vcxproj의 <code>CopyAssets</code> 타깃이 exe 옆 <code>Assets\</code>로 복사하고 <code>Paths::GetAssetPath</code>가 찾습니다(없으면 소스 트리 폴백).</p>
+<p>재질은 텍스처를 핸들이 아니라 <strong>이름</strong>으로 가리킵니다. <code>Scene</code>은 <code>Device</code>를 모르므로 파일을 열 수 없고, Renderer의 캐시(이름 + "|srgb"/"|linear" → <code>TextureHandle</code>)가 이름을 핸들로 바꿉니다. 이름 규칙은 세 가지입니다: <code>Assets/Textures/</code> 기준 파일 이름("uv_checker.png"), <code>builtin:white</code> / <code>builtin:checker</code> / <code>builtin:gray128</code>(절차적), 빈 문자열(텍스처 없음 → 1×1 흰색, <code>baseColor</code>만 남음). 로드에 실패하면 경고를 남기고 흰색으로 대체하므로 화면이 깨지지 않습니다. 에셋은 vcxproj의 <code>CopyAssets</code> 타깃이 exe 옆 <code>Assets\</code>로 복사하고 <code>Paths::GetAssetPath</code>가 찾습니다(없으면 소스 트리 폴백).</p>
 
 <h2 id="s8"><span class="num">8.</span>함정과 해결</h2>
 <ul>
@@ -441,7 +441,7 @@ DirectX::GenerateMipMaps(current-&gt;GetImages(), current-&gt;GetImageCount(), c
   <li><strong>flip 모델은 sRGB 백버퍼를 거부한다.</strong> <code>CreateSwapChainForHwnd</code>가 <code>DXGI_ERROR_INVALID_CALL</code>. 문서의 예외 규칙(UNORM 백버퍼에 sRGB RTV)으로 해결. 이 예외는 백버퍼에만 적용되고 일반 텍스처는 TYPELESS로 만들어야 합니다.</li>
   <li><strong>ALLOW_TEARING은 세 곳에 같은 값.</strong> 생성 플래그, <code>ResizeBuffers</code> 플래그, <code>Present</code> 플래그. 하나라도 빠지면 리사이즈에서 <code>DXGI_ERROR_INVALID_CALL</code>. 멤버 <code>m_swapChainFlags</code>로 한 곳에서 관리.</li>
   <li><strong>b3을 VS가 읽는다.</strong> uvScale을 VS에서 곱하므로 재질 레이아웃의 b3 슬롯을 <code>VS|PS</code>로 바꿔야 했습니다. 4단계의 리플렉션 대조가 초기화 시점에 잡았습니다.</li>
-  <li><strong>빈 텍스처 이름이 흰색을 하나 더 만든다.</strong> 캐시 키가 ""|srgb 와 builtin:white|linear 로 달라 흰색 1×1이 두 개. 빈 이름은 캐시를 거치지 않고 <code>m_whiteTexture</code>를 돌려주게 수정. 텍스처 수 5 → 4.</li>
+  <li><strong>빈 텍스처 이름이 흰색을 하나 더 만든다.</strong> 캐시 키가 ""|srgb와 builtin:white|linear로 달라 흰색 1×1이 두 개. 빈 이름은 캐시를 거치지 않고 <code>m_whiteTexture</code>를 돌려주게 수정. 텍스처 수 5 → 4.</li>
   <li><strong>격리 grep이 주석에 걸렸다.</strong> Renderer.cpp의 주석 속 "ComPtr". 3단계와 같은 종류. 문구 수정.</li>
   <li><strong>검증 텍스처의 글자.</strong> uv_checker.png에 "u+"/"v+" 글자를 넣으려 했으나 생성 스크립트의 글꼴 렌더링이 실패해 색 마커만 남았습니다. 검증에는 마커로 충분합니다.</li>
 </ul>
@@ -472,7 +472,7 @@ DirectX::GenerateMipMaps(current-&gt;GetImages(), current-&gt;GetImageCount(), c
 </div>
 <div class="fig">
   <img src="../images/2026-09-23-phase5-mip-compare.png" alt="비등방 밉맵과 밉 없는 최근접 샘플의 먼 바닥 비교 크롭" style="width:100%;height:auto;border-radius:6px">
-  <div class="cap">그림 3. 먼 바닥 크롭. 왼쪽 AnisotropicWrap(밉 10레벨), 오른쪽 PointNoMip(레벨 0만). 오른쪽의 모아레가 픽셀 하나가 텍셀 수십 개를 덮을 때 밉 없이 생기는 앨리어싱이다. 전체 화면은 images/2026-09-23-phase5-sampler-pointnomip.png.</div>
+  <div class="cap">그림 3. 먼 바닥 크롭. 왼쪽 AnisotropicWrap(밉 10레벨), 오른쪽 PointNoMip(레벨 0만). 오른쪽의 모아레는 픽셀 하나가 텍셀 수십 개를 덮는데 밉이 없을 때 생기는 앨리어싱이다. 전체 화면은 images/2026-09-23-phase5-sampler-pointnomip.png.</div>
 </div>
 <div class="fig">
   <img src="../images/2026-09-23-phase5-uv-closeup.png" alt="UV 체커 구와 큐브를 가까이서 본 화면" style="width:100%;height:auto;border-radius:6px">
