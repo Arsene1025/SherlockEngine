@@ -57,7 +57,7 @@ bool D3D12PipelineState::Create(D3D12Device& device, const PipelineStateDesc& de
 		elements[i].InstanceDataStepRate = 0;
 	}
 
-	// 1단계에서 "D3D11 은 안 쓰지만 D3D12 는 필수"라고 넣어 둔 rtvFormats / dsvFormat / sampleCount 가 여기서 쓰인다.
+	// 1단계에서 "D3D11 은 안 쓰지만 D3D12 는 필수"라고 넣어 둔 rtvFormats / dsvFormat / sampleCount 가 여기서 쓰임.
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC pd = {};
 	pd.pRootSignature = m_rootLayout->rootSignature.Get();
 	pd.VS = { vs->bytecode.data(), vs->bytecode.size() };
@@ -136,7 +136,7 @@ void D3D12PipelineStateCache::Clear(D3D12Device& device)
 	{
 		Log::Info("PSO 캐시 비움 (%zu개). 이전 세대 %u 의 핸들은 무효.", m_states.size(), m_generation);
 	}
-	// GPU 가 아직 이전 프레임에서 이 PSO 를 쓰고 있을 수 있다. 프레임 펜스가 지나간 뒤 놓는다.
+	// GPU 가 아직 이전 프레임에서 이 PSO 를 쓰고 있을 수 있음. 따라서 프레임 펜스를 통과한 뒤 해제함.
 	for (auto& state : m_states)
 	{
 		device.DeferRelease(state->Detach());

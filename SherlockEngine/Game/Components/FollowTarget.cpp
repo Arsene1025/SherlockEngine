@@ -5,10 +5,10 @@
 #include <algorithm>
 #include <cmath>
 
-// 추적: 소유 오브젝트를 이름이 target 인 오브젝트의 offset 위치로 부드럽게 옮기고, target(+lookOffset) 을 바라보게 회전한다.
-// 카메라 오브젝트(CameraComponent)에 붙이면 3인칭 추적 카메라가 된다 — 카메라 자체는 CameraComponent 가 맡고
-// 이 컴포넌트는 "카메라 오브젝트를 옮기는 로직" 일 뿐이다. 그래서 어떤 오브젝트든 따라다니게 할 수 있다.
-// Start 에서 순간이동하지 않는다: 에디터에서 놓아 둔 자리에서 출발해 smoothing 속도로 따라붙는다.
+// 추적: 소유 오브젝트를 이름이 target 인 오브젝트의 offset 위치로 부드럽게 옮기고, target(+lookOffset) 을 바라보게 회전함.
+// 카메라 오브젝트(CameraComponent)에 붙이면 3인칭 추적 카메라가 됨 — 카메라 자체는 CameraComponent 가 맡고
+// 이 컴포넌트는 "카메라 오브젝트를 옮기는 로직" 일 뿐임. 그래서 어떤 오브젝트에 붙여도 대상을 따라다니게 할 수 있음.
+// Start 에서 순간이동하지 않음: 에디터에서 놓아 둔 자리에서 출발해 smoothing 속도로 따라붙음.
 class FollowTarget : public Behaviour
 {
 public:
@@ -26,7 +26,7 @@ public:
 
 	void Update(float dt) override
 	{
-		if (m_target == nullptr) m_target = GetContext().scene->FindObject(target);   // 재생 중 생긴 오브젝트도 찾는다
+		if (m_target == nullptr) m_target = GetContext().scene->FindObject(target);   // 재생 중 생긴 오브젝트도 찾음
 		if (m_target == nullptr || m_target == &GetOwner()) return;
 
 		const DirectX::XMFLOAT3 tp = m_target->GetTransform().GetPosition();

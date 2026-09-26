@@ -4,8 +4,8 @@
 #include "RHI/D3D12/D3D12Device.h"
 #include "Core/Log.h"
 
-// 백엔드 팩토리. 새 백엔드는 여기에 case 하나와 RHI/<backend>/ 폴더 하나를 더한다.
-// 이 파일은 백엔드 헤더를 include 하므로 RHI/ 의 "선언만" 규칙에서 유일한 예외다.
+// 백엔드 팩토리. 새 백엔드를 추가하려면 여기에 case 하나와 RHI/<backend>/ 폴더 하나를 더하면 됨.
+// 이 파일은 백엔드 헤더를 include 하므로 RHI/ 의 "선언만" 규칙에서 유일한 예외임.
 
 namespace RHI
 {

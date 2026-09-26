@@ -14,7 +14,7 @@ bool PipelineState::Create(D3D11Device& device, const PipelineStateDesc& desc)
 		return false;
 	}
 
-	// 셰이더. 핸들을 풀에서 실제 객체로 바꾼다.
+	// 셰이더. 핸들로 풀에서 실제 객체를 찾음.
 	const D3D11Shader* vs = device.GetShader(desc.vs);
 	if (vs == nullptr || vs->stage != ShaderStage::Vertex || !vs->vs)
 	{
@@ -23,8 +23,8 @@ bool PipelineState::Create(D3D11Device& device, const PipelineStateDesc& desc)
 	}
 	m_vs = vs->vs;
 
-	// 6단계: 픽셀 셰이더는 선택이다. 빈 핸들이면 깊이 전용 파이프라인(그림자 맵).
-	// D3D11은 PSSetShader(nullptr)로 래스터라이저 뒤를 끊고, D3D12는 PS 바이트코드가 비어 있으면 된다.
+	// 6단계: 픽셀 셰이더는 선택 사항임. 핸들이 비어 있으면 깊이 전용 파이프라인(그림자 맵)임.
+	// D3D11은 PSSetShader(nullptr)로 래스터라이저 이후 단계를 끊고, D3D12는 PS 바이트코드를 비워 두면 됨.
 	m_ps.Reset();
 	if (desc.ps.IsValid())
 	{
@@ -38,7 +38,7 @@ bool PipelineState::Create(D3D11Device& device, const PipelineStateDesc& desc)
 	}
 
 	// 입력 레이아웃. D3D11은 정점 셰이더 바이트코드로 시그니처를 검증하므로
-	// 셰이더의 바이트코드 사본이 필요하다. 그래서 D3D11Shader가 바이트코드를 보관한다.
+	// 셰이더의 바이트코드 사본이 필요함. 그래서 D3D11Shader가 바이트코드를 보관함.
 	if (desc.vertexLayout.attributeCount == 0 || desc.vertexLayout.attributeCount > kMaxVertexAttributes)
 	{
 		Log::Error("PipelineState::Create : 정점 속성 개수가 잘못됨 (%u).", desc.vertexLayout.attributeCount);
@@ -68,8 +68,8 @@ bool PipelineState::Create(D3D11Device& device, const PipelineStateDesc& desc)
 		return false;
 	}
 
-	// 래스터라이저 / 깊이스텐실 / 블렌드. PSO마다 따로 만든다.
-	// 같은 Desc를 공유해 D3D11 객체 수를 줄이는 하위 캐시는 PSO 수가 늘면 넣는다.
+	// 래스터라이저 / 깊이스텐실 / 블렌드. PSO마다 따로 만듦.
+	// 같은 Desc끼리 객체를 공유해 D3D11 객체 수를 줄이는 하위 캐시는 PSO 수가 늘어나면 추가함.
 	const D3D11_RASTERIZER_DESC rd = D3D11Convert::ToD3D11(desc.rasterizer);
 	hr = d3d->CreateRasterizerState(&rd, m_rasterizerState.ReleaseAndGetAddressOf());
 	if (FAILED(hr))
@@ -102,13 +102,13 @@ void PipelineState::Bind(ID3D11DeviceContext* context) const
 {
 	if (context == nullptr) return;
 
-	// D3D12의 SetPipelineState 하나에 해당하는 일곱 호출.
+	// D3D12의 SetPipelineState 한 번에 해당하는 일곱 번의 호출.
 	context->IASetInputLayout(m_inputLayout.Get());
 	context->IASetPrimitiveTopology(m_topology);
 	context->VSSetShader(m_vs.Get(), nullptr, 0);
 	context->PSSetShader(m_ps.Get(), nullptr, 0);
 	context->RSSetState(m_rasterizerState.Get());
-	// 스텐실 참조값과 블렌드 팩터는 동적 상태다. 기본값을 준다.
+	// 스텐실 참조값과 블렌드 팩터는 동적 상태임. 여기서는 기본값을 넘김.
 	context->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
 	context->OMSetBlendState(m_blendState.Get(), nullptr, 0xFFFFFFFF);
 }

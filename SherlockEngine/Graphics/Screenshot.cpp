@@ -21,7 +21,7 @@ bool Screenshot::SavePng(const std::wstring& path, const std::vector<uint8_t>& r
 	const size_t slash = path.find_last_of(L"\\/");
 	if (slash != std::wstring::npos) CreateDirectoryW(path.substr(0, slash).c_str(), nullptr);
 
-	// 알파는 1 로 저장한다 (백버퍼 알파는 의미가 없다).
+	// 알파는 1 로 저장함 (백버퍼 알파는 의미가 없음).
 	std::vector<uint8_t> opaque(rgba.begin(), rgba.begin() + image.slicePitch);
 	for (size_t i = 3; i < opaque.size(); i += 4) opaque[i] = 255;
 	image.pixels = opaque.data();

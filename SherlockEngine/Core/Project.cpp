@@ -30,7 +30,7 @@ namespace
 bool Project::IsValidName(const std::string& name)
 {
 	if (name.empty() || name.size() > 48) return false;
-	if (!std::isalpha(static_cast<unsigned char>(name[0]))) return false;   // vcxproj 이름·C++ 매크로에 쓴다
+	if (!std::isalpha(static_cast<unsigned char>(name[0]))) return false;   // vcxproj 이름·C++ 매크로에 쓰임
 	for (char c : name) if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '_')) return false;
 	return true;
 }
@@ -76,14 +76,14 @@ bool Project::Load(const std::wstring& pathOrDir)
 		Log::Error("프로젝트 파일 파싱 실패 (%s): %s", Log::ToUtf8(file.c_str()).c_str(), e.what());
 		return false;
 	}
-	// 상대 경로(--project=..\..\Projects\X)로 열어도 최근 목록·창 제목·생성기가 같은 프로젝트로 보게 절대 경로로 정규화
+	// 상대 경로(--project=..\..\Projects\X)로 열어도 최근 목록·창 제목·생성기가 같은 프로젝트로 인식하도록 절대 경로로 정규화함
 	const fs::path canonical = fs::weakly_canonical(fs::absolute(file, ec), ec);
 	if (!canonical.empty()) file = canonical.wstring();
 	m_root = WithSlash(fs::path(file).parent_path().wstring());
 	m_name = root.value("name", Log::ToUtf8(fs::path(file).stem().wstring().c_str()));
 	startScene = root.value("startScene", "");
 	engineRoot = WithSlash(Wide(root.value("engineRoot", "")));
-	if (!engineRoot.empty() && !fs::is_directory(engineRoot, ec)) engineRoot.clear();   // 다른 PC 로 옮긴 프로젝트: exe 옆에서 찾는다
+	if (!engineRoot.empty() && !fs::is_directory(engineRoot, ec)) engineRoot.clear();   // 다른 PC로 옮긴 프로젝트: exe 옆에서 찾음
 	Log::Info("프로젝트: %s (%s, 시작 씬 %s)", m_name.c_str(), Log::ToUtf8(m_root.c_str()).c_str(), startScene.empty() ? "(없음)" : startScene.c_str());
 	return true;
 }

@@ -23,7 +23,7 @@ float Time::Tick()
 	m_totalTime = m_timer.TotalTime();
 	++m_frameCount;
 
-	// FPS: 0.5초마다 창을 닫고 평균을 갱신한다. ImGui 의 Framerate 와 달리 우리 시계 기준이다.
+	// FPS: 0.5초 구간이 끝날 때마다 평균을 갱신함. ImGui 의 Framerate 와 달리 우리 시계 기준임.
 	m_fpsWindowTime += m_rawDeltaTime;
 	++m_fpsWindowFrames;
 	if (m_fpsWindowTime >= 0.5f)

@@ -6,13 +6,13 @@
 
 // 텍스처 파일 → CPU 이미지(밉 체인 포함). API 중립.
 //
-// 디코딩과 밉맵 생성은 DirectXTex(vcpkg)가 한다. WIC(PNG·JPG·BMP)와 DDS를 읽는다.
+// 디코딩과 밉맵 생성은 DirectXTex(vcpkg)가 맡음. WIC(PNG·JPG·BMP)와 DDS를 읽음.
 // 결과는 TextureDesc + 밉 레벨별 TextureSubresource 배열이므로 Device::CreateTexture에
-// 그대로 넘긴다. D3D 헤더는 쓰지 않는다 — DirectXTex의 D3D11 헬퍼(CreateTexture 등)는
-// 일부러 쓰지 않는다. 그것을 쓰면 로더가 D3D11 폴더에 들어가야 한다.
+// 그대로 넘김. D3D 헤더는 쓰지 않음 — DirectXTex의 D3D11 헬퍼(CreateTexture 등)도
+// 일부러 쓰지 않음. 그것을 쓰면 로더가 D3D11 폴더에 들어가야 함.
 //
-// sRGB: 색 텍스처(알베도)는 srgb=true 로 읽어 *_UNORM_SRGB 포맷으로 만든다. 샘플할 때
-// 하드웨어가 선형으로 풀고, 조명은 선형에서 계산되며, 백버퍼 sRGB 뷰가 다시 인코딩한다.
+// sRGB: 색 텍스처(알베도)는 srgb=true 로 읽어 *_UNORM_SRGB 포맷으로 만듦. 샘플할 때
+// 하드웨어가 선형으로 풀고, 조명은 선형에서 계산되며, 백버퍼 sRGB 뷰가 다시 인코딩함.
 // 노멀맵·마스크 같은 "숫자" 텍스처는 srgb=false.
 class TextureImage
 {
@@ -26,18 +26,18 @@ public:
 
 namespace TextureLoader
 {
-	// 파일에서 읽는다. generateMips면 1×1까지 밉 체인을 만든다.
+	// 파일에서 읽음. generateMips가 true면 1×1까지 밉 체인을 만듦.
 	bool LoadFromFile(const std::wstring& path, bool srgb, bool generateMips, TextureImage& out);
 
-	// 9단계: 메모리의 파일 내용(PNG/JPG/DDS 바이트)에서 읽는다. 모델에 내장된 이미지용.
+	// 9단계: 메모리의 파일 내용(PNG/JPG/DDS 바이트)에서 읽음. 모델에 내장된 이미지용.
 	bool LoadFromMemory(const uint8_t* data, size_t size, bool srgb, bool generateMips, TextureImage& out);
 
-	// 11-B단계: 에디터 썸네일. 긴 변이 maxSize 를 넘으면 DirectXTex Resize 로 줄인다. 밉 없음.
-	// 포맷은 UNORM 라벨 — ImGui 는 백버퍼의 UNORM 뷰에 그리므로 sRGB 라벨을 붙이면 두 번 인코딩되어 바랜다.
-	// 블록 압축 DDS 는 먼저 푼다. 로그는 실패할 때만 (폴더 하나에 수십 장이 있다).
+	// 11-B단계: 에디터 썸네일. 긴 변이 maxSize 를 넘으면 DirectXTex Resize 로 줄임. 밉 없음.
+	// 포맷은 UNORM 라벨 — ImGui 는 백버퍼의 UNORM 뷰에 그리므로 sRGB 라벨을 붙이면 두 번 인코딩되어 색이 바램.
+	// 블록 압축 DDS 는 먼저 압축을 풂. 로그는 실패할 때만 남김 (폴더 하나에 수십 장이 있을 수 있음).
 	bool LoadThumbnail(const std::wstring& path, uint32_t maxSize, TextureImage& out);
 
-	// 절차적 텍스처. 파일 없이 검증할 때 쓴다.
+	// 절차적 텍스처. 파일 없이 검증할 때 씀.
 	// 체커: cellsPerSide×cellsPerSide 격자, 두 색 교대.
 	bool CreateChecker(uint32_t size, uint32_t cellsPerSide, const uint8_t colorA[4], const uint8_t colorB[4],
 		bool srgb, bool generateMips, TextureImage& out);

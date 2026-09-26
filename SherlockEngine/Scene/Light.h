@@ -2,13 +2,13 @@
 #include <cstdint>
 #include <DirectXMath.h>
 
-// 조명 데이터. C++와 HLSL(Shaders/Common.hlsli의 LightData)이 바이트 단위로 같아야 한다.
+// 조명 데이터. C++ 구조체와 HLSL(Shaders/Common.hlsli의 LightData)의 메모리 배치가 바이트 단위로 같아야 함.
 //
 // HLSL 상수버퍼 패킹 규칙:
-//   - 16바이트 레지스터 단위로 채우며, 벡터 하나가 레지스터 경계를 넘을 수 없다.
-//   - 따라서 float3 다음에는 4바이트 스칼라를 두어 정확히 16을 채운다.
-//   - 구조체 배열의 각 원소는 16바이트 경계에서 시작한다.
-// 아래 순서는 그 규칙을 손으로 맞춘 것이다. 필드를 하나 옮기면 HLSL도 같이 옮겨야 한다.
+//   - 16바이트 레지스터 단위로 채우며, 벡터 하나가 레지스터 경계를 넘을 수 없음.
+//   - 따라서 float3 다음에는 4바이트 스칼라를 두어 정확히 16바이트를 채움.
+//   - 구조체 배열의 각 원소는 16바이트 경계에서 시작함.
+// 아래 필드 순서는 그 규칙에 맞춰 직접 배치한 것임. 필드를 하나 옮기면 HLSL 쪽도 같이 옮겨야 함.
 
 enum class LightType : uint32_t
 {
@@ -24,7 +24,7 @@ struct alignas(16) LightData
 	DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.0f, 10.0f, -10.0f);
 	float intensity = 1.0f;
 
-	// 빛이 진행하는 방향. 셰이더의 표면 방향 벡터 L은 반대 방향을 사용
+	// 빛이 진행하는 방향. 셰이더의 L(표면에서 광원을 향하는 벡터)은 이와 반대 방향을 사용함
 	DirectX::XMFLOAT3 direction = DirectX::XMFLOAT3(0.0f, -0.4472136f, 0.8944272f);
 	float range = 50.0f;
 

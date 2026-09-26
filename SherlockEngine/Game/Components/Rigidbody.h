@@ -1,9 +1,9 @@
 #pragma once
 #include "Scene/Behaviour.h"
 
-// 간단한 강체 (엔진 컴포넌트): 중력 + 속도 적분 + y = groundY 바닥과의 반발. 물리 엔진의 자리표시자다 — 다른 오브젝트와는 충돌하지 않는다.
-// FixedUpdate 에서 돈다 (10단계 고정 스텝): 프레임 속도와 무관하게 같은 궤적.
-// 스크립트에서: GetComponent<Rigidbody>()->AddImpulse(0, 6, 0) 처럼 쓴다 (헤더가 있는 이유).
+// 간단한 강체 (엔진 컴포넌트): 중력 + 속도 적분 + y = groundY 바닥과의 반발. 물리 엔진 대신 쓰는 임시 구현임 — 다른 오브젝트와는 충돌하지 않음.
+// FixedUpdate 에서 실행됨 (10단계 고정 스텝): 프레임 속도와 무관하게 같은 궤적을 그림.
+// 스크립트에서 GetComponent<Rigidbody>()->AddImpulse(0, 6, 0) 처럼 씀 (헤더를 따로 둔 이유).
 class Rigidbody : public Behaviour
 {
 public:

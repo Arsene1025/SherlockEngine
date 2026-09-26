@@ -12,12 +12,12 @@ bool GameApp::OnInitialize()
 	Engine& engine = GetEngine();
 	const Config& config = GetConfig();
 
-	// 창 제목은 CreateWindow 전에 읽힌다 (GetWindowTitle) — Initialize 순서상 LoadConfig 뒤이므로 여기서 다시 세운다.
+	// 창 제목은 CreateWindow 전에 GetWindowTitle 로 읽힘 — Initialize 순서상 이 함수는 LoadConfig 뒤에 불리므로 여기서 설정값으로 제목을 다시 지정함.
 	const std::string title = config.GetString("game.title", "Sherlock Game");
 	m_title = std::wstring(title.begin(), title.end());
 	SetWindowTextW(GetWindow(), m_title.c_str());
 
-	// 시작 씬: 프로젝트 파일(.sherlock)의 startScene, 없으면 engine.ini 의 [game] startScene. Assets\Scenes\ 기준 파일명, 또는 절대 경로.
+	// 시작 씬: 프로젝트 파일(.sherlock)의 startScene, 없으면 engine.ini 의 [game] startScene 을 씀. 값은 Assets\Scenes\ 기준 파일명 또는 절대 경로임.
 	std::string start = GetProject().IsLoaded() ? GetProject().startScene : "";
 	if (start.empty()) start = config.GetString("game.startScene", "");
 	if (start.empty())
@@ -42,7 +42,7 @@ bool GameApp::OnInitialize()
 	m_screenshotPath = GetCommandLineOption(L"screenshot");
 	m_dumpObjects = !GetCommandLineOption(L"dump-objects").empty();
 
-	// 바로 재생. 카메라 오브젝트가 있으면 첫 Update 에서 그 시점으로 (없으면 씬 파일의 카메라).
+	// 바로 재생. 카메라 오브젝트가 있으면 첫 Update 에서 그 시점으로 바뀜 (없으면 씬 파일의 카메라를 씀).
 	Scene& scene = engine.GetScene();
 	scene.BeginPlay(&engine.GetInput(), &engine.GetCamera());
 	size_t behaviours = 0;

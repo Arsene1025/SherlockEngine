@@ -81,7 +81,7 @@ bool Renderer::Initialize(RHI::Device* device)
 		return false;
 	}
 
-	// ---- 바인딩 레이아웃. "이 파이프라인은 b0·b1·b2·b3·t0·t1·t8·s0·s4 를 쓴다"의 선언 ----
+	// ---- 바인딩 레이아웃. "이 파이프라인은 b0·b1·b2·b3·t0·t1·t8·s0·s4 를 쓴다"는 선언 ----
 	BindingLayoutDesc frameLayout;
 	frameLayout.debugName = "Layout_Frame";
 	frameLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex | ShaderStageMask_Pixel, kCBSlotPerFrame);
@@ -110,7 +110,7 @@ bool Renderer::Initialize(RHI::Device* device)
 		return false;
 	}
 
-	// ---- 프레임/오브젝트 ResourceSet. 재질 셋은 재질마다 GetOrCreateGpuMaterial이 만든다 ----
+	// ---- 프레임/오브젝트 ResourceSet. 재질 셋은 재질마다 GetOrCreateGpuMaterial이 만듦 ----
 	ResourceSetDesc frameSet;
 	frameSet.layout = m_frameLayout;
 	frameSet.bindings[0].buffer = m_perFrameCB;
@@ -138,7 +138,7 @@ bool Renderer::Initialize(RHI::Device* device)
 		return false;
 	}
 
-	// ---- PSO의 고정 부분. 나머지(깊이 테스트 켬, 불투명, 트라이앵글 리스트)는 Desc 기본값 ----
+	// ---- PSO의 고정 부분. 나머지(깊이 테스트 켬, 불투명, 트라이앵글 리스트)는 Desc 기본값을 씀 ----
 	m_baseDesc = PipelineStateDesc{};
 	m_baseDesc.vs = m_vs;
 	m_baseDesc.ps = m_ps;
@@ -147,8 +147,8 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_baseDesc.bindingLayouts[2] = m_materialLayout;
 	m_baseDesc.bindingLayoutCount = 3;
 
-	// 그림자 패스: VS 만, 렌더 타깃 없음, 깊이 D32_FLOAT. 래스터라이저 깊이 바이어스로 자기 그림자(acne)를 줄인다.
-	// D32_FLOAT 에서 DepthBias 단위는 2^(지수−23) — z ≈ 0.5 면 한 단위가 6e-8 이다.
+	// 그림자 패스: VS 만, 렌더 타깃 없음, 깊이 D32_FLOAT. 래스터라이저 깊이 바이어스로 자기 그림자(acne)를 줄임.
+	// D32_FLOAT 에서 DepthBias 단위는 2^(지수−23) — z ≈ 0.5 면 한 단위가 6e-8 임.
 	m_shadowDesc = PipelineStateDesc{};
 	m_shadowDesc.vs = m_shadowVs;
 	m_shadowDesc.ps = ShaderHandle{};
@@ -161,7 +161,7 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_shadowDesc.rasterizer.slopeScaledDepthBias = 2.0f;
 	m_shadowDesc.rasterizer.depthBiasClamp = 0.01f;
 
-	// 첫 프레임 전에 기본 PSO를 만들어 두어 생성 실패를 초기화 단계에서 잡는다.
+	// 첫 프레임 전에 기본 PSO를 만들어 두어 생성 실패를 초기화 단계에서 잡음.
 	if (!GetPipelineFor(m_defaultMaterial, VertexFormat::PositionColorNormalTexcoordTangent).IsValid() ||
 		!GetShadowPipelineFor(m_defaultMaterial, VertexFormat::PositionColorNormalTexcoordTangent).IsValid())
 	{
@@ -174,7 +174,7 @@ bool Renderer::Initialize(RHI::Device* device)
 
 bool Renderer::CreateSamplers()
 {
-	// SamplerPreset 순서와 같아야 한다.
+	// SamplerPreset 순서와 같아야 함.
 	struct PresetDesc { SamplerFilter filter; SamplerAddress address; float maxLod; const char* name; };
 	const PresetDesc presets[kSamplerPresetCount] =
 	{
@@ -211,7 +211,7 @@ bool Renderer::CreateBuiltinTextures()
 
 bool Renderer::CreateShadowResources()
 {
-	// 깊이 전용 텍스처인데 셰이더가 읽는다 → Device 가 TYPELESS 리소스 + DSV(D32) + SRV(R32) 로 만든다.
+	// 깊이 전용 텍스처지만 셰이더에서도 읽음 → Device 가 TYPELESS 리소스 + DSV(D32) + SRV(R32) 로 만듦.
 	TextureDesc desc;
 	desc.width = kShadowMapSize;
 	desc.height = kShadowMapSize;
@@ -222,8 +222,8 @@ bool Renderer::CreateShadowResources()
 	m_shadowMap = m_device->CreateTexture(desc);
 	m_shadowMapState = ResourceState::Common;
 
-	// 비교 샘플러: SampleCmp 가 "저장된 깊이 ≤ 비교값" 을 0/1 로 돌려주고 이웃과 보간한다(하드웨어 PCF).
-	// 맵 밖은 Border 1 = 빛을 받는 것으로.
+	// 비교 샘플러: SampleCmp 가 "비교값(받는 쪽 깊이) ≤ 저장된 깊이" 면 1(빛 받음), 아니면 0 을 돌려주고 이웃과 보간함(하드웨어 PCF).
+	// 맵 밖은 Border 1 로 두어 빛을 받는 것으로 처리함.
 	SamplerDesc sampler;
 	sampler.filter = SamplerFilter::Comparison;
 	sampler.addressU = sampler.addressV = sampler.addressW = SamplerAddress::Border;
@@ -250,7 +250,7 @@ SamplerHandle Renderer::GetSampler(SamplerPreset preset) const
 
 TextureHandle Renderer::GetOrLoadTexture(const std::string& name, bool srgb, const Scene* scene)
 {
-	// 빈 이름 = 텍스처 없음. 캐시 항목을 따로 만들지 않고 기본 흰색을 그대로 쓴다.
+	// 빈 이름 = 텍스처 없음. 캐시 항목을 따로 만들지 않고 기본 흰색을 그대로 씀.
 	if (name.empty() && m_whiteTexture.IsValid())
 	{
 		return m_whiteTexture;
@@ -291,13 +291,13 @@ TextureHandle Renderer::GetOrLoadTexture(const std::string& name, bool srgb, con
 	}
 	else if (const std::vector<uint8_t>* encoded = scene != nullptr ? scene->FindImage(name) : nullptr)
 	{
-		// 9단계: 모델이 가져온 이미지. 씬이 인코딩된 바이트를 들고 있고 여기서 재질의 색공간으로 디코딩한다.
+		// 9단계: 모델에서 가져온 이미지. 씬이 인코딩된 바이트를 들고 있고, 여기서 재질의 색공간에 맞춰 디코딩함.
 		ok = TextureLoader::LoadFromMemory(encoded->data(), encoded->size(), srgb, true, image);
 		if (ok) Log::Info("텍스처 디코딩: %s (%ux%u, 밉 %u, %s)", name.c_str(), image.desc.width, image.desc.height, image.desc.mipLevels, srgb ? "sRGB" : "linear");
 	}
 	else
 	{
-		// 11-B단계: "asset:<Assets 기준 상대 경로>" 는 Textures\ 밖의 파일 (콘텐츠 브라우저에서 놓은 Sponza 이미지 등).
+		// 11-B단계: "asset:<Assets 기준 상대 경로>" 는 Textures\ 밖의 파일을 가리킴 (콘텐츠 브라우저에서 끌어다 놓은 Sponza 이미지 등).
 		static const char* kAssetPrefix = "asset:";
 		const std::wstring path = name.rfind(kAssetPrefix, 0) == 0
 			? Paths::GetAssetPath(ToWide(name.substr(6)).c_str())
@@ -342,7 +342,7 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 	}
 
 #if defined(_DEBUG)
-	// HLSL cbuffer 크기와 C++ 구조체 크기를 리플렉션으로 대조한다. 어긋나면 실패.
+	// HLSL cbuffer 크기와 C++ 구조체 크기를 리플렉션으로 대조함. 어긋나면 실패.
 	bool layoutOk = true;
 	layoutOk &= ShaderCompiler::ValidateConstantBufferSize(vsCode, "PerFrame", sizeof(PerFrameConstants));
 	layoutOk &= ShaderCompiler::ValidateConstantBufferSize(vsCode, "PerObject", sizeof(PerObjectConstants));
@@ -359,7 +359,7 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 	}
 #endif
 
-	// 셰이더가 실제로 쓰는 슬롯이 선언한 레이아웃 안에 있는지. Release는 경고만.
+	// 셰이더가 실제로 쓰는 슬롯이 선언한 레이아웃 안에 있는지 검사함. Release에서는 경고만 함.
 	if (!ValidateBindings(vsCode, psCode, shadowCode))
 	{
 #if defined(_DEBUG)
@@ -389,7 +389,7 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 		return false;
 	}
 
-	// 이전 셰이더는 PSO가 참조로 붙들고 있으므로 풀에서 지워도 캐시가 비워질 때까지 산다.
+	// 이전 셰이더는 PSO가 참조로 붙들고 있으므로 풀에서 지워도 캐시가 비워질 때까지 살아 있음.
 	m_device->DestroyShader(m_vs);
 	m_device->DestroyShader(m_ps);
 	m_device->DestroyShader(m_shadowVs);
@@ -397,7 +397,7 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 	m_ps = newPs;
 	m_shadowVs = newShadowVs;
 
-	// 핫리로드 감시 목록: 소스 트리의 원본 셋. Release에서도 목록은 만들지만 CheckHotReload가 돌지 않는다.
+	// 핫리로드 감시 목록: 소스 트리의 원본 네 개(VS·PS·ShadowVS·Common.hlsli). Release에서도 목록은 만들지만 CheckHotReload가 동작하지 않음.
 	m_watched.clear();
 	for (const wchar_t* file : { kVertexShaderFile, kPixelShaderFile, kShadowShaderFile, kCommonShaderFile })
 	{
@@ -413,7 +413,7 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 
 bool Renderer::ValidateBindings(const std::vector<uint8_t>& vsCode, const std::vector<uint8_t>& psCode, const std::vector<uint8_t>& shadowVsCode) const
 {
-	// 선언: 세 레이아웃의 슬롯 합집합. Renderer가 만든 Desc를 그대로 다시 쓴다.
+	// 선언: 세 레이아웃의 슬롯 합집합. Renderer가 만든 Desc 내용을 그대로 다시 적음.
 	struct Declared { BindingType type; uint8_t reg; uint8_t stageMask; };
 	const Declared declared[] =
 	{
@@ -432,7 +432,7 @@ bool Renderer::ValidateBindings(const std::vector<uint8_t>& vsCode, const std::v
 	auto check = [&](const std::vector<uint8_t>& code, uint8_t stage, const char* stageName)
 	{
 		std::vector<ShaderCompiler::ReflectedBinding> used;
-		if (!ShaderCompiler::ReflectBindings(code, used)) return;   // 리플렉션 불가면 검사 생략
+		if (!ShaderCompiler::ReflectBindings(code, used)) return;   // 리플렉션이 불가능하면 검사 생략
 		for (const auto& u : used)
 		{
 			bool found = false;
@@ -467,13 +467,13 @@ bool Renderer::ReloadShaders()
 	if (!LoadShaders(true))
 	{
 		Log::Warn("셰이더 핫리로드 실패. 이전 셰이더를 유지한다.");
-		// 실패해도 수정 시각은 갱신해 같은 파일로 계속 재시도하지 않게 한다. 다시 저장하면 다시 시도한다.
+		// 실패해도 수정 시각은 갱신해 같은 파일로 계속 재시도하지 않게 함. 파일을 다시 저장하면 재시도함.
 		for (WatchedFile& w : m_watched) w.writeTime = ShaderCompiler::GetLastWriteTime(w.path);
 		return false;
 	}
 
-	// 새 셰이더 핸들로 PSO를 다시 만들어야 한다. 캐시를 비우면 이전 세대 핸들은 무효가 되고,
-	// 다음 프레임의 GetPipelineFor가 새 Desc(새 vs/ps 핸들)로 새 PSO를 만든다.
+	// 새 셰이더 핸들로 PSO를 다시 만들어야 함. 캐시를 비우면 이전 세대 핸들은 무효가 되고,
+	// 다음 프레임의 GetPipelineFor가 새 Desc(새 vs/ps 핸들)로 새 PSO를 만듦.
 	m_baseDesc.vs = m_vs;
 	m_baseDesc.ps = m_ps;
 	m_shadowDesc.vs = m_shadowVs;
@@ -552,7 +552,7 @@ void Renderer::Shutdown()
 	m_device->DestroyShader(m_vs);
 	m_device->DestroyShader(m_ps);
 	m_device->DestroyShader(m_shadowVs);
-	// PSO는 캐시가 소유한다. 셰이더 핸들을 지워도 PSO는 자기 참조로 셰이더 객체를 붙들고 있다.
+	// PSO는 캐시가 소유함. 셰이더 핸들을 지워도 PSO는 자기 참조로 셰이더 객체를 붙들고 있음.
 
 	m_perFrameCB = m_perObjectCB = m_lightCB = BufferHandle{};
 	m_frameSet = m_objectSet = ResourceSetHandle{};
@@ -590,11 +590,11 @@ void Renderer::InvalidateScene(const Scene& scene, bool releaseTextures)
 	for (const auto& material : scene.GetMaterials()) InvalidateMaterial(material.get());
 	if (releaseTextures)
 	{
-		// 내장("builtin:") 은 남긴다 — 흰색·평평한 노멀은 프레임/기본 재질이 계속 쓴다.
+		// 내장 텍스처("builtin:")는 남김 — 흰색·평평한 노멀은 프레임/기본 재질이 계속 씀.
 		for (auto it = m_textureCache.begin(); it != m_textureCache.end();)
 		{
 			if (it->first.rfind("builtin:", 0) == 0) { ++it; continue; }
-			// 로드에 실패해 흰색으로 대체된 항목은 내장 핸들을 공유하므로 파괴하지 않는다.
+			// 로드에 실패해 흰색으로 대체된 항목은 내장 핸들을 공유하므로 파괴하지 않음.
 			if (it->second != m_whiteTexture && it->second != m_flatNormalTexture) m_device->DestroyTexture(it->second);
 			it = m_textureCache.erase(it);
 		}
@@ -605,8 +605,8 @@ void Renderer::InvalidateScene(const Scene& scene, bool releaseTextures)
 
 XMMATRIX Renderer::ComputeLightViewProj(const LightData& light) const
 {
-	// 방향광은 위치가 없다. 씬 중심에서 빛의 반대 방향으로 distance 만큼 물러난 곳에 눈을 두고,
-	// 직교 투영으로 orthoSize × orthoSize 영역을 본다. 씬 경계를 알면 그 AABB 에 맞추는 것이 다음 단계다.
+	// 방향광은 위치가 없음. 씬 중심에서 빛의 반대 방향으로 distance 만큼 물러난 곳에 눈을 두고,
+	// 직교 투영으로 orthoSize × orthoSize 영역을 봄. 씬 경계를 알게 되면 그 AABB 에 맞추는 것이 다음 단계임.
 	XMVECTOR direction = XMLoadFloat3(&light.direction);
 	if (XMVectorGetX(XMVector3LengthSq(direction)) < 0.000001f)
 	{
@@ -616,7 +616,7 @@ XMMATRIX Renderer::ComputeLightViewProj(const LightData& light) const
 
 	const XMVECTOR center = XMVectorSet(0.0f, 2.0f, 0.0f, 1.0f);
 	const XMVECTOR eye = XMVectorSubtract(center, XMVectorScale(direction, m_settings.shadowDistance));
-	// 빛이 거의 수직이면 up = +Y 가 시선과 평행해져 LookAt 이 무너진다. 그때는 +Z 를 up 으로.
+	// 빛이 거의 수직이면 up = +Y 가 시선과 평행해져 LookAt 이 깨짐. 그때는 +Z 를 up 으로 씀.
 	const XMVECTOR up = (fabsf(XMVectorGetY(direction)) > 0.99f) ? XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
 	const XMMATRIX view = XMMatrixLookAtLH(eye, center, up);
@@ -655,7 +655,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
 	{
 		lights.lights[i] = sceneLights[i];
 
-		// 방향은 셰이더가 정규화된 값을 기대한다. 0벡터면 아래를 향하게.
+		// 셰이더는 정규화된 방향을 기대함. 0벡터면 아래를 향하게 함.
 		const XMVECTOR direction = XMLoadFloat3(&lights.lights[i].direction);
 		const float lengthSquared = XMVectorGetX(XMVector3LengthSq(direction));
 		if (lengthSquared > 0.000001f)
@@ -671,8 +671,8 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
 
 	BuildDrawList(scene);
 
-	// 프레임 셋(b0, b2, t8, s4)과 오브젝트 셋(b1). 그림자 패스는 t8(그림자 맵)을 DSV 로 잡으므로
-	// BeginRenderPass 가 t8 SRV 를 풀어 준다. 메인 패스가 셋을 다시 바인딩해 t8 을 되살린다.
+	// 프레임 셋(b0, b2, t8, s4)과 오브젝트 셋(b1)을 바인딩함. 그림자 패스는 t8(그림자 맵)을 DSV 로 쓰므로
+	// BeginRenderPass 가 t8 SRV 바인딩을 해제함. 메인 패스에서 셋을 다시 바인딩해 t8 을 복구함.
 	cmd.SetResourceSet(m_frameSet);
 	cmd.SetResourceSet(m_objectSet);
 
@@ -687,7 +687,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
 	}
 	if (m_previewCamera != nullptr && m_previewColor.IsValid())
 	{
-		// 11-C단계: 선택한 카메라 오브젝트의 시점. b0 만 그 카메라로 바꿔 같은 드로우 목록을 작은 타깃에 다시 그린다.
+		// 11-C단계: 선택한 카메라 오브젝트의 시점. b0 만 그 카메라로 바꿔 같은 드로우 목록을 작은 타깃에 다시 그림.
 		GpuProfileScope gpuScope(cmd, "PreviewPass");
 		UploadPerFrameConstants(*m_previewCamera, totalTime);
 		RenderPreviewPass(cmd, scene);
@@ -702,11 +702,11 @@ void Renderer::BuildDrawList(const Scene& scene)
 	m_drawList.clear();
 	for (const auto& objectPtr : scene.GetObjects())
 	{
-		const GameObject& object = *objectPtr;   // 11-C단계: 씬이 unique_ptr 로 갖는다
+		const GameObject& object = *objectPtr;   // 11-C단계: 씬이 unique_ptr 로 소유함
 		const Mesh* mesh = object.GetMesh();
 		if (mesh == nullptr || !mesh->IsValid()) continue;
 
-		// 9단계: 서브메시마다 DrawItem 하나. 재질은 슬롯 → 오브젝트 기본 → Renderer 기본 순.
+		// 9단계: 서브메시마다 DrawItem 하나. 재질은 슬롯 → 오브젝트 기본 → Renderer 기본 순으로 고름.
 		for (const Submesh& submesh : mesh->GetSubmeshes())
 		{
 			if (submesh.indexCount == 0) continue;
@@ -725,7 +725,7 @@ void Renderer::BuildDrawList(const Scene& scene)
 		}
 	}
 
-	// ---- 정렬: PSO → Material → Mesh → 인덱스 범위. 같은 상태가 연속되면 바인딩을 건너뛸 수 있다 ----
+	// ---- 정렬: PSO → Material → Mesh → 인덱스 범위. 같은 상태가 연속되면 바인딩을 건너뛸 수 있음 ----
 	std::sort(m_drawList.begin(), m_drawList.end(), [](const DrawItem& a, const DrawItem& b)
 	{
 		if (a.pipeline.index != b.pipeline.index) return a.pipeline.index < b.pipeline.index;
@@ -738,18 +738,18 @@ void Renderer::BuildDrawList(const Scene& scene)
 void Renderer::UploadObjectConstants(const GameObject& object)
 {
 	// b1 PerObject. 드로우마다 Map(WRITE_DISCARD). 드라이버가 매번 새 메모리를 주므로
-	// 앞 드로우가 아직 실행되지 않았어도 덮어쓰지 않는다. 바인딩은 프레임 초에 한 번 했다.
+	// 앞 드로우가 아직 실행되지 않았어도 그 데이터를 덮어쓰지 않음. 바인딩은 프레임 초에 한 번만 했음.
 	const XMMATRIX world = object.GetTransform().GetWorldMatrix();
 	PerObjectConstants perObject = {};
 	XMStoreFloat4x4(&perObject.world, XMMatrixTranspose(world));
-	// 노멀 변환 행렬은 (W⁻¹)ᵀ. 전치해서 올려야 하므로 ((W⁻¹)ᵀ)ᵀ = W⁻¹ 를 그대로 저장한다.
+	// 노멀 변환 행렬은 (W⁻¹)ᵀ. 전치해서 올려야 하므로 ((W⁻¹)ᵀ)ᵀ = W⁻¹ 를 그대로 저장함.
 	XMStoreFloat4x4(&perObject.worldInvTranspose, XMMatrixInverse(nullptr, world));
 	m_device->UpdateBuffer(m_perObjectCB, &perObject, sizeof(perObject));
 }
 
 void Renderer::RenderShadowPass(RHI::CommandList& cmd)
 {
-	// 그림자 맵: ShaderResource(또는 Common) → DepthWrite. D3D11 에서는 추적만, D3D12 에서는 실제 배리어.
+	// 그림자 맵: ShaderResource(또는 Common) → DepthWrite. D3D11 에서는 상태 추적만 하고, D3D12 에서는 실제 배리어를 기록함.
 	cmd.Barrier(m_shadowMap, m_shadowMapState, ResourceState::DepthWrite);
 	m_shadowMapState = ResourceState::DepthWrite;
 
@@ -765,7 +765,7 @@ void Renderer::RenderShadowPass(RHI::CommandList& cmd)
 	const Mesh* lastMesh = nullptr;
 	for (const DrawItem& item : m_drawList)
 	{
-		if (item.material->unlit) continue;   // 감마 검증 카드처럼 조명을 받지 않는 물체는 그림자도 만들지 않는다
+		if (item.material->unlit) continue;   // 감마 검증 카드처럼 조명을 받지 않는 물체는 그림자도 만들지 않음
 
 		const PipelineHandle pipeline = GetShadowPipelineFor(*item.material, item.mesh->GetVertexFormat());
 		if (!pipeline.IsValid()) continue;
@@ -791,14 +791,14 @@ void Renderer::RenderShadowPass(RHI::CommandList& cmd)
 
 	cmd.EndRenderPass();
 
-	// DepthWrite → ShaderResource. 메인 패스가 t8 로 읽는다.
+	// DepthWrite → ShaderResource. 메인 패스가 t8 로 읽음.
 	cmd.Barrier(m_shadowMap, ResourceState::DepthWrite, ResourceState::ShaderResource);
 	m_shadowMapState = ResourceState::ShaderResource;
 }
 
 void Renderer::RenderMainPass(RHI::CommandList& cmd, const Scene& scene)
 {
-	// 11단계: 에디터가 씬 뷰 텍스처를 요청했으면 거기에, 아니면 백버퍼에 직접.
+	// 11단계: 에디터가 씬 뷰 텍스처를 요청했으면 거기에 그리고, 아니면 백버퍼에 직접 그림.
 	TextureHandle target;
 	TextureHandle depth;
 	if (IsOffscreen())
@@ -812,7 +812,7 @@ void Renderer::RenderMainPass(RHI::CommandList& cmd, const Scene& scene)
 	{
 		target = m_device->GetBackBuffer();
 		depth = m_device->GetDepthBuffer();
-		// 백버퍼: Present → RenderTarget. (D3D12 스왑체인 관례. D3D11 에서는 추적만.)
+		// 백버퍼: Present → RenderTarget. (D3D12 스왑체인 관례. D3D11 에서는 상태 추적만 함.)
 		cmd.Barrier(target, ResourceState::Present, ResourceState::RenderTarget);
 	}
 
@@ -820,7 +820,7 @@ void Renderer::RenderMainPass(RHI::CommandList& cmd, const Scene& scene)
 	pass.colorCount = 1;
 	pass.colors[0].texture = target;
 	pass.colors[0].load = LoadOp::Clear;
-	pass.colors[0].srgbView = m_settings.srgbOutput;   // 클리어 색은 선형 값. sRGB 뷰가 인코딩한다
+	pass.colors[0].srgbView = m_settings.srgbOutput;   // 클리어 색은 선형 값. sRGB 뷰가 인코딩함
 	for (int i = 0; i < 4; ++i) pass.colors[0].clearColor[i] = scene.clearColor[i];
 	pass.depth.texture = depth;
 	pass.depth.load = LoadOp::Clear;
@@ -831,7 +831,7 @@ void Renderer::RenderMainPass(RHI::CommandList& cmd, const Scene& scene)
 
 	if (IsOffscreen())
 	{
-		// ImGui 가 이 텍스처를 샘플한다. D3D12 에서는 실제 배리어, D3D11 에서는 추적.
+		// ImGui 가 이 텍스처를 샘플링함. D3D12 에서는 실제 배리어를 기록하고, D3D11 에서는 상태만 추적함.
 		cmd.Barrier(m_sceneColor, ResourceState::RenderTarget, ResourceState::ShaderResource);
 		m_sceneColorState = ResourceState::ShaderResource;
 	}
@@ -861,11 +861,11 @@ void Renderer::RenderPreviewPass(RHI::CommandList& cmd, const Scene& scene)
 
 void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene)
 {
-	// 그림자 패스가 t8 을 풀었으므로 프레임 셋을 다시 건다 (이제 그림자 맵은 SRV 상태). 패스마다 새로 건다.
+	// 그림자 패스에서 t8 바인딩이 해제됐으므로 프레임 셋을 다시 바인딩함 (이제 그림자 맵은 SRV 상태). 패스마다 새로 바인딩함.
 	cmd.SetResourceSet(m_frameSet);
 	cmd.SetResourceSet(m_objectSet);
 
-	// ---- 드로우. "직전" 기억은 이 패스 안에서만 산다 ----
+	// ---- 드로우. "직전" 상태 기억은 이 패스 안에서만 유효함 ----
 	PipelineHandle lastPipeline;
 	const Material* lastMaterial = nullptr;
 	const Mesh* lastMesh = nullptr;
@@ -898,7 +898,7 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene)
 			++m_stats.meshSwitches;
 		}
 
-		// 9단계: 서브메시 범위만 그린다. 같은 메시의 다른 서브메시는 정렬 덕에 대개 바로 뒤에 온다 (VB/IB 재바인딩 없음).
+		// 9단계: 서브메시 범위만 그림. 같은 메시의 다른 서브메시는 정렬 덕에 대개 바로 뒤에 옴 (VB/IB 재바인딩 없음).
 		UploadObjectConstants(*item.object);
 		cmd.DrawIndexed(item.indexCount, item.indexStart, 0);
 		m_stats.triangles += item.indexCount / 3;
@@ -908,8 +908,8 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene)
 
 void Renderer::UploadPerFrameConstants(const Camera& camera, float totalTime)
 {
-	// HLSL은 column_major로 읽고 셰이더는 mul(v, M)을 쓰므로 전치해서 올린다 (ShaderConstants.h).
-	// 11-C단계: 미리보기 패스가 다른 카메라로 한 번 더 부른다 (업로드 링이라 프레임 안에서 여러 번 올려도 된다, 8단계).
+	// HLSL은 column_major로 읽고 셰이더는 mul(v, M)을 쓰므로 전치해서 올림 (ShaderConstants.h).
+	// 11-C단계: 미리보기 패스에서 다른 카메라로 한 번 더 호출함 (업로드 링을 쓰므로 프레임 안에서 여러 번 올려도 됨, 8단계).
 	const XMMATRIX view = camera.GetViewMatrix();
 	const XMMATRIX proj = camera.GetProjectionMatrix();
 	PerFrameConstants perFrame = {};
@@ -965,7 +965,7 @@ void Renderer::SetPreviewTarget(uint32_t width, uint32_t height)
 void Renderer::BeginUIPass()
 {
 	if (m_device == nullptr) return;
-	// ImGui 는 sRGB 로 인코딩된 색을 그대로 내므로 UNORM 뷰에 그린다. 씬 위에 얹으므로 Load, 깊이 없음.
+	// ImGui 는 sRGB 로 인코딩된 색을 그대로 출력하므로 UNORM 뷰에 그림. 씬 위에 덧그리므로 Load, 깊이 없음.
 	RenderPassDesc pass;
 	pass.colorCount = 1;
 	pass.colors[0].texture = m_device->GetBackBuffer();
@@ -974,7 +974,7 @@ void Renderer::BeginUIPass()
 	pass.debugName = "UIPass";
 	if (IsOffscreen())
 	{
-		// 씬이 백버퍼에 그려지지 않았으므로 여기서 전이하고 지운다 (에디터 배경).
+		// 씬이 백버퍼에 그려지지 않았으므로 여기서 전이하고 지움 (에디터 배경).
 		m_device->GetCommandList().Barrier(m_device->GetBackBuffer(), ResourceState::Present, ResourceState::RenderTarget);
 		pass.colors[0].load = LoadOp::Clear;
 		pass.colors[0].clearColor[0] = 0.13f; pass.colors[0].clearColor[1] = 0.13f; pass.colors[0].clearColor[2] = 0.15f; pass.colors[0].clearColor[3] = 1.0f;
@@ -1005,7 +1005,7 @@ const Renderer::GpuMesh* Renderer::GetOrCreateGpuMesh(const Mesh& mesh)
 		return nullptr;
 	}
 
-	// 정점/인덱스 버퍼는 바뀌지 않으므로 Default + 초기 데이터.
+	// 정점/인덱스 버퍼는 바뀌지 않으므로 Default 버퍼에 초기 데이터를 넣어 만듦.
 	GpuMesh gpuMesh;
 	gpuMesh.vertexFormat = mesh.GetVertexFormat();
 
@@ -1017,7 +1017,7 @@ const Renderer::GpuMesh* Renderer::GetOrCreateGpuMesh(const Mesh& mesh)
 	vbDesc.debugName = "VB";
 	gpuMesh.vertexBuffer = m_device->CreateBuffer(vbDesc, mesh.GetVertices().data());
 
-	// 9단계 (D10): 정점이 65,536개 미만이면 16비트 인덱스. 버퍼와 IA 대역폭이 절반이다. CPU 쪽은 32비트 그대로.
+	// 9단계 (D10): 정점이 65,536개 미만이면 16비트 인덱스. 버퍼 크기와 IA 대역폭이 절반으로 줄어듦. CPU 쪽은 32비트 그대로 둠.
 	BufferDesc ibDesc;
 	ibDesc.usage = BufferUsage::Default;
 	ibDesc.bindFlags = BufferBind_Index;
@@ -1078,8 +1078,8 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		gpuMaterial = &m_gpuMaterials.emplace(&material, created).first->second;
 	}
 
-	// 재질이 가리키는 텍스처·샘플러가 바뀌었으면(ImGui 편집, 첫 생성) ResourceSet을 다시 만든다.
-	// ResourceSet은 값이라 갱신이 없다 — D3D12 디스크립터 테이블도 다시 써야 한다.
+	// 재질이 가리키는 텍스처·샘플러가 바뀌었으면(ImGui 편집, 첫 생성) ResourceSet을 다시 만듦.
+	// ResourceSet은 값 객체라 부분 갱신 기능이 없음 — D3D12 디스크립터 테이블도 다시 써야 함.
 	const TextureHandle albedo = GetOrLoadTexture(material.albedoTexture, material.albedoSrgb, scene);
 	const TextureHandle normal = material.normalTexture.empty() ? m_flatNormalTexture : GetOrLoadTexture(material.normalTexture, false, scene);
 	const SamplerPreset preset = (m_settings.samplerOverride >= 0 && m_settings.samplerOverride < static_cast<int>(kSamplerPresetCount))
@@ -1106,8 +1106,8 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		}
 	}
 
-	// 재질 상수는 프레임에 한 번 올린다. 편집(ImGui)이 바로 반영되도록 매 프레임 올리되,
-	// 같은 재질을 여러 오브젝트가 쓰면 그중 첫 드로우에서만.
+	// 재질 상수는 프레임에 한 번 올림. 편집(ImGui)이 바로 반영되도록 매 프레임 올리되,
+	// 같은 재질을 여러 오브젝트가 쓰면 그중 첫 드로우에서만 올림.
 	if (gpuMaterial->uploadedFrame != m_frameNumber)
 	{
 		MaterialConstants constants = {};
@@ -1130,8 +1130,8 @@ PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat v
 	desc.vertexLayout = GetVertexLayout(vertexFormat);
 	desc.rasterizer.fill = (m_settings.wireframe || material.wireframe) ? FillMode::Wireframe : FillMode::Solid;
 	desc.rasterizer.cull = (m_settings.cullBack && !material.doubleSided) ? CullMode::Back : CullMode::None;
-	// 8단계: D3D12 PSO 는 렌더 타깃 뷰의 포맷을 알아야 한다. 메인 패스가 백버퍼의 sRGB 뷰에 그리면 PSO 도 sRGB.
-	// D3D11 은 이 항목을 쓰지 않지만 1단계부터 Desc 에 있었고, 여기서 처음 실제 값이 들어간다.
+	// 8단계: D3D12 PSO 는 렌더 타깃 뷰의 포맷을 알아야 함. 메인 패스가 백버퍼의 sRGB 뷰에 그리면 PSO 도 sRGB 포맷이어야 함.
+	// D3D11 은 이 항목을 쓰지 않지만 1단계부터 Desc 에 있었고, 여기서 처음 실제 값이 들어감.
 	desc.rtvFormats[0] = m_settings.srgbOutput ? Format::R8G8B8A8_UNORM_SRGB : Format::R8G8B8A8_UNORM;
 	desc.rtvCount = 1;
 	desc.dsvFormat = Format::D24_UNORM_S8_UINT;
@@ -1140,7 +1140,7 @@ PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat v
 
 PipelineHandle Renderer::GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat)
 {
-	// 그림자는 항상 솔리드로 그린다 (와이어프레임 재질도 실체는 있다). 양면 재질은 컬링 없이.
+	// 그림자는 항상 솔리드로 그림 (와이어프레임 재질도 실체는 있음). 양면 재질은 컬링 없이 그림.
 	PipelineStateDesc desc = m_shadowDesc;
 	desc.vertexLayout = GetVertexLayout(vertexFormat);
 	desc.rasterizer.cull = material.doubleSided ? CullMode::None : CullMode::Back;
@@ -1154,7 +1154,7 @@ void Renderer::SetSceneTarget(uint32_t width, uint32_t height)
 	if (m_device == nullptr) return;
 	if (width == m_sceneWidth && height == m_sceneHeight) return;
 
-	// 이전 텍스처는 Destroy — D3D12 는 지연 해제(실행 중인 프레임의 ImGui 드로우가 아직 읽을 수 있다), D3D11 은 참조 카운트.
+	// 이전 텍스처는 Destroy 함 — D3D12 는 지연 해제(실행 중인 프레임의 ImGui 드로우가 아직 읽을 수 있음), D3D11 은 참조 카운트로 처리.
 	if (m_sceneColor.IsValid()) m_device->DestroyTexture(m_sceneColor);
 	if (m_sceneDepth.IsValid()) m_device->DestroyTexture(m_sceneDepth);
 	m_sceneColor = TextureHandle{};

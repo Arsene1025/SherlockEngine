@@ -184,7 +184,7 @@ namespace D3D11Convert
 		dd.StencilReadMask = desc.stencilReadMask;
 		dd.StencilWriteMask = desc.stencilWriteMask;
 
-		// 스텐실 연산은 아직 Desc에 없다. D3D11 기본값(KEEP / ALWAYS)을 채운다.
+		// 스텐실 연산은 아직 Desc에 없음. D3D11 기본값(KEEP / ALWAYS)으로 채움.
 		const D3D11_DEPTH_STENCILOP_DESC defaultOp =
 		{
 			D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_STENCIL_OP_KEEP, D3D11_COMPARISON_ALWAYS

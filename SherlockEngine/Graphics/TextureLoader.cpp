@@ -7,7 +7,7 @@
 
 namespace
 {
-	// DirectXTex ScratchImage(밉 체인) → 우리 TextureImage. 픽셀을 한 버퍼로 복사한다.
+	// DirectXTex ScratchImage(밉 체인) → 우리 TextureImage. 픽셀을 한 버퍼로 복사함.
 	bool FromScratchImage(const DirectX::ScratchImage& scratch, Format format, TextureImage& out)
 	{
 		const DirectX::TexMetadata& meta = scratch.GetMetadata();
@@ -46,13 +46,13 @@ namespace
 
 	bool FinishImage(DirectX::ScratchImage& base, bool srgb, bool generateMips, TextureImage& out)
 	{
-		// 픽셀 바이트는 파일에 든 그대로(sRGB 인코딩된 값)다. *_SRGB 포맷은 "이 바이트를 샘플할 때
-		// 선형으로 풀어라"는 라벨일 뿐 값을 바꾸지 않는다. 그래서 여기서는 색공간 변환 없이
-		// R8G8B8A8_UNORM으로 통일만 하고, 라벨(desc.format)만 sRGB로 붙인다.
+		// 픽셀 바이트는 파일에 든 그대로(sRGB 인코딩된 값)임. *_SRGB 포맷은 "이 바이트를 샘플할 때
+		// 선형으로 풀어라"는 라벨일 뿐 값을 바꾸지 않음. 그래서 여기서는 색공간 변환 없이
+		// R8G8B8A8_UNORM으로 통일만 하고, 라벨(desc.format)만 sRGB로 붙임.
 		//
-		// 함정: DirectXTex::Convert(UNORM → UNORM_SRGB)는 입력을 선형으로 보고 sRGB로 "인코딩"한다
-		// (TEX_FILTER_SRGB_OUT 암시). 128 회색이 188이 되어 화면에서 188로 읽혔다. 반대로 DDS가
-		// 이미 *_SRGB 포맷이면 Convert가 "디코딩"하므로, 먼저 OverrideFormat으로 라벨을 떼어 낸다.
+		// 함정: DirectXTex::Convert(UNORM → UNORM_SRGB)는 입력을 선형으로 보고 sRGB로 "인코딩"함
+		// (TEX_FILTER_SRGB_OUT 암시). 그 결과 128 회색이 188이 되어 화면에서 188로 읽혔음. 반대로 DDS가
+		// 이미 *_SRGB 포맷이면 Convert가 "디코딩"하므로, 먼저 OverrideFormat으로 라벨을 떼어 냄.
 		if (DirectX::IsSRGB(base.GetMetadata().format))
 		{
 			base.OverrideFormat(DirectX::MakeLinear(base.GetMetadata().format));
@@ -77,7 +77,7 @@ namespace
 		if (generateMips && current->GetMetadata().mipLevels == 1 && (current->GetMetadata().width > 1 || current->GetMetadata().height > 1))
 		{
 			// 박스 필터로 1×1까지. sRGB 데이터면 TEX_FILTER_SRGB(= SRGB_IN | SRGB_OUT): 풀어서 선형에서
-			// 평균 내고 다시 인코딩한다. 감마 공간에서 그대로 평균 내면 밉이 어두워진다
+			// 평균 내고 다시 인코딩함. 감마 공간에서 그대로 평균 내면 밉이 어두워짐
 			// (흰 230 + 검 40 의 절반은 선형에서 ≈ 170, 감마에서 135).
 			const DirectX::TEX_FILTER_FLAGS filter = srgb ? DirectX::TEX_FILTER_SRGB : DirectX::TEX_FILTER_DEFAULT;
 			const HRESULT hr = DirectX::GenerateMipMaps(current->GetImages(), current->GetImageCount(), current->GetMetadata(),
@@ -96,7 +96,7 @@ namespace
 
 namespace
 {
-	// 파일 → ScratchImage. 확장자가 .dds 면 DDS, 아니면 WIC. LoadFromFile 과 LoadThumbnail 이 같이 쓴다.
+	// 파일 → ScratchImage. 확장자가 .dds 면 DDS, 아니면 WIC. LoadFromFile 과 LoadThumbnail 이 함께 씀.
 	bool LoadScratchFromFile(const std::wstring& path, DirectX::ScratchImage& image)
 	{
 		DirectX::TexMetadata meta = {};
@@ -112,8 +112,8 @@ namespace
 		}
 		else
 		{
-			// WIC: PNG, JPG, BMP, TIFF, GIF. 알파 없는 파일도 RGBA로 확장한다.
-			// IGNORE_SRGB: 파일의 색공간 메타데이터로 포맷을 *_SRGB로 바꾸지 않는다. 라벨은 우리가 붙인다.
+			// WIC: PNG, JPG, BMP, TIFF, GIF. 알파 없는 파일도 RGBA로 확장함.
+			// IGNORE_SRGB: 파일의 색공간 메타데이터를 보고 포맷을 *_SRGB로 바꾸지 않게 함. 라벨은 우리가 붙임.
 			hr = DirectX::LoadFromWICFile(path.c_str(), DirectX::WIC_FLAGS_FORCE_RGB | DirectX::WIC_FLAGS_IGNORE_SRGB, &meta, image);
 		}
 		if (FAILED(hr))
@@ -186,7 +186,7 @@ bool TextureLoader::LoadThumbnail(const std::wstring& path, uint32_t maxSize, Te
 	DirectX::ScratchImage image;
 	if (!LoadScratchFromFile(path, image)) return false;
 
-	// 블록 압축(BC1~7)은 Resize/Convert 가 못 다루므로 먼저 푼다.
+	// 블록 압축(BC1~7)은 Resize/Convert 가 다루지 못하므로 먼저 압축을 풂.
 	DirectX::ScratchImage decompressed;
 	const DirectX::ScratchImage* current = &image;
 	if (DirectX::IsCompressed(image.GetMetadata().format))
@@ -200,7 +200,7 @@ bool TextureLoader::LoadThumbnail(const std::wstring& path, uint32_t maxSize, Te
 		current = &decompressed;
 	}
 
-	// 밉 0 만 쓴다. 긴 변을 maxSize 로 (비율 유지).
+	// 밉 0 만 씀. 긴 변을 maxSize 에 맞춤 (비율 유지).
 	const DirectX::Image* base = current->GetImage(0, 0, 0);
 	if (base == nullptr) return false;
 	DirectX::ScratchImage resized;
@@ -218,7 +218,7 @@ bool TextureLoader::LoadThumbnail(const std::wstring& path, uint32_t maxSize, Te
 		base = resized.GetImage(0, 0, 0);
 	}
 
-	// 밉 0 하나짜리 ScratchImage 로 옮겨 FinishImage 의 포맷 통일을 거친다. srgb=false: UNORM 라벨 (헤더 주석).
+	// 밉 0 하나짜리 ScratchImage 로 옮겨 FinishImage 의 포맷 통일을 거침. srgb=false: UNORM 라벨 (헤더 주석).
 	DirectX::ScratchImage single;
 	if (FAILED(single.InitializeFromImage(*base))) return false;
 	return FinishImage(single, false, false, out);
@@ -230,7 +230,7 @@ bool TextureLoader::LoadFromMemory(const uint8_t* data, size_t size, bool srgb, 
 	DirectX::ScratchImage image;
 	DirectX::TexMetadata meta = {};
 
-	// DDS 매직("DDS ") 이면 DDS, 아니면 WIC (PNG/JPG). 모델 파일이 확장자를 알려 주지 않을 수 있어 내용으로 판단한다.
+	// DDS 매직("DDS ") 이면 DDS, 아니면 WIC (PNG/JPG). 모델 파일이 확장자를 알려 주지 않을 수 있어 내용으로 판단함.
 	HRESULT hr;
 	if (size >= 4 && data[0] == 'D' && data[1] == 'D' && data[2] == 'S' && data[3] == ' ')
 	{

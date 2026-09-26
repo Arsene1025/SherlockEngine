@@ -35,11 +35,11 @@ void D3D11CommandList::BeginRenderPass(const RenderPassDesc& desc)
 	m_inPass = true;
 	++m_stats.renderPasses;
 
-	// (1) 타깃이 될 텍스처가 SRV 슬롯에 남아 있으면 먼저 푼다.
+	// (1) 타깃이 될 텍스처가 SRV 슬롯에 남아 있으면 먼저 풂.
 	for (uint32_t i = 0; i < desc.colorCount; ++i) UnbindShaderResourcesOf(desc.colors[i].texture);
 	if (desc.depth.texture.IsValid()) UnbindShaderResourcesOf(desc.depth.texture);
 
-	// (2) 뷰를 모은다. 뷰포트 기본 크기는 첫 attachment 에서.
+	// (2) 뷰를 모음. 뷰포트 기본 크기는 첫 attachment 에서 가져옴.
 	ID3D11RenderTargetView* rtvs[kMaxRenderTargets] = {};
 	uint32_t width = 0, height = 0;
 	for (uint32_t i = 0; i < desc.colorCount; ++i)
@@ -68,10 +68,10 @@ void D3D11CommandList::BeginRenderPass(const RenderPassDesc& desc)
 		}
 	}
 
-	// (3) 바인딩. flip 모델은 Present 뒤 백버퍼가 풀리므로 매 패스 다시 건다.
+	// (3) 바인딩. flip 모델에서는 Present 후 백버퍼 바인딩이 풀리므로 패스마다 다시 바인딩함.
 	context->OMSetRenderTargets(desc.colorCount, desc.colorCount ? rtvs : nullptr, dsv);
 
-	// (4) Load op. Clear 만 실제 동작이고 Load/DontCare 는 D3D11에서 같다.
+	// (4) Load op. Clear 만 실제로 동작하고, Load/DontCare 는 D3D11에서 동작이 같음.
 	for (uint32_t i = 0; i < desc.colorCount; ++i)
 	{
 		if (rtvs[i] && desc.colors[i].load == LoadOp::Clear)
@@ -84,7 +84,7 @@ void D3D11CommandList::BeginRenderPass(const RenderPassDesc& desc)
 		context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, desc.depth.clearDepth, desc.depth.clearStencil);
 	}
 
-	// (5) 뷰포트. PSO 밖의 동적 상태다.
+	// (5) 뷰포트. PSO 밖의 동적 상태임.
 	D3D11_VIEWPORT viewport = {};
 	viewport.TopLeftX = desc.viewport.x;
 	viewport.TopLeftY = desc.viewport.y;
@@ -99,7 +99,7 @@ void D3D11CommandList::EndRenderPass()
 {
 	ID3D11DeviceContext* context = m_device ? m_device->GetContext() : nullptr;
 	if (!m_inPass || context == nullptr) return;
-	// Store op 는 D3D11에서 할 일이 없다. 타깃을 풀어 다음 패스가 SRV 로 읽어도 경고가 없게 한다.
+	// Store op 는 D3D11에서 할 일이 없음. 타깃을 풀어 다음 패스가 SRV 로 읽어도 경고가 나지 않게 함.
 	context->OMSetRenderTargets(0, nullptr, nullptr);
 	m_inPass = false;
 }
@@ -152,7 +152,7 @@ void D3D11CommandList::SetResourceSet(ResourceSetHandle handle)
 	ID3D11DeviceContext* context = m_device->GetContext();
 	const uint32_t frameIndex = m_device->GetFrameIndex();
 
-	// D3D12라면 SetGraphicsRootDescriptorTable 한 번. D3D11은 슬롯마다 스테이지별로 푼다.
+	// D3D12라면 SetGraphicsRootDescriptorTable 한 번이면 됨. D3D11은 슬롯마다 스테이지별 호출로 풀어냄.
 	for (uint32_t i = 0; i < layout->desc.slotCount; ++i)
 	{
 		const BindingSlot& slot = layout->desc.slots[i];
@@ -247,8 +247,8 @@ void D3D11CommandList::Barrier(TextureHandle handle, ResourceState before, Resou
 		return;
 	}
 #if defined(_DEBUG)
-	// D3D11에서는 할 일이 없다. 대신 호출 코드가 적어 놓은 before 가 실제 추적 상태와
-	// 맞는지 확인한다. 어긋나면 D3D12에서 Debug Layer 에러가 될 자리다.
+	// D3D11에서는 할 일이 없음. 대신 호출 코드가 적어 놓은 before 가 실제 추적 상태와
+	// 맞는지 확인함. 어긋나면 D3D12에서는 Debug Layer 에러가 나는 경우임.
 	if (texture->state != before)
 	{
 		Log::Warn("Barrier : '%s' 의 현재 상태는 %s 인데 before=%s 로 호출됨 (after=%s).",

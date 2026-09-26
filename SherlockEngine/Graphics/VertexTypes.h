@@ -4,12 +4,12 @@
 
 // 정점 구조체와 그 레이아웃 기술.
 //
-// 레이아웃은 offsetof로 만든다. 예전에는 MeshRenderer가 D3D11_INPUT_ELEMENT_DESC에
-// 오프셋 0/12/28을 손으로 적었다. 구조체를 고치면 그 숫자를 같이 고쳐야 했고,
-// 잊으면 컴파일은 되는데 화면만 깨졌다.
+// 레이아웃은 offsetof로 만듦. 예전에는 MeshRenderer가 D3D11_INPUT_ELEMENT_DESC에
+// 오프셋 0/12/28을 손으로 적었음. 구조체를 고치면 그 숫자도 같이 고쳐야 했고,
+// 잊으면 컴파일은 되는데 화면이 깨졌음.
 //
-// 4단계(D9): 정점 포맷을 열거형으로 두고 Mesh가 자기 포맷을 말한다. Renderer는
-// GetVertexLayout(mesh.GetVertexFormat())으로 PSO Desc를 채운다.
+// 4단계(D9): 정점 포맷을 열거형으로 두고 Mesh가 자기 포맷을 알려줌. Renderer는
+// GetVertexLayout(mesh.GetVertexFormat())으로 PSO Desc를 채움.
 // 5단계: UV 추가. 6단계: 탄젠트 추가 (Position / Color / Normal / TexCoord / Tangent, 64바이트).
 
 struct VERTEX

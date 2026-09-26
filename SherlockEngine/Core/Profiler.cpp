@@ -11,7 +11,7 @@ namespace
 	{
 		const char* name;
 		LARGE_INTEGER start;
-		size_t index;   // 결과 목록에서의 자리 (닫힐 때 시간을 채운다)
+		size_t index;   // 결과 목록에서의 위치 (구간이 닫힐 때 시간을 채움)
 	};
 
 	struct GpuRange
@@ -31,7 +31,7 @@ namespace
 		std::vector<Profiler::CpuSample> cpuLast;
 		std::vector<OpenCpu> cpuOpen;
 
-		// GPU: 프레임마다 기록한 구간 목록을 프레임 번호와 함께 몇 개 들고 있다가, Device 가 그 프레임의 결과를 주면 짝짓는다.
+		// GPU: 프레임마다 기록한 구간 목록을 프레임 번호와 함께 몇 개 보관하다가, Device 가 그 프레임의 결과를 주면 짝지음.
 		struct GpuFrame { uint64_t frameNumber; std::vector<GpuRange> ranges; };
 		std::vector<GpuFrame> gpuPending;
 		std::vector<GpuRange> gpuCurrent;
@@ -60,16 +60,16 @@ namespace Profiler
 	{
 		State& s = S();
 		// ---- CPU: 직전 프레임 확정 ----
-		while (!s.cpuOpen.empty()) EndCpu();   // 짝이 안 맞는 Begin 은 여기서 닫는다
+		while (!s.cpuOpen.empty()) EndCpu();   // 짝이 안 맞는 Begin 은 여기서 닫음
 		s.cpuLast.swap(s.cpuCurrent);
 		s.cpuCurrent.clear();
 		s.cpuFrameMs = 0.0f;
 		for (const CpuSample& sample : s.cpuLast) if (sample.depth == 0) s.cpuFrameMs += sample.milliseconds;
 
-		// ---- GPU: 직전 프레임의 구간 목록을 보관하고, 완료된 결과와 짝짓는다 ----
+		// ---- GPU: 직전 프레임의 구간 목록을 보관하고, 완료된 결과와 짝지음 ----
 		if (!s.gpuCurrent.empty())
 		{
-			// gpuCurrent 는 직전 프레임(번호 frameCounter − 1) 의 것이다.
+			// gpuCurrent 는 직전 프레임(번호 frameCounter − 1)의 구간 목록임.
 			if (s.frameCounter > 0) s.gpuPending.push_back(State::GpuFrame{ s.frameCounter - 1, s.gpuCurrent });
 			if (s.gpuPending.size() > 8) s.gpuPending.erase(s.gpuPending.begin());
 		}

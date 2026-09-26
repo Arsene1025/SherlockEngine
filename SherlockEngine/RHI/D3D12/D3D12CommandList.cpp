@@ -27,7 +27,7 @@ void D3D12CommandList::BeginFrame(ID3D12GraphicsCommandList* list)
 	m_currentPipeline = PipelineHandle{};
 	m_currentPso = nullptr;
 	m_currentRoot = nullptr;
-	// 바인딩 기억은 유지하되 (Renderer 가 프레임 초에 다시 건다) 테이블은 다시 걸어야 한다.
+	// 기억해 둔 바인딩은 유지하되 (Renderer 가 프레임 초에 다시 설정함) 디스크립터 테이블은 다시 바인딩해야 함.
 	for (uint32_t i = 0; i < m_setCount; ++i) m_sets[i].tablesDirty = true;
 }
 
@@ -90,7 +90,7 @@ void D3D12CommandList::BeginRenderPass(const RenderPassDesc& desc)
 		m_list->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, desc.depth.clearDepth, desc.depth.clearStencil, 0, nullptr);
 	}
 
-	// 뷰포트 + 시저. 둘 다 PSO 밖의 동적 상태이고, 커맨드 리스트를 Reset 하면 사라진다.
+	// 뷰포트 + 시저. 둘 다 PSO 밖의 동적 상태이고, 커맨드 리스트를 Reset 하면 사라짐.
 	D3D12_VIEWPORT viewport = {};
 	viewport.TopLeftX = desc.viewport.x;
 	viewport.TopLeftY = desc.viewport.y;
@@ -110,7 +110,7 @@ void D3D12CommandList::BeginRenderPass(const RenderPassDesc& desc)
 
 void D3D12CommandList::EndRenderPass()
 {
-	// D3D12 의 OMSetRenderTargets 는 참조를 잡지 않으므로 풀어 줄 것이 없다. Store op 도 할 일이 없다.
+	// D3D12 의 OMSetRenderTargets 는 참조를 보유하지 않으므로 해제할 것이 없음. Store op 로 할 일도 없음.
 	m_inPass = false;
 }
 
@@ -131,7 +131,7 @@ void D3D12CommandList::SetPipelineState(PipelineHandle handle)
 	const D3D12RootLayout* root = pso->GetRootLayout();
 	if (root != m_currentRoot)
 	{
-		// 루트 시그니처가 바뀌면 루트 파라미터가 전부 무효가 된다. 테이블을 다시 건다.
+		// 루트 시그니처가 바뀌면 루트 파라미터가 전부 무효가 됨. 따라서 테이블을 다시 바인딩하게 함.
 		m_list->SetGraphicsRootSignature(root->rootSignature.Get());
 		m_currentRoot = root;
 		for (uint32_t i = 0; i < m_setCount; ++i) m_sets[i].tablesDirty = true;
@@ -197,9 +197,9 @@ void D3D12CommandList::SetIndexBuffer(BufferHandle handle, Format indexFormat)
 	m_list->IASetIndexBuffer(&view);
 }
 
-// 드로우 직전: 현재 루트 시그니처의 셋 순서대로 루트 CBV 와 테이블을 건다.
-// 루트 CBV 는 매 드로우 다시 건다 — 오브젝트 상수버퍼가 드로우마다 UpdateBuffer 로 새 링 주소를 받기 때문이다.
-// 테이블은 셋이 바뀌었거나 루트 시그니처가 바뀌었을 때만.
+// 드로우 직전: 현재 루트 시그니처의 셋 순서대로 루트 CBV 와 테이블을 바인딩함.
+// 루트 CBV 는 드로우마다 다시 바인딩함 — 오브젝트 상수버퍼가 드로우마다 UpdateBuffer 로 새 링 주소를 받기 때문임.
+// 테이블은 셋이나 루트 시그니처가 바뀌었을 때만 다시 바인딩함.
 void D3D12CommandList::ApplyBindings()
 {
 	static bool warnedMissing = false;
@@ -280,7 +280,7 @@ void D3D12CommandList::Barrier(TextureHandle handle, ResourceState before, Resou
 		ErrorOnce(warned, "Barrier : 유효하지 않은 TextureHandle.");
 		return;
 	}
-	// 호출 코드의 before 가 추적 상태와 다르면 D3D12 는 에러다. 추적 상태를 믿고 경고만 남긴다.
+	// 호출 코드가 넘긴 before 가 추적 상태와 다르면 D3D12 에서는 에러가 남. 따라서 추적 상태를 신뢰하고 경고만 남김.
 	ResourceState actualBefore = texture->state;
 	if (actualBefore != before)
 	{
@@ -309,7 +309,7 @@ void D3D12CommandList::CopyBuffer(BufferHandle dst, BufferHandle src)
 		Log::Error("CopyBuffer : 크기가 다름 (%s %u, %s %u).", d->name.c_str(), d->desc.size, s->name.c_str(), s->desc.size);
 		return;
 	}
-	// 버퍼는 COMMON 에서 COPY_* 로 암묵 승격되므로 배리어가 필요 없다.
+	// 버퍼는 COMMON 에서 COPY_* 로 암묵적으로 승격되므로 배리어가 필요 없음.
 	m_list->CopyResource(d->resource.Get(), s->resource.Get());
 }
 

@@ -7,9 +7,9 @@ using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
-	// 탄젠트 프레임을 채운다. T = u 증가 방향, B = v 증가 방향 (둘 다 해석적으로 안다).
+	// 탄젠트 프레임을 채움. T = u 증가 방향, B = v 증가 방향 (둘 다 해석적으로 구한 값).
 	// T 는 노멀에 직교화(Gram-Schmidt)하고, w 는 cross(N, T) 가 B 와 같은 쪽이면 +1, 반대면 −1.
-	// 픽셀 셰이더는 B = cross(N, T) * w 로 되살린다. 이 규칙은 정점 포맷의 일부다 (VertexTypes.h).
+	// 픽셀 셰이더는 B 를 cross(N, T) * w 로 복원함. 이 규칙은 정점 포맷의 일부임 (VertexTypes.h).
 	VERTEX MakeVertex(float x, float y, float z, float nx, float ny, float nz, float u, float v,
 		const XMFLOAT3& tangent, const XMFLOAT3& bitangent, const XMFLOAT4& c)
 	{
@@ -110,10 +110,10 @@ Mesh Mesh::CreateCube(float size, const XMFLOAT4& color)
 	Mesh mesh;
 	const float h = size * 0.5f;
 
-	// 면마다 정점 4개. 정점을 공유하면 노멀을 평균 내야 해서 모서리가 둥글게 보인다.
+	// 면마다 정점 4개. 정점을 공유하면 노멀을 평균 내야 해서 모서리가 둥글게 보임.
 	// 순서: 앞(−Z) 뒤(+Z) 위(+Y) 아래(−Y) 왼(−X) 오른(+X). 각 면의 인덱스는 (0,1,2)(0,2,3).
-	// UV는 면마다 (0,0)-(1,1). 면의 첫 정점이 (0,1), 둘째가 (0,0)이 되도록 시계방향으로 돈다.
-	// T/B 는 각 면에서 u+/v+ 가 향하는 월드 방향이다.
+	// UV는 면마다 (0,0)-(1,1). 면의 첫 정점이 (0,1), 둘째가 (0,0)이 되도록 시계방향 순서로 배치함.
+	// T/B 는 각 면에서 u+/v+ 가 향하는 월드 방향임.
 	struct Face { XMFLOAT3 n, t, b; XMFLOAT3 p[4]; float uv[4][2]; };
 	const Face faces[6] =
 	{
@@ -200,7 +200,7 @@ Mesh Mesh::CreateCylinder(float bottomRadius, float topRadius, float height,
 	const uint32_t ringCount = stackCount + 1;
 	const float dTheta = XM_2PI / sliceCount;
 
-	// 옆면. 링마다 sliceCount+1개(첫 정점을 끝에 복제해 텍스처 이음새를 만든다).
+	// 옆면. 링마다 정점 sliceCount+1개(첫 정점을 끝에 복제해 텍스처 이음새를 만듦).
 	// UV: u는 둘레(0..1), v는 위에서 아래로(위 0, 아래 1).
 	for (uint32_t i = 0; i < ringCount; ++i)
 	{
@@ -212,7 +212,7 @@ Mesh Mesh::CreateCylinder(float bottomRadius, float topRadius, float height,
 			const float c = cosf(j * dTheta);
 			const float s = sinf(j * dTheta);
 
-			// 노멀 = 접선(T) × 종접선(B). 원뿔대에서도 옆면에 수직이 된다.
+			// 노멀 = 접선(T) × 종접선(B). 원뿔대에서도 옆면에 수직이 됨.
 			// B 는 v 가 증가하는(아래로 내려가는) 방향이라 (dr·c, −height, dr·s).
 			const XMFLOAT3 tangent(-s, 0.0f, c);
 			const float dr = bottomRadius - topRadius;
@@ -333,7 +333,7 @@ void Mesh::Finalize()
 void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, const std::vector<uint32_t>& indices, bool bitangentTowardsIncreasingV)
 {
 	// Lengyel, "Computing Tangent Space Basis Vectors for an Arbitrary Mesh".
-	// 삼각형마다 (dP/du, dP/dv) 를 풀어 정점에 누적하고, 마지막에 노멀에 직교화한다.
+	// 삼각형마다 (dP/du, dP/dv) 를 풀어 정점에 누적하고, 마지막에 노멀에 직교화함.
 	std::vector<XMFLOAT3> tan1(vertices.size(), XMFLOAT3(0.0f, 0.0f, 0.0f));
 	std::vector<XMFLOAT3> tan2(vertices.size(), XMFLOAT3(0.0f, 0.0f, 0.0f));
 
@@ -351,7 +351,7 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, const std::vector<uint
 		const float du2 = v2.u - v0.u, dv2 = v2.v - v0.v;
 
 		const float det = du1 * dv2 - du2 * dv1;
-		if (fabsf(det) < 1e-12f) continue;   // UV 가 퇴화한 삼각형은 건너뛴다
+		if (fabsf(det) < 1e-12f) continue;   // UV 가 퇴화한 삼각형은 건너뜀
 		const float r = 1.0f / det;
 
 		// dP/du, dP/dv
@@ -372,14 +372,14 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, const std::vector<uint
 		XMVECTOR t = XMLoadFloat3(&tan1[i]);
 		if (XMVectorGetX(XMVector3LengthSq(t)) < 1e-16f)
 		{
-			// 누적된 것이 없으면(UV 없음 등) 노멀에 수직인 아무 벡터.
+			// 누적된 값이 없으면(UV 없음 등) 노멀에 수직인 임의의 벡터를 씀.
 			const XMVECTOR axis = fabsf(v.ny) < 0.99f ? XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f) : XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
 			t = XMVector3Cross(axis, n);
 		}
-		// Gram-Schmidt: 노멀 성분을 뺀다.
+		// Gram-Schmidt: 노멀 성분을 뺌.
 		t = XMVector3Normalize(XMVectorSubtract(t, XMVectorScale(n, XMVectorGetX(XMVector3Dot(n, t)))));
 
-		// 손잡이. cross(N, T) 가 dP/dv 와 같은 쪽이면 +1. glTF 는 B 가 −dP/dv 를 가리켜야 하므로 부호를 뒤집는다.
+		// 손잡이. cross(N, T) 가 dP/dv 와 같은 쪽이면 +1. glTF 는 B 가 −dP/dv 를 가리켜야 하므로 부호를 뒤집음.
 		const XMVECTOR b = XMLoadFloat3(&tan2[i]);
 		float w = (XMVectorGetX(XMVector3Dot(XMVector3Cross(n, t), b)) < 0.0f) ? -1.0f : 1.0f;
 		if (!bitangentTowardsIncreasingV) w = -w;

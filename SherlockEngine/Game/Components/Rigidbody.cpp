@@ -32,7 +32,7 @@ void Rigidbody::FixedUpdate(float dt)
 	{
 		p.y = groundY + radius;
 		if (m_velocity.y < 0.0f) m_velocity.y = -m_velocity.y * bounciness;
-		if (m_velocity.y < 0.05f) { m_velocity.y = 0.0f; m_grounded = true; }   // 미세한 되튐 정지 → 바닥에 닿음
+		if (m_velocity.y < 0.05f) { m_velocity.y = 0.0f; m_grounded = true; }   // 미세한 되튐은 멈추고 바닥에 닿은 것으로 처리
 	}
 	GetTransform().SetPosition(p);
 }

@@ -24,7 +24,7 @@ using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
-	// DirectXMath 의 RotationRollPitchYaw(pitch, yaw, roll) = Rz(roll)·Rx(pitch)·Ry(yaw) (행벡터) 에서 각을 되찾는다.
+	// DirectXMath 의 RotationRollPitchYaw(pitch, yaw, roll) = Rz(roll)·Rx(pitch)·Ry(yaw) (행벡터) 에서 각을 되찾음.
 	// 행렬 원소: m[2][1] = −sin p, m[2][0] = cos p·sin y, m[2][2] = cos p·cos y, m[0][1] = sin r·cos p, m[1][1] = cos r·cos p.
 	XMFLOAT3 EulerFromRotation(const XMFLOAT4X4& m)
 	{
@@ -38,14 +38,14 @@ namespace
 		}
 		else
 		{
-			// 짐벌락: yaw 를 0 으로 두고 roll 에 몰아준다.
+			// 짐벌락: yaw 를 0 으로 두고 roll 에 몰아줌.
 			euler.y = 0.0f;
 			euler.z = atan2f(-m.m[1][0], m.m[0][0]);
 		}
 		return euler;
 	}
 
-	// 광선-AABB (slab). t ≥ 0 인 가장 가까운 교차. 없으면 false.
+	// 광선-AABB 교차 판정 (slab). t ≥ 0 인 가장 가까운 교차점을 구함. 없으면 false.
 	bool RayAabb(const XMFLOAT3& origin, const XMFLOAT3& direction, const XMFLOAT3& boxMin, const XMFLOAT3& boxMax, float& outT)
 	{
 		float tMin = 0.0f;
@@ -72,7 +72,7 @@ namespace
 		return true;
 	}
 
-	// 11-B단계: 씬 뷰 픽셀 (u, v ∈ 0..1) → 월드 광선. near/far 점을 역투영한다 (Pick 과 드롭 위치 계산이 같이 쓴다).
+	// 11-B단계: 씬 뷰 픽셀 (u, v ∈ 0..1) → 월드 광선. near/far 점을 역투영함 (Pick 과 드롭 위치 계산이 함께 씀).
 	struct Ray
 	{
 		XMVECTOR origin;
@@ -88,7 +88,7 @@ namespace
 		return Ray{ nearPoint, XMVector3Normalize(farPoint - nearPoint) };
 	}
 
-	// 월드 점 → 씬 뷰 픽셀. XMVector3Transform (Coord 가 아니라) 로 w 를 남겨 카메라 뒤의 점을 거른다.
+	// 월드 점 → 씬 뷰 픽셀. XMVector3Transform (Coord 가 아니라) 로 w 를 남겨 카메라 뒤의 점을 걸러 냄.
 	bool ProjectToView(const XMMATRIX& viewProj, float x, float y, float width, float height, const XMFLOAT3& p, ImVec2& out)
 	{
 		const XMVECTOR clip = XMVector3Transform(XMLoadFloat3(&p), viewProj);
@@ -127,7 +127,7 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 	m_layoutBuilt = true;
 	ImGui::DockSpaceOverViewport(dockspaceId, viewport);
 
-	// 11-B단계: 콘텐츠 브라우저 에셋을 끌고 있나. IsDragDropActive 는 internal 이라 페이로드로 판단한다.
+	// 11-B단계: 콘텐츠 브라우저 에셋을 끌고 있는지 확인. IsDragDropActive 는 internal 이라 페이로드로 판단함.
 	const ImGuiPayload* dragPayload = ImGui::GetDragDropPayload();
 	m_assetDragActive = dragPayload != nullptr && dragPayload->IsDataType(kAssetPayloadType);
 
@@ -153,7 +153,7 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 	DrawInspector(engine);
 	DrawRenderSettings(engine);
 	DrawStats(engine, sceneName, modelStats);
-	DrawContentBrowser(engine, callbacks);   // Stats 뒤에 — 그 창의 도킹 노드에 따라 붙는다
+	DrawContentBrowser(engine, callbacks);   // Stats 다음에 그림 — Stats 창의 도킹 노드에 따라 붙음
 
 	ImGui::Begin("Lights");
 	DebugUI::DrawLightPanel(engine.GetScene());
@@ -187,7 +187,7 @@ void Editor::BuildDefaultLayout(uint32_t dockspaceId)
 	ImGui::DockBuilderDockWindow("Materials", right);
 	ImGui::DockBuilderDockWindow("Console (F12)", bottom);
 	ImGui::DockBuilderDockWindow("Stats", bottom);
-	ImGui::DockBuilderDockWindow("Content Browser", bottom);   // 11-B단계: 같은 노드의 탭. 첫 프레임에 활성 탭으로
+	ImGui::DockBuilderDockWindow("Content Browser", bottom);   // 11-B단계: 같은 노드의 탭. 첫 프레임에 활성 탭으로 만듦
 	ImGui::DockBuilderFinish(dockspaceId);
 	m_focusContentBrowserFrames = 3;
 }
@@ -298,7 +298,7 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 	if (ImGui::RadioButton("World", m_gizmoWorld)) m_gizmoWorld = true; ImGui::SameLine();
 	ImGui::TextDisabled("RMB: look  WASD: move  LMB: select  1/2/3: gizmo  Ctrl+P: play");
 
-	// 11-E단계: 이 exe 에 프로젝트 스크립트가 없으면 씬 뷰 위(이미지 앞)에 배너 — 이미지가 남은 공간을 다 쓰므로 그 전에 그린다
+	// 11-E단계: 이 exe 에 프로젝트 스크립트가 없으면 씬 뷰 위(이미지 앞)에 배너를 표시 — 이미지가 남은 공간을 다 쓰므로 이미지보다 먼저 그림
 	DrawProjectBanner(callbacks);
 
 	const ImVec2 available = ImGui::GetContentRegionAvail();
@@ -307,7 +307,7 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 	m_sceneWidth = width;
 	m_sceneHeight = height;
 	Renderer& renderer = engine.GetRenderer();
-	renderer.SetSceneTarget(width, height);   // 크기가 같으면 아무 일도 없다
+	renderer.SetSceneTarget(width, height);   // 크기가 같으면 아무것도 하지 않음
 	if (width > 0 && height > 0) engine.GetCamera().SetAspectRatio(static_cast<float>(width) / static_cast<float>(height));
 
 	const ImVec2 imagePos = ImGui::GetCursorScreenPos();
@@ -320,10 +320,10 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 	{
 		ImGui::Dummy(ImVec2(static_cast<float>(width), static_cast<float>(height)));
 	}
-	m_sceneHovered = ImGui::IsItemHovered();   // 드래그 중에는 ImGui 가 false 를 준다 (활성 소스 아이템이 막는다) — 드롭 판정은 아래 타깃으로만
+	m_sceneHovered = ImGui::IsItemHovered();   // 드래그 중에는 ImGui 가 false 를 돌려줌 (활성 소스 아이템이 막음) — 드롭 판정은 아래 드롭 타깃에서만 함
 	m_sceneFocused = ImGui::IsWindowFocused();
 
-	// 11-C단계: 재생 중 표시 — 언리얼 PIE 처럼 씬 뷰 테두리 (재생 초록, 일시정지 노랑)
+	// 11-C단계: 재생 중 표시 — 언리얼 PIE 처럼 씬 뷰에 테두리를 그림 (재생 초록, 일시정지 노랑)
 	if (playState != PlayState::Editing)
 	{
 		const ImU32 color = playState == PlayState::Playing ? IM_COL32(70, 200, 90, 255) : IM_COL32(240, 190, 40, 255);
@@ -332,8 +332,8 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 		ImGui::GetWindowDrawList()->AddText(ImVec2(imagePos.x + 10.0f, imagePos.y + 8.0f), color, text);
 	}
 
-	// 11-B단계: 콘텐츠 브라우저 드롭 타깃. 이미지 아이템 바로 뒤에 있어야 한다.
-	// AcceptBeforeDelivery: 호버 중 매 프레임 페이로드를 받아 고스트 마커를 그리고, IsDelivery() 인 프레임(릴리스)에만 실제로 놓는다.
+	// 11-B단계: 콘텐츠 브라우저 드롭 타깃. 이미지 아이템 바로 뒤에 있어야 함.
+	// AcceptBeforeDelivery: 호버 중 매 프레임 페이로드를 받아 고스트 마커를 그리고, IsDelivery() 인 프레임(릴리스)에만 실제로 놓음.
 	if (ImGui::BeginDragDropTarget())
 	{
 		const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kAssetPayloadType, ImGuiDragDropFlags_AcceptBeforeDelivery | ImGuiDragDropFlags_AcceptNoDrawDefaultRect);
@@ -352,17 +352,17 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 		ImGui::EndDragDropTarget();
 	}
 
-	// 11-C단계: 씬 안의 카메라 오브젝트를 프러스텀 아이콘으로 (편집 중에만 — 재생 중엔 그 카메라로 보고 있다)
+	// 11-C단계: 씬 안의 카메라 오브젝트를 프러스텀 아이콘으로 표시 (편집 중에만 — 재생 중에는 그 카메라로 보고 있음)
 	DrawCameraGizmos(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 	// 선택한 카메라의 시점 미리보기 (우측 하단)
 	DrawCameraPreview(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 
-	// 기즈모 (선택된 오브젝트). 이미지 위에 그린다. 에셋을 끌고 있는 동안은 끈다.
+	// 선택된 오브젝트의 기즈모. 이미지 위에 그림. 에셋을 끌고 있는 동안은 끔.
 	ImGuizmo::Enable(!m_assetDragActive);
 	DrawGizmo(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 	ImGuizmo::Enable(true);
 
-	// 클릭 선택. 기즈모를 잡고 있거나 기즈모 위면 제외.
+	// 클릭 선택. 기즈모를 잡고 있거나 커서가 기즈모 위에 있으면 제외.
 	if (m_sceneHovered && !m_assetDragActive && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsOver() && !ImGuizmo::IsUsing())
 	{
 		const ImVec2 mouse = ImGui::GetMousePos();
@@ -382,7 +382,7 @@ void Editor::DrawGizmo(Engine& engine, float x, float y, float width, float heig
 	GameObject& object = *scene.GetObjects()[m_selected];
 	const Camera& camera = engine.GetCamera();
 
-	// DirectXMath 행벡터 행렬과 ImGuizmo(열벡터, 열우선 메모리)는 메모리 배치가 같다 — 이동이 [12..14] 에 있는 것이 그 증거.
+	// DirectXMath 행벡터 행렬과 ImGuizmo(열벡터, 열우선 메모리)는 메모리 배치가 같음 — 이동 성분이 [12..14] 에 있는 것이 그 증거임.
 	XMFLOAT4X4 view, proj, world;
 	XMStoreFloat4x4(&view, camera.GetViewMatrix());
 	XMStoreFloat4x4(&proj, camera.GetProjectionMatrix());
@@ -395,7 +395,7 @@ void Editor::DrawGizmo(Engine& engine, float x, float y, float width, float heig
 	const ImGuizmo::MODE mode = (m_gizmoWorld && m_gizmoOperation != 2) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
 	if (ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], operation, mode, &world.m[0][0]))
 	{
-		// world = pre × S·R·T 이므로 S·R·T = pre⁻¹ × world. 분해해 Transform 에 되돌린다.
+		// world = pre × S·R·T 이므로 S·R·T = pre⁻¹ × world. 분해해 Transform 에 되돌림.
 		Transform& t = object.GetTransform();
 		XMMATRIX local = XMLoadFloat4x4(&world);
 		if (t.HasPreTransform()) local = XMMatrixInverse(nullptr, t.GetPreTransform()) * local;
@@ -437,12 +437,12 @@ int Editor::Pick(Scene& scene, const Camera& camera, float u, float v, float* ou
 		}
 		else if (objects[i]->GetBehaviour<CameraComponent>() != nullptr)
 		{
-			// 11-C단계: 메시 없는 카메라 오브젝트는 1 단위 상자로 잡는다 (씬 뷰의 카메라 아이콘과 같은 자리)
+			// 11-C단계: 메시 없는 카메라 오브젝트는 1 단위 상자로 판정함 (씬 뷰의 카메라 아이콘과 같은 자리)
 			boxMin = XMFLOAT3(-0.5f, -0.5f, -0.5f);
 			boxMax = XMFLOAT3(0.5f, 0.5f, 0.5f);
 		}
 		else continue;
-		// 광선을 오브젝트 로컬 공간으로 옮겨 로컬 AABB 와 검사한다 (회전·스케일이 있어도 정확).
+		// 광선을 오브젝트 로컬 공간으로 옮겨 로컬 AABB 와 검사함 (회전·스케일이 있어도 정확).
 		const XMMATRIX world = objects[i]->GetTransform().GetWorldMatrix();
 		const XMMATRIX invWorld = XMMatrixInverse(nullptr, world);
 		XMFLOAT3 origin, direction;
@@ -452,7 +452,7 @@ int Editor::Pick(Scene& scene, const Camera& camera, float u, float v, float* ou
 		if (length < 1e-8f) continue;
 		float tLocal = 0.0f;
 		if (!RayAabb(origin, direction, boxMin, boxMax, tLocal)) continue;
-		// 로컬 t 는 스케일된 방향 기준이라 월드 거리로 바꿔 비교한다.
+		// 로컬 t 는 스케일된 방향 기준이라 월드 거리로 바꿔 비교함.
 		const float tWorld = tLocal * length;
 		if (tWorld < bestT)
 		{
@@ -491,8 +491,8 @@ int Editor::RaycastScene(Scene& scene, const Camera& camera, float u, float v, X
 void Editor::DrawContentBrowser(Engine& engine, const Callbacks& callbacks)
 {
 	if (!showContentBrowser) return;
-	// 저장된 imgui.ini 에 이 창이 없으면(11단계 레이아웃) Stats 가 있는 노드의 탭으로 처음 한 번 붙인다.
-	// FirstUseEver 라 ini 에 항목이 생긴 뒤에는 사용자가 옮긴 자리를 존중한다. 도킹 ID 는 바꾸지 않는다.
+	// 저장된 imgui.ini 에 이 창이 없으면(11단계 레이아웃) Stats 가 있는 노드의 탭으로 처음 한 번 붙임.
+	// FirstUseEver 이므로 ini 에 항목이 생긴 뒤에는 사용자가 옮긴 자리를 존중함. 도킹 ID 는 바꾸지 않음.
 	if (ImGuiWindow* stats = ImGui::FindWindowByName("Stats"))
 	{
 		if (stats->DockId != 0) ImGui::SetNextWindowDockID(stats->DockId, ImGuiCond_FirstUseEver);
@@ -531,7 +531,7 @@ void Editor::LoadSceneFromAsset(const Callbacks& callbacks, const std::wstring& 
 {
 	if (!callbacks.loadScene) return;
 	scenePath = Paths::GetAssetRoot() + relativePath;
-	m_pathBuffer[0] = '\0';   // File 메뉴의 경로 필드를 다음에 열 때 다시 채운다
+	m_pathBuffer[0] = '\0';   // File 메뉴의 경로 필드를 다음에 열 때 다시 채움
 	m_lastMessage = callbacks.loadScene(scenePath) ? "loaded " + FileStem(relativePath) : "load failed";
 	m_selected = -1;
 }
@@ -549,7 +549,7 @@ void Editor::HandleAssetDrop(Engine& engine, const Callbacks& callbacks, const A
 		break;
 	case AssetType::Texture:
 	{
-		// 맞은 오브젝트의 재질 알베도로. 재질은 공유될 수 있어 같은 재질의 오브젝트가 모두 바뀐다 (메시지로 알린다).
+		// 광선에 맞은 오브젝트의 재질 알베도로 지정. 재질은 공유될 수 있어 같은 재질을 쓰는 오브젝트가 모두 바뀜 (메시지로 알림).
 		Scene& scene = engine.GetScene();
 		if (hitObject < 0 || hitObject >= static_cast<int>(scene.GetObjects().size()))
 		{
@@ -608,7 +608,7 @@ void Editor::DrawDropGhost(Engine& engine, float x, float y, float width, float 
 		dl->AddCircle(center, 10.0f, accent, 0, 2.0f);
 	}
 
-	// 모델이면 (이미 파싱된 것만 — 호버 중에 Sponza 를 파싱하면 안 된다) 놓일 자리의 AABB 를 그린다.
+	// 모델이면 놓일 자리에 AABB 를 그림 (이미 파싱된 모델만 — 호버 중에 Sponza 를 파싱하면 안 됨).
 	if (asset.type == AssetType::Model)
 	{
 		AssetManager& assets = engine.GetAssets();
@@ -649,7 +649,7 @@ void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 	Scene& scene = engine.GetScene();
 	auto& objects = scene.GetObjects();
 	ImGui::Text("Objects %zu   Lights %zu", objects.size(), scene.GetLights().size());
-	// 추가/삭제. 새 오브젝트는 원점 위에 기본 재질로 생기고 바로 선택된다.
+	// 추가/삭제. 새 오브젝트는 원점 위에 기본 재질로 생기고 바로 선택됨.
 	if (ImGui::SmallButton("+ Sphere") && callbacks.addPrimitive) { callbacks.addPrimitive(0); m_selected = static_cast<int>(objects.size()) - 1; }
 	ImGui::SameLine();
 	if (ImGui::SmallButton("+ Cube") && callbacks.addPrimitive) { callbacks.addPrimitive(1); m_selected = static_cast<int>(objects.size()) - 1; }
@@ -658,7 +658,7 @@ void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 	ImGui::SameLine();
 	if (ImGui::SmallButton("+ Plane") && callbacks.addPrimitive) { callbacks.addPrimitive(3); m_selected = static_cast<int>(objects.size()) - 1; }
 	ImGui::SameLine();
-	if (ImGui::SmallButton("+ Camera") && callbacks.addPrimitive) { callbacks.addPrimitive(4); m_selected = static_cast<int>(objects.size()) - 1; }   // 11-C단계: 에디터 시점에 카메라 오브젝트
+	if (ImGui::SmallButton("+ Camera") && callbacks.addPrimitive) { callbacks.addPrimitive(4); m_selected = static_cast<int>(objects.size()) - 1; }   // 11-C단계: 현재 에디터 시점 그대로 카메라 오브젝트 추가
 	const bool canDelete = m_selected >= 0 && m_selected < static_cast<int>(objects.size());
 	const bool deleteKey = canDelete && (m_sceneFocused || ImGui::IsWindowFocused()) && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Delete, false);
 	if (canDelete) { ImGui::SameLine(); }
@@ -705,7 +705,7 @@ void Editor::DrawInspector(Engine& engine)
 	if (ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.001f, 1000.0f)) t.SetScale(scale);
 	if (t.HasPreTransform()) ImGui::TextDisabled("(model node pre-transform applied before S*R*T)");
 
-	// 11-C단계: 카메라 오브젝트 — 에디터 시점과 주고받기
+	// 11-C단계: 카메라 오브젝트 — 에디터 시점과 자세를 주고받음
 	if (CameraComponent* cameraComponent = object.GetBehaviour<CameraComponent>())
 	{
 		if (ImGui::Button("Look through")) cameraComponent->ApplyTo(engine.GetCamera(), false);   // 에디터 시점 ← 이 카메라 (렌즈는 그대로)
@@ -738,7 +738,7 @@ void Editor::DrawInspector(Engine& engine)
 		if (source != nullptr && source->type == MeshSource::Type::Model) ImGui::TextDisabled("%s #%u", Log::ToUtf8(source->modelPath.c_str()).c_str(), source->meshIndex);
 	}
 
-	// 재질: 씬의 재질 중 고르고, 그 자리에서 편집한다.
+	// 재질: 씬의 재질 중에서 고르고 그 자리에서 편집함.
 	ImGui::Separator();
 	std::vector<std::unique_ptr<Material>>& materials = scene.GetMaterials();
 	int current = -1;
@@ -781,7 +781,7 @@ void Editor::DrawInspector(Engine& engine)
 
 namespace
 {
-	// Behaviour::Reflect 의 필드를 ImGui 위젯으로. Scene 계층은 ImGui 를 모르므로 방문자는 에디터 쪽에 있다.
+	// Behaviour::Reflect 의 필드를 ImGui 위젯으로 그림. Scene 계층은 ImGui 를 모르므로 방문자는 에디터 쪽에 둠.
 	class ImGuiPropertyVisitor : public PropertyVisitor
 	{
 	public:
@@ -818,7 +818,7 @@ void Editor::DrawCameraGizmos(Engine& engine, float x, float y, float width, flo
 	{
 		CameraComponent* cameraComponent = objects[i]->GetBehaviour<CameraComponent>();
 		if (cameraComponent == nullptr) continue;
-		// 에디터 눈과 겹치는 카메라(방금 "Align to view" 한 것)는 프러스텀이 화면 테두리와 일치해 의미가 없다 — 건너뛴다.
+		// 에디터 눈과 겹치는 카메라(방금 "Align to view" 한 것)는 프러스텀이 화면 테두리와 일치해 의미가 없음 — 건너뜀.
 		const XMFLOAT3 eyeDelta(cameraComponent->GetPose().position.x - editorCamera.GetPosition().x,
 			cameraComponent->GetPose().position.y - editorCamera.GetPosition().y, cameraComponent->GetPose().position.z - editorCamera.GetPosition().z);
 		if (eyeDelta.x * eyeDelta.x + eyeDelta.y * eyeDelta.y + eyeDelta.z * eyeDelta.z < 0.01f) continue;
@@ -829,7 +829,7 @@ void Editor::DrawCameraGizmos(Engine& engine, float x, float y, float width, flo
 		const XMVECTOR right = XMVector3TransformNormal(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), rotation);
 		const XMVECTOR up = XMVector3TransformNormal(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), rotation);
 
-		// 눈에서 1.5 단위 앞의 프러스텀 단면 (fov·종횡비는 컴포넌트/씬 뷰 값). 위쪽에 작은 삼각형 = "위".
+		// 눈에서 1.5 단위 앞의 프러스텀 단면 (fov 는 컴포넌트 값, 종횡비는 씬 뷰 값). 위쪽의 작은 삼각형 = "위".
 		const float depth = 1.5f;
 		const float halfH = depth * tanf(pose.fovY * 0.5f);
 		const float halfW = halfH * editorCamera.GetAspect();
@@ -869,22 +869,22 @@ void Editor::DrawCameraPreview(Engine& engine, float x, float y, float width, fl
 	Scene& scene = engine.GetScene();
 	CameraComponent* cameraComponent = (m_selected >= 0 && m_selected < static_cast<int>(scene.GetObjects().size()))
 		? scene.GetObjects()[m_selected]->GetBehaviour<CameraComponent>() : nullptr;
-	// 재생 중 활성 카메라를 선택했으면 씬 뷰가 이미 그 시점이다.
+	// 재생 중 활성 카메라를 선택했으면 씬 뷰가 이미 그 시점임.
 	const bool wanted = cameraComponent != nullptr && !(playState != PlayState::Editing && scene.GetActiveCamera() == cameraComponent) && width >= 240.0f && height >= 160.0f;
 	if (!wanted)
 	{
 		renderer.SetPreviewCamera(nullptr);
-		renderer.SetPreviewTarget(0, 0);   // 텍스처도 돌려준다
+		renderer.SetPreviewTarget(0, 0);   // 텍스처도 반납함
 		return;
 	}
 
-	// 씬 뷰 폭의 32%, 씬 뷰와 같은 비율 (카메라 종횡비는 화면을 따르므로).
+	// 폭은 씬 뷰의 32%, 비율은 씬 뷰와 같게 함 (카메라 종횡비가 화면을 따르므로).
 	const float previewWidth = floorf(width * 0.32f);
 	const float previewHeight = floorf(previewWidth * height / width);
 	renderer.SetPreviewTarget(static_cast<uint32_t>(previewWidth), static_cast<uint32_t>(previewHeight));
 	cameraComponent->ApplyTo(m_previewCamera, true);
 	m_previewCamera.SetAspectRatio(previewWidth / previewHeight);
-	renderer.SetPreviewCamera(&m_previewCamera);   // 이번 프레임의 Render 가 이 카메라로 미리보기 패스를 그린다
+	renderer.SetPreviewCamera(&m_previewCamera);   // 이번 프레임의 Render 가 이 카메라로 미리보기 패스를 그림
 
 	const TextureHandle texture = renderer.GetPreviewTexture();
 	if (!texture.IsValid()) return;
@@ -1017,7 +1017,7 @@ void Editor::DrawProjectSettingsPopup(const Callbacks& callbacks)
 
 void Editor::DrawBuildPopup()
 {
-	// 11-D단계: 언리얼 Package Project. 메뉴 바 안에서 OpenPopup 했으므로 여기(메뉴 바 밖)서 그린다.
+	// 11-D단계: 언리얼의 Package Project 에 해당. File 메뉴 항목은 플래그만 세우고, 메뉴를 닫은 뒤(EndMenu 뒤) OpenPopup 해서 여기서 그림.
 	if (!ImGui::BeginPopupModal("Build Game", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
 	if (!GameBuilder::IsAvailable())
 	{
@@ -1114,7 +1114,7 @@ void Editor::DrawComponents(GameObject& object)
 		const bool isScript = BehaviourRegistry::IsScript(behaviour.GetTypeName());
 		if (isScript)
 		{
-			// 스크립트 소스 열기 (Game\Scripts\<이름>.cpp). 고친 뒤 빌드·재실행.
+			// 스크립트 소스 열기 (<프로젝트>\Scripts\<이름>.cpp). 고친 뒤 빌드·재실행.
 			if (ImGui::SmallButton("Edit"))
 			{
 				m_lastMessage = ScriptCreator::OpenScript(behaviour.GetTypeName()) ? std::string("opened ") + behaviour.GetTypeName() + ".h/.cpp (rebuild after editing)" : "script source not found in Game/Scripts";
@@ -1133,7 +1133,7 @@ void Editor::DrawComponents(GameObject& object)
 	}
 	if (removeIndex >= 0) object.RemoveBehaviour(static_cast<size_t>(removeIndex));
 
-	// 추가: 레지스트리에 등록된 C++ 클래스 목록. 스크립트(Game/Scripts, SHERLOCK_SCRIPT)와 엔진 컴포넌트를 나눠 보여 준다.
+	// 추가: 레지스트리에 등록된 C++ 클래스 목록. 스크립트(프로젝트의 Scripts, SHERLOCK_SCRIPT)와 엔진 컴포넌트를 나눠 보여 줌.
 	ImGui::SetNextItemWidth(-FLT_MIN);
 	if (ImGui::BeginCombo("##addComponent", "Add Component..."))
 	{
@@ -1155,7 +1155,7 @@ void Editor::DrawComponents(GameObject& object)
 	}
 	if (BehaviourRegistry::GetTypeNames().empty()) ImGui::TextDisabled("(nothing registered — add a class in Game/Scripts with SHERLOCK_SCRIPT)");
 
-	// 새 스크립트 (유니티 Create > C# Script). 파일 + vcxproj 등록 + 편집기로 열기. 빌드 후 재실행해야 목록에 나타난다.
+	// 새 스크립트 (유니티의 Create > C# Script 에 해당). 파일 생성, vcxproj 등록, 편집기로 열기까지 함. 빌드 후 재실행해야 목록에 나타남.
 	if (ImGui::Button("New Script...")) ImGui::OpenPopup("New Script");
 	if (ImGui::IsItemHovered()) ImGui::SetTooltip("create Game/Scripts/<Name>.h + .cpp from a template, register them in the project and open them");
 	if (ImGui::BeginPopupModal("New Script", nullptr, ImGuiWindowFlags_AlwaysAutoResize))

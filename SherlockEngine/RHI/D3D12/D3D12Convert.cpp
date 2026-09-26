@@ -69,7 +69,7 @@ namespace D3D12Convert
 		}
 	}
 
-	// D3D12 PSO 는 "종류"(점·선·삼각형)만 안다. 리스트/스트립은 커맨드 리스트의 IASetPrimitiveTopology 가 정한다.
+	// D3D12 PSO 는 도형의 "종류"(점·선·삼각형)만 앎. 리스트/스트립 구분은 커맨드 리스트의 IASetPrimitiveTopology 가 정함.
 	D3D12_PRIMITIVE_TOPOLOGY_TYPE ToTopologyType(PrimitiveTopology topology)
 	{
 		switch (topology)
@@ -135,7 +135,7 @@ namespace D3D12Convert
 		}
 	}
 
-	// 6단계의 ResourceState 는 D3D12_RESOURCE_STATES 의 부분집합으로 설계했다. 여기서 1:1 로 풀린다.
+	// 6단계의 ResourceState 는 D3D12_RESOURCE_STATES 의 부분집합으로 설계했음. 따라서 여기서 1:1 로 대응됨.
 	D3D12_RESOURCE_STATES ToD3D12(ResourceState state)
 	{
 		switch (state)

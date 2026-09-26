@@ -6,12 +6,12 @@
 // 세대(generation) 카운터가 있는 슬롯 풀.
 //
 // 핸들 = {index, generation}. 슬롯을 해제하면 세대가 1 올라가므로, 해제 전에
-// 발급된 핸들은 index가 같아도 Get()에서 nullptr가 돌아온다. 댕글링 포인터가
-// "가끔 다른 객체를 가리키는" 대신 "항상 널"이 되는 것이 요점이다.
+// 발급된 핸들은 index가 같아도 Get()에서 nullptr가 돌아옴. 댕글링 포인터가
+// "가끔 다른 객체를 가리키는" 대신 "항상 널"이 되는 것이 요점임.
 // (Bitsquid의 ID lookup table, sokol_gfx의 pool과 같은 구조.)
 //
-// 빈 슬롯은 free list로 재사용한다. generation 0은 빈 핸들로 예약되어 있으므로
-// 1에서 시작하고, 넘치면 0을 건너뛴다.
+// 빈 슬롯은 free list로 재사용함. generation 0은 빈 핸들로 예약되어 있으므로
+// 세대는 1에서 시작하고, 값이 넘쳐 0이 되면 0을 건너뜀.
 template <typename T, typename HandleT>
 class ResourcePool
 {
@@ -51,9 +51,9 @@ public:
 
 	void Remove(HandleT handle)
 	{
-		if (Get(handle) == nullptr) return;   // 이미 해제됐거나 세대가 다르다
+		if (Get(handle) == nullptr) return;   // 이미 해제됐거나 세대가 다름
 		Slot& slot = m_slots[handle.index];
-		slot.item = T{};     // 스마트 포인터 멤버가 여기서 해제된다
+		slot.item = T{};     // 스마트 포인터 멤버가 여기서 해제됨
 		slot.alive = false;
 		++slot.generation;
 		if (slot.generation == 0) slot.generation = 1;

@@ -16,7 +16,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 AppBase* g_appBase = nullptr;
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    // 소멸 중이거나 아직 생성 전이면 g_appBase가 없다. DestroyWindow가 보내는 WM_DESTROY도 이 경로로 온다.
+    // 소멸 중이거나 아직 생성 전이면 g_appBase가 없음. DestroyWindow가 보내는 WM_DESTROY도 이 경로로 들어옴.
     if (g_appBase == nullptr)
     {
         return ::DefWindowProc(hWnd, msg, wParam, lParam);
@@ -31,7 +31,7 @@ AppBase::AppBase()
 
 AppBase::~AppBase()
 {
-    // 창을 먼저 파괴한다. DestroyWindow는 WM_DESTROY를 동기적으로 보내므로 g_appBase가 아직 살아 있어야 한다.
+    // 창을 먼저 파괴함. DestroyWindow는 WM_DESTROY를 동기적으로 보내므로 이때 g_appBase가 아직 살아 있어야 함.
     if (m_mainWindow != nullptr)
     {
         DestroyWindow(m_mainWindow);
@@ -39,7 +39,7 @@ AppBase::~AppBase()
     }
     g_appBase = nullptr;
 
-    // 초기화한 것만, 초기화의 역순으로: Engine(Device·ImGui 렌더러) → ImGui Win32 → ImGui 컨텍스트 → Logger.
+    // 초기화한 것만 초기화의 역순으로 정리함: Engine(Device·ImGui 렌더러) → ImGui Win32 → ImGui 컨텍스트 → Logger.
     m_engine.Shutdown();
     if (m_guiWin32Initialized)
     {
@@ -90,7 +90,7 @@ const char* AppBase::GetCompiledProjectName()
 std::wstring AppBase::GetDefaultProjectDir()
 {
     if (!Paths::HasEngineSourceTree()) return L"";
-    // 엔진 루트 = <repo>\SherlockEngine 폴더 → <repo>\Projects\Sample 폴더 (주석 끝의 백슬래시는 줄 연속이 되므로 피한다)
+    // 엔진 루트 = <repo>\SherlockEngine 폴더 → <repo>\Projects\Sample 폴더 (주석 끝의 백슬래시는 줄 연속으로 처리되므로 피함)
     const std::wstring engine = Paths::GetEngineRoot();
     const size_t slash = engine.find_last_of(L'\\', engine.size() - 2);
     if (slash == std::wstring::npos) return L"";
@@ -100,7 +100,7 @@ std::wstring AppBase::GetDefaultProjectDir()
 void AppBase::ResolveProject()
 {
     std::wstring path = GetCommandLineOption(L"project");
-    if (path.empty()) path = Project::FindUpwards(Paths::GetExecutableDir(), 3);   // Binaries\Debug\ → 프로젝트, 배포 폴더 → 옆의 .sherlock
+    if (path.empty()) path = Project::FindUpwards(Paths::GetExecutableDir(), 3);   // Binaries\Debug\ 에서는 프로젝트 폴더를, 배포 폴더에서는 같은 폴더의 .sherlock 을 찾음
     if (path.empty()) path = GetDefaultProjectDir();
     if (path.empty()) return;
     OpenProject(path);
@@ -118,11 +118,11 @@ bool AppBase::OpenProject(const std::wstring& pathOrDir)
 
 bool AppBase::LoadConfig()
 {
-    // Logger 보다 먼저다 (로그 파일 경로가 여기서 나온다). 그래서 이 함수는 로그를 남기지 않고 결과만 돌려준다.
+    // Logger 보다 먼저 실행됨 (로그 파일 경로를 여기서 읽음). 그래서 이 함수는 로그를 남기지 않고 결과만 돌려줌.
     const std::wstring path = Paths::GetAssetPath(L"Config\\engine.ini");
     const bool loaded = m_config.LoadFromFile(path);
 
-    // 실행 인자 덮어쓰기: --backend=, --scene= 는 8~9단계의 이름 그대로, 그 밖의 --section.key=value 는 일반형.
+    // 실행 인자로 덮어쓰기: --backend=, --scene= 는 8~9단계의 이름을 그대로 쓰고, 그 밖에는 일반형 --section.key=value 를 씀.
     int argc = 0;
     LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (argv != nullptr)
@@ -152,13 +152,13 @@ void AppBase::InitLogger()
 {
     Log::InitDesc desc;
     desc.console = m_config.GetBool("log.console", true);
-    // D19: Windows 서브시스템이라 콘솔이 없다. 예전에는 Debug 에서 하나 열었지만(10단계) 11단계부터 에디터의 Console 창과 로그 파일이 있어
-    // 검은 콘솔 창은 띄우지 않는다. 명령줄에서 실행하면 부모 콘솔에는 여전히 붙는다. 필요하면 engine.ini 의 log.allocConsole = true.
+    // D19: Windows 서브시스템이라 콘솔이 없음. 예전에는 Debug 에서 콘솔을 하나 열었지만(10단계) 11단계부터는 에디터의 Console 창과 로그 파일이 있으므로
+    // 검은 콘솔 창은 띄우지 않음. 명령줄에서 실행하면 여전히 부모 콘솔에 붙음. 필요하면 engine.ini 에서 log.allocConsole = true 로 설정.
     desc.allocConsole = m_config.GetBool("log.allocConsole", false);
     const std::string file = m_config.GetString("log.file", "Logs\\SherlockEngine.log");
     if (!file.empty())
     {
-        std::wstring wide(file.begin(), file.end());   // 경로는 ASCII 라고 가정 (설정 파일의 우리 값)
+        std::wstring wide(file.begin(), file.end());   // 경로는 ASCII 라고 가정 (설정 파일에 우리가 넣은 값)
         for (wchar_t& c : wide) if (c == L'/') c = L'\\';
         desc.filePath = Paths::GetExecutableDir() + wide;
     }
@@ -169,13 +169,13 @@ void AppBase::InitLogger()
 
 bool AppBase::Initialize()
 {
-    // 11-D단계: COM 을 명시적으로 연다. DirectXTex 의 WIC(PNG/JPG 읽기, 스크린샷 저장)가 COM 팩토리를 만든다.
-    // 에디터는 ImGui 쪽에서 우연히 초기화되어 동작했지만, 게임 런타임(ImGui 없음)에서는 텍스처 로드가 E_NOINTERFACE 로 실패했다.
+    // 11-D단계: COM 을 명시적으로 초기화함. DirectXTex 의 WIC(PNG/JPG 읽기, 스크린샷 저장)가 COM 팩토리를 만들기 때문임.
+    // 에디터에서는 ImGui 쪽에서 COM 이 우연히 초기화되어 동작했지만, 게임 런타임(ImGui 없음)에서는 텍스처 로드가 E_NOINTERFACE 로 실패했음.
     const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     m_comInitialized = SUCCEEDED(com);
     if (FAILED(com) && com != RPC_E_CHANGED_MODE) Log::Warn("CoInitializeEx 실패 (0x%08X)", static_cast<unsigned>(com));
 
-    ResolveProject();   // 11-E단계: 설정(engine.ini)보다 먼저 — 에셋 루트가 여기서 정해진다
+    ResolveProject();   // 11-E단계: 설정(engine.ini)보다 먼저 호출 — 에셋 루트가 여기서 정해짐
     const bool configLoaded = LoadConfig();
     InitLogger();
     if (m_project.IsLoaded())
@@ -190,8 +190,8 @@ bool AppBase::Initialize()
 
     if (!InitMainWindow()) return false;
 
-    // ImGui 컨텍스트는 Engine 보다 먼저 (Engine 이 렌더러 백엔드를 붙인다), Win32 백엔드는 창이 있으니 지금.
-    // 11-D단계: 게임 런타임(WantsGUI false)은 컨텍스트를 만들지 않는다 → Engine 이 ImGui 렌더러 백엔드도 건너뛴다.
+    // ImGui 컨텍스트는 Engine 보다 먼저 만듦 (Engine 이 렌더러 백엔드를 붙이기 때문). Win32 백엔드는 창이 이미 있으므로 지금 초기화해도 됨.
+    // 11-D단계: 게임 런타임(WantsGUI false)은 컨텍스트를 만들지 않음 → Engine 도 ImGui 렌더러 백엔드를 건너뜀.
     if (WantsGUI() && !InitGUI()) return false;
 
     Engine::Desc desc;
@@ -212,7 +212,7 @@ bool AppBase::Initialize()
 
     if (!OnInitialize()) return false;
 
-    // 11단계: 자동 검증 모드(--exit-after)에서는 포커스를 가져오지 않는다. 사용자가 다른 창(게임 등)을 쓰는 중일 수 있다.
+    // 11단계: 자동 검증 모드(--exit-after)에서는 포커스를 가져오지 않음. 사용자가 다른 창(게임 등)을 쓰는 중일 수 있기 때문임.
     if (GetCommandLineOption(L"exit-after").empty()) SetForegroundWindow(m_mainWindow);
     return true;
 }
@@ -229,10 +229,10 @@ int AppBase::Run()
             continue;
         }
 
-        // 시간·프로파일러·ImGui 렌더러 프레임. ImGui 프레임을 Update보다 먼저 연다:
-        // io.WantCaptureMouse/Keyboard 는 ImGui::NewFrame 에서 갱신되므로 그 뒤에 Update 가 읽어야 "이번 프레임" 값을 본다.
+        // 시간·프로파일러·ImGui 렌더러 프레임 시작. ImGui 프레임은 Update보다 먼저 엶:
+        // io.WantCaptureMouse/Keyboard 는 ImGui::NewFrame 에서 갱신되므로, 그 뒤에 Update 가 읽어야 "이번 프레임" 값을 얻음.
         const float dt = m_engine.BeginFrame();
-        const bool gui = m_guiWin32Initialized;   // 11-D단계: 게임 런타임은 ImGui 프레임이 없다
+        const bool gui = m_guiWin32Initialized;   // 11-D단계: 게임 런타임에는 ImGui 프레임이 없음
         if (gui)
         {
             ImGui_ImplWin32_NewFrame();
@@ -253,7 +253,7 @@ int AppBase::Run()
         if (gui)
         {
             ProfileScope scope("GUI");
-            OnGUI();   // 11단계: 앱(에디터)이 창을 직접 만든다. 도킹 공간도 거기서.
+            OnGUI();   // 11단계: 앱(에디터)이 창을 직접 만듦. 도킹 공간도 앱에서 만듦.
             ImGui::Render();
         }
 
@@ -265,7 +265,7 @@ int AppBase::Run()
 
 LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    // ImGui Win32 백엔드가 준비되기 전이나 종료된 뒤에는 넘기면 안 된다.
+    // ImGui Win32 백엔드가 준비되기 전이나 종료된 뒤에는 메시지를 넘기면 안 됨.
     if (m_guiWin32Initialized && ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
     {
         return true;
@@ -273,11 +273,11 @@ LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     Input& input = m_engine.GetInput();
     switch (msg)
     {
-        // ---- 입력 공급. ImGui가 소비하는지와 무관하게 항상 넣는다 (Input.h 참고). ----
+        // ---- 입력 공급. ImGui가 소비하는지와 무관하게 항상 넣음 (Input.h 참고). ----
         case WM_KEYDOWN:
-        case WM_SYSKEYDOWN:   // Alt 조합. break 뒤 DefWindowProc로 흘러야 Alt+F4가 동작한다.
+        case WM_SYSKEYDOWN:   // Alt 조합. break 뒤 DefWindowProc로 넘어가야 Alt+F4가 동작함.
             input.OnKeyDown(static_cast<uint32_t>(wParam));
-            // F10 은 혼자 눌러도 WM_SYSKEYDOWN 으로 오고, DefWindowProc 가 메뉴 모드에 들어가 다음 키 입력을 삼킨다.
+            // F10 은 혼자 눌러도 WM_SYSKEYDOWN 으로 오고, DefWindowProc 가 메뉴 모드에 들어가 다음 키 입력을 삼킴.
             if (wParam == VK_F10) return 0;
             break;
         case WM_KEYUP:
@@ -292,19 +292,19 @@ LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_MBUTTONDOWN: input.OnMouseButton(MouseButton::Middle, true);  break;
         case WM_MBUTTONUP:   input.OnMouseButton(MouseButton::Middle, false); break;
         case WM_MOUSEMOVE:
-            // LOWORD/HIWORD가 아니라 GET_X_LPARAM. 캡처 중에는 창 밖 좌표가 음수로 온다.
+            // LOWORD/HIWORD가 아니라 GET_X_LPARAM 을 씀. 캡처 중에는 창 밖 좌표가 음수로 오기 때문임.
             input.OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
             break;
         case WM_MOUSEWHEEL:
             input.OnMouseWheel(static_cast<float>(GET_WHEEL_DELTA_WPARAM(wParam)) / WHEEL_DELTA);
             break;
         case WM_KILLFOCUS:
-            // Alt-Tab 중에 키를 떼면 KeyUp이 오지 않는다. 전부 초기화한다.
+            // Alt-Tab 중에 키를 떼면 KeyUp이 오지 않으므로 입력 상태를 전부 초기화함.
             input.OnFocusLost();
             OnFocusLost();
             break;
         case WM_CAPTURECHANGED:
-            // lParam은 캡처를 새로 얻은 창이다. 자기 자신이면 상실이 아니다 (BeginLook 의 SetCapture).
+            // lParam은 캡처를 새로 얻은 창임. 자기 자신이면 캡처 상실이 아님 (BeginLook 의 SetCapture).
             if (reinterpret_cast<HWND>(lParam) != hwnd)
             {
                 input.OnCaptureLost();
@@ -313,7 +313,7 @@ LRESULT AppBase::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             break;
 
         case WM_SIZE:
-            // 맨 처음 시작때는 Resize호출하지 않기
+            // 엔진 초기화 전(맨 처음 시작할 때)에는 Resize를 호출하지 않음
             if (m_engine.IsInitialized() && wParam != SIZE_MINIMIZED)
             {
                 m_engine.OnResize(LOWORD(lParam), HIWORD(lParam));
@@ -337,11 +337,11 @@ bool AppBase::InitMainWindow()
         return false;
     }
 
-    // 클라이언트 영역이 width x height 가 되도록 창 크기를 다시 계산한다.
+    // 클라이언트 영역이 width x height 가 되도록 창 크기를 다시 계산함.
     RECT wr = { 0, 0, m_screenWidth, m_screenHeight };
     AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, false);
 
-    // 11단계: 자동 검증 모드에서는 창을 화면 밖에, 활성화 없이 만든다 — 스크린샷은 Device 리드백으로 찍으므로 보일 필요가 없다.
+    // 11단계: 자동 검증 모드에서는 창을 화면 밖에 비활성 상태로 만듦 — 스크린샷은 Device 리드백으로 찍으므로 창이 보일 필요가 없음.
     const bool automation = !GetCommandLineOption(L"exit-after").empty();
     const int windowX = automation ? -3000 : 100;
     m_mainWindow = CreateWindow(wc.lpszClassName, GetWindowTitle(), WS_OVERLAPPEDWINDOW,
@@ -365,8 +365,8 @@ bool AppBase::InitGUI()
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   // 11단계: 에디터 창 도킹
     ImGui::StyleColorsLight();
 
-    // 10단계: 로그 콘솔이 한글을 보여야 하므로 시스템의 맑은 고딕을 얹는다. 없으면 기본 폰트(ASCII 만).
-    // ImGui 1.92 는 글리프를 필요할 때 만들므로 글리프 범위를 미리 주지 않아도 된다.
+    // 10단계: 로그 콘솔에 한글을 표시해야 하므로 시스템의 맑은 고딕을 추가함. 없으면 기본 폰트(ASCII 만)를 씀.
+    // ImGui 1.92 는 글리프를 필요할 때 만들므로 글리프 범위를 미리 지정하지 않아도 됨.
     if (GetFileAttributesW(L"C:/Windows/Fonts/malgun.ttf") != INVALID_FILE_ATTRIBUTES)
     {
         ImFontConfig fontConfig;

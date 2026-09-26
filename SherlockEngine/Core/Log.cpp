@@ -9,7 +9,7 @@
 #include <io.h>
 #include <fcntl.h>
 
-// 이름 없는 namespace: Log 의 구현 세부. 다른 번역 단위에서 이름으로 참조할 수 없다.
+// 이름 없는 namespace: Log 의 구현 세부. 다른 번역 단위에서 이름으로 참조할 수 없음.
 namespace
 {
     struct State
@@ -34,8 +34,8 @@ namespace
         return state;
     }
 
-    // UTF-8 바이트열을 UTF-16으로 바꿔 OutputDebugStringW에 넘긴다.
-    // OutputDebugStringA는 콘솔 코드페이지가 아니라 시스템 ANSI 코드페이지로 해석하므로 한글이 깨진다.
+    // UTF-8 바이트열을 UTF-16으로 바꿔 OutputDebugStringW에 넘김.
+    // OutputDebugStringA는 콘솔 코드페이지가 아니라 시스템 ANSI 코드페이지로 해석하므로 한글이 깨짐.
     void WriteToDebugger(const std::string& utf8)
     {
         if (utf8.empty()) return;
@@ -87,7 +87,7 @@ namespace
         const std::string body = FormatV(fmt, args);
         const double time = Now(s);
 
-        // 콘솔·디버거에는 0단계와 같은 모양(접두어 + 본문). 파일에는 시각을 붙인다.
+        // 콘솔·디버거에는 0단계와 같은 형식(접두어 + 본문)으로 씀. 파일에는 시각을 붙임.
         const std::string line = std::string(Prefix(level)) + body + "\n";
         char stamp[32];
         std::snprintf(stamp, sizeof(stamp), "[%9.3f] ", time);
@@ -103,7 +103,7 @@ namespace
         if (s.file.is_open())
         {
             s.file << stamp << line;
-            s.file.flush();   // 크래시 직전 줄이 남아야 로그다
+            s.file.flush();   // 크래시 직전 줄까지 남아야 로그로서 쓸모가 있음
         }
         if (s.historyCapacity > 0)
         {
@@ -113,7 +113,7 @@ namespace
         }
     }
 
-    // 콘솔 준비. stdout 이 이미 유효하면(리다이렉트, 콘솔 서브시스템) 그대로. 아니면 부모 콘솔에 붙고, 없으면 새로 연다.
+    // 콘솔 준비. stdout 이 이미 유효하면(리다이렉트, 콘솔 서브시스템) 그대로 씀. 아니면 부모 콘솔에 붙고, 부모 콘솔이 없으면 allocIfNone 일 때만 새로 엶.
     bool SetupConsole(bool allocIfNone)
     {
         const HANDLE out = ::GetStdHandle(STD_OUTPUT_HANDLE);
@@ -151,14 +151,14 @@ namespace Log
         s.console = desc.console && SetupConsole(desc.allocConsole);
         if (!desc.filePath.empty())
         {
-            // 폴더가 없으면 만든다 (한 단계만).
+            // 폴더가 없으면 만듦 (한 단계만).
             const size_t slash = desc.filePath.find_last_of(L"\\/");
             if (slash != std::wstring::npos) ::CreateDirectoryW(desc.filePath.substr(0, slash).c_str(), nullptr);
             s.file.open(desc.filePath, std::ios::out | std::ios::trunc | std::ios::binary);
             if (s.file.is_open())
             {
                 s.filePath = desc.filePath;
-                s.file << "\xEF\xBB\xBF";   // UTF-8 BOM: 메모장이 한글을 바로 읽게
+                s.file << "\xEF\xBB\xBF";   // UTF-8 BOM: 메모장이 한글을 바로 읽도록
             }
         }
         s.initialized = true;
@@ -239,7 +239,7 @@ namespace Log
         if (len > 0 && text != nullptr)
         {
             std::string message = ToUtf8(text);
-            // FormatMessage는 끝에 개행을 붙여 준다. 한 줄 로그이므로 떼어낸다.
+            // FormatMessage는 끝에 개행을 붙여 줌. 한 줄 로그이므로 떼어 냄.
             while (!message.empty() && (message.back() == '\n' || message.back() == '\r')) message.pop_back();
             if (!message.empty()) result += " (" + message + ")";
         }

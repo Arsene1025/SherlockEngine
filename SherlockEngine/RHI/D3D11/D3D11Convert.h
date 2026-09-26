@@ -3,8 +3,8 @@
 #include "RHI/PipelineTypes.h"
 #include "RHI/ResourceDesc.h"   // SamplerFilter, SamplerAddress
 
-// API 중립 열거형/Desc → D3D11 타입 변환. 이 폴더 안에서만 쓴다.
-// 대응이 없는 값은 Log::Error를 남기고 안전한 기본값을 돌려준다.
+// API 중립 열거형/Desc → D3D11 타입 변환. 이 폴더 안에서만 씀.
+// 대응하는 값이 없으면 Log::Error를 남기고 안전한 기본값을 돌려줌.
 namespace D3D11Convert
 {
 	DXGI_FORMAT ToDXGI(Format format);

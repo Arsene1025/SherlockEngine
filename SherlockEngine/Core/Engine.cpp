@@ -22,7 +22,7 @@ bool Engine::Initialize(const Config& config, const Desc& desc)
 {
 	m_config = config;
 
-	// ---- 백엔드: 설정 파일이 정한다 (10단계 완료 기준). 값이 이상하면 D3D11 ----
+	// ---- 백엔드: 설정 파일이 정함 (10단계 완료 기준). 값이 올바르지 않으면 D3D11 ----
 	const std::string backend = m_config.GetString("engine.backend", "d3d11");
 	if (_stricmp(backend.c_str(), "d3d12") == 0) m_backend = RHI::Backend::D3D12;
 	else if (_stricmp(backend.c_str(), "d3d11") == 0) m_backend = RHI::Backend::D3D11;
@@ -47,7 +47,7 @@ bool Engine::Initialize(const Config& config, const Desc& desc)
 		return false;
 	}
 
-	// ImGui 렌더러 백엔드(DX11/DX12)는 Device 가 고른다. 컨텍스트는 앱이 먼저 만들어 두어야 한다.
+	// ImGui 렌더러 백엔드(DX11/DX12)는 Device 가 고름. 컨텍스트는 앱이 먼저 만들어 두어야 함.
 	if (ImGui::GetCurrentContext() != nullptr)
 	{
 		if (!m_device->InitImGui())
@@ -71,7 +71,7 @@ bool Engine::Initialize(const Config& config, const Desc& desc)
 void Engine::Shutdown()
 {
 	if (!m_device) return;
-	// 순서: 씬의 GPU 캐시 → Renderer → ImGui 렌더러 → Device. Renderer::Shutdown 이 자기 핸들을 Device 에 돌려준다.
+	// 순서: 씬의 GPU 캐시 → Renderer → ImGui 렌더러 → Device. Renderer::Shutdown 이 자기 핸들을 Device 에 돌려줌.
 	m_renderer.InvalidateScene(m_scene, true);
 	m_scene.Clear();
 	m_renderer.Shutdown();
@@ -129,7 +129,7 @@ void Engine::Render()
 
 void Engine::EndFrame()
 {
-	// 프레임 끝. Pressed/Released 판정용 이전 상태를 넘기고 마우스 델타를 비운다.
+	// 프레임 끝. Pressed/Released 판정용 이전 상태를 넘기고 마우스 델타를 비움.
 	m_input.EndFrame();
 }
 

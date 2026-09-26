@@ -54,7 +54,7 @@ std::vector<ProjectLauncher::Recent> ProjectLauncher::LoadRecent()
 		recent.name = item.value("name", "");
 		recent.path = Wide(item.value("path", ""));
 		std::error_code ec;
-		if (!recent.path.empty() && fs::exists(recent.path, ec)) list.push_back(recent);   // 지워진 프로젝트는 목록에서 뺀다
+		if (!recent.path.empty() && fs::exists(recent.path, ec)) list.push_back(recent);   // 지워진 프로젝트는 목록에서 뺌
 	}
 	return list;
 }
@@ -99,7 +99,7 @@ std::wstring ProjectLauncher::BrowseForProjectFile(void* ownerWindow)
 
 std::wstring ProjectLauncher::BrowseForFolder(void* ownerWindow, const std::wstring& initial)
 {
-	// Vista+ 폴더 선택 대화상자 (IFileOpenDialog, FOS_PICKFOLDERS). COM 은 AppBase 가 열어 두었다.
+	// Vista+ 폴더 선택 대화상자 (IFileOpenDialog, FOS_PICKFOLDERS). COM 은 AppBase 가 미리 초기화해 두었음.
 	IFileOpenDialog* dialog = nullptr;
 	if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)))) return L"";
 	DWORD options = 0;
