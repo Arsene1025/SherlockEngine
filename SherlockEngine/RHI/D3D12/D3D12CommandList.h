@@ -7,18 +7,18 @@ class D3D12Device;
 class D3D12PipelineState;
 struct D3D12RootLayout;
 
-// RHI::CommandList 의 D3D12 구현. Device 가 프레임마다 Reset 하는 ID3D12GraphicsCommandList 에 기록한다.
+// RHI::CommandList 의 D3D12 구현. Device 가 프레임마다 Reset 하는 ID3D12GraphicsCommandList 에 기록함.
 //
 // D3D11 과 다른 점:
-//   - Barrier 가 진짜 ResourceBarrier 다. before 는 텍스처의 추적 상태를 믿는다.
+//   - Barrier 가 실제 ResourceBarrier 를 기록함. before 는 인자보다 텍스처의 추적 상태를 신뢰함.
 //   - SetResourceSet 은 바인딩을 "기억"만 하고, DrawIndexed 직전에 현재 PSO 의 루트 시그니처에 맞춰
-//     루트 CBV(GPU 주소)와 디스크립터 테이블을 건다. Dynamic 상수버퍼의 주소가 UpdateBuffer 마다 바뀌기 때문이다.
-//   - BeginRenderPass 는 시저 사각형도 건다 (D3D12 는 시저가 없으면 아무것도 그리지 않는다).
+//     루트 CBV(GPU 주소)와 디스크립터 테이블을 바인딩함. Dynamic 상수버퍼의 주소가 UpdateBuffer 마다 바뀌기 때문임.
+//   - BeginRenderPass 는 시저 사각형도 설정함 (D3D12 는 시저 사각형이 없으면 아무것도 그리지 않음).
 class D3D12CommandList final : public RHI::CommandList
 {
 public:
 	void Init(D3D12Device* device);
-	void BeginFrame(ID3D12GraphicsCommandList* list);   // Device::BeginFrame 이 Reset 한 리스트를 넘긴다
+	void BeginFrame(ID3D12GraphicsCommandList* list);   // Device::BeginFrame 이 Reset 한 리스트를 넘겨받음
 
 	void BeginRenderPass(const RenderPassDesc& desc) override;
 	void EndRenderPass() override;

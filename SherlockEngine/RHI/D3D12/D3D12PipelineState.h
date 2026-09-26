@@ -8,13 +8,13 @@
 
 class D3D12Device;
 
-// BindingLayout 집합 → 루트 시그니처. 4단계가 "루트 시그니처의 D3D11 미리 그리기"라 부른 것이 여기서 진짜가 된다.
+// BindingLayout 집합 → 루트 시그니처. 4단계에서 "루트 시그니처의 D3D11 미리 그리기"라고 부른 것을 여기서 실제로 구현함.
 //
 // 루트 파라미터 배치 (PSO Desc 의 bindingLayouts 순서대로):
-//   셋마다  CB 슬롯 하나 = 루트 CBV 하나 (GPU 가상 주소. 드로우마다 다시 건다 — Dynamic 링 주소가 바뀌므로)
-//           SRV 슬롯들   = 디스크립터 테이블 하나 (슬롯마다 range 1개, 셋의 영구 범위와 순서가 같다)
+//   셋마다  CB 슬롯 하나 = 루트 CBV 하나 (GPU 가상 주소. Dynamic 링 주소가 바뀌므로 드로우마다 다시 바인딩함)
+//           SRV 슬롯들   = 디스크립터 테이블 하나 (슬롯마다 range 1개, 순서는 셋의 영구 범위와 같음)
 //           샘플러 슬롯들 = 디스크립터 테이블 하나
-// 레지스터 space 는 전부 0 (SM 5.0 DXBC). 셋끼리 레지스터가 겹치지 않는 것은 4단계의 검증이 보장한다.
+// 레지스터 space 는 전부 0 (SM 5.0 DXBC). 셋끼리 레지스터가 겹치지 않는 것은 4단계의 검증이 보장함.
 struct D3D12RootLayout
 {
 	struct SetBinding
@@ -49,8 +49,8 @@ private:
 	D3D12_PRIMITIVE_TOPOLOGY m_topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 };
 
-// Desc → PSO 캐시. D3D11 의 PipelineStateCache 와 같은 세대 규칙.
-// 차이: Clear() 가 PSO 를 바로 지우지 않고 Device 의 지연 해제 목록에 넘긴다 (GPU 가 아직 쓰고 있을 수 있다).
+// Desc → PSO 캐시. 세대 규칙은 D3D11 의 PipelineStateCache 와 같음.
+// 차이: Clear() 가 PSO 를 바로 지우지 않고 Device 의 지연 해제 목록에 넘김 (GPU 가 아직 쓰고 있을 수 있기 때문).
 class D3D12PipelineStateCache
 {
 public:

@@ -6,13 +6,13 @@
 #include <cstring>
 #include <fstream>
 
-// cgltf: 단일 헤더 C 라이브러리 (vcpkg). 이 파일에서만 구현을 켠다.
+// cgltf: 단일 헤더 C 라이브러리 (vcpkg). 이 파일에서만 구현을 켬.
 // 로드맵은 tinygltf 를 권장했지만 vcpkg 포트의 소스 아카이브 해시가 GitHub 재압축으로 어긋나
-// 설치되지 않았다. cgltf 는 같은 자리(glTF 전용·경량·헤더 하나)의 대안이고, 이미지 디코딩을
-// 하지 않는 점이 오히려 맞는다 — 디코딩은 5단계의 TextureLoader(DirectXTex)가 맡는다.
+// 설치되지 않았음. cgltf 는 같은 조건(glTF 전용·경량·헤더 하나)을 갖춘 대안이고, 이미지 디코딩을
+// 하지 않는 점이 오히려 잘 맞음 — 디코딩은 5단계의 TextureLoader(DirectXTex)가 맡음.
 #define CGLTF_IMPLEMENTATION
 #pragma warning(push)
-#pragma warning(disable : 4996)   // cgltf 내부의 fopen/strncpy (CRT 보안 경고). 우리 코드가 아니다.
+#pragma warning(disable : 4996)   // cgltf 내부의 fopen/strncpy (CRT 보안 경고). 우리 코드가 아님.
 #include <cgltf.h>
 #pragma warning(pop)
 
@@ -67,7 +67,7 @@ namespace
 		}
 	}
 
-	// glTF 샘플러 → 엔진 프리셋. 5단계 프리셋 다섯 개로 근사한다.
+	// glTF 샘플러 → 엔진 프리셋. 5단계 프리셋 중 세 개(AnisotropicWrap·LinearClamp·PointWrap)로 근사함.
 	SamplerPreset ToSamplerPreset(const cgltf_sampler* sampler)
 	{
 		if (sampler == nullptr) return SamplerPreset::AnisotropicWrap;
@@ -78,7 +78,7 @@ namespace
 		return SamplerPreset::AnisotropicWrap;
 	}
 
-	// 이미지 → 이름. 텍스처 캐시의 키가 되므로 모델 안에서 유일해야 한다.
+	// 이미지 → 이름. 텍스처 캐시의 키가 되므로 모델 안에서 유일해야 함.
 	std::string ImageName(const std::string& modelName, const cgltf_data* data, const cgltf_image* image)
 	{
 		const size_t index = static_cast<size_t>(image - data->images);
@@ -95,7 +95,7 @@ namespace
 		return ImageName(modelName, data, view.texture->image);
 	}
 
-	// 이미지 바이트를 모은다. GLB 내장(buffer_view), data: URI, 외부 파일 순.
+	// 이미지 바이트를 모음. GLB 내장(buffer_view), data: URI, 외부 파일 순으로 확인함.
 	bool CollectImage(const cgltf_data* data, const cgltf_image& image, const std::wstring& directory, ModelImage& out)
 	{
 		if (image.buffer_view != nullptr && image.buffer_view->buffer != nullptr && image.buffer_view->buffer->data != nullptr)
@@ -123,7 +123,7 @@ namespace
 			return true;
 		}
 
-		// 외부 파일. URI 의 %20 같은 이스케이프를 푼다.
+		// 외부 파일. URI 의 %20 같은 이스케이프 문자를 원래 문자로 되돌림.
 		std::string uri = image.uri;
 		cgltf_decode_uri(&uri[0]);
 		uri.resize(strlen(uri.c_str()));
@@ -137,7 +137,7 @@ namespace
 		return true;
 	}
 
-	// glTF 재질 → 엔진 Material. 금속성·거칠기는 12단계(PBR) 전까지 Blinn-Phong 으로 근사한다.
+	// glTF 재질 → 엔진 Material. 금속성·거칠기는 12단계(PBR) 전까지 Blinn-Phong 으로 근사함.
 	Material ConvertMaterial(const std::string& modelName, const cgltf_data* data, const cgltf_material* source, size_t index)
 	{
 		Material material;
@@ -158,7 +158,7 @@ namespace
 			metallic = pbr.metallic_factor;
 			if (pbr.base_color_texture.texture != nullptr) material.sampler = ToSamplerPreset(pbr.base_color_texture.texture->sampler);
 		}
-		// 거칠기 1(기본)이면 거의 무광, 0 이면 날카로운 하이라이트. 금속은 스페큘러가 기본색을 띤다.
+		// 거칠기 1(기본)이면 거의 무광, 0 이면 날카로운 하이라이트. 금속은 스페큘러가 기본색을 띰.
 		const float gloss = 1.0f - std::clamp(roughness, 0.0f, 1.0f);
 		material.shininess = 8.0f + 120.0f * gloss * gloss;
 		const float specular = 0.04f + 0.3f * gloss;
@@ -171,7 +171,7 @@ namespace
 		if (!material.normalTexture.empty()) material.normalStrength = source->normal_texture.scale > 0.0f ? source->normal_texture.scale : 1.0f;
 
 		material.doubleSided = source->double_sided != 0;
-		// MASK 는 컷아웃. BLEND 는 아직 블렌딩이 없으니 컷아웃으로 근사한다 (12단계).
+		// MASK 는 컷아웃. BLEND 는 블렌딩 지원이 아직 없어 컷아웃으로 근사함 (12단계).
 		if (source->alpha_mode == cgltf_alpha_mode_mask) material.alphaCutoff = source->alpha_cutoff > 0.0f ? source->alpha_cutoff : 0.5f;
 		else if (source->alpha_mode == cgltf_alpha_mode_blend) material.alphaCutoff = 0.5f;
 		return material;
@@ -187,7 +187,7 @@ namespace
 	}
 
 	// glTF 열우선 float[16] → DirectXMath 행벡터 행렬. 원소를 그대로 읽으면 전치가 되는데,
-	// 열벡터 M 에 대한 행벡터 행렬이 정확히 Mᵀ 이므로 그대로가 맞다.
+	// 열벡터 관례의 행렬 M 에 대응하는 행벡터 행렬이 정확히 Mᵀ 이므로 그대로 읽는 것이 맞음.
 	XMMATRIX LoadGltfMatrix(const float m[16])
 	{
 		return XMMATRIX(m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9], m[10], m[11], m[12], m[13], m[14], m[15]);
@@ -241,7 +241,7 @@ namespace
 				}
 				if (tangent != nullptr && cgltf_accessor_read_float(tangent, v, f, 4))
 				{
-					// 반사(Z 뒤집기)는 cross 의 부호를 바꾸므로 손잡이 w 도 뒤집는다 (Model.h 주석).
+					// 반사(Z 뒤집기)는 cross 의 부호를 바꾸므로 손잡이 w 도 뒤집음 (Model.h 주석).
 					vertex.tx = f[0]; vertex.ty = f[1]; vertex.tz = f[2] * zSign; vertex.tw = options.flipZ ? -f[3] : f[3];
 				}
 				vertices.push_back(vertex);
@@ -271,7 +271,7 @@ namespace
 
 		if (needTangents && options.generateMissingTangents)
 		{
-			// glTF 노멀 맵은 초록 = 위(v 감소) 이므로 B = −dP/dv 가 되도록 w 를 만든다.
+			// glTF 노멀 맵은 초록이 위(v 감소)를 가리키므로 B = −dP/dv 가 되도록 w 를 만듦.
 			Mesh::ComputeTangents(vertices, indices, false);
 			++stats.generatedTangentMeshes;
 		}
@@ -335,7 +335,7 @@ bool ModelLoader::LoadGltf(const std::wstring& path, const Options& options, Mod
 		out.images.push_back(std::move(image));
 	}
 
-	// ---- 재질. 마지막에 "재질 없음" 슬롯을 하나 더 둔다 ----
+	// ---- 재질. 마지막에 "재질 없음" 슬롯을 하나 더 둠 ----
 	out.materials.reserve(data->materials_count + 1);
 	for (cgltf_size i = 0; i < data->materials_count; ++i)
 	{
@@ -377,7 +377,7 @@ bool ModelLoader::LoadGltf(const std::wstring& path, const Options& options, Mod
 		instance.name = node.name != nullptr ? node.name : (out.name + "/node" + std::to_string(n));
 		out.instances.push_back(std::move(instance));
 
-		// 바운드 합집합: 로컬 AABB 의 여덟 꼭짓점을 월드로.
+		// 바운드 합집합: 로컬 AABB 의 여덟 꼭짓점을 월드로 옮겨 합침.
 		const Bounds& b = out.meshes[meshIndex].GetBounds();
 		for (int corner = 0; corner < 8; ++corner)
 		{

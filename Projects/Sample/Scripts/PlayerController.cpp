@@ -14,7 +14,7 @@ void PlayerController::Reflect(PropertyVisitor& v)
 
 void PlayerController::Start()
 {
-	// 다른 오브젝트의 스크립트 참조: 이름으로 오브젝트를 찾고 타입으로 컴포넌트를 찾는다.
+	// 다른 오브젝트의 스크립트 참조: 이름으로 오브젝트를 찾고 타입으로 컴포넌트를 찾음.
 	m_rotator = nullptr;
 	if (GameObject* target = Find(rotatorObject)) m_rotator = target->GetBehaviour<Rotator>();
 	if (m_rotator == nullptr) Log::Warn("PlayerController: '%s' 에 Rotator 가 없어 R 키는 아무것도 하지 않는다.", rotatorObject.c_str());
@@ -44,7 +44,7 @@ void PlayerController::Update(float dt)
 		}
 	}
 
-	// 다른 스크립트 호출: R 키로 Rotator 를 켜고 끈다
+	// 다른 스크립트 호출: R 키로 Rotator 를 켜고 끔
 	if (input.IsKeyPressed('R') && m_rotator != nullptr) m_rotator->Toggle();
 }
 

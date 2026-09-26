@@ -23,7 +23,7 @@ namespace
 		return path.substr(0, lastSlash + 1);
 	}
 
-	// "..\.." 같은 상대 요소를 정리한 절대 경로. 로그에 찍을 때 읽기 좋다.
+	// "..\.." 같은 상대 요소를 정리한 절대 경로. 로그에 찍을 때 읽기 좋음.
 	std::wstring Canonicalize(const std::wstring& path)
 	{
 		wchar_t buffer[MAX_PATH] = {};
@@ -53,7 +53,7 @@ namespace
 		return dir;
 	}
 
-	// 11-E단계: 루트 상태. 엔진 루트는 처음 물을 때 마커로 정하고, 프로젝트 파일이 더 정확한 값을 주면 덮어쓴다.
+	// 11-E단계: 루트 상태. 엔진 루트는 처음 조회할 때 마커로 정하고, 프로젝트 파일이 더 정확한 값을 주면 덮어씀.
 	std::wstring s_engineRoot;
 	bool s_engineIsSourceTree = false;
 	std::wstring s_projectRoot;
@@ -61,7 +61,7 @@ namespace
 	void EnsureEngineRoot()
 	{
 		if (!s_engineRoot.empty()) return;
-		// 엔진 저장소 빌드: exe 는 <repo>\x64\<Config>\ 에 있으므로 두 단계 위가 저장소 루트다.
+		// 엔진 저장소 빌드: exe 는 <repo>\x64\<Config>\ 에 있으므로 두 단계 위가 저장소 루트임.
 		const std::wstring marker = Canonicalize(Paths::GetExecutableDir() + L"..\\..\\SherlockEngine\\Assets\\Config\\engine.ini");
 		if (FileExists(marker))
 		{
@@ -94,7 +94,7 @@ void Paths::SetEngineRoot(const std::wstring& dir)
 {
 	if (dir.empty()) return;
 	const std::wstring canonical = WithSlash(Canonicalize(dir));
-	if (!DirectoryExists(canonical + L"Assets") || !DirectoryExists(canonical + L"Shaders")) return;   // 다른 PC 의 경로 등
+	if (!DirectoryExists(canonical + L"Assets") || !DirectoryExists(canonical + L"Shaders")) return;   // 다른 PC의 경로 등은 무시
 	s_engineRoot = canonical;
 	s_engineIsSourceTree = true;
 }
@@ -147,7 +147,7 @@ std::wstring Paths::GetShaderPath(const wchar_t* fileName)
 	}
 
 	// 빌드 산출물이 없을 때(예: 셰이더만 고치고 빌드하지 않은 채 실행, 또는 프로젝트 에디터의 Binaries\ 에서 실행)
-	// 엔진 루트의 원본으로 폴백한다.
+	// 엔진 루트의 원본으로 폴백함.
 	const std::wstring fallback = GetEngineRoot() + L"Shaders\\" + fileName;
 	if (FileExists(fallback))
 	{

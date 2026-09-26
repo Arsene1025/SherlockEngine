@@ -8,16 +8,16 @@
 class Mesh;
 struct Material;
 
-// 씬의 물체 하나. Transform 값 하나와 그릴 메시·재질에 대한 참조, 그리고 11-C단계의 컴포넌트(Behaviour) 목록.
+// 씬의 물체 하나. Transform 값 하나, 그릴 메시·재질에 대한 참조, 11-C단계에서 추가된 컴포넌트(Behaviour) 목록을 가짐.
 //
-// GPU 자원은 갖지 않는다. 메시 → 정점/인덱스 버퍼, 재질 → 상수버퍼/ResourceSet 대응은
-// Renderer의 캐시가 관리한다. (rendering-analysis D3: Scene은 CPU 데이터, GPU 자원은
-// Renderer 측 캐시) 메시와 재질은 Scene이 unique_ptr로 소유하므로 포인터가 안정적이다.
+// GPU 자원은 갖지 않음. 메시 → 정점/인덱스 버퍼, 재질 → 상수버퍼/ResourceSet 대응은
+// Renderer의 캐시가 관리함. (rendering-analysis D3: Scene은 CPU 데이터, GPU 자원은
+// Renderer 측 캐시) 메시와 재질은 Scene이 unique_ptr로 소유하므로 포인터가 바뀌지 않음.
 //
-// 9단계: 메시가 서브메시 여러 개(재질 슬롯)를 가지면 슬롯마다 재질을 둔다. 슬롯에 재질이 없으면
-// 오브젝트의 기본 재질(material), 그것도 없으면 Renderer 의 기본 재질.
+// 9단계: 메시가 서브메시 여러 개(재질 슬롯)를 가지면 슬롯마다 재질을 둠. 슬롯에 재질이 없으면
+// 오브젝트의 기본 재질(material)을 쓰고, 그것도 없으면 Renderer 의 기본 재질을 씀.
 //
-// 11-C단계: Scene 이 GameObject 도 unique_ptr 로 갖는다 (값 벡터였다). 컴포넌트가 소유자 포인터를 들기 때문.
+// 11-C단계: Scene 이 GameObject 도 unique_ptr 로 소유함 (이전에는 값 벡터였음). 컴포넌트가 소유자 포인터를 들고 있기 때문.
 class GameObject
 {
 public:
@@ -36,7 +36,7 @@ public:
 	const Material* GetMaterial() const { return material; }   // nullptr이면 Renderer의 기본 재질
 	void SetMaterial(const Material* value) { material = value; }
 
-	// 서브메시 재질 슬롯. 비어 있으면 모든 서브메시가 material 을 쓴다.
+	// 서브메시 재질 슬롯. 비어 있으면 모든 서브메시가 material 을 씀.
 	void SetSlotMaterials(std::vector<const Material*>&& slots) { slotMaterials = std::move(slots); }
 	const std::vector<const Material*>& GetSlotMaterials() const { return slotMaterials; }
 	const Material* GetMaterialForSlot(uint32_t slot) const
@@ -46,7 +46,7 @@ public:
 	}
 
 	const std::string& GetName() const { return name; }
-	void SetName(const std::string& value) { name = value; }   // 11-B단계: 배치한 모델의 번호 이름
+	void SetName(const std::string& value) { name = value; }   // 11-B단계: 배치한 모델에 번호가 붙은 이름을 줄 때 사용
 
 	// ---- 11-C단계: 컴포넌트 ----
 	Behaviour& AddBehaviour(std::unique_ptr<Behaviour> behaviour)
@@ -55,7 +55,7 @@ public:
 		behaviours.push_back(std::move(behaviour));
 		return *behaviours.back();
 	}
-	Behaviour* AddBehaviour(const std::string& typeName)   // 레지스트리 이름으로. 모르는 이름이면 nullptr
+	Behaviour* AddBehaviour(const std::string& typeName)   // 레지스트리에 등록된 이름으로 추가함. 모르는 이름이면 nullptr
 	{
 		std::unique_ptr<Behaviour> created = BehaviourRegistry::Create(typeName);
 		if (!created) return nullptr;

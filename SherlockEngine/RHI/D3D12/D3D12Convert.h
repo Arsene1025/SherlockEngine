@@ -4,7 +4,7 @@
 #include "RHI/ResourceDesc.h"
 #include "RHI/RenderPassTypes.h"
 
-// RHI 열거 → D3D12 값. D3D11Convert 와 같은 모양이며, 백엔드마다 매핑 테이블을 따로 갖는다.
+// RHI 열거형을 D3D12 값으로 변환함. D3D11Convert 와 같은 구조이며, 매핑 테이블은 백엔드마다 따로 둠.
 namespace D3D12Convert
 {
 	DXGI_FORMAT ToDXGI(Format format);
@@ -24,7 +24,7 @@ namespace D3D12Convert
 	D3D12_DEPTH_STENCIL_DESC ToD3D12(const DepthStencilDesc& desc);
 	D3D12_BLEND_DESC ToD3D12(const BlendDesc& desc);
 
-	// 깊이 포맷의 세 얼굴 (D3D11DepthFormat 과 같은 규칙)
+	// 깊이 포맷의 세 가지 형태(깊이·typeless·셰이더 뷰). 규칙은 D3D11DepthFormat 과 같음
 	bool IsDepthFormat(DXGI_FORMAT format);
 	DXGI_FORMAT DepthTypeless(DXGI_FORMAT format);
 	DXGI_FORMAT DepthShaderView(DXGI_FORMAT format);

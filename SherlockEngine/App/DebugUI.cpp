@@ -59,7 +59,7 @@ void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)
 		renderer.ReloadShaders();
 	}
 
-	// -1 = 재질 설정대로. 콤보의 첫 항목이 그것.
+	// -1 = 재질 설정을 따름. 콤보의 첫 항목이 이 값에 해당함.
 	int samplerIndex = settings.samplerOverride + 1;
 	const char* samplerItems[] = { "(per material)", "LinearWrap", "LinearClamp", "AnisotropicWrap", "PointWrap", "PointNoMip" };
 	if (ImGui::Combo("Sampler override", &samplerIndex, samplerItems, ARRAYSIZE(samplerItems)))
@@ -86,7 +86,7 @@ void DebugUI::DrawShadowPanel(Renderer& renderer, RHI::Device& device)
 	ImGui::SliderFloat("Light distance", &settings.shadowDistance, 5.0f, 120.0f);
 	if (ImGui::TreeNode("Shadow map (2048x2048 D32, shown as R)"))
 	{
-		// R32_FLOAT SRV 를 ImGui 가 RGBA 로 샘플하면 빨강 채널에 깊이가 온다. 가까울수록 검고 멀수록 빨갛다.
+		// R32_FLOAT SRV 를 ImGui 가 RGBA 로 샘플하면 빨강 채널에 깊이가 담김. 가까울수록 검고 멀수록 붉게 보임.
 		const ImTextureID id = static_cast<ImTextureID>(device.GetImGuiTextureId(renderer.GetShadowMap()));
 		if (id != 0)
 		{

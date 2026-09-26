@@ -2,20 +2,20 @@
 #include "RHI/PipelineTypes.h"
 #include <cstring>
 
-// 해시는 필드를 하나씩 섞는다.
+// 해시는 필드를 하나씩 섞음.
 //
-// 왜 memcpy/memcmp가 아닌가.
-// (1) 구조체에는 정렬 패딩이 있고 그 바이트 값은 정해져 있지 않다. 같은 내용의
-//     Desc 두 개가 패딩 때문에 다른 해시를 내면 캐시가 계속 미스난다.
-// (2) float는 -0.0f == 0.0f 이지만 비트가 다르다. 비트 패턴으로 해시하되
-//     0.0f로 정규화해서 넣는다.
-// (3) 배열은 "쓰는 만큼"만 섞는다. rtvCount 뒤의 슬롯과 attributeCount 뒤의
-//     속성은 의미가 없으므로 값이 달라도 같은 PSO여야 한다.
+// memcpy/memcmp를 쓰지 않는 이유.
+// (1) 구조체에는 정렬 패딩이 있고 그 바이트 값은 정해져 있지 않음. 같은 내용의
+//     Desc 두 개가 패딩 때문에 다른 해시를 내면 캐시 미스가 계속 남.
+// (2) float는 -0.0f == 0.0f 이지만 비트가 다름. 비트 패턴으로 해시하되
+//     -0.0f는 0.0f로 정규화해서 넣음.
+// (3) 배열은 "쓰는 만큼"만 섞음. rtvCount 뒤의 슬롯과 attributeCount 뒤의
+//     속성은 의미가 없으므로 값이 달라도 같은 PSO로 봐야 함.
 namespace
 {
 	inline uint64_t HashCombine(uint64_t seed, uint64_t value)
 	{
-		// boost::hash_combine의 64비트판. 황금비 상수로 섞는다.
+		// boost::hash_combine의 64비트판. 황금비 상수로 섞음.
 		return seed ^ (value + 0x9E3779B97F4A7C15ull + (seed << 6) + (seed >> 2));
 	}
 
@@ -29,7 +29,7 @@ namespace
 
 	inline bool FloatEq(float a, float b)
 	{
-		// 캐시 키이므로 비트 동일성이 맞다. 0.0f/-0.0f만 같은 것으로 본다.
+		// 캐시 키이므로 비트 단위로 같은지 비교하는 것이 맞음. 예외로 0.0f와 -0.0f만 같은 것으로 봄.
 		if (a == 0.0f && b == 0.0f) return true;
 		uint32_t ab = 0, bb = 0;
 		std::memcpy(&ab, &a, sizeof(ab));
@@ -103,7 +103,7 @@ namespace
 			&& a.alphaOp == b.alphaOp && a.writeMask == b.writeMask;
 	}
 
-	// independentBlend가 꺼져 있으면 D3D는 rt[0]만 본다. 해시도 그렇게 한다.
+	// independentBlend가 꺼져 있으면 D3D는 rt[0]만 봄. 해시도 rt[0]만 반영함.
 	uint32_t BlendSlotCount(const BlendDesc& b, uint8_t rtvCount)
 	{
 		return b.independentBlend ? rtvCount : 1u;

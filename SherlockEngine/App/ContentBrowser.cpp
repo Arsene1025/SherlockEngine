@@ -15,9 +15,9 @@ namespace fs = std::filesystem;
 namespace
 {
 	constexpr uint32_t kThumbnailSize = 128;          // 긴 변
-	constexpr size_t kMaxThumbnails = 256;            // 128² RGBA = 64KB → 최악 16MB. D3D12 shader-visible SRV 힙(4096) 도 지킨다
+	constexpr size_t kMaxThumbnails = 256;            // 128² RGBA = 64KB → 최악 16MB. D3D12 shader-visible SRV 힙(4096) 한도도 지킴
 	constexpr size_t kEvictTo = 192;
-	constexpr uint32_t kThumbnailLoadsPerFrame = 1;   // 2048² JPEG 디코드+축소 ≈ 10~30ms. 한 장씩이면 히치가 한 프레임에 그친다
+	constexpr uint32_t kThumbnailLoadsPerFrame = 1;   // 2048² JPEG 디코드+축소 ≈ 10~30ms. 한 장씩이면 히치가 한 프레임에 그침
 	constexpr int kMaxTreeDepth = 6;
 
 	std::wstring ToLower(std::wstring s)
@@ -53,7 +53,7 @@ namespace
 		return it != haystack.end();
 	}
 
-	// UTF-8 경계를 지켜 maxWidth 안에 들어가게 자르고 "…" 을 붙인다.
+	// UTF-8 경계를 지키며 maxWidth 안에 들어가게 자르고 "…" 을 붙임.
 	std::string TruncateLabel(const std::string& text, float maxWidth)
 	{
 		if (ImGui::CalcTextSize(text.c_str()).x <= maxWidth) return text;
@@ -63,7 +63,7 @@ namespace
 		while (length > 0)
 		{
 			--length;
-			while (length > 0 && (static_cast<unsigned char>(text[length]) & 0xC0) == 0x80) --length;   // 연속 바이트는 건너뛴다
+			while (length > 0 && (static_cast<unsigned char>(text[length]) & 0xC0) == 0x80) --length;   // UTF-8 연속 바이트는 건너뜀
 			if (ImGui::CalcTextSize(text.c_str(), text.c_str() + length).x + ellipsisWidth <= maxWidth) break;
 		}
 		return text.substr(0, length) + ellipsis;
@@ -112,7 +112,7 @@ const char* ContentBrowser::TypeName(AssetType type)
 
 std::string ContentBrowser::ToMaterialTextureName(const std::wstring& relativePath)
 {
-	// Textures\ 바로 아래 파일은 기존 규칙(파일명만) — 예전 씬 파일과 데모 씬의 이름과 같은 형태를 유지한다.
+	// Textures\ 바로 아래 파일은 기존 규칙(파일명만)을 따름 — 예전 씬 파일·데모 씬에 적힌 텍스처 이름과 같은 형태를 유지함.
 	const std::wstring prefix = L"Textures\\";
 	if (StartsWithNoCase(relativePath, prefix) && relativePath.find(L'\\', prefix.size()) == std::wstring::npos)
 	{
@@ -316,7 +316,7 @@ void ContentBrowser::Draw(RHI::Device& device, const Actions& actions)
 	if (m_rootsDirty) { RefreshRoots(); m_dirty = true; }
 	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) m_dragCancelled = false;
 
-	// 1초마다 폴더 수정 시각을 보고 바뀌었으면 다시 읽는다 (탐색기에서 파일을 넣었을 때).
+	// 1초마다 폴더 수정 시각을 보고 바뀌었으면 다시 읽음 (탐색기에서 파일을 넣었을 때).
 	const double now = ImGui::GetTime();
 	if (!m_dirty && now - m_lastPollTime > 1.0)
 	{
@@ -448,7 +448,7 @@ void ContentBrowser::DrawTileGrid(const Actions& actions)
 	const int columns = (std::max)(1, static_cast<int>((ImGui::GetContentRegionAvail().x + gap) / (tile.x + gap)));
 	const int rows = (static_cast<int>(visible.size()) + columns - 1) / columns;
 
-	// 보이는 행만 제출한다 — 썸네일도 보이는 타일만 요청되므로 큰 폴더에서 로드 큐가 폭주하지 않는다.
+	// 보이는 행만 제출함 — 썸네일도 보이는 타일에서만 요청되므로 큰 폴더에서도 로드 큐가 폭주하지 않음.
 	ImGuiListClipper clipper;
 	clipper.Begin(rows, tile.y + style.ItemSpacing.y);
 	while (clipper.Step())
@@ -495,7 +495,7 @@ void ContentBrowser::DrawTile(int entryIndex, const ImVec2& tile, const Actions&
 	uint64_t thumb = entry.type == AssetType::Texture ? RequestThumbnail(entry) : 0;
 	if (thumb != 0)
 	{
-		// 레터박스: 원본 비율은 알 수 없으니(썸네일은 긴 변 128) 정사각형에 맞춘다. 비율은 축소 시 지켰다.
+		// 레터박스: 원본 비율을 알 수 없으므로(썸네일은 긴 변 128) 정사각형에 맞춤. 비율은 축소할 때 유지했음.
 		dl->AddRectFilled(imgMin, imgMax, IM_COL32(60, 60, 68, static_cast<int>(255 * alpha)), 4.0f);
 		dl->AddImageRounded(static_cast<ImTextureID>(thumb), imgMin, imgMax, ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, static_cast<int>(255 * alpha)), 4.0f);
 	}
@@ -626,7 +626,7 @@ void ContentBrowser::PumpThumbnailLoads(uint32_t budget)
 		m_pending.pop_front();
 		auto it = m_thumbnails.find(absolute);
 		if (it == m_thumbnails.end()) continue;                    // 그 사이 지워짐
-		if (m_frame - it->second.lastUsedFrame > 2)                // 스크롤로 사라진 타일. 다시 보이면 다시 요청된다
+		if (m_frame - it->second.lastUsedFrame > 2)                // 스크롤로 사라진 타일. 다시 보이면 다시 요청됨
 		{
 			m_thumbnails.erase(it);
 			continue;

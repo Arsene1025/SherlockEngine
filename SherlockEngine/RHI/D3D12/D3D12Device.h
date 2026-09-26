@@ -16,12 +16,12 @@
 //   장치·직접 커맨드 큐·flip 스왑체인(백버퍼 3장), 프레임별 커맨드 할당자 + 단일 커맨드 리스트,
 //   펜스로 프레임 N−kFrameCount 완료 대기, 디스크립터 힙(RTV·DSV·스테이징 SRV/샘플러 CPU 전용,
 //   셰이더 가시 CBV/SRV/UAV·샘플러), 프레임별 업로드 링(Dynamic 버퍼), 동기 업로드(초기 데이터),
-//   지연 해제(GPU 가 아직 쓰는 리소스·디스크립터는 그 프레임의 펜스 뒤에 놓는다).
+//   지연 해제(GPU 가 아직 쓰는 리소스·디스크립터는 그 프레임의 펜스가 지난 뒤에 해제함).
 //
-// D3D11 에서 no-op 이던 것들이 여기서 진짜가 된다: Barrier → ResourceBarrier, BindingLayout → 루트 시그니처,
+// D3D11 에서 no-op 이던 것들이 여기서 실제로 동작함: Barrier → ResourceBarrier, BindingLayout → 루트 시그니처,
 // ResourceSet → 디스크립터 테이블, kFrameCount → 펜스와 링의 기준, RTV/DSV 포맷 → PSO 필수 항목.
-// 셰이더는 fxc 가 만든 DXBC(SM 5.0) 를 그대로 쓴다. D3D12 는 DXBC 를 받는다 — 두 백엔드가 같은 .cso 를
-// 쓰므로 픽셀 비교가 의미 있다. DXIL(dxc, SM 6.x) 은 SM 6 기능이 필요할 때 넣는다.
+// 셰이더는 fxc 가 만든 DXBC(SM 5.0) 를 그대로 씀. D3D12 도 DXBC 를 받음 — 두 백엔드가 같은 .cso 를
+// 쓰므로 픽셀 비교가 의미 있음. DXIL(dxc, SM 6.x) 은 SM 6 기능이 필요해지면 도입함.
 class D3D12Device final : public RHI::Device
 {
 public:
@@ -45,7 +45,7 @@ public:
     bool GetTimestampResults(uint64_t* ticks, uint32_t count, uint64_t& frequency, uint64_t& frameNumber) override;
     void RequestBackBufferReadback() override { m_readbackRequested = true; }
     bool TakeReadbackResult(std::vector<uint8_t>& rgba, uint32_t& width, uint32_t& height) override;
-    void WriteTimestamp(uint32_t slot);   // D3D12CommandList 가 위임한다
+    void WriteTimestamp(uint32_t slot);   // D3D12CommandList 가 위임함
 
     void Resize(int width, int height) override;
     void SetVSync(bool enabled) override { m_vsync = enabled; }
@@ -97,7 +97,7 @@ public:
     D3D12DescriptorHeap& GetSrvHeap() { return m_srvHeap; }
     D3D12DescriptorHeap& GetSamplerHeap() { return m_samplerHeap; }
 
-    // 뷰는 처음 요청될 때 만든다.
+    // 뷰는 처음 요청될 때 만듦.
     D3D12_CPU_DESCRIPTOR_HANDLE GetRTV(D3D12Texture& texture, bool srgbView);
     D3D12_CPU_DESCRIPTOR_HANDLE GetDSV(D3D12Texture& texture);
     D3D12_CPU_DESCRIPTOR_HANDLE GetSRV(D3D12Texture& texture);   // 스테이징 힙
@@ -105,7 +105,7 @@ public:
     // 레이아웃 조합 → 루트 시그니처 (캐시)
     std::shared_ptr<D3D12RootLayout> GetOrCreateRootLayout(const PipelineStateDesc& desc);
 
-    // GPU 가 아직 쓰고 있을 수 있는 객체·디스크립터를 이번 프레임의 펜스 뒤에 놓는다.
+    // GPU 가 아직 쓰고 있을 수 있는 객체·디스크립터의 해제를 이번 프레임의 펜스가 지날 때까지 미룸.
     void DeferRelease(ComPtr<ID3D12Object> object);
     void DeferFree(D3D12DescriptorHeap* heap, uint32_t start, uint32_t count);
 
@@ -147,7 +147,7 @@ private:
     ComPtr<ID3D12CommandQueue> m_queue;
     ComPtr<IDXGISwapChain3> m_swapChain;
 
-    // 프레임 자원 (kFrameCount 개가 동시에 진행 중일 수 있다)
+    // 프레임 자원 (kFrameCount 개가 동시에 진행 중일 수 있음)
     ComPtr<ID3D12CommandAllocator> m_allocators[kFrameCount];
     ComPtr<ID3D12GraphicsCommandList> m_list;
     ComPtr<ID3D12Fence> m_fence;
@@ -187,7 +187,7 @@ private:
     };
     Garbage m_garbage[kFrameCount];
 
-    // 풀과 캐시. 장치보다 먼저 파괴되어야 한다 (선언 역순).
+    // 풀과 캐시. 장치보다 먼저 파괴되어야 함 (파괴 순서는 선언 역순).
     ResourcePool<D3D12Buffer, BufferHandle> m_buffers;
     ResourcePool<D3D12Texture, TextureHandle> m_textures;
     ResourcePool<D3D12Sampler, SamplerHandle> m_samplers;
@@ -201,8 +201,8 @@ private:
     TextureHandle m_backBuffers[kBackBufferCount];
     TextureHandle m_depthBuffer;
 
-    // 10단계: 타임스탬프. 쿼리 힙은 프레임 슬롯마다 kMaxTimestamps 개, 리드백 버퍼는 같은 배치의 uint64.
-    // EndFrame 이 이번 슬롯의 기록된 범위를 Resolve 하고, BeginFrame 이 (펜스를 지난) 재사용 슬롯의 결과를 읽는다.
+    // 10단계: 타임스탬프. 쿼리 힙은 프레임 슬롯마다 kMaxTimestamps 개, 리드백 버퍼는 같은 배치의 uint64 배열.
+    // EndFrame 이 이번 슬롯에 기록된 범위를 Resolve 하고, BeginFrame 이 (펜스를 지나) 재사용되는 슬롯의 결과를 읽음.
     ComPtr<ID3D12QueryHeap> m_timestampHeap;
     ComPtr<ID3D12Resource> m_timestampReadback;
     uint32_t m_timestampWritten[kFrameCount] = {};   // 슬롯마다 기록된 최대 인덱스 + 1
@@ -212,7 +212,7 @@ private:
     uint64_t m_lastFrameNumber = 0;
     bool m_hasTimestampResults = false;
     bool CreateTimestampResources();
-    // 11단계: 백버퍼 리드백. EndFrame 이 Close 전에 복사를 기록하고, 실행 뒤 GPU 를 기다려 읽는다.
+    // 11단계: 백버퍼 리드백. EndFrame 이 Close 전에 복사를 기록하고, 실행 뒤 GPU 를 기다려 읽음.
     void RecordBackBufferReadback();
     void FinishBackBufferReadback();
     bool m_readbackRequested = false;

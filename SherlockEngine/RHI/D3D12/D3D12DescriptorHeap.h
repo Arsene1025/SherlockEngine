@@ -6,12 +6,12 @@
 
 // 디스크립터 힙 하나 + 연속 범위 할당기.
 //
-// D3D11 은 뷰 객체(ID3D11*View)를 만들면 끝이지만, D3D12 의 뷰는 "디스크립터 힙 안의 슬롯"이다.
-// CPU 전용 힙(RTV·DSV·스테이징 SRV·스테이징 샘플러)에 뷰를 만들어 두고, 셰이더가 읽을 것은
-// 셰이더 가시 힙(CBV/SRV/UAV 하나, 샘플러 하나)에 CopyDescriptorsSimple 로 복사한다.
-// ResourceSet 은 셰이더 가시 힙에서 연속 범위(디스크립터 테이블)를 영구 할당받는다.
+// D3D11 은 뷰 객체(ID3D11*View)를 만들면 끝이지만, D3D12 의 뷰는 "디스크립터 힙 안의 슬롯"임.
+// CPU 전용 힙(RTV·DSV·스테이징 SRV·스테이징 샘플러)에 뷰를 만들어 두고, 셰이더가 읽을 디스크립터는
+// 셰이더 가시 힙(CBV/SRV/UAV 힙 하나, 샘플러 힙 하나)에 CopyDescriptorsSimple 로 복사함.
+// ResourceSet 은 셰이더 가시 힙에서 연속 범위(디스크립터 테이블)를 영구적으로 할당받음.
 //
-// 할당기는 bump + free list(first-fit) 이다. 셋과 텍스처 수가 수백 개 수준이라 이걸로 충분하다.
+// 할당기는 bump + free list(first-fit) 방식임. 셋과 텍스처가 수백 개 수준이라 이 방식으로 충분함.
 class D3D12DescriptorHeap
 {
 public:
@@ -44,7 +44,7 @@ public:
 
 	static constexpr uint32_t kInvalid = UINT32_MAX;
 
-	// 연속 count 개. 실패하면 kInvalid.
+	// 연속된 슬롯 count 개를 할당함. 실패하면 kInvalid.
 	uint32_t Allocate(uint32_t count = 1)
 	{
 		for (size_t i = 0; i < m_free.size(); ++i)

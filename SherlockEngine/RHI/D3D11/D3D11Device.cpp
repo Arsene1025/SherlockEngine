@@ -9,7 +9,7 @@
 
 namespace
 {
-    // 매 프레임 같은 오류를 찍지 않기 위한 1회 로그.
+    // 같은 오류를 매 프레임 찍지 않도록 한 번만 남기는 로그.
     void ErrorOnce(bool& flag, const char* message)
     {
         if (flag) return;
@@ -49,9 +49,9 @@ void D3D11Device::ReleaseDevice()
         m_context->Flush();
     }
 
-    // 장치가 만든 객체를 먼저 놓는다. 장치보다 오래 살면 Live Object 경고가 난다.
+    // 장치가 만든 객체를 먼저 해제함. 장치보다 오래 살아 있으면 Live Object 경고가 발생함.
     m_pipelines.Clear();
-    for (TimestampSet& set : m_timestampSets)   // 10단계: 쿼리도 장치 객체다
+    for (TimestampSet& set : m_timestampSets)   // 10단계: 쿼리도 장치 객체임
     {
         set.disjoint.Reset();
         for (ComPtr<ID3D11Query>& query : set.timestamps) query.Reset();
@@ -70,8 +70,8 @@ void D3D11Device::ReleaseDevice()
     m_context.Reset();
 
 #if defined(_DEBUG)
-    // 장치만 남은 시점에 살아 있는 객체를 보고시킨다. 깨끗하면
-    // "Live ID3D11Device ..." 한 줄만 나온다 (자식 객체 보고가 없어야 한다).
+    // 장치만 남은 시점에 살아 있는 객체를 보고하게 함. 깨끗하게 정리됐다면
+    // "Live ID3D11Device ..." 한 줄만 나옴 (자식 객체 보고가 없어야 함).
     if (m_device)
     {
         ComPtr<ID3D11Debug> debug;
@@ -91,7 +91,7 @@ void D3D11Device::DumpDebugLayerMessages()
     if (!m_device) return;
 
     ComPtr<ID3D11InfoQueue> queue;
-    if (FAILED(m_device.As(&queue))) return;   // Debug Layer가 없으면(SDK 미설치) 조용히 넘어간다.
+    if (FAILED(m_device.As(&queue))) return;   // Debug Layer가 없으면(SDK 미설치) 조용히 넘어감.
 
     const UINT64 count = queue->GetNumStoredMessages();
     std::vector<char> buffer;
@@ -124,7 +124,7 @@ void D3D11Device::DumpDebugLayerMessages()
 void D3D11Device::SetDebugName(ID3D11DeviceChild* object, const std::string& name, uint32_t index)
 {
 #if defined(_DEBUG)
-    // Desc.debugName 을 Debug Layer 와 RenderDoc 이 읽는 이름으로 (WKPDID_D3DDebugObjectName).
+    // Desc.debugName 을 Debug Layer 와 RenderDoc 이 읽는 이름으로 설정함 (WKPDID_D3DDebugObjectName).
     if (object == nullptr || name.empty()) return;
     std::string full = name;
     if (index > 0) full += "[" + std::to_string(index) + "]";
@@ -154,8 +154,8 @@ void D3D11Device::NewFrameImGui()
 
 void D3D11Device::RenderImGui()
 {
-    // 이 백엔드는 자기가 건드린 D3D11 상태를 백업하고 복원한다.
-    // 그래도 다음 프레임의 첫 드로우 전에 PSO를 다시 바인딩하는 규칙은 유지한다.
+    // 이 백엔드는 자기가 건드린 D3D11 상태를 백업하고 복원함.
+    // 그래도 다음 프레임의 첫 드로우 전에 PSO를 다시 바인딩하는 규칙은 유지함.
     if (m_imguiInitialized) ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
@@ -170,7 +170,7 @@ uint64_t D3D11Device::GetImGuiTextureId(TextureHandle handle)
 {
     D3D11Texture* texture = m_textures.Get(handle);
     ID3D11ShaderResourceView* srv = texture ? texture->GetSRV(m_device.Get()) : nullptr;
-    // imgui_impl_dx11 의 ImTextureID 는 SRV 포인터다. RHI 헤더에 imgui 를 끌어오지 않으려고 정수로 싣는다.
+    // imgui_impl_dx11 의 ImTextureID 는 SRV 포인터임. RHI 헤더에 imgui 를 끌어오지 않으려고 정수에 담아 넘김.
     return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(srv));
 }
 
@@ -181,7 +181,7 @@ uint32_t D3D11Device::BeginFrame()
     m_frameIndex = static_cast<uint32_t>(m_frameCounter % kFrameCount);
     m_commandList.ResetStats();
 
-    // 10단계: 다시 쓸 세트(kTimestampSets 프레임 전)의 결과를 먼저 읽고, 이번 프레임 세트로 연다.
+    // 10단계: 다시 쓸 세트(kTimestampSets 프레임 전에 쓴 것)의 결과를 먼저 읽고, 이번 프레임의 세트로 다시 시작함.
     if (m_timestampSets[0].disjoint)
     {
         TimestampSet& set = m_timestampSets[m_frameCounter % kTimestampSets];
@@ -202,11 +202,11 @@ void D3D11Device::EndFrame()
         ErrorOnce(warned, "EndFrame : 렌더 패스가 열린 채 Present. EndRenderPass 를 빠뜨렸다.");
         m_commandList.EndRenderPass();
     }
-    if (m_readbackRequested) ReadBackBuffer();   // 11단계: Present 전에 (flip 모델은 Present 뒤 백버퍼 내용을 버린다)
+    if (m_readbackRequested) ReadBackBuffer();   // 11단계: Present 전에 읽음 (flip 모델은 Present 후 백버퍼 내용을 버림)
     if (m_swapChain)
     {
         // SyncInterval 1 = 수직 동기화(모니터 주사율로 제한), 0 = 제한 없음.
-        // flip 모델에서 창 모드 무제한 프레임은 ALLOW_TEARING 플래그가 있어야 컴포지터에 막히지 않는다.
+        // flip 모델의 창 모드에서 프레임을 제한 없이 내려면 ALLOW_TEARING 플래그가 있어야 컴포지터에 막히지 않음.
         const UINT flags = (!m_vsync && m_tearingSupported) ? DXGI_PRESENT_ALLOW_TEARING : 0;
         m_swapChain->Present(m_vsync ? 1 : 0, flags);
     }
@@ -214,7 +214,7 @@ void D3D11Device::EndFrame()
     {
         m_context->End(m_timestampSets[m_frameCounter % kTimestampSets].disjoint.Get());
     }
-    // 이 프레임에 쌓인 Debug Layer 메시지를 콘솔로. 비어 있으면 비용이 거의 없다.
+    // 이 프레임에 쌓인 Debug Layer 메시지를 콘솔로 출력함. 비어 있으면 비용이 거의 없음.
     DumpDebugLayerMessages();
     ++m_frameCounter;
 }
@@ -227,10 +227,10 @@ void D3D11Device::Resize(int width, int height)
     m_screenWidth = width;
     m_screenHeight = height;
 
-    // 순서가 중요하다.
+    // 순서가 중요함.
     // (1) 렌더 타깃 바인딩 해제 → (2) 백버퍼·깊이 텍스처 파괴(스왑체인 버퍼 참조가 전부
-    // 사라져야 ResizeBuffers가 DXGI_ERROR_INVALID_CALL 없이 성공한다) → (3) ResizeBuffers
-    // → (4) 새 핸들로 재생성. 이전 핸들은 세대가 올라가 어디서 쓰든 nullptr가 된다.
+    // 사라져야 ResizeBuffers가 DXGI_ERROR_INVALID_CALL 없이 성공함) → (3) ResizeBuffers
+    // → (4) 새 핸들로 재생성. 이전 핸들은 세대가 올라가므로 어디서 쓰든 nullptr가 됨.
     m_context->OMSetRenderTargets(0, nullptr, nullptr);
     DestroyTexture(m_backBuffer);
     DestroyTexture(m_depthBuffer);
@@ -242,7 +242,7 @@ void D3D11Device::Resize(int width, int height)
         m_screenWidth,
         m_screenHeight,
         DXGI_FORMAT_UNKNOWN,     // 기존 포맷 유지
-        m_swapChainFlags);       // 생성 때와 같은 플래그(ALLOW_TEARING)여야 한다
+        m_swapChainFlags);       // 생성 때와 같은 플래그(ALLOW_TEARING)여야 함
     if (FAILED(hr))
     {
         Log::Error("ResizeBuffers() 실패. %s", Log::HrToString(hr).c_str());
@@ -278,11 +278,11 @@ BufferHandle D3D11Device::CreateBuffer(const BufferDesc& descIn, const void* ini
 
     D3D11Buffer buffer;
     buffer.desc = descIn;
-    buffer.desc.debugName = nullptr;   // 포인터 수명을 믿지 않는다. 문자열로 복사.
+    buffer.desc.debugName = nullptr;   // 포인터 수명을 믿을 수 없으므로 문자열로 복사함.
     buffer.name = descIn.debugName ? descIn.debugName : "";
 
-    // D3D11 상수 버퍼 크기는 16바이트 단위여야 한다. desc.size도 올림된 값을 보관해
-    // UpdateBuffer의 크기 검사가 실제 버퍼와 맞게 한다.
+    // D3D11 상수 버퍼 크기는 16바이트 단위여야 함. desc.size에도 올림한 값을 보관해
+    // UpdateBuffer의 크기 검사가 실제 버퍼 크기와 맞게 함.
     if (buffer.desc.bindFlags & BufferBind_Constant)
     {
         buffer.desc.size = (buffer.desc.size + 15) & ~15u;
@@ -312,14 +312,14 @@ BufferHandle D3D11Device::CreateBuffer(const BufferDesc& descIn, const void* ini
     case BufferUsage::Staging:
         bd.Usage = D3D11_USAGE_STAGING;
         bd.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
-        bd.BindFlags = 0;   // Staging은 파이프라인에 바인딩할 수 없다
+        bd.BindFlags = 0;   // Staging은 파이프라인에 바인딩할 수 없음
         break;
     }
 
     D3D11_SUBRESOURCE_DATA init = {};
     init.pSysMem = initialData;
 
-    // Dynamic은 프레임마다 다른 복제본을 쓴다. 초기 데이터는 전부에 넣는다.
+    // Dynamic 버퍼는 프레임마다 다른 복제본을 씀. 초기 데이터는 모든 복제본에 넣음.
     const uint32_t copies = (buffer.desc.usage == BufferUsage::Dynamic) ? kFrameCount : 1;
     for (uint32_t i = 0; i < copies; ++i)
     {
@@ -360,10 +360,10 @@ void D3D11Device::UpdateBuffer(BufferHandle handle, const void* data, uint32_t s
     {
     case BufferUsage::Dynamic:
     {
-        // WRITE_DISCARD: 드라이버가 새 메모리를 주고 이전 내용은 버린다. GPU가 아직
-        // 읽고 있어도 기다리지 않는다(이름 바꾸기, renaming). 한 프레임에 같은
-        // 버퍼를 여러 번 Map해도 각 드로우는 자기 데이터를 본다. 대신 매번
-        // 전체를 다시 써야 한다 — 이전 내용을 읽을 수 없다.
+        // WRITE_DISCARD: 드라이버가 새 메모리를 주고 이전 내용은 버림. GPU가 아직
+        // 읽고 있어도 기다리지 않음(이름 바꾸기, renaming). 한 프레임에 같은
+        // 버퍼를 여러 번 Map해도 각 드로우는 자기 데이터를 봄. 대신 매번
+        // 전체를 다시 써야 함 — 이전 내용을 읽을 수 없음.
         D3D11_MAPPED_SUBRESOURCE mapped = {};
         const HRESULT hr = m_context->Map(target, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
         if (FAILED(hr))
@@ -376,8 +376,8 @@ void D3D11Device::UpdateBuffer(BufferHandle handle, const void* data, uint32_t s
         break;
     }
     case BufferUsage::Default:
-        // UpdateSubresource는 pDstBox가 없으면 리소스 전체를 덮어쓴다. 부분 갱신은
-        // 상수버퍼에서 허용되지 않으므로 전체 크기만 받는다.
+        // UpdateSubresource는 pDstBox가 없으면 리소스 전체를 덮어씀. 부분 갱신은
+        // 상수버퍼에서 허용되지 않으므로 전체 크기만 받음.
         if (size != buffer->desc.size)
         {
             Log::Error("UpdateBuffer : Default 버퍼는 전체 크기로만 갱신할 수 있음 (%s, %u != %u).",
@@ -407,10 +407,10 @@ TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, const Textur
     texture.desc.debugName = nullptr;
     texture.name = descIn.debugName ? descIn.debugName : "";
 
-    // 깊이 텍스처를 셰이더에서도 읽으려면(그림자 맵) 리소스는 TYPELESS. 뷰가 포맷을 정한다.
+    // 깊이 텍스처를 셰이더에서도 읽으려면(그림자 맵) 리소스를 TYPELESS로 만듦. 포맷은 뷰가 정함.
     const DXGI_FORMAT format = D3D11Convert::ToDXGI(descIn.format);
     const bool depthAndSrv = (descIn.bindFlags & TextureBind_DepthStencil) && (descIn.bindFlags & TextureBind_ShaderResource);
-    // 11단계: 렌더 타깃 + SRV 인 UNORM 색 텍스처(에디터 씬 뷰)도 TYPELESS — sRGB RTV 로 그리고 UNORM SRV 로 읽는다.
+    // 11단계: 렌더 타깃 + SRV 인 UNORM 색상 텍스처(에디터 씬 뷰)도 TYPELESS로 만듦 — sRGB RTV 로 그리고 UNORM SRV 로 읽음.
     const bool colorRtAndSrv = (descIn.bindFlags & TextureBind_RenderTarget) && (descIn.bindFlags & TextureBind_ShaderResource) && format == DXGI_FORMAT_R8G8B8A8_UNORM;
     texture.typeless = (depthAndSrv && D3D11DepthFormat::IsDepth(format)) || colorRtAndSrv;
 
@@ -427,8 +427,8 @@ TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, const Textur
     if (descIn.bindFlags & TextureBind_DepthStencil)   td.BindFlags |= D3D11_BIND_DEPTH_STENCIL;
     if (descIn.bindFlags & TextureBind_ShaderResource) td.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
 
-    // 초기 데이터: 밉 레벨마다 D3D11_SUBRESOURCE_DATA 하나. 개수가 모자라면 거부한다
-    // (모자란 밉은 쓰레기가 들어가 원거리에서 이상한 색이 나온다).
+    // 초기 데이터: 밉 레벨마다 D3D11_SUBRESOURCE_DATA 하나. 개수가 모자라면 거부함
+    // (모자란 밉에는 쓰레기 값이 들어가 원거리에서 이상한 색이 나옴).
     std::vector<D3D11_SUBRESOURCE_DATA> init;
     if (subresources != nullptr && subresourceCount > 0)
     {
@@ -464,8 +464,8 @@ void D3D11Device::DestroyTexture(TextureHandle handle)
 
 bool D3D11Device::CreateBackBufferTexture()
 {
-    // 스왑체인이 이미 만든 텍스처를 감싼다. CreateTexture로는 만들 수 없는 유일한 텍스처.
-    // 포맷은 UNORM이다. flip 모델은 백버퍼를 *_SRGB로 만들 수 없으므로 뷰를 sRGB로 만든다.
+    // 스왑체인이 이미 만든 텍스처를 감쌈. CreateTexture로는 만들 수 없는 유일한 텍스처임.
+    // 포맷은 UNORM임. flip 모델에서는 백버퍼를 *_SRGB로 만들 수 없으므로 뷰를 sRGB로 만듦.
     ComPtr<ID3D11Texture2D> backBuffer;
     const HRESULT hr = m_swapChain->GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf()));
     if (FAILED(hr))
@@ -492,7 +492,7 @@ bool D3D11Device::CreateBackBufferTexture()
 
 bool D3D11Device::CreateDepthTexture()
 {
-    // 깊이·스텐실 텍스처. 크기와 샘플 수는 백버퍼와 일치해야 한다.
+    // 깊이·스텐실 텍스처. 크기와 샘플 수는 백버퍼와 일치해야 함.
     TextureDesc desc;
     desc.width = m_screenWidth;
     desc.height = m_screenHeight;
@@ -584,7 +584,7 @@ ShaderHandle D3D11Device::CreateShader(const ShaderDesc& desc)
         return ShaderHandle{};
     }
 
-    // 입력 레이아웃 검증(VS)과 리플렉션용 사본.
+    // 입력 레이아웃 검증(VS)과 리플렉션에 쓸 바이트코드 사본.
     const uint8_t* bytes = static_cast<const uint8_t*>(desc.bytecode);
     shader.bytecode.assign(bytes, bytes + desc.bytecodeSize);
 
@@ -637,7 +637,7 @@ BindingLayoutHandle D3D11Device::CreateBindingLayout(const BindingLayoutDesc& de
             Log::Error("CreateBindingLayout : 슬롯 %u 레지스터 %u 가 상한 %u 이상 (%s).", i, slot.reg, limit, name);
             return BindingLayoutHandle{};
         }
-        // 같은 (타입, 레지스터)가 같은 스테이지에 두 번 나오면 하나가 다른 하나를 덮는다.
+        // 같은 (타입, 레지스터)가 같은 스테이지에 두 번 나오면 하나가 다른 하나를 덮어씀.
         for (uint32_t j = 0; j < i; ++j)
         {
             const BindingSlot& other = descIn.slots[j];
@@ -671,7 +671,7 @@ ResourceSetHandle D3D11Device::CreateResourceSet(const ResourceSetDesc& descIn)
         return ResourceSetHandle{};
     }
 
-    // 슬롯 타입에 맞는 종류의 핸들이 꽂혀 있는지 지금 검사한다. 드로우 시점에 매번 검사하지 않기 위해서다.
+    // 슬롯 타입에 맞는 종류의 핸들이 꽂혀 있는지 지금 검사함. 드로우 시점에 매번 검사하지 않기 위함임.
     for (uint32_t i = 0; i < layout->desc.slotCount; ++i)
     {
         const BindingSlot& slot = layout->desc.slots[i];
@@ -733,12 +733,12 @@ bool D3D11Device::InitDirect3D()
 
     const D3D_FEATURE_LEVEL featureLevels[] =
     {
-        D3D_FEATURE_LEVEL_11_0   // 7절 #10: 11_0 전용. 9_3 폴백은 의도가 아니었다 (11단계 정리)
+        D3D_FEATURE_LEVEL_11_0   // 7절 #10: 11_0 전용. 9_3 폴백은 의도한 것이 아니었음 (11단계 정리)
     };
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
 
-    // 5단계: 장치와 스왑체인을 따로 만든다. D3D11CreateDeviceAndSwapChain은 옛 DXGI_SWAP_CHAIN_DESC만
-    // 받아 flip 모델의 ALLOW_TEARING 확인(IDXGIFactory5)이나 CreateSwapChainForHwnd를 쓸 수 없다.
+    // 5단계: 장치와 스왑체인을 따로 만듦. D3D11CreateDeviceAndSwapChain은 옛 DXGI_SWAP_CHAIN_DESC만
+    // 받으므로 flip 모델의 ALLOW_TEARING 확인(IDXGIFactory5)이나 CreateSwapChainForHwnd를 쓸 수 없음.
     HRESULT hr = D3D11CreateDevice(
         nullptr,                        // 기본 그래픽 어댑터
         D3D_DRIVER_TYPE_HARDWARE,
@@ -761,7 +761,7 @@ bool D3D11Device::InitDirect3D()
         return false;
     }
 
-    // 장치를 만든 어댑터의 팩토리를 얻는다. 다른 팩토리로 스왑체인을 만들면 실패한다.
+    // 장치를 만든 어댑터의 팩토리를 얻음. 다른 팩토리로 스왑체인을 만들면 실패함.
     ComPtr<IDXGIDevice> dxgiDevice;
     ComPtr<IDXGIAdapter> adapter;
     ComPtr<IDXGIFactory2> factory;
@@ -772,7 +772,7 @@ bool D3D11Device::InitDirect3D()
         return false;
     }
 
-    // 창 모드에서 무제한 프레임(VSync 끔)을 내려면 tearing 지원이 필요하다.
+    // 창 모드에서 무제한 프레임(VSync 끔)을 내려면 tearing 지원이 필요함.
     ComPtr<IDXGIFactory5> factory5;
     if (SUCCEEDED(factory.As(&factory5)))
     {
@@ -784,8 +784,8 @@ bool D3D11Device::InitDirect3D()
     }
     m_swapChainFlags = m_tearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
-    // flip 모델 (DXGI_SWAP_EFFECT_FLIP_DISCARD). 요구: 버퍼 2개 이상, MSAA 없음,
-    // Present 뒤 백버퍼 재바인딩(BeginRenderPass가 한다), 백버퍼 포맷은 UNORM(sRGB는 뷰로).
+    // flip 모델 (DXGI_SWAP_EFFECT_FLIP_DISCARD). 요구 사항: 버퍼 2개 이상, MSAA 없음,
+    // Present 후 백버퍼 재바인딩(BeginRenderPass가 담당), 백버퍼 포맷은 UNORM(sRGB는 뷰로 처리).
     DXGI_SWAP_CHAIN_DESC1 sd = {};
     sd.Width = m_screenWidth;
     sd.Height = m_screenHeight;
@@ -805,12 +805,12 @@ bool D3D11Device::InitDirect3D()
         Log::Error("CreateSwapChainForHwnd() 실패. %s", Log::HrToString(hr).c_str());
         return false;
     }
-    // Alt+Enter 전체화면 전환은 DXGI가 하지 않게 한다 (창 모드 flip이 이미 전체화면급 성능).
+    // DXGI가 Alt+Enter 전체화면 전환을 하지 않게 함 (창 모드 flip만으로도 전체화면급 성능이 나옴).
     factory->MakeWindowAssociation(m_mainWindow, DXGI_MWA_NO_ALT_ENTER);
 
     Log::Info("스왑체인: FLIP_DISCARD, 버퍼 2, tearing %s", m_tearingSupported ? "지원" : "미지원");
 
-    // 4X MSAA 지원 여부확인
+    // 4X MSAA 지원 여부 확인
     hr = m_device->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM, 4, &m_numQualityLevels);
     if (FAILED(hr) || m_numQualityLevels <= 0)
     {
@@ -850,18 +850,18 @@ void D3D11Device::WriteTimestamp(uint32_t slot)
     if (slot >= kMaxTimestamps || !m_context) return;
     TimestampSet& set = m_timestampSets[m_frameCounter % kTimestampSets];
     if (!set.active) return;
-    // TIMESTAMP 쿼리는 End 만 부른다 (Begin 없음). 명령 스트림의 이 지점을 GPU 가 지날 때의 시각.
+    // TIMESTAMP 쿼리는 End 만 호출함 (Begin 없음). GPU 가 명령 스트림의 이 지점을 지날 때의 시각을 기록함.
     m_context->End(set.timestamps[slot].Get());
     set.written[slot] = true;
 }
 
 void D3D11Device::ResolveTimestamps(TimestampSet& set)
 {
-    // DONOTFLUSH: 준비되지 않았으면 S_FALSE 로 돌아오고 이 세트는 버린다 (두 프레임 전이라 거의 항상 준비됨).
+    // DONOTFLUSH: 준비되지 않았으면 S_FALSE 로 돌아오고 이 세트는 버림 (kTimestampSets 프레임 전에 쓴 세트라 거의 항상 준비됨).
     D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint = {};
     const HRESULT hr = m_context->GetData(set.disjoint.Get(), &disjoint, sizeof(disjoint), D3D11_ASYNC_GETDATA_DONOTFLUSH);
     set.active = false;
-    // 타임스탬프는 disjoint 결과와 무관하게 전부 읽어 둔다 — 안 읽은 쿼리에 다시 End 를 부르면 경고가 난다.
+    // 타임스탬프는 disjoint 결과와 무관하게 전부 읽어 둠 — 읽지 않은 쿼리에 다시 End 를 호출하면 경고가 발생함.
     uint64_t ticks[kMaxTimestamps] = {};
     bool complete = hr == S_OK;
     for (uint32_t i = 0; i < kMaxTimestamps; ++i)
@@ -908,7 +908,7 @@ void D3D11Device::ReadBackBuffer()
 
     m_context->CopyResource(staging.Get(), texture->texture.Get());
     D3D11_MAPPED_SUBRESOURCE mapped = {};
-    hr = m_context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped);   // 여기서 GPU 를 기다린다
+    hr = m_context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped);   // 여기서 GPU 를 기다림
     if (FAILED(hr)) { Log::Error("리드백 Map 실패. %s", Log::HrToString(hr).c_str()); return; }
     m_readbackWidth = desc.Width;
     m_readbackHeight = desc.Height;

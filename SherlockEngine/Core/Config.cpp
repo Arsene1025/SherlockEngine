@@ -37,7 +37,7 @@ bool Config::LoadFromFile(const std::wstring& path)
 		++lineNumber;
 		if (lineNumber == 1 && line.size() >= 3 && static_cast<unsigned char>(line[0]) == 0xEF) line.erase(0, 3);   // UTF-8 BOM
 
-		// 주석 제거 (; 또는 #). 값 안의 ; 는 지원하지 않는다 — 설정 파일에 그런 값을 둘 일이 없다.
+		// 주석 제거 (; 또는 #). 값 안의 ; 와 # 은 지원하지 않음 — 설정 파일에 그런 값을 둘 일이 없음.
 		const size_t comment = line.find_first_of(";#");
 		if (comment != std::string::npos) line.erase(comment);
 		line = Trim(line);

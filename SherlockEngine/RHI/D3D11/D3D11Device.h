@@ -7,18 +7,18 @@
 #include "RHI/Device.h"
 #include "RHI/GraphicsConfig.h"
 
-// RHI::Device 의 D3D11 구현. 장치·스왑체인과 리소스 풀.
+// RHI::Device 의 D3D11 구현. 장치·스왑체인과 리소스 풀을 관리함.
 //
-// 폴더 밖의 코드는 RHI::Device 인터페이스만 본다. ID3D11* 타입을 돌려주는 Get* 접근자는
-// RHI/D3D11/ 안(PipelineState, D3D11CommandList)만 부른다.
-// 3~6단계의 Device 클래스가 이름만 바뀌고 인터페이스를 상속했다. 메서드 본문은 같다.
+// 폴더 밖의 코드는 RHI::Device 인터페이스만 봄. ID3D11* 타입을 돌려주는 Get* 접근자는
+// RHI/D3D11/ 안의 코드(PipelineState, D3D11CommandList)에서만 호출함.
+// 3~6단계의 Device 클래스에서 이름만 바꾸고 인터페이스를 상속하게 했음. 메서드 본문은 같음.
 class D3D11Device final : public RHI::Device
 {
 public:
     ~D3D11Device() override { ReleaseDevice(); }
 
-    bool Init(const RHI::DeviceDesc& desc);   // RHI::CreateDevice 가 부른다
-    void ReleaseDevice();                     // 두 번 불러도 안전하다.
+    bool Init(const RHI::DeviceDesc& desc);   // RHI::CreateDevice 가 호출함
+    void ReleaseDevice();                     // 두 번 호출해도 안전함.
 
     // ---- RHI::Device ----
     RHI::Backend GetBackend() const override { return RHI::Backend::D3D11; }
@@ -32,7 +32,7 @@ public:
     bool GetTimestampResults(uint64_t* ticks, uint32_t count, uint64_t& frequency, uint64_t& frameNumber) override;
     void RequestBackBufferReadback() override { m_readbackRequested = true; }
     bool TakeReadbackResult(std::vector<uint8_t>& rgba, uint32_t& width, uint32_t& height) override;
-    void WriteTimestamp(uint32_t slot);   // D3D11CommandList 가 위임한다
+    void WriteTimestamp(uint32_t slot);   // D3D11CommandList 가 이쪽으로 위임함
 
     void Resize(int width, int height) override;
     void SetVSync(bool enabled) override { m_vsync = enabled; }
@@ -63,14 +63,14 @@ public:
     ResourceSetHandle CreateResourceSet(const ResourceSetDesc& desc) override;
     void DestroyResourceSet(ResourceSetHandle handle) override;
 
-    // ImGui 어댑터: imgui_impl_dx11 을 감싼다.
+    // ImGui 어댑터: imgui_impl_dx11 을 감쌈.
     bool InitImGui() override;
     void NewFrameImGui() override;
     void RenderImGui() override;
     void ShutdownImGui() override;
     uint64_t GetImGuiTextureId(TextureHandle texture) override;
 
-    // Debug Layer가 InfoQueue에 쌓아 둔 메시지를 Log로 옮긴다(Debug 빌드만).
+    // Debug Layer가 InfoQueue에 쌓아 둔 메시지를 Log로 옮김(Debug 빌드에서만).
     void DumpDebugLayerMessages();
 
     // ---- RHI/D3D11/ 안에서만 쓰는 접근자 ----
@@ -101,7 +101,7 @@ private:
     bool m_tearingSupported = false;
     bool m_debugLayer = false;
     bool m_imguiInitialized = false;
-    UINT m_swapChainFlags = 0;   // ResizeBuffers에 같은 값을 넘겨야 한다
+    UINT m_swapChainFlags = 0;   // ResizeBuffers에 같은 값을 넘겨야 함
 
     uint64_t m_frameCounter = 0;
     uint32_t m_frameIndex = 0;
@@ -110,9 +110,9 @@ private:
     ComPtr<ID3D11DeviceContext> m_context;
     ComPtr<IDXGISwapChain1> m_swapChain;
 
-    // 풀과 캐시는 m_device보다 뒤에 선언한다. 멤버는 선언의 역순으로 파괴되므로
-    // 이것들이 먼저 사라지고 나서 장치가 해제된다. 순서가 반대면 Debug Layer가
-    // 종료 시 Live Object를 보고한다. ReleaseDevice도 같은 순서로 비운다.
+    // 풀과 캐시는 m_device보다 뒤에 선언함. 멤버는 선언의 역순으로 파괴되므로
+    // 이것들이 먼저 사라지고 나서 장치가 해제됨. 순서가 반대면 Debug Layer가
+    // 종료 시 Live Object를 보고함. ReleaseDevice도 같은 순서로 비움.
     ResourcePool<D3D11Buffer, BufferHandle> m_buffers;
     ResourcePool<D3D11Texture, TextureHandle> m_textures;
     ResourcePool<D3D11Sampler, SamplerHandle> m_samplers;
@@ -120,14 +120,14 @@ private:
     ResourcePool<D3D11BindingLayout, BindingLayoutHandle> m_bindingLayouts;
     ResourcePool<D3D11ResourceSet, ResourceSetHandle> m_resourceSets;
     PipelineStateCache m_pipelines;
-    D3D11CommandList m_commandList;   // 소유권 없음(D3D11Device* 만 보관). 모든 바인딩·드로우
+    D3D11CommandList m_commandList;   // 소유권 없음(D3D11Device* 만 보관). 모든 바인딩·드로우가 이것을 거침
 
     TextureHandle m_backBuffer;
     TextureHandle m_depthBuffer;
 
     // 10단계: 타임스탬프 쿼리. 프레임마다 DISJOINT 쿼리 하나 + TIMESTAMP 쿼리 kMaxTimestamps 개.
-    // 세트 6개를 돌려 쓰고, 다시 쓰기 직전(6프레임 뒤)에 읽는다. DXGI 가 최대 3프레임을 큐에 둘 수 있어
-    // 2~3프레임 전 세트는 아직 GPU 에 있을 수 있고, 결과를 안 읽은 쿼리에 End 를 부르면 Debug Layer 가 경고한다.
+    // 세트 6개를 돌려 쓰고, 다시 쓰기 직전(6프레임 뒤)에 읽음. DXGI 가 최대 3프레임을 큐에 둘 수 있어
+    // 2~3프레임 전 세트는 아직 GPU 에서 처리 중일 수 있고, 결과를 읽지 않은 쿼리에 End 를 호출하면 Debug Layer 가 경고함.
     static constexpr uint32_t kTimestampSets = 6;
     struct TimestampSet
     {
@@ -143,7 +143,7 @@ private:
     uint64_t m_lastFrameNumber = 0;
     bool m_hasTimestampResults = false;
     bool CreateTimestampQueries();
-    void ReadBackBuffer();   // 11단계: EndFrame 이 Present 직전에 부른다
+    void ReadBackBuffer();   // 11단계: EndFrame 이 Present 직전에 호출함
     bool m_readbackRequested = false;
     bool m_readbackReady = false;
     std::vector<uint8_t> m_readbackPixels;

@@ -4,7 +4,7 @@
 
 void Input::OnKeyDown(uint32_t vk)
 {
-	// 키 자동 반복(WM_KEYDOWN 연속)은 같은 값을 다시 쓰는 것이라 무해하다.
+	// 키 자동 반복(WM_KEYDOWN 연속)은 같은 값을 다시 쓰는 것이라 무해함.
 	if (vk < kKeyCount) m_keys[vk] = true;
 }
 
@@ -23,7 +23,7 @@ void Input::OnMouseMove(int x, int y)
 {
 	if (m_hasPosition)
 	{
-		// 한 프레임에 WM_MOUSEMOVE가 여러 번 오면 델타를 누적한다.
+		// 한 프레임에 WM_MOUSEMOVE가 여러 번 오면 델타를 누적함.
 		m_dx += x - m_x;
 		m_dy += y - m_y;
 	}

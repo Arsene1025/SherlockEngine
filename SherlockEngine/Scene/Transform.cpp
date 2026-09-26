@@ -76,7 +76,7 @@ void Transform::Rotate(float pitch, float yaw, float roll)
 
 void Transform::LookAt(const XMFLOAT3& target)
 {
-	// forward = (cos p·sin y, −sin p, cos p·cos y) 의 역함수 (Camera::SetLookAt 과 같다)
+	// forward = (cos p·sin y, −sin p, cos p·cos y) 를 거꾸로 풀어 회전을 구함 (Camera::SetLookAt 과 같음)
 	const float dx = target.x - position.x;
 	const float dy = target.y - position.y;
 	const float dz = target.z - position.z;

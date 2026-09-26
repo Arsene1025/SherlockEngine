@@ -14,24 +14,24 @@ float CalculateDistanceAttenuation(LightData light, float distanceToLight)
 }
 
 // 6단계: 그림자 맵 비교. 광원 클립 좌표 → 텍스처 UV → 3×3 PCF.
-// 1 = 완전히 빛을 받음, 0 = 완전히 그림자. 맵 밖은 빛을 받는 것으로 본다(Border 1).
+// 1 = 완전히 빛을 받음, 0 = 완전히 그림자. 맵 밖은 빛을 받는 것으로 간주함(Border 1).
 float ComputeShadowFactor(float4 shadowPosition)
 {
     if (shadowParams.w < 0.5f)
     {
         return 1.0f;
     }
-    // 직교 투영이라 w = 1 이지만 관례대로 나눈다.
+    // 직교 투영이라 w = 1 이지만 관례대로 나눔.
     const float3 p = shadowPosition.xyz / shadowPosition.w;
-    // NDC x,y ∈ [−1, 1] → UV. D3D 텍스처 공간은 v 가 아래로 자라므로 y 부호를 뒤집는다.
+    // NDC x,y ∈ [−1, 1] → UV. D3D 텍스처 공간은 v 가 아래쪽으로 증가하므로 y 부호를 뒤집음.
     const float2 uv = float2(p.x * 0.5f + 0.5f, -p.y * 0.5f + 0.5f);
     if (p.z > 1.0f)
     {
         return 1.0f;   // 광원 far 밖
     }
-    const float depth = p.z - shadowParams.y;   // 수신자 깊이에서 바이어스를 뺀다(자기 그림자 방지)
+    const float depth = p.z - shadowParams.y;   // 수신자 깊이에서 바이어스를 뺌(자기 그림자 방지)
 
-    // PCF: 이웃 텍셀 9개의 비교 결과(0/1)를 평균 낸다. SampleCmp 는 비교 후 보간까지 하드웨어가 한다.
+    // PCF: 이웃 텍셀 9개의 비교 결과(0/1)를 평균 냄. SampleCmp 는 비교 후 보간까지 하드웨어에서 처리함.
     float lit = 0.0f;
     [unroll]
     for (int dy = -1; dy <= 1; ++dy)
@@ -48,26 +48,26 @@ float ComputeShadowFactor(float4 shadowPosition)
 
 float4 PS_Main(VSOutput input) : SV_TARGET
 {
-    // 재질의 기본색 × 정점 색 × 텍스처. sRGB 텍스처는 샘플 시 하드웨어가 선형으로 풀어 주므로
-    // 여기서부터 모든 색은 선형 공간이다. 백버퍼의 sRGB 뷰가 쓸 때 다시 인코딩한다.
+    // 재질의 기본색 × 정점 색 × 텍스처. sRGB 텍스처는 샘플링할 때 하드웨어가 선형으로 변환해 주므로
+    // 여기서부터 모든 색은 선형 공간임. 백버퍼에 쓸 때 sRGB 뷰가 다시 인코딩함.
     const float4 texel = albedoTexture.Sample(albedoSampler, input.uv);
     const float4 surface = input.col * baseColor * texel;
     const float3 albedo = surface.rgb;
 
-    // 9단계: 알파 컷아웃 (glTF MASK). 나뭇잎·격자처럼 알파로 구멍을 낸 재질.
+    // 9단계: 알파 컷아웃 (glTF MASK). 나뭇잎·격자처럼 알파로 구멍을 낸 재질에 씀.
     if (alphaCutoff > 0.0f)
     {
         clip(surface.a - alphaCutoff);
     }
 
-    // 감마 검증용: 조명 없이 알베도를 그대로 낸다. 128 회색 텍스처가 화면에서 128로 읽혀야 한다.
+    // 감마 검증용: 조명 없이 알베도를 그대로 출력함. 128 회색 텍스처가 화면에서 128로 읽혀야 함.
     if (unlit > 0.5f)
     {
         return float4(albedo, surface.a);
     }
 
-    // 6단계: 노멀 매핑. 탄젠트 공간(T, B, N) 의 노멀 맵 값을 월드 공간으로 되돌린다.
-    // 노멀 맵은 선형 텍스처이고 (0.5, 0.5, 1) 이 "평평". B 는 정점의 손잡이(w)로 복원한다.
+    // 6단계: 노멀 매핑. 탄젠트 공간(T, B, N) 의 노멀 맵 값을 월드 공간으로 변환함.
+    // 노멀 맵은 선형 텍스처이고 (0.5, 0.5, 1) 이 "평평"을 뜻함. B 는 정점 탄젠트의 손잡이(w)로 복원함.
     const float3 geometricNormal = SafeNormalize(input.normal, float3(0.0f, 1.0f, 0.0f));
     const float3 T = SafeNormalize(input.tangent.xyz - geometricNormal * dot(geometricNormal, input.tangent.xyz), float3(1.0f, 0.0f, 0.0f));
     const float3 B = cross(geometricNormal, T) * input.tangent.w;
@@ -80,7 +80,7 @@ float4 PS_Main(VSOutput input) : SV_TARGET
 
     const float shadowFactor = ComputeShadowFactor(input.shadowPosition);
 
-    // 11단계: 디버그 뷰. 에디터의 Render Settings 에서 고른다.
+    // 11단계: 디버그 뷰. 에디터의 Render Settings 에서 고름.
     const int debugView = (int)debugParams.x;
     if (debugView == 1) return float4(albedo, 1.0f);
     if (debugView == 2) return float4(normal * 0.5f + 0.5f, 1.0f);
@@ -101,7 +101,7 @@ float4 PS_Main(VSOutput input) : SV_TARGET
         if (light.type == LIGHT_DIRECTIONAL)
         {
             surfaceToLight = SafeNormalize(-light.direction, float3(0.0f, 1.0f, 0.0f));
-            // 그림자 맵은 방향광 0 하나에 대해서만 만든다.
+            // 그림자 맵은 방향광 0 하나에 대해서만 만듦.
             if (i == 0)
             {
                 attenuation *= shadowFactor;

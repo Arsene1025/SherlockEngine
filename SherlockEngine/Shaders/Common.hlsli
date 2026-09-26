@@ -1,9 +1,9 @@
 // SherlockEngine 공용 셰이더 헤더.
-// 상수버퍼 레이아웃은 Graphics/ShaderConstants.h 와 바이트 단위로 같아야 한다.
-// C++ 쪽 static_assert와 Debug 빌드의 D3DReflect 대조가 이를 검사한다.
+// 상수버퍼 레이아웃은 Graphics/ShaderConstants.h 와 바이트 단위로 같아야 함.
+// C++ 쪽 static_assert와 Debug 빌드의 D3DReflect 대조로 이를 검사함.
 //
-// register(b#, space0) 표기는 SM 5.0 fxc가 error X3721로 거부한다 (5.1 이상만 지원). 원문의
-// "fxc가 무시한다"는 틀렸다. space는 8단계에서 SM 5.1/6.0으로 올릴 때 넣는다.
+// register(b#, space0) 표기는 SM 5.0 fxc가 error X3721로 거부함 (5.1 이상만 지원). 원문의
+// "fxc가 무시한다"는 설명은 틀렸음. space는 8단계에서 SM 5.1/6.0으로 올릴 때 넣음.
 //
 // 레지스터 배정 (6단계, ShaderConstants.h 와 동일):
 //   재질 셋:   t0..t7  s0..s3   — 알베도 t0, 노멀 t1, 재질 샘플러 s0
@@ -17,7 +17,7 @@ static const uint LIGHT_POINT = 1;
 static const uint LIGHT_SPOT = 2;
 static const float EPSILON = 0.0001f;
 
-// 80바이트 = 16바이트 레지스터 5개. float3 뒤에 스칼라를 두어 경계를 맞춘다.
+// 80바이트 = 16바이트 레지스터 5개. float3 뒤에 스칼라를 두어 경계를 맞춤.
 struct LightData
 {
     float3 position;
@@ -36,7 +36,7 @@ struct LightData
     float3 padding;
 };
 
-// b0: 프레임에 한 번. VS와 PS 모두 읽는다. (304바이트)
+// b0: 프레임에 한 번. VS와 PS 모두 읽음. (304바이트)
 cbuffer PerFrame : register(b0)
 {
     matrix view;

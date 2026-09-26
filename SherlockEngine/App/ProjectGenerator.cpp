@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 namespace
 {
 	const wchar_t* kEngineGuid = L"{DCC06A61-7D5A-44F5-A959-3D9367E30EE7}";   // SherlockEngine.vcxproj 의 ProjectGuid
-	const wchar_t* kEditorGuid = L"{6F2E9A10-3C4D-4B5E-9F60-1E2D3C4B5A6A}";   // 생성 프로젝트의 고정 GUID (엔진 솔루션의 것과 다르다)
+	const wchar_t* kEditorGuid = L"{6F2E9A10-3C4D-4B5E-9F60-1E2D3C4B5A6A}";   // 생성 프로젝트의 고정 GUID (엔진 솔루션의 GUID 와 다름)
 	const wchar_t* kGameGuid = L"{7A3F0B21-4D5E-4C6F-A071-2F3E4D5C6B7B}";
 
 	std::wstring Wide(const std::string& utf8)
@@ -38,7 +38,7 @@ namespace
 		return true;
 	}
 
-	// 프로젝트 폴더에서 엔진 저장소로 가는 경로. 같은 드라이브면 상대(..\..\), 아니면 절대.
+	// 프로젝트 폴더에서 엔진 저장소로 가는 경로. 같은 드라이브면 상대 경로(..\..\), 아니면 절대 경로.
 	std::wstring EngineRepoFromProject(const std::wstring& projectRoot, const std::wstring& repo)
 	{
 		std::error_code ec;
@@ -159,7 +159,7 @@ namespace
 		const std::wstring name = Wide(project.GetName());
 		const std::wstring editorName = project.GetEditorProjectName();
 		std::wstringstream s;
-		s << L"\xFEFF";   // BOM: VS 가 만드는 sln 과 같게
+		s << L"\xFEFF";   // BOM: VS 가 만드는 sln 과 같게 맞춤
 		s << L"\r\nMicrosoft Visual Studio Solution File, Format Version 12.00\r\n# Visual Studio Version 17\r\nVisualStudioVersion = 17.0.31903.59\r\nMinimumVisualStudioVersion = 10.0.40219.1\r\n";
 		s << L"Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = \"" << editorName << L"\", \"" << editorName << L".vcxproj\", \"" << kEditorGuid << L"\"\r\nEndProject\r\n";
 		s << L"Project(\"{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}\") = \"" << name << L"\", \"" << name << L".vcxproj\", \"" << kGameGuid << L"\"\r\nEndProject\r\n";
@@ -217,7 +217,7 @@ bool ProjectGenerator::RunMsBuild(const std::wstring& solution, const std::wstri
 
 	std::error_code ec;
 	fs::create_directories(fs::path(logFile).parent_path(), ec);
-	// cmd 로 두 단계: vswhere 가 찾은 MSBuild 경로로 빌드. 창은 띄우지 않는다.
+	// cmd 에서 두 단계로 실행: vswhere 로 MSBuild 경로를 찾고 그 경로로 빌드. 창은 띄우지 않음.
 	std::wstring command = L"cmd.exe /c \"for /f \"usebackq delims=\" %m in (`\"" + vswhere + L"\" -latest -requires Microsoft.Component.MSBuild -find MSBuild\\**\\Bin\\MSBuild.exe`) do \"%m\" \""
 		+ solution + L"\" /t:" + target + L" /p:Configuration=" + configuration + L" /p:Platform=x64 /m /v:m /nologo > \"" + logFile + L"\" 2>&1\"";
 	STARTUPINFOW si = { sizeof(si) };

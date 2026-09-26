@@ -109,7 +109,7 @@ GameObject* Scene::FindObject(const std::string& name)
 
 void Scene::RemoveObject(size_t index)
 {
-	if (index < m_objects.size()) m_objects.erase(m_objects.begin() + index);   // 메시·재질은 씬이 계속 소유한다 (다른 오브젝트가 쓸 수 있다)
+	if (index < m_objects.size()) m_objects.erase(m_objects.begin() + index);   // 메시·재질은 씬이 계속 소유함 (다른 오브젝트가 쓰고 있을 수 있음)
 }
 
 // ------------------------------------------------------------------ 11-C단계: 재생
@@ -130,7 +130,7 @@ void Scene::Update(float dt)
 	if (!m_playing) return;
 	m_playContext.totalTime += dt;
 	m_playContext.cameraDriven = false;
-	// 인덱스 순회: 컴포넌트가 재생 중 오브젝트를 추가해도(벡터 재할당) 안전하다. 삭제는 순회 중에 하지 말 것.
+	// 인덱스로 순회함: 컴포넌트가 재생 중 오브젝트를 추가해도(벡터 재할당) 안전함. 삭제는 순회 중에 하지 말 것.
 	for (size_t i = 0; i < m_objects.size(); ++i)
 	{
 		auto& behaviours = m_objects[i]->GetBehaviours();
@@ -146,7 +146,7 @@ void Scene::Update(float dt)
 			if (behaviour.enabled) behaviour.Update(dt);
 		}
 	}
-	ApplyActiveCamera(dt);   // 모든 컴포넌트가 움직인 뒤 (FollowTarget 이 카메라 오브젝트를 옮긴 뒤) 카메라를 쓴다
+	ApplyActiveCamera(dt);   // 모든 컴포넌트가 움직인 뒤 (FollowTarget 이 카메라 오브젝트를 옮긴 뒤) 카메라에 자세를 적용함
 }
 
 CameraComponent* Scene::FindActiveCamera()
@@ -170,12 +170,12 @@ void Scene::ApplyActiveCamera(float dt)
 	CameraComponent* next = FindActiveCamera();
 	if (camera == nullptr || next == nullptr)
 	{
-		m_activeCamera = nullptr;   // 카메라 오브젝트가 없으면 에디터 카메라 그대로 (cameraDriven 도 false)
+		m_activeCamera = nullptr;   // 카메라 오브젝트가 없으면 에디터 카메라를 그대로 씀 (cameraDriven 도 false)
 		return;
 	}
 	if (next != m_activeCamera)
 	{
-		// 전환. 첫 활성화(재생 시작)는 즉시, 그 뒤는 새 카메라의 blendTime 동안 현재 시점에서 보간.
+		// 카메라 전환. 첫 활성화(재생 시작)는 즉시 전환하고, 그 뒤에는 새 카메라의 blendTime 동안 현재 시점에서 보간함.
 		m_blendFrom.position = camera->GetPosition();
 		m_blendFrom.yaw = camera->GetYaw();
 		m_blendFrom.pitch = camera->GetPitch();
@@ -215,7 +215,7 @@ void Scene::FixedUpdate(float fixedDt)
 		for (size_t b = 0; b < behaviours.size(); ++b)
 		{
 			Behaviour& behaviour = *behaviours[b];
-			if (behaviour.HasStarted() && behaviour.enabled) behaviour.FixedUpdate(fixedDt);   // Start 전에는 돌지 않는다 (Update 가 먼저 Start)
+			if (behaviour.HasStarted() && behaviour.enabled) behaviour.FixedUpdate(fixedDt);   // Start 전에는 호출하지 않음 (Start 는 Update 에서 먼저 호출됨)
 		}
 	}
 }
@@ -230,7 +230,7 @@ void Scene::EndPlay()
 
 size_t Scene::AddModel(Model&& model, const Transform& transform)
 {
-	// 메시·재질을 옮기고 새 포인터를 기억한다. 인스턴스는 인덱스로 참조하므로 순서만 지키면 된다.
+	// 메시·재질을 옮기고 새 포인터를 기억함. 인스턴스는 인덱스로 참조하므로 순서만 지키면 됨.
 	std::vector<const Mesh*> meshes;
 	meshes.reserve(model.meshes.size());
 	for (size_t i = 0; i < model.meshes.size(); ++i)

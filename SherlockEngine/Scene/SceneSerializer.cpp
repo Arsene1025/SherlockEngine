@@ -16,7 +16,7 @@ using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
-	constexpr int kVersion = 2;   // 2: 11-C단계 컴포넌트. 1 파일도 그대로 읽힌다 (components 없음)
+	constexpr int kVersion = 2;   // 2: 11-C단계 컴포넌트 추가. 버전 1 파일도 그대로 읽힘 (components 없음)
 
 	json ToJson(const XMFLOAT3& v) { return json::array({ v.x, v.y, v.z }); }
 	json ToJson(const XMFLOAT4& v) { return json::array({ v.x, v.y, v.z, v.w }); }
@@ -147,7 +147,7 @@ namespace
 		return l;
 	}
 
-	// 11-C단계: 컴포넌트 필드 ↔ JSON. Reflect 가 열거하는 이름·값을 그대로 키로 쓴다.
+	// 11-C단계: 컴포넌트 필드 ↔ JSON 변환. Reflect 가 열거하는 필드 이름을 그대로 JSON 키로 씀.
 	class JsonWriteVisitor : public PropertyVisitor
 	{
 	public:
@@ -182,7 +182,7 @@ namespace
 			c["type"] = behaviour->GetTypeName();
 			c["enabled"] = behaviour->enabled;
 			JsonWriteVisitor writer(c);
-			const_cast<Behaviour&>(*behaviour).Reflect(writer);   // Reflect 는 편집용이라 non-const. 쓰기 방문자는 값을 바꾸지 않는다
+			const_cast<Behaviour&>(*behaviour).Reflect(writer);   // Reflect 는 편집용이라 non-const 임. 쓰기 방문자는 값을 바꾸지 않음
 			components.push_back(c);
 		}
 		return components;
@@ -194,7 +194,7 @@ namespace
 		for (const json& c : components)
 		{
 			Behaviour* behaviour = object.AddBehaviour(c.value("type", ""));
-			if (behaviour == nullptr) continue;   // 모르는 타입은 경고 뒤 건너뜀 (레지스트리)
+			if (behaviour == nullptr) continue;   // 모르는 타입은 레지스트리가 경고를 남긴 뒤 건너뜀
 			behaviour->enabled = c.value("enabled", true);
 			JsonReadVisitor reader(c);
 			behaviour->Reflect(reader);
@@ -341,7 +341,7 @@ bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager&
 
 	scene.Clear();
 
-	// ---- 메시. 모델 메시는 AssetManager 에서 (이미지도 같이) ----
+	// ---- 메시. 모델 메시는 AssetManager 에서 가져옴 (이미지도 함께) ----
 	std::vector<const Mesh*> meshes;
 	std::vector<std::wstring> loadedModels;
 	for (const json& j : root.value("meshes", json::array()))

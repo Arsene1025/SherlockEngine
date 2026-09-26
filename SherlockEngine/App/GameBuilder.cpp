@@ -51,7 +51,7 @@ namespace
 		return true;
 	}
 
-	// 시작 씬이 참조하는 에셋: 모델 경로의 첫 두 단계(Models\Sponza), 재질 텍스처 이름.
+	// 시작 씬이 참조하는 에셋을 수집함: 모델 경로의 앞 두 단계(Models\Sponza)와 재질의 텍스처 이름.
 	void CollectReferences(const fs::path& scenePath, std::set<std::wstring>& modelFolders, std::set<std::wstring>& textures)
 	{
 		std::ifstream file(scenePath, std::ios::binary);
@@ -81,7 +81,7 @@ namespace
 		}
 	}
 
-	// 상대 경로의 에셋 폴더를 프로젝트 → 엔진 순으로 찾아 복사 (프로젝트 것이 이긴다).
+	// 상대 경로의 에셋 폴더를 프로젝트 → 엔진 순으로 찾아 복사함 (겹치면 프로젝트 것이 우선함).
 	bool CopyAssetTree(const std::wstring& relative, const fs::path& outAssets, int& count, std::string& error)
 	{
 		bool any = false;
@@ -129,7 +129,7 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 	if (!Paths::HasProject()) { result.message = "no project is open"; return result; }
 
 	// 런타임 exe: 이 에디터 옆의 <프로젝트>.exe (프로젝트 솔루션) 또는 SherlockGame.exe (엔진 솔루션의 Sample).
-	// Release 를 켰으면 먼저 빌드하고 Release 폴더에서 가져온다.
+	// Release 를 켰으면 먼저 빌드하고 Release 폴더에서 가져옴.
 	const std::wstring projectExe = Wide(options.projectName) + L".exe";
 	std::wstring runtimeDir = Paths::GetExecutableDir();
 	if (options.releaseBuild)
@@ -144,7 +144,7 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 		}
 		Log::Info("게임 빌드: MSBuild Release|x64 (%s) …", Utf8(target).c_str());
 		if (!ProjectGenerator::RunMsBuild(solution, target, L"Release", GetBuildRoot() + L"msbuild.log", result.message)) return result;
-		// 이 exe 가 x64\Debug 또는 Binaries\Debug 에 있으면 그 옆의 Release
+		// 이 exe 가 x64\Debug 또는 Binaries\Debug 에 있으면 같은 위치의 Release 폴더를 씀
 		const size_t debug = runtimeDir.rfind(L"\\Debug\\");
 		if (debug != std::wstring::npos) runtimeDir = runtimeDir.substr(0, debug) + L"\\Release\\";
 	}
@@ -153,7 +153,7 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 	if (!fs::exists(runtimeExe, ec)) runtimeExe = fs::path(runtimeDir) / L"SherlockGame.exe";
 	if (!fs::exists(runtimeExe, ec) && !options.releaseBuild && !options.projectSolution.empty() && GetFileAttributesW(options.projectSolution.c_str()) != INVALID_FILE_ATTRIBUTES)
 	{
-		// 프로젝트 솔루션의 게임 타깃이 아직 빌드되지 않았다 (에디터만 빌드한 경우). Debug 로 한 번 빌드해 둔다.
+		// 프로젝트 솔루션의 게임 타깃이 아직 빌드되지 않았음 (에디터만 빌드한 경우). Debug 로 한 번 빌드해 둠.
 		Log::Info("게임 빌드: %s.exe 가 없어 MSBuild Debug|x64 (%s) 를 먼저 …", options.projectName.c_str(), options.projectName.c_str());
 		if (!ProjectGenerator::RunMsBuild(options.projectSolution, Wide(options.projectName), L"Debug", GetBuildRoot() + L"msbuild.log", result.message)) return result;
 		runtimeExe = fs::path(runtimeDir) / projectExe;
@@ -175,7 +175,7 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 	CopyTree(fs::path(runtimeDir) / L"Shaders", out / L"Shaders", result.filesCopied, result.message, false);
 	if (!CopyTree(fs::path(Paths::GetEngineRoot()) / L"Shaders", out / L"Shaders", result.filesCopied, result.message)) return result;
 
-	// 3. 에셋: 엔진 콘텐츠 위에 프로젝트 콘텐츠를 덮는다 (런타임의 해석 순서와 같다). 패키지 안에서는 둘이 한 폴더다.
+	// 3. 에셋: 엔진 콘텐츠 위에 프로젝트 콘텐츠를 덮어씀 (런타임의 경로 해석 순서와 같음). 패키지 안에서는 둘이 한 폴더로 합쳐짐.
 	const fs::path outAssets = out / L"Assets";
 	const fs::path scenePath = fs::path(Paths::GetAssetRoot()) / L"Scenes" / Wide(options.startScene);
 	if (!fs::exists(scenePath, ec)) { result.message = "start scene not found: " + options.startScene; return result; }
@@ -197,10 +197,10 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 			const std::wstring found = Paths::GetAssetPath(texture.c_str());
 			if (fs::exists(found, ec) && !CopyOne(found, outAssets / texture, result.filesCopied, result.message)) return result;
 		}
-		CopyAssetTree(L"Textures", outAssets, result.filesCopied, result.message);   // 이름만 있는 기본 텍스처(bumps_normal 등)를 위해 전부
+		CopyAssetTree(L"Textures", outAssets, result.filesCopied, result.message);   // 이름만으로 참조되는 기본 텍스처(bumps_normal 등)를 위해 전부 복사
 	}
 
-	// 4. engine.ini: [game] startScene / title 을 빌드 사본에 쓴다 (원본은 건드리지 않는다).
+	// 4. engine.ini: [game] startScene / title 을 빌드 사본에 씀 (원본은 건드리지 않음).
 	{
 		const fs::path ini = outAssets / L"Config" / L"engine.ini";
 		std::ifstream in(ini, std::ios::binary);
@@ -209,9 +209,9 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 		text += "\r\n; --- Build Game (" + options.name + ") ---\r\n[game]\r\nstartScene = " + options.startScene + "\r\ntitle = " + options.name + "\r\n";
 		fs::create_directories(ini.parent_path(), ec);
 		std::ofstream outIni(ini, std::ios::binary | std::ios::trunc);
-		outIni << text;   // 같은 키가 앞에 있어도 마지막 값이 이긴다 (Config 는 키 → 값 맵)
+		outIni << text;   // 같은 키가 앞에 있어도 마지막 값이 적용됨 (Config 는 키 → 값 맵)
 	}
-	// 5. 프로젝트 파일 사본: 런타임이 exe 옆에서 찾아 프로젝트 루트 = exe 폴더로 잡는다 (engineRoot 없음 → 전부 exe 옆).
+	// 5. 프로젝트 파일 사본: 런타임이 exe 옆에서 이 파일을 찾아 exe 폴더를 프로젝트 루트로 잡음 (engineRoot 가 비어 있으므로 모든 경로가 exe 옆을 가리킴).
 	{
 		std::ofstream sherlock(out / (Wide(options.name) + L".sherlock"), std::ios::binary | std::ios::trunc);
 		sherlock << "{\n  \"name\": \"" << options.name << "\",\n  \"startScene\": \"" << options.startScene << "\",\n  \"engineRoot\": \"\",\n  \"format\": 1\n}\n";
