@@ -1,5 +1,8 @@
 ﻿#pragma once
 #include <cstdint>
+#include <compare>       // C++20: operator<=> 기본 생성
+#include <concepts>      // C++20: ResourceHandle 콘셉트
+#include <type_traits>   // std::is_trivially_copyable_v
 
 // GPU 리소스 핸들.
 //
@@ -22,11 +25,23 @@ struct Handle
 
 	bool IsValid() const { return index != UINT32_MAX && generation != 0; }
 
-	bool operator==(const Handle& other) const
-	{
-		return index == other.index && generation == other.generation;
-	}
-	bool operator!=(const Handle& other) const { return !(*this == other); }
+	// C++20 (2026-09-28): 비교 연산자를 = default 로 생성함.
+	// <=> 를 default 로 선언하면 == 도 함께 암묵 선언되고, != / < / <= / > / >= 는 컴파일러가
+	// 이 둘에서 재작성(rewritten comparison)함. 이전에는 == 와 != 를 손으로 썼음.
+	// 멤버 순서(index → generation)의 사전식 비교이므로 std::map 키나 정렬에도 쓸 수 있음.
+	auto operator<=>(const Handle&) const = default;
+};
+
+// C++20 (2026-09-28): "핸들처럼 생긴 타입"의 요구 조건. ResourcePool<T, HandleT> 의 HandleT 를 제약함.
+// 이전에는 template <typename HandleT> 라 잘못된 타입을 넣으면 풀 내부 어딘가에서 알 수 없는 에러가 났음.
+// 이제는 인스턴스화 지점에서 "ResourceHandle 을 만족하지 않음"이라고 바로 알려 줌.
+template <typename T>
+concept ResourceHandle = requires(const T h)
+{
+	{ h.index } -> std::convertible_to<uint32_t>;
+	{ h.generation } -> std::convertible_to<uint32_t>;
+	{ h.IsValid() } -> std::same_as<bool>;
+	requires std::is_trivially_copyable_v<T>;   // 핸들은 값으로 복사해 넘기는 작은 타입이어야 함
 };
 
 struct ShaderTag;
@@ -44,3 +59,5 @@ using TextureHandle = Handle<TextureTag>;
 using SamplerHandle = Handle<SamplerTag>;               // 5단계
 using BindingLayoutHandle = Handle<BindingLayoutTag>;   // 4단계: D3D12 루트 시그니처에 해당
 using ResourceSetHandle = Handle<ResourceSetTag>;       // 4단계: 레이아웃에 맞는 핸들 묶음
+
+static_assert(ResourceHandle<BufferHandle>, "Handle<Tag> 는 ResourceHandle 콘셉트를 만족해야 함");

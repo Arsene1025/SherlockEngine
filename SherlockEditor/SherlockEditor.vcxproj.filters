@@ -10,7 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EditorMain.cpp" />
-    <ClCompile Include="..\SherlockEngine\App\TestApp.cpp">
+    <ClCompile Include="..\SherlockEngine\App\EditorApp.cpp">
       <Filter>App</Filter>
     </ClCompile>
     <ClCompile Include="..\SherlockEngine\App\Editor.cpp">
@@ -37,7 +37,7 @@
     <ClCompile Include="..\SherlockEngine\pch.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\SherlockEngine\App\TestApp.h">
+    <ClInclude Include="..\SherlockEngine\App\EditorApp.h">
       <Filter>App</Filter>
     </ClInclude>
     <ClInclude Include="..\SherlockEngine\App\Editor.h">

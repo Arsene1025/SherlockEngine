@@ -1,4 +1,5 @@
 #pragma once
+#include <concepts>   // C++20: std::derived_from
 #include <memory>
 #include <string>
 #include <vector>
@@ -64,7 +65,9 @@ public:
 	void RemoveBehaviour(size_t index) { if (index < behaviours.size()) behaviours.erase(behaviours.begin() + index); }
 	std::vector<std::unique_ptr<Behaviour>>& GetBehaviours() { return behaviours; }
 	const std::vector<std::unique_ptr<Behaviour>>& GetBehaviours() const { return behaviours; }
-	template <typename T> T* GetBehaviour()
+	// C++20 (2026-09-28): T 는 Behaviour 파생 클래스여야 함 (std::derived_from 콘셉트). 이전에는 무엇이든 받아
+	// dynamic_cast 가 항상 nullptr 를 돌려주는 조용한 실수가 가능했음. 지금은 GetBehaviour<Transform>() 같은 호출이 컴파일되지 않음.
+	template <std::derived_from<Behaviour> T> T* GetBehaviour()
 	{
 		for (auto& b : behaviours) if (T* typed = dynamic_cast<T*>(b.get())) return typed;
 		return nullptr;

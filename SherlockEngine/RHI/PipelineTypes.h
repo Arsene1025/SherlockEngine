@@ -11,6 +11,17 @@
 // 이 항목 없이는 만들 수 없고, 나중에 추가하면 호출 코드를 전부 바꿔야 함.
 //
 // 모든 열거형은 uint8_t임. Desc를 해시 키로 쓰므로 크기가 작을수록 좋음.
+//
+// C++20 (2026-09-28): 하위 Desc(Rasterizer/DepthStencil/RenderTargetBlend/VertexAttribute)의
+// operator== 는 `= default` 로 생성함. 멤버를 하나씩 나열한 비교 함수를 PipelineTypes.cpp 에
+// 손으로 쓰던 것을 대체함 — 필드를 추가하면 비교에서 빠뜨리는 실수가 없어짐.
+// PipelineStateDesc 자체는 default 로 만들 수 없음: 배열을 "쓰는 만큼(rtvCount 등)"만 비교해야 하기 때문.
+// != 는 C++20 재작성 규칙으로 == 에서 자동으로 만들어지므로 따로 선언하지 않음.
+//
+// 호출 코드는 C++20 지정 초기화(designated initializer)로 채움:
+//   TextureDesc d{ .width = 2048, .height = 2048, .format = Format::D32_FLOAT, .bindFlags = ... };
+// 지정 초기화는 선언 순서를 따라야 하므로, 이 헤더의 필드 순서를 바꾸면 호출 코드가 컴파일되지 않음.
+// 그것이 의도임 — D3D12 desc 처럼 "필드 순서가 계약"이 됨.
 
 enum class Format : uint8_t
 {
@@ -50,6 +61,10 @@ struct RasterizerDesc
 	int32_t depthBias = 0;
 	float depthBiasClamp = 0.0f;
 	float slopeScaledDepthBias = 0.0f;
+
+	// float 멤버는 값 비교임: -0.0f == 0.0f (해시도 -0.0f 를 0.0f 로 정규화하므로 일관됨).
+	// NaN 은 자기 자신과도 다르지만 깊이 바이어스에 NaN 을 넣는 경우는 없음.
+	bool operator==(const RasterizerDesc&) const = default;
 };
 
 struct DepthStencilDesc
@@ -61,6 +76,8 @@ struct DepthStencilDesc
 	uint8_t stencilReadMask = 0xFF;
 	uint8_t stencilWriteMask = 0xFF;
 	// 스텐실 연산(StencilOp)은 이를 쓰는 단계가 오면 추가함.
+
+	bool operator==(const DepthStencilDesc&) const = default;
 };
 
 struct RenderTargetBlendDesc
@@ -73,6 +90,8 @@ struct RenderTargetBlendDesc
 	BlendFactor dstAlpha = BlendFactor::Zero;
 	BlendOp alphaOp = BlendOp::Add;
 	uint8_t writeMask = 0xF;   // RGBA
+
+	bool operator==(const RenderTargetBlendDesc&) const = default;
 };
 
 constexpr uint32_t kMaxRenderTargets = 8;
@@ -93,6 +112,8 @@ struct VertexAttribute
 	Format format = Format::Unknown;
 	uint16_t offset = 0;      // 정점 구조체 안의 바이트 오프셋 (offsetof)
 	uint8_t inputSlot = 0;
+
+	bool operator==(const VertexAttribute&) const = default;
 };
 
 struct VertexLayoutDesc
@@ -125,9 +146,9 @@ struct PipelineStateDesc
 
 	// 필드 단위 해시·비교. 구조체를 통째로 memcmp/memcpy하면 패딩 바이트가
 	// 섞여 같은 내용이 다른 키가 됨. PipelineTypes.cpp 참고.
+	// operator!= 는 선언하지 않음 — C++20 이 == 에서 재작성함.
 	uint64_t Hash() const;
 	bool operator==(const PipelineStateDesc& other) const;
-	bool operator!=(const PipelineStateDesc& other) const { return !(*this == other); }
 };
 
 struct PipelineStateDescHasher

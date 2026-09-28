@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <utility>
 #include <vector>
+#include "RHI/Handle.h"   // ResourceHandle 콘셉트
 
 // 세대(generation) 카운터가 있는 슬롯 풀.
 //
@@ -12,7 +13,11 @@
 //
 // 빈 슬롯은 free list로 재사용함. generation 0은 빈 핸들로 예약되어 있으므로
 // 세대는 1에서 시작하고, 값이 넘쳐 0이 되면 0을 건너뜀.
-template <typename T, typename HandleT>
+//
+// C++20 (2026-09-28): HandleT 는 ResourceHandle 콘셉트(Handle.h)로 제약함. 요구 조건은
+// index / generation / IsValid() 와 trivially copyable. 조건을 어기는 타입을 넣으면
+// 풀 본문이 아니라 ResourcePool<...> 를 적은 줄에서 에러가 남.
+template <typename T, ResourceHandle HandleT>
 class ResourcePool
 {
 public:

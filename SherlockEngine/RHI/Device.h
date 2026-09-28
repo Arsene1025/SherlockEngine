@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
 #include <cstddef>
+#include <span>     // C++20: 배열 인자는 (포인터, 개수) 대신 std::span 으로 받음
 #include <vector>
 #include "RHI/Handle.h"
 #include "RHI/PipelineTypes.h"
@@ -56,7 +57,9 @@ namespace RHI
 
 		// 10단계: 가장 최근에 완료된 프레임의 타임스탬프. ticks[i] = 그 프레임에서 slot i 에 기록한 값 (기록 안 했으면 0),
 		// frequency = 초당 틱. 아직 어떤 프레임도 끝나지 않았으면 false. 호출해도 CPU 가 대기하지 않음 (D3D12: 펜스가 이미 지난 슬롯, D3D11: 2프레임 전 쿼리).
-		virtual bool GetTimestampResults(uint64_t* ticks, uint32_t count, uint64_t& frequency, uint64_t& frameNumber) = 0;
+		// C++20 (2026-09-28): (uint64_t*, count) → std::span. 호출자의 C 배열이 크기와 함께 넘어오므로 count 를 따로 적을 일이 없음.
+		// ticks.size() 가 kMaxTimestamps 보다 크면 kMaxTimestamps 개까지만 채움.
+		virtual bool GetTimestampResults(std::span<uint64_t> ticks, uint64_t& frequency, uint64_t& frameNumber) = 0;
 
 		// 11단계: 다음 EndFrame 에서 Present 직전의 백버퍼를 CPU 로 읽음 (스크린샷). 동기 방식: 그 프레임의 EndFrame 이 GPU 를 기다림.
 		// TakeReadbackResult 는 준비된 결과(RGBA8, 위→아래, 행 간격 = width*4)를 한 번 돌려주고 비움.
@@ -74,9 +77,10 @@ namespace RHI
 		// Dynamic: 이 프레임 슬롯의 내용을 통째로 교체 (size ≤ desc.size). Default: 전체 크기로만 갱신.
 		virtual void UpdateBuffer(BufferHandle handle, const void* data, uint32_t size) = 0;
 
-		// subresources 는 밉 레벨마다 하나(desc.mipLevels 개). nullptr 이면 빈 텍스처.
+		// subresources 는 밉 레벨마다 하나(desc.mipLevels 개). 비어 있으면(기본값) 빈 텍스처.
 		// DepthStencil | ShaderResource 조합(그림자 맵)은 백엔드가 TYPELESS + 포맷별 뷰로 만듦.
-		virtual TextureHandle CreateTexture(const TextureDesc& desc, const TextureSubresource* subresources = nullptr, uint32_t subresourceCount = 0) = 0;
+		// C++20 (2026-09-28): (포인터, 개수) → std::span. std::vector<TextureSubresource> 를 그대로 넘김.
+		virtual TextureHandle CreateTexture(const TextureDesc& desc, std::span<const TextureSubresource> subresources = {}) = 0;
 		virtual void DestroyTexture(TextureHandle handle) = 0;
 		// Resize 할 때마다 새로 만들어짐. 프레임을 넘겨 보관하지 말 것.
 		virtual TextureHandle GetBackBuffer() const = 0;

@@ -3,9 +3,10 @@
 #include "Graphics/Model.h"   // ModelStats
 #include "App/Editor.h"
 
-// 테스트 앱 (10단계부터 "엔진 위의 앱"). 씬 구성·카메라 컨트롤러·단축키·패널만 가짐.
+// 에디터 앱 (SherlockEditor.exe). 10단계부터 "엔진 위의 앱"이며, GameApp(SherlockGame.exe)과 짝을 이룸. 씬 구성·카메라 컨트롤러·단축키·패널만 가짐.
+// 2026-09-28 TestApp → EditorApp 으로 개명: 저장·불러오기 단위는 프로젝트(11-E)와 씬(11)이 맡으므로, 이 클래스는 에디터 실행 파일 그 자체임.
 // Device·Renderer·Scene·Input·Time 은 GetEngine() 으로 접근함. 렌더 순서는 Engine 이 정함.
-class TestApp : public AppBase
+class EditorApp : public AppBase
 {
 public:
     // 9단계: 씬 세 가지. F11 로 순환하며, 설정 engine.scene 또는 실행 인자 --scene=demo|helmet|sponza 로 고름.
@@ -18,7 +19,7 @@ public:
         File        // 11단계: JSON 에서 로드한 씬 (F11 순환에는 들어가지 않음)
     };
 
-    TestApp();
+    EditorApp();
 
 protected:
     virtual bool OnInitialize() override;

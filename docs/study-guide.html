@@ -178,8 +178,8 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <thead><tr><th>스텝</th><th>주제</th><th>먼저 읽을 문서</th><th>함께 볼 소스</th><th>시간</th></tr></thead>
   <tbody>
     <tr><td class="n">0</td><td>지도 펴기</td><td>README · rendering-analysis <a href="rendering-analysis.html#s1">§1</a> · <a href="rendering-analysis.html#s9">§9 단계 구성 표</a></td><td>폴더 트리, <code>vcpkg.json</code>, <code>Assets/Config/engine.ini</code></td><td class="n">1h</td></tr>
-    <tr><td class="n">1</td><td>앱 골격과 프레임 루프</td><td><a href="phase-10.html#s5">phase-10 §5</a> · <a href="phase-0.html">phase-0</a> · rendering-analysis <a href="rendering-analysis.html#s3">§3</a>·<a href="rendering-analysis.html#s4">§4</a></td><td><code>SherlockEditor/EditorMain.cpp</code> · <code>App/AppBase</code> · <code>Core/Engine</code> · <code>App/TestApp.h</code> · <code>Core/Config</code> · <code>Core/Time</code> · <code>Core/Paths</code></td><td class="n">3h</td></tr>
-    <tr><td class="n">2</td><td>입력과 카메라</td><td><a href="phase-2.html">phase-2</a></td><td><code>Core/Input</code> · <code>Scene/Camera</code> · <code>Scene/Transform</code> · <code>TestApp::UpdateCamera</code></td><td class="n">2h</td></tr>
+    <tr><td class="n">1</td><td>앱 골격과 프레임 루프</td><td><a href="phase-10.html#s5">phase-10 §5</a> · <a href="phase-0.html">phase-0</a> · rendering-analysis <a href="rendering-analysis.html#s3">§3</a>·<a href="rendering-analysis.html#s4">§4</a></td><td><code>SherlockEditor/EditorMain.cpp</code> · <code>App/AppBase</code> · <code>Core/Engine</code> · <code>App/EditorApp.h</code> · <code>Core/Config</code> · <code>Core/Time</code> · <code>Core/Paths</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">2</td><td>입력과 카메라</td><td><a href="phase-2.html">phase-2</a></td><td><code>Core/Input</code> · <code>Scene/Camera</code> · <code>Scene/Transform</code> · <code>EditorApp::UpdateCamera</code></td><td class="n">2h</td></tr>
     <tr><td class="n">3</td><td>핸들·Desc·PSO (RHI 어휘)</td><td><a href="phase-1.html">phase-1</a> · <a href="phase-3.html">phase-3 §2~§6</a> · <a href="rendering-analysis.html#d21">D21</a>·<a href="rendering-analysis.html#d22">D22</a></td><td><code>RHI/Handle.h</code> · <code>RHI/ResourcePool.h</code> · <code>RHI/PipelineTypes.h</code> · <code>RHI/ResourceDesc.h</code> · <code>RHI/D3D11/PipelineState*</code></td><td class="n">4h</td></tr>
     <tr><td class="n">4</td><td>씬과 렌더러</td><td><a href="phase-3.html#s7">phase-3 §7</a> · <a href="rendering-analysis.html#d2">D2</a>·<a href="rendering-analysis.html#d3">D3</a></td><td><code>Scene/Scene.h</code> · <code>Scene/GameObject.h</code> · <code>Graphics/Mesh.h</code> · <code>Graphics/Renderer.h</code> · <code>Graphics/ShaderConstants.h</code> ↔ <code>Shaders/Common.hlsli</code></td><td class="n">3h</td></tr>
     <tr><td class="n">5</td><td>바인딩 레이아웃과 재질</td><td><a href="phase-4.html">phase-4</a></td><td><code>RHI/BindingTypes.h</code> · <code>Scene/Material.h</code> · <code>Graphics/VertexTypes.h</code> · <code>RHI/ShaderCompiler.h</code> · <code>Renderer::GetOrCreateGpuMaterial / GetPipelineFor / ValidateBindings</code></td><td class="n">3h</td></tr>
@@ -189,9 +189,9 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
     <tr><td class="n">9</td><td>D3D12 백엔드로 검증</td><td><a href="phase-8.html">phase-8</a></td><td><code>RHI/D3D12/*</code> — D3D11 구현과 같은 함수를 나란히 놓고 비교</td><td class="n">5h</td></tr>
     <tr><td class="n">10</td><td>모델 로딩</td><td><a href="phase-9.html">phase-9</a> · <a href="rendering-analysis.html#d10">D10</a></td><td><code>Graphics/Model</code> · <code>Scene::AddModel</code> · <code>Renderer::BuildDrawList</code>의 서브메시 · <code>Assets/Models/</code></td><td class="n">2h</td></tr>
     <tr><td class="n">11</td><td>엔진 코어 나머지</td><td><a href="phase-10.html">phase-10 §2·§6~§9</a> · <a href="rendering-analysis.html#d16">D16</a>·<a href="rendering-analysis.html#d19">D19</a></td><td><code>Core/Log</code> · <code>Core/Profiler</code> · <code>Core/AssetManager</code> · <code>App/DebugUI</code></td><td class="n">2h</td></tr>
-    <tr><td class="n">12</td><td>에디터와 씬 직렬화</td><td><a href="phase-11.html">phase-11</a></td><td><code>App/Editor</code> · <code>Scene/SceneSerializer</code> · <code>Renderer::SetSceneTarget</code> · <code>TestApp</code> 자동 검증 · <code>Projects/Sample/Assets/Scenes/floor_cube.json</code></td><td class="n">3h</td></tr>
-    <tr><td class="n">12-B</td><td>콘텐츠 브라우저와 드래그 앤 드롭</td><td><a href="phase-11b.html">phase-11b</a></td><td><code>App/ContentBrowser</code> · <code>Editor::DrawSceneView</code>의 드롭 타깃 · <code>RaycastScene</code> · <code>TestApp::PlaceModel</code> · <code>TextureLoader::LoadThumbnail</code></td><td class="n">2h</td></tr>
-    <tr><td class="n">12-C</td><td>재생 모드와 C++ 컴포넌트</td><td><a href="phase-11c.html">phase-11c</a></td><td><code>Scene/Behaviour.h</code> · <code>Scene/CameraComponent.h</code> · <code>Scene::BeginPlay/Update/ApplyActiveCamera</code> · <code>Game/Components/*.cpp</code> · <code>Projects/Sample/Scripts/*.cpp</code> · <code>TestApp::StartPlay/StopPlay</code> · <code>SceneSerializer</code>의 components · <code>Editor::DrawComponents</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">12</td><td>에디터와 씬 직렬화</td><td><a href="phase-11.html">phase-11</a></td><td><code>App/Editor</code> · <code>Scene/SceneSerializer</code> · <code>Renderer::SetSceneTarget</code> · <code>EditorApp</code> 자동 검증 · <code>Projects/Sample/Assets/Scenes/floor_cube.json</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">12-B</td><td>콘텐츠 브라우저와 드래그 앤 드롭</td><td><a href="phase-11b.html">phase-11b</a></td><td><code>App/ContentBrowser</code> · <code>Editor::DrawSceneView</code>의 드롭 타깃 · <code>RaycastScene</code> · <code>EditorApp::PlaceModel</code> · <code>TextureLoader::LoadThumbnail</code></td><td class="n">2h</td></tr>
+    <tr><td class="n">12-C</td><td>재생 모드와 C++ 컴포넌트</td><td><a href="phase-11c.html">phase-11c</a></td><td><code>Scene/Behaviour.h</code> · <code>Scene/CameraComponent.h</code> · <code>Scene::BeginPlay/Update/ApplyActiveCamera</code> · <code>Game/Components/*.cpp</code> · <code>Projects/Sample/Scripts/*.cpp</code> · <code>EditorApp::StartPlay/StopPlay</code> · <code>SceneSerializer</code>의 components · <code>Editor::DrawComponents</code></td><td class="n">3h</td></tr>
     <tr><td class="n">12-D</td><td>게임 빌드와 런타임 분리</td><td><a href="phase-11d.html">phase-11d</a></td><td><code>SherlockEngine.sln</code>의 세 프로젝트 · <code>App/GameApp</code> · <code>App/GameBuilder</code> · <code>AppBase::WantsGUI</code> · <code>&lt;프로젝트&gt;\Build\&lt;이름&gt;\</code></td><td class="n">1h</td></tr>
     <tr><td class="n">12-E</td><td>프로젝트 시스템</td><td><a href="phase-11e.html">phase-11e</a></td><td><code>Core/Project</code> · <code>Core/Paths</code> 세 루트 · <code>App/ProjectGenerator</code> · <code>App/ProjectLauncher</code> · <code>Projects\Sample</code> · 생성된 <code>&lt;이름&gt;.sln</code></td><td class="n">1h</td></tr>
     <tr><td class="n">13</td><td>되돌아보기</td><td>rendering-analysis <a href="rendering-analysis.html#s7">§7</a> · <a href="rendering-analysis.html#applied">적용 기록</a> · <a href="rendering-analysis.html#s8">§8 D1~D22</a> · <a href="rendering-analysis.html#s10">§10 부록</a> · <code>logs/*.md</code></td><td>다시 <code>Graphics/Renderer.cpp</code> 전체를 위에서 아래로</td><td class="n">3h</td></tr>
@@ -203,7 +203,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <!-- lanes -->
   <rect class="box" x="20" y="20" width="200" height="70" rx="8"/>
   <text x="34" y="44" font-weight="600">App/</text>
-  <text class="s" x="34" y="64">AppBase · TestApp · Editor · DebugUI</text>
+  <text class="s" x="34" y="64">AppBase · EditorApp · Editor · DebugUI</text>
   <circle class="badge" cx="196" cy="36" r="11"/><text class="badge" x="190" y="40">1</text>
   <circle class="badge" cx="170" cy="36" r="11"/><text class="badge" x="162" y="40">12</text>
 
@@ -291,7 +291,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
     <tr><td><code>Graphics/D3D11/ShaderCompiler.cpp</code></td><td><code>RHI/DXBC/ShaderCompiler.cpp</code> (선언은 <code>RHI/ShaderCompiler.h</code>)</td><td>7 → 8</td></tr>
     <tr><td><code>Graphics/D3D11/ImGuiBackend</code></td><td><code>RHI::Device</code>의 <code>InitImGui / RenderImGui …</code> 어댑터</td><td>7</td></tr>
     <tr><td><code>GameTimer</code>, <code>Update(float dt)</code></td><td><code>Core/Time</code>(고정 스텝 누적기) — <code>GameTimer</code>는 남아 있지만 앱 골격은 <code>Time</code>을 씁니다</td><td>10</td></tr>
-    <tr><td>TestApp이 Device·Renderer·Scene을 직접 소유</td><td><code>Core/Engine</code>이 소유, TestApp은 <code>GetEngine()</code>으로 접근</td><td>10</td></tr>
+    <tr><td>TestApp(현 EditorApp)이 Device·Renderer·Scene을 직접 소유</td><td><code>Core/Engine</code>이 소유, EditorApp은 <code>GetEngine()</code>으로 접근</td><td>10</td></tr>
     <tr><td><code>DebugUI</code> 패널 안의 조명·재질 편집</td><td><code>App/Editor</code>의 Lights·Materials·Inspector 창 (DebugUI는 남아 있음)</td><td>11</td></tr>
   </tbody>
 </table></div>
@@ -334,7 +334,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>SherlockEditor/EditorMain.cpp</code> → <code>App/AppBase.h</code>(헤더 주석) → <code>AppBase.cpp</code>의 <code>Initialize</code>·<code>Run</code>·<code>MsgProc</code></li>
         <li><code>Core/Engine.h</code> 전체(멤버 선언 순서 = 생성 순서 주석) → <code>Engine.cpp</code>의 <code>Initialize</code>·<code>BeginFrame</code>·<code>Render</code>·<code>EndFrame</code></li>
-        <li><code>App/TestApp.h</code>만 — <code>OnInitialize / OnUpdate / OnFixedUpdate / OnGUI</code> 네 훅과 자동 검증 인자 목록. .cpp는 아직</li>
+        <li><code>App/EditorApp.h</code>만 — <code>OnInitialize / OnUpdate / OnFixedUpdate / OnGUI</code> 네 훅과 자동 검증 인자 목록. .cpp는 아직</li>
         <li><code>Core/Config.h</code>, <code>Core/Time.h</code>, <code>Core/Paths.h</code>, <code>pch.h</code>(D3D 헤더가 없음을 확인)</li>
       </ul></div>
     </div>
@@ -356,7 +356,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
         <li><code>Core/Input.h/.cpp</code> — 메시지 → 프레임 상태(<code>IsKeyPressed</code> vs <code>IsKeyDown</code>), <code>EndFrame</code>이 델타를 지우는 자리</li>
         <li><code>Scene/Camera.h/.cpp</code> — <code>Rotate</code>·<code>Move</code>·뷰행렬 계산, Debug에서 <code>LookToLH</code>와 대조하는 검사</li>
         <li><code>Scene/Transform.h/.cpp</code> — 월드행렬 = S·R·T</li>
-        <li><code>App/TestApp.cpp</code>의 <code>UpdateCamera</code>·<code>BeginLook</code>·<code>EndLook</code>·<code>OnFocusLost</code>, <code>AppBase::MsgProc</code>의 마우스 메시지 분기</li>
+        <li><code>App/EditorApp.cpp</code>의 <code>UpdateCamera</code>·<code>BeginLook</code>·<code>EndLook</code>·<code>OnFocusLost</code>, <code>AppBase::MsgProc</code>의 마우스 메시지 분기</li>
       </ul></div>
     </div>
     <div class="check"><b>확인 포인트</b> — WASD/QE와 우클릭 드래그로 구 주위를 돈다. Alt-Tab 후 돌아와도 키가 고착되지 않는다. ImGui 창 위에서 드래그하면 카메라가 돌지 않는다(<code>WantCaptureMouse</code>). <code>images/2026-09-23-phase2-*.png</code>와 비교.</div>
@@ -536,7 +536,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
         <li><code>Graphics/Model.h</code> → <code>Model.cpp</code>의 cgltf 순회와 좌표 변환</li>
         <li><code>Scene.cpp</code>의 <code>AddModel</code>·<code>AddModelImages</code>·<code>Clear</code>, <code>Renderer::InvalidateScene</code></li>
         <li><code>Renderer.cpp</code>의 <code>BuildDrawList</code>(서브메시 범위)와 <code>GetOrCreateGpuMesh</code>(R16/R32 선택)</li>
-        <li><code>TestApp.cpp</code>의 <code>LoadSceneMode</code>·<code>BuildModelScene</code></li>
+        <li><code>EditorApp.cpp</code>의 <code>LoadSceneMode</code>·<code>BuildModelScene</code></li>
       </ul></div>
     </div>
     <div class="check"><b>확인 포인트</b> — F11로 데모 → 헬멧 → Sponza를 순환한다. 헬멧의 노멀 매핑을 F9로 껐다 켜 본다. Stats의 triangles·재질 수가 문서의 숫자(Sponza 재질 25개)와 맞는다. 씬을 전환해도 Live Object 경고가 없다.</div>
@@ -576,7 +576,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
         <li><code>App/Editor.h</code>(콜백 구조: 소유하지 않는다) → <code>Editor.cpp</code>의 <code>DrawSceneView</code>·<code>Pick</code>·<code>DrawGizmo</code>·<code>DrawInspector</code></li>
         <li><code>Renderer::SetSceneTarget</code>과 <code>RenderMainPass</code>의 타깃 분기, <code>Graphics/Screenshot</code></li>
         <li><code>Scene/SceneSerializer.cpp</code>와 <code>Projects/Sample/Assets/Scenes/floor_cube.json</code>을 나란히, <code>Scene.h</code>의 <code>MeshSource</code></li>
-        <li><code>TestApp.cpp</code>의 <code>ParseAutomation</code>·<code>RunAutomation</code></li>
+        <li><code>EditorApp.cpp</code>의 <code>ParseAutomation</code>·<code>RunAutomation</code></li>
       </ul></div>
     </div>
     <div class="check"><b>확인 포인트</b> — 아래 한 줄로 창을 띄우지 않고 선택·이동·저장·스크린샷이 되면 에디터 경로 전체를 이해한 것입니다.
@@ -596,7 +596,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>App/ContentBrowser.h</code>의 <code>AssetDragPayload</code> → <code>ContentBrowser.cpp</code>의 <code>DrawTile</code>·<code>BeginDragSource</code>·<code>PumpThumbnailLoads</code></li>
         <li><code>Editor::DrawSceneView</code>의 <code>BeginDragDropTarget</code> 블록, <code>RaycastScene</code>, <code>DrawDropGhost</code>, <code>HandleAssetDrop</code></li>
-        <li><code>TestApp::PlaceModel</code>(바닥면 = 놓은 점), <code>Renderer::GetOrLoadTexture</code>의 <code>asset:</code> 분기, <code>Paths::GetAssetRoot</code></li>
+        <li><code>EditorApp::PlaceModel</code>(바닥면 = 놓은 점), <code>Renderer::GetOrLoadTexture</code>의 <code>asset:</code> 분기, <code>Paths::GetAssetRoot</code></li>
       </ul></div>
     </div>
     <div class="check"><b>확인 포인트</b> — 브라우저에서 헬멧을 씬 뷰로 끌면 고스트 마커가 따라오고 놓은 자리에 서며, 아래 한 줄이 같은 경로를 창 없이 지난다.
@@ -616,9 +616,9 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>Projects/Sample/Scripts/Rotator.cpp</code> → <code>Scene/Script.h</code>(헤더 주석의 사용법, 헬퍼) → <code>Scene/Behaviour.h</code> → <code>Behaviour.cpp</code>의 레지스트리 → <code>Game/Components/Rigidbody.h</code>(스크립트가 쓰는 엔진 컴포넌트 API)</li>
-        <li><code>Scene.cpp</code>의 <code>BeginPlay/Update/FixedUpdate/EndPlay</code>, <code>TestApp::StartPlay/StopPlay</code>, <code>OnUpdate/OnFixedUpdate</code>의 분기</li>
+        <li><code>Scene.cpp</code>의 <code>BeginPlay/Update/FixedUpdate/EndPlay</code>, <code>EditorApp::StartPlay/StopPlay</code>, <code>OnUpdate/OnFixedUpdate</code>의 분기</li>
         <li><code>SceneSerializer.cpp</code>의 <code>JsonWriteVisitor/JsonReadVisitor</code>와 <code>Editor.cpp</code>의 <code>ImGuiPropertyVisitor</code>를 나란히 — 같은 <code>Reflect</code>를 두 방문자가 쓴다</li>
-        <li><code>Scene/CameraComponent.h</code> → <code>Scene::ApplyActiveCamera</code>(우선순위·블렌드) → <code>Game/Components/FollowTarget.cpp</code> → <code>TestApp::UpdateCamera</code>의 <code>cameraDriven</code> 분기</li>
+        <li><code>Scene/CameraComponent.h</code> → <code>Scene::ApplyActiveCamera</code>(우선순위·블렌드) → <code>Game/Components/FollowTarget.cpp</code> → <code>EditorApp::UpdateCamera</code>의 <code>cameraDriven</code> 분기</li>
       </ul></div>
     </div>
     <div class="check"><b>확인 포인트</b> — <code>Projects/Sample/Scripts/</code>에 .cpp 하나를 추가해(예: y축으로 떠오르는 <code>Rise</code>) 빌드하면 Inspector의 Add Component에 나타나고, 재생 중에 붙이면 바로 움직이며, Stop하면 사라진다(스냅샷). 아래 두 줄로 재생과 복원을 창 없이 확인한다.
@@ -671,7 +671,7 @@ Projects\Sample\Build\Test\Test.exe --exit-after=60 --dump-objects=1</code></pre
 </div>
 
 <h2 id="s8"><span class="num">8.</span>실행하며 확인하기</h2>
-<p>모든 스텝의 확인 포인트는 실행 중인 앱에서 확인합니다. 단축키는 <code>TestApp.cpp</code>의 <code>OnUpdate</code>에 모여 있고, 실행 인자는 <code>TestApp.h</code>의 <code>Automation</code> 주석에 있습니다.</p>
+<p>모든 스텝의 확인 포인트는 실행 중인 앱에서 확인합니다. 단축키는 <code>EditorApp.cpp</code>의 <code>OnUpdate</code>에 모여 있고, 실행 인자는 <code>EditorApp.h</code>의 <code>Automation</code> 주석에 있습니다.</p>
 <div class="tbl"><table>
   <thead><tr><th>키</th><th>동작</th><th>관련 스텝</th></tr></thead>
   <tbody>

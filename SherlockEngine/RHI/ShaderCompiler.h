@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <cstdint>
+#include <span>     // C++20: 바이트코드 읽기 전용 인자
 #include <string>
 #include <vector>
 #include "RHI/BindingTypes.h"
@@ -30,7 +31,9 @@ namespace ShaderCompiler
 	// 리플렉션으로 cbuffer 크기를 C++ 구조체 크기와 대조함. 패킹이 어긋나면
 	// 화면이 조용히 깨지는 대신 여기서 잡힘. 셰이더가 그 cbuffer를 쓰지 않아
 	// 리플렉션에 없으면 true(검사할 것이 없음)를 돌려주고 Info 로그를 남김.
-	bool ValidateConstantBufferSize(const std::vector<uint8_t>& bytecode, const char* cbufferName, uint32_t expectedSize);
+	// C++20 (2026-09-28): 읽기만 하는 바이트코드 인자는 const std::vector<uint8_t>& 대신 std::span<const uint8_t> 로 받음.
+	// vector 뿐 아니라 C 배열·ShaderDesc::bytecode 도 그대로 들어옴.
+	bool ValidateConstantBufferSize(std::span<const uint8_t> bytecode, const char* cbufferName, uint32_t expectedSize);
 
 	// 셰이더가 실제로 쓰는 바인딩(b#/t#/s#)을 리플렉션으로 읽음.
 	// Renderer가 직접 선언한 BindingLayout과 대조하는 데 씀.
@@ -40,7 +43,7 @@ namespace ShaderCompiler
 		uint8_t reg;
 		std::string name;
 	};
-	bool ReflectBindings(const std::vector<uint8_t>& bytecode, std::vector<ReflectedBinding>& out);
+	bool ReflectBindings(std::span<const uint8_t> bytecode, std::vector<ReflectedBinding>& out);
 
 	// 파일의 마지막 수정 시각(FILETIME을 64비트 값으로 변환). 파일이 없으면 0.
 	uint64_t GetLastWriteTime(const std::wstring& path);

@@ -29,7 +29,7 @@ public:
     void EndFrame() override;
     uint32_t GetFrameIndex() const override { return m_frameIndex; }
     RHI::CommandList& GetCommandList() override { return m_commandList; }
-    bool GetTimestampResults(uint64_t* ticks, uint32_t count, uint64_t& frequency, uint64_t& frameNumber) override;
+    bool GetTimestampResults(std::span<uint64_t> ticks, uint64_t& frequency, uint64_t& frameNumber) override;
     void RequestBackBufferReadback() override { m_readbackRequested = true; }
     bool TakeReadbackResult(std::vector<uint8_t>& rgba, uint32_t& width, uint32_t& height) override;
     void WriteTimestamp(uint32_t slot);   // D3D11CommandList 가 이쪽으로 위임함
@@ -43,7 +43,7 @@ public:
     void DestroyBuffer(BufferHandle handle) override;
     void UpdateBuffer(BufferHandle handle, const void* data, uint32_t size) override;
 
-    TextureHandle CreateTexture(const TextureDesc& desc, const TextureSubresource* subresources = nullptr, uint32_t subresourceCount = 0) override;
+    TextureHandle CreateTexture(const TextureDesc& desc, std::span<const TextureSubresource> subresources = {}) override;
     void DestroyTexture(TextureHandle handle) override;
     TextureHandle GetBackBuffer() const override { return m_backBuffer; }
     TextureHandle GetDepthBuffer() const override { return m_depthBuffer; }

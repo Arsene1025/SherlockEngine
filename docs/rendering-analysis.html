@@ -175,7 +175,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <div class="shell">
 <nav class="toc" aria-label="목차">
   <div class="brand">SherlockEngine 렌더링 해부</div>
-  <div class="meta">DirectX 11 · C++17 · 2026-09-03 분석<br>커밋 867c380 (2026/07/16)<br>2026-09-10 1차 수정 반영</div>
+  <div class="meta">DirectX 11 · C++17 · 2026-09-03 분석<br>커밋 867c380 (2026/07/16)<br>2026-09-10 1차 수정 반영<br>2026-09-28 C++20 전환 반영</div>
   <ol>
     <li><a href="#s1">1. 프로젝트 현재 상태</a></li>
     <li><a href="#s2">2. 클래스 구조와 소유 관계</a></li>
@@ -192,6 +192,8 @@ td .fix b{color:var(--ok);font-weight:600}
     <li><a href="#s6">6. 리소스 수명과 해제</a></li>
     <li><a href="#s7">7. 발견된 문제점</a></li>
     <li class="sub"><a href="#applied">적용 기록 — 2026-09-10</a></li>
+    <li class="sub"><a href="#applied-cpp20">적용 기록 — 2026-09-28 · C++20 전환</a></li>
+    <li class="sub"><a href="#applied-editorapp">적용 기록 — 2026-09-28 · TestApp → EditorApp 개명</a></li>
     <li><a href="#s8">8. 고민하고 수정해야 할 설계 지점</a></li>
     <li class="sub"><a href="#d1">D1~D20 설계 결정 목록</a></li>
     <li><a href="#s9">9. 발전 로드맵 — RHI와 PSO를 향해</a></li>
@@ -241,6 +243,11 @@ td .fix b{color:var(--ok);font-weight:600}
   <p>본문의 분석과 줄 번호는 <strong>커밋 867c380 시점의 코드</strong>를 그대로 서술한 기록입니다. 그 뒤 2026-09-10에 7절 20개 항목 중 9건을 해결하고 1건을 일부 처리했으며, 8절 설계 결정도 네 건을 반영했으므로 현재 코드는 본문 서술과 일부 다릅니다. <strong>깊이 버퍼가 생겼고, 프레임당 Clear는 한 번이며, 모든 계층이 ComPtr을 씁니다. PCH에서 전역 <code>using namespace</code>가 사라졌고, 로그는 <code>Log::*</code>를 거치며, 의존성은 vcpkg 매니페스트로 고정됩니다.</strong> 무엇을 어떤 방법으로 고쳤는지는 <a href="#applied">적용 기록</a>에 정리했습니다. 아직 손대지 않은 항목의 서술은 지금도 유효합니다.</p>
 </div>
 
+<div class="callout" style="border-left-color:var(--ok);background:var(--ok-soft)">
+  <div class="t">2026-09-28 — 언어 표준을 C++17에서 C++20으로 올림</div>
+  <p>세 프로젝트(<code>SherlockEngine</code>·<code>SherlockEditor</code>·<code>SherlockGame</code>)의 <code>LanguageStandard</code>가 <code>stdcpp20</code>이 되었습니다. 표준을 올리는 데 필요한 코드 수정은 없었고(Debug·Release 재빌드 경고 0), 그 위에 C++20 기능 여섯 가지 — <code>&lt;=&gt;</code>/기본 생성 비교, <code>std::span</code>, 지정 초기화, <code>std::format</code>, <code>consteval</code>, 콘셉트 — 를 RHI 헤더와 Renderer를 중심으로 적용했습니다. 본문 위쪽의 "C++17" 표기는 분석 시점의 기록으로 그대로 두었습니다. 무엇을 어디에 왜 적용했는지는 <a href="#applied-cpp20">적용 기록 — C++20 전환</a>에 있습니다.</p>
+</div>
+
 <h2 id="s1"><span class="num">1.</span>프로젝트 현재 상태</h2>
 <p>솔루션은 단일 프로젝트 <code>SherlockEngine.vcxproj</code>이며, 콘솔 서브시스템(<code>main()</code> 진입점)으로 빌드되어 실행 시 콘솔 창과 렌더 창이 함께 뜹니다. 로그는 전부 <code>std::cout</code>으로 콘솔에 남습니다. 작업 로그 8건(7/1 ~ 7/16)과 기획 메모 3건이 저장소 루트에 있고, 마지막 커밋에서 Blinn-Phong 조명이 완성된 상태입니다.</p>
 
@@ -250,7 +257,7 @@ td .fix b{color:var(--ok);font-weight:600}
 <tbody>
 <tr><td class="mono">main.cpp</td><td>진입점</td><td><code>TestApp</code> 생성 → <code>Initialize()</code> → <code>Run()</code></td></tr>
 <tr><td class="mono">AppBase.h/.cpp</td><td>앱 골격</td><td>Win32 창, 메시지 루프, ImGui 초기화, Device·Renderer·Shader·Camera·GameTimer 소유</td></tr>
-<tr><td class="mono">TestApp.h/.cpp</td><td>샘플 앱</td><td><code>Render()</code>에서 ShaderUpdate → RenderModeUpdate → Renderer::Render 호출</td></tr>
+<tr><td class="mono">TestApp.h/.cpp</td><td>샘플 앱</td><td><code>Render()</code>에서 ShaderUpdate → RenderModeUpdate → Renderer::Render 호출<span class="fix"><b>변경 (2026-09-28)</b> — <code>App/EditorApp.h/.cpp</code>로 개명. 11-D단계에서 진입점이 <code>SherlockEditor/EditorMain.cpp</code>로 옮겨진 뒤 이 클래스는 에디터 실행 파일(SherlockEditor.exe) 자체이고, 런타임은 <code>GameApp</code>이 맡습니다. <a href="#applied-editorapp">자세히</a></span></td></tr>
 <tr><td class="mono">Device.h/.cpp</td><td>D3D11 장치</td><td>Device/Context/SwapChain/RTV 생성, Clear, Present, Resize, 버퍼·InputLayout 생성 헬퍼</td></tr>
 <tr><td class="mono">Shader.h/.cpp</td><td>셰이더</td><td>HLSL 런타임 컴파일, VS/PS 객체, 상수버퍼 b0(변환)·b1(조명) 생성 및 바인딩</td></tr>
 <tr><td class="mono">Renderer.h/.cpp</td><td>씬 렌더러</td><td>구 오브젝트 1개 소유, RasterizerState 4종, 조명 데이터와 ImGui 조명 패널, 조명 상수버퍼 갱신</td></tr>
@@ -266,7 +273,7 @@ td .fix b{color:var(--ok);font-weight:600}
 
 <h3>빌드 설정에서 눈여겨볼 점</h3>
 <ul>
-  <li><strong>C++17, v143 툴셋, PCH 사용.</strong> 단, PCH 설정과 <code>stdcpp17</code>이 Debug|x64 구성에만 들어가 있습니다. 다른 구성은 기본값으로 빌드됩니다.</li>
+  <li><strong>C++17, v143 툴셋, PCH 사용.</strong> 단, PCH 설정과 <code>stdcpp17</code>이 Debug|x64 구성에만 들어가 있습니다. 다른 구성은 기본값으로 빌드됩니다. <span class="fix"><b>변경 (2026-09-28)</b> — 이후 네 구성 모두에 <code>stdcpp17</code>이 들어가 있던 것을 세 프로젝트 × 4구성 = 12곳 전부 <code>stdcpp20</code>으로 올렸습니다. 툴셋은 v143 그대로입니다. <a href="#applied-cpp20">자세히</a></span></li>
   <li><strong>HLSL은 런타임 컴파일.</strong> <code>D3DCompileFromFile</code>이 상대 경로 <code>L"BasicVertexShader.hlsl"</code>을 읽습니다. Visual Studio에서 실행할 때는 작업 디렉터리가 프로젝트 폴더라서 동작하지만, <code>x64/Debug</code>의 exe를 직접 실행하면 파일을 찾지 못합니다.</li>
   <li><strong>FxCompile 제외가 Debug|x64에만 적용됨.</strong> 두 .hlsl 파일의 <code>ExcludedFromBuild</code>가 Debug|x64에만 설정되어 있어, Release 구성으로 빌드하면 MSBuild가 fxc로 기본 진입점 <code>main</code>을 찾다가 실패합니다.</li>
   <li><strong>vcpkg 매니페스트 없음.</strong> DirectXTK/DirectXTex/ImGui가 vcpkg 전역 설치에 의존해 저장소만으로는 빌드를 재현할 수 없습니다.</li>
@@ -868,9 +875,103 @@ exit code: -1</code></pre>
   <p>7절의 <strong>#5</strong>(static gameTime), <strong>#8</strong>(셰이더 경로가 작업 디렉터리 기준), <strong>#9</strong>(Present 고정), <strong>#10</strong>·<strong>#11</strong>·<strong>#13</strong>~<strong>#15</strong>·<strong>#17</strong>·<strong>#20</strong>은 그대로입니다. #12는 <code>g_ClearColor</code>만 지웠고 <code>g_bCullback</code>·<code>g_bWireFrame</code>·<code>Device::CreateRenderState</code>는 남아 있습니다. 8절에서는 <strong>D4</strong>의 프레임 경계 재구성과 <strong>D16</strong>의 본체(Logger, 예외 정책)가 남았습니다. 둘 다 각각 6단계와 10단계 몫입니다. <strong>0단계를 끝내려면 이제 #5와 #8 두 가지만 남았습니다.</strong> 소스 폴더를 <code>Graphics/D3D11/</code>로 옮기자는 메모도 아직 처리하지 않았습니다.</p>
 </div>
 
+<h2 id="applied-cpp20">적용 기록 — 2026-09-28 · C++20 전환</h2>
+<p>언어 표준을 <strong>C++17에서 C++20으로</strong> 올리고, 그 위에서 쓸 수 있게 된 기능 여섯 가지를 RHI 헤더와 Renderer를 중심으로 적용한 기록입니다. 7절의 결함 목록과는 성격이 다릅니다 — 고치지 않으면 오동작하는 것이 아니라, <strong>실수를 런타임에서 컴파일 시점으로 끌어오는</strong> 종류의 변경입니다. 화면·동작은 전과 같아야 하며, 그것이 검증 기준입니다.</p>
+
+<div class="tbl"><table>
+<thead><tr><th>항목</th><th>상태</th><th>한 줄 요약</th></tr></thead>
+<tbody>
+<tr><td class="n">표준 전환</td><td><span class="pill ok">완료</span></td><td>3 프로젝트 × 4 구성 = 12곳 <code>stdcpp17</code> → <code>stdcpp20</code>. 코드 수정 0, 경고 0</td></tr>
+<tr><td class="n"><code>&lt;=&gt;</code> / <code>= default</code></td><td><span class="pill ok">완료</span></td><td><code>Handle</code>에 <code>&lt;=&gt;</code>, 하위 Desc 4종에 <code>== = default</code>. 손으로 쓴 비교 함수 5개 삭제</td></tr>
+<tr><td class="n"><code>std::span</code></td><td><span class="pill ok">완료</span></td><td><code>Device</code> 2 메서드, <code>ShaderDesc</code>, <code>ShaderCompiler</code> 2 함수. 호출처 4곳 단순화</td></tr>
+<tr><td class="n">지정 초기화</td><td><span class="pill ok">완료</span></td><td>Renderer·백엔드·TextureLoader 의 Desc 채우기 26곳. 필드 순서가 계약이 됨</td></tr>
+<tr><td class="n"><code>std::format</code></td><td><span class="pill warn">부분</span></td><td>내부 서식·문자열 조립 18곳. <code>Log::*</code> 공개 API 는 printf 유지 (이유 아래)</td></tr>
+<tr><td class="n"><code>consteval</code></td><td><span class="pill ok">완료</span></td><td>정점 레이아웃 생성 + cbuffer 크기 규칙. <code>static_assert</code> 8개 추가 (콘셉트 검사 1개 포함)</td></tr>
+<tr><td class="n">콘셉트</td><td><span class="pill ok">완료</span></td><td><code>ResourceHandle</code>(ResourcePool), <code>std::derived_from&lt;Behaviour&gt;</code>(GetBehaviour/GetComponent)</td></tr>
+</tbody></table></div>
+
+<h3>0. 표준 전환 자체</h3>
+<p>세 <code>.vcxproj</code>의 <code>&lt;LanguageStandard&gt;</code>를 바꾸고 Debug·Release x64 를 Rebuild 했습니다. C++ 컴파일 오류·경고 0. 유일한 경고는 HLSL 쪽 <code>X4000</code>(BasicPixelShader.hlsl:23, 이전부터 있던 것)입니다. 별도로 C++20 에서 깨지는 대표 패턴 — <code>u8""</code> 리터럴(<code>char8_t</code>), 제거된 <code>std::result_of</code>·<code>std::iterator&lt;&gt;</code>·<code>random_shuffle</code>, deprecated <code>&lt;codecvt&gt;</code>, <code>volatile</code> 복합 대입, 비대칭 <code>operator==</code> — 를 grep 으로 확인했고 해당 사항이 없었습니다. 즉 <strong>표준을 올리는 데 필요한 코드 수정은 없었습니다.</strong></p>
+<p><b>함정.</b> Git Bash 의 <code>sed -i</code>가 CRLF 파일을 LF 로 바꿔 놓아 diff 가 파일 전체로 번질 뻔했습니다. 줄바꿈을 복원해 실제 diff 는 12줄입니다. 이 프로젝트의 소스는 LF, <code>.vcxproj</code>는 CRLF + BOM 이라 파일 종류별로 확인해야 합니다.</p>
+
+<h3>1. 비교 연산자 — <code>&lt;=&gt;</code> 와 <code>= default</code> (D21, D22)</h3>
+<p><code>RHI/Handle.h</code>의 <code>Handle&lt;Tag&gt;</code>는 손으로 쓴 <code>operator==</code>/<code>!=</code> 대신 <code>auto operator&lt;=&gt;(const Handle&amp;) const = default;</code> 한 줄입니다. C++20 규칙으로 <code>&lt;=&gt;</code>를 default 선언하면 <code>==</code>도 암묵 선언되고, <code>!=</code>·<code>&lt;</code>·<code>&gt;</code> 등은 컴파일러가 재작성합니다. 부수 효과로 핸들이 <code>std::map</code> 키가 될 수 있게 됐습니다(index → generation 사전식).</p>
+<p><code>RHI/PipelineTypes.h</code>의 <code>RasterizerDesc</code>·<code>DepthStencilDesc</code>·<code>RenderTargetBlendDesc</code>·<code>VertexAttribute</code>에 <code>bool operator==(const X&amp;) const = default;</code>를 넣고, <code>PipelineTypes.cpp</code>의 <code>EqRasterizer</code>·<code>EqDepthStencil</code>·<code>EqRtBlend</code>·<code>EqVertexAttribute</code>·<code>FloatEq</code>를 지웠습니다. <code>PipelineStateDesc::operator==</code> 본체는 남겼습니다 — 배열을 <code>rtvCount</code>·<code>bindingLayoutCount</code>·<code>attributeCount</code>만큼만 비교하는 "쓰는 만큼" 규칙은 default 로 쓸 수 없고, 해시도 같은 이유로 그대로입니다. 모든 <code>operator!=</code> 선언은 삭제했습니다.</p>
+<p><b>의미가 바뀐 지점 하나.</b> 예전 <code>FloatEq</code>는 비트 비교(±0 만 같게)였고 default <code>==</code>는 값 비교입니다. 둘은 NaN 에서만 다릅니다(값 비교는 NaN ≠ NaN). 캐시 키로서 중요한 성질 <code>a == b ⇒ hash(a) == hash(b)</code>는 유지됩니다: ±0 은 해시가 정규화하고, 그 밖에 값이 같은 float 는 비트도 같기 때문입니다. 깊이 바이어스에 NaN 을 넣는 경로는 없으므로 실질 차이는 없다고 판단했고, 헤더 주석에 남겼습니다.</p>
+<p><b>선택하지 않은 것.</b> <code>PipelineStateDesc</code> 전체에 <code>&lt;=&gt; = default</code>를 붙이고 배열을 <code>std::array</code>로 바꿔 "전부 비교"하는 방법. 단순하지만 <code>rtvCount</code> 뒤의 쓰레기 슬롯이 다르면 같은 PSO 를 두 번 만드는 캐시 미스가 생깁니다. 이 문서 1단계의 설계(쓰는 만큼만 해시)를 지키는 쪽을 택했습니다.</p>
+
+<h3>2. <code>std::span</code> — RHI 인터페이스의 배열 인자 (D21)</h3>
+<p>(포인터, 개수) 쌍이던 인자를 전부 <code>std::span</code>으로 바꿨습니다.</p>
+<ul>
+  <li><code>Device::CreateTexture(const TextureDesc&amp;, std::span&lt;const TextureSubresource&gt; = {})</code> — 이전 <code>(const TextureSubresource*, uint32_t)</code>. 호출처(Renderer·ContentBrowser)는 <code>image.subresources</code>(vector)를 그대로 넘깁니다.</li>
+  <li><code>Device::GetTimestampResults(std::span&lt;uint64_t&gt; ticks, …)</code> — Profiler 의 C 배열 <code>uint64_t ticks[kMaxTimestamps]</code>가 크기와 함께 암묵 변환됩니다. 백엔드는 <code>ticks.size()</code>와 <code>kMaxTimestamps</code> 중 작은 쪽까지 채웁니다.</li>
+  <li><code>ShaderDesc::bytecode</code> — <code>const void* + size_t</code>에서 <code>std::span&lt;const uint8_t&gt;</code> 하나로. 백엔드의 <code>bytecode == nullptr || bytecodeSize == 0</code>은 <code>bytecode.empty()</code>가 됐습니다.</li>
+  <li><code>ShaderCompiler::ValidateConstantBufferSize/ReflectBindings</code> — <code>const std::vector&lt;uint8_t&gt;&amp;</code> → <code>std::span&lt;const uint8_t&gt;</code>. 읽기만 하는 인자를 컨테이너 타입에 묶어 둘 이유가 없었습니다.</li>
+</ul>
+<p><b>선택하지 않은 것.</b> <code>UpdateBuffer(handle, const void* data, uint32_t size)</code>와 <code>CreateBuffer</code>의 초기 데이터. 호출처가 전부 "구조체 하나의 주소 + <code>sizeof</code>"라서 <code>std::span&lt;const std::byte&gt;</code>로 바꾸면 <code>std::as_bytes(std::span{&amp;constants, 1})</code>처럼 오히려 장황해집니다. 타입 있는 배열이 들어오는 자리가 아니면 <code>void*</code>가 정직합니다.</p>
+
+<h3>3. 지정 초기화 — Desc 채우기 (D22)</h3>
+<p>"빈 Desc 를 만들고 필드를 한 줄씩 대입"하던 코드 26곳을 <code>TextureDesc{ .width = …, .format = …, .bindFlags = … }</code> 형태로 바꿨습니다. Renderer 의 <code>m_baseDesc</code>·<code>m_shadowDesc</code>(중첩 <code>.rasterizer = { .depthBias = 2000, … }</code>), 텍스처·샘플러·버퍼 Desc, <code>ResourceSetDesc</code>(슬롯 i 에 무엇이 꽂히는지 <code>.bindings = { { .buffer = … }, { .texture = … } }</code>로 한눈에), <code>RenderPassDesc</code>(그림자·메인·프리뷰·UI 패스), 두 백엔드의 백버퍼·깊이 텍스처, TextureLoader 입니다. <code>BindingLayoutDesc</code>는 <code>Add()</code> 체이닝 빌더라 그대로 두었습니다.</p>
+<p><b>함정 두 개.</b> (1) 지정 초기화는 <em>리스트 초기화</em>라 축소 변환이 금지됩니다. 대입문에서는 조용히 넘어가던 <code>int m_screenWidth → uint32_t width</code>가 컴파일 에러가 되어 <code>static_cast</code>를 넣었습니다 — 즉 이 변환이 실제로 있었다는 것을 컴파일러가 처음 알려 준 셈입니다. 상수(<code>.mipLevels = 1</code>, <code>.bindFlags = A | B</code>)는 값이 맞으면 축소로 취급되지 않습니다. (2) 필드는 <strong>선언 순서</strong>로만 나열할 수 있습니다. <code>PipelineTypes.h</code>·<code>ResourceDesc.h</code>의 필드 순서를 바꾸면 호출 코드가 컴파일되지 않는데, 이것을 단점이 아니라 "D3D12 desc 처럼 필드 순서가 계약"이 된 것으로 받아들이고 헤더 주석에 적었습니다.</p>
+
+<h3>4. <code>std::format</code> — 내부 서식만 (D16)</h3>
+<p><code>snprintf</code> + 고정 버퍼(Log 의 시각 스탬프 <code>char[32]</code>, HrToString 의 <code>char[16]</code>, ContentBrowser 의 크기 표시, Editor 의 드롭 라벨 <code>char[320]</code>)와 <code>std::to_string</code> 조각을 <code>+</code>로 잇던 곳(Config 오류 메시지 3, GameBuilder·ProjectGenerator 결과 메시지, D3D11/D3D12 디버그 이름 4, Model 이름 3)을 <code>std::format</code>으로 바꿨습니다. 서식 문자열은 컴파일 시점에 검사되고 인자 타입을 스스로 알아 <code>%llu</code>·<code>static_cast&lt;unsigned long long&gt;</code>류가 사라집니다.</p>
+<p><b><code>Log::Info/Warn/Error</code> 공개 API 는 printf 서식을 유지했습니다.</b> 호출부 100여 곳도 이유지만 결정적인 이유는 안전성입니다. 같은 이름으로 <code>template&lt;class... A&gt; void Info(std::format_string&lt;A...&gt;, A&amp;&amp;...)</code>를 추가하면, 기존 호출 <code>Log::Info("x %d", 3)</code>은 C 가변 인자보다 템플릿에 먼저 매칭되고, "치환 필드가 없는데 인자가 남는" 것은 <code>std::format</code>에서 에러가 아니라서 <code>"x %d"</code>가 그대로 찍힙니다. 두 서식 체계를 한 오버로드 집합에 섞으면 조용한 버그가 생기므로, 파사드를 옮기는 날이 오면 이름을 바꿔(<code>InfoF</code> 등) 한 번에 옮기는 것이 맞습니다. 이 판단을 <code>Log.cpp</code>의 <code>FormatV</code> 위에 주석으로 남겼습니다.</p>
+
+<h3>5. <code>consteval</code> — 컴파일 시점으로 끌어온 검사 (D9)</h3>
+<p><code>Graphics/VertexTypes.h</code>: <code>GetVertexLayoutPCNTT()</code>를 <code>consteval MakeVertexLayoutPCNTT()</code>로 바꾸고 <code>inline constexpr VertexLayoutDesc kVertexLayoutPCNTT</code>에 담았습니다. 런타임 입력이 없고 <code>offsetof</code>·<code>sizeof</code>만 쓰는 함수이므로 컴파일 시점 계산을 <em>강제</em>하는 것이 맞습니다. 이어서 <code>static_assert</code> 세 개 — stride == <code>sizeof(VERTEX)</code>, 속성 5개, 마지막 속성(Tangent) 뒤에 빈 공간 없음 — 가 D9 가 "잊으면 화면이 깨졌음"이라고 적은 실수를 빌드 실패로 바꿉니다. <code>GetVertexLayout()</code>·<code>GetVertexStride()</code>는 이름을 유지하고 <code>constexpr</code>이 되어 호출처는 바뀌지 않았습니다.</p>
+<p><code>Graphics/ShaderConstants.h</code>: <code>consteval bool IsValidConstantBufferSize(size_t)</code>(16 의 배수, 0 초과, 65,536 이하)를 네 cbuffer 구조체의 <code>static_assert</code>에 걸었습니다. 기존의 정확한 크기·오프셋 단언은 그대로 두었습니다(HLSL 과 바이트 단위 대조가 실제 검사). 이 함수는 새 cbuffer 를 추가할 때 먼저 걸리는 일반 규칙입니다.</p>
+
+<h3>6. 콘셉트 — 템플릿 인자의 요구 조건을 이름 붙여서</h3>
+<p><code>RHI/Handle.h</code>에 <code>concept ResourceHandle</code>(<code>index</code>·<code>generation</code>이 <code>uint32_t</code>로 변환 가능, <code>IsValid()</code>가 bool, trivially copyable)을 정의하고 <code>ResourcePool&lt;T, ResourceHandle HandleT&gt;</code>로 제약했습니다. 이전엔 잘못된 타입을 넣으면 풀 본문 어딘가에서 알 수 없는 에러가 났고, 지금은 <code>ResourcePool&lt;…&gt;</code>를 적은 줄에서 "콘셉트를 만족하지 않음"으로 멈춥니다. <code>static_assert(ResourceHandle&lt;BufferHandle&gt;)</code>로 <code>Handle&lt;Tag&gt;</code> 자체가 조건을 만족함을 고정했습니다.</p>
+<p><code>Scene/GameObject.h</code>의 <code>GetBehaviour&lt;T&gt;()</code>와 <code>Scene/Script.h</code>의 <code>GetComponent&lt;T&gt;()</code>는 <code>template &lt;std::derived_from&lt;Behaviour&gt; T&gt;</code>가 되었습니다. <code>GetBehaviour&lt;Transform&gt;()</code>처럼 <code>dynamic_cast</code>가 항상 nullptr 를 돌려주는 조용한 오타가 컴파일 에러가 됩니다. 사용자 스크립트(11-C단계)가 이 함수를 쓰므로 스크립트 작성자에게도 바로 도움이 되는 제약입니다.</p>
+
+<h3>검증 방법</h3>
+<p><b>빌드.</b> 표준 전환 직후 Debug·Release x64 Rebuild, 기능 적용 후 다시 Debug·Release Build — 네 번 모두 C++ 오류·경고 0.</p>
+<p><b>실행.</b> <code>SherlockEditor.exe</code>를 D3D11(기본)과 <code>--backend=d3d12</code>로 각각 10초 실행해 로그를 봤습니다. 두 백엔드 모두 경고·실패 0줄이고, 이번에 손댄 경로가 전부 지나갔음을 로그로 확인했습니다: cbuffer 크기 대조 8건 일치(span 으로 넘긴 바이트코드 리플렉션), 바인딩 대조 13건 OK, PSO 생성 #0~#2(지정 초기화한 <code>m_baseDesc</code>·<code>m_shadowDesc</code>가 캐시 키로 동작), 그림자 맵 2048² D32_FLOAT, 씬 뷰 텍스처 생성·리사이즈(지정 초기화 <code>TextureDesc</code>), 텍스처 2장 밉 10 로드(<code>CreateTexture</code>의 span 초기 데이터), D3D12 에서는 <code>BackBuffer[0..2]</code> 디버그 이름(<code>std::format</code>)까지. 픽셀 비교는 하지 않았습니다 — 이번 변경은 데이터 흐름을 바꾸지 않는 표기 변경이고, 유일하게 의미가 바뀐 float 비교는 위에서 분석했습니다.</p>
+
+<div class="callout amber">
+  <div class="t">이번에 손대지 않은 것</div>
+  <p><code>Log::*</code> 공개 API 의 printf 서식(위 4 의 이유), <code>UpdateBuffer/CreateBuffer</code>의 <code>const void*</code>(위 2 의 이유), <code>BindingLayoutDesc::Add()</code> 빌더, ImGui 계층의 <code>snprintf</code>(ImGui 자체가 printf 서식이라 어색하지 않음). 모듈(<code>import</code>)·코루틴·<code>std::ranges</code>는 이 코드베이스에 지금 필요한 자리가 없어 도입하지 않았습니다. 이 문서 본문의 "C++17" 표기(목차·1절)는 분석 시점 기록으로 그대로 두고 변경 메모만 달았습니다.</p>
+</div>
+
+<h2 id="applied-editorapp">적용 기록 — 2026-09-28 · TestApp → EditorApp 개명</h2>
+<p>코드 동작은 그대로 두고 <strong>클래스와 파일 이름만</strong> 바꾼 기록입니다. 이 문서의 1~6절은 분석 시점(867c380)의 <code>TestApp</code>이라는 이름을 그대로 쓰므로, 아래 표와 함께 읽어야 합니다.</p>
+
+<div class="tbl"><table>
+<thead><tr><th>항목</th><th>상태</th><th>한 줄 요약</th></tr></thead>
+<tbody>
+<tr><td class="n">클래스·파일</td><td><span class="pill ok">완료</span></td><td><code>App/TestApp.h/.cpp</code> → <code>App/EditorApp.h/.cpp</code> (<code>git mv</code>), <code>class TestApp</code> → <code>class EditorApp</code></td></tr>
+<tr><td class="n">참조 치환</td><td><span class="pill ok">완료</span></td><td><code>EditorMain.cpp</code>, <code>SherlockEditor.vcxproj</code>·<code>.filters</code>, <code>ProjectGenerator::GetEditorSources()</code>, 주석 6곳(ContentBrowser·Editor·GameApp·ProjectGenerator·Engine·PlayerController), README, study-guide</td></tr>
+<tr><td class="n">과거 문서</td><td><span class="pill none">유지</span></td><td><code>phase-*.html</code>과 이 문서의 1~6절·D14·로드맵 본문은 당시 이름을 남김. 현재 파일을 가리키는 곳(파일 표, 목표 구조 그림, study-guide)만 고침</td></tr>
+</tbody></table></div>
+
+<h3>왜 바꿨나</h3>
+<p><code>TestApp</code>은 원래 "앱을 저장·불러오기 가능한 단위로 만든다"는 구상에서 출발한 이름이었습니다. 그런데 그 역할은 이미 다른 두 개념이 가져갔습니다 — <strong>씬</strong>(11단계, <code>SceneSerializer</code>의 JSON)이 월드 상태의 저장 단위이고, <strong>프로젝트</strong>(11-E단계, <code>.sherlock</code> 폴더)가 게임 하나의 저장 단위입니다. 남은 <code>TestApp</code>은 창을 열고 <code>Editor</code>·<code>ContentBrowser</code>·재생 모드·프로젝트 생성을 묶는 <em>에디터 실행 파일 그 자체</em>였고, 11-D단계부터는 <code>GameApp</code>(SherlockGame.exe)과 나란히 <code>AppBase</code> 위에 올라가는 두 앱 중 하나입니다. 창 제목도 이미 <code>L"SherlockEditor"</code>였습니다. 이름이 역할을 설명하지 못하고 "테스트용 임시 코드"라는 인상을 주므로 <code>GameApp</code>과 대칭인 <code>EditorApp</code>으로 바꿨습니다.</p>
+
+<h3>고르지 않은 대안</h3>
+<ul>
+  <li><b>앱을 저장 단위로 살리기</b> — 프로젝트·씬과 겹치는 세 번째 직렬화 단위가 생기고, 무엇을 어디에 저장하는지 규칙이 흐려집니다. 앱은 "실행 파일의 종류"(에디터/게임)이고 데이터는 프로젝트가 갖는다는 지금의 분리가 언리얼(에디터 exe ↔ .uproject)·유니티(에디터 ↔ 프로젝트 폴더)와도 같습니다.</li>
+  <li><b><code>SherlockEditorApp</code> 같은 긴 이름</b> — 프로젝트 이름은 이미 폴더(<code>SherlockEditor/</code>)와 exe 이름에 있으므로 클래스에는 중복입니다. <code>GameApp</code>과 길이·형태를 맞췄습니다.</li>
+  <li><b><code>Editor</code>로 합치기</b> — <code>App/Editor</code>는 11단계 규칙("에디터는 씬을 소유하지 않고 콜백으로 앱에 넘긴다")의 패널 묶음이고, <code>EditorApp</code>은 그 콜백을 받아 씬·재생 상태·프로젝트를 실제로 바꾸는 쪽입니다. 둘의 경계가 재생 모드(11-C)와 자동 검증 인자의 근거이므로 합치지 않았습니다.</li>
+</ul>
+
+<h3>작업 중 겪은 함정</h3>
+<div class="callout amber">
+  <div class="t">Git Bash의 <code>sed -i</code>가 CRLF를 LF로 바꿨습니다</div>
+  <p>치환 자체는 한 줄이었지만, 이 환경의 <code>sed -i</code>는 파일을 다시 쓰면서 줄 끝을 LF로 통일했습니다. 저장소 인덱스는 LF(<code>core.autocrlf=true</code>)라 <code>git diff</code>에는 드러나지 않지만, 작업 트리의 다른 파일은 모두 CRLF이므로 편집한 14개 파일을 파이썬으로 CRLF로 되돌렸습니다. 이 문서(<code>rendering-analysis.html</code>)도 현재 CRLF입니다 — 편집 후 <code>file</code> 명령으로 줄 끝을 확인하는 습관을 남깁니다.</p>
+</div>
+
+<h3>검증 방법</h3>
+<ul>
+  <li>소스·프로젝트 파일·README에 <code>TestApp</code>이 남지 않았는지 <code>grep</code>(docs·logs 제외). 남은 것은 <code>EditorApp.h</code> 머리 주석의 개명 이력 한 줄만.</li>
+  <li><code>SherlockEngine.sln</code> Debug|x64 전체 빌드(세 프로젝트) 경고·오류 0.</li>
+  <li><code>ProjectGenerator::GetEditorSources()</code>가 생성하는 <code>&lt;이름&gt;Editor.vcxproj</code>의 소스 목록은 <code>SherlockEditor.vcxproj</code>와 같아야 한다는 11-E 규칙 — 두 곳을 같은 치환으로 고쳤습니다. 기존에 생성해 둔 프로젝트 솔루션(<code>Projects\&lt;이름&gt;\&lt;이름&gt;Editor.vcxproj</code>)이 있으면 <code>TestApp.cpp</code>를 가리키므로 File &gt; Projects에서 다시 생성해야 합니다.</li>
+</ul>
+
 <h2 id="s8"><span class="num">8.</span>고민하고 수정해야 할 설계 지점</h2>
 <p>7절은 "고치지 않으면 곧 오동작하는 것"이었습니다. 이 절은 다릅니다. 지금은 문제없이 돌아가지만, 코드가 커질수록 비용이 불어나거나 나중에 되돌리기 어려워지는 <strong>설계 선택</strong>들입니다. 항목마다 현재 상태, 왜 지금 고민해야 하는지, 갈 수 있는 방향, 그리고 그 방향의 장단점을 함께 적었습니다. 모두 바꿔야 한다는 뜻은 아닙니다. 몇 개는 "지금 방식이 맞으니 유지하되 한계를 알고 있자"는 결론입니다.</p>
-<p><b>수정 여부 열</b>은 2026-09-10 작업과 2026-09-23의 0~11단계 작업을 반영한 결과입니다. <span class="pill none">해당 없음</span>은 권장이 "유지"라서 고칠 것이 없다는 뜻이고, <span class="pill none">미착수</span>는 아직 손대지 않았다는 뜻입니다. 어떤 방법으로 고쳤는지는 <a href="#applied">적용 기록</a>과 각 항목의 적용 결과 상자에 있습니다.</p>
+<p><b>수정 여부 열</b>은 2026-09-10 작업, 2026-09-23의 0~11단계 작업, 2026-09-28의 C++20 전환을 반영한 결과입니다. <span class="pill none">해당 없음</span>은 권장이 "유지"라서 고칠 것이 없다는 뜻이고, <span class="pill none">미착수</span>는 아직 손대지 않았다는 뜻입니다. 어떤 방법으로 고쳤는지는 <a href="#applied">적용 기록</a>과 각 항목의 적용 결과 상자에 있습니다.</p>
 
 <div class="tbl"><table>
 <thead><tr><th>#</th><th>영역</th><th>주제</th><th>권장</th><th>시점</th><th>수정 여부</th></tr></thead>
@@ -883,20 +984,20 @@ exit code: -1</code></pre>
 <tr><td class="n">D6</td><td>데이터</td><td><a href="#d6">상수버퍼 갱신: UpdateSubresource vs Map</a></td><td><span class="pill info">조건부</span></td><td>3단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">3단계: Dynamic 은 Map(WRITE_DISCARD) + 프레임 슬롯. 8단계 D3D12 업로드 링</span></td></tr>
 <tr><td class="n">D7</td><td>데이터</td><td><a href="#d7">매 프레임 월드행렬·역행렬 재계산</a></td><td><span class="pill info">조건부</span></td><td>3단계</td><td><span class="pill none">미착수</span></td></tr>
 <tr><td class="n">D8</td><td>데이터</td><td><a href="#d8">오일러 각 회전과 LookAt 카메라</a></td><td><span class="pill warn">전환</span></td><td>2단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">2단계: yaw/pitch 카메라, 뷰 = 역행렬</span></td></tr>
-<tr><td class="n">D9</td><td>데이터</td><td><a href="#d9">단일 VERTEX 구조체와 수동 InputLayout</a></td><td><span class="pill warn">전환</span></td><td>4단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">1·4단계: VertexFormat + offsetof 레이아웃, PSO 가 InputLayout 소유</span></td></tr>
+<tr><td class="n">D9</td><td>데이터</td><td><a href="#d9">단일 VERTEX 구조체와 수동 InputLayout</a></td><td><span class="pill warn">전환</span></td><td>4단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">1·4단계: VertexFormat + offsetof 레이아웃, PSO 가 InputLayout 소유</span><span class="sub">2026-09-28: 레이아웃 생성이 <code>consteval</code>, stride·속성 수를 <code>static_assert</code>로 검사</span></td></tr>
 <tr><td class="n">D10</td><td>데이터</td><td><a href="#d10">32비트 인덱스 고정</a></td><td><span class="pill info">조건부</span></td><td>9단계</td><td><span class="pill ok">적용 · 2026-09-23</span></td></tr>
 <tr><td class="n">D11</td><td>데이터</td><td><a href="#d11">조명 8개 고정 배열 상수버퍼</a></td><td><span class="pill ok">유지</span></td><td>12단계에 재검토</td><td><span class="pill none">해당 없음</span><span class="sub">유지가 결론</span></td></tr>
 <tr><td class="n">D12</td><td>셰이더</td><td><a href="#d12">런타임 HLSL 컴파일 vs 사전 컴파일 .cso</a></td><td><span class="pill info">병행</span></td><td>4단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">4단계: FxCompile .cso + Debug 핫리로드(런타임 컴파일 병행)</span></td></tr>
 <tr><td class="n">D13</td><td>셰이더</td><td><a href="#d13">전치 업로드 vs row_major 선언</a></td><td><span class="pill ok">유지</span></td><td>—</td><td><span class="pill none">해당 없음</span><span class="sub">유지가 결론</span></td></tr>
 <tr><td class="n">D14</td><td>앱 구조</td><td><a href="#d14">전역 g_appBase와 가상함수 앱 골격</a></td><td><span class="pill ok">유지</span></td><td>10단계에 재검토</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">전역 포인터는 유지, Engine 이 시스템을 소유하고 AppBase 는 창·루프만 (10단계)</span></td></tr>
 <tr><td class="n">D15</td><td>앱 구조</td><td><a href="#d15">GameObject 값 소유 vs 컴포넌트 vs ECS</a></td><td><span class="pill info">단계적</span></td><td>3단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">3단계 형태: 값 소유 + Mesh*/Material* 참조, 9단계 서브메시 슬롯. 컴포넌트/ECS 는 미도입</span></td></tr>
-<tr><td class="n">D16</td><td>오류 처리</td><td><a href="#d16">bool/HRESULT/void 혼용과 std::cout 로그</a></td><td><span class="pill warn">전환</span></td><td>0단계 일부, 10단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">0단계 몫 완료. Log 파사드와 bool 통일. Logger 본체는 10단계</span></td></tr>
+<tr><td class="n">D16</td><td>오류 처리</td><td><a href="#d16">bool/HRESULT/void 혼용과 std::cout 로그</a></td><td><span class="pill warn">전환</span></td><td>0단계 일부, 10단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">0단계 몫 완료. Log 파사드와 bool 통일. Logger 본체는 10단계</span><span class="sub">2026-09-28: 내부 서식은 <code>std::format</code>. 공개 API 는 printf 유지 (이유는 적용 기록)</span></td></tr>
 <tr><td class="n">D17</td><td>환경</td><td><a href="#d17">소스 인코딩 CP949</a></td><td><span class="pill warn">전환</span></td><td>0단계</td><td><span class="pill ok">적용 완료</span><span class="sub">.editorconfig와 콘솔 코드페이지까지</span></td></tr>
 <tr><td class="n">D18</td><td>환경</td><td><a href="#d18">PCH의 미사용 헤더와 using namespace</a></td><td><span class="pill info">정리</span></td><td>0단계</td><td><span class="pill ok">적용 완료</span><span class="sub">2026-09-10. 수학 타입은 DirectXMath로 확정</span></td></tr>
 <tr><td class="n">D19</td><td>환경</td><td><a href="#d19">콘솔 서브시스템</a></td><td><span class="pill ok">유지</span></td><td>10단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">Windows 서브시스템 + wWinMain, Debug 는 AllocConsole (10단계)</span></td></tr>
 <tr><td class="n">D20</td><td>환경</td><td><a href="#d20">vcpkg 전역 설치 의존</a></td><td><span class="pill warn">전환</span></td><td>0단계</td><td><span class="pill ok">적용 완료</span><span class="sub">2026-09-10</span></td></tr>
-<tr><td class="n">D21</td><td>RHI</td><td><a href="#d21">RHI 추상화의 형태와 도입 시점</a></td><td><span class="pill warn">전환</span></td><td>3단계 준비, 7단계 확정</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">7단계 RHI 인터페이스, 8단계 D3D12 로 검증</span></td></tr>
-<tr><td class="n">D22</td><td>RHI</td><td><a href="#d22">D3D11 위 PSO 에뮬레이션</a></td><td><span class="pill warn">전환</span></td><td>1단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">1단계 PipelineStateDesc + 캐시, 8단계 네이티브 PSO</span></td></tr></tbody></table></div>
+<tr><td class="n">D21</td><td>RHI</td><td><a href="#d21">RHI 추상화의 형태와 도입 시점</a></td><td><span class="pill warn">전환</span></td><td>3단계 준비, 7단계 확정</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">7단계 RHI 인터페이스, 8단계 D3D12 로 검증</span><span class="sub">2026-09-28: 배열 인자 <code>std::span</code>, Handle <code>&lt;=&gt;</code>, ResourcePool 콘셉트 제약</span></td></tr>
+<tr><td class="n">D22</td><td>RHI</td><td><a href="#d22">D3D11 위 PSO 에뮬레이션</a></td><td><span class="pill warn">전환</span></td><td>1단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">1단계 PipelineStateDesc + 캐시, 8단계 네이티브 PSO</span><span class="sub">2026-09-28: 하위 Desc 비교 <code>= default</code>, Desc 채우기는 지정 초기화</span></td></tr></tbody></table></div>
 
 <!-- D1 -->
 <div class="decision" id="d1">
@@ -1024,6 +1125,7 @@ exit code: -1</code></pre>
   </div>
 </div>
   <div class="applied"><b>적용 — 2026-09-23</b> · 1단계: <code>VertexLayoutDesc</code>를 <code>offsetof</code>로 만들고 PSO가 InputLayout을 소유. 4단계: <code>VertexFormat</code> 열거로 Mesh가 자기 정점 포맷을 밝힌다. 5·6단계에 UV·탄젠트가 같은 경로로 추가됐다. 상세: <a href="phase-4.html">4단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-28 (C++20)</b> · <code>VertexTypes.h</code>의 레이아웃 생성 함수를 <code>consteval MakeVertexLayoutPCNTT()</code>로 바꾸고 결과를 <code>inline constexpr kVertexLayoutPCNTT</code>에 담았다. 이 문서가 "잊으면 컴파일은 되는데 화면이 깨졌음"이라고 적은 종류의 실수 — stride 와 <code>sizeof(VERTEX)</code> 불일치, 속성 수 누락, 마지막 속성 뒤의 빈 공간 — 를 <code>static_assert</code> 세 개가 컴파일 시점에 잡는다. <code>GetVertexLayout()</code>은 이름을 유지하되 상수 참조를 돌려주므로 호출처(Renderer 두 곳)는 바뀌지 않았다. 각 <code>VertexAttribute</code>는 지정 초기화(<code>.semantic = …, .format = …, .offset = …</code>)로 적어 필드 순서를 외울 필요가 없어졌다. 상세: <a href="#applied-cpp20">적용 기록 — C++20</a></div>
 
 <!-- D10 -->
 <div class="decision" id="d10">
@@ -1121,6 +1223,7 @@ exit code: -1</code></pre>
   </div>
 </div>
   <div class="applied"><b>적용 — 2026-09-23 (10단계, 본체)</b> · Log 파사드 뒤에 Logger 본체가 들어왔다: 레벨(Debug/Info/Warn/Error) 필터, 싱크 네 개(콘솔·OutputDebugString·파일·메모리 히스토리), 뮤텍스. 호출부(<code>Log::Info/Warn/Error</code>)는 바뀌지 않았다. 0단계에서 자유 함수 네임스페이스로 둔 이유가 바로 이것이었다. ImGui 콘솔(F12)은 히스토리를 레벨·문자열로 거른다. ThrowIfFailed류 매크로는 여전히 쓰지 않는다(반환값 통일 유지). 상세: <a href="phase-10.html#s2">phase-10.html §2</a></div>
+  <div class="applied"><b>적용 — 2026-09-28 (C++20, 부분)</b> · <code>std::format</code>은 Log 의 <em>내부</em>(시각 스탬프 <code>[{:9.3f}]</code>, <code>HrToString</code>의 <code>0x{:08X}</code>)와 <code>std::to_string</code> 조각을 <code>+</code>로 이어 붙이던 곳(Config 오류 메시지, GameBuilder 결과, ProjectGenerator 오류, 디버그 이름 <code>BackBuffer[{}]</code>, Model 이름, ContentBrowser 크기 표시, Editor 드롭 라벨)에 썼다. <strong>공개 API <code>Log::Info/Warn/Error(const char* fmt, ...)</code>는 printf 서식을 유지했다.</strong> 호출부 100여 곳 때문만이 아니다 — 같은 이름으로 <code>std::format_string</code> 오버로드를 추가하면 <code>Log::Info("x %d", 3)</code>이 그 오버로드에도 적법하게 매칭되어(치환 필드 없이 인자가 남는 것은 <code>std::format</code>에서 에러가 아님) <code>"x %d"</code>를 그대로 찍는다. 두 서식 체계를 한 오버로드 집합에 섞는 것은 조용한 버그의 통로이므로, 파사드를 통째로 바꾸는 날이 오면 이름을 바꿔서(<code>Log::InfoF</code> 등) 한 번에 옮기는 것이 맞다. 상세: <a href="#applied-cpp20">적용 기록 — C++20</a></div>
 
 <!-- D17 -->
 <div class="decision" id="d17">
@@ -1205,6 +1308,7 @@ exit code: -1</code></pre>
   </div>
 </div>
   <div class="applied"><b>적용 — 2026-09-23</b> · 7단계: <code>RHI/</code>에 <code>Device</code>·<code>CommandList</code> 가상 인터페이스와 핸들·Desc 타입, 팩토리 <code>RHI::CreateDevice(Backend)</code>를 두었다. 백엔드 헤더는 <code>RHI/D3D11/</code>·<code>RHI/D3D12/</code> 안에서만 include한다(grep으로 강제). 8단계 D3D12 백엔드가 Renderer 세 줄 변경만으로 붙어 추상화가 새지 않음을 확인했다. 상세: <a href="phase-7.html">7단계</a>, <a href="phase-8.html">8단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-28 (C++20)</b> · 인터페이스 표면이 세 곳 바뀌었다. (1) <code>Device::CreateTexture(desc, std::span&lt;const TextureSubresource&gt; = {})</code>, <code>Device::GetTimestampResults(std::span&lt;uint64_t&gt;, …)</code>, <code>ShaderDesc::bytecode</code>(<code>std::span&lt;const uint8_t&gt;</code>), <code>ShaderCompiler::ValidateConstantBufferSize/ReflectBindings</code>가 (포인터, 개수) 쌍 대신 <code>std::span</code>을 받는다. 호출 코드는 <code>std::vector</code>·C 배열을 그대로 넘기므로 <code>.data(), static_cast&lt;uint32_t&gt;(.size())</code> 조각이 사라졌고, 백엔드는 <code>nullptr &amp;&amp; count &gt; 0</code> 대신 <code>.empty()</code>를 본다. (2) <code>Handle&lt;Tag&gt;</code>는 <code>auto operator&lt;=&gt;(const Handle&amp;) const = default</code> 하나로 <code>==</code>·<code>!=</code>와 순서 비교가 모두 생겨, 이 문서가 "복사·비교·직렬화가 쉬움"이라고 적은 핸들의 장점이 그대로 <code>std::map</code> 키 자격까지 확장됐다. (3) <code>ResourcePool&lt;T, ResourceHandle HandleT&gt;</code> — 콘셉트로 "핸들처럼 생긴 타입"(index·generation·IsValid·trivially copyable)만 받는다. <code>UpdateBuffer/CreateBuffer</code>의 <code>const void*</code> 초기 데이터는 그대로 두었다(구조체 하나를 넘기는 자리라 <code>std::as_bytes(std::span{&amp;x, 1})</code>가 오히려 장황함). 두 백엔드가 같은 시그니처를 구현하므로 D3D11·D3D12 모두 재빌드·실행으로 확인했다. 상세: <a href="#applied-cpp20">적용 기록 — C++20</a></div>
 
 <!-- D22 -->
 <div class="decision" id="d22">
@@ -1223,6 +1327,7 @@ exit code: -1</code></pre>
   <p>22개 중 <strong>지금 당장</strong> 손대면 좋은 것은 비용이 낮고 되돌릴 일이 없는 D1(ComPtr 통일), D17(UTF-8), D20(vcpkg 매니페스트), D18(PCH 정리)입니다. <span class="pill ok">네 가지 모두 2026-09-10에 적용됨</span> D2·D3·D4·D9는 로드맵 3~4단계의 핵심 작업 그 자체이고, D5·D11·D13·D14·D19는 지금 방식이 옳으니 한계만 기억해 두면 됩니다. D6·D7·D10·D15는 "규모가 커지면"이라는 조건이 붙는 항목으로, 측정 없이 미리 바꾸면 복잡도만 늘어납니다. RHI 목표와 직접 연결된 D21·D22는 각각 7단계와 1단계의 핵심 작업이며, 특히 D22(PSO 에뮬레이션)는 1단계에서 바로 시작해야 이후 모든 단계가 그 위에 쌓입니다.</p>
 </div>
   <div class="applied"><b>적용 — 2026-09-23</b> · 1단계: <code>PipelineStateDesc</code>(래스터·깊이·블렌드·레이아웃·셰이더·RTV/DSV 포맷)를 필드 단위로 해시해 캐시하고, D3D11 백엔드는 상태 객체 5개와 Bind 한 번의 Set 호출 7개로 에뮬레이션한다. 8단계 D3D12에서는 같은 Desc가 <code>D3D12_GRAPHICS_PIPELINE_STATE_DESC</code> 하나가 되었다. 상세: <a href="phase-1.html">1단계</a>, <a href="phase-8.html#s7">8단계 §7</a></div>
+  <div class="applied"><b>적용 — 2026-09-28 (C++20)</b> · 위 "단점 · 주의"의 <em>"Desc의 해시·비교 코드를 직접 작성해야 하고, float 필드의 비교에 주의"</em>가 절반 해소됐다. <code>RasterizerDesc</code>·<code>DepthStencilDesc</code>·<code>RenderTargetBlendDesc</code>·<code>VertexAttribute</code>의 <code>operator==</code>는 <code>= default</code>가 되어 <code>PipelineTypes.cpp</code>의 멤버 나열 비교 함수 네 개와 <code>FloatEq</code>가 삭제됐다 — 필드를 추가하면 비교에서 빠뜨리는 실수가 구조적으로 사라진다. <code>PipelineStateDesc::operator==</code> 자체는 손으로 남겼다: 배열을 <code>rtvCount</code>·<code>attributeCount</code>만큼만 비교해야 하는 "쓰는 만큼" 규칙은 default 로 표현할 수 없다. 해시도 그대로다(표준에 기본 해시는 없음). float 비교의 의미는 비트 비교(±0 예외)에서 값 비교로 바뀌었는데, 둘은 NaN 에서만 다르고 해시와의 일관성(<code>a == b ⇒ hash(a) == hash(b)</code>)은 유지된다. <code>operator!=</code> 선언은 모두 지웠다 — C++20 이 <code>==</code>에서 재작성한다. Renderer 의 Desc 채우기(<code>m_baseDesc</code>·<code>m_shadowDesc</code>·<code>TextureDesc</code>·<code>SamplerDesc</code>·<code>ResourceSetDesc</code>·<code>RenderPassDesc</code>·<code>BufferDesc</code>)는 전부 지정 초기화로 바꿔, 문서가 목표로 삼은 "D3D12 desc 처럼 한 덩어리로 기술"하는 모양이 코드에 그대로 나타난다. 상세: <a href="#applied-cpp20">적용 기록 — C++20</a></div>
 
 <h2 id="s9"><span class="num">9.</span>발전 로드맵 — RHI와 PSO를 향해</h2>
 <p>이 프로젝트의 최종 목표는 <strong>RHI</strong>(Render Hardware Interface, 그래픽 API를 감추는 추상화 층)와 <strong>PSO</strong>(Pipeline State Object, 파이프라인 상태를 하나의 불변 객체로 묶는 구조)입니다. 이 목표는 로드맵의 <em>순서</em>보다 <em>각 단계를 어떤 모양으로 만드는가</em>를 바꿉니다. 깊이 버퍼, Material, 텍스처, 그림자는 어차피 필요하지만, 그것들을 "D3D11 호출을 직접 부르는 코드"로 만들면 나중에 RHI로 옮길 때 전부 다시 써야 합니다. 반대로 처음부터 RHI 모양의 래퍼 뒤에서 만들면 RHI 추출은 인터페이스를 뽑아내는 작업으로 끝납니다.</p>
@@ -1236,7 +1341,7 @@ exit code: -1</code></pre>
 <div class="fig">
 <svg viewBox="0 0 900 330" role="img" aria-label="RHI 계층 구조">
   <defs><marker id="ar7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--line-strong)"/></marker></defs>
-  <g class="box"><rect x="20" y="16" width="860" height="44" rx="6"/><text x="450" y="35" text-anchor="middle" font-weight="600">App / Editor</text><text x="450" y="51" text-anchor="middle" class="s">TestApp · ImGui 패널 · 씬 조작 — RHI를 직접 만지지 않음</text></g>
+  <g class="box"><rect x="20" y="16" width="860" height="44" rx="6"/><text x="450" y="35" text-anchor="middle" font-weight="600">App / Editor</text><text x="450" y="51" text-anchor="middle" class="s">EditorApp(에디터) · GameApp(런타임) · ImGui 패널 · 씬 조작 — RHI를 직접 만지지 않음</text></g>
   <path class="ln" d="M450 60V78" marker-end="url(#ar7)"/>
   <g class="box"><rect x="20" y="78" width="860" height="56" rx="6"/><text x="450" y="99" text-anchor="middle" font-weight="600">Renderer · Scene · Material · Mesh · RenderPass</text><text x="450" y="118" text-anchor="middle" class="s">API 중립 코드. RHI 핸들(BufferHandle, TextureHandle, PipelineHandle)과 CommandList만 사용</text></g>
   <path class="ln" d="M450 134V152" marker-end="url(#ar7)"/>
@@ -1336,6 +1441,10 @@ exit code: -1</code></pre>
   <div class="applied">
     <div class="t">잔여 완료 — 2026-09-23</div>
     <p>남아 있던 셋을 처리했습니다. <code>static GameTime</code> 제거 + <code>Update(float dt)</code>, <code>Core/Paths</code>로 exe 기준 셰이더 경로(빌드가 <code>Shaders\</code>를 exe 옆으로 복사), <code>App/ Core/ Graphics/ Graphics/D3D11/ Scene/ Shaders/</code> 폴더 재배치. 커밋 8338842. <strong>상세: <a href="phase-0.html">phase-0.html</a></strong></p>
+  </div>
+  <div class="applied">
+    <div class="t">기반 갱신 — 2026-09-28 · C++20</div>
+    <p>0단계의 성격("새 추상화를 만들지 않고 기존 코드를 안전하게")에 속하는 후속 작업으로 언어 표준을 C++20으로 올렸습니다. 세 프로젝트 12곳의 <code>stdcpp17</code> → <code>stdcpp20</code>, 코드 수정 없이 Debug·Release 재빌드 경고 0. 이어서 기본 생성 비교·<code>std::span</code>·지정 초기화·<code>std::format</code>·<code>consteval</code>·콘셉트를 적용했습니다. 이 여섯 가지는 모두 "런타임 동작은 같고, 실수를 컴파일 시점으로 끌어오는" 종류입니다. <strong>상세: <a href="#applied-cpp20">적용 기록 — C++20 전환</a></strong></p>
   </div>
 </div>
 
@@ -1508,6 +1617,10 @@ exit code: -1</code></pre>
     <div class="t">완료 — 2026-09-23</div>
     <p><code>RHI/</code>(선언만: Handle·PipelineTypes·ResourceDesc·BindingTypes·RenderPassTypes·GraphicsConfig, 순수 가상 <code>RHI::Device</code>·<code>RHI::CommandList</code>, <code>ShaderCompiler.h</code>, 팩토리 <code>RHI::CreateDevice(Backend, DeviceDesc)</code>) / <code>RHI/D3D11/</code>(<code>D3D11Device final</code>, <code>D3D11CommandList final</code>, 변환·풀·PSO·컴파일러 구현) / <code>Graphics/</code>(Renderer·Mesh·VertexTypes·ShaderConstants·TextureLoader만). 인터페이스 메서드 집합은 6단계 클래스의 공개 API 그대로. ImGui는 두 선택지 중 <em>얇은 어댑터</em>: <code>RHI::Device</code>의 <code>Init/NewFrame/Render/ShutdownImGui</code> + <code>GetImGuiTextureId(uint64)</code>, <code>ImGuiBackend</code> 삭제. AppBase는 <code>unique_ptr&lt;RHI::Device&gt;</code>. Renderer는 include 경로와 <code>Device*</code> → <code>RHI::Device*</code> 치환만(로직 0줄), Material·Scene 무변경. 검증: F10 고정 상태 전/후 캡처 픽셀 비교 794,880 중 12(전부 창 둥근 모서리, 씬 0), 격리 grep(<code>RHI/D3D11/</code> 밖) 0, Debug/Release 빌드, 리사이즈·핫리로드 회귀 통과. 상세: <a href="phase-7.html">phase-7.html</a>.</p>
   </div>
+  <div class="applied">
+    <div class="t">인터페이스 다듬기 — 2026-09-28 · C++20</div>
+    <p><code>RHI::Device</code>의 배열 인자(<code>CreateTexture</code> 초기 데이터, <code>GetTimestampResults</code> 결과 버퍼)와 <code>ShaderDesc::bytecode</code>, <code>ShaderCompiler</code>의 바이트코드 인자가 (포인터, 개수) 쌍에서 <code>std::span</code>으로 바뀌었습니다. 위 완료 기준 "Renderer 코드가 변경 없이 컴파일"은 이번엔 의도적으로 깨뜨린 것입니다 — 호출처 4곳이 <code>.data(), size()</code> 조각을 지우는 방향으로 짧아졌습니다. D3D11·D3D12 두 구현이 같은 시그니처를 따르므로 두 백엔드를 모두 실행해 확인했습니다. <code>Handle</code>은 <code>&lt;=&gt; = default</code>, <code>ResourcePool</code>은 <code>ResourceHandle</code> 콘셉트로 제약. 상세: <a href="#applied-cpp20">적용 기록 — C++20 전환</a>, <a href="#d21">D21</a></p>
+  </div>
 </div>
 
 <div class="phase" id="p8">
@@ -1635,6 +1748,7 @@ exit code: -1</code></pre>
   </div>
   <div class="done"><b>완료 기준</b> — Build 폴더를 통째로 복사한 곳에서 SherlockGame.exe가 소스 트리 없이 시작 씬을 재생한다.</div>
   <div class="applied"><b>적용 결과 — 2026-09-23</b> · <code>--build-game=TestBuild</code>로 파일 86개 출력 → <code>Build\TestBuild\SherlockGame.exe</code>가 자기 옆의 engine.ini·.cso·씬만으로 재생(Rigidbody 상승, 활성 카메라 Main Camera, 스크린샷). 런타임 단독·D3D12 Release 동일. 세 프로젝트 Debug·Release 경고 0. 첫 실행의 WIC E_NOINTERFACE는 CoInitializeEx로 해결. 상세: <a href="phase-11d.html">phase-11d.html</a></div>
+  <div class="applied"><b>후속 — 2026-09-28</b> · 이 단계에서 에디터 exe의 앱 클래스가 된 <code>TestApp</code>을 <code>EditorApp</code>으로 개명했습니다(<code>GameApp</code>과 대칭). 저장·불러오기 단위는 씬(11)과 프로젝트(11-E)가 맡으므로 "앱"은 실행 파일의 종류만 뜻합니다. <a href="#applied-editorapp">적용 기록</a></div>
 </div>
 
 <div class="phase" id="p11e">
@@ -1732,7 +1846,8 @@ exit code: -1</code></pre>
 
 <div class="footer">
   분석 대상: SherlockEngine 저장소 커밋 867c380 (main). 소스 15개 파일과 HLSL 2개, 작업 로그 8건, 기획 메모 3건을 전부 읽고 작성했습니다. 본문의 코드 줄 번호는 모두 해당 커밋 기준입니다.<br>
-  2026-09-10에 7절 9건(+1건 일부)과 8절 D1·D17·D18·D20(+D4·D16 일부)을 수정하고 <a href="#applied">적용 기록</a>을 덧붙였습니다. 원래 분석 내용은 고치지 않고 그대로 두었으므로, 현재 코드와 다른 서술은 수정 전 상태의 기록으로 읽으면 됩니다.
+  2026-09-10에 7절 9건(+1건 일부)과 8절 D1·D17·D18·D20(+D4·D16 일부)을 수정하고 <a href="#applied">적용 기록</a>을 덧붙였습니다. 원래 분석 내용은 고치지 않고 그대로 두었으므로, 현재 코드와 다른 서술은 수정 전 상태의 기록으로 읽으면 됩니다.<br>
+  2026-09-28에 언어 표준을 C++20으로 올리고 기본 생성 비교·<code>std::span</code>·지정 초기화·<code>std::format</code>·<code>consteval</code>·콘셉트를 적용했습니다. <a href="#applied-cpp20">적용 기록 — C++20 전환</a>에 정리했고, D9·D16·D21·D22와 0·7단계에 적용 결과 상자를 덧붙였습니다.
 </div>
 </main>
 </div>

@@ -11,6 +11,12 @@
 // 4단계(D9): 정점 포맷을 열거형으로 두고 Mesh가 자기 포맷을 알려줌. Renderer는
 // GetVertexLayout(mesh.GetVertexFormat())으로 PSO Desc를 채움.
 // 5단계: UV 추가. 6단계: 탄젠트 추가 (Position / Color / Normal / TexCoord / Tangent, 64바이트).
+//
+// C++20 (2026-09-28): 레이아웃 생성 함수를 consteval 로 바꿈. 이 함수는 런타임 입력이 없고
+// offsetof / sizeof 만 쓰므로 컴파일 시점에 계산되어야 마땅하고, consteval 은 그것을 강제함
+// (런타임 호출은 컴파일 에러). 결과는 아래 kVertexLayoutPCNTT 상수에 담기고, 그 아래 static_assert 가
+// "레이아웃의 stride 가 정점 크기와 같다", "속성 5개" 를 컴파일 시점에 검사함 — 이전에는 런타임에
+// 화면이 깨져야 알 수 있던 종류의 실수임.
 
 struct VERTEX
 {
@@ -27,31 +33,44 @@ enum class VertexFormat : uint8_t
 	PositionColorNormalTexcoordTangent,   // VERTEX (VertexPCNTT)
 };
 
-// Position / Color / Normal / TexCoord / Tangent 레이아웃.
-inline VertexLayoutDesc GetVertexLayoutPCNTT()
+// Position / Color / Normal / TexCoord / Tangent 레이아웃. 컴파일 시점 전용(consteval).
+consteval VertexLayoutDesc MakeVertexLayoutPCNTT()
 {
 	VertexLayoutDesc layout;
-	layout.attributes[0] = { VertexSemantic::Position, 0, Format::R32G32B32_FLOAT,    static_cast<uint16_t>(offsetof(VERTEX, x)),  0 };
-	layout.attributes[1] = { VertexSemantic::Color,    0, Format::R32G32B32A32_FLOAT, static_cast<uint16_t>(offsetof(VERTEX, r)),  0 };
-	layout.attributes[2] = { VertexSemantic::Normal,   0, Format::R32G32B32_FLOAT,    static_cast<uint16_t>(offsetof(VERTEX, nx)), 0 };
-	layout.attributes[3] = { VertexSemantic::TexCoord, 0, Format::R32G32_FLOAT,       static_cast<uint16_t>(offsetof(VERTEX, u)),  0 };
-	layout.attributes[4] = { VertexSemantic::Tangent,  0, Format::R32G32B32A32_FLOAT, static_cast<uint16_t>(offsetof(VERTEX, tx)), 0 };
+	// C++20 지정 초기화. VertexAttribute 필드 순서: semantic, semanticIndex, format, offset, inputSlot.
+	layout.attributes[0] = { .semantic = VertexSemantic::Position, .format = Format::R32G32B32_FLOAT,    .offset = static_cast<uint16_t>(offsetof(VERTEX, x)) };
+	layout.attributes[1] = { .semantic = VertexSemantic::Color,    .format = Format::R32G32B32A32_FLOAT, .offset = static_cast<uint16_t>(offsetof(VERTEX, r)) };
+	layout.attributes[2] = { .semantic = VertexSemantic::Normal,   .format = Format::R32G32B32_FLOAT,    .offset = static_cast<uint16_t>(offsetof(VERTEX, nx)) };
+	layout.attributes[3] = { .semantic = VertexSemantic::TexCoord, .format = Format::R32G32_FLOAT,       .offset = static_cast<uint16_t>(offsetof(VERTEX, u)) };
+	layout.attributes[4] = { .semantic = VertexSemantic::Tangent,  .format = Format::R32G32B32A32_FLOAT, .offset = static_cast<uint16_t>(offsetof(VERTEX, tx)) };
 	layout.attributeCount = 5;
 	layout.stride = sizeof(VERTEX);
 	return layout;
 }
 
-inline VertexLayoutDesc GetVertexLayout(VertexFormat format)
+inline constexpr VertexLayoutDesc kVertexLayoutPCNTT = MakeVertexLayoutPCNTT();
+
+static_assert(kVertexLayoutPCNTT.stride == sizeof(VERTEX), "VertexPCNTT 레이아웃의 stride 가 정점 구조체 크기와 다름");
+static_assert(kVertexLayoutPCNTT.attributeCount == 5, "VertexPCNTT 는 속성 5개(Position/Color/Normal/TexCoord/Tangent)");
+static_assert(kVertexLayoutPCNTT.attributes[4].offset + sizeof(float) * 4 == sizeof(VERTEX), "마지막 속성(Tangent) 뒤에 빈 공간이 없어야 함");
+
+// 이전 이름을 유지함 — 호출처는 그대로임. 이제 상수를 돌려줄 뿐임.
+constexpr const VertexLayoutDesc& GetVertexLayoutPCNTT()
+{
+	return kVertexLayoutPCNTT;
+}
+
+constexpr const VertexLayoutDesc& GetVertexLayout(VertexFormat format)
 {
 	switch (format)
 	{
 	case VertexFormat::PositionColorNormalTexcoordTangent:
 	default:
-		return GetVertexLayoutPCNTT();
+		return kVertexLayoutPCNTT;
 	}
 }
 
-inline uint32_t GetVertexStride(VertexFormat format)
+constexpr uint32_t GetVertexStride(VertexFormat format)
 {
 	return GetVertexLayout(format).stride;
 }

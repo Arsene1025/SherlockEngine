@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "Core/Config.h"
 #include <fstream>
+#include <format>   // C++20: 오류 메시지 조립
 #include <cctype>
 
 namespace
@@ -46,15 +47,15 @@ bool Config::LoadFromFile(const std::wstring& path)
 		if (line.front() == '[')
 		{
 			const size_t close = line.find(']');
-			if (close == std::string::npos) { m_errors += std::to_string(lineNumber) + "줄: 닫히지 않은 섹션\n"; continue; }
+			if (close == std::string::npos) { m_errors += std::format("{}줄: 닫히지 않은 섹션\n", lineNumber); continue; }   // C++20 std::format
 			section = Lower(Trim(line.substr(1, close - 1)));
 			continue;
 		}
 		const size_t equals = line.find('=');
-		if (equals == std::string::npos) { m_errors += std::to_string(lineNumber) + "줄: '=' 없음\n"; continue; }
+		if (equals == std::string::npos) { m_errors += std::format("{}줄: '=' 없음\n", lineNumber); continue; }
 		const std::string key = Lower(Trim(line.substr(0, equals)));
 		const std::string value = Trim(line.substr(equals + 1));
-		if (key.empty()) { m_errors += std::to_string(lineNumber) + "줄: 키 없음\n"; continue; }
+		if (key.empty()) { m_errors += std::format("{}줄: 키 없음\n", lineNumber); continue; }
 		m_values[section.empty() ? key : section + "." + key] = value;
 	}
 	return true;

@@ -46,7 +46,7 @@ public:
 	// ---- 자기 오브젝트 ----
 	GameObject& GetGameObject() { return GetOwner(); }
 	const std::string& GetName() const { return GetOwner().GetName(); }
-	template <typename T> T* GetComponent() { return GetOwner().GetBehaviour<T>(); }   // 같은 오브젝트의 다른 컴포넌트 (예: Rigidbody)
+	template <std::derived_from<Behaviour> T> T* GetComponent() { return GetOwner().GetBehaviour<T>(); }   // 같은 오브젝트의 다른 컴포넌트 (예: Rigidbody). C++20 콘셉트로 T 를 Behaviour 파생으로 제한
 
 	// ---- Transform 단축 함수 (Transform 의 같은 이름 함수를 호출함) ----
 	const DirectX::XMFLOAT3& GetPosition() const { return GetOwner().GetTransform().GetPosition(); }

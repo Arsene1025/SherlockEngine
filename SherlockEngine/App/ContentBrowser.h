@@ -41,7 +41,7 @@ public:
 	};
 
 	ContentBrowser();
-	~ContentBrowser();   // 썸네일 텍스처를 마지막 Draw 의 Device 로 파괴함 (TestApp 이 Engine::Shutdown 보다 먼저 소멸)
+	~ContentBrowser();   // 썸네일 텍스처를 마지막 Draw 의 Device 로 파괴함 (EditorApp 이 Engine::Shutdown 보다 먼저 소멸)
 
 	// "Content Browser" 창의 내용. ImGui::Begin/End 는 호출자(Editor) 의 몫.
 	void Draw(RHI::Device& device, const Actions& actions);

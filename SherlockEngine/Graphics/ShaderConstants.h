@@ -80,6 +80,18 @@ struct alignas(16) MaterialConstants
 	DirectX::XMFLOAT3 padding;
 };
 
+// C++20 (2026-09-28): consteval 검사 함수. cbuffer 는 16바이트 레지스터 단위로 올라가고 D3D11 은 65,536바이트가 상한임.
+// consteval 이라 런타임에는 존재하지 않는 함수임 — static_assert 안에서만 호출됨. 아래의 정확한 크기 단언은
+// 그대로 두고(HLSL 과 바이트 단위로 대조하는 것이 실제 검사), 이 함수는 새 cbuffer 를 추가할 때 먼저 걸리는 일반 규칙임.
+consteval bool IsValidConstantBufferSize(size_t bytes)
+{
+	return bytes > 0 && bytes % 16 == 0 && bytes <= 65536;
+}
+static_assert(IsValidConstantBufferSize(sizeof(PerFrameConstants)), "PerFrameConstants 는 16의 배수여야 함");
+static_assert(IsValidConstantBufferSize(sizeof(PerObjectConstants)), "PerObjectConstants 는 16의 배수여야 함");
+static_assert(IsValidConstantBufferSize(sizeof(LightConstants)), "LightConstants 는 16의 배수여야 함");
+static_assert(IsValidConstantBufferSize(sizeof(MaterialConstants)), "MaterialConstants 는 16의 배수여야 함");
+
 static_assert(sizeof(PerFrameConstants) == 304, "PerFrameConstants: 64*4 + 16 + 16 + 16");
 static_assert(offsetof(PerFrameConstants, debugParams) == 288, "PerFrameConstants.debugParams");
 static_assert(offsetof(PerFrameConstants, lightViewProj) == 192, "PerFrameConstants.lightViewProj");

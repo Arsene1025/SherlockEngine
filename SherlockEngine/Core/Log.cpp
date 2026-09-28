@@ -4,6 +4,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <deque>
+#include <format>   // C++20: 내부 서식(시각 스탬프, HRESULT 코드)
 #include <fstream>
 #include <mutex>
 #include <io.h>
@@ -47,6 +48,10 @@ namespace
         ::OutputDebugStringW(wide.c_str());
     }
 
+    // 공개 API(Log::Info 등)는 printf 서식을 유지함. 호출부 100여 곳을 바꾸지 않기 위한 것도 있지만, 더 중요한 이유는
+    // std::format 오버로드를 같은 이름으로 추가하면 위험하기 때문임: Log::Info("x %d", 3) 은 format_string 오버로드에도
+    // 적법하게 매칭되고(치환 필드가 없는데 인자가 남는 것은 std::format 에서 에러가 아님) "x %d" 를 그대로 찍음.
+    // 그래서 C++20 std::format 은 이 파일 안의 내부 서식(Emit 의 시각 스탬프, HrToString 의 코드)에만 씀.
     std::string FormatV(const char* fmt, va_list args)
     {
         va_list copy;
@@ -89,8 +94,7 @@ namespace
 
         // 콘솔·디버거에는 0단계와 같은 형식(접두어 + 본문)으로 씀. 파일에는 시각을 붙임.
         const std::string line = std::string(Prefix(level)) + body + "\n";
-        char stamp[32];
-        std::snprintf(stamp, sizeof(stamp), "[%9.3f] ", time);
+        const std::string stamp = std::format("[{:9.3f}] ", time);   // C++20: snprintf + char[32] 대신
 
         std::lock_guard<std::mutex> lock(s.mutex);
         ++s.counts[static_cast<int>(level)];
@@ -226,8 +230,8 @@ namespace Log
 
     std::string HrToString(HRESULT hr)
     {
-        char code[16] = {};
-        std::snprintf(code, sizeof(code), "0x%08X", static_cast<unsigned int>(hr));
+        // "0x80070002" — C++20 std::format. {:08X} 는 %08X 와 같음 (대문자 8자리, 0 채움).
+        std::string result = std::format("0x{:08X}", static_cast<unsigned int>(hr));
 
         LPWSTR text = nullptr;
         const DWORD len = ::FormatMessageW(
@@ -235,7 +239,6 @@ namespace Log
             nullptr, static_cast<DWORD>(hr), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
             reinterpret_cast<LPWSTR>(&text), 0, nullptr);
 
-        std::string result = code;
         if (len > 0 && text != nullptr)
         {
             std::string message = ToUtf8(text);
