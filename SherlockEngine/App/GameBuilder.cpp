@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <shellapi.h>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iterator>
 #include <chrono>
@@ -220,7 +221,7 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 
 	result.ok = true;
 	result.seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
-	result.message = "built " + options.name + " (" + std::to_string(result.filesCopied) + " files, " + std::to_string(static_cast<int>(result.seconds)) + " s)";
+	result.message = std::format("built {} ({} files, {:.0f} s)", options.name, result.filesCopied, result.seconds);   // C++20 std::format
 	Log::Info("게임 빌드: %s → %s (%d 파일, %.1f 초)", options.name.c_str(), Utf8(result.outputDir).c_str(), result.filesCopied, result.seconds);
 	if (options.openFolder) ShellExecuteW(nullptr, L"explore", result.outputDir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 	return result;

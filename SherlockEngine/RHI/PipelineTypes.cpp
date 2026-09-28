@@ -11,6 +11,13 @@
 //     -0.0f는 0.0f로 정규화해서 넣음.
 // (3) 배열은 "쓰는 만큼"만 섞음. rtvCount 뒤의 슬롯과 attributeCount 뒤의
 //     속성은 의미가 없으므로 값이 달라도 같은 PSO로 봐야 함.
+//
+// C++20 (2026-09-28): 하위 Desc 의 비교 함수(EqRasterizer / EqDepthStencil / EqRtBlend /
+// EqVertexAttribute / FloatEq)는 삭제하고 헤더의 `operator== = default` 를 씀. 해시 함수는
+// 그대로임 — 표준에 "기본 해시"는 없고, (3)의 "쓰는 만큼만" 규칙은 어차피 손으로 써야 함.
+// float 비교 의미가 바뀐 지점: 예전 FloatEq 는 비트 비교(±0 만 예외)였고, 지금은 값 비교임.
+// 두 방식은 NaN 에서만 다르고(값 비교는 NaN != NaN), 해시와의 일관성(a == b ⇒ hash(a) == hash(b))은
+// 값 비교에서도 유지됨 — ±0 은 해시가 정규화하고, 그 외 값이 같으면 비트도 같기 때문.
 namespace
 {
 	inline uint64_t HashCombine(uint64_t seed, uint64_t value)
@@ -25,16 +32,6 @@ namespace
 		uint32_t bits = 0;
 		std::memcpy(&bits, &f, sizeof(bits));
 		return HashCombine(seed, bits);
-	}
-
-	inline bool FloatEq(float a, float b)
-	{
-		// 캐시 키이므로 비트 단위로 같은지 비교하는 것이 맞음. 예외로 0.0f와 -0.0f만 같은 것으로 봄.
-		if (a == 0.0f && b == 0.0f) return true;
-		uint32_t ab = 0, bb = 0;
-		std::memcpy(&ab, &a, sizeof(ab));
-		std::memcpy(&bb, &b, sizeof(bb));
-		return ab == bb;
 	}
 
 	uint64_t HashRasterizer(uint64_t h, const RasterizerDesc& r)
@@ -52,19 +49,6 @@ namespace
 		return h;
 	}
 
-	bool EqRasterizer(const RasterizerDesc& a, const RasterizerDesc& b)
-	{
-		return a.fill == b.fill && a.cull == b.cull
-			&& a.frontCounterClockwise == b.frontCounterClockwise
-			&& a.depthClipEnable == b.depthClipEnable
-			&& a.scissorEnable == b.scissorEnable
-			&& a.multisampleEnable == b.multisampleEnable
-			&& a.antialiasedLineEnable == b.antialiasedLineEnable
-			&& a.depthBias == b.depthBias
-			&& FloatEq(a.depthBiasClamp, b.depthBiasClamp)
-			&& FloatEq(a.slopeScaledDepthBias, b.slopeScaledDepthBias);
-	}
-
 	uint64_t HashDepthStencil(uint64_t h, const DepthStencilDesc& d)
 	{
 		h = HashCombine(h, d.depthEnable);
@@ -74,13 +58,6 @@ namespace
 		h = HashCombine(h, d.stencilReadMask);
 		h = HashCombine(h, d.stencilWriteMask);
 		return h;
-	}
-
-	bool EqDepthStencil(const DepthStencilDesc& a, const DepthStencilDesc& b)
-	{
-		return a.depthEnable == b.depthEnable && a.depthWrite == b.depthWrite
-			&& a.depthFunc == b.depthFunc && a.stencilEnable == b.stencilEnable
-			&& a.stencilReadMask == b.stencilReadMask && a.stencilWriteMask == b.stencilWriteMask;
 	}
 
 	uint64_t HashRtBlend(uint64_t h, const RenderTargetBlendDesc& b)
@@ -96,23 +73,10 @@ namespace
 		return h;
 	}
 
-	bool EqRtBlend(const RenderTargetBlendDesc& a, const RenderTargetBlendDesc& b)
-	{
-		return a.blendEnable == b.blendEnable && a.srcColor == b.srcColor && a.dstColor == b.dstColor
-			&& a.colorOp == b.colorOp && a.srcAlpha == b.srcAlpha && a.dstAlpha == b.dstAlpha
-			&& a.alphaOp == b.alphaOp && a.writeMask == b.writeMask;
-	}
-
 	// independentBlend가 꺼져 있으면 D3D는 rt[0]만 봄. 해시도 rt[0]만 반영함.
 	uint32_t BlendSlotCount(const BlendDesc& b, uint8_t rtvCount)
 	{
 		return b.independentBlend ? rtvCount : 1u;
-	}
-
-	bool EqVertexAttribute(const VertexAttribute& a, const VertexAttribute& b)
-	{
-		return a.semantic == b.semantic && a.semanticIndex == b.semanticIndex
-			&& a.format == b.format && a.offset == b.offset && a.inputSlot == b.inputSlot;
 	}
 }
 
@@ -169,6 +133,7 @@ uint64_t PipelineStateDesc::Hash() const
 
 bool PipelineStateDesc::operator==(const PipelineStateDesc& o) const
 {
+	// Handle 의 != 는 default <=> 에서, 하위 Desc 의 == / != 는 default == 에서 재작성됨.
 	if (vs != o.vs || ps != o.ps) return false;
 	if (bindingLayoutCount != o.bindingLayoutCount) return false;
 	for (uint32_t i = 0; i < bindingLayoutCount && i < kMaxBindingSets; ++i)
@@ -180,11 +145,11 @@ bool PipelineStateDesc::operator==(const PipelineStateDesc& o) const
 	if (vertexLayout.stride != o.vertexLayout.stride) return false;
 	for (uint32_t i = 0; i < vertexLayout.attributeCount && i < kMaxVertexAttributes; ++i)
 	{
-		if (!EqVertexAttribute(vertexLayout.attributes[i], o.vertexLayout.attributes[i])) return false;
+		if (vertexLayout.attributes[i] != o.vertexLayout.attributes[i]) return false;
 	}
 
-	if (!EqRasterizer(rasterizer, o.rasterizer)) return false;
-	if (!EqDepthStencil(depthStencil, o.depthStencil)) return false;
+	if (rasterizer != o.rasterizer) return false;
+	if (depthStencil != o.depthStencil) return false;
 
 	if (blend.alphaToCoverage != o.blend.alphaToCoverage) return false;
 	if (blend.independentBlend != o.blend.independentBlend) return false;
@@ -192,7 +157,7 @@ bool PipelineStateDesc::operator==(const PipelineStateDesc& o) const
 	const uint32_t blendSlots = BlendSlotCount(blend, rtvCount);
 	for (uint32_t i = 0; i < blendSlots && i < kMaxRenderTargets; ++i)
 	{
-		if (!EqRtBlend(blend.rt[i], o.blend.rt[i])) return false;
+		if (blend.rt[i] != o.blend.rt[i]) return false;
 	}
 
 	if (topology != o.topology) return false;

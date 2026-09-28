@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
 #include <cstddef>
+#include <span>                  // C++20: ShaderDesc::bytecode
 #include "RHI/PipelineTypes.h"   // Format, ShaderStage, CompareFunc
 
 // GPU 리소스 기술(Desc). D3D 헤더를 include하지 않음.
@@ -96,8 +97,11 @@ struct SamplerDesc
 struct ShaderDesc
 {
 	ShaderStage stage = ShaderStage::Vertex;
-	const void* bytecode = nullptr;         // 컴파일된 바이트코드. 컴파일은 ShaderCompiler가 담당함.
-	size_t bytecodeSize = 0;
+	// 컴파일된 바이트코드. 컴파일은 ShaderCompiler가 담당함.
+	// C++20 (2026-09-28): (const void*, size_t) 쌍을 std::span 하나로 합침. std::vector<uint8_t> 를 그대로
+	// 대입할 수 있고, 포인터와 길이가 따로 다니다 어긋나는 일이 없음. span 은 소유하지 않으므로
+	// CreateShader 가 돌아오기 전까지만 원본이 살아 있으면 됨 (백엔드는 사본을 뜸).
+	std::span<const uint8_t> bytecode;
 	const char* debugName = nullptr;
 };
 

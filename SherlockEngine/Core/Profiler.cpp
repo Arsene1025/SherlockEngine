@@ -81,7 +81,7 @@ namespace Profiler
 		uint64_t ticks[kMaxTimestamps] = {};
 		uint64_t frequency = 0;
 		uint64_t frameNumber = 0;
-		if (device != nullptr && device->GetTimestampResults(ticks, kMaxTimestamps, frequency, frameNumber) && frequency != 0)
+		if (device != nullptr && device->GetTimestampResults(ticks, frequency, frameNumber) && frequency != 0)   // C 배열 → std::span 암묵 변환 (크기 포함)
 		{
 			for (size_t i = 0; i < s.gpuPending.size(); ++i)
 			{

@@ -4,6 +4,7 @@
 #include "Core/Paths.h"
 #include "Core/Log.h"
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -176,7 +177,7 @@ namespace
 
 const std::vector<std::wstring>& ProjectGenerator::GetEditorSources()
 {
-	static const std::vector<std::wstring> sources = { L"TestApp", L"Editor", L"ContentBrowser", L"ScriptCreator", L"GameBuilder", L"DebugUI", L"ProjectGenerator", L"ProjectLauncher" };
+	static const std::vector<std::wstring> sources = { L"EditorApp", L"Editor", L"ContentBrowser", L"ScriptCreator", L"GameBuilder", L"DebugUI", L"ProjectGenerator", L"ProjectLauncher" };
 	return sources;
 }
 
@@ -238,7 +239,7 @@ bool ProjectGenerator::RunMsBuild(const std::wstring& solution, const std::wstri
 	{
 		std::ifstream log(logFile, std::ios::binary);
 		std::string text((std::istreambuf_iterator<char>(log)), std::istreambuf_iterator<char>());
-		error = "MSBuild failed (exit " + std::to_string(exitCode) + "). See " + Log::ToUtf8(logFile.c_str());
+		error = std::format("MSBuild failed (exit {}). See {}", exitCode, Log::ToUtf8(logFile.c_str()));   // C++20 std::format
 		Log::Error("MSBuild 실패 (%s %s)\n%s", Log::ToUtf8(solution.c_str()).c_str(), Log::ToUtf8(target.c_str()).c_str(), text.substr(0, 4000).c_str());
 		return false;
 	}

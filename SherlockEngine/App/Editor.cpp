@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
+#include <format>        // C++20: 드롭 라벨 서식
+#include <string_view>
 
 using namespace DirectX;   // 이 파일 안에서만
 
@@ -630,17 +632,16 @@ void Editor::DrawDropGhost(Engine& engine, float x, float y, float width, float 
 		}
 	}
 
-	// 라벨: 이름 → 위치 (맞은 오브젝트 이름)
-	char label[320];
+	// 라벨: 이름 → 위치 (맞은 오브젝트 이름). C++20 std::format — 고정 320바이트 버퍼와 잘림 걱정이 없음.
 	const std::string name = FileStem(asset.relativePath);
 	const Scene& scene = engine.GetScene();
-	const char* target = hitObject >= 0 && hitObject < static_cast<int>(scene.GetObjects().size()) ? scene.GetObjects()[hitObject]->GetName().c_str() : "ground";
-	snprintf(label, sizeof(label), "%s  ->  (%.1f, %.1f, %.1f)  on %s", name.c_str(), point.x, point.y, point.z, target);
+	const std::string_view target = hitObject >= 0 && hitObject < static_cast<int>(scene.GetObjects().size()) ? std::string_view(scene.GetObjects()[hitObject]->GetName()) : "ground";
+	const std::string label = std::format("{}  ->  ({:.1f}, {:.1f}, {:.1f})  on {}", name, point.x, point.y, point.z, target);
 	const ImVec2 mouse = ImGui::GetMousePos();
 	const ImVec2 at(mouse.x + 18.0f, mouse.y + 14.0f);
-	const ImVec2 size = ImGui::CalcTextSize(label);
+	const ImVec2 size = ImGui::CalcTextSize(label.c_str());
 	dl->AddRectFilled(ImVec2(at.x - 4.0f, at.y - 2.0f), ImVec2(at.x + size.x + 4.0f, at.y + size.y + 2.0f), IM_COL32(20, 22, 40, 210), 3.0f);
-	dl->AddText(at, IM_COL32(255, 255, 255, 255), label);
+	dl->AddText(at, IM_COL32(255, 255, 255, 255), label.c_str());
 }
 
 void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)

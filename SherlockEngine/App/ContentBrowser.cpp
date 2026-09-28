@@ -8,6 +8,7 @@
 #include <shellapi.h>
 #include <algorithm>
 #include <filesystem>
+#include <format>
 #pragma comment(lib, "shell32.lib")
 
 namespace fs = std::filesystem;
@@ -69,13 +70,13 @@ namespace
 		return text.substr(0, length) + ellipsis;
 	}
 
+	// C++20 (2026-09-28): snprintf + 고정 버퍼 대신 std::format. 서식 문자열은 컴파일 시점에 검사되고 인자 타입을 스스로 알아
+	// %llu / static_cast 가 필요 없음.
 	std::string SizeText(uintmax_t bytes)
 	{
-		char buffer[32];
-		if (bytes >= 1024ull * 1024ull) snprintf(buffer, sizeof(buffer), "%.1f MB", bytes / (1024.0 * 1024.0));
-		else if (bytes >= 1024ull) snprintf(buffer, sizeof(buffer), "%.0f KB", bytes / 1024.0);
-		else snprintf(buffer, sizeof(buffer), "%llu B", static_cast<unsigned long long>(bytes));
-		return buffer;
+		if (bytes >= 1024ull * 1024ull) return std::format("{:.1f} MB", bytes / (1024.0 * 1024.0));
+		if (bytes >= 1024ull) return std::format("{:.0f} KB", bytes / 1024.0);
+		return std::format("{} B", bytes);
 	}
 
 	int64_t DirectoryStamp(const fs::path& dir)
@@ -639,7 +640,7 @@ void ContentBrowser::PumpThumbnailLoads(uint32_t budget)
 			continue;
 		}
 		image.desc.debugName = "Thumbnail";
-		it->second.handle = m_device->CreateTexture(image.desc, image.subresources.data(), static_cast<uint32_t>(image.subresources.size()));
+		it->second.handle = m_device->CreateTexture(image.desc, image.subresources);   // vector → std::span
 		if (!it->second.handle.IsValid()) it->second.failed = true;
 		--budget;
 	}

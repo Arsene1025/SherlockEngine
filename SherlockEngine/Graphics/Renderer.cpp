@@ -58,13 +58,11 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_device = device;
 
 	// ---- 상수버퍼. 전부 Dynamic(매 프레임/드로우마다 Map WRITE_DISCARD) ----
+	// C++20 (2026-09-28): Desc 는 지정 초기화(designated initializer)로 채움. "빈 Desc 를 만들고 필드를 하나씩 대입"하던
+	// 코드가 D3D12 의 desc 채우기와 같은 한 덩어리 리터럴이 됨. 나열하지 않은 필드(stride)는 헤더의 기본값을 받음.
 	auto makeCB = [this](uint32_t size, const char* name)
 	{
-		BufferDesc desc;
-		desc.size = size;
-		desc.usage = BufferUsage::Dynamic;
-		desc.bindFlags = BufferBind_Constant;
-		desc.debugName = name;
+		const BufferDesc desc{ .size = size, .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_Constant, .debugName = name };
 		return m_device->CreateBuffer(desc);
 	};
 	m_perFrameCB = makeCB(sizeof(PerFrameConstants), "CB_PerFrame");
@@ -111,19 +109,19 @@ bool Renderer::Initialize(RHI::Device* device)
 	}
 
 	// ---- 프레임/오브젝트 ResourceSet. 재질 셋은 재질마다 GetOrCreateGpuMaterial이 만듦 ----
-	ResourceSetDesc frameSet;
-	frameSet.layout = m_frameLayout;
-	frameSet.bindings[0].buffer = m_perFrameCB;
-	frameSet.bindings[1].buffer = m_lightCB;
-	frameSet.bindings[2].texture = m_shadowMap;
-	frameSet.bindings[3].sampler = m_shadowSampler;
-	frameSet.debugName = "Set_Frame";
+	// bindings[i] 는 위 frameLayout.Add(...) 의 i 번째 슬롯과 짝임. 지정 초기화로 쓰면 "슬롯 i 에 무엇이 꽂히는가"가 한눈에 보임.
+	const ResourceSetDesc frameSet{
+		.layout = m_frameLayout,
+		.bindings = { { .buffer = m_perFrameCB }, { .buffer = m_lightCB }, { .texture = m_shadowMap }, { .sampler = m_shadowSampler } },
+		.debugName = "Set_Frame",
+	};
 	m_frameSet = m_device->CreateResourceSet(frameSet);
 
-	ResourceSetDesc objectSet;
-	objectSet.layout = m_objectLayout;
-	objectSet.bindings[0].buffer = m_perObjectCB;
-	objectSet.debugName = "Set_Object";
+	const ResourceSetDesc objectSet{
+		.layout = m_objectLayout,
+		.bindings = { { .buffer = m_perObjectCB } },
+		.debugName = "Set_Object",
+	};
 	m_objectSet = m_device->CreateResourceSet(objectSet);
 
 	if (!m_frameSet.IsValid() || !m_objectSet.IsValid())
@@ -139,27 +137,25 @@ bool Renderer::Initialize(RHI::Device* device)
 	}
 
 	// ---- PSO의 고정 부분. 나머지(깊이 테스트 켬, 불투명, 트라이앵글 리스트)는 Desc 기본값을 씀 ----
-	m_baseDesc = PipelineStateDesc{};
-	m_baseDesc.vs = m_vs;
-	m_baseDesc.ps = m_ps;
-	m_baseDesc.bindingLayouts[0] = m_frameLayout;
-	m_baseDesc.bindingLayouts[1] = m_objectLayout;
-	m_baseDesc.bindingLayouts[2] = m_materialLayout;
-	m_baseDesc.bindingLayoutCount = 3;
+	// PipelineStateDesc 를 D3D12_GRAPHICS_PIPELINE_STATE_DESC 처럼 한 리터럴로 적음. 지정 초기화는 선언 순서를 따라야 하므로
+	// 필드 순서는 PipelineTypes.h 와 같음: vs, ps, bindingLayouts, bindingLayoutCount, vertexLayout, rasterizer, ..., rtvCount, dsvFormat.
+	m_baseDesc = PipelineStateDesc{
+		.vs = m_vs,
+		.ps = m_ps,
+		.bindingLayouts = { m_frameLayout, m_objectLayout, m_materialLayout },
+		.bindingLayoutCount = 3,
+	};
 
-	// 그림자 패스: VS 만, 렌더 타깃 없음, 깊이 D32_FLOAT. 래스터라이저 깊이 바이어스로 자기 그림자(acne)를 줄임.
+	// 그림자 패스: VS 만(ps 는 빈 핸들), 렌더 타깃 없음, 깊이 D32_FLOAT. 래스터라이저 깊이 바이어스로 자기 그림자(acne)를 줄임.
 	// D32_FLOAT 에서 DepthBias 단위는 2^(지수−23) — z ≈ 0.5 면 한 단위가 6e-8 임.
-	m_shadowDesc = PipelineStateDesc{};
-	m_shadowDesc.vs = m_shadowVs;
-	m_shadowDesc.ps = ShaderHandle{};
-	m_shadowDesc.bindingLayouts[0] = m_frameLayout;
-	m_shadowDesc.bindingLayouts[1] = m_objectLayout;
-	m_shadowDesc.bindingLayoutCount = 2;
-	m_shadowDesc.rtvCount = 0;
-	m_shadowDesc.dsvFormat = Format::D32_FLOAT;
-	m_shadowDesc.rasterizer.depthBias = 2000;
-	m_shadowDesc.rasterizer.slopeScaledDepthBias = 2.0f;
-	m_shadowDesc.rasterizer.depthBiasClamp = 0.01f;
+	m_shadowDesc = PipelineStateDesc{
+		.vs = m_shadowVs,
+		.bindingLayouts = { m_frameLayout, m_objectLayout },
+		.bindingLayoutCount = 2,
+		.rasterizer = { .depthBias = 2000, .depthBiasClamp = 0.01f, .slopeScaledDepthBias = 2.0f },
+		.rtvCount = 0,
+		.dsvFormat = Format::D32_FLOAT,
+	};
 
 	// 첫 프레임 전에 기본 PSO를 만들어 두어 생성 실패를 초기화 단계에서 잡음.
 	if (!GetPipelineFor(m_defaultMaterial, VertexFormat::PositionColorNormalTexcoordTangent).IsValid() ||
@@ -186,12 +182,15 @@ bool Renderer::CreateSamplers()
 	};
 	for (uint32_t i = 0; i < kSamplerPresetCount; ++i)
 	{
-		SamplerDesc desc;
-		desc.filter = presets[i].filter;
-		desc.addressU = desc.addressV = desc.addressW = presets[i].address;
-		desc.maxAnisotropy = 16;
-		desc.maxLod = presets[i].maxLod;
-		desc.debugName = presets[i].name;
+		const SamplerDesc desc{
+			.filter = presets[i].filter,
+			.addressU = presets[i].address,
+			.addressV = presets[i].address,
+			.addressW = presets[i].address,
+			.maxAnisotropy = 16,
+			.maxLod = presets[i].maxLod,
+			.debugName = presets[i].name,
+		};
 		m_samplers[i] = m_device->CreateSampler(desc);
 		if (!m_samplers[i].IsValid())
 		{
@@ -212,25 +211,29 @@ bool Renderer::CreateBuiltinTextures()
 bool Renderer::CreateShadowResources()
 {
 	// 깊이 전용 텍스처지만 셰이더에서도 읽음 → Device 가 TYPELESS 리소스 + DSV(D32) + SRV(R32) 로 만듦.
-	TextureDesc desc;
-	desc.width = kShadowMapSize;
-	desc.height = kShadowMapSize;
-	desc.format = Format::D32_FLOAT;
-	desc.mipLevels = 1;
-	desc.bindFlags = TextureBind_DepthStencil | TextureBind_ShaderResource;
-	desc.debugName = "ShadowMap";
+	const TextureDesc desc{
+		.width = kShadowMapSize,
+		.height = kShadowMapSize,
+		.format = Format::D32_FLOAT,
+		.mipLevels = 1,
+		.bindFlags = TextureBind_DepthStencil | TextureBind_ShaderResource,
+		.debugName = "ShadowMap",
+	};
 	m_shadowMap = m_device->CreateTexture(desc);
 	m_shadowMapState = ResourceState::Common;
 
 	// 비교 샘플러: SampleCmp 가 "비교값(받는 쪽 깊이) ≤ 저장된 깊이" 면 1(빛 받음), 아니면 0 을 돌려주고 이웃과 보간함(하드웨어 PCF).
 	// 맵 밖은 Border 1 로 두어 빛을 받는 것으로 처리함.
-	SamplerDesc sampler;
-	sampler.filter = SamplerFilter::Comparison;
-	sampler.addressU = sampler.addressV = sampler.addressW = SamplerAddress::Border;
-	sampler.compareFunc = CompareFunc::LessEqual;
-	sampler.maxAnisotropy = 1;
-	sampler.borderColor[0] = sampler.borderColor[1] = sampler.borderColor[2] = sampler.borderColor[3] = 1.0f;
-	sampler.debugName = "Sampler_ShadowCompare";
+	const SamplerDesc sampler{
+		.filter = SamplerFilter::Comparison,
+		.addressU = SamplerAddress::Border,
+		.addressV = SamplerAddress::Border,
+		.addressW = SamplerAddress::Border,
+		.maxAnisotropy = 1,
+		.compareFunc = CompareFunc::LessEqual,
+		.borderColor = { 1.0f, 1.0f, 1.0f, 1.0f },
+		.debugName = "Sampler_ShadowCompare",
+	};
 	m_shadowSampler = m_device->CreateSampler(sampler);
 
 	if (!m_shadowMap.IsValid() || !m_shadowSampler.IsValid())
@@ -309,7 +312,7 @@ TextureHandle Renderer::GetOrLoadTexture(const std::string& name, bool srgb, con
 	if (ok)
 	{
 		image.desc.debugName = debugName.c_str();
-		handle = m_device->CreateTexture(image.desc, image.subresources.data(), static_cast<uint32_t>(image.subresources.size()));
+		handle = m_device->CreateTexture(image.desc, image.subresources);   // C++20: vector → std::span (포인터+개수 대신)
 	}
 	if (!handle.IsValid())
 	{
@@ -367,13 +370,10 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 #endif
 	}
 
-	auto makeShader = [this](ShaderStage stage, const std::vector<uint8_t>& code, const char* name)
+	auto makeShader = [this](ShaderStage stage, std::span<const uint8_t> code, const char* name)
 	{
-		ShaderDesc desc;
-		desc.stage = stage;
-		desc.bytecode = code.data();
-		desc.bytecodeSize = code.size();
-		desc.debugName = name;
+		// ShaderDesc::bytecode 는 std::span — vector 의 data()/size() 를 따로 옮기지 않음.
+		const ShaderDesc desc{ .stage = stage, .bytecode = code, .debugName = name };
 		return m_device->CreateShader(desc);
 	};
 	const ShaderHandle newVs = makeShader(ShaderStage::Vertex, vsCode, "BasicVS");
@@ -753,12 +753,12 @@ void Renderer::RenderShadowPass(RHI::CommandList& cmd)
 	cmd.Barrier(m_shadowMap, m_shadowMapState, ResourceState::DepthWrite);
 	m_shadowMapState = ResourceState::DepthWrite;
 
-	RenderPassDesc pass;
-	pass.colorCount = 0;
-	pass.depth.texture = m_shadowMap;
-	pass.depth.load = LoadOp::Clear;
-	pass.depth.clearDepth = 1.0f;
-	pass.debugName = "ShadowPass";
+	// RenderPassDesc 도 지정 초기화 — Vulkan 의 VkRenderingInfo 나 D3D12 의 BeginRenderPass 인자와 같은 모양이 됨.
+	const RenderPassDesc pass{
+		.colorCount = 0,
+		.depth = { .texture = m_shadowMap, .load = LoadOp::Clear, .clearDepth = 1.0f },
+		.debugName = "ShadowPass",
+	};
 	cmd.BeginRenderPass(pass);   // 뷰포트는 2048² (attachment 크기)
 
 	PipelineHandle lastPipeline;
@@ -816,15 +816,17 @@ void Renderer::RenderMainPass(RHI::CommandList& cmd, const Scene& scene)
 		cmd.Barrier(target, ResourceState::Present, ResourceState::RenderTarget);
 	}
 
-	RenderPassDesc pass;
-	pass.colorCount = 1;
-	pass.colors[0].texture = target;
-	pass.colors[0].load = LoadOp::Clear;
-	pass.colors[0].srgbView = m_settings.srgbOutput;   // 클리어 색은 선형 값. sRGB 뷰가 인코딩함
-	for (int i = 0; i < 4; ++i) pass.colors[0].clearColor[i] = scene.clearColor[i];
-	pass.depth.texture = depth;
-	pass.depth.load = LoadOp::Clear;
-	pass.debugName = "MainPass";
+	const RenderPassDesc pass{
+		.colors = { {
+			.texture = target,
+			.load = LoadOp::Clear,
+			.srgbView = m_settings.srgbOutput,   // 클리어 색은 선형 값. sRGB 뷰가 인코딩함
+			.clearColor = { scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] },
+		} },
+		.colorCount = 1,
+		.depth = { .texture = depth, .load = LoadOp::Clear },
+		.debugName = "MainPass",
+	};
 	cmd.BeginRenderPass(pass);
 	DrawItems(cmd, scene);
 	cmd.EndRenderPass();
@@ -842,15 +844,17 @@ void Renderer::RenderPreviewPass(RHI::CommandList& cmd, const Scene& scene)
 	cmd.Barrier(m_previewColor, m_previewColorState, ResourceState::RenderTarget);
 	m_previewColorState = ResourceState::RenderTarget;
 
-	RenderPassDesc pass;
-	pass.colorCount = 1;
-	pass.colors[0].texture = m_previewColor;
-	pass.colors[0].load = LoadOp::Clear;
-	pass.colors[0].srgbView = m_settings.srgbOutput;
-	for (int i = 0; i < 4; ++i) pass.colors[0].clearColor[i] = scene.clearColor[i];
-	pass.depth.texture = m_previewDepth;
-	pass.depth.load = LoadOp::Clear;
-	pass.debugName = "PreviewPass";
+	const RenderPassDesc pass{
+		.colors = { {
+			.texture = m_previewColor,
+			.load = LoadOp::Clear,
+			.srgbView = m_settings.srgbOutput,
+			.clearColor = { scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] },
+		} },
+		.colorCount = 1,
+		.depth = { .texture = m_previewDepth, .load = LoadOp::Clear },
+		.debugName = "PreviewPass",
+	};
 	cmd.BeginRenderPass(pass);
 	DrawItems(cmd, scene);
 	cmd.EndRenderPass();
@@ -937,22 +941,24 @@ void Renderer::SetPreviewTarget(uint32_t width, uint32_t height)
 	m_previewColorState = ResourceState::Common;
 	if (width == 0 || height == 0) return;
 
-	TextureDesc color;
-	color.width = width;
-	color.height = height;
-	color.format = Format::R8G8B8A8_UNORM;   // 씬 뷰와 같은 TYPELESS 규칙 (sRGB RTV + UNORM SRV)
-	color.mipLevels = 1;
-	color.bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource;
-	color.debugName = "CameraPreview_Color";
+	const TextureDesc color{
+		.width = width,
+		.height = height,
+		.format = Format::R8G8B8A8_UNORM,   // 씬 뷰와 같은 TYPELESS 규칙 (sRGB RTV + UNORM SRV)
+		.mipLevels = 1,
+		.bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource,
+		.debugName = "CameraPreview_Color",
+	};
 	m_previewColor = m_device->CreateTexture(color);
 
-	TextureDesc depth;
-	depth.width = width;
-	depth.height = height;
-	depth.format = Format::D24_UNORM_S8_UINT;
-	depth.mipLevels = 1;
-	depth.bindFlags = TextureBind_DepthStencil;
-	depth.debugName = "CameraPreview_Depth";
+	const TextureDesc depth{
+		.width = width,
+		.height = height,
+		.format = Format::D24_UNORM_S8_UINT,
+		.mipLevels = 1,
+		.bindFlags = TextureBind_DepthStencil,
+		.debugName = "CameraPreview_Depth",
+	};
 	m_previewDepth = m_device->CreateTexture(depth);
 
 	if (!m_previewColor.IsValid() || !m_previewDepth.IsValid())
@@ -965,13 +971,12 @@ void Renderer::SetPreviewTarget(uint32_t width, uint32_t height)
 void Renderer::BeginUIPass()
 {
 	if (m_device == nullptr) return;
-	// ImGui 는 sRGB 로 인코딩된 색을 그대로 출력하므로 UNORM 뷰에 그림. 씬 위에 덧그리므로 Load, 깊이 없음.
-	RenderPassDesc pass;
-	pass.colorCount = 1;
-	pass.colors[0].texture = m_device->GetBackBuffer();
-	pass.colors[0].load = LoadOp::Load;
-	pass.colors[0].srgbView = false;
-	pass.debugName = "UIPass";
+	// ImGui 는 sRGB 로 인코딩된 색을 그대로 출력하므로 UNORM 뷰에 그림. 씬 위에 덧그리므로 Load, 깊이 없음(depth 기본값 = 빈 핸들).
+	RenderPassDesc pass{
+		.colors = { { .texture = m_device->GetBackBuffer(), .load = LoadOp::Load, .srgbView = false } },
+		.colorCount = 1,
+		.debugName = "UIPass",
+	};
 	if (IsOffscreen())
 	{
 		// 씬이 백버퍼에 그려지지 않았으므로 여기서 전이하고 지움 (에디터 배경).
@@ -1009,19 +1014,18 @@ const Renderer::GpuMesh* Renderer::GetOrCreateGpuMesh(const Mesh& mesh)
 	GpuMesh gpuMesh;
 	gpuMesh.vertexFormat = mesh.GetVertexFormat();
 
-	BufferDesc vbDesc;
-	vbDesc.size = static_cast<uint32_t>(sizeof(VERTEX) * mesh.GetVertices().size());
-	vbDesc.usage = BufferUsage::Default;
-	vbDesc.bindFlags = BufferBind_Vertex;
-	vbDesc.stride = GetVertexStride(mesh.GetVertexFormat());
-	vbDesc.debugName = "VB";
+	const BufferDesc vbDesc{
+		.size = static_cast<uint32_t>(sizeof(VERTEX) * mesh.GetVertices().size()),
+		.usage = BufferUsage::Default,
+		.bindFlags = BufferBind_Vertex,
+		.stride = GetVertexStride(mesh.GetVertexFormat()),
+		.debugName = "VB",
+	};
 	gpuMesh.vertexBuffer = m_device->CreateBuffer(vbDesc, mesh.GetVertices().data());
 
 	// 9단계 (D10): 정점이 65,536개 미만이면 16비트 인덱스. 버퍼 크기와 IA 대역폭이 절반으로 줄어듦. CPU 쪽은 32비트 그대로 둠.
-	BufferDesc ibDesc;
-	ibDesc.usage = BufferUsage::Default;
-	ibDesc.bindFlags = BufferBind_Index;
-	ibDesc.debugName = "IB";
+	// size / stride 는 아래 분기에서 채우므로 여기서는 공통 필드만 지정함.
+	BufferDesc ibDesc{ .usage = BufferUsage::Default, .bindFlags = BufferBind_Index, .debugName = "IB" };
 	if (mesh.GetVertexCount() <= 65535)
 	{
 		std::vector<uint16_t> indices16(mesh.GetIndices().size());
@@ -1064,11 +1068,7 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 	{
 		GpuMaterial created;
 
-		BufferDesc cbDesc;
-		cbDesc.size = sizeof(MaterialConstants);
-		cbDesc.usage = BufferUsage::Dynamic;
-		cbDesc.bindFlags = BufferBind_Constant;
-		cbDesc.debugName = "CB_Material";
+		const BufferDesc cbDesc{ .size = sizeof(MaterialConstants), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_Constant, .debugName = "CB_Material" };
 		created.constants = m_device->CreateBuffer(cbDesc);
 		if (!created.constants.IsValid())
 		{
@@ -1088,13 +1088,12 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 	if (!gpuMaterial->set.IsValid() || gpuMaterial->boundAlbedo != albedo || gpuMaterial->boundNormal != normal || gpuMaterial->boundSampler != sampler)
 	{
 		m_device->DestroyResourceSet(gpuMaterial->set);
-		ResourceSetDesc setDesc;
-		setDesc.layout = m_materialLayout;
-		setDesc.bindings[0].buffer = gpuMaterial->constants;
-		setDesc.bindings[1].texture = albedo;
-		setDesc.bindings[2].texture = normal;
-		setDesc.bindings[3].sampler = sampler;
-		setDesc.debugName = "Set_Material";
+		// 슬롯 순서는 Initialize 의 materialLayout.Add(...) 순서: b3 상수, t0 알베도, t1 노멀, s0 샘플러.
+		const ResourceSetDesc setDesc{
+			.layout = m_materialLayout,
+			.bindings = { { .buffer = gpuMaterial->constants }, { .texture = albedo }, { .texture = normal }, { .sampler = sampler } },
+			.debugName = "Set_Material",
+		};
 		gpuMaterial->set = m_device->CreateResourceSet(setDesc);
 		gpuMaterial->boundAlbedo = albedo;
 		gpuMaterial->boundNormal = normal;
@@ -1164,22 +1163,24 @@ void Renderer::SetSceneTarget(uint32_t width, uint32_t height)
 	m_sceneColorState = ResourceState::Common;
 	if (width == 0 || height == 0) return;
 
-	TextureDesc color;
-	color.width = width;
-	color.height = height;
-	color.format = Format::R8G8B8A8_UNORM;   // TYPELESS 리소스: sRGB RTV + UNORM SRV
-	color.mipLevels = 1;
-	color.bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource;
-	color.debugName = "SceneView_Color";
+	const TextureDesc color{
+		.width = width,
+		.height = height,
+		.format = Format::R8G8B8A8_UNORM,   // TYPELESS 리소스: sRGB RTV + UNORM SRV
+		.mipLevels = 1,
+		.bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource,
+		.debugName = "SceneView_Color",
+	};
 	m_sceneColor = m_device->CreateTexture(color);
 
-	TextureDesc depth;
-	depth.width = width;
-	depth.height = height;
-	depth.format = Format::D24_UNORM_S8_UINT;
-	depth.mipLevels = 1;
-	depth.bindFlags = TextureBind_DepthStencil;
-	depth.debugName = "SceneView_Depth";
+	const TextureDesc depth{
+		.width = width,
+		.height = height,
+		.format = Format::D24_UNORM_S8_UINT,
+		.mipLevels = 1,
+		.bindFlags = TextureBind_DepthStencil,
+		.debugName = "SceneView_Depth",
+	};
 	m_sceneDepth = m_device->CreateTexture(depth);
 
 	if (!m_sceneColor.IsValid() || !m_sceneDepth.IsValid())

@@ -3,9 +3,9 @@
 #include "RHI/D3D11/D3D11Convert.h"
 #include "Core/Log.h"
 #include <cstring>
+#include <format>   // C++20: 디버그 이름 조립
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
-#include <cstring>
 
 namespace
 {
@@ -126,8 +126,8 @@ void D3D11Device::SetDebugName(ID3D11DeviceChild* object, const std::string& nam
 #if defined(_DEBUG)
     // Desc.debugName 을 Debug Layer 와 RenderDoc 이 읽는 이름으로 설정함 (WKPDID_D3DDebugObjectName).
     if (object == nullptr || name.empty()) return;
-    std::string full = name;
-    if (index > 0) full += "[" + std::to_string(index) + "]";
+    // C++20 (2026-09-28): 문자열 조립은 std::format. "이름[3]" 처럼 조각을 + 로 이어 붙이던 것을 서식 하나로 씀.
+    const std::string full = index > 0 ? std::format("{}[{}]", name, index) : name;
     object->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(full.size()), full.c_str());
 #else
     (void)object; (void)name; (void)index;
@@ -394,7 +394,7 @@ void D3D11Device::UpdateBuffer(BufferHandle handle, const void* data, uint32_t s
 
 // ------------------------------------------------------------------ 텍스처
 
-TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, const TextureSubresource* subresources, uint32_t subresourceCount)
+TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, std::span<const TextureSubresource> subresources)
 {
     if (!m_device)
     {
@@ -430,11 +430,11 @@ TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, const Textur
     // 초기 데이터: 밉 레벨마다 D3D11_SUBRESOURCE_DATA 하나. 개수가 모자라면 거부함
     // (모자란 밉에는 쓰레기 값이 들어가 원거리에서 이상한 색이 나옴).
     std::vector<D3D11_SUBRESOURCE_DATA> init;
-    if (subresources != nullptr && subresourceCount > 0)
+    if (!subresources.empty())   // span: (nullptr, 0) 검사 두 개가 empty() 하나로
     {
-        if (subresourceCount < descIn.mipLevels)
+        if (subresources.size() < descIn.mipLevels)
         {
-            Log::Error("CreateTexture : 초기 데이터가 밉 레벨 수보다 적음 (%s, %u < %u).", texture.name.c_str(), subresourceCount, descIn.mipLevels);
+            Log::Error("CreateTexture : 초기 데이터가 밉 레벨 수보다 적음 (%s, %zu < %u).", texture.name.c_str(), subresources.size(), descIn.mipLevels);
             return TextureHandle{};
         }
         init.resize(descIn.mipLevels);
@@ -475,12 +475,16 @@ bool D3D11Device::CreateBackBufferTexture()
     }
 
     D3D11Texture texture;
-    texture.desc.width = m_screenWidth;
-    texture.desc.height = m_screenHeight;
-    texture.desc.format = Format::R8G8B8A8_UNORM;
-    texture.desc.mipLevels = 1;
-    texture.desc.bindFlags = TextureBind_RenderTarget;
-    texture.desc.sampleCount = 1;
+    // C++20 지정 초기화: 나열하지 않은 필드(debugName)는 헤더의 기본값을 받음.
+    // 지정 초기화는 리스트 초기화라 축소 변환(int → uint32_t)이 금지됨 — 그래서 static_cast 가 필요함. 대입문에서는 조용히 넘어가던 변환임.
+    texture.desc = TextureDesc{
+        .width = static_cast<uint32_t>(m_screenWidth),
+        .height = static_cast<uint32_t>(m_screenHeight),
+        .format = Format::R8G8B8A8_UNORM,
+        .mipLevels = 1,
+        .bindFlags = TextureBind_RenderTarget,
+        .sampleCount = 1,
+    };
     texture.name = "BackBuffer";
     texture.texture = backBuffer;
     texture.state = ResourceState::Present;   // D3D12 관례: 스왑체인 버퍼는 PRESENT 상태로 시작
@@ -493,14 +497,15 @@ bool D3D11Device::CreateBackBufferTexture()
 bool D3D11Device::CreateDepthTexture()
 {
     // 깊이·스텐실 텍스처. 크기와 샘플 수는 백버퍼와 일치해야 함.
-    TextureDesc desc;
-    desc.width = m_screenWidth;
-    desc.height = m_screenHeight;
-    desc.format = Format::D24_UNORM_S8_UINT;
-    desc.mipLevels = 1;
-    desc.bindFlags = TextureBind_DepthStencil;
-    desc.sampleCount = 1;   // 스왑체인과 동일 (MSAA 미사용)
-    desc.debugName = "DepthBuffer";
+    const TextureDesc desc{
+        .width = static_cast<uint32_t>(m_screenWidth),
+        .height = static_cast<uint32_t>(m_screenHeight),
+        .format = Format::D24_UNORM_S8_UINT,
+        .mipLevels = 1,
+        .bindFlags = TextureBind_DepthStencil,
+        .sampleCount = 1,   // 스왑체인과 동일 (MSAA 미사용)
+        .debugName = "DepthBuffer",
+    };
 
     m_depthBuffer = CreateTexture(desc);
     if (D3D11Texture* t = m_textures.Get(m_depthBuffer)) t->state = ResourceState::DepthWrite;
@@ -553,7 +558,7 @@ void D3D11Device::DestroySampler(SamplerHandle handle)
 
 ShaderHandle D3D11Device::CreateShader(const ShaderDesc& desc)
 {
-    if (!m_device || desc.bytecode == nullptr || desc.bytecodeSize == 0)
+    if (!m_device || desc.bytecode.empty())
     {
         Log::Error("CreateShader : 장치가 없거나 바이트코드가 비어 있음.");
         return ShaderHandle{};
@@ -567,11 +572,11 @@ ShaderHandle D3D11Device::CreateShader(const ShaderDesc& desc)
     switch (desc.stage)
     {
     case ShaderStage::Vertex:
-        hr = m_device->CreateVertexShader(desc.bytecode, desc.bytecodeSize, nullptr, shader.vs.GetAddressOf());
+        hr = m_device->CreateVertexShader(desc.bytecode.data(), desc.bytecode.size(), nullptr, shader.vs.GetAddressOf());
         SetDebugName(shader.vs.Get(), shader.name, 0);
         break;
     case ShaderStage::Pixel:
-        hr = m_device->CreatePixelShader(desc.bytecode, desc.bytecodeSize, nullptr, shader.ps.GetAddressOf());
+        hr = m_device->CreatePixelShader(desc.bytecode.data(), desc.bytecode.size(), nullptr, shader.ps.GetAddressOf());
         SetDebugName(shader.ps.Get(), shader.name, 0);
         break;
     default:
@@ -584,9 +589,8 @@ ShaderHandle D3D11Device::CreateShader(const ShaderDesc& desc)
         return ShaderHandle{};
     }
 
-    // 입력 레이아웃 검증(VS)과 리플렉션에 쓸 바이트코드 사본.
-    const uint8_t* bytes = static_cast<const uint8_t*>(desc.bytecode);
-    shader.bytecode.assign(bytes, bytes + desc.bytecodeSize);
+    // 입력 레이아웃 검증(VS)과 리플렉션에 쓸 바이트코드 사본. span 은 소유하지 않으므로 여기서 복사함.
+    shader.bytecode.assign(desc.bytecode.begin(), desc.bytecode.end());
 
     return m_shaders.Add(std::move(shader));
 }
@@ -878,11 +882,11 @@ void D3D11Device::ResolveTimestamps(TimestampSet& set)
     m_hasTimestampResults = true;
 }
 
-bool D3D11Device::GetTimestampResults(uint64_t* ticks, uint32_t count, uint64_t& frequency, uint64_t& frameNumber)
+bool D3D11Device::GetTimestampResults(std::span<uint64_t> ticks, uint64_t& frequency, uint64_t& frameNumber)
 {
     if (!m_hasTimestampResults) return false;
-    const uint32_t n = count < kMaxTimestamps ? count : kMaxTimestamps;
-    for (uint32_t i = 0; i < n; ++i) ticks[i] = m_lastTicks[i];
+    const size_t n = ticks.size() < kMaxTimestamps ? ticks.size() : kMaxTimestamps;   // 호출자 배열 크기는 span 이 알고 있음
+    for (size_t i = 0; i < n; ++i) ticks[i] = m_lastTicks[i];
     frequency = m_lastFrequency;
     frameNumber = m_lastFrameNumber;
     return true;

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <format>
 #include <fstream>
 
 // cgltf: 단일 헤더 C 라이브러리 (vcpkg). 이 파일에서만 구현을 켬.
@@ -82,7 +83,7 @@ namespace
 	std::string ImageName(const std::string& modelName, const cgltf_data* data, const cgltf_image* image)
 	{
 		const size_t index = static_cast<size_t>(image - data->images);
-		std::string name = modelName + "/" + std::to_string(index);
+		std::string name = std::format("{}/{}", modelName, index);   // C++20 std::format
 		if (image->uri != nullptr) name += std::string(" ") + image->uri;
 		else if (image->name != nullptr) name += std::string(" ") + image->name;
 		return name;
@@ -142,7 +143,7 @@ namespace
 	{
 		Material material;
 		material.name = (source != nullptr && source->name != nullptr && source->name[0] != '\0')
-			? source->name : (modelName + "/material" + std::to_string(index));
+			? source->name : std::format("{}/material{}", modelName, index);
 		material.sampler = SamplerPreset::AnisotropicWrap;
 		if (source == nullptr) return material;
 
@@ -374,7 +375,7 @@ bool ModelLoader::LoadGltf(const std::wstring& path, const Options& options, Mod
 		ModelInstance instance;
 		instance.meshIndex = static_cast<uint32_t>(meshIndex);
 		XMStoreFloat4x4(&instance.world, world);
-		instance.name = node.name != nullptr ? node.name : (out.name + "/node" + std::to_string(n));
+		instance.name = node.name != nullptr ? node.name : std::format("{}/node{}", out.name, n);
 		out.instances.push_back(std::move(instance));
 
 		// 바운드 합집합: 로컬 AABB 의 여덟 꼭짓점을 월드로 옮겨 합침.

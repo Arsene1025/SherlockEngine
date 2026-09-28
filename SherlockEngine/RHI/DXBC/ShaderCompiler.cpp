@@ -146,10 +146,10 @@ bool ShaderCompiler::LoadOrCompile(const wchar_t* hlslName, const char* entryPoi
 	return CompileFromFile(fallback, entryPoint, target, outBytecode);
 }
 
-bool ShaderCompiler::ValidateConstantBufferSize(const std::vector<uint8_t>& bytecode, const char* cbufferName, uint32_t expectedSize)
+bool ShaderCompiler::ValidateConstantBufferSize(std::span<const uint8_t> bytecode, const char* cbufferName, uint32_t expectedSize)
 {
 	ComPtr<ID3D11ShaderReflection> reflection;
-	HRESULT hr = D3DReflect(bytecode.data(), bytecode.size(), IID_PPV_ARGS(reflection.GetAddressOf()));
+	HRESULT hr = D3DReflect(bytecode.data(), bytecode.size(), IID_PPV_ARGS(reflection.GetAddressOf()));   // span: data()/size() 인터페이스가 vector 와 같음
 	if (FAILED(hr))
 	{
 		Log::Warn("D3DReflect 실패. cbuffer '%s' 크기 검사를 건너뜀. %s", cbufferName, Log::HrToString(hr).c_str());
@@ -177,7 +177,7 @@ bool ShaderCompiler::ValidateConstantBufferSize(const std::vector<uint8_t>& byte
 	return true;
 }
 
-bool ShaderCompiler::ReflectBindings(const std::vector<uint8_t>& bytecode, std::vector<ReflectedBinding>& out)
+bool ShaderCompiler::ReflectBindings(std::span<const uint8_t> bytecode, std::vector<ReflectedBinding>& out)
 {
 	out.clear();
 	ComPtr<ID3D11ShaderReflection> reflection;

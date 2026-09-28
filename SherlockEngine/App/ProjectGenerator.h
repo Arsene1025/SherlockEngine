@@ -7,7 +7,7 @@ class Project;
 // 11-E단계: 프로젝트 솔루션 생성 — 언리얼의 "Generate Visual Studio project files".
 //
 // <프로젝트>\<Name>.sln 과 vcxproj 두 개를 씀:
-//   <Name>Editor.vcxproj  에디터 exe  = 엔진 저장소의 에디터 소스(App\TestApp·Editor·…) + EditorMain.cpp + Scripts\*.cpp
+//   <Name>Editor.vcxproj  에디터 exe  = 엔진 저장소의 에디터 소스(App\EditorApp·Editor·…) + EditorMain.cpp + Scripts\*.cpp
 //   <Name>.vcxproj        게임 exe    = GameMain.cpp + Scripts\*.cpp
 // 둘 다 엔진 정적 라이브러리(SherlockEngine.vcxproj)를 ProjectReference 로 참조하고 /WHOLEARCHIVE 로 링크함 (11-D).
 // 스크립트는 와일드카드 항목이므로 New Script 후에 vcxproj 를 고칠 필요가 없음. SHERLOCK_PROJECT_NAME="<Name>" 을 정의해

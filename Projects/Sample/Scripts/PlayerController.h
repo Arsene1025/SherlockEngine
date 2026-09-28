@@ -5,7 +5,7 @@ class Rotator;   // 다른 스크립트 참조는 헤더에서 전방 선언, .c
 
 // 예제 스크립트 1: 플레이어. 방향키로 XZ 이동(Shift 가속), Space 로 점프(같은 오브젝트의 Rigidbody), R 로 다른 오브젝트의 Rotator 를 켜고 끔.
 // 유니티의 MonoBehaviour 처럼 Update 안에서 입력을 읽고 Transform 을 직접 조작함. 새 스크립트를 작성할 때는 이 파일 쌍을 복사해서 시작하면 됨.
-// 방향키를 쓰는 이유: WASD 는 에디터 카메라가 씀 (TestApp::UpdateCamera). 게임 카메라가 활성화되어 있으면 에디터 카메라 이동은 꺼짐.
+// 방향키를 쓰는 이유: WASD 는 에디터 카메라가 씀 (EditorApp::UpdateCamera). 게임 카메라가 활성화되어 있으면 에디터 카메라 이동은 꺼짐.
 class PlayerController : public Script
 {
 public:

@@ -18,7 +18,7 @@ struct ModelStats;
 // 에디터 UI (11단계). ImGui Dockspace 위의 창들: Scene(오프스크린 씬 뷰 + ImGuizmo + 클릭 선택), Hierarchy,
 // Inspector(Transform·재질 편집), Render Settings(백엔드·PSO 통계·디버그 뷰·그림자), Lights, Materials, Stats, Console.
 //
-// 소유하지 않음: 씬·카메라·렌더러는 Engine 의 것이고, 씬 전환·저장·로드는 콜백으로 앱(TestApp)에 넘김.
+// 소유하지 않음: 씬·카메라·렌더러는 Engine 의 것이고, 씬 전환·저장·로드는 콜백으로 앱(EditorApp)에 넘김.
 // 패널은 데이터를 "편집"하는 쪽이지 "소유"하는 쪽이 아님 (3단계 DebugUI 의 규칙 그대로).
 class Editor
 {

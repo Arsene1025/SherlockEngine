@@ -6,6 +6,7 @@
 #include <imgui_impl_dx12.h>
 #include <algorithm>
 #include <cstring>
+#include <format>   // C++20: 디버그 이름 조립
 
 namespace
 {
@@ -196,7 +197,7 @@ bool D3D12Device::InitFrameResources()
     {
         hr = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(m_allocators[i].GetAddressOf()));
         if (FAILED(hr)) { Log::Error("CreateCommandAllocator 실패. %s", Log::HrToString(hr).c_str()); return false; }
-        SetDebugName(m_allocators[i].Get(), "FrameAllocator[" + std::to_string(i) + "]");
+        SetDebugName(m_allocators[i].Get(), std::format("FrameAllocator[{}]", i));   // C++20 std::format
     }
     hr = m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_allocators[0].Get(), nullptr, IID_PPV_ARGS(m_list.GetAddressOf()));
     if (FAILED(hr)) { Log::Error("CreateCommandList 실패. %s", Log::HrToString(hr).c_str()); return false; }
@@ -223,7 +224,7 @@ bool D3D12Device::InitFrameResources()
         hr = m_device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &rd, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
             IID_PPV_ARGS(m_rings[i].resource.GetAddressOf()));
         if (FAILED(hr)) { Log::Error("업로드 링 생성 실패. %s", Log::HrToString(hr).c_str()); return false; }
-        SetDebugName(m_rings[i].resource.Get(), "UploadRing[" + std::to_string(i) + "]");
+        SetDebugName(m_rings[i].resource.Get(), std::format("UploadRing[{}]", i));
         const D3D12_RANGE noRead = { 0, 0 };
         void* mapped = nullptr;
         if (FAILED(m_rings[i].resource->Map(0, &noRead, &mapped))) return false;
@@ -626,7 +627,7 @@ void D3D12Device::UpdateBuffer(BufferHandle handle, const void* data, uint32_t s
 
 // ------------------------------------------------------------------ 텍스처
 
-TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, const TextureSubresource* subresources, uint32_t subresourceCount)
+TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<const TextureSubresource> subresources)
 {
     if (!m_device)
     {
@@ -682,7 +683,7 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, const Textur
 
     // 초기 상태. 초기 데이터가 있으면 COPY_DEST, 깊이 전용이면 DEPTH_WRITE (Renderer 가 배리어를 걸지 않는 메인 깊이 버퍼),
     // 그 외(그림자 맵 포함)는 COMMON — Renderer 의 첫 배리어가 Common → DepthWrite 임 (6단계의 상태 추적과 출발점이 같음).
-    const bool hasInit = subresources != nullptr && subresourceCount > 0;
+    const bool hasInit = !subresources.empty();   // span: (nullptr, 0) 검사가 empty() 하나로
     D3D12_RESOURCE_STATES initial = D3D12_RESOURCE_STATE_COMMON;
     if (hasInit) initial = D3D12_RESOURCE_STATE_COPY_DEST;
     else if (isDepth && !isSrv) initial = D3D12_RESOURCE_STATE_DEPTH_WRITE;
@@ -699,9 +700,9 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, const Textur
 
     if (hasInit)
     {
-        if (subresourceCount < descIn.mipLevels)
+        if (subresources.size() < descIn.mipLevels)
         {
-            Log::Error("CreateTexture : 초기 데이터가 밉 레벨 수보다 적음 (%s, %u < %u).", texture.name.c_str(), subresourceCount, descIn.mipLevels);
+            Log::Error("CreateTexture : 초기 데이터가 밉 레벨 수보다 적음 (%s, %zu < %u).", texture.name.c_str(), subresources.size(), descIn.mipLevels);
             return TextureHandle{};
         }
         // 업로드 힙 → CopyTextureRegion(밉마다) → 배리어. D3D11 에서 D3D11_SUBRESOURCE_DATA[] 로 하던 초기화를 여기서는 이렇게 처리함.
@@ -801,13 +802,15 @@ bool D3D12Device::CreateBackBufferTextures()
             Log::Error("SwapChain 백버퍼 %u 가져오기 실패. %s", i, Log::HrToString(hr).c_str());
             return false;
         }
-        texture.desc.width = m_screenWidth;
-        texture.desc.height = m_screenHeight;
-        texture.desc.format = Format::R8G8B8A8_UNORM;
-        texture.desc.mipLevels = 1;
-        texture.desc.bindFlags = TextureBind_RenderTarget;
-        texture.desc.sampleCount = 1;
-        texture.name = "BackBuffer[" + std::to_string(i) + "]";
+        texture.desc = TextureDesc{   // C++20 지정 초기화. 리스트 초기화라 int → uint32_t 축소 변환에 static_cast 필요
+            .width = static_cast<uint32_t>(m_screenWidth),
+            .height = static_cast<uint32_t>(m_screenHeight),
+            .format = Format::R8G8B8A8_UNORM,
+            .mipLevels = 1,
+            .bindFlags = TextureBind_RenderTarget,
+            .sampleCount = 1,
+        };
+        texture.name = std::format("BackBuffer[{}]", i);
         texture.state = ResourceState::Present;   // 스왑체인 버퍼는 COMMON(=PRESENT) 상태로 시작함
         SetDebugName(texture.resource.Get(), texture.name);
         m_backBuffers[i] = m_textures.Add(std::move(texture));
@@ -818,14 +821,15 @@ bool D3D12Device::CreateBackBufferTextures()
 
 bool D3D12Device::CreateDepthTexture()
 {
-    TextureDesc desc;
-    desc.width = m_screenWidth;
-    desc.height = m_screenHeight;
-    desc.format = Format::D24_UNORM_S8_UINT;
-    desc.mipLevels = 1;
-    desc.bindFlags = TextureBind_DepthStencil;
-    desc.sampleCount = 1;
-    desc.debugName = "DepthBuffer";
+    const TextureDesc desc{
+        .width = static_cast<uint32_t>(m_screenWidth),
+        .height = static_cast<uint32_t>(m_screenHeight),
+        .format = Format::D24_UNORM_S8_UINT,
+        .mipLevels = 1,
+        .bindFlags = TextureBind_DepthStencil,
+        .sampleCount = 1,
+        .debugName = "DepthBuffer",
+    };
     m_depthBuffer = CreateTexture(desc);
     return m_depthBuffer.IsValid();
 }
@@ -922,17 +926,16 @@ void D3D12Device::DestroySampler(SamplerHandle handle)
 
 ShaderHandle D3D12Device::CreateShader(const ShaderDesc& desc)
 {
-    if (desc.bytecode == nullptr || desc.bytecodeSize == 0)
+    if (desc.bytecode.empty())
     {
         Log::Error("CreateShader : 바이트코드가 비어 있음.");
         return ShaderHandle{};
     }
-    // D3D12 에는 셰이더 객체가 없음. 바이트코드(DXBC)를 보관했다가 PSO 생성 시 넘김.
+    // D3D12 에는 셰이더 객체가 없음. 바이트코드(DXBC)를 보관했다가 PSO 생성 시 넘김. span 은 소유하지 않으므로 여기서 복사함.
     D3D12Shader shader;
     shader.stage = desc.stage;
     shader.name = desc.debugName ? desc.debugName : "";
-    const uint8_t* bytes = static_cast<const uint8_t*>(desc.bytecode);
-    shader.bytecode.assign(bytes, bytes + desc.bytecodeSize);
+    shader.bytecode.assign(desc.bytecode.begin(), desc.bytecode.end());
     return m_shaders.Add(std::move(shader));
 }
 
@@ -1348,11 +1351,11 @@ void D3D12Device::ReadTimestamps(uint32_t slot)
     m_timestampWritten[slot] = 0;
 }
 
-bool D3D12Device::GetTimestampResults(uint64_t* ticks, uint32_t count, uint64_t& frequency, uint64_t& frameNumber)
+bool D3D12Device::GetTimestampResults(std::span<uint64_t> ticks, uint64_t& frequency, uint64_t& frameNumber)
 {
     if (!m_hasTimestampResults) return false;
-    const uint32_t n = count < kMaxTimestamps ? count : kMaxTimestamps;
-    for (uint32_t i = 0; i < n; ++i) ticks[i] = m_lastTicks[i];
+    const size_t n = ticks.size() < kMaxTimestamps ? ticks.size() : kMaxTimestamps;
+    for (size_t i = 0; i < n; ++i) ticks[i] = m_lastTicks[i];
     frequency = m_lastFrequency;
     frameNumber = m_lastFrameNumber;
     return true;

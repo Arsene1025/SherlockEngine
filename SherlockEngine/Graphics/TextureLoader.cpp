@@ -11,12 +11,13 @@ namespace
 	bool FromScratchImage(const DirectX::ScratchImage& scratch, Format format, TextureImage& out)
 	{
 		const DirectX::TexMetadata& meta = scratch.GetMetadata();
-		out.desc = TextureDesc{};
-		out.desc.width = static_cast<uint32_t>(meta.width);
-		out.desc.height = static_cast<uint32_t>(meta.height);
-		out.desc.format = format;
-		out.desc.mipLevels = static_cast<uint32_t>(meta.mipLevels);
-		out.desc.bindFlags = TextureBind_ShaderResource;
+		out.desc = TextureDesc{   // C++20 지정 초기화. 나열하지 않은 sampleCount / debugName 은 기본값
+			.width = static_cast<uint32_t>(meta.width),
+			.height = static_cast<uint32_t>(meta.height),
+			.format = format,
+			.mipLevels = static_cast<uint32_t>(meta.mipLevels),
+			.bindFlags = TextureBind_ShaderResource,
+		};
 
 		out.pixels.clear();
 		out.subresources.clear();

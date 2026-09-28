@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "App/TestApp.h"
+#include "App/EditorApp.h"
 #include "App/DebugUI.h"
 #include "Graphics/Mesh.h"
 #include "Graphics/Model.h"
@@ -18,12 +18,12 @@
 
 using namespace DirectX;   // 이 파일 안에서만
 
-TestApp::TestApp()
+EditorApp::EditorApp()
 {
 
 }
 
-bool TestApp::OnInitialize()
+bool EditorApp::OnInitialize()
 {
 	ParseAutomation();
 
@@ -77,7 +77,7 @@ bool TestApp::OnInitialize()
 	return true;
 }
 
-const char* TestApp::GetSceneName() const
+const char* EditorApp::GetSceneName() const
 {
 	switch (m_sceneMode)
 	{
@@ -88,7 +88,7 @@ const char* TestApp::GetSceneName() const
 	}
 }
 
-void TestApp::LoadSceneMode(SceneMode mode)
+void EditorApp::LoadSceneMode(SceneMode mode)
 {
 	if (mode >= SceneMode::Count) mode = SceneMode::Demo;
 	m_editor.ClearSelection();
@@ -123,7 +123,7 @@ void TestApp::LoadSceneMode(SceneMode mode)
 		scene.GetObjects().size(), scene.GetMeshes().size(), scene.GetMaterials().size(), scene.GetImageCount());
 }
 
-void TestApp::BuildDemoScene()
+void EditorApp::BuildDemoScene()
 {
 	Scene& scene = GetEngine().GetScene();
 	Camera& camera = GetEngine().GetCamera();
@@ -255,7 +255,7 @@ void TestApp::BuildDemoScene()
 	AddCameraObject("Main Camera");
 }
 
-bool TestApp::BuildModelScene(SceneMode mode)
+bool EditorApp::BuildModelScene(SceneMode mode)
 {
 	Scene& scene = GetEngine().GetScene();
 	Renderer& renderer = GetEngine().GetRenderer();
@@ -343,7 +343,7 @@ bool TestApp::BuildModelScene(SceneMode mode)
 	return true;
 }
 
-void TestApp::OnGUI()
+void EditorApp::OnGUI()
 {
 	// 11단계: 에디터가 모든 창을 그림 (도킹 공간·메뉴·씬 뷰·계층·인스펙터·설정·통계·콘솔).
 	m_editor.cameraMoveSpeed = m_moveSpeed;
@@ -355,7 +355,7 @@ void TestApp::OnGUI()
 	m_timeScale = m_editor.timeScale;
 }
 
-void TestApp::OnFixedUpdate(float fixedDt)
+void EditorApp::OnFixedUpdate(float fixedDt)
 {
 	// 고정 스텝 검증용 카운터. 11-C단계: 재생 중이면 컴포넌트의 FixedUpdate 를 호출함 (Rigidbody 등).
 	++m_fixedUpdates;
@@ -363,7 +363,7 @@ void TestApp::OnFixedUpdate(float fixedDt)
 	if (m_playState == PlayState::Playing) GetEngine().GetScene().FixedUpdate(fixedDt * m_timeScale);
 }
 
-void TestApp::OnUpdate(float dt)
+void EditorApp::OnUpdate(float dt)
 {
 	Engine& engine = GetEngine();
 	Scene& scene = engine.GetScene();
@@ -424,7 +424,7 @@ void TestApp::OnUpdate(float dt)
 
 // ------------------------------------------------------------------ 11-E단계: 프로젝트
 
-void TestApp::SyncProjectInfo()
+void EditorApp::SyncProjectInfo()
 {
 	Editor::ProjectInfo& info = m_editor.project;
 	const Project& project = GetProject();
@@ -448,7 +448,7 @@ void TestApp::SyncProjectInfo()
 	}
 }
 
-bool TestApp::OpenProjectAndScene(const std::wstring& pathOrDir)
+bool EditorApp::OpenProjectAndScene(const std::wstring& pathOrDir)
 {
 	if (m_playState != PlayState::Editing) StopPlay();
 	if (!OpenProject(pathOrDir)) return false;
@@ -466,7 +466,7 @@ bool TestApp::OpenProjectAndScene(const std::wstring& pathOrDir)
 	return true;
 }
 
-bool TestApp::CreateProject(const std::wstring& parentDir, const std::string& name, std::string& error)
+bool EditorApp::CreateProject(const std::wstring& parentDir, const std::string& name, std::string& error)
 {
 	Project project;
 	if (!Project::Create(parentDir, name, Paths::GetEngineRoot(), project, error)) return false;
@@ -488,7 +488,7 @@ bool TestApp::CreateProject(const std::wstring& parentDir, const std::string& na
 	return true;
 }
 
-void TestApp::BuildAndLaunchProjectEditor()
+void EditorApp::BuildAndLaunchProjectEditor()
 {
 	const Project& project = GetProject();
 	if (!project.IsLoaded()) return;
@@ -513,7 +513,7 @@ void TestApp::BuildAndLaunchProjectEditor()
 
 // ------------------------------------------------------------------ 11-C단계: 재생
 
-void TestApp::StartPlay()
+void EditorApp::StartPlay()
 {
 	if (m_playState != PlayState::Editing) return;
 	Engine& engine = GetEngine();
@@ -527,7 +527,7 @@ void TestApp::StartPlay()
 	Log::Info("재생 시작: 오브젝트 %zu, 컴포넌트 %zu, 스냅샷 %zu 바이트", scene.GetObjects().size(), behaviours, m_playSnapshot.size());
 }
 
-void TestApp::StopPlay()
+void EditorApp::StopPlay()
 {
 	if (m_playState == PlayState::Editing) return;
 	Engine& engine = GetEngine();
@@ -548,20 +548,20 @@ void TestApp::StopPlay()
 	Log::Info("재생 정지: 스냅샷 복원 (오브젝트 %zu)", scene.GetObjects().size());
 }
 
-void TestApp::TogglePause()
+void EditorApp::TogglePause()
 {
 	if (m_playState == PlayState::Playing) { m_playState = PlayState::Paused; Log::Info("재생 일시정지"); }
 	else if (m_playState == PlayState::Paused) { m_playState = PlayState::Playing; Log::Info("재생 재개"); }
 }
 
-void TestApp::StepFrame()
+void EditorApp::StepFrame()
 {
 	if (m_playState == PlayState::Editing) return;
 	m_playState = PlayState::Paused;
 	m_stepOnce = true;
 }
 
-void TestApp::UpdateCamera(float dt)
+void EditorApp::UpdateCamera(float dt)
 {
 	const ImGuiIO& io = ImGui::GetIO();
 	Input& input = GetEngine().GetInput();
@@ -625,7 +625,7 @@ void TestApp::UpdateCamera(float dt)
 	}
 }
 
-void TestApp::BeginLook()
+void EditorApp::BeginLook()
 {
 	if (m_lookActive) return;
 
@@ -642,7 +642,7 @@ void TestApp::BeginLook()
 	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange;
 }
 
-void TestApp::EndLook()
+void EditorApp::EndLook()
 {
 	if (!m_lookActive) return;
 	m_lookActive = false;
@@ -658,7 +658,7 @@ void TestApp::EndLook()
 	}
 }
 
-void TestApp::OnFocusLost()
+void EditorApp::OnFocusLost()
 {
 	// Alt-Tab 또는 캡처 상실 시 호출됨. 커서가 숨겨진 채로 남지 않게 함.
 	EndLook();
@@ -666,12 +666,12 @@ void TestApp::OnFocusLost()
 
 // ------------------------------------------------------------------ 11단계: 씬 저장/로드
 
-bool TestApp::SaveSceneFile(const std::wstring& path)
+bool EditorApp::SaveSceneFile(const std::wstring& path)
 {
 	return SceneSerializer::Save(GetEngine().GetScene(), GetEngine().GetCamera(), path);
 }
 
-bool TestApp::LoadSceneFile(const std::wstring& path)
+bool EditorApp::LoadSceneFile(const std::wstring& path)
 {
 	Engine& engine = GetEngine();
 	// Renderer 캐시는 포인터를 키로 씀. 그래서 씬을 비우기 전에 버림 (9단계 LoadSceneMode 와 같은 순서).
@@ -693,7 +693,7 @@ bool TestApp::LoadSceneFile(const std::wstring& path)
 
 // ------------------------------------------------------------------ 11단계: 자동 검증
 
-void TestApp::ParseAutomation()
+void EditorApp::ParseAutomation()
 {
 	const std::wstring exitAfter = GetCommandLineOption(L"exit-after");
 	if (exitAfter.empty()) return;
@@ -742,7 +742,7 @@ void TestApp::ParseAutomation()
 		Log::ToUtf8(m_auto.loadPath.c_str()).c_str(), Log::ToUtf8(m_auto.screenshotPath.c_str()).c_str(), m_auto.dumpObjects ? 1 : 0);
 }
 
-void TestApp::RunAutomation()
+void EditorApp::RunAutomation()
 {
 	Engine& engine = GetEngine();
 	Scene& scene = engine.GetScene();
@@ -868,7 +868,7 @@ void TestApp::RunAutomation()
 
 // ------------------------------------------------------------------ 11단계: 새 씬 · 오브젝트 추가/삭제
 
-void TestApp::BuildEmptyScene()
+void EditorApp::BuildEmptyScene()
 {
 	Engine& engine = GetEngine();
 	Scene& scene = engine.GetScene();
@@ -904,7 +904,7 @@ void TestApp::BuildEmptyScene()
 	Log::Info("씬 전환: New (바닥 1, 방향광 1, 카메라 1)");
 }
 
-GameObject& TestApp::AddCameraObject(const char* name)
+GameObject& EditorApp::AddCameraObject(const char* name)
 {
 	Scene& scene = GetEngine().GetScene();
 	GameObject& object = scene.AddObject(nullptr, nullptr, name);   // 메시 없음 — 렌더러는 건너뛰고 에디터가 프러스텀 아이콘을 그림
@@ -912,7 +912,7 @@ GameObject& TestApp::AddCameraObject(const char* name)
 	return object;
 }
 
-void TestApp::AddPrimitive(int type)
+void EditorApp::AddPrimitive(int type)
 {
 	Scene& scene = GetEngine().GetScene();
 	if (type == 4)
@@ -959,7 +959,7 @@ void TestApp::AddPrimitive(int type)
 	Log::Info("오브젝트 추가: %s", uniqueName.c_str());
 }
 
-void TestApp::PlaceModel(const std::wstring& relativePath, const XMFLOAT3& position)
+void EditorApp::PlaceModel(const std::wstring& relativePath, const XMFLOAT3& position)
 {
 	Engine& engine = GetEngine();
 	Scene& scene = engine.GetScene();
@@ -996,7 +996,7 @@ void TestApp::PlaceModel(const std::wstring& relativePath, const XMFLOAT3& posit
 	Log::Info("모델 배치: %s ×%zu at (%.2f, %.2f, %.2f)", prefix.c_str(), created, position.x, position.y, position.z);
 }
 
-void TestApp::DeleteObject(int index)
+void EditorApp::DeleteObject(int index)
 {
 	Scene& scene = GetEngine().GetScene();
 	auto& objects = scene.GetObjects();
