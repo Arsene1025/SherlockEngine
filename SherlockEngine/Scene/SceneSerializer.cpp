@@ -16,7 +16,7 @@ using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
-	constexpr int kVersion = 2;   // 2: 11-C단계 컴포넌트 추가. 버전 1 파일도 그대로 읽힘 (components 없음)
+	constexpr int kVersion = 3;   // 2: 11-C단계 컴포넌트 추가. 3: 11-F단계 "parent"(부모 오브젝트 인덱스). 이전 버전 파일도 그대로 읽힘 (필드 없음 = 루트)
 
 	json ToJson(const XMFLOAT3& v) { return json::array({ v.x, v.y, v.z }); }
 	json ToJson(const XMFLOAT4& v) { return json::array({ v.x, v.y, v.z, v.w }); }
@@ -262,6 +262,8 @@ std::string SceneSerializer::SaveToString(const Scene& scene, const Camera& came
 		const GameObject& object = *objectPtr;
 		json j;
 		j["name"] = object.GetName();
+		// 11-F단계: 부모는 objects 배열의 인덱스로 (자식이 부모보다 앞에 올 수 있으므로 로드는 두 단계). position/rotation/scale 은 부모 기준 로컬 값.
+		if (object.GetParent() != nullptr) j["parent"] = static_cast<int>(scene.IndexOf(object.GetParent()));
 		auto mi = meshIndex.find(object.GetMesh());
 		j["mesh"] = mi == meshIndex.end() ? -1 : mi->second;
 		auto mati = materialIndex.find(object.GetMaterial());
@@ -398,8 +400,10 @@ bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager&
 	}
 
 	auto materialAt = [&materials](int index) -> const Material* { return (index >= 0 && index < static_cast<int>(materials.size())) ? materials[index] : nullptr; };
+	std::vector<int> parents;   // 11-F단계: 오브젝트를 모두 만든 뒤 두 번째 단계에서 연결함 (부모가 뒤에 있을 수 있음)
 	for (const json& j : root.value("objects", json::array()))
 	{
+		parents.push_back(j.value("parent", -1));
 		const int mi = j.value("mesh", -1);
 		const Mesh* mesh = (mi >= 0 && mi < static_cast<int>(meshes.size())) ? meshes[mi] : nullptr;
 		const std::string name = j.value("name", "");
@@ -421,6 +425,14 @@ bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager&
 			t.SetPreTransform(XMLoadFloat4x4(&pre));
 		}
 		if (j.contains("components")) ComponentsFromJson(object, j["components"]);   // 11-C단계
+	}
+	for (size_t i = 0; i < parents.size(); ++i)
+	{
+		const int parent = parents[i];
+		if (parent < 0 || parent >= static_cast<int>(scene.GetObjects().size()) || parent == static_cast<int>(i)) continue;
+		// 저장된 값이 이미 로컬이므로 keepWorld=false. 순환이면 SetParent 가 거부함 (손으로 고친 파일).
+		if (!scene.GetObjects()[i]->SetParent(scene.GetObjects()[parent].get(), false))
+			Log::Warn("씬 로드: 오브젝트 %zu 의 부모 %d 가 순환을 만들어 무시함", i, parent);
 	}
 
 	scene.ambientColor = ToFloat3(root.value("ambientColor", json()), scene.ambientColor);

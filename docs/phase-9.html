@@ -273,6 +273,10 @@ object.SetSlotMaterials(materials);                          <span class="cm">//
 object.GetTransform() = transform;                           <span class="cm">// 모델 전체 배치</span>
 object.GetTransform().SetPreTransform(XMLoadFloat4x4(&amp;instance.world));   <span class="cm">// 노드 변환</span></code></pre>
 <p>경계는 3단계의 D3 그대로입니다: <code>Model</code>·<code>Scene</code> 은 Device 를 모르고, GPU 버퍼·텍스처·ResourceSet 은 Renderer 캐시가 첫 드로우에서 만듭니다. 그래서 로더는 D3D 헤더 없이 컴파일되고(격리 grep 0건), 같은 Model 을 두 백엔드가 그립니다. 노드의 월드 변환은 임의 행렬이라 Transform 의 오일러 각으로 분해하지 않고 <code>SetPreTransform</code> 으로 S·R·T 앞에 곱합니다. 모델 전체를 옮길 때는 기존 position/rotation/scale 을 그대로 씁니다.</p>
+<div class="applied">
+  <div class="t">11-F단계에서 바뀐 것 (2026-09-29)</div>
+  <p>"모델 전체를 옮길 때" 노드들이 서로 독립이라 전부 골라야 했던 것이, 11-F 의 부모-자식 계층으로 해결됐습니다. <code>Scene::AddModel</code> 은 유효한 인스턴스가 둘 이상이면 빈 루트 오브젝트(파일 이름)를 만들고 노드를 그 자식으로 둡니다. 루트가 placement 를 갖고 자식은 pre 만 가지므로 자식 월드 = pre × placement 로 이 절과 같은 결과입니다. 노드 트리 자체를 런타임 계층으로 되살리지는 않았고(평탄화 유지), 노드가 하나인 헬멧·Sponza 는 이전과 똑같이 오브젝트 하나입니다. 상세: <a href="phase-11f.html#s7">phase-11f 7절</a>.</p>
+</div>
 
 <h2 id="s5"><span class="num">5.</span>좌표계: 오른손 → 왼손</h2>
 <p>glTF 는 오른손 좌표계에 +Y 위, 앞면 +Z 이고, 양의 행렬식 변환에서 삼각형 앞면은 반시계(CCW)입니다<sup><a href="#ref-1">1</a></sup>. 엔진은 왼손에 시계(CW) 앞면입니다(1단계 <code>frontCounterClockwise = false</code>). 정점의 z 부호를 뒤집는 반사 <em>M</em> = diag(1, 1, −1) 을 쓰면 와인딩이 CCW → CW 로 바뀌어 인덱스 순서를 건드릴 필요가 없습니다. 인덱스 순서만 뒤집는 대안을 쓰면 모델이 거울상으로 보입니다(헬멧 글자가 뒤집힘).</p>
@@ -382,5 +386,6 @@ cmd.DrawIndexed(item.indexCount, item.indexStart, 0);</code></pre>
 </div>
 </main>
 </div>
+<script src="memo.js"></script>
 </body>
 </html>

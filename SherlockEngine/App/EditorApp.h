@@ -105,6 +105,8 @@ private:
         std::string newProject;     // --new-project=Name (2 프레임째 CreateProject in <repo>\Projects\, 11-E)
         bool buildProject = false;  // --build-project=1 (4 프레임째 프로젝트 솔루션의 에디터 타깃을 MSBuild 로 빌드 — 실행하지는 않음)
         bool launcher = false;      // --launcher=1 (2 프레임째 File > Projects 런처 팝업을 엶 — 문서 스크린샷용)
+        bool setRotation = false; DirectX::XMFLOAT3 rotationDeg = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --set-rotation=p,y,r (도, 8 프레임째 선택 오브젝트, 11-F)
+        std::string parentChild, parentName;   // --set-parent=자식;부모 (7 프레임째 재부모화, 부모가 비면 루트로, 11-F)
     } m_auto;
     void ParseAutomation();
     void RunAutomation();

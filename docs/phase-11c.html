@@ -285,6 +285,10 @@ m_editor.SetSelectedObject(selected);            <span class="cm">// 오브젝�
   <li><strong>카메라 전환(앞으로)</strong>: 카메라를 여러 개 두고 재생 중 <code>priority</code> 를 올리거나 <code>enabled</code> 를 켜면 그 카메라로 넘어가며 <code>blendTime</code> 동안 위치·yaw(짧은 쪽)·pitch·fov 를 smoothstep 으로 보간한다. 컷씬이나 "문을 열면 고정 카메라" 같은 연출은 컴포넌트가 다른 오브젝트의 CameraComponent 를 찾아(<code>FindObject</code> → <code>GetBehaviour&lt;CameraComponent&gt;</code>) priority 를 바꾸는 것으로 충분하다. 언리얼의 <code>SetViewTargetWithBlend</code>, 유니티 Cinemachine 의 우선순위 방식과 같은 골격이다.</li>
   <li>모든 씬(데모·헬멧·Sponza·새 씬)에 처음 시점 위치의 "Main Camera" 가 하나씩 생긴다. 씬 파일에는 메시 −1 오브젝트 + components 로 저장된다(버전 2, 형식 변경 없음).</li>
 </ul>
+<div class="applied">
+  <div class="t">11-F단계에서 바뀐 것 (2026-09-29)</div>
+  <p>위 코드의 <code>CameraPose{yaw, pitch}</code> 와 <code>SetYawPitch</code> 경로가 병목이었습니다 — 오브젝트 회전을 각도 둘로 줄이는 순간 <code>rotation.z</code> 의 roll 과 (나중에 생길) 부모의 회전이 잘립니다. 지금 <code>GetPose</code> 는 소유 오브젝트의 <strong>월드 행렬</strong>을 <code>XMMatrixDecompose</code> 로 분해해 위치 + 회전 <em>쿼터니언</em>으로 넘기고, <code>Camera::SetRotation(XMMATRIX)</code> 가 행렬을 그대로 저장합니다. 블렌드의 "yaw 는 짧은 쪽으로" lerp 는 <code>XMQuaternionSlerp</code> 로 바뀌었습니다. <code>SetFromCamera</code> 는 <code>GameObject::SetWorldMatrix</code> 를 거쳐 부모가 있어도 맞습니다. 상세: <a href="phase-11f.html#s5">phase-11f 5절</a>.</p>
+</div>
 
 <h2 id="s8"><span class="num">8.</span>에디터: 툴바·Inspector·표시</h2>
 <ul>
@@ -364,6 +368,7 @@ SherlockEngine.exe --scene=demo --exit-after=20 --add=4 --set-position=6,5,-12 -
   <li><strong>컴포넌트 간 참조.</strong> <code>GetOwner().GetBehaviour&lt;T&gt;()</code> 는 있지만 다른 오브젝트 참조는 이름(<code>Scene::FindObject</code>)뿐이다. 안정 ID 가 필요해지는 지점.</li>
   <li><strong>게임 모듈 분리 / 라이브 코딩.</strong> 지금은 exe 에 직접 컴파일된다. DLL 로 나누면 레지스트리의 정적 초기화(3.2절)와 핫 리로드 시 컴포넌트 상태 보존을 설계해야 한다.</li>
   <li><strong>Undo.</strong> 편집 조작(드롭·삭제·기즈모·컴포넌트 추가)이 전부 즉시 적용된다. 스냅샷과 같은 직렬화로 명령 스택을 만들 수 있다.</li>
+  <li><strong>오브젝트 계층.</strong> <span class="pill ok">11-F 에서 완료</span> 여기 목록에는 없었지만 카메라 roll 질문에서 필요가 생겨 먼저 들어갔다 — GameObject 부모/자식, 월드 행렬 재귀, 씬 파일 버전 3. <a href="phase-11f.html">phase-11f</a>.</li>
 </ul>
 
 <h2 id="s13"><span class="num">13.</span>참고 문헌</h2>
@@ -381,5 +386,6 @@ SherlockEngine.exe --scene=demo --exit-after=20 --add=4 --set-position=6,5,-12 -
 </div>
 </main>
 </div>
+<script src="memo.js"></script>
 </body>
 </html>

@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>SherlockEngine 렌더링 해부</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -194,6 +195,7 @@ td .fix b{color:var(--ok);font-weight:600}
     <li class="sub"><a href="#applied">적용 기록 — 2026-09-10</a></li>
     <li class="sub"><a href="#applied-cpp20">적용 기록 — 2026-09-28 · C++20 전환</a></li>
     <li class="sub"><a href="#applied-editorapp">적용 기록 — 2026-09-28 · TestApp → EditorApp 개명</a></li>
+    <li class="sub"><a href="#applied-hierarchy">적용 기록 — 2026-09-29 · 오브젝트 계층과 카메라 행렬 경로</a></li>
     <li><a href="#s8">8. 고민하고 수정해야 할 설계 지점</a></li>
     <li class="sub"><a href="#d1">D1~D20 설계 결정 목록</a></li>
     <li><a href="#s9">9. 발전 로드맵 — RHI와 PSO를 향해</a></li>
@@ -213,6 +215,7 @@ td .fix b{color:var(--ok);font-weight:600}
     <li class="sub"><a href="#p11c">11-C단계 · 재생 모드와 컴포넌트</a> <a href="phase-11c.html" title="상세 문서">↗</a></li>
     <li class="sub"><a href="#p11d">11-D단계 · 게임 빌드와 런타임 분리</a> <a href="phase-11d.html" title="상세 문서">↗</a></li>
     <li class="sub"><a href="#p11e">11-E단계 · 프로젝트 시스템</a> <a href="phase-11e.html" title="상세 문서">↗</a></li>
+    <li class="sub"><a href="#p11f">11-F단계 · 오브젝트 계층과 카메라 자세</a> <a href="phase-11f.html" title="상세 문서">↗</a></li>
     <li class="sub"><a href="#p12">12단계 · 고급 렌더링</a></li>
     <li><a href="#s10">10. 부록</a></li>
   </ol>
@@ -246,6 +249,11 @@ td .fix b{color:var(--ok);font-weight:600}
 <div class="callout" style="border-left-color:var(--ok);background:var(--ok-soft)">
   <div class="t">2026-09-28 — 언어 표준을 C++17에서 C++20으로 올림</div>
   <p>세 프로젝트(<code>SherlockEngine</code>·<code>SherlockEditor</code>·<code>SherlockGame</code>)의 <code>LanguageStandard</code>가 <code>stdcpp20</code>이 되었습니다. 표준을 올리는 데 필요한 코드 수정은 없었고(Debug·Release 재빌드 경고 0), 그 위에 C++20 기능 여섯 가지 — <code>&lt;=&gt;</code>/기본 생성 비교, <code>std::span</code>, 지정 초기화, <code>std::format</code>, <code>consteval</code>, 콘셉트 — 를 RHI 헤더와 Renderer를 중심으로 적용했습니다. 본문 위쪽의 "C++17" 표기는 분석 시점의 기록으로 그대로 두었습니다. 무엇을 어디에 왜 적용했는지는 <a href="#applied-cpp20">적용 기록 — C++20 전환</a>에 있습니다.</p>
+</div>
+
+<div class="callout" style="border-left-color:var(--ok);background:var(--ok-soft)">
+  <div class="t">2026-09-29 — 오브젝트 부모-자식 계층과 카메라의 행렬 입력 경로 (11-F단계)</div>
+  <p>"카메라에 쿼터니언을 안 썼는데 Roll 이 필요하면?" 이라는 질문에서 출발해, 쿼터니언 대신 <strong>GameObject 계층</strong>(parent/children, <code>GetWorldMatrix</code> 재귀)을 넣고 <strong>Camera 가 각도 둘 대신 회전 행렬을 받도록</strong> 바꿨습니다. 부모의 roll 이 행렬 곱으로 자식 카메라에 상속되므로 카메라 자체에 roll 변수는 없습니다. 카메라 블렌드는 쿼터니언 slerp, 씬 파일은 버전 3(<code>"parent"</code>), Hierarchy 는 드래그로 재부모화하는 트리입니다. D8·D15 의 적용 결과 상자와 <a href="#applied-hierarchy">적용 기록</a>, 상세는 <a href="phase-11f.html">phase-11f.html</a>. Roll·짐벌락·유니티/언리얼 방식의 정리는 그 문서 3절에 있습니다.</p>
 </div>
 
 <h2 id="s1"><span class="num">1.</span>프로젝트 현재 상태</h2>
@@ -969,9 +977,52 @@ exit code: -1</code></pre>
   <li><code>ProjectGenerator::GetEditorSources()</code>가 생성하는 <code>&lt;이름&gt;Editor.vcxproj</code>의 소스 목록은 <code>SherlockEditor.vcxproj</code>와 같아야 한다는 11-E 규칙 — 두 곳을 같은 치환으로 고쳤습니다. 기존에 생성해 둔 프로젝트 솔루션(<code>Projects\&lt;이름&gt;\&lt;이름&gt;Editor.vcxproj</code>)이 있으면 <code>TestApp.cpp</code>를 가리키므로 File &gt; Projects에서 다시 생성해야 합니다.</li>
 </ul>
 
+<h2 id="applied-hierarchy">적용 기록 — 2026-09-29 · 오브젝트 계층과 카메라 행렬 경로</h2>
+<p>11-F단계의 기록입니다. 출발은 코드 문제가 아니라 질문이었습니다 — "카메라에 쿼터니언을 안 썼는데 나중에 Roll 이 필요하면 어떻게 하나?". 답을 따라가다 보니 카메라의 <em>저장 형식</em>이 아니라 <em>전달 경로</em>가 병목이었고, 그 경로를 여는 일과 roll 을 공급할 부모-자식 계층을 만드는 일이 이 작업이 되었습니다. 상세와 Roll·짐벌락 논의는 <a href="phase-11f.html">phase-11f.html</a>.</p>
+
+<div class="tbl"><table>
+<thead><tr><th>항목</th><th>상태</th><th>한 줄 요약</th></tr></thead>
+<tbody>
+<tr><td class="n">GameObject 계층</td><td><span class="pill ok">완료</span></td><td><code>parent</code>/<code>children</code> 비소유 링크, <code>SetParent(keepWorld)</code>, 순환 금지, <code>GetWorldMatrix</code> 재귀, 월드 헬퍼 4개. 소유는 Scene 벡터 그대로</td></tr>
+<tr><td class="n">Transform</td><td><span class="pill ok">완료</span></td><td>값은 로컬. <code>GetWorldMatrix</code> → <code>GetLocalMatrix</code> 개명, <code>SetLocalMatrix</code>(pre⁻¹ + 분해), <code>EulerFromRotationMatrix</code> 를 Editor 에서 이사</td></tr>
+<tr><td class="n">Camera 행렬 경로</td><td><span class="pill ok">완료</span></td><td>yaw/pitch 멤버 → 회전 행렬. <code>SetRotation(XMMATRIX)</code> 추가, 각도는 파생(<code>GetRoll</code> 신설). 에디터 자유 카메라·씬 파일은 각도 경로 유지</td></tr>
+<tr><td class="n">CameraPose · 블렌드</td><td><span class="pill ok">완료</span></td><td>pose 는 월드 쿼터니언(<code>XMMatrixDecompose</code> 로 스케일 제거), 블렌드는 slerp. 이전의 yaw 짧은 쪽 lerp 제거</td></tr>
+<tr><td class="n">에디터</td><td><span class="pill ok">완료</span></td><td>Hierarchy 트리 + 드래그 재부모화(빈 곳 = 루트), 기즈모 <code>GetWorldMatrix</code>/<code>SetWorldMatrix</code>, Inspector 부모·월드 위치·Detach, 프러스텀 아이콘 roll 반영</td></tr>
+<tr><td class="n">씬 파일</td><td><span class="pill ok">완료</span></td><td>버전 3 <code>"parent"</code>(인덱스), 두 단계 로드. 1·2 는 그대로 읽힘</td></tr>
+<tr><td class="n">모델 루트</td><td><span class="pill warn">일부 검증</span></td><td>노드 둘 이상이면 빈 루트 아래 자식으로. 동봉 모델이 모두 단일 노드라 실행 경로는 코드 읽기로만 확인</td></tr>
+<tr><td class="n">스크립트·FollowTarget</td><td><span class="pill ok">완료</span></td><td><code>Script::GetParent/SetParent/GetWorldPosition/SetWorldPosition</code>, FollowTarget 월드 기준 계산</td></tr>
+<tr><td class="n">자동 검증</td><td><span class="pill ok">완료</span></td><td><code>--set-parent</code>(7 프레임)·<code>--set-rotation</code>(8 프레임), 덤프에 roll·parent·world. D3D11·D3D12 동일 수치</td></tr>
+</tbody></table></div>
+
+<h3>왜 이렇게 고쳤나</h3>
+<p>Roll 에는 세 종류가 있습니다 — 시선축 기울임(더치 앵글·흔들림), 카메라 사이 보간, 6자유도 자유 회전. 앞의 둘은 오일러 세 번째 각과 slerp 로 충분하고 마지막만 저장 형식을 쿼터니언으로 바꿔야 합니다. 그런데 유니티·언리얼에서 탈것의 banking 처럼 게임에서 실제로 마주치는 roll 은 대부분 <strong>카메라가 계산하지 않고 부모(몸체)에서 상속</strong>받습니다. 이 프로젝트에는 그 계층이 없었고, 있었더라도 <code>CameraComponent::GetPose</code> 가 월드 행렬을 yaw/pitch 둘로 줄여 넘기는 지점에서 roll 이 잘렸을 것입니다. 그래서 (1) 계층을 만들고 (2) 카메라가 행렬을 받게 하고 (3) 각도 lerp 였던 블렌드를 slerp 로 바꿨습니다. 짐벌락은 pitch = ±90° 에만 있고 각도 경로의 클램프가 그대로 막으므로, 행렬 경로를 열어도 새 위험은 "행렬에서 각을 역추출하는 곳" 뿐입니다 — 카메라의 yaw/pitch 는 forward 벡터만으로 계산해 그 위험을 피했습니다.</p>
+
+<h3>고르지 않은 대안</h3>
+<ul>
+  <li><b>Camera 에 <code>m_roll</code> 추가.</b> 30줄이면 되고 더치 앵글에는 맞지만, "부모를 따라 기우는" 경우를 해결하지 못합니다. 각도 셋으로 전달하는 경로가 남는 한 계층의 회전은 계속 잘립니다. 가산 층은 나중에 <code>CameraComponent</code> 쪽에 얹으면 됩니다(phase-11f 12절).</li>
+  <li><b>Camera·Transform 저장 형식을 쿼터니언으로.</b> D8 의 원래 권장. 지금 필요한 것은 "행렬을 받는 입구" 하나였고, 저장을 쿼터니언으로 바꾸면 <code>GetYaw/GetPitch</code>·직렬화·DebugUI·Inspector 가 전부 변환을 거치며 오일러 역추출의 flip 문제가 오히려 늘어납니다. 쿼터니언은 slerp 에서만 임시로 씁니다.</li>
+  <li><b>부모 링크를 Transform 에.</b> 유니티 API 모양이지만 <code>Transform</code> 이 값 복사되는 곳(<code>AddModel</code>)에서 링크까지 복사되는 문제가 있습니다. 복사 불가·주소 안정인 <code>GameObject</code> 가 맞는 자리입니다.</li>
+  <li><b>삭제 시 자식을 루트로 승격(언리얼).</b> 이 계층의 첫 용도가 "모델 노드 묶기·카메라 얹기" 라 부모와 운명을 같이하는 편이 덜 놀랍습니다. 필요하면 Detach 뒤 삭제하면 됩니다.</li>
+  <li><b>glTF 노드 트리를 그대로 런타임 계층으로.</b> 9단계의 pre-transform 평탄화를 되돌리는 일이라 미뤘습니다. 대신 노드들을 빈 루트 하나 아래 묶어 "모델 전체 옮기기" 만 얻었습니다.</li>
+</ul>
+
+<h3>작업 중 겪은 함정</h3>
+<div class="callout amber">
+  <div class="t">이름 규칙·측정 정의·도구</div>
+  <p>새 큐브가 "Cube 1" 이 아니라 "Cube 3" 이었습니다(접두어 개수 규칙). 부모를 월드 Z 축으로 30° 돌렸을 때 카메라의 <code>GetRoll</code> 은 31.5° 였는데, 시선축 기준 정의라 회전축이 다르면 값이 다릅니다 — 검산은 카메라 <em>위치</em>로 했습니다. 동봉 모델(헬멧·Sponza)이 모두 단일 노드라 모델 루트 경로는 실행하지 못했습니다. 셸 명령이 길면 히어독이 잘리고 <code>\\</code> 가 한 번 풀려 C4129 가 났습니다. 모두 <a href="phase-11f.html#s10">phase-11f 10절</a>.</p>
+</div>
+
+<h3>검증 방법</h3>
+<ul>
+  <li>Debug|x64 세 프로젝트 빌드 경고·오류 0.</li>
+  <li><code>--add=1 --set-parent="Main Camera;Cube 3" --set-rotation=0,0,30 --play=1 --dump-objects=1</code>: 재부모화 뒤 로컬 (18, 14.5, −28)·월드 (18, 16, −28) 유지, 부모 회전 뒤 카메라 위치 (8.34, 23.06, −28) 이 회전 공식과 일치, roll 0.55 rad. D3D12 동일.</li>
+  <li><code>--save=… --load=…</code>: 버전 3 파일에서 parent 와 월드 위치 복원.</li>
+  <li>스크린샷 <code>images/2026-09-29-phase11f-roll-play.png</code>: 트리·Inspector·기울어진 재생 화면.</li>
+</ul>
+
 <h2 id="s8"><span class="num">8.</span>고민하고 수정해야 할 설계 지점</h2>
 <p>7절은 "고치지 않으면 곧 오동작하는 것"이었습니다. 이 절은 다릅니다. 지금은 문제없이 돌아가지만, 코드가 커질수록 비용이 불어나거나 나중에 되돌리기 어려워지는 <strong>설계 선택</strong>들입니다. 항목마다 현재 상태, 왜 지금 고민해야 하는지, 갈 수 있는 방향, 그리고 그 방향의 장단점을 함께 적었습니다. 모두 바꿔야 한다는 뜻은 아닙니다. 몇 개는 "지금 방식이 맞으니 유지하되 한계를 알고 있자"는 결론입니다.</p>
-<p><b>수정 여부 열</b>은 2026-09-10 작업, 2026-09-23의 0~11단계 작업, 2026-09-28의 C++20 전환을 반영한 결과입니다. <span class="pill none">해당 없음</span>은 권장이 "유지"라서 고칠 것이 없다는 뜻이고, <span class="pill none">미착수</span>는 아직 손대지 않았다는 뜻입니다. 어떤 방법으로 고쳤는지는 <a href="#applied">적용 기록</a>과 각 항목의 적용 결과 상자에 있습니다.</p>
+<p><b>수정 여부 열</b>은 2026-09-10 작업, 2026-09-23의 0~11단계 작업, 2026-09-28의 C++20 전환, 2026-09-29의 11-F단계(계층·카메라)를 반영한 결과입니다. <span class="pill none">해당 없음</span>은 권장이 "유지"라서 고칠 것이 없다는 뜻이고, <span class="pill none">미착수</span>는 아직 손대지 않았다는 뜻입니다. 어떤 방법으로 고쳤는지는 <a href="#applied">적용 기록</a>과 각 항목의 적용 결과 상자에 있습니다.</p>
 
 <div class="tbl"><table>
 <thead><tr><th>#</th><th>영역</th><th>주제</th><th>권장</th><th>시점</th><th>수정 여부</th></tr></thead>
@@ -983,14 +1034,14 @@ exit code: -1</code></pre>
 <tr><td class="n">D5</td><td>프레임</td><td><a href="#d5">매 프레임 무조건 재바인딩</a></td><td><span class="pill ok">유지</span></td><td>3단계에 재검토</td><td><span class="pill none">해당 없음</span><span class="sub">유지가 결론</span></td></tr>
 <tr><td class="n">D6</td><td>데이터</td><td><a href="#d6">상수버퍼 갱신: UpdateSubresource vs Map</a></td><td><span class="pill info">조건부</span></td><td>3단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">3단계: Dynamic 은 Map(WRITE_DISCARD) + 프레임 슬롯. 8단계 D3D12 업로드 링</span></td></tr>
 <tr><td class="n">D7</td><td>데이터</td><td><a href="#d7">매 프레임 월드행렬·역행렬 재계산</a></td><td><span class="pill info">조건부</span></td><td>3단계</td><td><span class="pill none">미착수</span></td></tr>
-<tr><td class="n">D8</td><td>데이터</td><td><a href="#d8">오일러 각 회전과 LookAt 카메라</a></td><td><span class="pill warn">전환</span></td><td>2단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">2단계: yaw/pitch 카메라, 뷰 = 역행렬</span></td></tr>
+<tr><td class="n">D8</td><td>데이터</td><td><a href="#d8">오일러 각 회전과 LookAt 카메라</a></td><td><span class="pill warn">전환</span></td><td>2단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">2단계: yaw/pitch 카메라, 뷰 = 역행렬</span><span class="sub">2026-09-29 (11-F): 카메라 저장 형식을 회전 행렬로, 블렌드는 쿼터니언 slerp. Transform 은 오일러 유지 (계층이 roll 을 공급)</span></td></tr>
 <tr><td class="n">D9</td><td>데이터</td><td><a href="#d9">단일 VERTEX 구조체와 수동 InputLayout</a></td><td><span class="pill warn">전환</span></td><td>4단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">1·4단계: VertexFormat + offsetof 레이아웃, PSO 가 InputLayout 소유</span><span class="sub">2026-09-28: 레이아웃 생성이 <code>consteval</code>, stride·속성 수를 <code>static_assert</code>로 검사</span></td></tr>
 <tr><td class="n">D10</td><td>데이터</td><td><a href="#d10">32비트 인덱스 고정</a></td><td><span class="pill info">조건부</span></td><td>9단계</td><td><span class="pill ok">적용 · 2026-09-23</span></td></tr>
 <tr><td class="n">D11</td><td>데이터</td><td><a href="#d11">조명 8개 고정 배열 상수버퍼</a></td><td><span class="pill ok">유지</span></td><td>12단계에 재검토</td><td><span class="pill none">해당 없음</span><span class="sub">유지가 결론</span></td></tr>
 <tr><td class="n">D12</td><td>셰이더</td><td><a href="#d12">런타임 HLSL 컴파일 vs 사전 컴파일 .cso</a></td><td><span class="pill info">병행</span></td><td>4단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">4단계: FxCompile .cso + Debug 핫리로드(런타임 컴파일 병행)</span></td></tr>
 <tr><td class="n">D13</td><td>셰이더</td><td><a href="#d13">전치 업로드 vs row_major 선언</a></td><td><span class="pill ok">유지</span></td><td>—</td><td><span class="pill none">해당 없음</span><span class="sub">유지가 결론</span></td></tr>
 <tr><td class="n">D14</td><td>앱 구조</td><td><a href="#d14">전역 g_appBase와 가상함수 앱 골격</a></td><td><span class="pill ok">유지</span></td><td>10단계에 재검토</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">전역 포인터는 유지, Engine 이 시스템을 소유하고 AppBase 는 창·루프만 (10단계)</span></td></tr>
-<tr><td class="n">D15</td><td>앱 구조</td><td><a href="#d15">GameObject 값 소유 vs 컴포넌트 vs ECS</a></td><td><span class="pill info">단계적</span></td><td>3단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">3단계 형태: 값 소유 + Mesh*/Material* 참조, 9단계 서브메시 슬롯. 컴포넌트/ECS 는 미도입</span></td></tr>
+<tr><td class="n">D15</td><td>앱 구조</td><td><a href="#d15">GameObject 값 소유 vs 컴포넌트 vs ECS</a></td><td><span class="pill info">단계적</span></td><td>3단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">3단계 형태: 값 소유 + Mesh*/Material* 참조, 9단계 서브메시 슬롯. 컴포넌트/ECS 는 미도입</span><span class="sub">2026-09-29 (11-F): GameObject 에 부모-자식 링크(비소유), Transform 은 로컬 값. ECS 는 여전히 미도입</span></td></tr>
 <tr><td class="n">D16</td><td>오류 처리</td><td><a href="#d16">bool/HRESULT/void 혼용과 std::cout 로그</a></td><td><span class="pill warn">전환</span></td><td>0단계 일부, 10단계</td><td><span class="pill ok">적용 · 2026-09-23</span><span class="sub">0단계 몫 완료. Log 파사드와 bool 통일. Logger 본체는 10단계</span><span class="sub">2026-09-28: 내부 서식은 <code>std::format</code>. 공개 API 는 printf 유지 (이유는 적용 기록)</span></td></tr>
 <tr><td class="n">D17</td><td>환경</td><td><a href="#d17">소스 인코딩 CP949</a></td><td><span class="pill warn">전환</span></td><td>0단계</td><td><span class="pill ok">적용 완료</span><span class="sub">.editorconfig와 콘솔 코드페이지까지</span></td></tr>
 <tr><td class="n">D18</td><td>환경</td><td><a href="#d18">PCH의 미사용 헤더와 using namespace</a></td><td><span class="pill info">정리</span></td><td>0단계</td><td><span class="pill ok">적용 완료</span><span class="sub">2026-09-10. 수학 타입은 DirectXMath로 확정</span></td></tr>
@@ -1112,6 +1163,7 @@ exit code: -1</code></pre>
   </div>
 </div>
   <div class="applied"><b>적용 — 2026-09-23</b> · 2단계: 위치 + yaw/pitch 카메라, 뷰행렬 = 카메라 월드 변환의 역행렬, pitch 클램프로 짐벌락 없음. 11단계 에디터의 씬 뷰 카메라도 같은 클래스를 쓴다. 상세: <a href="phase-2.html">2단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-29 (11-F단계)</b> · 이 항목의 "발전 방향" 은 <em>Transform 을 쿼터니언으로</em> 였지만 실제로는 그 반대 순서가 맞았다. 필요했던 것은 Transform 의 표현 변경이 아니라 <strong>카메라가 행렬을 받는 입구</strong>였다 — <code>CameraComponent</code> 가 오브젝트 회전을 yaw/pitch 둘로 줄여 넘기면서 roll 이 잘리고 있었다. 지금 <code>Camera</code> 는 회전 행렬을 저장하고(<code>SetYawPitch</code> 각도 경로 + <code>SetRotation</code> 행렬 경로, yaw/pitch/roll 은 파생), <code>CameraPose</code> 는 월드 쿼터니언, 블렌드는 <code>XMQuaternionSlerp</code> 다. Transform 은 오일러를 유지한다: 에디터 편집이 직관적이고, roll 은 부모 계층(D15)이 행렬로 공급하며, 6자유도 회전이 필요한 물체가 아직 없다. "장점" 열의 <em>Slerp 보간</em>과 <em>카메라 = GameObject</em>(11-C) 는 이루어졌고, "단점" 의 <em>쿼터니언 → 오일러가 튄다</em> 는 각도 역추출을 forward 벡터만으로 하는 것으로 피했다. 짐벌락·roll·유니티/언리얼 비교는 <a href="phase-11f.html#s3">phase-11f 3절</a>.</div>
 
 <!-- D9 -->
 <div class="decision" id="d9">
@@ -1201,7 +1253,7 @@ exit code: -1</code></pre>
     <div><h5>단점 · 주의</h5><ul><li>명시적 멤버는 종류가 5~6개를 넘으면 GameObject가 비대해지고 대부분 nullptr인 멤버가 생김. 그 시점이 컴포넌트 전환 신호</li><li>컴포넌트 목록은 <code>GetComponent</code>가 선형 탐색이라 매 프레임 호출하면 느림. 렌더러는 별도 리스트(MeshRenderer 목록)를 유지해야 함</li><li>ECS로 나중에 전환하는 비용은 크지만, 필요 없는 프로젝트가 대부분</li></ul></div>
   </div>
 </div>
-  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계 형태(단계적 결정의 첫 단계): <code>GameObject</code>는 값으로 소유하고 Mesh·Material은 Scene이 가진 <code>unique_ptr</code>을 포인터로 참조한다. 9단계에 서브메시 재질 슬롯, 11단계에 계층·인스펙터·JSON 직렬화가 이 형태 위에 얹혔다. 컴포넌트/ECS는 필요가 생기지 않아 도입하지 않았다. 상세: <a href="phase-3.html">3단계</a> · <b>11-C단계 (2026-09-23)</b>: 재생 모드가 들어오면서 "필요"가 생겨 두 번째 단계로 넘어갔다. <code>GameObject</code>를 <code>unique_ptr</code>로 바꾸고 <code>Behaviour</code> 컴포넌트 목록을 달았다. ECS는 여전히 도입하지 않는다(오브젝트는 수십 개이고, 캐시 친화성보다 작성 편의가 중요하다). 상세: <a href="phase-11c.html">11-C단계</a></div>
+  <div class="applied"><b>적용 — 2026-09-23</b> · 3단계 형태(단계적 결정의 첫 단계): <code>GameObject</code>는 값으로 소유하고 Mesh·Material은 Scene이 가진 <code>unique_ptr</code>을 포인터로 참조한다. 9단계에 서브메시 재질 슬롯, 11단계에 계층·인스펙터·JSON 직렬화가 이 형태 위에 얹혔다. 컴포넌트/ECS는 필요가 생기지 않아 도입하지 않았다. 상세: <a href="phase-3.html">3단계</a> · <b>11-C단계 (2026-09-23)</b>: 재생 모드가 들어오면서 "필요"가 생겨 두 번째 단계로 넘어갔다. <code>GameObject</code>를 <code>unique_ptr</code>로 바꾸고 <code>Behaviour</code> 컴포넌트 목록을 달았다. ECS는 여전히 도입하지 않는다(오브젝트는 수십 개이고, 캐시 친화성보다 작성 편의가 중요하다). 상세: <a href="phase-11c.html">11-C단계</a> · <b>11-F단계 (2026-09-29)</b>: 부모-자식 계층. 링크(<code>parent</code>/<code>children</code>)는 비소유 포인터로 <code>GameObject</code> 에 두고 소유는 Scene 의 평면 벡터가 계속 맡는다 — 11-C 의 unique_ptr 전환이 주소를 안정시켜 둔 덕이다. Transform 은 로컬 값이고 월드는 <code>GameObject::GetWorldMatrix</code> 가 재귀로 만든다. 삭제는 서브트리째, 재부모화는 월드 유지, 순환 금지. 모델 노드가 여럿이면 빈 루트 아래 묶는다(9단계의 pre-transform 평탄화는 유지). 상세: <a href="phase-11f.html#s4">11-F단계 4절</a></div>
 
 <!-- D16 -->
 <div class="decision" id="d16">
@@ -1768,6 +1820,22 @@ exit code: -1</code></pre>
   <div class="applied"><b>적용 결과 — 2026-09-24</b> · <code>--new-project=TestGame --build-project=1</code>: 폴더·솔루션 생성, MSBuild 성공(lib 공유로 5초). <code>TestGameEditor.exe</code>가 exe 위쪽 폴더에서 .sherlock을 찾아 "컴파일된 프로젝트 TestGame"으로 뜨고, Main.json 로드, 프로젝트 스크립트 Rotator 부착·재생. 엔진 에디터로 열면 배너가 뜬다. 상세: <a href="phase-11e.html">phase-11e.html</a></div>
 </div>
 
+<div class="phase" id="p11f">
+  <header><span class="pn">PHASE 11-F</span><h3>오브젝트 계층과 카메라 자세</h3><span class="pill info">에디터 확장</span><span class="pill ok">완료 · 2026-09-29</span></header>
+  <p class="why">로드맵에 없던 단계입니다. "카메라에 쿼터니언을 안 썼는데 Roll 이 필요하면?" 을 따라가니 저장 형식이 아니라 전달 경로가 문제였고, 유니티·언리얼이 탈것 banking 을 카메라가 아니라 부모 계층으로 푸는 것을 확인한 뒤 계층을 먼저 넣기로 했습니다. D8 의 "쿼터니언 전환" 권장은 이 순서로 대체됩니다.</p>
+  <div class="cols">
+    <div><h5>작업</h5><ul>
+      <li><code>GameObject</code> 부모/자식 비소유 링크, <code>SetParent(keepWorld)</code>·순환 금지·서브트리 삭제, <code>GetWorldMatrix</code> 재귀와 월드 헬퍼. <code>Transform</code> 은 로컬 값(<code>GetLocalMatrix</code>, <code>SetLocalMatrix</code>, <code>EulerFromRotationMatrix</code>)</li>
+      <li><code>Camera</code>: yaw/pitch 멤버 → 회전 행렬. <code>SetYawPitch</code>(각도)·<code>SetRotation</code>(행렬) 두 경로, 각도는 파생. <code>CameraPose</code> 는 월드 쿼터니언, 블렌드는 slerp</li>
+      <li>Hierarchy 트리 + 드래그 앤 드롭 재부모화, 기즈모 월드↔로컬, Inspector 부모·월드 위치·Detach, 씬 파일 버전 3 <code>"parent"</code></li>
+      <li>모델 노드가 여럿이면 빈 루트 아래 묶기, <code>Script</code> 계층 헬퍼, <code>FollowTarget</code> 월드 기준, 자동 검증 <code>--set-parent</code>·<code>--set-rotation</code></li>
+    </ul></div>
+    <div><h5>주의</h5><ul><li>Transform 의 값은 부모 기준 로컬이다. 스크립트가 월드 좌표를 원하면 <code>GetWorldPosition</code></li><li>부모 스케일이 비균등하면 기즈모·재부모화의 분해가 근사가 된다 (유니티도 같음)</li><li>월드 행렬은 캐시 없이 매번 재귀 계산 (D7)</li></ul></div>
+  </div>
+  <div class="done"><b>완료 기준</b> — 부모를 30° 굴리면 자식 카메라로 본 화면이 기울고, 저장 → 로드 뒤 부모 관계와 월드 위치가 그대로다.</div>
+  <div class="applied"><b>적용 결과 — 2026-09-29</b> · <code>--set-parent="Main Camera;Cube 3" --set-rotation=0,0,30 --play=1</code>: 재부모화 뒤 월드 유지(로컬 y = 16 − 1.5), 부모 회전 뒤 카메라 위치 (8.34, 23.06, −28) 이 Z 축 30° 회전 공식과 일치, roll 0.55 rad. 저장/로드 뒤 parent='Cube 3'. D3D11·D3D12 동일. 동봉 모델이 단일 노드라 모델 루트 경로는 실행하지 못함. 상세: <a href="phase-11f.html">phase-11f.html</a></div>
+</div>
+
 <div class="phase" id="p12">
   <header><span class="pn">PHASE 12</span><h3>고급 렌더링</h3><span class="pill info">장기</span></header>
   <p class="why">모두 RHI 위에서 한 번만 작성됩니다. 순서는 이전 로드맵과 같지만, 컴퓨트 셰이더가 들어오는 시점에 RHI에 <code>ComputePipeline</code>과 UAV 바인딩이 추가됩니다.</p>
@@ -1847,7 +1915,9 @@ exit code: -1</code></pre>
 <div class="footer">
   분석 대상: SherlockEngine 저장소 커밋 867c380 (main). 소스 15개 파일과 HLSL 2개, 작업 로그 8건, 기획 메모 3건을 전부 읽고 작성했습니다. 본문의 코드 줄 번호는 모두 해당 커밋 기준입니다.<br>
   2026-09-10에 7절 9건(+1건 일부)과 8절 D1·D17·D18·D20(+D4·D16 일부)을 수정하고 <a href="#applied">적용 기록</a>을 덧붙였습니다. 원래 분석 내용은 고치지 않고 그대로 두었으므로, 현재 코드와 다른 서술은 수정 전 상태의 기록으로 읽으면 됩니다.<br>
-  2026-09-28에 언어 표준을 C++20으로 올리고 기본 생성 비교·<code>std::span</code>·지정 초기화·<code>std::format</code>·<code>consteval</code>·콘셉트를 적용했습니다. <a href="#applied-cpp20">적용 기록 — C++20 전환</a>에 정리했고, D9·D16·D21·D22와 0·7단계에 적용 결과 상자를 덧붙였습니다.
+  2026-09-28에 언어 표준을 C++20으로 올리고 기본 생성 비교·<code>std::span</code>·지정 초기화·<code>std::format</code>·<code>consteval</code>·콘셉트를 적용했습니다. <a href="#applied-cpp20">적용 기록 — C++20 전환</a>에 정리했고, D9·D16·D21·D22와 0·7단계에 적용 결과 상자를 덧붙였습니다.<br>
+  2026-09-29에 GameObject 부모-자식 계층과 카메라의 회전 행렬 입력 경로를 추가했습니다(11-F단계). <a href="#applied-hierarchy">적용 기록 — 오브젝트 계층과 카메라 행렬 경로</a>에 정리했고, D8·D15에 적용 결과 상자를, 로드맵에 <a href="#p11f">PHASE 11-F</a>를 덧붙였습니다.
 </div>
 </main>
 </div>
+<script src="memo.js"></script>

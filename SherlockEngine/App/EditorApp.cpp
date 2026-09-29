@@ -15,6 +15,7 @@
 #include "App/ProjectLauncher.h"
 #include <imgui.h>
 #include <cmath>
+#include <format>   // C++20: 자동 검증 로그 서식 (11-F)
 
 using namespace DirectX;   // 이 파일 안에서만
 
@@ -737,6 +738,16 @@ void EditorApp::ParseAutomation()
 	m_auto.newProject = Log::ToUtf8(GetCommandLineOption(L"new-project").c_str());
 	m_auto.buildProject = !GetCommandLineOption(L"build-project").empty();
 	m_auto.launcher = !GetCommandLineOption(L"launcher").empty();
+	// 11-F단계
+	const std::wstring rotation = GetCommandLineOption(L"set-rotation");
+	if (!rotation.empty()) { m_auto.setRotation = swscanf_s(rotation.c_str(), L"%f,%f,%f", &m_auto.rotationDeg.x, &m_auto.rotationDeg.y, &m_auto.rotationDeg.z) == 3; }
+	const std::wstring setParent = GetCommandLineOption(L"set-parent");
+	if (!setParent.empty())
+	{
+		const size_t semicolon = setParent.find(L';');
+		m_auto.parentChild = Log::ToUtf8(setParent.substr(0, semicolon).c_str());
+		m_auto.parentName = semicolon != std::wstring::npos ? Log::ToUtf8(setParent.substr(semicolon + 1).c_str()) : std::string();
+	}
 	Log::Info("자동 검증: exit-after %llu, pick %d, set-position %d, save '%s', load '%s', screenshot '%s', dump %d",
 		m_auto.exitAfter, m_auto.pick ? 1 : 0, m_auto.setPosition ? 1 : 0, Log::ToUtf8(m_auto.savePath.c_str()).c_str(),
 		Log::ToUtf8(m_auto.loadPath.c_str()).c_str(), Log::ToUtf8(m_auto.screenshotPath.c_str()).c_str(), m_auto.dumpObjects ? 1 : 0);
@@ -840,22 +851,56 @@ void EditorApp::RunAutomation()
 		}
 		else Log::Warn("자동 검증: 선택된 오브젝트가 없어 set-position 을 건너뜀");
 	}
+	if (frame == 8 && m_auto.setRotation)
+	{
+		// 11-F단계: 선택 오브젝트의 로컬 회전(도). roll 을 주고 카메라를 자식으로 붙이면 카메라 roll 상속을 검증할 수 있음.
+		const int selected = m_editor.GetSelectedObject();
+		if (GameObject* object = scene.GetObject(selected < 0 ? SIZE_MAX : static_cast<size_t>(selected)))
+		{
+			object->GetTransform().SetRotation(XMConvertToRadians(m_auto.rotationDeg.x), XMConvertToRadians(m_auto.rotationDeg.y), XMConvertToRadians(m_auto.rotationDeg.z));
+			Log::Info("자동 검증: '%s' 회전 → (%.1f, %.1f, %.1f) deg", object->GetName().c_str(), m_auto.rotationDeg.x, m_auto.rotationDeg.y, m_auto.rotationDeg.z);
+		}
+		else Log::Warn("자동 검증: 선택된 오브젝트가 없어 set-rotation 을 건너뜀");
+	}
+	if (frame == 7 && !m_auto.parentChild.empty())
+	{
+		// 11-F단계: --set-parent=자식;부모 (부모가 비어 있으면 루트로). 월드 자세는 유지됨 (Hierarchy 드래그와 같은 경로).
+		// set-rotation(8 프레임) 보다 먼저 실행해, 부모를 붙인 뒤 부모를 돌리면 자식(카메라)이 따라 도는지 검증할 수 있게 함.
+		GameObject* child = scene.FindObject(m_auto.parentChild);
+		GameObject* parent = m_auto.parentName.empty() ? nullptr : scene.FindObject(m_auto.parentName);
+		if (child == nullptr || (parent == nullptr && !m_auto.parentName.empty()))
+			Log::Warn("자동 검증: set-parent 대상을 찾지 못함 ('%s' → '%s')", m_auto.parentChild.c_str(), m_auto.parentName.c_str());
+		else
+		{
+			const bool ok = child->SetParent(parent);
+			const XMFLOAT3 lp = child->GetTransform().GetPosition();
+			const XMFLOAT3 wp = child->GetWorldPosition();
+			Log::Info("자동 검증: set-parent '%s' → '%s' %s, 로컬 (%.2f, %.2f, %.2f) 월드 (%.2f, %.2f, %.2f)", m_auto.parentChild.c_str(),
+				parent != nullptr ? parent->GetName().c_str() : "(root)", ok ? "성공" : "거부(순환)", lp.x, lp.y, lp.z, wp.x, wp.y, wp.z);
+		}
+	}
 	if (frame == 12 && !m_auto.savePath.empty()) SaveSceneFile(m_auto.savePath);
 	if (frame == 16 && !m_auto.loadPath.empty()) LoadSceneFile(m_auto.loadPath);
 	if (frame == 20 && m_auto.dumpObjects)
 	{
 		const Camera& camera = engine.GetCamera();
 		const CameraComponent* active = scene.GetActiveCamera();
-		Log::Info("자동 검증: 카메라 위치 (%.2f, %.2f, %.2f) yaw %.2f pitch %.2f, 활성 카메라 %s", camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z,
-			camera.GetYaw(), camera.GetPitch(), active != nullptr ? active->GetOwner().GetName().c_str() : "(editor)");
+		Log::Info("자동 검증: 카메라 위치 (%.2f, %.2f, %.2f) yaw %.2f pitch %.2f roll %.2f, 활성 카메라 %s", camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z,
+			camera.GetYaw(), camera.GetPitch(), camera.GetRoll(), active != nullptr ? active->GetOwner().GetName().c_str() : "(editor)");   // 11-F단계: roll 추가
 		for (const auto& object : scene.GetObjects())
 		{
 			const XMFLOAT3& p = object->GetTransform().GetPosition();
 			const char* albedo = object->GetMaterial() != nullptr ? object->GetMaterial()->albedoTexture.c_str() : "";
 			std::string components;
 			for (const auto& b : object->GetBehaviours()) components += std::string(components.empty() ? "" : ",") + b->GetTypeName();
-			Log::Info("자동 검증: 오브젝트 '%s' 위치 (%.2f, %.2f, %.2f) albedo=%s components=[%s] %s", object->GetName().c_str(), p.x, p.y, p.z, albedo,
-				components.c_str(), m_playState == PlayState::Editing ? "(editing)" : "(playing)");
+			std::string parent;   // 11-F단계: 부모가 있으면 이름과 월드 위치도 남김 (로컬 값과 비교용)
+			if (object->GetParent() != nullptr)
+			{
+				const XMFLOAT3 wp = object->GetWorldPosition();
+				parent = std::format(" parent='{}' world=({:.2f}, {:.2f}, {:.2f})", object->GetParent()->GetName(), wp.x, wp.y, wp.z);
+			}
+			Log::Info("자동 검증: 오브젝트 '%s' 위치 (%.2f, %.2f, %.2f) albedo=%s components=[%s]%s %s", object->GetName().c_str(), p.x, p.y, p.z, albedo,
+				components.c_str(), parent.c_str(), m_playState == PlayState::Editing ? "(editing)" : "(playing)");
 		}
 	}
 	if (m_auto.exitAfter > 1 && frame == m_auto.exitAfter - 1 && !m_auto.screenshotPath.empty()) engine.RequestScreenshot(m_auto.screenshotPath);
@@ -985,14 +1030,12 @@ void EditorApp::PlaceModel(const std::wstring& relativePath, const XMFLOAT3& pos
 	int count = 1;
 	for (size_t i = 0; i < first; ++i) if (scene.GetObjects()[i]->GetName().rfind(stem + " ", 0) == 0) ++count;
 	const std::string prefix = stem + " " + std::to_string(count);
-	for (size_t i = first; i < first + created; ++i)
-	{
-		GameObject& object = *scene.GetObjects()[i];
-		object.SetName(created == 1 ? prefix : prefix + "/" + object.GetName());
-	}
+	// 11-F단계: 노드가 여럿이면 Scene::AddModel 이 빈 루트(첫 오브젝트)를 만들고 노드를 그 자식으로 둔다. 루트가 "<파일명> N" 이고
+	// 자식은 노드 이름 그대로 (이전의 "<파일명> N/<노드명>" 접두어는 트리에서 중복이라 뺌). 노드 하나면 그 오브젝트가 "<파일명> N".
+	if (created > 0) scene.GetObjects()[first]->SetName(prefix);
 	// 모델을 놓아도 씬 모드는 바꾸지 않음 (삭제할 때만 File 로 바꿈 — DeleteObject).
 	m_modelStats = model->stats;
-	m_editor.SetSelectedObject(created > 0 ? static_cast<int>(first + created) - 1 : -1);
+	m_editor.SetSelectedObject(created > 0 ? static_cast<int>(first) : -1);   // 루트(또는 유일한 노드)를 선택 — 기즈모로 모델 전체를 옮길 수 있음
 	Log::Info("모델 배치: %s ×%zu at (%.2f, %.2f, %.2f)", prefix.c_str(), created, position.x, position.y, position.z);
 }
 

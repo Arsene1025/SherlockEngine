@@ -21,31 +21,13 @@
 #include <cmath>
 #include <format>        // C++20: 드롭 라벨 서식
 #include <string_view>
+#include <unordered_map>
 
 using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
-	// DirectXMath 의 RotationRollPitchYaw(pitch, yaw, roll) = Rz(roll)·Rx(pitch)·Ry(yaw) (행벡터) 에서 각을 되찾음.
-	// 행렬 원소: m[2][1] = −sin p, m[2][0] = cos p·sin y, m[2][2] = cos p·cos y, m[0][1] = sin r·cos p, m[1][1] = cos r·cos p.
-	XMFLOAT3 EulerFromRotation(const XMFLOAT4X4& m)
-	{
-		XMFLOAT3 euler;
-		const float sp = -m.m[2][1];
-		euler.x = asinf(std::clamp(sp, -1.0f, 1.0f));
-		if (fabsf(sp) < 0.9999f)
-		{
-			euler.y = atan2f(m.m[2][0], m.m[2][2]);
-			euler.z = atan2f(m.m[0][1], m.m[1][1]);
-		}
-		else
-		{
-			// 짐벌락: yaw 를 0 으로 두고 roll 에 몰아줌.
-			euler.y = 0.0f;
-			euler.z = atan2f(-m.m[1][0], m.m[0][0]);
-		}
-		return euler;
-	}
+	// 회전 행렬 → 오일러 각 변환은 11-F단계에 Transform::EulerFromRotationMatrix 로 옮겨 감 (재부모화·FollowTarget 도 같은 식을 쓰기 때문).
 
 	// 광선-AABB 교차 판정 (slab). t ≥ 0 인 가장 가까운 교차점을 구함. 없으면 false.
 	bool RayAabb(const XMFLOAT3& origin, const XMFLOAT3& direction, const XMFLOAT3& boxMin, const XMFLOAT3& boxMax, float& outT)
@@ -388,7 +370,7 @@ void Editor::DrawGizmo(Engine& engine, float x, float y, float width, float heig
 	XMFLOAT4X4 view, proj, world;
 	XMStoreFloat4x4(&view, camera.GetViewMatrix());
 	XMStoreFloat4x4(&proj, camera.GetProjectionMatrix());
-	XMStoreFloat4x4(&world, object.GetTransform().GetWorldMatrix());
+	XMStoreFloat4x4(&world, object.GetWorldMatrix());   // 11-F단계: 부모까지 곱한 월드 행렬. 기즈모는 언제나 월드 공간에서 조작함
 
 	ImGuizmo::SetOrthographic(false);
 	ImGuizmo::SetDrawlist();
@@ -397,22 +379,9 @@ void Editor::DrawGizmo(Engine& engine, float x, float y, float width, float heig
 	const ImGuizmo::MODE mode = (m_gizmoWorld && m_gizmoOperation != 2) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
 	if (ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], operation, mode, &world.m[0][0]))
 	{
-		// world = pre × S·R·T 이므로 S·R·T = pre⁻¹ × world. 분해해 Transform 에 되돌림.
-		Transform& t = object.GetTransform();
-		XMMATRIX local = XMLoadFloat4x4(&world);
-		if (t.HasPreTransform()) local = XMMatrixInverse(nullptr, t.GetPreTransform()) * local;
-		XMVECTOR scale, rotation, translation;
-		if (XMMatrixDecompose(&scale, &rotation, &translation, local))
-		{
-			XMFLOAT4X4 rot;
-			XMStoreFloat4x4(&rot, XMMatrixRotationQuaternion(rotation));
-			XMFLOAT3 s, p;
-			XMStoreFloat3(&s, scale);
-			XMStoreFloat3(&p, translation);
-			t.SetScale(s);
-			t.SetRotation(EulerFromRotation(rot));
-			t.SetPosition(p);
-		}
+		// world = pre × S·R·T × parent.world 이므로 GameObject 가 parent.world⁻¹ 을, Transform 이 pre⁻¹ 과 S·R·T 분해를 맡음 (11-F단계).
+		// 분해가 실패하면(스케일 0) 이번 프레임 조작은 버려짐.
+		object.SetWorldMatrix(XMLoadFloat4x4(&world));
 	}
 	m_gizmoUsing = ImGuizmo::IsUsing();
 }
@@ -445,7 +414,7 @@ int Editor::Pick(Scene& scene, const Camera& camera, float u, float v, float* ou
 		}
 		else continue;
 		// 광선을 오브젝트 로컬 공간으로 옮겨 로컬 AABB 와 검사함 (회전·스케일이 있어도 정확).
-		const XMMATRIX world = objects[i]->GetTransform().GetWorldMatrix();
+		const XMMATRIX world = objects[i]->GetWorldMatrix();   // 11-F단계: 계층 포함
 		const XMMATRIX invWorld = XMMatrixInverse(nullptr, world);
 		XMFLOAT3 origin, direction;
 		XMStoreFloat3(&origin, XMVector3TransformCoord(nearPoint, invWorld));
@@ -665,17 +634,73 @@ void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 	if (canDelete) { ImGui::SameLine(); }
 	if (canDelete && (ImGui::SmallButton("Delete (Del)") || deleteKey) && callbacks.deleteObject) { callbacks.deleteObject(m_selected); m_selected = -1; }
 	ImGui::Separator();
+	// 11-F단계: 평면 목록 대신 트리. 루트(부모 없음)부터 그리고 자식은 재귀. 선택은 여전히 씬 벡터의 인덱스이므로 포인터 → 인덱스 표를 한 번 만든다.
+	// 드래그 앤 드롭으로 재부모화: 항목을 다른 항목 위에 놓으면 그 자식이 되고(월드 자세 유지), 빈 곳에 놓으면 루트가 된다.
+	std::unordered_map<const GameObject*, int> indexOf;
+	indexOf.reserve(objects.size());
+	for (int i = 0; i < static_cast<int>(objects.size()); ++i) indexOf[objects[i].get()] = i;
 	for (int i = 0; i < static_cast<int>(objects.size()); ++i)
+		if (objects[i]->GetParent() == nullptr) DrawHierarchyNode(scene, *objects[i], indexOf);
+	// 빈 공간에 드롭 → 루트로
+	ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x, (std::max)(ImGui::GetContentRegionAvail().y, 24.0f)));
+	if (ImGui::BeginDragDropTarget())
 	{
-		ImGui::PushID(i);
-		const bool selected = m_selected == i;
-		std::string label = objects[i]->GetName().empty() ? "(unnamed)" : objects[i]->GetName();
-		if (!objects[i]->GetBehaviours().empty()) label += "  [" + std::to_string(objects[i]->GetBehaviours().size()) + "]";   // 11-C단계: 컴포넌트 수
-		if (ImGui::Selectable(label.c_str(), selected)) m_selected = i;
-		ImGui::PopID();
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SHERLOCK_OBJECT"))
+		{
+			const int dragged = *static_cast<const int*>(payload->Data);
+			if (GameObject* object = scene.GetObject(dragged < 0 ? SIZE_MAX : static_cast<size_t>(dragged)))
+			{
+				if (object->SetParent(nullptr)) Log::Info("계층: '%s' 를 루트로", object->GetName().c_str());
+			}
+		}
+		ImGui::EndDragDropTarget();
 	}
 	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered()) m_selected = -1;
 	ImGui::End();
+}
+
+void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unordered_map<const GameObject*, int>& indexOf)
+{
+	const auto found = indexOf.find(&object);
+	const int index = found != indexOf.end() ? found->second : -1;
+	ImGui::PushID(&object);
+	std::string label = object.GetName().empty() ? "(unnamed)" : object.GetName();
+	if (!object.GetBehaviours().empty()) label += "  [" + std::to_string(object.GetBehaviours().size()) + "]";   // 11-C단계: 컴포넌트 수
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen;
+	if (object.GetChildren().empty()) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	if (m_selected == index) flags |= ImGuiTreeNodeFlags_Selected;
+	const bool open = ImGui::TreeNodeEx(label.c_str(), flags);
+	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) m_selected = index;
+
+	// 드래그 소스: 페이로드는 씬 인덱스. 드롭 대상: 이 오브젝트의 자식으로 (자기 자신·자손이면 SetParent 가 거부).
+	if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+	{
+		ImGui::SetDragDropPayload("SHERLOCK_OBJECT", &index, sizeof(index));
+		ImGui::TextUnformatted(object.GetName().c_str());
+		ImGui::EndDragDropSource();
+	}
+	if (ImGui::BeginDragDropTarget())
+	{
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SHERLOCK_OBJECT"))
+		{
+			const int dragged = *static_cast<const int*>(payload->Data);
+			if (GameObject* child = scene.GetObject(dragged < 0 ? SIZE_MAX : static_cast<size_t>(dragged)))
+			{
+				if (child->SetParent(&object)) Log::Info("계층: '%s' → '%s' 의 자식", child->GetName().c_str(), object.GetName().c_str());
+				else Log::Warn("계층: '%s' 를 '%s' 의 자식으로 만들 수 없음 (자기 자신 또는 자손)", child->GetName().c_str(), object.GetName().c_str());
+			}
+		}
+		ImGui::EndDragDropTarget();
+	}
+
+	if (open && !object.GetChildren().empty())
+	{
+		// 자식 목록을 복사해 순회함: 드롭으로 재부모화하면 순회 중인 벡터가 바뀔 수 있음.
+		const std::vector<GameObject*> children = object.GetChildren();
+		for (GameObject* child : children) DrawHierarchyNode(scene, *child, indexOf);
+		ImGui::TreePop();
+	}
+	ImGui::PopID();
 }
 
 void Editor::DrawInspector(Engine& engine)
@@ -705,6 +730,15 @@ void Editor::DrawInspector(Engine& engine)
 	}
 	if (ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.001f, 1000.0f)) t.SetScale(scale);
 	if (t.HasPreTransform()) ImGui::TextDisabled("(model node pre-transform applied before S*R*T)");
+	// 11-F단계: 부모가 있으면 위 값은 부모 기준 로컬임을 알리고 월드 위치를 함께 보임. Detach 는 월드 자세를 유지한 채 루트로 올림.
+	if (const GameObject* parent = object.GetParent())
+	{
+		const XMFLOAT3 wp = object.GetWorldPosition();
+		ImGui::TextDisabled("local to parent '%s'   world (%.2f, %.2f, %.2f)", parent->GetName().c_str(), wp.x, wp.y, wp.z);
+		ImGui::SameLine();
+		if (ImGui::SmallButton("Detach")) object.SetParent(nullptr);
+	}
+	else if (!object.GetChildren().empty()) ImGui::TextDisabled("%zu children follow this object (drag in Hierarchy to reparent)", object.GetChildren().size());
 
 	// 11-C단계: 카메라 오브젝트 — 에디터 시점과 자세를 주고받음
 	if (CameraComponent* cameraComponent = object.GetBehaviour<CameraComponent>())
@@ -824,7 +858,7 @@ void Editor::DrawCameraGizmos(Engine& engine, float x, float y, float width, flo
 			cameraComponent->GetPose().position.y - editorCamera.GetPosition().y, cameraComponent->GetPose().position.z - editorCamera.GetPosition().z);
 		if (eyeDelta.x * eyeDelta.x + eyeDelta.y * eyeDelta.y + eyeDelta.z * eyeDelta.z < 0.01f) continue;
 		const CameraPose pose = cameraComponent->GetPose();
-		const XMMATRIX rotation = XMMatrixRotationRollPitchYaw(pose.pitch, pose.yaw, 0.0f);
+		const XMMATRIX rotation = pose.GetRotationMatrix();   // 11-F단계: 월드 회전 (부모 roll 포함) 그대로
 		const XMVECTOR eye = XMLoadFloat3(&pose.position);
 		const XMVECTOR forward = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), rotation);
 		const XMVECTOR right = XMVector3TransformNormal(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), rotation);
