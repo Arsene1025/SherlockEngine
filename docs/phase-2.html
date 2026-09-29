@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>2단계 · 입력과 카메라 — SherlockEngine</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -304,6 +305,10 @@ pitch = −asin(d.y)            <span class="cm">// y = −sin p</span></code></
 
 <h3 id="s3-5">3.5 쿼터니언은 왜 아닌가</h3>
 <p>원문 2단계는 "쿼터니언 또는 yaw/pitch"라고 했고 D8은 <code>Transform</code>의 내부 표현을 쿼터니언으로 바꾸는 방향을 권했습니다. 카메라에 yaw/pitch를 고른 이유는 세 가지입니다. (1) 1인칭 자유 시점 카메라는 정의상 롤이 없고 두 각도로 완전히 기술됩니다. 자유도가 딱 맞는 표현을 쓰면 "롤이 누적되는" 부류의 버그가 원천적으로 생기지 않습니다. 쿼터니언으로 마우스 회전을 누적하면(<code>q = q_yaw · q · q_pitch</code>) 부동소수점 오차로 미세한 롤이 쌓여 지평선이 기울어지고, 이를 막으려면 결국 매 프레임 yaw/pitch로 분해해 다시 조립하게 됩니다. (2) UI에 "yaw 21.8°"처럼 표시·편집하기 쉽습니다. (3) <code>SetLookAt</code> 역산이 두 줄입니다. 쿼터니언이 필요한 곳은 임의 축 회전이 누적되는 <em>물체</em>의 Transform(D8), 카메라 사이의 부드러운 보간(slerp), 비행 시뮬레이터식 6자유도 카메라입니다. 그때는 <code>Camera</code>에 <code>SetOrientation(XMFLOAT4 quat)</code>를 추가하고 yaw/pitch는 편집용 입출력으로 남기면 됩니다.</p>
+<div class="applied">
+  <div class="t">11-F단계에서 바뀐 것 (2026-09-29)</div>
+  <p>"그때" 가 왔지만 모양은 조금 달랐습니다. 필요해진 것은 카메라 자신의 roll 이 아니라 <strong>부모 오브젝트의 회전을 상속</strong>하는 것이었고, 그러려면 카메라가 각도 둘 대신 <em>행렬</em>을 받아야 했습니다. <code>Camera</code> 는 이제 회전 행렬(<code>XMFLOAT4X4</code>)을 저장하고 <code>SetYawPitch</code>(각도 경로, 이 문서의 클램프·부호 관례 그대로)와 <code>SetRotation(XMMATRIX)</code>(행렬 경로) 두 입구를 가집니다. <code>GetYaw/GetPitch</code> 는 forward 벡터에서 계산하는 파생값이라 roll 이 있어도 튀지 않고, 3.3 의 클램프는 각도 경로에 그대로 남아 짐벌락을 막습니다. 이 절의 세 이유(자유도·UI·LookAt 역산)는 마우스 룩(<code>Rotate</code>)에 여전히 유효하며, 예고했던 "카메라 사이의 slerp" 는 <code>Scene::ApplyActiveCamera</code> 의 블렌드에 들어갔습니다. 쿼터니언은 저장이 아니라 그 보간에서만 씁니다. 상세: <a href="phase-11f.html#s5">phase-11f 5절</a>, 짐벌락 논의는 <a href="phase-11f.html#s3">3절</a>.</p>
+</div>
 
 <h2 id="s4"><span class="num">4.</span>마우스 룩</h2>
 
@@ -423,3 +428,4 @@ pitch = −asin(d.y)            <span class="cm">// y = −sin p</span></code></
 </div>
 </main>
 </div>
+<script src="memo.js"></script>

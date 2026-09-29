@@ -267,8 +267,16 @@ XMMATRIX local = XMLoadFloat4x4(&amp;world);
 XMMatrixDecompose(&amp;scale, &amp;rotation, &amp;translation, local);              <span class="cm">// [5]</span>
 t.SetScale(scale);  t.SetRotation(EulerFromRotation(rotationMatrix));  t.SetPosition(translation);</code></pre>
 <p>Transform 이 오일러 각(<code>XMMatrixRotationRollPitchYaw(pitch, yaw, roll)</code> = Rz·Rx·Ry, 행벡터)을 쓰므로 회전 행렬에서 각을 되찾아야 합니다: m[2][1] = −sin p, m[2][0] = cos p·sin y, m[2][2] = cos p·cos y, m[0][1] = sin r·cos p, m[1][1] = cos r·cos p. pitch = asin(−m[2][1]), yaw = atan2(m[2][0], m[2][2]), roll = atan2(m[0][1], m[1][1]); cos p ≈ 0 이면 yaw 를 0 으로 두고 roll 에 몰아줍니다. 모델 노드(Sponza 전체가 오브젝트 하나)도 pre-transform 을 벗기므로 기즈모가 정상 동작합니다(그림 3).</p>
+<div class="applied">
+  <div class="t">11-F단계에서 바뀐 것 (2026-09-29)</div>
+  <p>위 분해 코드는 <code>Transform::SetLocalMatrix</code> 로, <code>EulerFromRotation</code> 은 <code>Transform::EulerFromRotationMatrix</code> 로 옮겨 갔고 기즈모는 <code>object.GetWorldMatrix()</code> → <code>object.SetWorldMatrix(world)</code> 한 줄입니다. 부모가 있으면 <code>GameObject</code> 가 먼저 <code>parent.world⁻¹</code> 을 곱하고, 그 다음 이 절의 pre⁻¹·분해가 그대로 이어집니다. 각 되찾기 공식과 짐벌락 처리("yaw 를 0 으로, roll 에 몰아줌")는 변함없습니다. 상세: <a href="phase-11f.html#s6">phase-11f 6절</a>.</p>
+</div>
 
 <h2 id="s6"><span class="num">6.</span>Hierarchy · Inspector · Stats · 디버그 뷰</h2>
+<div class="applied">
+  <div class="t">11-F단계에서 바뀐 것 (2026-09-29)</div>
+  <p>Hierarchy 는 이름 그대로 <strong>계층</strong>이 되었습니다 — 부모 없는 오브젝트를 루트로 하는 <code>TreeNodeEx</code> 트리이고, 항목을 다른 항목 위에 끌어 놓으면 자식이 되며(월드 자세 유지) 빈 곳에 놓으면 루트가 됩니다. Inspector 는 부모가 있을 때 "local to parent" 와 월드 위치, Detach 버튼을 보입니다. 아래 서술은 11단계 당시의 평면 목록입니다. 상세: <a href="phase-11f.html#s6">phase-11f 6절</a>.</p>
+</div>
 <p>Hierarchy 는 오브젝트 이름 목록(Selectable)이고, 빈 곳을 클릭하면 선택이 해제됩니다. Inspector 는 선택 오브젝트의 이름, 위치/회전(도)/크기 DragFloat3, 메시 출처(sphere/plane/model + 경로·인덱스), 재질 콤보(씬의 재질 중 고름)와 그 재질의 필드(기본색·스페큘러·광택·UV 배율·노멀 세기·알파 컷아웃·unlit·와이어·양면)입니다. 재질을 편집하면 4단계 캐시가 다음 프레임에 상수를 다시 올리고, 텍스처가 바뀌면 ResourceSet 을 다시 만듭니다. Stats 는 10단계 프로파일러와 Renderer 통계를 한 창에 모았습니다.</p>
 <p>디버그 뷰는 PerFrame 상수버퍼에 <code>debugParams</code>(288 → 304 B) 를 더하고 픽셀 셰이더가 조명 직전에 분기합니다: 알베도, 월드 노멀(×0.5+0.5, 노멀 맵 적용 뒤), 깊이(카메라 거리 / 범위), 그림자 계수, UV. 셰이더 상수 하나라 PSO 변형이 늘지 않습니다. 그림자 맵 미리보기는 6단계 것 그대로입니다.</p>
 
@@ -354,5 +362,6 @@ SherlockEngine.exe --scene=Scenes\test.json --exit-after=60 --screenshot=b.png
 </div>
 </main>
 </div>
+<script src="memo.js"></script>
 </body>
 </html>

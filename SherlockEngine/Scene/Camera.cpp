@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "Scene/Camera.h"
+#include <algorithm>
 #include <cmath>
 #include <cassert>
 
@@ -28,8 +29,6 @@ namespace
 
 Camera::Camera()
 	: m_position(0.0f, 0.0f, 0.0f),
-	  m_yaw(0.0f),
-	  m_pitch(0.0f),
 	  m_fovY(XM_PIDIV4),
 	  m_aspect(16.0f / 9.0f),
 	  m_nearZ(0.1f),
@@ -37,6 +36,7 @@ Camera::Camera()
 	  m_orthoHeight(25.0f),
 	  m_usePerspective(true)
 {
+	XMStoreFloat4x4(&m_rotation, XMMatrixIdentity());
 	XMStoreFloat4x4(&m_view, XMMatrixIdentity());
 	XMStoreFloat4x4(&m_proj, XMMatrixIdentity());
 
@@ -53,14 +53,54 @@ void Camera::SetPosition(const XMFLOAT3& position)
 
 void Camera::SetYawPitch(float yaw, float pitch)
 {
-	m_yaw = WrapAngle(yaw);
-	m_pitch = ClampPitch(pitch);
+	// 인자 순서는 (pitch, yaw, roll). Transform::GetRotationMatrix 와 같은 함수를 씀.
+	XMStoreFloat4x4(&m_rotation, XMMatrixRotationRollPitchYaw(ClampPitch(pitch), WrapAngle(yaw), 0.0f));
 	UpdateViewMatrix();
+}
+
+void Camera::SetRotation(const XMMATRIX& rotation)
+{
+	// 이동 성분이 섞여 들어오지 않게 3×3 만 취함. 스케일은 호출자가 이미 벗겨 냈다고 가정함 (CameraComponent::GetPose 참고).
+	XMMATRIX r = rotation;
+	r.r[0] = XMVectorSetW(r.r[0], 0.0f);
+	r.r[1] = XMVectorSetW(r.r[1], 0.0f);
+	r.r[2] = XMVectorSetW(r.r[2], 0.0f);
+	r.r[3] = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+	XMStoreFloat4x4(&m_rotation, r);
+	UpdateViewMatrix();
+}
+
+float Camera::GetYaw() const
+{
+	// forward = (cos p·sin y, −sin p, cos p·cos y) 를 거꾸로 풀면 yaw = atan2(f.x, f.z). roll 은 forward 를 바꾸지 않으므로 무관함.
+	XMFLOAT3 f;
+	XMStoreFloat3(&f, GetForward());
+	return atan2f(f.x, f.z);
+}
+
+float Camera::GetPitch() const
+{
+	XMFLOAT3 f;
+	XMStoreFloat3(&f, GetForward());
+	return -asinf(std::clamp(f.y, -1.0f, 1.0f));
+}
+
+float Camera::GetRoll() const
+{
+	// roll 이 0 일 때의 right/up(월드 +Y 기준)을 만들고, 실제 up 이 그 두 축 사이에서 얼마나 돌아 있는지 잼.
+	// XMMatrixRotationRollPitchYaw(p, y, r) 로 만든 행렬에 대해 r 을 그대로 돌려줌 (부호까지). 자동 검증 로그와 DebugUI 가 씀.
+	const XMVECTOR forward = GetForward();
+	const XMVECTOR worldUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	if (fabsf(XMVectorGetY(forward)) > 0.9999f) return 0.0f;   // 수직으로 보면 roll 과 yaw 를 구분할 수 없음 (짐벌락). 0 으로 보고함
+	const XMVECTOR rightNoRoll = XMVector3Normalize(XMVector3Cross(worldUp, forward));   // 왼손: right = up × forward
+	const XMVECTOR upNoRoll = XMVector3Cross(forward, rightNoRoll);
+	const XMVECTOR up = GetUp();
+	return atan2f(-XMVectorGetX(XMVector3Dot(up, rightNoRoll)), XMVectorGetX(XMVector3Dot(up, upNoRoll)));
 }
 
 void Camera::Rotate(float deltaYaw, float deltaPitch)
 {
-	SetYawPitch(m_yaw + deltaYaw, m_pitch + deltaPitch);
+	SetYawPitch(GetYaw() + deltaYaw, GetPitch() + deltaPitch);
 }
 
 void Camera::Move(float forward, float right, float up)
@@ -82,15 +122,7 @@ void Camera::SetLookAt(const XMFLOAT3& eye, const XMFLOAT3& target)
 
 	// forward = (cos p·sin y, −sin p, cos p·cos y) 를 거꾸로 풀어 yaw/pitch 를 구함.
 	m_position = eye;
-	m_yaw = WrapAngle(atan2f(dx, dz));
-	m_pitch = ClampPitch(-asinf(dy));
-	UpdateViewMatrix();
-}
-
-XMMATRIX Camera::GetRotationMatrix() const
-{
-	// 인자 순서는 (pitch, yaw, roll). Transform::GetWorldMatrix와 같은 함수를 씀.
-	return XMMatrixRotationRollPitchYaw(m_pitch, m_yaw, 0.0f);
+	SetYawPitch(atan2f(dx, dz), -asinf(std::clamp(dy, -1.0f, 1.0f)));
 }
 
 XMVECTOR Camera::GetForward() const
@@ -155,6 +187,7 @@ void Camera::UpdateViewMatrix()
 
 #if defined(_DEBUG)
 	// 같은 결과를 내야 하는 전용 함수(XMMatrixLookToLH)와 대조함. 기저 벡터의 정의가 어긋나면 여기서 잡힘.
+	// forward/up 을 저장 행렬에서 읽으므로 roll 이 있어도 성립함 (LookToLH 는 up 이 forward 와 직교하면 그 기저를 그대로 씀).
 	const XMMATRIX lookTo = XMMatrixLookToLH(XMLoadFloat3(&m_position), GetForward(), GetUp());
 	for (int row = 0; row < 4; ++row)
 	{

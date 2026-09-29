@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "Scene/Behaviour.h"
 #include "Scene/GameObject.h"
 #include "Scene/Scene.h"
@@ -29,22 +29,23 @@ public:
 		if (m_target == nullptr) m_target = GetContext().scene->FindObject(target);   // 재생 중 생긴 오브젝트도 찾음
 		if (m_target == nullptr || m_target == &GetOwner()) return;
 
-		const DirectX::XMFLOAT3 tp = m_target->GetTransform().GetPosition();
+		// 11-F단계: 월드 좌표로 계산함. target 이나 자기 자신이 다른 오브젝트의 자식이어도 맞게 따라가도록 (Transform 의 값은 부모 기준 로컬).
+		const DirectX::XMFLOAT3 tp = m_target->GetWorldPosition();
 		const DirectX::XMFLOAT3 desired(tp.x + offset.x, tp.y + offset.y, tp.z + offset.z);
-		DirectX::XMFLOAT3 p = GetTransform().GetPosition();
+		DirectX::XMFLOAT3 p = GetOwner().GetWorldPosition();
 		const float k = smoothing <= 0.0f ? 1.0f : (std::min)(1.0f, dt * smoothing);
 		p.x += (desired.x - p.x) * k;
 		p.y += (desired.y - p.y) * k;
 		p.z += (desired.z - p.z) * k;
-		GetTransform().SetPosition(p);
+		GetOwner().SetWorldPosition(p);
 
-		// target 을 바라보는 yaw/pitch (Camera::SetLookAt 과 같은 식: forward = (cos p·sin y, −sin p, cos p·cos y))
+		// target 을 바라보는 월드 회전 (Camera::SetLookAt 과 같은 식: forward = (cos p·sin y, −sin p, cos p·cos y)). roll 0.
 		const float dx = tp.x + lookOffset.x - p.x;
 		const float dy = tp.y + lookOffset.y - p.y;
 		const float dz = tp.z + lookOffset.z - p.z;
 		const float length = sqrtf(dx * dx + dy * dy + dz * dz);
 		if (length < 1e-4f) return;
-		GetTransform().SetRotation(-asinf(dy / length), atan2f(dx, dz), 0.0f);
+		GetOwner().SetWorldRotation(DirectX::XMMatrixRotationRollPitchYaw(-asinf(dy / length), atan2f(dx, dz), 0.0f));
 	}
 
 	std::string target = "SphereCenter";

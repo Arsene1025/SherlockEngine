@@ -157,7 +157,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
 <main>
 <div class="eyebrow">SherlockEngine 읽기 가이드</div>
 <h1>프로젝트를 문서와 함께 읽는 순서</h1>
-<p class="lede"><code>docs/</code>에는 렌더러 해부와 로드맵(<a href="rendering-analysis.html">rendering-analysis.html</a>) 한 편과 단계별 상세 문서(<a href="phase-0.html">phase-0</a> ~ <a href="phase-11.html">phase-11</a>, 그리고 에디터 확장 <a href="phase-11b.html">phase-11b</a>·<a href="phase-11c.html">phase-11c</a>·phase-11d·phase-11e) 열여섯 편이 있습니다. 문서는 단계 순서로 쓰였고 소스도 그 순서로 자랐으므로, <strong>로드맵으로 지도를 펴고 → 앱 골격을 잡은 뒤 → 단계 문서를 번호 순으로 소스와 짝지어</strong> 읽는 것이 가장 덜 헤매는 길입니다. 이 문서는 그 길을 14개 스텝으로 나누고, 스텝마다 "먼저 읽을 문서 → 함께 볼 소스 → 확인 포인트"를 적었습니다.</p>
+<p class="lede"><code>docs/</code>에는 렌더러 해부와 로드맵(<a href="rendering-analysis.html">rendering-analysis.html</a>) 한 편과 단계별 상세 문서(<a href="phase-0.html">phase-0</a> ~ <a href="phase-11.html">phase-11</a>, 그리고 에디터 확장 <a href="phase-11b.html">phase-11b</a>·<a href="phase-11c.html">phase-11c</a>·phase-11d·phase-11e·<a href="phase-11f.html">phase-11f</a>) 열일곱 편이 있습니다. 문서는 단계 순서로 쓰였고 소스도 그 순서로 자랐으므로, <strong>로드맵으로 지도를 펴고 → 앱 골격을 잡은 뒤 → 단계 문서를 번호 순으로 소스와 짝지어</strong> 읽는 것이 가장 덜 헤매는 길입니다. 이 문서는 그 길을 14개 스텝으로 나누고, 스텝마다 "먼저 읽을 문서 → 함께 볼 소스 → 확인 포인트"를 적었습니다.</p>
 
 <div class="facts">
   <div><div class="k">문서</div><div class="v">17편<small>해부·로드맵 1 + 단계 문서 16</small></div></div>
@@ -194,6 +194,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
     <tr><td class="n">12-C</td><td>재생 모드와 C++ 컴포넌트</td><td><a href="phase-11c.html">phase-11c</a></td><td><code>Scene/Behaviour.h</code> · <code>Scene/CameraComponent.h</code> · <code>Scene::BeginPlay/Update/ApplyActiveCamera</code> · <code>Game/Components/*.cpp</code> · <code>Projects/Sample/Scripts/*.cpp</code> · <code>EditorApp::StartPlay/StopPlay</code> · <code>SceneSerializer</code>의 components · <code>Editor::DrawComponents</code></td><td class="n">3h</td></tr>
     <tr><td class="n">12-D</td><td>게임 빌드와 런타임 분리</td><td><a href="phase-11d.html">phase-11d</a></td><td><code>SherlockEngine.sln</code>의 세 프로젝트 · <code>App/GameApp</code> · <code>App/GameBuilder</code> · <code>AppBase::WantsGUI</code> · <code>&lt;프로젝트&gt;\Build\&lt;이름&gt;\</code></td><td class="n">1h</td></tr>
     <tr><td class="n">12-E</td><td>프로젝트 시스템</td><td><a href="phase-11e.html">phase-11e</a></td><td><code>Core/Project</code> · <code>Core/Paths</code> 세 루트 · <code>App/ProjectGenerator</code> · <code>App/ProjectLauncher</code> · <code>Projects\Sample</code> · 생성된 <code>&lt;이름&gt;.sln</code></td><td class="n">1h</td></tr>
+    <tr><td class="n">12-F</td><td>오브젝트 계층과 카메라 자세</td><td><a href="phase-11f.html">phase-11f</a> · <a href="rendering-analysis.html#d8">D8</a>·<a href="rendering-analysis.html#d15">D15</a></td><td><code>Scene/GameObject.h</code> 의 parent/children · <code>Scene/Transform.h</code>(로컬) · <code>Scene/Camera.h</code> 의 두 입구 · <code>Scene/CameraComponent.cpp</code> · <code>Scene::ApplyActiveCamera</code> 의 slerp · <code>Editor::DrawHierarchyNode / DrawGizmo</code></td><td class="n">1.5h</td></tr>
     <tr><td class="n">13</td><td>되돌아보기</td><td>rendering-analysis <a href="rendering-analysis.html#s7">§7</a> · <a href="rendering-analysis.html#applied">적용 기록</a> · <a href="rendering-analysis.html#s8">§8 D1~D22</a> · <a href="rendering-analysis.html#s10">§10 부록</a> · <code>logs/*.md</code></td><td>다시 <code>Graphics/Renderer.cpp</code> 전체를 위에서 아래로</td><td class="n">3h</td></tr>
   </tbody>
 </table></div>
@@ -650,6 +651,28 @@ Projects\Sample\Build\Test\Test.exe --exit-after=60 --dump-objects=1</code></pre
 
 <h2 id="s7"><span class="num">7.</span>스텝 13: 되돌아보기</h2>
 <div class="stage">
+  <div class="tag">S12-F</div>
+  <div>
+    <h4>오브젝트 계층과 카메라 자세 <span class="time">약 1.5시간</span></h4>
+    <div class="why">"카메라에 쿼터니언을 안 썼는데 Roll 이 필요하면?" 에 대한 답입니다. 결론은 쿼터니언이 아니라 <strong>부모-자식 계층</strong>과 <strong>카메라의 행렬 입력 경로</strong>였습니다. 계층은 GameObject 의 비소유 링크 + Transform 로컬 값 + 월드 행렬 재귀 세 조각이고, 카메라는 각도 경로와 행렬 경로 두 입구를 가집니다. 먼저 phase-11f 3절(Roll 의 종류, 짐벌락의 위치, 유니티·언리얼 방식)을 읽고 나서 코드를 보면 왜 카메라에 roll 변수가 없는지 보입니다.</div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-11f.html">phase-11f</a> §2 출발점, §3 Roll·짐벌락·쿼터니언, §4 계층 설계, §5 카메라 행렬 경로, §10 함정</li>
+        <li><a href="rendering-analysis.html#d8">D8</a>·<a href="rendering-analysis.html#d15">D15</a> 의 11-F 적용 결과 상자 — 원래 권장("Transform 을 쿼터니언으로")과 실제 순서가 왜 달랐는지</li>
+        <li><a href="phase-2.html#s3-5">phase-2 §3.5</a> "쿼터니언은 왜 아닌가" 와 그 아래 11-F 상자를 이어서</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>Scene/GameObject.h/.cpp</code> 의 <code>SetParent / GetWorldMatrix / SetWorldMatrix</code> → <code>Scene/Transform.cpp</code> 의 <code>SetLocalMatrix / EulerFromRotationMatrix</code></li>
+        <li><code>Scene/Camera.h</code> 머리 주석 → <code>SetYawPitch / SetRotation / GetRoll</code> → <code>Scene/CameraComponent.cpp</code> 의 <code>GetPose</code>(월드 행렬 분해) → <code>Scene::ApplyActiveCamera</code> 의 slerp</li>
+        <li><code>Editor::DrawHierarchyNode</code>(트리·드래그 페이로드), <code>DrawGizmo</code> 의 한 줄, <code>SceneSerializer</code> 의 <code>"parent"</code> 두 단계 로드, <code>Scene::AddModel</code> 의 루트</li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — Hierarchy 에서 Main Camera 를 큐브 밑으로 끌어 넣고 큐브의 Rotation z 를 30 으로 바꾼 뒤 Play 하면 화면이 기운다. 창 없이는 아래 한 줄 — 카메라 roll 이 0 이 아니고 위치가 회전 공식과 맞으면 된다.
+      <pre style="margin:10px 0 0"><code>SherlockEditor.exe --scene=demo --exit-after=30 --add=1 --set-parent="Main Camera;Cube 3" --set-rotation=0,0,30 --play=1 --dump-objects=1</code></pre></div>
+  </div>
+</div>
+
+<div class="stage">
   <div class="tag">S13</div>
   <div>
     <h4>처음 문서를 끝에서 다시 <span class="time">약 3시간</span></h4>
@@ -712,9 +735,10 @@ Projects\Sample\Build\Test\Test.exe --exit-after=60 --dump-objects=1</code></pre
 <p>S2·S6은 문서의 1절 요약과 확인 포인트만 보고 지나가도 됩니다. 대신 S3의 D21·D22, S5의 §2(루트 시그니처를 D3D11에 미리 그리기), S7의 Barrier 설계, S8·S9 전체에 시간을 몰아 주세요. 이 프로젝트의 고유한 부분이 거기 있습니다.</p>
 
 <div class="footer">
-  SherlockEngine 읽기 가이드 · 2026/09/24 (11-E 반영) · 문서 기준: rendering-analysis.html과 phase-0 ~ phase-11, phase-11b ~ phase-11e · 소스 기준: 커밋 653dd09 작업 트리. 이전 문서의 <code>SherlockEngine.exe</code>는 지금의 <code>SherlockEditor.exe</code>, <code>Game\Scripts</code>는 <code>Projects\Sample\Scripts</code>입니다.
+  SherlockEngine 읽기 가이드 · 2026/09/29 (11-F 반영) · 문서 기준: rendering-analysis.html과 phase-0 ~ phase-11, phase-11b ~ phase-11f · 소스 기준: 커밋 653dd09 작업 트리. 이전 문서의 <code>SherlockEngine.exe</code>는 지금의 <code>SherlockEditor.exe</code>, <code>Game\Scripts</code>는 <code>Projects\Sample\Scripts</code>입니다.
 </div>
 </main>
 </div>
+<script src="memo.js"></script>
 </body>
 </html>

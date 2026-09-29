@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "Scene/Behaviour.h"
 #include "Scene/GameObject.h"
 #include "Core/Input.h"   // 스크립트가 GetInput() 만으로 키를 읽을 수 있게 함 (별도 include 불필요)
@@ -48,7 +48,7 @@ public:
 	const std::string& GetName() const { return GetOwner().GetName(); }
 	template <std::derived_from<Behaviour> T> T* GetComponent() { return GetOwner().GetBehaviour<T>(); }   // 같은 오브젝트의 다른 컴포넌트 (예: Rigidbody). C++20 콘셉트로 T 를 Behaviour 파생으로 제한
 
-	// ---- Transform 단축 함수 (Transform 의 같은 이름 함수를 호출함) ----
+	// ---- Transform 단축 함수 (Transform 의 같은 이름 함수를 호출함). 모두 부모 기준 로컬 값 (유니티의 localPosition 등) ----
 	const DirectX::XMFLOAT3& GetPosition() const { return GetOwner().GetTransform().GetPosition(); }
 	const DirectX::XMFLOAT3& GetRotation() const { return GetOwner().GetTransform().GetRotation(); }
 	void SetPosition(float x, float y, float z) { GetTransform().SetPosition(x, y, z); }
@@ -58,6 +58,12 @@ public:
 	void Rotate(float pitch, float yaw, float roll) { GetTransform().Rotate(pitch, yaw, roll); }
 	void LookAt(const DirectX::XMFLOAT3& target) { GetTransform().LookAt(target); }
 	void SetScale(float s) { GetTransform().SetScale(s, s, s); }
+
+	// ---- 11-F단계: 계층. 부모가 있는 오브젝트의 월드 좌표가 필요할 때 (유니티의 transform.position / SetParent) ----
+	GameObject* GetParent() { return GetOwner().GetParent(); }
+	bool SetParent(GameObject* parent, bool keepWorld = true) { return GetOwner().SetParent(parent, keepWorld); }
+	DirectX::XMFLOAT3 GetWorldPosition() const { return GetOwner().GetWorldPosition(); }
+	void SetWorldPosition(const DirectX::XMFLOAT3& p) { GetOwner().SetWorldPosition(p); }
 
 	// ---- 엔진 시스템 (재생 중) ----
 	Input& GetInput();                        // 키보드·마우스. VK_LEFT, 'A', VK_SPACE …

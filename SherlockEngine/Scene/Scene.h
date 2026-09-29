@@ -59,7 +59,9 @@ public:
 	GameObject& AddObject(const Mesh* mesh, const Material* material, const char* name);
 
 	// 모델의 메시·재질·이미지를 이 씬으로 옮기고(모델은 비워짐) 인스턴스마다 GameObject 를 만듦.
-	// 만든 오브젝트 수를 돌려줌. transform 은 모든 인스턴스에 똑같이 적용됨(모델 전체를 옮길 때 사용).
+	// 만든 오브젝트 수를 돌려줌. transform 은 모델 전체의 배치임.
+	// 11-F단계: 노드가 둘 이상이면 빈 루트 오브젝트(파일 이름)를 먼저 만들고 인스턴스를 그 자식으로 둠 — 반환값에 루트가 포함됨.
+	// 루트가 transform 을 갖고 자식은 pre(노드 행렬)만 가지므로 월드 행렬은 이전 방식(pre × transform)과 같음.
 	size_t AddModel(Model&& model, const Transform& transform);
 	// 10단계: AssetManager 캐시의 모델을 복사해 넣음 (원본은 그대로 남아 다음 전환 때 다시 쓰임).
 	size_t AddModel(const Model& model, const Transform& transform);
@@ -74,7 +76,8 @@ public:
 	const std::vector<std::unique_ptr<GameObject>>& GetObjects() const { return m_objects; }
 	GameObject* GetObject(size_t index) { return index < m_objects.size() ? m_objects[index].get() : nullptr; }
 	GameObject* FindObject(const std::string& name);
-	void RemoveObject(size_t index);
+	size_t IndexOf(const GameObject* object) const;   // 11-F단계: 포인터 → 벡터 인덱스. 없으면 SIZE_MAX
+	void RemoveObject(size_t index);                  // 11-F단계: 자식도 함께 지움
 
 	// ---- 11-C단계: 재생 (에디터의 ▶). 재생 중에만 컴포넌트의 Start/Update/FixedUpdate 가 호출됨 ----
 	void BeginPlay(Input* input, Camera* camera);
@@ -120,7 +123,7 @@ private:
 	bool m_playing = false;
 	PlayContext m_playContext;
 	CameraComponent* m_activeCamera = nullptr;
-	CameraPose m_blendFrom;          // 전환 시작 시점의 카메라 자세
+	CameraPose m_blendFrom;          // 전환 시작 시점의 카메라 자세 (11-F단계: 회전은 쿼터니언, slerp 로 보간)
 	float m_blendElapsed = 0.0f;
 	float m_blendDuration = 0.0f;
 };

@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "Scene/Transform.h"
+#include <algorithm>
 #include <cmath>
 
 using namespace DirectX;   // 이 파일 안에서만
@@ -85,31 +86,72 @@ void Transform::LookAt(const XMFLOAT3& target)
 	rotation = XMFLOAT3(-asinf(dy / length), atan2f(dx, dz), 0.0f);
 }
 
+XMMATRIX Transform::GetRotationMatrix() const
+{
+	return XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z);
+}
+
 XMVECTOR Transform::GetForward() const
 {
-	return XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z));
+	return XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), GetRotationMatrix());
 }
 
 XMVECTOR Transform::GetRight() const
 {
-	return XMVector3TransformNormal(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z));
+	return XMVector3TransformNormal(XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), GetRotationMatrix());
 }
 
 XMVECTOR Transform::GetUp() const
 {
-	return XMVector3TransformNormal(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z));
+	return XMVector3TransformNormal(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), GetRotationMatrix());
 }
 
-XMMATRIX Transform::GetWorldMatrix() const
+XMMATRIX Transform::GetLocalMatrix() const
 {
 	XMMATRIX scaleMatrix = XMMatrixScaling(scale.x, scale.y, scale.z);
-	XMMATRIX rotationMatrix = XMMatrixRotationRollPitchYaw(rotation.x, rotation.y, rotation.z);
+	XMMATRIX rotationMatrix = GetRotationMatrix();
 	XMMATRIX translationMatrix = XMMatrixTranslation(position.x, position.y, position.z);
 
-	XMMATRIX world = scaleMatrix * rotationMatrix * translationMatrix;
+	XMMATRIX local = scaleMatrix * rotationMatrix * translationMatrix;
 	if (hasPreTransform)
 	{
-		world = XMLoadFloat4x4(&preTransform) * world;
+		local = XMLoadFloat4x4(&preTransform) * local;
 	}
-	return world;
+	return local;
+}
+
+bool Transform::SetLocalMatrix(const XMMATRIX& localWithPre)
+{
+	// local = pre × S·R·T 이므로 S·R·T = pre⁻¹ × local.
+	XMMATRIX srt = localWithPre;
+	if (hasPreTransform) srt = XMMatrixInverse(nullptr, XMLoadFloat4x4(&preTransform)) * srt;
+	XMVECTOR s, q, t;
+	if (!XMMatrixDecompose(&s, &q, &t, srt)) return false;   // 스케일 0 이거나 행렬이 퇴화하면 실패
+	XMFLOAT4X4 rot;
+	XMStoreFloat4x4(&rot, XMMatrixRotationQuaternion(q));
+	XMStoreFloat3(&scale, s);
+	XMStoreFloat3(&position, t);
+	rotation = EulerFromRotationMatrix(rot);
+	return true;
+}
+
+XMFLOAT3 Transform::EulerFromRotationMatrix(const XMFLOAT4X4& m)
+{
+	// R = Rz(roll)·Rx(pitch)·Ry(yaw) (행벡터). 세 번째 행이 forward = (cos p·sin y, −sin p, cos p·cos y) 이므로
+	// m[2][1] = −sin(pitch) 에서 pitch 를, m[2][0]/m[2][2] 에서 yaw 를, 첫 열 두 성분에서 roll 을 얻음.
+	XMFLOAT3 euler;
+	const float sp = -m.m[2][1];
+	euler.x = asinf(std::clamp(sp, -1.0f, 1.0f));
+	if (fabsf(sp) < 0.9999f)
+	{
+		euler.y = atan2f(m.m[2][0], m.m[2][2]);
+		euler.z = atan2f(m.m[0][1], m.m[1][1]);
+	}
+	else
+	{
+		// 짐벌락: yaw 축과 roll 축이 겹쳐 둘을 구분할 수 없음. yaw 를 0 으로 두고 roll 에 몰아줌.
+		euler.y = 0.0f;
+		euler.z = atan2f(-m.m[1][0], m.m[0][0]);
+	}
+	return euler;
 }

@@ -739,7 +739,7 @@ void Renderer::UploadObjectConstants(const GameObject& object)
 {
 	// b1 PerObject. 드로우마다 Map(WRITE_DISCARD). 드라이버가 매번 새 메모리를 주므로
 	// 앞 드로우가 아직 실행되지 않았어도 그 데이터를 덮어쓰지 않음. 바인딩은 프레임 초에 한 번만 했음.
-	const XMMATRIX world = object.GetTransform().GetWorldMatrix();
+	const XMMATRIX world = object.GetWorldMatrix();   // 11-F단계: 부모 계층을 곱한 월드 행렬 (Transform 의 것은 로컬)
 	PerObjectConstants perObject = {};
 	XMStoreFloat4x4(&perObject.world, XMMatrixTranspose(world));
 	// 노멀 변환 행렬은 (W⁻¹)ᵀ. 전치해서 올려야 하므로 ((W⁻¹)ᵀ)ᵀ = W⁻¹ 를 그대로 저장함.

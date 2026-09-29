@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
 #include <functional>
+#include <unordered_map>
 #include <string>
 #include <DirectXMath.h>
 #include "App/ContentBrowser.h"   // 11-B단계
@@ -100,6 +101,7 @@ private:
 	void BuildDefaultLayout(uint32_t dockspaceId);
 	void DrawSceneView(Engine& engine, const Callbacks& callbacks);
 	void DrawHierarchy(Engine& engine, const Callbacks& callbacks);
+	void DrawHierarchyNode(Scene& scene, GameObject& object, const std::unordered_map<const GameObject*, int>& indexOf);   // 11-F단계: 트리 항목 하나 (재귀)
 	void DrawInspector(Engine& engine);
 	void DrawRenderSettings(Engine& engine);
 	void DrawStats(Engine& engine, const char* sceneName, const ModelStats& modelStats);

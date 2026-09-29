@@ -131,8 +131,10 @@ bool AppBase::LoadConfig()
         {
             const std::wstring arg = argv[i];
             if (arg.size() < 3 || arg[0] != L'-' || arg[1] != L'-') continue;
+
             const size_t equals = arg.find(L'=');
             if (equals == std::wstring::npos) continue;
+
             std::string key = Log::ToUtf8(arg.substr(2, equals - 2).c_str());
             const std::string value = Log::ToUtf8(arg.substr(equals + 1).c_str());
             if (key == "backend") key = "engine.backend";

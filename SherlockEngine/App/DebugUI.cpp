@@ -28,8 +28,8 @@ void DebugUI::DrawCameraPanel(const Camera& camera, float& moveSpeed)
 	ImGui::Text("Camera  (WASD/QE move, RMB drag look, Shift fast)");
 	const XMFLOAT3& p = camera.GetPosition();
 	ImGui::Text("pos   %.2f  %.2f  %.2f", p.x, p.y, p.z);
-	ImGui::Text("yaw   %.1f deg   pitch %.1f deg",
-		XMConvertToDegrees(camera.GetYaw()), XMConvertToDegrees(camera.GetPitch()));
+	ImGui::Text("yaw   %.1f deg   pitch %.1f deg   roll %.1f deg",
+		XMConvertToDegrees(camera.GetYaw()), XMConvertToDegrees(camera.GetPitch()), XMConvertToDegrees(camera.GetRoll()));   // roll 은 재생 중 부모가 기울어진 카메라에서만 0 이 아님 (11-F)
 	ImGui::SliderFloat("Speed", &moveSpeed, 1.0f, 50.0f);
 	ImGui::Text("F1 wire  F2 cull  F3 vsync  F4 reload  F5 sRGB  F6 sampler  F7 light orbit  F8 shadows  F9 normal maps  F10 freeze");
 }

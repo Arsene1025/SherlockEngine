@@ -9,16 +9,6 @@
 
 using namespace DirectX;   // 이 파일 안에서만
 
-namespace
-{
-	float WrapAngle(float a)
-	{
-		while (a > XM_PI) a -= XM_2PI;
-		while (a < -XM_PI) a += XM_2PI;
-		return a;
-	}
-}
-
 Scene::Scene()
 {
 }
@@ -109,7 +99,27 @@ GameObject* Scene::FindObject(const std::string& name)
 
 void Scene::RemoveObject(size_t index)
 {
-	if (index < m_objects.size()) m_objects.erase(m_objects.begin() + index);   // 메시·재질은 씬이 계속 소유함 (다른 오브젝트가 쓰고 있을 수 있음)
+	if (index >= m_objects.size()) return;
+	// 11-F단계: 자식도 함께 지움 (유니티와 같음. 언리얼은 떼어 내지만, 여기서 계층은 "묶어서 옮기기" 용도라 함께 지우는 쪽이 자연스러움).
+	// 서브트리를 먼저 모으고, 루트를 부모에서 떼어 낸 뒤, 벡터에서 해당 포인터들을 지움. 메시·재질은 씬이 계속 소유함 (다른 오브젝트가 쓰고 있을 수 있음).
+	std::vector<GameObject*> doomed;
+	const auto collect = [&doomed](GameObject* object, auto& self) -> void
+	{
+		doomed.push_back(object);
+		for (GameObject* child : object->GetChildren()) self(child, self);
+	};
+	GameObject* root = m_objects[index].get();
+	collect(root, collect);
+	root->DetachFromHierarchy();   // 부모의 children 에서 빠짐. 자식 링크도 끊지만 자식들은 아래에서 함께 지워짐
+	m_objects.erase(std::remove_if(m_objects.begin(), m_objects.end(),
+		[&doomed](const std::unique_ptr<GameObject>& o) { return std::find(doomed.begin(), doomed.end(), o.get()) != doomed.end(); }), m_objects.end());
+	if (doomed.size() > 1) Log::Info("오브젝트 삭제: 자식 %zu 개 포함", doomed.size() - 1);
+}
+
+size_t Scene::IndexOf(const GameObject* object) const
+{
+	for (size_t i = 0; i < m_objects.size(); ++i) if (m_objects[i].get() == object) return i;
+	return SIZE_MAX;
 }
 
 // ------------------------------------------------------------------ 11-C단계: 재생
@@ -177,8 +187,7 @@ void Scene::ApplyActiveCamera(float dt)
 	{
 		// 카메라 전환. 첫 활성화(재생 시작)는 즉시 전환하고, 그 뒤에는 새 카메라의 blendTime 동안 현재 시점에서 보간함.
 		m_blendFrom.position = camera->GetPosition();
-		m_blendFrom.yaw = camera->GetYaw();
-		m_blendFrom.pitch = camera->GetPitch();
+		XMStoreFloat4(&m_blendFrom.rotation, XMQuaternionRotationMatrix(camera->GetRotationMatrix()));   // 11-F단계: 행렬 → 쿼터니언 (보간용)
 		m_blendFrom.fovY = camera->GetFovY();
 		m_blendDuration = m_activeCamera != nullptr ? (std::max)(0.0f, next->blendTime) : 0.0f;
 		m_blendElapsed = 0.0f;
@@ -196,12 +205,15 @@ void Scene::ApplyActiveCamera(float dt)
 		pose.position.x = m_blendFrom.position.x + (pose.position.x - m_blendFrom.position.x) * t;
 		pose.position.y = m_blendFrom.position.y + (pose.position.y - m_blendFrom.position.y) * t;
 		pose.position.z = m_blendFrom.position.z + (pose.position.z - m_blendFrom.position.z) * t;
-		pose.yaw = m_blendFrom.yaw + WrapAngle(pose.yaw - m_blendFrom.yaw) * t;   // 짧은 쪽으로
-		pose.pitch = m_blendFrom.pitch + (pose.pitch - m_blendFrom.pitch) * t;
+		// 11-F단계: 회전은 쿼터니언 slerp. 이전의 yaw/pitch 별 lerp 는 roll 을 표현할 수 없고, 두 각을 따로 보간하면 수직 근처에서 경로가 휘었음.
+		// slerp 는 언제나 두 자세 사이의 최단 호를 따르므로 "yaw 를 짧은 쪽으로 감기" 처리도 필요 없음.
+		const XMVECTOR from = XMLoadFloat4(&m_blendFrom.rotation);
+		const XMVECTOR to = XMLoadFloat4(&pose.rotation);
+		XMStoreFloat4(&pose.rotation, XMQuaternionNormalize(XMQuaternionSlerp(from, to, t)));
 		pose.fovY = m_blendFrom.fovY + (pose.fovY - m_blendFrom.fovY) * t;
 	}
 	camera->SetPosition(pose.position);
-	camera->SetYawPitch(pose.yaw, pose.pitch);
+	camera->SetRotation(pose.GetRotationMatrix());
 	camera->SetLens(pose.fovY, camera->GetAspect(), next->nearZ, next->farZ);
 	m_playContext.cameraDriven = true;
 }
@@ -248,14 +260,29 @@ size_t Scene::AddModel(Model&& model, const Transform& transform)
 		AddImage(image.name, std::move(image.encoded));
 	}
 
-	size_t created = 0;
+	// 11-F단계: 노드가 여럿이면 빈 루트 오브젝트 하나를 만들어 그 아래에 인스턴스를 자식으로 둠 (유니티가 모델 프리팹을 놓을 때와 같음).
+	// 루트가 placement(transform)를 갖고 자식은 로컬 = pre(노드 월드 행렬) 이므로 결과 월드 행렬은 이전(pre × placement)과 정확히 같다.
+	// 이제 루트 하나를 옮기면 모델 전체가 따라오고, Hierarchy 에서 접힌다. 노드가 하나면 루트 없이 그 오브젝트가 placement 를 가짐 (이전과 동일).
+	size_t validInstances = 0;
+	for (const ModelInstance& instance : model.instances) if (instance.meshIndex < meshes.size()) ++validInstances;
+	GameObject* root = nullptr;
+	if (validInstances > 1)
+	{
+		std::string rootName = Log::ToUtf8(model.sourcePath.c_str());
+		rootName = rootName.substr(rootName.find_last_of("\\/") + 1);
+		root = &AddObject(nullptr, nullptr, rootName.c_str());
+		root->GetTransform() = transform;
+	}
+
+	size_t created = root != nullptr ? 1 : 0;
 	for (const ModelInstance& instance : model.instances)
 	{
 		if (instance.meshIndex >= meshes.size()) continue;
 		GameObject& object = AddObject(meshes[instance.meshIndex], materials.empty() ? nullptr : materials.back(), instance.name.c_str());
 		std::vector<const Material*> slots = materials;   // 슬롯 번호 = 모델 재질 인덱스
 		object.SetSlotMaterials(std::move(slots));
-		object.GetTransform() = transform;
+		if (root != nullptr) object.SetParent(root, false);   // 로컬 값은 pre 만. keepWorld=false: 아래에서 pre 를 직접 넣음
+		else object.GetTransform() = transform;
 		object.GetTransform().SetPreTransform(XMLoadFloat4x4(&instance.world));
 		++created;
 	}
