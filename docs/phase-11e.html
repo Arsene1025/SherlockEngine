@@ -97,7 +97,7 @@ tr:last-child td{border-bottom:0}
 <div class="shell">
 <nav class="toc" aria-label="목차">
   <div class="brand">11-E단계 · 프로젝트 시스템</div>
-  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/24 (작업 트리, 미커밋)<br><a href="rendering-analysis.html#p11e">rendering-analysis.html → PHASE 11-E</a></div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/24 (작업 트리, 미커밋) · 5절 상자 2026/09/30<br><a href="rendering-analysis.html#p11e">rendering-analysis.html → PHASE 11-E</a></div>
   <ol>
     <li><a href="#s1">1. 요약</a></li>
     <li><a href="#s2">2. 프로젝트 = 폴더 + .sherlock</a></li>
@@ -133,6 +133,14 @@ tr:last-child td{border-bottom:0}
   <p><code>Paths</code> 가 세 루트(엔진·프로젝트·exe)를 알고 에셋을 "프로젝트 → 엔진 → exe" 순으로 찾으므로 씬 파일은 어느 루트인지 적지 않습니다. <code>AppBase</code> 가 시작할 때 <code>.sherlock</code> 을 찾아 루트를 정하고(<code>--project=</code>, exe 위쪽, 엔진의 <code>Projects\Sample</code>), 에디터는 런처·프로젝트 설정·솔루션 생성을 얹습니다. 스크립트는 <code>Scripts\*.cpp</code> 와일드카드로 프로젝트 솔루션의 두 exe 에 컴파일되고, exe 는 <code>SHERLOCK_PROJECT_NAME</code> 으로 "내가 어느 프로젝트의 에디터인가" 를 압니다.</p>
 </div>
 
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><strong>와일드카드.</strong> 위 한 줄 요약의 <code>Scripts\*.cpp</code> 는 2026-09-30부터 생성기가 쓰는 프로젝트 솔루션에서 <code>Scripts\**\*.cpp</code>(하위 폴더 포함)입니다. 엔진 솔루션의 Sample(<code>SherlockEditor.vcxproj</code>·<code>SherlockGame.vcxproj</code>)은 여전히 <code>..\Projects\Sample\Scripts\*.cpp</code> 로 비재귀입니다. <a href="#s5">5절 상자</a>.</li>
+    <li><strong>TestApp → EditorApp.</strong> 2026-09-28(커밋 <code>11a74a5</code>)에 에디터 앱 클래스 이름이 바뀌었습니다. 2절의 <code>TestApp::CreateProject</code> 는 지금 <code>EditorApp::CreateProject</code>(<code>App/EditorApp.cpp</code>)입니다. 5절의 <code>ProjectGenerator::GetEditorSources()</code> 목록도 첫 항목이 <code>EditorApp</code> 이어서, 생성되는 <code>&lt;이름&gt;Editor.vcxproj</code> 는 <code>App\EditorApp.cpp</code> 를 컴파일합니다. 나머지 항목(Editor·ContentBrowser·ScriptCreator·GameBuilder·DebugUI·ProjectGenerator·ProjectLauncher)은 같습니다.</li>
+  </ul>
+</div>
+
 <h2 id="s1"><span class="num">1.</span>요약</h2>
 <div class="tbl"><table>
   <thead><tr><th>항목</th><th>구현</th><th>확인</th></tr></thead>
@@ -141,7 +149,7 @@ tr:last-child td{border-bottom:0}
     <tr><td>루트</td><td><code>Paths</code>: <code>GetEngineRoot / GetProjectRoot / GetEngineAssetRoot / GetAssetRoot</code>, <code>GetAssetPath</code> 는 프로젝트 → 엔진 → exe. <code>AppBase::ResolveProject</code> 가 설정보다 먼저</td><td>로그 "프로젝트 루트 … 엔진 루트 … 컴파일된 프로젝트 …"</td></tr>
     <tr><td>콘텐츠 브라우저</td><td>루트 둘(Project / Engine) — 트리에 두 최상위 노드, 브레드크럼 첫 조각이 루트, 썸네일 키는 절대 경로</td><td>그림 1</td></tr>
     <tr><td>엔진 컴포넌트</td><td><code>Game\Components</code>(Rigidbody·FollowTarget)와 <code>Scene\CameraComponent</code> 는 엔진 lib. 어떤 프로젝트에서도 Add Component 에 나온다</td><td>TestGame 에디터의 Cube 1 에 Rigidbody·Rotator</td></tr>
-    <tr><td>프로젝트 스크립트</td><td><code>&lt;프로젝트&gt;\Scripts\*.cpp</code> 와일드카드. ScriptCreator 는 파일만 만든다(vcxproj 편집 없음)</td><td>New Script → 빌드 → 목록</td></tr>
+    <tr><td>프로젝트 스크립트</td><td><code>&lt;프로젝트&gt;\Scripts\*.cpp</code> 와일드카드. ScriptCreator 는 파일만 만든다(vcxproj 편집 없음) <br><span class="pill ok">변경 2026-09-30</span> <code>Scripts\**\*.cpp</code> 재귀. 실험 스크립트는 <code>Scripts\Tests\</code> 에 (<a href="#s5">5절</a> 상자)</td><td>New Script → 빌드 → 목록</td></tr>
     <tr><td>솔루션 생성</td><td><code>App/ProjectGenerator</code>: <code>&lt;이름&gt;.sln</code>, <code>&lt;이름&gt;Editor.vcxproj</code>, <code>&lt;이름&gt;.vcxproj</code>(엔진 lib ProjectReference, vcpkg 매니페스트 루트 = 엔진 저장소, <code>SHERLOCK_PROJECT_NAME</code>, Binaries\ 출력)</td><td>MSBuild 성공, <code>Binaries\Debug\TestGameEditor.exe</code></td></tr>
     <tr><td>런처</td><td>File &gt; Projects: 최근 목록(<code>%LOCALAPPDATA%\SherlockEngine\editor.json</code>), Open(.sherlock 대화상자), New(이름·위치 → 폴더·예제 스크립트·솔루션·Main.json). Project Settings(시작 씬)</td><td>그림 1 메뉴 바의 프로젝트 이름</td></tr>
     <tr><td>스크립트 없는 에디터</td><td>컴파일된 프로젝트 ≠ 열린 프로젝트면 씬 뷰 위 배너 + "Build and switch to the project editor"(MSBuild → 그 exe 실행 → 종료)</td><td>그림 3</td></tr>
@@ -163,6 +171,10 @@ tr:last-child td{border-bottom:0}
 ├─ Binaries\Debug\MyGameEditor.exe, MyGame.exe        (빌드 후)
 └─ Build\                             패키징 결과</code></pre>
 <p><code>Project::Create</code> 는 폴더 골격과 <code>.sherlock</code> 만 만들고, 나머지(예제 스크립트, 솔루션, 기본 씬)는 에디터(<code>TestApp::CreateProject</code>)가 프로젝트를 연 뒤 채웁니다 — Core 가 Scene·에디터 계층을 모르게 하기 위해서입니다. <code>engineRoot</code> 가 존재하지 않는 경로면(다른 PC 로 옮긴 프로젝트) 무시하고 exe 옆에서 찾습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>점검 시점의 <code>Projects\Sample\Scripts\</code> 에는 위 트리의 PlayerController·Rotator 외에 <code>Test.h</code>/<code>Test.cpp</code> 도 있습니다. 2026-09-24 커밋(<code>7143af8</code>)에 처음 들어갔고 2026-09-26 커밋(<code>b9e3244</code>)에서 고쳐졌으며, 내용은 New Script 템플릿 형식(필드 <code>speed</code> 하나)입니다. 엔진 솔루션이 <code>Scripts\*.cpp</code> 와일드카드를 쓰므로 Sample 의 에디터·게임 exe 에 함께 컴파일됩니다.</p>
+</div>
 
 <h2 id="s3"><span class="num">3.</span>세 루트: 엔진 · 프로젝트 · exe</h2>
 <pre><code><span class="cm">// Paths — 11-E</span>
@@ -196,6 +208,11 @@ GetSceneDir()         프로젝트 Assets\Scenes\   GetShaderPath: exe\Shaders\*
   <li><strong>엔진 lib 공유.</strong> 처음에는 생성 솔루션이 엔진 lib 를 <code>$(SolutionDir)x64\</code> — 즉 프로젝트 폴더 — 에 다시 빌드했습니다(29 초). lib 의 OutDir 을 <code>$(ProjectDir)..\x64\$(Configuration)\</code> 로 못박아 어느 솔루션에서 빌드하든 엔진 저장소의 것을 공유합니다(5 초).</li>
   <li><strong>SHERLOCK_PROJECT_NAME 은 exe 의 것.</strong> 매크로는 exe 프로젝트에만 정의되므로 엔진 lib 의 <code>AppBase</code> 가 직접 읽으면 항상 비어 있습니다. 진입점(EditorMain/GameMain)이 <code>AppBase::SetCompiledProjectName</code> 으로 넣어 줍니다.</li>
 </ul>
+
+<div class="applied">
+  <div class="t">2026-09-30에 바뀐 것 — 재귀 와일드카드와 C++20 (쿼터니언 roll 재현 실험에서)</div>
+  <p>실험 전용 프로젝트 <code>QuaternionLookTest</code> 를 이 절의 생성기로 만들어 쓰면서 두 가지를 고쳤습니다. (1) <strong>와일드카드가 재귀가 되었습니다.</strong> <code>Scripts\*.cpp</code> → <code>Scripts\**\*.cpp</code>(<code>.h</code> 도 같이, 필터 파일도 같이). 실험용 스크립트를 <code>Scripts\Tests\</code> 하위 폴더에 따로 모아 두기 위해서이고, MSBuild 의 <code>**</code> 가 재귀라 New Script 뒤 vcxproj 편집이 없다는 성질은 그대로입니다. 첫 사용자는 <code>Projects\QuaternionLookTest\Scripts\Tests\QuaternionLook.cpp</code>. (2) <strong>생성 vcxproj 의 언어 표준이 <code>stdcpp20</code> 이 되었습니다.</strong> 위 코드 조각에는 안 보이지만 생성기는 <code>&lt;LanguageStandard&gt;stdcpp17&lt;/LanguageStandard&gt;</code> 를 쓰고 있었고, 2026-09-28 의 C++20 전환이 엔진 솔루션 12곳만 고치고 이 문자열은 빠뜨렸습니다. <code>Script.h</code> 의 <code>GetComponent</code> 가 <code>std::derived_from</code> 콘셉트를 쓰므로 그 상태로는 어떤 새 프로젝트도 자기 에디터를 빌드할 수 없었는데, 새 프로젝트를 만들어 본 것이 이번이 처음이라 드러나지 않았던 것입니다. 엔진 솔루션의 <code>SherlockEditor.vcxproj</code>(Sample 스크립트)는 여전히 <code>..\Projects\Sample\Scripts\*.cpp</code> 비재귀입니다 — Sample 은 예제 전용이라 하위 폴더를 두지 않기로 했습니다. 실험 기록: <a href="phase-11f.html#s3-4">phase-11f 3.4</a>, <a href="rendering-analysis.html#applied-quat-roll">적용 기록</a>.</p>
+</div>
 
 <h2 id="s6"><span class="num">6.</span>런처와 "스크립트 없는 에디터"</h2>
 <p>A안의 대가는 "프로젝트를 바꾸면 그 프로젝트의 에디터 exe 가 필요하다" 입니다. 에디터는 이것을 숨기지 않고 안내합니다: 컴파일된 프로젝트 이름과 열린 프로젝트 이름이 다르면 씬 뷰 위에 배너를 띄우고 <b>Build and switch to the project editor</b> 버튼이 <code>&lt;이름&gt;.sln /t:&lt;이름&gt;Editor</code> 를 MSBuild 로 빌드한 뒤 <code>Binaries\Debug\&lt;이름&gt;Editor.exe --project=…</code> 를 띄우고 자기는 종료합니다. 그 사이에도 열린 씬은 정상 동작하며, 없는 스크립트는 로드할 때 경고를 남기고 건너뜁니다(레지스트리, 11-C). 런처(File &gt; Projects)는 최근 목록·열기 대화상자·새 프로젝트를 제공하고, New 는 프로젝트를 만든 뒤 바로 엽니다(엔진 에디터에서 만들었으므로 배너가 뜨고, 버튼 한 번으로 그 프로젝트의 에디터로 넘어갑니다).</p>
@@ -272,7 +289,7 @@ Projects\TestGame\Build\TestPack\TestPack.exe --exit-after=60 --dump-objects=1</
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 작업 트리 (2026/09/24, 11-D 위에 연속). 이전: <a href="phase-11d.html">11-D단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11e">rendering-analysis.html PHASE 11-E</a>. 스크린샷은 <code>images/2026-09-24-phase11e-*.png</code>. 12단계(고급 렌더링)는 시작하지 않았다.
+  대상: SherlockEngine 작업 트리 (2026/09/24, 11-D 위에 연속). 이전: <a href="phase-11d.html">11-D단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11e">rendering-analysis.html PHASE 11-E</a>. 스크린샷은 <code>images/2026-09-24-phase11e-*.png</code>. 2026-09-30: 생성기 와일드카드 재귀·<code>stdcpp20</code>(5절 상자). 12단계(고급 렌더링)는 시작하지 않았다. 2026-10-01 문서-코드 점검 반영(문서 앞 상자, 2절 상자).
 </div>
 </main>
 </div>

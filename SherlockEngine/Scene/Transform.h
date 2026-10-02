@@ -13,7 +13,7 @@ public:
 
 	void SetPosition(const DirectX::XMFLOAT3& value);
 	void SetPosition(float x, float y, float z);
-	void SetRotation(const DirectX::XMFLOAT3& value);
+	void SetRotation(const DirectX::XMFLOAT3& value); 
 	void SetRotation(float x, float y, float z);
 	void SetScale(const DirectX::XMFLOAT3& value);
 	void SetScale(float x, float y, float z);

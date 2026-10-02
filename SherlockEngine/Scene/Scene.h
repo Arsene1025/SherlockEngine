@@ -12,7 +12,7 @@
 class Mesh;
 struct Model;
 
-// 11단계: 메시의 출처 정보. 씬을 저장할 때 정점 데이터 대신 이 정보를 기록하고, 로드할 때 이를 바탕으로 메시를 다시 만듦.
+// 메시의 출처 정보. 씬을 저장할 때 정점 데이터 대신 이 정보를 기록하고, 로드할 때 이를 바탕으로 메시를 다시 만듦.
 struct MeshSource
 {
 	enum class Type : uint8_t { Custom, Sphere, Cube, Plane, Cylinder, Model };

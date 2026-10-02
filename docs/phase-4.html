@@ -230,6 +230,14 @@ td .fix b{color:var(--ok);font-weight:600}
 <tr><td class="mono">Renderer</td><td>Graphics/Renderer.cpp</td><td>레이아웃 3개·셋 2개 생성, GpuMaterial 캐시, 드로우 목록 정렬, 상태 캐시, 파일 감시</td></tr>
 <tr><td class="mono">FxCompile 항목 + 타깃 2개</td><td>SherlockEngine.vcxproj</td><td>.cso 생성, 출력 폴더 생성, 소스 사본 복사</td></tr>
 </tbody></table></div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>파일 위치(7단계 RHI 인터페이스 추출).</b> 위 표의 <code>Graphics/</code> 경로는 이제 <code>RHI/</code> 아래에 있습니다: <code>RHI/BindingTypes.h</code>, <code>RHI/PipelineTypes.h</code>, <code>RHI/D3D11/D3D11Device.cpp</code>(클래스 <code>D3D11Device</code>, 인터페이스는 <code>RHI/Device.h</code>), <code>RHI/D3D11/PipelineStateCache.cpp</code>. 셰이더 컴파일러는 8단계에서 선언 <code>RHI/ShaderCompiler.h</code>, 구현 <code>RHI/DXBC/ShaderCompiler.cpp</code>로 나뉘었습니다.</li>
+    <li><b><code>SetResourceSet</code>(6단계).</b> Device 함수가 아니라 <code>RHI::CommandList</code>의 함수입니다. D3D11 구현은 <code>D3D11CommandList::SetResourceSet</code>(<code>RHI/D3D11/D3D11CommandList.cpp</code>)입니다. <code>CreateBindingLayout</code>·<code>CreateResourceSet</code>의 검증은 그대로 <code>D3D11Device</code>에 있습니다.</li>
+    <li><b>상수버퍼 크기.</b> b0 PerFrame은 208 → 288(6단계 <code>lightViewProj</code>·<code>shadowParams</code>) → 304바이트(11단계 <code>debugParams</code>), b3 Material은 32 → 48(5단계 <code>uvScale</code>·<code>unlit</code>) → 64바이트(9단계 <code>alphaCutoff</code>)입니다. b1 128, b2 656은 그대로입니다(<code>Graphics/ShaderConstants.h</code>의 <code>static_assert</code>).</li>
+  </ul>
+</div>
 
 <h2 id="s2"><span class="num">2.</span>루트 시그니처를 D3D11에 미리 그리기</h2>
 
@@ -259,6 +267,13 @@ td .fix b{color:var(--ok);font-weight:600}
     }
 }</code></pre>
 <p>검증은 생성 시점에 합니다. <code>CreateBindingLayout</code>은 슬롯 상한, 스테이지 마스크 0, 같은 (타입, 레지스터)가 같은 스테이지에 두 번 선언되는 경우(뒤의 선언이 앞의 것을 덮어 조용히 틀어짐)를 거부합니다. <code>CreateResourceSet</code>은 슬롯 타입에 맞는 종류의 핸들(상수버퍼 슬롯에 <code>BufferBind_Constant</code> 버퍼, SRV 슬롯에 <code>TextureBind_ShaderResource</code> 텍스처)이 꽂혀 있는지 확인합니다. 드로우마다 검사하지 않기 위해서입니다. 3단계까지 있던 <code>BindConstantBuffer(slot, handle, stageMask)</code>는 지웠습니다. 남겨 두면 레이아웃을 우회하는 길이 되기 때문입니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><code>ResourceBinding</code>에는 5단계에서 <code>SamplerHandle sampler</code>가 더해져 <code>{ buffer, texture, sampler }</code>가 되었습니다(<code>RHI/BindingTypes.h</code>).</li>
+    <li>위 <code>SetResourceSet</code> 스니펫은 6단계부터 <code>D3D11CommandList::SetResourceSet</code>(<code>RHI/D3D11/D3D11CommandList.cpp</code>)에 있습니다. 상수버퍼는 <code>m_device-&gt;GetBuffer(binding.buffer)-&gt;Get(frameIndex)</code>로 얻고, <code>Sampler</code> 슬롯은 <code>VSSetSamplers</code>/<code>PSSetSamplers</code>로 풉니다. 슬롯별 D3D11 호출로 풀어내는 구조는 같습니다.</li>
+  </ul>
+</div>
 
 <h3 id="s2-2">2.2 갱신 빈도별 셋 세 개</h3>
 <div class="tbl"><table>
@@ -270,6 +285,15 @@ td .fix b{color:var(--ok);font-weight:600}
 </tbody></table></div>
 <p>세 레이아웃은 <code>PipelineStateDesc::bindingLayouts[0..2]</code>에 순서대로 들어갑니다. D3D12에서는 이 배열이 루트 시그니처 하나의 루트 파라미터 목록이 됩니다. Microsoft는 "자주 바뀌는 파라미터를 앞에 두라"고 하는데<sup><a href="#ref-3">[3]</a></sup>, 지금 순서(프레임 → 오브젝트 → 재질)는 원문 4단계의 "프레임마다 바뀌는 것과 재질마다 바뀌는 것을 다른 ResourceSet으로"를 따른 것입니다. 8단계에서 루트 시그니처를 만들 때 순서를 성능에 맞게 재배치해도, Renderer는 셋을 바인딩할 뿐이라 바뀌지 않습니다.</p>
 <p>오브젝트 셋을 "프레임 초 1회"만 바인딩해도 되는 것은 3단계의 Dynamic 버퍼 의미론 덕분입니다. <code>UpdateBuffer</code>가 <code>Map(WRITE_DISCARD)</code>로 내용을 바꿔도 D3D11 객체(<code>ID3D11Buffer*</code>)는 같으므로 바인딩은 유효하고, 드라이버가 드로우마다 다른 메모리를 가리키게 합니다. D3D12에서는 이 자리가 링 버퍼 오프셋 갱신(루트 CBV 주소 변경)이 됩니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>지금의 세 레이아웃(<code>Renderer::Initialize</code>, <code>Graphics/Renderer.cpp</code>)은 위 표보다 슬롯이 많습니다.</p>
+  <ul>
+    <li><code>Layout_Frame</code>: b0 PerFrame (VS|PS), b2 Lights (PS), 그리고 6단계에서 더해진 t8 그림자 맵 (PS), s4 비교 샘플러 (PS).</li>
+    <li><code>Layout_Object</code>: b1 PerObject (VS). 변화 없음.</li>
+    <li><code>Layout_Material</code>: b3 Material (<b>VS|PS</b>, 5단계 <code>uvScale</code> 때문), t0 알베도 (5단계), t1 노멀 (6단계), s0 샘플러 (5단계). 표의 "5단계에서 t0·s0이 여기 붙는다"는 예고대로 되었고 6단계에서 t1이 더해졌습니다.</li>
+  </ul>
+</div>
 
 <h3 id="s2-3">2.3 D3D12의 64 DWORD 예산</h3>
 <p>루트 시그니처는 최대 64 DWORD이고 디스크립터 테이블은 1 DWORD, 루트 상수는 1 DWORD, 루트 디스크립터는 2 DWORD를 씁니다<sup><a href="#ref-3">[3]</a></sup>. 세 테이블이면 3 DWORD로 여유가 많지만, 슬롯을 무한정 늘릴 수 없다는 사실을 <code>BindingTypes.h</code>의 상한(CBV 8, SRV 16, Sampler 8)으로 지금부터 드러냈습니다. D3D11 자체 한도(CBV 14, SRV 128, Sampler 16)보다 좁습니다. 원문 4단계가 제안한 값(CBV 4, SRV 16, Sampler 8)에서 CBV만 8로 늘렸는데, 이미 b0~b3 넷을 쓰고 있어 4는 여유가 없기 때문입니다. 일부 하드웨어는 루트 인자 공간이 16 DWORD로 고정되어 있어, 이를 넘기면 느린 메모리로 흘러넘친다는 점도 같은 문서에 나옵니다.</p>
@@ -297,6 +321,14 @@ std::unordered_map&lt;<span class="kw">const</span> Material*, GpuMaterial&gt; m
 …
 <span class="kw">return</span> float4(finalColor, surface.a);</code></pre>
 <p>재질 상수는 <strong>프레임에 재질당 한 번</strong> 올립니다. 같은 재질을 여러 오브젝트가 쓰면 첫 드로우에서만 <code>Map</code>합니다(<code>uploadedFrame</code> 스탬프). 매 프레임 올리는 이유는 ImGui 재질 패널의 편집이 즉시 반영되어야 하기 때문이고, 32바이트 × 재질 수라 비용이랄 것이 없습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><code>Material</code>(<code>Scene/Material.h</code>)에 5단계 <code>albedoTexture</code>·<code>albedoSrgb</code>·<code>sampler</code>·<code>uvScale</code>·<code>unlit</code>, 6단계 <code>normalTexture</code>·<code>normalStrength</code>, 9단계 <code>alphaCutoff</code>가 더해졌습니다. <code>wireframe</code>·<code>doubleSided</code>는 맨 뒤로 옮겨졌습니다.</li>
+    <li><code>GpuMaterial</code>(<code>Graphics/Renderer.h</code>)은 <code>{ constants, set, boundAlbedo, boundNormal, boundSampler, uploadedFrame }</code>입니다. 셋에 넣은 텍스처·샘플러를 기억해 바뀌면 셋을 다시 만듭니다(<a href="phase-5.html#s7">5단계 7절</a>). PSO 핸들을 저장하지 않는 원칙은 그대로입니다.</li>
+    <li>픽셀 셰이더의 표면 색은 5단계부터 <code>input.col * baseColor * texel</code>입니다. <code>MaterialConstants</code>는 지금 64바이트입니다.</li>
+  </ul>
+</div>
 
 <h2 id="s4"><span class="num">4.</span>정점 포맷 열거</h2>
 <p>원문 D9가 권한 (a) "정점 타입 열거 + <code>offsetof</code> 레이아웃" 방식입니다. 1단계에서 이미 <code>GetVertexLayoutPCN()</code>이 <code>offsetof</code>를 썼으므로, 남은 것은 <em>메시가 자기 포맷을 말하게</em> 하는 것이었습니다.</p>
@@ -312,6 +344,13 @@ VertexFormat GetVertexFormat() <span class="kw">const</span>;
 desc.vertexLayout = GetVertexLayout(vertexFormat);   <span class="cm">// PSO Desc의 일부 → 포맷이 다르면 다른 PSO</span>
 vbDesc.stride = GetVertexStride(mesh.GetVertexFormat());</code></pre>
 <p>InputLayout은 여전히 PSO 안에서만 만들어집니다(1단계). 리플렉션(D9의 (b))은 5절에서 바인딩 검사에 썼고, 입력 시그니처 검사는 <code>CreateInputLayout</code>이 이미 하므로(시맨틱이 맞지 않으면 실패) 따로 하지 않았습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li>6단계에서 탄젠트가 더해지면서 <code>VertexFormat</code>의 값은 <code>PositionColorNormalTexcoordTangent</code> 하나만 남았습니다(<code>VERTEX</code> 64바이트, 속성 5개). <code>PositionColorNormal</code>과 5단계의 <code>PositionColorNormalTexcoord</code>는 없습니다.</li>
+    <li>C++20 전환(2026-09-28): 레이아웃은 <code>consteval MakeVertexLayoutPCNTT()</code>로 컴파일 시점에 만든 상수 <code>kVertexLayoutPCNTT</code>이고, 함수는 <code>constexpr const VertexLayoutDesc&amp; GetVertexLayout(VertexFormat)</code>, <code>constexpr uint32_t GetVertexStride(VertexFormat)</code>입니다. 위 스니펫의 <code>inline</code>·값 반환 시그니처와 다릅니다(<code>Graphics/VertexTypes.h</code>).</li>
+  </ul>
+</div>
 
 <h2 id="s5"><span class="num">5.</span>리플렉션으로 선언 대조</h2>
 <p><code>BindingLayout</code>은 손으로 선언합니다. 셰이더에 <code>cbuffer Extra : register(b4)</code>를 추가하고 레이아웃에 넣는 것을 잊으면 D3D11은 아무 말 없이 b4에 널이 바인딩된 채 그립니다(전부 0으로 읽힘). 이것을 초기화 시점에 잡습니다.</p>
@@ -335,6 +374,13 @@ vbDesc.stride = GetVertexStride(mesh.GetVertexFormat());</code></pre>
 [정보] 바인딩 대조: PS b3 ('Material') OK</code></pre>
 <p>원문은 "리플렉션으로 BindingLayout 자동 생성"이라고 했지만 여기서는 <em>대조</em>에 그쳤습니다. 자동 생성하면 "셰이더가 쓰는 것"이 곧 레이아웃이 되어 검사가 사라지고, 셰이더 두 개가 같은 레이아웃을 공유해야 한다는(PSO 캐시 히트의 조건) 제약을 표현할 수 없습니다. 레이아웃은 <strong>의도</strong>이고 리플렉션은 <strong>사실</strong>이며, 둘을 비교하는 것이 검사입니다. 반대 방향 검사(선언했지만 아무 셰이더도 안 쓰는 슬롯)는 Info 로그로만 남겨도 되지만 지금은 하지 않습니다.</p>
 <p>리플렉션 데이터는 <code>.cso</code>에 남아 있어야 하므로 fxc의 <code>/Qstrip_reflect</code>를 켜지 않습니다<sup><a href="#ref-5">[5]</a></sup>. D12에서 예고한 대로입니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li>시그니처는 C++20 전환(2026-09-28)에서 <code>bool ReflectBindings(std::span&lt;const uint8_t&gt; bytecode, std::vector&lt;ReflectedBinding&gt;&amp; out)</code>로 바뀌었습니다. 선언은 <code>RHI/ShaderCompiler.h</code>, 구현은 <code>RHI/DXBC/ShaderCompiler.cpp</code>(8단계)입니다.</li>
+    <li><code>Renderer::ValidateBindings</code>는 6단계부터 그림자 정점 셰이더까지 세 셰이더(VS, PS, ShadowVS)를 대조합니다. 대조 대상 슬롯도 위 2.2절 상자처럼 늘었으므로 로그 줄 수가 위 예시보다 많습니다.</li>
+  </ul>
+</div>
 
 <h2 id="s6"><span class="num">6.</span>.cso 사전 컴파일과 핫리로드</h2>
 
@@ -359,6 +405,13 @@ vbDesc.stride = GetVertexStride(mesh.GetVertexFormat());</code></pre>
 <div class="callout amber">
   <div class="t">원문의 register space 가정은 틀렸다</div>
   <p>원문 4단계는 "<code>register(b0, space0)</code> 표기는 D3D11 fxc가 무시하므로 지금부터 써도 된다"고 했습니다. 실제로는 SM 5.0 프로파일에서 fxc가 <code>error X3721: space is only supported for shader targets 5.1 and higher</code>로 거부합니다. <code>space</code>는 Shader Model 5.1이 도입한 문법이며 D3D12는 모든 하드웨어에서 5.1을 지원합니다<sup><a href="#ref-7">[7]</a></sup>. 8단계에서 프로파일을 5.1(또는 dxc 6.0)로 올릴 때 넣습니다. <code>Common.hlsli</code> 맨 위에 이 정정을 적어 두었습니다.</p>
+</div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>"8단계에서 5.1로 올린다"는 예고는 실현되지 않았습니다.</b> 8단계 D3D12 백엔드도 fxc가 만든 SM 5.0 DXBC를 그대로 받으므로 프로파일을 올리지 않았습니다. 지금도 <code>SherlockEngine.vcxproj</code>의 <code>&lt;ShaderModel&gt;5.0</code>, <code>Renderer::LoadShaders</code>의 <code>vs_5_0</code>/<code>ps_5_0</code>이고, 레지스터에 <code>space</code>를 쓰지 않습니다(D3D12 루트 시그니처는 space 0). <code>Common.hlsli</code> 머리 주석도 아직 "8단계에서 넣음"이라고 적혀 있습니다. <a href="phase-8.html">8단계 문서</a> 참고.</li>
+    <li>FxCompile 항목은 6단계에서 <code>Shaders\ShadowVertexShader.hlsl</code>(진입점 <code>VS_Shadow</code>)이 더해져 세 개입니다.</li>
+  </ul>
 </div>
 
 <h3 id="s6-2">6.2 런타임: 무엇을 로드할까</h3>
@@ -391,6 +444,13 @@ PipelineHandle GetOrCreate(…) { … <span class="kw">return</span> PipelineHan
 <span class="kw">void</span> Clear() { m_lookup.clear(); m_states.clear(); ++m_generation; <span class="kw">if</span> (m_generation == 0) m_generation = 1; }</code></pre>
 <p>세대가 없으면 위험합니다. 캐시를 비운 뒤 인덱스는 0부터 다시 시작하므로, 누군가 들고 있던 옛 핸들 <code>{0, 1}</code>이 새로 만들어진 전혀 다른 PSO를 가리키게 됩니다. 1단계에서 "PSO는 개별 삭제하지 않으므로 세대가 항상 1"이라고 한 전제가 4단계에서 무너진 것입니다. 그래서 3단계의 <code>ResourcePool</code>과 같은 해법(세대 불일치 → <code>nullptr</code>)을 캐시 전체 단위로 적용했습니다. 이 때문에 <code>GpuMaterial</code>이 PSO 핸들을 저장하지 않는 것입니다(3절). 로그는 <code>PSO 생성 #0 (…, gen=2)</code>처럼 세대를 찍습니다.</p>
 <p>ImGui의 "Reload shaders" 버튼과 F4 키가 <code>ReloadShaders()</code>를 수동으로 부릅니다. Release에서는 폴링이 꺼져 있지만 수동 호출은 동작합니다(소스 트리가 없으면 exe 옆 사본을 컴파일).</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li>감시 파일은 6단계에서 <code>ShadowVertexShader.hlsl</code>이 더해져 <b>네 개</b>(VS, PS, ShadowVS, Common.hlsli)입니다. <code>ReloadShaders</code>는 <code>m_baseDesc.vs/ps</code>와 함께 그림자 패스의 <code>m_shadowDesc.vs</code>도 바꾼 뒤 <code>InvalidatePipelines()</code>를 부릅니다(<code>Graphics/Renderer.cpp</code>).</li>
+    <li><code>InvalidatePipelines</code>는 이제 <code>RHI::Device</code>의 가상 함수이고, D3D11 구현이 <code>RHI/D3D11/PipelineStateCache.cpp</code>의 <code>Clear()</code>를 부릅니다. 세대 로직(<code>Get</code>의 세대 비교, <code>Clear</code>의 0 건너뛰기)은 위 스니펫과 같습니다.</li>
+  </ul>
+</div>
 
 <h2 id="s7"><span class="num">7.</span>드로우 정렬과 상태 캐시</h2>
 <p>원문 D5는 "3단계에서 드로우 루프가 생기면 (a) 정렬, (b) 마지막 바인딩을 기억해 건너뛰는 얇은 캐시"를 권했고, 4단계 작업 항목이 "PSO → Material → Mesh 순"을 정했습니다. Ericson의 잘 알려진 글<sup><a href="#ref-8">[8]</a></sup>이 같은 생각을 정렬 키 하나로 표현합니다. 여기서는 키를 만들지 않고 비교 함수로 썼습니다.</p>
@@ -413,6 +473,13 @@ std::sort(m_drawList…, [](a, b) {
 }</code></pre>
 <p>D5가 경고한 "캐시는 누군가 몰래 상태를 바꾼 것을 모른다"는 문제는 <code>lastPipeline</code> 등을 <code>Render()</code>의 지역 변수로 두는 것으로 해결됩니다. 프레임마다 새로 시작하므로 ImGui 백엔드가 프레임 끝에 상태를 건드려도 다음 프레임 첫 드로우는 항상 바인딩합니다. 투명 오브젝트(뒤→앞 거리순)는 별도 큐가 필요하다는 경고도 유효하며 5단계 이후의 몫입니다.</p>
 <p>데모 씬(7 오브젝트, 재질 6, 메시 4, PSO 2)의 실측: <strong>draws 7, PSO switches 2, set switches 6, mesh switches 5</strong>. 같은 PSO·재질·메시가 연속되도록 정렬된 결과입니다. 정렬 없이는 각각 7이었을 것입니다. 이 숫자는 ImGui 패널에 매 프레임 표시되며 11단계 Stats 패널의 원형입니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><code>DrawItem</code>에 9단계에서 서브메시 범위 <code>indexStart</code>·<code>indexCount</code>가 더해졌고, 정렬 키는 PSO → Material → Mesh → <code>indexStart</code> 네 단계입니다(<code>Graphics/Renderer.h</code>, <code>Graphics/Renderer.cpp</code>).</li>
+    <li>바인딩 호출은 6단계부터 <code>RHI::CommandList</code>를 거칩니다: <code>cmd.SetPipelineState</code>, <code>cmd.SetResourceSet</code>, <code>cmd.SetVertexBuffer</code>, <code>cmd.SetIndexBuffer(…, indexFormat)</code>, <code>cmd.DrawIndexed(item.indexCount, item.indexStart, 0)</code>. 오브젝트 상수는 <code>UploadObjectConstants</code>가 올립니다. <code>lastPipeline</code>·<code>lastMaterial</code>·<code>lastMesh</code>가 함수 지역 변수라는 점은 그대로입니다.</li>
+  </ul>
+</div>
 
 <h2 id="s8"><span class="num">8.</span>함정과 해결</h2>
 <ul>
@@ -469,7 +536,7 @@ std::sort(m_drawList…, [](a, b) {
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 작업 트리 (2026/09/23, 3단계 커밋 1f89e4b 이후). 이전: <a href="phase-3.html">3단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p4">rendering-analysis.html PHASE 4</a>. 스크린샷은 <code>images/2026-09-23-phase4-*.png</code>.
+  대상: SherlockEngine 작업 트리 (2026/09/23, 3단계 커밋 1f89e4b 이후). 이전: <a href="phase-3.html">3단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p4">rendering-analysis.html PHASE 4</a>. 스크린샷은 <code>images/2026-09-23-phase4-*.png</code>. 2026-10-01 문서-코드 점검 반영(이후 단계의 변경을 각 절의 상자로 덧붙임).
 </div>
 </main>
 </div>

@@ -30,7 +30,7 @@ namespace Paths
 	std::wstring GetAssetRoot();                      // 프로젝트 Assets\ (프로젝트가 없으면 엔진 Assets\). 콘텐츠 브라우저의 첫 트리·씬 저장 위치
 
 	// exe\Shaders\<fileName> 의 절대 경로.
-	// 빌드가 Shaders\ 폴더를 exe 옆으로 복사함(vcxproj의 CopyShaders 타깃).
+	// 빌드가 .hlsl/.hlsli 원본을 exe 옆 Shaders\ 로 복사함(vcxproj의 CopyShaderSources 타깃. .cso 는 FxCompile 이 같은 폴더에 만듦).
 	// 그 파일이 없으면 엔진 루트의 Shaders\ 로 폴백하고 경고를 한 번 남김.
 	std::wstring GetShaderPath(const wchar_t* fileName);
 

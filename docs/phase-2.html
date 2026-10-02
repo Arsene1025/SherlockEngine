@@ -226,6 +226,14 @@ td .fix b{color:var(--ok);font-weight:600}
 <tr><td class="mono">AppBase::Run</td><td>App/AppBase.cpp</td><td>ImGui <code>NewFrame</code>을 <code>Update</code> 앞으로, 프레임 끝에 <code>input.EndFrame()</code></td></tr>
 <tr><td class="mono">TestApp::UpdateCamera</td><td>App/TestApp.cpp</td><td>WASD/QE 이동, 우클릭 룩(<code>BeginLook</code>/<code>EndLook</code>), 공전하는 구</td></tr>
 </tbody></table></div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>TestApp → EditorApp</b>: 커밋 11a74a5(2026-09-28)에서 앱 클래스 이름이 바뀌었습니다. 이 문서의 <code>TestApp::UpdateCamera</code>·<code>BeginLook</code>·<code>EndLook</code>은 지금 <code>App/EditorApp.cpp</code>의 <code>EditorApp::UpdateCamera</code>·<code>EditorApp::BeginLook</code>·<code>EditorApp::EndLook</code>입니다(선언은 <code>App/EditorApp.h</code>). <code>App/TestApp.cpp</code>는 더 이상 없습니다.</li>
+    <li><b>AppBase::Run 행</b>: 10단계(D14)에서 엔진이 <code>Core/Engine</code>으로 분리되면서 <code>input.EndFrame()</code>은 <code>Engine::EndFrame()</code> 안으로 옮겨졌습니다. <code>Run</code>은 <code>m_engine.EndFrame()</code>을 부릅니다. 자세한 순서는 2.3절 아래 상자에 적었습니다.</li>
+    <li><b>Camera 행</b>: "위치 + yaw/pitch"는 2단계 당시 저장 형식입니다. 11-F단계 이후에는 회전 행렬을 저장합니다(3.5절 상자).</li>
+  </ul>
+</div>
 
 <h2 id="s2"><span class="num">2.</span>입력 모델</h2>
 
@@ -261,6 +269,13 @@ ImGui::Begin("Information"); … UpdateGUI(); … ImGui::End();  ImGui::Render()
 graphicsDevice.Clear();  Render();  ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());  graphicsDevice.Present();
 input.EndFrame();</code></pre>
 <p>그리고 룩 모드는 <strong>latch</strong>입니다. 우클릭이 눌린 순간에만 <code>WantCaptureMouse</code>를 묻고, 일단 시작되면 커서가 UI 패널 위를 지나가도 계속 돕니다. 드래그 중에 카메라가 갑자기 멈추는 것이 더 나쁜 경험이기 때문이고, ImGui도 "ImGui 밖에서 시작한 드래그"는 자기 것이 아니라고 봅니다(FAQ의 <code>MouseDownOwned</code> 설명).</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>Run() 스니펫</b>: "ImGui 프레임을 <code>Update</code>보다 먼저 연다"는 원칙은 그대로이지만 코드 모양이 바뀌었습니다. 현재 <code>App/AppBase.cpp</code>의 순서는 <code>m_engine.BeginFrame()</code>(시간 Tick·프로파일러·<code>RHI::Device::NewFrameImGui()</code>) → <code>ImGui_ImplWin32_NewFrame()</code>·<code>ImGui::NewFrame()</code>·<code>ImGuizmo::BeginFrame()</code> → 고정 스텝 <code>OnFixedUpdate</code> 루프와 <code>OnUpdate(dt)</code> → <code>OnGUI()</code>·<code>ImGui::Render()</code> → <code>m_engine.Render()</code> → <code>m_engine.EndFrame()</code>입니다. <code>graphicsDevice.Clear()</code>·<code>ImGui_ImplDX11_RenderDrawData</code>·<code>Present</code>는 <code>Engine::Render()</code>의 패스 구조(6단계)와 <code>RHI::Device::RenderImGui()</code>로, <code>input.EndFrame()</code>은 <code>Engine::EndFrame()</code>으로 옮겨졌습니다(10단계). 게임 런타임(11-D단계)에서는 ImGui 프레임 자체를 열지 않습니다.</li>
+    <li><b>latch의 시작 조건</b>: 11단계에서 씬이 ImGui 창(씬 뷰) 안에 그려지면서, 씬 위에서도 <code>WantCaptureMouse</code>가 항상 참이 되었습니다. 그래서 룩 시작 조건은 <code>WantCaptureMouse</code> 대신 <code>m_editor.IsSceneViewHovered()</code>로 바뀌었습니다(5절 상자). 일단 시작하면 UI 위를 지나가도 계속 도는 latch 동작은 그대로입니다.</li>
+  </ul>
+</div>
 
 <h2 id="s3"><span class="num">3.</span>카메라 수학</h2>
 
@@ -274,6 +289,10 @@ input.EndFrame();</code></pre>
 <pre><code>(0, 0, 1) · RotX(p)          = (0, −sin p, cos p)
 (0, −sin p, cos p) · RotY(y) = (cos p · sin y,  −sin p,  cos p · cos y)   ← forward</code></pre>
 <p>오른쪽 (1, 0, 0)은 RotX에 영향받지 않고 RotY만 적용되어 <code>(cos y, 0, −sin y)</code>가 되므로 항상 수평입니다. 위쪽은 <code>(0, 1, 0) · R = (sin p · sin y, cos p, sin p · cos y)</code>입니다. 코드는 이 식을 직접 쓰지 않고 <code>XMVector3TransformNormal(축, R)</code>로 계산해서, 관례가 바뀌어도 식을 다시 유도할 필요가 없게 했습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>위에서 관례의 예로 든 <code>Transform::GetWorldMatrix</code>는 11-F단계(커밋 fc04ab0, 2026-09-29)에서 <code>Transform::GetLocalMatrix</code>로 이름이 바뀌었습니다. 계층이 생기면서 <code>Transform</code>은 부모 기준 값만 갖게 되어 옛 이름이 사실과 맞지 않게 되었기 때문입니다. 현재 식은 <code>local = pre × S × R × T</code>입니다(<code>pre</code>는 9단계 모델 노드의 고정 행렬). 월드 행렬은 <code>GameObject::GetWorldMatrix</code>가 <code>local × parent.world</code>를 재귀로 곱해 만듭니다. 행벡터·왼손 관례와 <code>S·R·T</code> 곱셈 순서는 그대로입니다.</p>
+</div>
 
 <h3 id="s3-2">3.2 뷰행렬 = 카메라 월드 변환의 역행렬</h3>
 <p>월드 행렬 <code>W</code>는 물체의 로컬 좌표를 월드 좌표로 보냅니다. 카메라도 씬 안의 물체 하나라고 보면, 카메라의 월드 행렬 <code>W<sub>cam</sub> = R · T(position)</code>은 "카메라 로컬 → 월드"입니다. 뷰 변환은 그 반대, "월드 → 카메라 로컬"이므로 <strong>정의상 <code>V = W<sub>cam</sub><sup>−1</sup></code></strong>입니다. 원문 D8이 "뷰행렬은 그 역행렬로"라고 한 것이 이 뜻입니다.</p>
@@ -310,6 +329,16 @@ pitch = −asin(d.y)            <span class="cm">// y = −sin p</span></code></
   <p>"그때" 가 왔지만 모양은 조금 달랐습니다. 필요해진 것은 카메라 자신의 roll 이 아니라 <strong>부모 오브젝트의 회전을 상속</strong>하는 것이었고, 그러려면 카메라가 각도 둘 대신 <em>행렬</em>을 받아야 했습니다. <code>Camera</code> 는 이제 회전 행렬(<code>XMFLOAT4X4</code>)을 저장하고 <code>SetYawPitch</code>(각도 경로, 이 문서의 클램프·부호 관례 그대로)와 <code>SetRotation(XMMATRIX)</code>(행렬 경로) 두 입구를 가집니다. <code>GetYaw/GetPitch</code> 는 forward 벡터에서 계산하는 파생값이라 roll 이 있어도 튀지 않고, 3.3 의 클램프는 각도 경로에 그대로 남아 짐벌락을 막습니다. 이 절의 세 이유(자유도·UI·LookAt 역산)는 마우스 룩(<code>Rotate</code>)에 여전히 유효하며, 예고했던 "카메라 사이의 slerp" 는 <code>Scene::ApplyActiveCamera</code> 의 블렌드에 들어갔습니다. 쿼터니언은 저장이 아니라 그 보간에서만 씁니다. 상세: <a href="phase-11f.html#s5">phase-11f 5절</a>, 짐벌락 논의는 <a href="phase-11f.html#s3">3절</a>.</p>
 </div>
 
+<div class="applied">
+  <div class="t">재현 실험으로 정정 (2026-09-30)</div>
+  <p>위 (1) 의 "부동소수점 오차로 미세한 롤이 쌓인다" 는 <strong>원인 서술은 틀렸습니다.</strong> 실제로 재현해 보니(<a href="phase-11f.html#s3-4">phase-11f 3.4</a>, 실험 프로젝트 <code>QuaternionLookTest</code> 의 <code>Scripts\Tests\QuaternionLook</code> 스크립트) 눈에 보이는 roll 은 두 증분을 <em>모두 카메라 자기 축</em>으로 곱할 때 생기며, 마우스가 (yaw, pitch) 평면에서 원을 한 바퀴 그릴 때마다 그 원이 감싼 입체각 2π(1 − cos r) 만큼 남습니다 — 17° 원이면 바퀴당 약 15°, 세 바퀴에 −45.7° 로 결정적이고 큽니다. 반대로 본문이 예로 든 <code>q = q_yaw · q · q_pitch</code>(yaw 는 월드 Y, pitch 는 로컬 X) 꼴은 R<sub>x</sub>(p)·R<sub>y</sub>(y) 형태가 유지되어 roll 이 0 이고, 부동소수점 오차는 360 프레임에 0.0° 였습니다. 그러므로 위험한 것은 쿼터니언이 아니라 <strong>증분을 어느 공간에서 곱하느냐</strong>이며, 행렬로 누적해도 같습니다. "자유도가 딱 맞는 표현(yaw/pitch 두 각)을 쓰면 이 부류의 버그가 원천적으로 생기지 않는다" 는 결론과 선택은 그대로 유효합니다. 이 버그를 지금 재현할 수 <em>있게</em> 된 것은 11-F 가 카메라까지 행렬을 잘리지 않고 넘기는 경로를 열었기 때문입니다 — 그 전에는 roll 이 쌓여도 화면에 나타나지 않았습니다.</p>
+</div>
+
+<div class="applied">
+  <div class="t">표기 관례 보충 (2026-10-01 문서 점검)</div>
+  <p>이 절의 <code>q = q_yaw · q · q_pitch</code>는 수학 표기입니다. 해밀턴 곱과 <code>v' = q v q*</code> 관례에서는 <strong>오른쪽 인자가 먼저</strong> 적용되므로, <code>q_pitch</code>가 먼저(로컬 X), <code>q_yaw</code>가 나중(월드 Y)입니다. 반면 DirectXMath의 <code>XMQuaternionMultiply(a, b)</code>는 곱 <code>b·a</code>를 돌려주므로 <strong>a가 먼저, b가 나중</strong>입니다(행벡터 행렬곱 <code>a·b</code>와 같은 순서). 그래서 같은 식을 코드로 쓰면 인자 순서가 반대로 보입니다. <code>QuaternionLook.cpp</code>의 <code>q = XMQuaternionMultiply(XMQuaternionMultiply(qPitch, q), qYaw)</code>가 위 수학 표기와 같은 식입니다.</p>
+</div>
+
 <h2 id="s4"><span class="num">4.</span>마우스 룩</h2>
 
 <h3 id="s4-1">4.1 캡처·커서·재중앙화</h3>
@@ -339,6 +368,10 @@ pitch = −asin(d.y)            <span class="cm">// y = −sin p</span></code></
     <span class="kw">if</span> (GetCapture() == GetWindow()) ReleaseCapture();
 }</code></pre>
 <p><code>EndLook</code>은 세 곳에서 불립니다. 우클릭을 뗐을 때, <code>WM_KILLFOCUS</code>(Alt-Tab), 그리고 <code>WM_CAPTURECHANGED</code>(다른 창이 캡처를 가져감). 뒤의 둘은 <code>AppBase::OnFocusLost()</code> 가상 훅을 거칩니다. 이 훅이 없으면 드래그 중 Alt-Tab을 했을 때 커서가 숨겨진 채 남습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>위 스니펫은 지금 <code>App/EditorApp.cpp</code>의 <code>EditorApp::BeginLook</code>·<code>EditorApp::EndLook</code>입니다(커밋 11a74a5, 2026-09-28 클래스 개명). 본문은 같습니다. <code>SetCapture</code>를 latch보다 먼저 부르는 순서, 멱등성, <code>ShowCursor</code>의 짝이 모두 유지됩니다. <code>EndLook</code>을 부르는 곳은 <strong>네 곳</strong>이 되었습니다. 11-C단계에서 재생 중 게임 카메라 컴포넌트가 카메라를 움직이면(<code>GetPlayContext().cameraDriven</code>) <code>UpdateCamera</code>가 <code>EndLook()</code>을 부르고 바로 반환하는 경로가 추가되었기 때문입니다.</p>
+</div>
 
 <h3 id="s4-2">4.2 WM_CAPTURECHANGED가 자기 자신에게 온다</h3>
 <p>첫 구현에서 우클릭 드래그가 전혀 회전하지 않았습니다. 키보드는 동작했고(W로 전진 확인), 좌클릭도 ImGui에 잘 갔습니다. 원인은 <strong>ImGui Win32 백엔드가 <code>WM_RBUTTONDOWN</code>에서 먼저 <code>SetCapture</code>를 부른다</strong>는 것이었습니다(모든 버튼 다운에서 캡처를 잡아 드래그를 추적합니다). 우리 <code>MsgProc</code>은 ImGui 핸들러를 먼저 부르므로, <code>BeginLook</code>이 <code>SetCapture</code>를 부르는 시점에는 이미 우리 창이 캡처를 갖고 있습니다. 그리고 Windows는 캡처 창이 바뀔 때 <em>이전</em> 캡처 창에 <code>WM_CAPTURECHANGED</code>를 동기 전송하는데, 이전 창과 새 창이 같아도 보냅니다. 문서에도 "창이 스스로 <code>ReleaseCapture</code>를 불러도 이 메시지를 받는다"고 적혀 있고, <code>lParam</code>이 "캡처를 얻는 창"입니다<sup><a href="#ref-6">[6]</a></sup>.</p>
@@ -385,6 +418,15 @@ pitch = −asin(d.y)            <span class="cm">// y = −sin p</span></code></
 }</code></pre>
 <p><code>Camera::Move</code>는 전방을 pitch가 포함된 3D 벡터로 씁니다(비행 카메라). 위를 보고 W를 누르면 떠오릅니다. FPS식으로 수평 이동만 원하면 <code>forward</code>의 y를 0으로 만들고 정규화하면 됩니다. 상하(<code>E/Q</code>)는 카메라의 up이 아니라 월드 +Y입니다. 아래를 보고 있어도 E는 항상 위로 갑니다. 이것도 자유 시점 카메라의 관례입니다.</p>
 <p>dt 검증을 위해 두 번째 구를 첫 구 주위로 공전시켰습니다. 각속도 1 rad/s이므로 VSync를 켜든(60 FPS) 끄든(3,000 FPS) 한 바퀴에 6.28초가 걸려야 합니다. 원문이 제안한 "회전하는 구"는 균일한 흰 구를 자전시키는 것이라 회전이 화면에 드러나지 않아 공전으로 바꿨습니다. 렌더 토글 F1(와이어프레임)·F2(컬링)·F3(VSync)도 이때 넣었습니다. 1단계에서 ImGui 체크박스 좌표로 자동 검증하다 ini 문제를 겪었기 때문입니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>컨트롤러는 지금 <code>App/EditorApp.cpp</code>의 <code>EditorApp::UpdateCamera(dt)</code>입니다. 회전 계산(감도 0.0025 rad/px), 재중앙화, 이동 속도(10 단위/초, Shift 4배), E/Q의 월드 Y 이동은 위 스니펫과 같습니다. 바뀐 것은 세 가지 조건입니다.</p>
+  <ul>
+    <li><b>재생 중 게임 카메라 우선</b>(11-C단계): 재생 중(<code>m_playState != PlayState::Editing</code>)에 <code>GetPlayContext().cameraDriven</code>이 참이면 <code>EndLook()</code>을 부르고 바로 반환합니다.</li>
+    <li><b>룩 시작</b>: <code>!io.WantCaptureMouse</code> 대신 <code>m_editor.IsSceneViewHovered() &amp;&amp; !m_editor.IsGizmoUsing() &amp;&amp; !m_editor.IsAssetDragActive()</code>를 봅니다. 씬 뷰와 기즈모는 11단계, 에셋 드래그는 11-B단계에서 들어왔습니다.</li>
+    <li><b>이동</b>: <code>!io.WantCaptureKeyboard</code> 대신 <code>!io.WantTextInput &amp;&amp; (m_editor.IsSceneViewFocused() || m_editor.IsSceneViewHovered() || m_lookActive)</code>를 봅니다. 텍스트 입력 중이 아니고, 씬 뷰에 포커스나 커서가 있거나 룩 중일 때만 움직입니다.</li>
+  </ul>
+</div>
 
 <h2 id="s6"><span class="num">6.</span>검증</h2>
 <div class="applied">
@@ -424,7 +466,7 @@ pitch = −asin(d.y)            <span class="cm">// y = −sin p</span></code></
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 커밋 6e6b146 (2026/09/23). 이전: <a href="phase-1.html">1단계</a> · 다음: <a href="phase-3.html">3단계 · Scene과 리소스 래퍼</a>. 원본 로드맵: <a href="rendering-analysis.html#p2">rendering-analysis.html PHASE 2</a>.
+  대상: SherlockEngine 커밋 6e6b146 (2026/09/23). 이전: <a href="phase-1.html">1단계</a> · 다음: <a href="phase-3.html">3단계 · Scene과 리소스 래퍼</a>. 원본 로드맵: <a href="rendering-analysis.html#p2">rendering-analysis.html PHASE 2</a>. 2026-10-01 문서-코드 점검 반영.
 </div>
 </main>
 </div>

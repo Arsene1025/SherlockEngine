@@ -15,12 +15,27 @@
 // 세대는 1에서 시작하고, 값이 넘쳐 0이 되면 0을 건너뜀.
 //
 // C++20 (2026-09-28): HandleT 는 ResourceHandle 콘셉트(Handle.h)로 제약함. 요구 조건은
-// index / generation / IsValid() 와 trivially copyable. 조건을 어기는 타입을 넣으면
-// 풀 본문이 아니라 ResourcePool<...> 를 적은 줄에서 에러가 남.
+// Handle<Tag> 의 특수화이고 trivially copyable 일 것 (2026-10-01: 멤버 모양 검사에서 바꿈).
+// 조건을 어기는 타입을 넣으면 풀 본문이 아니라 ResourcePool<...> 를 적은 줄에서 에러가 남.
 template <typename T, ResourceHandle HandleT>
 class ResourcePool
 {
 public:
+	/*
+	ResourcePool<D3D11Buffer, BufferHandle>이기 때문에 T는 D3D11Buffer이다
+
+	D3D11Buffer 구조
+	struct D3D11Buffer
+	{
+	BufferDesc desc;
+	std::string name;                          // 힙 메모리
+	ComPtr<ID3D11Buffer> buffers[kFrameCount]; // COM 참조 카운트
+	};
+
+	위 구조를 복사로 진행하면 Comptr에서 AddRef()가 호출되고 원본 소멸시 Release()도 호출 -> 불필요한 호출이고 잠시 소유자가 둘이 됨
+	std::string또한 힙 할당이 일어나고 문자열 전체가 복사.
+	이런 현상을 막기위해서 이동 연산자 사용, T&&이기 때문에 호출시 std::move써야함.
+	*/
 	HandleT Add(T&& item)
 	{
 		uint32_t index;
@@ -59,6 +74,7 @@ public:
 		if (Get(handle) == nullptr) return;   // 이미 해제됐거나 세대가 다름
 		Slot& slot = m_slots[handle.index];
 		slot.item = T{};     // 스마트 포인터 멤버가 여기서 해제됨
+		//빈 객체를 이동 대입하면서 기존 Comptr들이 Release()되면서 GPU리소스 해제
 		slot.alive = false;
 		++slot.generation;
 		if (slot.generation == 0) slot.generation = 1;

@@ -38,7 +38,7 @@ struct RenderSettings
 	float debugDepthRange = 60.0f;
 };
 
-// 씬을 그림. 씬 데이터는 갖지 않고 입력으로 받음 (rendering-analysis D3).
+// 씬을 그림. 씬 데이터는 갖지 않고 입력으로 받음
 //
 // 소유하는 것: 셰이더 핸들, 상수버퍼 핸들, BindingLayout 세 개(프레임/오브젝트/재질)와
 // ResourceSet, PSO Desc의 고정 부분, Mesh → GPU 버퍼 캐시, Material → GPU 재질 캐시,

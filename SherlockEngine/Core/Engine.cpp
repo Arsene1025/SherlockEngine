@@ -95,6 +95,7 @@ float Engine::BeginFrame()
 void Engine::Render()
 {
 	// 6단계 프레임 구조: BeginFrame → [ShadowPass → MainPass → UIPass] → EndFrame(Present).
+	// 11-C단계부터 Hierarchy 에서 카메라 오브젝트를 고르면 MainPass 뒤에 PreviewPass 가 하나 더 붙음 (Renderer::Render).
 	ProfileScope cpuScope("Engine::Render");
 	m_device->BeginFrame();
 	RHI::CommandList& cmd = m_device->GetCommandList();

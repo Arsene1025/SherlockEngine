@@ -4,7 +4,8 @@
 // 11-C단계: 에디터에서 새 스크립트 만들기 (유니티의 Create > C# Script, 언리얼의 New C++ Class).
 //
 // 11-E단계: 스크립트는 프로젝트에 속함. <프로젝트>\Scripts\<이름>.h (선언) 와 <이름>.cpp (구현 + SHERLOCK_SCRIPT) 를 템플릿으로 생성함.
-// 프로젝트 솔루션(ProjectGenerator)과 엔진 솔루션의 SherlockEditor/SherlockGame 은 Scripts\*.cpp 를 와일드카드로 컴파일하므로
+// 프로젝트 솔루션(ProjectGenerator)은 Scripts\**\*.cpp(하위 폴더 포함), 엔진 솔루션의 SherlockEditor/SherlockGame 은
+// Projects\Sample\Scripts\*.cpp 를 와일드카드로 컴파일하므로
 // vcxproj 에 따로 등록할 필요가 없음 — Visual Studio 에서는 "프로젝트 다시 로드" 후 새 파일이 보임.
 // C++ 이므로 빌드(Ctrl+Shift+B)하고 다시 실행해야 Inspector 목록에 나타남 — 에디터는 컴파일하지 않음.
 namespace ScriptCreator

@@ -6,9 +6,9 @@
 
 // 상수버퍼 레이아웃. Shaders/Common.hlsli 의 cbuffer 네 개와 바이트 단위로 같아야 함.
 //
-// 갱신 빈도별로 나눔 (rendering-analysis D2):
+//   갱신 빈도별로 나눔
 //   b0 PerFrame  — 프레임에 한 번. 뷰·투영·광원 ViewProj·카메라 위치·시간·그림자 파라미터. VS와 PS 모두.
-//   b1 PerObject — 드로우마다. 월드 행렬과 노멀 변환용 역전치.       VS만.
+//   b1 PerObject — 드로우마다. 월드 행렬과 노멀 변환용 역전치.          VS만.
 //   b2 Lights    — 프레임에 한 번(조명이 바뀔 때만이어도 됨).           PS만.
 //   b3 Material  — 재질마다(4단계). 기본색·스페큘러·광택·UV 배율·노멀 맵 세기. VS(uvScale)와 PS.
 // 예전에는 b0 하나(world·view·proj·wvp, 320B)를 드로우마다 통째로 올렸음.
@@ -21,7 +21,7 @@
 //   (4) alignas(16)과 "sizeof % 16 == 0"은 필요조건일 뿐임. float3 두 개를 나란히
 //       두면 크기는 맞아도 오프셋이 어긋남. 그래서 아래 offsetof 단언이 실제 검사임.
 //
-// 행렬 관례:
+//   행렬 관례:
 //   HLSL은 기본적으로 column_major 로 읽고, 셰이더는 mul(v, M) 행벡터 곱을 씀.
 //   DirectXMath 행렬(행우선 메모리)을 그대로 올리면 HLSL이 전치된 행렬로 읽으므로
 //   C++에서 XMMatrixTranspose 로 전치해서 올림. #pragma pack_matrix(row_major)는 섞어 쓰지 않음.

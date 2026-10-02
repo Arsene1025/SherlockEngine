@@ -79,8 +79,9 @@ private:
 	bool m_started = false;
 };
 
-// 이름 → 생성 함수 대응표. 매크로가 정적 초기화 시점에 등록함 (모든 컴포넌트가 exe 에 직접 컴파일되므로
-// 정적 라이브러리의 "참조되지 않은 .obj 탈락" 문제가 없음).
+// 이름 → 생성 함수 대응표. 매크로가 정적 초기화 시점에 등록함.
+// 스크립트는 exe 프로젝트에 직접 컴파일되지만, 엔진 컴포넌트(Game/Components, CameraComponent)는 11-D단계부터
+// SherlockEngine.lib 안에 있음. 아무도 참조하지 않는 .obj 는 링커가 버리므로 에디터·게임 exe 는 /WHOLEARCHIVE:SherlockEngine.lib 로 링크함.
 namespace BehaviourRegistry
 {
 	using Factory = std::function<std::unique_ptr<Behaviour>()>;

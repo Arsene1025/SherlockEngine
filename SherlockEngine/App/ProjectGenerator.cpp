@@ -106,7 +106,7 @@ namespace
 			s << L"      <SDLCheck>true</SDLCheck>\r\n";
 			s << L"      <PreprocessorDefinitions>" << (debug ? L"_DEBUG" : L"NDEBUG") << L";_CONSOLE;SHERLOCK_PROJECT_NAME=\"" << Wide(project.GetName()) << L"\";%(PreprocessorDefinitions)</PreprocessorDefinitions>\r\n";
 			s << L"      <ConformanceMode>true</ConformanceMode>\r\n      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>\r\n";
-			s << L"      <LanguageStandard>stdcpp17</LanguageStandard>\r\n      <PrecompiledHeader>Use</PrecompiledHeader>\r\n      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>\r\n";
+			s << L"      <LanguageStandard>stdcpp20</LanguageStandard>\r\n      <PrecompiledHeader>Use</PrecompiledHeader>\r\n      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>\r\n";
 			s << L"      <AdditionalIncludeDirectories>$(SherlockEngineDir);$(ProjectDir)Scripts;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>\r\n";
 			s << L"    </ClCompile>\r\n    <Link>\r\n      <SubSystem>Windows</SubSystem>\r\n      <GenerateDebugInformation>true</GenerateDebugInformation>\r\n";
 			s << L"      <AdditionalOptions>/WHOLEARCHIVE:SherlockEngine.lib %(AdditionalOptions)</AdditionalOptions>\r\n";
@@ -123,9 +123,11 @@ namespace
 		{
 			s << L"    <ClCompile Include=\"$(SherlockRepo)SherlockGame\\GameMain.cpp\" />\r\n";
 		}
-		s << L"    <ClCompile Include=\"Scripts\\*.cpp\" />\r\n";
+		// 2026-09-30: Scripts\ 아래 하위 폴더까지 재귀(**). 실험용 스크립트를 Scripts\Tests\ 에 따로 모아 두기 위해서다 (QuaternionLookTest 프로젝트가 첫 사용자).
+		// 언어 표준은 엔진과 같은 C++20 — Script.h 의 GetComponent 가 std::derived_from 콘셉트를 쓰므로 stdcpp17 로는 컴파일되지 않는다 (2026-09-28 C++20 전환 때 생성기를 빠뜨렸던 것을 2026-09-30 QuaternionLookTest 를 만들며 발견해 고침).
+		s << L"    <ClCompile Include=\"Scripts\\**\\*.cpp\" />\r\n";
 		s << L"    <ClCompile Include=\"$(SherlockEngineDir)pch.cpp\">\r\n      <PrecompiledHeader>Create</PrecompiledHeader>\r\n    </ClCompile>\r\n";
-		s << L"  </ItemGroup>\r\n  <ItemGroup>\r\n    <ClInclude Include=\"Scripts\\*.h\" />\r\n";
+		s << L"  </ItemGroup>\r\n  <ItemGroup>\r\n    <ClInclude Include=\"Scripts\\**\\*.h\" />\r\n";
 		if (editor)
 			for (const std::wstring& source : ProjectGenerator::GetEditorSources())
 				s << L"    <ClInclude Include=\"$(SherlockEngineDir)App\\" << source << L".h\" />\r\n";
@@ -143,11 +145,11 @@ namespace
 		s << L"  <ItemGroup>\r\n    <Filter Include=\"Scripts\">\r\n      <UniqueIdentifier>{a0c2e1f0-5c11-4b3e-9a6f-1a2b3c4d5e11}</UniqueIdentifier>\r\n    </Filter>\r\n";
 		s << L"    <Filter Include=\"Engine Editor\">\r\n      <UniqueIdentifier>{a0c2e1f0-5c11-4b3e-9a6f-1a2b3c4d5e12}</UniqueIdentifier>\r\n    </Filter>\r\n";
 		s << L"    <Filter Include=\"Assets\">\r\n      <UniqueIdentifier>{a0c2e1f0-5c11-4b3e-9a6f-1a2b3c4d5e13}</UniqueIdentifier>\r\n    </Filter>\r\n  </ItemGroup>\r\n";
-		s << L"  <ItemGroup>\r\n    <ClCompile Include=\"Scripts\\*.cpp\">\r\n      <Filter>Scripts</Filter>\r\n    </ClCompile>\r\n";
+		s << L"  <ItemGroup>\r\n    <ClCompile Include=\"Scripts\\**\\*.cpp\">\r\n      <Filter>Scripts</Filter>\r\n    </ClCompile>\r\n";
 		if (editor)
 			for (const std::wstring& source : ProjectGenerator::GetEditorSources())
 				s << L"    <ClCompile Include=\"$(SherlockEngineDir)App\\" << source << L".cpp\">\r\n      <Filter>Engine Editor</Filter>\r\n    </ClCompile>\r\n";
-		s << L"  </ItemGroup>\r\n  <ItemGroup>\r\n    <ClInclude Include=\"Scripts\\*.h\">\r\n      <Filter>Scripts</Filter>\r\n    </ClInclude>\r\n";
+		s << L"  </ItemGroup>\r\n  <ItemGroup>\r\n    <ClInclude Include=\"Scripts\\**\\*.h\">\r\n      <Filter>Scripts</Filter>\r\n    </ClInclude>\r\n";
 		if (editor)
 			for (const std::wstring& source : ProjectGenerator::GetEditorSources())
 				s << L"    <ClInclude Include=\"$(SherlockEngineDir)App\\" << source << L".h\">\r\n      <Filter>Engine Editor</Filter>\r\n    </ClInclude>\r\n";

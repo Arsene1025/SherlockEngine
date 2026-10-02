@@ -238,6 +238,15 @@ td .fix b{color:var(--ok);font-weight:600}
     <tr><td>디버그 UI</td><td>—</td><td>sRGB 토글, 샘플러 덮어쓰기 콤보, 텍스처 수, 재질별 샘플러·UV 배율·unlit. F5·F6</td></tr>
   </tbody>
 </table></div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>정점</b>: 6단계에서 탄젠트가 더해져 <code>VERTEX</code>는 64바이트, 속성 5개, <code>VertexFormat::PositionColorNormalTexcoordTangent</code>입니다. <code>PositionColorNormalTexcoord</code>는 없습니다.</li>
+    <li><b>텍스처 생성</b>: C++20 전환(2026-09-28)에서 <code>CreateTexture(const TextureDesc&amp; desc, std::span&lt;const TextureSubresource&gt; subresources = {})</code>로 바뀌었습니다(<code>RHI/Device.h</code>). 4.1절 상자 참고.</li>
+    <li><b>상수버퍼</b>: b3은 9단계 <code>alphaCutoff</code>로 64바이트입니다. <b>재질 셋</b>은 6단계에서 노멀 맵 t1이 더해져 b3 (VS|PS) · t0 · t1 · s0입니다(7절 상자).</li>
+    <li><b>UI 패스</b>: 6단계에서 <code>Device::BeginUIPass()</code>는 삭제되고 <code>Renderer::BeginUIPass()</code>/<code>EndUIPass()</code>가 되었습니다(2.3절 상자).</li>
+  </ul>
+</div>
 
 <h2 id="s2"><span class="num">2.</span>색공간: 왜 선형에서 계산하는가</h2>
 <h3 id="s2-1">2.1 sRGB 전달 함수와 "두 번 어두워지기"</h3>
@@ -279,6 +288,13 @@ ID3D11RenderTargetView* GetRTV(ID3D11Device* device, <span class="kw">bool</span
     <span class="kw">return</span> target.Get();
 }</code></pre>
 <p><code>Device::BeginFrame</code>은 <code>m_srgbOutput</code>에 따라 둘 중 하나를 바인딩하고 클리어합니다. 클리어 색 (0.1, 0.1, 0.3)은 선형 값이고, sRGB 뷰를 클리어하면 인코딩된 (89, 89, 149)가 저장됩니다. 2.4절의 측정값이 정확히 이 숫자입니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li>6단계 RenderPass 도입으로 <code>Device::BeginFrame</code>은 더 이상 렌더 타깃을 바인딩하거나 클리어하지 않습니다(지금 <code>D3D11Device::BeginFrame</code>은 프레임 인덱스·통계·타임스탬프만 처리). Device의 <code>m_srgbOutput</code>·<code>SetSrgbOutput</code>도 없어졌습니다. sRGB 뷰 선택은 <code>RenderSettings::srgbOutput</code>(<code>Graphics/Renderer.h</code>)을 Renderer가 <code>RenderPassDesc</code> 색 첨부의 <code>.srgbView</code>로 넘기는 방식이고, 클리어도 그 패스의 <code>LoadOp::Clear</code>가 합니다.</li>
+    <li><code>GetRTV</code>는 7단계부터 <code>RHI/D3D11/D3D11Resources.h</code>에 있고, RenderTarget 바인드 플래그 검사와 11단계 TYPELESS 텍스처(씬 뷰)용 분기, 실패 로그가 더해졌습니다. UNORM 뷰 / sRGB 뷰 지연 생성이라는 골자는 같습니다.</li>
+  </ul>
+</div>
 
 <h3 id="s2-3">2.3 ImGui는 UNORM 뷰에</h3>
 <p>Dear ImGui는 스타일 색을 sRGB로 인코딩된 값으로 취급하고, 렌더러 백엔드는 그것을 그대로 출력합니다. 선형/sRGB 프레임버퍼 문제는 오래된 이슈이고 라이브러리 차원의 해법은 아직 없습니다<sup><a href="#ref-19">19</a></sup>. sRGB 뷰에 ImGui를 그리면 인코딩된 값이 한 번 더 인코딩되어 패널이 희게 떠 보입니다. 그래서 <code>AppBase::Run</code>이 씬 렌더 뒤에 <code>Device::BeginUIPass()</code>를 부르고, 그것이 백버퍼의 UNORM 뷰를 깊이 없이 바인딩합니다. 6단계의 <code>RenderPassDesc</code>가 생기면 "UI 패스"는 그 첫 번째 사용자가 됩니다.</p>
@@ -288,6 +304,13 @@ Render();
 graphicsDevice.BeginUIPass();     <span class="cm">// UNORM 뷰, 깊이 없음</span>
 ImGuiBackend::Render();
 graphicsDevice.EndFrame();        <span class="cm">// Present</span></code></pre>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li>위 문단의 예고대로 6단계에서 UI 패스가 <code>RenderPassDesc</code>의 사용자가 되었습니다. <code>Device::BeginUIPass()</code>는 삭제되었고 <code>Renderer::BeginUIPass()</code>가 백버퍼를 <code>.srgbView = false</code>, <code>LoadOp::Load</code>, 깊이 없음으로 엽니다. <code>Renderer::EndUIPass()</code>가 패스를 닫고 백버퍼를 Present 상태로 전이합니다(<code>Graphics/Renderer.cpp</code>).</li>
+    <li>프레임 순서는 <code>AppBase::Run</code>이 아니라 10단계의 <code>Engine::Render</code>(<code>Core/Engine.cpp</code>)가 정합니다: <code>m_device-&gt;BeginFrame()</code> → <code>m_renderer.Render(…)</code> → <code>m_renderer.BeginUIPass()</code> → <code>m_device-&gt;RenderImGui()</code> → <code>m_renderer.EndUIPass()</code> → <code>m_device-&gt;EndFrame()</code>.</li>
+  </ul>
+</div>
 
 <h3 id="s2-4">2.4 회색 128 검증</h3>
 <p>원문 로드맵의 "중간 회색 128 검증"을 그대로 수행했습니다. 4×4 픽셀의 (128,128,128) 텍스처를 sRGB 라벨로 만들고(<code>builtin:gray128</code>), <code>unlit</code> 재질로 큐브에 입혀 화면 픽셀을 읽었습니다. 배경(클리어 색)도 함께 읽어 예측값과 대조했습니다.</p>
@@ -341,6 +364,10 @@ m_swapChain-&gt;Present(m_vsync ? 1 : 0, flags);
 <span class="cm">// Resize — 생성 때와 같은 플래그</span>
 m_swapChain-&gt;ResizeBuffers(0, w, h, DXGI_FORMAT_UNKNOWN, m_swapChainFlags);</code></pre>
 <p>이 기기는 tearing을 지원했고(로그 "tearing 지원", 패널 "(tearing OK)"), VSync를 끈 상태에서 약 2,000 FPS가 나옵니다. 3단계의 리사이즈 순서(언바인드 → 백버퍼·깊이 텍스처 파괴 → <code>ResizeBuffers</code> → 재생성)는 flip 모델에서도 그대로 통과했습니다. 6회 반복과 최소화/복원에서 Debug Layer 메시지는 0건입니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>위 스니펫의 "Device.cpp"는 7단계부터 <code>RHI/D3D11/D3D11Device.cpp</code>의 <code>D3D11Device::InitDirect3D</code> / <code>EndFrame</code> / <code>Resize</code>입니다. 플래그 처리(<code>m_tearingSupported</code>, <code>m_swapChainFlags</code>, FLIP_DISCARD, 버퍼 2, <code>DXGI_MWA_NO_ALT_ENTER</code>)는 그대로입니다. 8단계 D3D12 백엔드(<code>RHI/D3D12/D3D12Device.cpp</code>)도 같은 방식으로 tearing을 확인하고 <code>m_swapChainFlags</code>를 <code>ResizeBuffers</code>에 넘깁니다.</p>
+</div>
 
 <h2 id="s4"><span class="num">4.</span>텍스처 로더와 밉맵</h2>
 <h3 id="s4-1">4.1 API 중립 TextureImage</h3>
@@ -359,6 +386,13 @@ TextureHandle CreateTexture(<span class="kw">const</span> TextureDesc&amp; desc,
     init[mip].SysMemPitch = subresources[mip].rowPitch;
 }</code></pre>
 <p>로드맵 원문은 별도의 <code>UploadTexture(handle, data)</code> 함수를 제안했지만, 지금은 생성과 업로드를 한 호출로 묶었습니다. 텍스처가 전부 불변(immutable)이고 스트리밍이 없으므로 생성 시 초기 데이터로 넘기는 방식이 가장 단순합니다. D3D12에서는 초기 데이터가 있는 <code>CreateTexture</code>가 내부적으로 업로드 힙 경로를 타면 됩니다. 실행 중 갱신이 필요해지면(비디오, 스트리밍) 그때 <code>UploadTexture</code>를 추가합니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li>C++20 전환(2026-09-28)에서 (포인터, 개수) 두 인자가 <code>std::span</code> 하나로 바뀌었습니다: <code>virtual TextureHandle CreateTexture(const TextureDesc&amp; desc, std::span&lt;const TextureSubresource&gt; subresources = {}) = 0;</code>(<code>RHI/Device.h</code>). 호출 측은 <code>std::vector&lt;TextureSubresource&gt;</code>를 그대로 넘깁니다.</li>
+    <li>구현은 <code>D3D11Device::CreateTexture</code>(<code>RHI/D3D11/D3D11Device.cpp</code>)이고, 검사도 <code>subresources.size() &lt; descIn.mipLevels</code>로 바뀌었습니다. 초기 데이터가 밉 수보다 적으면 거부하는 규칙은 같습니다. <code>ResourceDesc.h</code>는 <code>RHI/ResourceDesc.h</code>입니다.</li>
+  </ul>
+</div>
 
 <h3 id="s4-2">4.2 밉맵을 CPU에서 만드는 이유</h3>
 <p>밉맵은 텍스처를 절반씩 줄인 피라미드입니다. 각 레벨은 위 레벨의 절반이고 1×1까지 내려가며, 홀수 크기는 내림합니다<sup><a href="#ref-13">13</a></sup>(512 → 10레벨). 샘플러는 화면 픽셀 하나가 텍셀 몇 개를 덮는지 계산해 맞는 레벨을 고릅니다. 먼 바닥처럼 픽셀 하나가 텍셀 수십 개를 덮는 곳에서 밉 없이 최근접 샘플을 하면 프레임마다 다른 텍셀이 뽑혀 반짝이고(shimmer) 모아레가 생깁니다. Williams가 1983년에 "multum in parvo"에서 이름을 따 제안한 기법입니다<sup><a href="#ref-17">17</a></sup>. 그림 3이 같은 바닥을 밉 있음/없음으로 비교한 것입니다.</p>
@@ -413,6 +447,10 @@ DirectX::GenerateMipMaps(current-&gt;GetImages(), current-&gt;GetImageCount(), c
     <tr><td>실린더 뚜껑</td><td colspan="2">원판을 위에서 본 평면 투영 (0.5 + 0.5·cos, 0.5 − 0.5·sin)</td><td>중심 (0.5, 0.5)</td></tr>
   </tbody>
 </table></div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>6단계에서 노멀 매핑용 탄젠트 <code>tx, ty, tz, tw</code>(<code>TANGENT0</code>, <code>R32G32B32A32_FLOAT</code>)가 붙어 <code>VERTEX</code>는 48바이트가 아니라 <b>64바이트</b>, 입력 속성은 5개입니다(<code>Graphics/VertexTypes.h</code>, <code>Shaders/Common.hlsli</code>의 <code>VSInput</code>). UV 규칙과 <code>uv × uvScale</code>(VS), b3의 <code>VS|PS</code> 선언은 그대로입니다.</p>
+</div>
 
 <h2 id="s7"><span class="num">7.</span>재질 셋에 t0·s0</h2>
 <p>4단계에서 재질 ResourceSet은 b3 하나였습니다. 이제 t0(알베도 SRV)과 s0(샘플러)이 더해집니다. <code>Device::CreateResourceSet</code>이 4단계에서 거부하던 <code>Sampler</code> 슬롯을 받고, <code>SetResourceSet</code>이 <code>PSSetShaderResources</code>·<code>PSSetSamplers</code>로 풉니다. 3단계 <code>D3D11Texture::GetSRV</code>의 지연 생성이 여기서 처음 실전에 쓰입니다.</p>
@@ -433,6 +471,14 @@ DirectX::GenerateMipMaps(current-&gt;GetImages(), current-&gt;GetImageCount(), c
     gpuMaterial-&gt;boundSampler = sampler;
 }</code></pre>
 <p>재질은 텍스처를 핸들이 아니라 <strong>이름</strong>으로 가리킵니다. <code>Scene</code>은 <code>Device</code>를 모르므로 파일을 열 수 없고, Renderer의 캐시(이름 + "|srgb"/"|linear" → <code>TextureHandle</code>)가 이름을 핸들로 바꿉니다. 이름 규칙은 세 가지입니다: <code>Assets/Textures/</code> 기준 파일 이름("uv_checker.png"), <code>builtin:white</code> / <code>builtin:checker</code> / <code>builtin:gray128</code>(절차적), 빈 문자열(텍스처 없음 → 1×1 흰색, <code>baseColor</code>만 남음). 로드에 실패하면 경고를 남기고 흰색으로 대체하므로 화면이 깨지지 않습니다. 에셋은 vcxproj의 <code>CopyAssets</code> 타깃이 exe 옆 <code>Assets\</code>로 복사하고 <code>Paths::GetAssetPath</code>가 찾습니다(없으면 소스 트리 폴백).</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>샘플러는 지금 <code>bindings[3]</code>입니다.</b> 6단계에서 재질 레이아웃에 노멀 맵 t1이 b3·t0과 s0 사이에 들어가, 슬롯 순서가 b3 상수(<code>bindings[0]</code>), t0 알베도(<code>[1]</code>), t1 노멀(<code>[2]</code>), s0 샘플러(<code>[3]</code>)가 되었습니다. 위 스니펫의 <code>bindings[2].sampler</code>는 5단계 당시의 배치입니다. 지금 코드는 지정 초기화로 <code>.bindings = { { .buffer = … }, { .texture = albedo }, { .texture = normal }, { .sampler = sampler } }</code>라고 씁니다.</li>
+    <li>필드 <code>boundTexture</code>는 <code>boundAlbedo</code>·<code>boundNormal</code> 둘로 나뉘었고, 셋 재생성 조건도 셋 중 하나(알베도·노멀·샘플러)가 바뀔 때입니다. 시그니처는 9단계부터(씬에 들어 있는 모델 이미지를 이름으로 찾기 위해) <code>GetOrCreateGpuMaterial(const Material&amp;, const Scene* scene)</code>, <code>GetOrLoadTexture(const std::string&amp; name, bool srgb, const Scene* scene)</code>입니다(<code>Graphics/Renderer.h</code>).</li>
+    <li>텍스처 이름 규칙에 6단계 <code>builtin:flatnormal</code>(노멀 맵 없음 → 평평한 노멀)과 11-B단계 <code>asset:&lt;Assets 기준 상대 경로&gt;</code>가 더해졌습니다(<code>Scene/Material.h</code> 머리 주석). 빈 이름이 <code>m_whiteTexture</code>를 돌려주는 규칙은 그대로입니다.</li>
+  </ul>
+</div>
 
 <h2 id="s8"><span class="num">8.</span>함정과 해결</h2>
 <ul>
@@ -508,7 +554,7 @@ DirectX::GenerateMipMaps(current-&gt;GetImages(), current-&gt;GetImageCount(), c
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 작업 트리 (2026/09/23, 4단계 위에 연속). 이전: <a href="phase-4.html">4단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p5">rendering-analysis.html PHASE 5</a>. 스크린샷은 <code>images/2026-09-23-phase5-*.png</code>.
+  대상: SherlockEngine 작업 트리 (2026/09/23, 4단계 위에 연속). 이전: <a href="phase-4.html">4단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p5">rendering-analysis.html PHASE 5</a>. 스크린샷은 <code>images/2026-09-23-phase5-*.png</code>. 2026-10-01 문서-코드 점검 반영(이후 단계의 변경을 각 절의 상자로 덧붙임).
 </div>
 </main>
 </div>

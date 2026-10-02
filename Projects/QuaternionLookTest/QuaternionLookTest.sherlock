@@ -1,0 +1,6 @@
+{
+  "engineRoot": "C:\\Users\\User\\Desktop\\SherlockEngine\\SherlockEngine\\",
+  "format": 1,
+  "name": "QuaternionLookTest",
+  "startScene": "quat_roll_local.json"
+}
