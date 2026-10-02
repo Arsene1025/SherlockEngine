@@ -33,7 +33,7 @@ protected:
     virtual bool OnInitialize() = 0;              // 씬 구성. 호출 시점에 Engine 은 준비되어 있음
     virtual void OnUpdate(float dt) = 0;          // 매 프레임 호출 (가변 dt)
     virtual void OnFixedUpdate(float fixedDt) { (void)fixedDt; }   // 고정 스텝 (Time.fixedStep). 필요할 때만 구현
-    virtual void OnGUI() = 0;                     // "Information" 창 안에서 호출됨. 다른 창을 열어도 됨
+    virtual void OnGUI() = 0;                     // ImGui::NewFrame 과 Render 사이에서 호출됨. 창과 도킹 공간은 앱이 직접 만듦 (11단계에 "Information" 창은 없어짐)
     virtual void OnFocusLost() {}                 // WM_KILLFOCUS / WM_CAPTURECHANGED
     // 11-D단계: false 면 ImGui 컨텍스트·Win32/렌더러 백엔드를 만들지 않음 (게임 런타임 GameApp). OnGUI 도 호출되지 않음.
     virtual bool WantsGUI() const { return true; }

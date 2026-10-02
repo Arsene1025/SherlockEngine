@@ -97,7 +97,7 @@ tr:last-child td{border-bottom:0}
 <div class="shell">
 <nav class="toc" aria-label="목차">
   <div class="brand">11-F단계 · 오브젝트 계층과 카메라 자세</div>
-  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/29 (작업 트리, 미커밋)<br><a href="rendering-analysis.html#p11f">rendering-analysis.html → PHASE 11-F</a></div>
+  <div class="meta">SherlockEngine 단계별 상세 문서<br>2026/09/29 (작업 트리, 미커밋) · 3.4 추가 2026/09/30<br><a href="rendering-analysis.html#p11f">rendering-analysis.html → PHASE 11-F</a></div>
   <ol>
     <li><a href="#s1">1. 요약</a></li>
     <li><a href="#s2">2. 출발점: "카메라에 쿼터니언을 안 썼는데 Roll 은?"</a></li>
@@ -105,6 +105,7 @@ tr:last-child td{border-bottom:0}
     <li class="sub"><a href="#s3-1">3.1 Roll 의 두 종류</a></li>
     <li class="sub"><a href="#s3-2">3.2 짐벌락은 어디에 있나</a></li>
     <li class="sub"><a href="#s3-3">3.3 유니티·언리얼은 어떻게 하나</a></li>
+    <li class="sub"><a href="#s3-4">3.4 재현 실험: 쿼터니언 누적과 Roll</a></li>
     <li><a href="#s4">4. 계층: GameObject 의 부모-자식</a></li>
     <li><a href="#s5">5. 카메라: 각도 대신 행렬</a></li>
     <li><a href="#s6">6. 에디터: 트리·드래그·기즈모</a></li>
@@ -186,6 +187,65 @@ tr:last-child td{border-bottom:0}
 </ul>
 <p>SherlockEngine 과 대응시키면 "조작용 오일러 + pitch 클램프" 는 있었고, "Roll 가산 층" 은 <code>GetRotationMatrix</code> 의 세 번째 인자를 열면 되며, <strong>"계층 상속" 만 없었습니다.</strong> 부모의 Roll 이 존재하면 카메라에 roll 변수가 없어도 행렬 곱으로 상속됩니다 — 단, 그 행렬이 카메라까지 <em>잘리지 않고</em> 도달해야 하고, 그것이 2절에서 찾은 병목이었습니다.</p>
 
+<h3 id="s3-4">3.4 재현 실험: 쿼터니언 누적과 Roll (2026-09-30 추가)</h3>
+<p>"쿼터니언으로 했을 때 Roll 이 누적되는 버그를 지금 프로젝트에서 재현할 수 있나?" 라는 질문에서 시작한 실험입니다. 답은 <strong>가능</strong>이고, 두 가지가 필요했습니다. (1) 임의 회전 행렬이 카메라까지 <em>잘리지 않고</em> 도달하는 경로 — 이것은 이 단계(5절)가 이미 열어 두었습니다. 11-F 이전에는 <code>CameraComponent</code> 가 자세를 yaw/pitch 둘로 줄여 넘겼으므로 roll 이 아무리 쌓여도 화면에는 나타나지 않았을 것입니다. (2) 쿼터니언을 <em>누적</em>하는 쪽 — 엔진 카메라의 <code>Rotate</code> 는 각도 경로라 원천적으로 roll 이 없으니, 재현은 스크립트로 해야 합니다. 그래서 실험 전용 프로젝트 <strong>QuaternionLookTest</strong> 를 프로젝트 시스템(11-E)으로 만들고, 그 안의 실험 스크립트 폴더 <code>Projects\QuaternionLookTest\Scripts\Tests\</code> 에 <code>QuaternionLook.h/.cpp</code> 를 두었습니다. Sample 프로젝트의 <code>Scripts\</code> 에 넣지 않은 이유는 Sample 의 스크립트가 엔진 솔루션의 <code>SherlockEditor.exe</code> 에 통째로 컴파일되어 "기본 에디터" 의 일부가 되기 때문입니다 — 예제(Rotator·PlayerController)와 실험이 섞이고, 실험이 끝난 뒤에도 남습니다. 별도 프로젝트에 두면 실험 스크립트는 그 프로젝트의 자기 에디터(<code>Binaries\Debug\QuaternionLookTestEditor.exe</code>)에만 존재하고, Sample 에디터에서 <code>--add-component=QuaternionLook</code> 을 시도하면 "컴포넌트를 모른다" 로 실패합니다(확인함). <code>Scripts\Tests\</code> 하위 폴더를 컴파일하기 위해 <code>ProjectGenerator</code> 의 와일드카드를 <code>Scripts\*.cpp</code> 에서 <code>Scripts\**\*.cpp</code>(재귀)로 바꿨고, 그 김에 생성 vcxproj 가 아직 <code>stdcpp17</code> 이던 것(<code>Script.h</code> 가 C++20 콘셉트를 쓰므로 빌드 불가)을 <code>stdcpp20</code> 으로 고쳤습니다 — <a href="phase-11e.html#s5">phase-11e 5절</a>의 적용 상자.</p>
+
+<h4>원인은 부동소수점이 아니라 곱하는 순서다</h4>
+<p><a href="phase-2.html#s3-5">phase-2 3.5</a> 는 "쿼터니언으로 마우스 회전을 누적하면 부동소수점 오차로 미세한 롤이 쌓인다" 고 적었습니다. 실험해 보니 <strong>결론은 맞지만 원인 서술은 틀렸습니다.</strong> 눈에 보이는 roll 은 부동소수점에서 오지 않습니다. 두 증분(마우스 dx → yaw, dy → pitch)을 <em>둘 다 카메라 자기 축</em>으로 곱하면 — 6자유도 비행 카메라의 관례 — 마우스가 (yaw, pitch) 평면에서 닫힌 경로를 한 바퀴 그릴 때마다 그 경로가 감싼 <em>입체각</em>만큼 roll 이 남습니다. 구면 위에서 벡터를 평행 이동시켜 제자리로 돌아오면 방향이 돌아가 있는 것(홀로노미)과 같은 현상이라 크기가 크고 결정적입니다. 반지름 r 인 원이면 한 바퀴에 2π(1 − cos r) 라디안이고, r = 17° 이면 <strong>15.7°</strong> 입니다. 반면 phase-2 가 예로 든 꼴 <code>q = q_yaw · q · q_pitch</code> — yaw 는 월드 Y, pitch 는 로컬 X — 는 R<sub>x</sub>(p)·R<sub>y</sub>(y) 형태가 그대로 유지되어 roll 이 정확히 0 입니다. 부동소수점 오차는 360 프레임 동안 소수점 첫째 자리에서 0.0° 였습니다. 즉 위험한 것은 "쿼터니언" 이 아니라 "증분을 어느 공간에서 곱하느냐" 이고, 행렬로 누적해도 똑같이 생깁니다.</p>
+<pre><code><span class="cm">// QuaternionLook::Update — XMQuaternionMultiply(a, b) 는 "a 먼저, b 나중" (행벡터 행렬곱 a·b 와 같은 순서)</span>
+<span class="kw">const</span> XMVECTOR qPitch = XMQuaternionRotationAxis(XMVectorSet(1,0,0,0), dPitch);
+<span class="kw">const</span> XMVECTOR qYaw   = XMQuaternionRotationAxis(XMVectorSet(0,1,0,0), dYaw);
+<span class="kw">if</span> (mode == 0) q = XMQuaternionMultiply(XMQuaternionMultiply(qPitch, qYaw), q);   <span class="cm">// 둘 다 자기 축 → roll 누적 (버그)</span>
+<span class="kw">else</span>           q = XMQuaternionMultiply(XMQuaternionMultiply(qPitch, q), qYaw);   <span class="cm">// pitch 로컬 X, yaw 월드 Y → roll 0</span>
+GetGameObject().SetWorldRotation(XMMatrixRotationQuaternion(XMQuaternionNormalize(q)));</code></pre>
+<p><b>표기 주의 (2026-10-01 추가).</b> 위 문단과 phase-2 의 수식 <code>q = q_yaw · q · q_pitch</code> 는 수학의 해밀턴 곱 표기로, <em>오른쪽이 먼저</em> 적용됩니다(pitch 먼저·로컬, yaw 나중·월드). 반면 코드의 <code>XMQuaternionMultiply(a, b)</code> 는 해밀턴 곱 b·a 를 돌려주므로 <em>a 가 먼저, b 가 나중</em>입니다(행벡터 행렬곱 a·b 와 같은 순서). 그래서 mode 1 의 <code>Multiply(Multiply(qPitch, q), qYaw)</code> 는 수식 <code>q_yaw · q · q_pitch</code> 와 같은 회전이고, mode 0 의 <code>Multiply(Multiply(qPitch, qYaw), q)</code> 는 수식으로 <code>q · q_yaw · q_pitch</code>(두 증분 모두 q 의 오른쪽 = 자기 축)입니다. 인자 순서가 수식과 반대로 보이는 것은 관례 차이일 뿐 같은 내용입니다.</p>
+
+<h4>실험 구성</h4>
+<ul>
+  <li><b>가상 마우스.</b> 창이 화면 밖에 있는 자동 검증에서는 실제 마우스가 없으므로, 스크립트가 (yaw, pitch) 평면에서 반지름 <code>radiusDeg</code>(17°)인 원을 <code>framesPerLoop</code>(120) 프레임에 한 바퀴 그립니다. 이웃한 두 점의 차가 그 프레임의 (Δyaw, Δpitch) 이고, 한 바퀴의 합은 정확히 0 입니다. dt 가 아니라 프레임 수로 진행하므로 결과가 매번 같습니다.</li>
+  <li><b>카메라 연결.</b> <code>Start</code> 에서 자기 오브젝트의 <code>CameraComponent::priority</code> 를 100 으로 올려(Main Camera 는 0) 활성 카메라가 되게 하고, <code>startPosition</code> (12, 4, −22) 에서 <code>LookAt</code> (0, 2, 0) 으로 출발 자세(roll 0)를 잡아 쿼터니언으로 바꿔 둡니다. 매 프레임 누적한 쿼터니언을 <code>SetWorldRotation</code> 으로 써 넣으면 <code>CameraComponent::GetPose</code> → <code>Camera::SetRotation</code> 행렬 경로로 roll 이 화면에 그대로 나타납니다. 이 스크립트 안에서만 쿼터니언이 원본이고 Transform 은 출력입니다.</li>
+  <li><b>씬 파일 둘.</b> <code>Projects\QuaternionLookTest\Assets\Scenes\quat_roll_local.json</code>(mode 0)과 <code>quat_roll_world.json</code>(mode 1). 데모 씬에 "Camera 1" 오브젝트(CameraComponent + QuaternionLook)를 얹은 것으로, 첫 파일은 <code>--scene=demo --add=4 --add-component=QuaternionLook --save=…</code> 로 에디터가 직접 저장했고 둘째는 그 사본의 <code>mode</code> 만 1 로 바꾼 것입니다. 데모 씬에서 따라온 Sample 전용 컴포넌트 <code>PlayerController</code> 는 빼냈습니다(QuaternionLookTest 에디터에는 없어 "모른다" 경고를 내므로). <code>.sherlock</code> 의 <code>startScene</code> 도 첫 파일입니다.</li>
+  <li><b>실행.</b> 프로젝트의 자기 에디터 <code>Binaries\Debug\QuaternionLookTestEditor.exe</code> 로 실행합니다(프로젝트 솔루션을 Debug|x64 로 빌드). 재생 시작은 9 프레임째, 스크린샷은 <code>exit-after − 1</code> 프레임째이므로 한 바퀴 뒤는 132, 세 바퀴 뒤는 372 입니다. 60 프레임마다 스크립트가 자기 쿼터니언에서 역추출한 오일러와 <code>Camera::GetRoll</code> 을 나란히 로그로 남깁니다.</li>
+</ul>
+<pre><code>SherlockEditor.exe --new-project=QuaternionLookTest --exit-after=8                     <span class="cm">// 프로젝트 생성 (한 번). 이후 QuaternionLookTest.sln 의 에디터 타깃 빌드</span>
+QuaternionLookTestEditor.exe --scene=quat_roll_local.json --play=1 --exit-after=132 --screenshot=...\images\2026-09-30-quat-roll-local-1loop.png
+QuaternionLookTestEditor.exe --scene=quat_roll_local.json --play=1 --exit-after=372 --screenshot=...\images\2026-09-30-quat-roll-local-3loops.png
+QuaternionLookTestEditor.exe --scene=quat_roll_world.json --play=1 --exit-after=372 --screenshot=...\images\2026-09-30-quat-roll-world-3loops.png</code></pre>
+
+<h4>측정</h4>
+<div class="tbl"><table>
+  <thead><tr><th>바퀴</th><th colspan="3">mode 0 — 로컬 yaw·pitch 누적</th><th colspan="3">mode 1 — 월드 yaw + 로컬 pitch</th></tr>
+  <tr><th></th><th>yaw</th><th>pitch</th><th>roll</th><th>yaw</th><th>pitch</th><th>roll</th></tr></thead>
+  <tbody>
+    <tr><td>출발</td><td>−28.6°</td><td>4.6°</td><td>0°</td><td>−28.6°</td><td>4.6°</td><td>0°</td></tr>
+    <tr><td>1.0</td><td>−29.2°</td><td>8.9°</td><td><b>−14.9°</b></td><td>−28.6°</td><td>4.6°</td><td>−0.0°</td></tr>
+    <tr><td>2.0</td><td>−30.9°</td><td>13.0°</td><td><b>−30.1°</b></td><td>−28.6°</td><td>4.6°</td><td>−0.0°</td></tr>
+    <tr><td>3.0</td><td>−33.7°</td><td>16.5°</td><td><b>−45.7°</b></td><td>−28.6°</td><td>4.6°</td><td>−0.0°</td></tr>
+  </tbody>
+</table></div>
+<p>mode 0 은 바퀴마다 약 15.2° 씩 roll 이 쌓입니다(이론값 15.7° 보다 조금 작은 것은 원이 아니라 120각형이라 감싼 넓이가 약간 작기 때문). yaw·pitch 도 출발점으로 돌아오지 않는데, roll 이 생긴 뒤에는 "로컬 pitch 축" 이 더 이상 세계의 수평축이 아니기 때문입니다. mode 1 은 세 바퀴 내내 roll 0.0° 이고 yaw·pitch 가 매 바퀴 출발 자세(−28.6°, 4.6°)로 정확히 되돌아옵니다. 두 열의 <code>Camera::GetRoll</code> 은 스크립트가 자기 쿼터니언에서 역추출한 roll 과 0.2° 이내로 일치했으므로, 5절의 "roll 은 forward 를 축으로 한 기울기" 정의도 이 실험으로 함께 검증되었습니다.</p>
+
+<div class="fig">
+  <img src="../images/2026-09-30-quat-roll-local-1loop.png" alt="가상 마우스로 원을 한 바퀴 그린 뒤: 지평선이 약 15도 기울어 있다. 콘솔에 QuaternionLook[mode 0] 프레임 120 (1.00 바퀴) roll -14.9도 로그가 보인다" style="max-width:100%;border-radius:6px">
+  <div class="cap">그림 2. mode 0, 한 바퀴 뒤(132 프레임). 원을 한 바퀴 그렸을 뿐인데 지평선이 약 15° 기울었다. 콘솔 마지막 줄이 <code>roll −14.9°</code>.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-30-quat-roll-local-3loops.png" alt="세 바퀴 뒤: 지평선이 약 45도 기울어 바닥 체커가 대각선으로 흐른다. 콘솔에 0.5 바퀴 간격으로 roll 이 -9.9, -14.9, -24.8, -30.1, -39.9, -45.7도로 커지는 로그가 보인다" style="max-width:100%;border-radius:6px">
+  <div class="cap">그림 3. mode 0, 세 바퀴 뒤(372 프레임). roll −45.7°. 콘솔에 반 바퀴 간격으로 roll 이 단조 증가하는 것이 보인다 — 흔들리는 잡음이 아니라 바퀴 수에 비례하는 값이다.</div>
+</div>
+<div class="fig">
+  <img src="../images/2026-09-30-quat-roll-world-3loops.png" alt="같은 입력을 월드 yaw + 로컬 pitch 로 누적한 세 바퀴 뒤: 지평선이 수평이고 콘솔의 roll 이 모두 -0.0도이다" style="max-width:100%;border-radius:6px">
+  <div class="cap">그림 4. mode 1, 같은 입력·같은 372 프레임. 지평선이 수평이고 콘솔의 roll 은 전부 <code>−0.0°</code>. 부동소수점 오차만으로는 세 바퀴에 0.1° 도 생기지 않았다.</div>
+</div>
+
+<h4>이 실험이 바꾸는 것</h4>
+<ul>
+  <li><b>phase-2 3.5 의 원인 문장</b>은 정정합니다(원문은 그대로 두고 상자를 덧붙였습니다). "각도 둘로 저장하면 원천 차단" 이라는 결론과 선택은 그대로 유효합니다.</li>
+  <li><b>3.1 셋째 행(6자유도)의 roll 은 버그가 아닙니다.</b> 우주선 카메라에서 같은 조작을 하면 같은 roll 이 생기고, 그것이 "위가 없는" 세계의 올바른 물리입니다. FPS 카메라에서 버그가 되는 이유는 세계에 위(+Y)가 있기 때문이며, 그래서 yaw 는 월드 Y 로 곱하거나(mode 1) 아예 각도 둘만 저장합니다(현재 <code>Camera::Rotate</code>).</li>
+  <li><b>실험은 실험 프로젝트에 격리합니다.</b> <code>QuaternionLook</code> 은 예제가 아니라 문서의 주장을 확인하는 코드이므로 Sample 이 아닌 <code>QuaternionLookTest</code> 프로젝트의 <code>Scripts\Tests\</code> 에 두었고, 앞으로의 실험 스크립트도 같은 자리에 모읍니다. "쿼터니언은 왜 아닌가" 를 말로 설명하는 대신 그 프로젝트의 에디터에서 <code>--play=1 --exit-after=372</code> 한 줄로 보여 줄 수 있습니다. 12절의 6자유도 컨트롤러를 만들 때 mode 0 코드가 그대로 출발점이 됩니다.</li>
+  <li><b>프로젝트 생성기가 두 군데 바뀌었습니다.</b> 스크립트 와일드카드가 재귀(<code>Scripts\**\*.cpp</code>)가 되어 하위 폴더도 컴파일되고, 생성 vcxproj 의 언어 표준이 <code>stdcpp20</code> 이 되었습니다(이전에는 C++20 전환에서 빠져 새 프로젝트가 빌드되지 않았음). 상세는 <a href="phase-11e.html#s5">phase-11e 5절</a>.</li>
+</ul>
+
 <h2 id="s4"><span class="num">4.</span>계층: GameObject 의 부모-자식</h2>
 <p>링크를 <code>Transform</code> 이 아니라 <code>GameObject</code> 에 두었습니다. <code>Transform</code> 은 값 타입이라 <code>object.GetTransform() = placement;</code> 처럼 통째로 복사되는데(<code>Scene::AddModel</code>), 부모 포인터가 값 안에 있으면 그 복사가 링크까지 옮겨 엉뚱한 부모를 가리키게 됩니다. GameObject 는 복사가 금지되어 있고 11-C 부터 <code>unique_ptr</code> 로 소유되어 주소가 안정적이므로 비소유 포인터를 두기에 맞는 자리입니다. 소유는 여전히 <code>Scene</code> 의 평면 벡터가 합니다 — 에디터의 선택(인덱스), 재생 루프의 순회, 직렬화 순서가 모두 그대로입니다.</p>
 <pre><code><span class="cm">// Scene/GameObject.h (11-F)</span>
@@ -237,6 +297,7 @@ camera-&gt;SetRotation(pose.GetRotationMatrix());</code></pre>
   <li><b>픽킹·프러스텀 아이콘.</b> 광선을 로컬 AABB 로 옮길 때 <code>GetWorldMatrix</code> 를 쓰므로 자식도 제자리에서 선택됩니다. 카메라 프러스텀은 <code>pose.GetRotationMatrix()</code> 를 그대로 써서 부모 roll 만큼 기울어진 채 그려집니다.</li>
   <li><b>삭제.</b> Delete 키·버튼은 <code>Scene::RemoveObject</code> 를 부르므로 서브트리가 함께 사라집니다. 선택은 −1 로.</li>
 </ul>
+<div class="applied"><div class="t">버그 수정 (2026-09-30)</div>위 "드래그 앤 드롭" 구현은 자식이 <em>없는</em> 항목 위에 놓으면 <code>PopID() too many times</code> 어서션으로 멈췄습니다. 잎은 <code>NoTreePushOnOpen</code> 으로 그려 푸시를 하지 않는데, 드롭이 그 자리에서 자식을 붙인 뒤 <code>open &amp;&amp; !GetChildren().empty()</code> 를 다시 물어 짝 없는 <code>TreePop</code> 이 나갔기 때문입니다. 지금은 <code>const bool hadChildren</code> 을 <code>TreeNodeEx</code> 앞에서 한 번 읽어 잎 플래그와 <code>TreePop</code> 조건에 같이 씁니다. 새 자식은 다음 프레임부터 보입니다. 상세: <a href="rendering-analysis.html#applied-treepop">적용 기록</a>, 10절.</div>
 
 <h2 id="s7"><span class="num">7.</span>직렬화와 모델 루트</h2>
 <pre><code><span class="cm">// 씬 파일 버전 3 — 오브젝트 하나</span>
@@ -279,6 +340,7 @@ SherlockEditor.exe --backend=d3d12 --scene=demo --exit-after=30 --add=1 --set-pa
   <li><strong>동봉 모델은 노드가 하나.</strong> 7절의 모델 루트 경로(<code>validInstances &gt; 1</code>)를 Sponza(<code>×1</code>)·헬멧으로는 탈 수 없었습니다. 그 경로는 <code>SetParent(root, false)</code> + <code>SetPreTransform</code> 두 호출뿐이고 재부모화·씬 로드와 같은 함수를 지나므로 코드 읽기로 확인하고 넘어갔습니다. 여러 노드를 가진 glTF 를 놓으면 루트 아래 접히는 것이 완료 확인입니다.</li>
   <li><strong>Transform 복사가 링크를 복사한다.</strong> 4절 첫 문단. 링크를 GameObject 에 둔 이유이고, <code>AddModel</code> 의 <code>object.GetTransform() = transform;</code> 이 여전히 안전한 이유입니다.</li>
   <li><strong>드롭 중 벡터 변경.</strong> 트리 순회 중 자식 위에 드롭하면 <code>children</code> 이 바뀝니다. 자식 목록을 복사해 순회합니다(6절).</li>
+  <li><strong>드롭이 TreePop 조건도 바꾼다 (2026-09-30 추가).</strong> 위 항목의 나머지 절반입니다. 잎 위에 드롭하면 그 노드가 같은 프레임에 "자식 있음" 이 되어 푸시하지 않은 트리를 팝했고, <code>imgui.cpp</code> 의 <code>PopID() too many times</code> 어서션이 났습니다. Push/Pop 짝의 조건은 Push 시점에 지역 변수로 고정합니다. 9절의 <code>--set-parent</code> 는 ImGui 그리기 밖에서 <code>SetParent</code> 를 부르므로 이 버그를 잡지 못했습니다 — 실제로 끌어다 놓기 전까지 드러나지 않았습니다.</li>
   <li><strong>비균등 스케일 부모.</strong> <code>XMMatrixDecompose</code> 는 전단(shear)을 표현할 수 없어, 부모가 (1, 2, 1) 처럼 스케일되고 자식이 회전돼 있으면 기즈모·재부모화의 로컬 값이 근사가 됩니다. 유니티도 같은 한계이며 카메라(스케일 버림)에는 영향이 없습니다.</li>
   <li><strong>히어독과 백슬래시.</strong> 문서와 소스를 쓰는 셸 명령이 일정 길이를 넘으면 잘려 "unexpected EOF" 가 났고, 문자열의 <code>\</code> 가 한 번 풀려 <code>"\/"</code> 가 되어 C4129 경고가 났습니다. 명령을 짧게 나누고 경로 구분자는 <code>chr(92)</code> 로 조립해 해결했습니다. 편집 후 <code>norm.py</code> 로 BOM·CRLF 를 통일했습니다(11-D 의 CRLF 함정과 같은 이유).</li>
 </ul>
@@ -290,6 +352,7 @@ SherlockEditor.exe --backend=d3d12 --scene=demo --exit-after=30 --add=1 --set-pa
   <li><b>저장/로드</b> — 9절 B: 버전 3 파일에서 parent 복원, 월드 위치 동일. 테스트 파일 <code>hier_test.json</code> 은 지움.</li>
   <li><b>D3D12</b> — 9절 D: 같은 수치.</li>
   <li><b>기존 동작</b>: 데모 씬 재생(Rigidbody·Rotator·PlayerController), Main Camera 즉시 전환, 에디터 마우스 룩(<code>Rotate</code> → 각도 경로) 모두 이전과 같음. Sponza 드롭은 "Sponza 1" 오브젝트 하나(노드 하나)로 이전과 같음.</li>
+  <li><b>2026-09-30 추가 — 쿼터니언 roll 누적 재현</b>: <a href="#s3-4">3.4</a>. 실험 프로젝트 <code>QuaternionLookTest</code> 의 에디터에서 <code>QuaternionLook</code> mode 0 은 17° 원 한 바퀴당 roll 약 15° 누적(세 바퀴 −45.7°), mode 1 은 0.0°. 그림 2~4, <code>images/2026-09-30-quat-roll-*.png</code>. Sample 에디터에서는 같은 스크립트가 등록되지 않음(<code>--add-component=QuaternionLook</code> 실패 로그로 확인). 프로젝트 생성기 재귀 와일드카드·C++20 수정 뒤 QuaternionLookTest 에디터 빌드 경고·오류 0.</li>
 </ul>
 <div class="fig">
   <img src="../images/2026-09-29-phase11f-roll-play.png" alt="재생 중: Cube 3 을 30° 굴린 상태에서 자식 Main Camera 로 본 화면이 기울어 있다. Hierarchy 에 Cube 3 아래 Main Camera 가 들어 있고 Inspector 가 1 children follow this object 를 표시한다" style="max-width:100%;border-radius:6px">
@@ -317,7 +380,7 @@ SherlockEditor.exe --backend=d3d12 --scene=demo --exit-after=30 --add=1 --set-pa
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 작업 트리 (2026/09/29, 11-E 위에 연속). 이전: <a href="phase-11e.html">11-E단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11f">rendering-analysis.html PHASE 11-F</a>. 설계 결정: <a href="rendering-analysis.html#d8">D8</a>(카메라·오일러)과 <a href="rendering-analysis.html#d15">D15</a>(GameObject 구조)의 적용 결과 상자. 스크린샷은 <code>images/2026-09-29-phase11f-*.png</code>. 12단계(고급 렌더링)는 시작하지 않았다.
+  대상: SherlockEngine 작업 트리 (2026/09/29, 11-E 위에 연속). 이전: <a href="phase-11e.html">11-E단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11f">rendering-analysis.html PHASE 11-F</a>. 설계 결정: <a href="rendering-analysis.html#d8">D8</a>(카메라·오일러)과 <a href="rendering-analysis.html#d15">D15</a>(GameObject 구조)의 적용 결과 상자. 스크린샷은 <code>images/2026-09-29-phase11f-*.png</code>, 3.4 의 재현 실험(2026-09-30)은 <code>images/2026-09-30-quat-roll-*.png</code>. 2026-10-01 문서-코드 점검 반영(3.4 에 쿼터니언 곱셈 표기 관례 주석 추가, 본문 서술은 소스와 일치 확인). 12단계(고급 렌더링)는 시작하지 않았다.
 </div>
 </main>
 </div>

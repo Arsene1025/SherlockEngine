@@ -139,7 +139,8 @@ bool Renderer::Initialize(RHI::Device* device)
 	// ---- PSO의 고정 부분. 나머지(깊이 테스트 켬, 불투명, 트라이앵글 리스트)는 Desc 기본값을 씀 ----
 	// PipelineStateDesc 를 D3D12_GRAPHICS_PIPELINE_STATE_DESC 처럼 한 리터럴로 적음. 지정 초기화는 선언 순서를 따라야 하므로
 	// 필드 순서는 PipelineTypes.h 와 같음: vs, ps, bindingLayouts, bindingLayoutCount, vertexLayout, rasterizer, ..., rtvCount, dsvFormat.
-	m_baseDesc = PipelineStateDesc{
+	m_baseDesc = PipelineStateDesc
+	{
 		.vs = m_vs,
 		.ps = m_ps,
 		.bindingLayouts = { m_frameLayout, m_objectLayout, m_materialLayout },

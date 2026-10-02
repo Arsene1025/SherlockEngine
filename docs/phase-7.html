@@ -207,7 +207,7 @@ td .fix b{color:var(--ok);font-weight:600}
 
 <div class="facts">
   <div><div class="k">상태</div><div class="v">작업 트리<small>커밋은 사용자가 결정</small></div></div>
-  <div><div class="k">RHI/</div><div class="v">헤더 10 · cpp 2<small>Device.h, CommandList.h, RHI.h/.cpp 신설</small></div></div>
+  <div><div class="k">RHI/</div><div class="v">헤더 10 · cpp 2<small>Device.h, CommandList.h, RHI.h/.cpp 신설</small><small><span class="sub">2026-10-01: 헤더 11 · cpp 2 (ResourcePool.h 가 RHI/ 로 옮겨 옴)</span></small></div></div>
   <div><div class="k">RHI/D3D11/</div><div class="v">파일 12<small>D3D11Device, D3D11CommandList 로 개명</small></div></div>
   <div><div class="k">Graphics/</div><div class="v">파일 8<small>Renderer·Mesh·VertexTypes·ShaderConstants·TextureLoader</small></div></div>
   <div><div class="k">픽셀 비교</div><div class="v">794,880 중 12<small>전부 창 모서리(둥근 테두리). 씬 영역 0</small></div></div>
@@ -235,6 +235,14 @@ td .fix b{color:var(--ok);font-weight:600}
   </tbody>
 </table></div>
 
+<div class="applied"><div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>생성.</b> 장치는 지금 <code>AppBase</code>가 아니라 10단계에서 생긴 <code>Engine</code>이 가집니다: <code>Core/Engine.h</code>의 <code>RHI::Backend m_backend</code>, <code>std::unique_ptr&lt;RHI::Device&gt; m_device</code>, 그 뒤 <code>Renderer m_renderer</code>. 생성은 <code>Core/Engine.cpp</code>의 <code>m_device = RHI::CreateDevice(m_backend, deviceDesc)</code>입니다 (<a href="phase-10.html#s5">10단계 §5</a>).</li>
+    <li><b>ShaderCompiler.</b> 구현은 8단계에서 <code>RHI/D3D11/ShaderCompiler.cpp</code> → <code>RHI/DXBC/ShaderCompiler.cpp</code>로 옮겨져 두 백엔드가 공유합니다 (<a href="phase-8.html#s9">8단계 §9</a>). 선언은 그대로 <code>RHI/ShaderCompiler.h</code>입니다.</li>
+    <li><b>격리 규칙.</b> 지금의 격리 규칙은 <b><code>RHI/D3D11/</code>·<code>RHI/D3D12/</code>·<code>RHI/DXBC/</code> 밖</b>에서 <code>ID3D11 | d3d11.h | dxgi.h | d3dcompiler.h | imgui_impl_dx11 | ComPtr</code> 0건입니다. 8단계에서 생긴 <code>RHI/D3D12/</code>(D3D12 백엔드)와 <code>RHI/DXBC/ShaderCompiler.cpp</code>(fxc·리플렉션)가 이 헤더들을 쓰므로, 7단계의 "<code>RHI/D3D11/</code> 밖" 문구 그대로 grep 하면 이 두 폴더가 걸립니다. 2026-10-01 기준으로 Graphics·App·Core·Scene 에서는 0건입니다.</li>
+    <li><b>F10.</b> 11-C단계에서 "애니메이션 고정"이 재생 일시정지로 바뀌었습니다 (<code>App/EditorApp.cpp</code>의 <code>if (input.IsKeyPressed(VK_F10)) TogglePause();</code>, <a href="phase-11c.html#s8">11-C단계 §8</a>). 이 문서의 픽셀 비교는 7단계 당시의 F10 고정으로 한 것입니다.</li>
+  </ul>
+</div>
 <h2 id="s2"><span class="num">2.</span>무엇이 RHI이고 무엇이 아닌가</h2>
 <p>RHI(Render Hardware Interface)는 <em>API 차이만</em> 감추는 층입니다. 리소스 생성, 파이프라인 상태, 바인딩, 렌더 패스, 드로우, 상태 전이 — 즉 D3D11과 D3D12가 서로 다르게 표현하는 것들입니다. 재질 시스템, 드로우 정렬, 텍스처 캐시, 그림자 패스의 순서는 RHI 위에 있는 Renderer의 일이고, 어느 백엔드에서나 같은 코드로 돌아갑니다. 이 경계를 폴더로 그었습니다.</p>
 <pre><code>SherlockEngine/
@@ -256,6 +264,14 @@ td .fix b{color:var(--ok);font-weight:600}
     Renderer.h/.cpp, Mesh.h/.cpp, VertexTypes.h, ShaderConstants.h, TextureLoader.h/.cpp
   Scene/  App/  Core/  Shaders/  Assets/</code></pre>
 <p>같은 모양의 라이브러리가 여럿 있습니다. NVRHI는 D3D11·D3D12·Vulkan 위에 가상 인터페이스와 리소스 핸들을 두고<sup><a href="#ref-2">2</a></sup>, sokol_gfx는 Desc 구조체와 세대 카운터가 있는 풀·정수 id를 씁니다<sup><a href="#ref-3">3</a></sup>. bgfx<sup><a href="#ref-4">4</a></sup>와 Diligent Engine<sup><a href="#ref-9">9</a></sup>도 같은 부류입니다. 우리 RHI는 그것들의 축소판이며, 인터페이스에는 이 프로젝트가 실제로 쓰는 것만 담았습니다.</p>
+<div class="applied"><div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><code>ResourcePool.h</code>는 지금 <code>RHI/D3D11/</code>가 아니라 <code>RHI/ResourcePool.h</code>에 있고, <code>D3D11Device.h</code>와 <code>RHI/D3D12/D3D12Device.h</code>가 함께 씁니다. 그래서 <code>RHI/</code>의 헤더는 11개입니다.</li>
+    <li>fxc/DXBC 구현은 <code>RHI/D3D11/ShaderCompiler.cpp</code>가 아니라 <code>RHI/DXBC/ShaderCompiler.cpp</code>입니다(8단계).</li>
+    <li>8단계에서 <code>RHI/D3D12/</code>(D3D12 백엔드)와 <code>RHI/DXBC/</code>가 트리에 더해졌습니다.</li>
+    <li>트리의 "<code>RHI.h / RHI.cpp</code> — Backend, DeviceDesc, CreateDevice 팩토리"는 정확하지 않습니다. <code>Backend</code>와 <code>DeviceDesc</code>는 3.1절 스니펫대로 <code>RHI/Device.h</code>에 선언되어 있고, <code>RHI/RHI.h</code>에는 <code>CreateDevice</code>와 <code>ToString(Backend)</code>만 있습니다.</li>
+  </ul>
+</div>
 
 <h2 id="s3"><span class="num">3.</span>인터페이스</h2>
 <h3 id="s3-1">3.1 RHI::Device</h3>
@@ -288,8 +304,20 @@ td .fix b{color:var(--ok);font-weight:600}
     };
 }</code></pre>
 
+<div class="applied"><div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><code>Backend</code>에는 8단계에서 <code>D3D12</code>가 들어왔습니다 (<code>enum class Backend : uint8_t { D3D11, D3D12 }</code>).</li>
+    <li><code>CreateTexture</code>의 시그니처는 2026-09-28 C++20 전환 때 포인터+개수에서 <code>TextureHandle CreateTexture(const TextureDesc&amp; desc, std::span&lt;const TextureSubresource&gt; subresources = {})</code>로 바뀌었습니다 (<code>RHI/Device.h</code>, <code>RHI/D3D11/D3D11Device.h</code>).</li>
+    <li>"메서드는 하나도 더하거나 빼지 않았다"는 7단계 당시의 서술입니다. 지금 인터페이스에는 <code>GetBackendName</code>, <code>IsInitialized</code>, <code>GetFrameIndex</code>, 10단계의 <code>GetTimestampResults</code>(<a href="phase-10.html#s7-1">10단계 §7.1</a>), 11단계 스크린샷용 <code>RequestBackBufferReadback</code>·<code>TakeReadbackResult</code>, 그리고 <code>SetVSync</code>·<code>IsVSync</code>·<code>IsTearingSupported</code>·<code>GetPipelineCount</code>가 있습니다.</li>
+  </ul>
+</div>
 <h3 id="s3-2">3.2 RHI::CommandList</h3>
 <p>6단계 메서드 집합 그대로입니다: <code>BeginRenderPass / EndRenderPass / SetPipelineState / SetResourceSet / SetVertexBuffer / SetIndexBuffer / DrawIndexed / Barrier / CopyBuffer</code> + <code>Stats</code>. D3D11 백엔드에서는 ImmediateContext를 감싼 래퍼이고, D3D12에서는 <code>ID3D12GraphicsCommandList</code>에 기록하게 됩니다. D3D12가 D3D11과 가장 크게 다른 세 가지 — 명시적 동기화, PSO, 커맨드 리스트와 디스크립터 테이블<sup><a href="#ref-5">5</a></sup> — 가 이미 인터페이스 어휘(Barrier, PipelineStateDesc, CommandList, ResourceSet)로 들어와 있습니다.</p>
+<div class="applied"><div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><code>RHI/CommandList.h</code>에는 지금 위 목록 외에 <code>bool IsInRenderPass() const</code>, 10단계 GPU 프로파일러용 <code>void WriteTimestamp(uint32_t slot)</code>, 통계 접근자 <code>const Stats&amp; GetStats() const</code>·<code>void ResetStats()</code>가 있습니다.</li>
+  </ul>
+</div>
 
 <h3 id="s3-3">3.3 핸들은 값, Device만 가상</h3>
 <p>D21이 비교한 세 형태 — (a) 리소스마다 가상 인터페이스, (b) 핸들 + 백엔드 풀, (c) 컴파일 타임 선택 — 중 (b)를 리소스에, (a)를 Device/CommandList에 씁니다. 리소스가 <code>{index, generation}</code> 값이면 호출 코드에 포인터가 안 보이고, 세대 카운터가 해제 후 사용을 "항상 널"로 바꿉니다<sup><a href="#ref-1">1</a></sup>. 드로우콜당 가상 호출 몇 개는 D3D API 호출 비용에 묻힙니다. 런타임에 백엔드를 바꿀 수 있으므로(<code>Backend</code> 값 하나) 8단계에서 두 백엔드를 같은 실행 파일에서 나란히 비교할 수 있습니다.</p>
@@ -312,13 +340,29 @@ std::unique_ptr&lt;Device&gt; CreateDevice(Backend backend, <span class="kw">con
     }
 }</code></pre>
 <p>새 백엔드를 더하려면 <code>case</code> 하나와 <code>RHI/&lt;backend&gt;/</code> 폴더 하나만 추가하면 됩니다. <code>DeviceDesc::windowHandle</code>이 <code>void*</code>인 것도 같은 이유로, RHI 헤더가 <code>windows.h</code>에 의존하지 않게 하기 위해서입니다.</p>
+<div class="applied"><div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><code>RHI/RHI.cpp</code>는 8단계부터 <code>RHI/D3D12/D3D12Device.h</code>도 include 하고 <code>case Backend::D3D12</code>를 가집니다. 두 case 모두 <code>Init</code> 실패 시 <code>Log::Error("RHI : … 장치 초기화 실패.")</code>를 남기고 <code>nullptr</code>를 돌려주며, <code>default</code>도 "지원하지 않는 백엔드" 로그를 남깁니다.</li>
+    <li>지금의 격리 규칙은 <b><code>RHI/D3D11/</code>·<code>RHI/D3D12/</code>·<code>RHI/DXBC/</code> 밖</b>에서 <code>ID3D11 | d3d11.h | dxgi.h | d3dcompiler.h | imgui_impl_dx11 | ComPtr</code> 0건입니다. 8단계에서 생긴 <code>RHI/D3D12/</code>(D3D12 백엔드)와 <code>RHI/DXBC/ShaderCompiler.cpp</code>(fxc·리플렉션)가 이 헤더들을 쓰므로, 7단계의 "<code>RHI/D3D11/</code> 밖" 문구 그대로 grep 하면 이 두 폴더가 걸립니다. 2026-10-01 기준으로 Graphics·App·Core·Scene 에서는 0건입니다.</li>
+  </ul>
+</div>
 
 <h2 id="s5"><span class="num">5.</span>D3D11 백엔드</h2>
 <p><code>Device</code> → <code>D3D11Device final : public RHI::Device</code>, <code>CommandList</code> → <code>D3D11CommandList final : public RHI::CommandList</code>. 메서드 본문은 6단계와 같고 <code>override</code>가 붙었을 뿐입니다. <code>final</code>은 컴파일러에 가상 호출을 탈가상화(devirtualize)할 여지를 주고, 이 클래스를 더 상속할 이유가 없다는 선언이기도 합니다. 리소스 풀(<code>ResourcePool&lt;T, Handle&gt;</code>, free list + 세대)은 3단계 그대로이며, <code>Desc::debugName</code>은 <code>SetPrivateData(WKPDID_D3DDebugObjectName)</code>으로 D3D 객체에 붙으므로 Debug Layer 누수 보고와 RenderDoc에 그 이름으로 표시됩니다<sup><a href="#ref-7">7</a></sup>.</p>
 <p>내부 접근자(<code>GetDevice / GetContext / GetTexture / GetPipeline …</code>)는 인터페이스에 없고 <code>D3D11Device</code>의 공개 메서드입니다. 이를 부르는 것은 <code>D3D11CommandList</code>와 <code>PipelineState</code>뿐이며, 둘 다 같은 폴더에 있습니다. 폴더 밖 코드는 <code>RHI::Device*</code>만 갖고 있어 부를 수 없습니다.</p>
+<div class="applied"><div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><code>ResourcePool</code>은 지금 <code>RHI/ResourcePool.h</code>에 있고 선언은 <code>template &lt;typename T, ResourceHandle HandleT&gt; class ResourcePool</code>입니다. 2026-09-28 C++20 전환 때 <code>HandleT</code>를 <code>ResourceHandle</code> 콘셉트(<code>RHI/Handle.h</code>)로 제약했고, 2026-10-01에 그 조건을 멤버 모양 검사에서 "<code>Handle&lt;Tag&gt;</code>의 특수화이고 trivially copyable"(<code>kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyable_v&lt;T&gt;</code>)로 바꿨습니다. free list + 세대 동작은 같습니다.</li>
+  </ul>
+</div>
 
 <h2 id="s6"><span class="num">6.</span>셰이더 컴파일러의 자리</h2>
 <p>셰이더 바이트코드는 백엔드마다 다릅니다. fxc는 DXBC(SM 5.x), dxc는 DXIL(SM 6.x)을 냅니다<sup><a href="#ref-8">8</a></sup>. 그래서 <code>ShaderCompiler.h</code>(컴파일·로드·리플렉션 함수 선언, <code>BindingTypes</code>만 의존)는 <code>RHI/</code>에, 구현(<code>D3DCompile</code>·<code>D3DReflect</code>)은 <code>RHI/D3D11/ShaderCompiler.cpp</code>에 있습니다. 8단계에서 D3D12 백엔드가 오면 같은 선언에 dxc 구현이 붙고, 캐시 키에 백엔드가 들어갑니다. 지금은 구현이 하나라 <code>Backend</code> 인자가 없습니다 — 필요해질 때 넣는 것이 "얇게" 유지하는 방법입니다.</p>
+<div class="applied"><div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li>8단계에서 구현 파일이 <code>RHI/DXBC/ShaderCompiler.cpp</code>로 옮겨졌습니다. 바이트코드 형식(DXBC)에 묶인 코드라 D3D12 백엔드도 같은 fxc 결과를 받습니다 (<a href="phase-8.html#s9">8단계 §9 셰이더: DXBC 그대로</a>). 그래서 예고와 달리 dxc 구현과 <code>Backend</code> 인자는 아직 없고, <code>RHI/ShaderCompiler.h</code>의 선언도 그대로입니다.</li>
+  </ul>
+</div>
 
 <h2 id="s7"><span class="num">7.</span>ImGui 어댑터</h2>
 <p>로드맵은 두 길을 제시했습니다. RHI 위에 자체 ImGui 렌더러를 작성하는 방법(권장, 소형)과, 백엔드별로 <code>imgui_impl_*</code>을 갈아 끼우는 얇은 어댑터입니다. 우리는 <strong>후자</strong>를 택했습니다. Dear ImGui 문서 자체가 "표준 백엔드는 검증되어 있고, 직접 만든 렌더러 백엔드가 프로젝트에 가치를 더할 가능성은 낮다"고 말합니다<sup><a href="#ref-6">6</a></sup>. 자체 렌더러를 쓰려면 RHI에 시저 사각형과 동적 정점 버퍼 갱신 경로를 더해야 하는데, 지금 그것이 필요한 이유가 ImGui뿐이라면 RHI를 두껍게 만들 뿐입니다.</p>
@@ -350,6 +394,12 @@ uint64_t D3D11Device::GetImGuiTextureId(TextureHandle h)
   </tbody>
 </table></div>
 <p>로드맵의 "Renderer·Material·Mesh 코드가 변경 없이 컴파일" 기준에 대해 솔직하게 적으면, Renderer는 이전에 <em>구체 클래스 이름</em>(<code>Device</code>)을 썼으므로 타입 이름을 바꾸지 않고는 불가능했습니다. 다만 3~6단계에서 인터페이스가 될 이름과 시그니처를 미리 잡아 둔 덕분에, 바뀐 것은 그 치환이 전부였습니다.</p>
+<div class="applied"><div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><code>App/AppBase.h</code>의 <code>graphicsDevice</code>·<code>m_backend</code>는 10단계에서 <code>Engine</code>으로 옮겨졌습니다 (<code>Core/Engine.h</code>의 <code>m_backend</code>, <code>m_device</code>). <code>AppBase</code>는 지금 <code>Engine m_engine</code> 하나를 갖고, 생성은 <code>Core/Engine.cpp</code>의 <code>RHI::CreateDevice</code>, 접근은 <code>Engine::GetDevice()</code>입니다.</li>
+    <li><code>App/TestApp.cpp</code>는 2026-09-28 커밋(<code>11a74a5</code>)에서 <code>App/EditorApp.cpp</code>로 이름이 바뀌었습니다. 그림자 맵 미리보기는 지금도 <code>DebugUI::DrawShadowPanel(Renderer&amp;, RHI::Device&amp;)</code>이 <code>device.GetImGuiTextureId(renderer.GetShadowMap())</code>로 그립니다.</li>
+  </ul>
+</div>
 
 <h2 id="s9"><span class="num">9.</span>함정과 해결</h2>
 <ul>
@@ -362,6 +412,12 @@ uint64_t D3D11Device::GetImGuiTextureId(TextureHandle h)
   <li><strong>결정적 비교.</strong> 애니메이션(공전·bob·자전·맥동)이 시간에 따라 움직여 두 실행의 화면이 같을 수 없었습니다. F10은 시간을 <code>t = 0</code>으로 고정하고 광원 공전을 끕니다. 비교 대상은 클라이언트 영역이며 ImGui 헤더 행도 포함해 0건이었습니다.</li>
 </ul>
 
+<div class="applied"><div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>파괴 순서.</b> ImGui 렌더러 종료는 지금 <code>AppBase</code> 소멸자가 직접 하지 않고 <code>Core/Engine.cpp</code>의 <code>Engine::Shutdown()</code>이 합니다: 씬 GPU 캐시 → <code>m_renderer.Shutdown()</code> → <code>m_device-&gt;ShutdownImGui()</code> → <code>m_device.reset()</code>. <code>AppBase::~AppBase</code>는 창을 파괴한 뒤 <code>m_engine.Shutdown()</code>을 부르고, 그다음 ImGui Win32 백엔드와 컨텍스트를 정리합니다. <code>Core/Engine.h</code>에서도 <code>m_device</code>가 <code>m_renderer</code>보다 먼저 선언되어 있어 멤버 순서 규칙은 같습니다.</li>
+    <li><b>결정적 비교.</b> F10은 11-C단계부터 "고정"이 아니라 재생 일시정지(<code>TogglePause</code>)입니다.</li>
+  </ul>
+</div>
 <h2 id="s10"><span class="num">10.</span>검증과 스크린샷</h2>
 <div class="applied">
   <div class="t">적용 결과 — 2026-09-23</div>
@@ -395,7 +451,7 @@ uint64_t D3D11Device::GetImGuiTextureId(TextureHandle h)
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 작업 트리 (2026/09/23, 6단계 위에 연속). 이전: <a href="phase-6.html">6단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p7">rendering-analysis.html PHASE 7</a>. 스크린샷은 <code>images/2026-09-23-phase7-*.png</code>.
+  대상: SherlockEngine 작업 트리 (2026/09/23, 6단계 위에 연속). 이전: <a href="phase-6.html">6단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p7">rendering-analysis.html PHASE 7</a>. 스크린샷은 <code>images/2026-09-23-phase7-*.png</code>. 2026-10-01 문서-코드 점검 반영.
 </div>
 </main>
 </div>

@@ -53,7 +53,7 @@ public:
 	const std::string& GetName() const { return name; }
 	void SetName(const std::string& value) { name = value; }   // 11-B단계: 배치한 모델에 번호가 붙은 이름을 줄 때 사용
 
-	// ---- 11-F단계: 계층 ----
+	// ---- 계층 ----
 	GameObject* GetParent() { return parent; }
 	const GameObject* GetParent() const { return parent; }
 	const std::vector<GameObject*>& GetChildren() const { return children; }

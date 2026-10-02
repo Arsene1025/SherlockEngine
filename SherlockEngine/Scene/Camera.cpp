@@ -11,14 +11,26 @@ namespace
 	// 90도보다 살짝 작게 제한함. 정확히 90도면 forward가 up과 나란해져 right가 정의되지 않음.
 	constexpr float kPitchLimit = XM_PIDIV2 - 0.01f;
 
+	/*
+	카메라를 Yaw로 돌릴 때 360도로 계속 돌릴 수 있어야 하는데 각도를 그대로 두면 Yaw의 값이 끝도 없이 커지거나 작아진다
+	따라서 각도를 360도 더하거나 빼서 각도가 일정한 범위 안에 존재하도록 만드는 것
+	정확히 360도를 빼기 때문에 카메라가 회전할 일은 없음
+	while을 사용함으로서 입력이 얼마가 되든 [−π, π]로 돌아오는걸 보장.
+	*/
 	float WrapAngle(float angle)
 	{
-		// [−π, π] 범위로 되돌림. 오래 돌려도 값이 계속 커지지 않아 누적 오차가 생기지 않음.
+		// [−π, π] 범위로 되돌림. 오래 돌려도 값이 계속 커지지 않아 값이 커짐으로서 생기는 정밀도 손실을 막음.
+		// float는 유효 숫자의 개수가 고정되어있음, 값이 커지면 자릿수를 정수 쪽에서 사용하고 소수 쪽에 남는 자릿수가 줄어듬.
+		// 소수 자리수가 줄어들면 필연적으로 정밀도가 손실됨.
 		while (angle > XM_PI) angle -= XM_2PI;
 		while (angle < -XM_PI) angle += XM_2PI;
 		return angle;
 	}
-
+	/*
+	Pitch를 클램프로 처리하는 이유 -> 카메라를 올렸을 때 90도가 되면 월드의 UP벡터와 카메라의 Foward벡터가 일치함.
+	그렇게 되면 LookAt계산의 외적이 0이 되어버리고 90도가 넘으면 화면이 뒤집힘.
+	이를 막기위해 90도보다 0.01 rad(약 0.57도) 작은 약 89.43도로 Pitch를 Clamp함 (kPitchLimit).
+	*/
 	float ClampPitch(float pitch)
 	{
 		if (pitch > kPitchLimit) return kPitchLimit;

@@ -667,7 +667,10 @@ void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unor
 	std::string label = object.GetName().empty() ? "(unnamed)" : object.GetName();
 	if (!object.GetBehaviours().empty()) label += "  [" + std::to_string(object.GetBehaviours().size()) + "]";   // 11-C단계: 컴포넌트 수
 	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen;
-	if (object.GetChildren().empty()) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	// TreePop 여부는 TreeNodeEx 를 부르는 시점의 자식 유무로 고정함. 아래 드롭 처리에서 SetParent 가 자식 목록을 바꾸므로,
+	// 잎(NoTreePushOnOpen — 푸시 안 함)으로 그린 노드가 같은 프레임에 자식을 얻으면 다시 물어봤을 때 짝 없는 TreePop 이 나감.
+	const bool hadChildren = !object.GetChildren().empty();
+	if (!hadChildren) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 	if (m_selected == index) flags |= ImGuiTreeNodeFlags_Selected;
 	const bool open = ImGui::TreeNodeEx(label.c_str(), flags);
 	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) m_selected = index;
@@ -693,7 +696,7 @@ void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unor
 		ImGui::EndDragDropTarget();
 	}
 
-	if (open && !object.GetChildren().empty())
+	if (open && hadChildren)
 	{
 		// 자식 목록을 복사해 순회함: 드롭으로 재부모화하면 순회 중인 벡터가 바뀔 수 있음.
 		const std::vector<GameObject*> children = object.GetChildren();

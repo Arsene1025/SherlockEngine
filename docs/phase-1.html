@@ -227,6 +227,21 @@ td .fix b{color:var(--ok);font-weight:600}
 <tr><td class="mono">PipelineStateCache</td><td>Graphics/D3D11/</td><td><code>unordered_map&lt;Desc, index&gt;</code> + <code>vector&lt;unique_ptr&lt;PipelineState&gt;&gt;</code></td></tr>
 <tr><td class="mono">Device</td><td>Graphics/D3D11/</td><td><code>CreateShader(바이트코드) → ShaderHandle</code>, <code>CreatePipeline(Desc) → PipelineHandle</code>, <code>BindPipeline</code>, VSync 토글, Debug Layer 메시지 덤프</td></tr>
 </tbody></table></div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>위 표와 아래 "한 줄 요약"의 파일 위치는 1단계(c856ca8) 시점입니다. 지금 코드에서는 다음과 같습니다.</p>
+  <ul>
+    <li><b>API 중립 타입</b>: <code>PipelineStateDesc</code>는 <code>RHI/PipelineTypes.h/.cpp</code>에, <code>Handle&lt;Tag&gt;</code>는 <code>RHI/Handle.h</code>에 있습니다. <code>VertexTypes.h</code>는 여전히 <code>Graphics/</code>에 있습니다.</li>
+    <li><b>D3D11 구현</b>: <code>D3D11Convert</code>·<code>PipelineState</code>·<code>PipelineStateCache</code>는 7단계에서 <code>RHI/D3D11/</code>로 옮겨졌습니다(<a href="phase-7.html#s4">phase-7.html 4절</a>). 개별 상태 호출 일곱 개는 지금 <code>RHI/D3D11/PipelineState.cpp</code>의 <code>Bind()</code>에만 있습니다.</li>
+    <li><b>Device</b>: 7단계에서 <code>D3D11Device final : public RHI::Device</code>(<code>RHI/D3D11/D3D11Device.h</code>)로 바뀌었습니다.
+      <ul>
+        <li>셰이더 생성은 3단계부터 <code>CreateShader(const ShaderDesc&amp;)</code>입니다(<code>ShaderDesc</code>는 <code>RHI/ResourceDesc.h</code>).</li>
+        <li><code>CreatePipeline(const PipelineStateDesc&amp;)</code>와 <code>SetVSync(bool)</code>는 <code>RHI::Device</code>의 가상 함수입니다.</li>
+        <li><code>BindPipeline</code>은 없어졌고, 파이프라인 바인딩은 <code>RHI::CommandList::SetPipelineState(PipelineHandle)</code>가 맡습니다.</li>
+      </ul></li>
+    <li><b>D3D12 백엔드</b>: 8단계에서 같은 Desc가 <code>D3D12_GRAPHICS_PIPELINE_STATE_DESC</code>로 변환됩니다(<a href="phase-8.html#s7">phase-8.html 7절</a>). D3D12에서는 토폴로지 순서를 <code>RHI/D3D12/D3D12CommandList.cpp</code>의 <code>IASetPrimitiveTopology</code>가 설정합니다(2.2절 표의 "PSO 밖" 항목).</li>
+  </ul>
+</div>
 
 <h2 id="s2"><span class="num">2.</span>D3D11의 상태 모델과 D3D12의 PSO</h2>
 
@@ -323,6 +338,32 @@ uint64_t PipelineStateDesc::Hash() <span class="kw">const</span>
     <span class="kw">return</span> layout;
 }</code></pre>
 <p>시맨틱 이름은 열거형(<code>VertexSemantic::Position</code>)이고 문자열 <code>"POSITION"</code>으로 바꾸는 일은 <code>D3D11Convert::ToSemanticName</code>이 맡습니다. Vulkan에는 시맨틱 이름이 없고 location 번호만 있으므로 문자열을 API 중립 층에 두지 않았습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>3.1 루트 시그니처 자리</b>: 4단계(<a href="phase-4.html#s2-1">phase-4.html 2.1절</a>)에서 예고대로 채워졌습니다.
+      <ul>
+        <li><code>PipelineStateDesc</code>에 <code>BindingLayoutHandle bindingLayouts[kMaxBindingSets]</code>(<code>kMaxBindingSets = 4</code>)와 <code>uint8_t bindingLayoutCount</code>가 <code>ps</code> 바로 뒤에 들어갔습니다.</li>
+        <li>파일은 지금 <code>RHI/PipelineTypes.h</code>입니다.</li>
+      </ul></li>
+    <li><b>3.2 Hash() 스니펫</b>: 지금의 <code>RHI/PipelineTypes.cpp</code>는 <code>vs</code>·<code>ps</code> 다음에 <code>bindingLayoutCount</code>와 <code>bindingLayouts[i].index</code>·<code>.generation</code>도 섞습니다. 나머지 순서와 "쓰는 만큼만" 규칙은 그대로입니다.</li>
+    <li><b>3.2 비교 함수</b>: 2026-09-28 C++20 적용 때 바뀌었습니다.
+      <ul>
+        <li>하위 Desc 네 개(<code>RasterizerDesc</code>·<code>DepthStencilDesc</code>·<code>RenderTargetBlendDesc</code>·<code>VertexAttribute</code>)는 <code>bool operator==(const …&amp;) const = default;</code>가 되었습니다.</li>
+        <li>손으로 쓰던 <code>EqRasterizer</code> 등의 비교 함수는 삭제되었습니다.</li>
+        <li>float 비교는 "비트 비교(±0만 예외)"에서 "값 비교"로 바뀌었습니다. 두 방식은 NaN에서만 다르고, ±0 정규화는 이제 해시 쪽에만 남아 있습니다.</li>
+        <li>따라서 "필드를 추가하면 <code>Hash()</code>와 <code>operator==</code> 두 곳을 고친다"는 서술은 <code>PipelineStateDesc</code> 자신의 필드에만 해당합니다. 하위 Desc에 필드를 더하면 <code>Hash</code> 쪽만 고치면 됩니다. <code>PipelineStateDesc::operator==</code>는 배열을 "쓰는 만큼"만 비교해야 해서 여전히 손으로 씁니다.</li>
+      </ul></li>
+    <li><b>3.3 GetVertexLayoutPCN 스니펫</b>: 이 이름은 지금 코드에 없습니다.
+      <ul>
+        <li>4단계(D9, <a href="phase-4.html#s4">phase-4.html 4절</a>)에서 정점 포맷이 <code>VertexFormat</code> 열거형이 되었고, <code>GetVertexLayout(VertexFormat)</code>가 레이아웃을 돌려줍니다.</li>
+        <li>속성은 5단계에 TexCoord, 6단계에 Tangent가 더해져 다섯 개입니다. <code>VERTEX</code>는 64바이트입니다.</li>
+        <li>2026-09-28 C++20 적용으로 레이아웃은 <code>consteval VertexLayoutDesc MakeVertexLayoutPCNTT()</code>가 지정 초기화로 만들어 <code>inline constexpr kVertexLayoutPCNTT</code>에 담습니다. <code>static_assert</code>로 stride와 속성 수를 컴파일 시점에 검사하고, <code>GetVertexLayoutPCNTT()</code>는 이 상수를 돌려줍니다(<code>Graphics/VertexTypes.h</code>).</li>
+        <li><code>offsetof</code>를 쓴다는 원칙은 그대로입니다.</li>
+      </ul></li>
+    <li><b>ToSemanticName</b>: 지금 <code>RHI/D3D11/D3D11Convert.h</code>에 있습니다. 8단계 D3D12 백엔드에도 같은 이름의 <code>D3D12Convert::ToSemanticName</code>이 있습니다.</li>
+  </ul>
+</div>
 
 <h2 id="s4"><span class="num">4.</span>핸들</h2>
 <pre><code><span class="cm">// Graphics/Handle.h</span>
@@ -338,6 +379,28 @@ uint64_t PipelineStateDesc::Hash() <span class="kw">const</span>
 <span class="kw">using</span> ShaderHandle   = Handle&lt;ShaderTag&gt;;
 <span class="kw">using</span> PipelineHandle = Handle&lt;PipelineTag&gt;;</code></pre>
 <p>원문 D21이 권장한 "(b) 핸들 + 백엔드 풀" 방식의 첫 조각입니다. <code>Tag</code>는 정의조차 없는 불완전 타입으로, <code>BufferHandle</code>과 <code>TextureHandle</code>을 서로 다른 타입으로 만들어 잘못 넘기면 컴파일이 안 되게 하는 용도일 뿐입니다. Weissflog의 글<sup><a href="#ref-4">[4]</a></sup>이 정리한 핸들의 장점은 (1) 소유권이 한 곳(풀)에 있어 수명이 단순하고, (2) 값이라 복사·비교·직렬화가 자유롭고, (3) 세대 번호로 해제 후 접근을 탐지한다는 것입니다. 1단계에서는 셰이더와 PSO 모두 개별 삭제가 없어 세대가 항상 1이고, 진짜 풀은 3단계에서 도입됩니다(<a href="phase-3.html#s2">phase-3.html 2절</a>).</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>위치</b>: 지금 파일은 <code>RHI/Handle.h</code>입니다.</li>
+    <li><b>비교 연산자</b>: 2026-09-28 C++20 적용 때 바뀌었습니다.
+      <ul>
+        <li>스니펫의 <code>bool operator==(const Handle&amp;) const;</code>(손으로 쓴 <code>==</code>와 <code>!=</code>)는 <code>auto operator&lt;=&gt;(const Handle&amp;) const = default;</code> 한 줄이 되었습니다.</li>
+        <li><code>==</code>는 함께 암묵 선언되고, <code>!=</code>와 대소 비교는 컴파일러가 재작성합니다. 멤버 순서(index → generation)의 사전식 비교라 정렬 키로도 쓸 수 있습니다.</li>
+      </ul></li>
+    <li><b>콘셉트</b>: <code>ResourcePool&lt;T, HandleT&gt;</code>의 <code>HandleT</code>를 제약하는 <code>concept ResourceHandle</code>이 생겼습니다.
+      <ul>
+        <li>2026-10-01부터 조건은 "<code>Handle&lt;Tag&gt;</code>의 특수화(<code>kIsHandle&lt;T&gt;</code>)이면서 trivially copyable"입니다. 이전에는 index·generation·IsValid() 멤버가 있는지만 검사했습니다.</li>
+        <li><code>static_assert</code> 두 개로 <code>BufferHandle</code>은 만족하고 <code>uint32_t</code>는 만족하지 않음을 확인합니다.</li>
+      </ul></li>
+    <li><b>핸들 종류</b>: <code>BufferHandle</code>·<code>TextureHandle</code>(3단계), <code>BindingLayoutHandle</code>·<code>ResourceSetHandle</code>(4단계), <code>SamplerHandle</code>(5단계)이 더해졌습니다.</li>
+    <li><b>세대</b>: "PSO의 세대가 항상 1"은 4단계에서 바뀌었습니다.
+      <ul>
+        <li>셰이더 핫리로드를 위해 <code>PipelineStateCache</code>에 <code>m_generation</code>이 생겼습니다. <code>Clear()</code>할 때마다 세대가 1 오르고, 이전 세대의 PSO 핸들은 <code>Get()</code>에서 <code>nullptr</code>가 됩니다(<a href="phase-4.html#s6-3">phase-4.html 6.3절</a>).</li>
+        <li>셰이더는 3단계부터 <code>ResourcePool&lt;D3D11Shader, ShaderHandle&gt;</code>(free list + 세대)이 관리합니다.</li>
+      </ul></li>
+  </ul>
+</div>
 
 <h2 id="s5"><span class="num">5.</span>D3D11 구현</h2>
 
@@ -401,6 +464,37 @@ std::vector&lt;ShaderEntry&gt; m_shaders;      <span class="cm">// (3단계에�
 PipelineStateCache       m_pipelines;</code></pre>
 <p>C++ 멤버는 선언 순서로 생성되고 역순으로 파괴됩니다. 캐시가 <code>m_device</code>보다 <em>앞에</em> 선언되어 있으면 장치가 먼저 해제되고 나서 상태 객체들이 <code>Release</code>되며, Debug Layer는 종료 시 "Live Object"를 보고합니다. <code>ReleaseDevice()</code>도 같은 순서를 손으로 지킵니다: 캐시·풀 <code>Clear()</code> → 뷰·스왑체인 <code>Reset()</code> → 컨텍스트 → (보고) → 장치.</p>
 <p>이번에 <code>~Device()</code>가 <code>ReleaseDevice()</code>를 부르도록 했습니다. 이전에는 아무도 부르지 않았고 <code>ComPtr</code> 소멸에만 의존했습니다. 소멸자 안에서 <code>ID3D11Debug::ReportLiveDeviceObjects(D3D11_RLDO_DETAIL | D3D11_RLDO_IGNORE_INTERNAL)</code><sup><a href="#ref-5">[5]</a></sup>를 부르고, 그 보고를 포함한 Debug Layer 메시지를 <code>ID3D11InfoQueue</code>에서 꺼내 <code>Log</code>로 옮깁니다. 이 덤프(<code>Device::DumpDebugLayerMessages</code>)는 매 프레임 <code>Present</code> 뒤에도 돌아, 디버거를 붙이지 않고 콘솔만 봐도 D3D 오류·경고가 보입니다. 이 문서의 모든 검증은 디버거 없이 콘솔 로그로 했습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>5.1 PipelineState</b>: 파일은 <code>RHI/D3D11/PipelineState.h/.cpp</code>이고, 시그니처는 <code>bool Create(D3D11Device&amp; device, const PipelineStateDesc&amp; desc)</code>입니다.
+      <ul>
+        <li>스니펫의 <code>const Device::ShaderEntry*</code>는 지금 <code>const D3D11Shader*</code>(<code>RHI/D3D11/D3D11Resources.h</code>)입니다.</li>
+        <li>6단계부터 픽셀 셰이더는 선택 사항입니다. <code>desc.ps</code>가 비어 있으면 깊이 전용 파이프라인(그림자 맵)이고, <code>Bind()</code>는 <code>PSSetShader(nullptr, …)</code>를 부릅니다.</li>
+        <li><code>Bind()</code>의 일곱 호출과 인자는 그대로입니다.</li>
+      </ul></li>
+    <li><b>5.2 PipelineStateCache</b>: 시그니처는 <code>PipelineHandle GetOrCreate(D3D11Device&amp; device, const PipelineStateDesc&amp; desc)</code>입니다.
+      <ul>
+        <li>돌려주는 핸들의 세대는 상수 <code>1</code>이 아니라 캐시의 <code>m_generation</code>입니다. <code>Get()</code>은 세대가 다른 핸들에 <code>nullptr</code>를 돌려주고, <code>Clear()</code>는 세대를 올립니다(4단계 핫리로드).</li>
+        <li>생성 로그는 <code>"PSO 생성 #%u (fill=%s, cull=%d, layouts=%u, gen=%u). 캐시 크기 %zu"</code>로 바뀌었습니다. 그래서 위 문단과 8절에 인용한 로그 문자열과 지금 출력은 다릅니다.</li>
+      </ul></li>
+    <li><b>5.3 Device</b>: 클래스는 <code>D3D11Device</code>(<code>RHI/D3D11/D3D11Device.h</code>)입니다.
+      <ul>
+        <li><code>m_shaders</code>는 예고대로 <code>ResourcePool&lt;D3D11Shader, ShaderHandle&gt;</code>가 되었습니다. 이것과 <code>PipelineStateCache m_pipelines</code>는 여전히 <code>m_device</code> 뒤에 선언되어 있습니다.</li>
+        <li><code>~D3D11Device()</code>는 <code>ReleaseDevice()</code>를 부릅니다. 순서는 다음과 같습니다.
+          <ol>
+            <li><code>ShutdownImGui()</code>(7단계)</li>
+            <li><code>ClearState()</code>·<code>Flush()</code></li>
+            <li>PSO 캐시, 타임스탬프 쿼리(10단계), 리소스 셋·바인딩 레이아웃·셰이더·샘플러·텍스처·버퍼 풀 <code>Clear()</code></li>
+            <li>스왑체인·컨텍스트 <code>Reset()</code></li>
+            <li>(Debug) <code>ReportLiveDeviceObjects</code>와 <code>DumpDebugLayerMessages()</code></li>
+            <li>장치 해제</li>
+          </ol>
+          "풀이 먼저, 장치가 마지막"이라는 원칙은 같습니다.</li>
+        <li><code>D3D11Device::DumpDebugLayerMessages()</code>는 지금도 매 프레임 <code>Present</code> 뒤에 돕니다.</li>
+      </ul></li>
+  </ul>
+</div>
 
 <h2 id="s6"><span class="num">6.</span>기존 코드 이관</h2>
 <div class="tbl"><table>
@@ -413,6 +507,28 @@ PipelineStateCache       m_pipelines;</code></pre>
 <tr><td>구 1개</td><td>같은 메시로 구 2개 (x = ±3, 반지름 5). 완료 기준 "관통하는 구 두 개"</td></tr>
 </tbody></table></div>
 <p>ImGui 패널에 Wireframe / Cull back faces / VSync 체크박스와 <code>PSO cache: N</code>이 생겼습니다. VSync는 <code>Device::SetVSync</code>가 <code>Present(1, 0)</code>과 <code>Present(0, 0)</code>을 고르는 것이 전부입니다. 지금 스왑체인은 <code>DXGI_SWAP_EFFECT_DISCARD</code>(blt 모델)이고, Microsoft는 flip 모델로 바꾸라고 권합니다<sup><a href="#ref-6">[6]</a></sup>. flip 모델은 <code>Present</code> 뒤 백버퍼를 다시 바인딩해야 한다는 조건이 있는데, 3단계의 <code>BeginFrame()</code>이 매 프레임 <code>OMSetRenderTargets</code>를 하므로 그 준비는 되어 있습니다. 전환 자체는 5단계(sRGB 백버퍼)와 함께 합니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>RenderSettings</b>: <code>Graphics/Renderer.h</code>의 <code>RenderSettings</code>에는 <code>wireframe</code>·<code>cullBack</code> 외에도 필드가 더해졌습니다.
+      <ul>
+        <li>5단계: <code>srgbOutput</code>, <code>samplerOverride</code></li>
+        <li>6단계: <code>shadows</code>, <code>shadowBias</code> 등 그림자 설정, <code>normalMapping</code></li>
+        <li>11단계: <code>debugView</code>, <code>debugDepthRange</code></li>
+      </ul></li>
+    <li><b>Desc를 만드는 함수</b>: <code>GetPipelineForSettings()</code>는 지금 <code>Renderer::GetPipelineFor(const Material&amp;, VertexFormat)</code>와 그림자용 <code>GetShadowPipelineFor</code>입니다. 재질의 <code>wireframe</code>·<code>doubleSided</code>도 함께 반영합니다.</li>
+    <li><b>표 오른쪽 열의 이름</b>: <code>TestApp::Render()</code>, <code>BindConstantBuffers</code>, <code>BindPipeline</code>, <code>Shader</code>·<code>MeshRenderer</code> 클래스는 지금 코드에 없습니다.
+      <ul>
+        <li>바인딩은 <code>RHI::CommandList::SetPipelineState</code>와 4단계의 리소스 셋이 맡습니다.</li>
+        <li><code>TestApp</code>은 2026-09-28에 <code>EditorApp</code>으로 이름이 바뀌었습니다.</li>
+      </ul></li>
+    <li><b>스왑체인</b>: 예고대로 5단계(<a href="phase-5.html#s3">phase-5.html 3절</a>)에서 flip 모델로 옮겼습니다.
+      <ul>
+        <li>지금은 <code>DXGI_SWAP_EFFECT_FLIP_DISCARD</code>, 버퍼 2개, UNORM 백버퍼(sRGB는 뷰)입니다.</li>
+        <li>VSync 토글은 <code>Present(m_vsync ? 1 : 0, flags)</code>입니다. VSync를 끄고 tearing이 지원되면 <code>flags</code>가 <code>DXGI_PRESENT_ALLOW_TEARING</code>입니다(<code>RHI/D3D11/D3D11Device.cpp</code>).</li>
+      </ul></li>
+  </ul>
+</div>
 
 <h2 id="s7"><span class="num">7.</span>함정과 해결</h2>
 <ul>
@@ -431,6 +547,17 @@ PipelineStateCache       m_pipelines;</code></pre>
     <li>토글: Wireframe 켜기 → 로그 <code>PSO 생성 #1 (fill=wire, cull=2). 캐시 크기 2</code>, 이어서 Cull 끄기 → <code>#2 (fill=wire, cull=0). 캐시 크기 3</code>. 같은 조합으로 돌아가면 새 PSO가 생기지 않습니다(캐시 히트). 와이어프레임 + 컬링 끔에서 구의 뒷면 삼각형이 보입니다.</li>
     <li>VSync 토글: 꺼짐 3,000~5,000 FPS, 켜짐 모니터 주사율.</li>
     <li>종료 보고: 자식 Live Object 0건.</li>
+  </ul>
+</div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>완료 기준 ② 재확인</b>: 2026-10-01에 같은 grep을 다시 돌렸습니다. D3D11 쪽 상태 호출은 <code>RHI/D3D11/PipelineState.cpp:106-113</code>의 일곱 줄(주석 제외)뿐이고, 결론은 그대로입니다. 위 기록의 <code>Graphics/D3D11/PipelineState.cpp:99-106</code>은 당시의 경로와 행 번호입니다.
+      <ul>
+        <li>패턴이 부분 문자열이라 <code>RHI/D3D11/D3D11CommandList.cpp</code>의 <code>VSSetShaderResources</code>·<code>PSSetShaderResources</code>(SRV 바인딩)도 함께 잡힙니다. 이것은 PSO 밖의 리소스 바인딩이므로 기준 위반이 아닙니다.</li>
+      </ul></li>
+    <li><b>D3D12 쪽 결과</b>: <code>RHI/D3D12/D3D12CommandList.cpp</code>의 <code>IASetPrimitiveTopology</code> 한 줄이 함께 잡힙니다. 이것은 D3D12에서 PSO 밖의 동적 상태라 정상입니다.</li>
+    <li><b>로그 형식</b>: 위 토글 로그는 지금 <code>layouts=…, gen=…</code>가 붙은 형식으로 찍힙니다(5절 끝 상자).</li>
   </ul>
 </div>
 
@@ -457,7 +584,7 @@ PipelineStateCache       m_pipelines;</code></pre>
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 커밋 c856ca8 (2026/09/23). 이전: <a href="phase-0.html">0단계</a> · 다음: <a href="phase-2.html">2단계 · 입력과 카메라</a>. 원본 로드맵: <a href="rendering-analysis.html#p1">rendering-analysis.html PHASE 1</a>.
+  대상: SherlockEngine 커밋 c856ca8 (2026/09/23). 이전: <a href="phase-0.html">0단계</a> · 다음: <a href="phase-2.html">2단계 · 입력과 카메라</a>. 원본 로드맵: <a href="rendering-analysis.html#p1">rendering-analysis.html PHASE 1</a>. 2026-10-01 문서-코드 점검 반영.
 </div>
 </main>
 </div>

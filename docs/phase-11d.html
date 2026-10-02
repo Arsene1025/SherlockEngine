@@ -131,6 +131,16 @@ tr:last-child td{border-bottom:0}
   <p>게임 로직(스크립트)은 이미 엔진과 함께 컴파일되고 에셋은 파일이므로, "빌드" 는 <em>런타임 모드 하나</em>(<code>GameApp</code>: 에디터 UI 없이 시작 씬을 로드해 <code>BeginPlay</code>)와 <em>복사</em>(<code>GameBuilder</code>)로 끝납니다. 프로젝트 분리의 유일한 함정은 정적 라이브러리에서 스크립트의 정적 등록 .obj 가 링크에서 빠지는 것이고, <code>/WHOLEARCHIVE</code> 한 줄로 막습니다.</p>
 </div>
 
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>이 문서는 2026-09-23 작업 트리 기준이고, 다음 날 11-E단계(<a href="phase-11e.html">프로젝트 시스템</a>)가 여러 전제를 바꿨습니다. 위 lede 와 한 줄 요약을 지금 코드로 읽으면 다음과 같습니다.</p>
+  <ul>
+    <li>스크립트는 더 이상 엔진과 함께 컴파일되지 않습니다. 엔진 lib 에는 <code>Game\Components</code>(Rigidbody·FollowTarget)만 남았고, 스크립트는 프로젝트의 <code>Scripts\</code> 에서 exe 프로젝트가 직접 컴파일합니다. 그래서 <code>/WHOLEARCHIVE</code> 가 지키는 대상은 스크립트가 아니라 엔진 컴포넌트입니다(2절 상자).</li>
+    <li>패키지 폴더는 열린 프로젝트 안의 <code>&lt;프로젝트&gt;\Build\&lt;이름&gt;\</code> 이고, 런타임 exe 는 <code>&lt;이름&gt;.exe</code> 로 복사됩니다. 시작 씬은 <code>.sherlock</code> 의 startScene 이 먼저입니다(3·4·5절 상자).</li>
+    <li>2026-09-28(커밋 <code>11a74a5</code>)에 에디터 앱 클래스 <code>TestApp</code> 은 <code>EditorApp</code>(<code>App/EditorApp.h/.cpp</code>)이 되었습니다. 1절 표와 2절 트리의 TestApp 이 여기에 해당합니다.</li>
+  </ul>
+</div>
+
 <h2 id="s1"><span class="num">1.</span>요약</h2>
 <div class="tbl"><table>
   <thead><tr><th>항목</th><th>구현</th><th>확인</th></tr></thead>
@@ -159,6 +169,14 @@ tr:last-child td{border-bottom:0}
   <li>pch 는 프로젝트마다 자기 것을 만듭니다: exe 프로젝트가 <code>..\SherlockEngine\pch.cpp</code> 를 Create 로 포함합니다.</li>
   <li>에디터의 디버그 시작 폴더를 <code>$(SolutionDir)SherlockEngine</code> 으로 두어(vcxproj 안) 추적 중인 <code>imgui.ini</code> 를 그대로 씁니다. VS 에서는 SherlockEditor 를 시작 프로젝트로 지정합니다.</li>
 </ul>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><strong>프로젝트 구성(위 트리, 1절 표).</strong> 지금 <code>SherlockEngine.vcxproj</code>(StaticLibrary)의 Game 항목은 <code>Game\Components\Rigidbody.h/.cpp</code> 와 <code>Game\Components\FollowTarget.cpp</code> 뿐입니다. 11-E단계(2026-09-24)에서 <code>Game\Scripts</code> 가 <code>Projects\Sample\Scripts\</code> 로 옮겨졌기 때문입니다. 스크립트는 <code>SherlockEditor.vcxproj</code>·<code>SherlockGame.vcxproj</code> 가 <code>..\Projects\Sample\Scripts\*.cpp</code> 와일드카드로 직접 컴파일하고, include 경로에도 <code>$(SolutionDir)Projects\Sample\Scripts</code> 가 더해졌습니다. 에디터 프로젝트의 소스는 <code>EditorMain.cpp</code> + <code>..\SherlockEngine\App\{EditorApp, Editor, ContentBrowser, ScriptCreator, GameBuilder, DebugUI, ProjectLauncher, ProjectGenerator}</code> 입니다. <code>TestApp</code> 은 2026-09-28 에 <code>EditorApp</code> 으로 이름이 바뀌었고, <code>ProjectLauncher</code>·<code>ProjectGenerator</code> 는 11-E 에서 더해졌습니다.</li>
+    <li><strong>/WHOLEARCHIVE 가 지키는 것(2.1절, 6절 두 번째 항목).</strong> 옵션은 그대로 두 exe 프로젝트에 있습니다. 다만 지금 lib 안에서 이름으로만 접근되어 링크에서 빠질 수 있는 것은 엔진 컴포넌트(<code>SHERLOCK_BEHAVIOUR</code> 로 등록되는 <code>Rigidbody</code>·<code>FollowTarget</code>·<code>CameraComponent</code>)이고, 헤더 없이 <code>.cpp</code> 하나뿐인 <code>FollowTarget</code> 이 대표적입니다. <code>Rotator.obj</code> 같은 스크립트 .obj 는 exe 프로젝트의 직접 컴파일 대상이라 이 옵션과 관계없이 링크됩니다.</li>
+    <li><strong>ScriptCreator(2.2절).</strong> 지금은 어떤 vcxproj 에도 등록하지 않고 열린 프로젝트의 <code>Scripts\</code> 에 .h/.cpp 를 만들기만 하며, 와일드카드가 컴파일 대상에 넣습니다. <a href="phase-11c.html#s3-4">phase-11c 3.4절 상자</a>.</li>
+  </ul>
+</div>
 
 <h2 id="s3"><span class="num">3.</span>게임 런타임 GameApp</h2>
 <pre><code><span class="cm">// AppBase — 앱이 GUI 를 원하지 않으면 ImGui 컨텍스트를 만들지 않는다 → Engine::Initialize 가 렌더러 백엔드도 건너뛴다 (GetCurrentContext 검사, 10단계)</span>
@@ -171,6 +189,10 @@ SceneSerializer::Load(scene, camera, assets, path);
 scene.BeginPlay(&amp;input, &amp;camera);          <span class="cm">// 카메라 오브젝트가 있으면 첫 Update 에서 그 시점 (11-C ApplyActiveCamera)</span>
 OnUpdate: scene.Update(dt); ESC → PostQuitMessage.   OnFixedUpdate: scene.FixedUpdate(fixedDt);</code></pre>
 <p>11-C 의 재생 루프가 그대로이고 스냅샷·Stop 만 없습니다. 게임 exe 도 <code>--exit-after / --screenshot / --dump-objects</code> 를 받아 창 없이 검증할 수 있습니다. ImGui 라이브러리 자체는 엔진 lib 의 Device 백엔드 코드가 참조하므로 링크되지만, 컨텍스트가 없어 아무것도 실행되지 않습니다(완전히 떼는 것은 8절).</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>11-E단계(2026-09-24)부터 시작 씬은 <code>engine.ini</code> 보다 프로젝트 파일이 먼저입니다. 지금 <code>App/GameApp.cpp</code> 의 <code>GameApp::OnInitialize</code> 는 <code>GetProject().startScene</code>(<code>.sherlock</code> 의 <code>startScene</code>)을 먼저 보고, 비어 있을 때만 위 코드의 <code>config["game.startScene"]</code> 을 봅니다. 둘 다 없으면 오류를 남기고 시작하지 않습니다. 값은 여전히 <code>Assets\Scenes\</code> 기준 파일명이거나 절대 경로입니다. <a href="phase-11e.html#s7">phase-11e 7절</a>.</p>
+</div>
 
 <h2 id="s4"><span class="num">4.</span>Build Game: 패키징</h2>
 <pre><code>Build\&lt;이름&gt;\
@@ -184,6 +206,17 @@ OnUpdate: scene.Update(dt); ESC → PostQuitMessage.   OnFixedUpdate: scene.Fixe
   <li><strong>Release 빌드</strong>: <code>vswhere -latest -find MSBuild\**\Bin\MSBuild.exe</code> → <code>MSBuild SherlockEngine.sln /t:SherlockGame /p:Configuration=Release</code> 를 창 없이 동기로 돌리고 <code>Build\msbuild.log</code> 에 출력을 남깁니다. 에디터는 그동안 멈춥니다(수십 초).</li>
   <li>패키지 안에는 소스 트리가 없으므로 <code>Paths</code> 의 폴백이 전부 exe 옆 사본으로 갑니다 — 10·11-B 에서 이미 그렇게 설계된 경로가 처음으로 실제로 쓰였습니다. 로그는 <code>Build\&lt;이름&gt;\Logs\</code> 에 남습니다.</li>
 </ul>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>11-E단계(2026-09-24)에서 <code>App/GameBuilder.cpp</code> 가 프로젝트 기준으로 바뀌어 위 트리와 Release 빌드 설명이 지금과 다릅니다.</p>
+  <ul>
+    <li><strong>출력 위치</strong>: <code>GameBuilder::GetBuildRoot()</code> = <code>&lt;프로젝트&gt;\Build\</code> 입니다. 패키지는 <code>&lt;프로젝트&gt;\Build\&lt;이름&gt;\</code>, MSBuild 로그는 <code>&lt;프로젝트&gt;\Build\msbuild.log</code> 에 생깁니다. 프로젝트가 열려 있지 않으면 <code>"no project is open"</code> 으로 멈춥니다.</li>
+    <li><strong>런타임 exe</strong>: 에디터 옆의 <code>&lt;프로젝트&gt;.exe</code>(프로젝트 솔루션의 게임 타깃)를 먼저 찾고, 없으면 <code>SherlockGame.exe</code>(엔진 솔루션의 Sample)를 씁니다. 패키지 안에는 <code>SherlockGame.exe</code> 가 아니라 <strong><code>&lt;이름&gt;.exe</code></strong>(게임 이름)로 복사됩니다. Release 를 켜지 않았는데 exe 가 없고 프로젝트 솔루션이 있으면, 그 게임 타깃을 Debug 로 먼저 빌드합니다.</li>
+    <li><strong>Release 빌드</strong>: MSBuild 대상은 프로젝트 솔루션의 <code>&lt;프로젝트&gt;</code> 타깃이고, 프로젝트 솔루션이 없을 때(엔진 솔루션의 Sample)만 위의 <code>SherlockEngine.sln /t:SherlockGame</code> 입니다. vswhere 로 MSBuild 를 찾는 과정은 같습니다.</li>
+    <li><strong>에셋과 프로젝트 파일</strong>: 엔진 콘텐츠를 먼저 복사하고 프로젝트 콘텐츠로 덮어써 한 <code>Assets\</code> 로 합칩니다. 패키지에는 <code>&lt;이름&gt;.sherlock</code>(engineRoot 빈 값) 사본이 더해져, 런타임이 exe 옆에서 프로젝트를 찾고 그 startScene 을 씁니다. <code>engine.ini</code> 끝에 <code>[game]</code> 을 덧붙이는 것은 그대로입니다.</li>
+  </ul>
+  <p>상세: <a href="phase-11e.html#s7">phase-11e 7절</a>.</p>
+</div>
 
 <h2 id="s5"><span class="num">5.</span>자동 검증</h2>
 <pre><code><span class="cm"># 에디터 (스크립트 등록이 /WHOLEARCHIVE 로 살아 있나)</span>
@@ -194,6 +227,10 @@ SherlockGame.exe --exit-after=90 --dump-objects=1 --screenshot=...phase11d-game.
 SherlockEditor.exe --scene=demo --exit-after=20 --build-game=TestBuild [--build-scene=floor_cube.json]
 <span class="cm"># 패키지 실행 (소스 트리 없음)</span>
 Build\TestBuild\SherlockGame.exe --exit-after=90 --dump-objects=1 --screenshot=...phase11d-packaged.png</code></pre>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>11-E 이후 같은 <code>--build-game=TestBuild</code> 를 엔진 솔루션의 <code>SherlockEditor.exe</code>(Sample 프로젝트)로 돌리면 패키지는 <code>Projects\Sample\Build\TestBuild\</code> 에 생기고 실행 파일 이름은 <code>TestBuild.exe</code> 입니다(4절 상자). 그래서 마지막 명령은 지금 <code>Projects\Sample\Build\TestBuild\TestBuild.exe --exit-after=90 …</code> 로 읽어야 합니다. 런타임 단독 실행의 시작 씬도 <code>engine.ini</code> 의 <code>[game]</code> 보다 <code>Projects\Sample\Sample.sherlock</code> 의 <code>startScene</code>(<code>demo_components.json</code>)이 먼저입니다. 프로젝트 기준 검증은 <a href="phase-11e.html#s8">phase-11e 8절</a> E 입니다.</p>
+</div>
 
 <h2 id="s6"><span class="num">6.</span>함정과 해결</h2>
 <ul>
@@ -239,7 +276,7 @@ Build\TestBuild\SherlockGame.exe --exit-after=90 --dump-objects=1 --screenshot=.
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 작업 트리 (2026/09/23, 11-C 위에 연속). 이전: <a href="phase-11c.html">11-C단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11d">rendering-analysis.html PHASE 11-D</a>. 스크린샷은 <code>images/2026-09-23-phase11d-*.png</code>. 12단계(고급 렌더링)는 시작하지 않았다.
+  대상: SherlockEngine 작업 트리 (2026/09/23, 11-C 위에 연속). 이전: <a href="phase-11c.html">11-C단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11d">rendering-analysis.html PHASE 11-D</a>. 스크린샷은 <code>images/2026-09-23-phase11d-*.png</code>. 12단계(고급 렌더링)는 시작하지 않았다. 2026-10-01 문서-코드 점검 반영(문서 앞 상자, 2·3·4·5절 상자).
 </div>
 </main>
 </div>

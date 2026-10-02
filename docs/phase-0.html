@@ -225,6 +225,15 @@ td .fix b{color:var(--ok);font-weight:600}
 <tr><td class="mono">소스 배치</td><td>31개 파일이 폴더 없이 모두 프로젝트 루트에</td><td><code>App/ Core/ Graphics/ Graphics/D3D11/ Scene/ Shaders/</code>. include는 프로젝트 루트 기준</td></tr>
 <tr><td class="mono">D3D 헤더</td><td><code>pch.h</code>가 전역 include</td><td><code>Graphics/D3D11/D3D11Common.h</code> 신설. (pch.h의 전역 include는 3단계 3.6에서 제거)</td></tr>
 </tbody></table></div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>위 표의 "이후" 열은 커밋 8338842 시점입니다. 지금 코드와 다른 곳은 각 절 끝의 상자에 적었습니다.</p>
+  <ul>
+    <li><b>dt 전달</b>: <code>Update(float dt)</code>는 10단계에서 <code>AppBase::OnUpdate(float dt)</code>가 되었고, dt는 <code>Engine::BeginFrame()</code>이 <code>Time</code> 클래스로 계산합니다(3절 끝).</li>
+    <li><b>셰이더 빌드 항목</b>: <code>CopyFileToFolders</code>는 4단계에서 없어지고 <code>FxCompile</code>(.cso)과 <code>CopyShaderSources</code> 타깃으로 바뀌었습니다(4절 끝).</li>
+    <li><b>D3D 헤더</b>: 7단계에서 폴더가 옮겨져 지금은 <code>RHI/D3D11/D3D11Common.h</code>입니다(5절 끝).</li>
+  </ul>
+</div>
 
 <h2 id="s2"><span class="num">2.</span>왜 이 세 가지가 남아 있었나</h2>
 <p>원문 0단계의 <a href="rendering-analysis.html#p0">진행 상황</a>은 "이 셋은 1단계 PSO 작업과 병행해도 무방하다"고 적었습니다. 맞는 판단이었지만, 1~3단계를 한 번에 진행하기로 하면서 순서가 바뀌었습니다. 세 항목은 각각 뒤 단계의 <em>전제</em>이기 때문입니다.</p>
@@ -264,6 +273,16 @@ Update(dt);</code></pre>
 <div class="callout amber">
   <div class="t">dt가 커지는 순간</div>
   <p>창을 드래그하거나 최소화하면 메시지 루프가 모달 상태에 들어가 수백 ms 동안 프레임이 멈춥니다. 복귀한 첫 프레임의 dt는 그 시간 전체입니다. 2단계 카메라는 "속도 × dt"만큼 순간이동하고, 3단계 공전은 한 번에 큰 각도를 돕니다. 지금은 허용했지만 물리를 넣을 때는 dt 상한(예: 0.1초)을 두거나 고정 스텝으로 바꿔야 합니다.</p>
+</div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>가상 함수 이름</b>: 10단계에서 Engine과 AppBase를 나누면서(<a href="phase-10.html#s5">phase-10.html 5절</a>) <code>virtual void Update(float dt)</code>는 <code>virtual void OnUpdate(float dt) = 0</code>(<code>App/AppBase.h</code>)이 되었습니다. 고정 스텝용 <code>virtual void OnFixedUpdate(float fixedDt)</code>도 함께 생겼습니다. dt를 인자로 받는다는 3.2절의 설계는 그대로입니다.</li>
+    <li><b>Run()의 시간 처리</b>: 위 스니펫의 <code>gameTimer.Tick()</code>·<code>gameTimer.DeltaTime()</code>은 지금 <code>const float dt = m_engine.BeginFrame();</code> 한 줄입니다. <code>Engine::BeginFrame()</code>이 <code>Time</code> 갱신, 프로파일러 프레임 시작, ImGui 렌더러 NewFrame을 맡습니다. 이어서 <code>while (time.ConsumeFixedStep()) OnFixedUpdate(time.GetFixedStep());</code>, 그다음 <code>OnUpdate(dt)</code> 순서로 부릅니다(<code>App/AppBase.cpp</code> <code>Run()</code>).</li>
+    <li><b>누적 시간</b>: AppBase의 <code>protected</code> 멤버 <code>m_totalTime</code>은 없어졌습니다. 같은 값은 <code>Core/Time.h</code>의 <code>Time::GetTotalTime()</code>으로 읽습니다. <code>Time</code>은 여전히 <code>GameTimer</code>를 시계로 씁니다.</li>
+    <li><b>TestApp</b>: 2026-09-28에 <code>EditorApp</code>(<code>App/EditorApp.h</code>)으로 이름이 바뀌었습니다. 3.2절의 <code>m_lastDt</code>는 지금 코드에 없습니다.</li>
+    <li><b>3.3절의 예고</b>: 10단계 <code>Time</code>(<a href="phase-10.html#s4">phase-10.html 4절</a>)이 위 callout의 dt 상한과 고정 스텝을 둘 다 넣었습니다. <code>maxDeltaTime = 0.25f</code>로 dt를 자르고, <code>maxFixedStepsPerFrame = 8</code>로 따라잡기 횟수를 제한합니다.</li>
+  </ul>
 </div>
 
 <h2 id="s4"><span class="num">4.</span>exe 기준 셰이더 경로</h2>
@@ -321,6 +340,35 @@ std::wstring Paths::GetShaderPath(<span class="kw">const wchar_t</span>* fileNam
 
 <h3 id="s4-4">4.4 #include 해석 위치</h3>
 <p><code>D3DCompileFromFile</code>에 <code>D3D_COMPILE_STANDARD_FILE_INCLUDE</code>를 넘기면 기본 include 핸들러가 붙습니다. Microsoft 문서는 이 핸들러가 "현재 디렉터리 기준으로 파일을 찾는다"고 적고 있습니다<sup><a href="#ref-5">[5]</a></sup>. 그러나 3단계에서 실측한 결과는 다릅니다. 작업 디렉터리를 <code>x64\Debug</code>로 두고(거기에는 <code>Common.hlsli</code>가 없음) 절대 경로 <code>x64\Debug\Shaders\BasicVertexShader.hlsl</code>을 컴파일했을 때 <code>#include "Common.hlsli"</code>가 <code>x64\Debug\Shaders\Common.hlsli</code>를 찾아 성공했습니다. 즉 <code>D3DCompileFromFile</code>은 <strong>원본 파일이 있는 디렉터리</strong>를 먼저 봅니다(<code>D3DCompile</code>에 <code>pSourceName</code> 없이 메모리 문자열을 넘길 때는 정말로 현재 디렉터리만 봅니다). 어느 쪽이든 셰이더를 절대 경로로 열면 두 경우 모두 안전합니다. 이것이 0단계에서 경로를 먼저 정리한 이유입니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>4.2 폴백 경로</b>: <code>Paths::GetShaderPath</code>의 폴백은 더 이상 <code>GetExecutableDir() + L"..\\..\\SherlockEngine\\Shaders\\"</code>를 직접 조립하지 않습니다. 지금은 <code>GetEngineRoot() + L"Shaders\\"</code>입니다(<code>Core/Paths.cpp</code>).
+      <ul>
+        <li>"exe에서 두 단계 위" 추정은 11-E단계에서 <code>GetEngineRoot()</code> 안으로 옮겨졌습니다. 엔진 루트는 다음 순서로 찾습니다.
+          <ol>
+            <li>프로젝트 파일이 <code>Paths::SetEngineRoot()</code>로 알려 준 폴더</li>
+            <li><code>exe\..\..\SherlockEngine\Assets\Config\engine.ini</code> 마커가 있으면 그 소스 폴더</li>
+            <li>둘 다 없으면(배포 환경) exe 폴더</li>
+          </ol></li>
+        <li><code>GetModuleFileNameW</code> 반환값 검사, <code>Canonicalize</code>(<code>GetFullPathNameW</code>), 경고 1회는 그대로입니다.</li>
+      </ul></li>
+    <li><b>Paths의 함수 수</b>: 위 헤더 스니펫의 두 함수 외에 함수가 더 늘었습니다.
+      <ul>
+        <li>셰이더: <code>GetShaderBinaryPath</code>(exe 옆 .cso), <code>GetShaderSourcePath</code>(원본 .hlsl).</li>
+        <li>루트: <code>GetEngineRoot</code>·<code>SetEngineRoot</code>·<code>GetProjectRoot</code>·<code>SetProjectRoot</code>(11-E단계).</li>
+        <li>에셋: <code>GetAssetPath</code>·<code>GetAssetRoot</code>·<code>GetSceneDir</code> 등.</li>
+      </ul></li>
+    <li><b>4.3 빌드 항목</b>: <code>CopyFileToFolders</code>는 지금 <code>SherlockEngine.vcxproj</code>에 없습니다. 4단계(D12, <a href="phase-4.html#s6-1">phase-4.html 6.1절</a>)부터 셰이더 빌드는 두 갈래입니다.
+      <ul>
+        <li><code>.hlsl</code>은 <code>FxCompile</code> 항목입니다. fxc가 <code>$(OutDir)Shaders\%(Filename).cso</code>를 만듭니다.</li>
+        <li>소스 사본은 사용자 정의 타깃 <code>CopyShaderSources</code>(<code>AfterTargets="Build"</code>)가 복사합니다. <code>&lt;Copy SourceFiles="@(ShaderSourceFiles)" DestinationFolder="$(OutDir)Shaders" SkipUnchangedFiles="true" /&gt;</code>로 <code>Shaders\*.hlsl;*.hlsli</code>를 <code>$(OutDir)Shaders</code>에 둡니다.</li>
+        <li><code>Common.hlsli</code>는 <code>None</code> 항목입니다.</li>
+      </ul>
+      위 4.3절의 "<code>FxCompile</code>을 버려도"라는 서술은 이 시점 이후로는 맞지 않습니다.</li>
+    <li><b>4.4 include 해석</b>: 컴파일 구현은 지금 <code>RHI/DXBC/ShaderCompiler.cpp</code>에 있고, 여전히 <code>D3D_COMPILE_STANDARD_FILE_INCLUDE</code>를 넘깁니다.</li>
+  </ul>
+</div>
 
 <h2 id="s5"><span class="num">5.</span>폴더 재배치</h2>
 
@@ -354,6 +402,40 @@ std::wstring Paths::GetShaderPath(<span class="kw">const wchar_t</span>* fileNam
 
 <h3 id="s5-3">5.3 인코딩·줄바꿈 함정</h3>
 <p>include 경로를 바꾸느라 Git Bash의 GNU <code>sed -i</code>를 썼는데, 이것이 모든 파일의 CRLF를 LF로 바꿔 놓았습니다. 저장소는 <code>core.autocrlf=true</code>라 커밋에는 영향이 없지만, 디스크 파일이 <code>.editorconfig</code>(CRLF, C++는 UTF-8 BOM, HLSL은 BOM 없음)와 어긋납니다. 그래서 작업용 스크립트 하나를 만들어 매 빌드 전에 돌렸습니다. 요지는 <code>.h/.cpp</code>는 BOM을 붙이고, <code>.hlsl/.hlsli</code>는 BOM을 떼고, 전부 CRLF로 통일하는 것입니다. 원래 <code>main.cpp</code>만 BOM이 없었던 것도 이때 잡혔습니다. HLSL의 BOM은 <code>D3DCompileFromFile</code>이 <code>error X3000</code>으로 거부하므로 이 스크립트가 없으면 셰이더가 갑자기 컴파일되지 않는 사고가 납니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>5.1절 표는 0단계 시점의 배치입니다. 지금 코드의 배치는 다음과 같습니다.</p>
+  <ul>
+    <li><b>(루트) main.cpp</b>: 11-D단계(<a href="phase-11d.html#s2">phase-11d.html 2절</a>)에서 엔진이 정적 라이브러리(<code>&lt;ConfigurationType&gt;StaticLibrary</code>, <code>SherlockEngine.lib</code>)가 되었습니다. 그래서 엔진 폴더에는 <code>main.cpp</code>가 없습니다.
+      <ul>
+        <li>진입점은 <code>SherlockEditor/EditorMain.cpp</code>와 <code>SherlockGame/GameMain.cpp</code>입니다.</li>
+        <li><code>pch.h</code>/<code>pch.cpp</code>는 여전히 <code>SherlockEngine/</code> 루트에 있습니다.</li>
+      </ul></li>
+    <li><b>App/</b>: <code>TestApp</code>은 2026-09-28에 <code>EditorApp</code>으로 이름이 바뀌었습니다. <code>GameApp</code>·<code>Editor</code>·<code>ContentBrowser</code> 등이 더해졌습니다.</li>
+    <li><b>Graphics/의 API 중립 타입</b>: 지금은 <code>RHI/</code>에 있습니다.
+      <ul>
+        <li>대상: <code>Handle.h</code>, <code>PipelineTypes.h/.cpp</code>, <code>ResourceDesc.h</code>, <code>GraphicsConfig.h</code>, <code>ResourcePool.h</code>.</li>
+        <li><code>Graphics/</code>에는 Renderer·Mesh·Model·VertexTypes·ShaderConstants·TextureLoader·Screenshot이 남았습니다.</li>
+      </ul></li>
+    <li><b>Graphics/D3D11/</b>: 7단계(<a href="phase-7.html#s4">phase-7.html 4·5절</a>)에서 <code>RHI/D3D11/</code>이 되었습니다.
+      <ul>
+        <li><code>Device</code> → <code>D3D11Device</code>(<code>final : public RHI::Device</code>, 파일 <code>RHI/D3D11/D3D11Device.h/.cpp</code>)</li>
+        <li><code>CommandList</code> → <code>D3D11CommandList</code></li>
+        <li><code>ImGuiBackend.h/.cpp</code>는 삭제되었고, 그 일은 <code>D3D11Device::InitImGui</code> 등이 맡습니다(<a href="phase-7.html#s7">phase-7.html 7절</a>).</li>
+        <li><code>ShaderCompiler</code>는 선언이 <code>RHI/ShaderCompiler.h</code>, 구현이 <code>RHI/DXBC/ShaderCompiler.cpp</code>입니다.</li>
+      </ul></li>
+    <li><b>D3D 헤더의 자리</b>: D3D11 헤더는 <code>RHI/D3D11/D3D11Common.h</code>에, D3D12/DXGI 1.6 헤더는 <code>RHI/D3D12/D3D12Common.h</code>에 있습니다.
+      <ul>
+        <li>지금 <code>RHI/D3D11/</code> 밖에서 <code>ID3D11</code>이 검색되는 곳은 두 곳입니다. 리플렉션용 <code>&lt;d3d11shader.h&gt;</code>(<code>ID3D11ShaderReflection</code>)를 쓰는 <code>RHI/DXBC/ShaderCompiler.cpp</code>, 그리고 <code>RHI/D3D12/D3D12DescriptorHeap.h</code>의 주석 한 줄입니다.</li>
+      </ul></li>
+    <li><b>D3D11Common.h 스니펫</b>: 지금 파일에는 <code>#include &lt;dxgi1_5.h&gt;</code>(<code>IDXGIFactory2</code>·<code>IDXGIFactory5</code>, flip 모델과 tearing 확인용)와 <code>#pragma comment(lib, "dxgi.lib")</code>가 더 있습니다(<a href="phase-5.html#s3">phase-5.html 3절</a>).</li>
+    <li><b>5.2 프로젝트 파일</b>: 네 구성의 <code>$(ProjectDir)</code> include 경로와 "필터 = 물리 폴더" 규칙은 그대로입니다.
+      <ul>
+        <li>필터에 <code>RHI</code>·<code>RHI\D3D11</code>·<code>RHI\D3D12</code>·<code>RHI\DXBC</code>·<code>Game\Components</code>·<code>Assets</code>가 더해졌습니다.</li>
+        <li>언어 표준은 2026-09-28부터 <code>&lt;LanguageStandard&gt;stdcpp20&lt;/LanguageStandard&gt;</code>입니다.</li>
+      </ul></li>
+  </ul>
+</div>
 
 <h2 id="s6"><span class="num">6.</span>검증</h2>
 <div class="applied">
@@ -377,7 +459,7 @@ std::wstring Paths::GetShaderPath(<span class="kw">const wchar_t</span>* fileNam
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 커밋 8338842 (2026/09/23). 다음 문서: <a href="phase-1.html">1단계 · 깊이 버퍼와 PSO 에뮬레이션</a>. 원본 로드맵: <a href="rendering-analysis.html#p0">rendering-analysis.html PHASE 0</a>.
+  대상: SherlockEngine 커밋 8338842 (2026/09/23). 다음 문서: <a href="phase-1.html">1단계 · 깊이 버퍼와 PSO 에뮬레이션</a>. 원본 로드맵: <a href="rendering-analysis.html#p0">rendering-analysis.html PHASE 0</a>. 2026-10-01 문서-코드 점검 반영.
 </div>
 </main>
 </div>

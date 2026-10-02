@@ -6,7 +6,7 @@
 // 11-C단계: 모든 스크립트의 기반 클래스 — 유니티의 MonoBehaviour 에 해당함.
 //
 // 오브젝트의 움직임·규칙은 이 클래스를 상속한 C++ 클래스에 직접 작성함. 스크립트 하나는 언리얼처럼 <프로젝트>\Scripts\<이름>.h (선언) + .cpp (구현 +
-// SHERLOCK_SCRIPT) 한 쌍으로 이뤄짐 — Inspector 의 "New Script..." 가 템플릿으로 두 파일을 만들어 줌 (Scripts\*.cpp 는 와일드카드로 컴파일됨). 빌드 후 재실행하면
+// SHERLOCK_SCRIPT) 한 쌍으로 이뤄짐 — Inspector 의 "New Script..." 가 템플릿으로 두 파일을 만들어 줌 (Scripts\**\*.cpp 는 와일드카드로 컴파일됨). 빌드 후 재실행하면
 // Inspector 의 "Add Component" 스크립트 목록에 나타나고, 씬 파일에는 이름으로 저장됨. Reflect 에 열거한 필드는 Inspector 에서 편집되고
 // 씬에 저장됨 ([SerializeField] 에 해당). 헤더가 따로 있으므로 다른 스크립트가 이를 #include 한 뒤 Find("이름")->GetBehaviour<이름>() 로 가져올 수 있음.
 //

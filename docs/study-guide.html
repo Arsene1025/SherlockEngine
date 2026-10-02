@@ -157,11 +157,11 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
 <main>
 <div class="eyebrow">SherlockEngine 읽기 가이드</div>
 <h1>프로젝트를 문서와 함께 읽는 순서</h1>
-<p class="lede"><code>docs/</code>에는 렌더러 해부와 로드맵(<a href="rendering-analysis.html">rendering-analysis.html</a>) 한 편과 단계별 상세 문서(<a href="phase-0.html">phase-0</a> ~ <a href="phase-11.html">phase-11</a>, 그리고 에디터 확장 <a href="phase-11b.html">phase-11b</a>·<a href="phase-11c.html">phase-11c</a>·phase-11d·phase-11e·<a href="phase-11f.html">phase-11f</a>) 열일곱 편이 있습니다. 문서는 단계 순서로 쓰였고 소스도 그 순서로 자랐으므로, <strong>로드맵으로 지도를 펴고 → 앱 골격을 잡은 뒤 → 단계 문서를 번호 순으로 소스와 짝지어</strong> 읽는 것이 가장 덜 헤매는 길입니다. 이 문서는 그 길을 14개 스텝으로 나누고, 스텝마다 "먼저 읽을 문서 → 함께 볼 소스 → 확인 포인트"를 적었습니다.</p>
+<p class="lede"><code>docs/</code>에는 렌더러 해부와 로드맵(<a href="rendering-analysis.html">rendering-analysis.html</a>) 한 편과, 단계별 상세 문서 열일곱 편(<a href="phase-0.html">phase-0</a> ~ <a href="phase-11.html">phase-11</a> 열두 편, 그리고 에디터 확장 <a href="phase-11b.html">phase-11b</a>·<a href="phase-11c.html">phase-11c</a>·<a href="phase-11d.html">phase-11d</a>·<a href="phase-11e.html">phase-11e</a>·<a href="phase-11f.html">phase-11f</a> 다섯 편)이 있습니다. 문서는 단계 순서로 쓰였고 소스도 그 순서로 자랐으므로, <strong>로드맵으로 지도를 펴고 → 앱 골격을 잡은 뒤 → 단계 문서를 번호 순으로 소스와 짝지어</strong> 읽는 것이 가장 덜 헤매는 길입니다. 이 문서는 그 길을 14개 스텝으로 나누고, 스텝마다 "먼저 읽을 문서 → 함께 볼 소스 → 확인 포인트"를 적었습니다.</p>
 
 <div class="facts">
-  <div><div class="k">문서</div><div class="v">17편<small>해부·로드맵 1 + 단계 문서 16</small></div></div>
-  <div><div class="k">소스</div><div class="v">116 파일 · 약 18,400줄<small>App · Core · Graphics · Scene · RHI · Shaders</small></div></div>
+  <div><div class="k">문서</div><div class="v">18편<small>해부·로드맵 1 + 단계 문서 17</small></div></div>
+  <div><div class="k">소스</div><div class="v">116 파일 · 약 19,000줄<small>App · Core · Graphics · Scene · Game · RHI · Shaders (2026-10-01 기준)</small></div></div>
   <div><div class="k">스텝</div><div class="v">14개 (0~13)<small>단계 문서 순서와 거의 같음</small></div></div>
   <div><div class="k">권장 기간</div><div class="v">정독 2주<small>하루 코스는 9절</small></div></div>
   <div><div class="k">백엔드</div><div class="v">D3D11 · D3D12<small>engine.ini 한 줄로 전환</small></div></div>
@@ -268,7 +268,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
 <h2 id="s2"><span class="num">2.</span>읽기 원칙</h2>
 
 <h3 id="s2-1">2.1 문서 두 종류의 구조</h3>
-<p><strong>rendering-analysis.html</strong>은 한 편이지만 시점이 셋입니다. §1~§7은 2026년 7월의 초기 코드를 해부한 <em>스냅샷</em>이라 지금 소스와 이름이 다릅니다(<code>Shader</code>·<code>MeshRenderer</code>·<code>struct.h</code>는 이제 없습니다). <a href="rendering-analysis.html#applied">적용 기록</a>과 §8의 설계 결정 D1~D22는 "무엇을 왜 바꾸기로 했나"이고, §9 로드맵의 PHASE 카드 17장은 각 단계의 요구·완료 기준·완료 보고를 담은 <em>현재까지의 지도</em>입니다. 그래서 처음에는 §1과 §9의 단계 구성 표만 읽고, 나머지는 각 스텝에서 필요한 D 항목과 PHASE 카드만 찾아 읽은 뒤, 마지막 스텝에서 통독합니다.</p>
+<p><strong>rendering-analysis.html</strong>은 한 편이지만 시점이 셋입니다. §1~§7은 2026년 7월의 초기 코드를 해부한 <em>스냅샷</em>이라 지금 소스와 이름이 다릅니다(<code>Shader</code>·<code>MeshRenderer</code>·<code>struct.h</code>는 이제 없습니다). <a href="rendering-analysis.html#applied">적용 기록</a>과 §8의 설계 결정 D1~D22는 "무엇을 왜 바꾸기로 했나"이고, §9 로드맵의 PHASE 카드 18장(0~12단계와 11-B~11-F)은 각 단계의 요구·완료 기준·완료 보고를 담은 <em>현재까지의 지도</em>입니다. 그래서 처음에는 §1과 §9의 단계 구성 표만 읽고, 나머지는 각 스텝에서 필요한 D 항목과 PHASE 카드만 찾아 읽은 뒤, 마지막 스텝에서 통독합니다.</p>
 <p><strong>phase-N.html</strong>은 모두 같은 뼈대로 되어 있습니다. 상단 <em>facts</em> 격자(상태·파일 수·완료 기준), "한 줄 요약" 콜아웃, <strong>1절 요약</strong>(이전 단계 vs 이 단계의 표), 설계 절들, <strong>함정과 해결</strong>, <strong>검증과 스크린샷</strong>, 참고 문헌 순입니다. 요약 표와 함정 절만 읽어도 그 단계가 코드에 남긴 흔적을 알 수 있고, 설계 절은 소스를 읽다가 이유가 궁금할 때 돌아오면 됩니다. 검증 절의 스크린샷은 <code>images/2026-09-23-phaseN-*.png</code>에 있으니 직접 실행한 화면과 비교하세요.</p>
 
 <h3 id="s2-2">2.2 소스를 읽는 법</h3>
@@ -308,7 +308,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
       <div><h5>먼저 읽을 문서</h5><ul>
         <li><a href="../README.md">README.md</a> 전체 — 빌드 준비, 실행, 소스 폴더 표, 소스 규약(UTF-8 BOM, ComPtr, bool 반환)</li>
         <li>rendering-analysis <a href="rendering-analysis.html#s1">§1 프로젝트 현재 상태</a> — 파일 표는 옛 것이니 "역할" 열만</li>
-        <li>rendering-analysis <a href="rendering-analysis.html#s9">§9</a>의 "단계 구성" 표와 PHASE 카드 17장의 <em>제목·완료 줄만</em></li>
+        <li>rendering-analysis <a href="rendering-analysis.html#s9">§9</a>의 "단계 구성" 표와 PHASE 카드 18장의 <em>제목·완료 줄만</em></li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li>폴더 트리 한 번 훑기: <code>App/ Core/ Graphics/ Scene/ RHI/ RHI/D3D11/ RHI/D3D12/ RHI/DXBC/ Shaders/ Assets/</code></li>
@@ -649,7 +649,28 @@ Projects\Sample\Build\Test\Test.exe --exit-after=60 --dump-objects=1</code></pre
   </div>
 </div>
 
-<h2 id="s7"><span class="num">7.</span>스텝 13: 되돌아보기</h2>
+<div class="stage">
+  <div class="tag">S12-E</div>
+  <div>
+    <h4>프로젝트 시스템 <span class="time">약 1시간</span></h4>
+    <div class="why">씬이 아니라 게임을 분리합니다. 프로젝트는 폴더 하나(<code>&lt;이름&gt;.sherlock</code> + <code>Assets\</code> + <code>Scripts\</code>)이고, 생성기가 그 프로젝트 전용 에디터·게임 솔루션을 만듭니다. 엔진 컴포넌트와 프로젝트 스크립트의 경계, 그리고 엔진 · 프로젝트 · exe 세 루트에서 에셋을 찾는 폴백 순서가 핵심입니다. <em>(2026-10-01 점검에서 스텝 표에는 있고 블록이 빠져 있던 것을 채웠습니다.)</em></div>
+    <div class="cols">
+      <div><h5>먼저 읽을 문서</h5><ul>
+        <li><a href="phase-11e.html">phase-11e</a> §2 프로젝트 = 폴더 + .sherlock, §3 세 루트, §4 엔진 컴포넌트 vs 프로젝트 스크립트, §5 솔루션 생성(2026-09-30 재귀 와일드카드·C++20 상자 포함), §9 함정</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>Core/Project.h/.cpp</code> 의 <code>Load / Create / FindUpwards</code> → <code>Core/Paths.h</code> 의 <code>GetEngineRoot / GetProjectRoot / GetAssetPath / GetSceneDir</code></li>
+        <li><code>App/AppBase</code> 의 <code>ResolveProject</code> 와 <code>SetCompiledProjectName</code>, <code>EditorApp::CreateProject</code></li>
+        <li><code>App/ProjectGenerator.cpp</code>(<code>GetEditorSources</code>, <code>Scripts\**\*.cpp</code>), <code>App/ProjectLauncher</code>, <code>App/ScriptCreator</code>, <code>Editor::DrawProjectBanner</code></li>
+        <li><code>Projects\Sample</code> 과 실험 프로젝트 <code>Projects\QuaternionLookTest</code> 의 생성된 <code>.sln</code>·<code>.vcxproj</code></li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — File &gt; Projects 로 새 프로젝트를 만들고 그 솔루션의 에디터 타깃을 빌드하면, 그 에디터에서 프로젝트 스크립트(Rotator)와 엔진 컴포넌트(Rigidbody)를 함께 붙일 수 있다. 엔진 에디터로 다른 프로젝트를 열면 씬 뷰 위에 배너가 뜬다. 창 없이:
+      <pre style="margin:10px 0 0"><code>SherlockEditor.exe --exit-after=30 --new-project=TestGame --build-project=1
+Projects\TestGame\Binaries\Debug\TestGameEditor.exe --exit-after=40 --play=1 --add=1 --add-component=Rotator --dump-objects=1</code></pre></div>
+  </div>
+</div>
+
 <div class="stage">
   <div class="tag">S12-F</div>
   <div>
@@ -660,10 +681,12 @@ Projects\Sample\Build\Test\Test.exe --exit-after=60 --dump-objects=1</code></pre
         <li><a href="phase-11f.html">phase-11f</a> §2 출발점, §3 Roll·짐벌락·쿼터니언, §4 계층 설계, §5 카메라 행렬 경로, §10 함정</li>
         <li><a href="rendering-analysis.html#d8">D8</a>·<a href="rendering-analysis.html#d15">D15</a> 의 11-F 적용 결과 상자 — 원래 권장("Transform 을 쿼터니언으로")과 실제 순서가 왜 달랐는지</li>
         <li><a href="phase-2.html#s3-5">phase-2 §3.5</a> "쿼터니언은 왜 아닌가" 와 그 아래 11-F 상자를 이어서</li>
+        <li><a href="phase-11f.html#s3-4">phase-11f §3.4</a> 재현 실험(2026-09-30) — "쿼터니언이면 roll 이 쌓인다" 를 실제로 찍은 그림 세 장과 원인 정정(부동소수점이 아니라 증분을 곱하는 공간)</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>Scene/GameObject.h/.cpp</code> 의 <code>SetParent / GetWorldMatrix / SetWorldMatrix</code> → <code>Scene/Transform.cpp</code> 의 <code>SetLocalMatrix / EulerFromRotationMatrix</code></li>
         <li><code>Scene/Camera.h</code> 머리 주석 → <code>SetYawPitch / SetRotation / GetRoll</code> → <code>Scene/CameraComponent.cpp</code> 의 <code>GetPose</code>(월드 행렬 분해) → <code>Scene::ApplyActiveCamera</code> 의 slerp</li>
+        <li><code>Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp</code> 의 <code>Update</code> — 두 줄 차이(mode 0/1)로 roll 이 생기고 안 생기는 것을 그 프로젝트의 에디터(<code>QuaternionLookTestEditor.exe</code>)로 직접 실행해 볼 것: <code>--scene=quat_roll_local.json --play=1 --exit-after=372</code>. 실험 스크립트는 Sample 이 아니라 실험 프로젝트의 <code>Scripts\Tests\</code> 에 둔다</li>
         <li><code>Editor::DrawHierarchyNode</code>(트리·드래그 페이로드), <code>DrawGizmo</code> 의 한 줄, <code>SceneSerializer</code> 의 <code>"parent"</code> 두 단계 로드, <code>Scene::AddModel</code> 의 루트</li>
       </ul></div>
     </div>
@@ -672,6 +695,7 @@ Projects\Sample\Build\Test\Test.exe --exit-after=60 --dump-objects=1</code></pre
   </div>
 </div>
 
+<h2 id="s7"><span class="num">7.</span>스텝 13: 되돌아보기</h2>
 <div class="stage">
   <div class="tag">S13</div>
   <div>
@@ -735,7 +759,7 @@ Projects\Sample\Build\Test\Test.exe --exit-after=60 --dump-objects=1</code></pre
 <p>S2·S6은 문서의 1절 요약과 확인 포인트만 보고 지나가도 됩니다. 대신 S3의 D21·D22, S5의 §2(루트 시그니처를 D3D11에 미리 그리기), S7의 Barrier 설계, S8·S9 전체에 시간을 몰아 주세요. 이 프로젝트의 고유한 부분이 거기 있습니다.</p>
 
 <div class="footer">
-  SherlockEngine 읽기 가이드 · 2026/09/29 (11-F 반영) · 문서 기준: rendering-analysis.html과 phase-0 ~ phase-11, phase-11b ~ phase-11f · 소스 기준: 커밋 653dd09 작업 트리. 이전 문서의 <code>SherlockEngine.exe</code>는 지금의 <code>SherlockEditor.exe</code>, <code>Game\Scripts</code>는 <code>Projects\Sample\Scripts</code>입니다.
+  SherlockEngine 읽기 가이드 · 2026/10/01 (11-F 반영, phase-11f §3.4 재현 실험 추가, 2026-10-01 문서-코드 점검 반영: 문서 편수·PHASE 카드 수 정정, S12-E 블록 추가, S12-F 를 6절로 이동) · 문서 기준: rendering-analysis.html과 phase-0 ~ phase-11, phase-11b ~ phase-11f · 소스 기준: 커밋 fc04ab0 + 미커밋 작업 트리(2026-10-01). 이전 문서의 <code>SherlockEngine.exe</code>는 지금의 <code>SherlockEditor.exe</code>, <code>Game\Scripts</code>는 <code>Projects\Sample\Scripts</code>입니다.
 </div>
 </main>
 </div>

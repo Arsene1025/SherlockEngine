@@ -217,6 +217,14 @@ td .fix b{color:var(--ok);font-weight:600}
   <div class="t">한 줄 요약</div>
   <p>에디터는 <code>App/Editor</code> 한 클래스이고 아무것도 소유하지 않습니다 — 씬·카메라·렌더러는 Engine 의 것이고 씬 전환·저장·로드는 콜백으로 앱에 넘깁니다(3단계 DebugUI 의 "패널은 편집만" 규칙 그대로). 씬 뷰는 Renderer 가 백버퍼 대신 그리는 텍스처 하나이고, 선택은 씬 뷰 픽셀에서 쏜 광선으로 각 메시의 로컬 AABB 를 검사하는 것이고, 기즈모는 ImGuizmo 가 준 월드 행렬에서 노드 pre-transform 을 벗겨 S·R·T 로 분해하는 것입니다. 저장은 정점 데이터가 아니라 메시의 <em>출처</em>(프리미티브 인자 또는 모델 경로 + 인덱스)를 적습니다.</p>
 </div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>이 문서에 반복되는 이름 두 가지가 그 뒤 바뀌었습니다. 본문은 11단계 당시 그대로 두고 여기서 한 번에 안내합니다.</p>
+  <ul>
+    <li><b>TestApp → EditorApp.</b> 2026-09-28 커밋에서 <code>App/EditorApp.h/.cpp</code> 로 개명되었습니다. 8절의 "TestApp 의 실행 인자" 는 지금의 <code>EditorApp::ParseAutomation</code> 입니다. 상세: <a href="rendering-analysis.html#applied-editorapp">rendering-analysis 적용 기록 — TestApp → EditorApp 개명</a>.</li>
+    <li><b>SherlockEngine.exe → SherlockEditor.exe.</b> 11-D단계에서 엔진이 정적 라이브러리가 되었습니다. 에디터는 <code>x64\&lt;구성&gt;\SherlockEditor.exe</code>, 게임 런타임은 <code>SherlockGame.exe</code> 입니다. 8절 명령의 exe 이름은 지금 <code>SherlockEditor.exe</code> 로 읽습니다. 상세: <a href="phase-11d.html#s2">phase-11d 2절</a>.</li>
+  </ul>
+</div>
 
 <h2 id="s1"><span class="num">1.</span>요약</h2>
 <div class="tbl"><table>
@@ -287,6 +295,16 @@ t.SetScale(scale);  t.SetRotation(EulerFromRotation(rotationMatrix));  t.SetPosi
   "lights":    [ {type, position, direction, color, intensity, range, attenuation, innerConeCos, outerConeCos} ],
   "objects":   [ {name, mesh, material, slotMaterials?, position, rotation, scale, preTransform?} ] }</code></pre>
 <p>메시는 정점이 아니라 <em>출처</em>로 저장합니다. <code>Scene::AddMesh(mesh, MeshSource)</code> 가 출처를 같이 받고(프리미티브 인자, 또는 모델 경로 + 메시 번호 — <code>AssetManager</code> 가 <code>Model::sourcePath</code> 를 채웁니다), 로드는 프리미티브를 다시 만들거나 AssetManager 에서 모델을 받아 그 메시를 복사하고 이미지 바이트(<code>AddModelImages</code>)를 씬에 넣습니다. 재질은 JSON 값이 우선이라 편집이 살아남고, 이미지 이름은 9단계 규칙("&lt;모델&gt;/&lt;번호&gt; &lt;uri&gt;")을 따르므로 다시 읽은 모델과 맞습니다. 출처를 모르는 메시는 경고와 함께 빈 자리로 남습니다. 로드 순서는 9단계 씬 전환과 같습니다: <code>Renderer::InvalidateScene</code> → <code>Scene::Clear</code> → 채우기(포인터 키 캐시). 파일 입출력은 nlohmann-json<sup><a href="#ref-3">3</a></sup> 의 <code>dump(2)</code> / <code>parse</code> 로 하고, 값은 <code>value(key, default)</code> 로 읽으므로 필드가 빠져도 기본값이 들어갑니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>위 형식은 11단계 당시의 <code>"version": 1</code> 입니다. 지금 <code>Scene/SceneSerializer.cpp</code> 는 <code>kVersion = 3</code> 으로 저장하며, 오브젝트 항목에 키가 두 개 늘었습니다.</p>
+  <ul>
+    <li><b>버전 2 — 11-C단계.</b> <code>"components"</code>: 오브젝트에 붙은 컴포넌트·스크립트 목록입니다. 비어 있으면 키를 쓰지 않습니다. 상세: <a href="phase-11c.html">phase-11c</a>.</li>
+    <li><b>버전 3 — 11-F단계.</b> <code>"parent"</code>: 부모 오브젝트의 인덱스입니다. 부모가 없으면 키를 쓰지 않고, 로드할 때 키가 없으면 루트(−1)가 됩니다. 상세: <a href="phase-11f.html#s7">phase-11f 7절</a>.</li>
+    <li>메시 <code>"type"</code> 의 전체 값은 <code>sphere</code>·<code>cube</code>·<code>plane</code>·<code>cylinder</code>·<code>model</code> 이고, 출처를 모르는 메시는 <code>custom</code> 으로 적힙니다. 위 예시는 그중 두 가지만 보인 것입니다. <code>"camera"</code> 는 지금도 <code>{position, yaw, pitch}</code> 입니다.</li>
+    <li>이전 버전 파일도 그대로 읽힙니다. 더 높은 버전의 파일은 경고를 한 줄 남기고 읽기를 시도합니다.</li>
+  </ul>
+</div>
 
 <h2 id="s8"><span class="num">8.</span>자동 검증: 입력 주입 없이</h2>
 <p>이전 단계의 검증 스크립트는 화면을 캡처하고 키·마우스를 OS 에 주입했습니다. 이 단계 도중 사용자가 전체 화면 게임을 하고 있어 그 캡처가 게임 화면을 찍었고, 주입한 F10·F11·클릭이 게임으로 갔을 가능성이 있습니다(9절). 그래서 검증 방식을 바꿨습니다: (1) RHI 에 <code>RequestBackBufferReadback / TakeReadbackResult</code> 를 더해 Present 직전의 백버퍼를 CPU 로 읽고(D3D11: STAGING + <code>Map(READ)</code><sup><a href="#ref-7">7</a></sup>, D3D12: 커맨드 리스트에 COPY_SOURCE 전이 + 리드백 힙 복사, 펜스 뒤 Map<sup><a href="#ref-8">8</a></sup>) DirectXTex 로 PNG 를 씁니다(<code>Graphics/Screenshot</code>). 창이 가려져 있거나 화면 밖이어도 정확한 프레임입니다. (2) TestApp 의 실행 인자가 에디터 경로를 프레임 번호로 재생합니다 — <code>--pick=u,v</code> 는 클릭과 같은 <code>Editor::Pick</code>, <code>--set-position</code> 은 Inspector 편집과 같은 <code>Transform::SetPosition</code>, <code>--save/--load</code> 는 메뉴와 같은 콜백을 부릅니다. (3) <code>--exit-after</code> 가 있으면 창을 화면 밖(x = −3000)에 활성화 없이 만들고 포커스를 가져오지 않습니다.</p>
@@ -295,6 +313,15 @@ SherlockEngine.exe --scene=demo --exit-after=60 --pick=0.5,0.5 --set-position=0,
 <span class="cm"># B: 재시작해서 그 파일을 로드 → 스크린샷 (구가 y = 6 에 있다)</span>
 SherlockEngine.exe --scene=Scenes\test.json --exit-after=60 --screenshot=b.png
 <span class="cm"># 그 밖에 --load=path, --debug-view=N, --dump-objects=1, --backend=d3d12</span></code></pre>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>위 명령을 지금 그대로 실행하면 결과가 달라집니다. 바뀐 점은 세 가지입니다.</p>
+  <ul>
+    <li><b>exe 이름.</b> <code>SherlockEngine.exe</code> 는 11-D단계부터 <code>SherlockEditor.exe</code> 입니다. 인자를 읽는 함수는 <code>EditorApp::ParseAutomation</code>(<code>App/EditorApp.cpp</code>)입니다.</li>
+    <li><b>상대 경로의 기준.</b> 지금은 <code>--save</code>·<code>--load</code>·<code>--screenshot</code> 과 <code>--scene=</code> 의 <code>.json</code> 값이 상대 경로이면 <code>Paths::GetSceneDir()</code> 를 기준으로 풉니다. 11-E단계부터 이 폴더는 프로젝트의 <code>Assets\Scenes\</code> 입니다. 그래서 <code>--save=Scenes\test.json</code> 은 <code>…\Assets\Scenes\Scenes\test.json</code> 이 됩니다. 지금은 <code>--save=test.json</code>, <code>--scene=test.json</code> 처럼 파일 이름만 적습니다. 드라이브(<code>:</code>)가 있거나 <code>\</code> 로 시작하는 경로는 그대로 씁니다.</li>
+    <li><b>시작 씬.</b> 11-E단계부터 프로젝트가 있으면 <code>.sherlock</code> 의 <code>startScene</code> 을 먼저 로드합니다. 명령줄에 <code>--scene=</code> 이 있을 때만 그 값을 우선합니다(<code>EditorApp::OnInitialize</code>). 위 A·B 는 <code>--scene=</code> 을 주므로 그대로 성립합니다. 상세: <a href="phase-11e.html#s3">phase-11e 3절</a>.</li>
+  </ul>
+</div>
 
 <h2 id="s9"><span class="num">9.</span>함정과 해결</h2>
 <ul>
@@ -358,7 +385,7 @@ SherlockEngine.exe --scene=Scenes\test.json --exit-after=60 --screenshot=b.png
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 작업 트리 (2026/09/23, 10단계 위에 연속). 이전: <a href="phase-10.html">10단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11">rendering-analysis.html PHASE 11</a>. 스크린샷은 <code>images/2026-09-23-phase11-*.png</code> (전부 리드백 스크린샷). 12단계(고급 렌더링)는 시작하지 않았다.
+  대상: SherlockEngine 작업 트리 (2026/09/23, 10단계 위에 연속). 이전: <a href="phase-10.html">10단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11">rendering-analysis.html PHASE 11</a>. 스크린샷은 <code>images/2026-09-23-phase11-*.png</code> (전부 리드백 스크린샷). 12단계(고급 렌더링)는 시작하지 않았다. 2026-10-01 문서-코드 점검 반영(도입부·7절·8절의 "이후 바뀐 것" 상자).
 </div>
 </main>
 </div>

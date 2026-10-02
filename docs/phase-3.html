@@ -224,6 +224,17 @@ td .fix b{color:var(--ok);font-weight:600}
   <p><code>Device</code>는 이제 <code>CreateBuffer(BufferDesc) → BufferHandle</code>, <code>CreateTexture</code>, <code>CreateShader</code>, <code>CreatePipeline</code>, <code>UpdateBuffer</code>, <code>BeginFrame/EndFrame</code>, <code>Bind*/DrawIndexed</code>만 밖으로 내놓습니다. 실제 객체는 세대 카운터가 붙은 풀에 있고, 핸들은 정수 두 개입니다. Renderer는 <code>Render(const Scene&amp;, const Camera&amp;)</code>로 씬을 입력받아 PerFrame·Lights·PerObject 세 상수버퍼를 <code>Map(WRITE_DISCARD)</code>로 채우고 <code>Mesh*</code>를 키로 GPU 버퍼를 캐시합니다. <code>pch.h</code>에서 D3D 헤더를 뺐고, 폴더 밖에 <code>ID3D11</code>이라는 글자는 주석에도 없습니다.</p>
 </div>
 
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>이 문서는 3단계 시점(커밋 1f89e4b)의 기록입니다. 상단 카드와 1절 표의 경로·크기는 그 시점 값입니다. 이후 크게 바뀐 것은 아래 네 가지이며, 자세한 내용은 각 절 끝의 상자에 적었습니다.</p>
+  <ul>
+    <li><b>폴더와 Device</b>(7단계): <code>Graphics/D3D11/</code>의 파일과 API 중립 헤더(<code>ResourceDesc.h</code>·<code>GraphicsConfig.h</code>·<code>ResourcePool.h</code>)는 <code>RHI/</code> 아래로 옮겨졌습니다. 이 문서의 <code>Device</code>는 가상 인터페이스 <code>RHI::Device</code>(<code>RHI/Device.h</code>)와 구현 <code>D3D11Device</code>(<code>RHI/D3D11/D3D11Device.h/.cpp</code>)로 나뉘었습니다. 8단계에서 <code>RHI/D3D12/</code>가 추가되었습니다(<a href="phase-7.html#s4">phase-7 4절</a>).</li>
+    <li><b>상수버퍼</b>: b0 PerFrame은 208B에서 <strong>304B</strong>로 늘었습니다(6단계 그림자, 11단계 디버그 뷰). b2 Lights는 672B에서 <strong>656B</strong>로 줄었습니다(4단계에서 스페큘러·광택이 재질로 이동). b3 Material(64B)이 새로 생겼습니다. b1 PerObject는 128B 그대로입니다(5절 상자).</li>
+    <li><b>ImGuiBackend 삭제</b>(7단계): ImGui 렌더러는 <code>RHI::Device</code>의 가상 함수로 흡수되었습니다(8절 상자).</li>
+    <li><b>바인딩·드로우</b>(6단계): <code>Bind*/DrawIndexed</code>는 <code>RHI::CommandList</code>로 옮겨졌습니다(3절 상자).</li>
+  </ul>
+</div>
+
 <h2 id="s1"><span class="num">1.</span>요약</h2>
 <div class="tbl"><table>
 <thead><tr><th>영역</th><th>이전</th><th>이후</th></tr></thead>
@@ -267,6 +278,14 @@ td .fix b{color:var(--ok);font-weight:600}
 <p>슬롯을 해제하면 세대가 1 올라갑니다. 같은 슬롯이 재사용되어 새 핸들 <code>{7, 3}</code>이 나가더라도, 옛 핸들 <code>{7, 2}</code>로 <code>Get</code>하면 세대가 달라 <code>nullptr</code>입니다. 세대 0은 "빈 핸들"로 예약되어 있으므로(<code>Handle::IsValid</code>가 <code>generation != 0</code>을 봄) 오버플로 시 0을 건너뜁니다. 32비트 세대가 넘치려면 같은 슬롯을 40억 번 재사용해야 합니다.</p>
 <p><code>Remove</code>가 <code>item = T{}</code>로 대입하는 것이 ComPtr을 해제하는 지점입니다. <code>D3D11Texture</code>의 경우 텍스처와 RTV/DSV/SRV가 이때 함께 해제됩니다. <code>Resize</code>가 이 성질에 기댑니다(6절).</p>
 <p>세 풀(<code>m_buffers</code>, <code>m_textures</code>, <code>m_shaders</code>)과 PSO 캐시는 <code>Device</code>에서 <code>m_device</code> 뒤에 선언되어 먼저 파괴되고, <code>ReleaseDevice()</code>도 <code>pipelines → shaders → textures → buffers → swapchain → context → (보고) → device</code> 순으로 비웁니다. PSO가 셰이더 ComPtr을 복사해 두므로 셰이더 풀보다 PSO 캐시를 먼저 비워야 합니다(순서가 반대여도 ComPtr이라 누수는 없지만, "풀을 비웠는데 객체가 살아 있는" 상태가 잠깐 생깁니다).</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>위치</b>: <code>ResourcePool</code>은 7단계에서 <code>RHI/ResourcePool.h</code>로 옮겨졌습니다. <code>Add/Get/Remove/Clear</code>, 세대 1 시작, 0 건너뛰기, free list 규칙은 위 설명과 같습니다.</li>
+    <li><b>템플릿 인자</b>(C++20, 2026-09-28): <code>template &lt;typename T, ResourceHandle HandleT&gt;</code>로 바뀌었습니다. <code>ResourceHandle</code>은 <code>RHI/Handle.h</code>의 콘셉트입니다. 잘못된 타입을 넣으면 풀 내부가 아니라 <code>ResourcePool&lt;…&gt;</code>을 적은 줄에서 에러가 납니다. 2026-10-01 작업 트리에서는 콘셉트 조건이 멤버 모양 검사에서 "<code>Handle&lt;Tag&gt;</code>의 특수화(<code>kIsHandle</code>)이고 trivially copyable"로 바뀌어 있습니다.</li>
+    <li><b>ReleaseDevice 순서</b>: 지금은 <code>RHI/D3D11/D3D11Device.cpp</code>의 <code>D3D11Device::ReleaseDevice()</code>입니다. ImGui 종료와 <code>ClearState/Flush</code> 뒤에 pipelines → (10단계 타임스탬프 쿼리) → resourceSets → bindingLayouts → shaders → samplers → textures → buffers → swapchain → context 순으로 비웁니다. 4·5단계에서 생긴 풀이 끼어들었을 뿐, "PSO 캐시를 셰이더보다 먼저"라는 원칙은 같습니다.</li>
+  </ul>
+</div>
 
 <h2 id="s3"><span class="num">3.</span>Desc → 핸들 API</h2>
 <pre><code><span class="cm">// Graphics/ResourceDesc.h — D3D 헤더 없음</span>
@@ -298,6 +317,15 @@ PipelineHandle CreatePipeline(<span class="kw">const</span> PipelineStateDesc&am
 <span class="kw">void</span> DrawIndexed(uint32_t indexCount, uint32_t startIndex = 0, int32_t baseVertex = 0);</code></pre>
 <p><code>debugName</code>은 <code>const char*</code>이지만 Device는 그 포인터를 보관하지 않고 즉시 <code>std::string</code>으로 복사한 뒤 <code>SetPrivateData(WKPDID_D3DDebugObjectName)</code>로 D3D 객체에 붙입니다. Debug Layer 메시지에 "CB_PerObject[1]"처럼 이름이 나오므로 어느 버퍼가 문제인지 바로 보입니다. 이 GUID가 <code>dxguid.lib</code>에 있어서 링크 에러를 한 번 만났습니다(10절).</p>
 <p><code>BindConstantBuffer</code>가 <code>stageMask</code>를 받는 것은 D3D11 특유의 사정 때문입니다. D3D11은 VS와 PS의 상수버퍼 슬롯이 <em>따로</em>라서 PS가 b0의 <code>cameraPosition</code>을 읽으려면 <code>PSSetConstantBuffers(0, …)</code>도 불러야 합니다. D3D12에서는 루트 시그니처의 가시성(visibility)에 해당하고, 4단계 <code>BindingLayoutDesc</code>의 슬롯별 "셰이더 스테이지" 항목이 이 마스크를 흡수합니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>경로</b>: <code>Graphics/ResourceDesc.h</code>는 <code>RHI/ResourceDesc.h</code>로 옮겨졌습니다. <code>Graphics/D3D11/Device.h</code>의 공개 API는 7단계에서 예고대로 가상 인터페이스 <code>RHI::Device</code>(<code>RHI/Device.h</code>)가 되었고, 구현은 <code>RHI/D3D11/D3D11Device</code>입니다.</li>
+    <li><b>ShaderDesc</b>(C++20, 2026-09-28): <code>const void* bytecode; size_t bytecodeSize;</code> 두 필드가 <code>std::span&lt;const uint8_t&gt; bytecode;</code> 하나로 합쳐졌습니다.</li>
+    <li><b>CreateTexture</b>: 5단계에서 밉 레벨마다 초기 데이터를 받게 되었고, 2026-09-28 C++20 적용으로 지금 시그니처는 <code>CreateTexture(const TextureDesc&amp;, std::span&lt;const TextureSubresource&gt; subresources = {})</code>입니다. <code>TextureSubresource</code>는 <code>{data, rowPitch}</code>입니다.</li>
+    <li><b>바인딩·드로우</b>(6단계): <code>BindPipeline/BindVertexBuffer/BindIndexBuffer/DrawIndexed</code>는 <code>RHI::CommandList</code>의 <code>SetPipelineState/SetVertexBuffer/SetIndexBuffer/DrawIndexed</code>가 되었습니다. <code>BindConstantBuffer(slot, handle, stageMask)</code>는 4단계에서 <code>SetResourceSet</code>으로 대체되었습니다. <code>SetClearColor</code>는 Device에서 빠지고 렌더 패스의 클리어 값으로 옮겨졌습니다. 그 사이에 <code>CreateSampler</code>(5단계), <code>CreateBindingLayout/CreateResourceSet</code>(4단계), ImGui 어댑터(7단계)가 인터페이스에 추가되었습니다.</li>
+  </ul>
+</div>
 
 <h2 id="s4"><span class="num">4.</span>프레임과 Dynamic 버퍼 링</h2>
 
@@ -322,6 +350,10 @@ uint32_t Device::BeginFrame()
     ++m_frameCounter;
 }</code></pre>
 <p>예전 <code>Clear()</code>/<code>Present()</code>가 <code>BeginFrame()</code>/<code>EndFrame()</code>이 된 것은 이름만 바뀐 것이 아닙니다. 프레임의 시작과 끝이 <em>한 곳</em>에 생겼고, 그 안에서 <strong>프레임 인덱스</strong>가 돌아갑니다. 렌더 타깃을 매 프레임 다시 바인딩하는 것도 여기서 정해졌습니다. 1단계 문서가 언급한 flip 모델 스왑체인의 요구 사항("Present 뒤 백버퍼 재바인딩")이 자연히 충족되고, 6단계에서 <code>RenderPassDesc</code>(타깃 + Load/Store)가 <code>OMSetRenderTargets</code>와 <code>Clear</code>의 자리를 차지하게 됩니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>위 예고대로 바뀌었습니다. 지금은 <code>RHI/D3D11/D3D11Device.cpp</code>의 <code>D3D11Device::BeginFrame()</code>입니다. 이 함수는 프레임 인덱스 계산, <code>CommandList</code> 통계 초기화, 10단계 GPU 타임스탬프 세트 시작만 합니다. <code>OMSetRenderTargets</code>·<code>Clear*</code>·<code>RSSetViewports</code>는 6단계에서 <code>CommandList::BeginRenderPass(RenderPassDesc)</code>로 옮겨졌습니다. <code>EndFrame()</code>에는 몇 가지가 더해졌습니다. 열린 렌더 패스가 있으면 경고하고 닫고, 11단계 스크린샷 리드백을 처리하고, VSync를 끄면 <code>DXGI_PRESENT_ALLOW_TEARING</code>으로 Present합니다. 프레임 카운터를 올리는 구조는 같습니다.</p>
+</div>
 
 <h3 id="s4-2">4.2 Map(WRITE_DISCARD)의 의미론</h3>
 <p>세 상수버퍼는 전부 <code>BufferUsage::Dynamic</code>이고 <code>UpdateBuffer</code>는 <code>Map(D3D11_MAP_WRITE_DISCARD)</code>를 씁니다. Microsoft 문서<sup><a href="#ref-5">[5]</a></sup>의 설명을 이 프로젝트 맥락으로 옮기면 다음과 같습니다.</p>
@@ -348,6 +380,10 @@ uint32_t Device::BeginFrame()
 };</code></pre>
 <p>D3D11에서 이 복제는 <strong>아무 일도 하지 않습니다.</strong> WRITE_DISCARD가 이미 동기화를 해 주므로 복제본 1개면 충분합니다. 그런데도 넣은 이유는 원문 3단계의 설계 결정인 "프레임 인덱스를 지금부터 노출한다" 때문입니다. D3D12에는 DISCARD가 없습니다. 업로드 힙의 메모리를 CPU가 직접 쓰고, GPU가 그 메모리를 아직 읽고 있는지는 <em>앱이</em> 펜스로 추적해야 합니다. Microsoft의 <em>Fence-Based Resource Management</em><sup><a href="#ref-8">[8]</a></sup>가 설명하는 링 버퍼가 그것입니다. 프레임 N의 업로드는 슬롯 <code>N % kFrameCount</code>에 쓰고, 그 슬롯을 다시 쓰기 전에 프레임 <code>N − kFrameCount</code>의 펜스가 완료됐는지 기다립니다. 8단계 D3D12 백엔드는 <code>BeginFrame</code>에서 그 대기를 추가하고 <code>buffers[frameIndex]</code>에 해당하는 업로드 힙 영역을 돌려주면 됩니다. <code>Renderer</code>는 바뀌지 않습니다.</p>
 <p>이 구조가 "투명한지"를 확인하는 방법은 <code>kFrameCount</code>를 1, 2, 3으로 바꿔 빌드해 화면이 같은지 보는 것입니다. 다르다면 어딘가에 "이전 프레임 슬롯의 내용이 남아 있다"는 가정에 기대는 버그가 있는 것입니다. 세 값 모두 같은 화면이었습니다(11절). Information 패널의 <code>frame slot</code>이 0·1·2로 도는 것도 볼 수 있습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>스니펫의 두 파일은 7단계에서 옮겨졌습니다. <code>kFrameCount = 2</code>는 <code>RHI/GraphicsConfig.h</code>에 있고, 10단계에서 같은 파일에 <code>kMaxTimestamps = 32</code>가 추가되었습니다. <code>D3D11Buffer</code>는 <code>RHI/D3D11/D3D11Resources.h</code>에 있고 <code>Get(frameIndex)</code>의 동작은 같습니다. 이 절이 예고한 D3D12의 펜스 기반 링은 8단계에서 구현되었습니다.</p>
+</div>
 <div class="callout amber">
   <div class="t">Dynamic 버퍼의 계약</div>
   <p>Dynamic 버퍼의 내용은 <strong><code>UpdateBuffer</code>를 부른 그 프레임에서만</strong> 유효합니다. 다음 프레임은 다른 슬롯을 바인딩하므로, "지난 프레임에 올렸으니 이번엔 안 올려도 되겠지" 하고 건너뛰면 D3D12에서는 옛 데이터나 쓰레기 값을 읽게 됩니다. Renderer는 PerFrame과 Lights를 매 프레임, PerObject를 드로우마다 올립니다. 조명이 바뀌지 않아도 올립니다. 최적화가 필요해지면 "바뀐 프레임에만 올리되 모든 슬롯에 올린다"가 맞는 방향입니다.</p>
@@ -412,6 +448,19 @@ cbuffer Lights    : register(b2) { LightData lights[MAX_LIGHTS]; float3 ambientC
 [정보] cbuffer 'Lights' 크기 일치: 672 바이트 (변수 5개)</code></pre></li>
   <li><strong>실행 시점 — RenderDoc.</strong> 드로우를 캡처하면 VS에 b0·b1, PS에 b0·b2가 208/128/672 바이트로 바인딩된 것과 각 변수의 값이 보입니다. 이 문서 작성 시점의 검증은 1·2번으로 했습니다.</li>
 </ol>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>5.1~5.3의 크기·오프셋·로그는 3단계 시점 값입니다. 지금 <code>Graphics/ShaderConstants.h</code>와 <code>Shaders/Common.hlsli</code>의 cbuffer는 넷입니다.</p>
+  <div class="tbl"><table>
+  <thead><tr><th>슬롯</th><th>구조체</th><th>3단계</th><th>현재</th><th>바뀐 내용</th></tr></thead>
+  <tbody>
+  <tr><td class="mono">b0</td><td class="mono">PerFrameConstants</td><td>208B</td><td>304B</td><td>6단계에 <code>lightViewProj</code>(오프셋 192)·<code>shadowParams</code>(272), 11단계에 <code>debugParams</code>(288) 추가. 그래서 <code>cameraPosition</code>은 256, <code>time</code>은 268로 밀렸습니다.</td></tr>
+  <tr><td class="mono">b1</td><td class="mono">PerObjectConstants</td><td>128B</td><td>128B</td><td>변화 없음</td></tr>
+  <tr><td class="mono">b2</td><td class="mono">LightConstants</td><td>672B</td><td>656B</td><td>4단계에서 <code>specularColor</code>·<code>shininess</code>가 재질로 이동했습니다. 남은 것은 <code>LightData[8]</code>, <code>ambientColor</code>(640), <code>lightCount</code>(652)입니다. 계산은 8×80 + 16 = 656입니다.</td></tr>
+  <tr><td class="mono">b3</td><td class="mono">MaterialConstants</td><td>—</td><td>64B</td><td>4단계에서 생겼고, 5단계(<code>uvScale</code>·<code>unlit</code>), 6단계(<code>normalStrength</code>), 9단계(<code>alphaCutoff</code>)에서 필드가 늘었습니다. <code>baseColor</code>, <code>specularColor</code>(16)·<code>shininess</code>(28), <code>uvScale</code>(32)·<code>unlit</code>(40), <code>normalStrength</code>(44)·<code>alphaCutoff</code>(48)이 들어 있고 VS와 PS가 함께 씁니다.</td></tr>
+  </tbody></table></div>
+  <p>5.3의 단언도 이 값으로 바뀌었습니다(<code>sizeof(PerFrameConstants) == 304</code>, <code>offsetof(…, time) == 268</code>, <code>sizeof(LightConstants) == 656</code> 등). C++20 적용(2026-09-28) 때 <code>consteval bool IsValidConstantBufferSize(size_t)</code>가 추가되었습니다. 이 함수는 0보다 크고 16의 배수이며 65,536 이하인지만 보는 일반 규칙이고, 정확한 크기·오프셋 단언은 그대로 둡니다. 리플렉션 대조는 지금 <code>Renderer.cpp</code>에서 VS·PS·그림자 셰이더를 합쳐 8건이며 Material도 대상입니다. <code>LightData</code>(80B)와 패킹 규칙 설명(5.2)은 바뀌지 않았습니다.</p>
+</div>
 
 <h3 id="s5-4">5.4 행렬 전치 관례와 역전치</h3>
 <p>HLSL은 기본적으로 행렬을 <strong>column_major</strong>로 읽습니다. 즉 상수버퍼의 연속된 16바이트 4개를 열 4개로 해석합니다. DirectXMath의 <code>XMMATRIX</code>는 행우선(row-major) 메모리라 그대로 올리면 HLSL이 전치된 행렬을 봅니다. 셰이더가 행벡터 곱 <code>mul(v, M)</code>을 쓰므로, 우리는 C++에서 <code>XMMatrixTranspose(M)</code>을 올려 두 전치가 상쇄되게 합니다. 이것이 이전 코드부터 이어진 관례이고, 원문 D13이 "<code>#pragma pack_matrix(row_major)</code>로 전치를 없앨 수도 있지만 관례를 섞지 말라"고 한 지점입니다. 섞으면 어떤 행렬은 전치하고 어떤 것은 안 하는 상태가 되어 화면이 조용히 깨집니다.</p>
@@ -433,6 +482,10 @@ CreateBackBufferTexture();                           <span class="cm">// (4) 새
 CreateDepthTexture();
 UpdateViewport();</code></pre>
 <p>(2)에서 풀의 <code>Remove</code>가 <code>item = T{}</code>로 ComPtr을 놓는 것이 곧 참조 해제입니다. 누군가 이전 <code>TextureHandle</code>을 들고 있어도 그것은 값이라 참조를 유지하지 않으므로 <code>ResizeBuffers</code>를 막지 못하고, 다음 <code>Get</code>에서 <code>nullptr</code>를 받습니다. 그래서 헤더에 "Resize마다 새로 만들어진다. 프레임을 넘겨 보관하지 말 것"이라고 적었습니다. <code>WM_SIZE</code>는 메시지 루프에서만 오므로 프레임 도중에 핸들이 무효화되는 일은 없습니다. 창 크기를 여섯 번 바꾸고 최소화/복원해도 Debug Layer 메시지가 0건이었습니다(11절).</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>지금은 <code>RHI/D3D11/D3D11Device.cpp</code>의 <code>D3D11Device::Resize()</code>입니다. (1)~(4)의 순서와 "이전 핸들은 세대가 올라가 무효"라는 성질은 같고, 차이는 두 가지입니다. <code>ResizeBuffers</code>의 마지막 인자가 <code>0</code>이 아니라 <code>m_swapChainFlags</code>입니다. 스왑체인을 <code>ALLOW_TEARING</code>으로 만들었다면 같은 플래그를 넘겨야 하기 때문입니다. <code>UpdateViewport()</code> 호출은 없어졌습니다. 6단계 이후 뷰포트는 렌더 패스를 시작할 때 타깃 크기로 정해집니다.</p>
+</div>
 
 <h2 id="s7"><span class="num">7.</span>Scene · GameObject · Renderer</h2>
 
@@ -460,6 +513,13 @@ std::unordered_map&lt;<span class="kw">const</span> Mesh*, GpuMesh&gt; m_gpuMesh
   <div class="t">뒤에 바뀐 것</div>
   <p>11-C단계(2026-09-23)에서 <code>GameObject</code> 는 값 벡터에서 <code>unique_ptr</code> 벡터로, 컴포넌트 목록이 붙었습니다. 11-F단계(2026-09-29)에서는 부모-자식 링크(비소유 포인터)가 들어가 <code>Transform</code> 이 <em>부모 기준 로컬</em>이 되었고 월드 행렬은 <code>GameObject::GetWorldMatrix</code> 가 재귀로 만듭니다(<code>Transform::GetWorldMatrix</code> 는 <code>GetLocalMatrix</code> 로 개명). Renderer 의 <code>UploadObjectConstants</code> 는 그 월드 행렬을 받습니다 — CPU 데이터/GPU 캐시 경계(D3)는 그대로입니다. 상세: <a href="phase-11c.html#s6">phase-11c 6절</a>, <a href="phase-11f.html#s4">phase-11f 4절</a>.</p>
 </div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>재질</b>(4단계): 위 상자가 다루지 않은 변경입니다. <code>Scene::AddObject</code>는 <code>AddObject(const Mesh*, const Material*, const char* name)</code>가 되었습니다. <code>Scene</code>의 <code>specularColor</code>·<code>shininess</code>는 <code>Material</code>로 옮겨져 지금 <code>Scene</code>에는 <code>ambientColor</code>와 <code>clearColor[4]</code>만 남아 있습니다. <code>GameObject</code>에는 <code>material</code>과, 9단계 모델의 서브메시별 재질인 <code>slotMaterials</code>가 추가되었습니다.</li>
+    <li><b>GPU 캐시 키</b>: 위 본문은 "9단계에서 <code>Mesh</code>에 고유 ID를 붙여 키를 바꾸는 것이 맞다"고 했지만 그렇게 하지 않았습니다. 키는 지금도 <code>std::unordered_map&lt;const Mesh*, GpuMesh&gt;</code>입니다. 대신 <code>Renderer::InvalidateScene(const Scene&amp;, bool releaseTextures)</code>를 추가해 씬 전체의 메시·재질 캐시를 한 번에 버리고, <code>Scene</code>을 비우기 전에 이것을 먼저 부르는 규칙(<code>Scene.h</code> 주석)으로 주소 재사용 위험을 막고 있습니다.</li>
+  </ul>
+</div>
 
 <h3 id="s7-2">7.2 Render(Scene, Camera)</h3>
 <pre><code><span class="cm">// Graphics/Renderer.cpp — Render()의 흐름</span>
@@ -483,6 +543,10 @@ m_device-&gt;BindConstantBuffer(kCBSlotLights,   m_lightCB,    ShaderStageMask_P
     m_device-&gt;DrawIndexed(gpuMesh-&gt;indexCount);
 }</code></pre>
 <p>이 함수에는 D3D 호출이 하나도 없습니다. 전부 <code>Device</code>의 핸들 API입니다. 6단계에서 <code>m_device-&gt;</code>가 <code>commandList-&gt;</code>로 바뀌는 것 말고는 이 모양이 유지될 예정입니다. 오브젝트 정렬(PSO → Material → Mesh)은 4단계 몫입니다. 지금은 PSO가 하나라 정렬할 것이 없습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>예고대로 바뀌었습니다. <code>Renderer::Render(const Scene&amp;, const Camera&amp;, float totalTime)</code>는 그림자 패스와 메인 패스를 나눠 부릅니다(6단계). 오브젝트 루프는 <code>RenderMainPass(RHI::CommandList&amp;, const Scene&amp;)</code>가 부르는 <code>DrawItems</code>로 옮겨졌습니다. 이 루프는 씬을 직접 돌지 않고, PSO → Material → Mesh 순으로 <code>std::sort</code>한 <code>m_drawList</code>를 돌며, 직전과 다를 때만 <code>cmd.SetPipelineState</code>·<code>SetResourceSet</code>·<code>SetVertexBuffer/SetIndexBuffer</code>를 부릅니다(4단계). b1 업로드는 <code>UploadObjectConstants(const GameObject&amp;)</code>가 맡고, 월드 행렬은 11-F단계부터 <code>GameObject::GetWorldMatrix()</code>에서 받습니다. 9단계부터는 서브메시 범위(<code>indexCount</code>, <code>indexStart</code>)만 그립니다.</p>
+</div>
 
 <h3 id="s7-3">7.3 프리미티브</h3>
 <p><code>Mesh::CreateCube / CreatePlane / CreateCylinder</code>를 추가했습니다. 전부 Luna의 <code>GeometryGenerator</code><sup><a href="#ref-12">[12]</a></sup> 관례를 따릅니다. 왼손 좌표계, <strong>시계방향이 앞면</strong>(<code>RasterizerDesc::frontCounterClockwise = false</code>가 기본), 노멀은 바깥쪽. 기존 구 생성기도 같은 관례라서 컬링을 켰을 때 넷 다 올바르게 보입니다.</p>
@@ -498,6 +562,14 @@ m_device-&gt;BindConstantBuffer(kCBSlotLights,   m_lightCB,    ShaderStageMask_P
   <li><strong>DebugUI</strong> (<code>App/</code>) — 조명·렌더 설정·카메라 패널을 자유 함수 세 개로 분리했습니다. Renderer는 <code>&lt;imgui.h&gt;</code>를 include하지 않습니다. 패널은 데이터를 <em>편집</em>하는 쪽이지 <em>소유</em>하는 쪽이 아니므로 App 계층입니다.</li>
   <li><strong>ImGuiBackend</strong> (<code>Graphics/D3D11/</code>) — <code>ImGui_ImplDX11_Init</code>이 <code>ID3D11Device*</code>를 받으므로 그것을 부르는 코드는 D3D11 폴더 안에 있어야 합니다. <code>Init(Device&amp;)/NewFrame/Render/Shutdown</code> 네 함수로 감쌌고 <code>AppBase</code>는 Win32 백엔드와 ImGui 컨텍스트만 다룹니다. D3D12 백엔드는 <code>Graphics/D3D12/ImGuiBackend</code>가 될 것입니다.</li>
 </ul>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>ShaderCompiler</b>: 7단계에서 선언이 <code>RHI/ShaderCompiler.h</code>로 옮겨졌습니다. 8단계에서는 구현이 <code>RHI/DXBC/ShaderCompiler.cpp</code>로 옮겨졌습니다. fxc와 리플렉션은 그래픽스 API가 아니라 DXBC 바이트코드 형식에 묶여 있어서 두 백엔드가 공유하기 때문입니다. 4단계에서 <code>LoadOrCompile</code>(<code>.cso</code> 우선)과 <code>ReflectBindings</code>가 추가되었습니다. <code>ValidateConstantBufferSize</code>는 C++20 적용(2026-09-28) 때 바이트코드를 <code>std::span&lt;const uint8_t&gt;</code>로 받게 되었습니다.</li>
+    <li><b>DebugUI</b>: 자유 함수는 세 개에서 아홉 개가 되었습니다(<code>App/DebugUI.h</code>). 재질(4단계), 그림자(6단계), 모델(9단계), 엔진·프로파일러·로그 콘솔(10단계) 패널이 더해졌습니다. 조명 패널은 6단계에서 조명 8개를 모두 편집하도록 넓어졌습니다. 장치 인자는 <code>RHI::Device&amp;</code>입니다. "편집할 뿐 소유하지 않는다"는 원칙은 같습니다.</li>
+    <li><b>ImGuiBackend 삭제</b>(7단계): <code>ImGuiBackend</code> 파일과 네임스페이스는 이제 없습니다. 이 문서가 예상한 "백엔드별 <code>ImGuiBackend</code>" 대신, ImGui 렌더러 호출은 <code>RHI::Device</code>의 가상 함수 <code>InitImGui</code>·<code>NewFrameImGui</code>·<code>RenderImGui</code>·<code>ShutdownImGui</code>·<code>GetImGuiTextureId</code>로 들어갔습니다(<code>RHI/Device.h</code>). <code>App</code>은 여전히 ImGui 컨텍스트와 Win32 백엔드만 다룹니다. 상세: <a href="phase-7.html#s7">phase-7 7절</a>.</li>
+  </ul>
+</div>
 
 <h2 id="s9"><span class="num">9.</span>pch 정리와 ID3D11 격리</h2>
 <p><code>pch.h</code>에서 <code>d3d11.h</code>·<code>dxgi.h</code>·<code>d3dcompiler.h</code>·<code>wrl/client.h</code>와 <code>#pragma comment(lib)</code>를 지웠습니다. 0단계에서 <code>D3D11Common.h</code>를 만들고 D3D11 폴더의 모든 헤더가 그것을 include하게 해 두었기 때문에 <strong>컴파일 에러가 하나도 나지 않았습니다.</strong> 계획은 "컴파일 에러 목록이 곧 남은 누출 목록"이었는데 목록이 비어 있었던 셈입니다. grep이 잡은 것은 주석 속 문자열 세 곳("<code>ComPtr&lt;ID3D11Buffer&gt;를 돌려줬다</code>" 같은 설명)뿐이라 문구를 고쳤습니다. 완료 기준은 문자열 검색이므로 주석도 대상입니다.</p>
@@ -505,6 +577,10 @@ m_device-&gt;BindConstantBuffer(kCBSlotLights,   m_lightCB,    ShaderStageMask_P
 grep -rn "ID3D11\|d3d11\.h\|dxgi\.h\|d3dcompiler\.h\|imgui_impl_dx11" --include=*.h --include=*.cpp . | grep -v "^./Graphics/D3D11/"
 grep -rn "ComPtr" --include=*.h --include=*.cpp . | grep -v "^./Graphics/D3D11/"</code></pre>
 <p>이 규칙이 지키는 것은 "<code>Graphics/D3D11/</code> 밖의 파일은 재컴파일 없이 D3D12 백엔드로 바꿀 수 있는가"입니다. 지금 답은 "헤더 기준으로는 그렇다"입니다. <code>Renderer.cpp</code>와 <code>DebugUI.cpp</code>가 <code>Graphics/D3D11/Device.h</code>를 include하는 부분은 남아 있고, 7단계에서 그것이 <code>RHI/Device.h</code>(가상 인터페이스)로 바뀝니다. 그때 바뀌는 것은 include 한 줄과 <code>Device*</code> → <code>RHI::Device*</code>뿐이어야 하며, 지금 <code>Device</code>의 공개 함수는 그 인터페이스와 이름·시그니처가 같게 설계되었습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>위 grep은 <code>Graphics/D3D11/</code>을 제외 경로로 쓰므로 지금 그대로 돌리면 결과가 맞지 않습니다. 7단계에서 그 폴더가 <code>RHI/D3D11/</code>(<code>D3D11Common.h</code>와 <code>dxguid.lib</code> pragma 포함)로 옮겨졌고, 8단계에서 <code>RHI/D3D12/</code>, <code>RHI/DXBC/</code>가 생겼기 때문입니다. 지금 기준으로 같은 검사를 하려면 제외 경로를 <code>^./RHI/D3D11/</code>·<code>^./RHI/D3D12/</code>·<code>^./RHI/DXBC/</code>로 바꿉니다. 2026-10-01에 그렇게 돌려 보면 D3D 헤더·타입 검색은 0건이고, <code>ComPtr</code>은 <code>RHI/DXBC/ShaderCompiler.cpp</code>에서만 나옵니다. 예고대로 <code>Renderer.cpp</code>와 <code>DebugUI.cpp</code>는 이제 <code>RHI/Device.h</code>를 include하고 <code>RHI::Device</code>를 씁니다.</p>
+</div>
 
 <h2 id="s10"><span class="num">10.</span>함정과 해결</h2>
 <ul>
@@ -567,7 +643,7 @@ grep -rn "ComPtr" --include=*.h --include=*.cpp . | grep -v "^./Graphics/D3D11/"
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 커밋 1f89e4b (2026/09/23). 이전: <a href="phase-2.html">2단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p3">rendering-analysis.html PHASE 3</a>. 다음: <a href="phase-4.html">4단계 · Material과 바인딩 레이아웃</a>.
+  대상: SherlockEngine 커밋 1f89e4b (2026/09/23). 이전: <a href="phase-2.html">2단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p3">rendering-analysis.html PHASE 3</a>. 다음: <a href="phase-4.html">4단계 · Material과 바인딩 레이아웃</a>. 2026-10-01 문서-코드 점검 반영.
 </div>
 </main>
 </div>

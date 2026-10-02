@@ -141,6 +141,17 @@ tr:last-child td{border-bottom:0}
   <p>게임 로직은 <code>Behaviour</code> 를 상속한 C++ 클래스이고, <code>SHERLOCK_BEHAVIOUR(클래스)</code> 한 줄이 이름 → 생성 함수를 레지스트리에 등록합니다. <code>Reflect(PropertyVisitor&amp;)</code> 가 열거한 필드를 SceneSerializer 는 JSON 으로, Editor 는 ImGui 위젯으로 씁니다(Scene 계층은 ImGui 를 모릅니다). Play 는 씬+카메라를 JSON 문자열로 스냅샷한 뒤 <code>Scene::BeginPlay</code> 를 부르고, Stop 은 그 문자열을 다시 로드합니다 — 11단계 SceneSerializer 위에 얹은 구조라 재생을 위해 렌더러를 고친 곳은 없습니다.</p>
 </div>
 
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>이 문서는 2026-09-23 작업 트리 기준입니다. 여러 절에 되풀이되는 변경은 여기서 한 번에 안내하고, 절마다 다른 변경은 해당 절의 상자(3.1·3.2·3.4·7절)에 적었습니다.</p>
+  <ul>
+    <li><strong>TestApp → EditorApp.</strong> 2026-09-28(커밋 <code>11a74a5</code>)에 에디터 앱 클래스 이름이 바뀌었습니다. 본문의 <code>TestApp::StartPlay/StopPlay/TogglePause/StepFrame</code>, <code>TestApp::UpdateCamera</code>, <code>TestApp::m_playState</code>, 3.3절의 <code>TestApp.cpp</code>(데모 씬 구성) 등은 지금 <code>App/EditorApp.h</code>·<code>App/EditorApp.cpp</code> 의 <code>EditorApp::…</code> 입니다. 멤버 이름(<code>m_playState</code>, <code>m_timeScale</code>, <code>m_stepOnce</code>, <code>m_playSnapshot</code>)은 그대로입니다. 2절의 <code>TestApp::OnUpdate</code> 는 11-C 이전 상태를 설명하는 문장이라 당시 이름으로 읽으면 됩니다.</li>
+    <li><strong>실행 파일 이름.</strong> 11-D단계(2026-09-23)에서 프로젝트를 셋으로 나누면서 9절 명령의 <code>SherlockEngine.exe</code> 는 <code>SherlockEditor.exe</code>(<code>x64\Debug\</code>)가 되었습니다. 인자는 그대로입니다. <a href="phase-11d.html#s6">phase-11d 6절</a>.</li>
+    <li><strong>스크립트 위치.</strong> lede·요약 카드·3절·7절의 <code>Game/Scripts/</code> 는 11-E단계(2026-09-24)에서 Sample 프로젝트로 옮겨져 지금 <code>Projects/Sample/Scripts/</code>(PlayerController·Rotator)입니다. 엔진의 <code>SherlockEngine/Game/</code> 에는 <code>Components/</code>(Rigidbody·FollowTarget)만 남았습니다. <a href="phase-11e.html#s4">phase-11e 4절</a>.</li>
+    <li><strong>씬 파일 버전.</strong> 요약 카드·1절·7.1절의 "버전 2" 는 11-F단계(2026-09-29)에서 <code>"parent"</code> 필드가 더해져 지금 버전 3입니다(<code>Scene/SceneSerializer.cpp</code> 의 <code>kVersion = 3</code>). 버전 1·2 파일도 그대로 읽힙니다. <a href="phase-11f.html">phase-11f</a>.</li>
+  </ul>
+</div>
+
 <h2 id="s1"><span class="num">1.</span>요약</h2>
 <div class="tbl"><table>
   <thead><tr><th>항목</th><th>구현</th><th>확인</th></tr></thead>
@@ -200,6 +211,10 @@ SHERLOCK_SCRIPT(Rotator)   <span class="cm">// 이름 "Rotator" 로 등록. 빌�
 }</code></pre>
 <p>스크립트끼리 참조할 때의 규칙: 상대 포인터는 <code>Start</code> 에서 찾아 멤버에 둔다(오브젝트는 <code>unique_ptr</code> 라 재생 중 주소가 안정적). Stop 은 씬을 스냅샷에서 다시 만들므로 이전 재생의 포인터는 무효이고, 재생마다 <code>Start</code> 가 다시 불리니 거기서 다시 찾으면 된다. 상대가 아직 <code>Start</code> 전일 수 있으므로(오브젝트 순서) 상대의 초기화 결과에 의존한다면 첫 <code>Update</code> 에서 찾는다. 헤더끼리는 서로 include 하지 않고 전방 선언 + 포인터를 쓴다.</p>
 <p>생명주기는 유니티의 MonoBehaviour 와 같습니다: <code>Start</code>(재생 시작 뒤 첫 프레임, 재생 중 추가된 것도 그 다음 프레임에), <code>Update(dt)</code>(매 프레임, 시간 배율 반영), <code>FixedUpdate(fixedDt)</code>(10단계 고정 스텝 — Rigidbody 가 쓴다). <code>enabled</code> 가 false 면 Update/FixedUpdate 를 받지 않습니다. <code>Script</code> 는 <code>Behaviour</code>(모든 컴포넌트의 기반)의 얇은 하위 클래스로 헬퍼만 더합니다 — 엔진 컴포넌트(Rigidbody·CameraComponent·FollowTarget)는 <code>Behaviour</code> 를 직접 상속하고 <code>SHERLOCK_BEHAVIOUR</code> 로 등록하며, 스크립트에서 <code>GetComponent&lt;Rigidbody&gt;()</code> 로 찾아 쓸 수 있게 헤더(<code>Game/Components/Rigidbody.h</code>)를 갖습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>위 코드 조각의 경로는 11-C 당시의 것입니다. 11-E단계(2026-09-24)에서 예제 스크립트가 엔진에서 Sample 프로젝트로 옮겨져, 지금 파일은 <code>Projects/Sample/Scripts/Rotator.h/.cpp</code> 와 <code>Projects/Sample/Scripts/PlayerController.h/.cpp</code> 입니다. 스크립트 폴더가 include 경로에 들어 있으므로(엔진 솔루션의 <code>SherlockEditor.vcxproj</code>·<code>SherlockGame.vcxproj</code> 는 <code>$(SolutionDir)Projects\Sample\Scripts</code>, 생성된 프로젝트 솔루션은 <code>$(ProjectDir)Scripts</code>) 스크립트끼리의 include 에는 폴더를 쓰지 않습니다. <code>Rotator.cpp</code> 와 <code>PlayerController.cpp</code> 는 <code>#include "Rotator.h"</code> 이고, 엔진 컴포넌트는 그대로 <code>#include "Game/Components/Rigidbody.h"</code> 입니다. 클래스 내용과 스크립트끼리 참조하는 규칙은 바뀌지 않았습니다. 새 스크립트가 만들어지는 곳은 3.4절 상자를 보십시오.</p>
+</div>
 
 <h3 id="s3-2">3.2 레지스트리와 SHERLOCK_BEHAVIOUR</h3>
 <pre><code>#define SHERLOCK_BEHAVIOUR(ClassName) \
@@ -207,6 +222,13 @@ SHERLOCK_SCRIPT(Rotator)   <span class="cm">// 이름 "Rotator" 로 등록. 빌�
     <span class="kw">namespace</span> { <span class="kw">struct</span> ClassName##_Registrar { ClassName##_Registrar() { \
         BehaviourRegistry::Register(#ClassName, []() { <span class="kw">return</span> std::make_unique&lt;ClassName&gt;(); }); } } s_##ClassName##_Registrar; }</code></pre>
 <p>정적 객체의 생성자가 main 전에 이름 → 생성 함수를 등록합니다. 레지스트리의 map 은 함수 안의 static(Meyers singleton)이라 정적 초기화 순서에 안전합니다. 정적 라이브러리였다면 "참조되지 않은 .obj 의 정적 초기화가 링크에서 빠지는" 함정이 있지만, 이 프로젝트는 컴포넌트가 exe 에 직접 컴파일되므로 해당하지 않습니다 — 게임을 별도 모듈로 나누는 날이 오면 이 지점을 다시 봐야 합니다(12절). <code>GameObject::AddBehaviour("Rotator")</code>, SceneSerializer, Inspector 콤보가 전부 이 레지스트리를 씁니다. <code>SHERLOCK_SCRIPT</code> 는 같은 등록에 "스크립트" 표시를 더해 Inspector 가 Scripts / Components 로 나눠 보여 줍니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><strong>정적 라이브러리 단서.</strong> "컴포넌트가 exe 에 직접 컴파일되므로 해당하지 않는다" 는 지금 맞지 않습니다. 11-D단계(2026-09-23)에서 엔진이 정적 라이브러리(<code>SherlockEngine.vcxproj</code>, <code>StaticLibrary</code>)가 되면서 바로 이 함정이 생겼고, 두 exe 프로젝트의 링커 옵션 <code>/WHOLEARCHIVE:SherlockEngine.lib</code> 로 막았습니다(<a href="phase-11d.html#s2-1">phase-11d 2.1절</a>). 11-E 이후 lib 안에 있는 등록은 엔진 컴포넌트(<code>Rigidbody</code>·<code>FollowTarget</code>·<code>CameraComponent</code>)이고, 프로젝트 스크립트는 exe 프로젝트가 직접 컴파일하므로 이 함정과 무관합니다.</li>
+    <li><strong>매크로의 실제 모양.</strong> 위 스니펫은 축약입니다. 지금 <code>Scene/Behaviour.h</code> 에서는 <code>SHERLOCK_BEHAVIOUR(C)</code> 와 <code>SHERLOCK_SCRIPT(C)</code> 가 모두 <code>SHERLOCK_REGISTER_BEHAVIOUR_(C, IsScript)</code> 로 위임하고(각각 <code>false</code>·<code>true</code>), <code>BehaviourRegistry::Register</code> 는 세 번째 인자 <code>bool isScript</code> 를 받으며, 람다는 반환형을 <code>-&gt; std::unique_ptr&lt;Behaviour&gt;</code> 로 적습니다. 이 플래그가 바로 위 문단 끝의 "스크립트 표시" 입니다.</li>
+  </ul>
+</div>
 
 <h3 id="s3-3">3.3 PropertyVisitor: 저장과 Inspector 를 한 번에</h3>
 <p>컴포넌트마다 JSON 코드와 ImGui 코드를 따로 쓰게 하면 Scene 계층이 ImGui 를 알게 되고(3단계의 "패널은 편집만, Scene 은 CPU 데이터" 규칙 위반) 필드를 하나 더할 때마다 세 곳을 고쳐야 합니다. 그래서 컴포넌트는 <code>Reflect</code> 에서 필드를 <em>열거만</em> 하고, 방문자가 무엇을 하는지는 모릅니다.</p>
@@ -220,6 +242,16 @@ SHERLOCK_SCRIPT(Rotator)   <span class="cm">// 이름 "Rotator" 로 등록. 빌�
 <h3 id="s3-4">3.4 에디터에서 새 스크립트 만들기 · 편집</h3>
 <p>유니티의 Create &gt; C# Script 에 해당합니다. Inspector 의 <b>New Script...</b> 에 클래스 이름을 넣으면 <code>App/ScriptCreator</code> 가 (1) <code>Game/Scripts/&lt;이름&gt;.h</code>(선언: Reflect·Start·Update, 필드)와 <code>&lt;이름&gt;.cpp</code>(구현 골격, 쓸 수 있는 함수 목록 주석, <code>SHERLOCK_SCRIPT</code>)를 템플릿으로 만들고, (2) <code>SherlockEngine.vcxproj</code> 와 <code>.filters</code> 의 마지막 <code>Game\Scripts</code> 항목 뒤에 <code>&lt;ClInclude&gt;</code>·<code>&lt;ClCompile&gt;</code> 줄을 끼워 넣고(줄 끝·BOM 은 파일을 따른다), (3) 두 파일을 연결 프로그램(보통 Visual Studio)으로 엽니다. 결과는 언리얼의 New C++ Class 와 같습니다. 스크립트 컴포넌트 헤더의 <b>Edit</b> 버튼은 그 .h/.cpp 를 바로 엽니다.</p>
 <p>에디터는 컴파일하지 않습니다 — C++ 이므로 만들거나 고친 뒤 Visual Studio 에서 빌드(Ctrl+Shift+B)하고 앱을 다시 실행해야 Add Component 의 Scripts 목록에 나타납니다(팝업과 상태 메시지로 안내합니다). 소스 트리가 있는 저장소 빌드(<code>x64\Debug</code>)에서만 동작하고, 배포 빌드에서는 버튼이 "source tree not found" 를 표시합니다. 자동 검증 <code>--new-script=TestScript</code> 로 같은 경로를 창 없이 돌려, 생성된 .h/.cpp 가 그대로 컴파일되고 재실행 뒤 <code>--add-component=TestScript</code> 가 붙는 것을 확인했습니다(검증 뒤 파일과 항목은 지웠습니다). 데모 재생에서는 PlayerController 가 Cylinder 의 Rotator 를 찾습니다(경고 없음). 라이브 코딩(실행 중 재컴파일)은 12절에서 다룹니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검) — New Script 의 동작이 위 설명과 다릅니다</div>
+  <p>11-E단계(2026-09-24)에서 스크립트가 프로젝트에 속하게 되면서 위 (2)단계, 즉 <strong>vcxproj 편집은 없어졌습니다</strong>. 지금 <code>App/ScriptCreator.cpp</code> 의 <code>ScriptCreator::Create</code> 가 하는 일은 다음과 같습니다.</p>
+  <ul>
+    <li>열린 프로젝트의 <code>&lt;프로젝트&gt;\Scripts\&lt;이름&gt;.h</code> 와 <code>.cpp</code> 를 템플릿으로 <strong>만들기만 합니다</strong>(<code>GetScriptsDir()</code> = <code>Paths::GetProjectRoot()</code> + <code>Scripts\</code>, 폴더가 없으면 만듦). <code>SherlockEngine.vcxproj</code>·<code>.filters</code> 를 포함해 어떤 vcxproj 도 건드리지 않습니다.</li>
+    <li>새 파일이 컴파일되는 것은 와일드카드 덕분입니다. 생성된 프로젝트 솔루션의 두 vcxproj 는 <code>Scripts\**\*.cpp</code>(하위 폴더 포함, 2026-09-30부터)를, 엔진 솔루션의 <code>SherlockEditor.vcxproj</code>·<code>SherlockGame.vcxproj</code>(Sample 프로젝트)는 <code>..\Projects\Sample\Scripts\*.cpp</code> 를 컴파일합니다. 그래서 만든 뒤에는 빌드하고 다시 실행하면 됩니다. Sample 이면 엔진 솔루션의 SherlockEditor 를, 다른 프로젝트면 그 프로젝트 솔루션의 <code>&lt;이름&gt;Editor</code> 를 빌드합니다.</li>
+    <li>사용 가능 조건은 "소스 트리가 있는가" 가 아니라 "프로젝트가 열려 있는가"(<code>ScriptCreator::IsAvailable()</code> = <code>Paths::HasProject()</code>)입니다. 조건이 맞지 않을 때 <code>Create</code> 가 돌려주는 오류 문구는 <code>"no project is open"</code> 입니다. 다만 점검 시점에 Inspector 의 New Script 팝업(<code>App/Editor.cpp</code>)이 같은 조건에서 직접 띄우는 안내는 아직 옛 문구 <code>"source tree not found - run from the repository build (x64\Debug)"</code> 이고, New Script... 버튼의 툴팁과 Edit 버튼의 실패 메시지에도 <code>Game/Scripts</code> 가 남아 있습니다.</li>
+    <li>클래스 이름 검사, 연결 프로그램으로 두 파일 열기(<code>ScriptCreator::Open</code>), 스크립트 컴포넌트의 Edit 버튼, <code>--new-script</code> 자동 검증은 그대로 있습니다. 11-E 쪽 설명: <a href="phase-11e.html#s4">phase-11e 4절</a>, <a href="phase-11e.html#s5">5절</a>.</li>
+  </ul>
+</div>
 
 <h2 id="s4"><span class="num">4.</span>재생 루프: Scene::Update 와 PlayContext</h2>
 <pre><code><span class="cm">// Scene — 재생 중에만 컴포넌트를 부른다. 컨텍스트는 씬이 하나 들고 컴포넌트가 포인터로 본다.</span>
@@ -259,6 +291,10 @@ m_editor.SetSelectedObject(selected);            <span class="cm">// 오브젝�
   </tbody>
 </table></div>
 <p>데모 씬의 움직임은 이제 스크립트 두 개뿐입니다: Play 를 누르면 방향키로 가운데 구를 움직이고 Space 로 점프하며(PlayerController + Rigidbody), 원기둥이 자전하고(Rotator), CubeStatic 이 튀어 올랐다 떨어집니다(Rigidbody 초기 속도). 나머지 오브젝트는 가만히 있습니다 — 공전·진동·맥동 같은 움직임은 이제 사용자가 스크립트를 써서 붙입니다. PlayerController 가 WASD 가 아니라 방향키를 쓰는 것은 WASD 를 에디터 카메라(2단계)가 쓰기 때문입니다. Rigidbody 는 물리 엔진의 자리표시자입니다 — 바닥과만 반발하고 오브젝트끼리는 충돌하지 않습니다(<code>IsGrounded / AddImpulse / SetVelocity</code> 가 스크립트용 API).</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <p>위 표의 PlayerController 필드 목록에는 처음부터 하나가 빠져 있었습니다. <code>Projects/Sample/Scripts/PlayerController.cpp</code> 의 <code>Reflect</code> 는 <code>speed</code>·<code>boost</code>·<code>jumpSpeed</code> 와 함께 <code>rotatorObject</code>(String, 기본값 <code>"Cylinder"</code>, R 키로 토글할 Rotator 가 붙은 오브젝트 이름, 3.1절)도 열거하므로 Inspector 와 씬 파일에는 네 필드가 나옵니다. 절 제목의 <code>Game/</code> 가운데 두 스크립트는 지금 <code>Projects/Sample/Scripts/</code> 에 있습니다(문서 앞 상자).</p>
+</div>
 
 <h3 id="s7-1">7.1 씬 안의 카메라: CameraComponent</h3>
 <p>처음 버전은 "GameCamera" 컴포넌트가 오프셋으로 엔진 카메라를 직접 움직였습니다. 이렇게 하면 사용자가 카메라를 씬에서 <em>배치</em>할 수 없습니다. 유니티의 Main Camera 처럼 카메라도 오브젝트여야 합니다. 그래서 <code>Scene/CameraComponent</code>(Game/ 이 아니라 Scene/ — 에디터와 씬이 타입을 알아야 하므로)를 두었습니다.</p>
@@ -382,7 +418,7 @@ SherlockEngine.exe --scene=demo --exit-after=20 --add=4 --set-position=6,5,-12 -
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 작업 트리 (2026/09/23, 11-B 위에 연속). 이전: <a href="phase-11b.html">11-B단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11c">rendering-analysis.html PHASE 11-C</a>. 스크린샷은 <code>images/2026-09-23-phase11c-*.png</code> (전부 리드백 스크린샷). 12단계(고급 렌더링)는 시작하지 않았다.
+  대상: SherlockEngine 작업 트리 (2026/09/23, 11-B 위에 연속). 이전: <a href="phase-11b.html">11-B단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11c">rendering-analysis.html PHASE 11-C</a>. 스크린샷은 <code>images/2026-09-23-phase11c-*.png</code> (전부 리드백 스크린샷). 12단계(고급 렌더링)는 시작하지 않았다. 2026-10-01 문서-코드 점검 반영(문서 앞 상자, 3.1·3.2·3.4·7절 상자).
 </div>
 </main>
 </div>

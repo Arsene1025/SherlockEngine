@@ -92,6 +92,8 @@ tr:last-child td{border-bottom:0}
 .applied ul{margin:0;padding-left:1.2em;max-width:none;font-size:14px}
 .applied li{margin:3px 0}
 .applied code{background:var(--surface)}
+.fix{display:block;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line-strong);color:var(--ink-2)}
+.fix b{color:var(--ok);font-weight:600}
 .footer{margin-top:80px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
 </style>
 </head>
@@ -137,6 +139,14 @@ tr:last-child td{border-bottom:0}
   <div class="t">한 줄 요약</div>
   <p>브라우저는 파일 시스템을 읽기만 하고 GPU 자원은 썸네일뿐입니다. 드래그는 ImGui 의 drag &amp; drop 페이로드(POD 구조체 하나)로 전달합니다. 드롭은 Scene 뷰 이미지 아이템의 <code>BeginDragDropTarget</code> 에서 받아 11단계의 선택 광선(<code>Pick</code>)을 그대로 써서 놓을 점을 구하고, 실제 배치는 11단계 콜백 규칙대로 앱(<code>TestApp::PlaceModel</code>)에 넘깁니다. 렌더러에서 바뀐 것은 <code>asset:</code> 텍스처 이름 한 줄뿐입니다.</p>
 </div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>TestApp → EditorApp.</b> 2026-09-28 커밋에서 <code>App/EditorApp.h/.cpp</code> 로 개명되었습니다. 본문의 <code>TestApp::PlaceModel</code>·<code>~TestApp</code> 은 지금의 <code>EditorApp::PlaceModel</code>·<code>~EditorApp</code> 입니다. 상세: <a href="rendering-analysis.html#applied-editorapp">rendering-analysis 적용 기록 — TestApp → EditorApp 개명</a>.</li>
+    <li><b>SherlockEngine.exe → SherlockEditor.exe.</b> 11-D단계에서 엔진이 정적 라이브러리가 되었습니다. 에디터는 <code>x64\&lt;구성&gt;\SherlockEditor.exe</code> 이므로 9절 명령의 exe 이름은 지금 <code>SherlockEditor.exe</code> 로 읽습니다. 상세: <a href="phase-11d.html#s2">phase-11d 2절</a>.</li>
+    <li><b>경로 규칙.</b> 이 단계 이후 가장 크게 바뀐 것은 에셋 경로입니다(11-E단계 프로젝트 시스템). 2.1절과 10절의 상자를 보십시오.</li>
+  </ul>
+</div>
 
 <h2 id="s1"><span class="num">1.</span>요약</h2>
 <div class="tbl"><table>
@@ -155,6 +165,15 @@ tr:last-child td{border-bottom:0}
 <h3 id="s2-1">2.1 에셋 루트와 열거</h3>
 <p><code>Paths::GetAssetRoot()</code> 가 새로 생겼습니다. 11단계 <code>GetSceneDir()</code> 과 같은 마커(<code>exe\..\..\SherlockEngine\Assets\Config\engine.ini</code>)로 소스 트리를 찾아 <em>저장소의</em> <code>Assets\</code> 를 보여 주고, 없으면(배포) <code>exe\Assets\</code> 를 씁니다. 그래서 브라우저에서 보이는 파일이 곧 저장소의 파일이고, 브라우저가 놓은 모델 경로(<code>Models\DamagedHelmet\DamagedHelmet.glb</code>)는 <code>AssetManager::GetModel</code> 과 씬 파일의 <code>MeshSource::modelPath</code> 가 쓰는 상대 경로 그대로입니다.</p>
 <p>열거에는 C++17 <code>std::filesystem</code> 을 쓰고, 예외를 던지지 않는 <code>error_code</code> 오버로드만 씁니다(정션·잠긴 파일·긴 경로). 정렬은 폴더가 먼저이고, 이름은 대소문자를 무시합니다. 라벨은 <code>Log::ToUtf8</code> 로 한 번만 변환해 둡니다(한글 경로). 분류는 확장자로: <code>.gltf/.glb</code> Model, <code>.png/.jpg/.jpeg/.bmp/.dds/.tga</code> Texture, <code>Scenes\</code> 아래 <code>.json</code> Scene, 나머지 Other. <code>.bin/.ini/.log</code> 는 숨김이라 <code>Sponza.bin</code>·<code>engine.ini</code> 가 그리드를 어지럽히지 않습니다(Hidden 토글로 회색 표시). 폴더 수정 시각을 1초마다 비교하므로, 탐색기에서 파일을 넣으면 저절로 다시 읽습니다.</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>에셋 루트가 둘로 나뉨 — 11-E단계.</b> <code>Paths::GetAssetRoot()</code> 는 이제 <em>프로젝트의</em> <code>Assets\</code> 를 돌려줍니다. 프로젝트가 없을 때만 엔진 쪽을 씁니다. 엔진 쪽은 별도 함수 <code>Paths::GetEngineAssetRoot()</code>(<code>&lt;엔진 루트&gt;\Assets\</code>, 없으면 <code>exe\Assets\</code>)로 분리되었습니다(<code>Core/Paths.cpp</code>).</li>
+    <li><b>브라우저 트리의 루트 두 개.</b> 그래서 콘텐츠 브라우저의 트리는 루트가 <code>"Project"</code>(<code>GetAssetRoot</code>)와 <code>"Engine"</code>(<code>GetEngineAssetRoot</code>) 두 개입니다. 프로젝트가 없으면 <code>"Engine (no project)"</code> 하나입니다(<code>ContentBrowser::RefreshRoots</code>).</li>
+    <li><b>씬 폴더.</b> 위에서 말한 <code>GetSceneDir()</code> 도 이제 마커로 소스 트리를 찾지 않습니다. <code>GetAssetRoot() + L"Scenes\\"</code>, 즉 프로젝트의 <code>Assets\Scenes\</code> 입니다.</li>
+    <li>상대 경로 규칙은 그대로입니다. 브라우저가 실어 보내는 경로는 여전히 Assets 기준 상대 경로이고, 그 경로를 프로젝트와 엔진 중 어디에서 찾을지는 <code>GetAssetPath</code> 가 정합니다(10절 상자). 상세: <a href="phase-11e.html#s3">phase-11e 3절</a>.</li>
+  </ul>
+</div>
 <h3 id="s2-2">2.2 타일 그리드와 아이콘</h3>
 <p>타일 하나는 <code>InvisibleButton</code> 하나입니다 — 호버·클릭·더블클릭·드래그 소스·컨텍스트 메뉴가 전부 그 아이템에 붙고, 그림(배경·썸네일 또는 아이콘·확장자 배지·잘라낸 라벨)은 <code>ImDrawList</code> 로 그 위에 그립니다. 행은 <code>ImGuiListClipper</code> 로 보이는 것만 제출하므로 썸네일 요청도 보이는 타일에서만 나옵니다. 아이콘은 에셋 파일 없이 <code>ImDrawList</code> 도형으로 그립니다: 폴더(탭 + 몸통), 모델(등각 정육면체 세 면), 씬(문서 + 줄 + 작은 큐브), 텍스처 자리표시자(체커 4칸).</p>
 
@@ -194,6 +213,13 @@ placement.SetPosition(position.x, position.y - model-&gt;bounds.min.y, position.
 <span class="cm">// 이름 "DamagedHelmet 1", 노드가 여럿이면 "Sponza 1/&lt;노드&gt;". 마지막 오브젝트 선택. 씬 모드는 그대로 (아래).</span></code></pre>
 <p>씬 모드는 바꾸지 않습니다. 처음에는 <code>AddPrimitive</code> 처럼 Demo → File 로 바꿨는데, 그러면 데모 씬에 헬멧을 놓는 순간 <code>OnUpdate</code> 의 애니메이션(Demo 모드에서만 돈다)이 멈춥니다. 오브젝트를 끝에 추가하는 것은 애니메이션 인덱스(<code>m_orbitSphere</code> 등)를 건드리지 않으므로 모드를 전환할 이유가 없습니다. 인덱스를 밀어내는 것은 삭제뿐이므로 <code>DeleteObject</code> 에서만 File 로 바꿉니다. <code>AddPrimitive</code> 도 같은 이유로 모드를 유지하게 고쳤습니다.</p>
 <p><code>Scene::AddModel(const Model&amp;)</code> 은 캐시 모델의 메시·재질·이미지를 <em>복사</em>합니다(10단계). 같은 모델을 두 번 놓으면 CPU 메시와 GPU 버퍼가 두 벌이 됩니다. 헬멧 두 개(그림 2)는 문제없지만, Sponza 를 여러 번 놓는 경우는 다음 단계의 메시 공유(12절)로 미룹니다. 저장 쪽은 바꿀 것이 없습니다 — <code>MeshSource::FromModel(path, index)</code> 가 이미 경로로 저장하고, 로드할 때 <code>AssetManager</code> 에서 다시 받습니다(자동 검증 B).</p>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>이름과 선택 — 11-F단계.</b> 스니펫 주석의 "노드가 여럿이면 <code>Sponza 1/&lt;노드&gt;</code>. 마지막 오브젝트 선택" 은 지금과 다릅니다. 유효한 노드가 둘 이상이면 <code>Scene::AddModel</code> 이 먼저 빈 루트 오브젝트를 만듭니다. 놓은 Transform 은 그 루트가 받고, 노드들은 루트의 자식이 되어 로컬 값으로 노드 pre-transform 만 가집니다. <code>EditorApp::PlaceModel</code> 은 루트의 이름을 <code>"&lt;파일명&gt; N"</code> 으로 바꾸고, 자식은 노드 이름을 그대로 씁니다. 예전의 <code>/&lt;노드&gt;</code> 접두어는 트리에서 중복이라 뺐습니다. 선택되는 것은 마지막 오브젝트가 아니라 루트(노드가 하나면 그 오브젝트)이므로, 기즈모로 모델 전체를 옮길 수 있습니다. 상세: <a href="phase-11f.html#s7">phase-11f 7절</a>.</li>
+    <li><b>데모 애니메이션 — 11-C단계.</b> 위 문단의 <code>m_orbitSphere</code> 같은 애니메이션 인덱스는 더 이상 코드에 없습니다. 인덱스로 위치를 직접 쓰던 하드코딩 애니메이션(공전·진동 등)은 없어졌습니다. 지금 데모 씬의 움직임은 오브젝트에 붙은 컴포넌트(<code>Rigidbody</code>·<code>PlayerController</code>·<code>Rotator</code>)가 만들고, 이 컴포넌트는 재생(Play) 중에만 돕니다. <code>OnUpdate</code> 에 남은 자동 움직임은 F7 로 켜는 방향광 회전(<code>m_lightOrbit</code>) 하나입니다. "삭제할 때만 Demo → File 로 바꾼다" 는 규칙은 지금도 <code>EditorApp::DeleteObject</code> 에 그대로 있습니다. 상세: <a href="phase-11c.html#s2">phase-11c 2절</a>.</li>
+  </ul>
+</div>
 
 <h2 id="s6"><span class="num">6.</span>텍스처 썸네일</h2>
 <pre><code><span class="cm">// TextureLoader::LoadThumbnail — 밉 0 만, 긴 변이 maxSize 를 넘으면 DirectXTex Resize [2], 블록 압축 DDS 는 Decompress 먼저</span>
@@ -233,9 +259,23 @@ SherlockEngine.exe --exit-after=150 --scene=helmet "--browse=Models\Sponza" --sc
   <li><strong>첫 프레임 포커스.</strong> 8절. 같은 프레임에 뒤에서 처음 나타난 창이 포커스를 가져간다. 3 프레임 반복.</li>
   <li><strong>썸네일 색공간.</strong> 6절. sRGB 라벨을 붙이면 UNORM 백버퍼 뷰에서 두 번 인코딩된다. UNORM 으로.</li>
   <li><strong>호버 중 모델 파싱.</strong> 4절. AABB 고스트는 <code>IsModelCached</code> 일 때만. 첫 드롭의 동기 파싱(Sponza 수 초)은 이번 범위에서 그대로 두고 로그로 알린다.</li>
-  <li><strong><code>GetAssetPath</code> 는 exe 사본 우선.</strong> 브라우저는 소스 트리를 보여 주지만 로드는 exe 옆 사본이 먼저다. 소스 트리에서 <em>수정</em>한 파일은 다음 빌드(CopyAssets)까지 옛 것이 읽히고, <em>추가</em>한 파일은 폴백으로 바로 보인다. <code>Paths.h</code> 주석에 적어 두었다.</li>
+  <li><strong><code>GetAssetPath</code> 는 exe 사본 우선.</strong> 브라우저는 소스 트리를 보여 주지만 로드는 exe 옆 사본이 먼저다. 소스 트리에서 <em>수정</em>한 파일은 다음 빌드(CopyAssets)까지 옛 것이 읽히고, <em>추가</em>한 파일은 폴백으로 바로 보인다. <code>Paths.h</code> 주석에 적어 두었다.<span class="fix"><b>정정 (2026-10-01 점검):</b> 11-E단계부터 이 순서는 <em>반대</em>입니다. 지금 <code>GetAssetPath</code> 는 프로젝트 <code>Assets\</code> → 엔진 소스 <code>Assets\</code> → <code>exe\Assets\</code> 사본 순서로 찾습니다. 소스 트리에서 수정한 파일은 빌드 없이 바로 읽히고, exe 사본은 소스 트리가 없을 때(배포)만 쓰입니다. 아래 상자를 보십시오.</span></li>
   <li><strong>MSYS 인자 변환.</strong> Git Bash 에서 <code>msbuild /p:Configuration=Debug</code> 의 <code>/p:</code> 가 경로로 바뀌어 "프로젝트를 하나만 지정할 수 있습니다" 오류가 났다. PowerShell 로 빌드한다.</li>
 </ul>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-01 문서 점검)</div>
+  <ul>
+    <li><b>"<code>GetAssetPath</code> 는 exe 사본 우선" 은 지금 코드와 정반대입니다.</b> 이 서술은 11-B단계(2026-09-23) 당시에는 맞았습니다. 그때 <code>GetAssetPath</code> 는 <code>exe\Assets\</code> 를 먼저 보고 <code>exe\..\..\SherlockEngine\Assets\</code> 로 폴백했습니다. 11-E단계(2026-09-24)의 프로젝트 시스템에서 순서가 뒤집혔습니다.</li>
+    <li><b>현재 순서</b>(<code>Core/Paths.cpp</code> 의 <code>Paths::GetAssetPath</code>):
+      <ol>
+        <li>프로젝트가 있으면 <code>&lt;프로젝트&gt;\Assets\&lt;rel&gt;</code></li>
+        <li><code>GetEngineAssetRoot()</code> 의 <code>&lt;rel&gt;</code>, 즉 엔진 소스 트리의 <code>Assets\</code>(소스 트리가 없으면 <code>exe\Assets\</code>)</li>
+        <li><code>exe\Assets\&lt;rel&gt;</code></li>
+      </ol>
+      셋 다 없으면 프로젝트(없으면 엔진) 쪽 경로를 돌려주어 "파일 없음" 으로 실패하게 둡니다. <code>Paths.h</code> 의 주석도 이 순서로 고쳐져 있습니다.</li>
+    <li><b>결과.</b> 개발 환경에서는 소스 트리의 파일이 exe 옆 사본(CopyAssets)보다 먼저 읽힙니다. 따라서 "수정한 파일은 다음 빌드까지 옛 것이 읽힌다" 는 함정은 더 이상 생기지 않습니다. exe 사본은 소스 트리가 없는 배포·빌드 폴더에서만 쓰이고, 그 경우 엔진 루트가 exe 폴더이므로 2번과 3번이 같은 곳이 됩니다. 같은 상대 경로가 프로젝트와 엔진 양쪽에 있으면 프로젝트 것이 이깁니다. 상세: <a href="phase-11e.html#s3">phase-11e 3절</a>.</li>
+  </ul>
+</div>
 
 <h2 id="s11"><span class="num">11.</span>검증과 스크린샷</h2>
 <div class="applied">
@@ -293,7 +333,7 @@ SherlockEngine.exe --exit-after=150 --scene=helmet "--browse=Models\Sponza" --sc
 </ol>
 
 <div class="footer">
-  대상: SherlockEngine 작업 트리 (2026/09/23, 11단계 위에 연속). 이전: <a href="phase-11.html">11단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11b">rendering-analysis.html PHASE 11-B</a>. 스크린샷은 <code>images/2026-09-23-phase11b-*.png</code> (전부 리드백 스크린샷). 12단계(고급 렌더링)는 시작하지 않았다.
+  대상: SherlockEngine 작업 트리 (2026/09/23, 11단계 위에 연속). 이전: <a href="phase-11.html">11단계</a>. 원본 로드맵: <a href="rendering-analysis.html#p11b">rendering-analysis.html PHASE 11-B</a>. 스크린샷은 <code>images/2026-09-23-phase11b-*.png</code> (전부 리드백 스크린샷). 12단계(고급 렌더링)는 시작하지 않았다. 2026-10-01 문서-코드 점검 반영(도입부·2.1절·5절·10절의 "이후 바뀐 것" 상자, 10절 <code>GetAssetPath</code> 정정 메모).
 </div>
 </main>
 </div>
