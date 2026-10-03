@@ -334,15 +334,15 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 		vsSource = Paths::GetShaderSourcePath(kVertexShaderFile);
 		psSource = Paths::GetShaderSourcePath(kPixelShaderFile);
 		shadowSource = Paths::GetShaderSourcePath(kShadowShaderFile);
-		if (!ShaderCompiler::CompileFromFile(vsSource, "VS_Main", "vs_5_0", vsCode)) return false;
-		if (!ShaderCompiler::CompileFromFile(psSource, "PS_Main", "ps_5_0", psCode)) return false;
-		if (!ShaderCompiler::CompileFromFile(shadowSource, "VS_Shadow", "vs_5_0", shadowCode)) return false;
+		if (!ShaderCompiler::CompileFromFile(vsSource, "VS_Main", ShaderStage::Vertex, vsCode)) return false;
+		if (!ShaderCompiler::CompileFromFile(psSource, "PS_Main", ShaderStage::Pixel, psCode)) return false;
+		if (!ShaderCompiler::CompileFromFile(shadowSource, "VS_Shadow", ShaderStage::Vertex, shadowCode)) return false;
 	}
 	else
 	{
-		if (!ShaderCompiler::LoadOrCompile(kVertexShaderFile, "VS_Main", "vs_5_0", vsCode, &vsSource)) return false;
-		if (!ShaderCompiler::LoadOrCompile(kPixelShaderFile, "PS_Main", "ps_5_0", psCode, &psSource)) return false;
-		if (!ShaderCompiler::LoadOrCompile(kShadowShaderFile, "VS_Shadow", "vs_5_0", shadowCode, &shadowSource)) return false;
+		if (!ShaderCompiler::LoadOrCompile(kVertexShaderFile, "VS_Main", ShaderStage::Vertex, vsCode, &vsSource)) return false;
+		if (!ShaderCompiler::LoadOrCompile(kPixelShaderFile, "PS_Main", ShaderStage::Pixel, psCode, &psSource)) return false;
+		if (!ShaderCompiler::LoadOrCompile(kShadowShaderFile, "VS_Shadow", ShaderStage::Vertex, shadowCode, &shadowSource)) return false;
 	}
 
 #if defined(_DEBUG)

@@ -56,7 +56,7 @@ struct TextureDesc
 	const char* debugName = nullptr;
 };
 
-// 텍스처 초기 데이터. 밉 레벨마다 하나. 5단계: 밉맵은 CPU에서 만들어 함께 올림.
+// 텍스처 초기 데이터. 밉 레벨마다 하나. 밉맵은 CPU에서 만들어 함께 올림.
 // D3D12에서는 이 배열이 업로드 힙 → CopyTextureRegion 경로로 처리됨. 호출 코드는 같음.
 struct TextureSubresource
 {
