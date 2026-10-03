@@ -9,9 +9,33 @@ using Microsoft::WRL::ComPtr;
 #include <d3d11shader.h>   // ID3D11ShaderReflection
 #include <fstream>
 
-bool ShaderCompiler::CompileFromFile(const std::wstring& path, const char* entryPoint, const char* target,
+namespace
+{
+	// 스테이지 → fxc 타깃 프로파일. 런타임 컴파일의 셰이더 모델(5_0)은 여기서만 정함.
+	// D3D11·D3D12 두 백엔드가 같은 SM 5.0 DXBC를 받으므로 백엔드별로 나누지 않음.
+	// 빌드가 만드는 .cso의 셰이더 모델은 SherlockEngine.vcxproj의 <ShaderModel>이 정하므로
+	// 올릴 때는 두 곳을 같이 바꿔야 함.
+	const char* GetTargetProfile(ShaderStage stage)
+	{
+		switch (stage)
+		{
+		case ShaderStage::Vertex: return "vs_5_0";
+		case ShaderStage::Pixel:  return "ps_5_0";
+		}
+		return nullptr;
+	}
+}
+
+bool ShaderCompiler::CompileFromFile(const std::wstring& path, const char* entryPoint, ShaderStage stage,
 	std::vector<uint8_t>& outBytecode)
 {
+	const char* target = GetTargetProfile(stage);
+	if (target == nullptr)
+	{
+		Log::Error("CompileFromFile : 알 수 없는 ShaderStage %d", static_cast<int>(stage));
+		return false;
+	}
+
 	// 셰이더 컴파일 방법에 관한 MS 문서
 	// https://learn.microsoft.com/en-us/windows/win32/direct3d11/how-to--compile-a-shader
 
@@ -101,7 +125,7 @@ uint64_t ShaderCompiler::GetLastWriteTime(const std::wstring& path)
 	return (static_cast<uint64_t>(data.ftLastWriteTime.dwHighDateTime) << 32) | data.ftLastWriteTime.dwLowDateTime;
 }
 
-bool ShaderCompiler::LoadOrCompile(const wchar_t* hlslName, const char* entryPoint, const char* target,
+bool ShaderCompiler::LoadOrCompile(const wchar_t* hlslName, const char* entryPoint, ShaderStage stage,
 	std::vector<uint8_t>& outBytecode, std::wstring* outSource)
 {
 	// "BasicVertexShader.hlsl" → "BasicVertexShader.cso"
@@ -128,7 +152,7 @@ bool ShaderCompiler::LoadOrCompile(const wchar_t* hlslName, const char* entryPoi
 		else
 			Log::Info("셰이더 %s : 소스가 .cso보다 새로움. 소스에서 컴파일.", Log::ToUtf8(hlslName).c_str());
 		if (outSource) *outSource = sourcePath;
-		return CompileFromFile(sourcePath, entryPoint, target, outBytecode);
+		return CompileFromFile(sourcePath, entryPoint, stage, outBytecode);
 	}
 #endif
 
@@ -143,7 +167,7 @@ bool ShaderCompiler::LoadOrCompile(const wchar_t* hlslName, const char* entryPoi
 	Log::Warn("셰이더 %s : .cso를 찾지 못해 런타임 컴파일로 폴백 (%s).",
 		Log::ToUtf8(hlslName).c_str(), Log::ToUtf8(fallback.c_str()).c_str());
 	if (outSource) *outSource = fallback;
-	return CompileFromFile(fallback, entryPoint, target, outBytecode);
+	return CompileFromFile(fallback, entryPoint, stage, outBytecode);
 }
 
 bool ShaderCompiler::ValidateConstantBufferSize(std::span<const uint8_t> bytecode, const char* cbufferName, uint32_t expectedSize)
