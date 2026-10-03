@@ -137,13 +137,13 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
 <div class="shell">
 <nav class="toc" aria-label="목차">
   <div class="brand">공부 순서 가이드</div>
-  <div class="meta">SherlockEngine 읽기 가이드<br>2026/09/23 15:05 작성<br><a href="rendering-analysis.html">rendering-analysis.html</a> · <a href="../README.md">README.md</a></div>
+  <div class="meta">SherlockEngine 읽기 가이드<br>2026-10-02 최종본 기준<br><a href="rendering-analysis.html">rendering-analysis.html</a> · <a href="../README.md">README.md</a></div>
   <ol>
     <li><a href="#s1">1. 요약: 전체 순서</a></li>
     <li><a href="#s2">2. 읽기 원칙</a></li>
-    <li class="sub"><a href="#s2-1">2.1 문서 두 종류의 구조</a></li>
+    <li class="sub"><a href="#s2-1">2.1 최종본의 구조</a></li>
     <li class="sub"><a href="#s2-2">2.2 소스를 읽는 법</a></li>
-    <li class="sub"><a href="#s2-3">2.3 문서와 현재 경로의 차이</a></li>
+    <li class="sub"><a href="#s2-3">2.3 질문에서 출발하기</a></li>
     <li><a href="#s3">3. 스텝 0~2: 지도와 골격</a></li>
     <li><a href="#s4">4. 스텝 3~7: RHI 조각 다섯 개</a></li>
     <li><a href="#s5">5. 스텝 8~9: 인터페이스와 D3D12</a></li>
@@ -157,51 +157,50 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
 <main>
 <div class="eyebrow">SherlockEngine 읽기 가이드</div>
 <h1>프로젝트를 문서와 함께 읽는 순서</h1>
-<p class="lede"><code>docs/</code>에는 렌더러 해부와 로드맵(<a href="rendering-analysis.html">rendering-analysis.html</a>) 한 편과, 단계별 상세 문서 열일곱 편(<a href="phase-0.html">phase-0</a> ~ <a href="phase-11.html">phase-11</a> 열두 편, 그리고 에디터 확장 <a href="phase-11b.html">phase-11b</a>·<a href="phase-11c.html">phase-11c</a>·<a href="phase-11d.html">phase-11d</a>·<a href="phase-11e.html">phase-11e</a>·<a href="phase-11f.html">phase-11f</a> 다섯 편)이 있습니다. 문서는 단계 순서로 쓰였고 소스도 그 순서로 자랐으므로, <strong>로드맵으로 지도를 펴고 → 앱 골격을 잡은 뒤 → 단계 문서를 번호 순으로 소스와 짝지어</strong> 읽는 것이 가장 덜 헤매는 길입니다. 이 문서는 그 길을 14개 스텝으로 나누고, 스텝마다 "먼저 읽을 문서 → 함께 볼 소스 → 확인 포인트"를 적었습니다.</p>
+<p class="lede"><code>docs/</code>에는 문서가 두 편 있습니다. 렌더러 해부 최종본 <a href="rendering-analysis.html">rendering-analysis.html</a>(5부 22장 + 부록 A~E)과 이 읽기 가이드입니다. 최종본은 에디터 실행부터 화면 표시까지의 흐름(Part I), 그 아래의 RHI(Part II), 그리기(Part III), 엔진과 에디터(Part IV), 그리고 경위·설계 결정·질문과 답(Part V)으로 나뉘어 있고 전부 현재 코드 기준입니다. 이 가이드는 그 장들을 <strong>소스를 읽는 순서</strong>로 다시 배열해 14개 스텝으로 나누고, 스텝마다 "먼저 읽을 절 → 함께 볼 소스 → 확인 포인트"를 적었습니다.</p>
 
 <div class="facts">
-  <div><div class="k">문서</div><div class="v">18편<small>해부·로드맵 1 + 단계 문서 17</small></div></div>
-  <div><div class="k">소스</div><div class="v">116 파일 · 약 19,000줄<small>App · Core · Graphics · Scene · Game · RHI · Shaders (2026-10-01 기준)</small></div></div>
-  <div><div class="k">스텝</div><div class="v">14개 (0~13)<small>단계 문서 순서와 거의 같음</small></div></div>
+  <div><div class="k">문서</div><div class="v">2편<small>해부 최종본 1 + 읽기 가이드 1 (2026-10-02 통합. 이전의 phase-0 ~ phase-11f 17편은 최종본에 흡수됨)</small></div></div>
+  <div><div class="k">소스</div><div class="v">114 파일 · 약 19,000줄<small>App · Core · Graphics · Scene · Game · RHI · Shaders</small></div></div>
+  <div><div class="k">스텝</div><div class="v">14개 (0~13)<small>소스가 자란 순서와 거의 같음</small></div></div>
   <div><div class="k">권장 기간</div><div class="v">정독 2주<small>하루 코스는 9절</small></div></div>
   <div><div class="k">백엔드</div><div class="v">D3D11 · D3D12<small>engine.ini 한 줄로 전환</small></div></div>
 </div>
 
 <div class="callout">
   <div class="t">한 줄 요약</div>
-  <p>단계 문서 한 편은 항상 같은 네 박자로 읽습니다. <strong>① 1절 요약 표와 "한 줄 요약" → ② 그 단계가 만든 헤더의 맨 위 주석 → ③ .cpp의 핵심 함수 두세 개 → ④ 실행해서 완료 기준을 눈으로 확인.</strong> 문서 본문(설계 근거·함정·참고 문헌)은 ③에서 "왜 이렇게 했지?"가 생겼을 때 돌아가서 읽습니다.</p>
+  <p>스텝 하나는 항상 같은 네 박자로 읽습니다. <strong>① 최종본의 해당 장 첫머리(한 문단 요약 + 관련 소스 표) → ② 그 장이 가리키는 헤더의 맨 위 주석 → ③ .cpp의 핵심 함수 두세 개 → ④ 실행해서 확인 포인트를 눈으로 확인.</strong> 장의 본문(설계 근거·배경 지식·함정 표)은 ③에서 "왜 이렇게 했지?"가 생겼을 때 돌아가서 읽습니다.</p>
 </div>
 
 <h2 id="s1"><span class="num">1.</span>요약: 전체 순서</h2>
-<p>스텝 번호는 단계 번호와 다릅니다. 앱 골격은 10단계에서 만들어졌지만 가장 먼저 읽어야 하고, 2단계(입력·카메라)는 RHI와 무관하니 골격 바로 뒤에 붙였습니다. 나머지는 단계 번호 순서 그대로입니다.</p>
+<p>스텝 번호는 최종본의 장 번호와 다릅니다. 최종본은 "실행 흐름 → RHI → 그리기 → 엔진·에디터 → 기록" 순서로 설명하지만, 소스를 읽을 때는 앱 골격(3·4장) 다음에 RHI 어휘(5·6장)를 먼저 익혀야 Renderer(14장)를 읽을 수 있습니다. 아래 표가 그 순서입니다.</p>
 <div class="tbl"><table>
-  <thead><tr><th>스텝</th><th>주제</th><th>먼저 읽을 문서</th><th>함께 볼 소스</th><th>시간</th></tr></thead>
+  <thead><tr><th>스텝</th><th>주제</th><th>먼저 읽을 절 (rendering-analysis)</th><th>함께 볼 소스</th><th>시간</th></tr></thead>
   <tbody>
-    <tr><td class="n">0</td><td>지도 펴기</td><td>README · rendering-analysis <a href="rendering-analysis.html#s1">§1</a> · <a href="rendering-analysis.html#s9">§9 단계 구성 표</a></td><td>폴더 트리, <code>vcpkg.json</code>, <code>Assets/Config/engine.ini</code></td><td class="n">1h</td></tr>
-    <tr><td class="n">1</td><td>앱 골격과 프레임 루프</td><td><a href="phase-10.html#s5">phase-10 §5</a> · <a href="phase-0.html">phase-0</a> · rendering-analysis <a href="rendering-analysis.html#s3">§3</a>·<a href="rendering-analysis.html#s4">§4</a></td><td><code>SherlockEditor/EditorMain.cpp</code> · <code>App/AppBase</code> · <code>Core/Engine</code> · <code>App/EditorApp.h</code> · <code>Core/Config</code> · <code>Core/Time</code> · <code>Core/Paths</code></td><td class="n">3h</td></tr>
-    <tr><td class="n">2</td><td>입력과 카메라</td><td><a href="phase-2.html">phase-2</a></td><td><code>Core/Input</code> · <code>Scene/Camera</code> · <code>Scene/Transform</code> · <code>EditorApp::UpdateCamera</code></td><td class="n">2h</td></tr>
-    <tr><td class="n">3</td><td>핸들·Desc·PSO (RHI 어휘)</td><td><a href="phase-1.html">phase-1</a> · <a href="phase-3.html">phase-3 §2~§6</a> · <a href="rendering-analysis.html#d21">D21</a>·<a href="rendering-analysis.html#d22">D22</a></td><td><code>RHI/Handle.h</code> · <code>RHI/ResourcePool.h</code> · <code>RHI/PipelineTypes.h</code> · <code>RHI/ResourceDesc.h</code> · <code>RHI/D3D11/PipelineState*</code></td><td class="n">4h</td></tr>
-    <tr><td class="n">4</td><td>씬과 렌더러</td><td><a href="phase-3.html#s7">phase-3 §7</a> · <a href="rendering-analysis.html#d2">D2</a>·<a href="rendering-analysis.html#d3">D3</a></td><td><code>Scene/Scene.h</code> · <code>Scene/GameObject.h</code> · <code>Graphics/Mesh.h</code> · <code>Graphics/Renderer.h</code> · <code>Graphics/ShaderConstants.h</code> ↔ <code>Shaders/Common.hlsli</code></td><td class="n">3h</td></tr>
-    <tr><td class="n">5</td><td>바인딩 레이아웃과 재질</td><td><a href="phase-4.html">phase-4</a></td><td><code>RHI/BindingTypes.h</code> · <code>Scene/Material.h</code> · <code>Graphics/VertexTypes.h</code> · <code>RHI/ShaderCompiler.h</code> · <code>Renderer::GetOrCreateGpuMaterial / GetPipelineFor / ValidateBindings</code></td><td class="n">3h</td></tr>
-    <tr><td class="n">6</td><td>텍스처와 색공간</td><td><a href="phase-5.html">phase-5</a></td><td><code>Graphics/TextureLoader</code> · <code>Renderer::GetOrLoadTexture / CreateSamplers</code> · <code>D3D11Device</code> 스왑체인·sRGB 뷰</td><td class="n">2h</td></tr>
-    <tr><td class="n">7</td><td>렌더 패스·커맨드 리스트·그림자</td><td><a href="phase-6.html">phase-6</a> · <a href="rendering-analysis.html#d4">D4</a></td><td><code>RHI/RenderPassTypes.h</code> · <code>RHI/CommandList.h</code> · <code>RHI/D3D11/D3D11CommandList.cpp</code> · <code>Renderer::Render / RenderShadowPass / RenderMainPass</code> · <code>Shaders/*.hlsl</code></td><td class="n">4h</td></tr>
-    <tr><td class="n">8</td><td>RHI 인터페이스 추출</td><td><a href="phase-7.html">phase-7</a></td><td><code>RHI/RHI.h/.cpp</code> · <code>RHI/Device.h</code> 전체 · <code>RHI/D3D11/D3D11Device.h</code> · <code>D3D11Convert</code></td><td class="n">2h</td></tr>
-    <tr><td class="n">9</td><td>D3D12 백엔드로 검증</td><td><a href="phase-8.html">phase-8</a></td><td><code>RHI/D3D12/*</code> — D3D11 구현과 같은 함수를 나란히 놓고 비교</td><td class="n">5h</td></tr>
-    <tr><td class="n">10</td><td>모델 로딩</td><td><a href="phase-9.html">phase-9</a> · <a href="rendering-analysis.html#d10">D10</a></td><td><code>Graphics/Model</code> · <code>Scene::AddModel</code> · <code>Renderer::BuildDrawList</code>의 서브메시 · <code>Assets/Models/</code></td><td class="n">2h</td></tr>
-    <tr><td class="n">11</td><td>엔진 코어 나머지</td><td><a href="phase-10.html">phase-10 §2·§6~§9</a> · <a href="rendering-analysis.html#d16">D16</a>·<a href="rendering-analysis.html#d19">D19</a></td><td><code>Core/Log</code> · <code>Core/Profiler</code> · <code>Core/AssetManager</code> · <code>App/DebugUI</code></td><td class="n">2h</td></tr>
-    <tr><td class="n">12</td><td>에디터와 씬 직렬화</td><td><a href="phase-11.html">phase-11</a></td><td><code>App/Editor</code> · <code>Scene/SceneSerializer</code> · <code>Renderer::SetSceneTarget</code> · <code>EditorApp</code> 자동 검증 · <code>Projects/Sample/Assets/Scenes/floor_cube.json</code></td><td class="n">3h</td></tr>
-    <tr><td class="n">12-B</td><td>콘텐츠 브라우저와 드래그 앤 드롭</td><td><a href="phase-11b.html">phase-11b</a></td><td><code>App/ContentBrowser</code> · <code>Editor::DrawSceneView</code>의 드롭 타깃 · <code>RaycastScene</code> · <code>EditorApp::PlaceModel</code> · <code>TextureLoader::LoadThumbnail</code></td><td class="n">2h</td></tr>
-    <tr><td class="n">12-C</td><td>재생 모드와 C++ 컴포넌트</td><td><a href="phase-11c.html">phase-11c</a></td><td><code>Scene/Behaviour.h</code> · <code>Scene/CameraComponent.h</code> · <code>Scene::BeginPlay/Update/ApplyActiveCamera</code> · <code>Game/Components/*.cpp</code> · <code>Projects/Sample/Scripts/*.cpp</code> · <code>EditorApp::StartPlay/StopPlay</code> · <code>SceneSerializer</code>의 components · <code>Editor::DrawComponents</code></td><td class="n">3h</td></tr>
-    <tr><td class="n">12-D</td><td>게임 빌드와 런타임 분리</td><td><a href="phase-11d.html">phase-11d</a></td><td><code>SherlockEngine.sln</code>의 세 프로젝트 · <code>App/GameApp</code> · <code>App/GameBuilder</code> · <code>AppBase::WantsGUI</code> · <code>&lt;프로젝트&gt;\Build\&lt;이름&gt;\</code></td><td class="n">1h</td></tr>
-    <tr><td class="n">12-E</td><td>프로젝트 시스템</td><td><a href="phase-11e.html">phase-11e</a></td><td><code>Core/Project</code> · <code>Core/Paths</code> 세 루트 · <code>App/ProjectGenerator</code> · <code>App/ProjectLauncher</code> · <code>Projects\Sample</code> · 생성된 <code>&lt;이름&gt;.sln</code></td><td class="n">1h</td></tr>
-    <tr><td class="n">12-F</td><td>오브젝트 계층과 카메라 자세</td><td><a href="phase-11f.html">phase-11f</a> · <a href="rendering-analysis.html#d8">D8</a>·<a href="rendering-analysis.html#d15">D15</a></td><td><code>Scene/GameObject.h</code> 의 parent/children · <code>Scene/Transform.h</code>(로컬) · <code>Scene/Camera.h</code> 의 두 입구 · <code>Scene/CameraComponent.cpp</code> · <code>Scene::ApplyActiveCamera</code> 의 slerp · <code>Editor::DrawHierarchyNode / DrawGizmo</code></td><td class="n">1.5h</td></tr>
-    <tr><td class="n">13</td><td>되돌아보기</td><td>rendering-analysis <a href="rendering-analysis.html#s7">§7</a> · <a href="rendering-analysis.html#applied">적용 기록</a> · <a href="rendering-analysis.html#s8">§8 D1~D22</a> · <a href="rendering-analysis.html#s10">§10 부록</a> · <code>logs/*.md</code></td><td>다시 <code>Graphics/Renderer.cpp</code> 전체를 위에서 아래로</td><td class="n">3h</td></tr>
+    <tr><td class="n">0</td><td>지도 펴기</td><td>머리말(그림 0) · <a href="rendering-analysis.html#c1">1장</a> · <a href="rendering-analysis.html#c2">2장</a> · <a href="rendering-analysis.html#c20-2">20.2</a></td><td>폴더 트리, <code>vcpkg.json</code>, <code>Assets/Config/engine.ini</code></td><td class="n">1h</td></tr>
+    <tr><td class="n">1</td><td>앱 골격과 프레임 루프</td><td><a href="rendering-analysis.html#c3">3장</a> · <a href="rendering-analysis.html#c4">4장</a> · <a href="rendering-analysis.html#c15-3">15.3</a>·<a href="rendering-analysis.html#c15-4">15.4</a>·<a href="rendering-analysis.html#c15-10">15.10</a></td><td><code>SherlockEditor/EditorMain.cpp</code> · <code>App/AppBase</code> · <code>Core/Engine</code> · <code>App/EditorApp.h</code> · <code>Core/Config</code> · <code>Core/Time</code> · <code>Core/Paths</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">2</td><td>입력과 카메라</td><td><a href="rendering-analysis.html#c15-5">15.5</a>·<a href="rendering-analysis.html#c15-6">15.6</a> · <a href="rendering-analysis.html#c13-8">13.8</a>~<a href="rendering-analysis.html#c13-10">13.10</a> · <a href="rendering-analysis.html#app-b">부록 B</a></td><td><code>Core/Input</code> · <code>Scene/Camera</code> · <code>Scene/Transform</code> · <code>EditorApp::UpdateCamera</code></td><td class="n">2h</td></tr>
+    <tr><td class="n">3</td><td>핸들·Desc·PSO (RHI 어휘)</td><td><a href="rendering-analysis.html#c5">5장</a> · <a href="rendering-analysis.html#c6">6장</a> · <a href="rendering-analysis.html#d21">D21</a>·<a href="rendering-analysis.html#d22">D22</a></td><td><code>RHI/Handle.h</code> · <code>RHI/ResourcePool.h</code> · <code>RHI/PipelineTypes.h</code> · <code>RHI/ResourceDesc.h</code> · <code>RHI/D3D11/PipelineState*</code></td><td class="n">4h</td></tr>
+    <tr><td class="n">4</td><td>씬과 렌더러</td><td><a href="rendering-analysis.html#c13-1">13.1</a>~<a href="rendering-analysis.html#c13-7">13.7</a> · <a href="rendering-analysis.html#c14">14장</a> · <a href="rendering-analysis.html#c10-6">10.6</a>~<a href="rendering-analysis.html#c10-10">10.10</a></td><td><code>Scene/Scene.h</code> · <code>Scene/GameObject.h</code> · <code>Graphics/Mesh.h</code> · <code>Graphics/Renderer.h</code> · <code>Graphics/ShaderConstants.h</code> ↔ <code>Shaders/Common.hlsli</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">5</td><td>바인딩 레이아웃·재질·셰이더 컴파일</td><td><a href="rendering-analysis.html#c7">7장</a> · <a href="rendering-analysis.html#c10-1">10.1</a>~<a href="rendering-analysis.html#c10-5">10.5</a> · <a href="rendering-analysis.html#c14-4">14.4</a>·<a href="rendering-analysis.html#c14-5">14.5</a></td><td><code>RHI/BindingTypes.h</code> · <code>Scene/Material.h</code> · <code>Graphics/VertexTypes.h</code> · <code>RHI/ShaderCompiler.h</code> · <code>Renderer::GetOrCreateGpuMaterial / GetPipelineFor / ValidateBindings</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">6</td><td>텍스처와 색공간</td><td><a href="rendering-analysis.html#c12">12장</a></td><td><code>Graphics/TextureLoader</code> · <code>Renderer::GetOrLoadTexture / CreateSamplers</code> · <code>D3D11Device</code> 스왑체인·sRGB 뷰</td><td class="n">2h</td></tr>
+    <tr><td class="n">7</td><td>렌더 패스·커맨드 리스트·파이프라인·그림자</td><td><a href="rendering-analysis.html#c8">8장</a> · <a href="rendering-analysis.html#c11">11장</a> · <a href="rendering-analysis.html#d4">D4</a></td><td><code>RHI/RenderPassTypes.h</code> · <code>RHI/CommandList.h</code> · <code>RHI/D3D11/D3D11CommandList.cpp</code> · <code>Renderer::Render / RenderShadowPass / RenderMainPass</code> · <code>Shaders/*.hlsl</code></td><td class="n">4h</td></tr>
+    <tr><td class="n">8</td><td>RHI 인터페이스</td><td><a href="rendering-analysis.html#c9-1">9.1</a>~<a href="rendering-analysis.html#c9-5">9.5</a></td><td><code>RHI/RHI.h/.cpp</code> · <code>RHI/Device.h</code> 전체 · <code>RHI/D3D11/D3D11Device.h</code> · <code>D3D11Convert</code></td><td class="n">2h</td></tr>
+    <tr><td class="n">9</td><td>D3D12 백엔드로 검증</td><td><a href="rendering-analysis.html#c9-6">9.6</a>~<a href="rendering-analysis.html#c9-14">9.14</a> · <a href="rendering-analysis.html#app-c">부록 C</a></td><td><code>RHI/D3D12/*</code> — D3D11 구현과 같은 함수를 나란히 놓고 비교</td><td class="n">5h</td></tr>
+    <tr><td class="n">10</td><td>모델 로딩</td><td><a href="rendering-analysis.html#c13-5">13.5</a>·<a href="rendering-analysis.html#c13-6">13.6</a> · <a href="rendering-analysis.html#c14-3">14.3</a>·<a href="rendering-analysis.html#c14-11">14.11</a> · <a href="rendering-analysis.html#d10">D10</a></td><td><code>Graphics/Model</code> · <code>Scene::AddModel</code> · <code>Renderer::BuildDrawList</code>의 서브메시 · <code>Assets/Models/</code></td><td class="n">2h</td></tr>
+    <tr><td class="n">11</td><td>엔진 코어 나머지</td><td><a href="rendering-analysis.html#c15-1">15.1</a>·<a href="rendering-analysis.html#c15-2">15.2</a> · <a href="rendering-analysis.html#c15-7">15.7</a>~<a href="rendering-analysis.html#c15-9">15.9</a> · <a href="rendering-analysis.html#c15-11">15.11</a> · <a href="rendering-analysis.html#d16">D16</a>·<a href="rendering-analysis.html#d19">D19</a></td><td><code>Core/Log</code> · <code>Core/Profiler</code> · <code>Core/AssetManager</code> · <code>App/DebugUI</code></td><td class="n">2h</td></tr>
+    <tr><td class="n">12</td><td>에디터와 씬 직렬화</td><td><a href="rendering-analysis.html#c16-1">16.1</a>~<a href="rendering-analysis.html#c16-8">16.8</a> · <a href="rendering-analysis.html#c16-10">16.10</a> · <a href="rendering-analysis.html#c14-8">14.8</a></td><td><code>App/Editor</code> · <code>Scene/SceneSerializer</code> · <code>Renderer::SetSceneTarget</code> · <code>EditorApp</code> 자동 검증 · <code>Projects/Sample/Assets/Scenes/floor_cube.json</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">12-B</td><td>콘텐츠 브라우저와 드래그 앤 드롭</td><td><a href="rendering-analysis.html#c16-9">16.9</a></td><td><code>App/ContentBrowser</code> · <code>Editor::DrawSceneView</code>의 드롭 타깃 · <code>RaycastScene</code> · <code>EditorApp::PlaceModel</code> · <code>TextureLoader::LoadThumbnail</code></td><td class="n">2h</td></tr>
+    <tr><td class="n">12-C</td><td>재생 모드와 C++ 컴포넌트</td><td><a href="rendering-analysis.html#c17-1">17.1</a>~<a href="rendering-analysis.html#c17-9">17.9</a> · <a href="rendering-analysis.html#d15">D15</a></td><td><code>Scene/Behaviour.h</code> · <code>Scene/Script.h</code> · <code>Scene/CameraComponent.h</code> · <code>Scene::BeginPlay/Update/ApplyActiveCamera</code> · <code>Game/Components/*.cpp</code> · <code>Projects/Sample/Scripts/*.cpp</code> · <code>EditorApp::StartPlay/StopPlay</code> · <code>Editor::DrawComponents</code></td><td class="n">3h</td></tr>
+    <tr><td class="n">12-D</td><td>게임 빌드와 런타임 분리</td><td><a href="rendering-analysis.html#c17-10">17.10</a>·<a href="rendering-analysis.html#c17-11">17.11</a> · <a href="rendering-analysis.html#c3-9">3.9</a>·<a href="rendering-analysis.html#c4-12">4.12</a></td><td><code>SherlockEngine.sln</code>의 세 프로젝트 · <code>App/GameApp</code> · <code>App/GameBuilder</code> · <code>AppBase::WantsGUI</code> · <code>&lt;프로젝트&gt;\Build\&lt;이름&gt;\</code></td><td class="n">1h</td></tr>
+    <tr><td class="n">12-E</td><td>프로젝트 시스템</td><td><a href="rendering-analysis.html#c17-12">17.12</a>~<a href="rendering-analysis.html#c17-14">17.14</a> · <a href="rendering-analysis.html#c1-7">1.7</a></td><td><code>Core/Project</code> · <code>Core/Paths</code> 세 루트 · <code>App/ProjectGenerator</code> · <code>App/ProjectLauncher</code> · <code>Projects\Sample</code> · 생성된 <code>&lt;이름&gt;.sln</code></td><td class="n">1h</td></tr>
+    <tr><td class="n">12-F</td><td>오브젝트 계층과 카메라 자세</td><td><a href="rendering-analysis.html#c13-4">13.4</a> · <a href="rendering-analysis.html#c13-11">13.11</a>~<a href="rendering-analysis.html#c13-13">13.13</a> · <a href="rendering-analysis.html#c16-5">16.5</a>·<a href="rendering-analysis.html#c16-6">16.6</a> · <a href="rendering-analysis.html#d8">D8</a></td><td><code>Scene/GameObject.h</code> 의 parent/children · <code>Scene/Transform.h</code>(로컬) · <code>Scene/Camera.h</code> 의 두 입구 · <code>Scene/CameraComponent.cpp</code> · <code>Scene::ApplyActiveCamera</code> 의 slerp · <code>Editor::DrawHierarchyNode / DrawGizmo</code></td><td class="n">1.5h</td></tr>
+    <tr><td class="n">13</td><td>되돌아보기</td><td><a href="rendering-analysis.html#c18">18장</a> · <a href="rendering-analysis.html#c19">19장</a> · <a href="rendering-analysis.html#c20">20장</a> · <a href="rendering-analysis.html#c21">21장</a> · <a href="rendering-analysis.html#c22">22장</a> · <a href="rendering-analysis.html#app-e">부록 E</a></td><td>다시 <code>Graphics/Renderer.cpp</code> 전체를 위에서 아래로</td><td class="n">3h</td></tr>
   </tbody>
 </table></div>
 
 <div class="fig">
 <svg viewBox="0 0 900 340" role="img" aria-label="계층별 소스 폴더와 그것을 읽는 스텝 번호">
-  <!-- lanes -->
   <rect class="box" x="20" y="20" width="200" height="70" rx="8"/>
   <text x="34" y="44" font-weight="600">App/</text>
   <text class="s" x="34" y="64">AppBase · EditorApp · Editor · DebugUI</text>
@@ -253,7 +252,6 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <text x="474" y="317" font-weight="600">RHI/D3D12/</text>
   <circle class="badge" cx="636" cy="312" r="11"/><text class="badge" x="630" y="316">9</text>
 
-  <!-- arrows: who depends on whom -->
   <path class="ln" d="M120 90 V120 H240"/>
   <path class="ln" d="M340 90 V120"/>
   <path class="ln" d="M560 90 V120"/>
@@ -262,41 +260,39 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <path class="ln" d="M340 272 V292"/>
   <path class="ln" d="M560 272 V292"/>
 </svg>
-<div class="cap">그림 1. 폴더는 위가 아래를 쓰고, 아래는 위를 모릅니다. 숫자 배지는 그 폴더를 주로 읽는 스텝입니다. 순서가 "위→아래"가 아니라 1(App·Core) → 3(RHI 선언) → 4(Graphics) → … 로 오가는 이유는, 렌더러를 읽으려면 먼저 핸들·Desc 어휘를 알아야 하기 때문입니다.</div>
+<div class="cap">그림 1. 폴더는 위가 아래를 쓰고, 아래는 위를 모릅니다(의도된 예외는 최종본 <a href="rendering-analysis.html#c1-2">1.2</a>). 숫자 배지는 그 폴더를 주로 읽는 스텝입니다. 순서가 "위→아래"가 아니라 1(App·Core) → 3(RHI 선언) → 4(Graphics) → … 로 오가는 이유는, 렌더러를 읽으려면 먼저 핸들·Desc 어휘를 알아야 하기 때문입니다.</div>
 </div>
 
 <h2 id="s2"><span class="num">2.</span>읽기 원칙</h2>
 
-<h3 id="s2-1">2.1 문서 두 종류의 구조</h3>
-<p><strong>rendering-analysis.html</strong>은 한 편이지만 시점이 셋입니다. §1~§7은 2026년 7월의 초기 코드를 해부한 <em>스냅샷</em>이라 지금 소스와 이름이 다릅니다(<code>Shader</code>·<code>MeshRenderer</code>·<code>struct.h</code>는 이제 없습니다). <a href="rendering-analysis.html#applied">적용 기록</a>과 §8의 설계 결정 D1~D22는 "무엇을 왜 바꾸기로 했나"이고, §9 로드맵의 PHASE 카드 18장(0~12단계와 11-B~11-F)은 각 단계의 요구·완료 기준·완료 보고를 담은 <em>현재까지의 지도</em>입니다. 그래서 처음에는 §1과 §9의 단계 구성 표만 읽고, 나머지는 각 스텝에서 필요한 D 항목과 PHASE 카드만 찾아 읽은 뒤, 마지막 스텝에서 통독합니다.</p>
-<p><strong>phase-N.html</strong>은 모두 같은 뼈대로 되어 있습니다. 상단 <em>facts</em> 격자(상태·파일 수·완료 기준), "한 줄 요약" 콜아웃, <strong>1절 요약</strong>(이전 단계 vs 이 단계의 표), 설계 절들, <strong>함정과 해결</strong>, <strong>검증과 스크린샷</strong>, 참고 문헌 순입니다. 요약 표와 함정 절만 읽어도 그 단계가 코드에 남긴 흔적을 알 수 있고, 설계 절은 소스를 읽다가 이유가 궁금할 때 돌아오면 됩니다. 검증 절의 스크린샷은 <code>images/2026-09-23-phaseN-*.png</code>에 있으니 직접 실행한 화면과 비교하세요.</p>
+<h3 id="s2-1">2.1 최종본의 구조</h3>
+<p><strong>rendering-analysis.html</strong>은 다섯 부와 부록으로 되어 있고, Part I~IV는 전부 <em>현재 코드</em>를 현재형으로 서술합니다. 옛 이름(<code>Shader</code>·<code>MeshRenderer</code>·<code>TestApp</code>)이나 "이후 바뀐 것" 상자는 더 이상 본문에 없습니다.</p>
+<div class="tbl"><table>
+  <thead><tr><th>부</th><th>장</th><th>무엇인가</th><th>언제 읽나</th></tr></thead>
+  <tbody>
+    <tr><td>머리말</td><td>그림 0 · 읽는 법</td><td>실행부터 Present 까지의 전체 그림 한 장</td><td>S0 에서. 이후 길을 잃을 때마다</td></tr>
+    <tr><td>Part I 실행 흐름</td><td><a href="rendering-analysis.html#c1">1</a>~<a href="rendering-analysis.html#c4">4</a>장</td><td>구성 · 소유 관계 · 시작 순서 · 한 프레임</td><td>S0·S1. 문서의 척추이므로 통독</td></tr>
+    <tr><td>Part II RHI</td><td><a href="rendering-analysis.html#c5">5</a>~<a href="rendering-analysis.html#c9">9</a>장</td><td>핸들·Desc · PSO · 바인딩 · 렌더 패스·커맨드 리스트 · 두 백엔드</td><td>S3·S5·S7·S8·S9</td></tr>
+    <tr><td>Part III 그리기</td><td><a href="rendering-analysis.html#c10">10</a>~<a href="rendering-analysis.html#c14">14</a>장</td><td>셰이더·상수버퍼 · 파이프라인 추적 · 텍스처·색공간 · 씬 데이터 · Renderer 내부</td><td>S2·S4·S6·S7·S10</td></tr>
+    <tr><td>Part IV 엔진과 에디터</td><td><a href="rendering-analysis.html#c15">15</a>~<a href="rendering-analysis.html#c17">17</a>장</td><td>코어 서브시스템 · 에디터 · 재생 모드·스크립트·빌드·프로젝트</td><td>S1·S2·S11·S12 계열</td></tr>
+    <tr><td>Part V 기록</td><td><a href="rendering-analysis.html#c18">18</a>~<a href="rendering-analysis.html#c22">22</a>장</td><td>출발점과 문제 20건 · 설계 결정 D1~D22 · 단계별 연대기(p0~p11f)와 적용 기록 · 질문과 답 · 남은 일</td><td>S13 에서 통독. 그 전에는 본문의 <a href="rendering-analysis.html#d12">D12</a>·<a href="rendering-analysis.html#p6">6단계</a> 같은 링크를 따라 필요한 항목만</td></tr>
+    <tr><td>부록</td><td>A~E</td><td>용어·타입 사전 · 좌표계·행렬 규약 · 프레임당 API 호출 목록 · 실행 인자와 검증 방법 · 참고 문헌</td><td>찾아볼 때. 부록 D 는 모든 스텝의 확인 포인트가 기댐</td></tr>
+  </tbody>
+</table></div>
+<p>장은 모두 같은 뼈대입니다. 첫머리에 그 장이 다루는 범위 한 문단과 <em>관련 소스 표</em>가 있고, 본문 절이 이어지며, 끝에 <strong>함정과 해결</strong> 표와 검증 방법이 있습니다. 첫머리의 소스 표가 곧 그 스텝에서 열어야 할 파일 목록이고, 함정 표는 소스를 읽다가 "왜 이렇게 돌아가지?" 싶은 코드의 이유가 적힌 곳입니다. 스크린샷은 <code>images/2026-09-*-phaseN-*.png</code>에 있으니 직접 실행한 화면과 비교하세요.</p>
 
 <h3 id="s2-2">2.2 소스를 읽는 법</h3>
 <ul>
   <li><strong>헤더 맨 위 주석이 설계 문서입니다.</strong> <code>RHI/Device.h</code>, <code>Graphics/Renderer.h</code>, <code>Scene/Scene.h</code>, <code>Core/Engine.h</code>의 첫 20줄에는 그 클래스가 무엇을 소유하고 무엇을 소유하지 않는지, 어느 단계·어느 D 항목에서 왔는지가 적혀 있습니다. 헤더를 다 읽은 뒤 .cpp로 넘어갑니다.</li>
-  <li><strong>"N단계" 주석으로 검색하세요.</strong> 소스 곳곳에 <code>// 6단계:</code>, <code>// 11단계 (D19)</code> 같은 표시가 있습니다. 스텝을 읽을 때 <code>grep -rn "6단계" SherlockEngine/</code>으로 그 단계가 손댄 자리를 한 번에 모을 수 있습니다.</li>
-  <li><strong>큰 파일은 함수 단위로.</strong> <code>Renderer.cpp</code>(1,192줄), <code>D3D11Device.cpp</code>(934줄), <code>D3D12Device.cpp</code>(1,428줄)는 통째로 읽지 말고 각 스텝이 지목한 함수만 읽습니다. 스텝 13에서 <code>Renderer.cpp</code>만 처음부터 끝까지 다시 읽습니다.</li>
-  <li><strong>백엔드는 항상 두 개를 나란히.</strong> 스텝 9부터는 같은 이름의 함수를 <code>D3D11Device.cpp</code>와 <code>D3D12Device.cpp</code>에서 나란히 열어 두고 비교합니다. RHI가 감춘 것이 무엇인지 그 차이에서 보입니다.</li>
-  <li><strong>실행 파일을 켜 두고 읽으세요.</strong> Debug|x64로 빌드해 두면 Debug Layer 메시지, ImGui 콘솔, Stats 패널이 코드의 주장을 즉시 확인해 줍니다(8절).</li>
+  <li><strong>"N단계" 주석으로 검색하세요.</strong> 소스 곳곳에 <code>// 6단계:</code>, <code>// 11단계 (D19)</code> 같은 표시가 있습니다. <code>grep -rn "6단계" SherlockEngine/</code>으로 그 단계가 손댄 자리를 한 번에 모을 수 있고, 단계 번호의 뜻은 최종본 <a href="rendering-analysis.html#c20-3">20.3</a>의 카드에 있습니다.</li>
+  <li><strong>큰 파일은 함수 단위로.</strong> <code>Renderer.cpp</code>(약 1,200줄), <code>D3D11Device.cpp</code>(약 940줄), <code>D3D12Device.cpp</code>(약 1,430줄)는 통째로 읽지 말고 각 스텝이 지목한 함수만 읽습니다. S13에서 <code>Renderer.cpp</code>만 처음부터 끝까지 다시 읽습니다.</li>
+  <li><strong>백엔드는 항상 두 개를 나란히.</strong> S9부터는 같은 이름의 함수를 <code>D3D11Device.cpp</code>와 <code>D3D12Device.cpp</code>에서 나란히 열어 두고 비교합니다. RHI가 감춘 것이 무엇인지 그 차이에서 보입니다. 최종본 <a href="rendering-analysis.html#c9-10">9.10</a>의 대응표를 옆에 둡니다.</li>
+  <li><strong>실행 파일을 켜 두고 읽으세요.</strong> Debug|x64로 빌드해 두면 Debug Layer 메시지, Console 창, Stats·Render Settings 창이 코드의 주장을 즉시 확인해 줍니다(8절).</li>
+  <li><strong>문서의 줄 번호는 없습니다.</strong> 최종본은 코드를 "파일 + 함수 이름"으로 가리킵니다. IDE 의 기호 검색(Ctrl+,)이나 <code>grep -n "Renderer::RenderMainPass"</code>로 바로 찾습니다.</li>
 </ul>
 
-<h3 id="s2-3">2.3 문서와 현재 경로의 차이</h3>
-<p>1~6단계 문서는 7단계의 폴더 분리 이전에 쓰였습니다. 그 문서들이 가리키는 경로는 아래처럼 바꿔 읽어야 합니다.</p>
-<div class="tbl"><table>
-  <thead><tr><th>문서(1~6단계)의 이름</th><th>지금 위치</th><th>바뀐 단계</th></tr></thead>
-  <tbody>
-    <tr><td><code>Graphics/D3D11/Device</code>, <code>class Device</code></td><td><code>RHI/D3D11/D3D11Device</code> (<code>RHI::Device</code>를 구현)</td><td>7</td></tr>
-    <tr><td><code>Graphics/D3D11/CommandList</code></td><td><code>RHI/D3D11/D3D11CommandList</code></td><td>7</td></tr>
-    <tr><td><code>Graphics/D3D11/PipelineState</code>, <code>PipelineStateCache</code>, <code>ResourcePool</code></td><td><code>RHI/D3D11/PipelineState*</code>, <code>RHI/ResourcePool.h</code></td><td>7</td></tr>
-    <tr><td><code>Graphics/Handle.h</code>, <code>PipelineTypes.h</code>, <code>ResourceDesc.h</code>, <code>BindingTypes.h</code>, <code>RenderPassTypes.h</code></td><td>전부 <code>RHI/</code></td><td>7</td></tr>
-    <tr><td><code>Graphics/D3D11/ShaderCompiler.cpp</code></td><td><code>RHI/DXBC/ShaderCompiler.cpp</code> (선언은 <code>RHI/ShaderCompiler.h</code>)</td><td>7 → 8</td></tr>
-    <tr><td><code>Graphics/D3D11/ImGuiBackend</code></td><td><code>RHI::Device</code>의 <code>InitImGui / RenderImGui …</code> 어댑터</td><td>7</td></tr>
-    <tr><td><code>GameTimer</code>, <code>Update(float dt)</code></td><td><code>Core/Time</code>(고정 스텝 누적기) — <code>GameTimer</code>는 남아 있지만 앱 골격은 <code>Time</code>을 씁니다</td><td>10</td></tr>
-    <tr><td>TestApp(현 EditorApp)이 Device·Renderer·Scene을 직접 소유</td><td><code>Core/Engine</code>이 소유, EditorApp은 <code>GetEngine()</code>으로 접근</td><td>10</td></tr>
-    <tr><td><code>DebugUI</code> 패널 안의 조명·재질 편집</td><td><code>App/Editor</code>의 Lights·Materials·Inspector 창 (DebugUI는 남아 있음)</td><td>11</td></tr>
-  </tbody>
-</table></div>
-
+<h3 id="s2-3">2.3 질문에서 출발하기</h3>
+<p>코드를 읽다 막히면 먼저 최종본 <a href="rendering-analysis.html#c21-0">21.0 질문 색인</a>을 봅니다. 이 프로젝트를 만들면서 실제로 나왔던 질문 50개(핸들을 콘셉트로 할지 태그 구조체로 할지, PSO 를 왜 해시로 찾는지, 루트 시그니처는 어디서 바인딩되는지, Roll 과 짐벌락, <code>WrapAngle</code> 의 <code>while</code> 등)가 주제별로 답과 함께 있고, 답 끝마다 본문 장으로 가는 링크가 있습니다. 낯선 타입이나 Win32 함수(<code>LPWSTR</code>, <code>CommandLineToArgvW</code>, <code>&lt;=&gt;</code>, <code>consteval</code> …)는 <a href="rendering-analysis.html#app-a">부록 A</a>에서 찾습니다.</p>
 <h2 id="s3"><span class="num">3.</span>스텝 0~2: 지도와 골격</h2>
 
 <div class="stage">
@@ -307,13 +303,15 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
         <li><a href="../README.md">README.md</a> 전체 — 빌드 준비, 실행, 소스 폴더 표, 소스 규약(UTF-8 BOM, ComPtr, bool 반환)</li>
-        <li>rendering-analysis <a href="rendering-analysis.html#s1">§1 프로젝트 현재 상태</a> — 파일 표는 옛 것이니 "역할" 열만</li>
-        <li>rendering-analysis <a href="rendering-analysis.html#s9">§9</a>의 "단계 구성" 표와 PHASE 카드 18장의 <em>제목·완료 줄만</em></li>
+        <li>최종본 머리말 — 사실 카드, "한 줄 요약", <strong>그림 0</strong>(실행부터 Present 까지). 그림의 상자 하나가 장 하나입니다</li>
+        <li><a href="rendering-analysis.html#c1">1장 프로젝트 구성</a> — 1.1 세 프로젝트, 1.2 폴더 규칙, 1.4 의존성, 1.6 engine.ini</li>
+        <li><a href="rendering-analysis.html#c2">2장 계층과 소유 관계</a> — 2.2 그림과 2.4 생성·파괴 순서만</li>
+        <li><a href="rendering-analysis.html#c20-2">20.2 로드맵의 설계 원칙</a>과 <a href="rendering-analysis.html#c20-3">20.3</a> 단계 카드 17장의 <em>제목 줄만</em> — 소스가 자란 순서</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
-        <li>폴더 트리 한 번 훑기: <code>App/ Core/ Graphics/ Scene/ RHI/ RHI/D3D11/ RHI/D3D12/ RHI/DXBC/ Shaders/ Assets/</code></li>
-        <li><code>vcpkg.json</code> — 의존성 목록(DirectXTK·DirectXTex·ImGui·cgltf 등)</li>
-        <li><code>Assets/Config/engine.ini</code> — 백엔드·씬·로그 레벨을 고르는 곳</li>
+        <li>폴더 트리 한 번 훑기: <code>App/ Core/ Graphics/ Scene/ Game/ RHI/ RHI/D3D11/ RHI/D3D12/ RHI/DXBC/ Shaders/ Assets/</code></li>
+        <li><code>vcpkg.json</code> — 의존성 목록(DirectXMath·DirectXTex·ImGui·ImGuizmo·cgltf·nlohmann-json. DirectXTK 는 선언만 있고 미사용)</li>
+        <li><code>SherlockEngine/Assets/Config/engine.ini</code> — 백엔드·씬·로그 레벨을 고르는 곳</li>
       </ul></div>
     </div>
     <div class="check"><b>확인 포인트</b> — Debug|x64 빌드가 성공하고 <code>x64\Debug\SherlockEditor.exe</code>를 탐색기에서 직접 실행해도 데모 씬이 뜬다. <code>engine.ini</code>의 <code>backend</code>를 <code>d3d12</code>로 바꾸면 메뉴 막대와 Render Settings 창의 백엔드 이름이 바뀐다.</div>
@@ -324,22 +322,22 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <div class="tag">S1</div>
   <div>
     <h4>앱 골격과 프레임 루프 <span class="time">약 3시간</span></h4>
-    <div class="why">"프로그램이 켜져서 한 프레임을 그리고 꺼지기까지"를 따라갑니다. 이 뼈대를 알아야 이후 스텝에서 읽는 모든 클래스가 어느 시점에 불리는지 알 수 있습니다. 골격은 10단계에서 지금 모양이 됐으므로 10단계 문서의 해당 절을 먼저 봅니다.</div>
+    <div class="why">"프로그램이 켜져서 한 프레임을 그리고 꺼지기까지"를 따라갑니다. 이 뼈대를 알아야 이후 스텝에서 읽는 모든 클래스가 어느 시점에 불리는지 알 수 있습니다. 최종본 3·4장이 호출 순서 그대로 쓰여 있으니 코드와 한 줄씩 짝지어 읽습니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-10.html#s5">phase-10 §5 Engine과 AppBase (D14)</a>, <a href="phase-10.html#s3">§3 Config</a>, <a href="phase-10.html#s4">§4 Time: 고정 스텝 누적기</a></li>
-        <li><a href="phase-0.html">phase-0</a> 전체 — dt 전달, exe 기준 셰이더 경로(<code>Core/Paths</code>), 폴더 재배치. 짧고 기초적</li>
-        <li>rendering-analysis <a href="rendering-analysis.html#s3">§3 초기화 과정</a>·<a href="rendering-analysis.html#s4">§4 프레임 루프</a> — 옛 코드 기준이지만 "초기화 순서와 실패 시 false" 규약은 그대로</li>
+        <li><a href="rendering-analysis.html#c3">3장 시작</a> 전체 — 3.1 순서 그림, ⓪ 정적 초기화(스크립트 자기 등록)부터 ⑭까지, 3.9 게임 런타임의 차이</li>
+        <li><a href="rendering-analysis.html#c4">4장 한 프레임</a> 전체 — 특히 4.1 루프의 뼈대, 4.6~4.10 패스 순서, 4.9 의 "드로우 직전 바인딩 상태" 표, 4.14 종료</li>
+        <li><a href="rendering-analysis.html#c15-3">15.3 Config</a>, <a href="rendering-analysis.html#c15-4">15.4 Time — 고정 스텝 누적기</a>, <a href="rendering-analysis.html#c15-10">15.10 Engine</a></li>
         <li><a href="rendering-analysis.html#d14">D14</a>(전역 g_appBase와 앱 골격), <a href="rendering-analysis.html#d13">D13</a>(가변/고정 스텝)</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>SherlockEditor/EditorMain.cpp</code> → <code>App/AppBase.h</code>(헤더 주석) → <code>AppBase.cpp</code>의 <code>Initialize</code>·<code>Run</code>·<code>MsgProc</code></li>
-        <li><code>Core/Engine.h</code> 전체(멤버 선언 순서 = 생성 순서 주석) → <code>Engine.cpp</code>의 <code>Initialize</code>·<code>BeginFrame</code>·<code>Render</code>·<code>EndFrame</code></li>
+        <li><code>Core/Engine.h</code> 전체(멤버 선언 순서 = 생성 순서 주석) → <code>Engine.cpp</code>의 <code>Initialize</code>·<code>BeginFrame</code>·<code>Render</code>·<code>EndFrame</code>·<code>Shutdown</code></li>
         <li><code>App/EditorApp.h</code>만 — <code>OnInitialize / OnUpdate / OnFixedUpdate / OnGUI</code> 네 훅과 자동 검증 인자 목록. .cpp는 아직</li>
         <li><code>Core/Config.h</code>, <code>Core/Time.h</code>, <code>Core/Paths.h</code>, <code>pch.h</code>(D3D 헤더가 없음을 확인)</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — <code>Engine::Render</code>에 적힌 순서(<code>Device::BeginFrame</code> → 그림자·메인 → UI 패스 → <code>EndFrame</code>)를 종이에 그릴 수 있다. <code>engine.ini</code>의 <code>fixedstep</code>을 0.1로 바꾸면 OnFixedUpdate 호출 수가 초당 10회로 준다. 로그 파일이 exe 옆 <code>Logs\</code>에 생긴다.</div>
+    <div class="check"><b>확인 포인트</b> — <code>Engine::Render</code>에 적힌 순서(<code>Device::BeginFrame</code> → 그림자·메인·(미리보기) → UI 패스 → <code>EndFrame</code>)를 종이에 그릴 수 있다. <code>engine.ini</code>의 <code>fixedstep</code>을 0.1로 바꾸면 OnFixedUpdate 호출 수가 초당 10회로 준다. 로그 파일이 exe 옆 <code>Logs\</code>에 생긴다.</div>
   </div>
 </div>
 
@@ -347,46 +345,48 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <div class="tag">S2</div>
   <div>
     <h4>입력과 카메라 <span class="time">약 2시간</span></h4>
-    <div class="why">RHI와 무관하지만 이후의 모든 검증을 "카메라를 움직여 보기"로 하므로 먼저 익혀 둡니다. 뷰행렬을 카메라 월드 변환의 역행렬로 구하는 수학과 Win32 마우스 캡처의 함정이 핵심입니다.</div>
+    <div class="why">RHI와 무관하지만 이후의 모든 검증을 "카메라를 움직여 보기"로 하므로 먼저 익혀 둡니다. 뷰행렬을 카메라 월드 변환의 역행렬로 구하는 수학과 Win32 마우스 캡처의 함정이 핵심입니다. 카메라는 각도가 아니라 회전 행렬을 저장한다는 점(<code>SetYawPitch</code>와 <code>SetRotation</code> 두 입구)을 여기서 알아 두면 S12-F가 쉬워집니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-2.html">phase-2</a> 전체. 특히 §2.2 "공급은 무조건, 소비 측에서 판단", §3.2 "뷰행렬 = 카메라 월드 변환의 역행렬", §4.2 <code>WM_CAPTURECHANGED</code></li>
-        <li><a href="rendering-analysis.html#d8">D8</a> 오일러 각과 LookAt 카메라 · 부록 <a href="rendering-analysis.html#s10">B. 좌표계와 행렬 규약</a></li>
+        <li><a href="rendering-analysis.html#c15-5">15.5 Input</a> — "공급은 무조건, 소비 측에서 판단", <code>WantCaptureMouse</code>의 타이밍</li>
+        <li><a href="rendering-analysis.html#c15-6">15.6 마우스 룩과 에디터 카메라 컨트롤러</a> — 캡처·커서·재중앙화, <code>WM_CAPTURECHANGED</code>가 자기 자신에게 오는 함정</li>
+        <li><a href="rendering-analysis.html#c13-8">13.8 Camera 수학</a>, <a href="rendering-analysis.html#c13-9">13.9 WrapAngle 과 ClampPitch</a>, <a href="rendering-analysis.html#c13-10">13.10 투영행렬</a></li>
+        <li><a href="rendering-analysis.html#app-b">부록 B 좌표계와 행렬 규약</a>, <a href="rendering-analysis.html#d8">D8</a></li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>Core/Input.h/.cpp</code> — 메시지 → 프레임 상태(<code>IsKeyPressed</code> vs <code>IsKeyDown</code>), <code>EndFrame</code>이 델타를 지우는 자리</li>
-        <li><code>Scene/Camera.h/.cpp</code> — <code>Rotate</code>·<code>Move</code>·뷰행렬 계산, Debug에서 <code>LookToLH</code>와 대조하는 검사</li>
-        <li><code>Scene/Transform.h/.cpp</code> — 월드행렬 = S·R·T</li>
+        <li><code>Scene/Camera.h/.cpp</code> — 회전 행렬 저장, <code>SetYawPitch</code>·<code>Move</code>·뷰행렬 = <code>inverse(R·T)</code>, Debug에서 <code>XMMatrixLookToLH</code>와 대조하는 검사</li>
+        <li><code>Scene/Transform.h/.cpp</code> — 로컬 월드행렬 = S·R·T</li>
         <li><code>App/EditorApp.cpp</code>의 <code>UpdateCamera</code>·<code>BeginLook</code>·<code>EndLook</code>·<code>OnFocusLost</code>, <code>AppBase::MsgProc</code>의 마우스 메시지 분기</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — WASD/QE와 우클릭 드래그로 구 주위를 돈다. Alt-Tab 후 돌아와도 키가 고착되지 않는다. ImGui 창 위에서 드래그하면 카메라가 돌지 않는다(<code>WantCaptureMouse</code>). <code>images/2026-09-23-phase2-*.png</code>와 비교.</div>
+    <div class="check"><b>확인 포인트</b> — WASD/QE와 씬 뷰 위 우클릭 드래그로 물체 주위를 돈다. Alt-Tab 후 돌아와도 키가 고착되지 않는다. 씬 뷰 밖의 ImGui 창 위에서 드래그하면 카메라가 돌지 않는다(룩 시작 조건은 씬 뷰 hover). <code>images/2026-09-23-phase2-*.png</code>와 비교.</div>
   </div>
 </div>
 
 <h2 id="s4"><span class="num">4.</span>스텝 3~7: RHI 조각 다섯 개</h2>
-<p>로드맵이 강조한 1·3·4·6단계(그리고 텍스처를 실전에 쓰는 5단계)는 각각 RHI의 조각 하나를 만듭니다. PSO → 핸들·Desc → 바인딩 레이아웃 → 텍스처·샘플러 → 렌더 패스·커맨드 리스트. 이 다섯 스텝을 지나면 <code>RHI/</code>의 헤더 전부와 <code>Renderer.cpp</code>의 대부분을 읽은 셈이 됩니다.</p>
+<p>RHI는 조각 다섯 개로 이루어져 있습니다. 핸들·Desc·PSO → 씬과 렌더러(상수버퍼) → 바인딩 레이아웃·재질·셰이더 컴파일 → 텍스처·샘플러 → 렌더 패스·커맨드 리스트·그림자. 이 다섯 스텝을 지나면 <code>RHI/</code>의 헤더 전부와 <code>Renderer.cpp</code>의 대부분을 읽은 셈이 됩니다.</p>
 
 <div class="stage">
   <div class="tag">S3</div>
   <div>
     <h4>핸들 · Desc · PSO: RHI의 어휘 <span class="time">약 4시간</span></h4>
-    <div class="why">이 프로젝트의 모든 GPU 리소스는 <code>{index, generation}</code> 값 핸들이고, 생성은 Desc 구조체 하나로 하며, 파이프라인 상태는 PSO Desc 하나로 통합돼 있습니다. 이 어휘를 먼저 익히지 않으면 Renderer를 읽을 수 없습니다. 1단계(PSO)와 3단계(핸들·풀·Dynamic 버퍼 링)를 묶었습니다.</div>
+    <div class="why">이 프로젝트의 모든 GPU 리소스는 <code>Handle&lt;Tag&gt;</code>(<code>{index, generation}</code>) 값 핸들이고, 생성은 Desc 구조체 하나로 하며, 파이프라인 상태는 <code>PipelineStateDesc</code> 하나로 통합돼 있습니다. 이 어휘를 먼저 익히지 않으면 Renderer를 읽을 수 없습니다. 콘셉트 대 태그 구조체, 해시를 왜 섞는지 같은 질문의 답이 이 두 장에 있습니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-1.html">phase-1</a> §2 "D3D11의 상태 모델과 D3D12의 PSO", §3 PipelineStateDesc 설계(값 타입·해시), §5 D3D11 구현</li>
-        <li><a href="phase-3.html">phase-3</a> §2 핸들과 풀(세대 카운터·free list), §3 Desc → 핸들 API, §4 프레임과 Dynamic 버퍼 링, §6 텍스처</li>
+        <li><a href="rendering-analysis.html#c5">5장 핸들·풀·Desc</a> — 5.1 왜 핸들인가, 5.2 <code>Handle&lt;Tag&gt;</code>, 5.3 콘셉트, 5.4 세대 카운터와 free list, 5.5 Desc → 핸들, 5.7 C++20 기능</li>
+        <li><a href="rendering-analysis.html#c6">6장 PSO</a> — 6.1 상태 모델 대 PSO, 6.3 필드 대응표, 6.6 해시, 6.7 캐시, 6.8 D3D11 구현, 6.10 PSO 가 실제로 적용되는 경로</li>
         <li><a href="rendering-analysis.html#d21">D21</a> RHI 추상화의 형태, <a href="rendering-analysis.html#d22">D22</a> D3D11 위 PSO 에뮬레이션, <a href="rendering-analysis.html#d1">D1</a> ComPtr</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
-        <li><code>RHI/Handle.h</code> → <code>RHI/ResourcePool.h</code> — 세대가 use-after-free를 어떻게 잡는지</li>
-        <li><code>RHI/PipelineTypes.h/.cpp</code> — <code>Format</code>·<code>CullMode</code> 열거, <code>PipelineStateDesc</code>와 해시·비교</li>
+        <li><code>RHI/Handle.h</code> → <code>RHI/ResourcePool.h</code> — 세대가 use-after-free를 어떻게 잡는지, <code>Get</code>의 const 오버로드</li>
+        <li><code>RHI/PipelineTypes.h/.cpp</code> — 열거형, <code>PipelineStateDesc</code>, <code>HashCombine</code>과 비교</li>
         <li><code>RHI/ResourceDesc.h</code>, <code>RHI/GraphicsConfig.h</code>(<code>kFrameCount</code>)</li>
-        <li><code>RHI/D3D11/PipelineState.h/.cpp</code>, <code>PipelineStateCache.h/.cpp</code> — D3D11 상태 객체 5개를 하나로 묶는 자리</li>
-        <li><code>RHI/D3D11/D3D11Resources.h</code>, <code>D3D11Device.cpp</code>의 <code>CreateBuffer</code>·<code>UpdateBuffer</code>·<code>CreateTexture</code>·<code>BeginFrame</code>만</li>
+        <li><code>RHI/D3D11/PipelineState.h/.cpp</code>(<code>Create</code>·<code>Bind</code>), <code>PipelineStateCache.h/.cpp</code></li>
+        <li><code>RHI/D3D11/D3D11Resources.h</code>, <code>D3D11Device.cpp</code>의 <code>CreateBuffer</code>·<code>UpdateBuffer</code>·<code>CreateTexture</code>·<code>CreatePipeline</code>만</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — F1(와이어프레임)·F2(컬링)를 누르면 Stats 패널의 PSO 수가 늘고, 같은 조합으로 돌아오면 늘지 않는다(캐시). Debug Layer가 종료 시 Live Object를 보고하지 않는다. <code>PipelineState.cpp</code> 밖에서 <code>RSSetState</code>가 검색되지 않는다.</div>
+    <div class="check"><b>확인 포인트</b> — F1(와이어프레임)·F2(컬링)를 누르면 Stats 패널의 PSO 수가 늘고, 같은 조합으로 돌아오면 늘지 않는다(캐시). Debug Layer가 종료 시 장치 한 건 외의 Live Object를 보고하지 않는다. <code>PipelineState.cpp</code> 밖에서 <code>RSSetState</code>가 검색되지 않는다. <code>ShaderHandle == PipelineHandle</code>을 써 보면 컴파일 에러가 난다.</div>
   </div>
 </div>
 
@@ -394,43 +394,46 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <div class="tag">S4</div>
   <div>
     <h4>씬과 렌더러 <span class="time">약 3시간</span></h4>
-    <div class="why">CPU 데이터(Scene·Mesh·Material)와 GPU 캐시(Renderer의 GpuMesh·GpuMaterial)의 경계, 상수버퍼 3분할(b0·b1·b2)과 HLSL 패킹 규칙이 여기 있습니다. Renderer가 씬을 소유하지 않고 입력으로 받는 이유(D3)도 함께 봅니다.</div>
+    <div class="why">CPU 데이터(Scene·Mesh·Material)와 GPU 캐시(Renderer의 GpuMesh·GpuMaterial)의 경계, 상수버퍼 네 개(b0 프레임·b1 오브젝트·b2 조명·b3 재질)와 HLSL 패킹 규칙이 여기 있습니다. Renderer가 씬을 소유하지 않고 입력으로 받는 이유(D3)도 함께 봅니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-3.html#s5">phase-3 §5 상수버퍼 3분할</a>(패킹 규칙, 세 겹의 검사, 행렬 전치 관례), <a href="phase-3.html#s7">§7 Scene · GameObject · Renderer</a></li>
-        <li><a href="rendering-analysis.html#d2">D2</a> 상수버퍼 갱신, <a href="rendering-analysis.html#d3">D3</a> Renderer의 소유, <a href="rendering-analysis.html#d5">D5</a> 전치 업로드 vs row_major</li>
-        <li>rendering-analysis <a href="rendering-analysis.html#s5">§5 GPU 파이프라인 단계별 추적</a> — IA·RS·OM 설명은 지금도 유효</li>
+        <li><a href="rendering-analysis.html#c13-1">13.1 Scene</a>, <a href="rendering-analysis.html#c13-2">13.2 GameObject</a>, <a href="rendering-analysis.html#c13-3">13.3 Transform</a>, <a href="rendering-analysis.html#c13-5">13.5 Mesh</a>, <a href="rendering-analysis.html#c13-7">13.7 Material 과 Light</a></li>
+        <li><a href="rendering-analysis.html#c14">14장 Renderer 내부</a> — 14.1 소유, 14.3 GpuMesh, 14.6 드로우 목록과 정렬, 14.7 드로우 루프와 통계, 14.11 캐시 무효화</li>
+        <li><a href="rendering-analysis.html#c10-6">10.6 상수버퍼 네 개</a>(격자), <a href="rendering-analysis.html#c10-7">10.7 패킹 규칙</a>, <a href="rendering-analysis.html#c10-8">10.8 세 겹의 검사</a>, <a href="rendering-analysis.html#c10-9">10.9 전치 관례</a>, <a href="rendering-analysis.html#c10-10">10.10 갱신 방식</a></li>
+        <li><a href="rendering-analysis.html#d2">D2</a>, <a href="rendering-analysis.html#d3">D3</a>, <a href="rendering-analysis.html#d5">D5</a></li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
-        <li><code>Scene/Scene.h</code>(헤더 주석) · <code>Scene/GameObject.h</code> · <code>Scene/Light.h</code></li>
+        <li><code>Scene/Scene.h</code>(헤더 주석) · <code>Scene/GameObject.h</code> · <code>Scene/Light.h</code> · <code>Scene/Material.h</code></li>
         <li><code>Graphics/Mesh.h</code>, <code>Mesh.cpp</code>의 프리미티브 하나(<code>CreateSphere</code>)</li>
         <li><code>Graphics/ShaderConstants.h</code>를 <code>Shaders/Common.hlsli</code>와 <strong>나란히</strong> — <code>static_assert</code>의 오프셋과 cbuffer 선언을 한 줄씩 대응</li>
-        <li><code>Graphics/Renderer.h</code> 전체 → <code>Renderer.cpp</code>의 <code>Render</code>·<code>BuildDrawList</code>·<code>UploadObjectConstants</code>·<code>GetOrCreateGpuMesh</code></li>
+        <li><code>Graphics/Renderer.h</code> 전체 → <code>Renderer.cpp</code>의 <code>Render</code>·<code>BuildDrawList</code>·<code>DrawItems</code>·<code>UploadPerFrameConstants</code>·<code>UploadObjectConstants</code>·<code>GetOrCreateGpuMesh</code></li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — <code>PerFrameConstants</code>의 크기 304B를 손으로 계산해 <code>static_assert</code>와 맞춘다. 데모 씬에서 바닥 위 오브젝트 7개가 각자 다른 변환으로 그려진다. <code>RHI/D3D11/</code>·<code>RHI/D3D12/</code>·<code>RHI/DXBC/</code> 밖에서 <code>ID3D11</code>이 검색되지 않는다.</div>
+    <div class="check"><b>확인 포인트</b> — <code>PerFrameConstants</code>의 크기 304B를 손으로 계산해 <code>static_assert</code>와 맞춘다. 데모 씬에서 바닥 위 오브젝트들이 각자 다른 변환으로 그려진다. <code>RHI/D3D11/</code>·<code>RHI/D3D12/</code>·<code>RHI/DXBC/</code>·<code>RHI/RHI.cpp</code> 밖의 <em>코드</em>에서 <code>ID3D11</code>이 검색되지 않는다(주석에는 남아 있음).</div>
   </div>
 </div>
 
 <div class="stage">
   <div class="tag">S5</div>
   <div>
-    <h4>바인딩 레이아웃과 재질 <span class="time">약 3시간</span></h4>
-    <div class="why">D3D12의 루트 시그니처를 D3D11 위에 미리 그린 <code>BindingLayout</code>/<code>ResourceSet</code>, 재질이 PSO와 셋으로 풀리는 과정, 리플렉션으로 셰이더 선언을 대조하는 검사, 핫리로드. 이후 D3D12 스텝에서 이것이 진짜 루트 시그니처가 됩니다.</div>
+    <h4>바인딩 레이아웃 · 재질 · 셰이더 컴파일 <span class="time">약 3시간</span></h4>
+    <div class="why">D3D12의 루트 시그니처를 D3D11 위에 미리 그린 <code>BindingLayout</code>/<code>ResourceSet</code>, 재질이 PSO와 셋으로 풀리는 과정, 리플렉션으로 셰이더 선언을 대조하는 검사, <code>.cso</code>와 핫리로드. 7장은 루트 시그니처·디스크립터 힙·테이블을 처음 배우는 사람 기준으로 배경부터 설명하므로 S9 전에 읽어 두면 D3D12 가 낯설지 않습니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-4.html">phase-4</a> §2 루트 시그니처를 D3D11에 미리 그리기(갱신 빈도별 셋 세 개, 64 DWORD 예산), §3 Material, §5 리플렉션, §6 .cso와 핫리로드, §7 드로우 정렬</li>
+        <li><a href="rendering-analysis.html#c7">7장 바인딩</a> — 7.1~7.4 배경(슬롯 모델 → 루트 시그니처 → 디스크립터), 7.5 엔진의 어휘, 7.6 <code>ResourceBinding</code>이 핸들 셋을 다 가지는 이유, 7.7 갱신 빈도별 셋 세 개, 7.8 D3D11 구현, 7.12 셰이더 선언과 대조</li>
+        <li><a href="rendering-analysis.html#c10-1">10.1</a>~<a href="rendering-analysis.html#c10-5">10.5</a> — 셰이더 파일, <code>ShaderCompiler</code>(<code>ShaderStage</code> 인자), <code>.cso</code> 우선 로드, 핫리로드, 리플렉션</li>
+        <li><a href="rendering-analysis.html#c14-4">14.4 GpuMaterial 캐시</a>, <a href="rendering-analysis.html#c14-5">14.5 PSO 선택</a></li>
         <li><a href="rendering-analysis.html#d9">D9</a> 정점 구조체와 InputLayout, <a href="rendering-analysis.html#d12">D12</a> 런타임 컴파일 vs .cso</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>RHI/BindingTypes.h</code> — 헤더 주석과 레지스터 상한 상수</li>
         <li><code>Scene/Material.h</code> — 텍스처를 핸들이 아닌 "이름"으로 들고 있는 이유</li>
-        <li><code>Graphics/VertexTypes.h</code>, <code>RHI/ShaderCompiler.h</code> → <code>RHI/DXBC/ShaderCompiler.cpp</code>의 리플렉션 함수</li>
-        <li><code>Renderer.cpp</code>의 <code>Initialize</code>(레이아웃 세 개 선언) · <code>LoadShaders</code> · <code>ValidateBindings</code> · <code>CheckHotReload</code> · <code>GetOrCreateGpuMaterial</code> · <code>GetPipelineFor</code> · <code>RenderMainPass</code>의 정렬 루프</li>
+        <li><code>Graphics/VertexTypes.h</code>, <code>RHI/ShaderCompiler.h</code> → <code>RHI/DXBC/ShaderCompiler.cpp</code>의 <code>GetTargetProfile</code>·<code>LoadOrCompile</code>·리플렉션 함수</li>
+        <li><code>Renderer.cpp</code>의 <code>Initialize</code>(레이아웃 세 개 선언) · <code>LoadShaders</code> · <code>ValidateBindings</code> · <code>CheckHotReload</code> · <code>GetOrCreateGpuMaterial</code> · <code>GetPipelineFor</code></li>
         <li><code>Shaders/BasicVertexShader.hlsl</code>, <code>BasicPixelShader.hlsl</code>의 cbuffer·register 선언부</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — <code>BasicPixelShader.hlsl</code>의 색을 바꿔 저장하면 Debug 실행 중 1초 안에 화면이 바뀌고, 문법 오류를 내면 이전 셰이더가 유지되며 콘솔에 줄 번호가 찍힌다(F4는 수동 리로드). Stats의 pipelineSwitches·resourceSetSwitches가 드로우 수보다 훨씬 작다(정렬 효과).</div>
+    <div class="check"><b>확인 포인트</b> — <code>BasicPixelShader.hlsl</code>의 색을 바꿔 저장하면 Debug 실행 중 1초 안에 화면이 바뀌고, 문법 오류를 내면 이전 셰이더가 유지되며 Console에 줄 번호가 찍힌다(F4는 수동 리로드). Stats의 pipelineSwitches·resourceSetSwitches가 드로우 수보다 훨씬 작다(정렬 효과).</div>
   </div>
 </div>
 
@@ -441,7 +444,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
     <div class="why">sRGB 전달 함수와 "두 번 어두워지기", 백버퍼는 UNORM으로 만들되 씬은 sRGB 뷰에 그리고 ImGui는 UNORM 뷰에 그리는 이유, CPU 밉 생성. 실무에서 가장 자주 틀리는 부분이라 검증 방법(회색 128)을 꼭 따라 해 보세요.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-5.html">phase-5</a> §2 색공간(§2.4 회색 128 검증), §3 flip 모델 스왑체인, §4 텍스처 로더와 밉맵(§4.3 DirectXTex 함정), §5 샘플러</li>
+        <li><a href="rendering-analysis.html#c12">12장 텍스처와 색공간</a> 전체 — 12.1 선형 공간, 12.2 <code>_SRGB</code> 뷰와 TYPELESS, 12.4 ImGui 는 UNORM, 12.5 회색 128 검증, 12.6 flip 모델 스왑체인, 12.7 텍스처 로더와 밉맵, 12.9 샘플러, 12.12 텍스처 캐시</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>Graphics/TextureLoader.h/.cpp</code> — <code>TextureImage</code>와 밉 체인 생성(sRGB는 선형에서 평균)</li>
@@ -457,34 +460,35 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
 <div class="stage">
   <div class="tag">S7</div>
   <div>
-    <h4>렌더 패스 · 커맨드 리스트 · 그림자 <span class="time">약 4시간</span></h4>
-    <div class="why">RHI의 마지막 조각입니다. 프레임이 <code>BeginFrame → [Shadow → Main → UI] → EndFrame</code>으로 고정되고, 모든 GPU 명령이 <code>CommandList</code>를 지나며, 그림자 맵이 "DSV로 쓰고 SRV로 읽는" 첫 리소스라 <code>Barrier</code>가 등장합니다. D3D11에서는 빈 함수지만 D3D12로 갈 자리를 코드에 미리 적어 둔 것입니다.</div>
+    <h4>렌더 패스 · 커맨드 리스트 · 파이프라인 · 그림자 <span class="time">약 4시간</span></h4>
+    <div class="why">RHI의 마지막 조각입니다. 프레임이 <code>BeginFrame → [Shadow → Main → (Preview) → UI] → EndFrame</code>으로 고정되고, 모든 GPU 명령이 <code>CommandList</code>를 지나며, 그림자 맵이 "DSV로 쓰고 SRV로 읽는" 첫 리소스라 <code>Barrier</code>가 등장합니다. D3D11에서는 상태 추적만 하지만 D3D12로 갈 자리를 코드에 미리 적어 둔 것입니다. 같은 스텝에서 정점 하나·픽셀 하나가 파이프라인을 지나는 11장을 읽어 셰이더 코드를 끝까지 따라갑니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-6.html">phase-6</a> §2 RenderPass(Load/Store, SRV 충돌), §3 CommandList와 Barrier, §4 그림자 매핑(TYPELESS 깊이, 비교 샘플러와 PCF, 광원 행렬), §5 노멀 매핑과 탄젠트</li>
+        <li><a href="rendering-analysis.html#c8">8장</a> — 8.1 왜 패스인가, 8.2 <code>RenderPassDesc</code>, 8.3 SRV·타깃 충돌, 8.5 <code>CommandList</code> 대응표, 8.7 리소스 상태와 배리어, 8.9 Dynamic 버퍼</li>
+        <li><a href="rendering-analysis.html#c11">11장</a> — 11.1 IA, 11.2 VS, 11.4 래스터라이저, 11.6 조명 수식(<code>direction</code>과 L 의 부호), 11.7 노멀 매핑, 11.8 그림자 매핑(TYPELESS 깊이, 비교 샘플러와 PCF, 광원 행렬), 11.10 OM</li>
         <li><a href="rendering-analysis.html#d4">D4</a> 프레임 시작/끝의 소유권, <a href="rendering-analysis.html#d6">D6</a> 매 프레임 재바인딩</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>RHI/RenderPassTypes.h</code>(<code>LoadOp</code>·<code>ResourceState</code>) → <code>RHI/CommandList.h</code></li>
-        <li><code>RHI/D3D11/D3D11CommandList.cpp</code> 전체(284줄) — SRV 슬롯 추적과 <code>Barrier</code>의 상태 검사</li>
+        <li><code>RHI/D3D11/D3D11CommandList.cpp</code> 전체 — SRV 슬롯 추적과 <code>Barrier</code>의 상태 검사</li>
         <li><code>Renderer.cpp</code>의 <code>CreateShadowResources</code>·<code>ComputeLightViewProj</code>·<code>RenderShadowPass</code>·<code>RenderMainPass</code>·<code>EndUIPass</code>(Present 전이)</li>
         <li><code>Shaders/ShadowVertexShader.hlsl</code>, <code>BasicPixelShader.hlsl</code>의 PCF 루프와 TBN, <code>Common.hlsli</code>의 t8·s4</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — 바닥에 그림자가 떨어지고 F7(광원 공전)로 그림자가 따라온다. F8·F9로 그림자·노멀 매핑을 끄고 켠다. Stats의 renderPasses = 3, barriers = 4(프레임당). Debug Layer에 "SRV를 강제로 unbind" 경고가 없다. 에디터 Render Settings 창에서 그림자 맵을 미리 볼 수 있다.</div>
+    <div class="check"><b>확인 포인트</b> — 바닥에 그림자가 떨어지고 F7(광원 공전)로 그림자가 따라온다. F8·F9로 그림자·노멀 매핑을 끄고 켠다. Render Settings 창의 패스 수·배리어 수를 <a href="rendering-analysis.html#c14-8">14.8</a>의 표와 맞춰 본다(<code>Renderer::Render</code> 끝에서 읽으므로 UI 패스와 백버퍼 전이는 빠진 값). Debug Layer에 "SRV를 강제로 unbind" 경고가 없다. 같은 창에서 그림자 맵을 미리 볼 수 있다.</div>
   </div>
 </div>
-
 <h2 id="s5"><span class="num">5.</span>스텝 8~9: 인터페이스와 D3D12</h2>
 
 <div class="stage">
   <div class="tag">S8</div>
   <div>
-    <h4>RHI 인터페이스 추출 <span class="time">약 2시간</span></h4>
-    <div class="why">기능 추가가 없는 단계라 읽을 것도 적지만, "무엇이 RHI이고 무엇이 아닌가"의 경계를 폴더로 긋는 규칙과 팩토리가 여기서 확정됩니다. 앞 스텝에서 이미 <code>RHI/</code> 헤더를 다 읽었으니 <code>Device.h</code>를 처음부터 끝까지 다시 읽으며 "왜 이 메서드는 있고 저것은 없나"를 생각해 보세요.</div>
+    <h4>RHI 인터페이스 <span class="time">약 2시간</span></h4>
+    <div class="why">앞 스텝에서 이미 <code>RHI/</code> 헤더를 다 읽었으니, 이번에는 "무엇이 RHI이고 무엇이 아닌가"의 경계를 폴더로 긋는 규칙과 팩토리를 확정합니다. <code>Device.h</code>를 처음부터 끝까지 다시 읽으며 "왜 이 메서드는 있고 저것은 없나"를 생각해 보세요. 9.2의 표가 메서드 37개를 기능 묶음별로 정리해 둔 것입니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-7.html">phase-7</a> §2 무엇이 RHI인가(폴더 트리), §3.3 핸들은 값·Device만 가상, §4 폴더 규칙과 팩토리, §7 ImGui 어댑터의 선택</li>
+        <li><a href="rendering-analysis.html#c9-1">9.1 무엇이 RHI 이고 무엇이 아닌가</a>(폴더 규칙과 격리 확인법), <a href="rendering-analysis.html#c9-2">9.2 RHI::Device 인터페이스 전체</a>, <a href="rendering-analysis.html#c9-3">9.3 핸들은 값, Device 만 가상</a>, <a href="rendering-analysis.html#c9-4">9.4 백엔드 팩토리</a>, <a href="rendering-analysis.html#c9-5">9.5 D3D11 백엔드</a></li>
+        <li><a href="rendering-analysis.html#d21">D21</a>의 최종 결론 상자</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>RHI/RHI.h</code> → <code>RHI/RHI.cpp</code>(백엔드 헤더를 include하는 유일한 파일)</li>
@@ -493,7 +497,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
         <li><code>Core/Engine.cpp</code>의 <code>CreateDevice</code> 호출 한 줄</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — 아래 검색이 <code>RHI/D3D11/</code>·<code>RHI/D3D12/</code>·<code>RHI/RHI.cpp</code>·<code>RHI/DXBC/</code> 밖에서 0건이다.
+    <div class="check"><b>확인 포인트</b> — 아래 검색이 <code>RHI/D3D11/</code>·<code>RHI/D3D12/</code>·<code>RHI/RHI.cpp</code>·<code>RHI/DXBC/</code> 밖에서 코드 줄로는 0건이다(주석에 남은 몇 줄은 9.1 표 참고).
       <pre style="margin:10px 0 0"><code>grep -rnE "d3d11.h|d3d12.h|dxgi.h|ID3D11|ID3D12|ComPtr" SherlockEngine --include=*.h --include=*.cpp | grep -vE "RHI/(D3D11|D3D12|DXBC)/|RHI/RHI.cpp"</code></pre></div>
   </div>
 </div>
@@ -502,21 +506,23 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <div class="tag">S9</div>
   <div>
     <h4>D3D12 백엔드로 검증 <span class="time">약 5시간</span></h4>
-    <div class="why">가장 긴 스텝입니다. 앞에서 "D3D12를 미리 고려한" 자리(프레임 인덱스, 갱신 빈도별 셋, Barrier, PSO Desc의 RTV 포맷·샘플 수)가 전부 실제 코드가 됩니다. D3D12를 처음 본다면 문서의 절 순서대로 <code>D3D12Device.cpp</code>의 함수를 하나씩 짝지어 읽고, 같은 이름의 D3D11 함수를 옆에 둡니다.</div>
+    <div class="why">가장 긴 스텝입니다. 앞에서 "D3D12를 미리 고려한" 자리(프레임 인덱스, 갱신 빈도별 셋, Barrier, PSO Desc의 RTV 포맷·샘플 수)가 전부 실제 코드가 됩니다. D3D12를 처음 본다면 9.6~9.9의 절 순서대로 <code>D3D12Device.cpp</code>의 함수를 하나씩 짝지어 읽고, 같은 이름의 D3D11 함수를 옆에 둡니다. 루트 시그니처와 디스크립터 테이블의 상세는 7장(7.9~7.11), 배리어·펜스·지연 해제는 8장(8.7~8.10)에 있으니 그쪽으로 건너갔다 돌아옵니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-8.html">phase-8</a> §2 두 번째 백엔드가 검증하는 것 → §3 장치·큐·스왑체인·프레임 자원 → §4 메모리와 업로드(동기 업로드, 업로드 링과 루트 CBV, 지연 해제) → §5 디스크립터 힙과 ResourceSet → §6 BindingLayout → 루트 시그니처 → §7 PSO → §8 배리어 → §10 Debug Layer / GBV</li>
-        <li>rendering-analysis <a href="rendering-analysis.html#s9">§9</a>의 "개념 대응표"(D3D11 ↔ RHI ↔ D3D12)를 옆에 펴 두기</li>
+        <li><a href="rendering-analysis.html#c9-6">9.6 장치·큐·프레임 자원</a> → <a href="rendering-analysis.html#c9-7">9.7 메모리와 업로드</a> → <a href="rendering-analysis.html#c9-8">9.8 디스크립터 힙과 뷰</a> → <a href="rendering-analysis.html#c9-9">9.9 PSO·셰이더·검증 계층·ImGui</a></li>
+        <li><a href="rendering-analysis.html#c7-9">7.9</a>~<a href="rendering-analysis.html#c7-11">7.11</a> D3D12 바인딩 구현(루트 시그니처는 어디서 바인딩되나), <a href="rendering-analysis.html#c6-9">6.9</a> D3D12 PSO, <a href="rendering-analysis.html#c8-4">8.4</a>·<a href="rendering-analysis.html#c8-7">8.7</a>·<a href="rendering-analysis.html#c8-10">8.10</a></li>
+        <li><a href="rendering-analysis.html#c9-10">9.10 개념 대응표</a>를 옆에 펴 두기, <a href="rendering-analysis.html#c9-11">9.11 두 번째 백엔드가 검증한 것</a>, <a href="rendering-analysis.html#c9-12">9.12 백엔드 선택·OpenGL·Vulkan·셰이더 모델에 대한 질문</a></li>
+        <li><a href="rendering-analysis.html#app-c">부록 C</a> — 한 프레임의 D3D11/D3D12 호출을 나란히</li>
       </ul></div>
-      <div><h5>함께 볼 소스 (문서 절 ↔ 함수)</h5><ul>
-        <li>§3 ↔ <code>D3D12Device::InitDevice</code>·<code>InitSwapChain</code>·<code>InitFrameResources</code>·<code>WaitForGpu</code>·<code>BeginFrame</code>·<code>EndFrame</code></li>
-        <li>§4 ↔ <code>CreateBuffer</code>·<code>UpdateBuffer</code>·<code>ExecuteUploadSync</code>·<code>CreateTexture</code>·<code>DeferRelease</code>·<code>ReleaseGarbage</code></li>
-        <li>§5 ↔ <code>D3D12DescriptorHeap.h</code>, <code>CreateResourceSet</code>·<code>CreateSampler</code></li>
-        <li>§6·§7 ↔ <code>CreateBindingLayout</code>, <code>D3D12PipelineState.cpp</code>, <code>D3D12Convert.cpp</code></li>
-        <li>§8 ↔ <code>D3D12CommandList.cpp</code>의 <code>Barrier</code>·<code>BeginRenderPass</code>·<code>SetResourceSet</code></li>
+      <div><h5>함께 볼 소스 (절 ↔ 함수)</h5><ul>
+        <li>9.6 ↔ <code>D3D12Device</code>의 장치·큐·스왑체인·프레임 자원 초기화, <code>WaitForGpu</code>·<code>BeginFrame</code>·<code>EndFrame</code></li>
+        <li>9.7 ↔ <code>CreateBuffer</code>·<code>UpdateBuffer</code>·동기 업로드·<code>CreateTexture</code>·지연 해제</li>
+        <li>9.8 ↔ <code>D3D12DescriptorHeap.h</code>, <code>CreateResourceSet</code>·<code>CreateSampler</code></li>
+        <li>7.9~7.11 ↔ <code>CreateBindingLayout</code>, <code>GetOrCreateRootLayout</code>, <code>D3D12CommandList::ApplyBindings</code>; 6.9 ↔ <code>D3D12PipelineState.cpp</code>, <code>D3D12Convert.cpp</code></li>
+        <li>8.4·8.7 ↔ <code>D3D12CommandList.cpp</code>의 <code>BeginRenderPass</code>·<code>Barrier</code>·<code>SetResourceSet</code></li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — <code>engine.ini</code>에서 <code>backend = d3d12</code>로 실행하고, 재생하지 않은 편집 상태(움직임 없음)에서 두 백엔드 스크린샷을 비교한다(<code>images/2026-09-23-phase8-backend-compare.png</code>). Debug 빌드에서 D3D12 Debug Layer·GBV 메시지가 0건. Resize해도 멈추지 않는다. <code>Stats</code>의 barriers 수가 D3D11과 같다.</div>
+    <div class="check"><b>확인 포인트</b> — <code>engine.ini</code>에서 <code>backend = d3d12</code>로 실행하고, 재생하지 않은 편집 상태(움직임 없음)에서 두 백엔드 스크린샷을 비교한다(<code>images/2026-09-23-phase8-backend-compare.png</code>). Debug 빌드에서 D3D12 Debug Layer·GBV 메시지가 0건. Resize해도 멈추지 않는다. 메인 PSO 의 루트 파라미터가 8개(12 DWORD)인 것을 7.9의 표와 코드에서 확인한다.</div>
   </div>
 </div>
 
@@ -530,17 +536,17 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
     <div class="why">실제 에셋(DamagedHelmet·Sponza)이 들어오면서 생긴 문제들: 오른손 → 왼손 좌표계, 탄젠트 생성, 서브메시와 16/32비트 인덱스, 알파 컷아웃, 이미지 바이트를 씬이 들고 Renderer가 색공간을 정하는 경계.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-9.html">phase-9</a> §4 Model의 모양과 경계, §5 좌표계, §6 탄젠트, §7 서브메시, §9 이미지, §10 씬 전환과 캐시 무효화</li>
-        <li><a href="rendering-analysis.html#d10">D10</a> 32비트 인덱스, <a href="rendering-analysis.html#d15">D15</a> GameObject 소유 모델</li>
+        <li><a href="rendering-analysis.html#c13-5">13.5 Mesh</a>(탄젠트·AABB), <a href="rendering-analysis.html#c13-6">13.6 Model — glTF 로딩</a>(로더 선택, 좌표계, 서브메시, 재질 대응, 이미지의 경계)</li>
+        <li><a href="rendering-analysis.html#c14-3">14.3 GpuMesh 캐시</a>(R16/R32 선택), <a href="rendering-analysis.html#c14-11">14.11 캐시 무효화</a>, <a href="rendering-analysis.html#d10">D10</a> 32비트 인덱스, <a href="rendering-analysis.html#d15">D15</a></li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>Graphics/Model.h</code> → <code>Model.cpp</code>의 cgltf 순회와 좌표 변환</li>
-        <li><code>Scene.cpp</code>의 <code>AddModel</code>·<code>AddModelImages</code>·<code>Clear</code>, <code>Renderer::InvalidateScene</code></li>
-        <li><code>Renderer.cpp</code>의 <code>BuildDrawList</code>(서브메시 범위)와 <code>GetOrCreateGpuMesh</code>(R16/R32 선택)</li>
-        <li><code>EditorApp.cpp</code>의 <code>LoadSceneMode</code>·<code>BuildModelScene</code></li>
+        <li><code>Scene.cpp</code>의 <code>AddModel</code>·<code>Clear</code>, <code>Renderer::InvalidateScene</code></li>
+        <li><code>Renderer.cpp</code>의 <code>BuildDrawList</code>(서브메시 범위)와 <code>GetOrCreateGpuMesh</code></li>
+        <li><code>EditorApp.cpp</code>의 씬 전환 함수(F11 경로)</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — F11로 데모 → 헬멧 → Sponza를 순환한다. 헬멧의 노멀 매핑을 F9로 껐다 켜 본다. Stats의 triangles·재질 수가 문서의 숫자(Sponza 재질 25개)와 맞는다. 씬을 전환해도 Live Object 경고가 없다.</div>
+    <div class="check"><b>확인 포인트</b> — F11로 데모 → 헬멧 → Sponza를 순환한다. 헬멧의 노멀 매핑을 F9로 껐다 켜 본다. Stats의 triangles·재질 수가 13.6의 숫자(Sponza 재질 25개)와 맞는다. 씬을 전환해도 Live Object 경고가 없다.</div>
   </div>
 </div>
 
@@ -548,19 +554,19 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <div class="tag">S11</div>
   <div>
     <h4>엔진 코어 나머지 <span class="time">약 2시간</span></h4>
-    <div class="why">S1에서 골격만 읽고 남겨 둔 것들: 로그 싱크 네 개, Windows 서브시스템과 콘솔, CPU 구간 + GPU 타임스탬프 프로파일러, 에셋 캐시, ImGui 콘솔·한글 폰트. 프로파일러는 RHI에 <code>WriteTimestamp</code>를 더한 사례라 "RHI를 얇게 확장하는 법"의 예로 읽습니다.</div>
+    <div class="why">S1에서 골격만 읽고 남겨 둔 것들: 로그 싱크 네 개, Windows 서브시스템과 콘솔, CPU 구간 + GPU 타임스탬프 프로파일러, 경로 해석, 에셋 캐시, 한글 폰트. 프로파일러는 RHI에 <code>WriteTimestamp</code>를 더한 사례라 "RHI를 얇게 확장하는 법"의 예로 읽습니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-10.html#s2">phase-10 §2 Logger</a>, <a href="phase-10.html#s6">§6 Windows 서브시스템과 콘솔</a>, <a href="phase-10.html#s7">§7 Profiler</a>(§7.1 RHI 확장, §7.2·§7.3 두 백엔드의 쿼리), §8 AssetManager, §9 콘솔과 한글 폰트</li>
+        <li><a href="rendering-analysis.html#c15-1">15.1 Log</a>(네임스페이스 파사드가 무엇인지), <a href="rendering-analysis.html#c15-2">15.2 HRESULT 로깅과 반환 규약</a>, <a href="rendering-analysis.html#c15-7">15.7 Paths</a>, <a href="rendering-analysis.html#c15-8">15.8 Profiler</a>(두 백엔드의 쿼리와 결과 지연), <a href="rendering-analysis.html#c15-9">15.9 AssetManager</a>, <a href="rendering-analysis.html#c15-11">15.11 서브시스템·콘솔·Console 창</a></li>
         <li><a href="rendering-analysis.html#d16">D16</a> 반환 규약과 로그, <a href="rendering-analysis.html#d19">D19</a> 콘솔 서브시스템</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>Core/Log.h/.cpp</code>, <code>SherlockEditor/EditorMain.cpp</code>의 <code>wWinMain</code> 주석</li>
         <li><code>Core/Profiler.h</code>(<code>ProfileScope</code>·<code>GpuProfileScope</code>) → <code>RHI/CommandList.h</code>의 <code>WriteTimestamp</code> → <code>D3D11Device</code>·<code>D3D12Device</code>의 <code>GetTimestampResults</code></li>
-        <li><code>Core/AssetManager.h/.cpp</code>, <code>App/DebugUI.cpp</code>(콘솔 창)</li>
+        <li><code>Core/Paths.h/.cpp</code>, <code>Core/AssetManager.h/.cpp</code>, <code>App/DebugUI.cpp</code>(Console·Profiler 창)</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — 명령줄에서 실행하면 부모 콘솔에 로그가 붙고, 탐색기에서 실행하면 콘솔이 열리지 않는다(<code>allocConsole = true</code>면 새로 연다). Profiler 패널에서 CPU 구간과 GPU 구간이 계층으로 보이고 GPU 시간이 CPU 시간과 다르다. 같은 모델을 다시 로드하면 AssetManager 캐시 적중이 늘어난다.</div>
+    <div class="check"><b>확인 포인트</b> — 명령줄에서 실행하면 부모 콘솔에 로그가 붙고, 탐색기에서 실행하면 콘솔이 열리지 않는다(<code>log.allocConsole = true</code>면 새로 연다). Profiler 창에서 CPU 구간과 GPU 구간이 계층으로 보이고 GPU 시간이 CPU 시간과 다르다. 같은 모델을 다시 로드하면 AssetManager 캐시 적중이 늘어난다.</div>
   </div>
 </div>
 
@@ -568,19 +574,20 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <div class="tag">S12</div>
   <div>
     <h4>에디터와 씬 직렬화 <span class="time">약 3시간</span></h4>
-    <div class="why">씬 뷰를 오프스크린 텍스처에 그리고(백엔드 둘 다 TYPELESS 색 텍스처), 클릭 선택(광선·AABB), ImGuizmo, Hierarchy·Inspector, JSON 저장/로드, 그리고 OS 입력 주입 없이 에디터 경로를 검증하는 실행 인자. 마지막 스텝이면서 앞의 모든 것을 한 화면에서 쓰는 곳입니다.</div>
+    <div class="why">씬 뷰를 오프스크린 텍스처에 그리고(백엔드 둘 다 TYPELESS 색 텍스처), 클릭 선택(광선·AABB), ImGuizmo, Hierarchy·Inspector, JSON 저장/로드, 그리고 OS 입력 주입 없이 에디터 경로를 검증하는 실행 인자. 앞의 모든 것을 한 화면에서 쓰는 곳입니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-11.html">phase-11</a> §3 씬 뷰(§3.1 TYPELESS, §3.2 타깃 선택과 배리어), §4 클릭 선택, §5 ImGuizmo, §7 씬 저장/로드, §8 자동 검증</li>
+        <li><a href="rendering-analysis.html#c16-1">16.1</a> 역할 분담, <a href="rendering-analysis.html#c16-2">16.2</a> 도킹과 창 목록, <a href="rendering-analysis.html#c16-3">16.3</a> 씬 뷰, <a href="rendering-analysis.html#c16-4">16.4</a> 클릭 선택(확인할 점 상자 포함), <a href="rendering-analysis.html#c16-7">16.7</a> Inspector, <a href="rendering-analysis.html#c16-8">16.8</a> 씬 직렬화, <a href="rendering-analysis.html#c16-10">16.10</a> 자동 검증</li>
+        <li><a href="rendering-analysis.html#c14-8">14.8 씬 타깃</a> — Renderer 쪽에서 메인 패스가 어디에 그리는지</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>App/Editor.h</code>(콜백 구조: 소유하지 않는다) → <code>Editor.cpp</code>의 <code>DrawSceneView</code>·<code>Pick</code>·<code>DrawGizmo</code>·<code>DrawInspector</code></li>
         <li><code>Renderer::SetSceneTarget</code>과 <code>RenderMainPass</code>의 타깃 분기, <code>Graphics/Screenshot</code></li>
-        <li><code>Scene/SceneSerializer.cpp</code>와 <code>Projects/Sample/Assets/Scenes/floor_cube.json</code>을 나란히, <code>Scene.h</code>의 <code>MeshSource</code></li>
+        <li><code>Scene/SceneSerializer.cpp</code>와 <code>Projects/Sample/Assets/Scenes/floor_cube.json</code>을 나란히</li>
         <li><code>EditorApp.cpp</code>의 <code>ParseAutomation</code>·<code>RunAutomation</code></li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — 아래 한 줄로 창을 띄우지 않고 선택·이동·저장·스크린샷이 되면 에디터 경로 전체를 이해한 것입니다.
+    <div class="check"><b>확인 포인트</b> — 아래 한 줄로 창을 띄우지 않고 선택·이동·저장·스크린샷이 되면 에디터 경로 전체를 이해한 것입니다(인자 목록은 <a href="rendering-analysis.html#app-d-1">부록 D.1</a>).
       <pre style="margin:10px 0 0"><code>SherlockEditor.exe --backend=d3d12 --exit-after=30 --pick=0.5,0.5 --set-position=1,2,3 --save=out.json --dump-objects=1 --screenshot=out.png</code></pre></div>
   </div>
 </div>
@@ -589,15 +596,16 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <div class="tag">S12-B</div>
   <div>
     <h4>콘텐츠 브라우저와 드래그 앤 드롭 <span class="time">약 2시간</span></h4>
-    <div class="why">에셋 폴더를 보여 주고 타일을 씬 뷰로 끌어다 놓는 상용 엔진식 워크플로입니다. ImGui drag &amp; drop의 페이로드 규칙(POD, 드래그 중 hover는 false), 11단계 선택 광선을 재사용한 드롭 위치, 렌더러 캐시와 분리한 썸네일 수명이 핵심입니다.</div>
+    <div class="why">에셋 폴더를 보여 주고 타일을 씬 뷰로 끌어다 놓는 상용 엔진식 워크플로입니다. ImGui drag &amp; drop의 페이로드 규칙(POD, 드래그 중 hover는 false), 선택 광선을 재사용한 드롭 위치, 렌더러 캐시와 분리한 썸네일 수명이 핵심입니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-11b.html">phase-11b</a> §3 드래그 페이로드, §4 Scene 뷰 드롭(광선과 바닥면), §6 썸네일(UNORM인 이유), §7 <code>asset:</code> 이름, §10 함정</li>
+        <li><a href="rendering-analysis.html#c16-9">16.9 콘텐츠 브라우저</a> — 에셋 루트 두 개(프로젝트·엔진), 타일과 썸네일(UNORM인 이유), 드래그 페이로드, 씬 뷰 드롭과 <code>PlaceModel</code>, 텍스처 드롭과 <code>asset:</code> 이름</li>
+        <li><a href="rendering-analysis.html#c16-11">16.11 함정과 해결</a>의 브라우저 관련 행</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
-        <li><code>App/ContentBrowser.h</code>의 <code>AssetDragPayload</code> → <code>ContentBrowser.cpp</code>의 <code>DrawTile</code>·<code>BeginDragSource</code>·<code>PumpThumbnailLoads</code></li>
-        <li><code>Editor::DrawSceneView</code>의 <code>BeginDragDropTarget</code> 블록, <code>RaycastScene</code>, <code>DrawDropGhost</code>, <code>HandleAssetDrop</code></li>
-        <li><code>EditorApp::PlaceModel</code>(바닥면 = 놓은 점), <code>Renderer::GetOrLoadTexture</code>의 <code>asset:</code> 분기, <code>Paths::GetAssetRoot</code></li>
+        <li><code>App/ContentBrowser.h</code>의 드래그 페이로드 구조체 → <code>ContentBrowser.cpp</code>의 타일 그리기·드래그 시작·썸네일 로드</li>
+        <li><code>Editor::DrawSceneView</code>의 <code>BeginDragDropTarget</code> 블록, <code>RaycastScene</code>, <code>PlaceModelFromAsset</code></li>
+        <li><code>EditorApp::PlaceModel</code>, <code>Renderer::GetOrLoadTexture</code>의 <code>asset:</code> 분기, <code>Paths::GetAssetPath</code></li>
       </ul></div>
     </div>
     <div class="check"><b>확인 포인트</b> — 브라우저에서 헬멧을 씬 뷰로 끌면 고스트 마커가 따라오고 놓은 자리에 서며, 아래 한 줄이 같은 경로를 창 없이 지난다.
@@ -609,17 +617,18 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
   <div class="tag">S12-C</div>
   <div>
     <h4>재생 모드와 C++ 컴포넌트 <span class="time">약 3시간</span></h4>
-    <div class="why">Play를 눌러야 게임이 돌고, 로직은 사용자가 프로젝트의 <code>Scripts/</code>에 쓰는 C++ 스크립트(유니티의 MonoBehaviour)입니다. "스크립트 = 클래스 + 레지스트리 + Reflect" 세 조각과, 스냅샷으로 되돌리는 재생 상태 기계가 전부입니다. 소스를 읽기 전에 <code>Projects/Sample/Scripts/Rotator.cpp</code>(18줄)와 <code>PlayerController.cpp</code>를 먼저 보면 나머지가 왜 있는지 보입니다.</div>
+    <div class="why">Play를 눌러야 게임이 돌고, 로직은 사용자가 프로젝트의 <code>Scripts/</code>에 쓰는 C++ 스크립트(유니티의 MonoBehaviour)입니다. "스크립트 = 클래스 + 레지스트리 + Reflect" 세 조각과, 스냅샷으로 되돌리는 재생 상태 기계가 전부입니다. 소스를 읽기 전에 <code>Projects/Sample/Scripts/Rotator.cpp</code>와 <code>PlayerController.cpp</code>를 먼저 보면 나머지가 왜 있는지 보입니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-11c.html">phase-11c</a> §3 Behaviour(§3.2 레지스트리, §3.3 PropertyVisitor), §4 재생 루프, §5 스냅샷, §6 unique_ptr로 바꾼 이유, §10 함정</li>
-        <li><a href="rendering-analysis.html#d15">D15</a>의 11-C 적용 기록 — 3단계의 "단계적 결정"이 어디까지 갔는지</li>
+        <li><a href="rendering-analysis.html#c17-1">17.1</a>~<a href="rendering-analysis.html#c17-8">17.8</a> — Behaviour, 레지스트리와 /WHOLEARCHIVE, PropertyVisitor 와 스크립트 API, 재생 루프, Play/Pause/Step/Stop 과 스냅샷(Stop 이 렌즈를 되돌리지 않는 주의 상자), 내장 컴포넌트와 CameraComponent, 새 스크립트 만들기</li>
+        <li><a href="rendering-analysis.html#c17-9">17.9 왜 C++ 인가</a> — 스크립팅 언어에 대한 질문과 답</li>
+        <li><a href="rendering-analysis.html#d15">D15</a>의 최종 결론 — 3단계의 "단계적 결정"이 어디까지 갔는지</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
-        <li><code>Projects/Sample/Scripts/Rotator.cpp</code> → <code>Scene/Script.h</code>(헤더 주석의 사용법, 헬퍼) → <code>Scene/Behaviour.h</code> → <code>Behaviour.cpp</code>의 레지스트리 → <code>Game/Components/Rigidbody.h</code>(스크립트가 쓰는 엔진 컴포넌트 API)</li>
+        <li><code>Projects/Sample/Scripts/Rotator.cpp</code> → <code>Scene/Script.h</code>(헤더 주석의 사용법, 헬퍼) → <code>Scene/Behaviour.h</code> → <code>Behaviour.cpp</code>의 레지스트리 → <code>Game/Components/Rigidbody.h</code></li>
         <li><code>Scene.cpp</code>의 <code>BeginPlay/Update/FixedUpdate/EndPlay</code>, <code>EditorApp::StartPlay/StopPlay</code>, <code>OnUpdate/OnFixedUpdate</code>의 분기</li>
-        <li><code>SceneSerializer.cpp</code>의 <code>JsonWriteVisitor/JsonReadVisitor</code>와 <code>Editor.cpp</code>의 <code>ImGuiPropertyVisitor</code>를 나란히 — 같은 <code>Reflect</code>를 두 방문자가 쓴다</li>
-        <li><code>Scene/CameraComponent.h</code> → <code>Scene::ApplyActiveCamera</code>(우선순위·블렌드) → <code>Game/Components/FollowTarget.cpp</code> → <code>EditorApp::UpdateCamera</code>의 <code>cameraDriven</code> 분기</li>
+        <li><code>SceneSerializer.cpp</code>의 JSON 방문자와 <code>Editor.cpp</code>의 ImGui 방문자를 나란히 — 같은 <code>Reflect</code>를 두 방문자가 쓴다</li>
+        <li><code>Scene/CameraComponent.h</code> → <code>Scene::ApplyActiveCamera</code>(우선순위·블렌드) → <code>Game/Components/FollowTarget.cpp</code> → <code>EditorApp::UpdateCamera</code>의 카메라 구동 분기</li>
       </ul></div>
     </div>
     <div class="check"><b>확인 포인트</b> — <code>Projects/Sample/Scripts/</code>에 .cpp 하나를 추가해(예: y축으로 떠오르는 <code>Rise</code>) 빌드하면 Inspector의 Add Component에 나타나고, 재생 중에 붙이면 바로 움직이며, Stop하면 사라진다(스냅샷). 아래 두 줄로 재생과 복원을 창 없이 확인한다.
@@ -635,12 +644,13 @@ SherlockEditor.exe --scene=demo --exit-after=30 --play=1 --stop-at=15 --dump-obj
     <div class="why">에디터 없는 런타임(GameApp)과 패키징(GameBuilder), 그리고 엔진 lib · 에디터 exe · 게임 exe로 나뉜 솔루션을 봅니다. 정적 라이브러리에서 "이름으로만 접근하는 것"이 사라지는 함정(/WHOLEARCHIVE)과 COM 초기화가 핵심입니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-11d.html">phase-11d</a> §2 세 프로젝트(§2.1 /WHOLEARCHIVE), §3 GameApp, §4 Build Game, §6 함정</li>
+        <li><a href="rendering-analysis.html#c17-10">17.10 세 프로젝트와 GameApp</a>, <a href="rendering-analysis.html#c17-11">17.11 Build Game</a>(복사되는 파일, <code>&lt;이름&gt;.exe</code> + <code>.sherlock</code> 사본)</li>
+        <li><a href="rendering-analysis.html#c3-9">3.9 게임 런타임은 무엇이 다른가</a>, <a href="rendering-analysis.html#c4-12">4.12 에디터와 게임 런타임의 프레임 차이</a>, <a href="rendering-analysis.html#c1-1">1.1 솔루션의 세 프로젝트</a></li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
-        <li><code>SherlockEditor\SherlockEditor.vcxproj</code>의 ProjectReference · AdditionalIncludeDirectories · /WHOLEARCHIVE, <code>SherlockGame\GameMain.cpp</code></li>
+        <li><code>SherlockEditor\SherlockEditor.vcxproj</code>의 ProjectReference · /WHOLEARCHIVE, <code>SherlockGame\GameMain.cpp</code></li>
         <li><code>App/AppBase.cpp</code>의 <code>WantsGUI</code> 분기와 <code>CoInitializeEx</code>, <code>App/GameApp.cpp</code></li>
-        <li><code>App/GameBuilder.cpp</code>의 복사 순서와 engine.ini [game] 덧붙이기, <code>Editor::DrawBuildPopup</code></li>
+        <li><code>App/GameBuilder.cpp</code>의 복사 순서와 engine.ini [game] 덧붙이기</li>
       </ul></div>
     </div>
     <div class="check"><b>확인 포인트</b> — 에디터의 File &gt; Build Game...으로 만든 <code>&lt;프로젝트&gt;\Build\&lt;이름&gt;\</code>를 다른 폴더(또는 PC)로 옮겨 <code>&lt;이름&gt;.exe</code>가 뜨면 된다. 창 없이:
@@ -653,15 +663,16 @@ Projects\Sample\Build\Test\Test.exe --exit-after=60 --dump-objects=1</code></pre
   <div class="tag">S12-E</div>
   <div>
     <h4>프로젝트 시스템 <span class="time">약 1시간</span></h4>
-    <div class="why">씬이 아니라 게임을 분리합니다. 프로젝트는 폴더 하나(<code>&lt;이름&gt;.sherlock</code> + <code>Assets\</code> + <code>Scripts\</code>)이고, 생성기가 그 프로젝트 전용 에디터·게임 솔루션을 만듭니다. 엔진 컴포넌트와 프로젝트 스크립트의 경계, 그리고 엔진 · 프로젝트 · exe 세 루트에서 에셋을 찾는 폴백 순서가 핵심입니다. <em>(2026-10-01 점검에서 스텝 표에는 있고 블록이 빠져 있던 것을 채웠습니다.)</em></div>
+    <div class="why">씬이 아니라 게임을 분리합니다. 프로젝트는 폴더 하나(<code>&lt;이름&gt;.sherlock</code> + <code>Assets\</code> + <code>Scripts\</code>)이고, 생성기가 그 프로젝트 전용 에디터·게임 솔루션을 만듭니다. 엔진 컴포넌트와 프로젝트 스크립트의 경계, 그리고 프로젝트 → 엔진 → exe 세 루트에서 에셋을 찾는 순서가 핵심입니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-11e.html">phase-11e</a> §2 프로젝트 = 폴더 + .sherlock, §3 세 루트, §4 엔진 컴포넌트 vs 프로젝트 스크립트, §5 솔루션 생성(2026-09-30 재귀 와일드카드·C++20 상자 포함), §9 함정</li>
+        <li><a href="rendering-analysis.html#c17-12">17.12 프로젝트 = 폴더 + .sherlock, 세 루트</a>, <a href="rendering-analysis.html#c17-13">17.13 솔루션 생성과 런처</a>(재귀 와일드카드, 런처는 File 메뉴의 팝업), <a href="rendering-analysis.html#c17-14">17.14 예제·실험 프로젝트와 EditorApp 이라는 이름</a></li>
+        <li><a href="rendering-analysis.html#c1-7">1.7</a>, <a href="rendering-analysis.html#c15-7">15.7 Paths</a>, <a href="rendering-analysis.html#c17-15">17.15 함정</a></li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
-        <li><code>Core/Project.h/.cpp</code> 의 <code>Load / Create / FindUpwards</code> → <code>Core/Paths.h</code> 의 <code>GetEngineRoot / GetProjectRoot / GetAssetPath / GetSceneDir</code></li>
+        <li><code>Core/Project.h/.cpp</code> 의 <code>Load / Create / FindUpwards</code> → <code>Core/Paths.h</code> 의 <code>GetEngineRoot / GetProjectRoot / GetAssetPath</code></li>
         <li><code>App/AppBase</code> 의 <code>ResolveProject</code> 와 <code>SetCompiledProjectName</code>, <code>EditorApp::CreateProject</code></li>
-        <li><code>App/ProjectGenerator.cpp</code>(<code>GetEditorSources</code>, <code>Scripts\**\*.cpp</code>), <code>App/ProjectLauncher</code>, <code>App/ScriptCreator</code>, <code>Editor::DrawProjectBanner</code></li>
+        <li><code>App/ProjectGenerator.cpp</code>(<code>Scripts\**\*.cpp</code>), <code>App/ProjectLauncher</code>, <code>App/ScriptCreator</code></li>
         <li><code>Projects\Sample</code> 과 실험 프로젝트 <code>Projects\QuaternionLookTest</code> 의 생성된 <code>.sln</code>·<code>.vcxproj</code></li>
       </ul></div>
     </div>
@@ -675,22 +686,21 @@ Projects\TestGame\Binaries\Debug\TestGameEditor.exe --exit-after=40 --play=1 --a
   <div class="tag">S12-F</div>
   <div>
     <h4>오브젝트 계층과 카메라 자세 <span class="time">약 1.5시간</span></h4>
-    <div class="why">"카메라에 쿼터니언을 안 썼는데 Roll 이 필요하면?" 에 대한 답입니다. 결론은 쿼터니언이 아니라 <strong>부모-자식 계층</strong>과 <strong>카메라의 행렬 입력 경로</strong>였습니다. 계층은 GameObject 의 비소유 링크 + Transform 로컬 값 + 월드 행렬 재귀 세 조각이고, 카메라는 각도 경로와 행렬 경로 두 입구를 가집니다. 먼저 phase-11f 3절(Roll 의 종류, 짐벌락의 위치, 유니티·언리얼 방식)을 읽고 나서 코드를 보면 왜 카메라에 roll 변수가 없는지 보입니다.</div>
+    <div class="why">"카메라에 쿼터니언을 안 썼는데 Roll 이 필요하면?" 에 대한 답입니다. 결론은 쿼터니언이 아니라 <strong>부모-자식 계층</strong>과 <strong>카메라의 행렬 입력 경로</strong>였습니다. 계층은 GameObject 의 비소유 링크 + Transform 로컬 값 + 월드 행렬 재귀 세 조각이고, 카메라는 각도 경로와 행렬 경로 두 입구를 가집니다. 먼저 13.12(Roll 의 종류, 짐벌락의 위치, 유니티·언리얼 방식)를 읽고 나서 코드를 보면 왜 카메라에 roll 변수가 없는지 보입니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="phase-11f.html">phase-11f</a> §2 출발점, §3 Roll·짐벌락·쿼터니언, §4 계층 설계, §5 카메라 행렬 경로, §10 함정</li>
-        <li><a href="rendering-analysis.html#d8">D8</a>·<a href="rendering-analysis.html#d15">D15</a> 의 11-F 적용 결과 상자 — 원래 권장("Transform 을 쿼터니언으로")과 실제 순서가 왜 달랐는지</li>
-        <li><a href="phase-2.html#s3-5">phase-2 §3.5</a> "쿼터니언은 왜 아닌가" 와 그 아래 11-F 상자를 이어서</li>
-        <li><a href="phase-11f.html#s3-4">phase-11f §3.4</a> 재현 실험(2026-09-30) — "쿼터니언이면 roll 이 쌓인다" 를 실제로 찍은 그림 세 장과 원인 정정(부동소수점이 아니라 증분을 곱하는 공간)</li>
+        <li><a href="rendering-analysis.html#c13-4">13.4 부모-자식 계층</a>, <a href="rendering-analysis.html#c13-11">13.11 카메라의 두 입구와 블렌드</a>, <a href="rendering-analysis.html#c13-12">13.12 Roll·짐벌락·쿼터니언</a>, <a href="rendering-analysis.html#c13-13">13.13 재현 실험</a>(쿼터니언이면 roll 이 쌓이는 것을 실제로 찍은 그림)</li>
+        <li><a href="rendering-analysis.html#c16-5">16.5 기즈모</a>(부모가 있을 때 월드 조작 → 로컬 변환), <a href="rendering-analysis.html#c16-6">16.6 Hierarchy</a>(재부모화와 PopID 사건)</li>
+        <li><a href="rendering-analysis.html#d8">D8</a>·<a href="rendering-analysis.html#d15">D15</a> 의 최종 결론 — 원래 권장("Transform 을 쿼터니언으로")과 실제 순서가 왜 달랐는지</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>Scene/GameObject.h/.cpp</code> 의 <code>SetParent / GetWorldMatrix / SetWorldMatrix</code> → <code>Scene/Transform.cpp</code> 의 <code>SetLocalMatrix / EulerFromRotationMatrix</code></li>
-        <li><code>Scene/Camera.h</code> 머리 주석 → <code>SetYawPitch / SetRotation / GetRoll</code> → <code>Scene/CameraComponent.cpp</code> 의 <code>GetPose</code>(월드 행렬 분해) → <code>Scene::ApplyActiveCamera</code> 의 slerp</li>
-        <li><code>Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp</code> 의 <code>Update</code> — 두 줄 차이(mode 0/1)로 roll 이 생기고 안 생기는 것을 그 프로젝트의 에디터(<code>QuaternionLookTestEditor.exe</code>)로 직접 실행해 볼 것: <code>--scene=quat_roll_local.json --play=1 --exit-after=372</code>. 실험 스크립트는 Sample 이 아니라 실험 프로젝트의 <code>Scripts\Tests\</code> 에 둔다</li>
-        <li><code>Editor::DrawHierarchyNode</code>(트리·드래그 페이로드), <code>DrawGizmo</code> 의 한 줄, <code>SceneSerializer</code> 의 <code>"parent"</code> 두 단계 로드, <code>Scene::AddModel</code> 의 루트</li>
+        <li><code>Scene/Camera.h</code> 머리 주석 → <code>SetYawPitch / SetRotation / GetRoll</code> → <code>Scene/CameraComponent.cpp</code> 의 <code>GetPose</code> → <code>Scene::ApplyActiveCamera</code> 의 slerp</li>
+        <li><code>Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp</code> 의 <code>Update</code> — mode 0/1 두 줄 차이로 roll 이 생기고 안 생기는 것을 그 프로젝트의 에디터로 직접 실행해 볼 것: <code>--scene=quat_roll_local.json --play=1 --exit-after=372</code></li>
+        <li><code>Editor::DrawHierarchyNode</code>(트리·드래그 페이로드), <code>DrawGizmo</code> 의 한 줄, <code>SceneSerializer</code> 의 <code>"parent"</code> 두 단계 로드</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — Hierarchy 에서 Main Camera 를 큐브 밑으로 끌어 넣고 큐브의 Rotation z 를 30 으로 바꾼 뒤 Play 하면 화면이 기운다. 창 없이는 아래 한 줄 — 카메라 roll 이 0 이 아니고 위치가 회전 공식과 맞으면 된다.
+    <div class="check"><b>확인 포인트</b> — Hierarchy 에서 Main Camera 를 큐브 밑으로 끌어 넣고 큐브의 Rotation z 를 30 으로 바꾼 뒤 Play 하면 화면이 기운다. 창 없이는 아래 한 줄 — 카메라 roll 이 0 이 아니고 위치가 13.4 의 검산식과 맞으면 된다.
       <pre style="margin:10px 0 0"><code>SherlockEditor.exe --scene=demo --exit-after=30 --add=1 --set-parent="Main Camera;Cube 3" --set-rotation=0,0,30 --play=1 --dump-objects=1</code></pre></div>
   </div>
 </div>
@@ -699,26 +709,27 @@ Projects\TestGame\Binaries\Debug\TestGameEditor.exe --exit-after=40 --play=1 --a
 <div class="stage">
   <div class="tag">S13</div>
   <div>
-    <h4>처음 문서를 끝에서 다시 <span class="time">약 3시간</span></h4>
-    <div class="why">S0에서 건너뛴 rendering-analysis의 나머지를 이제 읽습니다. 7월의 문제점 목록과 설계 결정 22개에는 지금 코드가 왜 이런 모양인지에 대한 답이 전부 적혀 있습니다. 코드를 다 본 뒤에 읽어야 "그래서 이렇게 됐구나" 하고 와닿습니다.</div>
+    <h4>기록을 끝에서 다시 <span class="time">약 3시간</span></h4>
+    <div class="why">S0에서 제목만 보고 건너뛴 Part V 를 이제 통독합니다. 7월 코드의 문제 20건, 설계 결정 22개, 단계 카드 17장에는 지금 코드가 왜 이런 모양인지에 대한 답이 전부 적혀 있습니다. 코드를 다 본 뒤에 읽어야 "그래서 이렇게 됐구나" 하고 와닿습니다.</div>
     <div class="cols">
       <div><h5>읽을 문서</h5><ul>
-        <li>rendering-analysis <a href="rendering-analysis.html#s7">§7 발견된 문제점</a> → <a href="rendering-analysis.html#applied">적용 기록</a> → <a href="rendering-analysis.html#s8">§8 D1~D22</a> 통독 → <a href="rendering-analysis.html#s6">§6 리소스 수명</a></li>
-        <li><a href="rendering-analysis.html#s10">§10 부록</a> A(프레임당 D3D11 API 호출 전체 목록 — 옛 코드 기준이지만 파이프라인 감각에 좋음), B(좌표계와 행렬 규약), C(참고 자료)</li>
+        <li><a href="rendering-analysis.html#c18">18장</a> 출발점과 문제 20건 → <a href="rendering-analysis.html#c19">19장</a> D1~D22 통독(각 카드의 "최종 결론" 상자와 19.8 돌아보기) → <a href="rendering-analysis.html#c20">20장</a> 연표·단계 카드·적용 기록</li>
+        <li><a href="rendering-analysis.html#c21">21장 질문과 답</a> 전체 — 이미 아는 것은 빠르게, 처음 보는 질문은 답 끝의 링크를 따라 본문으로</li>
+        <li><a href="rendering-analysis.html#c22">22장 남은 일</a> — 12단계 카드, 각 단계가 남겨 둔 일, 코드에 남은 경고와 한계, 우선순위 제안. 이 다음에 무엇이 오는지</li>
+        <li><a href="rendering-analysis.html#app-e">부록 E 참고 문헌</a> — 더 깊이 갈 주제의 원전</li>
         <li><code>logs/2026-07-*.md</code> — 처음 2주의 작업 로그. 소유 원칙("Device는 아무것도 소유하지 않는다")이 어디서 나왔는지</li>
-        <li><a href="rendering-analysis.html#p12">PHASE 12 고급 렌더링</a> 카드와 "가장 가까운 다음 목표" — 이 다음에 무엇이 오는지</li>
       </ul></div>
       <div><h5>다시 볼 소스</h5><ul>
         <li><code>Graphics/Renderer.cpp</code>를 처음부터 끝까지, 이번엔 건너뛰지 않고</li>
-        <li>단계 문서 16편의 "함정과 해결" 절만 이어서 — 같은 종류의 함정(BOM, TYPELESS, 세대 카운터, ImGui 캡처)이 반복되는 것이 보입니다</li>
+        <li>각 장 끝의 "함정과 해결" 표만 1장부터 17장까지 이어서 — 같은 종류의 함정(BOM, TYPELESS, 세대 카운터, ImGui 캡처)이 반복되는 것이 보입니다</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — D1~D22 각각에 대해 "지금 코드의 어느 파일이 그 결정의 결과인가"를 한 줄씩 적을 수 있다. 예: D21 → <code>RHI/Handle.h</code>·<code>RHI/Device.h</code>, D2 → <code>ShaderConstants.h</code>, D4 → <code>Engine::Render</code>.</div>
+    <div class="check"><b>확인 포인트</b> — D1~D22 각각에 대해 "지금 코드의 어느 파일이 그 결정의 결과인가"를 한 줄씩 적을 수 있다. 예: D21 → <code>RHI/Handle.h</code>·<code>RHI/Device.h</code>, D2 → <code>ShaderConstants.h</code>, D4 → <code>Engine::Render</code>. 19.1 의 요약 표와 맞춰 본다.</div>
   </div>
 </div>
 
 <h2 id="s8"><span class="num">8.</span>실행하며 확인하기</h2>
-<p>모든 스텝의 확인 포인트는 실행 중인 앱에서 확인합니다. 단축키는 <code>EditorApp.cpp</code>의 <code>OnUpdate</code>에 모여 있고, 실행 인자는 <code>EditorApp.h</code>의 <code>Automation</code> 주석에 있습니다.</p>
+<p>모든 스텝의 확인 포인트는 실행 중인 앱에서 확인합니다. 단축키는 <code>EditorApp.cpp</code>의 <code>OnUpdate</code>에 모여 있고, 실행 인자는 <code>EditorApp.h</code>의 자동 검증 주석에 있습니다. 전체 목록과 검증 수법은 최종본 <a href="rendering-analysis.html#app-d">부록 D</a>에 있습니다.</p>
 <div class="tbl"><table>
   <thead><tr><th>키</th><th>동작</th><th>관련 스텝</th></tr></thead>
   <tbody>
@@ -729,37 +740,37 @@ Projects\TestGame\Binaries\Debug\TestGameEditor.exe --exit-after=40 --play=1 --a
     <tr><td class="mono">F6</td><td>샘플러 프리셋 덮어쓰기 순환 (−1 = 재질대로)</td><td>S6</td></tr>
     <tr><td class="mono">F7</td><td>방향광 0 공전</td><td>S7</td></tr>
     <tr><td class="mono">F8 / F9</td><td>그림자 / 노멀 매핑 토글</td><td>S7, S10</td></tr>
-    <tr><td class="mono">F10</td><td>재생 일시정지 토글 (11-C 이전에는 백엔드 픽셀 비교용 애니메이션 고정)</td><td>S8, S9</td></tr>
+    <tr><td class="mono">F10</td><td>재생 일시정지 토글</td><td>S12-C</td></tr>
     <tr><td class="mono">F11</td><td>씬 순환: 데모 → 헬멧 → Sponza</td><td>S10</td></tr>
-    <tr><td class="mono">F12</td><td>ImGui 콘솔 창 토글</td><td>S11</td></tr>
-    <tr><td class="mono">WASD · QE · 우클릭 드래그 · Shift</td><td>카메라 이동·회전·4배속</td><td>S2</td></tr>
+    <tr><td class="mono">F12</td><td>Console 창 토글</td><td>S11</td></tr>
+    <tr><td class="mono">WASD · QE · 씬 뷰 우클릭 드래그 · Shift</td><td>카메라 이동·회전·4배속</td><td>S2</td></tr>
   </tbody>
 </table></div>
 <dl class="kv">
   <dt>백엔드 전환</dt><dd><code>Assets/Config/engine.ini</code>의 <code>backend = d3d11 | d3d12</code>, 또는 실행 인자 <code>--backend=d3d12</code></dd>
   <dt>시작 씬</dt><dd><code>scene = demo | helmet | sponza</code>, 또는 <code>--scene=</code> (프로젝트가 열려 있으면 <code>scene</code>보다 프로젝트의 시작 씬이 먼저이고, <code>--scene=</code>은 그보다 우선)</dd>
-  <dt>로그</dt><dd><code>[log]</code>의 <code>level</code>·<code>file</code>·<code>console</code>. 파일은 exe 기준 <code>Logs\SherlockEngine.log</code></dd>
-  <dt>Debug Layer</dt><dd>Debug 빌드에서 켜짐. 종료 시 Live Object 보고가 0인지, 실행 중 경고가 없는지가 대부분 스텝의 합격 기준</dd>
+  <dt>로그</dt><dd><code>[log]</code>의 <code>level</code>·<code>file</code>·<code>console</code>·<code>allocConsole</code>. 파일은 exe 기준 <code>Logs\SherlockEngine.log</code></dd>
+  <dt>Debug Layer</dt><dd>Debug 빌드에서 켜짐(<code>engine.debuglayer</code>). 종료 시 장치 한 건 외의 Live Object 보고가 없고, 실행 중 경고가 없는지가 대부분 스텝의 합격 기준</dd>
   <dt>스크린샷</dt><dd><code>--screenshot=path</code> (Device 리드백이라 창이 가려져 있어도 정확). 문서의 스크린샷과 나란히 비교</dd>
 </dl>
 
 <h2 id="s9"><span class="num">9.</span>시간별 코스</h2>
 <h3>하루 코스 (약 8시간): 구조만 잡기</h3>
 <ol>
-  <li>S0 → S1을 그대로 (4시간). 프레임 루프와 소유 관계가 목표.</li>
+  <li>S0 → S1을 그대로 (4시간). 최종본 3·4장과 그림 0 이 목표.</li>
   <li>S3에서 <code>RHI/Handle.h</code>·<code>RHI/Device.h</code>·<code>RHI/CommandList.h</code> 세 헤더만 (1시간).</li>
-  <li>S4·S7에서 <code>Renderer.h</code> 헤더 주석과 <code>Renderer::Render</code>·<code>RenderMainPass</code>만 (2시간).</li>
-  <li>S8의 phase-7 §2 폴더 트리와 grep 검사 (30분). 나머지 스텝은 단계 문서의 "한 줄 요약"만 12개 읽고 마침 (30분).</li>
+  <li>S4·S7에서 <code>Renderer.h</code> 헤더 주석과 <code>Renderer::Render</code>·<code>RenderMainPass</code>·<code>DrawItems</code>만 (2시간).</li>
+  <li>S8의 9.1 폴더 규칙과 grep 검사 (30분). 나머지는 20.3 의 단계 카드 17장의 "목표" 줄만 읽고 마침 (30분).</li>
 </ol>
 <h3>2주 코스: 정독</h3>
-<p>1절 표의 시간 합계가 약 46시간(S12-B~S12-E 포함)이므로 하루 3시간이면 15일입니다. 하루에 스텝 하나가 기준이고, S9(D3D12)만 이틀을 잡습니다. 각 스텝의 확인 포인트를 통과하기 전에는 다음 스텝으로 넘어가지 않는 것이 규칙입니다. 확인이 안 되면 그 단계 문서의 "함정과 해결" 절로 돌아가세요.</p>
+<p>1절 표의 시간 합계가 약 46시간이므로 하루 3시간이면 15일입니다. 하루에 스텝 하나가 기준이고, S9(D3D12)만 이틀을 잡습니다. 각 스텝의 확인 포인트를 통과하기 전에는 다음 스텝으로 넘어가지 않는 것이 규칙입니다. 확인이 안 되면 그 장 끝의 "함정과 해결" 표로 돌아가세요.</p>
 <h3>D3D12를 모르는 경우</h3>
-<p>S9 전에 phase-8 §2와 rendering-analysis §9의 개념 대응표를 먼저 읽고, 문서의 참고 문헌(Microsoft의 "D3D12 for D3D11 programmers" 계열)을 하루 곁들이면 됩니다. 이 프로젝트는 D3D12의 개념(PSO·루트 시그니처·디스크립터 테이블·배리어·펜스)을 1~6단계에서 D3D11 위에 미리 그려 두었으므로, S3~S7을 충실히 지나왔다면 낯선 것은 API 이름뿐입니다.</p>
+<p>S9 전에 7장의 7.1~7.4(슬롯 모델에서 디스크립터까지)와 9.10 의 개념 대응표를 먼저 읽고, 부록 E 의 Microsoft 문서("D3D12 for D3D11 programmers" 계열)를 하루 곁들이면 됩니다. 이 프로젝트는 D3D12의 개념(PSO·루트 시그니처·디스크립터 테이블·배리어·펜스)을 D3D11 위에 미리 그려 두었으므로, S3~S7을 충실히 지나왔다면 낯선 것은 API 이름뿐입니다.</p>
 <h3>이미 D3D11을 잘 아는 경우</h3>
-<p>S2·S6은 문서의 1절 요약과 확인 포인트만 보고 지나가도 됩니다. 대신 S3의 D21·D22, S5의 §2(루트 시그니처를 D3D11에 미리 그리기), S7의 Barrier 설계, S8·S9 전체에 시간을 몰아 주세요. 이 프로젝트의 고유한 부분이 거기 있습니다.</p>
+<p>S2·S6은 장 첫머리 요약과 확인 포인트만 보고 지나가도 됩니다. 대신 S3의 D21·D22, S5의 7장(루트 시그니처를 D3D11에 미리 그리기), S7의 배리어 설계, S8·S9 전체에 시간을 몰아 주세요. 이 프로젝트의 고유한 부분이 거기 있습니다.</p>
 
 <div class="footer">
-  SherlockEngine 읽기 가이드 · 2026/10/01 (11-F 반영, phase-11f §3.4 재현 실험 추가, 2026-10-01 문서-코드 점검 반영: 문서 편수·PHASE 카드 수 정정, S12-E 블록 추가, S12-F 를 6절로 이동) · 문서 기준: rendering-analysis.html과 phase-0 ~ phase-11, phase-11b ~ phase-11f · 소스 기준: 커밋 fc04ab0 + 미커밋 작업 트리(2026-10-01). 이전 문서의 <code>SherlockEngine.exe</code>는 지금의 <code>SherlockEditor.exe</code>, <code>Game\Scripts</code>는 <code>Projects\Sample\Scripts</code>입니다.
+  SherlockEngine 읽기 가이드 · 2026-10-02 (문서 통합 반영: phase-0 ~ phase-11f 17편이 rendering-analysis.html 최종본에 흡수되어 모든 링크를 최종본의 장·절로 바꿈) · 문서 기준: rendering-analysis.html 최종본 · 소스 기준: 커밋 646717b + 미커밋 작업 트리(2026-10-02).
 </div>
 </main>
 </div>

@@ -230,6 +230,7 @@
         '<button type="button" data-act="clear">이 문서 메모 전체 삭제</button>' +
       '</div>' +
       '<div class="orphans" style="display:none"><div class="ohead" style="color:var(--muted,#888)">고아 메모 (제목이 바뀌어 붙일 곳이 없음)</div></div>' +
+      '<div class="orphans others" style="display:none"><div class="ohead" style="color:var(--muted,#888)">다른 문서의 메모 (통합 전 phase-*.html 등)</div></div>' +
       '<div class="status"></div>' +
       '<div class="hint">메모는 이 브라우저의 localStorage에만 저장됩니다. 다른 PC로 옮기려면 내보내기 → 가져오기를 쓰세요.</div>' +
     '</div>';
@@ -269,6 +270,37 @@
       });
       row.appendChild(kk); row.appendChild(show); row.appendChild(rm);
       orphansEl.appendChild(row);
+    });
+  }
+
+  // 다른 문서 키에 남아 있는 메모. 문서를 한 편으로 합친 뒤(2026-10-02) 파일이 없어진 phase-*.html 의
+  // 메모를 여기서 읽을 수 있게 함. 브라우저가 file:// 문서끼리 localStorage 를 공유할 때만 보임.
+  function renderOthers() {
+    var el = panel.querySelector('.others');
+    if (!el) return;
+    var old = el.querySelectorAll('.orow');
+    for (var i = 0; i < old.length; i++) el.removeChild(old[i]);
+    var docs = [];
+    try {
+      for (var j = 0; j < localStorage.length; j++) {
+        var k = localStorage.key(j);
+        if (!k || k.indexOf(PREFIX) !== 0 || k === KEY) continue;
+        var notes;
+        try { notes = (JSON.parse(localStorage.getItem(k)) || {}).notes || {}; } catch (e) { continue; }
+        var lines = [];
+        for (var nk in notes) if (notes[nk] && notes[nk].text) lines.push('[' + nk + ']\n' + notes[nk].text);
+        if (lines.length) docs.push({ name: k.slice(PREFIX.length), lines: lines });
+      }
+    } catch (e) { /* 저장소를 읽을 수 없으면 표시하지 않음 */ }
+    docs.sort(function (a, b) { return a.name < b.name ? -1 : 1; });
+    el.style.display = docs.length ? 'block' : 'none';
+    docs.forEach(function (d) {
+      var row = document.createElement('div'); row.className = 'orow';
+      var kk = document.createElement('span'); kk.className = 'k'; kk.textContent = d.name + ' (' + d.lines.length + ')';
+      var show = document.createElement('button'); show.type = 'button'; show.textContent = '보기';
+      show.addEventListener('click', function () { alert('「' + d.name + '」의 메모 ' + d.lines.length + '건\n\n' + d.lines.join('\n\n')); });
+      row.appendChild(kk); row.appendChild(show);
+      el.appendChild(row);
     });
   }
 
@@ -376,5 +408,6 @@
   });
 
   updateCount();
+  renderOthers();
   if (!storageOk) setStatus('브라우저 저장소를 쓸 수 없어 메모가 저장되지 않습니다.', true);
 })();
