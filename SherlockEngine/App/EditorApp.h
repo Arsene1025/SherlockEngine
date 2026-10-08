@@ -51,7 +51,11 @@ private:
     // 11-E단계: 프로젝트
     bool OpenProjectAndScene(const std::wstring& pathOrDir);            // AppBase::OpenProject + 에디터 갱신 + 시작 씬 로드 + 최근 목록
     bool CreateProject(const std::wstring& parentDir, const std::string& name, std::string& error);   // 폴더·스크립트 예제·솔루션·Main.json
-    void BuildAndLaunchProjectEditor();                                  // MSBuild <Name>Editor → 실행 → 종료
+    // 2026-10-08 (B안): 스크립트 DLL. BuildScripts = MSBuild <Name>Scripts → ReloadScripts. ReloadScripts = 씬 스냅샷 → 씬 비움 → DLL 교체 → 스냅샷 복원.
+    // 편집 중에만 다시 올림 (재생 중이면 정지 뒤로 미룸). OnUpdate 가 1초마다 DLL 의 수정 시각을 보고, VS 에서 빌드해도 자동으로 다시 올림.
+    void BuildScripts();
+    bool ReloadScripts();
+    void PollScripts(float dt);
     void SyncProjectInfo();                                              // Editor::project 채우기 + 창 제목
     const wchar_t* GetWindowTitle() const override { return L"SherlockEditor"; }
     const char* GetSceneName() const;
@@ -103,7 +107,7 @@ private:
         std::string buildGame;      // --build-game=Name (3 프레임째 GameBuilder::Build — 에셋 전부, 폴더 열지 않음, 시작 씬 = --build-scene 또는 프로젝트 시작 씬)
         std::string buildScene;
         std::string newProject;     // --new-project=Name (2 프레임째 CreateProject in <repo>\Projects\, 11-E)
-        bool buildProject = false;  // --build-project=1 (4 프레임째 프로젝트 솔루션의 에디터 타깃을 MSBuild 로 빌드 — 실행하지는 않음)
+        bool buildProject = false;  // --build-project=1 (4 프레임째 BuildScripts — 프로젝트 스크립트 DLL 을 MSBuild 로 빌드하고 다시 올림)
         bool launcher = false;      // --launcher=1 (2 프레임째 File > Projects 런처 팝업을 엶 — 문서 스크린샷용)
         bool setRotation = false; DirectX::XMFLOAT3 rotationDeg = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --set-rotation=p,y,r (도, 8 프레임째 선택 오브젝트, 11-F)
         std::string parentChild, parentName;   // --set-parent=자식;부모 (7 프레임째 재부모화, 부모가 비면 루트로, 11-F)
@@ -116,6 +120,9 @@ private:
     std::string m_playSnapshot;   // 재생 전 씬 JSON (SceneSerializer::SaveToString)
     float m_timeScale = 1.0f;
     bool m_stepOnce = false;
+
+    float m_scriptPollTimer = 0.0f;   // 2026-10-08: PollScripts 간격 (1초)
+    size_t m_scriptSources = 0;       // Scripts\**\*.cpp 개수 (PollScripts 가 갱신)
 
     // 6단계: F7 로 방향광 0 을 Y축 둘레로 회전시킴.
     bool m_lightOrbit = false;

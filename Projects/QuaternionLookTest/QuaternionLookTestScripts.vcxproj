@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- SherlockEngine 프로젝트 CubemapTest — 에디터의 ProjectGenerator 가 만들었다. 손으로 고쳐도 되지만 다시 생성하면 덮어쓴다. -->
+  <!-- SherlockEngine ProjectGenerator 2: 프로젝트 QuaternionLookTest 의 스크립트 DLL. 에디터가 만들었고 다시 생성하면 덮어쓴다.
+       빌드하면 Binaries\<구성>\QuaternionLookTestScripts.dll 이 생기고, 켜져 있는 에디터가 1초 안에 다시 올린다(핫리로드). F5 는 엔진의 SherlockEditor.exe 로 이 프로젝트를 연다. -->
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -14,23 +15,24 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{7A3F0B21-4D5E-4C6F-A071-2F3E4D5C6B7B}</ProjectGuid>
-    <RootNamespace>CubemapTest</RootNamespace>
+    <ProjectGuid>{8B4C1D32-5E6F-4D70-B182-3F4E5D6C7B8C}</ProjectGuid>
+    <RootNamespace>QuaternionLookTestScripts</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <SherlockRepo>$(MSBuildProjectDirectory)\..\..\</SherlockRepo>
     <SherlockEngineDir>$(SherlockRepo)SherlockEngine\</SherlockEngineDir>
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
     <VcpkgManifestRoot>$(SherlockRepo)</VcpkgManifestRoot>
+    <VcpkgAutoLink>false</VcpkgAutoLink>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -51,22 +53,24 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(ProjectDir)Binaries\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)Intermediate\$(ProjectName)\$(Configuration)\</IntDir>
-    <LocalDebuggerWorkingDirectory>$(ProjectDir)</LocalDebuggerWorkingDirectory>
-    <LocalDebuggerCommandArguments>--project=$(ProjectDir)</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommand>$(SherlockRepo)x64\$(Configuration)\SherlockEditor.exe</LocalDebuggerCommand>
+    <LocalDebuggerCommandArguments>--project="$(ProjectDir)QuaternionLookTest.sherlock"</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>$(SherlockRepo)x64\$(Configuration)\</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(ProjectDir)Binaries\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)Intermediate\$(ProjectName)\$(Configuration)\</IntDir>
-    <LocalDebuggerWorkingDirectory>$(ProjectDir)</LocalDebuggerWorkingDirectory>
-    <LocalDebuggerCommandArguments>--project=$(ProjectDir)</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommand>$(SherlockRepo)x64\$(Configuration)\SherlockEditor.exe</LocalDebuggerCommand>
+    <LocalDebuggerCommandArguments>--project="$(ProjectDir)QuaternionLookTest.sherlock"</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>$(SherlockRepo)x64\$(Configuration)\</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;SHERLOCK_PROJECT_NAME="CubemapTest";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -77,7 +81,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalOptions>/WHOLEARCHIVE:SherlockEngine.lib %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>SherlockEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SherlockRepo)x64\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -86,7 +91,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;SHERLOCK_PROJECT_NAME="CubemapTest";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -97,11 +102,11 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalOptions>/WHOLEARCHIVE:SherlockEngine.lib %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>SherlockEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SherlockRepo)x64\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="$(SherlockRepo)SherlockGame\GameMain.cpp" />
     <ClCompile Include="Scripts\**\*.cpp" />
     <ClCompile Include="$(SherlockEngineDir)pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -112,11 +117,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Scenes\*.json" />
-    <None Include="CubemapTest.sherlock" />
+    <None Include="QuaternionLookTest.sherlock" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="$(SherlockEngineDir)SherlockEngine.vcxproj">
       <Project>{DCC06A61-7D5A-44F5-A959-3D9367E30EE7}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

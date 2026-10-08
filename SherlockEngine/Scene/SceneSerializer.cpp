@@ -204,6 +204,12 @@ namespace
 			const_cast<Behaviour&>(*behaviour).Reflect(writer);   // Reflect 는 편집용이라 non-const 임. 쓰기 방문자는 값을 바꾸지 않음
 			components.push_back(c);
 		}
+		// 2026-10-08 (B안): 만들지 못한 컴포넌트(스크립트 DLL 이 없음)는 읽은 그대로 다시 씀
+		for (const std::string& missing : object.GetMissingComponents())
+		{
+			json c = json::parse(missing, nullptr, false);
+			if (!c.is_discarded()) components.push_back(std::move(c));
+		}
 		return components;
 	}
 
@@ -213,7 +219,12 @@ namespace
 		for (const json& c : components)
 		{
 			Behaviour* behaviour = object.AddBehaviour(c.value("type", ""));
-			if (behaviour == nullptr) continue;   // 모르는 타입은 레지스트리가 경고를 남긴 뒤 건너뜀
+			if (behaviour == nullptr)
+			{
+				// 모르는 타입(레지스트리가 경고를 남김). 2026-10-08 (B안): 버리지 않고 원본을 보관해 저장·핫리로드 때 되살림
+				object.GetMissingComponents().push_back(c.dump());
+				continue;
+			}
 			behaviour->enabled = c.value("enabled", true);
 			JsonReadVisitor reader(c);
 			behaviour->Reflect(reader);
@@ -315,7 +326,7 @@ std::string SceneSerializer::SaveToString(const Scene& scene, const Camera& came
 			XMStoreFloat4x4(&pre, t.GetPreTransform());
 			j["preTransform"] = ToJson(pre);
 		}
-		if (!object.GetBehaviours().empty()) j["components"] = ComponentsToJson(object);   // 11-C단계
+		if (!object.GetBehaviours().empty() || !object.GetMissingComponents().empty()) j["components"] = ComponentsToJson(object);   // 11-C단계
 		objects.push_back(j);
 	}
 	root["objects"] = objects;

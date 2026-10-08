@@ -75,9 +75,10 @@ void GameApp::OnUpdate(float dt)
 		for (const auto& object : scene.GetObjects())
 		{
 			const XMFLOAT3& p = object->GetTransform().GetPosition();
+			const XMFLOAT3& r = object->GetTransform().GetRotation();   // 2026-10-08: 스크립트(Rotator)가 돌았는지 확인용
 			std::string components;
 			for (const auto& b : object->GetBehaviours()) components += std::string(components.empty() ? "" : ",") + b->GetTypeName();
-			Log::Info("게임 검증: 오브젝트 '%s' 위치 (%.2f, %.2f, %.2f) components=[%s]", object->GetName().c_str(), p.x, p.y, p.z, components.c_str());
+			Log::Info("게임 검증: 오브젝트 '%s' 위치 (%.2f, %.2f, %.2f) 회전 (%.2f, %.2f, %.2f) components=[%s]", object->GetName().c_str(), p.x, p.y, p.z, r.x, r.y, r.z, components.c_str());
 		}
 	}
 	if (m_exitAfter > 1 && frame == m_exitAfter - 1 && !m_screenshotPath.empty()) engine.RequestScreenshot(m_screenshotPath);

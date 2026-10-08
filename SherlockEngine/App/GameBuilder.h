@@ -4,9 +4,10 @@
 
 // 11-D단계: 게임 빌드(패키징) — 언리얼의 Package Project, 유니티의 Build.
 //
-// <프로젝트>\Build\<이름>\ 폴더에 런타임 exe(<이름>.exe 로 복사) + DLL + Shaders\ + Assets\ 를 모으고 engine.ini 에 [game] startScene 을 기록함.
+// <프로젝트>\Build\<이름>\ 폴더에 런타임 exe(SherlockGame.exe 를 <이름>.exe 로 복사) + DLL(SherlockEngine.dll, <이름>Scripts.dll, vcpkg) + Shaders\ + Assets\ 를 모으고
+// engine.ini 에 [game] startScene 을 기록함.
 // 폴더를 통째로 다른 PC 에 복사한 뒤 exe 를 더블클릭하면 게임이 실행됨 (소스 트리가 없으므로 Paths 는 exe 옆 사본만 참조함).
-// releaseBuild 면 먼저 vswhere → MSBuild 로 프로젝트 솔루션의 게임 타깃(없으면 엔진 솔루션의 SherlockGame)을 Release|x64 로 빌드함 (VS 가 설치된 개발 PC 에서만 가능).
+// releaseBuild 면 먼저 vswhere → MSBuild 로 엔진 솔루션의 SherlockGame 과 프로젝트의 스크립트 DLL 을 Release|x64 로 빌드함 (VS 가 설치된 개발 PC 에서만 가능).
 // 에셋은 전부 복사하거나(copyAllAssets), 시작 씬이 참조하는 모델 폴더·텍스처만 복사함 (Sponza 같은 큰 모델을 제외하기 위함).
 namespace GameBuilder
 {
@@ -14,10 +15,10 @@ namespace GameBuilder
 	{
 		std::string name = "MyGame";                  // Build\<name>\ 와 창 제목·exe 이름
 		std::string startScene = "";                  // 프로젝트 Assets\Scenes 기준 파일명 (ListScenes 의 항목)
-		std::string projectName;                      // 11-E: 열린 프로젝트 이름 — 런타임 exe(<이름>.exe) 와 MSBuild 타깃
-		std::wstring projectSolution;                 // 11-E: 프로젝트 솔루션 경로 (없으면 엔진 솔루션의 SherlockGame)
+		std::string projectName;                      // 11-E: 열린 프로젝트 이름 — 스크립트 DLL(<이름>Scripts.dll) 과 MSBuild 타깃
+		std::wstring projectSolution;                 // 11-E: 프로젝트 솔루션 경로 (스크립트 DLL 을 빌드할 때)
 		bool copyAllAssets = true;
-		bool releaseBuild = false;                    // MSBuild Release 빌드 후 Release 폴더의 런타임을 씀. 아니면 현재 에디터 옆(Debug)의 런타임을 씀
+		bool releaseBuild = false;                    // MSBuild Release 빌드 후 Release 런타임·스크립트를 씀. 아니면 현재 에디터와 같은 구성(Debug)의 것을 씀
 		bool openFolder = true;
 	};
 	struct Result

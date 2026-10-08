@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
 #include "Scene/Behaviour.h"
 
 class Camera;
@@ -24,7 +25,7 @@ struct CameraPose
 	DirectX::XMMATRIX GetRotationMatrix() const { return DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&rotation)); }
 };
 
-class CameraComponent : public Behaviour
+class SHERLOCK_API CameraComponent : public Behaviour
 {
 public:
 	const char* GetTypeName() const override;

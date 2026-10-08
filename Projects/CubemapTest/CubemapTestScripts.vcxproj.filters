@@ -4,9 +4,6 @@
     <Filter Include="Scripts">
       <UniqueIdentifier>{a0c2e1f0-5c11-4b3e-9a6f-1a2b3c4d5e11}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine Editor">
-      <UniqueIdentifier>{a0c2e1f0-5c11-4b3e-9a6f-1a2b3c4d5e12}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Assets">
       <UniqueIdentifier>{a0c2e1f0-5c11-4b3e-9a6f-1a2b3c4d5e13}</UniqueIdentifier>
     </Filter>

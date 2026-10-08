@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -65,11 +66,15 @@ struct SceneEnvironment
 //
 // 9단계: 모델(Model)의 메시·재질·이미지를 통째로 받음. 이미지는 인코딩된 바이트 상태로 이름으로 찾을 수 있게
 // 보관하고, Renderer 의 텍스처 캐시가 재질 이름 → 씬 이미지 → 디코딩 순으로 텍스처를 만듦.
-class Scene
+class SHERLOCK_API Scene
 {
 public:
 	Scene();
 	~Scene();
+	// 2026-10-08: 복사 금지를 명시함. 엔진 DLL 이 클래스를 통째로 내보내면(SHERLOCK_API) 암묵적 복사 생성자까지 인스턴스화되는데,
+	// unique_ptr 벡터 멤버 때문에 그 복사 생성자는 컴파일되지 않음.
+	Scene(const Scene&) = delete;
+	Scene& operator=(const Scene&) = delete;
 
 	Mesh* AddMesh(Mesh&& mesh);
 	Mesh* AddMesh(Mesh&& mesh, const MeshSource& source);   // 11단계: 출처 정보와 함께 추가 (저장 가능)

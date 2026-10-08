@@ -32,8 +32,19 @@ namespace
 
 void BehaviourRegistry::Register(const char* typeName, Factory factory, bool isScript)
 {
-	Entries()[typeName] = Entry{ std::move(factory), isScript };
+	// 2026-10-08: 같은 이름은 먼저 등록한 쪽이 이김. 스크립트 DLL(B안)이 엔진 컴포넌트와 같은 이름을 쓰면 무시되고 경고가 남음 —
+	// 덮어쓰면 DLL 을 내릴 때(Unregister) 엔진 컴포넌트까지 지워지기 때문.
+	if (!Entries().try_emplace(typeName, Entry{ std::move(factory), isScript }).second)
+	{
+		Log::Warn("컴포넌트 이름 '%s' 가 이미 등록돼 있어 새 등록을 무시함 (스크립트 이름을 바꿀 것).", typeName);
+		return;
+	}
 	Names().clear();   // 다음 GetTypeNames 호출 때 다시 만듦
+}
+
+void BehaviourRegistry::Unregister(const std::string& typeName)
+{
+	if (Entries().erase(typeName) > 0) Names().clear();
 }
 
 std::unique_ptr<Behaviour> BehaviourRegistry::Create(const std::string& typeName)
@@ -41,7 +52,7 @@ std::unique_ptr<Behaviour> BehaviourRegistry::Create(const std::string& typeName
 	auto found = Entries().find(typeName);
 	if (found == Entries().end())
 	{
-		Log::Warn("컴포넌트 '%s' 를 모른다 (Game/ 에 SHERLOCK_SCRIPT / SHERLOCK_BEHAVIOUR 로 등록된 클래스가 아니다). 건너뜀.", typeName.c_str());
+		Log::Warn("컴포넌트 '%s' 를 모른다 (SHERLOCK_SCRIPT / SHERLOCK_BEHAVIOUR 로 등록된 클래스가 아님 — 프로젝트 스크립트라면 스크립트 DLL 을 빌드해야 함).", typeName.c_str());
 		return nullptr;
 	}
 	return found->second.factory();

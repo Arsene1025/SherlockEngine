@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
 #include <cstdint>
 
 enum class MouseButton : uint8_t
@@ -23,7 +24,7 @@ enum class MouseButton : uint8_t
 // ImGui가 입력을 쓰고 있는지(io.WantCaptureMouse/Keyboard)는 여기서 보지 않음.
 // 공급은 무조건 하고 판단은 소비하는 쪽이 함. 공급을 막으면 UI 위에서 키를
 // 뗐을 때 KeyUp을 놓쳐 키가 눌린 채로 고착됨.
-class Input
+class SHERLOCK_API Input
 {
 public:
 	// ---- Win32 메시지 공급 (AppBase::MsgProc에서만 호출) ----

@@ -5,6 +5,7 @@
 #include "Core/Engine.h"
 #include "Core/Config.h"
 #include "Core/Project.h"
+#include "Core/ScriptModule.h"
 
 // AppBase (10단계, D14): 창과 메시지 루프, ImGui 컨텍스트·Win32 백엔드를 담당함. 엔진 시스템은 전부 Engine 이 가짐.
 //
@@ -22,11 +23,6 @@ public:
     int Run();
 
     virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-    // 11-E단계: 이 실행 파일에 컴파일된 프로젝트 이름. 열린 프로젝트와 다르면 그 프로젝트의 스크립트는 들어 있지 않음.
-    // SHERLOCK_PROJECT_NAME 은 exe 프로젝트에만 정의되므로(엔진 lib 는 모름) 진입점(EditorMain/GameMain)이 Initialize 전에 넣어 줌.
-    static void SetCompiledProjectName(const char* name);
-    static const char* GetCompiledProjectName();
 
 protected:
     // ---- 앱이 구현하는 것 ----
@@ -50,6 +46,14 @@ protected:
     bool OpenProject(const std::wstring& pathOrDir);
     static std::wstring GetDefaultProjectDir();   // <엔진 저장소>\Projects\Sample\ (소스 트리가 있을 때)
 
+    // 2026-10-08 (B안): 프로젝트 스크립트 DLL. Initialize 가 Engine 초기화 직후(OnInitialize 전, 씬이 빈 때) 한 번 부름.
+    // 열린 프로젝트의 <이름>Scripts.dll 을 찾아 올림: exe 옆(패키지된 게임) → <프로젝트>\Binaries\<구성>\ 순.
+    // 이미 올린 DLL 이 있으면 먼저 씬을 비우고 내림 — 프로젝트를 바꿀 때 에디터가 다시 부름. hotReload 면 복사본을 올려 원본을 다시 빌드할 수 있게 함.
+    // DLL 이 없으면 false (스크립트 없이 동작. 그 스크립트를 쓰는 컴포넌트는 씬 로드 때 경고와 함께 빠짐).
+    bool LoadProjectScripts(bool hotReload);
+    void UnloadProjectScripts();   // 씬을 비운 뒤 DLL 을 내림
+    ScriptModule& GetScripts() { return m_scripts; }
+
 
     // 실행 인자 "--name=value" 의 value 를 돌려줌. 없으면 빈 문자열.
     static std::wstring GetCommandLineOption(const wchar_t* name);
@@ -65,6 +69,7 @@ private:
     Config m_config;
     Engine m_engine;
     Project m_project;   // 11-E단계
+    ScriptModule m_scripts;   // 2026-10-08 (B안). 소멸자는 DLL 을 내리지 않음 — 엔진이 씬을 비우는 시점이 더 늦을 수 있음
 
     int m_screenWidth = 1280;   // 클라이언트 영역 크기 (설정 engine.width/height)
     int m_screenHeight = 720;

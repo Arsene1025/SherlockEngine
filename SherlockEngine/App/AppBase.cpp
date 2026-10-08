@@ -72,21 +72,6 @@ std::wstring AppBase::GetCommandLineOption(const wchar_t* name)
     return result;
 }
 
-namespace
-{
-    std::string s_compiledProjectName;
-}
-
-void AppBase::SetCompiledProjectName(const char* name)
-{
-    s_compiledProjectName = name ? name : "";
-}
-
-const char* AppBase::GetCompiledProjectName()
-{
-    return s_compiledProjectName.c_str();
-}
-
 std::wstring AppBase::GetDefaultProjectDir()
 {
     if (!Paths::HasEngineSourceTree()) return L"";
@@ -114,6 +99,33 @@ bool AppBase::OpenProject(const std::wstring& pathOrDir)
     Paths::SetEngineRoot(m_project.engineRoot);
     Paths::SetProjectRoot(m_project.GetRoot());
     return true;
+}
+
+bool AppBase::LoadProjectScripts(bool hotReload)
+{
+    UnloadProjectScripts();
+    if (!m_project.IsLoaded()) return false;
+    const std::wstring name(m_project.GetName().begin(), m_project.GetName().end());
+    std::wstring path = Paths::GetExecutableDir() + name + L"Scripts.dll";   // 패키지된 게임: exe 옆
+    if (GetFileAttributesW(path.c_str()) == INVALID_FILE_ATTRIBUTES) path = ScriptModule::GetDllPath(m_project);
+    if (!m_scripts.Load(path, hotReload))
+    {
+        const size_t sources = ScriptModule::CountScriptSources(m_project);
+        if (sources > 0) Log::Warn("프로젝트 '%s' 의 스크립트 DLL 을 올리지 못함 (%s). 스크립트 %zu개는 빌드한 뒤에 쓸 수 있음.",
+            m_project.GetName().c_str(), m_scripts.GetLastError().c_str(), sources);
+        return false;
+    }
+    return true;
+}
+
+void AppBase::UnloadProjectScripts()
+{
+    if (!m_scripts.IsLoaded()) return;
+    // DLL 의 클래스로 만든 컴포넌트가 남아 있으면 FreeLibrary 뒤에 소멸자·vtable 이 사라진 코드를 가리킴. 그래서 씬을 먼저 비움.
+    // Renderer 캐시는 메시·재질 포인터를 키로 쓰므로 Scene::Clear 전에 버림 (텍스처는 남김).
+    m_engine.GetRenderer().InvalidateScene(m_engine.GetScene(), false);
+    m_engine.GetScene().Clear();
+    m_scripts.Unload();
 }
 
 bool AppBase::LoadConfig()
@@ -182,8 +194,8 @@ bool AppBase::Initialize()
     InitLogger();
     if (m_project.IsLoaded())
     {
-        Log::Info("프로젝트 루트: %s (엔진 루트 %s%s, 컴파일된 프로젝트 %s)", Log::ToUtf8(Paths::GetProjectRoot().c_str()).c_str(),
-            Log::ToUtf8(Paths::GetEngineRoot().c_str()).c_str(), Paths::HasEngineSourceTree() ? "" : ", 배포", GetCompiledProjectName());
+        Log::Info("프로젝트 루트: %s (엔진 루트 %s%s)", Log::ToUtf8(Paths::GetProjectRoot().c_str()).c_str(),
+            Log::ToUtf8(Paths::GetEngineRoot().c_str()).c_str(), Paths::HasEngineSourceTree() ? "" : ", 배포");
     }
     else Log::Info("프로젝트 없음: 엔진 콘텐츠만 (%s)", Log::ToUtf8(Paths::GetEngineAssetRoot().c_str()).c_str());
     if (configLoaded) Log::Info("설정 파일: %s (%zu 항목)", Log::ToUtf8(m_config.GetPath().c_str()).c_str(), m_config.GetAll().size());
@@ -211,6 +223,10 @@ bool AppBase::Initialize()
         }
         m_guiWin32Initialized = true;
     }
+
+    // 2026-10-08 (B안): 프로젝트 스크립트 DLL. 씬을 만들기 전에 올려야 씬 파일의 스크립트 컴포넌트를 만들 수 있음.
+    // 에디터는 복사본을 올려(핫리로드) 실행 중에 다시 빌드할 수 있게 하고, 게임은 원본을 그대로 올림.
+    if (m_project.IsLoaded()) LoadProjectScripts(WantsGUI());
 
     if (!OnInitialize()) return false;
 

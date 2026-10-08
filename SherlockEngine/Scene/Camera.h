@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
 #include <DirectXMath.h>
 
 // 위치와 회전 행렬로 자세를 나타내는 카메라.
@@ -23,7 +24,7 @@
 //     따라서 마우스 dx > 0 → +yaw, dy > 0 → +pitch 로 부호를 뒤집지 않고 그대로 쓸 수 있음.
 //   - 각도 경로(SetYawPitch/Rotate)는 pitch 를 ±(90° − ε)로 클램프하므로 짐벌락도 없음. 행렬 경로는 클램프하지 않음
 //     (부모가 뒤집혀 있으면 카메라도 뒤집힌 채 그대로 보는 것이 맞음).
-class Camera
+class SHERLOCK_API Camera
 {
 public:
 	Camera();

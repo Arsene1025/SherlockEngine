@@ -132,7 +132,7 @@ std::wstring Project::GetSolutionPath() const
 	return m_root + Wide(m_name) + L".sln";
 }
 
-std::wstring Project::GetEditorProjectName() const
+std::wstring Project::GetScriptsProjectName() const
 {
-	return Wide(m_name) + L"Editor";
+	return Wide(m_name) + L"Scripts";
 }

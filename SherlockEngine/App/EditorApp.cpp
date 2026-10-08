@@ -43,10 +43,16 @@ bool EditorApp::OnInitialize()
 	m_editorCallbacks.stepFrame = [this]() { StepFrame(); };
 	m_editorCallbacks.openProject = [this](const std::wstring& path) { return OpenProjectAndScene(path); };   // 11-E단계
 	m_editorCallbacks.newProject = [this](const std::wstring& parent, const std::string& name, std::string& error) { return CreateProject(parent, name, error); };
-	m_editorCallbacks.buildAndLaunchProjectEditor = [this]() { BuildAndLaunchProjectEditor(); };
+	m_editorCallbacks.buildScripts = [this]() { BuildScripts(); };   // 2026-10-08 (B안)
 	m_editorCallbacks.saveProject = [this]() { return GetProject().Save(); };
 
 	// 11-E단계: 프로젝트가 있으면(AppBase 가 --project / exe 상위 폴더 / Projects\Sample 순으로 찾았음) 그 프로젝트의 시작 씬을 로드함. 없으면 engine.scene 을 씀.
+	// 2026-10-08 (B안): 스크립트 DLL 은 AppBase::Initialize 가 이미 올렸음. 옛 형식 프로젝트면 솔루션을 스크립트 DLL 형식으로 다시 만듦.
+	if (GetProject().IsLoaded())
+	{
+		ProjectGenerator::EnsureUpToDate(GetProject());
+		m_scriptSources = ScriptModule::CountScriptSources(GetProject());
+	}
 	SyncProjectInfo();
 	m_editor.OnProjectChanged();
 	if (GetProject().IsLoaded())
@@ -373,6 +379,7 @@ void EditorApp::OnUpdate(float dt)
 	const float totalTime = engine.GetTime().GetTotalTime();
 
 	if (m_auto.active) RunAutomation();
+	PollScripts(dt);   // 2026-10-08 (B안): 스크립트 DLL 이 새로 빌드됐으면 다시 올림
 	UpdateCamera(dt);
 
 	// 렌더 설정 단축키. ImGui 텍스트 입력 중에는 무시함.
@@ -435,9 +442,15 @@ void EditorApp::SyncProjectInfo()
 	info.root = project.GetRoot();
 	info.solutionPath = project.GetSolutionPath();
 	info.hasSolution = info.loaded && GetFileAttributesW(info.solutionPath.c_str()) != INVALID_FILE_ATTRIBUTES;
-	// 이 exe 에 프로젝트 스크립트가 들어 있는지 판단: 컴파일된 이름이 같거나, 컴파일된 이름이 없고(엔진 전용) 프로젝트에 스크립트가 없을 때 참
-	const std::string compiled = GetCompiledProjectName();
-	info.scriptsCompiledHere = !info.loaded || compiled == info.name;
+	// 2026-10-08 (B안): 스크립트 DLL 상태
+	const ScriptModule& scripts = GetScripts();
+	info.scriptSources = m_scriptSources;
+	info.scriptsLoaded = scripts.IsLoaded();
+	info.scriptTypes = scripts.GetTypeNames().size();
+	info.scriptReloads = scripts.GetReloadCount();
+	info.scriptsPendingReload = m_playState != PlayState::Editing && scripts.HasNewerBuild();
+	info.scriptsError = scripts.GetLastError();
+	info.scriptsDll = info.loaded ? ScriptModule::GetDllPath(GetProject()) : std::wstring();
 	m_editor.projectStartScene = info.loaded ? &GetProject().startScene : nullptr;
 
 	static std::string lastTitle;
@@ -452,7 +465,16 @@ void EditorApp::SyncProjectInfo()
 bool EditorApp::OpenProjectAndScene(const std::wstring& pathOrDir)
 {
 	if (m_playState != PlayState::Editing) StopPlay();
+	// 2026-10-08 (B안): 이전 프로젝트의 스크립트 DLL 을 내리고(씬을 먼저 비움) 새 프로젝트의 DLL 을 올린 뒤 씬을 읽음.
+	{
+		Project probe;
+		if (!probe.Load(pathOrDir)) return false;
+	}
+	UnloadProjectScripts();
 	if (!OpenProject(pathOrDir)) return false;
+	ProjectGenerator::EnsureUpToDate(GetProject());   // 옛 형식(<이름>Editor.vcxproj) 프로젝트를 스크립트 DLL 형식으로 바꿈
+	LoadProjectScripts(true);
+	m_scriptSources = ScriptModule::CountScriptSources(GetProject());
 	SyncProjectInfo();
 	m_editor.OnProjectChanged();
 	ProjectLauncher::AddRecent(GetProject().GetName(), GetProject().GetFilePath());
@@ -472,6 +494,7 @@ bool EditorApp::CreateProject(const std::wstring& parentDir, const std::string& 
 	Project project;
 	if (!Project::Create(parentDir, name, Paths::GetEngineRoot(), project, error)) return false;
 	// 프로젝트를 연 뒤 내용을 채움: 예제 스크립트(ScriptCreator 가 프로젝트 Scripts\ 에 씀), 기본 씬, 솔루션
+	UnloadProjectScripts();   // 2026-10-08 (B안): 이전 프로젝트의 스크립트 DLL (새 프로젝트는 아직 빌드 전이라 올릴 DLL 이 없음)
 	if (!OpenProject(project.GetFilePath())) { error = "cannot open the new project"; return false; }
 	SyncProjectInfo();
 	m_editor.OnProjectChanged();
@@ -484,32 +507,64 @@ bool EditorApp::CreateProject(const std::wstring& parentDir, const std::string& 
 	SaveSceneFile(scenePath);
 	m_editor.scenePath = scenePath;
 	ProjectLauncher::AddRecent(GetProject().GetName(), GetProject().GetFilePath());
-	Log::Info("새 프로젝트 준비 완료: %s — Visual Studio 로 %s 를 열어 %sEditor 를 빌드하면 스크립트가 포함된 에디터가 된다",
+	m_scriptSources = ScriptModule::CountScriptSources(GetProject());
+	Log::Info("새 프로젝트 준비 완료: %s — 스크립트는 Build scripts(또는 Visual Studio 로 %s 의 %sScripts 빌드) 뒤 에디터가 자동으로 올림",
 		name.c_str(), Log::ToUtf8(GetProject().GetSolutionPath().c_str()).c_str(), name.c_str());
 	return true;
 }
 
-void EditorApp::BuildAndLaunchProjectEditor()
+void EditorApp::BuildScripts()
 {
 	const Project& project = GetProject();
 	if (!project.IsLoaded()) return;
+	ProjectGenerator::EnsureUpToDate(project);
 	std::string error;
-	const std::wstring log = project.GetRoot() + L"Build\\msbuild-editor.log";
-	if (!ProjectGenerator::RunMsBuild(project.GetSolutionPath(), project.GetEditorProjectName(), L"Debug", log, error))
+	const std::wstring log = project.GetRoot() + L"Build\\msbuild-scripts.log";
+	// BuildProjectReferences=false: 엔진 DLL 은 이 에디터가 쓰는 중이라 다시 링크할 수 없음. 스크립트 DLL 만 빌드함 (엔진은 엔진 솔루션에서).
+	Log::Info("스크립트 빌드: MSBuild %sScripts (%s|x64) …", project.GetName().c_str(), Log::ToUtf8(ScriptModule::GetConfiguration()).c_str());
+	if (!ProjectGenerator::RunMsBuild(project.GetSolutionPath(), project.GetScriptsProjectName(), ScriptModule::GetConfiguration(), log, error, L"/p:BuildProjectReferences=false"))
 	{
-		Log::Error("프로젝트 에디터 빌드 실패: %s", error.c_str());
+		Log::Error("스크립트 빌드 실패: %s (로그 %s)", error.c_str(), Log::ToUtf8(log.c_str()).c_str());
 		return;
 	}
-	const std::wstring exe = project.GetBinariesDir(L"Debug") + project.GetEditorProjectName() + L".exe";
-	const std::wstring arguments = L"--project=\"" + project.GetFilePath() + L"\"";
-	const HINSTANCE result = ShellExecuteW(nullptr, L"open", exe.c_str(), arguments.c_str(), project.GetRoot().c_str(), SW_SHOWNORMAL);
-	if (reinterpret_cast<INT_PTR>(result) <= 32)
+	m_scriptSources = ScriptModule::CountScriptSources(project);
+	if (m_playState == PlayState::Editing) ReloadScripts();
+	else Log::Info("스크립트 빌드 완료: 재생을 멈추면 다시 올림");
+}
+
+bool EditorApp::ReloadScripts()
+{
+	if (m_playState != PlayState::Editing || !GetProject().IsLoaded()) return false;
+	Engine& engine = GetEngine();
+	Scene& scene = engine.GetScene();
+	// 씬을 문자열로 기록 → 비움(DLL 클래스의 컴포넌트를 모두 파괴) → DLL 교체 → 문자열에서 다시 만듦. ■ Stop 의 스냅샷 복원과 같은 경로.
+	// 컴포넌트의 필드는 Reflect 로 저장되므로 새 DLL 에서도 값이 이어짐 (필드 이름을 바꾸면 그 값은 기본값이 됨).
+	const std::string snapshot = SceneSerializer::SaveToString(scene, engine.GetCamera());
+	const int selected = m_editor.GetSelectedObject();
+	const bool ok = LoadProjectScripts(true);   // UnloadProjectScripts(씬 비움) → Load
+	if (!SceneSerializer::LoadFromString(scene, engine.GetCamera(), engine.GetAssets(), snapshot, "script reload"))
 	{
-		Log::Error("프로젝트 에디터 실행 실패: %s", Log::ToUtf8(exe.c_str()).c_str());
-		return;
+		Log::Error("스크립트 다시 올리기 뒤 씬을 복원하지 못해 빈 씬으로 시작한다.");
+		BuildEmptyScene();
 	}
-	Log::Info("프로젝트 에디터로 전환: %s", Log::ToUtf8(exe.c_str()).c_str());
-	PostQuitMessage(0);
+	m_editor.SetSelectedObject(selected < static_cast<int>(scene.GetObjects().size()) ? selected : -1);
+	m_scriptSources = ScriptModule::CountScriptSources(GetProject());
+	Log::Info("스크립트 다시 올리기 %s: 컴포넌트 %zu개, 오브젝트 %zu개 복원", ok ? "완료" : "실패", GetScripts().GetTypeNames().size(), scene.GetObjects().size());
+	return ok;
+}
+
+void EditorApp::PollScripts(float dt)
+{
+	// 1초마다: 소스 수(배너 표시용)와 DLL 수정 시각. 편집 중이고 새 빌드가 있으면 다시 올림.
+	m_scriptPollTimer -= dt;
+	if (m_scriptPollTimer > 0.0f || !GetProject().IsLoaded()) return;
+	m_scriptPollTimer = 1.0f;
+	m_scriptSources = ScriptModule::CountScriptSources(GetProject());
+	if (m_playState == PlayState::Editing && GetScripts().HasNewerBuild())
+	{
+		Log::Info("스크립트 DLL 이 새로 빌드됨: 다시 올림");
+		ReloadScripts();
+	}
 }
 
 // ------------------------------------------------------------------ 11-C단계: 재생
@@ -777,9 +832,8 @@ void EditorApp::RunAutomation()
 	}
 	if (frame == 4 && m_auto.buildProject && GetProject().IsLoaded())
 	{
-		std::string error;
-		const bool ok = ProjectGenerator::RunMsBuild(GetProject().GetSolutionPath(), GetProject().GetEditorProjectName(), L"Debug", GetProject().GetRoot() + L"Build\\msbuild-editor.log", error);
-		Log::Info("자동 검증: build-project %s %s", ok ? "성공" : "실패", error.c_str());
+		BuildScripts();
+		Log::Info("자동 검증: build-project → 스크립트 DLL %s (컴포넌트 %zu개)", GetScripts().IsLoaded() ? "올라옴" : "없음", GetScripts().GetTypeNames().size());
 	}
 	if (frame == 3 && !m_auto.buildGame.empty())
 	{
@@ -789,6 +843,7 @@ void EditorApp::RunAutomation()
 		options.projectName = GetProject().GetName();
 		options.projectSolution = GetProject().GetSolutionPath();
 		options.openFolder = false;
+		options.releaseBuild = !GetCommandLineOption(L"build-release").empty();   // 2026-10-08: Release 패키지 검증
 		const GameBuilder::Result result = GameBuilder::Build(options);
 		Log::Info("자동 검증: build-game %s → %s", result.ok ? "성공" : "실패", result.message.c_str());
 	}

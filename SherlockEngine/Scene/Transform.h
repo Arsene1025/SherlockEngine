@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
 #include <DirectXMath.h>
 
 // 오브젝트 하나의 로컬 자세: 위치·오일러 회전·스케일 (+ 모델 노드의 고정 행렬).
@@ -6,7 +7,7 @@
 // 11-F단계: 이 값은 언제나 "부모 기준"이다. 부모가 없으면 로컬 = 월드. 월드 행렬은 GameObject::GetWorldMatrix 가
 // 부모를 따라 올라가며 곱해 만들고, Transform 은 부모를 모른다 (유니티의 localPosition/localRotation/localScale 에 해당).
 // 이전에는 GetWorldMatrix 라는 이름으로 이 로컬 행렬을 돌려줬는데, 계층이 생기면서 이름이 거짓이 되어 GetLocalMatrix 로 바꿨다.
-class Transform
+class SHERLOCK_API Transform
 {
 public:
 	Transform();
