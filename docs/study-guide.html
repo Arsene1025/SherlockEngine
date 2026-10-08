@@ -622,7 +622,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
     <div class="why">Play를 눌러야 게임이 돌고, 로직은 사용자가 프로젝트의 <code>Scripts/</code>에 쓰는 C++ 스크립트(유니티의 MonoBehaviour)입니다. "스크립트 = 클래스 + 레지스트리 + Reflect" 세 조각과, 스냅샷으로 되돌리는 재생 상태 기계가 전부입니다. 소스를 읽기 전에 <code>Projects/Sample/Scripts/Rotator.cpp</code>와 <code>PlayerController.cpp</code>를 먼저 보면 나머지가 왜 있는지 보입니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
-        <li><a href="rendering-analysis.html#c17-1">17.1</a>~<a href="rendering-analysis.html#c17-8">17.8</a> — Behaviour, 레지스트리와 /WHOLEARCHIVE, PropertyVisitor 와 스크립트 API, 재생 루프, Play/Pause/Step/Stop 과 스냅샷(Stop 이 렌즈를 되돌리지 않는 주의 상자), 내장 컴포넌트와 CameraComponent, 새 스크립트 만들기</li>
+        <li><a href="rendering-analysis.html#c17-1">17.1</a>~<a href="rendering-analysis.html#c17-8">17.8</a> — Behaviour, 레지스트리와 엔진 DLL, PropertyVisitor 와 스크립트 API, 재생 루프, Play/Pause/Step/Stop 과 스냅샷(Stop 이 렌즈를 되돌리지 않는 주의 상자), 내장 컴포넌트와 CameraComponent, 새 스크립트 만들기</li>
         <li><a href="rendering-analysis.html#c17-9">17.9 왜 C++ 인가</a> — 스크립팅 언어에 대한 질문과 답</li>
         <li><a href="rendering-analysis.html#d15">D15</a>의 최종 결론 — 3단계의 "단계적 결정"이 어디까지 갔는지</li>
       </ul></div>
@@ -643,14 +643,14 @@ SherlockEditor.exe --scene=demo --exit-after=30 --play=1 --stop-at=15 --dump-obj
   <div class="tag">S12-D</div>
   <div>
     <h4>게임 빌드와 런타임 분리 <span class="time">약 1시간</span></h4>
-    <div class="why">에디터 없는 런타임(GameApp)과 패키징(GameBuilder), 그리고 엔진 lib · 에디터 exe · 게임 exe로 나뉜 솔루션을 봅니다. 정적 라이브러리에서 "이름으로만 접근하는 것"이 사라지는 함정(/WHOLEARCHIVE)과 COM 초기화가 핵심입니다.</div>
+    <div class="why">에디터 없는 런타임(GameApp)과 패키징(GameBuilder), 그리고 엔진 DLL · 에디터 exe · 게임 exe · 스크립트 DLL로 나뉜 솔루션을 봅니다. 정적 라이브러리에서 "이름으로만 접근하는 것"이 사라지는 함정(/WHOLEARCHIVE)과 COM 초기화가 핵심입니다.</div>
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
         <li><a href="rendering-analysis.html#c17-10">17.10 세 프로젝트와 GameApp</a>, <a href="rendering-analysis.html#c17-11">17.11 Build Game</a>(복사되는 파일, <code>&lt;이름&gt;.exe</code> + <code>.sherlock</code> 사본)</li>
         <li><a href="rendering-analysis.html#c3-9">3.9 게임 런타임은 무엇이 다른가</a>, <a href="rendering-analysis.html#c4-12">4.12 에디터와 게임 런타임의 프레임 차이</a>, <a href="rendering-analysis.html#c1-1">1.1 솔루션의 세 프로젝트</a></li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
-        <li><code>SherlockEditor\SherlockEditor.vcxproj</code>의 ProjectReference · /WHOLEARCHIVE, <code>SherlockGame\GameMain.cpp</code></li>
+        <li><code>SherlockEngine\SherlockEngine.vcxproj</code>의 DynamicLibrary · <code>SHERLOCK_ENGINE_EXPORTS</code>, <code>Core\EngineApi.h</code>, <code>App\EntryPoints.cpp</code>, <code>SherlockGame\GameMain.cpp</code></li>
         <li><code>App/AppBase.cpp</code>의 <code>WantsGUI</code> 분기와 <code>CoInitializeEx</code>, <code>App/GameApp.cpp</code></li>
         <li><code>App/GameBuilder.cpp</code>의 복사 순서와 engine.ini [game] 덧붙이기</li>
       </ul></div>
@@ -673,14 +673,14 @@ Projects\Sample\Build\Test\Test.exe --exit-after=60 --dump-objects=1</code></pre
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>Core/Project.h/.cpp</code> 의 <code>Load / Create / FindUpwards</code> → <code>Core/Paths.h</code> 의 <code>GetEngineRoot / GetProjectRoot / GetAssetPath</code></li>
-        <li><code>App/AppBase</code> 의 <code>ResolveProject</code> 와 <code>SetCompiledProjectName</code>, <code>EditorApp::CreateProject</code></li>
+        <li><code>App/AppBase</code> 의 <code>ResolveProject</code> 와 <code>LoadProjectScripts</code>, <code>Core/ScriptModule</code>, <code>EditorApp::CreateProject</code> · <code>ReloadScripts</code></li>
         <li><code>App/ProjectGenerator.cpp</code>(<code>Scripts\**\*.cpp</code>), <code>App/ProjectLauncher</code>, <code>App/ScriptCreator</code></li>
-        <li><code>Projects\Sample</code> 과 실험 프로젝트 <code>Projects\QuaternionLookTest</code> 의 생성된 <code>.sln</code>·<code>.vcxproj</code></li>
+        <li><code>Projects\Sample</code> 과 실험 프로젝트 <code>Projects\QuaternionLookTest</code> 의 생성된 <code>.sln</code>·<code>&lt;이름&gt;Scripts.vcxproj</code></li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — File &gt; Projects 로 새 프로젝트를 만들고 그 솔루션의 에디터 타깃을 빌드하면, 그 에디터에서 프로젝트 스크립트(Rotator)와 엔진 컴포넌트(Rigidbody)를 함께 붙일 수 있다. 엔진 에디터로 다른 프로젝트를 열면 씬 뷰 위에 배너가 뜬다. 창 없이:
+    <div class="check"><b>확인 포인트</b> — File &gt; Projects 로 새 프로젝트를 만들고 배너의 Build scripts 를 누르면 같은 에디터에 스크립트 DLL 이 올라와 프로젝트 스크립트(Rotator)와 엔진 컴포넌트(Rigidbody)를 함께 붙일 수 있다. 에디터를 켠 채 스크립트를 고쳐 다시 빌드하면 1초 안에 다시 올라온다. 창 없이:
       <pre style="margin:10px 0 0"><code>SherlockEditor.exe --exit-after=30 --new-project=TestGame --build-project=1
-Projects\TestGame\Binaries\Debug\TestGameEditor.exe --exit-after=40 --play=1 --add=1 --add-component=Rotator --dump-objects=1</code></pre></div>
+SherlockEditor.exe --project=..\..\Projects\TestGame --exit-after=40 --play=1 --add=1 --add-component=Rotator --dump-objects=1</code></pre></div>
   </div>
 </div>
 

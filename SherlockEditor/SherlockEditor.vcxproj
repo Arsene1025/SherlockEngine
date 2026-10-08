@@ -91,20 +91,17 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;SHERLOCK_PROJECT_NAME="Sample";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <!-- include 는 엔진 소스 루트(SherlockEngine\) 기준. 예: #include "App/Editor.h" -->
-      <AdditionalIncludeDirectories>$(SolutionDir)SherlockEngine;$(SolutionDir)Projects\Sample\Scripts;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <!-- include 는 엔진 소스 루트(SherlockEngine\) 기준. 진입점 헤더(App/EntryPoints.h)만 씀 -->
+      <AdditionalIncludeDirectories>$(SolutionDir)SherlockEngine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <!-- 스크립트·컴포넌트는 정적 초기화로 자기를 등록한다(SHERLOCK_SCRIPT). 참조되지 않는 .obj 가 링크에서 빠지지 않도록 라이브러리를 통째로 넣는다. -->
-      <AdditionalOptions>/WHOLEARCHIVE:SherlockEngine.lib %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -113,40 +110,34 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;SHERLOCK_PROJECT_NAME="Sample";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <!-- include 는 엔진 소스 루트(SherlockEngine\) 기준. 예: #include "App/Editor.h" -->
-      <AdditionalIncludeDirectories>$(SolutionDir)SherlockEngine;$(SolutionDir)Projects\Sample\Scripts;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <!-- include 는 엔진 소스 루트(SherlockEngine\) 기준. 진입점 헤더(App/EntryPoints.h)만 씀 -->
+      <AdditionalIncludeDirectories>$(SolutionDir)SherlockEngine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <!-- 스크립트·컴포넌트는 정적 초기화로 자기를 등록한다(SHERLOCK_SCRIPT). 참조되지 않는 .obj 가 링크에서 빠지지 않도록 라이브러리를 통째로 넣는다. -->
-      <AdditionalOptions>/WHOLEARCHIVE:SherlockEngine.lib %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;SHERLOCK_PROJECT_NAME="Sample";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <!-- include 는 엔진 소스 루트(SherlockEngine\) 기준. 예: #include "App/Editor.h" -->
-      <AdditionalIncludeDirectories>$(SolutionDir)SherlockEngine;$(SolutionDir)Projects\Sample\Scripts;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <!-- include 는 엔진 소스 루트(SherlockEngine\) 기준. 진입점 헤더(App/EntryPoints.h)만 씀 -->
+      <AdditionalIncludeDirectories>$(SolutionDir)SherlockEngine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <!-- 스크립트·컴포넌트는 정적 초기화로 자기를 등록한다(SHERLOCK_SCRIPT). 참조되지 않는 .obj 가 링크에서 빠지지 않도록 라이브러리를 통째로 넣는다. -->
-      <AdditionalOptions>/WHOLEARCHIVE:SherlockEngine.lib %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -155,47 +146,26 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;SHERLOCK_PROJECT_NAME="Sample";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <!-- include 는 엔진 소스 루트(SherlockEngine\) 기준. 예: #include "App/Editor.h" -->
-      <AdditionalIncludeDirectories>$(SolutionDir)SherlockEngine;$(SolutionDir)Projects\Sample\Scripts;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <!-- include 는 엔진 소스 루트(SherlockEngine\) 기준. 진입점 헤더(App/EntryPoints.h)만 씀 -->
+      <AdditionalIncludeDirectories>$(SolutionDir)SherlockEngine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <!-- 스크립트·컴포넌트는 정적 초기화로 자기를 등록한다(SHERLOCK_SCRIPT). 참조되지 않는 .obj 가 링크에서 빠지지 않도록 라이브러리를 통째로 넣는다. -->
-      <AdditionalOptions>/WHOLEARCHIVE:SherlockEngine.lib %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
+  <!-- 2026-10-08 (B안): 에디터 exe 는 진입점 하나뿐이다. 엔진·에디터 코드는 SherlockEngine.dll, 프로젝트 스크립트는 <프로젝트>Scripts.dll 에 있다.
+       ProjectReference 가 엔진 DLL 의 가져오기 라이브러리(SherlockEngine.lib)를 링크한다. -->
   <ItemGroup>
     <ClCompile Include="EditorMain.cpp" />
-    <ClCompile Include="..\SherlockEngine\App\EditorApp.cpp" />
-    <ClCompile Include="..\SherlockEngine\App\Editor.cpp" />
-    <ClCompile Include="..\SherlockEngine\App\ContentBrowser.cpp" />
-    <ClCompile Include="..\SherlockEngine\App\ScriptCreator.cpp" />
-    <ClCompile Include="..\SherlockEngine\App\GameBuilder.cpp" />
-    <ClCompile Include="..\SherlockEngine\App\DebugUI.cpp" />
-    <ClCompile Include="..\SherlockEngine\App\ProjectLauncher.cpp" />
-    <ClCompile Include="..\SherlockEngine\App\ProjectGenerator.cpp" />
-    <ClCompile Include="..\Projects\Sample\Scripts\*.cpp" />
-    <ClCompile Include="..\SherlockEngine\pch.cpp">
-      <PrecompiledHeader>Create</PrecompiledHeader>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Projects\Sample\Scripts\*.h" />
-    <ClInclude Include="..\SherlockEngine\App\EditorApp.h" />
-    <ClInclude Include="..\SherlockEngine\App\Editor.h" />
-    <ClInclude Include="..\SherlockEngine\App\ContentBrowser.h" />
-    <ClInclude Include="..\SherlockEngine\App\ScriptCreator.h" />
-    <ClInclude Include="..\SherlockEngine\App\GameBuilder.h" />
-    <ClInclude Include="..\SherlockEngine\App\DebugUI.h" />
-    <ClInclude Include="..\SherlockEngine\App\ProjectLauncher.h" />
-    <ClInclude Include="..\SherlockEngine\App\ProjectGenerator.h" />
+    <ClInclude Include="..\SherlockEngine\App\EntryPoints.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SherlockEngine\SherlockEngine.vcxproj">

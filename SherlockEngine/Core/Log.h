@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -44,34 +45,34 @@ namespace Log
     };
 
     // 한 번만 호출함. 인자 없는 Init 은 0단계에서 콘솔 코드페이지만 맞췄음 — 지금은 InitDesc 기본값으로 부르는 것과 같음.
-    void Init();
-    void Init(const InitDesc& desc);
-    void Shutdown();   // 파일을 닫음. 이후 로그는 콘솔·디버거·히스토리로만 나감
+    SHERLOCK_API void Init();
+    SHERLOCK_API void Init(const InitDesc& desc);
+    SHERLOCK_API void Shutdown();   // 파일을 닫음. 이후 로그는 콘솔·디버거·히스토리로만 나감
 
     // 서식은 printf 규칙을 따름.
     // 주의: 컴파일러 메시지처럼 %가 들어갈 수 있는 문자열은 Log::Error("%s", text) 처럼 인자로 넘길 것.
-    void Debug(const char* fmt, ...);   // "[디버그] " — 기본 레벨(Info)에서는 출력되지 않음
-    void Info(const char* fmt, ...);    // "[정보] "
-    void Warn(const char* fmt, ...);    // "[경고] "
-    void Error(const char* fmt, ...);   // "[실패] "
+    SHERLOCK_API void Debug(const char* fmt, ...);   // "[디버그] " — 기본 레벨(Info)에서는 출력되지 않음
+    SHERLOCK_API void Info(const char* fmt, ...);    // "[정보] "
+    SHERLOCK_API void Warn(const char* fmt, ...);    // "[경고] "
+    SHERLOCK_API void Error(const char* fmt, ...);   // "[실패] "
 
-    void SetMinLevel(Level level);
-    Level GetMinLevel();
-    const char* LevelName(Level level);   // "디버그"/"정보"/"경고"/"실패"
-    bool ParseLevel(const std::string& text, Level& out);   // "debug|info|warn|error"
+    SHERLOCK_API void SetMinLevel(Level level);
+    SHERLOCK_API Level GetMinLevel();
+    SHERLOCK_API const char* LevelName(Level level);   // "디버그"/"정보"/"경고"/"실패"
+    SHERLOCK_API bool ParseLevel(const std::string& text, Level& out);   // "debug|info|warn|error"
 
     // ImGui 콘솔용 히스토리 스냅샷. 뮤텍스 안에서 복사함. 수천 줄 규모라 프레임마다 불러도 충분히 가벼움.
-    void CopyHistory(std::vector<Entry>& out);
-    void ClearHistory();
-    uint64_t GetHistoryVersion();            // 새 줄이 들어올 때마다 증가 (자동 스크롤 판단용)
-    uint32_t GetCount(Level level);          // Init 이후 레벨별 누적 수
-    const std::wstring& GetFilePath();       // 열린 파일 경로. 없으면 빈 문자열
-    bool HasConsole();
+    SHERLOCK_API void CopyHistory(std::vector<Entry>& out);
+    SHERLOCK_API void ClearHistory();
+    SHERLOCK_API uint64_t GetHistoryVersion();            // 새 줄이 들어올 때마다 증가 (자동 스크롤 판단용)
+    SHERLOCK_API uint32_t GetCount(Level level);          // Init 이후 레벨별 누적 수
+    SHERLOCK_API const std::wstring& GetFilePath();       // 열린 파일 경로. 없으면 빈 문자열
+    SHERLOCK_API bool HasConsole();
 
     // HRESULT를 "0x80070002 (지정된 파일을 찾을 수 없습니다)" 형태의 문자열로 바꿈.
-    std::string HrToString(HRESULT hr);
+    SHERLOCK_API std::string HrToString(HRESULT hr);
 
     // 넓은 문자열을 UTF-8로 바꿈. std::cout에 wchar_t*를 넘기면
     // 문자열이 아니라 포인터 주소가 찍히기 때문에 필요함.
-    std::string ToUtf8(const wchar_t* wide);
+    SHERLOCK_API std::string ToUtf8(const wchar_t* wide);
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
 #include <functional>
 #include <memory>
 #include <string>
@@ -47,7 +48,7 @@ public:
 	virtual void String(const char* name, std::string& value) = 0;
 };
 
-class Behaviour
+class SHERLOCK_API Behaviour
 {
 public:
 	virtual ~Behaviour() = default;
@@ -80,15 +81,17 @@ private:
 };
 
 // 이름 → 생성 함수 대응표. 매크로가 정적 초기화 시점에 등록함.
-// 스크립트는 exe 프로젝트에 직접 컴파일되지만, 엔진 컴포넌트(Game/Components, CameraComponent)는 11-D단계부터
-// SherlockEngine.lib 안에 있음. 아무도 참조하지 않는 .obj 는 링커가 버리므로 에디터·게임 exe 는 /WHOLEARCHIVE:SherlockEngine.lib 로 링크함.
+// 2026-10-08 (B안): 엔진 컴포넌트(Game/Components, CameraComponent)는 SherlockEngine.dll 이 올라올 때, 프로젝트 스크립트는
+// <프로젝트>Scripts.dll 을 LoadLibrary 할 때 등록됨. 표는 엔진 DLL 안에 한 벌뿐이라 스크립트 DLL 의 등록도 같은 표로 들어감.
 namespace BehaviourRegistry
 {
 	using Factory = std::function<std::unique_ptr<Behaviour>()>;
-	void Register(const char* typeName, Factory factory, bool isScript);
-	std::unique_ptr<Behaviour> Create(const std::string& typeName);   // 모르는 이름이면 nullptr (+ 경고 로그)
-	const std::vector<std::string>& GetTypeNames();                    // 정렬된 목록 (Inspector 의 Add Component)
-	bool IsScript(const std::string& typeName);                        // SHERLOCK_SCRIPT 로 등록된 타입인지 여부
+	SHERLOCK_API void Register(const char* typeName, Factory factory, bool isScript);   // 같은 이름이 이미 있으면 무시 (경고)
+	// 2026-10-08: 스크립트 DLL 을 내리기 전에 그 DLL 이 등록한 이름을 지움 (ScriptModule::Unload). 생성 함수가 DLL 코드를 가리키기 때문.
+	SHERLOCK_API void Unregister(const std::string& typeName);
+	SHERLOCK_API std::unique_ptr<Behaviour> Create(const std::string& typeName);   // 모르는 이름이면 nullptr (+ 경고 로그)
+	SHERLOCK_API const std::vector<std::string>& GetTypeNames();                    // 정렬된 목록 (Inspector 의 Add Component)
+	SHERLOCK_API bool IsScript(const std::string& typeName);                        // SHERLOCK_SCRIPT 로 등록된 타입인지 여부
 }
 
 #define SHERLOCK_REGISTER_BEHAVIOUR_(ClassName, IsScript) \

@@ -6,7 +6,7 @@
 #include <DirectXMath.h>
 #include "App/ContentBrowser.h"   // 11-B단계
 #include "App/GameBuilder.h"      // 11-D단계
-#include "App/AppBase.h"          // 11-E단계: GetCompiledProjectName, Project
+#include "App/AppBase.h"          // 11-E단계: Project
 #include <vector>
 #include "Scene/Camera.h"          // 11-C단계: 카메라 미리보기용 임시 카메라
 
@@ -42,7 +42,7 @@ public:
 		// 11-E단계: 프로젝트. Project 는 앱(AppBase)이 갖고, 에디터는 런처·메뉴만 담당함.
 		std::function<bool(const std::wstring& pathOrDir)> openProject;
 		std::function<bool(const std::wstring& parentDir, const std::string& name, std::string& error)> newProject;   // 폴더·솔루션·기본 씬을 만든 뒤 엶
-		std::function<void()> buildAndLaunchProjectEditor;   // 프로젝트 솔루션의 에디터를 MSBuild 로 빌드하고 그 exe 로 갈아탐
+		std::function<void()> buildScripts;                  // 2026-10-08 (B안): 프로젝트 스크립트 DLL 을 MSBuild 로 빌드하고 다시 올림
 		std::function<bool()> saveProject;                   // .sherlock 저장 (시작 씬 등)
 	};
 
@@ -53,7 +53,14 @@ public:
 		std::string startScene;
 		std::wstring root;
 		std::wstring solutionPath;
-		bool scriptsCompiledHere = true;   // SHERLOCK_PROJECT_NAME == name 이면 참. 거짓이면 이 exe 에는 프로젝트 스크립트가 없음
+		// 2026-10-08 (B안): 프로젝트 스크립트 DLL 상태 (Core/ScriptModule.h)
+		size_t scriptSources = 0;            // Scripts\**\*.cpp 개수
+		bool scriptsLoaded = false;          // <이름>Scripts.dll 이 올라와 있음
+		size_t scriptTypes = 0;              // 그 DLL 이 등록한 컴포넌트 수
+		uint32_t scriptReloads = 0;          // 이번 실행에서 올린 횟수 (첫 로드 포함)
+		bool scriptsPendingReload = false;   // 새 빌드가 있지만 재생 중이라 정지 뒤에 올림
+		std::string scriptsError;            // 마지막 로드 실패 사유 (예: 아직 빌드하지 않음)
+		std::wstring scriptsDll;             // DLL 경로
 		bool hasSolution = false;
 	};
 

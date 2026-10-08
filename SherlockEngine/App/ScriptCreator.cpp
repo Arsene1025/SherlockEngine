@@ -121,7 +121,7 @@ bool ScriptCreator::Create(const std::string& className, std::string& error)
 	CreateDirectoryW(GetScriptsDir().c_str(), nullptr);
 	if (!WriteAll(headerPath, HeaderTemplate(className))) { error = "cannot write " + Log::ToUtf8(headerPath.c_str()); return false; }
 	if (!WriteAll(sourcePath, SourceTemplate(className))) { error = "cannot write " + Log::ToUtf8(sourcePath.c_str()); return false; }
-	Log::Info("새 스크립트: %s (+ .h). 프로젝트 솔루션이 Scripts\\**\\*.cpp 를 와일드카드로 컴파일한다 (하위 폴더 포함) — 빌드 후 Add Component 에 나타난다", Log::ToUtf8(sourcePath.c_str()).c_str());
+	Log::Info("새 스크립트: %s (+ .h). 스크립트 DLL 프로젝트가 Scripts\\**\\*.cpp 를 와일드카드로 컴파일한다 (하위 폴더 포함) — Build scripts 하면 에디터가 DLL 을 다시 올려 Add Component 에 나타난다", Log::ToUtf8(sourcePath.c_str()).c_str());
 	return true;
 }
 

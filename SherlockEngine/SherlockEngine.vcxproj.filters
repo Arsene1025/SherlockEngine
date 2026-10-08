@@ -59,6 +59,36 @@
     <ClCompile Include="App\AppBase.cpp">
       <Filter>App</Filter>
     </ClCompile>
+    <ClCompile Include="App\EditorApp.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App\Editor.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App\ContentBrowser.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App\ScriptCreator.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App\GameBuilder.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App\DebugUI.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App\ProjectLauncher.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App\ProjectGenerator.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="App\EntryPoints.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\ScriptModule.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
     <ClCompile Include="App\GameApp.cpp">
       <Filter>App</Filter>
     </ClCompile>
@@ -178,6 +208,39 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="App\AppBase.h">
       <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\EditorApp.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\Editor.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\ContentBrowser.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\ScriptCreator.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\GameBuilder.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\DebugUI.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\ProjectLauncher.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\ProjectGenerator.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\EntryPoints.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\EngineApi.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\ScriptModule.h">
+      <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="App\GameApp.h">
       <Filter>App</Filter>

@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
 #include <concepts>   // C++20: std::derived_from
 #include <memory>
 #include <string>
@@ -23,7 +24,7 @@ struct Material;
 // 11-F단계: 부모-자식 계층. Transform 은 부모 기준 로컬 값이고, 월드 행렬 = local × parent.world 를 GetWorldMatrix 가 재귀로 만듦.
 // 소유는 여전히 Scene 의 평면 벡터가 하고(인덱스 선택·순회는 그대로), 부모/자식 포인터는 비소유 링크임 — 주소가 안정적인 것은
 // 11-C 의 unique_ptr 전환 덕분. 부모를 지우면 자식도 함께 지워짐(Scene::RemoveObject, 유니티와 같음).
-class GameObject
+class SHERLOCK_API GameObject
 {
 public:
 	GameObject() = default;
@@ -95,6 +96,12 @@ public:
 		return nullptr;
 	}
 
+	// 2026-10-08 (B안): 레지스트리에 없는 타입이라 만들지 못한 컴포넌트의 원본 JSON (유니티의 "Missing Script").
+	// 스크립트 DLL 을 아직 빌드하지 않았거나 올리지 못했을 때 씬을 열면 여기에 남고, 씬을 저장하면 그대로 다시 써서 값을 잃지 않음.
+	// 핫리로드는 씬을 문자열로 저장했다가 다시 읽으므로, 새 DLL 이 그 타입을 등록했으면 그때 진짜 컴포넌트로 되살아남 (목록의 끝에 붙음).
+	std::vector<std::string>& GetMissingComponents() { return missingComponents; }
+	const std::vector<std::string>& GetMissingComponents() const { return missingComponents; }
+
 	// ---- Scene 이 호출함 ----
 	// 계층에서 떼어냄: 부모의 children 에서 빠지고 자식들의 parent 를 끊음 (자식은 루트가 됨). 소멸자에서는 하지 않음 —
 	// Scene::Clear 가 벡터를 통째로 지울 때 이미 죽은 부모를 건드리게 되기 때문. RemoveObject 가 지우기 직전에 호출함.
@@ -107,6 +114,7 @@ private:
 	std::vector<const Material*> slotMaterials;
 	std::string name;
 	std::vector<std::unique_ptr<Behaviour>> behaviours;
+	std::vector<std::string> missingComponents;   // 2026-10-08 (B안): JSON 문자열
 	GameObject* parent = nullptr;          // 11-F단계: 비소유. 소유는 Scene 의 벡터
 	std::vector<GameObject*> children;     // 11-F단계: 비소유. Hierarchy 표시 순서
 };

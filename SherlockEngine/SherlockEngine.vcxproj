@@ -18,10 +18,10 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <!-- 11-D단계: 엔진은 정적 라이브러리(SherlockEngine.lib). 에디터(SherlockEditor)와 게임 런타임(SherlockGame)이 링크한다.
-       셰이더 컴파일과 Shaders\/Assets\ 복사는 여기서 한 번 한다 (세 프로젝트의 OutDir 이 같다: x64\<구성>\). -->
-  <!-- 11-D단계: 엔진은 정적 라이브러리(SherlockEngine.lib). 에디터(SherlockEditor)와 게임 런타임(SherlockGame)이 링크한다.
-       셰이더 컴파일과 Shaders\/Assets\ 복사는 여기서 한 번 한다 (세 프로젝트의 OutDir 이 같다: x64\<구성>\). -->
+  <!-- 2026-10-08 (B안): 엔진은 DLL(SherlockEngine.dll + 가져오기 라이브러리 SherlockEngine.lib). 에디터(SherlockEditor.exe)·게임(SherlockGame.exe)과
+       프로젝트 스크립트 DLL(<프로젝트>Scripts.dll)이 모두 이 DLL 하나를 공유해 컴포넌트 레지스트리·로그·입력 같은 전역 상태가 한 벌만 있다.
+       에디터 소스(App\EditorApp·Editor·…)도 여기 들어간다 — ImGui 가 정적 라이브러리라 exe 에 두면 ImGui 컨텍스트가 둘이 된다.
+       셰이더 컴파일과 Shaders\/Assets\ 복사도 여기서 한 번 한다 (세 프로젝트의 OutDir 이 같다: x64\<구성>\). -->
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -33,26 +33,26 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -76,8 +76,8 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <!-- 11-E단계: 라이브러리 산출물은 솔루션이 어디든 엔진 저장소의 x64\<구성>\ 에 둔다 — 생성된 프로젝트 솔루션(Projects\<이름>\<이름>.sln)이
-       엔진 lib 를 참조할 때 프로젝트 폴더에 엔진을 다시 빌드하지 않고 여기 것을 공유한다. -->
+  <!-- 11-E단계: 산출물은 솔루션이 어디든 엔진 저장소의 x64\<구성>\ 에 둔다 — 생성된 프로젝트 솔루션(Projects\<이름>\<이름>.sln)이
+       엔진을 참조할 때 프로젝트 폴더에 엔진을 다시 빌드하지 않고 여기 것(SherlockEngine.dll/.lib)을 공유한다. -->
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <OutDir>$(ProjectDir)..\x64\$(Configuration)\</OutDir>
   </PropertyGroup>
@@ -85,7 +85,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;SHERLOCK_ENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -105,7 +105,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;SHERLOCK_ENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -123,7 +123,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;SHERLOCK_ENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -143,7 +143,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;SHERLOCK_ENGINE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
@@ -161,6 +161,17 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="App\AppBase.h" />
     <ClInclude Include="App\GameApp.h" />
+    <ClInclude Include="App\EditorApp.h" />
+    <ClInclude Include="App\Editor.h" />
+    <ClInclude Include="App\ContentBrowser.h" />
+    <ClInclude Include="App\ScriptCreator.h" />
+    <ClInclude Include="App\GameBuilder.h" />
+    <ClInclude Include="App\DebugUI.h" />
+    <ClInclude Include="App\ProjectLauncher.h" />
+    <ClInclude Include="App\ProjectGenerator.h" />
+    <ClInclude Include="App\EntryPoints.h" />
+    <ClInclude Include="Core\EngineApi.h" />
+    <ClInclude Include="Core\ScriptModule.h" />
     <ClInclude Include="Core\GameTimer.h" />
     <ClInclude Include="Core\Input.h" />
     <ClInclude Include="Core\Log.h" />
@@ -221,6 +232,16 @@
     </ClCompile>
     <ClCompile Include="App\AppBase.cpp" />
     <ClCompile Include="App\GameApp.cpp" />
+    <ClCompile Include="App\EditorApp.cpp" />
+    <ClCompile Include="App\Editor.cpp" />
+    <ClCompile Include="App\ContentBrowser.cpp" />
+    <ClCompile Include="App\ScriptCreator.cpp" />
+    <ClCompile Include="App\GameBuilder.cpp" />
+    <ClCompile Include="App\DebugUI.cpp" />
+    <ClCompile Include="App\ProjectLauncher.cpp" />
+    <ClCompile Include="App\ProjectGenerator.cpp" />
+    <ClCompile Include="App\EntryPoints.cpp" />
+    <ClCompile Include="Core\ScriptModule.cpp" />
     <ClCompile Include="Core\GameTimer.cpp" />
     <ClCompile Include="Core\Input.cpp" />
     <ClCompile Include="Core\Log.cpp" />

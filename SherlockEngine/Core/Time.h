@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
 #include <cstdint>
 #include "Core/GameTimer.h"
 
@@ -8,7 +9,7 @@
 // 고정 스텝: 물리처럼 dt 가 일정해야 하는 갱신은 Tick 마다 누적된 시간을 fixedStep 단위로 소비함
 // (Fiedler, "Fix Your Timestep"). 프레임이 오래 걸리면 한 프레임에 여러 번 돌고, 짧으면 한 번도 돌지 않음. 한 프레임에
 // 최대 maxFixedStepsPerFrame 번까지만 돎 — 그 이상은 따라잡기를 포기해 죽음의 나선을 막음.
-class Time
+class SHERLOCK_API Time
 {
 public:
 	void Reset();            // 시계 시작 (Engine::Initialize 에서 호출)

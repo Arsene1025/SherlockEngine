@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "App/GameBuilder.h"
 #include "App/ProjectGenerator.h"
+#include "Core/ScriptModule.h"
 #include "Core/Paths.h"
 #include "Core/Log.h"
 #include <nlohmann/json.hpp>
@@ -141,49 +142,58 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 	for (char c : options.name) if (c == '\\' || c == '/' || c == ':' || c == '"') { result.message = "invalid game name"; return result; }
 	if (!Paths::HasProject()) { result.message = "no project is open"; return result; }
 
-	// 런타임 exe: 이 에디터 옆의 <프로젝트>.exe (프로젝트 솔루션) 또는 SherlockGame.exe (엔진 솔루션의 Sample).
-	// Release 를 켰으면 먼저 빌드하고 Release 폴더에서 가져옴.
-	const std::wstring projectExe = Wide(options.projectName) + L".exe";
+	// 2026-10-08 (B안): 런타임 = SherlockGame.exe + SherlockEngine.dll(+ vcpkg DLL) — 모든 프로젝트가 같은 exe 를 씀 — 와 프로젝트의 <이름>Scripts.dll.
+	// Release 를 켰으면 엔진 솔루션의 SherlockGame 과 프로젝트의 스크립트 DLL 을 Release 로 빌드한 뒤 Release 폴더에서 가져옴.
+	const std::wstring buildLog = GetBuildRoot() + L"msbuild.log";
 	std::wstring runtimeDir = Paths::GetExecutableDir();
+	const wchar_t* configuration = ScriptModule::GetConfiguration();
 	if (options.releaseBuild)
 	{
-		std::wstring solution = options.projectSolution;
-		std::wstring target = Wide(options.projectName);
-		if (solution.empty() || GetFileAttributesW(solution.c_str()) == INVALID_FILE_ATTRIBUTES)
+		configuration = L"Release";
+		// 이 에디터가 Release 면 엔진 Release DLL 은 지금 쓰는 중이고 이미 빌드돼 있음 (다시 링크할 수 없음)
+		if (wcscmp(ScriptModule::GetConfiguration(), L"Release") != 0)
 		{
-			// 엔진 솔루션의 Sample: 엔진 저장소의 SherlockEngine.sln, 타깃 SherlockGame
-			solution = ProjectGenerator::GetEngineRepoDir() + L"SherlockEngine.sln";
-			target = L"SherlockGame";
+			Log::Info("게임 빌드: MSBuild SherlockGame (Release|x64) …");
+			if (!ProjectGenerator::RunMsBuild(ProjectGenerator::GetEngineRepoDir() + L"SherlockEngine.sln", L"SherlockGame", L"Release", buildLog, result.message)) return result;
 		}
-		Log::Info("게임 빌드: MSBuild Release|x64 (%s) …", Utf8(target).c_str());
-		if (!ProjectGenerator::RunMsBuild(solution, target, L"Release", GetBuildRoot() + L"msbuild.log", result.message)) return result;
-		// 이 exe 가 x64\Debug 또는 Binaries\Debug 에 있으면 같은 위치의 Release 폴더를 씀
+		// 이 exe 가 x64\Debug 에 있으면 같은 위치의 Release 폴더를 씀
 		const size_t debug = runtimeDir.rfind(L"\\Debug\\");
 		if (debug != std::wstring::npos) runtimeDir = runtimeDir.substr(0, debug) + L"\\Release\\";
 	}
 	std::error_code ec;
-	fs::path runtimeExe = fs::path(runtimeDir) / projectExe;
-	if (!fs::exists(runtimeExe, ec)) runtimeExe = fs::path(runtimeDir) / L"SherlockGame.exe";
-	if (!fs::exists(runtimeExe, ec) && !options.releaseBuild && !options.projectSolution.empty() && GetFileAttributesW(options.projectSolution.c_str()) != INVALID_FILE_ATTRIBUTES)
+	const fs::path runtimeExe = fs::path(runtimeDir) / L"SherlockGame.exe";
+	if (!fs::exists(runtimeExe, ec)) { result.message = "game runtime not found in " + Utf8(runtimeDir) + " (build SherlockGame in SherlockEngine.sln)"; return result; }
+
+	// 스크립트 DLL: <프로젝트>\Binaries\<구성>\<이름>Scripts.dll. Release 이거나 아직 없으면 먼저 빌드함 (엔진은 위에서 빌드했으므로 BuildProjectReferences=false).
+	const std::wstring scriptsName = Wide(options.projectName) + L"Scripts";
+	const fs::path scriptsDll = fs::path(Paths::GetProjectRoot()) / L"Binaries" / configuration / (scriptsName + L".dll");
+	size_t scriptSources = 0;
+	for (const fs::directory_entry& entry : fs::recursive_directory_iterator(Paths::GetProjectRoot() + L"Scripts", ec))
+		if (entry.is_regular_file(ec) && entry.path().extension() == L".cpp") ++scriptSources;
+	if (scriptSources > 0 && (options.releaseBuild || !fs::exists(scriptsDll, ec)))
 	{
-		// 프로젝트 솔루션의 게임 타깃이 아직 빌드되지 않았음 (에디터만 빌드한 경우). Debug 로 한 번 빌드해 둠.
-		Log::Info("게임 빌드: %s.exe 가 없어 MSBuild Debug|x64 (%s) 를 먼저 …", options.projectName.c_str(), options.projectName.c_str());
-		if (!ProjectGenerator::RunMsBuild(options.projectSolution, Wide(options.projectName), L"Debug", GetBuildRoot() + L"msbuild.log", result.message)) return result;
-		runtimeExe = fs::path(runtimeDir) / projectExe;
+		if (options.projectSolution.empty() || !fs::exists(options.projectSolution, ec)) { result.message = "project solution not found: " + Utf8(options.projectSolution); return result; }
+		Log::Info("게임 빌드: MSBuild %s (%s|x64) …", Utf8(scriptsName).c_str(), Utf8(configuration).c_str());
+		if (!ProjectGenerator::RunMsBuild(options.projectSolution, scriptsName, configuration, buildLog, result.message, L"/p:BuildProjectReferences=false")) return result;
 	}
-	if (!fs::exists(runtimeExe, ec)) { result.message = "game runtime not found in " + Utf8(runtimeDir) + " (build the " + options.projectName + " / SherlockGame project)"; return result; }
 
 	const fs::path out = fs::path(GetBuildRoot()) / Wide(options.name);
 	result.outputDir = out.wstring() + L"\\";
 	fs::create_directories(out, ec);
 
-	// 1. 런타임: exe(게임 이름으로) + DLL (vcpkg 가 exe 옆에 둔 DirectXTex.dll 등)
+	// 1. 런타임: exe(게임 이름으로) + DLL (SherlockEngine.dll, vcpkg 가 둔 DirectXTex.dll 등)
 	if (!CopyOne(runtimeExe, out / (Wide(options.name) + L".exe"), result.filesCopied, result.message)) return result;
 	for (const fs::directory_entry& entry : fs::directory_iterator(runtimeDir, ec))
 	{
 		if (entry.is_regular_file(ec) && entry.path().extension() == L".dll")
 			if (!CopyOne(entry.path(), out / entry.path().filename(), result.filesCopied, result.message)) return result;
 	}
+	// 스크립트 DLL 은 <게임 이름>Scripts.dll 로 둠 — 패키지의 .sherlock 이름이 게임 이름이고, 런타임은 exe 옆의 <프로젝트 이름>Scripts.dll 을 찾음 (AppBase::LoadProjectScripts).
+	if (fs::exists(scriptsDll, ec))
+	{
+		if (!CopyOne(scriptsDll, out / (Wide(options.name) + L"Scripts.dll"), result.filesCopied, result.message)) return result;
+	}
+	else if (scriptSources > 0) { result.message = "scripts DLL not found: " + Utf8(scriptsDll.wstring()); return result; }
 	// 2. 셰이더: exe 옆의 .cso + 엔진 루트의 .hlsl 소스 (런타임 컴파일 폴백)
 	CopyTree(fs::path(runtimeDir) / L"Shaders", out / L"Shaders", result.filesCopied, result.message, false);
 	if (!CopyTree(fs::path(Paths::GetEngineRoot()) / L"Shaders", out / L"Shaders", result.filesCopied, result.message)) return result;

@@ -6,13 +6,13 @@
 //   <Name>\
 //   ├─ <Name>.sherlock     JSON: name, startScene, engineRoot (엔진 소스 폴더 — 프로젝트 솔루션, 셰이더, 엔진 콘텐츠를 찾는 기준)
 //   ├─ Assets\             프로젝트 콘텐츠 (Scenes\, Textures\, Models\ …). 엔진 콘텐츠(SherlockEngine\Assets)는 후순위 폴백으로 보임
-//   ├─ Scripts\            프로젝트 스크립트 (.h/.cpp). 프로젝트 솔루션이 와일드카드(Scripts\*.cpp)로 컴파일함
-//   ├─ <Name>.sln / <Name>Editor.vcxproj / <Name>.vcxproj   에디터가 생성 (ProjectGenerator). 엔진 lib 를 참조
-//   ├─ Binaries\<구성>\    <Name>Editor.exe, <Name>.exe
+//   ├─ Scripts\            프로젝트 스크립트 (.h/.cpp). <Name>Scripts.vcxproj 가 와일드카드(Scripts\**\*.cpp)로 컴파일함
+//   ├─ <Name>.sln / <Name>Scripts.vcxproj   에디터가 생성 (ProjectGenerator). 엔진 DLL 의 import lib 를 링크
+//   ├─ Binaries\<구성>\    <Name>Scripts.dll (2026-10-08 B안: 에디터·게임이 LoadLibrary 로 올림)
 //   └─ Build\              패키징 결과
 //
-// 엔진 컴포넌트(Rigidbody·FollowTarget·CameraComponent)는 엔진 lib 에 있어 어떤 프로젝트에서도 쓸 수 있음. 프로젝트 스크립트만 프로젝트에 속함.
-// 엔진 저장소의 Projects\Sample 이 예제 프로젝트이고, 엔진 솔루션의 SherlockEditor/SherlockGame 이 그 프로젝트의 에디터·게임임.
+// 엔진 컴포넌트(Rigidbody·FollowTarget·CameraComponent)는 엔진 DLL 에 있어 어떤 프로젝트에서도 쓸 수 있음. 프로젝트 스크립트만 프로젝트에 속함.
+// 에디터(SherlockEditor.exe)와 게임(SherlockGame.exe)은 모든 프로젝트가 공유하는 하나뿐임 — 프로젝트별 exe 는 없음 (언리얼의 게임 모듈 DLL 방식).
 class Project
 {
 public:
@@ -35,7 +35,7 @@ public:
 	std::wstring GetScriptsDir() const { return m_root + L"Scripts\\"; }
 	std::wstring GetBinariesDir(const wchar_t* configuration) const { return m_root + L"Binaries\\" + configuration + L"\\"; }
 	std::wstring GetSolutionPath() const;
-	std::wstring GetEditorProjectName() const;                     // "<Name>Editor"
+	std::wstring GetScriptsProjectName() const;                    // "<Name>Scripts" (vcxproj 이름이자 DLL 이름)
 
 	std::string startScene;      // Assets\Scenes 기준 파일명
 	std::wstring engineRoot;     // SherlockEngine\ 소스 폴더 (생성 시 기록). 값이 비었거나 그 폴더가 없으면 exe 옆에서 찾음

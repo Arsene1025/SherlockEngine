@@ -283,7 +283,7 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 	if (ImGui::RadioButton("World", m_gizmoWorld)) m_gizmoWorld = true; ImGui::SameLine();
 	ImGui::TextDisabled("RMB: look  WASD: move  LMB: select  1/2/3: gizmo  Ctrl+P: play");
 
-	// 11-E단계: 이 exe 에 프로젝트 스크립트가 없으면 씬 뷰 위(이미지 앞)에 배너를 표시 — 이미지가 남은 공간을 다 쓰므로 이미지보다 먼저 그림
+	// 11-E단계 (2026-10-08 B안으로 조건 변경): 스크립트 DLL 이 안 올라왔거나 새 빌드가 있으면 씬 뷰 위(이미지 앞)에 배너를 표시 — 이미지가 남은 공간을 다 쓰므로 이미지보다 먼저 그림
 	DrawProjectBanner(callbacks);
 
 	const ImVec2 available = ImGui::GetContentRegionAvail();
@@ -959,18 +959,35 @@ void Editor::OnProjectChanged()
 
 void Editor::DrawProjectBanner(const Callbacks& callbacks)
 {
-	if (!project.loaded || project.scriptsCompiledHere) return;
+	// 2026-10-08 (B안): 스크립트는 exe 가 아니라 <이름>Scripts.dll 에 있음. 배너는 "스크립트가 있는데 DLL 이 안 올라옴" 과
+	// "새 빌드가 있지만 재생 중이라 아직 못 올림" 두 경우에만 뜸. 스크립트가 없는 프로젝트(렌더링 실험 등)는 배너가 없음.
+	if (!project.loaded) return;
+	const bool missing = project.scriptSources > 0 && !project.scriptsLoaded;
+	if (!missing && !project.scriptsPendingReload) return;
 	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.45f, 0.30f, 0.05f, 0.92f));
 	ImGui::BeginChild("##projectBanner", ImVec2(ImGui::GetContentRegionAvail().x, 0.0f), ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_AlwaysAutoResize);
-	ImGui::TextWrapped("This editor was built without the scripts of project '%s' (compiled project: %s). Scripts in its Scripts\\ folder are unavailable — objects using them keep working with the other components.",
-		project.name.c_str(), AppBase::GetCompiledProjectName()[0] ? AppBase::GetCompiledProjectName() : "engine only");
-	if (project.hasSolution)
+	if (project.scriptsPendingReload)
 	{
-		if (ImGui::Button("Build and switch to the project editor") && callbacks.buildAndLaunchProjectEditor) callbacks.buildAndLaunchProjectEditor();
-		if (ImGui::IsItemHovered()) ImGui::SetTooltip("MSBuild %s (Debug|x64), then start Binaries\\Debug\\%sEditor.exe and close this editor", Log::ToUtf8(project.solutionPath.c_str()).c_str(), project.name.c_str());
-		ImGui::SameLine();
+		ImGui::TextWrapped("A new build of %sScripts.dll was found. It will be loaded when play stops.", project.name.c_str());
 	}
-	ImGui::TextDisabled("or open %s in Visual Studio and run %sEditor", project.hasSolution ? Log::ToUtf8(project.solutionPath.c_str()).c_str() : "(no solution - regenerate in Project Settings)", project.name.c_str());
+	else
+	{
+		ImGui::TextWrapped("Scripts of project '%s' are not loaded (%s). Objects using them keep working with the other components; build the scripts to use them.",
+			project.name.c_str(), project.scriptsError.empty() ? "not built" : project.scriptsError.c_str());
+		if (project.hasSolution)
+		{
+			if (ImGui::Button("Build scripts") && callbacks.buildScripts) callbacks.buildScripts();
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("MSBuild %sScripts (%s|x64) in %s, then load the DLL without restarting", project.name.c_str(),
+#if defined(_DEBUG)
+				"Debug",
+#else
+				"Release",
+#endif
+				Log::ToUtf8(project.solutionPath.c_str()).c_str());
+			ImGui::SameLine();
+		}
+		ImGui::TextDisabled("or build %sScripts in Visual Studio — the editor reloads it automatically", project.name.c_str());
+	}
 	ImGui::EndChild();
 	ImGui::PopStyleColor();
 }
@@ -1047,7 +1064,18 @@ void Editor::DrawProjectSettingsPopup(const Callbacks& callbacks)
 		if (ImGui::SmallButton("refresh")) m_buildScenes = GameBuilder::ListScenes();
 	}
 	ImGui::TextDisabled("Solution: %s", project.hasSolution ? Log::ToUtf8(project.solutionPath.c_str()).c_str() : "(none)");
-	ImGui::TextDisabled("Scripts compiled in this editor: %s", project.scriptsCompiledHere ? "yes" : "no");
+	// 2026-10-08 (B안): 스크립트 DLL 상태와 빌드 버튼
+	if (project.scriptsLoaded)
+		ImGui::TextDisabled("Scripts DLL: loaded, %zu component(s), loaded %u time(s)", project.scriptTypes, project.scriptReloads);
+	else
+		ImGui::TextDisabled("Scripts DLL: not loaded (%s)", project.scriptsError.empty() ? "no scripts" : project.scriptsError.c_str());
+	ImGui::TextDisabled("  %s", Log::ToUtf8(project.scriptsDll.c_str()).c_str());
+	if (project.hasSolution && callbacks.buildScripts)
+	{
+		if (ImGui::Button("Build scripts")) callbacks.buildScripts();
+		ImGui::SameLine();
+		ImGui::TextDisabled("(%zu source file(s); a newer build is also picked up automatically while editing)", project.scriptSources);
+	}
 	ImGui::Separator();
 	if (ImGui::Button("Save") && callbacks.saveProject) m_lastMessage = callbacks.saveProject() ? "project saved" : "project save failed";
 	ImGui::SameLine();
@@ -1068,7 +1096,7 @@ void Editor::DrawBuildPopup()
 	}
 	m_buildOptions.projectName = project.name;
 	m_buildOptions.projectSolution = project.solutionPath;
-	if (!project.scriptsCompiledHere) ImGui::TextColored(ImVec4(0.9f, 0.6f, 0.2f, 1.0f), "warning: this editor has no scripts of '%s'; the packaged runtime next to it will not have them either", project.name.c_str());
+	if (project.scriptSources > 0 && !project.scriptsLoaded) ImGui::TextColored(ImVec4(0.9f, 0.6f, 0.2f, 1.0f), "warning: %sScripts.dll is not built; the package will not have the scripts (build them first)", project.name.c_str());
 	if (m_buildScenes.empty()) m_buildScenes = GameBuilder::ListScenes();
 	if (m_buildOptions.startScene.empty() && !m_buildScenes.empty())
 	{
@@ -1157,9 +1185,9 @@ void Editor::DrawComponents(GameObject& object)
 			// 스크립트 소스 열기 (<프로젝트>\Scripts\<이름>.cpp). 고친 뒤 빌드·재실행.
 			if (ImGui::SmallButton("Edit"))
 			{
-				m_lastMessage = ScriptCreator::OpenScript(behaviour.GetTypeName()) ? std::string("opened ") + behaviour.GetTypeName() + ".h/.cpp (rebuild after editing)" : "script source not found in Game/Scripts";
+				m_lastMessage = ScriptCreator::OpenScript(behaviour.GetTypeName()) ? std::string("opened ") + behaviour.GetTypeName() + ".h/.cpp (Build scripts to reload)" : "script source not found in the project Scripts folder";
 			}
-			if (ImGui::IsItemHovered()) ImGui::SetTooltip("open Game/Scripts/%s.h and .cpp in the editor (rebuild + restart to apply)", behaviour.GetTypeName());
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("open Scripts/%s.h and .cpp (after editing: Build scripts, or build in Visual Studio — the editor reloads the DLL)", behaviour.GetTypeName());
 			ImGui::SameLine();
 		}
 		const bool open = ImGui::TreeNodeEx("##node", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed, "%s%s", behaviour.GetTypeName(), isScript ? "  (Script)" : "");
@@ -1173,6 +1201,28 @@ void Editor::DrawComponents(GameObject& object)
 	}
 	if (removeIndex >= 0) object.RemoveBehaviour(static_cast<size_t>(removeIndex));
 
+	// 2026-10-08 (B안): 스크립트 DLL 이 없어 만들지 못한 컴포넌트. 값은 보관 중이며 Build scripts 뒤 핫리로드가 되살림
+	auto& missing = object.GetMissingComponents();
+	int removeMissing = -1;
+	for (int i = 0; i < static_cast<int>(missing.size()); ++i)
+	{
+		const size_t typeAt = missing[i].find("\"type\":\"");
+		std::string type = "?";
+		if (typeAt != std::string::npos)
+		{
+			const size_t begin = typeAt + 8;
+			type = missing[i].substr(begin, missing[i].find('"', begin) - begin);
+		}
+		ImGui::PushID(1000 + i);
+		if (ImGui::SmallButton("x")) removeMissing = i;
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("remove (the saved values are lost)");
+		ImGui::SameLine();
+		ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), "%s  (Missing script)", type.c_str());
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("not registered: build the project scripts. Values are kept and restored on reload.");
+		ImGui::PopID();
+	}
+	if (removeMissing >= 0) missing.erase(missing.begin() + removeMissing);
+
 	// 추가: 레지스트리에 등록된 C++ 클래스 목록. 스크립트(프로젝트의 Scripts, SHERLOCK_SCRIPT)와 엔진 컴포넌트를 나눠 보여 줌.
 	ImGui::SetNextItemWidth(-FLT_MIN);
 	if (ImGui::BeginCombo("##addComponent", "Add Component..."))
@@ -1180,7 +1230,7 @@ void Editor::DrawComponents(GameObject& object)
 		for (int group = 0; group < 2; ++group)
 		{
 			const bool scripts = group == 0;
-			ImGui::SeparatorText(scripts ? "Scripts (Game/Scripts)" : "Components");
+			ImGui::SeparatorText(scripts ? "Scripts (project DLL)" : "Components");
 			for (const std::string& name : BehaviourRegistry::GetTypeNames())
 			{
 				if (BehaviourRegistry::IsScript(name) != scripts) continue;
@@ -1193,11 +1243,11 @@ void Editor::DrawComponents(GameObject& object)
 		}
 		ImGui::EndCombo();
 	}
-	if (BehaviourRegistry::GetTypeNames().empty()) ImGui::TextDisabled("(nothing registered — add a class in Game/Scripts with SHERLOCK_SCRIPT)");
+	if (BehaviourRegistry::GetTypeNames().empty()) ImGui::TextDisabled("(nothing registered — add a class in Scripts with SHERLOCK_SCRIPT)");
 
-	// 새 스크립트 (유니티의 Create > C# Script 에 해당). 파일 생성, vcxproj 등록, 편집기로 열기까지 함. 빌드 후 재실행해야 목록에 나타남.
+	// 새 스크립트 (유니티의 Create > C# Script 에 해당). 파일 생성과 편집기로 열기까지 함. 2026-10-08 (B안): Build scripts 하면 에디터가 DLL 을 다시 올려 목록에 나타남 (재실행 불필요).
 	if (ImGui::Button("New Script...")) ImGui::OpenPopup("New Script");
-	if (ImGui::IsItemHovered()) ImGui::SetTooltip("create Game/Scripts/<Name>.h + .cpp from a template, register them in the project and open them");
+	if (ImGui::IsItemHovered()) ImGui::SetTooltip("create Scripts/<Name>.h + .cpp from a template and open them");
 	if (ImGui::BeginPopupModal("New Script", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		if (!ScriptCreator::IsAvailable())
@@ -1212,7 +1262,7 @@ void Editor::DrawComponents(GameObject& object)
 			ImGui::SetNextItemWidth(320.0f);
 			const bool enter = ImGui::InputText("##name", m_newScriptName, sizeof(m_newScriptName), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsNoBlank);
 			ImGui::TextDisabled("%s", Log::ToUtf8((ScriptCreator::GetScriptsDir() + L"<Name>.h  +  <Name>.cpp").c_str()).c_str());
-			ImGui::TextDisabled("Both files open in your editor. Build (Ctrl+Shift+B) and restart to see it in Add Component.");
+			ImGui::TextDisabled("Both files open in your editor. Build scripts (or build in Visual Studio) - the editor reloads the DLL.");
 			if (!m_newScriptError.empty()) ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.3f, 1.0f), "%s", m_newScriptError.c_str());
 			const bool valid = ScriptCreator::IsValidClassName(m_newScriptName);
 			ImGui::BeginDisabled(!valid);
@@ -1222,7 +1272,7 @@ void Editor::DrawComponents(GameObject& object)
 				if (ScriptCreator::Create(m_newScriptName, error))
 				{
 					ScriptCreator::OpenScript(m_newScriptName);
-					m_lastMessage = std::string("created ") + m_newScriptName + ".cpp - build and restart";
+					m_lastMessage = std::string("created ") + m_newScriptName + ".cpp - Build scripts to use it";
 					m_newScriptError.clear();
 					m_newScriptName[0] = '\0';
 					ImGui::CloseCurrentPopup();

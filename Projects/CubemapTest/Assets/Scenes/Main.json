@@ -1,19 +1,18 @@
 {
-  "version": 4,
-  "camera": {
-    "position": [
-      0.0,
-      3.2,
-      -9.0
-    ],
-    "yaw": 0.0,
-    "pitch": 0.0
-  },
   "ambientColor": [
-    0.03,
-    0.03,
-    0.03
+    0.029999999329447746,
+    0.029999999329447746,
+    0.029999999329447746
   ],
+  "camera": {
+    "pitch": 1.341104507446289e-07,
+    "position": [
+      2.3115882873535156,
+      3.804626703262329,
+      -9.696110725402832
+    ],
+    "yaw": -0.21249161660671234
+  },
   "clearColor": [
     0.0,
     0.0,
@@ -21,12 +20,12 @@
     1.0
   ],
   "environment": {
-    "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
-    "irradiance": "asset:Cubemap\\CubemapSampleDiffuseHDR.dds",
-    "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
     "brdfLut": "asset:Cubemap\\CubemapSampleBrdf.dds",
-    "iblIntensity": 0.5,
     "exposure": 1.0,
+    "iblIntensity": 0.5,
+    "irradiance": "asset:Cubemap\\CubemapSampleDiffuseHDR.dds",
+    "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
+    "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
     "toneMapping": true
   },
   "lights": [
@@ -38,16 +37,16 @@
       ],
       "color": [
         1.0,
-        0.62,
-        0.42
+        0.6200000047683716,
+        0.41999998688697815
       ],
       "direction": [
-        0.8531879055103522,
-        -0.24293505282185426,
-        -0.4615766003615231
+        0.8531879186630249,
+        -0.24293504655361176,
+        -0.4615766108036041
       ],
       "innerConeCos": 0.9238795042037964,
-      "intensity": 1.2,
+      "intensity": 1.2000000476837158,
       "outerConeCos": 0.8660253882408142,
       "position": [
         0.0,
@@ -56,30 +55,6 @@
       ],
       "range": 50.0,
       "type": 0
-    }
-  ],
-  "meshes": [
-    {
-      "meshIndex": 0,
-      "path": "Models\\DamagedHelmet\\DamagedHelmet.glb",
-      "type": "model"
-    },
-    {
-      "type": "sphere",
-      "params": [
-        0.8,
-        0.0,
-        0.0,
-        0.0
-      ],
-      "a": 48,
-      "b": 24,
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ]
     }
   ],
   "materials": [
@@ -150,400 +125,424 @@
       "wireframe": false
     },
     {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        0.765999972820282,
+        0.335999995470047,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "",
       "name": "Gold_R0.0",
-      "baseColor": [
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.0,
+      "sampler": 0,
+      "unlit": false,
+      "uvScale": [
         1.0,
-        0.766,
-        0.336,
         1.0
       ],
-      "metallic": 1.0,
-      "roughness": 0.0,
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        0.765999972820282,
+        0.335999995470047,
+        1.0
+      ],
+      "doubleSided": false,
       "emissive": [
         0.0,
         0.0,
         0.0
       ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
-      "sampler": 0,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
       "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
-    },
-    {
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "",
       "name": "Gold_R0.2",
-      "baseColor": [
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.20000000298023224,
+      "sampler": 0,
+      "unlit": false,
+      "uvScale": [
         1.0,
-        0.766,
-        0.336,
         1.0
       ],
-      "metallic": 1.0,
-      "roughness": 0.2,
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        0.765999972820282,
+        0.335999995470047,
+        1.0
+      ],
+      "doubleSided": false,
       "emissive": [
         0.0,
         0.0,
         0.0
       ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
-      "sampler": 0,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
       "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
-    },
-    {
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "",
       "name": "Gold_R0.4",
-      "baseColor": [
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.4000000059604645,
+      "sampler": 0,
+      "unlit": false,
+      "uvScale": [
         1.0,
-        0.766,
-        0.336,
         1.0
       ],
-      "metallic": 1.0,
-      "roughness": 0.4,
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        0.765999972820282,
+        0.335999995470047,
+        1.0
+      ],
+      "doubleSided": false,
       "emissive": [
         0.0,
         0.0,
         0.0
       ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
-      "sampler": 0,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
       "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
-    },
-    {
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "",
       "name": "Gold_R0.6",
-      "baseColor": [
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.6000000238418579,
+      "sampler": 0,
+      "unlit": false,
+      "uvScale": [
         1.0,
-        0.766,
-        0.336,
         1.0
       ],
-      "metallic": 1.0,
-      "roughness": 0.6,
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        0.765999972820282,
+        0.335999995470047,
+        1.0
+      ],
+      "doubleSided": false,
       "emissive": [
         0.0,
         0.0,
         0.0
       ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
-      "sampler": 0,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
       "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
-    },
-    {
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "",
       "name": "Gold_R0.8",
-      "baseColor": [
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.800000011920929,
+      "sampler": 0,
+      "unlit": false,
+      "uvScale": [
         1.0,
-        0.766,
-        0.336,
         1.0
       ],
-      "metallic": 1.0,
-      "roughness": 0.8,
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        0.765999972820282,
+        0.335999995470047,
+        1.0
+      ],
+      "doubleSided": false,
       "emissive": [
         0.0,
         0.0,
         0.0
       ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
-      "sampler": 0,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
       "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
-    },
-    {
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "",
       "name": "Gold_R1.0",
-      "baseColor": [
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 0,
+      "unlit": false,
+      "uvScale": [
         1.0,
-        0.766,
-        0.336,
         1.0
       ],
-      "metallic": 1.0,
-      "roughness": 1.0,
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.800000011920929,
+        0.07999999821186066,
+        0.05999999865889549,
+        1.0
+      ],
+      "doubleSided": false,
       "emissive": [
         0.0,
         0.0,
         0.0
       ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
-      "sampler": 0,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
       "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
-    },
-    {
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "Plastic_R0.0",
-      "baseColor": [
-        0.8,
-        0.08,
-        0.06,
-        1.0
-      ],
-      "metallic": 0.0,
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
       "roughness": 0.0,
+      "sampler": 0,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.800000011920929,
+        0.07999999821186066,
+        0.05999999865889549,
+        1.0
+      ],
+      "doubleSided": false,
       "emissive": [
         0.0,
         0.0,
         0.0
       ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
-      "sampler": 0,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
       "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
-    },
-    {
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "Plastic_R0.2",
-      "baseColor": [
-        0.8,
-        0.08,
-        0.06,
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.20000000298023224,
+      "sampler": 0,
+      "unlit": false,
+      "uvScale": [
+        1.0,
         1.0
       ],
-      "metallic": 0.0,
-      "roughness": 0.2,
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.800000011920929,
+        0.07999999821186066,
+        0.05999999865889549,
+        1.0
+      ],
+      "doubleSided": false,
       "emissive": [
         0.0,
         0.0,
         0.0
       ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
-      "sampler": 0,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
       "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
-    },
-    {
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "Plastic_R0.4",
-      "baseColor": [
-        0.8,
-        0.08,
-        0.06,
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.4000000059604645,
+      "sampler": 0,
+      "unlit": false,
+      "uvScale": [
+        1.0,
         1.0
       ],
-      "metallic": 0.0,
-      "roughness": 0.4,
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.800000011920929,
+        0.07999999821186066,
+        0.05999999865889549,
+        1.0
+      ],
+      "doubleSided": false,
       "emissive": [
         0.0,
         0.0,
         0.0
       ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
-      "sampler": 0,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
       "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
-    },
-    {
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "Plastic_R0.6",
-      "baseColor": [
-        0.8,
-        0.08,
-        0.06,
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.6000000238418579,
+      "sampler": 0,
+      "unlit": false,
+      "uvScale": [
+        1.0,
         1.0
       ],
-      "metallic": 0.0,
-      "roughness": 0.6,
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.800000011920929,
+        0.07999999821186066,
+        0.05999999865889549,
+        1.0
+      ],
+      "doubleSided": false,
       "emissive": [
         0.0,
         0.0,
         0.0
       ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
-      "sampler": 0,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
       "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
-    },
-    {
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "Plastic_R0.8",
-      "baseColor": [
-        0.8,
-        0.08,
-        0.06,
-        1.0
-      ],
-      "metallic": 0.0,
-      "roughness": 0.8,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.800000011920929,
       "sampler": 0,
+      "unlit": false,
       "uvScale": [
         1.0,
         1.0
       ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
-      "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
+      "wireframe": false
     },
     {
-      "name": "Plastic_R1.0",
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
       "baseColor": [
-        0.8,
-        0.08,
-        0.06,
+        0.800000011920929,
+        0.07999999821186066,
+        0.05999999865889549,
         1.0
       ],
-      "metallic": 0.0,
-      "roughness": 1.0,
+      "doubleSided": false,
       "emissive": [
         0.0,
         0.0,
         0.0
       ],
-      "albedoTexture": "",
-      "albedoSrgb": true,
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "name": "Plastic_R1.0",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
       "sampler": 0,
+      "unlit": false,
       "uvScale": [
         1.0,
         1.0
       ],
-      "unlit": false,
-      "normalTexture": "",
-      "normalStrength": 1.0,
-      "metallicRoughnessTexture": "",
-      "occlusionTexture": "",
-      "occlusionStrength": 1.0,
-      "emissiveTexture": "",
-      "alphaCutoff": 0.0,
-      "wireframe": false,
-      "doubleSided": false
+      "wireframe": false
+    }
+  ],
+  "meshes": [
+    {
+      "meshIndex": 0,
+      "path": "Models\\DamagedHelmet\\DamagedHelmet.glb",
+      "type": "model"
+    },
+    {
+      "a": 48,
+      "b": 24,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        0.800000011920929,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "type": "sphere"
     }
   ],
   "objects": [
@@ -553,7 +552,7 @@
       "name": "DamagedHelmet",
       "position": [
         0.0,
-        1.3,
+        1.2999999523162842,
         -1.5
       ],
       "preTransform": [
@@ -590,12 +589,12 @@
       ]
     },
     {
-      "name": "Gold R0.0",
-      "mesh": 1,
       "material": 2,
+      "mesh": 1,
+      "name": "Gold R0.0",
       "position": [
         -5.5,
-        5.6,
+        5.599999904632568,
         3.0
       ],
       "rotation": [
@@ -610,12 +609,12 @@
       ]
     },
     {
-      "name": "Gold R0.2",
-      "mesh": 1,
       "material": 3,
+      "mesh": 1,
+      "name": "Gold R0.2",
       "position": [
-        -3.3,
-        5.6,
+        -3.299999952316284,
+        5.599999904632568,
         3.0
       ],
       "rotation": [
@@ -630,12 +629,12 @@
       ]
     },
     {
-      "name": "Gold R0.4",
-      "mesh": 1,
       "material": 4,
+      "mesh": 1,
+      "name": "Gold R0.4",
       "position": [
-        -1.0999999999999996,
-        5.6,
+        -1.100000023841858,
+        5.599999904632568,
         3.0
       ],
       "rotation": [
@@ -650,12 +649,12 @@
       ]
     },
     {
-      "name": "Gold R0.6",
-      "mesh": 1,
       "material": 5,
+      "mesh": 1,
+      "name": "Gold R0.6",
       "position": [
-        1.1000000000000005,
-        5.6,
+        1.100000023841858,
+        5.599999904632568,
         3.0
       ],
       "rotation": [
@@ -670,12 +669,12 @@
       ]
     },
     {
-      "name": "Gold R0.8",
-      "mesh": 1,
       "material": 6,
+      "mesh": 1,
+      "name": "Gold R0.8",
       "position": [
-        3.3000000000000007,
-        5.6,
+        3.299999952316284,
+        5.599999904632568,
         3.0
       ],
       "rotation": [
@@ -690,12 +689,12 @@
       ]
     },
     {
-      "name": "Gold R1.0",
-      "mesh": 1,
       "material": 7,
+      "mesh": 1,
+      "name": "Gold R1.0",
       "position": [
         5.5,
-        5.6,
+        5.599999904632568,
         3.0
       ],
       "rotation": [
@@ -710,9 +709,9 @@
       ]
     },
     {
-      "name": "Plastic R0.0",
-      "mesh": 1,
       "material": 8,
+      "mesh": 1,
+      "name": "Plastic R0.0",
       "position": [
         -5.5,
         3.5,
@@ -730,11 +729,11 @@
       ]
     },
     {
-      "name": "Plastic R0.2",
-      "mesh": 1,
       "material": 9,
+      "mesh": 1,
+      "name": "Plastic R0.2",
       "position": [
-        -3.3,
+        -3.299999952316284,
         3.5,
         3.0
       ],
@@ -750,11 +749,11 @@
       ]
     },
     {
-      "name": "Plastic R0.4",
-      "mesh": 1,
       "material": 10,
+      "mesh": 1,
+      "name": "Plastic R0.4",
       "position": [
-        -1.0999999999999996,
+        -1.100000023841858,
         3.5,
         3.0
       ],
@@ -770,11 +769,11 @@
       ]
     },
     {
-      "name": "Plastic R0.6",
-      "mesh": 1,
       "material": 11,
+      "mesh": 1,
+      "name": "Plastic R0.6",
       "position": [
-        1.1000000000000005,
+        1.100000023841858,
         3.5,
         3.0
       ],
@@ -790,11 +789,11 @@
       ]
     },
     {
-      "name": "Plastic R0.8",
-      "mesh": 1,
       "material": 12,
+      "mesh": 1,
+      "name": "Plastic R0.8",
       "position": [
-        3.3000000000000007,
+        3.299999952316284,
         3.5,
         3.0
       ],
@@ -810,9 +809,9 @@
       ]
     },
     {
-      "name": "Plastic R1.0",
-      "mesh": 1,
       "material": 13,
+      "mesh": 1,
+      "name": "Plastic R1.0",
       "position": [
         5.5,
         3.5,
@@ -846,7 +845,7 @@
       "name": "Main Camera",
       "position": [
         0.0,
-        3.2,
+        3.200000047683716,
         -9.0
       ],
       "rotation": [
@@ -860,5 +859,6 @@
         1.0
       ]
     }
-  ]
+  ],
+  "version": 4
 }

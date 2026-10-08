@@ -5,13 +5,13 @@
     0.11999999731779099
   ],
   "camera": {
-    "pitch": 0.8782848119735718,
+    "pitch": 0.6732863783836365,
     "position": [
-      15.619025230407715,
-      24.70808982849121,
-      -7.785666465759277
+      7.3654303550720215,
+      14.43248176574707,
+      -5.084444046020508
     ],
-    "yaw": -1.0944405794143677
+    "yaw": -1.524458885192871
   },
   "clearColor": [
     0.10000000149011612,
@@ -19,6 +19,15 @@
     0.30000001192092896,
     1.0
   ],
+  "environment": {
+    "brdfLut": "",
+    "exposure": 1.0,
+    "iblIntensity": 1.0,
+    "irradiance": "",
+    "skybox": "builtin:sky",
+    "specular": "",
+    "toneMapping": false
+  },
   "lights": [
     {
       "attenuation": [
@@ -114,16 +123,21 @@
         1.0
       ],
       "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "Floor",
       "normalStrength": 0.6000000238418579,
       "normalTexture": "bumps_normal.png",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.6687402725219727,
       "sampler": 2,
-      "shininess": 8.0,
-      "specularColor": [
-        0.20000000298023224,
-        0.20000000298023224,
-        0.20000000298023224
-      ],
       "unlit": false,
       "uvScale": [
         8.0,
@@ -142,16 +156,21 @@
         1.0
       ],
       "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "",
       "name": "UVChecker",
       "normalStrength": 1.0,
       "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.4924790561199188,
       "sampler": 0,
-      "shininess": 32.0,
-      "specularColor": [
-        0.30000001192092896,
-        0.30000001192092896,
-        0.30000001192092896
-      ],
       "unlit": false,
       "uvScale": [
         1.0,
@@ -170,16 +189,21 @@
         1.0
       ],
       "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "BlueMatte",
       "normalStrength": 1.0,
       "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.7598356604576111,
       "sampler": 0,
-      "shininess": 4.0,
-      "specularColor": [
-        0.10000000149011612,
-        0.10000000149011612,
-        0.10000000149011612
-      ],
       "unlit": false,
       "uvScale": [
         2.0,
@@ -198,16 +222,21 @@
         1.0
       ],
       "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "GoldWire",
       "normalStrength": 1.0,
       "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.4924790561199188,
       "sampler": 0,
-      "shininess": 32.0,
-      "specularColor": [
-        1.0,
-        1.0,
-        1.0
-      ],
       "unlit": false,
       "uvScale": [
         1.0,
@@ -226,16 +255,21 @@
         1.0
       ],
       "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "Orange",
       "normalStrength": 1.5,
       "normalTexture": "bumps_normal.png",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.4924790561199188,
       "sampler": 0,
-      "shininess": 32.0,
-      "specularColor": [
-        1.0,
-        1.0,
-        1.0
-      ],
       "unlit": false,
       "uvScale": [
         1.0,
@@ -254,16 +288,21 @@
         1.0
       ],
       "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "Green",
       "normalStrength": 1.0,
       "normalTexture": "bumps_normal.png",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.5266404151916504,
       "sampler": 0,
-      "shininess": 24.0,
-      "specularColor": [
-        0.6000000238418579,
-        0.6000000238418579,
-        0.6000000238418579
-      ],
       "unlit": false,
       "uvScale": [
         4.0,
@@ -282,16 +321,21 @@
         1.0
       ],
       "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "GrayCard128",
       "normalStrength": 1.0,
       "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.4924790561199188,
       "sampler": 0,
-      "shininess": 32.0,
-      "specularColor": [
-        1.0,
-        1.0,
-        1.0
-      ],
       "unlit": true,
       "uvScale": [
         1.0,
@@ -406,14 +450,6 @@
           ],
           "radius": 2.5,
           "type": "Rigidbody"
-        },
-        {
-          "boost": 3.0,
-          "enabled": true,
-          "jumpSpeed": 7.0,
-          "rotatorObject": "Cylinder",
-          "speed": 6.0,
-          "type": "PlayerController"
         }
       ],
       "material": 1,
@@ -534,12 +570,8 @@
     {
       "components": [
         {
-          "degreesPerSecond": [
-            0.0,
-            60.0,
-            0.0
-          ],
           "enabled": true,
+          "speed": 1.0,
           "type": "Rotator"
         }
       ],
@@ -614,5 +646,5 @@
       ]
     }
   ],
-  "version": 3
+  "version": 4
 }
