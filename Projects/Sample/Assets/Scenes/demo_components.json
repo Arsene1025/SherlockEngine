@@ -5,13 +5,13 @@
     0.11999999731779099
   ],
   "camera": {
-    "pitch": 0.6732863783836365,
+    "pitch": 0.20079028606414795,
     "position": [
-      7.3654303550720215,
-      14.43248176574707,
-      -5.084444046020508
+      19.72844696044922,
+      12.511914253234863,
+      16.502471923828125
     ],
-    "yaw": -1.524458885192871
+    "yaw": -2.421294689178467
   },
   "clearColor": [
     0.10000000149011612,
@@ -20,13 +20,13 @@
     1.0
   ],
   "environment": {
-    "brdfLut": "",
+    "brdfLut": "asset:Cubemap\\CubemapSampleBrdf.dds",
     "exposure": 1.0,
-    "iblIntensity": 1.0,
-    "irradiance": "",
-    "skybox": "builtin:sky",
-    "specular": "",
-    "toneMapping": false
+    "iblIntensity": 0.5,
+    "irradiance": "asset:Cubemap\\CubemapSampleDiffuseHDR.dds",
+    "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
+    "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
+    "toneMapping": true
   },
   "lights": [
     {
@@ -570,8 +570,12 @@
     {
       "components": [
         {
+          "degreesPerSecond": [
+            0.0,
+            60.0,
+            0.0
+          ],
           "enabled": true,
-          "speed": 1.0,
           "type": "Rotator"
         }
       ],

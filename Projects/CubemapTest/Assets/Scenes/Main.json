@@ -1,22 +1,22 @@
 {
   "ambientColor": [
-    0.029999999329447746,
-    0.029999999329447746,
-    0.029999999329447746
+    0.3199999928474426,
+    0.33000001311302185,
+    0.36000001430511475
   ],
   "camera": {
-    "pitch": 1.341104507446289e-07,
+    "pitch": 0.15389907360076904,
     "position": [
-      2.3115882873535156,
-      3.804626703262329,
-      -9.696110725402832
+      -0.72252357006073,
+      5.288355350494385,
+      0.5289933681488037
     ],
-    "yaw": -0.21249161660671234
+    "yaw": 1.1828958988189697
   },
   "clearColor": [
-    0.0,
-    0.0,
-    0.0,
+    0.3499999940395355,
+    0.44999998807907104,
+    0.6000000238418579,
     1.0
   ],
   "environment": {
@@ -37,16 +37,16 @@
       ],
       "color": [
         1.0,
-        0.6200000047683716,
-        0.41999998688697815
+        1.0,
+        1.0
       ],
       "direction": [
-        0.8531879186630249,
-        -0.24293504655361176,
-        -0.4615766108036041
+        0.25,
+        -1.0,
+        0.11999999731779099
       ],
       "innerConeCos": 0.9238795042037964,
-      "intensity": 1.2000000476837158,
+      "intensity": 2.200000047683716,
       "outerConeCos": 0.8660253882408142,
       "position": [
         0.0,
@@ -60,28 +60,820 @@
   "materials": [
     {
       "albedoSrgb": true,
-      "albedoTexture": "DamagedHelmet/0",
+      "albedoTexture": "Sponza/1 5061699253647017043.png",
+      "alphaCutoff": 0.5,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": true,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/2 11872827283454512094.jpg",
+      "name": "Sponza/material0",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/0 8773302468495022225.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/7 7268504077753552595.jpg",
       "alphaCutoff": 0.0,
       "baseColor": [
-        1.0,
-        1.0,
-        1.0,
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
         1.0
       ],
       "doubleSided": false,
       "emissive": [
-        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/8 8503262930880235456.jpg",
+      "name": "Sponza/material1",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/6 4477655471536070370.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
         1.0,
         1.0
       ],
-      "emissiveTexture": "DamagedHelmet/2",
-      "metallic": 1.0,
-      "metallicRoughnessTexture": "DamagedHelmet/1",
-      "name": "Material_MR",
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/68 white.png",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "name": "Sponza/material2",
       "normalStrength": 1.0,
-      "normalTexture": "DamagedHelmet/4",
+      "normalTexture": "",
       "occlusionStrength": 1.0,
-      "occlusionTexture": "DamagedHelmet/3",
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/4 8006627369776289000.png",
+      "alphaCutoff": 0.5,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": true,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/5 715093869573992647.jpg",
+      "name": "Sponza/material3",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/3 12501374198249454378.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/10 8750083169368950601.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/11 16885566240357350108.jpg",
+      "name": "Sponza/material4",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/9 13982482287905699490.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/13 5792855332885324923.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/14 11968150294050148237.jpg",
+      "name": "Sponza/material5",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/12 16299174074766089871.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/16 14650633544276105767.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/17 4871783166746854860.jpg",
+      "name": "Sponza/material6",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/15 2051777328469649772.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/19 15295713303328085182.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/20 9916269861720640319.jpg",
+      "name": "Sponza/material7",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/18 10388182081421875623.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/22 6047387724914829168.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/23 8051790464816141987.jpg",
+      "name": "Sponza/material8",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/21 15722799267630235092.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/25 5823059166183034438.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/26 13824894030729245199.jpg",
+      "name": "Sponza/material9",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/24 14267839433702832875.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/28 7441062115984513793.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/29 8114461559286000061.jpg",
+      "name": "Sponza/material10",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/27 6667038893015345571.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/31 11490520546946913238.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/32 3455394979645218238.jpg",
+      "name": "Sponza/material11",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/30 3628158980083700836.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/34 6151467286084645207.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/35 8783994986360286082.jpg",
+      "name": "Sponza/material12",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/33 7645212358685992005.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/37 4975155472559461469.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/38 3371964815757888145.jpg",
+      "name": "Sponza/material13",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/36 2299742237651021498.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/40 4675343432951571524.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/41 7815564343179553343.jpg",
+      "name": "Sponza/material14",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/39 7056944414013900257.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/43 2775690330959970771.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/41 7815564343179553343.jpg",
+      "name": "Sponza/material15",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/42 2374361008830720677.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/45 2185409758123873465.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/41 7815564343179553343.jpg",
+      "name": "Sponza/material16",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/44 332936164838540657.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/47 17876391417123941155.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/48 466164707995436622.jpg",
+      "name": "Sponza/material17",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/46 6593109234861095314.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/50 11474523244911310074.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/48 466164707995436622.jpg",
+      "name": "Sponza/material18",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/49 4601176305987539675.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/52 9288698199695299068.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/48 466164707995436622.jpg",
+      "name": "Sponza/material19",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/51 4910669866631290573.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/54 16275776544635328252.png",
+      "alphaCutoff": 0.5,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": true,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/55 1219024358953944284.jpg",
+      "name": "Sponza/material20",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/53 14170708867020035030.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/57 755318871556304029.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/58 2411100444841994089.jpg",
+      "name": "Sponza/material21",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/56 3827035219084910048.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/60 8481240838833932244.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/61 17556969131407844942.jpg",
+      "name": "Sponza/material22",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/59 10381718147657362067.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/63 6772804448157695701.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/64 13196865903111448057.jpg",
+      "name": "Sponza/material23",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/62 759203620573749278.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "Sponza/66 2969916736137545357.jpg",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.5879999995231628,
+        0.5879999995231628,
+        0.5879999995231628,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "Sponza/67 8747919177698443163.jpg",
+      "name": "Sponza/material24",
+      "normalStrength": 1.0,
+      "normalTexture": "Sponza/65 14118779221266351425.jpg",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
       "unlit": false,
@@ -110,7 +902,7 @@
       "emissiveTexture": "",
       "metallic": 0.0,
       "metallicRoughnessTexture": "",
-      "name": "DamagedHelmet/material1",
+      "name": "Sponza/material25",
       "normalStrength": 1.0,
       "normalTexture": "",
       "occlusionStrength": 1.0,
@@ -123,450 +915,37 @@
         1.0
       ],
       "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        1.0,
-        0.765999972820282,
-        0.335999995470047,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 1.0,
-      "metallicRoughnessTexture": "",
-      "name": "Gold_R0.0",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 0.0,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        1.0,
-        0.765999972820282,
-        0.335999995470047,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 1.0,
-      "metallicRoughnessTexture": "",
-      "name": "Gold_R0.2",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 0.20000000298023224,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        1.0,
-        0.765999972820282,
-        0.335999995470047,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 1.0,
-      "metallicRoughnessTexture": "",
-      "name": "Gold_R0.4",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 0.4000000059604645,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        1.0,
-        0.765999972820282,
-        0.335999995470047,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 1.0,
-      "metallicRoughnessTexture": "",
-      "name": "Gold_R0.6",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 0.6000000238418579,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        1.0,
-        0.765999972820282,
-        0.335999995470047,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 1.0,
-      "metallicRoughnessTexture": "",
-      "name": "Gold_R0.8",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 0.800000011920929,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        1.0,
-        0.765999972820282,
-        0.335999995470047,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 1.0,
-      "metallicRoughnessTexture": "",
-      "name": "Gold_R1.0",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 1.0,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        0.800000011920929,
-        0.07999999821186066,
-        0.05999999865889549,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 0.0,
-      "metallicRoughnessTexture": "",
-      "name": "Plastic_R0.0",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 0.0,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        0.800000011920929,
-        0.07999999821186066,
-        0.05999999865889549,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 0.0,
-      "metallicRoughnessTexture": "",
-      "name": "Plastic_R0.2",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 0.20000000298023224,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        0.800000011920929,
-        0.07999999821186066,
-        0.05999999865889549,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 0.0,
-      "metallicRoughnessTexture": "",
-      "name": "Plastic_R0.4",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 0.4000000059604645,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        0.800000011920929,
-        0.07999999821186066,
-        0.05999999865889549,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 0.0,
-      "metallicRoughnessTexture": "",
-      "name": "Plastic_R0.6",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 0.6000000238418579,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        0.800000011920929,
-        0.07999999821186066,
-        0.05999999865889549,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 0.0,
-      "metallicRoughnessTexture": "",
-      "name": "Plastic_R0.8",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 0.800000011920929,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
-    },
-    {
-      "albedoSrgb": true,
-      "albedoTexture": "",
-      "alphaCutoff": 0.0,
-      "baseColor": [
-        0.800000011920929,
-        0.07999999821186066,
-        0.05999999865889549,
-        1.0
-      ],
-      "doubleSided": false,
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "emissiveTexture": "",
-      "metallic": 0.0,
-      "metallicRoughnessTexture": "",
-      "name": "Plastic_R1.0",
-      "normalStrength": 1.0,
-      "normalTexture": "",
-      "occlusionStrength": 1.0,
-      "occlusionTexture": "",
-      "roughness": 1.0,
-      "sampler": 0,
-      "unlit": false,
-      "uvScale": [
-        1.0,
-        1.0
-      ],
-      "wireframe": false
     }
   ],
   "meshes": [
     {
       "meshIndex": 0,
-      "path": "Models\\DamagedHelmet\\DamagedHelmet.glb",
+      "path": "Models\\Sponza\\Sponza.gltf",
       "type": "model"
-    },
-    {
-      "a": 48,
-      "b": 24,
-      "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
-      ],
-      "params": [
-        0.800000011920929,
-        0.0,
-        0.0,
-        0.0
-      ],
-      "type": "sphere"
     }
   ],
   "objects": [
     {
-      "material": 1,
+      "material": 25,
       "mesh": 0,
-      "name": "DamagedHelmet",
+      "name": "Sponza/node0",
       "position": [
         0.0,
-        1.2999999523162842,
-        -1.5
+        0.0,
+        0.0
       ],
       "preTransform": [
-        1.0,
+        0.00800000037997961,
         0.0,
         0.0,
         0.0,
         0.0,
-        -1.1920928955078125e-07,
-        -1.0000001192092896,
+        0.00800000037997961,
         0.0,
         0.0,
-        1.0000001192092896,
-        -1.1920928955078125e-07,
+        0.0,
+        0.0,
+        0.00800000037997961,
         0.0,
         0.0,
         0.0,
@@ -585,247 +964,31 @@
       ],
       "slotMaterials": [
         0,
-        1
-      ]
-    },
-    {
-      "material": 2,
-      "mesh": 1,
-      "name": "Gold R0.0",
-      "position": [
-        -5.5,
-        5.599999904632568,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "material": 3,
-      "mesh": 1,
-      "name": "Gold R0.2",
-      "position": [
-        -3.299999952316284,
-        5.599999904632568,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "material": 4,
-      "mesh": 1,
-      "name": "Gold R0.4",
-      "position": [
-        -1.100000023841858,
-        5.599999904632568,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "material": 5,
-      "mesh": 1,
-      "name": "Gold R0.6",
-      "position": [
-        1.100000023841858,
-        5.599999904632568,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "material": 6,
-      "mesh": 1,
-      "name": "Gold R0.8",
-      "position": [
-        3.299999952316284,
-        5.599999904632568,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "material": 7,
-      "mesh": 1,
-      "name": "Gold R1.0",
-      "position": [
-        5.5,
-        5.599999904632568,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "material": 8,
-      "mesh": 1,
-      "name": "Plastic R0.0",
-      "position": [
-        -5.5,
-        3.5,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "material": 9,
-      "mesh": 1,
-      "name": "Plastic R0.2",
-      "position": [
-        -3.299999952316284,
-        3.5,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "material": 10,
-      "mesh": 1,
-      "name": "Plastic R0.4",
-      "position": [
-        -1.100000023841858,
-        3.5,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "material": 11,
-      "mesh": 1,
-      "name": "Plastic R0.6",
-      "position": [
-        1.100000023841858,
-        3.5,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "material": 12,
-      "mesh": 1,
-      "name": "Plastic R0.8",
-      "position": [
-        3.299999952316284,
-        3.5,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
-    {
-      "material": 13,
-      "mesh": 1,
-      "name": "Plastic R1.0",
-      "position": [
-        5.5,
-        3.5,
-        3.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25
       ]
     },
     {
@@ -844,13 +1007,13 @@
       "mesh": -1,
       "name": "Main Camera",
       "position": [
-        0.0,
-        3.200000047683716,
-        -9.0
+        6.213386058807373,
+        1.588459849357605,
+        1.4078764915466309
       ],
       "rotation": [
-        0.0,
-        0.0,
+        -0.06860041618347168,
+        -1.7377756834030151,
         0.0
       ],
       "scale": [

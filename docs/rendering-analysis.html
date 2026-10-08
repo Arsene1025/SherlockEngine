@@ -456,6 +456,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
     <li class="sub" data-ch="c20"><a href="#c20-15">20.15 적용 기록 — 2026-10-08 · PBR 전환과 IBL, CubemapTest 프로젝트</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-16">20.16 적용 기록 — 2026-10-08 · glTF 감기 순서</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-17">20.17 적용 기록 — 2026-10-08 · 스크립트 DLL 과 핫리로드</a></li>
+    <li class="sub" data-ch="c20"><a href="#c20-18">20.18 적용 기록 — 2026-10-08 · 모든 씬에 HDR 환경</a></li>
     <li data-ch="c21"><a href="#c21">21. 질문과 답</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-0">21.0 질문 색인</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-1">21.1 C++ 언어</a></li>
@@ -521,7 +522,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
   <div><div class="k">실행 파일</div><div class="v">SherlockEditor · SherlockGame<small>엔진은 DLL 하나(SherlockEngine.dll). 두 exe 와 프로젝트 스크립트 DLL 이 그것을 공유</small></div></div>
   <div><div class="k">그리는 것</div><div class="v">씬 파일 · glTF 모델<small>PBR(Cook-Torrance GGX) + IBL, 광원 최대 8개, 방향광 그림자(2048² · 3×3 PCF), 노멀 매핑, sRGB, HDR 큐브맵 스카이박스</small></div></div>
   <div><div class="k">셰이더</div><div class="v">HLSL · SM 5.0 DXBC<small>한 번 컴파일한 바이트코드를 두 백엔드가 함께 씀</small></div></div>
-  <div><div class="k">기준 시점</div><div class="v">2026-10-08 작업 트리<small>커밋 3caf020 + 스크립트 DLL·핫리로드(미커밋)</small></div></div>
+  <div><div class="k">기준 시점</div><div class="v">2026-10-08 작업 트리<small>커밋 4595bb0 + 모든 씬의 HDR 환경(미커밋)</small></div></div>
 </div>
 
 <div class="callout">
@@ -5515,6 +5516,7 @@ SamplerComparisonState shadowSampler : <span class="kw">register</span>(s4);</co
 <h4>샘플 세트와 CubemapTest 프로젝트</h4>
 <p><code>SherlockEngine/Assets/Cubemap</code> 의 일곱 파일은 IBLBaker 형식의 세트입니다. <code>Env</code>(스카이박스, 512², 밉 10), <code>Specular</code>(반사 프리필터, 512², 밉 10, 밉 0 이 거울), <code>Diffuse</code>(확산 조도, 128²), <code>Brdf</code>(256² 2D LUT)이고 각각 HDR(float32)과 MDR(8비트 BGRA)이 있습니다. LUT 의 축은 데이터로 확인했습니다. 오른쪽 아래 (N·V = 1, 거칠기 0) 가 (1, 0), 왼쪽 아래(N·V → 0, 거칠기 0)가 (0, 1) 이므로 u = N·V, v = 1 − roughness 입니다. 이 세트의 Diffuse·Specular 는 Env 보다 약 2배 밝게 구워져 있어서(같은 면의 평균이 Env 1.5 · Specular 3.0, 아래 면 0.44 · Diffuse 0.97), 실험 프로젝트의 씬은 IBL 세기 0.5 로 하늘과 같은 밝기 기준을 맞춥니다.</p>
 <p>실험 프로젝트 <code>Projects/CubemapTest</code> 는 에디터의 <code>--new-project=CubemapTest</code> 로 만들었고, 시작 씬 <code>Assets/Scenes/Main.json</code> 이 HDR 세트 네 장(<code>asset:Cubemap\…</code>, 엔진 <code>Assets\</code> 에서 찾음)·IBL 세기 0.5·톤매핑 켬을 씁니다. 구 12개는 금속(금색)과 유전체(빨강) 두 줄에 거칠기 0, 0.2, …, 1 이고, 앞에 DamagedHelmet 이 있습니다. 방향광 하나는 환경맵 속 태양(−X 쪽 지평선, 방위 약 −62°, 붉은 석양)과 같은 쪽에서 조금 높여 비춥니다.</p>
+<p><strong>기본 환경(2026-10-08 저녁).</strong> 이 세트는 이제 CubemapTest 만의 것이 아닙니다. 엔진 내장 씬(데모·헬멧·Sponza·새 씬, 그리고 새 프로젝트의 <code>Main.json</code>)은 <code>EditorApp.cpp</code> 의 <code>ApplyDefaultEnvironment</code> 로, 저장소의 모든 프로젝트 씬 파일(Sample 2개·QuaternionLookTest 3개·CubemapTest 1개)은 파일의 <code>"environment"</code> 로 같은 값을 씁니다. HDR 네 장(<code>asset:Cubemap\…</code>), IBL 세기 0.5, 노출 1, 톤매핑 켬입니다. <code>asset:</code> 이름은 프로젝트 <code>Assets\</code> 에 없으면 엔진 <code>Assets\</code> 에서 찾으므로 어느 프로젝트에서나 같은 파일을 가리키고, Build Game 은 이 네 장을 패키지로 복사합니다. 환경이 있으면 <code>ambientColor</code> 는 쓰이지 않습니다(위 표). 흐린 하늘이라 흰 체커 바닥처럼 밝은 재질은 전보다 희게 보입니다. 그 뒤 CubemapTest 의 <code>Main.json</code> 은 에디터에서 Sponza 씬으로 바뀌어 저장됐으므로, 아래 그림 12-14d 의 구·헬멧 배치는 커밋 <code>c97fe3f</code> 의 씬입니다.</p>
 <div class="fig"><img src="../images/2026-10-08-cubemaptest-ibl.png" alt="CubemapTest 프로젝트를 게임 런타임으로 실행한 화면. 위 줄은 금속 구, 아래 줄은 빨간 유전체 구가 왼쪽에서 오른쪽으로 거칠어지고, 앞에 DamagedHelmet 이 있으며 배경은 흐린 하늘" style="width:100%;height:auto;border-radius:6px" loading="lazy">
 <div class="cap">그림 12-14d. CubemapTest(D3D12, 게임 런타임). 거칠기 0 의 금속 구에는 하늘이 선명하게 비치고 오른쪽으로 갈수록 흐려집니다. 구의 아래쪽은 어두운 지면을 반사합니다. D3D11 과 픽셀이 같습니다.</div></div>
 <div class="fig"><img src="../images/2026-10-08-ibl-compare.png" alt="같은 씬을 환경 없음, 스카이박스만, IBL 맵 전체로 그린 화면 세 장" style="width:100%;height:auto;border-radius:6px" loading="lazy">
@@ -8190,7 +8192,7 @@ SHERLOCK_SCRIPT(PlayerController)</code></pre>
 
 <h4>런처와 새 프로젝트</h4>
 <p>File 메뉴의 <code>New Project...</code> 와 <code>Projects (launcher)...</code> 가 <code>Projects</code> 팝업(<code>Editor::DrawLauncher</code>)을 엽니다. 시작할 때 자동으로 뜨지는 않습니다. 팝업은 세 구역입니다. Recent 는 <code>ProjectLauncher::LoadRecent</code> 가 <code>%LOCALAPPDATA%\SherlockEngine\editor.json</code> 의 <code>recentProjects</code> 배열에서 읽은 목록이고(최대 10개, 없어진 파일은 빠짐), Open 은 <code>*.sherlock</code> 파일 대화상자이며, New 는 이름과 위치를 받습니다. 위치의 기본값은 엔진 저장소의 <code>Projects\</code> 입니다. <code>Create and open</code> 은 <code>EditorApp::CreateProject</code> 를 부릅니다.</p>
-<p>호출 순서: <code>Project::Create</code>(폴더 골격과 프로젝트 파일) → <code>UnloadProjectScripts</code>(이전 프로젝트의 DLL) → <code>AppBase::OpenProject</code> → <code>ScriptCreator::Create("Rotator")</code>(템플릿으로 만든 예제 스크립트) → <code>ProjectGenerator::Generate</code> → <code>BuildEmptyScene</code>(바닥, 방향광, Main Camera) → <code>Main.json</code> 으로 저장 → <code>ProjectLauncher::AddRecent</code>. 새 프로젝트의 스크립트는 아직 빌드 전이라 Rotator 는 Add Component 에 없고, 배너의 Build scripts 를 한 번 누르면 올라옵니다.</p>
+<p>호출 순서: <code>Project::Create</code>(폴더 골격과 프로젝트 파일) → <code>UnloadProjectScripts</code>(이전 프로젝트의 DLL) → <code>AppBase::OpenProject</code> → <code>ScriptCreator::Create("Rotator")</code>(템플릿으로 만든 예제 스크립트) → <code>ProjectGenerator::Generate</code> → <code>BuildEmptyScene</code>(바닥, 방향광, Main Camera, HDR 환경) → <code>Main.json</code> 으로 저장 → <code>ProjectLauncher::AddRecent</code>. 새 프로젝트의 스크립트는 아직 빌드 전이라 Rotator 는 Add Component 에 없고, 배너의 Build scripts 를 한 번 누르면 올라옵니다.</p>
 <p>실행 중에 다른 프로젝트를 여는 경로는 <code>EditorApp::OpenProjectAndScene</code> 입니다. 재생 중이면 먼저 <code>StopPlay</code> 를 하고, 이전 프로젝트의 스크립트 DLL 을 내리고(씬을 먼저 비움), <code>AppBase::OpenProject</code> 가 <code>Paths</code> 의 엔진 루트와 프로젝트 루트를 바꾸고, <code>EnsureUpToDate</code> 와 <code>LoadProjectScripts</code> 로 새 프로젝트의 DLL 을 올린 뒤 <code>Editor::OnProjectChanged</code> 가 콘텐츠 브라우저와 선택을 초기화한 뒤 시작 씬을 읽습니다. 시작 씬이 없거나 읽지 못하면 빈 씬을 만듭니다. <code>Project Settings...</code> 팝업은 시작 씬을 고르고 <code>Project::Save</code> 로 저장합니다.</p>
 
 <h4>스크립트가 아직 없을 때 — 배너와 Missing script</h4>
@@ -9164,7 +9166,8 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <tr><td class="n">10-02</td><td class="mono">e4e52e2</td><td>판단 "셰이더 5_0 을 유지하고 싶고 셰이더를 두 벌 만들고 싶지 않다" → 컴파일 인자를 <code>ShaderStage</code> 로. 같은 날 질문: ResourcePool 의 <code>Add</code>/<code>Get</code>, 해시 결합식, D3D11·D3D12 백엔드 공존, PSO·렌더 패스·루트 시그니처</td><td><a href="#c20-12">20.12</a>, <a href="#c21">21장</a></td></tr>
 <tr><td class="n">10-02</td><td class="mono">be3d578</td><td>요청 "단계별 문서로 나누지 말고 두 문서로 압축" → 이 최종본</td><td><a href="#c20-13">20.13</a></td></tr>
 <tr><td class="n">10-06</td><td>—</td><td>질문 "큐브맵을 추가하려면 큐브맵 클래스를 만들어 구현하고 scene 에서 불러오는 게 맞나" → 클래스가 아니라 RHI 의 큐브 텍스처 + 씬의 이름 + Renderer 의 패스로 나누자는 답</td><td><a href="#c21-6">21.6</a></td></tr>
-<tr><td class="n">10-08</td><td>미커밋</td><td>질문 "CubemapTestEditor 가 아니라 그냥 Editor 에 통합하면 안 되나" → B안 구현: 엔진을 DLL 로, 프로젝트 스크립트를 <code>&lt;이름&gt;Scripts.dll</code> 로, 에디터 하나가 모든 프로젝트를 열고 다시 빌드하면 핫리로드</td><td><a href="#c20-17">20.17</a>, <a href="#c17-13">17.13</a></td></tr>
+<tr><td class="n">10-08</td><td>미커밋</td><td>요청 "CubeMap 과 PBR 을 모든 프로젝트 모든 씬에 적용" → 내장 씬의 기본 환경과 프로젝트 씬 파일 6개를 <code>Assets\Cubemap</code> 의 HDR IBL 세트로, 옛 씬 파일을 버전 4(PBR 재질)로</td><td><a href="#c20-18">20.18</a>, <a href="#c12-14">12.14</a></td></tr>
+<tr><td class="n">10-08</td><td class="mono">4595bb0</td><td>질문 "CubemapTestEditor 가 아니라 그냥 Editor 에 통합하면 안 되나" → B안 구현: 엔진을 DLL 로, 프로젝트 스크립트를 <code>&lt;이름&gt;Scripts.dll</code> 로, 에디터 하나가 모든 프로젝트를 열고 다시 빌드하면 핫리로드</td><td><a href="#c20-17">20.17</a>, <a href="#c17-13">17.13</a></td></tr>
 <tr><td class="n">10-08</td><td class="mono">3caf020</td><td>질문 "Cull back faces 를 켜면 헬멧 전면부가 안 보이는데 노멀이 이상한가" → glTF 로더의 Z 반사 뒤 감기 순서 수정. 9단계의 "검은 바이저" 의 실제 원인</td><td><a href="#c20-16">20.16</a></td></tr>
 <tr><td class="n">10-08</td><td class="mono">c97fe3f</td><td>요청 "Assets\Cubemap 의 큐브맵으로 CubemapTest 프로젝트를 만들고 IBL 이 적용되게" → HDR 텍스처, PBR(Cook-Torrance) 재질, split-sum IBL, 노출·톤매핑, 실험 프로젝트 <code>CubemapTest</code></td><td><a href="#c20-15">20.15</a>, <a href="#c11-6">11.6</a></td></tr>
 <tr><td class="n">10-08</td><td class="mono">c97fe3f</td><td>요청 "큐브맵 추가해줘" → <code>TextureDimension::TextureCube</code>, <code>CommandList::Draw</code>, 정점 속성 0개 PSO, 큐브 로더(DDS·면 6장·절차적), <code>Scene::skybox</code>, 스카이박스 패스</td><td><a href="#c20-14">20.14</a>, <a href="#c12-14">12.14</a></td></tr>
@@ -10074,13 +10077,23 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
 </ul>
 
 <h3 id="c20-17">20.17 적용 기록 — 2026-10-08 · 스크립트 DLL 과 핫리로드(B안)</h3>
-<p>미커밋 작업 트리의 변경입니다. 발단은 CubemapTest 를 엔진 에디터로 열었을 때 뜬 "이 실행 파일에는 이 프로젝트의 스크립트가 없다" 배너였습니다. "빌드를 한 번 했는데 왜 계속 뜨나" 에 이어 "CubemapTestEditor 가 아니라 그냥 Editor 에 통합하면 안 되나" 라는 질문이 나왔고, 실행 파일 하나 + 프로젝트별 스크립트 DLL(B안)을 엔진 DLL 방식으로 하기로 했습니다.</p>
+<p>커밋 <code>4595bb0</code> 에 들어간 변경입니다. 발단은 CubemapTest 를 엔진 에디터로 열었을 때 뜬 "이 실행 파일에는 이 프로젝트의 스크립트가 없다" 배너였습니다. "빌드를 한 번 했는데 왜 계속 뜨나" 에 이어 "CubemapTestEditor 가 아니라 그냥 Editor 에 통합하면 안 되나" 라는 질문이 나왔고, 실행 파일 하나 + 프로젝트별 스크립트 DLL(B안)을 엔진 DLL 방식으로 하기로 했습니다.</p>
 <ul>
   <li><b>무엇을.</b> 빌드 구조: <code>SherlockEngine</code> 을 정적 라이브러리에서 DLL 로(<code>SHERLOCK_ENGINE_EXPORTS</code>), 에디터 소스 8개와 새 <code>App/EntryPoints</code> 를 엔진 DLL 로 옮기고 두 실행 파일은 <code>RunEditor()</code> · <code>RunGame()</code> 한 줄로. <code>/WHOLEARCHIVE</code> · <code>SHERLOCK_PROJECT_NAME</code> · <code>SetCompiledProjectName</code> · <code>BuildAndLaunchProjectEditor</code> 삭제. 내보내기: <code>Core/EngineApi.h</code> 의 <code>SHERLOCK_API</code> 를 스크립트 API 클래스 10개와 <code>Log</code> · <code>Paths</code> · <code>BehaviourRegistry</code> 함수에. 레지스트리: 중복 등록 경고(<code>try_emplace</code>), <code>Unregister</code>. 새 <code>Core/ScriptModule</code>(복사본 로드, 등록 이름 추적, 새 빌드 감지). <code>AppBase::LoadProjectScripts</code> · <code>UnloadProjectScripts</code>. 에디터: <code>BuildScripts</code> · <code>ReloadScripts</code> · <code>PollScripts</code>, 배너와 Project Settings 의 DLL 상태, 낡은 "Game/Scripts" 문구. 씬: <code>GameObject::GetMissingComponents</code>. 생성기: <code>&lt;이름&gt;Scripts.vcxproj</code>(형식 2)와 <code>EnsureUpToDate</code>, <code>RunMsBuild</code> 의 추가 인자. <code>GameBuilder</code>: <code>SherlockGame.exe</code> + 엔진 DLL + 스크립트 DLL. Sample 에 생성 파일을 두고 <code>SampleScripts</code> 를 엔진 솔루션에 추가. CubemapTest · QuaternionLookTest 는 자동 변환. 게임의 <code>--dump-objects</code> 에 회전, 에디터에 <code>--build-release</code>.</li>
   <li><b>왜 엔진을 DLL 로.</b> 스크립트 DLL 이 엔진을 정적으로 링크하면 레지스트리·로그·입력·시간 같은 전역 상태가 DLL 마다 한 벌씩 생기고, 스크립트가 자기 복사본에 등록한 것을 에디터는 보지 못합니다. 하나뿐인 엔진 DLL 을 모두가 가져다 쓰면 이 문제가 구조적으로 없고, 언리얼의 모듈 DLL 과 같은 모양이 됩니다. ImGui 가 정적 라이브러리라 에디터 코드도 엔진 DLL 에 넣었습니다(<a href="#c1">1장</a>).</li>
   <li><b>고르지 않은 대안.</b> (1) 엔진은 정적 라이브러리로 두고 등록 함수 포인터나 레지스트리 인터페이스를 DLL 의 초기화 함수에 넘기기: 빌드 구조는 덜 바뀌지만 스크립트가 부르는 <code>Log</code> · <code>Input</code> · <code>Time</code> · <code>Scene</code> 의 전역 상태도 모두 넘겨야 하고, 하나라도 빠지면 조용히 다른 복사본을 씁니다. (2) A안 유지(프로젝트마다 에디터 실행 파일): 배너 문제가 그대로이고 스크립트를 고칠 때마다 에디터를 다시 띄워야 합니다. (3) 스크립트 언어 도입: 17.9절의 이유로 지금은 아님. (4) 원본 DLL 을 그대로 올리기: 단순하지만 켜 둔 에디터가 파일을 잠가 다시 빌드할 수 없습니다. (5) 재생 중에도 다시 올리기: 재생 중 스크립트의 런타임 필드는 <code>Reflect</code> 밖에 있어 보존할 방법이 없으므로 편집 중으로 제한했습니다.</li>
   <li><b>함정.</b> <code>ScriptModule</code> 안에서 <code>GetLastError()</code> 가 멤버 함수로 해석되어 컴파일 오류(<code>::GetLastError</code>). 구현 중 코드에서 발견한 것: 모르는 컴포넌트를 버리던 씬 로드 때문에 DLL 없이 연 씬은 다시 올려도 스크립트가 돌아오지 않았을 것이라 Missing 보관을 넣었습니다. 올리기에 실패한 DLL 을 매초 다시 시도하지 않도록 시도 시각을 따로 둡니다. 종료 때 <code>ScriptModule</code> 소멸자에서 내리면 엔진이 나중에 씬을 비울 때 사라진 코드를 부르므로 내리지 않습니다.</li>
   <li><b>검증.</b> Debug · Release 전체 솔루션 빌드 경고 없음. Sample 을 연 에디터가 <code>Sample.sln</code> · <code>SampleScripts.vcxproj</code> 를 생성하고 <code>--build-project</code> 로 빌드해 3개(PlayerController · Rotator · Test)를 올림. DLL 없이 열 때 모른다던 Rotator 가 다시 올리기 뒤 복원. 에디터를 켠 채 <code>Rotator.cpp</code> 에 로그 한 줄을 넣고 MSBuild 로 빌드하자 1초 안에 다시 올리고 새 코드의 로그가 나옴(확인 뒤 원래대로). 재생 · 정지(컴포넌트 4개). <code>SherlockGame.exe</code> 로 Sample 을 두 백엔드에서 실행해 Rotator 의 회전이 늘어남. CubemapTest · QuaternionLookTest 의 옛 vcxproj 가 지워지고 스크립트 DLL 형식으로 생성 · 빌드 · 로드. CubemapTest 를 Debug · Release 로 패키징해 4조합(구성 × 백엔드)이 스크립트 DLL 을 올리고 렌더링(Release · D3D12 화면 확인). Release 에디터가 <code>Binaries\Release</code> 의 DLL 을 올림. 종료 시 Live Object 는 장치 한 줄(22.4, 전과 같음). 확인하지 못한 것: 배너 · Project Settings · Missing script 표시의 화면, Visual Studio 의 F5(디버거 명령)로 에디터가 뜨는지, 저장소 밖에 만든 프로젝트.</li>
+</ul>
+
+<h3 id="c20-18">20.18 적용 기록 — 2026-10-08 · 모든 씬에 HDR 환경</h3>
+<p>미커밋 작업 트리의 변경입니다. 요청은 "CubeMap 과 PBR 을 모든 프로젝트 모든 씬에 적용해 달라" 였습니다. PBR 셰이딩은 20.15 부터 모든 씬에 쓰이고 있었으므로, 남은 일은 (1) 큐브맵 환경이 CubemapTest 에만 있던 것과 (2) 옛 씬 파일이 아직 Blinn-Phong 의 <code>shininess</code> 로 저장돼 있던 것(읽을 때만 거칠기로 환산)이었습니다.</p>
+<ul>
+  <li><b>무엇을.</b> <code>App/EditorApp.cpp</code> 에 <code>ApplyDefaultEnvironment</code> 를 두고 데모·헬멧·Sponza·<code>BuildEmptyScene</code>(새 씬·새 프로젝트) 네 곳이 부르게 했습니다. 그 전에는 데모·Sponza·새 씬이 <code>builtin:sky</code>(IBL 맵 없이 하늘 밉 근사, 세기 0.35~0.5), 헬멧은 환경 없음이었습니다. 프로젝트 씬 파일 6개는 엔진으로 읽어 다시 저장해(<code>--scene= --save=</code>) 버전 1·3 의 두 파일군을 버전 4 의 PBR 재질(<code>metallic</code>·<code>roughness</code>)로 올리고, <code>"environment"</code> 를 같은 HDR 세트로 바꿨습니다. 오브젝트·컴포넌트·조명 수는 모든 파일에서 그대로입니다.</li>
+  <li><b>왜 이렇게.</b> 환경은 씬의 값이므로(13장) 씬 파일마다 적는 것이 맞고, 엔진 전역 기본값을 두면 "환경 없음" 을 고를 수 없게 됩니다. 그래서 파일이 없는 내장 씬만 코드의 기본값을 쓰고, 파일은 파일에 적었습니다. 재질 변환은 손으로 JSON 을 고치지 않고 엔진의 로더·저장기를 그대로 통과시켜, 읽을 때의 환산(20.15)과 저장 형식이 한 곳에서 정해지게 했습니다.</li>
+  <li><b>고르지 않은 대안.</b> (1) Renderer 에서 환경이 비면 샘플 세트를 쓰기: 파일을 고치지 않아도 되지만 환경을 끈 씬을 만들 수 없고, 렌더러가 특정 에셋 이름을 알게 됩니다. (2) MDR(8비트) 세트: 로드가 가볍지만 태양과 금속 반사가 1 에서 잘립니다(20.15). (3) 씬마다 IBL 세기를 따로 맞추기: 같은 세트라 밝기 기준(0.5)이 같고, 조명 값은 그대로 두는 편이 변경이 작습니다.</li>
+  <li><b>함정.</b> 작업 중 사용자 에디터가 켜져 있어 엔진 DLL 을 다시 링크할 수 없었습니다(LNK1168). 또 에디터가 씬을 저장하고 있어, 변환은 에디터가 꺼진 뒤 그 마지막 저장본 위에 했습니다. 첫 변환 시도는 셸 인용 때문에 <code>--project=</code> 가 깨져 데모 씬 5개가 엔진 <code>Assets\Scenes\</code> 에 새로 저장됐고, 바로 지웠습니다(기존 파일은 덮어쓰지 않음). 두 번째는 Python 의 <code>subprocess</code> 로 인자를 넘겨 로드·저장 경로가 프로젝트 파일인지 로그로 확인했습니다.</li>
+  <li><b>검증.</b> Debug·Release 전체 솔루션 빌드 경고 없음. 프로젝트 씬 6개와 내장 씬 3개(데모·헬멧·Sponza)를 D3D11·D3D12 로 그려 모두 HDR 하늘이 보이고 경고 없음, 두 백엔드의 씬 뷰 픽셀 차이는 최대 5/255(1픽셀). <code>SherlockGame.exe</code> 가 Sample 시작 씬에서 HDR 네 장을 로드해 같은 화면. Release 의 <code>SherlockGame.exe</code> 도 같은 네 장을 로드. QuaternionLookTest 의 <code>quat_roll_local.json</code> 을 Build Game 으로 패키징해 패키지 안의 <code>Assets\Cubemap</code> 에서 큐브맵을 읽고 스크립트 DLL 과 함께 그려짐(D3D12). 변환 전 파일은 작업 폴더 밖에 백업해 두고 오브젝트·컴포넌트·조명 수를 비교함. 확인하지 못한 것: 에디터의 환경 칸 화면.</li>
 </ul>
 
 <!-- c21-01.html -->
@@ -11103,7 +11116,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tr><td>비균등 스케일 부모</td><td>부모 스케일이 비균등하고 자식이 회전돼 있으면 기즈모와 재부모화의 분해가 근사가 됩니다(전단을 표현하지 못함)</td><td>11-F 기록에 따름</td></tr>
 <tr><td>톤매핑이 셰이더 끝에 있음</td><td>HDR 렌더 타깃이 없어 노출·ACES 근사를 메인 PS 와 스카이박스 PS 의 끝에서 합니다. 블룸처럼 화면 전체를 보는 후처리는 이 구조로는 넣을 수 없습니다</td><td><code>Shaders/Common.hlsli</code> 의 <code>ApplyExposureToneMap</code></td></tr>
 <tr><td>IBL 맵은 미리 구운 것만</td><td>엔진이 스카이박스에서 확산 조도·프리필터·LUT 를 만들지 않습니다. 맵이 없으면 스카이박스의 박스 필터 밉으로 근사해 중간 거칠기의 반사가 실제보다 선명합니다(그림 12-14c)</td><td><code>Renderer::ResolveEnvironment</code></td></tr>
-<tr><td>샘플 IBL 세트의 밝기</td><td><code>Assets\Cubemap</code> 의 Diffuse·Specular 맵은 Env 보다 약 2배 밝게 구워져 있어 CubemapTest 씬은 IBL 세기 0.5 를 씁니다(밉 0 평균 3.0 대 1.5)</td><td><a href="#c20-15">20.15</a></td></tr>
+<tr><td>샘플 IBL 세트의 밝기</td><td><code>Assets\Cubemap</code> 의 Diffuse·Specular 맵은 Env 보다 약 2배 밝게 구워져 있어 이 세트를 쓰는 모든 씬(내장 씬과 프로젝트 씬 전부)이 IBL 세기 0.5 를 씁니다(밉 0 평균 3.0 대 1.5). 다른 IBL 세트로 바꾸면 이 값도 다시 정해야 합니다</td><td><a href="#c20-15">20.15</a>, <a href="#c20-18">20.18</a></td></tr>
 <tr><td>환경이 없는 씬의 금속</td><td>환경도 스카이박스도 없으면 금속은 <code>ambientColor</code> 만 반사해 어둡습니다(헬멧 씬)</td><td>11.6절</td></tr>
 <tr><td>스카이박스는 원근 투영 전제</td><td><code>SkyboxVertexShader.hlsl</code> 은 <code>proj._11</code>·<code>proj._22</code> 로 투영을 거꾸로 풉니다. 카메라를 직교 투영으로 바꾸면 방향이 원근처럼 퍼져 보입니다(직교 카메라에서 하늘의 "올바른" 모습은 단색에 가까움)</td><td>셰이더 주석</td></tr>
 <tr><td>스카이박스 UI 의 화면 확인</td><td>Lights 창의 Skybox 콤보·이름 입력·드롭 칸은 빌드와 실행에서 문제가 없었지만, 자동 검증이 탭을 바꾸거나 드래그를 재현하지 못해 화면으로는 확인하지 않았습니다</td><td><a href="#c20-14">20.14</a></td></tr>
@@ -11872,7 +11885,7 @@ SherlockGame.exe --exit-after=90 --dump-objects=1 --screenshot=C:\shots\game.png
 
 <div class="footer">
   SherlockEngine 렌더링 해부 · 최종본 · 2026-10-02 (2026-10-08 갱신)<br>
-  기준: 커밋 3caf020(큐브맵·스카이박스 <a href="#c20-14">20.14</a>, PBR·IBL <a href="#c20-15">20.15</a>, glTF 감기 순서 <a href="#c20-16">20.16</a>)과 그 위의 미커밋 작업 트리(스크립트 DLL·핫리로드 <a href="#c20-17">20.17</a>). 본문의 모든 파일·함수 이름은 이 시점의 소스에서 확인한 것입니다.<br>
+  기준: 커밋 4595bb0(큐브맵·스카이박스 <a href="#c20-14">20.14</a>, PBR·IBL <a href="#c20-15">20.15</a>, glTF 감기 순서 <a href="#c20-16">20.16</a>, 스크립트 DLL·핫리로드 <a href="#c20-17">20.17</a>)과 그 위의 미커밋 작업 트리(모든 씬의 HDR 환경 <a href="#c20-18">20.18</a>). 본문의 모든 파일·함수 이름은 이 시점의 소스에서 확인한 것입니다.<br>
   이 문서는 2026-09-03 의 분석 보고서(커밋 867c380 기준)와 단계별 문서 17편(<code>phase-0</code> ~ <code>phase-11f</code>), 2026-09-10 ~ 2026-10-02 의 적용 기록, 그리고 같은 기간의 질문과 답을 현재 코드 기준으로 다시 써서 한 편으로 합친 것입니다. 이전 판의 원문은 git 이력(커밋 646717b 의 <code>docs/</code>)에 있습니다.<br>
   소스와 함께 읽는 순서는 <a href="study-guide.html">study-guide.html</a>에 있습니다.
 </div>

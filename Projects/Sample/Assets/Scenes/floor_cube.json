@@ -19,6 +19,15 @@
     0.30000001192092896,
     1.0
   ],
+  "environment": {
+    "brdfLut": "asset:Cubemap\\CubemapSampleBrdf.dds",
+    "exposure": 1.0,
+    "iblIntensity": 0.5,
+    "irradiance": "asset:Cubemap\\CubemapSampleDiffuseHDR.dds",
+    "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
+    "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
+    "toneMapping": true
+  },
   "lights": [
     {
       "attenuation": [
@@ -60,16 +69,21 @@
         1.0
       ],
       "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "Floor",
       "normalStrength": 1.0,
       "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.6687402725219727,
       "sampler": 2,
-      "shininess": 8.0,
-      "specularColor": [
-        0.20000000298023224,
-        0.20000000298023224,
-        0.20000000298023224
-      ],
       "unlit": false,
       "uvScale": [
         8.0,
@@ -88,16 +102,21 @@
         1.0
       ],
       "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
       "name": "Default",
       "normalStrength": 1.0,
       "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.4924790561199188,
       "sampler": 0,
-      "shininess": 32.0,
-      "specularColor": [
-        0.30000001192092896,
-        0.30000001192092896,
-        0.30000001192092896
-      ],
       "unlit": false,
       "uvScale": [
         1.0,
@@ -184,5 +203,5 @@
       ]
     }
   ],
-  "version": 1
+  "version": 4
 }
