@@ -268,6 +268,19 @@ void D3D12CommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndex, int
 	m_list->DrawIndexedInstanced(indexCount, 1, startIndex, baseVertex, 0);
 }
 
+void D3D12CommandList::Draw(uint32_t vertexCount, uint32_t startVertex)
+{
+	static bool warnedOutside = false;
+	if (!m_inPass)
+	{
+		ErrorOnce(warnedOutside, "Draw : 렌더 패스 밖에서 드로우. BeginRenderPass 가 필요하다.");
+		return;
+	}
+	if (m_list == nullptr || m_currentPso == nullptr) return;
+	ApplyBindings();
+	m_list->DrawInstanced(vertexCount, 1, startVertex, 0);
+}
+
 // ------------------------------------------------------------------ 전이·복사
 
 void D3D12CommandList::Barrier(TextureHandle handle, ResourceState before, ResourceState after)

@@ -181,15 +181,16 @@ std::wstring Paths::GetShaderSourcePath(const wchar_t* fileName)
 
 std::wstring Paths::GetAssetPath(const wchar_t* relative)
 {
+	const auto exists = [](const std::wstring& path) { return FileExists(path) || DirectoryExists(path); };   // 2026-10-08: 스카이박스 폴더
 	if (HasProject())
 	{
 		const std::wstring project = s_projectRoot + L"Assets\\" + relative;
-		if (FileExists(project)) return project;
+		if (exists(project)) return project;
 	}
 	const std::wstring engine = GetEngineAssetRoot() + relative;
-	if (FileExists(engine)) return engine;
+	if (exists(engine)) return engine;
 	const std::wstring exe = GetExecutableDir() + L"Assets\\" + relative;
-	if (FileExists(exe)) return exe;
+	if (exists(exe)) return exe;
 	return HasProject() ? s_projectRoot + L"Assets\\" + relative : engine;
 }
 

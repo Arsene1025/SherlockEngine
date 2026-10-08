@@ -7,6 +7,8 @@
 #include "Core/AssetManager.h"
 #include "Core/Log.h"
 #include <nlohmann/json.hpp>
+#include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <iterator>
 #include <unordered_map>
@@ -16,7 +18,7 @@ using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
-	constexpr int kVersion = 3;   // 2: 11-C단계 컴포넌트 추가. 3: 11-F단계 "parent"(부모 오브젝트 인덱스). 이전 버전 파일도 그대로 읽힘 (필드 없음 = 루트)
+	constexpr int kVersion = 4;   // 2: 11-C단계 컴포넌트 추가. 3: 11-F단계 "parent"(부모 오브젝트 인덱스). 4: 2026-10-08 "environment"(스카이박스·IBL·노출)와 PBR 재질. 이전 버전 파일도 그대로 읽힘 (필드 없음 = 루트, 환경 없음)
 
 	json ToJson(const XMFLOAT3& v) { return json::array({ v.x, v.y, v.z }); }
 	json ToJson(const XMFLOAT4& v) { return json::array({ v.x, v.y, v.z, v.w }); }
@@ -82,8 +84,13 @@ namespace
 		json j;
 		j["name"] = m.name;
 		j["baseColor"] = ToJson(m.baseColor);
-		j["specularColor"] = ToJson(m.specularColor);
-		j["shininess"] = m.shininess;
+		j["metallic"] = m.metallic;     // 2026-10-08 PBR
+		j["roughness"] = m.roughness;
+		j["emissive"] = ToJson(m.emissive);
+		j["metallicRoughnessTexture"] = m.metallicRoughnessTexture;
+		j["occlusionTexture"] = m.occlusionTexture;
+		j["occlusionStrength"] = m.occlusionStrength;
+		j["emissiveTexture"] = m.emissiveTexture;
 		j["albedoTexture"] = m.albedoTexture;
 		j["albedoSrgb"] = m.albedoSrgb;
 		j["sampler"] = static_cast<int>(m.sampler);
@@ -102,8 +109,20 @@ namespace
 		Material m;
 		m.name = j.value("name", "");
 		m.baseColor = ToFloat4(j.value("baseColor", json()), m.baseColor);
-		m.specularColor = ToFloat3(j.value("specularColor", json()), m.specularColor);
-		m.shininess = j.value("shininess", m.shininess);
+		m.metallic = j.value("metallic", m.metallic);
+		if (j.contains("roughness")) m.roughness = j.value("roughness", m.roughness);
+		else if (j.contains("shininess"))
+		{
+			// 2026-10-08 이전(Blinn-Phong) 파일: 광택 지수 → 거칠기. Blinn-Phong 지수 n 과 Beckmann 거칠기 m 의 관계 n = 2/m² − 2 를
+			// 거꾸로 풀고(m = sqrt(2/(n+2))), GGX 의 α ≈ m 이므로 지각적 거칠기 = sqrt(m). specularColor 는 버림 (유전체 F0 = 0.04).
+			const float shininess = (std::max)(j.value("shininess", 32.0f), 1.0f);
+			m.roughness = std::sqrt(std::sqrt(2.0f / (shininess + 2.0f)));
+		}
+		m.emissive = ToFloat3(j.value("emissive", json()), m.emissive);
+		m.metallicRoughnessTexture = j.value("metallicRoughnessTexture", m.metallicRoughnessTexture);
+		m.occlusionTexture = j.value("occlusionTexture", m.occlusionTexture);
+		m.occlusionStrength = j.value("occlusionStrength", m.occlusionStrength);
+		m.emissiveTexture = j.value("emissiveTexture", m.emissiveTexture);
 		m.albedoTexture = j.value("albedoTexture", "");
 		m.albedoSrgb = j.value("albedoSrgb", true);
 		m.sampler = static_cast<SamplerPreset>(j.value("sampler", 0));
@@ -209,6 +228,14 @@ std::string SceneSerializer::SaveToString(const Scene& scene, const Camera& came
 	root["camera"] = { { "position", ToJson(camera.GetPosition()) }, { "yaw", camera.GetYaw() }, { "pitch", camera.GetPitch() } };
 	root["ambientColor"] = ToJson(scene.ambientColor);
 	root["clearColor"] = json::array({ scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] });
+	{
+		// 2026-10-08. 키가 없으면 환경 없음 (이전 씬 파일과 호환)
+		const SceneEnvironment& env = scene.environment;
+		root["environment"] = {
+			{ "skybox", env.skybox }, { "irradiance", env.irradiance }, { "specular", env.specular }, { "brdfLut", env.brdfLut },
+			{ "iblIntensity", env.iblIntensity }, { "exposure", env.exposure }, { "toneMapping", env.toneMapping },
+		};
+	}
 
 	// 메시 출처. 인덱스 = 씬의 메시 순서.
 	std::unordered_map<const Mesh*, int> meshIndex;
@@ -438,6 +465,22 @@ bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager&
 	scene.ambientColor = ToFloat3(root.value("ambientColor", json()), scene.ambientColor);
 	const json clear = root.value("clearColor", json());
 	if (clear.is_array() && clear.size() >= 4) for (int i = 0; i < 4; ++i) scene.clearColor[i] = clear[i].get<float>();
+	const json env = root.value("environment", json());
+	if (env.is_object())
+	{
+		SceneEnvironment& e = scene.environment;
+		e.skybox = env.value("skybox", std::string());
+		e.irradiance = env.value("irradiance", std::string());
+		e.specular = env.value("specular", std::string());
+		e.brdfLut = env.value("brdfLut", std::string());
+		e.iblIntensity = env.value("iblIntensity", 1.0f);
+		e.exposure = env.value("exposure", 1.0f);
+		e.toneMapping = env.value("toneMapping", false);
+	}
+	else
+	{
+		scene.environment.skybox = root.value("skybox", std::string());   // 같은 날 잠시 쓴 형식 (루트의 "skybox" 하나)
+	}
 
 	const json cam = root.value("camera", json());
 	if (cam.is_object())

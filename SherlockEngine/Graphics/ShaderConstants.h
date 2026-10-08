@@ -7,10 +7,10 @@
 // 상수버퍼 레이아웃. Shaders/Common.hlsli 의 cbuffer 네 개와 바이트 단위로 같아야 함.
 //
 //   갱신 빈도별로 나눔
-//   b0 PerFrame  — 프레임에 한 번. 뷰·투영·광원 ViewProj·카메라 위치·시간·그림자 파라미터. VS와 PS 모두.
+//   b0 PerFrame  — 프레임에 한 번. 뷰·투영·광원 ViewProj·카메라 위치·시간·그림자·환경광(IBL)·출력(노출·톤매핑) 파라미터. VS와 PS 모두.
 //   b1 PerObject — 드로우마다. 월드 행렬과 노멀 변환용 역전치.          VS만.
 //   b2 Lights    — 프레임에 한 번(조명이 바뀔 때만이어도 됨).           PS만.
-//   b3 Material  — 재질마다(4단계). 기본색·스페큘러·광택·UV 배율·노멀 맵 세기. VS(uvScale)와 PS.
+//   b3 Material  — 재질마다(4단계). 기본색·금속성·거칠기·발광·UV 배율·노멀 맵 세기·AO 세기. VS(uvScale)와 PS.
 // 예전에는 b0 하나(world·view·proj·wvp, 320B)를 드로우마다 통째로 올렸음.
 //
 // 패킹 규칙 (HLSL "Packing Rules for Constant Variables"):
@@ -29,8 +29,9 @@
 //
 // 레지스터 배정 (6단계). D3D11의 t#/s# 는 스테이지마다 번호 공간이 하나뿐이므로 셋끼리 겹치지 않게 나눔.
 // D3D12 에서는 이 구간이 그대로 디스크립터 테이블 범위가 됨.
-//   재질 셋:   t0..t7   s0..s3   (알베도 t0, 노멀 t1, 재질 샘플러 s0)
-//   프레임 셋: t8..t15  s4..s7   (그림자 맵 t8, 비교 샘플러 s4)
+//   재질 셋:   t0..t7   s0..s3   (알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 재질 샘플러 s0)
+//   프레임 셋: t8..t15  s4..s7   (그림자 맵 t8, 비교 샘플러 s4, 스카이박스 t9, 환경 샘플러 s5,
+//                                 IBL 확산 조도 t10, IBL 반사 프리필터 t11, BRDF LUT t12 — 2026-10-08)
 
 constexpr uint32_t kCBSlotPerFrame = 0;
 constexpr uint32_t kCBSlotPerObject = 1;
@@ -38,9 +39,17 @@ constexpr uint32_t kCBSlotLights = 2;
 constexpr uint32_t kCBSlotMaterial = 3;
 constexpr uint32_t kSRVSlotAlbedo = 0;       // t0 (재질)
 constexpr uint32_t kSRVSlotNormal = 1;       // t1 (재질)
+constexpr uint32_t kSRVSlotMetallicRoughness = 2; // t2 (재질, G = 거칠기, B = 금속성)
+constexpr uint32_t kSRVSlotOcclusion = 3;    // t3 (재질, R = AO)
+constexpr uint32_t kSRVSlotEmissive = 4;     // t4 (재질, sRGB)
 constexpr uint32_t kSRVSlotShadowMap = 8;    // t8 (프레임)
+constexpr uint32_t kSRVSlotEnvironment = 9;  // t9 (프레임, 스카이박스 큐브맵)
+constexpr uint32_t kSRVSlotIrradiance = 10;  // t10 (프레임, IBL 확산 조도 큐브)
+constexpr uint32_t kSRVSlotPrefiltered = 11; // t11 (프레임, IBL 반사 프리필터 큐브. 밉 = 거칠기)
+constexpr uint32_t kSRVSlotBrdfLut = 12;     // t12 (프레임, split-sum BRDF LUT 2D)
 constexpr uint32_t kSamplerSlotMaterial = 0; // s0 (재질)
 constexpr uint32_t kSamplerSlotShadow = 4;   // s4 (프레임, 비교 샘플러)
+constexpr uint32_t kSamplerSlotEnvironment = 5; // s5 (프레임, 큐브맵용 선형 Clamp)
 
 struct alignas(16) PerFrameConstants
 {
@@ -51,7 +60,12 @@ struct alignas(16) PerFrameConstants
 	DirectX::XMFLOAT3 cameraPosition;
 	float time;
 	DirectX::XMFLOAT4 shadowParams;      // x = 1/맵 크기, y = 깊이 바이어스, z = 세기(0..1), w = 사용 여부
-	DirectX::XMFLOAT4 debugParams;       // 11단계: x = 디버그 뷰(0 조명, 1 알베도, 2 노멀, 3 깊이, 4 그림자, 5 UV), y = 깊이 범위
+	DirectX::XMFLOAT4 debugParams;       // 11단계: x = 디버그 뷰(0 조명, 1 알베도, 2 노멀, 3 깊이, 4 그림자, 5 UV, 6 금속성/거칠기, 7 AO), y = 깊이 범위
+	// 2026-10-08: 환경광(IBL). x = 세기, y = 반사 큐브(t11)의 밉 수, z = 확산 조도 큐브(t10)를 읽을 밉,
+	// w = 환경 큐브가 있음(1) / 없음(0, ambientColor 로 대체)
+	DirectX::XMFLOAT4 environmentParams;
+	// 2026-10-08: 출력. x = 노출(최종 색에 곱함), y = ACES 톤매핑(1) / 끔(0), z = BRDF LUT(t12) 있음(1) / 해석적 근사(0), w = 미사용
+	DirectX::XMFLOAT4 outputParams;
 };
 
 struct alignas(16) PerObjectConstants
@@ -68,16 +82,19 @@ struct alignas(16) LightConstants
 };
 
 // 4단계: 재질. 5단계: uvScale·unlit. 6단계: normalStrength.
+// 2026-10-08: PBR. specularColor·shininess 자리(16~31)에 emissive·metallic 이, 끝의 패딩 자리에 roughness·occlusionStrength 가 들어감. 크기는 64B 그대로.
 struct alignas(16) MaterialConstants
 {
 	DirectX::XMFLOAT4 baseColor;       // 정점 색·텍스처에 곱해짐
-	DirectX::XMFLOAT3 specularColor;
-	float shininess;
+	DirectX::XMFLOAT3 emissive;        // 발광 계수 (선형)
+	float metallic;
 	DirectX::XMFLOAT2 uvScale;         // 타일링
 	float unlit;                       // 1 = 조명 없이 알베도 출력
 	float normalStrength;              // 노멀 맵 xy 배율. 0 = 노멀 맵 무시
 	float alphaCutoff;                 // 9단계: 알파 컷아웃. 0 = 끔
-	DirectX::XMFLOAT3 padding;
+	float roughness;
+	float occlusionStrength;
+	float padding;
 };
 
 // C++20 (2026-09-28): consteval 검사 함수. cbuffer 는 16바이트 레지스터 단위로 올라가고 D3D11 은 65,536바이트가 상한임.
@@ -92,7 +109,9 @@ static_assert(IsValidConstantBufferSize(sizeof(PerObjectConstants)), "PerObjectC
 static_assert(IsValidConstantBufferSize(sizeof(LightConstants)), "LightConstants 는 16의 배수여야 함");
 static_assert(IsValidConstantBufferSize(sizeof(MaterialConstants)), "MaterialConstants 는 16의 배수여야 함");
 
-static_assert(sizeof(PerFrameConstants) == 304, "PerFrameConstants: 64*4 + 16 + 16 + 16");
+static_assert(sizeof(PerFrameConstants) == 336, "PerFrameConstants: 64*4 + 16 * 5");
+static_assert(offsetof(PerFrameConstants, environmentParams) == 304, "PerFrameConstants.environmentParams");
+static_assert(offsetof(PerFrameConstants, outputParams) == 320, "PerFrameConstants.outputParams");
 static_assert(offsetof(PerFrameConstants, debugParams) == 288, "PerFrameConstants.debugParams");
 static_assert(offsetof(PerFrameConstants, lightViewProj) == 192, "PerFrameConstants.lightViewProj");
 static_assert(offsetof(PerFrameConstants, cameraPosition) == 256, "PerFrameConstants.cameraPosition");
@@ -107,9 +126,11 @@ static_assert(offsetof(LightConstants, ambientColor) == 640, "LightConstants.amb
 static_assert(offsetof(LightConstants, lightCount) == 652, "LightConstants.lightCount");
 
 static_assert(sizeof(MaterialConstants) == 64, "MaterialConstants: 16 + 16 + 16 + 16");
-static_assert(offsetof(MaterialConstants, specularColor) == 16, "MaterialConstants.specularColor");
-static_assert(offsetof(MaterialConstants, shininess) == 28, "MaterialConstants.shininess");
+static_assert(offsetof(MaterialConstants, emissive) == 16, "MaterialConstants.emissive");
+static_assert(offsetof(MaterialConstants, metallic) == 28, "MaterialConstants.metallic");
 static_assert(offsetof(MaterialConstants, uvScale) == 32, "MaterialConstants.uvScale");
 static_assert(offsetof(MaterialConstants, unlit) == 40, "MaterialConstants.unlit");
 static_assert(offsetof(MaterialConstants, normalStrength) == 44, "MaterialConstants.normalStrength");
 static_assert(offsetof(MaterialConstants, alphaCutoff) == 48, "MaterialConstants.alphaCutoff");
+static_assert(offsetof(MaterialConstants, roughness) == 52, "MaterialConstants.roughness");
+static_assert(offsetof(MaterialConstants, occlusionStrength) == 56, "MaterialConstants.occlusionStrength");

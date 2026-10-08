@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 #include "RHI/ResourceDesc.h"
@@ -17,9 +18,9 @@
 class TextureImage
 {
 public:
-	TextureDesc desc;                            // format, width, height, mipLevels
-	std::vector<uint8_t> pixels;                 // 모든 밉을 이어 붙인 버퍼
-	std::vector<TextureSubresource> subresources;   // 밉마다 pixels 안의 포인터와 rowPitch
+	TextureDesc desc;                            // dimension, format, width, height, mipLevels
+	std::vector<uint8_t> pixels;                 // 모든 서브리소스(면 × 밉)를 이어 붙인 버퍼
+	std::vector<TextureSubresource> subresources;   // 서브리소스마다 pixels 안의 포인터와 rowPitch. 순서는 ResourceDesc.h (면 0 의 밉 전부, 면 1 ...)
 
 	bool IsValid() const { return desc.width > 0 && !subresources.empty(); }
 };
@@ -43,4 +44,14 @@ namespace TextureLoader
 		bool srgb, bool generateMips, TextureImage& out);
 	// 단색 (예: 1×1 흰색 = "텍스처 없음"의 기본값, 128 회색 = 감마 검증).
 	bool CreateSolid(uint32_t size, const uint8_t rgba[4], bool srgb, TextureImage& out);
+
+	// ---- 2026-10-08: 큐브맵 (desc.dimension = TextureCube, 면 6장) ----
+	// path 가 폴더면 그 안의 면 이미지 6장(px/nx/py/ny/pz/nz, posx/negx/..., right/left/top/bottom/front/back 중 하나의 규칙,
+	// 확장자 .png/.jpg/.jpeg/.bmp)을 읽음. 파일이면 큐브 DDS(면 6장 + 큐브 플래그). 블록 압축 DDS 는 압축을 풀어 R8G8B8A8 로 만듦.
+	// 부동소수점(HDR) DDS 는 R16G16B16A16_FLOAT 로 읽음 — 2D 도 같음(FinishImage). 면 이미지 폴더는 8비트만 받음.
+	bool LoadCubeFromFile(const std::wstring& path, bool srgb, bool generateMips, TextureImage& out);
+	// 절차적 큐브. 면마다 size×size 텍셀을 돌며 텍셀 중심이 가리키는 정규화된 방향(월드 축 기준)을 shade 에 넘기고 RGBA 를 받음.
+	// 내장 하늘("builtin:sky"), 면 판별용 큐브, 1×1 검은 기본 큐브를 모두 이것으로 만듦.
+	bool CreateCube(uint32_t size, const std::function<void(const float direction[3], uint8_t rgba[4])>& shade,
+		bool srgb, bool generateMips, TextureImage& out);
 }

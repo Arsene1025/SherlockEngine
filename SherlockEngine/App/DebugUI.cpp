@@ -9,6 +9,7 @@
 #include "Core/Log.h"
 #include "Core/Profiler.h"
 #include "RHI/RHI.h"
+#include "App/ContentBrowser.h"   // 2026-10-08: 스카이박스 칸의 드롭 페이로드
 #include <imgui.h>
 #include <cmath>
 #include <algorithm>
@@ -94,6 +95,79 @@ void DebugUI::DrawShadowPanel(Renderer& renderer, RHI::Device& device)
 		}
 		ImGui::TreePop();
 	}
+}
+
+namespace
+{
+	// 2026-10-08: 환경 칸 하나 — 이름 입력(Enter 로 적용) + 콘텐츠 브라우저의 텍스처 드롭.
+	// 규칙은 재질 텍스처와 같음: Textures\ 기준 상대 경로 또는 "asset:<Assets 기준>".
+	// cube 가 참이면 .dds 는 그 파일(큐브 DDS), 그 밖의 이미지는 그 이미지가 든 폴더(면 6장)를 씀 — 폴더 타일은 드래그할 수 없기 때문.
+	// cube 가 거짓(BRDF LUT)이면 떨어뜨린 파일 그대로.
+	void EditEnvironmentName(const char* label, const char* hint, std::string& value, bool cube)
+	{
+		char buffer[260];
+		strncpy_s(buffer, value.c_str(), _TRUNCATE);
+		if (ImGui::InputTextWithHint(label, hint, buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue))
+		{
+			value = buffer;
+		}
+		if (!ImGui::BeginDragDropTarget()) return;
+		const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kAssetPayloadType);
+		if (payload != nullptr && payload->DataSize == sizeof(AssetDragPayload))
+		{
+			AssetDragPayload asset = *static_cast<const AssetDragPayload*>(payload->Data);
+			asset.relativePath[259] = L'\0';   // 종료 문자 방어
+			std::wstring relative = asset.relativePath;
+			if (asset.type == AssetType::Texture)
+			{
+				const size_t dot = relative.find_last_of(L'.');
+				const bool dds = dot != std::wstring::npos && _wcsicmp(relative.c_str() + dot, L".dds") == 0;
+				if (cube && !dds)
+				{
+					const size_t slash = relative.find_last_of(L'\\');
+					relative = slash == std::wstring::npos ? std::wstring() : relative.substr(0, slash);
+				}
+				// Textures\ 바로 아래 항목은 이름만, 그 밖은 "asset:" 접두사 (ContentBrowser::ToMaterialTextureName).
+				if (!relative.empty()) value = ContentBrowser::ToMaterialTextureName(relative);
+				Log::Info("환경 드롭 (%s): %s", label, value.c_str());
+			}
+		}
+		ImGui::EndDragDropTarget();
+	}
+}
+
+void DebugUI::DrawEnvironmentPanel(Scene& scene)
+{
+	// 이름만 바꾸면 됨 — Renderer 가 다음 프레임에 이름으로 큐브·LUT 를 읽어(캐시) 프레임 셋 t9~t12 에 꽂음. Scene 은 GPU 를 모름.
+	SceneEnvironment& env = scene.environment;
+	static const char* const kPresets[] = { "(none)", "builtin:sky", "builtin:skyfaces" };
+	const char* preview = env.skybox.empty() ? kPresets[0] : env.skybox.c_str();
+	if (ImGui::BeginCombo("Skybox", preview))
+	{
+		for (int i = 0; i < IM_ARRAYSIZE(kPresets); ++i)
+		{
+			const std::string value = i == 0 ? std::string() : kPresets[i];
+			if (ImGui::Selectable(kPresets[i], env.skybox == value)) env.skybox = value;
+		}
+		ImGui::EndCombo();
+	}
+	EditEnvironmentName("Skybox file", "asset:Cubemap\\Sky.dds  or  Skybox (folder of 6 faces)", env.skybox, true);
+
+	// IBL. 비워 두면 스카이박스를 밉으로 흐려 대신 쓰고(근사), 스카이박스도 없으면 ambientColor.
+	if (ImGui::TreeNodeEx("Image based lighting", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		EditEnvironmentName("Irradiance", "diffuse cube (.dds)", env.irradiance, true);
+		EditEnvironmentName("Specular", "prefiltered cube, mip = roughness (.dds)", env.specular, true);
+		EditEnvironmentName("BRDF LUT", "2D, u = N.V, v = 1 - roughness", env.brdfLut, false);
+		ImGui::SliderFloat("IBL intensity", &env.iblIntensity, 0.0f, 4.0f);
+		ImGui::TextDisabled(env.irradiance.empty() && env.specular.empty()
+			? (env.skybox.empty() ? "no environment: ambient color is used" : "no IBL maps: blurred skybox mips are used (approximation)")
+			: "IBL maps in use");
+		ImGui::TreePop();
+	}
+	ImGui::SliderFloat("Exposure", &env.exposure, 0.05f, 8.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+	ImGui::SameLine();
+	ImGui::Checkbox("ACES tone mapping", &env.toneMapping);
 }
 
 void DebugUI::DrawLightPanel(Scene& scene)
@@ -184,10 +258,16 @@ void DebugUI::DrawMaterialPanel(Scene& scene)
 		if (ImGui::TreeNode(material.name.c_str()))
 		{
 			ImGui::ColorEdit4("Base color", &material.baseColor.x);
-			ImGui::ColorEdit3("Specular", &material.specularColor.x);
-			ImGui::SliderFloat("Shininess", &material.shininess, 1.0f, 256.0f, "%.0f", ImGuiSliderFlags_Logarithmic);
+			ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);   // 2026-10-08 PBR
+			ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
+			ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+			ImGui::SliderFloat("Occlusion strength", &material.occlusionStrength, 0.0f, 1.0f);
 			ImGui::Text("Albedo: %s (%s)   Normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(),
 				material.albedoSrgb ? "sRGB" : "linear", material.normalTexture.empty() ? "(none)" : material.normalTexture.c_str());
+			ImGui::Text("Metal/Rough: %s   AO: %s   Emissive: %s",
+				material.metallicRoughnessTexture.empty() ? "(none)" : material.metallicRoughnessTexture.c_str(),
+				material.occlusionTexture.empty() ? "(none)" : material.occlusionTexture.c_str(),
+				material.emissiveTexture.empty() ? "(none)" : material.emissiveTexture.c_str());
 			int sampler = static_cast<int>(material.sampler);
 			if (ImGui::Combo("Sampler", &sampler, kSamplerNames, ARRAYSIZE(kSamplerNames)))
 			{

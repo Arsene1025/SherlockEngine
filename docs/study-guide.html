@@ -465,17 +465,19 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
     <div class="cols">
       <div><h5>먼저 읽을 문서</h5><ul>
         <li><a href="rendering-analysis.html#c8">8장</a> — 8.1 왜 패스인가, 8.2 <code>RenderPassDesc</code>, 8.3 SRV·타깃 충돌, 8.5 <code>CommandList</code> 대응표, 8.7 리소스 상태와 배리어, 8.9 Dynamic 버퍼</li>
-        <li><a href="rendering-analysis.html#c11">11장</a> — 11.1 IA, 11.2 VS, 11.4 래스터라이저, 11.6 조명 수식(<code>direction</code>과 L 의 부호), 11.7 노멀 매핑, 11.8 그림자 매핑(TYPELESS 깊이, 비교 샘플러와 PCF, 광원 행렬), 11.10 OM</li>
+        <li><a href="rendering-analysis.html#c11">11장</a> — 11.1 IA, 11.2 VS, 11.4 래스터라이저, 11.6 조명 수식(PBR: GGX·Smith·Schlick 와 split-sum IBL, <code>direction</code>과 L 의 부호), 11.7 노멀 매핑, 11.8 그림자 매핑(TYPELESS 깊이, 비교 샘플러와 PCF, 광원 행렬), 11.10 OM</li>
         <li><a href="rendering-analysis.html#d4">D4</a> 프레임 시작/끝의 소유권, <a href="rendering-analysis.html#d6">D6</a> 매 프레임 재바인딩</li>
+        <li><a href="rendering-analysis.html#c12-14">12.14 큐브맵과 스카이박스</a> — 메인 패스의 마지막 드로우. 정점 버퍼 없는 <code>Draw(3)</code>, 깊이 1.0 트릭, 투영의 역</li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>RHI/RenderPassTypes.h</code>(<code>LoadOp</code>·<code>ResourceState</code>) → <code>RHI/CommandList.h</code></li>
         <li><code>RHI/D3D11/D3D11CommandList.cpp</code> 전체 — SRV 슬롯 추적과 <code>Barrier</code>의 상태 검사</li>
         <li><code>Renderer.cpp</code>의 <code>CreateShadowResources</code>·<code>ComputeLightViewProj</code>·<code>RenderShadowPass</code>·<code>RenderMainPass</code>·<code>EndUIPass</code>(Present 전이)</li>
         <li><code>Shaders/ShadowVertexShader.hlsl</code>, <code>BasicPixelShader.hlsl</code>의 PCF 루프와 TBN, <code>Common.hlsli</code>의 t8·s4</li>
+        <li><code>Renderer.cpp</code>의 <code>UpdateFrameSet</code>·<code>DrawSkybox</code>·<code>GetSkyPipeline</code>, <code>Shaders/SkyboxVertexShader.hlsl</code>·<code>SkyboxPixelShader.hlsl</code>, <code>Common.hlsli</code>의 t9·s5</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — 바닥에 그림자가 떨어지고 F7(광원 공전)로 그림자가 따라온다. F8·F9로 그림자·노멀 매핑을 끄고 켠다. Render Settings 창의 패스 수·배리어 수를 <a href="rendering-analysis.html#c14-8">14.8</a>의 표와 맞춰 본다(<code>Renderer::Render</code> 끝에서 읽으므로 UI 패스와 백버퍼 전이는 빠진 값). Debug Layer에 "SRV를 강제로 unbind" 경고가 없다. 같은 창에서 그림자 맵을 미리 볼 수 있다.</div>
+    <div class="check"><b>확인 포인트</b> — 바닥에 그림자가 떨어지고 F7(광원 공전)로 그림자가 따라온다. F8·F9로 그림자·노멀 매핑을 끄고 켠다. Render Settings 창의 패스 수·배리어 수를 <a href="rendering-analysis.html#c14-8">14.8</a>의 표와 맞춰 본다(<code>Renderer::Render</code> 끝에서 읽으므로 UI 패스와 백버퍼 전이는 빠진 값). Debug Layer에 "SRV를 강제로 unbind" 경고가 없다. 같은 창에서 그림자 맵을 미리 볼 수 있다. Lights 창의 Skybox 를 <code>builtin:skyfaces</code> 로 바꾸고 +Z 를 보면 파랑, 오른쪽이 빨강(+X), 위가 초록(+Y)이다(<a href="rendering-analysis.html#c12-14">12.14</a>의 그림). <code>Projects/CubemapTest</code> 를 열면 거칠기 0 의 금속 구에 하늘이 선명하게 비치고 오른쪽으로 갈수록 흐려진다(그림 12-14d). 디버그 뷰 6 으로 금속성/거칠기를 확인한다.</div>
   </div>
 </div>
 <h2 id="s5"><span class="num">5.</span>스텝 8~9: 인터페이스와 D3D12</h2>

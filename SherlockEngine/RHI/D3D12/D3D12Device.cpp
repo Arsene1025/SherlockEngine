@@ -648,12 +648,22 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
     const bool colorRtAndSrv = isRt && isSrv && format == DXGI_FORMAT_R8G8B8A8_UNORM;
     texture.typeless = (isDepth && isSrv && D3D12Convert::IsDepthFormat(format)) || colorRtAndSrv;
 
+    // 2026-10-08: 큐브는 정사각형 + ShaderResource 전용 (ResourceDesc.h). D3D12 에는 "큐브 리소스"가 따로 없고 면 6장짜리 2D 배열임 —
+    // 큐브라는 해석은 SRV(TEXTURECUBE) 가 붙임. D3D11 처럼 리소스에 MISC 플래그를 다는 단계가 없음.
+    const bool isCube = descIn.dimension == TextureDimension::TextureCube;
+    const uint32_t arraySize = GetArraySize(descIn);
+    if (isCube && (descIn.width != descIn.height || isRt || isDepth))
+    {
+        Log::Error("CreateTexture : 큐브 텍스처는 정사각형 ShaderResource 전용임 (%s, %ux%u).", texture.name.c_str(), descIn.width, descIn.height);
+        return TextureHandle{};
+    }
+
     D3D12_RESOURCE_DESC rd = {};
     rd.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     rd.Alignment = 0;
     rd.Width = descIn.width;
     rd.Height = descIn.height;
-    rd.DepthOrArraySize = 1;
+    rd.DepthOrArraySize = static_cast<UINT16>(arraySize);
     rd.MipLevels = static_cast<UINT16>(descIn.mipLevels);
     rd.Format = texture.typeless ? (isDepth ? D3D12Convert::DepthTypeless(format) : DXGI_FORMAT_R8G8B8A8_TYPELESS) : format;
     rd.SampleDesc.Count = descIn.sampleCount;
@@ -700,18 +710,19 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
 
     if (hasInit)
     {
-        if (subresources.size() < descIn.mipLevels)
+        // 서브리소스(면 × 밉)마다 하나. 순서는 서브리소스 인덱스 = mip + face × mipLevels — GetCopyableFootprints 가 돌려주는 순서와 같음.
+        const UINT count = descIn.mipLevels * arraySize;
+        if (subresources.size() < count)
         {
-            Log::Error("CreateTexture : 초기 데이터가 밉 레벨 수보다 적음 (%s, %zu < %u).", texture.name.c_str(), subresources.size(), descIn.mipLevels);
+            Log::Error("CreateTexture : 초기 데이터가 서브리소스 수(면 %u × 밉 %u)보다 적음 (%s, %zu < %u).", arraySize, descIn.mipLevels, texture.name.c_str(), subresources.size(), count);
             return TextureHandle{};
         }
-        // 업로드 힙 → CopyTextureRegion(밉마다) → 배리어. D3D11 에서 D3D11_SUBRESOURCE_DATA[] 로 하던 초기화를 여기서는 이렇게 처리함.
-        const UINT mips = descIn.mipLevels;
-        std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(mips);
-        std::vector<UINT> numRows(mips);
-        std::vector<UINT64> rowSizes(mips);
+        // 업로드 힙 → CopyTextureRegion(서브리소스마다) → 배리어. D3D11 에서 D3D11_SUBRESOURCE_DATA[] 로 하던 초기화를 여기서는 이렇게 처리함.
+        std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(count);
+        std::vector<UINT> numRows(count);
+        std::vector<UINT64> rowSizes(count);
         UINT64 totalBytes = 0;
-        m_device->GetCopyableFootprints(&rd, 0, mips, 0, layouts.data(), numRows.data(), rowSizes.data(), &totalBytes);
+        m_device->GetCopyableFootprints(&rd, 0, count, 0, layouts.data(), numRows.data(), rowSizes.data(), &totalBytes);
 
         ComPtr<ID3D12Resource> upload;
         const D3D12_HEAP_PROPERTIES uploadHeap = D3D12Convert::HeapProperties(D3D12_HEAP_TYPE_UPLOAD);
@@ -725,16 +736,16 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
         uint8_t* mapped = nullptr;
         const D3D12_RANGE noRead = { 0, 0 };
         if (FAILED(upload->Map(0, &noRead, reinterpret_cast<void**>(&mapped)))) return TextureHandle{};
-        for (UINT mip = 0; mip < mips; ++mip)
+        for (UINT sub = 0; sub < count; ++sub)
         {
-            const uint8_t* src = static_cast<const uint8_t*>(subresources[mip].data);
-            uint8_t* dst = mapped + layouts[mip].Offset;
-            for (UINT row = 0; row < numRows[mip]; ++row)
+            const uint8_t* src = static_cast<const uint8_t*>(subresources[sub].data);
+            uint8_t* dst = mapped + layouts[sub].Offset;
+            for (UINT row = 0; row < numRows[sub]; ++row)
             {
                 // 업로드 힙의 행 간격(RowPitch)은 256 바이트 정렬임. 원본 행 간격과 다르므로 행 단위로 복사함.
-                std::memcpy(dst + static_cast<size_t>(row) * layouts[mip].Footprint.RowPitch,
-                    src + static_cast<size_t>(row) * subresources[mip].rowPitch,
-                    static_cast<size_t>(rowSizes[mip]));
+                std::memcpy(dst + static_cast<size_t>(row) * layouts[sub].Footprint.RowPitch,
+                    src + static_cast<size_t>(row) * subresources[sub].rowPitch,
+                    static_cast<size_t>(rowSizes[sub]));
             }
         }
         upload->Unmap(0, nullptr);
@@ -743,16 +754,16 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
         ID3D12Resource* srcRes = upload.Get();
         ExecuteUploadSync([&](ID3D12GraphicsCommandList* list)
         {
-            for (UINT mip = 0; mip < mips; ++mip)
+            for (UINT sub = 0; sub < count; ++sub)
             {
                 D3D12_TEXTURE_COPY_LOCATION dst = {};
                 dst.pResource = dstRes;
                 dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-                dst.SubresourceIndex = mip;
+                dst.SubresourceIndex = sub;
                 D3D12_TEXTURE_COPY_LOCATION src = {};
                 src.pResource = srcRes;
                 src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-                src.PlacedFootprint = layouts[mip];
+                src.PlacedFootprint = layouts[sub];
                 list->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
             }
             const D3D12_RESOURCE_BARRIER barrier = D3D12Convert::TransitionBarrier(dstRes,
@@ -874,12 +885,23 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12Device::GetSRV(D3D12Texture& texture)
         D3D12_SHADER_RESOURCE_VIEW_DESC vd = {};
         const DXGI_FORMAT format = D3D12Convert::ToDXGI(texture.desc.format);
         vd.Format = texture.typeless ? D3D12Convert::DepthShaderView(format) : format;   // D32 → R32_FLOAT
-        vd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         vd.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        vd.Texture2D.MostDetailedMip = 0;
-        vd.Texture2D.MipLevels = texture.desc.mipLevels;
-        vd.Texture2D.PlaneSlice = 0;
-        vd.Texture2D.ResourceMinLODClamp = 0.0f;
+        if (texture.desc.dimension == TextureDimension::TextureCube)
+        {
+            // 2026-10-08: 면 6장짜리 2D 배열 리소스를 큐브로 읽는 뷰. HLSL TextureCube 와 짝임.
+            vd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+            vd.TextureCube.MostDetailedMip = 0;
+            vd.TextureCube.MipLevels = texture.desc.mipLevels;
+            vd.TextureCube.ResourceMinLODClamp = 0.0f;
+        }
+        else
+        {
+            vd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            vd.Texture2D.MostDetailedMip = 0;
+            vd.Texture2D.MipLevels = texture.desc.mipLevels;
+            vd.Texture2D.PlaneSlice = 0;
+            vd.Texture2D.ResourceMinLODClamp = 0.0f;
+        }
         m_device->CreateShaderResourceView(texture.resource.Get(), &vd, m_srvStaging.Cpu(texture.srv));
     }
     return m_srvStaging.Cpu(texture.srv);

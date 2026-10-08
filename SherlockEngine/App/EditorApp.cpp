@@ -143,8 +143,7 @@ void EditorApp::BuildDemoScene()
 	Material floorMat;
 	floorMat.name = "Floor";
 	floorMat.baseColor = XMFLOAT4(0.9f, 0.9f, 0.95f, 1.0f);
-	floorMat.specularColor = XMFLOAT3(0.2f, 0.2f, 0.2f);
-	floorMat.shininess = 8.0f;
+	floorMat.roughness = 0.75f;   // 2026-10-08 PBR (예전 Blinn-Phong: 스페큘러 0.2, 광택 8)
 	floorMat.albedoTexture = "builtin:checker";
 	floorMat.uvScale = XMFLOAT2(8.0f, 8.0f);
 	floorMat.sampler = SamplerPreset::AnisotropicWrap;
@@ -155,14 +154,12 @@ void EditorApp::BuildDemoScene()
 	Material uvChecker;
 	uvChecker.name = "UVChecker";
 	uvChecker.albedoTexture = "uv_checker.png";
-	uvChecker.specularColor = XMFLOAT3(0.3f, 0.3f, 0.3f);
-	uvChecker.shininess = 32.0f;
+	uvChecker.roughness = 0.45f;
 
 	Material blueMatte;
 	blueMatte.name = "BlueMatte";
 	blueMatte.baseColor = XMFLOAT4(0.2f, 0.35f, 0.9f, 1.0f);
-	blueMatte.specularColor = XMFLOAT3(0.1f, 0.1f, 0.1f);
-	blueMatte.shininess = 4.0f;
+	blueMatte.roughness = 0.85f;
 	blueMatte.albedoTexture = "builtin:checker";
 	blueMatte.uvScale = XMFLOAT2(2.0f, 1.0f);
 
@@ -175,15 +172,15 @@ void EditorApp::BuildDemoScene()
 	Material orange;
 	orange.name = "Orange";
 	orange.baseColor = XMFLOAT4(0.9f, 0.5f, 0.3f, 1.0f);
-	orange.shininess = 32.0f;
+	orange.roughness = 0.4f;
 	orange.normalTexture = "bumps_normal.png";
 	orange.normalStrength = 1.5f;
 
 	Material green;
 	green.name = "Green";
 	green.baseColor = XMFLOAT4(0.4f, 0.8f, 0.5f, 1.0f);
-	green.specularColor = XMFLOAT3(0.6f, 0.6f, 0.6f);
-	green.shininess = 24.0f;
+	green.metallic = 1.0f;     // 2026-10-08: 데모 씬의 금속 하나 — 하늘(환경)이 비쳐 보임
+	green.roughness = 0.3f;
 	green.normalTexture = "bumps_normal.png";
 	green.uvScale = XMFLOAT2(4.0f, 2.0f);
 
@@ -247,6 +244,8 @@ void EditorApp::BuildDemoScene()
 
 	scene.ambientColor = XMFLOAT3(0.12f, 0.12f, 0.12f);
 	scene.clearColor[0] = 0.1f; scene.clearColor[1] = 0.1f; scene.clearColor[2] = 0.3f; scene.clearColor[3] = 1.0f;
+	scene.environment.skybox = "builtin:sky";   // 2026-10-08: 절차적 하늘 큐브맵. 비우면 clearColor 배경
+	scene.environment.iblIntensity = 0.35f;     // IBL 맵이 없어 하늘의 흐린 밉이 환경광이 됨. 예전 주변광(0.12)과 비슷한 밝기로 낮춤
 
 	// 첫 시점: 씬 전체가 보이도록 조금 뒤에서 바라봄.
 	camera.SetLookAt(XMFLOAT3(18.0f, 16.0f, -28.0f), XMFLOAT3(0.0f, 2.0f, 0.0f));
@@ -284,8 +283,7 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		Material floorMat;
 		floorMat.name = "Floor";
 		floorMat.baseColor = XMFLOAT4(0.85f, 0.85f, 0.9f, 1.0f);
-		floorMat.specularColor = XMFLOAT3(0.15f, 0.15f, 0.15f);
-		floorMat.shininess = 8.0f;
+		floorMat.roughness = 0.75f;
 		floorMat.albedoTexture = "builtin:checker";
 		floorMat.uvScale = XMFLOAT2(3.0f, 3.0f);
 		floorMat.sampler = SamplerPreset::AnisotropicWrap;
@@ -325,6 +323,8 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		scene.GetLights().push_back(sun);
 		scene.ambientColor = XMFLOAT3(0.32f, 0.33f, 0.36f);
 		scene.clearColor[0] = 0.35f; scene.clearColor[1] = 0.45f; scene.clearColor[2] = 0.6f; scene.clearColor[3] = 1.0f;
+		scene.environment.skybox = "builtin:sky";   // 2026-10-08: 안뜰 위로 하늘이 보임 (헬멧 씬은 어두운 배경을 그대로 둠)
+		scene.environment.iblIntensity = 0.5f;
 
 		const XMFLOAT3 center = bounds.Center();
 		const XMFLOAT3 extent = bounds.Extent();
@@ -929,8 +929,7 @@ void EditorApp::BuildEmptyScene()
 	Material floorMat;
 	floorMat.name = "Floor";
 	floorMat.baseColor = XMFLOAT4(0.9f, 0.9f, 0.95f, 1.0f);
-	floorMat.specularColor = XMFLOAT3(0.2f, 0.2f, 0.2f);
-	floorMat.shininess = 8.0f;
+	floorMat.roughness = 0.75f;
 	floorMat.albedoTexture = "builtin:checker";
 	floorMat.uvScale = XMFLOAT2(8.0f, 8.0f);
 	floorMat.sampler = SamplerPreset::AnisotropicWrap;
@@ -938,6 +937,8 @@ void EditorApp::BuildEmptyScene()
 	scene.GetLights().push_back(LightData{});
 	scene.ambientColor = XMFLOAT3(0.15f, 0.15f, 0.15f);
 	scene.clearColor[0] = 0.1f; scene.clearColor[1] = 0.1f; scene.clearColor[2] = 0.3f; scene.clearColor[3] = 1.0f;
+	scene.environment.skybox = "builtin:sky";   // 2026-10-08: 새 씬도 기본 하늘을 가짐 (유니티의 기본 Skybox 와 같은 관례)
+	scene.environment.iblIntensity = 0.35f;
 
 	RenderSettings& settings = engine.GetRenderer().GetSettings();
 	settings.shadowOrthoSize = 60.0f;
@@ -990,8 +991,7 @@ void EditorApp::AddPrimitive(int type)
 		Material defaultMat;
 		defaultMat.name = "Default";
 		defaultMat.baseColor = XMFLOAT4(0.75f, 0.75f, 0.8f, 1.0f);
-		defaultMat.specularColor = XMFLOAT3(0.3f, 0.3f, 0.3f);
-		defaultMat.shininess = 32.0f;
+		defaultMat.roughness = 0.5f;
 		material = scene.AddMaterial(defaultMat);
 	}
 

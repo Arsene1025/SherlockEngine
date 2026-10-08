@@ -138,7 +138,7 @@ namespace
 		return true;
 	}
 
-	// glTF 재질 → 엔진 Material. 금속성·거칠기는 12단계(PBR) 전까지 Blinn-Phong 으로 근사함.
+	// glTF 재질 → 엔진 Material. 2026-10-08 부터 엔진도 metallic-roughness PBR 이라 값을 그대로 옮김.
 	Material ConvertMaterial(const std::string& modelName, const cgltf_data* data, const cgltf_material* source, size_t index)
 	{
 		Material material;
@@ -147,26 +147,33 @@ namespace
 		material.sampler = SamplerPreset::AnisotropicWrap;
 		if (source == nullptr) return material;
 
-		float roughness = 1.0f;
-		float metallic = 0.0f;
+		// 2026-10-08: 엔진 재질이 glTF 와 같은 metallic-roughness 가 되어 근사 없이 그대로 옮김. glTF 기본값은 금속 1·거칠기 1.
+		material.metallic = 1.0f;
+		material.roughness = 1.0f;
 		if (source->has_pbr_metallic_roughness)
 		{
 			const cgltf_pbr_metallic_roughness& pbr = source->pbr_metallic_roughness;
 			material.baseColor = XMFLOAT4(pbr.base_color_factor[0], pbr.base_color_factor[1], pbr.base_color_factor[2], pbr.base_color_factor[3]);
 			material.albedoTexture = TextureName(modelName, data, pbr.base_color_texture);
 			material.albedoSrgb = true;
-			roughness = pbr.roughness_factor;
-			metallic = pbr.metallic_factor;
+			material.roughness = pbr.roughness_factor;
+			material.metallic = pbr.metallic_factor;
+			material.metallicRoughnessTexture = TextureName(modelName, data, pbr.metallic_roughness_texture);   // G = 거칠기, B = 금속성
 			if (pbr.base_color_texture.texture != nullptr) material.sampler = ToSamplerPreset(pbr.base_color_texture.texture->sampler);
 		}
-		// 거칠기 1(기본)이면 거의 무광, 0 이면 날카로운 하이라이트. 금속은 스페큘러가 기본색을 띰.
-		const float gloss = 1.0f - std::clamp(roughness, 0.0f, 1.0f);
-		material.shininess = 8.0f + 120.0f * gloss * gloss;
-		const float specular = 0.04f + 0.3f * gloss;
-		material.specularColor = XMFLOAT3(
-			specular + (material.baseColor.x - specular) * metallic,
-			specular + (material.baseColor.y - specular) * metallic,
-			specular + (material.baseColor.z - specular) * metallic);
+		else
+		{
+			material.metallic = 0.0f;   // PBR 블록이 없는 재질(드묾)은 무광 유전체로
+		}
+		material.occlusionTexture = TextureName(modelName, data, source->occlusion_texture);   // R = AO (ORM 한 장이면 metallicRoughness 와 같은 이미지)
+		material.occlusionStrength = material.occlusionTexture.empty() ? 1.0f : source->occlusion_texture.scale;
+		material.emissiveTexture = TextureName(modelName, data, source->emissive_texture);
+		material.emissive = XMFLOAT3(source->emissive_factor[0], source->emissive_factor[1], source->emissive_factor[2]);
+		if (source->has_emissive_strength)
+		{
+			const float strength = source->emissive_strength.emissive_strength;   // KHR_materials_emissive_strength
+			material.emissive = XMFLOAT3(material.emissive.x * strength, material.emissive.y * strength, material.emissive.z * strength);
+		}
 
 		material.normalTexture = TextureName(modelName, data, source->normal_texture);
 		if (!material.normalTexture.empty()) material.normalStrength = source->normal_texture.scale > 0.0f ? source->normal_texture.scale : 1.0f;

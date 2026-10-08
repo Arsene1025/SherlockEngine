@@ -39,7 +39,8 @@ bool D3D12PipelineState::Create(D3D12Device& device, const PipelineStateDesc& de
 		return false;
 	}
 
-	if (desc.vertexLayout.attributeCount == 0 || desc.vertexLayout.attributeCount > kMaxVertexAttributes)
+	// 2026-10-08: 속성 0개 허용 — InputLayout 이 { elements, 0 } 이 되어 정점 버퍼 없이 SV_VertexID 로 그림.
+	if (desc.vertexLayout.attributeCount > kMaxVertexAttributes)
 	{
 		Log::Error("D3D12PipelineState::Create : 정점 속성 개수가 잘못됨 (%u).", desc.vertexLayout.attributeCount);
 		return false;

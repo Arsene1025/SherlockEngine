@@ -37,6 +37,7 @@ enum class Format : uint8_t
 	R32G32B32A32_FLOAT,    // float4 (색·탄젠트 등)
 	R16_UINT,              // 16비트 인덱스 (정점 65535개 이하)
 	R32_UINT,              // 32비트 인덱스
+	R16G16B16A16_FLOAT,    // 2026-10-08: half4 색. HDR 큐브맵·BRDF LUT (1.0 을 넘는 값을 담음, 최대 65504)
 };
 
 enum class FillMode : uint8_t

@@ -304,6 +304,7 @@ void Scene::Clear()
 	m_materials.clear();
 	m_meshes.clear();
 	m_meshSources.clear();
+	environment = SceneEnvironment{};   // 2026-10-08: 씬 빌더·씬 파일이 다시 정함. 정하지 않으면 스카이박스·IBL 없음
 }
 
 void Scene::AddImage(const std::string& name, std::vector<uint8_t>&& encoded)

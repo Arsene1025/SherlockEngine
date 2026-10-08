@@ -414,11 +414,20 @@ TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, std::span<co
     const bool colorRtAndSrv = (descIn.bindFlags & TextureBind_RenderTarget) && (descIn.bindFlags & TextureBind_ShaderResource) && format == DXGI_FORMAT_R8G8B8A8_UNORM;
     texture.typeless = (depthAndSrv && D3D11DepthFormat::IsDepth(format)) || colorRtAndSrv;
 
+    // 2026-10-08: 큐브는 정사각형 + ShaderResource 전용 (ResourceDesc.h). RTV/DSV 는 2D 뷰만 만들 줄 알기 때문.
+    const bool isCube = descIn.dimension == TextureDimension::TextureCube;
+    const uint32_t arraySize = GetArraySize(descIn);
+    if (isCube && (descIn.width != descIn.height || (descIn.bindFlags & (TextureBind_RenderTarget | TextureBind_DepthStencil))))
+    {
+        Log::Error("CreateTexture : 큐브 텍스처는 정사각형 ShaderResource 전용임 (%s, %ux%u).", texture.name.c_str(), descIn.width, descIn.height);
+        return TextureHandle{};
+    }
+
     D3D11_TEXTURE2D_DESC td = {};
     td.Width = descIn.width;
     td.Height = descIn.height;
     td.MipLevels = descIn.mipLevels;
-    td.ArraySize = 1;
+    td.ArraySize = arraySize;
     td.Format = texture.typeless ? (D3D11DepthFormat::IsDepth(format) ? D3D11DepthFormat::Typeless(format) : DXGI_FORMAT_R8G8B8A8_TYPELESS) : format;
     td.SampleDesc.Count = descIn.sampleCount;
     td.SampleDesc.Quality = 0;
@@ -426,23 +435,25 @@ TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, std::span<co
     if (descIn.bindFlags & TextureBind_RenderTarget)   td.BindFlags |= D3D11_BIND_RENDER_TARGET;
     if (descIn.bindFlags & TextureBind_DepthStencil)   td.BindFlags |= D3D11_BIND_DEPTH_STENCIL;
     if (descIn.bindFlags & TextureBind_ShaderResource) td.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
+    if (isCube) td.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;   // 이 플래그가 있어야 TEXTURECUBE SRV 를 만들 수 있음
 
-    // 초기 데이터: 밉 레벨마다 D3D11_SUBRESOURCE_DATA 하나. 개수가 모자라면 거부함
-    // (모자란 밉에는 쓰레기 값이 들어가 원거리에서 이상한 색이 나옴).
+    // 초기 데이터: 서브리소스(면 × 밉)마다 D3D11_SUBRESOURCE_DATA 하나. 순서는 면 0 의 밉 0..N−1, 면 1 의 ... (서브리소스 인덱스 순).
+    // 개수가 모자라면 거부함 (모자란 밉에는 쓰레기 값이 들어가 원거리에서 이상한 색이 나옴).
     std::vector<D3D11_SUBRESOURCE_DATA> init;
     if (!subresources.empty())   // span: (nullptr, 0) 검사 두 개가 empty() 하나로
     {
-        if (subresources.size() < descIn.mipLevels)
+        const uint32_t count = descIn.mipLevels * arraySize;
+        if (subresources.size() < count)
         {
-            Log::Error("CreateTexture : 초기 데이터가 밉 레벨 수보다 적음 (%s, %zu < %u).", texture.name.c_str(), subresources.size(), descIn.mipLevels);
+            Log::Error("CreateTexture : 초기 데이터가 서브리소스 수(면 %u × 밉 %u)보다 적음 (%s, %zu < %u).", arraySize, descIn.mipLevels, texture.name.c_str(), subresources.size(), count);
             return TextureHandle{};
         }
-        init.resize(descIn.mipLevels);
-        for (uint32_t mip = 0; mip < descIn.mipLevels; ++mip)
+        init.resize(count);
+        for (uint32_t i = 0; i < count; ++i)
         {
-            init[mip].pSysMem = subresources[mip].data;
-            init[mip].SysMemPitch = subresources[mip].rowPitch;
-            init[mip].SysMemSlicePitch = 0;
+            init[i].pSysMem = subresources[i].data;
+            init[i].SysMemPitch = subresources[i].rowPitch;
+            init[i].SysMemSlicePitch = 0;
         }
     }
 

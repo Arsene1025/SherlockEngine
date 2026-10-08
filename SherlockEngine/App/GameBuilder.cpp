@@ -72,12 +72,24 @@ namespace
 		}
 		for (const auto& material : root.value("materials", nlohmann::json::array()))
 		{
-			for (const char* key : { "albedoTexture", "normalTexture" })
+			for (const char* key : { "albedoTexture", "normalTexture", "metallicRoughnessTexture", "occlusionTexture", "emissiveTexture" })
 			{
 				const std::string name = material.value(key, "");
 				if (name.empty() || name.rfind("builtin:", 0) == 0) continue;
 				if (name.rfind("asset:", 0) == 0) textures.insert(Wide(name.substr(6)));
 				else if (name.find('/') == std::string::npos) textures.insert(L"Textures\\" + Wide(name));
+			}
+		}
+		// 2026-10-08: 스카이박스와 IBL 맵. 재질 텍스처와 같은 이름 규칙. 큐브 DDS·LUT 파일이거나 면 이미지 6장이 든 폴더임 (복사 루프가 둘 다 처리함).
+		const nlohmann::json env = root.value("environment", nlohmann::json());
+		if (env.is_object())
+		{
+			for (const char* key : { "skybox", "irradiance", "specular", "brdfLut" })
+			{
+				const std::string name = env.value(key, "");
+				if (name.empty() || name.rfind("builtin:", 0) == 0) continue;
+				if (name.rfind("asset:", 0) == 0) textures.insert(Wide(name.substr(6)));
+				else textures.insert(L"Textures\\" + Wide(name));
 			}
 		}
 	}
@@ -196,7 +208,11 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 		for (const std::wstring& texture : textures)
 		{
 			const std::wstring found = Paths::GetAssetPath(texture.c_str());
-			if (fs::exists(found, ec) && !CopyOne(found, outAssets / texture, result.filesCopied, result.message)) return result;
+			if (fs::is_directory(found, ec))   // 2026-10-08: 스카이박스 면 이미지 폴더
+			{
+				if (!CopyTree(found, outAssets / texture, result.filesCopied, result.message)) return result;
+			}
+			else if (fs::exists(found, ec) && !CopyOne(found, outAssets / texture, result.filesCopied, result.message)) return result;
 		}
 		CopyAssetTree(L"Textures", outAssets, result.filesCopied, result.message);   // 이름만으로 참조되는 기본 텍스처(bumps_normal 등)를 위해 전부 복사
 	}

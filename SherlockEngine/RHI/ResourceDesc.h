@@ -45,8 +45,18 @@ enum TextureBind : uint8_t
 	TextureBind_ShaderResource = 1 << 2,
 };
 
+// 2026-10-08: 큐브맵. 큐브는 "면 6장짜리 2D 텍스처 배열 + 큐브로 읽는 뷰"임 — D3D11 은 ArraySize 6 + MISC_TEXTURECUBE,
+// D3D12 는 DepthOrArraySize 6 + SRV_DIMENSION_TEXTURECUBE. 면 순서는 D3D 관례 +X, −X, +Y, −Y, +Z, −Z (DDS 파일 순서와 같음).
+// 지금 큐브는 ShaderResource 전용임 (렌더 타깃으로 그리는 큐브 — 반사 프로브 — 는 면별 RTV 가 필요해 아직 없음).
+enum class TextureDimension : uint8_t
+{
+	Texture2D,     // 배열 크기 1
+	TextureCube,   // 배열 크기 6. width == height 여야 함
+};
+
 struct TextureDesc
 {
+	TextureDimension dimension = TextureDimension::Texture2D;   // D3D12_RESOURCE_DESC 처럼 첫 필드. 생략하면 2D
 	uint32_t width = 0;
 	uint32_t height = 0;
 	Format format = Format::Unknown;        // sRGB 텍스처는 *_UNORM_SRGB 로 만듦. 샘플링할 때 하드웨어가 선형 값으로 변환함.
@@ -56,7 +66,15 @@ struct TextureDesc
 	const char* debugName = nullptr;
 };
 
-// 텍스처 초기 데이터. 밉 레벨마다 하나. 밉맵은 CPU에서 만들어 함께 올림.
+// 배열 크기(면 수). 큐브 = 6, 그 외 = 1. 백엔드의 ArraySize / DepthOrArraySize 와 초기 데이터 개수가 이 값을 씀.
+constexpr uint32_t GetArraySize(const TextureDesc& desc)
+{
+	return desc.dimension == TextureDimension::TextureCube ? 6u : 1u;
+}
+
+// 텍스처 초기 데이터. 서브리소스(면 × 밉)마다 하나. 밉맵은 CPU에서 만들어 함께 올림.
+// 순서는 D3D 서브리소스 인덱스 = mip + face × mipLevels 와 같음: 면 0 의 밉 0..N−1, 면 1 의 밉 0..N−1, ...
+// 2D 텍스처는 면이 하나뿐이라 "밉 레벨마다 하나"였던 이전 규칙과 같음.
 // D3D12에서는 이 배열이 업로드 힙 → CopyTextureRegion 경로로 처리됨. 호출 코드는 같음.
 struct TextureSubresource
 {
