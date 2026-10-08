@@ -272,6 +272,13 @@ namespace
 				for (cgltf_size i = 0; i < vertexCount; ++i) indices.push_back(baseVertex + static_cast<uint32_t>(i));
 			}
 			submesh.indexCount = static_cast<uint32_t>(indices.size()) - submesh.indexStart;
+			// 2026-10-08: Z 뒤집기(반사, 행렬식 −1)는 화면에서 삼각형이 도는 방향도 뒤집음. glTF 의 앞면은 반시계(CCW)인데
+			// 반사 후에는 엔진 기준(시계방향이 앞면, RasterizerDesc::frontCounterClockwise = false)으로 뒷면이 되어 뒷면 컬링에 잘렸음.
+			// 삼각형마다 두 번째·세 번째 인덱스를 바꿔 감기 순서를 되돌림. 탄젠트 계산(ComputeTangents)은 감기 순서와 무관함.
+			if (options.flipZ)
+			{
+				for (size_t i = submesh.indexStart; i + 2 < indices.size(); i += 3) std::swap(indices[i + 1], indices[i + 2]);
+			}
 			submeshes.push_back(submesh);
 		}
 
