@@ -19,6 +19,23 @@
 
 using namespace DirectX;   // 이 파일 안에서만
 
+namespace
+{
+	// 2026-10-08: 모든 내장 씬(데모·헬멧·Sponza·새 씬·새 프로젝트)의 기본 환경 = 엔진 콘텐츠 Assets\Cubemap 의 HDR IBL 세트.
+	// "asset:" 이름은 프로젝트 Assets → 엔진 Assets 순으로 찾으므로 어느 프로젝트에서나 보이고, Build Game 이 패키지로 복사함.
+	// 세기 0.5: 이 세트의 Diffuse·Specular 는 Env 보다 약 2배 밝게 구워져 있어 하늘과 밝기를 맞춤 (12.14절). HDR 이라 톤매핑을 켬.
+	void ApplyDefaultEnvironment(Scene& scene)
+	{
+		scene.environment.skybox = "asset:Cubemap\\CubemapSampleEnvHDR.dds";
+		scene.environment.irradiance = "asset:Cubemap\\CubemapSampleDiffuseHDR.dds";
+		scene.environment.specular = "asset:Cubemap\\CubemapSampleSpecularHDR.dds";
+		scene.environment.brdfLut = "asset:Cubemap\\CubemapSampleBrdf.dds";
+		scene.environment.iblIntensity = 0.5f;
+		scene.environment.exposure = 1.0f;
+		scene.environment.toneMapping = true;
+	}
+}
+
 EditorApp::EditorApp()
 {
 
@@ -250,8 +267,7 @@ void EditorApp::BuildDemoScene()
 
 	scene.ambientColor = XMFLOAT3(0.12f, 0.12f, 0.12f);
 	scene.clearColor[0] = 0.1f; scene.clearColor[1] = 0.1f; scene.clearColor[2] = 0.3f; scene.clearColor[3] = 1.0f;
-	scene.environment.skybox = "builtin:sky";   // 2026-10-08: 절차적 하늘 큐브맵. 비우면 clearColor 배경
-	scene.environment.iblIntensity = 0.35f;     // IBL 맵이 없어 하늘의 흐린 밉이 환경광이 됨. 예전 주변광(0.12)과 비슷한 밝기로 낮춤
+	ApplyDefaultEnvironment(scene);   // 2026-10-08: HDR 스카이박스 + IBL (ambientColor 는 IBL 이 있으면 쓰이지 않음)
 
 	// 첫 시점: 씬 전체가 보이도록 조금 뒤에서 바라봄.
 	camera.SetLookAt(XMFLOAT3(18.0f, 16.0f, -28.0f), XMFLOAT3(0.0f, 2.0f, 0.0f));
@@ -308,6 +324,7 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		scene.GetLights().push_back(fill);
 		scene.ambientColor = XMFLOAT3(0.18f, 0.18f, 0.2f);
 		scene.clearColor[0] = 0.12f; scene.clearColor[1] = 0.13f; scene.clearColor[2] = 0.18f; scene.clearColor[3] = 1.0f;
+		ApplyDefaultEnvironment(scene);   // 2026-10-08: 헬멧도 HDR 환경 (그 전에는 어두운 배경)
 
 		settings.shadowOrthoSize = 10.0f;
 		settings.shadowDistance = 12.0f;
@@ -329,8 +346,7 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		scene.GetLights().push_back(sun);
 		scene.ambientColor = XMFLOAT3(0.32f, 0.33f, 0.36f);
 		scene.clearColor[0] = 0.35f; scene.clearColor[1] = 0.45f; scene.clearColor[2] = 0.6f; scene.clearColor[3] = 1.0f;
-		scene.environment.skybox = "builtin:sky";   // 2026-10-08: 안뜰 위로 하늘이 보임 (헬멧 씬은 어두운 배경을 그대로 둠)
-		scene.environment.iblIntensity = 0.5f;
+		ApplyDefaultEnvironment(scene);   // 2026-10-08: 안뜰 위로 HDR 하늘이 보임
 
 		const XMFLOAT3 center = bounds.Center();
 		const XMFLOAT3 extent = bounds.Extent();
@@ -992,8 +1008,7 @@ void EditorApp::BuildEmptyScene()
 	scene.GetLights().push_back(LightData{});
 	scene.ambientColor = XMFLOAT3(0.15f, 0.15f, 0.15f);
 	scene.clearColor[0] = 0.1f; scene.clearColor[1] = 0.1f; scene.clearColor[2] = 0.3f; scene.clearColor[3] = 1.0f;
-	scene.environment.skybox = "builtin:sky";   // 2026-10-08: 새 씬도 기본 하늘을 가짐 (유니티의 기본 Skybox 와 같은 관례)
-	scene.environment.iblIntensity = 0.35f;
+	ApplyDefaultEnvironment(scene);   // 2026-10-08: 새 씬(새 프로젝트의 Main.json 포함)도 HDR 환경을 가짐 (유니티의 기본 Skybox 와 같은 관례)
 
 	RenderSettings& settings = engine.GetRenderer().GetSettings();
 	settings.shadowOrthoSize = 60.0f;
