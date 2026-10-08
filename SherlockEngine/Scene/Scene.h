@@ -33,9 +33,30 @@ struct MeshSource
 	bool CreatePrimitive(Mesh& out) const;
 };
 
+// 2026-10-08: 씬의 환경 — 배경(스카이박스)과 환경광(IBL)과 출력(노출·톤매핑).
+//
+// 큐브맵·LUT 는 재질 텍스처처럼 핸들이 아니라 이름으로 참조하고, 이름 → GPU 텍스처 변환은 Renderer 가 함.
+//   - 빈 문자열: 없음
+//   - 내장: "builtin:sky" (절차적 하늘 그라데이션), "builtin:skyfaces" (면마다 다른 색 — 방향 검증용)
+//   - 파일: Assets/Textures/ 기준 상대 경로, 또는 "asset:<Assets 기준 상대 경로>". 큐브는 큐브 DDS 나 면 이미지 6장이 든 폴더,
+//     LUT 는 2D 이미지(보통 부동소수점 DDS)
+// 씬 전체에 하나뿐이고 트랜스폼이 없으므로 GameObject 가 아니라 주변광과 같은 값으로 둠.
+//
+// IBL 맵이 비어 있으면: 스카이박스가 있으면 그 큐브를 밉으로 흐려 확산·반사에 대신 쓰고(근사), 스카이박스도 없으면 ambientColor 를 씀.
+struct SceneEnvironment
+{
+	std::string skybox;        // 배경 큐브맵 (보통 HDR 원본)
+	std::string irradiance;    // IBL 확산: 노멀 방향의 코사인 가중 평균 복사휘도 큐브
+	std::string specular;      // IBL 반사: 거칠기별로 미리 거른 큐브. 밉 0 = 거칠기 0, 마지막 밉 = 거칠기 1
+	std::string brdfLut;       // split-sum BRDF LUT (2D, u = N·V, v = 1 − roughness). 비면 해석적 근사
+	float iblIntensity = 1.0f; // 환경광 배율 (IBL 맵이나 스카이박스를 쓸 때만. ambientColor 대체 경로에는 적용 안 함)
+	float exposure = 1.0f;     // 최종 색(물체·하늘)에 곱함
+	bool toneMapping = false;  // ACES 근사. HDR 환경에서 켬. 끄면 1 을 넘는 값이 잘림
+};
+
 // 씬 = 그릴 대상들의 CPU 쪽 데이터.
 //
-// 오브젝트·조명·재질 목록과 환경(주변광·클리어 색)을 담음. GPU 자원은 갖지 않음.
+// 오브젝트·조명·재질 목록과 환경(주변광·클리어 색·SceneEnvironment)을 담음. GPU 자원은 갖지 않음.
 // Renderer는 Render(const Scene&, const Camera&)로 씬을 입력받아 그리기만 함.
 // 예전에는 Renderer가 구 하나, 조명 배열, ImGui 패널을 직접 들고 있었음(D3).
 //
@@ -109,6 +130,9 @@ public:
 
 	DirectX::XMFLOAT3 ambientColor = DirectX::XMFLOAT3(0.12f, 0.12f, 0.12f);
 	float clearColor[4] = { 0.1f, 0.1f, 0.3f, 1.0f };
+
+	// 2026-10-08: 스카이박스와 IBL (SceneEnvironment). 주변광과 같은 "환경" 값.
+	SceneEnvironment environment;
 
 private:
 	std::vector<std::unique_ptr<Mesh>> m_meshes;

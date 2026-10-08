@@ -52,8 +52,8 @@ exe 옆 `Shaders\`에 원본이 없으면(셰이더만 고치고 빌드하지 �
 | `RHI/DXBC/` | `ShaderCompiler` 구현 (`D3DCompileFromFile`, `D3DReflect`). 두 백엔드가 공유 |
 | `Scene/` | 카메라, 트랜스폼, 게임 오브젝트, 컴포넌트 기반(`Behaviour`), 씬 직렬화 |
 | `Game/Components/` | 엔진 컴포넌트 (Rigidbody, FollowTarget). `SHERLOCK_BEHAVIOUR` 로 등록. 엔진 lib 에 있어 모든 프로젝트에서 쓰인다 (exe 는 등록이 빠지지 않도록 `/WHOLEARCHIVE:SherlockEngine.lib` 로 링크) |
-| `../Projects/<이름>/` | **프로젝트** (11-E, 언리얼 .uproject): `<이름>.sherlock` + `Assets\` + `Scripts\`(유니티 MonoBehaviour / `.h`+`.cpp` 쌍, `SHERLOCK_SCRIPT`). 에디터의 File > Projects 로 만들면 `<이름>.sln`(에디터·게임 타깃)이 생성된다. `Projects\Sample` 이 예제이고 엔진 솔루션의 SherlockEditor/SherlockGame 이 그 에디터·게임이다 (docs/rendering-analysis.html 17.12~17.13절). 실험·검증용 스크립트는 Sample 이 아니라 별도 실험 프로젝트의 `Scripts\Tests\` 에 둔다 — 예: `Projects\QuaternionLookTest` (쿼터니언 roll 누적 재현, docs/rendering-analysis.html 13.13절). 생성 솔루션은 `Scripts\**\*.cpp` 를 재귀로 컴파일한다 |
-| `Shaders/` | HLSL (`BasicVertexShader`·`BasicPixelShader`·`ShadowVertexShader` + 공용 `Common.hlsli`) |
+| `../Projects/<이름>/` | **프로젝트** (11-E, 언리얼 .uproject): `<이름>.sherlock` + `Assets\` + `Scripts\`(유니티 MonoBehaviour / `.h`+`.cpp` 쌍, `SHERLOCK_SCRIPT`). 에디터의 File > Projects 로 만들면 `<이름>.sln`(에디터·게임 타깃)이 생성된다. `Projects\Sample` 이 예제이고 엔진 솔루션의 SherlockEditor/SherlockGame 이 그 에디터·게임이다 (docs/rendering-analysis.html 17.12~17.13절). 실험·검증용 스크립트는 Sample 이 아니라 별도 실험 프로젝트의 `Scripts\Tests\` 에 둔다 — 예: `Projects\QuaternionLookTest` (쿼터니언 roll 누적 재현, docs/rendering-analysis.html 13.13절), `Projects\CubemapTest` (HDR 큐브맵 스카이박스 + PBR·IBL, 엔진 `Assets\Cubemap` 의 IBL 세트를 씀, 12.14절). 생성 솔루션은 `Scripts\**\*.cpp` 를 재귀로 컴파일한다 |
+| `Shaders/` | HLSL (`BasicVertexShader`·`BasicPixelShader`·`ShadowVertexShader`·`SkyboxVertexShader`·`SkyboxPixelShader` + 공용 `Common.hlsli`) |
 
 `#include`는 엔진 루트(`SherlockEngine\`) 기준으로 씁니다. 예: `#include "RHI/D3D11/D3D11Device.h"`.
 

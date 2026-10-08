@@ -127,6 +127,16 @@ struct D3D11Texture
 				viewDesc.Texture2D.MipLevels = desc.mipLevels;
 				hr = device->CreateShaderResourceView(texture.Get(), &viewDesc, srv.GetAddressOf());
 			}
+			else if (desc.dimension == TextureDimension::TextureCube)
+			{
+				// 2026-10-08: 큐브. nullptr desc 로 만들면 TEXTURE2DARRAY 뷰가 되어 HLSL 의 TextureCube 와 맞지 않음 — 차원을 명시해야 함.
+				D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
+				viewDesc.Format = D3D11Convert::ToDXGI(desc.format);
+				viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+				viewDesc.TextureCube.MostDetailedMip = 0;
+				viewDesc.TextureCube.MipLevels = desc.mipLevels;
+				hr = device->CreateShaderResourceView(texture.Get(), &viewDesc, srv.GetAddressOf());
+			}
 			else
 			{
 				// nullptr desc = 텍스처 포맷 그대로, 모든 밉 레벨. sRGB 포맷이면 샘플링할 때 선형으로 변환됨.

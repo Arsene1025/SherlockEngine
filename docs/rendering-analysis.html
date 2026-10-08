@@ -329,7 +329,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
     <li class="sub" data-ch="c11"><a href="#c11-3">11.3 클립 공간에서 픽셀까지</a></li>
     <li class="sub" data-ch="c11"><a href="#c11-4">11.4 Rasterizer — 컬링, 보간, 깊이 바이어스</a></li>
     <li class="sub" data-ch="c11"><a href="#c11-5">11.5 Pixel Shader — 전체 순서, 재질, 텍스처, 알파 컷아웃</a></li>
-    <li class="sub" data-ch="c11"><a href="#c11-6">11.6 조명 수식 — Blinn-Phong</a></li>
+    <li class="sub" data-ch="c11"><a href="#c11-6">11.6 조명 수식 — PBR(Cook-Torrance)과 IBL</a></li>
     <li class="sub" data-ch="c11"><a href="#c11-7">11.7 노멀 매핑</a></li>
     <li class="sub" data-ch="c11"><a href="#c11-8">11.8 그림자 매핑</a></li>
     <li class="sub" data-ch="c11"><a href="#c11-9">11.9 디버그 뷰</a></li>
@@ -349,6 +349,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
     <li class="sub" data-ch="c12"><a href="#c12-11">12.11 재질 셋의 텍스처·샘플러 슬롯</a></li>
     <li class="sub" data-ch="c12"><a href="#c12-12">12.12 Renderer 의 텍스처 캐시</a></li>
     <li class="sub" data-ch="c12"><a href="#c12-13">12.13 함정과 해결</a></li>
+    <li class="sub" data-ch="c12"><a href="#c12-14">12.14 큐브맵 · 스카이박스 · IBL 맵</a></li>
     <li data-ch="c13"><a href="#c13">13. 씬 데이터 — Mesh·Model·Material·Light·GameObject 계층·Camera</a></li>
     <li class="sub" data-ch="c13"><a href="#c13-1">13.1 Scene — 무엇을 소유하나</a></li>
     <li class="sub" data-ch="c13"><a href="#c13-2">13.2 GameObject</a></li>
@@ -451,6 +452,8 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
     <li class="sub" data-ch="c20"><a href="#c20-11">20.11 적용 기록 — 2026-10-01 · 문서-코드 전수 점검</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-12">20.12 적용 기록 — 2026-10-02 · 셰이더 컴파일 인자를 ShaderStage 로</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-13">20.13 2026-10-02 · 문서 통합</a></li>
+    <li class="sub" data-ch="c20"><a href="#c20-14">20.14 적용 기록 — 2026-10-08 · 큐브맵과 스카이박스</a></li>
+    <li class="sub" data-ch="c20"><a href="#c20-15">20.15 적용 기록 — 2026-10-08 · PBR 전환과 IBL, CubemapTest 프로젝트</a></li>
     <li data-ch="c21"><a href="#c21">21. 질문과 답</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-0">21.0 질문 색인</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-1">21.1 C++ 언어</a></li>
@@ -514,9 +517,9 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
   <div><div class="k">그래픽 API</div><div class="v">Direct3D 11 · Direct3D 12<small>RHI 뒤의 두 백엔드. <code>engine.ini</code> 또는 <code>--backend=</code>로 시작할 때 하나를 고름</small></div></div>
   <div><div class="k">언어와 도구</div><div class="v">C++20 · MSVC v143<small>vcpkg 매니페스트, PCH, HLSL은 빌드 때 <code>.cso</code>로 사전 컴파일</small></div></div>
   <div><div class="k">실행 파일</div><div class="v">SherlockEditor · SherlockGame<small>엔진은 정적 라이브러리 하나. 에디터와 게임 런타임이 그것을 링크</small></div></div>
-  <div><div class="k">그리는 것</div><div class="v">씬 파일 · glTF 모델<small>Blinn-Phong, 광원 최대 8개, 방향광 그림자(2048² · 3×3 PCF), 노멀 매핑, sRGB</small></div></div>
+  <div><div class="k">그리는 것</div><div class="v">씬 파일 · glTF 모델<small>PBR(Cook-Torrance GGX) + IBL, 광원 최대 8개, 방향광 그림자(2048² · 3×3 PCF), 노멀 매핑, sRGB, HDR 큐브맵 스카이박스</small></div></div>
   <div><div class="k">셰이더</div><div class="v">HLSL · SM 5.0 DXBC<small>한 번 컴파일한 바이트코드를 두 백엔드가 함께 씀</small></div></div>
-  <div><div class="k">기준 시점</div><div class="v">2026-10-02 작업 트리<small>커밋 646717b + 셰이더 컴파일 인자 변경(미커밋)</small></div></div>
+  <div><div class="k">기준 시점</div><div class="v">2026-10-08 작업 트리<small>커밋 e4e52e2 + 큐브맵·스카이박스·PBR·IBL(미커밋)</small></div></div>
 </div>
 
 <div class="callout">
@@ -662,7 +665,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
 <div class="tbl"><table>
 <thead><tr><th>프로젝트</th><th>종류와 산출물</th><th>컴파일하는 것</th></tr></thead>
 <tbody>
-<tr><td class="mono">SherlockEngine</td><td><code>StaticLibrary</code><span class="sub">x64\&lt;구성&gt;\SherlockEngine.lib</span></td><td><code>Core/</code>, <code>RHI/</code>(두 백엔드와 <code>DXBC/</code> 포함), <code>Graphics/</code>, <code>Scene/</code>, <code>Game/Components/</code>, 그리고 <code>App/</code> 중 <code>AppBase</code> 와 <code>GameApp</code>. 셰이더 세 개의 <code>FxCompile</code> 과 <code>Shaders\</code>·<code>Assets\</code> 복사 타깃도 이 프로젝트에 있습니다.</td></tr>
+<tr><td class="mono">SherlockEngine</td><td><code>StaticLibrary</code><span class="sub">x64\&lt;구성&gt;\SherlockEngine.lib</span></td><td><code>Core/</code>, <code>RHI/</code>(두 백엔드와 <code>DXBC/</code> 포함), <code>Graphics/</code>, <code>Scene/</code>, <code>Game/Components/</code>, 그리고 <code>App/</code> 중 <code>AppBase</code> 와 <code>GameApp</code>. 셰이더 다섯 개의 <code>FxCompile</code> 과 <code>Shaders\</code>·<code>Assets\</code> 복사 타깃도 이 프로젝트에 있습니다.</td></tr>
 <tr><td class="mono">SherlockEditor</td><td><code>Application</code><span class="sub">SherlockEditor.exe</span></td><td><code>SherlockEditor/EditorMain.cpp</code> 와, 엔진 폴더에 그대로 있는 에디터 소스 여덟 개(<code>App/</code> 의 <code>EditorApp</code>·<code>Editor</code>·<code>ContentBrowser</code>·<code>ScriptCreator</code>·<code>GameBuilder</code>·<code>DebugUI</code>·<code>ProjectLauncher</code>·<code>ProjectGenerator</code>), <code>Projects\Sample\Scripts\*.cpp</code>.</td></tr>
 <tr><td class="mono">SherlockGame</td><td><code>Application</code><span class="sub">SherlockGame.exe</span></td><td><code>SherlockGame/GameMain.cpp</code> 와 <code>Projects\Sample\Scripts\*.cpp</code>. <code>GameApp</code> 은 엔진 라이브러리 안에 있습니다.</td></tr>
 </tbody></table></div>
@@ -720,7 +723,8 @@ SherlockEngine\             <span class="cm">엔진 정적 라이브러리. "엔
 │  ├─ D3D12\    D3D12Common.h, D3D12Device, D3D12CommandList, D3D12Resources.h, D3D12Convert,
 │  │            D3D12PipelineState, D3D12DescriptorHeap.h
 │  └─ DXBC\     ShaderCompiler.cpp
-├─ Shaders\     BasicVertexShader.hlsl, BasicPixelShader.hlsl, ShadowVertexShader.hlsl, Common.hlsli
+├─ Shaders\     BasicVertexShader.hlsl, BasicPixelShader.hlsl, ShadowVertexShader.hlsl,
+│                SkyboxVertexShader.hlsl, SkyboxPixelShader.hlsl, Common.hlsli
 └─ Assets\      Config\engine.ini, Textures\, Models\DamagedHelmet\, Models\Sponza\
 SherlockEditor\EditorMain.cpp      <span class="cm">에디터 진입점</span>
 SherlockGame\GameMain.cpp          <span class="cm">게임 런타임 진입점</span>
@@ -798,7 +802,7 @@ vcpkg_installed\, docs\, images\, logs\
 <div class="tbl"><table>
 <thead><tr><th>단계</th><th><code>SherlockEngine.vcxproj</code> 의 항목</th><th>하는 일</th></tr></thead>
 <tbody>
-<tr><td>셰이더 컴파일</td><td><code>&lt;FxCompile&gt;</code> 세 개</td><td>fxc 가 셰이더 모델 5.0 으로 컴파일해 <code>$(OutDir)Shaders\&lt;이름&gt;.cso</code> 를 만듭니다. 진입점은 <code>BasicVertexShader.hlsl</code> 이 <code>VS_Main</code>, <code>BasicPixelShader.hlsl</code> 이 <code>PS_Main</code>, <code>ShadowVertexShader.hlsl</code> 이 <code>VS_Shadow</code> 입니다. Debug 구성은 디버그 정보를 넣고 최적화를 끕니다. 리플렉션에 쓰므로 <code>/Qstrip_reflect</code> 는 켜지 않습니다</td></tr>
+<tr><td>셰이더 컴파일</td><td><code>&lt;FxCompile&gt;</code> 다섯 개</td><td>fxc 가 셰이더 모델 5.0 으로 컴파일해 <code>$(OutDir)Shaders\&lt;이름&gt;.cso</code> 를 만듭니다. 진입점은 <code>BasicVertexShader.hlsl</code> 이 <code>VS_Main</code>, <code>BasicPixelShader.hlsl</code> 이 <code>PS_Main</code>, <code>ShadowVertexShader.hlsl</code> 이 <code>VS_Shadow</code>, <code>SkyboxVertexShader.hlsl</code> 이 <code>VS_Sky</code>, <code>SkyboxPixelShader.hlsl</code> 이 <code>PS_Sky</code> 입니다. Debug 구성은 디버그 정보를 넣고 최적화를 끕니다. 리플렉션에 쓰므로 <code>/Qstrip_reflect</code> 는 켜지 않습니다</td></tr>
 <tr><td>출력 폴더 만들기</td><td>타깃 <code>EnsureShaderOutputDir</code><span class="sub">BeforeTargets="FxCompile"</span></td><td>fxc 는 출력 폴더를 만들어 주지 않으므로 <code>$(OutDir)Shaders</code> 를 먼저 만듭니다</td></tr>
 <tr><td>셰이더 원본 복사</td><td>타깃 <code>CopyShaderSources</code><span class="sub">AfterTargets="Build"</span></td><td><code>Shaders\*.hlsl</code>·<code>*.hlsli</code> 를 <code>$(OutDir)Shaders</code> 로 복사합니다. <code>.cso</code> 가 없을 때의 런타임 컴파일과, 소스 트리가 없는 환경의 핫리로드 대상입니다</td></tr>
 <tr><td>에셋 복사</td><td>타깃 <code>CopyAssets</code><span class="sub">AfterTargets="Build"</span></td><td><code>Assets\**\*</code> 를 폴더 구조 그대로 <code>$(OutDir)Assets\</code> 로 복사합니다</td></tr>
@@ -1255,11 +1259,11 @@ Time m_time;
 <tr><td class="n">2</td><td>샘플러 프리셋 5개</td><td><code>CreateSamplers</code>: LinearWrap, LinearClamp, AnisotropicWrap, PointWrap, PointNoMip</td><td><a href="#c12">12장</a></td></tr>
 <tr><td class="n">3</td><td>내장 텍스처 2개</td><td><code>CreateBuiltinTextures</code>: <code>builtin:white</code>(텍스처 없음의 기본값), <code>builtin:flatnormal</code></td><td><a href="#c12">12장</a></td></tr>
 <tr><td class="n">4</td><td>그림자 맵과 비교 샘플러</td><td><code>CreateShadowResources</code>: 2048×2048 <code>D32_FLOAT</code>, 깊이로 쓰고 셰이더에서도 읽음</td><td><a href="#c11">11장</a></td></tr>
-<tr><td class="n">5</td><td>BindingLayout 3개</td><td>프레임(b0, b2, t8, s4), 오브젝트(b1), 재질(b3, t0, t1, s0). "이 파이프라인이 어떤 슬롯을 쓰는가"의 선언</td><td><a href="#c7">7장</a></td></tr>
-<tr><td class="n">6</td><td>ResourceSet 2개</td><td>프레임 셋(1·4에서 만든 상수버퍼·그림자 맵·비교 샘플러를 꽂음)과 오브젝트 셋</td><td><a href="#c7">7장</a></td></tr>
-<tr><td class="n">7</td><td>셰이더 3개</td><td><code>LoadShaders(false)</code>: <code>.cso</code> 를 읽거나 소스를 컴파일해 VS·PS·그림자 VS 의 바이트코드를 얻고 <code>CreateShader</code></td><td><a href="#c10">10장</a></td></tr>
-<tr><td class="n">8</td><td>PSO Desc 의 고정 부분</td><td><code>m_baseDesc</code>(메인 패스: VS·PS·레이아웃 셋), <code>m_shadowDesc</code>(그림자 패스: VS 만, 렌더 타깃 없음, 깊이 바이어스)</td><td><a href="#c6">6장</a></td></tr>
-<tr><td class="n">9</td><td>기본 PSO 2개</td><td>기본 재질로 <code>GetPipelineFor</code>·<code>GetShadowPipelineFor</code> 를 한 번씩 호출</td><td><a href="#c6">6장</a></td></tr>
+<tr><td class="n">5</td><td>BindingLayout 3개</td><td>프레임(b0, b2, t8, s4, t9, s5, t10, t11, t12), 오브젝트(b1), 재질(b3, t0~t4, s0). "이 파이프라인이 어떤 슬롯을 쓰는가"의 선언</td><td><a href="#c7">7장</a></td></tr>
+<tr><td class="n">6</td><td>ResourceSet 2개</td><td>프레임 셋(1·4에서 만든 상수버퍼·그림자 맵·비교 샘플러와 빈 환경 — 검은 큐브 셋·흰 LUT — 을 꽂음. <code>ResolveEnvironment</code> → <code>UpdateFrameSet</code>)과 오브젝트 셋</td><td><a href="#c7">7장</a></td></tr>
+<tr><td class="n">7</td><td>셰이더 5개</td><td><code>LoadShaders(false)</code>: <code>.cso</code> 를 읽거나 소스를 컴파일해 VS·PS·그림자 VS·스카이박스 VS·PS 의 바이트코드를 얻고 <code>CreateShader</code></td><td><a href="#c10">10장</a></td></tr>
+<tr><td class="n">8</td><td>PSO Desc 의 고정 부분</td><td><code>m_baseDesc</code>(메인 패스: VS·PS·레이아웃 셋), <code>m_shadowDesc</code>(그림자 패스: VS 만, 렌더 타깃 없음, 깊이 바이어스), <code>m_skyDesc</code>(스카이박스: 프레임 레이아웃 하나, 정점 입력 없음, 깊이 쓰기 끔)</td><td><a href="#c6">6장</a></td></tr>
+<tr><td class="n">9</td><td>기본 PSO 3개</td><td>기본 재질로 <code>GetPipelineFor</code>·<code>GetShadowPipelineFor</code> 를 한 번씩, 그리고 <code>GetSkyPipeline</code> 을 호출</td><td><a href="#c6">6장</a></td></tr>
 </tbody></table></div>
 <p>순서는 의존 관계를 따릅니다. 프레임 ResourceSet 이 상수버퍼·그림자 맵·비교 샘플러의 핸들을 담으므로 1·4가 6보다 먼저이고, 셋은 레이아웃을 가리키므로 5가 6보다 먼저이며, PSO Desc 는 셰이더와 레이아웃의 핸들을 담으므로 5·7이 8보다 먼저입니다.</p>
 <p>7번의 <code>LoadShaders</code> 는 로드만 하지 않고 두 가지를 대조합니다. Debug 빌드에서는 리플렉션으로 읽은 HLSL <code>cbuffer</code> 크기를 C++ 구조체의 <code>sizeof</code> 와 비교하고(<code>ShaderCompiler::ValidateConstantBufferSize</code>, 여덟 건), 셰이더가 실제로 쓰는 레지스터가 5번에서 선언한 레이아웃 안에 있는지 검사합니다(<code>Renderer::ValidateBindings</code>). 어긋나면 Debug 에서는 초기화가 실패합니다. C++ 과 HLSL 이 조용히 어긋나 화면이 깨지는 대신 시작할 때 멈추게 하려는 장치입니다. 끝으로 핫리로드가 감시할 원본 네 개(<code>.hlsl</code> 셋과 <code>Common.hlsli</code>)의 수정 시각을 기록합니다.</p>
@@ -1594,7 +1598,7 @@ m_device-&gt;EndFrame();                  <span class="cm">// Present</span>
 <p>목록은 PSO 인덱스, 재질 포인터, 메시 포인터, 인덱스 시작 위치 순으로 정렬합니다. 같은 상태가 연속되게 해서 패스 안에서 바인딩을 건너뛰기 위한 것입니다(<a href="#c14">14장</a>).</p></div></div>
 
 <div class="stage"><div class="tag">⑤</div><div><h4>프레임 셋·오브젝트 셋 바인딩</h4>
-<p><code>cmd.SetResourceSet(m_frameSet)</code> 과 <code>cmd.SetResourceSet(m_objectSet)</code> 을 부릅니다. 프레임 셋은 b0(PerFrame)·b2(Lights)·t8(그림자 맵)·s4(비교 샘플러), 오브젝트 셋은 b1(PerObject)입니다. D3D11 은 여기서 바로 슬롯마다 <code>VSSetConstantBuffers</code>·<code>PSSetConstantBuffers</code>·<code>PSSetShaderResources</code>·<code>PSSetSamplers</code> 를 호출합니다. D3D12 는 "이 레이아웃에는 이 셋"이라고 기억만 하고, 실제 바인딩은 드로우 직전으로 미룹니다. 어느 루트 파라미터에 넣을지는 PSO(루트 시그니처)가 정해져야 알 수 있기 때문입니다(<a href="#c7">7장</a>).</p></div></div>
+<p>먼저 <code>UpdateFrameSet</code> 이 프레임 맨 앞의 <code>ResolveEnvironment</code> 가 정한 환경 텍스처(스카이박스 t9, IBL t10~t12. 없는 것은 검은 큐브·흰 LUT)를 꽂은 프레임 셋을 준비합니다. 꽂힌 텍스처가 직전과 같으면 아무것도 하지 않고, 다르면 셋을 새로 만듭니다(<a href="#c12-14">12.14절</a>). 그다음 <code>cmd.SetResourceSet(m_frameSet)</code> 과 <code>cmd.SetResourceSet(m_objectSet)</code> 을 부릅니다. 프레임 셋은 b0(PerFrame)·b2(Lights)·t8(그림자 맵)·s4(비교 샘플러)·t9(스카이박스)·s5(환경 샘플러)·t10~t12(IBL), 오브젝트 셋은 b1(PerObject)입니다. D3D11 은 여기서 바로 슬롯마다 <code>VSSetConstantBuffers</code>·<code>PSSetConstantBuffers</code>·<code>PSSetShaderResources</code>·<code>PSSetSamplers</code> 를 호출합니다. D3D12 는 "이 레이아웃에는 이 셋"이라고 기억만 하고, 실제 바인딩은 드로우 직전으로 미룹니다. 어느 루트 파라미터에 넣을지는 PSO(루트 시그니처)가 정해져야 알 수 있기 때문입니다(<a href="#c7">7장</a>).</p></div></div>
 
 <h3 id="c4-8">4.8 <code>Renderer::Render</code> ② — 그림자 패스</h3>
 
@@ -1654,6 +1658,8 @@ m_device-&gt;EndFrame();                  <span class="cm">// Present</span>
 
 <p><code>GetOrCreateGpuMesh</code> 와 <code>GetOrCreateGpuMaterial</code> 은 처음 보는 메시·재질일 때만 GPU 버퍼와 리소스 셋을 만듭니다. 재질 상수(b3)는 그 재질의 프레임 첫 드로우에서만 <code>UpdateBuffer</code> 로 올립니다(<a href="#c14">14장</a>).</p>
 
+<p>목록을 다 그린 뒤 씬에 스카이박스가 있으면(<code>scene.environment.skybox</code> 가 비어 있지 않으면) <code>DrawSkybox</code> 가 스카이박스 PSO 를 걸고 <code>cmd.Draw(3)</code> 을 한 번 부릅니다. 정점 버퍼 없이 정점 셰이더가 화면을 덮는 삼각형을 만들고, 깊이를 1.0 으로 두어 불투명 물체가 그려지지 않은 픽셀에만 하늘이 남습니다. 불투명 드로우 <em>뒤에</em> 그리는 이유와 수식은 <a href="#c12-14">12.14절</a>에 있습니다.</p>
+
 <div class="callout"><div class="t">PSO 와 루트 시그니처가 걸리는 정확한 지점</div>
 <p><strong>가져오기</strong>는 <code>Renderer::BuildDrawList</code>(메인)와 <code>RenderShadowPass</code>(그림자)에서 <code>GetPipelineFor</code> / <code>GetShadowPipelineFor</code> → <code>Device::CreatePipeline</code> 입니다. <strong>적용</strong>은 <code>Renderer::DrawItems</code> 와 <code>RenderShadowPass</code> 의 <code>cmd.SetPipelineState(handle)</code> 입니다.</p>
 <p>D3D11: <code>D3D11CommandList::SetPipelineState</code> 가 핸들로 <code>PipelineState</code> 를 찾아 <code>PipelineState::Bind</code> 를 부르고, 그 안에서 <code>IASetInputLayout</code>, <code>IASetPrimitiveTopology</code>, <code>VSSetShader</code>, <code>PSSetShader</code>, <code>RSSetState</code>, <code>OMSetDepthStencilState</code>, <code>OMSetBlendState</code> 일곱 호출이 나갑니다. 엔진에서 이런 개별 상태 호출은 이 함수에만 있습니다. D3D11 에는 루트 시그니처가 없고, 리소스는 <code>D3D11CommandList::SetResourceSet</code> 이 슬롯 번호로 바로 꽂습니다.</p>
@@ -1669,11 +1675,11 @@ m_device-&gt;EndFrame();                  <span class="cm">// Present</span>
 <tr><td>PSO</td><td>BasicVS, BasicPS, 입력 레이아웃, 래스터라이저, 깊이·스텐실, 블렌드, 토폴로지</td><td><code>SetPipelineState</code>, PSO 가 바뀔 때</td><td>—</td></tr>
 <tr><td class="mono">b0</td><td>PerFrame (VS·PS)</td><td>프레임 셋, 패스마다</td><td class="n">0</td></tr>
 <tr><td class="mono">b2</td><td>Lights (PS)</td><td>프레임 셋</td><td class="n">1</td></tr>
-<tr><td class="mono">t8</td><td>그림자 맵 (PS)</td><td>프레임 셋</td><td class="n">2 <span class="sub">테이블</span></td></tr>
-<tr><td class="mono">s4</td><td>비교 샘플러 (PS)</td><td>프레임 셋</td><td class="n">3 <span class="sub">테이블</span></td></tr>
+<tr><td class="mono">t8 ~ t12</td><td>그림자 맵, 스카이박스, IBL 확산 조도·반사 프리필터·BRDF LUT (PS)</td><td>프레임 셋</td><td class="n">2 <span class="sub">테이블</span></td></tr>
+<tr><td class="mono">s4, s5</td><td>비교 샘플러, 환경 샘플러 (PS)</td><td>프레임 셋</td><td class="n">3 <span class="sub">테이블</span></td></tr>
 <tr><td class="mono">b1</td><td>PerObject (VS)</td><td>오브젝트 셋. 내용은 드로우마다 갱신</td><td class="n">4</td></tr>
 <tr><td class="mono">b3</td><td>Material (VS·PS)</td><td>재질 셋, 재질이 바뀔 때</td><td class="n">5</td></tr>
-<tr><td class="mono">t0, t1</td><td>알베도, 노멀 (PS)</td><td>재질 셋</td><td class="n">6 <span class="sub">테이블</span></td></tr>
+<tr><td class="mono">t0 ~ t4</td><td>알베도, 노멀, 금속성/거칠기, AO, 발광 (PS)</td><td>재질 셋</td><td class="n">6 <span class="sub">테이블</span></td></tr>
 <tr><td class="mono">s0</td><td>재질 샘플러 (PS)</td><td>재질 셋</td><td class="n">7 <span class="sub">테이블</span></td></tr>
 <tr><td>정점·인덱스</td><td>VB 슬롯 0, IB(<code>R16_UINT</code> 또는 <code>R32_UINT</code>)</td><td>메시가 바뀔 때</td><td>—</td></tr>
 </tbody></table></div>
@@ -2133,7 +2139,7 @@ PipelineStateCache m_pipelines;   <span class="cm">// PSO 만 풀이 아니라 �
     <span class="kw">const char</span>* debugName = <span class="kw">nullptr</span>;
 };
 <span class="kw">struct</span> TextureSubresource { <span class="kw">const void</span>* data = <span class="kw">nullptr</span>; uint32_t rowPitch = 0; };   <span class="cm">// 밉 레벨마다 하나</span></code></pre>
-<p>초기 데이터는 밉 레벨마다 <code>TextureSubresource</code> 하나입니다. 밉맵은 CPU 에서 만들어 함께 올리며, 개수가 <code>mipLevels</code>보다 적으면 백엔드가 생성을 거부합니다. <code>DepthStencil | ShaderResource</code> 조합(그림자 맵)과 <code>RenderTarget | ShaderResource</code>인 UNORM 색 텍스처(에디터 씬 뷰)는 백엔드가 TYPELESS 리소스와 포맷별 뷰로 만듭니다. 호출 코드는 이 사정을 모릅니다(<a href="#c12">12장</a>). 백버퍼와 기본 깊이 버퍼는 장치가 만들어 두고 <code>GetBackBuffer()</code>·<code>GetDepthBuffer()</code>로 핸들을 돌려줍니다. Resize 마다 새 핸들이 되므로 프레임을 넘겨 보관하지 않습니다.</p>
+<p>초기 데이터는 서브리소스(면 × 밉 레벨)마다 <code>TextureSubresource</code> 하나입니다. 2D 텍스처는 면이 하나라 밉 레벨마다 하나이고, 큐브(<code>dimension = TextureDimension::TextureCube</code>)는 면 6장 × 밉입니다. 밉맵은 CPU 에서 만들어 함께 올리며, 개수가 <code>GetArraySize(desc) × mipLevels</code> 보다 적으면 백엔드가 생성을 거부합니다. <code>DepthStencil | ShaderResource</code> 조합(그림자 맵)과 <code>RenderTarget | ShaderResource</code>인 UNORM 색 텍스처(에디터 씬 뷰)는 백엔드가 TYPELESS 리소스와 포맷별 뷰로 만듭니다. 호출 코드는 이 사정을 모릅니다(<a href="#c12">12장</a>). 백버퍼와 기본 깊이 버퍼는 장치가 만들어 두고 <code>GetBackBuffer()</code>·<code>GetDepthBuffer()</code>로 핸들을 돌려줍니다. Resize 마다 새 핸들이 되므로 프레임을 넘겨 보관하지 않습니다.</p>
 
 <h4>SamplerDesc 와 ShaderDesc</h4>
 <pre><code><span class="kw">struct</span> SamplerDesc
@@ -2389,6 +2395,7 @@ PipelineStateCache m_pipelines;   <span class="cm">// PSO 만 풀이 아니라 �
   <li><strong>메시는 자기 정점 포맷만 압니다.</strong> <code>Mesh::GetVertexFormat()</code>이 <code>VertexFormat</code> 열거형을 돌려주고, Renderer 가 <code>GetVertexLayout(format)</code>으로 Desc 의 <code>vertexLayout</code>을 채웁니다.</li>
   <li><strong>시맨틱 이름은 열거형입니다.</strong> 문자열 <code>"POSITION"</code>으로 바꾸는 일은 각 백엔드의 <code>ToSemanticName</code>이 맡습니다. Vulkan 처럼 시맨틱 이름 없이 location 번호만 쓰는 API 가 있으므로 문자열을 API 중립 층에 두지 않았습니다.</li>
   <li><strong>stride 는 두 군데서 쓰입니다.</strong> PSO 의 <code>vertexLayout.stride</code>는 해시 키의 일부이고, 실제 <code>IASetVertexBuffers</code>에 넘기는 stride 는 정점 버퍼의 <code>BufferDesc::stride</code>입니다. 둘 다 <code>sizeof(VERTEX)</code>에서 나옵니다.</li>
+  <li><strong>속성이 0개인 레이아웃도 됩니다(2026-10-08).</strong> <code>attributeCount = 0</code> 이면 D3D11 은 입력 레이아웃 객체를 만들지 않고(<code>IASetInputLayout(nullptr)</code>), D3D12 는 빈 <code>InputLayout</code> 을 넣습니다. 정점 셰이더가 <code>SV_VertexID</code> 만으로 위치를 만드는 스카이박스 PSO 가 이것을 씁니다. 예전에는 두 백엔드가 0개를 오류로 거부했습니다.</li>
 </ul>
 
 <!-- c06-3.html -->
@@ -2817,15 +2824,15 @@ context-&gt;PSSetSamplers(0, 1, &amp;sampler);            <span class="cm">// PS
 <div class="tbl"><table>
 <thead><tr><th>레이아웃 / 셋</th><th>슬롯 (Add 순서 = bindings 순서)</th><th>내용 갱신</th><th>셋을 바인딩하는 자리</th></tr></thead>
 <tbody>
-<tr><td class="mono">Layout_Frame<br>Set_Frame</td><td>[0] <code>b0</code> PerFrame (VS|PS) ← <code>m_perFrameCB</code><br>[1] <code>b2</code> Lights (PS) ← <code>m_lightCB</code><br>[2] <code>t8</code> 그림자 맵 (PS) ← <code>m_shadowMap</code><br>[3] <code>s4</code> 비교 샘플러 (PS) ← <code>m_shadowSampler</code></td><td>프레임에 한 번. 카메라 미리보기 패스가 있으면 b0 만 한 번 더</td><td><code>Renderer::Render</code> 의 패스 시작 전, 그리고 <code>DrawItems</code> 첫머리(패스마다)</td></tr>
+<tr><td class="mono">Layout_Frame<br>Set_Frame</td><td>[0] <code>b0</code> PerFrame (VS|PS) ← <code>m_perFrameCB</code><br>[1] <code>b2</code> Lights (PS) ← <code>m_lightCB</code><br>[2] <code>t8</code> 그림자 맵 (PS) ← <code>m_shadowMap</code><br>[3] <code>s4</code> 비교 샘플러 (PS) ← <code>m_shadowSampler</code><br>[4] <code>t9</code> 스카이박스 (PS) ← 씬의 스카이박스 또는 <code>m_blackCube</code><br>[5] <code>s5</code> 환경 샘플러 (PS) ← LinearClamp 프리셋<br>[6] <code>t10</code> IBL 확산 조도 (PS)<br>[7] <code>t11</code> IBL 반사 프리필터 (PS)<br>[8] <code>t12</code> BRDF LUT (PS) ← 없으면 <code>m_whiteTexture</code></td><td>프레임에 한 번. 카메라 미리보기 패스가 있으면 b0 만 한 번 더. 셋 자체는 t9~t12 의 텍스처가 바뀔 때만 다시 만듦</td><td><code>Renderer::Render</code> 의 패스 시작 전, 그리고 <code>DrawItems</code> 첫머리(패스마다)</td></tr>
 <tr><td class="mono">Layout_Object<br>Set_Object</td><td>[0] <code>b1</code> PerObject (VS) ← <code>m_perObjectCB</code></td><td>드로우마다 내용만 (<code>UploadObjectConstants</code>)</td><td>프레임 셋과 같은 자리. 드로우마다 다시 바인딩하지 않습니다</td></tr>
-<tr><td class="mono">Layout_Material<br>Set_Material × 재질 수</td><td>[0] <code>b3</code> Material (VS|PS) ← 재질별 상수버퍼<br>[1] <code>t0</code> 알베도 (PS)<br>[2] <code>t1</code> 노멀 (PS)<br>[3] <code>s0</code> 재질 샘플러 (PS)</td><td>재질당 프레임에 한 번 (<code>GetOrCreateGpuMaterial</code>)</td><td><code>DrawItems</code> 에서 재질이 직전 드로우와 다를 때</td></tr>
+<tr><td class="mono">Layout_Material<br>Set_Material × 재질 수</td><td>[0] <code>b3</code> Material (VS|PS) ← 재질별 상수버퍼<br>[1] <code>t0</code> 알베도 (PS)<br>[2] <code>t1</code> 노멀 (PS)<br>[3] <code>t2</code> 금속성/거칠기 (PS)<br>[4] <code>t3</code> AO (PS)<br>[5] <code>t4</code> 발광 (PS)<br>[6] <code>s0</code> 재질 샘플러 (PS)</td><td>재질당 프레임에 한 번 (<code>GetOrCreateGpuMaterial</code>)</td><td><code>DrawItems</code> 에서 재질이 직전 드로우와 다를 때</td></tr>
 </tbody></table></div>
-<p>메인 패스 PSO 의 Desc(<code>m_baseDesc</code>)는 <code>bindingLayouts = { m_frameLayout, m_objectLayout, m_materialLayout }</code> 셋을 쓰고, 그림자 패스 PSO(<code>m_shadowDesc</code>)는 재질을 읽지 않으므로 <code>{ m_frameLayout, m_objectLayout }</code> 둘만 씁니다. b3 이 정점 셰이더에도 보이는 것은 정점 셰이더가 재질의 <code>uvScale</code> 을 읽기 때문입니다.</p>
-<p>프레임 셋과 오브젝트 셋은 초기화 때 한 번 만들어 계속 씁니다. 재질 셋은 재질마다 하나이고 <code>GetOrCreateGpuMaterial</code> 이 만듭니다. <code>ResourceSet</code> 에는 부분 갱신 기능이 없으므로, 재질이 가리키는 알베도·노멀 텍스처나 샘플러가 바뀌면 이 함수가 이전 셋을 <code>DestroyResourceSet</code> 하고 새로 만듭니다. 노멀 텍스처가 없는 재질에는 내장 평면 노멀 텍스처(<code>m_flatNormalTexture</code>)를 꽂아 슬롯이 비지 않게 합니다.</p>
+<p>메인 패스 PSO 의 Desc(<code>m_baseDesc</code>)는 <code>bindingLayouts = { m_frameLayout, m_objectLayout, m_materialLayout }</code> 셋을 쓰고, 그림자 패스 PSO(<code>m_shadowDesc</code>)는 재질을 읽지 않으므로 <code>{ m_frameLayout, m_objectLayout }</code> 둘만 씁니다. 스카이박스 PSO(<code>m_skyDesc</code>)는 오브젝트도 재질도 없으므로 <code>{ m_frameLayout }</code> 하나만 씁니다. b3 이 정점 셰이더에도 보이는 것은 정점 셰이더가 재질의 <code>uvScale</code> 을 읽기 때문입니다.</p>
+<p>오브젝트 셋은 초기화 때 한 번 만들어 계속 씁니다. 프레임 셋은 <code>UpdateFrameSet</code> 이 만들고, 씬의 환경이 바뀌어 t9~t12 에 꽂을 텍스처가 달라질 때만 다시 만듭니다(<a href="#c12-14">12.14절</a>). 재질 셋은 재질마다 하나이고 <code>GetOrCreateGpuMaterial</code> 이 만듭니다. <code>ResourceSet</code> 에는 부분 갱신 기능이 없으므로, 재질이 가리키는 알베도·노멀 텍스처나 샘플러가 바뀌면 이 함수가 이전 셋을 <code>DestroyResourceSet</code> 하고 새로 만듭니다. 노멀 텍스처가 없는 재질에는 내장 평면 노멀 텍스처(<code>m_flatNormalTexture</code>)를 꽂아 슬롯이 비지 않게 합니다.</p>
 <div class="callout">
   <div class="t">셋끼리 t·s 레지스터 구간을 나눈다</div>
-  <p>D3D11 의 <code>t#</code>·<code>s#</code> 는 스테이지마다 번호 공간이 하나뿐이라, 재질 셋과 프레임 셋이 같은 번호를 쓰면 한쪽이 다른 쪽을 덮어씁니다. 그래서 구간을 배정했습니다(<code>Graphics/ShaderConstants.h</code> 머리 주석). 재질 셋은 t0~t7 / s0~s3, 프레임 셋은 t8~t15 / s4~s7 입니다. 그림자 맵이 t1 이 아니라 t8, 비교 샘플러가 s1 이 아니라 s4 인 이유입니다. D3D12 에서는 이 구간이 그대로 테이블의 range 가 됩니다.</p>
+  <p>D3D11 의 <code>t#</code>·<code>s#</code> 는 스테이지마다 번호 공간이 하나뿐이라, 재질 셋과 프레임 셋이 같은 번호를 쓰면 한쪽이 다른 쪽을 덮어씁니다. 그래서 구간을 배정했습니다(<code>Graphics/ShaderConstants.h</code> 머리 주석). 재질 셋은 t0~t7 / s0~s3, 프레임 셋은 t8~t15 / s4~s7 입니다. 그림자 맵이 t1 이 아니라 t8, 비교 샘플러가 s1 이 아니라 s4 인 이유이고, 환경 텍스처(t9~t12)와 그 샘플러(s5)도 같은 구간에 이어 붙였고, 재질의 PBR 텍스처(t2~t4)는 재질 구간을 씁니다. D3D12 에서는 이 구간이 그대로 테이블의 range 가 됩니다.</p>
 </div>
 
 <h3 id="c7-8">7.8 D3D11 구현: 선언을 보관했다가 슬롯별 호출로 푼다</h3>
@@ -3149,12 +3156,13 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());</code></pre>
 <tr><td class="mono">SetVertexBuffer(h, slot, offset)</td><td><code>IASetVertexBuffers</code>. stride 는 <code>BufferDesc::stride</code></td><td><code>D3D12_VERTEX_BUFFER_VIEW</code>(GPU 주소, 크기, stride)를 채워 <code>IASetVertexBuffers</code></td></tr>
 <tr><td class="mono">SetIndexBuffer(h, format)</td><td><code>IASetIndexBuffer</code></td><td><code>D3D12_INDEX_BUFFER_VIEW</code> 를 채워 <code>IASetIndexBuffer</code></td></tr>
 <tr><td class="mono">DrawIndexed(count, start, base)</td><td><code>DrawIndexed</code></td><td><code>ApplyBindings</code> 로 루트 CBV 와 테이블을 넘긴 뒤 <code>DrawIndexedInstanced(count, 1, start, base, 0)</code></td></tr>
+<tr><td class="mono">Draw(count, start)<br><span class="sub">2026-10-08</span></td><td><code>Draw</code></td><td><code>ApplyBindings</code> 뒤 <code>DrawInstanced(count, 1, start, 0)</code>. 정점 버퍼 없이 <code>SV_VertexID</code> 로 그리는 스카이박스용</td></tr>
 <tr><td class="mono">Barrier(tex, before, after)</td><td>상태 기록만 갱신. Debug 빌드에서 <code>before</code> 가 기록과 다르면 경고</td><td><code>ResourceBarrier</code>(전이)</td></tr>
 <tr><td class="mono">CopyBuffer(dst, src)</td><td><code>CopyResource</code></td><td><code>CopyResource</code>. 버퍼는 암묵적 상태 승격이 있어 배리어 없음. Dynamic 버퍼는 리소스가 없어 대상이 될 수 없음</td></tr>
 <tr><td class="mono">WriteTimestamp(slot)</td><td colspan="2">장치의 타임스탬프 쿼리에 위임합니다 (<a href="#c15">15장</a>)</td></tr>
 <tr><td class="mono">GetStats / ResetStats</td><td colspan="2"><code>renderPasses</code>, <code>barriers</code>, <code>srvUnbinds</code>(D3D11 에서만 증가). <code>BeginFrame</code> 이 0 으로 돌립니다</td></tr>
 </tbody></table></div>
-<p>두 구현이 똑같이 지키는 규칙이 있습니다. 패스 밖에서 <code>DrawIndexed</code> 를 부르면 에러 로그를 한 번 남기고 무시합니다. 패스가 열린 채 <code>BeginRenderPass</code> 를 부르면 에러를 남기고 이전 패스를 닫은 뒤 진행하고, 패스가 열린 채 <code>EndFrame</code> 에 도달해도 같은 처리를 합니다. 유효하지 않은 핸들은 에러 한 번과 함께 무시됩니다. 같은 에러가 매 프레임 로그를 채우지 않도록 함수마다 <code>ErrorOnce</code> 로 한 번만 출력합니다. <code>CopyBuffer</code> 는 인터페이스에 있지만 현재 부르는 코드가 없습니다.</p>
+<p>두 구현이 똑같이 지키는 규칙이 있습니다. 패스 밖에서 <code>DrawIndexed</code>·<code>Draw</code> 를 부르면 에러 로그를 한 번 남기고 무시합니다. 패스가 열린 채 <code>BeginRenderPass</code> 를 부르면 에러를 남기고 이전 패스를 닫은 뒤 진행하고, 패스가 열린 채 <code>EndFrame</code> 에 도달해도 같은 처리를 합니다. 유효하지 않은 핸들은 에러 한 번과 함께 무시됩니다. 같은 에러가 매 프레임 로그를 채우지 않도록 함수마다 <code>ErrorOnce</code> 로 한 번만 출력합니다. <code>CopyBuffer</code> 는 인터페이스에 있지만 현재 부르는 코드가 없습니다.</p>
 
 <h3 id="c8-6">8.6 즉시 실행과 기록 후 제출</h3>
 <p>같은 메서드를 같은 순서로 부르지만 두 백엔드에서 명령이 GPU 에 닿는 시점이 다릅니다.</p>
@@ -3414,7 +3422,7 @@ m_fenceValues[m_frameIndex] = m_nextFenceValue++;</code></pre>
 <tbody>
 <tr><td>정보 조회</td><td class="mono">GetBackend · GetBackendName · IsInitialized</td><td>표시용입니다. 호출 코드가 백엔드에 따라 분기하는 데 쓰지 않습니다. <code>Renderer</code> 에는 <code>GetBackend()</code> 호출이 없습니다.</td></tr>
 <tr><td>프레임</td><td class="mono">BeginFrame · EndFrame · GetFrameIndex · GetCommandList</td><td><code>BeginFrame</code> 은 프레임 인덱스(<code>프레임 번호 % kFrameCount</code>)를 갱신해 돌려줄 뿐 타깃을 바인딩하거나 지우지 않습니다. <code>EndFrame</code> 은 Present 입니다. 열린 렌더 패스가 있으면 에러 로그를 한 번 남기고 닫습니다.</td></tr>
-<tr><td>생성·파괴</td><td class="mono">CreateBuffer / DestroyBuffer<br>CreateTexture / DestroyTexture<br>CreateSampler / DestroySampler<br>CreateShader / DestroyShader<br>CreateBindingLayout / DestroyBindingLayout<br>CreateResourceSet / DestroyResourceSet</td><td>Desc 를 받아 핸들을 돌려줍니다. 실패하면 빈 핸들입니다. <code>CreateTexture</code> 의 초기 데이터는 밉 레벨마다 하나인 <code>std::span&lt;const TextureSubresource&gt;</code> 이고 비어 있으면 빈 텍스처입니다. <code>CreateShader</code> 는 바이트코드만 받습니다. Device 는 컴파일러를 모릅니다.</td></tr>
+<tr><td>생성·파괴</td><td class="mono">CreateBuffer / DestroyBuffer<br>CreateTexture / DestroyTexture<br>CreateSampler / DestroySampler<br>CreateShader / DestroyShader<br>CreateBindingLayout / DestroyBindingLayout<br>CreateResourceSet / DestroyResourceSet</td><td>Desc 를 받아 핸들을 돌려줍니다. 실패하면 빈 핸들입니다. <code>CreateTexture</code> 의 초기 데이터는 서브리소스(면 × 밉)마다 하나인 <code>std::span&lt;const TextureSubresource&gt;</code> 이고 비어 있으면 빈 텍스처입니다. 큐브 텍스처는 정사각형 ShaderResource 전용입니다. <code>CreateShader</code> 는 바이트코드만 받습니다. Device 는 컴파일러를 모릅니다.</td></tr>
 <tr><td>파이프라인</td><td class="mono">CreatePipeline · GetPipelineCount · InvalidatePipelines</td><td>같은 Desc 면 같은 핸들이 돌아옵니다(캐시). 개별 파괴는 없고 <code>InvalidatePipelines</code> 가 전부 버리며 이전 핸들을 무효로 만듭니다. 셰이더 핫리로드가 씁니다(<a href="#c6">6장</a>).</td></tr>
 <tr><td>갱신</td><td class="mono">UpdateBuffer</td><td>Dynamic 버퍼는 "이 프레임 슬롯의 내용을 통째로 교체"(<code>size ≤ desc.size</code>), Default 버퍼는 전체 크기로만 갱신합니다. 부분 갱신과 이전 내용 읽기는 약속하지 않습니다.</td></tr>
 <tr><td>백버퍼·리사이즈</td><td class="mono">GetBackBuffer · GetDepthBuffer · Resize · SetVSync · IsVSync · IsTearingSupported</td><td>백버퍼와 메인 깊이 버퍼는 Device 가 소유하고 핸들로 빌려줍니다. <code>Resize</code> 때마다 새 핸들이 되므로 프레임을 넘겨 보관하면 안 됩니다. D3D12 에서는 프레임마다 다른 백버퍼의 핸들이 돌아옵니다.</td></tr>
@@ -3870,6 +3878,7 @@ Garbage m_garbage[kFrameCount];</code></pre>
 <tr><td class="mono">Shaders/BasicVertexShader.hlsl</td><td>메인 패스 정점 셰이더 <code>VS_Main</code></td></tr>
 <tr><td class="mono">Shaders/BasicPixelShader.hlsl</td><td>메인 패스 픽셀 셰이더 <code>PS_Main</code>, <code>ComputeShadowFactor</code>, <code>CalculateDistanceAttenuation</code></td></tr>
 <tr><td class="mono">Shaders/ShadowVertexShader.hlsl</td><td>그림자 패스 정점 셰이더 <code>VS_Shadow</code> (픽셀 셰이더 없음)</td></tr>
+<tr><td class="mono">Shaders/SkyboxVertexShader.hlsl<br>Shaders/SkyboxPixelShader.hlsl</td><td>스카이박스 <code>VS_Sky</code>(정점 버퍼 없이 전체 화면 삼각형, 투영의 역), <code>PS_Sky</code>(환경 큐브맵 샘플)</td></tr>
 <tr><td class="mono">Graphics/ShaderConstants.h</td><td>cbuffer 와 짝인 C++ 구조체, 슬롯 상수, 크기·오프셋 단언</td></tr>
 <tr><td class="mono">Scene/Light.h</td><td><code>LightData</code>(80바이트), <code>LightType</code>, <code>MAX_LIGHTS</code></td></tr>
 <tr><td class="mono">RHI/ShaderCompiler.h<br>RHI/DXBC/ShaderCompiler.cpp</td><td><code>CompileFromFile</code>, <code>LoadOrCompile</code>, <code>ValidateConstantBufferSize</code>, <code>ReflectBindings</code>, <code>GetLastWriteTime</code></td></tr>
@@ -3879,20 +3888,23 @@ Garbage m_garbage[kFrameCount];</code></pre>
 </tbody></table></div>
 
 <h3 id="c10-1">10.1 셰이더 파일 구성과 진입점</h3>
-<p>셰이더는 세 개이고 전부 <code>Common.hlsli</code> 하나를 include 합니다. 스테이지마다 파일을 나눈 이유는 Visual Studio 의 <code>FxCompile</code> 항목이 파일 하나에 진입점 하나와 셰이더 종류 하나만 지정할 수 있기 때문입니다.</p>
+<p>셰이더는 다섯 개이고 전부 <code>Common.hlsli</code> 하나를 include 합니다. 스테이지마다 파일을 나눈 이유는 Visual Studio 의 <code>FxCompile</code> 항목이 파일 하나에 진입점 하나와 셰이더 종류 하나만 지정할 수 있기 때문입니다.</p>
 <div class="tbl"><table>
 <thead><tr><th>파일</th><th>진입점</th><th>스테이지</th><th>쓰는 패스</th><th>읽는 것</th></tr></thead>
 <tbody>
 <tr><td class="mono">BasicVertexShader.hlsl</td><td class="mono">VS_Main</td><td>정점</td><td>메인, 미리보기</td><td>b0 <code>PerFrame</code>, b1 <code>PerObject</code>, b3 <code>Material</code>(<code>uvScale</code>)</td></tr>
-<tr><td class="mono">BasicPixelShader.hlsl</td><td class="mono">PS_Main</td><td>픽셀</td><td>메인, 미리보기</td><td>b0, b2 <code>Lights</code>, b3, t0·t1·s0, t8·s4</td></tr>
+<tr><td class="mono">BasicPixelShader.hlsl</td><td class="mono">PS_Main</td><td>픽셀</td><td>메인, 미리보기</td><td>b0, b2 <code>Lights</code>, b3, t0~t4·s0, t8·s4, t10~t12·s5</td></tr>
 <tr><td class="mono">ShadowVertexShader.hlsl</td><td class="mono">VS_Shadow</td><td>정점</td><td>그림자</td><td>b0(<code>lightViewProj</code>), b1(<code>world</code>)</td></tr>
+<tr><td class="mono">SkyboxVertexShader.hlsl</td><td class="mono">VS_Sky</td><td>정점</td><td>메인, 미리보기 (스카이박스가 있을 때)</td><td>b0(<code>view</code>, <code>proj</code>), <code>SV_VertexID</code>. 정점 버퍼 없음</td></tr>
+<tr><td class="mono">SkyboxPixelShader.hlsl</td><td class="mono">PS_Sky</td><td>픽셀</td><td>위와 같음</td><td>t9 <code>environmentMap</code>, s5</td></tr>
 </tbody></table></div>
 <p><code>Common.hlsli</code> 는 include 가드(<code>SHERLOCK_COMMON_HLSLI</code>) 안에 다음을 순서대로 둡니다.</p>
 <ul>
   <li>상수: <code>MAX_LIGHTS = 8</code>, <code>LIGHT_DIRECTIONAL = 0</code>, <code>LIGHT_POINT = 1</code>, <code>LIGHT_SPOT = 2</code>, <code>EPSILON = 0.0001f</code>. 앞의 넷은 <code>Scene/Light.h</code> 의 <code>MAX_LIGHTS</code>, <code>LightType</code> 과 값이 같아야 합니다.</li>
   <li><code>struct LightData</code> 와 cbuffer 네 개(<code>PerFrame</code> b0, <code>PerObject</code> b1, <code>Lights</code> b2, <code>Material</code> b3). 배치는 <a href="#c10-6">10.6절</a>에서 한 줄씩 대조합니다.</li>
-  <li>텍스처와 샘플러: <code>albedoTexture</code> t0, <code>normalTexture</code> t1, <code>albedoSampler</code> s0, <code>shadowMap</code> t8, <code>shadowSampler</code> s4(<code>SamplerComparisonState</code>).</li>
-  <li>정점 셰이더의 입력·출력 구조체 <code>VSInput</code>, <code>VSOutput</code> 과 영벡터를 정규화해도 NaN 이 나오지 않게 하는 <code>SafeNormalize(value, fallback)</code>.</li>
+  <li>텍스처와 샘플러: <code>albedoTexture</code> t0, <code>normalTexture</code> t1, <code>albedoSampler</code> s0, <code>shadowMap</code> t8, <code>shadowSampler</code> s4(<code>SamplerComparisonState</code>), <code>environmentMap</code> t9(<code>TextureCube</code>), <code>environmentSampler</code> s5, IBL 의 <code>irradianceMap</code> t10·<code>prefilteredMap</code> t11(<code>TextureCube</code>)·<code>brdfLut</code> t12, 재질의 <code>metallicRoughnessTexture</code> t2·<code>occlusionTexture</code> t3·<code>emissiveTexture</code> t4.</li>
+  <li>출력 함수 <code>ApplyExposureToneMap</code>(노출 × ACES 근사)과 상수 <code>PI</code>.</li>
+  <li>정점 셰이더의 입력·출력 구조체 <code>VSInput</code>, <code>VSOutput</code>, 스카이박스 VS → PS 구조체 <code>SkyVSOutput</code> 과 영벡터를 정규화해도 NaN 이 나오지 않게 하는 <code>SafeNormalize(value, fallback)</code>.</li>
 </ul>
 <p>레지스터 번호는 셋(갱신 빈도별 바인딩 묶음)마다 구간을 나눠 배정합니다. 재질 셋은 t0~t7, s0~s3 을, 프레임 셋은 t8~t15, s4~s7 을 씁니다. D3D11 의 <code>t#</code>/<code>s#</code> 는 스테이지마다 번호 공간이 하나뿐이라 셋끼리 번호가 겹치면 안 되고, D3D12 에서는 이 구간이 그대로 디스크립터 테이블의 범위가 됩니다. 셋과 레이아웃의 구조는 <a href="#c7">7장</a>이 다룹니다. C++ 쪽의 같은 번호는 <code>Graphics/ShaderConstants.h</code> 의 상수입니다.</p>
 <pre><code><span class="cm">// Graphics/ShaderConstants.h</span>
@@ -3903,8 +3915,11 @@ Garbage m_garbage[kFrameCount];</code></pre>
 <span class="kw">constexpr</span> uint32_t kSRVSlotAlbedo = 0;       <span class="cm">// t0 (재질)</span>
 <span class="kw">constexpr</span> uint32_t kSRVSlotNormal = 1;       <span class="cm">// t1 (재질)</span>
 <span class="kw">constexpr</span> uint32_t kSRVSlotShadowMap = 8;    <span class="cm">// t8 (프레임)</span>
+<span class="kw">constexpr</span> uint32_t kSRVSlotEnvironment = 9;  <span class="cm">// t9 (프레임, 스카이박스 큐브맵)</span>
+<span class="kw">constexpr</span> uint32_t kSRVSlotIrradiance = 10;  <span class="cm">// t10~t12 (프레임, IBL). 재질의 t2~t4 는 kSRVSlotMetallicRoughness 등</span>
 <span class="kw">constexpr</span> uint32_t kSamplerSlotMaterial = 0; <span class="cm">// s0 (재질)</span>
-<span class="kw">constexpr</span> uint32_t kSamplerSlotShadow = 4;   <span class="cm">// s4 (프레임, 비교 샘플러)</span></code></pre>
+<span class="kw">constexpr</span> uint32_t kSamplerSlotShadow = 4;   <span class="cm">// s4 (프레임, 비교 샘플러)</span>
+<span class="kw">constexpr</span> uint32_t kSamplerSlotEnvironment = 5; <span class="cm">// s5 (프레임, 큐브맵용 선형 Clamp)</span></code></pre>
 <div class="callout amber"><div class="t">register 에 space 를 쓰지 않는 이유</div>
 <p><code>register(b0, space0)</code> 표기는 셰이더 모델 5.1 부터 지원합니다. 5.0 프로파일에서는 fxc 가 <code>error X3721</code> 로 거부합니다. 이 엔진은 5.0 을 유지하므로 레지스터에 <code>space</code> 를 적지 않고, D3D12 루트 시그니처는 space 0 만 씁니다. <code>Common.hlsli</code> 머리 주석에는 "space 는 8단계에서 SM 5.1/6.0 으로 올릴 때 넣음"이라고 적혀 있지만 8단계에서 셰이더 모델을 올리지 않았으므로 지금 코드에는 <code>space</code> 가 없습니다.</p></div>
 
@@ -4006,7 +4021,7 @@ compileFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
   &lt;Copy SourceFiles="@(ShaderSourceFiles)" DestinationFolder="$(OutDir)Shaders" SkipUnchangedFiles="true" /&gt;
 &lt;/Target&gt;</code></pre>
 <ul>
-  <li><code>FxCompile</code> 항목은 셋입니다: <code>BasicVertexShader.hlsl</code>(Vertex, <code>VS_Main</code>), <code>BasicPixelShader.hlsl</code>(Pixel, <code>PS_Main</code>), <code>ShadowVertexShader.hlsl</code>(Vertex, <code>VS_Shadow</code>). 각 속성은 fxc 인자 <code>/T</code>, <code>/E</code>, <code>/Fo</code>, <code>/Zi</code>, <code>/Od</code> 로 옮겨집니다.</li>
+  <li><code>FxCompile</code> 항목은 다섯입니다: <code>BasicVertexShader.hlsl</code>(Vertex, <code>VS_Main</code>), <code>BasicPixelShader.hlsl</code>(Pixel, <code>PS_Main</code>), <code>ShadowVertexShader.hlsl</code>(Vertex, <code>VS_Shadow</code>), <code>SkyboxVertexShader.hlsl</code>(Vertex, <code>VS_Sky</code>), <code>SkyboxPixelShader.hlsl</code>(Pixel, <code>PS_Sky</code>). 각 속성은 fxc 인자 <code>/T</code>, <code>/E</code>, <code>/Fo</code>, <code>/Zi</code>, <code>/Od</code> 로 옮겨집니다.</li>
   <li><code>Common.hlsli</code> 는 include 전용이라 컴파일 대상이 아닌 <code>None</code> 항목입니다.</li>
   <li>fxc 는 출력 폴더를 만들어 주지 않습니다. <code>EnsureShaderOutputDir</code> 타깃이 <code>FxCompile</code> 전에 <code>$(OutDir)Shaders</code> 를 만듭니다.</li>
   <li><code>CopyShaderSources</code> 타깃이 빌드 뒤에 <code>Shaders\*.hlsl</code>, <code>*.hlsli</code> 원본을 같은 폴더로 복사합니다. <code>.cso</code> 가 없을 때의 런타임 컴파일 폴백과, 소스 트리가 없는 환경에서의 수동 리로드가 이 사본을 씁니다.</li>
@@ -4022,17 +4037,17 @@ compileFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
 <p><code>LoadFile</code> 이 파일을 통째로 읽어 돌려줍니다. Release 빌드는 ①이 컴파일되지 않으므로 여기서 시작합니다.</p></div></div>
 <div class="stage"><div class="tag">③</div><div><h4>.cso 가 없으면 폴백</h4>
 <p><code>Log::Warn</code> 을 남기고 <code>Paths::GetShaderPath</code> 가 돌려준 <code>.hlsl</code>(exe 옆 사본, 없으면 엔진 루트 원본)을 런타임 컴파일합니다.</p></div></div>
-<p><code>outSource</code> 에는 실제로 사용한 경로가 담기고, <code>Renderer::LoadShaders</code> 가 끝에 <code>셰이더 로드: VS …, PS …, ShadowVS …</code> 한 줄로 찍습니다. 셰이더마다 따로 판단하므로 VS 는 <code>.cso</code>, PS 는 소스인 혼합 상태도 정상입니다.</p>
+<p><code>outSource</code> 에는 실제로 사용한 경로가 담기고, <code>Renderer::LoadShaders</code> 가 끝에 <code>셰이더 로드: VS …, PS …, ShadowVS …</code> 한 줄로 찍습니다(스카이박스 VS·PS 경로도 같은 줄에 이어짐). 셰이더마다 따로 판단하므로 VS 는 <code>.cso</code>, PS 는 소스인 혼합 상태도 정상입니다.</p>
 
 <h3 id="c10-4">10.4 LoadShaders 와 핫리로드</h3>
-<p><code>Renderer::LoadShaders(bool fromSourceOnly)</code> 가 셰이더 세 개를 한 묶음으로 다룹니다. 초기화(<code>Renderer::Initialize</code>)는 <code>false</code> 로 불러 <code>LoadOrCompile</code> 경로를 타고, 핫리로드는 <code>true</code> 로 불러 <code>Paths::GetShaderSourcePath</code> 의 원본을 무조건 <code>CompileFromFile</code> 합니다. 그 뒤의 순서는 같습니다.</p>
+<p><code>Renderer::LoadShaders(bool fromSourceOnly)</code> 가 셰이더 다섯 개를 한 묶음으로 다룹니다. 초기화(<code>Renderer::Initialize</code>)는 <code>false</code> 로 불러 <code>LoadOrCompile</code> 경로를 타고, 핫리로드는 <code>true</code> 로 불러 <code>Paths::GetShaderSourcePath</code> 의 원본을 무조건 <code>CompileFromFile</code> 합니다. 그 뒤의 순서는 같습니다.</p>
 <ol>
-  <li>바이트코드 세 개를 얻습니다. 하나라도 실패하면 <code>false</code> 를 돌려줍니다.</li>
+  <li>바이트코드 다섯 개(메인 VS·PS, 그림자 VS, 스카이박스 VS·PS)를 얻습니다. 하나라도 실패하면 <code>false</code> 를 돌려줍니다.</li>
   <li>Debug 빌드에서는 cbuffer 크기를 리플렉션으로 대조합니다(<a href="#c10-5">10.5절</a>). 어긋나면 실패합니다.</li>
   <li><code>ValidateBindings</code> 로 셰이더가 쓰는 슬롯을 선언과 대조합니다. Debug 에서는 불일치가 실패이고, Release 에서는 로그만 남깁니다.</li>
-  <li><code>Device::CreateShader</code> 로 새 <code>ShaderHandle</code> 세 개(<code>"BasicVS"</code>, <code>"BasicPS"</code>, <code>"ShadowVS"</code>)를 만듭니다. 하나라도 유효하지 않으면 새로 만든 것을 전부 파괴하고 실패합니다.</li>
-  <li>여기까지 성공한 뒤에야 이전 핸들 <code>m_vs</code>, <code>m_ps</code>, <code>m_shadowVs</code> 를 <code>DestroyShader</code> 하고 새 핸들로 바꿉니다.</li>
-  <li>감시 목록 <code>m_watched</code> 를 다시 만듭니다. 원본 네 개(VS, PS, ShadowVS, <code>Common.hlsli</code>)의 경로와 현재 수정 시각을 기록합니다.</li>
+  <li><code>Device::CreateShader</code> 로 새 <code>ShaderHandle</code> 다섯 개(<code>"BasicVS"</code>, <code>"BasicPS"</code>, <code>"ShadowVS"</code>, <code>"SkyboxVS"</code>, <code>"SkyboxPS"</code>)를 만듭니다. 하나라도 유효하지 않으면 새로 만든 것을 전부 파괴하고 실패합니다.</li>
+  <li>여기까지 성공한 뒤에야 이전 핸들 <code>m_vs</code>, <code>m_ps</code>, <code>m_shadowVs</code>, <code>m_skyVs</code>, <code>m_skyPs</code> 를 <code>DestroyShader</code> 하고 새 핸들로 바꿉니다.</li>
+  <li>감시 목록 <code>m_watched</code> 를 다시 만듭니다. 원본 여섯 개(VS, PS, ShadowVS, SkyboxVS, SkyboxPS, <code>Common.hlsli</code>)의 경로와 현재 수정 시각을 기록합니다.</li>
 </ol>
 <p>5번이 맨 뒤에 있다는 점이 "실패하면 이전 셰이더를 유지한다"는 동작을 만듭니다. 컴파일 오류, 레이아웃 불일치, 생성 실패 어느 것이든 그 전에 함수가 끝나므로 <code>m_vs</code> 등은 손대지 않은 채 남습니다.</p>
 
@@ -4050,12 +4065,14 @@ compileFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
     m_baseDesc.vs = m_vs;
     m_baseDesc.ps = m_ps;
     m_shadowDesc.vs = m_shadowVs;
+    m_skyDesc.vs = m_skyVs;
+    m_skyDesc.ps = m_skyPs;
     m_device-&gt;InvalidatePipelines();
     ++m_stats.shaderReloads;
     …
 }</code></pre>
 <ul>
-  <li><strong>자동</strong>: <code>Renderer::Render</code> 가 매 프레임 맨 앞에서 <code>CheckHotReload(totalTime)</code> 을 부릅니다. Debug 빌드에서만 동작하며, 0.5초(<code>kHotReloadPollInterval</code>)마다 감시 파일 네 개의 수정 시각을 읽어 하나라도 기록과 다르면 <code>ReloadShaders</code> 를 부릅니다. Release 에서는 함수 본문이 비어 있습니다.</li>
+  <li><strong>자동</strong>: <code>Renderer::Render</code> 가 매 프레임 맨 앞에서 <code>CheckHotReload(totalTime)</code> 을 부릅니다. Debug 빌드에서만 동작하며, 0.5초(<code>kHotReloadPollInterval</code>)마다 감시 파일 여섯 개의 수정 시각을 읽어 하나라도 기록과 다르면 <code>ReloadShaders</code> 를 부릅니다. Release 에서는 함수 본문이 비어 있습니다.</li>
   <li><strong>수동</strong>: F4 키(<code>App/EditorApp.cpp</code>)와 패널의 "Reload shaders" 버튼(<code>App/DebugUI.cpp</code>)이 <code>ReloadShaders</code> 를 직접 부릅니다. 폴링과 달리 빌드 구성과 무관하게 동작합니다.</li>
   <li><strong>실패 시</strong>: 화면은 직전 셰이더로 계속 그려집니다. 수정 시각 기록은 갱신하므로 같은 파일로 0.5초마다 재시도하지 않고, 파일을 다시 저장하면 다시 시도합니다.</li>
   <li><strong>성공 시</strong>: PSO Desc 의 고정 부분(<code>m_baseDesc</code>, <code>m_shadowDesc</code>)에 새 셰이더 핸들을 넣고 <code>Device::InvalidatePipelines</code> 로 PSO 캐시를 비웁니다. 다음 프레임의 <code>GetPipelineFor</code> 가 새 Desc 로 PSO 를 다시 만듭니다.</li>
@@ -4095,18 +4112,26 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
 <h4>바인딩 — ReflectBindings 와 ValidateBindings</h4>
 <p><code>BindingLayout</code>(<a href="#c7">7장</a>)은 <code>Renderer::Initialize</code> 가 손으로 선언합니다. 셰이더에 <code>cbuffer Extra : register(b4)</code> 를 추가하고 레이아웃에 넣는 것을 잊으면 D3D11 은 아무 말 없이 b4 에 아무것도 바인딩되지 않은 채로 그리고, 셰이더는 0 을 읽습니다. 이 종류의 실수를 로드 시점에 잡습니다.</p>
 <p><code>ShaderCompiler::ReflectBindings</code> 는 <code>D3D11_SHADER_DESC::BoundResources</code> 만큼 <code>GetResourceBindingDesc</code> 를 돌려 (타입, 레지스터 번호, 이름) 목록을 만듭니다. <code>D3D_SIT_CBUFFER</code> 는 <code>BindingType::ConstantBuffer</code>, <code>D3D_SIT_TEXTURE</code> 는 <code>ShaderResource</code>, <code>D3D_SIT_SAMPLER</code> 는 <code>Sampler</code> 로 옮깁니다. 그 밖의 타입(StructuredBuffer, UAV 등)은 아직 레이아웃이 다루지 않으므로 경고를 남기고 목록에 넣지 않습니다.</p>
-<p><code>Renderer::ValidateBindings</code> 는 세 레이아웃(프레임, 오브젝트, 재질)의 슬롯 합집합을 표로 다시 적어 두고, 셰이더 세 개의 리플렉션 결과가 전부 그 표 안에 <em>그 스테이지로</em> 선언되어 있는지 확인합니다.</p>
+<p><code>Renderer::ValidateBindings</code> 는 세 레이아웃(프레임, 오브젝트, 재질)의 슬롯 합집합을 표로 다시 적어 두고, 셰이더 다섯 개의 리플렉션 결과가 전부 그 표 안에 <em>그 스테이지로</em> 선언되어 있는지 확인합니다. 스카이박스 셰이더가 실제로 쓰는 것은 b0·t9·s5 뿐입니다.</p>
 <div class="tbl"><table>
 <thead><tr><th>선언</th><th>레지스터</th><th>스테이지</th><th>레이아웃</th></tr></thead>
 <tbody>
-<tr><td>ConstantBuffer</td><td class="mono">b0 (kCBSlotPerFrame)</td><td>VS + PS</td><td rowspan="4">프레임</td></tr>
+<tr><td>ConstantBuffer</td><td class="mono">b0 (kCBSlotPerFrame)</td><td>VS + PS</td><td rowspan="9">프레임</td></tr>
 <tr><td>ConstantBuffer</td><td class="mono">b2 (kCBSlotLights)</td><td>PS</td></tr>
 <tr><td>ShaderResource</td><td class="mono">t8 (kSRVSlotShadowMap)</td><td>PS</td></tr>
 <tr><td>Sampler</td><td class="mono">s4 (kSamplerSlotShadow)</td><td>PS</td></tr>
+<tr><td>ShaderResource</td><td class="mono">t9 (kSRVSlotEnvironment)</td><td>PS</td></tr>
+<tr><td>Sampler</td><td class="mono">s5 (kSamplerSlotEnvironment)</td><td>PS</td></tr>
+<tr><td>ShaderResource</td><td class="mono">t10 (kSRVSlotIrradiance)</td><td>PS</td></tr>
+<tr><td>ShaderResource</td><td class="mono">t11 (kSRVSlotPrefiltered)</td><td>PS</td></tr>
+<tr><td>ShaderResource</td><td class="mono">t12 (kSRVSlotBrdfLut)</td><td>PS</td></tr>
 <tr><td>ConstantBuffer</td><td class="mono">b1 (kCBSlotPerObject)</td><td>VS</td><td>오브젝트</td></tr>
-<tr><td>ConstantBuffer</td><td class="mono">b3 (kCBSlotMaterial)</td><td>VS + PS</td><td rowspan="4">재질</td></tr>
+<tr><td>ConstantBuffer</td><td class="mono">b3 (kCBSlotMaterial)</td><td>VS + PS</td><td rowspan="7">재질</td></tr>
 <tr><td>ShaderResource</td><td class="mono">t0 (kSRVSlotAlbedo)</td><td>PS</td></tr>
 <tr><td>ShaderResource</td><td class="mono">t1 (kSRVSlotNormal)</td><td>PS</td></tr>
+<tr><td>ShaderResource</td><td class="mono">t2 (kSRVSlotMetallicRoughness)</td><td>PS</td></tr>
+<tr><td>ShaderResource</td><td class="mono">t3 (kSRVSlotOcclusion)</td><td>PS</td></tr>
+<tr><td>ShaderResource</td><td class="mono">t4 (kSRVSlotEmissive)</td><td>PS</td></tr>
 <tr><td>Sampler</td><td class="mono">s0 (kSamplerSlotMaterial)</td><td>PS</td></tr>
 </tbody></table></div>
 <p>일치하면 <code>바인딩 대조: PS t8 ('shadowMap') OK</code> 형식의 Info 를, 표에 없으면 <code>…를 쓰지만 BindingLayout에 그 스테이지로 선언되지 않음</code> 오류를 남깁니다. 리플렉션 자체가 불가능한 셰이더는 검사를 건너뜁니다. 불일치가 있으면 Debug 빌드에서는 <code>LoadShaders</code> 가 실패하고, Release 빌드에서는 로그만 남기고 진행합니다.</p>
@@ -4121,14 +4146,14 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
 <div class="tbl"><table>
 <thead><tr><th>슬롯</th><th>HLSL cbuffer</th><th>C++ 구조체</th><th>크기</th><th>갱신</th><th>읽는 스테이지</th><th>버퍼 핸들</th></tr></thead>
 <tbody>
-<tr><td class="mono">b0</td><td class="mono">PerFrame</td><td class="mono">PerFrameConstants</td><td class="n">304</td><td>프레임에 한 번. 미리보기 패스가 있으면 그 카메라로 한 번 더</td><td>VS + PS</td><td class="mono">m_perFrameCB</td></tr>
+<tr><td class="mono">b0</td><td class="mono">PerFrame</td><td class="mono">PerFrameConstants</td><td class="n">336</td><td>프레임에 한 번. 미리보기 패스가 있으면 그 카메라로 한 번 더</td><td>VS + PS</td><td class="mono">m_perFrameCB</td></tr>
 <tr><td class="mono">b1</td><td class="mono">PerObject</td><td class="mono">PerObjectConstants</td><td class="n">128</td><td>드로우마다</td><td>VS</td><td class="mono">m_perObjectCB</td></tr>
 <tr><td class="mono">b2</td><td class="mono">Lights</td><td class="mono">LightConstants</td><td class="n">656</td><td>프레임에 한 번</td><td>PS</td><td class="mono">m_lightCB</td></tr>
 <tr><td class="mono">b3</td><td class="mono">Material</td><td class="mono">MaterialConstants</td><td class="n">64</td><td>재질마다 프레임에 한 번</td><td>VS(<code>uvScale</code>) + PS</td><td class="mono">GpuMaterial::constants</td></tr>
 </tbody></table></div>
 <p>아래 격자는 한 행이 16바이트 레지스터 하나, 한 칸이 4바이트입니다. 왼쪽 위 숫자는 바이트 오프셋 범위이고, 필드 이름은 C++ 와 HLSL 에서 같습니다.</p>
 
-<h4>b0 PerFrame — 304바이트</h4>
+<h4>b0 PerFrame — 336바이트</h4>
 <div class="layout">
   <div class="row">0 ~ 63</div>
   <div class="m4">view — matrix / XMFLOAT4X4 (레지스터 4개)</div>
@@ -4144,8 +4169,12 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
   <div>x: 1/맵 크기</div><div>y: 깊이 바이어스</div><div>z: 세기 0..1</div><div>w: 사용 여부</div>
   <div class="row">288 ~ 303 · debugParams</div>
   <div>x: 디버그 뷰 번호</div><div>y: 깊이 범위</div><div class="pad">z: 0</div><div class="pad">w: 0</div>
+  <div class="row">304 ~ 319 · environmentParams</div>
+  <div>x: IBL 세기</div><div>y: 반사 큐브 밉 수</div><div>z: 확산 조도 밉</div><div>w: 환경 있음</div>
+  <div class="row">320 ~ 335 · outputParams</div>
+  <div>x: 노출</div><div>y: 톤매핑</div><div>z: BRDF LUT 있음</div><div class="pad">w: 0</div>
 </div>
-<p>채우는 곳은 <code>Renderer::UploadPerFrameConstants</code> 입니다. <code>shadowParams</code> 는 <code>(1 / kShadowMapSize, m_settings.shadowBias, m_settings.shadowStrength, m_shadowEnabledThisFrame ? 1 : 0)</code> 이고 <code>debugParams</code> 는 <code>(m_settings.debugView, m_settings.debugDepthRange, 0, 0)</code> 입니다. 현재 셰이더는 <code>view</code>, <code>proj</code>, <code>time</code>, <code>shadowParams.x</code> 를 읽지 않습니다. 변환에는 <code>viewProj</code> 만 쓰고, PCF 의 이웃 텍셀은 정수 오프셋 인자로 지정하기 때문입니다.</p>
+<p>채우는 곳은 <code>Renderer::UploadPerFrameConstants</code> 입니다. <code>shadowParams</code> 는 <code>(1 / kShadowMapSize, m_settings.shadowBias, m_settings.shadowStrength, m_shadowEnabledThisFrame ? 1 : 0)</code> 이고 <code>debugParams</code> 는 <code>(m_settings.debugView, m_settings.debugDepthRange, 0, 0)</code> 입니다. 2026-10-08 에 붙은 두 줄은 <code>Renderer::ResolveEnvironment</code> 가 그 프레임에 정한 환경을 옮깁니다(<a href="#c11-6">11.6절</a>, <a href="#c12-14">12.14절</a>). 현재 셰이더는 <code>view</code>, <code>proj</code>, <code>time</code>, <code>shadowParams.x</code> 를 읽지 않습니다. 변환에는 <code>viewProj</code> 만 쓰고, PCF 의 이웃 텍셀은 정수 오프셋 인자로 지정하기 때문입니다.</p>
 
 <h4>b1 PerObject — 128바이트</h4>
 <div class="layout">
@@ -4181,11 +4210,11 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
   <div class="row">0 ~ 15</div>
   <div>baseColor.r</div><div>baseColor.g</div><div>baseColor.b</div><div>baseColor.a</div>
   <div class="row">16 ~ 31</div>
-  <div>specularColor.r</div><div>specularColor.g</div><div>specularColor.b</div><div>shininess</div>
+  <div>emissive.r</div><div>emissive.g</div><div>emissive.b</div><div>metallic</div>
   <div class="row">32 ~ 47</div>
   <div>uvScale.x</div><div>uvScale.y</div><div>unlit</div><div>normalStrength</div>
   <div class="row">48 ~ 63</div>
-  <div>alphaCutoff</div><div class="pad">padding.x</div><div class="pad">padding.y</div><div class="pad">padding.z</div>
+  <div>alphaCutoff</div><div>roughness</div><div>occlusionStrength</div><div class="pad">padding</div>
 </div>
 <p>채우는 곳은 <code>Renderer::GetOrCreateGpuMaterial</code> 입니다. <code>Scene/Material.h</code> 의 <code>Material</code> 에서 값을 옮기되 <code>bool unlit</code> 은 0 또는 1 의 <code>float</code> 로, <code>normalStrength</code> 는 렌더 설정의 <code>normalMapping</code> 이 꺼져 있으면 0 으로 넣습니다. 패딩 필드의 이름은 HLSL 에서 <code>materialPadding</code>, C++ 에서 <code>padding</code> 으로 다르지만 배치는 이름이 아니라 순서와 타입으로 정해지므로 영향이 없습니다.</p>
 
@@ -4210,14 +4239,14 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
 <tr><td class="mono">float s; float3 a;</td><td>s 0, a 4</td><td>s 0, a 4</td><td><span class="pill ok">일치</span> 4 + 12 = 16 으로 한 레지스터 안에 들어갑니다.</td></tr>
 <tr><td class="mono">float2 p; float3 a;</td><td>p 0, a 8</td><td>p 0, a 16</td><td><span class="pill crit">어긋남</span> 남은 8바이트에 <code>float3</code> 가 들어가지 않습니다.</td></tr>
 </tbody></table></div>
-<p>그래서 이 엔진은 규칙을 손으로 맞춥니다. <strong><code>XMFLOAT3</code> 뒤에는 반드시 4바이트 스칼라 하나</strong>를 두어 레지스터를 정확히 채웁니다. <code>LightData</code> 의 <code>position + intensity</code>, <code>direction + range</code>, <code>color + type</code>, <code>attenuation + innerConeCos</code> 가 모두 그 모양이고, 마지막 줄은 <code>outerConeCos + padding(float3)</code> 로 순서가 반대지만 역시 16바이트입니다. <code>PerFrameConstants</code> 의 <code>cameraPosition + time</code>, <code>LightConstants</code> 의 <code>ambientColor + lightCount</code>, <code>MaterialConstants</code> 의 <code>specularColor + shininess</code> 도 같습니다. 필드를 하나 옮기면 HLSL 쪽도 같은 자리로 옮겨야 합니다.</p>
+<p>그래서 이 엔진은 규칙을 손으로 맞춥니다. <strong><code>XMFLOAT3</code> 뒤에는 반드시 4바이트 스칼라 하나</strong>를 두어 레지스터를 정확히 채웁니다. <code>LightData</code> 의 <code>position + intensity</code>, <code>direction + range</code>, <code>color + type</code>, <code>attenuation + innerConeCos</code> 가 모두 그 모양이고, 마지막 줄은 <code>outerConeCos + padding(float3)</code> 로 순서가 반대지만 역시 16바이트입니다. <code>PerFrameConstants</code> 의 <code>cameraPosition + time</code>, <code>LightConstants</code> 의 <code>ambientColor + lightCount</code>, <code>MaterialConstants</code> 의 <code>emissive + metallic</code> 도 같습니다. 필드를 하나 옮기면 HLSL 쪽도 같은 자리로 옮겨야 합니다.</p>
 
 <h3 id="c10-8">10.8 세 겹의 검사</h3>
 <p>배치가 어긋나면 컴파일도 실행도 되고 화면만 틀립니다. 그래서 어긋남을 화면이 아닌 곳에서 잡도록 검사를 세 겹으로 둡니다.</p>
 
 <div class="stage"><div class="tag">①</div><div><h4>컴파일 시점 — static_assert 와 offsetof</h4>
 <p><code>Graphics/ShaderConstants.h</code> 아래쪽에 구조체마다 크기와 필드 오프셋 단언이 있습니다. <code>sizeof</code> 만으로는 위 표의 첫 줄 같은 실수를 잡지 못하므로 <strong><code>offsetof</code> 단언이 실제 검사</strong>입니다. <code>alignas(16)</code> 과 "크기가 16 의 배수"는 필요조건일 뿐입니다.</p>
-<pre><code><span class="kw">static_assert</span>(<span class="kw">sizeof</span>(PerFrameConstants) == 304, <span class="str">"PerFrameConstants: 64*4 + 16 + 16 + 16"</span>);
+<pre><code><span class="kw">static_assert</span>(<span class="kw">sizeof</span>(PerFrameConstants) == 336, <span class="str">"PerFrameConstants: 64*4 + 16 * 5"</span>);
 <span class="kw">static_assert</span>(offsetof(PerFrameConstants, lightViewProj) == 192, …);
 <span class="kw">static_assert</span>(offsetof(PerFrameConstants, cameraPosition) == 256, …);
 <span class="kw">static_assert</span>(offsetof(PerFrameConstants, time) == 268, …);
@@ -4232,7 +4261,7 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
 <span class="kw">static_assert</span>(offsetof(LightConstants, lightCount) == 652, …);
 
 <span class="kw">static_assert</span>(<span class="kw">sizeof</span>(MaterialConstants) == 64, <span class="str">"MaterialConstants: 16 + 16 + 16 + 16"</span>);
-<span class="kw">static_assert</span>(offsetof(MaterialConstants, shininess) == 28, …);
+<span class="kw">static_assert</span>(offsetof(MaterialConstants, metallic) == 28, …);
 <span class="kw">static_assert</span>(offsetof(MaterialConstants, uvScale) == 32, …);
 …</code></pre>
 <p><code>Scene/Light.h</code> 에도 <code>static_assert(sizeof(LightData) == 80, …)</code> 이 있습니다. 이 숫자들은 HLSL 쪽 배치를 손으로 세어 적은 것이므로, 단언은 "C++ 구조체가 작성자가 의도한 배치와 같다"를 보장합니다.</p></div></div>
@@ -4376,7 +4405,7 @@ vsOutput.normal = normalize(mul(<span class="kw">float4</span>(vsInput.normal, 0
   <text x="14" y="128" class="m">IB: R16_UINT / R32_UINT</text>
   <text x="14" y="146" class="s">속성 5개 (P/C/N/UV/T)</text>
   <text x="14" y="164" class="s">TriangleList</text>
-  <text x="194" y="110" class="m">b0 PerFrame 304B</text>
+  <text x="194" y="110" class="m">b0 PerFrame 336B</text>
   <text x="194" y="128" class="m">b1 PerObject 128B</text>
   <text x="194" y="146" class="m">b3 Material 64B</text>
   <text x="194" y="164" class="s">행렬은 전치해서 업로드</text>
@@ -4385,9 +4414,9 @@ vsOutput.normal = normalize(mul(<span class="kw">float4</span>(vsInput.normal, 0
   <text x="374" y="146" class="s">시계 방향이 앞면</text>
   <text x="374" y="164" class="s">뷰포트 = 타깃 크기, z 0~1</text>
   <text x="554" y="110" class="m">b0 · b2 Lights 656B · b3</text>
-  <text x="554" y="128" class="m">t0 알베도 · t1 노멀 · s0</text>
-  <text x="554" y="146" class="m">t8 그림자 맵 · s4 비교</text>
-  <text x="554" y="164" class="s">Blinn-Phong, 조명 최대 8개</text>
+  <text x="554" y="128" class="m">t0~t4 재질 · s0</text>
+  <text x="554" y="146" class="m">t8 그림자 · t10~12 IBL</text>
+  <text x="554" y="164" class="s">PBR + IBL, 조명 최대 8개</text>
   <text x="734" y="110" class="s">RTV: sRGB 뷰</text>
   <text x="734" y="128" class="s">DSV: D24_UNORM_S8_UINT</text>
   <text x="734" y="146" class="s">깊이 Less, 기록 켬</text>
@@ -4522,14 +4551,16 @@ depth   = MinDepth + z_ndc × (MaxDepth − MinDepth)</code></pre>
 <p><code>alphaCutoff &gt; 0</code> 이면 <code>clip(surface.a - alphaCutoff)</code>. 버려진 픽셀은 여기서 끝납니다.</p></div></div>
 <div class="stage"><div class="tag">③</div><div><h4>unlit 조기 반환</h4>
 <p><code>unlit &gt; 0.5</code> 이면 조명 없이 <code>float4(albedo, surface.a)</code> 를 반환합니다.</p></div></div>
+<div class="stage"><div class="tag">③′</div><div><h4>PBR 입력</h4>
+<p>금속성/거칠기 텍스처(t2, G·B), AO(t3, R), 발광(t4)을 샘플해 계수에 곱합니다. 거칠기는 <code>[0.03, 1]</code> 로 자르고, <code>F0 = lerp(0.04, albedo, metallic)</code> 을 구합니다(<a href="#c11-6">11.6절</a>).</p></div></div>
 <div class="stage"><div class="tag">④</div><div><h4>노멀</h4>
 <p>보간된 노멀과 탄젠트로 TBN 기저를 만들고 노멀 맵 값을 월드 공간 노멀로 바꿉니다(<a href="#c11-7">11.7절</a>).</p></div></div>
 <div class="stage"><div class="tag">⑤</div><div><h4>뷰 벡터와 그림자 계수</h4>
 <p><code>viewDirection = SafeNormalize(cameraPosition - input.worldPosition, …)</code>, <code>shadowFactor = ComputeShadowFactor(input.shadowPosition)</code>(<a href="#c11-8">11.8절</a>).</p></div></div>
 <div class="stage"><div class="tag">⑥</div><div><h4>디버그 뷰 조기 반환</h4>
-<p><code>debugParams.x</code> 가 1~5 이면 중간값 하나를 색으로 반환합니다(<a href="#c11-9">11.9절</a>).</p></div></div>
+<p><code>debugParams.x</code> 가 1~7 이면 중간값 하나를 색으로 반환합니다(<a href="#c11-9">11.9절</a>).</p></div></div>
 <div class="stage"><div class="tag">⑦</div><div><h4>조명 누적</h4>
-<p><code>finalColor = albedo * ambientColor</code> 로 시작해 <code>min(lightCount, MAX_LIGHTS)</code> 개의 조명을 더합니다(<a href="#c11-6">11.6절</a>). 반환값은 <code>float4(finalColor, surface.a)</code> 입니다.</p></div></div>
+<p><code>finalColor = EnvironmentLighting(…) + 발광</code> 으로 시작해 <code>min(lightCount, MAX_LIGHTS)</code> 개의 조명을 Cook-Torrance 로 더합니다(<a href="#c11-6">11.6절</a>). 반환값은 노출·톤매핑을 거친 <code>float4(ApplyExposureToneMap(finalColor), surface.a)</code> 입니다.</p></div></div>
 
 <h4>재질 파라미터</h4>
 <p>재질의 CPU 데이터는 <code>Scene/Material.h</code> 의 <code>Material</code> 이고, 셰이더가 읽는 부분은 b3 <code>Material</code> cbuffer 로 올라갑니다. 나머지는 텍스처·샘플러 바인딩이나 PSO 선택에 쓰입니다.</p>
@@ -4537,8 +4568,11 @@ depth   = MinDepth + z_ndc × (MaxDepth − MinDepth)</code></pre>
 <thead><tr><th><code>Material</code> 필드</th><th>기본값</th><th>가는 곳</th><th>효과</th></tr></thead>
 <tbody>
 <tr><td class="mono">baseColor</td><td>(1, 1, 1, 1)</td><td>b3</td><td>정점 색과 텍스처에 곱해지는 기본색. 알파 포함</td></tr>
-<tr><td class="mono">specularColor</td><td>(1, 1, 1)</td><td>b3</td><td>하이라이트의 색과 세기</td></tr>
-<tr><td class="mono">shininess</td><td>32</td><td>b3</td><td>하이라이트의 날카로움. 클수록 작고 또렷합니다. 셰이더가 1 미만을 1 로 올립니다.</td></tr>
+<tr><td class="mono">metallic</td><td>0</td><td>b3</td><td>0 = 유전체(F0 = 0.04, 확산 있음), 1 = 금속(F0 = 기본색, 확산 없음). t2 의 B 채널이 곱해짐</td></tr>
+<tr><td class="mono">roughness</td><td>0.5</td><td>b3</td><td>지각적 거칠기. GGX 의 α = roughness², IBL 반사 큐브의 밉도 이 값으로 고름. t2 의 G 채널이 곱해짐. 셰이더가 0.03 아래를 올림</td></tr>
+<tr><td class="mono">emissive, emissiveTexture</td><td>(0, 0, 0), ""</td><td>b3, t4</td><td>스스로 내는 빛. 조명·그림자·AO 와 무관하게 더해짐(헬멧의 램프)</td></tr>
+<tr><td class="mono">metallicRoughnessTexture</td><td>""</td><td>t2</td><td>glTF 채널 배치(G 거칠기, B 금속성). 비면 흰색</td></tr>
+<tr><td class="mono">occlusionTexture, occlusionStrength</td><td>"", 1</td><td>t3, b3</td><td>환경광에만 곱하는 AO(R). 강도 0 이면 무시</td></tr>
 <tr><td class="mono">uvScale</td><td>(1, 1)</td><td>b3 (VS)</td><td>텍스처 타일링 배율</td></tr>
 <tr><td class="mono">unlit</td><td>false</td><td>b3 (0 또는 1)</td><td>조명 없이 알베도만 출력. 그림자 패스에서도 건너뜁니다.</td></tr>
 <tr><td class="mono">normalStrength</td><td>1</td><td>b3</td><td>노멀 맵 xy 배율. 0 이면 노멀 맵을 무시한 것과 같습니다.</td></tr>
@@ -4548,7 +4582,7 @@ depth   = MinDepth + z_ndc × (MaxDepth − MinDepth)</code></pre>
 <tr><td class="mono">sampler</td><td>LinearWrap</td><td>s0</td><td>샘플러 프리셋. 렌더 설정의 <code>samplerOverride</code> 가 있으면 그것이 우선</td></tr>
 <tr><td class="mono">wireframe, doubleSided</td><td>false, false</td><td>PSO Desc</td><td>값이 다르면 다른 PSO 를 씁니다(<a href="#c11-4">11.4절</a>).</td></tr>
 </tbody></table></div>
-<p>이 재질 모델은 Blinn-Phong 용입니다. glTF 의 금속성·거칠기 재질을 이 파라미터로 근사해 옮기는 규칙은 <a href="#c13">13장</a>에 있습니다.</p>
+<p>2026-10-08 부터 이 재질 모델은 glTF 와 같은 metallic-roughness PBR 입니다. glTF 재질은 근사 없이 그대로 옮겨지고(<a href="#c13-6">13.6절</a>), 예전 씬 파일의 <code>shininess</code> 는 읽을 때 거칠기로 환산됩니다(<a href="#c16-8">16.8절</a>).</p>
 
 <h4>텍스처 샘플링</h4>
 <pre><code><span class="kw">const float4</span> texel = albedoTexture.Sample(albedoSampler, input.uv);
@@ -4570,8 +4604,8 @@ depth   = MinDepth + z_ndc × (MaxDepth − MinDepth)</code></pre>
 <p><code>unlit</code> 재질은 조명 계산을 건너뛰고 알베도를 그대로 출력합니다. 감마 검증에 씁니다. 값 128 의 회색 텍스처를 unlit 로 그렸을 때 화면에서 128 로 읽히면 sRGB 입력과 출력의 변환이 서로 상쇄된 것입니다(<a href="#c12">12장</a>). 이 반환은 디버그 뷰 분기보다 앞에 있으므로 unlit 재질은 디버그 뷰의 영향을 받지 않습니다.</p>
 
 <!-- c11-4.html -->
-<h3 id="c11-6">11.6 조명 수식 — Blinn-Phong</h3>
-<p>조명 모델은 Blinn-Phong 입니다. 표면이 받는 빛을 세 항으로 나눕니다. <em>ambient</em> 는 방향 없이 어디에나 있는 약한 빛, <em>diffuse</em> 는 표면이 빛을 정면으로 받을수록 밝아지는 난반사, <em>specular</em> 는 빛이 거울처럼 튕겨 눈에 들어올 때 생기는 하이라이트입니다. 계산에 쓰는 벡터는 넷이고 전부 월드 공간의 단위 벡터이며 <strong>표면의 점 P 에서 바깥으로</strong> 나갑니다.</p>
+<h3 id="c11-6">11.6 조명 수식 — PBR(Cook-Torrance)과 IBL</h3>
+<p>2026-10-08 부터 조명 모델은 물리 기반(PBR)의 Cook-Torrance 입니다(그 전은 Blinn-Phong, 경위는 <a href="#c20-15">20.15</a>). 표면이 받는 빛은 두 갈래입니다. <em>직접광</em>은 씬의 조명 최대 8개를 루프로 더하고, <em>환경광</em>은 주변 전체에서 오는 빛을 큐브맵(IBL)으로 한 번에 더합니다. 각 갈래 안에서 다시 <em>확산</em>(diffuse, 표면 속으로 들어갔다 사방으로 나오는 빛)과 <em>반사</em>(specular, 표면에서 바로 튕기는 빛)로 나뉩니다. 계산에 쓰는 벡터는 넷이고 전부 월드 공간의 단위 벡터이며 <strong>표면의 점 P 에서 바깥으로</strong> 나갑니다.</p>
 <dl class="kv">
   <dt>N</dt><dd>표면 노멀. 노멀 매핑을 거친 <code>normal</code></dd>
   <dt>L</dt><dd>표면에서 <em>광원을 향하는</em> 방향. 코드의 <code>surfaceToLight</code></dd>
@@ -4646,7 +4680,7 @@ depth   = MinDepth + z_ndc × (MaxDepth − MinDepth)</code></pre>
 
 <h4>조명 루프</h4>
 <pre><code><span class="cm">// Shaders/BasicPixelShader.hlsl — PS_Main</span>
-<span class="kw">float3</span> finalColor = albedo * ambientColor;
+<span class="kw">float3</span> finalColor = EnvironmentLighting(albedo, F0, metal, rough, normal, viewDirection, ao) + emission;
 <span class="kw">const uint</span> activeLightCount = min(lightCount, MAX_LIGHTS);
 
 [loop]
@@ -4678,30 +4712,55 @@ depth   = MinDepth + z_ndc × (MaxDepth − MinDepth)</code></pre>
         }
     }
 
-    <span class="kw">const float</span> nDotL = saturate(dot(normal, surfaceToLight));
+    <span class="kw">const float</span> NdotL = saturate(dot(normal, surfaceToLight));
+    <span class="kw">if</span> (NdotL &lt;= 0.0f) <span class="kw">continue</span>;
     <span class="kw">const float3</span> halfVector = SafeNormalize(surfaceToLight + viewDirection, normal);
-    <span class="kw">const float</span> specularAmount = (nDotL &gt; 0.0f)
-        ? pow(saturate(dot(normal, halfVector)), max(shininess, 1.0f))
-        : 0.0f;
+    <span class="kw">const float</span> D = DistributionGGX(saturate(dot(normal, halfVector)), rough * rough);
+    <span class="kw">const float</span> G = GeometrySmith(NdotL, NdotV, rough);
+    <span class="kw">const float3</span> F = FresnelSchlick(F0, saturate(dot(viewDirection, halfVector)));
+    <span class="kw">const float3</span> specular = D * G * F / max(4.0f * NdotL * NdotV, EPSILON);
+    <span class="kw">const float3</span> kd = (1.0f - F) * (1.0f - metal);
 
-    <span class="kw">const float3</span> radiance = light.color * max(light.intensity, 0.0f) * attenuation;
-    finalColor += (albedo * nDotL + specularColor * specularAmount) * radiance;
-}</code></pre>
+    <span class="kw">const float3</span> irradiance = light.color * max(light.intensity, 0.0f) * attenuation * NdotL;
+    finalColor += (kd * albedo + specular * PI) * irradiance;
+}
+<span class="kw">return float4</span>(ApplyExposureToneMap(finalColor), surface.a);</code></pre>
 
 <!-- c11-5.html -->
 <h4>항별 수식</h4>
 <div class="tbl"><table>
 <thead><tr><th>항</th><th>수식 (코드 기준)</th><th>설명</th></tr></thead>
 <tbody>
-<tr><td>Ambient</td><td class="mono">albedo × ambientColor</td><td>조명 루프 밖에서 한 번. 노멀과 그림자의 영향을 받지 않습니다. <code>ambientColor</code> 는 씬의 값입니다.</td></tr>
-<tr><td>Diffuse</td><td class="mono">albedo × saturate(N·L)</td><td>Lambert. 빛을 비스듬히 받을수록 같은 빛이 넓은 면적에 퍼지므로 코사인에 비례해 어두워집니다. 뒤를 향한 면은 0 입니다.</td></tr>
-<tr><td>Specular</td><td class="mono">specularColor × pow(saturate(N·H), max(shininess, 1))</td><td>Blinn. <code>N·L ≤ 0</code> 이면 0 으로 잘라 빛을 등진 면의 하이라이트를 막습니다.</td></tr>
-<tr><td>광원의 세기</td><td class="mono">radiance = color × max(intensity, 0) × attenuation</td><td>감쇠에는 거리, 스포트 콘, 그림자 계수가 곱해져 있습니다.</td></tr>
-<tr><td>누적</td><td class="mono">Σ (diffuse + specular) × radiance</td><td>조명마다 더합니다. 톤 매핑이 없으므로 1 을 넘는 값은 렌더 타깃에 기록될 때 1 로 잘립니다.</td></tr>
+<tr><td>F0</td><td class="mono">lerp(0.04, albedo, metallic)</td><td>수직으로 볼 때의 반사율. 유전체는 대부분 2~5% 라 4% 로 고정하고, 금속은 자기 색으로 반사합니다.</td></tr>
+<tr><td>D (분포)</td><td class="mono">α² / (π · ((N·H)²(α² − 1) + 1)²), α = rough²</td><td>GGX(Trowbridge-Reitz). 미세면 중 H 를 향한 비율. 거칠수록 넓고 낮은 하이라이트가 됩니다.</td></tr>
+<tr><td>G (가림)</td><td class="mono">G₁(N·L) · G₁(N·V), G₁(x) = x / (x(1 − k) + k), k = (rough + 1)² / 8</td><td>Smith-Schlick. 미세면끼리 빛이나 시선을 가리는 몫. k 는 직접광용(Karis 2013)입니다.</td></tr>
+<tr><td>F (프레넬)</td><td class="mono">F0 + (1 − F0)(1 − V·H)⁵</td><td>Schlick 근사. 스치듯 볼수록 반사가 1 에 가까워집니다.</td></tr>
+<tr><td>반사</td><td class="mono">D · G · F / (4 · N·L · N·V)</td><td>Cook-Torrance 반사 BRDF. 분모의 0 나눗셈은 <code>EPSILON</code> 으로 막습니다.</td></tr>
+<tr><td>확산</td><td class="mono">kd · albedo / π, kd = (1 − F)(1 − metallic)</td><td>Lambert. 반사된 몫(F)을 빼서 에너지를 보존하고, 금속은 확산이 없습니다.</td></tr>
+<tr><td>조도 관례</td><td class="mono">(kd · albedo + specular · π) × color × intensity × attenuation × N·L</td><td>조명의 <code>color × intensity</code> 를 "빛에 수직인 면이 받는 조도 E" 로 보고 BRDF 에 π 를 곱합니다. 확산항이 Blinn-Phong 시절의 <code>albedo · N·L · radiance</code> 와 같은 밝기라 기존 씬의 조명 값을 그대로 씁니다.</td></tr>
+<tr><td>환경광</td><td class="mono">EnvironmentLighting(…) × ao</td><td>아래 "환경광 — split-sum IBL". 루프 밖에서 한 번이고 그림자의 영향을 받지 않습니다. AO 는 여기에만 곱합니다.</td></tr>
+<tr><td>출력</td><td class="mono">ApplyExposureToneMap(finalColor)</td><td>노출을 곱하고, 씬이 켜 두었으면 ACES 근사로 [0, 1] 로 누릅니다. 끄면 1 을 넘는 값이 잘립니다.</td></tr>
 </tbody></table></div>
 
-<h4>half vector</h4>
-<p>원래의 Phong 모델은 L 을 N 에 대해 반사시킨 벡터 R 을 구하고 <code>(R·V)^shininess</code> 를 씁니다. Blinn 의 변형은 R 대신 L 과 V 의 중간 방향 <code>H = normalize(L + V)</code> 를 구해 <code>(N·H)^shininess</code> 를 씁니다. N 과 H 가 일치한다는 것은 그 표면이 빛을 정확히 눈 쪽으로 반사하는 방향을 향한다는 뜻이므로 두 식은 같은 현상을 잽니다. H 방식은 반사 벡터 계산이 필요 없고, R 과 V 사이 각이 90° 를 넘을 때 하이라이트가 끊기는 Phong 의 문제가 없습니다. <code>L + V</code> 가 영벡터가 되는 경우(빛과 시선이 정반대)에는 <code>SafeNormalize</code> 가 대체값 <code>normal</code> 을 돌려줍니다.</p>
+<h4>half vector 와 미세면</h4>
+<p>미세면 이론은 표면을 아주 작은 거울 조각의 모임으로 봅니다. 빛 L 을 눈 V 쪽으로 반사하는 조각은 노멀이 정확히 L 과 V 의 중간 <code>H = normalize(L + V)</code> 인 조각뿐이므로, D 는 "노멀이 H 인 조각의 밀도", F 는 그 조각의 반사율(입사각은 V·H), G 는 그 조각이 이웃에 가려지지 않을 확률입니다. Blinn-Phong 의 <code>(N·H)^n</code> 도 같은 H 를 썼지만 에너지 보존과 프레넬이 없어, 거친 면과 매끈한 면의 총 반사량이 달라지고 금속을 표현하지 못했습니다. <code>L + V</code> 가 영벡터가 되는 경우(빛과 시선이 정반대)에는 <code>SafeNormalize</code> 가 대체값 <code>normal</code> 을 돌려줍니다.</p>
+
+<h4>환경광 — split-sum IBL</h4>
+<p>환경광은 반구 전체에서 오는 빛의 적분이라 픽셀마다 계산할 수 없습니다. 그래서 미리 구워 둔 텍스처 세 장으로 나눕니다(Karis 2013 의 split-sum). <code>EnvironmentLighting</code> 이 이것을 합칩니다.</p>
+<pre><code><span class="cm">// Shaders/BasicPixelShader.hlsl — EnvironmentLighting</span>
+F  = FresnelSchlickRoughness(F0, N·V, rough);              <span class="cm">// 거칠수록 스치는 각의 반사 상한을 1 − rough 로</span>
+kd = (1 − F)(1 − metallic);
+irradiance  = irradianceMap.SampleLevel(s5, N, environmentParams.z);                 <span class="cm">// t10</span>
+prefiltered = prefilteredMap.SampleLevel(s5, reflect(−V, N), rough × (밉 수 − 1));   <span class="cm">// t11</span>
+brdf        = brdfLut.SampleLevel(s5, float2(N·V, 1 − rough), 0).rg;                 <span class="cm">// t12. 없으면 EnvBRDFApprox</span>
+<span class="kw">return</span> (kd · albedo · irradiance + prefiltered · (F0 · brdf.x + brdf.y)) × IBL 세기 × ao;</code></pre>
+<ul>
+  <li><strong>확산 조도(t10).</strong> 노멀 방향 반구의 코사인 가중 평균 복사휘도입니다. π 가 이미 들어 있어 albedo 를 곱하면 곧 확산 반사광입니다.</li>
+  <li><strong>반사 프리필터(t11).</strong> 반사 방향 주변을 GGX 로 미리 흐린 큐브이고 밉마다 거칠기가 다릅니다. 밉 0 이 거칠기 0(거울)입니다. 거칠기를 밉 범위 전체에 선형으로 펼칩니다.</li>
+  <li><strong>BRDF LUT(t12).</strong> 반사 적분의 나머지(F0 에 곱할 값 A 와 더할 값 B)를 N·V 와 거칠기의 2D 표로 만든 것입니다. 없으면 Karis 의 모바일 근사식 <code>EnvBRDFApprox</code> 로 대신합니다.</li>
+  <li><strong>환경이 없을 때.</strong> <code>environmentParams.w</code> 가 0 이면 두 조도를 <code>ambientColor</code> 하나로 대신하고 IBL 세기를 곱하지 않습니다. 유전체에서는 <code>albedo · ambientColor</code> 와 거의 같은 값이라 환경을 정하지 않은 예전 씬의 밝기가 유지됩니다.</li>
+</ul>
+<p>어떤 텍스처가 t10~t12 에 꽂히는지(IBL 맵, 스카이박스로 대신하는 근사, 검은 큐브)는 <a href="#c12-14">12.14절</a>이 다룹니다.</p>
 
 <h4>거리 감쇠</h4>
 <pre><code><span class="kw">float</span> CalculateDistanceAttenuation(LightData light, <span class="kw">float</span> distanceToLight)
@@ -4722,7 +4781,7 @@ depth   = MinDepth + z_ndc × (MaxDepth − MinDepth)</code></pre>
 <p><code>coneCos = dot(direction, −L)</code> 은 콘의 축과 "광원에서 이 픽셀로 가는 방향" 사이 각의 코사인입니다. 각이 작을수록(축에 가까울수록) 값이 큽니다. <code>saturate((coneCos − outerConeCos) / (innerConeCos − outerConeCos))</code> 는 안쪽 콘 안에서 1, 바깥 콘 밖에서 0, 그 사이에서 코사인에 대해 선형으로 변합니다. 기본값은 안쪽 22.5°(코사인 0.9239), 바깥 30°(0.8660)입니다. 각도가 아니라 코사인을 저장하므로 셰이더에 <code>acos</code> 가 없습니다. 분모는 <code>EPSILON</code> 으로 보호해 두 값이 같거나 뒤집혀도 0 으로 나누지 않습니다.</p>
 
 <h4>방어 코드</h4>
-<p>이 셰이더는 입력이 나쁠 때 NaN 이 화면에 번지지 않도록 곳곳에 하한을 둡니다. 모든 정규화는 <code>SafeNormalize(value, fallback)</code> 를 거치고(길이 제곱이 <code>EPSILON²</code> 이하면 대체값), 나눗셈의 분모와 <code>range</code> 는 <code>EPSILON</code> 이상, <code>shininess</code> 는 1 이상, <code>intensity</code> 는 0 이상, 조명 수는 <code>MAX_LIGHTS</code> 이하로 고정합니다.</p>
+<p>이 셰이더는 입력이 나쁠 때 NaN 이 화면에 번지지 않도록 곳곳에 하한을 둡니다. 모든 정규화는 <code>SafeNormalize(value, fallback)</code> 를 거치고(길이 제곱이 <code>EPSILON²</code> 이하면 대체값), 나눗셈의 분모와 <code>range</code> 는 <code>EPSILON</code> 이상, 거칠기는 0.03 이상(GGX 의 α² 가 0 이 되면 D 가 발산함), <code>intensity</code> 는 0 이상, 조명 수는 <code>MAX_LIGHTS</code> 이하로 고정합니다.</p>
 <p>조명을 고정 크기 배열 8개로 두는 판단과 한계는 <a href="#d11">D11</a>에 있습니다. 그림자는 0번 조명이 방향광일 때 그 조명에만 적용됩니다.</p>
 
 <h3 id="c11-7">11.7 노멀 매핑</h3>
@@ -4909,7 +4968,9 @@ m_shadowDesc = PipelineStateDesc{
 <span class="kw">if</span> (debugView == 2) <span class="kw">return float4</span>(normal * 0.5f + 0.5f, 1.0f);
 <span class="kw">if</span> (debugView == 3) { <span class="kw">const float</span> d = saturate(length(cameraPosition - input.worldPosition) / max(debugParams.y, 0.001f)); <span class="kw">return float4</span>(d, d, d, 1.0f); }
 <span class="kw">if</span> (debugView == 4) <span class="kw">return float4</span>(shadowFactor, shadowFactor, shadowFactor, 1.0f);
-<span class="kw">if</span> (debugView == 5) <span class="kw">return float4</span>(frac(input.uv), 0.0f, 1.0f);</code></pre>
+<span class="kw">if</span> (debugView == 5) <span class="kw">return float4</span>(frac(input.uv), 0.0f, 1.0f);
+<span class="kw">if</span> (debugView == 6) <span class="kw">return float4</span>(0.0f, rough, metal, 1.0f);   <span class="cm">// 2026-10-08</span>
+<span class="kw">if</span> (debugView == 7) <span class="kw">return float4</span>(ao, ao, ao, 1.0f);</code></pre>
 <div class="tbl"><table>
 <thead><tr><th>번호</th><th>출력</th><th>무엇을 확인하나</th></tr></thead>
 <tbody>
@@ -4919,6 +4980,8 @@ m_shadowDesc = PipelineStateDesc{
 <tr><td class="n">3</td><td>카메라까지의 거리 ÷ <code>debugParams.y</code></td><td>깊이 버퍼 값이 아니라 월드 거리입니다. 범위의 기본값은 60 입니다.</td></tr>
 <tr><td class="n">4</td><td>그림자 계수</td><td>조명과 분리한 그림자 판정. 흰색이 빛, 검정이 그림자입니다.</td></tr>
 <tr><td class="n">5</td><td><code>frac(uv)</code> 를 빨강·초록으로</td><td>UV 의 방향과 타일링</td></tr>
+<tr><td class="n">6</td><td>초록 = 거칠기, 파랑 = 금속성</td><td>glTF 의 metallicRoughness 텍스처와 같은 채널 배치. 텍스처 × 계수가 의도대로인지</td></tr>
+<tr><td class="n">7</td><td>AO</td><td>오클루전 텍스처와 강도</td></tr>
 </tbody></table></div>
 <p>에디터의 Render Settings 패널에 있는 "Debug view" 콤보(<code>App/Editor.cpp</code>)나 실행 인자 <code>--debug-view=N</code>(<a href="#app-d">부록 D</a>)으로 고릅니다. 디버그 출력도 같은 sRGB 렌더 타깃에 기록되므로 화면의 픽셀 값은 셰이더가 내보낸 값을 sRGB 로 인코딩한 값입니다. 화면에서 값을 읽어 역산할 때는 이 점을 감안합니다.</p>
 <div class="fig"><img src="../images/2026-09-23-phase11-debugview-normals.png" alt="디버그 뷰 2번으로 월드 노멀을 색으로 표시한 에디터 화면" style="width:100%;height:auto;border-radius:6px" loading="lazy"><div class="cap">디버그 뷰 2(월드 노멀). 위를 향한 바닥은 초록이 강하고, 구는 방향에 따라 색이 연속으로 변합니다. 바닥과 큐브의 잔무늬는 노멀 맵이 만든 것입니다. 앞쪽의 회색 사각형은 unlit 재질이라 디버그 뷰의 영향을 받지 않습니다. (images/2026-09-23-phase11-debugview-normals.png)</div></div>
@@ -4959,7 +5022,7 @@ m_shadowDesc = PipelineStateDesc{
 <tr><td>바이어스가 작거나 큼</td><td>줄무늬(acne) 또는 떠 보이는 그림자(Peter Panning)</td><td>래스터라이저 상수·기울기 바이어스와 셰이더 바이어스를 함께 조절. 씬마다 다시 정함</td></tr>
 <tr><td>unlit 물체가 그림자를 드리움</td><td>조명을 받지 않는 검증용 카드가 바닥에 그림자를 만듦</td><td>그림자 패스에서 <code>unlit</code> 재질을 건너뜀</td></tr>
 <tr><td>컷아웃 재질의 그림자</td><td>구멍 없는 사각형 그림자</td><td><span class="pill warn">남음</span> 알파 테스트용 그림자 PSO 변형이 필요</td></tr>
-<tr><td>금속 재질이 검게 보임</td><td>환경 반사가 없어 금속성 높은 표면이 어두움</td><td><span class="pill warn">남음</span> Blinn-Phong 의 한계. PBR 과 환경 조명의 몫(<a href="#c22">22장</a>)</td></tr>
+<tr><td>금속 재질이 검게 보임</td><td>환경 반사가 없어 금속성 높은 표면이 어두움</td><td><span class="pill ok">해결 10-08</span> PBR + IBL. 환경이 없는 씬에서는 금속이 <code>ambientColor</code> 만 반사해 여전히 어둡습니다(<a href="#c20-15">20.15</a>)</td></tr>
 </tbody></table></div>
 
 <!-- c12-1.html -->
@@ -5226,8 +5289,10 @@ m_swapChain-&gt;ResizeBuffers(…, DXGI_FORMAT_UNKNOWN, m_swapChainFlags);</code
 <h3 id="c12-8">12.8 TextureDesc 와 TextureSubresource 로 Device 에 올리기</h3>
 
 <pre><code><span class="cm">// RHI/ResourceDesc.h</span>
+<span class="kw">enum class</span> TextureDimension : uint8_t { Texture2D, TextureCube };   <span class="cm">// 큐브 = 면 6장 (2026-10-08)</span>
 <span class="kw">struct</span> TextureDesc
 {
+    TextureDimension dimension = TextureDimension::Texture2D;
     uint32_t width = 0, height = 0;
     Format format = Format::Unknown;
     uint32_t mipLevels = 1;
@@ -5235,16 +5300,18 @@ m_swapChain-&gt;ResizeBuffers(…, DXGI_FORMAT_UNKNOWN, m_swapChainFlags);</code
     uint32_t sampleCount = 1;
     <span class="kw">const char</span>* debugName = <span class="kw">nullptr</span>;
 };
-<span class="kw">struct</span> TextureSubresource { <span class="kw">const void</span>* data = <span class="kw">nullptr</span>; uint32_t rowPitch = 0; };   <span class="cm">// 밉 레벨마다 하나</span>
+<span class="kw">constexpr</span> uint32_t GetArraySize(<span class="kw">const</span> TextureDesc&amp; desc);   <span class="cm">// 큐브 6, 그 밖 1</span>
+<span class="kw">struct</span> TextureSubresource { <span class="kw">const void</span>* data = <span class="kw">nullptr</span>; uint32_t rowPitch = 0; };
+<span class="cm">// 서브리소스(면 × 밉)마다 하나. 순서 = D3D 서브리소스 인덱스 mip + face × mipLevels</span>
 
 <span class="cm">// RHI/Device.h</span>
 <span class="kw">virtual</span> TextureHandle CreateTexture(<span class="kw">const</span> TextureDesc&amp; desc, std::span&lt;<span class="kw">const</span> TextureSubresource&gt; subresources = {}) = 0;</code></pre>
 
-<p>생성과 초기 데이터 업로드가 한 호출입니다. 엔진의 텍스처는 만든 뒤 내용이 바뀌지 않고 스트리밍도 없으므로 별도의 업로드 함수를 두지 않았습니다. <code>subresources</code> 가 비어 있으면 빈 텍스처(렌더 타깃, 깊이 버퍼)가 됩니다. 호출 쪽은 <code>m_device-&gt;CreateTexture(image.desc, image.subresources)</code> 처럼 <code>std::vector</code> 를 그대로 넘기고, 두 백엔드 모두 초기 데이터의 개수가 <code>mipLevels</code> 보다 적으면 거부합니다. 모자란 밉에는 쓰레기 값이 남아 먼 거리에서 이상한 색이 나오기 때문입니다.</p>
+<p>생성과 초기 데이터 업로드가 한 호출입니다. 엔진의 텍스처는 만든 뒤 내용이 바뀌지 않고 스트리밍도 없으므로 별도의 업로드 함수를 두지 않았습니다. <code>subresources</code> 가 비어 있으면 빈 텍스처(렌더 타깃, 깊이 버퍼)가 됩니다. 호출 쪽은 <code>m_device-&gt;CreateTexture(image.desc, image.subresources)</code> 처럼 <code>std::vector</code> 를 그대로 넘기고, 두 백엔드 모두 초기 데이터의 개수가 <code>GetArraySize(desc) × mipLevels</code> 보다 적으면 거부합니다. 모자란 밉에는 쓰레기 값이 남아 먼 거리에서 이상한 색이 나오기 때문입니다. 배열의 순서는 D3D 의 서브리소스 인덱스(<code>mip + face × mipLevels</code>)와 같아서, 면 0 의 밉 전부, 면 1 의 밉 전부 순입니다. 2D 텍스처는 면이 하나뿐이므로 "밉마다 하나"와 같은 말입니다.</p>
 
-<p><strong>D3D11</strong>(<code>D3D11Device::CreateTexture</code>)은 배열을 <code>D3D11_SUBRESOURCE_DATA[]</code> 로 옮겨(<code>pSysMem = data</code>, <code>SysMemPitch = rowPitch</code>) <code>CreateTexture2D</code> 의 초기 데이터로 넘깁니다. 서브리소스 하나가 밉 레벨 하나이고 배열 순서가 밉 순서입니다. 드라이버가 복사와 동기화를 모두 처리하므로 호출이 돌아오면 텍스처는 쓸 수 있는 상태입니다. SRV 는 처음 바인딩될 때 <code>D3D11Texture::GetSRV</code> 가 만들며, TYPELESS 가 아니면 뷰 기술 없이(<code>nullptr</code>) 만들어 리소스 포맷과 모든 밉을 그대로 봅니다.</p>
+<p><strong>D3D11</strong>(<code>D3D11Device::CreateTexture</code>)은 배열을 <code>D3D11_SUBRESOURCE_DATA[]</code> 로 옮겨(<code>pSysMem = data</code>, <code>SysMemPitch = rowPitch</code>) <code>CreateTexture2D</code> 의 초기 데이터로 넘깁니다. 큐브는 <code>ArraySize = 6</code> 에 <code>MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE</code> 를 더합니다. 이 플래그가 있어야 큐브 SRV 를 만들 수 있습니다. 드라이버가 복사와 동기화를 모두 처리하므로 호출이 돌아오면 텍스처는 쓸 수 있는 상태입니다. SRV 는 처음 바인딩될 때 <code>D3D11Texture::GetSRV</code> 가 만들며, TYPELESS 가 아니면 뷰 기술 없이(<code>nullptr</code>) 만들어 리소스 포맷과 모든 밉을 그대로 봅니다. 큐브만은 예외로 <code>D3D11_SRV_DIMENSION_TEXTURECUBE</code> 를 명시합니다. 기술 없이 만들면 <code>TEXTURE2DARRAY</code> 뷰가 되어 HLSL 의 <code>TextureCube</code> 와 맞지 않습니다.</p>
 
-<p><strong>D3D12</strong>(<code>D3D12Device::CreateTexture</code>)에서는 같은 일을 직접 해야 합니다. 텍스처를 <code>COPY_DEST</code> 상태로 만들고, <code>GetCopyableFootprints</code> 로 밉마다 업로드 버퍼 안의 위치와 행 간격을 얻고, 업로드 힙 버퍼를 만들어 <code>Map</code> 한 뒤 <strong>행 단위로</strong> 복사합니다. 업로드 버퍼의 행 간격은 256바이트로 정렬되어 원본의 <code>rowPitch</code> 와 다르기 때문에 통째로 복사할 수 없습니다. 그 뒤 <code>ExecuteUploadSync</code> 가 전용 커맨드 리스트에 밉마다 <code>CopyTextureRegion</code> 과 <code>COPY_DEST</code> → 셰이더 리소스 상태 배리어를 기록해 실행하고 <code>WaitForGpu</code> 로 끝나기를 기다립니다. 로드 시점에만 쓰는 경로여서 동기 방식으로 두었습니다. 초기 데이터가 없는 텍스처의 초기 상태는 깊이 전용이면 <code>DEPTH_WRITE</code>, 그 밖(그림자 맵, 씬 뷰 색 텍스처)은 <code>COMMON</code> 이고 Renderer 의 첫 배리어가 여기서 출발합니다(<a href="#c8">8장</a>).</p>
+<p><strong>D3D12</strong>(<code>D3D12Device::CreateTexture</code>)에서는 같은 일을 직접 해야 합니다. 텍스처를 <code>COPY_DEST</code> 상태로 만들고, <code>GetCopyableFootprints</code> 로 서브리소스(면 × 밉)마다 업로드 버퍼 안의 위치와 행 간격을 얻고, 업로드 힙 버퍼를 만들어 <code>Map</code> 한 뒤 <strong>행 단위로</strong> 복사합니다. 업로드 버퍼의 행 간격은 256바이트로 정렬되어 원본의 <code>rowPitch</code> 와 다르기 때문에 통째로 복사할 수 없습니다. 그 뒤 <code>ExecuteUploadSync</code> 가 전용 커맨드 리스트에 서브리소스마다 <code>CopyTextureRegion</code> 과 <code>COPY_DEST</code> → 셰이더 리소스 상태 배리어를 기록해 실행하고 <code>WaitForGpu</code> 로 끝나기를 기다립니다. 로드 시점에만 쓰는 경로여서 동기 방식으로 두었습니다. 초기 데이터가 없는 텍스처의 초기 상태는 깊이 전용이면 <code>DEPTH_WRITE</code>, 그 밖(그림자 맵, 씬 뷰 색 텍스처)은 <code>COMMON</code> 이고 Renderer 의 첫 배리어가 여기서 출발합니다(<a href="#c8">8장</a>). D3D12 에는 "큐브 리소스"가 따로 없습니다. 큐브는 <code>DepthOrArraySize = 6</code> 인 2D 배열이고, 큐브라는 해석은 SRV 의 <code>D3D12_SRV_DIMENSION_TEXTURECUBE</code> 가 붙입니다.</p>
 
 <!-- c12-4.html -->
 <h3 id="c12-9">12.9 샘플러</h3>
@@ -5344,7 +5411,7 @@ SamplerComparisonState shadowSampler : <span class="kw">register</span>(s4);</co
 
 <p>모델의 이미지를 로더가 미리 디코딩하지 않고 씬이 바이트로 들고 있는 이유는 색공간입니다. 디코딩할 때 밉을 선형에서 평균 낼지, 라벨을 무엇으로 붙일지는 그 이미지를 쓰는 재질이 알려 주어야 하므로, 재질과 이미지가 만나는 이 함수에서 디코딩합니다. <code>Core/AssetManager.h</code> 가 텍스처 파일을 아직 맡지 않은 이유도 같습니다.</p>
 
-<p>로드에 실패하면 경고 로그를 남기고 <strong>흰색 텍스처의 핸들을 그 키로 캐시에 넣습니다</strong>. 화면이 깨지지 않고, 같은 실패를 매 프레임 되풀이하지도 않습니다. 기본 텍스처 두 개는 <code>CreateBuiltinTextures</code> 가 초기화 때 만들어 <code>m_whiteTexture</code>("텍스처 없음"의 알베도)와 <code>m_flatNormalTexture</code>(노멀 맵 없음)에 보관합니다. 캐시를 언제 비우는지는 <a href="#c14">14장</a>에서 다룹니다.</p>
+<p>로드에 실패하면 경고 로그를 남기고 <strong>흰색 텍스처의 핸들을 그 키로 캐시에 넣습니다</strong>. 화면이 깨지지 않고, 같은 실패를 매 프레임 되풀이하지도 않습니다. 기본 텍스처 두 개는 <code>CreateBuiltinTextures</code> 가 초기화 때 만들어 <code>m_whiteTexture</code>("텍스처 없음"의 알베도)와 <code>m_flatNormalTexture</code>(노멀 맵 없음)에 보관합니다. 캐시를 언제 비우는지는 <a href="#c14">14장</a>에서 다룹니다. 스카이박스 큐브맵은 같은 이름 규칙을 쓰지만 캐시는 따로입니다(<code>m_cubeCache</code>, <a href="#c12-14">12.14절</a>).</p>
 
 <h3 id="c12-13">12.13 함정과 해결</h3>
 
@@ -5360,6 +5427,122 @@ SamplerComparisonState shadowSampler : <span class="kw">register</span>(s4);</co
     <tr><td>초기화가 "VS 가 b3 을 쓰지만 선언되지 않음"으로 실패</td><td><code>uvScale</code> 을 정점 셰이더가 읽는데 재질 레이아웃의 b3 이 PS 전용이었습니다</td><td>b3 을 <code>VS | PS</code> 로 선언. 리플렉션 대조가 잡습니다(<a href="#c10">10장</a>)</td></tr>
     <tr><td>흰색 1×1 텍스처가 두 개 생김</td><td>빈 이름의 키(<code>"|srgb"</code>)와 <code>builtin:white|linear</code> 가 다릅니다</td><td>빈 이름은 캐시를 거치지 않고 <code>m_whiteTexture</code> 를 돌려줍니다</td></tr>
     <tr><td>씬을 바꾼 뒤 기본 재질이 깨짐</td><td>로드에 실패한 항목이 흰색 핸들을 공유하는데, 캐시를 비우면서 그것을 파괴했습니다</td><td>내장 핸들과 같은 항목은 파괴하지 않고 항목만 지웁니다(<a href="#c14">14장</a>)</td></tr>
+  </tbody>
+</table></div>
+
+<h3 id="c12-14">12.14 큐브맵 · 스카이박스 · IBL 맵</h3>
+
+<p><strong>큐브맵</strong>은 정육면체의 여섯 면에 붙인 정사각형 이미지 6장을 하나의 텍스처로 묶고, 좌표 대신 <strong>방향 벡터</strong>로 샘플하는 텍스처입니다. 하드웨어가 방향의 가장 큰 성분으로 면을 고르고 나머지 두 성분으로 면 안의 위치를 정합니다. <strong>스카이박스</strong>는 그 큐브맵을 카메라에서 각 픽셀을 지나는 방향으로 읽어 "무한히 먼 배경"을 그리는 것입니다. 이 엔진에는 2026-10-08 에 들어갔고(<a href="#c20-14">20.14</a>), 기능 하나가 다섯 층에 나뉘어 있습니다. 큐브맵이라는 이름의 클래스는 없습니다. 이유는 아래 "왜 클래스가 아닌가"와 <a href="#c21-6">21.6</a>의 질문에 있습니다.</p>
+
+<div class="tbl"><table>
+<thead><tr><th>층</th><th>무엇이 생겼나</th><th>파일</th></tr></thead>
+<tbody>
+<tr><td>RHI</td><td><code>TextureDimension::TextureCube</code>(면 6장, 정사각형 ShaderResource 전용), <code>GetArraySize</code>, <code>CommandList::Draw</code>(인덱스 없는 드로우), 정점 속성 0개 PSO 허용</td><td class="mono">RHI/ResourceDesc.h, RHI/CommandList.h, RHI/D3D11/*, RHI/D3D12/*</td></tr>
+<tr><td>로더</td><td><code>TextureLoader::LoadCubeFromFile</code>(큐브 DDS 또는 면 이미지 6장 폴더), <code>TextureLoader::CreateCube</code>(방향 → 색 함수로 절차적 큐브). 부동소수점 DDS 는 <code>R16G16B16A16_FLOAT</code>(HDR)로 읽음</td><td class="mono">Graphics/TextureLoader.*</td></tr>
+<tr><td>씬</td><td><code>Scene::environment</code>(<code>SceneEnvironment</code>) — 스카이박스·확산 조도·반사 프리필터·BRDF LUT 의 <strong>이름</strong>과 IBL 세기·노출·톤매핑. 씬 파일의 <code>"environment"</code> 객체(버전 4)</td><td class="mono">Scene/Scene.h, Scene/SceneSerializer.cpp</td></tr>
+<tr><td>Renderer</td><td>이름 → 큐브 캐시(<code>GetOrLoadCubemap</code>, <code>m_cubeCache</code>), 이름 → 바인딩(<code>ResolveEnvironment</code>), 프레임 셋 t9~t12 에 꽂기(<code>UpdateFrameSet</code>), 스카이박스 PSO(<code>m_skyDesc</code>, <code>GetSkyPipeline</code>)와 드로우(<code>DrawSkybox</code>)</td><td class="mono">Graphics/Renderer.*</td></tr>
+<tr><td>셰이더</td><td><code>VS_Sky</code>(전체 화면 삼각형과 투영의 역), <code>PS_Sky</code>(큐브 샘플 + 노출·톤매핑), <code>Common.hlsli</code> 의 <code>environmentMap</code> t9 · <code>environmentSampler</code> s5 · IBL 의 t10~t12, <code>BasicPixelShader.hlsl</code> 의 <code>EnvironmentLighting</code>(<a href="#c11-6">11.6절</a>)</td><td class="mono">Shaders/Skybox*.hlsl, Shaders/Common.hlsli</td></tr>
+<tr><td>에디터·빌드</td><td>Lights 창의 환경 칸(스카이박스·IBL 맵 이름 입력과 텍스처 드롭, IBL 세기, 노출, 톤매핑. <code>DebugUI::DrawEnvironmentPanel</code>), Build Game 이 스카이박스 파일·폴더를 복사, <code>Paths::GetAssetPath</code> 가 폴더도 찾음</td><td class="mono">App/DebugUI.cpp, App/GameBuilder.cpp, Core/Paths.cpp</td></tr>
+</tbody></table></div>
+
+<h4>왜 클래스가 아닌가</h4>
+<p>"큐브맵 클래스가 파일을 읽고 GPU 텍스처를 들고 있고, Scene 이 그것을 불러온다"는 구조는 <a href="#c13-1">13.1절</a>의 경계를 깹니다. <code>Scene</code> 은 CPU 데이터만 갖고 Device 를 모르며, 재질도 텍스처를 핸들이 아니라 이름으로 가리킵니다(12.12절). 큐브맵은 새로운 종류의 객체가 아니라 <em>면이 6장인 텍스처</em>이므로, 텍스처를 다루는 기존 길을 그대로 따릅니다. RHI 가 큐브를 만들 줄 알고, 씬은 이름만 갖고, Renderer 가 이름을 GPU 자원으로 바꿔 패스에서 씁니다. 스카이박스를 <code>GameObject</code> 나 컴포넌트로 두지 않은 이유는 씬에 하나뿐이고 트랜스폼이 없으며, 이후 반사·환경광의 입력이 될 "환경" 값이기 때문입니다. 그래서 <code>ambientColor</code> 옆에 있습니다.</p>
+
+<h4>면 순서와 텍셀의 방향</h4>
+<p>면 순서는 D3D 관례(DDS 파일의 순서와 같음)인 +X, −X, +Y, −Y, +Z, −Z 입니다. 면 위의 텍셀 좌표를 <code>s</code>(오른쪽으로 증가)·<code>t</code>(아래로 증가) ∈ [−1, 1] 로 두면, D3D 의 큐브 샘플 규칙("주축 <code>ma</code>, 가로 <code>sc</code>, 세로 <code>tc</code>")을 거꾸로 풀어 텍셀이 가리키는 방향을 얻습니다. <code>TextureLoader.cpp</code> 의 익명 함수 <code>CubeTexelDirection</code> 이 이 표를 그대로 옮긴 것이고, 절차적 큐브(<code>CreateCube</code>)는 텍셀 중심마다 이 방향을 정규화해 색 함수에 넘깁니다.</p>
+<div class="tbl"><table>
+<thead><tr><th>면</th><th>텍셀 (s, t) 의 방향</th><th>폴더에서 찾는 파일 이름</th><th>검증 큐브의 색</th></tr></thead>
+<tbody>
+<tr><td class="n">0 +X</td><td class="mono">( 1, −t, −s)</td><td class="mono">px · posx · right</td><td>빨강</td></tr>
+<tr><td class="n">1 −X</td><td class="mono">(−1, −t,  s)</td><td class="mono">nx · negx · left</td><td>청록</td></tr>
+<tr><td class="n">2 +Y</td><td class="mono">( s,  1,  t)</td><td class="mono">py · posy · top</td><td>초록</td></tr>
+<tr><td class="n">3 −Y</td><td class="mono">( s, −1, −t)</td><td class="mono">ny · negy · bottom</td><td>자홍</td></tr>
+<tr><td class="n">4 +Z</td><td class="mono">( s, −t,  1)</td><td class="mono">pz · posz · front</td><td>파랑</td></tr>
+<tr><td class="n">5 −Z</td><td class="mono">(−s, −t, −1)</td><td class="mono">nz · negz · back</td><td>노랑</td></tr>
+</tbody></table></div>
+<p>큐브맵의 규칙은 텍스처 좌표의 규칙일 뿐 월드의 손잡이와는 무관하지만, 이 엔진은 왼손 좌표계에 +Y 위, +Z 앞이라(<a href="#app-b">부록 B</a>) 월드 방향을 그대로 넣으면 됩니다. +Z 를 바라볼 때 오른쪽이 +X 이므로 +Z 면의 <code>s</code> 가 화면 오른쪽으로 증가하고, 거울상이 생기지 않습니다. 흔히 내려받는 right/left/top/bottom/front/back 6장(LearnOpenGL 등)도 front = +Z 이므로 바꾸지 않고 씁니다.</p>
+
+<h4>큐브를 읽는 세 경로</h4>
+<ul>
+  <li><strong>큐브 DDS 파일.</strong> <code>LoadScratchFromFile</code> 이 DirectXTex 로 읽으면 메타데이터의 <code>IsCubemap()</code> 이 참이고 배열 크기가 6입니다. 큐브 플래그가 없는 DDS 는 <code>FinishImage</code> 가 "큐브맵이 아님"으로 거부합니다. 블록 압축(BC1~7) DDS 는 <code>DirectX::Convert</code> 가 다루지 못하므로 <code>FinishImage</code> 가 먼저 <code>DirectX::Decompress</code> 로 <code>R8G8B8A8_UNORM</code> 을 만듭니다(2D 텍스처에도 적용되는 개선입니다).</li>
+  <li><strong>면 이미지 6장이 든 폴더.</strong> 위 표의 이름(확장자 <code>.png</code>·<code>.jpg</code>·<code>.jpeg</code>·<code>.bmp</code>)을 찾아 각각을 2D 로 <code>FinishImage</code> 에 한 번 통과시켜 바이트 형식을 맞춘 뒤, <code>ScratchImage::InitializeCube</code> 로 만든 큐브에 행 단위로 복사합니다. 여섯 장은 같은 크기의 정사각형이어야 합니다. sRGB 라벨과 밉 생성은 마지막에 큐브 전체에 한 번 합니다(<code>GenerateMipMaps</code> 는 큐브를 면별로 처리함).</li>
+  <li><strong>내장.</strong> <code>builtin:sky</code> 는 방향의 높이(y)만 보는 하늘 그라데이션(128², 밉 생성), <code>builtin:skyfaces</code> 는 면마다 색이 다르고 4×4 격자선이 있는 방향 검증용 큐브(64²), <code>builtin:black</code> 은 1×1 검은 큐브입니다.</li>
+</ul>
+<p><code>FromScratchImage</code> 는 서브리소스를 면 0 의 밉 전부, 면 1 의 밉 전부 순으로 펼쳐 <code>TextureImage::subresources</code> 에 담습니다. D3D 의 서브리소스 인덱스(<code>mip + face × mipLevels</code>) 순서이므로 두 백엔드가 받은 배열을 그대로 씁니다(12.8절). 반대로 2D 경로(<code>LoadFromFile</code>)에 큐브 DDS 를 주면 첫 면만 써서 예전처럼 2D 텍스처가 됩니다. 8비트 큐브맵은 "색" 이므로 Renderer 는 sRGB 로 읽습니다. 부동소수점 DDS 는 아래 "HDR" 대로 라벨 없이 half float 가 됩니다.</p>
+
+<h4>Renderer: 이름에서 t9 까지</h4>
+<p><code>Renderer::GetOrLoadCubemap(name)</code> 은 12.12절의 텍스처 캐시와 같은 경로 규칙(<code>asset:</code> 이면 <code>Assets\</code> 기준, 아니면 <code>Textures\</code> 기준)을 쓰지만 캐시는 <code>m_cubeCache</code> 로 따로 둡니다. 실패했을 때의 대체물이 다르기 때문입니다. 2D 캐시는 흰색 2D 텍스처로 대체하지만, t9 는 HLSL 에서 <code>TextureCube</code> 이므로 2D SRV 를 꽂으면 차원이 맞지 않습니다. 그래서 큐브 캐시는 경고를 남기고 <strong>검은 1×1 큐브</strong>(<code>m_blackCube</code>)를 그 이름으로 캐시에 넣습니다.</p>
+<p>환경 텍스처는 재질 셋이 아니라 <strong>프레임 셋</strong>의 t9~t12·s5 에 꽂힙니다(<a href="#c7-7">7.7절</a>). 씬마다 하나이고 모든 재질이 같은 큐브를 읽기 때문입니다. <code>Renderer::Render</code> 는 맨 앞에서 <code>ResolveEnvironment(scene.environment)</code> 로 이름을 핸들과 셰이더 파라미터(<code>EnvironmentBinding</code>)로 바꾸고, 패스에 들어가기 전에 <code>UpdateFrameSet()</code> 을 부릅니다. <code>ResourceSet</code> 은 슬롯 하나만 바꾸는 기능이 없으므로, 꽂을 텍스처 네 개가 직전(<code>m_boundEnvironment</code>)과 다를 때만 셋을 파괴하고 새로 만듭니다. 없는 것도 슬롯을 비우지 않고 검은 큐브(LUT 는 흰 2D)를 꽂습니다. D3D12 디스크립터 테이블에는 유효한 뷰가 있어야 하고, 셰이더는 <code>environmentParams</code>·<code>outputParams</code> 의 플래그로 쓸지 정합니다. 씬을 바꿀 때 <code>InvalidateScene(…, true)</code> 는 파일에서 읽은 큐브를 버리고 <code>m_boundEnvironment</code> 를 비워, 다음 프레임에 셋이 반드시 다시 만들어지게 합니다(<a href="#c14-11">14.11절</a>).</p>
+
+<h4>IBL 맵: 무엇이 t10~t12 에 꽂히나</h4>
+<p><code>ResolveEnvironment</code> 는 이름이 비었거나 로드에 실패한 맵을 다른 것으로 대신합니다. 실패한 이름은 <code>GetOrLoadCubemap</code> 이 검은 큐브를 돌려주므로 "검은 큐브가 아님" 을 로드 성공으로 봅니다.</p>
+<div class="tbl"><table>
+<thead><tr><th>슬롯</th><th>1순위</th><th>대체</th><th>셰이더 파라미터</th></tr></thead>
+<tbody>
+<tr><td class="mono">t9 스카이박스</td><td><code>environment.skybox</code></td><td>검은 큐브(그리지는 않음 — 스카이박스 드로우는 이름이 있을 때만)</td><td>—</td></tr>
+<tr><td class="mono">t11 반사 프리필터</td><td><code>environment.specular</code></td><td>스카이박스(밉 체인으로 근사) → 검은 큐브</td><td><code>environmentParams.y</code> = 그 큐브의 밉 수</td></tr>
+<tr><td class="mono">t10 확산 조도</td><td><code>environment.irradiance</code></td><td>t11 에 꽂힌 큐브의 끝에서 두 번째 밉(면당 2×2) → 검은 큐브</td><td><code>environmentParams.z</code> = 읽을 밉(진짜 조도 맵이면 0)</td></tr>
+<tr><td class="mono">t12 BRDF LUT</td><td><code>environment.brdfLut</code>(2D 텍스처 캐시, 선형)</td><td>흰 2D, 셰이더는 <code>EnvBRDFApprox</code></td><td><code>outputParams.z</code></td></tr>
+</tbody></table></div>
+<p>셋 중 무엇이라도 있으면 <code>environmentParams.w = 1</code>(환경 있음)이고 IBL 세기 <code>environmentParams.x</code> 가 곱해집니다. 아무것도 없으면 셰이더가 <code>ambientColor</code> 로 대신합니다. 스카이박스 근사는 박스 필터로 만든 밉이라 GGX 로 거른 프리필터보다 중간 거칠기에서 반사가 선명하고(그림 12-14c), 조도도 면당 2×2 의 거친 평균이라 방향성이 약합니다. 그래도 내장 하늘만 둔 데모 씬의 금속에 하늘이 비치게 해 줍니다. 데모·Sponza·새 씬은 이 경로라 IBL 세기를 0.35~0.5 로 낮춰 예전 주변광과 비슷한 밝기를 맞췄습니다.</p>
+
+<h4>HDR — half float 텍스처와 노출·톤매핑</h4>
+<p>IBL 세트의 큐브는 보통 부동소수점입니다(<code>Assets\Cubemap</code> 의 <code>*HDR.dds</code> 는 <code>R32G32B32A32_FLOAT</code>, 태양 픽셀이 300 을 넘음). <code>TextureLoader</code> 의 <code>FinishImage</code> 는 원본이 부동소수점이거나 BC6H 면 <code>R16G16B16A16_FLOAT</code>(이번에 <code>Format</code> 에 추가)로 바꿉니다. 크기는 float32 의 절반이고 최대 65504 까지 담습니다. 부동소수점 데이터는 이미 선형이라 sRGB 라벨을 붙이지 않고 밉도 선형으로 평균 냅니다. 면 이미지 폴더는 8비트만 받습니다.</p>
+<p>값이 1 을 넘으므로 출력 단계가 필요합니다. 아직 HDR 렌더 타깃이 없어서, 메인 PS 와 스카이박스 PS 가 마지막에 <code>ApplyExposureToneMap</code> 을 부릅니다. <code>environment.exposure</code> 를 곱하고, <code>toneMapping</code> 이 켜져 있으면 ACES 근사(Narkowicz 2016)로 [0, 1] 로 누릅니다. 기본값은 노출 1·톤매핑 끔이라 환경을 정하지 않은 씬의 색은 예전과 같습니다. unlit 재질은 감마 검증용이라 이 단계를 거치지 않습니다.</p>
+
+<h4>샘플 세트와 CubemapTest 프로젝트</h4>
+<p><code>SherlockEngine/Assets/Cubemap</code> 의 일곱 파일은 IBLBaker 형식의 세트입니다. <code>Env</code>(스카이박스, 512², 밉 10), <code>Specular</code>(반사 프리필터, 512², 밉 10, 밉 0 이 거울), <code>Diffuse</code>(확산 조도, 128²), <code>Brdf</code>(256² 2D LUT)이고 각각 HDR(float32)과 MDR(8비트 BGRA)이 있습니다. LUT 의 축은 데이터로 확인했습니다. 오른쪽 아래 (N·V = 1, 거칠기 0) 가 (1, 0), 왼쪽 아래(N·V → 0, 거칠기 0)가 (0, 1) 이므로 u = N·V, v = 1 − roughness 입니다. 이 세트의 Diffuse·Specular 는 Env 보다 약 2배 밝게 구워져 있어서(같은 면의 평균이 Env 1.5 · Specular 3.0, 아래 면 0.44 · Diffuse 0.97), 실험 프로젝트의 씬은 IBL 세기 0.5 로 하늘과 같은 밝기 기준을 맞춥니다.</p>
+<p>실험 프로젝트 <code>Projects/CubemapTest</code> 는 에디터의 <code>--new-project=CubemapTest</code> 로 만들었고, 시작 씬 <code>Assets/Scenes/Main.json</code> 이 HDR 세트 네 장(<code>asset:Cubemap\…</code>, 엔진 <code>Assets\</code> 에서 찾음)·IBL 세기 0.5·톤매핑 켬을 씁니다. 구 12개는 금속(금색)과 유전체(빨강) 두 줄에 거칠기 0, 0.2, …, 1 이고, 앞에 DamagedHelmet 이 있습니다. 방향광 하나는 환경맵 속 태양(−X 쪽 지평선, 방위 약 −62°, 붉은 석양)과 같은 쪽에서 조금 높여 비춥니다.</p>
+<div class="fig"><img src="../images/2026-10-08-cubemaptest-ibl.png" alt="CubemapTest 프로젝트를 게임 런타임으로 실행한 화면. 위 줄은 금속 구, 아래 줄은 빨간 유전체 구가 왼쪽에서 오른쪽으로 거칠어지고, 앞에 DamagedHelmet 이 있으며 배경은 흐린 하늘" style="width:100%;height:auto;border-radius:6px" loading="lazy">
+<div class="cap">그림 12-14d. CubemapTest(D3D12, 게임 런타임). 거칠기 0 의 금속 구에는 하늘이 선명하게 비치고 오른쪽으로 갈수록 흐려집니다. 구의 아래쪽은 어두운 지면을 반사합니다. D3D11 과 픽셀이 같습니다.</div></div>
+<div class="fig"><img src="../images/2026-10-08-ibl-compare.png" alt="같은 씬을 환경 없음, 스카이박스만, IBL 맵 전체로 그린 화면 세 장" style="width:100%;height:auto;border-radius:6px" loading="lazy">
+<div class="cap">그림 12-14c. 왼쪽: 환경 없음(주변광 0.3 만, 금속은 거의 단색). 가운데: IBL 맵 없이 스카이박스만(밉 근사, 중간 거칠기의 반사가 덜 흐림). 오른쪽: 확산 조도 + 반사 프리필터 + BRDF LUT.</div></div>
+
+<h4>스카이박스 패스: 전체 화면 삼각형 하나</h4>
+<p>스카이박스는 큐브 메시로 그리지 않습니다. <code>DrawItems</code> 가 불투명 드로우를 다 그린 뒤 <code>DrawSkybox</code> 가 스카이박스 PSO 를 걸고 <code>cmd.Draw(3)</code> 을 부르면, 정점 셰이더가 <code>SV_VertexID</code> 0·1·2 로 화면을 덮는 삼각형을 만듭니다. 정점 버퍼도 입력 레이아웃도 없습니다.</p>
+<pre><code><span class="cm">// Shaders/SkyboxVertexShader.hlsl</span>
+SkyVSOutput VS_Sky(uint vertexId : SV_VertexID)
+{
+    <span class="kw">const</span> float2 uv  = float2((vertexId &lt;&lt; 1) &amp; 2, vertexId &amp; 2);          <span class="cm">// (0,0) (2,0) (0,2)</span>
+    <span class="kw">const</span> float2 ndc = float2(uv.x * 2 - 1, 1 - uv.y * 2);                 <span class="cm">// (−1,1) (3,1) (−1,−3)</span>
+    output.position  = float4(ndc, 1, 1);                                   <span class="cm">// z = w → 깊이 1.0</span>
+    <span class="kw">const</span> float3 viewDirection = float3(ndc.x / proj._11, ndc.y / proj._22, 1);   <span class="cm">// 투영의 역</span>
+    output.direction = mul((float3x3)view, viewDirection);                  <span class="cm">// 뷰 → 월드 (회전만)</span>
+}
+<span class="cm">// Shaders/SkyboxPixelShader.hlsl</span>
+<span class="kw">return</span> float4(environmentMap.Sample(environmentSampler, input.direction).rgb, 1);</code></pre>
+<ul>
+  <li><strong>투영의 역.</strong> 원근 투영(<code>XMMatrixPerspectiveFovLH</code>)은 x<sub>ndc</sub> = x<sub>view</sub> · P<sub>11</sub> / z<sub>view</sub>, y<sub>ndc</sub> = y<sub>view</sub> · P<sub>22</sub> / z<sub>view</sub> 입니다. 그러니 z<sub>view</sub> = 1 인 뷰 공간 점은 (x<sub>ndc</sub> / P<sub>11</sub>, y<sub>ndc</sub> / P<sub>22</sub>, 1) 이고, 카메라에서 그 점을 향하는 것이 그 픽셀의 시선 방향입니다. 셰이더의 <code>proj</code> 는 C++ 가 전치해서 올린 것을 column_major 로 읽으므로 논리적으로 P 그 자체입니다(<a href="#c10-9">10.9절</a>).</li>
+  <li><strong>뷰 → 월드.</strong> 뷰 행렬의 3×3 부분 R 은 회전(직교 행렬)이라 역행렬이 전치입니다. 행벡터 규약에서 v · R<sup>T</sup> 는 <code>mul(R, v)</code> 와 같으므로 <code>mul((float3x3)view, v)</code> 한 줄입니다. 4행의 이동은 쓰지 않습니다. 하늘은 무한히 멀어서 카메라가 움직여도 따라오지 않아야 합니다.</li>
+  <li><strong>정점에서 계산해도 되는 이유.</strong> 이 변환은 NDC 에 대해 선형이고 세 정점의 w 가 모두 1 이라 래스터라이저의 보간도 화면 공간에서 선형입니다. 픽셀 셰이더는 샘플만 하며, 큐브 샘플은 방향의 길이를 보지 않으므로 정규화도 하지 않습니다.</li>
+  <li><strong>깊이.</strong> 위치의 z 를 w 와 같게 두면 NDC 깊이가 정확히 1.0 입니다. PSO 는 깊이 테스트 <code>LessEqual</code>(클리어 값 1.0 과 같아도 통과)에 깊이 쓰기를 끕니다. 불투명 물체가 그려진 픽셀은 깊이가 1 보다 작아 통과하지 못하므로, 하늘은 빈 픽셀에만 남고 가려질 픽셀의 셰이딩도 하지 않습니다. 이것이 불투명 드로우 <em>뒤에</em> 그리는 이유입니다. 앞에 그리면 화면 전체를 칠한 뒤 덮어쓰게 됩니다.</li>
+</ul>
+<pre><code><span class="cm">// Graphics/Renderer.cpp — Renderer::Initialize</span>
+m_skyDesc = PipelineStateDesc{
+    .vs = m_skyVs, .ps = m_skyPs,
+    .bindingLayouts = { m_frameLayout }, .bindingLayoutCount = 1,          <span class="cm">// 오브젝트·재질 셋 없음</span>
+    .rasterizer = { .cull = CullMode::None },                                <span class="cm">// vertexLayout 은 기본값(속성 0개)</span>
+    .depthStencil = { .depthEnable = <span class="kw">true</span>, .depthWrite = <span class="kw">false</span>, .depthFunc = CompareFunc::LessEqual },
+};</code></pre>
+<p><code>GetSkyPipeline</code> 은 메인 PSO 처럼 RTV 포맷(sRGB 출력이면 <code>R8G8B8A8_UNORM_SRGB</code>)과 DSV 포맷을 매 프레임 채워 캐시에서 받습니다. 와이어프레임 설정은 따르지 않습니다. 화면을 덮는 삼각형의 모서리만 보여 의미가 없기 때문입니다. 미리보기 패스도 같은 <code>DrawItems</code> 를 쓰므로 미리보기 카메라의 시점으로 하늘이 그려집니다.</p>
+
+<h4>검증</h4>
+<div class="fig"><img src="../images/2026-10-08-skybox-face-orientation.png" alt="builtin:skyfaces 와 면 이미지 폴더로 같은 두 방향을 본 화면 네 장. 위는 +Z 파랑이 왼쪽, +X 빨강이 오른쪽, +Y 초록이 위. 아래는 -Z 노랑이 왼쪽, -X 청록이 오른쪽, -Y 자홍이 아래" style="width:100%;height:auto;border-radius:6px" loading="lazy">
+<div class="cap">그림 12-14a. 방향 검증. 위 두 장은 yaw 45°(+Z 와 +X 사이)·위로 약 29° 를 본 화면이고, +Z 파랑이 왼쪽·+X 빨강이 오른쪽·+Y 초록이 위입니다. 아래 두 장은 yaw −135°·아래로 본 화면으로 −Z 노랑이 왼쪽·−X 청록이 오른쪽·−Y 자홍이 아래입니다. 왼쪽은 내장 <code>builtin:skyfaces</code>, 오른쪽은 라벨을 쓴 PNG 6장 폴더이고 같은 내용의 큐브 DDS 도 같은 화면을 냈습니다. +X 면 왼쪽 위에 쓴 "TL" 이 (+X, +Y, +Z) 모서리에 거울상 없이 놓여 텍셀 (0,0) 의 방향이 표와 맞습니다.</div></div>
+<div class="fig"><img src="../images/2026-10-08-skybox-demo-d3d11-d3d12.png" alt="데모 씬을 D3D11 과 D3D12 로 그린 씬 뷰. 위쪽에 지평선의 옅은 하늘색과 아래쪽의 지면색 그라데이션" style="width:100%;height:auto;border-radius:6px" loading="lazy">
+<div class="cap">그림 12-14b. 데모 씬(<code>builtin:sky</code>)의 씬 뷰. 왼쪽 D3D11, 오른쪽 D3D12 이며 샘플한 픽셀 값이 같습니다.</div></div>
+
+<h4>함정과 해결</h4>
+<div class="tbl"><table>
+  <thead><tr><th>증상</th><th>원인</th><th>해결</th></tr></thead>
+  <tbody>
+    <tr><td>D3D11 에서 큐브 SRV 가 <code>Texture2DArray</code> 로 만들어짐</td><td><code>CreateShaderResourceView(…, nullptr, …)</code> 는 큐브 플래그가 있어도 배열 뷰를 만듭니다</td><td>큐브는 <code>D3D11_SRV_DIMENSION_TEXTURECUBE</code> 를 명시(<code>D3D11Texture::GetSRV</code>)</td></tr>
+    <tr><td>로드 실패한 스카이박스가 차원 오류를 냄</td><td>2D 캐시처럼 흰색 2D 로 대체하면 <code>TextureCube</code> 슬롯에 2D SRV 가 꽂힙니다</td><td>큐브 캐시를 따로 두고 검은 1×1 큐브로 대체</td></tr>
+    <tr><td>프로젝트가 열려 있으면 엔진 <code>Assets\</code> 의 스카이박스 폴더를 못 찾음</td><td><code>Paths::GetAssetPath</code> 가 파일만 확인해, 폴더는 어느 루트에서도 "없음"이 되어 프로젝트 경로를 돌려줬습니다</td><td>파일 또는 폴더가 있으면 그 루트를 씀(<a href="#c15-7">15.7절</a>)</td></tr>
+    <tr><td>BC 압축 큐브 DDS 가 "포맷 변환 실패"</td><td><code>DirectX::Convert</code> 는 블록 압축 포맷을 받지 않습니다</td><td><code>FinishImage</code> 가 먼저 <code>Decompress</code></td></tr>
+    <tr><td>정점 버퍼 없는 PSO 가 생성되지 않음</td><td>두 백엔드가 정점 속성 0개를 오류로 거부했습니다</td><td>0개 허용. D3D11 은 입력 레이아웃을 만들지 않고 <code>nullptr</code> 을 바인딩(<a href="#c6-5">6.5절</a>)</td></tr>
+    <tr><td>HDR 하늘의 태양이 하얀 원판으로 뭉갬, 금속 반사가 잘림</td><td>로더가 부동소수점 DDS 를 8비트로 바꿔 1 을 넘는 값을 잘랐습니다</td><td>부동소수점·BC6H 원본은 <code>R16G16B16A16_FLOAT</code> 로 읽고, 출력에서 노출·톤매핑</td></tr>
+    <tr><td>IBL 을 켜자 물체가 하늘보다 밝게 뜸</td><td>샘플 세트의 Diffuse·Specular 가 Env 의 약 2배로 구워져 있음</td><td>씬의 IBL 세기를 0.5 로(데이터 측정은 위 "샘플 세트")</td></tr>
   </tbody>
 </table></div>
 
@@ -5395,6 +5578,7 @@ SamplerComparisonState shadowSampler : <span class="kw">register</span>(s4);</co
 <tr><td class="mono">m_lights</td><td class="mono">vector&lt;LightData&gt;</td><td>조명. 값으로 보관. 최대 <code>MAX_LIGHTS</code>(8)개가 쓰임</td></tr>
 <tr><td class="mono">m_images</td><td class="mono">unordered_map&lt;string, vector&lt;uint8_t&gt;&gt;</td><td>모델에서 온 인코딩된 이미지 바이트(PNG·JPG 그대로). 이름으로 찾음(13.6)</td></tr>
 <tr><td class="mono">ambientColor, clearColor</td><td class="mono">XMFLOAT3, float[4]</td><td>환경광과 배경색. 기본값 (0.12, 0.12, 0.12), (0.1, 0.1, 0.3, 1)</td></tr>
+<tr><td class="mono">environment</td><td class="mono">SceneEnvironment</td><td>스카이박스·IBL 맵(확산 조도·반사 프리필터·BRDF LUT)의 <strong>이름</strong>, IBL 세기, 노출, 톤매핑(2026-10-08). 비어 있으면 환경 없음. 재질 텍스처처럼 핸들이 아니라 이름이고 GPU 텍스처는 Renderer 가 만듦(<a href="#c12-14">12.14절</a>). 씬에 하나뿐이고 트랜스폼이 없어 GameObject 가 아니라 환경 값으로 둠</td></tr>
 <tr><td class="mono">m_playing, m_playContext, m_activeCamera, m_blend…</td><td></td><td>재생 상태와 활성 카메라. 재생 루프는 <a href="#c17">17장</a>, 카메라 부분은 13.11</td></tr>
 </tbody></table></div>
 
@@ -5436,7 +5620,7 @@ SamplerComparisonState shadowSampler : <span class="kw">register</span>(s4);</co
 
 <h4>비우는 순서</h4>
 <div class="callout amber"><div class="t">Scene::Clear 앞에 Renderer::InvalidateScene</div>
-<p><code>Scene::Clear</code> 는 오브젝트·조명·이미지·재질·메시를 모두 버립니다. <code>Renderer</code> 캐시의 키가 그 포인터들이므로, 씬을 비우기 <em>전에</em> <code>Renderer::InvalidateScene</code> 을 먼저 불러야 합니다. 순서가 바뀌면 새로 만든 메시가 우연히 같은 주소를 받았을 때 옛 GPU 버퍼로 그려집니다. <code>EditorApp::LoadSceneMode</code> 가 이 순서를 지키는 호출 예이고, 캐시 쪽 동작은 <a href="#c14">14장</a>에 있습니다.</p></div>
+<p><code>Scene::Clear</code> 는 오브젝트·조명·이미지·재질·메시를 모두 버리고 <code>environment</code> 를 기본값으로 되돌립니다(주변광·배경색은 그대로 두고 씬 빌더가 다시 정함). <code>Renderer</code> 캐시의 키가 그 포인터들이므로, 씬을 비우기 <em>전에</em> <code>Renderer::InvalidateScene</code> 을 먼저 불러야 합니다. 순서가 바뀌면 새로 만든 메시가 우연히 같은 주소를 받았을 때 옛 GPU 버퍼로 그려집니다. <code>EditorApp::LoadSceneMode</code> 가 이 순서를 지키는 호출 예이고, 캐시 쪽 동작은 <a href="#c14">14장</a>에 있습니다.</p></div>
 
 <!-- c13-02.html -->
 <h3 id="c13-2">13.2 GameObject</h3>
@@ -5674,7 +5858,7 @@ B   = (e2·du1 − e1·du2) / det      <span class="cm">// dP/dv</span></code></
 </ul>
 
 <h4>재질 대응</h4>
-<p>glTF 재질은 metallic-roughness PBR 이고 엔진의 조명 모델은 Blinn-Phong 이므로 <code>ConvertMaterial</code> 이 근사해서 옮깁니다. PBR 은 <a href="#p12">12단계</a>의 일입니다.</p>
+<p>glTF 재질은 metallic-roughness PBR 이고, 2026-10-08 부터 엔진의 재질도 같은 모델이라 <code>ConvertMaterial</code> 이 값을 그대로 옮깁니다(그 전에는 Blinn-Phong 으로 근사했습니다).</p>
 <div class="tbl"><table>
 <thead><tr><th>glTF</th><th>엔진 <code>Material</code></th></tr></thead>
 <tbody>
@@ -5682,8 +5866,10 @@ B   = (e2·du1 − e1·du2) / det      <span class="cm">// dP/dv</span></code></
 <tr><td class="mono">baseColorFactor</td><td><code>baseColor</code></td></tr>
 <tr><td class="mono">baseColorTexture</td><td><code>albedoTexture</code>(이미지 이름), <code>albedoSrgb = true</code></td></tr>
 <tr><td class="mono">texture.sampler</td><td>확대 필터가 nearest 면 <code>PointWrap</code>, 감싸기가 clamp 면 <code>LinearClamp</code>, 그 밖과 샘플러 없음은 <code>AnisotropicWrap</code></td></tr>
-<tr><td class="mono">roughnessFactor (r)</td><td><code>shininess = 8 + 120·(1 − r)²</code></td></tr>
-<tr><td class="mono">metallicFactor (m)</td><td><code>specularColor</code> = (0.04 + 0.3·(1 − r)) 를 m 만큼 <code>baseColor</code> 쪽으로 섞은 값</td></tr>
+<tr><td class="mono">metallicFactor, roughnessFactor</td><td><code>metallic</code>, <code>roughness</code> 그대로. glTF 기본값처럼 PBR 블록이 있으면 1, 1 에서 시작</td></tr>
+<tr><td class="mono">metallicRoughnessTexture</td><td><code>metallicRoughnessTexture</code> (선형, G = 거칠기, B = 금속성)</td></tr>
+<tr><td class="mono">occlusionTexture, strength</td><td><code>occlusionTexture</code>, <code>occlusionStrength</code></td></tr>
+<tr><td class="mono">emissiveFactor, emissiveTexture</td><td><code>emissive</code>, <code>emissiveTexture</code>(sRGB). <code>KHR_materials_emissive_strength</code> 가 있으면 계수에 곱함</td></tr>
 <tr><td class="mono">normalTexture, scale</td><td><code>normalTexture</code>, <code>normalStrength</code>(scale 이 0 이하면 1)</td></tr>
 <tr><td class="mono">doubleSided</td><td><code>doubleSided</code> (뒷면 컬링을 끄는 PSO 변형)</td></tr>
 <tr><td class="mono">alphaMode = MASK</td><td><code>alphaCutoff</code> = 파일의 <code>alphaCutoff</code>(0 이하면 0.5). 알베도 알파가 이 값보다 작은 픽셀을 버림</td></tr>
@@ -5718,7 +5904,8 @@ B   = (e2·du1 − e1·du2) / det      <span class="cm">// dP/dv</span></code></
 <tbody>
 <tr><td class="mono">name</td><td></td><td>표시·저장용 이름</td></tr>
 <tr><td class="mono">baseColor</td><td>(1,1,1,1)</td><td>정점 색·알베도 텍스처에 곱해지는 색</td></tr>
-<tr><td class="mono">specularColor, shininess</td><td>(1,1,1), 32</td><td>Blinn-Phong 스페큘러 색과 지수</td></tr>
+<tr><td class="mono">metallic, roughness, emissive</td><td>0, 0.5, (0,0,0)</td><td>PBR 계수 (2026-10-08, 그 전의 <code>specularColor</code>·<code>shininess</code> 를 대체). 11.5절의 표</td></tr>
+<tr><td class="mono">metallicRoughnessTexture, occlusionTexture, occlusionStrength, emissiveTexture</td><td>"", "", 1, ""</td><td>PBR 텍스처 이름. 비면 흰색</td></tr>
 <tr><td class="mono">albedoTexture, albedoSrgb</td><td>"", true</td><td>알베도 텍스처의 <em>이름</em>과 색공간. 비면 1×1 흰색</td></tr>
 <tr><td class="mono">sampler</td><td>LinearWrap</td><td><code>SamplerPreset</code>: <code>LinearWrap</code>, <code>LinearClamp</code>, <code>AnisotropicWrap</code>, <code>PointWrap</code>, <code>PointNoMip</code></td></tr>
 <tr><td class="mono">uvScale</td><td>(1,1)</td><td>UV 배율(타일링)</td></tr>
@@ -6038,7 +6225,7 @@ QuaternionLookTestEditor.exe --scene=quat_roll_world.json --play=1 --exit-after=
 <tr><td>cgltf 를 넣자 C4996 경고로 빌드가 막힘</td><td>cgltf 내부의 <code>fopen</code>·<code>strncpy</code></td><td>그 include 만 <code>#pragma warning</code> 으로 감쌈. 전역 매크로로 끄지 않음</td></tr>
 <tr><td>tinygltf 가 설치되지 않음</td><td>vcpkg 포트의 소스 아카이브 해시 불일치</td><td>같은 조건의 cgltf 로 대체. 접점은 <code>Graphics/Model.cpp</code> 하나</td></tr>
 <tr><td>큐브의 모서리 음영이 둥글게 뭉개짐</td><td>정점 8개를 공유하면 세 면의 노멀이 평균됨</td><td>면마다 정점 4개(24 정점)</td></tr>
-<tr><td>헬멧의 금속 바이저가 검게 나옴</td><td>금속 재질을 Blinn-Phong 으로 근사해 환경 반사가 없음</td><td>근사의 한계. <a href="#p12">12단계</a>(PBR·IBL)의 일</td></tr>
+<tr><td>헬멧의 금속 바이저가 검게 나옴</td><td>금속 재질을 Blinn-Phong 으로 근사해 환경 반사가 없음</td><td>2026-10-08 PBR + IBL 로 해결(<a href="#c20-15">20.15</a>). 환경이 없는 헬멧 씬에서는 여전히 어두움</td></tr>
 <tr><td>반투명(BLEND) 재질이 컷아웃처럼 보임</td><td>블렌딩 PSO 가 아직 없음</td><td><code>alphaCutoff = 0.5</code> 로 근사. <a href="#p12">12단계</a></td></tr>
 </tbody></table></div>
 
@@ -6078,14 +6265,14 @@ QuaternionLookTestEditor.exe --scene=quat_roll_world.json --play=1 --exit-after=
 <div class="tbl"><table>
   <thead><tr><th>묶음</th><th>멤버</th><th>만들어지는 때</th><th>수명</th></tr></thead>
   <tbody>
-    <tr><td>셰이더</td><td class="mono">m_vs, m_ps, m_shadowVs</td><td><code>LoadShaders</code></td><td>핫리로드 때 교체, <code>Shutdown</code> 까지</td></tr>
+    <tr><td>셰이더</td><td class="mono">m_vs, m_ps, m_shadowVs, m_skyVs, m_skyPs</td><td><code>LoadShaders</code></td><td>핫리로드 때 교체, <code>Shutdown</code> 까지</td></tr>
     <tr><td>프레임 공통 상수버퍼</td><td class="mono">m_perFrameCB(b0), m_perObjectCB(b1), m_lightCB(b2)</td><td><code>Initialize</code></td><td><code>Shutdown</code> 까지. 전부 <code>Dynamic</code></td></tr>
     <tr><td>바인딩 레이아웃</td><td class="mono">m_frameLayout, m_objectLayout, m_materialLayout</td><td><code>Initialize</code></td><td><code>Shutdown</code> 까지</td></tr>
-    <tr><td>리소스 셋</td><td class="mono">m_frameSet, m_objectSet</td><td><code>Initialize</code></td><td><code>Shutdown</code> 까지. 재질 셋은 재질마다 따로(14.4절)</td></tr>
-    <tr><td>PSO Desc 의 고정 부분</td><td class="mono">m_baseDesc, m_shadowDesc</td><td><code>Initialize</code>, 핫리로드 때 셰이더 핸들만 갱신</td><td>값. PSO 핸들 자체는 보관하지 않습니다(14.5절)</td></tr>
+    <tr><td>리소스 셋</td><td class="mono">m_frameSet, m_objectSet</td><td><code>Initialize</code></td><td><code>Shutdown</code> 까지. 프레임 셋은 t9 의 큐브가 바뀌면 <code>UpdateFrameSet</code> 이 다시 만듦. 재질 셋은 재질마다 따로(14.4절)</td></tr>
+    <tr><td>PSO Desc 의 고정 부분</td><td class="mono">m_baseDesc, m_shadowDesc, m_skyDesc</td><td><code>Initialize</code>, 핫리로드 때 셰이더 핸들만 갱신</td><td>값. PSO 핸들 자체는 보관하지 않습니다(14.5절)</td></tr>
     <tr><td>샘플러</td><td class="mono">m_samplers[5], m_shadowSampler</td><td><code>CreateSamplers</code>, <code>CreateShadowResources</code></td><td><code>Shutdown</code> 까지</td></tr>
-    <tr><td>내장 텍스처·그림자 맵</td><td class="mono">m_whiteTexture, m_flatNormalTexture, m_shadowMap</td><td><code>CreateBuiltinTextures</code>, <code>CreateShadowResources</code></td><td><code>Shutdown</code> 까지</td></tr>
-    <tr><td>텍스처 캐시</td><td class="mono">m_textureCache <span class="sub">이름 + 색공간 → 핸들</span></td><td>재질이 처음 그 이름을 쓸 때</td><td>씬 전환(<code>InvalidateScene(…, true)</code>) 또는 <code>Shutdown</code></td></tr>
+    <tr><td>내장 텍스처·그림자 맵</td><td class="mono">m_whiteTexture, m_flatNormalTexture, m_blackCube, m_shadowMap</td><td><code>CreateBuiltinTextures</code>, <code>CreateShadowResources</code></td><td><code>Shutdown</code> 까지</td></tr>
+    <tr><td>텍스처 캐시</td><td class="mono">m_textureCache <span class="sub">이름 + 색공간 → 핸들</span><br>m_cubeCache <span class="sub">큐브맵 이름 → 핸들·밉 수</span><br>m_environment, m_boundEnvironment <span class="sub">이번 프레임의 환경, 지금 프레임 셋에 꽂힌 환경</span></td><td>재질·씬이 처음 그 이름을 쓸 때</td><td>씬 전환(<code>InvalidateScene(…, true)</code>) 또는 <code>Shutdown</code></td></tr>
     <tr><td>GPU 캐시</td><td class="mono">m_gpuMeshes, m_gpuMaterials</td><td>처음 그릴 때</td><td><code>Invalidate*</code> 또는 <code>Shutdown</code></td></tr>
     <tr><td>오프스크린 타깃</td><td class="mono">m_sceneColor/Depth, m_previewColor/Depth</td><td><code>SetSceneTarget</code>, <code>SetPreviewTarget</code></td><td>크기가 바뀌면 재생성, 0×0 이면 반납</td></tr>
     <tr><td>프레임 임시 값</td><td class="mono">m_drawList, m_stats, m_frameNumber, m_lightViewProj, m_shadowEnabledThisFrame</td><td>매 <code>Render</code></td><td>다음 프레임에 덮어씀</td></tr>
@@ -6099,9 +6286,9 @@ QuaternionLookTestEditor.exe --scene=quat_roll_world.json --play=1 --exit-after=
 
 <h4>초기화와 종료 순서</h4>
 
-<p><code>Initialize</code> 의 순서는 의존 관계를 따릅니다. 상수버퍼 세 개, 샘플러 프리셋, 내장 텍스처, 그림자 맵과 비교 샘플러를 먼저 만듭니다. 프레임 셋이 이 핸들들을 담기 때문입니다. 이어서 레이아웃 세 개, 프레임 셋과 오브젝트 셋, 셰이더(<code>LoadShaders(false)</code>)를 만들고 <code>m_baseDesc</code> 와 <code>m_shadowDesc</code> 를 채웁니다. 마지막으로 기본 재질에 대한 메인 PSO 와 그림자 PSO 를 한 번씩 요청합니다. PSO 생성 실패를 첫 프레임이 아니라 초기화 단계에서 잡기 위한 것입니다.</p>
+<p><code>Initialize</code> 의 순서는 의존 관계를 따릅니다. 상수버퍼 세 개, 샘플러 프리셋, 내장 텍스처, 그림자 맵과 비교 샘플러를 먼저 만듭니다. 프레임 셋이 이 핸들들을 담기 때문입니다. 이어서 레이아웃 세 개, 프레임 셋과 오브젝트 셋, 셰이더(<code>LoadShaders(false)</code>)를 만들고 <code>m_baseDesc</code>, <code>m_shadowDesc</code>, <code>m_skyDesc</code> 를 채웁니다. 마지막으로 기본 재질에 대한 메인 PSO 와 그림자 PSO, 그리고 스카이박스 PSO 를 한 번씩 요청합니다. PSO 생성 실패를 첫 프레임이 아니라 초기화 단계에서 잡기 위한 것입니다.</p>
 
-<p><code>Shutdown</code> 은 GPU 메시, GPU 재질, 텍스처 캐시, 씬·미리보기 타깃, 그림자 맵, 샘플러, 리소스 셋, 레이아웃, 상수버퍼, 셰이더 순으로 핸들을 Device 에 돌려줍니다. 흰색 텍스처는 캐시에도 들어 있으므로 캐시를 돌 때는 건너뛰고 끝에 한 번만 파괴합니다. <code>Engine::Shutdown</code> 은 그 전에 <code>InvalidateScene(m_scene, true)</code> 와 <code>Scene::Clear</code> 를 먼저 부릅니다(14.11절).</p>
+<p><code>Shutdown</code> 은 GPU 메시, GPU 재질, 텍스처 캐시, 씬·미리보기 타깃, 그림자 맵, 샘플러, 리소스 셋, 레이아웃, 상수버퍼, 셰이더 순으로 핸들을 Device 에 돌려줍니다. 흰색 텍스처는 캐시에도 들어 있으므로 캐시를 돌 때는 건너뛰고 끝에 한 번만 파괴합니다. 검은 큐브도 같은 방식입니다(로드에 실패한 큐브 항목이 그 핸들을 공유함). <code>Engine::Shutdown</code> 은 그 전에 <code>InvalidateScene(m_scene, true)</code> 와 <code>Scene::Clear</code> 를 먼저 부릅니다(14.11절).</p>
 
 <h3 id="c14-2">14.2 RenderSettings — 설정이 닿는 곳</h3>
 
@@ -6171,8 +6358,8 @@ std::unordered_map&lt;<span class="kw">const</span> Material*, GpuMaterial&gt; m
 <p><code>GetOrCreateGpuMaterial(material, scene)</code> 은 호출될 때마다 세 단계를 거칩니다. 캐시 조회만 하고 끝나는 함수가 아니라, 재질의 현재 값과 GPU 쪽 상태를 <strong>매번 대조</strong>하는 함수입니다. <code>Material</code> 에는 "바뀌었다"는 표시가 없고 Inspector 가 필드를 직접 고치기 때문에 이렇게 합니다.</p>
 
 <div class="stage"><div class="tag">①</div><div><h4>항목 찾기 또는 만들기</h4><p>맵에 없으면 <code>Dynamic</code> 상수버퍼 하나(<code>"CB_Material"</code>)를 만들어 항목을 넣습니다. 셋은 아직 빈 핸들입니다.</p></div></div>
-<div class="stage"><div class="tag">②</div><div><h4>셋 대조</h4><p>재질이 지금 가리키는 것을 핸들로 바꿉니다. 알베도는 <code>GetOrLoadTexture(albedoTexture, albedoSrgb, scene)</code>, 노멀은 이름이 비었으면 <code>m_flatNormalTexture</code> 이고 아니면 <code>GetOrLoadTexture(normalTexture, false, scene)</code>, 샘플러는 <code>samplerOverride</code> 가 유효하면 그 프리셋이고 아니면 재질의 <code>sampler</code> 입니다. 셋이 없거나 이 세 핸들 중 하나라도 <code>bound*</code> 와 다르면 옛 셋을 파괴하고 <code>CreateResourceSet</code> 으로 다시 만듭니다.</p></div></div>
-<div class="stage"><div class="tag">③</div><div><h4>상수 올리기</h4><p><code>uploadedFrame != m_frameNumber</code> 이면 <code>MaterialConstants</code>(<code>baseColor</code>, <code>specularColor</code>, <code>shininess</code>, <code>uvScale</code>, <code>unlit</code>, <code>normalStrength</code>, <code>alphaCutoff</code>)를 채워 <code>UpdateBuffer</code> 로 올리고 프레임 번호를 기록합니다.</p></div></div>
+<div class="stage"><div class="tag">②</div><div><h4>셋 대조</h4><p>재질이 지금 가리키는 것을 핸들로 바꿉니다. 알베도는 <code>GetOrLoadTexture(albedoTexture, albedoSrgb, scene)</code>, 노멀은 이름이 비었으면 <code>m_flatNormalTexture</code> 이고 아니면 <code>GetOrLoadTexture(normalTexture, false, scene)</code>, 금속성/거칠기·AO 는 선형으로, 발광은 sRGB 로 <code>GetOrLoadTexture</code>(빈 이름은 흰색), 샘플러는 <code>samplerOverride</code> 가 유효하면 그 프리셋이고 아니면 재질의 <code>sampler</code> 입니다. 셋이 없거나 이 여섯 핸들 중 하나라도 <code>bound*</code> 와 다르면 옛 셋을 파괴하고 <code>CreateResourceSet</code> 으로 다시 만듭니다.</p></div></div>
+<div class="stage"><div class="tag">③</div><div><h4>상수 올리기</h4><p><code>uploadedFrame != m_frameNumber</code> 이면 <code>MaterialConstants</code>(<code>baseColor</code>, <code>emissive</code>, <code>metallic</code>, <code>uvScale</code>, <code>unlit</code>, <code>normalStrength</code>, <code>alphaCutoff</code>, <code>roughness</code>, <code>occlusionStrength</code>)를 채워 <code>UpdateBuffer</code> 로 올리고 프레임 번호를 기록합니다.</p></div></div>
 
 <p>②에서 셋을 통째로 다시 만드는 이유는 <code>ResourceSet</code> 이 값 객체이기 때문입니다. 슬롯 하나만 바꾸는 기능이 없고, D3D12 에서는 어차피 디스크립터 테이블을 다시 써야 합니다(<a href="#c7">7장</a>). 텍스처 이름으로 캐시를 조회하는 비용은 문자열 해시 한 번이고, 실제 파일 디코딩은 그 이름을 처음 볼 때만 일어납니다(<a href="#c12">12장</a>).</p>
 
@@ -6434,7 +6621,7 @@ cmd.BeginRenderPass(pass);  DrawItems(cmd, scene);  cmd.EndRenderPass();
   <tbody>
     <tr><td class="mono">InvalidateMesh(mesh)</td><td>그 메시의 정점·인덱스 버퍼와 캐시 항목</td></tr>
     <tr><td class="mono">InvalidateMaterial(material)</td><td>그 재질의 리소스 셋·상수버퍼와 캐시 항목</td></tr>
-    <tr><td class="mono">InvalidateScene(scene, releaseTextures)</td><td>씬의 모든 메시·재질에 위 둘을 적용. <code>releaseTextures</code> 가 참이면 텍스처 캐시에서 <code>builtin:</code> 이 아닌 항목을 모두 지우고, 핸들이 흰색·평평한 노멀과 다른 것만 파괴</td></tr>
+    <tr><td class="mono">InvalidateScene(scene, releaseTextures)</td><td>씬의 모든 메시·재질에 위 둘을 적용. <code>releaseTextures</code> 가 참이면 텍스처 캐시에서 <code>builtin:</code> 이 아닌 항목을 모두 지우고, 핸들이 흰색·평평한 노멀과 다른 것만 파괴. 큐브 캐시도 같은 규칙(검은 큐브는 파괴하지 않음)이고, <code>m_boundEnvironment</code> 를 비워 다음 <code>Render</code> 가 프레임 셋을 반드시 다시 만들게 함(BRDF LUT 는 2D 캐시와 함께 버려짐)</td></tr>
   </tbody>
 </table></div>
 
@@ -6789,7 +6976,7 @@ EndFrame()        : prev ← cur, m_dx = m_dy = 0, m_wheel = 0</code></pre>
 </table></div>
 
 <h4>에셋 경로</h4>
-<p><code>GetAssetPath(L"Models\\DamagedHelmet\\DamagedHelmet.glb")</code> 는 <strong>프로젝트 <code>Assets\</code> → 엔진 <code>Assets\</code> → <code>exe\Assets\</code></strong> 순으로 찾아 처음 존재하는 절대 경로를 돌려줍니다. 어디에도 없으면 첫 후보 경로를 돌려주어 호출자가 "파일 없음"으로 실패하게 둡니다. 이 순서 덕분에 씬 파일과 재질은 어느 루트 기준인지 적지 않고 <code>Assets\</code> 기준 상대 경로만 저장합니다. 프로젝트에 같은 이름의 파일을 두면 프로젝트 것이 이기고, 배포 폴더에서는 둘이 <code>exe\Assets\</code> 한 곳에 합쳐져도 같은 규칙이 성립합니다. <code>ToAssetRelative</code> 는 그 반대 방향으로, 절대 경로가 세 <code>Assets\</code> 중 하나 아래에 있으면 상대 경로를 돌려줍니다(대소문자 무시). <code>GetAssetPath</code> 를 쓰는 곳은 설정 파일(15.3절), <code>AssetManager</code>(15.9절), <code>Renderer</code> 의 텍스처 로드(<code>Textures\&lt;이름&gt;</code> 또는 <code>asset:&lt;상대 경로&gt;</code>)입니다.</p>
+<p><code>GetAssetPath(L"Models\\DamagedHelmet\\DamagedHelmet.glb")</code> 는 <strong>프로젝트 <code>Assets\</code> → 엔진 <code>Assets\</code> → <code>exe\Assets\</code></strong> 순으로 찾아 처음 존재하는 절대 경로를 돌려줍니다. 어디에도 없으면 첫 후보 경로를 돌려주어 호출자가 "파일 없음"으로 실패하게 둡니다. 2026-10-08 부터 파일뿐 아니라 <strong>폴더</strong>도 "있음"으로 칩니다. 면 이미지 6장이 든 스카이박스 폴더(<a href="#c12-14">12.14절</a>)도 같은 우선순위로 찾아야 하기 때문입니다. 이 순서 덕분에 씬 파일과 재질은 어느 루트 기준인지 적지 않고 <code>Assets\</code> 기준 상대 경로만 저장합니다. 프로젝트에 같은 이름의 파일을 두면 프로젝트 것이 이기고, 배포 폴더에서는 둘이 <code>exe\Assets\</code> 한 곳에 합쳐져도 같은 규칙이 성립합니다. <code>ToAssetRelative</code> 는 그 반대 방향으로, 절대 경로가 세 <code>Assets\</code> 중 하나 아래에 있으면 상대 경로를 돌려줍니다(대소문자 무시). <code>GetAssetPath</code> 를 쓰는 곳은 설정 파일(15.3절), <code>AssetManager</code>(15.9절), <code>Renderer</code> 의 텍스처 로드(<code>Textures\&lt;이름&gt;</code> 또는 <code>asset:&lt;상대 경로&gt;</code>)입니다.</p>
 
 <h4>셰이더 경로</h4>
 <div class="tbl"><table>
@@ -7261,7 +7448,7 @@ ImGui::PopID();</code></pre>
 <div class="tbl"><table>
 <thead><tr><th>창</th><th>패널 함수</th><th>편집·표시하는 것</th></tr></thead>
 <tbody>
-<tr><td>Lights</td><td class="mono">DrawLightPanel</td><td>주변광 색, Add point light(<code>MAX_LIGHTS</code> 미만일 때), 조명마다 종류·위치·범위·방향(normalize 버튼)·색·세기·감쇠, 스포트라이트의 안쪽·바깥쪽 원뿔각(도로 편집하고 코사인으로 저장, 바깥쪽이 안쪽보다 좁아지지 않게 보정), Remove(조명이 둘 이상일 때)</td></tr>
+<tr><td>Lights</td><td class="mono">DrawEnvironmentPanel<br>DrawLightPanel</td><td>환경: 스카이박스(내장 프리셋 콤보), 스카이박스·Irradiance·Specular·BRDF LUT 이름 칸(Enter 로 적용, 콘텐츠 브라우저의 텍스처 드롭 — 큐브 칸은 <code>.dds</code> 면 그 파일, 그 밖의 이미지는 그 폴더), IBL 세기, 노출, ACES 톤매핑(<a href="#c12-14">12.14절</a>). 주변광 색, Add point light(<code>MAX_LIGHTS</code> 미만일 때), 조명마다 종류·위치·범위·방향(normalize 버튼)·색·세기·감쇠, 스포트라이트의 안쪽·바깥쪽 원뿔각(도로 편집하고 코사인으로 저장, 바깥쪽이 안쪽보다 좁아지지 않게 보정), Remove(조명이 둘 이상일 때)</td></tr>
 <tr><td>Materials</td><td class="mono">DrawMaterialPanel</td><td>씬의 모든 재질. Inspector 의 재질 필드에 샘플러 프리셋 콤보와 알베도 색공간 표시가 더해짐. 모델의 슬롯 재질은 여기서 편집</td></tr>
 <tr><td rowspan="5">Render Settings</td><td class="mono">DrawRenderSettingsPanel</td><td>백엔드 이름, Wireframe, Cull back faces, sRGB output, Normal maps, VSync, Reload shaders, 샘플러 덮어쓰기, 드로우·패스·배리어·캐시 통계</td></tr>
 <tr><td>(<code>Editor::DrawRenderSettings</code>)</td><td>Debug view 콤보와 Depth range 슬라이더</td></tr>
@@ -7274,7 +7461,7 @@ ImGui::PopID();</code></pre>
 <tr><td>Console (F12)</td><td class="mono">DrawLogConsole</td><td>로그 기록. 레벨별 표시 체크, 문자열 필터, 자동 스크롤, Clear, 최소 레벨 콤보. 기록은 <code>Log::GetHistoryVersion()</code> 이 바뀔 때만 다시 복사</td></tr>
 </tbody></table></div>
 <h4>디버그 뷰 전환</h4>
-<p>Render Settings 의 Debug view 콤보는 <code>RenderSettings::debugView</code> 정수 하나를 바꿉니다. 값은 0 Lit, 1 Albedo, 2 World normal, 3 Depth, 4 Shadow factor, 5 UV 입니다. Renderer 는 이 값과 <code>debugDepthRange</code> 를 프레임 상수버퍼의 <code>debugParams</code> 에 실어 보내고, 픽셀 셰이더(<code>Shaders/BasicPixelShader.hlsl</code>)가 조명을 합산하기 직전에 분기해 해당 값을 색으로 내보냅니다. 노멀은 <code>normal × 0.5 + 0.5</code>, 깊이는 카메라까지의 거리를 범위로 나눈 값, UV 는 <code>frac(uv)</code> 입니다. 셰이더 변형을 따로 만들지 않고 상수 하나로 분기하므로 PSO 가 늘지 않습니다. 그림자 맵 미리보기는 <code>Renderer::GetShadowMap()</code> 을 씬 텍스처와 같은 방법(<code>GetImGuiTextureId</code>)으로 ImGui 에 넘긴 것입니다. 상수버퍼 배치는 <a href="#c10">10장</a>, 셰이더의 조명 계산은 <a href="#c11">11장</a>에 있습니다.</p>
+<p>Render Settings 의 Debug view 콤보는 <code>RenderSettings::debugView</code> 정수 하나를 바꿉니다. 값은 0 Lit, 1 Albedo, 2 World normal, 3 Depth, 4 Shadow factor, 5 UV, 6 Metal/Rough, 7 Occlusion 입니다. Renderer 는 이 값과 <code>debugDepthRange</code> 를 프레임 상수버퍼의 <code>debugParams</code> 에 실어 보내고, 픽셀 셰이더(<code>Shaders/BasicPixelShader.hlsl</code>)가 조명을 합산하기 직전에 분기해 해당 값을 색으로 내보냅니다. 노멀은 <code>normal × 0.5 + 0.5</code>, 깊이는 카메라까지의 거리를 범위로 나눈 값, UV 는 <code>frac(uv)</code> 입니다. 셰이더 변형을 따로 만들지 않고 상수 하나로 분기하므로 PSO 가 늘지 않습니다. 그림자 맵 미리보기는 <code>Renderer::GetShadowMap()</code> 을 씬 텍스처와 같은 방법(<code>GetImGuiTextureId</code>)으로 ImGui 에 넘긴 것입니다. 상수버퍼 배치는 <a href="#c10">10장</a>, 셰이더의 조명 계산은 <a href="#c11">11장</a>에 있습니다.</p>
 
 <!-- c16-7.html -->
 <h3 id="c16-8">16.8 씬 직렬화</h3>
@@ -7282,18 +7469,20 @@ ImGui::PopID();</code></pre>
 <div class="tbl"><table>
 <thead><tr><th>저장하는 것</th><th>저장하지 않는 것</th></tr></thead>
 <tbody>
-<tr><td>에디터 카메라(위치, yaw, pitch), 주변광·클리어 색, 조명, 재질(전 필드), 메시 출처, 오브젝트(이름, 부모, 메시·재질 인덱스, 슬롯 재질, Transform, 노드 pre-transform, 컴포넌트)</td><td>GPU 자원(핸들은 실행마다 달라지는 값), 정점 데이터(출처로 다시 만듦), 렌더 설정(<code>RenderSettings</code> 는 Renderer 의 것), 카메라 roll 과 렌즈</td></tr>
+<tr><td>에디터 카메라(위치, yaw, pitch), 주변광·클리어 색, 환경(스카이박스·IBL 맵 이름, IBL 세기, 노출, 톤매핑), 조명, 재질(전 필드), 메시 출처, 오브젝트(이름, 부모, 메시·재질 인덱스, 슬롯 재질, Transform, 노드 pre-transform, 컴포넌트)</td><td>GPU 자원(핸들은 실행마다 달라지는 값), 정점 데이터(출처로 다시 만듦), 렌더 설정(<code>RenderSettings</code> 는 Renderer 의 것), 카메라 roll 과 렌즈</td></tr>
 </tbody></table></div>
-<h4>스키마 (버전 3)</h4>
+<h4>스키마 (버전 4)</h4>
 <pre><code>{
-  <span class="str">"version"</span>: 3,
+  <span class="str">"version"</span>: 4,
   <span class="str">"camera"</span>: { <span class="str">"position"</span>: [x, y, z], <span class="str">"yaw"</span>: 라디안, <span class="str">"pitch"</span>: 라디안 },
   <span class="str">"ambientColor"</span>: [r, g, b],  <span class="str">"clearColor"</span>: [r, g, b, a],
+  <span class="str">"environment"</span>: { skybox, irradiance, specular, brdfLut, iblIntensity, exposure, toneMapping },   <span class="cm">// 버전 4 (2026-10-08). 없으면 환경 없음</span>
   <span class="str">"meshes"</span>: [
     { <span class="str">"type"</span>: <span class="str">"sphere"</span>, <span class="str">"params"</span>: [2.5, 0, 0, 0], <span class="str">"a"</span>: 32, <span class="str">"b"</span>: 16, <span class="str">"color"</span>: [1, 1, 1, 1] },
     { <span class="str">"type"</span>: <span class="str">"model"</span>, <span class="str">"path"</span>: <span class="str">"Models\\DamagedHelmet\\DamagedHelmet.glb"</span>, <span class="str">"meshIndex"</span>: 0 } ],
-  <span class="str">"materials"</span>: [ { name, baseColor, specularColor, shininess, albedoTexture, albedoSrgb, sampler,
-                   uvScale, unlit, normalTexture, normalStrength, alphaCutoff, wireframe, doubleSided } ],
+  <span class="str">"materials"</span>: [ { name, baseColor, metallic, roughness, emissive, albedoTexture, albedoSrgb, sampler,
+                   uvScale, unlit, normalTexture, normalStrength, metallicRoughnessTexture, occlusionTexture,
+                   occlusionStrength, emissiveTexture, alphaCutoff, wireframe, doubleSided } ],
   <span class="str">"lights"</span>: [ { type, position, direction, color, intensity, range, attenuation, innerConeCos, outerConeCos } ],
   <span class="str">"objects"</span>: [
     { <span class="str">"name"</span>: <span class="str">"Main Camera"</span>, <span class="str">"parent"</span>: 9, <span class="str">"mesh"</span>: -1, <span class="str">"material"</span>: -1, <span class="str">"slotMaterials"</span>: [..],
@@ -7867,7 +8056,7 @@ SHERLOCK_SCRIPT(PlayerController)</code></pre>
 <div class="stage"><div class="tag">①</div><div><h4>런타임 실행 파일 찾기</h4><p>에디터 실행 파일이 있는 폴더에서 <code>&lt;프로젝트 이름&gt;.exe</code> 를 찾고, 없으면 <code>SherlockGame.exe</code> 를 찾습니다. 앞의 것은 프로젝트 솔루션의 게임 타깃이고 뒤의 것은 엔진 솔루션의 Sample 입니다. 둘 다 없고 프로젝트 솔루션이 있으면 그 게임 타깃을 Debug 로 먼저 빌드합니다. <code>releaseBuild</code> 가 켜져 있으면 프로젝트 솔루션의 <code>&lt;프로젝트 이름&gt;</code> 타깃(솔루션이 없으면 엔진 저장소의 <code>SherlockEngine.sln</code> 의 <code>SherlockGame</code>)을 Release 로 빌드하고, 경로의 <code>\Debug\</code> 를 <code>\Release\</code> 로 바꿔 거기서 찾습니다.</p></div></div>
 <div class="stage"><div class="tag">②</div><div><h4>실행 파일과 DLL</h4><p>런타임 실행 파일을 <code>&lt;name&gt;.exe</code> 라는 이름으로 복사하고, 같은 폴더의 <code>*.dll</code>(vcpkg 가 놓은 <code>DirectXTex.dll</code> 등)을 함께 복사합니다.</p></div></div>
 <div class="stage"><div class="tag">③</div><div><h4>셰이더</h4><p>런타임 폴더의 <code>Shaders\</code>(컴파일된 <code>.cso</code>, 없어도 됨)와 엔진 루트의 <code>Shaders\</code>(<code>.hlsl</code> 원본, 런타임 컴파일 폴백용)를 <code>Shaders\</code> 로 복사합니다.</p></div></div>
-<div class="stage"><div class="tag">④</div><div><h4>에셋</h4><p>전부 복사일 때는 엔진의 <code>Assets\</code> 를 먼저, 프로젝트의 <code>Assets\</code> 를 나중에 같은 폴더로 복사합니다. 이름이 겹치면 프로젝트 것이 덮어쓰므로 런타임의 탐색 순서(17.12절)와 결과가 같습니다. 참조만 복사일 때는 <code>Config</code>, 시작 씬 파일, 씬 JSON 의 <code>meshes[].path</code> 에서 뽑은 모델 폴더(경로의 앞 두 단계, 예: <code>Models\Sponza</code>), 재질의 <code>albedoTexture</code> · <code>normalTexture</code> 가 가리키는 파일을 복사하고, 이름만으로 참조되는 기본 텍스처를 위해 <code>Textures</code> 폴더는 통째로 넣습니다.</p></div></div>
+<div class="stage"><div class="tag">④</div><div><h4>에셋</h4><p>전부 복사일 때는 엔진의 <code>Assets\</code> 를 먼저, 프로젝트의 <code>Assets\</code> 를 나중에 같은 폴더로 복사합니다. 이름이 겹치면 프로젝트 것이 덮어쓰므로 런타임의 탐색 순서(17.12절)와 결과가 같습니다. 참조만 복사일 때는 <code>Config</code>, 시작 씬 파일, 씬 JSON 의 <code>meshes[].path</code> 에서 뽑은 모델 폴더(경로의 앞 두 단계, 예: <code>Models\Sponza</code>), 재질의 텍스처 다섯 종(알베도·노멀·금속성/거칠기·AO·발광)과 씬 <code>environment</code> 의 네 이름(내장이 아니면)이 가리키는 파일 또는 폴더를 복사하고, 이름만으로 참조되는 기본 텍스처를 위해 <code>Textures</code> 폴더는 통째로 넣습니다.</p></div></div>
 <div class="stage"><div class="tag">⑤</div><div><h4>설정과 프로젝트 파일</h4><p>복사본 <code>Assets\Config\engine.ini</code> 의 끝에 <code>[game]</code> 구역(<code>startScene</code>, <code>title</code>)을 덧붙입니다. <code>Config</code> 는 키에서 값으로 가는 맵이라 같은 키가 앞에 있어도 마지막 값이 적용됩니다. 그리고 <code>&lt;name&gt;.sherlock</code> 을 <code>engineRoot</code> 가 빈 문자열인 채로 씁니다.</p></div></div>
 <pre><code>&lt;프로젝트&gt;\Build\&lt;name&gt;\
 ├─ &lt;name&gt;.exe            런타임 실행 파일의 사본
@@ -8894,7 +9083,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <p>저장소 루트의 <code>작업 예정 목록.txt</code> 와 <code>구조 초안.txt</code> 는 이 시기에 쓴 계획 메모입니다. 삼각형 루프 안정화에서 에디터까지 11항목으로 된 그 계획이 지금 어디까지 실현됐는지는 <a href="#c22">22장</a>에서 대조합니다.</p>
 
 <!-- c20-02.html -->
-<h4>9월 3일 ~ 10월 2일 — 분석, 로드맵, 구현, 다듬기</h4>
+<h4>9월 3일 ~ 10월 8일 — 분석, 로드맵, 구현, 다듬기</h4>
 <p>커밋이 없는 행은 그날의 질문이나 문서 작업입니다. 질문은 작업의 출발점이었던 것만 한 줄씩 옮겼고, 답의 내용은 <a href="#c21">21장</a>에 있습니다.</p>
 <div class="tbl"><table>
 <thead><tr><th>날짜</th><th>커밋</th><th>무엇을 했나</th><th>단계 · 기록</th></tr></thead>
@@ -8925,8 +9114,11 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <tr><td class="n">10-01</td><td>—</td><td>요청 "PipelineTypes·PipelineStateCache 에 주석을 달아 달라", 질문 "요소를 전부 해시하는 이유". 주석만 추가</td><td><a href="#c6">6장</a>, <a href="#c21">21장</a></td></tr>
 <tr><td class="n">10-01</td><td>—</td><td>지적 "문서에 갱신 안 된 곳이 보인다" → 문서 전체를 코드와 대조, 코드 주석 10곳 수정</td><td><a href="#c20-11">20.11</a></td></tr>
 <tr><td class="n">10-02</td><td class="mono">646717b</td><td>09-30 ~ 10-01 의 작업을 한 커밋으로: 실험 프로젝트, 생성기 수정, TreePop 수정, 콘셉트 변경, 주석과 문서 갱신</td><td><a href="#c20-8">20.8</a> ~ <a href="#c20-11">20.11</a></td></tr>
-<tr><td class="n">10-02</td><td>미커밋</td><td>판단 "셰이더 5_0 을 유지하고 싶고 셰이더를 두 벌 만들고 싶지 않다" → 컴파일 인자를 <code>ShaderStage</code> 로. 같은 날 질문: ResourcePool 의 <code>Add</code>/<code>Get</code>, 해시 결합식, D3D11·D3D12 백엔드 공존, PSO·렌더 패스·루트 시그니처</td><td><a href="#c20-12">20.12</a>, <a href="#c21">21장</a></td></tr>
-<tr><td class="n">10-02</td><td>미커밋</td><td>요청 "단계별 문서로 나누지 말고 두 문서로 압축" → 이 최종본</td><td><a href="#c20-13">20.13</a></td></tr>
+<tr><td class="n">10-02</td><td class="mono">e4e52e2</td><td>판단 "셰이더 5_0 을 유지하고 싶고 셰이더를 두 벌 만들고 싶지 않다" → 컴파일 인자를 <code>ShaderStage</code> 로. 같은 날 질문: ResourcePool 의 <code>Add</code>/<code>Get</code>, 해시 결합식, D3D11·D3D12 백엔드 공존, PSO·렌더 패스·루트 시그니처</td><td><a href="#c20-12">20.12</a>, <a href="#c21">21장</a></td></tr>
+<tr><td class="n">10-02</td><td class="mono">be3d578</td><td>요청 "단계별 문서로 나누지 말고 두 문서로 압축" → 이 최종본</td><td><a href="#c20-13">20.13</a></td></tr>
+<tr><td class="n">10-06</td><td>—</td><td>질문 "큐브맵을 추가하려면 큐브맵 클래스를 만들어 구현하고 scene 에서 불러오는 게 맞나" → 클래스가 아니라 RHI 의 큐브 텍스처 + 씬의 이름 + Renderer 의 패스로 나누자는 답</td><td><a href="#c21-6">21.6</a></td></tr>
+<tr><td class="n">10-08</td><td>미커밋</td><td>요청 "Assets\Cubemap 의 큐브맵으로 CubemapTest 프로젝트를 만들고 IBL 이 적용되게" → HDR 텍스처, PBR(Cook-Torrance) 재질, split-sum IBL, 노출·톤매핑, 실험 프로젝트 <code>CubemapTest</code></td><td><a href="#c20-15">20.15</a>, <a href="#c11-6">11.6</a></td></tr>
+<tr><td class="n">10-08</td><td>미커밋</td><td>요청 "큐브맵 추가해줘" → <code>TextureDimension::TextureCube</code>, <code>CommandList::Draw</code>, 정점 속성 0개 PSO, 큐브 로더(DDS·면 6장·절차적), <code>Scene::skybox</code>, 스카이박스 패스</td><td><a href="#c20-14">20.14</a>, <a href="#c12-14">12.14</a></td></tr>
 </tbody></table></div>
 
 <!-- c20-03.html -->
@@ -8970,7 +9162,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <tr><td class="n"><a href="#p11d">11-D</a></td><td>엔진 lib + 에디터 exe + 게임 exe, Build Game</td><td>변화 없음</td><td>09-23</td></tr>
 <tr><td class="n"><a href="#p11e">11-E</a></td><td>프로젝트 시스템(.sherlock, 솔루션 생성, 런처)</td><td>변화 없음</td><td>09-24</td></tr>
 <tr><td class="n"><a href="#p11f">11-F</a></td><td>오브젝트 계층, 카메라 행렬 경로</td><td>변화 없음. 로드맵에 없던 단계</td><td>09-29 <span class="sub">fc04ab0</span></td></tr>
-<tr><td class="n"><a href="#p12">12</a></td><td>고급 렌더링(스카이박스, PBR, 후처리, Deferred)</td><td>ComputePipeline, UAV, 다중 RTV 가 추가될 자리</td><td>미착수</td></tr>
+<tr><td class="n"><a href="#p12">12</a></td><td>고급 렌더링(스카이박스, PBR, 후처리, Deferred)</td><td>큐브 텍스처·<code>Draw</code>·정점 입력 없는 PSO·half float 포맷이 추가됨. ComputePipeline, UAV, 다중 RTV 가 추가될 자리</td><td>스카이박스·PBR·IBL 10-08 <span class="sub">미커밋</span></td></tr>
 </tbody></table></div>
 <p>4~11단계는 구현 당시 미커밋 작업 트리였고 <code>c9be97a</code> 한 커밋으로 들어갔습니다. 11-B~11-E 는 <code>7143af8</code> 에 함께 들어갔습니다. 그래서 이 구간은 커밋 단위로 단계를 나눠 볼 수 없고, 아래 카드가 단계별 경계의 유일한 기록입니다.</p>
 
@@ -9787,7 +9979,7 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
 <p><b>방법과 검증.</b> 문서를 11개 구간으로 나눠 읽기 전용으로 병렬 대조하고 발견 항목마다 코드 근거를 붙였습니다. 모든 HTML 은 태그 짝·중복 id·내부 앵커를 파서로 검사했고, 고친 C++ 파일은 원래 인코딩과 CRLF 를 유지했습니다. 주석만 바꿨으므로 빌드는 다시 돌리지 않았습니다.</p>
 
 <h3 id="c20-12">20.12 적용 기록 — 2026-10-02 · 셰이더 컴파일 인자를 ShaderStage 로</h3>
-<p>미커밋 작업 트리의 변경입니다. "셰이더 모델을 5_0 으로 계속 둘 것인가"를 검토한 결론은 <strong>SM 5.0 유지</strong>이고, 대신 <code>"vs_5_0"</code>·<code>"ps_5_0"</code> 프로파일 문자열을 <code>Renderer</code> 가 들고 있지 않게 했습니다. 만들어지는 바이트코드와 런타임 동작은 같습니다.</p>
+<p>10-03 의 커밋 <code>e4e52e2</code> 에 들어간 변경입니다. "셰이더 모델을 5_0 으로 계속 둘 것인가"를 검토한 결론은 <strong>SM 5.0 유지</strong>이고, 대신 <code>"vs_5_0"</code>·<code>"ps_5_0"</code> 프로파일 문자열을 <code>Renderer</code> 가 들고 있지 않게 했습니다. 만들어지는 바이트코드와 런타임 동작은 같습니다.</p>
 <ul>
   <li><b>왜 5_0 인가.</b> D3D12 가 SM 5.0 DXBC 를 그대로 받아 셰이더 소스도 컴파일도 한 벌입니다. D3D11 은 5.1 을 받지 않으므로 5.1 로만 올려도 백엔드별로 컴파일이 갈립니다. 리플렉션(<code>D3DReflect</code>)이 DXBC 에 묶여 있어 6.x 로 가면 dxc 리플렉션 경로를 따로 만들어야 합니다. 포기하는 것은 5.1 의 register space 와 무제한 디스크립터 배열, 6.x 의 wave intrinsics·DXR·메시 셰이더 등인데 쓸 계획이 아직 없습니다.</li>
   <li><b>무엇을.</b> <code>ShaderCompiler::CompileFromFile</code>·<code>LoadOrCompile</code> 의 <code>const char* target</code> 인자를 <code>ShaderStage stage</code> 로 바꾸고, 프로파일은 <code>RHI/DXBC/ShaderCompiler.cpp</code> 의 익명 네임스페이스 함수 <code>GetTargetProfile</code> 한 곳이 정합니다. <code>Renderer::LoadShaders</code> 의 문자열 6곳이 사라졌습니다. 진입점 이름(<code>VS_Main</code>, <code>PS_Main</code>, <code>VS_Shadow</code>)은 여전히 호출자가 넘깁니다.</li>
@@ -9799,6 +9991,27 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
 
 <h3 id="c20-13">20.13 2026-10-02 · 문서 통합</h3>
 <p>"단계별로 나누지 말고 분석 문서와 학습 안내 두 편으로 압축하고 싶다"는 요청에 따라, 단계별 상세 문서 17편(0~11단계와 11-B~11-F)과 구 분석 문서를 이 최종본 한 편으로 합쳤습니다. 구 분석 문서는 09-03 시점(커밋 <code>867c380</code>)의 서술 위에 적용 기록과 "이후 바뀐 것" 상자를 계속 덧붙인 형태여서, 10-01 점검(20.11)이 보여 주듯 낡은 서술을 찾아 고치는 비용이 커지고 있었습니다. 최종본은 1~17장을 현재 코드 기준으로 처음부터 다시 쓰고, 경위는 이 장을 포함한 Part V 에 모았습니다. 단계 문서에 있던 세부 설명은 각 카드의 "지금 읽을 곳"이 가리키는 장으로 옮겨졌고, 함정과 검증 기록은 이 장의 카드에 압축해 남겼습니다. 이전 판 문서의 원문은 git 이력(커밋 <code>646717b</code> 과 그 이전)에 있습니다.</p>
+
+<h3 id="c20-14">20.14 적용 기록 — 2026-10-08 · 큐브맵과 스카이박스</h3>
+<p>미커밋 작업 트리의 변경입니다. 10-06 의 질문 "큐브맵 클래스를 만들어 scene 에서 불러오는 게 맞나"(<a href="#c21-6">21.6</a>)에 대한 답대로, 클래스 하나가 아니라 RHI · 로더 · 씬 · Renderer · 셰이더에 나눠 넣었습니다. 지금의 구조는 <a href="#c12-14">12.14절</a>이 설명합니다.</p>
+<ul>
+  <li><b>무엇을.</b> RHI: <code>TextureDesc::dimension</code>(<code>TextureDimension::TextureCube</code>)과 <code>GetArraySize</code>, 서브리소스를 면 × 밉으로 받는 <code>CreateTexture</code>(D3D11 <code>ArraySize</code>·<code>MISC_TEXTURECUBE</code>·큐브 SRV, D3D12 <code>DepthOrArraySize</code>·큐브 SRV), <code>CommandList::Draw</code>, 정점 속성 0개 PSO. 로더: <code>LoadCubeFromFile</code>, <code>CreateCube</code>, BC 압축 해제. 씬: <code>Scene::skybox</code>, 씬 파일 버전 4. Renderer: 큐브 캐시, 프레임 셋 t9·s5 와 <code>UpdateFrameSet</code>, 스카이박스 PSO·패스, 셰이더 두 개와 핫리로드 감시. 에디터: Lights 창의 Skybox 칸, Build Game 복사, <code>GetAssetPath</code> 의 폴더 탐색. 데모·Sponza·새 씬은 <code>builtin:sky</code> 를, 헬멧 씬은 어두운 배경을 그대로 씁니다.</li>
+  <li><b>왜 이렇게 나눴나.</b> 큐브맵은 면이 6장인 텍스처일 뿐이라, 텍스처가 이미 지나는 길(Desc → 핸들, 씬은 이름, Renderer 가 캐시)을 그대로 따르는 것이 RHI·PSO 라는 목표와 맞습니다. 큐브 지원을 <code>TextureDesc</code> 의 필드 하나로 넣었으므로 반사 프로브나 IBL 이 같은 Desc 를 씁니다.</li>
+  <li><b>고르지 않은 대안.</b> (1) GPU 텍스처를 소유하는 <code>Cubemap</code> 클래스를 Scene 이 로드: Scene 이 Device 를 알게 되어 13.1절의 경계가 깨집니다. (2) 스카이박스를 GameObject·컴포넌트로: 트랜스폼이 없고 씬에 하나뿐인 환경 값이라 Hierarchy 에 둘 이유가 없습니다. (3) 큐브 메시를 기존 <code>VERTEX</code> 레이아웃으로 그리기: RHI 를 바꾸지 않아도 되지만 64바이트 정점 36개와 컬링 방향을 신경 써야 하고, 후처리의 전체 화면 패스가 곧 필요로 할 <code>Draw</code> 와 입력 없는 PSO 를 미루는 일입니다. (4) 스카이박스 전용 레이아웃(t0·s0): 프레임 셋을 다시 만들 일은 없지만 IBL 때 큐브를 프레임 셋으로 다시 옮겨야 합니다. (5) 불투명보다 먼저 깊이 쓰기 없이 그리기: 화면 전체를 칠한 뒤 덮어쓰는 오버드로가 생깁니다.</li>
+  <li><b>함정.</b> 큐브 SRV 를 뷰 기술 없이 만들면 배열 뷰가 됩니다. 실패 대체물을 흰 2D 로 하면 차원이 어긋납니다. 폴더 스카이박스는 <code>GetAssetPath</code> 가 파일만 확인해 찾지 못했습니다. 셋 모두 12.14절의 함정 표에 있습니다. 검증 쪽 함정도 하나 있었습니다. 자동 검증의 <code>--save</code> 는 12번째 프레임에 저장하므로 <code>--exit-after=10</code> 으로는 파일이 생기지 않습니다(<a href="#app-d">부록 D</a>).</li>
+  <li><b>검증.</b> Debug·Release 빌드 성공(경고 없음). Release 도 데모 씬을 두 백엔드로 실행해 하늘 픽셀이 서로 같음. 데모 씬을 두 백엔드로 그려 씬 뷰 픽셀이 같음(그림 12-14b). 같은 씬 파일에 스카이박스와 카메라만 바꿔 <code>builtin:skyfaces</code>, 라벨을 쓴 PNG 6장 폴더, 같은 내용의 큐브 DDS 를 두 방향에서 그려 면 배치가 12.14절의 표와 같음(그림 12-14a). 없는 파일은 경고와 함께 검은 큐브. 폴더 큐브 씬에서 <code>--load</code> 로 내장 큐브 씬으로 바꿔 두 백엔드 모두 새 큐브가 보이고 D3D12 Debug Layer 메시지 없음. 종료 시 Live Object 는 장치 자신의 한 줄뿐(22.4). 확인하지 못한 것: Lights 창의 Skybox UI 의 화면(자동 검증이 탭 전환·드래그를 재현하지 못함), 스카이박스 셰이더의 핫리로드(F4). 검증용 PNG·DDS 는 엔진 <code>Assets\Textures\</code> 에 잠시 두었다가 지웠습니다.</li>
+</ul>
+
+
+<h3 id="c20-15">20.15 적용 기록 — 2026-10-08 · PBR 전환과 IBL, CubemapTest 프로젝트</h3>
+<p>미커밋 작업 트리의 변경입니다. 요청은 "<code>Assets\Cubemap</code> 에 둔 큐브맵으로 큐브맵이 적용된 CubemapTest 프로젝트를 만들고, IBL 이 적용되게 해 달라"였습니다. 샘플은 Env·Specular·Diffuse·BRDF LUT 로 된 IBLBaker 형식의 세트이고 PBR(metallic-roughness)을 전제로 합니다. 엔진 재질은 Blinn-Phong 이라 재질 모델을 먼저 정해야 했고, 사용자가 "PBR 전환 + IBL" 을 골랐습니다(대안은 Blinn-Phong 을 두고 주변광·반사만 큐브로 바꾸는 것).</p>
+<ul>
+  <li><b>무엇을.</b> RHI: <code>Format::R16G16B16A16_FLOAT</code>. 로더: 부동소수점·BC6H 원본을 half float 로(HDR). 재질: <code>specularColor</code>·<code>shininess</code> 를 <code>metallic</code>·<code>roughness</code>·<code>emissive</code> 와 텍스처 세 장(금속성/거칠기·AO·발광)으로 바꾸고 <code>MaterialConstants</code> 는 64B 를 유지. 셰이더: Cook-Torrance(GGX·Smith·Schlick) 직접광, split-sum IBL, <code>ApplyExposureToneMap</code>, 디버그 뷰 6·7. 씬: <code>SceneEnvironment</code>(스카이박스·확산 조도·반사 프리필터·BRDF LUT·IBL 세기·노출·톤매핑)가 <code>Scene::skybox</code> 를 대체. Renderer: <code>ResolveEnvironment</code>, 프레임 셋 t10~t12, 재질 셋 t2~t4, PerFrame 336B. glTF: 금속성·거칠기·AO·발광을 그대로. 에디터: 환경 칸과 PBR 재질 슬라이더. 씬 파일: 버전 4 를 <code>"environment"</code> 객체로 다시 정의(같은 날 잠시 쓴 루트의 <code>"skybox"</code> 도 읽음)하고, 옛 <code>shininess</code> 는 읽을 때 거칠기로 환산합니다(<code>roughness = sqrt(sqrt(2 / (n + 2)))</code>, Blinn-Phong 지수와 Beckmann 거칠기의 관계에서 GGX 의 α ≈ m 으로).</li>
+  <li><b>왜 이 구조인가.</b> IBL 텍스처는 씬마다 하나라 프레임 셋에, PBR 텍스처는 재질마다라 재질 셋에 둡니다. 조명 세기는 "조도 E" 관례로 BRDF 에 π 를 곱해, 확산 밝기가 예전과 같아 기존 씬의 조명 값을 고치지 않았습니다. HDR 렌더 타깃 없이 톤매핑을 셰이더 끝에 둔 것은 임시 구조이며 후처리 단계에서 패스로 옮깁니다(22.4).</li>
+  <li><b>고르지 않은 대안.</b> (1) Blinn-Phong 유지 + 큐브 주변광/반사: 변경은 작지만 <code>specularColor</code> 가 흰색인 기존 재질이 거울처럼 되고, IBL 세트가 전제한 F0·거칠기와 맞지 않습니다. (2) 샘플의 MDR(8비트) 세트 사용: 로더를 바꾸지 않아도 되지만 하늘의 태양과 금속 반사가 1 에서 잘립니다. (3) IBL 맵이 없을 때 반사를 끄기: 내장 하늘만 둔 씬의 금속이 검게 남으므로, 스카이박스 밉으로 근사하는 대체를 넣었습니다. (4) 반사 밉 매핑을 honglab 예제식(밉 2 + 거칠기 × 5)으로: 데이터에서 밉 0 이 거울(태양이 그대로 남음)임을 확인해 밉 전체에 선형으로 펼쳤습니다.</li>
+  <li><b>함정.</b> 첫 실행에서 물체가 하늘보다 밝게 떴습니다. 샘플의 Diffuse·Specular 가 Env 의 약 2배로 구워져 있어 CubemapTest 씬의 IBL 세기를 0.5 로 맞췄습니다(12.14절의 측정). BRDF LUT 의 v 축 방향은 모서리 값을 읽어 확인했습니다. 면 폴더 경로에 HDR 이미지가 들어오면 8비트를 가정한 행 복사가 깨지므로 거부하게 했습니다.</li>
+  <li><b>검증.</b> Debug·Release 빌드 성공(기존 X4000 경고 하나뿐, 22.4). Release 의 CubemapTest 화면이 Debug 와 픽셀이 같음. 데모·헬멧 씬을 두 백엔드로 그려 픽셀이 같고, 데모의 금속 원기둥에 하늘이 비침. CubemapTest 를 에디터와 게임 런타임으로 실행해 HDR 네 장이 half float 로 로드되고(Diffuse 는 밉 생성으로 8단계) 두 백엔드 픽셀이 같음(그림 12-14d). 환경 없음 / 스카이박스만 / IBL 전체를 같은 씬으로 비교(그림 12-14c). 경고·D3D12 Debug Layer 메시지 없음, 종료 시 Live Object 는 장치 한 줄. 확인하지 못한 것: 에디터의 환경 칸·PBR 슬라이더의 화면(자동 검증이 창 전환을 못 함), 디버그 뷰 6·7 의 화면, CubemapTest 전용 에디터(<code>CubemapTestEditor</code>) 빌드 — 스크립트가 예제 <code>Rotator</code> 뿐이라 엔진 에디터로 열었고, 그래서 씬 뷰 위에 "프로젝트 스크립트 없이 빌드됨" 배너가 뜹니다.</li>
+</ul>
 
 <!-- c21-01.html -->
 <h2 id="c21"><span class="num">21.</span>질문과 답</h2>
@@ -9860,7 +10073,7 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
 <tr><td>각도를 빼면 회전이 되는 것 아닌가</td></tr>
 <tr><td><code>if</code> 가 아니라 <code>while</code> 을 쓰는 이유</td></tr>
 <tr><td>값이 커지면 왜 정밀도 손실이 생기나</td></tr>
-<tr><td>코드를 어떤 순서로 읽어야 하나</td><td rowspan="8"><a href="#c21-6">21.6 엔진 구조·진로</a></td></tr>
+<tr><td>코드를 어떤 순서로 읽어야 하나</td><td rowspan="9"><a href="#c21-6">21.6 엔진 구조·진로</a></td></tr>
 <tr><td>자체 엔진에서 렌더와 엔진의 역할 범위</td></tr>
 <tr><td>두 사람이 만들면 권장 순서가 달라지나</td></tr>
 <tr><td>RenderFrame 계약과 폴더 트리 예시</td></tr>
@@ -9868,6 +10081,7 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
 <tr><td>스크립팅을 보통 Python·Lua 로 하는 이유, 스크립팅 엔진의 개념</td></tr>
 <tr><td>스크립트 언어를 바꾸는 것이 더 효율적인가</td></tr>
 <tr><td>HTML 문서에 메모를 남기는 기능은 어떻게 동작하나</td></tr>
+<tr><td>큐브맵은 클래스를 만들어 scene 에서 불러오는 게 맞나</td></tr>
 </tbody></table></div>
 
 <!-- c21-02.html -->
@@ -10725,6 +10939,19 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <div class="callout amber"><div class="t">한계</div>
 <p>메모는 그 PC 의 그 브라우저에만 남습니다. 브라우저 데이터를 지우면 사라지고 git 에도 들어가지 않습니다. 다른 곳으로 옮기거나 백업하려면 패널의 내보내기와 가져오기를 씁니다. 키에 문서 파일명이 들어가므로 파일 이름을 바꾸면 그 문서의 메모는 새 이름에서 보이지 않습니다. 오래 남길 메모는 문서 본문으로 옮기는 편이 안전합니다.</p></div>
 
+<h4>Q. 이 프로젝트에 큐브맵을 추가하려면 큐브맵 클래스를 만들어서 구현하고 scene 에서 불러오는 게 맞나? (2026-10-06)</h4>
+
+<p>반은 맞고 반은 이 구조와 맞지 않습니다. "큐브맵 클래스가 파일을 읽어 GPU 텍스처를 들고 있고 Scene 이 그것을 불러온다"는 형태라면 지금의 경계를 깹니다. <code>Scene</code> 은 CPU 데이터만 갖고 GPU 자원을 갖지 않으며(<a href="#c13-1">13.1절</a>), 재질도 텍스처를 핸들이 아니라 이름으로 가리키고 이름 → 핸들 변환은 Renderer 의 캐시가 맡습니다(<a href="#c12-12">12.12절</a>). 큐브맵은 새로운 종류의 객체가 아니라 면이 6장인 텍스처이므로 그 길을 그대로 따르는 것이 맞습니다.</p>
+<div class="tbl"><table>
+<thead><tr><th>층</th><th>할 일</th></tr></thead>
+<tbody>
+<tr><td>RHI</td><td><code>TextureDesc</code> 에 큐브 여부를 넣고, 백엔드가 배열 크기 6 과 큐브 SRV 를 만들게 합니다. 서브리소스는 면 × 밉 순서</td></tr>
+<tr><td>TextureLoader</td><td>큐브 DDS(DirectXTex 가 그대로 읽음)와, 필요하면 면 이미지 6장</td></tr>
+<tr><td>Scene</td><td><code>ambientColor</code>·<code>clearColor</code> 옆에 스카이박스 <strong>이름</strong> 하나. 씬 파일에 한 줄 저장</td></tr>
+<tr><td>Renderer</td><td>이름 → 큐브 캐시, 스카이박스 PSO(깊이 LessEqual·쓰기 끔), 불투명 드로우 뒤의 스카이박스 드로우. 반사·IBL 까지 보면 큐브는 프레임 셋에</td></tr>
+</tbody></table></div>
+<p>GameObject 나 컴포넌트로 만들 필요도 없습니다. 스카이박스는 씬에 하나뿐이고 트랜스폼이 없으며, 조명 정보로도 쓰일 환경 설정이므로 주변광과 같은 자리가 자연스럽습니다. 에디터에서는 Hierarchy 가 아니라 환경 설정 칸에 이름을 넣는 것으로 충분합니다. 이 답대로 구현한 결과가 <a href="#c12-14">12.14절</a>이고 경위는 <a href="#c20-14">20.14</a>입니다.</p>
+
 <!-- c22-01.html -->
 <h2 id="c22"><span class="num">22.</span>남은 일과 다음 로드맵</h2>
 <p>이 장은 아직 하지 않은 일을 한곳에 모읍니다. 로드맵의 마지막 단계인 12단계(22.1), 각 단계가 "다음 단계"로 남겨 둔 미착수 항목(22.2), 설계 결정 가운데 미착수이거나 재검토 시점이 남은 것(22.3), 코드에 남아 있는 알려진 경고와 한계(22.4), 7월의 계획 메모와 현재의 대조(22.5), 그리고 우선순위 제안(22.6) 순서입니다. 각 항목은 2026-10-02 작업 트리의 소스에서 지금도 그런지 확인한 것만 실었고, 빌드나 실행으로만 확인되는 것은 그렇게 표시했습니다.</p>
@@ -10735,26 +10962,26 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 
 <h3 id="c22-1">22.1 12단계 — 고급 렌더링</h3>
 <div class="phase" id="p12">
-  <header><span class="pn">PHASE 12</span><h3>고급 렌더링</h3><span class="pill info">장기</span><span class="pill none">미착수</span></header>
+  <header><span class="pn">PHASE 12</span><h3>고급 렌더링</h3><span class="pill info">장기</span><span class="pill ok">스카이박스·PBR·IBL 10-08</span></header>
   <p class="why">로드맵에서 유일하게 남은 단계입니다. 여기 있는 기능은 모두 RHI 위에서 한 번만 작성하면 두 백엔드에서 동작합니다. 0~11단계가 "RHI 를 만들고 검증하는" 일이었다면 12단계는 그 RHI 를 처음으로 <em>넓히는</em> 일입니다. 컴퓨트 셰이더가 들어오는 시점에 인터페이스에 새 개념이 추가됩니다.</p>
   <div class="cols">
     <div><h5>추천 순서</h5><ul>
-      <li><b>스카이박스와 환경맵.</b> 깊이 쓰기를 끄는 PSO 하나를 더하는 일입니다. 큐브 텍스처가 필요합니다</li>
-      <li><b>PBR(Cook-Torrance)과 IBL.</b> 환경맵 프리필터링이 컴퓨트 PSO 의 첫 사용처입니다. <a href="#p9">9단계</a>에서 검게 나온 헬멧 바이저가 이 단계의 시험 대상입니다</li>
+      <li><b>스카이박스와 환경맵.</b> 끝났습니다(2026-10-08, <a href="#c12-14">12.14절</a>)</li>
+      <li><b>PBR(Cook-Torrance)과 IBL.</b> 셰이딩은 끝났습니다(2026-10-08, <a href="#c11-6">11.6절</a>). IBL 맵은 아직 밖에서 구운 것(IBLBaker 등)을 읽기만 하고, 스카이박스 하나에서 확산 조도·반사 프리필터·BRDF LUT 를 엔진이 직접 만드는 일이 남았습니다. 그것이 컴퓨트 PSO 의 첫 사용처입니다</li>
       <li><b>후처리 체인.</b> HDR 타깃 → 톤매핑 → 블룸 → FXAA. 렌더 패스 인프라 위의 풀스크린 패스입니다</li>
       <li><b>Deferred Shading.</b> G-Buffer 는 다중 렌더 타깃 패스이고, 조명 목록은 구조화 버퍼로 옮깁니다(<a href="#d11">D11</a> 재검토)</li>
       <li><b>인스턴싱, 프러스텀 컬링, Cascaded Shadow Map</b></li>
     </ul></div>
     <div><h5>RHI 에 추가될 것</h5><ul>
       <li><code>ComputePipelineDesc</code>, UAV 바인딩 타입, <code>Dispatch</code>. 지금 <code>RHI/</code> 헤더에는 컴퓨트와 UAV 가 없고 <code>ShaderStage</code> 도 Vertex·Pixel 둘입니다</li>
-      <li>HDR 과 큐브 텍스처. <code>Format</code> 열거형에 16비트 float 색 포맷이 없습니다</li>
+      <li>HDR 렌더 타깃. 텍스처용 <code>R16G16B16A16_FLOAT</code> 는 생겼지만 메인 패스는 아직 8비트 sRGB 타깃에 바로 쓰고 톤매핑을 픽셀 셰이더 끝에서 합니다. 큐브 텍스처는 ShaderResource 전용이라, 큐브에 그리는 일(반사 프로브, IBL 프리필터)에는 면별 RTV 나 UAV 가 더 필요합니다</li>
       <li>알파 블렌딩 경로. <code>BlendDesc</code> 는 있지만 반투명 재질을 그리는 경로가 없어 glTF 의 BLEND 는 컷아웃 0.5 로 근사하고 있습니다(<code>Graphics/Model.cpp</code> 의 주석이 12단계를 가리킴)</li>
       <li>프레임 그래프(패스 간 의존으로 배리어를 자동 생성)는 RHI 가 아니라 그 위 Renderer 계층에 둡니다</li>
     </ul></div>
   </div>
   <div class="done"><b>이미 준비된 것</b> — 다중 렌더 타깃은 타입 수준에서 준비돼 있습니다. <code>PipelineStateDesc</code> 의 <code>rtvFormats[kMaxRenderTargets]</code>·<code>rtvCount</code>(1단계)와 <code>RenderPassDesc</code> 의 <code>colors[]</code>·<code>colorCount</code>(6단계)가 그것이고, 실제로 둘 이상을 쓰는 패스는 아직 없습니다. 현재 구조는 <a href="#c6">6장</a>과 <a href="#c8">8장</a>.</div>
 </div>
-<p>09-07 의 로드맵은 "가장 가까운 다음 목표"로 여덟 항목(0단계 정리부터 RHI 인터페이스 추출까지)을 꼽고, 그 뒤 D3D12 로 검증할지 바로 모델 로딩으로 갈지는 그때 정하자고 적었습니다. 여덟 항목과 그 뒤의 선택지 양쪽이 모두 끝났으므로, 지금의 "가장 가까운 다음 목표"는 스카이박스입니다. 새 PSO 하나와 큐브 텍스처 하나로 끝나는 가장 작은 단위이면서, 12단계의 나머지(IBL, HDR)가 모두 그 위에 올라갑니다.</p>
+<p>09-07 의 로드맵은 "가장 가까운 다음 목표"로 여덟 항목(0단계 정리부터 RHI 인터페이스 추출까지)을 꼽고, 그 뒤 D3D12 로 검증할지 바로 모델 로딩으로 갈지는 그때 정하자고 적었습니다. 여덟 항목과 그 뒤의 선택지 양쪽이 모두 끝났으므로, "가장 가까운 다음 목표"였던 스카이박스는 2026-10-08 에 들어갔습니다(<a href="#c20-14">20.14</a>). 그 과정에서 RHI 에 큐브 텍스처, 인덱스 없는 <code>Draw</code>, 정점 입력 없는 PSO 가 생겼고, 이 셋은 후처리의 전체 화면 패스와 IBL 이 그대로 다시 씁니다. 같은 날 PBR·IBL 도 들어갔고(<a href="#c20-15">20.15</a>), 톤매핑은 픽셀 셰이더 끝의 함수로 임시로 들어가 있습니다. 다음으로 작은 단위는 HDR 렌더 타깃과 그 위의 톤매핑 패스(후처리의 첫 패스)입니다.</p>
 
 <h3 id="c22-2">22.2 각 단계가 남겨 둔 일</h3>
 <p>단계 문서들의 "다음 단계" 절에 있던 항목 가운데 지금도 하지 않은 것입니다. 같은 항목이 여러 단계에서 반복해 나온 경우 하나로 합쳤습니다.</p>
@@ -10798,7 +11025,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tr><td>HLSL 경고 X4000</td><td>런타임 컴파일 경로에서 <code>BasicPixelShader.hlsl</code> 의 <code>ComputeShadowFactor</code> 에 "use of potentially uninitialized variable" 경고가 나옵니다. 이 함수는 그림자가 꺼졌을 때와 광원 far 밖일 때 조기 반환하는 구조입니다. 동작에는 영향이 없어 손대지 않았습니다</td><td>함수 구조는 소스로 확인. 경고 자체는 09-28·10-02 의 실행 기록에 따름(이번에 다시 빌드하지 않음)</td></tr>
 <tr><td>종료 시 Live Device 한 줄</td><td>Debug 실행을 끝내면 <code>Live ID3D11Device</code>(또는 D3D12) <code>… Refcount: 3</code> 한 줄이 남습니다. 자식 객체 보고는 0건이라 누수가 아니며, 장치가 자기 자신을 보고하는 줄입니다. 3 중 하나의 출처는 1단계 때부터 확정하지 못했습니다</td><td><code>RHI/D3D11/D3D11Device.cpp</code> 의 주석이 "이 한 줄만 나오는 것"을 기대 상태로 적고 있음</td></tr>
 <tr><td>쓰지 않는 의존성 DirectXTK</td><td><code>vcpkg.json</code> 에 <code>directxtk</code> 가 선언돼 있지만 소스에서 DirectXTK 헤더나 타입을 쓰는 곳이 없습니다. 09-10 에 "5단계에서 쓸 것"이라며 남겼으나 텍스처 로딩은 DirectXTex 로 했습니다</td><td>소스 grep 0건</td></tr>
-<tr><td>셰이더 모델을 정하는 곳이 두 군데</td><td>런타임 컴파일은 <code>RHI/DXBC/ShaderCompiler.cpp</code> 의 <code>GetTargetProfile</code>, 빌드의 <code>.cso</code> 는 <code>SherlockEngine.vcxproj</code> 의 FxCompile 세 항목(<code>&lt;ShaderModel&gt;5.0</code>)이 정합니다. 올릴 때는 둘을 같이 바꿔야 합니다</td><td>두 파일 확인</td></tr>
+<tr><td>셰이더 모델을 정하는 곳이 두 군데</td><td>런타임 컴파일은 <code>RHI/DXBC/ShaderCompiler.cpp</code> 의 <code>GetTargetProfile</code>, 빌드의 <code>.cso</code> 는 <code>SherlockEngine.vcxproj</code> 의 FxCompile 다섯 항목(<code>&lt;ShaderModel&gt;5.0</code>)이 정합니다. 올릴 때는 둘을 같이 바꿔야 합니다</td><td>두 파일 확인</td></tr>
 <tr><td>낡은 UI 문구</td><td><code>App/Editor.cpp</code> 의 스크립트 관련 문구가 아직 "Game/Scripts" 와 "source tree not found" 를 말합니다(스크립트는 프로젝트의 <code>Scripts\</code> 에 있음). <code>App/DebugUI.cpp</code> 의 단축키 안내는 "F10 freeze" 인데 F10 은 일시정지입니다</td><td>문자열 확인</td></tr>
 <tr><td>스크립트 와일드카드 불일치</td><td>생성기가 만드는 프로젝트 솔루션은 <code>Scripts\**\*.cpp</code>(재귀)이고, 엔진 솔루션의 <code>SherlockEditor.vcxproj</code>·<code>SherlockGame.vcxproj</code> 는 <code>..\Projects\Sample\Scripts\*.cpp</code>(비재귀)입니다. Sample 의 하위 폴더 스크립트는 엔진 솔루션에서 컴파일되지 않습니다</td><td>세 파일 확인</td></tr>
 <tr><td>에디터 소스 목록이 두 곳</td><td><code>ProjectGenerator::GetEditorSources()</code> 와 <code>SherlockEditor.vcxproj</code> 가 같은 목록을 따로 갖습니다. 에디터에 파일을 추가하면 두 곳을 같이 고쳐야 합니다</td><td>두 파일 확인</td></tr>
@@ -10806,6 +11033,12 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tr><td>통계의 배리어 수</td><td>패널의 배리어 수는 <code>Renderer::Render</code> 끝에서 찍혀, 그 뒤의 UI 패스와 마지막 Present 전이가 빠집니다</td><td>10-01 점검 기록에 따름</td></tr>
 <tr><td>모델 루트 경로 미실행</td><td>노드가 둘 이상인 모델을 빈 루트 아래 묶는 경로는 동봉 모델이 모두 단일 노드라 실행해 본 적이 없습니다</td><td>11-F 기록에 따름</td></tr>
 <tr><td>비균등 스케일 부모</td><td>부모 스케일이 비균등하고 자식이 회전돼 있으면 기즈모와 재부모화의 분해가 근사가 됩니다(전단을 표현하지 못함)</td><td>11-F 기록에 따름</td></tr>
+<tr><td>톤매핑이 셰이더 끝에 있음</td><td>HDR 렌더 타깃이 없어 노출·ACES 근사를 메인 PS 와 스카이박스 PS 의 끝에서 합니다. 블룸처럼 화면 전체를 보는 후처리는 이 구조로는 넣을 수 없습니다</td><td><code>Shaders/Common.hlsli</code> 의 <code>ApplyExposureToneMap</code></td></tr>
+<tr><td>IBL 맵은 미리 구운 것만</td><td>엔진이 스카이박스에서 확산 조도·프리필터·LUT 를 만들지 않습니다. 맵이 없으면 스카이박스의 박스 필터 밉으로 근사해 중간 거칠기의 반사가 실제보다 선명합니다(그림 12-14c)</td><td><code>Renderer::ResolveEnvironment</code></td></tr>
+<tr><td>샘플 IBL 세트의 밝기</td><td><code>Assets\Cubemap</code> 의 Diffuse·Specular 맵은 Env 보다 약 2배 밝게 구워져 있어 CubemapTest 씬은 IBL 세기 0.5 를 씁니다(밉 0 평균 3.0 대 1.5)</td><td><a href="#c20-15">20.15</a></td></tr>
+<tr><td>환경이 없는 씬의 금속</td><td>환경도 스카이박스도 없으면 금속은 <code>ambientColor</code> 만 반사해 어둡습니다(헬멧 씬)</td><td>11.6절</td></tr>
+<tr><td>스카이박스는 원근 투영 전제</td><td><code>SkyboxVertexShader.hlsl</code> 은 <code>proj._11</code>·<code>proj._22</code> 로 투영을 거꾸로 풉니다. 카메라를 직교 투영으로 바꾸면 방향이 원근처럼 퍼져 보입니다(직교 카메라에서 하늘의 "올바른" 모습은 단색에 가까움)</td><td>셰이더 주석</td></tr>
+<tr><td>스카이박스 UI 의 화면 확인</td><td>Lights 창의 Skybox 콤보·이름 입력·드롭 칸은 빌드와 실행에서 문제가 없었지만, 자동 검증이 탭을 바꾸거나 드래그를 재현하지 못해 화면으로는 확인하지 않았습니다</td><td><a href="#c20-14">20.14</a></td></tr>
 <tr><td>자동 검증의 사각</td><td>실행 인자 재생은 입력을 주입하지 않으므로 드래그 앤 드롭과 단축키(F4 핫리로드 등)는 자동으로 재현되지 않습니다. PopID 어서션(<a href="#c20-9">20.9</a>)이 이 사각에서 나왔습니다</td><td><a href="#app-d">부록 D</a></td></tr>
 </tbody></table></div>
 
@@ -10835,7 +11068,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <thead><tr><th>순위</th><th>일</th><th>크기</th><th>이유</th></tr></thead>
 <tbody>
 <tr><td class="n">1</td><td>자잘한 정리: 낡은 UI 문구, 쓰지 않는 DirectXTK 선언, X4000 경고, 스크립트 와일드카드 통일</td><td>작음</td><td>코드와 문서가 어긋나는 지점을 없앱니다. 모두 22.4 에 위치가 적혀 있어 바로 할 수 있습니다</td></tr>
-<tr><td class="n">2</td><td>스카이박스와 큐브 텍스처</td><td>작음</td><td>12단계의 가장 작은 첫 단위이고 RHI 에 텍스처 종류 하나를 더하는 연습입니다</td></tr>
+<tr><td class="n">2</td><td><s>스카이박스와 큐브 텍스처, PBR + IBL 셰이딩</s> 완료(10-08)</td><td>—</td><td>남은 것은 HDR 렌더 타깃(아래 3)과 IBL 맵의 엔진 내 생성(아래 4)입니다</td></tr>
 <tr><td class="n">3</td><td>HDR 타깃과 톤매핑(후처리의 첫 패스)</td><td>중간</td><td>풀스크린 패스 구조가 생기면 블룸·FXAA 가 같은 틀에 올라갑니다. 포맷 추가가 필요합니다</td></tr>
 <tr><td class="n">4</td><td>컴퓨트 파이프라인과 UAV, 이어서 PBR + IBL</td><td>큼</td><td>RHI 인터페이스가 처음으로 넓어지는 지점입니다. 셰이더 스테이지와 바인딩 타입이 늘어 두 백엔드를 모두 고칩니다</td></tr>
 <tr><td class="n">5</td><td>Undo 와 에디터 명령 큐</td><td>중간</td><td>에디터를 실제로 쓰기 시작하면 가장 먼저 아쉬운 기능이고, 드롭을 그리기 뒤로 미루는 구조도 함께 얻습니다</td></tr>
@@ -10897,7 +11130,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tr><td>템플릿 부분 특수화</td><td>템플릿 인자가 특정 꼴일 때만 선택되는 별도 정의.</td><td><code>RHI/Handle.h</code> 의 <code>kIsHandle&lt;Handle&lt;Tag&gt;&gt; = true</code></td><td><a href="#c5">5</a></td></tr>
 <tr><td class="mono">constexpr</td><td>컴파일 시점에 계산할 수 <em>있는</em> 변수·함수. 변수에 쓰면 컴파일 시점 상수가 됩니다. <code>inline constexpr</code> 는 헤더에 두어도 정의가 하나로 합쳐집니다.</td><td><code>RHI/GraphicsConfig.h</code> 의 <code>kFrameCount</code>, <code>Graphics/ShaderConstants.h</code> 의 슬롯 번호(<code>kCBSlotPerFrame</code> …), <code>Scene/Camera.cpp</code> 의 <code>kPitchLimit</code></td><td><a href="#c10">10</a></td></tr>
 <tr><td class="mono">consteval</td><td>컴파일 시점에 <em>반드시</em> 계산되는 함수(C++20). 런타임에 부르는 코드는 컴파일되지 않습니다.</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>IsValidConstantBufferSize</code>, <code>Graphics/VertexTypes.h</code> 의 <code>MakeVertexLayoutPCNTT</code></td><td><a href="#c10">10</a></td></tr>
-<tr><td class="mono">static_assert</td><td>컴파일 시점의 assert. 조건이 거짓이면 그 자리에서 빌드가 실패합니다. 일반 <code>assert</code> 는 Debug 빌드의 실행 중에만 검사합니다.</td><td><code>Graphics/ShaderConstants.h</code>(<code>sizeof(PerFrameConstants) == 304</code> 와 <code>offsetof</code> 검사), <code>Scene/Light.h</code>(<code>sizeof(LightData) == 80</code>), <code>RHI/Handle.h</code></td><td><a href="#c10">10</a></td></tr>
+<tr><td class="mono">static_assert</td><td>컴파일 시점의 assert. 조건이 거짓이면 그 자리에서 빌드가 실패합니다. 일반 <code>assert</code> 는 Debug 빌드의 실행 중에만 검사합니다.</td><td><code>Graphics/ShaderConstants.h</code>(<code>sizeof(PerFrameConstants) == 336</code> 과 <code>offsetof</code> 검사), <code>Scene/Light.h</code>(<code>sizeof(LightData) == 80</code>), <code>RHI/Handle.h</code></td><td><a href="#c10">10</a></td></tr>
 <tr><td class="mono">alignas / offsetof</td><td><code>alignas(16)</code> 은 타입의 정렬을 지정하고, <code>offsetof(T, m)</code> 은 멤버의 바이트 위치를 줍니다. 둘 다 C++ 구조체를 HLSL 상수버퍼 배치와 맞추는 데 씁니다.</td><td><code>Scene/Light.h</code> 의 <code>struct alignas(16) LightData</code>, <code>Graphics/VertexTypes.h</code></td><td><a href="#c10">10</a></td></tr>
 <tr><td>지정 초기화</td><td><code>T{ .a = 1, .b = 2 }</code> 처럼 멤버 이름으로 채우는 초기화(C++20). 선언 순서를 지켜야 하고, 적지 않은 멤버는 기본값이 됩니다.</td><td><code>Graphics/Renderer.cpp</code> 의 <code>PipelineStateDesc{ .vs = m_vs, … }</code>, <code>RenderPassDesc</code>, <code>ResourceSetDesc</code></td><td><a href="#c5">5</a></td></tr>
 <tr><td class="mono">std::span&lt;T&gt;</td><td>연속된 원소 구간을 가리키는 비소유 뷰(포인터와 길이, C++20). <code>vector</code>, 배열, 포인터+길이를 같은 인자로 받습니다.</td><td><code>RHI/ShaderCompiler.h</code> 의 <code>std::span&lt;const uint8_t&gt; bytecode</code>, <code>RHI/Device.h</code> 의 <code>CreateTexture(…, std::span&lt;const TextureSubresource&gt;)</code></td><td><a href="#c9">9</a>, <a href="#c10">10</a></td></tr>
@@ -11004,7 +11237,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 
 <h3 id="app-c-1">C.1 조건</h3>
 <dl class="kv">
-  <dt>씬</dt><dd><code>Projects/Sample/Assets/Scenes/floor_cube.json</code>. 오브젝트 2개(Floor: 평면 메시 + Floor 재질, Cube 1: 큐브 메시 + Default 재질), 방향광 1개. 두 재질 모두 솔리드·뒷면 컬링이라 메인 PSO 1개와 그림자 PSO 1개만 쓰입니다. 두 메시 모두 정점이 65,535개 이하라 인덱스는 <code>R16_UINT</code> 입니다.</dd>
+  <dt>씬</dt><dd><code>Projects/Sample/Assets/Scenes/floor_cube.json</code>. 오브젝트 2개(Floor: 평면 메시 + Floor 재질, Cube 1: 큐브 메시 + Default 재질), 방향광 1개. 두 재질 모두 솔리드·뒷면 컬링이라 메인 PSO 1개와 그림자 PSO 1개만 쓰입니다. 두 메시 모두 정점이 65,535개 이하라 인덱스는 <code>R16_UINT</code> 입니다. 이 씬 파일에는 <code>"skybox"</code> 키가 없어 스카이박스 드로우가 없습니다. 있으면 메인 패스의 마지막 드로우 뒤에 <code>SetPipelineState</code>(스카이박스 PSO, D3D12 는 루트 시그니처도 바뀜)와 <code>Draw(3)</code>(D3D11 <code>Draw</code>, D3D12 <code>DrawInstanced</code>)가 한 번씩 더해집니다.</dd>
   <dt>앱</dt><dd>에디터, 편집 상태. 씬 뷰가 열려 있어 메인 패스는 오프스크린 씬 타깃에 그립니다. 카메라 오브젝트가 없어 미리보기 패스는 없습니다.</dd>
   <dt>시점</dt><dd>둘째 프레임 이후. PSO, GPU 메시·재질, 텍스처, RTV·DSV·SRV 가 전부 만들어진 뒤라 생성 호출이 없습니다. 프로파일러는 켜져 있습니다(기본값).</dd>
   <dt>제외</dt><dd>ImGui 렌더러 백엔드가 내부에서 내는 호출은 한 줄로만 적습니다. Debug 빌드에서 <code>DumpDebugLayerMessages</code> 가 프레임 끝에 부르는 InfoQueue 조회도 뺐습니다.</dd>
@@ -11129,7 +11362,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <div class="tbl"><table>
 <thead><tr><th>프레임</th><th>인자</th><th>하는 일 (부르는 함수)</th></tr></thead>
 <tbody>
-<tr><td class="n">2</td><td class="mono">--debug-view=N</td><td>디버그 뷰 설정(0 조명, 1 알베도, 2 월드 노멀, 3 깊이, 4 그림자 계수, 5 UV)</td></tr>
+<tr><td class="n">2</td><td class="mono">--debug-view=N</td><td>디버그 뷰 설정(0 조명, 1 알베도, 2 월드 노멀, 3 깊이, 4 그림자 계수, 5 UV, 6 금속성/거칠기, 7 AO)</td></tr>
 <tr><td class="n">2</td><td class="mono">--browse=상대폴더</td><td>콘텐츠 브라우저를 그 폴더로 옮기고 탭을 앞으로</td></tr>
 <tr><td class="n">2</td><td class="mono">--new-script=이름</td><td><code>ScriptCreator::Create</code> — Inspector 의 New Script 와 같은 경로</td></tr>
 <tr><td class="n">2</td><td class="mono">--launcher=1</td><td>프로젝트 런처 팝업을 엶</td></tr>
@@ -11382,7 +11615,11 @@ SherlockGame.exe --exit-after=90 --dump-objects=1 --screenshot=C:\shots\game.png
 <li>Microsoft Learn, <em>ID3D11Device::CreateInputLayout</em> — 정점 셰이더 입력 시그니처와 레이아웃의 검증(11.1). <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11device-createinputlayout">learn.microsoft.com/…/nf-d3d11-id3d11device-createinputlayout</a></li>
 <li>Microsoft Learn, <em>ID3D11DeviceContext::IASetIndexBuffer</em> — 인덱스 포맷은 R16_UINT 와 R32_UINT 뿐(11.1). <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-iasetindexbuffer">learn.microsoft.com/…/nf-d3d11-id3d11devicecontext-iasetindexbuffer</a></li>
 <li>James F. Blinn, <em>Models of Light Reflection for Computer Synthesized Pictures</em>, SIGGRAPH 1977 — half vector 를 쓰는 스페큘러 모델의 출처(11.6).</li>
-<li>LearnOpenGL, <em>Advanced Lighting</em> — Phong 과 Blinn-Phong 의 차이(11.6). <a href="https://learnopengl.com/Advanced-Lighting/Advanced-Lighting">learnopengl.com/Advanced-Lighting/Advanced-Lighting</a></li>
+<li>LearnOpenGL, <em>Advanced Lighting</em> — Phong 과 Blinn-Phong 의 차이(2026-10-08 이전의 조명 모델, 20장). <a href="https://learnopengl.com/Advanced-Lighting/Advanced-Lighting">learnopengl.com/Advanced-Lighting/Advanced-Lighting</a></li>
+<li>Brian Karis, <em>Real Shading in Unreal Engine 4</em> (SIGGRAPH 2013 Physically Based Shading course) — GGX·Smith(k = (r+1)²/8)·Schlick 조합, split-sum IBL 과 BRDF LUT(11.6, 12.14). <a href="https://blog.selfshadow.com/publications/s2013-shading-course/">blog.selfshadow.com/publications/s2013-shading-course</a></li>
+<li>Brian Karis, <em>Physically Based Shading on Mobile</em> (2014) — LUT 없이 쓰는 <code>EnvBRDFApprox</code>(11.6). <a href="https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile">unrealengine.com/…/physically-based-shading-on-mobile</a></li>
+<li>LearnOpenGL, <em>PBR — Theory / Lighting / IBL</em> — Cook-Torrance 와 IBL 을 단계별로 구현한 해설(11.6). <a href="https://learnopengl.com/PBR/Theory">learnopengl.com/PBR/Theory</a></li>
+<li>Krzysztof Narkowicz, <em>ACES Filmic Tone Mapping Curve</em> (2016) — <code>ApplyExposureToneMap</code> 의 근사식(12.14). <a href="https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/">knarkowicz.wordpress.com/…/aces-filmic-tone-mapping-curve</a></li>
 <li>Eric Lengyel, <em>Computing Tangent Space Basis Vectors for an Arbitrary Mesh</em>, 2004 — 삼각형별 미분, Gram-Schmidt 직교화, w 에 저장하는 손잡이(11.7). <a href="https://terathon.com/blog/tangent-space.html">terathon.com/blog/tangent-space.html</a></li>
 <li>LearnOpenGL, <em>Normal Mapping</em> — 탄젠트 공간과 TBN 기저 변환(11.7). <a href="https://learnopengl.com/Advanced-Lighting/Normal-Mapping">learnopengl.com/Advanced-Lighting/Normal-Mapping</a></li>
 <li>Khronos Group, <em>glTF 2.0 Specification</em> — normalTexture 관례와 B = (N × T)·w, alphaMode MASK 와 alphaCutoff(11.5, 11.7). <a href="https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html">registry.khronos.org/glTF/specs/2.0/glTF-2.0.html</a></li>
@@ -11566,8 +11803,8 @@ SherlockGame.exe --exit-after=90 --dump-objects=1 --screenshot=C:\shots\game.png
 </ul>
 
 <div class="footer">
-  SherlockEngine 렌더링 해부 · 최종본 · 2026-10-02<br>
-  기준: 커밋 646717b 와 그 위의 미커밋 작업 트리(셰이더 컴파일 인자를 <code>ShaderStage</code> 로 바꾼 변경 포함). 본문의 모든 파일·함수 이름은 이 시점의 소스에서 확인한 것입니다.<br>
+  SherlockEngine 렌더링 해부 · 최종본 · 2026-10-02 (2026-10-08 갱신)<br>
+  기준: 커밋 e4e52e2 와 그 위의 미커밋 작업 트리(큐브맵·스카이박스 추가 <a href="#c20-14">20.14</a>, PBR·IBL 전환 <a href="#c20-15">20.15</a>). 본문의 모든 파일·함수 이름은 이 시점의 소스에서 확인한 것입니다.<br>
   이 문서는 2026-09-03 의 분석 보고서(커밋 867c380 기준)와 단계별 문서 17편(<code>phase-0</code> ~ <code>phase-11f</code>), 2026-09-10 ~ 2026-10-02 의 적용 기록, 그리고 같은 기간의 질문과 답을 현재 코드 기준으로 다시 써서 한 편으로 합친 것입니다. 이전 판의 원문은 git 이력(커밋 646717b 의 <code>docs/</code>)에 있습니다.<br>
   소스와 함께 읽는 순서는 <a href="study-guide.html">study-guide.html</a>에 있습니다.
 </div>

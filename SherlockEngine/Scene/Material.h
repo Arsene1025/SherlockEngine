@@ -10,7 +10,7 @@
 //   - 파일 경로: Assets/Textures/ 기준 상대 경로 ("uv_checker.png")
 //   - 에셋 경로: "asset:Models\Sponza\lion.jpg" — Assets/ 기준 상대 경로 (11-B단계, 콘텐츠 브라우저 드롭)
 //   - 내장:      "builtin:white", "builtin:checker", "builtin:gray128", "builtin:flatnormal"
-//   - 빈 문자열: 텍스처 없음 (알베도는 1×1 흰색, 노멀 맵은 평평한 노멀로 대체)
+//   - 빈 문자열: 텍스처 없음 (알베도·금속성/거칠기·AO·발광은 1×1 흰색, 노멀 맵은 평평한 노멀로 대체)
 
 enum class SamplerPreset : uint8_t
 {
@@ -26,8 +26,12 @@ struct Material
 	std::string name;
 
 	DirectX::XMFLOAT4 baseColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);   // 정점 색·텍스처에 곱해짐
-	DirectX::XMFLOAT3 specularColor = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-	float shininess = 32.0f;
+
+	// 2026-10-08: PBR (glTF metallic-roughness). Blinn-Phong 의 specularColor / shininess 를 대체함.
+	// 직접광은 Cook-Torrance(GGX), 환경광은 IBL(split-sum) 이 이 두 값을 읽음 (BasicPixelShader.hlsl).
+	float metallic = 0.0f;                 // 0 = 유전체(F0 = 0.04), 1 = 금속(F0 = baseColor, 확산 없음)
+	float roughness = 0.5f;                // 지각적 거칠기. GGX 의 α = roughness². IBL 반사 큐브의 밉도 이 값으로 고름
+	DirectX::XMFLOAT3 emissive = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // 스스로 내는 빛(선형, 1 을 넘어도 됨). 조명·그림자와 무관하게 더해짐
 
 	// 5단계
 	std::string albedoTexture;             // 위 규칙을 따르는 이름. 비면 흰색
@@ -39,6 +43,12 @@ struct Material
 	// 6단계: 노멀 맵. 항상 선형(sRGB 아님). 탄젠트 공간, +X = u 증가, +Y = v 증가(아래), +Z = 표면 밖.
 	std::string normalTexture;             // 비면 평평한 노멀 (128,128,255)
 	float normalStrength = 1.0f;           // xy 배율. 0 이면 노멀 맵을 무시한 것과 같음
+
+	// 2026-10-08: PBR 텍스처. 계수(metallic·roughness·emissive)에 곱해짐 — glTF 규칙. 비면 흰색이라 계수가 그대로 쓰임.
+	std::string metallicRoughnessTexture;  // 선형. G = roughness, B = metallic (glTF 채널 배치)
+	std::string occlusionTexture;          // 선형. R = 앰비언트 오클루전. 환경광(IBL)에만 곱함
+	float occlusionStrength = 1.0f;        // 0 = AO 무시, 1 = 텍스처 값 그대로
+	std::string emissiveTexture;           // sRGB 색 텍스처
 
 	// 9단계: 알파 컷아웃 (glTF alphaMode MASK). 0 = 끔. 알베도 알파가 이 값보다 작은 픽셀은 버림(clip).
 	float alphaCutoff = 0.0f;

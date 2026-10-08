@@ -40,6 +40,9 @@ namespace RHI
 
 		// ---- 드로우 ----
 		virtual void DrawIndexed(uint32_t indexCount, uint32_t startIndex = 0, int32_t baseVertex = 0) = 0;
+		// 2026-10-08: 인덱스 없는 드로우. 정점 버퍼 없이 VS 가 SV_VertexID 로 위치를 만드는 패스(스카이박스의 전체 화면 삼각형)에 씀.
+		// 그런 PSO 는 vertexLayout.attributeCount = 0 으로 만듦 (입력 레이아웃 없음).
+		virtual void Draw(uint32_t vertexCount, uint32_t startVertex = 0) = 0;
 
 		// ---- 전이·복사 ----
 		// D3D11: 상태 추적만 (before 가 기록과 다르면 Debug 경고). D3D12: ResourceBarrier(Transition).

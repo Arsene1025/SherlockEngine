@@ -43,6 +43,7 @@ namespace Paths
 
 	// Assets\<relative> (예: L"Textures\\uv_checker.png"): 프로젝트 Assets → 엔진 Assets → exe\Assets 순으로 찾아 처음 있는 경로.
 	// 아무 데도 없으면 프로젝트(또는 엔진) 경로를 돌려주어 "파일 없음"으로 실패하게 둠.
+	// 2026-10-08: 폴더도 찾음 — 면 이미지 6장이 든 스카이박스 폴더(Textures\Skybox\)도 같은 우선순위로 찾아야 하기 때문.
 	std::wstring GetAssetPath(const wchar_t* relative);
 
 	// 씬 파일 폴더 = 프로젝트 Assets\Scenes\ (없으면 엔진). 끝에 백슬래시 포함. 폴더가 없으면 만듦.

@@ -39,33 +39,38 @@ bool PipelineState::Create(D3D11Device& device, const PipelineStateDesc& desc)
 
 	// 입력 레이아웃. D3D11은 정점 셰이더 바이트코드로 시그니처를 검증하므로
 	// 셰이더의 바이트코드 사본이 필요함. 그래서 D3D11Shader가 바이트코드를 보관함.
-	if (desc.vertexLayout.attributeCount == 0 || desc.vertexLayout.attributeCount > kMaxVertexAttributes)
+	if (desc.vertexLayout.attributeCount > kMaxVertexAttributes)
 	{
 		Log::Error("PipelineState::Create : 정점 속성 개수가 잘못됨 (%u).", desc.vertexLayout.attributeCount);
 		return false;
 	}
 
-	D3D11_INPUT_ELEMENT_DESC elements[kMaxVertexAttributes] = {};
-	for (uint32_t i = 0; i < desc.vertexLayout.attributeCount; ++i)
+	// 2026-10-08: 속성이 0개면 입력 레이아웃 없음 (정점 버퍼 없이 SV_VertexID 로 그리는 PSO). Bind 가 IASetInputLayout(nullptr) 을 함.
+	HRESULT hr = S_OK;
+	if (desc.vertexLayout.attributeCount > 0)
 	{
-		const VertexAttribute& a = desc.vertexLayout.attributes[i];
-		elements[i].SemanticName = D3D11Convert::ToSemanticName(a.semantic);
-		elements[i].SemanticIndex = a.semanticIndex;
-		elements[i].Format = D3D11Convert::ToDXGI(a.format);
-		elements[i].InputSlot = a.inputSlot;
-		elements[i].AlignedByteOffset = a.offset;
-		elements[i].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-		elements[i].InstanceDataStepRate = 0;
-	}
+		D3D11_INPUT_ELEMENT_DESC elements[kMaxVertexAttributes] = {};
+		for (uint32_t i = 0; i < desc.vertexLayout.attributeCount; ++i)
+		{
+			const VertexAttribute& a = desc.vertexLayout.attributes[i];
+			elements[i].SemanticName = D3D11Convert::ToSemanticName(a.semantic);
+			elements[i].SemanticIndex = a.semanticIndex;
+			elements[i].Format = D3D11Convert::ToDXGI(a.format);
+			elements[i].InputSlot = a.inputSlot;
+			elements[i].AlignedByteOffset = a.offset;
+			elements[i].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+			elements[i].InstanceDataStepRate = 0;
+		}
 
-	HRESULT hr = d3d->CreateInputLayout(
-		elements, desc.vertexLayout.attributeCount,
-		vs->bytecode.data(), vs->bytecode.size(),
-		m_inputLayout.ReleaseAndGetAddressOf());
-	if (FAILED(hr))
-	{
-		Log::Error("PipelineState::Create : CreateInputLayout 실패. %s", Log::HrToString(hr).c_str());
-		return false;
+		hr = d3d->CreateInputLayout(
+			elements, desc.vertexLayout.attributeCount,
+			vs->bytecode.data(), vs->bytecode.size(),
+			m_inputLayout.ReleaseAndGetAddressOf());
+		if (FAILED(hr))
+		{
+			Log::Error("PipelineState::Create : CreateInputLayout 실패. %s", Log::HrToString(hr).c_str());
+			return false;
+		}
 	}
 
 	// 래스터라이저 / 깊이스텐실 / 블렌드. PSO마다 따로 만듦.

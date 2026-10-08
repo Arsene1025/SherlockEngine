@@ -140,6 +140,7 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 	DrawContentBrowser(engine, callbacks);   // Stats 다음에 그림 — Stats 창의 도킹 노드에 따라 붙음
 
 	ImGui::Begin("Lights");
+	DebugUI::DrawEnvironmentPanel(engine.GetScene());   // 2026-10-08: 스카이박스·IBL — 주변광과 같은 "환경" 값이라 조명 창에 둠
 	DebugUI::DrawLightPanel(engine.GetScene());
 	ImGui::End();
 
@@ -797,8 +798,9 @@ void Editor::DrawInspector(Engine& engine)
 	{
 		Material& material = *materials[current];
 		ImGui::ColorEdit4("Base color", &material.baseColor.x);
-		ImGui::ColorEdit3("Specular", &material.specularColor.x);
-		ImGui::SliderFloat("Shininess", &material.shininess, 1.0f, 256.0f, "%.0f", ImGuiSliderFlags_Logarithmic);
+		ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);   // 2026-10-08 PBR
+		ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
+		ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 		ImGui::DragFloat2("UV scale", &material.uvScale.x, 0.1f, 0.1f, 64.0f);
 		ImGui::SliderFloat("Normal strength", &material.normalStrength, 0.0f, 3.0f);
 		ImGui::SliderFloat("Alpha cutoff", &material.alphaCutoff, 0.0f, 1.0f);
@@ -1240,8 +1242,8 @@ void Editor::DrawRenderSettings(Engine& engine)
 	ImGui::Begin("Render Settings");
 	DebugUI::DrawRenderSettingsPanel(engine.GetRenderer(), engine.GetDevice());
 	RenderSettings& settings = engine.GetRenderer().GetSettings();
-	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV" };
-	ImGui::Combo("Debug view", &settings.debugView, views, 6);
+	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion" };
+	ImGui::Combo("Debug view", &settings.debugView, views, IM_ARRAYSIZE(views));
 	if (settings.debugView == 3) ImGui::SliderFloat("Depth range", &settings.debugDepthRange, 1.0f, 500.0f);
 	DebugUI::DrawShadowPanel(engine.GetRenderer(), engine.GetDevice());
 	DebugUI::DrawCameraPanel(engine.GetCamera(), cameraMoveSpeed);

@@ -77,7 +77,8 @@ namespace RHI
 		// Dynamic: 이 프레임 슬롯의 내용을 통째로 교체 (size ≤ desc.size). Default: 전체 크기로만 갱신.
 		virtual void UpdateBuffer(BufferHandle handle, const void* data, uint32_t size) = 0;
 
-		// subresources 는 밉 레벨마다 하나(desc.mipLevels 개). 비어 있으면(기본값) 빈 텍스처.
+		// subresources 는 서브리소스마다 하나(GetArraySize(desc) × desc.mipLevels 개, 면 우선 순서 — ResourceDesc.h). 2D 면 밉 레벨마다 하나.
+		// 비어 있으면(기본값) 빈 텍스처. desc.dimension = TextureCube 는 정사각형 ShaderResource 전용 (2026-10-08).
 		// DepthStencil | ShaderResource 조합(그림자 맵)은 백엔드가 TYPELESS + 포맷별 뷰로 만듦.
 		// C++20 (2026-09-28): (포인터, 개수) → std::span. std::vector<TextureSubresource> 를 그대로 넘김.
 		virtual TextureHandle CreateTexture(const TextureDesc& desc, std::span<const TextureSubresource> subresources = {}) = 0;

@@ -234,6 +234,17 @@ void D3D11CommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndex, int
 	m_device->GetContext()->DrawIndexed(indexCount, startIndex, baseVertex);
 }
 
+void D3D11CommandList::Draw(uint32_t vertexCount, uint32_t startVertex)
+{
+	static bool warnedOutside = false;
+	if (!m_inPass)
+	{
+		ErrorOnce(warnedOutside, "Draw : 렌더 패스 밖에서 드로우. BeginRenderPass 가 필요하다.");
+		return;
+	}
+	m_device->GetContext()->Draw(vertexCount, startVertex);
+}
+
 // ------------------------------------------------------------------ 전이·복사
 
 void D3D11CommandList::Barrier(TextureHandle handle, ResourceState before, ResourceState after)
