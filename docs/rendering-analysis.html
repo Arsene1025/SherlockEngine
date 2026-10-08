@@ -454,6 +454,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
     <li class="sub" data-ch="c20"><a href="#c20-13">20.13 2026-10-02 · 문서 통합</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-14">20.14 적용 기록 — 2026-10-08 · 큐브맵과 스카이박스</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-15">20.15 적용 기록 — 2026-10-08 · PBR 전환과 IBL, CubemapTest 프로젝트</a></li>
+    <li class="sub" data-ch="c20"><a href="#c20-16">20.16 적용 기록 — 2026-10-08 · glTF 감기 순서</a></li>
     <li data-ch="c21"><a href="#c21">21. 질문과 답</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-0">21.0 질문 색인</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-1">21.1 C++ 언어</a></li>
@@ -519,7 +520,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
   <div><div class="k">실행 파일</div><div class="v">SherlockEditor · SherlockGame<small>엔진은 정적 라이브러리 하나. 에디터와 게임 런타임이 그것을 링크</small></div></div>
   <div><div class="k">그리는 것</div><div class="v">씬 파일 · glTF 모델<small>PBR(Cook-Torrance GGX) + IBL, 광원 최대 8개, 방향광 그림자(2048² · 3×3 PCF), 노멀 매핑, sRGB, HDR 큐브맵 스카이박스</small></div></div>
   <div><div class="k">셰이더</div><div class="v">HLSL · SM 5.0 DXBC<small>한 번 컴파일한 바이트코드를 두 백엔드가 함께 씀</small></div></div>
-  <div><div class="k">기준 시점</div><div class="v">2026-10-08 작업 트리<small>커밋 e4e52e2 + 큐브맵·스카이박스·PBR·IBL(미커밋)</small></div></div>
+  <div><div class="k">기준 시점</div><div class="v">2026-10-08 작업 트리<small>커밋 fd3a5a1 + glTF 감기 순서 수정(미커밋)</small></div></div>
 </div>
 
 <div class="callout">
@@ -5840,7 +5841,7 @@ B   = (e2·du1 − e1·du2) / det      <span class="cm">// dP/dv</span></code></
 <p>glTF 는 오른손 좌표계(+Y 위)이고 삼각형 앞면이 반시계(CCW)입니다. 엔진은 왼손 좌표계에 시계(CW) 앞면입니다. 로더는 z 부호를 뒤집는 반사 <code>M = diag(1, 1, −1)</code> 하나로 둘을 맞춥니다(<code>Options::flipZ</code>, 기본 켬).</p>
 <ul>
   <li><strong>정점.</strong> 위치·노멀·탄젠트의 z 성분에 −1 을 곱합니다.</li>
-  <li><strong>감기 방향.</strong> 반사는 삼각형의 감기 방향을 뒤집습니다. CCW 가 CW 로 바뀌므로 <strong>인덱스 순서는 그대로 둡니다</strong>. 반대로 z 를 두고 인덱스 순서만 뒤집으면 면은 보이지만 모델이 거울상이 됩니다(헬멧의 글자가 뒤집힘).</li>
+  <li><strong>감기 방향.</strong> 반사 뒤에는 <strong>삼각형마다 두 번째·세 번째 인덱스를 바꿉니다</strong>(2026-10-08 수정, <a href="#c20-16">20.16</a>). 두 규약의 "앞면" 은 결국 같은 조건입니다. glTF 의 CCW 앞면은 오른손 법칙으로 <code>cross(v1 − v0, v2 − v0)</code> 가 바깥 노멀을 향한다는 뜻이고, 엔진의 CW 앞면(왼손 좌표계, +Z 를 보는 카메라)도 같은 외적이 카메라 쪽, 즉 바깥을 향한다는 뜻입니다. 반사 M 은 행렬식이 −1 이라 <code>cross(Ma, Mb) = −M · cross(a, b)</code> 가 되어, 반사된 삼각형의 외적은 반사된 노멀의 반대(안쪽)를 가리킵니다. 그래서 인덱스를 그대로 두면 바깥 면이 뒷면으로 판정되어 컬링에 잘리고 모델 안쪽 벽이 보입니다. 이전 판은 "CCW 가 CW 로 바뀌므로 그대로 둔다" 고 적었는데, 화면에서 보이는 방향을 두 번(좌표계와 반사) 뒤집는 것을 한 번으로 셌던 오류입니다. z 를 두고 인덱스만 뒤집으면 면은 보이지만 모델이 거울상이 됩니다(헬멧의 글자가 뒤집힘).</li>
   <li><strong>노드 행렬.</strong> <code>cgltf_node_transform_world</code> 는 열벡터 관례의 행렬을 열 우선 <code>float[16]</code> 으로 줍니다. 이것을 순서대로 <code>XMMATRIX</code> 의 행에 넣으면 전치가 되는데, 열벡터용 행렬의 전치가 곧 행벡터용 행렬이므로 그대로 읽으면 됩니다(<code>LoadGltfMatrix</code>). 그 뒤 <code>world = M · A · M · rootScale</code> 로 반사합니다. 반사된 정점 <code>P·M</code> 에 <code>M·A·M</code> 을 곱하면 <code>P·M·M·A·M = (P·A)·M</code>, 즉 원래 위치의 거울상이 됩니다.</li>
   <li><strong>UV.</strong> glTF 도 이미지의 왼쪽 위가 (0,0) 이라 그대로 씁니다.</li>
 </ul>
@@ -6225,7 +6226,8 @@ QuaternionLookTestEditor.exe --scene=quat_roll_world.json --play=1 --exit-after=
 <tr><td>cgltf 를 넣자 C4996 경고로 빌드가 막힘</td><td>cgltf 내부의 <code>fopen</code>·<code>strncpy</code></td><td>그 include 만 <code>#pragma warning</code> 으로 감쌈. 전역 매크로로 끄지 않음</td></tr>
 <tr><td>tinygltf 가 설치되지 않음</td><td>vcpkg 포트의 소스 아카이브 해시 불일치</td><td>같은 조건의 cgltf 로 대체. 접점은 <code>Graphics/Model.cpp</code> 하나</td></tr>
 <tr><td>큐브의 모서리 음영이 둥글게 뭉개짐</td><td>정점 8개를 공유하면 세 면의 노멀이 평균됨</td><td>면마다 정점 4개(24 정점)</td></tr>
-<tr><td>헬멧의 금속 바이저가 검게 나옴</td><td>금속 재질을 Blinn-Phong 으로 근사해 환경 반사가 없음</td><td>2026-10-08 PBR + IBL 로 해결(<a href="#c20-15">20.15</a>). 환경이 없는 헬멧 씬에서는 여전히 어두움</td></tr>
+<tr><td>헬멧의 금속 바이저가 검게 나옴</td><td>당시에는 Blinn-Phong 근사의 한계로 봤지만, 실제로는 대부분 <strong>감기 순서</strong> 문제였음. Z 반사 뒤 인덱스를 그대로 둬 바깥 면이 뒷면 컬링에 잘리고 헬멧 안쪽 벽(어두움)이 보였음. 렌더 설정에서 "Cull back faces" 를 끄면 정상으로 보인 것이 단서</td><td>2026-10-08 반사 뒤 인덱스 교환으로 해결(<a href="#c20-16">20.16</a>). 금속의 환경 반사는 같은 날 PBR + IBL 로(<a href="#c20-15">20.15</a>)</td></tr>
+<tr><td>뒷면 컬링을 켜면 glTF 모델의 앞면이 사라지고 안쪽이 보임</td><td>위와 같은 원인</td><td>위와 같음. 엔진이 만드는 프리미티브(구·큐브 등)는 처음부터 CW 라 영향 없음</td></tr>
 <tr><td>반투명(BLEND) 재질이 컷아웃처럼 보임</td><td>블렌딩 PSO 가 아직 없음</td><td><code>alphaCutoff = 0.5</code> 로 근사. <a href="#p12">12단계</a></td></tr>
 </tbody></table></div>
 
@@ -9117,8 +9119,9 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <tr><td class="n">10-02</td><td class="mono">e4e52e2</td><td>판단 "셰이더 5_0 을 유지하고 싶고 셰이더를 두 벌 만들고 싶지 않다" → 컴파일 인자를 <code>ShaderStage</code> 로. 같은 날 질문: ResourcePool 의 <code>Add</code>/<code>Get</code>, 해시 결합식, D3D11·D3D12 백엔드 공존, PSO·렌더 패스·루트 시그니처</td><td><a href="#c20-12">20.12</a>, <a href="#c21">21장</a></td></tr>
 <tr><td class="n">10-02</td><td class="mono">be3d578</td><td>요청 "단계별 문서로 나누지 말고 두 문서로 압축" → 이 최종본</td><td><a href="#c20-13">20.13</a></td></tr>
 <tr><td class="n">10-06</td><td>—</td><td>질문 "큐브맵을 추가하려면 큐브맵 클래스를 만들어 구현하고 scene 에서 불러오는 게 맞나" → 클래스가 아니라 RHI 의 큐브 텍스처 + 씬의 이름 + Renderer 의 패스로 나누자는 답</td><td><a href="#c21-6">21.6</a></td></tr>
-<tr><td class="n">10-08</td><td>미커밋</td><td>요청 "Assets\Cubemap 의 큐브맵으로 CubemapTest 프로젝트를 만들고 IBL 이 적용되게" → HDR 텍스처, PBR(Cook-Torrance) 재질, split-sum IBL, 노출·톤매핑, 실험 프로젝트 <code>CubemapTest</code></td><td><a href="#c20-15">20.15</a>, <a href="#c11-6">11.6</a></td></tr>
-<tr><td class="n">10-08</td><td>미커밋</td><td>요청 "큐브맵 추가해줘" → <code>TextureDimension::TextureCube</code>, <code>CommandList::Draw</code>, 정점 속성 0개 PSO, 큐브 로더(DDS·면 6장·절차적), <code>Scene::skybox</code>, 스카이박스 패스</td><td><a href="#c20-14">20.14</a>, <a href="#c12-14">12.14</a></td></tr>
+<tr><td class="n">10-08</td><td>미커밋</td><td>질문 "Cull back faces 를 켜면 헬멧 전면부가 안 보이는데 노멀이 이상한가" → glTF 로더의 Z 반사 뒤 감기 순서 수정. 9단계의 "검은 바이저" 의 실제 원인</td><td><a href="#c20-16">20.16</a></td></tr>
+<tr><td class="n">10-08</td><td class="mono">c97fe3f</td><td>요청 "Assets\Cubemap 의 큐브맵으로 CubemapTest 프로젝트를 만들고 IBL 이 적용되게" → HDR 텍스처, PBR(Cook-Torrance) 재질, split-sum IBL, 노출·톤매핑, 실험 프로젝트 <code>CubemapTest</code></td><td><a href="#c20-15">20.15</a>, <a href="#c11-6">11.6</a></td></tr>
+<tr><td class="n">10-08</td><td class="mono">c97fe3f</td><td>요청 "큐브맵 추가해줘" → <code>TextureDimension::TextureCube</code>, <code>CommandList::Draw</code>, 정점 속성 0개 PSO, 큐브 로더(DDS·면 6장·절차적), <code>Scene::skybox</code>, 스카이박스 패스</td><td><a href="#c20-14">20.14</a>, <a href="#c12-14">12.14</a></td></tr>
 </tbody></table></div>
 
 <!-- c20-03.html -->
@@ -9532,7 +9535,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
       <li>탄젠트 손방향의 두 관례(엔진 프리미티브 B = dP/dv, glTF B = −dP/dv). 생성 시 w 부호만 다르게, 반사가 겹치면 제공된 w 도 뒤집음</li>
       <li>로드 실패한 텍스처가 흰색 핸들을 공유하고 있어 씬 무효화가 내장 흰색을 파괴할 뻔함. 내장 핸들과 같은 항목은 지우기만</li>
       <li>Sponza 자동 카메라 배치가 두 번 벽 안. x 한쪽 끝에서 대각선으로 보게 함</li>
-      <li>헬멧 바이저가 검게 나옴. 금속 재질의 Blinn-Phong 근사 한계이고 IBL(<a href="#p12">12단계</a>)의 몫</li>
+      <li>헬멧 바이저가 검게 나옴. 금속 재질의 Blinn-Phong 근사 한계이고 IBL(<a href="#p12">12단계</a>)의 몫으로 봄 — 2026-10-08 에 실제 원인의 대부분이 Z 반사 뒤의 감기 순서(앞면이 컬링됨)였음이 드러남(<a href="#c20-16">20.16</a>)</li>
     </ul></div>
     <div><h5>검증</h5><ul>
       <li>F10 고정 화면 D3D11 대 D3D12: 헬멧 1픽셀, Sponza 7픽셀 차이(비등방 필터 반올림 수준)</li>
@@ -9993,7 +9996,7 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
 <p>"단계별로 나누지 말고 분석 문서와 학습 안내 두 편으로 압축하고 싶다"는 요청에 따라, 단계별 상세 문서 17편(0~11단계와 11-B~11-F)과 구 분석 문서를 이 최종본 한 편으로 합쳤습니다. 구 분석 문서는 09-03 시점(커밋 <code>867c380</code>)의 서술 위에 적용 기록과 "이후 바뀐 것" 상자를 계속 덧붙인 형태여서, 10-01 점검(20.11)이 보여 주듯 낡은 서술을 찾아 고치는 비용이 커지고 있었습니다. 최종본은 1~17장을 현재 코드 기준으로 처음부터 다시 쓰고, 경위는 이 장을 포함한 Part V 에 모았습니다. 단계 문서에 있던 세부 설명은 각 카드의 "지금 읽을 곳"이 가리키는 장으로 옮겨졌고, 함정과 검증 기록은 이 장의 카드에 압축해 남겼습니다. 이전 판 문서의 원문은 git 이력(커밋 <code>646717b</code> 과 그 이전)에 있습니다.</p>
 
 <h3 id="c20-14">20.14 적용 기록 — 2026-10-08 · 큐브맵과 스카이박스</h3>
-<p>미커밋 작업 트리의 변경입니다. 10-06 의 질문 "큐브맵 클래스를 만들어 scene 에서 불러오는 게 맞나"(<a href="#c21-6">21.6</a>)에 대한 답대로, 클래스 하나가 아니라 RHI · 로더 · 씬 · Renderer · 셰이더에 나눠 넣었습니다. 지금의 구조는 <a href="#c12-14">12.14절</a>이 설명합니다.</p>
+<p>커밋 <code>c97fe3f</code> 에 들어간 변경입니다. 10-06 의 질문 "큐브맵 클래스를 만들어 scene 에서 불러오는 게 맞나"(<a href="#c21-6">21.6</a>)에 대한 답대로, 클래스 하나가 아니라 RHI · 로더 · 씬 · Renderer · 셰이더에 나눠 넣었습니다. 지금의 구조는 <a href="#c12-14">12.14절</a>이 설명합니다.</p>
 <ul>
   <li><b>무엇을.</b> RHI: <code>TextureDesc::dimension</code>(<code>TextureDimension::TextureCube</code>)과 <code>GetArraySize</code>, 서브리소스를 면 × 밉으로 받는 <code>CreateTexture</code>(D3D11 <code>ArraySize</code>·<code>MISC_TEXTURECUBE</code>·큐브 SRV, D3D12 <code>DepthOrArraySize</code>·큐브 SRV), <code>CommandList::Draw</code>, 정점 속성 0개 PSO. 로더: <code>LoadCubeFromFile</code>, <code>CreateCube</code>, BC 압축 해제. 씬: <code>Scene::skybox</code>, 씬 파일 버전 4. Renderer: 큐브 캐시, 프레임 셋 t9·s5 와 <code>UpdateFrameSet</code>, 스카이박스 PSO·패스, 셰이더 두 개와 핫리로드 감시. 에디터: Lights 창의 Skybox 칸, Build Game 복사, <code>GetAssetPath</code> 의 폴더 탐색. 데모·Sponza·새 씬은 <code>builtin:sky</code> 를, 헬멧 씬은 어두운 배경을 그대로 씁니다.</li>
   <li><b>왜 이렇게 나눴나.</b> 큐브맵은 면이 6장인 텍스처일 뿐이라, 텍스처가 이미 지나는 길(Desc → 핸들, 씬은 이름, Renderer 가 캐시)을 그대로 따르는 것이 RHI·PSO 라는 목표와 맞습니다. 큐브 지원을 <code>TextureDesc</code> 의 필드 하나로 넣었으므로 반사 프로브나 IBL 이 같은 Desc 를 씁니다.</li>
@@ -10004,13 +10007,24 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
 
 
 <h3 id="c20-15">20.15 적용 기록 — 2026-10-08 · PBR 전환과 IBL, CubemapTest 프로젝트</h3>
-<p>미커밋 작업 트리의 변경입니다. 요청은 "<code>Assets\Cubemap</code> 에 둔 큐브맵으로 큐브맵이 적용된 CubemapTest 프로젝트를 만들고, IBL 이 적용되게 해 달라"였습니다. 샘플은 Env·Specular·Diffuse·BRDF LUT 로 된 IBLBaker 형식의 세트이고 PBR(metallic-roughness)을 전제로 합니다. 엔진 재질은 Blinn-Phong 이라 재질 모델을 먼저 정해야 했고, 사용자가 "PBR 전환 + IBL" 을 골랐습니다(대안은 Blinn-Phong 을 두고 주변광·반사만 큐브로 바꾸는 것).</p>
+<p>커밋 <code>c97fe3f</code> 에 들어간 변경입니다. 요청은 "<code>Assets\Cubemap</code> 에 둔 큐브맵으로 큐브맵이 적용된 CubemapTest 프로젝트를 만들고, IBL 이 적용되게 해 달라"였습니다. 샘플은 Env·Specular·Diffuse·BRDF LUT 로 된 IBLBaker 형식의 세트이고 PBR(metallic-roughness)을 전제로 합니다. 엔진 재질은 Blinn-Phong 이라 재질 모델을 먼저 정해야 했고, 사용자가 "PBR 전환 + IBL" 을 골랐습니다(대안은 Blinn-Phong 을 두고 주변광·반사만 큐브로 바꾸는 것).</p>
 <ul>
   <li><b>무엇을.</b> RHI: <code>Format::R16G16B16A16_FLOAT</code>. 로더: 부동소수점·BC6H 원본을 half float 로(HDR). 재질: <code>specularColor</code>·<code>shininess</code> 를 <code>metallic</code>·<code>roughness</code>·<code>emissive</code> 와 텍스처 세 장(금속성/거칠기·AO·발광)으로 바꾸고 <code>MaterialConstants</code> 는 64B 를 유지. 셰이더: Cook-Torrance(GGX·Smith·Schlick) 직접광, split-sum IBL, <code>ApplyExposureToneMap</code>, 디버그 뷰 6·7. 씬: <code>SceneEnvironment</code>(스카이박스·확산 조도·반사 프리필터·BRDF LUT·IBL 세기·노출·톤매핑)가 <code>Scene::skybox</code> 를 대체. Renderer: <code>ResolveEnvironment</code>, 프레임 셋 t10~t12, 재질 셋 t2~t4, PerFrame 336B. glTF: 금속성·거칠기·AO·발광을 그대로. 에디터: 환경 칸과 PBR 재질 슬라이더. 씬 파일: 버전 4 를 <code>"environment"</code> 객체로 다시 정의(같은 날 잠시 쓴 루트의 <code>"skybox"</code> 도 읽음)하고, 옛 <code>shininess</code> 는 읽을 때 거칠기로 환산합니다(<code>roughness = sqrt(sqrt(2 / (n + 2)))</code>, Blinn-Phong 지수와 Beckmann 거칠기의 관계에서 GGX 의 α ≈ m 으로).</li>
   <li><b>왜 이 구조인가.</b> IBL 텍스처는 씬마다 하나라 프레임 셋에, PBR 텍스처는 재질마다라 재질 셋에 둡니다. 조명 세기는 "조도 E" 관례로 BRDF 에 π 를 곱해, 확산 밝기가 예전과 같아 기존 씬의 조명 값을 고치지 않았습니다. HDR 렌더 타깃 없이 톤매핑을 셰이더 끝에 둔 것은 임시 구조이며 후처리 단계에서 패스로 옮깁니다(22.4).</li>
   <li><b>고르지 않은 대안.</b> (1) Blinn-Phong 유지 + 큐브 주변광/반사: 변경은 작지만 <code>specularColor</code> 가 흰색인 기존 재질이 거울처럼 되고, IBL 세트가 전제한 F0·거칠기와 맞지 않습니다. (2) 샘플의 MDR(8비트) 세트 사용: 로더를 바꾸지 않아도 되지만 하늘의 태양과 금속 반사가 1 에서 잘립니다. (3) IBL 맵이 없을 때 반사를 끄기: 내장 하늘만 둔 씬의 금속이 검게 남으므로, 스카이박스 밉으로 근사하는 대체를 넣었습니다. (4) 반사 밉 매핑을 honglab 예제식(밉 2 + 거칠기 × 5)으로: 데이터에서 밉 0 이 거울(태양이 그대로 남음)임을 확인해 밉 전체에 선형으로 펼쳤습니다.</li>
   <li><b>함정.</b> 첫 실행에서 물체가 하늘보다 밝게 떴습니다. 샘플의 Diffuse·Specular 가 Env 의 약 2배로 구워져 있어 CubemapTest 씬의 IBL 세기를 0.5 로 맞췄습니다(12.14절의 측정). BRDF LUT 의 v 축 방향은 모서리 값을 읽어 확인했습니다. 면 폴더 경로에 HDR 이미지가 들어오면 8비트를 가정한 행 복사가 깨지므로 거부하게 했습니다.</li>
   <li><b>검증.</b> Debug·Release 빌드 성공(기존 X4000 경고 하나뿐, 22.4). Release 의 CubemapTest 화면이 Debug 와 픽셀이 같음. 데모·헬멧 씬을 두 백엔드로 그려 픽셀이 같고, 데모의 금속 원기둥에 하늘이 비침. CubemapTest 를 에디터와 게임 런타임으로 실행해 HDR 네 장이 half float 로 로드되고(Diffuse 는 밉 생성으로 8단계) 두 백엔드 픽셀이 같음(그림 12-14d). 환경 없음 / 스카이박스만 / IBL 전체를 같은 씬으로 비교(그림 12-14c). 경고·D3D12 Debug Layer 메시지 없음, 종료 시 Live Object 는 장치 한 줄. 확인하지 못한 것: 에디터의 환경 칸·PBR 슬라이더의 화면(자동 검증이 창 전환을 못 함), 디버그 뷰 6·7 의 화면, CubemapTest 전용 에디터(<code>CubemapTestEditor</code>) 빌드 — 스크립트가 예제 <code>Rotator</code> 뿐이라 엔진 에디터로 열었고, 그래서 씬 뷰 위에 "프로젝트 스크립트 없이 빌드됨" 배너가 뜹니다.</li>
+</ul>
+
+
+<h3 id="c20-16">20.16 적용 기록 — 2026-10-08 · glTF 감기 순서(뒷면 컬링에 앞면이 잘림)</h3>
+<p>미커밋 작업 트리의 변경입니다. 보고는 "Cull back faces 를 켜면 헬멧의 전면부가 안 보인다, 노멀이 이상한가" 였습니다. 컬링을 끄면 정상, 켜면 바깥 껍질이 사라지고 헬멧 안쪽 벽이 보였습니다.</p>
+<ul>
+  <li><b>원인.</b> 노멀이 아니라 삼각형 감기 순서입니다. 컬링은 노멀을 보지 않고 화면에서 세 정점이 도는 방향으로 앞뒷면을 정합니다. <code>ModelLoader</code> 는 오른손(glTF) → 왼손 변환을 z 반사로 하면서 인덱스 순서를 그대로 뒀습니다. 반사는 외적의 방향을 뒤집으므로(행렬식 −1) glTF 의 앞면이 엔진 기준으로 뒷면이 되었습니다(<a href="#c13-6">13.6절</a>에 유도). 노멀은 z 만 뒤집혀 바깥을 제대로 향했으므로 컬링을 끄면 조명까지 정상으로 보였습니다.</li>
+  <li><b>무엇을.</b> <code>Graphics/Model.cpp</code> 의 <code>ConvertMesh</code> 에서 <code>flipZ</code> 이면 primitive 마다 삼각형의 두 번째·세 번째 인덱스를 바꿉니다. 탄젠트 생성은 두 변을 바꾸면 분자·분모의 부호가 함께 바뀌어 결과가 같습니다.</li>
+  <li><b>고르지 않은 대안.</b> 모델 PSO 만 <code>frontCounterClockwise = true</code> 로: 같은 재질이라도 메시 출처에 따라 PSO 가 갈리고, 반사 여부와 래스터라이저 설정이 떨어져 있게 됩니다. z 대신 x 를 뒤집기: 반사라는 점은 같아 감기 문제는 그대로입니다.</li>
+  <li><b>드러난 것.</b> 9단계부터 "Blinn-Phong 근사의 한계" 로 기록된 헬멧 바이저의 검은색은 대부분 이 버그였습니다(안쪽 벽이 보였음). 13.14 표와 9단계 카드에 정정을 적었습니다. 9단계의 두 백엔드 비교는 두 백엔드가 같은 틀린 결과를 냈기 때문에 이것을 잡지 못했습니다. 엔진이 만드는 프리미티브는 처음부터 CW 라 영향이 없습니다.</li>
+  <li><b>검증.</b> Debug 빌드 성공. 기본 설정(뒷면 컬링 켬)으로 CubemapTest(두 백엔드 픽셀 같음), 헬멧 씬, Sponza 를 그려 헬멧 앞면(바이저·램프)이 보이고 Sponza 의 벽·기둥·천이 그대로임을 확인. 경고 없음.</li>
 </ul>
 
 <!-- c21-01.html -->
@@ -11804,7 +11818,7 @@ SherlockGame.exe --exit-after=90 --dump-objects=1 --screenshot=C:\shots\game.png
 
 <div class="footer">
   SherlockEngine 렌더링 해부 · 최종본 · 2026-10-02 (2026-10-08 갱신)<br>
-  기준: 커밋 e4e52e2 와 그 위의 미커밋 작업 트리(큐브맵·스카이박스 추가 <a href="#c20-14">20.14</a>, PBR·IBL 전환 <a href="#c20-15">20.15</a>). 본문의 모든 파일·함수 이름은 이 시점의 소스에서 확인한 것입니다.<br>
+  기준: 커밋 fd3a5a1(큐브맵·스카이박스 <a href="#c20-14">20.14</a>, PBR·IBL <a href="#c20-15">20.15</a>)과 그 위의 미커밋 작업 트리(glTF 감기 순서 <a href="#c20-16">20.16</a>). 본문의 모든 파일·함수 이름은 이 시점의 소스에서 확인한 것입니다.<br>
   이 문서는 2026-09-03 의 분석 보고서(커밋 867c380 기준)와 단계별 문서 17편(<code>phase-0</code> ~ <code>phase-11f</code>), 2026-09-10 ~ 2026-10-02 의 적용 기록, 그리고 같은 기간의 질문과 답을 현재 코드 기준으로 다시 써서 한 편으로 합친 것입니다. 이전 판의 원문은 git 이력(커밋 646717b 의 <code>docs/</code>)에 있습니다.<br>
   소스와 함께 읽는 순서는 <a href="study-guide.html">study-guide.html</a>에 있습니다.
 </div>
