@@ -413,6 +413,10 @@ vbDesc.stride = GetVertexStride(mesh.GetVertexFormat());</code></pre>
     <li>FxCompile 항목은 6단계에서 <code>Shaders\ShadowVertexShader.hlsl</code>(진입점 <code>VS_Shadow</code>)이 더해져 세 개입니다.</li>
   </ul>
 </div>
+<div class="applied">
+  <div class="t">이후 바뀐 것 (2026-10-02)</div>
+  <p>SM 5.0 유지는 그대로입니다. 다만 <code>vs_5_0</code>/<code>ps_5_0</code> 문자열은 이제 <code>Renderer::LoadShaders</code>에 없습니다. <code>ShaderCompiler::CompileFromFile</code>·<code>LoadOrCompile</code>이 <code>ShaderStage</code>를 받고, 프로파일은 <code>RHI/DXBC/ShaderCompiler.cpp</code>의 <code>GetTargetProfile</code>이 정합니다. <a href="rendering-analysis.html#applied-shader-stage">적용 기록 — 셰이더 컴파일 인자를 ShaderStage로</a></p>
+</div>
 
 <h3 id="s6-2">6.2 런타임: 무엇을 로드할까</h3>
 <pre><code><span class="cm">// Graphics/D3D11/ShaderCompiler.cpp — LoadOrCompile</span>
