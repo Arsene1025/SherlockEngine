@@ -315,7 +315,7 @@ cmd.DrawIndexed(item.indexCount, item.indexStart, 0);</code></pre>
 <p><b>D10.</b> CPU 쪽 <code>Mesh::indices</code> 는 32비트를 유지하고, <code>GetOrCreateGpuMesh</code> 가 정점 수 ≤ 65,535 면 16비트 배열로 변환해 올리며 <code>GpuMesh::indexFormat</code> 을 기억합니다. 드로우 루프는 <code>SetIndexBuffer(handle, gpuMesh-&gt;indexFormat)</code> 로 넘기기만 합니다. D3D 의 인덱스 버퍼 포맷은 R16_UINT 와 R32_UINT 둘뿐이므로<sup><a href="#ref-6">6</a></sup> 분기는 정확히 그 둘입니다. 헬멧(14,556 정점)은 16비트, Sponza(192,496 정점, 메시 하나로 합쳤으므로)는 32비트가 됩니다. 프리미티브 씬은 전부 16비트가 되었고 화면은 바뀌지 않았습니다.</p>
 
 <h2 id="s8"><span class="num">8.</span>재질 대응과 알파 컷아웃</h2>
-<p>glTF 의 재질은 metallic-roughness PBR 이고 엔진은 Blinn-Phong 입니다. 12단계(PBR) 전까지는 근사로 대신합니다: <code>baseColorFactor</code> → <code>baseColor</code>, <code>baseColorTexture</code> → 알베도(sRGB), <code>roughnessFactor</code> → <code>shininess = 8 + 120·(1−r)²</code>, 스페큘러는 0.04 + 0.3·(1−r) 을 금속성만큼 기본색 쪽으로 섞습니다. <code>normalTexture</code> 의 <code>scale</code> 은 6단계의 <code>normalStrength</code> 와 뜻이 같습니다(xy 배율). <code>doubleSided</code> 는 그대로 PSO 의 컬링을 끕니다.</p>
+<p>glTF 의 재질은 metallic-roughness PBR 이고 이 단계 당시 엔진은 Blinn-Phong 이었습니다(2026-10-08 에 엔진 재질도 PBR 로 바뀌어 지금은 값을 그대로 옮깁니다. rendering-analysis.html 의 20.15절). 아래는 당시의 근사입니다: <code>baseColorFactor</code> → <code>baseColor</code>, <code>baseColorTexture</code> → 알베도(sRGB), <code>roughnessFactor</code> → <code>shininess = 8 + 120·(1−r)²</code>, 스페큘러는 0.04 + 0.3·(1−r) 을 금속성만큼 기본색 쪽으로 섞습니다. <code>normalTexture</code> 의 <code>scale</code> 은 6단계의 <code>normalStrength</code> 와 뜻이 같습니다(xy 배율). <code>doubleSided</code> 는 그대로 PSO 의 컬링을 끕니다.</p>
 <p><code>alphaMode: MASK</code> 는 알파가 <code>alphaCutoff</code> 미만인 픽셀을 버립니다<sup><a href="#ref-1">1</a></sup>. Sponza 의 식물과 쇠사슬이 이 방식을 씁니다. 재질 상수버퍼에 <code>alphaCutoff</code>(0 = 끔)를 더해 64B 가 되었고(패딩 float3 포함, <code>static_assert</code> 갱신), 픽셀 셰이더가 알베도를 샘플한 직후 <code>clip(surface.a − alphaCutoff)</code> 합니다. BLEND 는 아직 블렌딩 상태가 없으니 컷아웃 0.5 로 근사합니다. 그림자 패스는 픽셀 셰이더가 없어 컷아웃 재질도 사각형 그림자를 드리웁니다 — 12단계에서 알파 테스트 그림자 PSO 변형으로 풀 일입니다.</p>
 
 <h2 id="s9"><span class="num">9.</span>이미지: 씬이 바이트를, Renderer 가 색공간을</h2>
@@ -333,7 +333,7 @@ cmd.DrawIndexed(item.indexCount, item.indexStart, 0);</code></pre>
   <li><strong>탄젠트 손방향의 두 관례.</strong> 6절. 엔진 프리미티브(B = dP/dv)와 glTF(B = −dP/dv)를 같은 셰이더로 그리려면 생성 시 w 의 부호만 다르게. 반사까지 겹치면 제공된 w 도 뒤집는다.</li>
   <li><strong>실패한 텍스처가 흰색 핸들을 공유.</strong> 5단계부터 로드 실패는 <code>m_whiteTexture</code> 를 캐시에 넣었다. <code>InvalidateScene</code> 이 그것을 파괴하면 기본 재질이 깨지므로 내장 핸들과 같은 항목은 지우기만 한다.</li>
   <li><strong>Sponza 첫 시점.</strong> 바운드 중심 기준 자동 배치가 두 번 벽 안이었다. 안뜰은 x 축을 따라 길고 z 축 중앙이 열려 있으므로 x 한쪽 끝 + z 살짝 옆에서 대각선으로 본다.</li>
-  <li><strong>금속 바이저가 검다.</strong> DamagedHelmet 의 바이저는 metallic 1 에 어두운 기본색이라 환경 반사 없이는 검게 나온다. Blinn-Phong 근사의 한계이고 12단계(IBL) 의 몫이다.</li>
+  <li><strong>금속 바이저가 검다.</strong> DamagedHelmet 의 바이저는 metallic 1 에 어두운 기본색이라 환경 반사 없이는 검게 나온다. Blinn-Phong 근사의 한계이고 12단계(IBL) 의 몫이라고 봤다. <em>정정(2026-10-08):</em> 검은색의 대부분은 Z 반사 뒤 삼각형 감기 순서가 그대로여서 뒷면 컬링에 바깥 면이 잘리던 버그였고(rendering-analysis.html 의 20.16절), 금속 반사는 PBR + IBL 로 해결됐다.</li>
 </ul>
 
 <h2 id="s12"><span class="num">12.</span>검증과 스크린샷</h2>
