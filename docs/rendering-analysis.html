@@ -457,6 +457,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
     <li class="sub" data-ch="c20"><a href="#c20-16">20.16 적용 기록 — 2026-10-08 · glTF 감기 순서</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-17">20.17 적용 기록 — 2026-10-08 · 스크립트 DLL 과 핫리로드</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-18">20.18 적용 기록 — 2026-10-08 · 모든 씬에 HDR 환경</a></li>
+    <li class="sub" data-ch="c20"><a href="#c20-19">20.19 적용 기록 — 2026-10-12 · 좁은 패널 자동 정렬</a></li>
     <li data-ch="c21"><a href="#c21">21. 질문과 답</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-0">21.0 질문 색인</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-1">21.1 C++ 언어</a></li>
@@ -9171,6 +9172,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <tr><td class="n">10-08</td><td class="mono">3caf020</td><td>질문 "Cull back faces 를 켜면 헬멧 전면부가 안 보이는데 노멀이 이상한가" → glTF 로더의 Z 반사 뒤 감기 순서 수정. 9단계의 "검은 바이저" 의 실제 원인</td><td><a href="#c20-16">20.16</a></td></tr>
 <tr><td class="n">10-08</td><td class="mono">c97fe3f</td><td>요청 "Assets\Cubemap 의 큐브맵으로 CubemapTest 프로젝트를 만들고 IBL 이 적용되게" → HDR 텍스처, PBR(Cook-Torrance) 재질, split-sum IBL, 노출·톤매핑, 실험 프로젝트 <code>CubemapTest</code></td><td><a href="#c20-15">20.15</a>, <a href="#c11-6">11.6</a></td></tr>
 <tr><td class="n">10-08</td><td class="mono">c97fe3f</td><td>요청 "큐브맵 추가해줘" → <code>TextureDimension::TextureCube</code>, <code>CommandList::Draw</code>, 정점 속성 0개 PSO, 큐브 로더(DDS·면 6장·절차적), <code>Scene::skybox</code>, 스카이박스 패스</td><td><a href="#c20-14">20.14</a>, <a href="#c12-14">12.14</a></td></tr>
+<tr><td class="n">10-12</td><td>미커밋</td><td>요청 "에디터 창이 작으면 내용물이 잘리는데 자동 정렬되게" → 디버그 패널에 줄바꿈(<code>TextWrapped</code>)·라벨 폭을 뺀 위젯 폭·체크박스/버튼 줄 흐름 적용, 창을 키웠다 줄이면 다시 잘리던 문제는 가로 스크롤바 옵션을 빼서 해결</td><td><a href="#c20-19">20.19</a></td></tr>
 </tbody></table></div>
 
 <!-- c20-03.html -->
@@ -10095,6 +10097,15 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
   <li><b>함정.</b> 작업 중 사용자 에디터가 켜져 있어 엔진 DLL 을 다시 링크할 수 없었습니다(LNK1168). 또 에디터가 씬을 저장하고 있어, 변환은 에디터가 꺼진 뒤 그 마지막 저장본 위에 했습니다. 첫 변환 시도는 셸 인용 때문에 <code>--project=</code> 가 깨져 데모 씬 5개가 엔진 <code>Assets\Scenes\</code> 에 새로 저장됐고, 바로 지웠습니다(기존 파일은 덮어쓰지 않음). 두 번째는 Python 의 <code>subprocess</code> 로 인자를 넘겨 로드·저장 경로가 프로젝트 파일인지 로그로 확인했습니다.</li>
   <li><b>검증.</b> Debug·Release 전체 솔루션 빌드 경고 없음. 프로젝트 씬 6개와 내장 씬 3개(데모·헬멧·Sponza)를 D3D11·D3D12 로 그려 모두 HDR 하늘이 보이고 경고 없음, 두 백엔드의 씬 뷰 픽셀 차이는 최대 5/255(1픽셀). <code>SherlockGame.exe</code> 가 Sample 시작 씬에서 HDR 네 장을 로드해 같은 화면. Release 의 <code>SherlockGame.exe</code> 도 같은 네 장을 로드. QuaternionLookTest 의 <code>quat_roll_local.json</code> 을 Build Game 으로 패키징해 패키지 안의 <code>Assets\Cubemap</code> 에서 큐브맵을 읽고 스크립트 DLL 과 함께 그려짐(D3D12). 변환 전 파일은 작업 폴더 밖에 백업해 두고 오브젝트·컴포넌트·조명 수를 비교함. 확인하지 못한 것: 에디터의 환경 칸 화면.</li>
   <li><b>되돌림.</b> 이어서 요청 "CubemapTest 원래 헬멧·구 씬으로 되돌려줘" 에 따라 <code>Projects/CubemapTest/Assets/Scenes/Main.json</code> 을 커밋 <code>c97fe3f</code> 의 것(헬멧, 금속·유전체 구 12개, Main Camera)으로 되돌렸습니다. 그 파일은 처음부터 버전 4·HDR 환경이라 변환할 것이 없습니다. 게임 런타임으로 두 백엔드에서 그려 그림 12-14d 와 같은 배치이고, 두 백엔드의 픽셀 차이는 최대 1/255.</li>
+</ul>
+
+<h3 id="c20-19">20.19 적용 기록 — 2026-10-12 · 좁은 패널 자동 정렬</h3>
+<p>요청은 "에디터 창이 작으면 내용물이 정렬되지 않고 잘리는데, 어느 정도까지는 자동 조절되게" 였습니다. 원인은 ImGui 패널이 (1) <code>Text</code> 를 줄바꿈하지 않고, (2) 위젯 폭을 창 폭의 65% 로 잡아 오른쪽 라벨이 먼저 잘리고, (3) 체크박스·버튼을 <code>SameLine</code> 으로 무조건 한 줄에 이어 붙이기 때문입니다.</p>
+<ul>
+  <li><b>무엇을.</b> <code>App/DebugUI.cpp</code> 에 <code>BeginPanel</code>/<code>EndPanel</code>·<code>SameLineIfFits</code>·<code>CheckboxWidth</code>·<code>ButtonWidth</code>·<code>TextItemWidth</code> 를 두었습니다. Inspector·Render Settings·Lights·Materials·Hierarchy·Stats 가 <code>ImGui::Begin/End</code> 대신 이것을 씁니다. 긴 문장은 <code>TextWrapped</code>, 가로로 늘어놓던 체크박스·버튼은 남은 폭에 안 들어가면 다음 줄로 내립니다. <code>BeginPanel</code> 은 위젯 폭을 "남은 폭 − 라벨 영역(창 폭의 42%, 110~170px)" 으로 잡고 최소 90px 을 지킵니다.</li>
+  <li><b>고르지 않은 대안.</b> 처음에는 <code>ImGuiWindowFlags_HorizontalScrollbar</code> 를 안전장치로 켰습니다. 그러나 스크롤바가 있는 창은 줄바꿈 기준이 창 폭이 아니라 직전 프레임의 내용 폭이어서, 창을 키웠다 줄이면 줄바꿈이 넓은 폭에 고정된 채 스크롤바만 생겼습니다(1900px → 1000px 로 재현). 그래서 이 옵션을 뺐고, 아주 좁아지면 일부가 잘리는 것은 받아들였습니다. 줄바꿈 폭을 창 폭에서 직접 계산하면 스크롤바도 유지할 수 있지만 <code>TextWrapped</code> 호출을 전부 별도 헬퍼로 바꿔야 해서 하지 않았습니다.</li>
+  <li><b>함정.</b> <code>std::max</code> 는 Windows 헤더의 <code>max</code> 매크로와 충돌해 <code>(std::max)(…)</code> 로 썼습니다. 에디터가 켜져 있으면 엔진 DLL 링크가 실패(LNK1104·LNK1168)하므로 닫은 뒤 빌드해야 합니다.</li>
+  <li><b>검증.</b> Debug 빌드 후 에디터를 띄워 창을 1900×1000 으로 키웠다가 1000×759 로 줄인 화면에서 Render Settings 의 텍스트·체크박스 줄이 줄어든 폭에 맞게 줄바꿈되고 오른쪽 라벨이 잘리지 않음을 확인했습니다. Release·D3D12 와 다른 패널의 극단적 폭은 확인하지 않았습니다.</li>
 </ul>
 
 <!-- c21-01.html -->

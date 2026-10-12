@@ -139,14 +139,14 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 	DrawStats(engine, sceneName, modelStats);
 	DrawContentBrowser(engine, callbacks);   // Stats 다음에 그림 — Stats 창의 도킹 노드에 따라 붙음
 
-	ImGui::Begin("Lights");
+	DebugUI::BeginPanel("Lights");
 	DebugUI::DrawEnvironmentPanel(engine.GetScene());   // 2026-10-08: 스카이박스·IBL — 주변광과 같은 "환경" 값이라 조명 창에 둠
 	DebugUI::DrawLightPanel(engine.GetScene());
-	ImGui::End();
+	DebugUI::EndPanel();
 
-	ImGui::Begin("Materials");
+	DebugUI::BeginPanel("Materials");
 	DebugUI::DrawMaterialPanel(engine.GetScene());
-	ImGui::End();
+	DebugUI::EndPanel();
 
 	if (showConsole) DebugUI::DrawLogConsole(&showConsole);
 }
@@ -616,23 +616,23 @@ void Editor::DrawDropGhost(Engine& engine, float x, float y, float width, float 
 
 void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 {
-	ImGui::Begin("Hierarchy");
+	DebugUI::BeginPanel("Hierarchy");
 	Scene& scene = engine.GetScene();
 	auto& objects = scene.GetObjects();
-	ImGui::Text("Objects %zu   Lights %zu", objects.size(), scene.GetLights().size());
+	ImGui::TextWrapped("Objects %zu   Lights %zu", objects.size(), scene.GetLights().size());
 	// 추가/삭제. 새 오브젝트는 원점 위에 기본 재질로 생기고 바로 선택됨.
 	if (ImGui::SmallButton("+ Sphere") && callbacks.addPrimitive) { callbacks.addPrimitive(0); m_selected = static_cast<int>(objects.size()) - 1; }
-	ImGui::SameLine();
+	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Cube"));
 	if (ImGui::SmallButton("+ Cube") && callbacks.addPrimitive) { callbacks.addPrimitive(1); m_selected = static_cast<int>(objects.size()) - 1; }
-	ImGui::SameLine();
+	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Cylinder"));
 	if (ImGui::SmallButton("+ Cylinder") && callbacks.addPrimitive) { callbacks.addPrimitive(2); m_selected = static_cast<int>(objects.size()) - 1; }
-	ImGui::SameLine();
+	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Plane"));
 	if (ImGui::SmallButton("+ Plane") && callbacks.addPrimitive) { callbacks.addPrimitive(3); m_selected = static_cast<int>(objects.size()) - 1; }
-	ImGui::SameLine();
+	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Camera"));
 	if (ImGui::SmallButton("+ Camera") && callbacks.addPrimitive) { callbacks.addPrimitive(4); m_selected = static_cast<int>(objects.size()) - 1; }   // 11-C단계: 현재 에디터 시점 그대로 카메라 오브젝트 추가
 	const bool canDelete = m_selected >= 0 && m_selected < static_cast<int>(objects.size());
 	const bool deleteKey = canDelete && (m_sceneFocused || ImGui::IsWindowFocused()) && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Delete, false);
-	if (canDelete) { ImGui::SameLine(); }
+	if (canDelete) { DebugUI::SameLineIfFits(DebugUI::ButtonWidth("Delete (Del)")); }
 	if (canDelete && (ImGui::SmallButton("Delete (Del)") || deleteKey) && callbacks.deleteObject) { callbacks.deleteObject(m_selected); m_selected = -1; }
 	ImGui::Separator();
 	// 11-F단계: 평면 목록 대신 트리. 루트(부모 없음)부터 그리고 자식은 재귀. 선택은 여전히 씬 벡터의 인덱스이므로 포인터 → 인덱스 표를 한 번 만든다.
@@ -657,7 +657,7 @@ void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 		ImGui::EndDragDropTarget();
 	}
 	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered()) m_selected = -1;
-	ImGui::End();
+	DebugUI::EndPanel();
 }
 
 void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unordered_map<const GameObject*, int>& indexOf)
@@ -709,12 +709,12 @@ void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unor
 
 void Editor::DrawInspector(Engine& engine)
 {
-	ImGui::Begin("Inspector");
+	DebugUI::BeginPanel("Inspector");
 	Scene& scene = engine.GetScene();
 	if (m_selected < 0 || m_selected >= static_cast<int>(scene.GetObjects().size()))
 	{
 		ImGui::TextDisabled("Click an object in the Scene view or the Hierarchy.");
-		ImGui::End();
+		DebugUI::EndPanel();
 		return;
 	}
 	GameObject& object = *scene.GetObjects()[m_selected];
@@ -773,7 +773,7 @@ void Editor::DrawInspector(Engine& engine)
 			}
 		}
 		ImGui::Separator();
-		ImGui::Text("Mesh: %s   vertices %u   triangles %u   submeshes %zu", type, mesh->GetVertexCount(), mesh->GetIndexCount() / 3, mesh->GetSubmeshes().size());
+		ImGui::TextWrapped("Mesh: %s   vertices %u   triangles %u   submeshes %zu", type, mesh->GetVertexCount(), mesh->GetIndexCount() / 3, mesh->GetSubmeshes().size());
 		if (source != nullptr && source->type == MeshSource::Type::Model) ImGui::TextDisabled("%s #%u", Log::ToUtf8(source->modelPath.c_str()).c_str(), source->meshIndex);
 	}
 
@@ -804,8 +804,10 @@ void Editor::DrawInspector(Engine& engine)
 		ImGui::DragFloat2("UV scale", &material.uvScale.x, 0.1f, 0.1f, 64.0f);
 		ImGui::SliderFloat("Normal strength", &material.normalStrength, 0.0f, 3.0f);
 		ImGui::SliderFloat("Alpha cutoff", &material.alphaCutoff, 0.0f, 1.0f);
-		ImGui::Checkbox("Unlit", &material.unlit); ImGui::SameLine();
-		ImGui::Checkbox("Wireframe", &material.wireframe); ImGui::SameLine();
+		ImGui::Checkbox("Unlit", &material.unlit);
+		DebugUI::SameLineIfFits(DebugUI::CheckboxWidth("Wireframe"));
+		ImGui::Checkbox("Wireframe", &material.wireframe);
+		DebugUI::SameLineIfFits(DebugUI::CheckboxWidth("Double sided"));
 		ImGui::Checkbox("Double sided", &material.doubleSided);
 		ImGui::TextDisabled("albedo: %s   normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(),
 			material.normalTexture.empty() ? "(none)" : material.normalTexture.c_str());
@@ -814,7 +816,7 @@ void Editor::DrawInspector(Engine& engine)
 	// 11-C단계: 컴포넌트
 	ImGui::Separator();
 	DrawComponents(object);
-	ImGui::End();
+	DebugUI::EndPanel();
 }
 
 // ------------------------------------------------------------------ 11-C단계: 재생 · 컴포넌트
@@ -1289,7 +1291,7 @@ void Editor::DrawComponents(GameObject& object)
 
 void Editor::DrawRenderSettings(Engine& engine)
 {
-	ImGui::Begin("Render Settings");
+	DebugUI::BeginPanel("Render Settings");
 	DebugUI::DrawRenderSettingsPanel(engine.GetRenderer(), engine.GetDevice());
 	RenderSettings& settings = engine.GetRenderer().GetSettings();
 	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion" };
@@ -1298,18 +1300,18 @@ void Editor::DrawRenderSettings(Engine& engine)
 	DebugUI::DrawShadowPanel(engine.GetRenderer(), engine.GetDevice());
 	DebugUI::DrawCameraPanel(engine.GetCamera(), cameraMoveSpeed);
 	DebugUI::DrawEnginePanel(engine);
-	ImGui::End();
+	DebugUI::EndPanel();
 }
 
 void Editor::DrawStats(Engine& engine, const char* sceneName, const ModelStats& modelStats)
 {
-	ImGui::Begin("Stats");
+	DebugUI::BeginPanel("Stats");
 	const Renderer::Stats& stats = engine.GetRenderer().GetStats();
 	const Time& time = engine.GetTime();
-	ImGui::Text("%.1f FPS   %.2f ms/frame   scene view %ux%u", time.GetFps(), time.GetAverageFrameMs(), m_sceneWidth, m_sceneHeight);
-	ImGui::Text("draws %u (+%u shadow)   triangles %u   PSO switches %u   set switches %u   mesh switches %u   PSO cache %zu",
+	ImGui::TextWrapped("%.1f FPS   %.2f ms/frame   scene view %ux%u", time.GetFps(), time.GetAverageFrameMs(), m_sceneWidth, m_sceneHeight);
+	ImGui::TextWrapped("draws %u (+%u shadow)   triangles %u   PSO switches %u   set switches %u   mesh switches %u   PSO cache %zu",
 		stats.draws, stats.shadowDraws, stats.triangles, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches, engine.GetRenderer().GetPipelineCount());
 	DebugUI::DrawModelPanel(sceneName, modelStats, engine.GetScene().GetImageCount(), engine.GetScene().GetObjects().size());
 	DebugUI::DrawProfilerPanel();
-	ImGui::End();
+	DebugUI::EndPanel();
 }
