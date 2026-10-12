@@ -11,6 +11,16 @@ class Engine;
 // 패널은 데이터를 "편집"할 뿐 "소유"하지는 않으므로 App 계층에 둠.
 namespace DebugUI
 {
+	// 2026-10-12: 좁은 패널 대응. ImGui::Begin/End 대신 쓰면 (1) 가로 스크롤바가 켜지고 (2) 위젯 폭이 라벨 폭을 뺀 만큼으로 잡혀
+	// 슬라이더·콤보의 오른쪽 라벨이 잘리지 않으며 (3) 창이 너무 좁아지지 않음. 패널 안의 긴 문장은 TextWrapped 로 줄바꿈함.
+	bool BeginPanel(const char* name, bool* open = nullptr);
+	void EndPanel();
+	// 가로로 이어 붙이는 위젯(체크박스·버튼 줄): 직전 위젯 오른쪽에 itemWidth 만큼 들어가면 SameLine, 아니면 다음 줄로 내림.
+	void SameLineIfFits(float itemWidth);
+	float CheckboxWidth(const char* label);
+	float ButtonWidth(const char* label);        // Button·SmallButton 공통 (가로 패딩은 같음)
+	float TextItemWidth(const char* text);
+
 	void DrawCameraPanel(const Camera& camera, float& moveSpeed);
 	void DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device);
 	void DrawShadowPanel(Renderer& renderer, RHI::Device& device);   // 6단계: 그림자 설정 + 그림자 맵 미리보기

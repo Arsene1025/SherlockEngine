@@ -13,6 +13,7 @@
 #include <imgui.h>
 #include <cmath>
 #include <algorithm>
+#include <cfloat>
 #include <vector>
 
 using namespace DirectX;   // 이 파일 안에서만
@@ -23,38 +24,76 @@ namespace
 	const char* kLightTypeNames[] = { "Directional", "Point", "Spot" };
 }
 
+bool DebugUI::BeginPanel(const char* name, bool* open)
+{
+	ImGui::SetNextWindowSizeConstraints(ImVec2(180.0f, 0.0f), ImVec2(FLT_MAX, FLT_MAX));   // 떠 있는 창일 때만 의미가 있음 (도킹 노드는 도킹 쪽이 정함)
+	const bool visible = ImGui::Begin(name, open);
+	const float available = ImGui::GetContentRegionAvail().x;
+	const float labelWidth = std::clamp(available * 0.42f, 110.0f, 170.0f);   // 오른쪽 라벨에 남겨 둘 폭
+	ImGui::PushItemWidth((std::max)(available - labelWidth - ImGui::GetStyle().ItemInnerSpacing.x, 90.0f));
+	return visible;
+}
+
+void DebugUI::EndPanel()
+{
+	ImGui::PopItemWidth();
+	ImGui::End();
+}
+
+void DebugUI::SameLineIfFits(float itemWidth)
+{
+	const float right = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;   // 줄 시작 x + 남은 폭 = 오른쪽 끝
+	if (ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + itemWidth <= right) ImGui::SameLine();
+}
+
+float DebugUI::CheckboxWidth(const char* label)
+{
+	return ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x + ImGui::CalcTextSize(label, nullptr, true).x;
+}
+
+float DebugUI::ButtonWidth(const char* label)
+{
+	return ImGui::CalcTextSize(label, nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+}
+
+float DebugUI::TextItemWidth(const char* text)
+{
+	return ImGui::CalcTextSize(text, nullptr, true).x;
+}
+
 void DebugUI::DrawCameraPanel(const Camera& camera, float& moveSpeed)
 {
 	ImGui::Separator();
-	ImGui::Text("Camera  (WASD/QE move, RMB drag look, Shift fast)");
+	ImGui::TextWrapped("Camera  (WASD/QE move, RMB drag look, Shift fast)");
 	const XMFLOAT3& p = camera.GetPosition();
 	ImGui::Text("pos   %.2f  %.2f  %.2f", p.x, p.y, p.z);
-	ImGui::Text("yaw   %.1f deg   pitch %.1f deg   roll %.1f deg",
+	ImGui::TextWrapped("yaw   %.1f deg   pitch %.1f deg   roll %.1f deg",
 		XMConvertToDegrees(camera.GetYaw()), XMConvertToDegrees(camera.GetPitch()), XMConvertToDegrees(camera.GetRoll()));   // roll 은 재생 중 부모가 기울어진 카메라에서만 0 이 아님 (11-F)
 	ImGui::SliderFloat("Speed", &moveSpeed, 1.0f, 50.0f);
-	ImGui::Text("F1 wire  F2 cull  F3 vsync  F4 reload  F5 sRGB  F6 sampler  F7 light orbit  F8 shadows  F9 normal maps  F10 freeze");
+	ImGui::TextWrapped("F1 wire  F2 cull  F3 vsync  F4 reload  F5 sRGB  F6 sampler  F7 light orbit  F8 shadows  F9 normal maps  F10 freeze");
 }
 
 void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)
 {
 	ImGui::Separator();
-	ImGui::Text("Pipeline   backend: %s (--backend=d3d11|d3d12)", device.GetBackendName());
+	ImGui::TextWrapped("Pipeline   backend: %s (--backend=d3d11|d3d12)", device.GetBackendName());
 	RenderSettings& settings = renderer.GetSettings();
 	ImGui::Checkbox("Wireframe", &settings.wireframe);
-	ImGui::SameLine();
+	SameLineIfFits(CheckboxWidth("Cull back faces"));
 	ImGui::Checkbox("Cull back faces", &settings.cullBack);
-	ImGui::SameLine();
+	SameLineIfFits(CheckboxWidth("sRGB output"));
 	ImGui::Checkbox("sRGB output", &settings.srgbOutput);
-	ImGui::SameLine();
+	SameLineIfFits(CheckboxWidth("Normal maps"));
 	ImGui::Checkbox("Normal maps", &settings.normalMapping);
 	bool vsync = device.IsVSync();
 	if (ImGui::Checkbox("VSync", &vsync))
 	{
 		device.SetVSync(vsync);
 	}
-	ImGui::SameLine();
-	ImGui::Text(device.IsTearingSupported() ? "(tearing OK)" : "(no tearing)");
-	ImGui::SameLine();
+	const char* tearing = device.IsTearingSupported() ? "(tearing OK)" : "(no tearing)";
+	SameLineIfFits(TextItemWidth(tearing));
+	ImGui::TextUnformatted(tearing);
+	SameLineIfFits(ButtonWidth("Reload shaders"));
 	if (ImGui::Button("Reload shaders"))
 	{
 		renderer.ReloadShaders();
@@ -69,9 +108,9 @@ void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)
 	}
 
 	const Renderer::Stats& stats = renderer.GetStats();
-	ImGui::Text("draws %u (+%u shadow)   PSO switches %u   set switches %u   mesh switches %u",
+	ImGui::TextWrapped("draws %u (+%u shadow)   PSO switches %u   set switches %u   mesh switches %u",
 		stats.draws, stats.shadowDraws, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches);
-	ImGui::Text("passes %u   barriers %u   PSO cache %zu   GPU meshes %zu   GPU materials %zu   textures %zu   reloads %u   frame slot %u",
+	ImGui::TextWrapped("passes %u   barriers %u   PSO cache %zu   GPU meshes %zu   GPU materials %zu   textures %zu   reloads %u   frame slot %u",
 		stats.renderPasses, stats.barriers, renderer.GetPipelineCount(), renderer.GetGpuMeshCount(), renderer.GetGpuMaterialCount(),
 		renderer.GetTextureCount(), stats.shaderReloads, device.GetFrameIndex());
 }
@@ -166,7 +205,7 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 		ImGui::TreePop();
 	}
 	ImGui::SliderFloat("Exposure", &env.exposure, 0.05f, 8.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-	ImGui::SameLine();
+	SameLineIfFits(CheckboxWidth("ACES tone mapping"));
 	ImGui::Checkbox("ACES tone mapping", &env.toneMapping);
 }
 
@@ -174,11 +213,11 @@ void DebugUI::DrawLightPanel(Scene& scene)
 {
 	ImGui::Separator();
 	std::vector<LightData>& lights = scene.GetLights();
-	ImGui::Text("Lights (%zu / %u)   light 0 casts the shadow when directional", lights.size(), MAX_LIGHTS);
+	ImGui::TextWrapped("Lights (%zu / %u)   light 0 casts the shadow when directional", lights.size(), MAX_LIGHTS);
 	ImGui::ColorEdit3("Ambient", &scene.ambientColor.x);
 	if (lights.size() < MAX_LIGHTS)
 	{
-		ImGui::SameLine();
+		SameLineIfFits(ButtonWidth("Add point light"));
 		if (ImGui::Button("Add point light"))
 		{
 			LightData light;
@@ -211,7 +250,7 @@ void DebugUI::DrawLightPanel(Scene& scene)
 			if (light.type != static_cast<uint32_t>(LightType::Point))
 			{
 				ImGui::DragFloat3("Direction", &light.direction.x, 0.01f, -1.0f, 1.0f);
-				ImGui::SameLine();
+				SameLineIfFits(ButtonWidth("normalize"));
 				if (ImGui::SmallButton("normalize"))
 				{
 					XMVECTOR d = XMLoadFloat3(&light.direction);
@@ -262,9 +301,9 @@ void DebugUI::DrawMaterialPanel(Scene& scene)
 			ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
 			ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 			ImGui::SliderFloat("Occlusion strength", &material.occlusionStrength, 0.0f, 1.0f);
-			ImGui::Text("Albedo: %s (%s)   Normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(),
+			ImGui::TextWrapped("Albedo: %s (%s)   Normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(),
 				material.albedoSrgb ? "sRGB" : "linear", material.normalTexture.empty() ? "(none)" : material.normalTexture.c_str());
-			ImGui::Text("Metal/Rough: %s   AO: %s   Emissive: %s",
+			ImGui::TextWrapped("Metal/Rough: %s   AO: %s   Emissive: %s",
 				material.metallicRoughnessTexture.empty() ? "(none)" : material.metallicRoughnessTexture.c_str(),
 				material.occlusionTexture.empty() ? "(none)" : material.occlusionTexture.c_str(),
 				material.emissiveTexture.empty() ? "(none)" : material.emissiveTexture.c_str());
@@ -276,9 +315,9 @@ void DebugUI::DrawMaterialPanel(Scene& scene)
 			ImGui::DragFloat2("UV scale", &material.uvScale.x, 0.1f, 0.1f, 64.0f);
 			ImGui::SliderFloat("Normal strength", &material.normalStrength, 0.0f, 3.0f);
 			ImGui::Checkbox("Unlit", &material.unlit);
-			ImGui::SameLine();
+			SameLineIfFits(CheckboxWidth("Wireframe"));
 			ImGui::Checkbox("Wireframe", &material.wireframe);
-			ImGui::SameLine();
+			SameLineIfFits(CheckboxWidth("Double sided"));
 			ImGui::Checkbox("Double sided", &material.doubleSided);
 			ImGui::TreePop();
 		}
@@ -289,15 +328,15 @@ void DebugUI::DrawMaterialPanel(Scene& scene)
 void DebugUI::DrawModelPanel(const char* sceneName, const ModelStats& stats, size_t sceneImages, size_t sceneObjects)
 {
 	ImGui::Separator();
-	ImGui::Text("Scene: %s   (F11 next: Demo -> DamagedHelmet -> Sponza, or --scene=demo|helmet|sponza)", sceneName);
+	ImGui::TextWrapped("Scene: %s   (F11 next: Demo -> DamagedHelmet -> Sponza, or --scene=demo|helmet|sponza)", sceneName);
 	if (stats.meshes == 0)
 	{
 		ImGui::Text("model: none   objects %zu", sceneObjects);
 		return;
 	}
-	ImGui::Text("model: meshes %u  submeshes %u  instances %u  materials %u  images %u (scene %zu)   load %.0f ms",
+	ImGui::TextWrapped("model: meshes %u  submeshes %u  instances %u  materials %u  images %u (scene %zu)   load %.0f ms",
 		stats.meshes, stats.submeshes, stats.instances, stats.materials, stats.images, sceneImages, stats.loadMilliseconds);
-	ImGui::Text("       vertices %u  triangles %u  16-bit index meshes %u/%u  generated tangents %u  skipped primitives %u   objects %zu",
+	ImGui::TextWrapped("       vertices %u  triangles %u  16-bit index meshes %u/%u  generated tangents %u  skipped primitives %u   objects %zu",
 		stats.vertices, stats.triangles, stats.meshesWith16BitIndices, stats.meshes, stats.generatedTangentMeshes, stats.skippedPrimitives, sceneObjects);
 }
 
@@ -309,24 +348,24 @@ void DebugUI::DrawEnginePanel(Engine& engine)
 	const Config& config = engine.GetConfig();
 	const std::string configPath = config.GetPath().empty() ? "(none)" : Log::ToUtf8(config.GetPath().c_str());
 	const std::string logPath = Log::GetFilePath().empty() ? "(none)" : Log::ToUtf8(Log::GetFilePath().c_str());
-	ImGui::Text("Engine   backend %s (engine.backend = %s)   config %s", engine.GetDevice().GetBackendName(),
+	ImGui::TextWrapped("Engine   backend %s (engine.backend = %s)   config %s", engine.GetDevice().GetBackendName(),
 		config.GetString("engine.backend", "?").c_str(), configPath.c_str());
-	ImGui::Text("Log      file %s   console %s   level %s   info %u  warn %u  error %u", logPath.c_str(),
+	ImGui::TextWrapped("Log      file %s   console %s   level %s   info %u  warn %u  error %u", logPath.c_str(),
 		Log::HasConsole() ? "yes" : "no", Log::LevelName(Log::GetMinLevel()),
 		Log::GetCount(Log::Level::Info), Log::GetCount(Log::Level::Warn), Log::GetCount(Log::Level::Error));
 	const AssetManager::Stats& assets = engine.GetAssets().GetStats();
-	ImGui::Text("Assets   models %zu (loads %u, hits %u)   files %zu   %.1f MB cached   %.0f ms total load",
+	ImGui::TextWrapped("Assets   models %zu (loads %u, hits %u)   files %zu   %.1f MB cached   %.0f ms total load",
 		engine.GetAssets().GetModelCount(), assets.modelLoads, assets.modelHits, engine.GetAssets().GetFileCount(),
 		assets.cachedBytes / (1024.0 * 1024.0), assets.totalLoadMs);
 	const Time& time = engine.GetTime();
-	ImGui::Text("Time     dt %.2f ms (raw %.2f)   fixed step %.2f ms   steps last frame %u   alpha %.2f",
+	ImGui::TextWrapped("Time     dt %.2f ms (raw %.2f)   fixed step %.2f ms   steps last frame %u   alpha %.2f",
 		time.GetDeltaTime() * 1000.0f, time.GetRawDeltaTime() * 1000.0f, time.GetFixedStep() * 1000.0f,
 		time.GetFixedStepsLastFrame(), time.GetInterpolationAlpha());
 	if (ImGui::TreeNode("Config values"))
 	{
 		std::vector<std::pair<std::string, std::string>> values(config.GetAll().begin(), config.GetAll().end());
 		std::sort(values.begin(), values.end());
-		for (const auto& entry : values) ImGui::Text("%s = %s", entry.first.c_str(), entry.second.c_str());
+		for (const auto& entry : values) ImGui::TextWrapped("%s = %s", entry.first.c_str(), entry.second.c_str());
 		ImGui::TreePop();
 	}
 }
@@ -336,8 +375,8 @@ void DebugUI::DrawProfilerPanel()
 	ImGui::Separator();
 	bool enabled = Profiler::IsEnabled();
 	if (ImGui::Checkbox("Profiler", &enabled)) Profiler::SetEnabled(enabled);
-	ImGui::SameLine();
-	ImGui::Text("CPU frame %.3f ms   GPU frame %.3f ms (frame %llu)", Profiler::GetCpuFrameMs(), Profiler::GetGpuFrameMs(), Profiler::GetGpuFrameNumber());
+	SameLineIfFits(TextItemWidth("CPU frame 0.000 ms   GPU frame 0.000 ms (frame 0)"));
+	ImGui::TextWrapped("CPU frame %.3f ms   GPU frame %.3f ms (frame %llu)", Profiler::GetCpuFrameMs(), Profiler::GetGpuFrameMs(), Profiler::GetGpuFrameNumber());
 	if (ImGui::TreeNodeEx("Timings", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::Columns(2, "profiler", false);
