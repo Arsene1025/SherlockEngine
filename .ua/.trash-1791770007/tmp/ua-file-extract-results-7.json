@@ -1,0 +1,5683 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 22,
+  "filesSkipped": [
+    "SherlockEngine/Assets/Config/engine.ini",
+    "SherlockEngine/Assets/Models/Sponza/Sponza.bin",
+    "SherlockEngine/Assets/Models/Sponza/Sponza.gltf"
+  ],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 22,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 22,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "SherlockEngine/App/ScriptCreator.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 22,
+      "nonEmptyLines": 21,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/AssetManager.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 111,
+      "nonEmptyLines": 101,
+      "functions": [
+        {
+          "name": "AssetManager",
+          "startLine": 10,
+          "endLine": 10,
+          "params": []
+        },
+        {
+          "name": "~AssetManager",
+          "startLine": 11,
+          "endLine": 11,
+          "params": []
+        },
+        {
+          "name": "Normalize",
+          "startLine": 13,
+          "endLine": 19,
+          "params": [
+            "path"
+          ]
+        },
+        {
+          "name": "EstimateBytes",
+          "startLine": 21,
+          "endLine": 27,
+          "params": [
+            "model"
+          ]
+        },
+        {
+          "name": "IsModelCached",
+          "startLine": 85,
+          "endLine": 88,
+          "params": [
+            "relativePath"
+          ]
+        },
+        {
+          "name": "UnloadModel",
+          "startLine": 90,
+          "endLine": 96,
+          "params": [
+            "relativePath"
+          ]
+        },
+        {
+          "name": "Clear",
+          "startLine": 98,
+          "endLine": 103,
+          "params": []
+        },
+        {
+          "name": "GetModelPaths",
+          "startLine": 105,
+          "endLine": 111,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "AssetManager",
+          "line": 10,
+          "isDefault": false
+        },
+        {
+          "name": "~AssetManager",
+          "line": 11,
+          "isDefault": false
+        },
+        {
+          "name": "Normalize",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "EstimateBytes",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "IsModelCached",
+          "line": 85,
+          "isDefault": false
+        },
+        {
+          "name": "UnloadModel",
+          "line": 90,
+          "isDefault": false
+        },
+        {
+          "name": "Clear",
+          "line": 98,
+          "isDefault": false
+        },
+        {
+          "name": "GetModelPaths",
+          "line": 105,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "Normalize",
+          "callee": "std::replace",
+          "lineNumber": 16
+        },
+        {
+          "caller": "Normalize",
+          "callee": "begin",
+          "lineNumber": 16
+        },
+        {
+          "caller": "Normalize",
+          "callee": "end",
+          "lineNumber": 16
+        },
+        {
+          "caller": "Normalize",
+          "callee": "std::transform",
+          "lineNumber": 17
+        },
+        {
+          "caller": "Normalize",
+          "callee": "begin",
+          "lineNumber": 17
+        },
+        {
+          "caller": "Normalize",
+          "callee": "end",
+          "lineNumber": 17
+        },
+        {
+          "caller": "Normalize",
+          "callee": "begin",
+          "lineNumber": 17
+        },
+        {
+          "caller": "EstimateBytes",
+          "callee": "size",
+          "lineNumber": 24
+        },
+        {
+          "caller": "EstimateBytes",
+          "callee": "GetVertices",
+          "lineNumber": 24
+        },
+        {
+          "caller": "EstimateBytes",
+          "callee": "size",
+          "lineNumber": 24
+        },
+        {
+          "caller": "EstimateBytes",
+          "callee": "GetIndices",
+          "lineNumber": 24
+        },
+        {
+          "caller": "EstimateBytes",
+          "callee": "size",
+          "lineNumber": 25
+        },
+        {
+          "caller": "IsModelCached",
+          "callee": "find",
+          "lineNumber": 87
+        },
+        {
+          "caller": "IsModelCached",
+          "callee": "Normalize",
+          "lineNumber": 87
+        },
+        {
+          "caller": "IsModelCached",
+          "callee": "end",
+          "lineNumber": 87
+        },
+        {
+          "caller": "UnloadModel",
+          "callee": "find",
+          "lineNumber": 92
+        },
+        {
+          "caller": "UnloadModel",
+          "callee": "Normalize",
+          "lineNumber": 92
+        },
+        {
+          "caller": "UnloadModel",
+          "callee": "end",
+          "lineNumber": 93
+        },
+        {
+          "caller": "UnloadModel",
+          "callee": "EstimateBytes",
+          "lineNumber": 94
+        },
+        {
+          "caller": "UnloadModel",
+          "callee": "erase",
+          "lineNumber": 95
+        },
+        {
+          "caller": "Clear",
+          "callee": "clear",
+          "lineNumber": 100
+        },
+        {
+          "caller": "Clear",
+          "callee": "clear",
+          "lineNumber": 101
+        },
+        {
+          "caller": "GetModelPaths",
+          "callee": "push_back",
+          "lineNumber": 108
+        },
+        {
+          "caller": "GetModelPaths",
+          "callee": "std::sort",
+          "lineNumber": 109
+        },
+        {
+          "caller": "GetModelPaths",
+          "callee": "begin",
+          "lineNumber": 109
+        },
+        {
+          "caller": "GetModelPaths",
+          "callee": "end",
+          "lineNumber": 109
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 8,
+        "functionCount": 8,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/AssetManager.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 55,
+      "nonEmptyLines": 47,
+      "functions": [
+        {
+          "name": "GetModelCount",
+          "startLine": 44,
+          "endLine": 44,
+          "params": []
+        },
+        {
+          "name": "GetFileCount",
+          "startLine": 45,
+          "endLine": 45,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "Model",
+          "startLine": 8,
+          "endLine": 8,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "AssetManager",
+          "startLine": 17,
+          "endLine": 55,
+          "methods": [
+            "IsModelCached",
+            "UnloadModel",
+            "Clear",
+            "GetModelCount",
+            "GetFileCount",
+            "GetModelPaths",
+            "Normalize",
+            "EstimateBytes"
+          ],
+          "properties": [
+            "GetModel",
+            "GetFile",
+            "m_models",
+            "m_files",
+            "m_stats"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Model",
+          "line": 8,
+          "isDefault": false
+        },
+        {
+          "name": "IsModelCached",
+          "line": 39,
+          "isDefault": false
+        },
+        {
+          "name": "UnloadModel",
+          "line": 40,
+          "isDefault": false
+        },
+        {
+          "name": "Clear",
+          "line": 41,
+          "isDefault": false
+        },
+        {
+          "name": "GetModelCount",
+          "line": 44,
+          "isDefault": false
+        },
+        {
+          "name": "GetFileCount",
+          "line": 45,
+          "isDefault": false
+        },
+        {
+          "name": "GetModelPaths",
+          "line": 46,
+          "isDefault": false
+        },
+        {
+          "name": "AssetManager",
+          "line": 17,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "GetModelCount",
+          "callee": "size",
+          "lineNumber": 44
+        },
+        {
+          "caller": "GetFileCount",
+          "callee": "size",
+          "lineNumber": 45
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 8,
+        "functionCount": 2,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Config.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 106,
+      "nonEmptyLines": 94,
+      "functions": [
+        {
+          "name": "Trim",
+          "startLine": 9,
+          "endLine": 16,
+          "params": [
+            "text"
+          ]
+        },
+        {
+          "name": "Lower",
+          "startLine": 18,
+          "endLine": 24,
+          "params": [
+            "text"
+          ]
+        },
+        {
+          "name": "LoadFromFile",
+          "startLine": 27,
+          "endLine": 62,
+          "params": [
+            "path"
+          ]
+        },
+        {
+          "name": "Set",
+          "startLine": 64,
+          "endLine": 67,
+          "params": [
+            "key",
+            "value"
+          ]
+        },
+        {
+          "name": "Has",
+          "startLine": 69,
+          "endLine": 72,
+          "params": [
+            "key"
+          ]
+        },
+        {
+          "name": "GetString",
+          "startLine": 74,
+          "endLine": 78,
+          "params": [
+            "key",
+            "defaultValue"
+          ]
+        },
+        {
+          "name": "GetInt",
+          "startLine": 80,
+          "endLine": 87,
+          "params": [
+            "key",
+            "defaultValue"
+          ]
+        },
+        {
+          "name": "GetFloat",
+          "startLine": 89,
+          "endLine": 96,
+          "params": [
+            "key",
+            "defaultValue"
+          ]
+        },
+        {
+          "name": "GetBool",
+          "startLine": 98,
+          "endLine": 106,
+          "params": [
+            "key",
+            "defaultValue"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Trim",
+          "line": 9,
+          "isDefault": false
+        },
+        {
+          "name": "Lower",
+          "line": 18,
+          "isDefault": false
+        },
+        {
+          "name": "LoadFromFile",
+          "line": 27,
+          "isDefault": false
+        },
+        {
+          "name": "Set",
+          "line": 64,
+          "isDefault": false
+        },
+        {
+          "name": "Has",
+          "line": 69,
+          "isDefault": false
+        },
+        {
+          "name": "GetString",
+          "line": 74,
+          "isDefault": false
+        },
+        {
+          "name": "GetInt",
+          "line": 80,
+          "isDefault": false
+        },
+        {
+          "name": "GetFloat",
+          "line": 89,
+          "isDefault": false
+        },
+        {
+          "name": "GetBool",
+          "line": 98,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "Trim",
+          "callee": "size",
+          "lineNumber": 12
+        },
+        {
+          "caller": "Trim",
+          "callee": "std::isspace",
+          "lineNumber": 12
+        },
+        {
+          "caller": "Trim",
+          "callee": "static_cast<unsigned char>",
+          "lineNumber": 12
+        },
+        {
+          "caller": "Trim",
+          "callee": "size",
+          "lineNumber": 13
+        },
+        {
+          "caller": "Trim",
+          "callee": "std::isspace",
+          "lineNumber": 14
+        },
+        {
+          "caller": "Trim",
+          "callee": "static_cast<unsigned char>",
+          "lineNumber": 14
+        },
+        {
+          "caller": "Trim",
+          "callee": "substr",
+          "lineNumber": 15
+        },
+        {
+          "caller": "Lower",
+          "callee": "reserve",
+          "lineNumber": 21
+        },
+        {
+          "caller": "Lower",
+          "callee": "size",
+          "lineNumber": 21
+        },
+        {
+          "caller": "Lower",
+          "callee": "static_cast<char>",
+          "lineNumber": 22
+        },
+        {
+          "caller": "Lower",
+          "callee": "std::tolower",
+          "lineNumber": 22
+        },
+        {
+          "caller": "Lower",
+          "callee": "static_cast<unsigned char>",
+          "lineNumber": 22
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "std::getline",
+          "lineNumber": 36
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "size",
+          "lineNumber": 39
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "static_cast<unsigned char>",
+          "lineNumber": 39
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "erase",
+          "lineNumber": 39
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "find_first_of",
+          "lineNumber": 42
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "erase",
+          "lineNumber": 43
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "Trim",
+          "lineNumber": 44
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "empty",
+          "lineNumber": 45
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "front",
+          "lineNumber": 47
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "find",
+          "lineNumber": 49
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "std::format",
+          "lineNumber": 50
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "Lower",
+          "lineNumber": 51
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "Trim",
+          "lineNumber": 51
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "substr",
+          "lineNumber": 51
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "find",
+          "lineNumber": 54
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "std::format",
+          "lineNumber": 55
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "Lower",
+          "lineNumber": 56
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "Trim",
+          "lineNumber": 56
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "substr",
+          "lineNumber": 56
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "Trim",
+          "lineNumber": 57
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "substr",
+          "lineNumber": 57
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "empty",
+          "lineNumber": 58
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "std::format",
+          "lineNumber": 58
+        },
+        {
+          "caller": "LoadFromFile",
+          "callee": "empty",
+          "lineNumber": 59
+        },
+        {
+          "caller": "Set",
+          "callee": "Lower",
+          "lineNumber": 66
+        },
+        {
+          "caller": "Has",
+          "callee": "find",
+          "lineNumber": 71
+        },
+        {
+          "caller": "Has",
+          "callee": "Lower",
+          "lineNumber": 71
+        },
+        {
+          "caller": "Has",
+          "callee": "end",
+          "lineNumber": 71
+        },
+        {
+          "caller": "GetString",
+          "callee": "find",
+          "lineNumber": 76
+        },
+        {
+          "caller": "GetString",
+          "callee": "Lower",
+          "lineNumber": 76
+        },
+        {
+          "caller": "GetString",
+          "callee": "end",
+          "lineNumber": 77
+        },
+        {
+          "caller": "GetInt",
+          "callee": "find",
+          "lineNumber": 82
+        },
+        {
+          "caller": "GetInt",
+          "callee": "Lower",
+          "lineNumber": 82
+        },
+        {
+          "caller": "GetInt",
+          "callee": "end",
+          "lineNumber": 83
+        },
+        {
+          "caller": "GetInt",
+          "callee": "std::strtol",
+          "lineNumber": 85
+        },
+        {
+          "caller": "GetInt",
+          "callee": "c_str",
+          "lineNumber": 85
+        },
+        {
+          "caller": "GetInt",
+          "callee": "c_str",
+          "lineNumber": 86
+        },
+        {
+          "caller": "GetInt",
+          "callee": "static_cast<int>",
+          "lineNumber": 86
+        },
+        {
+          "caller": "GetFloat",
+          "callee": "find",
+          "lineNumber": 91
+        },
+        {
+          "caller": "GetFloat",
+          "callee": "Lower",
+          "lineNumber": 91
+        },
+        {
+          "caller": "GetFloat",
+          "callee": "end",
+          "lineNumber": 92
+        },
+        {
+          "caller": "GetFloat",
+          "callee": "std::strtof",
+          "lineNumber": 94
+        },
+        {
+          "caller": "GetFloat",
+          "callee": "c_str",
+          "lineNumber": 94
+        },
+        {
+          "caller": "GetFloat",
+          "callee": "c_str",
+          "lineNumber": 95
+        },
+        {
+          "caller": "GetBool",
+          "callee": "find",
+          "lineNumber": 100
+        },
+        {
+          "caller": "GetBool",
+          "callee": "Lower",
+          "lineNumber": 100
+        },
+        {
+          "caller": "GetBool",
+          "callee": "end",
+          "lineNumber": 101
+        },
+        {
+          "caller": "GetBool",
+          "callee": "Lower",
+          "lineNumber": 102
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 9,
+        "functionCount": 9,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Config.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 33,
+      "nonEmptyLines": 29,
+      "classes": [
+        {
+          "name": "Config",
+          "startLine": 13,
+          "endLine": 33,
+          "methods": [
+            "LoadFromFile",
+            "Set",
+            "Has",
+            "GetString",
+            "GetInt",
+            "GetFloat",
+            "GetBool"
+          ],
+          "properties": [
+            "m_path",
+            "m_errors",
+            "m_values"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "LoadFromFile",
+          "line": 16,
+          "isDefault": false
+        },
+        {
+          "name": "Set",
+          "line": 17,
+          "isDefault": false
+        },
+        {
+          "name": "Has",
+          "line": 19,
+          "isDefault": false
+        },
+        {
+          "name": "GetString",
+          "line": 20,
+          "isDefault": false
+        },
+        {
+          "name": "GetInt",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "GetFloat",
+          "line": 22,
+          "isDefault": false
+        },
+        {
+          "name": "GetBool",
+          "line": 23,
+          "isDefault": false
+        },
+        {
+          "name": "Config",
+          "line": 13,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 8,
+        "functionCount": 0,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Engine.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 142,
+      "nonEmptyLines": 127,
+      "functions": [
+        {
+          "name": "Engine",
+          "startLine": 12,
+          "endLine": 14,
+          "params": []
+        },
+        {
+          "name": "~Engine",
+          "startLine": 16,
+          "endLine": 19,
+          "params": []
+        },
+        {
+          "name": "Initialize",
+          "startLine": 21,
+          "endLine": 69,
+          "params": [
+            "config",
+            "desc"
+          ]
+        },
+        {
+          "name": "Shutdown",
+          "startLine": 71,
+          "endLine": 85,
+          "params": []
+        },
+        {
+          "name": "BeginFrame",
+          "startLine": 87,
+          "endLine": 93,
+          "params": []
+        },
+        {
+          "name": "Render",
+          "startLine": 95,
+          "endLine": 129,
+          "params": []
+        },
+        {
+          "name": "EndFrame",
+          "startLine": 131,
+          "endLine": 135,
+          "params": []
+        },
+        {
+          "name": "OnResize",
+          "startLine": 137,
+          "endLine": 142,
+          "params": [
+            "width",
+            "height"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Engine",
+          "line": 12,
+          "isDefault": false
+        },
+        {
+          "name": "~Engine",
+          "line": 16,
+          "isDefault": false
+        },
+        {
+          "name": "Initialize",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "Shutdown",
+          "line": 71,
+          "isDefault": false
+        },
+        {
+          "name": "BeginFrame",
+          "line": 87,
+          "isDefault": false
+        },
+        {
+          "name": "Render",
+          "line": 95,
+          "isDefault": false
+        },
+        {
+          "name": "EndFrame",
+          "line": 131,
+          "isDefault": false
+        },
+        {
+          "name": "OnResize",
+          "line": 137,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "~Engine",
+          "callee": "Shutdown",
+          "lineNumber": 18
+        },
+        {
+          "caller": "Initialize",
+          "callee": "GetString",
+          "lineNumber": 26
+        },
+        {
+          "caller": "Initialize",
+          "callee": "_stricmp",
+          "lineNumber": 27
+        },
+        {
+          "caller": "Initialize",
+          "callee": "c_str",
+          "lineNumber": 27
+        },
+        {
+          "caller": "Initialize",
+          "callee": "_stricmp",
+          "lineNumber": 28
+        },
+        {
+          "caller": "Initialize",
+          "callee": "c_str",
+          "lineNumber": 28
+        },
+        {
+          "caller": "Initialize",
+          "callee": "Log::Warn",
+          "lineNumber": 29
+        },
+        {
+          "caller": "Initialize",
+          "callee": "c_str",
+          "lineNumber": 29
+        },
+        {
+          "caller": "Initialize",
+          "callee": "GetBool",
+          "lineNumber": 35
+        },
+        {
+          "caller": "Initialize",
+          "callee": "RHI::CreateDevice",
+          "lineNumber": 36
+        },
+        {
+          "caller": "Initialize",
+          "callee": "Log::Error",
+          "lineNumber": 39
+        },
+        {
+          "caller": "Initialize",
+          "callee": "RHI::ToString",
+          "lineNumber": 39
+        },
+        {
+          "caller": "Initialize",
+          "callee": "SetVSync",
+          "lineNumber": 42
+        },
+        {
+          "caller": "Initialize",
+          "callee": "GetBool",
+          "lineNumber": 42
+        },
+        {
+          "caller": "Initialize",
+          "callee": "Initialize",
+          "lineNumber": 44
+        },
+        {
+          "caller": "Initialize",
+          "callee": "get",
+          "lineNumber": 44
+        },
+        {
+          "caller": "Initialize",
+          "callee": "Log::Error",
+          "lineNumber": 46
+        },
+        {
+          "caller": "Initialize",
+          "callee": "ImGui::GetCurrentContext",
+          "lineNumber": 51
+        },
+        {
+          "caller": "Initialize",
+          "callee": "InitImGui",
+          "lineNumber": 53
+        },
+        {
+          "caller": "Initialize",
+          "callee": "Log::Error",
+          "lineNumber": 55
+        },
+        {
+          "caller": "Initialize",
+          "callee": "SetLens",
+          "lineNumber": 61
+        },
+        {
+          "caller": "Initialize",
+          "callee": "static_cast<float>",
+          "lineNumber": 61
+        },
+        {
+          "caller": "Initialize",
+          "callee": "SetFixedStep",
+          "lineNumber": 62
+        },
+        {
+          "caller": "Initialize",
+          "callee": "GetFloat",
+          "lineNumber": 62
+        },
+        {
+          "caller": "Initialize",
+          "callee": "Reset",
+          "lineNumber": 63
+        },
+        {
+          "caller": "Initialize",
+          "callee": "Log::Info",
+          "lineNumber": 65
+        },
+        {
+          "caller": "Initialize",
+          "callee": "GetBackendName",
+          "lineNumber": 66
+        },
+        {
+          "caller": "Initialize",
+          "callee": "IsVSync",
+          "lineNumber": 66
+        },
+        {
+          "caller": "Initialize",
+          "callee": "GetFixedStep",
+          "lineNumber": 66
+        },
+        {
+          "caller": "Initialize",
+          "callee": "empty",
+          "lineNumber": 67
+        },
+        {
+          "caller": "Initialize",
+          "callee": "GetPath",
+          "lineNumber": 67
+        },
+        {
+          "caller": "Initialize",
+          "callee": "c_str",
+          "lineNumber": 67
+        },
+        {
+          "caller": "Initialize",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 67
+        },
+        {
+          "caller": "Initialize",
+          "callee": "c_str",
+          "lineNumber": 67
+        },
+        {
+          "caller": "Initialize",
+          "callee": "GetPath",
+          "lineNumber": 67
+        },
+        {
+          "caller": "Shutdown",
+          "callee": "InvalidateScene",
+          "lineNumber": 75
+        },
+        {
+          "caller": "Shutdown",
+          "callee": "Clear",
+          "lineNumber": 76
+        },
+        {
+          "caller": "Shutdown",
+          "callee": "Shutdown",
+          "lineNumber": 77
+        },
+        {
+          "caller": "Shutdown",
+          "callee": "ShutdownImGui",
+          "lineNumber": 80
+        },
+        {
+          "caller": "Shutdown",
+          "callee": "Clear",
+          "lineNumber": 83
+        },
+        {
+          "caller": "Shutdown",
+          "callee": "reset",
+          "lineNumber": 84
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "Tick",
+          "lineNumber": 89
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "Profiler::BeginFrame",
+          "lineNumber": 90
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "get",
+          "lineNumber": 90
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "NewFrameImGui",
+          "lineNumber": 91
+        },
+        {
+          "caller": "Render",
+          "callee": "BeginFrame",
+          "lineNumber": 100
+        },
+        {
+          "caller": "Render",
+          "callee": "GetCommandList",
+          "lineNumber": 101
+        },
+        {
+          "caller": "Render",
+          "callee": "Render",
+          "lineNumber": 106
+        },
+        {
+          "caller": "Render",
+          "callee": "GetTotalTime",
+          "lineNumber": 106
+        },
+        {
+          "caller": "Render",
+          "callee": "BeginUIPass",
+          "lineNumber": 111
+        },
+        {
+          "caller": "Render",
+          "callee": "RenderImGui",
+          "lineNumber": 112
+        },
+        {
+          "caller": "Render",
+          "callee": "EndUIPass",
+          "lineNumber": 113
+        },
+        {
+          "caller": "Render",
+          "callee": "empty",
+          "lineNumber": 116
+        },
+        {
+          "caller": "Render",
+          "callee": "RequestBackBufferReadback",
+          "lineNumber": 116
+        },
+        {
+          "caller": "Render",
+          "callee": "EndFrame",
+          "lineNumber": 119
+        },
+        {
+          "caller": "Render",
+          "callee": "empty",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Render",
+          "callee": "TakeReadbackResult",
+          "lineNumber": 125
+        },
+        {
+          "caller": "Render",
+          "callee": "Screenshot::SavePng",
+          "lineNumber": 125
+        },
+        {
+          "caller": "Render",
+          "callee": "Log::Error",
+          "lineNumber": 126
+        },
+        {
+          "caller": "Render",
+          "callee": "c_str",
+          "lineNumber": 126
+        },
+        {
+          "caller": "Render",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 126
+        },
+        {
+          "caller": "Render",
+          "callee": "c_str",
+          "lineNumber": 126
+        },
+        {
+          "caller": "Render",
+          "callee": "clear",
+          "lineNumber": 127
+        },
+        {
+          "caller": "EndFrame",
+          "callee": "EndFrame",
+          "lineNumber": 134
+        },
+        {
+          "caller": "OnResize",
+          "callee": "Resize",
+          "lineNumber": 140
+        },
+        {
+          "caller": "OnResize",
+          "callee": "SetAspectRatio",
+          "lineNumber": 141
+        },
+        {
+          "caller": "OnResize",
+          "callee": "static_cast<float>",
+          "lineNumber": 141
+        },
+        {
+          "caller": "OnResize",
+          "callee": "static_cast<float>",
+          "lineNumber": 141
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 8,
+        "functionCount": 8,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Engine.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 70,
+      "nonEmptyLines": 63,
+      "functions": [
+        {
+          "name": "IsInitialized",
+          "startLine": 35,
+          "endLine": 35,
+          "params": []
+        },
+        {
+          "name": "RequestScreenshot",
+          "startLine": 43,
+          "endLine": 43,
+          "params": [
+            "path"
+          ]
+        },
+        {
+          "name": "GetBackend",
+          "startLine": 54,
+          "endLine": 54,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "Engine",
+          "startLine": 20,
+          "endLine": 70,
+          "methods": [
+            "Initialize",
+            "Shutdown",
+            "IsInitialized",
+            "BeginFrame",
+            "Render",
+            "EndFrame",
+            "OnResize",
+            "RequestScreenshot",
+            "GetBackend"
+          ],
+          "properties": [
+            "m_config",
+            "m_backend",
+            "m_device",
+            "m_renderer",
+            "m_assets",
+            "m_scene",
+            "m_camera",
+            "m_input",
+            "m_time",
+            "m_imguiRendererReady",
+            "m_screenshotPath"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Initialize",
+          "line": 33,
+          "isDefault": false
+        },
+        {
+          "name": "Shutdown",
+          "line": 34,
+          "isDefault": false
+        },
+        {
+          "name": "IsInitialized",
+          "line": 35,
+          "isDefault": false
+        },
+        {
+          "name": "BeginFrame",
+          "line": 38,
+          "isDefault": false
+        },
+        {
+          "name": "Render",
+          "line": 39,
+          "isDefault": false
+        },
+        {
+          "name": "EndFrame",
+          "line": 40,
+          "isDefault": false
+        },
+        {
+          "name": "OnResize",
+          "line": 41,
+          "isDefault": false
+        },
+        {
+          "name": "RequestScreenshot",
+          "line": 43,
+          "isDefault": false
+        },
+        {
+          "name": "GetBackend",
+          "line": 54,
+          "isDefault": false
+        },
+        {
+          "name": "Engine",
+          "line": 20,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 10,
+        "functionCount": 3,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/EngineApi.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 23,
+      "nonEmptyLines": 21,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/GameTimer.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 134,
+      "nonEmptyLines": 110,
+      "functions": [
+        {
+          "name": "GameTimer",
+          "startLine": 10,
+          "endLine": 17,
+          "params": []
+        },
+        {
+          "name": "TotalTime",
+          "startLine": 21,
+          "endLine": 51,
+          "params": []
+        },
+        {
+          "name": "DeltaTime",
+          "startLine": 53,
+          "endLine": 56,
+          "params": []
+        },
+        {
+          "name": "DeltaTimeMS",
+          "startLine": 58,
+          "endLine": 61,
+          "params": []
+        },
+        {
+          "name": "Reset",
+          "startLine": 63,
+          "endLine": 72,
+          "params": []
+        },
+        {
+          "name": "Start",
+          "startLine": 74,
+          "endLine": 94,
+          "params": []
+        },
+        {
+          "name": "Stop",
+          "startLine": 96,
+          "endLine": 106,
+          "params": []
+        },
+        {
+          "name": "Tick",
+          "startLine": 108,
+          "endLine": 133,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "GameTimer",
+          "line": 10,
+          "isDefault": false
+        },
+        {
+          "name": "TotalTime",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "DeltaTime",
+          "line": 53,
+          "isDefault": false
+        },
+        {
+          "name": "DeltaTimeMS",
+          "line": 58,
+          "isDefault": false
+        },
+        {
+          "name": "Reset",
+          "line": 63,
+          "isDefault": false
+        },
+        {
+          "name": "Start",
+          "line": 74,
+          "isDefault": false
+        },
+        {
+          "name": "Stop",
+          "line": 96,
+          "isDefault": false
+        },
+        {
+          "name": "Tick",
+          "line": 108,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "GameTimer",
+          "callee": "QueryPerformanceFrequency",
+          "lineNumber": 15
+        },
+        {
+          "caller": "Reset",
+          "callee": "QueryPerformanceCounter",
+          "lineNumber": 66
+        },
+        {
+          "caller": "Start",
+          "callee": "QueryPerformanceCounter",
+          "lineNumber": 77
+        },
+        {
+          "caller": "Stop",
+          "callee": "QueryPerformanceCounter",
+          "lineNumber": 101
+        },
+        {
+          "caller": "Tick",
+          "callee": "QueryPerformanceCounter",
+          "lineNumber": 117
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 8,
+        "functionCount": 8,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/GameTimer.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 36,
+      "nonEmptyLines": 27,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Input.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 104,
+      "nonEmptyLines": 89,
+      "functions": [
+        {
+          "name": "OnKeyDown",
+          "startLine": 5,
+          "endLine": 9,
+          "params": [
+            "vk"
+          ]
+        },
+        {
+          "name": "OnKeyUp",
+          "startLine": 11,
+          "endLine": 14,
+          "params": [
+            "vk"
+          ]
+        },
+        {
+          "name": "OnMouseButton",
+          "startLine": 16,
+          "endLine": 20,
+          "params": [
+            "button",
+            "down"
+          ]
+        },
+        {
+          "name": "OnMouseMove",
+          "startLine": 22,
+          "endLine": 33,
+          "params": [
+            "x",
+            "y"
+          ]
+        },
+        {
+          "name": "OnMouseWheel",
+          "startLine": 35,
+          "endLine": 38,
+          "params": [
+            "delta"
+          ]
+        },
+        {
+          "name": "OnFocusLost",
+          "startLine": 40,
+          "endLine": 48,
+          "params": []
+        },
+        {
+          "name": "OnCaptureLost",
+          "startLine": 50,
+          "endLine": 55,
+          "params": []
+        },
+        {
+          "name": "SetMousePositionSilently",
+          "startLine": 57,
+          "endLine": 62,
+          "params": [
+            "x",
+            "y"
+          ]
+        },
+        {
+          "name": "EndFrame",
+          "startLine": 64,
+          "endLine": 71,
+          "params": []
+        },
+        {
+          "name": "IsKeyDown",
+          "startLine": 73,
+          "endLine": 76,
+          "params": [
+            "vk"
+          ]
+        },
+        {
+          "name": "IsKeyPressed",
+          "startLine": 78,
+          "endLine": 81,
+          "params": [
+            "vk"
+          ]
+        },
+        {
+          "name": "IsKeyReleased",
+          "startLine": 83,
+          "endLine": 86,
+          "params": [
+            "vk"
+          ]
+        },
+        {
+          "name": "IsMouseDown",
+          "startLine": 88,
+          "endLine": 92,
+          "params": [
+            "button"
+          ]
+        },
+        {
+          "name": "IsMousePressed",
+          "startLine": 94,
+          "endLine": 98,
+          "params": [
+            "button"
+          ]
+        },
+        {
+          "name": "IsMouseReleased",
+          "startLine": 100,
+          "endLine": 104,
+          "params": [
+            "button"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "OnKeyDown",
+          "line": 5,
+          "isDefault": false
+        },
+        {
+          "name": "OnKeyUp",
+          "line": 11,
+          "isDefault": false
+        },
+        {
+          "name": "OnMouseButton",
+          "line": 16,
+          "isDefault": false
+        },
+        {
+          "name": "OnMouseMove",
+          "line": 22,
+          "isDefault": false
+        },
+        {
+          "name": "OnMouseWheel",
+          "line": 35,
+          "isDefault": false
+        },
+        {
+          "name": "OnFocusLost",
+          "line": 40,
+          "isDefault": false
+        },
+        {
+          "name": "OnCaptureLost",
+          "line": 50,
+          "isDefault": false
+        },
+        {
+          "name": "SetMousePositionSilently",
+          "line": 57,
+          "isDefault": false
+        },
+        {
+          "name": "EndFrame",
+          "line": 64,
+          "isDefault": false
+        },
+        {
+          "name": "IsKeyDown",
+          "line": 73,
+          "isDefault": false
+        },
+        {
+          "name": "IsKeyPressed",
+          "line": 78,
+          "isDefault": false
+        },
+        {
+          "name": "IsKeyReleased",
+          "line": 83,
+          "isDefault": false
+        },
+        {
+          "name": "IsMouseDown",
+          "line": 88,
+          "isDefault": false
+        },
+        {
+          "name": "IsMousePressed",
+          "line": 94,
+          "isDefault": false
+        },
+        {
+          "name": "IsMouseReleased",
+          "line": 100,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "OnMouseButton",
+          "callee": "static_cast<uint32_t>",
+          "lineNumber": 18
+        },
+        {
+          "caller": "OnFocusLost",
+          "callee": "std::memset",
+          "lineNumber": 42
+        },
+        {
+          "caller": "OnFocusLost",
+          "callee": "std::memset",
+          "lineNumber": 43
+        },
+        {
+          "caller": "OnCaptureLost",
+          "callee": "std::memset",
+          "lineNumber": 52
+        },
+        {
+          "caller": "EndFrame",
+          "callee": "std::memcpy",
+          "lineNumber": 66
+        },
+        {
+          "caller": "EndFrame",
+          "callee": "std::memcpy",
+          "lineNumber": 67
+        },
+        {
+          "caller": "IsMouseDown",
+          "callee": "static_cast<uint32_t>",
+          "lineNumber": 90
+        },
+        {
+          "caller": "IsMousePressed",
+          "callee": "static_cast<uint32_t>",
+          "lineNumber": 96
+        },
+        {
+          "caller": "IsMouseReleased",
+          "callee": "static_cast<uint32_t>",
+          "lineNumber": 102
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 15,
+        "functionCount": 15,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Input.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 76,
+      "nonEmptyLines": 66,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Log.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 263,
+      "nonEmptyLines": 237,
+      "functions": [
+        {
+          "name": "WriteToDebugger",
+          "startLine": 40,
+          "endLine": 49,
+          "params": [
+            "utf8"
+          ]
+        },
+        {
+          "name": "FormatV",
+          "startLine": 55,
+          "endLine": 66,
+          "params": [
+            "fmt",
+            "args"
+          ]
+        },
+        {
+          "name": "Now",
+          "startLine": 68,
+          "endLine": 74,
+          "params": [
+            "s"
+          ]
+        },
+        {
+          "name": "Emit",
+          "startLine": 87,
+          "endLine": 118,
+          "params": [
+            "level",
+            "fmt",
+            "args"
+          ]
+        },
+        {
+          "name": "SetupConsole",
+          "startLine": 121,
+          "endLine": 137,
+          "params": [
+            "allocIfNone"
+          ]
+        },
+        {
+          "name": "Init",
+          "startLine": 142,
+          "endLine": 145,
+          "params": []
+        },
+        {
+          "name": "Init",
+          "startLine": 147,
+          "endLine": 171,
+          "params": [
+            "desc"
+          ]
+        },
+        {
+          "name": "Shutdown",
+          "startLine": 173,
+          "endLine": 179,
+          "params": []
+        },
+        {
+          "name": "Debug",
+          "startLine": 181,
+          "endLine": 181,
+          "params": [
+            "fmt"
+          ]
+        },
+        {
+          "name": "Info",
+          "startLine": 182,
+          "endLine": 182,
+          "params": [
+            "fmt"
+          ]
+        },
+        {
+          "name": "Warn",
+          "startLine": 183,
+          "endLine": 183,
+          "params": [
+            "fmt"
+          ]
+        },
+        {
+          "name": "Error",
+          "startLine": 184,
+          "endLine": 184,
+          "params": [
+            "fmt"
+          ]
+        },
+        {
+          "name": "SetMinLevel",
+          "startLine": 186,
+          "endLine": 186,
+          "params": [
+            "level"
+          ]
+        },
+        {
+          "name": "GetMinLevel",
+          "startLine": 187,
+          "endLine": 187,
+          "params": []
+        },
+        {
+          "name": "ParseLevel",
+          "startLine": 200,
+          "endLine": 209,
+          "params": [
+            "text",
+            "out"
+          ]
+        },
+        {
+          "name": "CopyHistory",
+          "startLine": 211,
+          "endLine": 216,
+          "params": [
+            "out"
+          ]
+        },
+        {
+          "name": "ClearHistory",
+          "startLine": 218,
+          "endLine": 224,
+          "params": []
+        },
+        {
+          "name": "GetHistoryVersion",
+          "startLine": 226,
+          "endLine": 226,
+          "params": []
+        },
+        {
+          "name": "GetCount",
+          "startLine": 227,
+          "endLine": 227,
+          "params": [
+            "level"
+          ]
+        },
+        {
+          "name": "HasConsole",
+          "startLine": 229,
+          "endLine": 229,
+          "params": []
+        },
+        {
+          "name": "HrToString",
+          "startLine": 231,
+          "endLine": 251,
+          "params": [
+            "hr"
+          ]
+        },
+        {
+          "name": "ToUtf8",
+          "startLine": 253,
+          "endLine": 262,
+          "params": [
+            "wide"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "State",
+          "startLine": 16,
+          "endLine": 30,
+          "methods": [],
+          "properties": [
+            "mutex",
+            "minLevel",
+            "initialized",
+            "console",
+            "filePath",
+            "file",
+            "history",
+            "historyCapacity",
+            "historyVersion",
+            "counts",
+            "frequency",
+            "start"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "State",
+          "line": 16,
+          "isDefault": false
+        },
+        {
+          "name": "WriteToDebugger",
+          "line": 40,
+          "isDefault": false
+        },
+        {
+          "name": "FormatV",
+          "line": 55,
+          "isDefault": false
+        },
+        {
+          "name": "Now",
+          "line": 68,
+          "isDefault": false
+        },
+        {
+          "name": "Emit",
+          "line": 87,
+          "isDefault": false
+        },
+        {
+          "name": "SetupConsole",
+          "line": 121,
+          "isDefault": false
+        },
+        {
+          "name": "Init",
+          "line": 142,
+          "isDefault": false
+        },
+        {
+          "name": "Init",
+          "line": 147,
+          "isDefault": false
+        },
+        {
+          "name": "Shutdown",
+          "line": 173,
+          "isDefault": false
+        },
+        {
+          "name": "Debug",
+          "line": 181,
+          "isDefault": false
+        },
+        {
+          "name": "Info",
+          "line": 182,
+          "isDefault": false
+        },
+        {
+          "name": "Warn",
+          "line": 183,
+          "isDefault": false
+        },
+        {
+          "name": "Error",
+          "line": 184,
+          "isDefault": false
+        },
+        {
+          "name": "SetMinLevel",
+          "line": 186,
+          "isDefault": false
+        },
+        {
+          "name": "GetMinLevel",
+          "line": 187,
+          "isDefault": false
+        },
+        {
+          "name": "ParseLevel",
+          "line": 200,
+          "isDefault": false
+        },
+        {
+          "name": "CopyHistory",
+          "line": 211,
+          "isDefault": false
+        },
+        {
+          "name": "ClearHistory",
+          "line": 218,
+          "isDefault": false
+        },
+        {
+          "name": "GetHistoryVersion",
+          "line": 226,
+          "isDefault": false
+        },
+        {
+          "name": "GetCount",
+          "line": 227,
+          "isDefault": false
+        },
+        {
+          "name": "HasConsole",
+          "line": 229,
+          "isDefault": false
+        },
+        {
+          "name": "HrToString",
+          "line": 231,
+          "isDefault": false
+        },
+        {
+          "name": "ToUtf8",
+          "line": 253,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "WriteToDebugger",
+          "callee": "empty",
+          "lineNumber": 42
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "::MultiByteToWideChar",
+          "lineNumber": 43
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "c_str",
+          "lineNumber": 43
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "static_cast<int>",
+          "lineNumber": 43
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "size",
+          "lineNumber": 43
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "resize",
+          "lineNumber": 46
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "static_cast<size_t>",
+          "lineNumber": 46
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "::MultiByteToWideChar",
+          "lineNumber": 47
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "c_str",
+          "lineNumber": 47
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "static_cast<int>",
+          "lineNumber": 47
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "size",
+          "lineNumber": 47
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "::OutputDebugStringW",
+          "lineNumber": 48
+        },
+        {
+          "caller": "WriteToDebugger",
+          "callee": "c_str",
+          "lineNumber": 48
+        },
+        {
+          "caller": "FormatV",
+          "callee": "va_copy",
+          "lineNumber": 58
+        },
+        {
+          "caller": "FormatV",
+          "callee": "std::vsnprintf",
+          "lineNumber": 59
+        },
+        {
+          "caller": "FormatV",
+          "callee": "va_end",
+          "lineNumber": 60
+        },
+        {
+          "caller": "FormatV",
+          "callee": "std::string",
+          "lineNumber": 61
+        },
+        {
+          "caller": "FormatV",
+          "callee": "resize",
+          "lineNumber": 63
+        },
+        {
+          "caller": "FormatV",
+          "callee": "static_cast<size_t>",
+          "lineNumber": 63
+        },
+        {
+          "caller": "FormatV",
+          "callee": "std::vsnprintf",
+          "lineNumber": 64
+        },
+        {
+          "caller": "FormatV",
+          "callee": "static_cast<size_t>",
+          "lineNumber": 64
+        },
+        {
+          "caller": "Now",
+          "callee": "::QueryPerformanceCounter",
+          "lineNumber": 72
+        },
+        {
+          "caller": "Now",
+          "callee": "static_cast<double>",
+          "lineNumber": 73
+        },
+        {
+          "caller": "Now",
+          "callee": "static_cast<double>",
+          "lineNumber": 73
+        },
+        {
+          "caller": "Emit",
+          "callee": "S",
+          "lineNumber": 89
+        },
+        {
+          "caller": "Emit",
+          "callee": "FormatV",
+          "lineNumber": 92
+        },
+        {
+          "caller": "Emit",
+          "callee": "Now",
+          "lineNumber": 93
+        },
+        {
+          "caller": "Emit",
+          "callee": "std::string",
+          "lineNumber": 96
+        },
+        {
+          "caller": "Emit",
+          "callee": "Prefix",
+          "lineNumber": 96
+        },
+        {
+          "caller": "Emit",
+          "callee": "std::format",
+          "lineNumber": 97
+        },
+        {
+          "caller": "Emit",
+          "callee": "static_cast<int>",
+          "lineNumber": 100
+        },
+        {
+          "caller": "Emit",
+          "callee": "std::fputs",
+          "lineNumber": 103
+        },
+        {
+          "caller": "Emit",
+          "callee": "c_str",
+          "lineNumber": 103
+        },
+        {
+          "caller": "Emit",
+          "callee": "std::fflush",
+          "lineNumber": 104
+        },
+        {
+          "caller": "Emit",
+          "callee": "WriteToDebugger",
+          "lineNumber": 106
+        },
+        {
+          "caller": "Emit",
+          "callee": "is_open",
+          "lineNumber": 107
+        },
+        {
+          "caller": "Emit",
+          "callee": "flush",
+          "lineNumber": 110
+        },
+        {
+          "caller": "Emit",
+          "callee": "size",
+          "lineNumber": 114
+        },
+        {
+          "caller": "Emit",
+          "callee": "pop_front",
+          "lineNumber": 114
+        },
+        {
+          "caller": "Emit",
+          "callee": "push_back",
+          "lineNumber": 115
+        },
+        {
+          "caller": "SetupConsole",
+          "callee": "::GetStdHandle",
+          "lineNumber": 123
+        },
+        {
+          "caller": "SetupConsole",
+          "callee": "::AttachConsole",
+          "lineNumber": 127
+        },
+        {
+          "caller": "SetupConsole",
+          "callee": "::AllocConsole",
+          "lineNumber": 128
+        },
+        {
+          "caller": "SetupConsole",
+          "callee": "freopen_s",
+          "lineNumber": 131
+        },
+        {
+          "caller": "SetupConsole",
+          "callee": "freopen_s",
+          "lineNumber": 132
+        },
+        {
+          "caller": "SetupConsole",
+          "callee": "::SetConsoleOutputCP",
+          "lineNumber": 134
+        },
+        {
+          "caller": "SetupConsole",
+          "callee": "std::setvbuf",
+          "lineNumber": 135
+        },
+        {
+          "caller": "Init",
+          "callee": "Init",
+          "lineNumber": 144
+        },
+        {
+          "caller": "Init",
+          "callee": "S",
+          "lineNumber": 149
+        },
+        {
+          "caller": "Init",
+          "callee": "::QueryPerformanceFrequency",
+          "lineNumber": 151
+        },
+        {
+          "caller": "Init",
+          "callee": "::QueryPerformanceCounter",
+          "lineNumber": 152
+        },
+        {
+          "caller": "Init",
+          "callee": "SetupConsole",
+          "lineNumber": 155
+        },
+        {
+          "caller": "Init",
+          "callee": "empty",
+          "lineNumber": 156
+        },
+        {
+          "caller": "Init",
+          "callee": "find_last_of",
+          "lineNumber": 159
+        },
+        {
+          "caller": "Init",
+          "callee": "::CreateDirectoryW",
+          "lineNumber": 160
+        },
+        {
+          "caller": "Init",
+          "callee": "c_str",
+          "lineNumber": 160
+        },
+        {
+          "caller": "Init",
+          "callee": "substr",
+          "lineNumber": 160
+        },
+        {
+          "caller": "Init",
+          "callee": "open",
+          "lineNumber": 161
+        },
+        {
+          "caller": "Init",
+          "callee": "is_open",
+          "lineNumber": 162
+        },
+        {
+          "caller": "Init",
+          "callee": "empty",
+          "lineNumber": 169
+        },
+        {
+          "caller": "Init",
+          "callee": "Info",
+          "lineNumber": 169
+        },
+        {
+          "caller": "Init",
+          "callee": "c_str",
+          "lineNumber": 169
+        },
+        {
+          "caller": "Init",
+          "callee": "ToUtf8",
+          "lineNumber": 169
+        },
+        {
+          "caller": "Init",
+          "callee": "c_str",
+          "lineNumber": 169
+        },
+        {
+          "caller": "Init",
+          "callee": "empty",
+          "lineNumber": 170
+        },
+        {
+          "caller": "Init",
+          "callee": "Warn",
+          "lineNumber": 170
+        },
+        {
+          "caller": "Init",
+          "callee": "c_str",
+          "lineNumber": 170
+        },
+        {
+          "caller": "Init",
+          "callee": "ToUtf8",
+          "lineNumber": 170
+        },
+        {
+          "caller": "Init",
+          "callee": "c_str",
+          "lineNumber": 170
+        },
+        {
+          "caller": "Shutdown",
+          "callee": "S",
+          "lineNumber": 175
+        },
+        {
+          "caller": "Shutdown",
+          "callee": "is_open",
+          "lineNumber": 177
+        },
+        {
+          "caller": "Shutdown",
+          "callee": "close",
+          "lineNumber": 177
+        },
+        {
+          "caller": "Shutdown",
+          "callee": "clear",
+          "lineNumber": 178
+        },
+        {
+          "caller": "Debug",
+          "callee": "va_start",
+          "lineNumber": 181
+        },
+        {
+          "caller": "Debug",
+          "callee": "Emit",
+          "lineNumber": 181
+        },
+        {
+          "caller": "Debug",
+          "callee": "va_end",
+          "lineNumber": 181
+        },
+        {
+          "caller": "Info",
+          "callee": "va_start",
+          "lineNumber": 182
+        },
+        {
+          "caller": "Info",
+          "callee": "Emit",
+          "lineNumber": 182
+        },
+        {
+          "caller": "Info",
+          "callee": "va_end",
+          "lineNumber": 182
+        },
+        {
+          "caller": "Warn",
+          "callee": "va_start",
+          "lineNumber": 183
+        },
+        {
+          "caller": "Warn",
+          "callee": "Emit",
+          "lineNumber": 183
+        },
+        {
+          "caller": "Warn",
+          "callee": "va_end",
+          "lineNumber": 183
+        },
+        {
+          "caller": "Error",
+          "callee": "va_start",
+          "lineNumber": 184
+        },
+        {
+          "caller": "Error",
+          "callee": "Emit",
+          "lineNumber": 184
+        },
+        {
+          "caller": "Error",
+          "callee": "va_end",
+          "lineNumber": 184
+        },
+        {
+          "caller": "SetMinLevel",
+          "callee": "S",
+          "lineNumber": 186
+        },
+        {
+          "caller": "GetMinLevel",
+          "callee": "S",
+          "lineNumber": 187
+        },
+        {
+          "caller": "ParseLevel",
+          "callee": "static_cast<char>",
+          "lineNumber": 203
+        },
+        {
+          "caller": "ParseLevel",
+          "callee": "::tolower",
+          "lineNumber": 203
+        },
+        {
+          "caller": "ParseLevel",
+          "callee": "static_cast<unsigned char>",
+          "lineNumber": 203
+        },
+        {
+          "caller": "CopyHistory",
+          "callee": "S",
+          "lineNumber": 213
+        },
+        {
+          "caller": "CopyHistory",
+          "callee": "assign",
+          "lineNumber": 215
+        },
+        {
+          "caller": "CopyHistory",
+          "callee": "begin",
+          "lineNumber": 215
+        },
+        {
+          "caller": "CopyHistory",
+          "callee": "end",
+          "lineNumber": 215
+        },
+        {
+          "caller": "ClearHistory",
+          "callee": "S",
+          "lineNumber": 220
+        },
+        {
+          "caller": "ClearHistory",
+          "callee": "clear",
+          "lineNumber": 222
+        },
+        {
+          "caller": "GetHistoryVersion",
+          "callee": "S",
+          "lineNumber": 226
+        },
+        {
+          "caller": "GetCount",
+          "callee": "S",
+          "lineNumber": 227
+        },
+        {
+          "caller": "GetCount",
+          "callee": "static_cast<int>",
+          "lineNumber": 227
+        },
+        {
+          "caller": "HasConsole",
+          "callee": "S",
+          "lineNumber": 229
+        },
+        {
+          "caller": "HrToString",
+          "callee": "std::format",
+          "lineNumber": 234
+        },
+        {
+          "caller": "HrToString",
+          "callee": "static_cast<unsigned int>",
+          "lineNumber": 234
+        },
+        {
+          "caller": "HrToString",
+          "callee": "::FormatMessageW",
+          "lineNumber": 237
+        },
+        {
+          "caller": "HrToString",
+          "callee": "static_cast<DWORD>",
+          "lineNumber": 239
+        },
+        {
+          "caller": "HrToString",
+          "callee": "MAKELANGID",
+          "lineNumber": 239
+        },
+        {
+          "caller": "HrToString",
+          "callee": "reinterpret_cast<LPWSTR>",
+          "lineNumber": 240
+        },
+        {
+          "caller": "HrToString",
+          "callee": "ToUtf8",
+          "lineNumber": 244
+        },
+        {
+          "caller": "HrToString",
+          "callee": "empty",
+          "lineNumber": 246
+        },
+        {
+          "caller": "HrToString",
+          "callee": "back",
+          "lineNumber": 246
+        },
+        {
+          "caller": "HrToString",
+          "callee": "back",
+          "lineNumber": 246
+        },
+        {
+          "caller": "HrToString",
+          "callee": "pop_back",
+          "lineNumber": 246
+        },
+        {
+          "caller": "HrToString",
+          "callee": "empty",
+          "lineNumber": 247
+        },
+        {
+          "caller": "HrToString",
+          "callee": "::LocalFree",
+          "lineNumber": 249
+        },
+        {
+          "caller": "ToUtf8",
+          "callee": "std::string",
+          "lineNumber": 255
+        },
+        {
+          "caller": "ToUtf8",
+          "callee": "::WideCharToMultiByte",
+          "lineNumber": 256
+        },
+        {
+          "caller": "ToUtf8",
+          "callee": "std::string",
+          "lineNumber": 257
+        },
+        {
+          "caller": "ToUtf8",
+          "callee": "resize",
+          "lineNumber": 259
+        },
+        {
+          "caller": "ToUtf8",
+          "callee": "static_cast<size_t>",
+          "lineNumber": 259
+        },
+        {
+          "caller": "ToUtf8",
+          "callee": "::WideCharToMultiByte",
+          "lineNumber": 260
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 23,
+        "functionCount": 22,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Log.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 78,
+      "nonEmptyLines": 69,
+      "classes": [
+        {
+          "name": "Entry",
+          "startLine": 31,
+          "endLine": 36,
+          "methods": [],
+          "properties": [
+            "level",
+            "time",
+            "text"
+          ]
+        },
+        {
+          "name": "InitDesc",
+          "startLine": 38,
+          "endLine": 45,
+          "methods": [],
+          "properties": [
+            "console",
+            "allocConsole",
+            "filePath",
+            "minLevel",
+            "historyCapacity"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Entry",
+          "line": 31,
+          "isDefault": false
+        },
+        {
+          "name": "InitDesc",
+          "line": 38,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 0,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Paths.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 215,
+      "nonEmptyLines": 189,
+      "functions": [
+        {
+          "name": "QueryExecutableDir",
+          "startLine": 7,
+          "endLine": 24,
+          "params": []
+        },
+        {
+          "name": "Canonicalize",
+          "startLine": 27,
+          "endLine": 36,
+          "params": [
+            "path"
+          ]
+        },
+        {
+          "name": "FileExists",
+          "startLine": 38,
+          "endLine": 42,
+          "params": [
+            "path"
+          ]
+        },
+        {
+          "name": "DirectoryExists",
+          "startLine": 44,
+          "endLine": 48,
+          "params": [
+            "path"
+          ]
+        },
+        {
+          "name": "WithSlash",
+          "startLine": 50,
+          "endLine": 54,
+          "params": [
+            "dir"
+          ]
+        },
+        {
+          "name": "EnsureEngineRoot",
+          "startLine": 61,
+          "endLine": 76,
+          "params": []
+        },
+        {
+          "name": "PrefixRelative",
+          "startLine": 78,
+          "endLine": 84,
+          "params": [
+            "root",
+            "full"
+          ]
+        },
+        {
+          "name": "SetEngineRoot",
+          "startLine": 93,
+          "endLine": 100,
+          "params": [
+            "dir"
+          ]
+        },
+        {
+          "name": "HasEngineSourceTree",
+          "startLine": 108,
+          "endLine": 112,
+          "params": []
+        },
+        {
+          "name": "SetProjectRoot",
+          "startLine": 114,
+          "endLine": 117,
+          "params": [
+            "dir"
+          ]
+        },
+        {
+          "name": "HasProject",
+          "startLine": 124,
+          "endLine": 127,
+          "params": []
+        },
+        {
+          "name": "GetEngineAssetRoot",
+          "startLine": 129,
+          "endLine": 133,
+          "params": []
+        },
+        {
+          "name": "GetAssetRoot",
+          "startLine": 135,
+          "endLine": 139,
+          "params": []
+        },
+        {
+          "name": "GetShaderPath",
+          "startLine": 141,
+          "endLine": 165,
+          "params": [
+            "fileName"
+          ]
+        },
+        {
+          "name": "GetShaderBinaryPath",
+          "startLine": 167,
+          "endLine": 170,
+          "params": [
+            "fileName"
+          ]
+        },
+        {
+          "name": "GetShaderSourcePath",
+          "startLine": 172,
+          "endLine": 180,
+          "params": [
+            "fileName"
+          ]
+        },
+        {
+          "name": "GetAssetPath",
+          "startLine": 182,
+          "endLine": 195,
+          "params": [
+            "relative"
+          ]
+        },
+        {
+          "name": "GetSceneDir",
+          "startLine": 197,
+          "endLine": 202,
+          "params": []
+        },
+        {
+          "name": "ToAssetRelative",
+          "startLine": 204,
+          "endLine": 215,
+          "params": [
+            "absolute"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "QueryExecutableDir",
+          "line": 7,
+          "isDefault": false
+        },
+        {
+          "name": "Canonicalize",
+          "line": 27,
+          "isDefault": false
+        },
+        {
+          "name": "FileExists",
+          "line": 38,
+          "isDefault": false
+        },
+        {
+          "name": "DirectoryExists",
+          "line": 44,
+          "isDefault": false
+        },
+        {
+          "name": "WithSlash",
+          "line": 50,
+          "isDefault": false
+        },
+        {
+          "name": "EnsureEngineRoot",
+          "line": 61,
+          "isDefault": false
+        },
+        {
+          "name": "PrefixRelative",
+          "line": 78,
+          "isDefault": false
+        },
+        {
+          "name": "SetEngineRoot",
+          "line": 93,
+          "isDefault": false
+        },
+        {
+          "name": "HasEngineSourceTree",
+          "line": 108,
+          "isDefault": false
+        },
+        {
+          "name": "SetProjectRoot",
+          "line": 114,
+          "isDefault": false
+        },
+        {
+          "name": "HasProject",
+          "line": 124,
+          "isDefault": false
+        },
+        {
+          "name": "GetEngineAssetRoot",
+          "line": 129,
+          "isDefault": false
+        },
+        {
+          "name": "GetAssetRoot",
+          "line": 135,
+          "isDefault": false
+        },
+        {
+          "name": "GetShaderPath",
+          "line": 141,
+          "isDefault": false
+        },
+        {
+          "name": "GetShaderBinaryPath",
+          "line": 167,
+          "isDefault": false
+        },
+        {
+          "name": "GetShaderSourcePath",
+          "line": 172,
+          "isDefault": false
+        },
+        {
+          "name": "GetAssetPath",
+          "line": 182,
+          "isDefault": false
+        },
+        {
+          "name": "GetSceneDir",
+          "line": 197,
+          "isDefault": false
+        },
+        {
+          "name": "ToAssetRelative",
+          "line": 204,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "QueryExecutableDir",
+          "callee": "GetModuleFileNameW",
+          "lineNumber": 10
+        },
+        {
+          "caller": "QueryExecutableDir",
+          "callee": "Log::Error",
+          "lineNumber": 13
+        },
+        {
+          "caller": "QueryExecutableDir",
+          "callee": "find_last_of",
+          "lineNumber": 18
+        },
+        {
+          "caller": "QueryExecutableDir",
+          "callee": "substr",
+          "lineNumber": 23
+        },
+        {
+          "caller": "Canonicalize",
+          "callee": "GetFullPathNameW",
+          "lineNumber": 30
+        },
+        {
+          "caller": "Canonicalize",
+          "callee": "c_str",
+          "lineNumber": 30
+        },
+        {
+          "caller": "Canonicalize",
+          "callee": "std::wstring",
+          "lineNumber": 35
+        },
+        {
+          "caller": "FileExists",
+          "callee": "GetFileAttributesW",
+          "lineNumber": 40
+        },
+        {
+          "caller": "FileExists",
+          "callee": "c_str",
+          "lineNumber": 40
+        },
+        {
+          "caller": "DirectoryExists",
+          "callee": "GetFileAttributesW",
+          "lineNumber": 46
+        },
+        {
+          "caller": "DirectoryExists",
+          "callee": "c_str",
+          "lineNumber": 46
+        },
+        {
+          "caller": "WithSlash",
+          "callee": "empty",
+          "lineNumber": 52
+        },
+        {
+          "caller": "WithSlash",
+          "callee": "back",
+          "lineNumber": 52
+        },
+        {
+          "caller": "EnsureEngineRoot",
+          "callee": "empty",
+          "lineNumber": 63
+        },
+        {
+          "caller": "EnsureEngineRoot",
+          "callee": "Canonicalize",
+          "lineNumber": 65
+        },
+        {
+          "caller": "EnsureEngineRoot",
+          "callee": "Paths::GetExecutableDir",
+          "lineNumber": 65
+        },
+        {
+          "caller": "EnsureEngineRoot",
+          "callee": "FileExists",
+          "lineNumber": 66
+        },
+        {
+          "caller": "EnsureEngineRoot",
+          "callee": "Canonicalize",
+          "lineNumber": 68
+        },
+        {
+          "caller": "EnsureEngineRoot",
+          "callee": "Paths::GetExecutableDir",
+          "lineNumber": 68
+        },
+        {
+          "caller": "EnsureEngineRoot",
+          "callee": "Paths::GetExecutableDir",
+          "lineNumber": 73
+        },
+        {
+          "caller": "PrefixRelative",
+          "callee": "empty",
+          "lineNumber": 80
+        },
+        {
+          "caller": "PrefixRelative",
+          "callee": "size",
+          "lineNumber": 80
+        },
+        {
+          "caller": "PrefixRelative",
+          "callee": "size",
+          "lineNumber": 80
+        },
+        {
+          "caller": "PrefixRelative",
+          "callee": "_wcsnicmp",
+          "lineNumber": 80
+        },
+        {
+          "caller": "PrefixRelative",
+          "callee": "c_str",
+          "lineNumber": 80
+        },
+        {
+          "caller": "PrefixRelative",
+          "callee": "c_str",
+          "lineNumber": 80
+        },
+        {
+          "caller": "PrefixRelative",
+          "callee": "size",
+          "lineNumber": 80
+        },
+        {
+          "caller": "PrefixRelative",
+          "callee": "substr",
+          "lineNumber": 81
+        },
+        {
+          "caller": "PrefixRelative",
+          "callee": "size",
+          "lineNumber": 81
+        },
+        {
+          "caller": "SetEngineRoot",
+          "callee": "empty",
+          "lineNumber": 95
+        },
+        {
+          "caller": "SetEngineRoot",
+          "callee": "WithSlash",
+          "lineNumber": 96
+        },
+        {
+          "caller": "SetEngineRoot",
+          "callee": "Canonicalize",
+          "lineNumber": 96
+        },
+        {
+          "caller": "SetEngineRoot",
+          "callee": "DirectoryExists",
+          "lineNumber": 97
+        },
+        {
+          "caller": "SetEngineRoot",
+          "callee": "DirectoryExists",
+          "lineNumber": 97
+        },
+        {
+          "caller": "HasEngineSourceTree",
+          "callee": "EnsureEngineRoot",
+          "lineNumber": 110
+        },
+        {
+          "caller": "SetProjectRoot",
+          "callee": "empty",
+          "lineNumber": 116
+        },
+        {
+          "caller": "SetProjectRoot",
+          "callee": "WithSlash",
+          "lineNumber": 116
+        },
+        {
+          "caller": "SetProjectRoot",
+          "callee": "Canonicalize",
+          "lineNumber": 116
+        },
+        {
+          "caller": "HasProject",
+          "callee": "empty",
+          "lineNumber": 126
+        },
+        {
+          "caller": "GetEngineAssetRoot",
+          "callee": "GetEngineRoot",
+          "lineNumber": 131
+        },
+        {
+          "caller": "GetEngineAssetRoot",
+          "callee": "DirectoryExists",
+          "lineNumber": 132
+        },
+        {
+          "caller": "GetEngineAssetRoot",
+          "callee": "GetExecutableDir",
+          "lineNumber": 132
+        },
+        {
+          "caller": "GetAssetRoot",
+          "callee": "HasProject",
+          "lineNumber": 137
+        },
+        {
+          "caller": "GetAssetRoot",
+          "callee": "GetEngineAssetRoot",
+          "lineNumber": 138
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "GetExecutableDir",
+          "lineNumber": 143
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "FileExists",
+          "lineNumber": 144
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "GetEngineRoot",
+          "lineNumber": 151
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "FileExists",
+          "lineNumber": 152
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "Log::Warn",
+          "lineNumber": 158
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "c_str",
+          "lineNumber": 158
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 158
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "c_str",
+          "lineNumber": 158
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "Log::Error",
+          "lineNumber": 163
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "c_str",
+          "lineNumber": 163
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 163
+        },
+        {
+          "caller": "GetShaderPath",
+          "callee": "c_str",
+          "lineNumber": 163
+        },
+        {
+          "caller": "GetShaderBinaryPath",
+          "callee": "GetExecutableDir",
+          "lineNumber": 169
+        },
+        {
+          "caller": "GetShaderSourcePath",
+          "callee": "GetEngineRoot",
+          "lineNumber": 174
+        },
+        {
+          "caller": "GetShaderSourcePath",
+          "callee": "FileExists",
+          "lineNumber": 175
+        },
+        {
+          "caller": "GetShaderSourcePath",
+          "callee": "GetExecutableDir",
+          "lineNumber": 179
+        },
+        {
+          "caller": "GetAssetPath",
+          "callee": "FileExists",
+          "lineNumber": 184
+        },
+        {
+          "caller": "GetAssetPath",
+          "callee": "DirectoryExists",
+          "lineNumber": 184
+        },
+        {
+          "caller": "GetAssetPath",
+          "callee": "HasProject",
+          "lineNumber": 185
+        },
+        {
+          "caller": "GetAssetPath",
+          "callee": "exists",
+          "lineNumber": 188
+        },
+        {
+          "caller": "GetAssetPath",
+          "callee": "GetEngineAssetRoot",
+          "lineNumber": 190
+        },
+        {
+          "caller": "GetAssetPath",
+          "callee": "exists",
+          "lineNumber": 191
+        },
+        {
+          "caller": "GetAssetPath",
+          "callee": "GetExecutableDir",
+          "lineNumber": 192
+        },
+        {
+          "caller": "GetAssetPath",
+          "callee": "exists",
+          "lineNumber": 193
+        },
+        {
+          "caller": "GetAssetPath",
+          "callee": "HasProject",
+          "lineNumber": 194
+        },
+        {
+          "caller": "GetSceneDir",
+          "callee": "GetAssetRoot",
+          "lineNumber": 199
+        },
+        {
+          "caller": "GetSceneDir",
+          "callee": "CreateDirectoryW",
+          "lineNumber": 200
+        },
+        {
+          "caller": "GetSceneDir",
+          "callee": "c_str",
+          "lineNumber": 200
+        },
+        {
+          "caller": "ToAssetRelative",
+          "callee": "Canonicalize",
+          "lineNumber": 206
+        },
+        {
+          "caller": "ToAssetRelative",
+          "callee": "HasProject",
+          "lineNumber": 207
+        },
+        {
+          "caller": "ToAssetRelative",
+          "callee": "PrefixRelative",
+          "lineNumber": 209
+        },
+        {
+          "caller": "ToAssetRelative",
+          "callee": "empty",
+          "lineNumber": 210
+        },
+        {
+          "caller": "ToAssetRelative",
+          "callee": "PrefixRelative",
+          "lineNumber": 212
+        },
+        {
+          "caller": "ToAssetRelative",
+          "callee": "GetEngineAssetRoot",
+          "lineNumber": 212
+        },
+        {
+          "caller": "ToAssetRelative",
+          "callee": "empty",
+          "lineNumber": 213
+        },
+        {
+          "caller": "ToAssetRelative",
+          "callee": "PrefixRelative",
+          "lineNumber": 214
+        },
+        {
+          "caller": "ToAssetRelative",
+          "callee": "GetExecutableDir",
+          "lineNumber": 214
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 19,
+        "functionCount": 19,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Paths.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 55,
+      "nonEmptyLines": 47,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Profiler.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 177,
+      "nonEmptyLines": 162,
+      "functions": [
+        {
+          "name": "BeginFrame",
+          "startLine": 59,
+          "endLine": 108,
+          "params": [
+            "device"
+          ]
+        },
+        {
+          "name": "BeginCpu",
+          "startLine": 110,
+          "endLine": 120,
+          "params": [
+            "name"
+          ]
+        },
+        {
+          "name": "EndCpu",
+          "startLine": 122,
+          "endLine": 134,
+          "params": []
+        },
+        {
+          "name": "BeginGpu",
+          "startLine": 136,
+          "endLine": 155,
+          "params": [
+            "cmd",
+            "name"
+          ]
+        },
+        {
+          "name": "EndGpu",
+          "startLine": 157,
+          "endLine": 168,
+          "params": [
+            "cmd"
+          ]
+        },
+        {
+          "name": "GetGpuFrameNumber",
+          "startLine": 172,
+          "endLine": 172,
+          "params": []
+        },
+        {
+          "name": "GetCpuFrameMs",
+          "startLine": 173,
+          "endLine": 173,
+          "params": []
+        },
+        {
+          "name": "GetGpuFrameMs",
+          "startLine": 174,
+          "endLine": 174,
+          "params": []
+        },
+        {
+          "name": "IsEnabled",
+          "startLine": 175,
+          "endLine": 175,
+          "params": []
+        },
+        {
+          "name": "SetEnabled",
+          "startLine": 176,
+          "endLine": 176,
+          "params": [
+            "enabled"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "OpenCpu",
+          "startLine": 10,
+          "endLine": 15,
+          "methods": [],
+          "properties": [
+            "name",
+            "start",
+            "index"
+          ]
+        },
+        {
+          "name": "GpuRange",
+          "startLine": 17,
+          "endLine": 23,
+          "methods": [],
+          "properties": [
+            "name",
+            "beginSlot",
+            "endSlot",
+            "depth"
+          ]
+        },
+        {
+          "name": "State",
+          "startLine": 25,
+          "endLine": 47,
+          "methods": [],
+          "properties": [
+            "enabled",
+            "frequency",
+            "cpuCurrent",
+            "cpuLast",
+            "cpuOpen",
+            "gpuPending",
+            "gpuCurrent",
+            "gpuNextSlot",
+            "gpuDepth",
+            "gpuOpen",
+            "frameCounter",
+            "gpuLast",
+            "gpuLastFrame",
+            "cpuFrameMs",
+            "gpuFrameMs"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "OpenCpu",
+          "line": 10,
+          "isDefault": false
+        },
+        {
+          "name": "GpuRange",
+          "line": 17,
+          "isDefault": false
+        },
+        {
+          "name": "State",
+          "line": 25,
+          "isDefault": false
+        },
+        {
+          "name": "BeginFrame",
+          "line": 59,
+          "isDefault": false
+        },
+        {
+          "name": "BeginCpu",
+          "line": 110,
+          "isDefault": false
+        },
+        {
+          "name": "EndCpu",
+          "line": 122,
+          "isDefault": false
+        },
+        {
+          "name": "BeginGpu",
+          "line": 136,
+          "isDefault": false
+        },
+        {
+          "name": "EndGpu",
+          "line": 157,
+          "isDefault": false
+        },
+        {
+          "name": "GetGpuFrameNumber",
+          "line": 172,
+          "isDefault": false
+        },
+        {
+          "name": "GetCpuFrameMs",
+          "line": 173,
+          "isDefault": false
+        },
+        {
+          "name": "GetGpuFrameMs",
+          "line": 174,
+          "isDefault": false
+        },
+        {
+          "name": "IsEnabled",
+          "line": 175,
+          "isDefault": false
+        },
+        {
+          "name": "SetEnabled",
+          "line": 176,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "BeginFrame",
+          "callee": "S",
+          "lineNumber": 61
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "empty",
+          "lineNumber": 63
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "EndCpu",
+          "lineNumber": 63
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "swap",
+          "lineNumber": 64
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "clear",
+          "lineNumber": 65
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "empty",
+          "lineNumber": 70
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "push_back",
+          "lineNumber": 73
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "size",
+          "lineNumber": 74
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "erase",
+          "lineNumber": 74
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "begin",
+          "lineNumber": 74
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "clear",
+          "lineNumber": 76
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "clear",
+          "lineNumber": 77
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "GetTimestampResults",
+          "lineNumber": 84
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "size",
+          "lineNumber": 86
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "clear",
+          "lineNumber": 91
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "static_cast<float>",
+          "lineNumber": 97
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "static_cast<double>",
+          "lineNumber": 97
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "static_cast<double>",
+          "lineNumber": 97
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "push_back",
+          "lineNumber": 98
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "erase",
+          "lineNumber": 103
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "begin",
+          "lineNumber": 103
+        },
+        {
+          "caller": "BeginFrame",
+          "callee": "begin",
+          "lineNumber": 103
+        },
+        {
+          "caller": "BeginCpu",
+          "callee": "S",
+          "lineNumber": 112
+        },
+        {
+          "caller": "BeginCpu",
+          "callee": "QueryPerformanceCounter",
+          "lineNumber": 116
+        },
+        {
+          "caller": "BeginCpu",
+          "callee": "size",
+          "lineNumber": 117
+        },
+        {
+          "caller": "BeginCpu",
+          "callee": "push_back",
+          "lineNumber": 118
+        },
+        {
+          "caller": "BeginCpu",
+          "callee": "static_cast<uint32_t>",
+          "lineNumber": 118
+        },
+        {
+          "caller": "BeginCpu",
+          "callee": "size",
+          "lineNumber": 118
+        },
+        {
+          "caller": "BeginCpu",
+          "callee": "push_back",
+          "lineNumber": 119
+        },
+        {
+          "caller": "EndCpu",
+          "callee": "S",
+          "lineNumber": 124
+        },
+        {
+          "caller": "EndCpu",
+          "callee": "empty",
+          "lineNumber": 125
+        },
+        {
+          "caller": "EndCpu",
+          "callee": "back",
+          "lineNumber": 126
+        },
+        {
+          "caller": "EndCpu",
+          "callee": "pop_back",
+          "lineNumber": 127
+        },
+        {
+          "caller": "EndCpu",
+          "callee": "QueryPerformanceCounter",
+          "lineNumber": 129
+        },
+        {
+          "caller": "EndCpu",
+          "callee": "size",
+          "lineNumber": 130
+        },
+        {
+          "caller": "EndCpu",
+          "callee": "static_cast<float>",
+          "lineNumber": 132
+        },
+        {
+          "caller": "EndCpu",
+          "callee": "static_cast<double>",
+          "lineNumber": 132
+        },
+        {
+          "caller": "EndCpu",
+          "callee": "static_cast<double>",
+          "lineNumber": 132
+        },
+        {
+          "caller": "BeginGpu",
+          "callee": "S",
+          "lineNumber": 138
+        },
+        {
+          "caller": "BeginGpu",
+          "callee": "Log::Warn",
+          "lineNumber": 143
+        },
+        {
+          "caller": "BeginGpu",
+          "callee": "push_back",
+          "lineNumber": 144
+        },
+        {
+          "caller": "BeginGpu",
+          "callee": "WriteTimestamp",
+          "lineNumber": 152
+        },
+        {
+          "caller": "BeginGpu",
+          "callee": "push_back",
+          "lineNumber": 153
+        },
+        {
+          "caller": "BeginGpu",
+          "callee": "static_cast<uint32_t>",
+          "lineNumber": 153
+        },
+        {
+          "caller": "BeginGpu",
+          "callee": "size",
+          "lineNumber": 153
+        },
+        {
+          "caller": "BeginGpu",
+          "callee": "push_back",
+          "lineNumber": 154
+        },
+        {
+          "caller": "EndGpu",
+          "callee": "S",
+          "lineNumber": 159
+        },
+        {
+          "caller": "EndGpu",
+          "callee": "empty",
+          "lineNumber": 160
+        },
+        {
+          "caller": "EndGpu",
+          "callee": "back",
+          "lineNumber": 161
+        },
+        {
+          "caller": "EndGpu",
+          "callee": "pop_back",
+          "lineNumber": 162
+        },
+        {
+          "caller": "EndGpu",
+          "callee": "WriteTimestamp",
+          "lineNumber": 167
+        },
+        {
+          "caller": "GetGpuFrameNumber",
+          "callee": "S",
+          "lineNumber": 172
+        },
+        {
+          "caller": "GetCpuFrameMs",
+          "callee": "S",
+          "lineNumber": 173
+        },
+        {
+          "caller": "GetGpuFrameMs",
+          "callee": "S",
+          "lineNumber": 174
+        },
+        {
+          "caller": "IsEnabled",
+          "callee": "S",
+          "lineNumber": 175
+        },
+        {
+          "caller": "SetEnabled",
+          "callee": "S",
+          "lineNumber": 176
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 13,
+        "functionCount": 10,
+        "classCount": 3
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Profiler.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 72,
+      "nonEmptyLines": 63,
+      "functions": [
+        {
+          "name": "ProfileScope",
+          "startLine": 57,
+          "endLine": 57,
+          "params": [
+            "name"
+          ]
+        },
+        {
+          "name": "~ProfileScope",
+          "startLine": 58,
+          "endLine": 58,
+          "params": []
+        },
+        {
+          "name": "ProfileScope",
+          "startLine": 59,
+          "endLine": 59,
+          "params": []
+        },
+        {
+          "name": "GpuProfileScope",
+          "startLine": 66,
+          "endLine": 66,
+          "params": [
+            "cmd",
+            "name"
+          ]
+        },
+        {
+          "name": "~GpuProfileScope",
+          "startLine": 67,
+          "endLine": 67,
+          "params": []
+        },
+        {
+          "name": "GpuProfileScope",
+          "startLine": 68,
+          "endLine": 68,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "Device",
+          "startLine": 6,
+          "endLine": 6,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "CommandList",
+          "startLine": 6,
+          "endLine": 6,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "CpuSample",
+          "startLine": 19,
+          "endLine": 24,
+          "methods": [],
+          "properties": [
+            "name",
+            "milliseconds",
+            "depth"
+          ]
+        },
+        {
+          "name": "GpuSample",
+          "startLine": 26,
+          "endLine": 31,
+          "methods": [],
+          "properties": [
+            "name",
+            "milliseconds",
+            "depth"
+          ]
+        },
+        {
+          "name": "ProfileScope",
+          "startLine": 54,
+          "endLine": 61,
+          "methods": [
+            "ProfileScope",
+            "~ProfileScope",
+            "ProfileScope"
+          ],
+          "properties": []
+        },
+        {
+          "name": "GpuProfileScope",
+          "startLine": 63,
+          "endLine": 72,
+          "methods": [
+            "GpuProfileScope",
+            "~GpuProfileScope",
+            "GpuProfileScope"
+          ],
+          "properties": [
+            "m_cmd"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Device",
+          "line": 6,
+          "isDefault": false
+        },
+        {
+          "name": "CommandList",
+          "line": 6,
+          "isDefault": false
+        },
+        {
+          "name": "CpuSample",
+          "line": 19,
+          "isDefault": false
+        },
+        {
+          "name": "GpuSample",
+          "line": 26,
+          "isDefault": false
+        },
+        {
+          "name": "ProfileScope",
+          "line": 57,
+          "isDefault": false
+        },
+        {
+          "name": "~ProfileScope",
+          "line": 58,
+          "isDefault": false
+        },
+        {
+          "name": "ProfileScope",
+          "line": 59,
+          "isDefault": false
+        },
+        {
+          "name": "ProfileScope",
+          "line": 54,
+          "isDefault": false
+        },
+        {
+          "name": "GpuProfileScope",
+          "line": 66,
+          "isDefault": false
+        },
+        {
+          "name": "~GpuProfileScope",
+          "line": 67,
+          "isDefault": false
+        },
+        {
+          "name": "GpuProfileScope",
+          "line": 68,
+          "isDefault": false
+        },
+        {
+          "name": "GpuProfileScope",
+          "line": 63,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "ProfileScope",
+          "callee": "Profiler::BeginCpu",
+          "lineNumber": 57
+        },
+        {
+          "caller": "~ProfileScope",
+          "callee": "Profiler::EndCpu",
+          "lineNumber": 58
+        },
+        {
+          "caller": "GpuProfileScope",
+          "callee": "Profiler::BeginGpu",
+          "lineNumber": 66
+        },
+        {
+          "caller": "~GpuProfileScope",
+          "callee": "Profiler::EndGpu",
+          "lineNumber": 67
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 12,
+        "functionCount": 6,
+        "classCount": 6
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Project.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 138,
+      "nonEmptyLines": 127,
+      "functions": [
+        {
+          "name": "Wide",
+          "startLine": 14,
+          "endLine": 21,
+          "params": [
+            "utf8"
+          ]
+        },
+        {
+          "name": "WithSlash",
+          "startLine": 22,
+          "endLine": 27,
+          "params": [
+            "dir"
+          ]
+        },
+        {
+          "name": "IsValidName",
+          "startLine": 30,
+          "endLine": 36,
+          "params": [
+            "name"
+          ]
+        },
+        {
+          "name": "FindProjectFile",
+          "startLine": 38,
+          "endLine": 46,
+          "params": [
+            "dir"
+          ]
+        },
+        {
+          "name": "FindUpwards",
+          "startLine": 48,
+          "endLine": 59,
+          "params": [
+            "startDir",
+            "maxLevels"
+          ]
+        },
+        {
+          "name": "Load",
+          "startLine": 61,
+          "endLine": 89,
+          "params": [
+            "pathOrDir"
+          ]
+        },
+        {
+          "name": "Save",
+          "startLine": 91,
+          "endLine": 103,
+          "params": []
+        },
+        {
+          "name": "Create",
+          "startLine": 105,
+          "endLine": 123,
+          "params": [
+            "parentDir",
+            "name",
+            "engineRoot",
+            "out",
+            "error"
+          ]
+        },
+        {
+          "name": "GetFilePath",
+          "startLine": 125,
+          "endLine": 128,
+          "params": []
+        },
+        {
+          "name": "GetSolutionPath",
+          "startLine": 130,
+          "endLine": 133,
+          "params": []
+        },
+        {
+          "name": "GetScriptsProjectName",
+          "startLine": 135,
+          "endLine": 138,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "Wide",
+          "line": 14,
+          "isDefault": false
+        },
+        {
+          "name": "WithSlash",
+          "line": 22,
+          "isDefault": false
+        },
+        {
+          "name": "IsValidName",
+          "line": 30,
+          "isDefault": false
+        },
+        {
+          "name": "FindProjectFile",
+          "line": 38,
+          "isDefault": false
+        },
+        {
+          "name": "FindUpwards",
+          "line": 48,
+          "isDefault": false
+        },
+        {
+          "name": "Load",
+          "line": 61,
+          "isDefault": false
+        },
+        {
+          "name": "Save",
+          "line": 91,
+          "isDefault": false
+        },
+        {
+          "name": "Create",
+          "line": 105,
+          "isDefault": false
+        },
+        {
+          "name": "GetFilePath",
+          "line": 125,
+          "isDefault": false
+        },
+        {
+          "name": "GetSolutionPath",
+          "line": 130,
+          "isDefault": false
+        },
+        {
+          "name": "GetScriptsProjectName",
+          "line": 135,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "Wide",
+          "callee": "empty",
+          "lineNumber": 16
+        },
+        {
+          "caller": "Wide",
+          "callee": "MultiByteToWideChar",
+          "lineNumber": 17
+        },
+        {
+          "caller": "Wide",
+          "callee": "c_str",
+          "lineNumber": 17
+        },
+        {
+          "caller": "Wide",
+          "callee": "MultiByteToWideChar",
+          "lineNumber": 19
+        },
+        {
+          "caller": "Wide",
+          "callee": "c_str",
+          "lineNumber": 19
+        },
+        {
+          "caller": "WithSlash",
+          "callee": "empty",
+          "lineNumber": 25
+        },
+        {
+          "caller": "WithSlash",
+          "callee": "back",
+          "lineNumber": 25
+        },
+        {
+          "caller": "IsValidName",
+          "callee": "empty",
+          "lineNumber": 32
+        },
+        {
+          "caller": "IsValidName",
+          "callee": "size",
+          "lineNumber": 32
+        },
+        {
+          "caller": "IsValidName",
+          "callee": "std::isalpha",
+          "lineNumber": 33
+        },
+        {
+          "caller": "IsValidName",
+          "callee": "static_cast<unsigned char>",
+          "lineNumber": 33
+        },
+        {
+          "caller": "IsValidName",
+          "callee": "std::isalnum",
+          "lineNumber": 34
+        },
+        {
+          "caller": "IsValidName",
+          "callee": "static_cast<unsigned char>",
+          "lineNumber": 34
+        },
+        {
+          "caller": "FindProjectFile",
+          "callee": "fs::directory_iterator",
+          "lineNumber": 41
+        },
+        {
+          "caller": "FindProjectFile",
+          "callee": "is_regular_file",
+          "lineNumber": 43
+        },
+        {
+          "caller": "FindProjectFile",
+          "callee": "extension",
+          "lineNumber": 43
+        },
+        {
+          "caller": "FindProjectFile",
+          "callee": "path",
+          "lineNumber": 43
+        },
+        {
+          "caller": "FindProjectFile",
+          "callee": "wstring",
+          "lineNumber": 43
+        },
+        {
+          "caller": "FindProjectFile",
+          "callee": "path",
+          "lineNumber": 43
+        },
+        {
+          "caller": "FindUpwards",
+          "callee": "empty",
+          "lineNumber": 51
+        },
+        {
+          "caller": "FindUpwards",
+          "callee": "FindProjectFile",
+          "lineNumber": 53
+        },
+        {
+          "caller": "FindUpwards",
+          "callee": "wstring",
+          "lineNumber": 53
+        },
+        {
+          "caller": "FindUpwards",
+          "callee": "empty",
+          "lineNumber": 54
+        },
+        {
+          "caller": "FindUpwards",
+          "callee": "parent_path",
+          "lineNumber": 55
+        },
+        {
+          "caller": "FindUpwards",
+          "callee": "parent_path",
+          "lineNumber": 56
+        },
+        {
+          "caller": "Load",
+          "callee": "fs::is_directory",
+          "lineNumber": 65
+        },
+        {
+          "caller": "Load",
+          "callee": "FindProjectFile",
+          "lineNumber": 65
+        },
+        {
+          "caller": "Load",
+          "callee": "empty",
+          "lineNumber": 66
+        },
+        {
+          "caller": "Load",
+          "callee": "fs::is_regular_file",
+          "lineNumber": 66
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::Error",
+          "lineNumber": 68
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 68
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 68
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 68
+        },
+        {
+          "caller": "Load",
+          "callee": "nlohmann::json::parse",
+          "lineNumber": 73
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::Error",
+          "lineNumber": 76
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 76
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 76
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 76
+        },
+        {
+          "caller": "Load",
+          "callee": "what",
+          "lineNumber": 76
+        },
+        {
+          "caller": "Load",
+          "callee": "fs::weakly_canonical",
+          "lineNumber": 80
+        },
+        {
+          "caller": "Load",
+          "callee": "fs::absolute",
+          "lineNumber": 80
+        },
+        {
+          "caller": "Load",
+          "callee": "empty",
+          "lineNumber": 81
+        },
+        {
+          "caller": "Load",
+          "callee": "wstring",
+          "lineNumber": 81
+        },
+        {
+          "caller": "Load",
+          "callee": "WithSlash",
+          "lineNumber": 82
+        },
+        {
+          "caller": "Load",
+          "callee": "wstring",
+          "lineNumber": 82
+        },
+        {
+          "caller": "Load",
+          "callee": "parent_path",
+          "lineNumber": 82
+        },
+        {
+          "caller": "Load",
+          "callee": "fs::path",
+          "lineNumber": 82
+        },
+        {
+          "caller": "Load",
+          "callee": "value",
+          "lineNumber": 83
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 83
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 83
+        },
+        {
+          "caller": "Load",
+          "callee": "wstring",
+          "lineNumber": 83
+        },
+        {
+          "caller": "Load",
+          "callee": "stem",
+          "lineNumber": 83
+        },
+        {
+          "caller": "Load",
+          "callee": "fs::path",
+          "lineNumber": 83
+        },
+        {
+          "caller": "Load",
+          "callee": "value",
+          "lineNumber": 84
+        },
+        {
+          "caller": "Load",
+          "callee": "WithSlash",
+          "lineNumber": 85
+        },
+        {
+          "caller": "Load",
+          "callee": "Wide",
+          "lineNumber": 85
+        },
+        {
+          "caller": "Load",
+          "callee": "value",
+          "lineNumber": 85
+        },
+        {
+          "caller": "Load",
+          "callee": "empty",
+          "lineNumber": 86
+        },
+        {
+          "caller": "Load",
+          "callee": "fs::is_directory",
+          "lineNumber": 86
+        },
+        {
+          "caller": "Load",
+          "callee": "clear",
+          "lineNumber": 86
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::Info",
+          "lineNumber": 87
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 87
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 87
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 87
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 87
+        },
+        {
+          "caller": "Load",
+          "callee": "empty",
+          "lineNumber": 87
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 87
+        },
+        {
+          "caller": "Save",
+          "callee": "IsLoaded",
+          "lineNumber": 93
+        },
+        {
+          "caller": "Save",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 97
+        },
+        {
+          "caller": "Save",
+          "callee": "c_str",
+          "lineNumber": 97
+        },
+        {
+          "caller": "Save",
+          "callee": "GetFilePath",
+          "lineNumber": 99
+        },
+        {
+          "caller": "Save",
+          "callee": "dump",
+          "lineNumber": 101
+        },
+        {
+          "caller": "Create",
+          "callee": "IsValidName",
+          "lineNumber": 107
+        },
+        {
+          "caller": "Create",
+          "callee": "fs::path",
+          "lineNumber": 109
+        },
+        {
+          "caller": "Create",
+          "callee": "WithSlash",
+          "lineNumber": 109
+        },
+        {
+          "caller": "Create",
+          "callee": "Wide",
+          "lineNumber": 109
+        },
+        {
+          "caller": "Create",
+          "callee": "fs::exists",
+          "lineNumber": 110
+        },
+        {
+          "caller": "Create",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 110
+        },
+        {
+          "caller": "Create",
+          "callee": "c_str",
+          "lineNumber": 110
+        },
+        {
+          "caller": "Create",
+          "callee": "wstring",
+          "lineNumber": 110
+        },
+        {
+          "caller": "Create",
+          "callee": "fs::create_directories",
+          "lineNumber": 113
+        },
+        {
+          "caller": "Create",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 114
+        },
+        {
+          "caller": "Create",
+          "callee": "c_str",
+          "lineNumber": 114
+        },
+        {
+          "caller": "Create",
+          "callee": "wstring",
+          "lineNumber": 114
+        },
+        {
+          "caller": "Create",
+          "callee": "WithSlash",
+          "lineNumber": 117
+        },
+        {
+          "caller": "Create",
+          "callee": "wstring",
+          "lineNumber": 117
+        },
+        {
+          "caller": "Create",
+          "callee": "WithSlash",
+          "lineNumber": 119
+        },
+        {
+          "caller": "Create",
+          "callee": "Save",
+          "lineNumber": 120
+        },
+        {
+          "caller": "Create",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 120
+        },
+        {
+          "caller": "Create",
+          "callee": "c_str",
+          "lineNumber": 120
+        },
+        {
+          "caller": "Create",
+          "callee": "GetFilePath",
+          "lineNumber": 120
+        },
+        {
+          "caller": "Create",
+          "callee": "Log::Info",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Create",
+          "callee": "c_str",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Create",
+          "callee": "c_str",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Create",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Create",
+          "callee": "c_str",
+          "lineNumber": 121
+        },
+        {
+          "caller": "GetFilePath",
+          "callee": "Wide",
+          "lineNumber": 127
+        },
+        {
+          "caller": "GetSolutionPath",
+          "callee": "Wide",
+          "lineNumber": 132
+        },
+        {
+          "caller": "GetScriptsProjectName",
+          "callee": "Wide",
+          "lineNumber": 137
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 11,
+        "functionCount": 11,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/Project.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 46,
+      "nonEmptyLines": 40,
+      "functions": [
+        {
+          "name": "IsLoaded",
+          "startLine": 23,
+          "endLine": 23,
+          "params": []
+        },
+        {
+          "name": "GetAssetsDir",
+          "startLine": 34,
+          "endLine": 34,
+          "params": []
+        },
+        {
+          "name": "GetScriptsDir",
+          "startLine": 35,
+          "endLine": 35,
+          "params": []
+        },
+        {
+          "name": "GetBinariesDir",
+          "startLine": 36,
+          "endLine": 36,
+          "params": [
+            "configuration"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "Project",
+          "startLine": 16,
+          "endLine": 46,
+          "methods": [
+            "Load",
+            "Save",
+            "IsLoaded",
+            "Create",
+            "FindProjectFile",
+            "FindUpwards",
+            "IsValidName",
+            "GetFilePath",
+            "GetAssetsDir",
+            "GetScriptsDir",
+            "GetBinariesDir",
+            "GetSolutionPath",
+            "GetScriptsProjectName"
+          ],
+          "properties": [
+            "kExtension",
+            "startScene",
+            "engineRoot",
+            "m_name",
+            "m_root"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Load",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "Save",
+          "line": 22,
+          "isDefault": false
+        },
+        {
+          "name": "IsLoaded",
+          "line": 23,
+          "isDefault": false
+        },
+        {
+          "name": "Create",
+          "line": 26,
+          "isDefault": false
+        },
+        {
+          "name": "FindProjectFile",
+          "line": 27,
+          "isDefault": false
+        },
+        {
+          "name": "FindUpwards",
+          "line": 28,
+          "isDefault": false
+        },
+        {
+          "name": "IsValidName",
+          "line": 29,
+          "isDefault": false
+        },
+        {
+          "name": "GetFilePath",
+          "line": 33,
+          "isDefault": false
+        },
+        {
+          "name": "GetAssetsDir",
+          "line": 34,
+          "isDefault": false
+        },
+        {
+          "name": "GetScriptsDir",
+          "line": 35,
+          "isDefault": false
+        },
+        {
+          "name": "GetBinariesDir",
+          "line": 36,
+          "isDefault": false
+        },
+        {
+          "name": "GetSolutionPath",
+          "line": 37,
+          "isDefault": false
+        },
+        {
+          "name": "GetScriptsProjectName",
+          "line": 38,
+          "isDefault": false
+        },
+        {
+          "name": "Project",
+          "line": 16,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "IsLoaded",
+          "callee": "empty",
+          "lineNumber": 23
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 14,
+        "functionCount": 4,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/ScriptModule.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 146,
+      "nonEmptyLines": 133,
+      "functions": [
+        {
+          "name": "GetWriteTime",
+          "startLine": 13,
+          "endLine": 18,
+          "params": [
+            "path"
+          ]
+        },
+        {
+          "name": "Now",
+          "startLine": 20,
+          "endLine": 25,
+          "params": []
+        },
+        {
+          "name": "CleanOldCopies",
+          "startLine": 28,
+          "endLine": 36,
+          "params": [
+            "dir"
+          ]
+        },
+        {
+          "name": "~ScriptModule",
+          "startLine": 39,
+          "endLine": 43,
+          "params": []
+        },
+        {
+          "name": "GetDllPath",
+          "startLine": 54,
+          "endLine": 57,
+          "params": [
+            "project"
+          ]
+        },
+        {
+          "name": "CountScriptSources",
+          "startLine": 59,
+          "endLine": 68,
+          "params": [
+            "project"
+          ]
+        },
+        {
+          "name": "Load",
+          "startLine": 70,
+          "endLine": 123,
+          "params": [
+            "dllPath",
+            "copyBeforeLoad"
+          ]
+        },
+        {
+          "name": "Unload",
+          "startLine": 125,
+          "endLine": 137,
+          "params": []
+        },
+        {
+          "name": "HasNewerBuild",
+          "startLine": 139,
+          "endLine": 146,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "GetWriteTime",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "Now",
+          "line": 20,
+          "isDefault": false
+        },
+        {
+          "name": "CleanOldCopies",
+          "line": 28,
+          "isDefault": false
+        },
+        {
+          "name": "~ScriptModule",
+          "line": 39,
+          "isDefault": false
+        },
+        {
+          "name": "GetDllPath",
+          "line": 54,
+          "isDefault": false
+        },
+        {
+          "name": "CountScriptSources",
+          "line": 59,
+          "isDefault": false
+        },
+        {
+          "name": "Load",
+          "line": 70,
+          "isDefault": false
+        },
+        {
+          "name": "Unload",
+          "line": 125,
+          "isDefault": false
+        },
+        {
+          "name": "HasNewerBuild",
+          "line": 139,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "GetWriteTime",
+          "callee": "GetFileAttributesExW",
+          "lineNumber": 16
+        },
+        {
+          "caller": "GetWriteTime",
+          "callee": "c_str",
+          "lineNumber": 16
+        },
+        {
+          "caller": "GetWriteTime",
+          "callee": "static_cast<uint64_t>",
+          "lineNumber": 17
+        },
+        {
+          "caller": "Now",
+          "callee": "GetSystemTimeAsFileTime",
+          "lineNumber": 23
+        },
+        {
+          "caller": "Now",
+          "callee": "static_cast<uint64_t>",
+          "lineNumber": 24
+        },
+        {
+          "caller": "CleanOldCopies",
+          "callee": "fs::directory_iterator",
+          "lineNumber": 31
+        },
+        {
+          "caller": "CleanOldCopies",
+          "callee": "wstring",
+          "lineNumber": 33
+        },
+        {
+          "caller": "CleanOldCopies",
+          "callee": "extension",
+          "lineNumber": 33
+        },
+        {
+          "caller": "CleanOldCopies",
+          "callee": "path",
+          "lineNumber": 33
+        },
+        {
+          "caller": "CleanOldCopies",
+          "callee": "fs::remove",
+          "lineNumber": 34
+        },
+        {
+          "caller": "CleanOldCopies",
+          "callee": "path",
+          "lineNumber": 34
+        },
+        {
+          "caller": "GetDllPath",
+          "callee": "GetBinariesDir",
+          "lineNumber": 56
+        },
+        {
+          "caller": "GetDllPath",
+          "callee": "GetConfiguration",
+          "lineNumber": 56
+        },
+        {
+          "caller": "GetDllPath",
+          "callee": "std::wstring",
+          "lineNumber": 56
+        },
+        {
+          "caller": "GetDllPath",
+          "callee": "begin",
+          "lineNumber": 56
+        },
+        {
+          "caller": "GetDllPath",
+          "callee": "GetName",
+          "lineNumber": 56
+        },
+        {
+          "caller": "GetDllPath",
+          "callee": "end",
+          "lineNumber": 56
+        },
+        {
+          "caller": "GetDllPath",
+          "callee": "GetName",
+          "lineNumber": 56
+        },
+        {
+          "caller": "CountScriptSources",
+          "callee": "fs::recursive_directory_iterator",
+          "lineNumber": 63
+        },
+        {
+          "caller": "CountScriptSources",
+          "callee": "GetScriptsDir",
+          "lineNumber": 63
+        },
+        {
+          "caller": "CountScriptSources",
+          "callee": "is_regular_file",
+          "lineNumber": 65
+        },
+        {
+          "caller": "CountScriptSources",
+          "callee": "extension",
+          "lineNumber": 65
+        },
+        {
+          "caller": "CountScriptSources",
+          "callee": "path",
+          "lineNumber": 65
+        },
+        {
+          "caller": "Load",
+          "callee": "Unload",
+          "lineNumber": 72
+        },
+        {
+          "caller": "Load",
+          "callee": "clear",
+          "lineNumber": 74
+        },
+        {
+          "caller": "Load",
+          "callee": "GetFileAttributesW",
+          "lineNumber": 75
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 75
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 77
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 77
+        },
+        {
+          "caller": "Load",
+          "callee": "GetWriteTime",
+          "lineNumber": 86
+        },
+        {
+          "caller": "Load",
+          "callee": "parent_path",
+          "lineNumber": 90
+        },
+        {
+          "caller": "Load",
+          "callee": "fs::create_directories",
+          "lineNumber": 91
+        },
+        {
+          "caller": "Load",
+          "callee": "CleanOldCopies",
+          "lineNumber": 92
+        },
+        {
+          "caller": "Load",
+          "callee": "wstring",
+          "lineNumber": 93
+        },
+        {
+          "caller": "Load",
+          "callee": "stem",
+          "lineNumber": 93
+        },
+        {
+          "caller": "Load",
+          "callee": "std::to_wstring",
+          "lineNumber": 93
+        },
+        {
+          "caller": "Load",
+          "callee": "GetCurrentProcessId",
+          "lineNumber": 93
+        },
+        {
+          "caller": "Load",
+          "callee": "std::to_wstring",
+          "lineNumber": 93
+        },
+        {
+          "caller": "Load",
+          "callee": "fs::copy_file",
+          "lineNumber": 95
+        },
+        {
+          "caller": "Load",
+          "callee": "message",
+          "lineNumber": 97
+        },
+        {
+          "caller": "Load",
+          "callee": "BehaviourRegistry::GetTypeNames",
+          "lineNumber": 103
+        },
+        {
+          "caller": "Load",
+          "callee": "LoadLibraryW",
+          "lineNumber": 104
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 104
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::HrToString",
+          "lineNumber": 107
+        },
+        {
+          "caller": "Load",
+          "callee": "HRESULT_FROM_WIN32",
+          "lineNumber": 107
+        },
+        {
+          "caller": "Load",
+          "callee": "::GetLastError",
+          "lineNumber": 107
+        },
+        {
+          "caller": "Load",
+          "callee": "fs::remove",
+          "lineNumber": 108
+        },
+        {
+          "caller": "Load",
+          "callee": "wstring",
+          "lineNumber": 112
+        },
+        {
+          "caller": "Load",
+          "callee": "std::wstring",
+          "lineNumber": 112
+        },
+        {
+          "caller": "Load",
+          "callee": "BehaviourRegistry::GetTypeNames",
+          "lineNumber": 115
+        },
+        {
+          "caller": "Load",
+          "callee": "std::find",
+          "lineNumber": 117
+        },
+        {
+          "caller": "Load",
+          "callee": "begin",
+          "lineNumber": 117
+        },
+        {
+          "caller": "Load",
+          "callee": "end",
+          "lineNumber": 117
+        },
+        {
+          "caller": "Load",
+          "callee": "end",
+          "lineNumber": 117
+        },
+        {
+          "caller": "Load",
+          "callee": "push_back",
+          "lineNumber": 117
+        },
+        {
+          "caller": "Load",
+          "callee": "empty",
+          "lineNumber": 120
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::Info",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Load",
+          "callee": "size",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Unload",
+          "callee": "BehaviourRegistry::Unregister",
+          "lineNumber": 128
+        },
+        {
+          "caller": "Unload",
+          "callee": "FreeLibrary",
+          "lineNumber": 129
+        },
+        {
+          "caller": "Unload",
+          "callee": "static_cast<HMODULE>",
+          "lineNumber": 129
+        },
+        {
+          "caller": "Unload",
+          "callee": "empty",
+          "lineNumber": 132
+        },
+        {
+          "caller": "Unload",
+          "callee": "std::filesystem::remove",
+          "lineNumber": 132
+        },
+        {
+          "caller": "Unload",
+          "callee": "Log::Info",
+          "lineNumber": 133
+        },
+        {
+          "caller": "Unload",
+          "callee": "c_str",
+          "lineNumber": 133
+        },
+        {
+          "caller": "Unload",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 133
+        },
+        {
+          "caller": "Unload",
+          "callee": "c_str",
+          "lineNumber": 133
+        },
+        {
+          "caller": "Unload",
+          "callee": "size",
+          "lineNumber": 133
+        },
+        {
+          "caller": "Unload",
+          "callee": "clear",
+          "lineNumber": 134
+        },
+        {
+          "caller": "Unload",
+          "callee": "clear",
+          "lineNumber": 135
+        },
+        {
+          "caller": "HasNewerBuild",
+          "callee": "empty",
+          "lineNumber": 141
+        },
+        {
+          "caller": "HasNewerBuild",
+          "callee": "GetWriteTime",
+          "lineNumber": 142
+        },
+        {
+          "caller": "HasNewerBuild",
+          "callee": "Now",
+          "lineNumber": 145
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 9,
+        "functionCount": 9,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Core/ScriptModule.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 55,
+      "nonEmptyLines": 49,
+      "functions": [
+        {
+          "name": "ScriptModule",
+          "startLine": 23,
+          "endLine": 23,
+          "params": []
+        },
+        {
+          "name": "ScriptModule",
+          "startLine": 25,
+          "endLine": 25,
+          "params": []
+        },
+        {
+          "name": "IsLoaded",
+          "startLine": 39,
+          "endLine": 39,
+          "params": []
+        },
+        {
+          "name": "GetReloadCount",
+          "startLine": 44,
+          "endLine": 44,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "Project",
+          "startLine": 6,
+          "endLine": 6,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "ScriptModule",
+          "startLine": 20,
+          "endLine": 55,
+          "methods": [
+            "ScriptModule",
+            "ScriptModule",
+            "GetDllPath",
+            "CountScriptSources",
+            "Load",
+            "Unload",
+            "IsLoaded",
+            "HasNewerBuild",
+            "GetReloadCount"
+          ],
+          "properties": [
+            "GetConfiguration",
+            "m_module",
+            "m_path",
+            "m_loadedCopy",
+            "m_loadedWriteTime",
+            "m_triedWriteTime",
+            "m_typeNames",
+            "m_lastError",
+            "m_reloads"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Project",
+          "line": 6,
+          "isDefault": false
+        },
+        {
+          "name": "ScriptModule",
+          "line": 23,
+          "isDefault": false
+        },
+        {
+          "name": "ScriptModule",
+          "line": 25,
+          "isDefault": false
+        },
+        {
+          "name": "GetDllPath",
+          "line": 29,
+          "isDefault": false
+        },
+        {
+          "name": "CountScriptSources",
+          "line": 31,
+          "isDefault": false
+        },
+        {
+          "name": "Load",
+          "line": 35,
+          "isDefault": false
+        },
+        {
+          "name": "Unload",
+          "line": 37,
+          "isDefault": false
+        },
+        {
+          "name": "IsLoaded",
+          "line": 39,
+          "isDefault": false
+        },
+        {
+          "name": "HasNewerBuild",
+          "line": 43,
+          "isDefault": false
+        },
+        {
+          "name": "GetReloadCount",
+          "line": 44,
+          "isDefault": false
+        },
+        {
+          "name": "ScriptModule",
+          "line": 20,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 11,
+        "functionCount": 4,
+        "classCount": 2
+      }
+    }
+  ]
+}

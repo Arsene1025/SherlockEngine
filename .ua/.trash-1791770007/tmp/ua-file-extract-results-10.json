@@ -1,0 +1,6441 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 22,
+  "filesSkipped": [
+    "SherlockEngine/Shaders/BasicPixelShader.hlsl",
+    "SherlockEngine/Shaders/BasicVertexShader.hlsl",
+    "SherlockEngine/Shaders/Common.hlsli"
+  ],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 22,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 22,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "SherlockEngine/RHI/RenderPassTypes.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 95,
+      "nonEmptyLines": 86,
+      "classes": [
+        {
+          "name": "ColorAttachment",
+          "startLine": 28,
+          "endLine": 35,
+          "methods": [],
+          "properties": [
+            "texture",
+            "load",
+            "store",
+            "srgbView",
+            "clearColor"
+          ]
+        },
+        {
+          "name": "DepthAttachment",
+          "startLine": 37,
+          "endLine": 44,
+          "methods": [],
+          "properties": [
+            "texture",
+            "load",
+            "store",
+            "clearDepth",
+            "clearStencil"
+          ]
+        },
+        {
+          "name": "Viewport",
+          "startLine": 46,
+          "endLine": 54,
+          "methods": [],
+          "properties": [
+            "x",
+            "y",
+            "width",
+            "height",
+            "minDepth",
+            "maxDepth"
+          ]
+        },
+        {
+          "name": "RenderPassDesc",
+          "startLine": 56,
+          "endLine": 63,
+          "methods": [],
+          "properties": [
+            "colors",
+            "colorCount",
+            "depth",
+            "viewport",
+            "debugName"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "ColorAttachment",
+          "line": 28,
+          "isDefault": false
+        },
+        {
+          "name": "DepthAttachment",
+          "line": 37,
+          "isDefault": false
+        },
+        {
+          "name": "Viewport",
+          "line": 46,
+          "isDefault": false
+        },
+        {
+          "name": "RenderPassDesc",
+          "line": 56,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 4,
+        "functionCount": 0,
+        "classCount": 4
+      }
+    },
+    {
+      "path": "SherlockEngine/RHI/ResourceDesc.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 131,
+      "nonEmptyLines": 117,
+      "functions": [
+        {
+          "name": "GetArraySize",
+          "startLine": 70,
+          "endLine": 73,
+          "params": [
+            "desc"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "BufferDesc",
+          "startLine": 32,
+          "endLine": 39,
+          "methods": [],
+          "properties": [
+            "size",
+            "usage",
+            "bindFlags",
+            "stride",
+            "debugName"
+          ]
+        },
+        {
+          "name": "TextureDesc",
+          "startLine": 57,
+          "endLine": 67,
+          "methods": [],
+          "properties": [
+            "dimension",
+            "width",
+            "height",
+            "format",
+            "mipLevels",
+            "bindFlags",
+            "sampleCount",
+            "debugName"
+          ]
+        },
+        {
+          "name": "TextureSubresource",
+          "startLine": 79,
+          "endLine": 83,
+          "methods": [],
+          "properties": [
+            "data",
+            "rowPitch"
+          ]
+        },
+        {
+          "name": "SamplerDesc",
+          "startLine": 101,
+          "endLine": 113,
+          "methods": [],
+          "properties": [
+            "filter",
+            "addressU",
+            "addressV",
+            "addressW",
+            "maxAnisotropy",
+            "compareFunc",
+            "minLod",
+            "maxLod",
+            "borderColor",
+            "debugName"
+          ]
+        },
+        {
+          "name": "ShaderDesc",
+          "startLine": 115,
+          "endLine": 124,
+          "methods": [],
+          "properties": [
+            "stage",
+            "bytecode",
+            "debugName"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "BufferDesc",
+          "line": 32,
+          "isDefault": false
+        },
+        {
+          "name": "TextureDesc",
+          "line": 57,
+          "isDefault": false
+        },
+        {
+          "name": "GetArraySize",
+          "line": 70,
+          "isDefault": false
+        },
+        {
+          "name": "TextureSubresource",
+          "line": 79,
+          "isDefault": false
+        },
+        {
+          "name": "SamplerDesc",
+          "line": 101,
+          "isDefault": false
+        },
+        {
+          "name": "ShaderDesc",
+          "line": 115,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 6,
+        "functionCount": 1,
+        "classCount": 5
+      }
+    },
+    {
+      "path": "SherlockEngine/RHI/ResourcePool.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 105,
+      "nonEmptyLines": 94,
+      "callGraph": [
+        {
+          "caller": "Add",
+          "callee": "empty",
+          "lineNumber": 42
+        },
+        {
+          "caller": "Add",
+          "callee": "back",
+          "lineNumber": 44
+        },
+        {
+          "caller": "Add",
+          "callee": "pop_back",
+          "lineNumber": 45
+        },
+        {
+          "caller": "Add",
+          "callee": "static_cast<uint32_t>",
+          "lineNumber": 49
+        },
+        {
+          "caller": "Add",
+          "callee": "size",
+          "lineNumber": 49
+        },
+        {
+          "caller": "Add",
+          "callee": "emplace_back",
+          "lineNumber": 50
+        },
+        {
+          "caller": "Add",
+          "callee": "std::move",
+          "lineNumber": 54
+        },
+        {
+          "caller": "Remove",
+          "callee": "Get",
+          "lineNumber": 74
+        },
+        {
+          "caller": "Remove",
+          "callee": "push_back",
+          "lineNumber": 81
+        },
+        {
+          "caller": "Clear",
+          "callee": "clear",
+          "lineNumber": 86
+        },
+        {
+          "caller": "Clear",
+          "callee": "clear",
+          "lineNumber": 87
+        },
+        {
+          "caller": "AliveCount",
+          "callee": "size",
+          "lineNumber": 92
+        },
+        {
+          "caller": "AliveCount",
+          "callee": "size",
+          "lineNumber": 92
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/RHI/ShaderCompiler.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 52,
+      "nonEmptyLines": 46,
+      "classes": [
+        {
+          "name": "ReflectedBinding",
+          "startLine": 42,
+          "endLine": 47,
+          "methods": [],
+          "properties": [
+            "type",
+            "reg",
+            "name"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "ReflectedBinding",
+          "line": 42,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 1,
+        "functionCount": 0,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Behaviour.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 75,
+      "nonEmptyLines": 68,
+      "functions": [
+        {
+          "name": "Register",
+          "startLine": 33,
+          "endLine": 43,
+          "params": [
+            "typeName",
+            "factory",
+            "isScript"
+          ]
+        },
+        {
+          "name": "Unregister",
+          "startLine": 45,
+          "endLine": 48,
+          "params": [
+            "typeName"
+          ]
+        },
+        {
+          "name": "Create",
+          "startLine": 50,
+          "endLine": 59,
+          "params": [
+            "typeName"
+          ]
+        },
+        {
+          "name": "IsScript",
+          "startLine": 71,
+          "endLine": 75,
+          "params": [
+            "typeName"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "Entry",
+          "startLine": 15,
+          "endLine": 19,
+          "methods": [],
+          "properties": [
+            "factory",
+            "isScript"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Entry",
+          "line": 15,
+          "isDefault": false
+        },
+        {
+          "name": "Register",
+          "line": 33,
+          "isDefault": false
+        },
+        {
+          "name": "Unregister",
+          "line": 45,
+          "isDefault": false
+        },
+        {
+          "name": "Create",
+          "line": 50,
+          "isDefault": false
+        },
+        {
+          "name": "IsScript",
+          "line": 71,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "Register",
+          "callee": "try_emplace",
+          "lineNumber": 37
+        },
+        {
+          "caller": "Register",
+          "callee": "Entries",
+          "lineNumber": 37
+        },
+        {
+          "caller": "Register",
+          "callee": "std::move",
+          "lineNumber": 37
+        },
+        {
+          "caller": "Register",
+          "callee": "Log::Warn",
+          "lineNumber": 39
+        },
+        {
+          "caller": "Register",
+          "callee": "clear",
+          "lineNumber": 42
+        },
+        {
+          "caller": "Register",
+          "callee": "Names",
+          "lineNumber": 42
+        },
+        {
+          "caller": "Unregister",
+          "callee": "erase",
+          "lineNumber": 47
+        },
+        {
+          "caller": "Unregister",
+          "callee": "Entries",
+          "lineNumber": 47
+        },
+        {
+          "caller": "Unregister",
+          "callee": "clear",
+          "lineNumber": 47
+        },
+        {
+          "caller": "Unregister",
+          "callee": "Names",
+          "lineNumber": 47
+        },
+        {
+          "caller": "Create",
+          "callee": "find",
+          "lineNumber": 52
+        },
+        {
+          "caller": "Create",
+          "callee": "Entries",
+          "lineNumber": 52
+        },
+        {
+          "caller": "Create",
+          "callee": "end",
+          "lineNumber": 53
+        },
+        {
+          "caller": "Create",
+          "callee": "Entries",
+          "lineNumber": 53
+        },
+        {
+          "caller": "Create",
+          "callee": "Log::Warn",
+          "lineNumber": 55
+        },
+        {
+          "caller": "Create",
+          "callee": "c_str",
+          "lineNumber": 55
+        },
+        {
+          "caller": "Create",
+          "callee": "factory",
+          "lineNumber": 58
+        },
+        {
+          "caller": "IsScript",
+          "callee": "find",
+          "lineNumber": 73
+        },
+        {
+          "caller": "IsScript",
+          "callee": "Entries",
+          "lineNumber": 73
+        },
+        {
+          "caller": "IsScript",
+          "callee": "end",
+          "lineNumber": 74
+        },
+        {
+          "caller": "IsScript",
+          "callee": "Entries",
+          "lineNumber": 74
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 5,
+        "functionCount": 4,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Behaviour.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 104,
+      "nonEmptyLines": 91,
+      "functions": [
+        {
+          "name": "~PropertyVisitor",
+          "startLine": 43,
+          "endLine": 43,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "GameObject",
+          "startLine": 9,
+          "endLine": 9,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "Transform",
+          "startLine": 10,
+          "endLine": 10,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "Scene",
+          "startLine": 11,
+          "endLine": 11,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "Input",
+          "startLine": 12,
+          "endLine": 12,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "Camera",
+          "startLine": 13,
+          "endLine": 13,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "PlayContext",
+          "startLine": 29,
+          "endLine": 36,
+          "methods": [],
+          "properties": [
+            "scene",
+            "input",
+            "camera",
+            "totalTime",
+            "cameraDriven"
+          ]
+        },
+        {
+          "name": "PropertyVisitor",
+          "startLine": 40,
+          "endLine": 49,
+          "methods": [
+            "~PropertyVisitor",
+            "Float",
+            "Int",
+            "Bool",
+            "Float3",
+            "String"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "GameObject",
+          "line": 9,
+          "isDefault": false
+        },
+        {
+          "name": "Transform",
+          "line": 10,
+          "isDefault": false
+        },
+        {
+          "name": "Scene",
+          "line": 11,
+          "isDefault": false
+        },
+        {
+          "name": "Input",
+          "line": 12,
+          "isDefault": false
+        },
+        {
+          "name": "Camera",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "PlayContext",
+          "line": 29,
+          "isDefault": false
+        },
+        {
+          "name": "~PropertyVisitor",
+          "line": 43,
+          "isDefault": false
+        },
+        {
+          "name": "Float",
+          "line": 44,
+          "isDefault": false
+        },
+        {
+          "name": "Int",
+          "line": 45,
+          "isDefault": false
+        },
+        {
+          "name": "Bool",
+          "line": 46,
+          "isDefault": false
+        },
+        {
+          "name": "Float3",
+          "line": 47,
+          "isDefault": false
+        },
+        {
+          "name": "String",
+          "line": 48,
+          "isDefault": false
+        },
+        {
+          "name": "PropertyVisitor",
+          "line": 40,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 13,
+        "functionCount": 1,
+        "classCount": 7
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Camera.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 233,
+      "nonEmptyLines": 203,
+      "functions": [
+        {
+          "name": "WrapAngle",
+          "startLine": 20,
+          "endLine": 28,
+          "params": [
+            "angle"
+          ]
+        },
+        {
+          "name": "ClampPitch",
+          "startLine": 34,
+          "endLine": 39,
+          "params": [
+            "pitch"
+          ]
+        },
+        {
+          "name": "Camera",
+          "startLine": 42,
+          "endLine": 58,
+          "params": []
+        },
+        {
+          "name": "SetPosition",
+          "startLine": 60,
+          "endLine": 64,
+          "params": [
+            "position"
+          ]
+        },
+        {
+          "name": "SetYawPitch",
+          "startLine": 66,
+          "endLine": 71,
+          "params": [
+            "yaw",
+            "pitch"
+          ]
+        },
+        {
+          "name": "SetRotation",
+          "startLine": 73,
+          "endLine": 83,
+          "params": [
+            "rotation"
+          ]
+        },
+        {
+          "name": "GetYaw",
+          "startLine": 85,
+          "endLine": 91,
+          "params": []
+        },
+        {
+          "name": "GetPitch",
+          "startLine": 93,
+          "endLine": 98,
+          "params": []
+        },
+        {
+          "name": "GetRoll",
+          "startLine": 100,
+          "endLine": 111,
+          "params": []
+        },
+        {
+          "name": "Rotate",
+          "startLine": 113,
+          "endLine": 116,
+          "params": [
+            "deltaYaw",
+            "deltaPitch"
+          ]
+        },
+        {
+          "name": "Move",
+          "startLine": 118,
+          "endLine": 126,
+          "params": [
+            "forward",
+            "right",
+            "up"
+          ]
+        },
+        {
+          "name": "SetLookAt",
+          "startLine": 128,
+          "endLine": 138,
+          "params": [
+            "eye",
+            "target"
+          ]
+        },
+        {
+          "name": "GetForward",
+          "startLine": 140,
+          "endLine": 143,
+          "params": []
+        },
+        {
+          "name": "GetRight",
+          "startLine": 145,
+          "endLine": 148,
+          "params": []
+        },
+        {
+          "name": "GetUp",
+          "startLine": 150,
+          "endLine": 153,
+          "params": []
+        },
+        {
+          "name": "SetLens",
+          "startLine": 155,
+          "endLine": 162,
+          "params": [
+            "fovY",
+            "aspect",
+            "zn",
+            "zf"
+          ]
+        },
+        {
+          "name": "SetAspectRatio",
+          "startLine": 164,
+          "endLine": 168,
+          "params": [
+            "aspect"
+          ]
+        },
+        {
+          "name": "SetUsePerspectiveProjection",
+          "startLine": 170,
+          "endLine": 174,
+          "params": [
+            "usePerspective"
+          ]
+        },
+        {
+          "name": "GetViewMatrix",
+          "startLine": 176,
+          "endLine": 179,
+          "params": []
+        },
+        {
+          "name": "GetProjectionMatrix",
+          "startLine": 181,
+          "endLine": 184,
+          "params": []
+        },
+        {
+          "name": "GetViewProjectionMatrix",
+          "startLine": 186,
+          "endLine": 189,
+          "params": []
+        },
+        {
+          "name": "UpdateViewMatrix",
+          "startLine": 191,
+          "endLine": 212,
+          "params": []
+        },
+        {
+          "name": "UpdateProjectionMatrix",
+          "startLine": 214,
+          "endLine": 233,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "WrapAngle",
+          "line": 20,
+          "isDefault": false
+        },
+        {
+          "name": "ClampPitch",
+          "line": 34,
+          "isDefault": false
+        },
+        {
+          "name": "Camera",
+          "line": 42,
+          "isDefault": false
+        },
+        {
+          "name": "SetPosition",
+          "line": 60,
+          "isDefault": false
+        },
+        {
+          "name": "SetYawPitch",
+          "line": 66,
+          "isDefault": false
+        },
+        {
+          "name": "SetRotation",
+          "line": 73,
+          "isDefault": false
+        },
+        {
+          "name": "GetYaw",
+          "line": 85,
+          "isDefault": false
+        },
+        {
+          "name": "GetPitch",
+          "line": 93,
+          "isDefault": false
+        },
+        {
+          "name": "GetRoll",
+          "line": 100,
+          "isDefault": false
+        },
+        {
+          "name": "Rotate",
+          "line": 113,
+          "isDefault": false
+        },
+        {
+          "name": "Move",
+          "line": 118,
+          "isDefault": false
+        },
+        {
+          "name": "SetLookAt",
+          "line": 128,
+          "isDefault": false
+        },
+        {
+          "name": "GetForward",
+          "line": 140,
+          "isDefault": false
+        },
+        {
+          "name": "GetRight",
+          "line": 145,
+          "isDefault": false
+        },
+        {
+          "name": "GetUp",
+          "line": 150,
+          "isDefault": false
+        },
+        {
+          "name": "SetLens",
+          "line": 155,
+          "isDefault": false
+        },
+        {
+          "name": "SetAspectRatio",
+          "line": 164,
+          "isDefault": false
+        },
+        {
+          "name": "SetUsePerspectiveProjection",
+          "line": 170,
+          "isDefault": false
+        },
+        {
+          "name": "GetViewMatrix",
+          "line": 176,
+          "isDefault": false
+        },
+        {
+          "name": "GetProjectionMatrix",
+          "line": 181,
+          "isDefault": false
+        },
+        {
+          "name": "GetViewProjectionMatrix",
+          "line": 186,
+          "isDefault": false
+        },
+        {
+          "name": "UpdateViewMatrix",
+          "line": 191,
+          "isDefault": false
+        },
+        {
+          "name": "UpdateProjectionMatrix",
+          "line": 214,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "Camera",
+          "callee": "XMStoreFloat4x4",
+          "lineNumber": 51
+        },
+        {
+          "caller": "Camera",
+          "callee": "XMMatrixIdentity",
+          "lineNumber": 51
+        },
+        {
+          "caller": "Camera",
+          "callee": "XMStoreFloat4x4",
+          "lineNumber": 52
+        },
+        {
+          "caller": "Camera",
+          "callee": "XMMatrixIdentity",
+          "lineNumber": 52
+        },
+        {
+          "caller": "Camera",
+          "callee": "XMStoreFloat4x4",
+          "lineNumber": 53
+        },
+        {
+          "caller": "Camera",
+          "callee": "XMMatrixIdentity",
+          "lineNumber": 53
+        },
+        {
+          "caller": "Camera",
+          "callee": "SetLookAt",
+          "lineNumber": 56
+        },
+        {
+          "caller": "Camera",
+          "callee": "XMFLOAT3",
+          "lineNumber": 56
+        },
+        {
+          "caller": "Camera",
+          "callee": "XMFLOAT3",
+          "lineNumber": 56
+        },
+        {
+          "caller": "Camera",
+          "callee": "UpdateProjectionMatrix",
+          "lineNumber": 57
+        },
+        {
+          "caller": "SetPosition",
+          "callee": "UpdateViewMatrix",
+          "lineNumber": 63
+        },
+        {
+          "caller": "SetYawPitch",
+          "callee": "XMStoreFloat4x4",
+          "lineNumber": 69
+        },
+        {
+          "caller": "SetYawPitch",
+          "callee": "XMMatrixRotationRollPitchYaw",
+          "lineNumber": 69
+        },
+        {
+          "caller": "SetYawPitch",
+          "callee": "ClampPitch",
+          "lineNumber": 69
+        },
+        {
+          "caller": "SetYawPitch",
+          "callee": "WrapAngle",
+          "lineNumber": 69
+        },
+        {
+          "caller": "SetYawPitch",
+          "callee": "UpdateViewMatrix",
+          "lineNumber": 70
+        },
+        {
+          "caller": "SetRotation",
+          "callee": "XMVectorSetW",
+          "lineNumber": 77
+        },
+        {
+          "caller": "SetRotation",
+          "callee": "XMVectorSetW",
+          "lineNumber": 78
+        },
+        {
+          "caller": "SetRotation",
+          "callee": "XMVectorSetW",
+          "lineNumber": 79
+        },
+        {
+          "caller": "SetRotation",
+          "callee": "XMVectorSet",
+          "lineNumber": 80
+        },
+        {
+          "caller": "SetRotation",
+          "callee": "XMStoreFloat4x4",
+          "lineNumber": 81
+        },
+        {
+          "caller": "SetRotation",
+          "callee": "UpdateViewMatrix",
+          "lineNumber": 82
+        },
+        {
+          "caller": "GetYaw",
+          "callee": "XMStoreFloat3",
+          "lineNumber": 89
+        },
+        {
+          "caller": "GetYaw",
+          "callee": "GetForward",
+          "lineNumber": 89
+        },
+        {
+          "caller": "GetYaw",
+          "callee": "atan2f",
+          "lineNumber": 90
+        },
+        {
+          "caller": "GetPitch",
+          "callee": "XMStoreFloat3",
+          "lineNumber": 96
+        },
+        {
+          "caller": "GetPitch",
+          "callee": "GetForward",
+          "lineNumber": 96
+        },
+        {
+          "caller": "GetPitch",
+          "callee": "asinf",
+          "lineNumber": 97
+        },
+        {
+          "caller": "GetPitch",
+          "callee": "std::clamp",
+          "lineNumber": 97
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "GetForward",
+          "lineNumber": 104
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "XMVectorSet",
+          "lineNumber": 105
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "fabsf",
+          "lineNumber": 106
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "XMVectorGetY",
+          "lineNumber": 106
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "XMVector3Normalize",
+          "lineNumber": 107
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "XMVector3Cross",
+          "lineNumber": 107
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "XMVector3Cross",
+          "lineNumber": 108
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "GetUp",
+          "lineNumber": 109
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "atan2f",
+          "lineNumber": 110
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "XMVectorGetX",
+          "lineNumber": 110
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "XMVector3Dot",
+          "lineNumber": 110
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "XMVectorGetX",
+          "lineNumber": 110
+        },
+        {
+          "caller": "GetRoll",
+          "callee": "XMVector3Dot",
+          "lineNumber": 110
+        },
+        {
+          "caller": "Rotate",
+          "callee": "SetYawPitch",
+          "lineNumber": 115
+        },
+        {
+          "caller": "Rotate",
+          "callee": "GetYaw",
+          "lineNumber": 115
+        },
+        {
+          "caller": "Rotate",
+          "callee": "GetPitch",
+          "lineNumber": 115
+        },
+        {
+          "caller": "Move",
+          "callee": "XMLoadFloat3",
+          "lineNumber": 120
+        },
+        {
+          "caller": "Move",
+          "callee": "GetForward",
+          "lineNumber": 121
+        },
+        {
+          "caller": "Move",
+          "callee": "GetRight",
+          "lineNumber": 122
+        },
+        {
+          "caller": "Move",
+          "callee": "XMVectorSet",
+          "lineNumber": 123
+        },
+        {
+          "caller": "Move",
+          "callee": "XMStoreFloat3",
+          "lineNumber": 124
+        },
+        {
+          "caller": "Move",
+          "callee": "UpdateViewMatrix",
+          "lineNumber": 125
+        },
+        {
+          "caller": "SetLookAt",
+          "callee": "XMVector3Normalize",
+          "lineNumber": 130
+        },
+        {
+          "caller": "SetLookAt",
+          "callee": "XMLoadFloat3",
+          "lineNumber": 130
+        },
+        {
+          "caller": "SetLookAt",
+          "callee": "XMLoadFloat3",
+          "lineNumber": 130
+        },
+        {
+          "caller": "SetLookAt",
+          "callee": "XMVectorGetX",
+          "lineNumber": 131
+        },
+        {
+          "caller": "SetLookAt",
+          "callee": "XMVectorGetY",
+          "lineNumber": 132
+        },
+        {
+          "caller": "SetLookAt",
+          "callee": "XMVectorGetZ",
+          "lineNumber": 133
+        },
+        {
+          "caller": "SetLookAt",
+          "callee": "SetYawPitch",
+          "lineNumber": 137
+        },
+        {
+          "caller": "SetLookAt",
+          "callee": "atan2f",
+          "lineNumber": 137
+        },
+        {
+          "caller": "SetLookAt",
+          "callee": "asinf",
+          "lineNumber": 137
+        },
+        {
+          "caller": "SetLookAt",
+          "callee": "std::clamp",
+          "lineNumber": 137
+        },
+        {
+          "caller": "GetForward",
+          "callee": "XMVector3TransformNormal",
+          "lineNumber": 142
+        },
+        {
+          "caller": "GetForward",
+          "callee": "XMVectorSet",
+          "lineNumber": 142
+        },
+        {
+          "caller": "GetForward",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 142
+        },
+        {
+          "caller": "GetRight",
+          "callee": "XMVector3TransformNormal",
+          "lineNumber": 147
+        },
+        {
+          "caller": "GetRight",
+          "callee": "XMVectorSet",
+          "lineNumber": 147
+        },
+        {
+          "caller": "GetRight",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 147
+        },
+        {
+          "caller": "GetUp",
+          "callee": "XMVector3TransformNormal",
+          "lineNumber": 152
+        },
+        {
+          "caller": "GetUp",
+          "callee": "XMVectorSet",
+          "lineNumber": 152
+        },
+        {
+          "caller": "GetUp",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 152
+        },
+        {
+          "caller": "SetLens",
+          "callee": "UpdateProjectionMatrix",
+          "lineNumber": 161
+        },
+        {
+          "caller": "SetAspectRatio",
+          "callee": "UpdateProjectionMatrix",
+          "lineNumber": 167
+        },
+        {
+          "caller": "SetUsePerspectiveProjection",
+          "callee": "UpdateProjectionMatrix",
+          "lineNumber": 173
+        },
+        {
+          "caller": "GetViewMatrix",
+          "callee": "XMLoadFloat4x4",
+          "lineNumber": 178
+        },
+        {
+          "caller": "GetProjectionMatrix",
+          "callee": "XMLoadFloat4x4",
+          "lineNumber": 183
+        },
+        {
+          "caller": "GetViewProjectionMatrix",
+          "callee": "GetViewMatrix",
+          "lineNumber": 188
+        },
+        {
+          "caller": "GetViewProjectionMatrix",
+          "callee": "GetProjectionMatrix",
+          "lineNumber": 188
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 197
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "XMMatrixTranslation",
+          "lineNumber": 197
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "XMMatrixInverse",
+          "lineNumber": 198
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "XMMatrixLookToLH",
+          "lineNumber": 203
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "XMLoadFloat3",
+          "lineNumber": 203
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "GetForward",
+          "lineNumber": 203
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "GetUp",
+          "lineNumber": 203
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "XMVectorAbs",
+          "lineNumber": 206
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "assert",
+          "lineNumber": 207
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "XMVector4LessOrEqual",
+          "lineNumber": 207
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "XMVectorReplicate",
+          "lineNumber": 207
+        },
+        {
+          "caller": "UpdateViewMatrix",
+          "callee": "XMStoreFloat4x4",
+          "lineNumber": 211
+        },
+        {
+          "caller": "UpdateProjectionMatrix",
+          "callee": "XMMatrixIdentity",
+          "lineNumber": 222
+        },
+        {
+          "caller": "UpdateProjectionMatrix",
+          "callee": "XMMatrixPerspectiveFovLH",
+          "lineNumber": 225
+        },
+        {
+          "caller": "UpdateProjectionMatrix",
+          "callee": "XMMatrixOrthographicLH",
+          "lineNumber": 229
+        },
+        {
+          "caller": "UpdateProjectionMatrix",
+          "callee": "XMStoreFloat4x4",
+          "lineNumber": 232
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 23,
+        "functionCount": 23,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Camera.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 89,
+      "nonEmptyLines": 78,
+      "callGraph": [
+        {
+          "caller": "GetRotationMatrix",
+          "callee": "DirectX::XMLoadFloat4x4",
+          "lineNumber": 41
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/CameraComponent.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 59,
+      "nonEmptyLines": 52,
+      "functions": [
+        {
+          "name": "Reflect",
+          "startLine": 8,
+          "endLine": 15,
+          "params": [
+            "v"
+          ]
+        },
+        {
+          "name": "GetPose",
+          "startLine": 17,
+          "endLine": 38,
+          "params": []
+        },
+        {
+          "name": "ApplyTo",
+          "startLine": 40,
+          "endLine": 46,
+          "params": [
+            "camera",
+            "applyLens"
+          ]
+        },
+        {
+          "name": "SetFromCamera",
+          "startLine": 48,
+          "endLine": 57,
+          "params": [
+            "camera"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Reflect",
+          "line": 8,
+          "isDefault": false
+        },
+        {
+          "name": "GetPose",
+          "line": 17,
+          "isDefault": false
+        },
+        {
+          "name": "ApplyTo",
+          "line": 40,
+          "isDefault": false
+        },
+        {
+          "name": "SetFromCamera",
+          "line": 48,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "Reflect",
+          "callee": "Float",
+          "lineNumber": 10
+        },
+        {
+          "caller": "Reflect",
+          "callee": "Float",
+          "lineNumber": 11
+        },
+        {
+          "caller": "Reflect",
+          "callee": "Float",
+          "lineNumber": 12
+        },
+        {
+          "caller": "Reflect",
+          "callee": "Int",
+          "lineNumber": 13
+        },
+        {
+          "caller": "Reflect",
+          "callee": "Float",
+          "lineNumber": 14
+        },
+        {
+          "caller": "GetPose",
+          "callee": "XMConvertToRadians",
+          "lineNumber": 20
+        },
+        {
+          "caller": "GetPose",
+          "callee": "GetOwner",
+          "lineNumber": 23
+        },
+        {
+          "caller": "GetPose",
+          "callee": "XMMatrixDecompose",
+          "lineNumber": 25
+        },
+        {
+          "caller": "GetPose",
+          "callee": "GetWorldMatrix",
+          "lineNumber": 25
+        },
+        {
+          "caller": "GetPose",
+          "callee": "XMStoreFloat3",
+          "lineNumber": 27
+        },
+        {
+          "caller": "GetPose",
+          "callee": "XMStoreFloat4",
+          "lineNumber": 28
+        },
+        {
+          "caller": "GetPose",
+          "callee": "XMQuaternionNormalize",
+          "lineNumber": 28
+        },
+        {
+          "caller": "GetPose",
+          "callee": "GetTransform",
+          "lineNumber": 33
+        },
+        {
+          "caller": "GetPose",
+          "callee": "GetPosition",
+          "lineNumber": 34
+        },
+        {
+          "caller": "GetPose",
+          "callee": "XMStoreFloat4",
+          "lineNumber": 35
+        },
+        {
+          "caller": "GetPose",
+          "callee": "XMQuaternionRotationMatrix",
+          "lineNumber": 35
+        },
+        {
+          "caller": "GetPose",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 35
+        },
+        {
+          "caller": "ApplyTo",
+          "callee": "GetPose",
+          "lineNumber": 42
+        },
+        {
+          "caller": "ApplyTo",
+          "callee": "SetPosition",
+          "lineNumber": 43
+        },
+        {
+          "caller": "ApplyTo",
+          "callee": "SetRotation",
+          "lineNumber": 44
+        },
+        {
+          "caller": "ApplyTo",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 44
+        },
+        {
+          "caller": "ApplyTo",
+          "callee": "SetLens",
+          "lineNumber": 45
+        },
+        {
+          "caller": "ApplyTo",
+          "callee": "GetAspect",
+          "lineNumber": 45
+        },
+        {
+          "caller": "SetFromCamera",
+          "callee": "GetOwner",
+          "lineNumber": 51
+        },
+        {
+          "caller": "SetFromCamera",
+          "callee": "GetPosition",
+          "lineNumber": 52
+        },
+        {
+          "caller": "SetFromCamera",
+          "callee": "SetWorldMatrix",
+          "lineNumber": 53
+        },
+        {
+          "caller": "SetFromCamera",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 53
+        },
+        {
+          "caller": "SetFromCamera",
+          "callee": "XMMatrixTranslation",
+          "lineNumber": 53
+        },
+        {
+          "caller": "SetFromCamera",
+          "callee": "XMConvertToDegrees",
+          "lineNumber": 54
+        },
+        {
+          "caller": "SetFromCamera",
+          "callee": "GetFovY",
+          "lineNumber": 54
+        },
+        {
+          "caller": "SetFromCamera",
+          "callee": "GetNearZ",
+          "lineNumber": 55
+        },
+        {
+          "caller": "SetFromCamera",
+          "callee": "GetFarZ",
+          "lineNumber": 56
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 4,
+        "functionCount": 4,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/CameraComponent.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 47,
+      "nonEmptyLines": 41,
+      "functions": [
+        {
+          "name": "GetRotationMatrix",
+          "startLine": 25,
+          "endLine": 25,
+          "params": []
+        }
+      ],
+      "classes": [
+        {
+          "name": "Camera",
+          "startLine": 5,
+          "endLine": 5,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "CameraPose",
+          "startLine": 19,
+          "endLine": 26,
+          "methods": [
+            "GetRotationMatrix"
+          ],
+          "properties": [
+            "position",
+            "rotation",
+            "fovY"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Camera",
+          "line": 5,
+          "isDefault": false
+        },
+        {
+          "name": "GetRotationMatrix",
+          "line": 25,
+          "isDefault": false
+        },
+        {
+          "name": "CameraPose",
+          "line": 19,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "GetRotationMatrix",
+          "callee": "DirectX::XMMatrixRotationQuaternion",
+          "lineNumber": 25
+        },
+        {
+          "caller": "GetRotationMatrix",
+          "callee": "DirectX::XMLoadFloat4",
+          "lineNumber": 25
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 3,
+        "functionCount": 1,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/GameObject.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 93,
+      "nonEmptyLines": 80,
+      "functions": [
+        {
+          "name": "IsDescendantOf",
+          "startLine": 7,
+          "endLine": 12,
+          "params": [
+            "ancestor"
+          ]
+        },
+        {
+          "name": "SetParent",
+          "startLine": 14,
+          "endLine": 33,
+          "params": [
+            "newParent",
+            "keepWorld"
+          ]
+        },
+        {
+          "name": "GetParentWorldMatrix",
+          "startLine": 35,
+          "endLine": 38,
+          "params": []
+        },
+        {
+          "name": "GetWorldMatrix",
+          "startLine": 40,
+          "endLine": 45,
+          "params": []
+        },
+        {
+          "name": "GetWorldPosition",
+          "startLine": 47,
+          "endLine": 52,
+          "params": []
+        },
+        {
+          "name": "SetWorldMatrix",
+          "startLine": 54,
+          "endLine": 59,
+          "params": [
+            "world"
+          ]
+        },
+        {
+          "name": "SetWorldPosition",
+          "startLine": 61,
+          "endLine": 72,
+          "params": [
+            "position"
+          ]
+        },
+        {
+          "name": "SetWorldRotation",
+          "startLine": 74,
+          "endLine": 81,
+          "params": [
+            "rotation"
+          ]
+        },
+        {
+          "name": "DetachFromHierarchy",
+          "startLine": 83,
+          "endLine": 93,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "IsDescendantOf",
+          "line": 7,
+          "isDefault": false
+        },
+        {
+          "name": "SetParent",
+          "line": 14,
+          "isDefault": false
+        },
+        {
+          "name": "GetParentWorldMatrix",
+          "line": 35,
+          "isDefault": false
+        },
+        {
+          "name": "GetWorldMatrix",
+          "line": 40,
+          "isDefault": false
+        },
+        {
+          "name": "GetWorldPosition",
+          "line": 47,
+          "isDefault": false
+        },
+        {
+          "name": "SetWorldMatrix",
+          "line": 54,
+          "isDefault": false
+        },
+        {
+          "name": "SetWorldPosition",
+          "line": 61,
+          "isDefault": false
+        },
+        {
+          "name": "SetWorldRotation",
+          "line": 74,
+          "isDefault": false
+        },
+        {
+          "name": "DetachFromHierarchy",
+          "line": 83,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "SetParent",
+          "callee": "IsDescendantOf",
+          "lineNumber": 17
+        },
+        {
+          "caller": "SetParent",
+          "callee": "GetWorldMatrix",
+          "lineNumber": 21
+        },
+        {
+          "caller": "SetParent",
+          "callee": "erase",
+          "lineNumber": 26
+        },
+        {
+          "caller": "SetParent",
+          "callee": "std::remove",
+          "lineNumber": 26
+        },
+        {
+          "caller": "SetParent",
+          "callee": "begin",
+          "lineNumber": 26
+        },
+        {
+          "caller": "SetParent",
+          "callee": "end",
+          "lineNumber": 26
+        },
+        {
+          "caller": "SetParent",
+          "callee": "end",
+          "lineNumber": 26
+        },
+        {
+          "caller": "SetParent",
+          "callee": "push_back",
+          "lineNumber": 29
+        },
+        {
+          "caller": "SetParent",
+          "callee": "SetWorldMatrix",
+          "lineNumber": 31
+        },
+        {
+          "caller": "GetParentWorldMatrix",
+          "callee": "GetWorldMatrix",
+          "lineNumber": 37
+        },
+        {
+          "caller": "GetParentWorldMatrix",
+          "callee": "XMMatrixIdentity",
+          "lineNumber": 37
+        },
+        {
+          "caller": "GetWorldMatrix",
+          "callee": "GetLocalMatrix",
+          "lineNumber": 43
+        },
+        {
+          "caller": "GetWorldMatrix",
+          "callee": "GetWorldMatrix",
+          "lineNumber": 44
+        },
+        {
+          "caller": "GetWorldPosition",
+          "callee": "XMStoreFloat3",
+          "lineNumber": 50
+        },
+        {
+          "caller": "GetWorldPosition",
+          "callee": "XMVector3TransformCoord",
+          "lineNumber": 50
+        },
+        {
+          "caller": "GetWorldPosition",
+          "callee": "XMVectorZero",
+          "lineNumber": 50
+        },
+        {
+          "caller": "GetWorldPosition",
+          "callee": "GetWorldMatrix",
+          "lineNumber": 50
+        },
+        {
+          "caller": "SetWorldMatrix",
+          "callee": "XMMatrixInverse",
+          "lineNumber": 57
+        },
+        {
+          "caller": "SetWorldMatrix",
+          "callee": "GetWorldMatrix",
+          "lineNumber": 57
+        },
+        {
+          "caller": "SetWorldMatrix",
+          "callee": "SetLocalMatrix",
+          "lineNumber": 58
+        },
+        {
+          "caller": "SetWorldPosition",
+          "callee": "HasPreTransform",
+          "lineNumber": 64
+        },
+        {
+          "caller": "SetWorldPosition",
+          "callee": "SetPosition",
+          "lineNumber": 66
+        },
+        {
+          "caller": "SetWorldPosition",
+          "callee": "GetWorldMatrix",
+          "lineNumber": 69
+        },
+        {
+          "caller": "SetWorldPosition",
+          "callee": "XMVectorSet",
+          "lineNumber": 70
+        },
+        {
+          "caller": "SetWorldPosition",
+          "callee": "SetWorldMatrix",
+          "lineNumber": 71
+        },
+        {
+          "caller": "SetWorldRotation",
+          "callee": "XMMatrixDecompose",
+          "lineNumber": 78
+        },
+        {
+          "caller": "SetWorldRotation",
+          "callee": "GetWorldMatrix",
+          "lineNumber": 78
+        },
+        {
+          "caller": "SetWorldRotation",
+          "callee": "XMMatrixScalingFromVector",
+          "lineNumber": 79
+        },
+        {
+          "caller": "SetWorldRotation",
+          "callee": "XMMatrixTranslationFromVector",
+          "lineNumber": 79
+        },
+        {
+          "caller": "SetWorldRotation",
+          "callee": "SetWorldMatrix",
+          "lineNumber": 80
+        },
+        {
+          "caller": "DetachFromHierarchy",
+          "callee": "erase",
+          "lineNumber": 88
+        },
+        {
+          "caller": "DetachFromHierarchy",
+          "callee": "std::remove",
+          "lineNumber": 88
+        },
+        {
+          "caller": "DetachFromHierarchy",
+          "callee": "begin",
+          "lineNumber": 88
+        },
+        {
+          "caller": "DetachFromHierarchy",
+          "callee": "end",
+          "lineNumber": 88
+        },
+        {
+          "caller": "DetachFromHierarchy",
+          "callee": "end",
+          "lineNumber": 88
+        },
+        {
+          "caller": "DetachFromHierarchy",
+          "callee": "clear",
+          "lineNumber": 92
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 9,
+        "functionCount": 9,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/GameObject.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 120,
+      "nonEmptyLines": 107,
+      "classes": [
+        {
+          "name": "Mesh",
+          "startLine": 10,
+          "endLine": 10,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "Material",
+          "startLine": 11,
+          "endLine": 11,
+          "methods": [],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "Mesh",
+          "line": 10,
+          "isDefault": false
+        },
+        {
+          "name": "Material",
+          "line": 11,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "SetSlotMaterials",
+          "callee": "std::move",
+          "lineNumber": 46
+        },
+        {
+          "caller": "RemoveBehaviour",
+          "callee": "size",
+          "lineNumber": 88
+        },
+        {
+          "caller": "RemoveBehaviour",
+          "callee": "erase",
+          "lineNumber": 88
+        },
+        {
+          "caller": "RemoveBehaviour",
+          "callee": "begin",
+          "lineNumber": 88
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 0,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Light.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 42,
+      "nonEmptyLines": 33,
+      "classes": [
+        {
+          "name": "LightData",
+          "startLine": 22,
+          "endLine": 40,
+          "methods": [],
+          "properties": [
+            "position",
+            "intensity",
+            "direction",
+            "range",
+            "color",
+            "type",
+            "attenuation",
+            "innerConeCos",
+            "outerConeCos",
+            "padding"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "LightData",
+          "line": 22,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 1,
+        "functionCount": 0,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Material.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 59,
+      "nonEmptyLines": 49,
+      "classes": [
+        {
+          "name": "Material",
+          "startLine": 24,
+          "endLine": 59,
+          "methods": [],
+          "properties": [
+            "name",
+            "baseColor",
+            "metallic",
+            "roughness",
+            "emissive",
+            "albedoTexture",
+            "albedoSrgb",
+            "sampler",
+            "uvScale",
+            "unlit",
+            "normalTexture",
+            "normalStrength",
+            "metallicRoughnessTexture",
+            "occlusionTexture",
+            "occlusionStrength",
+            "emissiveTexture",
+            "alphaCutoff",
+            "wireframe",
+            "doubleSided"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Material",
+          "line": 24,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 1,
+        "functionCount": 0,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Scene.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 325,
+      "nonEmptyLines": 296,
+      "functions": [
+        {
+          "name": "Scene",
+          "startLine": 12,
+          "endLine": 14,
+          "params": []
+        },
+        {
+          "name": "~Scene",
+          "startLine": 16,
+          "endLine": 18,
+          "params": []
+        },
+        {
+          "name": "AddModelImages",
+          "startLine": 41,
+          "endLine": 48,
+          "params": [
+            "model"
+          ]
+        },
+        {
+          "name": "Sphere",
+          "startLine": 50,
+          "endLine": 53,
+          "params": [
+            "radius",
+            "slices",
+            "stacks",
+            "color"
+          ]
+        },
+        {
+          "name": "Cube",
+          "startLine": 54,
+          "endLine": 57,
+          "params": [
+            "size",
+            "color"
+          ]
+        },
+        {
+          "name": "Plane",
+          "startLine": 58,
+          "endLine": 61,
+          "params": [
+            "width",
+            "depth",
+            "m",
+            "n",
+            "color"
+          ]
+        },
+        {
+          "name": "Cylinder",
+          "startLine": 62,
+          "endLine": 65,
+          "params": [
+            "bottom",
+            "top",
+            "height",
+            "slices",
+            "stacks",
+            "color"
+          ]
+        },
+        {
+          "name": "FromModel",
+          "startLine": 66,
+          "endLine": 69,
+          "params": [
+            "path",
+            "meshIndex"
+          ]
+        },
+        {
+          "name": "CreatePrimitive",
+          "startLine": 70,
+          "endLine": 80,
+          "params": [
+            "out"
+          ]
+        },
+        {
+          "name": "RemoveObject",
+          "startLine": 100,
+          "endLine": 117,
+          "params": [
+            "index"
+          ]
+        },
+        {
+          "name": "IndexOf",
+          "startLine": 119,
+          "endLine": 123,
+          "params": [
+            "object"
+          ]
+        },
+        {
+          "name": "BeginPlay",
+          "startLine": 127,
+          "endLine": 136,
+          "params": [
+            "input",
+            "camera"
+          ]
+        },
+        {
+          "name": "Update",
+          "startLine": 138,
+          "endLine": 160,
+          "params": [
+            "dt"
+          ]
+        },
+        {
+          "name": "ApplyActiveCamera",
+          "startLine": 177,
+          "endLine": 219,
+          "params": [
+            "dt"
+          ]
+        },
+        {
+          "name": "FixedUpdate",
+          "startLine": 221,
+          "endLine": 233,
+          "params": [
+            "fixedDt"
+          ]
+        },
+        {
+          "name": "EndPlay",
+          "startLine": 235,
+          "endLine": 241,
+          "params": []
+        },
+        {
+          "name": "AddModel",
+          "startLine": 243,
+          "endLine": 295,
+          "params": [
+            "model",
+            "transform"
+          ]
+        },
+        {
+          "name": "Clear",
+          "startLine": 297,
+          "endLine": 308,
+          "params": []
+        },
+        {
+          "name": "AddImage",
+          "startLine": 310,
+          "endLine": 313,
+          "params": [
+            "name",
+            "encoded"
+          ]
+        },
+        {
+          "name": "AddModel",
+          "startLine": 321,
+          "endLine": 325,
+          "params": [
+            "model",
+            "transform"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Scene",
+          "line": 12,
+          "isDefault": false
+        },
+        {
+          "name": "~Scene",
+          "line": 16,
+          "isDefault": false
+        },
+        {
+          "name": "AddModelImages",
+          "line": 41,
+          "isDefault": false
+        },
+        {
+          "name": "Sphere",
+          "line": 50,
+          "isDefault": false
+        },
+        {
+          "name": "Cube",
+          "line": 54,
+          "isDefault": false
+        },
+        {
+          "name": "Plane",
+          "line": 58,
+          "isDefault": false
+        },
+        {
+          "name": "Cylinder",
+          "line": 62,
+          "isDefault": false
+        },
+        {
+          "name": "FromModel",
+          "line": 66,
+          "isDefault": false
+        },
+        {
+          "name": "CreatePrimitive",
+          "line": 70,
+          "isDefault": false
+        },
+        {
+          "name": "RemoveObject",
+          "line": 100,
+          "isDefault": false
+        },
+        {
+          "name": "IndexOf",
+          "line": 119,
+          "isDefault": false
+        },
+        {
+          "name": "BeginPlay",
+          "line": 127,
+          "isDefault": false
+        },
+        {
+          "name": "Update",
+          "line": 138,
+          "isDefault": false
+        },
+        {
+          "name": "ApplyActiveCamera",
+          "line": 177,
+          "isDefault": false
+        },
+        {
+          "name": "FixedUpdate",
+          "line": 221,
+          "isDefault": false
+        },
+        {
+          "name": "EndPlay",
+          "line": 235,
+          "isDefault": false
+        },
+        {
+          "name": "AddModel",
+          "line": 243,
+          "isDefault": false
+        },
+        {
+          "name": "Clear",
+          "line": 297,
+          "isDefault": false
+        },
+        {
+          "name": "AddImage",
+          "line": 310,
+          "isDefault": false
+        },
+        {
+          "name": "AddModel",
+          "line": 321,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "AddModelImages",
+          "callee": "AddImage",
+          "lineNumber": 46
+        },
+        {
+          "caller": "AddModelImages",
+          "callee": "std::move",
+          "lineNumber": 46
+        },
+        {
+          "caller": "CreatePrimitive",
+          "callee": "Mesh::CreateSphere",
+          "lineNumber": 74
+        },
+        {
+          "caller": "CreatePrimitive",
+          "callee": "Mesh::CreateCube",
+          "lineNumber": 75
+        },
+        {
+          "caller": "CreatePrimitive",
+          "callee": "Mesh::CreatePlane",
+          "lineNumber": 76
+        },
+        {
+          "caller": "CreatePrimitive",
+          "callee": "Mesh::CreateCylinder",
+          "lineNumber": 77
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "size",
+          "lineNumber": 102
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "push_back",
+          "lineNumber": 108
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "GetChildren",
+          "lineNumber": 109
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "self",
+          "lineNumber": 109
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "get",
+          "lineNumber": 111
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "collect",
+          "lineNumber": 112
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "DetachFromHierarchy",
+          "lineNumber": 113
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "erase",
+          "lineNumber": 114
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "std::remove_if",
+          "lineNumber": 114
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "begin",
+          "lineNumber": 114
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "end",
+          "lineNumber": 114
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "std::find",
+          "lineNumber": 115
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "begin",
+          "lineNumber": 115
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "end",
+          "lineNumber": 115
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "get",
+          "lineNumber": 115
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "end",
+          "lineNumber": 115
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "end",
+          "lineNumber": 115
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "size",
+          "lineNumber": 116
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "Log::Info",
+          "lineNumber": 116
+        },
+        {
+          "caller": "RemoveObject",
+          "callee": "size",
+          "lineNumber": 116
+        },
+        {
+          "caller": "IndexOf",
+          "callee": "size",
+          "lineNumber": 121
+        },
+        {
+          "caller": "IndexOf",
+          "callee": "get",
+          "lineNumber": 121
+        },
+        {
+          "caller": "BeginPlay",
+          "callee": "GetBehaviours",
+          "lineNumber": 135
+        },
+        {
+          "caller": "BeginPlay",
+          "callee": "BeginPlay",
+          "lineNumber": 135
+        },
+        {
+          "caller": "Update",
+          "callee": "size",
+          "lineNumber": 144
+        },
+        {
+          "caller": "Update",
+          "callee": "GetBehaviours",
+          "lineNumber": 146
+        },
+        {
+          "caller": "Update",
+          "callee": "size",
+          "lineNumber": 147
+        },
+        {
+          "caller": "Update",
+          "callee": "HasStarted",
+          "lineNumber": 150
+        },
+        {
+          "caller": "Update",
+          "callee": "BeginPlay",
+          "lineNumber": 152
+        },
+        {
+          "caller": "Update",
+          "callee": "MarkStarted",
+          "lineNumber": 153
+        },
+        {
+          "caller": "Update",
+          "callee": "Start",
+          "lineNumber": 154
+        },
+        {
+          "caller": "Update",
+          "callee": "Update",
+          "lineNumber": 156
+        },
+        {
+          "caller": "Update",
+          "callee": "ApplyActiveCamera",
+          "lineNumber": 159
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "FindActiveCamera",
+          "lineNumber": 180
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "GetPosition",
+          "lineNumber": 189
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "XMStoreFloat4",
+          "lineNumber": 190
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "XMQuaternionRotationMatrix",
+          "lineNumber": 190
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 190
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "GetFovY",
+          "lineNumber": 191
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "Log::Info",
+          "lineNumber": 195
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "c_str",
+          "lineNumber": 195
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "GetName",
+          "lineNumber": 195
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "GetOwner",
+          "lineNumber": 195
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "GetPose",
+          "lineNumber": 199
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "XMLoadFloat4",
+          "lineNumber": 210
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "XMLoadFloat4",
+          "lineNumber": 211
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "XMStoreFloat4",
+          "lineNumber": 212
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "XMQuaternionNormalize",
+          "lineNumber": 212
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "XMQuaternionSlerp",
+          "lineNumber": 212
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "SetPosition",
+          "lineNumber": 215
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "SetRotation",
+          "lineNumber": 216
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 216
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "SetLens",
+          "lineNumber": 217
+        },
+        {
+          "caller": "ApplyActiveCamera",
+          "callee": "GetAspect",
+          "lineNumber": 217
+        },
+        {
+          "caller": "FixedUpdate",
+          "callee": "size",
+          "lineNumber": 224
+        },
+        {
+          "caller": "FixedUpdate",
+          "callee": "GetBehaviours",
+          "lineNumber": 226
+        },
+        {
+          "caller": "FixedUpdate",
+          "callee": "size",
+          "lineNumber": 227
+        },
+        {
+          "caller": "FixedUpdate",
+          "callee": "HasStarted",
+          "lineNumber": 230
+        },
+        {
+          "caller": "FixedUpdate",
+          "callee": "FixedUpdate",
+          "lineNumber": 230
+        },
+        {
+          "caller": "EndPlay",
+          "callee": "GetBehaviours",
+          "lineNumber": 240
+        },
+        {
+          "caller": "EndPlay",
+          "callee": "EndPlay",
+          "lineNumber": 240
+        },
+        {
+          "caller": "AddModel",
+          "callee": "reserve",
+          "lineNumber": 247
+        },
+        {
+          "caller": "AddModel",
+          "callee": "size",
+          "lineNumber": 247
+        },
+        {
+          "caller": "AddModel",
+          "callee": "size",
+          "lineNumber": 248
+        },
+        {
+          "caller": "AddModel",
+          "callee": "push_back",
+          "lineNumber": 250
+        },
+        {
+          "caller": "AddModel",
+          "callee": "AddMesh",
+          "lineNumber": 250
+        },
+        {
+          "caller": "AddModel",
+          "callee": "std::move",
+          "lineNumber": 250
+        },
+        {
+          "caller": "AddModel",
+          "callee": "MeshSource::FromModel",
+          "lineNumber": 250
+        },
+        {
+          "caller": "AddModel",
+          "callee": "static_cast<uint32_t>",
+          "lineNumber": 250
+        },
+        {
+          "caller": "AddModel",
+          "callee": "reserve",
+          "lineNumber": 253
+        },
+        {
+          "caller": "AddModel",
+          "callee": "size",
+          "lineNumber": 253
+        },
+        {
+          "caller": "AddModel",
+          "callee": "push_back",
+          "lineNumber": 256
+        },
+        {
+          "caller": "AddModel",
+          "callee": "AddMaterial",
+          "lineNumber": 256
+        },
+        {
+          "caller": "AddModel",
+          "callee": "AddImage",
+          "lineNumber": 260
+        },
+        {
+          "caller": "AddModel",
+          "callee": "std::move",
+          "lineNumber": 260
+        },
+        {
+          "caller": "AddModel",
+          "callee": "size",
+          "lineNumber": 267
+        },
+        {
+          "caller": "AddModel",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 271
+        },
+        {
+          "caller": "AddModel",
+          "callee": "c_str",
+          "lineNumber": 271
+        },
+        {
+          "caller": "AddModel",
+          "callee": "substr",
+          "lineNumber": 272
+        },
+        {
+          "caller": "AddModel",
+          "callee": "find_last_of",
+          "lineNumber": 272
+        },
+        {
+          "caller": "AddModel",
+          "callee": "AddObject",
+          "lineNumber": 273
+        },
+        {
+          "caller": "AddModel",
+          "callee": "c_str",
+          "lineNumber": 273
+        },
+        {
+          "caller": "AddModel",
+          "callee": "GetTransform",
+          "lineNumber": 274
+        },
+        {
+          "caller": "AddModel",
+          "callee": "size",
+          "lineNumber": 280
+        },
+        {
+          "caller": "AddModel",
+          "callee": "AddObject",
+          "lineNumber": 281
+        },
+        {
+          "caller": "AddModel",
+          "callee": "empty",
+          "lineNumber": 281
+        },
+        {
+          "caller": "AddModel",
+          "callee": "back",
+          "lineNumber": 281
+        },
+        {
+          "caller": "AddModel",
+          "callee": "c_str",
+          "lineNumber": 281
+        },
+        {
+          "caller": "AddModel",
+          "callee": "SetSlotMaterials",
+          "lineNumber": 283
+        },
+        {
+          "caller": "AddModel",
+          "callee": "std::move",
+          "lineNumber": 283
+        },
+        {
+          "caller": "AddModel",
+          "callee": "SetParent",
+          "lineNumber": 284
+        },
+        {
+          "caller": "AddModel",
+          "callee": "GetTransform",
+          "lineNumber": 285
+        },
+        {
+          "caller": "AddModel",
+          "callee": "SetPreTransform",
+          "lineNumber": 286
+        },
+        {
+          "caller": "AddModel",
+          "callee": "GetTransform",
+          "lineNumber": 286
+        },
+        {
+          "caller": "AddModel",
+          "callee": "XMLoadFloat4x4",
+          "lineNumber": 286
+        },
+        {
+          "caller": "AddModel",
+          "callee": "clear",
+          "lineNumber": 290
+        },
+        {
+          "caller": "AddModel",
+          "callee": "clear",
+          "lineNumber": 291
+        },
+        {
+          "caller": "AddModel",
+          "callee": "clear",
+          "lineNumber": 292
+        },
+        {
+          "caller": "AddModel",
+          "callee": "clear",
+          "lineNumber": 293
+        },
+        {
+          "caller": "Clear",
+          "callee": "clear",
+          "lineNumber": 301
+        },
+        {
+          "caller": "Clear",
+          "callee": "clear",
+          "lineNumber": 302
+        },
+        {
+          "caller": "Clear",
+          "callee": "clear",
+          "lineNumber": 303
+        },
+        {
+          "caller": "Clear",
+          "callee": "clear",
+          "lineNumber": 304
+        },
+        {
+          "caller": "Clear",
+          "callee": "clear",
+          "lineNumber": 305
+        },
+        {
+          "caller": "Clear",
+          "callee": "clear",
+          "lineNumber": 306
+        },
+        {
+          "caller": "AddImage",
+          "callee": "std::move",
+          "lineNumber": 312
+        },
+        {
+          "caller": "AddModel",
+          "callee": "AddModel",
+          "lineNumber": 324
+        },
+        {
+          "caller": "AddModel",
+          "callee": "std::move",
+          "lineNumber": 324
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 20,
+        "functionCount": 20,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Scene.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 158,
+      "nonEmptyLines": 139,
+      "classes": [
+        {
+          "name": "Mesh",
+          "startLine": 13,
+          "endLine": 13,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "Model",
+          "startLine": 14,
+          "endLine": 14,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "MeshSource",
+          "startLine": 17,
+          "endLine": 35,
+          "methods": [
+            "Sphere",
+            "Cube",
+            "Plane",
+            "Cylinder",
+            "FromModel",
+            "CreatePrimitive"
+          ],
+          "properties": [
+            "type",
+            "params",
+            "a",
+            "b",
+            "color",
+            "modelPath",
+            "meshIndex"
+          ]
+        },
+        {
+          "name": "SceneEnvironment",
+          "startLine": 47,
+          "endLine": 56,
+          "methods": [],
+          "properties": [
+            "skybox",
+            "irradiance",
+            "specular",
+            "brdfLut",
+            "iblIntensity",
+            "exposure",
+            "toneMapping"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Mesh",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "Model",
+          "line": 14,
+          "isDefault": false
+        },
+        {
+          "name": "Sphere",
+          "line": 28,
+          "isDefault": false
+        },
+        {
+          "name": "Cube",
+          "line": 29,
+          "isDefault": false
+        },
+        {
+          "name": "Plane",
+          "line": 30,
+          "isDefault": false
+        },
+        {
+          "name": "Cylinder",
+          "line": 31,
+          "isDefault": false
+        },
+        {
+          "name": "FromModel",
+          "line": 32,
+          "isDefault": false
+        },
+        {
+          "name": "CreatePrimitive",
+          "line": 34,
+          "isDefault": false
+        },
+        {
+          "name": "MeshSource",
+          "line": 17,
+          "isDefault": false
+        },
+        {
+          "name": "SceneEnvironment",
+          "line": 47,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "GetImageCount",
+          "callee": "size",
+          "lineNumber": 130
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 10,
+        "functionCount": 0,
+        "classCount": 4
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/SceneSerializer.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 506,
+      "nonEmptyLines": 476,
+      "functions": [
+        {
+          "name": "ToJson",
+          "startLine": 23,
+          "endLine": 23,
+          "params": [
+            "v"
+          ]
+        },
+        {
+          "name": "ToJson",
+          "startLine": 24,
+          "endLine": 24,
+          "params": [
+            "v"
+          ]
+        },
+        {
+          "name": "ToJson",
+          "startLine": 25,
+          "endLine": 25,
+          "params": [
+            "v"
+          ]
+        },
+        {
+          "name": "ToJson",
+          "startLine": 26,
+          "endLine": 31,
+          "params": [
+            "m"
+          ]
+        },
+        {
+          "name": "ToFloat3",
+          "startLine": 33,
+          "endLine": 37,
+          "params": [
+            "j",
+            "fallback"
+          ]
+        },
+        {
+          "name": "ToFloat4",
+          "startLine": 38,
+          "endLine": 42,
+          "params": [
+            "j",
+            "fallback"
+          ]
+        },
+        {
+          "name": "ToFloat2",
+          "startLine": 43,
+          "endLine": 47,
+          "params": [
+            "j",
+            "fallback"
+          ]
+        },
+        {
+          "name": "ToUtf8",
+          "startLine": 49,
+          "endLine": 49,
+          "params": [
+            "wide"
+          ]
+        },
+        {
+          "name": "ToWide",
+          "startLine": 50,
+          "endLine": 57,
+          "params": [
+            "utf8"
+          ]
+        },
+        {
+          "name": "ParseSourceType",
+          "startLine": 72,
+          "endLine": 80,
+          "params": [
+            "name"
+          ]
+        },
+        {
+          "name": "MaterialToJson",
+          "startLine": 82,
+          "endLine": 105,
+          "params": [
+            "m"
+          ]
+        },
+        {
+          "name": "MaterialFromJson",
+          "startLine": 107,
+          "endLine": 137,
+          "params": [
+            "j"
+          ]
+        },
+        {
+          "name": "LightToJson",
+          "startLine": 139,
+          "endLine": 152,
+          "params": [
+            "l"
+          ]
+        },
+        {
+          "name": "LightFromJson",
+          "startLine": 154,
+          "endLine": 167,
+          "params": [
+            "j"
+          ]
+        },
+        {
+          "name": "JsonWriteVisitor",
+          "startLine": 173,
+          "endLine": 173,
+          "params": [
+            "j"
+          ]
+        },
+        {
+          "name": "Float",
+          "startLine": 174,
+          "endLine": 174,
+          "params": [
+            "name",
+            "value"
+          ]
+        },
+        {
+          "name": "Int",
+          "startLine": 175,
+          "endLine": 175,
+          "params": [
+            "name",
+            "value"
+          ]
+        },
+        {
+          "name": "Bool",
+          "startLine": 176,
+          "endLine": 176,
+          "params": [
+            "name",
+            "value"
+          ]
+        },
+        {
+          "name": "Float3",
+          "startLine": 177,
+          "endLine": 177,
+          "params": [
+            "name",
+            "value"
+          ]
+        },
+        {
+          "name": "String",
+          "startLine": 178,
+          "endLine": 178,
+          "params": [
+            "name",
+            "value"
+          ]
+        },
+        {
+          "name": "JsonReadVisitor",
+          "startLine": 185,
+          "endLine": 185,
+          "params": [
+            "j"
+          ]
+        },
+        {
+          "name": "Float",
+          "startLine": 186,
+          "endLine": 186,
+          "params": [
+            "name",
+            "value"
+          ]
+        },
+        {
+          "name": "Int",
+          "startLine": 187,
+          "endLine": 187,
+          "params": [
+            "name",
+            "value"
+          ]
+        },
+        {
+          "name": "Bool",
+          "startLine": 188,
+          "endLine": 188,
+          "params": [
+            "name",
+            "value"
+          ]
+        },
+        {
+          "name": "Float3",
+          "startLine": 189,
+          "endLine": 189,
+          "params": [
+            "name",
+            "value"
+          ]
+        },
+        {
+          "name": "String",
+          "startLine": 190,
+          "endLine": 190,
+          "params": [
+            "name",
+            "value"
+          ]
+        },
+        {
+          "name": "ComponentsToJson",
+          "startLine": 195,
+          "endLine": 214,
+          "params": [
+            "object"
+          ]
+        },
+        {
+          "name": "ComponentsFromJson",
+          "startLine": 216,
+          "endLine": 232,
+          "params": [
+            "object",
+            "components"
+          ]
+        },
+        {
+          "name": "SaveToString",
+          "startLine": 235,
+          "endLine": 334,
+          "params": [
+            "scene",
+            "camera"
+          ]
+        },
+        {
+          "name": "Save",
+          "startLine": 336,
+          "endLine": 351,
+          "params": [
+            "scene",
+            "camera",
+            "path"
+          ]
+        },
+        {
+          "name": "Load",
+          "startLine": 353,
+          "endLine": 363,
+          "params": [
+            "scene",
+            "camera",
+            "assets",
+            "path"
+          ]
+        },
+        {
+          "name": "LoadFromString",
+          "startLine": 365,
+          "endLine": 506,
+          "params": [
+            "scene",
+            "camera",
+            "assets",
+            "text",
+            "label"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "JsonWriteVisitor",
+          "startLine": 170,
+          "endLine": 181,
+          "methods": [
+            "JsonWriteVisitor",
+            "Float",
+            "Int",
+            "Bool",
+            "Float3",
+            "String"
+          ],
+          "properties": [
+            "m_j"
+          ]
+        },
+        {
+          "name": "JsonReadVisitor",
+          "startLine": 182,
+          "endLine": 193,
+          "methods": [
+            "JsonReadVisitor",
+            "Float",
+            "Int",
+            "Bool",
+            "Float3",
+            "String"
+          ],
+          "properties": [
+            "m_j"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "ToJson",
+          "line": 23,
+          "isDefault": false
+        },
+        {
+          "name": "ToJson",
+          "line": 24,
+          "isDefault": false
+        },
+        {
+          "name": "ToJson",
+          "line": 25,
+          "isDefault": false
+        },
+        {
+          "name": "ToJson",
+          "line": 26,
+          "isDefault": false
+        },
+        {
+          "name": "ToFloat3",
+          "line": 33,
+          "isDefault": false
+        },
+        {
+          "name": "ToFloat4",
+          "line": 38,
+          "isDefault": false
+        },
+        {
+          "name": "ToFloat2",
+          "line": 43,
+          "isDefault": false
+        },
+        {
+          "name": "ToUtf8",
+          "line": 49,
+          "isDefault": false
+        },
+        {
+          "name": "ToWide",
+          "line": 50,
+          "isDefault": false
+        },
+        {
+          "name": "ParseSourceType",
+          "line": 72,
+          "isDefault": false
+        },
+        {
+          "name": "MaterialToJson",
+          "line": 82,
+          "isDefault": false
+        },
+        {
+          "name": "MaterialFromJson",
+          "line": 107,
+          "isDefault": false
+        },
+        {
+          "name": "LightToJson",
+          "line": 139,
+          "isDefault": false
+        },
+        {
+          "name": "LightFromJson",
+          "line": 154,
+          "isDefault": false
+        },
+        {
+          "name": "JsonWriteVisitor",
+          "line": 173,
+          "isDefault": false
+        },
+        {
+          "name": "Float",
+          "line": 174,
+          "isDefault": false
+        },
+        {
+          "name": "Int",
+          "line": 175,
+          "isDefault": false
+        },
+        {
+          "name": "Bool",
+          "line": 176,
+          "isDefault": false
+        },
+        {
+          "name": "Float3",
+          "line": 177,
+          "isDefault": false
+        },
+        {
+          "name": "String",
+          "line": 178,
+          "isDefault": false
+        },
+        {
+          "name": "JsonWriteVisitor",
+          "line": 170,
+          "isDefault": false
+        },
+        {
+          "name": "JsonReadVisitor",
+          "line": 185,
+          "isDefault": false
+        },
+        {
+          "name": "Float",
+          "line": 186,
+          "isDefault": false
+        },
+        {
+          "name": "Int",
+          "line": 187,
+          "isDefault": false
+        },
+        {
+          "name": "Bool",
+          "line": 188,
+          "isDefault": false
+        },
+        {
+          "name": "Float3",
+          "line": 189,
+          "isDefault": false
+        },
+        {
+          "name": "String",
+          "line": 190,
+          "isDefault": false
+        },
+        {
+          "name": "JsonReadVisitor",
+          "line": 182,
+          "isDefault": false
+        },
+        {
+          "name": "ComponentsToJson",
+          "line": 195,
+          "isDefault": false
+        },
+        {
+          "name": "ComponentsFromJson",
+          "line": 216,
+          "isDefault": false
+        },
+        {
+          "name": "SaveToString",
+          "line": 235,
+          "isDefault": false
+        },
+        {
+          "name": "Save",
+          "line": 336,
+          "isDefault": false
+        },
+        {
+          "name": "Load",
+          "line": 353,
+          "isDefault": false
+        },
+        {
+          "name": "LoadFromString",
+          "line": 365,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "ToJson",
+          "callee": "json::array",
+          "lineNumber": 23
+        },
+        {
+          "caller": "ToJson",
+          "callee": "json::array",
+          "lineNumber": 24
+        },
+        {
+          "caller": "ToJson",
+          "callee": "json::array",
+          "lineNumber": 25
+        },
+        {
+          "caller": "ToJson",
+          "callee": "json::array",
+          "lineNumber": 28
+        },
+        {
+          "caller": "ToJson",
+          "callee": "push_back",
+          "lineNumber": 29
+        },
+        {
+          "caller": "ToFloat3",
+          "callee": "is_array",
+          "lineNumber": 35
+        },
+        {
+          "caller": "ToFloat3",
+          "callee": "size",
+          "lineNumber": 35
+        },
+        {
+          "caller": "ToFloat3",
+          "callee": "XMFLOAT3",
+          "lineNumber": 36
+        },
+        {
+          "caller": "ToFloat3",
+          "callee": "get<float>",
+          "lineNumber": 36
+        },
+        {
+          "caller": "ToFloat3",
+          "callee": "get<float>",
+          "lineNumber": 36
+        },
+        {
+          "caller": "ToFloat3",
+          "callee": "get<float>",
+          "lineNumber": 36
+        },
+        {
+          "caller": "ToFloat4",
+          "callee": "is_array",
+          "lineNumber": 40
+        },
+        {
+          "caller": "ToFloat4",
+          "callee": "size",
+          "lineNumber": 40
+        },
+        {
+          "caller": "ToFloat4",
+          "callee": "XMFLOAT4",
+          "lineNumber": 41
+        },
+        {
+          "caller": "ToFloat4",
+          "callee": "get<float>",
+          "lineNumber": 41
+        },
+        {
+          "caller": "ToFloat4",
+          "callee": "get<float>",
+          "lineNumber": 41
+        },
+        {
+          "caller": "ToFloat4",
+          "callee": "get<float>",
+          "lineNumber": 41
+        },
+        {
+          "caller": "ToFloat4",
+          "callee": "get<float>",
+          "lineNumber": 41
+        },
+        {
+          "caller": "ToFloat2",
+          "callee": "is_array",
+          "lineNumber": 45
+        },
+        {
+          "caller": "ToFloat2",
+          "callee": "size",
+          "lineNumber": 45
+        },
+        {
+          "caller": "ToFloat2",
+          "callee": "XMFLOAT2",
+          "lineNumber": 46
+        },
+        {
+          "caller": "ToFloat2",
+          "callee": "get<float>",
+          "lineNumber": 46
+        },
+        {
+          "caller": "ToFloat2",
+          "callee": "get<float>",
+          "lineNumber": 46
+        },
+        {
+          "caller": "ToUtf8",
+          "callee": "Log::ToUtf8",
+          "lineNumber": 49
+        },
+        {
+          "caller": "ToUtf8",
+          "callee": "c_str",
+          "lineNumber": 49
+        },
+        {
+          "caller": "ToWide",
+          "callee": "empty",
+          "lineNumber": 52
+        },
+        {
+          "caller": "ToWide",
+          "callee": "MultiByteToWideChar",
+          "lineNumber": 53
+        },
+        {
+          "caller": "ToWide",
+          "callee": "c_str",
+          "lineNumber": 53
+        },
+        {
+          "caller": "ToWide",
+          "callee": "MultiByteToWideChar",
+          "lineNumber": 55
+        },
+        {
+          "caller": "ToWide",
+          "callee": "c_str",
+          "lineNumber": 55
+        },
+        {
+          "caller": "MaterialToJson",
+          "callee": "ToJson",
+          "lineNumber": 86
+        },
+        {
+          "caller": "MaterialToJson",
+          "callee": "ToJson",
+          "lineNumber": 89
+        },
+        {
+          "caller": "MaterialToJson",
+          "callee": "static_cast<int>",
+          "lineNumber": 96
+        },
+        {
+          "caller": "MaterialToJson",
+          "callee": "ToJson",
+          "lineNumber": 97
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 110
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "ToFloat4",
+          "lineNumber": 111
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 111
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "json",
+          "lineNumber": 111
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 112
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "contains",
+          "lineNumber": 113
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 113
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "contains",
+          "lineNumber": 114
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 118
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "std::sqrt",
+          "lineNumber": 119
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "std::sqrt",
+          "lineNumber": 119
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "ToFloat3",
+          "lineNumber": 121
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 121
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "json",
+          "lineNumber": 121
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 122
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 123
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 124
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 125
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 126
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 127
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "static_cast<SamplerPreset>",
+          "lineNumber": 128
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 128
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "ToFloat2",
+          "lineNumber": 129
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 129
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "json",
+          "lineNumber": 129
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 130
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 131
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 132
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 133
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 134
+        },
+        {
+          "caller": "MaterialFromJson",
+          "callee": "value",
+          "lineNumber": 135
+        },
+        {
+          "caller": "LightToJson",
+          "callee": "ToJson",
+          "lineNumber": 143
+        },
+        {
+          "caller": "LightToJson",
+          "callee": "ToJson",
+          "lineNumber": 144
+        },
+        {
+          "caller": "LightToJson",
+          "callee": "ToJson",
+          "lineNumber": 145
+        },
+        {
+          "caller": "LightToJson",
+          "callee": "ToJson",
+          "lineNumber": 148
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "value",
+          "lineNumber": 157
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "ToFloat3",
+          "lineNumber": 158
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "value",
+          "lineNumber": 158
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "json",
+          "lineNumber": 158
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "ToFloat3",
+          "lineNumber": 159
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "value",
+          "lineNumber": 159
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "json",
+          "lineNumber": 159
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "ToFloat3",
+          "lineNumber": 160
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "value",
+          "lineNumber": 160
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "json",
+          "lineNumber": 160
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "value",
+          "lineNumber": 161
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "value",
+          "lineNumber": 162
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "ToFloat3",
+          "lineNumber": 163
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "value",
+          "lineNumber": 163
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "json",
+          "lineNumber": 163
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "value",
+          "lineNumber": 164
+        },
+        {
+          "caller": "LightFromJson",
+          "callee": "value",
+          "lineNumber": 165
+        },
+        {
+          "caller": "Float3",
+          "callee": "ToJson",
+          "lineNumber": 177
+        },
+        {
+          "caller": "Float",
+          "callee": "contains",
+          "lineNumber": 186
+        },
+        {
+          "caller": "Float",
+          "callee": "is_number",
+          "lineNumber": 186
+        },
+        {
+          "caller": "Float",
+          "callee": "get<float>",
+          "lineNumber": 186
+        },
+        {
+          "caller": "Int",
+          "callee": "contains",
+          "lineNumber": 187
+        },
+        {
+          "caller": "Int",
+          "callee": "is_number",
+          "lineNumber": 187
+        },
+        {
+          "caller": "Int",
+          "callee": "get<int>",
+          "lineNumber": 187
+        },
+        {
+          "caller": "Bool",
+          "callee": "contains",
+          "lineNumber": 188
+        },
+        {
+          "caller": "Bool",
+          "callee": "is_boolean",
+          "lineNumber": 188
+        },
+        {
+          "caller": "Bool",
+          "callee": "get<bool>",
+          "lineNumber": 188
+        },
+        {
+          "caller": "Float3",
+          "callee": "contains",
+          "lineNumber": 189
+        },
+        {
+          "caller": "Float3",
+          "callee": "ToFloat3",
+          "lineNumber": 189
+        },
+        {
+          "caller": "String",
+          "callee": "contains",
+          "lineNumber": 190
+        },
+        {
+          "caller": "String",
+          "callee": "is_string",
+          "lineNumber": 190
+        },
+        {
+          "caller": "String",
+          "callee": "get<std::string>",
+          "lineNumber": 190
+        },
+        {
+          "caller": "ComponentsToJson",
+          "callee": "json::array",
+          "lineNumber": 197
+        },
+        {
+          "caller": "ComponentsToJson",
+          "callee": "GetBehaviours",
+          "lineNumber": 198
+        },
+        {
+          "caller": "ComponentsToJson",
+          "callee": "GetTypeName",
+          "lineNumber": 201
+        },
+        {
+          "caller": "ComponentsToJson",
+          "callee": "Reflect",
+          "lineNumber": 204
+        },
+        {
+          "caller": "ComponentsToJson",
+          "callee": "const_cast<Behaviour&>",
+          "lineNumber": 204
+        },
+        {
+          "caller": "ComponentsToJson",
+          "callee": "push_back",
+          "lineNumber": 205
+        },
+        {
+          "caller": "ComponentsToJson",
+          "callee": "GetMissingComponents",
+          "lineNumber": 208
+        },
+        {
+          "caller": "ComponentsToJson",
+          "callee": "json::parse",
+          "lineNumber": 210
+        },
+        {
+          "caller": "ComponentsToJson",
+          "callee": "is_discarded",
+          "lineNumber": 211
+        },
+        {
+          "caller": "ComponentsToJson",
+          "callee": "push_back",
+          "lineNumber": 211
+        },
+        {
+          "caller": "ComponentsToJson",
+          "callee": "std::move",
+          "lineNumber": 211
+        },
+        {
+          "caller": "ComponentsFromJson",
+          "callee": "is_array",
+          "lineNumber": 218
+        },
+        {
+          "caller": "ComponentsFromJson",
+          "callee": "AddBehaviour",
+          "lineNumber": 221
+        },
+        {
+          "caller": "ComponentsFromJson",
+          "callee": "value",
+          "lineNumber": 221
+        },
+        {
+          "caller": "ComponentsFromJson",
+          "callee": "push_back",
+          "lineNumber": 225
+        },
+        {
+          "caller": "ComponentsFromJson",
+          "callee": "GetMissingComponents",
+          "lineNumber": 225
+        },
+        {
+          "caller": "ComponentsFromJson",
+          "callee": "dump",
+          "lineNumber": 225
+        },
+        {
+          "caller": "ComponentsFromJson",
+          "callee": "value",
+          "lineNumber": 228
+        },
+        {
+          "caller": "ComponentsFromJson",
+          "callee": "Reflect",
+          "lineNumber": 230
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "ToJson",
+          "lineNumber": 239
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetPosition",
+          "lineNumber": 239
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetYaw",
+          "lineNumber": 239
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetPitch",
+          "lineNumber": 239
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "ToJson",
+          "lineNumber": 240
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "json::array",
+          "lineNumber": 241
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "json::array",
+          "lineNumber": 253
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetMeshes",
+          "lineNumber": 254
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetMeshSource",
+          "lineNumber": 256
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "get",
+          "lineNumber": 256
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "Log::Warn",
+          "lineNumber": 261
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetVertexCount",
+          "lineNumber": 261
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "SourceTypeName",
+          "lineNumber": 265
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "ToUtf8",
+          "lineNumber": 268
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "json::array",
+          "lineNumber": 273
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "ToJson",
+          "lineNumber": 276
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "get",
+          "lineNumber": 279
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "static_cast<int>",
+          "lineNumber": 279
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "size",
+          "lineNumber": 279
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "push_back",
+          "lineNumber": 280
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "json::array",
+          "lineNumber": 285
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetMaterials",
+          "lineNumber": 286
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "get",
+          "lineNumber": 288
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "static_cast<int>",
+          "lineNumber": 288
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "size",
+          "lineNumber": 288
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "push_back",
+          "lineNumber": 289
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "MaterialToJson",
+          "lineNumber": 289
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "json::array",
+          "lineNumber": 293
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetLights",
+          "lineNumber": 294
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "push_back",
+          "lineNumber": 294
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "LightToJson",
+          "lineNumber": 294
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "json::array",
+          "lineNumber": 297
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetObjects",
+          "lineNumber": 298
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetName",
+          "lineNumber": 302
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetParent",
+          "lineNumber": 304
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "static_cast<int>",
+          "lineNumber": 304
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "IndexOf",
+          "lineNumber": 304
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetParent",
+          "lineNumber": 304
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "find",
+          "lineNumber": 305
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetMesh",
+          "lineNumber": 305
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "end",
+          "lineNumber": 306
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "find",
+          "lineNumber": 307
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetMaterial",
+          "lineNumber": 307
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "end",
+          "lineNumber": 308
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "empty",
+          "lineNumber": 309
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetSlotMaterials",
+          "lineNumber": 309
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "json::array",
+          "lineNumber": 311
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetSlotMaterials",
+          "lineNumber": 312
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "find",
+          "lineNumber": 314
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "push_back",
+          "lineNumber": 315
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "end",
+          "lineNumber": 315
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetTransform",
+          "lineNumber": 319
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "ToJson",
+          "lineNumber": 320
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetPosition",
+          "lineNumber": 320
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "ToJson",
+          "lineNumber": 321
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetRotation",
+          "lineNumber": 321
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "ToJson",
+          "lineNumber": 322
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetScale",
+          "lineNumber": 322
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "HasPreTransform",
+          "lineNumber": 323
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "XMStoreFloat4x4",
+          "lineNumber": 326
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetPreTransform",
+          "lineNumber": 326
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "ToJson",
+          "lineNumber": 327
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "empty",
+          "lineNumber": 329
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetBehaviours",
+          "lineNumber": 329
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "empty",
+          "lineNumber": 329
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "GetMissingComponents",
+          "lineNumber": 329
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "ComponentsToJson",
+          "lineNumber": 329
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "push_back",
+          "lineNumber": 330
+        },
+        {
+          "caller": "SaveToString",
+          "callee": "dump",
+          "lineNumber": 333
+        },
+        {
+          "caller": "Save",
+          "callee": "SaveToString",
+          "lineNumber": 338
+        },
+        {
+          "caller": "Save",
+          "callee": "find_last_of",
+          "lineNumber": 339
+        },
+        {
+          "caller": "Save",
+          "callee": "CreateDirectoryW",
+          "lineNumber": 340
+        },
+        {
+          "caller": "Save",
+          "callee": "c_str",
+          "lineNumber": 340
+        },
+        {
+          "caller": "Save",
+          "callee": "substr",
+          "lineNumber": 340
+        },
+        {
+          "caller": "Save",
+          "callee": "Log::Error",
+          "lineNumber": 344
+        },
+        {
+          "caller": "Save",
+          "callee": "c_str",
+          "lineNumber": 344
+        },
+        {
+          "caller": "Save",
+          "callee": "ToUtf8",
+          "lineNumber": 344
+        },
+        {
+          "caller": "Save",
+          "callee": "Log::Info",
+          "lineNumber": 348
+        },
+        {
+          "caller": "Save",
+          "callee": "c_str",
+          "lineNumber": 348
+        },
+        {
+          "caller": "Save",
+          "callee": "ToUtf8",
+          "lineNumber": 348
+        },
+        {
+          "caller": "Save",
+          "callee": "size",
+          "lineNumber": 349
+        },
+        {
+          "caller": "Save",
+          "callee": "GetObjects",
+          "lineNumber": 349
+        },
+        {
+          "caller": "Save",
+          "callee": "size",
+          "lineNumber": 349
+        },
+        {
+          "caller": "Save",
+          "callee": "GetMeshes",
+          "lineNumber": 349
+        },
+        {
+          "caller": "Save",
+          "callee": "size",
+          "lineNumber": 349
+        },
+        {
+          "caller": "Save",
+          "callee": "GetMaterials",
+          "lineNumber": 349
+        },
+        {
+          "caller": "Save",
+          "callee": "size",
+          "lineNumber": 349
+        },
+        {
+          "caller": "Save",
+          "callee": "GetLights",
+          "lineNumber": 349
+        },
+        {
+          "caller": "Load",
+          "callee": "Log::Error",
+          "lineNumber": 358
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 358
+        },
+        {
+          "caller": "Load",
+          "callee": "ToUtf8",
+          "lineNumber": 358
+        },
+        {
+          "caller": "Load",
+          "callee": "std::istreambuf_iterator<char>",
+          "lineNumber": 361
+        },
+        {
+          "caller": "Load",
+          "callee": "std::istreambuf_iterator<char>",
+          "lineNumber": 361
+        },
+        {
+          "caller": "Load",
+          "callee": "LoadFromString",
+          "lineNumber": 362
+        },
+        {
+          "caller": "Load",
+          "callee": "c_str",
+          "lineNumber": 362
+        },
+        {
+          "caller": "Load",
+          "callee": "ToUtf8",
+          "lineNumber": 362
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json::parse",
+          "lineNumber": 370
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "Log::Error",
+          "lineNumber": 374
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "what",
+          "lineNumber": 374
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 377
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "Log::Warn",
+          "lineNumber": 379
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 379
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "Clear",
+          "lineNumber": 382
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 387
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json::array",
+          "lineNumber": 387
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "ParseSourceType",
+          "lineNumber": 390
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 390
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "ToWide",
+          "lineNumber": 394
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 394
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 395
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetModel",
+          "lineNumber": 396
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 397
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "AddMesh",
+          "lineNumber": 400
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "std::move",
+          "lineNumber": 400
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "std::find",
+          "lineNumber": 401
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "begin",
+          "lineNumber": 401
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "end",
+          "lineNumber": 401
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "end",
+          "lineNumber": 401
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "AddModelImages",
+          "lineNumber": 403
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "push_back",
+          "lineNumber": 404
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "Log::Warn",
+          "lineNumber": 409
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "c_str",
+          "lineNumber": 409
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 409
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 414
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json::array",
+          "lineNumber": 414
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 415
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "get<float>",
+          "lineNumber": 415
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 416
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 417
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "ToFloat4",
+          "lineNumber": 418
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 418
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json",
+          "lineNumber": 418
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "CreatePrimitive",
+          "lineNumber": 420
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "AddMesh",
+          "lineNumber": 420
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "std::move",
+          "lineNumber": 420
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "Log::Warn",
+          "lineNumber": 424
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "push_back",
+          "lineNumber": 426
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 430
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json::array",
+          "lineNumber": 430
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "push_back",
+          "lineNumber": 432
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "AddMaterial",
+          "lineNumber": 432
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "MaterialFromJson",
+          "lineNumber": 432
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 435
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json::array",
+          "lineNumber": 435
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 437
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetLights",
+          "lineNumber": 437
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "push_back",
+          "lineNumber": 437
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetLights",
+          "lineNumber": 437
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "LightFromJson",
+          "lineNumber": 437
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "static_cast<int>",
+          "lineNumber": 440
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 440
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 442
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json::array",
+          "lineNumber": 442
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "push_back",
+          "lineNumber": 444
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 444
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 445
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "static_cast<int>",
+          "lineNumber": 446
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 446
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 447
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "AddObject",
+          "lineNumber": 448
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "materialAt",
+          "lineNumber": 448
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 448
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "c_str",
+          "lineNumber": 448
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "contains",
+          "lineNumber": 449
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "push_back",
+          "lineNumber": 452
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "materialAt",
+          "lineNumber": 452
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "get<int>",
+          "lineNumber": 452
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "SetSlotMaterials",
+          "lineNumber": 453
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "std::move",
+          "lineNumber": 453
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetTransform",
+          "lineNumber": 455
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "SetPosition",
+          "lineNumber": 456
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "ToFloat3",
+          "lineNumber": 456
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 456
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json",
+          "lineNumber": 456
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "XMFLOAT3",
+          "lineNumber": 456
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "SetRotation",
+          "lineNumber": 457
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "ToFloat3",
+          "lineNumber": 457
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 457
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json",
+          "lineNumber": 457
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "XMFLOAT3",
+          "lineNumber": 457
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "SetScale",
+          "lineNumber": 458
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "ToFloat3",
+          "lineNumber": 458
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 458
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json",
+          "lineNumber": 458
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "XMFLOAT3",
+          "lineNumber": 458
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "contains",
+          "lineNumber": 459
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "is_array",
+          "lineNumber": 459
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 459
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "get<float>",
+          "lineNumber": 462
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "SetPreTransform",
+          "lineNumber": 463
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "XMLoadFloat4x4",
+          "lineNumber": 463
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "contains",
+          "lineNumber": 465
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "ComponentsFromJson",
+          "lineNumber": 465
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 467
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "static_cast<int>",
+          "lineNumber": 470
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 470
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetObjects",
+          "lineNumber": 470
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "static_cast<int>",
+          "lineNumber": 470
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "SetParent",
+          "lineNumber": 472
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetObjects",
+          "lineNumber": 472
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "get",
+          "lineNumber": 472
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetObjects",
+          "lineNumber": 472
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "Log::Warn",
+          "lineNumber": 473
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "ToFloat3",
+          "lineNumber": 476
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 476
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json",
+          "lineNumber": 476
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 477
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json",
+          "lineNumber": 477
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "is_array",
+          "lineNumber": 478
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 478
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "get<float>",
+          "lineNumber": 478
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 479
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json",
+          "lineNumber": 479
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "is_object",
+          "lineNumber": 480
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 483
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "std::string",
+          "lineNumber": 483
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 484
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "std::string",
+          "lineNumber": 484
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 485
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "std::string",
+          "lineNumber": 485
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 486
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "std::string",
+          "lineNumber": 486
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 487
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 488
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 489
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 493
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "std::string",
+          "lineNumber": 493
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 496
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json",
+          "lineNumber": 496
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "is_object",
+          "lineNumber": 497
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "SetPosition",
+          "lineNumber": 499
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "ToFloat3",
+          "lineNumber": 499
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 499
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "json",
+          "lineNumber": 499
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetPosition",
+          "lineNumber": 499
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "SetYawPitch",
+          "lineNumber": 500
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 500
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetYaw",
+          "lineNumber": 500
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "value",
+          "lineNumber": 500
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetPitch",
+          "lineNumber": 500
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "Log::Info",
+          "lineNumber": 503
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 504
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetObjects",
+          "lineNumber": 504
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 504
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetMeshes",
+          "lineNumber": 504
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 504
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetMaterials",
+          "lineNumber": 504
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 504
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "GetLights",
+          "lineNumber": 504
+        },
+        {
+          "caller": "LoadFromString",
+          "callee": "size",
+          "lineNumber": 504
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 34,
+        "functionCount": 32,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/SceneSerializer.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 25,
+      "nonEmptyLines": 22,
+      "classes": [
+        {
+          "name": "Scene",
+          "startLine": 4,
+          "endLine": 4,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "Camera",
+          "startLine": 5,
+          "endLine": 5,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "AssetManager",
+          "startLine": 6,
+          "endLine": 6,
+          "methods": [],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "Scene",
+          "line": 4,
+          "isDefault": false
+        },
+        {
+          "name": "Camera",
+          "line": 5,
+          "isDefault": false
+        },
+        {
+          "name": "AssetManager",
+          "line": 6,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 3,
+        "functionCount": 0,
+        "classCount": 3
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Script.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 19,
+      "nonEmptyLines": 16,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Script.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 74,
+      "nonEmptyLines": 70,
+      "functions": [
+        {
+          "name": "SetPosition",
+          "startLine": 55,
+          "endLine": 55,
+          "params": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        {
+          "name": "SetPosition",
+          "startLine": 56,
+          "endLine": 56,
+          "params": [
+            "p"
+          ]
+        },
+        {
+          "name": "Translate",
+          "startLine": 57,
+          "endLine": 57,
+          "params": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        {
+          "name": "TranslateLocal",
+          "startLine": 58,
+          "endLine": 58,
+          "params": [
+            "forward",
+            "right",
+            "up"
+          ]
+        },
+        {
+          "name": "Rotate",
+          "startLine": 59,
+          "endLine": 59,
+          "params": [
+            "pitch",
+            "yaw",
+            "roll"
+          ]
+        },
+        {
+          "name": "LookAt",
+          "startLine": 60,
+          "endLine": 60,
+          "params": [
+            "target"
+          ]
+        },
+        {
+          "name": "SetScale",
+          "startLine": 61,
+          "endLine": 61,
+          "params": [
+            "s"
+          ]
+        },
+        {
+          "name": "SetParent",
+          "startLine": 65,
+          "endLine": 65,
+          "params": [
+            "parent"
+          ]
+        },
+        {
+          "name": "GetWorldPosition",
+          "startLine": 66,
+          "endLine": 66,
+          "params": []
+        },
+        {
+          "name": "SetWorldPosition",
+          "startLine": 67,
+          "endLine": 67,
+          "params": [
+            "p"
+          ]
+        },
+        {
+          "name": "GetTime",
+          "startLine": 72,
+          "endLine": 72,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "SetPosition",
+          "line": 55,
+          "isDefault": false
+        },
+        {
+          "name": "SetPosition",
+          "line": 56,
+          "isDefault": false
+        },
+        {
+          "name": "Translate",
+          "line": 57,
+          "isDefault": false
+        },
+        {
+          "name": "TranslateLocal",
+          "line": 58,
+          "isDefault": false
+        },
+        {
+          "name": "Rotate",
+          "line": 59,
+          "isDefault": false
+        },
+        {
+          "name": "LookAt",
+          "line": 60,
+          "isDefault": false
+        },
+        {
+          "name": "SetScale",
+          "line": 61,
+          "isDefault": false
+        },
+        {
+          "name": "SetParent",
+          "line": 65,
+          "isDefault": false
+        },
+        {
+          "name": "GetWorldPosition",
+          "line": 66,
+          "isDefault": false
+        },
+        {
+          "name": "SetWorldPosition",
+          "line": 67,
+          "isDefault": false
+        },
+        {
+          "name": "GetTime",
+          "line": 72,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "SetPosition",
+          "callee": "SetPosition",
+          "lineNumber": 55
+        },
+        {
+          "caller": "SetPosition",
+          "callee": "GetTransform",
+          "lineNumber": 55
+        },
+        {
+          "caller": "SetPosition",
+          "callee": "SetPosition",
+          "lineNumber": 56
+        },
+        {
+          "caller": "SetPosition",
+          "callee": "GetTransform",
+          "lineNumber": 56
+        },
+        {
+          "caller": "Translate",
+          "callee": "Translate",
+          "lineNumber": 57
+        },
+        {
+          "caller": "Translate",
+          "callee": "GetTransform",
+          "lineNumber": 57
+        },
+        {
+          "caller": "TranslateLocal",
+          "callee": "TranslateLocal",
+          "lineNumber": 58
+        },
+        {
+          "caller": "TranslateLocal",
+          "callee": "GetTransform",
+          "lineNumber": 58
+        },
+        {
+          "caller": "Rotate",
+          "callee": "Rotate",
+          "lineNumber": 59
+        },
+        {
+          "caller": "Rotate",
+          "callee": "GetTransform",
+          "lineNumber": 59
+        },
+        {
+          "caller": "LookAt",
+          "callee": "LookAt",
+          "lineNumber": 60
+        },
+        {
+          "caller": "LookAt",
+          "callee": "GetTransform",
+          "lineNumber": 60
+        },
+        {
+          "caller": "SetScale",
+          "callee": "SetScale",
+          "lineNumber": 61
+        },
+        {
+          "caller": "SetScale",
+          "callee": "GetTransform",
+          "lineNumber": 61
+        },
+        {
+          "caller": "SetParent",
+          "callee": "SetParent",
+          "lineNumber": 65
+        },
+        {
+          "caller": "SetParent",
+          "callee": "GetOwner",
+          "lineNumber": 65
+        },
+        {
+          "caller": "GetWorldPosition",
+          "callee": "GetWorldPosition",
+          "lineNumber": 66
+        },
+        {
+          "caller": "GetWorldPosition",
+          "callee": "GetOwner",
+          "lineNumber": 66
+        },
+        {
+          "caller": "SetWorldPosition",
+          "callee": "SetWorldPosition",
+          "lineNumber": 67
+        },
+        {
+          "caller": "SetWorldPosition",
+          "callee": "GetOwner",
+          "lineNumber": 67
+        },
+        {
+          "caller": "GetTime",
+          "callee": "GetContext",
+          "lineNumber": 72
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 11,
+        "functionCount": 11,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Transform.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 157,
+      "nonEmptyLines": 135,
+      "functions": [
+        {
+          "name": "Transform",
+          "startLine": 8,
+          "endLine": 14,
+          "params": []
+        },
+        {
+          "name": "SetPosition",
+          "startLine": 16,
+          "endLine": 19,
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "name": "SetPosition",
+          "startLine": 21,
+          "endLine": 24,
+          "params": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        {
+          "name": "SetRotation",
+          "startLine": 26,
+          "endLine": 29,
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "name": "SetRotation",
+          "startLine": 31,
+          "endLine": 34,
+          "params": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        {
+          "name": "SetScale",
+          "startLine": 36,
+          "endLine": 39,
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "name": "SetScale",
+          "startLine": 41,
+          "endLine": 44,
+          "params": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        {
+          "name": "SetPreTransform",
+          "startLine": 46,
+          "endLine": 50,
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "name": "Translate",
+          "startLine": 52,
+          "endLine": 57,
+          "params": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        {
+          "name": "Translate",
+          "startLine": 59,
+          "endLine": 62,
+          "params": [
+            "delta"
+          ]
+        },
+        {
+          "name": "TranslateLocal",
+          "startLine": 64,
+          "endLine": 69,
+          "params": [
+            "forward",
+            "right",
+            "up"
+          ]
+        },
+        {
+          "name": "Rotate",
+          "startLine": 71,
+          "endLine": 76,
+          "params": [
+            "pitch",
+            "yaw",
+            "roll"
+          ]
+        },
+        {
+          "name": "LookAt",
+          "startLine": 78,
+          "endLine": 87,
+          "params": [
+            "target"
+          ]
+        },
+        {
+          "name": "GetRotationMatrix",
+          "startLine": 89,
+          "endLine": 92,
+          "params": []
+        },
+        {
+          "name": "GetForward",
+          "startLine": 94,
+          "endLine": 97,
+          "params": []
+        },
+        {
+          "name": "GetRight",
+          "startLine": 99,
+          "endLine": 102,
+          "params": []
+        },
+        {
+          "name": "GetUp",
+          "startLine": 104,
+          "endLine": 107,
+          "params": []
+        },
+        {
+          "name": "GetLocalMatrix",
+          "startLine": 109,
+          "endLine": 121,
+          "params": []
+        },
+        {
+          "name": "SetLocalMatrix",
+          "startLine": 123,
+          "endLine": 136,
+          "params": [
+            "localWithPre"
+          ]
+        },
+        {
+          "name": "EulerFromRotationMatrix",
+          "startLine": 138,
+          "endLine": 157,
+          "params": [
+            "m"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Transform",
+          "line": 8,
+          "isDefault": false
+        },
+        {
+          "name": "SetPosition",
+          "line": 16,
+          "isDefault": false
+        },
+        {
+          "name": "SetPosition",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "SetRotation",
+          "line": 26,
+          "isDefault": false
+        },
+        {
+          "name": "SetRotation",
+          "line": 31,
+          "isDefault": false
+        },
+        {
+          "name": "SetScale",
+          "line": 36,
+          "isDefault": false
+        },
+        {
+          "name": "SetScale",
+          "line": 41,
+          "isDefault": false
+        },
+        {
+          "name": "SetPreTransform",
+          "line": 46,
+          "isDefault": false
+        },
+        {
+          "name": "Translate",
+          "line": 52,
+          "isDefault": false
+        },
+        {
+          "name": "Translate",
+          "line": 59,
+          "isDefault": false
+        },
+        {
+          "name": "TranslateLocal",
+          "line": 64,
+          "isDefault": false
+        },
+        {
+          "name": "Rotate",
+          "line": 71,
+          "isDefault": false
+        },
+        {
+          "name": "LookAt",
+          "line": 78,
+          "isDefault": false
+        },
+        {
+          "name": "GetRotationMatrix",
+          "line": 89,
+          "isDefault": false
+        },
+        {
+          "name": "GetForward",
+          "line": 94,
+          "isDefault": false
+        },
+        {
+          "name": "GetRight",
+          "line": 99,
+          "isDefault": false
+        },
+        {
+          "name": "GetUp",
+          "line": 104,
+          "isDefault": false
+        },
+        {
+          "name": "GetLocalMatrix",
+          "line": 109,
+          "isDefault": false
+        },
+        {
+          "name": "SetLocalMatrix",
+          "line": 123,
+          "isDefault": false
+        },
+        {
+          "name": "EulerFromRotationMatrix",
+          "line": 138,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "Transform",
+          "callee": "XMStoreFloat4x4",
+          "lineNumber": 13
+        },
+        {
+          "caller": "Transform",
+          "callee": "XMMatrixIdentity",
+          "lineNumber": 13
+        },
+        {
+          "caller": "SetPosition",
+          "callee": "XMFLOAT3",
+          "lineNumber": 23
+        },
+        {
+          "caller": "SetRotation",
+          "callee": "XMFLOAT3",
+          "lineNumber": 33
+        },
+        {
+          "caller": "SetScale",
+          "callee": "XMFLOAT3",
+          "lineNumber": 43
+        },
+        {
+          "caller": "SetPreTransform",
+          "callee": "XMStoreFloat4x4",
+          "lineNumber": 48
+        },
+        {
+          "caller": "Translate",
+          "callee": "Translate",
+          "lineNumber": 61
+        },
+        {
+          "caller": "TranslateLocal",
+          "callee": "XMLoadFloat3",
+          "lineNumber": 66
+        },
+        {
+          "caller": "TranslateLocal",
+          "callee": "GetForward",
+          "lineNumber": 67
+        },
+        {
+          "caller": "TranslateLocal",
+          "callee": "GetRight",
+          "lineNumber": 67
+        },
+        {
+          "caller": "TranslateLocal",
+          "callee": "GetUp",
+          "lineNumber": 67
+        },
+        {
+          "caller": "TranslateLocal",
+          "callee": "XMStoreFloat3",
+          "lineNumber": 68
+        },
+        {
+          "caller": "LookAt",
+          "callee": "sqrtf",
+          "lineNumber": 84
+        },
+        {
+          "caller": "LookAt",
+          "callee": "XMFLOAT3",
+          "lineNumber": 86
+        },
+        {
+          "caller": "LookAt",
+          "callee": "asinf",
+          "lineNumber": 86
+        },
+        {
+          "caller": "LookAt",
+          "callee": "atan2f",
+          "lineNumber": 86
+        },
+        {
+          "caller": "GetRotationMatrix",
+          "callee": "XMMatrixRotationRollPitchYaw",
+          "lineNumber": 91
+        },
+        {
+          "caller": "GetForward",
+          "callee": "XMVector3TransformNormal",
+          "lineNumber": 96
+        },
+        {
+          "caller": "GetForward",
+          "callee": "XMVectorSet",
+          "lineNumber": 96
+        },
+        {
+          "caller": "GetForward",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 96
+        },
+        {
+          "caller": "GetRight",
+          "callee": "XMVector3TransformNormal",
+          "lineNumber": 101
+        },
+        {
+          "caller": "GetRight",
+          "callee": "XMVectorSet",
+          "lineNumber": 101
+        },
+        {
+          "caller": "GetRight",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 101
+        },
+        {
+          "caller": "GetUp",
+          "callee": "XMVector3TransformNormal",
+          "lineNumber": 106
+        },
+        {
+          "caller": "GetUp",
+          "callee": "XMVectorSet",
+          "lineNumber": 106
+        },
+        {
+          "caller": "GetUp",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 106
+        },
+        {
+          "caller": "GetLocalMatrix",
+          "callee": "XMMatrixScaling",
+          "lineNumber": 111
+        },
+        {
+          "caller": "GetLocalMatrix",
+          "callee": "GetRotationMatrix",
+          "lineNumber": 112
+        },
+        {
+          "caller": "GetLocalMatrix",
+          "callee": "XMMatrixTranslation",
+          "lineNumber": 113
+        },
+        {
+          "caller": "GetLocalMatrix",
+          "callee": "XMLoadFloat4x4",
+          "lineNumber": 118
+        },
+        {
+          "caller": "SetLocalMatrix",
+          "callee": "XMMatrixInverse",
+          "lineNumber": 127
+        },
+        {
+          "caller": "SetLocalMatrix",
+          "callee": "XMLoadFloat4x4",
+          "lineNumber": 127
+        },
+        {
+          "caller": "SetLocalMatrix",
+          "callee": "XMMatrixDecompose",
+          "lineNumber": 129
+        },
+        {
+          "caller": "SetLocalMatrix",
+          "callee": "XMStoreFloat4x4",
+          "lineNumber": 131
+        },
+        {
+          "caller": "SetLocalMatrix",
+          "callee": "XMMatrixRotationQuaternion",
+          "lineNumber": 131
+        },
+        {
+          "caller": "SetLocalMatrix",
+          "callee": "XMStoreFloat3",
+          "lineNumber": 132
+        },
+        {
+          "caller": "SetLocalMatrix",
+          "callee": "XMStoreFloat3",
+          "lineNumber": 133
+        },
+        {
+          "caller": "SetLocalMatrix",
+          "callee": "EulerFromRotationMatrix",
+          "lineNumber": 134
+        },
+        {
+          "caller": "EulerFromRotationMatrix",
+          "callee": "asinf",
+          "lineNumber": 144
+        },
+        {
+          "caller": "EulerFromRotationMatrix",
+          "callee": "std::clamp",
+          "lineNumber": 144
+        },
+        {
+          "caller": "EulerFromRotationMatrix",
+          "callee": "fabsf",
+          "lineNumber": 145
+        },
+        {
+          "caller": "EulerFromRotationMatrix",
+          "callee": "atan2f",
+          "lineNumber": 147
+        },
+        {
+          "caller": "EulerFromRotationMatrix",
+          "callee": "atan2f",
+          "lineNumber": 148
+        },
+        {
+          "caller": "EulerFromRotationMatrix",
+          "callee": "atan2f",
+          "lineNumber": 154
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 20,
+        "functionCount": 20,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/Scene/Transform.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 62,
+      "nonEmptyLines": 54,
+      "callGraph": [
+        {
+          "caller": "GetPreTransform",
+          "callee": "DirectX::XMLoadFloat4x4",
+          "lineNumber": 29
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    }
+  ]
+}

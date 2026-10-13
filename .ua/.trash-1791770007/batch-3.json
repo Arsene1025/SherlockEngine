@@ -1,0 +1,17 @@
+{
+"nodes":[
+{"id":"document:README.md","type":"document","name":"README.md","filePath":"README.md","summary":"SherlockEngine의 개요, vcpkg/MSBuild 빌드 준비, 솔루션 4개 프로젝트 설명, 소스 폴더 구조와 소스 규약(UTF-8 BOM, ComPtr 소유권), 작업 로그 링크를 담은 프로젝트 진입 문서.","tags":["문서","진입점","빌드-가이드","프로젝트-구조"],"complexity":"moderate"},
+{"id":"config:SherlockEngine.sln","type":"config","name":"SherlockEngine.sln","filePath":"SherlockEngine.sln","summary":"Visual Studio 솔루션 파일로 SherlockEngine(DLL), SherlockEditor, SherlockGame, SampleScripts 네 프로젝트와 x64 Debug/Release 구성을 정의한다.","tags":["설정","빌드-시스템","솔루션","msbuild"],"complexity":"simple"},
+{"id":"config:vcpkg.json","type":"config","name":"vcpkg.json","filePath":"vcpkg.json","summary":"vcpkg 매니페스트로 directxmath, cgltf, nlohmann-json, imgui, imguizmo, directxtk, directxtex 등 의존성과 baseline을 고정한다.","tags":["설정","의존성-관리","vcpkg","빌드-시스템"],"complexity":"simple"},
+{"id":"document:구조 초안.txt","type":"document","name":"구조 초안.txt","filePath":"구조 초안.txt","summary":"초기 엔진 구조 초안 메모로 GameObject, Transform, MeshRenderer, Mesh, Material, Shader, Renderer의 역할과 필드를 나열하고 단계별 안정화 순서를 제안한다.","tags":["문서","설계-메모","아키텍처","초안"],"complexity":"simple"},
+{"id":"document:작업 예정 목록.txt","type":"document","name":"작업 예정 목록.txt","filePath":"작업 예정 목록.txt","summary":"렌더링 루프 안정화, 셰이더/입력 레이아웃 계약, 상수버퍼와 행렬, 카메라·트랜스폼 등 앞으로의 작업 순서를 자체 리뷰와 함께 정리한 로드맵 메모.","tags":["문서","로드맵","작업-목록","렌더링"],"complexity":"moderate"},
+{"id":"document:조명 관련 정리.txt","type":"document","name":"조명 관련 정리.txt","filePath":"조명 관련 정리.txt","summary":"Directional/Point/Spot 조명 타입, LightBuffer 정렬, ImGui 조명 편집, Blinn-Phong 픽셀 셰이더 구현 등 조명 작업 내용을 파일별로 요약한 메모.","tags":["문서","조명","blinn-phong","작업-로그"],"complexity":"simple"}
+],
+"edges":[
+{"source":"config:SherlockEngine.sln","target":"config:vcpkg.json","type":"related","direction":"forward","weight":0.5},
+{"source":"config:vcpkg.json","target":"config:SherlockEngine.sln","type":"configures","direction":"forward","weight":0.6},
+{"source":"document:README.md","target":"config:SherlockEngine.sln","type":"documents","direction":"forward","weight":0.5},
+{"source":"document:README.md","target":"config:vcpkg.json","type":"documents","direction":"forward","weight":0.5},
+{"source":"document:작업 예정 목록.txt","target":"document:구조 초안.txt","type":"related","direction":"forward","weight":0.5},
+{"source":"document:조명 관련 정리.txt","target":"document:작업 예정 목록.txt","type":"related","direction":"forward","weight":0.5}
+]}

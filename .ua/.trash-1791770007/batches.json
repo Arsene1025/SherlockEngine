@@ -1,0 +1,2846 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "louvain",
+  "totalFiles": 178,
+  "totalBatches": 11,
+  "exportsByPath": {
+    "Projects/CubemapTest/CubemapTest.sherlock": [],
+    "Projects/CubemapTest/CubemapTestScripts.vcxproj": [],
+    "Projects/CubemapTest/CubemapTestScripts.vcxproj.filters": [],
+    "Projects/CubemapTest/Scripts/Rotator.cpp": [
+      "Reflect",
+      "Start",
+      "Update"
+    ],
+    "Projects/CubemapTest/Scripts/Rotator.h": [
+      "Reflect",
+      "Start",
+      "Update",
+      "Rotator"
+    ],
+    "Projects/QuaternionLookTest/QuaternionLookTest.sherlock": [],
+    "Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj": [],
+    "Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj.filters": [],
+    "Projects/QuaternionLookTest/Scripts/Rotator.cpp": [
+      "Reflect",
+      "Start",
+      "Update"
+    ],
+    "Projects/QuaternionLookTest/Scripts/Rotator.h": [
+      "Reflect",
+      "Start",
+      "Update",
+      "Rotator"
+    ],
+    "Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp": [
+      "Reflect",
+      "Start",
+      "Update"
+    ],
+    "Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h": [
+      "Reflect",
+      "Start",
+      "Update",
+      "QuaternionLook"
+    ],
+    "Projects/Sample/Sample.sherlock": [],
+    "Projects/Sample/SampleScripts.vcxproj": [],
+    "Projects/Sample/SampleScripts.vcxproj.filters": [],
+    "Projects/Sample/Scripts/PlayerController.cpp": [
+      "Reflect",
+      "Start",
+      "Update"
+    ],
+    "Projects/Sample/Scripts/PlayerController.h": [
+      "Rotator",
+      "Reflect",
+      "Start",
+      "Update",
+      "PlayerController"
+    ],
+    "Projects/Sample/Scripts/Rotator.cpp": [
+      "Reflect",
+      "Update"
+    ],
+    "Projects/Sample/Scripts/Rotator.h": [
+      "Reflect",
+      "Update",
+      "Toggle",
+      "SetSpeed",
+      "Rotator"
+    ],
+    "Projects/Sample/Scripts/Test.cpp": [
+      "Reflect",
+      "Start",
+      "Update"
+    ],
+    "Projects/Sample/Scripts/Test.h": [
+      "Reflect",
+      "Start",
+      "Update",
+      "Test"
+    ],
+    "SherlockEditor/EditorMain.cpp": [
+      "wWinMain"
+    ],
+    "SherlockEditor/SherlockEditor.vcxproj": [],
+    "SherlockEditor/SherlockEditor.vcxproj.filters": [],
+    "SherlockEngine/App/AppBase.cpp": [
+      "WndProc",
+      "AppBase",
+      "~AppBase",
+      "GetCommandLineOption",
+      "GetDefaultProjectDir",
+      "ResolveProject",
+      "OpenProject",
+      "LoadProjectScripts",
+      "UnloadProjectScripts",
+      "LoadConfig",
+      "InitLogger",
+      "Initialize",
+      "Run",
+      "MsgProc",
+      "InitMainWindow",
+      "InitGUI"
+    ],
+    "SherlockEngine/App/AppBase.h": [
+      "Initialize",
+      "Run",
+      "MsgProc",
+      "AppBase"
+    ],
+    "SherlockEngine/App/ContentBrowser.cpp": [
+      "ToLower",
+      "Extension",
+      "FileName",
+      "StartsWithNoCase",
+      "ContainsNoCase",
+      "TruncateLabel",
+      "SizeText",
+      "DirectoryStamp",
+      "Classify",
+      "ToMaterialTextureName",
+      "DrawTypeIcon",
+      "ContentBrowser",
+      "~ContentBrowser",
+      "SetDirectory",
+      "EnumerateDirectory",
+      "RefreshRoots",
+      "BuildTree",
+      "Draw",
+      "DrawToolbar",
+      "DrawBreadcrumb",
+      "DrawFolderTree",
+      "DrawTileGrid",
+      "DrawTile",
+      "BeginDragSource",
+      "DrawContextMenu",
+      "OnDoubleClick",
+      "RequestThumbnail",
+      "PumpThumbnailLoads",
+      "EvictThumbnails",
+      "ClearThumbnails"
+    ],
+    "SherlockEngine/App/ContentBrowser.h": [
+      "Device",
+      "ImDrawList",
+      "ImVec2",
+      "AssetDragPayload",
+      "Draw",
+      "Refresh",
+      "SetDirectory",
+      "GetEntryCount",
+      "GetThumbnailCount",
+      "IsDragCancelled",
+      "Classify",
+      "ToMaterialTextureName",
+      "DrawTypeIcon",
+      "ContentBrowser"
+    ],
+    "SherlockEngine/App/DebugUI.cpp": [
+      "DrawCameraPanel",
+      "DrawRenderSettingsPanel",
+      "DrawShadowPanel",
+      "EditEnvironmentName",
+      "DrawEnvironmentPanel",
+      "DrawLightPanel",
+      "DrawMaterialPanel",
+      "DrawModelPanel",
+      "DrawEnginePanel",
+      "DrawProfilerPanel",
+      "DrawLogConsole"
+    ],
+    "SherlockEngine/App/DebugUI.h": [
+      "Scene",
+      "Renderer",
+      "Device",
+      "Camera",
+      "ModelStats",
+      "Engine"
+    ],
+    "SherlockEngine/App/Editor.cpp": [
+      "RayAabb",
+      "Ray",
+      "ScreenToRay",
+      "ProjectToView",
+      "FileStem",
+      "Editor",
+      "Draw",
+      "BuildDefaultLayout",
+      "DrawMenuBar",
+      "DrawSceneView",
+      "DrawGizmo",
+      "Pick",
+      "RaycastScene",
+      "DrawContentBrowser",
+      "PlaceModelFromAsset",
+      "LoadSceneFromAsset",
+      "HandleAssetDrop",
+      "DrawDropGhost",
+      "DrawHierarchy",
+      "DrawHierarchyNode",
+      "DrawInspector",
+      "Float",
+      "Int",
+      "Bool",
+      "Float3",
+      "String",
+      "ImGuiPropertyVisitor",
+      "DrawCameraGizmos",
+      "DrawCameraPreview",
+      "OnProjectChanged",
+      "DrawProjectBanner",
+      "DrawLauncher",
+      "DrawProjectSettingsPopup",
+      "DrawBuildPopup",
+      "DrawPlayControls",
+      "DrawComponents",
+      "DrawRenderSettings",
+      "DrawStats"
+    ],
+    "SherlockEngine/App/Editor.h": [
+      "Engine",
+      "Scene",
+      "Camera",
+      "GameObject",
+      "ModelStats",
+      "Draw",
+      "IsSceneViewHovered",
+      "IsSceneViewFocused",
+      "IsGizmoUsing",
+      "GetSceneViewWidth",
+      "GetSceneViewHeight",
+      "GetSelectedObject",
+      "SetSelectedObject",
+      "ClearSelection",
+      "PickAt",
+      "RaycastScene",
+      "IsAssetDragActive",
+      "FocusContentBrowser",
+      "OnProjectChanged",
+      "ShowLauncher",
+      "Editor"
+    ],
+    "SherlockEngine/App/EditorApp.cpp": [
+      "ApplyDefaultEnvironment",
+      "EditorApp",
+      "OnInitialize",
+      "LoadSceneMode",
+      "BuildDemoScene",
+      "BuildModelScene",
+      "OnGUI",
+      "OnFixedUpdate",
+      "OnUpdate",
+      "SyncProjectInfo",
+      "OpenProjectAndScene",
+      "CreateProject",
+      "BuildScripts",
+      "ReloadScripts",
+      "PollScripts",
+      "StartPlay",
+      "StopPlay",
+      "TogglePause",
+      "StepFrame",
+      "UpdateCamera",
+      "BeginLook",
+      "EndLook",
+      "OnFocusLost",
+      "SaveSceneFile",
+      "LoadSceneFile",
+      "ParseAutomation",
+      "RunAutomation",
+      "BuildEmptyScene",
+      "AddPrimitive",
+      "PlaceModel",
+      "DeleteObject"
+    ],
+    "SherlockEngine/App/EditorApp.h": [
+      "EditorApp"
+    ],
+    "SherlockEngine/App/EntryPoints.cpp": [
+      "RunEditor",
+      "RunGame"
+    ],
+    "SherlockEngine/App/EntryPoints.h": [],
+    "SherlockEngine/App/GameApp.cpp": [
+      "OnInitialize",
+      "OnFixedUpdate",
+      "OnUpdate"
+    ],
+    "SherlockEngine/App/GameApp.h": [
+      "GameApp"
+    ],
+    "SherlockEngine/App/GameBuilder.cpp": [
+      "Utf8",
+      "Wide",
+      "CopyOne",
+      "CopyTree",
+      "CollectReferences",
+      "CopyAssetTree",
+      "IsAvailable",
+      "GetBuildRoot",
+      "ListScenes",
+      "Build"
+    ],
+    "SherlockEngine/App/GameBuilder.h": [
+      "Options",
+      "Result"
+    ],
+    "SherlockEngine/App/ProjectGenerator.cpp": [
+      "Wide",
+      "WriteAll",
+      "FileContains",
+      "EngineRepoFromProject",
+      "ScriptsProject",
+      "Filters",
+      "Solution",
+      "GetEngineRepoDir",
+      "Generate",
+      "EnsureUpToDate",
+      "RunMsBuild"
+    ],
+    "SherlockEngine/App/ProjectGenerator.h": [
+      "Project"
+    ],
+    "SherlockEngine/App/ProjectLauncher.cpp": [
+      "SettingsPath",
+      "Wide",
+      "LoadSettings",
+      "SaveSettings",
+      "LoadRecent",
+      "AddRecent",
+      "RemoveRecent",
+      "BrowseForProjectFile",
+      "BrowseForFolder",
+      "GetDefaultProjectsDir"
+    ],
+    "SherlockEngine/App/ProjectLauncher.h": [
+      "Recent"
+    ],
+    "SherlockEngine/App/ScriptCreator.cpp": [
+      "FileExists",
+      "WriteAll",
+      "HeaderTemplate",
+      "SourceTemplate",
+      "IsAvailable",
+      "GetScriptsDir",
+      "GetScriptPath",
+      "GetScriptHeaderPath",
+      "IsValidClassName",
+      "Create",
+      "Open",
+      "OpenScript"
+    ],
+    "SherlockEngine/App/ScriptCreator.h": [],
+    "SherlockEngine/Assets/Models/Sponza/Sponza.bin": [],
+    "SherlockEngine/Assets/Models/Sponza/Sponza.gltf": [],
+    "SherlockEngine/Core/AssetManager.cpp": [
+      "AssetManager",
+      "~AssetManager",
+      "Normalize",
+      "EstimateBytes",
+      "IsModelCached",
+      "UnloadModel",
+      "Clear",
+      "GetModelPaths"
+    ],
+    "SherlockEngine/Core/AssetManager.h": [
+      "Model",
+      "IsModelCached",
+      "UnloadModel",
+      "Clear",
+      "GetModelCount",
+      "GetFileCount",
+      "GetModelPaths",
+      "AssetManager"
+    ],
+    "SherlockEngine/Core/Config.cpp": [
+      "Trim",
+      "Lower",
+      "LoadFromFile",
+      "Set",
+      "Has",
+      "GetString",
+      "GetInt",
+      "GetFloat",
+      "GetBool"
+    ],
+    "SherlockEngine/Core/Config.h": [
+      "LoadFromFile",
+      "Set",
+      "Has",
+      "GetString",
+      "GetInt",
+      "GetFloat",
+      "GetBool",
+      "Config"
+    ],
+    "SherlockEngine/Core/Engine.cpp": [
+      "Engine",
+      "~Engine",
+      "Initialize",
+      "Shutdown",
+      "BeginFrame",
+      "Render",
+      "EndFrame",
+      "OnResize"
+    ],
+    "SherlockEngine/Core/Engine.h": [
+      "Initialize",
+      "Shutdown",
+      "IsInitialized",
+      "BeginFrame",
+      "Render",
+      "EndFrame",
+      "OnResize",
+      "RequestScreenshot",
+      "GetBackend",
+      "Engine"
+    ],
+    "SherlockEngine/Core/EngineApi.h": [],
+    "SherlockEngine/Core/GameTimer.cpp": [
+      "GameTimer",
+      "TotalTime",
+      "DeltaTime",
+      "DeltaTimeMS",
+      "Reset",
+      "Start",
+      "Stop",
+      "Tick"
+    ],
+    "SherlockEngine/Core/GameTimer.h": [],
+    "SherlockEngine/Core/Input.cpp": [
+      "OnKeyDown",
+      "OnKeyUp",
+      "OnMouseButton",
+      "OnMouseMove",
+      "OnMouseWheel",
+      "OnFocusLost",
+      "OnCaptureLost",
+      "SetMousePositionSilently",
+      "EndFrame",
+      "IsKeyDown",
+      "IsKeyPressed",
+      "IsKeyReleased",
+      "IsMouseDown",
+      "IsMousePressed",
+      "IsMouseReleased"
+    ],
+    "SherlockEngine/Core/Input.h": [],
+    "SherlockEngine/Core/Log.cpp": [
+      "State",
+      "WriteToDebugger",
+      "FormatV",
+      "Now",
+      "Emit",
+      "SetupConsole",
+      "Init",
+      "Init",
+      "Shutdown",
+      "Debug",
+      "Info",
+      "Warn",
+      "Error",
+      "SetMinLevel",
+      "GetMinLevel",
+      "ParseLevel",
+      "CopyHistory",
+      "ClearHistory",
+      "GetHistoryVersion",
+      "GetCount",
+      "HasConsole",
+      "HrToString",
+      "ToUtf8"
+    ],
+    "SherlockEngine/Core/Log.h": [
+      "Entry",
+      "InitDesc"
+    ],
+    "SherlockEngine/Core/Paths.cpp": [
+      "QueryExecutableDir",
+      "Canonicalize",
+      "FileExists",
+      "DirectoryExists",
+      "WithSlash",
+      "EnsureEngineRoot",
+      "PrefixRelative",
+      "SetEngineRoot",
+      "HasEngineSourceTree",
+      "SetProjectRoot",
+      "HasProject",
+      "GetEngineAssetRoot",
+      "GetAssetRoot",
+      "GetShaderPath",
+      "GetShaderBinaryPath",
+      "GetShaderSourcePath",
+      "GetAssetPath",
+      "GetSceneDir",
+      "ToAssetRelative"
+    ],
+    "SherlockEngine/Core/Paths.h": [],
+    "SherlockEngine/Core/Profiler.cpp": [
+      "OpenCpu",
+      "GpuRange",
+      "State",
+      "BeginFrame",
+      "BeginCpu",
+      "EndCpu",
+      "BeginGpu",
+      "EndGpu",
+      "GetGpuFrameNumber",
+      "GetCpuFrameMs",
+      "GetGpuFrameMs",
+      "IsEnabled",
+      "SetEnabled"
+    ],
+    "SherlockEngine/Core/Profiler.h": [
+      "Device",
+      "CommandList",
+      "CpuSample",
+      "GpuSample",
+      "ProfileScope",
+      "~ProfileScope",
+      "ProfileScope",
+      "ProfileScope",
+      "GpuProfileScope",
+      "~GpuProfileScope",
+      "GpuProfileScope",
+      "GpuProfileScope"
+    ],
+    "SherlockEngine/Core/Project.cpp": [
+      "Wide",
+      "WithSlash",
+      "IsValidName",
+      "FindProjectFile",
+      "FindUpwards",
+      "Load",
+      "Save",
+      "Create",
+      "GetFilePath",
+      "GetSolutionPath",
+      "GetScriptsProjectName"
+    ],
+    "SherlockEngine/Core/Project.h": [
+      "Load",
+      "Save",
+      "IsLoaded",
+      "Create",
+      "FindProjectFile",
+      "FindUpwards",
+      "IsValidName",
+      "GetFilePath",
+      "GetAssetsDir",
+      "GetScriptsDir",
+      "GetBinariesDir",
+      "GetSolutionPath",
+      "GetScriptsProjectName",
+      "Project"
+    ],
+    "SherlockEngine/Core/ScriptModule.cpp": [
+      "GetWriteTime",
+      "Now",
+      "CleanOldCopies",
+      "~ScriptModule",
+      "GetDllPath",
+      "CountScriptSources",
+      "Load",
+      "Unload",
+      "HasNewerBuild"
+    ],
+    "SherlockEngine/Core/ScriptModule.h": [
+      "Project",
+      "ScriptModule",
+      "ScriptModule",
+      "GetDllPath",
+      "CountScriptSources",
+      "Load",
+      "Unload",
+      "IsLoaded",
+      "HasNewerBuild",
+      "GetReloadCount",
+      "ScriptModule"
+    ],
+    "SherlockEngine/Core/Time.cpp": [
+      "Reset",
+      "Tick",
+      "ConsumeFixedStep"
+    ],
+    "SherlockEngine/Core/Time.h": [],
+    "SherlockEngine/Game/Components/FollowTarget.cpp": [
+      "Reflect",
+      "Start",
+      "Update",
+      "FollowTarget"
+    ],
+    "SherlockEngine/Game/Components/Rigidbody.cpp": [
+      "Reflect",
+      "Start",
+      "FixedUpdate"
+    ],
+    "SherlockEngine/Game/Components/Rigidbody.h": [],
+    "SherlockEngine/Graphics/Mesh.cpp": [
+      "MakeVertex",
+      "CreateSphere",
+      "CreateCube",
+      "CreatePlane",
+      "CreateCylinder",
+      "Radius",
+      "FromData",
+      "Finalize",
+      "ComputeTangents"
+    ],
+    "SherlockEngine/Graphics/Mesh.h": [
+      "Submesh",
+      "Center",
+      "Extent",
+      "Radius",
+      "Bounds",
+      "CreateSphere",
+      "CreateCube",
+      "CreatePlane",
+      "CreateCylinder",
+      "FromData",
+      "ComputeTangents",
+      "GetVertexCount",
+      "GetIndexCount",
+      "IsValid",
+      "GetVertexFormat",
+      "Mesh"
+    ],
+    "SherlockEngine/Graphics/Model.cpp": [
+      "ToUtf8",
+      "ToWide",
+      "ReadWholeFile",
+      "ToSamplerPreset",
+      "ImageName",
+      "TextureName",
+      "CollectImage",
+      "ConvertMaterial",
+      "LoadGltfMatrix",
+      "ConvertMesh",
+      "LoadGltf"
+    ],
+    "SherlockEngine/Graphics/Model.h": [
+      "ModelImage",
+      "ModelInstance",
+      "ModelStats",
+      "IsValid",
+      "Model",
+      "Options"
+    ],
+    "SherlockEngine/Graphics/Renderer.cpp": [
+      "ToWide",
+      "Renderer",
+      "~Renderer",
+      "Initialize",
+      "CreateSamplers",
+      "CreateBuiltinTextures",
+      "ResolveEnvironment",
+      "UpdateFrameSet",
+      "CreateShadowResources",
+      "GetSampler",
+      "GetOrLoadTexture",
+      "GetOrLoadCubemap",
+      "LoadShaders",
+      "ValidateBindings",
+      "ReloadShaders",
+      "CheckHotReload",
+      "Shutdown",
+      "GetPipelineCount",
+      "InvalidateMesh",
+      "InvalidateMaterial",
+      "InvalidateScene",
+      "ComputeLightViewProj",
+      "Render",
+      "BuildDrawList",
+      "UploadObjectConstants",
+      "RenderShadowPass",
+      "RenderMainPass",
+      "RenderPreviewPass",
+      "DrawItems",
+      "DrawSkybox",
+      "UploadPerFrameConstants",
+      "SetPreviewTarget",
+      "BeginUIPass",
+      "EndUIPass",
+      "GetPipelineFor",
+      "GetShadowPipelineFor",
+      "GetSkyPipeline",
+      "SetSceneTarget"
+    ],
+    "SherlockEngine/Graphics/Renderer.h": [
+      "Device",
+      "CommandList",
+      "Scene",
+      "SceneEnvironment",
+      "Camera",
+      "Mesh",
+      "GameObject",
+      "RenderSettings",
+      "Initialize",
+      "Shutdown",
+      "Render",
+      "BeginUIPass",
+      "EndUIPass",
+      "ReloadShaders",
+      "GetPipelineCount",
+      "GetGpuMeshCount",
+      "GetGpuMaterialCount",
+      "GetTextureCount",
+      "GetShadowMap",
+      "SetSceneTarget",
+      "IsOffscreen",
+      "GetSceneTexture",
+      "GetSceneWidth",
+      "GetSceneHeight",
+      "SetPreviewTarget",
+      "SetPreviewCamera",
+      "GetPreviewTexture",
+      "InvalidateMesh",
+      "InvalidateMaterial",
+      "InvalidateScene",
+      "Renderer"
+    ],
+    "SherlockEngine/Graphics/Screenshot.cpp": [
+      "SavePng"
+    ],
+    "SherlockEngine/Graphics/Screenshot.h": [],
+    "SherlockEngine/Graphics/ShaderConstants.h": [
+      "PerFrameConstants",
+      "PerObjectConstants",
+      "LightConstants",
+      "MaterialConstants",
+      "IsValidConstantBufferSize"
+    ],
+    "SherlockEngine/Graphics/TextureLoader.cpp": [
+      "FromScratchImage",
+      "FinishImage",
+      "LoadScratchFromFile",
+      "LoadFromFile",
+      "CreateChecker",
+      "CreateSolid",
+      "LoadThumbnail",
+      "LoadFromMemory",
+      "FindFaceFile",
+      "CubeTexelDirection",
+      "LoadCubeFromFile",
+      "CreateCube"
+    ],
+    "SherlockEngine/Graphics/TextureLoader.h": [
+      "IsValid",
+      "TextureImage"
+    ],
+    "SherlockEngine/Graphics/VertexTypes.h": [
+      "VERTEX",
+      "MakeVertexLayoutPCNTT",
+      "GetVertexStride"
+    ],
+    "SherlockEngine/RHI/BindingTypes.h": [
+      "BindingSlot",
+      "BindingLayoutDesc",
+      "ResourceBinding",
+      "ResourceSetDesc"
+    ],
+    "SherlockEngine/RHI/CommandList.h": [
+      "~CommandList",
+      "BeginRenderPass",
+      "EndRenderPass",
+      "IsInRenderPass",
+      "SetPipelineState",
+      "SetResourceSet",
+      "SetVertexBuffer",
+      "SetIndexBuffer",
+      "DrawIndexed",
+      "Draw",
+      "Barrier",
+      "CopyBuffer",
+      "WriteTimestamp",
+      "ResetStats",
+      "CommandList"
+    ],
+    "SherlockEngine/RHI/D3D11/D3D11CommandList.cpp": [
+      "ErrorOnce",
+      "Init",
+      "BeginRenderPass",
+      "EndRenderPass",
+      "UnbindShaderResourcesOf",
+      "SetPipelineState",
+      "SetResourceSet",
+      "SetVertexBuffer",
+      "SetIndexBuffer",
+      "DrawIndexed",
+      "Draw",
+      "Barrier",
+      "CopyBuffer",
+      "WriteTimestamp"
+    ],
+    "SherlockEngine/RHI/D3D11/D3D11CommandList.h": [
+      "D3D11Device",
+      "Init",
+      "BeginRenderPass",
+      "EndRenderPass",
+      "IsInRenderPass",
+      "SetPipelineState",
+      "SetResourceSet",
+      "SetVertexBuffer",
+      "SetIndexBuffer",
+      "DrawIndexed",
+      "Draw",
+      "Barrier",
+      "CopyBuffer",
+      "WriteTimestamp",
+      "ResetStats",
+      "D3D11CommandList"
+    ],
+    "SherlockEngine/RHI/D3D11/D3D11Common.h": [],
+    "SherlockEngine/RHI/D3D11/D3D11Convert.cpp": [
+      "ToDXGI",
+      "ToD3D11",
+      "ToD3D11",
+      "ToD3D11",
+      "ToD3D11",
+      "ToD3D11",
+      "ToD3D11",
+      "ToD3D11",
+      "ToD3D11",
+      "ToD3D11",
+      "ToD3D11",
+      "ToD3D11"
+    ],
+    "SherlockEngine/RHI/D3D11/D3D11Convert.h": [],
+    "SherlockEngine/RHI/D3D11/D3D11Device.cpp": [
+      "ErrorOnce",
+      "Init",
+      "ReleaseDevice",
+      "DumpDebugLayerMessages",
+      "SetDebugName",
+      "InitImGui",
+      "NewFrameImGui",
+      "RenderImGui",
+      "ShutdownImGui",
+      "GetImGuiTextureId",
+      "BeginFrame",
+      "EndFrame",
+      "Resize",
+      "CreateBuffer",
+      "DestroyBuffer",
+      "UpdateBuffer",
+      "CreateTexture",
+      "DestroyTexture",
+      "CreateBackBufferTexture",
+      "CreateDepthTexture",
+      "CreateSampler",
+      "DestroySampler",
+      "CreateShader",
+      "DestroyShader",
+      "CreatePipeline",
+      "InvalidatePipelines",
+      "CreateBindingLayout",
+      "DestroyBindingLayout",
+      "CreateResourceSet",
+      "DestroyResourceSet",
+      "InitDirect3D",
+      "CreateTimestampQueries",
+      "WriteTimestamp",
+      "ResolveTimestamps",
+      "GetTimestampResults",
+      "ReadBackBuffer",
+      "TakeReadbackResult"
+    ],
+    "SherlockEngine/RHI/D3D11/D3D11Device.h": [
+      "~D3D11Device",
+      "Init",
+      "ReleaseDevice",
+      "GetBackend",
+      "IsInitialized",
+      "BeginFrame",
+      "EndFrame",
+      "GetFrameIndex",
+      "GetTimestampResults",
+      "RequestBackBufferReadback",
+      "TakeReadbackResult",
+      "WriteTimestamp",
+      "Resize",
+      "SetVSync",
+      "IsVSync",
+      "IsTearingSupported",
+      "CreateBuffer",
+      "DestroyBuffer",
+      "UpdateBuffer",
+      "CreateTexture",
+      "DestroyTexture",
+      "GetBackBuffer",
+      "GetDepthBuffer",
+      "CreateSampler",
+      "DestroySampler",
+      "CreateShader",
+      "DestroyShader",
+      "CreatePipeline",
+      "GetPipelineCount",
+      "InvalidatePipelines",
+      "CreateBindingLayout",
+      "DestroyBindingLayout",
+      "CreateResourceSet",
+      "DestroyResourceSet",
+      "InitImGui",
+      "NewFrameImGui",
+      "RenderImGui",
+      "ShutdownImGui",
+      "GetImGuiTextureId",
+      "DumpDebugLayerMessages",
+      "D3D11Device"
+    ],
+    "SherlockEngine/RHI/D3D11/D3D11Resources.h": [
+      "D3D11Buffer",
+      "IsDepth",
+      "Typeless",
+      "ShaderView",
+      "D3D11Texture",
+      "D3D11Shader",
+      "D3D11Sampler",
+      "D3D11BindingLayout",
+      "D3D11ResourceSet"
+    ],
+    "SherlockEngine/RHI/D3D11/PipelineState.cpp": [
+      "Create",
+      "Bind"
+    ],
+    "SherlockEngine/RHI/D3D11/PipelineState.h": [
+      "D3D11Device",
+      "Create",
+      "Bind",
+      "PipelineState"
+    ],
+    "SherlockEngine/RHI/D3D11/PipelineStateCache.cpp": [
+      "GetOrCreate",
+      "Clear"
+    ],
+    "SherlockEngine/RHI/D3D11/PipelineStateCache.h": [
+      "D3D11Device",
+      "GetOrCreate",
+      "Count",
+      "GetGeneration",
+      "Clear",
+      "PipelineStateCache"
+    ],
+    "SherlockEngine/RHI/D3D12/D3D12CommandList.cpp": [
+      "ErrorOnce",
+      "Init",
+      "BeginFrame",
+      "BeginRenderPass",
+      "EndRenderPass",
+      "SetPipelineState",
+      "SetResourceSet",
+      "SetVertexBuffer",
+      "SetIndexBuffer",
+      "ApplyBindings",
+      "DrawIndexed",
+      "Draw",
+      "Barrier",
+      "CopyBuffer",
+      "WriteTimestamp"
+    ],
+    "SherlockEngine/RHI/D3D12/D3D12CommandList.h": [
+      "D3D12Device",
+      "D3D12PipelineState",
+      "D3D12RootLayout",
+      "Init",
+      "BeginFrame",
+      "BeginRenderPass",
+      "EndRenderPass",
+      "IsInRenderPass",
+      "SetPipelineState",
+      "SetResourceSet",
+      "SetVertexBuffer",
+      "SetIndexBuffer",
+      "DrawIndexed",
+      "Draw",
+      "Barrier",
+      "CopyBuffer",
+      "WriteTimestamp",
+      "ResetStats",
+      "D3D12CommandList"
+    ],
+    "SherlockEngine/RHI/D3D12/D3D12Common.h": [],
+    "SherlockEngine/RHI/D3D12/D3D12Convert.cpp": [
+      "ToDXGI",
+      "ToD3D12",
+      "ToD3D12",
+      "ToD3D12",
+      "ToD3D12",
+      "ToTopologyType",
+      "ToD3D12",
+      "ToD3D12",
+      "ToD3D12",
+      "ToD3D12",
+      "ToD3D12",
+      "ToD3D12",
+      "ToD3D12",
+      "ToD3D12",
+      "IsDepthFormat",
+      "DepthTypeless",
+      "DepthShaderView",
+      "ToSrgb",
+      "HeapProperties",
+      "BufferDesc",
+      "TransitionBarrier"
+    ],
+    "SherlockEngine/RHI/D3D12/D3D12Convert.h": [],
+    "SherlockEngine/RHI/D3D12/D3D12DescriptorHeap.h": [
+      "Init",
+      "Release",
+      "Allocate",
+      "Free",
+      "Cpu",
+      "Gpu",
+      "GetType",
+      "GetIncrement",
+      "GetUsed",
+      "GetCapacity",
+      "D3D12DescriptorHeap"
+    ],
+    "SherlockEngine/RHI/D3D12/D3D12Device.cpp": [
+      "ErrorOnce",
+      "VisibilityOf",
+      "ToWide",
+      "Init",
+      "SetDebugName",
+      "InitDevice",
+      "InitSwapChain",
+      "InitFrameResources",
+      "WaitForGpu",
+      "ReleaseGarbage",
+      "DeferRelease",
+      "DeferFree",
+      "ReleaseDevice",
+      "DumpDebugLayerMessages",
+      "ExecuteUploadSync",
+      "BeginFrame",
+      "EndFrame",
+      "Resize",
+      "CreateBuffer",
+      "DestroyBuffer",
+      "UpdateBuffer",
+      "CreateTexture",
+      "DestroyTexture",
+      "ReleaseTextureNow",
+      "CreateBackBufferTextures",
+      "CreateDepthTexture",
+      "GetRTV",
+      "GetDSV",
+      "GetSRV",
+      "CreateSampler",
+      "DestroySampler",
+      "CreateShader",
+      "DestroyShader",
+      "CreatePipeline",
+      "InvalidatePipelines",
+      "GetOrCreateRootLayout",
+      "CreateBindingLayout",
+      "DestroyBindingLayout",
+      "CreateResourceSet",
+      "DestroyResourceSet",
+      "ImGuiSrvAlloc",
+      "ImGuiSrvFree",
+      "InitImGui",
+      "NewFrameImGui",
+      "RenderImGui",
+      "ShutdownImGui",
+      "GetImGuiTextureId",
+      "CreateTimestampResources",
+      "WriteTimestamp",
+      "ReadTimestamps",
+      "GetTimestampResults",
+      "RecordBackBufferReadback",
+      "FinishBackBufferReadback",
+      "TakeReadbackResult"
+    ],
+    "SherlockEngine/RHI/D3D12/D3D12Device.h": [
+      "~D3D12Device",
+      "Init",
+      "ReleaseDevice",
+      "GetBackend",
+      "IsInitialized",
+      "BeginFrame",
+      "EndFrame",
+      "GetFrameIndex",
+      "GetTimestampResults",
+      "RequestBackBufferReadback",
+      "TakeReadbackResult",
+      "WriteTimestamp",
+      "Resize",
+      "SetVSync",
+      "IsVSync",
+      "IsTearingSupported",
+      "CreateBuffer",
+      "DestroyBuffer",
+      "UpdateBuffer",
+      "CreateTexture",
+      "DestroyTexture",
+      "GetBackBuffer",
+      "GetDepthBuffer",
+      "CreateSampler",
+      "DestroySampler",
+      "CreateShader",
+      "DestroyShader",
+      "CreatePipeline",
+      "GetPipelineCount",
+      "InvalidatePipelines",
+      "CreateBindingLayout",
+      "DestroyBindingLayout",
+      "CreateResourceSet",
+      "DestroyResourceSet",
+      "InitImGui",
+      "NewFrameImGui",
+      "RenderImGui",
+      "ShutdownImGui",
+      "GetImGuiTextureId",
+      "DumpDebugLayerMessages",
+      "GetFrameNumber",
+      "GetRTV",
+      "GetDSV",
+      "GetSRV",
+      "GetOrCreateRootLayout",
+      "DeferRelease",
+      "DeferFree",
+      "D3D12Device"
+    ],
+    "SherlockEngine/RHI/D3D12/D3D12PipelineState.cpp": [
+      "Create",
+      "GetOrCreate",
+      "Clear"
+    ],
+    "SherlockEngine/RHI/D3D12/D3D12PipelineState.h": [
+      "D3D12Device",
+      "D3D12RootLayout",
+      "Create",
+      "GetTopology",
+      "Detach",
+      "D3D12PipelineState",
+      "GetOrCreate",
+      "Count",
+      "GetGeneration",
+      "Clear",
+      "D3D12PipelineStateCache"
+    ],
+    "SherlockEngine/RHI/D3D12/D3D12Resources.h": [
+      "D3D12Buffer",
+      "D3D12Texture",
+      "D3D12Shader",
+      "D3D12Sampler",
+      "D3D12BindingLayout",
+      "D3D12ResourceSet"
+    ],
+    "SherlockEngine/RHI/DXBC/ShaderCompiler.cpp": [
+      "CompileFromFile",
+      "LoadFile",
+      "GetLastWriteTime",
+      "LoadOrCompile",
+      "ValidateConstantBufferSize",
+      "ReflectBindings"
+    ],
+    "SherlockEngine/RHI/Device.h": [
+      "DeviceDesc",
+      "~Device",
+      "GetBackend",
+      "IsInitialized",
+      "BeginFrame",
+      "EndFrame",
+      "GetFrameIndex",
+      "GetTimestampResults",
+      "RequestBackBufferReadback",
+      "TakeReadbackResult",
+      "Resize",
+      "SetVSync",
+      "IsVSync",
+      "IsTearingSupported",
+      "CreateBuffer",
+      "DestroyBuffer",
+      "UpdateBuffer",
+      "CreateTexture",
+      "DestroyTexture",
+      "GetBackBuffer",
+      "GetDepthBuffer",
+      "CreateSampler",
+      "DestroySampler",
+      "CreateShader",
+      "DestroyShader",
+      "CreatePipeline",
+      "GetPipelineCount",
+      "InvalidatePipelines",
+      "CreateBindingLayout",
+      "DestroyBindingLayout",
+      "CreateResourceSet",
+      "DestroyResourceSet",
+      "InitImGui",
+      "NewFrameImGui",
+      "RenderImGui",
+      "ShutdownImGui",
+      "GetImGuiTextureId",
+      "Device"
+    ],
+    "SherlockEngine/RHI/GraphicsConfig.h": [],
+    "SherlockEngine/RHI/Handle.h": [
+      "ShaderTag",
+      "PipelineTag",
+      "BufferTag",
+      "TextureTag",
+      "BindingLayoutTag",
+      "ResourceSetTag",
+      "SamplerTag"
+    ],
+    "SherlockEngine/RHI/PipelineTypes.cpp": [
+      "HashCombine",
+      "HashFloat",
+      "HashRasterizer",
+      "HashDepthStencil",
+      "HashRtBlend",
+      "BlendSlotCount",
+      "Hash",
+      "operator=="
+    ],
+    "SherlockEngine/RHI/PipelineTypes.h": [
+      "operator==",
+      "RasterizerDesc",
+      "operator==",
+      "DepthStencilDesc",
+      "operator==",
+      "RenderTargetBlendDesc",
+      "BlendDesc",
+      "operator==",
+      "VertexAttribute",
+      "VertexLayoutDesc",
+      "Hash",
+      "operator==",
+      "PipelineStateDesc",
+      "operator()",
+      "PipelineStateDescHasher"
+    ],
+    "SherlockEngine/RHI/RHI.cpp": [
+      "CreateDevice"
+    ],
+    "SherlockEngine/RHI/RHI.h": [],
+    "SherlockEngine/RHI/RenderPassTypes.h": [
+      "ColorAttachment",
+      "DepthAttachment",
+      "Viewport",
+      "RenderPassDesc"
+    ],
+    "SherlockEngine/RHI/ResourceDesc.h": [
+      "BufferDesc",
+      "TextureDesc",
+      "GetArraySize",
+      "TextureSubresource",
+      "SamplerDesc",
+      "ShaderDesc"
+    ],
+    "SherlockEngine/RHI/ResourcePool.h": [],
+    "SherlockEngine/RHI/ShaderCompiler.h": [
+      "ReflectedBinding"
+    ],
+    "SherlockEngine/Scene/Behaviour.cpp": [
+      "Entry",
+      "Register",
+      "Unregister",
+      "Create",
+      "IsScript"
+    ],
+    "SherlockEngine/Scene/Behaviour.h": [
+      "GameObject",
+      "Transform",
+      "Scene",
+      "Input",
+      "Camera",
+      "PlayContext",
+      "~PropertyVisitor",
+      "Float",
+      "Int",
+      "Bool",
+      "Float3",
+      "String",
+      "PropertyVisitor"
+    ],
+    "SherlockEngine/Scene/Camera.cpp": [
+      "WrapAngle",
+      "ClampPitch",
+      "Camera",
+      "SetPosition",
+      "SetYawPitch",
+      "SetRotation",
+      "GetYaw",
+      "GetPitch",
+      "GetRoll",
+      "Rotate",
+      "Move",
+      "SetLookAt",
+      "GetForward",
+      "GetRight",
+      "GetUp",
+      "SetLens",
+      "SetAspectRatio",
+      "SetUsePerspectiveProjection",
+      "GetViewMatrix",
+      "GetProjectionMatrix",
+      "GetViewProjectionMatrix",
+      "UpdateViewMatrix",
+      "UpdateProjectionMatrix"
+    ],
+    "SherlockEngine/Scene/Camera.h": [],
+    "SherlockEngine/Scene/CameraComponent.cpp": [
+      "Reflect",
+      "GetPose",
+      "ApplyTo",
+      "SetFromCamera"
+    ],
+    "SherlockEngine/Scene/CameraComponent.h": [
+      "Camera",
+      "GetRotationMatrix",
+      "CameraPose"
+    ],
+    "SherlockEngine/Scene/GameObject.cpp": [
+      "IsDescendantOf",
+      "SetParent",
+      "GetParentWorldMatrix",
+      "GetWorldMatrix",
+      "GetWorldPosition",
+      "SetWorldMatrix",
+      "SetWorldPosition",
+      "SetWorldRotation",
+      "DetachFromHierarchy"
+    ],
+    "SherlockEngine/Scene/GameObject.h": [
+      "Mesh",
+      "Material"
+    ],
+    "SherlockEngine/Scene/Light.h": [
+      "LightData"
+    ],
+    "SherlockEngine/Scene/Material.h": [
+      "Material"
+    ],
+    "SherlockEngine/Scene/Scene.cpp": [
+      "Scene",
+      "~Scene",
+      "AddModelImages",
+      "Sphere",
+      "Cube",
+      "Plane",
+      "Cylinder",
+      "FromModel",
+      "CreatePrimitive",
+      "RemoveObject",
+      "IndexOf",
+      "BeginPlay",
+      "Update",
+      "ApplyActiveCamera",
+      "FixedUpdate",
+      "EndPlay",
+      "AddModel",
+      "Clear",
+      "AddImage",
+      "AddModel"
+    ],
+    "SherlockEngine/Scene/Scene.h": [
+      "Mesh",
+      "Model",
+      "Sphere",
+      "Cube",
+      "Plane",
+      "Cylinder",
+      "FromModel",
+      "CreatePrimitive",
+      "MeshSource",
+      "SceneEnvironment"
+    ],
+    "SherlockEngine/Scene/SceneSerializer.cpp": [
+      "ToJson",
+      "ToJson",
+      "ToJson",
+      "ToJson",
+      "ToFloat3",
+      "ToFloat4",
+      "ToFloat2",
+      "ToUtf8",
+      "ToWide",
+      "ParseSourceType",
+      "MaterialToJson",
+      "MaterialFromJson",
+      "LightToJson",
+      "LightFromJson",
+      "JsonWriteVisitor",
+      "Float",
+      "Int",
+      "Bool",
+      "Float3",
+      "String",
+      "JsonWriteVisitor",
+      "JsonReadVisitor",
+      "Float",
+      "Int",
+      "Bool",
+      "Float3",
+      "String",
+      "JsonReadVisitor",
+      "ComponentsToJson",
+      "ComponentsFromJson",
+      "SaveToString",
+      "Save",
+      "Load",
+      "LoadFromString"
+    ],
+    "SherlockEngine/Scene/SceneSerializer.h": [
+      "Scene",
+      "Camera",
+      "AssetManager"
+    ],
+    "SherlockEngine/Scene/Script.cpp": [],
+    "SherlockEngine/Scene/Script.h": [
+      "SetPosition",
+      "SetPosition",
+      "Translate",
+      "TranslateLocal",
+      "Rotate",
+      "LookAt",
+      "SetScale",
+      "SetParent",
+      "GetWorldPosition",
+      "SetWorldPosition",
+      "GetTime"
+    ],
+    "SherlockEngine/Scene/Transform.cpp": [
+      "Transform",
+      "SetPosition",
+      "SetPosition",
+      "SetRotation",
+      "SetRotation",
+      "SetScale",
+      "SetScale",
+      "SetPreTransform",
+      "Translate",
+      "Translate",
+      "TranslateLocal",
+      "Rotate",
+      "LookAt",
+      "GetRotationMatrix",
+      "GetForward",
+      "GetRight",
+      "GetUp",
+      "GetLocalMatrix",
+      "SetLocalMatrix",
+      "EulerFromRotationMatrix"
+    ],
+    "SherlockEngine/Scene/Transform.h": [],
+    "SherlockEngine/Shaders/BasicPixelShader.hlsl": [],
+    "SherlockEngine/Shaders/BasicVertexShader.hlsl": [],
+    "SherlockEngine/Shaders/Common.hlsli": [],
+    "SherlockEngine/Shaders/ShadowVertexShader.hlsl": [],
+    "SherlockEngine/Shaders/SkyboxPixelShader.hlsl": [],
+    "SherlockEngine/Shaders/SkyboxVertexShader.hlsl": [],
+    "SherlockEngine/SherlockEngine.vcxproj": [],
+    "SherlockEngine/SherlockEngine.vcxproj.filters": [],
+    "SherlockEngine/pch.cpp": [],
+    "SherlockEngine/pch.h": [],
+    "SherlockGame/GameMain.cpp": [
+      "wWinMain"
+    ],
+    "SherlockGame/SherlockGame.vcxproj": [],
+    "SherlockGame/SherlockGame.vcxproj.filters": [],
+    "docs/memo.js": []
+  },
+  "batches": [
+    {
+      "batchIndex": 1,
+      "files": [
+        {
+          "path": "Projects/Sample/Scripts/PlayerController.cpp",
+          "language": "cpp",
+          "sizeLines": 51,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/Sample/Scripts/PlayerController.h",
+          "language": "c",
+          "sizeLines": 24,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/Sample/Scripts/Rotator.cpp",
+          "language": "cpp",
+          "sizeLines": 18,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/Sample/Scripts/Rotator.h",
+          "language": "c",
+          "sizeLines": 19,
+          "fileCategory": "code"
+        }
+      ],
+      "batchImportData": {
+        "Projects/Sample/Scripts/PlayerController.cpp": [
+          "Projects/Sample/Scripts/PlayerController.h",
+          "Projects/Sample/Scripts/Rotator.h"
+        ],
+        "Projects/Sample/Scripts/PlayerController.h": [],
+        "Projects/Sample/Scripts/Rotator.cpp": [
+          "Projects/Sample/Scripts/Rotator.h"
+        ],
+        "Projects/Sample/Scripts/Rotator.h": []
+      },
+      "neighborMap": {}
+    },
+    {
+      "batchIndex": 2,
+      "files": [
+        {
+          "path": "Projects/QuaternionLookTest/Assets/Scenes/Main.json",
+          "language": "json",
+          "sizeLines": 168,
+          "fileCategory": "config"
+        },
+        {
+          "path": "Projects/QuaternionLookTest/Assets/Scenes/quat_roll_local.json",
+          "language": "json",
+          "sizeLines": 699,
+          "fileCategory": "config"
+        },
+        {
+          "path": "Projects/QuaternionLookTest/Assets/Scenes/quat_roll_world.json",
+          "language": "json",
+          "sizeLines": 699,
+          "fileCategory": "config"
+        }
+      ],
+      "batchImportData": {
+        "Projects/QuaternionLookTest/Assets/Scenes/Main.json": [],
+        "Projects/QuaternionLookTest/Assets/Scenes/quat_roll_local.json": [],
+        "Projects/QuaternionLookTest/Assets/Scenes/quat_roll_world.json": []
+      },
+      "neighborMap": {}
+    },
+    {
+      "batchIndex": 3,
+      "files": [
+        {
+          "path": "README.md",
+          "language": "markdown",
+          "sizeLines": 80,
+          "fileCategory": "docs"
+        },
+        {
+          "path": "SherlockEngine.sln",
+          "language": "sln",
+          "sizeLines": 59,
+          "fileCategory": "config"
+        },
+        {
+          "path": "vcpkg.json",
+          "language": "json",
+          "sizeLines": 22,
+          "fileCategory": "config"
+        },
+        {
+          "path": "구조 초안.txt",
+          "language": "txt",
+          "sizeLines": 43,
+          "fileCategory": "docs"
+        },
+        {
+          "path": "작업 예정 목록.txt",
+          "language": "txt",
+          "sizeLines": 172,
+          "fileCategory": "docs"
+        },
+        {
+          "path": "조명 관련 정리.txt",
+          "language": "txt",
+          "sizeLines": 23,
+          "fileCategory": "docs"
+        }
+      ],
+      "batchImportData": {
+        "README.md": [],
+        "SherlockEngine.sln": [],
+        "vcpkg.json": [],
+        "구조 초안.txt": [],
+        "작업 예정 목록.txt": [],
+        "조명 관련 정리.txt": []
+      },
+      "neighborMap": {}
+    },
+    {
+      "batchIndex": 4,
+      "files": [
+        {
+          "path": "docs/pbr-guide.html",
+          "language": "html",
+          "sizeLines": 2336,
+          "fileCategory": "markup"
+        },
+        {
+          "path": "docs/rendering-analysis.html",
+          "language": "html",
+          "sizeLines": 11922,
+          "fileCategory": "markup"
+        },
+        {
+          "path": "docs/study-guide.html",
+          "language": "html",
+          "sizeLines": 781,
+          "fileCategory": "markup"
+        }
+      ],
+      "batchImportData": {
+        "docs/pbr-guide.html": [],
+        "docs/rendering-analysis.html": [],
+        "docs/study-guide.html": []
+      },
+      "neighborMap": {}
+    },
+    {
+      "batchIndex": 5,
+      "files": [
+        {
+          "path": ".claude/launch.json",
+          "language": "json",
+          "sizeLines": 17,
+          "fileCategory": "config"
+        },
+        {
+          "path": ".ua/config.json",
+          "language": "json",
+          "sizeLines": 1,
+          "fileCategory": "config"
+        },
+        {
+          "path": "Projects/CubemapTest/Assets/Scenes/Main.json",
+          "language": "json",
+          "sizeLines": 863,
+          "fileCategory": "config"
+        },
+        {
+          "path": "Projects/CubemapTest/CubemapTest.sherlock",
+          "language": "sherlock",
+          "sizeLines": 5,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/CubemapTest/CubemapTest.sln",
+          "language": "sln",
+          "sizeLines": 34,
+          "fileCategory": "config"
+        },
+        {
+          "path": "Projects/CubemapTest/CubemapTestScripts.vcxproj",
+          "language": "vcxproj",
+          "sizeLines": 132,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/CubemapTest/CubemapTestScripts.vcxproj.filters",
+          "language": "filters",
+          "sizeLines": 26,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/CubemapTest/Scripts/Rotator.cpp",
+          "language": "cpp",
+          "sizeLines": 24,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/CubemapTest/Scripts/Rotator.h",
+          "language": "c",
+          "sizeLines": 17,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/CubemapTest/imgui.ini",
+          "language": "config",
+          "sizeLines": 77,
+          "fileCategory": "config"
+        },
+        {
+          "path": "Projects/QuaternionLookTest/QuaternionLookTest.sherlock",
+          "language": "sherlock",
+          "sizeLines": 5,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/QuaternionLookTest/QuaternionLookTest.sln",
+          "language": "sln",
+          "sizeLines": 34,
+          "fileCategory": "config"
+        },
+        {
+          "path": "Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj",
+          "language": "vcxproj",
+          "sizeLines": 132,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj.filters",
+          "language": "filters",
+          "sizeLines": 26,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/QuaternionLookTest/Scripts/Rotator.cpp",
+          "language": "cpp",
+          "sizeLines": 24,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/QuaternionLookTest/Scripts/Rotator.h",
+          "language": "c",
+          "sizeLines": 17,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp",
+          "language": "cpp",
+          "sizeLines": 69,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h",
+          "language": "c",
+          "sizeLines": 33,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/Sample/Assets/Scenes/demo_components.json",
+          "language": "json",
+          "sizeLines": 654,
+          "fileCategory": "config"
+        },
+        {
+          "path": "Projects/Sample/Assets/Scenes/floor_cube.json",
+          "language": "json",
+          "sizeLines": 207,
+          "fileCategory": "config"
+        },
+        {
+          "path": "Projects/Sample/Sample.sherlock",
+          "language": "sherlock",
+          "sizeLines": 6,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/Sample/Sample.sln",
+          "language": "sln",
+          "sizeLines": 34,
+          "fileCategory": "config"
+        },
+        {
+          "path": "Projects/Sample/SampleScripts.vcxproj",
+          "language": "vcxproj",
+          "sizeLines": 132,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/Sample/SampleScripts.vcxproj.filters",
+          "language": "filters",
+          "sizeLines": 26,
+          "fileCategory": "code"
+        },
+        {
+          "path": "Projects/Sample/Scripts/Test.cpp",
+          "language": "cpp",
+          "sizeLines": 24,
+          "fileCategory": "code"
+        }
+      ],
+      "batchImportData": {
+        ".claude/launch.json": [],
+        ".ua/config.json": [],
+        "Projects/CubemapTest/Assets/Scenes/Main.json": [],
+        "Projects/CubemapTest/CubemapTest.sherlock": [],
+        "Projects/CubemapTest/CubemapTest.sln": [],
+        "Projects/CubemapTest/CubemapTestScripts.vcxproj": [],
+        "Projects/CubemapTest/CubemapTestScripts.vcxproj.filters": [],
+        "Projects/CubemapTest/Scripts/Rotator.cpp": [
+          "Projects/CubemapTest/Scripts/Rotator.h"
+        ],
+        "Projects/CubemapTest/Scripts/Rotator.h": [],
+        "Projects/CubemapTest/imgui.ini": [],
+        "Projects/QuaternionLookTest/QuaternionLookTest.sherlock": [],
+        "Projects/QuaternionLookTest/QuaternionLookTest.sln": [],
+        "Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj": [],
+        "Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj.filters": [],
+        "Projects/QuaternionLookTest/Scripts/Rotator.cpp": [
+          "Projects/QuaternionLookTest/Scripts/Rotator.h"
+        ],
+        "Projects/QuaternionLookTest/Scripts/Rotator.h": [],
+        "Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp": [
+          "Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h"
+        ],
+        "Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h": [],
+        "Projects/Sample/Assets/Scenes/demo_components.json": [],
+        "Projects/Sample/Assets/Scenes/floor_cube.json": [],
+        "Projects/Sample/Sample.sherlock": [],
+        "Projects/Sample/Sample.sln": [],
+        "Projects/Sample/SampleScripts.vcxproj": [],
+        "Projects/Sample/SampleScripts.vcxproj.filters": [],
+        "Projects/Sample/Scripts/Test.cpp": [
+          "Projects/Sample/Scripts/Test.h"
+        ]
+      },
+      "neighborMap": {
+        "Projects/Sample/Scripts/Test.cpp": [
+          {
+            "path": "Projects/Sample/Scripts/Test.h",
+            "batchIndex": 6,
+            "symbols": [
+              "Reflect",
+              "Start",
+              "Update",
+              "Test"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "batchIndex": 6,
+      "files": [
+        {
+          "path": "Projects/Sample/Scripts/Test.h",
+          "language": "c",
+          "sizeLines": 16,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEditor/EditorMain.cpp",
+          "language": "cpp",
+          "sizeLines": 14,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEditor/SherlockEditor.vcxproj",
+          "language": "vcxproj",
+          "sizeLines": 178,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEditor/SherlockEditor.vcxproj.filters",
+          "language": "filters",
+          "sizeLines": 9,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/AppBase.cpp",
+          "language": "cpp",
+          "sizeLines": 398,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/AppBase.h",
+          "language": "c",
+          "sizeLines": 82,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/ContentBrowser.cpp",
+          "language": "cpp",
+          "sizeLines": 679,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/ContentBrowser.h",
+          "language": "c",
+          "sizeLines": 133,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/DebugUI.cpp",
+          "language": "cpp",
+          "sizeLines": 410,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/DebugUI.h",
+          "language": "c",
+          "sizeLines": 29,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/Editor.cpp",
+          "language": "cpp",
+          "sizeLines": 1315,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/Editor.h",
+          "language": "c",
+          "sizeLines": 165,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/EditorApp.cpp",
+          "language": "cpp",
+          "sizeLines": 1120,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/EditorApp.h",
+          "language": "c",
+          "sizeLines": 140,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/EntryPoints.cpp",
+          "language": "cpp",
+          "sizeLines": 27,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/EntryPoints.h",
+          "language": "c",
+          "sizeLines": 10,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/GameApp.cpp",
+          "language": "cpp",
+          "sizeLines": 90,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/GameApp.h",
+          "language": "c",
+          "sizeLines": 26,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/GameBuilder.cpp",
+          "language": "cpp",
+          "sizeLines": 254,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/GameBuilder.h",
+          "language": "c",
+          "sizeLines": 37,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/ProjectGenerator.cpp",
+          "language": "cpp",
+          "sizeLines": 268,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/ProjectGenerator.h",
+          "language": "c",
+          "sizeLines": 27,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/ProjectLauncher.cpp",
+          "language": "cpp",
+          "sizeLines": 144,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/ProjectLauncher.h",
+          "language": "c",
+          "sizeLines": 21,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/App/ScriptCreator.cpp",
+          "language": "cpp",
+          "sizeLines": 140,
+          "fileCategory": "code"
+        }
+      ],
+      "batchImportData": {
+        "Projects/Sample/Scripts/Test.h": [],
+        "SherlockEditor/EditorMain.cpp": [],
+        "SherlockEditor/SherlockEditor.vcxproj": [],
+        "SherlockEditor/SherlockEditor.vcxproj.filters": [],
+        "SherlockEngine/App/AppBase.cpp": [],
+        "SherlockEngine/App/AppBase.h": [],
+        "SherlockEngine/App/ContentBrowser.cpp": [],
+        "SherlockEngine/App/ContentBrowser.h": [],
+        "SherlockEngine/App/DebugUI.cpp": [],
+        "SherlockEngine/App/DebugUI.h": [],
+        "SherlockEngine/App/Editor.cpp": [],
+        "SherlockEngine/App/Editor.h": [],
+        "SherlockEngine/App/EditorApp.cpp": [],
+        "SherlockEngine/App/EditorApp.h": [],
+        "SherlockEngine/App/EntryPoints.cpp": [],
+        "SherlockEngine/App/EntryPoints.h": [],
+        "SherlockEngine/App/GameApp.cpp": [],
+        "SherlockEngine/App/GameApp.h": [],
+        "SherlockEngine/App/GameBuilder.cpp": [],
+        "SherlockEngine/App/GameBuilder.h": [],
+        "SherlockEngine/App/ProjectGenerator.cpp": [],
+        "SherlockEngine/App/ProjectGenerator.h": [],
+        "SherlockEngine/App/ProjectLauncher.cpp": [],
+        "SherlockEngine/App/ProjectLauncher.h": [],
+        "SherlockEngine/App/ScriptCreator.cpp": []
+      },
+      "neighborMap": {
+        "Projects/Sample/Scripts/Test.h": [
+          {
+            "path": "Projects/Sample/Scripts/Test.cpp",
+            "batchIndex": 5,
+            "symbols": [
+              "Reflect",
+              "Start",
+              "Update"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "batchIndex": 7,
+      "files": [
+        {
+          "path": "SherlockEngine/App/ScriptCreator.h",
+          "language": "c",
+          "sizeLines": 22,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Assets/Config/engine.ini",
+          "language": "config",
+          "sizeLines": 22,
+          "fileCategory": "config"
+        },
+        {
+          "path": "SherlockEngine/Assets/Models/Sponza/Sponza.bin",
+          "language": "bin",
+          "sizeLines": 35481,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Assets/Models/Sponza/Sponza.gltf",
+          "language": "gltf",
+          "sizeLines": 8573,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/AssetManager.cpp",
+          "language": "cpp",
+          "sizeLines": 111,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/AssetManager.h",
+          "language": "c",
+          "sizeLines": 55,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Config.cpp",
+          "language": "cpp",
+          "sizeLines": 106,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Config.h",
+          "language": "c",
+          "sizeLines": 33,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Engine.cpp",
+          "language": "cpp",
+          "sizeLines": 142,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Engine.h",
+          "language": "c",
+          "sizeLines": 70,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/EngineApi.h",
+          "language": "c",
+          "sizeLines": 23,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/GameTimer.cpp",
+          "language": "cpp",
+          "sizeLines": 134,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/GameTimer.h",
+          "language": "c",
+          "sizeLines": 35,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Input.cpp",
+          "language": "cpp",
+          "sizeLines": 104,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Input.h",
+          "language": "c",
+          "sizeLines": 76,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Log.cpp",
+          "language": "cpp",
+          "sizeLines": 263,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Log.h",
+          "language": "c",
+          "sizeLines": 78,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Paths.cpp",
+          "language": "cpp",
+          "sizeLines": 215,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Paths.h",
+          "language": "c",
+          "sizeLines": 55,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Profiler.cpp",
+          "language": "cpp",
+          "sizeLines": 177,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Profiler.h",
+          "language": "c",
+          "sizeLines": 72,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Project.cpp",
+          "language": "cpp",
+          "sizeLines": 138,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Project.h",
+          "language": "c",
+          "sizeLines": 46,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/ScriptModule.cpp",
+          "language": "cpp",
+          "sizeLines": 146,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/ScriptModule.h",
+          "language": "c",
+          "sizeLines": 55,
+          "fileCategory": "code"
+        }
+      ],
+      "batchImportData": {
+        "SherlockEngine/App/ScriptCreator.h": [],
+        "SherlockEngine/Assets/Config/engine.ini": [],
+        "SherlockEngine/Assets/Models/Sponza/Sponza.bin": [],
+        "SherlockEngine/Assets/Models/Sponza/Sponza.gltf": [],
+        "SherlockEngine/Core/AssetManager.cpp": [],
+        "SherlockEngine/Core/AssetManager.h": [],
+        "SherlockEngine/Core/Config.cpp": [],
+        "SherlockEngine/Core/Config.h": [],
+        "SherlockEngine/Core/Engine.cpp": [],
+        "SherlockEngine/Core/Engine.h": [],
+        "SherlockEngine/Core/EngineApi.h": [],
+        "SherlockEngine/Core/GameTimer.cpp": [],
+        "SherlockEngine/Core/GameTimer.h": [],
+        "SherlockEngine/Core/Input.cpp": [],
+        "SherlockEngine/Core/Input.h": [],
+        "SherlockEngine/Core/Log.cpp": [],
+        "SherlockEngine/Core/Log.h": [],
+        "SherlockEngine/Core/Paths.cpp": [],
+        "SherlockEngine/Core/Paths.h": [],
+        "SherlockEngine/Core/Profiler.cpp": [],
+        "SherlockEngine/Core/Profiler.h": [],
+        "SherlockEngine/Core/Project.cpp": [],
+        "SherlockEngine/Core/Project.h": [],
+        "SherlockEngine/Core/ScriptModule.cpp": [],
+        "SherlockEngine/Core/ScriptModule.h": []
+      },
+      "neighborMap": {}
+    },
+    {
+      "batchIndex": 8,
+      "files": [
+        {
+          "path": "SherlockEngine/Core/Time.cpp",
+          "language": "cpp",
+          "sizeLines": 53,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Core/Time.h",
+          "language": "c",
+          "sizeLines": 48,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Game/Components/FollowTarget.cpp",
+          "language": "cpp",
+          "sizeLines": 59,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Game/Components/Rigidbody.cpp",
+          "language": "cpp",
+          "sizeLines": 40,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Game/Components/Rigidbody.h",
+          "language": "c",
+          "sizeLines": 31,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/Mesh.cpp",
+          "language": "cpp",
+          "sizeLines": 391,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/Mesh.h",
+          "language": "c",
+          "sizeLines": 74,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/Model.cpp",
+          "language": "cpp",
+          "sizeLines": 423,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/Model.h",
+          "language": "c",
+          "sizeLines": 74,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/Renderer.cpp",
+          "language": "cpp",
+          "sizeLines": 1468,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/Renderer.h",
+          "language": "c",
+          "sizeLines": 287,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/Screenshot.cpp",
+          "language": "cpp",
+          "sizeLines": 37,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/Screenshot.h",
+          "language": "c",
+          "sizeLines": 11,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/ShaderConstants.h",
+          "language": "c",
+          "sizeLines": 136,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/TextureLoader.cpp",
+          "language": "cpp",
+          "sizeLines": 444,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/TextureLoader.h",
+          "language": "c",
+          "sizeLines": 57,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Graphics/VertexTypes.h",
+          "language": "c",
+          "sizeLines": 76,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/BindingTypes.h",
+          "language": "c",
+          "sizeLines": 69,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/CommandList.h",
+          "language": "c",
+          "sizeLines": 61,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+          "language": "cpp",
+          "sizeLines": 295,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D11/D3D11CommandList.h",
+          "language": "c",
+          "sizeLines": 49,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D11/D3D11Common.h",
+          "language": "c",
+          "sizeLines": 24,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D11/D3D11Convert.cpp",
+          "language": "cpp",
+          "sizeLines": 218,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D11/D3D11Convert.h",
+          "language": "c",
+          "sizeLines": 24,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+          "language": "cpp",
+          "sizeLines": 949,
+          "fileCategory": "code"
+        }
+      ],
+      "batchImportData": {
+        "SherlockEngine/Core/Time.cpp": [],
+        "SherlockEngine/Core/Time.h": [],
+        "SherlockEngine/Game/Components/FollowTarget.cpp": [],
+        "SherlockEngine/Game/Components/Rigidbody.cpp": [],
+        "SherlockEngine/Game/Components/Rigidbody.h": [],
+        "SherlockEngine/Graphics/Mesh.cpp": [],
+        "SherlockEngine/Graphics/Mesh.h": [],
+        "SherlockEngine/Graphics/Model.cpp": [],
+        "SherlockEngine/Graphics/Model.h": [],
+        "SherlockEngine/Graphics/Renderer.cpp": [],
+        "SherlockEngine/Graphics/Renderer.h": [],
+        "SherlockEngine/Graphics/Screenshot.cpp": [],
+        "SherlockEngine/Graphics/Screenshot.h": [],
+        "SherlockEngine/Graphics/ShaderConstants.h": [],
+        "SherlockEngine/Graphics/TextureLoader.cpp": [],
+        "SherlockEngine/Graphics/TextureLoader.h": [],
+        "SherlockEngine/Graphics/VertexTypes.h": [],
+        "SherlockEngine/RHI/BindingTypes.h": [],
+        "SherlockEngine/RHI/CommandList.h": [],
+        "SherlockEngine/RHI/D3D11/D3D11CommandList.cpp": [],
+        "SherlockEngine/RHI/D3D11/D3D11CommandList.h": [],
+        "SherlockEngine/RHI/D3D11/D3D11Common.h": [],
+        "SherlockEngine/RHI/D3D11/D3D11Convert.cpp": [],
+        "SherlockEngine/RHI/D3D11/D3D11Convert.h": [],
+        "SherlockEngine/RHI/D3D11/D3D11Device.cpp": []
+      },
+      "neighborMap": {}
+    },
+    {
+      "batchIndex": 9,
+      "files": [
+        {
+          "path": "SherlockEngine/RHI/D3D11/D3D11Device.h",
+          "language": "c",
+          "sizeLines": 153,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D11/D3D11Resources.h",
+          "language": "c",
+          "sizeLines": 191,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D11/PipelineState.cpp",
+          "language": "cpp",
+          "sizeLines": 119,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D11/PipelineState.h",
+          "language": "c",
+          "sizeLines": 36,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D11/PipelineStateCache.cpp",
+          "language": "cpp",
+          "sizeLines": 65,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D11/PipelineStateCache.h",
+          "language": "c",
+          "sizeLines": 32,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D12/D3D12CommandList.cpp",
+          "language": "cpp",
+          "sizeLines": 332,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D12/D3D12CommandList.h",
+          "language": "c",
+          "sizeLines": 66,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D12/D3D12Common.h",
+          "language": "c",
+          "sizeLines": 15,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D12/D3D12Convert.cpp",
+          "language": "cpp",
+          "sizeLines": 297,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D12/D3D12Convert.h",
+          "language": "c",
+          "sizeLines": 37,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D12/D3D12DescriptorHeap.h",
+          "language": "c",
+          "sizeLines": 105,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D12/D3D12Device.cpp",
+          "language": "cpp",
+          "sizeLines": 1453,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D12/D3D12Device.h",
+          "language": "c",
+          "sizeLines": 227,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D12/D3D12PipelineState.cpp",
+          "language": "cpp",
+          "sizeLines": 149,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D12/D3D12PipelineState.h",
+          "language": "c",
+          "sizeLines": 67,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/D3D12/D3D12Resources.h",
+          "language": "c",
+          "sizeLines": 74,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/DXBC/ShaderCompiler.cpp",
+          "language": "cpp",
+          "sizeLines": 242,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/Device.h",
+          "language": "c",
+          "sizeLines": 115,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/GraphicsConfig.h",
+          "language": "c",
+          "sizeLines": 16,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/Handle.h",
+          "language": "c",
+          "sizeLines": 67,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/PipelineTypes.cpp",
+          "language": "cpp",
+          "sizeLines": 211,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/PipelineTypes.h",
+          "language": "c",
+          "sizeLines": 225,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/RHI.cpp",
+          "language": "cpp",
+          "sizeLines": 53,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/RHI.h",
+          "language": "c",
+          "sizeLines": 16,
+          "fileCategory": "code"
+        }
+      ],
+      "batchImportData": {
+        "SherlockEngine/RHI/D3D11/D3D11Device.h": [],
+        "SherlockEngine/RHI/D3D11/D3D11Resources.h": [],
+        "SherlockEngine/RHI/D3D11/PipelineState.cpp": [],
+        "SherlockEngine/RHI/D3D11/PipelineState.h": [],
+        "SherlockEngine/RHI/D3D11/PipelineStateCache.cpp": [],
+        "SherlockEngine/RHI/D3D11/PipelineStateCache.h": [],
+        "SherlockEngine/RHI/D3D12/D3D12CommandList.cpp": [],
+        "SherlockEngine/RHI/D3D12/D3D12CommandList.h": [],
+        "SherlockEngine/RHI/D3D12/D3D12Common.h": [],
+        "SherlockEngine/RHI/D3D12/D3D12Convert.cpp": [],
+        "SherlockEngine/RHI/D3D12/D3D12Convert.h": [],
+        "SherlockEngine/RHI/D3D12/D3D12DescriptorHeap.h": [],
+        "SherlockEngine/RHI/D3D12/D3D12Device.cpp": [],
+        "SherlockEngine/RHI/D3D12/D3D12Device.h": [],
+        "SherlockEngine/RHI/D3D12/D3D12PipelineState.cpp": [],
+        "SherlockEngine/RHI/D3D12/D3D12PipelineState.h": [],
+        "SherlockEngine/RHI/D3D12/D3D12Resources.h": [],
+        "SherlockEngine/RHI/DXBC/ShaderCompiler.cpp": [],
+        "SherlockEngine/RHI/Device.h": [],
+        "SherlockEngine/RHI/GraphicsConfig.h": [],
+        "SherlockEngine/RHI/Handle.h": [],
+        "SherlockEngine/RHI/PipelineTypes.cpp": [],
+        "SherlockEngine/RHI/PipelineTypes.h": [],
+        "SherlockEngine/RHI/RHI.cpp": [],
+        "SherlockEngine/RHI/RHI.h": []
+      },
+      "neighborMap": {}
+    },
+    {
+      "batchIndex": 10,
+      "files": [
+        {
+          "path": "SherlockEngine/RHI/RenderPassTypes.h",
+          "language": "c",
+          "sizeLines": 95,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/ResourceDesc.h",
+          "language": "c",
+          "sizeLines": 131,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/ResourcePool.h",
+          "language": "c",
+          "sizeLines": 105,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/RHI/ShaderCompiler.h",
+          "language": "c",
+          "sizeLines": 52,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Behaviour.cpp",
+          "language": "cpp",
+          "sizeLines": 75,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Behaviour.h",
+          "language": "c",
+          "sizeLines": 104,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Camera.cpp",
+          "language": "cpp",
+          "sizeLines": 233,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Camera.h",
+          "language": "c",
+          "sizeLines": 89,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/CameraComponent.cpp",
+          "language": "cpp",
+          "sizeLines": 59,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/CameraComponent.h",
+          "language": "c",
+          "sizeLines": 47,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/GameObject.cpp",
+          "language": "cpp",
+          "sizeLines": 93,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/GameObject.h",
+          "language": "c",
+          "sizeLines": 120,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Light.h",
+          "language": "c",
+          "sizeLines": 42,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Material.h",
+          "language": "c",
+          "sizeLines": 59,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Scene.cpp",
+          "language": "cpp",
+          "sizeLines": 325,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Scene.h",
+          "language": "c",
+          "sizeLines": 158,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/SceneSerializer.cpp",
+          "language": "cpp",
+          "sizeLines": 506,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/SceneSerializer.h",
+          "language": "c",
+          "sizeLines": 25,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Script.cpp",
+          "language": "cpp",
+          "sizeLines": 19,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Script.h",
+          "language": "c",
+          "sizeLines": 74,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Transform.cpp",
+          "language": "cpp",
+          "sizeLines": 157,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Scene/Transform.h",
+          "language": "c",
+          "sizeLines": 62,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Shaders/BasicPixelShader.hlsl",
+          "language": "hlsl",
+          "sizeLines": 233,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Shaders/BasicVertexShader.hlsl",
+          "language": "hlsl",
+          "sizeLines": 23,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Shaders/Common.hlsli",
+          "language": "hlsli",
+          "sizeLines": 155,
+          "fileCategory": "code"
+        }
+      ],
+      "batchImportData": {
+        "SherlockEngine/RHI/RenderPassTypes.h": [],
+        "SherlockEngine/RHI/ResourceDesc.h": [],
+        "SherlockEngine/RHI/ResourcePool.h": [],
+        "SherlockEngine/RHI/ShaderCompiler.h": [],
+        "SherlockEngine/Scene/Behaviour.cpp": [],
+        "SherlockEngine/Scene/Behaviour.h": [],
+        "SherlockEngine/Scene/Camera.cpp": [],
+        "SherlockEngine/Scene/Camera.h": [],
+        "SherlockEngine/Scene/CameraComponent.cpp": [],
+        "SherlockEngine/Scene/CameraComponent.h": [],
+        "SherlockEngine/Scene/GameObject.cpp": [],
+        "SherlockEngine/Scene/GameObject.h": [],
+        "SherlockEngine/Scene/Light.h": [],
+        "SherlockEngine/Scene/Material.h": [],
+        "SherlockEngine/Scene/Scene.cpp": [],
+        "SherlockEngine/Scene/Scene.h": [],
+        "SherlockEngine/Scene/SceneSerializer.cpp": [],
+        "SherlockEngine/Scene/SceneSerializer.h": [],
+        "SherlockEngine/Scene/Script.cpp": [],
+        "SherlockEngine/Scene/Script.h": [],
+        "SherlockEngine/Scene/Transform.cpp": [],
+        "SherlockEngine/Scene/Transform.h": [],
+        "SherlockEngine/Shaders/BasicPixelShader.hlsl": [],
+        "SherlockEngine/Shaders/BasicVertexShader.hlsl": [],
+        "SherlockEngine/Shaders/Common.hlsli": []
+      },
+      "neighborMap": {}
+    },
+    {
+      "batchIndex": 11,
+      "files": [
+        {
+          "path": "SherlockEngine/Shaders/ShadowVertexShader.hlsl",
+          "language": "hlsl",
+          "sizeLines": 15,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Shaders/SkyboxPixelShader.hlsl",
+          "language": "hlsl",
+          "sizeLines": 9,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/Shaders/SkyboxVertexShader.hlsl",
+          "language": "hlsl",
+          "sizeLines": 29,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/SherlockEngine.vcxproj",
+          "language": "vcxproj",
+          "sizeLines": 357,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/SherlockEngine.vcxproj.filters",
+          "language": "filters",
+          "sizeLines": 445,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/imgui.ini",
+          "language": "config",
+          "sizeLines": 87,
+          "fileCategory": "config"
+        },
+        {
+          "path": "SherlockEngine/pch.cpp",
+          "language": "cpp",
+          "sizeLines": 1,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockEngine/pch.h",
+          "language": "c",
+          "sizeLines": 22,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockGame/GameMain.cpp",
+          "language": "cpp",
+          "sizeLines": 10,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockGame/SherlockGame.vcxproj",
+          "language": "vcxproj",
+          "sizeLines": 178,
+          "fileCategory": "code"
+        },
+        {
+          "path": "SherlockGame/SherlockGame.vcxproj.filters",
+          "language": "filters",
+          "sizeLines": 9,
+          "fileCategory": "code"
+        },
+        {
+          "path": "docs/memo.js",
+          "language": "javascript",
+          "sizeLines": 413,
+          "fileCategory": "code"
+        }
+      ],
+      "batchImportData": {
+        "SherlockEngine/Shaders/ShadowVertexShader.hlsl": [],
+        "SherlockEngine/Shaders/SkyboxPixelShader.hlsl": [],
+        "SherlockEngine/Shaders/SkyboxVertexShader.hlsl": [],
+        "SherlockEngine/SherlockEngine.vcxproj": [],
+        "SherlockEngine/SherlockEngine.vcxproj.filters": [],
+        "SherlockEngine/imgui.ini": [],
+        "SherlockEngine/pch.cpp": [
+          "SherlockEngine/pch.h"
+        ],
+        "SherlockEngine/pch.h": [],
+        "SherlockGame/GameMain.cpp": [],
+        "SherlockGame/SherlockGame.vcxproj": [],
+        "SherlockGame/SherlockGame.vcxproj.filters": [],
+        "docs/memo.js": []
+      },
+      "neighborMap": {}
+    }
+  ]
+}

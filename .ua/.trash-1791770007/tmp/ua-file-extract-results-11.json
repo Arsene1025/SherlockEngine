@@ -1,0 +1,809 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 4,
+  "filesSkipped": [
+    "SherlockEngine/Shaders/ShadowVertexShader.hlsl",
+    "SherlockEngine/Shaders/SkyboxPixelShader.hlsl",
+    "SherlockEngine/Shaders/SkyboxVertexShader.hlsl"
+  ],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 4,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 4,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "SherlockEngine/pch.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 1,
+      "nonEmptyLines": 1,
+      "metrics": {
+        "importCount": 1,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockEngine/pch.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 22,
+      "nonEmptyLines": 18,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "SherlockGame/GameMain.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 10,
+      "nonEmptyLines": 9,
+      "functions": [
+        {
+          "name": "wWinMain",
+          "startLine": 7,
+          "endLine": 10,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "wWinMain",
+          "line": 7,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "wWinMain",
+          "callee": "RunGame",
+          "lineNumber": 9
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 1,
+        "functionCount": 1,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "docs/memo.js",
+      "language": "javascript",
+      "fileCategory": "code",
+      "totalLines": 413,
+      "nonEmptyLines": 392,
+      "callGraph": [
+        {
+          "caller": "docName",
+          "callee": "location.pathname.split('/').pop",
+          "lineNumber": 26
+        },
+        {
+          "caller": "docName",
+          "callee": "location.pathname.split",
+          "lineNumber": 26
+        },
+        {
+          "caller": "docName",
+          "callee": "decodeURIComponent",
+          "lineNumber": 27
+        },
+        {
+          "caller": "loadDoc",
+          "callee": "localStorage.getItem",
+          "lineNumber": 35
+        },
+        {
+          "caller": "loadDoc",
+          "callee": "JSON.parse",
+          "lineNumber": 37
+        },
+        {
+          "caller": "saveDoc",
+          "callee": "localStorage.setItem",
+          "lineNumber": 47
+        },
+        {
+          "caller": "saveDoc",
+          "callee": "JSON.stringify",
+          "lineNumber": 47
+        },
+        {
+          "caller": "saveDoc",
+          "callee": "setStatus",
+          "lineNumber": 51
+        },
+        {
+          "caller": "normText",
+          "callee": "el.cloneNode",
+          "lineNumber": 59
+        },
+        {
+          "caller": "normText",
+          "callee": "clone.querySelectorAll",
+          "lineNumber": 60
+        },
+        {
+          "caller": "normText",
+          "callee": "btns[i].parentNode.removeChild",
+          "lineNumber": 61
+        },
+        {
+          "caller": "normText",
+          "callee": "(clone.textContent || '').replace(/\\s+/g, ' ').trim().slice",
+          "lineNumber": 62
+        },
+        {
+          "caller": "normText",
+          "callee": "(clone.textContent || '').replace(/\\s+/g, ' ').trim",
+          "lineNumber": 62
+        },
+        {
+          "caller": "normText",
+          "callee": "(clone.textContent || '').replace",
+          "lineNumber": 62
+        },
+        {
+          "caller": "collectHeadings",
+          "callee": "document.querySelectorAll",
+          "lineNumber": 65
+        },
+        {
+          "caller": "collectHeadings",
+          "callee": "h.closest",
+          "lineNumber": 71
+        },
+        {
+          "caller": "collectHeadings",
+          "callee": "normText",
+          "lineNumber": 73
+        },
+        {
+          "caller": "collectHeadings",
+          "callee": "list.push",
+          "lineNumber": 77
+        },
+        {
+          "caller": "fmtTime",
+          "callee": "d.getFullYear",
+          "lineNumber": 129
+        },
+        {
+          "caller": "fmtTime",
+          "callee": "p",
+          "lineNumber": 129
+        },
+        {
+          "caller": "fmtTime",
+          "callee": "d.getMonth",
+          "lineNumber": 129
+        },
+        {
+          "caller": "fmtTime",
+          "callee": "p",
+          "lineNumber": 129
+        },
+        {
+          "caller": "fmtTime",
+          "callee": "d.getDate",
+          "lineNumber": 129
+        },
+        {
+          "caller": "fmtTime",
+          "callee": "p",
+          "lineNumber": 129
+        },
+        {
+          "caller": "fmtTime",
+          "callee": "d.getHours",
+          "lineNumber": 129
+        },
+        {
+          "caller": "fmtTime",
+          "callee": "p",
+          "lineNumber": 129
+        },
+        {
+          "caller": "fmtTime",
+          "callee": "d.getMinutes",
+          "lineNumber": 129
+        },
+        {
+          "caller": "autoSize",
+          "callee": "Math.max",
+          "lineNumber": 133
+        },
+        {
+          "caller": "refreshBtn",
+          "callee": "fmtTime",
+          "lineNumber": 140
+        },
+        {
+          "caller": "openBox",
+          "callee": "fmtTime",
+          "lineNumber": 146
+        },
+        {
+          "caller": "openBox",
+          "callee": "autoSize",
+          "lineNumber": 147
+        },
+        {
+          "caller": "openBox",
+          "callee": "b.ta.focus",
+          "lineNumber": 148
+        },
+        {
+          "caller": "commit",
+          "callee": "text.trim",
+          "lineNumber": 156
+        },
+        {
+          "caller": "commit",
+          "callee": "saveDoc",
+          "lineNumber": 157
+        },
+        {
+          "caller": "commit",
+          "callee": "Date.now",
+          "lineNumber": 161
+        },
+        {
+          "caller": "commit",
+          "callee": "saveDoc",
+          "lineNumber": 162
+        },
+        {
+          "caller": "commit",
+          "callee": "fmtTime",
+          "lineNumber": 163
+        },
+        {
+          "caller": "commit",
+          "callee": "refreshBtn",
+          "lineNumber": 165
+        },
+        {
+          "caller": "commit",
+          "callee": "updateCount",
+          "lineNumber": 166
+        },
+        {
+          "caller": "updateCount",
+          "callee": "renderOrphans",
+          "lineNumber": 253
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "rows.push",
+          "lineNumber": 257
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "orphansEl.querySelectorAll",
+          "lineNumber": 258
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "orphansEl.removeChild",
+          "lineNumber": 259
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "rows.forEach",
+          "lineNumber": 261
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "document.createElement",
+          "lineNumber": 262
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "document.createElement",
+          "lineNumber": 263
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "document.createElement",
+          "lineNumber": 264
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "document.createElement",
+          "lineNumber": 265
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "show.addEventListener",
+          "lineNumber": 266
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "alert",
+          "lineNumber": 266
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "rm.addEventListener",
+          "lineNumber": 267
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "confirm",
+          "lineNumber": 268
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "data.notes[key].text.slice",
+          "lineNumber": 268
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "saveDoc",
+          "lineNumber": 269
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "updateCount",
+          "lineNumber": 269
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "row.appendChild",
+          "lineNumber": 271
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "row.appendChild",
+          "lineNumber": 271
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "row.appendChild",
+          "lineNumber": 271
+        },
+        {
+          "caller": "renderOrphans",
+          "callee": "orphansEl.appendChild",
+          "lineNumber": 272
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "panel.querySelector",
+          "lineNumber": 279
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "el.querySelectorAll",
+          "lineNumber": 281
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "el.removeChild",
+          "lineNumber": 282
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "localStorage.key",
+          "lineNumber": 286
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "k.indexOf",
+          "lineNumber": 287
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "JSON.parse",
+          "lineNumber": 289
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "localStorage.getItem",
+          "lineNumber": 289
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "lines.push",
+          "lineNumber": 291
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "docs.push",
+          "lineNumber": 292
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "k.slice",
+          "lineNumber": 292
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "docs.sort",
+          "lineNumber": 295
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "docs.forEach",
+          "lineNumber": 297
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "document.createElement",
+          "lineNumber": 298
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "document.createElement",
+          "lineNumber": 299
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "document.createElement",
+          "lineNumber": 300
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "show.addEventListener",
+          "lineNumber": 301
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "alert",
+          "lineNumber": 301
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "d.lines.join",
+          "lineNumber": 301
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "row.appendChild",
+          "lineNumber": 302
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "row.appendChild",
+          "lineNumber": 302
+        },
+        {
+          "caller": "renderOthers",
+          "callee": "el.appendChild",
+          "lineNumber": 303
+        },
+        {
+          "caller": "download",
+          "callee": "URL.createObjectURL",
+          "lineNumber": 309
+        },
+        {
+          "caller": "download",
+          "callee": "document.createElement",
+          "lineNumber": 310
+        },
+        {
+          "caller": "download",
+          "callee": "document.body.appendChild",
+          "lineNumber": 312
+        },
+        {
+          "caller": "download",
+          "callee": "a.click",
+          "lineNumber": 312
+        },
+        {
+          "caller": "download",
+          "callee": "document.body.removeChild",
+          "lineNumber": 312
+        },
+        {
+          "caller": "download",
+          "callee": "setTimeout",
+          "lineNumber": 313
+        },
+        {
+          "caller": "download",
+          "callee": "URL.revokeObjectURL",
+          "lineNumber": 313
+        },
+        {
+          "caller": "stamp",
+          "callee": "d.getFullYear",
+          "lineNumber": 317
+        },
+        {
+          "caller": "stamp",
+          "callee": "p",
+          "lineNumber": 317
+        },
+        {
+          "caller": "stamp",
+          "callee": "d.getMonth",
+          "lineNumber": 317
+        },
+        {
+          "caller": "stamp",
+          "callee": "p",
+          "lineNumber": 317
+        },
+        {
+          "caller": "stamp",
+          "callee": "d.getDate",
+          "lineNumber": 317
+        },
+        {
+          "caller": "stamp",
+          "callee": "p",
+          "lineNumber": 317
+        },
+        {
+          "caller": "stamp",
+          "callee": "d.getHours",
+          "lineNumber": 317
+        },
+        {
+          "caller": "stamp",
+          "callee": "p",
+          "lineNumber": 317
+        },
+        {
+          "caller": "stamp",
+          "callee": "d.getMinutes",
+          "lineNumber": 317
+        },
+        {
+          "caller": "exportThis",
+          "callee": "download",
+          "lineNumber": 320
+        },
+        {
+          "caller": "exportThis",
+          "callee": "docName().replace",
+          "lineNumber": 320
+        },
+        {
+          "caller": "exportThis",
+          "callee": "docName",
+          "lineNumber": 320
+        },
+        {
+          "caller": "exportThis",
+          "callee": "stamp",
+          "lineNumber": 320
+        },
+        {
+          "caller": "exportThis",
+          "callee": "JSON.stringify",
+          "lineNumber": 321
+        },
+        {
+          "caller": "exportThis",
+          "callee": "docName",
+          "lineNumber": 321
+        },
+        {
+          "caller": "exportThis",
+          "callee": "new Date().toISOString",
+          "lineNumber": 321
+        },
+        {
+          "caller": "exportThis",
+          "callee": "setStatus",
+          "lineNumber": 322
+        },
+        {
+          "caller": "exportAll",
+          "callee": "localStorage.key",
+          "lineNumber": 328
+        },
+        {
+          "caller": "exportAll",
+          "callee": "k.indexOf",
+          "lineNumber": 329
+        },
+        {
+          "caller": "exportAll",
+          "callee": "k.slice",
+          "lineNumber": 330
+        },
+        {
+          "caller": "exportAll",
+          "callee": "JSON.parse",
+          "lineNumber": 330
+        },
+        {
+          "caller": "exportAll",
+          "callee": "localStorage.getItem",
+          "lineNumber": 330
+        },
+        {
+          "caller": "exportAll",
+          "callee": "setStatus",
+          "lineNumber": 333
+        },
+        {
+          "caller": "exportAll",
+          "callee": "download",
+          "lineNumber": 334
+        },
+        {
+          "caller": "exportAll",
+          "callee": "stamp",
+          "lineNumber": 334
+        },
+        {
+          "caller": "exportAll",
+          "callee": "JSON.stringify",
+          "lineNumber": 335
+        },
+        {
+          "caller": "exportAll",
+          "callee": "new Date().toISOString",
+          "lineNumber": 335
+        },
+        {
+          "caller": "exportAll",
+          "callee": "setStatus",
+          "lineNumber": 336
+        },
+        {
+          "caller": "mergeInto",
+          "callee": "v.text.trim",
+          "lineNumber": 342
+        },
+        {
+          "caller": "mergeInto",
+          "callee": "Date.now",
+          "lineNumber": 345
+        },
+        {
+          "caller": "refreshAll",
+          "callee": "refreshBtn",
+          "lineNumber": 352
+        },
+        {
+          "caller": "refreshAll",
+          "callee": "openBox",
+          "lineNumber": 353
+        },
+        {
+          "caller": "refreshAll",
+          "callee": "isOpen",
+          "lineNumber": 353
+        },
+        {
+          "caller": "refreshAll",
+          "callee": "closeBox",
+          "lineNumber": 353
+        },
+        {
+          "caller": "refreshAll",
+          "callee": "updateCount",
+          "lineNumber": 355
+        },
+        {
+          "caller": "importFile",
+          "callee": "JSON.parse",
+          "lineNumber": 361
+        },
+        {
+          "caller": "importFile",
+          "callee": "setStatus",
+          "lineNumber": 361
+        },
+        {
+          "caller": "importFile",
+          "callee": "JSON.parse",
+          "lineNumber": 366
+        },
+        {
+          "caller": "importFile",
+          "callee": "localStorage.getItem",
+          "lineNumber": 366
+        },
+        {
+          "caller": "importFile",
+          "callee": "mergeInto",
+          "lineNumber": 368
+        },
+        {
+          "caller": "importFile",
+          "callee": "docName",
+          "lineNumber": 369
+        },
+        {
+          "caller": "importFile",
+          "callee": "localStorage.setItem",
+          "lineNumber": 370
+        },
+        {
+          "caller": "importFile",
+          "callee": "JSON.stringify",
+          "lineNumber": 370
+        },
+        {
+          "caller": "importFile",
+          "callee": "setStatus",
+          "lineNumber": 370
+        },
+        {
+          "caller": "importFile",
+          "callee": "setStatus",
+          "lineNumber": 373
+        },
+        {
+          "caller": "importFile",
+          "callee": "docName",
+          "lineNumber": 375
+        },
+        {
+          "caller": "importFile",
+          "callee": "confirm",
+          "lineNumber": 376
+        },
+        {
+          "caller": "importFile",
+          "callee": "docName",
+          "lineNumber": 376
+        },
+        {
+          "caller": "importFile",
+          "callee": "setStatus",
+          "lineNumber": 376
+        },
+        {
+          "caller": "importFile",
+          "callee": "mergeInto",
+          "lineNumber": 377
+        },
+        {
+          "caller": "importFile",
+          "callee": "saveDoc",
+          "lineNumber": 378
+        },
+        {
+          "caller": "importFile",
+          "callee": "setStatus",
+          "lineNumber": 379
+        },
+        {
+          "caller": "importFile",
+          "callee": "setStatus",
+          "lineNumber": 381
+        },
+        {
+          "caller": "importFile",
+          "callee": "refreshAll",
+          "lineNumber": 383
+        },
+        {
+          "caller": "importFile",
+          "callee": "r.readAsText",
+          "lineNumber": 385
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,573 @@
+{
+ "nodes": [
+  {
+   "id": "config:.claude/launch.json",
+   "type": "config",
+   "name": "launch.json",
+   "filePath": ".claude/launch.json",
+   "summary": "docs와 저장소 루트를 로컬 python http.server(8765, 8766)로 띄우는 Claude 미리보기 실행 설정.",
+   "tags": [
+    "configuration",
+    "dev-server",
+    "tooling"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:.ua/config.json",
+   "type": "config",
+   "name": "config.json",
+   "filePath": ".ua/config.json",
+   "summary": "Understand-Anything 분석 결과의 출력 언어를 지정하는 설정 파일.",
+   "tags": [
+    "configuration",
+    "tooling",
+    "analysis"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:Projects/CubemapTest/CubemapTest.sherlock",
+   "type": "file",
+   "name": "CubemapTest.sherlock",
+   "filePath": "Projects/CubemapTest/CubemapTest.sherlock",
+   "summary": "CubemapTest 프로젝트 매니페스트(JSON): 이름, 시작 씬, 엔진 루트, 포맷 버전을 정의해 에디터가 프로젝트를 열게 함.",
+   "tags": [
+    "project-manifest",
+    "configuration",
+    "editor"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:Projects/CubemapTest/CubemapTest.sln",
+   "type": "config",
+   "name": "CubemapTest.sln",
+   "filePath": "Projects/CubemapTest/CubemapTest.sln",
+   "summary": "CubemapTest 스크립트 DLL 프로젝트를 담은 Visual Studio 솔루션.",
+   "tags": [
+    "build-system",
+    "visual-studio",
+    "solution"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:Projects/CubemapTest/CubemapTestScripts.vcxproj",
+   "type": "file",
+   "name": "CubemapTestScripts.vcxproj",
+   "filePath": "Projects/CubemapTest/CubemapTestScripts.vcxproj",
+   "summary": "CubemapTest의 게임 스크립트를 CubemapTestScripts.dll로 빌드하는 MSBuild C++ 프로젝트(핫리로드용).",
+   "tags": [
+    "build-system",
+    "msbuild",
+    "script-dll",
+    "hot-reload"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:Projects/CubemapTest/CubemapTestScripts.vcxproj.filters",
+   "type": "file",
+   "name": "CubemapTestScripts.vcxproj.filters",
+   "filePath": "Projects/CubemapTest/CubemapTestScripts.vcxproj.filters",
+   "summary": "CubemapTestScripts.vcxproj의 Visual Studio 솔루션 탐색기 폴더 필터 정의.",
+   "tags": [
+    "build-system",
+    "msbuild",
+    "ide-metadata"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:Projects/QuaternionLookTest/QuaternionLookTest.sherlock",
+   "type": "file",
+   "name": "QuaternionLookTest.sherlock",
+   "filePath": "Projects/QuaternionLookTest/QuaternionLookTest.sherlock",
+   "summary": "QuaternionLookTest 프로젝트 매니페스트(JSON): 이름, 시작 씬, 엔진 루트, 포맷 버전을 정의해 에디터가 프로젝트를 열게 함.",
+   "tags": [
+    "project-manifest",
+    "configuration",
+    "editor"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:Projects/QuaternionLookTest/QuaternionLookTest.sln",
+   "type": "config",
+   "name": "QuaternionLookTest.sln",
+   "filePath": "Projects/QuaternionLookTest/QuaternionLookTest.sln",
+   "summary": "QuaternionLookTest 스크립트 DLL 프로젝트를 담은 Visual Studio 솔루션.",
+   "tags": [
+    "build-system",
+    "visual-studio",
+    "solution"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj",
+   "type": "file",
+   "name": "QuaternionLookTestScripts.vcxproj",
+   "filePath": "Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj",
+   "summary": "QuaternionLookTest의 게임 스크립트를 QuaternionLookTestScripts.dll로 빌드하는 MSBuild C++ 프로젝트(핫리로드용).",
+   "tags": [
+    "build-system",
+    "msbuild",
+    "script-dll",
+    "hot-reload"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj.filters",
+   "type": "file",
+   "name": "QuaternionLookTestScripts.vcxproj.filters",
+   "filePath": "Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj.filters",
+   "summary": "QuaternionLookTestScripts.vcxproj의 Visual Studio 솔루션 탐색기 폴더 필터 정의.",
+   "tags": [
+    "build-system",
+    "msbuild",
+    "ide-metadata"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:Projects/Sample/Sample.sherlock",
+   "type": "file",
+   "name": "Sample.sherlock",
+   "filePath": "Projects/Sample/Sample.sherlock",
+   "summary": "Sample 프로젝트 매니페스트(JSON): 이름, 시작 씬, 엔진 루트, 포맷 버전을 정의해 에디터가 프로젝트를 열게 함.",
+   "tags": [
+    "project-manifest",
+    "configuration",
+    "editor"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:Projects/Sample/Sample.sln",
+   "type": "config",
+   "name": "Sample.sln",
+   "filePath": "Projects/Sample/Sample.sln",
+   "summary": "Sample 스크립트 DLL 프로젝트를 담은 Visual Studio 솔루션.",
+   "tags": [
+    "build-system",
+    "visual-studio",
+    "solution"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:Projects/Sample/SampleScripts.vcxproj",
+   "type": "file",
+   "name": "SampleScripts.vcxproj",
+   "filePath": "Projects/Sample/SampleScripts.vcxproj",
+   "summary": "Sample의 게임 스크립트를 SampleScripts.dll로 빌드하는 MSBuild C++ 프로젝트(핫리로드용).",
+   "tags": [
+    "build-system",
+    "msbuild",
+    "script-dll",
+    "hot-reload"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:Projects/Sample/SampleScripts.vcxproj.filters",
+   "type": "file",
+   "name": "SampleScripts.vcxproj.filters",
+   "filePath": "Projects/Sample/SampleScripts.vcxproj.filters",
+   "summary": "SampleScripts.vcxproj의 Visual Studio 솔루션 탐색기 폴더 필터 정의.",
+   "tags": [
+    "build-system",
+    "msbuild",
+    "ide-metadata"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:Projects/CubemapTest/Assets/Scenes/Main.json",
+   "type": "config",
+   "name": "Main.json",
+   "filePath": "Projects/CubemapTest/Assets/Scenes/Main.json",
+   "summary": "CubemapTest의 PBR(버전 4) 씬: 카메라, HDR 큐브맵 IBL 환경, 조명, 메시, 재질, 오브젝트 정의.",
+   "tags": [
+    "scene-data",
+    "pbr",
+    "ibl",
+    "cubemap"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "config:Projects/CubemapTest/imgui.ini",
+   "type": "config",
+   "name": "imgui.ini",
+   "filePath": "Projects/CubemapTest/imgui.ini",
+   "summary": "CubemapTest 에디터의 ImGui 창 배치와 도킹 상태 저장 파일.",
+   "tags": [
+    "configuration",
+    "imgui",
+    "editor-layout"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "config:Projects/Sample/Assets/Scenes/demo_components.json",
+   "type": "config",
+   "name": "demo_components.json",
+   "filePath": "Projects/Sample/Assets/Scenes/demo_components.json",
+   "summary": "Sample의 컴포넌트 데모 씬: 조명, 재질, 메시, 오브젝트와 환경 설정.",
+   "tags": [
+    "scene-data",
+    "demo",
+    "pbr"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "config:Projects/Sample/Assets/Scenes/floor_cube.json",
+   "type": "config",
+   "name": "floor_cube.json",
+   "filePath": "Projects/Sample/Assets/Scenes/floor_cube.json",
+   "summary": "Sample의 바닥과 큐브로 이뤄진 단순 씬 데이터.",
+   "tags": [
+    "scene-data",
+    "sample",
+    "pbr"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:Projects/CubemapTest/Scripts/Rotator.h",
+   "type": "file",
+   "name": "Rotator.h",
+   "filePath": "Projects/CubemapTest/Scripts/Rotator.h",
+   "summary": "Script를 상속한 Rotator 스크립트 선언(speed 필드). 에디터 New Script 템플릿에서 생성됨.",
+   "tags": [
+    "script",
+    "header",
+    "gameplay"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:Projects/CubemapTest/Scripts/Rotator.cpp",
+   "type": "file",
+   "name": "Rotator.cpp",
+   "filePath": "Projects/CubemapTest/Scripts/Rotator.cpp",
+   "summary": "Rotator의 Reflect/Start/Update 구현으로, 매 프레임 오브젝트를 회전시키는 스크립트.",
+   "tags": [
+    "script",
+    "gameplay",
+    "component"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:Projects/CubemapTest/Scripts/Rotator.h:Rotator",
+   "type": "class",
+   "name": "Rotator",
+   "filePath": "Projects/CubemapTest/Scripts/Rotator.h",
+   "lineRange": [
+    8,
+    17
+   ],
+   "summary": "speed 속성으로 오브젝트를 회전시키는 Script 파생 클래스.",
+   "tags": [
+    "script",
+    "component",
+    "behaviour"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:Projects/QuaternionLookTest/Scripts/Rotator.h",
+   "type": "file",
+   "name": "Rotator.h",
+   "filePath": "Projects/QuaternionLookTest/Scripts/Rotator.h",
+   "summary": "Script를 상속한 Rotator 스크립트 선언(speed 필드). 에디터 New Script 템플릿에서 생성됨.",
+   "tags": [
+    "script",
+    "header",
+    "gameplay"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:Projects/QuaternionLookTest/Scripts/Rotator.cpp",
+   "type": "file",
+   "name": "Rotator.cpp",
+   "filePath": "Projects/QuaternionLookTest/Scripts/Rotator.cpp",
+   "summary": "Rotator의 Reflect/Start/Update 구현으로, 매 프레임 오브젝트를 회전시키는 스크립트.",
+   "tags": [
+    "script",
+    "gameplay",
+    "component"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:Projects/QuaternionLookTest/Scripts/Rotator.h:Rotator",
+   "type": "class",
+   "name": "Rotator",
+   "filePath": "Projects/QuaternionLookTest/Scripts/Rotator.h",
+   "lineRange": [
+    8,
+    17
+   ],
+   "summary": "speed 속성으로 오브젝트를 회전시키는 Script 파생 클래스.",
+   "tags": [
+    "script",
+    "component",
+    "behaviour"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h",
+   "type": "file",
+   "name": "QuaternionLook.h",
+   "filePath": "Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h",
+   "summary": "가상 마우스 원 운동으로 쿼터니언 누적 시 roll이 생기는 현상을 재현하는 실험 스크립트 선언.",
+   "tags": [
+    "experiment",
+    "script",
+    "quaternion",
+    "header"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp",
+   "type": "file",
+   "name": "QuaternionLook.cpp",
+   "filePath": "Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp",
+   "summary": "mode 0(로컬 누적)과 mode 1(월드 yaw+로컬 pitch)로 카메라 회전을 누적하고 roll을 로그로 남기는 실험 구현.",
+   "tags": [
+    "experiment",
+    "script",
+    "quaternion",
+    "camera"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h:QuaternionLook",
+   "type": "class",
+   "name": "QuaternionLook",
+   "filePath": "Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h",
+   "lineRange": [
+    15,
+    33
+   ],
+   "summary": "가상 마우스가 그린 원의 증분을 쿼터니언에 곱해 홀로노미로 인한 roll 누적을 검증하는 Script 클래스.",
+   "tags": [
+    "experiment",
+    "quaternion",
+    "script"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp:Update",
+   "type": "function",
+   "name": "Update",
+   "filePath": "Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp",
+   "lineRange": [
+    30,
+    67
+   ],
+   "summary": "프레임마다 원 위의 가상 마우스 증분을 mode에 따라 쿼터니언에 곱하고 Transform에 반영하며 roll을 주기적으로 로그.",
+   "tags": [
+    "experiment",
+    "quaternion",
+    "update-loop"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:Projects/Sample/Scripts/Test.cpp",
+   "type": "file",
+   "name": "Test.cpp",
+   "filePath": "Projects/Sample/Scripts/Test.cpp",
+   "summary": "Sample 프로젝트의 Test 스크립트 구현(Reflect/Start/Update 골격).",
+   "tags": [
+    "script",
+    "sample",
+    "gameplay"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "config:Projects/CubemapTest/CubemapTest.sln",
+   "target": "file:Projects/CubemapTest/CubemapTestScripts.vcxproj",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:Projects/CubemapTest/CubemapTestScripts.vcxproj.filters",
+   "target": "file:Projects/CubemapTest/CubemapTestScripts.vcxproj",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:Projects/CubemapTest/CubemapTest.sherlock",
+   "target": "file:Projects/CubemapTest/CubemapTestScripts.vcxproj",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "config:Projects/QuaternionLookTest/QuaternionLookTest.sln",
+   "target": "file:Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj.filters",
+   "target": "file:Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:Projects/QuaternionLookTest/QuaternionLookTest.sherlock",
+   "target": "file:Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "config:Projects/Sample/Sample.sln",
+   "target": "file:Projects/Sample/SampleScripts.vcxproj",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:Projects/Sample/SampleScripts.vcxproj.filters",
+   "target": "file:Projects/Sample/SampleScripts.vcxproj",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:Projects/Sample/Sample.sherlock",
+   "target": "file:Projects/Sample/SampleScripts.vcxproj",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "file:Projects/CubemapTest/CubemapTest.sherlock",
+   "target": "config:Projects/CubemapTest/Assets/Scenes/Main.json",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:Projects/Sample/Sample.sherlock",
+   "target": "config:Projects/Sample/Assets/Scenes/demo_components.json",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:Projects/CubemapTest/Scripts/Rotator.h",
+   "target": "class:Projects/CubemapTest/Scripts/Rotator.h:Rotator",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:Projects/CubemapTest/Scripts/Rotator.h",
+   "target": "class:Projects/CubemapTest/Scripts/Rotator.h:Rotator",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:Projects/CubemapTest/Scripts/Rotator.cpp",
+   "target": "file:Projects/CubemapTest/Scripts/Rotator.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:Projects/CubemapTest/Scripts/Rotator.cpp",
+   "target": "class:Projects/CubemapTest/Scripts/Rotator.h:Rotator",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "file:Projects/QuaternionLookTest/Scripts/Rotator.h",
+   "target": "class:Projects/QuaternionLookTest/Scripts/Rotator.h:Rotator",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:Projects/QuaternionLookTest/Scripts/Rotator.h",
+   "target": "class:Projects/QuaternionLookTest/Scripts/Rotator.h:Rotator",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:Projects/QuaternionLookTest/Scripts/Rotator.cpp",
+   "target": "file:Projects/QuaternionLookTest/Scripts/Rotator.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:Projects/QuaternionLookTest/Scripts/Rotator.cpp",
+   "target": "class:Projects/QuaternionLookTest/Scripts/Rotator.h:Rotator",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "file:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h",
+   "target": "class:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h:QuaternionLook",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h",
+   "target": "class:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h:QuaternionLook",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp",
+   "target": "function:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp:Update",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.cpp",
+   "target": "file:Projects/QuaternionLookTest/Scripts/Tests/QuaternionLook.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:Projects/Sample/Scripts/Test.cpp",
+   "target": "file:Projects/Sample/Scripts/Test.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  }
+ ]
+}

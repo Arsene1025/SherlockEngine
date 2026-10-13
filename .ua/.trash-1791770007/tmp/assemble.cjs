@@ -1,0 +1,11 @@
+const fs=require('fs');const d='.ua/intermediate/';
+const g=JSON.parse(fs.readFileSync(d+'assembled-graph.json','utf8'));
+let layers=JSON.parse(fs.readFileSync(d+'layers.json','utf8'));if(layers.layers)layers=layers.layers;
+let tour=JSON.parse(fs.readFileSync(d+'tour.json','utf8'));if(tour.steps)tour=tour.steps;
+const ids=new Set(g.nodes.map(n=>n.id));
+layers.forEach(l=>{if(!l.nodeIds&&l.nodes)l.nodeIds=l.nodes.map(x=>x.id||x);l.nodeIds=l.nodeIds.filter(i=>ids.has(i));});
+tour.forEach(s=>{s.nodeIds=(s.nodeIds||[]).filter(i=>ids.has(i));});tour.sort((a,b)=>a.order-b.order);
+const scan=JSON.parse(fs.readFileSync(d+'scan-result.json','utf8'));
+const out={version:'1.0.0',project:{name:scan.name||'SherlockEngine',languages:scan.languages||[],frameworks:scan.frameworks||[],description:scan.description||'',analyzedAt:new Date().toISOString(),gitCommitHash:'747dde81b264ef7dded61b0c8058d3f033eabd52'},nodes:g.nodes,edges:g.edges,layers,tour};
+fs.writeFileSync(d+'assembled-graph.json',JSON.stringify(out,null,2));
+console.log(out.nodes.length,out.edges.length,layers.length,tour.length,Object.keys(scan).slice(0,10));

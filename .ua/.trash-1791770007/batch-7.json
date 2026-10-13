@@ -1,0 +1,962 @@
+{
+ "nodes": [
+  {
+   "id": "file:SherlockEngine/App/ScriptCreator.h",
+   "type": "file",
+   "name": "ScriptCreator.h",
+   "filePath": "SherlockEngine/App/ScriptCreator.h",
+   "summary": "스크립트 프로젝트 생성 기능을 선언하는 에디터 앱용 헤더입니다.",
+   "tags": [
+    "헤더",
+    "스크립트",
+    "에디터"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:SherlockEngine/Assets/Config/engine.ini",
+   "type": "config",
+   "name": "engine.ini",
+   "filePath": "SherlockEngine/Assets/Config/engine.ini",
+   "summary": "엔진 실행 설정(그래픽·경로 등)을 키=값 형식으로 담은 INI 설정 파일로, Config 클래스가 읽어들입니다.",
+   "tags": [
+    "설정",
+    "ini",
+    "런타임-설정"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Assets/Models/Sponza/Sponza.bin",
+   "type": "file",
+   "name": "Sponza.bin",
+   "filePath": "SherlockEngine/Assets/Models/Sponza/Sponza.bin",
+   "summary": "Sponza glTF 모델의 정점·인덱스 버퍼를 담은 바이너리 데이터입니다.",
+   "tags": [
+    "에셋",
+    "모델",
+    "바이너리",
+    "gltf"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:SherlockEngine/Assets/Models/Sponza/Sponza.gltf",
+   "type": "file",
+   "name": "Sponza.gltf",
+   "filePath": "SherlockEngine/Assets/Models/Sponza/Sponza.gltf",
+   "summary": "Sponza 장면의 메시·머티리얼·노드 구조를 기술한 glTF 모델 정의 파일입니다.",
+   "tags": [
+    "에셋",
+    "모델",
+    "gltf",
+    "장면"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:SherlockEngine/Core/AssetManager.cpp",
+   "type": "file",
+   "name": "AssetManager.cpp",
+   "filePath": "SherlockEngine/Core/AssetManager.cpp",
+   "summary": "모델 에셋 캐시의 로드 여부 확인, 언로드, 전체 비우기, 경로 목록 조회를 구현합니다.",
+   "tags": [
+    "에셋-관리",
+    "캐시",
+    "구현"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Core/AssetManager.h",
+   "type": "file",
+   "name": "AssetManager.h",
+   "filePath": "SherlockEngine/Core/AssetManager.h",
+   "summary": "경로 기반으로 모델을 캐싱하는 AssetManager 클래스를 선언합니다.",
+   "tags": [
+    "에셋-관리",
+    "캐시",
+    "헤더"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Config.cpp",
+   "type": "file",
+   "name": "Config.cpp",
+   "filePath": "SherlockEngine/Core/Config.cpp",
+   "summary": "INI 파일 파싱과 문자열·정수·실수·불리언 값 조회를 구현합니다.",
+   "tags": [
+    "설정",
+    "파서",
+    "구현"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Config.h",
+   "type": "file",
+   "name": "Config.h",
+   "filePath": "SherlockEngine/Core/Config.h",
+   "summary": "키-값 설정 저장소 Config 클래스를 선언합니다.",
+   "tags": [
+    "설정",
+    "헤더",
+    "유틸리티"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Engine.cpp",
+   "type": "file",
+   "name": "Engine.cpp",
+   "filePath": "SherlockEngine/Core/Engine.cpp",
+   "summary": "엔진의 초기화·종료, 프레임 시작/렌더/종료, 리사이즈 처리를 구현하며 서브시스템을 조율합니다.",
+   "tags": [
+    "엔진-코어",
+    "프레임-루프",
+    "진입점"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Engine.h",
+   "type": "file",
+   "name": "Engine.h",
+   "filePath": "SherlockEngine/Core/Engine.h",
+   "summary": "RHI, 렌더러, 씬, 입력, 에셋 매니저 등을 소유하는 Engine 클래스를 선언합니다.",
+   "tags": [
+    "엔진-코어",
+    "헤더",
+    "서비스"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Core/EngineApi.h",
+   "type": "file",
+   "name": "EngineApi.h",
+   "filePath": "SherlockEngine/Core/EngineApi.h",
+   "summary": "엔진 DLL 내보내기/가져오기를 위한 SHERLOCK_API 매크로를 정의합니다.",
+   "tags": [
+    "dll",
+    "매크로",
+    "헤더"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Core/GameTimer.cpp",
+   "type": "file",
+   "name": "GameTimer.cpp",
+   "filePath": "SherlockEngine/Core/GameTimer.cpp",
+   "summary": "고해상도 타이머 기반의 총 시간·델타 시간 계산과 시작/정지/리셋을 구현합니다.",
+   "tags": [
+    "타이머",
+    "시간",
+    "구현"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Core/GameTimer.h",
+   "type": "file",
+   "name": "GameTimer.h",
+   "filePath": "SherlockEngine/Core/GameTimer.h",
+   "summary": "프레임 타이밍을 측정하는 GameTimer 클래스를 선언합니다.",
+   "tags": [
+    "타이머",
+    "헤더",
+    "시간"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Input.cpp",
+   "type": "file",
+   "name": "Input.cpp",
+   "filePath": "SherlockEngine/Core/Input.cpp",
+   "summary": "키보드·마우스 이벤트 수신과 프레임 단위 눌림/뗌 상태 판별을 구현합니다.",
+   "tags": [
+    "입력",
+    "이벤트-핸들러",
+    "구현"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Input.h",
+   "type": "file",
+   "name": "Input.h",
+   "filePath": "SherlockEngine/Core/Input.h",
+   "summary": "키·마우스 상태를 추적하는 Input 인터페이스를 선언합니다.",
+   "tags": [
+    "입력",
+    "헤더",
+    "상태"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Log.cpp",
+   "type": "file",
+   "name": "Log.cpp",
+   "filePath": "SherlockEngine/Core/Log.cpp",
+   "summary": "콘솔·디버거·파일 출력과 로그 히스토리, HRESULT 문자열 변환 등 로깅 시스템을 구현합니다.",
+   "tags": [
+    "로깅",
+    "진단",
+    "구현"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Log.h",
+   "type": "file",
+   "name": "Log.h",
+   "filePath": "SherlockEngine/Core/Log.h",
+   "summary": "로그 레벨, Entry, InitDesc와 로깅 API를 선언합니다.",
+   "tags": [
+    "로깅",
+    "헤더",
+    "진단"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Paths.cpp",
+   "type": "file",
+   "name": "Paths.cpp",
+   "filePath": "SherlockEngine/Core/Paths.cpp",
+   "summary": "실행 파일 위치 기준 엔진·프로젝트 루트, 셰이더·에셋·씬 경로 해석을 구현합니다.",
+   "tags": [
+    "경로",
+    "유틸리티",
+    "파일시스템"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Paths.h",
+   "type": "file",
+   "name": "Paths.h",
+   "filePath": "SherlockEngine/Core/Paths.h",
+   "summary": "엔진·프로젝트 경로 조회 함수들을 선언합니다.",
+   "tags": [
+    "경로",
+    "헤더",
+    "유틸리티"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Profiler.cpp",
+   "type": "file",
+   "name": "Profiler.cpp",
+   "filePath": "SherlockEngine/Core/Profiler.cpp",
+   "summary": "CPU 스코프와 GPU 타임스탬프 쿼리 기반 프레임 프로파일러를 구현합니다.",
+   "tags": [
+    "프로파일링",
+    "성능",
+    "gpu"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Profiler.h",
+   "type": "file",
+   "name": "Profiler.h",
+   "filePath": "SherlockEngine/Core/Profiler.h",
+   "summary": "CPU/GPU 샘플 구조체와 RAII 방식의 ProfileScope, GpuProfileScope를 선언합니다.",
+   "tags": [
+    "프로파일링",
+    "raii",
+    "헤더"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Project.cpp",
+   "type": "file",
+   "name": "Project.cpp",
+   "filePath": "SherlockEngine/Core/Project.cpp",
+   "summary": "프로젝트 파일 탐색, 로드/저장/생성과 솔루션·스크립트 프로젝트 경로 계산을 구현합니다.",
+   "tags": [
+    "프로젝트",
+    "파일-입출력",
+    "구현"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Core/Project.h",
+   "type": "file",
+   "name": "Project.h",
+   "filePath": "SherlockEngine/Core/Project.h",
+   "summary": "프로젝트 메타데이터와 디렉터리 조회를 제공하는 Project 클래스를 선언합니다.",
+   "tags": [
+    "프로젝트",
+    "헤더",
+    "메타데이터"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Core/ScriptModule.cpp",
+   "type": "file",
+   "name": "ScriptModule.cpp",
+   "filePath": "SherlockEngine/Core/ScriptModule.cpp",
+   "summary": "스크립트 DLL을 복사본으로 로드/언로드하고 새 빌드 감지로 핫리로드를 지원합니다.",
+   "tags": [
+    "스크립트",
+    "핫리로드",
+    "dll"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Core/ScriptModule.h",
+   "type": "file",
+   "name": "ScriptModule.h",
+   "filePath": "SherlockEngine/Core/ScriptModule.h",
+   "summary": "프로젝트 스크립트 DLL을 관리하는 ScriptModule 클래스를 선언합니다.",
+   "tags": [
+    "스크립트",
+    "핫리로드",
+    "헤더"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/Core/AssetManager.h:AssetManager",
+   "type": "class",
+   "name": "AssetManager",
+   "filePath": "SherlockEngine/Core/AssetManager.h",
+   "lineRange": [
+    17,
+    55
+   ],
+   "summary": "모델을 정규화된 경로로 캐싱하고 언로드·정리·목록 조회를 제공하는 클래스입니다.",
+   "tags": [
+    "에셋-관리",
+    "캐시"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Core/Config.h:Config",
+   "type": "class",
+   "name": "Config",
+   "filePath": "SherlockEngine/Core/Config.h",
+   "lineRange": [
+    13,
+    33
+   ],
+   "summary": "INI에서 읽은 키-값을 보관하고 타입별 getter를 제공하는 설정 클래스입니다.",
+   "tags": [
+    "설정",
+    "유틸리티"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Core/Engine.h:Engine",
+   "type": "class",
+   "name": "Engine",
+   "filePath": "SherlockEngine/Core/Engine.h",
+   "lineRange": [
+    20,
+    70
+   ],
+   "summary": "RHI·렌더러·씬·입력·에셋을 묶어 프레임 수명주기를 관리하는 엔진 최상위 클래스입니다.",
+   "tags": [
+    "엔진-코어",
+    "서비스"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Core/Project.h:Project",
+   "type": "class",
+   "name": "Project",
+   "filePath": "SherlockEngine/Core/Project.h",
+   "lineRange": [
+    16,
+    46
+   ],
+   "summary": "프로젝트 파일 로드/저장/생성과 에셋·스크립트·바이너리 디렉터리를 제공하는 클래스입니다.",
+   "tags": [
+    "프로젝트",
+    "메타데이터"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Core/ScriptModule.h:ScriptModule",
+   "type": "class",
+   "name": "ScriptModule",
+   "filePath": "SherlockEngine/Core/ScriptModule.h",
+   "lineRange": [
+    20,
+    55
+   ],
+   "summary": "스크립트 DLL의 로드, 언로드, 새 빌드 감지를 담당하는 핫리로드 클래스입니다.",
+   "tags": [
+    "스크립트",
+    "핫리로드"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Core/Profiler.h:ProfileScope",
+   "type": "class",
+   "name": "ProfileScope",
+   "filePath": "SherlockEngine/Core/Profiler.h",
+   "lineRange": [
+    54,
+    61
+   ],
+   "summary": "생성/소멸 시 CPU 구간을 자동 기록하는 RAII 스코프입니다.",
+   "tags": [
+    "프로파일링",
+    "raii"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Core/Profiler.h:GpuProfileScope",
+   "type": "class",
+   "name": "GpuProfileScope",
+   "filePath": "SherlockEngine/Core/Profiler.h",
+   "lineRange": [
+    63,
+    72
+   ],
+   "summary": "커맨드 리스트에 GPU 타임스탬프 구간을 자동 기록하는 RAII 스코프입니다.",
+   "tags": [
+    "프로파일링",
+    "raii",
+    "gpu"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Core/Engine.cpp:Initialize",
+   "type": "function",
+   "name": "Initialize",
+   "filePath": "SherlockEngine/Core/Engine.cpp",
+   "lineRange": [
+    21,
+    69
+   ],
+   "summary": "엔진 서브시스템(장치, 렌더러, 씬 등)을 순서대로 초기화합니다.",
+   "tags": [
+    "초기화",
+    "엔진-코어"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Core/Engine.cpp:Render",
+   "type": "function",
+   "name": "Render",
+   "filePath": "SherlockEngine/Core/Engine.cpp",
+   "lineRange": [
+    95,
+    129
+   ],
+   "summary": "한 프레임의 씬 렌더링 패스를 기록하고 실행합니다.",
+   "tags": [
+    "렌더링",
+    "엔진-코어"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Core/ScriptModule.cpp:Load",
+   "type": "function",
+   "name": "Load",
+   "filePath": "SherlockEngine/Core/ScriptModule.cpp",
+   "lineRange": [
+    70,
+    123
+   ],
+   "summary": "스크립트 DLL을 복사본으로 로드하고 진입 함수를 연결합니다.",
+   "tags": [
+    "스크립트",
+    "핫리로드"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Core/Paths.cpp:GetShaderPath",
+   "type": "function",
+   "name": "GetShaderPath",
+   "filePath": "SherlockEngine/Core/Paths.cpp",
+   "lineRange": [
+    141,
+    165
+   ],
+   "summary": "빌드 출력과 소스 트리를 고려해 셰이더 파일 경로를 해석합니다.",
+   "tags": [
+    "경로",
+    "셰이더"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Core/Log.cpp:Emit",
+   "type": "function",
+   "name": "Emit",
+   "filePath": "SherlockEngine/Core/Log.cpp",
+   "lineRange": [
+    87,
+    118
+   ],
+   "summary": "로그 한 줄을 포맷해 콘솔·디버거·히스토리로 내보냅니다.",
+   "tags": [
+    "로깅",
+    "출력"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Core/Profiler.cpp:BeginFrame",
+   "type": "function",
+   "name": "BeginFrame",
+   "filePath": "SherlockEngine/Core/Profiler.cpp",
+   "lineRange": [
+    59,
+    108
+   ],
+   "summary": "프레임 시작 시 이전 프레임의 CPU/GPU 측정값을 정리하고 새 프레임을 준비합니다.",
+   "tags": [
+    "프로파일링",
+    "프레임"
+   ],
+   "complexity": "moderate"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:SherlockEngine/Core/AssetManager.h",
+   "target": "class:SherlockEngine/Core/AssetManager.h:AssetManager",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/AssetManager.h",
+   "target": "class:SherlockEngine/Core/AssetManager.h:AssetManager",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/Core/Config.h",
+   "target": "class:SherlockEngine/Core/Config.h:Config",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/Config.h",
+   "target": "class:SherlockEngine/Core/Config.h:Config",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.h",
+   "target": "class:SherlockEngine/Core/Engine.h:Engine",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.h",
+   "target": "class:SherlockEngine/Core/Engine.h:Engine",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/Core/Project.h",
+   "target": "class:SherlockEngine/Core/Project.h:Project",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/Project.h",
+   "target": "class:SherlockEngine/Core/Project.h:Project",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/Core/ScriptModule.h",
+   "target": "class:SherlockEngine/Core/ScriptModule.h:ScriptModule",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/ScriptModule.h",
+   "target": "class:SherlockEngine/Core/ScriptModule.h:ScriptModule",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/Core/Profiler.h",
+   "target": "class:SherlockEngine/Core/Profiler.h:ProfileScope",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/Profiler.h",
+   "target": "class:SherlockEngine/Core/Profiler.h:ProfileScope",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/Core/Profiler.h",
+   "target": "class:SherlockEngine/Core/Profiler.h:GpuProfileScope",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/Profiler.h",
+   "target": "class:SherlockEngine/Core/Profiler.h:GpuProfileScope",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.cpp",
+   "target": "function:SherlockEngine/Core/Engine.cpp:Initialize",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.cpp",
+   "target": "function:SherlockEngine/Core/Engine.cpp:Render",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/ScriptModule.cpp",
+   "target": "function:SherlockEngine/Core/ScriptModule.cpp:Load",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/Paths.cpp",
+   "target": "function:SherlockEngine/Core/Paths.cpp:GetShaderPath",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/Log.cpp",
+   "target": "function:SherlockEngine/Core/Log.cpp:Emit",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/Profiler.cpp",
+   "target": "function:SherlockEngine/Core/Profiler.cpp:BeginFrame",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/AssetManager.cpp",
+   "target": "file:SherlockEngine/Core/AssetManager.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/AssetManager.cpp",
+   "target": "file:SherlockEngine/Core/Paths.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/AssetManager.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/AssetManager.cpp",
+   "target": "file:SherlockEngine/Graphics/Model.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Config.cpp",
+   "target": "file:SherlockEngine/Core/Config.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.cpp",
+   "target": "file:SherlockEngine/Core/Engine.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.cpp",
+   "target": "file:SherlockEngine/Core/Profiler.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.cpp",
+   "target": "file:SherlockEngine/RHI/Device.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.cpp",
+   "target": "file:SherlockEngine/RHI/CommandList.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.cpp",
+   "target": "file:SherlockEngine/Graphics/Screenshot.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.h",
+   "target": "file:SherlockEngine/RHI/RHI.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.h",
+   "target": "file:SherlockEngine/Graphics/Renderer.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.h",
+   "target": "file:SherlockEngine/Scene/Scene.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.h",
+   "target": "file:SherlockEngine/Scene/Camera.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.h",
+   "target": "file:SherlockEngine/Core/Config.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.h",
+   "target": "file:SherlockEngine/Core/Input.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.h",
+   "target": "file:SherlockEngine/Core/Time.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Engine.h",
+   "target": "file:SherlockEngine/Core/AssetManager.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/GameTimer.cpp",
+   "target": "file:SherlockEngine/Core/GameTimer.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Input.cpp",
+   "target": "file:SherlockEngine/Core/Input.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Input.h",
+   "target": "file:SherlockEngine/Core/EngineApi.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Log.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Log.h",
+   "target": "file:SherlockEngine/Core/EngineApi.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Paths.cpp",
+   "target": "file:SherlockEngine/Core/Paths.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Paths.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Paths.h",
+   "target": "file:SherlockEngine/Core/EngineApi.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Profiler.cpp",
+   "target": "file:SherlockEngine/Core/Profiler.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Profiler.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Profiler.cpp",
+   "target": "file:SherlockEngine/RHI/Device.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Profiler.cpp",
+   "target": "file:SherlockEngine/RHI/CommandList.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Profiler.cpp",
+   "target": "file:SherlockEngine/RHI/GraphicsConfig.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Project.cpp",
+   "target": "file:SherlockEngine/Core/Project.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Project.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/ScriptModule.cpp",
+   "target": "file:SherlockEngine/Core/ScriptModule.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/ScriptModule.cpp",
+   "target": "file:SherlockEngine/Core/Project.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/ScriptModule.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/ScriptModule.cpp",
+   "target": "file:SherlockEngine/Scene/Behaviour.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "config:SherlockEngine/Assets/Config/engine.ini",
+   "target": "file:SherlockEngine/Core/Config.cpp",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:SherlockEngine/Assets/Models/Sponza/Sponza.gltf",
+   "target": "file:SherlockEngine/Assets/Models/Sponza/Sponza.bin",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  }
+ ]
+}

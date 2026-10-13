@@ -1,0 +1,1248 @@
+{
+ "nodes": [
+  {
+   "id": "file:SherlockEngine/Core/Time.cpp",
+   "type": "file",
+   "name": "Time.cpp",
+   "filePath": "SherlockEngine/Core/Time.cpp",
+   "summary": "Time 정적 클래스의 구현으로, 프레임 델타 타임 측정(Tick), 초기화(Reset), 고정 스텝 소비(ConsumeFixedStep)를 처리한다.",
+   "tags": [
+    "timing",
+    "game-loop",
+    "fixed-timestep"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Core/Time.cpp:Tick",
+   "type": "function",
+   "name": "Tick",
+   "filePath": "SherlockEngine/Core/Time.cpp",
+   "summary": "프레임 간 경과 시간을 계산해 deltaTime과 고정 스텝 누적기를 갱신한다.",
+   "tags": [
+    "timing",
+    "game-loop"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    18,
+    40
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Core/Time.cpp:ConsumeFixedStep",
+   "type": "function",
+   "name": "ConsumeFixedStep",
+   "filePath": "SherlockEngine/Core/Time.cpp",
+   "summary": "누적된 시간에서 고정 스텝 하나를 소비할 수 있는지 반환한다.",
+   "tags": [
+    "fixed-timestep",
+    "physics"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    42,
+    53
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Core/Time.h",
+   "type": "file",
+   "name": "Time.h",
+   "filePath": "SherlockEngine/Core/Time.h",
+   "summary": "스크립트에서 쓰는 전역 시간 API(deltaTime, 고정 스텝 등)를 선언하며 GameTimer를 감싸 엔진 DLL로 내보낸다.",
+   "tags": [
+    "timing",
+    "public-api",
+    "header"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Game/Components/FollowTarget.cpp",
+   "type": "file",
+   "name": "FollowTarget.cpp",
+   "filePath": "SherlockEngine/Game/Components/FollowTarget.cpp",
+   "summary": "대상 오브젝트를 부드럽게 따라가는 Behaviour 컴포넌트로, Reflect로 에디터에 속성을 노출하고 Update에서 위치를 보간한다.",
+   "tags": [
+    "component",
+    "behaviour",
+    "camera-follow",
+    "reflection"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/Game/Components/FollowTarget.cpp:FollowTarget",
+   "type": "class",
+   "name": "FollowTarget",
+   "filePath": "SherlockEngine/Game/Components/FollowTarget.cpp",
+   "summary": "대상 오브젝트를 따라가는 Behaviour 컴포넌트.",
+   "tags": [
+    "component",
+    "camera-follow"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    12,
+    58
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Game/Components/Rigidbody.cpp",
+   "type": "file",
+   "name": "Rigidbody.cpp",
+   "filePath": "SherlockEngine/Game/Components/Rigidbody.cpp",
+   "summary": "간단한 물리 컴포넌트 Rigidbody의 구현으로, FixedUpdate에서 속도와 중력을 적분해 위치를 갱신한다.",
+   "tags": [
+    "component",
+    "physics",
+    "fixed-update",
+    "reflection"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Game/Components/Rigidbody.cpp:FixedUpdate",
+   "type": "function",
+   "name": "FixedUpdate",
+   "filePath": "SherlockEngine/Game/Components/Rigidbody.cpp",
+   "summary": "고정 스텝마다 중력과 속도를 적분해 위치를 갱신한다.",
+   "tags": [
+    "physics",
+    "fixed-update"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    21,
+    38
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Game/Components/Rigidbody.h",
+   "type": "file",
+   "name": "Rigidbody.h",
+   "filePath": "SherlockEngine/Game/Components/Rigidbody.h",
+   "summary": "Behaviour를 상속하는 Rigidbody 컴포넌트 선언으로 속도·중력 등 물리 속성을 정의한다.",
+   "tags": [
+    "component",
+    "physics",
+    "header"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Graphics/Mesh.cpp",
+   "type": "file",
+   "name": "Mesh.cpp",
+   "filePath": "SherlockEngine/Graphics/Mesh.cpp",
+   "summary": "구·큐브·평면·실린더 프리미티브 생성, 바운드 계산, 탄젠트 계산 등 CPU 메시 데이터 구축 로직을 구현한다.",
+   "tags": [
+    "mesh",
+    "procedural-geometry",
+    "tangent",
+    "geometry"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Mesh.cpp:CreateSphere",
+   "type": "function",
+   "name": "CreateSphere",
+   "filePath": "SherlockEngine/Graphics/Mesh.cpp",
+   "summary": "구 프리미티브의 정점·인덱스를 생성한다.",
+   "tags": [
+    "procedural-geometry",
+    "mesh"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    31,
+    106
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Mesh.cpp:CreateCube",
+   "type": "function",
+   "name": "CreateCube",
+   "filePath": "SherlockEngine/Graphics/Mesh.cpp",
+   "summary": "면별 법선을 가진 큐브 메시를 생성한다.",
+   "tags": [
+    "procedural-geometry",
+    "mesh"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    108,
+    144
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Mesh.cpp:CreatePlane",
+   "type": "function",
+   "name": "CreatePlane",
+   "filePath": "SherlockEngine/Graphics/Mesh.cpp",
+   "summary": "평면 메시를 생성한다.",
+   "tags": [
+    "procedural-geometry",
+    "mesh"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    146,
+    189
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Mesh.cpp:CreateCylinder",
+   "type": "function",
+   "name": "CreateCylinder",
+   "filePath": "SherlockEngine/Graphics/Mesh.cpp",
+   "summary": "측면과 캡을 포함한 실린더 메시를 생성한다.",
+   "tags": [
+    "procedural-geometry",
+    "mesh"
+   ],
+   "complexity": "complex",
+   "lineRange": [
+    191,
+    289
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Mesh.cpp:ComputeTangents",
+   "type": "function",
+   "name": "ComputeTangents",
+   "filePath": "SherlockEngine/Graphics/Mesh.cpp",
+   "summary": "UV 기반으로 정점별 탄젠트를 계산해 노멀맵을 지원한다.",
+   "tags": [
+    "tangent",
+    "normal-mapping"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    333,
+    391
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Mesh.cpp:Finalize",
+   "type": "function",
+   "name": "Finalize",
+   "filePath": "SherlockEngine/Graphics/Mesh.cpp",
+   "summary": "바운드와 서브메시 정보를 확정해 메시를 사용 가능 상태로 만든다.",
+   "tags": [
+    "mesh",
+    "bounds"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    309,
+    331
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Graphics/Mesh.h",
+   "type": "file",
+   "name": "Mesh.h",
+   "filePath": "SherlockEngine/Graphics/Mesh.h",
+   "summary": "Submesh, Bounds, Mesh 클래스를 선언하며 정점/인덱스 데이터와 프리미티브 팩토리, 바운딩 정보를 제공한다.",
+   "tags": [
+    "mesh",
+    "data-model",
+    "header",
+    "geometry"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/Mesh.h:Mesh",
+   "type": "class",
+   "name": "Mesh",
+   "filePath": "SherlockEngine/Graphics/Mesh.h",
+   "summary": "CPU 측 정점/인덱스 데이터와 서브메시, 바운드를 보유하며 프리미티브 팩토리를 제공하는 클래스.",
+   "tags": [
+    "mesh",
+    "data-model"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    32,
+    74
+   ]
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/Mesh.h:Bounds",
+   "type": "class",
+   "name": "Bounds",
+   "filePath": "SherlockEngine/Graphics/Mesh.h",
+   "summary": "바운딩 박스 구조체로 중심과 크기를 제공한다.",
+   "tags": [
+    "bounds",
+    "data-model"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    17,
+    25
+   ]
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/Mesh.h:Submesh",
+   "type": "class",
+   "name": "Submesh",
+   "filePath": "SherlockEngine/Graphics/Mesh.h",
+   "summary": "인덱스 범위 단위의 서브메시 구조체.",
+   "tags": [
+    "mesh",
+    "data-model"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    9,
+    14
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Graphics/Model.cpp",
+   "type": "file",
+   "name": "Model.cpp",
+   "filePath": "SherlockEngine/Graphics/Model.cpp",
+   "summary": "glTF 파일을 읽어 메시, 머티리얼, 텍스처 이미지, 노드 변환을 엔진 형식으로 변환하는 로더 구현.",
+   "tags": [
+    "gltf",
+    "model-loader",
+    "asset-import",
+    "pbr"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Model.cpp:LoadGltf",
+   "type": "function",
+   "name": "LoadGltf",
+   "filePath": "SherlockEngine/Graphics/Model.cpp",
+   "summary": "glTF 파일을 파싱해 메시, 머티리얼, 이미지, 노드 인스턴스를 Model로 변환하는 진입 함수.",
+   "tags": [
+    "gltf",
+    "model-loader"
+   ],
+   "complexity": "complex",
+   "lineRange": [
+    302,
+    423
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Model.cpp:ConvertMesh",
+   "type": "function",
+   "name": "ConvertMesh",
+   "filePath": "SherlockEngine/Graphics/Model.cpp",
+   "summary": "glTF 프리미티브를 엔진 Mesh로 변환하며 좌표계 보정을 처리한다.",
+   "tags": [
+    "gltf",
+    "mesh-conversion"
+   ],
+   "complexity": "complex",
+   "lineRange": [
+    205,
+    299
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Model.cpp:ConvertMaterial",
+   "type": "function",
+   "name": "ConvertMaterial",
+   "filePath": "SherlockEngine/Graphics/Model.cpp",
+   "summary": "glTF PBR 머티리얼을 엔진 Material로 변환한다.",
+   "tags": [
+    "gltf",
+    "pbr",
+    "material"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    142,
+    186
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Model.cpp:CollectImage",
+   "type": "function",
+   "name": "CollectImage",
+   "filePath": "SherlockEngine/Graphics/Model.cpp",
+   "summary": "glTF 이미지를 수집해 ModelImage로 저장한다.",
+   "tags": [
+    "gltf",
+    "texture"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    100,
+    139
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Graphics/Model.h",
+   "type": "file",
+   "name": "Model.h",
+   "filePath": "SherlockEngine/Graphics/Model.h",
+   "summary": "glTF 로드 결과를 담는 Model, ModelImage, ModelInstance, ModelStats 구조체와 로드 옵션을 선언한다.",
+   "tags": [
+    "model",
+    "data-model",
+    "header",
+    "gltf"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/Model.h:Model",
+   "type": "class",
+   "name": "Model",
+   "filePath": "SherlockEngine/Graphics/Model.h",
+   "summary": "로드된 glTF 모델의 메시, 머티리얼, 이미지, 인스턴스를 담는 클래스.",
+   "tags": [
+    "model",
+    "data-model"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    49,
+    61
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "type": "file",
+   "name": "Renderer.cpp",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "엔진의 핵심 렌더러 구현으로, RHI를 통해 초기화, 셰이더 로드/핫리로드, 그림자·메인·프리뷰·UI 패스, 드로우 리스트 구성, 텍스처/큐브맵 캐시, 환경(IBL) 처리를 수행한다.",
+   "tags": [
+    "renderer",
+    "rendering-pipeline",
+    "shadow-pass",
+    "hot-reload",
+    "ibl"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:Initialize",
+   "type": "function",
+   "name": "Initialize",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "디바이스, 셰이더, 샘플러, 그림자 리소스, 내장 텍스처를 초기화한다.",
+   "tags": [
+    "renderer",
+    "initialization"
+   ],
+   "complexity": "complex",
+   "lineRange": [
+    53,
+    190
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:LoadShaders",
+   "type": "function",
+   "name": "LoadShaders",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "HLSL 셰이더를 컴파일하고 바인딩 레이아웃과 파이프라인을 구성한다.",
+   "tags": [
+    "shader",
+    "pipeline"
+   ],
+   "complexity": "complex",
+   "lineRange": [
+    498,
+    600
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:ReloadShaders",
+   "type": "function",
+   "name": "ReloadShaders",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "셰이더를 다시 컴파일해 파이프라인을 무효화하는 핫리로드 처리.",
+   "tags": [
+    "hot-reload",
+    "shader"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    662,
+    686
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:Render",
+   "type": "function",
+   "name": "Render",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "한 프레임의 그림자, 메인, 프리뷰 패스를 실행하는 최상위 렌더 함수.",
+   "tags": [
+    "renderer",
+    "frame"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    850,
+    927
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:BuildDrawList",
+   "type": "function",
+   "name": "BuildDrawList",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "씬을 순회해 드로우 항목을 구성한다.",
+   "tags": [
+    "draw-list",
+    "culling"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    929,
+    965
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:RenderShadowPass",
+   "type": "function",
+   "name": "RenderShadowPass",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "방향광 시점의 섀도맵을 렌더링한다.",
+   "tags": [
+    "shadow-pass",
+    "rendering"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    979,
+    1026
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:RenderMainPass",
+   "type": "function",
+   "name": "RenderMainPass",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "메인 색상 패스를 렌더링한다.",
+   "tags": [
+    "main-pass",
+    "rendering"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    1028,
+    1069
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:DrawItems",
+   "type": "function",
+   "name": "DrawItems",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "드로우 항목의 파이프라인, 리소스 셋, 상수 버퍼를 바인딩해 드로우한다.",
+   "tags": [
+    "draw-calls",
+    "rendering"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    1095,
+    1146
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:GetOrLoadTexture",
+   "type": "function",
+   "name": "GetOrLoadTexture",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "경로별 텍스처를 캐시에서 찾거나 로드해 GPU 리소스로 만든다.",
+   "tags": [
+    "texture-cache",
+    "resource"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    348,
+    418
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:GetOrLoadCubemap",
+   "type": "function",
+   "name": "GetOrLoadCubemap",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "큐브맵을 캐시에서 찾거나 로드한다.",
+   "tags": [
+    "cubemap",
+    "ibl",
+    "texture-cache"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    420,
+    496
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:ResolveEnvironment",
+   "type": "function",
+   "name": "ResolveEnvironment",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "씬 환경 설정을 해석해 IBL 큐브맵 리소스를 확정한다.",
+   "tags": [
+    "ibl",
+    "environment"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    233,
+    275
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:SetSceneTarget",
+   "type": "function",
+   "name": "SetSceneTarget",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "씬 오프스크린 렌더 타깃을 생성/재생성한다.",
+   "tags": [
+    "offscreen",
+    "render-target"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    1426,
+    1468
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Renderer.cpp:Shutdown",
+   "type": "function",
+   "name": "Shutdown",
+   "filePath": "SherlockEngine/Graphics/Renderer.cpp",
+   "summary": "모든 GPU 리소스와 캐시를 해제한다.",
+   "tags": [
+    "renderer",
+    "cleanup"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    709,
+    775
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Graphics/Renderer.h",
+   "type": "file",
+   "name": "Renderer.h",
+   "filePath": "SherlockEngine/Graphics/Renderer.h",
+   "summary": "Renderer 클래스와 RenderSettings를 선언하며 GPU 리소스 캐시, 패스 함수, 오프스크린 타깃, 파이프라인 조회 API를 정의한다.",
+   "tags": [
+    "renderer",
+    "header",
+    "rendering-pipeline",
+    "public-api"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/Renderer.h:Renderer",
+   "type": "class",
+   "name": "Renderer",
+   "filePath": "SherlockEngine/Graphics/Renderer.h",
+   "summary": "RHI 위에서 씬을 렌더링하는 중심 클래스로 패스, 캐시, 파이프라인, 오프스크린 타깃을 관리한다.",
+   "tags": [
+    "renderer",
+    "rendering-pipeline"
+   ],
+   "complexity": "complex",
+   "lineRange": [
+    53,
+    287
+   ]
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/Renderer.h:RenderSettings",
+   "type": "class",
+   "name": "RenderSettings",
+   "filePath": "SherlockEngine/Graphics/Renderer.h",
+   "summary": "그림자·환경 등 렌더러 옵션 구조체.",
+   "tags": [
+    "settings",
+    "data-model"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    22,
+    40
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Graphics/Screenshot.cpp",
+   "type": "file",
+   "name": "Screenshot.cpp",
+   "filePath": "SherlockEngine/Graphics/Screenshot.cpp",
+   "summary": "픽셀 버퍼를 PNG 파일로 저장하는 SavePng 함수를 구현한다.",
+   "tags": [
+    "screenshot",
+    "image-io",
+    "utility"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/Screenshot.cpp:SavePng",
+   "type": "function",
+   "name": "SavePng",
+   "filePath": "SherlockEngine/Graphics/Screenshot.cpp",
+   "summary": "픽셀 버퍼를 PNG 파일로 인코딩해 저장한다.",
+   "tags": [
+    "screenshot",
+    "image-io"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    6,
+    37
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Graphics/Screenshot.h",
+   "type": "file",
+   "name": "Screenshot.h",
+   "filePath": "SherlockEngine/Graphics/Screenshot.h",
+   "summary": "PNG 스크린샷 저장 함수를 선언하는 작은 헤더.",
+   "tags": [
+    "screenshot",
+    "header",
+    "utility"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:SherlockEngine/Core/Time.cpp",
+   "target": "function:SherlockEngine/Core/Time.cpp:Tick",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/Time.cpp",
+   "target": "function:SherlockEngine/Core/Time.cpp:ConsumeFixedStep",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Core/Time.cpp",
+   "target": "file:SherlockEngine/Core/Time.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Time.h",
+   "target": "file:SherlockEngine/Core/EngineApi.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Core/Time.h",
+   "target": "file:SherlockEngine/Core/GameTimer.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Game/Components/FollowTarget.cpp",
+   "target": "class:SherlockEngine/Game/Components/FollowTarget.cpp:FollowTarget",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Game/Components/FollowTarget.cpp",
+   "target": "file:SherlockEngine/Scene/Behaviour.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Game/Components/FollowTarget.cpp",
+   "target": "file:SherlockEngine/Scene/GameObject.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Game/Components/FollowTarget.cpp",
+   "target": "file:SherlockEngine/Scene/Scene.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Game/Components/Rigidbody.cpp",
+   "target": "function:SherlockEngine/Game/Components/Rigidbody.cpp:FixedUpdate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Game/Components/Rigidbody.cpp",
+   "target": "file:SherlockEngine/Game/Components/Rigidbody.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Game/Components/Rigidbody.cpp",
+   "target": "file:SherlockEngine/Scene/GameObject.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Game/Components/Rigidbody.h",
+   "target": "file:SherlockEngine/Core/EngineApi.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Game/Components/Rigidbody.h",
+   "target": "file:SherlockEngine/Scene/Behaviour.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Mesh.cpp",
+   "target": "function:SherlockEngine/Graphics/Mesh.cpp:CreateSphere",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Mesh.cpp",
+   "target": "function:SherlockEngine/Graphics/Mesh.cpp:CreateCube",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Mesh.cpp",
+   "target": "function:SherlockEngine/Graphics/Mesh.cpp:CreatePlane",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Mesh.cpp",
+   "target": "function:SherlockEngine/Graphics/Mesh.cpp:CreateCylinder",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Mesh.cpp",
+   "target": "function:SherlockEngine/Graphics/Mesh.cpp:ComputeTangents",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Mesh.cpp",
+   "target": "function:SherlockEngine/Graphics/Mesh.cpp:Finalize",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Mesh.cpp",
+   "target": "file:SherlockEngine/Graphics/Mesh.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Mesh.h",
+   "target": "class:SherlockEngine/Graphics/Mesh.h:Mesh",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Mesh.h",
+   "target": "class:SherlockEngine/Graphics/Mesh.h:Bounds",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Mesh.h",
+   "target": "class:SherlockEngine/Graphics/Mesh.h:Submesh",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Mesh.h",
+   "target": "file:SherlockEngine/Graphics/VertexTypes.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Model.cpp",
+   "target": "function:SherlockEngine/Graphics/Model.cpp:LoadGltf",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Model.cpp",
+   "target": "function:SherlockEngine/Graphics/Model.cpp:ConvertMesh",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Model.cpp",
+   "target": "function:SherlockEngine/Graphics/Model.cpp:ConvertMaterial",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Model.cpp",
+   "target": "function:SherlockEngine/Graphics/Model.cpp:CollectImage",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Model.cpp",
+   "target": "file:SherlockEngine/Graphics/Model.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Model.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Model.h",
+   "target": "class:SherlockEngine/Graphics/Model.h:Model",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Model.h",
+   "target": "file:SherlockEngine/Graphics/Mesh.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Model.h",
+   "target": "file:SherlockEngine/Scene/Material.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:Initialize",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:LoadShaders",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:ReloadShaders",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:Render",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:BuildDrawList",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:RenderShadowPass",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:RenderMainPass",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:DrawItems",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:GetOrLoadTexture",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:GetOrLoadCubemap",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:ResolveEnvironment",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:SetSceneTarget",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "function:SherlockEngine/Graphics/Renderer.cpp:Shutdown",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/Graphics/Renderer.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/RHI/Device.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/RHI/CommandList.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/RHI/ShaderCompiler.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/RHI/ResourceDesc.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/RHI/BindingTypes.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/Graphics/ShaderConstants.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/Graphics/VertexTypes.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/Graphics/TextureLoader.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/Graphics/Mesh.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/Scene/Scene.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/Scene/Camera.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/Core/Paths.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/Core/Profiler.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.h",
+   "target": "class:SherlockEngine/Graphics/Renderer.h:Renderer",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.h",
+   "target": "class:SherlockEngine/Graphics/Renderer.h:RenderSettings",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.h",
+   "target": "file:SherlockEngine/RHI/Handle.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.h",
+   "target": "file:SherlockEngine/RHI/PipelineTypes.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.h",
+   "target": "file:SherlockEngine/RHI/RenderPassTypes.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.h",
+   "target": "file:SherlockEngine/Graphics/VertexTypes.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.h",
+   "target": "file:SherlockEngine/Scene/Material.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.h",
+   "target": "file:SherlockEngine/Scene/Light.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Screenshot.cpp",
+   "target": "function:SherlockEngine/Graphics/Screenshot.cpp:SavePng",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Screenshot.cpp",
+   "target": "file:SherlockEngine/Graphics/Screenshot.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Screenshot.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/Renderer.cpp",
+   "target": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  }
+ ]
+}

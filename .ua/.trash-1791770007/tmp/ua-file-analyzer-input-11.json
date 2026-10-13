@@ -1,0 +1,9 @@
+{"projectRoot":"C:/Users/User/Desktop/SherlockEngine","batchFiles":[
+{"path":"SherlockEngine/Shaders/ShadowVertexShader.hlsl","language":"hlsl","sizeLines":15,"fileCategory":"code"},
+{"path":"SherlockEngine/Shaders/SkyboxPixelShader.hlsl","language":"hlsl","sizeLines":9,"fileCategory":"code"},
+{"path":"SherlockEngine/Shaders/SkyboxVertexShader.hlsl","language":"hlsl","sizeLines":29,"fileCategory":"code"},
+{"path":"SherlockEngine/pch.cpp","language":"cpp","sizeLines":1,"fileCategory":"code"},
+{"path":"SherlockEngine/pch.h","language":"c","sizeLines":22,"fileCategory":"code"},
+{"path":"SherlockGame/GameMain.cpp","language":"cpp","sizeLines":10,"fileCategory":"code"},
+{"path":"docs/memo.js","language":"javascript","sizeLines":413,"fileCategory":"code"}],
+"batchImportData":{"SherlockEngine/pch.cpp":["SherlockEngine/pch.h"]}}

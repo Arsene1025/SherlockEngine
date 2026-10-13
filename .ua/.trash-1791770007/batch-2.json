@@ -1,0 +1,58 @@
+{
+ "nodes": [
+  {
+   "id": "config:Projects/QuaternionLookTest/Assets/Scenes/Main.json",
+   "type": "config",
+   "name": "Main.json",
+   "filePath": "Projects/QuaternionLookTest/Assets/Scenes/Main.json",
+   "summary": "QuaternionLookTest 프로젝트의 기본 시작 씬으로, 카메라·HDR 큐브맵 IBL 환경·조명 1개·PBR 머티리얼·메시·오브젝트를 정의하는 버전 4 씬 파일.",
+   "tags": [
+    "configuration",
+    "scene",
+    "pbr",
+    "ibl",
+    "json"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "config:Projects/QuaternionLookTest/Assets/Scenes/quat_roll_local.json",
+   "type": "config",
+   "name": "quat_roll_local.json",
+   "filePath": "Projects/QuaternionLookTest/Assets/Scenes/quat_roll_local.json",
+   "summary": "쿼터니언 roll 회전을 로컬 축 기준으로 검증하기 위한 테스트 씬으로, 다수의 PBR 머티리얼과 구·큐브·실린더 오브젝트, 카메라 2대를 담고 있다.",
+   "tags": [
+    "configuration",
+    "scene",
+    "quaternion",
+    "test-scene",
+    "pbr"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "config:Projects/QuaternionLookTest/Assets/Scenes/quat_roll_world.json",
+   "type": "config",
+   "name": "quat_roll_world.json",
+   "filePath": "Projects/QuaternionLookTest/Assets/Scenes/quat_roll_world.json",
+   "summary": "쿼터니언 roll 회전을 월드 축 기준으로 검증하기 위한 테스트 씬으로, quat_roll_local.json과 같은 구성에서 회전 기준만 달리한 짝 씬.",
+   "tags": [
+    "configuration",
+    "scene",
+    "quaternion",
+    "test-scene",
+    "pbr"
+   ],
+   "complexity": "complex"
+  }
+ ],
+ "edges": [
+  {
+   "source": "config:Projects/QuaternionLookTest/Assets/Scenes/quat_roll_local.json",
+   "target": "config:Projects/QuaternionLookTest/Assets/Scenes/quat_roll_world.json",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  }
+ ]
+}

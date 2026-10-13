@@ -1,0 +1,1746 @@
+{
+ "nodes": [
+  {
+   "id": "file:Projects/Sample/Scripts/Test.h",
+   "type": "file",
+   "name": "Test.h",
+   "filePath": "Projects/Sample/Scripts/Test.h",
+   "summary": "샘플 프로젝트의 Test 스크립트 클래스 선언. 구현은 Test.cpp에 있으며 다른 스크립트가 GetBehaviour<Test>()로 사용할 수 있다.",
+   "tags": [
+    "스크립트",
+    "헤더",
+    "샘플",
+    "리플렉션"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:Projects/Sample/Scripts/Test.h:Test",
+   "type": "class",
+   "name": "Test",
+   "filePath": "Projects/Sample/Scripts/Test.h",
+   "lineRange": [
+    7,
+    16
+   ],
+   "summary": "Script를 상속하는 샘플 게임 스크립트로 Reflect/Start/Update를 선언한다.",
+   "tags": [
+    "스크립트",
+    "샘플",
+    "컴포넌트"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEditor/EditorMain.cpp",
+   "type": "file",
+   "name": "EditorMain.cpp",
+   "filePath": "SherlockEditor/EditorMain.cpp",
+   "summary": "에디터 실행 파일의 wWinMain 진입점. EntryPoints의 RunEditor로 위임한다.",
+   "tags": [
+    "진입점",
+    "에디터",
+    "윈도우"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEditor/EditorMain.cpp:wWinMain",
+   "type": "function",
+   "name": "wWinMain",
+   "filePath": "SherlockEditor/EditorMain.cpp",
+   "lineRange": [
+    11,
+    14
+   ],
+   "summary": "Win32 진입 함수로 엔진 DLL의 에디터 실행을 호출한다.",
+   "tags": [
+    "진입점",
+    "윈도우"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:SherlockEditor/SherlockEditor.vcxproj",
+   "type": "config",
+   "name": "SherlockEditor.vcxproj",
+   "filePath": "SherlockEditor/SherlockEditor.vcxproj",
+   "summary": "SherlockEditor 실행 파일의 MSBuild 프로젝트 파일. EditorMain.cpp와 SherlockEngine 프로젝트 참조를 정의한다.",
+   "tags": [
+    "빌드",
+    "msbuild",
+    "에디터",
+    "설정"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "config:SherlockEditor/SherlockEditor.vcxproj.filters",
+   "type": "config",
+   "name": "SherlockEditor.vcxproj.filters",
+   "filePath": "SherlockEditor/SherlockEditor.vcxproj.filters",
+   "summary": "SherlockEditor 프로젝트의 Visual Studio 솔루션 탐색기 필터 정의.",
+   "tags": [
+    "빌드",
+    "msbuild",
+    "설정"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/AppBase.h",
+   "type": "file",
+   "name": "AppBase.h",
+   "filePath": "SherlockEngine/App/AppBase.h",
+   "summary": "Win32 창, 엔진, 설정, 프로젝트 스크립트 DLL 로드를 담당하는 앱 기반 클래스 선언. 에디터와 게임 앱이 상속한다.",
+   "tags": [
+    "앱",
+    "기반클래스",
+    "헤더",
+    "창관리"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/App/AppBase.h:AppBase",
+   "type": "class",
+   "name": "AppBase",
+   "filePath": "SherlockEngine/App/AppBase.h",
+   "lineRange": [
+    15,
+    82
+   ],
+   "summary": "Initialize/Run/MsgProc 루프와 가상 훅(OnInitialize, OnUpdate, OnGUI 등)을 제공하는 앱 추상 기반.",
+   "tags": [
+    "앱",
+    "기반클래스",
+    "수명주기"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/App/AppBase.cpp",
+   "type": "file",
+   "name": "AppBase.cpp",
+   "filePath": "SherlockEngine/App/AppBase.cpp",
+   "summary": "창 생성, 설정/로거 초기화, 프로젝트 해석과 스크립트 DLL 로드, 메인 루프, 윈도우 메시지 처리를 구현한다.",
+   "tags": [
+    "앱",
+    "메인루프",
+    "윈도우",
+    "스크립트"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/AppBase.cpp:Initialize",
+   "type": "function",
+   "name": "Initialize",
+   "filePath": "SherlockEngine/App/AppBase.cpp",
+   "lineRange": [
+    184,
+    236
+   ],
+   "summary": "설정, 로거, 창, 엔진, GUI를 순서대로 초기화한다.",
+   "tags": [
+    "초기화"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/AppBase.cpp:Run",
+   "type": "function",
+   "name": "Run",
+   "filePath": "SherlockEngine/App/AppBase.cpp",
+   "lineRange": [
+    238,
+    282
+   ],
+   "summary": "메시지 펌프와 고정/가변 업데이트, 렌더링을 도는 메인 루프.",
+   "tags": [
+    "메인루프"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/AppBase.cpp:MsgProc",
+   "type": "function",
+   "name": "MsgProc",
+   "filePath": "SherlockEngine/App/AppBase.cpp",
+   "lineRange": [
+    284,
+    346
+   ],
+   "summary": "윈도우 메시지를 처리하고 리사이즈 및 포커스 이벤트를 앱에 전달한다.",
+   "tags": [
+    "윈도우",
+    "이벤트"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/AppBase.cpp:LoadProjectScripts",
+   "type": "function",
+   "name": "LoadProjectScripts",
+   "filePath": "SherlockEngine/App/AppBase.cpp",
+   "lineRange": [
+    104,
+    119
+   ],
+   "summary": "프로젝트 스크립트 DLL을 로드해 등록한다.",
+   "tags": [
+    "스크립트",
+    "핫리로드"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/AppBase.cpp:OpenProject",
+   "type": "function",
+   "name": "OpenProject",
+   "filePath": "SherlockEngine/App/AppBase.cpp",
+   "lineRange": [
+    94,
+    102
+   ],
+   "summary": "프로젝트를 열고 스크립트를 다시 로드한다.",
+   "tags": [
+    "프로젝트"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/AppBase.cpp:InitGUI",
+   "type": "function",
+   "name": "InitGUI",
+   "filePath": "SherlockEngine/App/AppBase.cpp",
+   "lineRange": [
+    377,
+    398
+   ],
+   "summary": "ImGui를 초기화하고 D3D11 및 Win32 백엔드를 연결한다.",
+   "tags": [
+    "imgui",
+    "초기화"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/ContentBrowser.h",
+   "type": "file",
+   "name": "ContentBrowser.h",
+   "filePath": "SherlockEngine/App/ContentBrowser.h",
+   "summary": "에디터 콘텐츠 브라우저 패널과 드래그 페이로드(AssetDragPayload) 선언.",
+   "tags": [
+    "에디터",
+    "에셋",
+    "헤더",
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/App/ContentBrowser.h:ContentBrowser",
+   "type": "class",
+   "name": "ContentBrowser",
+   "filePath": "SherlockEngine/App/ContentBrowser.h",
+   "lineRange": [
+    34,
+    133
+   ],
+   "summary": "폴더 트리, 타일 그리드, 썸네일 캐시, 에셋 드래그 소스를 가진 콘텐츠 브라우저 클래스.",
+   "tags": [
+    "에디터",
+    "에셋",
+    "ui"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "class:SherlockEngine/App/ContentBrowser.h:AssetDragPayload",
+   "type": "class",
+   "name": "AssetDragPayload",
+   "filePath": "SherlockEngine/App/ContentBrowser.h",
+   "lineRange": [
+    27,
+    31
+   ],
+   "summary": "에셋을 씬 뷰로 드래그할 때 전달하는 페이로드 구조체.",
+   "tags": [
+    "드래그앤드롭",
+    "에셋"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "type": "file",
+   "name": "ContentBrowser.cpp",
+   "filePath": "SherlockEngine/App/ContentBrowser.cpp",
+   "summary": "디렉터리 열거, 브레드크럼, 타일 그리드, 비동기 썸네일 로딩과 퇴출, 드래그 소스를 구현한 ImGui 콘텐츠 브라우저.",
+   "tags": [
+    "에디터",
+    "에셋",
+    "imgui",
+    "썸네일"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/ContentBrowser.cpp:Classify",
+   "type": "function",
+   "name": "Classify",
+   "filePath": "SherlockEngine/App/ContentBrowser.cpp",
+   "lineRange": [
+    92,
+    100
+   ],
+   "summary": "확장자로 에셋 종류를 분류한다.",
+   "tags": [
+    "에셋",
+    "분류"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/App/ContentBrowser.cpp:DrawTypeIcon",
+   "type": "function",
+   "name": "DrawTypeIcon",
+   "filePath": "SherlockEngine/App/ContentBrowser.cpp",
+   "lineRange": [
+    125,
+    201
+   ],
+   "summary": "에셋 종류별 아이콘을 ImDrawList로 직접 그린다.",
+   "tags": [
+    "ui",
+    "아이콘"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/ContentBrowser.cpp:EnumerateDirectory",
+   "type": "function",
+   "name": "EnumerateDirectory",
+   "filePath": "SherlockEngine/App/ContentBrowser.cpp",
+   "lineRange": [
+    230,
+    280
+   ],
+   "summary": "현재 디렉터리의 항목을 열거해 정렬한다.",
+   "tags": [
+    "파일시스템"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/ContentBrowser.cpp:Draw",
+   "type": "function",
+   "name": "Draw",
+   "filePath": "SherlockEngine/App/ContentBrowser.cpp",
+   "lineRange": [
+    313,
+    361
+   ],
+   "summary": "툴바, 폴더 트리, 타일 그리드를 배치하는 최상위 그리기 함수.",
+   "tags": [
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/ContentBrowser.cpp:DrawTile",
+   "type": "function",
+   "name": "DrawTile",
+   "filePath": "SherlockEngine/App/ContentBrowser.cpp",
+   "lineRange": [
+    474,
+    537
+   ],
+   "summary": "타일 하나의 썸네일, 라벨, 선택, 드래그를 처리한다.",
+   "tags": [
+    "ui",
+    "타일"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/ContentBrowser.cpp:BeginDragSource",
+   "type": "function",
+   "name": "BeginDragSource",
+   "filePath": "SherlockEngine/App/ContentBrowser.cpp",
+   "lineRange": [
+    539,
+    573
+   ],
+   "summary": "에셋 드래그 시작과 페이로드 설정을 처리한다.",
+   "tags": [
+    "드래그앤드롭"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/ContentBrowser.cpp:PumpThumbnailLoads",
+   "type": "function",
+   "name": "PumpThumbnailLoads",
+   "filePath": "SherlockEngine/App/ContentBrowser.cpp",
+   "lineRange": [
+    622,
+    647
+   ],
+   "summary": "프레임당 제한된 수의 썸네일 텍스처를 로드한다.",
+   "tags": [
+    "썸네일",
+    "비동기"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/ContentBrowser.cpp:EvictThumbnails",
+   "type": "function",
+   "name": "EvictThumbnails",
+   "filePath": "SherlockEngine/App/ContentBrowser.cpp",
+   "lineRange": [
+    649,
+    666
+   ],
+   "summary": "오래된 썸네일을 퇴출해 메모리를 제한한다.",
+   "tags": [
+    "썸네일",
+    "캐시"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/DebugUI.h",
+   "type": "file",
+   "name": "DebugUI.h",
+   "filePath": "SherlockEngine/App/DebugUI.h",
+   "summary": "디버그 패널 그리기 함수들의 전방 선언 헤더.",
+   "tags": [
+    "디버그",
+    "ui",
+    "헤더"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/DebugUI.cpp",
+   "type": "file",
+   "name": "DebugUI.cpp",
+   "filePath": "SherlockEngine/App/DebugUI.cpp",
+   "summary": "카메라, 렌더 설정, 그림자, 환경, 라이트, 머티리얼, 모델, 엔진, 프로파일러 패널과 로그 콘솔을 ImGui로 그린다.",
+   "tags": [
+    "디버그",
+    "imgui",
+    "패널",
+    "프로파일러"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/DebugUI.cpp:DrawRenderSettingsPanel",
+   "type": "function",
+   "name": "DrawRenderSettingsPanel",
+   "filePath": "SherlockEngine/App/DebugUI.cpp",
+   "lineRange": [
+    38,
+    77
+   ],
+   "summary": "렌더 옵션을 조절하는 패널.",
+   "tags": [
+    "렌더링",
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/DebugUI.cpp:DrawEnvironmentPanel",
+   "type": "function",
+   "name": "DrawEnvironmentPanel",
+   "filePath": "SherlockEngine/App/DebugUI.cpp",
+   "lineRange": [
+    139,
+    171
+   ],
+   "summary": "HDR 환경 맵과 IBL 설정을 편집한다.",
+   "tags": [
+    "환경",
+    "ibl"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/DebugUI.cpp:DrawLightPanel",
+   "type": "function",
+   "name": "DrawLightPanel",
+   "filePath": "SherlockEngine/App/DebugUI.cpp",
+   "lineRange": [
+    173,
+    247
+   ],
+   "summary": "라이트 종류와 속성을 편집하는 패널.",
+   "tags": [
+    "라이트",
+    "ui"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/DebugUI.cpp:DrawMaterialPanel",
+   "type": "function",
+   "name": "DrawMaterialPanel",
+   "filePath": "SherlockEngine/App/DebugUI.cpp",
+   "lineRange": [
+    249,
+    287
+   ],
+   "summary": "PBR 머티리얼 파라미터를 편집한다.",
+   "tags": [
+    "머티리얼",
+    "pbr"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/DebugUI.cpp:DrawProfilerPanel",
+   "type": "function",
+   "name": "DrawProfilerPanel",
+   "filePath": "SherlockEngine/App/DebugUI.cpp",
+   "lineRange": [
+    334,
+    358
+   ],
+   "summary": "프로파일러 측정값을 표시한다.",
+   "tags": [
+    "프로파일러"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/DebugUI.cpp:DrawLogConsole",
+   "type": "function",
+   "name": "DrawLogConsole",
+   "filePath": "SherlockEngine/App/DebugUI.cpp",
+   "lineRange": [
+    360,
+    410
+   ],
+   "summary": "로그 메시지를 필터링해 보여주는 콘솔.",
+   "tags": [
+    "로그",
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/App/Editor.h",
+   "type": "file",
+   "name": "Editor.h",
+   "filePath": "SherlockEngine/App/Editor.h",
+   "summary": "씬 뷰, 하이어라키, 인스펙터, 기즈모, 프로젝트 런처를 가진 에디터 UI 클래스 선언.",
+   "tags": [
+    "에디터",
+    "ui",
+    "헤더"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "class:SherlockEngine/App/Editor.h:Editor",
+   "type": "class",
+   "name": "Editor",
+   "filePath": "SherlockEngine/App/Editor.h",
+   "lineRange": [
+    24,
+    165
+   ],
+   "summary": "에디터 UI 전체를 관장하며 선택, 피킹, 에셋 드롭, 프로젝트 전환을 제공하는 클래스.",
+   "tags": [
+    "에디터",
+    "ui",
+    "선택"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:SherlockEngine/App/Editor.cpp",
+   "type": "file",
+   "name": "Editor.cpp",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "summary": "에디터의 메뉴바, 씬 뷰, 기즈모, 피킹, 하이어라키, 인스펙터, 에셋 드롭, 카메라 미리보기, 런처와 빌드 팝업을 구현한다.",
+   "tags": [
+    "에디터",
+    "imgui",
+    "기즈모",
+    "피킹"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/Editor.cpp:RayAabb",
+   "type": "function",
+   "name": "RayAabb",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    33,
+    57
+   ],
+   "summary": "레이와 AABB의 교차 거리를 계산한다.",
+   "tags": [
+    "수학",
+    "피킹"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/App/Editor.cpp:Draw",
+   "type": "function",
+   "name": "Draw",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    100,
+    152
+   ],
+   "summary": "에디터 UI 한 프레임을 그리는 진입 함수.",
+   "tags": [
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/Editor.cpp:DrawSceneView",
+   "type": "function",
+   "name": "DrawSceneView",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    268,
+    359
+   ],
+   "summary": "렌더 결과를 이미지로 표시하고 입력과 기즈모를 처리한다.",
+   "tags": [
+    "씬뷰"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/Editor.cpp:DrawGizmo",
+   "type": "function",
+   "name": "DrawGizmo",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    361,
+    388
+   ],
+   "summary": "선택 오브젝트의 변환 기즈모를 그린다.",
+   "tags": [
+    "기즈모"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/Editor.cpp:Pick",
+   "type": "function",
+   "name": "Pick",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    390,
+    437
+   ],
+   "summary": "마우스 위치로 오브젝트를 레이캐스트 선택한다.",
+   "tags": [
+    "피킹"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/Editor.cpp:HandleAssetDrop",
+   "type": "function",
+   "name": "HandleAssetDrop",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    511,
+    553
+   ],
+   "summary": "씬 뷰에 드롭된 에셋을 종류별로 처리한다.",
+   "tags": [
+    "드래그앤드롭"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/Editor.cpp:DrawHierarchy",
+   "type": "function",
+   "name": "DrawHierarchy",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    617,
+    661
+   ],
+   "summary": "씬 오브젝트 트리를 표시한다.",
+   "tags": [
+    "하이어라키"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/Editor.cpp:DrawInspector",
+   "type": "function",
+   "name": "DrawInspector",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    710,
+    818
+   ],
+   "summary": "선택 오브젝트 컴포넌트를 편집한다.",
+   "tags": [
+    "인스펙터"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/Editor.cpp:DrawComponents",
+   "type": "function",
+   "name": "DrawComponents",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    1168,
+    1288
+   ],
+   "summary": "컴포넌트별 속성 편집 UI를 그린다.",
+   "tags": [
+    "컴포넌트",
+    "리플렉션"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/Editor.cpp:DrawBuildPopup",
+   "type": "function",
+   "name": "DrawBuildPopup",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    1086,
+    1138
+   ],
+   "summary": "게임 빌드 옵션 팝업을 그리고 GameBuilder를 호출한다.",
+   "tags": [
+    "빌드"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/Editor.cpp:DrawLauncher",
+   "type": "function",
+   "name": "DrawLauncher",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    995,
+    1046
+   ],
+   "summary": "최근 프로젝트 목록과 새 프로젝트 생성 런처 UI.",
+   "tags": [
+    "프로젝트"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/App/Editor.cpp:ImGuiPropertyVisitor",
+   "type": "class",
+   "name": "ImGuiPropertyVisitor",
+   "filePath": "SherlockEngine/App/Editor.cpp",
+   "lineRange": [
+    825,
+    838
+   ],
+   "summary": "리플렉션 속성 방문자로 값을 ImGui 위젯으로 편집한다.",
+   "tags": [
+    "리플렉션",
+    "imgui"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/EditorApp.cpp",
+   "type": "file",
+   "name": "EditorApp.cpp",
+   "filePath": "SherlockEngine/App/EditorApp.cpp",
+   "summary": "에디터 앱 구현: 초기화, 데모 씬 구성, 업데이트, 카메라 조작, 플레이/정지, 스크립트 빌드와 핫리로드, 씬 저장/로드, 자동화 실행.",
+   "tags": [
+    "에디터",
+    "앱",
+    "핫리로드",
+    "자동화"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/EditorApp.cpp:OnInitialize",
+   "type": "function",
+   "name": "OnInitialize",
+   "filePath": "SherlockEngine/App/EditorApp.cpp",
+   "lineRange": [
+    44,
+    102
+   ],
+   "summary": "렌더러, 에디터 UI, 프로젝트와 기본 씬을 초기화한다.",
+   "tags": [
+    "초기화"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/EditorApp.cpp:BuildDemoScene",
+   "type": "function",
+   "name": "BuildDemoScene",
+   "filePath": "SherlockEngine/App/EditorApp.cpp",
+   "lineRange": [
+    150,
+    278
+   ],
+   "summary": "데모용 씬 오브젝트를 구성한다.",
+   "tags": [
+    "씬"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/EditorApp.cpp:OnUpdate",
+   "type": "function",
+   "name": "OnUpdate",
+   "filePath": "SherlockEngine/App/EditorApp.cpp",
+   "lineRange": [
+    389,
+    447
+   ],
+   "summary": "입력, 카메라, 시뮬레이션을 프레임마다 갱신한다.",
+   "tags": [
+    "업데이트"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/EditorApp.cpp:BuildScripts",
+   "type": "function",
+   "name": "BuildScripts",
+   "filePath": "SherlockEngine/App/EditorApp.cpp",
+   "lineRange": [
+    532,
+    549
+   ],
+   "summary": "프로젝트 스크립트 DLL을 MSBuild로 빌드한다.",
+   "tags": [
+    "스크립트",
+    "빌드"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/App/EditorApp.cpp:ReloadScripts",
+   "type": "function",
+   "name": "ReloadScripts",
+   "filePath": "SherlockEngine/App/EditorApp.cpp",
+   "lineRange": [
+    551,
+    570
+   ],
+   "summary": "스크립트 DLL을 언로드하고 다시 로드한다.",
+   "tags": [
+    "핫리로드"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/EditorApp.cpp:StartPlay",
+   "type": "function",
+   "name": "StartPlay",
+   "filePath": "SherlockEngine/App/EditorApp.cpp",
+   "lineRange": [
+    588,
+    600
+   ],
+   "summary": "씬을 스냅샷하고 플레이 모드로 전환한다.",
+   "tags": [
+    "플레이모드"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/App/EditorApp.cpp:StopPlay",
+   "type": "function",
+   "name": "StopPlay",
+   "filePath": "SherlockEngine/App/EditorApp.cpp",
+   "lineRange": [
+    602,
+    621
+   ],
+   "summary": "스냅샷을 복원하며 편집 모드로 돌아간다.",
+   "tags": [
+    "플레이모드"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/EditorApp.cpp:UpdateCamera",
+   "type": "function",
+   "name": "UpdateCamera",
+   "filePath": "SherlockEngine/App/EditorApp.cpp",
+   "lineRange": [
+    636,
+    698
+   ],
+   "summary": "자유 시점 카메라 이동을 처리한다.",
+   "tags": [
+    "카메라",
+    "입력"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/EditorApp.cpp:RunAutomation",
+   "type": "function",
+   "name": "RunAutomation",
+   "filePath": "SherlockEngine/App/EditorApp.cpp",
+   "lineRange": [
+    827,
+    983
+   ],
+   "summary": "명령줄 자동화 스크립트를 실행한다.",
+   "tags": [
+    "자동화",
+    "테스트"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/EditorApp.cpp:PlaceModel",
+   "type": "function",
+   "name": "PlaceModel",
+   "filePath": "SherlockEngine/App/EditorApp.cpp",
+   "lineRange": [
+    1077,
+    1110
+   ],
+   "summary": "모델을 씬에 배치한다.",
+   "tags": [
+    "씬",
+    "모델"
+   ],
+   "complexity": "moderate"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:Projects/Sample/Scripts/Test.h",
+   "target": "class:Projects/Sample/Scripts/Test.h:Test",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEditor/EditorMain.cpp",
+   "target": "function:SherlockEditor/EditorMain.cpp:wWinMain",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "config:SherlockEditor/SherlockEditor.vcxproj",
+   "target": "file:SherlockEditor/EditorMain.cpp",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:SherlockEditor/SherlockEditor.vcxproj",
+   "target": "file:SherlockEngine/App/EntryPoints.h",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:SherlockEditor/SherlockEditor.vcxproj.filters",
+   "target": "config:SherlockEditor/SherlockEditor.vcxproj",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.h",
+   "target": "class:SherlockEngine/App/AppBase.h:AppBase",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.cpp",
+   "target": "function:SherlockEngine/App/AppBase.cpp:Initialize",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.cpp",
+   "target": "function:SherlockEngine/App/AppBase.cpp:Run",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.cpp",
+   "target": "function:SherlockEngine/App/AppBase.cpp:MsgProc",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.cpp",
+   "target": "function:SherlockEngine/App/AppBase.cpp:LoadProjectScripts",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.cpp",
+   "target": "function:SherlockEngine/App/AppBase.cpp:OpenProject",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.cpp",
+   "target": "function:SherlockEngine/App/AppBase.cpp:InitGUI",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.h",
+   "target": "class:SherlockEngine/App/ContentBrowser.h:ContentBrowser",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.h",
+   "target": "class:SherlockEngine/App/ContentBrowser.h:AssetDragPayload",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "function:SherlockEngine/App/ContentBrowser.cpp:Classify",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "function:SherlockEngine/App/ContentBrowser.cpp:DrawTypeIcon",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "function:SherlockEngine/App/ContentBrowser.cpp:EnumerateDirectory",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "function:SherlockEngine/App/ContentBrowser.cpp:Draw",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "function:SherlockEngine/App/ContentBrowser.cpp:DrawTile",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "function:SherlockEngine/App/ContentBrowser.cpp:BeginDragSource",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "function:SherlockEngine/App/ContentBrowser.cpp:PumpThumbnailLoads",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "function:SherlockEngine/App/ContentBrowser.cpp:EvictThumbnails",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "function:SherlockEngine/App/DebugUI.cpp:DrawRenderSettingsPanel",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "function:SherlockEngine/App/DebugUI.cpp:DrawEnvironmentPanel",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "function:SherlockEngine/App/DebugUI.cpp:DrawLightPanel",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "function:SherlockEngine/App/DebugUI.cpp:DrawMaterialPanel",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "function:SherlockEngine/App/DebugUI.cpp:DrawProfilerPanel",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "function:SherlockEngine/App/DebugUI.cpp:DrawLogConsole",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.h",
+   "target": "class:SherlockEngine/App/Editor.h:Editor",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "function:SherlockEngine/App/Editor.cpp:RayAabb",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "function:SherlockEngine/App/Editor.cpp:Draw",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "function:SherlockEngine/App/Editor.cpp:DrawSceneView",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "function:SherlockEngine/App/Editor.cpp:DrawGizmo",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "function:SherlockEngine/App/Editor.cpp:Pick",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "function:SherlockEngine/App/Editor.cpp:HandleAssetDrop",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "function:SherlockEngine/App/Editor.cpp:DrawHierarchy",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "function:SherlockEngine/App/Editor.cpp:DrawInspector",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "function:SherlockEngine/App/Editor.cpp:DrawComponents",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "function:SherlockEngine/App/Editor.cpp:DrawBuildPopup",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "function:SherlockEngine/App/Editor.cpp:DrawLauncher",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "class:SherlockEngine/App/Editor.cpp:ImGuiPropertyVisitor",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "function:SherlockEngine/App/EditorApp.cpp:OnInitialize",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "function:SherlockEngine/App/EditorApp.cpp:BuildDemoScene",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "function:SherlockEngine/App/EditorApp.cpp:OnUpdate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "function:SherlockEngine/App/EditorApp.cpp:BuildScripts",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "function:SherlockEngine/App/EditorApp.cpp:ReloadScripts",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "function:SherlockEngine/App/EditorApp.cpp:StartPlay",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "function:SherlockEngine/App/EditorApp.cpp:StopPlay",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "function:SherlockEngine/App/EditorApp.cpp:UpdateCamera",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "function:SherlockEngine/App/EditorApp.cpp:RunAutomation",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "function:SherlockEngine/App/EditorApp.cpp:PlaceModel",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.cpp",
+   "target": "file:SherlockEngine/App/AppBase.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.cpp",
+   "target": "file:SherlockEngine/Core/Paths.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.cpp",
+   "target": "file:SherlockEngine/Core/Profiler.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "file:SherlockEngine/App/ContentBrowser.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "file:SherlockEngine/Core/Paths.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "file:SherlockEngine/Graphics/TextureLoader.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.cpp",
+   "target": "file:SherlockEngine/RHI/Device.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "file:SherlockEngine/App/DebugUI.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "file:SherlockEngine/Scene/Scene.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "file:SherlockEngine/Scene/Camera.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "file:SherlockEngine/Graphics/Renderer.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "file:SherlockEngine/RHI/Device.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "file:SherlockEngine/Graphics/Model.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "file:SherlockEngine/Core/Engine.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "file:SherlockEngine/Core/Profiler.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "file:SherlockEngine/RHI/RHI.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/DebugUI.cpp",
+   "target": "file:SherlockEngine/App/ContentBrowser.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/App/Editor.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/App/DebugUI.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/App/ScriptCreator.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/App/GameBuilder.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/App/ProjectLauncher.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/Core/Engine.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/Core/Profiler.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/Core/Paths.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/Core/AssetManager.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/Graphics/Mesh.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/Graphics/Model.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/Scene/CameraComponent.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.cpp",
+   "target": "file:SherlockEngine/RHI/Device.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/App/EditorApp.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/App/DebugUI.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/Graphics/Mesh.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/Graphics/Model.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/Core/Paths.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/Core/Profiler.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/Scene/SceneSerializer.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/Scene/CameraComponent.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/Game/Components/Rigidbody.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/App/ScriptCreator.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/App/GameBuilder.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/App/ProjectGenerator.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.cpp",
+   "target": "file:SherlockEngine/App/ProjectLauncher.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.h",
+   "target": "file:SherlockEngine/Core/Engine.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.h",
+   "target": "file:SherlockEngine/Core/Config.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.h",
+   "target": "file:SherlockEngine/Core/Project.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.h",
+   "target": "file:SherlockEngine/Core/ScriptModule.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.h",
+   "target": "file:SherlockEngine/RHI/Handle.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.h",
+   "target": "file:SherlockEngine/App/ContentBrowser.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.h",
+   "target": "file:SherlockEngine/App/GameBuilder.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.h",
+   "target": "file:SherlockEngine/App/AppBase.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.h",
+   "target": "file:SherlockEngine/Scene/Camera.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEditor/EditorMain.cpp",
+   "target": "file:SherlockEngine/App/EntryPoints.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:Projects/Sample/Scripts/Test.h",
+   "target": "file:SherlockEngine/Scene/Script.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEditor/EditorMain.cpp",
+   "target": "function:SherlockEngine/App/EntryPoints.cpp:RunEditor",
+   "type": "calls",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:Projects/Sample/Scripts/Test.h",
+   "target": "file:Projects/Sample/Scripts/Test.cpp",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "file:SherlockEngine/App/Editor.h",
+   "target": "class:SherlockEngine/App/Editor.h:Editor",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.h",
+   "target": "class:SherlockEngine/App/ContentBrowser.h:ContentBrowser",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/App/AppBase.h",
+   "target": "class:SherlockEngine/App/AppBase.h:AppBase",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/App/ContentBrowser.h",
+   "target": "class:SherlockEngine/App/ContentBrowser.h:AssetDragPayload",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  }
+ ]
+}
