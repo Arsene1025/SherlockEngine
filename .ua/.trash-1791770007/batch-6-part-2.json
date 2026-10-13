@@ -1,0 +1,876 @@
+{
+ "nodes": [
+  {
+   "id": "file:SherlockEngine/App/EditorApp.h",
+   "type": "file",
+   "name": "EditorApp.h",
+   "filePath": "SherlockEngine/App/EditorApp.h",
+   "summary": "AppBase를 상속한 에디터 애플리케이션 클래스 선언.",
+   "tags": [
+    "에디터",
+    "앱",
+    "헤더"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/App/EditorApp.h:EditorApp",
+   "type": "class",
+   "name": "EditorApp",
+   "filePath": "SherlockEngine/App/EditorApp.h",
+   "lineRange": [
+    9,
+    140
+   ],
+   "summary": "씬 편집, 플레이 모드, 스크립트 재빌드, 자동화를 담당하는 앱 클래스.",
+   "tags": [
+    "에디터",
+    "앱",
+    "플레이모드"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:SherlockEngine/App/EntryPoints.h",
+   "type": "file",
+   "name": "EntryPoints.h",
+   "filePath": "SherlockEngine/App/EntryPoints.h",
+   "summary": "엔진 DLL이 내보내는 RunEditor/RunGame 진입점 선언.",
+   "tags": [
+    "진입점",
+    "헤더",
+    "dll"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/EntryPoints.cpp",
+   "type": "file",
+   "name": "EntryPoints.cpp",
+   "filePath": "SherlockEngine/App/EntryPoints.cpp",
+   "summary": "RunEditor와 RunGame 구현. 해당 앱 객체를 만들어 실행한다.",
+   "tags": [
+    "진입점",
+    "dll",
+    "앱"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/App/EntryPoints.cpp:RunEditor",
+   "type": "function",
+   "name": "RunEditor",
+   "filePath": "SherlockEngine/App/EntryPoints.cpp",
+   "lineRange": [
+    7,
+    16
+   ],
+   "summary": "EditorApp을 생성해 초기화하고 실행한다.",
+   "tags": [
+    "진입점",
+    "에디터"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/App/EntryPoints.cpp:RunGame",
+   "type": "function",
+   "name": "RunGame",
+   "filePath": "SherlockEngine/App/EntryPoints.cpp",
+   "lineRange": [
+    18,
+    27
+   ],
+   "summary": "GameApp을 생성해 초기화하고 실행한다.",
+   "tags": [
+    "진입점",
+    "게임"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/GameApp.h",
+   "type": "file",
+   "name": "GameApp.h",
+   "filePath": "SherlockEngine/App/GameApp.h",
+   "summary": "빌드된 게임을 실행하는 GameApp 클래스 선언. GUI를 사용하지 않는다.",
+   "tags": [
+    "게임",
+    "앱",
+    "헤더"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/App/GameApp.h:GameApp",
+   "type": "class",
+   "name": "GameApp",
+   "filePath": "SherlockEngine/App/GameApp.h",
+   "lineRange": [
+    11,
+    26
+   ],
+   "summary": "GUI 없이 씬을 로드해 실행하는 AppBase 파생 클래스.",
+   "tags": [
+    "게임",
+    "앱"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/GameApp.cpp",
+   "type": "file",
+   "name": "GameApp.cpp",
+   "filePath": "SherlockEngine/App/GameApp.cpp",
+   "summary": "게임 모드 초기화(씬 로드, 카메라 탐색)와 업데이트를 구현한다.",
+   "tags": [
+    "게임",
+    "앱",
+    "런타임"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/GameApp.cpp:OnInitialize",
+   "type": "function",
+   "name": "OnInitialize",
+   "filePath": "SherlockEngine/App/GameApp.cpp",
+   "lineRange": [
+    10,
+    53
+   ],
+   "summary": "시작 씬을 로드하고 메인 카메라를 찾는다.",
+   "tags": [
+    "초기화",
+    "씬"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/GameApp.cpp:OnUpdate",
+   "type": "function",
+   "name": "OnUpdate",
+   "filePath": "SherlockEngine/App/GameApp.cpp",
+   "lineRange": [
+    60,
+    90
+   ],
+   "summary": "게임 프레임을 갱신한다.",
+   "tags": [
+    "업데이트"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/App/GameBuilder.h",
+   "type": "file",
+   "name": "GameBuilder.h",
+   "filePath": "SherlockEngine/App/GameBuilder.h",
+   "summary": "게임 빌드 옵션(Options)과 결과(Result) 구조체 및 빌더 API 선언.",
+   "tags": [
+    "빌드",
+    "헤더",
+    "배포"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/App/GameBuilder.h:Options",
+   "type": "class",
+   "name": "Options",
+   "filePath": "SherlockEngine/App/GameBuilder.h",
+   "lineRange": [
+    14,
+    23
+   ],
+   "summary": "빌드 출력 위치, 포함 씬 등 옵션 구조체.",
+   "tags": [
+    "빌드",
+    "옵션"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/App/GameBuilder.h:Result",
+   "type": "class",
+   "name": "Result",
+   "filePath": "SherlockEngine/App/GameBuilder.h",
+   "lineRange": [
+    24,
+    31
+   ],
+   "summary": "빌드 성공 여부와 메시지를 담는 구조체.",
+   "tags": [
+    "빌드",
+    "결과"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/GameBuilder.cpp",
+   "type": "file",
+   "name": "GameBuilder.cpp",
+   "filePath": "SherlockEngine/App/GameBuilder.cpp",
+   "summary": "게임 배포 빌더: 씬이 참조하는 에셋을 수집하고 DLL, 스크립트, 에셋을 출력 폴더로 복사한다.",
+   "tags": [
+    "빌드",
+    "배포",
+    "파일시스템"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/GameBuilder.cpp:CollectReferences",
+   "type": "function",
+   "name": "CollectReferences",
+   "filePath": "SherlockEngine/App/GameBuilder.cpp",
+   "lineRange": [
+    57,
+    96
+   ],
+   "summary": "씬 파일에서 참조된 에셋 경로를 수집한다.",
+   "tags": [
+    "에셋",
+    "의존성"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/GameBuilder.cpp:CopyTree",
+   "type": "function",
+   "name": "CopyTree",
+   "filePath": "SherlockEngine/App/GameBuilder.cpp",
+   "lineRange": [
+    39,
+    54
+   ],
+   "summary": "디렉터리 트리를 재귀 복사한다.",
+   "tags": [
+    "파일시스템"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/App/GameBuilder.cpp:Build",
+   "type": "function",
+   "name": "Build",
+   "filePath": "SherlockEngine/App/GameBuilder.cpp",
+   "lineRange": [
+    137,
+    254
+   ],
+   "summary": "선택한 씬과 에셋을 모아 게임 패키지를 생성한다.",
+   "tags": [
+    "빌드",
+    "배포"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:SherlockEngine/App/ProjectGenerator.h",
+   "type": "file",
+   "name": "ProjectGenerator.h",
+   "filePath": "SherlockEngine/App/ProjectGenerator.h",
+   "summary": "프로젝트 파일 생성과 MSBuild 실행 API 선언.",
+   "tags": [
+    "프로젝트",
+    "생성기",
+    "헤더"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/ProjectGenerator.cpp",
+   "type": "file",
+   "name": "ProjectGenerator.cpp",
+   "filePath": "SherlockEngine/App/ProjectGenerator.cpp",
+   "summary": "스크립트용 vcxproj, filters, 솔루션 파일을 생성하고 MSBuild를 실행한다.",
+   "tags": [
+    "프로젝트",
+    "생성기",
+    "msbuild",
+    "코드생성"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/ProjectGenerator.cpp:ScriptsProject",
+   "type": "function",
+   "name": "ScriptsProject",
+   "filePath": "SherlockEngine/App/ProjectGenerator.cpp",
+   "lineRange": [
+    71,
+    149
+   ],
+   "summary": "스크립트 DLL용 vcxproj 텍스트를 생성한다.",
+   "tags": [
+    "코드생성",
+    "msbuild"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/App/ProjectGenerator.cpp:Generate",
+   "type": "function",
+   "name": "Generate",
+   "filePath": "SherlockEngine/App/ProjectGenerator.cpp",
+   "lineRange": [
+    191,
+    217
+   ],
+   "summary": "프로젝트에 필요한 빌드 파일 일체를 생성한다.",
+   "tags": [
+    "프로젝트"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/ProjectGenerator.cpp:EnsureUpToDate",
+   "type": "function",
+   "name": "EnsureUpToDate",
+   "filePath": "SherlockEngine/App/ProjectGenerator.cpp",
+   "lineRange": [
+    219,
+    230
+   ],
+   "summary": "생성 파일이 최신이 아니면 다시 만든다.",
+   "tags": [
+    "프로젝트"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/App/ProjectGenerator.cpp:RunMsBuild",
+   "type": "function",
+   "name": "RunMsBuild",
+   "filePath": "SherlockEngine/App/ProjectGenerator.cpp",
+   "lineRange": [
+    232,
+    268
+   ],
+   "summary": "MSBuild를 외부 프로세스로 실행한다.",
+   "tags": [
+    "msbuild",
+    "프로세스"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/App/ProjectLauncher.h",
+   "type": "file",
+   "name": "ProjectLauncher.h",
+   "filePath": "SherlockEngine/App/ProjectLauncher.h",
+   "summary": "최근 프로젝트 목록 항목(Recent)과 런처 API 선언.",
+   "tags": [
+    "프로젝트",
+    "런처",
+    "헤더"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/ProjectLauncher.cpp",
+   "type": "file",
+   "name": "ProjectLauncher.cpp",
+   "filePath": "SherlockEngine/App/ProjectLauncher.cpp",
+   "summary": "최근 프로젝트 저장/불러오기와 Win32 파일 및 폴더 선택 대화상자를 구현한다.",
+   "tags": [
+    "프로젝트",
+    "런처",
+    "설정",
+    "대화상자"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/ProjectLauncher.cpp:BrowseForFolder",
+   "type": "function",
+   "name": "BrowseForFolder",
+   "filePath": "SherlockEngine/App/ProjectLauncher.cpp",
+   "lineRange": [
+    100,
+    135
+   ],
+   "summary": "폴더 선택 대화상자를 연다.",
+   "tags": [
+    "win32",
+    "대화상자"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/ProjectLauncher.cpp:AddRecent",
+   "type": "function",
+   "name": "AddRecent",
+   "filePath": "SherlockEngine/App/ProjectLauncher.cpp",
+   "lineRange": [
+    62,
+    73
+   ],
+   "summary": "최근 프로젝트 목록에 항목을 추가한다.",
+   "tags": [
+    "최근목록"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/App/ScriptCreator.cpp",
+   "type": "file",
+   "name": "ScriptCreator.cpp",
+   "filePath": "SherlockEngine/App/ScriptCreator.cpp",
+   "summary": "새 스크립트 클래스의 헤더와 소스 템플릿을 생성하고 편집기로 연다.",
+   "tags": [
+    "스크립트",
+    "코드생성",
+    "템플릿"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/App/ScriptCreator.cpp:SourceTemplate",
+   "type": "function",
+   "name": "SourceTemplate",
+   "filePath": "SherlockEngine/App/ScriptCreator.cpp",
+   "lineRange": [
+    48,
+    76
+   ],
+   "summary": "스크립트 .cpp 템플릿 문자열을 만든다.",
+   "tags": [
+    "템플릿"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/App/ScriptCreator.cpp:HeaderTemplate",
+   "type": "function",
+   "name": "HeaderTemplate",
+   "filePath": "SherlockEngine/App/ScriptCreator.cpp",
+   "lineRange": [
+    25,
+    46
+   ],
+   "summary": "스크립트 .h 템플릿 문자열을 만든다.",
+   "tags": [
+    "템플릿"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/App/ScriptCreator.cpp:Create",
+   "type": "function",
+   "name": "Create",
+   "filePath": "SherlockEngine/App/ScriptCreator.cpp",
+   "lineRange": [
+    113,
+    126
+   ],
+   "summary": "유효성을 검사한 뒤 스크립트 파일 쌍을 만든다.",
+   "tags": [
+    "스크립트"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:SherlockEngine/App/EditorApp.h",
+   "target": "class:SherlockEngine/App/EditorApp.h:EditorApp",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EntryPoints.cpp",
+   "target": "function:SherlockEngine/App/EntryPoints.cpp:RunEditor",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EntryPoints.cpp",
+   "target": "function:SherlockEngine/App/EntryPoints.cpp:RunGame",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/GameApp.h",
+   "target": "class:SherlockEngine/App/GameApp.h:GameApp",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/GameApp.cpp",
+   "target": "function:SherlockEngine/App/GameApp.cpp:OnInitialize",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/GameApp.cpp",
+   "target": "function:SherlockEngine/App/GameApp.cpp:OnUpdate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.h",
+   "target": "class:SherlockEngine/App/GameBuilder.h:Options",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.h",
+   "target": "class:SherlockEngine/App/GameBuilder.h:Result",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.cpp",
+   "target": "function:SherlockEngine/App/GameBuilder.cpp:CollectReferences",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.cpp",
+   "target": "function:SherlockEngine/App/GameBuilder.cpp:CopyTree",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.cpp",
+   "target": "function:SherlockEngine/App/GameBuilder.cpp:Build",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectGenerator.cpp",
+   "target": "function:SherlockEngine/App/ProjectGenerator.cpp:ScriptsProject",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectGenerator.cpp",
+   "target": "function:SherlockEngine/App/ProjectGenerator.cpp:Generate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectGenerator.cpp",
+   "target": "function:SherlockEngine/App/ProjectGenerator.cpp:EnsureUpToDate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectGenerator.cpp",
+   "target": "function:SherlockEngine/App/ProjectGenerator.cpp:RunMsBuild",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectLauncher.cpp",
+   "target": "function:SherlockEngine/App/ProjectLauncher.cpp:BrowseForFolder",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectLauncher.cpp",
+   "target": "function:SherlockEngine/App/ProjectLauncher.cpp:AddRecent",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ScriptCreator.cpp",
+   "target": "function:SherlockEngine/App/ScriptCreator.cpp:SourceTemplate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ScriptCreator.cpp",
+   "target": "function:SherlockEngine/App/ScriptCreator.cpp:HeaderTemplate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/ScriptCreator.cpp",
+   "target": "function:SherlockEngine/App/ScriptCreator.cpp:Create",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/App/EntryPoints.cpp",
+   "target": "file:SherlockEngine/App/EntryPoints.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EntryPoints.cpp",
+   "target": "file:SherlockEngine/App/EditorApp.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EntryPoints.cpp",
+   "target": "file:SherlockEngine/App/GameApp.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EntryPoints.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/GameApp.cpp",
+   "target": "file:SherlockEngine/App/GameApp.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/GameApp.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/GameApp.cpp",
+   "target": "file:SherlockEngine/Core/Paths.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/GameApp.cpp",
+   "target": "file:SherlockEngine/Scene/SceneSerializer.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/GameApp.cpp",
+   "target": "file:SherlockEngine/Scene/CameraComponent.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.cpp",
+   "target": "file:SherlockEngine/App/GameBuilder.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.cpp",
+   "target": "file:SherlockEngine/App/ProjectGenerator.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.cpp",
+   "target": "file:SherlockEngine/Core/ScriptModule.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.cpp",
+   "target": "file:SherlockEngine/Core/Paths.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectGenerator.cpp",
+   "target": "file:SherlockEngine/App/ProjectGenerator.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectGenerator.cpp",
+   "target": "file:SherlockEngine/Core/Project.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectGenerator.cpp",
+   "target": "file:SherlockEngine/Core/Paths.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectGenerator.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectLauncher.cpp",
+   "target": "file:SherlockEngine/App/ProjectLauncher.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectLauncher.cpp",
+   "target": "file:SherlockEngine/App/ProjectGenerator.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ProjectLauncher.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ScriptCreator.cpp",
+   "target": "file:SherlockEngine/App/ScriptCreator.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ScriptCreator.cpp",
+   "target": "file:SherlockEngine/Core/Paths.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/ScriptCreator.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.h",
+   "target": "file:SherlockEngine/App/AppBase.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.h",
+   "target": "file:SherlockEngine/Graphics/Model.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.h",
+   "target": "file:SherlockEngine/App/Editor.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/EntryPoints.h",
+   "target": "file:SherlockEngine/Core/EngineApi.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/App/GameApp.h",
+   "target": "file:SherlockEngine/App/AppBase.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "function:SherlockEngine/App/EntryPoints.cpp:RunEditor",
+   "target": "class:SherlockEngine/App/EditorApp.h:EditorApp",
+   "type": "calls",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "function:SherlockEngine/App/EntryPoints.cpp:RunGame",
+   "target": "class:SherlockEngine/App/GameApp.h:GameApp",
+   "type": "calls",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "class:SherlockEngine/App/EditorApp.h:EditorApp",
+   "target": "class:SherlockEngine/App/AppBase.h:AppBase",
+   "type": "inherits",
+   "direction": "forward",
+   "weight": 0.9
+  },
+  {
+   "source": "class:SherlockEngine/App/GameApp.h:GameApp",
+   "target": "class:SherlockEngine/App/AppBase.h:AppBase",
+   "type": "inherits",
+   "direction": "forward",
+   "weight": 0.9
+  },
+  {
+   "source": "file:SherlockEngine/App/EditorApp.h",
+   "target": "class:SherlockEngine/App/EditorApp.h:EditorApp",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/App/GameApp.h",
+   "target": "class:SherlockEngine/App/GameApp.h:GameApp",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.h",
+   "target": "class:SherlockEngine/App/GameBuilder.h:Options",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:SherlockEngine/App/GameBuilder.h",
+   "target": "class:SherlockEngine/App/GameBuilder.h:Result",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  }
+ ]
+}

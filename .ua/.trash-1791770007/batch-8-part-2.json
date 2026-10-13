@@ -1,0 +1,1258 @@
+{
+ "nodes": [
+  {
+   "id": "file:SherlockEngine/Graphics/ShaderConstants.h",
+   "type": "file",
+   "name": "ShaderConstants.h",
+   "filePath": "SherlockEngine/Graphics/ShaderConstants.h",
+   "summary": "HLSL 상수 버퍼와 1:1로 대응하는 PerFrame, PerObject, Light, Material 상수 구조체와 레지스터 슬롯, 크기 검증 함수를 정의한다.",
+   "tags": [
+    "constant-buffer",
+    "shader-interface",
+    "data-model",
+    "header"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/ShaderConstants.h:PerFrameConstants",
+   "type": "class",
+   "name": "PerFrameConstants",
+   "filePath": "SherlockEngine/Graphics/ShaderConstants.h",
+   "summary": "프레임 단위 상수 버퍼 구조체.",
+   "tags": [
+    "constant-buffer",
+    "data-model"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    54,
+    69
+   ]
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/ShaderConstants.h:PerObjectConstants",
+   "type": "class",
+   "name": "PerObjectConstants",
+   "filePath": "SherlockEngine/Graphics/ShaderConstants.h",
+   "summary": "오브젝트별 상수 버퍼 구조체.",
+   "tags": [
+    "constant-buffer",
+    "data-model"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    71,
+    75
+   ]
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/ShaderConstants.h:LightConstants",
+   "type": "class",
+   "name": "LightConstants",
+   "filePath": "SherlockEngine/Graphics/ShaderConstants.h",
+   "summary": "조명 데이터 상수 구조체.",
+   "tags": [
+    "constant-buffer",
+    "light"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    77,
+    82
+   ]
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/ShaderConstants.h:MaterialConstants",
+   "type": "class",
+   "name": "MaterialConstants",
+   "filePath": "SherlockEngine/Graphics/ShaderConstants.h",
+   "summary": "PBR 머티리얼 파라미터 상수 구조체.",
+   "tags": [
+    "constant-buffer",
+    "pbr",
+    "material"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    86,
+    98
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Graphics/TextureLoader.cpp",
+   "type": "file",
+   "name": "TextureLoader.cpp",
+   "filePath": "SherlockEngine/Graphics/TextureLoader.cpp",
+   "summary": "DirectXTex를 사용해 파일/메모리에서 텍스처를 로드하고, 체커·단색·큐브맵(HDR 포함) 및 썸네일 이미지를 생성한다.",
+   "tags": [
+    "texture",
+    "loader",
+    "cubemap",
+    "directxtex"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/TextureLoader.cpp:FinishImage",
+   "type": "function",
+   "name": "FinishImage",
+   "filePath": "SherlockEngine/Graphics/TextureLoader.cpp",
+   "summary": "스크래치 이미지를 변환/밉맵 처리해 TextureImage로 마무리한다.",
+   "tags": [
+    "texture",
+    "mipmap"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    61,
+    135
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/TextureLoader.cpp:LoadFromFile",
+   "type": "function",
+   "name": "LoadFromFile",
+   "filePath": "SherlockEngine/Graphics/TextureLoader.cpp",
+   "summary": "파일에서 텍스처를 읽어 TextureImage를 만든다.",
+   "tags": [
+    "texture",
+    "loader"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    180,
+    192
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/TextureLoader.cpp:LoadCubeFromFile",
+   "type": "function",
+   "name": "LoadCubeFromFile",
+   "filePath": "SherlockEngine/Graphics/TextureLoader.cpp",
+   "summary": "파일에서 큐브맵을 로드한다.",
+   "tags": [
+    "cubemap",
+    "hdr",
+    "loader"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    350,
+    414
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/TextureLoader.cpp:CreateCube",
+   "type": "function",
+   "name": "CreateCube",
+   "filePath": "SherlockEngine/Graphics/TextureLoader.cpp",
+   "summary": "큐브맵 TextureImage를 생성한다.",
+   "tags": [
+    "cubemap",
+    "texture"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    416,
+    444
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/TextureLoader.cpp:LoadThumbnail",
+   "type": "function",
+   "name": "LoadThumbnail",
+   "filePath": "SherlockEngine/Graphics/TextureLoader.cpp",
+   "summary": "에디터 표시용 썸네일 이미지를 생성한다.",
+   "tags": [
+    "thumbnail",
+    "editor"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    236,
+    277
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/TextureLoader.cpp:CreateChecker",
+   "type": "function",
+   "name": "CreateChecker",
+   "filePath": "SherlockEngine/Graphics/TextureLoader.cpp",
+   "summary": "체커보드 텍스처를 생성한다.",
+   "tags": [
+    "procedural",
+    "texture"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    194,
+    215
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Graphics/TextureLoader.h",
+   "type": "file",
+   "name": "TextureLoader.h",
+   "filePath": "SherlockEngine/Graphics/TextureLoader.h",
+   "summary": "TextureImage 구조체와 TextureLoader 함수들을 선언하며 CPU 측 텍스처 데이터를 RHI 리소스 설명자와 연결한다.",
+   "tags": [
+    "texture",
+    "header",
+    "data-model"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/TextureLoader.h:TextureImage",
+   "type": "class",
+   "name": "TextureImage",
+   "filePath": "SherlockEngine/Graphics/TextureLoader.h",
+   "summary": "CPU 측 텍스처 픽셀 데이터와 포맷 정보를 담는 구조체.",
+   "tags": [
+    "texture",
+    "data-model"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    18,
+    26
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/Graphics/VertexTypes.h",
+   "type": "file",
+   "name": "VertexTypes.h",
+   "filePath": "SherlockEngine/Graphics/VertexTypes.h",
+   "summary": "VERTEX 구조체와 정점 포맷(PCNTT) 레이아웃 생성, 스트라이드 계산 헬퍼를 정의한다.",
+   "tags": [
+    "vertex",
+    "type-definition",
+    "input-layout",
+    "header"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/Graphics/VertexTypes.h:VERTEX",
+   "type": "class",
+   "name": "VERTEX",
+   "filePath": "SherlockEngine/Graphics/VertexTypes.h",
+   "summary": "위치·법선·UV·탄젠트 등을 가진 표준 정점 구조체.",
+   "tags": [
+    "vertex",
+    "data-model"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    21,
+    28
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/Graphics/VertexTypes.h:MakeVertexLayoutPCNTT",
+   "type": "function",
+   "name": "MakeVertexLayoutPCNTT",
+   "filePath": "SherlockEngine/Graphics/VertexTypes.h",
+   "summary": "PCNTT 정점의 입력 레이아웃 설명을 만든다.",
+   "tags": [
+    "input-layout",
+    "vertex"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    37,
+    49
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/RHI/BindingTypes.h",
+   "type": "file",
+   "name": "BindingTypes.h",
+   "filePath": "SherlockEngine/RHI/BindingTypes.h",
+   "summary": "바인딩 슬롯, 바인딩 레이아웃, 리소스 바인딩, 리소스 셋 설명자 등 API 독립적 바인딩 타입을 정의한다.",
+   "tags": [
+    "rhi",
+    "binding",
+    "type-definition",
+    "header"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/RHI/BindingTypes.h:BindingLayoutDesc",
+   "type": "class",
+   "name": "BindingLayoutDesc",
+   "filePath": "SherlockEngine/RHI/BindingTypes.h",
+   "summary": "셰이더 단계별 리소스 슬롯 레이아웃 설명자.",
+   "tags": [
+    "binding",
+    "rhi"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    40,
+    54
+   ]
+  },
+  {
+   "id": "class:SherlockEngine/RHI/BindingTypes.h:ResourceSetDesc",
+   "type": "class",
+   "name": "ResourceSetDesc",
+   "filePath": "SherlockEngine/RHI/BindingTypes.h",
+   "summary": "레이아웃에 맞춰 실제 리소스를 묶는 리소스 셋 설명자.",
+   "tags": [
+    "binding",
+    "rhi"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    64,
+    69
+   ]
+  },
+  {
+   "id": "class:SherlockEngine/RHI/BindingTypes.h:BindingSlot",
+   "type": "class",
+   "name": "BindingSlot",
+   "filePath": "SherlockEngine/RHI/BindingTypes.h",
+   "summary": "단일 바인딩 슬롯 설명.",
+   "tags": [
+    "binding",
+    "rhi"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    25,
+    30
+   ]
+  },
+  {
+   "id": "class:SherlockEngine/RHI/BindingTypes.h:ResourceBinding",
+   "type": "class",
+   "name": "ResourceBinding",
+   "filePath": "SherlockEngine/RHI/BindingTypes.h",
+   "summary": "슬롯과 실제 리소스를 연결하는 항목.",
+   "tags": [
+    "binding",
+    "rhi"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    57,
+    62
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/RHI/CommandList.h",
+   "type": "file",
+   "name": "CommandList.h",
+   "filePath": "SherlockEngine/RHI/CommandList.h",
+   "summary": "렌더 패스, 파이프라인, 리소스 셋, 드로우, 배리어 등을 기록하는 API 독립적 CommandList 추상 인터페이스.",
+   "tags": [
+    "rhi",
+    "abstract-interface",
+    "command-list",
+    "header"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/RHI/CommandList.h:CommandList",
+   "type": "class",
+   "name": "CommandList",
+   "filePath": "SherlockEngine/RHI/CommandList.h",
+   "summary": "렌더 패스, PSO, 드로우, 배리어 등을 기록하는 추상 인터페이스.",
+   "tags": [
+    "rhi",
+    "abstract-interface",
+    "command-list"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    16,
+    60
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "type": "file",
+   "name": "D3D11CommandList.cpp",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "summary": "CommandList의 D3D11 구현으로, 렌더 패스 시작/종료, PSO 적용, 리소스 셋 바인딩, 드로우, 버퍼 복사, 타임스탬프 기록을 수행한다.",
+   "tags": [
+    "rhi",
+    "d3d11",
+    "command-list",
+    "draw-calls"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp:BeginRenderPass",
+   "type": "function",
+   "name": "BeginRenderPass",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "summary": "렌더 타깃/뎁스를 바인딩하고 클리어 및 뷰포트를 설정한다.",
+   "tags": [
+    "render-pass",
+    "d3d11"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    24,
+    96
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp:SetResourceSet",
+   "type": "function",
+   "name": "SetResourceSet",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "summary": "리소스 셋의 리소스를 단계별로 바인딩한다.",
+   "tags": [
+    "binding",
+    "d3d11"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    142,
+    196
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp:SetPipelineState",
+   "type": "function",
+   "name": "SetPipelineState",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "summary": "파이프라인 상태를 D3D11 컨텍스트에 적용한다.",
+   "tags": [
+    "pso",
+    "d3d11"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    130,
+    140
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp:Barrier",
+   "type": "function",
+   "name": "Barrier",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "summary": "D3D11에서 리소스 전환을 모사한다.",
+   "tags": [
+    "barrier",
+    "d3d11"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    250,
+    272
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp:CopyBuffer",
+   "type": "function",
+   "name": "CopyBuffer",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "summary": "GPU 버퍼 간 복사를 수행한다.",
+   "tags": [
+    "copy",
+    "d3d11"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    274,
+    290
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.h",
+   "type": "file",
+   "name": "D3D11CommandList.h",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11CommandList.h",
+   "summary": "D3D11CommandList 클래스를 선언하며 CommandList 인터페이스를 D3D11 디바이스 컨텍스트로 구현하기 위한 상태를 보관한다.",
+   "tags": [
+    "rhi",
+    "d3d11",
+    "command-list",
+    "header"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/RHI/D3D11/D3D11CommandList.h:D3D11CommandList",
+   "type": "class",
+   "name": "D3D11CommandList",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11CommandList.h",
+   "summary": "CommandList의 D3D11 구현 클래스.",
+   "tags": [
+    "rhi",
+    "d3d11",
+    "command-list"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    10,
+    49
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/RHI/D3D11/D3D11Common.h",
+   "type": "file",
+   "name": "D3D11Common.h",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Common.h",
+   "summary": "D3D11 백엔드 전반에서 공유하는 D3D11/DXGI 헤더 등 공통 include 모음.",
+   "tags": [
+    "rhi",
+    "d3d11",
+    "common-header",
+    "dependencies"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/RHI/D3D11/D3D11Convert.cpp",
+   "type": "file",
+   "name": "D3D11Convert.cpp",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Convert.cpp",
+   "summary": "RHI의 API 독립적 enum(포맷, 필터, 블렌드, 비교 함수 등)을 DXGI/D3D11 값으로 변환하는 함수들을 구현한다.",
+   "tags": [
+    "rhi",
+    "d3d11",
+    "conversion",
+    "enum-mapping"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Convert.cpp:ToDXGI",
+   "type": "function",
+   "name": "ToDXGI",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Convert.cpp",
+   "summary": "RHI Format을 DXGI_FORMAT으로 변환한다.",
+   "tags": [
+    "conversion",
+    "dxgi"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    7,
+    27
+   ]
+  },
+  {
+   "id": "file:SherlockEngine/RHI/D3D11/D3D11Convert.h",
+   "type": "file",
+   "name": "D3D11Convert.h",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Convert.h",
+   "summary": "RHI 타입을 D3D11 타입으로 변환하는 ToDXGI/ToD3D11 오버로드 선언.",
+   "tags": [
+    "rhi",
+    "d3d11",
+    "conversion",
+    "header"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "type": "file",
+   "name": "D3D11Device.cpp",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "Device의 D3D11 구현으로, 디바이스/스왑체인 초기화, 버퍼·텍스처·샘플러·셰이더·바인딩 레이아웃·리소스 셋 생성/파괴, ImGui 연동, GPU 타임스탬프와 리드백을 처리한다.",
+   "tags": [
+    "rhi",
+    "d3d11",
+    "device",
+    "resource-management",
+    "swapchain"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:InitDirect3D",
+   "type": "function",
+   "name": "InitDirect3D",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "D3D11 디바이스, 스왑체인, 디버그 레이어를 생성한다.",
+   "tags": [
+    "device",
+    "swapchain",
+    "initialization"
+   ],
+   "complexity": "complex",
+   "lineRange": [
+    742,
+    839
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateBuffer",
+   "type": "function",
+   "name": "CreateBuffer",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "RHI 설명자로 D3D11 버퍼를 생성한다.",
+   "tags": [
+    "buffer",
+    "resource-creation"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    266,
+    336
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateTexture",
+   "type": "function",
+   "name": "CreateTexture",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "텍스처와 뷰를 생성한다.",
+   "tags": [
+    "texture",
+    "resource-creation"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    397,
+    469
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateSampler",
+   "type": "function",
+   "name": "CreateSampler",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "샘플러 상태를 생성한다.",
+   "tags": [
+    "sampler",
+    "resource-creation"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    528,
+    561
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateShader",
+   "type": "function",
+   "name": "CreateShader",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "컴파일된 바이트코드로 셰이더 객체를 만든다.",
+   "tags": [
+    "shader",
+    "resource-creation"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    570,
+    607
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateBindingLayout",
+   "type": "function",
+   "name": "CreateBindingLayout",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "바인딩 레이아웃을 생성한다.",
+   "tags": [
+    "binding",
+    "resource-creation"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    626,
+    672
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateResourceSet",
+   "type": "function",
+   "name": "CreateResourceSet",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "레이아웃에 맞는 리소스 셋을 만든다.",
+   "tags": [
+    "binding",
+    "resource-creation"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    679,
+    733
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:UpdateBuffer",
+   "type": "function",
+   "name": "UpdateBuffer",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "버퍼 내용을 갱신한다.",
+   "tags": [
+    "buffer",
+    "upload"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    343,
+    393
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:Resize",
+   "type": "function",
+   "name": "Resize",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "스왑체인과 백버퍼를 리사이즈한다.",
+   "tags": [
+    "swapchain",
+    "resize"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    222,
+    262
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:BeginFrame",
+   "type": "function",
+   "name": "BeginFrame",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "프레임 시작 처리를 수행한다.",
+   "tags": [
+    "frame",
+    "device"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    179,
+    195
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:EndFrame",
+   "type": "function",
+   "name": "EndFrame",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "Present와 프레임 종료 처리를 수행한다.",
+   "tags": [
+    "frame",
+    "present"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    197,
+    220
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:ReadBackBuffer",
+   "type": "function",
+   "name": "ReadBackBuffer",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "GPU 버퍼를 리드백한다.",
+   "tags": [
+    "readback",
+    "gpu"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    908,
+    938
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:ReleaseDevice",
+   "type": "function",
+   "name": "ReleaseDevice",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "모든 D3D 리소스를 해제한다.",
+   "tags": [
+    "cleanup",
+    "device"
+   ],
+   "complexity": "moderate",
+   "lineRange": [
+    40,
+    86
+   ]
+  },
+  {
+   "id": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:ResolveTimestamps",
+   "type": "function",
+   "name": "ResolveTimestamps",
+   "filePath": "SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "summary": "GPU 타임스탬프 쿼리를 해석한다.",
+   "tags": [
+    "profiling",
+    "gpu-timing"
+   ],
+   "complexity": "simple",
+   "lineRange": [
+    873,
+    894
+   ]
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:SherlockEngine/Graphics/ShaderConstants.h",
+   "target": "class:SherlockEngine/Graphics/ShaderConstants.h:PerFrameConstants",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/ShaderConstants.h",
+   "target": "class:SherlockEngine/Graphics/ShaderConstants.h:PerObjectConstants",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/ShaderConstants.h",
+   "target": "class:SherlockEngine/Graphics/ShaderConstants.h:LightConstants",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/ShaderConstants.h",
+   "target": "class:SherlockEngine/Graphics/ShaderConstants.h:MaterialConstants",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/ShaderConstants.h",
+   "target": "file:SherlockEngine/Scene/Light.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/TextureLoader.cpp",
+   "target": "function:SherlockEngine/Graphics/TextureLoader.cpp:FinishImage",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/TextureLoader.cpp",
+   "target": "function:SherlockEngine/Graphics/TextureLoader.cpp:LoadFromFile",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/TextureLoader.cpp",
+   "target": "function:SherlockEngine/Graphics/TextureLoader.cpp:LoadCubeFromFile",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/TextureLoader.cpp",
+   "target": "function:SherlockEngine/Graphics/TextureLoader.cpp:CreateCube",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/TextureLoader.cpp",
+   "target": "function:SherlockEngine/Graphics/TextureLoader.cpp:LoadThumbnail",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/TextureLoader.cpp",
+   "target": "function:SherlockEngine/Graphics/TextureLoader.cpp:CreateChecker",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/TextureLoader.cpp",
+   "target": "file:SherlockEngine/Graphics/TextureLoader.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/TextureLoader.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/TextureLoader.h",
+   "target": "class:SherlockEngine/Graphics/TextureLoader.h:TextureImage",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/TextureLoader.h",
+   "target": "file:SherlockEngine/RHI/ResourceDesc.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/VertexTypes.h",
+   "target": "class:SherlockEngine/Graphics/VertexTypes.h:VERTEX",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/VertexTypes.h",
+   "target": "function:SherlockEngine/Graphics/VertexTypes.h:MakeVertexLayoutPCNTT",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Graphics/VertexTypes.h",
+   "target": "file:SherlockEngine/RHI/PipelineTypes.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/BindingTypes.h",
+   "target": "class:SherlockEngine/RHI/BindingTypes.h:BindingLayoutDesc",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/BindingTypes.h",
+   "target": "class:SherlockEngine/RHI/BindingTypes.h:ResourceSetDesc",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/BindingTypes.h",
+   "target": "class:SherlockEngine/RHI/BindingTypes.h:BindingSlot",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/BindingTypes.h",
+   "target": "class:SherlockEngine/RHI/BindingTypes.h:ResourceBinding",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/BindingTypes.h",
+   "target": "file:SherlockEngine/RHI/Handle.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/BindingTypes.h",
+   "target": "file:SherlockEngine/RHI/ResourceDesc.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/CommandList.h",
+   "target": "class:SherlockEngine/RHI/CommandList.h:CommandList",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/CommandList.h",
+   "target": "file:SherlockEngine/RHI/Handle.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/CommandList.h",
+   "target": "file:SherlockEngine/RHI/PipelineTypes.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/CommandList.h",
+   "target": "file:SherlockEngine/RHI/RenderPassTypes.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp:BeginRenderPass",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp:SetResourceSet",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp:SetPipelineState",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp:Barrier",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp:CopyBuffer",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "target": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "target": "file:SherlockEngine/RHI/D3D11/D3D11Device.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "target": "file:SherlockEngine/RHI/D3D11/D3D11Convert.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.h",
+   "target": "class:SherlockEngine/RHI/D3D11/D3D11CommandList.h:D3D11CommandList",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.h",
+   "target": "file:SherlockEngine/RHI/D3D11/D3D11Common.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.h",
+   "target": "file:SherlockEngine/RHI/CommandList.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11CommandList.h",
+   "target": "file:SherlockEngine/RHI/BindingTypes.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Convert.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Convert.cpp:ToDXGI",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Convert.cpp",
+   "target": "file:SherlockEngine/RHI/D3D11/D3D11Convert.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Convert.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Convert.h",
+   "target": "file:SherlockEngine/RHI/D3D11/D3D11Common.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Convert.h",
+   "target": "file:SherlockEngine/RHI/PipelineTypes.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Convert.h",
+   "target": "file:SherlockEngine/RHI/ResourceDesc.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:InitDirect3D",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateBuffer",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateTexture",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateSampler",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateShader",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateBindingLayout",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:CreateResourceSet",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:UpdateBuffer",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:Resize",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:BeginFrame",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:EndFrame",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:ReadBackBuffer",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:ReleaseDevice",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "function:SherlockEngine/RHI/D3D11/D3D11Device.cpp:ResolveTimestamps",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "file:SherlockEngine/RHI/D3D11/D3D11Device.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "file:SherlockEngine/RHI/D3D11/D3D11Convert.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/RHI/D3D11/D3D11Device.cpp",
+   "target": "file:SherlockEngine/Core/Log.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "class:SherlockEngine/RHI/D3D11/D3D11CommandList.h:D3D11CommandList",
+   "target": "class:SherlockEngine/RHI/CommandList.h:CommandList",
+   "type": "inherits",
+   "direction": "forward",
+   "weight": 0.9
+  }
+ ]
+}

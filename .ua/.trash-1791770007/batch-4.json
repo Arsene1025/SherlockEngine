@@ -1,0 +1,9 @@
+{"nodes":[
+{"id":"file:docs/pbr-guide.html","type":"file","name":"pbr-guide.html","filePath":"docs/pbr-guide.html","summary":"PBR(물리 기반 렌더링)을 처음부터 설명하는 입문용 HTML 가이드로, 엔진의 PBR 구현을 이해하기 위한 개념을 단계적으로 다룬다.","tags":["documentation","pbr","tutorial","html"],"complexity":"complex","languageNotes":"정적 HTML 문서이며 스크립트 로직 없이 콘텐츠 중심으로 구성되어 있다."},
+{"id":"file:docs/rendering-analysis.html","type":"file","name":"rendering-analysis.html","filePath":"docs/rendering-analysis.html","summary":"SherlockEngine 렌더링 구조를 5부 22장으로 통합 정리한 최종 분석 문서로, 코드 변경 시 해당 장과 적용 기록을 함께 갱신한다.","tags":["documentation","rendering","architecture","html"],"complexity":"complex","languageNotes":"약 12,000줄의 대형 정적 HTML 문서이다."},
+{"id":"file:docs/study-guide.html","type":"file","name":"study-guide.html","filePath":"docs/study-guide.html","summary":"문서와 소스를 어떤 순서로 읽고 공부할지 안내하는 9개 절 구성의 학습 가이드이다.","tags":["documentation","guide","onboarding","html"],"complexity":"complex"}
+],"edges":[
+{"source":"file:docs/study-guide.html","target":"file:docs/rendering-analysis.html","type":"related","direction":"forward","weight":0.5},
+{"source":"file:docs/study-guide.html","target":"file:docs/pbr-guide.html","type":"related","direction":"forward","weight":0.5},
+{"source":"file:docs/pbr-guide.html","target":"file:docs/rendering-analysis.html","type":"related","direction":"forward","weight":0.5}
+]}

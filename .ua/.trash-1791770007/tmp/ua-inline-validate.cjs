@@ -1,0 +1,11 @@
+const fs=require('fs');const graph=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
+const issues=[],warnings=[];const ids=new Set();const seen=new Set();
+graph.nodes.forEach((n,i)=>{if(!n.id||!n.type||!n.name||!n.summary||!n.tags||!n.tags.length)issues.push('Node['+i+'] '+n.id+' missing field');if(seen.has(n.id))issues.push('dup '+n.id);seen.add(n.id);ids.add(n.id)});
+graph.edges.forEach((e,i)=>{if(!ids.has(e.source)||!ids.has(e.target))issues.push('Edge['+i+'] dangling')});
+const ft=new Set(['file','config','document','service','pipeline','table','schema','resource','endpoint']);
+const asg=new Map();graph.layers.forEach(l=>l.nodeIds.forEach(id=>{if(asg.has(id))issues.push('multi-layer '+id);asg.set(id,l.id)}));
+graph.nodes.filter(n=>ft.has(n.type)).forEach(n=>{if(!asg.has(n.id))issues.push('unassigned '+n.id)});
+graph.tour.forEach((s,i)=>s.nodeIds.forEach(id=>{if(!ids.has(id))issues.push('tour '+i+' '+id)}));
+const we=new Set(graph.edges.flatMap(e=>[e.source,e.target]));graph.nodes.forEach(n=>{if(!we.has(n.id))warnings.push('orphan '+n.id)});
+fs.writeFileSync(process.argv[3],JSON.stringify({issues,warnings,stats:{nodes:graph.nodes.length,edges:graph.edges.length}},null,2));
+console.log('issues',issues.length,issues.slice(0,15));console.log('orphans',warnings.length);

@@ -1,0 +1,950 @@
+{
+ "nodes": [
+  {
+   "id": "file:SherlockEngine/Scene/Material.h",
+   "type": "file",
+   "name": "Material.h",
+   "filePath": "SherlockEngine/Scene/Material.h",
+   "summary": "PBR 머티리얼 파라미터와 텍스처 경로, 샘플러 프리셋을 담는 Material 구조체를 정의한다.",
+   "tags": [
+    "material",
+    "pbr",
+    "data-model",
+    "scene"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Scene/Scene.cpp",
+   "type": "file",
+   "name": "Scene.cpp",
+   "filePath": "SherlockEngine/Scene/Scene.cpp",
+   "summary": "Scene의 객체 생성·삭제, Play/Update/FixedUpdate 수명주기, 활성 카메라 적용, 모델 추가를 구현한다.",
+   "tags": [
+    "scene",
+    "lifecycle",
+    "game-loop",
+    "core"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:SherlockEngine/Scene/Scene.h",
+   "type": "file",
+   "name": "Scene.h",
+   "filePath": "SherlockEngine/Scene/Scene.h",
+   "summary": "GameObject 컬렉션, 조명, 환경(SceneEnvironment), 카메라를 소유하는 Scene 컨테이너를 선언한다.",
+   "tags": [
+    "scene",
+    "container",
+    "core",
+    "헤더"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "type": "file",
+   "name": "SceneSerializer.cpp",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "summary": "Scene을 JSON으로 저장·로드하며 머티리얼, 조명, 컴포넌트 프로퍼티를 PropertyVisitor로 직렬화한다.",
+   "tags": [
+    "serialization",
+    "json",
+    "scene",
+    "persistence"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:SherlockEngine/Scene/SceneSerializer.h",
+   "type": "file",
+   "name": "SceneSerializer.h",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.h",
+   "summary": "Scene을 파일/문자열로 저장하고 불러오는 SceneSerializer 인터페이스를 선언한다.",
+   "tags": [
+    "serialization",
+    "scene",
+    "헤더"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Scene/Script.cpp",
+   "type": "file",
+   "name": "Script.cpp",
+   "filePath": "SherlockEngine/Scene/Script.cpp",
+   "summary": "Script 기반 클래스의 구현부로 Scene과 Input 접근을 연결한다.",
+   "tags": [
+    "script",
+    "scene",
+    "input"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Scene/Script.h",
+   "type": "file",
+   "name": "Script.h",
+   "filePath": "SherlockEngine/Scene/Script.h",
+   "summary": "사용자 스크립트가 상속하는 Script 클래스를 선언하며 Input 접근과 DLL 핫리로드용 사용법을 안내한다.",
+   "tags": [
+    "script",
+    "hot-reload",
+    "component",
+    "scene"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Scene/Transform.cpp",
+   "type": "file",
+   "name": "Transform.cpp",
+   "filePath": "SherlockEngine/Scene/Transform.cpp",
+   "summary": "Transform의 LookAt, 로컬 행렬 계산/설정, 회전 행렬에서 오일러 각 추출을 구현한다.",
+   "tags": [
+    "transform",
+    "math",
+    "scene"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:SherlockEngine/Scene/Transform.h",
+   "type": "file",
+   "name": "Transform.h",
+   "filePath": "SherlockEngine/Scene/Transform.h",
+   "summary": "위치·회전·스케일과 로컬/월드 행렬을 다루는 Transform 클래스를 선언한다.",
+   "tags": [
+    "transform",
+    "math",
+    "scene",
+    "헤더"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Shaders/BasicPixelShader.hlsl",
+   "type": "file",
+   "name": "BasicPixelShader.hlsl",
+   "filePath": "SherlockEngine/Shaders/BasicPixelShader.hlsl",
+   "summary": "PBR 조명과 IBL, 그림자를 계산하는 메인 픽셀 셰이더.",
+   "tags": [
+    "hlsl",
+    "pixel-shader",
+    "pbr",
+    "ibl"
+   ],
+   "complexity": "complex",
+   "languageNotes": "Common.hlsli의 cbuffer와 헬퍼를 include한다."
+  },
+  {
+   "id": "file:SherlockEngine/Shaders/BasicVertexShader.hlsl",
+   "type": "file",
+   "name": "BasicVertexShader.hlsl",
+   "filePath": "SherlockEngine/Shaders/BasicVertexShader.hlsl",
+   "summary": "정점을 월드/클립 공간으로 변환하고 픽셀 셰이더에 전달하는 기본 버텍스 셰이더.",
+   "tags": [
+    "hlsl",
+    "vertex-shader",
+    "transform"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:SherlockEngine/Shaders/Common.hlsli",
+   "type": "file",
+   "name": "Common.hlsli",
+   "filePath": "SherlockEngine/Shaders/Common.hlsli",
+   "summary": "PerFrame/PerObject/Lights/Material 상수 버퍼와 공용 구조체·함수를 정의하는 공유 HLSL 헤더.",
+   "tags": [
+    "hlsl",
+    "shared-header",
+    "constant-buffer",
+    "pbr"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Scene/Material.h:Material",
+   "type": "class",
+   "name": "Material",
+   "filePath": "SherlockEngine/Scene/Material.h",
+   "lineRange": [
+    24,
+    59
+   ],
+   "summary": "PBR 머티리얼 파라미터와 텍스처 경로를 담는 구조체.",
+   "tags": [
+    "material",
+    "pbr"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/Scene/Scene.h:Scene",
+   "type": "class",
+   "name": "Scene",
+   "filePath": "SherlockEngine/Scene/Scene.h",
+   "lineRange": [
+    69,
+    139
+   ],
+   "summary": "객체, 조명, 환경, 활성 카메라를 소유하는 씬 컨테이너.",
+   "tags": [
+    "scene",
+    "container"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Scene/Scene.h:SceneEnvironment",
+   "type": "class",
+   "name": "SceneEnvironment",
+   "filePath": "SherlockEngine/Scene/Scene.h",
+   "lineRange": [
+    47,
+    56
+   ],
+   "summary": "HDR 큐브맵 등 환경 광원 설정을 담는 구조체.",
+   "tags": [
+    "environment",
+    "ibl"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/Scene/Scene.h:MeshSource",
+   "type": "class",
+   "name": "MeshSource",
+   "filePath": "SherlockEngine/Scene/Scene.h",
+   "lineRange": [
+    17,
+    35
+   ],
+   "summary": "객체 메시의 출처를 기술하는 구조체.",
+   "tags": [
+    "mesh",
+    "serialization"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/Scene.cpp:AddModel",
+   "type": "function",
+   "name": "AddModel",
+   "filePath": "SherlockEngine/Scene/Scene.cpp",
+   "lineRange": [
+    243,
+    295
+   ],
+   "summary": "모델을 불러와 계층 구조의 GameObject들로 씬에 추가한다.",
+   "tags": [
+    "scene",
+    "model-loading"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/Scene.cpp:ApplyActiveCamera",
+   "type": "function",
+   "name": "ApplyActiveCamera",
+   "filePath": "SherlockEngine/Scene/Scene.cpp",
+   "lineRange": [
+    177,
+    219
+   ],
+   "summary": "활성 CameraComponent의 포즈를 Camera에 적용한다.",
+   "tags": [
+    "scene",
+    "camera"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/Scene.cpp:Update",
+   "type": "function",
+   "name": "Update",
+   "filePath": "SherlockEngine/Scene/Scene.cpp",
+   "lineRange": [
+    138,
+    160
+   ],
+   "summary": "모든 활성 Behaviour의 Update를 호출한다.",
+   "tags": [
+    "scene",
+    "game-loop"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/Scene.cpp:RemoveObject",
+   "type": "function",
+   "name": "RemoveObject",
+   "filePath": "SherlockEngine/Scene/Scene.cpp",
+   "lineRange": [
+    100,
+    117
+   ],
+   "summary": "객체를 계층에서 분리해 씬에서 제거한다.",
+   "tags": [
+    "scene",
+    "lifecycle"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/Scene.cpp:BeginPlay",
+   "type": "function",
+   "name": "BeginPlay",
+   "filePath": "SherlockEngine/Scene/Scene.cpp",
+   "lineRange": [
+    127,
+    136
+   ],
+   "summary": "플레이 시작 시 Behaviour들의 시작 훅을 호출한다.",
+   "tags": [
+    "scene",
+    "lifecycle"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/Scene.cpp:FixedUpdate",
+   "type": "function",
+   "name": "FixedUpdate",
+   "filePath": "SherlockEngine/Scene/Scene.cpp",
+   "lineRange": [
+    221,
+    233
+   ],
+   "summary": "고정 시간 간격 업데이트를 Behaviour에 전달한다.",
+   "tags": [
+    "scene",
+    "game-loop"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/Scene.cpp:CreatePrimitive",
+   "type": "function",
+   "name": "CreatePrimitive",
+   "filePath": "SherlockEngine/Scene/Scene.cpp",
+   "lineRange": [
+    70,
+    80
+   ],
+   "summary": "기본 도형 GameObject를 생성한다.",
+   "tags": [
+    "scene",
+    "factory"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/SceneSerializer.cpp:SaveToString",
+   "type": "function",
+   "name": "SaveToString",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    235,
+    334
+   ],
+   "summary": "씬 전체를 JSON 문자열로 직렬화한다.",
+   "tags": [
+    "serialization",
+    "json"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/SceneSerializer.cpp:LoadFromString",
+   "type": "function",
+   "name": "LoadFromString",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    365,
+    506
+   ],
+   "summary": "JSON 문자열에서 씬을 복원하며 버전 차이를 처리한다.",
+   "tags": [
+    "serialization",
+    "json"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/SceneSerializer.cpp:Save",
+   "type": "function",
+   "name": "Save",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    336,
+    351
+   ],
+   "summary": "씬을 파일로 저장한다.",
+   "tags": [
+    "serialization",
+    "io"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/SceneSerializer.cpp:Load",
+   "type": "function",
+   "name": "Load",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    353,
+    363
+   ],
+   "summary": "파일에서 씬을 읽어 불러온다.",
+   "tags": [
+    "serialization",
+    "io"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/SceneSerializer.cpp:MaterialToJson",
+   "type": "function",
+   "name": "MaterialToJson",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    82,
+    105
+   ],
+   "summary": "Material을 JSON 객체로 변환한다.",
+   "tags": [
+    "serialization",
+    "material"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/SceneSerializer.cpp:MaterialFromJson",
+   "type": "function",
+   "name": "MaterialFromJson",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    107,
+    137
+   ],
+   "summary": "JSON에서 Material을 복원한다.",
+   "tags": [
+    "serialization",
+    "material"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/SceneSerializer.cpp:LightToJson",
+   "type": "function",
+   "name": "LightToJson",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    139,
+    152
+   ],
+   "summary": "LightData를 JSON으로 변환한다.",
+   "tags": [
+    "serialization",
+    "light"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/SceneSerializer.cpp:LightFromJson",
+   "type": "function",
+   "name": "LightFromJson",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    154,
+    167
+   ],
+   "summary": "JSON에서 LightData를 복원한다.",
+   "tags": [
+    "serialization",
+    "light"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/SceneSerializer.cpp:ComponentsToJson",
+   "type": "function",
+   "name": "ComponentsToJson",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    195,
+    214
+   ],
+   "summary": "컴포넌트들을 PropertyVisitor로 JSON에 기록한다.",
+   "tags": [
+    "serialization",
+    "component"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/SceneSerializer.cpp:ComponentsFromJson",
+   "type": "function",
+   "name": "ComponentsFromJson",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    216,
+    232
+   ],
+   "summary": "JSON에서 컴포넌트를 생성하고 프로퍼티를 읽어온다.",
+   "tags": [
+    "serialization",
+    "component"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Scene/SceneSerializer.cpp:JsonWriteVisitor",
+   "type": "class",
+   "name": "JsonWriteVisitor",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    170,
+    181
+   ],
+   "summary": "PropertyVisitor 구현으로 프로퍼티를 JSON에 쓴다.",
+   "tags": [
+    "visitor",
+    "serialization"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/Scene/SceneSerializer.cpp:JsonReadVisitor",
+   "type": "class",
+   "name": "JsonReadVisitor",
+   "filePath": "SherlockEngine/Scene/SceneSerializer.cpp",
+   "lineRange": [
+    182,
+    193
+   ],
+   "summary": "PropertyVisitor 구현으로 JSON에서 프로퍼티를 읽는다.",
+   "tags": [
+    "visitor",
+    "serialization"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:SherlockEngine/Scene/Script.h:Script",
+   "type": "class",
+   "name": "Script",
+   "filePath": "SherlockEngine/Scene/Script.h",
+   "lineRange": [
+    44,
+    70
+   ],
+   "summary": "사용자 스크립트가 상속하는 Behaviour 파생 클래스.",
+   "tags": [
+    "script",
+    "component"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:SherlockEngine/Scene/Transform.h:Transform",
+   "type": "class",
+   "name": "Transform",
+   "filePath": "SherlockEngine/Scene/Transform.h",
+   "lineRange": [
+    10,
+    62
+   ],
+   "summary": "위치·회전·스케일과 행렬을 관리하는 변환 클래스.",
+   "tags": [
+    "transform",
+    "math"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/Transform.cpp:GetLocalMatrix",
+   "type": "function",
+   "name": "GetLocalMatrix",
+   "filePath": "SherlockEngine/Scene/Transform.cpp",
+   "lineRange": [
+    109,
+    121
+   ],
+   "summary": "TRS로부터 로컬 행렬을 계산한다.",
+   "tags": [
+    "transform",
+    "matrix"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/Transform.cpp:SetLocalMatrix",
+   "type": "function",
+   "name": "SetLocalMatrix",
+   "filePath": "SherlockEngine/Scene/Transform.cpp",
+   "lineRange": [
+    123,
+    136
+   ],
+   "summary": "행렬을 분해해 위치/회전/스케일에 반영한다.",
+   "tags": [
+    "transform",
+    "matrix"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/Transform.cpp:EulerFromRotationMatrix",
+   "type": "function",
+   "name": "EulerFromRotationMatrix",
+   "filePath": "SherlockEngine/Scene/Transform.cpp",
+   "lineRange": [
+    138,
+    157
+   ],
+   "summary": "회전 행렬에서 오일러 각을 추출한다.",
+   "tags": [
+    "transform",
+    "math"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:SherlockEngine/Scene/Transform.cpp:LookAt",
+   "type": "function",
+   "name": "LookAt",
+   "filePath": "SherlockEngine/Scene/Transform.cpp",
+   "lineRange": [
+    78,
+    87
+   ],
+   "summary": "대상 방향을 바라보도록 회전을 설정한다.",
+   "tags": [
+    "transform",
+    "math"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:SherlockEngine/Scene/Material.h",
+   "target": "class:SherlockEngine/Scene/Material.h:Material",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.h",
+   "target": "class:SherlockEngine/Scene/Scene.h:Scene",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.h",
+   "target": "class:SherlockEngine/Scene/Scene.h:SceneEnvironment",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.h",
+   "target": "class:SherlockEngine/Scene/Scene.h:MeshSource",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.cpp",
+   "target": "function:SherlockEngine/Scene/Scene.cpp:AddModel",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.cpp",
+   "target": "function:SherlockEngine/Scene/Scene.cpp:ApplyActiveCamera",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.cpp",
+   "target": "function:SherlockEngine/Scene/Scene.cpp:Update",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.cpp",
+   "target": "function:SherlockEngine/Scene/Scene.cpp:RemoveObject",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.cpp",
+   "target": "function:SherlockEngine/Scene/Scene.cpp:BeginPlay",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.cpp",
+   "target": "function:SherlockEngine/Scene/Scene.cpp:FixedUpdate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.cpp",
+   "target": "function:SherlockEngine/Scene/Scene.cpp:CreatePrimitive",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "function:SherlockEngine/Scene/SceneSerializer.cpp:SaveToString",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "function:SherlockEngine/Scene/SceneSerializer.cpp:LoadFromString",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "function:SherlockEngine/Scene/SceneSerializer.cpp:Save",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "function:SherlockEngine/Scene/SceneSerializer.cpp:Load",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "function:SherlockEngine/Scene/SceneSerializer.cpp:MaterialToJson",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "function:SherlockEngine/Scene/SceneSerializer.cpp:MaterialFromJson",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "function:SherlockEngine/Scene/SceneSerializer.cpp:LightToJson",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "function:SherlockEngine/Scene/SceneSerializer.cpp:LightFromJson",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "function:SherlockEngine/Scene/SceneSerializer.cpp:ComponentsToJson",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "function:SherlockEngine/Scene/SceneSerializer.cpp:ComponentsFromJson",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "class:SherlockEngine/Scene/SceneSerializer.cpp:JsonWriteVisitor",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "class:SherlockEngine/Scene/SceneSerializer.cpp:JsonReadVisitor",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Script.h",
+   "target": "class:SherlockEngine/Scene/Script.h:Script",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Transform.h",
+   "target": "class:SherlockEngine/Scene/Transform.h:Transform",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Transform.cpp",
+   "target": "function:SherlockEngine/Scene/Transform.cpp:GetLocalMatrix",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Transform.cpp",
+   "target": "function:SherlockEngine/Scene/Transform.cpp:SetLocalMatrix",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Transform.cpp",
+   "target": "function:SherlockEngine/Scene/Transform.cpp:EulerFromRotationMatrix",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Transform.cpp",
+   "target": "function:SherlockEngine/Scene/Transform.cpp:LookAt",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.h",
+   "target": "file:SherlockEngine/Scene/GameObject.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.h",
+   "target": "file:SherlockEngine/Scene/CameraComponent.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.h",
+   "target": "file:SherlockEngine/Scene/Light.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.h",
+   "target": "file:SherlockEngine/Scene/Material.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Script.h",
+   "target": "file:SherlockEngine/Scene/Behaviour.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Script.h",
+   "target": "file:SherlockEngine/Scene/GameObject.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.cpp",
+   "target": "file:SherlockEngine/Scene/Scene.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Scene.cpp",
+   "target": "file:SherlockEngine/Scene/Camera.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "file:SherlockEngine/Scene/SceneSerializer.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "file:SherlockEngine/Scene/Scene.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/SceneSerializer.cpp",
+   "target": "file:SherlockEngine/Scene/Camera.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Script.cpp",
+   "target": "file:SherlockEngine/Scene/Script.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Script.cpp",
+   "target": "file:SherlockEngine/Scene/Scene.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Scene/Transform.cpp",
+   "target": "file:SherlockEngine/Scene/Transform.h",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Shaders/BasicPixelShader.hlsl",
+   "target": "file:SherlockEngine/Shaders/Common.hlsli",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:SherlockEngine/Shaders/BasicVertexShader.hlsl",
+   "target": "file:SherlockEngine/Shaders/Common.hlsli",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  }
+ ]
+}

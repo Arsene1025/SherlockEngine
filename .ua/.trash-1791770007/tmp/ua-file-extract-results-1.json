@@ -1,0 +1,390 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 4,
+  "filesSkipped": [],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 4,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 4,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "Projects/Sample/Scripts/PlayerController.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 51,
+      "nonEmptyLines": 45,
+      "functions": [
+        {
+          "name": "Reflect",
+          "startLine": 7,
+          "endLine": 13,
+          "params": [
+            "v"
+          ]
+        },
+        {
+          "name": "Start",
+          "startLine": 15,
+          "endLine": 21,
+          "params": []
+        },
+        {
+          "name": "Update",
+          "startLine": 23,
+          "endLine": 49,
+          "params": [
+            "dt"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Reflect",
+          "line": 7,
+          "isDefault": false
+        },
+        {
+          "name": "Start",
+          "line": 15,
+          "isDefault": false
+        },
+        {
+          "name": "Update",
+          "line": 23,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "Reflect",
+          "callee": "Float",
+          "lineNumber": 9
+        },
+        {
+          "caller": "Reflect",
+          "callee": "Float",
+          "lineNumber": 10
+        },
+        {
+          "caller": "Reflect",
+          "callee": "Float",
+          "lineNumber": 11
+        },
+        {
+          "caller": "Reflect",
+          "callee": "String",
+          "lineNumber": 12
+        },
+        {
+          "caller": "Start",
+          "callee": "Find",
+          "lineNumber": 19
+        },
+        {
+          "caller": "Start",
+          "callee": "GetBehaviour<Rotator>",
+          "lineNumber": 19
+        },
+        {
+          "caller": "Start",
+          "callee": "Log::Warn",
+          "lineNumber": 20
+        },
+        {
+          "caller": "Start",
+          "callee": "c_str",
+          "lineNumber": 20
+        },
+        {
+          "caller": "Update",
+          "callee": "GetInput",
+          "lineNumber": 25
+        },
+        {
+          "caller": "Update",
+          "callee": "IsKeyDown",
+          "lineNumber": 27
+        },
+        {
+          "caller": "Update",
+          "callee": "IsKeyDown",
+          "lineNumber": 28
+        },
+        {
+          "caller": "Update",
+          "callee": "IsKeyDown",
+          "lineNumber": 29
+        },
+        {
+          "caller": "Update",
+          "callee": "IsKeyDown",
+          "lineNumber": 30
+        },
+        {
+          "caller": "Update",
+          "callee": "IsKeyDown",
+          "lineNumber": 33
+        },
+        {
+          "caller": "Update",
+          "callee": "Translate",
+          "lineNumber": 35
+        },
+        {
+          "caller": "Update",
+          "callee": "IsKeyPressed",
+          "lineNumber": 39
+        },
+        {
+          "caller": "Update",
+          "callee": "GetComponent<Rigidbody>",
+          "lineNumber": 41
+        },
+        {
+          "caller": "Update",
+          "callee": "IsGrounded",
+          "lineNumber": 43
+        },
+        {
+          "caller": "Update",
+          "callee": "AddImpulse",
+          "lineNumber": 43
+        },
+        {
+          "caller": "Update",
+          "callee": "IsKeyPressed",
+          "lineNumber": 48
+        },
+        {
+          "caller": "Update",
+          "callee": "Toggle",
+          "lineNumber": 48
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 3,
+        "functionCount": 3,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "Projects/Sample/Scripts/PlayerController.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 24,
+      "nonEmptyLines": 20,
+      "classes": [
+        {
+          "name": "Rotator",
+          "startLine": 4,
+          "endLine": 4,
+          "methods": [],
+          "properties": []
+        },
+        {
+          "name": "PlayerController",
+          "startLine": 9,
+          "endLine": 24,
+          "methods": [
+            "Reflect",
+            "Start",
+            "Update"
+          ],
+          "properties": [
+            "GetTypeName",
+            "speed",
+            "boost",
+            "jumpSpeed",
+            "rotatorObject",
+            "m_rotator"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Rotator",
+          "line": 4,
+          "isDefault": false
+        },
+        {
+          "name": "Reflect",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "Start",
+          "line": 14,
+          "isDefault": false
+        },
+        {
+          "name": "Update",
+          "line": 15,
+          "isDefault": false
+        },
+        {
+          "name": "PlayerController",
+          "line": 9,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 5,
+        "functionCount": 0,
+        "classCount": 2
+      }
+    },
+    {
+      "path": "Projects/Sample/Scripts/Rotator.cpp",
+      "language": "cpp",
+      "fileCategory": "code",
+      "totalLines": 18,
+      "nonEmptyLines": 14,
+      "functions": [
+        {
+          "name": "Reflect",
+          "startLine": 6,
+          "endLine": 9,
+          "params": [
+            "v"
+          ]
+        },
+        {
+          "name": "Update",
+          "startLine": 11,
+          "endLine": 16,
+          "params": [
+            "dt"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Reflect",
+          "line": 6,
+          "isDefault": false
+        },
+        {
+          "name": "Update",
+          "line": 11,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "Reflect",
+          "callee": "Float3",
+          "lineNumber": 8
+        },
+        {
+          "caller": "Update",
+          "callee": "Rotate",
+          "lineNumber": 13
+        },
+        {
+          "caller": "Update",
+          "callee": "DirectX::XMConvertToRadians",
+          "lineNumber": 13
+        },
+        {
+          "caller": "Update",
+          "callee": "DirectX::XMConvertToRadians",
+          "lineNumber": 14
+        },
+        {
+          "caller": "Update",
+          "callee": "DirectX::XMConvertToRadians",
+          "lineNumber": 15
+        }
+      ],
+      "metrics": {
+        "importCount": 1,
+        "exportCount": 2,
+        "functionCount": 2,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "Projects/Sample/Scripts/Rotator.h",
+      "language": "c",
+      "fileCategory": "code",
+      "totalLines": 19,
+      "nonEmptyLines": 16,
+      "functions": [
+        {
+          "name": "Toggle",
+          "startLine": 15,
+          "endLine": 15,
+          "params": []
+        },
+        {
+          "name": "SetSpeed",
+          "startLine": 16,
+          "endLine": 16,
+          "params": [
+            "degreesPerSecondY"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "Rotator",
+          "startLine": 7,
+          "endLine": 19,
+          "methods": [
+            "Reflect",
+            "Update",
+            "Toggle",
+            "SetSpeed"
+          ],
+          "properties": [
+            "GetTypeName",
+            "degreesPerSecond"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "Reflect",
+          "line": 11,
+          "isDefault": false
+        },
+        {
+          "name": "Update",
+          "line": 12,
+          "isDefault": false
+        },
+        {
+          "name": "Toggle",
+          "line": 15,
+          "isDefault": false
+        },
+        {
+          "name": "SetSpeed",
+          "line": 16,
+          "isDefault": false
+        },
+        {
+          "name": "Rotator",
+          "line": 7,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 5,
+        "functionCount": 2,
+        "classCount": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 2,
+  "filesSkipped": [
+    "SherlockEngine.sln",
+    "구조 초안.txt",
+    "작업 예정 목록.txt",
+    "조명 관련 정리.txt"
+  ],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 2,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 2
+    }
+  },
+  "results": [
+    {
+      "path": "README.md",
+      "language": "markdown",
+      "fileCategory": "docs",
+      "totalLines": 80,
+      "nonEmptyLines": 57,
+      "sections": [
+        {
+          "heading": "SherlockEngine",
+          "level": 1,
+          "line": 1
+        },
+        {
+          "heading": "빌드 준비",
+          "level": 2,
+          "line": 7
+        },
+        {
+          "heading": "실행",
+          "level": 2,
+          "line": 29
+        },
+        {
+          "heading": "소스 폴더",
+          "level": 2,
+          "line": 44
+        },
+        {
+          "heading": "소스 규약",
+          "level": 2,
+          "line": 61
+        },
+        {
+          "heading": "작업 로그",
+          "level": 2,
+          "line": 69
+        },
+        {
+          "heading": "2026년 7월",
+          "level": 3,
+          "line": 71
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 7
+      }
+    },
+    {
+      "path": "vcpkg.json",
+      "language": "json",
+      "fileCategory": "config",
+      "totalLines": 22,
+      "nonEmptyLines": 22,
+      "sections": [
+        {
+          "heading": "$schema",
+          "level": 1,
+          "line": 2
+        },
+        {
+          "heading": "name",
+          "level": 1,
+          "line": 3
+        },
+        {
+          "heading": "version",
+          "level": 1,
+          "line": 4
+        },
+        {
+          "heading": "description",
+          "level": 1,
+          "line": 5
+        },
+        {
+          "heading": "builtin-baseline",
+          "level": 1,
+          "line": 6
+        },
+        {
+          "heading": "dependencies",
+          "level": 1,
+          "line": 7
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 6
+      }
+    }
+  ]
+}

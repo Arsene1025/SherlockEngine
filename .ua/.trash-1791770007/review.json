@@ -1,0 +1,16 @@
+{
+  "issues": [],
+  "warnings": [
+    "orphan config:Projects/QuaternionLookTest/Assets/Scenes/Main.json",
+    "orphan config:.claude/launch.json",
+    "orphan config:.ua/config.json",
+    "orphan config:Projects/CubemapTest/imgui.ini",
+    "orphan config:Projects/Sample/Assets/Scenes/floor_cube.json",
+    "orphan config:SherlockEngine/imgui.ini",
+    "orphan file:docs/memo.js"
+  ],
+  "stats": {
+    "nodes": 429,
+    "edges": 650
+  }
+}

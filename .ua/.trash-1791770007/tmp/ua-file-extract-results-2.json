@@ -1,0 +1,202 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 3,
+  "filesSkipped": [],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 3,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 3
+    }
+  },
+  "results": [
+    {
+      "path": "Projects/QuaternionLookTest/Assets/Scenes/Main.json",
+      "language": "json",
+      "fileCategory": "config",
+      "totalLines": 168,
+      "nonEmptyLines": 168,
+      "sections": [
+        {
+          "heading": "ambientColor",
+          "level": 1,
+          "line": 2
+        },
+        {
+          "heading": "camera",
+          "level": 1,
+          "line": 7
+        },
+        {
+          "heading": "clearColor",
+          "level": 1,
+          "line": 16
+        },
+        {
+          "heading": "environment",
+          "level": 1,
+          "line": 22
+        },
+        {
+          "heading": "lights",
+          "level": 1,
+          "line": 31
+        },
+        {
+          "heading": "materials",
+          "level": 1,
+          "line": 60
+        },
+        {
+          "heading": "meshes",
+          "level": 1,
+          "line": 95
+        },
+        {
+          "heading": "objects",
+          "level": 1,
+          "line": 114
+        },
+        {
+          "heading": "version",
+          "level": 1,
+          "line": 167
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 9
+      }
+    },
+    {
+      "path": "Projects/QuaternionLookTest/Assets/Scenes/quat_roll_local.json",
+      "language": "json",
+      "fileCategory": "config",
+      "totalLines": 699,
+      "nonEmptyLines": 699,
+      "sections": [
+        {
+          "heading": "ambientColor",
+          "level": 1,
+          "line": 2
+        },
+        {
+          "heading": "camera",
+          "level": 1,
+          "line": 7
+        },
+        {
+          "heading": "clearColor",
+          "level": 1,
+          "line": 16
+        },
+        {
+          "heading": "environment",
+          "level": 1,
+          "line": 22
+        },
+        {
+          "heading": "lights",
+          "level": 1,
+          "line": 31
+        },
+        {
+          "heading": "materials",
+          "level": 1,
+          "line": 114
+        },
+        {
+          "heading": "meshes",
+          "level": 1,
+          "line": 347
+        },
+        {
+          "heading": "objects",
+          "level": 1,
+          "line": 417
+        },
+        {
+          "heading": "version",
+          "level": 1,
+          "line": 698
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 9
+      }
+    },
+    {
+      "path": "Projects/QuaternionLookTest/Assets/Scenes/quat_roll_world.json",
+      "language": "json",
+      "fileCategory": "config",
+      "totalLines": 699,
+      "nonEmptyLines": 699,
+      "sections": [
+        {
+          "heading": "ambientColor",
+          "level": 1,
+          "line": 2
+        },
+        {
+          "heading": "camera",
+          "level": 1,
+          "line": 7
+        },
+        {
+          "heading": "clearColor",
+          "level": 1,
+          "line": 16
+        },
+        {
+          "heading": "environment",
+          "level": 1,
+          "line": 22
+        },
+        {
+          "heading": "lights",
+          "level": 1,
+          "line": 31
+        },
+        {
+          "heading": "materials",
+          "level": 1,
+          "line": 114
+        },
+        {
+          "heading": "meshes",
+          "level": 1,
+          "line": 347
+        },
+        {
+          "heading": "objects",
+          "level": 1,
+          "line": 417
+        },
+        {
+          "heading": "version",
+          "level": 1,
+          "line": 698
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 9
+      }
+    }
+  ]
+}
