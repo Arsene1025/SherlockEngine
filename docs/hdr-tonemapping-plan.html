@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HDR 타깃 · 톤매핑 구현 계획</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.step { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>HDR 타깃 · 톤매핑 구현 계획</h1>
+  <p>2026-10-16 · 다음 구현 목표인 "씬을 FP16 HDR 텍스처에 그리고, 별도 패스에서 톤매핑해 화면(LDR)에 내보내기"의 구현 순서와, 단계마다 손댈 코드 위치를 적은 계획서입니다. <b>이 문서를 쓴 시점에는 코드를 한 줄도 고치지 않았습니다.</b></p>
+  <p class="foot">기준: 커밋 9cbe7f3 + 작업 트리(2026-10-16). 코드 위치는 "파일 + 함수 이름"이 기준이고, 괄호 안 행 번호는 이 시점의 참고용입니다. 기존 분석 문서(<code>rendering-analysis.html</code>)는 고치지 않았습니다.</p>
+</header>
+<nav><a href="#now">1. 현재 구조</a><a href="#design">2. 목표 구조</a><a href="#steps">3. 구현 순서</a><a href="#s1">단계 1</a><a href="#s2">2</a><a href="#s3">3</a><a href="#s4">4</a><a href="#s5">5</a><a href="#s6">6</a><a href="#s7">7</a><a href="#pitfalls">4. 함정</a><a href="#verify">5. 검증</a><a href="#files">6. 파일 목록</a></nav>
+
+<section id="now">
+<h2>1. 현재 구조 (코드에서 확인한 사실)</h2>
+<div class="box warn"><b>가장 중요한 발견:</b> 노출과 ACES 톤매핑은 <b>이미 있습니다.</b> 다만 <b>머티리얼·스카이박스 픽셀 셰이더 끝</b>에서 8비트 타깃에 쓰기 직전에 적용합니다. 그래서 없는 것은 "톤매핑 함수"가 아니라 <b>① 중간 HDR 타깃 ② 톤매핑을 따로 수행하는 패스</b>입니다. 이번 작업은 "새로 만들기"와 "옮기기"의 혼합입니다.</div>
+<table>
+<tr><th>항목</th><th>지금</th><th>위치</th></tr>
+<tr><td>노출 + ACES 근사</td><td><code>ApplyExposureToneMap</code>. 노출을 곱하고, 켜져 있으면 Narkowicz ACES, 결과는 <code>saturate</code>. 파라미터는 <code>outputParams</code>(x 노출, y 톤매핑 on/off, z BRDF LUT 유무)</td><td><code>Shaders/Common.hlsli</code> (함수 약 145행, cbuffer 필드 약 53행)</td></tr>
+<tr><td>호출하는 곳</td><td>머티리얼 PS 마지막 줄, 스카이박스 PS 한 줄</td><td><code>Shaders/BasicPixelShader.hlsl</code> (약 231행), <code>Shaders/SkyboxPixelShader.hlsl</code> (약 8행)</td></tr>
+<tr><td>디버그 뷰 1~7</td><td>톤매핑 <b>전에</b> 조기 return (알베도, 노멀, 깊이 등을 그대로 보여 줌)</td><td><code>BasicPixelShader.hlsl</code> (약 163~171행)</td></tr>
+<tr><td>값의 출처</td><td><code>SceneEnvironment::exposure / toneMapping</code> → <code>Renderer::ResolveEnvironment</code> → <code>UploadPerFrameConstants</code>의 <code>outputParams</code></td><td><code>Scene/Scene.h</code> (약 62~63행), <code>Graphics/Renderer.cpp</code> (약 272행, 1180행)</td></tr>
+<tr><td>저장·편집 UI</td><td>씬 JSON의 <code>exposure</code>, <code>toneMapping</code>. UI는 Exposure 슬라이더와 "ACES tone mapping" 체크박스</td><td><code>Scene/SceneSerializer.cpp</code> (약 423~437행), <code>App/DebugUI.cpp</code> (약 215~217행)</td></tr>
+<tr><td>메인 패스 타깃</td><td><b>R8G8B8A8</b> (에디터: TYPELESS 씬 텍스처, 게임: 스왑체인 백버퍼). <b>sRGB RTV</b>로 쓰므로 하드웨어가 선형→sRGB 인코딩. 즉 8비트에 이미 톤매핑된 값이 들어감</td><td><code>Renderer::RenderMainPass</code> (약 1030행), <code>SetSceneTarget</code> (약 1431행)</td></tr>
+<tr><td>PSO의 RTV 포맷</td><td><code>srgbOutput ? R8G8B8A8_UNORM_SRGB : R8G8B8A8_UNORM</code></td><td><code>Renderer::GetPipelineFor</code> (약 1403행), <code>GetSkyPipeline</code> (약 1423행)</td></tr>
+<tr><td>카메라 미리보기</td><td>같은 방식으로 작은 R8G8B8A8 텍스처에 그림</td><td><code>Renderer::RenderPreviewPass</code> (약 1073행), <code>SetPreviewTarget</code> (약 1184행)</td></tr>
+<tr><td>UI 패스</td><td>백버퍼 <b>UNORM</b> 뷰에 ImGui. 에디터는 Clear, 게임은 Load</td><td><code>Renderer::BeginUIPass / EndUIPass</code> (약 1224행), 호출은 <code>Core/Engine.cpp</code> <code>Engine::Render</code> (약 109~115행)</td></tr>
+<tr><td>MSAA</td><td>쓰지 않음 (스왑체인·깊이 버퍼 모두 sampleCount 1). 리졸브 단계 불필요</td><td><code>RHI/D3D11/D3D11Device.cpp</code> (약 808행), <code>D3D12Device.cpp</code> (약 841행)</td></tr>
+</table>
+
+<h3>RHI가 이미 갖고 있는 것 (새로 만들 필요 없음)</h3>
+<ul>
+  <li><code>Format::R16G16B16A16_FLOAT</code>가 enum과 양쪽 변환 표에 있음 (<code>RHI/D3D11/D3D11Convert.cpp</code>, <code>D3D12/D3D12Convert.cpp</code> 약 20행). HDR 큐브맵 로딩이 이미 이 포맷을 씀 (<code>Graphics/TextureLoader.cpp</code> 약 82행).</li>
+  <li>RT + SRV 겸용 텍스처는 <code>TextureBind_RenderTarget | TextureBind_ShaderResource</code>. 'TYPELESS' 특수 처리(<code>colorRtAndSrv</code>)는 <b>R8G8B8A8_UNORM에만</b> 걸리므로 FP16은 일반 텍스처로 만들어짐 (<code>D3D11Device::CreateTexture</code> 약 414행, <code>D3D12Device::CreateTexture</code> 약 648행).</li>
+  <li><code>srgbView=true</code>를 FP16에 주면 <code>ToSrgb</code>가 같은 포맷을 돌려줌 (D3D11Resources.h 약 151행). 무해하지만 의미도 없으니 HDR 패스에서는 <code>false</code>로 둠.</li>
+  <li>풀스크린 삼각형 패턴: 정점 버퍼 없이 <code>Draw(3, 0)</code> + <code>SV_VertexID</code> (<code>Renderer::DrawSkybox</code>, <code>Shaders/SkyboxVertexShader.hlsl</code>). PSO 설정은 <code>m_skyDesc</code> (<code>Renderer::Initialize</code> 약 171행)을 본뜸.</li>
+  <li>D3D11은 <code>BeginRenderPass</code>가 타깃 텍스처가 SRV 슬롯에 남아 있으면 먼저 풀어 줌 (<code>D3D11CommandList::BeginRenderPass</code> 약 38~40행). HDR 텍스처를 톤 패스에서 읽고 다음 프레임에 다시 쓰는 흐름이 안전함.</li>
+  <li>배리어 추적 패턴: <code>m_sceneColorState</code> + <code>cmd.Barrier(...)</code> (<code>RenderMainPass</code> 약 1039행). HDR 텍스처도 같은 방식.</li>
+</ul>
+</section>
+
+<section id="design">
+<h2>2. 목표 구조</h2>
+<pre><code>[ShadowPass]  (그대로)
+[MainPass]    → HDR 타깃 (R16G16B16A16_FLOAT, 선형, 클리어 후 PBR + 스카이박스)   ← 노출·ACES·sRGB 없음
+[PreviewPass] → 미리보기용 HDR 타깃 (선택한 카메라가 있을 때만)
+[TonemapPass] HDR(SRV) → 노출 → ACES(또는 saturate) → sRGB RTV
+                 ├ 에디터: m_sceneColor (이후 ImGui가 UNORM SRV로 읽음, 지금과 같음)
+                 └ 게임:   백버퍼
+[TonemapPass] (미리보기) → m_previewColor
+[UIPass]      (그대로)</code></pre>
+<ul>
+  <li><b>sRGB 인코딩은 톤 패스의 RTV가 맡습니다.</b> 지금 메인 패스가 하던 일(<code>srgbView = settings.srgbOutput</code>)이 톤 패스로 이동하고, 씬 패스는 순수 선형만 다룹니다. F5의 "sRGB output" 토글(<code>EditorApp.cpp</code> 약 586행)의 의미는 그대로입니다.</li>
+  <li><b>톤 패스는 샘플러 없이 <code>Texture2D.Load</code>로 읽습니다.</b> HDR 타깃과 출력 타깃 크기가 같고 1:1로 옮기므로 필요 없고, <code>Common.hlsli</code>가 s0 등을 이미 점유하고 있어 슬롯 충돌도 피합니다.</li>
+  <li><b>톤 패스의 상수는 기존 <code>PerFrame</code>(b0) 재사용을 추천합니다.</b> 노출·톤매핑 여부는 <code>outputParams</code>에 이미 있고, 디버그 뷰 번호도 <code>debugParams.x</code>에 있습니다. 새 상수 구조체와 <code>static_assert</code>를 안 늘려도 됩니다. 단점: 톤 패스 PS가 <code>Common.hlsli</code>를 포함해 쓰지 않는 선언이 따라옴 (리플렉션은 실제 사용분만 보므로 <code>ValidateBindings</code>에는 영향 없음). 별도 작은 CB를 원하면 단계 3에서 바꿀 수 있습니다.</li>
+  <li><b>톤 패스의 PSO:</b> 깊이 끔(<code>depthEnable=false</code>), 컬링 없음, 정점 입력 없음, <code>dsvFormat=Unknown</code>, <code>rtvFormats[0]</code> = <code>R8G8B8A8_UNORM_SRGB</code>(또는 sRGB 끔이면 <code>UNORM</code>), 블렌드 끔.</li>
+</ul>
+</section>
+
+<section id="steps">
+<h2>3. 구현 순서</h2>
+<p>핵심은 <b>"화면이 지금과 똑같이 나오는 상태를 단계마다 유지"</b>하는 것입니다. 단계 5까지는 셰이더 안의 톤매핑을 그대로 두고 <b>톤 패스를 복사(패스스루)로 시작</b>하며, 단계 6에서 톤매핑을 옮깁니다. 각 단계 끝에 빌드하고 D3D11·D3D12 양쪽에서 확인합니다.</p>
+<table>
+<tr><th>단계</th><th>하는 일</th><th>끝났을 때 화면</th></tr>
+<tr><td>1</td><td>기준 스크린샷 저장 (코드 변경 없음)</td><td>-</td></tr>
+<tr><td>2</td><td>새 셰이더 파일 두 개 + 빌드·로드·핫리로드 등록</td><td>변화 없음</td></tr>
+<tr><td>3</td><td>바인딩 레이아웃 + 톤 패스 PSO (아직 호출 안 함)</td><td>변화 없음</td></tr>
+<tr><td>4</td><td>HDR 타깃 생성·리사이즈·해제 (아직 안 씀)</td><td>변화 없음</td></tr>
+<tr><td>5</td><td>메인·미리보기 패스를 HDR로 + 톤 패스 호출 (패스스루)</td><td>지금과 같음 (FP16 정밀도 차이만)</td></tr>
+<tr><td>6</td><td>톤매핑을 셰이더 끝에서 톤 패스로 이동, 디버그 뷰 우회</td><td>같거나 배경색만 미세하게 다름 (함정 참조)</td></tr>
+<tr><td>7</td><td>UI 문구·주석·통계 정리, 검증, 문서 갱신</td><td>-</td></tr>
+</table>
+
+<h3 id="s1"><span class="step">1</span>기준선 만들기 (코드 변경 없음)</h3>
+<ul>
+  <li>자동 스크린샷 인자로 현재 화면을 저장해 둡니다. <code>EditorApp.cpp</code> 약 1212행(<code>m_auto.screenshotPath</code>), <code>GameApp.cpp</code> 약 84행, 실제 저장은 <code>Engine::Render</code> 약 117~128행(백버퍼 리드백 → PNG). 실행 인자 이름은 <code>rendering-analysis.html</code> 부록 D에 있습니다.</li>
+  <li>찍을 장면: ① <code>CubemapTest</code>(HDR 스카이박스 + IBL + 헬멧·구) 톤매핑 켬/끔, ② 스카이박스가 없는 씬(<code>clearColor</code>가 그대로 보이는 경우), ③ 디버그 뷰 몇 개. 이후 모든 단계의 비교 기준입니다.</li>
+  <li>스크린샷이 백버퍼를 읽으므로 톤 패스가 백버퍼/씬 텍스처에 쓴 최종 결과가 그대로 비교됩니다.</li>
+</ul>
+
+<h3 id="s2"><span class="step">2</span>셰이더 두 개 추가 (호출은 아직 없음)</h3>
+<table>
+<tr><th>할 일</th><th>위치</th></tr>
+<tr><td><code>Shaders/FullscreenVertexShader.hlsl</code> 신규: <code>VS_Fullscreen</code>. <code>SkyboxVertexShader.hlsl</code>와 같은 삼각형 생성이되 방향 계산·<code>PerFrame</code> 의존 없이 <code>SV_Position</code>만 출력</td><td>신규 파일</td></tr>
+<tr><td><code>Shaders/TonemapPixelShader.hlsl</code> 신규: <code>PS_Tonemap</code>. 지금은 <code>sceneHdr.Load(int3(pos.xy, 0))</code>을 그대로 출력(패스스루). <code>Texture2D sceneHdr : register(t13)</code></td><td>신규 파일. 슬롯 상수는 단계 3</td></tr>
+<tr><td>빌드 항목 추가: <code>FxCompile</code> 두 개 (Skybox 항목 약 314~329행을 복사. ShaderModel 5.0, 진입점 <code>VS_Fullscreen</code> / <code>PS_Tonemap</code>)</td><td><code>SherlockEngine.vcxproj</code>, <code>SherlockEngine.vcxproj.filters</code></td></tr>
+<tr><td>파일 이름 상수 + 컴파일 목록 확장. <code>kFullscreenVertexShaderFile</code>, <code>kTonemapPixelShaderFile</code> 추가. <code>LoadShaders</code>의 <code>fromSourceOnly</code> 분기와 <code>LoadOrCompile</code> 분기 양쪽에 두 줄씩, 코드 vector·소스 경로 변수, <code>makeShader</code>, 실패 시 <code>DestroyShader</code>, 교체(이전 핸들 파괴 후 대입), 로그 한 줄</td><td><code>Graphics/Renderer.cpp</code> 상단 상수 (약 24~29행), <code>Renderer::LoadShaders</code> (약 498~600행)</td></tr>
+<tr><td>핫리로드 감시 목록에 두 파일 추가</td><td><code>LoadShaders</code> 안 <code>m_watched</code> 루프 (약 589행)</td></tr>
+<tr><td><code>ReloadShaders</code>에서 새 PSO desc의 <code>vs/ps</code> 갱신 (단계 3의 <code>m_tonemapDesc</code>)</td><td><code>Renderer::ReloadShaders</code> (약 677~681행)</td></tr>
+<tr><td>멤버 <code>ShaderHandle m_fullscreenVs, m_tonemapPs</code> 추가, <code>Shutdown</code>에서 파괴</td><td><code>Graphics/Renderer.h</code> (약 210~214행 옆), <code>Renderer::Shutdown</code> (약 709행)</td></tr>
+<tr><td><code>ValidateBindings</code>가 두 셰이더도 대조하도록 인자 추가. 선언 목록 <code>declared[]</code>에 새 슬롯 한 줄 (<code>t13</code>, Pixel)</td><td><code>Renderer::ValidateBindings</code> (약 602~660행), 선언부 <code>Renderer.h</code> 약 152행</td></tr>
+<tr><td>Debug 빌드 cbuffer 크기 대조에 톤 PS의 <code>PerFrame</code> 추가 (<code>sizeof(PerFrameConstants)</code>)</td><td><code>LoadShaders</code> 의 <code>#if defined(_DEBUG)</code> 블록 (약 525~542행)</td></tr>
+</table>
+<div class="box">확인: 빌드가 되고 로그에 "셰이더 로드 …" 줄이 새 두 파일을 포함해 찍히는지, F4 핫리로드가 실패하지 않는지.</div>
+
+<h3 id="s3"><span class="step">3</span>바인딩 레이아웃과 톤 패스 PSO (호출은 아직 없음)</h3>
+<table>
+<tr><th>할 일</th><th>위치</th></tr>
+<tr><td>슬롯 상수 추가: <code>kSRVSlotSceneHdr = 13;  // t13 (포스트, HDR 씬 색)</code></td><td><code>Graphics/ShaderConstants.h</code> (약 40~52행 옆)</td></tr>
+<tr><td><code>Layout_Post</code> 생성: <code>ConstantBuffer b0 (Pixel)</code> + <code>ShaderResource t13 (Pixel)</code>. 기존 <code>m_frameLayout</code> 작성 코드(<code>Renderer::Initialize</code> 약 85~98행)를 본뜸. 멤버 <code>BindingLayoutHandle m_postLayout</code></td><td><code>Renderer::Initialize</code>, <code>Renderer.h</code></td></tr>
+<tr><td><code>m_tonemapDesc</code> 구성: <code>vs=m_fullscreenVs, ps=m_tonemapPs, bindingLayouts={m_postLayout}, count 1, rasterizer.cull=None, depthStencil.depthEnable=false, depthWrite=false</code>. <code>m_skyDesc</code>(약 171행)를 복사한 뒤 깊이만 끄면 됨</td><td><code>Renderer::Initialize</code></td></tr>
+<tr><td><code>GetTonemapPipeline()</code> 추가: <code>rtvFormats[0] = srgbOutput ? R8G8B8A8_UNORM_SRGB : R8G8B8A8_UNORM</code>, <code>rtvCount = 1</code>, <code>dsvFormat = Unknown</code>. 기존 <code>GetSkyPipeline</code>(약 1418행)과 같은 모양</td><td><code>Renderer.cpp</code> 하단, <code>Renderer.h</code> 약 197행 옆</td></tr>
+<tr><td>초기화 때 PSO를 미리 만들어 실패를 잡는 조건에 <code>GetTonemapPipeline().IsValid()</code> 추가</td><td><code>Renderer::Initialize</code> (약 181~187행)</td></tr>
+<tr><td>HDR 텍스처를 담는 <code>ResourceSet</code>은 단계 4에서 타깃과 함께 만듦 (값 객체라 텍스처가 바뀌면 다시 만들어야 함. <code>UpdateFrameSet</code> 약 277행과 같은 이유)</td><td>-</td></tr>
+</table>
+<div class="box warn">D3D12는 PSO가 RTV 포맷을 알아야 하고 <code>m_device->InvalidatePipelines()</code>로 캐시가 비워지면 핸들이 무효가 됩니다. 톤 PSO도 매 프레임 <code>GetTonemapPipeline()</code>으로 얻고 핸들을 멤버에 저장하지 않습니다 (<code>GetPipelineFor</code>와 같은 규칙).</div>
+
+<h3 id="s4"><span class="step">4</span>HDR 타깃 생성 · 리사이즈 · 해제 (아직 안 씀)</h3>
+<table>
+<tr><th>할 일</th><th>위치</th></tr>
+<tr><td>멤버: <code>m_hdrColor, m_hdrWidth, m_hdrHeight, m_hdrColorState, m_hdrPostSet</code> (메인용), <code>m_previewHdr, m_previewHdrState, m_previewHdrPostSet</code> (미리보기용). 상태 변수 모양은 <code>m_sceneColorState</code> (약 263행)</td><td><code>Graphics/Renderer.h</code> (약 258~270행 옆)</td></tr>
+<tr><td><b>크기를 정하는 규칙:</b> 에디터(오프스크린)면 <code>m_sceneWidth × m_sceneHeight</code>, 게임이면 백버퍼 크기. 깊이 버퍼와 <b>크기가 같아야</b> 함 (같은 패스에 붙음)</td><td>-</td></tr>
+<tr><td><b>백버퍼 크기 전달 경로가 필요함.</b> <code>Device</code>에는 크기 조회가 없고 (<code>RHI/Device.h</code> 약 69·87행) Renderer는 크기를 모름. 추천: <code>Renderer::SetOutputSize(w, h)</code> 추가, <code>Engine::Initialize</code>에서 <code>m_renderer.Initialize</code> 직후(약 45행, 크기는 <code>desc.width/height</code>)와 <code>Engine::OnResize</code>에서 <code>m_device->Resize</code> 직후(약 141행)에 호출</td><td><code>Core/Engine.cpp</code>, <code>Renderer.h</code></td></tr>
+<tr><td><code>EnsureHdrTargets()</code>: 필요 크기가 달라졌을 때만 <code>DestroyTexture</code> → <code>CreateTexture</code>(<code>.format = R16G16B16A16_FLOAT, .bindFlags = RenderTarget | ShaderResource, .debugName = "SceneHDR"</code>) → 상태 <code>Common</code>으로 리셋 → <code>m_hdrPostSet</code> 다시 생성(<code>{ .buffer = m_perFrameCB }, { .texture = m_hdrColor }</code>). <code>SetSceneTarget</code>(약 1431행)의 생성·실패 처리 코드를 본뜸. <code>Render()</code> 맨 앞에서 호출</td><td><code>Renderer.cpp</code>, <code>Render</code> (약 850행)</td></tr>
+<tr><td>미리보기용 HDR은 <code>SetPreviewTarget</code>(약 1184행) 안에서 미리보기 컬러·깊이와 함께 만들고 파괴</td><td><code>Renderer::SetPreviewTarget</code></td></tr>
+<tr><td>해제: <code>Shutdown</code>이 <code>SetSceneTarget(0,0)</code>, <code>SetPreviewTarget(0,0)</code>을 부르는 자리(약 742~743행)에서 HDR도 같이 정리하고 <code>m_postLayout</code>, 새 셰이더, 리소스 셋을 파괴</td><td><code>Renderer::Shutdown</code></td></tr>
+</table>
+<div class="box">에디터에서 패널 크기가 바뀌면 <code>Editor.cpp</code> 약 316행의 <code>renderer.SetSceneTarget</code>이 매 프레임 불리고 크기가 같으면 아무것도 하지 않습니다. HDR 재생성도 같은 호출 흐름(<code>EnsureHdrTargets</code>)에서 크기 비교로 처리하면 별도 연결이 필요 없습니다.</div>
+
+<h3 id="s5"><span class="step">5</span>씬을 HDR에 그리고 톤 패스 호출 (패스스루)</h3>
+<table>
+<tr><th>할 일</th><th>위치</th></tr>
+<tr><td><code>RenderMainPass</code>: 색 타깃을 항상 <code>m_hdrColor</code>로. 깊이는 기존 선택 유지 (에디터 <code>m_sceneDepth</code>, 게임 <code>GetDepthBuffer()</code>). 배리어는 <code>m_hdrColorState → RenderTarget</code>, 패스 후 <code>RenderTarget → ShaderResource</code>. <code>srgbView = false</code>. 백버퍼 <code>Present → RenderTarget</code> 전이는 <b>톤 패스로 이동</b></td><td><code>Renderer::RenderMainPass</code> (약 1030~1071행)</td></tr>
+<tr><td><code>RenderPreviewPass</code>: 같은 변환 (타깃을 <code>m_previewHdr</code>로, <code>srgbView = false</code>)</td><td><code>Renderer::RenderPreviewPass</code> (약 1073~1095행)</td></tr>
+<tr><td><b>씬 PSO의 RTV 포맷을 FP16으로.</b> 메인 PSO와 스카이 PSO 두 곳. <code>srgbOutput</code> 분기는 여기서 삭제 (톤 PSO로 이동했음)</td><td><code>GetPipelineFor</code> 약 1403행, <code>GetSkyPipeline</code> 약 1423행</td></tr>
+<tr><td>새 <code>RenderTonemapPass(cmd, hdr, hdrState, hdrSet, outputTarget, outputState …)</code>: 출력 타깃을 <code>RenderTarget</code>으로 전이, <code>BeginRenderPass</code>(<code>load = DontCare</code>, <code>srgbView = settings.srgbOutput</code>, 깊이 없음, <code>debugName = "TonemapPass"</code>), <code>SetPipelineState(GetTonemapPipeline())</code>, <code>SetResourceSet(hdrSet)</code>, <code>Draw(3, 0)</code>, <code>EndRenderPass</code>. 출력이 <code>m_sceneColor</code>면 끝에서 <code>RenderTarget → ShaderResource</code>로 전이(ImGui가 읽음). 출력이 백버퍼면 전이하지 않음 (<code>EndUIPass</code>가 <code>RenderTarget → Present</code>를 함)</td><td><code>Renderer.cpp</code> 신규 함수, <code>Renderer.h</code> 선언 (약 161~165행 옆)</td></tr>
+<tr><td><code>Render()</code>에서 호출 순서: MainPass → (미리보기 카메라가 있으면 PreviewPass) → <code>GpuProfileScope "TonemapPass"</code> 로 톤 패스(메인) → (있으면) 톤 패스(미리보기). b0는 미리보기 카메라로 올린 값이 남아 있어도 <code>outputParams</code>/<code>debugParams</code>는 카메라와 무관하므로 안전</td><td><code>Renderer::Render</code> (약 917~928행)</td></tr>
+<tr><td>톤 패스 직후 UI 패스: 에디터는 <code>BeginUIPass</code>가 백버퍼 전이·Clear를 하고 게임은 톤 패스가 쓴 백버퍼를 <code>Load</code>하므로 <b>변경 없음</b></td><td><code>Renderer::BeginUIPass</code> (약 1224행)</td></tr>
+<tr><td><code>TonemapPixelShader.hlsl</code>은 여전히 패스스루. 이 단계의 머티리얼·스카이 PS는 <b>톤매핑을 그대로 하고 있으므로</b> 값은 이미 0~1이며, FP16 저장→복사→sRGB RTV는 사실상 무손실</td><td>-</td></tr>
+</table>
+<div class="box ok"><b>이 단계가 가장 위험합니다.</b> 확인: ① 기준 스크린샷과 같은 화면 ② D3D11·D3D12 양쪽에서 디버그 레이어 경고 없음 (PSO RTV 포맷 불일치, 배리어 상태 불일치 경고가 여기서 나옴) ③ 에디터 패널 크기 변경, 창 최대화·복원 ④ Play 모드 ⑤ 카메라 오브젝트를 골랐을 때 미리보기.</div>
+
+<h3 id="s6"><span class="step">6</span>톤매핑을 톤 패스로 이동</h3>
+<table>
+<tr><th>할 일</th><th>위치</th></tr>
+<tr><td>머티리얼 PS 마지막 줄 <code>return float4(ApplyExposureToneMap(finalColor), surface.a)</code> → <code>return float4(finalColor, surface.a)</code>. 이제 1을 넘는 값이 그대로 FP16에 저장됨</td><td><code>Shaders/BasicPixelShader.hlsl</code> (약 231행)</td></tr>
+<tr><td>스카이박스 PS: <code>ApplyExposureToneMap(...)</code> 호출 제거, 샘플 값을 그대로 출력</td><td><code>Shaders/SkyboxPixelShader.hlsl</code> (약 8행)</td></tr>
+<tr><td>톤 PS 본문: <code>color = sceneHdr.Load(...).rgb</code> → <code>ApplyExposureToneMap(color)</code> → 출력. <code>ApplyExposureToneMap</code>은 <code>Common.hlsli</code>에 둠 (톤 PS만 쓰게 되지만 상수 레이아웃 <code>outputParams</code>와 같은 파일에 있는 편이 읽기 쉬움)</td><td><code>Shaders/TonemapPixelShader.hlsl</code>, <code>Common.hlsli</code> 약 143~153행</td></tr>
+<tr><td><b>디버그 뷰 우회:</b> <code>debugParams.x != 0</code>이면 노출·ACES를 건너뛰고 <code>saturate(color)</code>만. 디버그 뷰 1~7은 알베도·노멀(0.5 스케일)·깊이 같은 <b>데이터 시각화</b>라 톤매핑을 거치면 값이 왜곡됨 (지금은 톤매핑 전에 return 하므로 왜곡 없음)</td><td><code>TonemapPixelShader.hlsl</code>. 값의 출처 <code>UploadPerFrameConstants</code> 약 1176행</td></tr>
+<tr><td>톤매핑 꺼짐 동작 유지: 꺼져 있으면 <code>saturate(color * exposure)</code> (지금도 8비트 타깃이 1에서 자르므로 동일)</td><td><code>ApplyExposureToneMap</code>이 이미 이렇게 동작하므로 변경 없음</td></tr>
+<tr><td><code>Common.hlsli</code> 주석(약 143~144행)과 <code>ShaderConstants.h</code> 약 68행의 <code>outputParams</code> 설명에서 "sRGB RTV 가 인코딩함"을 "톤 패스의 sRGB RTV"로 수정</td><td>주석만</td></tr>
+</table>
+<div class="box warn"><b>알려진 시각 차이 (함정 1):</b> 클리어 색(<code>scene.clearColor</code>, 스카이박스가 없을 때 보이는 배경)이 <b>지금은 톤매핑을 안 거치는데</b>, 이동 후에는 HDR 타깃에 들어갔다가 노출·ACES를 거칩니다. <code>toneMapping=true</code>이거나 <code>exposure≠1</code>인 씬에서는 배경색이 달라집니다. 허용할지(현실적인 렌더러의 일반 동작) 아니면 클리어 색을 톤 패스 이후 값으로 보정할지 이 단계에서 정해야 합니다. 추천은 허용하되 화면 비교 때 의도된 차이로 기록하는 것입니다.</div>
+
+<h3 id="s7"><span class="step">7</span>정리 · 검증 · 문서</h3>
+<ul>
+  <li><code>DebugUI.cpp</code> 약 215~217행의 Exposure 슬라이더·체크박스 위치는 유지. 툴팁이나 옆 설명에 "톤 패스에서 적용"을 적을지 정함.</li>
+  <li><code>Engine::Render</code> 주석(약 98행)의 프레임 구조를 "ShadowPass → MainPass(HDR) → [PreviewPass] → TonemapPass → UIPass"로 고치고, <code>Renderer.h</code> 상단 설명(약 48~52행)도 같이.</li>
+  <li><code>Stats.renderPasses / barriers</code>는 <code>cmd.GetStats()</code>에서 읽으므로 자동으로 늘어남. 디버그 패널의 값이 달라지는 것은 정상.</li>
+  <li><code>Renderer::GetSettings().srgbOutput</code> 설명(<code>Renderer.h</code> 약 26행, "백버퍼 sRGB 뷰")을 "톤 패스 출력의 sRGB 뷰"로.</li>
+  <li>문서: 코드가 바뀐 뒤에 <code>rendering-analysis.html</code>을 고칠지 새 기록 문서를 만들지는 그때 정합니다. 이 계획서는 구현 뒤 "적용 기록"으로 바꿔도 됩니다.</li>
+</ul>
+</section>
+
+<section id="pitfalls">
+<h2>4. 함정 모음</h2>
+<table>
+<tr><th>함정</th><th>이유 / 대처</th></tr>
+<tr><td>톤매핑 이중 적용</td><td>단계 6에서 머티리얼·스카이 PS의 호출 제거와 톤 PS의 적용이 <b>같은 커밋</b>에 있어야 함. 한쪽만 하면 밝기가 눈에 띄게 어긋남(ACES 두 번 = 어두움/채도 감소).</td></tr>
+<tr><td>sRGB 이중/누락</td><td>FP16 HDR 타깃은 하드웨어 sRGB 인코딩이 없음. 인코딩은 <b>톤 패스 RTV(srgbView)</b>에서만. 씬 패스에 <code>srgbView = true</code>가 남아 있으면 무해하지만 PSO 포맷 분기가 남아 있으면 D3D12에서 포맷 불일치.</td></tr>
+<tr><td>D3D12 PSO RTV 포맷 불일치</td><td>씬 PSO는 FP16, 톤 PSO는 R8G8B8A8(sRGB). 메인·스카이·톤 세 PSO의 <code>rtvFormats[0]</code>를 각각 실제 타깃과 맞출 것. 틀리면 D3D12 디버그 레이어가 그리기 시점에 오류.</td></tr>
+<tr><td>HDR 타깃과 깊이 크기 불일치</td><td>에디터는 <code>m_sceneDepth</code>(씬 패널 크기), 게임은 장치 깊이 버퍼(백버퍼 크기). HDR 색 크기를 각각에 맞추지 않으면 <code>OMSetRenderTargets</code>가 실패.</td></tr>
+<tr><td>HDR 텍스처가 SRV와 RTV로 동시에 묶임</td><td>D3D11은 <code>BeginRenderPass</code>가 풀어 주지만, D3D12는 <b>배리어</b>가 맞아야 함 (<code>RenderTarget ↔ ShaderResource</code>). 상태 변수를 안 갱신하면 한 프레임 뒤에 틀어짐.</td></tr>
+<tr><td>리소스 셋이 낡은 텍스처를 가리킴</td><td>HDR 텍스처를 재생성하면 셋도 다시 만들어야 함. 셋 재생성을 빠뜨리면 이전(파괴된) 텍스처를 읽음.</td></tr>
+<tr><td>PreviewPass 순서</td><td>b0 업로드는 미리보기 패스 직전에 미리보기 카메라로 덮어씀. 톤 패스가 읽는 건 <code>outputParams/debugParams</code>뿐이라 안전하지만, 나중에 카메라 의존 값(예: 비네트)을 톤 패스에서 쓰게 되면 깨지므로 그때는 톤 패스 상수를 분리.</td></tr>
+<tr><td>핫리로드</td><td>새 셰이더 두 개를 감시 목록·<code>ReloadShaders</code>·<code>ValidateBindings</code> 세 곳에 모두 넣어야 함. 하나라도 빠지면 F4 후 톤 PSO만 옛 셰이더를 씀.</td></tr>
+<tr><td>스크린샷/리드백</td><td>백버퍼를 읽으므로 톤 패스 결과가 저장됨. HDR 값을 확인하려면 별도 디버그 뷰가 필요 (이번 범위 밖).</td></tr>
+</table>
+</section>
+
+<section id="verify">
+<h2>5. 검증 체크리스트</h2>
+<ul>
+  <li>두 백엔드(D3D11, D3D12)에서 같은 장면. 디버그 레이어에 경고·오류 없음.</li>
+  <li>단계 5 직후: 기준 스크린샷과 시각적으로 동일.</li>
+  <li>단계 6 직후: <code>CubemapTest</code>에서 톤매핑 켬/끔, 노출 슬라이더(0.05~8), 태양·헬멧 하이라이트가 이전보다 <b>덜 뭉개지는지</b>(켬)와 <b>1에서 잘리는지</b>(끔).</li>
+  <li>디버그 뷰 1~7이 이전과 같은 색 (톤매핑 우회가 동작하는지).</li>
+  <li>F5 sRGB 토글, F4 셰이더 핫리로드 (톤 PS를 고쳐 저장하면 즉시 반영).</li>
+  <li>에디터: 패널 크기를 크게/작게, 도킹 위치 변경, 창 최소화·복원, Play ↔ Edit 전환, 카메라 오브젝트 미리보기.</li>
+  <li>게임 실행(<code>GameApp</code>): 창 크기 변경 후 화면이 늘어나지 않고 깨끗한지(HDR 재생성), 스크린샷 인자.</li>
+  <li>저장한 씬을 다시 열었을 때 노출·톤매핑 값이 유지되는지 (직렬화는 건드리지 않으므로 그대로여야 함).</li>
+</ul>
+</section>
+
+<section id="files">
+<h2>6. 손대는 파일 한눈에</h2>
+<table>
+<tr><th>파일</th><th>변경</th></tr>
+<tr><td><code>Shaders/FullscreenVertexShader.hlsl</code>, <code>Shaders/TonemapPixelShader.hlsl</code></td><td>신규</td></tr>
+<tr><td><code>SherlockEngine.vcxproj</code>, <code>SherlockEngine.vcxproj.filters</code></td><td>FxCompile·필터 항목 추가</td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code></td><td><code>kSRVSlotSceneHdr</code>, <code>outputParams</code> 주석</td></tr>
+<tr><td><code>Graphics/Renderer.h</code></td><td>HDR 멤버, <code>m_postLayout</code>, 톤 셰이더·desc, <code>RenderTonemapPass</code>, <code>GetTonemapPipeline</code>, <code>SetOutputSize</code>, 주석</td></tr>
+<tr><td><code>Graphics/Renderer.cpp</code></td><td>상수, <code>Initialize</code>, <code>LoadShaders</code>, <code>ValidateBindings</code>, <code>ReloadShaders</code>, <code>Shutdown</code>, <code>Render</code>, <code>RenderMainPass</code>, <code>RenderPreviewPass</code>, <code>GetPipelineFor</code>, <code>GetSkyPipeline</code>, <code>SetPreviewTarget</code>, 신규 함수들</td></tr>
+<tr><td><code>Shaders/BasicPixelShader.hlsl</code>, <code>SkyboxPixelShader.hlsl</code>, <code>Common.hlsli</code></td><td>톤매핑 호출 제거(단계 6), 주석</td></tr>
+<tr><td><code>Core/Engine.cpp</code></td><td>출력 크기 전달 (<code>Initialize</code>, <code>OnResize</code>), 프레임 구조 주석</td></tr>
+<tr><td><code>App/DebugUI.cpp</code></td><td>(선택) 설명 문구</td></tr>
+<tr><td>건드리지 않는 것</td><td><code>RHI/**</code> (FP16 포맷·RT+SRV·풀스크린 삼각형·배리어가 이미 있음), <code>Scene/Scene.h</code>와 <code>SceneSerializer</code> (설정 필드 변경 없음), <code>Editor.cpp</code> (씬 텍스처는 여전히 UNORM으로 읽음)</td></tr>
+</table>
+<p class="foot">이 계획서는 코드 읽기만으로 작성했고 빌드·실행은 하지 않았습니다. "약 N행"은 2026-10-16 작업 트리 기준입니다.</p>
+</section>
+</main>
+</body>
+</html>

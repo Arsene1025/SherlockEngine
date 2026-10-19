@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RHI 확장 구현 가이드 (22.6 의 3·4·8번)</title>
+<style>
+:root {
+  --bg: #f6f5f1; --paper: #ffffff; --ink: #1d1f24; --ink2: #4a505c; --ink3: #8a909c;
+  --line: #d9dce3; --fill: #f1f3f7; --accent: #1d5fbf; --accent-bg: #e4ecf8;
+  --ok: #1f7a3d; --ok-bg: #e5f4ea; --warn: #a8620a; --warn-bg: #fdf3e2; --err: #c62828; --err-bg: #fbeaea;
+  --code-bg: #14171c; --code-fg: #e6e9ef;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101216; --paper: #181b21; --ink: #e8eaee; --ink2: #aab0bb; --ink3: #6f7683;
+    --line: #2b303a; --fill: #1f232b; --accent: #6ea8ff; --accent-bg: #16305a;
+    --ok: #5fcf85; --ok-bg: #12301f; --warn: #f0b14a; --warn-bg: #3a2a10; --err: #ff7070; --err-bg: #3b1620;
+    --code-bg: #0b0d10; --code-fg: #dfe3ea;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15.5px/1.75 -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", Roboto, sans-serif; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 24px 16px 80px; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 28px; }
+nav { position: sticky; top: 16px; align-self: start; font-size: 13.5px; line-height: 1.5; max-height: calc(100vh - 32px); overflow: auto; }
+nav b { display: block; margin: 12px 0 4px; color: var(--ink3); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
+nav a { display: block; padding: 3px 8px; color: var(--ink2); text-decoration: none; border-left: 2px solid var(--line); }
+nav a:hover { color: var(--accent); border-left-color: var(--accent); }
+main { min-width: 0; }
+header.top { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+header.top h1 { margin: 0 0 6px; font-size: 26px; line-height: 1.3; }
+header.top p { margin: 4px 0; color: var(--ink2); }
+section { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+h2 { margin: 0 0 12px; font-size: 21px; line-height: 1.35; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+h3 { margin: 26px 0 8px; font-size: 17px; line-height: 1.4; }
+h4 { margin: 18px 0 6px; font-size: 15px; color: var(--ink2); }
+p { margin: 8px 0; }
+ul, ol { margin: 8px 0; padding-left: 22px; }
+li { margin: 3px 0; }
+code { font: 13.5px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--fill); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--code-bg); color: var(--code-fg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font: 13px/1.6 ui-monospace, "Cascadia Mono", Consolas, monospace; margin: 10px 0; }
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+.cm { color: #7d8aa0; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; line-height: 1.55; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+th { background: var(--fill); white-space: nowrap; }
+.box { border-left: 4px solid var(--accent); background: var(--accent-bg); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+.box.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.box.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.box.err { border-left-color: var(--err); background: var(--err-bg); }
+.box p:first-child { margin-top: 0; } .box p:last-child { margin-bottom: 0; }
+.step { border: 1px solid var(--line); border-radius: 8px; margin: 14px 0; overflow: hidden; }
+.step > .sh { background: var(--fill); padding: 8px 14px; font-weight: 600; display: flex; gap: 10px; align-items: baseline; }
+.step > .sh .n { background: var(--accent); color: #fff; border-radius: 12px; min-width: 24px; text-align: center; font-size: 13px; padding: 0 7px; }
+.step > .sb { padding: 4px 16px 12px; }
+.tag { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--accent-bg); color: var(--accent); white-space: nowrap; }
+.tag.v { background: var(--ok-bg); color: var(--ok); }
+.tag.p { background: var(--warn-bg); color: var(--warn); }
+.foot { color: var(--ink3); font-size: 13px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } nav { position: static; max-height: none; } section, header.top { padding: 16px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="목차">
+  <b>시작</b>
+  <a href="#overview">0. 한눈에 보기</a>
+  <a href="#method">1. 모든 단계의 작업 방식</a>
+  <b>3번 · HDR</b>
+  <a href="#hdr">2. HDR 타깃과 톤매핑</a>
+  <b>4번 · 컴퓨트</b>
+  <a href="#compute">3. 컴퓨트 파이프라인과 UAV</a>
+  <a href="#ibl">4. 엔진 안에서 IBL 만들기</a>
+  <b>8번 · 규모</b>
+  <a href="#scale">5. 규모를 위한 일들</a>
+  <a href="#s-world">5-1 월드 행렬 캐시</a>
+  <a href="#s-cull">5-2 컬링</a>
+  <a href="#s-inst">5-3 메시 공유와 인스턴싱</a>
+  <a href="#s-csm">5-4 CSM</a>
+  <a href="#s-deferred">5-5 Deferred</a>
+  <b>마무리</b>
+  <a href="#docs">6. 문서와 검증 규칙</a>
+</nav>
+<main>
+
+<header class="top">
+  <h1>RHI 확장 구현 가이드</h1>
+  <p>rendering-analysis.html 22.6 의 <b>3번(HDR 타깃·톤매핑)</b>, <b>4번(컴퓨트 파이프라인·UAV)</b>, <b>8번(규모를 위한 일들)</b>을 직접 구현하기 위한 순서와 방법입니다.</p>
+  <p>기준: 2026-10-15 작업 트리. 파일 이름·함수 이름은 그날 코드에서 확인한 것이고, <span class="tag p">제안</span> 표시가 붙은 부분은 코드에 아직 없는 설계 권고입니다. 코드를 대신 써 주는 문서가 아니라 "어디를 어떤 순서로 건드리고 무엇으로 확인하는가"를 적은 지도입니다.</p>
+</header>
+
+<section id="overview">
+<h2>0. 한눈에 보기</h2>
+<table>
+<thead><tr><th>순서</th><th>일</th><th>RHI 가 넓어지나</th><th>앞 단계에 기대는 것</th><th>끝났다는 증거</th></tr></thead>
+<tbody>
+<tr><td>①</td><td>3번 · HDR 타깃 + 톤매핑 패스</td><td>아니오(<code>R16G16B16A16_FLOAT</code> 이미 있음). 풀스크린 패스용 바인딩 레이아웃만 추가</td><td>없음</td><td>화면이 전과 ±1 레벨 이내로 같고, 패스가 하나 늘어남</td></tr>
+<tr><td>②</td><td>4번 · 컴퓨트 파이프라인 + UAV</td><td><b>예</b>. 스테이지·바인딩 타입·상태·핸들·Dispatch 추가, 두 백엔드 수정</td><td>①은 필수 아님. 다만 첫 컴퓨트 응용(블룸·IBL)이 ①의 HDR 타깃을 쓰면 편함</td><td>컴퓨트가 쓴 텍스처를 그래픽스 패스가 읽어 화면에 보임. 두 백엔드 픽셀 일치</td></tr>
+<tr><td>③</td><td>4번 후반 · 엔진 안에서 IBL 생성</td><td>UAV 를 밉 단위·배열 단위로 만들 수 있어야 함</td><td>②</td><td>구워진 IBL 맵 없이 스카이박스만으로 반사가 나오고, 구워진 맵과 비교해 수치가 가까움</td></tr>
+<tr><td>④</td><td>8번 · 월드 행렬 캐시 → 컬링 → 메시 공유·인스턴싱 → CSM → (선택) Deferred</td><td>인스턴싱: <code>DrawIndexedInstanced</code> 한 개. CSM: 없음(아틀라스 방식). Deferred: 포맷 몇 개</td><td>컬링은 CSM 의 캐스터 컬링에 쓰임. Deferred 는 ①이 필수, ②가 있으면 타일 라이트 컬링 가능</td><td>각 단계마다 "화면 동일 + 숫자(draw, 시간)가 줄어듦"</td></tr>
+</tbody>
+</table>
+<div class="box">
+<p><b>왜 이 순서인가.</b> ①은 RHI 를 건드리지 않는 가장 작은 단계로, 풀스크린 패스라는 틀을 먼저 만듭니다. ②는 인터페이스가 처음 넓어지는 큰 일이라 두 백엔드를 한 번에 맞추는 연습이 필요하고, ①에서 익힌 "패스 하나 추가 → 배리어 → 두 백엔드 비교" 흐름이 그대로 쓰입니다. ④는 서로 독립적인 개선이 많아 효과가 큰 순(월드 행렬, 컬링, 인스턴싱)으로 가고, 구조를 가장 크게 바꾸는 Deferred 를 맨 뒤에 둡니다.</p>
+</div>
+<div class="box warn">
+<p><b>22.6 의 "PBR + IBL" 표현.</b> PBR 셰이딩과 IBL 은 10-08 에 이미 들어갔습니다(20.15). 4번에서 남은 일은 "IBL 맵을 엔진이 스카이박스에서 직접 만드는 것"(22.4 의 "IBL 맵은 미리 구운 것만")이라, 이 가이드는 그렇게 해석했습니다.</p>
+</div>
+</section>
+
+<section id="method">
+<h2>1. 모든 단계의 작업 방식</h2>
+<p>이 프로젝트는 "한 단계 = 빌드 가능 + 두 백엔드 같은 화면 + 문서 갱신"으로 진행해 왔습니다. 아래 틀을 단계마다 반복하면 어디서 깨졌는지 바로 좁혀집니다.</p>
+<ol>
+<li><b>기준 화면부터 찍습니다.</b> 코드를 고치기 전에 같은 씬·같은 카메라로 두 백엔드의 스크린샷을 저장해 둡니다.
+<pre><code>SherlockEditor.exe --scene=demo --exit-after=60 --backend=d3d11 --screenshot=C:\tmp\base_d3d11.png
+SherlockEditor.exe --scene=demo --exit-after=60 --backend=d3d12 --screenshot=C:\tmp\base_d3d12.png</code></pre>
+<p>움직이는 씬은 캡처 시점마다 달라집니다. 화면이 멈춘 씬(<code>--play</code> 없이)을 쓰세요(rendering-analysis 의 D.5).</p></li>
+<li><b>두 백엔드를 항상 같이 확인합니다.</b> D3D11 에서만 되고 D3D12 에서 깨지는 일이 이 프로젝트의 대표적인 실수입니다. 상태 전이(배리어), 디스크립터 수, 루트 시그니처가 그 원인입니다. Debug 빌드의 D3D12 Debug Layer 메시지가 0건이어야 합니다.</li>
+<li><b>픽셀 차이를 수치로 봅니다.</b> 눈으로 같아 보여도 1~2 레벨 차이는 흔합니다. PNG 두 장의 채널별 최대 차이와 평균 차이를 내는 작은 스크립트(Python + PIL)를 한 번 만들어 두세요. 판정: "의도한 변화 없음"이면 최대 차이 ≤ 1~2, "의도한 변화"이면 변한 영역이 예상 위치와 일치.</li>
+<li><b>숫자로 효과를 봅니다.</b> <code>Renderer::Stats</code>(draws, pipelineSwitches, resourceSetSwitches, meshSwitches, renderPasses, barriers)와 <code>Profiler</code> 의 GPU 타임스탬프(<code>GpuProfileScope</code>)가 이미 있습니다. 새 패스는 <code>GpuProfileScope</code> 로 감싸 패널에 이름이 보이게 하세요.</li>
+<li><b>실험용 코드는 별도 프로젝트에.</b> 스트레스 씬(구 1000 개 등)은 Sample 이 아니라 실험 프로젝트(<code>Projects/UndoPrefabTest</code> 처럼)에 둡니다. 6번에서 만든 <code>Spawner</code> 스크립트와 프리팹이 "같은 메시·재질 N 개" 씬을 만들어 줍니다(<code>maxSpawns</code>, <code>interval</code> 조절).</li>
+<li><b>기록은 새 문서로 따로 남깁니다.</b> 기존 <code>rendering-analysis.html</code> 은 고치지 말고, 이 단계의 기록(무엇을·왜·검증·확인하지 못한 것)을 <code>docs/undo-prefab-notes.html</code> 같은 형식의 별도 문서에 적습니다.</li>
+</ol>
+<div class="box">
+<p><b>막혔을 때의 순서.</b> ① 빌드 경고·Debug Layer 메시지 → ② 디버그 뷰(<code>--debug-view=N</code>)로 어느 단계 값이 틀린지 → ③ 새 패스를 끄고(설정 토글) 전 화면과 비교 → ④ 그래도 모르겠으면 변경을 반으로 나눠 이분 탐색. 셰이더는 F4(핫리로드)로 빌드 없이 고칠 수 있습니다.</p>
+</div>
+</section>
+
+<section id="hdr">
+<h2>2. 3번 — HDR 타깃과 톤매핑 <span class="tag">크기: 중간</span></h2>
+<h3>지금 구조</h3>
+<ul>
+<li>메인 패스는 백버퍼(또는 에디터의 씬 텍스처) <b>sRGB 뷰</b>에 직접 그립니다(<code>RenderMainPass</code>, <code>ColorAttachment::srgbView</code>).</li>
+<li>노출·ACES 톤매핑은 <code>Shaders/Common.hlsli</code> 의 <code>ApplyExposureToneMap</code> 이며 <b>픽셀 셰이더 끝</b>에서 부릅니다: <code>BasicPixelShader.hlsl</code> 의 마지막 <code>return</code>(231줄 근처)과 <code>SkyboxPixelShader.hlsl</code>.</li>
+<li>그래서 1 을 넘는 값은 톤매핑이 꺼져 있으면 잘려 나가고, 블룸처럼 "화면 전체를 본 뒤" 하는 후처리는 넣을 수 없습니다(22.4).</li>
+</ul>
+<h3>목표 구조</h3>
+<pre><code>ShadowPass ─▶ MainPass ─▶ TonemapPass ─▶ UIPass
+              (HDR 타깃    (풀스크린      (UNORM 백버퍼에 ImGui)
+               R16G16B16A16 삼각형. HDR 를 읽어
+               _FLOAT)      노출·ACES 후 sRGB 로 씀)</code></pre>
+
+<div class="step"><div class="sh"><span class="n">1</span>먼저 지금 화면을 저장하고 "무엇이 같아야 하는가"를 정하기</div><div class="sb">
+<p>데모·헬멧·CubemapTest 씬을 두 백엔드로 저장합니다. 이 변경은 <b>화면을 바꾸지 않는 리팩터링</b>이어야 합니다. 목표는 전후 차이 ≤ 1~2 레벨(8비트 양자화 위치가 달라지는 정도). 톤매핑을 끈 씬(<code>toneMapping=false</code>)은 예외입니다 — 아래 함정 참고.</p>
+</div></div>
+
+<div class="step"><div class="sh"><span class="n">2</span>HDR 렌더 타깃 만들기 <span class="tag">Renderer</span></div><div class="sb">
+<ul>
+<li><code>Format::R16G16B16A16_FLOAT</code> 는 이미 있고 두 백엔드 변환표(<code>D3D11Convert.cpp</code>, <code>D3D12Convert.cpp</code> 20줄 근처)에도 들어 있습니다. 새 포맷은 필요 없습니다.</li>
+<li><code>Renderer</code> 에 <code>m_hdrColor</code>(<code>TextureBind_RenderTarget | TextureBind_ShaderResource</code>)와 <code>m_hdrColorState</code> 를 추가합니다. 깊이는 기존 <code>m_sceneDepth</code>/백버퍼 깊이를 그대로 씁니다.</li>
+<li>크기는 "지금 그리는 목적지"의 크기입니다. 에디터는 <code>SetSceneTarget(w, h)</code> 가 정하는 씬 크기, 게임 런타임은 백버퍼 크기. 크기가 바뀔 때 다시 만드는 코드는 <code>SetSceneTarget</code>/<code>SetPreviewTarget</code> 의 기존 패턴(<code>m_sceneColor</code> 재생성)을 그대로 따르세요.</li>
+<li>카메라 미리보기(<code>m_previewColor</code>)도 같은 길을 가야 하므로 <b>미리보기용 HDR 타깃을 따로</b> 둡니다(크기가 다름).</li>
+</ul>
+<div class="box warn"><p><b>함정.</b> 게임 런타임은 오프스크린이 아니라 백버퍼에 직접 그립니다(<code>IsOffscreen()</code> 이 거짓). 이 경로의 HDR 크기는 <code>Device::Resize</code> 가 불릴 때 따라 바뀌어야 합니다. 에디터에서만 확인하고 끝내면 <code>SherlockGame.exe</code> 에서 창 크기를 바꿀 때 깨집니다.</p></div>
+</div></div>
+
+<div class="step"><div class="sh"><span class="n">3</span>메인 패스·스카이박스·미리보기 PSO 의 렌더 타깃 포맷 바꾸기</div><div class="sb">
+<ul>
+<li>메인 패스 PSO 의 렌더 타깃 포맷은 지금 <code>GetPipelineFor</code>(<code>Renderer.cpp</code> 1398줄 근처)가 <code>srgbOutput ? R8G8B8A8_UNORM_SRGB : R8G8B8A8_UNORM</code> 으로 정합니다(주석: "D3D12 PSO 는 렌더 타깃 뷰의 포맷을 알아야 함"). 이것을 <code>R16G16B16A16_FLOAT</code> 로 바꿉니다. 스카이박스 PSO(<code>GetSkyPipeline</code>, 1418줄 근처)도 "메인 PSO 와 같게 맞춤"이라 같이 바꿉니다(그림자 PSO 는 렌더 타깃이 없어 해당 없음). PSO 캐시 키에 포맷이 들어가 있어 이전 PSO 와 섞이지 않습니다.</li>
+<li><code>RenderMainPass</code>/<code>RenderPreviewPass</code> 의 <code>ColorAttachment</code> 를 <code>m_hdrColor</code> 로 바꾸고 <code>.srgbView = false</code>(float 포맷에는 sRGB 뷰가 없음). 클리어 색은 이미 "선형 값"이라 그대로 맞습니다.</li>
+<li>메인 패스가 끝나면 <code>Barrier(m_hdrColor, RenderTarget, ShaderResource)</code>.</li>
+</ul>
+</div></div>
+
+<div class="step"><div class="sh"><span class="n">4</span>톤매핑을 셰이더 끝에서 떼어 내기 <span class="tag">HLSL</span></div><div class="sb">
+<ul>
+<li><code>BasicPixelShader.hlsl</code> 와 <code>SkyboxPixelShader.hlsl</code> 의 <code>ApplyExposureToneMap(...)</code> 호출을 지웁니다(선형 HDR 값을 그대로 반환). 함수 자체는 <code>Common.hlsli</code> 에 남겨 새 셰이더가 씁니다.</li>
+<li>디버그 뷰(<code>--debug-view=1..5</code>: 알베도·노멀·깊이 등)가 지금 톤매핑을 거치는지 먼저 확인하세요. 거친다면 톤매핑 패스가 디버그 뷰 값까지 눌러 버리므로, 디버그 뷰일 때는 b0 의 <code>outputParams</code> 로 "노출 1, 톤매핑 끔"을 보내도록 합니다.</li>
+</ul>
+</div></div>
+
+<div class="step"><div class="sh"><span class="n">5</span>풀스크린 패스용 셰이더와 바인딩 만들기</div><div class="sb">
+<ul>
+<li><b>정점 셰이더</b>: <code>SkyboxVertexShader.hlsl</code> 가 이미 <code>SV_VertexID</code> 로 전체 화면 삼각형을 만듭니다. 방향 복원 부분을 뺀 <code>FullscreenVertexShader.hlsl</code>(위치 + uv 출력)을 새로 두면 이후 블룸·FXAA 가 같은 VS 를 씁니다.</li>
+<li><b>픽셀 셰이더</b> <code>TonemapPixelShader.hlsl</code>: <code>Texture2D hdr : register(t0)</code>, 샘플러 <code>s0</code>(클램프, 선형), 상수 <code>b0</code>(노출·톤매핑 on/off). 본문은 <code>float3 c = hdr.Sample(...).rgb; return float4(ApplyExposureToneMap(c), 1);</code>. <code>ApplyExposureToneMap</code> 이 <code>outputParams</code>(프레임 상수의 전역)를 읽으니, 새 상수버퍼로 값을 받게 쓰거나 프레임 셋(b0)을 같이 바인딩하는 둘 중 하나를 고릅니다. 프레임 셋을 재사용하면 새 상수버퍼가 없어 가장 작지만, 프레임 레이아웃에 t0 이 없으므로 <b>새 레이아웃이 어차피 필요</b>합니다.</li>
+<li><b>BindingLayout</b>: <code>BindingLayoutDesc</code> 에 <code>.Add(ShaderResource, ShaderStageMask_Pixel, 0)</code>, <code>.Add(Sampler, ShaderStageMask_Pixel, 0)</code> (필요하면 <code>ConstantBuffer</code> b0)를 더한 "post 레이아웃"을 만듭니다. <code>kMaxBindingSlots = 16</code> 안에서 충분합니다.</li>
+<li>셰이더 로딩은 <code>Renderer::LoadShaders</code> 의 스카이박스 항목을 그대로 복사해 이름만 바꿉니다. <b>두 군데</b>를 같이 고칩니다: ① <code>SherlockEngine.vcxproj</code> 의 FxCompile 항목(<code>.cso</code> 생성, <code>&lt;ShaderModel&gt;5.0</code>) ② 런타임 컴파일 폴백(<code>LoadOrCompile</code> 이 파일 이름으로 찾으므로 별도 등록 불필요). 22.4 의 "셰이더 모델을 정하는 곳이 두 군데" 항목이 이 일입니다.</li>
+<li><code>ValidateBindings</code> 에 새 셰이더 쌍을 넣어 셰이더가 쓰는 슬롯과 레이아웃을 대조하세요. 슬롯 하나를 빼먹으면 화면이 아니라 시작할 때 오류로 잡힙니다.</li>
+<li>핫리로드 감시 목록(<code>m_watched</code>)에도 새 파일을 넣으면 F4 로 고칠 수 있습니다.</li>
+</ul>
+</div></div>
+
+<div class="step"><div class="sh"><span class="n">6</span>톤매핑 패스 추가 <span class="tag">Renderer</span></div><div class="sb">
+<pre><code>void Renderer::RenderTonemapPass(RHI::CommandList&amp; cmd, TextureHandle hdr, TextureHandle target, bool srgbView)
+{
+    // target: 에디터면 m_sceneColor, 아니면 백버퍼. 상태 전이는 지금 메인 패스가 하던 것을 이 함수로 옮김
+    cmd.Barrier(target, <span class="cm">/* 현재 상태 */</span>, ResourceState::RenderTarget);
+    RenderPassDesc pass{ .colors = { { .texture = target, .load = LoadOp::DontCare, .srgbView = srgbView } },
+                         .colorCount = 1, .debugName = "TonemapPass" };   <span class="cm">// 깊이 없음 (UI 패스와 같음)</span>
+    cmd.BeginRenderPass(pass);
+    cmd.SetPipelineState(m_tonemapPipeline);
+    cmd.SetResourceSet(m_tonemapSet);   <span class="cm">// t0 = hdr</span>
+    cmd.Draw(3, 0);
+    cmd.EndRenderPass();
+    cmd.Barrier(target, ResourceState::RenderTarget, <span class="cm">/* 다음 상태 */</span>);
+}</code></pre>
+<ul>
+<li><b>ResourceSet 은 값 객체</b>입니다. HDR 타깃을 다시 만들면 <code>m_tonemapSet</code> 도 다시 만들어야 합니다(<code>UpdateFrameSet</code> 이 "꽂힌 텍스처가 바뀔 때만 다시 만든다"는 방식을 이미 씁니다 — 같은 패턴).</li>
+<li>PSO: 정점 속성 0개(<code>vertexLayout.attributeCount = 0</code>), 깊이 끔, 컬링 없음. <b>PSO 의 <code>rtvFormats[0]</code> 는 패스가 실제로 묶는 뷰의 포맷과 같아야 합니다</b>(D3D12). 메인 패스가 하던 대로 <code>srgbView = true</code> 로 그리면 <code>R8G8B8A8_UNORM_SRGB</code>, <code>false</code> 면 <code>R8G8B8A8_UNORM</code> 이며, <code>m_settings.srgbOutput</code> 을 따르는 지금 코드와 같은 삼항식을 쓰세요(F5 로 sRGB 출력을 끄고 켜는 경로가 이 PSO 도 다시 고르게). <code>dsvFormat</code> 은 깊이를 쓰지 않으니 UI 패스의 PSO(<code>BeginUIPass</code> 쪽)가 하는 대로 맞추세요. <code>GetSkyPipeline</code> 이 거의 같은 모양의 선례입니다.</li>
+<li><code>Render()</code> 의 순서: Shadow → Main(HDR) → Tonemap(→ 씬 텍스처/백버퍼) → (미리보기도 같은 방식) → UI. <code>m_stats.renderPasses</code> 가 1(미리보기 포함 시 2) 늘어납니다.</li>
+<li>D3D11 의 <code>BeginRenderPass</code> 는 attachment 와 겹치는 SRV 바인딩을 알아서 풀어 줍니다(<code>Stats::srvUnbinds</code>). D3D12 는 배리어가 전부입니다.</li>
+</ul>
+</div></div>
+
+<div class="step"><div class="sh"><span class="n">7</span>검증 <span class="tag v">확인</span></div><div class="sb">
+<ul>
+<li>데모·헬멧·CubemapTest 를 두 백엔드로 저장해 1단계의 기준과 비교: 최대 차이 ≤ 2. 하늘·금속·발광(1 을 넘는 값)이 있는 헬멧 씬이 가장 좋은 시험입니다.</li>
+<li><code>Stats.renderPasses</code> +1, 배리어 수 증가, Debug Layer 메시지 0건, 종료 시 Live Object 가 장치 한 줄뿐(22.4).</li>
+<li>창 크기 바꾸기(에디터 씬 뷰 도킹 크기 변경, 게임 런타임 창 리사이즈) 뒤에도 같은 화면.</li>
+<li>Release 빌드와 <code>SherlockGame.exe</code> 로도 한 번.</li>
+</ul>
+<div class="box warn"><p><b>함정: 톤매핑을 끈 씬.</b> 전에는 백버퍼가 8비트라 1 을 넘는 값이 잘렸지만, 이제 HDR 에는 값이 남고 톤매핑 패스가 "끔"일 때 <code>saturate</code> 해서 같은 결과가 되어야 합니다. 톤매핑 패스에서 <code>toneMapping == false</code> 이면 <code>saturate(color * exposure)</code> 로 쓰고, 이 경우 전과 똑같은지 따로 비교하세요.</p></div>
+<div class="box warn"><p><b>함정: 알파 블렌딩.</b> 반투명이 있다면 블렌딩이 이제 sRGB 인코딩 전의 선형 float 에서 일어납니다(이전: sRGB RTV 의 하드웨어 블렌딩도 선형이었으므로 대체로 같음). 블렌딩 씬이 있으면 비교 목록에 넣으세요.</p></div>
+</div></div>
+
+<h3>이어서 할 수 있는 일</h3>
+<p>풀스크린 틀이 생겼으니 블룸(밝은 부분 추출 → 다운샘플 체인 → 업샘플 합성)은 같은 틀에 패스만 추가하면 됩니다. 다운샘플은 그래픽스 패스로도 되지만 3장의 컴퓨트로 하는 것이 정석입니다. 후처리 설정(노출·블룸 세기)은 <code>SceneEnvironment</code> 에 키를 더하는 방식으로 씬 파일에 저장합니다(버전을 올리고 "키 추가만, 없으면 이전 동작" 규칙).</p>
+</section>
+
+<section id="compute">
+<h2>3. 4번 — 컴퓨트 파이프라인과 UAV <span class="tag">크기: 큼</span></h2>
+<p>RHI 인터페이스가 처음으로 넓어지는 일입니다. 순서를 지키면 어느 층에서 깨졌는지 알 수 있습니다: <b>(A) 타입 → (B) 셰이더 컴파일 → (C) D3D11 → (D) 첫 시험 → (E) D3D12 → (F) 응용</b>. D3D11 을 먼저 동작시키고 D3D12 를 붙이는 순서가 안전합니다(8단계 때도 그랬습니다).</p>
+
+<h3>필요한 것의 목록</h3>
+<table>
+<thead><tr><th>층</th><th>추가</th><th>자리</th></tr></thead>
+<tbody>
+<tr><td>스테이지</td><td><code>ShaderStage::Compute</code>, <code>ShaderStageMask_Compute = 1 &lt;&lt; 2</code></td><td><code>PipelineTypes.h</code>, <code>ResourceDesc.h</code></td></tr>
+<tr><td>바인딩 타입</td><td><code>BindingType::UnorderedAccess</code>(u#), <code>kMaxUavRegister</code></td><td><code>BindingTypes.h</code></td></tr>
+<tr><td>리소스 플래그</td><td><code>TextureBind_UnorderedAccess</code>, <code>BufferBind_UnorderedAccess</code></td><td><code>ResourceDesc.h</code></td></tr>
+<tr><td>상태</td><td><code>ResourceState::UnorderedAccess</code></td><td><code>RenderPassTypes.h</code></td></tr>
+<tr><td>파이프라인</td><td>컴퓨트 PSO: 셰이더 + 바인딩 레이아웃들. 새 핸들 타입(<code>Handle.h</code> 의 태그 패턴)과 <code>Device::CreateComputePipeline</code> <span class="tag p">제안</span></td><td><code>PipelineTypes.h</code>, <code>Device.h</code></td></tr>
+<tr><td>명령</td><td><code>CommandList::SetComputePipeline</code>, <code>Dispatch(x, y, z)</code>, 컴퓨트용 리소스 셋 바인딩</td><td><code>CommandList.h</code></td></tr>
+<tr><td>셰이더</td><td><code>cs_5_0</code> 프로파일, FxCompile 의 <code>ShaderType=Compute</code>, 리플렉션의 UAV 인식</td><td><code>DXBC/ShaderCompiler.cpp</code>, <code>vcxproj</code></td></tr>
+</tbody>
+</table>
+<div class="box">
+<p><b>셰이더 모델 5.0 으로 충분합니다.</b> 이 엔진은 D3D12 에서도 DXBC(fxc) 바이트코드를 씁니다(<code>GetTargetProfile</code>: "vs_5_0", "ps_5_0"). 컴퓨트도 <code>cs_5_0</code> 으로 두 백엔드가 같은 바이트코드를 받으므로 DXC 도입이나 셰이더 모델 상향이 필요 없습니다. 올릴 일이 생기면 두 군데(<code>GetTargetProfile</code> 과 vcxproj 의 <code>&lt;ShaderModel&gt;</code>)를 같이 바꿉니다(22.4).</p>
+</div>
+
+<div class="step"><div class="sh"><span class="n">A</span>RHI 타입 추가 (백엔드는 아직 건드리지 않기)</div><div class="sb">
+<ul>
+<li>위 표대로 열거형·플래그를 더합니다. 모든 열거형이 <code>uint8_t</code> 이고 Desc 를 해시 키로 쓰므로, 필드를 <b>끝에</b> 더하고 <code>operator==</code>/<code>Hash()</code> 에 빠뜨리지 않게 합니다(<code>PipelineTypes.cpp</code>).</li>
+<li>리소스 셋에서 UAV 슬롯은 어떤 리소스의 <b>어느 밉</b>인지 알아야 합니다. <code>ResourceBinding</code>(buffer, texture, sampler 세 핸들)에 <code>uint8_t mip = 0</code>(필요하면 <code>arraySlice</code>)를 <b>끝에</b> 추가하세요. 3장 후반(IBL)에서 밉마다 UAV 가 필요해집니다. 처음부터 넣어 두면 나중에 호출 코드를 안 고칩니다.</li>
+<li><code>CommandList</code> 는 <code>Dispatch</code> 가 "렌더 패스 밖"에서만 유효하다는 규칙을 먼저 정하고 <code>BeginRenderPass</code> 와 같은 방식의 에러 로그(1회)로 지키게 합니다. 컴퓨트는 패스 개념이 없으니 <code>IsInRenderPass()</code> 를 재사용합니다.</li>
+<li>컴퓨트 바인딩 호출 방식: ① 별도 함수 <code>SetComputeResourceSet</code> ② <code>SetResourceSet</code> 이 현재 파이프라인 종류를 보고 갈라짐. D3D12 는 <code>SetGraphicsRootDescriptorTable</code>/<code>SetComputeRootDescriptorTable</code> 이 다른 함수이므로 ①이 코드가 단순합니다 <span class="tag p">제안</span>. 단, 현재 <code>Renderer</code> 가 <code>SetResourceSet</code> 을 파이프라인보다 먼저 부르는 곳이 있으니(<code>Render()</code> 앞부분), D3D12 쪽이 "루트 시그니처가 정해지기 전의 리소스 셋"을 어떻게 미뤄 두는지(<code>D3D12CommandList.cpp</code>)를 먼저 읽고 컴퓨트도 같은 방식을 쓰세요.</li>
+</ul>
+</div></div>
+
+<div class="step"><div class="sh"><span class="n">B</span>셰이더 컴파일 경로 <span class="tag">DXBC/ShaderCompiler.cpp</span></div><div class="sb">
+<ul>
+<li><code>GetTargetProfile</code> 에 <code>case ShaderStage::Compute: return "cs_5_0";</code>.</li>
+<li><code>CompileFromFile</code>/<code>LoadOrCompile</code> 의 진입점 이름 인자를 쓰므로 호출 쪽에서 <code>"CSMain"</code> 을 넘깁니다.</li>
+<li><code>ReflectBindings</code>: 리플렉션의 <code>D3D_SIT_UAV_RWTYPED</code> 등을 <code>BindingType::UnorderedAccess</code> 로 매핑하지 않으면 <code>Renderer::ValidateBindings</code> 류 검사가 컴퓨트 셰이더를 틀렸다고 합니다. <code>ValidateConstantBufferSize</code> 는 컴퓨트 상수버퍼에도 그대로 씁니다(C++ 구조체와 HLSL cbuffer 크기 대조).</li>
+<li>vcxproj 에 <code>FxCompile</code> 항목(<code>&lt;ShaderType&gt;Compute&lt;/ShaderType&gt;</code>, <code>&lt;ShaderModel&gt;5.0</code>, 진입점 <code>CSMain</code>)을 추가.</li>
+</ul>
+</div></div>
+
+<div class="step"><div class="sh"><span class="n">C</span>D3D11 백엔드 먼저</div><div class="sb">
+<ul>
+<li><b>리소스</b>: <code>D3D11Device::CreateTexture</code> 가 <code>TextureBind_UnorderedAccess</code> 를 보면 <code>D3D11_BIND_UNORDERED_ACCESS</code> 를 켜고 UAV(<code>CreateUnorderedAccessView</code>)를 함께 만듭니다. <b>sRGB 포맷에는 UAV 가 안 됩니다</b>: 컴퓨트가 쓰는 텍스처는 <code>R8G8B8A8_UNORM</code> 이나 float 포맷으로 만드세요. 밉 UAV 는 밉마다 하나씩(<code>D3D11_TEX2D_UAV::MipSlice</code>). 큐브를 UAV 로 쓸 때는 <code>Texture2DArray</code> 뷰(6 슬라이스)입니다.</li>
+<li><b>셰이더</b>: <code>CreateShader</code> 가 <code>stage == Compute</code> 이면 <code>CreateComputeShader</code>.</li>
+<li><b>명령</b>: <code>CSSetShader</code>, <code>CSSetConstantBuffers</code>, <code>CSSetShaderResources</code>, <code>CSSetUnorderedAccessViews</code>, <code>Dispatch</code>. <code>SetResourceSet</code> 이 슬롯마다 <code>*SSet*</code> 으로 풀리는 기존 코드(<code>D3D11CommandList.cpp</code>)의 컴퓨트 버전입니다.</li>
+<li><b>해저드</b>: 같은 텍스처가 SRV 와 UAV 로 동시에 묶이면 D3D11 이 둘 다 풀어 버립니다. Dispatch 뒤에 UAV 를 <code>nullptr</code> 로 풀고, 그 텍스처를 읽는 그래픽스 패스 앞에서도 풀려 있는지 확인합니다. <code>BeginRenderPass</code> 가 겹치는 SRV 를 푸는 기존 로직(<code>srvUnbinds</code>)을 UAV 에도 확장하세요.</li>
+<li><code>Barrier</code> 는 D3D11 에서 상태 추적만 합니다. <code>UnorderedAccess</code> 상태도 추적에 포함시키면 D3D12 를 붙일 때 호출 코드가 이미 맞아 있습니다.</li>
+</ul>
+</div></div>
+
+<div class="step"><div class="sh"><span class="n">D</span>첫 시험: 아무것도 계산하지 않는 컴퓨트 <span class="tag v">확인</span></div><div class="sb">
+<p>실제 알고리즘 전에 <b>"컴퓨트가 쓴 값이 화면에 보인다"</b>만 확인합니다. 256×256 <code>R8G8B8A8_UNORM</code> 텍스처(UAV + SRV)를 만들고 셰이더는 <code>tex[id.xy] = float4(id.x/255.0, id.y/255.0, 0, 1);</code> 한 줄. Dispatch(32, 32, 1)(그룹 8×8). 이어서 <b>디버그 뷰</b>나 ImGui 이미지로 그 텍스처를 보여 그라데이션이 나오는지 봅니다(ImGui 로 보려면 <code>GetImGuiTextureId</code> 가 SRV 를 요구).</p>
+<p>이 시험이 통과하기 전에 알고리즘을 얹으면 "컴퓨트가 안 도는지, 알고리즘이 틀린지"를 구분할 수 없습니다.</p>
+</div></div>
+
+<div class="step"><div class="sh"><span class="n">E</span>D3D12 백엔드 <span class="tag">D3D12Device.cpp, D3D12CommandList.cpp</span></div><div class="sb">
+<ul>
+<li><b>리소스</b>: 텍스처 생성 시 <code>D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS</code>. UAV 는 <b>셰이더에서 보이는 디스크립터 힙</b>(지금 <code>m_srvHeap</code> 이 CBV/SRV 를 담는 힙이고, D3D12 의 같은 힙 종류가 UAV 도 담습니다)에 <code>CreateUnorderedAccessView</code> 로 만듭니다. 디스크립터 수 상한(힙 크기)과 <code>DeferFree</code>(프레임이 지난 뒤 해제)를 같이 확인하세요.</li>
+<li><b>루트 시그니처</b>: <code>CreateBindingLayout</code>(1000줄 근처, <code>D3D12_DESCRIPTOR_RANGE</code> 를 슬롯 타입별로 만드는 부분)에 <code>D3D12_DESCRIPTOR_RANGE_TYPE_UAV</code> 를 더합니다. 컴퓨트용 루트 시그니처는 그래픽스와 같은 방식으로 만들되 <code>D3D12_SHADER_VISIBILITY_ALL</code> 을 씁니다.</li>
+<li><b>파이프라인</b>: <code>D3D12_COMPUTE_PIPELINE_STATE_DESC</code> + <code>CreateComputePipelineState</code>. 그래픽스와 달리 렌더 타깃 포맷 같은 것이 없어 훨씬 단순합니다.</li>
+<li><b>명령</b>: <code>SetComputeRootSignature</code>, <code>SetPipelineState</code>, <code>SetComputeRootDescriptorTable</code>, <code>Dispatch</code>.</li>
+<li><b>배리어 — 이 일에서 가장 틀리기 쉬운 곳</b>: ① 텍스처가 <code>RenderTarget</code>/<code>ShaderResource</code> → <code>UnorderedAccess</code> → <code>ShaderResource</code> 로 전이. ② <b>같은 UAV 를 쓰는 Dispatch 두 개가 연달아 있으면 그 사이에 UAV 배리어</b>(<code>D3D12_RESOURCE_BARRIER_TYPE_UAV</code>)가 필요(밉 체인을 한 텍스처에 이어서 쓰는 경우). <code>Barrier(texture, before, after)</code> 에서 <code>before == after == UnorderedAccess</code> 이면 UAV 배리어로 해석하게 하는 것이 인터페이스를 늘리지 않는 방법입니다 <span class="tag p">제안</span>.</li>
+<li><b>잘못 쓰기 쉬운 것</b>: ImGui 가 SRV 힙을 직접 설정합니다(<code>SetDescriptorHeaps</code>). 컴퓨트를 기록하는 시점에도 같은 힙 하나만 묶여 있어야 합니다(지금 구조가 "프레임에 힙 하나"라 맞습니다).</li>
+</ul>
+<div class="box warn"><p>D3D12 Debug Layer 의 "리소스 상태 불일치" 메시지가 나오면 거의 항상 배리어의 <code>before</code> 가 실제와 다른 경우입니다. 텍스처마다 상태를 들고 있는 변수(<code>m_shadowMapState</code> 같은)를 컴퓨트 대상에도 똑같이 두고 갱신하세요.</p></div>
+</div></div>
+
+<div class="step"><div class="sh"><span class="n">F</span>검증 <span class="tag v">확인</span></div><div class="sb">
+<ul>
+<li>D 의 그라데이션 시험이 두 백엔드에서 같은 픽셀(PNG 비교).</li>
+<li>Debug Layer 메시지 0건. 특히 D3D12 의 상태·디스크립터 메시지.</li>
+<li>기존 씬의 화면이 전과 같음(그래픽스 경로를 건드렸으므로). <code>kFrameCount</code> 를 1, 3 으로 바꿔도 같은 화면(GraphicsConfig.h 의 규칙).</li>
+<li>컴퓨트 패스에도 <code>GpuProfileScope</code> 를 달아 패널에 시간이 보이게 합니다.</li>
+</ul>
+</div></div>
+</section>
+
+<section id="ibl">
+<h2>4. 4번 후반 — 엔진 안에서 IBL 만들기 <span class="tag">크기: 중간</span></h2>
+<p>지금 <code>Renderer::ResolveEnvironment</code> 는 구워진 확산 조도·반사 프리필터·BRDF LUT 가 없으면 스카이박스 밉으로 근사합니다(22.4). 컴퓨트가 생기면 세 가지를 엔진이 만들 수 있습니다. 쉬운 것부터:</p>
+<table>
+<thead><tr><th>순서</th><th>만들 것</th><th>입력 → 출력</th><th>난이도</th><th>검증</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>BRDF LUT</td><td>없음 → 2D <code>R16G16_FLOAT</code> 계열(<code>R16G16B16A16_FLOAT</code> 로 대체 가능) 512×512</td><td>쉬움(씬과 무관, 한 번만)</td><td>동봉된 LUT 와 픽셀 단위 비교</td></tr>
+<tr><td>2</td><td>확산 조도 큐브</td><td>스카이박스 큐브 → 32×32 큐브(코사인 컨볼루션)</td><td>중간</td><td>구워진 맵과 비교(평균 밝기, 면별)</td></tr>
+<tr><td>3</td><td>반사 프리필터 큐브</td><td>스카이박스 → 밉마다 거칠기가 다른 GGX 중요도 샘플링</td><td>어려움(밉마다 UAV)</td><td>거울 → 거친 면 순서로 구 하나를 놓고 비교</td></tr>
+</tbody>
+</table>
+<div class="step"><div class="sh"><span class="n">1</span>BRDF LUT 부터</div><div class="sb">
+<p>입력 텍스처가 없고 결과가 고정이라 컴퓨트 파이프라인 전체(타입·셰이더·바인딩·배리어)를 시험하기에 가장 좋은 첫 응용입니다. 셰이더는 (NdotV, roughness) 마다 Hammersley 샘플로 GGX 를 적분해 (scale, bias)를 씁니다. 기준값: <code>Assets\Cubemap</code> 의 LUT 와 비교하면 오차 한계를 알 수 있습니다(샘플 수 1024 이상). 만든 텍스처는 <code>m_environment.brdfLut</code>(t12)에 꽂습니다.</p>
+</div></div>
+<div class="step"><div class="sh"><span class="n">2</span>큐브를 UAV 로 쓰는 법</div><div class="sb">
+<ul>
+<li>큐브 텍스처 하나는 "6 슬라이스 2D 배열 + 큐브 SRV"입니다(<code>TextureDimension::TextureCube</code>). 쓰는 쪽(UAV)은 <code>RWTexture2DArray&lt;float4&gt;</code> 로 슬라이스를 직접 지정합니다. 그래서 RHI 에서 큐브의 UAV 뷰는 "배열 뷰, 밉 하나, 6 슬라이스 전부"로 만들면 됩니다.</li>
+<li>스레드 그룹의 z 가 면 번호(0~5)가 되게 <code>Dispatch(N/8, N/8, 6)</code>. 셰이더가 (면, 픽셀) → 큐브 방향 벡터로 바꾸는 식은 D3D 면 순서(+X −X +Y −Y +Z −Z, ResourceDesc.h 의 주석)를 따라야 하며, 기존 스카이박스 셰이더의 방향 규칙과 같은지 <b>구워진 맵 한 장과 면별로 비교</b>하는 것이 가장 빠른 확인입니다.</li>
+<li>입력 스카이박스는 sRGB 로 읽힌다는 점(<code>GetOrLoadCubemap</code>: "항상 sRGB 로 읽음")에 유의하세요. HDR half float 맵이면 선형 값이 그대로입니다.</li>
+</ul>
+</div></div>
+<div class="step"><div class="sh"><span class="n">3</span>프리필터와 캐시</div><div class="sb">
+<ul>
+<li>밉 m 의 거칠기 = m / (밉수 − 1). 밉마다 UAV 가 필요하므로 <code>ResourceBinding::mip</code>(3장 A 에서 넣어 둔 필드)를 씁니다. 밉마다 Dispatch 한 번, 같은 텍스처의 밉을 연달아 쓰므로 D3D12 에서는 서브리소스 단위 UAV 배리어가 필요 없고(밉이 서로 다른 서브리소스) 전체 전이만 앞뒤에 둡니다.</li>
+<li>결과는 <b>스카이박스 이름별로 캐시</b>합니다(<code>m_cubeCache</code> 와 같은 방식, 키는 이름 + "|ibl"). 매 프레임 만들면 안 됩니다. 스카이박스가 바뀔 때만(<code>ResolveEnvironment</code> 에서 이름 비교) 다시 만들고, 기존 핸들은 <code>DestroyTexture</code> 로 정리합니다.</li>
+<li>우선순위 규칙: 씬에 구워진 맵 이름이 있으면 그것, 없으면 엔진 생성물, 그것도 안 되면 지금의 밉 근사. 이 규칙을 <code>ResolveEnvironment</code> 의 "대체" 분기 순서에 그대로 옮깁니다. <code>irradianceLod</code> 같은 보정값도 생성물일 때는 0 으로 돌려놓아야 합니다.</li>
+<li>IBL 세기: 샘플 IBL 세트가 "약 2배 밝게 구워져" 씬마다 0.5 를 쓴다는 22.4 의 항목이 있습니다. 엔진이 만든 맵은 이 보정이 필요 없으니, 생성물을 쓸 때 <code>iblIntensity</code> 해석이 달라지지 않게(밝기 기준을 정해 문서에 적기) 주의하세요.</li>
+</ul>
+</div></div>
+<div class="box ok"><p><b>검증.</b> 같은 스카이박스로 (구워진 맵) 대 (엔진 생성물)을 CubemapTest 에서 두 백엔드로 비교. 확산 조도는 평균 색이 거의 같아야 하고, 반사는 거칠기 0 에서 스카이박스와 같고 거칠기가 커질수록 흐려져야 합니다(그림 12-14c 의 비교 방식). 생성 시간은 프로파일러로 재서 "스카이박스 교체 시 한 번"만 나오는지 확인.</p></div>
+</section>
+
+<section id="scale">
+<h2>5. 8번 — 규모를 위한 일들 <span class="tag">크기: 큼</span></h2>
+<p>다섯 개는 서로 독립이지만 아래 순서가 효과 대비 비용이 좋습니다. <b>전부 하지 않아도 됩니다</b> — 22.6 이 말하듯 "씬 규모가 커져 필요가 생길 때"입니다. 먼저 <b>측정용 씬</b>을 만드세요: <code>UndoPrefabTest</code> 의 <code>Spawner</code>(<code>maxSpawns=1000</code>, <code>interval=0.001</code>, Lifetime 은 떼기)와 Sponza 두 개면 "오브젝트가 많은 경우"와 "삼각형이 많은 경우"를 따로 봅니다. 각 단계의 전후를 <code>Renderer::Stats</code> 와 프로파일러 CPU/GPU 시간으로 기록하세요.</p>
+
+<h3 id="s-world">5-1. 월드 행렬 캐시 (D7)</h3>
+<p><b>지금</b>: <code>GameObject::GetWorldMatrix()</code> 는 부를 때마다 부모 사슬을 재귀로 곱합니다. <code>UploadObjectConstants</code> 가 드로우마다 이를 부르고 역행렬(<code>XMMatrixInverse</code>)도 매번 구하며, 그림자 패스·메인 패스·미리보기 패스가 각각 부르므로 오브젝트마다 프레임에 최소 2~3 번 계산됩니다. D7 은 "더티 플래그 캐시는 버그의 원인이 된다"는 이유로 미뤘습니다.</p>
+<div class="box">
+<p><b>더티 플래그 대신 "프레임 단위 일괄 계산"을 권합니다</b> <span class="tag p">제안</span>. <code>Transform</code> 의 값들은 에디터·스크립트·기즈모가 직접 고치므로 "바뀌면 표시"를 모든 쓰기 경로에 심을 수 없습니다. 대신 렌더링이 시작될 때 한 번 모든 오브젝트의 월드 행렬과 (역행렬 전치)를 계산해 배열에 둡니다 — 무효화 규칙이 없으니 낡은 값이 남을 수 없습니다. 비용은 오브젝트당 프레임에 한 번(행렬 곱 + 역행렬 한 번)입니다.</p>
+</div>
+<ol>
+<li><code>Renderer::BuildDrawList</code> 앞에서 <code>Scene</code> 의 오브젝트 수만큼 <code>std::vector&lt;WorldCache&gt;</code>(world, worldInvTranspose)를 채웁니다. 부모가 목록에서 뒤에 있을 수 있으므로 "이번 프레임에 계산됨" 표식(프레임 번호)을 두고 재귀로 메모이제이션합니다.</li>
+<li><code>DrawItem</code> 에 캐시 인덱스를 넣고 <code>UploadObjectConstants</code> 가 그것을 씁니다. <code>GetWorldMatrix()</code> 자체는 <b>캐시하지 않고 그대로</b> 둡니다(스크립트가 부르는 공개 API 이고, 재생 중 같은 프레임 안에서 값을 바꾼 뒤 읽는 일이 있어 낡은 값이 위험).</li>
+<li>오브젝트 포인터와 캐시를 잇는 맵은 만들지 말고, <code>DrawItem</code> 이 인덱스를 들게 하세요. 새 멤버를 <code>GameObject</code> 에 넣어야 한다면 <b>클래스 끝에 추가</b>(이미 빌드된 스크립트 DLL 의 ABI 규칙, 20.22).</li>
+</ol>
+<div class="box ok"><p><b>검증.</b> 화면 동일(픽셀 차이 0 이어야 함 — 같은 행렬 계산을 옮긴 것이므로). 계층이 깊은 씬(<code>Tree.json</code> in UndoPrefabTest)과 비균등 스케일 부모 씬 포함. CPU 시간: Spawner 1000 개 씬의 프레임 CPU 시간 전후 비교.</p></div>
+
+<h3 id="s-cull">5-2. 절두체 컬링</h3>
+<ol>
+<li><b>경계 상자</b>: 메시 로컬 AABB 를 정점에서 한 번 계산해 <code>Mesh</code> 에 저장(서브메시별로 두면 더 정확). 모델 노드의 <code>preTransform</code> 은 월드 행렬에 포함되어 있으므로 AABB 는 "정점 좌표 그대로"의 로컬 상자입니다.</li>
+<li><b>월드 AABB</b>: 로컬 상자의 중심·반지름(half-extent)을 월드 행렬의 절댓값 3×3 으로 변환(8 꼭짓점 변환보다 빠름). 5-1 의 월드 행렬 캐시를 쓰면 이 단계가 싸집니다 — 그래서 월드 행렬이 먼저입니다.</li>
+<li><b>절두체 평면</b>: 가장 안전한 길은 DirectXMath 에 딸린 <code>DirectXCollision.h</code> 의 <code>BoundingFrustum</code>(투영 행렬에서 만들고 <code>Transform</code> 으로 월드에 옮김)과 <code>BoundingBox</code>/<code>BoundingSphere</code> 의 <code>Intersects</code>/<code>Contains</code> 를 쓰는 것입니다. 행 벡터 규약과 D3D 깊이 범위(0..1)를 라이브러리가 처리해 줍니다. 직접 평면을 뽑는다면(Gribb–Hartmann) 이 엔진은 행 벡터 규약(v·M)이라 클립 좌표의 각 성분이 행렬의 <b>열</b>에서 나오니 행/열을 바꿔 쓰기 쉽습니다. 어느 쪽이든 <b>카메라 앞 정중앙의 점은 통과하고 뒤의 점은 탈락한다</b>는 두 점 시험을 코드 옆에 두세요.</li>
+<li><b>적용 위치</b>: <code>m_drawList</code> 는 PSO → 재질 → 메시로 정렬된 <b>전체</b> 목록으로 두고, 패스마다(메인·미리보기·그림자) 가시성을 따로 판정합니다. 메인 카메라로 컬링한 목록을 미리보기 카메라가 그대로 쓰면 미리보기에서 물체가 사라집니다. 가장 단순한 형태는 <code>DrawItems</code> 루프 안에서 <code>if (!Visible(item, frustum)) continue;</code> 입니다.</li>
+<li><b>그림자 패스</b>는 카메라 절두체가 아니라 <b>광원 절두체</b>(직교 상자)로 판정해야 합니다. 카메라 밖에 있어도 그림자를 드리우는 물체가 있기 때문입니다.</li>
+<li>설정 토글 <code>RenderSettings::frustumCulling</code> 과 통계 <code>Stats::culled</code> 를 추가합니다.</li>
+</ol>
+<div class="box ok"><p><b>검증.</b> 컬링 on/off 로 같은 위치에서 스크린샷 → <b>픽셀 차이 0</b> 이어야 합니다(컬링은 보이지 않는 것만 버리므로). 카메라를 여러 각도(모서리에 걸친 물체, 뒤쪽, 위)로 돌려 같은 시험을 반복. Sponza 에서 draws 가 줄고 프레임 시간이 줄어드는지. 실패 징후는 "화면 가장자리에서 물체가 튀어나오듯 나타남"입니다.</p></div>
+
+<h3 id="s-inst">5-3. 메시 공유와 인스턴싱</h3>
+<h4>메시 공유 (인스턴싱의 전제)</h4>
+<ul>
+<li>같은 파일을 두 번 놓으면 <code>Scene::AddModel</code> 이 메시를 복사합니다(22.2 의 "메시 공유"). 프리팹은 20.22 에서 이미 공유합니다(<code>PrefabResources</code>). 같은 방식을 <code>AddModel</code> 에도 적용: <code>MeshSource</code>(경로 + 메시 인덱스)를 키로 기존 <code>Mesh</code> 를 찾아 재사용.</li>
+<li>씬 불러오기(<code>SceneSerializer</code>)도 같은 <code>MeshSource</code> 를 가진 항목은 한 번만 로드. <b>"메시는 추가만 되고 줄지 않는다"는 불변식</b>(Undo 가 의존)은 지키세요.</li>
+<li>재질 공유는 편집이 모든 인스턴스에 보이는 부작용이 있습니다(20.22 의 프리팹 재질). 메시만 공유하고 재질은 선택으로 두는 편이 안전합니다.</li>
+</ul>
+<h4>인스턴싱</h4>
+<ol>
+<li><b>묶기</b>: <code>m_drawList</code> 는 이미 PSO → 재질 → 메시 → 인덱스 범위로 정렬되어 있으니, 연속된 항목 중 (pipeline, material, mesh, indexStart, indexCount)가 같은 것이 한 "런"입니다. 런 길이가 N 이면 드로우 한 번.</li>
+<li><b>RHI</b>: <code>CommandList::DrawIndexedInstanced(indexCount, instanceCount, startIndex, baseVertex, startInstance)</code> 하나를 추가(두 백엔드 모두 한 줄 호출).</li>
+<li><b>인스턴스별 데이터</b>: 오브젝트 상수버퍼(b1)를 드로우마다 올리는 대신, 이번 프레임 전체의 (world, worldInvTranspose)를 <code>StructuredBuffer&lt;PerObjectConstants&gt;</code> 하나에 모아 올립니다. <code>BufferBind_ShaderResource</code> + <code>stride</code> 가 이미 지원됩니다(ResourceDesc.h). 새 SRV 슬롯은 오브젝트 레이아웃에 t13 으로(<code>kMaxSrvRegister = 16</code> 이내; 프레임 셋이 t8~t12, 재질 셋이 t0~t4 를 씀).</li>
+<li><b>인덱싱</b>: HLSL 의 <code>SV_InstanceID</code> 는 <code>StartInstanceLocation</code> 을 포함하지 않습니다. 런의 첫 인스턴스 번호를 상수(<code>baseInstance</code>)로 드로우마다 넘기거나, 런마다 구조화 버퍼의 연속 구간을 쓰고 셰이더가 <code>baseInstance + SV_InstanceID</code> 로 읽게 하세요.</li>
+<li>VS 가 b1 대신 구조화 버퍼를 읽게 바꾸는 일은 <b>그림자 VS 도 함께</b> 해야 합니다(<code>ShadowVertexShader.hlsl</code>). 안 하면 그림자만 어긋납니다.</li>
+<li>인스턴스가 1 개인 런도 같은 경로로 그려 분기를 없앱니다(코드 경로 하나로 검증이 쉬워짐).</li>
+</ol>
+<div class="box ok"><p><b>검증.</b> 화면 픽셀 동일(인스턴싱은 결과를 바꾸지 않음). Spawner 1000 개 씬에서 <code>Stats.draws</code> 1000 → 1~수 개, CPU 시간 감소, <code>UpdateBuffer</code> 호출 수 감소. D3D12 는 구조화 버퍼의 디스크립터와 업로드 크기(<code>kFrameCount</code> 복제본)를 확인. 인스턴스 상한(버퍼 크기) 초과 시의 동작(분할 또는 경고)도 정해 두세요.</p></div>
+
+<h3 id="s-csm">5-4. 캐스케이드 섀도맵 (CSM)</h3>
+<p><b>지금</b>: 방향광 0 하나가 한 장의 2048² 맵을 쓰고, 직교 범위 <code>shadowOrthoSize=60</code>, 거리 <code>shadowDistance=40</code> 이 씬 크기에 맞춰진 고정값입니다. 큰 씬에서는 해상도가 모자라거나 범위를 벗어납니다.</p>
+<ol>
+<li><b>분할</b>: 카메라 near~far(그림자 거리)를 N(보통 4) 구간으로 나눕니다. 로그와 균등을 섞은 "practical split"(λ≈0.5~0.9).</li>
+<li><b>구간별 광원 행렬</b>: 구간의 절두체 8 꼭짓점을 구해 광원 공간에서 경계 구(회전해도 크기가 안 변함)나 AABB 로 감싸고 직교 투영을 만듭니다. 구를 쓰면 카메라를 돌려도 그림자 크기가 일정합니다.</li>
+<li><b>텍셀 스냅</b>: 광원 공간 원점을 텍셀 크기의 배수로 반올림해 카메라가 움직일 때 그림자 가장자리가 "반짝이는(shimmering)" 것을 막습니다. 이 단계를 빼먹는 것이 CSM 의 가장 흔한 미완성입니다.</li>
+<li><b>저장소</b>: <b>RHI 를 바꾸지 않는 방법</b> — 4096² 맵 한 장을 2×2 아틀라스로 쓰고 구간마다 <code>RenderPassDesc::viewport</code>(x, y, width, height)로 칸을 지정(<code>Viewport</code> 가 이미 x, y 를 가짐). 구간마다 <b>렌더 패스가 따로</b>(구간 수만큼 <code>BeginRenderPass</code>)이고, <code>LoadOp::Clear</code> 는 뷰포트가 아니라 깊이 뷰 <b>전체</b>를 지우므로 <b>첫 구간만 <code>Clear</code>, 나머지 구간은 <code>Load</code></b> 로 시작해야 앞 구간의 그림자가 지워지지 않습니다. 패스가 늘어나므로 <code>Stats.renderPasses</code> 와 배리어 수도 같이 늘어납니다(그림자 맵의 DepthWrite ↔ ShaderResource 전이는 첫 패스 앞과 마지막 패스 뒤에 한 번씩만). 이후 필요하면 <code>TextureDimension::Texture2DArray</code> 로 옮깁니다.</li>
+<li><b>셰이더</b>: 프레임 상수에 구간별 ViewProj(4 개)와 분할 거리를 추가 → <code>ComputeShadowFactor</code> 가 뷰 공간 깊이로 구간을 고르고 아틀라스 칸의 UV 로 변환해 PCF. 구간 경계에서 두 구간을 섞으면(작은 블렌드 폭) 이음매가 사라집니다. <code>PerFrameConstants</code> 의 크기가 바뀌므로 <code>ValidateConstantBufferSize</code> 가 C++ 구조체와 HLSL cbuffer 의 어긋남을 잡아 줍니다 — 이 검사를 믿고 크기를 맞추세요.</li>
+<li><b>디버그 뷰</b>: 4(그림자 계수) 옆에 "구간 색칠"(구간마다 R/G/B/Y)을 새 번호로 추가하면 분할이 맞는지 한눈에 보입니다.</li>
+<li>캐스터 컬링: 5-2 를 구간 상자로 재사용하면 구간당 그리는 양이 줄어 4 배 비용이 눈에 띄지 않습니다.</li>
+</ol>
+<div class="box ok"><p><b>검증.</b> (1) 구간 색칠 뷰가 가까운 곳이 구간 0 인지. (2) 카메라를 한 텍셀 미만씩 움직인 두 장의 스크린샷에서 그림자 가장자리가 같음(스냅이 맞음). (3) 큰 씬(Sponza)에서 멀리까지 그림자가 있음. (4) 구간이 1 개이고 범위를 전과 같게 두면 <b>전 화면과 같음</b>(회귀 시험). 그림자 바이어스는 구간마다 월드 텍셀 크기가 달라 구간별 보정이 필요할 수 있습니다.</p></div>
+
+<h3 id="s-deferred">5-5. Deferred 렌더링 <span class="tag p">선택</span></h3>
+<div class="box warn">
+<p><b>먼저 필요를 물으세요.</b> Deferred 는 "조명이 많을 때" 이득이고, 지금 조명은 최대 <code>MAX_LIGHTS = 8</code> 개이며 반투명·MSAA 가 어려워지고 G-버퍼 대역폭이 듭니다. 22.6 이 "D11 의 조명 배열 재검토도 여기서"라고 한 것처럼 진짜 목표가 <b>조명 수를 늘리는 것</b>이라면 <b>타일/클러스터 Forward+</b>(컴퓨트로 타일마다 조명 목록을 만들고, 포워드 셰이더가 그 목록만 순회)가 이 엔진의 구조(반투명·알파 컷아웃·IBL 그대로)에 더 맞을 수 있습니다. 4번(컴퓨트)이 끝난 뒤 둘을 비교해 정하세요.</p>
+</div>
+<p>그래도 Deferred 를 하겠다면 순서:</p>
+<ol>
+<li><b>전제</b>: ①(HDR 타깃) 필수. 깊이를 SRV 로 읽어야 하므로 메인 깊이 포맷을 <code>D24_UNORM_S8_UINT</code> 에서 <code>D32_FLOAT</code> + SRV 가능(그림자 맵이 이미 쓰는 TYPELESS + 포맷별 뷰 방식)으로 바꿉니다.</li>
+<li><b>셰이더 분리</b>: <code>BasicPixelShader.hlsl</code>(232줄)에서 BRDF·조명 계산을 함수로 먼저 뽑아 <code>Common.hlsli</code>(또는 <code>Lighting.hlsli</code>)로 옮깁니다 — <b>이 리팩터링만 먼저 하고 화면이 안 변하는지 확인</b>합니다. 그 다음 GBuffer PS(재질 샘플링 → G-버퍼 출력)와 Lighting PS(G-버퍼 → 조명 합산)로 나눕니다.</li>
+<li><b>G-버퍼 배치</b> <span class="tag p">제안</span>: RT0 = 알베도 <code>R8G8B8A8_UNORM_SRGB</code> + (A: AO), RT1 = 노멀(옥타헤드럴 2채널 <code>R16G16_FLOAT</code> 계열 또는 <code>R10G10B10A2</code>; 포맷을 추가해야 함) + roughness, RT2 = 발광 HDR 또는 metallic. 월드 위치는 저장하지 않고 깊이 + 역 ViewProj 로 복원. <code>kMaxRenderTargets = 8</code>, PSO 의 <code>rtvFormats</code>/<code>rtvCount</code> 가 이미 MRT 를 지원합니다.</li>
+<li><b>패스 구성</b>: Shadow → GBuffer(불투명만) → Lighting(풀스크린, IBL 포함, HDR 로 출력) → Skybox → <b>Forward(반투명·unlit, 깊이는 G-버퍼 것을 재사용)</b> → Tonemap → UI. 알파 컷아웃은 GBuffer 패스에서 <code>clip</code> 으로 처리 가능.</li>
+<li><b>디버그 뷰</b>가 G-버퍼 각 채널을 직접 보여 주게(알베도·노멀·깊이 뷰가 이미 있으니 G-버퍼 값으로 바꿔 끼움).</li>
+<li><b>회귀 기준</b>: 같은 씬을 Forward 와 Deferred 로 그려 픽셀 비교(허용 오차는 노멀 인코딩 때문에 몇 레벨). 반투명 씬은 따로.</li>
+</ol>
+<div class="box ok"><p><b>검증.</b> 조명 8 개 씬에서 두 방식의 픽셀 차이 ≤ 몇 레벨, 조명을 수십 개로 늘린 시험 씬(<code>MAX_LIGHTS</code> 상수를 올려야 함)에서 GPU 시간 비교. 메모리: G-버퍼 크기(해상도 × 채널)를 계산해 적어 두세요.</p></div>
+</section>
+
+<section id="docs">
+<h2>6. 문서와 검증 규칙</h2>
+<ul>
+<li><b>문서는 새 파일로.</b> 구현 기록은 기존 <code>rendering-analysis.html</code> 을 갱신하지 않고 별도 문서로 남깁니다(형식은 <code>undo-prefab-notes.html</code> 참고: 무엇을·왜·검증·확인하지 못한 것·한계). 자동 검증이 못 하는 것(드래그, 단축키, 눈으로 본 화면)은 솔직하게 적습니다.</li>
+<li><b>20장 기록에 "확인하지 못한 것"을 적습니다.</b> 이 프로젝트의 기록 형식은 무엇을·왜·검증·확인하지 못한 것입니다. 자동 검증이 못 하는 것(드래그, 단축키, 실제 눈으로 본 화면)은 솔직하게 남깁니다.</li>
+<li><b>소유권 규칙</b>: D3D 리소스 소유는 <code>ComPtr</code>, 생성 함수는 <code>ComPtr&lt;T&gt;</code> 값 반환, 생 포인터는 빌려 쓸 때만. RHI 헤더(<code>RHI/*.h</code>)에는 D3D 헤더를 include 하지 않습니다 — 새 타입도 이 규칙 안에서.</li>
+<li><b>ABI</b>: 이미 빌드된 스크립트 DLL 이 쓰는 클래스(<code>GameObject</code>, <code>Scene</code>)에 멤버를 더할 때는 <b>끝에</b> 추가합니다.</li>
+<li><b>커밋</b>은 단계 하나(예: "HDR 타깃 + 톤매핑 패스")를 한 커밋으로. 커밋 메시지는 기존 형식 <code>[2026/MM/DD] 요약</code>.</li>
+</ul>
+<h3>단계 체크리스트 (복사해 쓰세요)</h3>
+<pre><code>[ ] 기준 스크린샷 (d3d11 / d3d12) 저장
+[ ] 변경 구현 (한 번에 한 층)
+[ ] Debug 빌드 경고 없음, D3D12 Debug Layer 메시지 0건
+[ ] 기준과 픽셀 비교 (의도한 변화만 있음)
+[ ] Stats / 프로파일러 숫자 기록 (전/후)
+[ ] 창 크기 변경, Release, SherlockGame.exe 확인
+[ ] 별도 기록 문서 작성 (무엇을 · 왜 · 검증 · 확인하지 못한 것)</code></pre>
+<p class="foot">관련 문서: <code>docs/rendering-analysis.html</code> 22.6(우선순위), 22.4(알려진 한계), D7(월드 행렬), 12.14·20.15(큐브맵·IBL), 20.22(프리팹·메시 공유), 부록 D(실행 인자) · <code>docs/pbr-guide.html</code>(셰이딩 배경).</p>
+</section>
+
+</main>
+</div>
+</body>
+</html>

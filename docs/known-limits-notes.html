@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>알려진 한계 정리 (22.4 후속)</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --ok:#1f7a3d; --ok-bg:#e5f4ea; --warn:#a8620a; --warn-bg:#fdf3e2; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --ok:#5fcf85; --ok-bg:#12301f; --warn:#f0b14a; --warn-bg:#3a2a10; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width:960px; margin:0 auto; padding:24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:20px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); } .box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.tag { font-size:12px; padding:1px 8px; border-radius:10px; background:var(--accent-bg); color:var(--accent); white-space:nowrap; }
+nav { margin-bottom:18px; font-size:14px; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>알려진 한계 정리 (22.4 후속)</h1>
+  <p>2026-10-15 · rendering-analysis.html 22.4 "코드에 남아 있는 알려진 경고와 한계"에서 <b>지금 코드로 고칠 수 있는 것</b>을 고치고, 나머지는 <b>무엇이 더 필요한지</b>를 정리했습니다. 기존 분석 문서는 고치지 않았습니다.</p>
+  <p class="foot">상태: 작업 트리에 반영, 커밋하지 않음.</p>
+</header>
+<nav><a href="#fixed">1. 고친 것</a><a href="#todo">2. 다른 일이 필요한 것</a><a href="#leave">3. 그대로 두는 것</a></nav>
+
+<section id="fixed">
+<h2>1. 고친 것</h2>
+<h3>통계의 배리어 수 <span class="tag">Renderer.cpp</span></h3>
+<ul>
+  <li><b>문제.</b> 패널의 <code>barriers</code>·<code>passes</code> 가 <code>Renderer::Render</code> 끝에서 찍혀 UI 패스와 마지막 Present 전이가 빠졌습니다.</li>
+  <li><b>수정.</b> <code>Render</code> 시작에서 <code>Stats</code> 를 비울 때 두 값은 지난 프레임 값을 남기고, 값 채우기는 <code>EndUIPass</code> 의 마지막 배리어 뒤로 옮겼습니다(<code>cmd.GetStats()</code> 가 그 프레임 전체를 셈). 패널이 UI 패스 안에서 그려지므로 <b>한 프레임 늦은 값</b>이 보입니다. 카운터라 문제는 없습니다.</li>
+  <li><b>결과.</b> 데모 씬 에디터: passes 3, barriers 6(그림자·메인·UI 패스, Present 전이 포함). 이전에는 UI 패스 몫이 빠진 값이었습니다. 이 수치를 문서에 적은 곳(분석 문서의 통계 표들)은 UI 패스만큼 늘어난 값으로 읽어야 합니다.</li>
+  <li><b>확인하지 못한 것.</b> D3D12 에서 숫자를 따로 대조하지 않았고, <code>EndUIPass</code> 를 부르지 않는 앱 구성이 있다면 그 구성에서는 값이 갱신되지 않습니다(엔진 루프는 항상 부름).</li>
+</ul>
+<h3>스카이박스는 원근 투영 전제 <span class="tag">SkyboxVertexShader.hlsl</span></h3>
+<ul>
+  <li><b>문제.</b> 시선 방향을 <code>ndc / proj._11, ndc / proj._22</code> 로 복원하는 식이 원근 전제라, 직교 카메라에서 방향이 원근처럼 퍼져 보였습니다.</li>
+  <li><b>수정.</b> 직교 투영이면(<code>proj._44 &gt; 0.5</code>, 원근은 0) 모든 픽셀의 방향을 카메라 앞 방향 하나로 고정합니다. 직교에서 하늘은 원래 단색에 가깝습니다.</li>
+  <li><b>검증.</b> 카메라 기본값을 잠시 직교로 바꿔(검증 뒤 원복) 데모 씬을 D3D11·D3D12 로 실행: 하늘이 단색으로 나오고 오류 없음. 원복 후 헬멧 씬을 두 백엔드로 실행해 오류·경고 없음(종료 시 Live Device 한 줄만).</li>
+  <li><b>확인하지 못한 것.</b> 직교 카메라 UI(현재 에디터에 직교로 바꾸는 UI 가 없음)로의 확인, 두 백엔드 직교 화면의 픽셀 대조(스크린샷에 UI 가 들어가 직접 비교가 되지 않음), Release 빌드.</li>
+</ul>
+</section>
+
+<section id="todo">
+<h2>2. 지금 못 고친 것 — 무엇이 필요한가</h2>
+<table>
+<thead><tr><th>항목</th><th>왜 지금 못 고치나</th><th>필요한 것</th></tr></thead>
+<tbody>
+<tr><td><b>환경이 없는 씬의 금속이 어두움</b></td><td>버그가 아니라 설계 한계입니다. 환경이 없으면 금속은 균일한 <code>ambientColor</code> 만 반사합니다(물리적으로는 맞는 결과). 헬멧·데모 등 내장 씬은 10-08 부터 기본 환경이 있어 이미 해결되어 있습니다.</td><td><b>결정</b>: ① 환경이 없는 씬에 엔진 기본 환경(Cubemap 샘플 세트)을 자동 적용 — 옛 씬의 모습이 바뀜 ② 셰이더에 하늘/땅 그라데이션 같은 절차적 환경 — 반사 계산이 모든 씬에 영향 ③ 지금처럼 두고 씬 쪽에서 환경을 지정. 어느 쪽이든 기존 씬 화면 비교가 필요합니다.</td></tr>
+<tr><td><b>모델 루트 경로 미실행</b></td><td>노드가 둘 이상인 모델을 빈 루트 아래 묶는 경로를 실행해 볼 모델이 저장소에 없습니다(동봉 모델이 모두 단일 노드).</td><td>다중 노드 glTF 한 개(라이선스가 자유로운 샘플, 예: 계층이 있는 간단한 장면). 불러온 뒤 <code>--dump-objects=1</code> 로 계층·위치를 보고, 단일 노드 모델과 같은 방식으로 놓였는지 스크린샷으로 확인.</td></tr>
+<tr><td><b>셰이더 모델을 정하는 곳이 두 군데</b></td><td>런타임 컴파일(<code>GetTargetProfile</code>)과 빌드(vcxproj 의 <code>ShaderModel</code>)가 다른 도구의 설정이라 코드만으로 한 곳으로 합칠 수 없습니다.</td><td><b>결정</b>: ① 현재 상태 유지(올릴 때 두 군데를 같이 바꾼다는 주석) ② 시작할 때 <code>.cso</code> 의 프로파일(리플렉션)과 런타임 프로파일을 대조해 어긋나면 경고하는 검사 추가. 셰이더 모델을 실제로 올리는 일(컴퓨트·SM 5.1 이상)이 생길 때 같이 하는 것이 효율적입니다(가이드 3장 참고).</td></tr>
+<tr><td><b>비균등 스케일 부모의 분해 근사</b></td><td>로컬 변환을 위치·회전·스케일로만 저장해 전단(shear)을 표현할 수 없습니다. 오차를 경고하는 정도는 가능하지만 원인(표현력)은 그대로입니다.</td><td><b>설계 결정</b>: 로컬을 행렬로 저장하거나(Transform 구조 변경, 씬 파일 버전 상승, 기즈모·인스펙터 전반에 영향), 비균등 스케일 부모 아래 회전된 자식을 금지/경고. 영향 범위가 커서 필요가 생길 때 다룹니다.</td></tr>
+<tr><td><b>톤매핑이 셰이더 끝에 있음</b></td><td>HDR 렌더 타깃과 풀스크린 톤매핑 패스가 필요합니다(구조 변경).</td><td>22.6 의 3번. 순서와 방법: <code>docs/rhi-roadmap-guide.html</code> 2장.</td></tr>
+<tr><td><b>IBL 맵은 미리 구운 것만</b></td><td>스카이박스에서 조도·프리필터·BRDF LUT 를 만들려면 컴퓨트 파이프라인이 필요합니다.</td><td>22.6 의 4번(컴퓨트·UAV) 뒤 엔진 안 IBL 생성. 같은 가이드 3·4장.</td></tr>
+<tr><td><b>샘플 IBL 세트가 약 2배 밝게 구워짐(씬 IBL 세기 0.5)</b></td><td>자산 문제입니다. 세트를 다시 굽거나 세기를 다시 정해야 합니다.</td><td>외부 도구(예: cmgen 계열, 또는 4번 이후 엔진 생성)로 맵을 다시 만든 뒤 모든 씬의 <code>iblIntensity</code> 를 1.0 기준으로 재조정하고 화면을 비교. 4번이 끝나면 엔진 생성물을 기준으로 삼는 편이 낫습니다.</td></tr>
+<tr><td><b>스카이박스 UI 화면 확인 / 자동 검증의 사각</b></td><td>자동 검증이 입력(클릭·드래그·단축키)을 주입하지 못합니다.</td><td>입력 주입 수단: Win32 <code>SendInput</code> 기반 스크립트, 또는 ImGui 입력 큐에 이벤트를 넣는 자동화 모드(<code>io.AddMousePosEvent</code> 등)를 실행 인자 재생에 추가. 그러면 슬라이더 드래그·Ctrl+Z·드롭을 자동으로 검증할 수 있습니다(Undo 의 "확인하지 못한 것"도 함께 풀림).</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="leave">
+<h2>3. 그대로 두는 것</h2>
+<ul>
+  <li><b>종료 시 Live Device 한 줄.</b> 자식 객체 보고가 0건인 장치 자신의 줄이라 누수가 아닙니다. 이번 실행에서도 이 한 줄만 나왔습니다.</li>
+  <li><b>D3D12 Dynamic 버퍼 미갱신 경고.</b> 의도된 안전 검사입니다.</li>
+</ul>
+<div class="box"><p>22.4 표의 나머지 해결 항목(X4000, DirectXTK, F10 문구)은 앞서 처리되어 있습니다.</p></div>
+</section>
+</main>
+</body>
+</html>

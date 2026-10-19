@@ -458,6 +458,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
     <li class="sub" data-ch="c20"><a href="#c20-17">20.17 적용 기록 — 2026-10-08 · 스크립트 DLL 과 핫리로드</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-18">20.18 적용 기록 — 2026-10-08 · 모든 씬에 HDR 환경</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-19">20.19 적용 기록 — 2026-10-12 · 좁은 패널 자동 정렬</a></li>
+    <li class="sub" data-ch="c20"><a href="#c20-20">20.20 적용 기록 — 2026-10-15 · 자잘한 정리</a></li>
     <li data-ch="c21"><a href="#c21">21. 질문과 답</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-0">21.0 질문 색인</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-1">21.1 C++ 언어</a></li>
@@ -9173,6 +9174,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <tr><td class="n">10-08</td><td class="mono">c97fe3f</td><td>요청 "Assets\Cubemap 의 큐브맵으로 CubemapTest 프로젝트를 만들고 IBL 이 적용되게" → HDR 텍스처, PBR(Cook-Torrance) 재질, split-sum IBL, 노출·톤매핑, 실험 프로젝트 <code>CubemapTest</code></td><td><a href="#c20-15">20.15</a>, <a href="#c11-6">11.6</a></td></tr>
 <tr><td class="n">10-08</td><td class="mono">c97fe3f</td><td>요청 "큐브맵 추가해줘" → <code>TextureDimension::TextureCube</code>, <code>CommandList::Draw</code>, 정점 속성 0개 PSO, 큐브 로더(DDS·면 6장·절차적), <code>Scene::skybox</code>, 스카이박스 패스</td><td><a href="#c20-14">20.14</a>, <a href="#c12-14">12.14</a></td></tr>
 <tr><td class="n">10-12</td><td>미커밋</td><td>요청 "에디터 창이 작으면 내용물이 잘리는데 자동 정렬되게" → 디버그 패널에 줄바꿈(<code>TextWrapped</code>)·라벨 폭을 뺀 위젯 폭·체크박스/버튼 줄 흐름 적용, 창을 키웠다 줄이면 다시 잘리던 문제는 가로 스크롤바 옵션을 빼서 해결</td><td><a href="#c20-19">20.19</a></td></tr>
+<tr><td class="n">10-15</td><td>미커밋</td><td>요청 "22.6 자잘한 정리 실행" → F10 안내 문구, vcpkg 의 directxtk, ComputeShadowFactor 의 X4000 경고 정리</td><td><a href="#c20-20">20.20</a></td></tr>
 </tbody></table></div>
 
 <!-- c20-03.html -->
@@ -10106,6 +10108,15 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
   <li><b>고르지 않은 대안.</b> 처음에는 <code>ImGuiWindowFlags_HorizontalScrollbar</code> 를 안전장치로 켰습니다. 그러나 스크롤바가 있는 창은 줄바꿈 기준이 창 폭이 아니라 직전 프레임의 내용 폭이어서, 창을 키웠다 줄이면 줄바꿈이 넓은 폭에 고정된 채 스크롤바만 생겼습니다(1900px → 1000px 로 재현). 그래서 이 옵션을 뺐고, 아주 좁아지면 일부가 잘리는 것은 받아들였습니다. 줄바꿈 폭을 창 폭에서 직접 계산하면 스크롤바도 유지할 수 있지만 <code>TextWrapped</code> 호출을 전부 별도 헬퍼로 바꿔야 해서 하지 않았습니다.</li>
   <li><b>함정.</b> <code>std::max</code> 는 Windows 헤더의 <code>max</code> 매크로와 충돌해 <code>(std::max)(…)</code> 로 썼습니다. 에디터가 켜져 있으면 엔진 DLL 링크가 실패(LNK1104·LNK1168)하므로 닫은 뒤 빌드해야 합니다.</li>
   <li><b>검증.</b> Debug 빌드 후 에디터를 띄워 창을 1900×1000 으로 키웠다가 1000×759 로 줄인 화면에서 Render Settings 의 텍스트·체크박스 줄이 줄어든 폭에 맞게 줄바꿈되고 오른쪽 라벨이 잘리지 않음을 확인했습니다. Release·D3D12 와 다른 패널의 극단적 폭은 확인하지 않았습니다.</li>
+</ul>
+
+<h3 id="c20-20">20.20 적용 기록 — 2026-10-15 · 자잘한 정리</h3>
+<p>요청은 22.6 의 1순위 "자잘한 정리" 실행이었습니다. 스크립트 와일드카드 통일은 10-08 에 끝나 있어 나머지 셋을 했습니다.</p>
+<ul>
+  <li><b>UI 문구.</b> <code>App/DebugUI.cpp</code> 의 "F10 freeze" 를 "F10 pause" 로 바꿨습니다(11-C 에서 F10 이 재생 일시정지가 됐음).</li>
+  <li><b>DirectXTK.</b> <code>vcpkg.json</code> 의 <code>directxtk</code> 를 뺐습니다. 소스에서 쓰는 곳이 없었습니다.</li>
+  <li><b>X4000.</b> 경고는 런타임 컴파일의 Debug 플래그(<code>D3DCOMPILE_DEBUG | SKIP_OPTIMIZATION</code>)에서만 나왔습니다. <code>fxc /Zi /Od</code> 로 재현했고(<code>(23,5): warning X4000</code>) <code>/O3</code> 와 기본 플래그에서는 나오지 않았습니다. <code>ComputeShadowFactor</code> 를 <code>result</code> 하나를 갱신해 마지막에 반환하는 구조로 바꾸자 두 플래그 모두 경고가 없습니다. 동작은 같습니다(그림자 꺼짐·far 밖이면 1).</li>
+  <li><b>검증.</b> Debug|x64 솔루션 빌드 성공. 그림자 화면은 눈으로 비교하지 않았고, 로직은 조건식을 그대로 옮긴 것입니다. Release 빌드와 D3D12 실행은 확인하지 않았습니다.</li>
 </ul>
 
 <!-- c21-01.html -->
@@ -11117,11 +11128,11 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <div class="tbl"><table>
 <thead><tr><th>항목</th><th>내용</th><th>확인</th></tr></thead>
 <tbody>
-<tr><td>HLSL 경고 X4000</td><td>런타임 컴파일 경로에서 <code>BasicPixelShader.hlsl</code> 의 <code>ComputeShadowFactor</code> 에 "use of potentially uninitialized variable" 경고가 나옵니다. 이 함수는 그림자가 꺼졌을 때와 광원 far 밖일 때 조기 반환하는 구조입니다. 동작에는 영향이 없어 손대지 않았습니다</td><td>함수 구조는 소스로 확인. 경고 자체는 09-28·10-02 의 실행 기록에 따름(이번에 다시 빌드하지 않음)</td></tr>
+<tr><td><s>HLSL 경고 X4000</s> 해결(10-15)</td><td>10-15 에 해결. <code>ComputeShadowFactor</code> 의 조기 반환 두 곳을 단일 반환으로 바꿨습니다. 경고는 런타임 컴파일 경로의 <code>-Od</code>(Debug)에서만 나왔고 <code>fxc -Zi -Od</code> 로 재현·소멸을 확인했습니다</td><td><code>Shaders/BasicPixelShader.hlsl</code></td></tr>
 <tr><td>종료 시 Live Device 한 줄</td><td>Debug 실행을 끝내면 <code>Live ID3D11Device</code>(또는 D3D12) <code>… Refcount: 3</code> 한 줄이 남습니다. 자식 객체 보고는 0건이라 누수가 아니며, 장치가 자기 자신을 보고하는 줄입니다. 3 중 하나의 출처는 1단계 때부터 확정하지 못했습니다</td><td><code>RHI/D3D11/D3D11Device.cpp</code> 의 주석이 "이 한 줄만 나오는 것"을 기대 상태로 적고 있음</td></tr>
-<tr><td>쓰지 않는 의존성 DirectXTK</td><td><code>vcpkg.json</code> 에 <code>directxtk</code> 가 선언돼 있지만 소스에서 DirectXTK 헤더나 타입을 쓰는 곳이 없습니다. 09-10 에 "5단계에서 쓸 것"이라며 남겼으나 텍스처 로딩은 DirectXTex 로 했습니다</td><td>소스 grep 0건</td></tr>
+<tr><td><s>쓰지 않는 의존성 DirectXTK</s> 해결(10-15)</td><td><code>vcpkg.json</code> 에서 <code>directxtk</code> 를 뺐습니다. 소스에서 쓰는 곳이 없고 빌드가 통과합니다</td><td>소스 grep 0건, Debug 빌드</td></tr>
 <tr><td>셰이더 모델을 정하는 곳이 두 군데</td><td>런타임 컴파일은 <code>RHI/DXBC/ShaderCompiler.cpp</code> 의 <code>GetTargetProfile</code>, 빌드의 <code>.cso</code> 는 <code>SherlockEngine.vcxproj</code> 의 FxCompile 다섯 항목(<code>&lt;ShaderModel&gt;5.0</code>)이 정합니다. 올릴 때는 둘을 같이 바꿔야 합니다</td><td>두 파일 확인</td></tr>
-<tr><td>낡은 UI 문구</td><td><code>App/DebugUI.cpp</code> 의 단축키 안내는 "F10 freeze" 인데 F10 은 일시정지입니다. (<code>App/Editor.cpp</code> 의 "Game/Scripts" 문구는 2026-10-08 에 고침)</td><td>문자열 확인</td></tr>
+<tr><td><s>낡은 UI 문구</s> 해결(10-15)</td><td><code>App/DebugUI.cpp</code> 의 단축키 안내를 "F10 pause" 로 고쳤습니다. (<code>App/Editor.cpp</code> 의 "Game/Scripts" 문구는 10-08 에 고침)</td><td>문자열 확인</td></tr>
 <tr><td>D3D12 Dynamic 버퍼 미갱신 경고</td><td>이번 프레임에 갱신되지 않은 Dynamic 상수버퍼로 그리면 <code>D3D12CommandList</code> 가 오류 로그를 한 번 냅니다. Debug 전용이 아니라 모든 구성에서 검사합니다</td><td>검사 코드 확인</td></tr>
 <tr><td>통계의 배리어 수</td><td>패널의 배리어 수는 <code>Renderer::Render</code> 끝에서 찍혀, 그 뒤의 UI 패스와 마지막 Present 전이가 빠집니다</td><td>10-01 점검 기록에 따름</td></tr>
 <tr><td>모델 루트 경로 미실행</td><td>노드가 둘 이상인 모델을 빈 루트 아래 묶는 경로는 동봉 모델이 모두 단일 노드라 실행해 본 적이 없습니다</td><td>11-F 기록에 따름</td></tr>
@@ -11160,7 +11171,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <div class="tbl"><table>
 <thead><tr><th>순위</th><th>일</th><th>크기</th><th>이유</th></tr></thead>
 <tbody>
-<tr><td class="n">1</td><td>자잘한 정리: 낡은 UI 문구, 쓰지 않는 DirectXTK 선언, X4000 경고, <s>스크립트 와일드카드 통일</s>(10-08)</td><td>작음</td><td>코드와 문서가 어긋나는 지점을 없앱니다. 모두 22.4 에 위치가 적혀 있어 바로 할 수 있습니다</td></tr>
+<tr><td class="n">1</td><td><s>자잘한 정리: 낡은 UI 문구, 쓰지 않는 DirectXTK 선언, X4000 경고, 스크립트 와일드카드 통일</s> 완료(10-08·10-15)</td><td>—</td><td>코드와 문서가 어긋나는 지점을 없앱니다. 모두 22.4 에 위치가 적혀 있어 바로 할 수 있습니다</td></tr>
 <tr><td class="n">2</td><td><s>스카이박스와 큐브 텍스처, PBR + IBL 셰이딩</s> 완료(10-08)</td><td>—</td><td>남은 것은 HDR 렌더 타깃(아래 3)과 IBL 맵의 엔진 내 생성(아래 4)입니다</td></tr>
 <tr><td class="n">3</td><td>HDR 타깃과 톤매핑(후처리의 첫 패스)</td><td>중간</td><td>풀스크린 패스 구조가 생기면 블룸·FXAA 가 같은 틀에 올라갑니다. 포맷 추가가 필요합니다</td></tr>
 <tr><td class="n">4</td><td>컴퓨트 파이프라인과 UAV, 이어서 PBR + IBL</td><td>큼</td><td>RHI 인터페이스가 처음으로 넓어지는 지점입니다. 셰이더 스테이지와 바인딩 타입이 늘어 두 백엔드를 모두 고칩니다</td></tr>

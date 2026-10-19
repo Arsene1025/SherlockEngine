@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Undo · 프리팹 구현 기록</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+nav { margin-bottom:18px; font-size:14px; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Undo · 프리팹 구현 기록</h1>
+  <p>2026-10-15 · rendering-analysis.html 22.6 의 5번(Undo 와 에디터 명령 큐)과 6번(Instantiate / 지연 Destroy 와 프리팹)을 구현한 기록입니다. 기존 분석 문서는 고치지 않고 이 문서에 따로 적었습니다.</p>
+  <p class="foot">상태: 작업 트리에 반영, 커밋하지 않음. 관련: <code>docs/rhi-roadmap-guide.html</code>(3·4·8번 구현 가이드)</p>
+</header>
+<nav><a href="#undo">1. Undo·명령 큐</a><a href="#prefab">2. Instantiate·Destroy·프리팹</a><a href="#format">3. 파일 형식</a><a href="#ref">4. 조작·실행 인자</a><a href="#verify">5. 검증</a><a href="#limits">6. 한계</a></nav>
+
+<section id="undo">
+<h2>1. Undo 와 에디터 명령 큐</h2>
+<ul>
+  <li><b>방식.</b> 명령 객체가 아니라 <b>편집 상태 전체의 JSON 스냅샷 체인</b>입니다(<code>App/EditorHistory.h/.cpp</code>, <code>SceneSerializer::SaveEditState / RestoreEditState</code>). 담는 것: 오브젝트(자식·컴포넌트·모르는 컴포넌트·ID), 재질 내용, 조명, 환경·앰비언트·클리어 색. 100단계·96MB 가 넘으면 오래된 것부터 버립니다.</li>
+  <li><b>변경 감지.</b> 편집 위젯마다 명령을 만들지 않고, ImGui "바쁨"(<code>IsAnyItemActive</code> · 마우스 누름 · 기즈모 사용)이던 프레임이 끝날 때 상태가 달라졌으면 한 단계로 기록합니다(<code>EditorApp::TrackHistory</code>). 슬라이더를 끌어도 한 단계입니다.</li>
+  <li><b>명령 큐.</b> 구조를 바꾸는 콜백(불러오기, 새 씬, 놓기, 추가, 복제, 프리팹, Undo/Redo)은 큐에 넣고 <code>Editor::Draw</code> 뒤 <code>OnGUI</code> 안(같은 프레임의 렌더 앞)에서 비웁니다. 추가·삭제·복제·드롭 같은 구조 명령은 <code>RunCommand</code> 가 실행 앞뒤를 기록합니다.</li>
+  <li><b>안정 ID.</b> <code>GameObject::GetId()</code>(<code>uint64_t</code>, <code>Scene</code> 의 단조 증가 카운터, 0 은 무효). 에디터 선택도 ID 로 기억해 Undo 로 목록이 다시 만들어져도 유지됩니다.</li>
+  <li><b>복원.</b> 오브젝트는 전부 다시 만들고 재질은 같은 인덱스에 덮어씁니다. 메시는 건드리지 않습니다(추가만 되고 줄지 않는 불변식). 씬을 통째로 바꾸는 경로(불러오기·새 씬·씬 전환·프로젝트 변경)는 기록을 비우고, 재생 정지와 스크립트 다시 올리기는 기준을 다시 잡으며(<code>Rebase</code>), 재생 중에는 기록을 멈춥니다.</li>
+</ul>
+</section>
+
+<section id="prefab">
+<h2>2. Instantiate · 지연 Destroy · 프리팹</h2>
+<h3>스크립트 API (<code>Scene/Script.h</code>)</h3>
+<table>
+<thead><tr><th>함수</th><th>동작</th></tr></thead>
+<tbody>
+<tr><td><code>Instantiate(prefabPath, position)</code></td><td>Assets 기준 경로의 <code>.prefab</code> 을 위치에 만들고 루트 <code>GameObject*</code> 반환(실패 시 <code>nullptr</code>)</td></tr>
+<tr><td><code>Instantiate(const GameObject&amp;)</code></td><td>부분 트리 복제</td></tr>
+<tr><td><code>Destroy(GameObject&amp;)</code> · <code>DestroySelf()</code></td><td>표시만 하고 그 프레임의 <code>Update</code>/<code>FixedUpdate</code> 끝에 지움. 표시된 오브젝트는 남은 순회에서 건너뜀. 자식도 같이 지워짐</td></tr>
+<tr><td><code>FindById(id)</code></td><td>안정 ID 로 찾기, 없으면 <code>nullptr</code></td></tr>
+</tbody>
+</table>
+<div class="box"><p><b>규칙.</b> 다른 오브젝트의 포인터를 오래 들고 있으면 대상이 지워질 때 dangling 입니다. <b>ID 를 기억하고 쓸 때 <code>FindById</code> 로 다시 찾으세요.</b> 엔진의 <code>FollowTarget</code> 도 그렇게 바꿨습니다. <code>Instantiate</code> 는 목록 끝에 추가하므로 새 컴포넌트는 순회가 거기 닿을 때 <code>Start</code>/<code>Update</code> 를 받습니다.</p></div>
+<h3>프리팹</h3>
+<ul>
+  <li>만들기: Hierarchy 의 Save Prefab 버튼. 쓰기: 콘텐츠 브라우저의 <code>.prefab</code>(아이콘·더블클릭=원점 배치·우클릭 메뉴·씬 뷰에 드롭=커서 아래 배치).</li>
+  <li>같은 프리팹(경로 + 수정 시각)의 인스턴스는 메시·재질을 <b>공유</b>합니다(<code>Scene::PrefabResources</code>). 60개를 만들어도 메시 1·재질 1 이었습니다. 인스턴스 루트는 <code>"prefab"</code> 경로를 저장하고 Inspector 에 표시됩니다.</li>
+  <li>패키징: <code>GameBuilder</code> 의 선택 복사 모드가 <code>Prefabs</code> 폴더를 항상 복사하고, 프리팹이 쓰는 모델·텍스처도 씬과 같은 함수(<code>CollectReferences</code>)로 모읍니다. 스크립트가 문자열 경로로 부르므로 씬이 참조하지 않기 때문입니다.</li>
+  <li><b>ABI.</b> 이미 빌드된 스크립트 DLL 이 깨지지 않도록 <code>GameObject</code> 와 <code>Scene</code> 의 새 멤버는 모두 클래스 끝에 추가했습니다.</li>
+</ul>
+</section>
+
+<section id="format">
+<h2>3. 파일 형식</h2>
+<ul>
+  <li><b>씬 파일 버전 5.</b> 오브젝트에 <code>"id"</code>(씬 안에서 유일한 정수)와, 프리팹 인스턴스 루트에는 <code>"prefab"</code>(상대 경로). 둘 다 없는 옛 파일은 불러올 때 ID 를 새로 매기고 프리팹 출처는 없는 것으로 읽습니다.</li>
+  <li><b><code>.prefab</code></b>: 씬 파일의 부분집합, 참조는 파일 안 지역 인덱스.</li>
+</ul>
+<pre><code>{ "version": 1, "type": "prefab",
+  "meshes": [ … ], "materials": [ … ], "objects": [ … ] }</code></pre>
+</section>
+
+<section id="ref">
+<h2>4. 조작과 실행 인자</h2>
+<table>
+<thead><tr><th>키</th><th>동작</th></tr></thead>
+<tbody>
+<tr><td><code>Ctrl+Z</code></td><td>Undo (Edit 메뉴에 단계 이름 표시)</td></tr>
+<tr><td><code>Ctrl+Y</code> · <code>Ctrl+Shift+Z</code></td><td>Redo</td></tr>
+<tr><td><code>Ctrl+D</code></td><td>선택 오브젝트 복제(원본과 같은 부모 아래)</td></tr>
+</tbody>
+</table>
+<table>
+<thead><tr><th>실행 인자</th><th>프레임</th><th>효과</th></tr></thead>
+<tbody>
+<tr><td><code>--delete=이름</code></td><td>6</td><td>그 이름의 오브젝트와 자식 삭제(큐·기록을 거침)</td></tr>
+<tr><td><code>--duplicate=이름</code> · <code>--make-prefab=이름</code> · <code>--instantiate=경로</code></td><td>11</td><td>복제 · 프리팹 저장 · 프리팹 배치</td></tr>
+<tr><td><code>--gesture=1</code></td><td>11</td><td>"바쁨" 강제를 풀어 변경 감지 경로가 한 단계를 만들게 함</td></tr>
+<tr><td><code>--undo=N</code> · <code>--redo=N</code></td><td>14 · 15</td><td>Undo / Redo N 번</td></tr>
+<tr><td><code>--save-after=경로</code></td><td>18</td><td>그 상태를 저장 → 저장한 JSON 을 비교해 되돌리기를 확인</td></tr>
+</tbody>
+</table>
+<p>입력 주입 없이 실행 인자만으로 재생하므로 드래그·단축키는 자동 검증이 못 합니다(기존 분석 문서 부록 D 의 사각과 같음).</p>
+</section>
+
+<section id="verify">
+<h2>5. 검증</h2>
+<p>실험 프로젝트 <code>Projects/UndoPrefabTest</code>(<code>Scripts/Tests/Lifetime</code>·<code>Spawner</code>, 프리팹 Bullet·Sphere 1, 씬 Spawn·Tree)로 확인했습니다.</p>
+<ul>
+  <li>추가·위치 변경 뒤 <code>--undo</code>/<code>--redo</code> 로 저장한 JSON 의 오브젝트 배열이 기대한 상태와 같음. 자식과 모르는 컴포넌트가 달린 부분 트리 삭제 뒤 Undo 도 원래와 같고, 복제의 Undo/Redo 도 같음.</li>
+  <li><code>--gesture</code> 로 변경 감지 경로가 한 단계를 만듦. ID 는 저장·불러오기를 거쳐 유지.</li>
+  <li>Spawner 가 60개를 만드는 동안 메시 1·재질 1 공유, Lifetime 으로 살아 있는 수가 상한에 머문 뒤 0, 지워진 ID 의 <code>FindById</code> 는 <code>nullptr</code>.</li>
+  <li>패키징: <code>--build-game=PkgTest --build-scene=Spawn.json</code> 으로 만든 패키지의 <code>Assets\Prefabs</code> 에 두 프리팹이 복사되고, 그 exe 에서 스크립트 DLL 이 로드되어 Spawner 가 프리팹을 만듦.</li>
+  <li>Debug 엔진 솔루션 빌드 성공. Sample·CubemapTest·QuaternionLookTest·UndoPrefabTest 의 스크립트 DLL 이 새 헤더로 빌드됨.</li>
+</ul>
+<div class="box warn"><p><b>확인하지 못한 것.</b> 실제 슬라이더 드래그와 Ctrl+Z 입력의 화면, Release 빌드(패키지 포함), D3D12 실행, 에디터에서 프리팹을 끌어 놓는 화면, 프리팹이 모델·텍스처를 참조하는 경우의 패키징. 프로젝트 솔루션으로 직접 빌드하면 <code>SherlockEditor\EditorMain.cpp</code> 에서 <code>C1083</code>(<code>App/EntryPoints.h</code>)이 나는데, 이 파일은 건드리지 않았고 엔진 솔루션 빌드는 통과합니다(원인 미조사).</p></div>
+</section>
+
+<section id="limits">
+<h2>6. 알려진 한계</h2>
+<ul>
+  <li>모델을 놓은 뒤 Undo 하면 오브젝트는 사라지지만 <b>메시는 남습니다</b>(고아 메시). 복원 뒤 자식의 표시 순서가 보존되지 않을 수 있습니다.</li>
+  <li>프리팹 인스턴스끼리 재질을 공유하므로 한 인스턴스의 재질 편집이 전부에 보입니다. override·apply·revert, 중첩 프리팹, 프리팹 파일 수정의 기존 인스턴스 반영은 없습니다.</li>
+  <li>Hierarchy 재부모화와 텍스처 드롭은 아직 그리는 도중에 씬을 바꿉니다(큐를 거치지 않음). 변경 감지가 한 단계로 잡아 Undo 는 되지만 구조 변경의 안전은 "짝 맞추기"에 기댑니다.</li>
+  <li>스냅샷이 전체라 큰 씬에서는 단계당 비용이 커서 바이트 상한을 두었습니다.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>
