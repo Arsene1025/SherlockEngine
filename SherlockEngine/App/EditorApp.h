@@ -2,6 +2,8 @@
 #include "App/AppBase.h"
 #include "Graphics/Model.h"   // ModelStats
 #include "App/Editor.h"
+#include "App/EditorHistory.h"
+#include <functional>
 
 // 에디터 앱 (SherlockEditor.exe). 10단계부터 "엔진 위의 앱"이며, GameApp(SherlockGame.exe)과 짝을 이룸. 씬 구성·카메라 컨트롤러·단축키·패널만 가짐.
 // 2026-09-28 TestApp → EditorApp 으로 개명: 저장·불러오기 단위는 프로젝트(11-E)와 씬(11)이 맡으므로, 이 클래스는 에디터 실행 파일 그 자체임.
@@ -38,6 +40,25 @@ private:
     void AddPrimitive(int type);     // 0 구, 1 큐브, 2 원기둥, 3 평면, 4 카메라 오브젝트 (11-C)
     GameObject& AddCameraObject(const char* name);   // 11-C: 메시 없는 오브젝트 + CameraComponent 를 현재 에디터 시점에 만듦
     void DeleteObject(int index);
+    // 2026-10-15: 명령 큐와 되돌리기 (App/EditorHistory.h).
+    // 구조를 바꾸는 편집(추가·삭제·모델·프리팹·복제·씬 불러오기)은 위젯을 그리는 도중에 실행하지 않고 Enqueue 로 큐에 넣음.
+    // OnGUI 가 Editor::Draw 를 끝낸 뒤 FlushCommands 가 순서대로 실행함 — 그때는 어떤 위젯도 오브젝트 벡터를 순회하고 있지 않고,
+    // 결과는 같은 프레임의 렌더에 반영됨. 각 명령은 RunCommand 가 감싸 실행 앞뒤의 씬 상태를 비교해 되돌리기 한 단계로 기록함.
+    struct PendingCommand
+    {
+        std::string label;
+        std::function<void()> run;
+        bool record = true;   // false: 이력을 건드리는 명령(Undo/Redo 자신)이라 RunCommand 로 감싸지 않음
+    };
+    void Enqueue(const std::string& label, std::function<void()> run, bool record = true);
+    void RunCommand(const std::string& label, const std::function<void()>& run);   // 큐를 거치지 않고 즉시 실행하되 이력에는 기록함 (자동 검증이 씀)
+    void FlushCommands();
+    void TrackHistory();                // OnGUI 끝: 위젯 편집(슬라이더·기즈모 …)이 끝난 프레임에 한 단계로 기록
+    void UndoRedo(bool undo);
+    void DuplicateObject(uint64_t id);
+    void SavePrefabOf(uint64_t id);
+    void InstantiatePrefabAt(const std::wstring& relativePath, const DirectX::XMFLOAT3& position);
+    void ResetHistory();                // 씬을 통째로 갈아 끼운 뒤 (새 씬·불러오기·프로젝트 전환): 이력을 비우고 현재 씬을 첫 상태로
     // 11-B단계: 콘텐츠 브라우저 드롭. 모델(Assets 상대 경로)을 바닥면이 position.y 에 닿도록 position 에 놓음.
     void PlaceModel(const std::wstring& relativePath, const DirectX::XMFLOAT3& position);
 
@@ -111,11 +132,28 @@ private:
         bool launcher = false;      // --launcher=1 (2 프레임째 File > Projects 런처 팝업을 엶 — 문서 스크린샷용)
         bool setRotation = false; DirectX::XMFLOAT3 rotationDeg = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --set-rotation=p,y,r (도, 8 프레임째 선택 오브젝트, 11-F)
         std::string parentChild, parentName;   // --set-parent=자식;부모 (7 프레임째 재부모화, 부모가 비면 루트로, 11-F)
+        // 2026-10-15: 되돌리기·프리팹. 입력을 주입하지 못하므로 같은 코드 경로(RunCommand / UndoRedo / SavePrefabOf …)를 직접 부름
+        //   --delete=이름          6 프레임째 그 오브젝트 삭제 (Delete 키와 같은 DeleteObject 를 RunCommand 로)
+        //   --duplicate=이름       11 프레임째 그 오브젝트 복제 (Ctrl+D)
+        //   --make-prefab=이름     11 프레임째 그 오브젝트(와 자식)를 Assets\Prefabs\<이름>.prefab 로 저장
+        //   --instantiate=rel;x,y,z  11 프레임째 프리팹을 놓음 (씬 뷰 드롭과 같은 InstantiatePrefabAt)
+        //   --undo=N / --redo=N    14 / 15 프레임째 Ctrl+Z / Ctrl+Y 를 N 번
+        //   --save-after=path      18 프레임째 씬을 한 번 더 저장 (--save 는 12 프레임째 — 두 파일을 비교해 되돌리기를 검증)
+        std::string deleteName, duplicateName, makePrefabName;
+        std::wstring instantiatePath; DirectX::XMFLOAT3 instantiatePosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+        int undoCount = 0, redoCount = 0;
+        std::wstring saveAfterPath;
+        //   --gesture=1            --set-position 을 RunCommand 가 아니라 "위젯을 끄는 중" 으로 흉내 냄: 8 프레임째 입력 진행 중(busy)으로 두고 값을 바꾼 뒤
+        //                          11 프레임째 끝냄 → TrackHistory/EditorHistory::UpdateGesture 경로가 한 단계를 만드는지 확인
+        bool gesture = false;
     } m_auto;
+    bool m_forceBusy = false;   // 자동 검증(--gesture)이 켬: TrackHistory 가 입력 진행 중으로 봄
     void ParseAutomation();
     void RunAutomation();
 
     // 11-C단계: 데모 씬의 움직임은 스크립트(PlayerController·Rotator)와 엔진 컴포넌트(Rigidbody)가 맡고 재생 중에만 동작함.
+    EditorHistory m_history;                  // 2026-10-15
+    std::vector<PendingCommand> m_commands;   // 2026-10-15
     PlayState m_playState = PlayState::Editing;
     std::string m_playSnapshot;   // 재생 전 씬 JSON (SceneSerializer::SaveToString)
     float m_timeScale = 1.0f;

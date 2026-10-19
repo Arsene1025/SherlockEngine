@@ -173,6 +173,12 @@ void Camera::SetUsePerspectiveProjection(bool usePerspective)
 	UpdateProjectionMatrix();
 }
 
+void Camera::SetOrthoHeight(float height)
+{
+	m_orthoHeight = height < 0.01f ? 0.01f : height;   // 0 이하면 투영 행렬이 퇴화함
+	UpdateProjectionMatrix();
+}
+
 XMMATRIX Camera::GetViewMatrix() const
 {
 	return XMLoadFloat4x4(&m_view);

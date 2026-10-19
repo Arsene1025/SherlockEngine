@@ -213,6 +213,19 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 		if (!CopyOne(scenePath, outAssets / L"Scenes" / Wide(options.startScene), result.filesCopied, result.message)) return result;
 		std::set<std::wstring> modelFolders, textures;
 		CollectReferences(scenePath, modelFolders, textures);
+		// 2026-10-15: 프리팹. 스크립트가 "Prefabs\Bullet.prefab" 같은 문자열로 Instantiate 하므로 씬 파일이 참조하지 않음 — Prefabs 폴더를 통째로 복사하고,
+		// 프리팹이 쓰는 모델·텍스처도 씬과 같은 방식(같은 JSON 키)으로 모음.
+		{
+			std::string ignored;
+			CopyAssetTree(L"Prefabs", outAssets, result.filesCopied, ignored);   // 폴더가 없는 프로젝트도 있음
+			std::vector<std::wstring> roots = { Paths::GetEngineAssetRoot() };
+			if (Paths::HasProject()) roots.push_back(Paths::GetAssetRoot());
+			for (const std::wstring& root : roots)
+			{
+				for (const fs::directory_entry& entry : fs::recursive_directory_iterator(fs::path(root) / L"Prefabs", ec))
+					if (entry.is_regular_file(ec) && entry.path().extension() == L".prefab") CollectReferences(entry.path(), modelFolders, textures);
+			}
+		}
 		for (const std::wstring& folder : modelFolders)
 			if (!CopyAssetTree(folder, outAssets, result.filesCopied, result.message)) return result;
 		for (const std::wstring& texture : textures)

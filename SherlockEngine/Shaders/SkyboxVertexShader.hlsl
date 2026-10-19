@@ -19,7 +19,9 @@ SkyVSOutput VS_Sky(uint vertexId : SV_VertexID)
     // 투영의 역. 원근 투영(XMMatrixPerspectiveFovLH)은 x_ndc = x_view · P._11 / z_view, y_ndc = y_view · P._22 / z_view 이므로
     // z_view = 1 인 뷰 공간 점은 (x_ndc / P._11, y_ndc / P._22, 1). 셰이더의 proj 는 C++ 가 전치해서 올린 것을 column_major 로
     // 읽으므로 논리적으로 P 그 자체임 (ShaderConstants.h 의 행렬 관례).
-    const float3 viewDirection = float3(ndc.x / proj._11, ndc.y / proj._22, 1.0f);
+    // 2026-10-15: 직교 투영(proj._44 == 1, 원근은 0)에서는 모든 픽셀의 시선 방향이 같음 — 위 식은 원근 전제라 방향이 퍼져 보였음.
+    // 직교일 때는 카메라 앞 방향 하나로 고정함 (하늘은 단색에 가까워짐).
+    const float3 viewDirection = proj._44 > 0.5f ? float3(0.0f, 0.0f, 1.0f) : float3(ndc.x / proj._11, ndc.y / proj._22, 1.0f);
 
     // 뷰 공간 → 월드 공간. view 의 3×3 부분 R 은 회전(직교 행렬)이라 역행렬이 전치임. 행벡터 규약에서 v·Rᵀ 는 mul(R, v) 와 같음.
     // 이동 성분(4행)은 쓰지 않음 — 하늘은 무한히 멀어서 카메라가 움직여도 따라오지 않아야 함.

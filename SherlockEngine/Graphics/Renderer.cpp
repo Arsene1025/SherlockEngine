@@ -854,8 +854,12 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
 	CheckHotReload(totalTime);
 	++m_frameNumber;
 	const uint32_t reloads = m_stats.shaderReloads;
+	const uint32_t lastPasses = m_stats.renderPasses;   // 2026-10-15: 패스·배리어 수는 UI 패스까지 센 지난 프레임 값 (EndUIPass 가 채움)
+	const uint32_t lastBarriers = m_stats.barriers;
 	m_stats = Stats{};
 	m_stats.shaderReloads = reloads;
+	m_stats.renderPasses = lastPasses;
+	m_stats.barriers = lastBarriers;
 
 	RHI::CommandList& cmd = m_device->GetCommandList();
 
@@ -922,8 +926,6 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
 		RenderPreviewPass(cmd, scene);
 	}
 
-	m_stats.renderPasses = cmd.GetStats().renderPasses;
-	m_stats.barriers = cmd.GetStats().barriers;
 }
 
 void Renderer::BuildDrawList(const Scene& scene)
@@ -1245,6 +1247,9 @@ void Renderer::EndUIPass()
 	cmd.EndRenderPass();
 	// RenderTarget → Present. Present 직전의 마지막 전이.
 	cmd.Barrier(m_device->GetBackBuffer(), ResourceState::RenderTarget, ResourceState::Present);
+	// 2026-10-15: UI 패스와 마지막 Present 전이까지 센 프레임 전체 값. 패널은 UI 패스 안에서 그려 이 값이 한 프레임 늦게 보임.
+	m_stats.renderPasses = cmd.GetStats().renderPasses;
+	m_stats.barriers = cmd.GetStats().barriers;
 }
 
 // ------------------------------------------------------------------ GPU 캐시

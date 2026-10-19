@@ -1,9 +1,11 @@
 ﻿#pragma once
 #include <string>
+#include <DirectXMath.h>
 
 class Scene;
 class Camera;
 class AssetManager;
+class GameObject;
 
 // 씬 저장/로드 (11단계). 형식은 JSON (nlohmann-json).
 //
@@ -22,4 +24,22 @@ namespace SceneSerializer
 
 	std::string SaveToString(const Scene& scene, const Camera& camera);
 	bool LoadFromString(Scene& scene, Camera& camera, AssetManager& assets, const std::string& text, const char* label);
+
+	// ---- 2026-10-15: 편집 상태 (에디터의 되돌리기 이력) ----
+	// 오브젝트(자식·컴포넌트·안정 ID 포함), 재질 내용, 조명, 환경·주변광·클리어 색을 한 문자열로 만듦. 메시·이미지·카메라는 넣지 않음 —
+	// 편집 중에는 메시·재질이 늘기만 하므로 인덱스로 가리키면 충분하고, 그래서 Renderer 캐시를 건드리지 않고 되돌릴 수 있음.
+	std::string SaveEditState(const Scene& scene);
+	// 오브젝트를 모두 지우고 문자열에서 다시 만듦. 재질은 같은 인덱스의 것을 제자리에서 덮어씀. 메시·재질 목록은 그대로임.
+	// 따라서 문자열을 만든 뒤 Scene::Clear 가 있었다면 쓰면 안 됨 (호출자가 이력을 비움). 오브젝트 포인터는 모두 바뀜.
+	bool RestoreEditState(Scene& scene, const std::string& state);
+
+	// ---- 2026-10-15: 서브트리 복제와 프리팹 ----
+	// source 와 그 자손을 같은 씬 안에 복제함 (메시·재질 공유, 새 ID, 이름 뒤에 " (Clone)"). 복제본의 루트를 돌려줌.
+	GameObject* CloneSubtree(Scene& scene, const GameObject& source);
+	// root 와 그 자손을 프리팹 파일로 저장함. 파일은 메시 출처와 재질을 자체로 지님 (씬 없이도 읽힘). 형식은 SceneSerializer.cpp 의 SavePrefab 참고.
+	bool SavePrefab(const Scene& scene, const GameObject& root, const std::wstring& path);
+	// 프리팹(Assets 기준 상대 경로)을 씬에 만들고 루트를 돌려줌. 실패하면 nullptr (로그에 이유).
+	// position·rotation(라디안)을 주면 루트의 로컬 자세를 그 값으로 바꿈. 메시·재질은 프리팹마다 씬에 한 번만 만들어 인스턴스끼리 공유함.
+	GameObject* InstantiatePrefab(Scene& scene, AssetManager& assets, const std::string& relativePath,
+		const DirectX::XMFLOAT3* position = nullptr, const DirectX::XMFLOAT3* rotation = nullptr);
 }

@@ -21,6 +21,7 @@ Engine::~Engine()
 bool Engine::Initialize(const Config& config, const Desc& desc)
 {
 	m_config = config;
+	m_scene.SetAssets(&m_assets);   // 2026-10-15: Scene::Instantiate 가 프리팹의 모델 메시를 읽을 때 씀
 
 	// ---- 백엔드: 설정 파일이 정함 (10단계 완료 기준). 값이 올바르지 않으면 D3D11 ----
 	const std::string backend = m_config.GetString("engine.backend", "d3d11");

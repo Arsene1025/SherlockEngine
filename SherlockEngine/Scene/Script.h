@@ -71,4 +71,17 @@ public:
 	Scene& GetScene();
 	float GetTime() { return GetContext().totalTime; }   // 재생 시작 뒤 누적 초
 	GameObject* Find(const std::string& name);           // 이름으로 다른 오브젝트를 찾음. 없으면 nullptr
+
+	// ---- 2026-10-15: 생성과 지연 파괴 (유니티의 Instantiate / Destroy / FindObjectById) ----
+	// Instantiate: 프리팹(Assets 기준 상대 경로, 예: "Prefabs\\Bullet.prefab")을 position(로컬, 부모 없는 루트)에 만들고 루트를 돌려줌. 실패하면 nullptr.
+	//   같은 프리팹의 인스턴스는 메시·재질을 공유하므로 매 프레임 불러도 자원이 늘지 않음. 새 오브젝트의 컴포넌트는 같은 프레임 순회가 거기까지 오면 Start 와 첫 Update 를 받음.
+	// Destroy: 오브젝트(와 자식)를 지우도록 표시함. 프레임 끝에 지워지고, 그때까지 남은 Update 는 받지 않음. 자기 자신도 지울 수 있음(DestroySelf) —
+	//   호출 뒤 이 함수의 나머지 코드는 계속 실행되지만 멤버 포인터가 가리키는 다른 오브젝트가 같은 프레임에 지워질 수 있다는 점은 같음.
+	// 오브젝트 포인터 규칙: Find 로 얻은 GameObject* 를 멤버에 오래 들고 있으면 그 오브젝트가 Destroy 됐을 때 dangling 이 됨.
+	//   오래 들고 있을 것은 GetId() 를 저장하고, 쓸 때마다 FindById(id) 로 다시 찾음 (nullptr 이면 이미 지워진 것). Stop 이후에도 ID 는 같은 오브젝트를 가리킴.
+	GameObject* Instantiate(const std::string& prefabPath, const DirectX::XMFLOAT3& position);
+	GameObject* Instantiate(const GameObject& source);   // 씬의 오브젝트를 복제 (메시·재질 공유, 이름 뒤에 " (Clone)")
+	void Destroy(GameObject* object);
+	void DestroySelf() { Destroy(&GetOwner()); }
+	GameObject* FindById(uint64_t id);
 };

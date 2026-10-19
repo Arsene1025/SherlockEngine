@@ -14,6 +14,7 @@
 #include "App/ProjectGenerator.h"
 #include "App/ProjectLauncher.h"
 #include <imgui.h>
+#include <imgui_internal.h>   // 2026-10-15: 호버 중인 창 이름 (되돌리기 단계의 이름)
 #include <cmath>
 #include <format>   // C++20: 자동 검증 로그 서식 (11-F)
 
@@ -47,13 +48,58 @@ bool EditorApp::OnInitialize()
 
 	// 씬은 설정 engine.scene 으로 정함 (실행 인자 --scene= 이 덮어씀). 기본은 데모 씬.
 	// 11단계: 에디터 콜백 (메뉴·단축키 → 앱)
-	m_editorCallbacks.switchScene = [this](int mode) { LoadSceneMode(static_cast<SceneMode>(mode)); };
 	m_editorCallbacks.saveScene = [this](const std::wstring& path) { return SaveSceneFile(path); };
-	m_editorCallbacks.loadScene = [this](const std::wstring& path) { return LoadSceneFile(path); };
-	m_editorCallbacks.newScene = [this]() { BuildEmptyScene(); };
-	m_editorCallbacks.addPrimitive = [this](int type) { AddPrimitive(type); };
-	m_editorCallbacks.deleteObject = [this](int index) { DeleteObject(index); };
-	m_editorCallbacks.placeModel = [this](const std::wstring& path, const XMFLOAT3& position) { PlaceModel(path, position); };   // 11-B단계
+	// 2026-10-15: 구조를 바꾸는 콜백은 큐에 넣음 (위젯을 그리는 도중 오브젝트 벡터가 바뀌지 않게). 결과(선택·메시지)는 명령이 실행될 때 정함.
+	m_editorCallbacks.switchScene = [this](int mode) { Enqueue("Switch scene", [this, mode]() { LoadSceneMode(static_cast<SceneMode>(mode)); }); };
+	m_editorCallbacks.loadScene = [this](const std::wstring& path)
+	{
+		Enqueue("Load scene", [this, path]() { m_editor.SetMessage(LoadSceneFile(path) ? "loaded" : "load failed"); });
+		return true;
+	};
+	m_editorCallbacks.newScene = [this]() { Enqueue("New scene", [this]() { BuildEmptyScene(); m_editor.SetMessage("new scene"); }); };
+	m_editorCallbacks.addPrimitive = [this](int type)
+	{
+		Enqueue("Add object", [this, type]()
+		{
+			AddPrimitive(type);
+			m_editor.SetSelectedObject(static_cast<int>(GetEngine().GetScene().GetObjects().size()) - 1);   // 새 오브젝트는 목록 끝에 붙음
+		});
+	};
+	m_editorCallbacks.deleteObject = [this](int index)
+	{
+		const GameObject* object = GetEngine().GetScene().GetObject(index < 0 ? SIZE_MAX : static_cast<size_t>(index));
+		if (object == nullptr) return;
+		const uint64_t id = object->GetId();   // 인덱스가 아니라 ID 로 기억함: 큐에서 실행될 때까지 사이에 벡터가 바뀌어도 같은 오브젝트를 지움
+		Enqueue("Delete object", [this, id]()
+		{
+			Scene& scene = GetEngine().GetScene();
+			if (const GameObject* target = scene.FindById(id)) DeleteObject(static_cast<int>(scene.IndexOf(target)));
+		});
+	};
+	m_editorCallbacks.placeModel = [this](const std::wstring& path, const XMFLOAT3& position)   // 11-B단계
+	{
+		Enqueue("Place model", [this, path, position]() { PlaceModel(path, position); });
+	};
+	m_editorCallbacks.undo = [this]() { Enqueue("Undo", [this]() { UndoRedo(true); }, false); };
+	m_editorCallbacks.redo = [this]() { Enqueue("Redo", [this]() { UndoRedo(false); }, false); };
+	m_editorCallbacks.duplicateObject = [this](int index)
+	{
+		const GameObject* object = GetEngine().GetScene().GetObject(index < 0 ? SIZE_MAX : static_cast<size_t>(index));
+		if (object == nullptr) return;
+		const uint64_t id = object->GetId();
+		Enqueue("Duplicate", [this, id]() { DuplicateObject(id); });
+	};
+	m_editorCallbacks.savePrefab = [this](int index)
+	{
+		const GameObject* object = GetEngine().GetScene().GetObject(index < 0 ? SIZE_MAX : static_cast<size_t>(index));
+		if (object == nullptr) return;
+		const uint64_t id = object->GetId();
+		Enqueue("Save prefab", [this, id]() { SavePrefabOf(id); });
+	};
+	m_editorCallbacks.instantiatePrefab = [this](const std::wstring& path, const XMFLOAT3& position)
+	{
+		Enqueue("Instantiate prefab", [this, path, position]() { InstantiatePrefabAt(path, position); });
+	};
 	m_editorCallbacks.play = [this]() { StartPlay(); };   // 11-C단계
 	m_editorCallbacks.pauseToggle = [this]() { TogglePause(); };
 	m_editorCallbacks.stop = [this]() { StopPlay(); };
@@ -145,6 +191,7 @@ void EditorApp::LoadSceneMode(SceneMode mode)
 	}
 	Log::Info("씬 전환: %s (오브젝트 %zu, 메시 %zu, 재질 %zu, 이미지 %zu)", GetSceneName(),
 		scene.GetObjects().size(), scene.GetMeshes().size(), scene.GetMaterials().size(), scene.GetImageCount());
+	ResetHistory();   // 2026-10-15: 새 씬이므로 이전 씬의 되돌리기 이력은 의미가 없음
 }
 
 void EditorApp::BuildDemoScene()
@@ -373,9 +420,139 @@ void EditorApp::OnGUI()
 	SyncProjectInfo();   // 11-E단계
 	m_editor.playState = static_cast<Editor::PlayState>(m_playState);   // 11-C단계: 표시용 상태. 시간 배율은 슬라이더에서 바뀐 값을 다시 받아옴
 	m_editor.timeScale = m_timeScale;
+	m_editor.history.canUndo = m_history.CanUndo();
+	m_editor.history.canRedo = m_history.CanRedo();
+	m_editor.history.undoLabel = m_history.GetUndoLabel();
+	m_editor.history.redoLabel = m_history.GetRedoLabel();
+	m_editor.history.steps = m_history.GetStepCount();
+	m_editor.history.bytes = m_history.GetBytes();
 	m_editor.Draw(GetEngine(), GetSceneName(), m_modelStats, m_editorCallbacks);
 	m_moveSpeed = m_editor.cameraMoveSpeed;
 	m_timeScale = m_editor.timeScale;
+	FlushCommands();   // 2026-10-15: 위젯 순회가 끝난 지금 구조 변경 명령을 실행함. 렌더는 이 뒤라 같은 프레임에 보임
+	TrackHistory();
+}
+
+// ------------------------------------------------------------------ 2026-10-15: 명령 큐와 되돌리기
+
+void EditorApp::Enqueue(const std::string& label, std::function<void()> run, bool record)
+{
+	m_commands.push_back({ label, std::move(run), record });
+}
+
+void EditorApp::RunCommand(const std::string& label, const std::function<void()>& run)
+{
+	Scene& scene = GetEngine().GetScene();
+	const bool track = m_playState == PlayState::Editing;   // 재생 중의 편집은 Stop 이 버리므로 기록하지 않음
+	// 진행 중이던 위젯 편집이 아직 기록 전이면 먼저 한 단계로 끊음 — 그래야 이 명령의 단계에 섞이지 않고 각각 되돌려짐
+	if (track) m_history.Commit(scene, "Edit");
+	run();
+	if (track && m_history.Commit(scene, label))
+		Log::Info("되돌리기 이력: '%s' (단계 %zu, %.1f KB)", label.c_str(), m_history.GetStepCount(), m_history.GetBytes() / 1024.0);
+}
+
+void EditorApp::FlushCommands()
+{
+	if (m_commands.empty()) return;
+	// 명령이 새 명령을 큐에 넣을 수 있으므로 지금 쌓인 것만 떼어 내 실행함 (새로 들어온 것은 다음 프레임)
+	std::vector<PendingCommand> batch;
+	batch.swap(m_commands);
+	for (PendingCommand& command : batch)
+	{
+		if (command.record) RunCommand(command.label, command.run);
+		else command.run();
+	}
+}
+
+void EditorApp::TrackHistory()
+{
+	if (m_playState != PlayState::Editing) return;
+	// "입력이 진행 중" = 위젯이 활성이거나(슬라이더 드래그·글자 입력) 마우스 버튼이 눌려 있거나(클릭·계층 끌기·카메라 룩) 기즈모를 잡고 있음.
+	// 진행 중 → 끝난 프레임에 EditorHistory 가 씬을 한 번 직렬화해 이전 기준과 비교함. 끌기 한 번 = 한 단계.
+	const bool busy = ImGui::IsAnyItemActive() || ImGui::IsMouseDown(ImGuiMouseButton_Left) || ImGui::IsMouseDown(ImGuiMouseButton_Right)
+		|| ImGui::IsMouseDown(ImGuiMouseButton_Middle) || m_editor.IsGizmoUsing() || m_forceBusy;
+	std::string label = "Edit";
+	if (busy)
+	{
+		// 단계 이름 = 마우스가 올라 있는 창 (Inspector·Materials·Lights·Hierarchy·Scene …). 팝업(##…)이면 그냥 Edit
+		const ImGuiContext& g = *ImGui::GetCurrentContext();
+		if (g.HoveredWindow != nullptr && g.HoveredWindow->RootWindow != nullptr)
+		{
+			const char* name = g.HoveredWindow->RootWindow->Name;
+			if (name != nullptr && name[0] != '#' && name[0] != '\0') label = std::string("Edit ") + name;
+		}
+	}
+	m_history.UpdateGesture(GetEngine().GetScene(), busy, label);
+}
+
+void EditorApp::ResetHistory()
+{
+	m_history.Reset(GetEngine().GetScene());
+}
+
+void EditorApp::UndoRedo(bool undo)
+{
+	if (m_playState != PlayState::Editing) return;   // 재생 중에는 Stop 으로 되돌림
+	Scene& scene = GetEngine().GetScene();
+	m_history.Commit(scene, "Edit");   // 아직 기록 전인 편집이 있으면 먼저 기록해야 그것까지 되돌릴 수 있음
+	const std::string label = undo ? m_history.GetUndoLabel() : m_history.GetRedoLabel();
+	const uint64_t selectedId = m_editor.GetSelectedId();
+	const bool ok = undo ? m_history.Undo(scene) : m_history.Redo(scene);
+	if (!ok) { m_editor.SetMessage(undo ? "nothing to undo" : "nothing to redo"); return; }
+	// 되돌리면 오브젝트가 모두 새로 만들어져 포인터가 바뀜 → 선택은 ID 로 다시 잡음 (그 오브젝트가 없어졌으면 선택 해제)
+	const GameObject* selected = scene.FindById(selectedId);
+	m_editor.SetSelectedObject(selected != nullptr ? static_cast<int>(scene.IndexOf(selected)) : -1);
+	m_editor.SetMessage((undo ? "undo: " : "redo: ") + label);
+	Log::Info("%s: '%s' (이력 위치 %zu/%zu)", undo ? "되돌리기" : "다시 실행", label.c_str(), m_history.GetCurrentIndex(), m_history.GetStepCount());
+}
+
+void EditorApp::DuplicateObject(uint64_t id)
+{
+	Scene& scene = GetEngine().GetScene();
+	GameObject* source = scene.FindById(id);
+	if (source == nullptr) return;
+	GameObject* copy = scene.Instantiate(*source);
+	if (copy == nullptr) return;
+	// 같은 부모 아래 같은 로컬 자세로 놓음 (월드 자세도 같음). 이름 뒤의 " (Clone)" 은 Scene::Instantiate 가 붙임
+	if (source->GetParent() != nullptr) copy->SetParent(source->GetParent(), false);
+	m_editor.SetSelectedObject(static_cast<int>(scene.IndexOf(copy)));
+	m_editor.SetMessage("duplicated " + source->GetName());
+	Log::Info("복제: '%s' → '%s' (id %llu → %llu)", source->GetName().c_str(), copy->GetName().c_str(),
+		static_cast<unsigned long long>(source->GetId()), static_cast<unsigned long long>(copy->GetId()));
+}
+
+void EditorApp::SavePrefabOf(uint64_t id)
+{
+	Scene& scene = GetEngine().GetScene();
+	GameObject* object = scene.FindById(id);
+	if (object == nullptr) return;
+	// 파일 이름 = 오브젝트 이름 (경로에 쓸 수 없는 글자는 _ 로). 같은 이름이 있으면 덮어씀 — 이미 놓인 인스턴스는 그대로고, 다음 Instantiate 부터 새 버전을 씀.
+	std::string name = object->GetName().empty() ? std::string("Prefab") : object->GetName();
+	for (char& c : name) if (strchr("\\/:*?\"<>|", c) != nullptr) c = '_';
+	const std::wstring relative = L"Prefabs\\" + std::wstring(name.begin(), name.end()) + L".prefab";
+	if (!SceneSerializer::SavePrefab(scene, *object, Paths::GetAssetRoot() + relative))
+	{
+		m_editor.SetMessage("save prefab failed");
+		return;
+	}
+	object->SetPrefabSource(Log::ToUtf8(relative.c_str()));   // 이 오브젝트가 곧 그 프리팹의 인스턴스가 됨 (유니티가 Create Prefab 뒤에 하는 것과 같음)
+	m_editor.GetContentBrowser().Refresh();
+	m_editor.SetMessage("saved prefab " + name);
+}
+
+void EditorApp::InstantiatePrefabAt(const std::wstring& relativePath, const XMFLOAT3& position)
+{
+	Engine& engine = GetEngine();
+	Scene& scene = engine.GetScene();
+	GameObject* root = SceneSerializer::InstantiatePrefab(scene, engine.GetAssets(), Log::ToUtf8(relativePath.c_str()), &position, nullptr);
+	if (root == nullptr)
+	{
+		m_editor.SetMessage("instantiate failed: " + Log::ToUtf8(relativePath.c_str()));
+		return;
+	}
+	m_editor.SetSelectedObject(static_cast<int>(scene.IndexOf(root)));
+	m_editor.SetMessage("instantiated " + root->GetName());
+	Log::Info("프리팹 배치: %s at (%.2f, %.2f, %.2f)", Log::ToUtf8(relativePath.c_str()).c_str(), position.x, position.y, position.z);
 }
 
 void EditorApp::OnFixedUpdate(float fixedDt)
@@ -564,6 +741,7 @@ bool EditorApp::ReloadScripts()
 		BuildEmptyScene();
 	}
 	m_editor.SetSelectedObject(selected < static_cast<int>(scene.GetObjects().size()) ? selected : -1);
+	m_history.Rebase(scene);   // 2026-10-15: 같은 내용으로 다시 만들어졌지만 컴포넌트 순서가 달라졌을 수 있음 — 이력은 두고 기준만 갱신 (ID 는 파일에서 이어짐)
 	m_scriptSources = ScriptModule::CountScriptSources(GetProject());
 	Log::Info("스크립트 다시 올리기 %s: 컴포넌트 %zu개, 오브젝트 %zu개 복원", ok ? "완료" : "실패", GetScripts().GetTypeNames().size(), scene.GetObjects().size());
 	return ok;
@@ -614,6 +792,7 @@ void EditorApp::StopPlay()
 		LoadSceneMode(SceneMode::Demo);
 	}
 	m_editor.SetSelectedObject(selected < static_cast<int>(scene.GetObjects().size()) ? selected : -1);   // 오브젝트 순서는 스냅샷과 같음
+	m_history.Rebase(scene);   // 2026-10-15: 재생 전 씬이 돌아왔으므로 재생 전 이력이 그대로 유효함 (메시·재질 순서가 스냅샷과 같음)
 	m_playSnapshot.clear();
 	m_playState = PlayState::Editing;
 	m_stepOnce = false;
@@ -760,6 +939,7 @@ bool EditorApp::LoadSceneFile(const std::wstring& path)
 	// 파일에서 읽은 씬이므로 File 모드로 표시함. 움직임은 씬에 저장된 스크립트·컴포넌트가 재생 중에 맡음.
 	Log::Info("씬 전환: File (오브젝트 %zu, 메시 %zu, 재질 %zu, 이미지 %zu)",
 		engine.GetScene().GetObjects().size(), engine.GetScene().GetMeshes().size(), engine.GetScene().GetMaterials().size(), engine.GetScene().GetImageCount());
+	ResetHistory();   // 2026-10-15
 	return true;
 }
 
@@ -819,6 +999,21 @@ void EditorApp::ParseAutomation()
 		m_auto.parentChild = Log::ToUtf8(setParent.substr(0, semicolon).c_str());
 		m_auto.parentName = semicolon != std::wstring::npos ? Log::ToUtf8(setParent.substr(semicolon + 1).c_str()) : std::string();
 	}
+	// 2026-10-15
+	m_auto.deleteName = Log::ToUtf8(GetCommandLineOption(L"delete").c_str());
+	m_auto.duplicateName = Log::ToUtf8(GetCommandLineOption(L"duplicate").c_str());
+	m_auto.makePrefabName = Log::ToUtf8(GetCommandLineOption(L"make-prefab").c_str());
+	const std::wstring instantiate = GetCommandLineOption(L"instantiate");
+	if (!instantiate.empty())
+	{
+		const size_t semicolon = instantiate.find(L';');
+		m_auto.instantiatePath = instantiate.substr(0, semicolon);
+		if (semicolon != std::wstring::npos) swscanf_s(instantiate.c_str() + semicolon + 1, L"%f,%f,%f", &m_auto.instantiatePosition.x, &m_auto.instantiatePosition.y, &m_auto.instantiatePosition.z);
+	}
+	m_auto.undoCount = _wtoi(GetCommandLineOption(L"undo").c_str());
+	m_auto.redoCount = _wtoi(GetCommandLineOption(L"redo").c_str());
+	m_auto.saveAfterPath = resolve(GetCommandLineOption(L"save-after"));
+	m_auto.gesture = !GetCommandLineOption(L"gesture").empty();
 	Log::Info("자동 검증: exit-after %llu, pick %d, set-position %d, save '%s', load '%s', screenshot '%s', dump %d",
 		m_auto.exitAfter, m_auto.pick ? 1 : 0, m_auto.setPosition ? 1 : 0, Log::ToUtf8(m_auto.savePath.c_str()).c_str(),
 		Log::ToUtf8(m_auto.loadPath.c_str()).c_str(), Log::ToUtf8(m_auto.screenshotPath.c_str()).c_str(), m_auto.dumpObjects ? 1 : 0);
@@ -863,7 +1058,10 @@ void EditorApp::RunAutomation()
 		const GameBuilder::Result result = GameBuilder::Build(options);
 		Log::Info("자동 검증: build-game %s → %s", result.ok ? "성공" : "실패", result.message.c_str());
 	}
-	if (frame == 4 && m_auto.addPrimitive >= 0) { AddPrimitive(m_auto.addPrimitive); m_editor.SetSelectedObject(static_cast<int>(scene.GetObjects().size()) - 1); }
+	if (frame == 4 && m_auto.addPrimitive >= 0)
+	{
+		RunCommand("Add object", [&]() { AddPrimitive(m_auto.addPrimitive); m_editor.SetSelectedObject(static_cast<int>(scene.GetObjects().size()) - 1); });
+	}
 	if (frame == 5 && m_auto.pick)
 	{
 		const int picked = m_editor.PickAt(scene, engine.GetCamera(), m_auto.pickU, m_auto.pickV);
@@ -881,8 +1079,35 @@ void EditorApp::RunAutomation()
 			Log::Info("자동 검증: drop-uv (%.2f, %.2f) → 히트 (%.2f, %.2f, %.2f) %s", m_auto.dropU, m_auto.dropV, position.x, position.y, position.z,
 				hit >= 0 ? scene.GetObjects()[hit]->GetName().c_str() : "(ground)");
 		}
-		PlaceModel(m_auto.dropPath, position);
+		RunCommand("Place model", [&]() { PlaceModel(m_auto.dropPath, position); });
 	}
+	// 2026-10-15: 삭제·복제·프리팹 저장·프리팹 배치 — Delete 키·Ctrl+D·Save Prefab·씬 뷰 드롭이 부르는 함수를 그대로 부름
+	if (frame == 6 && !m_auto.deleteName.empty())
+	{
+		GameObject* target = scene.FindObject(m_auto.deleteName);
+		if (target == nullptr) Log::Warn("자동 검증: delete 대상 '%s' 를 찾지 못함", m_auto.deleteName.c_str());
+		else RunCommand("Delete object", [&]() { DeleteObject(static_cast<int>(scene.IndexOf(target))); });
+	}
+	if (frame == 11 && !m_auto.duplicateName.empty())
+	{
+		GameObject* target = scene.FindObject(m_auto.duplicateName);
+		if (target == nullptr) Log::Warn("자동 검증: duplicate 대상 '%s' 를 찾지 못함", m_auto.duplicateName.c_str());
+		else RunCommand("Duplicate", [&]() { DuplicateObject(target->GetId()); });
+	}
+	if (frame == 11 && !m_auto.makePrefabName.empty())
+	{
+		GameObject* target = scene.FindObject(m_auto.makePrefabName);
+		if (target == nullptr) Log::Warn("자동 검증: make-prefab 대상 '%s' 를 찾지 못함", m_auto.makePrefabName.c_str());
+		else RunCommand("Save prefab", [&]() { SavePrefabOf(target->GetId()); });
+	}
+	if (frame == 11 && !m_auto.instantiatePath.empty())
+	{
+		RunCommand("Instantiate prefab", [&]() { InstantiatePrefabAt(m_auto.instantiatePath, m_auto.instantiatePosition); });
+	}
+	if (frame == 11 && m_auto.gesture) m_forceBusy = false;
+	if (frame == 14 && m_auto.undoCount > 0) for (int i = 0; i < m_auto.undoCount; ++i) UndoRedo(true);
+	if (frame == 15 && m_auto.redoCount > 0) for (int i = 0; i < m_auto.redoCount; ++i) UndoRedo(false);
+	if (frame == 18 && !m_auto.saveAfterPath.empty()) SaveSceneFile(m_auto.saveAfterPath);
 	if (frame == 7 && !m_auto.dropTexture.empty())
 	{
 		const int selected = m_editor.GetSelectedObject();
@@ -893,8 +1118,11 @@ void EditorApp::RunAutomation()
 			for (auto& m : scene.GetMaterials()) if (m.get() == object.GetMaterial()) material = m.get();
 			if (material != nullptr)
 			{
-				material->albedoTexture = ContentBrowser::ToMaterialTextureName(m_auto.dropTexture);
-				Log::Info("자동 검증: '%s' 재질 '%s' 알베도 → %s", object.GetName().c_str(), material->name.c_str(), material->albedoTexture.c_str());
+				RunCommand("Drop texture", [&]()
+				{
+					material->albedoTexture = ContentBrowser::ToMaterialTextureName(m_auto.dropTexture);
+					Log::Info("자동 검증: '%s' 재질 '%s' 알베도 → %s", object.GetName().c_str(), material->name.c_str(), material->albedoTexture.c_str());
+				});
 			}
 			else Log::Warn("자동 검증: 선택 오브젝트에 편집 가능한 재질이 없어 drop-texture 를 건너뜀");
 		}
@@ -906,7 +1134,8 @@ void EditorApp::RunAutomation()
 		const int selected = m_editor.GetSelectedObject();
 		if (GameObject* object = scene.GetObject(selected < 0 ? SIZE_MAX : static_cast<size_t>(selected)))
 		{
-			Behaviour* added = object->AddBehaviour(m_auto.addComponent);
+			Behaviour* added = nullptr;
+			RunCommand("Add component", [&]() { added = object->AddBehaviour(m_auto.addComponent); });
 			Log::Info("자동 검증: '%s' 에 컴포넌트 %s %s", object->GetName().c_str(), m_auto.addComponent.c_str(), added ? "추가" : "추가 실패");
 		}
 		else Log::Warn("자동 검증: 선택된 오브젝트가 없어 add-component 를 건너뜀");
@@ -917,7 +1146,12 @@ void EditorApp::RunAutomation()
 		const int selected = m_editor.GetSelectedObject();
 		if (selected >= 0 && selected < static_cast<int>(scene.GetObjects().size()))
 		{
-			scene.GetObjects()[selected]->GetTransform().SetPosition(m_auto.position);
+			if (m_auto.gesture)
+			{
+				m_forceBusy = true;   // 슬라이더를 잡고 끄는 중: 값은 바뀌지만 아직 단계로 기록되지 않음 (11 프레임째에 입력이 끝남)
+				scene.GetObjects()[selected]->GetTransform().SetPosition(m_auto.position);
+			}
+			else RunCommand("Move", [&]() { scene.GetObjects()[selected]->GetTransform().SetPosition(m_auto.position); });
 			Log::Info("자동 검증: '%s' 위치 → (%.2f, %.2f, %.2f)", scene.GetObjects()[selected]->GetName().c_str(), m_auto.position.x, m_auto.position.y, m_auto.position.z);
 		}
 		else Log::Warn("자동 검증: 선택된 오브젝트가 없어 set-position 을 건너뜀");
@@ -928,7 +1162,7 @@ void EditorApp::RunAutomation()
 		const int selected = m_editor.GetSelectedObject();
 		if (GameObject* object = scene.GetObject(selected < 0 ? SIZE_MAX : static_cast<size_t>(selected)))
 		{
-			object->GetTransform().SetRotation(XMConvertToRadians(m_auto.rotationDeg.x), XMConvertToRadians(m_auto.rotationDeg.y), XMConvertToRadians(m_auto.rotationDeg.z));
+			RunCommand("Rotate", [&]() { object->GetTransform().SetRotation(XMConvertToRadians(m_auto.rotationDeg.x), XMConvertToRadians(m_auto.rotationDeg.y), XMConvertToRadians(m_auto.rotationDeg.z)); });
 			Log::Info("자동 검증: '%s' 회전 → (%.1f, %.1f, %.1f) deg", object->GetName().c_str(), m_auto.rotationDeg.x, m_auto.rotationDeg.y, m_auto.rotationDeg.z);
 		}
 		else Log::Warn("자동 검증: 선택된 오브젝트가 없어 set-rotation 을 건너뜀");
@@ -943,7 +1177,8 @@ void EditorApp::RunAutomation()
 			Log::Warn("자동 검증: set-parent 대상을 찾지 못함 ('%s' → '%s')", m_auto.parentChild.c_str(), m_auto.parentName.c_str());
 		else
 		{
-			const bool ok = child->SetParent(parent);
+			bool ok = false;
+			RunCommand("Reparent", [&]() { ok = child->SetParent(parent); });
 			const XMFLOAT3 lp = child->GetTransform().GetPosition();
 			const XMFLOAT3 wp = child->GetWorldPosition();
 			Log::Info("자동 검증: set-parent '%s' → '%s' %s, 로컬 (%.2f, %.2f, %.2f) 월드 (%.2f, %.2f, %.2f)", m_auto.parentChild.c_str(),
@@ -1018,6 +1253,7 @@ void EditorApp::BuildEmptyScene()
 	m_moveSpeed = 10.0f;
 	AddCameraObject("Main Camera");   // 11-C단계: 새 씬에도 카메라 하나
 	Log::Info("씬 전환: New (바닥 1, 방향광 1, 카메라 1)");
+	ResetHistory();   // 2026-10-15
 }
 
 GameObject& EditorApp::AddCameraObject(const char* name)

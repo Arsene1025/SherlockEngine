@@ -102,6 +102,19 @@ public:
 	std::vector<std::string>& GetMissingComponents() { return missingComponents; }
 	const std::vector<std::string>& GetMissingComponents() const { return missingComponents; }
 
+	// 2026-10-15: 안정 ID. Scene::AddObject 가 부여하고 씬 파일에 저장됨 (0 = 아직 없음). 포인터·인덱스와 달리 Stop·스크립트 다시 올리기·
+	// 씬 불러오기·되돌리기를 거쳐도 같은 오브젝트를 가리킴. 되돌리기 이력, 에디터 선택, 지연 Destroy, 프리팹 인스턴스가 이것으로 오브젝트를 찾음.
+	uint64_t GetId() const { return id; }
+	void SetId(uint64_t value) { id = value; }   // Scene·SceneSerializer 가 씀. 직접 바꾸면 유일성이 깨짐
+
+	// 2026-10-15: 프리팹 인스턴스의 루트면 그 프리팹 경로 (Assets 기준, 비면 아님). 표시와 저장만 함 (오버라이드·되돌리기 연동은 없음)
+	const std::string& GetPrefabSource() const { return prefabSource; }
+	void SetPrefabSource(const std::string& value) { prefabSource = value; }
+
+	// 2026-10-15: 지연 파괴 표시 (Scene::Destroy). 표시된 오브젝트는 그 프레임의 남은 Update 를 받지 않고, 프레임 끝에 Scene 이 지움.
+	bool IsMarkedForDestroy() const { return markedForDestroy; }
+	void MarkForDestroy() { markedForDestroy = true; }
+
 	// ---- Scene 이 호출함 ----
 	// 계층에서 떼어냄: 부모의 children 에서 빠지고 자식들의 parent 를 끊음 (자식은 루트가 됨). 소멸자에서는 하지 않음 —
 	// Scene::Clear 가 벡터를 통째로 지울 때 이미 죽은 부모를 건드리게 되기 때문. RemoveObject 가 지우기 직전에 호출함.
@@ -117,4 +130,8 @@ private:
 	std::vector<std::string> missingComponents;   // 2026-10-08 (B안): JSON 문자열
 	GameObject* parent = nullptr;          // 11-F단계: 비소유. 소유는 Scene 의 벡터
 	std::vector<GameObject*> children;     // 11-F단계: 비소유. Hierarchy 표시 순서
+	// 멤버는 끝에만 덧붙임: 인라인 접근자(GetTransform 등)를 쓰는 이미 빌드된 스크립트 DLL 이 옛 오프셋 그대로 동작함 (ABI 호환).
+	uint64_t id = 0;                       // 2026-10-15
+	std::string prefabSource;              // 2026-10-15
+	bool markedForDestroy = false;         // 2026-10-15
 };

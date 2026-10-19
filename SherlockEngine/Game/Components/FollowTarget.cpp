@@ -22,15 +22,21 @@ public:
 		v.Float("smoothing", smoothing, 0.1f);
 	}
 
-	void Start() override { m_target = nullptr; }
+	void Start() override { m_targetId = 0; }
 
 	void Update(float dt) override
 	{
-		if (m_target == nullptr) m_target = GetContext().scene->FindObject(target);   // 재생 중 생긴 오브젝트도 찾음
-		if (m_target == nullptr || m_target == &GetOwner()) return;
+		// 2026-10-15: 포인터 대신 ID 를 기억함 — target 이 Destroy 되면 FindById 가 nullptr 를 돌려주고, 같은 이름의 다른 오브젝트로 다시 찾음.
+		GameObject* targetObject = m_targetId != 0 ? GetContext().scene->FindById(m_targetId) : nullptr;
+		if (targetObject == nullptr)
+		{
+			targetObject = GetContext().scene->FindObject(target);   // 재생 중 생긴 오브젝트도 찾음
+			m_targetId = targetObject != nullptr ? targetObject->GetId() : 0;
+		}
+		if (targetObject == nullptr || targetObject == &GetOwner()) return;
 
 		// 11-F단계: 월드 좌표로 계산함. target 이나 자기 자신이 다른 오브젝트의 자식이어도 맞게 따라가도록 (Transform 의 값은 부모 기준 로컬).
-		const DirectX::XMFLOAT3 tp = m_target->GetWorldPosition();
+		const DirectX::XMFLOAT3 tp = targetObject->GetWorldPosition();
 		const DirectX::XMFLOAT3 desired(tp.x + offset.x, tp.y + offset.y, tp.z + offset.z);
 		DirectX::XMFLOAT3 p = GetOwner().GetWorldPosition();
 		const float k = smoothing <= 0.0f ? 1.0f : (std::min)(1.0f, dt * smoothing);
@@ -54,6 +60,6 @@ public:
 	float smoothing = 4.0f;
 
 private:
-	GameObject* m_target = nullptr;
+	uint64_t m_targetId = 0;
 };
 SHERLOCK_BEHAVIOUR(FollowTarget)

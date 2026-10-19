@@ -21,7 +21,7 @@ namespace DebugUI
 	float ButtonWidth(const char* label);        // Button·SmallButton 공통 (가로 패딩은 같음)
 	float TextItemWidth(const char* text);
 
-	void DrawCameraPanel(const Camera& camera, float& moveSpeed);
+	void DrawCameraPanel(Camera& camera, float& moveSpeed);
 	void DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device);
 	void DrawShadowPanel(Renderer& renderer, RHI::Device& device);   // 6단계: 그림자 설정 + 그림자 맵 미리보기
 	void DrawLightPanel(Scene& scene);                           // 6단계: 조명 8개 전부 편집, 추가/삭제

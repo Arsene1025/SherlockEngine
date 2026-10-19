@@ -115,13 +115,21 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 	const ImGuiPayload* dragPayload = ImGui::GetDragDropPayload();
 	m_assetDragActive = dragPayload != nullptr && dragPayload->IsDataType(kAssetPayloadType);
 
+	SyncSelection(engine.GetScene());   // 2026-10-15: 오브젝트 벡터가 바뀌었을 수 있으니(명령 큐·재생 중 Destroy·되돌리기) 먼저 ID 로 인덱스를 다시 잡음
 	DrawMenuBar(engine, callbacks);
 
 	// 단축키: Ctrl+S 저장, Ctrl+L 로드, 1/2/3 기즈모 (텍스트 입력 중이 아닐 때)
 	if (!ImGui::GetIO().WantTextInput)
 	{
 		if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S) && callbacks.saveScene) m_lastMessage = callbacks.saveScene(scenePath) ? "saved" : "save failed";
-		if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_L) && callbacks.loadScene) { m_lastMessage = callbacks.loadScene(scenePath) ? "loaded" : "load failed"; m_selected = -1; }
+		if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_L) && callbacks.loadScene) callbacks.loadScene(scenePath);   // 결과 메시지·선택 비우기는 명령이 함
+		// 2026-10-15: 되돌리기·다시 실행·복제. 위젯을 잡고 있는 동안(슬라이더 드래그 등)은 무시함 — 편집이 아직 기록되기 전이므로.
+		if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
+		{
+			if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z) && callbacks.undo) callbacks.undo();
+			if ((ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Y) || ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z)) && callbacks.redo) callbacks.redo();
+			if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_D) && callbacks.duplicateObject && m_selected >= 0) callbacks.duplicateObject(m_selected);
+		}
 		if (ImGui::IsKeyPressed(ImGuiKey_1, false)) m_gizmoOperation = 0;
 		if (ImGui::IsKeyPressed(ImGuiKey_2, false)) m_gizmoOperation = 1;
 		if (ImGui::IsKeyPressed(ImGuiKey_3, false)) m_gizmoOperation = 2;
@@ -219,11 +227,7 @@ void Editor::DrawMenuBar(Engine& engine, const Callbacks& callbacks)
 		{
 			m_lastMessage = callbacks.saveScene(scenePath) ? "saved" : "save failed";
 		}
-		if (ImGui::MenuItem("Load scene", "Ctrl+L") && callbacks.loadScene)
-		{
-			m_lastMessage = callbacks.loadScene(scenePath) ? "loaded" : "load failed";
-			m_selected = -1;
-		}
+		if (ImGui::MenuItem("Load scene", "Ctrl+L") && callbacks.loadScene) callbacks.loadScene(scenePath);   // 2026-10-15: 명령 큐. 결과 메시지는 명령이 정함
 		ImGui::Separator();
 		if (ImGui::MenuItem("New scene (floor only)") && callbacks.newScene) { callbacks.newScene(); m_selected = -1; m_lastMessage = "new scene"; }
 		ImGui::Separator();
@@ -232,6 +236,23 @@ void Editor::DrawMenuBar(Engine& engine, const Callbacks& callbacks)
 		if (ImGui::MenuItem("Sponza") && callbacks.switchScene) { callbacks.switchScene(2); m_selected = -1; }
 		ImGui::Separator();
 		if (ImGui::MenuItem("Build Game...")) m_openBuildPopup = true;   // 11-D단계
+		ImGui::EndMenu();
+	}
+	if (ImGui::BeginMenu("Edit"))
+	{
+		// 2026-10-15
+		const bool editing = playState == PlayState::Editing;
+		const std::string undoText = history.canUndo ? "Undo " + history.undoLabel : std::string("Undo");
+		const std::string redoText = history.canRedo ? "Redo " + history.redoLabel : std::string("Redo");
+		if (ImGui::MenuItem(undoText.c_str(), "Ctrl+Z", false, editing && history.canUndo) && callbacks.undo) callbacks.undo();
+		if (ImGui::MenuItem(redoText.c_str(), "Ctrl+Y", false, editing && history.canRedo) && callbacks.redo) callbacks.redo();
+		ImGui::Separator();
+		const bool hasSelection = m_selected >= 0 && m_selected < static_cast<int>(engine.GetScene().GetObjects().size());
+		if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, hasSelection) && callbacks.duplicateObject) callbacks.duplicateObject(m_selected);
+		if (ImGui::MenuItem("Delete", "Del", false, hasSelection) && callbacks.deleteObject) { callbacks.deleteObject(m_selected); m_selected = -1; }
+		if (ImGui::MenuItem("Save selection as Prefab", nullptr, false, hasSelection) && callbacks.savePrefab) callbacks.savePrefab(m_selected);
+		ImGui::Separator();
+		ImGui::TextDisabled("history: %zu steps, %.1f KB%s", history.steps, history.bytes / 1024.0, editing ? "" : " (paused during Play)");
 		ImGui::EndMenu();
 	}
 	if (m_openBuildPopup) { ImGui::OpenPopup("Build Game"); m_openBuildPopup = false; }
@@ -373,7 +394,7 @@ void Editor::DrawGizmo(Engine& engine, float x, float y, float width, float heig
 	XMStoreFloat4x4(&proj, camera.GetProjectionMatrix());
 	XMStoreFloat4x4(&world, object.GetWorldMatrix());   // 11-F단계: 부모까지 곱한 월드 행렬. 기즈모는 언제나 월드 공간에서 조작함
 
-	ImGuizmo::SetOrthographic(false);
+	ImGuizmo::SetOrthographic(!camera.IsUsePerspectiveProjection());   // 2026-10-15: 직교 카메라에서도 기즈모가 맞게
 	ImGuizmo::SetDrawlist();
 	ImGuizmo::SetRect(x, y, width, height);
 	const ImGuizmo::OPERATION operation = m_gizmoOperation == 0 ? ImGuizmo::TRANSLATE : (m_gizmoOperation == 1 ? ImGuizmo::ROTATE : ImGuizmo::SCALE);
@@ -478,25 +499,16 @@ void Editor::DrawContentBrowser(Engine& engine, const Callbacks& callbacks)
 	ContentBrowser::Actions actions;
 	actions.openScene = [&](const std::wstring& relativePath) { LoadSceneFromAsset(callbacks, relativePath); };
 	actions.placeModel = [&](const std::wstring& relativePath, const XMFLOAT3& position) { PlaceModelFromAsset(engine, callbacks, relativePath, position); };
+	actions.instantiatePrefab = [&](const std::wstring& relativePath, const XMFLOAT3& position) { if (callbacks.instantiatePrefab) callbacks.instantiatePrefab(relativePath, position); };
 	m_contentBrowser.Draw(engine.GetDevice(), actions);
 	ImGui::End();
 }
 
 void Editor::PlaceModelFromAsset(Engine& engine, const Callbacks& callbacks, const std::wstring& relativePath, const XMFLOAT3& position)
 {
+	(void)engine;
 	if (!callbacks.placeModel) return;
-	const size_t before = engine.GetScene().GetObjects().size();
-	callbacks.placeModel(relativePath, position);
-	const size_t after = engine.GetScene().GetObjects().size();
-	if (after > before)
-	{
-		m_selected = static_cast<int>(after) - 1;
-		m_lastMessage = "placed " + FileStem(relativePath);
-	}
-	else
-	{
-		m_lastMessage = "place failed: " + FileStem(relativePath);
-	}
+	callbacks.placeModel(relativePath, position);   // 2026-10-15: 명령 큐에 들어감. 배치·선택·메시지는 앱의 명령이 실행될 때 정함
 }
 
 void Editor::LoadSceneFromAsset(const Callbacks& callbacks, const std::wstring& relativePath)
@@ -504,8 +516,7 @@ void Editor::LoadSceneFromAsset(const Callbacks& callbacks, const std::wstring& 
 	if (!callbacks.loadScene) return;
 	scenePath = Paths::GetAssetRoot() + relativePath;
 	m_pathBuffer[0] = '\0';   // File 메뉴의 경로 필드를 다음에 열 때 다시 채움
-	m_lastMessage = callbacks.loadScene(scenePath) ? "loaded " + FileStem(relativePath) : "load failed";
-	m_selected = -1;
+	callbacks.loadScene(scenePath);   // 2026-10-15: 명령 큐. 결과 메시지·선택 비우기는 명령이 함
 }
 
 void Editor::HandleAssetDrop(Engine& engine, const Callbacks& callbacks, const AssetDragPayload& asset, const XMFLOAT3& point, int hitObject)
@@ -518,6 +529,9 @@ void Editor::HandleAssetDrop(Engine& engine, const Callbacks& callbacks, const A
 		break;
 	case AssetType::Scene:
 		LoadSceneFromAsset(callbacks, relativePath);
+		break;
+	case AssetType::Prefab:
+		if (callbacks.instantiatePrefab) callbacks.instantiatePrefab(relativePath, point);   // 2026-10-15: 명령 큐 → Scene::Instantiate
 		break;
 	case AssetType::Texture:
 	{
@@ -621,19 +635,28 @@ void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 	auto& objects = scene.GetObjects();
 	ImGui::TextWrapped("Objects %zu   Lights %zu", objects.size(), scene.GetLights().size());
 	// 추가/삭제. 새 오브젝트는 원점 위에 기본 재질로 생기고 바로 선택됨.
-	if (ImGui::SmallButton("+ Sphere") && callbacks.addPrimitive) { callbacks.addPrimitive(0); m_selected = static_cast<int>(objects.size()) - 1; }
+	if (ImGui::SmallButton("+ Sphere") && callbacks.addPrimitive) callbacks.addPrimitive(0);   // 2026-10-15: 명령 큐. 새 오브젝트 선택은 명령이 함
 	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Cube"));
-	if (ImGui::SmallButton("+ Cube") && callbacks.addPrimitive) { callbacks.addPrimitive(1); m_selected = static_cast<int>(objects.size()) - 1; }
+	if (ImGui::SmallButton("+ Cube") && callbacks.addPrimitive) callbacks.addPrimitive(1);
 	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Cylinder"));
-	if (ImGui::SmallButton("+ Cylinder") && callbacks.addPrimitive) { callbacks.addPrimitive(2); m_selected = static_cast<int>(objects.size()) - 1; }
+	if (ImGui::SmallButton("+ Cylinder") && callbacks.addPrimitive) callbacks.addPrimitive(2);
 	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Plane"));
-	if (ImGui::SmallButton("+ Plane") && callbacks.addPrimitive) { callbacks.addPrimitive(3); m_selected = static_cast<int>(objects.size()) - 1; }
+	if (ImGui::SmallButton("+ Plane") && callbacks.addPrimitive) callbacks.addPrimitive(3);
 	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Camera"));
-	if (ImGui::SmallButton("+ Camera") && callbacks.addPrimitive) { callbacks.addPrimitive(4); m_selected = static_cast<int>(objects.size()) - 1; }   // 11-C단계: 현재 에디터 시점 그대로 카메라 오브젝트 추가
+	if (ImGui::SmallButton("+ Camera") && callbacks.addPrimitive) callbacks.addPrimitive(4);   // 11-C단계: 현재 에디터 시점 그대로 카메라 오브젝트 추가
 	const bool canDelete = m_selected >= 0 && m_selected < static_cast<int>(objects.size());
 	const bool deleteKey = canDelete && (m_sceneFocused || ImGui::IsWindowFocused()) && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Delete, false);
 	if (canDelete) { DebugUI::SameLineIfFits(DebugUI::ButtonWidth("Delete (Del)")); }
 	if (canDelete && (ImGui::SmallButton("Delete (Del)") || deleteKey) && callbacks.deleteObject) { callbacks.deleteObject(m_selected); m_selected = -1; }
+	// 2026-10-15: 복제와 프리팹 저장 (Edit 메뉴와 같은 콜백)
+	if (canDelete && m_selected >= 0)
+	{
+		DebugUI::SameLineIfFits(DebugUI::ButtonWidth("Duplicate"));
+		if (ImGui::SmallButton("Duplicate") && callbacks.duplicateObject) callbacks.duplicateObject(m_selected);
+		DebugUI::SameLineIfFits(DebugUI::ButtonWidth("Save Prefab"));
+		if (ImGui::SmallButton("Save Prefab") && callbacks.savePrefab) callbacks.savePrefab(m_selected);
+		if (ImGui::IsItemHovered()) ImGui::SetTooltip("save the selected object and its children as Assets\\Prefabs\\<name>.prefab");
+	}
 	ImGui::Separator();
 	// 11-F단계: 평면 목록 대신 트리. 루트(부모 없음)부터 그리고 자식은 재귀. 선택은 여전히 씬 벡터의 인덱스이므로 포인터 → 인덱스 표를 한 번 만든다.
 	// 드래그 앤 드롭으로 재부모화: 항목을 다른 항목 위에 놓으면 그 자식이 되고(월드 자세 유지), 빈 곳에 놓으면 루트가 된다.
@@ -707,6 +730,25 @@ void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unor
 	ImGui::PopID();
 }
 
+void Editor::SyncSelection(Scene& scene)
+{
+	if (m_selected != m_selectedPrev)
+	{
+		// 지난 프레임 이후 UI(또는 앱)가 인덱스를 바꿈 → 그 오브젝트가 새 선택
+		const GameObject* object = scene.GetObject(m_selected < 0 ? SIZE_MAX : static_cast<size_t>(m_selected));
+		m_selectedId = object != nullptr ? object->GetId() : 0;
+		if (object == nullptr) m_selected = -1;
+	}
+	else if (m_selectedId != 0)
+	{
+		// 인덱스는 그대로인데 오브젝트 벡터가 바뀌었을 수 있음 → ID 로 다시 찾음 (지워졌으면 선택 해제)
+		const GameObject* object = scene.FindById(m_selectedId);
+		m_selected = object != nullptr ? static_cast<int>(scene.IndexOf(object)) : -1;
+		if (object == nullptr) m_selectedId = 0;
+	}
+	m_selectedPrev = m_selected;
+}
+
 void Editor::DrawInspector(Engine& engine)
 {
 	DebugUI::BeginPanel("Inspector");
@@ -719,6 +761,7 @@ void Editor::DrawInspector(Engine& engine)
 	}
 	GameObject& object = *scene.GetObjects()[m_selected];
 	ImGui::Text("%s", object.GetName().c_str());
+	ImGui::TextDisabled("id %llu%s%s", static_cast<unsigned long long>(object.GetId()), object.GetPrefabSource().empty() ? "" : "   prefab ", object.GetPrefabSource().c_str());   // 2026-10-15
 	if (playState != PlayState::Editing) ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.15f, 1.0f), "Playing: edits are discarded on Stop");   // 11-C단계
 	ImGui::Separator();
 
@@ -873,7 +916,8 @@ void Editor::DrawCameraGizmos(Engine& engine, float x, float y, float width, flo
 
 		// 눈에서 1.5 단위 앞의 프러스텀 단면 (fov 는 컴포넌트 값, 종횡비는 씬 뷰 값). 위쪽의 작은 삼각형 = "위".
 		const float depth = 1.5f;
-		const float halfH = depth * tanf(pose.fovY * 0.5f);
+		const bool ortho = cameraComponent->orthographic;   // 2026-10-15: 직교 카메라는 피라미드가 아니라 상자 (눈 평면의 사각형 → 앞의 사각형)
+		const float halfH = ortho ? cameraComponent->orthoSize * 0.5f : depth * tanf(pose.fovY * 0.5f);
 		const float halfW = halfH * editorCamera.GetAspect();
 		const XMVECTOR center = eye + forward * depth;
 		XMFLOAT3 corner[4], apex, top;
@@ -882,6 +926,11 @@ void Editor::DrawCameraGizmos(Engine& engine, float x, float y, float width, flo
 		XMStoreFloat3(&corner[2], center + right * halfW - up * halfH);
 		XMStoreFloat3(&corner[3], center - right * halfW - up * halfH);
 		XMStoreFloat3(&apex, eye);
+		XMFLOAT3 nearCorner[4];
+		XMStoreFloat3(&nearCorner[0], eye - right * halfW + up * halfH);
+		XMStoreFloat3(&nearCorner[1], eye + right * halfW + up * halfH);
+		XMStoreFloat3(&nearCorner[2], eye + right * halfW - up * halfH);
+		XMStoreFloat3(&nearCorner[3], eye - right * halfW - up * halfH);
 		XMStoreFloat3(&top, center + up * (halfH * 1.5f));
 
 		const bool selected = i == m_selected;
@@ -889,7 +938,12 @@ void Editor::DrawCameraGizmos(Engine& engine, float x, float y, float width, flo
 		const float thickness = selected ? 2.0f : 1.2f;
 		for (int c = 0; c < 4; ++c)
 		{
-			line(apex, corner[c], color, thickness);
+			if (ortho)
+			{
+				line(nearCorner[c], corner[c], color, thickness);
+				line(nearCorner[c], nearCorner[(c + 1) % 4], color, thickness);
+			}
+			else line(apex, corner[c], color, thickness);
 			line(corner[c], corner[(c + 1) % 4], color, thickness);
 		}
 		line(corner[0], top, color, thickness);

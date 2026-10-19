@@ -21,7 +21,7 @@ struct ImVec2;
 // 소유하지 않음: 파일 시스템을 읽기만 하고, 씬 변경은 Actions 콜백으로 Editor 에 넘김 (Editor 가 다시 앱에 넘김).
 // 유일하게 소유하는 GPU 자원은 텍스처 썸네일임. 렌더러의 텍스처 캐시와는 완전히 분리함 —
 // Renderer::InvalidateScene(…, true) 가 씬 전환마다 텍스처를 지우기 때문임.
-enum class AssetType : uint8_t { Folder, Model, Texture, Scene, Other };
+enum class AssetType : uint8_t { Folder, Model, Texture, Scene, Prefab, Other };   // 2026-10-15: Prefab (.prefab)
 
 // 드래그 페이로드. ImGui 가 memcpy 로 복사하므로 POD 고정 크기여야 함 (≈524B, ImGui 는 16B 를 넘으면 힙 버퍼에 복사함).
 struct AssetDragPayload
@@ -38,6 +38,7 @@ public:
 	{
 		std::function<void(const std::wstring& relativePath)> openScene;                                        // 씬 더블클릭·컨텍스트 메뉴
 		std::function<void(const std::wstring& relativePath, const DirectX::XMFLOAT3& position)> placeModel;    // 모델 더블클릭 → 원점
+		std::function<void(const std::wstring& relativePath, const DirectX::XMFLOAT3& position)> instantiatePrefab;   // 2026-10-15: 프리팹 더블클릭·컨텍스트 메뉴 → 원점
 	};
 
 	ContentBrowser();

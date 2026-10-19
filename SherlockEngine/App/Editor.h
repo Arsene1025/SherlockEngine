@@ -44,6 +44,24 @@ public:
 		std::function<bool(const std::wstring& parentDir, const std::string& name, std::string& error)> newProject;   // 폴더·솔루션·기본 씬을 만든 뒤 엶
 		std::function<void()> buildScripts;                  // 2026-10-08 (B안): 프로젝트 스크립트 DLL 을 MSBuild 로 빌드하고 다시 올림
 		std::function<bool()> saveProject;                   // .sherlock 저장 (시작 씬 등)
+		// 2026-10-15: 되돌리기와 오브젝트 명령. 구조를 바꾸는 명령(추가·삭제·모델·프리팹·불러오기·복제)은 앱이 명령 큐에 넣었다가
+		// 위젯을 모두 그린 뒤(OnGUI 끝)에 실행함 — 그리는 도중에 오브젝트 벡터가 바뀌지 않게 하려는 것임. 그래서 호출한 직후에는 결과가 아직 없음:
+		// 새 오브젝트의 선택·상태 메시지는 명령이 실행될 때 앱이 Editor::SetSelectedObject / SetMessage 로 정함.
+		std::function<void()> undo;
+		std::function<void()> redo;
+		std::function<void(int)> duplicateObject;              // 오브젝트 인덱스. 복제본은 원본과 같은 부모 아래 생기고 선택됨
+		std::function<void(int)> savePrefab;                   // 오브젝트 인덱스 → <프로젝트 Assets>\Prefabs\<이름>.prefab
+		std::function<void(const std::wstring& relativePath, const DirectX::XMFLOAT3& position)> instantiatePrefab;
+	};
+
+	struct HistoryInfo   // 앱이 매 프레임 넣어 주는 표시용 정보 (Edit 메뉴)
+	{
+		bool canUndo = false;
+		bool canRedo = false;
+		std::string undoLabel;
+		std::string redoLabel;
+		size_t steps = 0;
+		size_t bytes = 0;
 	};
 
 	struct ProjectInfo   // 앱이 매 프레임 넣어 주는 표시용 정보
@@ -79,8 +97,12 @@ public:
 	uint32_t GetSceneViewHeight() const { return m_sceneHeight; }
 
 	int GetSelectedObject() const { return m_selected; }
-	void SetSelectedObject(int index) { m_selected = index; }
-	void ClearSelection() { m_selected = -1; }
+	// 2026-10-15: 선택은 인덱스(m_selected)로 쓰지만 ID 로도 기억함 — 오브젝트가 지워지거나 되돌리기·재생 중 Destroy 로 순서가 바뀌어도
+	// 같은 오브젝트를 따라감. 밖에서 인덱스를 바꾸면(SetSelectedObject) 다음 프레임에 그 오브젝트의 ID 가 새 선택이 됨.
+	void SetSelectedObject(int index) { m_selected = index; m_selectedPrev = -2; }
+	void ClearSelection() { m_selected = -1; m_selectedPrev = -2; }
+	uint64_t GetSelectedId() const { return m_selectedId; }
+	void SetMessage(const std::string& message) { m_lastMessage = message; }   // 메뉴 바의 상태 문구. 명령 큐에서 실행된 명령이 결과를 알릴 때 씀
 	// 자동 검증용: 클릭과 같은 코드 경로로 (u, v) 픽셀의 오브젝트를 고름.
 	int PickAt(Scene& scene, const Camera& camera, float u, float v) const { return Pick(scene, camera, u, v); }
 	// 11-B단계: 드롭 위치를 구함. (u, v) 광선이 오브젝트 AABB 에 맞으면 그 교점(반환 = 오브젝트 인덱스), 아니면 y = 0 바닥면과의 교점(반환 −1).
@@ -97,6 +119,7 @@ public:
 	PlayState playState = PlayState::Editing;   // 11-C단계: 앱이 매 프레임 넣어 줌 (표시용)
 	float timeScale = 1.0f;                       // 씬 뷰 툴바의 슬라이더. 앱이 읽어 dt 에 곱함
 	ProjectInfo project;                          // 11-E단계: 앱이 매 프레임 넣어 줌
+	HistoryInfo history;                          // 2026-10-15: 앱이 매 프레임 넣어 줌
 	std::string* projectStartScene = nullptr;     // Project Settings 팝업이 편집하는 시작 씬 (앱의 Project::startScene)
 	void OnProjectChanged();                      // 앱이 프로젝트를 열거나 바꾼 뒤 호출: 브라우저·선택·경로 초기화
 	void ShowLauncher() { m_openLauncher = true; }
@@ -157,6 +180,9 @@ private:
 	uint32_t m_sceneWidth = 0;
 	uint32_t m_sceneHeight = 0;
 	int m_selected = -1;
+	int m_selectedPrev = -2;       // 2026-10-15: 지난 프레임 끝의 m_selected. -2 = "밖에서 바꿨으니 인덱스에서 ID 를 다시 구하라"
+	uint64_t m_selectedId = 0;     // 2026-10-15
+	void SyncSelection(Scene& scene);
 	int m_gizmoOperation = 0;   // 0 이동, 1 회전, 2 크기
 	bool m_gizmoWorld = false;   // 기본 로컬(오브젝트 축). 툴바의 Local/World 로 고름
 	bool m_layoutBuilt = false;

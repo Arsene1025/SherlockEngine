@@ -12,6 +12,14 @@
 
 class Mesh;
 struct Model;
+class AssetManager;
+
+// 2026-10-15: 프리팹 파일 하나가 씬에 만든 메시·재질. 같은 프리팹의 인스턴스는 이것을 공유함 (Scene::Instantiate).
+struct PrefabResources
+{
+	std::vector<const Mesh*> meshes;
+	std::vector<const Material*> materials;
+};
 
 // 메시의 출처 정보. 씬을 저장할 때 정점 데이터 대신 이 정보를 기록하고, 로드할 때 이를 바탕으로 메시를 다시 만듦.
 struct MeshSource
@@ -102,8 +110,32 @@ public:
 	const std::vector<std::unique_ptr<GameObject>>& GetObjects() const { return m_objects; }
 	GameObject* GetObject(size_t index) { return index < m_objects.size() ? m_objects[index].get() : nullptr; }
 	GameObject* FindObject(const std::string& name);
+	// 2026-10-15: 안정 ID 로 찾음. 없으면(지워졌거나 모르는 ID) nullptr — 오브젝트 포인터를 오래 들고 있는 대신 ID 를 들고 이것으로 다시 찾음.
+	GameObject* FindById(uint64_t id);
+	const GameObject* FindById(uint64_t id) const;
+	// 직렬화가 읽은 ID 보다 큰 값부터 새 ID 가 나가도록 카운터를 올림 (SceneSerializer 가 오브젝트를 만들기 전에 호출함).
+	void ReserveIds(uint64_t maxUsed) { if (m_nextId <= maxUsed) m_nextId = maxUsed + 1; }
 	size_t IndexOf(const GameObject* object) const;   // 11-F단계: 포인터 → 벡터 인덱스. 없으면 SIZE_MAX
-	void RemoveObject(size_t index);                  // 11-F단계: 자식도 함께 지움
+	void RemoveObject(size_t index);                  // 11-F단계: 자식도 함께 지움 (즉시. 재생 중 게임 코드는 Destroy 를 쓸 것)
+	void ClearObjects();                              // 2026-10-15: 오브젝트만 비움 (메시·재질·조명·환경은 유지). 되돌리기 복원이 씀. ID 카운터는 그대로
+
+	// ---- 2026-10-15: 생성(Instantiate)과 지연 파괴(Destroy) — 유니티의 Instantiate / Destroy ----
+	// 에셋 관리자 (프리팹의 모델 메시를 읽는 데 필요함). Engine 이 초기화할 때 한 번 지정함. 없으면 프리팹 Instantiate 는 실패함.
+	void SetAssets(AssetManager* assets) { m_assets = assets; }
+	// 프리팹(Assets 기준 상대 경로, 예: "Prefabs\\Bullet.prefab")을 씬에 만들고 루트를 돌려줌. 실패하면 nullptr.
+	// position·rotation(라디안)은 루트의 로컬 자세. 자세를 주지 않으면 프리팹에 저장된 값 그대로임.
+	// 재생 중 컴포넌트의 Update 안에서 불러도 안전함: 새 오브젝트는 목록 끝에 붙고, 같은 프레임 순회가 거기까지 오면 Start 와 첫 Update 를 받음.
+	GameObject* Instantiate(const std::string& prefabPath);
+	GameObject* Instantiate(const std::string& prefabPath, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& rotation = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+	// 씬의 오브젝트(와 자손)를 복제함 (메시·재질 공유, 이름 뒤에 " (Clone)"). 에디터의 Duplicate 도 이것을 씀.
+	GameObject* Instantiate(const GameObject& source);
+	// 오브젝트(와 자손)를 지우도록 표시함. 재생 중에는 지금 도는 Update/FixedUpdate 가 끝난 뒤(프레임 끝)에 지워지고, 그때까지 그 오브젝트는
+	// 남은 Update 를 받지 않음. 재생 중이 아니면 순회하는 코드가 없으므로 바로 지움. 지운 뒤에는 포인터가 무효이므로 오래 들고 있을 오브젝트는
+	// GetId() 를 저장해 두고 FindById 로 다시 찾을 것 (없으면 이미 지워진 것).
+	void Destroy(GameObject* object);
+	// 프리팹 자원 캐시 (SceneSerializer::InstantiatePrefab 이 씀). 씬을 비우면 함께 비워짐.
+	PrefabResources* FindPrefabResources(const std::string& key);
+	PrefabResources& StorePrefabResources(const std::string& key, PrefabResources&& resources);
 
 	// ---- 11-C단계: 재생 (에디터의 ▶). 재생 중에만 컴포넌트의 Start/Update/FixedUpdate 가 호출됨 ----
 	void BeginPlay(Input* input, Camera* camera);
@@ -155,4 +187,24 @@ private:
 	CameraPose m_blendFrom;          // 전환 시작 시점의 카메라 자세 (11-F단계: 회전은 쿼터니언, slerp 로 보간)
 	float m_blendElapsed = 0.0f;
 	float m_blendDuration = 0.0f;
+
+	// 2026-10-15: 멤버는 끝에만 덧붙임 (이미 빌드된 스크립트 DLL 과의 ABI 호환)
+	uint64_t m_nextId = 1;           // 다음에 부여할 오브젝트 ID. Clear 에서만 1 로 돌아감
+	AssetManager* m_assets = nullptr;
+	std::unordered_map<std::string, PrefabResources> m_prefabResources;
+	bool m_destroyPending = false;   // Destroy 로 표시된 오브젝트가 있음 → 프레임 끝에 FlushDestroyed
+
+	// 2026-10-15: 투영 선택. 재생 시작 때의 렌즈(투영 방식 포함)를 기억했다가 정지에서 되돌림 — 카메라 컴포넌트가 직교였으면 에디터 카메라가 직교로 남지 않게.
+	struct SavedLens
+	{
+		bool valid = false;
+		bool perspective = true;
+		float fovY = 0.0f;
+		float orthoHeight = 25.0f;
+		float nearZ = 0.1f;
+		float farZ = 1000.0f;
+	};
+	SavedLens m_savedLens;
+	float m_blendFromOrthoHeight = 25.0f;   // 전환 시작 시점의 직교 크기 (보간용)
+	void FlushDestroyed();
 };

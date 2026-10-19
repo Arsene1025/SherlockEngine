@@ -4,6 +4,7 @@
 #include "Core/Log.h"
 #include "Graphics/Mesh.h"   // unique_ptr<Mesh> 소멸에 완전한 타입 필요
 #include "Graphics/Model.h"
+#include "Scene/SceneSerializer.h"
 #include <algorithm>
 #include <cmath>
 
@@ -88,7 +89,20 @@ Material* Scene::AddMaterial(const Material& material)
 GameObject& Scene::AddObject(const Mesh* mesh, const Material* material, const char* name)
 {
 	m_objects.push_back(std::make_unique<GameObject>(mesh, material, name));
+	m_objects.back()->SetId(m_nextId++);   // 2026-10-15: 안정 ID. 씬 파일에서 읽은 오브젝트는 직렬화가 곧바로 파일의 값으로 바꿈
 	return *m_objects.back();
+}
+
+GameObject* Scene::FindById(uint64_t id)
+{
+	if (id == 0) return nullptr;
+	for (auto& object : m_objects) if (object->GetId() == id) return object.get();
+	return nullptr;
+}
+
+const GameObject* Scene::FindById(uint64_t id) const
+{
+	return const_cast<Scene*>(this)->FindById(id);
 }
 
 GameObject* Scene::FindObject(const std::string& name)
@@ -110,10 +124,79 @@ void Scene::RemoveObject(size_t index)
 	};
 	GameObject* root = m_objects[index].get();
 	collect(root, collect);
+	// 활성 카메라의 주인이 지워지면 포인터가 dangling 이 되므로 비움 (다음 ApplyActiveCamera 가 남은 카메라 중에서 다시 고름).
+	for (GameObject* object : doomed)
+		for (auto& behaviour : object->GetBehaviours()) if (behaviour.get() == m_activeCamera) m_activeCamera = nullptr;
 	root->DetachFromHierarchy();   // 부모의 children 에서 빠짐. 자식 링크도 끊지만 자식들은 아래에서 함께 지워짐
 	m_objects.erase(std::remove_if(m_objects.begin(), m_objects.end(),
 		[&doomed](const std::unique_ptr<GameObject>& o) { return std::find(doomed.begin(), doomed.end(), o.get()) != doomed.end(); }), m_objects.end());
 	if (doomed.size() > 1) Log::Info("오브젝트 삭제: 자식 %zu 개 포함", doomed.size() - 1);
+}
+
+void Scene::ClearObjects()
+{
+	m_activeCamera = nullptr;
+	m_destroyPending = false;
+	m_objects.clear();
+}
+
+GameObject* Scene::Instantiate(const std::string& prefabPath)
+{
+	if (m_assets == nullptr) { Log::Error("Instantiate: 에셋 관리자가 지정되지 않음 (%s)", prefabPath.c_str()); return nullptr; }
+	return SceneSerializer::InstantiatePrefab(*this, *m_assets, prefabPath);
+}
+
+GameObject* Scene::Instantiate(const std::string& prefabPath, const XMFLOAT3& position, const XMFLOAT3& rotation)
+{
+	if (m_assets == nullptr) { Log::Error("Instantiate: 에셋 관리자가 지정되지 않음 (%s)", prefabPath.c_str()); return nullptr; }
+	return SceneSerializer::InstantiatePrefab(*this, *m_assets, prefabPath, &position, &rotation);
+}
+
+GameObject* Scene::Instantiate(const GameObject& source)
+{
+	return SceneSerializer::CloneSubtree(*this, source);
+}
+
+void Scene::Destroy(GameObject* object)
+{
+	if (object == nullptr) return;
+	if (!m_playing)
+	{
+		const size_t index = IndexOf(object);
+		if (index != SIZE_MAX) RemoveObject(index);
+		return;
+	}
+	// 자손까지 표시함: 부모와 함께 지워질 것이므로 남은 Update 도 받지 않게 함.
+	const auto mark = [](GameObject* o, auto& self) -> void
+	{
+		o->MarkForDestroy();
+		for (GameObject* child : o->GetChildren()) self(child, self);
+	};
+	mark(object, mark);
+	m_destroyPending = true;
+}
+
+void Scene::FlushDestroyed()
+{
+	if (!m_destroyPending) return;
+	m_destroyPending = false;
+	// 표시된 오브젝트 중 부모가 표시되지 않은 것(서브트리 루트)만 지움: 자손은 RemoveObject 가 함께 지움. 지우는 동안 벡터가 바뀌므로 ID 로 기억함.
+	std::vector<uint64_t> roots;
+	for (const auto& object : m_objects)
+		if (object->IsMarkedForDestroy() && (object->GetParent() == nullptr || !object->GetParent()->IsMarkedForDestroy())) roots.push_back(object->GetId());
+	for (uint64_t id : roots)
+		if (GameObject* object = FindById(id)) RemoveObject(IndexOf(object));
+}
+
+PrefabResources* Scene::FindPrefabResources(const std::string& key)
+{
+	const auto found = m_prefabResources.find(key);
+	return found == m_prefabResources.end() ? nullptr : &found->second;
+}
+
+PrefabResources& Scene::StorePrefabResources(const std::string& key, PrefabResources&& resources)
+{
+	return m_prefabResources[key] = std::move(resources);
 }
 
 size_t Scene::IndexOf(const GameObject* object) const
@@ -130,6 +213,11 @@ void Scene::BeginPlay(Input* input, Camera* camera)
 	m_playContext.scene = this;
 	m_playContext.input = input;
 	m_playContext.camera = camera;
+	m_savedLens = SavedLens{};
+	if (camera != nullptr)
+	{
+		m_savedLens = SavedLens{ true, camera->IsUsePerspectiveProjection(), camera->GetFovY(), camera->GetOrthoHeight(), camera->GetNearZ(), camera->GetFarZ() };
+	}
 	m_playing = true;
 	for (auto& object : m_objects)
 		for (auto& behaviour : object->GetBehaviours()) behaviour->BeginPlay(&m_playContext);
@@ -143,6 +231,7 @@ void Scene::Update(float dt)
 	// 인덱스로 순회함: 컴포넌트가 재생 중 오브젝트를 추가해도(벡터 재할당) 안전함. 삭제는 순회 중에 하지 말 것.
 	for (size_t i = 0; i < m_objects.size(); ++i)
 	{
+		if (m_objects[i]->IsMarkedForDestroy()) continue;   // 2026-10-15: Destroy 가 표시한 오브젝트는 프레임 끝에 지워짐
 		auto& behaviours = m_objects[i]->GetBehaviours();
 		for (size_t b = 0; b < behaviours.size(); ++b)
 		{
@@ -156,6 +245,7 @@ void Scene::Update(float dt)
 			if (behaviour.enabled) behaviour.Update(dt);
 		}
 	}
+	FlushDestroyed();        // 2026-10-15: 이번 프레임에 Destroy 된 오브젝트를 순회가 끝난 지금 지움
 	ApplyActiveCamera(dt);   // 모든 컴포넌트가 움직인 뒤 (FollowTarget 이 카메라 오브젝트를 옮긴 뒤) 카메라에 자세를 적용함
 }
 
@@ -189,6 +279,7 @@ void Scene::ApplyActiveCamera(float dt)
 		m_blendFrom.position = camera->GetPosition();
 		XMStoreFloat4(&m_blendFrom.rotation, XMQuaternionRotationMatrix(camera->GetRotationMatrix()));   // 11-F단계: 행렬 → 쿼터니언 (보간용)
 		m_blendFrom.fovY = camera->GetFovY();
+		m_blendFromOrthoHeight = camera->GetOrthoHeight();
 		m_blendDuration = m_activeCamera != nullptr ? (std::max)(0.0f, next->blendTime) : 0.0f;
 		m_blendElapsed = 0.0f;
 		m_activeCamera = next;
@@ -197,6 +288,7 @@ void Scene::ApplyActiveCamera(float dt)
 	}
 
 	CameraPose pose = next->GetPose();
+	float orthoHeight = next->orthoSize;   // 투영 방식은 새 카메라 것을 바로 쓰고 직교 크기만 블렌드함
 	if (m_blendDuration > 0.0f && m_blendElapsed < m_blendDuration)
 	{
 		m_blendElapsed += dt;
@@ -211,10 +303,13 @@ void Scene::ApplyActiveCamera(float dt)
 		const XMVECTOR to = XMLoadFloat4(&pose.rotation);
 		XMStoreFloat4(&pose.rotation, XMQuaternionNormalize(XMQuaternionSlerp(from, to, t)));
 		pose.fovY = m_blendFrom.fovY + (pose.fovY - m_blendFrom.fovY) * t;
+		orthoHeight = m_blendFromOrthoHeight + (orthoHeight - m_blendFromOrthoHeight) * t;
 	}
 	camera->SetPosition(pose.position);
 	camera->SetRotation(pose.GetRotationMatrix());
 	camera->SetLens(pose.fovY, camera->GetAspect(), next->nearZ, next->farZ);
+	camera->SetOrthoHeight(orthoHeight);
+	camera->SetUsePerspectiveProjection(!next->orthographic);
 	m_playContext.cameraDriven = true;
 }
 
@@ -223,6 +318,7 @@ void Scene::FixedUpdate(float fixedDt)
 	if (!m_playing) return;
 	for (size_t i = 0; i < m_objects.size(); ++i)
 	{
+		if (m_objects[i]->IsMarkedForDestroy()) continue;
 		auto& behaviours = m_objects[i]->GetBehaviours();
 		for (size_t b = 0; b < behaviours.size(); ++b)
 		{
@@ -230,12 +326,21 @@ void Scene::FixedUpdate(float fixedDt)
 			if (behaviour.HasStarted() && behaviour.enabled) behaviour.FixedUpdate(fixedDt);   // Start 전에는 호출하지 않음 (Start 는 Update 에서 먼저 호출됨)
 		}
 	}
+	FlushDestroyed();
 }
 
 void Scene::EndPlay()
 {
 	m_playing = false;
 	m_activeCamera = nullptr;
+	if (m_savedLens.valid && m_playContext.camera != nullptr)   // 재생 중 카메라 컴포넌트가 바꾼 렌즈를 재생 전 값으로
+	{
+		Camera& camera = *m_playContext.camera;
+		camera.SetLens(m_savedLens.fovY, camera.GetAspect(), m_savedLens.nearZ, m_savedLens.farZ);
+		camera.SetOrthoHeight(m_savedLens.orthoHeight);
+		camera.SetUsePerspectiveProjection(m_savedLens.perspective);
+		m_savedLens.valid = false;
+	}
 	for (auto& object : m_objects)
 		for (auto& behaviour : object->GetBehaviours()) behaviour->EndPlay();
 }
@@ -299,6 +404,9 @@ void Scene::Clear()
 	m_playing = false;
 	m_activeCamera = nullptr;
 	m_objects.clear();
+	m_destroyPending = false;
+	m_prefabResources.clear();   // 프리팹 자원 (메시·재질 포인터)은 m_meshes/m_materials 와 함께 사라짐
+	m_nextId = 1;
 	m_lights.clear();
 	m_images.clear();
 	m_materials.clear();

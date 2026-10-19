@@ -61,7 +61,7 @@ float DebugUI::TextItemWidth(const char* text)
 	return ImGui::CalcTextSize(text, nullptr, true).x;
 }
 
-void DebugUI::DrawCameraPanel(const Camera& camera, float& moveSpeed)
+void DebugUI::DrawCameraPanel(Camera& camera, float& moveSpeed)
 {
 	ImGui::Separator();
 	ImGui::TextWrapped("Camera  (WASD/QE move, RMB drag look, Shift fast)");
@@ -70,7 +70,15 @@ void DebugUI::DrawCameraPanel(const Camera& camera, float& moveSpeed)
 	ImGui::TextWrapped("yaw   %.1f deg   pitch %.1f deg   roll %.1f deg",
 		XMConvertToDegrees(camera.GetYaw()), XMConvertToDegrees(camera.GetPitch()), XMConvertToDegrees(camera.GetRoll()));   // roll 은 재생 중 부모가 기울어진 카메라에서만 0 이 아님 (11-F)
 	ImGui::SliderFloat("Speed", &moveSpeed, 1.0f, 50.0f);
-	ImGui::TextWrapped("F1 wire  F2 cull  F3 vsync  F4 reload  F5 sRGB  F6 sampler  F7 light orbit  F8 shadows  F9 normal maps  F10 freeze");
+	// 2026-10-15: 에디터 카메라의 투영 선택. 재생 중 카메라 컴포넌트가 카메라를 움직이면 그 컴포넌트의 설정이 덮어씀.
+	bool orthographic = !camera.IsUsePerspectiveProjection();
+	if (ImGui::Checkbox("Orthographic", &orthographic)) camera.SetUsePerspectiveProjection(!orthographic);
+	if (orthographic)
+	{
+		float height = camera.GetOrthoHeight();
+		if (ImGui::SliderFloat("Ortho height", &height, 1.0f, 100.0f)) camera.SetOrthoHeight(height);
+	}
+	ImGui::TextWrapped("F1 wire  F2 cull  F3 vsync  F4 reload  F5 sRGB  F6 sampler  F7 light orbit  F8 shadows  F9 normal maps  F10 pause");
 }
 
 void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)

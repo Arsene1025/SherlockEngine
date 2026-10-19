@@ -60,6 +60,9 @@ public:
 	void SetAspectRatio(float aspect);
 	void SetUsePerspectiveProjection(bool usePerspective);
 	bool IsUsePerspectiveProjection() const { return m_usePerspective; }
+	// 2026-10-15: 직교 투영의 세로 길이(월드 단위). 가로는 이 값 × 종횡비. 원근일 때는 쓰이지 않지만 값은 유지됨.
+	void SetOrthoHeight(float height);
+	float GetOrthoHeight() const { return m_orthoHeight; }
 
 	DirectX::XMMATRIX GetViewMatrix() const;
 	DirectX::XMMATRIX GetProjectionMatrix() const;

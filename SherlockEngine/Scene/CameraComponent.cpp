@@ -12,6 +12,8 @@ void CameraComponent::Reflect(PropertyVisitor& v)
 	v.Float("farZ", farZ, 1.0f);
 	v.Int("priority", priority);
 	v.Float("blendTime", blendTime, 0.05f);
+	v.Bool("orthographic", orthographic);
+	v.Float("orthoSize", orthoSize, 0.1f);
 }
 
 CameraPose CameraComponent::GetPose() const
@@ -42,7 +44,12 @@ void CameraComponent::ApplyTo(Camera& camera, bool applyLens) const
 	const CameraPose pose = GetPose();
 	camera.SetPosition(pose.position);
 	camera.SetRotation(pose.GetRotationMatrix());
-	if (applyLens) camera.SetLens(pose.fovY, camera.GetAspect(), nearZ, farZ);
+	if (applyLens)
+	{
+		camera.SetLens(pose.fovY, camera.GetAspect(), nearZ, farZ);
+		camera.SetOrthoHeight(orthoSize);
+		camera.SetUsePerspectiveProjection(!orthographic);
+	}
 }
 
 void CameraComponent::SetFromCamera(const Camera& camera)
@@ -54,6 +61,8 @@ void CameraComponent::SetFromCamera(const Camera& camera)
 	fovYDegrees = XMConvertToDegrees(camera.GetFovY());
 	nearZ = camera.GetNearZ();
 	farZ = camera.GetFarZ();
+	orthographic = !camera.IsUsePerspectiveProjection();
+	orthoSize = camera.GetOrthoHeight();
 }
 
 SHERLOCK_BEHAVIOUR(CameraComponent)

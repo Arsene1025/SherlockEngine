@@ -162,6 +162,7 @@
     <ClInclude Include="App\AppBase.h" />
     <ClInclude Include="App\GameApp.h" />
     <ClInclude Include="App\EditorApp.h" />
+    <ClInclude Include="App\EditorHistory.h" />
     <ClInclude Include="App\Editor.h" />
     <ClInclude Include="App\ContentBrowser.h" />
     <ClInclude Include="App\ScriptCreator.h" />
@@ -233,6 +234,7 @@
     <ClCompile Include="App\AppBase.cpp" />
     <ClCompile Include="App\GameApp.cpp" />
     <ClCompile Include="App\EditorApp.cpp" />
+    <ClCompile Include="App\EditorHistory.cpp" />
     <ClCompile Include="App\Editor.cpp" />
     <ClCompile Include="App\ContentBrowser.cpp" />
     <ClCompile Include="App\ScriptCreator.cpp" />

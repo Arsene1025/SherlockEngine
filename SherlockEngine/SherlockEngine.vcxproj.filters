@@ -62,6 +62,9 @@
     <ClCompile Include="App\EditorApp.cpp">
       <Filter>App</Filter>
     </ClCompile>
+    <ClCompile Include="App\EditorHistory.cpp">
+      <Filter>App</Filter>
+    </ClCompile>
     <ClCompile Include="App\Editor.cpp">
       <Filter>App</Filter>
     </ClCompile>
@@ -210,6 +213,9 @@
       <Filter>App</Filter>
     </ClInclude>
     <ClInclude Include="App\EditorApp.h">
+      <Filter>App</Filter>
+    </ClInclude>
+    <ClInclude Include="App\EditorHistory.h">
       <Filter>App</Filter>
     </ClInclude>
     <ClInclude Include="App\Editor.h">

@@ -9,7 +9,6 @@
     "cgltf",
     "nlohmann-json",
     "imguizmo",
-    "directxtk",
     {
       "name": "directxtex",
       "features": [ "dx11" ]

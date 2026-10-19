@@ -44,4 +44,9 @@ public:
 	int priority = 0;        // 높은 쪽이 활성. 같으면 오브젝트 목록에서 앞선 것이 우선
 	float blendTime = 0.5f;  // 재생 "도중" 다른 카메라에서 이 카메라로 전환될 때의 보간 시간 (초). 0 = 즉시.
 	                         // Play 시작 때는 언제나 즉시 전환함 — 에디터 시점에서 카메라로 미끄러지듯 이동하지 않음 (Scene::ApplyActiveCamera).
+
+	// 2026-10-15: 투영 선택. false = 원근(fovY 를 씀), true = 직교(orthoSize 를 씀). 멤버는 끝에만 덧붙임 (스크립트 DLL ABI).
+	// 직교에서 orthoSize 는 화면 세로 길이(월드 단위)이고 가로는 종횡비를 곱한 값. 전환 블렌드 중에는 투영 방식이 새 카메라 것으로 즉시 바뀌고 크기만 보간함.
+	bool orthographic = false;
+	float orthoSize = 10.0f;
 };

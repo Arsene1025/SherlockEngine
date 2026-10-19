@@ -96,6 +96,7 @@ AssetType ContentBrowser::Classify(const std::wstring& relativePath, bool isDire
 	if (ext == L".gltf" || ext == L".glb") return AssetType::Model;
 	if (ext == L".png" || ext == L".jpg" || ext == L".jpeg" || ext == L".bmp" || ext == L".dds" || ext == L".tga") return AssetType::Texture;
 	if (ext == L".json" && StartsWithNoCase(relativePath, L"Scenes\\")) return AssetType::Scene;
+	if (ext == L".prefab") return AssetType::Prefab;   // 2026-10-15
 	return AssetType::Other;
 }
 
@@ -107,6 +108,7 @@ const char* ContentBrowser::TypeName(AssetType type)
 	case AssetType::Model: return "Model (glTF)";
 	case AssetType::Texture: return "Texture";
 	case AssetType::Scene: return "Scene";
+	case AssetType::Prefab: return "Prefab";
 	default: return "File";
 	}
 }
@@ -164,14 +166,15 @@ void ContentBrowser::DrawTypeIcon(ImDrawList* dl, const ImVec2& min, const ImVec
 		break;
 	}
 	case AssetType::Scene:
+	case AssetType::Prefab:
 	case AssetType::Other:
 	{
 		// 문서: 접힌 모서리 + 줄. 씬은 파란 줄 + 작은 큐브 점.
 		const ImVec2 a(c.x - s * 0.30f, c.y - s * 0.40f);
 		const ImVec2 b(c.x + s * 0.30f, c.y + s * 0.40f);
 		const float fold = s * 0.16f;
-		const ImU32 paper = type == AssetType::Scene ? col(236, 240, 255) : col(232, 232, 236);
-		const ImU32 ink = type == AssetType::Scene ? col(70, 90, 200) : col(150, 150, 160);
+		const ImU32 paper = type == AssetType::Scene ? col(236, 240, 255) : (type == AssetType::Prefab ? col(255, 242, 226) : col(232, 232, 236));
+		const ImU32 ink = type == AssetType::Scene ? col(70, 90, 200) : (type == AssetType::Prefab ? col(214, 120, 40) : col(150, 150, 160));
 		const ImVec2 outline[5] = { a, ImVec2(b.x - fold, a.y), ImVec2(b.x, a.y + fold), b, ImVec2(a.x, b.y) };
 		dl->AddConvexPolyFilled(outline, 5, paper);
 		dl->AddPolyline(outline, 5, ink, ImDrawFlags_Closed, 1.0f);
@@ -183,6 +186,7 @@ void ContentBrowser::DrawTypeIcon(ImDrawList* dl, const ImVec2& min, const ImVec
 			dl->AddLine(ImVec2(a.x + s * 0.08f, y), ImVec2(b.x - s * 0.08f, y), ink, 2.0f);
 		}
 		if (type == AssetType::Scene) dl->AddRectFilled(ImVec2(a.x + s * 0.08f, b.y - s * 0.20f), ImVec2(a.x + s * 0.22f, b.y - s * 0.06f), col(120, 150, 240));
+		if (type == AssetType::Prefab) dl->AddRectFilled(ImVec2(a.x + s * 0.08f, b.y - s * 0.20f), ImVec2(a.x + s * 0.22f, b.y - s * 0.06f), col(240, 160, 70));
 		break;
 	}
 	case AssetType::Texture:
@@ -565,7 +569,7 @@ void ContentBrowser::BeginDragSource(const Entry& entry)
 	ImGui::TextUnformatted(entry.nameUtf8.c_str());
 	ImGui::TextDisabled("%s", TypeName(entry.type));
 	if (m_dragCancelled) ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.3f, 1.0f), "cancelled (release)");
-	else ImGui::TextDisabled(entry.type == AssetType::Scene ? "drop on Scene view: load" : "drop on Scene view   Esc: cancel");
+	else ImGui::TextDisabled(entry.type == AssetType::Scene ? "drop on Scene view: load" : (entry.type == AssetType::Prefab ? "drop on Scene view: instantiate   Esc: cancel" : "drop on Scene view   Esc: cancel"));
 	ImGui::EndGroup();
 
 	if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) m_dragCancelled = true;
@@ -580,6 +584,7 @@ void ContentBrowser::DrawContextMenu(const Entry& entry, const Actions& actions)
 	if (entry.isDirectory && ImGui::MenuItem("Open folder")) SetDirectory(entry.relativePath, m_currentRoot);
 	if (entry.type == AssetType::Model && ImGui::MenuItem("Place at origin") && actions.placeModel) actions.placeModel(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
 	if (entry.type == AssetType::Scene && ImGui::MenuItem("Load scene") && actions.openScene) actions.openScene(entry.relativePath);
+	if (entry.type == AssetType::Prefab && ImGui::MenuItem("Instantiate at origin") && actions.instantiatePrefab) actions.instantiatePrefab(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
 	if (ImGui::MenuItem("Copy relative path")) ImGui::SetClipboardText(Log::ToUtf8(entry.relativePath.c_str()).c_str());
 	if (ImGui::MenuItem("Show in Explorer"))
 	{
@@ -596,6 +601,7 @@ void ContentBrowser::OnDoubleClick(const Entry& entry, const Actions& actions)
 	case AssetType::Folder: SetDirectory(entry.relativePath, m_currentRoot); break;
 	case AssetType::Scene: if (actions.openScene) actions.openScene(entry.relativePath); break;
 	case AssetType::Model: if (actions.placeModel) actions.placeModel(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f)); break;
+	case AssetType::Prefab: if (actions.instantiatePrefab) actions.instantiatePrefab(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f)); break;
 	default: break;
 	}
 }
