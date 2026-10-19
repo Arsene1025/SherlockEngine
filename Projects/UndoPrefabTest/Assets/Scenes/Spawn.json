@@ -1,0 +1,16 @@
+﻿{
+  "version": 5,
+  "ambientColor": [0.3, 0.3, 0.3],
+  "objects": [
+    {
+      "name": "Spawner",
+      "id": 1,
+      "mesh": -1,
+      "material": -1,
+      "position": [-8.0, 0.0, 0.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [1.0, 1.0, 1.0],
+      "components": [ { "type": "Spawner", "enabled": true, "prefab": "Prefabs\\Bullet.prefab", "interval": 0.02, "maxSpawns": 60, "spacing": 0.6, "logEvery": 300 } ]
+    }
+  ]
+}

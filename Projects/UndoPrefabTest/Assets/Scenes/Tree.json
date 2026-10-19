@@ -1,0 +1,10 @@
+{
+  "version": 5,
+  "objects": [
+    { "name": "A", "id": 11, "mesh": -1, "material": -1, "position": [1,0,0], "rotation": [0,0.5,0], "scale": [1,1,1] },
+    { "name": "B", "id": 12, "parent": 0, "mesh": -1, "material": -1, "position": [0,2,0], "rotation": [0,0,0], "scale": [2,2,2],
+      "components": [ { "type": "Lifetime", "enabled": true, "seconds": 7.5 }, { "type": "NoSuchScript", "enabled": true, "x": 3 } ] },
+    { "name": "C", "id": 13, "parent": 1, "mesh": -1, "material": -1, "position": [0,0,3], "rotation": [0,0,0], "scale": [1,1,1] },
+    { "name": "D", "id": 40, "mesh": -1, "material": -1, "position": [5,0,0], "rotation": [0,0,0], "scale": [1,1,1] }
+  ]
+}
