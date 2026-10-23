@@ -130,6 +130,7 @@ SherlockEditor.exe --scene=demo --exit-after=60 --backend=d3d12 --screenshot=C:\
 
 <section id="hdr">
 <h2>2. 3번 — HDR 타깃과 톤매핑 <span class="tag">크기: 중간</span></h2>
+<div class="box ok"><p><b>구현됨 (2026-10-23).</b> 이 장의 순서대로 HDR 타깃과 톤매핑 패스를 넣었습니다. 실제 변경은 <a href="hdr-tonemapping-implementation.html">hdr-tonemapping-implementation.html</a>, 계획 시점의 상세 단계는 <a href="hdr-tonemapping-plan.html">hdr-tonemapping-plan.html</a> 에 있습니다. 아래 "지금 구조"는 구현 전의 설명입니다.</p></div>
 <h3>지금 구조</h3>
 <ul>
 <li>메인 패스는 백버퍼(또는 에디터의 씬 텍스처) <b>sRGB 뷰</b>에 직접 그립니다(<code>RenderMainPass</code>, <code>ColorAttachment::srgbView</code>).</li>

@@ -4585,7 +4585,7 @@ depth   = MinDepth + z_ndc × (MaxDepth − MinDepth)</code></pre>
 <div class="stage"><div class="tag">⑥</div><div><h4>디버그 뷰 조기 반환</h4>
 <p><code>debugParams.x</code> 가 1~7 이면 중간값 하나를 색으로 반환합니다(<a href="#c11-9">11.9절</a>).</p></div></div>
 <div class="stage"><div class="tag">⑦</div><div><h4>조명 누적</h4>
-<p><code>finalColor = EnvironmentLighting(…) + 발광</code> 으로 시작해 <code>min(lightCount, MAX_LIGHTS)</code> 개의 조명을 Cook-Torrance 로 더합니다(<a href="#c11-6">11.6절</a>). 반환값은 노출·톤매핑을 거친 <code>float4(ApplyExposureToneMap(finalColor), surface.a)</code> 입니다.</p></div></div>
+<p><code>finalColor = EnvironmentLighting(…) + 발광</code> 으로 시작해 <code>min(lightCount, MAX_LIGHTS)</code> 개의 조명을 Cook-Torrance 로 더합니다(<a href="#c11-6">11.6절</a>). 반환값은 선형 HDR 값 <code>float4(finalColor, surface.a)</code> 입니다. 노출·톤매핑은 이 셰이더가 아니라 톤매핑 패스(<code>TonemapPixelShader.hlsl</code>)가 합니다(2026-10-23, <a href="hdr-tonemapping-implementation.html">구현 기록</a>).</p></div></div>
 
 <h4>재질 파라미터</h4>
 <p>재질의 CPU 데이터는 <code>Scene/Material.h</code> 의 <code>Material</code> 이고, 셰이더가 읽는 부분은 b3 <code>Material</code> cbuffer 로 올라갑니다. 나머지는 텍스처·샘플러 바인딩이나 PSO 선택에 쓰입니다.</p>
@@ -4749,7 +4749,7 @@ depth   = MinDepth + z_ndc × (MaxDepth − MinDepth)</code></pre>
     <span class="kw">const float3</span> irradiance = light.color * max(light.intensity, 0.0f) * attenuation * NdotL;
     finalColor += (kd * albedo + specular * PI) * irradiance;
 }
-<span class="kw">return float4</span>(ApplyExposureToneMap(finalColor), surface.a);</code></pre>
+<span class="kw">return float4</span>(finalColor, surface.a);</code></pre>
 
 <!-- c11-5.html -->
 <h4>항별 수식</h4>
@@ -4764,7 +4764,7 @@ depth   = MinDepth + z_ndc × (MaxDepth − MinDepth)</code></pre>
 <tr><td>확산</td><td class="mono">kd · albedo / π, kd = (1 − F)(1 − metallic)</td><td>Lambert. 반사된 몫(F)을 빼서 에너지를 보존하고, 금속은 확산이 없습니다.</td></tr>
 <tr><td>조도 관례</td><td class="mono">(kd · albedo + specular · π) × color × intensity × attenuation × N·L</td><td>조명의 <code>color × intensity</code> 를 "빛에 수직인 면이 받는 조도 E" 로 보고 BRDF 에 π 를 곱합니다. 확산항이 Blinn-Phong 시절의 <code>albedo · N·L · radiance</code> 와 같은 밝기라 기존 씬의 조명 값을 그대로 씁니다.</td></tr>
 <tr><td>환경광</td><td class="mono">EnvironmentLighting(…) × ao</td><td>아래 "환경광 — split-sum IBL". 루프 밖에서 한 번이고 그림자의 영향을 받지 않습니다. AO 는 여기에만 곱합니다.</td></tr>
-<tr><td>출력</td><td class="mono">ApplyExposureToneMap(finalColor)</td><td>노출을 곱하고, 씬이 켜 두었으면 ACES 근사로 [0, 1] 로 누릅니다. 끄면 1 을 넘는 값이 잘립니다.</td></tr>
+<tr><td>출력</td><td class="mono">finalColor</td><td>선형 HDR 값을 그대로 FP16 타깃에 씁니다. 노출과 ACES 근사는 톤매핑 패스가 적용하고, 끄면 1 을 넘는 값은 그 패스의 출력에서 잘립니다(2026-10-23).</td></tr>
 </tbody></table></div>
 
 <h4>half vector 와 미세면</h4>
@@ -5466,7 +5466,7 @@ SamplerComparisonState shadowSampler : <span class="kw">register</span>(s4);</co
 <tr><td>로더</td><td><code>TextureLoader::LoadCubeFromFile</code>(큐브 DDS 또는 면 이미지 6장 폴더), <code>TextureLoader::CreateCube</code>(방향 → 색 함수로 절차적 큐브). 부동소수점 DDS 는 <code>R16G16B16A16_FLOAT</code>(HDR)로 읽음</td><td class="mono">Graphics/TextureLoader.*</td></tr>
 <tr><td>씬</td><td><code>Scene::environment</code>(<code>SceneEnvironment</code>) — 스카이박스·확산 조도·반사 프리필터·BRDF LUT 의 <strong>이름</strong>과 IBL 세기·노출·톤매핑. 씬 파일의 <code>"environment"</code> 객체(버전 4)</td><td class="mono">Scene/Scene.h, Scene/SceneSerializer.cpp</td></tr>
 <tr><td>Renderer</td><td>이름 → 큐브 캐시(<code>GetOrLoadCubemap</code>, <code>m_cubeCache</code>), 이름 → 바인딩(<code>ResolveEnvironment</code>), 프레임 셋 t9~t12 에 꽂기(<code>UpdateFrameSet</code>), 스카이박스 PSO(<code>m_skyDesc</code>, <code>GetSkyPipeline</code>)와 드로우(<code>DrawSkybox</code>)</td><td class="mono">Graphics/Renderer.*</td></tr>
-<tr><td>셰이더</td><td><code>VS_Sky</code>(전체 화면 삼각형과 투영의 역), <code>PS_Sky</code>(큐브 샘플 + 노출·톤매핑), <code>Common.hlsli</code> 의 <code>environmentMap</code> t9 · <code>environmentSampler</code> s5 · IBL 의 t10~t12, <code>BasicPixelShader.hlsl</code> 의 <code>EnvironmentLighting</code>(<a href="#c11-6">11.6절</a>)</td><td class="mono">Shaders/Skybox*.hlsl, Shaders/Common.hlsli</td></tr>
+<tr><td>셰이더</td><td><code>VS_Sky</code>(전체 화면 삼각형과 투영의 역), <code>PS_Sky</code>(큐브 샘플, 선형 값 그대로. 노출·톤매핑은 톤매핑 패스), <code>Common.hlsli</code> 의 <code>environmentMap</code> t9 · <code>environmentSampler</code> s5 · IBL 의 t10~t12, <code>BasicPixelShader.hlsl</code> 의 <code>EnvironmentLighting</code>(<a href="#c11-6">11.6절</a>)</td><td class="mono">Shaders/Skybox*.hlsl, Shaders/Common.hlsli</td></tr>
 <tr><td>에디터·빌드</td><td>Lights 창의 환경 칸(스카이박스·IBL 맵 이름 입력과 텍스처 드롭, IBL 세기, 노출, 톤매핑. <code>DebugUI::DrawEnvironmentPanel</code>), Build Game 이 스카이박스 파일·폴더를 복사, <code>Paths::GetAssetPath</code> 가 폴더도 찾음</td><td class="mono">App/DebugUI.cpp, App/GameBuilder.cpp, Core/Paths.cpp</td></tr>
 </tbody></table></div>
 
@@ -5513,7 +5513,7 @@ SamplerComparisonState shadowSampler : <span class="kw">register</span>(s4);</co
 
 <h4>HDR — half float 텍스처와 노출·톤매핑</h4>
 <p>IBL 세트의 큐브는 보통 부동소수점입니다(<code>Assets\Cubemap</code> 의 <code>*HDR.dds</code> 는 <code>R32G32B32A32_FLOAT</code>, 태양 픽셀이 300 을 넘음). <code>TextureLoader</code> 의 <code>FinishImage</code> 는 원본이 부동소수점이거나 BC6H 면 <code>R16G16B16A16_FLOAT</code>(이번에 <code>Format</code> 에 추가)로 바꿉니다. 크기는 float32 의 절반이고 최대 65504 까지 담습니다. 부동소수점 데이터는 이미 선형이라 sRGB 라벨을 붙이지 않고 밉도 선형으로 평균 냅니다. 면 이미지 폴더는 8비트만 받습니다.</p>
-<p>값이 1 을 넘으므로 출력 단계가 필요합니다. 아직 HDR 렌더 타깃이 없어서, 메인 PS 와 스카이박스 PS 가 마지막에 <code>ApplyExposureToneMap</code> 을 부릅니다. <code>environment.exposure</code> 를 곱하고, <code>toneMapping</code> 이 켜져 있으면 ACES 근사(Narkowicz 2016)로 [0, 1] 로 누릅니다. 기본값은 노출 1·톤매핑 끔이라 환경을 정하지 않은 씬의 색은 예전과 같습니다. unlit 재질은 감마 검증용이라 이 단계를 거치지 않습니다.</p>
+<p>값이 1 을 넘으므로 출력 단계가 필요합니다. 2026-10-23 부터는 HDR 렌더 타깃(<code>R16G16B16A16_FLOAT</code>)이 있어, 메인 PS 와 스카이박스 PS 는 선형 값을 그대로 쓰고 별도의 톤매핑 패스(<code>TonemapPixelShader.hlsl</code>)가 <code>ApplyExposureToneMap</code> 을 부릅니다(<a href="hdr-tonemapping-implementation.html">구현 기록</a>). 이 절을 처음 쓴 10-08 에는 두 PS 가 마지막에 이 함수를 불렀습니다. <code>environment.exposure</code> 를 곱하고, <code>toneMapping</code> 이 켜져 있으면 ACES 근사(Narkowicz 2016)로 [0, 1] 로 누릅니다. 기본값은 노출 1·톤매핑 끔이라 환경을 정하지 않은 씬의 색은 예전과 같습니다. unlit 재질은 감마 검증용인데, 톤매핑이 패스로 옮겨 간 뒤로는 이 단계를 거치므로 감마 검증은 톤매핑을 끄고 노출 1 에서 해야 합니다.</p>
 
 <h4>샘플 세트와 CubemapTest 프로젝트</h4>
 <p><code>SherlockEngine/Assets/Cubemap</code> 의 일곱 파일은 IBLBaker 형식의 세트입니다. <code>Env</code>(스카이박스, 512², 밉 10), <code>Specular</code>(반사 프리필터, 512², 밉 10, 밉 0 이 거울), <code>Diffuse</code>(확산 조도, 128²), <code>Brdf</code>(256² 2D LUT)이고 각각 HDR(float32)과 MDR(8비트 BGRA)이 있습니다. LUT 의 축은 데이터로 확인했습니다. 오른쪽 아래 (N·V = 1, 거칠기 0) 가 (1, 0), 왼쪽 아래(N·V → 0, 거칠기 0)가 (0, 1) 이므로 u = N·V, v = 1 − roughness 입니다. 이 세트의 Diffuse·Specular 는 Env 보다 약 2배 밝게 구워져 있어서(같은 면의 평균이 Env 1.5 · Specular 3.0, 아래 면 0.44 · Diffuse 0.97), 실험 프로젝트의 씬은 IBL 세기 0.5 로 하늘과 같은 밝기 기준을 맞춥니다.</p>
@@ -10063,7 +10063,7 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
 <p>커밋 <code>c97fe3f</code> 에 들어간 변경입니다. 요청은 "<code>Assets\Cubemap</code> 에 둔 큐브맵으로 큐브맵이 적용된 CubemapTest 프로젝트를 만들고, IBL 이 적용되게 해 달라"였습니다. 샘플은 Env·Specular·Diffuse·BRDF LUT 로 된 IBLBaker 형식의 세트이고 PBR(metallic-roughness)을 전제로 합니다. 당시 엔진 재질은 Blinn-Phong 이라 재질 모델을 먼저 정해야 했고, 사용자가 "PBR 전환 + IBL" 을 골랐습니다(대안은 Blinn-Phong 을 두고 주변광·반사만 큐브로 바꾸는 것).</p>
 <ul>
   <li><b>무엇을.</b> RHI: <code>Format::R16G16B16A16_FLOAT</code>. 로더: 부동소수점·BC6H 원본을 half float 로(HDR). 재질: <code>specularColor</code>·<code>shininess</code> 를 <code>metallic</code>·<code>roughness</code>·<code>emissive</code> 와 텍스처 세 장(금속성/거칠기·AO·발광)으로 바꾸고 <code>MaterialConstants</code> 는 64B 를 유지. 셰이더: Cook-Torrance(GGX·Smith·Schlick) 직접광, split-sum IBL, <code>ApplyExposureToneMap</code>, 디버그 뷰 6·7. 씬: <code>SceneEnvironment</code>(스카이박스·확산 조도·반사 프리필터·BRDF LUT·IBL 세기·노출·톤매핑)가 <code>Scene::skybox</code> 를 대체. Renderer: <code>ResolveEnvironment</code>, 프레임 셋 t10~t12, 재질 셋 t2~t4, PerFrame 336B. glTF: 금속성·거칠기·AO·발광을 그대로. 에디터: 환경 칸과 PBR 재질 슬라이더. 씬 파일: 버전 4 를 <code>"environment"</code> 객체로 다시 정의(같은 날 잠시 쓴 루트의 <code>"skybox"</code> 도 읽음)하고, 옛 <code>shininess</code> 는 읽을 때 거칠기로 환산합니다(<code>roughness = sqrt(sqrt(2 / (n + 2)))</code>, Blinn-Phong 지수와 Beckmann 거칠기의 관계에서 GGX 의 α ≈ m 으로).</li>
-  <li><b>왜 이 구조인가.</b> IBL 텍스처는 씬마다 하나라 프레임 셋에, PBR 텍스처는 재질마다라 재질 셋에 둡니다. 조명 세기는 "조도 E" 관례로 BRDF 에 π 를 곱해, 확산 밝기가 예전과 같아 기존 씬의 조명 값을 고치지 않았습니다. HDR 렌더 타깃 없이 톤매핑을 셰이더 끝에 둔 것은 임시 구조이며 후처리 단계에서 패스로 옮깁니다(22.4).</li>
+  <li><b>왜 이 구조인가.</b> IBL 텍스처는 씬마다 하나라 프레임 셋에, PBR 텍스처는 재질마다라 재질 셋에 둡니다. 조명 세기는 "조도 E" 관례로 BRDF 에 π 를 곱해, 확산 밝기가 예전과 같아 기존 씬의 조명 값을 고치지 않았습니다. HDR 렌더 타깃 없이 톤매핑을 셰이더 끝에 둔 것은 임시 구조였고, 2026-10-23 에 톤매핑 패스로 옮겼습니다(22.4).</li>
   <li><b>고르지 않은 대안.</b> (1) Blinn-Phong 유지 + 큐브 주변광/반사: 변경은 작지만 <code>specularColor</code> 가 흰색인 기존 재질이 거울처럼 되고, IBL 세트가 전제한 F0·거칠기와 맞지 않습니다. (2) 샘플의 MDR(8비트) 세트 사용: 로더를 바꾸지 않아도 되지만 하늘의 태양과 금속 반사가 1 에서 잘립니다. (3) IBL 맵이 없을 때 반사를 끄기: 내장 하늘만 둔 씬의 금속이 검게 남으므로, 스카이박스 밉으로 근사하는 대체를 넣었습니다. (4) 반사 밉 매핑을 honglab 예제식(밉 2 + 거칠기 × 5)으로: 데이터에서 밉 0 이 거울(태양이 그대로 남음)임을 확인해 밉 전체에 선형으로 펼쳤습니다.</li>
   <li><b>함정.</b> 첫 실행에서 물체가 하늘보다 밝게 떴습니다. 샘플의 Diffuse·Specular 가 Env 의 약 2배로 구워져 있어 CubemapTest 씬의 IBL 세기를 0.5 로 맞췄습니다(12.14절의 측정). BRDF LUT 의 v 축 방향은 모서리 값을 읽어 확인했습니다. 면 폴더 경로에 HDR 이미지가 들어오면 8비트를 가정한 행 복사가 깨지므로 거부하게 했습니다.</li>
   <li><b>검증.</b> Debug·Release 빌드 성공(기존 X4000 경고 하나뿐, 22.4). Release 의 CubemapTest 화면이 Debug 와 픽셀이 같음. 데모·헬멧 씬을 두 백엔드로 그려 픽셀이 같고, 데모의 금속 원기둥에 하늘이 비침. CubemapTest 를 에디터와 게임 런타임으로 실행해 HDR 네 장이 half float 로 로드되고(Diffuse 는 밉 생성으로 8단계) 두 백엔드 픽셀이 같음(그림 12-14d). 환경 없음 / 스카이박스만 / IBL 전체를 같은 씬으로 비교(그림 12-14c). 경고·D3D12 Debug Layer 메시지 없음, 종료 시 Live Object 는 장치 한 줄. 확인하지 못한 것: 에디터의 환경 칸·PBR 슬라이더의 화면(자동 검증이 창 전환을 못 함), 디버그 뷰 6·7 의 화면, CubemapTest 전용 에디터(<code>CubemapTestEditor</code>) 빌드 — 스크립트가 예제 <code>Rotator</code> 뿐이라 엔진 에디터로 열었고, 그래서 씬 뷰 위에 "프로젝트 스크립트 없이 빌드됨" 배너가 뜹니다. 이 배너가 계기가 되어 같은 날 B안으로 바꿨습니다(<a href="#c20-17">20.17</a>).</li>
@@ -11074,20 +11074,20 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
     <div><h5>추천 순서</h5><ul>
       <li><b>스카이박스와 환경맵.</b> 끝났습니다(2026-10-08, <a href="#c12-14">12.14절</a>)</li>
       <li><b>PBR(Cook-Torrance)과 IBL.</b> 셰이딩은 끝났습니다(2026-10-08, <a href="#c11-6">11.6절</a>). IBL 맵은 아직 밖에서 구운 것(IBLBaker 등)을 읽기만 하고, 스카이박스 하나에서 확산 조도·반사 프리필터·BRDF LUT 를 엔진이 직접 만드는 일이 남았습니다. 그것이 컴퓨트 PSO 의 첫 사용처입니다</li>
-      <li><b>후처리 체인.</b> HDR 타깃 → 톤매핑 → 블룸 → FXAA. 렌더 패스 인프라 위의 풀스크린 패스입니다</li>
+      <li><b>후처리 체인.</b> HDR 타깃 → 톤매핑 → 블룸 → FXAA. 앞의 둘은 끝났습니다(2026-10-23, <a href="hdr-tonemapping-implementation.html">구현 기록</a>). 렌더 패스 인프라 위의 풀스크린 패스입니다</li>
       <li><b>Deferred Shading.</b> G-Buffer 는 다중 렌더 타깃 패스이고, 조명 목록은 구조화 버퍼로 옮깁니다(<a href="#d11">D11</a> 재검토)</li>
       <li><b>인스턴싱, 프러스텀 컬링, Cascaded Shadow Map</b></li>
     </ul></div>
     <div><h5>RHI 에 추가될 것</h5><ul>
       <li><code>ComputePipelineDesc</code>, UAV 바인딩 타입, <code>Dispatch</code>. 지금 <code>RHI/</code> 헤더에는 컴퓨트와 UAV 가 없고 <code>ShaderStage</code> 도 Vertex·Pixel 둘입니다</li>
-      <li>HDR 렌더 타깃. 텍스처용 <code>R16G16B16A16_FLOAT</code> 는 생겼지만 메인 패스는 아직 8비트 sRGB 타깃에 바로 쓰고 톤매핑을 픽셀 셰이더 끝에서 합니다. 큐브 텍스처는 ShaderResource 전용이라, 큐브에 그리는 일(반사 프로브, IBL 프리필터)에는 면별 RTV 나 UAV 가 더 필요합니다</li>
+      <li>HDR 렌더 타깃. HDR 렌더 타깃은 2026-10-23 에 들어갔습니다. 메인 패스는 <code>R16G16B16A16_FLOAT</code> 텍스처에 그리고 톤매핑 패스가 그 결과를 읽어 출력합니다(<a href="hdr-tonemapping-implementation.html">구현 기록</a>). 큐브 텍스처는 ShaderResource 전용이라, 큐브에 그리는 일(반사 프로브, IBL 프리필터)에는 면별 RTV 나 UAV 가 더 필요합니다</li>
       <li>알파 블렌딩 경로. <code>BlendDesc</code> 는 있지만 반투명 재질을 그리는 경로가 없어 glTF 의 BLEND 는 컷아웃 0.5 로 근사하고 있습니다(<code>Graphics/Model.cpp</code> 의 주석이 12단계를 가리킴)</li>
       <li>프레임 그래프(패스 간 의존으로 배리어를 자동 생성)는 RHI 가 아니라 그 위 Renderer 계층에 둡니다</li>
     </ul></div>
   </div>
   <div class="done"><b>이미 준비된 것</b> — 다중 렌더 타깃은 타입 수준에서 준비돼 있습니다. <code>PipelineStateDesc</code> 의 <code>rtvFormats[kMaxRenderTargets]</code>·<code>rtvCount</code>(1단계)와 <code>RenderPassDesc</code> 의 <code>colors[]</code>·<code>colorCount</code>(6단계)가 그것이고, 실제로 둘 이상을 쓰는 패스는 아직 없습니다. 현재 구조는 <a href="#c6">6장</a>과 <a href="#c8">8장</a>.</div>
 </div>
-<p>09-07 의 로드맵은 "가장 가까운 다음 목표"로 여덟 항목(0단계 정리부터 RHI 인터페이스 추출까지)을 꼽고, 그 뒤 D3D12 로 검증할지 바로 모델 로딩으로 갈지는 그때 정하자고 적었습니다. 여덟 항목과 그 뒤의 선택지 양쪽이 모두 끝났으므로, "가장 가까운 다음 목표"였던 스카이박스는 2026-10-08 에 들어갔습니다(<a href="#c20-14">20.14</a>). 그 과정에서 RHI 에 큐브 텍스처, 인덱스 없는 <code>Draw</code>, 정점 입력 없는 PSO 가 생겼고, 이 셋은 후처리의 전체 화면 패스와 IBL 이 그대로 다시 씁니다. 같은 날 PBR·IBL 도 들어갔고(<a href="#c20-15">20.15</a>), 톤매핑은 픽셀 셰이더 끝의 함수로 임시로 들어가 있습니다. 다음으로 작은 단위는 HDR 렌더 타깃과 그 위의 톤매핑 패스(후처리의 첫 패스)입니다.</p>
+<p>09-07 의 로드맵은 "가장 가까운 다음 목표"로 여덟 항목(0단계 정리부터 RHI 인터페이스 추출까지)을 꼽고, 그 뒤 D3D12 로 검증할지 바로 모델 로딩으로 갈지는 그때 정하자고 적었습니다. 여덟 항목과 그 뒤의 선택지 양쪽이 모두 끝났으므로, "가장 가까운 다음 목표"였던 스카이박스는 2026-10-08 에 들어갔습니다(<a href="#c20-14">20.14</a>). 그 과정에서 RHI 에 큐브 텍스처, 인덱스 없는 <code>Draw</code>, 정점 입력 없는 PSO 가 생겼고, 이 셋은 후처리의 전체 화면 패스와 IBL 이 그대로 다시 씁니다. 같은 날 PBR·IBL 도 들어갔고(<a href="#c20-15">20.15</a>), 톤매핑은 처음에 픽셀 셰이더 끝의 함수로 임시로 들어갔다가 2026-10-23 에 HDR 렌더 타깃과 톤매핑 패스(후처리의 첫 패스)로 옮겨졌습니다(<a href="hdr-tonemapping-implementation.html">구현 기록</a>). 다음으로 작은 단위는 같은 풀스크린 패스 구조 위의 블룸 같은 후처리입니다.</p>
 
 <h3 id="c22-2">22.2 각 단계가 남겨 둔 일</h3>
 <p>단계 문서들의 "다음 단계" 절에 있던 항목 가운데 지금도 하지 않은 것입니다. 같은 항목이 여러 단계에서 반복해 나온 경우 하나로 합쳤습니다.</p>
@@ -11137,7 +11137,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tr><td>통계의 배리어 수</td><td>패널의 배리어 수는 <code>Renderer::Render</code> 끝에서 찍혀, 그 뒤의 UI 패스와 마지막 Present 전이가 빠집니다</td><td>10-01 점검 기록에 따름</td></tr>
 <tr><td>모델 루트 경로 미실행</td><td>노드가 둘 이상인 모델을 빈 루트 아래 묶는 경로는 동봉 모델이 모두 단일 노드라 실행해 본 적이 없습니다</td><td>11-F 기록에 따름</td></tr>
 <tr><td>비균등 스케일 부모</td><td>부모 스케일이 비균등하고 자식이 회전돼 있으면 기즈모와 재부모화의 분해가 근사가 됩니다(전단을 표현하지 못함)</td><td>11-F 기록에 따름</td></tr>
-<tr><td>톤매핑이 셰이더 끝에 있음</td><td>HDR 렌더 타깃이 없어 노출·ACES 근사를 메인 PS 와 스카이박스 PS 의 끝에서 합니다. 블룸처럼 화면 전체를 보는 후처리는 이 구조로는 넣을 수 없습니다</td><td><code>Shaders/Common.hlsli</code> 의 <code>ApplyExposureToneMap</code></td></tr>
+<tr><td><s>톤매핑이 셰이더 끝에 있음</s> 해결(10-23)</td><td>HDR 렌더 타깃(<code>R16G16B16A16_FLOAT</code>)과 풀스크린 톤매핑 패스를 추가해, 노출·ACES 근사를 <code>TonemapPixelShader.hlsl</code> 가 한 번만 적용합니다. 메인·스카이박스 PS 는 선형 값을 그대로 씁니다. 블룸 같은 후처리를 올릴 틀이 생겼습니다</td><td><code>ApplyExposureToneMap</code> 호출처가 톤 PS 한 곳(소스 grep), Debug 빌드, D3D11 실행. D3D12 는 확인하지 않음</td></tr>
 <tr><td>IBL 맵은 미리 구운 것만</td><td>엔진이 스카이박스에서 확산 조도·프리필터·LUT 를 만들지 않습니다. 맵이 없으면 스카이박스의 박스 필터 밉으로 근사해 중간 거칠기의 반사가 실제보다 선명합니다(그림 12-14c)</td><td><code>Renderer::ResolveEnvironment</code></td></tr>
 <tr><td>샘플 IBL 세트의 밝기</td><td><code>Assets\Cubemap</code> 의 Diffuse·Specular 맵은 Env 보다 약 2배 밝게 구워져 있어 이 세트를 쓰는 모든 씬(내장 씬과 프로젝트 씬 전부)이 IBL 세기 0.5 를 씁니다(밉 0 평균 3.0 대 1.5). 다른 IBL 세트로 바꾸면 이 값도 다시 정해야 합니다</td><td><a href="#c20-15">20.15</a>, <a href="#c20-18">20.18</a></td></tr>
 <tr><td>환경이 없는 씬의 금속</td><td>환경도 스카이박스도 없으면 금속은 <code>ambientColor</code> 만 반사해 어둡습니다(헬멧 씬)</td><td>11.6절</td></tr>
@@ -11173,7 +11173,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tbody>
 <tr><td class="n">1</td><td><s>자잘한 정리: 낡은 UI 문구, 쓰지 않는 DirectXTK 선언, X4000 경고, 스크립트 와일드카드 통일</s> 완료(10-08·10-15)</td><td>—</td><td>코드와 문서가 어긋나는 지점을 없앱니다. 모두 22.4 에 위치가 적혀 있어 바로 할 수 있습니다</td></tr>
 <tr><td class="n">2</td><td><s>스카이박스와 큐브 텍스처, PBR + IBL 셰이딩</s> 완료(10-08)</td><td>—</td><td>남은 것은 HDR 렌더 타깃(아래 3)과 IBL 맵의 엔진 내 생성(아래 4)입니다</td></tr>
-<tr><td class="n">3</td><td>HDR 타깃과 톤매핑(후처리의 첫 패스)</td><td>중간</td><td>풀스크린 패스 구조가 생기면 블룸·FXAA 가 같은 틀에 올라갑니다. 포맷 추가가 필요합니다</td></tr>
+<tr><td class="n">3</td><td><s>HDR 타깃과 톤매핑(후처리의 첫 패스)</s> 완료(10-23)</td><td>—</td><td>풀스크린 패스 구조가 생겨 블룸·FXAA 가 같은 틀에 올라갑니다. 남은 것은 D3D12 실행 확인입니다</td></tr>
 <tr><td class="n">4</td><td>컴퓨트 파이프라인과 UAV, 이어서 PBR + IBL</td><td>큼</td><td>RHI 인터페이스가 처음으로 넓어지는 지점입니다. 셰이더 스테이지와 바인딩 타입이 늘어 두 백엔드를 모두 고칩니다</td></tr>
 <tr><td class="n">5</td><td>Undo 와 에디터 명령 큐</td><td>중간</td><td>에디터를 실제로 쓰기 시작하면 가장 먼저 아쉬운 기능이고, 드롭을 그리기 뒤로 미루는 구조도 함께 얻습니다</td></tr>
 <tr><td class="n">6</td><td>Instantiate / 지연 Destroy 와 프리팹</td><td>중간</td><td>스크립트로 게임다운 것을 만들려면 필요합니다. 안정 ID 를 함께 정해야 합니다</td></tr>

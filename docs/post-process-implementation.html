@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>후처리(PostProcess) 구현 기록</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.step { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>후처리(PostProcess) 구현 기록</h1>
+  <p>2026-10-23 · HDR 타깃·톤매핑 위에 <b>가우시안 블러, 블룸, GreyScale</b>를 올리고, 단계마다 결과를 보여 주는 <b>Post Stages 썸네일 창</b>까지 구현한 내용을 코드와 함께 정리한 기록입니다. 이 문서는 새로 만든 것이며 다른 문서를 고치지 않았습니다.</p>
+  <p class="foot">기준: 커밋 e716094 + 작업 트리(2026-10-23, <b>아직 커밋하지 않음</b>). 코드 조각은 문서를 만들 때 실제 소스 파일에서 그대로 읽어 옵니다. 위치는 "파일 + 함수 이름"이 기준입니다. 앞 단계(HDR 타깃, 톤 패스)는 <a href="hdr-tonemapping-implementation.html">hdr-tonemapping-implementation.html</a> 에 있습니다.</p>
+</header>
+<nav><a href="#summary">1. 요약</a><a href="#design">2. 설계</a><a href="#settings">3. 설정 데이터</a><a href="#binding">4. 상수·바인딩</a><a href="#pass">5. 공통 패스</a><a href="#grade">6. GreyScale</a><a href="#blur">7. 블러</a><a href="#bloom">8. 블룸</a><a href="#pso">9. PSO·셰이더 등록</a><a href="#scratch">10. 스크래치·호출 지점</a><a href="#stages">11. 단계별 썸네일</a><a href="#notes">12. 설계 결정·함정</a><a href="#verify">13. 검증</a><a href="#extend">14. 효과 추가하는 법</a><a href="#files">15. 파일 목록</a></nav>
+
+<section id="summary">
+<h2>1. 요약</h2>
+<div class="box ok">씬은 선형 FP16 HDR 텍스처에 그려지고, 그 위에서 <b>블러 → 블룸</b>이 HDR 값 그대로 처리됩니다. 그 결과를 톤 패스가 읽어 <b>노출 → ACES → GreyScale(색 효과) → sRGB</b>를 한 번에 적용합니다. 모든 효과를 끄면 이전 화면과 픽셀 단위로 같습니다.</div>
+<table>
+<tr><th>효과</th><th>어디서</th><th>패스 수</th><th>추가 텍스처</th></tr>
+<tr><td>가우시안 블러</td><td>HDR 구간 (<code>PS_Post</code> 모드 1)</td><td>2 (가로, 세로)</td><td>hdr 와 같은 크기 1장</td></tr>
+<tr><td>블룸</td><td>HDR 구간 (<code>PS_Post</code> 모드 2·3·4)</td><td>밝기추출 1 + 축소 4 + 확대 4 + 합성 1</td><td>1/2 ~ 1/32 크기 5장</td></tr>
+<tr><td>GreyScale</td><td>톤 패스 안 (<code>PS_Tonemap</code>)</td><td>0 (새 패스 없음)</td><td>없음</td></tr>
+<tr><td>단계별 썸네일</td><td>창이 열려 있을 때만</td><td>단계마다 톤 패스 1회</td><td>384 폭 RGBA8 4장</td></tr>
+</table>
+<h3>프레임 흐름</h3>
+<pre><code>ShadowPass
+→ MainPass                  (m_hdrColor, 선형 FP16)
+→ [HDR 구간: ApplyHdrEffects]
+     BlurH  (hdr → temp)  → BlurV (temp → hdr)               ← 블러가 켜졌을 때
+     BloomPrefilter (hdr → L0) → BloomDown ×4 (L0→L1→…→L4)
+       → BloomUp ×4 (가산, L4→L3→…→L0) → BloomComposite (가산, L0 → hdr)   ← 블룸이 켜졌을 때
+→ TonemapPass               (hdr 읽기 → 노출·ACES·GreyScale → 씬 뷰 텍스처 / 백버퍼)
+→ [PreviewPass → ApplyHdrEffects → PreviewTonemapPass]   (카메라 미리보기도 같은 체인)
+→ UIPass                    (Post Stages 창의 썸네일은 이 패스의 ImGui 가 읽음)</code></pre>
+</section>
+
+<section id="design">
+<h2>2. 설계</h2>
+<table>
+<tr><th>결정</th><th>이유</th></tr>
+<tr><td>순서를 엔진이 고정 (사용자는 값만 조절)</td><td>블러·블룸은 선형 HDR 값에서 해야 1을 넘는 밝기가 살아 있습니다. 톤매핑 전/후를 사용자가 바꾸게 하면 결과가 깨집니다. 상용 엔진도 순서는 엔진이 정합니다.</td></tr>
+<tr><td>효과의 결과는 항상 hdr 텍스처에 "제자리"로 남김</td><td>마지막 패스가 hdr 에 되돌려 쓰므로 톤 패스와 그 입력 셋(<code>m_hdrPostSet</code>)은 효과가 몇 개 켜졌는지 모릅니다. 효과를 추가해도 톤 패스는 안 바뀝니다.</td></tr>
+<tr><td>색 효과(GreyScale)는 톤 셰이더 안에 (uber)</td><td>패스도 텍스처도 늘지 않습니다. 비네트·그레인·대비 같은 효과도 같은 자리에 이어 붙입니다.</td></tr>
+<tr><td>설정은 씬 단위, <code>SceneEnvironment</code> 안에</td><td>노출·톤매핑이 이미 거기 있고, 환경 직렬화를 타면 씬 JSON 저장·로드와 되돌리기 이력(<code>EditorHistory</code>)이 따로 작업 없이 같이 됩니다. 구조체는 독립이라 나중에 카메라 컴포넌트로 옮길 수 있습니다.</td></tr>
+<tr><td>후처리 패스는 레이아웃 하나(<code>Layout_Post</code>)를 공유</td><td>셰이더가 안 쓰는 슬롯에도 항상 유효한 뷰가 꽂혀 있어 D3D12 디스크립터 테이블이 안전합니다. 효과마다 레이아웃을 따로 만들 필요가 없습니다.</td></tr>
+<tr><td>카메라 미리보기에도 같은 체인 적용</td><td>스크래치를 타깃별(<code>m_postMain</code>, <code>m_postPreview</code>)로 둡니다. 블러 반경은 720p 기준 픽셀이라 작은 미리보기에서도 모양이 같습니다.</td></tr>
+</table>
+</section>
+
+<section id="settings">
+<h2>3. 설정 데이터</h2>
+<h3>PostProcessSettings.h (새 파일 전체)</h3>
+<pre><code>#pragma once
+
+// 2026/10/23: 후처리 설정. 씬의 환경(SceneEnvironment::post)에 들어가 씬 JSON 으로 저장·복원·되돌리기됨.
+// Renderer 는 이 값을 읽어 HDR 구간(블러·블룸)과 톤 패스(GreyScale 등 색 효과)를 정함.
+// 효과를 추가할 때: 여기에 필드 → SceneSerializer 의 환경 JSON → DebugUI 의 후처리 섹션 → Renderer 의 후처리 체인 순으로 늘림.
+//
+// 순서는 Renderer 가 고정함 (사용자가 바꿀 수 없음):
+//   HDR 구간: 블러 → 블룸   (선형 HDR 값에서 해야 1 을 넘는 밝기가 살아 있음)
+//   톤 패스 : 노출 → ACES → 색 효과(GreyScale …)
+struct PostProcessSettings
+{
+    // 가우시안 블러 (가로·세로 분리). 반경은 &quot;720p 기준 픽셀&quot;이라 출력 높이에 비례해 늘고 줆 — 씬 뷰 크기를 바꾸거나 카메라 미리보기(작은 타깃)에서도 모양이 같음.
+    bool blurEnabled = false;
+    float blurRadius = 4.0f;
+
+    // 블룸: 밝기가 threshold 를 넘는 부분을 뽑아(knee 로 부드럽게) 축소 체인으로 흐린 뒤 intensity 만큼 더함.
+    bool bloomEnabled = false;
+    float bloomThreshold = 1.0f;
+    float bloomKnee = 0.5f;
+    float bloomIntensity = 0.5f;
+
+    // 톤 패스의 색 효과. 0 = 원본, 1 = 완전한 흑백.
+    float greyscale = 0.0f;
+
+    bool AnyHdrEffect() const { return blurEnabled || bloomEnabled; }
+};</code></pre>
+<h3>Scene.h — 환경에 한 줄 추가</h3>
+<pre><code>PostProcessSettings post;  // 2026/10/23: 후처리 (블러·블룸·GreyScale). 환경에 두어 저장·되돌리기가 환경과 함께 됨</code></pre>
+<h3>씬 JSON 저장·로드 (SceneSerializer.cpp)</h3>
+<p><code>EnvironmentToJson</code> 에 항목이 들어가면 <code>SaveToString</code>, <code>SaveEditState</code>(되돌리기 이력이 쓰는 직렬화)가 모두 받습니다. 로드는 <code>value(키, 기본값)</code> 라서 이전 씬 파일(키 없음)은 효과가 꺼진 기본값으로 열립니다.</p>
+<pre><code>{ &quot;postProcess&quot;, {
+    { &quot;blurEnabled&quot;, env.post.blurEnabled }, { &quot;blurRadius&quot;, env.post.blurRadius },
+    { &quot;bloomEnabled&quot;, env.post.bloomEnabled }, { &quot;bloomThreshold&quot;, env.post.bloomThreshold },
+    { &quot;bloomKnee&quot;, env.post.bloomKnee }, { &quot;bloomIntensity&quot;, env.post.bloomIntensity },
+    { &quot;greyscale&quot;, env.post.greyscale },
+} },</code></pre>
+<pre><code>// 2026/10/23: 후처리. 키가 없으면(이전 씬 파일) 전부 꺼진 기본값
+const PostProcessSettings defaults;
+const json post = env.value(&quot;postProcess&quot;, json::object());
+e.post.blurEnabled = post.value(&quot;blurEnabled&quot;, defaults.blurEnabled);
+e.post.blurRadius = post.value(&quot;blurRadius&quot;, defaults.blurRadius);
+e.post.bloomEnabled = post.value(&quot;bloomEnabled&quot;, defaults.bloomEnabled);
+e.post.bloomThreshold = post.value(&quot;bloomThreshold&quot;, defaults.bloomThreshold);
+e.post.bloomKnee = post.value(&quot;bloomKnee&quot;, defaults.bloomKnee);
+e.post.bloomIntensity = post.value(&quot;bloomIntensity&quot;, defaults.bloomIntensity);
+e.post.greyscale = post.value(&quot;greyscale&quot;, defaults.greyscale);</code></pre>
+<h3>에디터 UI (DebugUI.cpp, 환경 패널 안)</h3>
+<p>Lights 탭의 환경 섹션 아래에 "Post process" 항목이 생깁니다.</p>
+<pre><code>    // 2026/10/23: 후처리. 순서는 Renderer 가 고정함 (HDR 구간: 블러 → 블룸, 톤 패스: 노출 → ACES → 색 효과).
+    // 환경의 일부라 씬 JSON 과 되돌리기 이력에 함께 들어감.
+    if (ImGui::TreeNodeEx(&quot;Post process&quot;, ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        PostProcessSettings&amp; post = env.post;
+        ImGui::Checkbox(&quot;Gaussian blur&quot;, &amp;post.blurEnabled);
+        if (post.blurEnabled) ImGui::SliderFloat(&quot;Blur radius (px @720p)&quot;, &amp;post.blurRadius, 0.5f, 32.0f, &quot;%.1f&quot;);
+        ImGui::Checkbox(&quot;Bloom&quot;, &amp;post.bloomEnabled);
+        if (post.bloomEnabled)
+        {
+            ImGui::SliderFloat(&quot;Bloom threshold&quot;, &amp;post.bloomThreshold, 0.0f, 8.0f, &quot;%.2f&quot;);
+            ImGui::SliderFloat(&quot;Bloom knee&quot;, &amp;post.bloomKnee, 0.0f, 1.0f, &quot;%.2f&quot;);
+            ImGui::SliderFloat(&quot;Bloom intensity&quot;, &amp;post.bloomIntensity, 0.0f, 4.0f, &quot;%.2f&quot;);
+        }
+        ImGui::SliderFloat(&quot;Greyscale&quot;, &amp;post.greyscale, 0.0f, 1.0f);
+        ImGui::Checkbox(&quot;Stage thumbnails&quot;, &amp;g_showPostStages);   // 씬이 아니라 에디터 설정 — 되돌리기 이력에 들어가지 않음
+        ImGui::TreePop();
+    }
+}</code></pre>
+<h3>렌더러로 전달</h3>
+<p><code>Renderer::ResolveEnvironment</code> 가 매 프레임 환경을 읽을 때 같이 복사합니다.</p>
+<pre><code>m_postSettings = environment.post;   // 2026/10/23</code></pre>
+</section>
+
+<section id="binding">
+<h2>4. 상수버퍼와 바인딩</h2>
+<h3>슬롯 (ShaderConstants.h)</h3>
+<pre><code>constexpr uint32_t kSRVSlotSceneHdr = 13;    // t13 (후처리 셋, 후처리 패스의 입력 텍스처. 톤 패스는 HDR 씬, 블러·블룸은 앞 단계의 결과)
+constexpr uint32_t kCBSlotPostParams = 4;    // b4 (후처리 셋, 패스마다 올림)
+constexpr uint32_t kSamplerSlotPost = 6;     // s6 (후처리 셋, 선형 Clamp. 블룸 축소·확대와 썸네일이 씀. 후처리 패스는 프레임 셋을 바인딩하지 않으므로 s4~s7 과 겹치지 않음)</code></pre>
+<p>RHI 한도: 상수버퍼 레지스터 &lt; 8, 샘플러 레지스터 &lt; 8 (<code>kMaxCbvRegister</code>, <code>kMaxSamplerRegister</code>). 그래서 샘플러는 s8 이 아니라 s6 입니다. 후처리 패스는 프레임 셋(s4~s7 구간)을 바인딩하지 않으므로 겹치지 않습니다.</p>
+<h3>PostParams — C++ 구조체</h3>
+<pre><code>// 2026/10/23: 후처리 패스 파라미터 (b4). 패스마다 올림 — 업로드 링을 쓰므로 프레임 안에서 여러 번 올려도 됨 (b0 가 미리보기에서 그렇게 함).
+// 톤 패스도 매 프레임 올리므로 효과가 전부 꺼져 있어도 D3D12 의 &quot;이번 프레임에 갱신되지 않은 Dynamic CB&quot; 경고가 나지 않음.
+struct alignas(16) PostParamsConstants
+{
+    // x = 모드 (PS_Post: 1 블러, 2 블룸 밝기 추출+축소, 3 축소, 4 확대), y,z = 블러 방향 (텍셀 단위, 가로 (1,0) / 세로 (0,1)), w = 미사용
+    DirectX::XMFLOAT4 pass;
+    // x = 시그마(픽셀), y = 반경(픽셀, 정수로 읽음), zw = 미사용
+    DirectX::XMFLOAT4 blur;
+    // x = 임계값, y = knee, z = 확대 결과에 곱할 배율 (축적 확대는 1, 마지막 합성은 intensity), w = 미사용
+    DirectX::XMFLOAT4 bloom;
+    // xy = 입력 텍스처 크기, zw = 출력 타깃 크기 (픽셀). 톤 패스는 Load 좌표를 xy/zw 비로 늘려 읽음 (썸네일 = 축소 출력)
+    DirectX::XMFLOAT4 view;
+    // x = GreyScale 양 (0..1), y = 1 이면 색 효과를 건너뜀 (단계별 썸네일의 &quot;효과 전&quot; 그림), zw = 미사용
+    DirectX::XMFLOAT4 grade;
+};</code></pre>
+<h3>PostParams — HLSL (Common.hlsli)</h3>
+<pre><code>// b4: 후처리 패스 파라미터. 후처리 셋(톤 패스·블러·블룸)만 바인딩함. (80바이트, ShaderConstants.h 의 PostParamsConstants)
+cbuffer PostParams : register(b4)
+{
+    float4 postPass;          // x = 모드 (1 블러, 2 블룸 밝기 추출+축소, 3 축소, 4 확대), y,z = 블러 방향 (텍셀 단위)
+    float4 postBlur;          // x = 시그마(픽셀), y = 반경(픽셀)
+    float4 postBloom;         // x = 임계값, y = knee, z = 확대 결과 배율
+    float4 postView;          // xy = 입력 크기, zw = 출력 크기 (픽셀)
+    float4 postGrade;         // x = GreyScale 양, y = 1 이면 색 효과를 건너뜀
+}</code></pre>
+<p>C++ 구조체와 HLSL cbuffer 는 80바이트로 같아야 합니다. <code>static_assert</code> 가 C++ 쪽을, Debug 빌드의 <code>ValidateConstantBufferSize</code> 가 셰이더 리플렉션과의 일치를 검사합니다.</p>
+<table>
+<tr><th>필드</th><th>의미</th></tr>
+<tr><td><code>pass</code></td><td>x = 모드 (1 블러, 2 블룸 밝기추출+축소, 3 축소, 4 확대), y·z = 블러 방향(텍셀)</td></tr>
+<tr><td><code>blur</code></td><td>x = 시그마(px), y = 반경(px)</td></tr>
+<tr><td><code>bloom</code></td><td>x = 임계값, y = knee(임계값 × 비율), z = 확대 결과 배율 (축적 확대 1, 합성은 intensity)</td></tr>
+<tr><td><code>view</code></td><td>xy = 입력 크기, zw = 출력 크기. 톤 패스는 이 비로 Load 좌표를 늘려 읽음(썸네일 = 축소 출력)</td></tr>
+<tr><td><code>grade</code></td><td>x = GreyScale 양, y = 1 이면 색 효과 건너뜀(썸네일의 "효과 전" 그림)</td></tr>
+</table>
+<h3>Layout_Post (Renderer::Initialize)</h3>
+<p>예전 <code>b0 + t13</code> 에서 <code>b0 + b4 + t13 + s6</code> 으로 늘었습니다. 슬롯 순서가 곧 리소스 셋의 <code>bindings</code> 순서이므로, 기존 두 셋(<code>Set_Post_HDR</code>, <code>Set_Post_PreviewHDR</code>)도 같은 함수(<code>CreatePostSet</code>)로 다시 만들었습니다.</p>
+<pre><code>// 후처리 셋: b0 (PerFrame: 노출·톤매핑·디버그 뷰), b4 (PostParams: 패스 파라미터), t13 (입력 텍스처), s6 (선형 Clamp).
+// 슬롯 순서가 CreatePostSet 의 bindings 순서임. 모든 후처리 패스(톤매핑·블러·블룸)가 이 레이아웃 하나를 씀 —
+// 셰이더가 안 쓰는 슬롯도 항상 유효한 뷰가 꽂혀 있으므로 D3D12 디스크립터 테이블에도 안전함.
+BindingLayoutDesc postLayout;
+postLayout.debugName = &quot;Layout_Post&quot;;
+postLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPerFrame);  //b0
+postLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPostParams); //b4
+postLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneHdr); //t13
+postLayout.Add(BindingType::Sampler, ShaderStageMask_Pixel, kSamplerSlotPost);        //s6
+m_postLayout = m_device-&gt;CreateBindingLayout(postLayout);</code></pre>
+<p>셰이더가 실제로 쓰는 슬롯이 선언에 있는지 대조하는 <code>ValidateBindings</code> 의 <code>declared[]</code> 에도 두 줄을 추가했습니다.</p>
+<pre><code>{ BindingType::ConstantBuffer, kCBSlotPostParams, ShaderStageMask_Pixel },   // 2026/10/23
+{ BindingType::Sampler,        kSamplerSlotPost, ShaderStageMask_Pixel },</code></pre>
+</section>
+
+<section id="pass">
+<h2>5. 공통 후처리 패스 함수 (Renderer.cpp)</h2>
+<p>톤매핑·블러·블룸이 모두 이 함수 하나를 거칩니다. 출력의 상태 전이(<code>before → RenderTarget → after</code>), 패스 시작·끝, <code>Draw(3)</code> (정점 버퍼 없는 풀스크린 삼각형), 통계 카운터까지 합니다. 호출하는 쪽이 <code>UploadPostParams</code> 로 b4 를 먼저 올립니다.</p>
+<pre><code>ResourceSetHandle Renderer::CreatePostSet(TextureHandle input, const char* debugName)
+{
+    // 슬롯 순서는 Initialize 의 postLayout.Add(...) 순서: b0 PerFrame, b4 PostParams, t13 입력, s6 선형 Clamp.
+    const ResourceSetDesc desc{
+        .layout = m_postLayout,
+        .bindings = { { .buffer = m_perFrameCB }, { .buffer = m_postParamsCB }, { .texture = input }, { .sampler = GetSampler(SamplerPreset::LinearClamp) } },
+        .debugName = debugName,
+    };
+    return m_device-&gt;CreateResourceSet(desc);
+}
+
+void Renderer::UploadPostParams(const PostParamsConstants&amp; params)
+{
+    m_device-&gt;UpdateBuffer(m_postParamsCB, &amp;params, sizeof(params));
+}
+
+void Renderer::RenderPostPass(RHI::CommandList&amp; cmd, const PostPassDesc&amp; desc)
+{
+    if (!desc.pipeline.IsValid() || !desc.input.IsValid() || !desc.output.IsValid()) return;
+
+    // 출력: (에디터) 씬 뷰 텍스처 Common/ShaderResource → RenderTarget, (게임) 백버퍼 Present → RenderTarget.
+    // D3D12 스왑체인 관례. D3D11 에서는 상태 추적만 함.
+    cmd.Barrier(desc.output, desc.outputBefore, ResourceState::RenderTarget);
+
+    // 전체 화면을 다 덮어쓰면 Load 도 Clear 도 필요 없음 (DontCare). 덧그리는 패스(블룸 합성)는 Load.
+    // sRGB 뷰는 선형 → sRGB 인코딩을 함 (톤 패스만 씀. F5 로 끄면 UNORM 뷰).
+    const RenderPassDesc pass{
+        .colors = { { .texture = desc.output, .load = desc.load, .srgbView = desc.srgbView } },
+        .colorCount = 1,
+        .debugName = desc.debugName,
+    };
+    cmd.BeginRenderPass(pass);
+    cmd.SetPipelineState(desc.pipeline);
+    cmd.SetResourceSet(desc.input);   // b0 (PerFrame) + b4 (PostParams) + t13 (입력) + s6
+    cmd.Draw(3, 0);                   // 정점 버퍼 없음 — ScreenVS 가 SV_VertexID 로 삼각형 하나를 만듦
+    ++m_stats.pipelineSwitches;
+    ++m_stats.draws;
+    m_stats.triangles += 1;
+    cmd.EndRenderPass();
+
+    // ImGui 가 샘플링하거나 (씬 뷰·썸네일), 다음 후처리 패스가 읽거나, UI 패스가 이어서 백버퍼에 그림 (게임).
+    cmd.Barrier(desc.output, ResourceState::RenderTarget, desc.outputAfter);
+}
+
+void Renderer::RenderTonemapPass(RHI::CommandList&amp; cmd, ResourceSetHandle hdrSet, TextureHandle output,
+    ResourceState outputBefore, ResourceState outputAfter, const char* debugName,
+    uint32_t srcW, uint32_t srcH, uint32_t dstW, uint32_t dstH, bool skipGrade)
+{
+    PostParamsConstants params = {};
+    params.view = XMFLOAT4(static_cast&lt;float&gt;(srcW), static_cast&lt;float&gt;(srcH), static_cast&lt;float&gt;(dstW), static_cast&lt;float&gt;(dstH));
+    params.grade = XMFLOAT4(m_postSettings.greyscale, skipGrade ? 1.0f : 0.0f, 0.0f, 0.0f);
+    UploadPostParams(params);   // 효과가 전부 꺼져도 매 프레임 올림 (D3D12 의 갱신 안 된 Dynamic CB 경고 방지)
+
+    RenderPostPass(cmd, PostPassDesc{
+        .pipeline = GetTonemapPipeline(),
+        .input = hdrSet,
+        .output = output,
+        .outputBefore = outputBefore,
+        .outputAfter = outputAfter,
+        .load = LoadOp::DontCare,
+        .srgbView = m_settings.srgbOutput,
+        .debugName = debugName,
+    });
+}</code></pre>
+<div class="box">톤 패스는 효과가 전부 꺼져 있어도 매 프레임 <code>UploadPostParams</code> 를 부릅니다. D3D12 디버그 레이어가 "이번 프레임에 갱신되지 않은 Dynamic CB" 를 경고하기 때문입니다.</div>
+<h3>톤 패스 호출 (Render)</h3>
+<p>크기 인자 네 개(<code>srcW, srcH, dstW, dstH</code>)가 늘었습니다. 일반 호출은 입력·출력이 같은 크기입니다.</p>
+<pre><code>RenderTonemapPass(cmd, m_hdrPostSet, m_sceneColor, m_sceneColorState, ResourceState::ShaderResource, &quot;TonemapPass&quot;,
+        m_hdrWidth, m_hdrHeight, m_hdrWidth, m_hdrHeight);</code></pre><pre><code>RenderTonemapPass(cmd, m_hdrPostSet, m_device-&gt;GetBackBuffer(), ResourceState::Present, ResourceState::RenderTarget, &quot;TonemapPass&quot;,
+        m_hdrWidth, m_hdrHeight, m_hdrWidth, m_hdrHeight);</code></pre>
+</section>
+
+<section id="grade">
+<h2>6. GreyScale — 톤 셰이더 안의 색 효과</h2>
+<p><code>postView</code> 의 비로 Load 좌표를 늘려 읽는 것(썸네일용)과, 톤매핑을 끝낸 선형 값에 GreyScale 을 적용하는 것이 이번에 바뀐 부분입니다. 디버그 뷰(<code>debugParams.x &gt; 0.5</code>)는 색 효과 앞에서 먼저 반환하므로 알베도·노멀 같은 디버그 그림이 흑백이 되지 않습니다.</p>
+<pre><code>#include &quot;Common.hlsli&quot;
+
+// 2026-10-20: 톤매핑 패스 픽셀 셰이더 (ScreenVertexShader 와 짝). HDR 씬 텍스처를 읽어 노출·ACES 를 적용함.
+// 샘플러 없이 Load 를 쓰는 이유: 출력과 입력이 같은 크기면 1:1 대응이라 필터가 필요 없음.
+// 2026/10/23: 출력이 입력보다 작을 수 있음 (단계별 썸네일). 좌표를 postView 의 입력/출력 비로 늘려 읽음 — 같은 크기면 비가 1 이라 이전과 같음.
+// 결과는 선형 — 이 패스의 sRGB RTV 가 인코딩함.
+Texture2D sceneHdr : register(t13);
+
+float4 PS_Tonemap(float4 position : SV_POSITION) : SV_TARGET
+{
+    const float2 scale = postView.xy / max(postView.zw, 1.0f);
+    const float3 hdr = sceneHdr.Load(int3((int2)(position.xy * scale), 0)).rgb;
+
+    // 디버그 뷰(알베도·노멀 등)는 조명 결과가 아니므로 노출·톤매핑을 거치지 않음 (기존에도 톤매핑 전에 반환했음).
+    if (debugParams.x &gt; 0.5f)
+    {
+        return float4(saturate(hdr), 1.0f);
+    }
+    float3 color = ApplyExposureToneMap(hdr);
+
+    // 2026/10/23: 색 효과 (uber). 톤매핑을 끝낸 선형 값에 적용하고, 단계별 썸네일의 &quot;효과 전&quot; 그림은 postGrade.y 로 건너뜀.
+    // 새 색 효과(대비·채도·비네트·그레인 …)는 여기에 이어 붙임 — 패스도 텍스처도 늘지 않음.
+    if (postGrade.y &lt; 0.5f)
+    {
+        // GreyScale: 휘도(Rec.709 계수)로 섞음. 0 = 원본, 1 = 완전한 흑백
+        const float luma = dot(color, float3(0.2126f, 0.7152f, 0.0722f));
+        color = lerp(color, luma.xxx, saturate(postGrade.x));
+    }
+    return float4(color, 1.0f);
+}</code></pre>
+</section>
+
+<section id="blur">
+<h2>7. 가우시안 블러</h2>
+<h3>셰이더 (PostPixelShader.hlsl, 모드 1)</h3>
+<p>샘플러 없이 <code>Load</code> 에 클램프된 정수 좌표를 씁니다. 가중치는 시그마에서 바로 계산하고 합으로 나눠 정규화합니다. 반경 상한은 64 입니다.</p>
+<pre><code>    if (mode == 1)
+    {
+        // Load + 클램프된 좌표. 가중치는 시그마에서 바로 계산함 (정규화는 합으로 나눔).
+        const int2 base = (int2)position.xy;
+        const int2 maxCoord = (int2)postView.xy - 1;
+        const int2 dir = int2((int)postPass.y, (int)postPass.z);
+        const int radius = min((int)postBlur.y, kMaxBlurRadius);
+        const float sigma = max(postBlur.x, 0.01f);
+        const float invTwoSigmaSq = 0.5f / (sigma * sigma);
+
+        float3 sum = 0.0f;
+        float weightSum = 0.0f;
+        for (int i = -radius; i &lt;= radius; ++i)
+        {
+            const float w = exp(-(float)(i * i) * invTwoSigmaSq);
+            const int2 c = clamp(base + dir * i, int2(0, 0), maxCoord);
+            sum += postInput.Load(int3(c, 0)).rgb * w;
+            weightSum += w;
+        }
+        return float4(sum / weightSum, 1.0f);
+    }</code></pre>
+<h3>CPU (RendererPost.cpp, ApplyHdrEffects 의 블러 구간)</h3>
+<p>반경은 "720p 기준 픽셀"입니다. 출력 높이에 비례해 늘고 줄어서 씬 뷰 크기를 바꾸거나 작은 미리보기에서도 모양이 같습니다. 시그마 = 유효 반경 / 2.5 (±2.5σ 에서 자름).</p>
+<pre><code>// ---- 가우시안 블러: 가로 (hdr → temp) 후 세로 (temp → hdr). 반경은 720p 기준이라 출력 높이에 비례해 스케일함 ----
+if (blur)
+{
+    GpuProfileScope gpuScope(cmd, &quot;BlurPass&quot;);
+    const float effectiveRadius = (std::min)(post.blurRadius * h / kReferenceHeight, static_cast&lt;float&gt;(kMaxBlurRadius));
+    PostParamsConstants params = {};
+    params.blur = XMFLOAT4((std::max)(effectiveRadius / 2.5f, 0.5f), std::ceil((std::max)(effectiveRadius, 1.0f)), 0.0f, 0.0f);   // 시그마, 반경 (±2.5σ 에서 자름)
+    params.view = XMFLOAT4(w, h, w, h);
+
+    params.pass = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.0f);   // 모드 1, 방향 (1, 0)
+    UploadPostParams(params);
+    RenderPostPass(cmd, PostPassDesc{
+        .pipeline = GetPostPipeline(false),
+        .input = hdrSet,
+        .output = scratch.temp,
+        .outputBefore = scratch.tempState,
+        .outputAfter = ResourceState::ShaderResource,
+        .load = LoadOp::DontCare,
+        .debugName = &quot;BlurH&quot;,
+    });
+    scratch.tempState = ResourceState::ShaderResource;
+
+    params.pass = XMFLOAT4(1.0f, 0.0f, 1.0f, 0.0f);   // 방향 (0, 1). 결과를 hdr 에 되돌려 씀
+    UploadPostParams(params);
+    RenderPostPass(cmd, PostPassDesc{
+        .pipeline = GetPostPipeline(false),
+        .input = scratch.tempSet,
+        .output = hdr,
+        .outputBefore = hdrState,
+        .outputAfter = ResourceState::ShaderResource,
+        .load = LoadOp::DontCare,
+        .debugName = &quot;BlurV&quot;,
+    });
+    hdrState = ResourceState::ShaderResource;
+    if (capture) CapturePostStage(cmd, 1, &quot;Blur&quot;, hdrSet, width, height, true);
+}</code></pre>
+<table>
+<tr><th>패스</th><th>입력(t13)</th><th>출력</th><th>출력 상태 전이</th></tr>
+<tr><td>BlurH</td><td>hdr</td><td>temp</td><td>temp: 이전 → RenderTarget → ShaderResource</td></tr>
+<tr><td>BlurV</td><td>temp</td><td>hdr</td><td>hdr: ShaderResource → RenderTarget → ShaderResource</td></tr>
+</table>
+</section>
+
+<section id="bloom">
+<h2>8. 블룸</h2>
+<h3>셰이더 (PostPixelShader.hlsl, 모드 2·3·4)</h3>
+<p><b>밝기 추출</b>은 채널 최댓값이 임계값을 넘는 만큼만 남기고, knee 구간에서는 2차 곡선으로 부드럽게 이어 줍니다. <b>축소</b>는 입력 텍셀 모서리 네 곳을 선형 샘플러로 읽어 4x4 박스가 되게 합니다. <b>확대</b>는 3x3 텐트 필터이며, 출력 PSO 가 가산 블렌드라 기존 값에 더해집니다 (알파 0 으로 내보내 알파는 유지).</p>
+<pre><code>// 밝기(채널 최댓값)가 임계값을 넘는 만큼만 남김. knee 구간에서는 2차 곡선으로 부드럽게 올라감 (경계에서 튀지 않게).
+float3 BrightPass(float3 c)
+{
+    const float threshold = postBloom.x;
+    const float knee = postBloom.y;
+    const float brightness = max(c.r, max(c.g, c.b));
+    float soft = clamp(brightness - threshold + knee, 0.0f, 2.0f * knee);
+    soft = soft * soft / (4.0f * knee + 1e-5f);
+    const float contribution = max(soft, brightness - threshold) / max(brightness, 1e-5f);
+    return c * contribution;
+}</code></pre>
+<pre><code>    const float2 uv = position.xy / postView.zw;
+    const float2 texel = 1.0f / postView.xy;   // 입력 텍셀 크기
+
+    if (mode == 2 || mode == 3)
+    {
+        // 출력 픽셀 중심 = 입력 텍셀 2x2 의 경계. 입력 텍셀 모서리에서 4 번 읽으면 (각각 2x2 평균) 4x4 박스가 됨.
+        float3 a = SampleInput(uv + texel * float2(-1.0f, -1.0f));
+        float3 b = SampleInput(uv + texel * float2( 1.0f, -1.0f));
+        float3 c = SampleInput(uv + texel * float2(-1.0f,  1.0f));
+        float3 d = SampleInput(uv + texel * float2( 1.0f,  1.0f));
+        if (mode == 2)
+        {
+            a = BrightPass(a); b = BrightPass(b); c = BrightPass(c); d = BrightPass(d);
+        }
+        return float4((a + b + c + d) * 0.25f, 1.0f);
+    }
+
+    if (mode == 4)
+    {
+        // 3x3 텐트 (1 2 1 / 2 4 2 / 1 2 1) / 16. 입력(작은 쪽) 텍셀 단위로 읽음.
+        float3 sum = 0.0f;
+        sum += SampleInput(uv + texel * float2(-1.0f, -1.0f));
+        sum += SampleInput(uv + texel * float2( 0.0f, -1.0f)) * 2.0f;
+        sum += SampleInput(uv + texel * float2( 1.0f, -1.0f));
+        sum += SampleInput(uv + texel * float2(-1.0f,  0.0f)) * 2.0f;
+        sum += SampleInput(uv)                                 * 4.0f;
+        sum += SampleInput(uv + texel * float2( 1.0f,  0.0f)) * 2.0f;
+        sum += SampleInput(uv + texel * float2(-1.0f,  1.0f));
+        sum += SampleInput(uv + texel * float2( 0.0f,  1.0f)) * 2.0f;
+        sum += SampleInput(uv + texel * float2( 1.0f,  1.0f));
+        return float4(sum * (postBloom.z / 16.0f), 0.0f);   // 알파 0: 가산 블렌드가 알파는 기존 값을 유지함
+    }</code></pre>
+<h3>CPU (RendererPost.cpp, ApplyHdrEffects 의 블룸 구간)</h3>
+<p>마지막 합성은 hdr 를 렌더 타깃으로(<code>LoadOp::Load</code>, 가산 블렌드) 쓰고 입력은 레벨 0 이라, 같은 텍스처를 읽고 쓰는 일이 없습니다.</p>
+<pre><code>    // ---- 블룸: 밝기 추출 + 축소 (hdr → 레벨 0) → 축소 체인 → 확대하며 가산 (레벨 n-1 → … → 0) → hdr 에 intensity 만큼 가산 ----
+    // 마지막 가산이 hdr 를 렌더 타깃으로 쓰고(Load) 입력은 레벨 0 이라, 같은 텍스처를 읽고 쓰는 일이 없음.
+    if (bloom &amp;&amp; scratch.bloomCount &gt; 0)
+    {
+        GpuProfileScope gpuScope(cmd, &quot;BloomPass&quot;);
+        PostScratch::BloomLevel* levels = scratch.bloom;
+        const uint32_t count = scratch.bloomCount;
+
+        PostParamsConstants params = {};
+        params.bloom = XMFLOAT4(post.bloomThreshold, post.bloomThreshold * post.bloomKnee, 1.0f, 0.0f);
+
+        auto run = [&amp;](float mode, ResourceSetHandle input, float srcW, float srcH, PostScratch::BloomLevel* outLevel, const char* name, bool additive, float scale)
+        {
+            params.pass = XMFLOAT4(mode, 0.0f, 0.0f, 0.0f);
+            params.view = XMFLOAT4(srcW, srcH, static_cast&lt;float&gt;(outLevel-&gt;width), static_cast&lt;float&gt;(outLevel-&gt;height));
+            params.bloom.z = scale;
+            UploadPostParams(params);
+            RenderPostPass(cmd, PostPassDesc{
+                .pipeline = GetPostPipeline(additive),
+                .input = input,
+                .output = outLevel-&gt;texture,
+                .outputBefore = outLevel-&gt;state,
+                .outputAfter = ResourceState::ShaderResource,
+                .load = additive ? LoadOp::Load : LoadOp::DontCare,
+                .debugName = name,
+            });
+            outLevel-&gt;state = ResourceState::ShaderResource;
+        };
+
+        run(2.0f, hdrSet, w, h, &amp;levels[0], &quot;BloomPrefilter&quot;, false, 1.0f);
+        for (uint32_t i = 1; i &lt; count; ++i)
+            run(3.0f, levels[i - 1].set, static_cast&lt;float&gt;(levels[i - 1].width), static_cast&lt;float&gt;(levels[i - 1].height), &amp;levels[i], &quot;BloomDown&quot;, false, 1.0f);
+        for (uint32_t i = count - 1; i-- &gt; 0;)
+            run(4.0f, levels[i + 1].set, static_cast&lt;float&gt;(levels[i + 1].width), static_cast&lt;float&gt;(levels[i + 1].height), &amp;levels[i], &quot;BloomUp&quot;, true, 1.0f);
+
+        // 합성: 레벨 0 → hdr (가산, intensity)
+        params.pass = XMFLOAT4(4.0f, 0.0f, 0.0f, 0.0f);
+        params.view = XMFLOAT4(static_cast&lt;float&gt;(levels[0].width), static_cast&lt;float&gt;(levels[0].height), w, h);
+        params.bloom.z = post.bloomIntensity;
+        UploadPostParams(params);
+        RenderPostPass(cmd, PostPassDesc{
+            .pipeline = GetPostPipeline(true),
+            .input = levels[0].set,
+            .output = hdr,
+            .outputBefore = hdrState,
+            .outputAfter = ResourceState::ShaderResource,
+            .load = LoadOp::Load,
+            .debugName = &quot;BloomComposite&quot;,
+        });
+        hdrState = ResourceState::ShaderResource;
+        if (capture) CapturePostStage(cmd, 2, &quot;Bloom&quot;, hdrSet, width, height, true);
+    }
+    if (capture) CapturePostStage(cmd, 3, &quot;Final&quot;, hdrSet, width, height, false);
+}</code></pre>
+<h3>흐름 (5레벨, 1280x720 예)</h3>
+<pre><code>hdr(1280x720) ─Prefilter(임계값·knee)→ L0 640x360 ─Down→ L1 320x180 ─Down→ L2 160x90 ─Down→ L3 80x45 ─Down→ L4 40x23
+                                        ▲ 가산 ◄ Up ◄ L1 ◄ 가산 ◄ Up ◄ L2 ◄ 가산 ◄ Up ◄ L3 ◄ 가산 ◄ Up ◄ L4
+hdr ◄─ BloomComposite (L0 의 확대 결과 × intensity, 가산) </code></pre>
+</section>
+
+<section id="pso">
+<h2>9. PSO와 셰이더 등록</h2>
+<h3>PSO Desc (Renderer::Initialize)</h3>
+<p>톤 패스와 모양이 같으므로(풀스크린 삼각형, 깊이 없음, <code>Layout_Post</code>) <code>m_tonemapDesc</code> 를 베이스로 <code>ps</code> 만 바꿉니다. 깊이 없는 패스에 <code>PipelineStateDesc</code> 기본값(D24 DSV)이 남으면 거부되므로 베이스의 <code>dsvFormat = Unknown</code> 을 그대로 물려받는 것이 중요합니다. 가산 버전은 출력 = 셰이더 출력 + 기존 값이고 알파는 기존 값을 유지합니다.</p>
+<pre><code>// 2026/10/23: 블러·블룸. 톤 패스와 모양이 같으므로(풀스크린 삼각형, 깊이 없음, Layout_Post) 그 Desc 를 베이스로 ps 만 바꿈.
+// 가산 버전은 블룸 합성용: 출력 = 셰이더 출력 + 기존 값 (알파는 기존 값 유지).
+m_postDesc = m_tonemapDesc;
+m_postDesc.ps = m_postPs;
+m_postAddDesc = m_postDesc;
+m_postAddDesc.blend.rt[0] = RenderTargetBlendDesc{
+    .blendEnable = true,
+    .srcColor = BlendFactor::One, .dstColor = BlendFactor::One, .colorOp = BlendOp::Add,
+    .srcAlpha = BlendFactor::Zero, .dstAlpha = BlendFactor::One, .alphaOp = BlendOp::Add,
+};</code></pre>
+<h3>GetPostPipeline (RendererPost.cpp)</h3>
+<pre><code>PipelineHandle Renderer::GetPostPipeline(bool additive)
+{
+    // 블러·블룸은 FP16 스크래치/HDR 텍스처에 그림 (깊이 없음 — dsvFormat 은 m_tonemapDesc 에서 물려받은 Unknown).
+    PipelineStateDesc desc = additive ? m_postAddDesc : m_postDesc;
+    desc.rtvFormats[0] = Format::R16G16B16A16_FLOAT;
+    desc.rtvCount = 1;
+    return m_device-&gt;CreatePipeline(desc);
+}</code></pre>
+<h3>셰이더 로드·대조·핫리로드 (LoadShaders)</h3>
+<p>새 셰이더 <code>PostPixelShader.hlsl</code> 는 vcxproj 의 <code>FxCompile</code> 에 등록(<code>PS_Post</code>, SM 5.0)하고, 기존 셰이더와 같은 자리에 아래가 더해졌습니다: 컴파일/로드, 상수버퍼 크기 대조, 바인딩 대조, 핫리로드 감시 목록, 실패 시 정리, <code>ReloadShaders</code> 의 Desc 갱신, <code>Shutdown</code> 정리.</p>
+<pre><code>constexpr const wchar_t* kPostPixelShaderFile = L&quot;PostPixelShader.hlsl&quot;;   // 2026/10/23: 블러·블룸 (PS_Post)</code></pre><pre><code>if (!ShaderCompiler::LoadOrCompile(kPostPixelShaderFile, &quot;PS_Post&quot;, ShaderStage::Pixel, postPsCode, &amp;postPsSource)) return false;</code></pre><pre><code>layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(postPsCode, &quot;PostParams&quot;, sizeof(PostParamsConstants));</code></pre><pre><code>check(postPsCode, ShaderStageMask_Pixel, &quot;PostPS&quot;);             // 2026/10/23</code></pre>
+</section>
+
+<section id="scratch">
+<h2>10. 스크래치 텍스처와 호출 지점</h2>
+<h3>PostScratch (Renderer.h)</h3>
+<p>타깃(메인, 카메라 미리보기)마다 하나입니다. 효과가 처음 켜질 때만 필요한 텍스처를 만들고, hdr 크기가 바뀌면 전부 버리고 다시 만듭니다. 상태(<code>ResourceState</code>)는 텍스처마다 직접 추적합니다 (D3D12 배리어의 before 가 틀리면 안 되므로).</p>
+<pre><code>struct PostScratch
+{
+    static constexpr uint32_t kBloomLevels = 5;
+    struct BloomLevel
+    {
+        TextureHandle texture;                    // 레벨 i 는 hdr 의 1/2^(i+1) 크기
+        ResourceState state = ResourceState::Common;
+        ResourceSetHandle set;                    // Layout_Post: t13 = texture
+        uint32_t width = 0;
+        uint32_t height = 0;
+    };
+    uint32_t width = 0;                           // 이 스크래치가 맞춘 hdr 크기. 바뀌면 전부 다시 만듦
+    uint32_t height = 0;
+    TextureHandle temp;                           // 블러 가로 패스의 결과 (hdr 와 같은 크기·포맷). 블러가 처음 켜질 때 만듦
+    ResourceState tempState = ResourceState::Common;
+    ResourceSetHandle tempSet;                    // Layout_Post: t13 = temp
+    BloomLevel bloom[kBloomLevels];               // 블룸 축소 체인. 블룸이 처음 켜질 때 만듦
+    uint32_t bloomCount = 0;
+};</code></pre>
+<h3>생성과 정리 (RendererPost.cpp)</h3>
+<p>블룸 레벨 i 는 hdr 의 1/2^(i+1) 크기이고, 한 변이 4 미만이 되면 거기서 멈춥니다. 포맷은 전부 <code>R16G16B16A16_FLOAT</code> 입니다. 1을 넘는 밝기가 중간 단계에서 잘리면 블룸이 의미가 없기 때문입니다.</p>
+<pre><code>bool Renderer::EnsurePostScratch(PostScratch&amp; scratch, uint32_t width, uint32_t height, bool needBlur, bool needBloom)
+{
+    if (m_device == nullptr || width == 0 || height == 0) return false;
+    if (scratch.width != width || scratch.height != height) DestroyPostScratch(scratch);   // hdr 크기가 바뀌었으면 전부 다시
+
+    // 후처리 텍스처는 전부 FP16 — 1 을 넘는 밝기를 잘라내지 않도록 hdr 와 같은 포맷.
+    auto create = [this](uint32_t w, uint32_t h, const char* name, TextureHandle&amp; texture, ResourceSetHandle&amp; set)
+    {
+        const TextureDesc desc{
+            .width = w,
+            .height = h,
+            .format = Format::R16G16B16A16_FLOAT,
+            .mipLevels = 1,
+            .bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource,
+            .debugName = name,
+        };
+        texture = m_device-&gt;CreateTexture(desc);
+        if (texture.IsValid()) set = CreatePostSet(texture, name);
+        return texture.IsValid() &amp;&amp; set.IsValid();
+    };
+
+    if (needBlur &amp;&amp; !scratch.temp.IsValid())
+    {
+        if (!create(width, height, &quot;PostTemp&quot;, scratch.temp, scratch.tempSet))
+        {
+            Log::Error(&quot;후처리 스크래치 텍스처 생성 실패 (%ux%u).&quot;, width, height);
+            DestroyPostScratch(scratch);
+            return false;
+        }
+        scratch.tempState = ResourceState::Common;
+        Log::Info(&quot;후처리 스크래치(블러) %ux%u (R16G16B16A16_FLOAT)&quot;, width, height);
+    }
+    if (needBloom &amp;&amp; scratch.bloomCount == 0)
+    {
+        // 레벨 i = hdr 의 1/2^(i+1). 변이 4 미만이 되면 거기서 멈춤 (너무 작은 레벨은 의미가 없음).
+        uint32_t w = width, h = height;
+        for (uint32_t i = 0; i &lt; PostScratch::kBloomLevels; ++i)
+        {
+            w = (std::max)(1u, (w + 1) / 2);
+            h = (std::max)(1u, (h + 1) / 2);
+            PostScratch::BloomLevel&amp; level = scratch.bloom[i];
+            if (!create(w, h, &quot;PostBloom&quot;, level.texture, level.set))
+            {
+                Log::Error(&quot;후처리 스크래치 텍스처 생성 실패 (블룸 레벨 %u, %ux%u).&quot;, i, w, h);
+                DestroyPostScratch(scratch);
+                return false;
+            }
+            level.state = ResourceState::Common;
+            level.width = w;
+            level.height = h;
+            scratch.bloomCount = i + 1;
+            if (w &lt; 4 || h &lt; 4) break;
+        }
+        Log::Info(&quot;후처리 스크래치(블룸) 레벨 %u개, 가장 큰 쪽 %ux%u&quot;, scratch.bloomCount, scratch.bloom[0].width, scratch.bloom[0].height);
+    }
+    scratch.width = width;
+    scratch.height = height;
+    return true;
+}</code></pre>
+<pre><code>void Renderer::DestroyPostScratch(PostScratch&amp; scratch)
+{
+    if (m_device != nullptr)
+    {
+        // D3D12 는 지연 해제라 이미 기록된 명령이 읽어도 안전함.
+        if (scratch.tempSet.IsValid()) m_device-&gt;DestroyResourceSet(scratch.tempSet);
+        if (scratch.temp.IsValid()) m_device-&gt;DestroyTexture(scratch.temp);
+        for (PostScratch::BloomLevel&amp; level : scratch.bloom)
+        {
+            if (level.set.IsValid()) m_device-&gt;DestroyResourceSet(level.set);
+            if (level.texture.IsValid()) m_device-&gt;DestroyTexture(level.texture);
+        }
+    }
+    scratch = PostScratch{};
+}</code></pre>
+<h3>ApplyHdrEffects 의 머리</h3>
+<p>스크래치를 못 만들면 그 효과만 건너뛰고 씬은 그대로 나갑니다. 켜진 효과가 없으면 스크래치를 만들지 않고, 패스도 기록하지 않습니다(비용 0).</p>
+<pre><code>void Renderer::ApplyHdrEffects(RHI::CommandList&amp; cmd, PostScratch&amp; scratch, TextureHandle hdr, ResourceState&amp; hdrState, ResourceSetHandle hdrSet,
+    uint32_t width, uint32_t height, bool capture)
+{
+    const PostProcessSettings&amp; post = m_postSettings;
+    bool blur = post.blurEnabled &amp;&amp; post.blurRadius &gt; 0.0f;
+    bool bloom = post.bloomEnabled &amp;&amp; post.bloomIntensity &gt; 0.0f;
+    if ((blur || bloom) &amp;&amp; !EnsurePostScratch(scratch, width, height, blur, bloom))
+    {
+        blur = bloom = false;   // 못 만들면 효과만 건너뜀 (씬은 그대로 나감)
+    }
+    if (capture) CapturePostStage(cmd, 0, &quot;Scene&quot;, hdrSet, width, height, true);</code></pre>
+<h3>Render() 의 호출 지점</h3>
+<pre><code>// 2026/10/23: HDR 구간 후처리 (블러 → 블룸). 결과는 m_hdrColor 에 제자리로 남아 톤 패스가 그대로 읽음.</code></pre><pre><code>ApplyHdrEffects(cmd, m_postMain, m_hdrColor, m_hdrColorState, m_hdrPostSet, m_hdrWidth, m_hdrHeight, m_postCapture);</code></pre>
+<p>카메라 미리보기는 같은 함수를 자기 스크래치와 HDR 로 부릅니다 (썸네일 캡처는 메인 카메라만).</p>
+<pre><code>ApplyHdrEffects(cmd, m_postPreview, m_previewHdr, m_previewHdrState, m_previewHdrPostSet, m_previewWidth, m_previewHeight, false);</code></pre>
+<p>HDR 크기가 바뀌면(<code>EnsureHdrTargets</code> → <code>DestroyHdrTargets</code>) 메인 스크래치도 함께 버려지고, 효과가 켜져 있으면 다음 프레임에 다시 만들어집니다. <code>SetPreviewTarget</code> 도 미리보기 스크래치를 같은 규칙으로 정리합니다.</p>
+</section>
+
+<section id="stages">
+<h2>11. 단계별 썸네일 (Post Stages 창)</h2>
+<p>환경 패널의 "Stage thumbnails" 체크로 켜는 창입니다. Scene → Blur → Bloom → Final 의 HDR 결과를 <b>톤매핑해 본 모습</b>으로 나란히 보여 줍니다. Scene/Blur/Bloom 은 색 효과를 건너뛴 그림이고(그 효과가 한 일만 보이게), Final 만 색 효과까지 포함합니다. 꺼진 효과 칸은 "off" 로 표시합니다.</p>
+<h3>Renderer 공개 API (Renderer.h)</h3>
+<pre><code>// 2026/10/23: 후처리 단계별 썸네일 (에디터의 &quot;Post Stages&quot; 창). 창이 열려 있는 동안 매 프레임 RequestPostCapture 를 부르면
+// 다음 Render 가 단계마다 HDR 결과를 톤매핑한 작은 텍스처에 그림. 요청이 없으면 비용이 없음. 메인 카메라, 에디터(오프스크린) 전용.
+// 단계: 0 Scene (후처리 전), 1 Blur, 2 Bloom (꺼진 효과는 active = false), 3 Final (후처리 + 색 효과). 단계 0~2 는 색 효과를 뺀 그림임.
+static constexpr uint32_t kPostStageCount = 4;
+struct PostStageThumb
+{
+    TextureHandle texture;
+    const char* name = &quot;&quot;;
+    bool active = false;   // 이번 프레임에 그려졌는가
+};
+void RequestPostCapture();   // 썸네일 텍스처를 (필요하면) 만듦 — UI 를 만드는 중에 불러야 함. 이번 프레임의 UI 가 그 텍스처 ID 를 씀
+const PostStageThumb&amp; GetPostStage(uint32_t index) const { return m_stageThumbs[index]; }
+uint32_t GetPostStageWidth() const { return m_thumbWidth; }
+uint32_t GetPostStageHeight() const { return m_thumbHeight; }</code></pre>
+<h3>캡처 구현 (RendererPost.cpp)</h3>
+<p>CommandList 에 텍스처 복사가 없어서(<code>CopyBuffer</code> 만 있음) 썸네일은 draw 입니다. 톤 패스를 그대로 재사용하고, 셰이더가 입력/출력 크기 비로 읽는 최근접 축소를 합니다.</p>
+<pre><code>void Renderer::RequestPostCapture()
+{
+    m_postCaptureRequested = true;
+    // 썸네일 텍스처는 여기(UI 를 만드는 중)에서 만들고 바꿈. Render 에서 바꾸면 이 프레임의 UI 가 이미 집어 든 ImGui 텍스처 ID(D3D11 은 SRV 포인터)가
+    // UI 패스가 그리기 전에 해제됨. 씬 뷰 텍스처(SetSceneTarget)를 UI 단계에서 바꾸는 것과 같은 규칙임.
+    if (IsOffscreen()) EnsureStageThumbs(m_sceneWidth, m_sceneHeight);
+}
+
+void Renderer::EnsureStageThumbs(uint32_t hdrWidth, uint32_t hdrHeight)
+{
+    if (m_device == nullptr || hdrWidth == 0 || hdrHeight == 0) return;
+    // 폭 384 (HDR 가 더 좁으면 그 폭), 높이는 같은 종횡비. 종횡비가 바뀌면(씬 뷰 리사이즈) 다시 만듦.
+    const uint32_t width = (std::min)(384u, hdrWidth);
+    const uint32_t height = (std::max)(1u, static_cast&lt;uint32_t&gt;(static_cast&lt;uint64_t&gt;(width) * hdrHeight / hdrWidth));
+    if (width == m_thumbWidth &amp;&amp; height == m_thumbHeight &amp;&amp; m_stageThumbs[0].texture.IsValid()) return;
+
+    DestroyStageThumbs();
+    static const char* const kNames[kPostStageCount] = { &quot;Scene&quot;, &quot;Blur&quot;, &quot;Bloom&quot;, &quot;Final&quot; };
+    for (uint32_t i = 0; i &lt; kPostStageCount; ++i)
+    {
+        const TextureDesc desc{
+            .width = width,
+            .height = height,
+            .format = Format::R8G8B8A8_UNORM,   // 씬 뷰와 같은 TYPELESS 규칙 (sRGB RTV + UNORM SRV 로 ImGui 가 읽음)
+            .mipLevels = 1,
+            .bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource,
+            .debugName = &quot;PostStageThumb&quot;,
+        };
+        m_stageThumbs[i].texture = m_device-&gt;CreateTexture(desc);
+        m_stageThumbs[i].name = kNames[i];
+        m_stageThumbStates[i] = ResourceState::Common;
+        if (!m_stageThumbs[i].texture.IsValid())
+        {
+            Log::Error(&quot;후처리 단계 썸네일 생성 실패 (%ux%u).&quot;, width, height);
+            DestroyStageThumbs();
+            return;
+        }
+    }
+    m_thumbWidth = width;
+    m_thumbHeight = height;
+    Log::Info(&quot;후처리 단계 썸네일 %ux%u x %u&quot;, width, height, kPostStageCount);
+}
+
+void Renderer::DestroyStageThumbs()
+{
+    for (uint32_t i = 0; i &lt; kPostStageCount; ++i)
+    {
+        if (m_device != nullptr &amp;&amp; m_stageThumbs[i].texture.IsValid()) m_device-&gt;DestroyTexture(m_stageThumbs[i].texture);   // D3D12 는 지연 해제 (ImGui 가 읽을 수 있음)
+        m_stageThumbs[i] = PostStageThumb{};
+        m_stageThumbStates[i] = ResourceState::Common;
+    }
+    m_thumbWidth = m_thumbHeight = 0;
+}
+
+void Renderer::CapturePostStage(RHI::CommandList&amp; cmd, uint32_t stage, const char* name, ResourceSetHandle hdrSet,
+    uint32_t hdrWidth, uint32_t hdrHeight, bool skipGrade)
+{
+    PostStageThumb&amp; thumb = m_stageThumbs[stage];
+    if (!thumb.texture.IsValid() || m_thumbWidth == 0) return;
+    // 지금까지의 HDR 결과를 노출·ACES 로 톤매핑해 작은 텍스처에 그림 (톤 패스의 셰이더가 입력/출력 크기 비로 읽음 = 최근접 축소).
+    // 단계 0~2 는 색 효과를 건너뜀 — &quot;이 효과가 한 일&quot;만 보이게. 마지막 Final 만 색 효과까지 포함.
+    RenderTonemapPass(cmd, hdrSet, thumb.texture, m_stageThumbStates[stage], ResourceState::ShaderResource, name,
+        hdrWidth, hdrHeight, m_thumbWidth, m_thumbHeight, skipGrade);
+    m_stageThumbStates[stage] = ResourceState::ShaderResource;
+    thumb.active = true;
+}</code></pre>
+<h3>Render() 의 캡처 준비</h3>
+<p>창이 요청한 프레임에만 캡처하고, 요청은 한 번 쓰면 지웁니다. 창을 닫으면 다음 프레임부터 비용이 사라집니다.</p>
+<pre><code>// 2026/10/23: 단계별 썸네일. 창이 요청한 프레임에만 (요청은 한 번 쓰면 지움 — 창을 닫으면 다음 프레임부터 멈춤).
+m_postCapture = m_postCaptureRequested &amp;&amp; IsOffscreen();
+m_postCaptureRequested = false;
+for (PostStageThumb&amp; thumb : m_stageThumbs) thumb.active = false;
+if (m_postCapture) EnsureStageThumbs(m_hdrWidth, m_hdrHeight);</code></pre>
+<h3>창 (DebugUI.cpp)</h3>
+<pre><code>void DebugUI::SetShowPostStages(bool show)
+{
+    g_showPostStages = show;
+}
+
+void DebugUI::DrawPostStagesWindow(Renderer&amp; renderer, RHI::Device&amp; device)
+{
+    if (!g_showPostStages) return;
+    renderer.RequestPostCapture();   // 다음 프레임의 Render 가 단계별 썸네일을 그림. 창을 닫으면 요청이 끊겨 비용이 사라짐
+
+    // 처음에는 씬 뷰 왼쪽 위에 떠 있고, 도킹해도 됨.
+    ImGui::SetNextWindowPos(ImVec2(250.0f, 80.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(1080.0f, 285.0f), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin(&quot;Post Stages&quot;, &amp;g_showPostStages))
+    {
+        ImGui::SetWindowFontScale(1.5f);   // 글씨 기본 1.5배
+        ImGui::TextDisabled(&quot;HDR 결과를 톤매핑해 본 모습. Scene/Blur/Bloom 은 색 효과(Greyscale) 전, Final 은 후처리 + 색 효과 후.&quot;);
+        const uint32_t sourceW = renderer.GetPostStageWidth();
+        const uint32_t sourceH = renderer.GetPostStageHeight();
+        if (sourceW == 0)
+        {
+            ImGui::TextUnformatted(&quot;waiting for the first captured frame...&quot;);
+        }
+        else
+        {
+            // 창 폭에 맞춰 4칸을 같은 크기로 나눔 (칸 사이 여백 제외). 창을 키우면 이미지도 같이 커짐
+            const float spacing = ImGui::GetStyle().ItemSpacing.x;
+            const float cell = (std::max)(16.0f, (ImGui::GetContentRegionAvail().x - spacing * (Renderer::kPostStageCount - 1)) / Renderer::kPostStageCount);
+            const ImVec2 size(cell, cell * static_cast&lt;float&gt;(sourceH) / static_cast&lt;float&gt;(sourceW));
+            for (uint32_t i = 0; i &lt; Renderer::kPostStageCount; ++i)
+            {
+                const Renderer::PostStageThumb&amp; stage = renderer.GetPostStage(i);
+                ImGui::BeginGroup();
+                ImGui::TextUnformatted(stage.name);
+                const uint64_t id = stage.active ? device.GetImGuiTextureId(stage.texture) : 0;
+                if (id != 0) ImGui::Image(static_cast&lt;ImTextureID&gt;(id), size);
+                else ImGui::Dummy(size);   // 꺼진 효과 (Blur/Bloom): 자리만 비움
+                if (!stage.active) ImGui::TextDisabled(&quot;off&quot;);
+                ImGui::EndGroup();
+                if (i + 1 &lt; Renderer::kPostStageCount) ImGui::SameLine();
+            }
+        }
+    }
+    ImGui::End();
+}</code></pre>
+<h3>호출 위치와 자동 검증 플래그</h3>
+<pre><code>DebugUI::DrawPostStagesWindow(engine.GetRenderer(), engine.GetDevice());   // 2026/10/23: 후처리 단계별 썸네일 (체크로 켬)</code></pre>
+<pre><code>if (!GetCommandLineOption(L&quot;post-stages&quot;).empty()) DebugUI::SetShowPostStages(true);   // 2026/10/23: --post-stages=1 이면 후처리 단계별 썸네일 창을 처음부터 켬</code></pre><pre><code>if (frame == 5 &amp;&amp; !m_auto.selectName.empty())
+{
+    int found = -1;
+    for (size_t i = 0; i &lt; scene.GetObjects().size() &amp;&amp; found &lt; 0; ++i)
+        if (scene.GetObjects()[i]-&gt;GetName() == m_auto.selectName) found = static_cast&lt;int&gt;(i);
+    m_editor.SetSelectedObject(found);
+    Log::Info(&quot;자동 검증: select &#x27;%s&#x27; → %d&quot;, m_auto.selectName.c_str(), found);
+}</code></pre>
+<div class="box warn"><b>이 구현에서 실제로 났던 크래시.</b> 처음에는 썸네일 텍스처를 <code>Render()</code> 안에서 (재)생성했습니다. 그런데 에디터는 UI 를 먼저 만들고(그때 <code>GetImGuiTextureId</code> 로 텍스처 ID 를 쥠) 그 뒤에 <code>Render()</code> → UI 패스 순으로 진행합니다. D3D11 의 ImGui 텍스처 ID 는 SRV 포인터라서, 창 크기가 바뀐 프레임에 <code>Render()</code> 가 썸네일을 파괴하면 UI 패스가 해제된 SRV 를 그리게 되어 크래시했습니다 (효과를 끈 상태에서 6/6 재현). 해결: 생성·재생성을 UI 를 만드는 중(<code>RequestPostCapture</code>)으로 옮겼습니다. 씬 뷰 텍스처(<code>SetSceneTarget</code>)를 UI 단계에서 바꾸는 것과 같은 규칙입니다. 이 뒤로 같은 조건을 9번 반복해 모두 정상이었습니다. <code>Render()</code> 안의 <code>EnsureStageThumbs</code> 호출은 크기가 같으면 곧바로 반환하는 보호용입니다 (오프스크린에서는 <code>m_hdrWidth</code> 가 <code>m_sceneWidth</code> 와 같고, UI 단계에서 이미 같은 크기로 만들어져 있음).</div>
+</section>
+
+<section id="notes">
+<h2>12. 설계 결정과 알아 둘 함정</h2>
+<table>
+<tr><th>항목</th><th>내용</th></tr>
+<tr><td><code>UpdateBuffer</code> 를 한 프레임에 여러 번</td><td>D3D12 는 <code>UpdateBuffer</code> 가 호출마다 업로드 링에서 새 조각을 할당하고, 바인딩은 draw 시점(<code>ApplyBindings</code>)에 최신 조각을 가리킵니다. 그래서 패스마다 b4 를 올려도 앞 패스가 덮이지 않습니다 (b0 가 미리보기에서 이미 이렇게 쓰임). 패스마다 CB 를 따로 둘 필요가 없었습니다.</td></tr>
+<tr><td>같은 텍스처를 읽고 쓰지 않음</td><td>블러는 hdr → temp → hdr 로 핑퐁하고, 블룸 합성은 L0 을 읽어 hdr 에 가산합니다. D3D11 은 <code>BeginRenderPass</code> 가 렌더 타깃과 같은 텍스처의 SRV 슬롯을 자동으로 푸는데, 이에 기대지 않고 입력과 출력이 항상 다르게 했습니다.</td></tr>
+<tr><td><code>std::min/max</code> 와 Windows 매크로</td><td><code>pch.h</code> 가 <code>windows.h</code> 를 끌어와서 <code>std::min(a, b)</code> 가 컴파일 오류(C2589)가 납니다. 이 프로젝트 관례대로 <code>(std::min)(a, b)</code> 로 감쌌습니다.</td></tr>
+<tr><td>에디터·게임 exe 와 DLL</td><td><code>SherlockEditor</code>/<code>SherlockGame</code> 프로젝트를 단독으로 <code>msbuild x.vcxproj</code> 하면 <code>App/EntryPoints.h</code> 를 못 찾아 실패합니다. 솔루션(<code>SherlockEngine.sln</code>)으로 빌드해야 합니다.</td></tr>
+<tr><td>블러 반경 단위</td><td>720p 기준 픽셀. 씬 뷰가 커지거나 작아져도, 작은 카메라 미리보기에서도 같은 비율의 흐림이 됩니다. 기준 높이는 <code>RendererPost.cpp</code> 의 <code>kReferenceHeight</code>.</td></tr>
+<tr><td>블룸의 밝기 판정</td><td>채널 최댓값 기준입니다. 노출·ACES 전의 선형 HDR 값에 대한 임계값이라, 장면이 어두우면(노출이 낮으면) 같은 임계값에서도 번지는 양이 달라집니다.</td></tr>
+<tr><td>카메라 미리보기</td><td>같은 체인을 적용하지만 단계별 썸네일은 메인 카메라만 지원합니다.</td></tr>
+</table>
+</section>
+
+<section id="verify">
+<h2>13. 검증</h2>
+<div class="box ok">효과를 모두 끈 상태의 씬 뷰는 변경 전 기준 스크린샷과 <b>픽셀 단위로 같습니다</b>(차이 0). 켜면 화면이 눈에 띄게 바뀝니다.</div>
+<h3>방법</h3>
+<p>에디터를 자동 검증 모드로 실행해 스크린샷을 찍었습니다. 검증용 임시 프로젝트 <code>Projects/PostProcessTest/</code>(CubemapTest 씬의 복사본, 검증 뒤 삭제)의 씬 JSON 에 후처리 값을 써서 효과를 켰습니다. 에디터 화면에서 씬 뷰 영역(233,72)-(963,515)은 실행마다 픽셀이 같아서 이 영역을 기준과 비교했습니다. 단계마다 "끈 상태 = 기준과 같음" 과 "켠 상태 = 다름" 을 확인하고 다음 단계로 넘어갔습니다.</p>
+<pre><code>SherlockEditor.exe --project=...\PostProcessTest.sherlock --exit-after=40 --screenshot=out.png
+                   [--backend=d3d12] [--post-stages=1] [--select="Main Camera"]
+SherlockGame.exe   --project=... --exit-after=40 --screenshot=out.png [--backend=d3d12]</code></pre>
+<table>
+<tr><th>확인</th><th>결과</th></tr>
+<tr><td>Debug x64 솔루션 전체 빌드 (엔진, 에디터, 게임, SampleScripts)</td><td>통과</td></tr>
+<tr><td>GreyScale 켬</td><td>씬 뷰가 흑백 (채널 차이 0)</td></tr>
+<tr><td>블러 켬 (반경 8, 24)</td><td>화면 전체가 흐려지고 가장자리 이상 없음</td></tr>
+<tr><td>블룸 켬</td><td>밝은 구·하늘 주변이 번짐</td></tr>
+<tr><td>효과 끔 (각 단계마다)</td><td>기준 스크린샷과 차이 0</td></tr>
+<tr><td>Post Stages 창</td><td>Scene/Blur/Bloom/Final 4칸이 나옴. 효과를 모두 끈 경우 Blur/Bloom 칸은 "off"</td></tr>
+<tr><td>카메라 미리보기 (<code>--select</code>)</td><td>켠 효과가 미리보기에도 적용됨 (미리보기 크기용 스크래치 생성 로그 확인)</td></tr>
+<tr><td>D3D12 에디터 / 게임 모드 (백버퍼 경로)</td><td>정상 종료, D3D11 과 최대 채널 차이 1 이하 (종료 시 <code>Live ID3D12Device</code> 경고가 나옴. 이전 스모크 테스트에서도 나왔지만 이번 변경 전과 같은지는 확인하지 않음)</td></tr>
+<tr><td>CubemapTest (스크립트 DLL 로드 경로)</td><td>솔루션 전체 재빌드 뒤에도 기준과 차이 0</td></tr>
+<tr><td>썸네일 크래시 수정 후 반복</td><td>효과 끔/GreyScale/전부 켬을 3번씩 총 9회 정상 종료</td></tr>
+<tr><td>로그</td><td><code>PostPS</code> t13·b4·s6, <code>ToneMapPS</code> t13·b0·b4 바인딩 대조 OK, <code>PostParams</code> 80바이트 일치</td></tr>
+</table>
+<h3>스크린샷</h3>
+<p>사용자 확인용으로 <code>C:\Users\User\Pictures\Screenshots\PP검증\</code> 에 복사해 두었습니다: <code>0_기준_효과끔</code>, <code>1_GreyScale</code>, <code>2_블러</code>, <code>3_블룸</code>, <code>4_단계썸네일_전부켬</code>, <code>5_카메라미리보기</code>, <code>6_D3D12_전부켬</code>, <code>7_게임모드_D3D12</code>, <code>비교시트_효과별</code> (.png).</p>
+<h3>확인하지 못한 것</h3>
+<ul>
+<li><b>에디터 UI 를 직접 조작한 경우</b>: 슬라이더·체크박스를 움직이는 실시간 토글. 모든 검증은 씬 파일에 넣은 값으로 했습니다.</li>
+<li><b>되돌리기</b>: <code>EditorHistory</code> 가 씬 직렬화를 비교하는 방식이고 후처리가 그 직렬화에 들어가므로 동작해야 하지만, 실제로 되돌리기를 실행해 보지는 않았습니다.</li>
+<li><b>Release 빌드</b>.</li>
+<li>디버그 뷰(알베도·노멀 등)와 후처리를 함께 켠 경우.</li>
+</ul>
+</section>
+
+<section id="extend">
+<h2>14. 효과를 추가하는 법</h2>
+<table>
+<tr><th>종류</th><th>할 일</th></tr>
+<tr><td>색만 바꾸는 효과 (비네트, 그레인, 대비, 채도 …)</td><td>① <code>PostProcessSettings</code> 에 필드 ② 직렬화 두 곳 ③ UI 한 줄 ④ <code>PostParamsConstants</code> 의 빈 칸(<code>grade.zw</code>, <code>pass.w</code> 등)이나 새 float4 에 값을 실음 (크기를 바꾸면 HLSL cbuffer 와 <code>static_assert</code> 도 같이) ⑤ <code>TonemapPixelShader.hlsl</code> 의 색 효과 구간에 이어 붙임. 패스·텍스처는 늘지 않습니다.</td></tr>
+<tr><td>HDR 구간 효과 (DoF, SSAO, 안개 …)</td><td>① 설정·직렬화·UI ② <code>PostPixelShader.hlsl</code> 에 모드 추가 ③ <code>ApplyHdrEffects</code> 에 블록 하나 추가: <code>EnsurePostScratch</code> 에 필요한 텍스처를 더하고, 마지막 패스가 hdr 에 되돌려 쓰게 하면 톤 패스는 안 바뀝니다. 썸네일 단계가 필요하면 <code>kPostStageCount</code> 와 이름 배열을 늘립니다.</td></tr>
+<tr><td>톤매핑 뒤 효과 (FXAA 등)</td><td>톤 패스 출력이 지금은 최종 출력(씬 뷰 텍스처·백버퍼의 sRGB 뷰)에 바로 쓰입니다. LDR 입력이 필요하므로 톤 패스 출력을 LDR 중간 텍스처로 돌리는 구조 변경이 먼저 필요합니다. 아직 만들지 않았습니다.</td></tr>
+</table>
+</section>
+
+<section id="files">
+<h2>15. 파일 목록</h2>
+<table>
+<tr><th>파일</th><th>변경</th></tr>
+<tr><td><code>Scene/PostProcessSettings.h</code></td><td>새로 만듦. 후처리 설정 구조체</td></tr>
+<tr><td><code>Scene/Scene.h</code>, <code>Scene/SceneSerializer.cpp</code></td><td>환경에 <code>post</code> 추가, 저장·로드</td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code></td><td><code>PostParamsConstants</code>, b4/s6 슬롯 상수</td></tr>
+<tr><td><code>Shaders/Common.hlsli</code></td><td><code>cbuffer PostParams</code> (b4)</td></tr>
+<tr><td><code>Shaders/TonemapPixelShader.hlsl</code></td><td>입력/출력 비 읽기, GreyScale</td></tr>
+<tr><td><code>Shaders/PostPixelShader.hlsl</code></td><td>새로 만듦. 블러·블룸 (<code>PS_Post</code>)</td></tr>
+<tr><td><code>Graphics/Renderer.h</code>, <code>Graphics/Renderer.cpp</code></td><td>Layout_Post 확장, <code>CreatePostSet</code>/<code>UploadPostParams</code>/<code>RenderPostPass</code>, <code>RenderTonemapPass</code> 일반화, 셰이더 로드·대조, PSO Desc, 호출 지점, 썸네일 캡처 준비</td></tr>
+<tr><td><code>Graphics/RendererPost.cpp</code></td><td>새로 만듦. 스크래치, 블러·블룸 체인, 썸네일 캡처</td></tr>
+<tr><td><code>App/DebugUI.h/.cpp</code>, <code>App/Editor.cpp</code></td><td>후처리 UI, Post Stages 창</td></tr>
+<tr><td><code>App/EditorApp.h/.cpp</code></td><td>자동 검증 플래그 <code>--post-stages=1</code>, <code>--select=이름</code></td></tr>
+<tr><td><code>SherlockEngine.vcxproj(.filters)</code></td><td><code>PostPixelShader.hlsl</code>, <code>RendererPost.cpp</code>, <code>PostProcessSettings.h</code> 등록</td></tr>
+<tr><td><code>Projects/PostProcessTest/</code></td><td>검증용 임시 프로젝트였고 검증 뒤 삭제함 (커밋하지 않음)</td></tr>
+</table>
+</section>
+</main>
+</body>
+</html>
