@@ -28,6 +28,10 @@ namespace DebugUI
 	// 2026-10-08: 씬 환경 (Scene::environment) — 스카이박스, IBL(확산 조도·반사 프리필터·BRDF LUT·세기), 노출·톤매핑.
 	// 칸마다 이름 입력 + 콘텐츠 브라우저의 텍스처 드롭 (큐브 칸: .dds = 큐브 DDS 파일, 그 밖의 이미지 = 그 이미지가 든 폴더).
 	void DrawEnvironmentPanel(Scene& scene);
+	// 2026/10/23: 후처리 단계별 썸네일 창 ("Post Stages"). 환경 패널의 "Stage thumbnails" 체크로 켬 (--post-stages=1 로 처음부터 켤 수도 있음).
+	// 열려 있는 동안 Renderer 에 캡처를 요청해 Scene → Blur → Bloom → Final 의 HDR 결과를 톤매핑한 모습으로 나란히 보여 줌.
+	void SetShowPostStages(bool show);
+	void DrawPostStagesWindow(Renderer& renderer, RHI::Device& device);
 	void DrawMaterialPanel(Scene& scene);
 	// 9단계: 현재 씬 이름, 모델 통계 (메시·서브메시·정점·삼각형·16비트 인덱스·탄젠트 생성·로드 시간), 씬 전환 안내를 표시함.
 	void DrawModelPanel(const char* sceneName, const ModelStats& stats, size_t sceneImages, size_t sceneObjects);

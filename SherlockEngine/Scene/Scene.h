@@ -9,6 +9,7 @@
 #include "Scene/CameraComponent.h"
 #include "Scene/Light.h"
 #include "Scene/Material.h"
+#include "Scene/PostProcessSettings.h"
 
 class Mesh;
 struct Model;
@@ -61,6 +62,7 @@ struct SceneEnvironment
 	float iblIntensity = 1.0f; // 환경광 배율 (IBL 맵이나 스카이박스를 쓸 때만. ambientColor 대체 경로에는 적용 안 함)
 	float exposure = 1.0f;     // 최종 색(물체·하늘)에 곱함
 	bool toneMapping = false;  // ACES 근사. HDR 환경에서 켬. 끄면 1 을 넘는 값이 잘림
+	PostProcessSettings post;  // 2026/10/23: 후처리 (블러·블룸·GreyScale). 환경에 두어 저장·되돌리기가 환경과 함께 됨
 };
 
 // 씬 = 그릴 대상들의 CPU 쪽 데이터.

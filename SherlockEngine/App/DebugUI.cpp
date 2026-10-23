@@ -183,6 +183,57 @@ namespace
 	}
 }
 
+namespace
+{
+	bool g_showPostStages = false;   // 에디터 표시 설정 (씬에 저장하지 않음)
+}
+
+void DebugUI::SetShowPostStages(bool show)
+{
+	g_showPostStages = show;
+}
+
+void DebugUI::DrawPostStagesWindow(Renderer& renderer, RHI::Device& device)
+{
+	if (!g_showPostStages) return;
+	renderer.RequestPostCapture();   // 다음 프레임의 Render 가 단계별 썸네일을 그림. 창을 닫으면 요청이 끊겨 비용이 사라짐
+
+	// 처음에는 씬 뷰 왼쪽 위에 떠 있고, 도킹해도 됨.
+	ImGui::SetNextWindowPos(ImVec2(250.0f, 80.0f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(1080.0f, 285.0f), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Post Stages", &g_showPostStages))
+	{
+		ImGui::SetWindowFontScale(1.5f);   // 글씨 기본 1.5배
+		ImGui::TextDisabled("HDR 결과를 톤매핑해 본 모습. Scene/Blur/Bloom 은 색 효과(Greyscale) 전, Final 은 후처리 + 색 효과 후.");
+		const uint32_t sourceW = renderer.GetPostStageWidth();
+		const uint32_t sourceH = renderer.GetPostStageHeight();
+		if (sourceW == 0)
+		{
+			ImGui::TextUnformatted("waiting for the first captured frame...");
+		}
+		else
+		{
+			// 창 폭에 맞춰 4칸을 같은 크기로 나눔 (칸 사이 여백 제외). 창을 키우면 이미지도 같이 커짐
+			const float spacing = ImGui::GetStyle().ItemSpacing.x;
+			const float cell = (std::max)(16.0f, (ImGui::GetContentRegionAvail().x - spacing * (Renderer::kPostStageCount - 1)) / Renderer::kPostStageCount);
+			const ImVec2 size(cell, cell * static_cast<float>(sourceH) / static_cast<float>(sourceW));
+			for (uint32_t i = 0; i < Renderer::kPostStageCount; ++i)
+			{
+				const Renderer::PostStageThumb& stage = renderer.GetPostStage(i);
+				ImGui::BeginGroup();
+				ImGui::TextUnformatted(stage.name);
+				const uint64_t id = stage.active ? device.GetImGuiTextureId(stage.texture) : 0;
+				if (id != 0) ImGui::Image(static_cast<ImTextureID>(id), size);
+				else ImGui::Dummy(size);   // 꺼진 효과 (Blur/Bloom): 자리만 비움
+				if (!stage.active) ImGui::TextDisabled("off");
+				ImGui::EndGroup();
+				if (i + 1 < Renderer::kPostStageCount) ImGui::SameLine();
+			}
+		}
+	}
+	ImGui::End();
+}
+
 void DebugUI::DrawEnvironmentPanel(Scene& scene)
 {
 	// 이름만 바꾸면 됨 — Renderer 가 다음 프레임에 이름으로 큐브·LUT 를 읽어(캐시) 프레임 셋 t9~t12 에 꽂음. Scene 은 GPU 를 모름.
@@ -215,6 +266,25 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 	ImGui::SliderFloat("Exposure", &env.exposure, 0.05f, 8.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
 	SameLineIfFits(CheckboxWidth("ACES tone mapping"));
 	ImGui::Checkbox("ACES tone mapping", &env.toneMapping);
+
+	// 2026/10/23: 후처리. 순서는 Renderer 가 고정함 (HDR 구간: 블러 → 블룸, 톤 패스: 노출 → ACES → 색 효과).
+	// 환경의 일부라 씬 JSON 과 되돌리기 이력에 함께 들어감.
+	if (ImGui::TreeNodeEx("Post process", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		PostProcessSettings& post = env.post;
+		ImGui::Checkbox("Gaussian blur", &post.blurEnabled);
+		if (post.blurEnabled) ImGui::SliderFloat("Blur radius (px @720p)", &post.blurRadius, 0.5f, 32.0f, "%.1f");
+		ImGui::Checkbox("Bloom", &post.bloomEnabled);
+		if (post.bloomEnabled)
+		{
+			ImGui::SliderFloat("Bloom threshold", &post.bloomThreshold, 0.0f, 8.0f, "%.2f");
+			ImGui::SliderFloat("Bloom knee", &post.bloomKnee, 0.0f, 1.0f, "%.2f");
+			ImGui::SliderFloat("Bloom intensity", &post.bloomIntensity, 0.0f, 4.0f, "%.2f");
+		}
+		ImGui::SliderFloat("Greyscale", &post.greyscale, 0.0f, 1.0f);
+		ImGui::Checkbox("Stage thumbnails", &g_showPostStages);   // 씬이 아니라 에디터 설정 — 되돌리기 이력에 들어가지 않음
+		ImGui::TreePop();
+	}
 }
 
 void DebugUI::DrawLightPanel(Scene& scene)

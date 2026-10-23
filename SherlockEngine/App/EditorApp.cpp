@@ -947,10 +947,12 @@ bool EditorApp::LoadSceneFile(const std::wstring& path)
 
 void EditorApp::ParseAutomation()
 {
+	if (!GetCommandLineOption(L"post-stages").empty()) DebugUI::SetShowPostStages(true);   // 2026/10/23: --post-stages=1 이면 후처리 단계별 썸네일 창을 처음부터 켬
 	const std::wstring exitAfter = GetCommandLineOption(L"exit-after");
 	if (exitAfter.empty()) return;
 	m_auto.active = true;
 	m_auto.exitAfter = static_cast<uint64_t>(_wtoi64(exitAfter.c_str()));
+	m_auto.selectName = Log::ToUtf8(GetCommandLineOption(L"select").c_str());
 	const std::wstring pick = GetCommandLineOption(L"pick");
 	if (!pick.empty()) { m_auto.pick = swscanf_s(pick.c_str(), L"%f,%f", &m_auto.pickU, &m_auto.pickV) == 2; }
 	const std::wstring position = GetCommandLineOption(L"set-position");
@@ -1061,6 +1063,14 @@ void EditorApp::RunAutomation()
 	if (frame == 4 && m_auto.addPrimitive >= 0)
 	{
 		RunCommand("Add object", [&]() { AddPrimitive(m_auto.addPrimitive); m_editor.SetSelectedObject(static_cast<int>(scene.GetObjects().size()) - 1); });
+	}
+	if (frame == 5 && !m_auto.selectName.empty())
+	{
+		int found = -1;
+		for (size_t i = 0; i < scene.GetObjects().size() && found < 0; ++i)
+			if (scene.GetObjects()[i]->GetName() == m_auto.selectName) found = static_cast<int>(i);
+		m_editor.SetSelectedObject(found);
+		Log::Info("자동 검증: select '%s' → %d", m_auto.selectName.c_str(), found);
 	}
 	if (frame == 5 && m_auto.pick)
 	{

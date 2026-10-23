@@ -173,6 +173,9 @@
     <ClCompile Include="Graphics\Renderer.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RendererPost.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\TextureLoader.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
@@ -389,6 +392,9 @@
     <ClInclude Include="Scene\Material.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\PostProcessSettings.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\Scene.h">
       <Filter>Scene</Filter>
     </ClInclude>
@@ -431,6 +437,9 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\TonemapPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\PostPixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

@@ -113,6 +113,7 @@ private:
         bool active = false;
         uint64_t exitAfter = 0;
         bool pick = false; float pickU = 0.5f, pickV = 0.5f;
+        std::string selectName;   // 2026/10/23: --select=<오브젝트 이름>. 이름이 같은 첫 오브젝트를 선택함 (카메라 미리보기 검증 등)
         bool setPosition = false; DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
         std::wstring savePath, loadPath, screenshotPath;
         bool dumpObjects = false;

@@ -422,6 +422,12 @@ namespace
 		return {
 			{ "skybox", env.skybox }, { "irradiance", env.irradiance }, { "specular", env.specular }, { "brdfLut", env.brdfLut },
 			{ "iblIntensity", env.iblIntensity }, { "exposure", env.exposure }, { "toneMapping", env.toneMapping },
+			{ "postProcess", {
+				{ "blurEnabled", env.post.blurEnabled }, { "blurRadius", env.post.blurRadius },
+				{ "bloomEnabled", env.post.bloomEnabled }, { "bloomThreshold", env.post.bloomThreshold },
+				{ "bloomKnee", env.post.bloomKnee }, { "bloomIntensity", env.post.bloomIntensity },
+				{ "greyscale", env.post.greyscale },
+			} },
 		};
 	}
 
@@ -435,6 +441,16 @@ namespace
 		e.iblIntensity = env.value("iblIntensity", 1.0f);
 		e.exposure = env.value("exposure", 1.0f);
 		e.toneMapping = env.value("toneMapping", false);
+		// 2026/10/23: 후처리. 키가 없으면(이전 씬 파일) 전부 꺼진 기본값
+		const PostProcessSettings defaults;
+		const json post = env.value("postProcess", json::object());
+		e.post.blurEnabled = post.value("blurEnabled", defaults.blurEnabled);
+		e.post.blurRadius = post.value("blurRadius", defaults.blurRadius);
+		e.post.bloomEnabled = post.value("bloomEnabled", defaults.bloomEnabled);
+		e.post.bloomThreshold = post.value("bloomThreshold", defaults.bloomThreshold);
+		e.post.bloomKnee = post.value("bloomKnee", defaults.bloomKnee);
+		e.post.bloomIntensity = post.value("bloomIntensity", defaults.bloomIntensity);
+		e.post.greyscale = post.value("greyscale", defaults.greyscale);
 	}
 
 	void ApplyAmbientAndClear(Scene& scene, const json& root)

@@ -151,6 +151,7 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 	DebugUI::DrawEnvironmentPanel(engine.GetScene());   // 2026-10-08: 스카이박스·IBL — 주변광과 같은 "환경" 값이라 조명 창에 둠
 	DebugUI::DrawLightPanel(engine.GetScene());
 	DebugUI::EndPanel();
+	DebugUI::DrawPostStagesWindow(engine.GetRenderer(), engine.GetDevice());   // 2026/10/23: 후처리 단계별 썸네일 (체크로 켬)
 
 	DebugUI::BeginPanel("Materials");
 	DebugUI::DrawMaterialPanel(engine.GetScene());
