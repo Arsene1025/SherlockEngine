@@ -1,5 +1,28 @@
 # SherlockEngine
 
+## 커밋 컨벤션
+
+커밋 메시지는 [Conventional Commits](https://www.conventionalcommits.org/ko/v1.0.0/) 형식을 따릅니다. 작성 날짜는 제목 맨 뒤에 붙입니다.
+
+```
+<type>(<scope>): <설명> [YYYY/MM/DD]
+
+<본문(선택): 무엇을, 왜 바꿨는지>
+```
+
+| type | 용도 |
+|---|---|
+| `feat` | 새 기능 |
+| `fix` | 버그 수정 |
+| `docs` | 문서 추가·수정 |
+| `refactor` | 동작 변경 없는 구조 개선 |
+| `test` | 테스트·테스트 프로젝트 추가·수정 |
+| `style` | 주석·서식 등 코드 의미와 무관한 변경 |
+| `chore` | 빌드·설정·도구 등 기타 작업 |
+
+- `scope`는 선택입니다. 영향을 받는 영역을 짧게 적습니다(예: `render`, `editor`, `scene`, `rhi`, `shader`).
+- 예: `feat(render): 후처리(PP) 추가: 가우시안 블러·블룸·GreyScale [2026/10/23]`
+
 DirectX 11 렌더링 엔진입니다. 최종 목표는 RHI(Render Hardware Interface)와 PSO(Pipeline State Object)이며, D3D11 백엔드를 먼저 만들고 D3D12로 추상화를 검증합니다.
 
 렌더러 전체 구조(실행부터 화면 표시까지의 흐름, RHI, 그리기, 엔진·에디터)와 설계 결정, 단계별 기록, 질문과 답은 [docs/rendering-analysis.html](docs/rendering-analysis.html) 한 편에 정리되어 있고, 소스와 함께 읽는 순서는 [docs/study-guide.html](docs/study-guide.html)에 있습니다.
