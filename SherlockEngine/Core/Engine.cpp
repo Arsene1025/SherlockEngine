@@ -47,6 +47,8 @@ bool Engine::Initialize(const Config& config, const Desc& desc)
 		Log::Error("Engine : Renderer 초기화 실패");
 		return false;
 	}
+	// 2026/10/20 HDR: 게임 모드의 HDR 타깃은 백버퍼와 같은 크기. 에디터는 씬 뷰 크기를 따로 알려 주므로 이 값을 쓰지 않음.
+	m_renderer.SetOutputSize(static_cast<uint32_t>(desc.width), static_cast<uint32_t>(desc.height));
 
 	// ImGui 렌더러 백엔드(DX11/DX12)는 Device 가 고름. 컨텍스트는 앱이 먼저 만들어 두어야 함.
 	if (ImGui::GetCurrentContext() != nullptr)
@@ -95,7 +97,7 @@ float Engine::BeginFrame()
 
 void Engine::Render()
 {
-	// 6단계 프레임 구조: BeginFrame → [ShadowPass → MainPass → UIPass] → EndFrame(Present).
+	// 6단계 프레임 구조: BeginFrame → [ShadowPass → MainPass(HDR) → TonemapPass → UIPass] → EndFrame(Present).
 	// 11-C단계부터 Hierarchy 에서 카메라 오브젝트를 고르면 MainPass 뒤에 PreviewPass 가 하나 더 붙음 (Renderer::Render).
 	ProfileScope cpuScope("Engine::Render");
 	m_device->BeginFrame();
@@ -139,5 +141,6 @@ void Engine::OnResize(int width, int height)
 {
 	if (!m_device || width <= 0 || height <= 0) return;
 	m_device->Resize(width, height);
+	m_renderer.SetOutputSize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));   // 2026/10/20 HDR
 	m_camera.SetAspectRatio(static_cast<float>(width) / static_cast<float>(height));
 }

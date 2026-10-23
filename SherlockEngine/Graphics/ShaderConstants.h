@@ -47,6 +47,7 @@ constexpr uint32_t kSRVSlotEnvironment = 9;  // t9 (프레임, 스카이박스 �
 constexpr uint32_t kSRVSlotIrradiance = 10;  // t10 (프레임, IBL 확산 조도 큐브)
 constexpr uint32_t kSRVSlotPrefiltered = 11; // t11 (프레임, IBL 반사 프리필터 큐브. 밉 = 거칠기)
 constexpr uint32_t kSRVSlotBrdfLut = 12;     // t12 (프레임, split-sum BRDF LUT 2D)
+constexpr uint32_t kSRVSlotSceneHdr = 13;
 constexpr uint32_t kSamplerSlotMaterial = 0; // s0 (재질)
 constexpr uint32_t kSamplerSlotShadow = 4;   // s4 (프레임, 비교 샘플러)
 constexpr uint32_t kSamplerSlotEnvironment = 5; // s5 (프레임, 큐브맵용 선형 Clamp)
@@ -65,6 +66,7 @@ struct alignas(16) PerFrameConstants
 	// w = 환경 큐브가 있음(1) / 없음(0, ambientColor 로 대체)
 	DirectX::XMFLOAT4 environmentParams;
 	// 2026-10-08: 출력. x = 노출(최종 색에 곱함), y = ACES 톤매핑(1) / 끔(0), z = BRDF LUT(t12) 있음(1) / 해석적 근사(0), w = 미사용
+	// 2026/10/20 HDR: x, y 는 톤 패스(TonemapPixelShader)가 읽음. 톤 패스의 Layout_Post 가 이 b0 를 그대로 다시 씀.
 	DirectX::XMFLOAT4 outputParams;
 };
 

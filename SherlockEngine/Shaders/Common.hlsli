@@ -141,7 +141,9 @@ float3 SafeNormalize(float3 value, float3 fallback)
 }
 
 // 2026-10-08: 최종 출력. 노출을 곱하고, 켜져 있으면 ACES 근사(Narkowicz 2016)로 [0, ∞) → [0, 1] 로 누름.
-// 꺼져 있으면 1 을 넘는 값은 백버퍼에서 잘림. 결과는 선형 — sRGB RTV 가 인코딩함.
+// 꺼져 있으면 1 을 넘는 값은 출력 타깃에서 잘림. 결과는 선형 — sRGB RTV 가 인코딩함.
+// 2026/10/20 HDR: 이 함수는 TonemapPixelShader 만 부름 (메인·스카이 PS 는 선형 HDR 값을 FP16 타깃에 그대로 씀).
+// 그래서 "sRGB RTV" 는 톤 패스의 출력 뷰임.
 float3 ApplyExposureToneMap(float3 color)
 {
     color *= outputParams.x;

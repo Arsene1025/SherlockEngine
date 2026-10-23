@@ -23,7 +23,7 @@ struct RenderSettings
 {
 	bool wireframe = false;
 	bool cullBack = true;
-	bool srgbOutput = true;        // 5단계: 백버퍼 sRGB 뷰. 끄면 감마 보정 없이 출력함 (비교용)
+	bool srgbOutput = true;        // 5단계: 최종 출력(톤 패스의 RTV)을 sRGB 뷰로 씀. 끄면 감마 보정 없이 출력함 (비교용). 씬 패스는 FP16 선형이라 무관함
 	int samplerOverride = -1;      // -1 = 재질 설정대로. 그 외 SamplerPreset 값으로 전부 덮어씀
 
 	// 6단계: 그림자 (방향광 0) 와 노멀 매핑
@@ -46,7 +46,8 @@ struct RenderSettings
 // 텍스처 캐시(이름 → 핸들), 샘플러 프리셋, 그림자 맵. 전부 핸들이므로 이 헤더와 .cpp에는 D3D 타입이 없음.
 //
 // 6단계: 모든 GPU 명령은 Device::GetCommandList() 를 거침. 프레임은 렌더 패스 세 개로 이루어짐.
-//   ShadowPass (깊이 전용, 2048², 광원 ViewProj) → MainPass (백버퍼 sRGB 뷰 + 깊이) → UIPass (백버퍼 UNORM 뷰)
+//   ShadowPass (깊이 전용, 2048², 광원 ViewProj) → MainPass (FP16 HDR 텍스처 + 깊이) → TonemapPass (노출·ACES·sRGB → 씬 뷰 텍스처 또는 백버퍼)
+//   → [PreviewPass → PreviewTonemapPass] → UIPass (백버퍼 UNORM 뷰)   (2026/10/20 HDR: 톤매핑은 셰이더 끝이 아니라 별도 패스)
 // 2026-10-08: MainPass 는 불투명 드로우 뒤에 스카이박스(전체 화면 삼각형, 깊이 1.0)를 그림. 스카이박스는 프레임 셋 t9,
 // IBL(확산 조도·반사 프리필터·BRDF LUT)은 t10~t12 에 꽂힘. 재질은 PBR(metallic-roughness)이고 재질 셋이 t0~t4 를 씀.
 // 그림자 맵은 "DSV 로 쓰고 → SRV 로 읽는" 첫 리소스라 양쪽에 Barrier 호출이 있음 (D3D11 에서는 상태 추적만 함).
@@ -94,6 +95,9 @@ public:
 	// 11단계: 씬 뷰를 오프스크린 텍스처에 그림 (에디터용). 0×0 이면 백버퍼에 직접 그림 (기존 동작).
 	// 크기가 바뀌면 텍스처를 다시 만듦. 색 텍스처는 UNORM(TYPELESS) — sRGB 뷰로 그리고 ImGui 는 UNORM SRV 로 읽음.
 	void SetSceneTarget(uint32_t width, uint32_t height);
+	// 2026/10/20 HDR: 게임 모드(백버퍼에 직접 그릴 때)의 출력 크기. Engine 이 초기화·리사이즈 때 알려 줌.
+	// HDR 타깃은 최종 출력 타깃과 같은 크기여야 하므로 (깊이 버퍼도 같은 크기) 값만 저장하고, 텍스처는 Render 가 만듦.
+	void SetOutputSize(uint32_t width, uint32_t height);
 	bool IsOffscreen() const { return m_sceneColor.IsValid(); }
 	TextureHandle GetSceneTexture() const { return m_sceneColor; }
 	uint32_t GetSceneWidth() const { return m_sceneWidth; }
@@ -150,7 +154,8 @@ private:
 	bool LoadShaders(bool fromSourceOnly);
 	// 셰이더가 실제로 쓰는 슬롯이 BindingLayout 에 선언됐는지 대조함. 2026-10-08: 스카이박스 VS/PS 도 대조함.
 	bool ValidateBindings(const std::vector<uint8_t>& vsCode, const std::vector<uint8_t>& psCode, const std::vector<uint8_t>& shadowVsCode,
-		const std::vector<uint8_t>& skyVsCode, const std::vector<uint8_t>& skyPsCode) const;
+		const std::vector<uint8_t>& skyVsCode, const std::vector<uint8_t>& skyPsCode,
+		const std::vector<uint8_t>& screenVsCode, const std::vector<uint8_t>& toneMapPsCode) const;
 	void CheckHotReload(float totalTime);
 	bool CreateSamplers();
 	bool CreateBuiltinTextures();
@@ -163,6 +168,12 @@ private:
 	void RenderPreviewPass(RHI::CommandList& cmd, const Scene& scene);    // 11-C단계
 	void DrawItems(RHI::CommandList& cmd, const Scene& scene);            // 메인/미리보기 패스 공통 드로우 루프 (끝에 스카이박스)
 	void DrawSkybox(RHI::CommandList& cmd);                               // 2026-10-08: 전체 화면 삼각형 하나 (Draw(3), 정점 버퍼 없음)
+	// 2026/10/20 HDR: 메인·프리뷰 패스가 그린 HDR 텍스처(hdrSet 의 t13)를 읽어 노출·ACES 를 적용하고 output 에 sRGB 로 씀.
+	// output 의 상태 전이(outputBefore → RenderTarget → outputAfter)도 이 함수가 함. HDR 텍스처는 이미 ShaderResource 상태여야 함.
+	void RenderTonemapPass(RHI::CommandList& cmd, ResourceSetHandle hdrSet, TextureHandle output,
+		ResourceState outputBefore, ResourceState outputAfter, const char* debugName);
+	void EnsureHdrTargets();    // 출력 크기에 맞는 m_hdrColor·m_hdrPostSet 을 보장함 (크기가 같으면 아무것도 안 함)
+	void DestroyHdrTargets();
 	// 2026-10-08: 이번 프레임의 환경 바인딩. Scene::environment 의 이름들을 ResolveEnvironment 가 핸들과 셰이더 파라미터로 바꿈.
 	struct EnvironmentBinding
 	{
@@ -195,6 +206,7 @@ private:
 	PipelineHandle GetPipelineFor(const Material& material, VertexFormat vertexFormat);
 	PipelineHandle GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat);
 	PipelineHandle GetSkyPipeline();   // 2026-10-08: 정점 속성 0개, 깊이 LessEqual + 쓰기 끔, 컬링 없음
+	PipelineHandle GetTonemapPipeline();
 	// 재질의 텍스처 이름 → 핸들. "builtin:*"은 절차적으로 만들고, 씬에 같은 이름의 이미지가 있으면 그 바이트에서(9단계),
 	// 없으면 Assets/Textures/ 의 파일에서 읽음. 실패하면 흰색 텍스처를 돌려줌.
 	TextureHandle GetOrLoadTexture(const std::string& name, bool srgb, const Scene* scene);
@@ -212,6 +224,8 @@ private:
 	ShaderHandle m_shadowVs;        // 6단계: 깊이 전용 VS
 	ShaderHandle m_skyVs;           // 2026-10-08: 스카이박스 (SV_VertexID 전체 화면 삼각형)
 	ShaderHandle m_skyPs;
+	ShaderHandle m_screenVs;		//[2026/10/20] HDR과 ToneMap구현 시작
+	ShaderHandle m_toneMapPs;		//[2026/10/20] HDR과 ToneMap구현 끝
 	BufferHandle m_perFrameCB;
 	BufferHandle m_perObjectCB;
 	BufferHandle m_lightCB;
@@ -220,12 +234,14 @@ private:
 	BindingLayoutHandle m_frameLayout;      // b0 (VS|PS), b2 (PS), t8 그림자 맵, s4 비교 샘플러, t9 스카이박스, s5, t10~t12 IBL (모두 PS)
 	BindingLayoutHandle m_objectLayout;     // b1 (VS)
 	BindingLayoutHandle m_materialLayout;   // b3 (VS|PS), t0 알베도, t1 노멀, t2 금속성/거칠기, t3 AO, t4 발광, s0 (모두 PS)
+	BindingLayoutHandle m_postLayout;		//[2026/10/20] HDR과 ToneMap구현
 	ResourceSetHandle m_frameSet;
 	ResourceSetHandle m_objectSet;
 
 	PipelineStateDesc m_baseDesc;     // 메인 패스: 셰이더·레이아웃 등 설정과 무관한 부분
 	PipelineStateDesc m_shadowDesc;   // 그림자 패스: VS만, RTV 0개, DSV D32_FLOAT, 깊이 바이어스
 	PipelineStateDesc m_skyDesc;      // 2026-10-08: 스카이박스. 프레임 레이아웃 하나만 씀
+	PipelineStateDesc m_tonemapDesc;  //[2026/10/20] HDR과 ToneMap구현
 	RenderSettings m_settings;
 	Stats m_stats;
 	uint64_t m_frameNumber = 0;
@@ -261,6 +277,18 @@ private:
 	uint32_t m_sceneWidth = 0;
 	uint32_t m_sceneHeight = 0;
 	ResourceState m_sceneColorState = ResourceState::Common;
+
+	// 2026/10/20 HDR: 메인 패스는 선형 FP16 텍스처에 그리고, 톤 패스가 노출·ACES·sRGB 인코딩을 해서 최종 출력(씬 뷰 텍스처 또는 백버퍼)에 씀.
+	uint32_t m_outputWidth = 0;    // 게임 모드 출력(백버퍼) 크기 — SetOutputSize
+	uint32_t m_outputHeight = 0;
+	TextureHandle m_hdrColor;      // R16G16B16A16_FLOAT, 깊이 버퍼와 같은 크기
+	uint32_t m_hdrWidth = 0;
+	uint32_t m_hdrHeight = 0;
+	ResourceState m_hdrColorState = ResourceState::Common;
+	ResourceSetHandle m_hdrPostSet;      // Layout_Post: b0 (PerFrame) + t13 (m_hdrColor)
+	TextureHandle m_previewHdr;          // 카메라 미리보기용 (m_previewColor 와 같은 크기)
+	ResourceState m_previewHdrState = ResourceState::Common;
+	ResourceSetHandle m_previewHdrPostSet;
 	// 11-C단계: 카메라 미리보기 타깃
 	TextureHandle m_previewColor;
 	TextureHandle m_previewDepth;
