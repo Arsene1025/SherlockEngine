@@ -3,6 +3,8 @@
 #include <fstream>
 #include <format>   // C++20: 오류 메시지 조립
 #include <cctype>
+#include <vector>
+#include <iterator>
 
 namespace
 {
@@ -64,6 +66,85 @@ bool Config::LoadFromFile(const std::wstring& path)
 void Config::Set(const std::string& key, const std::string& value)
 {
 	m_values[Lower(key)] = value;
+}
+
+bool Config::WriteValue(const std::wstring& path, const std::string& section, const std::string& key, const std::string& value, std::string* error)
+{
+	auto fail = [&](const char* reason) { if (error != nullptr) *error = reason; return false; };
+
+	std::string text;
+	{
+		std::ifstream in(path, std::ios::binary);
+		if (!in) return fail("설정 파일을 열 수 없음");
+		text.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+	}
+	const bool crlf = text.find("\r\n") != std::string::npos;
+	const char* eol = crlf ? "\r\n" : "\n";
+
+	// 줄 단위로 나눔 (줄 끝의 \r 은 떼어 두고 저장할 때 eol 로 다시 붙임). BOM 은 첫 줄에 그대로 남음.
+	std::vector<std::string> lines;
+	size_t start = 0;
+	while (start <= text.size())
+	{
+		size_t end = text.find('\n', start);
+		if (end == std::string::npos) end = text.size();
+		std::string line = text.substr(start, end - start);
+		if (!line.empty() && line.back() == '\r') line.pop_back();
+		lines.push_back(std::move(line));
+		start = end + 1;
+	}
+	if (!lines.empty() && lines.back().empty()) lines.pop_back();   // 마지막 줄바꿈 뒤의 빈 조각
+
+	const std::string wantSection = Lower(section);
+	const std::string wantKey = Lower(key);
+	std::string current;
+	int sectionHeader = -1;   // 대상 섹션 헤더 줄
+	int sectionEnd = -1;      // 대상 섹션의 마지막 줄 (키를 새로 넣을 자리)
+	bool replaced = false;
+	for (size_t i = 0; i < lines.size() && !replaced; ++i)
+	{
+		std::string body = lines[i];
+		if (i == 0 && body.size() >= 3 && static_cast<unsigned char>(body[0]) == 0xEF) body.erase(0, 3);   // BOM
+		const size_t comment = body.find_first_of(";#");
+		const std::string code = Trim(comment == std::string::npos ? body : body.substr(0, comment));
+		if (code.empty()) continue;
+		if (code.front() == '[')
+		{
+			const size_t close = code.find(']');
+			current = close == std::string::npos ? std::string() : Lower(Trim(code.substr(1, close - 1)));
+			if (current == wantSection && sectionHeader < 0) sectionHeader = static_cast<int>(i);
+			continue;
+		}
+		if (current != wantSection) continue;
+		sectionEnd = static_cast<int>(i);
+		const size_t equals = code.find('=');
+		if (equals == std::string::npos || Lower(Trim(code.substr(0, equals))) != wantKey) continue;
+
+		// 같은 줄의 값 부분만 교체함. 값 뒤의 공백과 주석은 보존.
+		const size_t lineEquals = lines[i].find('=');
+		const size_t lineComment = lines[i].find_first_of(";#", lineEquals);
+		size_t valueEnd = lineComment == std::string::npos ? lines[i].size() : lineComment;
+		size_t gapStart = valueEnd;
+		while (gapStart > lineEquals + 1 && std::isspace(static_cast<unsigned char>(lines[i][gapStart - 1]))) --gapStart;
+		const std::string gap = lines[i].substr(gapStart, valueEnd - gapStart);
+		const std::string tail = lineComment == std::string::npos ? std::string() : lines[i].substr(lineComment);
+		lines[i] = lines[i].substr(0, lineEquals + 1) + " " + value + (tail.empty() ? std::string() : (gap.empty() ? " " : gap) + tail);
+		replaced = true;
+	}
+	if (!replaced)
+	{
+		const std::string newLine = key + " = " + value;
+		if (sectionHeader >= 0) lines.insert(lines.begin() + (sectionEnd >= 0 ? sectionEnd : sectionHeader) + 1, newLine);
+		else { lines.push_back(std::string()); lines.push_back("[" + section + "]"); lines.push_back(newLine); }
+	}
+
+	std::string out;
+	for (const std::string& line : lines) { out += line; out += eol; }
+	std::ofstream file(path, std::ios::binary | std::ios::trunc);
+	if (!file) return fail("설정 파일에 쓸 수 없음 (읽기 전용이거나 권한 없음)");
+	file.write(out.data(), static_cast<std::streamsize>(out.size()));
+	if (!file) return fail("설정 파일 쓰기 실패");
+	return true;
 }
 
 bool Config::Has(const std::string& key) const

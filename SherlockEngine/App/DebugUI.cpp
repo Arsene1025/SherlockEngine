@@ -6,6 +6,7 @@
 #include "RHI/Device.h"
 #include "Graphics/Model.h"   // ModelStats
 #include "Core/Engine.h"
+#include "Core/Config.h"
 #include "Core/Log.h"
 #include "Core/Profiler.h"
 #include "RHI/RHI.h"
@@ -428,7 +429,43 @@ void DebugUI::DrawEnginePanel(Engine& engine)
 	const std::string logPath = Log::GetFilePath().empty() ? "(none)" : Log::ToUtf8(Log::GetFilePath().c_str());
 	ImGui::TextWrapped("Engine   backend %s (engine.backend = %s)   config %s", engine.GetDevice().GetBackendName(),
 		config.GetString("engine.backend", "?").c_str(), configPath.c_str());
-	ImGui::TextWrapped("Log      file %s   console %s   level %s   info %u  warn %u  error %u", logPath.c_str(),
+
+	// 백엔드 선택: engine.ini 의 engine.backend 만 바꿔 저장함. 이미 만든 장치는 그대로이고 다음 실행부터 적용됨.
+	// 실행 인자 --backend= 는 ini 보다 우선하므로 인자로 띄운 경우에는 저장해도 다음에 인자가 이김.
+	{
+		static std::string savedBackend;    // 이 실행에서 저장한 값 ("d3d11"/"d3d12"). 비면 아직 저장 안 함 → 현재 설정값을 보임
+		static std::string saveMessage;
+		static bool saveFailed = false;
+		const char* items[] = { "D3D11", "D3D12" };
+		const char* values[] = { "d3d11", "d3d12" };
+		const std::string shown = savedBackend.empty() ? config.GetString("engine.backend", "d3d11") : savedBackend;
+		int index = (shown == "d3d12") ? 1 : 0;
+		ImGui::BeginDisabled(config.GetPath().empty());
+		if (ImGui::Combo("Backend (next launch)", &index, items, ARRAYSIZE(items)))
+		{
+			std::string error;
+			if (Config::WriteValue(config.GetPath(), "engine", "backend", values[index], &error))
+			{
+				savedBackend = values[index];
+				saveFailed = false;
+				saveMessage = std::string("Saved engine.backend = ") + values[index] + " to engine.ini. Restart the editor to apply.";
+				Log::Info("설정 저장: engine.backend = %s (%s). 다음 실행부터 적용됨.", values[index], configPath.c_str());
+			}
+			else
+			{
+				saveFailed = true;
+				saveMessage = "Save failed: " + error;
+				Log::Warn("설정 저장 실패: engine.backend (%s): %s", configPath.c_str(), error.c_str());
+			}
+		}
+		ImGui::EndDisabled();
+		if (config.GetPath().empty()) ImGui::TextWrapped("No engine.ini was loaded, so the backend cannot be saved.");
+		else if (!saveMessage.empty()) ImGui::TextWrapped("%s", saveMessage.c_str());
+		else if (shown != "d3d11" && shown != "d3d12") ImGui::TextWrapped("engine.backend '%s' is not d3d11/d3d12.", shown.c_str());
+		if (!savedBackend.empty() && !saveFailed && _stricmp(savedBackend.c_str(), engine.GetDevice().GetBackendName()) != 0)
+			ImGui::TextDisabled("Running: %s", engine.GetDevice().GetBackendName());
+	}
+	ImGui::TextWrapped("Log     file %s   console %s   level %s   info %u  warn %u  error %u", logPath.c_str(),
 		Log::HasConsole() ? "yes" : "no", Log::LevelName(Log::GetMinLevel()),
 		Log::GetCount(Log::Level::Info), Log::GetCount(Log::Level::Warn), Log::GetCount(Log::Level::Error));
 	const AssetManager::Stats& assets = engine.GetAssets().GetStats();
