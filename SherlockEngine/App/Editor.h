@@ -100,8 +100,9 @@ public:
 	// 2026-10-15: 선택은 인덱스(m_selected)로 쓰지만 ID 로도 기억함 — 오브젝트가 지워지거나 되돌리기·재생 중 Destroy 로 순서가 바뀌어도
 	// 같은 오브젝트를 따라감. 밖에서 인덱스를 바꾸면(SetSelectedObject) 다음 프레임에 그 오브젝트의 ID 가 새 선택이 됨.
 	void SetSelectedObject(int index) { m_selected = index; m_selectedPrev = -2; }
-	void ClearSelection() { m_selected = -1; m_selectedPrev = -2; }
+	void ClearSelection() { m_selected = -1; m_selectedPrev = -2; m_selectedLight = -1; }
 	uint64_t GetSelectedId() const { return m_selectedId; }
+	int GetSelectedLight() const { return m_selectedLight; }
 	void SetMessage(const std::string& message) { m_lastMessage = message; }   // 메뉴 바의 상태 문구. 명령 큐에서 실행된 명령이 결과를 알릴 때 씀
 	// 자동 검증용: 클릭과 같은 코드 경로로 (u, v) 픽셀의 오브젝트를 고름.
 	int PickAt(Scene& scene, const Camera& camera, float u, float v) const { return Pick(scene, camera, u, v); }
@@ -149,6 +150,15 @@ private:
 	void DrawPlayControls(const Callbacks& callbacks);
 	void DrawComponents(GameObject& object);
 	void DrawCameraGizmos(Engine& engine, float x, float y, float width, float height);   // 씬 안의 카메라 오브젝트 프러스텀
+	// 조명 선택·이동. 조명은 GameObject 가 아니라 Scene::GetLights() 의 값이라 m_selectedLight(인덱스)로 따로 선택함 (m_selected 와 배타적).
+	// 되돌리기는 SaveEditState 가 조명도 직렬화하므로 기즈모를 잡은 동안 busy 로 잡히는 것만으로 한 단계가 만들어짐.
+	void DrawLightIcons(Engine& engine, float x, float y, float width, float height);    // 씬 뷰의 조명 아이콘 (Point 원 / Spot 원뿔 / Directional 화살표)
+	void DrawLightGizmo(Engine& engine, float x, float y, float width, float height);    // 선택한 조명의 이동(Point·Spot)·회전(Spot·Directional) 기즈모
+	int PickLight(Engine& engine, float mouseX, float mouseY, float x, float y, float width, float height) const;   // 마우스 가까이 있는 아이콘의 조명 인덱스, 없으면 -1
+	void SelectLight(int index);
+	int m_selectedLight = -1;
+	int m_selectedLightPrev = -1;       // 지난 프레임 끝의 m_selectedLight (Lights 패널에서 바뀐 것을 SyncSelection 이 알아채려고)
+	bool m_openSelectedLight = false;   // 다음 Lights 패널 그리기에서 그 노드를 펼침
 	void DrawCameraPreview(Engine& engine, float x, float y, float width, float height);  // 선택한 카메라의 시점을 우측 하단에 표시
 	Camera m_previewCamera;   // 선택한 CameraComponent 의 자세를 복사해 Renderer 에 넘김 (Render 까지 살아 있어야 함)
 	char m_newScriptName[64] = {};   // Inspector 의 New Script 팝업

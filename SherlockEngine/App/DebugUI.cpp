@@ -288,7 +288,7 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 	}
 }
 
-void DebugUI::DrawLightPanel(Scene& scene)
+void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelected)
 {
 	ImGui::Separator();
 	std::vector<LightData>& lights = scene.GetLights();
@@ -314,7 +314,16 @@ void DebugUI::DrawLightPanel(Scene& scene)
 		LightData& light = lights[i];
 		ImGui::PushID(i);
 		const int typeIndex = static_cast<int>(light.type) < 3 ? static_cast<int>(light.type) : 0;
-		if (ImGui::TreeNode("light", "Light %d  %s", i, kLightTypeNames[typeIndex]))
+		const bool isSelected = selectedLight != nullptr && *selectedLight == i;
+		if (isSelected && openSelected != nullptr && *openSelected)
+		{
+			ImGui::SetNextItemOpen(true);   // 씬 뷰에서 조명을 클릭해 고른 직후: 해당 노드를 펼침
+			ImGui::SetScrollHereY();
+			*openSelected = false;
+		}
+		const bool open = ImGui::TreeNodeEx("light", isSelected ? ImGuiTreeNodeFlags_Selected : ImGuiTreeNodeFlags_None, "Light %d  %s", i, kLightTypeNames[typeIndex]);
+		if (selectedLight != nullptr && ImGui::IsItemClicked()) *selectedLight = i;   // 패널에서 눌러도 씬 뷰 기즈모가 붙음
+		if (open)
 		{
 			int selectedType = typeIndex;
 			if (ImGui::Combo("Type", &selectedType, kLightTypeNames, ARRAYSIZE(kLightTypeNames)))
@@ -361,6 +370,11 @@ void DebugUI::DrawLightPanel(Scene& scene)
 	if (removeIndex >= 0)
 	{
 		lights.erase(lights.begin() + removeIndex);
+		if (selectedLight != nullptr)
+		{
+			if (*selectedLight == removeIndex) *selectedLight = -1;
+			else if (*selectedLight > removeIndex) --*selectedLight;
+		}
 	}
 }
 

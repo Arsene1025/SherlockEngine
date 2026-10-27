@@ -82,6 +82,43 @@ namespace
 		return true;
 	}
 
+	// 조명 아이콘·기즈모가 앉는 월드 위치. Point·Spot 은 position. Directional 은 위치가 없으므로 씬 뷰 오른쪽 위 모서리에
+	// 화면 고정으로 세로로 쌓음 (카메라를 돌려도 같은 자리) — 그 화면 점을 카메라 앞 8 단위로 역투영한 점을 앵커로 씀.
+	constexpr float kLightPickRadius = 14.0f;
+	XMFLOAT3 LightAnchor(const Camera& camera, const std::vector<LightData>& lights, int index, float x, float y, float width, float height)
+	{
+		const LightData& light = lights[index];
+		if (light.type != static_cast<uint32_t>(LightType::Directional)) return light.position;
+		int ordinal = 0;
+		for (int i = 0; i < index; ++i) if (lights[i].type == static_cast<uint32_t>(LightType::Directional)) ++ordinal;
+		const float u = (width - 130.0f) / width;
+		const float v = (110.0f + ordinal * 42.0f) / height;
+		const Ray ray = ScreenToRay(camera, u, v);
+		XMFLOAT3 anchor;
+		XMStoreFloat3(&anchor, ray.origin + ray.direction * 8.0f);
+		return anchor;
+	}
+
+	// 광원 방향(+Z)을 향하는 회전 + 이동 행렬 (DirectXMath 행벡터: 행 0 = right, 1 = up, 2 = forward, 3 = 이동)
+	XMFLOAT4X4 LightGizmoMatrix(const LightData& light, const XMFLOAT3& anchor, bool withRotation)
+	{
+		XMFLOAT4X4 m;
+		XMStoreFloat4x4(&m, XMMatrixIdentity());
+		if (withRotation)
+		{
+			XMVECTOR f = XMLoadFloat3(&light.direction);
+			f = XMVectorGetX(XMVector3LengthSq(f)) > 1e-8f ? XMVector3Normalize(f) : XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
+			const XMVECTOR refUp = fabsf(XMVectorGetY(f)) > 0.99f ? XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+			const XMVECTOR r = XMVector3Normalize(XMVector3Cross(refUp, f));
+			const XMVECTOR u = XMVector3Cross(f, r);
+			XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(&m.m[0][0]), r);
+			XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(&m.m[1][0]), u);
+			XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(&m.m[2][0]), f);
+		}
+		m.m[3][0] = anchor.x; m.m[3][1] = anchor.y; m.m[3][2] = anchor.z;
+		return m;
+	}
+
 	std::string FileStem(const std::wstring& relativePath)
 	{
 		std::string s = Log::ToUtf8(relativePath.c_str());
@@ -149,7 +186,7 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 
 	DebugUI::BeginPanel("Lights");
 	DebugUI::DrawEnvironmentPanel(engine.GetScene());   // 2026-10-08: 스카이박스·IBL — 주변광과 같은 "환경" 값이라 조명 창에 둠
-	DebugUI::DrawLightPanel(engine.GetScene());
+	DebugUI::DrawLightPanel(engine.GetScene(), &m_selectedLight, &m_openSelectedLight);
 	DebugUI::EndPanel();
 	DebugUI::DrawPostStagesWindow(engine.GetRenderer(), engine.GetDevice());   // 2026/10/23: 후처리 단계별 썸네일 (체크로 켬)
 
@@ -365,17 +402,25 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 	DrawCameraPreview(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 
 	// 선택된 오브젝트의 기즈모. 이미지 위에 그림. 에셋을 끌고 있는 동안은 끔.
+	DrawLightIcons(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 	ImGuizmo::Enable(!m_assetDragActive);
 	DrawGizmo(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
+	DrawLightGizmo(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));   // 조명을 골랐을 때만 (오브젝트 선택과 배타적)
 	ImGuizmo::Enable(true);
 
-	// 클릭 선택. 기즈모를 잡고 있거나 커서가 기즈모 위에 있으면 제외.
+	// 클릭 선택. 기즈모를 잡고 있거나 커서가 기즈모 위에 있으면 제외. 조명 아이콘이 오브젝트보다 우선함 (작아서 오브젝트에 가려 안 눌리는 걸 막으려고).
 	if (m_sceneHovered && !m_assetDragActive && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsOver() && !ImGuizmo::IsUsing())
 	{
 		const ImVec2 mouse = ImGui::GetMousePos();
 		const float u = (mouse.x - imagePos.x) / static_cast<float>(width);
 		const float v = (mouse.y - imagePos.y) / static_cast<float>(height);
-		m_selected = Pick(engine.GetScene(), engine.GetCamera(), u, v);
+		const int lightHit = PickLight(engine, mouse.x, mouse.y, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
+		if (lightHit >= 0) SelectLight(lightHit);
+		else
+		{
+			m_selectedLight = -1;
+			m_selected = Pick(engine.GetScene(), engine.GetCamera(), u, v);
+		}
 	}
 	ImGui::End();
 }
@@ -731,8 +776,155 @@ void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unor
 	ImGui::PopID();
 }
 
+void Editor::SelectLight(int index)
+{
+	m_selectedLight = index;
+	m_selected = -1;              // 오브젝트 선택은 비움 (ID 는 다음 프레임 SyncSelection 이 정리)
+	m_selectedPrev = -2;
+	m_openSelectedLight = true;   // Lights 패널의 해당 노드를 펼침
+}
+
+int Editor::PickLight(Engine& engine, float mouseX, float mouseY, float x, float y, float width, float height) const
+{
+	if (playState != PlayState::Editing || width <= 0.0f || height <= 0.0f) return -1;
+	const Camera& camera = engine.GetCamera();
+	const std::vector<LightData>& lights = engine.GetScene().GetLights();
+	const XMMATRIX viewProj = camera.GetViewMatrix() * camera.GetProjectionMatrix();
+	int best = -1;
+	float bestDistSq = kLightPickRadius * kLightPickRadius;
+	for (int i = 0; i < static_cast<int>(lights.size()); ++i)
+	{
+		ImVec2 p;
+		if (!ProjectToView(viewProj, x, y, width, height, LightAnchor(camera, lights, i, x, y, width, height), p)) continue;
+		const float dx = p.x - mouseX, dy = p.y - mouseY;
+		const float d = dx * dx + dy * dy;
+		if (d < bestDistSq) { bestDistSq = d; best = i; }
+	}
+	return best;
+}
+
+void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float height)
+{
+	if (playState != PlayState::Editing || width <= 0.0f || height <= 0.0f) return;
+	const Camera& camera = engine.GetCamera();
+	const std::vector<LightData>& lights = engine.GetScene().GetLights();
+	const XMMATRIX viewProj = camera.GetViewMatrix() * camera.GetProjectionMatrix();
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+	dl->PushClipRect(ImVec2(x, y), ImVec2(x + width, y + height), true);
+	const auto project = [&](const XMFLOAT3& p, ImVec2& out) -> bool { return ProjectToView(viewProj, x, y, width, height, p, out); };
+
+	for (int i = 0; i < static_cast<int>(lights.size()); ++i)
+	{
+		const LightData& light = lights[i];
+		const XMFLOAT3 anchor = LightAnchor(camera, lights, i, x, y, width, height);
+		ImVec2 c;
+		if (!project(anchor, c)) continue;
+		const bool selected = i == m_selectedLight;
+		const ImU32 tint = IM_COL32(static_cast<int>(std::clamp(light.color.x, 0.0f, 1.0f) * 255), static_cast<int>(std::clamp(light.color.y, 0.0f, 1.0f) * 255),
+			static_cast<int>(std::clamp(light.color.z, 0.0f, 1.0f) * 255), 255);
+		const ImU32 outline = selected ? IM_COL32(255, 200, 40, 255) : IM_COL32(20, 20, 20, 230);
+		const float thickness = selected ? 2.5f : 1.5f;
+
+		const XMVECTOR dir = XMVector3Normalize(XMLoadFloat3(&light.direction));
+		const auto worldLine = [&](const XMVECTOR& a, const XMVECTOR& b, ImU32 color, float t)
+		{
+			XMFLOAT3 fa, fb; ImVec2 pa, pb;
+			XMStoreFloat3(&fa, a); XMStoreFloat3(&fb, b);
+			if (project(fa, pa) && project(fb, pb)) dl->AddLine(pa, pb, color, t);
+		};
+
+		dl->AddCircleFilled(c, 7.0f, tint);
+		dl->AddCircle(c, 7.0f, outline, 0, thickness);
+		if (light.type == static_cast<uint32_t>(LightType::Point))
+		{
+			for (int r = 0; r < 8; ++r)   // 사방으로 뻗는 짧은 광선 (화면 고정 크기)
+			{
+				const float a = r * XM_PIDIV4;
+				dl->AddLine(ImVec2(c.x + cosf(a) * 10.0f, c.y + sinf(a) * 10.0f), ImVec2(c.x + cosf(a) * 14.0f, c.y + sinf(a) * 14.0f), outline, thickness);
+			}
+		}
+		else if (light.type == static_cast<uint32_t>(LightType::Spot))
+		{
+			// 월드 크기의 원뿔: 길이 = min(range, 3), 밑면 반지름은 바깥 원뿔각에서 구함
+			const float length = (std::min)(light.range, 3.0f);
+			const float radius = length * tanf(acosf((std::clamp)(light.outerConeCos, 0.0f, 0.9999f)));
+			const XMVECTOR refUp = fabsf(XMVectorGetY(dir)) > 0.99f ? XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+			const XMVECTOR right = XMVector3Normalize(XMVector3Cross(refUp, dir));
+			const XMVECTOR up = XMVector3Cross(dir, right);
+			const XMVECTOR apex = XMLoadFloat3(&anchor);
+			const XMVECTOR center = apex + dir * length;
+			XMVECTOR prev = center + right * radius;
+			for (int s = 1; s <= 16; ++s)
+			{
+				const float a = s * XM_2PI / 16.0f;
+				const XMVECTOR cur = center + right * (cosf(a) * radius) + up * (sinf(a) * radius);
+				worldLine(prev, cur, outline, thickness);
+				if (s % 4 == 0) worldLine(apex, cur, outline, thickness);
+				prev = cur;
+			}
+		}
+		else
+		{
+			// Directional: 해 아이콘 + 진행 방향 화살표. 위치가 없으므로 화면 고정 자리에 있음 (회전 기즈모만 붙음).
+			const XMVECTOR a = XMLoadFloat3(&anchor);
+			const XMVECTOR b = a + dir * 1.5f;
+			worldLine(a, b, outline, thickness + 0.5f);
+			XMFLOAT3 tip; XMStoreFloat3(&tip, b);
+			ImVec2 pt;
+			if (project(tip, pt))
+			{
+				dl->AddCircleFilled(pt, 3.5f, outline);
+				dl->AddText(ImVec2(c.x + 12.0f, c.y - 8.0f), outline, "Dir");
+			}
+		}
+		char label[16];
+		snprintf(label, sizeof(label), "L%d", i);
+		dl->AddText(ImVec2(c.x + 10.0f, c.y + 6.0f), selected ? IM_COL32(255, 200, 40, 255) : IM_COL32(230, 230, 230, 230), label);
+	}
+	dl->PopClipRect();
+}
+
+void Editor::DrawLightGizmo(Engine& engine, float x, float y, float width, float height)
+{
+	Scene& scene = engine.GetScene();
+	if (playState != PlayState::Editing || m_selectedLight < 0 || m_selectedLight >= static_cast<int>(scene.GetLights().size()) || width <= 0.0f || height <= 0.0f) return;
+	const Camera& camera = engine.GetCamera();
+	LightData& light = scene.GetLights()[m_selectedLight];
+	const bool directional = light.type == static_cast<uint32_t>(LightType::Directional);
+	const bool spot = light.type == static_cast<uint32_t>(LightType::Spot);
+	// Directional = 회전만 (위치 없음). Spot = 툴바의 이동/회전. Point = 이동만 (방향이 없음).
+	const bool rotate = directional || (spot && m_gizmoOperation == 1);
+
+	XMFLOAT4X4 view, proj;
+	XMStoreFloat4x4(&view, camera.GetViewMatrix());
+	XMStoreFloat4x4(&proj, camera.GetProjectionMatrix());
+	const XMFLOAT3 anchor = LightAnchor(camera, scene.GetLights(), m_selectedLight, x, y, width, height);
+	XMFLOAT4X4 world = LightGizmoMatrix(light, anchor, directional || spot);
+
+	ImGuizmo::SetOrthographic(!camera.IsUsePerspectiveProjection());
+	ImGuizmo::SetDrawlist();
+	ImGuizmo::SetRect(x, y, width, height);
+	const ImGuizmo::MODE mode = (m_gizmoWorld && !directional) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
+	if (ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], rotate ? ImGuizmo::ROTATE : ImGuizmo::TRANSLATE, mode, &world.m[0][0]))
+	{
+		if (rotate)
+		{
+			const XMVECTOR f = XMVectorSet(world.m[2][0], world.m[2][1], world.m[2][2], 0.0f);
+			if (XMVectorGetX(XMVector3LengthSq(f)) > 1e-8f) XMStoreFloat3(&light.direction, XMVector3Normalize(f));
+		}
+		else light.position = XMFLOAT3(world.m[3][0], world.m[3][1], world.m[3][2]);
+	}
+	if (ImGuizmo::IsUsing()) m_gizmoUsing = true;   // TrackHistory 가 busy 로 보고, 끝난 프레임에 한 단계를 기록함
+}
+
 void Editor::SyncSelection(Scene& scene)
 {
+	// 조명 선택: 되돌리기·삭제로 개수가 줄었으면 해제. 조명이 새로 골라졌으면(씬 뷰·Lights 패널) 오브젝트 선택을 비우고, 반대도 마찬가지.
+	if (m_selectedLight >= static_cast<int>(scene.GetLights().size())) m_selectedLight = -1;
+	if (m_selectedLight >= 0 && m_selectedLight != m_selectedLightPrev) { m_selected = -1; m_selectedPrev = -2; }
+	else if (m_selected >= 0 && m_selected != m_selectedPrev) m_selectedLight = -1;
+	m_selectedLightPrev = m_selectedLight;
+
 	if (m_selected != m_selectedPrev)
 	{
 		// 지난 프레임 이후 UI(또는 앱)가 인덱스를 바꿈 → 그 오브젝트가 새 선택
@@ -756,7 +948,8 @@ void Editor::DrawInspector(Engine& engine)
 	Scene& scene = engine.GetScene();
 	if (m_selected < 0 || m_selected >= static_cast<int>(scene.GetObjects().size()))
 	{
-		ImGui::TextDisabled("Click an object in the Scene view or the Hierarchy.");
+		if (m_selectedLight >= 0) ImGui::TextDisabled("Light %d selected: move/rotate it in the Scene view, edit it in the Lights panel.", m_selectedLight);
+		else ImGui::TextDisabled("Click an object in the Scene view or the Hierarchy.");
 		DebugUI::EndPanel();
 		return;
 	}

@@ -24,7 +24,8 @@ namespace DebugUI
 	void DrawCameraPanel(Camera& camera, float& moveSpeed);
 	void DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device);
 	void DrawShadowPanel(Renderer& renderer, RHI::Device& device);   // 6단계: 그림자 설정 + 그림자 맵 미리보기
-	void DrawLightPanel(Scene& scene);                           // 6단계: 조명 8개 전부 편집, 추가/삭제
+	// 6단계: 조명 8개 전부 편집, 추가/삭제. selectedLight = 씬 뷰에서 고른 조명 인덱스(패널에서 눌러도 바뀜, 삭제 시 보정), openSelected = true 면 그 노드를 펼치고 false 로 되돌림
+	void DrawLightPanel(Scene& scene, int* selectedLight = nullptr, bool* openSelected = nullptr);
 	// 2026-10-08: 씬 환경 (Scene::environment) — 스카이박스, IBL(확산 조도·반사 프리필터·BRDF LUT·세기), 노출·톤매핑.
 	// 칸마다 이름 입력 + 콘텐츠 브라우저의 텍스처 드롭 (큐브 칸: .dds = 큐브 DDS 파일, 그 밖의 이미지 = 그 이미지가 든 폴더).
 	void DrawEnvironmentPanel(Scene& scene);
