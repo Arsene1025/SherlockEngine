@@ -5,13 +5,13 @@
     0.11999999731779099
   ],
   "camera": {
-    "pitch": 0.20079028606414795,
+    "pitch": 0.7132982015609741,
     "position": [
-      19.72844696044922,
-      12.511914253234863,
-      16.502471923828125
+      7.6021833419799805,
+      12.343656539916992,
+      -1.9433568716049194
     ],
-    "yaw": -2.421294689178467
+    "yaw": -2.7513487339019775
   },
   "clearColor": [
     0.10000000149011612,
@@ -24,6 +24,15 @@
     "exposure": 1.0,
     "iblIntensity": 0.5,
     "irradiance": "asset:Cubemap\\CubemapSampleDiffuseHDR.dds",
+    "postProcess": {
+      "bloomEnabled": false,
+      "bloomIntensity": 0.5,
+      "bloomKnee": 0.5,
+      "bloomThreshold": 1.0,
+      "blurEnabled": false,
+      "blurRadius": 4.0,
+      "greyscale": 0.0
+    },
     "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
     "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
     "toneMapping": true
@@ -37,16 +46,16 @@
       ],
       "color": [
         1.0,
-        1.0,
+        0.843137264251709,
         1.0
       ],
       "direction": [
-        0.0,
-        -0.4472135901451111,
-        0.8944271802902222
+        0.8560000061988831,
+        -0.9800000190734863,
+        -0.8865497708320618
       ],
       "innerConeCos": 0.9238795042037964,
-      "intensity": 1.0,
+      "intensity": 4.4720001220703125,
       "outerConeCos": 0.8660253882408142,
       "position": [
         0.0,
@@ -416,6 +425,7 @@
   ],
   "objects": [
     {
+      "id": 1,
       "material": 0,
       "mesh": 0,
       "name": "Floor",
@@ -452,6 +462,7 @@
           "type": "Rigidbody"
         }
       ],
+      "id": 2,
       "material": 1,
       "mesh": 1,
       "name": "SphereCenter",
@@ -472,6 +483,7 @@
       ]
     },
     {
+      "id": 3,
       "material": 2,
       "mesh": 1,
       "name": "SphereOrbit",
@@ -492,6 +504,7 @@
       ]
     },
     {
+      "id": 4,
       "material": 3,
       "mesh": 1,
       "name": "SpherePulse",
@@ -528,6 +541,7 @@
           "type": "Rigidbody"
         }
       ],
+      "id": 5,
       "material": 1,
       "mesh": 2,
       "name": "CubeStatic",
@@ -548,6 +562,7 @@
       ]
     },
     {
+      "id": 6,
       "material": 4,
       "mesh": 2,
       "name": "CubeBob",
@@ -579,6 +594,7 @@
           "type": "Rotator"
         }
       ],
+      "id": 7,
       "material": 5,
       "mesh": 3,
       "name": "Cylinder",
@@ -599,6 +615,7 @@
       ]
     },
     {
+      "id": 8,
       "material": 6,
       "mesh": 2,
       "name": "GrayCard",
@@ -626,10 +643,13 @@
           "farZ": 1000.0,
           "fovY": 45.0,
           "nearZ": 0.10000000149011612,
+          "orthoSize": 10.0,
+          "orthographic": false,
           "priority": 0,
           "type": "CameraComponent"
         }
       ],
+      "id": 9,
       "material": -1,
       "mesh": -1,
       "name": "Main Camera",
@@ -650,5 +670,5 @@
       ]
     }
   ],
-  "version": 4
+  "version": 5
 }
