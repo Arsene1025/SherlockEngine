@@ -459,6 +459,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
     <li class="sub" data-ch="c20"><a href="#c20-18">20.18 적용 기록 — 2026-10-08 · 모든 씬에 HDR 환경</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-19">20.19 적용 기록 — 2026-10-12 · 좁은 패널 자동 정렬</a></li>
     <li class="sub" data-ch="c20"><a href="#c20-20">20.20 적용 기록 — 2026-10-15 · 자잘한 정리</a></li>
+    <li class="sub" data-ch="c20"><a href="#c20-21">20.21 적용 기록 — 2026-10-28 · 노말 섀도, 그림자 설정의 씬 저장, 리셋 버튼, 검증 씬 프로젝트</a></li>
     <li data-ch="c21"><a href="#c21">21. 질문과 답</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-0">21.0 질문 색인</a></li>
     <li class="sub" data-ch="c21"><a href="#c21-1">21.1 C++ 언어</a></li>
@@ -749,7 +750,7 @@ SherlockEditor\EditorMain.cpp      <span class="cm">에디터 진입점 (RunEdit
 SherlockGame\GameMain.cpp          <span class="cm">게임 런타임 진입점 (RunGame)</span>
 Projects\Sample\                   <span class="cm">예제 프로젝트: Sample.sherlock, Assets\Scenes\, Scripts\, Sample.sln, SampleScripts.vcxproj</span>
 Projects\QuaternionLookTest\       <span class="cm">실험 프로젝트 (생성된 솔루션 포함)</span>
-Projects\CubemapTest\              <span class="cm">실험 프로젝트: HDR 큐브맵 + PBR·IBL</span>
+Projects\SherlockTestScenes\       <span class="cm">검증 씬 모음 (큐브맵·IBL, 프리팹·Undo, 헬멧, Sponza, 노말 섀도)</span>
 x64\&lt;구성&gt;\                        <span class="cm">빌드 산출물 (1.5절)</span>
 vcpkg_installed\, docs\, images\, logs\
 </code></pre>
@@ -4171,14 +4172,14 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
 <div class="tbl"><table>
 <thead><tr><th>슬롯</th><th>HLSL cbuffer</th><th>C++ 구조체</th><th>크기</th><th>갱신</th><th>읽는 스테이지</th><th>버퍼 핸들</th></tr></thead>
 <tbody>
-<tr><td class="mono">b0</td><td class="mono">PerFrame</td><td class="mono">PerFrameConstants</td><td class="n">336</td><td>프레임에 한 번. 미리보기 패스가 있으면 그 카메라로 한 번 더</td><td>VS + PS</td><td class="mono">m_perFrameCB</td></tr>
+<tr><td class="mono">b0</td><td class="mono">PerFrame</td><td class="mono">PerFrameConstants</td><td class="n">352</td><td>프레임에 한 번. 미리보기 패스가 있으면 그 카메라로 한 번 더</td><td>VS + PS</td><td class="mono">m_perFrameCB</td></tr>
 <tr><td class="mono">b1</td><td class="mono">PerObject</td><td class="mono">PerObjectConstants</td><td class="n">128</td><td>드로우마다</td><td>VS</td><td class="mono">m_perObjectCB</td></tr>
 <tr><td class="mono">b2</td><td class="mono">Lights</td><td class="mono">LightConstants</td><td class="n">656</td><td>프레임에 한 번</td><td>PS</td><td class="mono">m_lightCB</td></tr>
 <tr><td class="mono">b3</td><td class="mono">Material</td><td class="mono">MaterialConstants</td><td class="n">64</td><td>재질마다 프레임에 한 번</td><td>VS(<code>uvScale</code>) + PS</td><td class="mono">GpuMaterial::constants</td></tr>
 </tbody></table></div>
 <p>아래 격자는 한 행이 16바이트 레지스터 하나, 한 칸이 4바이트입니다. 왼쪽 위 숫자는 바이트 오프셋 범위이고, 필드 이름은 C++ 와 HLSL 에서 같습니다.</p>
 
-<h4>b0 PerFrame — 336바이트</h4>
+<h4>b0 PerFrame — 352바이트</h4>
 <div class="layout">
   <div class="row">0 ~ 63</div>
   <div class="m4">view — matrix / XMFLOAT4X4 (레지스터 4개)</div>
@@ -4198,8 +4199,10 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
   <div>x: IBL 세기</div><div>y: 반사 큐브 밉 수</div><div>z: 확산 조도 밉</div><div>w: 환경 있음</div>
   <div class="row">320 ~ 335 · outputParams</div>
   <div>x: 노출</div><div>y: 톤매핑</div><div>z: BRDF LUT 있음</div><div class="pad">w: 0</div>
+  <div class="row">336 ~ 351 · shadowExtra</div>
+  <div>x: 노말 섀도 오프셋</div><div class="pad">y: 0</div><div class="pad">z: 0</div><div class="pad">w: 0</div>
 </div>
-<p>채우는 곳은 <code>Renderer::UploadPerFrameConstants</code> 입니다. <code>shadowParams</code> 는 <code>(1 / kShadowMapSize, m_settings.shadowBias, m_settings.shadowStrength, m_shadowEnabledThisFrame ? 1 : 0)</code> 이고 <code>debugParams</code> 는 <code>(m_settings.debugView, m_settings.debugDepthRange, 0, 0)</code> 입니다. 2026-10-08 에 붙은 두 줄은 <code>Renderer::ResolveEnvironment</code> 가 그 프레임에 정한 환경을 옮깁니다(<a href="#c11-6">11.6절</a>, <a href="#c12-14">12.14절</a>). 현재 셰이더는 <code>view</code>, <code>proj</code>, <code>time</code>, <code>shadowParams.x</code> 를 읽지 않습니다. 변환에는 <code>viewProj</code> 만 쓰고, PCF 의 이웃 텍셀은 정수 오프셋 인자로 지정하기 때문입니다.</p>
+<p>채우는 곳은 <code>Renderer::UploadPerFrameConstants</code> 입니다. <code>shadowParams</code> 는 <code>(1 / kShadowMapSize, m_shadowSettings.bias, m_shadowSettings.strength, m_shadowEnabledThisFrame ? 1 : 0)</code> 이고 <code>debugParams</code> 는 <code>(m_settings.debugView, m_settings.debugDepthRange, 0, 0)</code> 입니다. <code>shadowExtra.x</code> 는 <code>m_shadowSettings.normalOffset</code> 입니다(2026-10-28). <code>m_shadowSettings</code> 는 <code>Renderer::Render</code> 가 맨 앞에서 씬의 <code>environment.shadow</code> 를 복사한 값입니다. 2026-10-08 에 붙은 두 줄은 <code>Renderer::ResolveEnvironment</code> 가 그 프레임에 정한 환경을 옮깁니다(<a href="#c11-6">11.6절</a>, <a href="#c12-14">12.14절</a>). 현재 셰이더는 <code>view</code>, <code>proj</code>, <code>time</code>, <code>shadowParams.x</code> 를 읽지 않습니다. 변환에는 <code>viewProj</code> 만 쓰고, PCF 의 이웃 텍셀은 정수 오프셋 인자로 지정하기 때문입니다.</p>
 
 <h4>b1 PerObject — 128바이트</h4>
 <div class="layout">
@@ -4271,7 +4274,7 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
 
 <div class="stage"><div class="tag">①</div><div><h4>컴파일 시점 — static_assert 와 offsetof</h4>
 <p><code>Graphics/ShaderConstants.h</code> 아래쪽에 구조체마다 크기와 필드 오프셋 단언이 있습니다. <code>sizeof</code> 만으로는 위 표의 첫 줄 같은 실수를 잡지 못하므로 <strong><code>offsetof</code> 단언이 실제 검사</strong>입니다. <code>alignas(16)</code> 과 "크기가 16 의 배수"는 필요조건일 뿐입니다.</p>
-<pre><code><span class="kw">static_assert</span>(<span class="kw">sizeof</span>(PerFrameConstants) == 336, <span class="str">"PerFrameConstants: 64*4 + 16 * 5"</span>);
+<pre><code><span class="kw">static_assert</span>(<span class="kw">sizeof</span>(PerFrameConstants) == 352, <span class="str">"PerFrameConstants: 64*4 + 16 * 6"</span>);
 <span class="kw">static_assert</span>(offsetof(PerFrameConstants, lightViewProj) == 192, …);
 <span class="kw">static_assert</span>(offsetof(PerFrameConstants, cameraPosition) == 256, …);
 <span class="kw">static_assert</span>(offsetof(PerFrameConstants, time) == 268, …);
@@ -4581,7 +4584,7 @@ depth   = MinDepth + z_ndc × (MaxDepth − MinDepth)</code></pre>
 <div class="stage"><div class="tag">④</div><div><h4>노멀</h4>
 <p>보간된 노멀과 탄젠트로 TBN 기저를 만들고 노멀 맵 값을 월드 공간 노멀로 바꿉니다(<a href="#c11-7">11.7절</a>).</p></div></div>
 <div class="stage"><div class="tag">⑤</div><div><h4>뷰 벡터와 그림자 계수</h4>
-<p><code>viewDirection = SafeNormalize(cameraPosition - input.worldPosition, …)</code>, <code>shadowFactor = ComputeShadowFactor(input.shadowPosition)</code>(<a href="#c11-8">11.8절</a>).</p></div></div>
+<p><code>viewDirection = SafeNormalize(cameraPosition - input.worldPosition, …)</code>, <code>shadowFactor = ComputeShadowFactor(input.shadowPosition, normal − geometricNormal)</code>(<a href="#c11-8">11.8절</a>).</p></div></div>
 <div class="stage"><div class="tag">⑥</div><div><h4>디버그 뷰 조기 반환</h4>
 <p><code>debugParams.x</code> 가 1~7 이면 중간값 하나를 색으로 반환합니다(<a href="#c11-9">11.9절</a>).</p></div></div>
 <div class="stage"><div class="tag">⑦</div><div><h4>조명 누적</h4>
@@ -4863,16 +4866,16 @@ tangentNormal.xy *= normalStrength;
 <h4>광원 행렬</h4>
 <pre><code><span class="cm">// Graphics/Renderer.cpp — ComputeLightViewProj</span>
 <span class="kw">const</span> XMVECTOR center = XMVectorSet(0.0f, 2.0f, 0.0f, 1.0f);
-<span class="kw">const</span> XMVECTOR eye = XMVectorSubtract(center, XMVectorScale(direction, m_settings.shadowDistance));
+<span class="kw">const</span> XMVECTOR eye = XMVectorSubtract(center, XMVectorScale(direction, m_shadowSettings.distance));
 <span class="kw">const</span> XMVECTOR up = (fabsf(XMVectorGetY(direction)) &gt; 0.99f) ? XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
 <span class="kw">const</span> XMMATRIX view = XMMatrixLookAtLH(eye, center, up);
-<span class="kw">const float</span> size = m_settings.shadowOrthoSize;
-<span class="kw">const</span> XMMATRIX proj = XMMatrixOrthographicLH(size, size, 0.1f, m_settings.shadowDistance * 2.0f + size);
+<span class="kw">const float</span> size = m_shadowSettings.orthoSize;
+<span class="kw">const</span> XMMATRIX proj = XMMatrixOrthographicLH(size, size, 0.1f, m_shadowSettings.distance * 2.0f + size);
 <span class="kw">return</span> view * proj;</code></pre>
 <ul>
-  <li><strong>눈의 위치.</strong> 방향광에는 위치가 없습니다. 고정된 중심점 <code>(0, 2, 0)</code> 에서 빛의 반대 방향으로 <code>shadowDistance</code> 만큼 물러난 곳에 가상의 눈을 두고 중심을 바라봅니다. 여기서도 <code>direction</code> 은 빛이 나아가는 방향이므로 눈은 <code>center − direction × 거리</code> 입니다.</li>
-  <li><strong>직교 투영.</strong> 방향광의 광선은 서로 평행하므로 원근이 없는 직교 투영을 씁니다. 한 변이 <code>shadowOrthoSize</code> 인 정사각형 상자이고 깊이 범위는 0.1 에서 <code>shadowDistance × 2 + shadowOrthoSize</code> 까지입니다. 이 상자 밖의 물체는 그림자를 만들지도 받지도 못합니다.</li>
+  <li><strong>눈의 위치.</strong> 방향광에는 위치가 없습니다. 고정된 중심점 <code>(0, 2, 0)</code> 에서 빛의 반대 방향으로 <code>shadow.distance</code> 만큼 물러난 곳에 가상의 눈을 두고 중심을 바라봅니다. 여기서도 <code>direction</code> 은 빛이 나아가는 방향이므로 눈은 <code>center − direction × 거리</code> 입니다.</li>
+  <li><strong>직교 투영.</strong> 방향광의 광선은 서로 평행하므로 원근이 없는 직교 투영을 씁니다. 한 변이 <code>shadow.orthoSize</code> 인 정사각형 상자이고 깊이 범위는 0.1 에서 <code>shadow.distance × 2 + shadow.orthoSize</code> 까지입니다. 이 상자 밖의 물체는 그림자를 만들지도 받지도 못합니다. 이 값들은 씬의 환경(<code>SceneEnvironment::shadow</code>)에 있어 씬 JSON 에 저장됩니다(2026-10-28 이전에는 렌더 설정이라 씬을 열 때마다 직전 슬라이더 값이 남았습니다). 상자 밖은 빛을 받는 것으로 치므로, 천장이 있는 방처럼 닫힌 공간은 <code>orthoSize</code> 가 벽까지 덮어야 합니다. 덮지 못하면 바닥이 "빛을 받는 곳"이 되어 빛이 샙니다.</li>
   <li><strong>수직광.</strong> 빛이 거의 수직이면 up 벡터 +Y 가 시선과 평행해져 <code>LookAt</code> 이 무너집니다. <code>|direction.y| &gt; 0.99</code> 이면 up 을 +Z 로 바꿉니다.</li>
   <li><strong>값.</strong> 기본값은 크기 60, 거리 40 입니다. 씬을 바꿀 때 <code>App/EditorApp.cpp</code> 가 씬 크기에 맞춰 크기·거리·바이어스를 다시 정하고, 패널의 슬라이더로도 바꿀 수 있습니다.</li>
 </ul>
@@ -4927,20 +4930,22 @@ m_shadowDesc = PipelineStateDesc{
 <tr><td>래스터라이저 상수 바이어스<br><code>depthBias</code></td><td class="n">2000</td><td>그림자 맵에 기록되는 깊이에 고정량을 더해 표면을 광원에서 멀어지게 밉니다. 부동소수점 깊이 버퍼에서 한 단위는 <code>2^(지수 − 23)</code> 이고, 지수는 그 삼각형의 최대 깊이 값의 지수입니다. 깊이 0.5 근처에서는 한 단위가 약 6×10⁻⁸ 이므로 2000 단위가 약 1.2×10⁻⁴ 입니다. 큰 정수가 정상입니다.</td></tr>
 <tr><td>래스터라이저 기울기 바이어스<br><code>slopeScaledDepthBias</code></td><td class="n">2.0</td><td>삼각형의 깊이 기울기에 비례하는 양을 더합니다. 광원에 비스듬한 면일수록 텍셀 안의 깊이 변화가 크므로 그만큼 더 밉니다.</td></tr>
 <tr><td>상한<br><code>depthBiasClamp</code></td><td class="n">0.01</td><td>두 항의 합이 넘지 못하는 값. 광원과 거의 평행한 면에서 기울기 항이 폭주하는 것을 막습니다.</td></tr>
-<tr><td>셰이더 바이어스<br><code>shadowParams.y</code></td><td class="n">0.0015</td><td>비교 직전에 수신 픽셀의 깊이에서 뺍니다. 렌더 설정 <code>shadowBias</code> 이고 광원 클립 공간의 z(0~1) 단위입니다.</td></tr>
+<tr><td>셰이더 바이어스<br><code>shadowParams.y</code></td><td class="n">0.0015</td><td>비교 직전에 수신 픽셀의 깊이에서 뺍니다. 씬의 환경 설정 <code>shadow.bias</code>(씬 JSON 에 저장)이고 광원 클립 공간의 z(0~1) 단위입니다.</td></tr>
 </tbody></table></div>
-<p>바이어스가 너무 크면 반대 문제가 생깁니다. 그림자가 물체의 발밑에서 떨어져 물체가 떠 보이는 <em>Peter Panning</em> 입니다. 상수 항은 작게 두고 기울어진 면은 기울기 항에 맡기는 것이 두 문제 사이의 절충입니다. 씬의 크기가 달라지면 광원 깊이 범위가 달라져 같은 숫자의 의미가 바뀌므로 씬마다 <code>shadowBias</code> 를 다시 정합니다.</p>
+<p>바이어스가 너무 크면 반대 문제가 생깁니다. 그림자가 물체의 발밑에서 떨어져 물체가 떠 보이는 <em>Peter Panning</em> 입니다. 상수 항은 작게 두고 기울어진 면은 기울기 항에 맡기는 것이 두 문제 사이의 절충입니다. 씬의 크기가 달라지면 광원 깊이 범위가 달라져 같은 숫자의 의미가 바뀌므로 씬마다 <code>shadow.bias</code> 를 다시 정하고 씬 파일에 저장합니다.</p>
 
 <h4>비교 샘플러와 PCF</h4>
 <pre><code><span class="cm">// Shaders/BasicPixelShader.hlsl</span>
-<span class="kw">float</span> ComputeShadowFactor(<span class="kw">float4</span> shadowPosition)
+<span class="kw">float</span> ComputeShadowFactor(<span class="kw">float4</span> shadowPosition, <span class="kw">float3</span> normalDelta)
 {
     <span class="kw">if</span> (shadowParams.w &lt; 0.5f)
     {
         <span class="kw">return</span> 1.0f;
     }
     <span class="kw">const float3</span> p = shadowPosition.xyz / shadowPosition.w;
-    <span class="kw">const float2</span> uv = <span class="kw">float2</span>(p.x * 0.5f + 0.5f, -p.y * 0.5f + 0.5f);
+    <span class="kw">float2</span> uv = <span class="kw">float2</span>(p.x * 0.5f + 0.5f, -p.y * 0.5f + 0.5f);
+    <span class="cm">// 노말 섀도: 노말맵이 기울인 만큼 그림자 UV 를 옮김</span>
+    uv += mul(<span class="kw">float4</span>(normalDelta, 0.0f), lightViewProj).xy * <span class="kw">float2</span>(0.5f, -0.5f) * shadowExtra.x;
     <span class="kw">if</span> (p.z &gt; 1.0f)
     {
         <span class="kw">return</span> 1.0f;   <span class="cm">// 광원 far 밖</span>
@@ -4963,10 +4968,11 @@ m_shadowDesc = PipelineStateDesc{
 <ol>
   <li><strong>광원 NDC.</strong> <code>shadowPosition</code> 은 보간된 광원 클립 좌표입니다. 직교 투영이라 w 는 1 이지만 관례대로 나눕니다. 결과 <code>p</code> 의 x, y 는 −1~1, z 는 0~1 입니다.</li>
   <li><strong>텍스처 좌표.</strong> NDC 의 −1~1 을 0~1 로 옮깁니다. NDC 는 y 가 위로 증가하고 텍스처의 v 는 아래로 증가하므로 y 의 부호를 뒤집습니다. 이 줄을 빼먹으면 그림자가 위아래로 뒤집힙니다.</li>
+  <li><strong>노말 섀도(2026-10-28).</strong> 노말맵 때문에 표면 노멀이 기하 노멀과 얼마나 달라졌는지(<code>normalDelta = normal − geometricNormal</code>)를 광원 클립 공간의 방향 벡터(<code>w = 0</code>)로 바꿔 <code>uv</code> 에 더합니다. 그러면 그림자 경계가 노말맵의 요철을 따라 일렁입니다. 클립 공간 <code>xy</code> 는 −1~1 이고 UV 는 0~1(y 는 반대)이므로 위치 변환과 같은 <code>(0.5, −0.5)</code> 를 곱해야 합니다. 그림자 행렬에 NDC→UV 변환이 이미 들어 있는 구현이라면 이 곱셈이 필요 없습니다. 이동량은 월드 거리로 약 <code>normalOffset × |normalDelta|</code> m 이고 <code>orthoSize</code> 와는 무관합니다(행렬의 2/orthoSize 와 UV 환산의 orthoSize 가 상쇄됨). <code>normalOffset</code>(<code>shadowExtra.x</code>, 기본 0.3)이 0 이거나 노말맵이 없으면 이전 결과와 같습니다.</li>
   <li><strong>범위 밖.</strong> <code>p.z &gt; 1</code> 이면 광원의 far 평면 너머이므로 빛을 받는 것으로 칩니다. 좌우·상하로 벗어난 좌표는 샘플러의 테두리 색이 처리합니다.</li>
   <li><strong>비교값.</strong> 수신 픽셀의 깊이에서 셰이더 바이어스를 뺀 값입니다.</li>
-  <li><strong>비교 샘플링 9회.</strong> 가운데와 이웃 여덟 텍셀 위치에서 비교 결과를 읽어 평균 냅니다.</li>
-  <li><strong>세기.</strong> <code>shadowParams.z</code>(렌더 설정 <code>shadowStrength</code>)로 1 과 섞습니다. 0 이면 그림자 없음, 1 이면 판정 그대로입니다.</li>
+  <li><strong>비교 샘플링 9회.</strong> 가운데와 이웃 여덟 텍셀 위치에서 비교 결과를 읽어 평균 냅니다. (2026-10-28 현재 셰이더는 임시로 5×5 = 25회이고 25 로 나눕니다. 위 코드는 원래의 3×3 입니다.)</li>
+  <li><strong>세기.</strong> <code>shadowParams.z</code>(씬의 <code>shadow.strength</code>)로 1 과 섞습니다. 0 이면 그림자 없음, 1 이면 판정 그대로입니다.</li>
 </ol>
 <p><code>shadowSampler</code> 는 일반 샘플러가 아니라 <code>SamplerComparisonState</code> 입니다. <code>Renderer::CreateShadowResources</code> 가 다음 설정으로 만듭니다.</p>
 <div class="tbl"><table>
@@ -4983,7 +4989,7 @@ m_shadowDesc = PipelineStateDesc{
 <p><code>shadowFactor</code> 는 조명 루프에서 <strong>0번 조명이 방향광일 때 그 조명의 감쇠에만</strong> 곱해집니다(<a href="#c11-6">11.6절</a>의 코드). ambient 항과 다른 조명은 그림자의 영향을 받지 않습니다. 그래서 그림자 안도 완전히 검지 않고 ambient 와 점광·스포트광의 빛이 남습니다.</p>
 <div class="fig"><img src="../images/2026-09-23-phase6-shadow-compare.png" alt="같은 자리에서 그림자를 켠 화면과 끈 화면" style="width:100%;height:auto;border-radius:6px" loading="lazy"><div class="cap">같은 자리의 그림자 켬(왼쪽)과 끔(오른쪽, F8). 방향광 0 의 그림자만 사라지고 나머지 조명은 그대로입니다. (images/2026-09-23-phase6-shadow-compare.png)</div></div>
 <div class="callout"><div class="t">그림자가 이상할 때 보는 순서</div>
-<p>디버그 뷰 4(그림자 계수)로 계수만 흑백으로 봅니다. 전부 흰색이면 그림자 패스가 돌지 않은 것이므로 0번 조명의 타입과 <code>shadows</code> 설정을 확인합니다. 줄무늬가 보이면 바이어스가 작은 것이고, 그림자가 물체에서 떨어져 있으면 큰 것입니다. 그림자가 어느 선에서 잘리면 광원 상자(<code>shadowOrthoSize</code>, <code>shadowDistance</code>)가 씬을 덮지 못하는 것입니다. 통계의 <code>shadowDraws</code> 가 0 이 아닌지도 함께 봅니다.</p></div>
+<p>디버그 뷰 4(그림자 계수)로 계수만 흑백으로 봅니다. 전부 흰색이면 그림자 패스가 돌지 않은 것이므로 0번 조명의 타입과 <code>shadows</code> 설정을 확인합니다. 줄무늬가 보이면 바이어스가 작은 것이고, 그림자가 물체에서 떨어져 있으면 큰 것입니다. 그림자가 어느 선에서 잘리면 광원 상자(<code>shadow.orthoSize</code>, <code>shadow.distance</code>)가 씬을 덮지 못하는 것입니다. 통계의 <code>shadowDraws</code> 가 0 이 아닌지도 함께 봅니다.</p></div>
 
 <!-- c11-8.html -->
 <h3 id="c11-9">11.9 디버그 뷰</h3>
@@ -5517,7 +5523,7 @@ SamplerComparisonState shadowSampler : <span class="kw">register</span>(s4);</co
 
 <h4>샘플 세트와 CubemapTest 프로젝트</h4>
 <p><code>SherlockEngine/Assets/Cubemap</code> 의 일곱 파일은 IBLBaker 형식의 세트입니다. <code>Env</code>(스카이박스, 512², 밉 10), <code>Specular</code>(반사 프리필터, 512², 밉 10, 밉 0 이 거울), <code>Diffuse</code>(확산 조도, 128²), <code>Brdf</code>(256² 2D LUT)이고 각각 HDR(float32)과 MDR(8비트 BGRA)이 있습니다. LUT 의 축은 데이터로 확인했습니다. 오른쪽 아래 (N·V = 1, 거칠기 0) 가 (1, 0), 왼쪽 아래(N·V → 0, 거칠기 0)가 (0, 1) 이므로 u = N·V, v = 1 − roughness 입니다. 이 세트의 Diffuse·Specular 는 Env 보다 약 2배 밝게 구워져 있어서(같은 면의 평균이 Env 1.5 · Specular 3.0, 아래 면 0.44 · Diffuse 0.97), 실험 프로젝트의 씬은 IBL 세기 0.5 로 하늘과 같은 밝기 기준을 맞춥니다.</p>
-<p>실험 프로젝트 <code>Projects/CubemapTest</code> 는 에디터의 <code>--new-project=CubemapTest</code> 로 만들었고, 시작 씬 <code>Assets/Scenes/Main.json</code> 이 HDR 세트 네 장(<code>asset:Cubemap\…</code>, 엔진 <code>Assets\</code> 에서 찾음)·IBL 세기 0.5·톤매핑 켬을 씁니다. 구 12개는 금속(금색)과 유전체(빨강) 두 줄에 거칠기 0, 0.2, …, 1 이고, 앞에 DamagedHelmet 이 있습니다. 방향광 하나는 환경맵 속 태양(−X 쪽 지평선, 방위 약 −62°, 붉은 석양)과 같은 쪽에서 조금 높여 비춥니다.</p>
+<p>(2026-10-28 추가: <code>CubemapTest</code> 프로젝트는 <code>Projects/SherlockTestScenes</code> 로 합쳐져 삭제됐고, 이 씬은 그 프로젝트의 <code>Assets/Scenes/Cubemap.json</code> 이 됐습니다. 아래는 만들 당시 서술입니다.) 실험 프로젝트 <code>Projects/CubemapTest</code> 는 에디터의 <code>--new-project=CubemapTest</code> 로 만들었고, 시작 씬 <code>Assets/Scenes/Main.json</code> 이 HDR 세트 네 장(<code>asset:Cubemap\…</code>, 엔진 <code>Assets\</code> 에서 찾음)·IBL 세기 0.5·톤매핑 켬을 씁니다. 구 12개는 금속(금색)과 유전체(빨강) 두 줄에 거칠기 0, 0.2, …, 1 이고, 앞에 DamagedHelmet 이 있습니다. 방향광 하나는 환경맵 속 태양(−X 쪽 지평선, 방위 약 −62°, 붉은 석양)과 같은 쪽에서 조금 높여 비춥니다.</p>
 <p><strong>기본 환경(2026-10-08 저녁).</strong> 이 세트는 이제 CubemapTest 만의 것이 아닙니다. 엔진 내장 씬(데모·헬멧·Sponza·새 씬, 그리고 새 프로젝트의 <code>Main.json</code>)은 <code>EditorApp.cpp</code> 의 <code>ApplyDefaultEnvironment</code> 로, 저장소의 모든 프로젝트 씬 파일(Sample 2개·QuaternionLookTest 3개·CubemapTest 1개)은 파일의 <code>"environment"</code> 로 같은 값을 씁니다. HDR 네 장(<code>asset:Cubemap\…</code>), IBL 세기 0.5, 노출 1, 톤매핑 켬입니다. <code>asset:</code> 이름은 프로젝트 <code>Assets\</code> 에 없으면 엔진 <code>Assets\</code> 에서 찾으므로 어느 프로젝트에서나 같은 파일을 가리키고, Build Game 은 이 네 장을 패키지로 복사합니다. 환경이 있으면 <code>ambientColor</code> 는 쓰이지 않습니다(위 표). 흐린 하늘이라 흰 체커 바닥처럼 밝은 재질은 전보다 희게 보입니다. CubemapTest 의 <code>Main.json</code> 은 한때 에디터에서 Sponza 씬으로 바뀌어 저장됐다가, 같은 날 커밋 <code>c97fe3f</code> 의 구·헬멧 씬(아래 그림 12-14d)으로 되돌렸습니다(<a href="#c20-18">20.18</a>).</p>
 <div class="fig"><img src="../images/2026-10-08-cubemaptest-ibl.png" alt="CubemapTest 프로젝트를 게임 런타임으로 실행한 화면. 위 줄은 금속 구, 아래 줄은 빨간 유전체 구가 왼쪽에서 오른쪽으로 거칠어지고, 앞에 DamagedHelmet 이 있으며 배경은 흐린 하늘" style="width:100%;height:auto;border-radius:6px" loading="lazy">
 <div class="cap">그림 12-14d. CubemapTest(D3D12, 게임 런타임). 거칠기 0 의 금속 구에는 하늘이 선명하게 비치고 오른쪽으로 갈수록 흐려집니다. 구의 아래쪽은 어두운 지면을 반사합니다. D3D11 과 픽셀이 같습니다.</div></div>
@@ -6329,14 +6335,15 @@ QuaternionLookTestEditor.exe --scene=quat_roll_world.json --play=1 --exit-after=
     <tr><td class="mono">srgbOutput <span class="sub">true</span></td><td>메인·미리보기 패스의 <code>srgbView</code> 와 <code>rtvFormats[0]</code> (<a href="#c12">12장</a>)</td><td><span class="pill info">PSO</span> + 패스</td><td>F5</td></tr>
     <tr><td class="mono">samplerOverride <span class="sub">−1</span></td><td><code>GetOrCreateGpuMaterial</code> 이 고르는 샘플러. 바뀌면 재질 셋을 다시 만듦</td><td>리소스 셋</td><td>F6</td></tr>
     <tr><td class="mono">shadows <span class="sub">true</span></td><td><code>m_shadowEnabledThisFrame</code>. 그림자 패스 생략과 <code>shadowParams.w</code></td><td>패스 + b0</td><td>F8</td></tr>
-    <tr><td class="mono">shadowBias, shadowStrength <span class="sub">0.0015, 1</span></td><td><code>shadowParams.y</code>, <code>.z</code></td><td>b0 상수</td><td></td></tr>
-    <tr><td class="mono">shadowOrthoSize, shadowDistance <span class="sub">60, 40</span></td><td><code>ComputeLightViewProj</code> 의 직교 투영 크기와 광원 눈의 거리 (<a href="#c11">11장</a>)</td><td>b0 상수</td><td></td></tr>
+    <tr><td class="mono">shadow.bias, shadow.strength <span class="sub">0.0015, 1</span></td><td><code>shadowParams.y</code>, <code>.z</code></td><td>b0 상수</td><td></td></tr>
+    <tr><td class="mono">shadow.orthoSize, shadow.distance <span class="sub">60, 40</span></td><td><code>ComputeLightViewProj</code> 의 직교 투영 크기와 광원 눈의 거리 (<a href="#c11">11장</a>)</td><td>b0 상수</td><td></td></tr>
+    <tr><td class="mono">shadow.normalOffset <span class="sub">0.3</span></td><td><code>shadowExtra.x</code>. 노말맵이 그림자 UV 를 미는 배율 (<a href="#c20-21">20.21절</a>)</td><td>b0 상수</td><td></td></tr>
     <tr><td class="mono">normalMapping <span class="sub">true</span></td><td>끄면 재질 상수의 <code>normalStrength</code> 를 0 으로 올림</td><td>b3 상수</td><td>F9</td></tr>
     <tr><td class="mono">debugView, debugDepthRange <span class="sub">0, 60</span></td><td><code>debugParams.x</code>, <code>.y</code> (14.10절)</td><td>b0 상수</td><td></td></tr>
   </tbody>
 </table></div>
 
-<p>노멀 매핑 토글과 디버그 뷰를 상수로 구현한 것은 의도한 선택입니다. 셰이더 변형이나 PSO 변형으로 만들면 조합 수가 곱으로 늘어나는데, 상수 하나로 분기하면 PSO 캐시 크기가 그대로입니다. <code>shadowOrthoSize</code>·<code>shadowDistance</code>·<code>shadowBias</code> 는 씬 크기에 맞춰야 하므로 <code>EditorApp</code> 이 씬을 만들 때마다 다시 정합니다.</p>
+<p>노멀 매핑 토글과 디버그 뷰를 상수로 구현한 것은 의도한 선택입니다. 셰이더 변형이나 PSO 변형으로 만들면 조합 수가 곱으로 늘어나는데, 상수 하나로 분기하면 PSO 캐시 크기가 그대로입니다. <code>shadow.orthoSize</code>·<code>distance</code>·<code>bias</code> 는 씬 크기에 맞춰야 하므로 씬 파일(<code>environment.shadow</code>)에 저장되고, <code>EditorApp</code> 이 모델 씬을 만들 때 모델 크기에 맞게 정합니다.</p>
 
 <!-- c14-2.html -->
 <h3 id="c14-3">14.3 GpuMesh 캐시 — Mesh 를 버퍼 두 개로</h3>
@@ -7188,7 +7195,7 @@ EndFrame()        : prev ← cur, m_dx = m_dy = 0, m_wheel = 0</code></pre>
 <div class="tbl"><table>
 <thead><tr><th><code>Editor::Callbacks</code> 멤버</th><th><code>EditorApp</code> 의 함수</th><th>부르는 곳</th></tr></thead>
 <tbody>
-<tr><td class="mono">switchScene(int)</td><td class="mono">LoadSceneMode</td><td>File 메뉴의 Demo scene / DamagedHelmet / Sponza</td></tr>
+<tr><td class="mono">switchScene(int)</td><td class="mono">LoadSceneMode</td><td>File 메뉴의 Demo scene. 헬멧·Sponza 항목은 2026-10-28 에 메뉴에서 뺐음 (프로젝트의 <code>Scenes\DamagedHelmet.json</code>·<code>Sponza.json</code> 을 콘텐츠 브라우저에서 더블클릭하거나 F11·<code>--scene</code> 으로 엶)</td></tr>
 <tr><td class="mono">saveScene(path) · loadScene(path)</td><td class="mono">SaveSceneFile · LoadSceneFile</td><td>File 메뉴, <code>Ctrl+S</code> · <code>Ctrl+L</code>, 콘텐츠 브라우저의 씬 열기</td></tr>
 <tr><td class="mono">newScene()</td><td class="mono">BuildEmptyScene</td><td>File 메뉴의 New scene (floor only)</td></tr>
 <tr><td class="mono">addPrimitive(int)</td><td class="mono">AddPrimitive</td><td>Hierarchy 의 + 버튼 (0 구, 1 큐브, 2 원기둥, 3 평면, 4 카메라)</td></tr>
@@ -7235,7 +7242,7 @@ ImGui::DockSpaceOverViewport(dockspaceId, viewport);</code></pre>
 <h4>메뉴 막대와 단축키</h4>
 <p><code>Editor::DrawMenuBar</code> 가 <code>BeginMainMenuBar</code> 로 그립니다.</p>
 <dl class="kv">
-<dt>File</dt><dd>프로젝트 항목(New Project, Open Project, Recent Projects, Project Settings, Projects 런처 — <a href="#c17">17장</a>), 씬 경로 입력 필드(<code>scenePath</code>), Save scene, Load scene, New scene (floor only), Demo scene·DamagedHelmet·Sponza, Build Game</dd>
+<dt>File</dt><dd>프로젝트 항목(New Project, Open Project, Recent Projects, Project Settings, Projects 런처 — <a href="#c17">17장</a>), 씬 경로 입력 필드(<code>scenePath</code>), Save scene, Load scene, New scene (floor only), Demo scene, Build Game</dd>
 <dt>View</dt><dd>Console (F12) 와 Content Browser 표시 여부, Reset layout</dd>
 <dt>Gizmo</dt><dd>Translate (1), Rotate (2), Scale (3), Local space, World space</dd>
 <dt>상태 문자열</dt><dd>마지막 동작 메시지(<code>m_lastMessage</code>), 프로젝트 이름, 백엔드 이름(<code>Device::GetBackendName</code>), 선택된 오브젝트 이름</dd>
@@ -7479,7 +7486,7 @@ ImGui::PopID();</code></pre>
 <tr><td>Materials</td><td class="mono">DrawMaterialPanel</td><td>씬의 모든 재질. Inspector 의 재질 필드에 샘플러 프리셋 콤보와 알베도 색공간 표시가 더해짐. 모델의 슬롯 재질은 여기서 편집</td></tr>
 <tr><td rowspan="5">Render Settings</td><td class="mono">DrawRenderSettingsPanel</td><td>백엔드 이름, Wireframe, Cull back faces, sRGB output, Normal maps, VSync, Reload shaders, 샘플러 덮어쓰기, 드로우·패스·배리어·캐시 통계</td></tr>
 <tr><td>(<code>Editor::DrawRenderSettings</code>)</td><td>Debug view 콤보와 Depth range 슬라이더</td></tr>
-<tr><td class="mono">DrawShadowPanel</td><td>그림자 켜기, bias, strength, ortho size, light distance, 그림자 맵 미리보기(256×256)</td></tr>
+<tr><td class="mono">DrawShadowPanel</td><td>그림자 켜기, bias, strength, normal offset, ortho size, light distance(값은 씬의 <code>environment.shadow</code> 에 저장되어 되돌리기·저장에 포함), 그림자 맵 미리보기(256×256). 슬라이더·드래그 대부분은 라벨 옆에 기본값 리셋 <code>R</code> 버튼이 붙음(<code>DebugUI::SliderFloatR</code>·<code>DragFloatR</code>·<code>DragFloat2R</code>·<code>DragFloat3R</code>. 기본값은 구조체 멤버 초기값이고, 값이 기본값이면 R 은 흐려짐. 값 직접 입력은 ImGui 의 Ctrl+클릭)</td></tr>
 <tr><td class="mono">DrawCameraPanel</td><td>카메라 위치와 yaw·pitch·roll, 이동 속도 슬라이더</td></tr>
 <tr><td class="mono">DrawEnginePanel</td><td>설정 파일·로그·AssetManager 통계·Time, 설정 값 목록</td></tr>
 <tr><td rowspan="3">Stats</td><td>(<code>Editor::DrawStats</code>)</td><td>FPS, 프레임 시간, 씬 뷰 크기, 드로우·삼각형·PSO 전환·ResourceSet 전환·메시 전환 수, PSO 캐시 크기</td></tr>
@@ -7683,7 +7690,7 @@ SherlockEditor.exe --scene=test.json --exit-after=60 --dump-objects=1 --screensh
 <tr><td class="mono">Core/ScriptModule.h · .cpp</td><td>스크립트 DLL 하나: 복사본 올리기, 등록 이름 추적·해제, 새 빌드 감지</td></tr>
 <tr><td class="mono">Core/EngineApi.h, App/EntryPoints.h · .cpp</td><td>엔진 DLL 의 내보내기 표시 <code>SHERLOCK_API</code>, 두 실행 파일이 부르는 <code>RunEditor</code> · <code>RunGame</code></td></tr>
 <tr><td class="mono">SherlockEditor/EditorMain.cpp, SherlockGame/GameMain.cpp</td><td>두 실행 파일의 진입점</td></tr>
-<tr><td class="mono">Projects/Sample, Projects/QuaternionLookTest, Projects/CubemapTest</td><td>예제 프로젝트와 실험용 프로젝트</td></tr>
+<tr><td class="mono">Projects/Sample, Projects/QuaternionLookTest, Projects/SherlockTestScenes</td><td>예제 프로젝트와 실험용 프로젝트</td></tr>
 </tbody></table></div>
 
 <h3 id="c17-1">17.1 왜 재생 모드가 필요했나</h3>
@@ -8210,7 +8217,7 @@ SHERLOCK_SCRIPT(PlayerController)</code></pre>
 <tbody>
 <tr><td class="mono">Projects/Sample</td><td><code>Sample.sherlock</code>(시작 씬 <code>demo_components.json</code>, <code>engineRoot</code> 빈 값), <code>Assets/Scenes/</code> 의 <code>demo_components.json</code> · <code>floor_cube.json</code>, <code>Scripts/</code> 의 <code>PlayerController</code> · <code>Rotator</code> · <code>Test</code>(템플릿 그대로)</td><td>생성된 <code>Sample.sln</code> · <code>SampleScripts.vcxproj</code>. 같은 스크립트 프로젝트가 엔진 솔루션에도 들어 있어 엔진과 함께 빌드됨</td></tr>
 <tr><td class="mono">Projects/QuaternionLookTest</td><td><code>.sherlock</code>(시작 씬 <code>quat_roll_local.json</code>, <code>engineRoot</code> 절대 경로), 씬 <code>Main.json</code> · <code>quat_roll_local.json</code> · <code>quat_roll_world.json</code>, <code>Scripts/Rotator</code>(생성 때의 예제), <code>Scripts/Tests/QuaternionLook</code></td><td>생성기가 만든 <code>QuaternionLookTest.sln</code> 의 <code>QuaternionLookTestScripts</code>(2026-10-08 에 형식 1 의 두 exe 프로젝트에서 자동 변환). 산출물은 <code>Binaries\</code></td></tr>
-<tr><td class="mono">Projects/CubemapTest</td><td><code>.sherlock</code>(시작 씬 <code>Main.json</code>), HDR 큐브맵·IBL 환경과 PBR 구·헬멧(<a href="#c12-14">12.14절</a>), <code>Scripts/Rotator</code></td><td><code>CubemapTest.sln</code> 의 <code>CubemapTestScripts</code>(자동 변환)</td></tr>
+<tr><td class="mono">Projects/SherlockTestScenes</td><td><code>.sherlock</code>(시작 씬 <code>Main.json</code>), 검증 씬 모음: <code>Cubemap</code>(HDR 큐브맵·IBL 환경과 PBR 구·헬멧, <a href="#c12-14">12.14절</a>), <code>demo_components</code>, <code>floor_cube</code>, <code>Spawn</code>·<code>Tree</code>(프리팹·Undo), <code>DamagedHelmet</code>, <code>Sponza</code>, <code>NormalBumpShadowMapping</code>(노말 섀도 검증, <a href="#c20-21">20.21절</a>), <code>Scripts/Rotator</code>, <code>Scripts/Tests/Spawner·Lifetime</code>, 프리팹 2개</td><td><code>SherlockTestScenes.sln</code> 의 <code>SherlockTestScenesScripts</code></td></tr>
 </tbody></table></div>
 <p>Sample 은 다른 프로젝트를 찾지 못했을 때 열리는 기본 프로젝트이기도 합니다(<code>AppBase::GetDefaultProjectDir</code>).</p>
 <div class="callout"><div class="t">규칙: 실험용 스크립트는 별도 프로젝트의 Scripts\Tests\ 에</div>
@@ -9175,6 +9182,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <tr><td class="n">10-08</td><td class="mono">c97fe3f</td><td>요청 "큐브맵 추가해줘" → <code>TextureDimension::TextureCube</code>, <code>CommandList::Draw</code>, 정점 속성 0개 PSO, 큐브 로더(DDS·면 6장·절차적), <code>Scene::skybox</code>, 스카이박스 패스</td><td><a href="#c20-14">20.14</a>, <a href="#c12-14">12.14</a></td></tr>
 <tr><td class="n">10-12</td><td>미커밋</td><td>요청 "에디터 창이 작으면 내용물이 잘리는데 자동 정렬되게" → 디버그 패널에 줄바꿈(<code>TextWrapped</code>)·라벨 폭을 뺀 위젯 폭·체크박스/버튼 줄 흐름 적용, 창을 키웠다 줄이면 다시 잘리던 문제는 가로 스크롤바 옵션을 빼서 해결</td><td><a href="#c20-19">20.19</a></td></tr>
 <tr><td class="n">10-15</td><td>미커밋</td><td>요청 "22.6 자잘한 정리 실행" → F10 안내 문구, vcpkg 의 directxtk, ComputeShadowFactor 의 X4000 경고 정리</td><td><a href="#c20-20">20.20</a></td></tr>
+<tr><td class="n">10-28</td><td>미커밋</td><td>요청 "노말맵이 그림자 경계에 영향을 주게" → 노말 섀도(<code>shadowExtra</code>, PerFrame 352바이트), 슬라이더 리셋 R 버튼, 그림자 설정을 씬 JSON 에 저장, 검증 프로젝트를 <code>SherlockTestScenes</code> 로 통합, 노말 섀도 검증 씬</td><td><a href="#c20-21">20.21</a></td></tr>
 </tbody></table></div>
 
 <!-- c20-03.html -->
@@ -10117,6 +10125,18 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
   <li><b>DirectXTK.</b> <code>vcpkg.json</code> 의 <code>directxtk</code> 를 뺐습니다. 소스에서 쓰는 곳이 없었습니다.</li>
   <li><b>X4000.</b> 경고는 런타임 컴파일의 Debug 플래그(<code>D3DCOMPILE_DEBUG | SKIP_OPTIMIZATION</code>)에서만 나왔습니다. <code>fxc /Zi /Od</code> 로 재현했고(<code>(23,5): warning X4000</code>) <code>/O3</code> 와 기본 플래그에서는 나오지 않았습니다. <code>ComputeShadowFactor</code> 를 <code>result</code> 하나를 갱신해 마지막에 반환하는 구조로 바꾸자 두 플래그 모두 경고가 없습니다. 동작은 같습니다(그림자 꺼짐·far 밖이면 1).</li>
   <li><b>검증.</b> Debug|x64 솔루션 빌드 성공. 그림자 화면은 눈으로 비교하지 않았고, 로직은 조건식을 그대로 옮긴 것입니다. Release 빌드와 D3D12 실행은 확인하지 않았습니다.</li>
+</ul>
+
+<h3 id="c20-21">20.21 적용 기록 — 2026-10-28 · 노말 섀도, 그림자 설정의 씬 저장, 리셋 버튼, 검증 씬 프로젝트</h3>
+<p>요청은 "노말맵의 노멀로 그림자 경계가 노말 매핑의 영향을 받게 한 내 연구를 현재 프로젝트에 적용해 달라"였고, 이어서 슬라이더에 값 입력·기본값 리셋, 그림자 설정의 씬 저장, 검증 씬 통합과 테스트 씬이 나왔습니다.</p>
+<ul>
+  <li><b>노말 섀도.</b> <code>ComputeShadowFactor(shadowPosition, normalDelta)</code> 가 <code>normalDelta</code> 를 <code>lightViewProj</code> 로 변환해 그림자 UV 에 더합니다(11.8절).  연구 코드는 그림자 행렬에 NDC→UV 변환이 이미 들어 있어 곱셈이 없었지만, 이 프로젝트의 <code>lightViewProj</code> 는 순수 클립 공간이라 <code>(0.5, −0.5)</code> 를 곱합니다. y 부호가 반대면 그림자가 위아래로 거꾸로 밀립니다.  <code>mul</code> 순서(행벡터 × 행렬)는 두 프로젝트가 같았습니다. 배율 <code>shadowExtra.x</code>(기본 0.3)를 담으려고 <code>PerFrame</code> 끝에 <code>float4 shadowExtra</code> 를 붙여 336 에서 352 바이트가 됐고,  <code>ShaderCompiler::ValidateConstantBufferSize</code> 가 C++ 구조체와 HLSL 을 시작할 때 대조합니다. 고르지 않은 대안: 빈 칸이 없는 <code>shadowParams</code> 를 쪼개 쓰기(의미가 섞임), <code>debugParams.z</code> 재활용(이름과 뜻이 어긋남).</li>
+  <li><b>그림자 설정의 씬 저장.</b> 바이어스·세기·노말 오프셋·직교 크기·거리를 <code>RenderSettings</code> 에서 <code>SceneEnvironment::shadow</code>(<code>Scene/ShadowSettings.h</code>)로 옮겼습니다. 후처리가 환경에 들어간 방식과 같아서  <code>environment.shadow</code> JSON 으로 저장·불러오기·되돌리기(<code>SaveEditState</code>)가 기존 경로로 처리되고, <code>Scene::Clear</code> 가 기본값으로 되돌립니다. 키가 없는 옛 씬 파일은 기본값(60·40·0.0015)입니다.  <code>Renderer::Render</code> 가 맨 앞에서 <code>m_shadowSettings</code> 로 복사해 그림자 행렬과 b0 가 읽습니다. 켜고 끄는 스위치(<code>shadows</code>, F8)는 렌더러 설정에 그대로 둡니다.  이전에는 값이 렌더러에 있어 씬을 열 때마다 직전 슬라이더 값이 남았고, Sponza 처럼 씬 크기에 맞춘 값이 파일에 없었습니다. 고르지 않은 대안: 값을 렌더러에 두고 직렬화 함수가 렌더 설정을 받기(씬 로드가 렌더러 상태를 바꾸고 되돌리기 이력에서 빠짐).</li>
+  <li><b>리셋 R 버튼.</b> <code>DebugUI::SliderFloatR</code>·<code>DragFloatR</code>·<code>DragFloat2R</code>·<code>DragFloat3R</code> 가 위젯 뒤(라벨 옆)에 <code>R</code> 을 그립니다. 값이 기본값이면 흐려지고 마우스를 올리면 기본값이 툴팁으로 나옵니다.  위젯 폭을 R 폭만큼 줄여 라벨과 R 이 원래 라벨 자리에 들어갑니다. 기본값은 <code>RenderSettings</code>·<code>SceneEnvironment</code>·<code>LightData</code>·<code>Material</code> 의 멤버 초기값을 읽어 한 곳에서 관리됩니다.  직접 입력은 ImGui 의 Ctrl+클릭이 이미 지원합니다. 되돌리기는 입력 제스처 단위(<code>UpdateGesture</code>)라 R 클릭도 한 단계로 기록됩니다. 적용 범위는 에디터 내장 패널(카메라·그림자·환경·후처리·조명·재질·Inspector Transform·툴바)이고, 스크립트 속성(<code>PropertyVisitor</code>)은 기본값 인자가 없어 제외했습니다.</li>
+  <li><b>검증 씬 프로젝트.</b> <code>CubemapTest</code>·<code>UndoPrefabTest</code> 를 <code>Projects/SherlockTestScenes</code> 하나로 합치고 두 폴더를 지웠습니다(<code>Sample</code>·<code>QuaternionLookTest</code> 는 유지). 같은 내용인 <code>Main.json</code> 은 하나만 남기고, 다른 것은 <code>Cubemap.json</code> 으로 이름을 바꿨습니다.  <code>Rotator</code> 는 <code>demo_components.json</code> 이 <code>degreesPerSecond</code> 필드를 쓰므로 Sample 의 것을 가져왔습니다. DamagedHelmet·Sponza 는 코드로 만들던 씬을 <code>--scene=helmet|sponza --save=…</code> 로 JSON 으로 저장해 씬 파일로 넣었고,  File 메뉴의 두 항목은 뺐습니다(콘텐츠 브라우저에서 더블클릭). F11 순환과 <code>--scene</code> 은 이 JSON 을 만들 때와 기존 검증 절차가 써서 남겼습니다.</li>
+  <li><b>노말 섀도 검증 씬.</b> <code>NormalBumpShadowMapping.json</code>: 12×6×12 m 방에 4×4 m 천창을 내고, 스카이박스·IBL 을 비우고 앰비언트 0.03, 방향광 하나가 천창으로 들어옵니다(그림자 맵은 방향광 0 에만 만들어지고, 천창이 없으면 천장이 빛을 다 막음).  바닥은 경사가 평균 약 54° 인 달걀판 노말맵(<code>NormalBumpTest.png</code>) 평면이고, 그림자 값은 <code>orthoSize</code> 24·<code>distance</code> 16 으로 씬 파일에 들어 있습니다.</li>
+  <li><b>함정.</b> 사용자가 PCF 를 5×5 로 임시로 바꿔 둔 셰이더가 <code>/ 9.0f</code> 로 나누고 있었습니다(25 로 고쳐 두셨음). 에디터가 켜져 있으면 <code>SherlockEngine.dll</code> 링크가 <code>LNK1168</code> 로 실패합니다. 프로젝트 솔루션 단독 빌드는 <code>SherlockEditor</code> 가 <code>EntryPoints.h</code> 를 못 찾습니다(엔진 솔루션으로 빌드).</li>
+  <li><b>검증.</b> Debug|x64 솔루션 빌드 성공(경고 없음). 노말 강도 0 / 1 로 같은 카메라의 씬 뷰를 비교하면 빛 얼룩의 경계가 매끈한 평행사변형에서 요철을 따르는 들쭉날쭉한 모양으로 바뀝니다. D3D12 에서 <code>cbuffer 'PerFrame' 크기 일치: 352 바이트</code> 와 바인딩 대조가 모두 OK 이고 D3D11 과 화면 픽셀이 같았습니다(평균 차이 0.0).  합친 프로젝트의 씬 8개가 모두 로드되고(<code>Tree.json</code> 의 <code>NoSuchScript</code> 경고는 의도), Sponza 를 불러와 다시 저장한 <code>environment.shadow</code> 가 파일과 같았습니다.  <b>확인하지 못한 것:</b> R 버튼을 실제로 눌러 값이 돌아가는 동작(스크린샷으로 버튼 표시만 확인), Release 빌드, <code>SherlockGame</code> 에서의 그림자 값 로드, <code>docs/*-interview.html</code> 의 코드 조각(옛 <code>m_settings.shadow*</code> 를 그대로 담은 스냅샷).</li>
 </ul>
 
 <!-- c21-01.html -->
@@ -11234,7 +11254,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tr><td>템플릿 부분 특수화</td><td>템플릿 인자가 특정 꼴일 때만 선택되는 별도 정의.</td><td><code>RHI/Handle.h</code> 의 <code>kIsHandle&lt;Handle&lt;Tag&gt;&gt; = true</code></td><td><a href="#c5">5</a></td></tr>
 <tr><td class="mono">constexpr</td><td>컴파일 시점에 계산할 수 <em>있는</em> 변수·함수. 변수에 쓰면 컴파일 시점 상수가 됩니다. <code>inline constexpr</code> 는 헤더에 두어도 정의가 하나로 합쳐집니다.</td><td><code>RHI/GraphicsConfig.h</code> 의 <code>kFrameCount</code>, <code>Graphics/ShaderConstants.h</code> 의 슬롯 번호(<code>kCBSlotPerFrame</code> …), <code>Scene/Camera.cpp</code> 의 <code>kPitchLimit</code></td><td><a href="#c10">10</a></td></tr>
 <tr><td class="mono">consteval</td><td>컴파일 시점에 <em>반드시</em> 계산되는 함수(C++20). 런타임에 부르는 코드는 컴파일되지 않습니다.</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>IsValidConstantBufferSize</code>, <code>Graphics/VertexTypes.h</code> 의 <code>MakeVertexLayoutPCNTT</code></td><td><a href="#c10">10</a></td></tr>
-<tr><td class="mono">static_assert</td><td>컴파일 시점의 assert. 조건이 거짓이면 그 자리에서 빌드가 실패합니다. 일반 <code>assert</code> 는 Debug 빌드의 실행 중에만 검사합니다.</td><td><code>Graphics/ShaderConstants.h</code>(<code>sizeof(PerFrameConstants) == 336</code> 과 <code>offsetof</code> 검사), <code>Scene/Light.h</code>(<code>sizeof(LightData) == 80</code>), <code>RHI/Handle.h</code></td><td><a href="#c10">10</a></td></tr>
+<tr><td class="mono">static_assert</td><td>컴파일 시점의 assert. 조건이 거짓이면 그 자리에서 빌드가 실패합니다. 일반 <code>assert</code> 는 Debug 빌드의 실행 중에만 검사합니다.</td><td><code>Graphics/ShaderConstants.h</code>(<code>sizeof(PerFrameConstants) == 352</code> 과 <code>offsetof</code> 검사), <code>Scene/Light.h</code>(<code>sizeof(LightData) == 80</code>), <code>RHI/Handle.h</code></td><td><a href="#c10">10</a></td></tr>
 <tr><td class="mono">alignas / offsetof</td><td><code>alignas(16)</code> 은 타입의 정렬을 지정하고, <code>offsetof(T, m)</code> 은 멤버의 바이트 위치를 줍니다. 둘 다 C++ 구조체를 HLSL 상수버퍼 배치와 맞추는 데 씁니다.</td><td><code>Scene/Light.h</code> 의 <code>struct alignas(16) LightData</code>, <code>Graphics/VertexTypes.h</code></td><td><a href="#c10">10</a></td></tr>
 <tr><td>지정 초기화</td><td><code>T{ .a = 1, .b = 2 }</code> 처럼 멤버 이름으로 채우는 초기화(C++20). 선언 순서를 지켜야 하고, 적지 않은 멤버는 기본값이 됩니다.</td><td><code>Graphics/Renderer.cpp</code> 의 <code>PipelineStateDesc{ .vs = m_vs, … }</code>, <code>RenderPassDesc</code>, <code>ResourceSetDesc</code></td><td><a href="#c5">5</a></td></tr>
 <tr><td class="mono">std::span&lt;T&gt;</td><td>연속된 원소 구간을 가리키는 비소유 뷰(포인터와 길이, C++20). <code>vector</code>, 배열, 포인터+길이를 같은 인자로 받습니다.</td><td><code>RHI/ShaderCompiler.h</code> 의 <code>std::span&lt;const uint8_t&gt; bytecode</code>, <code>RHI/Device.h</code> 의 <code>CreateTexture(…, std::span&lt;const TextureSubresource&gt;)</code></td><td><a href="#c9">9</a>, <a href="#c10">10</a></td></tr>

@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>다중 광원 그림자 구현 계획</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.step { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+ul.todo { list-style:none; padding-left:4px; } ul.todo > li { margin:7px 0; padding-left:26px; position:relative; } ul.todo > li > input[type=checkbox] { position:absolute; left:0; top:6px; }
+.meta { display:grid; grid-template-columns: 110px 1fr; gap:4px 12px; font-size:14.5px; margin:8px 0 4px; } .meta b { color:var(--ink2); font-weight:600; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } .meta { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>다중 광원 그림자 구현 계획</h1>
+  <p>섀도 아틀라스 · 스팟 · 포인트 · CSM</p>
+  <p>2026-10-29 · 지금은 "방향광 0번 하나"만 그림자를 만듭니다. 이 계획은 그것을 <b>방향광 1개(나중에 CSM) + 스팟·포인트 여러 개</b>가 그림자를 만드는 구조로 바꾸는 구현 순서입니다. 단계마다 손댈 코드 위치, 정해 둔 이름과 시그니처, 확인 방법, 커밋 예시, 그 단계에서 공부할 개념과 참고 자료를 적었습니다. <b>이 문서를 쓴 시점에는 코드를 한 줄도 고치지 않았습니다.</b></p>
+  <p class="foot">기준: 커밋 1be6099 + 작업 트리(2026-10-29). 코드 위치는 "파일 + 함수 이름"이 기준이고, 괄호 안 행 번호는 이 시점의 참고용입니다. 앞 단계를 구현하면 뒤 단계의 행 번호는 밀립니다. 기존 분석 문서(<code>rendering-analysis.html</code>)는 고치지 않았습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~3장은 "왜 이렇게 하는가", 4장은 단계별 작업, 5~8장은 함정·검증·파일 목록, 9~10장은 공부할 개념과 참고 문서입니다. 4장의 각 단계는 <b>목표 → 파일 → 인터페이스 → 작업 체크리스트 → 확인 → 커밋 → 공부할 개념 → 참고</b> 순서로 같은 모양입니다. 체크박스는 표시용이며 저장되지 않습니다.</div>
+</header>
+<nav><a href="#now">1. 현재 구조</a><a href="#design">2. 목표 구조</a><a href="#decisions">3. 설계 결정</a><a href="#steps">4. 구현 순서</a><a href="#s0">단계 0</a><a href="#s1">1</a><a href="#s2">2</a><a href="#s3">3</a><a href="#s4">4</a><a href="#s5">5</a><a href="#s6">6</a><a href="#s7">7</a><a href="#s8">8</a><a href="#pitfalls">5. 함정</a><a href="#focus">6. 놓치기 쉬운 입력</a><a href="#verify">7. 검증 방법</a><a href="#files">8. 파일 목록</a><a href="#study">9. 공부할 개념</a><a href="#refs">10. 참고 문서</a></nav>
+
+<section id="now">
+<h2>1. 현재 구조 (코드에서 확인한 사실)</h2>
+<div class="box warn"><b>그림자가 하나뿐인 이유.</b> 원인은 셰이딩 방식(포워드냐 디퍼드냐)이 아니라 그림자 데이터가 하나뿐이라는 데 있습니다. 섀도 맵 1장, 행렬 1개(b0의 <code>lightViewProj</code>), 정점 셰이더가 만드는 그림자 좌표 1개(<code>shadowPosition</code>), 픽셀 셰이더의 <code>i == 0</code> 조건이 모두 "광원 0"을 전제로 합니다. 이 넷을 "조명마다 뷰 여러 개"로 바꾸는 것이 이번 작업 전체입니다.</div>
+<table>
+<tr><th>항목</th><th>지금</th><th>위치</th></tr>
+<tr><td>섀도 맵</td><td>2048² <code>D32_FLOAT</code> 1장(DSV + SRV). 비교 샘플러는 <code>Border = 1</code>이라 맵 밖은 빛을 받음</td><td><code>Graphics/Renderer.cpp</code> <code>Renderer::CreateShadowResources</code> (약 360행), <code>Renderer.h</code> <code>kShadowMapSize</code> (약 70행)</td></tr>
+<tr><td>그림자를 만드는 조명</td><td><code>sceneLights[0]</code>이 방향광일 때만</td><td><code>Renderer::Render</code> (약 1007~1013행)</td></tr>
+<tr><td>광원 행렬</td><td>씬 중심 <code>(0, 2, 0)</code> 고정. 빛 반대쪽으로 <code>distance</code>만큼 물러난 눈에서 <code>orthoSize</code> 직교 투영</td><td><code>Renderer::ComputeLightViewProj</code> (약 961행)</td></tr>
+<tr><td>행렬 전달</td><td>b0 <code>PerFrame.lightViewProj</code> (오프셋 192, b0 전체 352B)</td><td><code>Graphics/ShaderConstants.h</code> (약 62행, 136~144행 static_assert), <code>Shaders/Common.hlsli</code> (약 47행), <code>Renderer::UploadPerFrameConstants</code> (약 1389행)</td></tr>
+<tr><td>그림자 좌표</td><td>VS가 <code>shadowPosition</code>(TEXCOORD2)을 계산해 PS로 넘김</td><td><code>Shaders/BasicVertexShader.hlsl</code> (약 20행), <code>Common.hlsli</code> <code>VSOutput</code> (약 137행)</td></tr>
+<tr><td>그림자 패스 VS</td><td><code>mul(worldPosition, lightViewProj)</code></td><td><code>Shaders/ShadowVertexShader.hlsl</code> (약 14행)</td></tr>
+<tr><td>PCF</td><td><code>ComputeShadowFactor</code>: 5×5 <code>SampleCmpLevelZero</code> + 노말맵 UV 오프셋(<code>shadowExtra.x</code>)</td><td><code>Shaders/BasicPixelShader.hlsl</code> (약 20~52행)</td></tr>
+<tr><td>적용</td><td>조명 루프 <b>전에</b> 한 번 계산하고, 루프 안에서는 <code>i == 0</code>인 방향광에만 곱함</td><td><code>BasicPixelShader.hlsl</code> (약 168행, 195행)</td></tr>
+<tr><td>그림자 패스</td><td>렌더 패스 하나. 뷰포트 = attachment 크기. 모든 DrawItem(unlit 제외)을 그림</td><td><code>Renderer::RenderShadowPass</code> (약 1146행)</td></tr>
+<tr><td>그림자 PSO</td><td>레이아웃 {frame, object}, VS만, <code>depthBias 2000 / slope 2.0 / clamp 0.01</code></td><td><code>Renderer::Initialize</code> <code>m_shadowDesc</code> (약 190행)</td></tr>
+<tr><td><code>LightData</code></td><td>80B. 마지막 16B는 <code>outerConeCos</code> + <code>float3 padding</code></td><td><code>Scene/Light.h</code> (약 38~39행), <code>Common.hlsli</code> (약 37~38행)</td></tr>
+<tr><td>그림자 설정</td><td><code>ShadowSettings {bias, strength, normalOffset, orthoSize, distance}</code>. 씬 JSON <code>environment.shadow</code>에 저장</td><td><code>Scene/ShadowSettings.h</code>, <code>Scene/SceneSerializer.cpp</code> (저장 약 431행, 읽기 약 459행)</td></tr>
+<tr><td>조명 저장</td><td><code>LightToJson</code> / <code>LightFromJson</code></td><td><code>SceneSerializer.cpp</code> (약 141~169행)</td></tr>
+<tr><td>되돌리기</td><td><code>EditorHistory</code>가 <code>SceneSerializer::SaveEditState</code>(씬 JSON)로 상태를 찍음. <code>LightToJson</code>에 넣은 필드는 자동으로 되돌리기 대상</td><td><code>App/EditorHistory.cpp</code> (약 15, 25, 33행), <code>SceneSerializer.cpp</code> (약 705행)</td></tr>
+<tr><td>에디터 UI</td><td>Shadow 패널(체크박스 "Shadows (light 0, directional)", 슬라이더, 2048 맵 미리보기), Lights 패널, 디버그 뷰 콤보(0~7), 통계 줄</td><td><code>App/DebugUI.cpp</code> <code>DrawShadowPanel</code> (약 201행), <code>DrawLightPanel</code> (약 368행), <code>App/Editor.cpp</code> (약 1544행 콤보, 1559행 통계), <code>DebugUI.cpp</code> (약 194행 통계)</td></tr>
+</table>
+
+<h3>RHI에 대해 확인한 것</h3>
+<table>
+<tr><th>사실</th><th>이번 작업에 주는 영향</th><th>위치</th></tr>
+<tr><td>뷰포트는 <code>RenderPassDesc.viewport</code>에만 있고 <code>CommandList::SetViewport</code>는 없음</td><td>패스 하나 안에서 타일마다 뷰포트를 바꾸려면 추가해야 함 (단계 1)</td><td><code>RHI/CommandList.h</code>, <code>RHI/RenderPassTypes.h</code> (약 46~63행)</td></tr>
+<tr><td>D3D11 <code>BeginRenderPass</code>는 (5)에서 <code>RSSetViewports</code>. D3D12는 뷰포트와 같은 크기의 시저도 설정</td><td><code>SetViewport</code>도 D3D12에서는 시저를 같이 바꿔야 함</td><td><code>RHI/D3D11/D3D11CommandList.cpp</code> (약 87~95행), <code>RHI/D3D12/D3D12CommandList.cpp</code> (약 93~108행)</td></tr>
+<tr><td>2D 텍스처 배열 없음(<code>GetArraySize</code>는 큐브 6, 그 밖 1). 큐브는 SRV 전용</td><td>RHI로는 텍스처 배열이나 큐브 DSV를 만들 수 없으므로(API는 지원함) 아틀라스(큰 2D 1장)로 감</td><td><code>RHI/ResourceDesc.h</code> (약 72행), <code>RHI/Device.h</code> (약 81행)</td></tr>
+<tr><td><b><code>kMaxBindingSets = 4</code>. D3D12 <code>SetResourceSet</code>은 레이아웃별 슬롯을 <code>m_setCount</code>까지만 추가하고, 넘치면 아무 말 없이 무시함. <code>BeginFrame</code>은 <code>m_setCount</code>를 비우지 않음</b></td><td>frame·object·material·post 레이아웃이 이미 4칸을 채움. <b>새 BindingLayout을 만들면 D3D12에서만 조용히 깨짐</b> → 새 상수버퍼는 기존 프레임 레이아웃에 넣음 (결정 D3)</td><td><code>RHI/PipelineTypes.h</code> (약 166행), <code>D3D12CommandList::SetResourceSet</code> (약 144~166행), <code>BeginFrame</code> (약 23~32행)</td></tr>
+<tr><td>D3D12 <code>ApplyBindings</code>는 PSO 루트 시그니처에 있는 Dynamic CB가 <b>이번 프레임에 갱신되지 않았으면</b> 경고함. 루트 CBV는 드로우마다 그 버퍼의 최신 주소로 다시 바인딩함</td><td>새 CB(b5, b6)는 그림자가 꺼져 있어도 <b>매 프레임 한 번은</b> 올려야 함. 대신 드로우 사이에 b5를 다시 올리면 다음 드로우가 새 값을 씀 → 타일마다 행렬 교체 가능</td><td><code>D3D12CommandList::ApplyBindings</code> (약 203~256행)</td></tr>
+<tr><td>CBV 레지스터 상한 8 (b0~b7). 지금 b0~b4 사용</td><td>b5, b6을 새로 쓸 수 있음</td><td><code>RHI/BindingTypes.h</code> (약 36행)</td></tr>
+<tr><td>D3D12 업로드 링: 프레임 슬롯마다 8MB, 256B 정렬</td><td>프레임당 CB 업로드 약 32,768회까지. 그림자 뷰 16개 × 드로우 수 + 메인 패스가 이 안에 들어와야 함 (단계 6에서 컬링)</td><td><code>RHI/D3D12/D3D12Device.h</code> (약 29행), <code>D3D12Device::AllocateUpload</code> (약 387행)</td></tr>
+<tr><td>D3D11 <code>BeginRenderPass</code>는 attachment로 쓸 텍스처가 SRV 슬롯에 남아 있으면 먼저 풂. <code>DrawItems</code>는 패스마다 프레임 셋을 다시 바인딩함</td><td>아틀라스도 지금 섀도 맵처럼 "DSV로 쓰고 SRV로 읽기"가 그대로 동작함. 이 재바인딩을 지우면 안 됨</td><td><code>D3D11CommandList::BeginRenderPass</code> (약 38~40행), <code>Renderer::DrawItems</code> (약 1316~1318행)</td></tr>
+</table>
+</section>
+
+<section id="design">
+<h2>2. 목표 구조</h2>
+<h3>2.1 한 프레임의 흐름</h3>
+<pre><code>Renderer::Render()
+ ├ m_shadowSettings = scene.environment.shadow
+ ├ LightConstants lights = (지금처럼 복사 + 방향 정규화)
+ ├ BuildShadowViews(camera, lights)   ← 새 함수. 조명마다 shadowIndex 를 정하고 그림자 뷰(최대 16개)를 만듦
+ ├ UploadShadowConstants()            ← 새 함수. b6 Shadows(PS) 를 올리고, b5 ShadowPass(VS) 를 단위 행렬로 한 번 올림
+ ├ ResolveEnvironment / UploadPerFrameConstants   ← b0 에서 lightViewProj 가 빠짐
+ ├ UpdateBuffer(b2 Lights)            ← LightData.shadowIndex 가 채워진 사본
+ ├ BuildDrawList / UpdateFrameSet     ← 프레임 셋에 b5, b6 이 추가됨
+ ├ ShadowPass   : 아틀라스 Clear → 뷰마다 { SetViewport(타일), b5 = 그 뷰의 행렬, 드로우 }
+ ├ MainPass     : PS 의 조명 루프가 ShadowForLight(light) → b6 의 뷰 → 아틀라스 샘플
+ └ 후처리 · 톤 · 미리보기 · UI (그대로)</code></pre>
+
+<h3>2.2 섀도 아틀라스 배치 (4096² D32_FLOAT, 64 MB)</h3>
+<pre><code>          0        1024       2048       3072       4096  (픽셀)
+     0    ┌────────────────────┬──────────┬──────────┐
+          │                    │  타일 0  │  타일 1  │
+  1024    │  방향광 영역       ├──────────┼──────────┤
+          │  2048 × 2048       │  타일 2  │  타일 3  │
+  2048    ├──────────┬─────────┼──────────┼──────────┤
+          │  타일 4  │  타일 5 │  타일 8  │  타일 9  │
+  3072    ├──────────┼─────────┼──────────┼──────────┤
+          │  타일 6  │  타일 7 │  타일 10 │  타일 11 │
+  4096    └──────────┴─────────┴──────────┴──────────┘
+
+방향광 영역: CSM 끔 → 2048 뷰 1개 (지금 섀도 맵과 같은 해상도)
+             CSM 켬 → 1024 뷰 2~4개 (영역을 2×2 로 나눔)
+지역광 타일: 1024 × 12개.  스팟 = 1타일, 포인트 = 연속 6타일
+뷰 수 상한:  방향광 4 + 타일 12 = 16 = MAX_SHADOW_VIEWS</code></pre>
+<p>방향광 영역을 지금 섀도 맵과 같은 2048²로 둔 이유는 단계 4에서 "아틀라스로 옮겨도 방향광 그림자가 지금과 같은가"를 스크린샷으로 비교하기 위해서입니다. CSM을 켜면 같은 영역을 1024 네 칸으로 나눕니다.</p>
+
+<h3>2.3 새로 생기는 GPU 데이터</h3>
+<table>
+<tr><th>이름</th><th>레지스터 · 스테이지</th><th>내용</th><th>올리는 시점</th></tr>
+<tr><td><code>ShadowPass</code></td><td>b5 · VS (프레임 레이아웃)</td><td><code>matrix shadowViewProj</code> 하나 (64B)</td><td>매 프레임 단위 행렬로 1회 + 그림자 패스에서 뷰마다</td></tr>
+<tr><td><code>Shadows</code></td><td>b6 · PS (프레임 레이아웃)</td><td>뷰 16개(행렬, 아틀라스 사각형, 파라미터) + 캐스케이드 정보 + 아틀라스 파라미터 (1600B)</td><td>매 프레임 1회</td></tr>
+<tr><td><code>LightData.castShadows</code></td><td>b2 (기존)</td><td>사용자 설정. 씬 JSON에 저장</td><td>지금처럼</td></tr>
+<tr><td><code>LightData.shadowIndex</code></td><td>b2 (기존)</td><td>Renderer가 매 프레임 GPU 사본에 채움. 첫 뷰 번호, -1이면 그림자 없음. 저장하지 않음</td><td>지금처럼</td></tr>
+</table>
+</section>
+
+<section id="decisions">
+<h2>3. 설계 결정</h2>
+<p>아래는 이 계획이 미리 정해 둔 것들입니다. 구현하다가 바꾸고 싶어지면 이 표의 "이유"를 먼저 보고 결정하면 됩니다.</p>
+<table>
+<tr><th>#</th><th>결정</th><th>이유</th><th>고르지 않은 대안</th></tr>
+<tr><td>D1</td><td><b>섀도 아틀라스</b> (큰 2D 깊이 텍스처 1장을 타일로 나눔)</td><td>D3D11·D3D12 API는 깊이 텍스처 배열(장 단위 DSV, <code>Texture2DArray</code> SRV, <code>TextureCubeArray</code>)을 모두 지원하지만 <b>우리 RHI</b>에는 아직 2D 배열·큐브 DSV가 없음. 또 여러 종류의 조명을 섞는 상용 엔진(Unity URP, Godot, UE4)도 그림자마다 해상도를 다르게 줄 수 있는 아틀라스를 많이 씀(배열은 CSM만 따로 구현할 때 흔함). 아틀라스는 뷰포트만 바꾸면 되고, PS도 텍스처 하나(t8)·샘플러 하나(s4)를 그대로 씀. MS의 CSM 문서도 D3D10 시절 PCF 제약 때문에 같은 방식("one large buffer + viewport per cascade")을 씀</td><td><code>Texture2DArray</code> + 슬라이스별 DSV, 큐브 섀도 맵: ResourceDesc·뷰 생성·디스크립터를 양쪽 백엔드에서 손봐야 해서 이번 범위를 넘음</td></tr>
+<tr><td>D2</td><td><b><code>CommandList::SetViewport</code> 추가</b> (사용자 선택)</td><td>그림자 패스를 1개로 유지. D3D12의 <code>RSSetViewports</code>/<code>RSSetScissorRects</code>와 1:1로 대응해 RHI 목표에 맞음</td><td>타일마다 렌더 패스: RHI는 그대로지만 패스·통계가 늘고 Load/Clear 관리가 번거로움</td></tr>
+<tr><td>D3</td><td><b>b5·b6을 기존 프레임 레이아웃에 추가</b>. 그림자 PSO는 지금처럼 {frame, object}</td><td>D3D12 커맨드 리스트가 기억하는 셋이 이미 4개로 가득 차 있음(1장 표). 새 레이아웃은 D3D12에서만 조용히 빠짐</td><td>새 <code>Layout_ShadowPass</code>: 위 이유로 탈락. 커맨드 리스트의 셋 용량을 PSO 상한과 분리하는 RHI 개선은 따로 할 일로 남김</td></tr>
+<tr><td>D4</td><td><b>그림자 좌표를 PS에서 계산</b>. <code>VSOutput.shadowPosition</code>과 b0 <code>lightViewProj</code> 삭제</td><td>조명마다 쓰는 뷰가 다르고(포인트는 면, CSM은 캐스케이드까지 PS에서 고름) VS 출력 하나로는 표현할 수 없음</td><td>VS에서 뷰 N개 좌표를 전부 출력: 보간기 슬롯이 모자라고 대부분 버려짐</td></tr>
+<tr><td>D5</td><td><b><code>LightData</code>의 padding 자리에 <code>castShadows</code>, <code>shadowIndex</code></b>. 80B 유지</td><td>상수버퍼 레이아웃과 <code>static_assert</code>가 그대로임. GPU 사본에 Renderer가 값을 써 넣는 것은 지금 방향 정규화(<code>Render</code> 약 1027~1039행)와 같은 방식</td><td>별도 배열 <code>int shadowIndex[8]</code>: cbuffer 배열은 원소마다 16B라 128B를 씀</td></tr>
+<tr><td>D6</td><td><b>타일 크기 고정</b>: 지역광 1024, 방향광 영역 2048</td><td>할당이 "다음 빈 타일 번호"로 끝남. 디버그·검증이 쉬움</td><td>크기가 다른 타일과 거리별 해상도: 나중 개선 거리</td></tr>
+<tr><td>D7</td><td><b>바이어스</b>: 직교 뷰(방향광·캐스케이드)는 지금의 NDC 깊이 바이어스. 원근 뷰(스팟·포인트)는 NDC 바이어스 0 + <b>노멀 방향 월드 오프셋</b>(텍셀 크기 × 배율)</td><td>원근 투영의 깊이는 비선형이라 고정 NDC 바이어스가 거리마다 다른 월드 거리가 됨. 노멀 오프셋은 텍셀의 월드 크기에 비례해 거리와 무관하게 일정함</td><td>원근 뷰 전용 PSO(래스터 바이어스 별도): 단계 5에서 여드름이 남으면 추가 (함정 5)</td></tr>
+<tr><td>D8</td><td><b>포인트 = 6타일</b>, 시야각은 90°보다 조금 넓게(PCF 여백만큼)</td><td>큐브 DSV가 없음. 면 경계에서 PCF 커널이 타일 밖을 읽지 않으면서도 인접 면과 빈틈이 없게 함</td><td>Dual-paraboloid: 2타일이지만 정점이 성기면 왜곡이 큼</td></tr>
+<tr><td>D9</td><td><b>CSM</b>: 캐스케이드 2~4개, practical split(λ), 경계 구(sphere)로 맞춘 직교 투영, 텍셀 스냅. 메인 카메라 기준으로 한 번 계산하고 미리보기 패스도 같은 것을 씀</td><td>회전해도 투영 크기가 변하지 않고(구), 이동해도 텍셀 단위로만 움직여(스냅) 가장자리가 반짝이지 않음</td><td>절두체 AABB에 꼭 맞춤(fit to cascade): 해상도는 아끼지만 카메라가 돌 때 흔들림</td></tr>
+<tr><td>D10</td><td><b>할당 규칙</b>: 조명 번호 순서. 방향광은 <code>castShadows</code>인 첫 번째 하나만. 스팟·포인트는 남은 타일이 있을 때만. 넘치면 그 조명은 그림자 없음 + UI에 "skipped N"</td><td>결과가 예측 가능하고 매 프레임 다시 계산하므로 편집(타입 변경·삭제)에 상태가 남지 않음</td><td>중요도(거리·밝기) 순 할당: 나중 개선 거리</td></tr>
+</table>
+<div class="box warn"><b>동작이 바뀌는 점 하나.</b> 지금은 "광원 0이 방향광일 때만" 그림자가 생깁니다. 바꾼 뒤에는 "<code>castShadows</code>인 첫 방향광"입니다. 광원 0이 점광이고 광원 2가 방향광인 씬은 지금은 그림자가 없지만, 바꾼 뒤에는 생깁니다. 옛 씬 파일에는 <code>castShadows</code> 키가 없으므로 읽을 때 "방향광이면 1, 아니면 0"으로 채웁니다(단계 2).</div>
+</section>
+
+<section id="steps">
+<h2>4. 구현 순서</h2>
+<p>원칙은 <b>"새 기능이 들어가기 전까지는 화면이 지금과 같다"</b>입니다. 단계 1~4는 구조만 바꾸고 방향광 그림자는 그대로 두므로 기준 스크린샷과 비교해 회귀를 잡습니다. 단계 5부터 새 그림자가 보이기 시작합니다. 단계마다 빌드 → D3D11·D3D12 실행 → 로그 확인 → 스크린샷 비교 → 커밋 순서로 끝냅니다.</p>
+<table>
+<tr><th>단계</th><th>하는 일</th><th>끝났을 때 화면</th><th>규모</th></tr>
+<tr><td><a href="#s0">0</a></td><td>준비: 기준 스크린샷, 테스트 씬 <code>MultiShadow.json</code>, 비교 스크립트</td><td>변화 없음</td><td>작음</td></tr>
+<tr><td><a href="#s1">1</a></td><td>RHI <code>CommandList::SetViewport</code> (D3D11·D3D12), D3D12 셋 슬롯 초과 경고</td><td>기준과 <b>픽셀 단위로 같음</b></td><td>작음</td></tr>
+<tr><td><a href="#s2">2</a></td><td><code>LightData.castShadows / shadowIndex</code>, 저장·읽기, Lights 패널 체크박스</td><td>기준과 같음. 체크를 끄면 방향광 그림자가 사라짐</td><td>작음</td></tr>
+<tr><td><a href="#s3">3</a></td><td>그림자 데이터 경로 교체: b5·b6, PS에서 그림자 좌표 계산, <code>BuildShadowViews</code>. 맵은 아직 2048 한 장</td><td>기준과 <b>거의 같음</b> (그림자 경계·맵 가장자리에서 1~2 단계 차이 허용)</td><td>큼</td></tr>
+<tr><td><a href="#s4">4</a></td><td>4096 아틀라스 + 영역 배치 + 타일 경계 처리 + 아틀라스 뷰어</td><td>단계 3과 거의 같음</td><td>중간</td></tr>
+<tr><td><a href="#s5">5</a></td><td>스팟 그림자 (원근 1타일, 노멀 오프셋)</td><td><b>스팟 그림자가 보임</b></td><td>중간</td></tr>
+<tr><td><a href="#s6">6</a></td><td>포인트 그림자 (6타일, 면 선택) + 지역광 컬링</td><td><b>점광 그림자가 사방으로 보임</b></td><td>중간</td></tr>
+<tr><td><a href="#s7">7</a></td><td>CSM (방향광 영역 2×2, 캐스케이드 선택, 디버그 뷰 8)</td><td><b>가까운 그림자가 선명해짐</b></td><td>큼</td></tr>
+<tr><td><a href="#s8">8</a></td><td>마무리: 전체 회귀, 게임 모드, 문서</td><td>-</td><td>작음</td></tr>
+</table>
+<div class="box"><b>"테스트"에 대해.</b> 이 저장소에는 C++ 단위 테스트 틀이 없습니다. 그래서 각 단계의 "실패하는 테스트 → 통과" 자리는 다음 세 가지 확인으로 대신합니다. ① Debug 빌드 로그의 <code>바인딩 대조 … OK</code> 줄과 cbuffer 크기 검사(<code>Renderer::LoadShaders</code>의 <code>ValidateConstantBufferSize</code>) ② 자동 검증 인자(<code>--scene= --backend= --exit-after= --screenshot= --debug-view=</code>)로 찍은 스크린샷 비교(7장 스크립트) ③ 로그에 D3D12 경고(<code>Dynamic 상수버퍼가 이번 프레임에 갱신되지 않음</code>, <code>업로드 링이 가득 참</code>, 배리어 불일치)가 없는지. 새 cbuffer를 추가할 때는 <b>먼저 HLSL만 바꾸고 C++ 크기를 틀리게 둔 채 실행해 크기 검사가 실패하는 것</b>을 한 번 보고, 그다음 C++를 맞추면 "실패 → 통과"를 직접 확인할 수 있습니다.</div>
+</section>
+
+<section id="s0">
+<h2><span class="step">0</span>준비: 기준 스크린샷과 테스트 씬</h2>
+<div class="meta"><b>목표</b><span>바꾸기 전 화면을 파일로 남기고, 조명 여러 개가 있는 검증 씬을 만든다.</span>
+<b>파일</b><span>새로 만듦: <code>Projects/SherlockTestScenes/Assets/Scenes/MultiShadow.json</code> (에디터에서 저장). 비교 스크립트는 저장소 밖에 둠(7장)</span></div>
+<ul class="todo">
+<li><input type="checkbox"> 솔루션 전체를 Debug x64로 빌드합니다. 프로젝트 하나만 빌드하면 <code>SherlockEditor</code>가 <code>EntryPoints.h</code>를 못 찾으므로 <b>반드시 솔루션</b>으로 빌드합니다.
+<pre><code>msbuild SherlockEngine.sln /p:Configuration=Debug /p:Platform=x64 /m</code></pre></li>
+<li><input type="checkbox"> 기준 스크린샷을 찍습니다(저장소 루트에서, 7장의 명령 그대로). 씬 × 백엔드 × 디버그 뷰:
+<table>
+<tr><th>파일 이름</th><th>씬</th><th>백엔드</th><th>디버그 뷰</th></tr>
+<tr><td><code>base-nbsm-d3d11.png</code></td><td>NormalBumpShadowMapping.json</td><td>d3d11</td><td>0 (조명)</td></tr>
+<tr><td><code>base-nbsm-d3d12.png</code></td><td>NormalBumpShadowMapping.json</td><td>d3d12</td><td>0</td></tr>
+<tr><td><code>base-nbsm-shadow-d3d11.png</code></td><td>NormalBumpShadowMapping.json</td><td>d3d11</td><td>4 (그림자 계수)</td></tr>
+<tr><td><code>base-sponza-d3d11.png</code></td><td>Sponza.json</td><td>d3d11</td><td>0</td></tr>
+<tr><td><code>base-sponza-d3d12.png</code></td><td>Sponza.json</td><td>d3d12</td><td>0</td></tr>
+</table>
+디버그 뷰 4는 "그림자만" 보여 주므로 회귀를 가장 민감하게 잡습니다.</li>
+<li><input type="checkbox"> 같은 명령을 한 번 더 실행해 <b>같은 설정끼리의 차이가 0</b>인지 확인합니다(7장 스크립트). 0이 아니면 그 씬은 프레임마다 달라지는 요소(애니메이션 스크립트 등)가 있다는 뜻이니 비교 대상에서 빼거나 <code>--exit-after</code>를 고정합니다.</li>
+<li><input type="checkbox"> 테스트 씬 <code>MultiShadow.json</code> (<b>2026-10-29에 이미 만들어 둠</b>: <code>NormalBumpShadowMapping.json</code> 사본에 아래 조명 4개와, 그림자를 만들 상자 3개 <code>Box Center</code>·<code>Pillar</code>·<code>Box Low</code>를 추가. 세기는 방향광 1.3, 스팟 2.0×2, 점광 1.2로 바닥이 하얗게 날아가지 않게 맞춤). 직접 만들 때는 에디터에서 <code>NormalBumpShadowMapping.json</code>을 열고 <b>Save As</b> 한 뒤 Lights 패널에서 조명을 추가합니다.
+<ul>
+<li>광원 0: 기존 방향광 그대로</li>
+<li>광원 1: <b>스팟</b>. "Add point light" 후 Type을 Spot으로. 물체 위 4~6m, 방향은 아래쪽 비스듬히, Outer cone 30~40°, Range 20 (만들어 둔 값: 위치 (3.5, 4.5, 3.5), 바깥 원뿔 35°)</li>
+<li>광원 2: <b>스팟</b> 하나 더. 다른 방향에서 같은 물체를 비춤(그림자 두 개가 겹치는지 보기 위함) (위치 (−3.5, 4.5, 3.5))</li>
+<li>광원 3: <b>포인트</b>. 물체들 사이, 높이 1.5~2m, Range 10~15 (위치 (−1, 2, −2.5), Range 12)</li>
+</ul>
+지금은 이 조명들이 빛만 더하고 그림자는 만들지 않습니다. 이 상태로 <code>base-multi-d3d11.png</code>를 찍어 둡니다.</li>
+</ul>
+<h4>확인</h4>
+<p>기준 PNG 6장이 있고, 같은 명령을 두 번 돌린 결과의 차이가 0입니다.</p>
+<h4>커밋</h4>
+<pre><code>git add Projects/SherlockTestScenes/Assets/Scenes/MultiShadow.json
+git commit -m "chore(test): 다중 광원 그림자 검증 씬 MultiShadow.json 추가 (방향광 1·스팟 2·포인트 1) [2026/10/29]"</code></pre>
+</section>
+
+<section id="s1">
+<h2><span class="step">1</span>RHI: <code>CommandList::SetViewport</code></h2>
+<div class="meta"><b>목표</b><span>렌더 패스 안에서 뷰포트(와 D3D12 시저)를 바꿀 수 있게 한다. 덤으로 D3D12의 "셋 슬롯 초과를 조용히 무시"를 경고로 바꾼다.</span>
+<b>파일</b><span>수정: <code>RHI/CommandList.h</code>, <code>RHI/D3D11/D3D11CommandList.h/.cpp</code>, <code>RHI/D3D12/D3D12CommandList.h/.cpp</code>. 확인용 임시 수정: <code>Graphics/Renderer.cpp</code> <code>RenderShadowPass</code></span>
+<b>만드는 것</b><span><code>virtual void RHI::CommandList::SetViewport(const Viewport&amp; viewport) = 0;</code> (뒤 단계의 <code>RenderShadowPass</code>가 씀)</span></div>
+<ul class="todo">
+<li><input type="checkbox"> <code>RHI/CommandList.h</code>의 "렌더 패스" 묶음, <code>IsInRenderPass</code> 아래에 선언을 추가합니다. 주석에 규칙 세 가지를 적습니다. ① 패스 안에서만 유효(밖이면 에러 로그 1회 후 무시) ② <code>width/height</code>가 0이면 이 패스의 첫 attachment 크기 ③ D3D12는 시저도 같은 사각형으로 바뀜. <code>Viewport</code>는 <code>RenderPassTypes.h</code>의 것을 그대로 씁니다.</li>
+<li><input type="checkbox"> D3D11: <code>D3D11CommandList</code>에 멤버 <code>uint32_t m_passWidth = 0, m_passHeight = 0;</code>와 private <code>void ApplyViewport(const Viewport&amp; viewport);</code>를 추가합니다. <code>BeginRenderPass</code>의 (2)에서 구한 <code>width/height</code>를 멤버에 저장하고, (5)의 뷰포트 코드(약 87~95행)를 <code>ApplyViewport(desc.viewport)</code>로 옮깁니다. <code>SetViewport</code>는 <code>m_inPass</code> 검사 → <code>ApplyViewport</code>.</li>
+<li><input type="checkbox"> D3D12: 같은 모양으로 <code>m_passWidth/m_passHeight</code> + <code>ApplyViewport</code>. (5)의 뷰포트·시저 코드(약 93~108행)를 그대로 옮깁니다. 시저는 반드시 뷰포트와 같은 사각형으로 같이 설정합니다.</li>
+<li><input type="checkbox"> D3D12 <code>SetResourceSet</code>(약 162~165행)의 <code>if (m_setCount &lt; kMaxBindingSets)</code>에 <code>else</code>를 달아 <code>ErrorOnce(warnedFull, "SetResourceSet : 커맨드 리스트의 셋 슬롯(kMaxBindingSets)이 가득 참. 이 셋은 바인딩되지 않음.")</code>을 남깁니다. 지금은 절대 불리지 않아야 정상이고, 나중에 누가 다섯 번째 레이아웃을 만들면 바로 드러납니다.</li>
+<li><input type="checkbox"> 확인용: <code>Renderer::RenderShadowPass</code>의 <code>cmd.BeginRenderPass(pass);</code> 바로 뒤에 <code>cmd.SetViewport(Viewport{});</code>를 넣습니다(전체 크기 = 지금과 같음). 단계 3에서 진짜 호출로 바뀌므로 지워도 되고 그대로 둬도 됩니다.</li>
+</ul>
+<h4>확인</h4>
+<ul>
+<li>빌드 성공. 두 백엔드 모두 순수 가상 함수 미구현 오류가 없어야 합니다.</li>
+<li>NormalBumpShadowMapping·Sponza를 D3D11·D3D12로 찍어 기준과 비교 → <b>차이 0</b>(같은 뷰포트를 한 번 더 설정했을 뿐).</li>
+<li>로그에 <code>SetResourceSet : … 가득 참</code>이 <b>없어야</b> 합니다.</li>
+</ul>
+<h4>커밋</h4>
+<pre><code>git commit -am "feat(rhi): CommandList::SetViewport 추가 (D3D11 RSSetViewports, D3D12 뷰포트+시저), D3D12 셋 슬롯 초과 경고 [2026/10/29]"</code></pre>
+<h4>공부할 개념</h4>
+<ul>
+<li><b>뷰포트 변환</b>: NDC(x, y ∈ [−1, 1]) → 픽셀 좌표. 뷰포트의 <code>TopLeftX/Y, Width, Height</code>가 그 사상의 오프셋·배율이라, 뷰포트만 바꾸면 같은 행렬로 텍스처의 다른 구역에 그려진다는 것이 아틀라스의 원리입니다.</li>
+<li><b>시저 테스트</b>와 D3D12에서 시저가 필수인 이유(설정하지 않으면 아무것도 그려지지 않음). 뷰포트 밖 픽셀이 다른 타일을 침범하지 않는지.</li>
+<li><b>동적 상태 vs PSO 상태</b>: 뷰포트·시저는 PSO 밖 상태라 패스 안에서 바꿔도 PSO를 다시 만들 필요가 없음.</li>
+</ul>
+<h4>참고</h4>
+<ul>
+<li>Luna DX12 4장 "Direct3D 초기화"의 뷰포트·시저 절, Luna DX11 4장의 뷰포트 절 (10장 표 L12-1, L11-1)</li>
+<li>MS Learn <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-rssetscissorrects">ID3D12GraphicsCommandList::RSSetScissorRects</a></li>
+</ul>
+</section>
+
+<section id="s2">
+<h2><span class="step">2</span>조명 데이터: <code>castShadows</code>, <code>shadowIndex</code></h2>
+<div class="meta"><b>목표</b><span>조명마다 "그림자를 만드는가"를 저장·편집할 수 있게 하고, GPU 사본에 "몇 번 뷰를 쓰는가"를 담을 자리를 만든다. 렌더링 경로는 아직 그대로.</span>
+<b>파일</b><span>수정: <code>Scene/Light.h</code>, <code>Shaders/Common.hlsli</code> (<code>LightData</code>), <code>Scene/SceneSerializer.cpp</code> (<code>LightToJson</code>/<code>LightFromJson</code>), <code>App/DebugUI.cpp</code> (<code>DrawLightPanel</code>), <code>Graphics/Renderer.cpp</code> (<code>Render</code>의 조건 한 줄)</span>
+<b>만드는 것</b><span><code>LightData::castShadows</code> (uint32_t, 0/1), <code>LightData::shadowIndex</code> (int32_t, -1 = 없음), <code>MAX_SHADOW_VIEWS = 16</code> (<code>Scene/Light.h</code>, <code>MAX_LIGHTS</code> 옆)</span></div>
+<p><code>LightData</code>의 마지막 16바이트 레지스터를 이렇게 바꿉니다. 크기 80B는 그대로입니다.</p>
+<table>
+<tr><th>오프셋</th><th>지금 (C++ / HLSL)</th><th>바꾼 뒤 C++</th><th>바꾼 뒤 HLSL</th></tr>
+<tr><td>64</td><td><code>float outerConeCos</code></td><td><code>float outerConeCos</code></td><td><code>float outerConeCos</code></td></tr>
+<tr><td>68</td><td rowspan="3"><code>XMFLOAT3 padding</code> / <code>float3 padding</code></td><td><code>uint32_t castShadows = 1;</code></td><td><code>uint castShadows;</code></td></tr>
+<tr><td>72</td><td><code>int32_t shadowIndex = -1;</code></td><td><code>int shadowIndex;</code></td></tr>
+<tr><td>76</td><td><code>float padding = 0.0f;</code></td><td><code>float padding;</code></td></tr>
+</table>
+<ul class="todo">
+<li><input type="checkbox"> <code>Scene/Light.h</code>: 위 표대로 필드를 바꾸고, 기존 <code>static_assert(sizeof(LightData) == 80)</code> 옆에 <code>offsetof</code> 단언 두 개(<code>castShadows == 68</code>, <code>shadowIndex == 72</code>)를 추가합니다. <code>castShadows</code>의 기본값이 1인 이유: <code>LightData</code>의 기본 타입이 방향광이고, 데모 씬처럼 코드로 만드는 방향광이 지금처럼 그림자를 만들어야 하기 때문입니다. 같은 파일에 <code>constexpr uint32_t MAX_SHADOW_VIEWS = 16;</code>을 추가합니다(단계 3부터 씀. <code>Renderer.h</code>와 <code>ShaderConstants.h</code>가 둘 다 이 헤더를 include함).</li>
+<li><input type="checkbox"> <code>Shaders/Common.hlsli</code> <code>LightData</code>: 표의 HLSL 열대로 바꾸고 <code>static const uint MAX_SHADOW_VIEWS = 16;</code>도 추가합니다.</li>
+<li><input type="checkbox"> <code>SceneSerializer.cpp</code> <code>LightToJson</code>: <code>j["castShadows"] = l.castShadows != 0;</code>(bool로 저장). <code>shadowIndex</code>는 <b>저장하지 않습니다</b>(매 프레임 Renderer가 정함).</li>
+<li><input type="checkbox"> <code>LightFromJson</code>: 키가 없는 옛 파일은 "방향광이면 1, 아니면 0"으로 채웁니다. 반드시 <code>type</code>을 읽은 <b>뒤에</b> 계산합니다.
+<pre><code>l.castShadows = j.value("castShadows", l.type == static_cast&lt;uint32_t&gt;(LightType::Directional)) ? 1u : 0u;</code></pre></li>
+<li><input type="checkbox"> <code>DebugUI.cpp</code> <code>DrawLightPanel</code>: Intensity 슬라이더 아래에 체크박스를 추가합니다(ImGui는 bool을 받으므로 임시 변수). "Add point light" 버튼(약 377~385행)이 만드는 조명은 <code>light.castShadows = 0;</code>으로 둡니다(새 점광이 갑자기 타일을 차지하지 않게). 머리 줄(약 372행)의 "light 0 casts the shadow when directional"은 "first directional with Cast shadows"로 고칩니다.
+<pre><code>bool cast = light.castShadows != 0;
+if (ImGui::Checkbox("Cast shadows", &amp;cast)) light.castShadows = cast ? 1u : 0u;</code></pre></li>
+<li><input type="checkbox"> <code>Renderer::Render</code>(약 1010행)의 그림자 조건에 <code>&amp;&amp; sceneLights[0].castShadows != 0</code>을 덧붙입니다. 이 단계에서는 이것만 바꿔 체크박스가 실제로 효과를 내게 합니다.</li>
+</ul>
+<h4>확인</h4>
+<ul>
+<li>Debug 실행 로그에 cbuffer 크기 오류가 없어야 합니다(<code>Lights</code> 656B 그대로).</li>
+<li>기준 스크린샷과 차이 0 (NormalBump·Sponza, D3D11·D3D12).</li>
+<li>에디터: 광원 0의 Cast shadows를 끄면 그림자가 사라지고, <b>Ctrl+Z</b>로 되돌아옵니다(되돌리기가 씬 JSON 스냅숏이라 따로 할 일 없음). 저장한 <code>MultiShadow.json</code>의 각 조명에 <code>"castShadows"</code> 키가 생깁니다. 키가 없는 옛 씬(<code>Cubemap.json</code> 등)을 열어도 방향광 그림자가 그대로입니다.</li>
+</ul>
+<h4>커밋</h4>
+<pre><code>git commit -am "feat(scene): 조명별 그림자 여부(castShadows) 추가, 씬 JSON 저장·Lights 패널 체크박스, LightData 에 shadowIndex 자리 [2026/10/29]"</code></pre>
+<h4>공부할 개념</h4>
+<ul>
+<li><b>HLSL 상수버퍼 패킹 규칙</b>: 16바이트 레지스터, 벡터는 경계를 넘지 못함, 구조체 배열 원소는 16바이트 정렬. 이번에는 float3 패딩 자리를 스칼라 셋으로 쪼개도 레이아웃이 같은 이유를 설명할 수 있어야 합니다.</li>
+<li><b>저장 데이터와 실행 데이터의 구분</b>: <code>castShadows</code>(사용자 의도, 저장)와 <code>shadowIndex</code>(렌더러가 매 프레임 계산, 저장 안 함)가 한 구조체에 있는 이유와 주의점.</li>
+</ul>
+<h4>참고</h4>
+<ul>
+<li>MS Learn <a href="https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-packing-rules">Packing rules for constant variables</a></li>
+<li><code>rendering-analysis.html</code> 10.6 "상수버퍼 네 개", 10.7 "HLSL 패킹 규칙" (이 저장소의 기존 설명)</li>
+</ul>
+</section>
+
+<section id="s3">
+<h2><span class="step">3</span>그림자 데이터 경로 교체 (맵은 아직 2048 한 장)</h2>
+<div class="meta"><b>목표</b><span>"광원 0 하나"를 "뷰 배열 + 조명별 shadowIndex"로 바꾼다. 뷰는 아직 방향광 하나뿐이라 화면은 기준과 (거의) 같아야 한다. 이 단계가 끝나면 단계 5~7은 "뷰를 더 만드는 일"만 남는다.</span>
+<b>파일</b><span>수정: <code>Graphics/ShaderConstants.h</code>, <code>Shaders/Common.hlsli</code>, <code>Shaders/BasicVertexShader.hlsl</code>, <code>Shaders/ShadowVertexShader.hlsl</code>, <code>Shaders/BasicPixelShader.hlsl</code>, <code>Graphics/Renderer.h</code>, <code>Graphics/Renderer.cpp</code>, <code>App/DebugUI.cpp</code>, <code>App/Editor.cpp</code></span>
+<b>쓰는 것</b><span>단계 1의 <code>SetViewport</code>, 단계 2의 <code>LightData::castShadows/shadowIndex</code>, <code>MAX_SHADOW_VIEWS</code></span>
+<b>만드는 것</b><span>b5 <code>ShadowPass</code>, b6 <code>Shadows</code>, <code>Renderer::ShadowView</code>, <code>BuildShadowViews</code>, <code>AddShadowView</code>, <code>UploadShadowConstants</code>, HLSL <code>SampleShadowView</code>·<code>ShadowForLight</code>, 통계 <code>Stats::shadowViews</code></span></div>
+
+<h3>3-A. 상수버퍼 (C++ ↔ HLSL)</h3>
+<p><code>Graphics/ShaderConstants.h</code>에 추가합니다. 슬롯 상수는 기존 <code>kCBSlot*</code> 옆에 둡니다.</p>
+<pre><code>constexpr uint32_t kCBSlotShadowPass = 5;   // b5 (프레임 셋, VS). 그림자 패스가 뷰마다 올림
+constexpr uint32_t kCBSlotShadows = 6;      // b6 (프레임 셋, PS). 그림자 뷰 배열
+
+struct alignas(16) ShadowPassConstants
+{
+	DirectX::XMFLOAT4X4 shadowViewProj;     // 지금 그리는 그림자 뷰 (전치해서 올림)
+};
+
+struct alignas(16) ShadowViewData
+{
+	DirectX::XMFLOAT4X4 viewProj;           // 월드 → 이 뷰의 클립 (전치해서 올림)
+	DirectX::XMFLOAT4 atlasRect;            // xy = 아틀라스 UV 시작, zw = UV 크기
+	DirectX::XMFLOAT4 params;               // x = NDC 깊이 바이어스, y = 텍셀의 월드 크기(직교) / 그 계수(원근, × 거리),
+	                                        // z = 1 원근 · 0 직교, w = 미사용
+};
+
+struct alignas(16) ShadowConstants
+{
+	ShadowViewData views[MAX_SHADOW_VIEWS];
+	DirectX::XMFLOAT4 cascadeSplits;        // 단계 7. 캐스케이드 i 가 끝나는 카메라 전방 거리
+	DirectX::XMFLOAT4 cascadeOrigin;        // xyz = 캐스케이드를 계산한 카메라 위치, w = 캐스케이드 수 (0 = CSM 끔)
+	DirectX::XMFLOAT4 cascadeForward;       // xyz = 그 카메라의 전방
+	DirectX::XMFLOAT4 atlasParams;          // x = 1/아틀라스 크기, y = PCF 여백(텍셀), z = 지역광 노멀 오프셋(텍셀, 단계 5), w = 미사용
+};</code></pre>
+<p><code>static_assert</code> (기존 단언 묶음 옆에):</p>
+<table>
+<tr><th>구조체</th><th>크기</th><th>오프셋</th></tr>
+<tr><td><code>ShadowPassConstants</code></td><td>64</td><td>-</td></tr>
+<tr><td><code>ShadowViewData</code></td><td>96</td><td><code>atlasRect</code> 64, <code>params</code> 80</td></tr>
+<tr><td><code>ShadowConstants</code></td><td>1600</td><td><code>cascadeSplits</code> 1536, <code>cascadeOrigin</code> 1552, <code>cascadeForward</code> 1568, <code>atlasParams</code> 1584</td></tr>
+<tr><td><code>PerFrameConstants</code> (<code>lightViewProj</code> 삭제)</td><td><b>288</b> (지금 352)</td><td><code>cameraPosition</code> 192, <code>time</code> 204, <code>shadowParams</code> 208, <code>debugParams</code> 224, <code>environmentParams</code> 240, <code>outputParams</code> 256, <code>shadowExtra</code> 272</td></tr>
+</table>
+<p><code>shadowParams</code>는 자리를 그대로 두되 셰이더가 읽는 것은 <code>z</code>(세기)와 <code>w</code>(사용 여부)뿐이 됩니다. <code>x</code>(1/맵 크기)는 <code>atlasParams.x</code>로, <code>y</code>(바이어스)는 뷰별 <code>params.x</code>로 옮겨 갑니다. 필드 주석을 그렇게 고칩니다.</p>
+<p><code>Shaders/Common.hlsli</code>:</p>
+<ul class="todo">
+<li><input type="checkbox"> <code>PerFrame</code>에서 <code>matrix lightViewProj;</code> 줄을 지우고, 파일 머리의 레지스터 배정 주석에 b5·b6을 적습니다.</li>
+<li><input type="checkbox"> 아래 선언을 <code>Lights</code>(b2) 다음에 추가합니다.
+<pre><code>struct ShadowViewData
+{
+    matrix viewProj;
+    float4 atlasRect;
+    float4 params;
+};
+
+// b5: 그림자 패스. VS 만. 뷰마다 다시 올림 (64바이트)
+cbuffer ShadowPass : register(b5)
+{
+    matrix shadowViewProj;
+}
+
+// b6: 그림자 뷰 배열. PS 만 (1600바이트)
+cbuffer Shadows : register(b6)
+{
+    ShadowViewData shadowViews[MAX_SHADOW_VIEWS];
+    float4 cascadeSplits;
+    float4 cascadeOrigin;
+    float4 cascadeForward;
+    float4 shadowAtlasParams;
+}</code></pre></li>
+<li><input type="checkbox"> <code>VSOutput</code>에서 <code>float4 shadowPosition : TEXCOORD2;</code>를 지웁니다.</li>
+<li><input type="checkbox"> <b>실패 먼저 보기</b>: 여기까지만 바꾸고 C++는 그대로 둔 채 Debug로 실행합니다. 로그에 <code>cbuffer 'PerFrame' 크기 불일치: HLSL 288 바이트, C++ 352 바이트</code>가 나오고 초기화가 실패해야 정상입니다. 확인했으면 C++ 쪽을 위 표대로 맞춥니다.</li>
+</ul>
+
+<h3>3-B. 셰이더</h3>
+<ul class="todo">
+<li><input type="checkbox"> <code>BasicVertexShader.hlsl</code>: <code>vsOutput.shadowPosition = …</code> 줄(약 20행)을 지웁니다.</li>
+<li><input type="checkbox"> <code>ShadowVertexShader.hlsl</code>: <code>return mul(worldPosition, shadowViewProj);</code></li>
+<li><input type="checkbox"> <code>BasicPixelShader.hlsl</code>: <code>ComputeShadowFactor</code>를 지우고 아래 두 함수로 바꿉니다. 시그니처와 판정 순서가 핵심이고, PCF 루프는 지금 것을 그대로 옮깁니다.
+<pre><code>// 그림자 뷰 하나에 대한 PCF. 1 = 빛을 받음, 0 = 그림자.
+// distanceToLight: 원근 뷰의 텍셀 월드 크기를 구할 때 씀 (직교 뷰는 무시)
+float SampleShadowView(uint viewIndex, float3 worldPosition, float3 geometricNormal, float3 normalDelta, float distanceToLight)
+{
+    float result = 1.0f;   // 단일 반환 구조 유지 (fxc -Od 의 X4000 오경고 회피 — 지금 함수의 주석 그대로)
+    const ShadowViewData view = shadowViews[viewIndex];
+    const bool perspective = view.params.z &gt; 0.5f;
+
+    // (1) 원근 뷰만: 받는 쪽 위치를 기하 노멀 방향으로 "텍셀 몇 개"만큼 밀어 자기 그림자를 피함 (단계 5부터 의미가 있음)
+    const float texelWorld = perspective ? view.params.y * distanceToLight : view.params.y;
+    const float3 p = worldPosition + geometricNormal * (perspective ? shadowAtlasParams.z * texelWorld : 0.0f);
+
+    // (2) 월드 → 이 뷰의 클립 → NDC → 타일 안 UV (0..1). y 는 뒤집음 (지금 코드와 같음)
+    const float4 clip = mul(float4(p, 1.0f), view.viewProj);
+    const float3 ndc = clip.xyz / clip.w;
+    float2 local = float2(ndc.x * 0.5f + 0.5f, -ndc.y * 0.5f + 0.5f);
+
+    // (3) 노말맵 오프셋 (지금의 shadowExtra.x). 방향(w = 0)을 같은 행렬로 옮기고 clip.w 로 나눔 — 직교면 w = 1 이라 지금과 같음
+    const float4 deltaClip = mul(float4(normalDelta, 0.0f), view.viewProj);
+    local += deltaClip.xy / clip.w * float2(0.5f, -0.5f) * shadowExtra.x;
+
+    // (4) 이 뷰 밖이면 빛을 받는 것으로 봄. 원근 뷰는 광원 뒤(w ≤ 0)와 near 앞(z &lt; 0)도 밖
+    const bool inside = clip.w &gt; 0.0f &amp;&amp; all(local &gt;= 0.0f) &amp;&amp; all(local &lt;= 1.0f) &amp;&amp; ndc.z &lt;= 1.0f &amp;&amp; (!perspective || ndc.z &gt;= 0.0f);
+    if (shadowParams.w &gt;= 0.5f &amp;&amp; inside)
+    {
+        // (5) 타일 UV → 아틀라스 UV. PCF 커널이 옆 타일을 읽지 않도록 여백(텍셀)만큼 안쪽으로 clamp
+        float2 uv = view.atlasRect.xy + local * view.atlasRect.zw;
+        const float2 border = shadowAtlasParams.y * shadowAtlasParams.x;
+        uv = clamp(uv, view.atlasRect.xy + border, view.atlasRect.xy + view.atlasRect.zw - border);
+        const float depth = ndc.z - view.params.x;
+
+        // (6) 지금의 5×5 PCF 루프 그대로 (SampleCmpLevelZero, int2 오프셋)
+        ...
+        result = lerp(1.0f, lit / 25.0f, shadowParams.z);
+    }
+    return result;
+}
+
+// 조명 하나의 그림자 계수. 그림자가 없는 조명은 1.
+float ShadowForLight(LightData light, float3 worldPosition, float3 geometricNormal, float3 normalDelta, float distanceToLight)
+{
+    float result = 1.0f;
+    if (light.shadowIndex &gt;= 0)
+    {
+        if (light.type == LIGHT_DIRECTIONAL)
+        {
+            // 단계 7 에서 캐스케이드 선택이 여기 들어감
+            result = SampleShadowView((uint)light.shadowIndex, worldPosition, geometricNormal, normalDelta, 0.0f);
+        }
+        // 단계 5: LIGHT_SPOT, 단계 6: LIGHT_POINT
+    }
+    return result;
+}</code></pre></li>
+<li><input type="checkbox"> <code>PS_Main</code> 수정:
+<ul>
+<li>루프 전의 <code>const float shadowFactor = ComputeShadowFactor(…)</code>(약 168행)를 지웁니다.</li>
+<li>디버그 뷰 4(약 175행)는 그림자가 있는 모든 조명의 계수를 곱해 보여 줍니다.
+<pre><code>if (debugView == 4)
+{
+    float s = 1.0f;
+    for (uint k = 0; k &lt; min(lightCount, MAX_LIGHTS); ++k)
+    {
+        const LightData l = lights[k];
+        const float d = length(l.position - input.worldPosition);
+        s *= ShadowForLight(l, input.worldPosition, geometricNormal, normal - geometricNormal, d);
+    }
+    return float4(s, s, s, 1.0f);
+}</code></pre></li>
+<li>조명 루프에서 <code>float distanceToLight = 0.0f;</code>를 분기 <b>밖</b>으로 꺼내고(점·스팟 분기에서 값을 채움), <code>if (i == 0) attenuation *= shadowFactor;</code>를 지웁니다. 대신 <code>NdotL &lt;= 0</code> 검사 <b>뒤</b>에 <code>if (attenuation &gt; 0.0f) attenuation *= ShadowForLight(light, input.worldPosition, geometricNormal, normal - geometricNormal, distanceToLight);</code>를 넣습니다. 빛이 닿지 않는 픽셀은 PCF 25회를 건너뜁니다.</li>
+</ul></li>
+</ul>
+
+<h3>3-C. Renderer</h3>
+<p><code>Graphics/Renderer.h</code>에 추가합니다. <code>struct LightConstants;</code>는 <code>PostParamsConstants</code>처럼 전방 선언합니다.</p>
+<pre><code>static constexpr uint32_t kShadowAtlasSize = 2048;   // kShadowMapSize 를 이 이름으로 바꿈. 단계 4 에서 4096
+static constexpr uint32_t kShadowPcfBorder = 3;      // PCF 5×5 반경 2 + 쌍선형 1 (텍셀)
+
+struct ShadowView
+{
+	DirectX::XMFLOAT4X4 viewProj;          // 행우선 (올릴 때 전치)
+	uint32_t x = 0, y = 0, size = 0;       // 아틀라스 안의 픽셀 사각형 (정사각형)
+	DirectX::XMFLOAT4 params = {};         // b6 의 params 와 같은 뜻
+	DirectX::XMFLOAT4 cullSphere = {};     // 단계 6. xyz = 광원 위치, w = 범위. w = 0 이면 컬링 안 함
+	uint32_t lightIndex = 0;
+};
+uint32_t GetShadowViewCount() const { return m_shadowViewCount; }
+const ShadowView&amp; GetShadowView(uint32_t index) const { return m_shadowViews[index]; }
+uint32_t GetSkippedShadowLights() const { return m_skippedShadowLights; }
+
+// private
+void BuildShadowViews(const Camera&amp; camera, LightConstants&amp; lights);   // lights.lights[i].shadowIndex 를 채우고 m_shadowViews 를 만듦
+uint32_t AddShadowView(const DirectX::XMMATRIX&amp; viewProj, uint32_t x, uint32_t y, uint32_t size,
+	const DirectX::XMFLOAT4&amp; params, uint32_t lightIndex);              // 새 뷰 번호
+void UploadShadowConstants();                                            // b6 전체 + b5 단위 행렬
+
+BufferHandle m_shadowPassCB;   // b5
+BufferHandle m_shadowsCB;      // b6
+ShadowView m_shadowViews[MAX_SHADOW_VIEWS];
+uint32_t m_shadowViewCount = 0;
+uint32_t m_skippedShadowLights = 0;   // castShadows 인데 자리가 없어 그림자를 못 받은 조명 수
+// 삭제: DirectX::XMFLOAT4X4 m_lightViewProj;</code></pre>
+<p><code>Stats</code>에 <code>uint32_t shadowViews = 0;</code>을 추가합니다.</p>
+<ul class="todo">
+<li><input type="checkbox"> <code>Initialize</code>: <code>makeCB</code>로 <code>m_shadowPassCB</code>(<code>"CB_ShadowPass"</code>), <code>m_shadowsCB</code>(<code>"CB_Shadows"</code>)를 만들고 유효성 검사에 넣습니다. 프레임 레이아웃의 <b>맨 끝</b>에 두 줄을 추가합니다(기존 슬롯 순서를 건드리지 않기 위해).
+<pre><code>frameLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotShadowPass);
+frameLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotShadows);</code></pre>
+<code>m_shadowDesc</code>는 그대로 {frame, object}입니다(결정 D3).</li>
+<li><input type="checkbox"> <code>UpdateFrameSet</code>: <code>bindings</code> 끝에 <code>{ .buffer = m_shadowPassCB }, { .buffer = m_shadowsCB }</code>를 붙이고, "bindings[i] 는 … b0, b2, t8, s4, t9, s5, t10, t11, t12" 주석에 ", b5, b6"을 더합니다.</li>
+<li><input type="checkbox"> <code>ValidateBindings</code>의 <code>declared[]</code>에 <code>{ ConstantBuffer, kCBSlotShadowPass, Vertex }</code>, <code>{ ConstantBuffer, kCBSlotShadows, Pixel }</code>을 추가합니다.</li>
+<li><input type="checkbox"> <code>LoadShaders</code>의 Debug 크기 검사: <code>shadowCode "PerFrame"</code> 줄을 <code>shadowCode "ShadowPass" sizeof(ShadowPassConstants)</code>로 바꾸고, <code>psCode "Shadows" sizeof(ShadowConstants)</code>를 추가합니다.</li>
+<li><input type="checkbox"> <code>Shutdown</code>: 두 버퍼를 <code>DestroyBuffer</code>하고 핸들을 비웁니다(약 889~903행 묶음에).</li>
+<li><input type="checkbox"> 생성자의 <code>XMStoreFloat4x4(&amp;m_lightViewProj, …)</code>와 <code>UploadPerFrameConstants</code>의 <code>lightViewProj</code> 줄(약 1389행)을 지웁니다. <code>shadowParams.x</code>에는 <code>1.0f / kShadowAtlasSize</code>를 그대로 넣어 둡니다.</li>
+<li><input type="checkbox"> <code>CreateShadowResources</code>: 크기를 <code>kShadowAtlasSize</code>로. 로그 문구의 "PCF 3x3"(약 393행, 실제는 5×5)도 고칩니다.</li>
+<li><input type="checkbox"> <code>AddShadowView</code>: <code>m_shadowViewCount &lt; MAX_SHADOW_VIEWS</code>를 확인하고(넘치면 <code>Log::Error</code> 1회 후 <code>UINT32_MAX</code>), 값을 채운 뒤 번호를 돌려줍니다.</li>
+<li><input type="checkbox"> <code>BuildShadowViews</code> (이 단계의 내용):
+<ol>
+<li><code>m_shadowViewCount = 0; m_skippedShadowLights = 0;</code>, 모든 <code>lights.lights[i].shadowIndex = -1</code>.</li>
+<li><code>m_settings.shadows</code>가 꺼져 있으면 여기서 끝.</li>
+<li>조명을 번호 순으로 돌며 <code>castShadows == 0</code>이면 건너뜀. 방향광이면 <b>첫 번째만</b>: <code>AddShadowView(ComputeLightViewProj(light), 0, 0, kShadowAtlasSize, { m_shadowSettings.bias, m_shadowSettings.orthoSize / kShadowAtlasSize, 0, 0 }, i)</code>의 결과를 <code>shadowIndex</code>에 넣음. 두 번째 방향광부터는 <code>++m_skippedShadowLights</code>. 스팟·포인트는 이 단계에서는 아무것도 하지 않음(단계 5·6).</li>
+</ol></li>
+<li><input type="checkbox"> <code>UploadShadowConstants</code>: <code>ShadowConstants</code>를 0으로 시작해 뷰마다 <code>viewProj</code>(<b>전치</b>), <code>atlasRect = (x/A, y/A, size/A, size/A)</code>(A = <code>kShadowAtlasSize</code>), <code>params</code>를 채우고 <code>atlasParams = (1/A, kShadowPcfBorder, m_shadowSettings.localNormalBias(단계 5 전까지 0), 0)</code>. <code>m_shadowsCB</code>에 올린 뒤, <b><code>m_shadowPassCB</code>에 단위 행렬을 한 번 올립니다</b>. 그림자가 꺼진 프레임에도 b5·b6이 "이번 프레임에 갱신됨" 상태여야 D3D12 경고가 나지 않습니다.</li>
+<li><input type="checkbox"> <code>Render</code> 순서를 2.1의 그림처럼 바꿉니다. 핵심은 <code>BuildShadowViews</code>가 <code>UploadPerFrameConstants</code>보다 <b>먼저</b>여야 한다는 점입니다(<code>shadowParams.w</code>가 그 결과를 씀).
+<pre><code>m_shadowSettings = scene.environment.shadow;
+LightConstants lights = {};   // 지금의 복사·정규화 루프 그대로 (약 1022~1040행)
+...
+BuildShadowViews(camera, lights);
+m_shadowEnabledThisFrame = m_shadowViewCount &gt; 0;
+UploadShadowConstants();
+ResolveEnvironment(scene.environment);
+UploadPerFrameConstants(camera, totalTime);
+m_device-&gt;UpdateBuffer(m_lightCB, &amp;lights, sizeof(lights));</code></pre>
+지금 1007~1013행(<code>lightViewProj</code> 계산과 <code>m_lightViewProj</code> 저장)은 지웁니다.</li>
+<li><input type="checkbox"> <code>RenderShadowPass</code>: 드로우 루프를 뷰 루프로 감쌉니다. 뷰마다 ① <code>cmd.SetViewport(Viewport{ .x = (float)view.x, .y = (float)view.y, .width = (float)view.size, .height = (float)view.size })</code> ② b5에 그 뷰의 행렬(전치)을 <code>UpdateBuffer</code> ③ 지금의 드로우 루프. <code>m_stats.shadowViews = m_shadowViewCount;</code>. 단계 1에서 넣은 임시 <code>SetViewport(Viewport{})</code>는 지웁니다.</li>
+<li><input type="checkbox"> UI: <code>DebugUI::DrawShadowPanel</code>의 체크박스 라벨을 <code>"Shadows (F8)"</code>로, 통계 두 곳(<code>Editor.cpp</code> 약 1559행, <code>DebugUI.cpp</code> 약 194행)을 <code>"draws %u (+%u shadow, %u views)"</code>로 바꿉니다.</li>
+</ul>
+<h4>확인</h4>
+<ul>
+<li>Debug 로그: <code>바인딩 대조: ShadowVS b5 ('ShadowPass') OK</code>, <code>바인딩 대조: PS b6 ('Shadows') OK</code>가 있고, 바인딩·크기 오류가 없어야 합니다.</li>
+<li>기준과 비교(7장 스크립트): NormalBump·Sponza × D3D11·D3D12 × 디버그 뷰 0·4. <b>합격 기준</b>: <code>-Diff</code> 이미지에서 다른 픽셀이 <b>그림자 경계와 섀도 맵 가장자리 띠에만</b> 있으면 합격입니다(이것이 주 기준). 최대 채널 차이는 참고용으로, 경계 안쪽은 대략 8/255 이하가 보통이지만 맵 가장자리에서는 clamp가 Border 샘플러를 대신하므로 더 클 수 있습니다(이 수치는 실측값이 아니라 예상치). 그림자 좌표를 VS 보간에서 PS 계산으로 옮겼고(부동소수점 순서가 달라짐) Border 샘플러 대신 명시적 clamp를 쓰기 때문에 <b>완전히 같지는 않습니다</b>. 그림자 전체가 밀리거나 사라지면 실패이고, 가장 흔한 원인은 b5·b6의 전치 누락입니다.</li>
+<li>에디터에서 F8을 껐다 켜며 D3D12로 실행 → 로그에 <code>Dynamic 상수버퍼가 이번 프레임에 갱신되지 않음</code>이 <b>없어야</b> 합니다.</li>
+<li><code>BasicPixelShader.hlsl</code>를 저장해 핫리로드가 성공하는지(<code>셰이더 핫리로드 완료</code>).</li>
+<li>통계 줄이 <code>(+N shadow, 1 views)</code>.</li>
+</ul>
+<h4>커밋</h4>
+<pre><code>git commit -am "refactor(render): 그림자 행렬을 b0 에서 b5(그림자 패스)·b6(그림자 뷰 배열)로 옮기고 그림자 좌표를 PS 에서 계산, 조명별 shadowIndex [2026/10/29]"</code></pre>
+<h4>공부할 개념</h4>
+<ul>
+<li><b>섀도 매핑 알고리즘 전체</b>: 광원 시점 깊이 패스 → 카메라 패스에서 "내 깊이 &gt; 맵 깊이면 그림자". 지금 코드를 한 줄씩 이 설명에 대응시켜 보세요.</li>
+<li><b>투영 텍스처 좌표</b>: 월드 → 광원 클립 → <code>/w</code> → NDC → <code>(x·0.5+0.5, −y·0.5+0.5)</code>. y를 뒤집는 이유(D3D 텍스처 v축이 아래로 증가).</li>
+<li><b>비교 샘플러와 PCF</b>: <code>SampleCmpLevelZero</code>가 "비교 후 보간"을 하드웨어에서 하는 것. 왜 루프 안에서는 <code>SampleCmp</code>가 아니라 <code>LevelZero</code>여야 하는지(동적 분기 안의 미분).</li>
+<li><b>cbuffer의 구조체 배열</b>: <code>ShadowViewData</code> 96B가 16의 배수라 배열 원소 사이에 빈칸이 없음.</li>
+<li><b>D3D12 루트 CBV와 Dynamic 버퍼</b>: 드로우 사이에 같은 CB를 다시 올리면 왜 다음 드로우가 새 값을 보는가(업로드 링의 새 조각 + 드로우 직전 <code>SetGraphicsRootConstantBufferView</code>).</li>
+</ul>
+<h4>참고</h4>
+<ul>
+<li>Luna DX11 21.1~21.5 (L11-2~L11-5), Luna DX12 20.1~20.5 (L12-2~L12-5)</li>
+<li>LearnOpenGL <a href="https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping">Shadow Mapping</a></li>
+<li>MS Learn <a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/common-techniques-to-improve-shadow-depth-maps">Common Techniques to Improve Shadow Depth Maps</a></li>
+<li>Luna DX12 6장(상수 버퍼)·7장(루트 시그니처·프레임 자원) (L12-11)과 <code>rendering-analysis.html</code> 7.11, 8.9</li>
+</ul>
+</section>
+
+<section id="s4">
+<h2><span class="step">4</span>4096 섀도 아틀라스와 영역 배치</h2>
+<div class="meta"><b>목표</b><span>섀도 맵을 4096² 아틀라스로 키우고 방향광을 왼쪽 위 2048 영역에 그린다. 지역광 타일 12개의 자리를 정한다. 화면은 단계 3과 같아야 한다.</span>
+<b>파일</b><span>수정: <code>Graphics/Renderer.h</code>, <code>Graphics/Renderer.cpp</code> (<code>CreateShadowResources</code>, <code>BuildShadowViews</code>, 익명 namespace 도우미), <code>App/DebugUI.cpp</code> (<code>DrawShadowPanel</code>)</span>
+<b>만드는 것</b><span>상수 <code>kShadowDirectionalRegion = 2048</code>, <code>kShadowTileSize = 1024</code>, <code>kShadowLocalTileCount = 12</code>. 도우미 <code>DirectionalRect</code>, <code>LocalTileRect</code>. 멤버 <code>m_usedLocalTiles</code>와 <code>GetUsedLocalTiles()</code></span></div>
+<ul class="todo">
+<li><input type="checkbox"> <code>Renderer.h</code>: <code>kShadowAtlasSize</code>를 4096으로 바꾸고 위 상수 세 개를 추가합니다. <code>uint32_t m_usedLocalTiles = 0;</code>와 <code>uint32_t GetUsedLocalTiles() const</code>를 추가합니다.</li>
+<li><input type="checkbox"> <code>Renderer.cpp</code> 익명 namespace에 도우미 두 개를 둡니다. 배치는 2.2의 그림과 같아야 합니다.
+<pre><code>struct AtlasRect { uint32_t x, y, size; };
+
+// 방향광 영역(왼쪽 위 2048²) 안의 칸. count == 1 이면 영역 전체, 2~4 면 2×2 의 index 번째 칸(1024).
+AtlasRect DirectionalRect(uint32_t index, uint32_t count)
+{
+	if (count &lt;= 1) return { 0, 0, Renderer::kShadowDirectionalRegion };
+	return { (index % 2) * Renderer::kShadowTileSize, (index / 2) * Renderer::kShadowTileSize, Renderer::kShadowTileSize };
+}
+
+// 지역광 타일 0..11. 사분면 1(오른쪽 위) → 2(왼쪽 아래) → 3(오른쪽 아래) 순서로 네 칸씩, 사분면 안에서는 왼→오, 위→아래.
+AtlasRect LocalTileRect(uint32_t tile)
+{
+	const uint32_t quadrant = 1 + tile / 4;
+	const uint32_t ox = (quadrant == 2) ? 0 : Renderer::kShadowDirectionalRegion;
+	const uint32_t oy = (quadrant == 1) ? 0 : Renderer::kShadowDirectionalRegion;
+	const uint32_t inside = tile % 4;
+	return { ox + (inside % 2) * Renderer::kShadowTileSize, oy + (inside / 2) * Renderer::kShadowTileSize, Renderer::kShadowTileSize };
+}</code></pre>
+상수가 private이면 도우미가 접근할 수 없으니 <code>public</code>에 둡니다(<code>kShadowMapSize</code>도 지금 public).</li>
+<li><input type="checkbox"> <code>BuildShadowViews</code>: <code>m_usedLocalTiles = 0;</code>으로 시작. 방향광 뷰의 사각형을 <code>DirectionalRect(0, 1)</code>로, <code>params.y</code>를 <code>orthoSize / kShadowDirectionalRegion</code>으로 바꿉니다(아틀라스 전체가 아니라 그 뷰의 해상도 기준).</li>
+<li><input type="checkbox"> <code>CreateShadowResources</code>: 크기가 상수를 따르므로 로그만 <code>"섀도 아틀라스: %ux%u D32_FLOAT (방향광 %u, 타일 %u × %u)"</code>로 고칩니다. 아틀라스는 64 MB입니다.</li>
+<li><input type="checkbox"> <code>DebugUI::DrawShadowPanel</code>: 트리 노드 라벨을 <code>"Shadow atlas (4096x4096 D32, shown as R)"</code>로, 이미지 크기를 512로 바꾸고, 이미지 위에 뷰 사각형을 그립니다. 아래에 사용량 한 줄을 추가합니다.
+<pre><code>ImGui::Image(id, ImVec2(512.0f, 512.0f));
+const ImVec2 origin = ImGui::GetItemRectMin();
+const float scale = 512.0f / Renderer::kShadowAtlasSize;
+ImDrawList* draw = ImGui::GetWindowDrawList();
+for (uint32_t v = 0; v &lt; renderer.GetShadowViewCount(); ++v)
+{
+	const Renderer::ShadowView&amp; view = renderer.GetShadowView(v);
+	const ImVec2 a(origin.x + view.x * scale, origin.y + view.y * scale);
+	const ImVec2 b(a.x + view.size * scale, a.y + view.size * scale);
+	draw-&gt;AddRect(a, b, IM_COL32(255, 220, 0, 255));
+	char label[16]; snprintf(label, sizeof(label), "L%u", view.lightIndex);
+	draw-&gt;AddText(ImVec2(a.x + 3, a.y + 2), IM_COL32(255, 220, 0, 255), label);
+}
+ImGui::Text("views %u / %u   local tiles %u / %u   skipped lights %u", …);</code></pre>
+아틀라스 텍스처는 초기화 때 한 번 만들고 다시 만들지 않으므로, ImGui에 넘긴 텍스처 ID가 같은 프레임에 해제되는 문제(후처리 썸네일에서 겪은 것)는 생기지 않습니다.</li>
+</ul>
+<h4>확인</h4>
+<ul>
+<li>단계 3의 스크린샷과 비교해 차이가 없거나 아주 작아야 합니다. 방향광 영역의 해상도(2048)와 행렬이 같고, 바뀐 것은 UV 배율(× 0.5)뿐입니다.</li>
+<li>Shadow atlas 뷰어에서 왼쪽 위 사분면에만 깊이가 보이고 노란 사각형 하나에 <code>L0</code>이 붙어 있습니다.</li>
+<li>D3D12 실행 로그에 검증 계층 오류가 없어야 합니다(뷰포트가 텍스처 안에 있는지).</li>
+<li>Profiler의 <code>ShadowPass</code> GPU 시간이 4096² 클리어 때문에 약간 늘 수 있습니다. 기록해 두면 단계 6의 컬링 효과와 비교할 수 있습니다.</li>
+</ul>
+<h4>커밋</h4>
+<pre><code>git commit -am "feat(render): 4096² 섀도 아틀라스 (방향광 2048 영역 + 1024 타일 12개), 에디터 아틀라스 뷰어에 뷰 사각형 표시 [2026/10/29]"</code></pre>
+<h4>공부할 개념</h4>
+<ul>
+<li><b>섀도 아틀라스</b>: 여러 섀도 맵을 한 텍스처에 모으는 이유(바인딩 하나, PCF 비교 샘플러 그대로)와 대가(타일 경계 처리, 해상도 고정).</li>
+<li><b>텍셀 밀도</b>: "월드 1m당 섀도 텍셀 수"가 그림자 품질을 정한다는 감각. 방향광 2048에 <code>orthoSize</code> 60이면 텍셀 하나가 약 3cm.</li>
+<li><b>PCF 여백</b>: 5×5 커널 + 쌍선형 보간이 중심에서 몇 텍셀까지 읽는가(이 계획은 3텍셀).</li>
+</ul>
+<h4>참고</h4>
+<ul>
+<li>MS Learn <a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/cascaded-shadow-maps">Cascaded Shadow Maps</a>: "Render the Shadow Map"(큰 버퍼 하나 + 캐스케이드마다 뷰포트)와 "Padding for PCF Kernels"(커널 절반만큼 여백) 절</li>
+<li>Luna DX11 21.4.3 / DX12 20.4.3 "PCF Filtering"</li>
+</ul>
+</section>
+
+<section id="s5">
+<h2><span class="step">5</span>스팟 라이트 그림자</h2>
+<div class="meta"><b>목표</b><span>castShadows인 스팟이 타일 하나를 받아 원근 투영으로 그림자를 만든다. 원근 뷰용 노멀 오프셋 바이어스를 넣는다.</span>
+<b>파일</b><span>수정: <code>Scene/ShadowSettings.h</code>, <code>Scene/SceneSerializer.cpp</code>, <code>App/DebugUI.cpp</code>, <code>Graphics/Renderer.h/.cpp</code>, <code>Shaders/BasicPixelShader.hlsl</code></span>
+<b>만드는 것</b><span><code>ShadowSettings::localNormalBias</code>, <code>DirectX::XMMATRIX Renderer::ComputeSpotViewProj(const LightData&amp; light, float&amp; outTanHalfFov) const</code></span></div>
+<ul class="todo">
+<li><input type="checkbox"> <code>ShadowSettings.h</code>: <code>float localNormalBias = 1.0f;   // 원근 뷰(스팟·포인트)의 노멀 오프셋. 단위는 그 위치의 섀도 텍셀 크기</code>. <code>SceneSerializer.cpp</code>의 저장(약 431행 묶음)과 읽기(약 459행 묶음)에 키 <code>"localNormalBias"</code>를 추가하고, <code>DrawShadowPanel</code>에 <code>SliderFloatR("Local normal bias (texels)", &amp;shadow.localNormalBias, kShadowDefaults.localNormalBias, 0.0f, 4.0f)</code>을 추가합니다. <code>UploadShadowConstants</code>의 <code>atlasParams.z</code>에 이 값을 넣습니다.</li>
+<li><input type="checkbox"> <code>ComputeSpotViewProj</code>:
+<ul>
+<li>눈 = <code>light.position</code>, 방향 = 정규화한 <code>light.direction</code>(0벡터면 (0, −1, 0)). up은 <code>ComputeLightViewProj</code>와 같은 규칙(<code>|dir.y| &gt; 0.99</code>면 +Z, 아니면 +Y). 뷰는 <code>XMMatrixLookToLH(eye, dir, up)</code>.</li>
+<li>시야각 = <code>2 · acos(outerConeCos) + 2°</code>를 <b>[5°, 120°]</b>로 clamp. 바깥 원뿔이 60°를 넘는 스팟은 가장자리가 그림자 없이 남습니다(UI의 Outer cone 상한이 89°라 가능한 입력임. 6장 참고).</li>
+<li>투영 = <code>XMMatrixPerspectiveFovLH(fov, 1.0f, nearZ, farZ)</code>, <code>nearZ = 0.1f</code>(range가 0.2보다 작으면 <code>range · 0.5</code>), <code>farZ = max(range, nearZ + 0.01f)</code>.</li>
+<li><code>outTanHalfFov = tan(fov / 2)</code>.</li>
+</ul></li>
+<li><input type="checkbox"> <code>BuildShadowViews</code> 스팟 분기: <code>m_usedLocalTiles &lt; kShadowLocalTileCount</code>면 <code>LocalTileRect(m_usedLocalTiles++)</code>에 <code>AddShadowView</code>. <code>params = (0, 2 · tanHalf / kShadowTileSize, 1, 0)</code>, <code>cullSphere = (position, range)</code>(단계 6에서 씀). 자리가 없으면 <code>++m_skippedShadowLights</code>.</li>
+<li><input type="checkbox"> <code>ShadowForLight</code>에 스팟 분기: <code>else if (light.type == LIGHT_SPOT) result = SampleShadowView((uint)light.shadowIndex, worldPosition, geometricNormal, normalDelta, distanceToLight);</code>. 원뿔 밖 픽셀은 <code>attenuation</code>이 이미 0이라 단계 3에서 넣은 <code>attenuation &gt; 0</code> 조건 덕분에 샘플링하지 않습니다.</li>
+</ul>
+<h4>확인</h4>
+<ul>
+<li><code>MultiShadow.json</code> D3D11·D3D12: 두 스팟이 각자 물체의 그림자를 만들고, 두 그림자가 겹친 곳이 더 어둡습니다. 디버그 뷰 4에서 그림자 모양이 분명하게 보입니다. 아틀라스 뷰어에 <code>L1</code>, <code>L2</code> 타일이 생깁니다.</li>
+<li>바이어스 실험(공부용): Local normal bias를 0으로 내려 바닥에 줄무늬(shadow acne)가 생기는 것을 보고, 4로 올려 그림자가 물체에서 떨어지는 것(peter panning)을 봅니다. 기본값 1에서 둘 다 거슬리지 않아야 합니다.</li>
+<li>편집 중 변화: 스팟을 기즈모로 옮기거나 돌리면 그림자가 따라옵니다. 스팟의 Type을 Directional로 바꾸면 그 타일이 비고(아틀라스 뷰어), 두 번째 방향광이므로 <code>skipped lights 1</code>이 됩니다. 조명을 지워도 남는 타일이 없습니다(매 프레임 다시 계산하므로).</li>
+<li>Outer cone 80°: 중심 60° 안쪽만 그림자가 생기는 것을 확인하고, 이 동작을 받아들일지 정합니다.</li>
+<li>기준 씬(NormalBump·Sponza)은 단계 4와 같아야 합니다(스팟이 없음).</li>
+</ul>
+<h4>커밋</h4>
+<pre><code>git commit -am "feat(render): 스팟 라이트 그림자 (원근 투영 1타일, 노멀 오프셋 바이어스 localNormalBias) [2026/10/29]"</code></pre>
+<h4>공부할 개념</h4>
+<ul>
+<li><b>원근 투영 행렬과 비선형 깊이</b>: NDC z가 1/z에 비례해 near 근처에 정밀도가 몰리는 이유. 그래서 직교 뷰의 "NDC 바이어스 상수"가 원근 뷰에서는 거리마다 다른 월드 거리가 됨.</li>
+<li><b>shadow acne와 peter panning</b>: 원인(텍셀 하나가 덮는 표면이 기울어져 있음)과 세 가지 대책(상수 바이어스, 기울기 바이어스 <code>slopeScaledDepthBias</code>, 노멀 오프셋)의 장단점.</li>
+<li><b>노멀 오프셋 그림자</b>: 받는 쪽 위치를 기하 노멀 방향으로 "그 거리에서의 텍셀 크기 × 배율"만큼 미는 이유. 텍셀 크기 = <code>2 · d · tan(fov/2) / 해상도</code>.</li>
+<li><b>스팟의 절두체</b>: 원뿔을 담는 정사각 절두체. 바깥 원뿔이 넓으면 시야각이 커지고 텍셀 밀도가 떨어지는 관계.</li>
+</ul>
+<h4>참고</h4>
+<ul>
+<li>Luna DX11 21.4.2 / DX12 20.4.2 "Biasing and Aliasing" (L11-4, L12-4). 두 책 모두 장 끝 연습문제에 스팟 라이트 그림자가 있는지 확인해 보세요.</li>
+<li>Luna 5장 "렌더링 파이프라인"의 원근 투영과 정규화 깊이 절 (L11-7, L12-7)</li>
+<li>MS Learn <a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/common-techniques-to-improve-shadow-depth-maps">Common Techniques to Improve Shadow Depth Maps</a>: shadow acne, peter panning, slope-scale bias</li>
+<li>LearnOpenGL <a href="https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping">Shadow Mapping</a>: "Improving shadow maps", "Orthographic vs perspective" 절</li>
+</ul>
+</section>
+
+<section id="s6">
+<h2><span class="step">6</span>포인트 라이트 그림자 + 지역광 컬링</h2>
+<div class="meta"><b>목표</b><span>castShadows인 점광이 연속 6타일(큐브 6면)을 받아 사방으로 그림자를 만든다. 그림자 패스에서 광원 범위 밖 물체를 건너뛴다.</span>
+<b>파일</b><span>수정: <code>Graphics/Renderer.h/.cpp</code> (<code>ComputePointFaceViewProj</code>, <code>BuildShadowViews</code>, <code>RenderShadowPass</code>), <code>Shaders/BasicPixelShader.hlsl</code></span>
+<b>만드는 것</b><span><code>DirectX::XMMATRIX Renderer::ComputePointFaceViewProj(const LightData&amp; light, uint32_t face) const</code>, HLSL <code>uint PointFace(float3 lightToSurface)</code>, 멤버 <code>std::vector&lt;DirectX::XMFLOAT4&gt; m_itemSpheres</code>, <code>Stats::shadowCulled</code></span></div>
+<h3>6-A. 면 6개의 순서와 행렬</h3>
+<table>
+<tr><th>face</th><th>방향 (look)</th><th>up</th></tr>
+<tr><td>0</td><td>+X (1, 0, 0)</td><td>+Y</td></tr>
+<tr><td>1</td><td>−X (−1, 0, 0)</td><td>+Y</td></tr>
+<tr><td>2</td><td>+Y (0, 1, 0)</td><td>−Z</td></tr>
+<tr><td>3</td><td>−Y (0, −1, 0)</td><td>+Z</td></tr>
+<tr><td>4</td><td>+Z (0, 0, 1)</td><td>+Y</td></tr>
+<tr><td>5</td><td>−Z (0, 0, −1)</td><td>+Y</td></tr>
+</table>
+<p>D3D 큐브맵 면 순서(+X, −X, +Y, −Y, +Z, −Z)와 같게 둡니다. 우리는 큐브 텍스처를 쓰지 않으므로 up은 면마다 시야만 맞으면 어떤 것이어도 되지만, 관례를 따르면 나중에 큐브 섀도 맵으로 옮기기 쉽습니다. 뷰는 <code>XMMatrixLookToLH(position, look, up)</code>입니다.</p>
+<p><b>시야각은 90°가 아니라 조금 넓게</b> 잡습니다. PCF가 타일 가장자리 3텍셀 안쪽으로 clamp되므로, 그 안쪽 영역이 정확히 90°를 덮도록 넓힙니다.</p>
+<pre><code>tanHalf = kShadowTileSize / (kShadowTileSize - 2 · kShadowPcfBorder)   // 1024 / 1018 ≈ 1.0059
+fov     = 2 · atan(tanHalf)                                            // ≈ 90.34°
+proj    = XMMatrixPerspectiveFovLH(fov, 1.0f, 0.05f, max(range, 0.06f))
+params  = (0, 2 · tanHalf / kShadowTileSize, 1, 0),  cullSphere = (position, range)</code></pre>
+<ul class="todo">
+<li><input type="checkbox"> <code>ComputePointFaceViewProj</code>를 위 표와 식대로 만듭니다.</li>
+<li><input type="checkbox"> <code>BuildShadowViews</code> 포인트 분기: <b><code>m_usedLocalTiles + 6 &lt;= kShadowLocalTileCount</code>일 때만</b> 면 0~5를 차례로 <code>AddShadowView(…, LocalTileRect(m_usedLocalTiles++), …)</code>하고, 첫 번호를 <code>shadowIndex</code>에 넣습니다. 6개 미만이면 일부만 할당하지 않고 통째로 건너뜁니다(<code>++m_skippedShadowLights</code>). PS가 <code>shadowIndex + face</code>로 찾기 때문에 <b>여섯 뷰의 번호가 연속</b>이어야 합니다.</li>
+<li><input type="checkbox"> HLSL: <code>PointFace</code>와 <code>ShadowForLight</code>의 포인트 분기.
+<pre><code>// 광원 → 표면 벡터의 가장 큰 성분 축이 그 면. 순서는 +X, −X, +Y, −Y, +Z, −Z (C++ 의 face 번호와 같음)
+uint PointFace(float3 v)
+{
+    const float3 a = abs(v);
+    uint face = (v.z &gt; 0.0f) ? 4 : 5;
+    if (a.x &gt;= a.y &amp;&amp; a.x &gt;= a.z) face = (v.x &gt; 0.0f) ? 0 : 1;
+    else if (a.y &gt;= a.z)           face = (v.y &gt; 0.0f) ? 2 : 3;
+    return face;
+}
+...
+else if (light.type == LIGHT_POINT)
+{
+    const uint face = PointFace(worldPosition - light.position);
+    result = SampleShadowView((uint)light.shadowIndex + face, worldPosition, geometricNormal, normalDelta, distanceToLight);
+}</code></pre></li>
+</ul>
+<h3>6-B. 지역광 컬링</h3>
+<p>점광 하나가 뷰 6개라 그림자 드로우가 "뷰 수 × 물체 수"로 늘어납니다. D3D12 업로드 링(프레임당 8 MB ÷ 256 B ≈ 32,768회)에는 Sponza 규모에서도 여유가 있지만, 범위 밖 물체를 그리는 것은 낭비이므로 구(sphere) 대 구 검사로 건너뜁니다.</p>
+<ul class="todo">
+<li><input type="checkbox"> <code>RenderShadowPass</code> 맨 앞에서 <code>m_drawList</code>의 항목마다 월드 경계 구를 한 번 계산해 <code>m_itemSpheres</code>(멤버, 프레임마다 재사용)에 넣습니다. 중심 = <code>item.mesh-&gt;GetBounds().Center()</code>를 <code>item.object-&gt;GetWorldMatrix()</code>로 변환(<code>XMVector3TransformCoord</code>). 반지름 = <code>Bounds::Radius()</code> × 월드 행렬 세 축 길이 중 최댓값.</li>
+<li><input type="checkbox"> 뷰 루프 안의 드로우 루프에서 <code>view.cullSphere.w &gt; 0</code>이고 <code>|중심 − 광원| &gt; 반지름 + 범위</code>면 건너뛰고 <code>++m_stats.shadowCulled</code>. 방향광·캐스케이드(<code>w = 0</code>)는 컬링하지 않습니다.</li>
+<li><input type="checkbox"> 통계 줄에 <code>culled %u</code>를 추가합니다.</li>
+</ul>
+<h4>확인</h4>
+<ul>
+<li><code>MultiShadow.json</code>: 점광 주변의 물체 그림자가 사방(바닥·벽 쪽)으로 생깁니다. 아틀라스 뷰어에 같은 <code>L3</code> 라벨의 타일 6개가 연속으로 보입니다. 통계 <code>views</code> = 1(방향광) + 2(스팟) + 6 = 9.</li>
+<li><b>면 경계</b>: 카메라를 점광 주위로 돌리며 디버그 뷰 4로 대각선(면이 바뀌는 45° 방향)에 선이나 빈틈이 없는지 봅니다. 선이 보이면 시야각 여백(<code>tanHalf</code> 식)이나 면 번호 순서가 C++과 HLSL에서 다른지 의심합니다.</li>
+<li><b>타일 부족</b>: 점광을 하나 더 추가해 Cast shadows를 켜면(2 + 6 + 6 = 14 &gt; 12) 새 점광은 그림자가 없고 <code>skipped lights 1</code>이 표시됩니다. 스팟 하나를 끄면 자리가 나도 6칸에는 모자라므로 여전히 건너뜁니다. 스팟 둘을 다 끄면 그때 그림자가 생깁니다.</li>
+<li><b>부하</b>: Sponza에 점광 두 개(그림자 켬)를 넣어 D3D12로 실행 → 로그에 <code>업로드 링이 가득 참</code>이 없어야 합니다. 컬링 전후의 <code>shadow</code> 드로우 수와 Profiler의 <code>ShadowPass</code> 시간을 기록합니다.</li>
+</ul>
+<h4>커밋</h4>
+<pre><code>git commit -am "feat(render): 포인트 라이트 그림자 (6타일, PS 면 선택, PCF 여백만큼 넓힌 시야각), 그림자 패스 지역광 범위 컬링 [2026/10/29]"</code></pre>
+<h4>공부할 개념</h4>
+<ul>
+<li><b>전방향(omnidirectional) 그림자</b>: 점광은 한 방향 투영으로 담을 수 없어 6면(큐브)으로 나눔. 지금 엔진의 IBL 큐브맵과 같은 면 구조.</li>
+<li><b>동적 큐브맵 렌더링</b>: 90° 카메라 6대로 장면을 그리는 방법. 큐브 섀도 맵(<code>TextureCube</code> + 거리 저장)과 이 계획의 "아틀라스 6타일 + PS 면 선택"이 어떻게 같은 일을 하는가.</li>
+<li><b>큐브 면 선택</b>: "가장 큰 성분 축"으로 면을 고르는 규칙. 하드웨어가 큐브 샘플링에서 하는 일을 직접 쓰는 것.</li>
+<li><b>경계 구 컬링</b>: AABB를 월드로 옮기는 대신 구를 쓰는 이유(회전에 강하고 계산이 쌈), 비균등 스케일에서 반지름을 최대 축 길이로 키우는 이유.</li>
+</ul>
+<h4>참고</h4>
+<ul>
+<li>Luna DX11 17장 "Cube Mapping"의 동적 큐브맵 절 (L11-8), Luna DX12 18장 "Cube Mapping"의 18.5 동적 큐브맵 (L12-8)</li>
+<li>Luna DX11 15장 / DX12 16장 "Instancing and Frustum Culling"의 경계 볼륨·컬링 절 (L11-9, L12-9)</li>
+<li>LearnOpenGL <a href="https://learnopengl.com/Advanced-Lighting/Shadows/Point-Shadows">Point Shadows</a> (OpenGL이라 지오메트리 셰이더로 6면을 한 번에 그리지만 원리는 같음)</li>
+</ul>
+</section>
+
+<section id="s7">
+<h2><span class="step">7</span>CSM (방향광 캐스케이드)</h2>
+<div class="meta"><b>목표</b><span>방향광 영역을 캐스케이드 2~4개로 나눠 카메라 가까운 곳에 해상도를 몰아준다. 캐스케이드는 회전·이동에 흔들리지 않게 만든다.</span>
+<b>파일</b><span>수정: <code>Scene/ShadowSettings.h</code>, <code>Scene/SceneSerializer.cpp</code>, <code>App/DebugUI.cpp</code>, <code>App/Editor.cpp</code> (디버그 뷰 콤보), <code>Graphics/Renderer.h/.cpp</code>, <code>Shaders/BasicPixelShader.hlsl</code></span>
+<b>만드는 것</b><span><code>ShadowSettings::cascadeCount/cascadeDistance/cascadeLambda</code>, <code>void Renderer::AddCascadeViews(const Camera&amp; camera, const LightData&amp; light, uint32_t lightIndex)</code>, 멤버 <code>m_cascadeCount</code>·<code>m_cascadeSplits</code>·<code>m_cascadeOrigin</code>·<code>m_cascadeForward</code>, HLSL <code>int SelectCascade(float3 worldPosition)</code>, 디버그 뷰 8 "Shadow cascade"</span></div>
+<h3>7-A. 설정</h3>
+<table>
+<tr><th>필드</th><th>기본값</th><th>뜻</th><th>UI</th></tr>
+<tr><td><code>int cascadeCount</code></td><td>1</td><td>1 = 지금처럼 직교 뷰 하나(<code>orthoSize</code>/<code>distance</code>). 2~4 = CSM</td><td><code>SliderInt("Cascades", 1, 4)</code></td></tr>
+<tr><td><code>float cascadeDistance</code></td><td>60</td><td>그림자를 그리는 최대 카메라 거리(카메라 far와 작은 쪽)</td><td>5 ~ 300 (CSM일 때만 표시)</td></tr>
+<tr><td><code>float cascadeLambda</code></td><td>0.7</td><td>분할식의 로그(1)·균등(0) 섞는 비율</td><td>0 ~ 1 (CSM일 때만)</td></tr>
+</table>
+<p>저장 키는 필드 이름 그대로입니다(<code>SceneSerializer.cpp</code> 그림자 묶음). 기본값 1이라 옛 씬은 지금과 똑같이 보입니다. CSM일 때 <code>distance</code>("Light distance")는 "카메라 밖 뒤쪽 캐스터까지 잡는 거리"로 계속 쓰이고, <code>orthoSize</code>는 바이어스 환산 기준으로만 쓰입니다. UI에서 Ortho size 옆에 그렇게 적어 둡니다.</p>
+
+<h3>7-B. <code>AddCascadeViews</code> 알고리즘</h3>
+<p><code>BuildShadowViews</code>의 방향광 분기에서 <code>cascadeCount &gt;= 2 &amp;&amp; camera.IsUsePerspectiveProjection()</code>이면 이 함수를, 아니면 지금의 단일 뷰를 씁니다(직교 카메라에서는 절두체 조각 계산이 맞지 않으므로 단일 뷰로 대체).</p>
+<pre><code>N = cascadeCount,  n = camera.GetNearZ(),  f = min(camera.GetFarZ(), cascadeDistance)
+분할 (practical split):  s[i] = λ · n · (f/n)^(i/N) + (1 − λ) · (n + (f − n) · i/N),   i = 0..N   (s[0] = n, s[N] = f)
+
+캐스케이드 c = 0..N−1:
+  1) 조각의 꼭짓점 8개: d ∈ {s[c], s[c+1]} 마다
+       h = d · tan(fovY/2),  w = h · aspect,  center = camPos + forward · d
+       꼭짓점 = center ± right · w ± up · h
+  2) 경계 구: 중심 C = 8개의 평균, 반지름 r = max |꼭짓점 − C|,  r = ceil(r · 16) / 16   ← 크기를 계단화해 회전에도 투영 크기가 그대로
+  3) 광원 뷰:  eye = C − dir · (r + back),  back = shadow.distance
+              view = XMMatrixLookToLH(eye, dir, up)        (up 은 ComputeLightViewProj 와 같은 규칙)
+              proj = XMMatrixOrthographicLH(2r, 2r, 0, 2r + back)
+  4) 텍셀 스냅:  월드 원점을 이 투영으로 옮긴 좌표를 텍셀 격자에 맞춤
+              o = XMVector4Transform((0,0,0,1), view · proj) · (tile / 2)
+              offset = (round(o) − o) · (2 / tile)
+              proj.r[3] += (offset.x, offset.y, 0, 0)
+  5) 사각형 = DirectionalRect(c, N),  tile = kShadowTileSize
+     params = ( shadow.bias · (2·distance + orthoSize) / (2r + back),   ← 단일 뷰와 같은 "월드 거리" 바이어스로 환산
+                2r / tile, 0, 0 )
+  6) 첫 캐스케이드의 뷰 번호가 그 조명의 shadowIndex
+
+m_cascadeSplits = (s[1], s[2], s[3], s[4])  (없는 칸은 0),  m_cascadeOrigin = camPos,  m_cascadeForward = forward,  m_cascadeCount = N</code></pre>
+<p><code>UploadShadowConstants</code>가 <code>cascadeSplits</code>, <code>cascadeOrigin = (camPos, N)</code>, <code>cascadeForward = (forward, 0)</code>을 올립니다. CSM이 아니면 <code>cascadeOrigin.w = 0</code>입니다. 카메라 벡터는 <code>Camera::GetForward/GetRight/GetUp</code>, 렌즈 값은 <code>GetFovY/GetAspect/GetNearZ/GetFarZ</code>를 씁니다.</p>
+
+<h3>7-C. 셰이더</h3>
+<pre><code>// CSM 이 켜져 있으면 이 위치의 캐스케이드 번호, 꺼져 있거나 마지막 캐스케이드 너머면 −1
+int SelectCascade(float3 worldPosition)
+{
+    int result = -1;
+    const uint count = (uint)cascadeOrigin.w;
+    const float depth = dot(worldPosition - cascadeOrigin.xyz, cascadeForward.xyz);   // 캐스케이드를 계산한 카메라의 전방 거리
+    [unroll]
+    for (uint i = 0; i &lt; 4; ++i)
+    {
+        if (result &lt; 0 &amp;&amp; i &lt; count &amp;&amp; depth &lt; cascadeSplits[i]) result = (int)i;
+    }
+    return result;
+}
+
+// ShadowForLight 의 방향광 분기
+if (cascadeOrigin.w &gt; 0.5f)
+{
+    const int c = SelectCascade(worldPosition);
+    if (c &gt;= 0) result = SampleShadowView((uint)(light.shadowIndex + c), worldPosition, geometricNormal, normalDelta, 0.0f);
+}
+else
+{
+    result = SampleShadowView((uint)light.shadowIndex, worldPosition, geometricNormal, normalDelta, 0.0f);
+}</code></pre>
+<ul class="todo">
+<li><input type="checkbox"> 위 셰이더 코드를 넣습니다. 깊이를 <b>지금 그리는 카메라의 b0가 아니라 <code>cascadeOrigin/Forward</code>로</b> 재는 이유: 카메라 미리보기 패스는 b0를 다른 카메라로 바꾸지만 그림자는 메인 카메라 기준으로 한 번만 만들기 때문입니다. 미리보기에서 메인 카메라의 마지막 캐스케이드보다 먼 곳은 그림자가 없습니다(받아들이는 한계).</li>
+<li><input type="checkbox"> 디버그 뷰 8: <code>Editor.cpp</code>의 <code>views[]</code>(약 1544행) 끝에 <code>"Shadow cascade"</code>를 추가하고, PS의 디버그 분기에 <code>if (debugView == 8)</code>를 넣습니다. 색: 0 빨강, 1 초록, 2 파랑, 3 노랑, 너머(−1)는 어두운 회색, CSM 꺼짐은 흰색. 알베도를 조금 섞으면(<code>lerp(color, albedo, 0.3)</code>) 장면을 알아보기 쉽습니다.</li>
+<li><input type="checkbox"> <code>AddCascadeViews</code>와 7-A의 설정·저장·UI를 구현합니다.</li>
+</ul>
+<h4>확인</h4>
+<ul>
+<li>먼저 에디터에서 <code>Sponza.json</code>을 열어 Shadows 패널의 Cascades를 4로 바꾸고 <b>Save As</b>로 <code>SponzaCascades.json</code>을 만듭니다(원본 Sponza는 Cascades 1로 두어 회귀 비교용으로 씀).</li>
+<li><code>SponzaCascades.json</code>, Cascades 4, 거리 60: <code>--debug-view=8</code> 스크린샷에서 카메라에서 멀어질수록 빨강 → 초록 → 파랑 → 노랑 띠가 보이고, 그 너머는 회색입니다.</li>
+<li>Cascades 1과 4의 같은 시점 스크린샷 비교: 4에서 카메라 가까운 그림자 경계가 눈에 띄게 선명합니다. Cascades 1은 단계 4와 같아야 합니다(회귀).</li>
+<li><b>흔들림</b>(에디터에서 직접): 카메라를 천천히 옮기고 돌리면서 그림자 가장자리가 반짝이지 않는지 봅니다. 반짝이면 4)의 스냅 부호나 <code>tile</code> 값을, 회전할 때 그림자 크기가 출렁이면 2)의 반지름 계단화를 의심합니다.</li>
+<li>캐스케이드 경계에서 그림자가 끊기는 선은 PCF 여백 clamp 때문에 약하게 보일 수 있습니다. 경계 블렌딩은 이번 범위 밖입니다(단계 8의 "남기는 일").</li>
+<li>카메라 오브젝트가 있는 씬에서 <code>--select=&lt;카메라 이름&gt;</code>으로 미리보기를 띄워, 미리보기에서도 메인 카메라 범위 안의 그림자가 맞게 보이는지 확인합니다.</li>
+<li>에디터 카메라를 직교로 바꾸면(카메라 설정) CSM 대신 단일 뷰로 그려지고 오류가 없어야 합니다.</li>
+<li>D3D12 동일, 로그 깨끗함. 통계 <code>views</code> = 4 + 지역광 타일 수.</li>
+</ul>
+<h4>커밋</h4>
+<pre><code>git commit -am "feat(render): 방향광 CSM (2~4 캐스케이드, practical split, 경계 구 + 텍셀 스냅), 디버그 뷰 8 Shadow cascade [2026/10/29]"</code></pre>
+<h4>공부할 개념</h4>
+<ul>
+<li><b>원근 앨리어싱</b>: 카메라 가까운 픽셀은 섀도 텍셀을 많이 필요로 하고 먼 픽셀은 적게 필요한데, 섀도 맵 하나는 해상도가 균일함. CSM이 이 문제를 푸는 방식.</li>
+<li><b>절두체 분할</b>: 균등·로그·practical(λ로 섞음) 분할의 차이와, λ를 키우면 가까운 캐스케이드가 얇아지는 것.</li>
+<li><b>안정적인 CSM</b>: fit to scene / fit to cascade, 경계 구를 쓰면 회전에 크기가 변하지 않는 이유, 텍셀 스냅이 이동 중 반짝임을 없애는 원리.</li>
+<li><b>캐스케이드 선택</b>: 구간(interval) 기반과 맵(map) 기반의 차이. 이 계획은 구간 기반.</li>
+<li><b>절두체 꼭짓점 계산</b>: fovY·aspect·near/far로 꼭짓점 8개를 만드는 법(Luna의 1인칭 카메라·절두체 컬링 장).</li>
+</ul>
+<h4>참고</h4>
+<ul>
+<li>MS Learn <a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/cascaded-shadow-maps">Cascaded Shadow Maps</a> (분할, fit to scene/cascade, 구간 기반 선택, 캐스케이드 블렌딩, PCF 여백)</li>
+<li>GPU Gems 3, 10장 <a href="https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html">Parallel-Split Shadow Maps on Programmable GPUs</a> (practical split 식의 출처)</li>
+<li>LearnOpenGL <a href="https://learnopengl.com/Guest-Articles/2021/CSM">CSM</a> (절두체 꼭짓점 → 광원 행렬 단계가 그림과 코드로 있음)</li>
+<li>Matt Pettineo(MJP)의 D3D11 그림자 예제 <a href="https://github.com/TheRealMJP/Shadows">TheRealMJP/Shadows</a> (안정적인 CSM, 텍셀 스냅 구현을 실제 코드로 볼 수 있음)</li>
+<li>Luna 두 책 본문에는 CSM 절이 없는 것으로 압니다. 목차에서 한 번 확인해 보세요. 절두체 쪽은 DX11 14장·15장, DX12 15장·16장 (L11-9, L11-10, L12-9, L12-10)</li>
+</ul>
+</section>
+
+<section id="s8">
+<h2><span class="step">8</span>마무리: 전체 회귀, 게임 모드, 정리</h2>
+<div class="meta"><b>목표</b><span>모든 씬·백엔드·실행 모드에서 깨진 것이 없음을 확인하고, 옛 경로의 흔적을 지운다.</span>
+<b>파일</b><span>앞 단계에서 손댄 파일 전부(정리만). 문서는 이 단계에서 고치지 않고 목록만 만든다.</span></div>
+<h3>8-A. 회귀 표</h3>
+<table>
+<tr><th>씬</th><th>백엔드</th><th>디버그 뷰</th><th>기대</th></tr>
+<tr><td>NormalBumpShadowMapping</td><td>d3d11, d3d12</td><td>0, 4</td><td>기준(단계 0)과 거의 같음(단계 3의 합격 기준)</td></tr>
+<tr><td>Sponza</td><td>d3d11, d3d12</td><td>0, 4</td><td>같음</td></tr>
+<tr><td><code>SponzaCascades.json</code> (Sponza를 Cascades 4로 Save As)</td><td>d3d11, d3d12</td><td>0, 8</td><td>가까운 그림자가 선명, 캐스케이드 띠 4색</td></tr>
+<tr><td>MultiShadow</td><td>d3d11, d3d12</td><td>0, 4</td><td>네 조명의 그림자가 모두 보임. <code>base-multi</code>와는 <b>달라야</b> 함</td></tr>
+<tr><td>Cubemap (IBL 씬)</td><td>d3d11, d3d12</td><td>0</td><td>IBL·스카이박스에 영향 없음</td></tr>
+</table>
+<ul class="todo">
+<li><input type="checkbox"> 위 표를 7장 명령으로 찍고 7장 스크립트로 비교합니다. D3D11과 D3D12 결과끼리도 비교해 봅니다(같은 씬이면 차이가 아주 작아야 함).</li>
+<li><input type="checkbox"> 실행마다 로그에서 <code>[실패]</code>·<code>[경고]</code> 줄과 <code>바인딩 대조 … OK</code>를 확인합니다(7장 명령). 작업 전부터 있던 <code>Live ID3D11Device</code> 경고 외에 새 줄이 없어야 합니다.</li>
+<li><input type="checkbox"> <b>게임 모드</b>: 7장의 <code>GameShot</code>으로 MultiShadow를 D3D11·D3D12로 찍습니다. 게임 실행 파일은 <code>--scene=</code>을 무시하고 프로젝트 파일의 <code>startScene</code>을 열기 때문에, 이 함수가 <code>startScene</code>을 잠깐 바꿨다가 되돌립니다. 로그의 <code>씬 로드: …MultiShadow.json</code> 줄로 맞는 씬이 열렸는지 확인합니다. 게임은 에디터 카메라가 아니라 씬의 Main Camera로 그리므로, CSM 기준 카메라(<code>m_cascadeOrigin</code>)가 그 카메라인지 봅니다. 게임 실행 흐름은 <code>rendering-analysis.html</code> 17.10~17.11에 정리되어 있습니다.</li>
+<li><input type="checkbox"> <b>Release x64</b>로도 솔루션을 빌드해 한 번 실행합니다(Debug 전용 검사 코드에 묶인 변수가 있으면 여기서 경고·오류가 납니다).</li>
+<li><input type="checkbox"> 흔적 정리. 저장소 루트에서 검색해 남은 것이 없게 합니다.
+<pre><code>git grep -n -e kShadowMapSize -e ComputeShadowFactor -e lightViewProj -e shadowPosition -e m_lightViewProj -- SherlockEngine
+git grep -n -e "light 0" -e "광원 0" -e "조명 0" -- SherlockEngine</code></pre>
+두 번째 검색은 주석에서 "첫 번째 조명만 그림자"를 말하는 문장을 찾기 위함입니다. 남은 문장은 "첫 번째 castShadows 방향광" 규칙으로 고칩니다.</li>
+<li><input type="checkbox"> 단계 1의 확인용 <code>cmd.SetViewport(Viewport{})</code>가 남아 있다면 지웁니다(단계 3에서 진짜 호출로 바뀌었어야 함).</li>
+</ul>
+<h3>8-B. 나중에 고칠 문서 목록 (이 단계에서는 고치지 않음)</h3>
+<table>
+<tr><th>문서</th><th>위치</th><th>바뀌는 내용</th></tr>
+<tr><td><code>rendering-analysis.html</code></td><td>11.8 그림자 매핑 (<code>#c11-8</code>)</td><td>단일 맵 → 아틀라스, b5·b6, PS의 그림자 좌표 계산, 조명별 그림자</td></tr>
+<tr><td></td><td>14장 Renderer 내부 (<code>#c14</code>)</td><td>프레임 순서(<code>BuildShadowViews</code>), 통계 항목, 디버그 뷰 8</td></tr>
+<tr><td></td><td>설계 결정 D11 (<code>#d11</code>)</td><td>조명 배열 재검토 결과(<code>castShadows/shadowIndex</code>)</td></tr>
+<tr><td></td><td>22장 로드맵 (<code>#c22</code>)</td><td>8번 행의 CSM 완료 표시</td></tr>
+<tr><td><code>known-limits-notes.html</code></td><td>그림자·통계 항목</td><td>"그림자는 조명 하나" 한계 삭제, 새 한계(타일 12개, 캐스케이드 블렌딩 없음, 미리보기 카메라 CSM) 추가</td></tr>
+<tr><td><code>README.md</code></td><td>기능 목록</td><td>다중 광원 그림자·CSM</td></tr>
+</table>
+<p>문서를 고칠 때는 "새 문서로 쓸지, 기존 문서를 고칠지"를 먼저 정합니다.</p>
+<h3>8-C. 남기는 일 (이번 범위 밖)</h3>
+<ul>
+<li><b>캐스케이드 경계 블렌딩</b>: 경계 근처에서 두 캐스케이드를 섞어 끊김을 숨김(MS Learn CSM 문서의 "Blending between cascades").</li>
+<li><b>타일 우선순위</b>: 지금은 조명 배열 순서대로 선착순. 카메라와의 거리·화면 크기로 정렬하면 타일이 모자랄 때 더 중요한 조명이 그림자를 받음.</li>
+<li><b>정적 그림자 캐시</b>: 움직이지 않는 지역광의 타일은 매 프레임 다시 그릴 필요가 없음.</li>
+<li><b>원근용 섀도 PSO</b>: 래스터 바이어스(<code>depthBias 2000, slope 2.0</code>)는 직교 맵 기준으로 맞춘 값. 지역광에서 acne·떠 보임이 심하면 바이어스가 다른 PSO를 하나 더 둠(5장 함정 표).</li>
+<li><b>텍스처 배열·큐브 섀도 맵</b>: RHI에 2D 배열·큐브 DSV가 생기면 아틀라스 대신 쓸 수 있음(<code>ResourceDesc.h</code>는 지금 2D 배열을 만들 수 없음).</li>
+<li><b>디퍼드 렌더링</b>: 로드맵 그대로. 이 작업으로 만든 "조명별 그림자 뷰"는 디퍼드에서도 그대로 쓰임.</li>
+</ul>
+<h4>커밋</h4>
+<pre><code>git commit -am "refactor(render): 단일 섀도 맵 경로의 흔적 제거 (kShadowMapSize, ComputeShadowFactor, 광원 0 주석) [2026/10/29]"</code></pre>
+</section>
+
+<section id="pitfalls">
+<h2>5. 함정 (증상으로 찾기)</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>대처</th><th>단계</th></tr>
+<tr><td>D3D12에서만 그림자가 없거나 셰이더가 쓰레기 값을 읽음. D3D11은 정상</td><td>새 b5·b6을 <b>새 바인딩 레이아웃</b>으로 만듦. <code>kMaxBindingSets = 4</code>가 이미 꽉 차 있어 다섯 번째 셋은 조용히 버려짐</td><td>b5·b6은 <b>frame 레이아웃에 추가</b>(결정 D3). 단계 1의 경고가 로그에 찍히는지 확인</td><td>1, 3</td></tr>
+<tr><td>D3D12 로그에 <code>Dynamic 상수버퍼가 이번 프레임에 갱신되지 않음</code></td><td>F8로 그림자를 껐거나 그림자 뷰가 0개라 b5·b6을 올리지 않은 프레임</td><td><code>UploadShadowConstants</code>는 그림자가 꺼져 있어도 <b>매 프레임</b> b6(뷰 0개)과 b5(단위 행렬)를 올림</td><td>3</td></tr>
+<tr><td>그림자 전체가 엉뚱한 곳에 있거나 사라짐</td><td>b5·b6 행렬의 전치 누락. 기존 b0는 <code>XMMatrixTranspose</code> 후 저장하는 규칙</td><td><code>ShadowView</code>에는 행우선 그대로 두고, <code>UploadShadowConstants</code>(b6)와 <code>RenderShadowPass</code>(b5)에서 <b>올릴 때만</b> 전치(단계 3의 규칙). 두 번 전치해도 같은 증상</td><td>3</td></tr>
+<tr><td>cbuffer 크기 검사 실패, 또는 뒤쪽 필드(<code>cascadeSplits</code> 등)만 이상한 값</td><td>HLSL 패킹 규칙: 필드가 16바이트 경계를 넘지 못함. C++ 쪽 오프셋과 다름</td><td>단계 3에 적은 오프셋대로 <code>static_assert(offsetof(...))</code>. 구조체 배열 원소는 16의 배수 크기로</td><td>2, 3</td></tr>
+<tr><td>타일 경계에 옆 조명의 그림자가 비침</td><td>PCF 5×5가 타일 밖 텍셀을 읽음</td><td>UV를 <code>[rect + border, rect + size − border]</code>로 clamp, <code>kShadowPcfBorder = 3</code></td><td>3, 4</td></tr>
+<tr><td>점광 그림자에 45° 방향 선·빈틈</td><td>시야각을 정확히 90°로 잡아 clamp된 여백만큼 덮지 못함, 또는 면 번호 순서가 C++과 HLSL에서 다름</td><td><code>tanHalf = tile / (tile − 2·border)</code>, 표의 면 순서를 양쪽에 똑같이</td><td>6</td></tr>
+<tr><td>스팟·점광 그림자에 줄무늬(acne) 또는 그림자가 물체에서 떠 있음(peter panning)</td><td>원근 깊이는 비선형이라 직교용 상수 바이어스가 거리마다 다르게 작동. 래스터 바이어스도 직교 기준 값</td><td>노멀 오프셋(<code>localNormalBias</code>)을 먼저 조절. 그래도 안 되면 지역광용 섀도 PSO를 따로 둠</td><td>5</td></tr>
+<tr><td>D3D11 경고 "SRV와 DSV 동시 바인딩", 그림자가 한 프레임 늦게 보임</td><td>그림자 패스가 아틀라스를 DSV로 쓰는 동안 t8에 SRV로 묶여 있음</td><td><code>DrawItems</code>의 frame 셋 재바인딩(그림자 패스 뒤) 순서를 바꾸지 않음</td><td>3</td></tr>
+<tr><td>셰이더 컴파일 경고 X3570 또는 루프 안 샘플링이 깨짐</td><td>동적 분기·루프 안에서 <code>SampleCmp</code>(미분 필요) 사용</td><td>항상 <code>SampleCmpLevelZero</code></td><td>3</td></tr>
+<tr><td>그림자가 없는 조명이 뷰 0번의 그림자를 받음</td><td><code>shadowIndex</code>를 <code>uint</code>로 선언해 −1이 4294967295가 되고, 검사를 <code>&lt; 0</code>으로 함</td><td>C++ <code>int32_t</code>, HLSL <code>int</code>. 검사는 <code>shadowIndex &lt; 0</code>, 인덱싱할 때만 <code>(uint)</code></td><td>2, 3</td></tr>
+<tr><td>바깥 원뿔이 넓은 스팟의 그림자 가장자리가 잘림</td><td>시야각을 120°로 clamp해 원뿔이 절두체 밖으로 나감</td><td>의도된 한계. 60° 이상이면 텍셀 밀도도 급감하므로 UI 툴팁에 적어 둠</td><td>5</td></tr>
+<tr><td>카메라 미리보기에서 먼 곳의 그림자가 없음</td><td>캐스케이드는 메인 카메라 기준으로 한 번만 만듦</td><td>의도된 한계(단계 7). <code>SelectCascade</code>가 b0가 아닌 <code>cascadeOrigin</code>을 쓰는지만 확인</td><td>7</td></tr>
+<tr><td>옛 씬을 열었더니 그림자가 바뀌거나 사라짐</td><td>그림자 조명이 "광원 0"에서 "첫 번째 castShadows 방향광"으로 바뀜. 광원 0이 방향광이 아니던 씬</td><td>의도된 동작 변경(3장 경고). 저장 기본값은 방향광만 <code>castShadows = true</code></td><td>2, 3</td></tr>
+</table>
+</section>
+
+<section id="focus">
+<h2>6. 놓치기 쉬운 입력</h2>
+<p>각 단계의 "확인"이 직접 다루지 않지만 실제로 쓰다 보면 만나는 경우입니다. 해당 단계를 끝낼 때 같이 확인하세요.</p>
+<table>
+<tr><th>입력·상황</th><th>기대하는 동작</th><th>확인 방법</th><th>단계</th></tr>
+<tr><td>그림자 조명이 타일 수보다 많음(스팟 13개, 점광 3개 등)</td><td>앞에서부터 들어가는 만큼만 그림자, 나머지는 그림자 없이 빛만. 크래시·잘못된 타일 없음. 통계에 <code>skipped</code> 수</td><td>MultiShadow 사본에 스팟을 계속 추가해 13개로(저장해 두고 재사용). 점광은 6칸이 안 남으면 통째로 건너뛰는지</td><td>4, 5, 6</td></tr>
+<tr><td>F8로 그림자를 끈 채 D3D12 실행</td><td>모든 조명 그림자 계수 1, 로그에 <code>Dynamic 상수버퍼…</code> 경고 없음</td><td><code>--backend=d3d12</code>로 F8 끈 씬을 저장해 실행 후 로그 검색</td><td>3</td></tr>
+<tr><td>편집 중 조명 Type 변경(방향↔스팟↔점), 삭제, 되돌리기</td><td>다음 프레임에 타일이 다시 배치되고 엉뚱한 그림자가 남지 않음. 되돌리기 후 원래 그림자 복귀</td><td>에디터에서 직접. <code>shadowIndex</code>는 매 프레임 <code>BuildShadowViews</code>가 새로 쓰므로 저장 파일에 들어가면 안 됨</td><td>2, 5, 6</td></tr>
+<tr><td>바깥 원뿔이 시야각 clamp(120°)보다 넓은 스팟</td><td>clamp된 범위까지만 그림자, 크래시·NaN 없음</td><td>Outer cone을 최대로. 디버그 뷰 4에서 검은 얼룩·번쩍임 없음</td><td>5</td></tr>
+<tr><td>CSM 켠 상태의 카메라 미리보기, 직교 메인 카메라</td><td>미리보기는 메인 카메라 범위만 그림자. 직교 카메라는 단일 뷰로 대체</td><td><code>--select=&lt;카메라 이름&gt;</code> 스크린샷(7장의 <code>-Extra</code> 인자), 카메라를 직교로 바꿔 실행</td><td>7</td></tr>
+<tr><td>Range가 아주 작거나(0.01) 큰(1000) 지역광, near보다 가까운 물체</td><td>투영 행렬이 퇴화하지 않음(far &gt; near 보장), 그림자는 없어도 오류 없음</td><td>Lights 패널에서 Range를 양 끝으로. 로그와 디버그 뷰 4</td><td>5, 6</td></tr>
+</table>
+</section>
+
+<section id="verify">
+<h2>7. 검증 방법 (명령과 스크립트)</h2>
+<p>모든 단계의 "확인"은 이 장의 함수 세 개로 합니다. 아래 코드를 PowerShell 창에 한 번 붙여 넣으면 그 창에서 계속 쓸 수 있습니다. 스크립트는 저장소에 넣지 않습니다(필요하면 <code>$env:TEMP</code>에 <code>.ps1</code>로 저장).</p>
+<h3>7-A. 스크린샷 찍기: <code>Shot</code></h3>
+<pre><code>$root = "C:\Users\User\Desktop\SherlockEngine"          # 저장소 루트
+$out  = Join-Path $env:TEMP "sherlock-shadow"            # 결과 폴더 (경로에 공백이 없어야 함)
+New-Item -ItemType Directory -Force $out | Out-Null
+
+function Shot {
+    param([string]$Name, [string]$Scene, [string]$Backend = "d3d11", [int]$View = 0,
+          [string]$Exe = "SherlockEditor.exe", [string[]]$Extra = @())
+    $argList = @(
+        "--project=Projects\SherlockTestScenes\SherlockTestScenes.sherlock",
+        "--scene=$Scene", "--backend=$Backend", "--exit-after=40",
+        "--screenshot=$out\$Name.png", "--debug-view=$View") + $Extra
+    # Start-Process 는 인자를 따옴표 없이 이어 붙이므로, 공백이 든 값(--select=Main Camera)도 한 인자로 가게 감쌈
+    $argList = $argList | ForEach-Object { '"' + $_ + '"' }
+    $start = Get-Date
+    # 에디터는 GUI 실행 파일이라 그냥 실행하면 기다리지 않음. -Wait 로 종료까지 기다림
+    Start-Process -FilePath "$root\x64\Debug\$Exe" -ArgumentList $argList -WorkingDirectory $root -Wait
+    # 로그는 실행마다 새로 쓰이므로 결과 옆에 복사해 둠. 이번 실행이 쓴 로그가 아니면 경고
+    $log = "$root\x64\Debug\Logs\SherlockEngine.log"
+    if ((Get-Item $log).LastWriteTime -lt $start) { "[주의] 이번 실행이 로그를 쓰지 않음: $log" }
+    Copy-Item $log "$out\$Name.log"
+    $ok = (Select-String -Path "$out\$Name.log" -Pattern "바인딩 대조.*OK").Count
+    "바인딩 대조 OK: $ok 줄"
+    Select-String -Path "$out\$Name.log" -Pattern "\[실패\]|\[경고\]" | ForEach-Object { $_.Line }
+}
+
+# 게임 실행 파일은 --scene= 을 쓰지 않고 .sherlock 의 startScene 을 엶 (GameApp.cpp 20~22행).
+# 그래서 startScene 을 잠깐 바꿔 찍고, 끝나면(실패해도) 원래 내용으로 되돌림
+function GameShot {
+    param([string]$Name, [string]$Scene, [string]$Backend = "d3d11")
+    $proj = "$root\Projects\SherlockTestScenes\SherlockTestScenes.sherlock"
+    $orig = [IO.File]::ReadAllText($proj)
+    [IO.File]::WriteAllText($proj, ($orig -replace '"startScene": "[^"]*"', "`"startScene`": `"$Scene`""))
+    try     { Shot $Name $Scene $Backend 0 -Exe SherlockGame.exe }
+    finally { [IO.File]::WriteAllText($proj, $orig) }
+}</code></pre>
+<p>지금 코드(1be6099 + 작업 트리)에서 실제로 돌려 본 결과: NormalBumpShadowMapping, D3D11, 디버그 뷰 4를 두 번 찍어 비교하면 <code>다른 픽셀 0 / 323390</code>이고, 출력은 <code>바인딩 대조 OK: 29 줄</code>과 경고 한 줄(<code>D3D11: Live ID3D11Device … Refcount: 3</code>, 아래 7-C 참고)입니다. b5·b6을 추가하면 OK 줄 수가 늘어야 합니다.</p>
+<p>사용 예:</p>
+<pre><code>Shot base-nbsm-d3d11        NormalBumpShadowMapping.json
+Shot base-nbsm-d3d12        NormalBumpShadowMapping.json d3d12
+Shot base-nbsm-shadow-d3d11 NormalBumpShadowMapping.json d3d11 4
+Shot s7-sponza-cascade      SponzaCascades.json d3d11 8
+Shot s7-preview             MultiShadow.json d3d11 0 -Extra "--select=Main Camera"
+GameShot s8-game-multi-d3d12 MultiShadow.json d3d12</code></pre>
+<ul>
+<li><code>--scene=</code>은 프로젝트의 씬 폴더(<code>Projects/SherlockTestScenes/Assets/Scenes</code>) 기준 상대 경로입니다(<code>AppBase.cpp</code>가 <code>engine.scene</code>으로 바꿔 넣음).</li>
+<li><code>--debug-view=N</code>은 2프레임째에 Render Settings의 디버그 뷰를 N으로 바꿉니다(<code>EditorApp.cpp</code> 약 1022행). 0이면 바꾸지 않습니다. 게임 실행 파일은 이 인자를 쓰지 않습니다.</li>
+<li><code>Shot</code>이 인자마다 큰따옴표를 씌우므로 <code>-Extra "--select=Main Camera"</code>처럼 공백이 든 값도 그대로 쓰면 됩니다.</li>
+</ul>
+<h3>7-B. 비교: <code>Compare-Shot</code></h3>
+<p>에디터 화면에서 씬 뷰 영역 (233, 72)~(963, 515)만 비교합니다. 이 영역은 같은 설정이면 실행마다 픽셀이 같고, 아래 패널의 FPS 숫자 같은 것은 매번 달라지기 때문입니다. 게임 스크린샷은 창 전체가 장면이므로 <code>-Full</code>을 붙입니다.</p>
+<pre><code>if (-not ("ShotDiff" -as [type])) {
+Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
+using System;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
+
+public static class ShotDiff
+{
+    // 두 PNG 의 [x0,x1) x [y0,y1) 영역을 비교해 "다른 픽셀 수"와 "RGB 채널 차이의 최댓값"을 돌려줌.
+    // diffPath 가 있으면 차이를 8배 키운 흑백 이미지를 저장함.
+    public static string Compare(string pathA, string pathB, string diffPath, int x0, int y0, int x1, int y1)
+    {
+        using (Bitmap a = new Bitmap(pathA))
+        using (Bitmap b = new Bitmap(pathB))
+        {
+            if (a.Width != b.Width || a.Height != b.Height) return "크기가 다름";
+            if (x1 &lt;= 0) { x0 = 0; y0 = 0; x1 = a.Width; y1 = a.Height; }
+            byte[] pa = ReadPixels(a), pb = ReadPixels(b);
+            int stride = a.Width * 4, count = 0, max = 0;
+            Bitmap d = string.IsNullOrEmpty(diffPath) ? null : new Bitmap(x1 - x0, y1 - y0);
+            for (int y = y0; y &lt; y1; ++y)
+            {
+                for (int x = x0; x &lt; x1; ++x)
+                {
+                    int i = y * stride + x * 4, m = 0;
+                    for (int c = 0; c &lt; 3; ++c) m = Math.Max(m, Math.Abs(pa[i + c] - pb[i + c]));
+                    if (m &gt; 0) { ++count; max = Math.Max(max, m); }
+                    if (d != null) { int v = Math.Min(255, m * 8); d.SetPixel(x - x0, y - y0, Color.FromArgb(v, v, v)); }
+                }
+            }
+            if (d != null) { d.Save(diffPath, ImageFormat.Png); d.Dispose(); }
+            return string.Format("다른 픽셀 {0} / {1}, 최대 채널 차이 {2}/255", count, (x1 - x0) * (y1 - y0), max);
+        }
+    }
+
+    static byte[] ReadPixels(Bitmap bmp)
+    {
+        BitmapData data = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        byte[] bytes = new byte[data.Stride * data.Height];
+        Marshal.Copy(data.Scan0, bytes, 0, bytes.Length);
+        bmp.UnlockBits(data);
+        return bytes;
+    }
+}
+'@
+}
+
+function Compare-Shot {
+    param([string]$A, [string]$B, [switch]$Diff, [switch]$Full)
+    $diffPath = if ($Diff) { "$out\diff-$A-$B.png" } else { "" }
+    if ($Full) { [ShotDiff]::Compare("$out\$A.png", "$out\$B.png", $diffPath, 0, 0, 0, 0) }
+    else       { [ShotDiff]::Compare("$out\$A.png", "$out\$B.png", $diffPath, 233, 72, 963, 515) }
+}</code></pre>
+<p>사용 예와 읽는 법:</p>
+<pre><code>Compare-Shot base-nbsm-d3d11 s1-nbsm-d3d11            # 단계 1: "다른 픽셀 0" 이어야 함
+Compare-Shot base-nbsm-shadow-d3d11 s3-nbsm-shadow-d3d11 -Diff   # 단계 3: 경계에만 차이, 최대 차이 작음
+Compare-Shot s8-game-multi-d3d11 s8-game-multi-d3d12 -Full</code></pre>
+<ul>
+<li><b>다른 픽셀 0</b>: 완전히 같음. 단계 1·2의 합격 기준입니다.</li>
+<li><b>다른 픽셀이 조금</b>: 부동소수점 순서·clamp 차이. <code>-Diff</code> 이미지에서 흰 점이 그림자 경계와 맵 가장자리 띠에만 있으면 단계 3·4 합격입니다. 차이의 크기보다 <b>위치</b>로 판단합니다.</li>
+<li><b>최대 차이가 크고(수십 이상) 넓은 영역</b>: 실패. 그림자가 밀렸거나 사라짐. 5장 함정 표의 위쪽 세 줄부터 봅니다.</li>
+</ul>
+<h3>7-C. 로그에서 볼 것</h3>
+<p>로그 파일은 <code>x64\Debug\Logs\SherlockEngine.log</code>이고 실행마다 새로 쓰입니다(<code>Shot</code>이 결과 폴더에 복사함). 줄 머리는 <code>[정보] [경고] [실패]</code>입니다.</p>
+<table>
+<tr><th>찾을 문자열</th><th>있어야 / 없어야</th><th>뜻</th></tr>
+<tr><td><code>바인딩 대조 … OK</code></td><td>있어야</td><td>셰이더 리플렉션과 C++ 바인딩 레이아웃이 일치(b5·b6 추가 후 특히)</td></tr>
+<tr><td><code>[실패]</code> + cbuffer 이름</td><td>없어야</td><td>HLSL과 C++ 구조체 크기 불일치(<code>ValidateConstantBufferSize</code>)</td></tr>
+<tr><td><code>SetResourceSet : … 가득 참</code></td><td>없어야</td><td>D3D12 셋 슬롯 초과(단계 1에서 추가한 경고)</td></tr>
+<tr><td><code>Dynamic 상수버퍼가 이번 프레임에 갱신되지 않음</code></td><td>없어야</td><td>b5·b6을 올리지 않은 프레임(D3D12)</td></tr>
+<tr><td><code>업로드 링이 가득 참</code></td><td>없어야</td><td>그림자 드로우가 너무 많음(단계 6 컬링 확인)</td></tr>
+<tr><td><code>자동 검증: … screenshot '…'</code></td><td>있어야</td><td>인자가 제대로 들어갔는지</td></tr>
+<tr><td><code>[경고] D3D11: Live ID3D11Device … Refcount: 3</code>, <code>[경고] D3D12: Live ID3D12Device … Refcount: 3</code></td><td>지금도 있음</td><td>종료 시 디바이스 참조가 남았다는 보고. <b>작업 전 코드에서도 두 백엔드 모두 찍힘</b>(2026-10-29, 에디터·게임 둘 다 확인). 이 작업과 무관하니 기준으로 삼고, Refcount 숫자가 늘거나 <code>Live ID3D11Texture2D</code>처럼 새 객체가 보이면 그때 의심합니다(아틀라스·새 상수 버퍼를 <code>Shutdown</code>에서 해제하지 않은 경우).</td></tr>
+</table>
+</section>
+
+<section id="files">
+<h2>8. 파일 목록 (단계별)</h2>
+<table>
+<tr><th>파일</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>바뀌는 것</th></tr>
+<tr><td><code>Projects/SherlockTestScenes/Assets/Scenes/MultiShadow.json</code></td><td>새</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>검증 씬</td></tr>
+<tr><td><code>RHI/CommandList.h</code></td><td></td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td><code>SetViewport</code> 선언</td></tr>
+<tr><td><code>RHI/D3D11/D3D11CommandList.h/.cpp</code></td><td></td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td><code>ApplyViewport</code>, <code>m_passWidth/Height</code></td></tr>
+<tr><td><code>RHI/D3D12/D3D12CommandList.h/.cpp</code></td><td></td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>뷰포트+시저, 셋 슬롯 초과 경고</td></tr>
+<tr><td><code>Scene/Light.h</code></td><td></td><td></td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td></td><td><code>castShadows</code>, <code>shadowIndex</code>, <code>MAX_SHADOW_VIEWS</code></td></tr>
+<tr><td><code>Scene/ShadowSettings.h</code></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td></td><td>✔</td><td></td><td><code>localNormalBias</code>, <code>cascadeCount/Distance/Lambda</code></td></tr>
+<tr><td><code>Scene/SceneSerializer.cpp</code></td><td></td><td></td><td>✔</td><td></td><td></td><td>✔</td><td></td><td>✔</td><td></td><td>조명·그림자 설정 저장/읽기</td></tr>
+<tr><td><code>Shaders/Common.hlsli</code></td><td></td><td></td><td>✔</td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td><code>LightData</code>, <code>PerFrame</code> 축소, b5·b6</td></tr>
+<tr><td><code>Shaders/BasicVertexShader.hlsl</code></td><td></td><td></td><td></td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td><code>shadowPosition</code> 출력 제거</td></tr>
+<tr><td><code>Shaders/ShadowVertexShader.hlsl</code></td><td></td><td></td><td></td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td>b0 → b5 <code>shadowViewProj</code></td></tr>
+<tr><td><code>Shaders/BasicPixelShader.hlsl</code></td><td></td><td></td><td></td><td>✔</td><td></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td><code>SampleShadowView</code>, <code>ShadowForLight</code>, <code>PointFace</code>, <code>SelectCascade</code>, 디버그 뷰 8</td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code></td><td></td><td></td><td></td><td>✔</td><td></td><td></td><td></td><td></td><td></td><td>슬롯 5·6, 새 구조체와 <code>static_assert</code></td></tr>
+<tr><td><code>Graphics/Renderer.h</code></td><td></td><td></td><td></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td><code>ShadowView</code>, 상수, 멤버, 새 함수 선언</td></tr>
+<tr><td><code>Graphics/Renderer.cpp</code></td><td></td><td>(임시)</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td><code>BuildShadowViews</code>, <code>RenderShadowPass</code>, 업로드, 레이아웃, 크기 검사</td></tr>
+<tr><td><code>App/DebugUI.cpp</code></td><td></td><td></td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td>✔</td><td></td><td>체크박스, 통계, 아틀라스 뷰어, 설정 슬라이더</td></tr>
+<tr><td><code>App/Editor.cpp</code></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>✔</td><td></td><td>디버그 뷰 콤보에 "Shadow cascade"</td></tr>
+</table>
+<p>경로는 <code>SherlockEngine/</code> 아래 기준입니다(검증 씬 제외). 새 <code>.h/.cpp</code> 파일은 만들지 않으므로 <code>SherlockEngine.vcxproj</code>·<code>.filters</code>는 고치지 않습니다.</p>
+</section>
+
+<section id="study">
+<h2>9. 공부할 개념 (한눈에)</h2>
+<p>각 단계의 "공부할 개념"을 모은 표입니다. <b>먼저 읽기</b>는 그 단계를 시작하기 전에, <b>하면서</b>는 막혔을 때 보면 되는 것입니다. 참고 열의 번호는 10장 표의 번호입니다.</p>
+<table>
+<tr><th>개념</th><th>왜 필요한가 (이 작업에서)</th><th>단계</th><th>언제</th><th>참고</th></tr>
+<tr><td>뷰포트 변환, 시저 테스트</td><td>한 텍스처의 다른 구역에 그리는 원리. D3D12는 시저가 없으면 안 그려짐</td><td>1</td><td>먼저 읽기</td><td>L11-1, L12-1, W4</td></tr>
+<tr><td>HLSL 상수 버퍼 패킹 규칙</td><td><code>LightData</code> 80B, <code>ShadowConstants</code> 1600B의 오프셋을 C++과 맞춤</td><td>2, 3</td><td>먼저 읽기</td><td>W3, L12-11</td></tr>
+<tr><td>섀도 매핑 알고리즘 전체</td><td>지금 코드를 이해해야 경로를 바꿀 수 있음</td><td>3</td><td>먼저 읽기</td><td>L11-2~L11-4, L12-2~L12-4, W5</td></tr>
+<tr><td>투영 텍스처 좌표</td><td>그림자 좌표 계산을 VS에서 PS로 옮김. y 뒤집기, 아틀라스 사각형으로 사상</td><td>3, 4</td><td>먼저 읽기</td><td>L11-3, L12-3</td></tr>
+<tr><td>비교 샘플러, PCF, 큰 PCF 커널</td><td><code>SampleCmpLevelZero</code> 5×5, 타일 경계 clamp 여백 3텍셀</td><td>3, 4</td><td>하면서</td><td>L11-4, L11-5, L12-4, L12-5</td></tr>
+<tr><td>D3D12 루트 CBV, 업로드 링, 프레임 자원</td><td>뷰마다 b5를 다시 올려도 드로우마다 새 값을 보는 이유, 매 프레임 갱신 규칙</td><td>3, 6</td><td>하면서</td><td>L12-11, <code>rendering-analysis.html</code> 7.11·8.9</td></tr>
+<tr><td>섀도 아틀라스, 텍셀 밀도</td><td>4096 한 장을 영역·타일로 나누는 배치와 그 대가</td><td>4</td><td>하면서</td><td>이 문서 2장의 배치 그림, W1</td></tr>
+<tr><td>원근 투영과 비선형 깊이</td><td>스팟·점광은 원근 맵이라 직교용 바이어스가 거리마다 다르게 작동</td><td>5</td><td>먼저 읽기</td><td>L11-7, L12-7</td></tr>
+<tr><td>shadow acne, peter panning, 기울기 바이어스, 노멀 오프셋</td><td>지역광 그림자 품질의 거의 전부</td><td>5, 6</td><td>먼저 읽기</td><td>L11-4, L12-4, W2, W5</td></tr>
+<tr><td>스팟·점광의 감쇠와 원뿔</td><td>그림자 절두체(시야각 = 바깥 원뿔, far = range)를 조명 모델과 맞춤</td><td>5, 6</td><td>하면서</td><td>L11-6, L12-6</td></tr>
+<tr><td>큐브맵 면 구조, 동적 큐브맵, 전방향 그림자</td><td>점광 = 90°(조금 넘게) 카메라 6대, PS의 면 선택</td><td>6</td><td>먼저 읽기</td><td>L11-8, L12-8, W6</td></tr>
+<tr><td>경계 구 컬링</td><td>점광 6뷰로 늘어난 그림자 드로우를 줄임</td><td>6</td><td>하면서</td><td>L11-9, L12-9</td></tr>
+<tr><td>카메라 절두체 꼭짓점</td><td>캐스케이드 조각의 꼭짓점 8개 → 경계 구</td><td>7</td><td>먼저 읽기</td><td>L11-10, L12-10, W7</td></tr>
+<tr><td>CSM: 분할, 안정화(경계 구·텍셀 스냅), 캐스케이드 선택</td><td>단계 7 전체</td><td>7</td><td>먼저 읽기</td><td>W1, W7, W8, W9</td></tr>
+</table>
+</section>
+
+<section id="refs">
+<h2>10. 참고 문서</h2>
+<div class="box"><b>쪽 번호를 적지 않은 이유.</b> 쪽 번호는 판·인쇄본·전자책마다 다르고, 합법적으로 볼 수 있는 자료(출판사 목차 등)에서는 쪽까지 확인하지 못했습니다. 틀린 쪽을 적느니 <b>장·절 번호</b>만 적었습니다. 장·절 번호는 같은 판이면 바뀌지 않으므로 책의 목차에서 찾은 뒤 마지막 <b>쪽</b> 칸을 직접 채워 쓰세요. 상태 열: <span class="tag ok">확인됨</span> = 공개 목차 자료로 장·절 번호를 확인함, <span class="tag chk">목차로 확인</span> = 기억에 기댄 번호라 한두 절 어긋날 수 있음. 제목은 원서(영문판) 기준입니다.</div>
+
+<h3>10-A. Frank Luna, <i>Introduction to 3D Game Programming with DirectX 11</i></h3>
+<table>
+<tr><th>번호</th><th>장·절</th><th>제목</th><th>이 작업에서 읽을 부분</th><th>단계</th><th>상태</th><th>쪽</th></tr>
+<tr><td>L11-1</td><td>4장 (4.2 안의 뷰포트 절)</td><td>Direct3D Initialization</td><td>뷰포트 구조체와 <code>RSSetViewports</code>, 화면 일부에 그리기</td><td>1</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L11-2</td><td>21.1, 21.2</td><td>Rendering Scene Depth / Orthographic Projections</td><td>광원 시점 깊이 패스, 방향광용 직교 투영</td><td>3</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L11-3</td><td>21.3</td><td>Projective Texture Coordinates</td><td>월드 → 텍스처 좌표 변환, y 뒤집기</td><td>3, 4</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L11-4</td><td>21.4 (21.4.1~21.4.7)</td><td>Shadow Mapping</td><td>알고리즘, 21.4.2 바이어스와 앨리어싱, PCF, 셰이더 코드</td><td>3, 5</td><td><span class="tag ok">확인됨</span></td><td class="blank"></td></tr>
+<tr><td>L11-5</td><td>21.5 (21.5.1~21.5.3)</td><td>Large PCF Kernels</td><td>큰 커널의 문제와 대책. 지금 5×5 PCF와 타일 여백의 근거</td><td>3, 4</td><td><span class="tag ok">확인됨</span></td><td class="blank"></td></tr>
+<tr><td>L11-6</td><td>7장</td><td>Lighting</td><td>점광·스팟광, 감쇠와 범위, 스팟 원뿔</td><td>5, 6</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L11-7</td><td>5장 (5.6 안의 투영 절)</td><td>The Rendering Pipeline</td><td>원근 투영 행렬, 정규화 깊이(NDC z)가 비선형인 이유</td><td>5</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L11-8</td><td>17장 (동적 큐브맵 절)</td><td>Cube Mapping</td><td>큐브맵 면 순서, 90° 카메라 6대로 장면 그리기</td><td>6</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L11-9</td><td>15장</td><td>Instancing and Frustum Culling</td><td>경계 볼륨(구·AABB), 절두체 컬링</td><td>6, 7</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L11-10</td><td>14장</td><td>Building a First Person Camera</td><td>카메라의 right/up/look 벡터, 절두체 정의</td><td>7</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+</table>
+
+<h3>10-B. Frank Luna, <i>Introduction to 3D Game Programming with DirectX 12</i></h3>
+<table>
+<tr><th>번호</th><th>장·절</th><th>제목</th><th>이 작업에서 읽을 부분</th><th>단계</th><th>상태</th><th>쪽</th></tr>
+<tr><td>L12-1</td><td>4.3.9, 4.3.10</td><td>Set the Viewport / Set the Scissor Rectangles</td><td><code>RSSetViewports</code>, <code>RSSetScissorRects</code>, 커맨드 리스트가 리셋되면 다시 설정해야 함</td><td>1</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L12-2</td><td>20.1, 20.2</td><td>Rendering Scene Depth / Orthographic Projections</td><td>L11-2와 같음 (D3D12 판)</td><td>3</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L12-3</td><td>20.3</td><td>Projective Texture Coordinates</td><td>L11-3과 같음</td><td>3, 4</td><td><span class="tag ok">확인됨</span></td><td class="blank"></td></tr>
+<tr><td>L12-4</td><td>20.4</td><td>Shadow Mapping</td><td>알고리즘, 20.4.2 바이어스와 앨리어싱, PCF, D3D12의 섀도 맵 자원 상태 전이</td><td>3, 5</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L12-5</td><td>20.5</td><td>Large PCF Kernels</td><td>L11-5와 같음</td><td>3, 4</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L12-6</td><td>8장</td><td>Lighting</td><td>L11-6과 같음</td><td>5, 6</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L12-7</td><td>5장 (5.6.3 근처)</td><td>The Rendering Pipeline</td><td>L11-7과 같음</td><td>5</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L12-8</td><td>18.5</td><td>Dynamic Cube Maps</td><td>L11-8과 같음. D3D12에서 6면을 그리는 패스 구성</td><td>6</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L12-9</td><td>16장</td><td>Instancing and Frustum Culling</td><td>L11-9와 같음</td><td>6, 7</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L12-10</td><td>15장</td><td>Building a First Person Camera and Dynamic Indexing</td><td>L11-10과 같음</td><td>7</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+<tr><td>L12-11</td><td>6장, 7장</td><td>Drawing in Direct3D / Drawing in Direct3D Part II</td><td>상수 버퍼, 루트 시그니처·루트 디스크립터, 프레임 자원(업로드 버퍼를 프레임마다 나누는 이유)</td><td>3, 6</td><td><span class="tag chk">목차로 확인</span></td><td class="blank"></td></tr>
+</table>
+<p>두 책 모두 <b>CSM 절은 없는 것으로</b> 압니다(목차로 확인). 단계 7은 아래 웹 자료가 주 자료입니다.</p>
+
+<h3>10-C. 웹 자료</h3>
+<table>
+<tr><th>번호</th><th>자료</th><th>읽을 부분</th><th>단계</th></tr>
+<tr><td>W1</td><td>MS Learn <a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/cascaded-shadow-maps">Cascaded Shadow Maps</a></td><td>절두체 분할, fit to scene / fit to cascade, 텍셀 크기 단위 이동, 구간·맵 기반 캐스케이드 선택, 블렌딩, PCF 여백</td><td>4, 7</td></tr>
+<tr><td>W2</td><td>MS Learn <a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/common-techniques-to-improve-shadow-depth-maps">Common Techniques to Improve Shadow Depth Maps</a></td><td>shadow acne, peter panning, slope-scale bias, near/far 설정, 텍셀 스냅</td><td>3, 5</td></tr>
+<tr><td>W3</td><td>MS Learn <a href="https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-packing-rules">Packing rules for constant variables</a></td><td>16바이트 경계, 배열 원소 정렬</td><td>2, 3</td></tr>
+<tr><td>W4</td><td>MS Learn <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-rssetscissorrects">ID3D12GraphicsCommandList::RSSetScissorRects</a></td><td>시저 사각형 규칙</td><td>1</td></tr>
+<tr><td>W5</td><td>LearnOpenGL <a href="https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping">Shadow Mapping</a></td><td>그림이 많은 입문. "Improving shadow maps", PCF, 직교 vs 원근</td><td>3, 5</td></tr>
+<tr><td>W6</td><td>LearnOpenGL <a href="https://learnopengl.com/Advanced-Lighting/Shadows/Point-Shadows">Point Shadows</a></td><td>점광 6면, 큐브 섀도 맵과 거리 비교</td><td>6</td></tr>
+<tr><td>W7</td><td>LearnOpenGL <a href="https://learnopengl.com/Guest-Articles/2021/CSM">CSM</a></td><td>절두체 꼭짓점 → 광원 행렬, 캐스케이드 선택 코드</td><td>7</td></tr>
+<tr><td>W8</td><td>GPU Gems 3, 10장 <a href="https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html">Parallel-Split Shadow Maps on Programmable GPUs</a></td><td>practical split 식(로그·균등 혼합)의 유도</td><td>7</td></tr>
+<tr><td>W9</td><td>MJP <a href="https://github.com/TheRealMJP/Shadows">TheRealMJP/Shadows</a></td><td>안정적인 CSM과 텍셀 스냅의 실제 D3D11 코드</td><td>7</td></tr>
+</table>
+
+<h3>10-D. 그 밖의 책과 엔진 문서</h3>
+<ul>
+<li>Akenine-Möller 외, <i>Real-Time Rendering</i> 4판, 7장 "Shadows": 7.4 섀도 맵과 그 안의 캐스케이드 부분(소절 번호는 목차로 확인). 개념을 넓게 정리할 때.</li>
+<li>이 저장소의 <code>docs/rendering-analysis.html</code>: 11.8 그림자 매핑(지금 구조), 7.11·8.9(D3D12 바인딩과 업로드), 14장(Renderer 내부), 17.10~17.11(게임 실행 흐름).</li>
+<li>이 저장소의 <code>docs/hdr-tonemapping-plan.html</code>: 같은 형식으로 쓴 이전 구현 계획. 단계별 검증을 어떻게 했는지 비교해 볼 수 있음.</li>
+</ul>
+</section>
+
+<p class="foot">2026-10-29 작성 · 기준 커밋 1be6099 + 작업 트리 · 이 문서는 계획이며 구현되지 않았습니다.</p>
+</main>
+</body>
+</html>

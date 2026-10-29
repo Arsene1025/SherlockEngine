@@ -477,7 +477,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
         <li><code>Renderer.cpp</code>의 <code>UpdateFrameSet</code>·<code>DrawSkybox</code>·<code>GetSkyPipeline</code>, <code>Shaders/SkyboxVertexShader.hlsl</code>·<code>SkyboxPixelShader.hlsl</code>, <code>Common.hlsli</code>의 t9·s5</li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — 바닥에 그림자가 떨어지고 F7(광원 공전)로 그림자가 따라온다. F8·F9로 그림자·노멀 매핑을 끄고 켠다. Render Settings 창의 패스 수·배리어 수를 <a href="rendering-analysis.html#c14-8">14.8</a>의 표와 맞춰 본다(<code>Renderer::Render</code> 끝에서 읽으므로 UI 패스와 백버퍼 전이는 빠진 값). Debug Layer에 "SRV를 강제로 unbind" 경고가 없다. 같은 창에서 그림자 맵을 미리 볼 수 있다. Lights 창의 Skybox 를 <code>builtin:skyfaces</code> 로 바꾸고 +Z 를 보면 파랑, 오른쪽이 빨강(+X), 위가 초록(+Y)이다(<a href="rendering-analysis.html#c12-14">12.14</a>의 그림). <code>Projects/CubemapTest</code> 를 열면 거칠기 0 의 금속 구에 하늘이 선명하게 비치고 오른쪽으로 갈수록 흐려진다(그림 12-14d). 디버그 뷰 6 으로 금속성/거칠기를 확인한다.</div>
+    <div class="check"><b>확인 포인트</b> — 바닥에 그림자가 떨어지고 F7(광원 공전)로 그림자가 따라온다. F8·F9로 그림자·노멀 매핑을 끄고 켠다. Render Settings 창의 패스 수·배리어 수를 <a href="rendering-analysis.html#c14-8">14.8</a>의 표와 맞춰 본다(<code>Renderer::Render</code> 끝에서 읽으므로 UI 패스와 백버퍼 전이는 빠진 값). Debug Layer에 "SRV를 강제로 unbind" 경고가 없다. 같은 창에서 그림자 맵을 미리 볼 수 있다. Lights 창의 Skybox 를 <code>builtin:skyfaces</code> 로 바꾸고 +Z 를 보면 파랑, 오른쪽이 빨강(+X), 위가 초록(+Y)이다(<a href="rendering-analysis.html#c12-14">12.14</a>의 그림). <code>Projects/SherlockTestScenes</code> 의 <code>Cubemap</code> 씬을 열면 거칠기 0 의 금속 구에 하늘이 선명하게 비치고 오른쪽으로 갈수록 흐려진다(그림 12-14d). 디버그 뷰 6 으로 금속성/거칠기를 확인한다.</div>
   </div>
 </div>
 <h2 id="s5"><span class="num">5.</span>스텝 8~9: 인터페이스와 D3D12</h2>
