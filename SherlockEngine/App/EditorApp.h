@@ -118,6 +118,8 @@ private:
         std::wstring savePath, loadPath, screenshotPath;
         bool dumpObjects = false;
         int debugView = 0;          // --debug-view=N (2 프레임째 Render Settings 의 디버그 뷰)
+        uint64_t freezeCascadesAt = 0;   // --freeze-cascades=N (N 프레임째 에디터 카메라로 캐스케이드 고정. Renderer::SetCascadeFreeze)
+        bool camLook = false; DirectX::XMFLOAT3 camEye = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), camTarget = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --cam-look=ex,ey,ez;tx,ty,tz (고정 다음 프레임, 고정이 없으면 3 프레임째 에디터 카메라 이동)
         bool newScene = false;      // --new-scene=1 (3 프레임째 바닥만 있는 새 씬)
         int addPrimitive = -1;      // --add=0..4 (4 프레임째 오브젝트 추가, 4 는 카메라 오브젝트)
         std::wstring browseDir;     // 11-B단계

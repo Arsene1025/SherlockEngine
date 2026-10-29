@@ -75,7 +75,10 @@ void D3D12CommandList::BeginRenderPass(const RenderPassDesc& desc)
 			if (width == 0) { width = texture->desc.width; height = texture->desc.height; }
 		}
 	}
+	m_passWidth = width;
+	m_passHeight = height;
 
+	//바인딩. flip 모델에서는 Present 후 백버퍼 바인딩이 풀리므로 패스마다 다시 바인딩함.
 	m_list->OMSetRenderTargets(rtvCount, rtvCount ? rtvs : nullptr, FALSE, hasDsv ? &dsv : nullptr);
 
 	for (uint32_t i = 0; i < rtvCount; ++i)
@@ -90,8 +93,11 @@ void D3D12CommandList::BeginRenderPass(const RenderPassDesc& desc)
 		m_list->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, desc.depth.clearDepth, desc.depth.clearStencil, 0, nullptr);
 	}
 
+
 	// 뷰포트 + 시저. 둘 다 PSO 밖의 동적 상태이고, 커맨드 리스트를 Reset 하면 사라짐.
-	D3D12_VIEWPORT viewport = {};
+	ApplyViewport(desc.viewport);
+	//[2026/10/29] : 아래 코드 ApplyViewport로 이동함.
+	/*D3D12_VIEWPORT viewport = {};
 	viewport.TopLeftX = desc.viewport.x;
 	viewport.TopLeftY = desc.viewport.y;
 	viewport.Width = desc.viewport.width > 0.0f ? desc.viewport.width : static_cast<float>(width);
@@ -105,8 +111,29 @@ void D3D12CommandList::BeginRenderPass(const RenderPassDesc& desc)
 	scissor.top = static_cast<LONG>(viewport.TopLeftY);
 	scissor.right = static_cast<LONG>(viewport.TopLeftX + viewport.Width);
 	scissor.bottom = static_cast<LONG>(viewport.TopLeftY + viewport.Height);
+	m_list->RSSetScissorRects(1, &scissor);*/
+	
+}
+
+void D3D12CommandList::ApplyViewport(const Viewport& viewport)
+{
+	D3D12_VIEWPORT vp = {};
+	vp.TopLeftX = viewport.x;
+	vp.TopLeftY = viewport.y;
+	vp.Width = viewport.width > 0.0f ? viewport.width : static_cast<float>(m_passWidth);
+	vp.Height = viewport.height > 0.0f ? viewport.height : static_cast<float>(m_passHeight);
+	vp.MinDepth = viewport.minDepth;
+	vp.MaxDepth = viewport.maxDepth;
+	m_list->RSSetViewports(1, &vp);
+
+	D3D12_RECT scissor = {};
+	scissor.left = static_cast<LONG>(vp.TopLeftX);
+	scissor.top = static_cast<LONG>(vp.TopLeftY);
+	scissor.right = static_cast<LONG>(vp.TopLeftX + vp.Width);
+	scissor.bottom = static_cast<LONG>(vp.TopLeftY + vp.Height);
 	m_list->RSSetScissorRects(1, &scissor);
 }
+
 
 void D3D12CommandList::EndRenderPass()
 {
@@ -162,6 +189,11 @@ void D3D12CommandList::SetResourceSet(ResourceSetHandle handle)
 	if (m_setCount < kMaxBindingSets)
 	{
 		m_sets[m_setCount++] = BoundSet{ set->desc.layout, handle, true };
+	}
+	else
+	{
+		static bool warnedFull = false;
+		ErrorOnce(warnedFull, "SetResourceSet : 커맨드 리스트의 셋 슬롯(kMaxBindingSets)이 가득 참. 이 셋은 바인딩되지 않음.");
 	}
 }
 
@@ -330,3 +362,11 @@ void D3D12CommandList::WriteTimestamp(uint32_t slot)
 {
 	if (m_device) m_device->WriteTimestamp(slot);
 }
+
+void D3D12CommandList::SetViewport(const Viewport& viewport)
+{
+	static bool warnedOutside = false;
+	if (!m_inPass) { ErrorOnce(warnedOutside, "SetViewport : 렌더 패스 안에서만 부를 수 있음."); return; }
+	ApplyViewport(viewport);
+}
+

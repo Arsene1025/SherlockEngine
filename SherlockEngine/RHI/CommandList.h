@@ -31,6 +31,12 @@ namespace RHI
 		virtual void EndRenderPass() = 0;
 		virtual bool IsInRenderPass() const = 0;
 
+		// 현재 렌더 패스의 뷰포트를 바꿈. 같은 패스 안에서 여러 번 불러도 됨 (섀도 아틀라스의 타일마다 호출).
+		//  - 렌더 패스 안에서만 유효함. 밖에서 부르면 에러 로그를 한 번 남기고 무시함.
+		//  - width/height 가 0 이면 이 패스의 첫 attachment 크기를 씀 (RenderPassDesc::viewport 와 같은 규칙).
+		//  - D3D12 는 시저 사각형도 같은 영역으로 함께 바꿈 (시저가 없으면 아무것도 안 그려짐). D3D11 은 PSO 의 scissorEnable 이 기본 false 라 뷰포트만 바꿈.
+		virtual void SetViewport(const Viewport& viewport) = 0;
+
 		// ---- 상태·바인딩 ----
 		virtual void SetPipelineState(PipelineHandle handle) = 0;
 		// 리소스 셋의 모든 슬롯을 바인딩함. D3D11: 슬롯마다 *SSet*. D3D12: SetGraphicsRootDescriptorTable.
@@ -50,10 +56,12 @@ namespace RHI
 		// 크기가 같은 두 버퍼 사이의 전체 복사.
 		virtual void CopyBuffer(BufferHandle dst, BufferHandle src) = 0;
 
-		// ---- 10단계: GPU 타임스탬프 (Profiler) ----
+		// ---- GPU 타임스탬프 (Profiler) ----
 		// 이 시점의 GPU 시각을 slot 에 기록함 (0 ≤ slot < kMaxTimestamps, 프레임 안에서 증가 순서로).
 		// 결과는 Device::GetTimestampResults 로 몇 프레임 뒤에 읽음. 렌더 패스 안팎 어디서든 부를 수 있음.
 		virtual void WriteTimestamp(uint32_t slot) = 0;
+
+		
 
 		virtual const Stats& GetStats() const = 0;
 		virtual void ResetStats() = 0;

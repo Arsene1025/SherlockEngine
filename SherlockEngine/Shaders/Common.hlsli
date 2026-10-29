@@ -13,6 +13,7 @@
 #define SHERLOCK_COMMON_HLSLI
 
 static const uint MAX_LIGHTS = 8;
+static const uint MAX_SHADOW_VIEWS = 16;   // Scene/Light.h 의 MAX_SHADOW_VIEWS 와 같아야 함 (b6 크기 1600B 가 이 값에 달림)
 static const uint LIGHT_DIRECTIONAL = 0;
 static const uint LIGHT_POINT = 1;
 static const uint LIGHT_SPOT = 2;
@@ -35,22 +36,26 @@ struct LightData
     float innerConeCos;
 
     float outerConeCos;
-    float3 padding;
+
+    //shadow옵션
+    uint castShadows;
+    int shadowIndex;
+    float padding;
 };
 
-// b0: 프레임에 한 번. VS와 PS 모두 읽음. (336바이트)
+// b0: 프레임에 한 번. VS와 PS 모두 읽음. (288바이트)
 cbuffer PerFrame : register(b0)
 {
     matrix view;
     matrix proj;
     matrix viewProj;
-    matrix lightViewProj;     // 6단계: 방향광 0의 그림자 행렬 (월드 → 광원 클립)
     float3 cameraPosition;
     float time;
     float4 shadowParams;      // x = 1/맵 크기, y = 깊이 바이어스, z = 세기(0..1), w = 사용 여부
     float4 debugParams;       // 11단계: x = 디버그 뷰 (0 조명, 1 알베도, 2 노멀, 3 깊이, 4 그림자, 5 UV, 6 금속성/거칠기, 7 AO), y = 깊이 범위
     float4 environmentParams; // 2026-10-08: x = IBL 세기, y = 반사 큐브 밉 수, z = 확산 조도를 읽을 밉, w = 환경 있음
     float4 outputParams;      // 2026-10-08: x = 노출, y = 톤매핑, z = BRDF LUT 있음
+    float4 shadowExtra;       // 2026/10/28: x = 노말 섀도 오프셋 (노말맵이 그림자 UV 를 미는 배율)
 }
 
 // b4: 후처리 패스 파라미터. 후처리 셋(톤 패스·블러·블룸)만 바인딩함. (80바이트, ShaderConstants.h 의 PostParamsConstants)
@@ -76,6 +81,29 @@ cbuffer Lights : register(b2)
     LightData lights[MAX_LIGHTS];
     float3 ambientColor;
     uint lightCount;
+}
+
+struct ShadowViewData
+{
+    matrix viewProj;
+    float4 atlasRect;
+    float4 params;
+};
+
+// b5: 그림자 패스. VS 만. 뷰마다 다시 올림 (64바이트)
+cbuffer ShadowPass : register(b5)
+{
+    matrix shadowViewProj;
+}
+
+// b6: 그림자 뷰 배열. PS 만 (1600바이트)
+cbuffer Shadows : register(b6)
+{
+    ShadowViewData shadowViews[MAX_SHADOW_VIEWS];
+    float4 cascadeSplits;
+    float4 cascadeOrigin;
+    float4 cascadeForward;
+    float4 shadowAtlasParams;
 }
 
 // b3: 재질. VS(uvScale)와 PS 모두. (64바이트)
@@ -133,7 +161,6 @@ struct VSOutput
     float3 normal : NORMAL0;
     float2 uv : TEXCOORD0;
     float3 worldPosition : TEXCOORD1;
-    float4 shadowPosition : TEXCOORD2;   // 광원 클립 공간
     float4 tangent : TANGENT0;
 };
 

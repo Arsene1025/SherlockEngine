@@ -11,6 +11,23 @@ void D3D11CommandList::ErrorOnce(bool& flag, const char* message)
 	Log::Error("%s", message);
 }
 
+void D3D11CommandList::ApplyViewport(const Viewport& viewport)
+{
+
+	ID3D11DeviceContext* context = m_device ? m_device->GetContext() : nullptr;
+	if (context == nullptr) return;
+
+	// 뷰포트. PSO 밖의 동적 상태임. width/height 가 0 이면 이 패스의 첫 attachment 크기.
+	D3D11_VIEWPORT vp = {};
+	vp.TopLeftX = viewport.x;
+	vp.TopLeftY = viewport.y;
+	vp.Width = viewport.width > 0.0f ? viewport.width : static_cast<float>(m_passWidth);
+	vp.Height = viewport.height > 0.0f ? viewport.height : static_cast<float>(m_passHeight);
+	vp.MinDepth = viewport.minDepth;
+	vp.MaxDepth = viewport.maxDepth;
+	context->RSSetViewports(1, &vp);
+}
+
 void D3D11CommandList::Init(D3D11Device* device)
 {
 	m_device = device;
@@ -67,6 +84,8 @@ void D3D11CommandList::BeginRenderPass(const RenderPassDesc& desc)
 			if (width == 0) { width = texture->desc.width; height = texture->desc.height; }
 		}
 	}
+	m_passWidth = width;
+	m_passHeight = height;
 
 	// (3) 바인딩. flip 모델에서는 Present 후 백버퍼 바인딩이 풀리므로 패스마다 다시 바인딩함.
 	context->OMSetRenderTargets(desc.colorCount, desc.colorCount ? rtvs : nullptr, dsv);
@@ -85,14 +104,17 @@ void D3D11CommandList::BeginRenderPass(const RenderPassDesc& desc)
 	}
 
 	// (5) 뷰포트. PSO 밖의 동적 상태임.
-	D3D11_VIEWPORT viewport = {};
+	ApplyViewport(desc.viewport);
+
+	//[2026/10/29] : 아래 코드 ApplyViewport로 이동함.
+	/*D3D11_VIEWPORT viewport = {};
 	viewport.TopLeftX = desc.viewport.x;
 	viewport.TopLeftY = desc.viewport.y;
 	viewport.Width = desc.viewport.width > 0.0f ? desc.viewport.width : static_cast<float>(width);
 	viewport.Height = desc.viewport.height > 0.0f ? desc.viewport.height : static_cast<float>(height);
 	viewport.MinDepth = desc.viewport.minDepth;
 	viewport.MaxDepth = desc.viewport.maxDepth;
-	context->RSSetViewports(1, &viewport);
+	context->RSSetViewports(1, &viewport);*/
 }
 
 void D3D11CommandList::EndRenderPass()
@@ -292,4 +314,11 @@ void D3D11CommandList::CopyBuffer(BufferHandle dst, BufferHandle src)
 void D3D11CommandList::WriteTimestamp(uint32_t slot)
 {
 	if (m_device) m_device->WriteTimestamp(slot);
+}
+
+void D3D11CommandList::SetViewport(const Viewport& viewport)
+{
+	static bool warnedOutside = false;
+	if (!m_inPass) { ErrorOnce(warnedOutside, "SetViewport : 렌더 패스 안에서만 부를 수 있음."); return; }
+	ApplyViewport(viewport);
 }

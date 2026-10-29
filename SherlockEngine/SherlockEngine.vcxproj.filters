@@ -395,6 +395,9 @@
     <ClInclude Include="Scene\PostProcessSettings.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\ShadowSettings.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\Scene.h">
       <Filter>Scene</Filter>
     </ClInclude>

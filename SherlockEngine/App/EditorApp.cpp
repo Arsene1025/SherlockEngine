@@ -163,7 +163,6 @@ void EditorApp::LoadSceneMode(SceneMode mode)
 	if (mode >= SceneMode::Count) mode = SceneMode::Demo;
 	m_editor.ClearSelection();
 	Scene& scene = GetEngine().GetScene();
-	Renderer& renderer = GetEngine().GetRenderer();
 	// Renderer 캐시는 메시·재질 포인터를 키로 씀. 그래서 씬을 비우기 전에 캐시를 먼저 버림 — 새로 만든 메시가
 	// 우연히 같은 주소를 받으면 옛 GPU 버퍼가 그대로 쓰일 수 있기 때문임.
 	GetEngine().GetRenderer().InvalidateScene(GetEngine().GetScene(), true);
@@ -171,12 +170,7 @@ void EditorApp::LoadSceneMode(SceneMode mode)
 	m_modelStats = ModelStats{};
 	m_sceneMode = mode;
 
-	// 그림자·조명 설정을 씬에 맞게 되돌림.
-	RenderSettings& settings = renderer.GetSettings();
-	settings.shadowOrthoSize = 60.0f;
-	settings.shadowDistance = 40.0f;
-	settings.shadowBias = 0.0015f;
-
+	// 그림자 값은 씬의 환경(environment.shadow)에 있어서 Clear() 가 기본값으로 되돌림. 모델 씬은 아래에서 모델 크기에 맞게 정함.
 	bool ok = true;
 	if (mode == SceneMode::Demo) BuildDemoScene();
 	else ok = BuildModelScene(mode);
@@ -327,7 +321,6 @@ void EditorApp::BuildDemoScene()
 bool EditorApp::BuildModelScene(SceneMode mode)
 {
 	Scene& scene = GetEngine().GetScene();
-	Renderer& renderer = GetEngine().GetRenderer();
 	Camera& camera = GetEngine().GetCamera();
 	// 9단계 완료 기준: glTF 모델이 텍스처·노멀맵·그림자와 함께 두 백엔드에서 똑같이 표시됨.
 	const wchar_t* relative = mode == SceneMode::Helmet ? L"Models\\DamagedHelmet\\DamagedHelmet.glb" : L"Models\\Sponza\\Sponza.gltf";
@@ -338,7 +331,6 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 	const Bounds bounds = model.bounds;
 	m_modelStats = model.stats;
 
-	RenderSettings& settings = renderer.GetSettings();
 	const XMFLOAT4 white(1.0f, 1.0f, 1.0f, 1.0f);
 
 	if (mode == SceneMode::Helmet)
@@ -368,14 +360,15 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		fill.color = XMFLOAT3(1.0f, 0.7f, 0.5f);
 		fill.intensity = 1.5f;
 		fill.range = 12.0f;
+		fill.castShadows = 0;   // 지역광 그림자는 타일을 쓰므로 기본은 꺼 둠
 		scene.GetLights().push_back(fill);
 		scene.ambientColor = XMFLOAT3(0.18f, 0.18f, 0.2f);
 		scene.clearColor[0] = 0.12f; scene.clearColor[1] = 0.13f; scene.clearColor[2] = 0.18f; scene.clearColor[3] = 1.0f;
 		ApplyDefaultEnvironment(scene);   // 2026-10-08: 헬멧도 HDR 환경 (그 전에는 어두운 배경)
 
-		settings.shadowOrthoSize = 10.0f;
-		settings.shadowDistance = 12.0f;
-		settings.shadowBias = 0.0008f;
+		scene.environment.shadow.orthoSize = 10.0f;
+		scene.environment.shadow.distance = 12.0f;
+		scene.environment.shadow.bias = 0.0008f;
 
 		const float top = bounds.max.y - bounds.min.y + 0.05f;
 		camera.SetLookAt(XMFLOAT3(2.6f, top * 0.9f, -3.2f), XMFLOAT3(0.0f, top * 0.5f, 0.0f));
@@ -398,9 +391,9 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		const XMFLOAT3 center = bounds.Center();
 		const XMFLOAT3 extent = bounds.Extent();
 		const float largest = (std::max)((std::max)(extent.x, extent.y), extent.z);
-		settings.shadowOrthoSize = largest * 2.2f;
-		settings.shadowDistance = largest * 2.0f;
-		settings.shadowBias = 0.0006f;
+		scene.environment.shadow.orthoSize = largest * 2.2f;
+		scene.environment.shadow.distance = largest * 2.0f;
+		scene.environment.shadow.bias = 0.0006f;
 
 		// 긴 축(x)의 한쪽 끝 안쪽, 사람 눈높이보다 조금 위에서 반대편을 바라봄.
 		// 안뜰을 대각선으로 바라봄: 위치는 긴 축(x)의 한쪽 끝, 짧은 축(z)의 한쪽 옆, 눈높이 ≈ 바닥 + 2.6.
@@ -967,6 +960,13 @@ void EditorApp::ParseAutomation()
 	m_auto.screenshotPath = resolve(GetCommandLineOption(L"screenshot"));
 	m_auto.dumpObjects = !GetCommandLineOption(L"dump-objects").empty();
 	m_auto.debugView = _wtoi(GetCommandLineOption(L"debug-view").c_str());
+	m_auto.freezeCascadesAt = static_cast<uint64_t>(_wtoi64(GetCommandLineOption(L"freeze-cascades").c_str()));
+	const std::wstring camLook = GetCommandLineOption(L"cam-look");
+	if (!camLook.empty())
+	{
+		m_auto.camLook = swscanf_s(camLook.c_str(), L"%f,%f,%f;%f,%f,%f", &m_auto.camEye.x, &m_auto.camEye.y, &m_auto.camEye.z,
+			&m_auto.camTarget.x, &m_auto.camTarget.y, &m_auto.camTarget.z) == 6;
+	}
 	m_auto.newScene = !GetCommandLineOption(L"new-scene").empty();
 	m_auto.addPrimitive = GetCommandLineOption(L"add").empty() ? -1 : _wtoi(GetCommandLineOption(L"add").c_str());
 	// 11-B단계
@@ -1028,6 +1028,9 @@ void EditorApp::RunAutomation()
 	const uint64_t frame = engine.GetTime().GetFrameCount();
 
 	if (frame == 2 && m_auto.debugView != 0) engine.GetRenderer().GetSettings().debugView = m_auto.debugView;
+	// CSM 디버그: 순서는 디버그 뷰(2) → 고정(N) → 카메라 이동(N+1) → 종료 시 스크린샷
+	if (m_auto.freezeCascadesAt != 0 && frame == m_auto.freezeCascadesAt) engine.GetRenderer().SetCascadeFreeze(true, engine.GetCamera());
+	if (m_auto.camLook && frame == (m_auto.freezeCascadesAt != 0 ? m_auto.freezeCascadesAt + 1 : 3)) engine.GetCamera().SetLookAt(m_auto.camEye, m_auto.camTarget);
 	if (frame == 2 && !m_auto.browseDir.empty()) { m_editor.GetContentBrowser().SetDirectory(m_auto.browseDir); m_editor.FocusContentBrowser(); }
 	if (frame == 2 && !m_auto.newScript.empty())
 	{
@@ -1255,10 +1258,7 @@ void EditorApp::BuildEmptyScene()
 	scene.clearColor[0] = 0.1f; scene.clearColor[1] = 0.1f; scene.clearColor[2] = 0.3f; scene.clearColor[3] = 1.0f;
 	ApplyDefaultEnvironment(scene);   // 2026-10-08: 새 씬(새 프로젝트의 Main.json 포함)도 HDR 환경을 가짐 (유니티의 기본 Skybox 와 같은 관례)
 
-	RenderSettings& settings = engine.GetRenderer().GetSettings();
-	settings.shadowOrthoSize = 60.0f;
-	settings.shadowDistance = 40.0f;
-	settings.shadowBias = 0.0015f;
+	scene.environment.shadow = ShadowSettings{};   // 2026/10/28: 그림자 값은 씬에 있음 (기본값)
 	engine.GetCamera().SetLookAt(XMFLOAT3(18.0f, 16.0f, -28.0f), XMFLOAT3(0.0f, 2.0f, 0.0f));
 	m_moveSpeed = 10.0f;
 	AddCameraObject("Main Camera");   // 11-C단계: 새 씬에도 카메라 하나

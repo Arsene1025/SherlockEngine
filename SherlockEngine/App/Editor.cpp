@@ -270,8 +270,6 @@ void Editor::DrawMenuBar(Engine& engine, const Callbacks& callbacks)
 		if (ImGui::MenuItem("New scene (floor only)") && callbacks.newScene) { callbacks.newScene(); m_selected = -1; m_lastMessage = "new scene"; }
 		ImGui::Separator();
 		if (ImGui::MenuItem("Demo scene") && callbacks.switchScene) { callbacks.switchScene(0); m_selected = -1; }
-		if (ImGui::MenuItem("DamagedHelmet") && callbacks.switchScene) { callbacks.switchScene(1); m_selected = -1; }
-		if (ImGui::MenuItem("Sponza") && callbacks.switchScene) { callbacks.switchScene(2); m_selected = -1; }
 		ImGui::Separator();
 		if (ImGui::MenuItem("Build Game...")) m_openBuildPopup = true;   // 11-D단계
 		ImGui::EndMenu();
@@ -402,6 +400,7 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 	DrawCameraPreview(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 
 	// 선택된 오브젝트의 기즈모. 이미지 위에 그림. 에셋을 끌고 있는 동안은 끔.
+	DrawCascadeFrustums(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 	DrawLightIcons(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 	ImGuizmo::Enable(!m_assetDragActive);
 	DrawGizmo(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
@@ -803,6 +802,37 @@ int Editor::PickLight(Engine& engine, float mouseX, float mouseY, float x, float
 	return best;
 }
 
+// CSM 디버그 오버레이: 캐스케이드 조각마다 절두체 와이어 (0 빨강, 1 초록, 2 파랑, 3 노랑 — 디버그 뷰 8 의 색과 같음).
+// 고정(Freeze) 중일 때만 그림 — 고정하지 않으면 지금 카메라 자신의 절두체라 변이 화면 가장자리에만 얹혀 정보가 없음.
+// 꼭짓점이 에디터 카메라 뒤인 변은 ProjectToView 가 걸러서 건너뜀.
+void Editor::DrawCascadeFrustums(Engine& engine, float x, float y, float width, float height)
+{
+	if (playState != PlayState::Editing || width <= 0.0f || height <= 0.0f) return;
+	const Renderer& renderer = engine.GetRenderer();
+	if (!renderer.IsCascadeFrozen()) return;
+	const uint32_t count = renderer.GetCascadeFrustumCount();
+	if (count == 0) return;
+
+	const Camera& camera = engine.GetCamera();
+	const XMMATRIX viewProj = camera.GetViewMatrix() * camera.GetProjectionMatrix();
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+	dl->PushClipRect(ImVec2(x, y), ImVec2(x + width, y + height), true);
+	static const ImU32 colors[4] = { IM_COL32(255, 60, 60, 255), IM_COL32(60, 255, 60, 255), IM_COL32(80, 120, 255, 255), IM_COL32(255, 255, 60, 255) };
+	// 앞면 사각형 (0,1,3,2), 뒷면 사각형 (4,5,7,6), 앞뒤를 잇는 변 i → i+4
+	static const int edges[12][2] = { {0,1},{1,3},{3,2},{2,0}, {4,5},{5,7},{7,6},{6,4}, {0,4},{1,5},{2,6},{3,7} };
+	for (uint32_t c = 0; c < count && c < 4; ++c)
+	{
+		const XMFLOAT3* corners = renderer.GetCascadeFrustumCorners(c);
+		for (const auto& edge : edges)
+		{
+			ImVec2 a, b;
+			if (ProjectToView(viewProj, x, y, width, height, corners[edge[0]], a) && ProjectToView(viewProj, x, y, width, height, corners[edge[1]], b))
+				dl->AddLine(a, b, colors[c], 2.0f);
+		}
+	}
+	dl->PopClipRect();
+}
+
 void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float height)
 {
 	if (playState != PlayState::Editing || width <= 0.0f || height <= 0.0f) return;
@@ -964,12 +994,12 @@ void Editor::DrawInspector(Engine& engine)
 	XMFLOAT3 rotation = t.GetRotation();
 	XMFLOAT3 scale = t.GetScale();
 	XMFLOAT3 rotationDeg(XMConvertToDegrees(rotation.x), XMConvertToDegrees(rotation.y), XMConvertToDegrees(rotation.z));
-	if (ImGui::DragFloat3("Position", &position.x, 0.05f)) t.SetPosition(position);
-	if (ImGui::DragFloat3("Rotation (deg)", &rotationDeg.x, 0.5f))
+	if (DebugUI::DragFloat3R("Position", &position.x, 0.0f, 0.0f, 0.0f, 0.05f, 0.0f, 0.0f)) t.SetPosition(position);
+	if (DebugUI::DragFloat3R("Rotation (deg)", &rotationDeg.x, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f))
 	{
 		t.SetRotation(XMFLOAT3(XMConvertToRadians(rotationDeg.x), XMConvertToRadians(rotationDeg.y), XMConvertToRadians(rotationDeg.z)));
 	}
-	if (ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.001f, 1000.0f)) t.SetScale(scale);
+	if (DebugUI::DragFloat3R("Scale", &scale.x, 1.0f, 1.0f, 1.0f, 0.01f, 0.001f, 1000.0f)) t.SetScale(scale);
 	if (t.HasPreTransform()) ImGui::TextDisabled("(model node pre-transform applied before S*R*T)");
 	// 11-F단계: 부모가 있으면 위 값은 부모 기준 로컬임을 알리고 월드 위치를 함께 보임. Detach 는 월드 자세를 유지한 채 루트로 올림.
 	if (const GameObject* parent = object.GetParent())
@@ -1035,12 +1065,13 @@ void Editor::DrawInspector(Engine& engine)
 	{
 		Material& material = *materials[current];
 		ImGui::ColorEdit4("Base color", &material.baseColor.x);
-		ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);   // 2026-10-08 PBR
-		ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
+		static const Material kDefaults;   // 2026/10/28: R 버튼의 기본값 = 재질 멤버 초기값
+		DebugUI::SliderFloatR("Metallic", &material.metallic, kDefaults.metallic, 0.0f, 1.0f);   // 2026-10-08 PBR
+		DebugUI::SliderFloatR("Roughness", &material.roughness, kDefaults.roughness, 0.0f, 1.0f);
 		ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
-		ImGui::DragFloat2("UV scale", &material.uvScale.x, 0.1f, 0.1f, 64.0f);
-		ImGui::SliderFloat("Normal strength", &material.normalStrength, 0.0f, 3.0f);
-		ImGui::SliderFloat("Alpha cutoff", &material.alphaCutoff, 0.0f, 1.0f);
+		DebugUI::DragFloat2R("UV scale", &material.uvScale.x, kDefaults.uvScale.x, kDefaults.uvScale.y, 0.1f, 0.1f, 64.0f);
+		DebugUI::SliderFloatR("Normal strength", &material.normalStrength, kDefaults.normalStrength, 0.0f, 3.0f);
+		DebugUI::SliderFloatR("Alpha cutoff", &material.alphaCutoff, kDefaults.alphaCutoff, 0.0f, 1.0f);
 		ImGui::Checkbox("Unlit", &material.unlit);
 		DebugUI::SameLineIfFits(DebugUI::CheckboxWidth("Wireframe"));
 		ImGui::Checkbox("Wireframe", &material.wireframe);
@@ -1411,7 +1442,7 @@ void Editor::DrawPlayControls(const Callbacks& callbacks)
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(90.0f);
-	ImGui::SliderFloat("##timeScale", &timeScale, 0.0f, 4.0f, "x%.2f");
+	DebugUI::SliderFloatR("##timeScale", &timeScale, 1.0f, 0.0f, 4.0f, "x%.2f");
 	if (ImGui::IsItemHovered()) ImGui::SetTooltip("time scale (dt multiplier while playing)");
 }
 
@@ -1542,10 +1573,18 @@ void Editor::DrawRenderSettings(Engine& engine)
 	DebugUI::BeginPanel("Render Settings");
 	DebugUI::DrawRenderSettingsPanel(engine.GetRenderer(), engine.GetDevice());
 	RenderSettings& settings = engine.GetRenderer().GetSettings();
-	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion" };
+	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion", "Shadow cascade" };
 	ImGui::Combo("Debug view", &settings.debugView, views, IM_ARRAYSIZE(views));
-	if (settings.debugView == 3) ImGui::SliderFloat("Depth range", &settings.debugDepthRange, 1.0f, 500.0f);
-	DebugUI::DrawShadowPanel(engine.GetRenderer(), engine.GetDevice());
+	if (settings.debugView == 3) DebugUI::SliderFloatR("Depth range", &settings.debugDepthRange, RenderSettings().debugDepthRange, 1.0f, 500.0f);
+	DebugUI::DrawShadowPanel(engine.GetScene(), engine.GetRenderer(), engine.GetDevice());
+	if (engine.GetScene().environment.shadow.cascadeCount >= 2 || engine.GetRenderer().IsCascadeFrozen())   // Cascades 를 1 로 내려도 고정을 풀 수 있게
+	{
+		// CSM 디버그: 지금 카메라로 캐스케이드를 고정하고, 에디터 카메라를 옮겨 바깥에서 거리 구간을 봄 (Debug view = Shadow cascade 와 같이 쓰면 이미지처럼 색 띠가 보임)
+		Renderer& renderer = engine.GetRenderer();
+		bool frozen = renderer.IsCascadeFrozen();
+		if (ImGui::Checkbox("Freeze cascade camera", &frozen)) renderer.SetCascadeFreeze(frozen, engine.GetCamera());
+		ImGui::TextDisabled("Freeze 후 에디터 카메라를 옮겨 보세요. 색 절두체 = 고정된 카메라의 캐스케이드.");
+	}
 	DebugUI::DrawCameraPanel(engine.GetCamera(), cameraMoveSpeed);
 	DebugUI::DrawEnginePanel(engine);
 	DebugUI::EndPanel();
@@ -1557,8 +1596,8 @@ void Editor::DrawStats(Engine& engine, const char* sceneName, const ModelStats& 
 	const Renderer::Stats& stats = engine.GetRenderer().GetStats();
 	const Time& time = engine.GetTime();
 	ImGui::TextWrapped("%.1f FPS   %.2f ms/frame   scene view %ux%u", time.GetFps(), time.GetAverageFrameMs(), m_sceneWidth, m_sceneHeight);
-	ImGui::TextWrapped("draws %u (+%u shadow)   triangles %u   PSO switches %u   set switches %u   mesh switches %u   PSO cache %zu",
-		stats.draws, stats.shadowDraws, stats.triangles, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches, engine.GetRenderer().GetPipelineCount());
+	ImGui::TextWrapped("draws %u (+%u shadow, %u views, culled %u)   triangles %u   PSO switches %u   set switches %u   mesh switches %u   PSO cache %zu",
+		stats.draws, stats.shadowDraws, stats.shadowViews, stats.shadowCulled, stats.triangles, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches, engine.GetRenderer().GetPipelineCount());
 	DebugUI::DrawModelPanel(sceneName, modelStats, engine.GetScene().GetImageCount(), engine.GetScene().GetObjects().size());
 	DebugUI::DrawProfilerPanel();
 	DebugUI::EndPanel();

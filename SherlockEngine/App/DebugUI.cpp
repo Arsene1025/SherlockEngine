@@ -23,6 +23,14 @@ namespace
 {
 	const char* kSamplerNames[] = { "LinearWrap", "LinearClamp", "AnisotropicWrap", "PointWrap", "PointNoMip" };
 	const char* kLightTypeNames[] = { "Directional", "Point", "Spot" };
+
+	// 2026/10/28: R 버튼의 기본값. 구조체의 멤버 초기값을 그대로 읽으므로 기본값을 바꿔도 이 파일은 고칠 필요가 없음.
+	const ShadowSettings kShadowDefaults;
+	const SceneEnvironment kEnvironmentDefaults;
+	const LightData kLightDefaults;
+	const Material kMaterialDefaults;
+	constexpr float kCameraMoveSpeedDefault = 10.0f;   // EditorApp::m_moveSpeed 의 초기값
+	constexpr float kCameraOrthoHeightDefault = 25.0f; // Camera 생성자의 m_orthoHeight
 }
 
 bool DebugUI::BeginPanel(const char* name, bool* open)
@@ -62,6 +70,72 @@ float DebugUI::TextItemWidth(const char* text)
 	return ImGui::CalcTextSize(text, nullptr, true).x;
 }
 
+namespace
+{
+	// 위젯을 그리기 전에 부름: 위젯 폭에서 R 버튼과 간격만큼을 뺌 (라벨은 위젯 오른쪽에 그려지므로 라벨 + R 이 원래 라벨 자리에 들어감).
+	void ReserveResetButton()
+	{
+		ImGui::SetNextItemWidth(ImGui::CalcItemWidth() - DebugUI::ButtonWidth("R") - ImGui::GetStyle().ItemSpacing.x);
+	}
+
+	// 위젯 바로 뒤(라벨 옆)에 R 버튼을 그림. 기본값과 같으면 비활성. 눌리면 true.
+	bool DrawResetButton(const char* id, bool atDefault, const char* defaultText)
+	{
+		ImGui::SameLine();
+		ImGui::PushID(id);
+		ImGui::BeginDisabled(atDefault);
+		const bool pressed = ImGui::SmallButton("R");
+		ImGui::EndDisabled();
+		ImGui::PopID();
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("Reset to default: %s", defaultText);
+		return pressed;
+	}
+}
+
+bool DebugUI::SliderFloatR(const char* label, float* value, float defaultValue, float min, float max, const char* format, int flags)
+{
+	ReserveResetButton();
+	bool changed = ImGui::SliderFloat(label, value, min, max, format, flags);
+	char text[32];
+	snprintf(text, sizeof(text), "%g", defaultValue);
+	if (DrawResetButton(label, *value == defaultValue, text)) { *value = defaultValue; changed = true; }
+	return changed;
+}
+
+bool DebugUI::DragFloatR(const char* label, float* value, float defaultValue, float speed, float min, float max, const char* format)
+{
+	ReserveResetButton();
+	bool changed = ImGui::DragFloat(label, value, speed, min, max, format);
+	char text[32];
+	snprintf(text, sizeof(text), "%g", defaultValue);
+	if (DrawResetButton(label, *value == defaultValue, text)) { *value = defaultValue; changed = true; }
+	return changed;
+}
+
+bool DebugUI::DragFloat2R(const char* label, float* value, float defaultX, float defaultY, float speed, float min, float max, const char* format)
+{
+	ReserveResetButton();
+	bool changed = ImGui::DragFloat2(label, value, speed, min, max, format);
+	char text[64];
+	snprintf(text, sizeof(text), "%g, %g", defaultX, defaultY);
+	if (DrawResetButton(label, value[0] == defaultX && value[1] == defaultY, text)) { value[0] = defaultX; value[1] = defaultY; changed = true; }
+	return changed;
+}
+
+bool DebugUI::DragFloat3R(const char* label, float* value, float defaultX, float defaultY, float defaultZ, float speed, float min, float max, const char* format)
+{
+	ReserveResetButton();
+	bool changed = ImGui::DragFloat3(label, value, speed, min, max, format);
+	char text[96];
+	snprintf(text, sizeof(text), "%g, %g, %g", defaultX, defaultY, defaultZ);
+	if (DrawResetButton(label, value[0] == defaultX && value[1] == defaultY && value[2] == defaultZ, text))
+	{
+		value[0] = defaultX; value[1] = defaultY; value[2] = defaultZ;
+		changed = true;
+	}
+	return changed;
+}
+
 void DebugUI::DrawCameraPanel(Camera& camera, float& moveSpeed)
 {
 	ImGui::Separator();
@@ -70,14 +144,14 @@ void DebugUI::DrawCameraPanel(Camera& camera, float& moveSpeed)
 	ImGui::Text("pos   %.2f  %.2f  %.2f", p.x, p.y, p.z);
 	ImGui::TextWrapped("yaw   %.1f deg   pitch %.1f deg   roll %.1f deg",
 		XMConvertToDegrees(camera.GetYaw()), XMConvertToDegrees(camera.GetPitch()), XMConvertToDegrees(camera.GetRoll()));   // roll 은 재생 중 부모가 기울어진 카메라에서만 0 이 아님 (11-F)
-	ImGui::SliderFloat("Speed", &moveSpeed, 1.0f, 50.0f);
+	SliderFloatR("Speed", &moveSpeed, kCameraMoveSpeedDefault, 1.0f, 50.0f);
 	// 2026-10-15: 에디터 카메라의 투영 선택. 재생 중 카메라 컴포넌트가 카메라를 움직이면 그 컴포넌트의 설정이 덮어씀.
 	bool orthographic = !camera.IsUsePerspectiveProjection();
 	if (ImGui::Checkbox("Orthographic", &orthographic)) camera.SetUsePerspectiveProjection(!orthographic);
 	if (orthographic)
 	{
 		float height = camera.GetOrthoHeight();
-		if (ImGui::SliderFloat("Ortho height", &height, 1.0f, 100.0f)) camera.SetOrthoHeight(height);
+		if (SliderFloatR("Ortho height", &height, kCameraOrthoHeightDefault, 1.0f, 100.0f)) camera.SetOrthoHeight(height);
 	}
 	ImGui::TextWrapped("F1 wire  F2 cull  F3 vsync  F4 reload  F5 sRGB  F6 sampler  F7 light orbit  F8 shadows  F9 normal maps  F10 pause");
 }
@@ -117,30 +191,58 @@ void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)
 	}
 
 	const Renderer::Stats& stats = renderer.GetStats();
-	ImGui::TextWrapped("draws %u (+%u shadow)   PSO switches %u   set switches %u   mesh switches %u",
-		stats.draws, stats.shadowDraws, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches);
+	ImGui::TextWrapped("draws %u (+%u shadow, %u views, culled %u)   PSO switches %u   set switches %u   mesh switches %u",
+		stats.draws, stats.shadowDraws, stats.shadowViews, stats.shadowCulled, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches);
 	ImGui::TextWrapped("passes %u   barriers %u   PSO cache %zu   GPU meshes %zu   GPU materials %zu   textures %zu   reloads %u   frame slot %u",
 		stats.renderPasses, stats.barriers, renderer.GetPipelineCount(), renderer.GetGpuMeshCount(), renderer.GetGpuMaterialCount(),
 		renderer.GetTextureCount(), stats.shaderReloads, device.GetFrameIndex());
 }
 
-void DebugUI::DrawShadowPanel(Renderer& renderer, RHI::Device& device)
+void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& device)
 {
 	ImGui::Separator();
 	RenderSettings& settings = renderer.GetSettings();
-	ImGui::Checkbox("Shadows (light 0, directional)", &settings.shadows);
-	ImGui::SliderFloat("Shadow bias", &settings.shadowBias, 0.0f, 0.01f, "%.4f");
-	ImGui::SliderFloat("Shadow strength", &settings.shadowStrength, 0.0f, 1.0f);
-	ImGui::SliderFloat("Ortho size", &settings.shadowOrthoSize, 10.0f, 150.0f);
-	ImGui::SliderFloat("Light distance", &settings.shadowDistance, 5.0f, 120.0f);
-	if (ImGui::TreeNode("Shadow map (2048x2048 D32, shown as R)"))
+	ImGui::Checkbox("Shadows (F8)", &settings.shadows);
+	// 2026/10/28: 아래 값들은 씬 파일에 저장됨 (scene.environment.shadow). 켜고 끄는 스위치만 렌더러 설정.
+	ShadowSettings& shadow = scene.environment.shadow;
+	SliderFloatR("Shadow bias", &shadow.bias, kShadowDefaults.bias, 0.0f, 0.01f, "%.4f");
+	SliderFloatR("Shadow strength", &shadow.strength, kShadowDefaults.strength, 0.0f, 1.0f);
+	SliderFloatR("Normal offset", &shadow.normalOffset, kShadowDefaults.normalOffset, 0.0f, 1.0f, "%.3f");
+	SliderFloatR("Ortho size", &shadow.orthoSize, kShadowDefaults.orthoSize, 10.0f, 150.0f);
+	if (shadow.cascadeCount >= 2) ImGui::TextDisabled("  (cascades on: Ortho size only scales the bias)");
+	SliderFloatR("Light distance", &shadow.distance, kShadowDefaults.distance, 5.0f, 120.0f);
+	SliderFloatR("Local normal bias (texels)", &shadow.localNormalBias, kShadowDefaults.localNormalBias, 0.0f, 4.0f);
+	ImGui::SliderInt("Cascades", &shadow.cascadeCount, 1, 4);
+	if (shadow.cascadeCount >= 2)
+	{
+		SliderFloatR("Cascade distance", &shadow.cascadeDistance, kShadowDefaults.cascadeDistance, 5.0f, 300.0f);
+		SliderFloatR("Cascade lambda", &shadow.cascadeLambda, kShadowDefaults.cascadeLambda, 0.0f, 1.0f);
+	}
+	if (ImGui::TreeNode("Shadow atlas (4096x4096 D32, shown as R)"))
 	{
 		// R32_FLOAT SRV 를 ImGui 가 RGBA 로 샘플하면 빨강 채널에 깊이가 담김. 가까울수록 검고 멀수록 붉게 보임.
 		const ImTextureID id = static_cast<ImTextureID>(device.GetImGuiTextureId(renderer.GetShadowMap()));
 		if (id != 0)
 		{
-			ImGui::Image(id, ImVec2(256.0f, 256.0f));
+			ImGui::Image(id, ImVec2(512.0f, 512.0f));
+			// 이번 프레임에 그린 뷰의 사각형과 조명 번호를 노란 테두리로 겹쳐 그림
+			const ImVec2 origin = ImGui::GetItemRectMin();
+			const float scale = 512.0f / Renderer::kShadowAtlasSize;
+			ImDrawList* draw = ImGui::GetWindowDrawList();
+			for (uint32_t v = 0; v < renderer.GetShadowViewCount(); ++v)
+			{
+				const Renderer::ShadowView& view = renderer.GetShadowView(v);
+				const ImVec2 a(origin.x + view.x * scale, origin.y + view.y * scale);
+				const ImVec2 b(a.x + view.size * scale, a.y + view.size * scale);
+				draw->AddRect(a, b, IM_COL32(255, 220, 0, 255));
+				char label[16];
+				snprintf(label, sizeof(label), "L%u", view.lightIndex);
+				draw->AddText(ImVec2(a.x + 3, a.y + 2), IM_COL32(255, 220, 0, 255), label);
+			}
 		}
+		ImGui::Text("views %u / %u   local tiles %u / %u   skipped lights %u",
+			renderer.GetShadowViewCount(), MAX_SHADOW_VIEWS, renderer.GetUsedLocalTiles(), Renderer::kShadowLocalTileCount,
+			renderer.GetSkippedShadowLights());
 		ImGui::TreePop();
 	}
 }
@@ -258,13 +360,13 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 		EditEnvironmentName("Irradiance", "diffuse cube (.dds)", env.irradiance, true);
 		EditEnvironmentName("Specular", "prefiltered cube, mip = roughness (.dds)", env.specular, true);
 		EditEnvironmentName("BRDF LUT", "2D, u = N.V, v = 1 - roughness", env.brdfLut, false);
-		ImGui::SliderFloat("IBL intensity", &env.iblIntensity, 0.0f, 4.0f);
+		SliderFloatR("IBL intensity", &env.iblIntensity, kEnvironmentDefaults.iblIntensity, 0.0f, 4.0f);
 		ImGui::TextDisabled(env.irradiance.empty() && env.specular.empty()
 			? (env.skybox.empty() ? "no environment: ambient color is used" : "no IBL maps: blurred skybox mips are used (approximation)")
 			: "IBL maps in use");
 		ImGui::TreePop();
 	}
-	ImGui::SliderFloat("Exposure", &env.exposure, 0.05f, 8.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+	SliderFloatR("Exposure", &env.exposure, kEnvironmentDefaults.exposure, 0.05f, 8.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
 	SameLineIfFits(CheckboxWidth("ACES tone mapping"));
 	ImGui::Checkbox("ACES tone mapping", &env.toneMapping);
 
@@ -274,15 +376,15 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 	{
 		PostProcessSettings& post = env.post;
 		ImGui::Checkbox("Gaussian blur", &post.blurEnabled);
-		if (post.blurEnabled) ImGui::SliderFloat("Blur radius (px @720p)", &post.blurRadius, 0.5f, 32.0f, "%.1f");
+		if (post.blurEnabled) SliderFloatR("Blur radius (px @720p)", &post.blurRadius, kEnvironmentDefaults.post.blurRadius, 0.5f, 32.0f, "%.1f");
 		ImGui::Checkbox("Bloom", &post.bloomEnabled);
 		if (post.bloomEnabled)
 		{
-			ImGui::SliderFloat("Bloom threshold", &post.bloomThreshold, 0.0f, 8.0f, "%.2f");
-			ImGui::SliderFloat("Bloom knee", &post.bloomKnee, 0.0f, 1.0f, "%.2f");
-			ImGui::SliderFloat("Bloom intensity", &post.bloomIntensity, 0.0f, 4.0f, "%.2f");
+			SliderFloatR("Bloom threshold", &post.bloomThreshold, kEnvironmentDefaults.post.bloomThreshold, 0.0f, 8.0f, "%.2f");
+			SliderFloatR("Bloom knee", &post.bloomKnee, kEnvironmentDefaults.post.bloomKnee, 0.0f, 1.0f, "%.2f");
+			SliderFloatR("Bloom intensity", &post.bloomIntensity, kEnvironmentDefaults.post.bloomIntensity, 0.0f, 4.0f, "%.2f");
 		}
-		ImGui::SliderFloat("Greyscale", &post.greyscale, 0.0f, 1.0f);
+		SliderFloatR("Greyscale", &post.greyscale, kEnvironmentDefaults.post.greyscale, 0.0f, 1.0f);
 		ImGui::Checkbox("Stage thumbnails", &g_showPostStages);   // 씬이 아니라 에디터 설정 — 되돌리기 이력에 들어가지 않음
 		ImGui::TreePop();
 	}
@@ -292,7 +394,7 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 {
 	ImGui::Separator();
 	std::vector<LightData>& lights = scene.GetLights();
-	ImGui::TextWrapped("Lights (%zu / %u)   light 0 casts the shadow when directional", lights.size(), MAX_LIGHTS);
+	ImGui::TextWrapped("Lights (%zu / %u)   shadows: first directional (cascades) + spot (1 tile) + point (6 tiles), 12 local tiles", lights.size(), MAX_LIGHTS);
 	ImGui::ColorEdit3("Ambient", &scene.ambientColor.x);
 	if (lights.size() < MAX_LIGHTS)
 	{
@@ -304,6 +406,7 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 			light.position = XMFLOAT3(0.0f, 6.0f, 0.0f);
 			light.range = 20.0f;
 			light.intensity = 2.0f;
+			light.castShadows = 0;   // 지역광 그림자는 타일을 쓰므로 기본은 꺼 둠 (Cast shadows 체크박스로 켬)
 			lights.push_back(light);
 		}
 	}
@@ -332,12 +435,12 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 			}
 			if (light.type != static_cast<uint32_t>(LightType::Directional))
 			{
-				ImGui::DragFloat3("Position", &light.position.x, 0.1f, -60.0f, 60.0f);
-				ImGui::DragFloat("Range", &light.range, 0.1f, 0.1f, 200.0f);
+				DragFloat3R("Position", &light.position.x, kLightDefaults.position.x, kLightDefaults.position.y, kLightDefaults.position.z, 0.1f, -60.0f, 60.0f);
+				DragFloatR("Range", &light.range, kLightDefaults.range, 0.1f, 0.1f, 200.0f);
 			}
 			if (light.type != static_cast<uint32_t>(LightType::Point))
 			{
-				ImGui::DragFloat3("Direction", &light.direction.x, 0.01f, -1.0f, 1.0f);
+				DragFloat3R("Direction", &light.direction.x, kLightDefaults.direction.x, kLightDefaults.direction.y, kLightDefaults.direction.z, 0.01f, -1.0f, 1.0f);
 				SameLineIfFits(ButtonWidth("normalize"));
 				if (ImGui::SmallButton("normalize"))
 				{
@@ -346,18 +449,23 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 				}
 			}
 			ImGui::ColorEdit3("Color", &light.color.x);
-			ImGui::SliderFloat("Intensity", &light.intensity, 0.0f, 10.0f);
+			SliderFloatR("Intensity", &light.intensity, kLightDefaults.intensity, 0.0f, 10.0f);
+
+			bool cast = light.castShadows != 0;
+			if (ImGui::Checkbox("Cast shadows", &cast)) light.castShadows = cast ? 1u : 0u;
+
 			if (light.type == static_cast<uint32_t>(LightType::Spot))
 			{
 				float inner = XMConvertToDegrees(acosf(light.innerConeCos));
 				float outer = XMConvertToDegrees(acosf(light.outerConeCos));
-				if (ImGui::SliderFloat("Inner cone (deg)", &inner, 1.0f, 89.0f)) light.innerConeCos = cosf(XMConvertToRadians(inner));
-				if (ImGui::SliderFloat("Outer cone (deg)", &outer, 1.0f, 89.0f)) light.outerConeCos = cosf(XMConvertToRadians(outer));
+				// 기본값도 슬라이더와 같은 식(acos → 도)으로 구해야 기본 상태에서 R 이 정확히 비활성이 됨.
+				if (SliderFloatR("Inner cone (deg)", &inner, XMConvertToDegrees(acosf(kLightDefaults.innerConeCos)), 1.0f, 89.0f)) light.innerConeCos = cosf(XMConvertToRadians(inner));
+				if (SliderFloatR("Outer cone (deg)", &outer, XMConvertToDegrees(acosf(kLightDefaults.outerConeCos)), 1.0f, 89.0f)) light.outerConeCos = cosf(XMConvertToRadians(outer));
 				if (light.outerConeCos > light.innerConeCos) light.outerConeCos = light.innerConeCos;
 			}
 			if (light.type != static_cast<uint32_t>(LightType::Directional))
 			{
-				ImGui::DragFloat3("Attenuation (c, l, q)", &light.attenuation.x, 0.001f, 0.0f, 10.0f, "%.4f");
+				DragFloat3R("Attenuation (c, l, q)", &light.attenuation.x, kLightDefaults.attenuation.x, kLightDefaults.attenuation.y, kLightDefaults.attenuation.z, 0.001f, 0.0f, 10.0f, "%.4f");
 			}
 			if (lights.size() > 1 && ImGui::Button("Remove"))
 			{
@@ -390,10 +498,10 @@ void DebugUI::DrawMaterialPanel(Scene& scene)
 		if (ImGui::TreeNode(material.name.c_str()))
 		{
 			ImGui::ColorEdit4("Base color", &material.baseColor.x);
-			ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);   // 2026-10-08 PBR
-			ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
+			SliderFloatR("Metallic", &material.metallic, kMaterialDefaults.metallic, 0.0f, 1.0f);   // 2026-10-08 PBR
+			SliderFloatR("Roughness", &material.roughness, kMaterialDefaults.roughness, 0.0f, 1.0f);
 			ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
-			ImGui::SliderFloat("Occlusion strength", &material.occlusionStrength, 0.0f, 1.0f);
+			SliderFloatR("Occlusion strength", &material.occlusionStrength, kMaterialDefaults.occlusionStrength, 0.0f, 1.0f);
 			ImGui::TextWrapped("Albedo: %s (%s)   Normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(),
 				material.albedoSrgb ? "sRGB" : "linear", material.normalTexture.empty() ? "(none)" : material.normalTexture.c_str());
 			ImGui::TextWrapped("Metal/Rough: %s   AO: %s   Emissive: %s",
@@ -405,8 +513,8 @@ void DebugUI::DrawMaterialPanel(Scene& scene)
 			{
 				material.sampler = static_cast<SamplerPreset>(sampler);
 			}
-			ImGui::DragFloat2("UV scale", &material.uvScale.x, 0.1f, 0.1f, 64.0f);
-			ImGui::SliderFloat("Normal strength", &material.normalStrength, 0.0f, 3.0f);
+			DragFloat2R("UV scale", &material.uvScale.x, kMaterialDefaults.uvScale.x, kMaterialDefaults.uvScale.y, 0.1f, 0.1f, 64.0f);
+			SliderFloatR("Normal strength", &material.normalStrength, kMaterialDefaults.normalStrength, 0.0f, 3.0f);
 			ImGui::Checkbox("Unlit", &material.unlit);
 			SameLineIfFits(CheckboxWidth("Wireframe"));
 			ImGui::Checkbox("Wireframe", &material.wireframe);

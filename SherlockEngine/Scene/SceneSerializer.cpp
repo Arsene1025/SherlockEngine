@@ -150,6 +150,8 @@ namespace
 		j["attenuation"] = ToJson(l.attenuation);
 		j["innerConeCos"] = l.innerConeCos;
 		j["outerConeCos"] = l.outerConeCos;
+		j["castShadows"] = l.castShadows != 0;
+		//ShadowIndex는 저장하지 않고 매 프레임 Renderer가 정한다.
 		return j;
 	}
 
@@ -165,6 +167,8 @@ namespace
 		l.attenuation = ToFloat3(j.value("attenuation", json()), l.attenuation);
 		l.innerConeCos = j.value("innerConeCos", l.innerConeCos);
 		l.outerConeCos = j.value("outerConeCos", l.outerConeCos);
+		//키가 없는 옛 파일을 대비해 방향광이면 1, 아니면 0
+		l.castShadows = j.value("castShadows", l.type == static_cast<uint32_t>(LightType::Directional)) ? 1u : 0u;
 		return l;
 	}
 
@@ -428,6 +432,13 @@ namespace
 				{ "bloomKnee", env.post.bloomKnee }, { "bloomIntensity", env.post.bloomIntensity },
 				{ "greyscale", env.post.greyscale },
 			} },
+			{ "shadow", {
+				{ "bias", env.shadow.bias }, { "strength", env.shadow.strength }, { "normalOffset", env.shadow.normalOffset },
+				{ "orthoSize", env.shadow.orthoSize }, { "distance", env.shadow.distance },
+				{ "localNormalBias", env.shadow.localNormalBias },
+				{ "cascadeCount", env.shadow.cascadeCount }, { "cascadeDistance", env.shadow.cascadeDistance },
+				{ "cascadeLambda", env.shadow.cascadeLambda },
+			} },
 		};
 	}
 
@@ -451,6 +462,18 @@ namespace
 		e.post.bloomKnee = post.value("bloomKnee", defaults.bloomKnee);
 		e.post.bloomIntensity = post.value("bloomIntensity", defaults.bloomIntensity);
 		e.post.greyscale = post.value("greyscale", defaults.greyscale);
+		// 2026/10/28: 그림자. 키가 없으면(이전 씬 파일) 기본값
+		const ShadowSettings shadowDefaults;
+		const json shadow = env.value("shadow", json::object());
+		e.shadow.bias = shadow.value("bias", shadowDefaults.bias);
+		e.shadow.strength = shadow.value("strength", shadowDefaults.strength);
+		e.shadow.normalOffset = shadow.value("normalOffset", shadowDefaults.normalOffset);
+		e.shadow.orthoSize = shadow.value("orthoSize", shadowDefaults.orthoSize);
+		e.shadow.distance = shadow.value("distance", shadowDefaults.distance);
+		e.shadow.localNormalBias = shadow.value("localNormalBias", shadowDefaults.localNormalBias);
+		e.shadow.cascadeCount = shadow.value("cascadeCount", shadowDefaults.cascadeCount);
+		e.shadow.cascadeDistance = shadow.value("cascadeDistance", shadowDefaults.cascadeDistance);
+		e.shadow.cascadeLambda = shadow.value("cascadeLambda", shadowDefaults.cascadeLambda);
 	}
 
 	void ApplyAmbientAndClear(Scene& scene, const json& root)

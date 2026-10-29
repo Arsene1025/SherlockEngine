@@ -21,9 +21,17 @@ namespace DebugUI
 	float ButtonWidth(const char* label);        // Button·SmallButton 공통 (가로 패딩은 같음)
 	float TextItemWidth(const char* text);
 
+	// 2026/10/28: 기본값 리셋 버튼(R)이 라벨 옆에 붙는 슬라이더·드래그. 값 입력은 ImGui 기본 기능(Ctrl+클릭 / 더블클릭)으로 이미 됨.
+	// 값이 기본값과 같으면 R 은 흐려지고(비활성), 마우스를 올리면 기본값이 툴팁으로 나옴. R 이 눌려도 값이 바뀐 것이므로 true 를 반환함.
+	// R 의 폭만큼 위젯 폭을 줄여서 라벨과 R 이 원래 라벨 자리에 들어감. 되돌리기는 입력 제스처 단위라 R 클릭도 한 단계로 기록됨.
+	bool SliderFloatR(const char* label, float* value, float defaultValue, float min, float max, const char* format = "%.3f", int flags = 0);
+	bool DragFloatR(const char* label, float* value, float defaultValue, float speed, float min, float max, const char* format = "%.3f");
+	bool DragFloat2R(const char* label, float* value, float defaultX, float defaultY, float speed, float min, float max, const char* format = "%.3f");
+	bool DragFloat3R(const char* label, float* value, float defaultX, float defaultY, float defaultZ, float speed, float min, float max, const char* format = "%.3f");
+
 	void DrawCameraPanel(Camera& camera, float& moveSpeed);
 	void DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device);
-	void DrawShadowPanel(Renderer& renderer, RHI::Device& device);   // 6단계: 그림자 설정 + 그림자 맵 미리보기
+	void DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& device);   // 6단계: 그림자 설정 + 그림자 맵 미리보기. 2026/10/28: 값은 씬(environment.shadow)에 저장되므로 Scene 을 받음
 	// 6단계: 조명 8개 전부 편집, 추가/삭제. selectedLight = 씬 뷰에서 고른 조명 인덱스(패널에서 눌러도 바뀜, 삭제 시 보정), openSelected = true 면 그 노드를 펼치고 false 로 되돌림
 	void DrawLightPanel(Scene& scene, int* selectedLight = nullptr, bool* openSelected = nullptr);
 	// 2026-10-08: 씬 환경 (Scene::environment) — 스카이박스, IBL(확산 조도·반사 프리필터·BRDF LUT·세기), 노출·톤매핑.

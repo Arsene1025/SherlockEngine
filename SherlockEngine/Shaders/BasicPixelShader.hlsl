@@ -13,34 +13,113 @@ float CalculateDistanceAttenuation(LightData light, float distanceToLight)
     return (rangeFactor * rangeFactor) / denominator;
 }
 
-// 6단계: 그림자 맵 비교. 광원 클립 좌표 → 텍스처 UV → 3×3 PCF.
-// 1 = 완전히 빛을 받음, 0 = 완전히 그림자. 맵 밖은 빛을 받는 것으로 간주함(Border 1).
-float ComputeShadowFactor(float4 shadowPosition)
+// 그림자 뷰 하나에 대한 PCF 5×5. 1 = 빛을 받음, 0 = 그림자.
+// 뷰 밖이면 빛을 받는 것으로 간주함 (예전의 Border 1 을 대신함 — 아틀라스는 옆 타일이 있어 Border 를 못 씀).
+// normalDelta = (노말맵 적용 노멀) − (기하 노멀). 그림자 경계가 노말맵의 영향을 받도록 UV 를 그만큼 옮김.
+// distanceToLight: 원근 뷰의 텍셀 월드 크기를 구할 때 씀 (직교 뷰는 무시).
+float SampleShadowView(uint viewIndex, float3 worldPosition, float3 geometricNormal, float3 normalDelta, float distanceToLight)
 {
     // 단일 반환 구조: 조기 반환이 섞이면 fxc 가 -Od(디버그) 에서 X4000 오경고를 냄.
     float result = 1.0f;
-    // 직교 투영이라 w = 1 이지만 관례대로 나눔.
-    const float3 p = shadowPosition.xyz / shadowPosition.w;
-    // NDC x,y ∈ [−1, 1] → UV. D3D 텍스처 공간은 v 가 아래쪽으로 증가하므로 y 부호를 뒤집음.
-    const float2 uv = float2(p.x * 0.5f + 0.5f, -p.y * 0.5f + 0.5f);
-    // 그림자가 꺼져 있거나 광원 far 밖이면 result = 1 그대로.
-    if (shadowParams.w >= 0.5f && p.z <= 1.0f)
-    {
-        const float depth = p.z - shadowParams.y;   // 수신자 깊이에서 바이어스를 뺌(자기 그림자 방지)
+    const ShadowViewData view = shadowViews[viewIndex];
+    const bool perspective = view.params.z > 0.5f;
 
-        // PCF: 이웃 텍셀 9개의 비교 결과(0/1)를 평균 냄. SampleCmp 는 비교 후 보간까지 하드웨어에서 처리함.
+    // (1) 원근 뷰만: 받는 쪽 위치를 기하 노멀 방향으로 "텍셀 몇 개"만큼 밀어 자기 그림자를 피함
+    const float texelWorld = perspective ? view.params.y * distanceToLight : view.params.y;
+    const float3 p = worldPosition + geometricNormal * (perspective ? shadowAtlasParams.z * texelWorld : 0.0f);
+
+    // (2) 월드 → 이 뷰의 클립 → NDC → 타일 안 UV (0..1). D3D 텍스처 공간은 v 가 아래쪽으로 증가하므로 y 부호를 뒤집음.
+    const float4 clip = mul(float4(p, 1.0f), view.viewProj);
+    const float3 ndc = clip.xyz / clip.w;
+    float2 local = float2(ndc.x * 0.5f + 0.5f, -ndc.y * 0.5f + 0.5f);
+
+    // (3) 노말 섀도: 노멀 차이를 같은 행렬의 방향(w = 0)으로 옮겨 UV 에 더함. shadowExtra.x(에디터의 Normal offset)로 조절함.
+    //     직교면 w = 1 이라 예전 계산과 같음.
+    const float4 deltaClip = mul(float4(normalDelta, 0.0f), view.viewProj);
+    local += deltaClip.xy / clip.w * float2(0.5f, -0.5f) * shadowExtra.x;
+
+    // (4) 이 뷰 밖이면 result = 1 그대로. 원근 뷰는 광원 뒤(w ≤ 0)와 near 앞(z < 0)도 밖.
+    const bool inside = clip.w > 0.0f && all(local >= 0.0f) && all(local <= 1.0f) && ndc.z <= 1.0f && (!perspective || ndc.z >= 0.0f);
+    if (shadowParams.w >= 0.5f && inside)
+    {
+        // (5) 타일 UV → 아틀라스 UV. PCF 커널이 옆 타일을 읽지 않도록 여백(텍셀)만큼 안쪽으로 clamp.
+        float2 uv = view.atlasRect.xy + local * view.atlasRect.zw;
+        const float2 border = shadowAtlasParams.y * shadowAtlasParams.x;
+        uv = clamp(uv, view.atlasRect.xy + border, view.atlasRect.xy + view.atlasRect.zw - border);
+        const float depth = ndc.z - view.params.x;   // 수신자 깊이에서 바이어스를 뺌(자기 그림자 방지)
+
+        // (6) PCF: 이웃 텍셀 25개의 비교 결과(0/1)를 평균 냄. SampleCmp 는 비교 후 보간까지 하드웨어에서 처리함.
         float lit = 0.0f;
         [unroll]
-        for (int dy = -1; dy <= 1; ++dy)
+        for (int dy = -2; dy <= 2; ++dy)
         {
             [unroll]
-            for (int dx = -1; dx <= 1; ++dx)
+            for (int dx = -2; dx <= 2; ++dx)
             {
                 lit += shadowMap.SampleCmpLevelZero(shadowSampler, uv, depth, int2(dx, dy));
             }
         }
-        lit /= 9.0f;
-        result = lerp(1.0f, lit, shadowParams.z);
+        result = lerp(1.0f, lit / 25.0f, shadowParams.z);
+    }
+    return result;
+}
+
+// 광원 → 표면 벡터의 가장 큰 성분 축이 그 면. 순서는 +X, −X, +Y, −Y, +Z, −Z (C++ 의 face 번호와 같음)
+uint PointFace(float3 v)
+{
+    const float3 a = abs(v);
+    uint face = (v.z > 0.0f) ? 4 : 5;
+    if (a.x >= a.y && a.x >= a.z) face = (v.x > 0.0f) ? 0 : 1;
+    else if (a.y >= a.z)           face = (v.y > 0.0f) ? 2 : 3;
+    return face;
+}
+
+// CSM 이 켜져 있으면 이 위치의 캐스케이드 번호, 꺼져 있거나 마지막 캐스케이드 너머면 −1.
+// 깊이를 지금 그리는 카메라의 b0 가 아니라 cascadeOrigin/Forward(캐스케이드를 계산한 카메라)로 잼:
+// 카메라 미리보기 패스는 b0 를 다른 카메라로 바꾸지만, 그림자는 메인 카메라 기준으로 한 번만 만들기 때문임.
+int SelectCascade(float3 worldPosition)
+{
+    int result = -1;
+    const uint count = (uint)cascadeOrigin.w;
+    const float depth = dot(worldPosition - cascadeOrigin.xyz, cascadeForward.xyz);
+    // 캐스케이드 카메라 뒤쪽(depth < 0)은 어느 구간도 아님. 카메라를 고정하고 바깥에서 볼 때만 나타나는 위치라
+    // 이 검사가 없으면 첫 캐스케이드로 잘못 분류되어 타일 밖을 샘플링함.
+    [unroll]
+    for (uint i = 0; i < 4; ++i)
+    {
+        if (result < 0 && depth >= 0.0f && i < count && depth < cascadeSplits[i]) result = (int)i;
+    }
+    return result;
+}
+
+// 조명 하나의 그림자 계수. 그림자가 없는 조명은 1.
+float ShadowForLight(LightData light, float3 worldPosition, float3 geometricNormal, float3 normalDelta, float distanceToLight)
+{
+    float result = 1.0f;
+    if (light.shadowIndex >= 0)
+    {
+        if (light.type == LIGHT_DIRECTIONAL)
+        {
+            if (cascadeOrigin.w > 0.5f)
+            {
+                // CSM: 마지막 캐스케이드 너머(−1)는 그림자 없음
+                const int c = SelectCascade(worldPosition);
+                if (c >= 0) result = SampleShadowView((uint)(light.shadowIndex + c), worldPosition, geometricNormal, normalDelta, 0.0f);
+            }
+            else
+            {
+                result = SampleShadowView((uint)light.shadowIndex, worldPosition, geometricNormal, normalDelta, 0.0f);
+            }
+        }
+        else if (light.type == LIGHT_SPOT)
+        {
+            result = SampleShadowView((uint)light.shadowIndex, worldPosition, geometricNormal, normalDelta, distanceToLight);
+        }
+        else if (light.type == LIGHT_POINT)
+        {
+            const uint face = PointFace(worldPosition - light.position);
+            result = SampleShadowView((uint)light.shadowIndex + face, worldPosition, geometricNormal, normalDelta, distanceToLight);
+        }
     }
     return result;
 }
@@ -159,17 +238,41 @@ float4 PS_Main(VSOutput input) : SV_TARGET
     const float3 viewDirection = SafeNormalize(
         cameraPosition - input.worldPosition, float3(0.0f, 0.0f, -1.0f));
 
-    const float shadowFactor = ComputeShadowFactor(input.shadowPosition);
-
     // 11단계: 디버그 뷰. 에디터의 Render Settings 에서 고름.
     const int debugView = (int)debugParams.x;
     if (debugView == 1) return float4(albedo, 1.0f);
     if (debugView == 2) return float4(normal * 0.5f + 0.5f, 1.0f);
     if (debugView == 3) { const float d = saturate(length(cameraPosition - input.worldPosition) / max(debugParams.y, 0.001f)); return float4(d, d, d, 1.0f); }
-    if (debugView == 4) return float4(shadowFactor, shadowFactor, shadowFactor, 1.0f);
+    if (debugView == 4)
+    {
+        // 그림자가 있는 모든 조명의 계수를 곱해 보여 줌
+        float s = 1.0f;
+        for (uint k = 0; k < min(lightCount, MAX_LIGHTS); ++k)
+        {
+            const LightData l = lights[k];
+            const float d = length(l.position - input.worldPosition);
+            s *= ShadowForLight(l, input.worldPosition, geometricNormal, normal - geometricNormal, d);
+        }
+        return float4(s, s, s, 1.0f);
+    }
     if (debugView == 5) return float4(frac(input.uv), 0.0f, 1.0f);
     if (debugView == 6) return float4(0.0f, rough, metal, 1.0f);   // glTF 의 metallicRoughness 텍스처와 같은 채널 배치
     if (debugView == 7) return float4(ao, ao, ao, 1.0f);
+    if (debugView == 8)
+    {
+        // 캐스케이드: 0 빨강, 1 초록, 2 파랑, 3 노랑, 마지막 너머는 어두운 회색, CSM 꺼짐은 흰색. 장면을 알아보도록 알베도를 조금 섞음.
+        float3 tint = float3(1.0f, 1.0f, 1.0f);
+        if (cascadeOrigin.w > 0.5f)
+        {
+            const int c = SelectCascade(input.worldPosition);
+            tint = float3(0.15f, 0.15f, 0.15f);
+            if (c == 0) tint = float3(1.0f, 0.1f, 0.1f);
+            else if (c == 1) tint = float3(0.1f, 1.0f, 0.1f);
+            else if (c == 2) tint = float3(0.1f, 0.1f, 1.0f);
+            else if (c == 3) tint = float3(1.0f, 1.0f, 0.1f);
+        }
+        return float4(lerp(tint, albedo, 0.3f), 1.0f);
+    }
 
     const float NdotV = max(dot(normal, viewDirection), EPSILON);
     float3 finalColor = EnvironmentLighting(albedo, F0, metal, rough, normal, viewDirection, ao) + emission;
@@ -181,20 +284,16 @@ float4 PS_Main(VSOutput input) : SV_TARGET
         const LightData light = lights[i];
         float3 surfaceToLight = float3(0.0f, 1.0f, 0.0f);
         float attenuation = 1.0f;
+        float distanceToLight = 0.0f;   // 점·스팟만 채움. 그림자의 원근 뷰가 텍셀 크기를 구할 때 씀
 
         if (light.type == LIGHT_DIRECTIONAL)
         {
             surfaceToLight = SafeNormalize(-light.direction, float3(0.0f, 1.0f, 0.0f));
-            // 그림자 맵은 방향광 0 하나에 대해서만 만듦.
-            if (i == 0)
-            {
-                attenuation *= shadowFactor;
-            }
         }
         else
         {
             const float3 toLight = light.position - input.worldPosition;
-            const float distanceToLight = length(toLight);
+            distanceToLight = length(toLight);
             surfaceToLight = SafeNormalize(toLight, float3(0.0f, 1.0f, 0.0f));
             attenuation = CalculateDistanceAttenuation(light, distanceToLight);
 
@@ -213,6 +312,11 @@ float4 PS_Main(VSOutput input) : SV_TARGET
         if (NdotL <= 0.0f)
         {
             continue;
+        }
+        // 빛이 닿지 않는 픽셀(원뿔 밖·범위 밖)은 PCF 를 건너뜀
+        if (attenuation > 0.0f)
+        {
+            attenuation *= ShadowForLight(light, input.worldPosition, geometricNormal, normal - geometricNormal, distanceToLight);
         }
         const float3 halfVector = SafeNormalize(surfaceToLight + viewDirection, normal);
         const float NdotH = saturate(dot(normal, halfVector));

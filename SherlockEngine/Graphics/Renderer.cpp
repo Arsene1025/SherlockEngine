@@ -47,12 +47,37 @@ namespace
 		if (length > 1) MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
 		return wide;
 	}
+
+	// ---- 섀도 아틀라스 배치 (4096²) ----
+	//   ┌──────────────┬──────────┬──────────┐
+	//   │  방향광 영역 │ 사분면 1 │ (2048²)  │   사분면 = 1024² 타일 4개 (2×2). 지역광 타일 0..3 은 사분면 1,
+	//   │   2048²      │ 타일 0~3 │          │   4..7 은 사분면 2 (왼쪽 아래), 8..11 은 사분면 3 (오른쪽 아래).
+	//   ├──────────────┼──────────┤          │
+	//   │ 사분면 2     │ 사분면 3 │          │
+	//   └──────────────┴──────────┴──────────┘
+	struct AtlasRect { uint32_t x, y, size; };
+
+	// 방향광 영역(왼쪽 위 2048²) 안의 칸. count == 1 이면 영역 전체, 2~4 면 2×2 의 index 번째 칸(1024).
+	AtlasRect DirectionalRect(uint32_t index, uint32_t count)
+	{
+		if (count <= 1) return { 0, 0, Renderer::kShadowDirectionalRegion };
+		return { (index % 2) * Renderer::kShadowTileSize, (index / 2) * Renderer::kShadowTileSize, Renderer::kShadowTileSize };
+	}
+
+	// 지역광 타일 0..11. 사분면 1(오른쪽 위) → 2(왼쪽 아래) → 3(오른쪽 아래) 순서로 네 칸씩, 사분면 안에서는 왼→오, 위→아래.
+	AtlasRect LocalTileRect(uint32_t tile)
+	{
+		const uint32_t quadrant = 1 + tile / 4;
+		const uint32_t ox = (quadrant == 2) ? 0 : Renderer::kShadowDirectionalRegion;
+		const uint32_t oy = (quadrant == 1) ? 0 : Renderer::kShadowDirectionalRegion;
+		const uint32_t inside = tile % 4;
+		return { ox + (inside % 2) * Renderer::kShadowTileSize, oy + (inside / 2) * Renderer::kShadowTileSize, Renderer::kShadowTileSize };
+	}
 }
 
 Renderer::Renderer()
 {
 	m_defaultMaterial.name = "Default";
-	XMStoreFloat4x4(&m_lightViewProj, XMMatrixIdentity());
 }
 
 Renderer::~Renderer()
@@ -81,7 +106,10 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_perObjectCB = makeCB(sizeof(PerObjectConstants), "CB_PerObject");
 	m_lightCB = makeCB(sizeof(LightConstants), "CB_Lights");
 	m_postParamsCB = makeCB(sizeof(PostParamsConstants), "CB_PostParams");   // 2026/10/23
-	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_lightCB.IsValid() || !m_postParamsCB.IsValid())
+	m_shadowPassCB = makeCB(sizeof(ShadowPassConstants), "CB_ShadowPass");   // b5
+	m_shadowsCB = makeCB(sizeof(ShadowConstants), "CB_Shadows");             // b6
+	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_lightCB.IsValid() || !m_postParamsCB.IsValid() ||
+		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid())
 	{
 		Log::Error("Renderer::Initialize : 상수버퍼 생성 실패.");
 		return false;
@@ -106,7 +134,11 @@ bool Renderer::Initialize(RHI::Device* device)
 	frameLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotIrradiance);
 	frameLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotPrefiltered);
 	frameLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotBrdfLut);
-	m_frameLayout = m_device->CreateBindingLayout(frameLayout);
+	// 다중 광원 그림자: b5 (그림자 패스가 뷰마다 올리는 행렬, VS), b6 (그림자 뷰 배열, PS).
+	// 새 레이아웃이 아니라 프레임 레이아웃의 끝에 붙임 — D3D12 커맨드 리스트의 셋 슬롯(kMaxBindingSets = 4)이 이미 가득 참.
+	frameLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotShadowPass);
+	frameLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotShadows);
+	m_frameLayout =m_device->CreateBindingLayout(frameLayout);
 
 	BindingLayoutDesc objectLayout;
 	objectLayout.debugName = "Layout_Object";
@@ -336,7 +368,7 @@ bool Renderer::UpdateFrameSet()
 	// ResourceSet 은 값 객체라 슬롯 하나만 바꾸는 기능이 없음 — 재질 셋과 같이 통째로 다시 만듦 (D3D12 디스크립터 테이블도 다시 씀).
 	// 이전 셋은 D3D12 에서 지연 해제되므로, 이미 기록된 드로우가 그 테이블을 읽어도 안전함.
 	m_device->DestroyResourceSet(m_frameSet);
-	// bindings[i] 는 Initialize 의 frameLayout.Add(...) i 번째 슬롯과 짝임: b0, b2, t8, s4, t9, s5, t10, t11, t12.
+	// bindings[i] 는 Initialize 의 frameLayout.Add(...) i 번째 슬롯과 짝임: b0, b2, t8, s4, t9, s5, t10, t11, t12, b5, b6.
 	// 환경 샘플러는 재질 프리셋의 LinearClamp 를 함께 씀 (큐브 샘플은 면 경계를 하드웨어가 이어 주고, LUT 는 가장자리에서 반복되면 안 됨).
 	const ResourceSetDesc frameSet{
 		.layout = m_frameLayout,
@@ -344,6 +376,7 @@ bool Renderer::UpdateFrameSet()
 			{ .buffer = m_perFrameCB }, { .buffer = m_lightCB }, { .texture = m_shadowMap }, { .sampler = m_shadowSampler },
 			{ .texture = m_environment.skybox }, { .sampler = GetSampler(SamplerPreset::LinearClamp) },
 			{ .texture = m_environment.irradiance }, { .texture = m_environment.specular }, { .texture = m_environment.brdfLut },
+			{ .buffer = m_shadowPassCB }, { .buffer = m_shadowsCB },
 		},
 		.debugName = "Set_Frame",
 	};
@@ -361,8 +394,8 @@ bool Renderer::CreateShadowResources()
 {
 	// 깊이 전용 텍스처지만 셰이더에서도 읽음 → Device 가 TYPELESS 리소스 + DSV(D32) + SRV(R32) 로 만듦.
 	const TextureDesc desc{
-		.width = kShadowMapSize,
-		.height = kShadowMapSize,
+		.width = kShadowAtlasSize,
+		.height = kShadowAtlasSize,
 		.format = Format::D32_FLOAT,
 		.mipLevels = 1,
 		.bindFlags = TextureBind_DepthStencil | TextureBind_ShaderResource,
@@ -372,7 +405,8 @@ bool Renderer::CreateShadowResources()
 	m_shadowMapState = ResourceState::Common;
 
 	// 비교 샘플러: SampleCmp 가 "비교값(받는 쪽 깊이) ≤ 저장된 깊이" 면 1(빛 받음), 아니면 0 을 돌려주고 이웃과 보간함(하드웨어 PCF).
-	// 맵 밖은 Border 1 로 두어 빛을 받는 것으로 처리함.
+	// Border 1 은 아틀라스 전체 밖의 안전장치임. 각 뷰의 "뷰 밖 = 빛을 받음"은 PS 의 SampleShadowView 가 직접 판정하고,
+	// PCF 가 옆 타일을 읽지 않도록 타일 안쪽으로 clamp 함 (타일 경계는 Border 가 아니라 이 clamp 가 막음).
 	const SamplerDesc sampler{
 		.filter = SamplerFilter::Comparison,
 		.addressU = SamplerAddress::Border,
@@ -390,7 +424,8 @@ bool Renderer::CreateShadowResources()
 		Log::Error("Renderer : 그림자 맵 리소스 생성 실패.");
 		return false;
 	}
-	Log::Info("그림자 맵: %ux%u D32_FLOAT (DSV + SRV), PCF 3x3", kShadowMapSize, kShadowMapSize);
+	Log::Info("섀도 아틀라스: %ux%u D32_FLOAT (방향광 %u, 타일 %u × %u), PCF 5x5", kShadowAtlasSize, kShadowAtlasSize,
+		kShadowDirectionalRegion, kShadowLocalTileCount, kShadowTileSize);
 	return true;
 }
 
@@ -599,7 +634,8 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 	layoutOk &= ShaderCompiler::ValidateConstantBufferSize(psCode, "PerFrame", sizeof(PerFrameConstants));
 	layoutOk &= ShaderCompiler::ValidateConstantBufferSize(psCode, "Lights", sizeof(LightConstants));
 	layoutOk &= ShaderCompiler::ValidateConstantBufferSize(psCode, "Material", sizeof(MaterialConstants));
-	layoutOk &= ShaderCompiler::ValidateConstantBufferSize(shadowCode, "PerFrame", sizeof(PerFrameConstants));
+	layoutOk &= ShaderCompiler::ValidateConstantBufferSize(psCode, "Shadows", sizeof(ShadowConstants));
+	layoutOk &= ShaderCompiler::ValidateConstantBufferSize(shadowCode, "ShadowPass", sizeof(ShadowPassConstants));
 	layoutOk &= ShaderCompiler::ValidateConstantBufferSize(shadowCode, "PerObject", sizeof(PerObjectConstants));
 	layoutOk &= ShaderCompiler::ValidateConstantBufferSize(skyVsCode, "PerFrame", sizeof(PerFrameConstants));   // 2026-10-08: view, proj
 	layoutOk &= ShaderCompiler::ValidateConstantBufferSize(toneMapPsCode, "PerFrame", sizeof(PerFrameConstants)); //[2026/10/20] HDR과 ToneMap구현
@@ -730,6 +766,8 @@ bool Renderer::ValidateBindings(const std::vector<uint8_t>& vsCode, const std::v
 		{ BindingType::ShaderResource, kSRVSlotIrradiance,  ShaderStageMask_Pixel },
 		{ BindingType::ShaderResource, kSRVSlotPrefiltered, ShaderStageMask_Pixel },
 		{ BindingType::ShaderResource, kSRVSlotBrdfLut,     ShaderStageMask_Pixel },
+		{ BindingType::ConstantBuffer, kCBSlotShadowPass,   ShaderStageMask_Vertex },   // b5: 그림자 패스 행렬
+		{ BindingType::ConstantBuffer, kCBSlotShadows,      ShaderStageMask_Pixel },    // b6: 그림자 뷰 배열
 		{ BindingType::ConstantBuffer, kCBSlotPerObject,    ShaderStageMask_Vertex },
 		{ BindingType::ConstantBuffer, kCBSlotMaterial,     ShaderStageMask_Vertex | ShaderStageMask_Pixel },
 		{ BindingType::ShaderResource, kSRVSlotAlbedo,      ShaderStageMask_Pixel },
@@ -890,6 +928,8 @@ void Renderer::Shutdown()
 	m_device->DestroyBuffer(m_perObjectCB);
 	m_device->DestroyBuffer(m_lightCB);
 	m_device->DestroyBuffer(m_postParamsCB);
+	m_device->DestroyBuffer(m_shadowPassCB);
+	m_device->DestroyBuffer(m_shadowsCB);
 	m_device->DestroyShader(m_vs);
 	m_device->DestroyShader(m_ps);
 	m_device->DestroyShader(m_shadowVs);
@@ -900,7 +940,7 @@ void Renderer::Shutdown()
 	m_device->DestroyShader(m_postPs);
 	// PSO는 캐시가 소유함. 셰이더 핸들을 지워도 PSO는 자기 참조로 셰이더 객체를 붙들고 있음.
 
-	m_perFrameCB = m_perObjectCB = m_lightCB = m_postParamsCB = BufferHandle{};
+	m_perFrameCB = m_perObjectCB = m_lightCB = m_postParamsCB = m_shadowPassCB = m_shadowsCB = BufferHandle{};
 	m_frameSet = m_objectSet = ResourceSetHandle{};
 	m_frameLayout = m_objectLayout = m_materialLayout = m_postLayout = BindingLayoutHandle{};   //[2026/10/20] HDR과 ToneMap구현
 	m_vs = m_ps = m_shadowVs = m_skyVs = m_skyPs = m_screenVs = m_toneMapPs = m_postPs = ShaderHandle{};
@@ -970,14 +1010,284 @@ XMMATRIX Renderer::ComputeLightViewProj(const LightData& light) const
 	direction = XMVector3Normalize(direction);
 
 	const XMVECTOR center = XMVectorSet(0.0f, 2.0f, 0.0f, 1.0f);
-	const XMVECTOR eye = XMVectorSubtract(center, XMVectorScale(direction, m_settings.shadowDistance));
+	const XMVECTOR eye = XMVectorSubtract(center, XMVectorScale(direction, m_shadowSettings.distance));
 	// 빛이 거의 수직이면 up = +Y 가 시선과 평행해져 LookAt 이 깨짐. 그때는 +Z 를 up 으로 씀.
 	const XMVECTOR up = (fabsf(XMVectorGetY(direction)) > 0.99f) ? XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
 	const XMMATRIX view = XMMatrixLookAtLH(eye, center, up);
-	const float size = m_settings.shadowOrthoSize;
-	const XMMATRIX proj = XMMatrixOrthographicLH(size, size, 0.1f, m_settings.shadowDistance * 2.0f + size);
+	const float size = m_shadowSettings.orthoSize;
+	const XMMATRIX proj = XMMatrixOrthographicLH(size, size, 0.1f, m_shadowSettings.distance * 2.0f + size);
 	return view * proj;
+}
+
+XMMATRIX Renderer::ComputeSpotViewProj(const LightData& light, float& outTanHalfFov) const
+{
+	XMVECTOR direction = XMLoadFloat3(&light.direction);
+	if (XMVectorGetX(XMVector3LengthSq(direction)) < 0.000001f)
+	{
+		direction = XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
+	}
+	direction = XMVector3Normalize(direction);
+
+	const XMVECTOR eye = XMVectorSet(light.position.x, light.position.y, light.position.z, 1.0f);
+	// ComputeLightViewProj 와 같은 규칙: 빛이 거의 수직이면 up = +Z
+	const XMVECTOR up = (fabsf(XMVectorGetY(direction)) > 0.99f) ? XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	const XMMATRIX view = XMMatrixLookToLH(eye, direction, up);
+
+	// 시야각 = 바깥 원뿔 전체 + 2° 여유. [5°, 120°] 로 clamp — 바깥 원뿔이 60° 를 넘으면 가장자리는 그림자가 없음.
+	const float outerCos = std::clamp(light.outerConeCos, -1.0f, 1.0f);
+	const float fov = std::clamp(2.0f * acosf(outerCos) + XMConvertToRadians(2.0f), XMConvertToRadians(5.0f), XMConvertToRadians(120.0f));
+	const float nearZ = (light.range < 0.2f) ? light.range * 0.5f : 0.1f;
+	const float farZ = (std::max)(light.range, nearZ + 0.01f);   // 괄호: Windows.h 의 max 매크로 회피
+	outTanHalfFov = tanf(fov * 0.5f);
+	return view * XMMatrixPerspectiveFovLH(fov, 1.0f, nearZ, farZ);
+}
+
+XMMATRIX Renderer::ComputePointFaceViewProj(const LightData& light, uint32_t face) const
+{
+	// 면 순서는 D3D 큐브맵과 같음 (+X, −X, +Y, −Y, +Z, −Z). PS 의 PointFace 가 같은 번호를 씀.
+	static const XMFLOAT3 kLook[6] = { {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1} };
+	static const XMFLOAT3 kUp[6] = { {0, 1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {0, 1, 0} };
+	face = (std::min)(face, 5u);
+
+	const XMVECTOR eye = XMVectorSet(light.position.x, light.position.y, light.position.z, 1.0f);
+	const XMMATRIX view = XMMatrixLookToLH(eye, XMLoadFloat3(&kLook[face]), XMLoadFloat3(&kUp[face]));
+
+	// 시야각을 90° 보다 조금 넓힘: PCF 가 타일 가장자리 kShadowPcfBorder 텍셀 안쪽으로 clamp 되므로, 그 안쪽이 정확히 90° 를 덮게 함.
+	const float tanHalf = static_cast<float>(kShadowTileSize) / static_cast<float>(kShadowTileSize - 2 * kShadowPcfBorder);
+	const float fov = 2.0f * atanf(tanHalf);
+	return view * XMMatrixPerspectiveFovLH(fov, 1.0f, 0.05f, (std::max)(light.range, 0.06f));
+}
+
+uint32_t Renderer::AddShadowView(const XMMATRIX& viewProj, uint32_t x, uint32_t y, uint32_t size,
+	const XMFLOAT4& params, uint32_t lightIndex)
+{
+	static bool warnedFull = false;
+	if (m_shadowViewCount >= MAX_SHADOW_VIEWS)
+	{
+		if (!warnedFull)
+		{
+			warnedFull = true;
+			Log::Error("그림자 뷰가 가득 참 (최대 %u개). 이 뷰는 만들지 않음.", MAX_SHADOW_VIEWS);
+		}
+		return UINT32_MAX;
+	}
+	const uint32_t index = m_shadowViewCount++;
+	ShadowView& view = m_shadowViews[index];
+	XMStoreFloat4x4(&view.viewProj, viewProj);   // 행우선 그대로. 올릴 때 전치함
+	view.x = x;
+	view.y = y;
+	view.size = size;
+	view.params = params;
+	view.cullSphere = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+	view.lightIndex = lightIndex;
+	return index;
+}
+
+uint32_t Renderer::AddCascadeViews(const Camera& camera, const LightData& light, uint32_t lightIndex)
+{
+	const uint32_t count = static_cast<uint32_t>(std::clamp(m_shadowSettings.cascadeCount, 2, 4));
+	if (m_shadowViewCount + count > MAX_SHADOW_VIEWS) return UINT32_MAX;   // 캐스케이드는 번호가 연속이어야 하므로 통째로 거절
+
+	// ---- 분할 (practical split): s[i] = λ · n · (f/n)^(i/N) + (1 − λ) · (n + (f − n) · i/N), s[0] = n, s[N] = f ----
+	const float nearZ = camera.GetNearZ();
+	const float farZ = (std::max)((std::min)(camera.GetFarZ(), m_shadowSettings.cascadeDistance), nearZ + 0.01f);
+	const float lambda = std::clamp(m_shadowSettings.cascadeLambda, 0.0f, 1.0f);
+	float split[5] = {};
+	for (uint32_t i = 0; i <= count; ++i)
+	{
+		const float t = static_cast<float>(i) / static_cast<float>(count);
+		split[i] = lambda * nearZ * powf(farZ / nearZ, t) + (1.0f - lambda) * (nearZ + (farZ - nearZ) * t);
+	}
+
+	// ---- 카메라와 광원 방향 ----
+	const XMFLOAT3 cameraPosition = camera.GetPosition();
+	const XMVECTOR eyePosition = XMLoadFloat3(&cameraPosition);
+	const XMVECTOR forward = camera.GetForward();
+	const XMVECTOR right = camera.GetRight();
+	const XMVECTOR cameraUp = camera.GetUp();
+	const float tanHalfFovY = tanf(camera.GetFovY() * 0.5f);
+	const float aspect = camera.GetAspect();
+
+	XMVECTOR direction = XMLoadFloat3(&light.direction);
+	if (XMVectorGetX(XMVector3LengthSq(direction)) < 0.000001f) direction = XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
+	direction = XMVector3Normalize(direction);
+	// ComputeLightViewProj 와 같은 up 규칙
+	const XMVECTOR lightUp = (fabsf(XMVectorGetY(direction)) > 0.99f) ? XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	const float back = m_shadowSettings.distance;   // 조각 뒤(광원 쪽)로 캐스터를 잡는 거리
+	const float tile = static_cast<float>(kShadowTileSize);
+
+	uint32_t first = UINT32_MAX;
+	for (uint32_t c = 0; c < count; ++c)
+	{
+		// 1) 조각의 꼭짓점 8개: 앞면(split[c])과 뒷면(split[c+1])의 네 모서리
+		XMVECTOR corners[8];
+		for (uint32_t k = 0; k < 2; ++k)
+		{
+			const float d = split[c + k];
+			const float h = d * tanHalfFovY;
+			const float w = h * aspect;
+			const XMVECTOR center = XMVectorAdd(eyePosition, XMVectorScale(forward, d));
+			for (uint32_t m = 0; m < 4; ++m)
+			{
+				const float sx = (m & 1) ? 1.0f : -1.0f;
+				const float sy = (m & 2) ? 1.0f : -1.0f;
+				corners[k * 4 + m] = XMVectorAdd(center, XMVectorAdd(XMVectorScale(right, sx * w), XMVectorScale(cameraUp, sy * h)));
+			}
+		}
+
+		for (uint32_t k = 0; k < 8; ++k) XMStoreFloat3(&m_cascadeCorners[c][k], corners[k]);   // 에디터 오버레이용
+
+		// 2) 경계 구: 중심 = 꼭짓점 평균, 반지름 = 가장 먼 꼭짓점까지. 반지름을 1/16 단위로 올림 — 카메라가 돌아도 투영 크기가 일정해 텍셀 스냅이 유효함.
+		XMVECTOR sphereCenter = XMVectorZero();
+		for (const XMVECTOR& corner : corners) sphereCenter = XMVectorAdd(sphereCenter, corner);
+		sphereCenter = XMVectorScale(sphereCenter, 1.0f / 8.0f);
+		float radius = 0.0f;
+		for (const XMVECTOR& corner : corners) radius = (std::max)(radius, XMVectorGetX(XMVector3Length(XMVectorSubtract(corner, sphereCenter))));
+		radius = ceilf(radius * 16.0f) / 16.0f;
+
+		// 3) 광원 뷰: 눈 = 구 중심에서 빛의 반대로 (r + back). 직교 상자 한 변 2r, 깊이 0 .. 2r + back.
+		const XMVECTOR lightEye = XMVectorSubtract(sphereCenter, XMVectorScale(direction, radius + back));
+		const XMMATRIX view = XMMatrixLookToLH(lightEye, direction, lightUp);
+		XMMATRIX proj = XMMatrixOrthographicLH(2.0f * radius, 2.0f * radius, 0.0f, 2.0f * radius + back);
+
+		// 4) 텍셀 스냅: 월드 원점이 광원 클립에서 놓이는 위치를 텍셀 격자에 맞춤. 카메라가 움직여도 그림자 텍셀이 월드에 붙어 있어 가장자리가 반짝이지 않음.
+		XMVECTOR origin = XMVector4Transform(XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f), view * proj);
+		origin = XMVectorScale(origin, tile * 0.5f);   // NDC [-1,1] → 텍셀 단위
+		const XMVECTOR snapped = XMVectorRound(origin);
+		const XMVECTOR offset = XMVectorScale(XMVectorSubtract(snapped, origin), 2.0f / tile);
+		proj.r[3] = XMVectorAdd(proj.r[3], XMVectorSet(XMVectorGetX(offset), XMVectorGetY(offset), 0.0f, 0.0f));
+
+		// 5) 사각형과 params. 바이어스는 단일 뷰와 같은 "월드 거리"가 되도록 깊이 범위 비로 환산함.
+		const AtlasRect rect = DirectionalRect(c, count);
+		const float singleRange = m_shadowSettings.distance * 2.0f + m_shadowSettings.orthoSize;
+		const XMFLOAT4 params(m_shadowSettings.bias * singleRange / (2.0f * radius + back), 2.0f * radius / rect.size, 0.0f, 0.0f);
+		const uint32_t index = AddShadowView(view * proj, rect.x, rect.y, rect.size, params, lightIndex);
+		if (c == 0) first = index;
+	}
+
+	// PS 가 캐스케이드를 고를 때 쓰는 값. 카메라 기준으로 한 번만 만듦.
+	m_cascadeCount = count;
+	m_cascadeSplits = XMFLOAT4(split[1], count > 1 ? split[2] : 0.0f, count > 2 ? split[3] : 0.0f, count > 3 ? split[4] : 0.0f);
+	m_cascadeOrigin = cameraPosition;
+	XMStoreFloat3(&m_cascadeForward, forward);
+	return first;
+}
+
+void Renderer::SetCascadeFreeze(bool freeze, const Camera& camera)
+{
+	m_cascadeFrozen = freeze;
+	if (freeze) m_cascadeFreezeCamera = camera;
+}
+
+void Renderer::BuildShadowViews(const Camera& drawCamera, LightConstants& lights)
+{
+	// 고정 중이면 캐스케이드는 잡아 둔 사본 기준. 로컬 광원 등 나머지는 카메라를 쓰지 않음.
+	const Camera& camera = m_cascadeFrozen ? m_cascadeFreezeCamera : drawCamera;
+	m_shadowViewCount = 0;
+	m_cascadeCount = 0;
+	m_cascadeSplits = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+	m_skippedShadowLights = 0;
+	m_usedLocalTiles = 0;
+	for (uint32_t i = 0; i < MAX_LIGHTS; ++i) lights.lights[i].shadowIndex = -1;
+	if (!m_settings.shadows) return;
+
+	bool directionalDone = false;
+	for (uint32_t i = 0; i < lights.lightCount; ++i)
+	{
+		LightData& light = lights.lights[i];
+		if (light.castShadows == 0) continue;
+
+		if (light.type == static_cast<uint32_t>(LightType::Directional))
+		{
+			// 방향광은 첫 번째 castShadows 방향광만. 두 번째부터는 자리를 주지 않음.
+			if (directionalDone)
+			{
+				++m_skippedShadowLights;
+				continue;
+			}
+			directionalDone = true;
+			if (m_shadowSettings.cascadeCount >= 2 && camera.IsUsePerspectiveProjection())
+			{
+				// CSM. 직교 카메라는 절두체 조각 계산이 맞지 않아 아래의 단일 뷰로 대신함.
+				const uint32_t first = AddCascadeViews(camera, light, i);
+				if (first != UINT32_MAX) light.shadowIndex = static_cast<int32_t>(first);
+				else ++m_skippedShadowLights;
+				continue;
+			}
+			// 텍셀의 월드 크기는 그 뷰의 해상도 기준 (아틀라스 전체가 아니라 방향광 영역)
+			const AtlasRect rect = DirectionalRect(0, 1);
+			const XMFLOAT4 params(m_shadowSettings.bias, m_shadowSettings.orthoSize / rect.size, 0.0f, 0.0f);
+			const uint32_t view = AddShadowView(ComputeLightViewProj(light), rect.x, rect.y, rect.size, params, i);
+			if (view != UINT32_MAX) light.shadowIndex = static_cast<int32_t>(view);
+		}
+		else if (light.type == static_cast<uint32_t>(LightType::Spot))
+		{
+			if (m_usedLocalTiles >= kShadowLocalTileCount)
+			{
+				++m_skippedShadowLights;
+				continue;
+			}
+			float tanHalf = 1.0f;
+			const XMMATRIX viewProj = ComputeSpotViewProj(light, tanHalf);
+			const AtlasRect rect = LocalTileRect(m_usedLocalTiles++);
+			// y = 거리 1 에서 텍셀 하나가 덮는 월드 길이 (2 · tan(fov/2) / 해상도). 셰이더가 거리를 곱함. z = 1 원근.
+			const XMFLOAT4 params(0.0f, 2.0f * tanHalf / rect.size, 1.0f, 0.0f);
+			const uint32_t view = AddShadowView(viewProj, rect.x, rect.y, rect.size, params, i);
+			if (view != UINT32_MAX)
+			{
+				light.shadowIndex = static_cast<int32_t>(view);
+				m_shadowViews[view].cullSphere = XMFLOAT4(light.position.x, light.position.y, light.position.z, light.range);
+			}
+		}
+		else if (light.type == static_cast<uint32_t>(LightType::Point))
+		{
+			// 면 6개가 연속 타일이어야 함 (PS 가 shadowIndex + face 로 찾음). 6칸이 안 남으면 일부만 주지 않고 통째로 건너뜀.
+			if (m_usedLocalTiles + 6 > kShadowLocalTileCount || m_shadowViewCount + 6 > MAX_SHADOW_VIEWS)
+			{
+				++m_skippedShadowLights;
+				continue;
+			}
+			const float tanHalf = static_cast<float>(kShadowTileSize) / static_cast<float>(kShadowTileSize - 2 * kShadowPcfBorder);
+			const XMFLOAT4 params(0.0f, 2.0f * tanHalf / kShadowTileSize, 1.0f, 0.0f);
+			uint32_t first = UINT32_MAX;
+			for (uint32_t face = 0; face < 6; ++face)
+			{
+				const AtlasRect rect = LocalTileRect(m_usedLocalTiles++);
+				const uint32_t view = AddShadowView(ComputePointFaceViewProj(light, face), rect.x, rect.y, rect.size, params, i);
+				if (view == UINT32_MAX) break;   // 위에서 자리를 확인했으므로 일어나지 않음
+				if (face == 0) first = view;
+				m_shadowViews[view].cullSphere = XMFLOAT4(light.position.x, light.position.y, light.position.z, light.range);
+			}
+			if (first != UINT32_MAX) light.shadowIndex = static_cast<int32_t>(first);
+		}
+	}
+}
+
+void Renderer::UploadShadowConstants()
+{
+	// b6: 그림자 뷰 배열. 그림자가 꺼진 프레임(뷰 0개)에도 올림 — D3D12 는 Dynamic 상수버퍼가 프레임마다 갱신되어야 경고하지 않음.
+	ShadowConstants constants = {};
+	for (uint32_t i = 0; i < m_shadowViewCount; ++i)
+	{
+		const ShadowView& view = m_shadowViews[i];
+		ShadowViewData& data = constants.views[i];
+		XMStoreFloat4x4(&data.viewProj, XMMatrixTranspose(XMLoadFloat4x4(&view.viewProj)));
+		const float atlas = static_cast<float>(kShadowAtlasSize);
+		data.atlasRect = XMFLOAT4(view.x / atlas, view.y / atlas, view.size / atlas, view.size / atlas);
+		data.params = view.params;
+	}
+	constants.atlasParams = XMFLOAT4(1.0f / kShadowAtlasSize, static_cast<float>(kShadowPcfBorder), m_shadowSettings.localNormalBias, 0.0f);
+	// CSM 이 아니면 cascadeOrigin.w = 0 (PS 가 단일 뷰 경로를 탐)
+	constants.cascadeSplits = m_cascadeSplits;
+	constants.cascadeOrigin = XMFLOAT4(m_cascadeOrigin.x, m_cascadeOrigin.y, m_cascadeOrigin.z, static_cast<float>(m_cascadeCount));
+	constants.cascadeForward = XMFLOAT4(m_cascadeForward.x, m_cascadeForward.y, m_cascadeForward.z, 0.0f);
+	m_device->UpdateBuffer(m_shadowsCB, &constants, sizeof(constants));
+
+	// b5: 그림자 패스가 뷰마다 덮어쓸 자리. 여기서는 단위 행렬로 한 번 올려 둠 (그림자 패스가 없는 프레임의 갱신 검사용).
+	ShadowPassConstants pass = {};
+	XMStoreFloat4x4(&pass.shadowViewProj, XMMatrixIdentity());
+	m_device->UpdateBuffer(m_shadowPassCB, &pass, sizeof(pass));
 }
 
 void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
@@ -1004,20 +1314,10 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
 
 	RHI::CommandList& cmd = m_device->GetCommandList();
 
-	// ---- 광원 0 (방향광) 의 그림자 행렬 ----
+	m_shadowSettings = scene.environment.shadow;   // 2026/10/28: 씬 파일에 저장된 그림자 값
 	const std::vector<LightData>& sceneLights = scene.GetLights();
-	m_shadowEnabledThisFrame = m_settings.shadows && !sceneLights.empty()
-		&& sceneLights[0].type == static_cast<uint32_t>(LightType::Directional);
-	const XMMATRIX lightViewProj = m_shadowEnabledThisFrame ? ComputeLightViewProj(sceneLights[0]) : XMMatrixIdentity();
-	XMStoreFloat4x4(&m_lightViewProj, lightViewProj);
 
-	// ---- 2026-10-08: 환경 (스카이박스 t9, IBL t10~t12, 노출·톤매핑). b0 의 environmentParams·outputParams 가 이 값을 씀 ----
-	ResolveEnvironment(scene.environment);
-
-	// ---- b0 PerFrame ----
-	UploadPerFrameConstants(camera, totalTime);
-
-	// ---- b2 Lights ----
+	// ---- b2 Lights 내용 (올리는 것은 아래에서). BuildShadowViews 가 lights.lights[i].shadowIndex 를 채우므로 b0·b6 보다 먼저 만듦 ----
 	LightConstants lights = {};
 	lights.lightCount = static_cast<uint32_t>(sceneLights.size() < MAX_LIGHTS ? sceneLights.size() : MAX_LIGHTS);
 	lights.ambientColor = scene.ambientColor;
@@ -1037,6 +1337,19 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
 			lights.lights[i].direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
 		}
 	}
+
+	// ---- 그림자 뷰: 조명마다 아틀라스 타일을 배정하고 shadowIndex 를 채움 → b6(+b5) → b0 (shadowParams.w 가 이 결과를 씀) ----
+	BuildShadowViews(camera, lights);
+	m_shadowEnabledThisFrame = m_shadowViewCount > 0;
+	UploadShadowConstants();
+
+	// ---- 2026-10-08: 환경 (스카이박스 t9, IBL t10~t12, 노출·톤매핑). b0 의 environmentParams·outputParams 가 이 값을 씀 ----
+	ResolveEnvironment(scene.environment);
+
+	// ---- b0 PerFrame ----
+	UploadPerFrameConstants(camera, totalTime);
+
+	// ---- b2 Lights ----
 	m_device->UpdateBuffer(m_lightCB, &lights, sizeof(lights));
 
 	BuildDrawList(scene);
@@ -1154,34 +1467,79 @@ void Renderer::RenderShadowPass(RHI::CommandList& cmd)
 		.depth = { .texture = m_shadowMap, .load = LoadOp::Clear, .clearDepth = 1.0f },
 		.debugName = "ShadowPass",
 	};
-	cmd.BeginRenderPass(pass);   // 뷰포트는 2048² (attachment 크기)
+	cmd.BeginRenderPass(pass);   // 아틀라스 전체를 한 번 클리어. 뷰포트는 뷰마다 아래에서 바꿈
+	m_stats.shadowViews = m_shadowViewCount;
+
+	// 지역광 컬링용: 드로우 항목마다 월드 경계 구를 한 번만 계산함 (뷰마다 다시 구하지 않음).
+	// 중심 = 메시 경계 중심을 월드 행렬로 변환, 반지름 = 메시 경계 반지름 × 월드 행렬 세 축 길이의 최댓값 (비균등 스케일 대비).
+	m_itemSpheres.resize(m_drawList.size());
+	for (size_t k = 0; k < m_drawList.size(); ++k)
+	{
+		const DrawItem& item = m_drawList[k];
+		const XMMATRIX world = item.object->GetWorldMatrix();
+		const XMFLOAT3 localCenter = item.mesh->GetBounds().Center();
+		const XMVECTOR center = XMVector3TransformCoord(XMLoadFloat3(&localCenter), world);
+		const float scale = (std::max)({ XMVectorGetX(XMVector3Length(world.r[0])), XMVectorGetX(XMVector3Length(world.r[1])),
+			XMVectorGetX(XMVector3Length(world.r[2])) });
+		XMFLOAT3 c;
+		XMStoreFloat3(&c, center);
+		m_itemSpheres[k] = XMFLOAT4(c.x, c.y, c.z, item.mesh->GetBounds().Radius() * scale);
+	}
 
 	PipelineHandle lastPipeline;
 	const Mesh* lastMesh = nullptr;
-	for (const DrawItem& item : m_drawList)
+	for (uint32_t v = 0; v < m_shadowViewCount; ++v)
 	{
-		if (item.material->unlit) continue;   // 감마 검증 카드처럼 조명을 받지 않는 물체는 그림자도 만들지 않음
+		const ShadowView& view = m_shadowViews[v];
 
-		const PipelineHandle pipeline = GetShadowPipelineFor(*item.material, item.mesh->GetVertexFormat());
-		if (!pipeline.IsValid()) continue;
-		if (pipeline != lastPipeline)
+		// ① 이 뷰의 아틀라스 사각형으로 뷰포트(D3D12 는 시저도) 제한
+		cmd.SetViewport(Viewport{ .x = static_cast<float>(view.x), .y = static_cast<float>(view.y),
+			.width = static_cast<float>(view.size), .height = static_cast<float>(view.size) });
+		// ② b5 에 이 뷰의 행렬 (전치). 드로우 직전에 D3D12 가 루트 CBV 를 다시 바인딩하므로 프레임 셋을 다시 꽂을 필요 없음.
+		ShadowPassConstants passConstants = {};
+		XMStoreFloat4x4(&passConstants.shadowViewProj, XMMatrixTranspose(XMLoadFloat4x4(&view.viewProj)));
+		m_device->UpdateBuffer(m_shadowPassCB, &passConstants, sizeof(passConstants));
+
+		// ③ 드로우 루프
+		for (size_t k = 0; k < m_drawList.size(); ++k)
 		{
-			cmd.SetPipelineState(pipeline);
-			lastPipeline = pipeline;
-			++m_stats.pipelineSwitches;
+			const DrawItem& item = m_drawList[k];
+			if (item.material->unlit) continue;   // 감마 검증 카드처럼 조명을 받지 않는 물체는 그림자도 만들지 않음
+
+			// 지역광(cullSphere.w > 0): 광원 범위 구와 겹치지 않는 물체는 이 뷰에 그림자를 드리울 수 없음. 방향광·캐스케이드는 w = 0 이라 컬링 안 함.
+			if (view.cullSphere.w > 0.0f)
+			{
+				const XMFLOAT4& s = m_itemSpheres[k];
+				const float dx = s.x - view.cullSphere.x, dy = s.y - view.cullSphere.y, dz = s.z - view.cullSphere.z;
+				const float reach = s.w + view.cullSphere.w;
+				if (dx * dx + dy * dy + dz * dz > reach * reach)
+				{
+					++m_stats.shadowCulled;
+					continue;
+				}
+			}
+
+			const PipelineHandle pipeline = GetShadowPipelineFor(*item.material, item.mesh->GetVertexFormat());
+			if (!pipeline.IsValid()) continue;
+			if (pipeline != lastPipeline)
+			{
+				cmd.SetPipelineState(pipeline);
+				lastPipeline = pipeline;
+				++m_stats.pipelineSwitches;
+			}
+			if (item.mesh != lastMesh)
+			{
+				const GpuMesh* gpuMesh = GetOrCreateGpuMesh(*item.mesh);
+				if (gpuMesh == nullptr) continue;
+				cmd.SetVertexBuffer(gpuMesh->vertexBuffer);
+				cmd.SetIndexBuffer(gpuMesh->indexBuffer, gpuMesh->indexFormat);
+				lastMesh = item.mesh;
+				++m_stats.meshSwitches;
+			}
+			UploadObjectConstants(*item.object);
+			cmd.DrawIndexed(item.indexCount, item.indexStart, 0);
+			++m_stats.shadowDraws;
 		}
-		if (item.mesh != lastMesh)
-		{
-			const GpuMesh* gpuMesh = GetOrCreateGpuMesh(*item.mesh);
-			if (gpuMesh == nullptr) continue;
-			cmd.SetVertexBuffer(gpuMesh->vertexBuffer);
-			cmd.SetIndexBuffer(gpuMesh->indexBuffer, gpuMesh->indexFormat);
-			lastMesh = item.mesh;
-			++m_stats.meshSwitches;
-		}
-		UploadObjectConstants(*item.object);
-		cmd.DrawIndexed(item.indexCount, item.indexStart, 0);
-		++m_stats.shadowDraws;
 	}
 
 	cmd.EndRenderPass();
@@ -1385,15 +1743,15 @@ void Renderer::UploadPerFrameConstants(const Camera& camera, float totalTime)
 	XMStoreFloat4x4(&perFrame.view, XMMatrixTranspose(view));
 	XMStoreFloat4x4(&perFrame.proj, XMMatrixTranspose(proj));
 	XMStoreFloat4x4(&perFrame.viewProj, XMMatrixTranspose(view * proj));
-	XMStoreFloat4x4(&perFrame.lightViewProj, XMMatrixTranspose(XMLoadFloat4x4(&m_lightViewProj)));
 	perFrame.cameraPosition = camera.GetPosition();
 	perFrame.time = totalTime;
-	perFrame.shadowParams = XMFLOAT4(1.0f / kShadowMapSize, m_settings.shadowBias, m_settings.shadowStrength, m_shadowEnabledThisFrame ? 1.0f : 0.0f);
+	perFrame.shadowParams = XMFLOAT4(1.0f / kShadowAtlasSize, m_shadowSettings.bias, m_shadowSettings.strength, m_shadowEnabledThisFrame ? 1.0f : 0.0f);
 	perFrame.debugParams = XMFLOAT4(static_cast<float>(m_settings.debugView), m_settings.debugDepthRange, 0.0f, 0.0f);
 	// 2026-10-08: ResolveEnvironment 가 이번 프레임에 정한 환경 (Render 맨 앞에서 불림)
 	perFrame.environmentParams = XMFLOAT4(m_environment.iblIntensity, static_cast<float>(m_environment.specularMips),
 		m_environment.irradianceLod, m_environment.hasEnvironment ? 1.0f : 0.0f);
 	perFrame.outputParams = XMFLOAT4(m_environment.exposure, m_environment.toneMapping ? 1.0f : 0.0f, m_environment.hasBrdfLut ? 1.0f : 0.0f, 0.0f);
+	perFrame.shadowExtra = XMFLOAT4(m_shadowSettings.normalOffset, 0.0f, 0.0f, 0.0f);
 	m_device->UpdateBuffer(m_perFrameCB, &perFrame, sizeof(perFrame));
 }
 

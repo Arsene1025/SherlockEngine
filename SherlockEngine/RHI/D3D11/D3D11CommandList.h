@@ -30,10 +30,13 @@ public:
 	void WriteTimestamp(uint32_t slot) override;   // 10단계: Device 의 쿼리 세트에 위임
 	const Stats& GetStats() const override { return m_stats; }
 	void ResetStats() override { m_stats = Stats{}; }
+	void SetViewport(const Viewport& viewport) override;
 
 private:
 	void UnbindShaderResourcesOf(TextureHandle texture);
 	static void ErrorOnce(bool& flag, const char* message);
+
+	void ApplyViewport(const Viewport& viewport);
 
 private:
 	D3D11Device* m_device = nullptr;
@@ -46,4 +49,8 @@ private:
 	// 강제로 SRV를 NULL 로 만듦 — 우리가 먼저 풀어 두면 경고가 나지 않고 추적도 정확해짐.
 	TextureHandle m_vsSrv[kMaxSrvRegister];
 	TextureHandle m_psSrv[kMaxSrvRegister];
+
+	//이 패스의 기본 뷰포트 크기 
+	uint32_t m_passWidth = 0;
+	uint32_t m_passHeight = 0;
 };

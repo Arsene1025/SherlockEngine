@@ -16,8 +16,6 @@ VSOutput VS_Main(VSInput vsInput)
     vsOutput.normal = normalize(mul(float4(vsInput.normal, 0.0f), worldInvTranspose).xyz);
     // 탄젠트는 표면 "위"의 방향이므로 월드 행렬로 변환함 (방향 벡터, w = 0). 손잡이(w)는 그대로 둠.
     vsOutput.tangent = float4(normalize(mul(float4(vsInput.tangent.xyz, 0.0f), world).xyz), vsInput.tangent.w);
-    // 6단계: 같은 월드 위치를 광원 시점에서 본 클립 좌표. PS 에서 그림자 맵 UV 로 바꿈.
-    vsOutput.shadowPosition = mul(worldPosition, lightViewProj);
 
     return vsOutput;
 }

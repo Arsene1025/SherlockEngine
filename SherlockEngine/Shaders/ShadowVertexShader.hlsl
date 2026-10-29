@@ -11,5 +11,5 @@ struct ShadowVSInput
 float4 VS_Shadow(ShadowVSInput input) : SV_POSITION
 {
     const float4 worldPosition = mul(float4(input.position, 1.0f), world);
-    return mul(worldPosition, lightViewProj);
+    return mul(worldPosition, shadowViewProj);   // b5: 지금 그리는 그림자 뷰
 }

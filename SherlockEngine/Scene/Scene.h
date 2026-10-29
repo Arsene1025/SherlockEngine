@@ -10,6 +10,7 @@
 #include "Scene/Light.h"
 #include "Scene/Material.h"
 #include "Scene/PostProcessSettings.h"
+#include "Scene/ShadowSettings.h"
 
 class Mesh;
 struct Model;
@@ -63,6 +64,7 @@ struct SceneEnvironment
 	float exposure = 1.0f;     // 최종 색(물체·하늘)에 곱함
 	bool toneMapping = false;  // ACES 근사. HDR 환경에서 켬. 끄면 1 을 넘는 값이 잘림
 	PostProcessSettings post;  // 2026/10/23: 후처리 (블러·블룸·GreyScale). 환경에 두어 저장·되돌리기가 환경과 함께 됨
+	ShadowSettings shadow;     // 2026/10/28: 그림자 (바이어스·세기·노말 오프셋·직교 크기·거리). 씬 크기에 맞는 값이 씬 파일에 들어감
 };
 
 // 씬 = 그릴 대상들의 CPU 쪽 데이터.

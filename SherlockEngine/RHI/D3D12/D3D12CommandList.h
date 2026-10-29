@@ -38,12 +38,15 @@ public:
 	void WriteTimestamp(uint32_t slot) override;   // 10단계: Device 의 쿼리 힙에 위임
 	const Stats& GetStats() const override { return m_stats; }
 	void ResetStats() override { m_stats = Stats{}; }
+	void SetViewport(const Viewport& viewport) override;
 
 	ID3D12GraphicsCommandList* GetList() const { return m_list; }
 
 private:
 	void ApplyBindings();
 	static void ErrorOnce(bool& flag, const char* message);
+
+	void ApplyViewport(const Viewport& viewport);
 
 private:
 	struct BoundSet
@@ -63,4 +66,8 @@ private:
 	const D3D12RootLayout* m_currentRoot = nullptr;
 	BoundSet m_sets[kMaxBindingSets];
 	uint32_t m_setCount = 0;
+
+	//이 패스의 기본 뷰포트 크기 
+	uint32_t m_passWidth = 0;
+	uint32_t m_passHeight = 0;
 };

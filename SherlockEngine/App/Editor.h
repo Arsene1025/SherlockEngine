@@ -26,7 +26,7 @@ class Editor
 public:
 	struct Callbacks
 	{
-		std::function<void(int)> switchScene;                  // 0 데모, 1 헬멧, 2 Sponza
+		std::function<void(int)> switchScene;                  // 0 데모 (헬멧·Sponza 는 메뉴에서 뺌 — 프로젝트의 Scenes\DamagedHelmet.json·Sponza.json 을 콘텐츠 브라우저에서 엶. 1·2 는 F11 순환·--scene 용으로 남김)
 		std::function<bool(const std::wstring&)> saveScene;
 		std::function<bool(const std::wstring&)> loadScene;
 		std::function<void()> newScene;                       // 바닥만 있는 새 씬
@@ -152,7 +152,8 @@ private:
 	void DrawCameraGizmos(Engine& engine, float x, float y, float width, float height);   // 씬 안의 카메라 오브젝트 프러스텀
 	// 조명 선택·이동. 조명은 GameObject 가 아니라 Scene::GetLights() 의 값이라 m_selectedLight(인덱스)로 따로 선택함 (m_selected 와 배타적).
 	// 되돌리기는 SaveEditState 가 조명도 직렬화하므로 기즈모를 잡은 동안 busy 로 잡히는 것만으로 한 단계가 만들어짐.
-	void DrawLightIcons(Engine& engine, float x, float y, float width, float height);    // 씬 뷰의 조명 아이콘 (Point 원 / Spot 원뿔 / Directional 화살표)
+	void DrawCascadeFrustums(Engine& engine, float x, float y, float width, float height);   // CSM 디버그: 캐스케이드 절두체 와이어 (Freeze 중일 때만)
+	void DrawLightIcons(Engine& engine, float x, float y, float width, float height);   // 씬 뷰의 조명 아이콘 (Point 원 / Spot 원뿔 / Directional 화살표)
 	void DrawLightGizmo(Engine& engine, float x, float y, float width, float height);    // 선택한 조명의 이동(Point·Spot)·회전(Spot·Directional) 기즈모
 	int PickLight(Engine& engine, float mouseX, float mouseY, float x, float y, float width, float height) const;   // 마우스 가까이 있는 아이콘의 조명 인덱스, 없으면 -1
 	void SelectLight(int index);

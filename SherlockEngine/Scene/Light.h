@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <cstddef>   // offsetof
 #include <cstdint>
 #include <DirectXMath.h>
 
@@ -36,7 +37,15 @@ struct alignas(16) LightData
 	float innerConeCos = 0.9238795f; // cos(22.5 degrees)
 
 	float outerConeCos = 0.8660254f; // cos(30 degrees)
-	DirectX::XMFLOAT3 padding = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+
+	uint32_t castShadows = 1;
+	int32_t shadowIndex = -1;
+	float padding = 0.0f;
 };
 
 static_assert(sizeof(LightData) == 80, "LightData는 HLSL과 같이 80바이트(16바이트 레지스터 5개)여야 한다.");
+static_assert(offsetof(LightData, castShadows) == 68, "castShadows 는 HLSL LightData 의 68바이트 위치여야 한다.");
+static_assert(offsetof(LightData, shadowIndex) == 72, "shadowIndex 는 HLSL LightData 의 72바이트 위치여야 한다.");
+
+// 그림자 뷰(아틀라스 타일) 수의 상한.
+constexpr uint32_t MAX_SHADOW_VIEWS = 16;

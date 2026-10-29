@@ -49,17 +49,21 @@ constexpr uint32_t kSRVSlotPrefiltered = 11; // t11 (프레임, IBL 반사 프�
 constexpr uint32_t kSRVSlotBrdfLut = 12;     // t12 (프레임, split-sum BRDF LUT 2D)
 constexpr uint32_t kSRVSlotSceneHdr = 13;    // t13 (후처리 셋, 후처리 패스의 입력 텍스처. 톤 패스는 HDR 씬, 블러·블룸은 앞 단계의 결과)
 constexpr uint32_t kCBSlotPostParams = 4;    // b4 (후처리 셋, 패스마다 올림)
+constexpr uint32_t kCBSlotShadowPass = 5;   // b5 (프레임 셋, VS). 그림자 패스가 뷰마다 올림
+constexpr uint32_t kCBSlotShadows = 6;      // b6 (프레임 셋, PS). 그림자 뷰 배열
+
 constexpr uint32_t kSamplerSlotPost = 6;     // s6 (후처리 셋, 선형 Clamp. 블룸 축소·확대와 썸네일이 씀. 후처리 패스는 프레임 셋을 바인딩하지 않으므로 s4~s7 과 겹치지 않음)
 constexpr uint32_t kSamplerSlotMaterial = 0; // s0 (재질)
 constexpr uint32_t kSamplerSlotShadow = 4;   // s4 (프레임, 비교 샘플러)
 constexpr uint32_t kSamplerSlotEnvironment = 5; // s5 (프레임, 큐브맵용 선형 Clamp)
+
+
 
 struct alignas(16) PerFrameConstants
 {
 	DirectX::XMFLOAT4X4 view;
 	DirectX::XMFLOAT4X4 proj;
 	DirectX::XMFLOAT4X4 viewProj;
-	DirectX::XMFLOAT4X4 lightViewProj;   // 6단계: 방향광 0의 그림자 행렬 (월드 → 광원 클립)
 	DirectX::XMFLOAT3 cameraPosition;
 	float time;
 	DirectX::XMFLOAT4 shadowParams;      // x = 1/맵 크기, y = 깊이 바이어스, z = 세기(0..1), w = 사용 여부
@@ -70,6 +74,8 @@ struct alignas(16) PerFrameConstants
 	// 2026-10-08: 출력. x = 노출(최종 색에 곱함), y = ACES 톤매핑(1) / 끔(0), z = BRDF LUT(t12) 있음(1) / 해석적 근사(0), w = 미사용
 	// 2026/10/20 HDR: x, y 는 톤 패스(TonemapPixelShader)가 읽음. 톤 패스의 Layout_Post 가 이 b0 를 그대로 다시 씀.
 	DirectX::XMFLOAT4 outputParams;
+	// 2026/10/28: 노말 섀도. x = 노말맵이 그림자 UV 를 미는 배율 (에디터의 Normal offset), yzw = 미사용
+	DirectX::XMFLOAT4 shadowExtra;
 };
 
 // 2026/10/23: 후처리 패스 파라미터 (b4). 패스마다 올림 — 업로드 링을 쓰므로 프레임 안에서 여러 번 올려도 됨 (b0 가 미리보기에서 그렇게 함).
@@ -117,6 +123,28 @@ struct alignas(16) MaterialConstants
 	float padding;
 };
 
+struct alignas(16) ShadowPassConstants
+{
+	DirectX::XMFLOAT4X4 shadowViewProj;     // 지금 그리는 그림자 뷰 (전치해서 올림)
+};
+
+struct alignas(16) ShadowViewData
+{
+	DirectX::XMFLOAT4X4 viewProj;           // 월드 → 이 뷰의 클립 (전치해서 올림)
+	DirectX::XMFLOAT4 atlasRect;            // xy = 아틀라스 UV 시작, zw = UV 크기
+	DirectX::XMFLOAT4 params;               // x = NDC 깊이 바이어스, y = 텍셀의 월드 크기(직교) / 그 계수(원근, × 거리),
+	// z = 1 원근 · 0 직교, w = 미사용
+};
+
+struct alignas(16) ShadowConstants
+{
+	ShadowViewData views[MAX_SHADOW_VIEWS];
+	DirectX::XMFLOAT4 cascadeSplits;        // 단계 7. 캐스케이드 i 가 끝나는 카메라 전방 거리
+	DirectX::XMFLOAT4 cascadeOrigin;        // xyz = 캐스케이드를 계산한 카메라 위치, w = 캐스케이드 수 (0 = CSM 끔)
+	DirectX::XMFLOAT4 cascadeForward;       // xyz = 그 카메라의 전방
+	DirectX::XMFLOAT4 atlasParams;          // x = 1/아틀라스 크기, y = PCF 여백(텍셀), z = 지역광 노멀 오프셋(텍셀, 단계 5), w = 미사용
+};
+
 // C++20 (2026-09-28): consteval 검사 함수. cbuffer 는 16바이트 레지스터 단위로 올라가고 D3D11 은 65,536바이트가 상한임.
 // consteval 이라 런타임에는 존재하지 않는 함수임 — static_assert 안에서만 호출됨. 아래의 정확한 크기 단언은
 // 그대로 두고(HLSL 과 바이트 단위로 대조하는 것이 실제 검사), 이 함수는 새 cbuffer 를 추가할 때 먼저 걸리는 일반 규칙임.
@@ -129,16 +157,19 @@ static_assert(IsValidConstantBufferSize(sizeof(PerObjectConstants)), "PerObjectC
 static_assert(IsValidConstantBufferSize(sizeof(LightConstants)), "LightConstants 는 16의 배수여야 함");
 static_assert(IsValidConstantBufferSize(sizeof(MaterialConstants)), "MaterialConstants 는 16의 배수여야 함");
 static_assert(IsValidConstantBufferSize(sizeof(PostParamsConstants)), "PostParamsConstants 는 16의 배수여야 함");
+static_assert(IsValidConstantBufferSize(sizeof(ShadowPassConstants)), "ShadowPassConstants 는 16의 배수여야 함");
+static_assert(IsValidConstantBufferSize(sizeof(ShadowConstants)), "ShadowConstants 는 16의 배수여야 함");
 static_assert(sizeof(PostParamsConstants) == 80, "PostParamsConstants: 16 * 5");
 
-static_assert(sizeof(PerFrameConstants) == 336, "PerFrameConstants: 64*4 + 16 * 5");
-static_assert(offsetof(PerFrameConstants, environmentParams) == 304, "PerFrameConstants.environmentParams");
-static_assert(offsetof(PerFrameConstants, outputParams) == 320, "PerFrameConstants.outputParams");
-static_assert(offsetof(PerFrameConstants, debugParams) == 288, "PerFrameConstants.debugParams");
-static_assert(offsetof(PerFrameConstants, lightViewProj) == 192, "PerFrameConstants.lightViewProj");
-static_assert(offsetof(PerFrameConstants, cameraPosition) == 256, "PerFrameConstants.cameraPosition");
-static_assert(offsetof(PerFrameConstants, time) == 268, "PerFrameConstants.time");
-static_assert(offsetof(PerFrameConstants, shadowParams) == 272, "PerFrameConstants.shadowParams");
+// lightViewProj 삭제 후: view/proj/viewProj(64*3) + 16 * 6
+static_assert(sizeof(PerFrameConstants) == 288, "PerFrameConstants: 64*3 + 16 * 6");
+static_assert(offsetof(PerFrameConstants, cameraPosition) == 192, "PerFrameConstants.cameraPosition");
+static_assert(offsetof(PerFrameConstants, time) == 204, "PerFrameConstants.time");
+static_assert(offsetof(PerFrameConstants, shadowParams) == 208, "PerFrameConstants.shadowParams");
+static_assert(offsetof(PerFrameConstants, debugParams) == 224, "PerFrameConstants.debugParams");
+static_assert(offsetof(PerFrameConstants, environmentParams) == 240, "PerFrameConstants.environmentParams");
+static_assert(offsetof(PerFrameConstants, outputParams) == 256, "PerFrameConstants.outputParams");
+static_assert(offsetof(PerFrameConstants, shadowExtra) == 272, "PerFrameConstants.shadowExtra");
 
 static_assert(sizeof(PerObjectConstants) == 128, "PerObjectConstants: 64*2");
 static_assert(offsetof(PerObjectConstants, worldInvTranspose) == 64, "PerObjectConstants.worldInvTranspose");
@@ -156,3 +187,15 @@ static_assert(offsetof(MaterialConstants, normalStrength) == 44, "MaterialConsta
 static_assert(offsetof(MaterialConstants, alphaCutoff) == 48, "MaterialConstants.alphaCutoff");
 static_assert(offsetof(MaterialConstants, roughness) == 52, "MaterialConstants.roughness");
 static_assert(offsetof(MaterialConstants, occlusionStrength) == 56, "MaterialConstants.occlusionStrength");
+
+static_assert(sizeof(ShadowPassConstants) == 64, "ShadowPassConstants: 64");
+
+static_assert(sizeof(ShadowViewData) == 96, "ShadowViewData: 64 + 16 + 16");
+static_assert(offsetof(ShadowViewData, atlasRect) == 64, "ShadowViewData.atlasRect");
+static_assert(offsetof(ShadowViewData, params) == 80, "ShadowViewData.params");
+
+static_assert(sizeof(ShadowConstants) == 1600, "ShadowConstants: 96*16 + 16*4");
+static_assert(offsetof(ShadowConstants, cascadeSplits) == 1536, "ShadowConstants.cascadeSplits");
+static_assert(offsetof(ShadowConstants, cascadeOrigin) == 1552, "ShadowConstants.cascadeOrigin");
+static_assert(offsetof(ShadowConstants, cascadeForward) == 1568, "ShadowConstants.cascadeForward");
+static_assert(offsetof(ShadowConstants, atlasParams) == 1584, "ShadowConstants.atlasParams");

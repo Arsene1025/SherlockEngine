@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "App/ContentBrowser.h"
+#include "App/DebugUI.h"
 #include "Core/Paths.h"
 #include "Core/Log.h"
 #include "Graphics/TextureLoader.h"
@@ -378,7 +379,7 @@ void ContentBrowser::DrawToolbar()
 	ImGui::InputTextWithHint("##search", "search in folder", m_search, sizeof(m_search));
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(120.0f);
-	ImGui::SliderFloat("##tile", &m_tileSize, 64.0f, 192.0f, "tile %.0f");
+	DebugUI::SliderFloatR("##tile", &m_tileSize, 96.0f, 64.0f, 192.0f, "tile %.0f");   // 96 = m_tileSize 의 초기값
 	ImGui::SameLine();
 	ImGui::Checkbox("Hidden", &m_showHidden);
 	ImGui::SameLine();

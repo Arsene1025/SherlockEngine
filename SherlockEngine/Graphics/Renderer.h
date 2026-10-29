@@ -9,16 +9,18 @@
 #include "RHI/RenderPassTypes.h"
 #include "Graphics/VertexTypes.h"   // VertexFormat
 #include "Scene/Material.h"
+#include "Scene/Camera.h"   // 캐스케이드 고정용 카메라 사본 (m_cascadeFreezeCamera)
 #include "Scene/Light.h"
 #include "Scene/PostProcessSettings.h"
+#include "Scene/ShadowSettings.h"
 
 namespace RHI { class Device; class CommandList; }
 class Scene;
 struct SceneEnvironment;
-class Camera;
 class Mesh;
 class GameObject;
 struct PostParamsConstants;   // ShaderConstants.h
+struct LightConstants;        // ShaderConstants.h
 
 // ImGui에서 바꾸는 렌더 설정. Material의 옵션과 합쳐져 PipelineStateDesc가 됨.
 struct RenderSettings
@@ -28,12 +30,9 @@ struct RenderSettings
 	bool srgbOutput = true;        // 5단계: 최종 출력(톤 패스의 RTV)을 sRGB 뷰로 씀. 끄면 감마 보정 없이 출력함 (비교용). 씬 패스는 FP16 선형이라 무관함
 	int samplerOverride = -1;      // -1 = 재질 설정대로. 그 외 SamplerPreset 값으로 전부 덮어씀
 
-	// 6단계: 그림자 (방향광 0) 와 노멀 매핑
+	// 6단계: 그림자 (켜고 끄는 스위치. 조명마다는 LightData::castShadows) 와 노멀 매핑. 2026/10/28: 그림자 값(바이어스·세기·노말 오프셋·직교 크기·거리)은 씬 파일에 들어가도록
+	// SceneEnvironment::shadow 로 옮김. 여기에는 켜고 끄는 스위치만 남김.
 	bool shadows = true;
-	float shadowBias = 0.0015f;     // 수신자 깊이에서 빼는 값 (광원 클립 z 단위, 0..1)
-	float shadowStrength = 1.0f;    // 0 = 그림자 없음, 1 = 완전히 어둡게
-	float shadowOrthoSize = 60.0f;  // 광원 직교 투영의 한 변 (월드 단위). 씬 전체를 덮어야 함
-	float shadowDistance = 40.0f;   // 광원 눈의 위치 = 씬 중심 − 방향 × 거리
 	bool normalMapping = true;
 
 	// 11단계: 디버그 뷰 (0 조명, 1 알베도, 2 월드 노멀, 3 깊이, 4 그림자 계수, 5 UV) 와 깊이 뷰의 범위(월드 단위)
@@ -48,7 +47,7 @@ struct RenderSettings
 // 텍스처 캐시(이름 → 핸들), 샘플러 프리셋, 그림자 맵. 전부 핸들이므로 이 헤더와 .cpp에는 D3D 타입이 없음.
 //
 // 6단계: 모든 GPU 명령은 Device::GetCommandList() 를 거침. 프레임은 렌더 패스 세 개로 이루어짐.
-//   ShadowPass (깊이 전용, 2048², 광원 ViewProj) → MainPass (FP16 HDR 텍스처 + 깊이) → TonemapPass (노출·ACES·sRGB → 씬 뷰 텍스처 또는 백버퍼)
+//   ShadowPass (깊이 전용, 4096² 아틀라스에 뷰(조명·캐스케이드·큐브 면)마다 뷰포트를 바꿔 그림) → MainPass (FP16 HDR 텍스처 + 깊이) → TonemapPass (노출·ACES·sRGB → 씬 뷰 텍스처 또는 백버퍼)
 //   → [PreviewPass → PreviewTonemapPass] → UIPass (백버퍼 UNORM 뷰)   (2026/10/20 HDR: 톤매핑은 셰이더 끝이 아니라 별도 패스)
 // 2026-10-08: MainPass 는 불투명 드로우 뒤에 스카이박스(전체 화면 삼각형, 깊이 1.0)를 그림. 스카이박스는 프레임 셋 t9,
 // IBL(확산 조도·반사 프리필터·BRDF LUT)은 t10~t12 에 꽂힘. 재질은 PBR(metallic-roughness)이고 재질 셋이 t0~t4 를 씀.
@@ -67,9 +66,41 @@ public:
 		uint32_t renderPasses = 0;
 		uint32_t barriers = 0;
 		uint32_t shaderReloads = 0;   // 누적
+		uint32_t shadowViews = 0;     // 이번 프레임에 그린 그림자 뷰(아틀라스 타일) 수
+		uint32_t shadowCulled = 0;    // 지역광 범위 밖이라 그림자 패스에서 건너뛴 (뷰, 드로우) 쌍 수
 	};
 
-	static constexpr uint32_t kShadowMapSize = 2048;
+	// 4096² 아틀라스: 왼쪽 위 2048² 가 방향광 영역, 나머지 세 사분면이 1024² 지역광 타일 12개 (사분면마다 4개).
+	static constexpr uint32_t kShadowAtlasSize = 4096;
+	static constexpr uint32_t kShadowDirectionalRegion = 2048;   // 방향광(캐스케이드 포함) 영역의 한 변
+	static constexpr uint32_t kShadowTileSize = 1024;            // 지역광 타일, 캐스케이드 2~4개일 때의 칸
+	static constexpr uint32_t kShadowLocalTileCount = 12;
+	static constexpr uint32_t kShadowPcfBorder = 3;              // PCF 5×5 반경 2 + 쌍선형 1 (텍셀)
+
+	// 그림자 뷰 하나 = 아틀라스의 사각형 하나 + 그 사각형에 그릴 광원 행렬. 조명마다 0개 이상 (방향광 1, 스팟 1, 포인트 6, 캐스케이드 N).
+	struct ShadowView
+	{
+		DirectX::XMFLOAT4X4 viewProj;          // 행우선 (올릴 때 전치)
+		uint32_t x = 0, y = 0, size = 0;       // 아틀라스 안의 픽셀 사각형 (정사각형)
+		DirectX::XMFLOAT4 params = {};         // b6 의 params 와 같은 뜻
+		DirectX::XMFLOAT4 cullSphere = {};     // 단계 6. xyz = 광원 위치, w = 범위. w = 0 이면 컬링 안 함
+		uint32_t lightIndex = 0;
+	};
+	uint32_t GetShadowViewCount() const { return m_shadowViewCount; }
+	const ShadowView& GetShadowView(uint32_t index) const { return m_shadowViews[index]; }
+	uint32_t GetSkippedShadowLights() const { return m_skippedShadowLights; }
+	uint32_t GetUsedLocalTiles() const { return m_usedLocalTiles; }
+
+	// ---- CSM 디버그: 캐스케이드 카메라 고정 ----
+	// 켜면 그 순간 camera 의 위치·방향·렌즈를 사본으로 잡고, 이후 캐스케이드(분할·광원 뷰·PS 의 구간 판정)를 항상 그 사본 기준으로 계산함.
+	// 에디터 카메라를 자유롭게 옮겨서 "고정된 카메라에서 본 거리 구간"을 바깥에서 볼 수 있음. 끄면 다시 매 프레임 현재 카메라를 따라감.
+	// 런타임 디버그 상태일 뿐이라 씬 파일에는 저장하지 않음. 카메라는 호출자가 직접 넘김 (Render 는 한 프레임에 여러 번 불려 미리보기 카메라를 잡을 수 있음).
+	void SetCascadeFreeze(bool freeze, const Camera& camera);
+	bool IsCascadeFrozen() const { return m_cascadeFrozen; }
+	// 이번 프레임의 캐스케이드별 절두체 조각 꼭짓점 8개: [0..3] 앞면 (−x−y, +x−y, −x+y, +x+y), [4..7] 뒷면 같은 순서. 월드 좌표.
+	// GetCascadeFrustumCount() 가 0 이면 이번 프레임에 CSM 을 안 쓴 것.
+	uint32_t GetCascadeFrustumCount() const { return m_cascadeCount; }
+	const DirectX::XMFLOAT3* GetCascadeFrustumCorners(uint32_t cascade) const { return m_cascadeCorners[cascade]; }
 
 	Renderer();
 	~Renderer();
@@ -87,6 +118,7 @@ public:
 	bool ReloadShaders();
 
 	RenderSettings& GetSettings() { return m_settings; }
+	const RenderSettings& GetSettings() const { return m_settings; }
 	const Stats& GetStats() const { return m_stats; }
 	size_t GetPipelineCount() const;
 	size_t GetGpuMeshCount() const { return m_gpuMeshes.size(); }
@@ -264,11 +296,24 @@ private:
 		}
 	};
 	void ResolveEnvironment(const SceneEnvironment& environment);   // → m_environment
-	// 프레임 셋(b0, b2, t8, s4, t9, s5, t10, t11, t12)을 m_environment 의 텍스처로 만듦.
+	// 프레임 셋(b0, b2, t8, s4, t9, s5, t10, t11, t12, b5, b6)을 m_environment 의 텍스처로 만듦.
 	// 꽂힌 텍스처가 바뀔 때만 다시 만듦 (ResourceSet 은 값 객체).
 	bool UpdateFrameSet();
 	void UploadObjectConstants(const GameObject& object);
 	DirectX::XMMATRIX ComputeLightViewProj(const LightData& light) const;
+	// 스팟: 원뿔을 담는 정사각 원근 절두체. outTanHalfFov = tan(시야각 / 2) (텍셀의 월드 크기 계수를 구할 때 씀)
+	DirectX::XMMATRIX ComputeSpotViewProj(const LightData& light, float& outTanHalfFov) const;
+	// 포인트: 큐브 6면 중 face 번째 (+X, −X, +Y, −Y, +Z, −Z — D3D 큐브맵 면 순서). 시야각은 PCF 여백만큼 90° 보다 조금 넓음.
+	DirectX::XMMATRIX ComputePointFaceViewProj(const LightData& light, uint32_t face) const;
+
+	// 다중 광원 그림자. lights.lights[i].shadowIndex 를 채우고 m_shadowViews 를 만듦 (Render 가 UploadPerFrameConstants 보다 먼저 부름).
+	void BuildShadowViews(const Camera& camera, LightConstants& lights);
+	// 방향광 CSM: 카메라 절두체를 N 조각으로 나눠 조각마다 직교 뷰를 만듦 (경계 구 + 텍셀 스냅). 첫 캐스케이드의 뷰 번호를 돌려줌 (실패 시 UINT32_MAX).
+	uint32_t AddCascadeViews(const Camera& camera, const LightData& light, uint32_t lightIndex);
+	// 새 뷰의 번호를 돌려줌. 자리가 없으면 UINT32_MAX.
+	uint32_t AddShadowView(const DirectX::XMMATRIX& viewProj, uint32_t x, uint32_t y, uint32_t size,
+		const DirectX::XMFLOAT4& params, uint32_t lightIndex);
+	void UploadShadowConstants();   // b6 전체 + b5 단위 행렬. 그림자가 꺼진 프레임에도 부름 (D3D12 의 Dynamic CB 갱신 검사)
 
 	const GpuMesh* GetOrCreateGpuMesh(const Mesh& mesh);
 	const GpuMaterial* GetOrCreateGpuMaterial(const Material& material, const Scene* scene);
@@ -300,9 +345,11 @@ private:
 	BufferHandle m_perObjectCB;
 	BufferHandle m_lightCB;
 	BufferHandle m_postParamsCB;   // 2026/10/23: b4 PostParams
+	BufferHandle m_shadowPassCB;   // b5 ShadowPass (뷰마다 올림)
+	BufferHandle m_shadowsCB;      // b6 Shadows (프레임에 한 번)
 
 	// 갱신 빈도별 레이아웃. PSO Desc에는 이 세 개가 순서대로 들어감.
-	BindingLayoutHandle m_frameLayout;      // b0 (VS|PS), b2 (PS), t8 그림자 맵, s4 비교 샘플러, t9 스카이박스, s5, t10~t12 IBL (모두 PS)
+	BindingLayoutHandle m_frameLayout;      // b0 (VS|PS), b2 (PS), t8 그림자 맵, s4 비교 샘플러, t9 스카이박스, s5, t10~t12 IBL (모두 PS), b5 그림자 패스 행렬 (VS), b6 그림자 뷰 배열 (PS)
 	BindingLayoutHandle m_objectLayout;     // b1 (VS)
 	BindingLayoutHandle m_materialLayout;   // b3 (VS|PS), t0 알베도, t1 노멀, t2 금속성/거칠기, t3 AO, t4 발광, s0 (모두 PS)
 	BindingLayoutHandle m_postLayout;		//[2026/10/20] HDR과 ToneMap구현
@@ -332,6 +379,7 @@ private:
 	TextureHandle m_blackCube;          // 환경이 없을 때 t9~t11 에 꽂는 1×1 큐브
 	EnvironmentBinding m_environment;   // 이번 프레임 (ResolveEnvironment)
 	PostProcessSettings m_postSettings;   // 이번 프레임 (ResolveEnvironment 가 씬의 환경에서 복사)
+	ShadowSettings m_shadowSettings;      // 이번 프레임 (Render 가 맨 앞에서 씬의 환경에서 복사. 그림자 행렬과 b0 가 씀)
 	EnvironmentBinding m_boundEnvironment;   // 지금 m_frameSet 에 꽂힌 것. 비우면 다음 UpdateFrameSet 이 셋을 다시 만듦
 	struct CubeEntry
 	{
@@ -379,12 +427,24 @@ private:
 	ResourceState m_previewColorState = ResourceState::Common;
 	const Camera* m_previewCamera = nullptr;
 	bool m_shadowEnabledThisFrame = false;
-	DirectX::XMFLOAT4X4 m_lightViewProj;
+	ShadowView m_shadowViews[MAX_SHADOW_VIEWS];
+	uint32_t m_shadowViewCount = 0;
+	uint32_t m_skippedShadowLights = 0;   // castShadows 인데 자리가 없어 그림자를 못 받은 조명 수
+	uint32_t m_usedLocalTiles = 0;        // 이번 프레임에 쓴 지역광 타일 수 (0..12)
+	// CSM (이번 프레임). 그림자는 메인 카메라 기준으로 한 번만 만들어서, 미리보기 패스에서도 PS 가 이 값으로 캐스케이드를 고름.
+	uint32_t m_cascadeCount = 0;          // 0 = CSM 아님
+	DirectX::XMFLOAT4 m_cascadeSplits = {};   // 캐스케이드 i 가 끝나는 카메라 전방 거리 (없는 칸은 0)
+	DirectX::XMFLOAT3 m_cascadeOrigin = {};   // 캐스케이드를 계산한 카메라의 위치·전방
+	DirectX::XMFLOAT3 m_cascadeForward = {};
+	DirectX::XMFLOAT3 m_cascadeCorners[4][8] = {};   // 에디터 오버레이용 (GetCascadeFrustumCorners)
+	bool m_cascadeFrozen = false;
+	Camera m_cascadeFreezeCamera;                    // 고정 중일 때 캐스케이드를 계산하는 카메라 사본
 
 	// Scene이 메시·재질을 unique_ptr로 소유하므로 포인터가 안정적임. 그래서 키로 씀.
 	std::unordered_map<const Mesh*, GpuMesh> m_gpuMeshes;
 	std::unordered_map<const Material*, GpuMaterial> m_gpuMaterials;
 	std::vector<DrawItem> m_drawList;
+	std::vector<DirectX::XMFLOAT4> m_itemSpheres;   // m_drawList 항목마다 월드 경계 구 (xyz = 중심, w = 반지름). 그림자 패스가 프레임마다 채움
 
 	// 핫리로드: 감시하는 소스 파일과 마지막 수정 시각
 	struct WatchedFile
