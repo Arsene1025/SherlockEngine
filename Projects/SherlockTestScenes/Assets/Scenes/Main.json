@@ -24,6 +24,15 @@
     "exposure": 1.0,
     "iblIntensity": 0.5,
     "irradiance": "asset:Cubemap\\CubemapSampleDiffuseHDR.dds",
+    "postProcess": {
+      "bloomEnabled": false,
+      "bloomIntensity": 0.5,
+      "bloomKnee": 0.5,
+      "bloomThreshold": 1.0,
+      "blurEnabled": false,
+      "blurRadius": 4.0,
+      "greyscale": 0.0
+    },
     "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
     "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
     "toneMapping": true
@@ -141,6 +150,8 @@
           "farZ": 1000.0,
           "fovY": 45.0,
           "nearZ": 0.10000000149011612,
+          "orthoSize": 25.0,
+          "orthographic": false,
           "priority": 0,
           "type": "CameraComponent"
         }

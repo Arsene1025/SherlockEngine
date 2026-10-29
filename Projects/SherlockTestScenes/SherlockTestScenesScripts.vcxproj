@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- SherlockEngine ProjectGenerator 2: 프로젝트 UndoPrefabTest 의 스크립트 DLL. 에디터가 만들었고 다시 생성하면 덮어쓴다.
-       빌드하면 Binaries\<구성>\UndoPrefabTestScripts.dll 이 생기고, 켜져 있는 에디터가 1초 안에 다시 올린다(핫리로드). F5 는 엔진의 SherlockEditor.exe 로 이 프로젝트를 연다. -->
+  <!-- SherlockEngine ProjectGenerator 2: 프로젝트 SherlockTestScenes 의 스크립트 DLL. 에디터가 만들었고 다시 생성하면 덮어쓴다.
+       빌드하면 Binaries\<구성>\SherlockTestScenesScripts.dll 이 생기고, 켜져 있는 에디터가 1초 안에 다시 올린다(핫리로드). F5 는 엔진의 SherlockEditor.exe 로 이 프로젝트를 연다. -->
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -16,7 +16,7 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{8B4C1D32-5E6F-4D70-B182-3F4E5D6C7B8C}</ProjectGuid>
-    <RootNamespace>UndoPrefabTestScripts</RootNamespace>
+    <RootNamespace>SherlockTestScenesScripts</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <SherlockRepo>$(MSBuildProjectDirectory)\..\..\</SherlockRepo>
     <SherlockEngineDir>$(SherlockRepo)SherlockEngine\</SherlockEngineDir>
@@ -54,7 +54,7 @@
     <OutDir>$(ProjectDir)Binaries\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)Intermediate\$(ProjectName)\$(Configuration)\</IntDir>
     <LocalDebuggerCommand>$(SherlockRepo)x64\$(Configuration)\SherlockEditor.exe</LocalDebuggerCommand>
-    <LocalDebuggerCommandArguments>--project="$(ProjectDir)UndoPrefabTest.sherlock"</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--project="$(ProjectDir)SherlockTestScenes.sherlock"</LocalDebuggerCommandArguments>
     <LocalDebuggerWorkingDirectory>$(SherlockRepo)x64\$(Configuration)\</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
@@ -62,7 +62,7 @@
     <OutDir>$(ProjectDir)Binaries\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)Intermediate\$(ProjectName)\$(Configuration)\</IntDir>
     <LocalDebuggerCommand>$(SherlockRepo)x64\$(Configuration)\SherlockEditor.exe</LocalDebuggerCommand>
-    <LocalDebuggerCommandArguments>--project="$(ProjectDir)UndoPrefabTest.sherlock"</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>--project="$(ProjectDir)SherlockTestScenes.sherlock"</LocalDebuggerCommandArguments>
     <LocalDebuggerWorkingDirectory>$(SherlockRepo)x64\$(Configuration)\</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
@@ -117,7 +117,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Scenes\*.json" />
-    <None Include="UndoPrefabTest.sherlock" />
+    <None Include="SherlockTestScenes.sherlock" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="$(SherlockEngineDir)SherlockEngine.vcxproj">
