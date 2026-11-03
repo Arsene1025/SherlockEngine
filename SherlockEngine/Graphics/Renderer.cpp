@@ -48,30 +48,42 @@ namespace
 		return wide;
 	}
 
-	// ---- 섀도 아틀라스 배치 (4096²) ----
-	//   ┌──────────────┬──────────┬──────────┐
-	//   │  방향광 영역 │ 사분면 1 │ (2048²)  │   사분면 = 1024² 타일 4개 (2×2). 지역광 타일 0..3 은 사분면 1,
-	//   │   2048²      │ 타일 0~3 │          │   4..7 은 사분면 2 (왼쪽 아래), 8..11 은 사분면 3 (오른쪽 아래).
-	//   ├──────────────┼──────────┤          │
-	//   │ 사분면 2     │ 사분면 3 │          │
-	//   └──────────────┴──────────┴──────────┘
+	// ---- 섀도 아틀라스 배치 ----
+	// 메인 아틀라스 (2048², 지역광 전용): 512² 타일 16개, 4×4. 타일 번호는 왼→오, 위→아래.
+	//   ┌────┬────┬────┬────┐
+	//   │ 0  │ 1  │ 2  │ 3  │
+	//   ├────┼────┼────┼────┤   스팟 = 1타일, 포인트 = 연속 6타일 (행을 넘어가도 됨 — 뷰마다 사각형을 따로 가짐)
+	//   │ 4  │ 5  │ 6  │ 7  │
+	//   ├────┼────┼────┼────┤
+	//   │ 8  │ 9  │ 10 │ 11 │
+	//   ├────┼────┼────┼────┤
+	//   │ 12 │ 13 │ 14 │ 15 │
+	//   └────┴────┴────┴────┘
+	// 방향광은 모두 CSM 전용 아틀라스(CsmRect, CsmSingleRect)에 그림.
 	struct AtlasRect { uint32_t x, y, size; };
 
-	// 방향광 영역(왼쪽 위 2048²) 안의 칸. count == 1 이면 영역 전체, 2~4 면 2×2 의 index 번째 칸(1024).
-	AtlasRect DirectionalRect(uint32_t index, uint32_t count)
+	// 방향광 단일 뷰(캐스케이드 1)는 CSM 아틀라스 전체를 씀.
+	AtlasRect CsmSingleRect()
 	{
-		if (count <= 1) return { 0, 0, Renderer::kShadowDirectionalRegion };
-		return { (index % 2) * Renderer::kShadowTileSize, (index / 2) * Renderer::kShadowTileSize, Renderer::kShadowTileSize };
+		return { 0, 0, Renderer::kCsmAtlasWidth };
 	}
 
-	// 지역광 타일 0..11. 사분면 1(오른쪽 위) → 2(왼쪽 아래) → 3(오른쪽 아래) 순서로 네 칸씩, 사분면 안에서는 왼→오, 위→아래.
+	// CSM 전용 아틀라스 (2048×2048)의 캐스케이드 칸. 크기는 Renderer::kCsmCascadeSize. 배치를 바꾸면 헤더의 그림도 같이 고칠 것.
+	//   C0 = (0, 0), C1 = (1024, 0), C2 = (0, 1024), C3 = (1024, 1024) — 모두 1024
+	AtlasRect CsmRect(uint32_t index)
+	{
+		index = (std::min)(index, 3u);
+		static constexpr uint32_t kX[4] = { 0, 1024, 0, 1024 };
+		static constexpr uint32_t kY[4] = { 0, 0, 1024, 1024 };
+		return { kX[index], kY[index], Renderer::kCsmCascadeSize[index] };
+	}
+
+	// 지역광 타일 0..15. 메인 아틀라스의 4×4 격자 (왼→오, 위→아래).
 	AtlasRect LocalTileRect(uint32_t tile)
 	{
-		const uint32_t quadrant = 1 + tile / 4;
-		const uint32_t ox = (quadrant == 2) ? 0 : Renderer::kShadowDirectionalRegion;
-		const uint32_t oy = (quadrant == 1) ? 0 : Renderer::kShadowDirectionalRegion;
-		const uint32_t inside = tile % 4;
-		return { ox + (inside % 2) * Renderer::kShadowTileSize, oy + (inside / 2) * Renderer::kShadowTileSize, Renderer::kShadowTileSize };
+		constexpr uint32_t kColumns = Renderer::kShadowAtlasSize / Renderer::kShadowTileSize;
+		tile = (std::min)(tile, Renderer::kShadowLocalTileCount - 1);
+		return { (tile % kColumns) * Renderer::kShadowTileSize, (tile / kColumns) * Renderer::kShadowTileSize, Renderer::kShadowTileSize };
 	}
 }
 
@@ -138,6 +150,7 @@ bool Renderer::Initialize(RHI::Device* device)
 	// 새 레이아웃이 아니라 프레임 레이아웃의 끝에 붙임 — D3D12 커맨드 리스트의 셋 슬롯(kMaxBindingSets = 4)이 이미 가득 참.
 	frameLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotShadowPass);
 	frameLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotShadows);
+	frameLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotCsmMap);   // t14: CSM 전용 아틀라스
 	m_frameLayout =m_device->CreateBindingLayout(frameLayout);
 
 	BindingLayoutDesc objectLayout;
@@ -368,7 +381,7 @@ bool Renderer::UpdateFrameSet()
 	// ResourceSet 은 값 객체라 슬롯 하나만 바꾸는 기능이 없음 — 재질 셋과 같이 통째로 다시 만듦 (D3D12 디스크립터 테이블도 다시 씀).
 	// 이전 셋은 D3D12 에서 지연 해제되므로, 이미 기록된 드로우가 그 테이블을 읽어도 안전함.
 	m_device->DestroyResourceSet(m_frameSet);
-	// bindings[i] 는 Initialize 의 frameLayout.Add(...) i 번째 슬롯과 짝임: b0, b2, t8, s4, t9, s5, t10, t11, t12, b5, b6.
+	// bindings[i] 는 Initialize 의 frameLayout.Add(...) i 번째 슬롯과 짝임: b0, b2, t8, s4, t9, s5, t10, t11, t12, b5, b6, t14.
 	// 환경 샘플러는 재질 프리셋의 LinearClamp 를 함께 씀 (큐브 샘플은 면 경계를 하드웨어가 이어 주고, LUT 는 가장자리에서 반복되면 안 됨).
 	const ResourceSetDesc frameSet{
 		.layout = m_frameLayout,
@@ -376,7 +389,7 @@ bool Renderer::UpdateFrameSet()
 			{ .buffer = m_perFrameCB }, { .buffer = m_lightCB }, { .texture = m_shadowMap }, { .sampler = m_shadowSampler },
 			{ .texture = m_environment.skybox }, { .sampler = GetSampler(SamplerPreset::LinearClamp) },
 			{ .texture = m_environment.irradiance }, { .texture = m_environment.specular }, { .texture = m_environment.brdfLut },
-			{ .buffer = m_shadowPassCB }, { .buffer = m_shadowsCB },
+			{ .buffer = m_shadowPassCB }, { .buffer = m_shadowsCB }, { .texture = m_csmMap },
 		},
 		.debugName = "Set_Frame",
 	};
@@ -404,6 +417,18 @@ bool Renderer::CreateShadowResources()
 	m_shadowMap = m_device->CreateTexture(desc);
 	m_shadowMapState = ResourceState::Common;
 
+	// 방향광 CSM 전용 아틀라스. 캐스케이드마다 해상도가 달라서 Texture2DArray 대신 한 장에 칸을 나눠 씀 (배치는 CsmRect).
+	const TextureDesc csmDesc{
+		.width = kCsmAtlasWidth,
+		.height = kCsmAtlasHeight,
+		.format = Format::D32_FLOAT,
+		.mipLevels = 1,
+		.bindFlags = TextureBind_DepthStencil | TextureBind_ShaderResource,
+		.debugName = "CsmShadowMap",
+	};
+	m_csmMap = m_device->CreateTexture(csmDesc);
+	m_csmMapState = ResourceState::Common;
+
 	// 비교 샘플러: SampleCmp 가 "비교값(받는 쪽 깊이) ≤ 저장된 깊이" 면 1(빛 받음), 아니면 0 을 돌려주고 이웃과 보간함(하드웨어 PCF).
 	// Border 1 은 아틀라스 전체 밖의 안전장치임. 각 뷰의 "뷰 밖 = 빛을 받음"은 PS 의 SampleShadowView 가 직접 판정하고,
 	// PCF 가 옆 타일을 읽지 않도록 타일 안쪽으로 clamp 함 (타일 경계는 Border 가 아니라 이 clamp 가 막음).
@@ -419,13 +444,15 @@ bool Renderer::CreateShadowResources()
 	};
 	m_shadowSampler = m_device->CreateSampler(sampler);
 
-	if (!m_shadowMap.IsValid() || !m_shadowSampler.IsValid())
+	if (!m_shadowMap.IsValid() || !m_csmMap.IsValid() || !m_shadowSampler.IsValid())
 	{
 		Log::Error("Renderer : 그림자 맵 리소스 생성 실패.");
 		return false;
 	}
-	Log::Info("섀도 아틀라스: %ux%u D32_FLOAT (방향광 %u, 타일 %u × %u), PCF 5x5", kShadowAtlasSize, kShadowAtlasSize,
-		kShadowDirectionalRegion, kShadowLocalTileCount, kShadowTileSize);
+	Log::Info("섀도 아틀라스: %ux%u D32_FLOAT (지역광 타일 %u × %u²), PCF 5x5", kShadowAtlasSize, kShadowAtlasSize,
+		kShadowLocalTileCount, kShadowTileSize);
+	Log::Info("CSM 아틀라스: %ux%u D32_FLOAT (캐스케이드 %u / %u / %u / %u)", kCsmAtlasWidth, kCsmAtlasHeight,
+		kCsmCascadeSize[0], kCsmCascadeSize[1], kCsmCascadeSize[2], kCsmCascadeSize[3]);
 	return true;
 }
 
@@ -768,6 +795,7 @@ bool Renderer::ValidateBindings(const std::vector<uint8_t>& vsCode, const std::v
 		{ BindingType::ShaderResource, kSRVSlotBrdfLut,     ShaderStageMask_Pixel },
 		{ BindingType::ConstantBuffer, kCBSlotShadowPass,   ShaderStageMask_Vertex },   // b5: 그림자 패스 행렬
 		{ BindingType::ConstantBuffer, kCBSlotShadows,      ShaderStageMask_Pixel },    // b6: 그림자 뷰 배열
+		{ BindingType::ShaderResource, kSRVSlotCsmMap,      ShaderStageMask_Pixel },    // t14: CSM 전용 아틀라스
 		{ BindingType::ConstantBuffer, kCBSlotPerObject,    ShaderStageMask_Vertex },
 		{ BindingType::ConstantBuffer, kCBSlotMaterial,     ShaderStageMask_Vertex | ShaderStageMask_Pixel },
 		{ BindingType::ShaderResource, kSRVSlotAlbedo,      ShaderStageMask_Pixel },
@@ -909,8 +937,10 @@ void Renderer::Shutdown()
 	SetPreviewTarget(0, 0);   // 11-C단계
 	m_previewCamera = nullptr;
 	m_device->DestroyTexture(m_shadowMap);
+	m_device->DestroyTexture(m_csmMap);
 	m_device->DestroySampler(m_shadowSampler);
 	m_shadowMap = TextureHandle{};
+	m_csmMap = TextureHandle{};
 	m_shadowSampler = SamplerHandle{};
 	for (SamplerHandle& sampler : m_samplers)
 	{
@@ -1060,7 +1090,7 @@ XMMATRIX Renderer::ComputePointFaceViewProj(const LightData& light, uint32_t fac
 }
 
 uint32_t Renderer::AddShadowView(const XMMATRIX& viewProj, uint32_t x, uint32_t y, uint32_t size,
-	const XMFLOAT4& params, uint32_t lightIndex)
+	const XMFLOAT4& params, uint32_t lightIndex, uint32_t atlas)
 {
 	static bool warnedFull = false;
 	if (m_shadowViewCount >= MAX_SHADOW_VIEWS)
@@ -1078,6 +1108,7 @@ uint32_t Renderer::AddShadowView(const XMMATRIX& viewProj, uint32_t x, uint32_t 
 	view.x = x;
 	view.y = y;
 	view.size = size;
+	view.atlas = atlas;
 	view.params = params;
 	view.cullSphere = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
 	view.lightIndex = lightIndex;
@@ -1115,7 +1146,6 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const LightData& light,
 	// ComputeLightViewProj 와 같은 up 규칙
 	const XMVECTOR lightUp = (fabsf(XMVectorGetY(direction)) > 0.99f) ? XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	const float back = m_shadowSettings.distance;   // 조각 뒤(광원 쪽)로 캐스터를 잡는 거리
-	const float tile = static_cast<float>(kShadowTileSize);
 
 	uint32_t first = UINT32_MAX;
 	for (uint32_t c = 0; c < count; ++c)
@@ -1152,6 +1182,9 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const LightData& light,
 		XMMATRIX proj = XMMatrixOrthographicLH(2.0f * radius, 2.0f * radius, 0.0f, 2.0f * radius + back);
 
 		// 4) 텍셀 스냅: 월드 원점이 광원 클립에서 놓이는 위치를 텍셀 격자에 맞춤. 카메라가 움직여도 그림자 텍셀이 월드에 붙어 있어 가장자리가 반짝이지 않음.
+		//    격자는 이 캐스케이드의 해상도(캐스케이드마다 다름) 기준이어야 함.
+		const AtlasRect rect = CsmRect(c);
+		const float tile = static_cast<float>(rect.size);
 		XMVECTOR origin = XMVector4Transform(XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f), view * proj);
 		origin = XMVectorScale(origin, tile * 0.5f);   // NDC [-1,1] → 텍셀 단위
 		const XMVECTOR snapped = XMVectorRound(origin);
@@ -1159,10 +1192,9 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const LightData& light,
 		proj.r[3] = XMVectorAdd(proj.r[3], XMVectorSet(XMVectorGetX(offset), XMVectorGetY(offset), 0.0f, 0.0f));
 
 		// 5) 사각형과 params. 바이어스는 단일 뷰와 같은 "월드 거리"가 되도록 깊이 범위 비로 환산함.
-		const AtlasRect rect = DirectionalRect(c, count);
 		const float singleRange = m_shadowSettings.distance * 2.0f + m_shadowSettings.orthoSize;
 		const XMFLOAT4 params(m_shadowSettings.bias * singleRange / (2.0f * radius + back), 2.0f * radius / rect.size, 0.0f, 0.0f);
-		const uint32_t index = AddShadowView(view * proj, rect.x, rect.y, rect.size, params, lightIndex);
+		const uint32_t index = AddShadowView(view * proj, rect.x, rect.y, rect.size, params, lightIndex, 1);   // 1 = CSM 아틀라스
 		if (c == 0) first = index;
 	}
 
@@ -1207,7 +1239,7 @@ void Renderer::BuildShadowViews(const Camera& drawCamera, LightConstants& lights
 				continue;
 			}
 			directionalDone = true;
-			if (m_shadowSettings.cascadeCount >= 2 && camera.IsUsePerspectiveProjection())
+			if (m_shadowSettings.cascadeEnabled && camera.IsUsePerspectiveProjection())
 			{
 				// CSM. 직교 카메라는 절두체 조각 계산이 맞지 않아 아래의 단일 뷰로 대신함.
 				const uint32_t first = AddCascadeViews(camera, light, i);
@@ -1215,10 +1247,10 @@ void Renderer::BuildShadowViews(const Camera& drawCamera, LightConstants& lights
 				else ++m_skippedShadowLights;
 				continue;
 			}
-			// 텍셀의 월드 크기는 그 뷰의 해상도 기준 (아틀라스 전체가 아니라 방향광 영역)
-			const AtlasRect rect = DirectionalRect(0, 1);
+			// 단일 뷰도 CSM 전용 아틀라스(atlas 1)에 그림. 텍셀의 월드 크기는 그 뷰의 해상도 기준.
+			const AtlasRect rect = CsmSingleRect();
 			const XMFLOAT4 params(m_shadowSettings.bias, m_shadowSettings.orthoSize / rect.size, 0.0f, 0.0f);
-			const uint32_t view = AddShadowView(ComputeLightViewProj(light), rect.x, rect.y, rect.size, params, i);
+			const uint32_t view = AddShadowView(ComputeLightViewProj(light), rect.x, rect.y, rect.size, params, i, 1);
 			if (view != UINT32_MAX) light.shadowIndex = static_cast<int32_t>(view);
 		}
 		else if (light.type == static_cast<uint32_t>(LightType::Spot))
@@ -1273,15 +1305,19 @@ void Renderer::UploadShadowConstants()
 		const ShadowView& view = m_shadowViews[i];
 		ShadowViewData& data = constants.views[i];
 		XMStoreFloat4x4(&data.viewProj, XMMatrixTranspose(XMLoadFloat4x4(&view.viewProj)));
-		const float atlas = static_cast<float>(kShadowAtlasSize);
-		data.atlasRect = XMFLOAT4(view.x / atlas, view.y / atlas, view.size / atlas, view.size / atlas);
+		// 아틀라스마다 크기가 다름 (CSM 아틀라스는 가로·세로도 다름). UV 사각형은 그 뷰가 속한 아틀라스 기준으로 환산함.
+		const float width = static_cast<float>(view.atlas == 1 ? kCsmAtlasWidth : kShadowAtlasSize);
+		const float height = static_cast<float>(view.atlas == 1 ? kCsmAtlasHeight : kShadowAtlasSize);
+		data.atlasRect = XMFLOAT4(view.x / width, view.y / height, view.size / width, view.size / height);
 		data.params = view.params;
+		data.params.w = static_cast<float>(view.atlas);   // 셰이더가 t8 / t14 중 어느 쪽을 읽을지 고름
 	}
 	constants.atlasParams = XMFLOAT4(1.0f / kShadowAtlasSize, static_cast<float>(kShadowPcfBorder), m_shadowSettings.localNormalBias, 0.0f);
+	constants.csmAtlasParams = XMFLOAT4(1.0f / kCsmAtlasWidth, 1.0f / kCsmAtlasHeight, 0.0f, 0.0f);
 	// CSM 이 아니면 cascadeOrigin.w = 0 (PS 가 단일 뷰 경로를 탐)
 	constants.cascadeSplits = m_cascadeSplits;
 	constants.cascadeOrigin = XMFLOAT4(m_cascadeOrigin.x, m_cascadeOrigin.y, m_cascadeOrigin.z, static_cast<float>(m_cascadeCount));
-	constants.cascadeForward = XMFLOAT4(m_cascadeForward.x, m_cascadeForward.y, m_cascadeForward.z, 0.0f);
+	constants.cascadeForward = XMFLOAT4(m_cascadeForward.x, m_cascadeForward.y, m_cascadeForward.z, std::clamp(m_shadowSettings.cascadeBlend, 0.0f, 0.5f));   // w = 경계 블렌딩 비율
 	m_device->UpdateBuffer(m_shadowsCB, &constants, sizeof(constants));
 
 	// b5: 그림자 패스가 뷰마다 덮어쓸 자리. 여기서는 단위 행렬로 한 번 올려 둠 (그림자 패스가 없는 프레임의 갱신 검사용).
@@ -1457,20 +1493,9 @@ void Renderer::UploadObjectConstants(const GameObject& object)
 
 void Renderer::RenderShadowPass(RHI::CommandList& cmd)
 {
-	// 그림자 맵: ShaderResource(또는 Common) → DepthWrite. D3D11 에서는 상태 추적만 하고, D3D12 에서는 실제 배리어를 기록함.
-	cmd.Barrier(m_shadowMap, m_shadowMapState, ResourceState::DepthWrite);
-	m_shadowMapState = ResourceState::DepthWrite;
-
-	// RenderPassDesc 도 지정 초기화 — Vulkan 의 VkRenderingInfo 나 D3D12 의 BeginRenderPass 인자와 같은 모양이 됨.
-	const RenderPassDesc pass{
-		.colorCount = 0,
-		.depth = { .texture = m_shadowMap, .load = LoadOp::Clear, .clearDepth = 1.0f },
-		.debugName = "ShadowPass",
-	};
-	cmd.BeginRenderPass(pass);   // 아틀라스 전체를 한 번 클리어. 뷰포트는 뷰마다 아래에서 바꿈
 	m_stats.shadowViews = m_shadowViewCount;
 
-	// 지역광 컬링용: 드로우 항목마다 월드 경계 구를 한 번만 계산함 (뷰마다 다시 구하지 않음).
+	// 지역광 컬링용: 드로우 항목마다 월드 경계 구를 한 번만 계산함 (뷰마다, 아틀라스마다 다시 구하지 않음).
 	// 중심 = 메시 경계 중심을 월드 행렬로 변환, 반지름 = 메시 경계 반지름 × 월드 행렬 세 축 길이의 최댓값 (비균등 스케일 대비).
 	m_itemSpheres.resize(m_drawList.size());
 	for (size_t k = 0; k < m_drawList.size(); ++k)
@@ -1486,11 +1511,47 @@ void Renderer::RenderShadowPass(RHI::CommandList& cmd)
 		m_itemSpheres[k] = XMFLOAT4(c.x, c.y, c.z, item.mesh->GetBounds().Radius() * scale);
 	}
 
+	// 깊이 텍스처가 둘이라 패스도 둘: 0 = 메인 아틀라스(지역광·단일 방향광), 1 = CSM 전용 아틀라스.
+	RenderShadowAtlasPass(cmd, 0);
+	RenderShadowAtlasPass(cmd, 1);
+}
+
+void Renderer::RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas)
+{
+	TextureHandle& map = (atlas == 1) ? m_csmMap : m_shadowMap;
+	ResourceState& mapState = (atlas == 1) ? m_csmMapState : m_shadowMapState;
+
+	// 이 아틀라스에 그릴 뷰가 없으면 패스를 열지 않음. 메인 패스가 t8 / t14 를 SRV 로 읽으므로 상태만 ShaderResource 로 맞춤.
+	bool hasViews = false;
+	for (uint32_t v = 0; v < m_shadowViewCount; ++v) hasViews = hasViews || (m_shadowViews[v].atlas == atlas);
+	if (!hasViews)
+	{
+		if (mapState != ResourceState::ShaderResource)
+		{
+			cmd.Barrier(map, mapState, ResourceState::ShaderResource);
+			mapState = ResourceState::ShaderResource;
+		}
+		return;
+	}
+
+	// 그림자 맵: ShaderResource(또는 Common) → DepthWrite. D3D11 에서는 상태 추적만 하고, D3D12 에서는 실제 배리어를 기록함.
+	cmd.Barrier(map, mapState, ResourceState::DepthWrite);
+	mapState = ResourceState::DepthWrite;
+
+	// RenderPassDesc 도 지정 초기화 — Vulkan 의 VkRenderingInfo 나 D3D12 의 BeginRenderPass 인자와 같은 모양이 됨.
+	const RenderPassDesc pass{
+		.colorCount = 0,
+		.depth = { .texture = map, .load = LoadOp::Clear, .clearDepth = 1.0f },
+		.debugName = (atlas == 1) ? "CsmShadowPass" : "ShadowPass",
+	};
+	cmd.BeginRenderPass(pass);   // 아틀라스 전체를 한 번 클리어. 뷰포트는 뷰마다 아래에서 바꿈
+
 	PipelineHandle lastPipeline;
 	const Mesh* lastMesh = nullptr;
 	for (uint32_t v = 0; v < m_shadowViewCount; ++v)
 	{
 		const ShadowView& view = m_shadowViews[v];
+		if (view.atlas != atlas) continue;
 
 		// ① 이 뷰의 아틀라스 사각형으로 뷰포트(D3D12 는 시저도) 제한
 		cmd.SetViewport(Viewport{ .x = static_cast<float>(view.x), .y = static_cast<float>(view.y),
@@ -1544,9 +1605,9 @@ void Renderer::RenderShadowPass(RHI::CommandList& cmd)
 
 	cmd.EndRenderPass();
 
-	// DepthWrite → ShaderResource. 메인 패스가 t8 로 읽음.
-	cmd.Barrier(m_shadowMap, ResourceState::DepthWrite, ResourceState::ShaderResource);
-	m_shadowMapState = ResourceState::ShaderResource;
+	// DepthWrite → ShaderResource. 메인 패스가 t8 / t14 로 읽음.
+	cmd.Barrier(map, ResourceState::DepthWrite, ResourceState::ShaderResource);
+	mapState = ResourceState::ShaderResource;
 }
 
 void Renderer::RenderMainPass(RHI::CommandList& cmd, const Scene& scene)

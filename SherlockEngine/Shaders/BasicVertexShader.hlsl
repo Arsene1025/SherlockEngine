@@ -16,6 +16,5 @@ VSOutput VS_Main(VSInput vsInput)
     vsOutput.normal = normalize(mul(float4(vsInput.normal, 0.0f), worldInvTranspose).xyz);
     // 탄젠트는 표면 "위"의 방향이므로 월드 행렬로 변환함 (방향 벡터, w = 0). 손잡이(w)는 그대로 둠.
     vsOutput.tangent = float4(normalize(mul(float4(vsInput.tangent.xyz, 0.0f), world).xyz), vsInput.tangent.w);
-
     return vsOutput;
 }

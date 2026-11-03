@@ -70,18 +70,33 @@ public:
 		uint32_t shadowCulled = 0;    // 지역광 범위 밖이라 그림자 패스에서 건너뛴 (뷰, 드로우) 쌍 수
 	};
 
-	// 4096² 아틀라스: 왼쪽 위 2048² 가 방향광 영역, 나머지 세 사분면이 1024² 지역광 타일 12개 (사분면마다 4개).
-	static constexpr uint32_t kShadowAtlasSize = 4096;
-	static constexpr uint32_t kShadowDirectionalRegion = 2048;   // 방향광(캐스케이드 포함) 영역의 한 변
-	static constexpr uint32_t kShadowTileSize = 1024;            // 지역광 타일, 캐스케이드 2~4개일 때의 칸
-	static constexpr uint32_t kShadowLocalTileCount = 12;
+	// 2048² 메인 아틀라스는 지역광(스팟·포인트) 전용: 512² 타일 16개를 4×4 로 배치 (D32 약 16MB). 스팟 = 1타일, 포인트 = 연속 6타일.
+	// 방향광(캐스케이드 1~4 모두)은 이 아틀라스가 아니라 아래의 CSM 전용 아틀라스에 그림.
+	static constexpr uint32_t kShadowAtlasSize = 2048;
+	static constexpr uint32_t kShadowTileSize = 512;             // 지역광 타일
+	static constexpr uint32_t kShadowLocalTileCount = 16;
 	static constexpr uint32_t kShadowPcfBorder = 3;              // PCF 5×5 반경 2 + 쌍선형 1 (텍셀)
+
+	// 방향광 전용 아틀라스. 캐스케이드 2~4개면 아래 그림처럼 1024² 칸 네 개, 단일 뷰(캐스케이드 1)면 2048² 전체를 한 뷰가 씀.
+	//   ┌─────────┬─────────┐
+	//   │ C0      │ C1      │   캐스케이드 네 장 모두 1024²
+	//   │ 1024²   │ 1024²   │
+	//   ├─────────┼─────────┤
+	//   │ C2      │ C3      │
+	//   │ 1024²   │ 1024²   │
+	//   └─────────┴─────────┘   2048² (D32 약 16MB)
+	// 균등 해상도: 분할(practical split)이 "캐스케이드마다 해상도가 같다"는 전제로 화면 픽셀당 텍셀 밀도를 맞추기 때문.
+	// 해상도를 바꾸려면 kCsmCascadeSize 와 CsmRect(Renderer.cpp)의 배치를 같이 고칠 것.
+	static constexpr uint32_t kCsmAtlasWidth = 2048;
+	static constexpr uint32_t kCsmAtlasHeight = 2048;
+	static constexpr uint32_t kCsmCascadeSize[4] = { 1024, 1024, 1024, 1024 };
 
 	// 그림자 뷰 하나 = 아틀라스의 사각형 하나 + 그 사각형에 그릴 광원 행렬. 조명마다 0개 이상 (방향광 1, 스팟 1, 포인트 6, 캐스케이드 N).
 	struct ShadowView
 	{
 		DirectX::XMFLOAT4X4 viewProj;          // 행우선 (올릴 때 전치)
 		uint32_t x = 0, y = 0, size = 0;       // 아틀라스 안의 픽셀 사각형 (정사각형)
+		uint32_t atlas = 0;                    // 0 = 메인 아틀라스(m_shadowMap), 1 = CSM 아틀라스(m_csmMap)
 		DirectX::XMFLOAT4 params = {};         // b6 의 params 와 같은 뜻
 		DirectX::XMFLOAT4 cullSphere = {};     // 단계 6. xyz = 광원 위치, w = 범위. w = 0 이면 컬링 안 함
 		uint32_t lightIndex = 0;
@@ -125,6 +140,7 @@ public:
 	size_t GetGpuMaterialCount() const { return m_gpuMaterials.size(); }
 	size_t GetTextureCount() const { return m_textureCache.size() + m_cubeCache.size(); }
 	TextureHandle GetShadowMap() const { return m_shadowMap; }   // 디버그 표시용
+	TextureHandle GetCsmMap() const { return m_csmMap; }         // 디버그 표시용 (CSM 전용 아틀라스)
 
 	// 11단계: 씬 뷰를 오프스크린 텍스처에 그림 (에디터용). 0×0 이면 백버퍼에 직접 그림 (기존 동작).
 	// 크기가 바뀌면 텍스처를 다시 만듦. 색 텍스처는 UNORM(TYPELESS) — sRGB 뷰로 그리고 ImGui 는 UNORM SRV 로 읽음.
@@ -213,6 +229,7 @@ private:
 	void BuildDrawList(const Scene& scene);
 	void UploadPerFrameConstants(const Camera& camera, float totalTime);   // b0: view/proj 는 이 카메라 기준, 나머지는 프레임 공통 값
 	void RenderShadowPass(RHI::CommandList& cmd);
+	void RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas);   // atlas 0 = 메인(m_shadowMap), 1 = CSM(m_csmMap). 그 아틀라스의 뷰만 그림
 	void RenderMainPass(RHI::CommandList& cmd, const Scene& scene);
 	void RenderPreviewPass(RHI::CommandList& cmd, const Scene& scene);    // 11-C단계
 	void DrawItems(RHI::CommandList& cmd, const Scene& scene);            // 메인/미리보기 패스 공통 드로우 루프 (끝에 스카이박스)
@@ -312,7 +329,7 @@ private:
 	uint32_t AddCascadeViews(const Camera& camera, const LightData& light, uint32_t lightIndex);
 	// 새 뷰의 번호를 돌려줌. 자리가 없으면 UINT32_MAX.
 	uint32_t AddShadowView(const DirectX::XMMATRIX& viewProj, uint32_t x, uint32_t y, uint32_t size,
-		const DirectX::XMFLOAT4& params, uint32_t lightIndex);
+		const DirectX::XMFLOAT4& params, uint32_t lightIndex, uint32_t atlas = 0);
 	void UploadShadowConstants();   // b6 전체 + b5 단위 행렬. 그림자가 꺼진 프레임에도 부름 (D3D12 의 Dynamic CB 갱신 검사)
 
 	const GpuMesh* GetOrCreateGpuMesh(const Mesh& mesh);
@@ -392,6 +409,8 @@ private:
 	TextureHandle m_shadowMap;
 	SamplerHandle m_shadowSampler;
 	ResourceState m_shadowMapState = ResourceState::Common;
+	TextureHandle m_csmMap;                // 방향광 CSM 전용 아틀라스 (kCsmAtlasWidth × kCsmAtlasHeight, 같은 비교 샘플러)
+	ResourceState m_csmMapState = ResourceState::Common;
 
 	// 11단계: 오프스크린 씬 타깃
 	TextureHandle m_sceneColor;

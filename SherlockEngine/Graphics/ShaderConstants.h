@@ -47,7 +47,8 @@ constexpr uint32_t kSRVSlotEnvironment = 9;  // t9 (프레임, 스카이박스 �
 constexpr uint32_t kSRVSlotIrradiance = 10;  // t10 (프레임, IBL 확산 조도 큐브)
 constexpr uint32_t kSRVSlotPrefiltered = 11; // t11 (프레임, IBL 반사 프리필터 큐브. 밉 = 거칠기)
 constexpr uint32_t kSRVSlotBrdfLut = 12;     // t12 (프레임, split-sum BRDF LUT 2D)
-constexpr uint32_t kSRVSlotSceneHdr = 13;    // t13 (후처리 셋, 후처리 패스의 입력 텍스처. 톤 패스는 HDR 씬, 블러·블룸은 앞 단계의 결과)
+constexpr uint32_t kSRVSlotCsmMap = 14;      // t14 (프레임, 방향광 CSM 전용 아틀라스. 후처리 셋의 t13 과는 셋이 달라 겹치지 않음)
+constexpr uint32_t kSRVSlotSceneHdr = 13;   // t13 (후처리 셋, 후처리 패스의 입력 텍스처. 톤 패스는 HDR 씬, 블러·블룸은 앞 단계의 결과)
 constexpr uint32_t kCBSlotPostParams = 4;    // b4 (후처리 셋, 패스마다 올림)
 constexpr uint32_t kCBSlotShadowPass = 5;   // b5 (프레임 셋, VS). 그림자 패스가 뷰마다 올림
 constexpr uint32_t kCBSlotShadows = 6;      // b6 (프레임 셋, PS). 그림자 뷰 배열
@@ -133,7 +134,7 @@ struct alignas(16) ShadowViewData
 	DirectX::XMFLOAT4X4 viewProj;           // 월드 → 이 뷰의 클립 (전치해서 올림)
 	DirectX::XMFLOAT4 atlasRect;            // xy = 아틀라스 UV 시작, zw = UV 크기
 	DirectX::XMFLOAT4 params;               // x = NDC 깊이 바이어스, y = 텍셀의 월드 크기(직교) / 그 계수(원근, × 거리),
-	// z = 1 원근 · 0 직교, w = 미사용
+	// z = 1 원근 · 0 직교, w = 0 이면 t8 의 메인 아틀라스 · 1 이면 t14 의 CSM 아틀라스
 };
 
 struct alignas(16) ShadowConstants
@@ -141,8 +142,9 @@ struct alignas(16) ShadowConstants
 	ShadowViewData views[MAX_SHADOW_VIEWS];
 	DirectX::XMFLOAT4 cascadeSplits;        // 단계 7. 캐스케이드 i 가 끝나는 카메라 전방 거리
 	DirectX::XMFLOAT4 cascadeOrigin;        // xyz = 캐스케이드를 계산한 카메라 위치, w = 캐스케이드 수 (0 = CSM 끔)
-	DirectX::XMFLOAT4 cascadeForward;       // xyz = 그 카메라의 전방
+	DirectX::XMFLOAT4 cascadeForward;       // xyz = 그 카메라의 전방, w = 캐스케이드 경계 블렌딩 비율 (0 = 끔)
 	DirectX::XMFLOAT4 atlasParams;          // x = 1/아틀라스 크기, y = PCF 여백(텍셀), z = 지역광 노멀 오프셋(텍셀, 단계 5), w = 미사용
+	DirectX::XMFLOAT4 csmAtlasParams;       // xy = 1/CSM 아틀라스 (가로, 세로), zw = 미사용
 };
 
 // C++20 (2026-09-28): consteval 검사 함수. cbuffer 는 16바이트 레지스터 단위로 올라가고 D3D11 은 65,536바이트가 상한임.
@@ -194,8 +196,9 @@ static_assert(sizeof(ShadowViewData) == 96, "ShadowViewData: 64 + 16 + 16");
 static_assert(offsetof(ShadowViewData, atlasRect) == 64, "ShadowViewData.atlasRect");
 static_assert(offsetof(ShadowViewData, params) == 80, "ShadowViewData.params");
 
-static_assert(sizeof(ShadowConstants) == 1600, "ShadowConstants: 96*16 + 16*4");
-static_assert(offsetof(ShadowConstants, cascadeSplits) == 1536, "ShadowConstants.cascadeSplits");
-static_assert(offsetof(ShadowConstants, cascadeOrigin) == 1552, "ShadowConstants.cascadeOrigin");
-static_assert(offsetof(ShadowConstants, cascadeForward) == 1568, "ShadowConstants.cascadeForward");
-static_assert(offsetof(ShadowConstants, atlasParams) == 1584, "ShadowConstants.atlasParams");
+static_assert(sizeof(ShadowConstants) == 2000, "ShadowConstants: 96*20 + 16*5");
+static_assert(offsetof(ShadowConstants, cascadeSplits) == 1920, "ShadowConstants.cascadeSplits");
+static_assert(offsetof(ShadowConstants, cascadeOrigin) == 1936, "ShadowConstants.cascadeOrigin");
+static_assert(offsetof(ShadowConstants, cascadeForward) == 1952, "ShadowConstants.cascadeForward");
+static_assert(offsetof(ShadowConstants, atlasParams) == 1968, "ShadowConstants.atlasParams");
+static_assert(offsetof(ShadowConstants, csmAtlasParams) == 1984, "ShadowConstants.csmAtlasParams");

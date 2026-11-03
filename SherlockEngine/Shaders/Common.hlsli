@@ -13,7 +13,7 @@
 #define SHERLOCK_COMMON_HLSLI
 
 static const uint MAX_LIGHTS = 8;
-static const uint MAX_SHADOW_VIEWS = 16;   // Scene/Light.h 의 MAX_SHADOW_VIEWS 와 같아야 함 (b6 크기 1600B 가 이 값에 달림)
+static const uint MAX_SHADOW_VIEWS = 20;   // Scene/Light.h 의 MAX_SHADOW_VIEWS 와 같아야 함 (b6 크기 2000B 가 이 값에 달림)
 static const uint LIGHT_DIRECTIONAL = 0;
 static const uint LIGHT_POINT = 1;
 static const uint LIGHT_SPOT = 2;
@@ -96,7 +96,7 @@ cbuffer ShadowPass : register(b5)
     matrix shadowViewProj;
 }
 
-// b6: 그림자 뷰 배열. PS 만 (1600바이트)
+// b6: 그림자 뷰 배열. PS 만 (2000바이트)
 cbuffer Shadows : register(b6)
 {
     ShadowViewData shadowViews[MAX_SHADOW_VIEWS];
@@ -104,6 +104,7 @@ cbuffer Shadows : register(b6)
     float4 cascadeOrigin;
     float4 cascadeForward;
     float4 shadowAtlasParams;
+    float4 csmAtlasParams;    // xy = 1/CSM 아틀라스 (가로, 세로)
 }
 
 // b3: 재질. VS(uvScale)와 PS 모두. (64바이트)
@@ -132,6 +133,8 @@ SamplerState albedoSampler : register(s0);
 // 프레임 셋 (Layout_Frame). 그림자 맵은 R32_FLOAT 로 읽는 깊이 텍스처.
 Texture2D shadowMap : register(t8);
 SamplerComparisonState shadowSampler : register(s4);
+// 방향광 CSM 전용 아틀라스 (캐스케이드마다 해상도가 다름). ShadowViewData.params.w == 1 인 뷰가 읽음. 같은 비교 샘플러(s4)를 씀.
+Texture2D csmMap : register(t14);
 // 2026-10-08: 씬의 스카이박스 큐브맵 (없으면 1×1 검은 큐브). 방향 벡터로 샘플함 — 길이는 상관없음.
 // 프레임 셋에 둔 이유: 스카이박스뿐 아니라 이후 반사·환경광(IBL)도 모든 재질이 같은 큐브를 읽기 때문.
 TextureCube environmentMap : register(t9);

@@ -209,16 +209,18 @@ void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& dev
 	SliderFloatR("Shadow strength", &shadow.strength, kShadowDefaults.strength, 0.0f, 1.0f);
 	SliderFloatR("Normal offset", &shadow.normalOffset, kShadowDefaults.normalOffset, 0.0f, 1.0f, "%.3f");
 	SliderFloatR("Ortho size", &shadow.orthoSize, kShadowDefaults.orthoSize, 10.0f, 150.0f);
-	if (shadow.cascadeCount >= 2) ImGui::TextDisabled("  (cascades on: Ortho size only scales the bias)");
+	if (shadow.cascadeEnabled) ImGui::TextDisabled("  (CSM on: Ortho size only scales the bias)");
 	SliderFloatR("Light distance", &shadow.distance, kShadowDefaults.distance, 5.0f, 120.0f);
 	SliderFloatR("Local normal bias (texels)", &shadow.localNormalBias, kShadowDefaults.localNormalBias, 0.0f, 4.0f);
-	ImGui::SliderInt("Cascades", &shadow.cascadeCount, 1, 4);
-	if (shadow.cascadeCount >= 2)
+	ImGui::Checkbox("CSM (off = single directional view)", &shadow.cascadeEnabled);
+	if (shadow.cascadeEnabled)
 	{
+		ImGui::SliderInt("Cascades", &shadow.cascadeCount, 2, 4);
 		SliderFloatR("Cascade distance", &shadow.cascadeDistance, kShadowDefaults.cascadeDistance, 5.0f, 300.0f);
 		SliderFloatR("Cascade lambda", &shadow.cascadeLambda, kShadowDefaults.cascadeLambda, 0.0f, 1.0f);
+		SliderFloatR("Cascade blend", &shadow.cascadeBlend, kShadowDefaults.cascadeBlend, 0.0f, 0.5f);
 	}
-	if (ImGui::TreeNode("Shadow atlas (4096x4096 D32, shown as R)"))
+	if (ImGui::TreeNode("Shadow atlas (2048x2048 D32, local lights, shown as R)"))
 	{
 		// R32_FLOAT SRV 를 ImGui 가 RGBA 로 샘플하면 빨강 채널에 깊이가 담김. 가까울수록 검고 멀수록 붉게 보임.
 		const ImTextureID id = static_cast<ImTextureID>(device.GetImGuiTextureId(renderer.GetShadowMap()));
@@ -232,6 +234,7 @@ void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& dev
 			for (uint32_t v = 0; v < renderer.GetShadowViewCount(); ++v)
 			{
 				const Renderer::ShadowView& view = renderer.GetShadowView(v);
+				if (view.atlas != 0) continue;   // CSM 아틀라스 소속 뷰는 아래 트리에서 보여 줌
 				const ImVec2 a(origin.x + view.x * scale, origin.y + view.y * scale);
 				const ImVec2 b(a.x + view.size * scale, a.y + view.size * scale);
 				draw->AddRect(a, b, IM_COL32(255, 220, 0, 255));
@@ -243,6 +246,37 @@ void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& dev
 		ImGui::Text("views %u / %u   local tiles %u / %u   skipped lights %u",
 			renderer.GetShadowViewCount(), MAX_SHADOW_VIEWS, renderer.GetUsedLocalTiles(), Renderer::kShadowLocalTileCount,
 			renderer.GetSkippedShadowLights());
+		ImGui::TreePop();
+	}
+	// 방향광 CSM 전용 아틀라스. 캐스케이드마다 해상도가 다름 (C0 이 가장 크고 가까운 구간). CSM 이 꺼져 있으면 마지막 CSM 프레임의 깊이가 남아 있거나 비어 있음.
+	if (ImGui::TreeNode("CSM atlas (2048x2048 D32, directional, shown as R)"))
+	{
+		const ImTextureID csmId = static_cast<ImTextureID>(device.GetImGuiTextureId(renderer.GetCsmMap()));
+		if (csmId != 0)
+		{
+			const float shownWidth = 512.0f;
+			const float scale = shownWidth / Renderer::kCsmAtlasWidth;
+			ImGui::Image(csmId, ImVec2(shownWidth, Renderer::kCsmAtlasHeight * scale));
+			const ImVec2 origin = ImGui::GetItemRectMin();
+			ImDrawList* draw = ImGui::GetWindowDrawList();
+			// 색은 씬의 캐스케이드 디버그 색(빨강·초록·파랑·노랑)과 같음. 캐스케이드 번호 = 이 아틀라스 뷰의 등장 순서.
+			static const ImU32 kCascadeColor[4] = { IM_COL32(255, 64, 64, 255), IM_COL32(64, 255, 64, 255),
+				IM_COL32(96, 128, 255, 255), IM_COL32(255, 220, 0, 255) };
+			uint32_t cascade = 0;
+			for (uint32_t v = 0; v < renderer.GetShadowViewCount() && cascade < 4; ++v)
+			{
+				const Renderer::ShadowView& view = renderer.GetShadowView(v);
+				if (view.atlas != 1) continue;
+				const ImVec2 a(origin.x + view.x * scale, origin.y + view.y * scale);
+				const ImVec2 b(a.x + view.size * scale, a.y + view.size * scale);
+				draw->AddRect(a, b, kCascadeColor[cascade], 0.0f, 0, 2.0f);
+				char label[24];
+				snprintf(label, sizeof(label), "C%u %u", cascade, view.size);
+				draw->AddText(ImVec2(a.x + 3, a.y + 2), kCascadeColor[cascade], label);
+				++cascade;
+			}
+		}
+		ImGui::Text("cascades %u", renderer.GetCascadeFrustumCount());
 		ImGui::TreePop();
 	}
 }

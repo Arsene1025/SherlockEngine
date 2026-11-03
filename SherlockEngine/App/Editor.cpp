@@ -1577,7 +1577,7 @@ void Editor::DrawRenderSettings(Engine& engine)
 	ImGui::Combo("Debug view", &settings.debugView, views, IM_ARRAYSIZE(views));
 	if (settings.debugView == 3) DebugUI::SliderFloatR("Depth range", &settings.debugDepthRange, RenderSettings().debugDepthRange, 1.0f, 500.0f);
 	DebugUI::DrawShadowPanel(engine.GetScene(), engine.GetRenderer(), engine.GetDevice());
-	if (engine.GetScene().environment.shadow.cascadeCount >= 2 || engine.GetRenderer().IsCascadeFrozen())   // Cascades 를 1 로 내려도 고정을 풀 수 있게
+	if (engine.GetScene().environment.shadow.cascadeEnabled || engine.GetRenderer().IsCascadeFrozen())   // Cascades 를 1 로 내려도 고정을 풀 수 있게
 	{
 		// CSM 디버그: 지금 카메라로 캐스케이드를 고정하고, 에디터 카메라를 옮겨 바깥에서 거리 구간을 봄 (Debug view = Shadow cascade 와 같이 쓰면 이미지처럼 색 띠가 보임)
 		Renderer& renderer = engine.GetRenderer();

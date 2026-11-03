@@ -47,5 +47,5 @@ static_assert(sizeof(LightData) == 80, "LightData는 HLSL과 같이 80바이트(
 static_assert(offsetof(LightData, castShadows) == 68, "castShadows 는 HLSL LightData 의 68바이트 위치여야 한다.");
 static_assert(offsetof(LightData, shadowIndex) == 72, "shadowIndex 는 HLSL LightData 의 72바이트 위치여야 한다.");
 
-// 그림자 뷰(아틀라스 타일) 수의 상한.
-constexpr uint32_t MAX_SHADOW_VIEWS = 16;
+// 그림자 뷰(아틀라스 타일) 수의 상한. 방향광 4(캐스케이드) + 지역광 타일 16 = 20.
+constexpr uint32_t MAX_SHADOW_VIEWS = 20;

@@ -17,7 +17,8 @@ float CalculateDistanceAttenuation(LightData light, float distanceToLight)
 // 뷰 밖이면 빛을 받는 것으로 간주함 (예전의 Border 1 을 대신함 — 아틀라스는 옆 타일이 있어 Border 를 못 씀).
 // normalDelta = (노말맵 적용 노멀) − (기하 노멀). 그림자 경계가 노말맵의 영향을 받도록 UV 를 그만큼 옮김.
 // distanceToLight: 원근 뷰의 텍셀 월드 크기를 구할 때 씀 (직교 뷰는 무시).
-float SampleShadowView(uint viewIndex, float3 worldPosition, float3 geometricNormal, float3 normalDelta, float distanceToLight)
+// coverage: 이 위치가 뷰 안이면 1, 밖이면 0. 캐스케이드 블렌딩이 "다음 캐스케이드가 이 위치를 덮는지" 확인하는 데 씀.
+float SampleShadowViewCoverage(uint viewIndex, float3 worldPosition, float3 geometricNormal, float3 normalDelta, float distanceToLight, out float coverage)
 {
     // 단일 반환 구조: 조기 반환이 섞이면 fxc 가 -Od(디버그) 에서 X4000 오경고를 냄.
     float result = 1.0f;
@@ -40,28 +41,53 @@ float SampleShadowView(uint viewIndex, float3 worldPosition, float3 geometricNor
 
     // (4) 이 뷰 밖이면 result = 1 그대로. 원근 뷰는 광원 뒤(w ≤ 0)와 near 앞(z < 0)도 밖.
     const bool inside = clip.w > 0.0f && all(local >= 0.0f) && all(local <= 1.0f) && ndc.z <= 1.0f && (!perspective || ndc.z >= 0.0f);
+    coverage = inside ? 1.0f : 0.0f;
     if (shadowParams.w >= 0.5f && inside)
     {
         // (5) 타일 UV → 아틀라스 UV. PCF 커널이 옆 타일을 읽지 않도록 여백(텍셀)만큼 안쪽으로 clamp.
+        //     params.w == 1 이면 CSM 전용 아틀라스(t14, 가로·세로가 다를 수 있음), 아니면 메인 아틀라스(t8).
+        const bool csm = view.params.w > 0.5f;
         float2 uv = view.atlasRect.xy + local * view.atlasRect.zw;
-        const float2 border = shadowAtlasParams.y * shadowAtlasParams.x;
+        const float2 border = shadowAtlasParams.y * (csm ? csmAtlasParams.xy : shadowAtlasParams.xx);
         uv = clamp(uv, view.atlasRect.xy + border, view.atlasRect.xy + view.atlasRect.zw - border);
         const float depth = ndc.z - view.params.x;   // 수신자 깊이에서 바이어스를 뺌(자기 그림자 방지)
 
         // (6) PCF: 이웃 텍셀 25개의 비교 결과(0/1)를 평균 냄. SampleCmp 는 비교 후 보간까지 하드웨어에서 처리함.
+        //     텍스처는 변수로 고를 수 없어서 아틀라스마다 루프를 따로 둠. 분기 조건은 뷰 단위라 한 드로우 안에서 균일함.
         float lit = 0.0f;
-        [unroll]
-        for (int dy = -2; dy <= 2; ++dy)
+        if (csm)
         {
             [unroll]
-            for (int dx = -2; dx <= 2; ++dx)
+            for (int cy = -2; cy <= 2; ++cy)
             {
-                lit += shadowMap.SampleCmpLevelZero(shadowSampler, uv, depth, int2(dx, dy));
+                [unroll]
+                for (int cx = -2; cx <= 2; ++cx)
+                {
+                    lit += csmMap.SampleCmpLevelZero(shadowSampler, uv, depth, int2(cx, cy));
+                }
+            }
+        }
+        else
+        {
+            [unroll]
+            for (int dy = -2; dy <= 2; ++dy)
+            {
+                [unroll]
+                for (int dx = -2; dx <= 2; ++dx)
+                {
+                    lit += shadowMap.SampleCmpLevelZero(shadowSampler, uv, depth, int2(dx, dy));
+                }
             }
         }
         result = lerp(1.0f, lit / 25.0f, shadowParams.z);
     }
     return result;
+}
+
+float SampleShadowView(uint viewIndex, float3 worldPosition, float3 geometricNormal, float3 normalDelta, float distanceToLight)
+{
+    float coverage;
+    return SampleShadowViewCoverage(viewIndex, worldPosition, geometricNormal, normalDelta, distanceToLight, coverage);
 }
 
 // 광원 → 표면 벡터의 가장 큰 성분 축이 그 면. 순서는 +X, −X, +Y, −Y, +Z, −Z (C++ 의 face 번호와 같음)
@@ -104,7 +130,37 @@ float ShadowForLight(LightData light, float3 worldPosition, float3 geometricNorm
             {
                 // CSM: 마지막 캐스케이드 너머(−1)는 그림자 없음
                 const int c = SelectCascade(worldPosition);
-                if (c >= 0) result = SampleShadowView((uint)(light.shadowIndex + c), worldPosition, geometricNormal, normalDelta, 0.0f);
+                if (c >= 0)
+                {
+                    float coverage;
+                    result = SampleShadowViewCoverage((uint)(light.shadowIndex + c), worldPosition, geometricNormal, normalDelta, 0.0f, coverage);
+
+                    // 경계 블렌딩: 캐스케이드 c 의 끝 쪽 band 구간에서 t 가 0 → 1 로 올라감. band = 그 캐스케이드 깊이 길이 × 비율.
+                    const uint count = (uint)cascadeOrigin.w;
+                    const float blend = cascadeForward.w;
+                    if (blend > 0.0f)
+                    {
+                        const float depth = dot(worldPosition - cascadeOrigin.xyz, cascadeForward.xyz);
+                        const float end = cascadeSplits[c];
+                        const float begin = (c > 0) ? cascadeSplits[c - 1] : 0.0f;
+                        const float band = max((end - begin) * blend, EPSILON);
+                        const float t = saturate((depth - (end - band)) / band);
+                        if (t > 0.0f)
+                        {
+                            if ((uint)c + 1 < count)
+                            {
+                                // 다음 캐스케이드도 읽어 섞음. 다음 뷰의 구 바깥이면(coverage 0) 섞지 않음 — 밖은 "빛 받음"이라 그림자가 거짓으로 옅어짐.
+                                float nextCoverage;
+                                const float next = SampleShadowViewCoverage((uint)(light.shadowIndex + c + 1), worldPosition, geometricNormal, normalDelta, 0.0f, nextCoverage);
+                                if (nextCoverage > 0.5f) result = lerp(result, next, t);
+                            }
+                            else
+                            {
+                                result = lerp(result, 1.0f, t);   // 마지막 캐스케이드: 끝에서 그림자가 갑자기 끊기지 않고 서서히 사라짐
+                            }
+                        }
+                    }
+                }
             }
             else
             {

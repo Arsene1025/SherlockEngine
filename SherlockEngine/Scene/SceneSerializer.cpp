@@ -436,8 +436,8 @@ namespace
 				{ "bias", env.shadow.bias }, { "strength", env.shadow.strength }, { "normalOffset", env.shadow.normalOffset },
 				{ "orthoSize", env.shadow.orthoSize }, { "distance", env.shadow.distance },
 				{ "localNormalBias", env.shadow.localNormalBias },
-				{ "cascadeCount", env.shadow.cascadeCount }, { "cascadeDistance", env.shadow.cascadeDistance },
-				{ "cascadeLambda", env.shadow.cascadeLambda },
+				{ "cascadeEnabled", env.shadow.cascadeEnabled }, { "cascadeCount", env.shadow.cascadeCount }, { "cascadeDistance", env.shadow.cascadeDistance },
+				{ "cascadeLambda", env.shadow.cascadeLambda }, { "cascadeBlend", env.shadow.cascadeBlend },
 			} },
 		};
 	}
@@ -472,8 +472,12 @@ namespace
 		e.shadow.distance = shadow.value("distance", shadowDefaults.distance);
 		e.shadow.localNormalBias = shadow.value("localNormalBias", shadowDefaults.localNormalBias);
 		e.shadow.cascadeCount = shadow.value("cascadeCount", shadowDefaults.cascadeCount);
+		// cascadeEnabled 가 없는 옛 씬 파일: cascadeCount 1 은 "CSM 끔"이었으므로 그 뜻을 그대로 옮김
+		e.shadow.cascadeEnabled = shadow.value("cascadeEnabled", e.shadow.cascadeCount >= 2);
+		e.shadow.cascadeCount = (std::max)(e.shadow.cascadeCount, 2);
 		e.shadow.cascadeDistance = shadow.value("cascadeDistance", shadowDefaults.cascadeDistance);
 		e.shadow.cascadeLambda = shadow.value("cascadeLambda", shadowDefaults.cascadeLambda);
+		e.shadow.cascadeBlend = shadow.value("cascadeBlend", shadowDefaults.cascadeBlend);
 	}
 
 	void ApplyAmbientAndClear(Scene& scene, const json& root)
