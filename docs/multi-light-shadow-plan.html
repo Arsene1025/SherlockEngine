@@ -40,6 +40,15 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
   <p>2026-10-29 · 지금은 "방향광 0번 하나"만 그림자를 만듭니다. 이 계획은 그것을 <b>방향광 1개(나중에 CSM) + 스팟·포인트 여러 개</b>가 그림자를 만드는 구조로 바꾸는 구현 순서입니다. 단계마다 손댈 코드 위치, 정해 둔 이름과 시그니처, 확인 방법, 커밋 예시, 그 단계에서 공부할 개념과 참고 자료를 적었습니다. <b>이 문서를 쓴 시점에는 코드를 한 줄도 고치지 않았습니다.</b></p>
   <p class="foot">기준: 커밋 1be6099 + 작업 트리(2026-10-29). 코드 위치는 "파일 + 함수 이름"이 기준이고, 괄호 안 행 번호는 이 시점의 참고용입니다. 앞 단계를 구현하면 뒤 단계의 행 번호는 밀립니다. 기존 분석 문서(<code>rendering-analysis.html</code>)는 고치지 않았습니다.</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1~3장은 "왜 이렇게 하는가", 4장은 단계별 작업, 5~8장은 함정·검증·파일 목록, 9~10장은 공부할 개념과 참고 문서입니다. 4장의 각 단계는 <b>목표 → 파일 → 인터페이스 → 작업 체크리스트 → 확인 → 커밋 → 공부할 개념 → 참고</b> 순서로 같은 모양입니다. 체크박스는 표시용이며 저장되지 않습니다.</div>
+  <div class="box ok"><b>구현 후 달라진 점 (2026-11-03).</b> 이 문서는 구현 전 계획이라 본문은 고치지 않았고, 계획과 달라진 곳만 여기와 해당 위치의 짧은 주석에 적었습니다. 자세한 구조는 <code>csm-study-guide.html</code>(2-6, 3-2, 4장)에 있습니다.
+  <ul>
+  <li><b>CSM은 전용 아틀라스를 씁니다.</b> 캐스케이드 2~4개는 이 문서 2.2의 "방향광 영역을 2×2로 나눔"이 아니라, 별도 텍스처 <code>m_csmMap</code>(2048², D32 약 16MB, 셰이더 t14)에 1024² 칸 네 개로 그립니다. 방향광은 단일 뷰(CSM 끔)도 이 아틀라스 전체(2048²)에 그립니다. 뷰의 <code>params.w</code>(0 = 메인, 1 = CSM)가 어느 텍스처를 읽을지 정하고, 그림자 패스는 아틀라스별로 두 번 돕니다.</li>
+  <li><b>메인 아틀라스는 2048²이고 지역광 전용입니다.</b> 4096² 대신 2048²에 512² 타일 16개(4×4)를 둡니다. 이 문서 2.2의 "방향광 영역"과 "1024² 타일 12개"는 계획 시점의 배치이고, 지금은 방향광 영역이 없습니다. 총 섀도 메모리는 64MB(계획)에서 메인 16MB + CSM 16MB = 32MB가 되었습니다.</li>
+  <li><b>칸 크기는 균등 1024²입니다.</b> 2048/1024/512/512와 1024/512/512/256을 시도했지만, practical split이 칸 해상도가 같다는 전제의 식이라 먼 쪽 칸을 줄이면 오히려 거칠어져서 되돌렸습니다(<code>kCsmCascadeSize</code>).</li>
+  <li><b>경계 블렌딩을 구현했습니다.</b> 8-C의 "남기는 일"이었던 것으로, <code>cascadeBlend</code>(기본 0.15, 0 = 끔)가 각 캐스케이드 끝 구간에서 다음 캐스케이드와 섞고 마지막 캐스케이드는 서서히 사라지게 합니다.</li>
+  <li><b><code>cascadeDistance</code> 기본값이 60에서 200이 되었습니다.</b> 단계 7의 표는 계획 시점의 값입니다.</li>
+  <li><b>b6가 2000B가 되었습니다.</b> 끝에 <code>csmAtlasParams</code>(1/CSM 아틀라스 크기)가 붙고 뷰가 16개에서 20개(<code>MAX_SHADOW_VIEWS</code>, 방향광 4 + 지역광 16)가 되어, 이 문서의 1600B·16개는 계획 시점의 값입니다.</li>
+  </ul></div>
 </header>
 <nav><a href="#now">1. 현재 구조</a><a href="#design">2. 목표 구조</a><a href="#decisions">3. 설계 결정</a><a href="#steps">4. 구현 순서</a><a href="#s0">단계 0</a><a href="#s1">1</a><a href="#s2">2</a><a href="#s3">3</a><a href="#s4">4</a><a href="#s5">5</a><a href="#s6">6</a><a href="#s7">7</a><a href="#s8">8</a><a href="#pitfalls">5. 함정</a><a href="#focus">6. 놓치기 쉬운 입력</a><a href="#verify">7. 검증 방법</a><a href="#files">8. 파일 목록</a><a href="#study">9. 공부할 개념</a><a href="#refs">10. 참고 문서</a></nav>
 
@@ -94,7 +103,8 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
  ├ MainPass     : PS 의 조명 루프가 ShadowForLight(light) → b6 의 뷰 → 아틀라스 샘플
  └ 후처리 · 톤 · 미리보기 · UI (그대로)</code></pre>
 
-<h3>2.2 섀도 아틀라스 배치 (4096² D32_FLOAT, 64 MB)</h3>
+<h3>2.2 섀도 아틀라스 배치 (4096² D32_FLOAT, 64 MB) <span class="tag chk">계획 시점</span></h3>
+<p><b>2026-11-03 현재 구현은 이 배치와 다릅니다.</b> 지역광 전용 메인 아틀라스 2048²(512² 타일 16개)와 방향광 전용 CSM 아틀라스 2048² 두 장입니다. 아래 그림과 숫자는 계획할 때의 것입니다.</p>
 <pre><code>          0        1024       2048       3072       4096  (픽셀)
      0    ┌────────────────────┬──────────┬──────────┐
           │                    │  타일 0  │  타일 1  │
@@ -110,13 +120,13 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
              CSM 켬 → 1024 뷰 2~4개 (영역을 2×2 로 나눔)
 지역광 타일: 1024 × 12개.  스팟 = 1타일, 포인트 = 연속 6타일
 뷰 수 상한:  방향광 4 + 타일 12 = 16 = MAX_SHADOW_VIEWS</code></pre>
-<p>방향광 영역을 지금 섀도 맵과 같은 2048²로 둔 이유는 단계 4에서 "아틀라스로 옮겨도 방향광 그림자가 지금과 같은가"를 스크린샷으로 비교하기 위해서입니다. CSM을 켜면 같은 영역을 1024 네 칸으로 나눕니다.</p>
+<p>방향광 영역을 지금 섀도 맵과 같은 2048²로 둔 이유는 단계 4에서 "아틀라스로 옮겨도 방향광 그림자가 지금과 같은가"를 스크린샷으로 비교하기 위해서입니다. CSM을 켜면 같은 영역을 1024 네 칸으로 나눕니다. <b>(2026-11-03: 구현은 이렇게 하지 않고 CSM 전용 아틀라스에 그립니다. 문서 맨 위 상자 참고.)</b></p>
 
 <h3>2.3 새로 생기는 GPU 데이터</h3>
 <table>
 <tr><th>이름</th><th>레지스터 · 스테이지</th><th>내용</th><th>올리는 시점</th></tr>
 <tr><td><code>ShadowPass</code></td><td>b5 · VS (프레임 레이아웃)</td><td><code>matrix shadowViewProj</code> 하나 (64B)</td><td>매 프레임 단위 행렬로 1회 + 그림자 패스에서 뷰마다</td></tr>
-<tr><td><code>Shadows</code></td><td>b6 · PS (프레임 레이아웃)</td><td>뷰 16개(행렬, 아틀라스 사각형, 파라미터) + 캐스케이드 정보 + 아틀라스 파라미터 (1600B)</td><td>매 프레임 1회</td></tr>
+<tr><td><code>Shadows</code></td><td>b6 · PS (프레임 레이아웃)</td><td>뷰 16개(행렬, 아틀라스 사각형, 파라미터) + 캐스케이드 정보 + 아틀라스 파라미터 (1600B. 2026-11-03: 지금은 뷰 20개 + CSM 아틀라스 파라미터, 2000B)</td><td>매 프레임 1회</td></tr>
 <tr><td><code>LightData.castShadows</code></td><td>b2 (기존)</td><td>사용자 설정. 씬 JSON에 저장</td><td>지금처럼</td></tr>
 <tr><td><code>LightData.shadowIndex</code></td><td>b2 (기존)</td><td>Renderer가 매 프레임 GPU 사본에 채움. 첫 뷰 번호, -1이면 그림자 없음. 저장하지 않음</td><td>지금처럼</td></tr>
 </table>
@@ -132,7 +142,7 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <tr><td>D3</td><td><b>b5·b6을 기존 프레임 레이아웃에 추가</b>. 그림자 PSO는 지금처럼 {frame, object}</td><td>D3D12 커맨드 리스트가 기억하는 셋이 이미 4개로 가득 차 있음(1장 표). 새 레이아웃은 D3D12에서만 조용히 빠짐</td><td>새 <code>Layout_ShadowPass</code>: 위 이유로 탈락. 커맨드 리스트의 셋 용량을 PSO 상한과 분리하는 RHI 개선은 따로 할 일로 남김</td></tr>
 <tr><td>D4</td><td><b>그림자 좌표를 PS에서 계산</b>. <code>VSOutput.shadowPosition</code>과 b0 <code>lightViewProj</code> 삭제</td><td>조명마다 쓰는 뷰가 다르고(포인트는 면, CSM은 캐스케이드까지 PS에서 고름) VS 출력 하나로는 표현할 수 없음</td><td>VS에서 뷰 N개 좌표를 전부 출력: 보간기 슬롯이 모자라고 대부분 버려짐</td></tr>
 <tr><td>D5</td><td><b><code>LightData</code>의 padding 자리에 <code>castShadows</code>, <code>shadowIndex</code></b>. 80B 유지</td><td>상수버퍼 레이아웃과 <code>static_assert</code>가 그대로임. GPU 사본에 Renderer가 값을 써 넣는 것은 지금 방향 정규화(<code>Render</code> 약 1027~1039행)와 같은 방식</td><td>별도 배열 <code>int shadowIndex[8]</code>: cbuffer 배열은 원소마다 16B라 128B를 씀</td></tr>
-<tr><td>D6</td><td><b>타일 크기 고정</b>: 지역광 1024, 방향광 영역 2048</td><td>할당이 "다음 빈 타일 번호"로 끝남. 디버그·검증이 쉬움</td><td>크기가 다른 타일과 거리별 해상도: 나중 개선 거리</td></tr>
+<tr><td>D6</td><td><b>타일 크기 고정</b>: 지역광 1024, 방향광 영역 2048 (2026-11-03: 지금은 지역광 512² × 16, 방향광은 CSM 전용 아틀라스)</td><td>할당이 "다음 빈 타일 번호"로 끝남. 디버그·검증이 쉬움</td><td>크기가 다른 타일과 거리별 해상도: 나중 개선 거리</td></tr>
 <tr><td>D7</td><td><b>바이어스</b>: 직교 뷰(방향광·캐스케이드)는 지금의 NDC 깊이 바이어스. 원근 뷰(스팟·포인트)는 NDC 바이어스 0 + <b>노멀 방향 월드 오프셋</b>(텍셀 크기 × 배율)</td><td>원근 투영의 깊이는 비선형이라 고정 NDC 바이어스가 거리마다 다른 월드 거리가 됨. 노멀 오프셋은 텍셀의 월드 크기에 비례해 거리와 무관하게 일정함</td><td>원근 뷰 전용 PSO(래스터 바이어스 별도): 단계 5에서 여드름이 남으면 추가 (함정 5)</td></tr>
 <tr><td>D8</td><td><b>포인트 = 6타일</b>, 시야각은 90°보다 조금 넓게(PCF 여백만큼)</td><td>큐브 DSV가 없음. 면 경계에서 PCF 커널이 타일 밖을 읽지 않으면서도 인접 면과 빈틈이 없게 함</td><td>Dual-paraboloid: 2타일이지만 정점이 성기면 왜곡이 큼</td></tr>
 <tr><td>D9</td><td><b>CSM</b>: 캐스케이드 2~4개, practical split(λ), 경계 구(sphere)로 맞춘 직교 투영, 텍셀 스냅. 메인 카메라 기준으로 한 번 계산하고 미리보기 패스도 같은 것을 씀</td><td>회전해도 투영 크기가 변하지 않고(구), 이동해도 텍셀 단위로만 움직여(스냅) 가장자리가 반짝이지 않음</td><td>절두체 AABB에 꼭 맞춤(fit to cascade): 해상도는 아끼지만 카메라가 돌 때 흔들림</td></tr>
@@ -700,14 +710,15 @@ else if (light.type == LIGHT_POINT)
 <h3>7-A. 설정</h3>
 <table>
 <tr><th>필드</th><th>기본값</th><th>뜻</th><th>UI</th></tr>
-<tr><td><code>int cascadeCount</code></td><td>1</td><td>1 = 지금처럼 직교 뷰 하나(<code>orthoSize</code>/<code>distance</code>). 2~4 = CSM</td><td><code>SliderInt("Cascades", 1, 4)</code></td></tr>
-<tr><td><code>float cascadeDistance</code></td><td>60</td><td>그림자를 그리는 최대 카메라 거리(카메라 far와 작은 쪽)</td><td>5 ~ 300 (CSM일 때만 표시)</td></tr>
+<tr><td><code>int cascadeCount</code></td><td>1</td><td>1 = 지금처럼 직교 뷰 하나(<code>orthoSize</code>/<code>distance</code>). 2~4 = CSM <span class="tag chk">2026-11-03</span> 지금은 <code>bool cascadeEnabled</code>(기본 켬)가 켜고 끄고, <code>cascadeCount</code>는 2~4(기본 4)입니다. 옛 씬 파일의 <code>cascadeCount</code> 1은 읽을 때 <code>cascadeEnabled = false</code>로 옮깁니다</td><td><code>SliderInt("Cascades", 1, 4)</code> → 체크박스 CSM + <code>SliderInt("Cascades", 2, 4)</code></td></tr>
+<tr><td><code>float cascadeDistance</code></td><td>60 (2026-11-03부터 기본 200)</td><td>그림자를 그리는 최대 카메라 거리(카메라 far와 작은 쪽)</td><td>5 ~ 300 (CSM일 때만 표시)</td></tr>
 <tr><td><code>float cascadeLambda</code></td><td>0.7</td><td>분할식의 로그(1)·균등(0) 섞는 비율</td><td>0 ~ 1 (CSM일 때만)</td></tr>
+<tr><td><code>float cascadeBlend</code></td><td>0.15 (2026-11-03 추가)</td><td>캐스케이드 경계 블렌딩 구간(그 캐스케이드 깊이 길이의 비율, 0 = 끔)</td><td>0 ~ 0.5 (CSM일 때만)</td></tr>
 </table>
 <p>저장 키는 필드 이름 그대로입니다(<code>SceneSerializer.cpp</code> 그림자 묶음). 기본값 1이라 옛 씬은 지금과 똑같이 보입니다. CSM일 때 <code>distance</code>("Light distance")는 "카메라 밖 뒤쪽 캐스터까지 잡는 거리"로 계속 쓰이고, <code>orthoSize</code>는 바이어스 환산 기준으로만 쓰입니다. UI에서 Ortho size 옆에 그렇게 적어 둡니다.</p>
 
 <h3>7-B. <code>AddCascadeViews</code> 알고리즘</h3>
-<p><code>BuildShadowViews</code>의 방향광 분기에서 <code>cascadeCount &gt;= 2 &amp;&amp; camera.IsUsePerspectiveProjection()</code>이면 이 함수를, 아니면 지금의 단일 뷰를 씁니다(직교 카메라에서는 절두체 조각 계산이 맞지 않으므로 단일 뷰로 대체).</p>
+<p><code>BuildShadowViews</code>의 방향광 분기에서 <code>cascadeCount &gt;= 2 &amp;&amp; camera.IsUsePerspectiveProjection()</code>(2026-11-03 이후: <code>cascadeEnabled &amp;&amp; …</code>)이면 이 함수를, 아니면 지금의 단일 뷰를 씁니다(직교 카메라에서는 절두체 조각 계산이 맞지 않으므로 단일 뷰로 대체).</p>
 <pre><code>N = cascadeCount,  n = camera.GetNearZ(),  f = min(camera.GetFarZ(), cascadeDistance)
 분할 (practical split):  s[i] = λ · n · (f/n)^(i/N) + (1 − λ) · (n + (f − n) · i/N),   i = 0..N   (s[0] = n, s[N] = f)
 
@@ -767,7 +778,7 @@ else
 <li><code>SponzaCascades.json</code>, Cascades 4, 거리 60: <code>--debug-view=8</code> 스크린샷에서 카메라에서 멀어질수록 빨강 → 초록 → 파랑 → 노랑 띠가 보이고, 그 너머는 회색입니다.</li>
 <li>Cascades 1과 4의 같은 시점 스크린샷 비교: 4에서 카메라 가까운 그림자 경계가 눈에 띄게 선명합니다. Cascades 1은 단계 4와 같아야 합니다(회귀).</li>
 <li><b>흔들림</b>(에디터에서 직접): 카메라를 천천히 옮기고 돌리면서 그림자 가장자리가 반짝이지 않는지 봅니다. 반짝이면 4)의 스냅 부호나 <code>tile</code> 값을, 회전할 때 그림자 크기가 출렁이면 2)의 반지름 계단화를 의심합니다.</li>
-<li>캐스케이드 경계에서 그림자가 끊기는 선은 PCF 여백 clamp 때문에 약하게 보일 수 있습니다. 경계 블렌딩은 이번 범위 밖입니다(단계 8의 "남기는 일").</li>
+<li>캐스케이드 경계에서 그림자가 끊기는 선은 PCF 여백 clamp 때문에 약하게 보일 수 있습니다. 경계 블렌딩은 이 계획에서는 범위 밖이었고, 2026-11-03에 따로 구현했습니다(<code>Cascade blend</code>, <code>csm-study-guide.html</code> 3-2).</li>
 <li>카메라 오브젝트가 있는 씬에서 <code>--select=&lt;카메라 이름&gt;</code>으로 미리보기를 띄워, 미리보기에서도 메인 카메라 범위 안의 그림자가 맞게 보이는지 확인합니다.</li>
 <li>에디터 카메라를 직교로 바꾸면(카메라 설정) CSM 대신 단일 뷰로 그려지고 오류가 없어야 합니다.</li>
 <li>D3D12 동일, 로그 깨끗함. 통계 <code>views</code> = 4 + 지역광 타일 수.</li>
@@ -829,7 +840,7 @@ git grep -n -e "light 0" -e "광원 0" -e "조명 0" -- SherlockEngine</code></p
 <p>문서를 고칠 때는 "새 문서로 쓸지, 기존 문서를 고칠지"를 먼저 정합니다.</p>
 <h3>8-C. 남기는 일 (이번 범위 밖)</h3>
 <ul>
-<li><b>캐스케이드 경계 블렌딩</b>: 경계 근처에서 두 캐스케이드를 섞어 끊김을 숨김(MS Learn CSM 문서의 "Blending between cascades").</li>
+<li><b>캐스케이드 경계 블렌딩</b>: 경계 근처에서 두 캐스케이드를 섞어 끊김을 숨김(MS Learn CSM 문서의 "Blending between cascades"). <b>2026-11-03에 구현함</b>(<code>cascadeBlend</code>).</li>
 <li><b>타일 우선순위</b>: 지금은 조명 배열 순서대로 선착순. 카메라와의 거리·화면 크기로 정렬하면 타일이 모자랄 때 더 중요한 조명이 그림자를 받음.</li>
 <li><b>정적 그림자 캐시</b>: 움직이지 않는 지역광의 타일은 매 프레임 다시 그릴 필요가 없음.</li>
 <li><b>원근용 섀도 PSO</b>: 래스터 바이어스(<code>depthBias 2000, slope 2.0</code>)는 직교 맵 기준으로 맞춘 값. 지역광에서 acne·떠 보임이 심하면 바이어스가 다른 PSO를 하나 더 둠(5장 함정 표).</li>
