@@ -180,6 +180,15 @@ float3 SafeNormalize(float3 value, float3 fallback)
     return (lengthSquared > EPSILON * EPSILON) ? value * rsqrt(lengthSquared) : fallback;
 }
 
+// 2026-11-04: 월드 행렬이 반사(행렬식 < 0, 예: scale -1 미러)이면 노멀((W⁻¹)ᵀ)과 탄젠트(W)가 따로 변환되어 cross(N, T) 의 방향이 뒤집힘.
+// 그래서 탄젠트 손잡이 w 에 행렬식의 부호를 곱해야 B = cross(N, T) * w 가 표면을 제대로 따라감. 스케일 0 이어도 0 이 되지 않도록 sign() 대신 삼항을 씀.
+// 행렬식 부호는 전치해도 같아서 C++ 가 전치해 올린 world 를 그대로 써도 됨. 탄젠트를 출력하는 모든 VS(디퍼드 G-buffer 포함)가 이 함수를 거칠 것.
+float TangentHandedness(float tangentW, matrix worldMatrix)
+{
+    const float det = dot(cross(worldMatrix[0].xyz, worldMatrix[1].xyz), worldMatrix[2].xyz);
+    return det < 0.0f ? -tangentW : tangentW;
+}
+
 // 2026-10-08: 최종 출력. 노출을 곱하고, 켜져 있으면 ACES 근사(Narkowicz 2016)로 [0, ∞) → [0, 1] 로 누름.
 // 꺼져 있으면 1 을 넘는 값은 출력 타깃에서 잘림. 결과는 선형 — sRGB RTV 가 인코딩함.
 // 2026/10/20 HDR: 이 함수는 TonemapPixelShader 만 부름 (메인·스카이 PS 는 선형 HDR 값을 FP16 타깃에 그대로 씀).

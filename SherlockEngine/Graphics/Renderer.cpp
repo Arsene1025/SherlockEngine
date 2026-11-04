@@ -1450,6 +1450,9 @@ void Renderer::BuildDrawList(const Scene& scene)
 		const Mesh* mesh = object.GetMesh();
 		if (mesh == nullptr || !mesh->IsValid()) continue;
 
+		// 2026-11-04: 월드 행렬식이 음수(scale -1 미러)면 화면에서 삼각형 감기 순서가 뒤집혀 뒷면 컬링이 앞면을 자름. 오브젝트마다 한 번만 판정.
+		const bool mirrored = XMVectorGetX(XMMatrixDeterminant(object.GetWorldMatrix())) < 0.0f;
+
 		// 9단계: 서브메시마다 DrawItem 하나. 재질은 슬롯 → 오브젝트 기본 → Renderer 기본 순으로 고름.
 		for (const Submesh& submesh : mesh->GetSubmeshes())
 		{
@@ -1458,7 +1461,8 @@ void Renderer::BuildDrawList(const Scene& scene)
 			if (material == nullptr) material = &m_defaultMaterial;
 
 			DrawItem item;
-			item.pipeline = GetPipelineFor(*material, mesh->GetVertexFormat());
+			item.mirrored = mirrored;
+			item.pipeline = GetPipelineFor(*material, mesh->GetVertexFormat(), mirrored);
 			item.material = material;
 			item.mesh = mesh;
 			item.object = &object;
@@ -1580,7 +1584,7 @@ void Renderer::RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas)
 				}
 			}
 
-			const PipelineHandle pipeline = GetShadowPipelineFor(*item.material, item.mesh->GetVertexFormat());
+			const PipelineHandle pipeline = GetShadowPipelineFor(*item.material, item.mesh->GetVertexFormat(), item.mirrored);
 			if (!pipeline.IsValid()) continue;
 			if (pipeline != lastPipeline)
 			{
@@ -2106,10 +2110,11 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 	return gpuMaterial;
 }
 
-PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat vertexFormat)
+PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored)
 {
 	PipelineStateDesc desc = m_baseDesc;
 	desc.vertexLayout = GetVertexLayout(vertexFormat);
+	desc.rasterizer.frontCounterClockwise = mirrored ? !desc.rasterizer.frontCounterClockwise : desc.rasterizer.frontCounterClockwise;
 	desc.rasterizer.fill = (m_settings.wireframe || material.wireframe) ? FillMode::Wireframe : FillMode::Solid;
 	desc.rasterizer.cull = (m_settings.cullBack && !material.doubleSided) ? CullMode::Back : CullMode::None;
 	// 8단계: D3D12 PSO 는 렌더 타깃 뷰의 포맷을 알아야 함. 2026/10/20 HDR: 메인 패스는 FP16 HDR 텍스처에 그리므로 항상 R16G16B16A16_FLOAT.
@@ -2120,11 +2125,12 @@ PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat v
 	return m_device->CreatePipeline(desc);
 }
 
-PipelineHandle Renderer::GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat)
+PipelineHandle Renderer::GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored)
 {
 	// 그림자는 항상 솔리드로 그림 (와이어프레임 재질도 실체는 있음). 양면 재질은 컬링 없이 그림.
 	PipelineStateDesc desc = m_shadowDesc;
 	desc.vertexLayout = GetVertexLayout(vertexFormat);
+	desc.rasterizer.frontCounterClockwise = mirrored ? !desc.rasterizer.frontCounterClockwise : desc.rasterizer.frontCounterClockwise;
 	desc.rasterizer.cull = material.doubleSided ? CullMode::None : CullMode::Back;
 	return m_device->CreatePipeline(desc);
 }

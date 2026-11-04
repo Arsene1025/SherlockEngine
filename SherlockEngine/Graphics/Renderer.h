@@ -209,6 +209,7 @@ private:
 	struct DrawItem
 	{
 		PipelineHandle pipeline;   // 메인 패스 PSO (정렬 키)
+		bool mirrored = false;     // 2026-11-04: 월드 행렬식 < 0 (scale -1 미러). 메인·그림자 PSO 의 앞면 방향을 뒤집음
 		const Material* material;
 		const Mesh* mesh;
 		const GameObject* object;
@@ -334,8 +335,9 @@ private:
 
 	const GpuMesh* GetOrCreateGpuMesh(const Mesh& mesh);
 	const GpuMaterial* GetOrCreateGpuMaterial(const Material& material, const Scene* scene);
-	PipelineHandle GetPipelineFor(const Material& material, VertexFormat vertexFormat);
-	PipelineHandle GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat);
+	// mirrored: 월드 행렬의 행렬식이 음수(반사)인 오브젝트. 감기 순서가 뒤집히므로 앞면 정의(frontCounterClockwise)를 반대로 둠.
+	PipelineHandle GetPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored = false);
+	PipelineHandle GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored = false);
 	PipelineHandle GetSkyPipeline();   // 2026-10-08: 정점 속성 0개, 깊이 LessEqual + 쓰기 끔, 컬링 없음
 	PipelineHandle GetTonemapPipeline();
 	// 재질의 텍스처 이름 → 핸들. "builtin:*"은 절차적으로 만들고, 씬에 같은 이름의 이미지가 있으면 그 바이트에서(9단계),

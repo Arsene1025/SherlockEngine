@@ -330,16 +330,22 @@ void Mesh::Finalize()
 	XMStoreFloat3(&bounds.max, hi);
 }
 
-void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, const std::vector<uint32_t>& indices, bool bitangentTowardsIncreasingV)
+void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>& indices, bool bitangentTowardsIncreasingV)
 {
 	// Lengyel, "Computing Tangent Space Basis Vectors for an Arbitrary Mesh".
 	// 삼각형마다 (dP/du, dP/dv) 를 풀어 정점에 누적하고, 마지막에 노멀에 직교화함.
-	std::vector<XMFLOAT3> tan1(vertices.size(), XMFLOAT3(0.0f, 0.0f, 0.0f));
-	std::vector<XMFLOAT3> tan2(vertices.size(), XMFLOAT3(0.0f, 0.0f, 0.0f));
+	//
+	// 2026-11-04: 미러 모델링(한쪽 면만 만들고 뒤집어 복제)처럼 UV 가 뒤집힌 삼각형은 손잡이(w)가 반대임. 같은 정점을 손잡이가 다른
+	// 삼각형이 공유하면 탄젠트가 서로 상쇄되고 w 도 한쪽으로만 정해지므로, 손잡이별로 정점을 복제해서 나눔 (1단계).
+	// 복제는 정점 배열 뒤에 붙이고 인덱스만 바꾸므로 서브메시의 인덱스 범위는 그대로 유효함.
+	struct TriangleBasis { XMFLOAT3 sdir, tdir; int8_t handedness = 0; };   // handedness 0 = 퇴화(건너뜀)
+	const size_t triangleCount = indices.size() / 3;
+	std::vector<TriangleBasis> triangles(triangleCount);
 
-	for (size_t i = 0; i + 2 < indices.size(); i += 3)
+	// 1단계: 삼각형마다 (dP/du, dP/dv) 와 손잡이를 구함.
+	for (size_t t = 0; t < triangleCount; ++t)
 	{
-		const uint32_t i0 = indices[i], i1 = indices[i + 1], i2 = indices[i + 2];
+		const uint32_t i0 = indices[t * 3], i1 = indices[t * 3 + 1], i2 = indices[t * 3 + 2];
 		if (i0 >= vertices.size() || i1 >= vertices.size() || i2 >= vertices.size()) continue;
 		const VERTEX& v0 = vertices[i0];
 		const VERTEX& v1 = vertices[i1];
@@ -354,14 +360,51 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, const std::vector<uint
 		if (fabsf(det) < 1e-12f) continue;   // UV 가 퇴화한 삼각형은 건너뜀
 		const float r = 1.0f / det;
 
-		// dP/du, dP/dv
-		const XMFLOAT3 sdir((e1x * dv2 - e2x * dv1) * r, (e1y * dv2 - e2y * dv1) * r, (e1z * dv2 - e2z * dv1) * r);
-		const XMFLOAT3 tdir((e2x * du1 - e1x * du2) * r, (e2y * du1 - e1y * du2) * r, (e2z * du1 - e1z * du2) * r);
+		TriangleBasis& tri = triangles[t];
+		tri.sdir = XMFLOAT3((e1x * dv2 - e2x * dv1) * r, (e1y * dv2 - e2y * dv1) * r, (e1z * dv2 - e2z * dv1) * r);
+		tri.tdir = XMFLOAT3((e2x * du1 - e1x * du2) * r, (e2y * du1 - e1y * du2) * r, (e2z * du1 - e1z * du2) * r);
 
-		for (uint32_t index : { i0, i1, i2 })
+		// 손잡이: 세 정점 노멀의 평균 N 에 대해 cross(N, dP/du) 가 dP/dv 와 같은 쪽이면 +1 (최종 w 계산과 같은 기준).
+		const XMVECTOR n = XMVectorSet(v0.nx + v1.nx + v2.nx, v0.ny + v1.ny + v2.ny, v0.nz + v1.nz + v2.nz, 0.0f);
+		const XMVECTOR s = XMLoadFloat3(&tri.sdir);
+		const XMVECTOR b = XMLoadFloat3(&tri.tdir);
+		tri.handedness = (XMVectorGetX(XMVector3Dot(XMVector3Cross(n, s), b)) < 0.0f) ? int8_t(-1) : int8_t(1);
+	}
+
+	// 정점마다 처음 만난 삼각형의 손잡이를 정점의 손잡이로 삼고, 반대 손잡이 삼각형은 복제한 정점(alt)으로 보냄.
+	const size_t originalVertexCount = vertices.size();
+	std::vector<int8_t> vertexHandedness(originalVertexCount, 0);
+	std::vector<uint32_t> alternate(originalVertexCount, UINT32_MAX);
+	for (size_t t = 0; t < triangleCount; ++t)
+	{
+		const int8_t h = triangles[t].handedness;
+		if (h == 0) continue;
+		for (size_t k = 0; k < 3; ++k)
 		{
-			tan1[index].x += sdir.x; tan1[index].y += sdir.y; tan1[index].z += sdir.z;
-			tan2[index].x += tdir.x; tan2[index].y += tdir.y; tan2[index].z += tdir.z;
+			uint32_t& index = indices[t * 3 + k];
+			if (vertexHandedness[index] == 0) { vertexHandedness[index] = h; continue; }
+			if (vertexHandedness[index] == h) continue;
+			if (alternate[index] == UINT32_MAX)
+			{
+				alternate[index] = static_cast<uint32_t>(vertices.size());
+				vertices.push_back(vertices[index]);
+			}
+			index = alternate[index];   // 손잡이는 두 가지뿐이므로 복제본은 항상 "반대 손잡이" 전용
+		}
+	}
+
+	// 2단계: 누적. 복제된 정점이 생겼으므로 배열은 분리 뒤 크기로 만듦.
+	std::vector<XMFLOAT3> tan1(vertices.size(), XMFLOAT3(0.0f, 0.0f, 0.0f));
+	std::vector<XMFLOAT3> tan2(vertices.size(), XMFLOAT3(0.0f, 0.0f, 0.0f));
+	for (size_t t = 0; t < triangleCount; ++t)
+	{
+		if (triangles[t].handedness == 0) continue;
+		const TriangleBasis& tri = triangles[t];
+		for (size_t k = 0; k < 3; ++k)
+		{
+			const uint32_t index = indices[t * 3 + k];
+			tan1[index].x += tri.sdir.x; tan1[index].y += tri.sdir.y; tan1[index].z += tri.sdir.z;
+			tan2[index].x += tri.tdir.x; tan2[index].y += tri.tdir.y; tan2[index].z += tri.tdir.z;
 		}
 	}
 

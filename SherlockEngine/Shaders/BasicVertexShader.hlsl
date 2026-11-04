@@ -14,7 +14,7 @@ VSOutput VS_Main(VSInput vsInput)
     vsOutput.uv = vsInput.uv * uvScale;
     // 노멀은 (W⁻¹)ᵀ 로 변환함. 그래야 비균등 스케일에서도 표면과 수직을 유지함.
     vsOutput.normal = normalize(mul(float4(vsInput.normal, 0.0f), worldInvTranspose).xyz);
-    // 탄젠트는 표면 "위"의 방향이므로 월드 행렬로 변환함 (방향 벡터, w = 0). 손잡이(w)는 그대로 둠.
-    vsOutput.tangent = float4(normalize(mul(float4(vsInput.tangent.xyz, 0.0f), world).xyz), vsInput.tangent.w);
+    // 탄젠트는 표면 "위"의 방향이므로 월드 행렬로 변환함 (방향 벡터, w = 0). 손잡이(w)는 월드 행렬이 반사(행렬식 < 0)이면 뒤집음.
+    vsOutput.tangent = float4(normalize(mul(float4(vsInput.tangent.xyz, 0.0f), world).xyz), TangentHandedness(vsInput.tangent.w, world));
     return vsOutput;
 }

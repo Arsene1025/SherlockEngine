@@ -47,7 +47,9 @@ public:
 	// 탄젠트가 없는 정점 배열에 삼각형별 UV 미분으로 탄젠트를 채움 (Lengyel). 노멀은 이미 있어야 함.
 	// bitangentTowardsIncreasingV: true 면 B = dP/dv (엔진 프리미티브·DirectX 식 노멀 맵: 초록 = v 증가),
 	// false 면 B = −dP/dv (glTF/OpenGL 식 노멀 맵: 초록 = 위). 두 결과는 tangent.w 의 부호만 다름.
-	static void ComputeTangents(std::vector<VERTEX>& vertices, const std::vector<uint32_t>& indices, bool bitangentTowardsIncreasingV);
+	// 2026-11-04: UV 가 뒤집힌(미러) 삼각형과 아닌 삼각형이 정점을 공유하면 손잡이별로 정점을 복제해 나눔.
+	// 그래서 vertices 는 뒤에 늘어나고 indices 는 복제본을 가리키도록 바뀜 (서브메시 인덱스 범위는 그대로).
+	static void ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>& indices, bool bitangentTowardsIncreasingV);
 
 	const std::vector<VERTEX>& GetVertices() const { return vertices; }
 	const std::vector<uint32_t>& GetIndices() const { return indices; }
