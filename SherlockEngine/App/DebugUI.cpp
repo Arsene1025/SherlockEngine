@@ -531,6 +531,9 @@ void DebugUI::DrawMaterialPanel(Scene& scene)
 		ImGui::PushID(index++);
 		if (ImGui::TreeNode(material.name.c_str()))
 		{
+			const size_t users = scene.CountMaterialUsers(&material);
+			if (users > 1) ImGui::TextDisabled("Shared by %zu objects - edits affect all of them", users);
+			else ImGui::TextDisabled("Used by %zu object%s", users, users == 1 ? "" : "s");
 			ImGui::ColorEdit4("Base color", &material.baseColor.x);
 			SliderFloatR("Metallic", &material.metallic, kMaterialDefaults.metallic, 0.0f, 1.0f);   // 2026-10-08 PBR
 			SliderFloatR("Roughness", &material.roughness, kMaterialDefaults.roughness, 0.0f, 1.0f);

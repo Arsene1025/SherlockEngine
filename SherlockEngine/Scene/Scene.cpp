@@ -43,6 +43,7 @@ void Scene::AddModelImages(const Model& model)
 {
 	for (const ModelImage& image : model.images)
 	{
+		if (m_images.find(image.name) != m_images.end()) continue;   // 같은 모델을 다시 놓을 때 바이트를 또 복사하지 않음
 		std::vector<uint8_t> bytes = image.encoded;
 		AddImage(image.name, std::move(bytes));
 	}
@@ -345,25 +346,109 @@ void Scene::EndPlay()
 		for (auto& behaviour : object->GetBehaviours()) behaviour->EndPlay();
 }
 
+namespace
+{
+	// 모델 경로 비교: 구분자(/ \)와 대소문자를 무시함 (AssetManager 의 캐시 키 규칙과 같음).
+	bool SameModelPath(const std::wstring& a, const std::wstring& b)
+	{
+		if (a.size() != b.size()) return false;
+		for (size_t i = 0; i < a.size(); ++i)
+		{
+			wchar_t x = a[i] == L'/' ? L'\\' : a[i];
+			wchar_t y = b[i] == L'/' ? L'\\' : b[i];
+			if (towlower(x) != towlower(y)) return false;
+		}
+		return true;
+	}
+}
+
+const Mesh* Scene::FindModelMesh(const std::wstring& modelPath, uint32_t meshIndex) const
+{
+	if (modelPath.empty()) return nullptr;
+	for (size_t i = 0; i < m_meshSources.size() && i < m_meshes.size(); ++i)
+	{
+		const MeshSource& source = m_meshSources[i];
+		if (source.type == MeshSource::Type::Model && source.meshIndex == meshIndex && SameModelPath(source.modelPath, modelPath)) return m_meshes[i].get();
+	}
+	return nullptr;
+}
+
+Material* Scene::FindModelMaterial(const std::wstring& modelPath, int materialIndex) const
+{
+	if (modelPath.empty() || materialIndex < 0) return nullptr;
+	for (const auto& material : m_materials)
+	{
+		if (material->modelMaterialIndex == materialIndex && SameModelPath(material->modelPath, modelPath)) return material.get();
+	}
+	return nullptr;
+}
+
+Material* Scene::CloneMaterialUnique(const Material& source)
+{
+	Material copy = source;
+	copy.modelPath.clear();
+	copy.modelMaterialIndex = -1;
+	copy.name += " (Unique)";
+	return AddMaterial(copy);
+}
+
+size_t Scene::CountMaterialUsers(const Material* material) const
+{
+	if (material == nullptr) return 0;
+	size_t count = 0;
+	for (const auto& object : m_objects)
+	{
+		bool uses = object->GetMaterial() == material;
+		if (!uses) for (const Material* slot : object->GetSlotMaterials()) if (slot == material) { uses = true; break; }
+		if (uses) ++count;
+	}
+	return count;
+}
+
 size_t Scene::AddModel(Model&& model, const Transform& transform)
 {
-	// 메시·재질을 옮기고 새 포인터를 기억함. 인스턴스는 인덱스로 참조하므로 순서만 지키면 됨.
+	const size_t created = AddModel(static_cast<const Model&>(model), transform);
+	model.meshes.clear();
+	model.materials.clear();
+	model.images.clear();
+	model.instances.clear();
+	return created;
+}
+
+size_t Scene::AddModel(const Model& model, const Transform& transform)
+{
+	// 같은 모델(sourcePath)의 메시·재질이 이미 씬에 있으면 그것을 공유하고, 없는 것만 복사해 넣음. 인스턴스는 인덱스로 참조하므로 순서만 지키면 됨.
+	// sourcePath 가 비어 있으면(AssetManager 를 거치지 않은 모델) 공유할 키가 없으므로 매번 새로 만듦.
 	std::vector<const Mesh*> meshes;
 	meshes.reserve(model.meshes.size());
 	for (size_t i = 0; i < model.meshes.size(); ++i)
 	{
-		meshes.push_back(AddMesh(std::move(model.meshes[i]), MeshSource::FromModel(model.sourcePath, static_cast<uint32_t>(i))));
+		const Mesh* shared = FindModelMesh(model.sourcePath, static_cast<uint32_t>(i));
+		if (shared == nullptr)
+		{
+			Mesh copy = model.meshes[i];
+			shared = AddMesh(std::move(copy), MeshSource::FromModel(model.sourcePath, static_cast<uint32_t>(i)));
+		}
+		meshes.push_back(shared);
 	}
 	std::vector<const Material*> materials;
 	materials.reserve(model.materials.size());
-	for (const Material& material : model.materials)
+	for (size_t i = 0; i < model.materials.size(); ++i)
 	{
-		materials.push_back(AddMaterial(material));
+		const Material* shared = FindModelMaterial(model.sourcePath, static_cast<int>(i));
+		if (shared == nullptr)
+		{
+			Material copy = model.materials[i];
+			if (!model.sourcePath.empty())
+			{
+				copy.modelPath = model.sourcePath;
+				copy.modelMaterialIndex = static_cast<int>(i);
+			}
+			shared = AddMaterial(copy);
+		}
+		materials.push_back(shared);
 	}
-	for (ModelImage& image : model.images)
-	{
-		AddImage(image.name, std::move(image.encoded));
-	}
+	AddModelImages(model);   // 이미 있는 이미지는 건너뜀
 
 	// 11-F단계: 노드가 여럿이면 빈 루트 오브젝트 하나를 만들어 그 아래에 인스턴스를 자식으로 둠 (유니티가 모델 프리팹을 놓을 때와 같음).
 	// 루트가 placement(transform)를 갖고 자식은 로컬 = pre(노드 월드 행렬) 이므로 결과 월드 행렬은 이전(pre × placement)과 정확히 같다.
@@ -391,11 +476,6 @@ size_t Scene::AddModel(Model&& model, const Transform& transform)
 		object.GetTransform().SetPreTransform(XMLoadFloat4x4(&instance.world));
 		++created;
 	}
-
-	model.meshes.clear();
-	model.materials.clear();
-	model.images.clear();
-	model.instances.clear();
 	return created;
 }
 
@@ -426,8 +506,3 @@ const std::vector<uint8_t>* Scene::FindImage(const std::string& name) const
 	return found == m_images.end() ? nullptr : &found->second;
 }
 
-size_t Scene::AddModel(const Model& model, const Transform& transform)
-{
-	Model copy = model;
-	return AddModel(std::move(copy), transform);
-}

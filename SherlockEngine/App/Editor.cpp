@@ -1060,7 +1060,44 @@ void Editor::DrawInspector(Engine& engine)
 		}
 		ImGui::EndCombo();
 	}
-	if (!object.GetSlotMaterials().empty()) ImGui::TextDisabled("submesh slots: %zu (edit in Materials window)", object.GetSlotMaterials().size());
+	if (!object.GetSlotMaterials().empty())
+	{
+		ImGui::TextDisabled("submesh slots: %zu (edit in Materials window)", object.GetSlotMaterials().size());
+		// 모델 재질은 같은 모델을 놓은 모든 오브젝트가 공유함 — 편집하면 모두 바뀜. 이 오브젝트만 다르게 하려면 슬롯별로 분리함.
+		if (object.GetMesh() != nullptr && ImGui::TreeNode("Shared slot materials"))
+		{
+			std::vector<uint32_t> usedSlots;
+			for (const Submesh& submesh : object.GetMesh()->GetSubmeshes())
+				if (std::find(usedSlots.begin(), usedSlots.end(), submesh.materialSlot) == usedSlots.end()) usedSlots.push_back(submesh.materialSlot);
+			for (uint32_t slot : usedSlots)
+			{
+				const Material* slotMaterial = object.GetMaterialForSlot(slot);
+				if (slotMaterial == nullptr) continue;
+				const size_t users = scene.CountMaterialUsers(slotMaterial);
+				ImGui::PushID(static_cast<int>(slot));
+				ImGui::Text("#%u %s", slot, slotMaterial->name.c_str());
+				ImGui::SameLine();
+				if (users > 1)
+				{
+					ImGui::TextDisabled("(shared by %zu)", users);
+					ImGui::SameLine();
+					if (ImGui::SmallButton("Make unique"))
+					{
+						Material* unique = scene.CloneMaterialUnique(*slotMaterial);
+						std::vector<const Material*> slots = object.GetSlotMaterials();
+						if (slot < slots.size()) slots[slot] = unique;
+						object.SetSlotMaterials(std::move(slots));
+					}
+				}
+				else
+				{
+					ImGui::TextDisabled("(unique)");
+				}
+				ImGui::PopID();
+			}
+			ImGui::TreePop();
+		}
+	}
 	if (current >= 0)
 	{
 		Material& material = *materials[current];

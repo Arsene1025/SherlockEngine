@@ -101,8 +101,18 @@ public:
 	// 11-F단계: 노드가 둘 이상이면 빈 루트 오브젝트(파일 이름)를 먼저 만들고 인스턴스를 그 자식으로 둠 — 반환값에 루트가 포함됨.
 	// 루트가 transform 을 갖고 자식은 pre(노드 행렬)만 가지므로 월드 행렬은 이전 방식(pre × transform)과 같음.
 	size_t AddModel(Model&& model, const Transform& transform);
-	// 10단계: AssetManager 캐시의 모델을 복사해 넣음 (원본은 그대로 남아 다음 전환 때 다시 쓰임).
+	// 10단계: AssetManager 캐시의 모델을 넣음 (원본은 그대로 남아 다음 전환 때 다시 쓰임). 씬에 없는 메시·재질만 복사하고 있는 것은 공유함 (아래).
 	size_t AddModel(const Model& model, const Transform& transform);
+
+	// ---- 모델 자원 공유 ----
+	// AddModel 은 같은 모델(sourcePath)의 메시·재질을 씬에 한 벌만 두고 모든 배치가 공유함 (Renderer 의 GPU 캐시도 포인터 키라 한 벌만 생김).
+	// 재질 편집은 공유 재질에 그대로 적용됨(유니티의 에셋 편집과 같음). 한 오브젝트만 다르게 하려면 CloneMaterialUnique 로 복사해 슬롯에 넣음.
+	const Mesh* FindModelMesh(const std::wstring& modelPath, uint32_t meshIndex) const;
+	Material* FindModelMaterial(const std::wstring& modelPath, int materialIndex) const;
+	// source 를 복사해 씬에 새 재질로 추가함. 모델 출처 키는 지움(더는 공유 대상이 아님). 이름 뒤에 " (Unique)".
+	Material* CloneMaterialUnique(const Material& source);
+	// material 을 기본 재질이나 슬롯 재질로 쓰는 오브젝트 수.
+	size_t CountMaterialUsers(const Material* material) const;
 
 	// 모든 오브젝트·메시·재질·이미지·조명을 버림. Renderer 캐시가 이 포인터들을 키로 쓰므로
 	// 먼저 Renderer::InvalidateScene 을 호출해야 함.

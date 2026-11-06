@@ -1336,7 +1336,7 @@ void EditorApp::PlaceModel(const std::wstring& relativePath, const XMFLOAT3& pos
 	Transform placement;
 	placement.SetPosition(position.x, position.y - model->bounds.min.y, position.z);
 	const size_t first = scene.GetObjects().size();
-	const size_t created = scene.AddModel(*model, placement);   // 메시·재질·이미지를 복사함 — 같은 모델을 두 번 놓으면 두 벌이 생김
+	const size_t created = scene.AddModel(*model, placement);   // 같은 모델을 다시 놓으면 씬에 이미 있는 메시·재질을 공유함 (오브젝트만 늘어남)
 
 	// 이름: "<파일명> N". 노드가 여럿이면 "<파일명> N/<노드명>". 번호는 AddPrimitive 처럼 같은 접두어를 가진 오브젝트 수로 정함.
 	std::string stem = Log::ToUtf8(relativePath.c_str());

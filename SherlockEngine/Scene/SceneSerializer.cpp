@@ -103,6 +103,11 @@ namespace
 		j["alphaCutoff"] = m.alphaCutoff;
 		j["wireframe"] = m.wireframe;
 		j["doubleSided"] = m.doubleSided;
+		if (m.modelMaterialIndex >= 0 && !m.modelPath.empty())   // 모델 공유 재질의 출처 (없으면 키 자체를 쓰지 않아 이전 파일과 같은 모양)
+		{
+			j["modelPath"] = ToUtf8(m.modelPath);
+			j["modelMaterial"] = m.modelMaterialIndex;
+		}
 		return j;
 	}
 
@@ -135,6 +140,8 @@ namespace
 		m.alphaCutoff = j.value("alphaCutoff", 0.0f);
 		m.wireframe = j.value("wireframe", false);
 		m.doubleSided = j.value("doubleSided", false);
+		m.modelPath = ToWide(j.value("modelPath", ""));
+		m.modelMaterialIndex = m.modelPath.empty() ? -1 : j.value("modelMaterial", -1);
 		return m;
 	}
 
@@ -284,8 +291,13 @@ namespace
 				Log::Warn("씬 로드: 모델 메시를 찾지 못함 (%s #%u)", j.value("path", "").c_str(), source.meshIndex);
 				return nullptr;
 			}
-			Mesh copy = model->meshes[source.meshIndex];
-			const Mesh* created = scene.AddMesh(std::move(copy), source);
+			// 같은 모델 메시가 이미 씬에 있으면 공유함 (이전 파일의 중복 항목도 하나로 합쳐짐. 인덱스 자리는 그대로 유지됨).
+			const Mesh* created = scene.FindModelMesh(source.modelPath, source.meshIndex);
+			if (created == nullptr)
+			{
+				Mesh copy = model->meshes[source.meshIndex];
+				created = scene.AddMesh(std::move(copy), source);
+			}
 			if (std::find(loadedModels.begin(), loadedModels.end(), source.modelPath) == loadedModels.end())
 			{
 				scene.AddModelImages(*model);
@@ -305,6 +317,26 @@ namespace
 		source.color = ToFloat4(j.value("color", json()), source.color);
 		Mesh mesh;
 		return source.CreatePrimitive(mesh) ? scene.AddMesh(std::move(mesh), source) : nullptr;
+	}
+
+	// 공유 키가 생기기 전에 저장된 씬 파일 대응: 모델 메시를 쓰는 오브젝트의 슬롯 재질은 Scene::AddModel 이 "슬롯 번호 = 모델 재질 번호"로
+	// 넣었으므로 거기서 키를 되살림. 그래야 로드한 씬에 같은 모델을 다시 놓을 때 재질이 공유됨. 이미 키가 있거나 다른 재질이 그 키를 가졌으면 건드리지 않음.
+	void BackfillModelMaterialKeys(Scene& scene)
+	{
+		for (const auto& object : scene.GetObjects())
+		{
+			const MeshSource* source = scene.GetMeshSource(object->GetMesh());
+			if (source == nullptr || source->type != MeshSource::Type::Model) continue;
+			const std::vector<const Material*>& slots = object->GetSlotMaterials();
+			for (size_t i = 0; i < slots.size(); ++i)
+			{
+				Material* material = const_cast<Material*>(slots[i]);   // 씬이 소유함. 키만 채움
+				if (material == nullptr || material->modelMaterialIndex >= 0) continue;
+				if (scene.FindModelMaterial(source->modelPath, static_cast<int>(i)) != nullptr) continue;
+				material->modelPath = source->modelPath;
+				material->modelMaterialIndex = static_cast<int>(i);
+			}
+		}
 	}
 
 	// 포인터 → 인덱스 (없으면 −1). 씬 전체 기준 맵이거나 서브트리의 지역 목록임.
@@ -678,6 +710,7 @@ bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager&
 	}
 
 	CreateObjects(scene, root.value("objects", json::array()), true, meshes, materials);
+	BackfillModelMaterialKeys(scene);
 
 	ApplyAmbientAndClear(scene, root);
 	const json env = root.value("environment", json());

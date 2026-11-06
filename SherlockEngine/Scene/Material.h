@@ -56,4 +56,10 @@ struct Material
 	// 파이프라인 상태에 영향을 주는 옵션. 값이 다르면 다른 PSO를 사용함.
 	bool wireframe = false;
 	bool doubleSided = false;   // 뒷면 컬링 끔
+
+	// 모델에서 온 공유 재질의 출처 (Assets 기준 모델 경로 + 모델 안 재질 번호). Scene::AddModel 이 같은 모델을 다시 놓을 때
+	// 이 키로 기존 재질을 찾아 공유함. 비어 있으면(-1) 공유 대상이 아님 — 직접 만든 재질이거나 "Make unique" 로 분리된 복사본.
+	// 재질 JSON 에 함께 저장되어 씬을 불러온 뒤에도 공유가 이어짐.
+	std::wstring modelPath;
+	int modelMaterialIndex = -1;
 };
