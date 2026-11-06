@@ -21,9 +21,9 @@ Engine::~Engine()
 bool Engine::Initialize(const Config& config, const Desc& desc)
 {
 	m_config = config;
-	m_scene.SetAssets(&m_assets);   // 2026-10-15: Scene::Instantiate 가 프리팹의 모델 메시를 읽을 때 씀
+	m_scene.SetAssets(&m_assets);   // Scene::Instantiate 가 프리팹의 모델 메시를 읽을 때 씀
 
-	// ---- 백엔드: 설정 파일이 정함 (10단계 완료 기준). 값이 올바르지 않으면 D3D11 ----
+	// ---- 백엔드: 설정 파일이 정함. 값이 올바르지 않으면 D3D11 ----
 	const std::string backend = m_config.GetString("engine.backend", "d3d11");
 	if (_stricmp(backend.c_str(), "d3d12") == 0) m_backend = RHI::Backend::D3D12;
 	else if (_stricmp(backend.c_str(), "d3d11") == 0) m_backend = RHI::Backend::D3D11;
@@ -47,7 +47,7 @@ bool Engine::Initialize(const Config& config, const Desc& desc)
 		Log::Error("Engine : Renderer 초기화 실패");
 		return false;
 	}
-	// 2026/10/20 HDR: 게임 모드의 HDR 타깃은 백버퍼와 같은 크기. 에디터는 씬 뷰 크기를 따로 알려 주므로 이 값을 쓰지 않음.
+	// HDR: 게임 모드의 HDR 타깃은 백버퍼와 같은 크기. 에디터는 씬 뷰 크기를 따로 알려 주므로 이 값을 쓰지 않음.
 	m_renderer.SetOutputSize(static_cast<uint32_t>(desc.width), static_cast<uint32_t>(desc.height));
 
 	// ImGui 렌더러 백엔드(DX11/DX12)는 Device 가 고름. 컨텍스트는 앱이 먼저 만들어 두어야 함.
@@ -97,8 +97,8 @@ float Engine::BeginFrame()
 
 void Engine::Render()
 {
-	// 6단계 프레임 구조: BeginFrame → [ShadowPass → MainPass(HDR) → TonemapPass → UIPass] → EndFrame(Present).
-	// 11-C단계부터 Hierarchy 에서 카메라 오브젝트를 고르면 MainPass 뒤에 PreviewPass 가 하나 더 붙음 (Renderer::Render).
+	// 프레임 구조: BeginFrame → [ShadowPass → MainPass(HDR) → TonemapPass → UIPass] → EndFrame(Present).
+	// Hierarchy 에서 카메라 오브젝트를 고르면 MainPass 뒤에 PreviewPass 가 하나 더 붙음 (Renderer::Render).
 	ProfileScope cpuScope("Engine::Render");
 	m_device->BeginFrame();
 	RHI::CommandList& cmd = m_device->GetCommandList();
@@ -141,6 +141,6 @@ void Engine::OnResize(int width, int height)
 {
 	if (!m_device || width <= 0 || height <= 0) return;
 	m_device->Resize(width, height);
-	m_renderer.SetOutputSize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));   // 2026/10/20 HDR
+	m_renderer.SetOutputSize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));   // HDR
 	m_camera.SetAspectRatio(static_cast<float>(width) / static_cast<float>(height));
 }

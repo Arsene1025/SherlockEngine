@@ -12,11 +12,12 @@
 
 using namespace DirectX;   // 이 파일 안에서만
 
-// 2026/10/23: HDR 구간 후처리 (블러 → 블룸). Renderer 의 멤버 함수를 파일만 나눠 구현함 — Renderer.cpp 가 너무 길어지지 않게.
+// HDR 구간 후처리 (블러 → 블룸). Renderer 의 멤버 함수를 파일만 나눠 구현함 — Renderer.cpp 가 너무 길어지지 않게.
 //
 // 순서는 고정임 (사용자가 바꿀 수 없음): 선형 HDR 값에서 해야 1 을 넘는 밝기가 살아 있으므로 톤매핑 앞에 둠.
-// 효과 하나를 추가할 때: PostProcessSettings 에 필드 → 여기 ApplyHdrEffects 에 호출 하나 → (새 모드가 필요하면) PostPixelShader.hlsl 에 모드 하나.
-// 결과는 항상 hdr 텍스처에 "제자리"로 남으므로 톤 패스는 효과가 몇 개 켜졌는지 모름.
+// 효과 하나를 추가할 때: PostProcessSettings 에 필드 → 여기 ApplyHdrEffects 에 호출 하나 → (새 모드가
+// 필요하면) PostPixelShader.hlsl 에 모드 하나. 결과는 항상 hdr 텍스처에 "제자리"로 남으므로 톤 패스는 효과가
+// 몇 개 켜졌는지 모름.
 
 namespace
 {
@@ -112,8 +113,9 @@ void Renderer::DestroyPostScratch(PostScratch& scratch)
 void Renderer::RequestPostCapture()
 {
 	m_postCaptureRequested = true;
-	// 썸네일 텍스처는 여기(UI 를 만드는 중)에서 만들고 바꿈. Render 에서 바꾸면 이 프레임의 UI 가 이미 집어 든 ImGui 텍스처 ID(D3D11 은 SRV 포인터)가
-	// UI 패스가 그리기 전에 해제됨. 씬 뷰 텍스처(SetSceneTarget)를 UI 단계에서 바꾸는 것과 같은 규칙임.
+	// 썸네일 텍스처는 여기(UI 를 만드는 중)에서 만들고 바꿈. Render 에서 바꾸면 이 프레임의 UI 가 이미 집어
+	// 든 ImGui 텍스처 ID(D3D11 은 SRV 포인터)가 UI 패스가 그리기 전에 해제됨. 씬 뷰 텍스처(SetSceneTarget)를
+	// UI 단계에서 바꾸는 것과 같은 규칙임.
 	if (IsOffscreen()) EnsureStageThumbs(m_sceneWidth, m_sceneHeight);
 }
 
@@ -168,8 +170,9 @@ void Renderer::CapturePostStage(RHI::CommandList& cmd, uint32_t stage, const cha
 {
 	PostStageThumb& thumb = m_stageThumbs[stage];
 	if (!thumb.texture.IsValid() || m_thumbWidth == 0) return;
-	// 지금까지의 HDR 결과를 노출·ACES 로 톤매핑해 작은 텍스처에 그림 (톤 패스의 셰이더가 입력/출력 크기 비로 읽음 = 최근접 축소).
-	// 단계 0~2 는 색 효과를 건너뜀 — "이 효과가 한 일"만 보이게. 마지막 Final 만 색 효과까지 포함.
+	// 지금까지의 HDR 결과를 노출·ACES 로 톤매핑해 작은 텍스처에 그림 (톤 패스의 셰이더가 입력/출력 크기 비로
+	// 읽음 = 최근접 축소). 단계 0~2 는 색 효과를 건너뜀 — "이 효과가 한 일"만 보이게. 마지막 Final 만 색
+	// 효과까지 포함.
 	RenderTonemapPass(cmd, hdrSet, thumb.texture, m_stageThumbStates[stage], ResourceState::ShaderResource, name,
 		hdrWidth, hdrHeight, m_thumbWidth, m_thumbHeight, skipGrade);
 	m_stageThumbStates[stage] = ResourceState::ShaderResource;

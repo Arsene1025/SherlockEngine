@@ -1,9 +1,9 @@
 #include "Common.hlsli"
 
-// 2026-10-20: 톤매핑 패스 픽셀 셰이더 (ScreenVertexShader 와 짝). HDR 씬 텍스처를 읽어 노출·ACES 를 적용함.
+// 톤매핑 패스 픽셀 셰이더 (ScreenVertexShader 와 짝). HDR 씬 텍스처를 읽어 노출·ACES 를 적용함.
 // 샘플러 없이 Load 를 쓰는 이유: 출력과 입력이 같은 크기면 1:1 대응이라 필터가 필요 없음.
-// 2026/10/23: 출력이 입력보다 작을 수 있음 (단계별 썸네일). 좌표를 postView 의 입력/출력 비로 늘려 읽음 — 같은 크기면 비가 1 이라 이전과 같음.
-// 결과는 선형 — 이 패스의 sRGB RTV 가 인코딩함.
+// 출력이 입력보다 작을 수 있음 (단계별 썸네일). 좌표를 postView 의 입력/출력 비로 늘려 읽음 — 같은 크기면
+// 비가 1 이라 이전과 같음. 결과는 선형 — 이 패스의 sRGB RTV 가 인코딩함.
 Texture2D sceneHdr : register(t13);
 
 float4 PS_Tonemap(float4 position : SV_POSITION) : SV_TARGET
@@ -18,7 +18,7 @@ float4 PS_Tonemap(float4 position : SV_POSITION) : SV_TARGET
     }
     float3 color = ApplyExposureToneMap(hdr);
 
-    // 2026/10/23: 색 효과 (uber). 톤매핑을 끝낸 선형 값에 적용하고, 단계별 썸네일의 "효과 전" 그림은 postGrade.y 로 건너뜀.
+    // 색 효과 (uber). 톤매핑을 끝낸 선형 값에 적용하고, 단계별 썸네일의 "효과 전" 그림은 postGrade.y 로 건너뜀.
     // 새 색 효과(대비·채도·비네트·그레인 …)는 여기에 이어 붙임 — 패스도 텍스처도 늘지 않음.
     if (postGrade.y < 0.5f)
     {

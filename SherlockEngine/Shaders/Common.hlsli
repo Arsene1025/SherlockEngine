@@ -2,13 +2,13 @@
 // 상수버퍼 레이아웃은 Graphics/ShaderConstants.h 와 바이트 단위로 같아야 함.
 // C++ 쪽 static_assert와 Debug 빌드의 D3DReflect 대조로 이를 검사함.
 //
-// register(b#, space0) 표기는 SM 5.0 fxc가 error X3721로 거부함 (5.1 이상만 지원). 원문의
-// "fxc가 무시한다"는 설명은 틀렸음. space는 8단계에서 SM 5.1/6.0으로 올릴 때 넣음.
+// register(b#, space0) 표기는 SM 5.0 fxc가 error X3721로 거부함 (5.1 이상만 지원).
+// space 는 SM 5.1/6.0 으로 올릴 때 넣음.
 //
-// 레지스터 배정 (6단계, ShaderConstants.h 와 동일):
+// 레지스터 배정 (ShaderConstants.h 와 동일):
 //   재질 셋:   t0..t7  s0..s3   — 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 재질 샘플러 s0
 //   프레임 셋: t8..t15 s4..s7   — 그림자 맵 t8, 비교 샘플러 s4, 스카이박스 t9, 환경 샘플러 s5,
-//                                IBL 확산 조도 t10, IBL 반사 프리필터 t11, BRDF LUT t12 (2026-10-08)
+//                                IBL 확산 조도 t10, IBL 반사 프리필터 t11, BRDF LUT t12
 #ifndef SHERLOCK_COMMON_HLSLI
 #define SHERLOCK_COMMON_HLSLI
 
@@ -37,7 +37,7 @@ struct LightData
 
     float outerConeCos;
 
-    //shadow옵션
+    // shadow옵션
     uint castShadows;
     int shadowIndex;
     float padding;
@@ -52,13 +52,14 @@ cbuffer PerFrame : register(b0)
     float3 cameraPosition;
     float time;
     float4 shadowParams;      // x = 1/맵 크기, y = 깊이 바이어스, z = 세기(0..1), w = 사용 여부
-    float4 debugParams;       // 11단계: x = 디버그 뷰 (0 조명, 1 알베도, 2 노멀, 3 깊이, 4 그림자, 5 UV, 6 금속성/거칠기, 7 AO), y = 깊이 범위
-    float4 environmentParams; // 2026-10-08: x = IBL 세기, y = 반사 큐브 밉 수, z = 확산 조도를 읽을 밉, w = 환경 있음
-    float4 outputParams;      // 2026-10-08: x = 노출, y = 톤매핑, z = BRDF LUT 있음
-    float4 shadowExtra;       // 2026/10/28: x = 노말 섀도 오프셋 (노말맵이 그림자 UV 를 미는 배율)
+    float4 debugParams;       // x = 디버그 뷰 (0 조명, 1 알베도, 2 노멀, 3 깊이, 4 그림자, 5 UV, 6 금속성/거칠기, 7 AO), y = 깊이 범위
+    float4 environmentParams; // x = IBL 세기, y = 반사 큐브 밉 수, z = 확산 조도를 읽을 밉, w = 환경 있음
+    float4 outputParams;      // x = 노출, y = 톤매핑, z = BRDF LUT 있음
+    float4 shadowExtra;       // x = 노말 섀도 오프셋 (노말맵이 그림자 UV 를 미는 배율)
 }
 
-// b4: 후처리 패스 파라미터. 후처리 셋(톤 패스·블러·블룸)만 바인딩함. (80바이트, ShaderConstants.h 의 PostParamsConstants)
+// b4: 후처리 패스 파라미터. 후처리 셋(톤 패스·블러·블룸)만 바인딩함. (80바이트, ShaderConstants.h 의
+// PostParamsConstants)
 cbuffer PostParams : register(b4)
 {
     float4 postPass;          // x = 모드 (1 블러, 2 블룸 밝기 추출+축소, 3 축소, 4 확대), y,z = 블러 방향 (텍셀 단위)
@@ -111,12 +112,12 @@ cbuffer Shadows : register(b6)
 cbuffer Material : register(b3)
 {
     float4 baseColor;
-    float3 emissive;          // 2026-10-08 PBR: 발광 계수 (선형)
+    float3 emissive;          // PBR: 발광 계수 (선형)
     float metallic;           // 0 = 유전체, 1 = 금속
     float2 uvScale;
     float unlit;
-    float normalStrength;     // 6단계: 노멀 맵 xy 배율. 0 = 무시
-    float alphaCutoff;        // 9단계: 알파 컷아웃. 0 = 끔
+    float normalStrength;     // 노멀 맵 xy 배율. 0 = 무시
+    float alphaCutoff;        // 알파 컷아웃. 0 = 끔
     float roughness;          // 지각적 거칠기. α = roughness²
     float occlusionStrength;  // AO 텍스처를 얼마나 따를지
     float materialPadding;
@@ -125,7 +126,7 @@ cbuffer Material : register(b3)
 // 재질 셋 (Layout_Material)
 Texture2D albedoTexture : register(t0);
 Texture2D normalTexture : register(t1);
-Texture2D metallicRoughnessTexture : register(t2);   // 2026-10-08: G = 거칠기, B = 금속성 (glTF)
+Texture2D metallicRoughnessTexture : register(t2);   // G = 거칠기, B = 금속성 (glTF)
 Texture2D occlusionTexture : register(t3);           // R = AO
 Texture2D emissiveTexture : register(t4);            // sRGB
 SamplerState albedoSampler : register(s0);
@@ -133,13 +134,14 @@ SamplerState albedoSampler : register(s0);
 // 프레임 셋 (Layout_Frame). 그림자 맵은 R32_FLOAT 로 읽는 깊이 텍스처.
 Texture2D shadowMap : register(t8);
 SamplerComparisonState shadowSampler : register(s4);
-// 방향광 CSM 전용 아틀라스 (캐스케이드마다 해상도가 다름). ShadowViewData.params.w == 1 인 뷰가 읽음. 같은 비교 샘플러(s4)를 씀.
+// 방향광 CSM 전용 아틀라스 (캐스케이드마다 해상도가 다름). ShadowViewData.params.w == 1 인 뷰가 읽음. 같은
+// 비교 샘플러(s4)를 씀.
 Texture2D csmMap : register(t14);
-// 2026-10-08: 씬의 스카이박스 큐브맵 (없으면 1×1 검은 큐브). 방향 벡터로 샘플함 — 길이는 상관없음.
+// 씬의 스카이박스 큐브맵 (없으면 1×1 검은 큐브). 방향 벡터로 샘플함 — 길이는 상관없음.
 // 프레임 셋에 둔 이유: 스카이박스뿐 아니라 이후 반사·환경광(IBL)도 모든 재질이 같은 큐브를 읽기 때문.
 TextureCube environmentMap : register(t9);
 SamplerState environmentSampler : register(s5);
-// 2026-10-08: IBL. 셋 다 같은 선형 Clamp 샘플러(s5)로 읽음.
+// IBL. 셋 다 같은 선형 Clamp 샘플러(s5)로 읽음.
 //   t10 확산 조도: 표면 노멀 방향의 코사인 가중 평균 복사휘도. albedo 를 곱하면 곧 확산 반사광 (π 는 이미 들어 있음)
 //   t11 반사 프리필터: 반사 방향으로 읽음. 밉 0 = 거칠기 0(거울), 마지막 밉 = 거칠기 1
 //   t12 BRDF LUT: u = N·V, v = 1 − roughness. RG = F0 에 곱할 값과 더할 값 (Karis 의 split-sum)
@@ -167,7 +169,7 @@ struct VSOutput
     float4 tangent : TANGENT0;
 };
 
-// 2026-10-08: 스카이박스 VS → PS (SkyboxVertexShader / SkyboxPixelShader).
+// 스카이박스 VS → PS (SkyboxVertexShader / SkyboxPixelShader).
 struct SkyVSOutput
 {
     float4 position : SV_POSITION;
@@ -180,18 +182,19 @@ float3 SafeNormalize(float3 value, float3 fallback)
     return (lengthSquared > EPSILON * EPSILON) ? value * rsqrt(lengthSquared) : fallback;
 }
 
-// 2026-11-04: 월드 행렬이 반사(행렬식 < 0, 예: scale -1 미러)이면 노멀((W⁻¹)ᵀ)과 탄젠트(W)가 따로 변환되어 cross(N, T) 의 방향이 뒤집힘.
-// 그래서 탄젠트 손잡이 w 에 행렬식의 부호를 곱해야 B = cross(N, T) * w 가 표면을 제대로 따라감. 스케일 0 이어도 0 이 되지 않도록 sign() 대신 삼항을 씀.
-// 행렬식 부호는 전치해도 같아서 C++ 가 전치해 올린 world 를 그대로 써도 됨. 탄젠트를 출력하는 모든 VS(디퍼드 G-buffer 포함)가 이 함수를 거칠 것.
+// 월드 행렬이 반사(행렬식 < 0, 예: scale -1 미러)이면 노멀((W⁻¹)ᵀ)과 탄젠트(W)가 따로 변환되어 cross(N, T) 의
+// 방향이 뒤집힘. 그래서 탄젠트 손잡이 w 에 행렬식의 부호를 곱해야 B = cross(N, T) * w 가 표면을 제대로
+// 따라감. 스케일 0 이어도 0 이 되지 않도록 sign() 대신 삼항을 씀. 행렬식 부호는 전치해도 같아서 C++ 가 전치해
+// 올린 world 를 그대로 써도 됨. 탄젠트를 출력하는 모든 VS(디퍼드 G-buffer 포함)가 이 함수를 거칠 것.
 float TangentHandedness(float tangentW, matrix worldMatrix)
 {
     const float det = dot(cross(worldMatrix[0].xyz, worldMatrix[1].xyz), worldMatrix[2].xyz);
     return det < 0.0f ? -tangentW : tangentW;
 }
 
-// 2026-10-08: 최종 출력. 노출을 곱하고, 켜져 있으면 ACES 근사(Narkowicz 2016)로 [0, ∞) → [0, 1] 로 누름.
+// 최종 출력. 노출을 곱하고, 켜져 있으면 ACES 근사(Narkowicz 2016)로 [0, ∞) → [0, 1] 로 누름.
 // 꺼져 있으면 1 을 넘는 값은 출력 타깃에서 잘림. 결과는 선형 — sRGB RTV 가 인코딩함.
-// 2026/10/20 HDR: 이 함수는 TonemapPixelShader 만 부름 (메인·스카이 PS 는 선형 HDR 값을 FP16 타깃에 그대로 씀).
+// HDR: 이 함수는 TonemapPixelShader 만 부름 (메인·스카이 PS 는 선형 HDR 값을 FP16 타깃에 그대로 씀).
 // 그래서 "sRGB RTV" 는 톤 패스의 출력 뷰임.
 float3 ApplyExposureToneMap(float3 color)
 {

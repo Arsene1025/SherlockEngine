@@ -46,7 +46,7 @@
 // (3) 배열은 "쓰는 만큼"만 섞음. rtvCount 뒤의 슬롯과 attributeCount 뒤의
 //     속성은 의미가 없으므로 값이 달라도 같은 PSO로 봐야 함.
 //
-// C++20 (2026-09-28): 하위 Desc 의 비교 함수(EqRasterizer / EqDepthStencil / EqRtBlend /
+// C++20: 하위 Desc 의 비교 함수(EqRasterizer / EqDepthStencil / EqRtBlend /
 // EqVertexAttribute / FloatEq)는 삭제하고 헤더의 `operator== = default` 를 씀. 해시 함수는
 // 그대로임 — 표준에 "기본 해시"는 없고, (3)의 "쓰는 만큼만" 규칙은 어차피 손으로 써야 함.
 // float 비교 의미가 바뀐 지점: 예전 FloatEq 는 비트 비교(±0 만 예외)였고, 지금은 값 비교임.

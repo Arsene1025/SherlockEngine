@@ -2,9 +2,10 @@
 #include "Scene/Script.h"
 
 // Rotator — 에디터의 New Script 로 만든 스크립트 (유니티 MonoBehaviour / 언리얼 컴포넌트).
-// 선언은 여기, 구현은 Rotator.cpp. 다른 스크립트가 #include "Rotator.h" 뒤 GetBehaviour<Rotator>() 로 이 클래스를 부를 수 있다.
-// 다른 스크립트를 참조할 때는 여기서 전방 선언(class Other;)만 하고 .cpp 에서 include 한다 (순환 include 방지).
-// 엔진 컴포넌트(Rigidbody 등)는 #include "Scene/Rigidbody.h" 뒤 GetComponent<Rigidbody>().
+// 선언은 여기, 구현은 Rotator.cpp. 다른 스크립트가 #include "Rotator.h" 뒤 GetBehaviour<Rotator>() 로 이
+// 클래스를 부를 수 있다. 다른 스크립트를 참조할 때는 여기서 전방 선언(class Other;)만 하고 .cpp 에서 include
+// 한다 (순환 include 방지). 엔진 컴포넌트(Rigidbody 등)는 #include "Scene/Rigidbody.h" 뒤
+// GetComponent<Rigidbody>().
 class Rotator : public Script
 {
 public:

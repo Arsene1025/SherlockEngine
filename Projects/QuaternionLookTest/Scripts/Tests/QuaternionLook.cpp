@@ -50,7 +50,8 @@ void QuaternionLook::Update(float)
 	q = XMQuaternionNormalize(q);
 	XMStoreFloat4(&m_q, q);
 
-	// 쿼터니언 → 회전 행렬 → 오브젝트 월드 회전. CameraComponent 가 이 월드 행렬을 그대로 카메라에 넘기므로 roll 이 화면에 나타남.
+	// 쿼터니언 → 회전 행렬 → 오브젝트 월드 회전. CameraComponent 가 이 월드 행렬을 그대로 카메라에 넘기므로
+	// roll 이 화면에 나타남.
 	GetGameObject().SetWorldRotation(XMMatrixRotationQuaternion(q));
 
 	if (logEvery > 0 && m_frame % logEvery == 0)

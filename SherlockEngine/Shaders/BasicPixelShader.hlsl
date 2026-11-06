@@ -34,7 +34,8 @@ float SampleShadowViewCoverage(uint viewIndex, float3 worldPosition, float3 geom
     const float3 ndc = clip.xyz / clip.w;
     float2 local = float2(ndc.x * 0.5f + 0.5f, -ndc.y * 0.5f + 0.5f);
 
-    // (3) 노말 섀도: 노멀 차이를 같은 행렬의 방향(w = 0)으로 옮겨 UV 에 더함. shadowExtra.x(에디터의 Normal offset)로 조절함.
+    // (3) 노말 섀도: 노멀 차이를 같은 행렬의 방향(w = 0)으로 옮겨 UV 에 더함. shadowExtra.x(에디터의 Normal
+    // offset)로 조절함.
     //     직교면 w = 1 이라 예전 계산과 같음.
     const float4 deltaClip = mul(float4(normalDelta, 0.0f), view.viewProj);
     local += deltaClip.xy / clip.w * float2(0.5f, -0.5f) * shadowExtra.x;
@@ -53,7 +54,8 @@ float SampleShadowViewCoverage(uint viewIndex, float3 worldPosition, float3 geom
         const float depth = ndc.z - view.params.x;   // 수신자 깊이에서 바이어스를 뺌(자기 그림자 방지)
 
         // (6) PCF: 이웃 텍셀 25개의 비교 결과(0/1)를 평균 냄. SampleCmp 는 비교 후 보간까지 하드웨어에서 처리함.
-        //     텍스처는 변수로 고를 수 없어서 아틀라스마다 루프를 따로 둠. 분기 조건은 뷰 단위라 한 드로우 안에서 균일함.
+        //     텍스처는 변수로 고를 수 없어서 아틀라스마다 루프를 따로 둠. 분기 조건은 뷰 단위라 한 드로우
+        //     안에서 균일함.
         float lit = 0.0f;
         if (csm)
         {
@@ -135,7 +137,8 @@ float ShadowForLight(LightData light, float3 worldPosition, float3 geometricNorm
                     float coverage;
                     result = SampleShadowViewCoverage((uint)(light.shadowIndex + c), worldPosition, geometricNormal, normalDelta, 0.0f, coverage);
 
-                    // 경계 블렌딩: 캐스케이드 c 의 끝 쪽 band 구간에서 t 가 0 → 1 로 올라감. band = 그 캐스케이드 깊이 길이 × 비율.
+                    // 경계 블렌딩: 캐스케이드 c 의 끝 쪽 band 구간에서 t 가 0 → 1 로 올라감. band = 그
+                    // 캐스케이드 깊이 길이 × 비율.
                     const uint count = (uint)cascadeOrigin.w;
                     const float blend = cascadeForward.w;
                     if (blend > 0.0f)
@@ -149,7 +152,8 @@ float ShadowForLight(LightData light, float3 worldPosition, float3 geometricNorm
                         {
                             if ((uint)c + 1 < count)
                             {
-                                // 다음 캐스케이드도 읽어 섞음. 다음 뷰의 구 바깥이면(coverage 0) 섞지 않음 — 밖은 "빛 받음"이라 그림자가 거짓으로 옅어짐.
+                                // 다음 캐스케이드도 읽어 섞음. 다음 뷰의 구 바깥이면(coverage 0) 섞지 않음 —
+                                // 밖은 "빛 받음"이라 그림자가 거짓으로 옅어짐.
                                 float nextCoverage;
                                 const float next = SampleShadowViewCoverage((uint)(light.shadowIndex + c + 1), worldPosition, geometricNormal, normalDelta, 0.0f, nextCoverage);
                                 if (nextCoverage > 0.5f) result = lerp(result, next, t);
@@ -180,10 +184,11 @@ float ShadowForLight(LightData light, float3 worldPosition, float3 geometricNorm
     return result;
 }
 
-// ---- 2026-10-08: PBR (Cook-Torrance, GGX) ----
+// ---- PBR (Cook-Torrance, GGX) ----
 // 직접광: f = kd · albedo / π + D · G · F / (4 · N·L · N·V).
 // 조명 세기 관례: LightData 의 color × intensity 를 "빛에 수직인 면이 받는 조도 E" 로 봄. 그래서 BRDF 에 π 를 곱해
-// 확산항이 albedo · E · N·L 이 됨 — Blinn-Phong 시절의 albedo · N·L · radiance 와 같은 밝기라 기존 씬의 조명 값을 그대로 씀.
+// 확산항이 albedo · E · N·L 이 됨 — Blinn-Phong 시절의 albedo · N·L · radiance 와 같은 밝기라 기존 씬의 조명
+// 값을 그대로 씀.
 float DistributionGGX(float NdotH, float alpha)
 {
     // Trowbridge-Reitz. α = roughness² (Disney/Karis 의 지각적 거칠기 매핑)
@@ -260,20 +265,21 @@ float4 PS_Main(VSOutput input) : SV_TARGET
     const float4 surface = input.col * baseColor * texel;
     const float3 albedo = surface.rgb;
 
-    // 9단계: 알파 컷아웃 (glTF MASK). 나뭇잎·격자처럼 알파로 구멍을 낸 재질에 씀.
+    // 알파 컷아웃 (glTF MASK). 나뭇잎·격자처럼 알파로 구멍을 낸 재질에 씀.
     if (alphaCutoff > 0.0f)
     {
         clip(surface.a - alphaCutoff);
     }
 
     // 감마 검증용: 조명 없이 알베도를 그대로 출력함. 128 회색 텍스처가 화면에서 128로 읽혀야 함.
-    // 2026/10/20 HDR: 톤매핑이 톤 패스로 옮겨 가서 이 픽셀도 노출·ACES 를 거침 — 감마 검증은 톤매핑을 끄고 노출 1 에서 할 것.
+    // HDR: 톤매핑이 톤 패스로 옮겨 가서 이 픽셀도 노출·ACES 를 거침 — 감마 검증은 톤매핑을 끄고 노출 1 에서 할 것.
     if (unlit > 0.5f)
     {
         return float4(albedo, surface.a);
     }
 
-    // 2026-10-08: PBR 입력. 텍스처가 없으면 흰색이라 계수가 그대로 쓰임. 거칠기 하한은 GGX 의 0 나눗셈과 점광원의 바늘 같은 하이라이트를 막음.
+    // PBR 입력. 텍스처가 없으면 흰색이라 계수가 그대로 쓰임. 거칠기 하한은 GGX 의 0 나눗셈과 점광원의 바늘
+    // 같은 하이라이트를 막음.
     const float4 metalRough = metallicRoughnessTexture.Sample(albedoSampler, input.uv);
     const float metal = saturate(metallic * metalRough.b);
     const float rough = clamp(roughness * metalRough.g, 0.03f, 1.0f);
@@ -294,7 +300,7 @@ float4 PS_Main(VSOutput input) : SV_TARGET
     const float3 viewDirection = SafeNormalize(
         cameraPosition - input.worldPosition, float3(0.0f, 0.0f, -1.0f));
 
-    // 11단계: 디버그 뷰. 에디터의 Render Settings 에서 고름.
+    // 디버그 뷰. 에디터의 Render Settings 에서 고름.
     const int debugView = (int)debugParams.x;
     if (debugView == 1) return float4(albedo, 1.0f);
     if (debugView == 2) return float4(normal * 0.5f + 0.5f, 1.0f);
@@ -316,7 +322,8 @@ float4 PS_Main(VSOutput input) : SV_TARGET
     if (debugView == 7) return float4(ao, ao, ao, 1.0f);
     if (debugView == 8)
     {
-        // 캐스케이드: 0 빨강, 1 초록, 2 파랑, 3 노랑, 마지막 너머는 어두운 회색, CSM 꺼짐은 흰색. 장면을 알아보도록 알베도를 조금 섞음.
+        // 캐스케이드: 0 빨강, 1 초록, 2 파랑, 3 노랑, 마지막 너머는 어두운 회색, CSM 꺼짐은 흰색. 장면을
+        // 알아보도록 알베도를 조금 섞음.
         float3 tint = float3(1.0f, 1.0f, 1.0f);
         if (cascadeOrigin.w > 0.5f)
         {
@@ -389,6 +396,6 @@ float4 PS_Main(VSOutput input) : SV_TARGET
         finalColor += (kd * albedo + specular * PI) * irradiance;
     }
 
-    // 2026/10/20 HDR: 선형 HDR 값을 그대로 FP16 타깃에 씀 (1 을 넘어도 잘리지 않음). 노출·ACES 는 TonemapPixelShader 가 함.
+    // HDR: 선형 HDR 값을 그대로 FP16 타깃에 씀 (1 을 넘어도 잘리지 않음). 노출·ACES 는 TonemapPixelShader 가 함.
     return float4(finalColor, surface.a);
 }

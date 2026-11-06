@@ -10,8 +10,8 @@
 #include "RHI/RenderPassTypes.h"
 #include "RHI/CommandList.h"
 
-// RHI::Device — 리소스 생성과 프레임 경계. 7단계에서 3~6단계 D3D11 Device 의 공개 "핸들 API"를
-// 그대로 가상 인터페이스로 추출했음 (rendering-analysis D21: 리소스는 핸들, Device/CommandList 만 가상).
+// RHI::Device — 리소스 생성과 프레임 경계. 리소스는 핸들이고 Device/CommandList 만 가상 인터페이스임
+// (rendering-analysis D21).
 //
 // 규칙:
 //   - 이 헤더와 RHI/ 의 다른 헤더는 D3D 헤더를 include 하지 않음. 구현은 RHI/D3D11/ 과 RHI/D3D12/ 에만.
@@ -25,7 +25,7 @@ namespace RHI
 	enum class Backend : uint8_t
 	{
 		D3D11,
-		D3D12,   // 8단계
+		D3D12,
 
 	};
 
@@ -55,14 +55,16 @@ namespace RHI
 		virtual uint32_t GetFrameIndex() const = 0;
 		virtual CommandList& GetCommandList() = 0;
 
-		// 10단계: 가장 최근에 완료된 프레임의 타임스탬프. ticks[i] = 그 프레임에서 slot i 에 기록한 값 (기록 안 했으면 0),
-		// frequency = 초당 틱. 아직 어떤 프레임도 끝나지 않았으면 false. 호출해도 CPU 가 대기하지 않음 (D3D12: 펜스가 이미 지난 슬롯, D3D11: 2프레임 전 쿼리).
-		// C++20 (2026-09-28): (uint64_t*, count) → std::span. 호출자의 C 배열이 크기와 함께 넘어오므로 count 를 따로 적을 일이 없음.
-		// ticks.size() 가 kMaxTimestamps 보다 크면 kMaxTimestamps 개까지만 채움.
+		// 가장 최근에 완료된 프레임의 타임스탬프. ticks[i] = 그 프레임에서 slot i 에 기록한 값 (기록 안 했으면 0),
+		// frequency = 초당 틱. 아직 어떤 프레임도 끝나지 않았으면 false. 호출해도 CPU 가 대기하지 않음
+		// (D3D12: 펜스가 이미 지난 슬롯, D3D11: 2프레임 전 쿼리). C++20: (uint64_t*, count) → std::span.
+		// 호출자의 C 배열이 크기와 함께 넘어오므로 count 를 따로 적을 일이 없음. ticks.size() 가
+		// kMaxTimestamps 보다 크면 kMaxTimestamps 개까지만 채움.
 		virtual bool GetTimestampResults(std::span<uint64_t> ticks, uint64_t& frequency, uint64_t& frameNumber) = 0;
 
-		// 11단계: 다음 EndFrame 에서 Present 직전의 백버퍼를 CPU 로 읽음 (스크린샷). 동기 방식: 그 프레임의 EndFrame 이 GPU 를 기다림.
-		// TakeReadbackResult 는 준비된 결과(RGBA8, 위→아래, 행 간격 = width*4)를 한 번 돌려주고 비움.
+		// 다음 EndFrame 에서 Present 직전의 백버퍼를 CPU 로 읽음 (스크린샷). 동기 방식: 그 프레임의 EndFrame
+		// 이 GPU 를 기다림. TakeReadbackResult 는 준비된 결과(RGBA8, 위→아래, 행 간격 = width*4)를 한 번
+		// 돌려주고 비움.
 		virtual void RequestBackBufferReadback() = 0;
 		virtual bool TakeReadbackResult(std::vector<uint8_t>& rgba, uint32_t& width, uint32_t& height) = 0;
 
@@ -77,10 +79,11 @@ namespace RHI
 		// Dynamic: 이 프레임 슬롯의 내용을 통째로 교체 (size ≤ desc.size). Default: 전체 크기로만 갱신.
 		virtual void UpdateBuffer(BufferHandle handle, const void* data, uint32_t size) = 0;
 
-		// subresources 는 서브리소스마다 하나(GetArraySize(desc) × desc.mipLevels 개, 면 우선 순서 — ResourceDesc.h). 2D 면 밉 레벨마다 하나.
-		// 비어 있으면(기본값) 빈 텍스처. desc.dimension = TextureCube 는 정사각형 ShaderResource 전용 (2026-10-08).
-		// DepthStencil | ShaderResource 조합(그림자 맵)은 백엔드가 TYPELESS + 포맷별 뷰로 만듦.
-		// C++20 (2026-09-28): (포인터, 개수) → std::span. std::vector<TextureSubresource> 를 그대로 넘김.
+		// subresources 는 서브리소스마다 하나(GetArraySize(desc) × desc.mipLevels 개, 면 우선 순서 —
+		// ResourceDesc.h). 2D 면 밉 레벨마다 하나. 비어 있으면(기본값) 빈 텍스처. desc.dimension =
+		// TextureCube 는 정사각형 ShaderResource 전용. DepthStencil | ShaderResource 조합(그림자 맵)은
+		// 백엔드가 TYPELESS + 포맷별 뷰로 만듦. C++20: (포인터, 개수) → std::span.
+		// std::vector<TextureSubresource> 를 그대로 넘김.
 		virtual TextureHandle CreateTexture(const TextureDesc& desc, std::span<const TextureSubresource> subresources = {}) = 0;
 		virtual void DestroyTexture(TextureHandle handle) = 0;
 		// Resize 할 때마다 새로 만들어짐. 프레임을 넘겨 보관하지 말 것.
@@ -104,7 +107,7 @@ namespace RHI
 
 		// ---- ImGui 렌더러 어댑터 ----
 		// ImGui 렌더러 구현(DX11/DX12)은 그래픽스 API 마다 따로 있으므로 어느 것을 쓸지는 Device 가 정함
-		// (로드맵 7단계의 두 선택지 중 "얇은 어댑터"). App 은 ImGui 컨텍스트와 Win32 백엔드만 다룸.
+		// (얇은 어댑터 방식). App 은 ImGui 컨텍스트와 Win32 백엔드만 다룸.
 		// GetImGuiTextureId 의 반환값은 ImTextureID(ImU64) 로 캐스팅해 ImGui::Image 에 넘김. 유효하지 않으면 0.
 		virtual bool InitImGui() = 0;
 		virtual void NewFrameImGui() = 0;

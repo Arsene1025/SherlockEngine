@@ -7,13 +7,13 @@
 
 struct Model;
 
-// 에셋 관리자 (10단계): 경로 → CPU 리소스 캐시.
+// 에셋 관리자: 경로 → CPU 리소스 캐시.
 //
 // 경로는 Assets/ 기준 상대 경로("Models\\DamagedHelmet\\DamagedHelmet.glb")이고 Paths::GetAssetPath 가
-// 프로젝트 Assets → 엔진 Assets → exe 옆 Assets 순으로 찾아 실제 경로로 바꿈. 같은 경로를 두 번 요청하면 두 번째는 캐시에서 가져옴 — 씬을 전환할 때
-// Sponza 를 다시 파싱하지 않음. GPU 자원은 여기서 다루지 않음: GPU 자원은 Renderer 캐시(메시·재질·텍스처)가 맡고,
-// 이 계층은 "파일 → 메모리"만 맡음. 텍스처 파일은 Renderer 가 재질 색공간을 알아야 디코딩할 수 있으므로
-// 아직 여기로 옮기지 않았음 (Scene 이미지 바이트 경로, 9단계).
+// 프로젝트 Assets → 엔진 Assets → exe 옆 Assets 순으로 찾아 실제 경로로 바꿈. 같은 경로를 두 번 요청하면 두
+// 번째는 캐시에서 가져옴 — 씬을 전환할 때 Sponza 를 다시 파싱하지 않음. GPU 자원은 여기서 다루지 않음: GPU
+// 자원은 Renderer 캐시(메시·재질·텍스처)가 맡고, 이 계층은 "파일 → 메모리"만 맡음. 텍스처 파일은 Renderer 가
+// 재질 색공간을 알아야 디코딩할 수 있으므로 여기서 다루지 않음.
 class AssetManager
 {
 public:

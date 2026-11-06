@@ -90,7 +90,7 @@ Material* Scene::AddMaterial(const Material& material)
 GameObject& Scene::AddObject(const Mesh* mesh, const Material* material, const char* name)
 {
 	m_objects.push_back(std::make_unique<GameObject>(mesh, material, name));
-	m_objects.back()->SetId(m_nextId++);   // 2026-10-15: 안정 ID. 씬 파일에서 읽은 오브젝트는 직렬화가 곧바로 파일의 값으로 바꿈
+	m_objects.back()->SetId(m_nextId++);   // 안정 ID. 씬 파일에서 읽은 오브젝트는 직렬화가 곧바로 파일의 값으로 바꿈
 	return *m_objects.back();
 }
 
@@ -115,8 +115,9 @@ GameObject* Scene::FindObject(const std::string& name)
 void Scene::RemoveObject(size_t index)
 {
 	if (index >= m_objects.size()) return;
-	// 11-F단계: 자식도 함께 지움 (유니티와 같음. 언리얼은 떼어 내지만, 여기서 계층은 "묶어서 옮기기" 용도라 함께 지우는 쪽이 자연스러움).
-	// 서브트리를 먼저 모으고, 루트를 부모에서 떼어 낸 뒤, 벡터에서 해당 포인터들을 지움. 메시·재질은 씬이 계속 소유함 (다른 오브젝트가 쓰고 있을 수 있음).
+	// 자식도 함께 지움 (유니티와 같음. 언리얼은 떼어 내지만, 여기서 계층은 "묶어서 옮기기" 용도라 함께 지우는
+	// 쪽이 자연스러움). 서브트리를 먼저 모으고, 루트를 부모에서 떼어 낸 뒤, 벡터에서 해당 포인터들을 지움.
+	// 메시·재질은 씬이 계속 소유함 (다른 오브젝트가 쓰고 있을 수 있음).
 	std::vector<GameObject*> doomed;
 	const auto collect = [&doomed](GameObject* object, auto& self) -> void
 	{
@@ -125,7 +126,8 @@ void Scene::RemoveObject(size_t index)
 	};
 	GameObject* root = m_objects[index].get();
 	collect(root, collect);
-	// 활성 카메라의 주인이 지워지면 포인터가 dangling 이 되므로 비움 (다음 ApplyActiveCamera 가 남은 카메라 중에서 다시 고름).
+	// 활성 카메라의 주인이 지워지면 포인터가 dangling 이 되므로 비움 (다음 ApplyActiveCamera 가 남은 카메라
+	// 중에서 다시 고름).
 	for (GameObject* object : doomed)
 		for (auto& behaviour : object->GetBehaviours()) if (behaviour.get() == m_activeCamera) m_activeCamera = nullptr;
 	root->DetachFromHierarchy();   // 부모의 children 에서 빠짐. 자식 링크도 끊지만 자식들은 아래에서 함께 지워짐
@@ -181,7 +183,8 @@ void Scene::FlushDestroyed()
 {
 	if (!m_destroyPending) return;
 	m_destroyPending = false;
-	// 표시된 오브젝트 중 부모가 표시되지 않은 것(서브트리 루트)만 지움: 자손은 RemoveObject 가 함께 지움. 지우는 동안 벡터가 바뀌므로 ID 로 기억함.
+	// 표시된 오브젝트 중 부모가 표시되지 않은 것(서브트리 루트)만 지움: 자손은 RemoveObject 가 함께 지움.
+	// 지우는 동안 벡터가 바뀌므로 ID 로 기억함.
 	std::vector<uint64_t> roots;
 	for (const auto& object : m_objects)
 		if (object->IsMarkedForDestroy() && (object->GetParent() == nullptr || !object->GetParent()->IsMarkedForDestroy())) roots.push_back(object->GetId());
@@ -206,7 +209,7 @@ size_t Scene::IndexOf(const GameObject* object) const
 	return SIZE_MAX;
 }
 
-// ------------------------------------------------------------------ 11-C단계: 재생
+// ------------------------------------------------------------------ 재생
 
 void Scene::BeginPlay(Input* input, Camera* camera)
 {
@@ -232,7 +235,7 @@ void Scene::Update(float dt)
 	// 인덱스로 순회함: 컴포넌트가 재생 중 오브젝트를 추가해도(벡터 재할당) 안전함. 삭제는 순회 중에 하지 말 것.
 	for (size_t i = 0; i < m_objects.size(); ++i)
 	{
-		if (m_objects[i]->IsMarkedForDestroy()) continue;   // 2026-10-15: Destroy 가 표시한 오브젝트는 프레임 끝에 지워짐
+		if (m_objects[i]->IsMarkedForDestroy()) continue;   // Destroy 가 표시한 오브젝트는 프레임 끝에 지워짐
 		auto& behaviours = m_objects[i]->GetBehaviours();
 		for (size_t b = 0; b < behaviours.size(); ++b)
 		{
@@ -246,7 +249,7 @@ void Scene::Update(float dt)
 			if (behaviour.enabled) behaviour.Update(dt);
 		}
 	}
-	FlushDestroyed();        // 2026-10-15: 이번 프레임에 Destroy 된 오브젝트를 순회가 끝난 지금 지움
+	FlushDestroyed();        // 이번 프레임에 Destroy 된 오브젝트를 순회가 끝난 지금 지움
 	ApplyActiveCamera(dt);   // 모든 컴포넌트가 움직인 뒤 (FollowTarget 이 카메라 오브젝트를 옮긴 뒤) 카메라에 자세를 적용함
 }
 
@@ -278,7 +281,7 @@ void Scene::ApplyActiveCamera(float dt)
 	{
 		// 카메라 전환. 첫 활성화(재생 시작)는 즉시 전환하고, 그 뒤에는 새 카메라의 blendTime 동안 현재 시점에서 보간함.
 		m_blendFrom.position = camera->GetPosition();
-		XMStoreFloat4(&m_blendFrom.rotation, XMQuaternionRotationMatrix(camera->GetRotationMatrix()));   // 11-F단계: 행렬 → 쿼터니언 (보간용)
+		XMStoreFloat4(&m_blendFrom.rotation, XMQuaternionRotationMatrix(camera->GetRotationMatrix()));   // 행렬 → 쿼터니언 (보간용)
 		m_blendFrom.fovY = camera->GetFovY();
 		m_blendFromOrthoHeight = camera->GetOrthoHeight();
 		m_blendDuration = m_activeCamera != nullptr ? (std::max)(0.0f, next->blendTime) : 0.0f;
@@ -298,8 +301,9 @@ void Scene::ApplyActiveCamera(float dt)
 		pose.position.x = m_blendFrom.position.x + (pose.position.x - m_blendFrom.position.x) * t;
 		pose.position.y = m_blendFrom.position.y + (pose.position.y - m_blendFrom.position.y) * t;
 		pose.position.z = m_blendFrom.position.z + (pose.position.z - m_blendFrom.position.z) * t;
-		// 11-F단계: 회전은 쿼터니언 slerp. 이전의 yaw/pitch 별 lerp 는 roll 을 표현할 수 없고, 두 각을 따로 보간하면 수직 근처에서 경로가 휘었음.
-		// slerp 는 언제나 두 자세 사이의 최단 호를 따르므로 "yaw 를 짧은 쪽으로 감기" 처리도 필요 없음.
+		// 회전은 쿼터니언 slerp. 이전의 yaw/pitch 별 lerp 는 roll 을 표현할 수 없고, 두 각을 따로 보간하면
+		// 수직 근처에서 경로가 휘었음. slerp 는 언제나 두 자세 사이의 최단 호를 따르므로 "yaw 를 짧은 쪽으로
+		// 감기" 처리도 필요 없음.
 		const XMVECTOR from = XMLoadFloat4(&m_blendFrom.rotation);
 		const XMVECTOR to = XMLoadFloat4(&pose.rotation);
 		XMStoreFloat4(&pose.rotation, XMQuaternionNormalize(XMQuaternionSlerp(from, to, t)));
@@ -417,8 +421,9 @@ size_t Scene::AddModel(Model&& model, const Transform& transform)
 
 size_t Scene::AddModel(const Model& model, const Transform& transform)
 {
-	// 같은 모델(sourcePath)의 메시·재질이 이미 씬에 있으면 그것을 공유하고, 없는 것만 복사해 넣음. 인스턴스는 인덱스로 참조하므로 순서만 지키면 됨.
-	// sourcePath 가 비어 있으면(AssetManager 를 거치지 않은 모델) 공유할 키가 없으므로 매번 새로 만듦.
+	// 같은 모델(sourcePath)의 메시·재질이 이미 씬에 있으면 그것을 공유하고, 없는 것만 복사해 넣음. 인스턴스는
+	// 인덱스로 참조하므로 순서만 지키면 됨. sourcePath 가 비어 있으면(AssetManager 를 거치지 않은 모델)
+	// 공유할 키가 없으므로 매번 새로 만듦.
 	std::vector<const Mesh*> meshes;
 	meshes.reserve(model.meshes.size());
 	for (size_t i = 0; i < model.meshes.size(); ++i)
@@ -450,9 +455,10 @@ size_t Scene::AddModel(const Model& model, const Transform& transform)
 	}
 	AddModelImages(model);   // 이미 있는 이미지는 건너뜀
 
-	// 11-F단계: 노드가 여럿이면 빈 루트 오브젝트 하나를 만들어 그 아래에 인스턴스를 자식으로 둠 (유니티가 모델 프리팹을 놓을 때와 같음).
-	// 루트가 placement(transform)를 갖고 자식은 로컬 = pre(노드 월드 행렬) 이므로 결과 월드 행렬은 이전(pre × placement)과 정확히 같다.
-	// 이제 루트 하나를 옮기면 모델 전체가 따라오고, Hierarchy 에서 접힌다. 노드가 하나면 루트 없이 그 오브젝트가 placement 를 가짐 (이전과 동일).
+	// 노드가 여럿이면 빈 루트 오브젝트 하나를 만들어 그 아래에 인스턴스를 자식으로 둠 (유니티가 모델 프리팹을
+	// 놓을 때와 같음). 루트가 placement(transform)를 갖고 자식은 로컬 = pre(노드 월드 행렬) 이므로 결과 월드
+	// 행렬은 이전(pre × placement)과 정확히 같다. 이제 루트 하나를 옮기면 모델 전체가 따라오고, Hierarchy
+	// 에서 접힌다. 노드가 하나면 루트 없이 그 오브젝트가 placement 를 가짐 (이전과 동일).
 	size_t validInstances = 0;
 	for (const ModelInstance& instance : model.instances) if (instance.meshIndex < meshes.size()) ++validInstances;
 	GameObject* root = nullptr;
@@ -492,7 +498,7 @@ void Scene::Clear()
 	m_materials.clear();
 	m_meshes.clear();
 	m_meshSources.clear();
-	environment = SceneEnvironment{};   // 2026-10-08: 씬 빌더·씬 파일이 다시 정함. 정하지 않으면 스카이박스·IBL 없음
+	environment = SceneEnvironment{};   // 씬 빌더·씬 파일이 다시 정함. 정하지 않으면 스카이박스·IBL 없음
 }
 
 void Scene::AddImage(const std::string& name, std::vector<uint8_t>&& encoded)

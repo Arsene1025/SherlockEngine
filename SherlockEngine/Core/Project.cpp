@@ -76,7 +76,8 @@ bool Project::Load(const std::wstring& pathOrDir)
 		Log::Error("프로젝트 파일 파싱 실패 (%s): %s", Log::ToUtf8(file.c_str()).c_str(), e.what());
 		return false;
 	}
-	// 상대 경로(--project=..\..\Projects\X)로 열어도 최근 목록·창 제목·생성기가 같은 프로젝트로 인식하도록 절대 경로로 정규화함
+	// 상대 경로(--project=..\..\Projects\X)로 열어도 최근 목록·창 제목·생성기가 같은 프로젝트로 인식하도록
+	// 절대 경로로 정규화함
 	const fs::path canonical = fs::weakly_canonical(fs::absolute(file, ec), ec);
 	if (!canonical.empty()) file = canonical.wstring();
 	m_root = WithSlash(fs::path(file).parent_path().wstring());

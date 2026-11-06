@@ -8,7 +8,7 @@
 // 텍스처는 핸들이 아니라 "이름"으로 참조함. Scene은 Device를 모르므로 파일을 열 수 없고,
 // 이름 → TextureHandle 변환은 Renderer의 텍스처 캐시가 맡음.
 //   - 파일 경로: Assets/Textures/ 기준 상대 경로 ("uv_checker.png")
-//   - 에셋 경로: "asset:Models\Sponza\lion.jpg" — Assets/ 기준 상대 경로 (11-B단계, 콘텐츠 브라우저 드롭)
+//   - 에셋 경로: "asset:Models\Sponza\lion.jpg" — Assets/ 기준 상대 경로 (콘텐츠 브라우저 드롭)
 //   - 내장:      "builtin:white", "builtin:checker", "builtin:gray128", "builtin:flatnormal"
 //   - 빈 문자열: 텍스처 없음 (알베도·금속성/거칠기·AO·발광은 1×1 흰색, 노멀 맵은 평평한 노멀로 대체)
 
@@ -27,39 +27,38 @@ struct Material
 
 	DirectX::XMFLOAT4 baseColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);   // 정점 색·텍스처에 곱해짐
 
-	// 2026-10-08: PBR (glTF metallic-roughness). Blinn-Phong 의 specularColor / shininess 를 대체함.
+	// PBR (glTF metallic-roughness). Blinn-Phong 의 specularColor / shininess 를 대체함.
 	// 직접광은 Cook-Torrance(GGX), 환경광은 IBL(split-sum) 이 이 두 값을 읽음 (BasicPixelShader.hlsl).
 	float metallic = 0.0f;                 // 0 = 유전체(F0 = 0.04), 1 = 금속(F0 = baseColor, 확산 없음)
 	float roughness = 0.5f;                // 지각적 거칠기. GGX 의 α = roughness². IBL 반사 큐브의 밉도 이 값으로 고름
 	DirectX::XMFLOAT3 emissive = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // 스스로 내는 빛(선형, 1 을 넘어도 됨). 조명·그림자와 무관하게 더해짐
 
-	// 5단계
 	std::string albedoTexture;             // 위 규칙을 따르는 이름. 비면 흰색
 	bool albedoSrgb = true;                // 색 텍스처는 sRGB. 데이터 텍스처(노멀·마스크)는 false
 	SamplerPreset sampler = SamplerPreset::LinearWrap;
 	DirectX::XMFLOAT2 uvScale = DirectX::XMFLOAT2(1.0f, 1.0f);
 	bool unlit = false;                    // 조명 없이 알베도만 출력 (감마 검증용)
 
-	// 6단계: 노멀 맵. 항상 선형(sRGB 아님). 탄젠트 공간, +X = u 증가, +Y = v 증가(아래), +Z = 표면 밖.
+	// 노멀 맵. 항상 선형(sRGB 아님). 탄젠트 공간, +X = u 증가, +Y = v 증가(아래), +Z = 표면 밖.
 	std::string normalTexture;             // 비면 평평한 노멀 (128,128,255)
 	float normalStrength = 1.0f;           // xy 배율. 0 이면 노멀 맵을 무시한 것과 같음
 
-	// 2026-10-08: PBR 텍스처. 계수(metallic·roughness·emissive)에 곱해짐 — glTF 규칙. 비면 흰색이라 계수가 그대로 쓰임.
+	// PBR 텍스처. 계수(metallic·roughness·emissive)에 곱해짐 — glTF 규칙. 비면 흰색이라 계수가 그대로 쓰임.
 	std::string metallicRoughnessTexture;  // 선형. G = roughness, B = metallic (glTF 채널 배치)
 	std::string occlusionTexture;          // 선형. R = 앰비언트 오클루전. 환경광(IBL)에만 곱함
 	float occlusionStrength = 1.0f;        // 0 = AO 무시, 1 = 텍스처 값 그대로
 	std::string emissiveTexture;           // sRGB 색 텍스처
 
-	// 9단계: 알파 컷아웃 (glTF alphaMode MASK). 0 = 끔. 알베도 알파가 이 값보다 작은 픽셀은 버림(clip).
+	// 알파 컷아웃 (glTF alphaMode MASK). 0 = 끔. 알베도 알파가 이 값보다 작은 픽셀은 버림(clip).
 	float alphaCutoff = 0.0f;
 
 	// 파이프라인 상태에 영향을 주는 옵션. 값이 다르면 다른 PSO를 사용함.
 	bool wireframe = false;
 	bool doubleSided = false;   // 뒷면 컬링 끔
 
-	// 모델에서 온 공유 재질의 출처 (Assets 기준 모델 경로 + 모델 안 재질 번호). Scene::AddModel 이 같은 모델을 다시 놓을 때
-	// 이 키로 기존 재질을 찾아 공유함. 비어 있으면(-1) 공유 대상이 아님 — 직접 만든 재질이거나 "Make unique" 로 분리된 복사본.
-	// 재질 JSON 에 함께 저장되어 씬을 불러온 뒤에도 공유가 이어짐.
+	// 모델에서 온 공유 재질의 출처 (Assets 기준 모델 경로 + 모델 안 재질 번호). Scene::AddModel 이 같은
+	// 모델을 다시 놓을 때 이 키로 기존 재질을 찾아 공유함. 비어 있으면(-1) 공유 대상이 아님 — 직접 만든
+	// 재질이거나 "Make unique" 로 분리된 복사본. 재질 JSON 에 함께 저장되어 씬을 불러온 뒤에도 공유가 이어짐.
 	std::wstring modelPath;
 	int modelMaterialIndex = -1;
 };

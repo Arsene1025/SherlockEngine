@@ -71,7 +71,7 @@ namespace
 		return text.substr(0, length) + ellipsis;
 	}
 
-	// C++20 (2026-09-28): snprintf + 고정 버퍼 대신 std::format. 서식 문자열은 컴파일 시점에 검사되고 인자 타입을 스스로 알아
+	// C++20: snprintf + 고정 버퍼 대신 std::format. 서식 문자열은 컴파일 시점에 검사되고 인자 타입을 스스로 알아
 	// %llu / static_cast 가 필요 없음.
 	std::string SizeText(uintmax_t bytes)
 	{
@@ -97,7 +97,7 @@ AssetType ContentBrowser::Classify(const std::wstring& relativePath, bool isDire
 	if (ext == L".gltf" || ext == L".glb") return AssetType::Model;
 	if (ext == L".png" || ext == L".jpg" || ext == L".jpeg" || ext == L".bmp" || ext == L".dds" || ext == L".tga") return AssetType::Texture;
 	if (ext == L".json" && StartsWithNoCase(relativePath, L"Scenes\\")) return AssetType::Scene;
-	if (ext == L".prefab") return AssetType::Prefab;   // 2026-10-15
+	if (ext == L".prefab") return AssetType::Prefab;
 	return AssetType::Other;
 }
 
@@ -116,7 +116,8 @@ const char* ContentBrowser::TypeName(AssetType type)
 
 std::string ContentBrowser::ToMaterialTextureName(const std::wstring& relativePath)
 {
-	// Textures\ 바로 아래 파일은 기존 규칙(파일명만)을 따름 — 예전 씬 파일·데모 씬에 적힌 텍스처 이름과 같은 형태를 유지함.
+	// Textures\ 바로 아래 파일은 기존 규칙(파일명만)을 따름 — 예전 씬 파일·데모 씬에 적힌 텍스처 이름과 같은
+	// 형태를 유지함.
 	const std::wstring prefix = L"Textures\\";
 	if (StartsWithNoCase(relativePath, prefix) && relativePath.find(L'\\', prefix.size()) == std::wstring::npos)
 	{

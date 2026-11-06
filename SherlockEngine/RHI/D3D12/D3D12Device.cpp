@@ -47,7 +47,7 @@ bool D3D12Device::Init(const RHI::DeviceDesc& desc)
     if (!InitSwapChain()) return false;
     if (!InitFrameResources()) return false;
     m_commandList.Init(this);
-    if (!CreateTimestampResources()) return false;   // 10단계
+    if (!CreateTimestampResources()) return false;
     if (!CreateBackBufferTextures()) return false;
     if (!CreateDepthTexture()) return false;
     return true;
@@ -70,7 +70,7 @@ bool D3D12Device::InitDevice(bool debugLayer)
     if (debugLayer)
     {
         // Debug Layer + GPU 기반 검증(GBV). GBV 는 배리어 누락·디스크립터 오용을 셰이더 실행 시점에 잡아냄.
-        // 프레임이 수십 배 느려지지만 8단계의 목적이 검증이므로 Debug 에서는 항상 켬.
+        // 프레임이 수십 배 느려지지만 Debug 의 목적이 검증이므로 항상 켬.
         ComPtr<ID3D12Debug> debug;
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(debug.GetAddressOf()))))
         {
@@ -118,7 +118,8 @@ bool D3D12Device::InitDevice(bool debugLayer)
 #if defined(_DEBUG)
     if (SUCCEEDED(m_device.As(&m_infoQueue)))
     {
-        // 클리어 값 불일치 경고: 스왑체인 백버퍼에는 최적화 클리어 값을 줄 수 없으므로 항상 발생함. 성능 힌트일 뿐이라 걸러냄.
+        // 클리어 값 불일치 경고: 스왑체인 백버퍼에는 최적화 클리어 값을 줄 수 없으므로 항상 발생함. 성능
+        // 힌트일 뿐이라 걸러냄.
         D3D12_MESSAGE_ID denyIds[] =
         {
             D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
@@ -379,7 +380,8 @@ bool D3D12Device::ExecuteUploadSync(const std::function<void(ID3D12GraphicsComma
     if (FAILED(m_uploadList->Close())) return false;
     ID3D12CommandList* lists[] = { m_uploadList.Get() };
     m_queue->ExecuteCommandLists(1, lists);
-    // 큐는 명령을 순서대로 실행하므로 이 펜스까지 기다리면 업로드도 끝난 것임. 로드 시점에만 쓰는 경로라 동기 방식이어도 됨.
+    // 큐는 명령을 순서대로 실행하므로 이 펜스까지 기다리면 업로드도 끝난 것임. 로드 시점에만 쓰는 경로라 동기
+    // 방식이어도 됨.
     WaitForGpu();
     return true;
 }
@@ -406,14 +408,15 @@ uint32_t D3D12Device::BeginFrame()
 {
     m_frameIndex = static_cast<uint32_t>(m_frameCounter % kFrameCount);
 
-    // 이 슬롯을 마지막으로 쓴 프레임(N − kFrameCount)이 GPU 에서 끝날 때까지 기다림. D3D11 에서는 드라이버 안에서 하던 대기임.
+    // 이 슬롯을 마지막으로 쓴 프레임(N − kFrameCount)이 GPU 에서 끝날 때까지 기다림. D3D11 에서는 드라이버
+    // 안에서 하던 대기임.
     if (m_fenceValues[m_frameIndex] != 0 && m_fence->GetCompletedValue() < m_fenceValues[m_frameIndex])
     {
         m_fence->SetEventOnCompletion(m_fenceValues[m_frameIndex], m_fenceEvent);
         WaitForSingleObject(m_fenceEvent, INFINITE);
     }
     ReleaseGarbage(m_frameIndex);      // 그 프레임이 쓰던 리소스·디스크립터를 이제 해제해도 됨
-    ReadTimestamps(m_frameIndex);      // 10단계: 그 프레임(N − kFrameCount)의 타임스탬프는 이제 리드백 버퍼에 있음
+    ReadTimestamps(m_frameIndex);      // 그 프레임(N − kFrameCount)의 타임스탬프는 이제 리드백 버퍼에 있음
     m_rings[m_frameIndex].offset = 0;  // 그 프레임의 업로드 링도 재사용
 
     m_allocators[m_frameIndex]->Reset();
@@ -435,14 +438,14 @@ void D3D12Device::EndFrame()
         ErrorOnce(warned, "EndFrame : 렌더 패스가 열린 채 Present. EndRenderPass 를 빠뜨렸다.");
         m_commandList.EndRenderPass();
     }
-    // 10단계: 이번 슬롯에 기록된 타임스탬프를 리드백 버퍼로 Resolve 함. 기록하지 않은 쿼리는 Resolve 하지 않음.
+    // 이번 슬롯에 기록된 타임스탬프를 리드백 버퍼로 Resolve 함. 기록하지 않은 쿼리는 Resolve 하지 않음.
     if (m_timestampHeap && m_timestampWritten[m_frameIndex] > 0)
     {
         m_list->ResolveQueryData(m_timestampHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, m_frameIndex * kMaxTimestamps,
             m_timestampWritten[m_frameIndex], m_timestampReadback.Get(), static_cast<UINT64>(m_frameIndex) * kMaxTimestamps * sizeof(uint64_t));
     }
     m_timestampFrame[m_frameIndex] = m_frameCounter;
-    if (m_readbackRequested) RecordBackBufferReadback();   // 11단계
+    if (m_readbackRequested) RecordBackBufferReadback();
     m_list->Close();
     ID3D12CommandList* lists[] = { m_list.Get() };
     m_queue->ExecuteCommandLists(1, lists);
@@ -458,7 +461,7 @@ void D3D12Device::EndFrame()
     // 이 프레임의 끝을 펜스로 표시함. 같은 슬롯을 다시 쓰는 BeginFrame 이 이 값을 기다림.
     m_queue->Signal(m_fence.Get(), m_nextFenceValue);
     m_fenceValues[m_frameIndex] = m_nextFenceValue++;
-    if (m_readbackPending) FinishBackBufferReadback();   // 11단계: GPU 를 기다려 픽셀을 읽음
+    if (m_readbackPending) FinishBackBufferReadback();   // GPU 를 기다려 픽셀을 읽음
 
     DumpDebugLayerMessages();
     ++m_frameCounter;
@@ -644,12 +647,13 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
     const bool isDepth = (descIn.bindFlags & TextureBind_DepthStencil) != 0;
     const bool isSrv = (descIn.bindFlags & TextureBind_ShaderResource) != 0;
     const bool isRt = (descIn.bindFlags & TextureBind_RenderTarget) != 0;
-    // 11단계: 렌더 타깃 + SRV 인 UNORM 색 텍스처(에디터 씬 뷰)도 TYPELESS 로 만듦 — sRGB RTV 와 UNORM SRV 를 함께 만들기 위함.
+    // 렌더 타깃 + SRV 인 UNORM 색 텍스처(에디터 씬 뷰)도 TYPELESS 로 만듦 — sRGB RTV 와 UNORM SRV 를 함께 만들기 위함.
     const bool colorRtAndSrv = isRt && isSrv && format == DXGI_FORMAT_R8G8B8A8_UNORM;
     texture.typeless = (isDepth && isSrv && D3D12Convert::IsDepthFormat(format)) || colorRtAndSrv;
 
-    // 2026-10-08: 큐브는 정사각형 + ShaderResource 전용 (ResourceDesc.h). D3D12 에는 "큐브 리소스"가 따로 없고 면 6장짜리 2D 배열임 —
-    // 큐브라는 해석은 SRV(TEXTURECUBE) 가 붙임. D3D11 처럼 리소스에 MISC 플래그를 다는 단계가 없음.
+    // 큐브는 정사각형 + ShaderResource 전용 (ResourceDesc.h). D3D12 에는 "큐브 리소스"가 따로 없고 면 6장짜리
+    // 2D 배열임 — 큐브라는 해석은 SRV(TEXTURECUBE) 가 붙임. D3D11 처럼 리소스에 MISC 플래그를 다는 단계가
+    // 없음.
     const bool isCube = descIn.dimension == TextureDimension::TextureCube;
     const uint32_t arraySize = GetArraySize(descIn);
     if (isCube && (descIn.width != descIn.height || isRt || isDepth))
@@ -691,8 +695,9 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
         pClear = &clear;
     }
 
-    // 초기 상태. 초기 데이터가 있으면 COPY_DEST, 깊이 전용이면 DEPTH_WRITE (Renderer 가 배리어를 걸지 않는 메인 깊이 버퍼),
-    // 그 외(그림자 맵 포함)는 COMMON — Renderer 의 첫 배리어가 Common → DepthWrite 임 (6단계의 상태 추적과 출발점이 같음).
+    // 초기 상태. 초기 데이터가 있으면 COPY_DEST, 깊이 전용이면 DEPTH_WRITE (Renderer 가 배리어를 걸지 않는
+    // 메인 깊이 버퍼), 그 외(그림자 맵 포함)는 COMMON — Renderer 의 첫 배리어가 Common → DepthWrite 임 (D3D11
+    // 의 상태 추적과 출발점이 같음).
     const bool hasInit = !subresources.empty();   // span: (nullptr, 0) 검사가 empty() 하나로
     D3D12_RESOURCE_STATES initial = D3D12_RESOURCE_STATE_COMMON;
     if (hasInit) initial = D3D12_RESOURCE_STATE_COPY_DEST;
@@ -710,14 +715,16 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
 
     if (hasInit)
     {
-        // 서브리소스(면 × 밉)마다 하나. 순서는 서브리소스 인덱스 = mip + face × mipLevels — GetCopyableFootprints 가 돌려주는 순서와 같음.
+        // 서브리소스(면 × 밉)마다 하나. 순서는 서브리소스 인덱스 = mip + face × mipLevels —
+        // GetCopyableFootprints 가 돌려주는 순서와 같음.
         const UINT count = descIn.mipLevels * arraySize;
         if (subresources.size() < count)
         {
             Log::Error("CreateTexture : 초기 데이터가 서브리소스 수(면 %u × 밉 %u)보다 적음 (%s, %zu < %u).", arraySize, descIn.mipLevels, texture.name.c_str(), subresources.size(), count);
             return TextureHandle{};
         }
-        // 업로드 힙 → CopyTextureRegion(서브리소스마다) → 배리어. D3D11 에서 D3D11_SUBRESOURCE_DATA[] 로 하던 초기화를 여기서는 이렇게 처리함.
+        // 업로드 힙 → CopyTextureRegion(서브리소스마다) → 배리어. D3D11 에서 D3D11_SUBRESOURCE_DATA[] 로 하던
+        // 초기화를 여기서는 이렇게 처리함.
         std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(count);
         std::vector<UINT> numRows(count);
         std::vector<UINT64> rowSizes(count);
@@ -853,7 +860,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12Device::GetRTV(D3D12Texture& texture, bool srgb
         index = m_rtvHeap.Allocate(1);
         D3D12_RENDER_TARGET_VIEW_DESC vd = {};
         const DXGI_FORMAT format = D3D12Convert::ToDXGI(texture.desc.format);
-        vd.Format = srgbView ? D3D12Convert::ToSrgb(format) : format;   // 5단계: UNORM 백버퍼의 sRGB 뷰
+        vd.Format = srgbView ? D3D12Convert::ToSrgb(format) : format;   // UNORM 백버퍼의 sRGB 뷰
         vd.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
         vd.Texture2D.MipSlice = 0;
         vd.Texture2D.PlaneSlice = 0;
@@ -888,7 +895,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12Device::GetSRV(D3D12Texture& texture)
         vd.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         if (texture.desc.dimension == TextureDimension::TextureCube)
         {
-            // 2026-10-08: 면 6장짜리 2D 배열 리소스를 큐브로 읽는 뷰. HLSL TextureCube 와 짝임.
+            // 면 6장짜리 2D 배열 리소스를 큐브로 읽는 뷰. HLSL TextureCube 와 짝임.
             vd.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
             vd.TextureCube.MostDetailedMip = 0;
             vd.TextureCube.MipLevels = texture.desc.mipLevels;
@@ -929,7 +936,8 @@ SamplerHandle D3D12Device::CreateSampler(const SamplerDesc& descIn)
     sd.AddressW = D3D12Convert::ToD3D12(descIn.addressW);
     sd.MipLODBias = 0.0f;
     sd.MaxAnisotropy = descIn.maxAnisotropy;
-    // 비교 필터가 아니면 ComparisonFunc 는 무시되지만 Debug Layer 가 "의도가 아닐 것"이라 경고함. 그래서 NEVER 로 채워 둠.
+    // 비교 필터가 아니면 ComparisonFunc 는 무시되지만 Debug Layer 가 "의도가 아닐 것"이라 경고함. 그래서
+    // NEVER 로 채워 둠.
     sd.ComparisonFunc = (descIn.filter == SamplerFilter::Comparison) ? D3D12Convert::ToD3D12(descIn.compareFunc) : D3D12_COMPARISON_FUNC_NEVER;
     std::memcpy(sd.BorderColor, descIn.borderColor, sizeof(sd.BorderColor));
     sd.MinLOD = descIn.minLod;
@@ -953,7 +961,8 @@ ShaderHandle D3D12Device::CreateShader(const ShaderDesc& desc)
         Log::Error("CreateShader : 바이트코드가 비어 있음.");
         return ShaderHandle{};
     }
-    // D3D12 에는 셰이더 객체가 없음. 바이트코드(DXBC)를 보관했다가 PSO 생성 시 넘김. span 은 소유하지 않으므로 여기서 복사함.
+    // D3D12 에는 셰이더 객체가 없음. 바이트코드(DXBC)를 보관했다가 PSO 생성 시 넘김. span 은 소유하지
+    // 않으므로 여기서 복사함.
     D3D12Shader shader;
     shader.stage = desc.stage;
     shader.name = desc.debugName ? desc.debugName : "";
@@ -1016,7 +1025,7 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
             {
             case BindingType::ConstantBuffer:
             {
-                // 루트 CBV: 드로우마다 GPU 주소를 바인딩함. 4단계에서 "CBV 는 루트 디스크립터"라고 정한 방식임.
+                // 루트 CBV: 드로우마다 GPU 주소를 바인딩함. "CBV 는 루트 디스크립터"로 두는 방식임.
                 D3D12_ROOT_PARAMETER p = {};
                 p.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
                 p.Descriptor.ShaderRegister = slot.reg;
@@ -1321,7 +1330,7 @@ uint64_t D3D12Device::GetImGuiTextureId(TextureHandle handle)
     return m_srvHeap.Gpu(texture->srvVisible).ptr;
 }
 
-// ------------------------------------------------------------------ 10단계: 타임스탬프
+// ------------------------------------------------------------------ 타임스탬프
 
 bool D3D12Device::CreateTimestampResources()
 {
@@ -1350,7 +1359,8 @@ void D3D12Device::WriteTimestamp(uint32_t slot)
 
 void D3D12Device::ReadTimestamps(uint32_t slot)
 {
-    // BeginFrame 이 이 슬롯의 펜스를 기다린 직후에 호출함. 리드백 버퍼는 READBACK 힙에 있으므로 Map 하면 바로 읽을 수 있음.
+    // BeginFrame 이 이 슬롯의 펜스를 기다린 직후에 호출함. 리드백 버퍼는 READBACK 힙에 있으므로 Map 하면 바로
+    // 읽을 수 있음.
     const uint32_t written = m_timestampWritten[slot];
     if (!m_timestampReadback || written == 0)
     {
@@ -1383,7 +1393,7 @@ bool D3D12Device::GetTimestampResults(std::span<uint64_t> ticks, uint64_t& frequ
     return true;
 }
 
-// ------------------------------------------------------------------ 11단계: 백버퍼 리드백 (스크린샷)
+// ------------------------------------------------------------------ 백버퍼 리드백 (스크린샷)
 
 void D3D12Device::RecordBackBufferReadback()
 {

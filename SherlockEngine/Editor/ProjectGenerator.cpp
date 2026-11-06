@@ -17,8 +17,9 @@ namespace
 	const wchar_t* kEditorGuid = L"{6F2E9A10-3C4D-4B5E-9F60-1E2D3C4B5A69}";   // SherlockEditor.vcxproj 의 ProjectGuid (엔진 저장소의 것을 그대로 참조)
 	const wchar_t* kScriptsGuid = L"{8B4C1D32-5E6F-4D70-B182-3F4E5D6C7B8C}";  // 생성 프로젝트의 스크립트 DLL (모든 프로젝트가 같은 GUID — 솔루션마다 하나뿐)
 
-	// 2026-10-08 (B안): 생성기의 형식 번호. vcxproj 첫 주석에 들어가며, EnsureUpToDate 가 이 표시가 없는 프로젝트(옛 형식)를 다시 생성함.
-	// 1 = 11-E 의 <Name>Editor.vcxproj + <Name>.vcxproj (스크립트를 exe 에 컴파일), 2 = <Name>Scripts.vcxproj (스크립트 DLL).
+	// 생성기의 형식 번호. vcxproj 첫 주석에 들어가며, EnsureUpToDate 가 이 표시가 없는 프로젝트(옛 형식)를 다시 생성함.
+	// 1 = 11-E 의 <Name>Editor.vcxproj + <Name>.vcxproj (스크립트를 exe 에 컴파일), 2 = <Name>Scripts.vcxproj
+	// (스크립트 DLL).
 	const wchar_t* kGeneratorMarker = L"SherlockEngine ProjectGenerator 2";
 	const char* kGeneratorMarkerUtf8 = "SherlockEngine ProjectGenerator 2";
 	const char* kOldGeneratorMarkerUtf8 = "ProjectGenerator 가 만들었다";   // 형식 1 의 주석. 이 표시가 있는 옛 파일만 지움
@@ -65,9 +66,10 @@ namespace
 		return r;
 	}
 
-	// 2026-10-08 (B안): <Name>Scripts.vcxproj — 프로젝트 스크립트만 담은 DLL.
+	// <Name>Scripts.vcxproj — 프로젝트 스크립트만 담은 DLL.
 	// 엔진은 SherlockEngine.dll 이고 이 DLL 은 그 가져오기 라이브러리(x64\<구성>\SherlockEngine.lib)를 링크함.
-	// 컴파일 설정(C++20, /utf-8, pch.h, Debug/Release 의 CRT)은 엔진과 같아야 함 — 경계 너머로 std::string 등을 넘기기 때문.
+	// 컴파일 설정(C++20, /utf-8, pch.h, Debug/Release 의 CRT)은 엔진과 같아야 함 — 경계 너머로 std::string
+	// 등을 넘기기 때문.
 	std::wstring ScriptsProject(const Project& project, const std::wstring& repoFromProject)
 	{
 		const std::wstring name = project.GetScriptsProjectName();
@@ -127,7 +129,7 @@ namespace
 			s << L"      <SDLCheck>true</SDLCheck>\r\n";
 			s << L"      <PreprocessorDefinitions>" << (debug ? L"_DEBUG" : L"NDEBUG") << L";_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>\r\n";
 			s << L"      <ConformanceMode>true</ConformanceMode>\r\n      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>\r\n";
-			// 언어 표준은 엔진과 같은 C++20 — Script.h 의 GetComponent 가 std::derived_from 콘셉트를 씀 (2026-09-30 에 생성기에서 빠뜨렸던 것).
+			// 언어 표준은 엔진과 같은 C++20 — Script.h 의 GetComponent 가 std::derived_from 콘셉트를 씀.
 			s << L"      <LanguageStandard>stdcpp20</LanguageStandard>\r\n      <PrecompiledHeader>Use</PrecompiledHeader>\r\n      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>\r\n";
 			s << L"      <AdditionalIncludeDirectories>$(SherlockEngineDir);$(ProjectDir)Scripts;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>\r\n";
 			s << L"    </ClCompile>\r\n    <Link>\r\n      <SubSystem>Windows</SubSystem>\r\n      <GenerateDebugInformation>true</GenerateDebugInformation>\r\n";
@@ -135,13 +137,15 @@ namespace
 			s << L"      <AdditionalLibraryDirectories>$(SherlockRepo)x64\\$(Configuration)\\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>\r\n";
 			s << L"    </Link>\r\n  </ItemDefinitionGroup>\r\n";
 		}
-		// Scripts\ 아래 하위 폴더까지 재귀(**). 실험용 스크립트를 Scripts\Tests\ 에 따로 모아 두기 위해서다 (QuaternionLookTest 가 첫 사용자).
+		// Scripts\ 아래 하위 폴더까지 재귀(**). 실험용 스크립트를 Scripts\Tests\ 에 따로 모아 두기 위해서다
+		// (QuaternionLookTest 가 첫 사용자).
 		s << L"  <ItemGroup>\r\n    <ClCompile Include=\"Scripts\\**\\*.cpp\" />\r\n";
 		s << L"    <ClCompile Include=\"$(SherlockEngineDir)pch.cpp\">\r\n      <PrecompiledHeader>Create</PrecompiledHeader>\r\n    </ClCompile>\r\n";
 		s << L"  </ItemGroup>\r\n  <ItemGroup>\r\n    <ClInclude Include=\"Scripts\\**\\*.h\" />\r\n  </ItemGroup>\r\n";
 		s << L"  <ItemGroup>\r\n    <None Include=\"Assets\\Scenes\\*.json\" />\r\n    <None Include=\"" << projectName << L".sherlock\" />\r\n  </ItemGroup>\r\n";
-		// 엔진은 빌드 순서만 맞추고 링크는 위의 AdditionalDependencies 로 함. 에디터의 Build scripts 는 /p:BuildProjectReferences=false 로
-		// 엔진을 건드리지 않음 — 엔진 DLL 은 그 에디터가 쓰는 중이라 다시 링크할 수 없음.
+		// 엔진은 빌드 순서만 맞추고 링크는 위의 AdditionalDependencies 로 함. 에디터의 Build scripts 는
+		// /p:BuildProjectReferences=false 로 엔진을 건드리지 않음 — 엔진 DLL 은 그 에디터가 쓰는 중이라 다시
+		// 링크할 수 없음.
 		s << L"  <ItemGroup>\r\n    <ProjectReference Include=\"$(SherlockEngineDir)SherlockEngine.vcxproj\">\r\n      <Project>" << kEngineGuid << L"</Project>\r\n";
 		s << L"      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>\r\n      <LinkLibraryDependencies>false</LinkLibraryDependencies>\r\n    </ProjectReference>\r\n  </ItemGroup>\r\n";
 		s << L"  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />\r\n  <ImportGroup Label=\"ExtensionTargets\">\r\n  </ImportGroup>\r\n</Project>\r\n";
@@ -160,7 +164,8 @@ namespace
 		return s.str();
 	}
 
-	// 솔루션: 스크립트 DLL(시작 프로젝트 — F5 가 에디터를 띄움) + 엔진 DLL + 엔진 에디터. 엔진 두 프로젝트는 저장소의 파일을 그대로 참조함.
+	// 솔루션: 스크립트 DLL(시작 프로젝트 — F5 가 에디터를 띄움) + 엔진 DLL + 엔진 에디터. 엔진 두 프로젝트는
+	// 저장소의 파일을 그대로 참조함.
 	std::wstring Solution(const Project& project, const std::wstring& repoFromProject)
 	{
 		const std::wstring scriptsName = project.GetScriptsProjectName();
@@ -202,7 +207,8 @@ bool ProjectGenerator::Generate(const Project& project, std::string& error)
 		error = "cannot write project files in " + Log::ToUtf8(root.c_str());
 		return false;
 	}
-	// 형식 1 의 exe 프로젝트(<Name>Editor.vcxproj, <Name>.vcxproj)는 이제 쓰지 않음. 생성기가 만든 표시가 있는 것만 지움 (손으로 만든 파일은 남김).
+	// 형식 1 의 exe 프로젝트(<Name>Editor.vcxproj, <Name>.vcxproj)는 이제 쓰지 않음. 생성기가 만든 표시가
+	// 있는 것만 지움 (손으로 만든 파일은 남김).
 	for (const std::wstring& old : { root + name + L"Editor.vcxproj", root + name + L".vcxproj" })
 	{
 		if (!FileContains(old, kOldGeneratorMarkerUtf8)) continue;

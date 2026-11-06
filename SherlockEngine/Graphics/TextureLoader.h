@@ -30,10 +30,10 @@ namespace TextureLoader
 	// 파일에서 읽음. generateMips가 true면 1×1까지 밉 체인을 만듦.
 	bool LoadFromFile(const std::wstring& path, bool srgb, bool generateMips, TextureImage& out);
 
-	// 9단계: 메모리의 파일 내용(PNG/JPG/DDS 바이트)에서 읽음. 모델에 내장된 이미지용.
+	// 메모리의 파일 내용(PNG/JPG/DDS 바이트)에서 읽음. 모델에 내장된 이미지용.
 	bool LoadFromMemory(const uint8_t* data, size_t size, bool srgb, bool generateMips, TextureImage& out);
 
-	// 11-B단계: 에디터 썸네일. 긴 변이 maxSize 를 넘으면 DirectXTex Resize 로 줄임. 밉 없음.
+	// 에디터 썸네일. 긴 변이 maxSize 를 넘으면 DirectXTex Resize 로 줄임. 밉 없음.
 	// 포맷은 UNORM 라벨 — ImGui 는 백버퍼의 UNORM 뷰에 그리므로 sRGB 라벨을 붙이면 두 번 인코딩되어 색이 바램.
 	// 블록 압축 DDS 는 먼저 압축을 풂. 로그는 실패할 때만 남김 (폴더 하나에 수십 장이 있을 수 있음).
 	bool LoadThumbnail(const std::wstring& path, uint32_t maxSize, TextureImage& out);
@@ -45,13 +45,14 @@ namespace TextureLoader
 	// 단색 (예: 1×1 흰색 = "텍스처 없음"의 기본값, 128 회색 = 감마 검증).
 	bool CreateSolid(uint32_t size, const uint8_t rgba[4], bool srgb, TextureImage& out);
 
-	// ---- 2026-10-08: 큐브맵 (desc.dimension = TextureCube, 면 6장) ----
-	// path 가 폴더면 그 안의 면 이미지 6장(px/nx/py/ny/pz/nz, posx/negx/..., right/left/top/bottom/front/back 중 하나의 규칙,
-	// 확장자 .png/.jpg/.jpeg/.bmp)을 읽음. 파일이면 큐브 DDS(면 6장 + 큐브 플래그). 블록 압축 DDS 는 압축을 풀어 R8G8B8A8 로 만듦.
-	// 부동소수점(HDR) DDS 는 R16G16B16A16_FLOAT 로 읽음 — 2D 도 같음(FinishImage). 면 이미지 폴더는 8비트만 받음.
+	// ---- 큐브맵 (desc.dimension = TextureCube, 면 6장) ----
+	// path 가 폴더면 그 안의 면 이미지 6장(px/nx/py/ny/pz/nz, posx/negx/..., right/left/top/bottom/front/back
+	// 중 하나의 규칙, 확장자 .png/.jpg/.jpeg/.bmp)을 읽음. 파일이면 큐브 DDS(면 6장 + 큐브 플래그). 블록 압축
+	// DDS 는 압축을 풀어 R8G8B8A8 로 만듦. 부동소수점(HDR) DDS 는 R16G16B16A16_FLOAT 로 읽음 — 2D 도
+	// 같음(FinishImage). 면 이미지 폴더는 8비트만 받음.
 	bool LoadCubeFromFile(const std::wstring& path, bool srgb, bool generateMips, TextureImage& out);
-	// 절차적 큐브. 면마다 size×size 텍셀을 돌며 텍셀 중심이 가리키는 정규화된 방향(월드 축 기준)을 shade 에 넘기고 RGBA 를 받음.
-	// 내장 하늘("builtin:sky"), 면 판별용 큐브, 1×1 검은 기본 큐브를 모두 이것으로 만듦.
+	// 절차적 큐브. 면마다 size×size 텍셀을 돌며 텍셀 중심이 가리키는 정규화된 방향(월드 축 기준)을 shade 에
+	// 넘기고 RGBA 를 받음. 내장 하늘("builtin:sky"), 면 판별용 큐브, 1×1 검은 기본 큐브를 모두 이것으로 만듦.
 	bool CreateCube(uint32_t size, const std::function<void(const float direction[3], uint8_t rgba[4])>& shade,
 		bool srgb, bool generateMips, TextureImage& out);
 }

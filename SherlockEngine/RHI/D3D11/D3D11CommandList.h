@@ -6,7 +6,6 @@
 class D3D11Device;
 
 // RHI::CommandList 의 D3D11 구현. ImmediateContext 의 얇은 래퍼라 "기록"이 곧 실행임.
-// 6단계의 CommandList 클래스에서 이름만 바꾸고 인터페이스를 상속하게 했음. 메서드 본문은 같음.
 class D3D11CommandList final : public RHI::CommandList
 {
 public:
@@ -27,7 +26,7 @@ public:
 	void Barrier(TextureHandle texture, ResourceState before, ResourceState after) override;
 	void CopyBuffer(BufferHandle dst, BufferHandle src) override;
 
-	void WriteTimestamp(uint32_t slot) override;   // 10단계: Device 의 쿼리 세트에 위임
+	void WriteTimestamp(uint32_t slot) override;   // Device 의 쿼리 세트에 위임
 	const Stats& GetStats() const override { return m_stats; }
 	void ResetStats() override { m_stats = Stats{}; }
 	void SetViewport(const Viewport& viewport) override;
@@ -50,7 +49,7 @@ private:
 	TextureHandle m_vsSrv[kMaxSrvRegister];
 	TextureHandle m_psSrv[kMaxSrvRegister];
 
-	//이 패스의 기본 뷰포트 크기 
+	// 이 패스의 기본 뷰포트 크기 
 	uint32_t m_passWidth = 0;
 	uint32_t m_passHeight = 0;
 };

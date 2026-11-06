@@ -6,11 +6,11 @@
 #include "Graphics/Mesh.h"
 #include "Scene/Material.h"
 
-// 9단계: 모델 = Mesh 배열 + Material 배열 + 인스턴스(노드) 배열 + 이미지 바이트.
+// 모델 = Mesh 배열 + Material 배열 + 인스턴스(노드) 배열 + 이미지 바이트.
 //
 // 전부 CPU 데이터라 Device 를 모름. Scene::AddModel 이 메시·재질·이미지를 씬으로 옮기고
 // 인스턴스마다 GameObject 를 만듦. GPU 자원(버퍼·텍스처·ResourceSet)은 그 뒤 Renderer 캐시가
-// 처음 그릴 때 만듦 — 3~5단계와 같은 경계임.
+// 처음 그릴 때 만듦 — Mesh·Material 과 같은 경계임.
 //
 // 좌표계: glTF 는 오른손(+Y 위, −Z 앞, CCW 앞면), 엔진은 왼손(CW 앞면). 로더가 Z 를 뒤집어서 읽어 들임.
 // 뒤집기(반사)가 와인딩을 CCW → CW 로 바꾸므로 인덱스 순서는 그대로 둠. 탄젠트 w 는 부호가 뒤집힘.
@@ -49,7 +49,7 @@ struct ModelStats
 struct Model
 {
 	std::string name;
-	std::wstring sourcePath;            // 10~11단계: Assets 기준 상대 경로 (AssetManager 가 채움). 씬 저장 시 메시 출처로 쓰임
+	std::wstring sourcePath;            // Assets 기준 상대 경로 (AssetManager 가 채움). 씬 저장 시 메시 출처로 쓰임
 	std::vector<Mesh> meshes;
 	std::vector<Material> materials;    // materialSlot → 이 배열의 인덱스
 	std::vector<ModelImage> images;

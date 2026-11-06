@@ -10,7 +10,7 @@
 namespace
 {
 	// DirectXTex ScratchImage(밉 체인) → 우리 TextureImage. 픽셀을 한 버퍼로 복사함.
-	// 2026-10-08: dimension = TextureCube 면 면 6장을 서브리소스 인덱스 순(면 0 의 밉 전부, 면 1 의 밉 전부, ...)으로 옮김.
+	// dimension = TextureCube 면 면 6장을 서브리소스 인덱스 순(면 0 의 밉 전부, 면 1 의 밉 전부, ...)으로 옮김.
 	// Texture2D 면 배열의 첫 장만 씀 — 큐브 DDS 를 재질 알베도로 지정해도 예전처럼 +X 면 하나짜리 2D 가 됨.
 	bool FromScratchImage(const DirectX::ScratchImage& scratch, Format format, TextureDimension dimension, TextureImage& out)
 	{
@@ -72,7 +72,7 @@ namespace
 			base.OverrideFormat(DirectX::MakeLinear(base.GetMetadata().format));
 		}
 
-		// 2026-10-08: HDR. 원본이 부동소수점(R32G32B32A32_FLOAT 등)이거나 BC6H 면 1.0 을 넘는 값을 잃지 않도록
+		// HDR. 원본이 부동소수점(R32G32B32A32_FLOAT 등)이거나 BC6H 면 1.0 을 넘는 값을 잃지 않도록
 		// R16G16B16A16_FLOAT 로 맞춤 (float32 의 절반 크기, 최대 65504 — HDR 환경맵의 태양 ≈ 수백). 부동소수점 데이터는
 		// 이미 선형이므로 sRGB 라벨을 붙이지 않고, 밉도 선형 그대로 평균 냄. srgb 인자는 무시됨.
 		const DXGI_FORMAT sourceFormat = base.GetMetadata().format;
@@ -82,8 +82,9 @@ namespace
 		const DXGI_FORMAT target = hdr ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
 		DirectX::ScratchImage converted;
 		const DirectX::ScratchImage* current = &base;
-		// 2026-10-08: 블록 압축(BC1~7) DDS 는 Convert 가 다루지 못하므로 먼저 압축을 풂 (내려받은 큐브 DDS 는 대개 BC 압축임).
-		// 압축을 풀면 바로 target(R8G8B8A8_UNORM, BC6H 는 R16G16B16A16_FLOAT)이 되므로 아래 Convert 는 건너뜀. 바이트는 그대로라 sRGB 라벨 규칙도 같음.
+		// 블록 압축(BC1~7) DDS 는 Convert 가 다루지 못하므로 먼저 압축을 풂 (내려받은 큐브 DDS 는 대개 BC 압축임).
+		// 압축을 풀면 바로 target(R8G8B8A8_UNORM, BC6H 는 R16G16B16A16_FLOAT)이 되므로 아래 Convert 는
+		// 건너뜀. 바이트는 그대로라 sRGB 라벨 규칙도 같음.
 		DirectX::ScratchImage decompressed;
 		if (DirectX::IsCompressed(base.GetMetadata().format))
 		{
@@ -124,7 +125,7 @@ namespace
 			current = &mipped;
 		}
 
-		// 2026-10-08: 큐브를 요청했는데 원본이 큐브가 아니면(2D DDS·면 6장이 아닌 배열) 실패. 반대 방향(큐브 → 2D)은 첫 면만 씀.
+		// 큐브를 요청했는데 원본이 큐브가 아니면(2D DDS·면 6장이 아닌 배열) 실패. 반대 방향(큐브 → 2D)은 첫 면만 씀.
 		if (dimension == TextureDimension::TextureCube && !current->GetMetadata().IsCubemap())
 		{
 			Log::Error("TextureLoader : 큐브맵이 아님 (DDS 의 큐브 플래그가 없거나 면이 6장이 아님).");
@@ -300,12 +301,13 @@ bool TextureLoader::LoadFromMemory(const uint8_t* data, size_t size, bool srgb, 
 	return FinishImage(image, srgb, generateMips, out);
 }
 
-// ------------------------------------------------------------------ 2026-10-08: 큐브맵
+// ------------------------------------------------------------------ 큐브맵
 
 namespace
 {
 	// 면 이미지 파일 이름 후보. 바깥 순서 = D3D 면 순서 +X, −X, +Y, −Y, +Z, −Z. 흔한 세 가지 이름 규칙을 받음.
-	// right/left/top/bottom/front/back 은 LearnOpenGL 등에서 쓰는 이름 — front = +Z 라서 왼손 좌표계(+Z 앞)인 이 엔진과 그대로 맞음.
+	// right/left/top/bottom/front/back 은 LearnOpenGL 등에서 쓰는 이름 — front = +Z 라서 왼손 좌표계(+Z 앞)인
+	// 이 엔진과 그대로 맞음.
 	const wchar_t* const kFaceNames[6][3] =
 	{
 		{ L"px", L"posx", L"right" },
@@ -332,7 +334,8 @@ namespace
 	}
 
 	// 면 face 의 텍셀 좌표 (s, t) ∈ [−1, 1] (s = 오른쪽, t = 아래쪽) → 그 텍셀이 가리키는 방향 (정규화 전).
-	// D3D 큐브맵 규칙 표(면마다 "주축 ma, 가로 sc, 세로 tc")를 거꾸로 푼 것. 예: +X 면은 sc = −z, tc = −y 이므로 z = −s, y = −t.
+	// D3D 큐브맵 규칙 표(면마다 "주축 ma, 가로 sc, 세로 tc")를 거꾸로 푼 것. 예: +X 면은 sc = −z, tc = −y
+	// 이므로 z = −s, y = −t.
 	void CubeTexelDirection(int face, float s, float t, float direction[3])
 	{
 		switch (face)
@@ -353,8 +356,9 @@ bool TextureLoader::LoadCubeFromFile(const std::wstring& path, bool srgb, bool g
 	std::error_code ec;
 	if (std::filesystem::is_directory(path, ec))
 	{
-		// 면 이미지 6장 → 큐브 ScratchImage 하나. 각 면을 FinishImage(2D, 밉 없음)에 한 번 통과시켜 R8G8B8A8_UNORM 바이트로 맞춘 뒤 행 단위로 복사함.
-		// 라벨(sRGB)은 면마다 붙이지 않고 마지막 FinishImage 에서 큐브 전체에 붙임 — 밉 생성도 거기서 sRGB 규칙으로 함.
+		// 면 이미지 6장 → 큐브 ScratchImage 하나. 각 면을 FinishImage(2D, 밉 없음)에 한 번 통과시켜
+		// R8G8B8A8_UNORM 바이트로 맞춘 뒤 행 단위로 복사함. 라벨(sRGB)은 면마다 붙이지 않고 마지막
+		// FinishImage 에서 큐브 전체에 붙임 — 밉 생성도 거기서 sRGB 규칙으로 함.
 		uint32_t size = 0;
 		for (int face = 0; face < 6; ++face)
 		{

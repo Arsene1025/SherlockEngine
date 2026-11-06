@@ -12,7 +12,7 @@
 //
 // 모든 열거형은 uint8_t임. Desc를 해시 키로 쓰므로 크기가 작을수록 좋음.
 //
-// C++20 (2026-09-28): 하위 Desc(Rasterizer/DepthStencil/RenderTargetBlend/VertexAttribute)의
+// C++20: 하위 Desc(Rasterizer/DepthStencil/RenderTargetBlend/VertexAttribute)의
 // operator== 는 `= default` 로 생성함. 멤버를 하나씩 나열한 비교 함수를 PipelineTypes.cpp 에
 // 손으로 쓰던 것을 대체함 — 필드를 추가하면 비교에서 빠뜨리는 실수가 없어짐.
 // PipelineStateDesc 자체는 default 로 만들 수 없음: 배열을 "쓰는 만큼(rtvCount 등)"만 비교해야 하기 때문.
@@ -37,7 +37,7 @@ enum class Format : uint8_t
 	R32G32B32A32_FLOAT,    // float4 (색·탄젠트 등)
 	R16_UINT,              // 16비트 인덱스 (정점 65535개 이하)
 	R32_UINT,              // 32비트 인덱스
-	R16G16B16A16_FLOAT,    // 2026-10-08: half4 색. HDR 큐브맵·BRDF LUT (1.0 을 넘는 값을 담음, 최대 65504)
+	R16G16B16A16_FLOAT,    // half4 색. HDR 큐브맵·BRDF LUT (1.0 을 넘는 값을 담음, 최대 65504)
 };
 
 enum class FillMode : uint8_t

@@ -78,7 +78,7 @@ void D3D12CommandList::BeginRenderPass(const RenderPassDesc& desc)
 	m_passWidth = width;
 	m_passHeight = height;
 
-	//바인딩. flip 모델에서는 Present 후 백버퍼 바인딩이 풀리므로 패스마다 다시 바인딩함.
+	// 바인딩. flip 모델에서는 Present 후 백버퍼 바인딩이 풀리므로 패스마다 다시 바인딩함.
 	m_list->OMSetRenderTargets(rtvCount, rtvCount ? rtvs : nullptr, FALSE, hasDsv ? &dsv : nullptr);
 
 	for (uint32_t i = 0; i < rtvCount; ++i)
@@ -96,7 +96,6 @@ void D3D12CommandList::BeginRenderPass(const RenderPassDesc& desc)
 
 	// 뷰포트 + 시저. 둘 다 PSO 밖의 동적 상태이고, 커맨드 리스트를 Reset 하면 사라짐.
 	ApplyViewport(desc.viewport);
-	//[2026/10/29] : 아래 코드 ApplyViewport로 이동함.
 	/*D3D12_VIEWPORT viewport = {};
 	viewport.TopLeftX = desc.viewport.x;
 	viewport.TopLeftY = desc.viewport.y;

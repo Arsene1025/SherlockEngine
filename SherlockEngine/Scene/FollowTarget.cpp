@@ -5,10 +5,11 @@
 #include <algorithm>
 #include <cmath>
 
-// 추적: 소유 오브젝트를 이름이 target 인 오브젝트의 offset 위치로 부드럽게 옮기고, target(+lookOffset) 을 바라보게 회전함.
-// 카메라 오브젝트(CameraComponent)에 붙이면 3인칭 추적 카메라가 됨 — 카메라 자체는 CameraComponent 가 맡고
-// 이 컴포넌트는 "카메라 오브젝트를 옮기는 로직" 일 뿐임. 그래서 어떤 오브젝트에 붙여도 대상을 따라다니게 할 수 있음.
-// Start 에서 순간이동하지 않음: 에디터에서 놓아 둔 자리에서 출발해 smoothing 속도로 따라붙음.
+// 추적: 소유 오브젝트를 이름이 target 인 오브젝트의 offset 위치로 부드럽게 옮기고, target(+lookOffset) 을
+// 바라보게 회전함. 카메라 오브젝트(CameraComponent)에 붙이면 3인칭 추적 카메라가 됨 — 카메라 자체는
+// CameraComponent 가 맡고 이 컴포넌트는 "카메라 오브젝트를 옮기는 로직" 일 뿐임. 그래서 어떤 오브젝트에
+// 붙여도 대상을 따라다니게 할 수 있음. Start 에서 순간이동하지 않음: 에디터에서 놓아 둔 자리에서 출발해
+// smoothing 속도로 따라붙음.
 class FollowTarget : public Behaviour
 {
 public:
@@ -26,7 +27,8 @@ public:
 
 	void Update(float dt) override
 	{
-		// 2026-10-15: 포인터 대신 ID 를 기억함 — target 이 Destroy 되면 FindById 가 nullptr 를 돌려주고, 같은 이름의 다른 오브젝트로 다시 찾음.
+		// 포인터 대신 ID 를 기억함 — target 이 Destroy 되면 FindById 가 nullptr 를 돌려주고, 같은 이름의 다른
+		// 오브젝트로 다시 찾음.
 		GameObject* targetObject = m_targetId != 0 ? GetContext().scene->FindById(m_targetId) : nullptr;
 		if (targetObject == nullptr)
 		{
@@ -35,7 +37,8 @@ public:
 		}
 		if (targetObject == nullptr || targetObject == &GetOwner()) return;
 
-		// 11-F단계: 월드 좌표로 계산함. target 이나 자기 자신이 다른 오브젝트의 자식이어도 맞게 따라가도록 (Transform 의 값은 부모 기준 로컬).
+		// 월드 좌표로 계산함. target 이나 자기 자신이 다른 오브젝트의 자식이어도 맞게 따라가도록 (Transform
+		// 의 값은 부모 기준 로컬).
 		const DirectX::XMFLOAT3 tp = targetObject->GetWorldPosition();
 		const DirectX::XMFLOAT3 desired(tp.x + offset.x, tp.y + offset.y, tp.z + offset.z);
 		DirectX::XMFLOAT3 p = GetOwner().GetWorldPosition();
@@ -45,7 +48,8 @@ public:
 		p.z += (desired.z - p.z) * k;
 		GetOwner().SetWorldPosition(p);
 
-		// target 을 바라보는 월드 회전 (Camera::SetLookAt 과 같은 식: forward = (cos p·sin y, −sin p, cos p·cos y)). roll 0.
+		// target 을 바라보는 월드 회전 (Camera::SetLookAt 과 같은 식: forward = (cos p·sin y, −sin p, cos
+		// p·cos y)). roll 0.
 		const float dx = tp.x + lookOffset.x - p.x;
 		const float dy = tp.y + lookOffset.y - p.y;
 		const float dz = tp.z + lookOffset.z - p.z;

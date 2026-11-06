@@ -29,7 +29,6 @@ bool D3D11Device::Init(const RHI::DeviceDesc& desc)
 
     if (!InitDirect3D()) return false;
     m_commandList.Init(this);
-    // 10단계
     if (!CreateTimestampQueries()) return false;
     if (!CreateBackBufferTexture()) return false;
     if (!CreateDepthTexture()) return false;
@@ -51,7 +50,7 @@ void D3D11Device::ReleaseDevice()
 
     // 장치가 만든 객체를 먼저 해제함. 장치보다 오래 살아 있으면 Live Object 경고가 발생함.
     m_pipelines.Clear();
-    for (TimestampSet& set : m_timestampSets)   // 10단계: 쿼리도 장치 객체임
+    for (TimestampSet& set : m_timestampSets)   // 쿼리도 장치 객체임
     {
         set.disjoint.Reset();
         for (ComPtr<ID3D11Query>& query : set.timestamps) query.Reset();
@@ -126,7 +125,7 @@ void D3D11Device::SetDebugName(ID3D11DeviceChild* object, const std::string& nam
 #if defined(_DEBUG)
     // Desc.debugName 을 Debug Layer 와 RenderDoc 이 읽는 이름으로 설정함 (WKPDID_D3DDebugObjectName).
     if (object == nullptr || name.empty()) return;
-    // C++20 (2026-09-28): 문자열 조립은 std::format. "이름[3]" 처럼 조각을 + 로 이어 붙이던 것을 서식 하나로 씀.
+    // C++20: 문자열 조립은 std::format. "이름[3]" 처럼 조각을 + 로 이어 붙이던 것을 서식 하나로 씀.
     const std::string full = index > 0 ? std::format("{}[{}]", name, index) : name;
     object->SetPrivateData(WKPDID_D3DDebugObjectName, static_cast<UINT>(full.size()), full.c_str());
 #else
@@ -181,7 +180,7 @@ uint32_t D3D11Device::BeginFrame()
     m_frameIndex = static_cast<uint32_t>(m_frameCounter % kFrameCount);
     m_commandList.ResetStats();
 
-    // 10단계: 다시 쓸 세트(kTimestampSets 프레임 전에 쓴 것)의 결과를 먼저 읽고, 이번 프레임의 세트로 다시 시작함.
+    // 다시 쓸 세트(kTimestampSets 프레임 전에 쓴 것)의 결과를 먼저 읽고, 이번 프레임의 세트로 다시 시작함.
     if (m_timestampSets[0].disjoint)
     {
         TimestampSet& set = m_timestampSets[m_frameCounter % kTimestampSets];
@@ -202,7 +201,7 @@ void D3D11Device::EndFrame()
         ErrorOnce(warned, "EndFrame : 렌더 패스가 열린 채 Present. EndRenderPass 를 빠뜨렸다.");
         m_commandList.EndRenderPass();
     }
-    if (m_readbackRequested) ReadBackBuffer();   // 11단계: Present 전에 읽음 (flip 모델은 Present 후 백버퍼 내용을 버림)
+    if (m_readbackRequested) ReadBackBuffer();   // Present 전에 읽음 (flip 모델은 Present 후 백버퍼 내용을 버림)
     if (m_swapChain)
     {
         // SyncInterval 1 = 수직 동기화(모니터 주사율로 제한), 0 = 제한 없음.
@@ -410,11 +409,11 @@ TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, std::span<co
     // 깊이 텍스처를 셰이더에서도 읽으려면(그림자 맵) 리소스를 TYPELESS로 만듦. 포맷은 뷰가 정함.
     const DXGI_FORMAT format = D3D11Convert::ToDXGI(descIn.format);
     const bool depthAndSrv = (descIn.bindFlags & TextureBind_DepthStencil) && (descIn.bindFlags & TextureBind_ShaderResource);
-    // 11단계: 렌더 타깃 + SRV 인 UNORM 색상 텍스처(에디터 씬 뷰)도 TYPELESS로 만듦 — sRGB RTV 로 그리고 UNORM SRV 로 읽음.
+    // 렌더 타깃 + SRV 인 UNORM 색상 텍스처(에디터 씬 뷰)도 TYPELESS로 만듦 — sRGB RTV 로 그리고 UNORM SRV 로 읽음.
     const bool colorRtAndSrv = (descIn.bindFlags & TextureBind_RenderTarget) && (descIn.bindFlags & TextureBind_ShaderResource) && format == DXGI_FORMAT_R8G8B8A8_UNORM;
     texture.typeless = (depthAndSrv && D3D11DepthFormat::IsDepth(format)) || colorRtAndSrv;
 
-    // 2026-10-08: 큐브는 정사각형 + ShaderResource 전용 (ResourceDesc.h). RTV/DSV 는 2D 뷰만 만들 줄 알기 때문.
+    // 큐브는 정사각형 + ShaderResource 전용 (ResourceDesc.h). RTV/DSV 는 2D 뷰만 만들 줄 알기 때문.
     const bool isCube = descIn.dimension == TextureDimension::TextureCube;
     const uint32_t arraySize = GetArraySize(descIn);
     if (isCube && (descIn.width != descIn.height || (descIn.bindFlags & (TextureBind_RenderTarget | TextureBind_DepthStencil))))
@@ -437,8 +436,9 @@ TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, std::span<co
     if (descIn.bindFlags & TextureBind_ShaderResource) td.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
     if (isCube) td.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;   // 이 플래그가 있어야 TEXTURECUBE SRV 를 만들 수 있음
 
-    // 초기 데이터: 서브리소스(면 × 밉)마다 D3D11_SUBRESOURCE_DATA 하나. 순서는 면 0 의 밉 0..N−1, 면 1 의 ... (서브리소스 인덱스 순).
-    // 개수가 모자라면 거부함 (모자란 밉에는 쓰레기 값이 들어가 원거리에서 이상한 색이 나옴).
+    // 초기 데이터: 서브리소스(면 × 밉)마다 D3D11_SUBRESOURCE_DATA 하나. 순서는 면 0 의 밉 0..N−1, 면 1 의 ...
+    // (서브리소스 인덱스 순). 개수가 모자라면 거부함 (모자란 밉에는 쓰레기 값이 들어가 원거리에서 이상한 색이
+    // 나옴).
     std::vector<D3D11_SUBRESOURCE_DATA> init;
     if (!subresources.empty())   // span: (nullptr, 0) 검사 두 개가 empty() 하나로
     {
@@ -487,7 +487,8 @@ bool D3D11Device::CreateBackBufferTexture()
 
     D3D11Texture texture;
     // C++20 지정 초기화: 나열하지 않은 필드(debugName)는 헤더의 기본값을 받음.
-    // 지정 초기화는 리스트 초기화라 축소 변환(int → uint32_t)이 금지됨 — 그래서 static_cast 가 필요함. 대입문에서는 조용히 넘어가던 변환임.
+    // 지정 초기화는 리스트 초기화라 축소 변환(int → uint32_t)이 금지됨 — 그래서 static_cast 가 필요함.
+    // 대입문에서는 조용히 넘어가던 변환임.
     texture.desc = TextureDesc{
         .width = static_cast<uint32_t>(m_screenWidth),
         .height = static_cast<uint32_t>(m_screenHeight),
@@ -748,11 +749,11 @@ bool D3D11Device::InitDirect3D()
 
     const D3D_FEATURE_LEVEL featureLevels[] =
     {
-        D3D_FEATURE_LEVEL_11_0   // 7절 #10: 11_0 전용. 9_3 폴백은 의도한 것이 아니었음 (11단계 정리)
+        D3D_FEATURE_LEVEL_11_0   // 11_0 전용 (9_3 폴백은 지원하지 않음)
     };
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
 
-    // 5단계: 장치와 스왑체인을 따로 만듦. D3D11CreateDeviceAndSwapChain은 옛 DXGI_SWAP_CHAIN_DESC만
+    // 장치와 스왑체인을 따로 만듦. D3D11CreateDeviceAndSwapChain은 옛 DXGI_SWAP_CHAIN_DESC만
     // 받으므로 flip 모델의 ALLOW_TEARING 확인(IDXGIFactory5)이나 CreateSwapChainForHwnd를 쓸 수 없음.
     HRESULT hr = D3D11CreateDevice(
         nullptr,                        // 기본 그래픽 어댑터
@@ -838,7 +839,7 @@ bool D3D11Device::InitDirect3D()
     return true;
 }
 
-// ------------------------------------------------------------------ 10단계: 타임스탬프 쿼리
+// ------------------------------------------------------------------ 타임스탬프 쿼리
 
 bool D3D11Device::CreateTimestampQueries()
 {
@@ -872,7 +873,8 @@ void D3D11Device::WriteTimestamp(uint32_t slot)
 
 void D3D11Device::ResolveTimestamps(TimestampSet& set)
 {
-    // DONOTFLUSH: 준비되지 않았으면 S_FALSE 로 돌아오고 이 세트는 버림 (kTimestampSets 프레임 전에 쓴 세트라 거의 항상 준비됨).
+    // DONOTFLUSH: 준비되지 않았으면 S_FALSE 로 돌아오고 이 세트는 버림 (kTimestampSets 프레임 전에 쓴 세트라
+    // 거의 항상 준비됨).
     D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint = {};
     const HRESULT hr = m_context->GetData(set.disjoint.Get(), &disjoint, sizeof(disjoint), D3D11_ASYNC_GETDATA_DONOTFLUSH);
     set.active = false;
@@ -903,7 +905,7 @@ bool D3D11Device::GetTimestampResults(std::span<uint64_t> ticks, uint64_t& frequ
     return true;
 }
 
-// ------------------------------------------------------------------ 11단계: 백버퍼 리드백 (스크린샷)
+// ------------------------------------------------------------------ 백버퍼 리드백 (스크린샷)
 
 void D3D11Device::ReadBackBuffer()
 {

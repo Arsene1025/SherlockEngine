@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-// 서브메시: 인덱스 범위 하나 + 재질 슬롯. 9단계: glTF 의 mesh 는 primitive 여러 개(재질마다 하나)로 이루어지는데,
+// 서브메시: 인덱스 범위 하나 + 재질 슬롯. glTF 의 mesh 는 primitive 여러 개(재질마다 하나)로 이루어지는데,
 // 정점·인덱스 버퍼는 하나로 합쳐 두고 범위만 나눔. 재질 슬롯 번호는 GameObject 가 실제 Material 로 바꿈.
 struct Submesh
 {
@@ -41,13 +41,13 @@ public:
 	static Mesh CreateCylinder(float bottomRadius, float topRadius, float height,
 		uint32_t sliceCount, uint32_t stackCount, const DirectX::XMFLOAT4& color);
 
-	// 9단계: 외부 데이터(모델 로더)로 만듦. submeshes 가 비면 전체를 서브메시 하나(슬롯 0)로 둠.
+	// 외부 데이터(모델 로더)로 만듦. submeshes 가 비면 전체를 서브메시 하나(슬롯 0)로 둠.
 	static Mesh FromData(std::vector<VERTEX>&& vertices, std::vector<uint32_t>&& indices, std::vector<Submesh>&& submeshes = {});
 
 	// 탄젠트가 없는 정점 배열에 삼각형별 UV 미분으로 탄젠트를 채움 (Lengyel). 노멀은 이미 있어야 함.
 	// bitangentTowardsIncreasingV: true 면 B = dP/dv (엔진 프리미티브·DirectX 식 노멀 맵: 초록 = v 증가),
 	// false 면 B = −dP/dv (glTF/OpenGL 식 노멀 맵: 초록 = 위). 두 결과는 tangent.w 의 부호만 다름.
-	// 2026-11-04: UV 가 뒤집힌(미러) 삼각형과 아닌 삼각형이 정점을 공유하면 손잡이별로 정점을 복제해 나눔.
+	// UV 가 뒤집힌(미러) 삼각형과 아닌 삼각형이 정점을 공유하면 손잡이별로 정점을 복제해 나눔.
 	// 그래서 vertices 는 뒤에 늘어나고 indices 는 복제본을 가리키도록 바뀜 (서브메시 인덱스 범위는 그대로).
 	static void ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>& indices, bool bitangentTowardsIncreasingV);
 

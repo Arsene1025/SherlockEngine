@@ -17,7 +17,8 @@ namespace
 		BehaviourRegistry::Factory factory;
 		bool isScript = false;
 	};
-	// 정적 초기화 순서 문제를 피하려고 함수 안의 static 을 사용함 (Meyers singleton). 등록은 매크로가 만든 정적 객체가 하므로 main 보다 먼저 일어남.
+	// 정적 초기화 순서 문제를 피하려고 함수 안의 static 을 사용함 (Meyers singleton). 등록은 매크로가 만든
+	// 정적 객체가 하므로 main 보다 먼저 일어남.
 	std::map<std::string, Entry>& Entries()
 	{
 		static std::map<std::string, Entry> entries;
@@ -32,7 +33,7 @@ namespace
 
 void BehaviourRegistry::Register(const char* typeName, Factory factory, bool isScript)
 {
-	// 2026-10-08: 같은 이름은 먼저 등록한 쪽이 이김. 스크립트 DLL(B안)이 엔진 컴포넌트와 같은 이름을 쓰면 무시되고 경고가 남음 —
+	// 같은 이름은 먼저 등록한 쪽이 이김. 스크립트 DLL이 엔진 컴포넌트와 같은 이름을 쓰면 무시되고 경고가 남음 —
 	// 덮어쓰면 DLL 을 내릴 때(Unregister) 엔진 컴포넌트까지 지워지기 때문.
 	if (!Entries().try_emplace(typeName, Entry{ std::move(factory), isScript }).second)
 	{

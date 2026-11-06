@@ -1,12 +1,13 @@
 ﻿#pragma once
-#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
+#include "Core/EngineApi.h"   // SHERLOCK_API (엔진 DLL 내보내기)
 #include <DirectXMath.h>
 
 // 오브젝트 하나의 로컬 자세: 위치·오일러 회전·스케일 (+ 모델 노드의 고정 행렬).
 //
-// 11-F단계: 이 값은 언제나 "부모 기준"이다. 부모가 없으면 로컬 = 월드. 월드 행렬은 GameObject::GetWorldMatrix 가
-// 부모를 따라 올라가며 곱해 만들고, Transform 은 부모를 모른다 (유니티의 localPosition/localRotation/localScale 에 해당).
-// 이전에는 GetWorldMatrix 라는 이름으로 이 로컬 행렬을 돌려줬는데, 계층이 생기면서 이름이 거짓이 되어 GetLocalMatrix 로 바꿨다.
+// 이 값은 언제나 "부모 기준"이다. 부모가 없으면 로컬 = 월드. 월드 행렬은 GameObject::GetWorldMatrix 가
+// 부모를 따라 올라가며 곱해 만들고, Transform 은 부모를 모른다 (유니티의
+// localPosition/localRotation/localScale 에 해당). 이전에는 GetWorldMatrix 라는 이름으로 이 로컬 행렬을
+// 돌려줬는데, 계층이 생기면서 이름이 거짓이 되어 GetLocalMatrix 로 바꿨다.
 class SHERLOCK_API Transform
 {
 public:
@@ -23,7 +24,7 @@ public:
 	const DirectX::XMFLOAT3& GetRotation() const { return rotation; }
 	const DirectX::XMFLOAT3& GetScale() const { return scale; }
 
-	// 9단계: S·R·T 앞에 곱하는 고정 행렬. 모델 노드의 월드 변환(임의 행렬)을 오일러 각으로 분해하지 않고
+	// S·R·T 앞에 곱하는 고정 행렬. 모델 노드의 월드 변환(임의 행렬)을 오일러 각으로 분해하지 않고
 	// 그대로 보관함. local = pre × S × R × T. 인스턴스 전체를 옮기려면 position/rotation/scale 을 쓰면 됨.
 	void SetPreTransform(const DirectX::XMMATRIX& value);
 	DirectX::XMMATRIX GetPreTransform() const { return DirectX::XMLoadFloat4x4(&preTransform); }
@@ -39,11 +40,12 @@ public:
 	bool SetLocalMatrix(const DirectX::XMMATRIX& local);
 
 	// 회전 행렬(순수 회전, 행벡터 관례) → RollPitchYaw 오일러 각. XMMatrixRotationRollPitchYaw(x, y, z) 의 역함수.
-	// pitch 가 ±90° 근처(짐벌락)이면 yaw 를 0 으로 두고 roll 에 몰아줌. 11-F단계에 Editor 에서 옮겨 옴 (재부모화·FollowTarget 도 씀).
+	// pitch 가 ±90° 근처(짐벌락)이면 yaw 를 0 으로 두고 roll 에 몰아줌. 재부모화·FollowTarget 도 씀.
 	static DirectX::XMFLOAT3 EulerFromRotationMatrix(const DirectX::XMFLOAT4X4& m);
 
-	// ---- 11-C단계: 스크립트가 Update 에서 호출하는 조작 함수 (유니티 Transform 의 Translate/Rotate/LookAt) ----
-	// 모두 로컬(부모 기준) 값이다. 부모가 있는 오브젝트를 월드 기준으로 옮기려면 GameObject::SetWorldPosition 등을 쓴다.
+	// ---- 스크립트가 Update 에서 호출하는 조작 함수 (유니티 Transform 의 Translate/Rotate/LookAt) ----
+	// 모두 로컬(부모 기준) 값이다. 부모가 있는 오브젝트를 월드 기준으로 옮기려면 GameObject::SetWorldPosition
+	// 등을 씀.
 	void Translate(float x, float y, float z);                       // 부모 축 기준 이동
 	void Translate(const DirectX::XMFLOAT3& delta);
 	void TranslateLocal(float forward, float right, float up);       // 자기 회전 기준 이동 (앞/오른쪽/위)

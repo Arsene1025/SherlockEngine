@@ -39,7 +39,7 @@ bool D3D12PipelineState::Create(D3D12Device& device, const PipelineStateDesc& de
 		return false;
 	}
 
-	// 2026-10-08: 속성 0개 허용 — InputLayout 이 { elements, 0 } 이 되어 정점 버퍼 없이 SV_VertexID 로 그림.
+	// 속성 0개 허용 — InputLayout 이 { elements, 0 } 이 되어 정점 버퍼 없이 SV_VertexID 로 그림.
 	if (desc.vertexLayout.attributeCount > kMaxVertexAttributes)
 	{
 		Log::Error("D3D12PipelineState::Create : 정점 속성 개수가 잘못됨 (%u).", desc.vertexLayout.attributeCount);
@@ -58,7 +58,7 @@ bool D3D12PipelineState::Create(D3D12Device& device, const PipelineStateDesc& de
 		elements[i].InstanceDataStepRate = 0;
 	}
 
-	// 1단계에서 "D3D11 은 안 쓰지만 D3D12 는 필수"라고 넣어 둔 rtvFormats / dsvFormat / sampleCount 가 여기서 쓰임.
+	// PSO Desc 의 rtvFormats / dsvFormat / sampleCount 는 D3D11 은 안 쓰지만 D3D12 는 필수라서 여기서 쓰임.
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC pd = {};
 	pd.pRootSignature = m_rootLayout->rootSignature.Get();
 	pd.VS = { vs->bytecode.data(), vs->bytecode.size() };

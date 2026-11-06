@@ -14,8 +14,8 @@
 // 빈 슬롯은 free list로 재사용함. generation 0은 빈 핸들로 예약되어 있으므로
 // 세대는 1에서 시작하고, 값이 넘쳐 0이 되면 0을 건너뜀.
 //
-// C++20 (2026-09-28): HandleT 는 ResourceHandle 콘셉트(Handle.h)로 제약함. 요구 조건은
-// Handle<Tag> 의 특수화이고 trivially copyable 일 것 (2026-10-01: 멤버 모양 검사에서 바꿈).
+// C++20: HandleT 는 ResourceHandle 콘셉트(Handle.h)로 제약함. 요구 조건은
+// Handle<Tag> 의 특수화이고 trivially copyable 일 것.
 // 조건을 어기는 타입을 넣으면 풀 본문이 아니라 ResourcePool<...> 를 적은 줄에서 에러가 남.
 template <typename T, ResourceHandle HandleT>
 class ResourcePool
@@ -74,7 +74,7 @@ public:
 		if (Get(handle) == nullptr) return;   // 이미 해제됐거나 세대가 다름
 		Slot& slot = m_slots[handle.index];
 		slot.item = T{};     // 스마트 포인터 멤버가 여기서 해제됨
-		//빈 객체를 이동 대입하면서 기존 Comptr들이 Release()되면서 GPU리소스 해제
+		// 빈 객체를 이동 대입하면서 기존 Comptr들이 Release()되면서 GPU리소스 해제
 		slot.alive = false;
 		++slot.generation;
 		if (slot.generation == 0) slot.generation = 1;

@@ -35,7 +35,7 @@ public:
 	void Barrier(TextureHandle texture, ResourceState before, ResourceState after) override;
 	void CopyBuffer(BufferHandle dst, BufferHandle src) override;
 
-	void WriteTimestamp(uint32_t slot) override;   // 10단계: Device 의 쿼리 힙에 위임
+	void WriteTimestamp(uint32_t slot) override;   // Device 의 쿼리 힙에 위임
 	const Stats& GetStats() const override { return m_stats; }
 	void ResetStats() override { m_stats = Stats{}; }
 	void SetViewport(const Viewport& viewport) override;
@@ -67,7 +67,7 @@ private:
 	BoundSet m_sets[kMaxBindingSets];
 	uint32_t m_setCount = 0;
 
-	//이 패스의 기본 뷰포트 크기 
+	// 이 패스의 기본 뷰포트 크기 
 	uint32_t m_passWidth = 0;
 	uint32_t m_passHeight = 0;
 };

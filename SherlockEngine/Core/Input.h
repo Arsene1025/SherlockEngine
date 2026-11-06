@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
+#include "Core/EngineApi.h"   // SHERLOCK_API (엔진 DLL 내보내기)
 #include <cstdint>
 
 enum class MouseButton : uint8_t

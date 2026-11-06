@@ -30,7 +30,7 @@ struct ColorAttachment
 	TextureHandle texture;
 	LoadOp load = LoadOp::Clear;
 	StoreOp store = StoreOp::Store;
-	bool srgbView = false;              // 5단계: UNORM 백버퍼를 sRGB 뷰로 씀
+	bool srgbView = false;              // UNORM 백버퍼를 sRGB 뷰로 씀
 	float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };   // 선형 값
 };
 

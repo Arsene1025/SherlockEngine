@@ -23,7 +23,7 @@ bool PipelineState::Create(D3D11Device& device, const PipelineStateDesc& desc)
 	}
 	m_vs = vs->vs;
 
-	// 6단계: 픽셀 셰이더는 선택 사항임. 핸들이 비어 있으면 깊이 전용 파이프라인(그림자 맵)임.
+	// 픽셀 셰이더는 선택 사항임. 핸들이 비어 있으면 깊이 전용 파이프라인(그림자 맵)임.
 	// D3D11은 PSSetShader(nullptr)로 래스터라이저 이후 단계를 끊고, D3D12는 PS 바이트코드를 비워 두면 됨.
 	m_ps.Reset();
 	if (desc.ps.IsValid())
@@ -45,7 +45,8 @@ bool PipelineState::Create(D3D11Device& device, const PipelineStateDesc& desc)
 		return false;
 	}
 
-	// 2026-10-08: 속성이 0개면 입력 레이아웃 없음 (정점 버퍼 없이 SV_VertexID 로 그리는 PSO). Bind 가 IASetInputLayout(nullptr) 을 함.
+	// 속성이 0개면 입력 레이아웃 없음 (정점 버퍼 없이 SV_VertexID 로 그리는 PSO). Bind 가
+	// IASetInputLayout(nullptr) 을 함.
 	HRESULT hr = S_OK;
 	if (desc.vertexLayout.attributeCount > 0)
 	{

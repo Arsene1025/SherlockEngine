@@ -8,7 +8,7 @@
 
 // HLSL → 바이트코드. Device는 바이트코드만 받음 (RHI는 컴파일러를 모름).
 //
-// 4단계(D12): 빌드 때 fxc로 만든 .cso를 우선 쓰고, Debug 빌드에서 소스 .hlsl이
+// 빌드 때 fxc로 만든 .cso를 우선 쓰고, Debug 빌드에서 소스 .hlsl이
 // .cso보다 새로우면 런타임 컴파일로 대체함. 핫리로드는 Renderer가 원본 파일의
 // 수정 시각을 감시하다가 CompileFromFile을 다시 부르는 방식으로 구현함.
 namespace ShaderCompiler
@@ -33,7 +33,7 @@ namespace ShaderCompiler
 	// 리플렉션으로 cbuffer 크기를 C++ 구조체 크기와 대조함. 패킹이 어긋나면
 	// 화면이 조용히 깨지는 대신 여기서 잡힘. 셰이더가 그 cbuffer를 쓰지 않아
 	// 리플렉션에 없으면 true(검사할 것이 없음)를 돌려주고 Info 로그를 남김.
-	// C++20 (2026-09-28): 읽기만 하는 바이트코드 인자는 const std::vector<uint8_t>& 대신 std::span<const uint8_t> 로 받음.
+	// C++20: 읽기만 하는 바이트코드 인자는 const std::vector<uint8_t>& 대신 std::span<const uint8_t> 로 받음.
 	// vector 뿐 아니라 C 배열·ShaderDesc::bytecode 도 그대로 들어옴.
 	bool ValidateConstantBufferSize(std::span<const uint8_t> bytecode, const char* cbufferName, uint32_t expectedSize);
 

@@ -10,7 +10,7 @@
 // cgltf: 단일 헤더 C 라이브러리 (vcpkg). 이 파일에서만 구현을 켬.
 // 로드맵은 tinygltf 를 권장했지만 vcpkg 포트의 소스 아카이브 해시가 GitHub 재압축으로 어긋나
 // 설치되지 않았음. cgltf 는 같은 조건(glTF 전용·경량·헤더 하나)을 갖춘 대안이고, 이미지 디코딩을
-// 하지 않는 점이 오히려 잘 맞음 — 디코딩은 5단계의 TextureLoader(DirectXTex)가 맡음.
+// 하지 않는 점이 오히려 잘 맞음 — 디코딩은 TextureLoader(DirectXTex)가 맡음.
 #define CGLTF_IMPLEMENTATION
 #pragma warning(push)
 #pragma warning(disable : 4996)   // cgltf 내부의 fopen/strncpy (CRT 보안 경고). 우리 코드가 아님.
@@ -68,7 +68,7 @@ namespace
 		}
 	}
 
-	// glTF 샘플러 → 엔진 프리셋. 5단계 프리셋 중 세 개(AnisotropicWrap·LinearClamp·PointWrap)로 근사함.
+	// glTF 샘플러 → 엔진 프리셋. 엔진 샘플러 프리셋 중 세 개(AnisotropicWrap·LinearClamp·PointWrap)로 근사함.
 	SamplerPreset ToSamplerPreset(const cgltf_sampler* sampler)
 	{
 		if (sampler == nullptr) return SamplerPreset::AnisotropicWrap;
@@ -138,7 +138,7 @@ namespace
 		return true;
 	}
 
-	// glTF 재질 → 엔진 Material. 2026-10-08 부터 엔진도 metallic-roughness PBR 이라 값을 그대로 옮김.
+	// glTF 재질 → 엔진 Material. 엔진도 metallic-roughness PBR 이라 값을 그대로 옮김.
 	Material ConvertMaterial(const std::string& modelName, const cgltf_data* data, const cgltf_material* source, size_t index)
 	{
 		Material material;
@@ -147,7 +147,7 @@ namespace
 		material.sampler = SamplerPreset::AnisotropicWrap;
 		if (source == nullptr) return material;
 
-		// 2026-10-08: 엔진 재질이 glTF 와 같은 metallic-roughness 가 되어 근사 없이 그대로 옮김. glTF 기본값은 금속 1·거칠기 1.
+		// 엔진 재질이 glTF 와 같은 metallic-roughness 가 되어 근사 없이 그대로 옮김. glTF 기본값은 금속 1·거칠기 1.
 		material.metallic = 1.0f;
 		material.roughness = 1.0f;
 		if (source->has_pbr_metallic_roughness)
@@ -179,7 +179,7 @@ namespace
 		if (!material.normalTexture.empty()) material.normalStrength = source->normal_texture.scale > 0.0f ? source->normal_texture.scale : 1.0f;
 
 		material.doubleSided = source->double_sided != 0;
-		// MASK 는 컷아웃. BLEND 는 블렌딩 지원이 아직 없어 컷아웃으로 근사함 (12단계).
+		// MASK 는 컷아웃. BLEND 는 블렌딩 지원이 아직 없어 컷아웃으로 근사함.
 		if (source->alpha_mode == cgltf_alpha_mode_mask) material.alphaCutoff = source->alpha_cutoff > 0.0f ? source->alpha_cutoff : 0.5f;
 		else if (source->alpha_mode == cgltf_alpha_mode_blend) material.alphaCutoff = 0.5f;
 		return material;
@@ -272,9 +272,10 @@ namespace
 				for (cgltf_size i = 0; i < vertexCount; ++i) indices.push_back(baseVertex + static_cast<uint32_t>(i));
 			}
 			submesh.indexCount = static_cast<uint32_t>(indices.size()) - submesh.indexStart;
-			// 2026-10-08: Z 뒤집기(반사, 행렬식 −1)는 화면에서 삼각형이 도는 방향도 뒤집음. glTF 의 앞면은 반시계(CCW)인데
-			// 반사 후에는 엔진 기준(시계방향이 앞면, RasterizerDesc::frontCounterClockwise = false)으로 뒷면이 되어 뒷면 컬링에 잘렸음.
-			// 삼각형마다 두 번째·세 번째 인덱스를 바꿔 감기 순서를 되돌림. 탄젠트 계산(ComputeTangents)은 감기 순서와 무관함.
+			// Z 뒤집기(반사, 행렬식 −1)는 화면에서 삼각형이 도는 방향도 뒤집음. glTF 의 앞면은 반시계(CCW)인데
+			// 반사 후에는 엔진 기준(시계방향이 앞면, RasterizerDesc::frontCounterClockwise = false)으로
+			// 뒷면이 되어 뒷면 컬링에 잘렸음. 삼각형마다 두 번째·세 번째 인덱스를 바꿔 감기 순서를 되돌림.
+			// 탄젠트 계산(ComputeTangents)은 감기 순서와 무관함.
 			if (options.flipZ)
 			{
 				for (size_t i = submesh.indexStart; i + 2 < indices.size(); i += 3) std::swap(indices[i + 1], indices[i + 2]);

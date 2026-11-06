@@ -14,7 +14,7 @@
 #include "Editor/ProjectGenerator.h"
 #include "Editor/ProjectLauncher.h"
 #include <imgui.h>
-#include <imgui_internal.h>   // 2026-10-15: 호버 중인 창 이름 (되돌리기 단계의 이름)
+#include <imgui_internal.h>   // 호버 중인 창 이름 (되돌리기 단계의 이름)
 #include <cmath>
 #include <format>   // C++20: 자동 검증 로그 서식 (11-F)
 
@@ -22,9 +22,10 @@ using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
-	// 2026-10-08: 모든 내장 씬(데모·헬멧·Sponza·새 씬·새 프로젝트)의 기본 환경 = 엔진 콘텐츠 Assets\Cubemap 의 HDR IBL 세트.
-	// "asset:" 이름은 프로젝트 Assets → 엔진 Assets 순으로 찾으므로 어느 프로젝트에서나 보이고, Build Game 이 패키지로 복사함.
-	// 세기 0.5: 이 세트의 Diffuse·Specular 는 Env 보다 약 2배 밝게 구워져 있어 하늘과 밝기를 맞춤 (12.14절). HDR 이라 톤매핑을 켬.
+	// 모든 내장 씬(데모·헬멧·Sponza·새 씬·새 프로젝트)의 기본 환경 = 엔진 콘텐츠 Assets\Cubemap 의 HDR IBL 세트.
+	// "asset:" 이름은 프로젝트 Assets → 엔진 Assets 순으로 찾으므로 어느 프로젝트에서나 보이고, Build Game 이
+	// 패키지로 복사함. 세기 0.5: 이 세트의 Diffuse·Specular 는 Env 보다 약 2배 밝게 구워져 있어 하늘과 밝기를
+	// 맞춤 (12.14절). HDR 이라 톤매핑을 켬.
 	void ApplyDefaultEnvironment(Scene& scene)
 	{
 		scene.environment.skybox = "asset:Cubemap\\CubemapSampleEnvHDR.dds";
@@ -47,9 +48,10 @@ bool EditorApp::OnInitialize()
 	ParseAutomation();
 
 	// 씬은 설정 engine.scene 으로 정함 (실행 인자 --scene= 이 덮어씀). 기본은 데모 씬.
-	// 11단계: 에디터 콜백 (메뉴·단축키 → 앱)
+	// 에디터 콜백 (메뉴·단축키 → 앱)
 	m_editorCallbacks.saveScene = [this](const std::wstring& path) { return SaveSceneFile(path); };
-	// 2026-10-15: 구조를 바꾸는 콜백은 큐에 넣음 (위젯을 그리는 도중 오브젝트 벡터가 바뀌지 않게). 결과(선택·메시지)는 명령이 실행될 때 정함.
+	// 구조를 바꾸는 콜백은 큐에 넣음 (위젯을 그리는 도중 오브젝트 벡터가 바뀌지 않게). 결과(선택·메시지)는
+	// 명령이 실행될 때 정함.
 	m_editorCallbacks.switchScene = [this](int mode) { Enqueue("Switch scene", [this, mode]() { LoadSceneMode(static_cast<SceneMode>(mode)); }); };
 	m_editorCallbacks.loadScene = [this](const std::wstring& path)
 	{
@@ -76,7 +78,7 @@ bool EditorApp::OnInitialize()
 			if (const GameObject* target = scene.FindById(id)) DeleteObject(static_cast<int>(scene.IndexOf(target)));
 		});
 	};
-	m_editorCallbacks.placeModel = [this](const std::wstring& path, const XMFLOAT3& position)   // 11-B단계
+	m_editorCallbacks.placeModel = [this](const std::wstring& path, const XMFLOAT3& position)
 	{
 		Enqueue("Place model", [this, path, position]() { PlaceModel(path, position); });
 	};
@@ -100,17 +102,18 @@ bool EditorApp::OnInitialize()
 	{
 		Enqueue("Instantiate prefab", [this, path, position]() { InstantiatePrefabAt(path, position); });
 	};
-	m_editorCallbacks.play = [this]() { StartPlay(); };   // 11-C단계
+	m_editorCallbacks.play = [this]() { StartPlay(); };
 	m_editorCallbacks.pauseToggle = [this]() { TogglePause(); };
 	m_editorCallbacks.stop = [this]() { StopPlay(); };
 	m_editorCallbacks.stepFrame = [this]() { StepFrame(); };
-	m_editorCallbacks.openProject = [this](const std::wstring& path) { return OpenProjectAndScene(path); };   // 11-E단계
+	m_editorCallbacks.openProject = [this](const std::wstring& path) { return OpenProjectAndScene(path); };
 	m_editorCallbacks.newProject = [this](const std::wstring& parent, const std::string& name, std::string& error) { return CreateProject(parent, name, error); };
-	m_editorCallbacks.buildScripts = [this]() { BuildScripts(); };   // 2026-10-08 (B안)
+	m_editorCallbacks.buildScripts = [this]() { BuildScripts(); };
 	m_editorCallbacks.saveProject = [this]() { return GetProject().Save(); };
 
-	// 11-E단계: 프로젝트가 있으면(AppBase 가 --project / exe 상위 폴더 / Projects\Sample 순으로 찾았음) 그 프로젝트의 시작 씬을 로드함. 없으면 engine.scene 을 씀.
-	// 2026-10-08 (B안): 스크립트 DLL 은 AppBase::Initialize 가 이미 올렸음. 옛 형식 프로젝트면 솔루션을 스크립트 DLL 형식으로 다시 만듦.
+	// 프로젝트가 있으면(AppBase 가 --project / exe 상위 폴더 / Projects\Sample 순으로 찾았음) 그 프로젝트의
+	// 시작 씬을 로드함. 없으면 engine.scene 을 씀. 스크립트 DLL 은 AppBase::Initialize 가 이미 올렸음. 옛
+	// 형식 프로젝트면 솔루션을 스크립트 DLL 형식으로 다시 만듦.
 	if (GetProject().IsLoaded())
 	{
 		ProjectGenerator::EnsureUpToDate(GetProject());
@@ -133,7 +136,7 @@ bool EditorApp::OnInitialize()
 	const std::string option = GetConfig().GetString("engine.scene", "demo");
 	if (option.size() > 5 && _stricmp(option.c_str() + option.size() - 5, ".json") == 0)
 	{
-		// 11단계: 저장한 씬 파일을 로드함. 실패하면 데모 씬으로 실행.
+		// 저장한 씬 파일을 로드함. 실패하면 데모 씬으로 실행.
 		std::wstring path(option.begin(), option.end());
 		if (path.find(L':') == std::wstring::npos && path[0] != L'\\') path = Paths::GetSceneDir() + path;   // 상대 경로는 씬 폴더 기준
 		m_editor.scenePath = path;
@@ -170,7 +173,8 @@ void EditorApp::LoadSceneMode(SceneMode mode)
 	m_modelStats = ModelStats{};
 	m_sceneMode = mode;
 
-	// 그림자 값은 씬의 환경(environment.shadow)에 있어서 Clear() 가 기본값으로 되돌림. 모델 씬은 아래에서 모델 크기에 맞게 정함.
+	// 그림자 값은 씬의 환경(environment.shadow)에 있어서 Clear() 가 기본값으로 되돌림. 모델 씬은 아래에서
+	// 모델 크기에 맞게 정함.
 	bool ok = true;
 	if (mode == SceneMode::Demo) BuildDemoScene();
 	else ok = BuildModelScene(mode);
@@ -185,29 +189,29 @@ void EditorApp::LoadSceneMode(SceneMode mode)
 	}
 	Log::Info("씬 전환: %s (오브젝트 %zu, 메시 %zu, 재질 %zu, 이미지 %zu)", GetSceneName(),
 		scene.GetObjects().size(), scene.GetMeshes().size(), scene.GetMaterials().size(), scene.GetImageCount());
-	ResetHistory();   // 2026-10-15: 새 씬이므로 이전 씬의 되돌리기 이력은 의미가 없음
+	ResetHistory();   // 새 씬이므로 이전 씬의 되돌리기 이력은 의미가 없음
 }
 
 void EditorApp::BuildDemoScene()
 {
 	Scene& scene = GetEngine().GetScene();
 	Camera& camera = GetEngine().GetCamera();
-	// 3단계 완료 기준: 바닥 평면 위에서 여러 개의 구·큐브가 서로 다른 변환으로 움직임.
-	// 4단계 완료 기준: 같은 구 메시를 서로 다른 Material로 여러 개 그림.
+	// 바닥 평면 위에서 여러 개의 구·큐브가 서로 다른 변환으로 움직임.
+	// 같은 구 메시를 서로 다른 Material로 여러 개 그림.
 	// 정점 색은 전부 흰색으로 두고 색은 Material이 정함.
 	const XMFLOAT4 white(1.0f, 1.0f, 1.0f, 1.0f);
-	// 11단계: 출처(MeshSource)를 함께 넣어 씬을 JSON 으로 저장·복원할 수 있게 함.
+	// 출처(MeshSource)를 함께 넣어 씬을 JSON 으로 저장·복원할 수 있게 함.
 	Mesh* floor = scene.AddMesh(Mesh::CreatePlane(40.0f, 40.0f, 21, 21, white), MeshSource::Plane(40.0f, 40.0f, 21, 21, white));
 	Mesh* sphere = scene.AddMesh(Mesh::CreateSphere(2.5f, 32, 16, white), MeshSource::Sphere(2.5f, 32, 16, white));
 	Mesh* cube = scene.AddMesh(Mesh::CreateCube(3.0f, white), MeshSource::Cube(3.0f, white));
 	Mesh* cylinder = scene.AddMesh(Mesh::CreateCylinder(1.5f, 1.0f, 4.0f, 24, 4, white), MeshSource::Cylinder(1.5f, 1.0f, 4.0f, 24, 4, white));
 
-	// 5단계: 텍스처. 바닥은 절차적 체커를 8×8 로 타일링하고 비등방 샘플러를 씀(비스듬히 보는 면의 밉맵 검증).
-	// 6단계: 바닥에도 약한 노멀 맵을 적용함.
+	// 텍스처. 바닥은 절차적 체커를 8×8 로 타일링하고 비등방 샘플러를 씀(비스듬히 보는 면의 밉맵 검증).
+	// 바닥에도 약한 노멀 맵을 적용함.
 	Material floorMat;
 	floorMat.name = "Floor";
 	floorMat.baseColor = XMFLOAT4(0.9f, 0.9f, 0.95f, 1.0f);
-	floorMat.roughness = 0.75f;   // 2026-10-08 PBR (예전 Blinn-Phong: 스페큘러 0.2, 광택 8)
+	floorMat.roughness = 0.75f;   // PBR (예전 Blinn-Phong: 스페큘러 0.2, 광택 8)
 	floorMat.albedoTexture = "builtin:checker";
 	floorMat.uvScale = XMFLOAT2(8.0f, 8.0f);
 	floorMat.sampler = SamplerPreset::AnisotropicWrap;
@@ -232,7 +236,7 @@ void EditorApp::BuildDemoScene()
 	goldWire.baseColor = XMFLOAT4(1.0f, 0.8f, 0.2f, 1.0f);
 	goldWire.wireframe = true;
 
-	// 6단계: 노멀 맵. 알베도 없이 색만 있는 재질에서 요철이 가장 잘 보임.
+	// 노멀 맵. 알베도 없이 색만 있는 재질에서 요철이 가장 잘 보임.
 	Material orange;
 	orange.name = "Orange";
 	orange.baseColor = XMFLOAT4(0.9f, 0.5f, 0.3f, 1.0f);
@@ -243,7 +247,7 @@ void EditorApp::BuildDemoScene()
 	Material green;
 	green.name = "Green";
 	green.baseColor = XMFLOAT4(0.4f, 0.8f, 0.5f, 1.0f);
-	green.metallic = 1.0f;     // 2026-10-08: 데모 씬의 금속 하나 — 하늘(환경)이 비쳐 보임
+	green.metallic = 1.0f;     // 데모 씬의 금속 하나 — 하늘(환경)이 비쳐 보임
 	green.roughness = 0.3f;
 	green.normalTexture = "bumps_normal.png";
 	green.uvScale = XMFLOAT2(4.0f, 2.0f);
@@ -264,8 +268,9 @@ void EditorApp::BuildDemoScene()
 
 	scene.AddObject(floor, floorMaterial, "Floor");
 
-	// 같은 구 메시에 서로 다른 재질 세 개. 11-C단계: 움직임은 프로젝트 Scripts 의 스크립트가 맡고 ▶ Play 중에만 동작함 (전에는 OnUpdate 에 하드코딩했음).
-	// 예전의 Orbit·Bob·Pulse 같은 기성 컴포넌트는 없음 — 그런 움직임은 스크립트의 Update 에서 Transform 함수를 호출해 직접 구현함 (Rotator.cpp 참고).
+	// 같은 구 메시에 서로 다른 재질 세 개. 움직임은 프로젝트 Scripts 의 스크립트가 맡고 ▶ Play 중에만 동작함.
+	// 예전의 Orbit·Bob·Pulse 같은 기성 컴포넌트는 없음 — 그런 움직임은 스크립트의 Update 에서 Transform
+	// 함수를 호출해 직접 구현함 (Rotator.cpp 참고).
 	GameObject& center = scene.AddObject(sphere, uvMaterial, "SphereCenter");
 	center.GetTransform().SetPosition(0.0f, 2.5f, 0.0f);
 	if (auto* body = dynamic_cast<Rigidbody*>(center.AddBehaviour("Rigidbody"))) body->radius = 2.5f;   // 점프용
@@ -286,7 +291,7 @@ void EditorApp::BuildDemoScene()
 	// 회색 카드: 카메라 가까이에 정면을 향하도록 놓음.
 	scene.AddObject(cube, grayMaterial, "GrayCard").GetTransform().SetPosition(14.0f, 1.5f, -14.0f);
 
-	// 조명. 0번 방향광이 그림자를 만듦. 6단계: 점광·스포트라이트를 추가해 여러 종류의 조명을 편집해 볼 수 있게 함.
+	// 조명. 0번 방향광이 그림자를 만듦. 점광·스포트라이트도 두어 여러 종류의 조명을 편집해 볼 수 있게 함.
 	scene.GetLights().push_back(LightData{});
 
 	LightData pointLight;
@@ -308,12 +313,12 @@ void EditorApp::BuildDemoScene()
 
 	scene.ambientColor = XMFLOAT3(0.12f, 0.12f, 0.12f);
 	scene.clearColor[0] = 0.1f; scene.clearColor[1] = 0.1f; scene.clearColor[2] = 0.3f; scene.clearColor[3] = 1.0f;
-	ApplyDefaultEnvironment(scene);   // 2026-10-08: HDR 스카이박스 + IBL (ambientColor 는 IBL 이 있으면 쓰이지 않음)
+	ApplyDefaultEnvironment(scene);   // HDR 스카이박스 + IBL (ambientColor 는 IBL 이 있으면 쓰이지 않음)
 
 	// 첫 시점: 씬 전체가 보이도록 조금 뒤에서 바라봄.
 	camera.SetLookAt(XMFLOAT3(18.0f, 16.0f, -28.0f), XMFLOAT3(0.0f, 2.0f, 0.0f));
 
-	// 11-C단계: 씬 안의 메인 카메라. 에디터에서 옮길 수 있고, 재생 중에는 이 카메라가 놓인 자리에서 보간 없이 그대로 봄.
+	// 씬 안의 메인 카메라. 에디터에서 옮길 수 있고, 재생 중에는 이 카메라가 놓인 자리에서 보간 없이 그대로 봄.
 	// 추적 카메라를 원하면 Inspector 에서 FollowTarget(target = SphereCenter) 을 붙이면 됨.
 	AddCameraObject("Main Camera");
 }
@@ -322,9 +327,9 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 {
 	Scene& scene = GetEngine().GetScene();
 	Camera& camera = GetEngine().GetCamera();
-	// 9단계 완료 기준: glTF 모델이 텍스처·노멀맵·그림자와 함께 두 백엔드에서 똑같이 표시됨.
+	// glTF 모델이 텍스처·노멀맵·그림자와 함께 두 백엔드에서 똑같이 표시됨.
 	const wchar_t* relative = mode == SceneMode::Helmet ? L"Models\\DamagedHelmet\\DamagedHelmet.glb" : L"Models\\Sponza\\Sponza.gltf";
-	// 10단계: AssetManager 캐시. 두 번째 전환부터는 파싱하지 않음 (패널의 hits 로 확인).
+	// AssetManager 캐시. 두 번째 전환부터는 파싱하지 않음 (패널의 hits 로 확인).
 	const Model* cached = GetEngine().GetAssets().GetModel(relative);
 	if (cached == nullptr) return false;
 	const Model& model = *cached;
@@ -364,7 +369,7 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		scene.GetLights().push_back(fill);
 		scene.ambientColor = XMFLOAT3(0.18f, 0.18f, 0.2f);
 		scene.clearColor[0] = 0.12f; scene.clearColor[1] = 0.13f; scene.clearColor[2] = 0.18f; scene.clearColor[3] = 1.0f;
-		ApplyDefaultEnvironment(scene);   // 2026-10-08: 헬멧도 HDR 환경 (그 전에는 어두운 배경)
+		ApplyDefaultEnvironment(scene);   // 헬멧도 HDR 환경 (그 전에는 어두운 배경)
 
 		scene.environment.shadow.orthoSize = 10.0f;
 		scene.environment.shadow.distance = 12.0f;
@@ -373,7 +378,7 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		const float top = bounds.max.y - bounds.min.y + 0.05f;
 		camera.SetLookAt(XMFLOAT3(2.6f, top * 0.9f, -3.2f), XMFLOAT3(0.0f, top * 0.5f, 0.0f));
 		m_moveSpeed = 3.0f;
-		AddCameraObject("Main Camera");   // 11-C단계
+		AddCameraObject("Main Camera");
 	}
 	else
 	{
@@ -386,7 +391,7 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		scene.GetLights().push_back(sun);
 		scene.ambientColor = XMFLOAT3(0.32f, 0.33f, 0.36f);
 		scene.clearColor[0] = 0.35f; scene.clearColor[1] = 0.45f; scene.clearColor[2] = 0.6f; scene.clearColor[3] = 1.0f;
-		ApplyDefaultEnvironment(scene);   // 2026-10-08: 안뜰 위로 HDR 하늘이 보임
+		ApplyDefaultEnvironment(scene);   // 안뜰 위로 HDR 하늘이 보임
 
 		const XMFLOAT3 center = bounds.Center();
 		const XMFLOAT3 extent = bounds.Extent();
@@ -401,17 +406,17 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		const XMFLOAT3 target(center.x - extent.x * 0.9f, bounds.min.y + 4.0f, center.z - extent.z * 0.25f);
 		camera.SetLookAt(eye, target);
 		m_moveSpeed = (std::max)(2.0f, largest * 0.25f);
-		AddCameraObject("Main Camera");   // 11-C단계
+		AddCameraObject("Main Camera");
 	}
 	return true;
 }
 
 void EditorApp::OnGUI()
 {
-	// 11단계: 에디터가 모든 창을 그림 (도킹 공간·메뉴·씬 뷰·계층·인스펙터·설정·통계·콘솔).
+	// 에디터가 모든 창을 그림 (도킹 공간·메뉴·씬 뷰·계층·인스펙터·설정·통계·콘솔).
 	m_editor.cameraMoveSpeed = m_moveSpeed;
-	SyncProjectInfo();   // 11-E단계
-	m_editor.playState = static_cast<Editor::PlayState>(m_playState);   // 11-C단계: 표시용 상태. 시간 배율은 슬라이더에서 바뀐 값을 다시 받아옴
+	SyncProjectInfo();
+	m_editor.playState = static_cast<Editor::PlayState>(m_playState);   // 표시용 상태. 시간 배율은 슬라이더에서 바뀐 값을 다시 받아옴
 	m_editor.timeScale = m_timeScale;
 	m_editor.history.canUndo = m_history.CanUndo();
 	m_editor.history.canRedo = m_history.CanRedo();
@@ -422,11 +427,11 @@ void EditorApp::OnGUI()
 	m_editor.Draw(GetEngine(), GetSceneName(), m_modelStats, m_editorCallbacks);
 	m_moveSpeed = m_editor.cameraMoveSpeed;
 	m_timeScale = m_editor.timeScale;
-	FlushCommands();   // 2026-10-15: 위젯 순회가 끝난 지금 구조 변경 명령을 실행함. 렌더는 이 뒤라 같은 프레임에 보임
+	FlushCommands();   // 위젯 순회가 끝난 지금 구조 변경 명령을 실행함. 렌더는 이 뒤라 같은 프레임에 보임
 	TrackHistory();
 }
 
-// ------------------------------------------------------------------ 2026-10-15: 명령 큐와 되돌리기
+// ------------------------------------------------------------------ 명령 큐와 되돌리기
 
 void EditorApp::Enqueue(const std::string& label, std::function<void()> run, bool record)
 {
@@ -460,8 +465,9 @@ void EditorApp::FlushCommands()
 void EditorApp::TrackHistory()
 {
 	if (m_playState != PlayState::Editing) return;
-	// "입력이 진행 중" = 위젯이 활성이거나(슬라이더 드래그·글자 입력) 마우스 버튼이 눌려 있거나(클릭·계층 끌기·카메라 룩) 기즈모를 잡고 있음.
-	// 진행 중 → 끝난 프레임에 EditorHistory 가 씬을 한 번 직렬화해 이전 기준과 비교함. 끌기 한 번 = 한 단계.
+	// "입력이 진행 중" = 위젯이 활성이거나(슬라이더 드래그·글자 입력) 마우스 버튼이 눌려 있거나(클릭·계층
+	// 끌기·카메라 룩) 기즈모를 잡고 있음. 진행 중 → 끝난 프레임에 EditorHistory 가 씬을 한 번 직렬화해 이전
+	// 기준과 비교함. 끌기 한 번 = 한 단계.
 	const bool busy = ImGui::IsAnyItemActive() || ImGui::IsMouseDown(ImGuiMouseButton_Left) || ImGui::IsMouseDown(ImGuiMouseButton_Right)
 		|| ImGui::IsMouseDown(ImGuiMouseButton_Middle) || m_editor.IsGizmoUsing() || m_forceBusy;
 	std::string label = "Edit";
@@ -492,7 +498,8 @@ void EditorApp::UndoRedo(bool undo)
 	const uint64_t selectedId = m_editor.GetSelectedId();
 	const bool ok = undo ? m_history.Undo(scene) : m_history.Redo(scene);
 	if (!ok) { m_editor.SetMessage(undo ? "nothing to undo" : "nothing to redo"); return; }
-	// 되돌리면 오브젝트가 모두 새로 만들어져 포인터가 바뀜 → 선택은 ID 로 다시 잡음 (그 오브젝트가 없어졌으면 선택 해제)
+	// 되돌리면 오브젝트가 모두 새로 만들어져 포인터가 바뀜 → 선택은 ID 로 다시 잡음 (그 오브젝트가 없어졌으면
+	// 선택 해제)
 	const GameObject* selected = scene.FindById(selectedId);
 	m_editor.SetSelectedObject(selected != nullptr ? static_cast<int>(scene.IndexOf(selected)) : -1);
 	m_editor.SetMessage((undo ? "undo: " : "redo: ") + label);
@@ -519,7 +526,8 @@ void EditorApp::SavePrefabOf(uint64_t id)
 	Scene& scene = GetEngine().GetScene();
 	GameObject* object = scene.FindById(id);
 	if (object == nullptr) return;
-	// 파일 이름 = 오브젝트 이름 (경로에 쓸 수 없는 글자는 _ 로). 같은 이름이 있으면 덮어씀 — 이미 놓인 인스턴스는 그대로고, 다음 Instantiate 부터 새 버전을 씀.
+	// 파일 이름 = 오브젝트 이름 (경로에 쓸 수 없는 글자는 _ 로). 같은 이름이 있으면 덮어씀 — 이미 놓인
+	// 인스턴스는 그대로고, 다음 Instantiate 부터 새 버전을 씀.
 	std::string name = object->GetName().empty() ? std::string("Prefab") : object->GetName();
 	for (char& c : name) if (strchr("\\/:*?\"<>|", c) != nullptr) c = '_';
 	const std::wstring relative = L"Prefabs\\" + std::wstring(name.begin(), name.end()) + L".prefab";
@@ -550,7 +558,7 @@ void EditorApp::InstantiatePrefabAt(const std::wstring& relativePath, const XMFL
 
 void EditorApp::OnFixedUpdate(float fixedDt)
 {
-	// 고정 스텝 검증용 카운터. 11-C단계: 재생 중이면 컴포넌트의 FixedUpdate 를 호출함 (Rigidbody 등).
+	// 고정 스텝 검증용 카운터. 재생 중이면 컴포넌트의 FixedUpdate 를 호출함 (Rigidbody 등).
 	++m_fixedUpdates;
 	m_fixedTime += fixedDt;
 	if (m_playState == PlayState::Playing) GetEngine().GetScene().FixedUpdate(fixedDt * m_timeScale);
@@ -565,11 +573,11 @@ void EditorApp::OnUpdate(float dt)
 	const float totalTime = engine.GetTime().GetTotalTime();
 
 	if (m_auto.active) RunAutomation();
-	PollScripts(dt);   // 2026-10-08 (B안): 스크립트 DLL 이 새로 빌드됐으면 다시 올림
+	PollScripts(dt);   // 스크립트 DLL 이 새로 빌드됐으면 다시 올림
 	UpdateCamera(dt);
 
 	// 렌더 설정 단축키. ImGui 텍스트 입력 중에는 무시함.
-	// 11단계: 화면 전체가 ImGui(도킹)라 WantCaptureKeyboard 는 늘 참임. 그래서 텍스트 입력 중일 때만 막음.
+	// 화면 전체가 ImGui(도킹)라 WantCaptureKeyboard 는 늘 참임. 그래서 텍스트 입력 중일 때만 막음.
 	if (!ImGui::GetIO().WantTextInput)
 	{
 		if (input.IsKeyPressed(VK_F1)) renderer.GetSettings().wireframe = !renderer.GetSettings().wireframe;
@@ -579,18 +587,17 @@ void EditorApp::OnUpdate(float dt)
 		if (input.IsKeyPressed(VK_F5)) renderer.GetSettings().srgbOutput = !renderer.GetSettings().srgbOutput;
 		// F6: 샘플러 덮어쓰기 순환 (-1 재질 설정 → 0..4 프리셋). 밉맵 유무 비교용.
 		if (input.IsKeyPressed(VK_F6)) renderer.GetSettings().samplerOverride = (renderer.GetSettings().samplerOverride + 2) % 6 - 1;
-		// 6단계
 		if (input.IsKeyPressed(VK_F7)) m_lightOrbit = !m_lightOrbit;
 		if (input.IsKeyPressed(VK_F8)) renderer.GetSettings().shadows = !renderer.GetSettings().shadows;
 		if (input.IsKeyPressed(VK_F9)) renderer.GetSettings().normalMapping = !renderer.GetSettings().normalMapping;
-		// 7단계의 F10 "고정" 은 11-C단계에서 재생 일시정지로 바뀌었음 (편집 중에는 아무것도 움직이지 않으므로).
+		// F10 은 재생 일시정지 (편집 중에는 아무것도 움직이지 않으므로).
 		if (input.IsKeyPressed(VK_F10)) TogglePause();
-		// 9단계: 씬 순환
+		// 씬 순환
 		if (input.IsKeyPressed(VK_F11))
 		{
 			LoadSceneMode(static_cast<SceneMode>((static_cast<uint8_t>(m_sceneMode) + 1) % static_cast<uint8_t>(SceneMode::Count)));
 		}
-		// 10단계: 로그 콘솔 창
+		// 로그 콘솔 창
 		if (input.IsKeyPressed(VK_F12)) m_editor.showConsole = !m_editor.showConsole;
 	}
 
@@ -601,7 +608,7 @@ void EditorApp::OnUpdate(float dt)
 		scene.GetLights()[0].direction = XMFLOAT3(0.85f * cosf(m_lightAngle), -0.5f, 0.85f * sinf(m_lightAngle));
 	}
 
-	// ---- 11-C단계: 재생. 컴포넌트의 Update 는 재생 중에만, 시간 배율을 곱한 dt 로 호출함. Step 은 고정 스텝 한 번만 진행함. ----
+	// ---- 재생. 컴포넌트의 Update 는 재생 중에만, 시간 배율을 곱한 dt 로 호출함. Step 은 고정 스텝 한 번만 진행함. ----
 	(void)totalTime;
 	if (m_playState == PlayState::Playing)
 	{
@@ -616,7 +623,7 @@ void EditorApp::OnUpdate(float dt)
 	}
 }
 
-// ------------------------------------------------------------------ 11-E단계: 프로젝트
+// ------------------------------------------------------------------ 프로젝트
 
 void EditorApp::SyncProjectInfo()
 {
@@ -628,7 +635,7 @@ void EditorApp::SyncProjectInfo()
 	info.root = project.GetRoot();
 	info.solutionPath = project.GetSolutionPath();
 	info.hasSolution = info.loaded && GetFileAttributesW(info.solutionPath.c_str()) != INVALID_FILE_ATTRIBUTES;
-	// 2026-10-08 (B안): 스크립트 DLL 상태
+	// 스크립트 DLL 상태
 	const ScriptModule& scripts = GetScripts();
 	info.scriptSources = m_scriptSources;
 	info.scriptsLoaded = scripts.IsLoaded();
@@ -651,7 +658,7 @@ void EditorApp::SyncProjectInfo()
 bool EditorApp::OpenProjectAndScene(const std::wstring& pathOrDir)
 {
 	if (m_playState != PlayState::Editing) StopPlay();
-	// 2026-10-08 (B안): 이전 프로젝트의 스크립트 DLL 을 내리고(씬을 먼저 비움) 새 프로젝트의 DLL 을 올린 뒤 씬을 읽음.
+	// 이전 프로젝트의 스크립트 DLL 을 내리고(씬을 먼저 비움) 새 프로젝트의 DLL 을 올린 뒤 씬을 읽음.
 	{
 		Project probe;
 		if (!probe.Load(pathOrDir)) return false;
@@ -680,7 +687,7 @@ bool EditorApp::CreateProject(const std::wstring& parentDir, const std::string& 
 	Project project;
 	if (!Project::Create(parentDir, name, Paths::GetEngineRoot(), project, error)) return false;
 	// 프로젝트를 연 뒤 내용을 채움: 예제 스크립트(ScriptCreator 가 프로젝트 Scripts\ 에 씀), 기본 씬, 솔루션
-	UnloadProjectScripts();   // 2026-10-08 (B안): 이전 프로젝트의 스크립트 DLL (새 프로젝트는 아직 빌드 전이라 올릴 DLL 이 없음)
+	UnloadProjectScripts();   // 이전 프로젝트의 스크립트 DLL (새 프로젝트는 아직 빌드 전이라 올릴 DLL 이 없음)
 	if (!OpenProject(project.GetFilePath())) { error = "cannot open the new project"; return false; }
 	SyncProjectInfo();
 	m_editor.OnProjectChanged();
@@ -706,7 +713,8 @@ void EditorApp::BuildScripts()
 	ProjectGenerator::EnsureUpToDate(project);
 	std::string error;
 	const std::wstring log = project.GetRoot() + L"Build\\msbuild-scripts.log";
-	// BuildProjectReferences=false: 엔진 DLL 은 이 에디터가 쓰는 중이라 다시 링크할 수 없음. 스크립트 DLL 만 빌드함 (엔진은 엔진 솔루션에서).
+	// BuildProjectReferences=false: 엔진 DLL 은 이 에디터가 쓰는 중이라 다시 링크할 수 없음. 스크립트 DLL 만
+	// 빌드함 (엔진은 엔진 솔루션에서).
 	Log::Info("스크립트 빌드: MSBuild %sScripts (%s|x64) …", project.GetName().c_str(), Log::ToUtf8(ScriptModule::GetConfiguration()).c_str());
 	if (!ProjectGenerator::RunMsBuild(project.GetSolutionPath(), project.GetScriptsProjectName(), ScriptModule::GetConfiguration(), log, error, L"/p:BuildProjectReferences=false"))
 	{
@@ -723,8 +731,9 @@ bool EditorApp::ReloadScripts()
 	if (m_playState != PlayState::Editing || !GetProject().IsLoaded()) return false;
 	Engine& engine = GetEngine();
 	Scene& scene = engine.GetScene();
-	// 씬을 문자열로 기록 → 비움(DLL 클래스의 컴포넌트를 모두 파괴) → DLL 교체 → 문자열에서 다시 만듦. ■ Stop 의 스냅샷 복원과 같은 경로.
-	// 컴포넌트의 필드는 Reflect 로 저장되므로 새 DLL 에서도 값이 이어짐 (필드 이름을 바꾸면 그 값은 기본값이 됨).
+	// 씬을 문자열로 기록 → 비움(DLL 클래스의 컴포넌트를 모두 파괴) → DLL 교체 → 문자열에서 다시 만듦. ■ Stop
+	// 의 스냅샷 복원과 같은 경로. 컴포넌트의 필드는 Reflect 로 저장되므로 새 DLL 에서도 값이 이어짐 (필드
+	// 이름을 바꾸면 그 값은 기본값이 됨).
 	const std::string snapshot = SceneSerializer::SaveToString(scene, engine.GetCamera());
 	const int selected = m_editor.GetSelectedObject();
 	const bool ok = LoadProjectScripts(true);   // UnloadProjectScripts(씬 비움) → Load
@@ -734,7 +743,7 @@ bool EditorApp::ReloadScripts()
 		BuildEmptyScene();
 	}
 	m_editor.SetSelectedObject(selected < static_cast<int>(scene.GetObjects().size()) ? selected : -1);
-	m_history.Rebase(scene);   // 2026-10-15: 같은 내용으로 다시 만들어졌지만 컴포넌트 순서가 달라졌을 수 있음 — 이력은 두고 기준만 갱신 (ID 는 파일에서 이어짐)
+	m_history.Rebase(scene);   // 같은 내용으로 다시 만들어졌지만 컴포넌트 순서가 달라졌을 수 있음 — 이력은 두고 기준만 갱신 (ID 는 파일에서 이어짐)
 	m_scriptSources = ScriptModule::CountScriptSources(GetProject());
 	Log::Info("스크립트 다시 올리기 %s: 컴포넌트 %zu개, 오브젝트 %zu개 복원", ok ? "완료" : "실패", GetScripts().GetTypeNames().size(), scene.GetObjects().size());
 	return ok;
@@ -754,7 +763,7 @@ void EditorApp::PollScripts(float dt)
 	}
 }
 
-// ------------------------------------------------------------------ 11-C단계: 재생
+// ------------------------------------------------------------------ 재생
 
 void EditorApp::StartPlay()
 {
@@ -776,7 +785,8 @@ void EditorApp::StopPlay()
 	Engine& engine = GetEngine();
 	Scene& scene = engine.GetScene();
 	scene.EndPlay();
-	// 스냅샷 복원 = 씬 로드. Renderer 캐시는 메시·재질 포인터를 키로 쓰므로 먼저 버림 (텍스처는 그대로 둠 — 다시 읽을 필요 없음).
+	// 스냅샷 복원 = 씬 로드. Renderer 캐시는 메시·재질 포인터를 키로 쓰므로 먼저 버림 (텍스처는 그대로 둠 —
+	// 다시 읽을 필요 없음).
 	engine.GetRenderer().InvalidateScene(scene, false);
 	const int selected = m_editor.GetSelectedObject();
 	if (!SceneSerializer::LoadFromString(scene, engine.GetCamera(), engine.GetAssets(), m_playSnapshot, "play snapshot"))
@@ -785,7 +795,7 @@ void EditorApp::StopPlay()
 		LoadSceneMode(SceneMode::Demo);
 	}
 	m_editor.SetSelectedObject(selected < static_cast<int>(scene.GetObjects().size()) ? selected : -1);   // 오브젝트 순서는 스냅샷과 같음
-	m_history.Rebase(scene);   // 2026-10-15: 재생 전 씬이 돌아왔으므로 재생 전 이력이 그대로 유효함 (메시·재질 순서가 스냅샷과 같음)
+	m_history.Rebase(scene);   // 재생 전 씬이 돌아왔으므로 재생 전 이력이 그대로 유효함 (메시·재질 순서가 스냅샷과 같음)
 	m_playSnapshot.clear();
 	m_playState = PlayState::Editing;
 	m_stepOnce = false;
@@ -813,15 +823,15 @@ void EditorApp::UpdateCamera(float dt)
 
 	// 회전 시작/종료. 시작 여부만 ImGui에 물어봄. 씬 위에서 시작한 드래그는
 	// 커서가 UI 패널 위를 지나가도 회전이 계속되어야 하므로 latch로 유지함.
-	// 11단계: 씬 뷰(ImGui 이미지) 위에서만 시작함. 씬 뷰 안에서는 WantCaptureMouse 가 항상 참이므로 대신 hover 여부를 확인함.
-	// 11-C단계: 재생 중 게임 카메라 컴포넌트가 카메라를 움직이면 에디터 컨트롤러는 카메라를 건드리지 않음.
+	// 씬 뷰(ImGui 이미지) 위에서만 시작함. 씬 뷰 안에서는 WantCaptureMouse 가 항상 참이므로 대신 hover 여부를 확인함.
+	// 재생 중 게임 카메라 컴포넌트가 카메라를 움직이면 에디터 컨트롤러는 카메라를 건드리지 않음.
 	if (m_playState != PlayState::Editing && GetEngine().GetScene().GetPlayContext().cameraDriven)
 	{
 		EndLook();
 		return;
 	}
 
-	// 11-B단계: 에셋을 끌고 있는 동안은 회전을 시작하지 않음 (드래그 중엔 hover 도 false 지만 의도를 명시하려고 조건을 넣음).
+	// 에셋을 끌고 있는 동안은 회전을 시작하지 않음 (드래그 중엔 hover 도 false 지만 의도를 명시하려고 조건을 넣음).
 	if (!m_lookActive && input.IsMousePressed(MouseButton::Right) && m_editor.IsSceneViewHovered() && !m_editor.IsGizmoUsing() && !m_editor.IsAssetDragActive())
 	{
 		BeginLook();
@@ -848,7 +858,8 @@ void EditorApp::UpdateCamera(float dt)
 		input.SetMousePositionSilently(client.x, client.y);
 	}
 
-	// 이동. 텍스트 필드에 입력 중이면 WASD가 UI로 가야 하므로 무시함. 씬 뷰에 포커스가 있거나 커서가 올라가 있을 때만 이동함.
+	// 이동. 텍스트 필드에 입력 중이면 WASD가 UI로 가야 하므로 무시함. 씬 뷰에 포커스가 있거나 커서가 올라가
+	// 있을 때만 이동함.
 	if (!io.WantTextInput && (m_editor.IsSceneViewFocused() || m_editor.IsSceneViewHovered() || m_lookActive))
 	{
 		float speed = m_moveSpeed * dt;
@@ -908,7 +919,7 @@ void EditorApp::OnFocusLost()
 	EndLook();
 }
 
-// ------------------------------------------------------------------ 11단계: 씬 저장/로드
+// ------------------------------------------------------------------ 씬 저장/로드
 
 bool EditorApp::SaveSceneFile(const std::wstring& path)
 {
@@ -918,7 +929,7 @@ bool EditorApp::SaveSceneFile(const std::wstring& path)
 bool EditorApp::LoadSceneFile(const std::wstring& path)
 {
 	Engine& engine = GetEngine();
-	// Renderer 캐시는 포인터를 키로 씀. 그래서 씬을 비우기 전에 버림 (9단계 LoadSceneMode 와 같은 순서).
+	// Renderer 캐시는 포인터를 키로 씀. 그래서 씬을 비우기 전에 버림 (LoadSceneMode 와 같은 순서).
 	engine.GetRenderer().InvalidateScene(engine.GetScene(), true);
 	m_editor.ClearSelection();
 	if (!SceneSerializer::Load(engine.GetScene(), engine.GetCamera(), engine.GetAssets(), path))
@@ -932,15 +943,15 @@ bool EditorApp::LoadSceneFile(const std::wstring& path)
 	// 파일에서 읽은 씬이므로 File 모드로 표시함. 움직임은 씬에 저장된 스크립트·컴포넌트가 재생 중에 맡음.
 	Log::Info("씬 전환: File (오브젝트 %zu, 메시 %zu, 재질 %zu, 이미지 %zu)",
 		engine.GetScene().GetObjects().size(), engine.GetScene().GetMeshes().size(), engine.GetScene().GetMaterials().size(), engine.GetScene().GetImageCount());
-	ResetHistory();   // 2026-10-15
+	ResetHistory();
 	return true;
 }
 
-// ------------------------------------------------------------------ 11단계: 자동 검증
+// ------------------------------------------------------------------ 자동 검증
 
 void EditorApp::ParseAutomation()
 {
-	if (!GetCommandLineOption(L"post-stages").empty()) DebugUI::SetShowPostStages(true);   // 2026/10/23: --post-stages=1 이면 후처리 단계별 썸네일 창을 처음부터 켬
+	if (!GetCommandLineOption(L"post-stages").empty()) DebugUI::SetShowPostStages(true);   // --post-stages=1 이면 후처리 단계별 썸네일 창을 처음부터 켬
 	const std::wstring exitAfter = GetCommandLineOption(L"exit-after");
 	if (exitAfter.empty()) return;
 	m_auto.active = true;
@@ -969,7 +980,6 @@ void EditorApp::ParseAutomation()
 	}
 	m_auto.newScene = !GetCommandLineOption(L"new-scene").empty();
 	m_auto.addPrimitive = GetCommandLineOption(L"add").empty() ? -1 : _wtoi(GetCommandLineOption(L"add").c_str());
-	// 11-B단계
 	m_auto.browseDir = GetCommandLineOption(L"browse");
 	const std::wstring drop = GetCommandLineOption(L"drop");
 	if (!drop.empty())
@@ -981,7 +991,6 @@ void EditorApp::ParseAutomation()
 	const std::wstring dropUv = GetCommandLineOption(L"drop-uv");
 	if (!dropUv.empty()) m_auto.dropUv = swscanf_s(dropUv.c_str(), L"%f,%f", &m_auto.dropU, &m_auto.dropV) == 2;
 	m_auto.dropTexture = GetCommandLineOption(L"drop-texture");
-	// 11-C단계
 	m_auto.play = !GetCommandLineOption(L"play").empty();
 	m_auto.stopAt = static_cast<uint64_t>(_wtoi64(GetCommandLineOption(L"stop-at").c_str()));
 	m_auto.addComponent = Log::ToUtf8(GetCommandLineOption(L"add-component").c_str());
@@ -991,7 +1000,6 @@ void EditorApp::ParseAutomation()
 	m_auto.newProject = Log::ToUtf8(GetCommandLineOption(L"new-project").c_str());
 	m_auto.buildProject = !GetCommandLineOption(L"build-project").empty();
 	m_auto.launcher = !GetCommandLineOption(L"launcher").empty();
-	// 11-F단계
 	const std::wstring rotation = GetCommandLineOption(L"set-rotation");
 	if (!rotation.empty()) { m_auto.setRotation = swscanf_s(rotation.c_str(), L"%f,%f,%f", &m_auto.rotationDeg.x, &m_auto.rotationDeg.y, &m_auto.rotationDeg.z) == 3; }
 	const std::wstring setParent = GetCommandLineOption(L"set-parent");
@@ -1001,7 +1009,6 @@ void EditorApp::ParseAutomation()
 		m_auto.parentChild = Log::ToUtf8(setParent.substr(0, semicolon).c_str());
 		m_auto.parentName = semicolon != std::wstring::npos ? Log::ToUtf8(setParent.substr(semicolon + 1).c_str()) : std::string();
 	}
-	// 2026-10-15
 	m_auto.deleteName = Log::ToUtf8(GetCommandLineOption(L"delete").c_str());
 	m_auto.duplicateName = Log::ToUtf8(GetCommandLineOption(L"duplicate").c_str());
 	m_auto.makePrefabName = Log::ToUtf8(GetCommandLineOption(L"make-prefab").c_str());
@@ -1059,7 +1066,7 @@ void EditorApp::RunAutomation()
 		options.projectName = GetProject().GetName();
 		options.projectSolution = GetProject().GetSolutionPath();
 		options.openFolder = false;
-		options.releaseBuild = !GetCommandLineOption(L"build-release").empty();   // 2026-10-08: Release 패키지 검증
+		options.releaseBuild = !GetCommandLineOption(L"build-release").empty();   // Release 패키지 검증
 		const GameBuilder::Result result = GameBuilder::Build(options);
 		Log::Info("자동 검증: build-game %s → %s", result.ok ? "성공" : "실패", result.message.c_str());
 	}
@@ -1084,7 +1091,7 @@ void EditorApp::RunAutomation()
 	}
 	if (frame == 6 && !m_auto.dropPath.empty())
 	{
-		// 11-B단계: 씬 뷰 드롭과 같은 경로. --drop-uv 가 있으면 광선 히트점(오브젝트 AABB 또는 y=0 바닥)에 놓음.
+		// 씬 뷰 드롭과 같은 경로. --drop-uv 가 있으면 광선 히트점(오브젝트 AABB 또는 y=0 바닥)에 놓음.
 		XMFLOAT3 position = m_auto.dropPosition;
 		if (m_auto.dropUv)
 		{
@@ -1094,7 +1101,7 @@ void EditorApp::RunAutomation()
 		}
 		RunCommand("Place model", [&]() { PlaceModel(m_auto.dropPath, position); });
 	}
-	// 2026-10-15: 삭제·복제·프리팹 저장·프리팹 배치 — Delete 키·Ctrl+D·Save Prefab·씬 뷰 드롭이 부르는 함수를 그대로 부름
+	// 삭제·복제·프리팹 저장·프리팹 배치 — Delete 키·Ctrl+D·Save Prefab·씬 뷰 드롭이 부르는 함수를 그대로 부름
 	if (frame == 6 && !m_auto.deleteName.empty())
 	{
 		GameObject* target = scene.FindObject(m_auto.deleteName);
@@ -1141,7 +1148,7 @@ void EditorApp::RunAutomation()
 		}
 		else Log::Warn("자동 검증: 선택된 오브젝트가 없어 drop-texture 를 건너뜀");
 	}
-	if (frame == 9 && m_auto.play) StartPlay();   // 11-C단계
+	if (frame == 9 && m_auto.play) StartPlay();
 	if (frame == 10 && !m_auto.addComponent.empty())
 	{
 		const int selected = m_editor.GetSelectedObject();
@@ -1171,7 +1178,7 @@ void EditorApp::RunAutomation()
 	}
 	if (frame == 8 && m_auto.setRotation)
 	{
-		// 11-F단계: 선택 오브젝트의 로컬 회전(도). roll 을 주고 카메라를 자식으로 붙이면 카메라 roll 상속을 검증할 수 있음.
+		// 선택 오브젝트의 로컬 회전(도). roll 을 주고 카메라를 자식으로 붙이면 카메라 roll 상속을 검증할 수 있음.
 		const int selected = m_editor.GetSelectedObject();
 		if (GameObject* object = scene.GetObject(selected < 0 ? SIZE_MAX : static_cast<size_t>(selected)))
 		{
@@ -1182,8 +1189,9 @@ void EditorApp::RunAutomation()
 	}
 	if (frame == 7 && !m_auto.parentChild.empty())
 	{
-		// 11-F단계: --set-parent=자식;부모 (부모가 비어 있으면 루트로). 월드 자세는 유지됨 (Hierarchy 드래그와 같은 경로).
-		// set-rotation(8 프레임) 보다 먼저 실행해, 부모를 붙인 뒤 부모를 돌리면 자식(카메라)이 따라 도는지 검증할 수 있게 함.
+		// --set-parent=자식;부모 (부모가 비어 있으면 루트로). 월드 자세는 유지됨 (Hierarchy 드래그와 같은 경로).
+		// set-rotation(8 프레임) 보다 먼저 실행해, 부모를 붙인 뒤 부모를 돌리면 자식(카메라)이 따라 도는지
+		// 검증할 수 있게 함.
 		GameObject* child = scene.FindObject(m_auto.parentChild);
 		GameObject* parent = m_auto.parentName.empty() ? nullptr : scene.FindObject(m_auto.parentName);
 		if (child == nullptr || (parent == nullptr && !m_auto.parentName.empty()))
@@ -1205,14 +1213,14 @@ void EditorApp::RunAutomation()
 		const Camera& camera = engine.GetCamera();
 		const CameraComponent* active = scene.GetActiveCamera();
 		Log::Info("자동 검증: 카메라 위치 (%.2f, %.2f, %.2f) yaw %.2f pitch %.2f roll %.2f, 활성 카메라 %s", camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z,
-			camera.GetYaw(), camera.GetPitch(), camera.GetRoll(), active != nullptr ? active->GetOwner().GetName().c_str() : "(editor)");   // 11-F단계: roll 추가
+			camera.GetYaw(), camera.GetPitch(), camera.GetRoll(), active != nullptr ? active->GetOwner().GetName().c_str() : "(editor)");   // roll 추가
 		for (const auto& object : scene.GetObjects())
 		{
 			const XMFLOAT3& p = object->GetTransform().GetPosition();
 			const char* albedo = object->GetMaterial() != nullptr ? object->GetMaterial()->albedoTexture.c_str() : "";
 			std::string components;
 			for (const auto& b : object->GetBehaviours()) components += std::string(components.empty() ? "" : ",") + b->GetTypeName();
-			std::string parent;   // 11-F단계: 부모가 있으면 이름과 월드 위치도 남김 (로컬 값과 비교용)
+			std::string parent;   // 부모가 있으면 이름과 월드 위치도 남김 (로컬 값과 비교용)
 			if (object->GetParent() != nullptr)
 			{
 				const XMFLOAT3 wp = object->GetWorldPosition();
@@ -1230,7 +1238,7 @@ void EditorApp::RunAutomation()
 	}
 }
 
-// ------------------------------------------------------------------ 11단계: 새 씬 · 오브젝트 추가/삭제
+// ------------------------------------------------------------------ 새 씬 · 오브젝트 추가/삭제
 
 void EditorApp::BuildEmptyScene()
 {
@@ -1256,14 +1264,14 @@ void EditorApp::BuildEmptyScene()
 	scene.GetLights().push_back(LightData{});
 	scene.ambientColor = XMFLOAT3(0.15f, 0.15f, 0.15f);
 	scene.clearColor[0] = 0.1f; scene.clearColor[1] = 0.1f; scene.clearColor[2] = 0.3f; scene.clearColor[3] = 1.0f;
-	ApplyDefaultEnvironment(scene);   // 2026-10-08: 새 씬(새 프로젝트의 Main.json 포함)도 HDR 환경을 가짐 (유니티의 기본 Skybox 와 같은 관례)
+	ApplyDefaultEnvironment(scene);   // 새 씬(새 프로젝트의 Main.json 포함)도 HDR 환경을 가짐 (유니티의 기본 Skybox 와 같은 관례)
 
-	scene.environment.shadow = ShadowSettings{};   // 2026/10/28: 그림자 값은 씬에 있음 (기본값)
+	scene.environment.shadow = ShadowSettings{};   // 그림자 값은 씬에 있음 (기본값)
 	engine.GetCamera().SetLookAt(XMFLOAT3(18.0f, 16.0f, -28.0f), XMFLOAT3(0.0f, 2.0f, 0.0f));
 	m_moveSpeed = 10.0f;
-	AddCameraObject("Main Camera");   // 11-C단계: 새 씬에도 카메라 하나
+	AddCameraObject("Main Camera");   // 새 씬에도 카메라 하나
 	Log::Info("씬 전환: New (바닥 1, 방향광 1, 카메라 1)");
-	ResetHistory();   // 2026-10-15
+	ResetHistory();
 }
 
 GameObject& EditorApp::AddCameraObject(const char* name)
@@ -1279,7 +1287,7 @@ void EditorApp::AddPrimitive(int type)
 	Scene& scene = GetEngine().GetScene();
 	if (type == 4)
 	{
-		// 11-C단계: 카메라 오브젝트. 지금 에디터가 보는 자리에 생성됨 ("Camera 1", "Camera 2" …).
+		// 카메라 오브젝트. 지금 에디터가 보는 자리에 생성됨 ("Camera 1", "Camera 2" …).
 		int count = 1;
 		for (const auto& object : scene.GetObjects()) if (object->GetName().rfind("Camera ", 0) == 0) ++count;
 		const std::string uniqueName = "Camera " + std::to_string(count);
@@ -1338,7 +1346,8 @@ void EditorApp::PlaceModel(const std::wstring& relativePath, const XMFLOAT3& pos
 	const size_t first = scene.GetObjects().size();
 	const size_t created = scene.AddModel(*model, placement);   // 같은 모델을 다시 놓으면 씬에 이미 있는 메시·재질을 공유함 (오브젝트만 늘어남)
 
-	// 이름: "<파일명> N". 노드가 여럿이면 "<파일명> N/<노드명>". 번호는 AddPrimitive 처럼 같은 접두어를 가진 오브젝트 수로 정함.
+	// 이름: "<파일명> N". 노드가 여럿이면 "<파일명> N/<노드명>". 번호는 AddPrimitive 처럼 같은 접두어를 가진
+	// 오브젝트 수로 정함.
 	std::string stem = Log::ToUtf8(relativePath.c_str());
 	stem = stem.substr(stem.find_last_of("\\/") + 1);
 	const size_t dot = stem.find_last_of('.');
@@ -1346,8 +1355,9 @@ void EditorApp::PlaceModel(const std::wstring& relativePath, const XMFLOAT3& pos
 	int count = 1;
 	for (size_t i = 0; i < first; ++i) if (scene.GetObjects()[i]->GetName().rfind(stem + " ", 0) == 0) ++count;
 	const std::string prefix = stem + " " + std::to_string(count);
-	// 11-F단계: 노드가 여럿이면 Scene::AddModel 이 빈 루트(첫 오브젝트)를 만들고 노드를 그 자식으로 둔다. 루트가 "<파일명> N" 이고
-	// 자식은 노드 이름 그대로 (이전의 "<파일명> N/<노드명>" 접두어는 트리에서 중복이라 뺌). 노드 하나면 그 오브젝트가 "<파일명> N".
+	// 노드가 여럿이면 Scene::AddModel 이 빈 루트(첫 오브젝트)를 만들고 노드를 그 자식으로 둔다. 루트가
+	// "<파일명> N" 이고 자식은 노드 이름 그대로 (이전의 "<파일명> N/<노드명>" 접두어는 트리에서 중복이라 뺌).
+	// 노드 하나면 그 오브젝트가 "<파일명> N".
 	if (created > 0) scene.GetObjects()[first]->SetName(prefix);
 	// 모델을 놓아도 씬 모드는 바꾸지 않음 (삭제할 때만 File 로 바꿈 — DeleteObject).
 	m_modelStats = model->stats;

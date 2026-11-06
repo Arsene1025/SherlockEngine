@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
+#include "Core/EngineApi.h"   // SHERLOCK_API (엔진 DLL 내보내기)
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -7,16 +7,17 @@
 #include <winerror.h>   // HRESULT의 typedef가 여기에 있음. windows.h를 통째로
                         // 끌어오지 않고도 이 헤더만으로 컴파일되게 하기 위함.
 
-// Logger (10단계, D16 본체).
+// Logger.
 //
-// 0단계의 자유 함수 파사드(Log::Info/Warn/Error)는 그대로 두고 내부 구현을 채웠음. 호출부 100여 곳은 바뀌지 않았음.
+// 호출부는 자유 함수 파사드(Log::Info/Warn/Error)만 씀. 내부 구현은 아래 싱크들이 맡음.
 //   - 레벨: Debug < Info < Warn < Error. SetMinLevel 로 정한 레벨보다 낮은 로그는 어디에도 출력되지 않음.
 //   - 싱크 네 개: 콘솔(stdout), OutputDebugString(VS 출력 창), 파일(exe 기준 경로), 메모리 히스토리(ImGui 콘솔).
-//   - 콘솔: SubSystem 이 Windows 라 콘솔이 없음(D19). Init 이 부모 콘솔에 붙거나(AttachConsole), 부모 콘솔이 없고 allocConsole 이 true 면 새로 엶.
-//     stdout 이 이미 파이프로 리다이렉트되어 있으면(캡처 스크립트) 그대로 씀.
+//   - 콘솔: SubSystem 이 Windows 라 콘솔이 없음. Init 이 부모 콘솔에 붙거나(AttachConsole), 부모 콘솔이 없고
+//     allocConsole 이 true 면 새로 엶. stdout 이 이미 파이프로 리다이렉트되어 있으면(캡처 스크립트) 그대로
+//     씀.
 //   - 스레드 안전: 뮤텍스 하나로 보호함. 로더 스레드가 생겨도 줄이 섞이지 않음.
 //
-// namespace 로 둔 이유는 0단계 주석과 같음: 상태 없는(정확히는 파일 지역 상태만 있는) 자유 함수 묶음에는
+// namespace 로 둔 이유: 상태 없는(정확히는 파일 지역 상태만 있는) 자유 함수 묶음에는
 // 클래스보다 namespace 가 적합하고, 싱글턴 인스턴스를 넘겨 다니지 않아도 됨.
 namespace Log
 {
@@ -44,7 +45,7 @@ namespace Log
         size_t historyCapacity = 4000;  // ImGui 콘솔용 링 버퍼
     };
 
-    // 한 번만 호출함. 인자 없는 Init 은 0단계에서 콘솔 코드페이지만 맞췄음 — 지금은 InitDesc 기본값으로 부르는 것과 같음.
+    // 한 번만 호출함. 인자 없는 Init 은 InitDesc 기본값으로 부르는 것과 같음.
     SHERLOCK_API void Init();
     SHERLOCK_API void Init(const InitDesc& desc);
     SHERLOCK_API void Shutdown();   // 파일을 닫음. 이후 로그는 콘솔·디버거·히스토리로만 나감

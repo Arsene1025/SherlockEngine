@@ -1,8 +1,8 @@
 #include "Common.hlsli"
 
-// 2026/10/23: HDR 구간 후처리 픽셀 셰이더 (ScreenVertexShader 와 짝). 블러·블룸이 모드(postPass.x)로 갈림.
-// 입력은 후처리 셋의 t13 (앞 단계의 결과), 파라미터는 b4 (PostParams). 선형 HDR 값을 그대로 다루므로 1 을 넘는 밝기가 살아 있음.
-// 효과를 추가할 때는 모드를 하나 늘리거나 (같은 입력·출력 모양이면) 새 PS 파일을 만듦.
+// HDR 구간 후처리 픽셀 셰이더 (ScreenVertexShader 와 짝). 블러·블룸이 모드(postPass.x)로 갈림.
+// 입력은 후처리 셋의 t13 (앞 단계의 결과), 파라미터는 b4 (PostParams). 선형 HDR 값을 그대로 다루므로 1 을
+// 넘는 밝기가 살아 있음. 효과를 추가할 때는 모드를 하나 늘리거나 (같은 입력·출력 모양이면) 새 PS 파일을 만듦.
 //
 //   모드 1 : 가우시안 블러 한 방향 (postPass.yz = 방향, 가로 (1,0) / 세로 (0,1)). 입력·출력 크기가 같음.
 //   모드 2 : 블룸 밝기 추출 + 축소 (hdr → 레벨 0). 임계값 아래는 버리고 knee 구간은 부드럽게 이어 줌.
@@ -57,7 +57,8 @@ float4 PS_Post(float4 position : SV_POSITION) : SV_TARGET
         return float4(sum / weightSum, 1.0f);
     }
 
-    // 모드 2~4 는 입력과 출력 크기가 다르므로 UV 로 읽음. position 은 픽셀 중심(x + 0.5)이라 출력 크기로 나누면 정확한 UV 임.
+    // 모드 2~4 는 입력과 출력 크기가 다르므로 UV 로 읽음. position 은 픽셀 중심(x + 0.5)이라 출력 크기로
+    // 나누면 정확한 UV 임.
     const float2 uv = position.xy / postView.zw;
     const float2 texel = 1.0f / postView.xy;   // 입력 텍셀 크기
 

@@ -11,7 +11,7 @@
 #include <memory>
 #include <unordered_map>
 
-// RHI::Device 의 D3D12 구현 (8단계, 최소 구성).
+// RHI::Device 의 D3D12 구현 (최소 구성).
 //
 //   장치·직접 커맨드 큐·flip 스왑체인(백버퍼 3장), 프레임별 커맨드 할당자 + 단일 커맨드 리스트,
 //   펜스로 프레임 N−kFrameCount 완료 대기, 디스크립터 힙(RTV·DSV·스테이징 SRV/샘플러 CPU 전용,
@@ -201,7 +201,7 @@ private:
     TextureHandle m_backBuffers[kBackBufferCount];
     TextureHandle m_depthBuffer;
 
-    // 10단계: 타임스탬프. 쿼리 힙은 프레임 슬롯마다 kMaxTimestamps 개, 리드백 버퍼는 같은 배치의 uint64 배열.
+    // 타임스탬프. 쿼리 힙은 프레임 슬롯마다 kMaxTimestamps 개, 리드백 버퍼는 같은 배치의 uint64 배열.
     // EndFrame 이 이번 슬롯에 기록된 범위를 Resolve 하고, BeginFrame 이 (펜스를 지나) 재사용되는 슬롯의 결과를 읽음.
     ComPtr<ID3D12QueryHeap> m_timestampHeap;
     ComPtr<ID3D12Resource> m_timestampReadback;
@@ -212,7 +212,7 @@ private:
     uint64_t m_lastFrameNumber = 0;
     bool m_hasTimestampResults = false;
     bool CreateTimestampResources();
-    // 11단계: 백버퍼 리드백. EndFrame 이 Close 전에 복사를 기록하고, 실행 뒤 GPU 를 기다려 읽음.
+    // 백버퍼 리드백. EndFrame 이 Close 전에 복사를 기록하고, 실행 뒤 GPU 를 기다려 읽음.
     void RecordBackBufferReadback();
     void FinishBackBufferReadback();
     bool m_readbackRequested = false;

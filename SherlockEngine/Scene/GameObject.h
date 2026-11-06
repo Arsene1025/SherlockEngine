@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
+#include "Core/EngineApi.h"   // SHERLOCK_API (엔진 DLL 내보내기)
 #include <concepts>   // C++20: std::derived_from
 #include <memory>
 #include <string>
@@ -10,20 +10,21 @@
 class Mesh;
 struct Material;
 
-// 씬의 물체 하나. Transform 값 하나, 그릴 메시·재질에 대한 참조, 11-C단계에서 추가된 컴포넌트(Behaviour) 목록을 가짐.
+// 씬의 물체 하나. Transform 값 하나, 그릴 메시·재질에 대한 참조, 컴포넌트(Behaviour) 목록을 가짐.
 //
 // GPU 자원은 갖지 않음. 메시 → 정점/인덱스 버퍼, 재질 → 상수버퍼/ResourceSet 대응은
 // Renderer의 캐시가 관리함. (rendering-analysis D3: Scene은 CPU 데이터, GPU 자원은
 // Renderer 측 캐시) 메시와 재질은 Scene이 unique_ptr로 소유하므로 포인터가 바뀌지 않음.
 //
-// 9단계: 메시가 서브메시 여러 개(재질 슬롯)를 가지면 슬롯마다 재질을 둠. 슬롯에 재질이 없으면
+// 메시가 서브메시 여러 개(재질 슬롯)를 가지면 슬롯마다 재질을 둠. 슬롯에 재질이 없으면
 // 오브젝트의 기본 재질(material)을 쓰고, 그것도 없으면 Renderer 의 기본 재질을 씀.
 //
-// 11-C단계: Scene 이 GameObject 도 unique_ptr 로 소유함 (이전에는 값 벡터였음). 컴포넌트가 소유자 포인터를 들고 있기 때문.
+// Scene 이 GameObject 도 unique_ptr 로 소유함 (이전에는 값 벡터였음). 컴포넌트가 소유자 포인터를 들고 있기 때문.
 //
-// 11-F단계: 부모-자식 계층. Transform 은 부모 기준 로컬 값이고, 월드 행렬 = local × parent.world 를 GetWorldMatrix 가 재귀로 만듦.
-// 소유는 여전히 Scene 의 평면 벡터가 하고(인덱스 선택·순회는 그대로), 부모/자식 포인터는 비소유 링크임 — 주소가 안정적인 것은
-// 11-C 의 unique_ptr 전환 덕분. 부모를 지우면 자식도 함께 지워짐(Scene::RemoveObject, 유니티와 같음).
+// 부모-자식 계층. Transform 은 부모 기준 로컬 값이고, 월드 행렬 = local × parent.world 를 GetWorldMatrix 가
+// 재귀로 만듦. 소유는 여전히 Scene 의 평면 벡터가 하고(인덱스 선택·순회는 그대로), 부모/자식 포인터는 비소유
+// 링크임 — 주소가 안정적인 것은 11-C 의 unique_ptr 전환 덕분. 부모를 지우면 자식도 함께
+// 지워짐(Scene::RemoveObject, 유니티와 같음).
 class SHERLOCK_API GameObject
 {
 public:
@@ -52,7 +53,7 @@ public:
 	}
 
 	const std::string& GetName() const { return name; }
-	void SetName(const std::string& value) { name = value; }   // 11-B단계: 배치한 모델에 번호가 붙은 이름을 줄 때 사용
+	void SetName(const std::string& value) { name = value; }   // 배치한 모델에 번호가 붙은 이름을 줄 때 사용
 
 	// ---- 계층 ----
 	GameObject* GetParent() { return parent; }
@@ -60,7 +61,8 @@ public:
 	const std::vector<GameObject*>& GetChildren() const { return children; }
 	bool IsDescendantOf(const GameObject* ancestor) const;   // 자기 자신은 포함하지 않음
 	// 부모를 바꿈. nullptr 이면 루트로. keepWorld 가 참이면 월드 자세가 유지되도록 로컬 값을 다시 계산함
-	// (유니티 SetParent(parent, worldPositionStays=true)). 자기 자신이나 자기 자손을 부모로 지정하면 false 를 돌려주고 아무것도 하지 않음.
+	// (유니티 SetParent(parent, worldPositionStays=true)). 자기 자신이나 자기 자손을 부모로 지정하면 false 를
+	// 돌려주고 아무것도 하지 않음.
 	bool SetParent(GameObject* newParent, bool keepWorld = true);
 
 	// 월드 행렬 = local × parent.world (재귀). 부모가 없으면 로컬 행렬 그대로. 렌더러·기즈모·픽킹·카메라가 씀.
@@ -72,7 +74,7 @@ public:
 	void SetWorldPosition(const DirectX::XMFLOAT3& position);
 	bool SetWorldRotation(const DirectX::XMMATRIX& rotation);   // 순수 회전 행렬. 위치·스케일은 유지
 
-	// ---- 11-C단계: 컴포넌트 ----
+	// ---- 컴포넌트 ----
 	Behaviour& AddBehaviour(std::unique_ptr<Behaviour> behaviour)
 	{
 		behaviour->Attach(this);
@@ -88,30 +90,35 @@ public:
 	void RemoveBehaviour(size_t index) { if (index < behaviours.size()) behaviours.erase(behaviours.begin() + index); }
 	std::vector<std::unique_ptr<Behaviour>>& GetBehaviours() { return behaviours; }
 	const std::vector<std::unique_ptr<Behaviour>>& GetBehaviours() const { return behaviours; }
-	// C++20 (2026-09-28): T 는 Behaviour 파생 클래스여야 함 (std::derived_from 콘셉트). 이전에는 무엇이든 받아
-	// dynamic_cast 가 항상 nullptr 를 돌려주는 조용한 실수가 가능했음. 지금은 GetBehaviour<Transform>() 같은 호출이 컴파일되지 않음.
+	// C++20: T 는 Behaviour 파생 클래스여야 함 (std::derived_from 콘셉트). 이전에는 무엇이든 받아
+	// dynamic_cast 가 항상 nullptr 를 돌려주는 조용한 실수가 가능했음. 지금은 GetBehaviour<Transform>() 같은
+	// 호출이 컴파일되지 않음.
 	template <std::derived_from<Behaviour> T> T* GetBehaviour()
 	{
 		for (auto& b : behaviours) if (T* typed = dynamic_cast<T*>(b.get())) return typed;
 		return nullptr;
 	}
 
-	// 2026-10-08 (B안): 레지스트리에 없는 타입이라 만들지 못한 컴포넌트의 원본 JSON (유니티의 "Missing Script").
-	// 스크립트 DLL 을 아직 빌드하지 않았거나 올리지 못했을 때 씬을 열면 여기에 남고, 씬을 저장하면 그대로 다시 써서 값을 잃지 않음.
-	// 핫리로드는 씬을 문자열로 저장했다가 다시 읽으므로, 새 DLL 이 그 타입을 등록했으면 그때 진짜 컴포넌트로 되살아남 (목록의 끝에 붙음).
+	// 레지스트리에 없는 타입이라 만들지 못한 컴포넌트의 원본 JSON (유니티의 "Missing Script").
+	// 스크립트 DLL 을 아직 빌드하지 않았거나 올리지 못했을 때 씬을 열면 여기에 남고, 씬을 저장하면 그대로
+	// 다시 써서 값을 잃지 않음. 핫리로드는 씬을 문자열로 저장했다가 다시 읽으므로, 새 DLL 이 그 타입을
+	// 등록했으면 그때 진짜 컴포넌트로 되살아남 (목록의 끝에 붙음).
 	std::vector<std::string>& GetMissingComponents() { return missingComponents; }
 	const std::vector<std::string>& GetMissingComponents() const { return missingComponents; }
 
-	// 2026-10-15: 안정 ID. Scene::AddObject 가 부여하고 씬 파일에 저장됨 (0 = 아직 없음). 포인터·인덱스와 달리 Stop·스크립트 다시 올리기·
-	// 씬 불러오기·되돌리기를 거쳐도 같은 오브젝트를 가리킴. 되돌리기 이력, 에디터 선택, 지연 Destroy, 프리팹 인스턴스가 이것으로 오브젝트를 찾음.
+	// 안정 ID. Scene::AddObject 가 부여하고 씬 파일에 저장됨 (0 = 아직 없음). 포인터·인덱스와 달리
+	// Stop·스크립트 다시 올리기· 씬 불러오기·되돌리기를 거쳐도 같은 오브젝트를 가리킴. 되돌리기 이력, 에디터
+	// 선택, 지연 Destroy, 프리팹 인스턴스가 이것으로 오브젝트를 찾음.
 	uint64_t GetId() const { return id; }
 	void SetId(uint64_t value) { id = value; }   // Scene·SceneSerializer 가 씀. 직접 바꾸면 유일성이 깨짐
 
-	// 2026-10-15: 프리팹 인스턴스의 루트면 그 프리팹 경로 (Assets 기준, 비면 아님). 표시와 저장만 함 (오버라이드·되돌리기 연동은 없음)
+	// 프리팹 인스턴스의 루트면 그 프리팹 경로 (Assets 기준, 비면 아님). 표시와 저장만 함 (오버라이드·되돌리기
+	// 연동은 없음)
 	const std::string& GetPrefabSource() const { return prefabSource; }
 	void SetPrefabSource(const std::string& value) { prefabSource = value; }
 
-	// 2026-10-15: 지연 파괴 표시 (Scene::Destroy). 표시된 오브젝트는 그 프레임의 남은 Update 를 받지 않고, 프레임 끝에 Scene 이 지움.
+	// 지연 파괴 표시 (Scene::Destroy). 표시된 오브젝트는 그 프레임의 남은 Update 를 받지 않고, 프레임 끝에
+	// Scene 이 지움.
 	bool IsMarkedForDestroy() const { return markedForDestroy; }
 	void MarkForDestroy() { markedForDestroy = true; }
 
@@ -127,11 +134,12 @@ private:
 	std::vector<const Material*> slotMaterials;
 	std::string name;
 	std::vector<std::unique_ptr<Behaviour>> behaviours;
-	std::vector<std::string> missingComponents;   // 2026-10-08 (B안): JSON 문자열
-	GameObject* parent = nullptr;          // 11-F단계: 비소유. 소유는 Scene 의 벡터
-	std::vector<GameObject*> children;     // 11-F단계: 비소유. Hierarchy 표시 순서
-	// 멤버는 끝에만 덧붙임: 인라인 접근자(GetTransform 등)를 쓰는 이미 빌드된 스크립트 DLL 이 옛 오프셋 그대로 동작함 (ABI 호환).
-	uint64_t id = 0;                       // 2026-10-15
-	std::string prefabSource;              // 2026-10-15
-	bool markedForDestroy = false;         // 2026-10-15
+	std::vector<std::string> missingComponents;   // JSON 문자열
+	GameObject* parent = nullptr;          // 비소유. 소유는 Scene 의 벡터
+	std::vector<GameObject*> children;     // 비소유. Hierarchy 표시 순서
+	// 멤버는 끝에만 덧붙임: 인라인 접근자(GetTransform 등)를 쓰는 이미 빌드된 스크립트 DLL 이 옛 오프셋
+	// 그대로 동작함 (ABI 호환).
+	uint64_t id = 0;
+	std::string prefabSource;
+	bool markedForDestroy = false;
 };

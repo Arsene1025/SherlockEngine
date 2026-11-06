@@ -5,20 +5,23 @@
 #include "Editor/EditorHistory.h"
 #include <functional>
 
-// 에디터 앱 (SherlockEditor.exe). 10단계부터 "엔진 위의 앱"이며, GameApp(SherlockGame.exe)과 짝을 이룸. 씬 구성·카메라 컨트롤러·단축키·패널만 가짐.
-// 2026-09-28 TestApp → EditorApp 으로 개명: 저장·불러오기 단위는 프로젝트(11-E)와 씬(11)이 맡으므로, 이 클래스는 에디터 실행 파일 그 자체임.
-// Device·Renderer·Scene·Input·Time 은 GetEngine() 으로 접근함. 렌더 순서는 Engine 이 정함.
+// 에디터 앱 (SherlockEditor.exe). "엔진 위의 앱"이며, GameApp(SherlockGame.exe)과 짝을 이룸. 씬 구성·카메라
+// 컨트롤러·단축키·패널만 가짐. TestApp → EditorApp 으로 개명: 저장·불러오기 단위는 프로젝트(11-E)와 씬(11)이
+// 맡으므로, 이 클래스는 에디터 실행 파일 그 자체임. Device·Renderer·Scene·Input·Time 은 GetEngine() 으로
+// 접근함. 렌더 순서는 Engine 이 정함.
 class EditorApp : public AppBase
 {
 public:
-    // 9단계: 씬 세 가지. F11 로 순환하며, 설정 engine.scene 또는 실행 인자 --scene=demo|helmet|sponza 로 고름.
+    // 내장 씬 세 가지. F11 로 순환하며, 설정 engine.scene 또는 실행 인자 --scene=demo|helmet|sponza 로 고름.
+    // Helmet·Sponza 의 모델 파일은 SherlockTestScenes 프로젝트의 Assets\Models 에 있으므로 그 프로젝트를 연
+    // 상태에서만 로드됨.
     enum class SceneMode : uint8_t
     {
-        Demo,       // 3~6단계의 프리미티브 씬 (애니메이션)
+        Demo,       // 프리미티브 씬 (애니메이션)
         Helmet,     // Khronos DamagedHelmet (.glb, 텍스처 내장, 탄젠트 없음 → 생성)
         Sponza,     // Khronos Sponza (.gltf + .bin + 외부 이미지, 재질 25개, 알파 컷아웃)
         Count,
-        File        // 11단계: JSON 에서 로드한 씬 (F11 순환에는 들어가지 않음)
+        File        // JSON 에서 로드한 씬 (F11 순환에는 들어가지 않음)
     };
 
     EditorApp();
@@ -34,16 +37,17 @@ private:
     void LoadSceneMode(SceneMode mode);
     void BuildDemoScene();
     bool BuildModelScene(SceneMode mode);
-    bool SaveSceneFile(const std::wstring& path);   // 11단계
+    bool SaveSceneFile(const std::wstring& path);
     bool LoadSceneFile(const std::wstring& path);
     void BuildEmptyScene();          // 바닥만 있는 새 씬 (File 모드)
     void AddPrimitive(int type);     // 0 구, 1 큐브, 2 원기둥, 3 평면, 4 카메라 오브젝트 (11-C)
     GameObject& AddCameraObject(const char* name);   // 11-C: 메시 없는 오브젝트 + CameraComponent 를 현재 에디터 시점에 만듦
     void DeleteObject(int index);
-    // 2026-10-15: 명령 큐와 되돌리기 (Editor/EditorHistory.h).
-    // 구조를 바꾸는 편집(추가·삭제·모델·프리팹·복제·씬 불러오기)은 위젯을 그리는 도중에 실행하지 않고 Enqueue 로 큐에 넣음.
-    // OnGUI 가 Editor::Draw 를 끝낸 뒤 FlushCommands 가 순서대로 실행함 — 그때는 어떤 위젯도 오브젝트 벡터를 순회하고 있지 않고,
-    // 결과는 같은 프레임의 렌더에 반영됨. 각 명령은 RunCommand 가 감싸 실행 앞뒤의 씬 상태를 비교해 되돌리기 한 단계로 기록함.
+    // 명령 큐와 되돌리기 (Editor/EditorHistory.h).
+    // 구조를 바꾸는 편집(추가·삭제·모델·프리팹·복제·씬 불러오기)은 위젯을 그리는 도중에 실행하지 않고 Enqueue
+    // 로 큐에 넣음. OnGUI 가 Editor::Draw 를 끝낸 뒤 FlushCommands 가 순서대로 실행함 — 그때는 어떤 위젯도
+    // 오브젝트 벡터를 순회하고 있지 않고, 결과는 같은 프레임의 렌더에 반영됨. 각 명령은 RunCommand 가 감싸
+    // 실행 앞뒤의 씬 상태를 비교해 되돌리기 한 단계로 기록함.
     struct PendingCommand
     {
         std::string label;
@@ -59,21 +63,23 @@ private:
     void SavePrefabOf(uint64_t id);
     void InstantiatePrefabAt(const std::wstring& relativePath, const DirectX::XMFLOAT3& position);
     void ResetHistory();                // 씬을 통째로 갈아 끼운 뒤 (새 씬·불러오기·프로젝트 전환): 이력을 비우고 현재 씬을 첫 상태로
-    // 11-B단계: 콘텐츠 브라우저 드롭. 모델(Assets 상대 경로)을 바닥면이 position.y 에 닿도록 position 에 놓음.
+    // 콘텐츠 브라우저 드롭. 모델(Assets 상대 경로)을 바닥면이 position.y 에 닿도록 position 에 놓음.
     void PlaceModel(const std::wstring& relativePath, const DirectX::XMFLOAT3& position);
 
-    // 11-C단계: 재생 (에디터의 ▶). Play 는 씬+카메라를 JSON 문자열로 스냅샷한 뒤 Scene::BeginPlay 를 호출하고, Stop 은 스냅샷으로 되돌림.
+    // 재생 (에디터의 ▶). Play 는 씬+카메라를 JSON 문자열로 스냅샷한 뒤 Scene::BeginPlay 를 호출하고, Stop 은
+    // 스냅샷으로 되돌림.
     enum class PlayState : uint8_t { Editing, Playing, Paused };
     void StartPlay();
     void StopPlay();
     void TogglePause();
     void StepFrame();   // Paused 에서 고정 스텝 한 번
 
-    // 11-E단계: 프로젝트
+    // 프로젝트
     bool OpenProjectAndScene(const std::wstring& pathOrDir);            // AppBase::OpenProject + 에디터 갱신 + 시작 씬 로드 + 최근 목록
     bool CreateProject(const std::wstring& parentDir, const std::string& name, std::string& error);   // 폴더·스크립트 예제·솔루션·Main.json
-    // 2026-10-08 (B안): 스크립트 DLL. BuildScripts = MSBuild <Name>Scripts → ReloadScripts. ReloadScripts = 씬 스냅샷 → 씬 비움 → DLL 교체 → 스냅샷 복원.
-    // 편집 중에만 다시 올림 (재생 중이면 정지 뒤로 미룸). OnUpdate 가 1초마다 DLL 의 수정 시각을 보고, VS 에서 빌드해도 자동으로 다시 올림.
+    // 스크립트 DLL. BuildScripts = MSBuild <Name>Scripts → ReloadScripts. ReloadScripts = 씬 스냅샷 → 씬 비움
+    // → DLL 교체 → 스냅샷 복원. 편집 중에만 다시 올림 (재생 중이면 정지 뒤로 미룸). OnUpdate 가 1초마다 DLL
+    // 의 수정 시각을 보고, VS 에서 빌드해도 자동으로 다시 올림.
     void BuildScripts();
     bool ReloadScripts();
     void PollScripts(float dt);
@@ -88,23 +94,22 @@ private:
 
 private:
     SceneMode m_sceneMode = SceneMode::Demo;
-    Editor m_editor;               // 11단계
+    Editor m_editor;
     Editor::Callbacks m_editorCallbacks;
     ModelStats m_modelStats;   // 모델 씬일 때의 로드 통계 (패널 표시)
 
-    // 11단계: 자동 검증 (실행 인자). OS 입력을 주입하지 않고 에디터와 같은 코드 경로를 거침 — 스크린샷은 화면 캡처 대신 Device 리드백으로 찍음.
+    // 자동 검증 (실행 인자). OS 입력을 주입하지 않고 에디터와 같은 코드 경로를 거침 — 스크린샷은 화면 캡처
+    // 대신 Device 리드백으로 찍음.
     //   --exit-after=N        N 프레임 뒤 종료 (자동 모드 스위치: 창은 화면 밖, 포커스 없음)
     //   --pick=u,v            5 프레임째 씬 뷰의 (u,v) 픽셀(0..1)로 Editor::Pick — 클릭 선택과 같은 코드
     //   --set-position=x,y,z  8 프레임째 선택 오브젝트 위치 변경 (인스펙터 편집과 같은 효과)
     //   --save=path           12 프레임째 씬 저장,   --load=path  16 프레임째 씬 로드
     //   --dump-objects        20 프레임째 오브젝트 이름·위치를 로그로 출력
     //   --screenshot=path     N−1 프레임째 백버퍼 PNG
-    // 11-B단계:
     //   --browse=relDir       2 프레임째 콘텐츠 브라우저 폴더 이동 (스크린샷용)
     //   --drop=rel;x,y,z      6 프레임째 PlaceModel — 씬 뷰 드롭과 같은 코드 경로
     //   --drop-uv=u,v         --drop 의 위치 대신 씬 뷰 (u,v) 광선의 히트점 (Editor::RaycastScene)
     //   --drop-texture=rel    7 프레임째 선택 오브젝트 재질의 알베도에 텍스처 에셋 지정 (드롭과 같은 이름 규칙)
-    // 11-C단계:
     //   --play=1              9 프레임째 StartPlay (▶ 와 같은 경로)
     //   --stop-at=N           N 프레임째 StopPlay (스냅샷 복원)
     //   --add-component=Name  10 프레임째 선택 오브젝트에 컴포넌트 추가 (Inspector 의 Add Component 와 같은 경로)
@@ -113,7 +118,7 @@ private:
         bool active = false;
         uint64_t exitAfter = 0;
         bool pick = false; float pickU = 0.5f, pickV = 0.5f;
-        std::string selectName;   // 2026/10/23: --select=<오브젝트 이름>. 이름이 같은 첫 오브젝트를 선택함 (카메라 미리보기 검증 등)
+        std::string selectName;   // --select=<오브젝트 이름>. 이름이 같은 첫 오브젝트를 선택함 (카메라 미리보기 검증 등)
         bool setPosition = false; DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
         std::wstring savePath, loadPath, screenshotPath;
         bool dumpObjects = false;
@@ -122,11 +127,11 @@ private:
         bool camLook = false; DirectX::XMFLOAT3 camEye = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), camTarget = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --cam-look=ex,ey,ez;tx,ty,tz (고정 다음 프레임, 고정이 없으면 3 프레임째 에디터 카메라 이동)
         bool newScene = false;      // --new-scene=1 (3 프레임째 바닥만 있는 새 씬)
         int addPrimitive = -1;      // --add=0..4 (4 프레임째 오브젝트 추가, 4 는 카메라 오브젝트)
-        std::wstring browseDir;     // 11-B단계
+        std::wstring browseDir;
         std::wstring dropPath; DirectX::XMFLOAT3 dropPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
         bool dropUv = false; float dropU = 0.5f, dropV = 0.5f;
         std::wstring dropTexture;
-        bool play = false; uint64_t stopAt = 0; std::string addComponent;   // 11-C단계
+        bool play = false; uint64_t stopAt = 0; std::string addComponent;
         std::string newScript;      // --new-script=Name (2 프레임째 ScriptCreator::Create — Inspector 의 New Script 와 같은 경로, 열지는 않음)
         std::string buildGame;      // --build-game=Name (3 프레임째 GameBuilder::Build — 에셋 전부, 폴더 열지 않음, 시작 씬 = --build-scene 또는 프로젝트 시작 씬)
         std::string buildScene;
@@ -135,7 +140,7 @@ private:
         bool launcher = false;      // --launcher=1 (2 프레임째 File > Projects 런처 팝업을 엶 — 문서 스크린샷용)
         bool setRotation = false; DirectX::XMFLOAT3 rotationDeg = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --set-rotation=p,y,r (도, 8 프레임째 선택 오브젝트, 11-F)
         std::string parentChild, parentName;   // --set-parent=자식;부모 (7 프레임째 재부모화, 부모가 비면 루트로, 11-F)
-        // 2026-10-15: 되돌리기·프리팹. 입력을 주입하지 못하므로 같은 코드 경로(RunCommand / UndoRedo / SavePrefabOf …)를 직접 부름
+        // 되돌리기·프리팹. 입력을 주입하지 못하므로 같은 코드 경로(RunCommand / UndoRedo / SavePrefabOf …)를 직접 부름
         //   --delete=이름          6 프레임째 그 오브젝트 삭제 (Delete 키와 같은 DeleteObject 를 RunCommand 로)
         //   --duplicate=이름       11 프레임째 그 오브젝트 복제 (Ctrl+D)
         //   --make-prefab=이름     11 프레임째 그 오브젝트(와 자식)를 Assets\Prefabs\<이름>.prefab 로 저장
@@ -147,29 +152,30 @@ private:
         int undoCount = 0, redoCount = 0;
         std::wstring saveAfterPath;
         //   --gesture=1            --set-position 을 RunCommand 가 아니라 "위젯을 끄는 중" 으로 흉내 냄: 8 프레임째 입력 진행 중(busy)으로 두고 값을 바꾼 뒤
-        //                          11 프레임째 끝냄 → TrackHistory/EditorHistory::UpdateGesture 경로가 한 단계를 만드는지 확인
+        //                          11 프레임째 끝냄 → TrackHistory/EditorHistory::UpdateGesture 경로가 한
+        //                          단계를 만드는지 확인
         bool gesture = false;
     } m_auto;
     bool m_forceBusy = false;   // 자동 검증(--gesture)이 켬: TrackHistory 가 입력 진행 중으로 봄
     void ParseAutomation();
     void RunAutomation();
 
-    // 11-C단계: 데모 씬의 움직임은 스크립트(PlayerController·Rotator)와 엔진 컴포넌트(Rigidbody)가 맡고 재생 중에만 동작함.
-    EditorHistory m_history;                  // 2026-10-15
-    std::vector<PendingCommand> m_commands;   // 2026-10-15
+    // 데모 씬의 움직임은 스크립트(PlayerController·Rotator)와 엔진 컴포넌트(Rigidbody)가 맡고 재생 중에만 동작함.
+    EditorHistory m_history;
+    std::vector<PendingCommand> m_commands;
     PlayState m_playState = PlayState::Editing;
     std::string m_playSnapshot;   // 재생 전 씬 JSON (SceneSerializer::SaveToString)
     float m_timeScale = 1.0f;
     bool m_stepOnce = false;
 
-    float m_scriptPollTimer = 0.0f;   // 2026-10-08: PollScripts 간격 (1초)
+    float m_scriptPollTimer = 0.0f;   // PollScripts 간격 (1초)
     size_t m_scriptSources = 0;       // Scripts\**\*.cpp 개수 (PollScripts 가 갱신)
 
-    // 6단계: F7 로 방향광 0 을 Y축 둘레로 회전시킴.
+    // F7 로 방향광 0 을 Y축 둘레로 회전시킴.
     bool m_lightOrbit = false;
     float m_lightAngle = 0.0f;
 
-    // 10단계: 고정 스텝 검증용 카운터 (패널에 표시). OnFixedUpdate 호출 수 / 누적 시간.
+    // 고정 스텝 검증용 카운터 (패널에 표시). OnFixedUpdate 호출 수 / 누적 시간.
     uint32_t m_fixedUpdates = 0;
     float m_fixedTime = 0.0f;
 

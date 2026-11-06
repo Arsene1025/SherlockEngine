@@ -12,12 +12,14 @@ bool GameApp::OnInitialize()
 	Engine& engine = GetEngine();
 	const Config& config = GetConfig();
 
-	// 창 제목은 CreateWindow 전에 GetWindowTitle 로 읽힘 — Initialize 순서상 이 함수는 LoadConfig 뒤에 불리므로 여기서 설정값으로 제목을 다시 지정함.
+	// 창 제목은 CreateWindow 전에 GetWindowTitle 로 읽힘 — Initialize 순서상 이 함수는 LoadConfig 뒤에
+	// 불리므로 여기서 설정값으로 제목을 다시 지정함.
 	const std::string title = config.GetString("game.title", "Sherlock Game");
 	m_title = std::wstring(title.begin(), title.end());
 	SetWindowTextW(GetWindow(), m_title.c_str());
 
-	// 시작 씬: 프로젝트 파일(.sherlock)의 startScene, 없으면 engine.ini 의 [game] startScene 을 씀. 값은 Assets\Scenes\ 기준 파일명 또는 절대 경로임.
+	// 시작 씬: 프로젝트 파일(.sherlock)의 startScene, 없으면 engine.ini 의 [game] startScene 을 씀. 값은
+	// Assets\Scenes\ 기준 파일명 또는 절대 경로임.
 	std::string start = GetProject().IsLoaded() ? GetProject().startScene : "";
 	if (start.empty()) start = config.GetString("game.startScene", "");
 	if (start.empty())
@@ -75,7 +77,7 @@ void GameApp::OnUpdate(float dt)
 		for (const auto& object : scene.GetObjects())
 		{
 			const XMFLOAT3& p = object->GetTransform().GetPosition();
-			const XMFLOAT3& r = object->GetTransform().GetRotation();   // 2026-10-08: 스크립트(Rotator)가 돌았는지 확인용
+			const XMFLOAT3& r = object->GetTransform().GetRotation();   // 스크립트(Rotator)가 돌았는지 확인용
 			std::string components;
 			for (const auto& b : object->GetBehaviours()) components += std::string(components.empty() ? "" : ",") + b->GetTypeName();
 			Log::Info("게임 검증: 오브젝트 '%s' 위치 (%.2f, %.2f, %.2f) 회전 (%.2f, %.2f, %.2f) components=[%s]", object->GetName().c_str(), p.x, p.y, p.z, r.x, r.y, r.z, components.c_str());

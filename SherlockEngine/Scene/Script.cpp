@@ -18,7 +18,6 @@ GameObject* Script::Find(const std::string& name)
 	return GetScene().FindObject(name);
 }
 
-// 2026-10-15
 GameObject* Script::Instantiate(const std::string& prefabPath, const DirectX::XMFLOAT3& position)
 {
 	return GetScene().Instantiate(prefabPath, position);

@@ -92,7 +92,7 @@ namespace
         const std::string body = FormatV(fmt, args);
         const double time = Now(s);
 
-        // 콘솔·디버거에는 0단계와 같은 형식(접두어 + 본문)으로 씀. 파일에는 시각을 붙임.
+        // 콘솔·디버거에는 접두어 + 본문 형식으로 씀. 파일에는 시각을 붙임.
         const std::string line = std::string(Prefix(level)) + body + "\n";
         const std::string stamp = std::format("[{:9.3f}] ", time);   // C++20: snprintf + char[32] 대신
 
@@ -117,7 +117,8 @@ namespace
         }
     }
 
-    // 콘솔 준비. stdout 이 이미 유효하면(리다이렉트, 콘솔 서브시스템) 그대로 씀. 아니면 부모 콘솔에 붙고, 부모 콘솔이 없으면 allocIfNone 일 때만 새로 엶.
+    // 콘솔 준비. stdout 이 이미 유효하면(리다이렉트, 콘솔 서브시스템) 그대로 씀. 아니면 부모 콘솔에 붙고,
+    // 부모 콘솔이 없으면 allocIfNone 일 때만 새로 엶.
     bool SetupConsole(bool allocIfNone)
     {
         const HANDLE out = ::GetStdHandle(STD_OUTPUT_HANDLE);

@@ -2,8 +2,9 @@
 #include "Scene/Script.h"
 
 // Test — 에디터의 New Script 로 만든 스크립트 (유니티 MonoBehaviour / 언리얼 컴포넌트).
-// 선언은 여기, 구현은 Test.cpp. 다른 스크립트가 #include "Test.h" 뒤 GetBehaviour<Test>() 로 이 클래스를 사용할 수 있음.
-// 다른 스크립트를 참조할 때는 여기서 전방 선언(class Other;)만 하고 .cpp 에서 include 함 (순환 include 방지).
+// 선언은 여기, 구현은 Test.cpp. 다른 스크립트가 #include "Test.h" 뒤 GetBehaviour<Test>() 로 이 클래스를
+// 사용할 수 있음. 다른 스크립트를 참조할 때는 여기서 전방 선언(class Other;)만 하고 .cpp 에서 include 함
+// (순환 include 방지).
 class Test : public Script
 {
 public:

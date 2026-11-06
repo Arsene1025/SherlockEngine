@@ -31,7 +31,8 @@ namespace
 		std::vector<Profiler::CpuSample> cpuLast;
 		std::vector<OpenCpu> cpuOpen;
 
-		// GPU: 프레임마다 기록한 구간 목록을 프레임 번호와 함께 몇 개 보관하다가, Device 가 그 프레임의 결과를 주면 짝지음.
+		// GPU: 프레임마다 기록한 구간 목록을 프레임 번호와 함께 몇 개 보관하다가, Device 가 그 프레임의
+		// 결과를 주면 짝지음.
 		struct GpuFrame { uint64_t frameNumber; std::vector<GpuRange> ranges; };
 		std::vector<GpuFrame> gpuPending;
 		std::vector<GpuRange> gpuCurrent;

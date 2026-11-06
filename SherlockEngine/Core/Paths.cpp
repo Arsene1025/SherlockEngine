@@ -53,7 +53,7 @@ namespace
 		return dir;
 	}
 
-	// 11-E단계: 루트 상태. 엔진 루트는 처음 조회할 때 마커로 정하고, 프로젝트 파일이 더 정확한 값을 주면 덮어씀.
+	// 루트 상태. 엔진 루트는 처음 조회할 때 마커로 정하고, 프로젝트 파일이 더 정확한 값을 주면 덮어씀.
 	std::wstring s_engineRoot;
 	bool s_engineIsSourceTree = false;
 	std::wstring s_projectRoot;
@@ -181,7 +181,7 @@ std::wstring Paths::GetShaderSourcePath(const wchar_t* fileName)
 
 std::wstring Paths::GetAssetPath(const wchar_t* relative)
 {
-	const auto exists = [](const std::wstring& path) { return FileExists(path) || DirectoryExists(path); };   // 2026-10-08: 스카이박스 폴더
+	const auto exists = [](const std::wstring& path) { return FileExists(path) || DirectoryExists(path); };   // 스카이박스 폴더
 	if (HasProject())
 	{
 		const std::wstring project = s_projectRoot + L"Assets\\" + relative;

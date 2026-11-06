@@ -75,7 +75,8 @@ std::wstring AppBase::GetCommandLineOption(const wchar_t* name)
 std::wstring AppBase::GetDefaultProjectDir()
 {
     if (!Paths::HasEngineSourceTree()) return L"";
-    // 엔진 루트 = <repo>\SherlockEngine 폴더 → <repo>\Projects\Sample 폴더 (주석 끝의 백슬래시는 줄 연속으로 처리되므로 피함)
+    // 엔진 루트 = <repo>\SherlockEngine 폴더 → <repo>\Projects\Sample 폴더 (주석 끝의 백슬래시는 줄 연속으로
+    // 처리되므로 피함)
     const std::wstring engine = Paths::GetEngineRoot();
     const size_t slash = engine.find_last_of(L'\\', engine.size() - 2);
     if (slash == std::wstring::npos) return L"";
@@ -121,8 +122,9 @@ bool AppBase::LoadProjectScripts(bool hotReload)
 void AppBase::UnloadProjectScripts()
 {
     if (!m_scripts.IsLoaded()) return;
-    // DLL 의 클래스로 만든 컴포넌트가 남아 있으면 FreeLibrary 뒤에 소멸자·vtable 이 사라진 코드를 가리킴. 그래서 씬을 먼저 비움.
-    // Renderer 캐시는 메시·재질 포인터를 키로 쓰므로 Scene::Clear 전에 버림 (텍스처는 남김).
+    // DLL 의 클래스로 만든 컴포넌트가 남아 있으면 FreeLibrary 뒤에 소멸자·vtable 이 사라진 코드를 가리킴.
+    // 그래서 씬을 먼저 비움. Renderer 캐시는 메시·재질 포인터를 키로 쓰므로 Scene::Clear 전에 버림 (텍스처는
+    // 남김).
     m_engine.GetRenderer().InvalidateScene(m_engine.GetScene(), false);
     m_engine.GetScene().Clear();
     m_scripts.Unload();
@@ -134,7 +136,8 @@ bool AppBase::LoadConfig()
     const std::wstring path = Paths::GetAssetPath(L"Config\\engine.ini");
     const bool loaded = m_config.LoadFromFile(path);
 
-    // 실행 인자로 덮어쓰기: --backend=, --scene= 는 8~9단계의 이름을 그대로 쓰고, 그 밖에는 일반형 --section.key=value 를 씀.
+    // 실행 인자로 덮어쓰기: --backend=, --scene= 는 짧은 이름을 그대로 쓰고, 그 밖에는 일반형
+    // --section.key=value 를 씀.
     int argc = 0;
     LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (argv != nullptr)
@@ -166,8 +169,9 @@ void AppBase::InitLogger()
 {
     Log::InitDesc desc;
     desc.console = m_config.GetBool("log.console", true);
-    // D19: Windows 서브시스템이라 콘솔이 없음. 예전에는 Debug 에서 콘솔을 하나 열었지만(10단계) 11단계부터는 에디터의 Console 창과 로그 파일이 있으므로
-    // 검은 콘솔 창은 띄우지 않음. 명령줄에서 실행하면 여전히 부모 콘솔에 붙음. 필요하면 engine.ini 에서 log.allocConsole = true 로 설정.
+    // Windows 서브시스템이라 콘솔이 없음. 에디터의 Console 창과 로그 파일이 있으므로
+    // 검은 콘솔 창은 띄우지 않음. 명령줄에서 실행하면 여전히 부모 콘솔에 붙음. 필요하면 engine.ini 에서
+    // log.allocConsole = true 로 설정.
     desc.allocConsole = m_config.GetBool("log.allocConsole", false);
     const std::string file = m_config.GetString("log.file", "Logs\\SherlockEngine.log");
     if (!file.empty())
@@ -183,13 +187,14 @@ void AppBase::InitLogger()
 
 bool AppBase::Initialize()
 {
-    // 11-D단계: COM 을 명시적으로 초기화함. DirectXTex 의 WIC(PNG/JPG 읽기, 스크린샷 저장)가 COM 팩토리를 만들기 때문임.
-    // 에디터에서는 ImGui 쪽에서 COM 이 우연히 초기화되어 동작했지만, 게임 런타임(ImGui 없음)에서는 텍스처 로드가 E_NOINTERFACE 로 실패했음.
+    // COM 을 명시적으로 초기화함. DirectXTex 의 WIC(PNG/JPG 읽기, 스크린샷 저장)가 COM 팩토리를 만들기 때문임.
+    // 에디터에서는 ImGui 쪽에서 COM 이 우연히 초기화되어 동작했지만, 게임 런타임(ImGui 없음)에서는 텍스처
+    // 로드가 E_NOINTERFACE 로 실패했음.
     const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     m_comInitialized = SUCCEEDED(com);
     if (FAILED(com) && com != RPC_E_CHANGED_MODE) Log::Warn("CoInitializeEx 실패 (0x%08X)", static_cast<unsigned>(com));
 
-    ResolveProject();   // 11-E단계: 설정(engine.ini)보다 먼저 호출 — 에셋 루트가 여기서 정해짐
+    ResolveProject();   // 설정(engine.ini)보다 먼저 호출 — 에셋 루트가 여기서 정해짐
     const bool configLoaded = LoadConfig();
     InitLogger();
     if (m_project.IsLoaded())
@@ -204,8 +209,9 @@ bool AppBase::Initialize()
 
     if (!InitMainWindow()) return false;
 
-    // ImGui 컨텍스트는 Engine 보다 먼저 만듦 (Engine 이 렌더러 백엔드를 붙이기 때문). Win32 백엔드는 창이 이미 있으므로 지금 초기화해도 됨.
-    // 11-D단계: 게임 런타임(WantsGUI false)은 컨텍스트를 만들지 않음 → Engine 도 ImGui 렌더러 백엔드를 건너뜀.
+    // ImGui 컨텍스트는 Engine 보다 먼저 만듦 (Engine 이 렌더러 백엔드를 붙이기 때문). Win32 백엔드는 창이
+    // 이미 있으므로 지금 초기화해도 됨. 게임 런타임(WantsGUI false)은 컨텍스트를 만들지 않음 → Engine 도
+    // ImGui 렌더러 백엔드를 건너뜀.
     if (WantsGUI() && !InitGUI()) return false;
 
     Engine::Desc desc;
@@ -224,13 +230,13 @@ bool AppBase::Initialize()
         m_guiWin32Initialized = true;
     }
 
-    // 2026-10-08 (B안): 프로젝트 스크립트 DLL. 씬을 만들기 전에 올려야 씬 파일의 스크립트 컴포넌트를 만들 수 있음.
+    // 프로젝트 스크립트 DLL. 씬을 만들기 전에 올려야 씬 파일의 스크립트 컴포넌트를 만들 수 있음.
     // 에디터는 복사본을 올려(핫리로드) 실행 중에 다시 빌드할 수 있게 하고, 게임은 원본을 그대로 올림.
     if (m_project.IsLoaded()) LoadProjectScripts(WantsGUI());
 
     if (!OnInitialize()) return false;
 
-    // 11단계: 자동 검증 모드(--exit-after)에서는 포커스를 가져오지 않음. 사용자가 다른 창(게임 등)을 쓰는 중일 수 있기 때문임.
+    // 자동 검증 모드(--exit-after)에서는 포커스를 가져오지 않음. 사용자가 다른 창(게임 등)을 쓰는 중일 수 있기 때문임.
     if (GetCommandLineOption(L"exit-after").empty()) SetForegroundWindow(m_mainWindow);
     return true;
 }
@@ -248,14 +254,15 @@ int AppBase::Run()
         }
 
         // 시간·프로파일러·ImGui 렌더러 프레임 시작. ImGui 프레임은 Update보다 먼저 엶:
-        // io.WantCaptureMouse/Keyboard 는 ImGui::NewFrame 에서 갱신되므로, 그 뒤에 Update 가 읽어야 "이번 프레임" 값을 얻음.
+        // io.WantCaptureMouse/Keyboard 는 ImGui::NewFrame 에서 갱신되므로, 그 뒤에 Update 가 읽어야 "이번
+        // 프레임" 값을 얻음.
         const float dt = m_engine.BeginFrame();
-        const bool gui = m_guiWin32Initialized;   // 11-D단계: 게임 런타임에는 ImGui 프레임이 없음
+        const bool gui = m_guiWin32Initialized;   // 게임 런타임에는 ImGui 프레임이 없음
         if (gui)
         {
             ImGui_ImplWin32_NewFrame();
             ImGui::NewFrame();
-            ImGuizmo::BeginFrame();   // 11단계
+            ImGuizmo::BeginFrame();
         }
 
         {
@@ -271,7 +278,7 @@ int AppBase::Run()
         if (gui)
         {
             ProfileScope scope("GUI");
-            OnGUI();   // 11단계: 앱(에디터)이 창을 직접 만듦. 도킹 공간도 앱에서 만듦.
+            OnGUI();   // 앱(에디터)이 창을 직접 만듦. 도킹 공간도 앱에서 만듦.
             ImGui::Render();
         }
 
@@ -359,7 +366,8 @@ bool AppBase::InitMainWindow()
     RECT wr = { 0, 0, m_screenWidth, m_screenHeight };
     AdjustWindowRect(&wr, WS_OVERLAPPEDWINDOW, false);
 
-    // 11단계: 자동 검증 모드에서는 창을 화면 밖에 비활성 상태로 만듦 — 스크린샷은 Device 리드백으로 찍으므로 창이 보일 필요가 없음.
+    // 자동 검증 모드에서는 창을 화면 밖에 비활성 상태로 만듦 — 스크린샷은 Device 리드백으로 찍으므로 창이
+    // 보일 필요가 없음.
     const bool automation = !GetCommandLineOption(L"exit-after").empty();
     const int windowX = automation ? -3000 : 100;
     m_mainWindow = CreateWindow(wc.lpszClassName, GetWindowTitle(), WS_OVERLAPPEDWINDOW,
@@ -380,10 +388,10 @@ bool AppBase::InitGUI()
     ImGui::CreateContext();
     m_guiContextCreated = true;
     ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   // 11단계: 에디터 창 도킹
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;   // 에디터 창 도킹
     ImGui::StyleColorsLight();
 
-    // 10단계: 로그 콘솔에 한글을 표시해야 하므로 시스템의 맑은 고딕을 추가함. 없으면 기본 폰트(ASCII 만)를 씀.
+    // 로그 콘솔에 한글을 표시해야 하므로 시스템의 맑은 고딕을 추가함. 없으면 기본 폰트(ASCII 만)를 씀.
     // ImGui 1.92 는 글리프를 필요할 때 만들므로 글리프 범위를 미리 지정하지 않아도 됨.
     if (GetFileAttributesW(L"C:/Windows/Fonts/malgun.ttf") != INVALID_FILE_ATTRIBUTES)
     {

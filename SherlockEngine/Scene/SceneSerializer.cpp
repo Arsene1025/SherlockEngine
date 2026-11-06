@@ -20,7 +20,7 @@ using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
-	constexpr int kVersion = 5;   // 5: 2026-10-15 오브젝트 "id"(안정 ID)와 "prefab"(프리팹 인스턴스 루트). 2: 11-C단계 컴포넌트 추가. 3: 11-F단계 "parent"(부모 오브젝트 인덱스). 4: 2026-10-08 "environment"(스카이박스·IBL·노출)와 PBR 재질. 이전 버전 파일도 그대로 읽힘 (필드 없음 = 루트, 환경 없음)
+	constexpr int kVersion = 5;   // 5: 오브젝트 "id"(안정 ID)와 "prefab"(프리팹 인스턴스 루트). 2: 컴포넌트 추가. 3: "parent"(부모 오브젝트 인덱스). 4: "environment"(스카이박스·IBL·노출)와 PBR 재질. 이전 버전 파일도 그대로 읽힘 (필드 없음 = 루트, 환경 없음)
 
 	json ToJson(const XMFLOAT3& v) { return json::array({ v.x, v.y, v.z }); }
 	json ToJson(const XMFLOAT4& v) { return json::array({ v.x, v.y, v.z, v.w }); }
@@ -86,7 +86,7 @@ namespace
 		json j;
 		j["name"] = m.name;
 		j["baseColor"] = ToJson(m.baseColor);
-		j["metallic"] = m.metallic;     // 2026-10-08 PBR
+		j["metallic"] = m.metallic;     // PBR
 		j["roughness"] = m.roughness;
 		j["emissive"] = ToJson(m.emissive);
 		j["metallicRoughnessTexture"] = m.metallicRoughnessTexture;
@@ -120,8 +120,9 @@ namespace
 		if (j.contains("roughness")) m.roughness = j.value("roughness", m.roughness);
 		else if (j.contains("shininess"))
 		{
-			// 2026-10-08 이전(Blinn-Phong) 파일: 광택 지수 → 거칠기. Blinn-Phong 지수 n 과 Beckmann 거칠기 m 의 관계 n = 2/m² − 2 를
-			// 거꾸로 풀고(m = sqrt(2/(n+2))), GGX 의 α ≈ m 이므로 지각적 거칠기 = sqrt(m). specularColor 는 버림 (유전체 F0 = 0.04).
+			// 이전(Blinn-Phong) 파일: 광택 지수 → 거칠기. Blinn-Phong 지수 n 과 Beckmann 거칠기 m 의 관계 n =
+			// 2/m² − 2 를 거꾸로 풀고(m = sqrt(2/(n+2))), GGX 의 α ≈ m 이므로 지각적 거칠기 = sqrt(m).
+			// specularColor 는 버림 (유전체 F0 = 0.04).
 			const float shininess = (std::max)(j.value("shininess", 32.0f), 1.0f);
 			m.roughness = std::sqrt(std::sqrt(2.0f / (shininess + 2.0f)));
 		}
@@ -158,7 +159,7 @@ namespace
 		j["innerConeCos"] = l.innerConeCos;
 		j["outerConeCos"] = l.outerConeCos;
 		j["castShadows"] = l.castShadows != 0;
-		//ShadowIndex는 저장하지 않고 매 프레임 Renderer가 정한다.
+		// ShadowIndex는 저장하지 않고 매 프레임 Renderer가 정함.
 		return j;
 	}
 
@@ -174,12 +175,12 @@ namespace
 		l.attenuation = ToFloat3(j.value("attenuation", json()), l.attenuation);
 		l.innerConeCos = j.value("innerConeCos", l.innerConeCos);
 		l.outerConeCos = j.value("outerConeCos", l.outerConeCos);
-		//키가 없는 옛 파일을 대비해 방향광이면 1, 아니면 0
+		// 키가 없는 옛 파일을 대비해 방향광이면 1, 아니면 0
 		l.castShadows = j.value("castShadows", l.type == static_cast<uint32_t>(LightType::Directional)) ? 1u : 0u;
 		return l;
 	}
 
-	// 11-C단계: 컴포넌트 필드 ↔ JSON 변환. Reflect 가 열거하는 필드 이름을 그대로 JSON 키로 씀.
+	// 컴포넌트 필드 ↔ JSON 변환. Reflect 가 열거하는 필드 이름을 그대로 JSON 키로 씀.
 	class JsonWriteVisitor : public PropertyVisitor
 	{
 	public:
@@ -217,7 +218,7 @@ namespace
 			const_cast<Behaviour&>(*behaviour).Reflect(writer);   // Reflect 는 편집용이라 non-const 임. 쓰기 방문자는 값을 바꾸지 않음
 			components.push_back(c);
 		}
-		// 2026-10-08 (B안): 만들지 못한 컴포넌트(스크립트 DLL 이 없음)는 읽은 그대로 다시 씀
+		// 만들지 못한 컴포넌트(스크립트 DLL 이 없음)는 읽은 그대로 다시 씀
 		for (const std::string& missing : object.GetMissingComponents())
 		{
 			json c = json::parse(missing, nullptr, false);
@@ -234,7 +235,7 @@ namespace
 			Behaviour* behaviour = object.AddBehaviour(c.value("type", ""));
 			if (behaviour == nullptr)
 			{
-				// 모르는 타입(레지스트리가 경고를 남김). 2026-10-08 (B안): 버리지 않고 원본을 보관해 저장·핫리로드 때 되살림
+				// 모르는 타입(레지스트리가 경고를 남김). 버리지 않고 원본을 보관해 저장·핫리로드 때 되살림
 				object.GetMissingComponents().push_back(c.dump());
 				continue;
 			}
@@ -245,9 +246,10 @@ namespace
 	}
 }
 
-// ------------------------------------------------------------------ 2026-10-15: 오브젝트·서브트리 단위 직렬화
-// 씬 저장, 되돌리기 스냅샷, 프리팹 저장·생성, 복제가 아래 도구를 함께 씀. 모두 "오브젝트 → JSON" 과 "JSON → 오브젝트" 두 방향이고,
-// 메시·재질·부모는 호출자가 정한 인덱스(씬 전체 기준이거나 서브트리 안의 지역 기준)로 참조함.
+// ------------------------------------------------------------------ 오브젝트·서브트리 단위 직렬화
+// 씬 저장, 되돌리기 스냅샷, 프리팹 저장·생성, 복제가 아래 도구를 함께 씀. 모두 "오브젝트 → JSON" 과 "JSON →
+// 오브젝트" 두 방향이고, 메시·재질·부모는 호출자가 정한 인덱스(씬 전체 기준이거나 서브트리 안의 지역 기준)로
+// 참조함.
 namespace
 {
 	json MeshSourceToJson(const Mesh& mesh, const MeshSource* source)
@@ -275,8 +277,8 @@ namespace
 		return j;
 	}
 
-	// 출처 JSON 으로 메시를 씬에 만듦. 모델 메시는 AssetManager 에서 복사하고, 모델의 이미지는 모델마다 한 번만 씬에 넣음(loadedModels 로 추적).
-	// 실패하면 nullptr (호출자가 인덱스 자리를 nullptr 로 유지함).
+	// 출처 JSON 으로 메시를 씬에 만듦. 모델 메시는 AssetManager 에서 복사하고, 모델의 이미지는 모델마다 한
+	// 번만 씬에 넣음(loadedModels 로 추적). 실패하면 nullptr (호출자가 인덱스 자리를 nullptr 로 유지함).
 	const Mesh* MeshFromJson(Scene& scene, AssetManager& assets, const json& j, std::vector<std::wstring>& loadedModels)
 	{
 		MeshSource source;
@@ -291,7 +293,8 @@ namespace
 				Log::Warn("씬 로드: 모델 메시를 찾지 못함 (%s #%u)", j.value("path", "").c_str(), source.meshIndex);
 				return nullptr;
 			}
-			// 같은 모델 메시가 이미 씬에 있으면 공유함 (이전 파일의 중복 항목도 하나로 합쳐짐. 인덱스 자리는 그대로 유지됨).
+			// 같은 모델 메시가 이미 씬에 있으면 공유함 (이전 파일의 중복 항목도 하나로 합쳐짐. 인덱스 자리는
+			// 그대로 유지됨).
 			const Mesh* created = scene.FindModelMesh(source.modelPath, source.meshIndex);
 			if (created == nullptr)
 			{
@@ -319,8 +322,9 @@ namespace
 		return source.CreatePrimitive(mesh) ? scene.AddMesh(std::move(mesh), source) : nullptr;
 	}
 
-	// 공유 키가 생기기 전에 저장된 씬 파일 대응: 모델 메시를 쓰는 오브젝트의 슬롯 재질은 Scene::AddModel 이 "슬롯 번호 = 모델 재질 번호"로
-	// 넣었으므로 거기서 키를 되살림. 그래야 로드한 씬에 같은 모델을 다시 놓을 때 재질이 공유됨. 이미 키가 있거나 다른 재질이 그 키를 가졌으면 건드리지 않음.
+	// 공유 키가 생기기 전에 저장된 씬 파일 대응: 모델 메시를 쓰는 오브젝트의 슬롯 재질은 Scene::AddModel 이
+	// "슬롯 번호 = 모델 재질 번호"로 넣었으므로 거기서 키를 되살림. 그래야 로드한 씬에 같은 모델을 다시 놓을
+	// 때 재질이 공유됨. 이미 키가 있거나 다른 재질이 그 키를 가졌으면 건드리지 않음.
 	void BackfillModelMaterialKeys(Scene& scene)
 	{
 		for (const auto& object : scene.GetObjects())
@@ -349,8 +353,8 @@ namespace
 		return found == map.end() ? -1 : found->second;
 	}
 
-	// 오브젝트 하나 → JSON. parentIndex: 같은 배열 안의 부모 위치 (−1 = 루트라 키를 쓰지 않음). withId: 안정 ID 를 저장할지
-	// (씬·되돌리기는 저장하고, 프리팹은 인스턴스마다 새 ID 를 받으므로 저장하지 않음).
+	// 오브젝트 하나 → JSON. parentIndex: 같은 배열 안의 부모 위치 (−1 = 루트라 키를 쓰지 않음). withId: 안정
+	// ID 를 저장할지 (씬·되돌리기는 저장하고, 프리팹은 인스턴스마다 새 ID 를 받으므로 저장하지 않음).
 	json ObjectToJson(const GameObject& object, int parentIndex, bool withId, const IndexMap<Mesh>& meshes, const IndexMap<Material>& materials)
 	{
 		json j;
@@ -375,7 +379,7 @@ namespace
 			XMStoreFloat4x4(&pre, t.GetPreTransform());
 			j["preTransform"] = ToJson(pre);
 		}
-		if (!object.GetBehaviours().empty() || !object.GetMissingComponents().empty()) j["components"] = ComponentsToJson(object);   // 11-C단계
+		if (!object.GetBehaviours().empty() || !object.GetMissingComponents().empty()) j["components"] = ComponentsToJson(object);
 		if (!object.GetPrefabSource().empty()) j["prefab"] = object.GetPrefabSource();
 		return j;
 	}
@@ -410,12 +414,13 @@ namespace
 			for (int r = 0; r < 4; ++r) for (int c = 0; c < 4; ++c) pre.m[r][c] = j["preTransform"][r * 4 + c].get<float>();
 			t.SetPreTransform(XMLoadFloat4x4(&pre));
 		}
-		if (j.contains("components")) ComponentsFromJson(object, j["components"]);   // 11-C단계
+		if (j.contains("components")) ComponentsFromJson(object, j["components"]);
 		object.SetPrefabSource(j.value("prefab", std::string()));
 		return object;
 	}
 
-	// 오브젝트 배열의 가장 큰 ID. 새로 부여할 ID 가 파일의 ID 와 겹치지 않도록 오브젝트를 만들기 전에 Scene::ReserveIds 에 넘김.
+	// 오브젝트 배열의 가장 큰 ID. 새로 부여할 ID 가 파일의 ID 와 겹치지 않도록 오브젝트를 만들기 전에
+	// Scene::ReserveIds 에 넘김.
 	uint64_t MaxIdIn(const json& objects)
 	{
 		uint64_t maxId = 0;
@@ -423,7 +428,8 @@ namespace
 		return maxId;
 	}
 
-	// created[i] 의 부모를 parents[i] (created 안의 인덱스, −1 = 루트)로 연결함. 저장된 값이 이미 로컬이므로 keepWorld = false.
+	// created[i] 의 부모를 parents[i] (created 안의 인덱스, −1 = 루트)로 연결함. 저장된 값이 이미 로컬이므로
+	// keepWorld = false.
 	void LinkParents(const std::vector<GameObject*>& created, const std::vector<int>& parents)
 	{
 		for (size_t i = 0; i < parents.size(); ++i)
@@ -484,7 +490,7 @@ namespace
 		e.iblIntensity = env.value("iblIntensity", 1.0f);
 		e.exposure = env.value("exposure", 1.0f);
 		e.toneMapping = env.value("toneMapping", false);
-		// 2026/10/23: 후처리. 키가 없으면(이전 씬 파일) 전부 꺼진 기본값
+		// 후처리. 키가 없으면(이전 씬 파일) 전부 꺼진 기본값
 		const PostProcessSettings defaults;
 		const json post = env.value("postProcess", json::object());
 		e.post.blurEnabled = post.value("blurEnabled", defaults.blurEnabled);
@@ -494,7 +500,7 @@ namespace
 		e.post.bloomKnee = post.value("bloomKnee", defaults.bloomKnee);
 		e.post.bloomIntensity = post.value("bloomIntensity", defaults.bloomIntensity);
 		e.post.greyscale = post.value("greyscale", defaults.greyscale);
-		// 2026/10/28: 그림자. 키가 없으면(이전 씬 파일) 기본값
+		// 그림자. 키가 없으면(이전 씬 파일) 기본값
 		const ShadowSettings shadowDefaults;
 		const json shadow = env.value("shadow", json::object());
 		e.shadow.bias = shadow.value("bias", shadowDefaults.bias);
@@ -613,7 +619,7 @@ std::string SceneSerializer::SaveToString(const Scene& scene, const Camera& came
 	root["camera"] = { { "position", ToJson(camera.GetPosition()) }, { "yaw", camera.GetYaw() }, { "pitch", camera.GetPitch() } };
 	root["ambientColor"] = ToJson(scene.ambientColor);
 	root["clearColor"] = json::array({ scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] });
-	root["environment"] = EnvironmentToJson(scene.environment);   // 2026-10-08. 키가 없으면 환경 없음 (이전 씬 파일과 호환)
+	root["environment"] = EnvironmentToJson(scene.environment);   // 키가 없으면 환경 없음 (이전 씬 파일과 호환)
 
 	// 메시 출처. 인덱스 = 씬의 메시 순서.
 	IndexMap<Mesh> meshIndex;
@@ -638,7 +644,8 @@ std::string SceneSerializer::SaveToString(const Scene& scene, const Camera& came
 	for (const LightData& light : scene.GetLights()) lights.push_back(LightToJson(light));
 	root["lights"] = lights;
 
-	// 11-F단계: 부모는 objects 배열의 인덱스로 (자식이 부모보다 앞에 올 수 있으므로 로드는 두 단계). position/rotation/scale 은 부모 기준 로컬 값.
+	// 부모는 objects 배열의 인덱스로 (자식이 부모보다 앞에 올 수 있으므로 로드는 두 단계).
+	// position/rotation/scale 은 부모 기준 로컬 값.
 	IndexMap<GameObject> objectIndex;
 	for (size_t i = 0; i < scene.GetObjects().size(); ++i) objectIndex[scene.GetObjects()[i].get()] = static_cast<int>(i);
 	json objects = json::array();
@@ -729,7 +736,7 @@ bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager&
 	return true;
 }
 
-// ------------------------------------------------------------------ 2026-10-15: 편집 상태 (되돌리기)
+// ------------------------------------------------------------------ 편집 상태 (되돌리기)
 
 std::string SceneSerializer::SaveEditState(const Scene& scene)
 {
@@ -796,7 +803,7 @@ bool SceneSerializer::RestoreEditState(Scene& scene, const std::string& text)
 	return true;
 }
 
-// ------------------------------------------------------------------ 2026-10-15: 서브트리 · 프리팹
+// ------------------------------------------------------------------ 서브트리 · 프리팹
 
 GameObject* SceneSerializer::CloneSubtree(Scene& scene, const GameObject& source)
 {
@@ -846,8 +853,9 @@ GameObject* SceneSerializer::InstantiatePrefab(Scene& scene, AssetManager& asset
 	const std::shared_ptr<const json> document = LoadPrefabDocument(fullPath, writeTime);
 	if (document == nullptr) return nullptr;
 
-	// 메시·재질은 프리팹 파일(의 수정 버전)마다 씬에 한 번만 만들고 인스턴스끼리 공유함. 총알을 천 개 쏴도 재질이 천 벌이 되지 않음.
-	// 키에 수정 시각을 넣어, 프리팹을 다시 저장하면 다음 인스턴스부터 새 버전의 자원을 씀 (이미 만든 인스턴스는 그대로).
+	// 메시·재질은 프리팹 파일(의 수정 버전)마다 씬에 한 번만 만들고 인스턴스끼리 공유함. 총알을 천 개 쏴도
+	// 재질이 천 벌이 되지 않음. 키에 수정 시각을 넣어, 프리팹을 다시 저장하면 다음 인스턴스부터 새 버전의
+	// 자원을 씀 (이미 만든 인스턴스는 그대로).
 	const std::string key = relativePath + "|" + std::to_string(writeTime);
 	PrefabResources* resources = scene.FindPrefabResources(key);
 	if (resources == nullptr)

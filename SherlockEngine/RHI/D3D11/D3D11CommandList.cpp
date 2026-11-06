@@ -106,7 +106,6 @@ void D3D11CommandList::BeginRenderPass(const RenderPassDesc& desc)
 	// (5) 뷰포트. PSO 밖의 동적 상태임.
 	ApplyViewport(desc.viewport);
 
-	//[2026/10/29] : 아래 코드 ApplyViewport로 이동함.
 	/*D3D11_VIEWPORT viewport = {};
 	viewport.TopLeftX = desc.viewport.x;
 	viewport.TopLeftY = desc.viewport.y;

@@ -61,7 +61,7 @@ struct D3D11Texture
 
 	// 뷰는 처음 요청될 때 만듦. bindFlags에 없는 뷰를 요청하면 nullptr를 돌려줌.
 	ComPtr<ID3D11RenderTargetView> rtv;       // desc.format 그대로
-	ComPtr<ID3D11RenderTargetView> rtvSrgb;   // *_UNORM_SRGB 뷰. 5단계: 이 뷰로 백버퍼에 쓰면 하드웨어가 선형→sRGB로 인코딩함
+	ComPtr<ID3D11RenderTargetView> rtvSrgb;   // *_UNORM_SRGB 뷰. 이 뷰로 백버퍼에 쓰면 하드웨어가 선형→sRGB로 인코딩함
 	ComPtr<ID3D11DepthStencilView> dsv;
 	ComPtr<ID3D11ShaderResourceView> srv;
 
@@ -76,7 +76,7 @@ struct D3D11Texture
 			HRESULT hr;
 			if (srgbView || typeless)
 			{
-				// TYPELESS 리소스(11단계 씬 뷰)에는 뷰 포맷을 명시해야 함.
+				// TYPELESS 리소스(씬 뷰)에는 뷰 포맷을 명시해야 함.
 				D3D11_RENDER_TARGET_VIEW_DESC viewDesc = {};
 				viewDesc.Format = srgbView ? ToSrgb(D3D11Convert::ToDXGI(desc.format)) : D3D11Convert::ToDXGI(desc.format);
 				viewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
@@ -129,7 +129,8 @@ struct D3D11Texture
 			}
 			else if (desc.dimension == TextureDimension::TextureCube)
 			{
-				// 2026-10-08: 큐브. nullptr desc 로 만들면 TEXTURE2DARRAY 뷰가 되어 HLSL 의 TextureCube 와 맞지 않음 — 차원을 명시해야 함.
+				// 큐브. nullptr desc 로 만들면 TEXTURE2DARRAY 뷰가 되어 HLSL 의 TextureCube 와 맞지 않음 —
+				// 차원을 명시해야 함.
 				D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
 				viewDesc.Format = D3D11Convert::ToDXGI(desc.format);
 				viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;

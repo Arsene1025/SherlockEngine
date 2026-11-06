@@ -1,16 +1,16 @@
 ﻿#pragma once
-#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
+#include "Core/EngineApi.h"   // SHERLOCK_API (엔진 DLL 내보내기)
 #include <DirectXMath.h>
 
 // 위치와 회전 행렬로 자세를 나타내는 카메라.
 //
 // 이전 버전은 eye/lookAt/up 세 점을 저장하고 XMMatrixLookAtLH로 뷰행렬을 만들었음.
 // 이 방식은 "앞으로 3만큼", "오른쪽으로 10도"를 표현하려면 lookAt 점을 매번 다시 계산해야
-// 해서 자유 시점 카메라와 맞지 않았음. 2단계부터는 위치와 yaw/pitch 두 각도만 저장했고,
+// 해서 자유 시점 카메라와 맞지 않았음. 그래서 위치와 yaw/pitch 두 각도를 저장하는 방식으로 바꿨고,
 // 뷰행렬은 카메라의 월드 변환(R·T)의 역행렬로 만듦. 카메라도 결국 씬의
 // 물체 하나이며, 뷰행렬은 "그 물체의 로컬 공간으로 가는 변환"을 뜻함.
 //
-// 11-F단계: 저장 형식을 yaw/pitch 두 각도에서 회전 행렬 하나로 바꿈. 각도만 받는 경로에서는 부모 오브젝트의 roll 이
+// 저장 형식을 yaw/pitch 두 각도에서 회전 행렬 하나로 바꿈. 각도만 받는 경로에서는 부모 오브젝트의 roll 이
 // 카메라에 도달하기 전에 잘려 나갔기 때문 (CameraComponent 가 월드 행렬을 각도 둘로 줄여서 넘겼음). 이제
 //   - SetYawPitch(yaw, pitch): 각도로 회전 행렬을 만들어 저장 (에디터 자유 카메라·씬 파일이 쓰는 경로. roll 은 0)
 //   - SetRotation(matrix): 회전 행렬을 그대로 저장 (CameraComponent 가 오브젝트 월드 회전을 넘기는 경로. roll 포함)
@@ -36,7 +36,7 @@ public:
 
 	// 각도 경로. roll 은 0 이 됨.
 	void SetYawPitch(float yaw, float pitch);
-	// 행렬 경로 (11-F단계). 순수 회전 행렬(직교 정규)이어야 함 — 스케일이 섞이면 뷰행렬이 늘어남.
+	// 행렬 경로. 순수 회전 행렬(직교 정규)이어야 함 — 스케일이 섞이면 뷰행렬이 늘어남.
 	void SetRotation(const DirectX::XMMATRIX& rotation);
 	DirectX::XMMATRIX GetRotationMatrix() const { return DirectX::XMLoadFloat4x4(&m_rotation); }
 	float GetYaw() const;     // forward 의 수평 방향각. 저장 행렬에서 파생
@@ -60,7 +60,7 @@ public:
 	void SetAspectRatio(float aspect);
 	void SetUsePerspectiveProjection(bool usePerspective);
 	bool IsUsePerspectiveProjection() const { return m_usePerspective; }
-	// 2026-10-15: 직교 투영의 세로 길이(월드 단위). 가로는 이 값 × 종횡비. 원근일 때는 쓰이지 않지만 값은 유지됨.
+	// 직교 투영의 세로 길이(월드 단위). 가로는 이 값 × 종횡비. 원근일 때는 쓰이지 않지만 값은 유지됨.
 	void SetOrthoHeight(float height);
 	float GetOrthoHeight() const { return m_orthoHeight; }
 
@@ -78,7 +78,7 @@ private:
 
 private:
 	DirectX::XMFLOAT3 m_position;
-	DirectX::XMFLOAT4X4 m_rotation;   // 11-F단계: 순수 회전 행렬. 이전의 m_yaw/m_pitch 를 대신함
+	DirectX::XMFLOAT4X4 m_rotation;   // 순수 회전 행렬. 이전의 m_yaw/m_pitch 를 대신함
 
 	DirectX::XMFLOAT4X4 m_view;
 	DirectX::XMFLOAT4X4 m_proj;

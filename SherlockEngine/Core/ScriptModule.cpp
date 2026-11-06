@@ -78,8 +78,9 @@ bool ScriptModule::Load(const std::wstring& dllPath, bool copyBeforeLoad)
 		return false;
 	}
 
-	// 복사본: <DLL 폴더>\Loaded\<이름>_<프로세스>_<번호>.dll. 원본은 잠기지 않으므로 에디터를 켠 채로 다시 빌드할 수 있음.
-	// PDB 는 복사하지 않음 — DLL 안에 원본 PDB 의 절대 경로가 들어 있어 디버거는 원본 옆의 PDB 를 찾음.
+	// 복사본: <DLL 폴더>\Loaded\<이름>_<프로세스>_<번호>.dll. 원본은 잠기지 않으므로 에디터를 켠 채로 다시
+	// 빌드할 수 있음. PDB 는 복사하지 않음 — DLL 안에 원본 PDB 의 절대 경로가 들어 있어 디버거는 원본 옆의
+	// PDB 를 찾음.
 	const fs::path original(dllPath);
 	fs::path copy = original;
 	std::error_code ec;

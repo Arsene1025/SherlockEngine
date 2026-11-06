@@ -10,7 +10,7 @@
 #include "Core/Log.h"
 #include "Core/Profiler.h"
 #include "RHI/RHI.h"
-#include "Editor/ContentBrowser.h"   // 2026-10-08: 스카이박스 칸의 드롭 페이로드
+#include "Editor/ContentBrowser.h"   // 스카이박스 칸의 드롭 페이로드
 #include <imgui.h>
 #include <cmath>
 #include <algorithm>
@@ -24,7 +24,7 @@ namespace
 	const char* kSamplerNames[] = { "LinearWrap", "LinearClamp", "AnisotropicWrap", "PointWrap", "PointNoMip" };
 	const char* kLightTypeNames[] = { "Directional", "Point", "Spot" };
 
-	// 2026/10/28: R 버튼의 기본값. 구조체의 멤버 초기값을 그대로 읽으므로 기본값을 바꿔도 이 파일은 고칠 필요가 없음.
+	// R 버튼의 기본값. 구조체의 멤버 초기값을 그대로 읽으므로 기본값을 바꿔도 이 파일은 고칠 필요가 없음.
 	const ShadowSettings kShadowDefaults;
 	const SceneEnvironment kEnvironmentDefaults;
 	const LightData kLightDefaults;
@@ -72,7 +72,8 @@ float DebugUI::TextItemWidth(const char* text)
 
 namespace
 {
-	// 위젯을 그리기 전에 부름: 위젯 폭에서 R 버튼과 간격만큼을 뺌 (라벨은 위젯 오른쪽에 그려지므로 라벨 + R 이 원래 라벨 자리에 들어감).
+	// 위젯을 그리기 전에 부름: 위젯 폭에서 R 버튼과 간격만큼을 뺌 (라벨은 위젯 오른쪽에 그려지므로 라벨 + R
+	// 이 원래 라벨 자리에 들어감).
 	void ReserveResetButton()
 	{
 		ImGui::SetNextItemWidth(ImGui::CalcItemWidth() - DebugUI::ButtonWidth("R") - ImGui::GetStyle().ItemSpacing.x);
@@ -145,7 +146,7 @@ void DebugUI::DrawCameraPanel(Camera& camera, float& moveSpeed)
 	ImGui::TextWrapped("yaw   %.1f deg   pitch %.1f deg   roll %.1f deg",
 		XMConvertToDegrees(camera.GetYaw()), XMConvertToDegrees(camera.GetPitch()), XMConvertToDegrees(camera.GetRoll()));   // roll 은 재생 중 부모가 기울어진 카메라에서만 0 이 아님 (11-F)
 	SliderFloatR("Speed", &moveSpeed, kCameraMoveSpeedDefault, 1.0f, 50.0f);
-	// 2026-10-15: 에디터 카메라의 투영 선택. 재생 중 카메라 컴포넌트가 카메라를 움직이면 그 컴포넌트의 설정이 덮어씀.
+	// 에디터 카메라의 투영 선택. 재생 중 카메라 컴포넌트가 카메라를 움직이면 그 컴포넌트의 설정이 덮어씀.
 	bool orthographic = !camera.IsUsePerspectiveProjection();
 	if (ImGui::Checkbox("Orthographic", &orthographic)) camera.SetUsePerspectiveProjection(!orthographic);
 	if (orthographic)
@@ -203,7 +204,7 @@ void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& dev
 	ImGui::Separator();
 	RenderSettings& settings = renderer.GetSettings();
 	ImGui::Checkbox("Shadows (F8)", &settings.shadows);
-	// 2026/10/28: 아래 값들은 씬 파일에 저장됨 (scene.environment.shadow). 켜고 끄는 스위치만 렌더러 설정.
+	// 아래 값들은 씬 파일에 저장됨 (scene.environment.shadow). 켜고 끄는 스위치만 렌더러 설정.
 	ShadowSettings& shadow = scene.environment.shadow;
 	SliderFloatR("Shadow bias", &shadow.bias, kShadowDefaults.bias, 0.0f, 0.01f, "%.4f");
 	SliderFloatR("Shadow strength", &shadow.strength, kShadowDefaults.strength, 0.0f, 1.0f);
@@ -248,7 +249,8 @@ void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& dev
 			renderer.GetSkippedShadowLights());
 		ImGui::TreePop();
 	}
-	// 방향광 CSM 전용 아틀라스. 캐스케이드마다 해상도가 다름 (C0 이 가장 크고 가까운 구간). CSM 이 꺼져 있으면 마지막 CSM 프레임의 깊이가 남아 있거나 비어 있음.
+	// 방향광 CSM 전용 아틀라스. 캐스케이드마다 해상도가 다름 (C0 이 가장 크고 가까운 구간). CSM 이 꺼져
+	// 있으면 마지막 CSM 프레임의 깊이가 남아 있거나 비어 있음.
 	if (ImGui::TreeNode("CSM atlas (2048x2048 D32, directional, shown as R)"))
 	{
 		const ImTextureID csmId = static_cast<ImTextureID>(device.GetImGuiTextureId(renderer.GetCsmMap()));
@@ -283,10 +285,10 @@ void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& dev
 
 namespace
 {
-	// 2026-10-08: 환경 칸 하나 — 이름 입력(Enter 로 적용) + 콘텐츠 브라우저의 텍스처 드롭.
+	// 환경 칸 하나 — 이름 입력(Enter 로 적용) + 콘텐츠 브라우저의 텍스처 드롭.
 	// 규칙은 재질 텍스처와 같음: Textures\ 기준 상대 경로 또는 "asset:<Assets 기준>".
-	// cube 가 참이면 .dds 는 그 파일(큐브 DDS), 그 밖의 이미지는 그 이미지가 든 폴더(면 6장)를 씀 — 폴더 타일은 드래그할 수 없기 때문.
-	// cube 가 거짓(BRDF LUT)이면 떨어뜨린 파일 그대로.
+	// cube 가 참이면 .dds 는 그 파일(큐브 DDS), 그 밖의 이미지는 그 이미지가 든 폴더(면 6장)를 씀 — 폴더
+	// 타일은 드래그할 수 없기 때문. cube 가 거짓(BRDF LUT)이면 떨어뜨린 파일 그대로.
 	void EditEnvironmentName(const char* label, const char* hint, std::string& value, bool cube)
 	{
 		char buffer[260];
@@ -373,7 +375,8 @@ void DebugUI::DrawPostStagesWindow(Renderer& renderer, RHI::Device& device)
 
 void DebugUI::DrawEnvironmentPanel(Scene& scene)
 {
-	// 이름만 바꾸면 됨 — Renderer 가 다음 프레임에 이름으로 큐브·LUT 를 읽어(캐시) 프레임 셋 t9~t12 에 꽂음. Scene 은 GPU 를 모름.
+	// 이름만 바꾸면 됨 — Renderer 가 다음 프레임에 이름으로 큐브·LUT 를 읽어(캐시) 프레임 셋 t9~t12 에 꽂음.
+	// Scene 은 GPU 를 모름.
 	SceneEnvironment& env = scene.environment;
 	static const char* const kPresets[] = { "(none)", "builtin:sky", "builtin:skyfaces" };
 	const char* preview = env.skybox.empty() ? kPresets[0] : env.skybox.c_str();
@@ -404,7 +407,7 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 	SameLineIfFits(CheckboxWidth("ACES tone mapping"));
 	ImGui::Checkbox("ACES tone mapping", &env.toneMapping);
 
-	// 2026/10/23: 후처리. 순서는 Renderer 가 고정함 (HDR 구간: 블러 → 블룸, 톤 패스: 노출 → ACES → 색 효과).
+	// 후처리. 순서는 Renderer 가 고정함 (HDR 구간: 블러 → 블룸, 톤 패스: 노출 → ACES → 색 효과).
 	// 환경의 일부라 씬 JSON 과 되돌리기 이력에 함께 들어감.
 	if (ImGui::TreeNodeEx("Post process", ImGuiTreeNodeFlags_DefaultOpen))
 	{
@@ -535,7 +538,7 @@ void DebugUI::DrawMaterialPanel(Scene& scene)
 			if (users > 1) ImGui::TextDisabled("Shared by %zu objects - edits affect all of them", users);
 			else ImGui::TextDisabled("Used by %zu object%s", users, users == 1 ? "" : "s");
 			ImGui::ColorEdit4("Base color", &material.baseColor.x);
-			SliderFloatR("Metallic", &material.metallic, kMaterialDefaults.metallic, 0.0f, 1.0f);   // 2026-10-08 PBR
+			SliderFloatR("Metallic", &material.metallic, kMaterialDefaults.metallic, 0.0f, 1.0f);   // PBR
 			SliderFloatR("Roughness", &material.roughness, kMaterialDefaults.roughness, 0.0f, 1.0f);
 			ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 			SliderFloatR("Occlusion strength", &material.occlusionStrength, kMaterialDefaults.occlusionStrength, 0.0f, 1.0f);
@@ -578,7 +581,7 @@ void DebugUI::DrawModelPanel(const char* sceneName, const ModelStats& stats, siz
 		stats.vertices, stats.triangles, stats.meshesWith16BitIndices, stats.meshes, stats.generatedTangentMeshes, stats.skippedPrimitives, sceneObjects);
 }
 
-// ------------------------------------------------------------------ 10단계
+// ------------------------------------------------------------------ 엔진 · 프로파일러 · 로그 콘솔
 
 void DebugUI::DrawEnginePanel(Engine& engine)
 {

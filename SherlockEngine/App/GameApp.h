@@ -2,7 +2,7 @@
 #include "App/AppBase.h"
 #include <string>
 
-// 11-D단계: 게임 런타임. 에디터 없이 시작 씬을 로드해 바로 재생함 — 언리얼의 패키징된 게임, 유니티의 플레이어 빌드에 해당.
+// 게임 런타임. 에디터 없이 시작 씬을 로드해 바로 재생함 — 언리얼의 패키징된 게임, 유니티의 플레이어 빌드에 해당.
 //
 // 같은 엔진 라이브러리 위에 올라가는 두 번째 앱임: EditorApp(에디터)은 SherlockEditor.exe, 이것은 SherlockGame.exe.
 // ImGui 컨텍스트를 만들지 않으므로(WantsGUI false) 씬은 오프스크린이 아니라 백버퍼에 직접 그려짐.

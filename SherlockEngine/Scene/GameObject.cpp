@@ -60,7 +60,8 @@ bool GameObject::SetWorldMatrix(const XMMATRIX& world)
 
 void GameObject::SetWorldPosition(const XMFLOAT3& position)
 {
-	// 위치만 바꾸면 되므로 행렬을 분해하지 않고 점 하나만 부모 공간으로 옮김 (pre 는 위치에 영향을 주지만 회전·스케일 값은 그대로).
+	// 위치만 바꾸면 되므로 행렬을 분해하지 않고 점 하나만 부모 공간으로 옮김 (pre 는 위치에 영향을 주지만
+	// 회전·스케일 값은 그대로).
 	if (parent == nullptr && !transform.HasPreTransform())
 	{
 		transform.SetPosition(position);

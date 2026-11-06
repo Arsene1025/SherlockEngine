@@ -4,11 +4,10 @@
 #include "RHI/PipelineTypes.h"
 #include "RHI/RenderPassTypes.h"
 
-// RHI::CommandList — GPU 명령을 기록하는 곳. 7단계에서 6단계 D3D11 CommandList 의 공개 API를
-// 그대로 가상 인터페이스로 추출했음. 추출할 때 메서드 집합은 그대로였고, 10단계에서 WriteTimestamp 가 추가됐음.
+// RHI::CommandList — GPU 명령을 기록하는 곳.
 //
 // D3D11 백엔드: ImmediateContext 의 얇은 래퍼. "기록"이 곧 실행.
-// D3D12 백엔드(8단계): 명령이 D3D12 그래픽스 커맨드 리스트에 쌓였다가 ExecuteCommandLists 로 제출됨.
+// D3D12 백엔드: 명령이 D3D12 그래픽스 커맨드 리스트에 쌓였다가 ExecuteCommandLists 로 제출됨.
 //
 // 이 헤더는 D3D 헤더를 include 하지 않음. 폴더 규칙: RHI/ 는 선언만, 구현은 RHI/D3D11/ 과 RHI/D3D12/.
 namespace RHI
@@ -34,7 +33,8 @@ namespace RHI
 		// 현재 렌더 패스의 뷰포트를 바꿈. 같은 패스 안에서 여러 번 불러도 됨 (섀도 아틀라스의 타일마다 호출).
 		//  - 렌더 패스 안에서만 유효함. 밖에서 부르면 에러 로그를 한 번 남기고 무시함.
 		//  - width/height 가 0 이면 이 패스의 첫 attachment 크기를 씀 (RenderPassDesc::viewport 와 같은 규칙).
-		//  - D3D12 는 시저 사각형도 같은 영역으로 함께 바꿈 (시저가 없으면 아무것도 안 그려짐). D3D11 은 PSO 의 scissorEnable 이 기본 false 라 뷰포트만 바꿈.
+		//  - D3D12 는 시저 사각형도 같은 영역으로 함께 바꿈 (시저가 없으면 아무것도 안 그려짐). D3D11 은 PSO
+		//    의 scissorEnable 이 기본 false 라 뷰포트만 바꿈.
 		virtual void SetViewport(const Viewport& viewport) = 0;
 
 		// ---- 상태·바인딩 ----
@@ -46,8 +46,8 @@ namespace RHI
 
 		// ---- 드로우 ----
 		virtual void DrawIndexed(uint32_t indexCount, uint32_t startIndex = 0, int32_t baseVertex = 0) = 0;
-		// 2026-10-08: 인덱스 없는 드로우. 정점 버퍼 없이 VS 가 SV_VertexID 로 위치를 만드는 패스(스카이박스의 전체 화면 삼각형)에 씀.
-		// 그런 PSO 는 vertexLayout.attributeCount = 0 으로 만듦 (입력 레이아웃 없음).
+		// 인덱스 없는 드로우. 정점 버퍼 없이 VS 가 SV_VertexID 로 위치를 만드는 패스(스카이박스의 전체 화면
+		// 삼각형)에 씀. 그런 PSO 는 vertexLayout.attributeCount = 0 으로 만듦 (입력 레이아웃 없음).
 		virtual void Draw(uint32_t vertexCount, uint32_t startVertex = 0) = 0;
 
 		// ---- 전이·복사 ----

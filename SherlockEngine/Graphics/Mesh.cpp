@@ -288,7 +288,7 @@ Mesh Mesh::CreateCylinder(float bottomRadius, float topRadius, float height,
 	return mesh;
 }
 
-// ------------------------------------------------------------------ 9단계: 외부 데이터·탄젠트·바운드
+// ------------------------------------------------------------------ 외부 데이터·탄젠트·바운드
 
 float Bounds::Radius() const
 {
@@ -335,14 +335,14 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>&
 	// Lengyel, "Computing Tangent Space Basis Vectors for an Arbitrary Mesh".
 	// 삼각형마다 (dP/du, dP/dv) 를 풀어 정점에 누적하고, 마지막에 노멀에 직교화함.
 	//
-	// 2026-11-04: 미러 모델링(한쪽 면만 만들고 뒤집어 복제)처럼 UV 가 뒤집힌 삼각형은 손잡이(w)가 반대임. 같은 정점을 손잡이가 다른
-	// 삼각형이 공유하면 탄젠트가 서로 상쇄되고 w 도 한쪽으로만 정해지므로, 손잡이별로 정점을 복제해서 나눔 (1단계).
+	// 미러 모델링(한쪽 면만 만들고 뒤집어 복제)처럼 UV 가 뒤집힌 삼각형은 손잡이(w)가 반대임. 같은 정점을 손잡이가 다른
+	// 삼각형이 공유하면 탄젠트가 서로 상쇄되고 w 도 한쪽으로만 정해지므로, 손잡이별로 정점을 복제해서 나눔.
 	// 복제는 정점 배열 뒤에 붙이고 인덱스만 바꾸므로 서브메시의 인덱스 범위는 그대로 유효함.
 	struct TriangleBasis { XMFLOAT3 sdir, tdir; int8_t handedness = 0; };   // handedness 0 = 퇴화(건너뜀)
 	const size_t triangleCount = indices.size() / 3;
 	std::vector<TriangleBasis> triangles(triangleCount);
 
-	// 1단계: 삼각형마다 (dP/du, dP/dv) 와 손잡이를 구함.
+	// 삼각형마다 (dP/du, dP/dv) 와 손잡이를 구함.
 	for (size_t t = 0; t < triangleCount; ++t)
 	{
 		const uint32_t i0 = indices[t * 3], i1 = indices[t * 3 + 1], i2 = indices[t * 3 + 2];
@@ -393,7 +393,7 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>&
 		}
 	}
 
-	// 2단계: 누적. 복제된 정점이 생겼으므로 배열은 분리 뒤 크기로 만듦.
+	// 누적. 복제된 정점이 생겼으므로 배열은 분리 뒤 크기로 만듦.
 	std::vector<XMFLOAT3> tan1(vertices.size(), XMFLOAT3(0.0f, 0.0f, 0.0f));
 	std::vector<XMFLOAT3> tan2(vertices.size(), XMFLOAT3(0.0f, 0.0f, 0.0f));
 	for (size_t t = 0; t < triangleCount; ++t)

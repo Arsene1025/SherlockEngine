@@ -7,7 +7,7 @@
 #include "Core/Project.h"
 #include "Core/ScriptModule.h"
 
-// AppBase (10단계, D14): 창과 메시지 루프, ImGui 컨텍스트·Win32 백엔드를 담당함. 엔진 시스템은 전부 Engine 이 가짐.
+// AppBase: 창과 메시지 루프, ImGui 컨텍스트·Win32 백엔드를 담당함. 엔진 시스템은 전부 Engine 이 가짐.
 //
 // 앱은 이것을 상속해 OnInitialize / OnUpdate / OnFixedUpdate / OnGUI 를 구현함. 렌더링은 Engine::Render 가
 // 정해진 순서로 수행함 — 앱은 "무엇을" 그릴지만 정하고 "어떤 순서로 그리는지"는 모름.
@@ -29,9 +29,9 @@ protected:
     virtual bool OnInitialize() = 0;              // 씬 구성. 호출 시점에 Engine 은 준비되어 있음
     virtual void OnUpdate(float dt) = 0;          // 매 프레임 호출 (가변 dt)
     virtual void OnFixedUpdate(float fixedDt) { (void)fixedDt; }   // 고정 스텝 (Time.fixedStep). 필요할 때만 구현
-    virtual void OnGUI() = 0;                     // ImGui::NewFrame 과 Render 사이에서 호출됨. 창과 도킹 공간은 앱이 직접 만듦 (11단계에 "Information" 창은 없어짐)
+    virtual void OnGUI() = 0;                     // ImGui::NewFrame 과 Render 사이에서 호출됨. 창과 도킹 공간은 앱이 직접 만듦
     virtual void OnFocusLost() {}                 // WM_KILLFOCUS / WM_CAPTURECHANGED
-    // 11-D단계: false 면 ImGui 컨텍스트·Win32/렌더러 백엔드를 만들지 않음 (게임 런타임 GameApp). OnGUI 도 호출되지 않음.
+    // false 면 ImGui 컨텍스트·Win32/렌더러 백엔드를 만들지 않음 (게임 런타임 GameApp). OnGUI 도 호출되지 않음.
     virtual bool WantsGUI() const { return true; }
     virtual const wchar_t* GetWindowTitle() const { return L"SherlockEngine"; }
 
@@ -39,17 +39,19 @@ protected:
     HWND GetWindow() const { return m_mainWindow; }
     const Config& GetConfig() const { return m_config; }
 
-    // 11-E단계: 프로젝트. Initialize 가 설정을 읽기 전에 정함 (--project=, exe 상위 폴더의 *.sherlock, 엔진의 Projects\Sample 순).
-    // OpenProject 는 실행 중에 프로젝트를 전환함 (Paths 의 프로젝트 루트를 바꿈). 씬 로드는 앱이 담당함.
+    // 프로젝트. Initialize 가 설정을 읽기 전에 정함 (--project=, exe 상위 폴더의 *.sherlock, 엔진의
+    // Projects\Sample 순). OpenProject 는 실행 중에 프로젝트를 전환함 (Paths 의 프로젝트 루트를 바꿈). 씬
+    // 로드는 앱이 담당함.
     Project& GetProject() { return m_project; }
     const Project& GetProject() const { return m_project; }
     bool OpenProject(const std::wstring& pathOrDir);
     static std::wstring GetDefaultProjectDir();   // <엔진 저장소>\Projects\Sample\ (소스 트리가 있을 때)
 
-    // 2026-10-08 (B안): 프로젝트 스크립트 DLL. Initialize 가 Engine 초기화 직후(OnInitialize 전, 씬이 빈 때) 한 번 부름.
+    // 프로젝트 스크립트 DLL. Initialize 가 Engine 초기화 직후(OnInitialize 전, 씬이 빈 때) 한 번 부름.
     // 열린 프로젝트의 <이름>Scripts.dll 을 찾아 올림: exe 옆(패키지된 게임) → <프로젝트>\Binaries\<구성>\ 순.
-    // 이미 올린 DLL 이 있으면 먼저 씬을 비우고 내림 — 프로젝트를 바꿀 때 에디터가 다시 부름. hotReload 면 복사본을 올려 원본을 다시 빌드할 수 있게 함.
-    // DLL 이 없으면 false (스크립트 없이 동작. 그 스크립트를 쓰는 컴포넌트는 씬 로드 때 경고와 함께 빠짐).
+    // 이미 올린 DLL 이 있으면 먼저 씬을 비우고 내림 — 프로젝트를 바꿀 때 에디터가 다시 부름. hotReload 면
+    // 복사본을 올려 원본을 다시 빌드할 수 있게 함. DLL 이 없으면 false (스크립트 없이 동작. 그 스크립트를
+    // 쓰는 컴포넌트는 씬 로드 때 경고와 함께 빠짐).
     bool LoadProjectScripts(bool hotReload);
     void UnloadProjectScripts();   // 씬을 비운 뒤 DLL 을 내림
     ScriptModule& GetScripts() { return m_scripts; }
@@ -59,7 +61,7 @@ protected:
     static std::wstring GetCommandLineOption(const wchar_t* name);
 
 private:
-    void ResolveProject();      // 11-E단계: 프로젝트 파일 찾기 → Paths 루트 설정
+    void ResolveProject();      // 프로젝트 파일 찾기 → Paths 루트 설정
     bool LoadConfig();          // Assets\Config\engine.ini 를 읽고 실행 인자로 덮어씀
     void InitLogger();          // 설정의 [log] 로 Logger 를 엶
     bool InitMainWindow();
@@ -68,8 +70,8 @@ private:
 private:
     Config m_config;
     Engine m_engine;
-    Project m_project;   // 11-E단계
-    ScriptModule m_scripts;   // 2026-10-08 (B안). 소멸자는 DLL 을 내리지 않음 — 엔진이 씬을 비우는 시점이 더 늦을 수 있음
+    Project m_project;
+    ScriptModule m_scripts;   // 소멸자는 DLL 을 내리지 않음 — 엔진이 씬을 비우는 시점이 더 늦을 수 있음
 
     int m_screenWidth = 1280;   // 클라이언트 영역 크기 (설정 engine.width/height)
     int m_screenHeight = 720;
@@ -78,5 +80,5 @@ private:
     // 초기화가 도중에 실패해도 소멸자가 안전하게 동작하도록, 실제로 초기화된 것만 기록해 두고 그것만 되돌림.
     bool m_guiWin32Initialized = false;
     bool m_guiContextCreated = false;
-    bool m_comInitialized = false;   // 11-D단계: CoInitializeEx (WIC)
+    bool m_comInitialized = false;   // CoInitializeEx (WIC)
 };

@@ -62,7 +62,8 @@ void EditorHistory::Restore(Scene& scene)
 		Log::Error("되돌리기: 상태를 복원하지 못함 (단계 %zu)", m_current);
 		return;
 	}
-	// 복원한 씬을 다시 직렬화해 기준으로 삼음: 복원이 표현을 조금이라도 바꾸면(예: 자식 순서) 다음 Commit 이 "바뀌었다" 고 오판하기 때문.
+	// 복원한 씬을 다시 직렬화해 기준으로 삼음: 복원이 표현을 조금이라도 바꾸면(예: 자식 순서) 다음 Commit 이
+	// "바뀌었다" 고 오판하기 때문.
 	m_bytes -= m_states[m_current].text.size();
 	m_states[m_current].text = SceneSerializer::SaveEditState(scene);
 	m_bytes += m_states[m_current].text.size();
@@ -97,7 +98,8 @@ const std::string& EditorHistory::GetRedoLabel() const
 
 void EditorHistory::Trim()
 {
-	// 가장 오래된 상태부터 버림 (m_states[0] 은 "그보다 더 앞으로는 못 가는" 바닥이 되어 남음). 현재 위치는 항상 마지막이므로 앞에서만 줄어듦.
+	// 가장 오래된 상태부터 버림 (m_states[0] 은 "그보다 더 앞으로는 못 가는" 바닥이 되어 남음). 현재 위치는
+	// 항상 마지막이므로 앞에서만 줄어듦.
 	while (m_states.size() > kMaxSteps + 1 || (m_bytes > kMaxBytes && m_states.size() > 2))
 	{
 		m_bytes -= m_states.front().text.size();

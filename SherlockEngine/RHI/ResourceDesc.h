@@ -10,8 +10,7 @@
 // 예전에는 CreateConstBuffer / CreateVertexBuffer / CreateIndexBuffer 가
 // 각각 D3D 버퍼 스마트 포인터를 돌려줬음. 세 함수의 차이는 BindFlags 하나뿐이었음.
 //
-// 이름과 필드는 RHI 최종형(7단계)과 같게 지었으므로, 7단계에서 인터페이스를 추출하고
-// D3D12 백엔드를 추가할 때도 호출 코드는 바뀌지 않았음.
+// 이름과 필드를 백엔드(D3D11·D3D12)와 무관하게 지었으므로 호출 코드는 백엔드에 상관없이 같음.
 
 enum class BufferUsage : uint8_t
 {
@@ -45,9 +44,10 @@ enum TextureBind : uint8_t
 	TextureBind_ShaderResource = 1 << 2,
 };
 
-// 2026-10-08: 큐브맵. 큐브는 "면 6장짜리 2D 텍스처 배열 + 큐브로 읽는 뷰"임 — D3D11 은 ArraySize 6 + MISC_TEXTURECUBE,
-// D3D12 는 DepthOrArraySize 6 + SRV_DIMENSION_TEXTURECUBE. 면 순서는 D3D 관례 +X, −X, +Y, −Y, +Z, −Z (DDS 파일 순서와 같음).
-// 지금 큐브는 ShaderResource 전용임 (렌더 타깃으로 그리는 큐브 — 반사 프로브 — 는 면별 RTV 가 필요해 아직 없음).
+// 큐브맵. 큐브는 "면 6장짜리 2D 텍스처 배열 + 큐브로 읽는 뷰"임 — D3D11 은 ArraySize 6 + MISC_TEXTURECUBE,
+// D3D12 는 DepthOrArraySize 6 + SRV_DIMENSION_TEXTURECUBE. 면 순서는 D3D 관례 +X, −X, +Y, −Y, +Z, −Z (DDS
+// 파일 순서와 같음). 지금 큐브는 ShaderResource 전용임 (렌더 타깃으로 그리는 큐브 — 반사 프로브 — 는 면별 RTV
+// 가 필요해 아직 없음).
 enum class TextureDimension : uint8_t
 {
 	Texture2D,     // 배열 크기 1
@@ -87,7 +87,7 @@ enum class SamplerFilter : uint8_t
 	Point,         // 최근접. 밉맵도 최근접
 	Linear,        // 3선형 (밉 사이도 보간)
 	Anisotropic,   // 비등방. maxAnisotropy 사용
-	Comparison,    // 그림자 비교 샘플러 (6단계). PCF용 선형 + compareFunc
+	Comparison,    // 그림자 비교 샘플러. PCF용 선형 + compareFunc
 };
 
 enum class SamplerAddress : uint8_t
@@ -116,7 +116,7 @@ struct ShaderDesc
 {
 	ShaderStage stage = ShaderStage::Vertex;
 	// 컴파일된 바이트코드. 컴파일은 ShaderCompiler가 담당함.
-	// C++20 (2026-09-28): (const void*, size_t) 쌍을 std::span 하나로 합침. std::vector<uint8_t> 를 그대로
+	// C++20: (const void*, size_t) 쌍을 std::span 하나로 합침. std::vector<uint8_t> 를 그대로
 	// 대입할 수 있고, 포인터와 길이가 따로 다니다 어긋나는 일이 없음. span 은 소유하지 않으므로
 	// CreateShader 가 돌아오기 전까지만 원본이 살아 있으면 됨 (백엔드는 사본을 뜸).
 	std::span<const uint8_t> bytecode;

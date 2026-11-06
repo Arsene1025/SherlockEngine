@@ -81,7 +81,8 @@ namespace
 				else if (name.find('/') == std::string::npos) textures.insert(L"Textures\\" + Wide(name));
 			}
 		}
-		// 2026-10-08: 스카이박스와 IBL 맵. 재질 텍스처와 같은 이름 규칙. 큐브 DDS·LUT 파일이거나 면 이미지 6장이 든 폴더임 (복사 루프가 둘 다 처리함).
+		// 스카이박스와 IBL 맵. 재질 텍스처와 같은 이름 규칙. 큐브 DDS·LUT 파일이거나 면 이미지 6장이 든
+		// 폴더임 (복사 루프가 둘 다 처리함).
 		const nlohmann::json env = root.value("environment", nlohmann::json());
 		if (env.is_object())
 		{
@@ -142,8 +143,9 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 	for (char c : options.name) if (c == '\\' || c == '/' || c == ':' || c == '"') { result.message = "invalid game name"; return result; }
 	if (!Paths::HasProject()) { result.message = "no project is open"; return result; }
 
-	// 2026-10-08 (B안): 런타임 = SherlockGame.exe + SherlockEngine.dll(+ vcpkg DLL) — 모든 프로젝트가 같은 exe 를 씀 — 와 프로젝트의 <이름>Scripts.dll.
-	// Release 를 켰으면 엔진 솔루션의 SherlockGame 과 프로젝트의 스크립트 DLL 을 Release 로 빌드한 뒤 Release 폴더에서 가져옴.
+	// 런타임 = SherlockGame.exe + SherlockEngine.dll(+ vcpkg DLL) — 모든 프로젝트가 같은 exe 를 씀 — 와
+	// 프로젝트의 <이름>Scripts.dll. Release 를 켰으면 엔진 솔루션의 SherlockGame 과 프로젝트의 스크립트 DLL
+	// 을 Release 로 빌드한 뒤 Release 폴더에서 가져옴.
 	const std::wstring buildLog = GetBuildRoot() + L"msbuild.log";
 	std::wstring runtimeDir = Paths::GetExecutableDir();
 	const wchar_t* configuration = ScriptModule::GetConfiguration();
@@ -164,7 +166,8 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 	const fs::path runtimeExe = fs::path(runtimeDir) / L"SherlockGame.exe";
 	if (!fs::exists(runtimeExe, ec)) { result.message = "game runtime not found in " + Utf8(runtimeDir) + " (build SherlockGame in SherlockEngine.sln)"; return result; }
 
-	// 스크립트 DLL: <프로젝트>\Binaries\<구성>\<이름>Scripts.dll. Release 이거나 아직 없으면 먼저 빌드함 (엔진은 위에서 빌드했으므로 BuildProjectReferences=false).
+	// 스크립트 DLL: <프로젝트>\Binaries\<구성>\<이름>Scripts.dll. Release 이거나 아직 없으면 먼저 빌드함
+	// (엔진은 위에서 빌드했으므로 BuildProjectReferences=false).
 	const std::wstring scriptsName = Wide(options.projectName) + L"Scripts";
 	const fs::path scriptsDll = fs::path(Paths::GetProjectRoot()) / L"Binaries" / configuration / (scriptsName + L".dll");
 	size_t scriptSources = 0;
@@ -188,7 +191,8 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 		if (entry.is_regular_file(ec) && entry.path().extension() == L".dll")
 			if (!CopyOne(entry.path(), out / entry.path().filename(), result.filesCopied, result.message)) return result;
 	}
-	// 스크립트 DLL 은 <게임 이름>Scripts.dll 로 둠 — 패키지의 .sherlock 이름이 게임 이름이고, 런타임은 exe 옆의 <프로젝트 이름>Scripts.dll 을 찾음 (AppBase::LoadProjectScripts).
+	// 스크립트 DLL 은 <게임 이름>Scripts.dll 로 둠 — 패키지의 .sherlock 이름이 게임 이름이고, 런타임은 exe
+	// 옆의 <프로젝트 이름>Scripts.dll 을 찾음 (AppBase::LoadProjectScripts).
 	if (fs::exists(scriptsDll, ec))
 	{
 		if (!CopyOne(scriptsDll, out / (Wide(options.name) + L"Scripts.dll"), result.filesCopied, result.message)) return result;
@@ -198,7 +202,8 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 	CopyTree(fs::path(runtimeDir) / L"Shaders", out / L"Shaders", result.filesCopied, result.message, false);
 	if (!CopyTree(fs::path(Paths::GetEngineRoot()) / L"Shaders", out / L"Shaders", result.filesCopied, result.message)) return result;
 
-	// 3. 에셋: 엔진 콘텐츠 위에 프로젝트 콘텐츠를 덮어씀 (런타임의 경로 해석 순서와 같음). 패키지 안에서는 둘이 한 폴더로 합쳐짐.
+	// 3. 에셋: 엔진 콘텐츠 위에 프로젝트 콘텐츠를 덮어씀 (런타임의 경로 해석 순서와 같음). 패키지 안에서는
+	//    둘이 한 폴더로 합쳐짐.
 	const fs::path outAssets = out / L"Assets";
 	const fs::path scenePath = fs::path(Paths::GetAssetRoot()) / L"Scenes" / Wide(options.startScene);
 	if (!fs::exists(scenePath, ec)) { result.message = "start scene not found: " + options.startScene; return result; }
@@ -213,8 +218,9 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 		if (!CopyOne(scenePath, outAssets / L"Scenes" / Wide(options.startScene), result.filesCopied, result.message)) return result;
 		std::set<std::wstring> modelFolders, textures;
 		CollectReferences(scenePath, modelFolders, textures);
-		// 2026-10-15: 프리팹. 스크립트가 "Prefabs\Bullet.prefab" 같은 문자열로 Instantiate 하므로 씬 파일이 참조하지 않음 — Prefabs 폴더를 통째로 복사하고,
-		// 프리팹이 쓰는 모델·텍스처도 씬과 같은 방식(같은 JSON 키)으로 모음.
+		// 프리팹. 스크립트가 "Prefabs\Bullet.prefab" 같은 문자열로 Instantiate 하므로 씬 파일이 참조하지 않음
+		// — Prefabs 폴더를 통째로 복사하고, 프리팹이 쓰는 모델·텍스처도 씬과 같은 방식(같은 JSON 키)으로
+		// 모음.
 		{
 			std::string ignored;
 			CopyAssetTree(L"Prefabs", outAssets, result.filesCopied, ignored);   // 폴더가 없는 프로젝트도 있음
@@ -231,7 +237,7 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 		for (const std::wstring& texture : textures)
 		{
 			const std::wstring found = Paths::GetAssetPath(texture.c_str());
-			if (fs::is_directory(found, ec))   // 2026-10-08: 스카이박스 면 이미지 폴더
+			if (fs::is_directory(found, ec))   // 스카이박스 면 이미지 폴더
 			{
 				if (!CopyTree(found, outAssets / texture, result.filesCopied, result.message)) return result;
 			}
@@ -251,7 +257,8 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 		std::ofstream outIni(ini, std::ios::binary | std::ios::trunc);
 		outIni << text;   // 같은 키가 앞에 있어도 마지막 값이 적용됨 (Config 는 키 → 값 맵)
 	}
-	// 5. 프로젝트 파일 사본: 런타임이 exe 옆에서 이 파일을 찾아 exe 폴더를 프로젝트 루트로 잡음 (engineRoot 가 비어 있으므로 모든 경로가 exe 옆을 가리킴).
+	// 5. 프로젝트 파일 사본: 런타임이 exe 옆에서 이 파일을 찾아 exe 폴더를 프로젝트 루트로 잡음 (engineRoot
+	//    가 비어 있으므로 모든 경로가 exe 옆을 가리킴).
 	{
 		std::ofstream sherlock(out / (Wide(options.name) + L".sherlock"), std::ios::binary | std::ios::trunc);
 		sherlock << "{\n  \"name\": \"" << options.name << "\",\n  \"startScene\": \"" << options.startScene << "\",\n  \"engineRoot\": \"\",\n  \"format\": 1\n}\n";

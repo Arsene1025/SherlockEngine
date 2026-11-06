@@ -2,8 +2,8 @@
 #include <string>
 #include <vector>
 
-// 11-E단계: 프로젝트 런처의 데이터 쪽 — 최근 프로젝트 목록(%LOCALAPPDATA%\SherlockEngine\editor.json)과 네이티브 파일/폴더 대화상자.
-// 그리기(ImGui 창)는 Editor::DrawLauncher 가 함.
+// 프로젝트 런처의 데이터 쪽 — 최근 프로젝트 목록(%LOCALAPPDATA%\SherlockEngine\editor.json)과 네이티브
+// 파일/폴더 대화상자. 그리기(ImGui 창)는 Editor::DrawLauncher 가 함.
 namespace ProjectLauncher
 {
 	struct Recent

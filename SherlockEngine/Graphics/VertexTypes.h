@@ -8,11 +8,11 @@
 // 오프셋 0/12/28을 손으로 적었음. 구조체를 고치면 그 숫자도 같이 고쳐야 했고,
 // 잊으면 컴파일은 되는데 화면이 깨졌음.
 //
-// 4단계(D9): 정점 포맷을 열거형으로 두고 Mesh가 자기 포맷을 알려줌. Renderer는
+// 정점 포맷을 열거형으로 두고 Mesh가 자기 포맷을 알려줌. Renderer는
 // GetVertexLayout(mesh.GetVertexFormat())으로 PSO Desc를 채움.
-// 5단계: UV 추가. 6단계: 탄젠트 추가 (Position / Color / Normal / TexCoord / Tangent, 64바이트).
+// 현재 포맷은 Position / Color / Normal / TexCoord / Tangent (64바이트).
 //
-// C++20 (2026-09-28): 레이아웃 생성 함수를 consteval 로 바꿈. 이 함수는 런타임 입력이 없고
+// C++20: 레이아웃 생성 함수를 consteval 로 바꿈. 이 함수는 런타임 입력이 없고
 // offsetof / sizeof 만 쓰므로 컴파일 시점에 계산되어야 마땅하고, consteval 은 그것을 강제함
 // (런타임 호출은 컴파일 에러). 결과는 아래 kVertexLayoutPCNTT 상수에 담기고, 그 아래 static_assert 가
 // "레이아웃의 stride 가 정점 크기와 같다", "속성 5개" 를 컴파일 시점에 검사함 — 이전에는 런타임에
@@ -20,11 +20,11 @@
 
 struct VERTEX
 {
-	float x, y, z; 			//좌표(Position)
-	float r, g, b, a;		//색상(Diffuse Color)
-	float nx, ny, nz;		//노멀(Normal)
-	float u, v;				//텍스처 좌표(TexCoord). (0,0) = 왼쪽 위 (D3D 관례)
-	float tx, ty, tz, tw;	//탄젠트(Tangent) = u 가 증가하는 방향. w = 손잡이(±1): B = cross(N, T) * w
+	float x, y, z; 			// 좌표(Position)
+	float r, g, b, a;		// 색상(Diffuse Color)
+	float nx, ny, nz;		// 노멀(Normal)
+	float u, v;				// 텍스처 좌표(TexCoord). (0,0) = 왼쪽 위 (D3D 관례)
+	float tx, ty, tz, tw;	// 탄젠트(Tangent) = u 가 증가하는 방향. w = 손잡이(±1): B = cross(N, T) * w
 };
 using VertexPCNTT = VERTEX;
 

@@ -5,7 +5,7 @@
 
 namespace RHI { class Device; class CommandList; }
 
-// 프로파일러 (10단계). CPU 구간과 GPU 타임스탬프 구간.
+// 프로파일러. CPU 구간과 GPU 타임스탬프 구간.
 //
 // CPU: QueryPerformanceCounter 로 잰 중첩 구간. ProfileScope RAII 로 감쌈. 프레임마다 목록을 만들고
 //      BeginFrame 에서 "직전 프레임" 결과로 넘김(패널은 항상 완성된 프레임을 봄).

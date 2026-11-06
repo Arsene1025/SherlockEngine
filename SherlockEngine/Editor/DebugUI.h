@@ -11,19 +11,22 @@ class Engine;
 // 패널은 데이터를 "편집"할 뿐 "소유"하지는 않으므로 App 계층에 둠.
 namespace DebugUI
 {
-	// 2026-10-12: 좁은 패널 대응. ImGui::Begin/End 대신 쓰면 (1) 가로 스크롤바가 켜지고 (2) 위젯 폭이 라벨 폭을 뺀 만큼으로 잡혀
-	// 슬라이더·콤보의 오른쪽 라벨이 잘리지 않으며 (3) 창이 너무 좁아지지 않음. 패널 안의 긴 문장은 TextWrapped 로 줄바꿈함.
+	// 좁은 패널 대응. ImGui::Begin/End 대신 쓰면 (1) 가로 스크롤바가 켜지고 (2) 위젯 폭이 라벨 폭을 뺀 만큼으로 잡혀
+	// 슬라이더·콤보의 오른쪽 라벨이 잘리지 않으며 (3) 창이 너무 좁아지지 않음. 패널 안의 긴 문장은
+	// TextWrapped 로 줄바꿈함.
 	bool BeginPanel(const char* name, bool* open = nullptr);
 	void EndPanel();
-	// 가로로 이어 붙이는 위젯(체크박스·버튼 줄): 직전 위젯 오른쪽에 itemWidth 만큼 들어가면 SameLine, 아니면 다음 줄로 내림.
+	// 가로로 이어 붙이는 위젯(체크박스·버튼 줄): 직전 위젯 오른쪽에 itemWidth 만큼 들어가면 SameLine, 아니면
+	// 다음 줄로 내림.
 	void SameLineIfFits(float itemWidth);
 	float CheckboxWidth(const char* label);
 	float ButtonWidth(const char* label);        // Button·SmallButton 공통 (가로 패딩은 같음)
 	float TextItemWidth(const char* text);
 
-	// 2026/10/28: 기본값 리셋 버튼(R)이 라벨 옆에 붙는 슬라이더·드래그. 값 입력은 ImGui 기본 기능(Ctrl+클릭 / 더블클릭)으로 이미 됨.
-	// 값이 기본값과 같으면 R 은 흐려지고(비활성), 마우스를 올리면 기본값이 툴팁으로 나옴. R 이 눌려도 값이 바뀐 것이므로 true 를 반환함.
-	// R 의 폭만큼 위젯 폭을 줄여서 라벨과 R 이 원래 라벨 자리에 들어감. 되돌리기는 입력 제스처 단위라 R 클릭도 한 단계로 기록됨.
+	// 기본값 리셋 버튼(R)이 라벨 옆에 붙는 슬라이더·드래그. 값 입력은 ImGui 기본 기능(Ctrl+클릭 /
+	// 더블클릭)으로 이미 됨. 값이 기본값과 같으면 R 은 흐려지고(비활성), 마우스를 올리면 기본값이 툴팁으로
+	// 나옴. R 이 눌려도 값이 바뀐 것이므로 true 를 반환함. R 의 폭만큼 위젯 폭을 줄여서 라벨과 R 이 원래 라벨
+	// 자리에 들어감. 되돌리기는 입력 제스처 단위라 R 클릭도 한 단계로 기록됨.
 	bool SliderFloatR(const char* label, float* value, float defaultValue, float min, float max, const char* format = "%.3f", int flags = 0);
 	bool DragFloatR(const char* label, float* value, float defaultValue, float speed, float min, float max, const char* format = "%.3f");
 	bool DragFloat2R(const char* label, float* value, float defaultX, float defaultY, float speed, float min, float max, const char* format = "%.3f");
@@ -31,21 +34,23 @@ namespace DebugUI
 
 	void DrawCameraPanel(Camera& camera, float& moveSpeed);
 	void DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device);
-	void DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& device);   // 6단계: 그림자 설정 + 그림자 맵 미리보기. 2026/10/28: 값은 씬(environment.shadow)에 저장되므로 Scene 을 받음
-	// 6단계: 조명 8개 전부 편집, 추가/삭제. selectedLight = 씬 뷰에서 고른 조명 인덱스(패널에서 눌러도 바뀜, 삭제 시 보정), openSelected = true 면 그 노드를 펼치고 false 로 되돌림
+	void DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& device);   // 그림자 설정 + 그림자 맵 미리보기. 값은 씬(environment.shadow)에 저장되므로 Scene 을 받음
+	// 조명 8개 전부 편집, 추가/삭제. selectedLight = 씬 뷰에서 고른 조명 인덱스(패널에서 눌러도 바뀜, 삭제 시
+	// 보정), openSelected = true 면 그 노드를 펼치고 false 로 되돌림
 	void DrawLightPanel(Scene& scene, int* selectedLight = nullptr, bool* openSelected = nullptr);
-	// 2026-10-08: 씬 환경 (Scene::environment) — 스카이박스, IBL(확산 조도·반사 프리필터·BRDF LUT·세기), 노출·톤매핑.
-	// 칸마다 이름 입력 + 콘텐츠 브라우저의 텍스처 드롭 (큐브 칸: .dds = 큐브 DDS 파일, 그 밖의 이미지 = 그 이미지가 든 폴더).
+	// 씬 환경 (Scene::environment) — 스카이박스, IBL(확산 조도·반사 프리필터·BRDF LUT·세기), 노출·톤매핑.
+	// 칸마다 이름 입력 + 콘텐츠 브라우저의 텍스처 드롭 (큐브 칸: .dds = 큐브 DDS 파일, 그 밖의 이미지 = 그
+	// 이미지가 든 폴더).
 	void DrawEnvironmentPanel(Scene& scene);
-	// 2026/10/23: 후처리 단계별 썸네일 창 ("Post Stages"). 환경 패널의 "Stage thumbnails" 체크로 켬 (--post-stages=1 로 처음부터 켤 수도 있음).
-	// 열려 있는 동안 Renderer 에 캡처를 요청해 Scene → Blur → Bloom → Final 의 HDR 결과를 톤매핑한 모습으로 나란히 보여 줌.
+	// 후처리 단계별 썸네일 창 ("Post Stages"). 환경 패널의 "Stage thumbnails" 체크로 켬 (--post-stages=1 로
+	// 처음부터 켤 수도 있음). 열려 있는 동안 Renderer 에 캡처를 요청해 Scene → Blur → Bloom → Final 의 HDR
+	// 결과를 톤매핑한 모습으로 나란히 보여 줌.
 	void SetShowPostStages(bool show);
 	void DrawPostStagesWindow(Renderer& renderer, RHI::Device& device);
 	void DrawMaterialPanel(Scene& scene);
-	// 9단계: 현재 씬 이름, 모델 통계 (메시·서브메시·정점·삼각형·16비트 인덱스·탄젠트 생성·로드 시간), 씬 전환 안내를 표시함.
+	// 현재 씬 이름, 모델 통계 (메시·서브메시·정점·삼각형·16비트 인덱스·탄젠트 생성·로드 시간), 씬 전환 안내를 표시함.
 	void DrawModelPanel(const char* sceneName, const ModelStats& stats, size_t sceneImages, size_t sceneObjects);
 
-	// 10단계
 	void DrawEnginePanel(Engine& engine);       // 백엔드·설정 파일·로그 파일·AssetManager·Time
 	void DrawProfilerPanel();                   // CPU 구간 + GPU 타임스탬프 구간 (직전 완료 프레임)
 	void DrawLogConsole(bool* open);            // 별도 창 "Console": 레벨 필터·검색·자동 스크롤·지우기

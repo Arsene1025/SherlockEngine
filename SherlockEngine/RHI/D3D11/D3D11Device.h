@@ -11,7 +11,6 @@
 //
 // 폴더 밖의 코드는 RHI::Device 인터페이스만 봄. ID3D11* 타입을 돌려주는 Get* 접근자는
 // RHI/D3D11/ 안의 코드(PipelineState, D3D11CommandList)에서만 호출함.
-// 3~6단계의 Device 클래스에서 이름만 바꾸고 인터페이스를 상속하게 했음. 메서드 본문은 같음.
 class D3D11Device final : public RHI::Device
 {
 public:
@@ -125,9 +124,10 @@ private:
     TextureHandle m_backBuffer;
     TextureHandle m_depthBuffer;
 
-    // 10단계: 타임스탬프 쿼리. 프레임마다 DISJOINT 쿼리 하나 + TIMESTAMP 쿼리 kMaxTimestamps 개.
+    // 타임스탬프 쿼리. 프레임마다 DISJOINT 쿼리 하나 + TIMESTAMP 쿼리 kMaxTimestamps 개.
     // 세트 6개를 돌려 쓰고, 다시 쓰기 직전(6프레임 뒤)에 읽음. DXGI 가 최대 3프레임을 큐에 둘 수 있어
-    // 2~3프레임 전 세트는 아직 GPU 에서 처리 중일 수 있고, 결과를 읽지 않은 쿼리에 End 를 호출하면 Debug Layer 가 경고함.
+    // 2~3프레임 전 세트는 아직 GPU 에서 처리 중일 수 있고, 결과를 읽지 않은 쿼리에 End 를 호출하면 Debug
+    // Layer 가 경고함.
     static constexpr uint32_t kTimestampSets = 6;
     struct TimestampSet
     {
@@ -143,7 +143,7 @@ private:
     uint64_t m_lastFrameNumber = 0;
     bool m_hasTimestampResults = false;
     bool CreateTimestampQueries();
-    void ReadBackBuffer();   // 11단계: EndFrame 이 Present 직전에 호출함
+    void ReadBackBuffer();   // EndFrame 이 Present 직전에 호출함
     bool m_readbackRequested = false;
     bool m_readbackReady = false;
     std::vector<uint8_t> m_readbackPixels;

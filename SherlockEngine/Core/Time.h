@@ -1,9 +1,9 @@
 ﻿#pragma once
-#include "Core/EngineApi.h"   // 2026-10-08: SHERLOCK_API (엔진 DLL 내보내기)
+#include "Core/EngineApi.h"   // SHERLOCK_API (엔진 DLL 내보내기)
 #include <cstdint>
 #include "Core/GameTimer.h"
 
-// 프레임 시간 (10단계). GameTimer(QueryPerformanceCounter, Luna) 를 시계로 쓰고 그 위에
+// 프레임 시간. GameTimer(QueryPerformanceCounter, Luna) 를 시계로 쓰고 그 위에
 // 델타 클램프·프레임 카운터·FPS 평균·고정 스텝 누적기를 얹음.
 //
 // 고정 스텝: 물리처럼 dt 가 일정해야 하는 갱신은 Tick 마다 누적된 시간을 fixedStep 단위로 소비함
