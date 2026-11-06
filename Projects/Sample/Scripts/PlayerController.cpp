@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "PlayerController.h"
 #include "Rotator.h"           // 다른 스크립트의 타입 (GetBehaviour<Rotator>)
-#include "Game/Components/Rigidbody.h"      // 엔진 컴포넌트의 타입 (GetComponent<Rigidbody>)
+#include "Scene/Rigidbody.h"      // 엔진 컴포넌트의 타입 (GetComponent<Rigidbody>)
 #include "Core/Log.h"
 
 void PlayerController::Reflect(PropertyVisitor& v)

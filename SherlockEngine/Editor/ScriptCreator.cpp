@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "App/ScriptCreator.h"
+#include "Editor/ScriptCreator.h"
 #include "Core/Paths.h"
 #include "Core/Log.h"
 #include <shellapi.h>
@@ -31,7 +31,7 @@ namespace
 		t += "// " + name + " — 에디터의 New Script 로 만든 스크립트 (유니티 MonoBehaviour / 언리얼 컴포넌트).\r\n";
 		t += "// 선언은 여기, 구현은 " + name + ".cpp. 다른 스크립트가 #include \"" + name + ".h\" 뒤 GetBehaviour<" + name + ">() 로 이 클래스를 부를 수 있다.\r\n";
 		t += "// 다른 스크립트를 참조할 때는 여기서 전방 선언(class Other;)만 하고 .cpp 에서 include 한다 (순환 include 방지).\r\n";
-		t += "// 엔진 컴포넌트(Rigidbody 등)는 #include \"Game/Components/Rigidbody.h\" 뒤 GetComponent<Rigidbody>().\r\n";
+		t += "// 엔진 컴포넌트(Rigidbody 등)는 #include \"Scene/Rigidbody.h\" 뒤 GetComponent<Rigidbody>().\r\n";
 		t += "class " + name + " : public Script\r\n";
 		t += "{\r\n";
 		t += "public:\r\n";
@@ -52,7 +52,7 @@ namespace
 		t += "#include \"" + name + ".h\"\r\n";
 		t += "\r\n";
 		t += "// 쓸 수 있는 것: Translate / TranslateLocal / Rotate / LookAt / SetPosition / SetScale, GetInput().IsKeyDown(VK_UP),\r\n";
-		t += "//              GetTime(), Find(\"이름\")->GetBehaviour<다른스크립트>(), GetComponent<Rigidbody>() (#include \"Game/Components/Rigidbody.h\").\r\n";
+		t += "//              GetTime(), Find(\"이름\")->GetBehaviour<다른스크립트>(), GetComponent<Rigidbody>() (#include \"Scene/Rigidbody.h\").\r\n";
 		t += "// 고친 뒤에는 빌드(Ctrl+Shift+B)하고 다시 실행한다.\r\n";
 		t += "\r\n";
 		t += "void " + name + "::Reflect(PropertyVisitor& v)\r\n";

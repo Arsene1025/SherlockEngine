@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "App/ContentBrowser.h"
-#include "App/DebugUI.h"
+#include "Editor/ContentBrowser.h"
+#include "Editor/DebugUI.h"
 #include "Core/Paths.h"
 #include "Core/Log.h"
 #include "Graphics/TextureLoader.h"

@@ -4,8 +4,8 @@
 #include <unordered_map>
 #include <string>
 #include <DirectXMath.h>
-#include "App/ContentBrowser.h"   // 11-B단계
-#include "App/GameBuilder.h"      // 11-D단계
+#include "Editor/ContentBrowser.h"   // 11-B단계
+#include "Editor/GameBuilder.h"      // 11-D단계
 #include "App/AppBase.h"          // 11-E단계: Project
 #include <vector>
 #include "Scene/Camera.h"          // 11-C단계: 카메라 미리보기용 임시 카메라

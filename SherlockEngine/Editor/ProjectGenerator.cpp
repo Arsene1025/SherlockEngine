@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "App/ProjectGenerator.h"
+#include "Editor/ProjectGenerator.h"
 #include "Core/Project.h"
 #include "Core/Paths.h"
 #include "Core/Log.h"

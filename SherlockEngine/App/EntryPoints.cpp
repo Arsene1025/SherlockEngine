@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "App/EntryPoints.h"
-#include "App/EditorApp.h"
+#include "Editor/EditorApp.h"
 #include "App/GameApp.h"
 #include "Core/Log.h"
 

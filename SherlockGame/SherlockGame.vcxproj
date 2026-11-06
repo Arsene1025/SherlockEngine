@@ -159,7 +159,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <!-- 2026-10-08 (B안): 게임 런타임 exe 는 진입점 하나뿐이다. 엔진·에디터 코드는 SherlockEngine.dll, 프로젝트 스크립트는 <프로젝트>Scripts.dll 에 있다.
+  <!-- 게임 런타임 exe 는 진입점 하나뿐이다. 엔진·에디터 코드는 SherlockEngine.dll, 프로젝트 스크립트는 <프로젝트>Scripts.dll 에 있다.
        ProjectReference 가 엔진 DLL 의 가져오기 라이브러리(SherlockEngine.lib)를 링크한다. -->
   <ItemGroup>
     <ClCompile Include="GameMain.cpp" />

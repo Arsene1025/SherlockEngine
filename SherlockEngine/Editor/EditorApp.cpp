@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
-#include "App/EditorApp.h"
-#include "App/DebugUI.h"
+#include "Editor/EditorApp.h"
+#include "Editor/DebugUI.h"
 #include "Graphics/Mesh.h"
 #include "Graphics/Model.h"
 #include "Core/Paths.h"
@@ -8,11 +8,11 @@
 #include "Core/Profiler.h"
 #include "Scene/SceneSerializer.h"
 #include "Scene/CameraComponent.h"
-#include "Game/Components/Rigidbody.h"
-#include "App/ScriptCreator.h"
-#include "App/GameBuilder.h"
-#include "App/ProjectGenerator.h"
-#include "App/ProjectLauncher.h"
+#include "Scene/Rigidbody.h"
+#include "Editor/ScriptCreator.h"
+#include "Editor/GameBuilder.h"
+#include "Editor/ProjectGenerator.h"
+#include "Editor/ProjectLauncher.h"
 #include <imgui.h>
 #include <imgui_internal.h>   // 2026-10-15: 호버 중인 창 이름 (되돌리기 단계의 이름)
 #include <cmath>

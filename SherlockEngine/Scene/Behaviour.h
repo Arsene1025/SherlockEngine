@@ -15,7 +15,7 @@ class Camera;
 // 11-C단계: 모든 컴포넌트의 기반 클래스. 유니티의 Component 에 해당함.
 //
 // 다음 두 종류가 이 클래스를 상속함:
-//   - 엔진 컴포넌트 (Game/Components/, Scene/): Rigidbody, CameraComponent, FollowTarget — SHERLOCK_BEHAVIOUR 로 등록
+//   - 엔진 컴포넌트 (Scene/): Rigidbody, CameraComponent, FollowTarget — SHERLOCK_BEHAVIOUR 로 등록
 //   - 스크립트 (<프로젝트>\Scripts\): 사용자가 오브젝트의 움직임·규칙을 직접 쓰는 C++ 클래스. Script (Scene/Script.h) 를 상속하고
 //     SHERLOCK_SCRIPT 로 등록함 — 유니티의 MonoBehaviour 에 해당. 사용법은 Script.h 의 주석 참고.
 //
@@ -81,7 +81,7 @@ private:
 };
 
 // 이름 → 생성 함수 대응표. 매크로가 정적 초기화 시점에 등록함.
-// 2026-10-08 (B안): 엔진 컴포넌트(Game/Components, CameraComponent)는 SherlockEngine.dll 이 올라올 때, 프로젝트 스크립트는
+// 2026-10-08 (B안): 엔진 컴포넌트(Rigidbody·FollowTarget·CameraComponent)는 SherlockEngine.dll 이 올라올 때, 프로젝트 스크립트는
 // <프로젝트>Scripts.dll 을 LoadLibrary 할 때 등록됨. 표는 엔진 DLL 안에 한 벌뿐이라 스크립트 DLL 의 등록도 같은 표로 들어감.
 namespace BehaviourRegistry
 {

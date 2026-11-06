@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "App/DebugUI.h"
+#include "Editor/DebugUI.h"
 #include "Scene/Scene.h"
 #include "Scene/Camera.h"
 #include "Graphics/Renderer.h"
@@ -10,7 +10,7 @@
 #include "Core/Log.h"
 #include "Core/Profiler.h"
 #include "RHI/RHI.h"
-#include "App/ContentBrowser.h"   // 2026-10-08: 스카이박스 칸의 드롭 페이로드
+#include "Editor/ContentBrowser.h"   // 2026-10-08: 스카이박스 칸의 드롭 페이로드
 #include <imgui.h>
 #include <cmath>
 #include <algorithm>

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Game/Components/Rigidbody.h"
+#include "Scene/Rigidbody.h"
 #include "Scene/GameObject.h"
 
 void Rigidbody::Reflect(PropertyVisitor& v)

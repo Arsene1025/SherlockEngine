@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "App/GameBuilder.h"
-#include "App/ProjectGenerator.h"
+#include "Editor/GameBuilder.h"
+#include "Editor/ProjectGenerator.h"
 #include "Core/ScriptModule.h"
 #include "Core/Paths.h"
 #include "Core/Log.h"

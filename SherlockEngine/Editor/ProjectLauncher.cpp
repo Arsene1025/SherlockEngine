@@ -1,6 +1,6 @@
 #include "pch.h"
-#include "App/ProjectLauncher.h"
-#include "App/ProjectGenerator.h"
+#include "Editor/ProjectLauncher.h"
+#include "Editor/ProjectGenerator.h"
 #include "Core/Log.h"
 #include <nlohmann/json.hpp>
 #include <commdlg.h>

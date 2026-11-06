@@ -5,32 +5,20 @@
     <Filter Include="App">
       <UniqueIdentifier>{b2224a2d-cafe-4ec6-b566-4de7f50daf89}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Editor">
+      <UniqueIdentifier>{7d1c6a52-3e48-4b0f-9d2a-5c8e1b4f6a10}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Assets">
       <UniqueIdentifier>{5a1c2b3d-4e5f-4a6b-9c7d-8e9f0a1b2c3d}</UniqueIdentifier>
     </Filter>
     <Filter Include="Assets\Config">
       <UniqueIdentifier>{a1e5c2d0-0c11-4b3e-9a6f-1a2b3c4d5e01}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Assets\Models">
-      <UniqueIdentifier>{a1e5c2d0-0c11-4b3e-9a6f-1a2b3c4d5e03}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Assets\Models\DamagedHelmet">
-      <UniqueIdentifier>{b33b7434-fb91-4563-a0c2-792242add4dd}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Assets\Models\Sponza">
-      <UniqueIdentifier>{06cbff44-88df-4ff0-bc86-103005c0c68b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Assets\Textures">
       <UniqueIdentifier>{1d3f5ef4-4bf0-4701-a8f3-18c042006f6a}</UniqueIdentifier>
     </Filter>
     <Filter Include="Core">
       <UniqueIdentifier>{c41fe42a-6770-4776-99aa-e77269ca6a38}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Game">
-      <UniqueIdentifier>{7c2e5d8a-4b1f-4e1e-9c3a-11c0ffee0b0c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Game\Components">
-      <UniqueIdentifier>{7c2e5d8a-4b1f-4e1e-9c3a-11c0ffee0b0d}</UniqueIdentifier>
     </Filter>
     <Filter Include="Graphics">
       <UniqueIdentifier>{0aa83911-1fa1-4769-84ef-01536c8bcac6}</UniqueIdentifier>
@@ -59,32 +47,32 @@
     <ClCompile Include="App\AppBase.cpp">
       <Filter>App</Filter>
     </ClCompile>
-    <ClCompile Include="App\EditorApp.cpp">
-      <Filter>App</Filter>
+    <ClCompile Include="Editor\EditorApp.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="App\EditorHistory.cpp">
-      <Filter>App</Filter>
+    <ClCompile Include="Editor\EditorHistory.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="App\Editor.cpp">
-      <Filter>App</Filter>
+    <ClCompile Include="Editor\Editor.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="App\ContentBrowser.cpp">
-      <Filter>App</Filter>
+    <ClCompile Include="Editor\ContentBrowser.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="App\ScriptCreator.cpp">
-      <Filter>App</Filter>
+    <ClCompile Include="Editor\ScriptCreator.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="App\GameBuilder.cpp">
-      <Filter>App</Filter>
+    <ClCompile Include="Editor\GameBuilder.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="App\DebugUI.cpp">
-      <Filter>App</Filter>
+    <ClCompile Include="Editor\DebugUI.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="App\ProjectLauncher.cpp">
-      <Filter>App</Filter>
+    <ClCompile Include="Editor\ProjectLauncher.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
-    <ClCompile Include="App\ProjectGenerator.cpp">
-      <Filter>App</Filter>
+    <ClCompile Include="Editor\ProjectGenerator.cpp">
+      <Filter>Editor</Filter>
     </ClCompile>
     <ClCompile Include="App\EntryPoints.cpp">
       <Filter>App</Filter>
@@ -197,11 +185,11 @@
     <ClCompile Include="Scene\Script.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Game\Components\Rigidbody.cpp">
-      <Filter>Game\Components</Filter>
+    <ClCompile Include="Scene\Rigidbody.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Game\Components\FollowTarget.cpp">
-      <Filter>Game\Components</Filter>
+    <ClCompile Include="Scene\FollowTarget.cpp">
+      <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\SceneSerializer.cpp">
       <Filter>Scene</Filter>
@@ -215,32 +203,32 @@
     <ClInclude Include="App\AppBase.h">
       <Filter>App</Filter>
     </ClInclude>
-    <ClInclude Include="App\EditorApp.h">
-      <Filter>App</Filter>
+    <ClInclude Include="Editor\EditorApp.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="App\EditorHistory.h">
-      <Filter>App</Filter>
+    <ClInclude Include="Editor\EditorHistory.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="App\Editor.h">
-      <Filter>App</Filter>
+    <ClInclude Include="Editor\Editor.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="App\ContentBrowser.h">
-      <Filter>App</Filter>
+    <ClInclude Include="Editor\ContentBrowser.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="App\ScriptCreator.h">
-      <Filter>App</Filter>
+    <ClInclude Include="Editor\ScriptCreator.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="App\GameBuilder.h">
-      <Filter>App</Filter>
+    <ClInclude Include="Editor\GameBuilder.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="App\DebugUI.h">
-      <Filter>App</Filter>
+    <ClInclude Include="Editor\DebugUI.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="App\ProjectLauncher.h">
-      <Filter>App</Filter>
+    <ClInclude Include="Editor\ProjectLauncher.h">
+      <Filter>Editor</Filter>
     </ClInclude>
-    <ClInclude Include="App\ProjectGenerator.h">
-      <Filter>App</Filter>
+    <ClInclude Include="Editor\ProjectGenerator.h">
+      <Filter>Editor</Filter>
     </ClInclude>
     <ClInclude Include="App\EntryPoints.h">
       <Filter>App</Filter>
@@ -410,8 +398,8 @@
     <ClInclude Include="Scene\Script.h">
       <Filter>Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Game\Components\Rigidbody.h">
-      <Filter>Game\Components</Filter>
+    <ClInclude Include="Scene\Rigidbody.h">
+      <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="Scene\SceneSerializer.h">
       <Filter>Scene</Filter>
@@ -458,12 +446,6 @@
     </None>
     <None Include="Assets\Config\engine.ini">
       <Filter>Assets\Config</Filter>
-    </None>
-    <None Include="Assets\Models\DamagedHelmet\DamagedHelmet.glb">
-      <Filter>Assets\Models\DamagedHelmet</Filter>
-    </None>
-    <None Include="Assets\Models\Sponza\Sponza.gltf">
-      <Filter>Assets\Models\Sponza</Filter>
     </None>
   </ItemGroup>
 </Project>

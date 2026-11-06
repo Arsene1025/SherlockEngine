@@ -1,8 +1,8 @@
 ﻿#pragma once
 #include "App/AppBase.h"
 #include "Graphics/Model.h"   // ModelStats
-#include "App/Editor.h"
-#include "App/EditorHistory.h"
+#include "Editor/Editor.h"
+#include "Editor/EditorHistory.h"
 #include <functional>
 
 // 에디터 앱 (SherlockEditor.exe). 10단계부터 "엔진 위의 앱"이며, GameApp(SherlockGame.exe)과 짝을 이룸. 씬 구성·카메라 컨트롤러·단축키·패널만 가짐.
@@ -40,7 +40,7 @@ private:
     void AddPrimitive(int type);     // 0 구, 1 큐브, 2 원기둥, 3 평면, 4 카메라 오브젝트 (11-C)
     GameObject& AddCameraObject(const char* name);   // 11-C: 메시 없는 오브젝트 + CameraComponent 를 현재 에디터 시점에 만듦
     void DeleteObject(int index);
-    // 2026-10-15: 명령 큐와 되돌리기 (App/EditorHistory.h).
+    // 2026-10-15: 명령 큐와 되돌리기 (Editor/EditorHistory.h).
     // 구조를 바꾸는 편집(추가·삭제·모델·프리팹·복제·씬 불러오기)은 위젯을 그리는 도중에 실행하지 않고 Enqueue 로 큐에 넣음.
     // OnGUI 가 Editor::Draw 를 끝낸 뒤 FlushCommands 가 순서대로 실행함 — 그때는 어떤 위젯도 오브젝트 벡터를 순회하고 있지 않고,
     // 결과는 같은 프레임의 렌더에 반영됨. 각 명령은 RunCommand 가 감싸 실행 앞뒤의 씬 상태를 비교해 되돌리기 한 단계로 기록함.

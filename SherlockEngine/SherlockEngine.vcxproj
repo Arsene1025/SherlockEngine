@@ -18,9 +18,9 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <!-- 2026-10-08 (B안): 엔진은 DLL(SherlockEngine.dll + 가져오기 라이브러리 SherlockEngine.lib). 에디터(SherlockEditor.exe)·게임(SherlockGame.exe)과
+  <!-- 엔진은 DLL(SherlockEngine.dll + 가져오기 라이브러리 SherlockEngine.lib). 에디터(SherlockEditor.exe)·게임(SherlockGame.exe)과
        프로젝트 스크립트 DLL(<프로젝트>Scripts.dll)이 모두 이 DLL 하나를 공유해 컴포넌트 레지스트리·로그·입력 같은 전역 상태가 한 벌만 있다.
-       에디터 소스(App\EditorApp·Editor·…)도 여기 들어간다 — ImGui 가 정적 라이브러리라 exe 에 두면 ImGui 컨텍스트가 둘이 된다.
+       에디터 소스(Editor\EditorApp·Editor·…)도 여기 들어간다 — ImGui 가 정적 라이브러리라 exe 에 두면 ImGui 컨텍스트가 둘이 된다.
        셰이더 컴파일과 Shaders\/Assets\ 복사도 여기서 한 번 한다 (세 프로젝트의 OutDir 이 같다: x64\<구성>\). -->
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -76,7 +76,7 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <!-- 11-E단계: 산출물은 솔루션이 어디든 엔진 저장소의 x64\<구성>\ 에 둔다 — 생성된 프로젝트 솔루션(Projects\<이름>\<이름>.sln)이
+  <!-- 산출물은 솔루션이 어디든 엔진 저장소의 x64\<구성>\ 에 둔다 — 생성된 프로젝트 솔루션(Projects\<이름>\<이름>.sln)이
        엔진을 참조할 때 프로젝트 폴더에 엔진을 다시 빌드하지 않고 여기 것(SherlockEngine.dll/.lib)을 공유한다. -->
   <PropertyGroup Condition="'$(Platform)'=='x64'">
     <OutDir>$(ProjectDir)..\x64\$(Configuration)\</OutDir>
@@ -161,15 +161,15 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="App\AppBase.h" />
     <ClInclude Include="App\GameApp.h" />
-    <ClInclude Include="App\EditorApp.h" />
-    <ClInclude Include="App\EditorHistory.h" />
-    <ClInclude Include="App\Editor.h" />
-    <ClInclude Include="App\ContentBrowser.h" />
-    <ClInclude Include="App\ScriptCreator.h" />
-    <ClInclude Include="App\GameBuilder.h" />
-    <ClInclude Include="App\DebugUI.h" />
-    <ClInclude Include="App\ProjectLauncher.h" />
-    <ClInclude Include="App\ProjectGenerator.h" />
+    <ClInclude Include="Editor\EditorApp.h" />
+    <ClInclude Include="Editor\EditorHistory.h" />
+    <ClInclude Include="Editor\Editor.h" />
+    <ClInclude Include="Editor\ContentBrowser.h" />
+    <ClInclude Include="Editor\ScriptCreator.h" />
+    <ClInclude Include="Editor\GameBuilder.h" />
+    <ClInclude Include="Editor\DebugUI.h" />
+    <ClInclude Include="Editor\ProjectLauncher.h" />
+    <ClInclude Include="Editor\ProjectGenerator.h" />
     <ClInclude Include="App\EntryPoints.h" />
     <ClInclude Include="Core\EngineApi.h" />
     <ClInclude Include="Core\ScriptModule.h" />
@@ -225,7 +225,7 @@
     <ClInclude Include="Scene\Behaviour.h" />
     <ClInclude Include="Scene\CameraComponent.h" />
     <ClInclude Include="Scene\Script.h" />
-    <ClInclude Include="Game\Components\Rigidbody.h" />
+    <ClInclude Include="Scene\Rigidbody.h" />
     <ClInclude Include="Scene\SceneSerializer.h" />
     <ClInclude Include="Scene\Transform.h" />
   </ItemGroup>
@@ -235,15 +235,15 @@
     </ClCompile>
     <ClCompile Include="App\AppBase.cpp" />
     <ClCompile Include="App\GameApp.cpp" />
-    <ClCompile Include="App\EditorApp.cpp" />
-    <ClCompile Include="App\EditorHistory.cpp" />
-    <ClCompile Include="App\Editor.cpp" />
-    <ClCompile Include="App\ContentBrowser.cpp" />
-    <ClCompile Include="App\ScriptCreator.cpp" />
-    <ClCompile Include="App\GameBuilder.cpp" />
-    <ClCompile Include="App\DebugUI.cpp" />
-    <ClCompile Include="App\ProjectLauncher.cpp" />
-    <ClCompile Include="App\ProjectGenerator.cpp" />
+    <ClCompile Include="Editor\EditorApp.cpp" />
+    <ClCompile Include="Editor\EditorHistory.cpp" />
+    <ClCompile Include="Editor\Editor.cpp" />
+    <ClCompile Include="Editor\ContentBrowser.cpp" />
+    <ClCompile Include="Editor\ScriptCreator.cpp" />
+    <ClCompile Include="Editor\GameBuilder.cpp" />
+    <ClCompile Include="Editor\DebugUI.cpp" />
+    <ClCompile Include="Editor\ProjectLauncher.cpp" />
+    <ClCompile Include="Editor\ProjectGenerator.cpp" />
     <ClCompile Include="App\EntryPoints.cpp" />
     <ClCompile Include="Core\ScriptModule.cpp" />
     <ClCompile Include="Core\GameTimer.cpp" />
@@ -280,13 +280,13 @@
     <ClCompile Include="Scene\Behaviour.cpp" />
     <ClCompile Include="Scene\CameraComponent.cpp" />
     <ClCompile Include="Scene\Script.cpp" />
-    <ClCompile Include="Game\Components\Rigidbody.cpp" />
-    <ClCompile Include="Game\Components\FollowTarget.cpp" />
+    <ClCompile Include="Scene\Rigidbody.cpp" />
+    <ClCompile Include="Scene\FollowTarget.cpp" />
     <ClCompile Include="Scene\SceneSerializer.cpp" />
     <ClCompile Include="Scene\Transform.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <!-- 4단계(D12): 빌드가 fxc로 .cso를 만들어 exe 옆 Shaders\ 에 둔다. 런타임은 .cso를 우선 로드하고,
+    <!-- 빌드가 fxc로 .cso를 만들어 exe 옆 Shaders\ 에 둔다. 런타임은 .cso를 우선 로드하고,
          Debug 빌드에서 소스 .hlsl이 더 새로우면 런타임 컴파일로 대체하며 파일 변경을 감시해 핫리로드한다.
          리플렉션(D9)에 쓰므로 /Qstrip_reflect 는 켜지 않는다. -->
     <FxCompile Include="Shaders\BasicVertexShader.hlsl">
@@ -313,7 +313,7 @@
       <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
     </FxCompile>
-    <!-- 2026-10-08: 스카이박스. 정점 버퍼 없이 SV_VertexID 로 전체 화면 삼각형을 만들고 환경 큐브맵(t9)을 샘플한다. -->
+    <!-- 스카이박스. 정점 버퍼 없이 SV_VertexID 로 전체 화면 삼각형을 만들고 환경 큐브맵(t9)을 샘플한다. -->
     <FxCompile Include="Shaders\SkyboxVertexShader.hlsl">
       <ShaderType>Vertex</ShaderType>
       <ShaderModel>5.0</ShaderModel>
@@ -330,7 +330,7 @@
       <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
     </FxCompile>
-    <!-- 2026-10-20: 톤매핑 패스. 전체 화면 삼각형 VS 와 HDR 씬 텍스처(t13)를 읽는 PS. -->
+    <!-- 톤매핑 패스. 전체 화면 삼각형 VS 와 HDR 씬 텍스처(t13)를 읽는 PS. -->
     <FxCompile Include="Shaders\ScreenVertexShader.hlsl">
       <ShaderType>Vertex</ShaderType>
       <ShaderModel>5.0</ShaderModel>
@@ -359,8 +359,6 @@
     <None Include="Assets\Textures\uv_checker.png" />
     <None Include="Assets\Textures\bumps_normal.png" />
     <None Include="Assets\Config\engine.ini" />
-    <None Include="Assets\Models\DamagedHelmet\DamagedHelmet.glb" />
-    <None Include="Assets\Models\Sponza\Sponza.gltf" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <!-- fxc는 출력 폴더를 만들어 주지 않는다. -->
@@ -375,7 +373,7 @@
     </ItemGroup>
     <Copy SourceFiles="@(ShaderSourceFiles)" DestinationFolder="$(OutDir)Shaders" SkipUnchangedFiles="true" />
   </Target>
-  <!-- 5단계: 에셋(텍스처)을 exe 옆 Assets\ 로 복사. 실행 파일은 Core/Paths::GetAssetPath 로 찾는다. -->
+  <!-- 에셋(텍스처)을 exe 옆 Assets\ 로 복사. 실행 파일은 Core/Paths::GetAssetPath 로 찾는다. -->
   <Target Name="CopyAssets" AfterTargets="Build">
     <ItemGroup>
       <AssetFiles Include="$(ProjectDir)Assets\**\*" />
