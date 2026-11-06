@@ -122,6 +122,65 @@
   var boxes = {};   // key -> {box, ta, btn, saved, h}
   var headings = collectHeadings();
 
+  // ---------- 문서 개편 때 옛 문서 메모 이전 ----------
+  // 이름이 바뀐 문서: 새 파일명 -> 옛 파일명들 (절 id 가 그대로라 키도 그대로 옮긴다)
+  var RENAMED_FROM = {
+    'reading-guide.html': ['study-guide.html'],
+    'hdr-tonemapping-record.html': ['hdr-tonemapping-implementation.html'],
+    'rhi-roadmap-plan.html': ['rhi-roadmap-guide.html'],
+    'post-process-record.html': ['post-process-implementation.html'],
+    'undo-prefab-record.html': ['undo-prefab-notes.html'],
+    'pbr-study.html': ['pbr-guide.html'],
+    'ibl-study.html': ['ibl-interview.html'],
+    'shadow-map-study.html': ['shadow-map-interview.html'],
+    'pcf-study.html': ['pcf-interview.html'],
+    'csm-study.html': ['csm-study-guide.html']
+  };
+  // 여러 문서를 한 편으로 합친 경우: 합친 문서가 window.SHERLOCK_MEMO_SOURCES = {옛 파일명: {section, prefix}} 로 알려 준다.
+  // 옮긴 메모는 data.migrated["옛 파일명|옛 키"] 에 표시하고 옛 localStorage 항목은 지우지 않는다.
+  // 새 문서에 같은 키의 메모가 이미 있으면 덮어쓰지 않는다.
+  function readNotes(name) {
+    try {
+      var o = JSON.parse(localStorage.getItem(PREFIX + name) || 'null');
+      return (o && o.notes) || null;
+    } catch (e) { return null; }
+  }
+  function mergedKey(oldKey, src) {
+    if (oldKey.indexOf('/') < 0) return src.prefix + oldKey;    // id 키
+    var m = /^[^\/]*\/(.*?)(?:#(\d+))?$/.exec(oldKey);           // "<h2 id>/<제목 텍스트>[#n]"
+    var section = document.getElementById(src.section);
+    if (!m || !section) return null;
+    var nth = m[2] ? parseInt(m[2], 10) : 1, found = 0;
+    for (var i = 0; i < headings.length; i++) {
+      var it = headings[i];
+      if (!section.contains(it.el) || it.el.id || normText(it.el) !== m[1]) continue;
+      if (++found === nth) return it.key;
+    }
+    return null;
+  }
+  function migrateOld() {
+    data.migrated = data.migrated || {};
+    var changed = false;
+    function take(oldName, oldKey, note, toKey) {
+      var tag = oldName + '|' + oldKey;
+      if (data.migrated[tag] || !toKey) return;
+      if (!data.notes[toKey]) data.notes[toKey] = { text: note.text, updated: note.updated || Date.now() };
+      data.migrated[tag] = 1;
+      changed = true;
+    }
+    (RENAMED_FROM[docName()] || []).forEach(function (oldName) {
+      var notes = readNotes(oldName);
+      for (var k in notes) if (notes[k] && notes[k].text) take(oldName, k, notes[k], k);
+    });
+    var srcs = window.SHERLOCK_MEMO_SOURCES || {};
+    for (var oldName in srcs) {
+      var notes2 = readNotes(oldName);
+      for (var k2 in notes2) if (notes2[k2] && notes2[k2].text) take(oldName, k2, notes2[k2], mergedKey(k2, srcs[oldName]));
+    }
+    if (changed) saveDoc(data);
+  }
+  migrateOld();
+
   function fmtTime(ts) {
     if (!ts) return '';
     var d = new Date(ts);
@@ -230,7 +289,7 @@
         '<button type="button" data-act="clear">이 문서 메모 전체 삭제</button>' +
       '</div>' +
       '<div class="orphans" style="display:none"><div class="ohead" style="color:var(--muted,#888)">고아 메모 (제목이 바뀌어 붙일 곳이 없음)</div></div>' +
-      '<div class="orphans others" style="display:none"><div class="ohead" style="color:var(--muted,#888)">다른 문서의 메모 (통합 전 phase-*.html 등)</div></div>' +
+      '<div class="orphans others" style="display:none"><div class="ohead" style="color:var(--muted,#888)">다른 문서의 메모 (합치기 전 phase-*.html 등, 아직 못 옮긴 것)</div></div>' +
       '<div class="status"></div>' +
       '<div class="hint">메모는 이 브라우저의 localStorage에만 저장됩니다. 다른 PC로 옮기려면 내보내기 → 가져오기를 쓰세요.</div>' +
     '</div>';
@@ -273,8 +332,8 @@
     });
   }
 
-  // 다른 문서 키에 남아 있는 메모. 문서를 한 편으로 합친 뒤(2026-10-02) 파일이 없어진 phase-*.html 의
-  // 메모를 여기서 읽을 수 있게 함. 브라우저가 file:// 문서끼리 localStorage 를 공유할 때만 보임.
+  // 다른 문서 키에 남아 있는 메모. 파일이 없어진 옛 문서(phase-*.html 등)의 메모 중 새 문서로
+  // 옮기지 못한 것을 여기서 읽을 수 있게 함. 브라우저가 file:// 문서끼리 localStorage 를 공유할 때만 보임.
   function renderOthers() {
     var el = panel.querySelector('.others');
     if (!el) return;
@@ -288,7 +347,8 @@
         var notes;
         try { notes = (JSON.parse(localStorage.getItem(k)) || {}).notes || {}; } catch (e) { continue; }
         var lines = [];
-        for (var nk in notes) if (notes[nk] && notes[nk].text) lines.push('[' + nk + ']\n' + notes[nk].text);
+        var mig = data.migrated || {};
+        for (var nk in notes) if (notes[nk] && notes[nk].text && !mig[k.slice(PREFIX.length) + '|' + nk]) lines.push('[' + nk + ']\n' + notes[nk].text);
         if (lines.length) docs.push({ name: k.slice(PREFIX.length), lines: lines });
       }
     } catch (e) { /* 저장소를 읽을 수 없으면 표시하지 않음 */ }
