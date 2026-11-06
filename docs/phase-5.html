@@ -509,23 +509,23 @@ DirectX::GenerateMipMaps(current-&gt;GetImages(), current-&gt;GetImageCount(), c
 </div>
 
 <div class="fig">
-  <img src="../images/2026-09-23-phase5-scene.png" alt="체커 바닥 위에 UV 체커 구·큐브, 파란 체커 구, 회색 카드가 있는 씬" style="width:100%;height:auto;border-radius:6px">
+  <img src="images/2026-09-23-phase5-scene.png" alt="체커 바닥 위에 UV 체커 구·큐브, 파란 체커 구, 회색 카드가 있는 씬" style="width:100%;height:auto;border-radius:6px">
   <div class="cap">그림 1. 5단계 기본 씬. 바닥은 절차적 체커 8×8 타일(비등방 16×), 가운데 구와 오른쪽 큐브는 uv_checker.png, 파란 구는 체커 2×1, 오른쪽 아래 회색 사각형이 unlit 128 카드. 조명은 선형에서 계산되고 sRGB 뷰로 나간다. (images/2026-09-23-phase5-scene.png)</div>
 </div>
 <div class="fig">
-  <img src="../images/2026-09-23-phase5-srgb-compare.png" alt="sRGB 출력 켬/끔 비교 크롭" style="width:100%;height:auto;border-radius:6px">
+  <img src="images/2026-09-23-phase5-srgb-compare.png" alt="sRGB 출력 켬/끔 비교 크롭" style="width:100%;height:auto;border-radius:6px">
   <div class="cap">그림 2. 같은 자리의 sRGB 출력 켬(왼쪽, 카드 128)과 끔(오른쪽, 카드 55). 오른쪽이 4단계까지의 상태다 — 선형 결과를 인코딩 없이 내보내 전체가 어둡다. 전체 화면은 images/2026-09-23-phase5-srgb-off.png.</div>
 </div>
 <div class="fig">
-  <img src="../images/2026-09-23-phase5-mip-compare.png" alt="비등방 밉맵과 밉 없는 최근접 샘플의 먼 바닥 비교 크롭" style="width:100%;height:auto;border-radius:6px">
+  <img src="images/2026-09-23-phase5-mip-compare.png" alt="비등방 밉맵과 밉 없는 최근접 샘플의 먼 바닥 비교 크롭" style="width:100%;height:auto;border-radius:6px">
   <div class="cap">그림 3. 먼 바닥 크롭. 왼쪽 AnisotropicWrap(밉 10레벨), 오른쪽 PointNoMip(레벨 0만). 오른쪽의 모아레는 픽셀 하나가 텍셀 수십 개를 덮는데 밉이 없을 때 생기는 앨리어싱이다. 전체 화면은 images/2026-09-23-phase5-sampler-pointnomip.png.</div>
 </div>
 <div class="fig">
-  <img src="../images/2026-09-23-phase5-uv-closeup.png" alt="UV 체커 구와 큐브를 가까이서 본 화면" style="width:100%;height:auto;border-radius:6px">
+  <img src="images/2026-09-23-phase5-uv-closeup.png" alt="UV 체커 구와 큐브를 가까이서 본 화면" style="width:100%;height:auto;border-radius:6px">
   <div class="cap">그림 4. W로 전진한 근접 화면. 오른쪽 큐브 면: 빨강(0,0) 왼쪽 위, 초록(u+) 오른쪽 위, 파랑(v+) 왼쪽 아래 — D3D 텍스처 공간과 일치. 가운데 구는 경도/위도 매핑으로 극점에서 셀이 모인다. (images/2026-09-23-phase5-uv-closeup.png)</div>
 </div>
 <div class="fig">
-  <img src="../images/2026-09-23-phase5-panel.png" alt="sRGB·샘플러 옵션과 텍스처 수가 보이는 ImGui 패널" style="width:100%;height:auto;border-radius:6px">
+  <img src="images/2026-09-23-phase5-panel.png" alt="sRGB·샘플러 옵션과 텍스처 수가 보이는 ImGui 패널" style="width:100%;height:auto;border-radius:6px">
   <div class="cap">그림 5. 패널. Pipeline 줄에 sRGB output 체크박스, "(tearing OK)", Sampler override 콤보, textures 수. 재질 트리를 펼치면 Sampler·UV scale·Unlit을 편집할 수 있다. (images/2026-09-23-phase5-panel.png)</div>
 </div>
 

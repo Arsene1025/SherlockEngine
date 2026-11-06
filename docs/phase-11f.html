@@ -226,15 +226,15 @@ QuaternionLookTestEditor.exe --scene=quat_roll_world.json --play=1 --exit-after=
 <p>mode 0 은 바퀴마다 약 15.2° 씩 roll 이 쌓입니다(이론값 15.7° 보다 조금 작은 것은 원이 아니라 120각형이라 감싼 넓이가 약간 작기 때문). yaw·pitch 도 출발점으로 돌아오지 않는데, roll 이 생긴 뒤에는 "로컬 pitch 축" 이 더 이상 세계의 수평축이 아니기 때문입니다. mode 1 은 세 바퀴 내내 roll 0.0° 이고 yaw·pitch 가 매 바퀴 출발 자세(−28.6°, 4.6°)로 정확히 되돌아옵니다. 두 열의 <code>Camera::GetRoll</code> 은 스크립트가 자기 쿼터니언에서 역추출한 roll 과 0.2° 이내로 일치했으므로, 5절의 "roll 은 forward 를 축으로 한 기울기" 정의도 이 실험으로 함께 검증되었습니다.</p>
 
 <div class="fig">
-  <img src="../images/2026-09-30-quat-roll-local-1loop.png" alt="가상 마우스로 원을 한 바퀴 그린 뒤: 지평선이 약 15도 기울어 있다. 콘솔에 QuaternionLook[mode 0] 프레임 120 (1.00 바퀴) roll -14.9도 로그가 보인다" style="max-width:100%;border-radius:6px">
+  <img src="images/2026-09-30-quat-roll-local-1loop.png" alt="가상 마우스로 원을 한 바퀴 그린 뒤: 지평선이 약 15도 기울어 있다. 콘솔에 QuaternionLook[mode 0] 프레임 120 (1.00 바퀴) roll -14.9도 로그가 보인다" style="max-width:100%;border-radius:6px">
   <div class="cap">그림 2. mode 0, 한 바퀴 뒤(132 프레임). 원을 한 바퀴 그렸을 뿐인데 지평선이 약 15° 기울었다. 콘솔 마지막 줄이 <code>roll −14.9°</code>.</div>
 </div>
 <div class="fig">
-  <img src="../images/2026-09-30-quat-roll-local-3loops.png" alt="세 바퀴 뒤: 지평선이 약 45도 기울어 바닥 체커가 대각선으로 흐른다. 콘솔에 0.5 바퀴 간격으로 roll 이 -9.9, -14.9, -24.8, -30.1, -39.9, -45.7도로 커지는 로그가 보인다" style="max-width:100%;border-radius:6px">
+  <img src="images/2026-09-30-quat-roll-local-3loops.png" alt="세 바퀴 뒤: 지평선이 약 45도 기울어 바닥 체커가 대각선으로 흐른다. 콘솔에 0.5 바퀴 간격으로 roll 이 -9.9, -14.9, -24.8, -30.1, -39.9, -45.7도로 커지는 로그가 보인다" style="max-width:100%;border-radius:6px">
   <div class="cap">그림 3. mode 0, 세 바퀴 뒤(372 프레임). roll −45.7°. 콘솔에 반 바퀴 간격으로 roll 이 단조 증가하는 것이 보인다 — 흔들리는 잡음이 아니라 바퀴 수에 비례하는 값이다.</div>
 </div>
 <div class="fig">
-  <img src="../images/2026-09-30-quat-roll-world-3loops.png" alt="같은 입력을 월드 yaw + 로컬 pitch 로 누적한 세 바퀴 뒤: 지평선이 수평이고 콘솔의 roll 이 모두 -0.0도이다" style="max-width:100%;border-radius:6px">
+  <img src="images/2026-09-30-quat-roll-world-3loops.png" alt="같은 입력을 월드 yaw + 로컬 pitch 로 누적한 세 바퀴 뒤: 지평선이 수평이고 콘솔의 roll 이 모두 -0.0도이다" style="max-width:100%;border-radius:6px">
   <div class="cap">그림 4. mode 1, 같은 입력·같은 372 프레임. 지평선이 수평이고 콘솔의 roll 은 전부 <code>−0.0°</code>. 부동소수점 오차만으로는 세 바퀴에 0.1° 도 생기지 않았다.</div>
 </div>
 
@@ -355,7 +355,7 @@ SherlockEditor.exe --backend=d3d12 --scene=demo --exit-after=30 --add=1 --set-pa
   <li><b>2026-09-30 추가 — 쿼터니언 roll 누적 재현</b>: <a href="#s3-4">3.4</a>. 실험 프로젝트 <code>QuaternionLookTest</code> 의 에디터에서 <code>QuaternionLook</code> mode 0 은 17° 원 한 바퀴당 roll 약 15° 누적(세 바퀴 −45.7°), mode 1 은 0.0°. 그림 2~4, <code>images/2026-09-30-quat-roll-*.png</code>. Sample 에디터에서는 같은 스크립트가 등록되지 않음(<code>--add-component=QuaternionLook</code> 실패 로그로 확인). 프로젝트 생성기 재귀 와일드카드·C++20 수정 뒤 QuaternionLookTest 에디터 빌드 경고·오류 0.</li>
 </ul>
 <div class="fig">
-  <img src="../images/2026-09-29-phase11f-roll-play.png" alt="재생 중: Cube 3 을 30° 굴린 상태에서 자식 Main Camera 로 본 화면이 기울어 있다. Hierarchy 에 Cube 3 아래 Main Camera 가 들어 있고 Inspector 가 1 children follow this object 를 표시한다" style="max-width:100%;border-radius:6px">
+  <img src="images/2026-09-29-phase11f-roll-play.png" alt="재생 중: Cube 3 을 30° 굴린 상태에서 자식 Main Camera 로 본 화면이 기울어 있다. Hierarchy 에 Cube 3 아래 Main Camera 가 들어 있고 Inspector 가 1 children follow this object 를 표시한다" style="max-width:100%;border-radius:6px">
   <div class="cap">그림 1. 9절 A 의 스크린샷(<code>--screenshot</code>). 왼쪽 Hierarchy 가 트리(Cube 3 ▸ Main Camera [1]), 오른쪽 Inspector 의 Rotation (deg) z = 30 과 "1 children follow this object", 가운데 씬 뷰는 재생 중 활성 카메라의 기울어진 시점이다. 카메라 오브젝트 자체의 회전은 손대지 않았다.</div>
 </div>
 

@@ -375,19 +375,19 @@ frequency:      m_queue-&gt;GetTimestampFrequency()</code></pre>
 </div>
 
 <div class="fig">
-  <img src="../images/2026-09-23-phase10-panel-console.png" alt="Engine·Profiler 패널과 로그 콘솔 창" style="width:100%;height:auto;border-radius:6px">
+  <img src="images/2026-09-23-phase10-panel-console.png" alt="Engine·Profiler 패널과 로그 콘솔 창" style="width:100%;height:auto;border-radius:6px">
   <div class="cap">그림 1. 10단계의 패널(D3D11, 데모 씬). Engine 줄(백엔드·설정 파일 경로), Log 줄(파일 경로·콘솔·레벨·건수), Assets·Time 줄, Profiler 의 CPU/GPU 열. 오른쪽 아래가 F12 콘솔 창 — 맑은 고딕으로 한글 로그가 그대로 보인다.</div>
 </div>
 <div class="fig">
-  <img src="../images/2026-09-23-phase10-config-d3d12.png" alt="설정 파일만 바꿔 D3D12 로 실행" style="width:100%;height:auto;border-radius:6px">
+  <img src="images/2026-09-23-phase10-config-d3d12.png" alt="설정 파일만 바꿔 D3D12 로 실행" style="width:100%;height:auto;border-radius:6px">
   <div class="cap">그림 2. 실행 인자 없이 <code>engine.ini</code> 의 <code>backend = d3d12</code> 만으로 실행한 화면. Engine 줄이 "backend D3D12 (engine.backend = d3d12)", Pipeline 줄도 D3D12. GPU 타임스탬프 열이 D3D12 쿼리 힙에서 채워진다.</div>
 </div>
 <div class="fig">
-  <img src="../images/2026-09-23-phase10-asset-cache.png" alt="AssetManager 캐시 적중" style="width:100%;height:auto;border-radius:6px">
+  <img src="images/2026-09-23-phase10-asset-cache.png" alt="AssetManager 캐시 적중" style="width:100%;height:auto;border-radius:6px">
   <div class="cap">그림 3. 헬멧 → Sponza → 데모 → 헬멧 전환 뒤. Assets 줄: models 2 (loads 2, hits 1) — 마지막 헬멧은 파싱 없이 캐시에서 왔다. 콘솔에 "모델 로드" 가 두 번만 있다.</div>
 </div>
 <div class="fig">
-  <img src="../images/2026-09-23-phase10-release-sponza-profiler.png" alt="Release 빌드 Sponza 와 프로파일러" style="width:100%;height:auto;border-radius:6px">
+  <img src="images/2026-09-23-phase10-release-sponza-profiler.png" alt="Release 빌드 Sponza 와 프로파일러" style="width:100%;height:auto;border-radius:6px">
   <div class="cap">그림 4. Release 빌드(콘솔 없음), Sponza. GPU Frame 0.39 ms(MainPass 0.33), CPU 0.53 ms. 로그 파일은 <code>x64\Release\Logs\SherlockEngine.log</code>, 콘솔 창에는 텍스처 디코딩 줄이 흐른다.</div>
 </div>
 

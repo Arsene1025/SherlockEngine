@@ -104,3 +104,11 @@ Projects/*/Intermediate/
 Projects/*/Build/
 Projects/*/x64/
 Projects/*/.vs/
+
+# 에디터가 작업 디렉터리에 만드는 imgui.ini (프로젝트의 imgui.ini 는 추적함)
+/imgui.ini
+/SherlockEngine/imgui.ini
+/SherlockEngine/Shaders/imgui.ini
+
+# understand-anything 플러그인 작업 캐시
+/.ua/
