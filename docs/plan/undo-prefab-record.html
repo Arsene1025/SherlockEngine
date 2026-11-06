@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Undo · 프리팹 구현 기록</title>
+<title>계획 · Undo · 프리팹 구현 기록 — SherlockEngine</title>
 <style>
 :root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --code-bg:#14171c; --code-fg:#e6e9ef; }
 @media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
@@ -29,6 +29,8 @@ nav { margin-bottom:18px; font-size:14px; } nav a { margin-right:12px; color:var
 <main>
 <header>
   <h1>Undo · 프리팹 구현 기록</h1>
+<div class="box warn"><p><b>경로 표기</b> — 이 문서에 적힌 <code>App/…</code> 경로는 작성 당시 값입니다. 지금은 에디터 코드가 <code>SherlockEngine/Editor/</code> 에, <code>Rigidbody</code> · <code>FollowTarget</code> 이 <code>SherlockEngine/Scene/</code> 에 있습니다. 이 문서는 기록이라 본문은 고치지 않았습니다.</p></div>
+
   <p>2026-10-15 · rendering-analysis.html 22.6 의 5번(Undo 와 에디터 명령 큐)과 6번(Instantiate / 지연 Destroy 와 프리팹)을 구현한 기록입니다. 기존 분석 문서는 고치지 않고 이 문서에 따로 적었습니다.</p>
   <p class="foot">상태: 작업 트리에 반영, 커밋하지 않음. 관련: <code>docs/rhi-roadmap-guide.html</code>(3·4·8번 구현 가이드)</p>
 </header>

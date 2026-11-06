@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>문서 목차 — SherlockEngine</title>
+<style>
+:root{--bg:#fbfaf7;--surface:#fff;--ink:#1f1d1a;--ink-2:#4a4640;--muted:#8a847b;--line:#e4dfd6;--accent:#a8501c}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161513;--surface:#1f1d1a;--ink:#ece8e1;--ink-2:#bfb9ae;--muted:#8d877d;--line:#35312b;--accent:#e0915a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 -apple-system,"Segoe UI","Malgun Gothic",sans-serif}
+main{max-width:820px;margin:0 auto;padding:48px 16px 96px}
+h1{font-size:30px;margin:0 0 6px}
+.lede{color:var(--ink-2);margin:0 0 36px}
+h2{font-size:18px;margin:36px 0 4px}
+h2 small{font-weight:400;color:var(--muted);font-size:14px;margin-left:8px}
+.cat{color:var(--muted);margin:0 0 10px;font-size:14px}
+ul{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+li{padding:11px 16px;border-top:1px solid var(--line)}
+li:first-child{border-top:none}
+a{color:var(--accent);text-decoration:none;font-weight:600}
+a:hover{text-decoration:underline}
+li span{display:block;color:var(--ink-2);font-size:14px}
+.rule{margin-top:44px;padding:14px 18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:14px;color:var(--ink-2)}
+.rule code{font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<h1>SherlockEngine 문서</h1>
+<p class="lede">문서는 목적에 따라 세 폴더로 나뉩니다. 처음이면 개요의 읽기 가이드부터 보면 됩니다.</p>
+
+<h2>개요<small>overview/</small></h2>
+<p class="cat">프로젝트가 지금 어떻게 생겼고 어떻게 거기까지 왔는지.</p>
+<ul>
+  <li><a href="overview/reading-guide.html">개요 · 문서와 소스 읽기 가이드</a><span>어떤 문서를 어떤 순서로, 어떤 소스와 함께 읽을지.</span></li>
+  <li><a href="overview/rendering-analysis.html">개요 · 렌더링 해부</a><span>실행부터 화면 표시까지의 구조, RHI, 설계 결정, 질문과 답. 다른 문서가 가장 많이 인용하는 본문입니다.</span></li>
+  <li><a href="overview/phase-record.html">개요 · 단계별 구현 기록</a><span>0단계부터 11-F단계까지의 설계 이유·함정·검증, 부록으로 알려진 한계.</span></li>
+</ul>
+
+<h2>계획<small>plan/</small></h2>
+<p class="cat">앞으로 할 일의 계획과, 그 계획을 실제로 구현한 기록. 진행 정도를 보여 주므로 합치지 않고 따로 둡니다.</p>
+<ul>
+  <li><a href="plan/hdr-tonemapping-plan.html">계획 · HDR 타깃 · 톤매핑 계획</a></li>
+  <li><a href="plan/hdr-tonemapping-record.html">계획 · HDR 타깃 · 톤매핑 구현 기록</a></li>
+  <li><a href="plan/multi-light-shadow-plan.html">계획 · 다중 광원 그림자 계획</a></li>
+  <li><a href="plan/rhi-roadmap-plan.html">계획 · RHI 확장 계획</a></li>
+  <li><a href="plan/post-process-record.html">계획 · 후처리(PostProcess) 구현 기록</a><span>별도 계획 문서가 없어 구현 기록이 이 자리를 맡습니다.</span></li>
+  <li><a href="plan/undo-prefab-record.html">계획 · Undo · 프리팹 구현 기록</a></li>
+</ul>
+
+<h2>공부<small>study/</small></h2>
+<p class="cat">개념을 이해하고 면접에서 설명하기 위한 학습 문서. 엔진 코드를 예로 듭니다.</p>
+<ul>
+  <li><a href="study/pbr-study.html">공부 · PBR 처음부터 이해하기</a></li>
+  <li><a href="study/ibl-study.html">공부 · IBL 면접 대비</a></li>
+  <li><a href="study/shadow-map-study.html">공부 · 그림자 맵 면접 대비</a></li>
+  <li><a href="study/pcf-study.html">공부 · PCF 면접 대비</a></li>
+  <li><a href="study/csm-study.html">공부 · CSM 학습</a></li>
+</ul>
+
+<div class="rule">
+  <b>이름 규칙</b> — 제목은 <code>분류 · 이름 — SherlockEngine</code> (분류: 개요 · 계획 · 공부). 파일명은 소문자와 하이픈이고,
+  계획 폴더는 <code>-plan</code> / <code>-record</code>, 공부 폴더는 <code>-study</code> 로 끝납니다.
+  개요 문서는 <code>rendering-analysis</code> 처럼 주제 이름만 씁니다.
+  메모 기능은 <code>docs/memo.js</code> 가 모든 문서에 붙습니다.
+</div>
+</main>
+</body>
+</html>

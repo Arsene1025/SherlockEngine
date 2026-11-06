@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="generator" content="Answer me with HTML 0.5.0">
-<title>PBR 처음부터 이해하기</title>
+<title>공부 · PCF 면접 대비 — SherlockEngine</title>
 <style>
 html[data-theme="blueprint"], html[data-theme="blueprint"][data-mode="light"] {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -726,6 +726,392 @@ table.am-mark { background: none; }
 @media print { .am-remark-pop { display: none !important; } }
 
 
+/*
+Temml.woff2 is a clone of KaTeX_Script-Regular, except that the code points
+have been changed from ASCII to Unicode Mathematical Alphanumeric Symbols Script capitals,
+Unicode range 1D49C to 1D4B5.
+*/
+
+@font-face {
+  font-family: 'Temml';
+  src: url('data:font/woff2;base64,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') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+math {
+  font-family: "Cambria Math", 'STIXTwoMath-Regular', 'NotoSansMath-Regular', math;
+  font-style: normal;
+  font-weight: normal;
+  line-height: normal;
+  font-size-adjust: none;
+  text-indent: 0;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  direction: ltr;
+  /* Prevent Firefox from omitting the dot on i or j. */
+  font-feature-settings: "dtls" off;
+}
+
+math * {
+  border-color: currentColor;
+}
+
+/* display: block is necessary in Firefox and Safari.
+ * Not in Chromium, which recognizes display: "block math" written inline. */
+ math.tml-display {
+  display: block;
+  width: 100%;
+}
+
+*.mathcal {
+  /* NotoSans */
+  font-feature-settings: 'ss01';
+}
+
+math .mathscr {
+  font-family: "Temml";
+}
+
+mo.tml-prime {
+  font-family: Temml;
+}
+
+/* Cramped superscripts in WebKit */
+mfrac > :nth-child(2),
+msqrt,
+mover > :first-child {
+  math-shift: compact
+}
+
+.menclose {
+  display: inline-block;
+  position: relative;
+  padding: 0.5ex 0ex;
+}
+.tml-cancelto {
+  display: inline-block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.5ex 0ex;
+  background-color: currentColor;
+  /* Use the SVG as an alpha mask (painted by background-color) */
+  -webkit-mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><defs><marker id='a' markerHeight='5' markerUnits='strokeWidth' markerWidth='7' orient='auto' refX='7' refY='2.5'><path fill='black' d='m0 0 7 2.5L0 5z'/></marker></defs><line x2='100%25' y1='100%25' stroke='black' stroke-width='.06em' marker-end='url(%23a)' vector-effect='non-scaling-stroke'/></svg>");
+          mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><defs><marker id='a' markerHeight='5' markerUnits='strokeWidth' markerWidth='7' orient='auto' refX='7' refY='2.5'><path fill='black' d='m0 0 7 2.5L0 5z'/></marker></defs><line x2='100%25' y1='100%25' stroke='black' stroke-width='.06em' marker-end='url(%23a)' vector-effect='non-scaling-stroke'/></svg>");
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+          mask-size: 100% 100%;
+  -webkit-mask-position: 0 0;
+          mask-position: 0 0;
+}
+
+@supports (-moz-appearance: none) {
+  /* \vec w/o italic correction for Firefox */
+  .tml-vec {
+    transform: scale(0.75)
+  }
+  /* Fix \cancelto in Firefox */
+  .ff-narrow {
+    width: 0em;
+  }
+  .ff-nudge-left {
+    margin-left: -0.2em;
+  }
+  /* Squash hidden mrows in \bordermatrix. Messes with centering, but necessary to squash. */
+  .ff-squash mtd {
+    display: block;
+    height: 0;
+  }
+}
+
+@supports (not (-moz-appearance: none)) {
+  /* Chromium and WebKit */
+  /* prime vertical alignment */
+  mo.tml-prime {
+    font-family: Temml;
+  }
+  /* Italic correction on superscripts */
+  .tml-sml-pad {
+    padding-left: 0.05em;
+  }
+  .tml-med-pad {
+    padding-left: 0.10em;
+  }
+  .tml-lrg-pad {
+    padding-left: 0.15em;
+  }
+}
+
+@supports (-webkit-backdrop-filter: blur(1px)) {
+  /* WebKit vertical & italic correction on accents */
+  .wbk-acc {
+    /* lower by x-height distance */
+    transform: translate(0em, 0.431em);
+  }
+  .wbk-sml {
+    transform: translate(0.07em, 0);
+  }
+  .wbk-sml-acc {
+    transform: translate(0.07em, 0.431em);
+  }
+  .wbk-sml-vec {
+    transform: scale(0.75) translate(0.07em, 0);
+  }
+  .wbk-med {
+    transform: translate(0.14em, 0);
+  }
+  .wbk-med-acc {
+    transform: translate(0.14em, 0.431em);
+  }
+  .wbk-med-vec {
+    transform: scale(0.75) translate(0.14em, 0);
+  }
+  .wbk-lrg {
+    transform: translate(0.21em, 0);
+  }
+  .wbk-lrg-acc {
+    transform: translate(0.21em, 0.431em);
+  }
+  .wbk-lrg-vec {
+    transform: scale(0.75) translate(0.21em, 0);
+  }
+}
+
+/* \cancel & \phase use background images. Get them to print. */
+menclose {
+  -webkit-print-color-adjust: exact;  /* Chrome & Edge */
+          print-color-adjust: exact;
+}
+
+/* Array cell justification in Firefox & WebKit */
+.tml-right {
+  text-align: right;
+}
+.tml-left {
+  text-align: left;
+}
+
+/* For CD labels that grow to the left in Firefox and WebKit */
+.tml-shift-left { margin-left:-200% }
+
+/* Styles for Chromium only */
+@supports (not (-webkit-backdrop-filter: blur(1px))) and (not (-moz-appearance: none)) {
+  /* Italic correction on accents */
+  .chr-sml {
+    transform: translate(0.07em, 0)
+  }
+  .chr-sml-vec {
+    transform: scale(0.75) translate(0.07em, 0)
+  }
+  .chr-med {
+    transform: translate(0.14em, 0)
+  }
+  .chr-med-vec {
+    transform: scale(0.75) translate(0.14em, 0)
+  }
+  .chr-lrg {
+    transform: translate(0.21em, 0)
+  }
+  .chr-lrg-vec {
+    transform: scale(0.75) translate(0.21em, 0)
+  }
+
+  /* For CD labels that grow to the left */
+  .tml-shift-left { margin-left:-100% }
+
+  /* MathML Core & Chromium do not support the MathML 3.0 element <menclose> attributes. */
+  /* So use styles. */
+  menclose {
+    position: relative;
+    padding: 0.5ex 0ex;
+  }
+  
+    .tml-overline {
+    padding: 0.1em 0 0 0;
+    border-top: 0.065em solid;
+  }
+
+  .tml-underline {
+    padding: 0 0 0.1em 0;
+    border-bottom: 0.065em solid;
+  }
+
+  .tml-cancel {
+    display: inline-block;
+    position: absolute;
+    left: 0.5px;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    background-color: currentColor;
+  }
+  .upstrike {
+    clip-path: polygon(0.05em 100%, 0em calc(100% - 0.05em), calc(100% - 0.05em) 0em, 100% 0.05em);
+  }
+  .downstrike {
+    clip-path: polygon(0em 0.05em, 0.05em 0em, 100% calc(100% - 0.05em), calc(100% - 0.05em) 100%);
+  }
+  .sout {
+    clip-path: polygon(0em calc(55% + 0.0333em), 0em calc(55% - 0.0333em), 100% calc(55% - 0.0333em), 100% calc(55% + 0.0333em));
+  }
+  .tml-xcancel {
+    clip-path: polygon(0.05em 0em, 0em 0.05em, calc(50% - 0.05em) 50%, 0em calc(100% - 0.05em), 0.05em 100%, 50% calc(50% + 0.05em), calc(100% - 0.05em) 100%, 100% calc(100% - 0.05em), calc(50% + 0.05em) 50%, 100% 0.05em, calc(100% - 0.05em) 0%, 50% calc(50% - 0.05em));
+  }
+
+  .longdiv-top {
+    border-top: 0.067em solid;
+    padding: 0.1em 0.2em 0.2em 0.433em;
+  }
+  .longdiv-arc {
+    position: absolute;
+    top: 0;
+    bottom: 0.1em;
+    left: -0.4em;
+    width: 0.7em;
+    border: 0.067em solid;
+    transform: translateY(-0.067em);
+    border-radius: 70%;
+    clip-path: inset(0 0 0 0.4em);
+    box-sizing: border-box;}
+    .menclose {display: inline-block;
+    text-align: left;
+    position: relative;
+  }
+  
+  .phasor-bottom {
+    border-bottom: 0.067em solid;
+    padding: 0.2em 0.2em 0.1em 0.6em;
+  }
+  .phasor-angle {
+    display: inline-block;
+    position: absolute;
+    left: 0.5px;
+    bottom: -0.04em;
+    height: 100%;
+    aspect-ratio: 0.5;
+    background-color: currentColor;
+    clip-path: polygon(0.05em 100%, 0em calc(100% - 0.05em), calc(100% - 0.05em) 0em, 100% 0.05em);
+  }
+
+  .tml-fbox {
+    padding: 3pt;
+    border: 1px solid;
+  }
+
+  .circle-pad {
+    padding: 0.267em;
+  }
+  .textcircle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    border: 0.067em solid;
+    border-radius: 50%;
+   }
+
+   .actuarial {
+    padding: 0.03889em 0.03889em 0 0.03889em;
+    border-width: 0.08em 0.08em 0em 0em;
+    border-style: solid;
+    margin-right: 0.03889em;
+   }
+
+   /* Stretch \widetilde */
+  .tml-tilde-2 {
+    transform: scale(2.0, 1.1)
+  }
+  .tml-tilde-3 {
+    transform: scale(3.0, 1.1)
+  }
+  .tml-tilde-4 {
+    transform: scale(4.0, 1.1)
+  }
+  /* Stretch \widehat */
+  .tml-hat-1 {
+    transform: scale(1.9, 1.0)
+  }
+  .tml-hat-2 {
+    transform: scale(3.9, 1.0)
+  }
+  .tml-hat-3 {
+    transform: scale(5.8, 1.0)
+  }
+  .tml-hat-4 {
+    transform: scale(7.8, 1.0)
+  }
+  
+  /* set array cell justification */
+  .tml-right {
+    text-align: -webkit-right;
+  }
+  .tml-left {
+    text-align: -webkit-left;
+  }
+}
+
+.special-fraction {
+  font-family: 'STIX TWO', 'Times New Roman', Times, Tinos, serif;
+}
+
+/* flex-wrap for line-breaking in Chromium */
+math {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+math > mrow {
+  padding: 0.5ex 0ex;
+}
+
+/* Default mtd top padding is 0.5ex per MathML-Core and user-agent CSS */
+/* We adjust for jot and small */
+mtable.tml-jot > mtr > mtd {
+  padding-top: 0.7ex;
+  padding-bottom: 0.7ex;
+}
+mtable.tml-small mtd {
+  padding-top: 0.35ex;
+  padding-bottom: 0.35ex;
+}
+
+/* Firefox */
+@-moz-document url-prefix() {
+  /* Avoid flex-wrap */
+  math { display: inline; }
+  math > mrow { padding: 0 }
+  /* Adjust Firefox spacing between array rows */
+  mtd, mtable.tml-small mtd { padding-top: 0; padding-bottom: 0; }
+  mtable.tml-jot > mtr > mtd { padding-top: 0.2ex; padding-bottom: 0.2ex; }
+}
+
+/* AMS environment auto-numbering via CSS counter. */
+.tml-eqn::before {
+  counter-increment: tmlEqnNo;
+  content: "(" counter(tmlEqnNo) ")";
+}
+
+body {
+  counter-reset: tmlEqnNo;
+}
+
+/* Math (src/math.js). Temml's own rules come before this file (src/themes/math-css.js). MathML takes its colour from the text around it, so every theme and mode works. */
+.am-math-block { display: block; max-width: 100%; overflow-x: auto; margin: 10px 0; }
+/* A marked $$ block is dir="ltr", but the note chip inside it is the reader's text and follows the page. */
+html[dir="rtl"] .am-math-block .am-mark-note { direction: rtl; }
+/* Inline formulas wrap at relations and operators (Chromium, wrap: "tex"); one part that cannot break scrolls inside its box and never widens the panel. */
+math:not(.tml-display) { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+/* A formula that Temml could not read: the TeX as written, in the error colour. */
+.am-math-error {
+  font-family: var(--font-mono); font-size: 0.9em; color: var(--err); background: var(--err-bg);
+  padding: 1px 5px; border-radius: 4px; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+
+
 html[data-theme="blueprint"] .am-frame { border: 1px solid var(--line); padding: 30px; }
 html[data-theme="blueprint"] .am-frame::before {
   content: ""; position: absolute; inset: 18px; border: 1px solid var(--line); pointer-events: none;
@@ -761,443 +1147,166 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <button class="am-btn" type="button" data-am="copy" data-done="Copied ✓">Copy source</button>
 </div>
 <main class="am-doc">
-<header class="am-head"><h1>PBR 처음부터 이해하기</h1><p class="am-sub">빛과 표면의 물리에서 SherlockEngine의 셰이더까지</p><div class="am-head-meta"><span><b>source</b>rendering-analysis.html 11.6 · 12.14 · 20.15</span></div><div class="am-intro am-md"><div class="am-md"><p>PBR은 &quot;표면이 빛을 어떻게 받아 어떻게 돌려주는가&quot;를 물리 법칙에 맞춰 계산하는 방식입니다. 재질을 <strong>기본색 · 금속성 · 거칠기</strong> 세 숫자로 정하면, 조명이 바뀌어도 에너지가 보존되고 결과가 자연스럽습니다.</p>
+<header class="am-head"><h1>PCF 면접 대비 정리</h1><p class="am-sub">비교 후 평균, 하드웨어 2×2와 엔진의 3×3, 그리고 PCSS까지</p><div class="am-head-meta"><span><b>source</b>BasicPixelShader.hlsl · Renderer.cpp</span></div><div class="am-intro am-md"><div class="am-md"><p>PCF(Percentage-Closer Filtering)는 그림자 맵의 <strong>비교 결과</strong>를 평균 내어 경계를 부드럽게 만드는 필터입니다. 면접에서는 &quot;왜 깊이를 필터링하면 안 되는가&quot;를 정확히 설명하는 것이 승부처입니다.</p>
 </div></div></header>
 <div class="am-doc-layout">
-<nav class="am-toc" aria-label="Contents"><a href="#panel-A">A · 1. 왜 PBR인가</a><a href="#panel-B">B · 2. 빛이 표면에서 하는 일</a><a href="#panel-C">C · 3. 재질을 정하는 세 숫자</a><a href="#panel-D">D · 4. 직접광: Cook-Torrance</a><a href="#panel-E">E · 5. 환경광: split-sum IBL</a><a href="#panel-F">F · 6. HDR과 톤매핑</a><a href="#panel-G">G · 7. 픽셀 셰이더의 전체 순서</a><a href="#panel-H">H · 8. 구현 중에 내린 판단</a><a href="#panel-I">I · 더 읽을 것</a></nav><div class="am-doc-body">
+<nav class="am-toc" aria-label="Contents"><a href="#panel-A">A · 한 줄 답변</a><a href="#panel-B">B · 1. 왜 깊이를 필터링하면 안 되는가</a><a href="#panel-C">C · 2. 하드웨어 PCF: 비교 샘플러</a><a href="#panel-D">D · 3. 엔진의 3×3</a><a href="#panel-E">E · 4. 비용과 품질</a><a href="#panel-F">F · 5. 대안 기법 비교</a><a href="#panel-G">G · 6. 흔한 함정</a><a href="#panel-H">H · 7. 예상 면접 질문</a><a href="#panel-I">I · 8. 참고자료</a></nav><div class="am-doc-body">
 <section class="am-panel" id="panel-A">
-<header class="am-panel-head"><span class="am-panel-id">A</span><h2>1. 왜 PBR인가</h2></header>
-<div class="am-panel-body"><div class="am-md"><p>옛 방식(Blinn-Phong)은 재질마다 &quot;스페큘러 색&quot;과 &quot;shininess&quot;를 손으로 맞췄습니다. 조명이 바뀌면 다시 맞춰야 했습니다.</p>
-</div>
-<figure class="am-codeblock"><figcaption class="am-code-head"><span class="am-code-title"></span><span class="am-code-lang">table</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code"><code data-lang="table"><span class="am-ln"></span></code></pre></figure>
-<div class="am-md"><div class="am-table-wrap"><table>
-<thead>
-<tr>
-<th>항목</th>
-<th>Blinn-Phong (이전)</th>
-<th>PBR (2026-10-08 이후)</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>재질 입력</td>
-<td>기본색, 스페큘러 색, shininess</td>
-<td>기본색, metallic, roughness</td>
-</tr>
-<tr>
-<td>에너지 보존</td>
-<td><span class="am-status am-status--no"><span class="am-status-icon" aria-hidden="true">✗</span>거친 면과 매끈한 면의 총 반사량이 다름</span></td>
-<td><span class="am-status am-status--ok"><span class="am-status-icon" aria-hidden="true">✓</span>반사된 몫을 확산에서 뺌</span></td>
-</tr>
-<tr>
-<td>프레넬 (스치는 각의 반사)</td>
-<td><span class="am-status am-status--no"><span class="am-status-icon" aria-hidden="true">✗</span>없음</span></td>
-<td><span class="am-status am-status--ok"><span class="am-status-icon" aria-hidden="true">✓</span>Schlick 근사</span></td>
-</tr>
-<tr>
-<td>금속 표현</td>
-<td><span class="am-status am-status--no"><span class="am-status-icon" aria-hidden="true">✗</span>못 함</span></td>
-<td><span class="am-status am-status--ok"><span class="am-status-icon" aria-hidden="true">✓</span>F0 = 기본색, 확산 없음</span></td>
-</tr>
-<tr>
-<td>환경 반사</td>
-<td><span class="am-status am-status--no"><span class="am-status-icon" aria-hidden="true">✗</span>상수 주변광</span></td>
-<td><span class="am-status am-status--ok"><span class="am-status-icon" aria-hidden="true">✓</span>큐브맵 IBL</span></td>
-</tr>
-<tr>
-<td>glTF 재질</td>
-<td><span class="am-status am-status--warn"><span class="am-status-icon" aria-hidden="true">!</span>근사로 환산</span></td>
-<td><span class="am-status am-status--ok"><span class="am-status-icon" aria-hidden="true">✓</span>값을 그대로 옮김</span></td>
-</tr>
-</tbody></table></div>
-</div></div>
+<header class="am-panel-head"><span class="am-panel-id">A</span><h2>한 줄 답변</h2></header>
+<div class="am-panel-body"><div class="am-callout am-callout--ok" role="note"><div class="am-callout-title">30초 답변</div><div class="am-callout-body am-md"><p>깊이 값을 먼저 평균 내서 비교하면 어느 표면의 깊이도 아닌 값이 나옵니다. PCF는 순서를 바꿔 <strong>먼저 비교(0 또는 1)하고, 그 결과를 평균</strong>합니다. 결과는 &quot;빛을 받는 비율&quot;(0~1)이라 경계가 부드러워집니다. 이 엔진은 하드웨어 비교 샘플러(2×2 보간)를 3×3 오프셋으로 아홉 번 불러 씁니다.</p>
+</div></div></div>
 </section>
-<section class="am-panel" id="panel-B">
-<header class="am-panel-head"><span class="am-panel-id">B</span><h2>2. 빛이 표면에서 하는 일</h2></header>
-<div class="am-panel-body"><div class="am-md"><p>빛이 표면에 닿으면 두 갈래로 나뉩니다.</p>
-<ul>
-<li><strong>반사(specular)</strong>: 표면에서 바로 튕깁니다. 하이라이트와 거울 같은 상이 됩니다.</li>
-<li><strong>확산(diffuse)</strong>: 표면 속으로 들어갔다가 사방으로 나옵니다. 물체의 &quot;색&quot;으로 보입니다.</li>
-</ul>
-<p>금속은 속으로 들어간 빛을 곧바로 흡수합니다. 그래서 금속에는 확산이 없고, 반사가 자기 색을 띱니다. 유전체(플라스틱, 나무, 돌)는 반사가 약하고 무채색이며, 확산이 대부분입니다.</p>
+<section class="am-panel am-span-wide" id="panel-B">
+<header class="am-panel-head"><span class="am-panel-id">B</span><h2>1. 왜 깊이를 필터링하면 안 되는가</h2></header>
+<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 617 134" width="617" height="134" role="img" aria-label="Flowchart: 깊이 맵, 깊이 평균, 평균 깊이와 비교, 잘못된 이진 결과, 각 텍셀과 비교, 0/1 결과 평균, 0~1 연속 값" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M87.2,84.5 L103.6,93.5 Q119.9,102.5 138.9,102.5 L157.9,102.5" marker-end="url(#am1-arrow)"/></g><g data-step="0"><path class="am-edge" d="M241.8,102.5 L260.7,102.5 Q279.7,102.5 291.2,102.5 L302.7,102.5" marker-end="url(#am1-arrow)"/></g><g data-step="0"><path class="am-edge" d="M429.5,102.5 L441,102.5 Q452.5,102.5 464,102.5 L475.5,102.5" marker-end="url(#am1-arrow)"/></g><g data-step="1"><path class="am-edge" d="M87.2,49.5 L103.6,40.5 Q119.9,31.5 131.4,31.5 L142.9,31.5" marker-end="url(#am1-arrow)"/></g><g data-step="1"><path class="am-edge" d="M256.7,31.5 L268.2,31.5 Q279.7,31.5 295.5,31.5 L311.3,31.5" marker-end="url(#am1-arrow)"/></g><g data-step="1"><path class="am-edge" d="M420.9,31.5 L436.7,31.5 Q452.5,31.5 471.5,31.5 L490.6,31.5" marker-end="url(#am1-arrow)"/></g></g><g><g class="am-node am-node--round" data-key="깊이 맵" data-step="0"><rect class="am-node-shape" x="14" y="49.5" width="82.9" height="35" rx="17.5"/><text x="55.5" y="67" text-anchor="middle" dominant-baseline="central">깊이 맵</text></g><g class="am-node am-node--rect" data-key="깊이 평균" data-step="0"><rect class="am-node-shape" x="157.9" y="85" width="83.9" height="35" rx="3"/><text x="199.8" y="102.5" text-anchor="middle" dominant-baseline="central">깊이 평균</text></g><g class="am-node am-node--rect" data-key="평균 깊이와 비교" data-step="0"><rect class="am-node-shape" x="302.7" y="85" width="126.8" height="35" rx="3"/><text x="366.1" y="102.5" text-anchor="middle" dominant-baseline="central">평균 깊이와 비교</text></g><g class="am-node am-node--rect" data-key="잘못된 이진 결과" data-step="0"><rect class="am-node-shape" x="475.5" y="85" width="126.8" height="35" rx="3"/><text x="538.9" y="102.5" text-anchor="middle" dominant-baseline="central">잘못된 이진 결과</text></g><g class="am-node am-node--rect am-node--hi" data-key="각 텍셀과 비교" data-step="1"><rect class="am-node-shape" x="142.9" y="14" width="113.8" height="35" rx="3"/><text x="199.8" y="31.5" text-anchor="middle" dominant-baseline="central">각 텍셀과 비교</text></g><g class="am-node am-node--rect" data-key="0/1 결과 평균" data-step="1"><rect class="am-node-shape" x="311.3" y="14" width="109.6" height="35" rx="3"/><text x="366.1" y="31.5" text-anchor="middle" dominant-baseline="central">0/1 결과 평균</text></g><g class="am-node am-node--rect" data-key="0~1 연속 값" data-step="1"><rect class="am-node-shape" x="490.6" y="14" width="96.6" height="35" rx="3"/><text x="538.9" y="31.5" text-anchor="middle" dominant-baseline="central">0~1 연속 값</text></g></g></svg></figure>
+<div class="am-md"><p>경계에 걸친 두 텍셀의 깊이가 0.2(가림막)와 0.9(바닥)라고 합니다. 평균은 0.55로, 가림막도 바닥도 아닌 허공의 깊이입니다. 수신자 깊이가 0.6이면 &quot;가려짐&quot;으로 판정되어 경계가 엉킵니다. 먼저 비교하면 결과는 1(빛)과 0(그림자)이고 평균은 0.5입니다. 반그림자가 올바르게 생깁니다.</p>
 </div>
-<figure class="am-diagram am-flow"><svg viewBox="0 0 646 134" width="646" height="134" role="img" aria-label="Flowchart: 빛, 표면에 닿음, 반사 specular, 확산 diffuse, 눈" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M90,67 L101.5,67 Q113,67 124.5,67 L136,67" marker-end="url(#am1-arrow)"/></g><g data-step="1"><path class="am-edge" d="M252.2,78.2 L299.4,90.4 Q346.6,102.5 379.2,102.5 L411.8,102.5" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="316.9" y="93.5" width="59.5" height="18" rx="3"/><text x="346.6" y="102.5" text-anchor="middle" dominant-baseline="central">바로 튕김</text></g></g><g data-step="2"><path class="am-edge" d="M252.2,55.8 L299.4,43.6 Q346.6,31.5 381.8,31.5 L417,31.5" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="305.4" y="22.5" width="82.5" height="18" rx="3"/><text x="346.6" y="31.5" text-anchor="middle" dominant-baseline="central">속으로 들어감</text></g></g><g data-step="3"><path class="am-edge" d="M521.7,102.5 L533.2,102.5 Q544.7,102.5 558.6,93.5 L572.6,84.5" marker-end="url(#am1-arrow)"/></g><g data-step="4"><path class="am-edge" d="M516.5,31.5 L530.6,31.5 Q544.7,31.5 558.6,40.5 L572.6,49.5" marker-end="url(#am1-arrow)"/></g></g><g><g class="am-node am-node--round" data-key="빛" data-step="0"><rect class="am-node-shape" x="14" y="49.5" width="76" height="35" rx="17.5"/><text x="52" y="67" text-anchor="middle" dominant-baseline="central">빛</text></g><g class="am-node am-node--diamond" data-key="표면에 닿음" data-step="0"><polygon class="am-node-shape" points="208.7,39 281.4,67 208.7,95 136,67"/><text x="208.7" y="67" text-anchor="middle" dominant-baseline="central">표면에 닿음</text></g><g class="am-node am-node--rect" data-key="반사 specular" data-step="1"><rect class="am-node-shape" x="411.8" y="85" width="109.9" height="35" rx="3"/><text x="466.8" y="102.5" text-anchor="middle" dominant-baseline="central">반사 specular</text></g><g class="am-node am-node--rect" data-key="확산 diffuse" data-step="2"><rect class="am-node-shape" x="417" y="14" width="99.5" height="35" rx="3"/><text x="466.8" y="31.5" text-anchor="middle" dominant-baseline="central">확산 diffuse</text></g><g class="am-node am-node--rect" data-key="눈" data-step="3"><rect class="am-node-shape" x="567.7" y="49.5" width="64" height="35" rx="3"/><text x="599.7" y="67" text-anchor="middle" dominant-baseline="central">눈</text></g></g></svg></figure></div>
+<div class="am-callout am-callout--warn" role="note"><div class="am-callout-title">면접 포인트</div><div class="am-callout-body am-md"><p>&quot;일반 텍스처 필터링(bilinear)을 깊이에 쓰면 안 되는 이유&quot;가 PCF의 존재 이유입니다. 비교는 비선형 연산이라 필터와 순서를 바꿀 수 없습니다.</p>
+</div></div></div>
 </section>
 <section class="am-panel" id="panel-C">
-<header class="am-panel-head"><span class="am-panel-id">C</span><h2>3. 재질을 정하는 세 숫자</h2></header>
-<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
-<thead>
-<tr>
-<th>입력</th>
-<th>뜻</th>
-<th>엔진 기본값</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>baseColor</td>
-<td>확산색 (금속이면 반사색)</td>
-<td>(1,1,1,1)</td>
-</tr>
-<tr>
-<td>metallic</td>
-<td>0 = 유전체, 1 = 금속</td>
-<td>0</td>
-</tr>
-<tr>
-<td>roughness</td>
-<td>0 = 거울, 1 = 아주 거침</td>
-<td>0.5</td>
-</tr>
-<tr>
-<td>emissive</td>
-<td>스스로 내는 빛 (조명과 무관)</td>
-<td>0</td>
-</tr>
-<tr>
-<td>AO 텍스처</td>
-<td>환경광이 닿기 어려운 구석을 어둡게</td>
-<td>강도 1</td>
-</tr>
-</tbody></table></div>
-<p>glTF 텍스처는 <strong>G 채널이 거칠기, B 채널이 금속성</strong>, AO는 R 채널입니다. 셰이더는 거칠기를 0.03 아래로 올리지 않습니다. 0이면 GGX 분포가 발산해 NaN이 생깁니다.</p>
-<h3>F0: 정면에서 본 반사율</h3>
-<p>F0는 표면을 수직으로 볼 때 반사되는 빛의 비율입니다.</p>
+<header class="am-panel-head"><span class="am-panel-id">C</span><h2>2. 하드웨어 PCF: 비교 샘플러</h2></header>
+<div class="am-panel-body"><div class="am-md"><p><code>SamplerComparisonState</code>와 <code>SampleCmp*</code>를 쓰면 GPU가 샘플 위치 주변 2×2 텍셀을 각각 비교한 뒤, 그 <strong>결과 네 개를 이중선형 보간</strong>합니다. 비교 함수는 샘플러에 설정합니다. 엔진은 <code>LessEqual</code>입니다.</p>
 </div>
-<figure class="am-codeblock"><figcaption class="am-code-head"><span class="am-code-title"></span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code"><code><span class="am-ln">F0 = lerp(0.04, baseColor, metallic)</span></code></pre></figure>
-<div class="am-md"><p>유전체는 대부분 2~5%라서 4%로 고정합니다. 금속은 기본색이 곧 F0입니다. 금이 노란 반사를 내는 이유입니다.</p>
+<figure class="am-codeblock" data-am-src="SherlockEngine/Graphics/Renderer.cpp" data-am-lines="356-366"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Graphics/Renderer.cpp:356-366</span><span class="am-code-lang">cpp</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="cpp"><span class="am-ln" data-n="356">	const SamplerDesc sampler{</span><span class="am-ln am-ln--hl" data-n="357">		.filter = SamplerFilter::Comparison,</span><span class="am-ln" data-n="358">		.addressU = SamplerAddress::Border,</span><span class="am-ln" data-n="359">		.addressV = SamplerAddress::Border,</span><span class="am-ln" data-n="360">		.addressW = SamplerAddress::Border,</span><span class="am-ln" data-n="361">		.maxAnisotropy = 1,</span><span class="am-ln am-ln--hl" data-n="362">		.compareFunc = CompareFunc::LessEqual,</span><span class="am-ln am-ln--hl" data-n="363">		.borderColor = { 1.0f, 1.0f, 1.0f, 1.0f },</span><span class="am-ln" data-n="364">		.debugName = &quot;Sampler_ShadowCompare&quot;,</span><span class="am-ln" data-n="365">	};</span><span class="am-ln" data-n="366">	m_shadowSampler = m_device-&gt;CreateSampler(sampler);</span></code></pre></figure>
+<div class="am-md"><p>의미는 다음과 같습니다.</p>
+<ul>
+<li>비교값(수신자 깊이) ≤ 저장된 깊이 → 1(빛), 아니면 0.</li>
+<li>맵 밖은 Border 색 1 → 빛을 받음.</li>
+<li>반환은 이미 보간된 값이라 한 번의 호출에 2×2 PCF가 들어 있습니다.</li>
+</ul>
 </div></div>
 </section>
-<section class="am-panel" id="panel-D">
-<header class="am-panel-head"><span class="am-panel-id">D</span><h2>4. 직접광: Cook-Torrance</h2></header>
-<div class="am-panel-body"><div class="am-md"><p>조명 하나가 주는 빛은 다음과 같습니다.</p>
-</div>
-<figure class="am-codeblock"><figcaption class="am-code-head"><span class="am-code-title"></span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code"><code><span class="am-ln">색 += (kd · albedo + specular · π) × color × intensity × attenuation × N·L</span></code></pre></figure>
-<div class="am-md"><h3>식의 각 항은 무엇인가</h3>
-<div class="am-table-wrap"><table>
-<thead>
-<tr>
-<th>항</th>
-<th>정체</th>
-<th>왜 필요한가</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>albedo</td>
-<td>표면의 난반사 색. 밝기 정보 없는 순수한 색</td>
-<td>빨간 공은 빨간 빛만 반사한다</td>
-</tr>
-<tr>
-<td>kd</td>
-<td>들어온 빛 중 난반사로 쓰이는 몫. <code>(1−F)(1−metallic)</code></td>
-<td>정반사로 빠진 만큼과 금속이 흡수하는 만큼을 빼서 반사 + 확산이 받은 빛보다 밝아지지 않게 한다 (에너지 보존)</td>
-</tr>
-<tr>
-<td>specular</td>
-<td>정반사 BRDF <code>D·G·F / (4·N·L·N·V)</code></td>
-<td>하이라이트. F가 이미 들어 있어서 kd를 따로 곱하지 않는다</td>
-</tr>
-<tr>
-<td>color</td>
-<td><strong>광원의</strong> 색 (albedo는 표면의 색)</td>
-<td>표면은 &quot;어떤 색을 반사하나&quot;, 광원은 &quot;어떤 색을 쏘나&quot;다. 둘을 곱해야 빨간 공에 파란 빛을 쏘면 어두워진다</td>
-</tr>
-<tr>
-<td>intensity</td>
-<td>광원의 밝기 배율</td>
-<td>색과 밝기를 분리해서 조절한다</td>
-</tr>
-<tr>
-<td>attenuation</td>
-<td>거리·스포트 콘에 따른 감쇠</td>
-<td>멀수록 어두워진다</td>
-</tr>
-<tr>
-<td>N·L</td>
-<td>노멀과 빛 방향의 코사인</td>
-<td>빛을 비스듬히 받을수록 같은 면적이 받는 빛이 줄어든다</td>
-</tr>
-</tbody></table></div>
-<p>묶어서 읽으면 <code>(표면이 반응하는 방식) × (광원 색 × 세기) × (거리 감쇠) × (각도)</code>입니다. 셰이더에서는 뒤의 세 곱을 <code>irradiance = color × intensity × attenuation × N·L</code>로 먼저 만들고, 앞의 괄호 <code>kd·albedo + specular·π</code>에 곱합니다. specular에만 π가 붙는 이유는 아래 &quot;왜 π를 곱하나&quot;에 있습니다.</p>
-<p>먼저 네 벡터를 정합니다. 모두 표면의 점 P에서 <strong>바깥으로</strong> 나가는 단위 벡터입니다.</p>
-<div class="am-table-wrap"><table>
-<thead>
-<tr>
-<th>기호</th>
-<th>뜻</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>N</td>
-<td>표면 노멀 (노멀 매핑 이후)</td>
-</tr>
-<tr>
-<td>L</td>
-<td>표면에서 광원을 향하는 방향</td>
-</tr>
-<tr>
-<td>V</td>
-<td>표면에서 카메라를 향하는 방향</td>
-</tr>
-<tr>
-<td>H</td>
-<td>normalize(L + V), 하프 벡터</td>
-</tr>
-</tbody></table></div>
-<blockquote>
-<p>함정: <code>LightData::direction</code>은 빛이 <strong>나아가는</strong> 방향입니다. 방향광의 L은 <code>−direction</code>입니다. 부호를 안 뒤집으면 밝은 면과 어두운 면이 뒤바뀝니다.</p>
-</blockquote>
-<h3>BRDF란 무엇인가</h3>
-<p>BRDF(Bidirectional Reflectance Distribution Function, 양방향 반사 분포 함수)는 <strong>&quot;빛이 L 방향에서 들어올 때, V 방향으로 얼마나 나가는가&quot;</strong>를 돌려주는 함수 <code>f(L, V)</code>입니다. 표면이 빛에 반응하는 방식을 통째로 담은 것입니다.</p>
-<ul>
-<li>입력은 빛이 오는 방향 L, 보는 방향 V입니다. 노멀 N과 재질(albedo, roughness, metallic)은 함수 안에 고정된 값으로 들어 있습니다.</li>
-<li>출력은 비율입니다. 단위는 1/sr(스테라디안당)이고, 값이 클수록 L로 들어온 빛이 V로 많이 나갑니다.</li>
-<li>&quot;양방향&quot;은 L과 V 둘 다 인자라는 뜻입니다. 거울은 L의 반사 방향 V에서만 값이 크고, 분필은 어느 V에서 봐도 비슷합니다. 이 차이가 BRDF의 모양 차이입니다.</li>
+<section class="am-panel am-span-wide" id="panel-D">
+<header class="am-panel-head"><span class="am-panel-id">D</span><h2>3. 엔진의 3×3</h2></header>
+<div class="am-panel-body"><figure class="am-codeblock" data-am-src="SherlockEngine/Shaders/BasicPixelShader.hlsl" data-am-lines="29-45"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Shaders/BasicPixelShader.hlsl:29-45</span><span class="am-code-lang">hlsl</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="hlsl"><span class="am-ln" data-n="29">        const float depth = p.z - shadowParams.y;   // 수신자 깊이에서 바이어스를 뺌(자기 그림자 방지)</span><span class="am-ln" data-n="30"></span><span class="am-ln" data-n="31">        // PCF: 이웃 텍셀 9개의 비교 결과(0/1)를 평균 냄. SampleCmp 는 비교 후 보간까지 하드웨어에서 처리함.</span><span class="am-ln" data-n="32">        float lit = 0.0f;</span><span class="am-ln am-ln--hl" data-n="33">        [unroll]</span><span class="am-ln am-ln--hl" data-n="34">        for (int dy = -1; dy &lt;= 1; ++dy)</span><span class="am-ln am-ln--hl" data-n="35">        {</span><span class="am-ln am-ln--hl" data-n="36">            [unroll]</span><span class="am-ln am-ln--hl" data-n="37">            for (int dx = -1; dx &lt;= 1; ++dx)</span><span class="am-ln am-ln--hl" data-n="38">            {</span><span class="am-ln am-ln--hl" data-n="39">                lit += shadowMap.SampleCmpLevelZero(shadowSampler, uv, depth, int2(dx, dy));</span><span class="am-ln am-ln--hl" data-n="40">            }</span><span class="am-ln" data-n="41">        }</span><span class="am-ln am-ln--hl" data-n="42">        lit /= 9.0f;</span><span class="am-ln" data-n="43">        result = lerp(1.0f, lit, shadowParams.z);</span><span class="am-ln" data-n="44">    }</span><span class="am-ln" data-n="45">    return result;</span></code></pre></figure>
+<div class="am-md"><ul>
+<li>이웃 오프셋은 <code>int2(dx, dy)</code> <strong>정수</strong>입니다. 텍셀 크기를 곱해 UV를 옮길 필요가 없습니다(그래서 <code>shadowParams.x</code>를 셰이더가 읽지 않습니다).</li>
+<li><code>[unroll]</code>로 루프를 펼칩니다. 오프셋이 컴파일 타임 상수여야 <code>SampleCmp</code>에 넣을 수 있습니다.</li>
+<li><code>SampleCmpLevelZero</code>는 밉 0만 읽습니다. 그림자 맵은 밉이 없으므로 맞는 선택입니다. 분기 안에서도 암시적 미분이 필요 없습니다.</li>
+<li>마지막에 <code>shadowParams.z</code>(세기)로 <code>lerp(1, lit, 세기)</code>를 적용합니다.</li>
 </ul>
-<p>한 픽셀의 최종 빛은 렌더링 방정식으로 정해집니다.</p>
-<figure class="am-codeblock"><figcaption class="am-code-head"><span class="am-code-title"></span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code"><code><span class="am-ln">나가는 빛(V) = ∫ f(L, V) × 들어오는 빛(L) × N·L dL     (반구 전체에 대해 적분)</span></code></pre></figure>
-<p>점광과 방향광은 빛이 오는 방향이 하나뿐이라 적분이 사라지고 곱셈 한 번이 됩니다. 이 엔진의 직접광 식이 그 꼴입니다.</p>
-<figure class="am-codeblock"><figcaption class="am-code-head"><span class="am-code-title"></span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code"><code><span class="am-ln">색 += f(L, V) × (color × intensity × attenuation) × N·L</span></code></pre></figure>
-<p>엔진의 BRDF는 두 덩어리를 더한 것입니다.</p>
-<div class="am-table-wrap"><table>
-<thead>
-<tr>
-<th>덩어리</th>
-<th>식</th>
-<th>방향 의존</th>
-<th>모습</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>확산 (Lambert)</td>
-<td><code>kd · albedo / π</code></td>
-<td>없음. L, V와 무관한 상수</td>
-<td>어느 방향에서 봐도 같은 밝기의 무광 표면</td>
-</tr>
-<tr>
-<td>반사 (Cook-Torrance)</td>
-<td><code>D · G · F / (4 · N·L · N·V)</code></td>
-<td>있음. H = normalize(L+V)에 크게 좌우됨</td>
-<td>보는 각도에 따라 움직이는 하이라이트</td>
-</tr>
-</tbody></table></div>
-<ul>
-<li>확산의 <code>1/π</code>는 &quot;반구 전체에서 N·L을 적분하면 π&quot;라서 생깁니다. π로 나눠야 흰색(albedo = 1) 표면이 받은 빛을 넘겨서 내보내지 않습니다.</li>
-<li>물리적으로 옳은 BRDF는 두 조건을 지킵니다. 에너지 보존(나가는 빛 합이 들어온 빛 이하)과 상반성(<code>f(L,V) = f(V,L)</code>)입니다. kd가 에너지 보존을 맡습니다.</li>
-<li>엔진은 이 BRDF 전체에 π를 곱해서 씁니다. 이유는 아래 &quot;왜 π를 곱하나&quot;에 있습니다.</li>
-</ul>
-<h3>왜 Blinn-Phong이 아닌가</h3>
-<p>Blinn-Phong의 <code>(N·H)^shininess</code>도 L과 V를 받아 값을 돌려주므로 넓은 의미의 BRDF로 쓸 수 있습니다. 실제로 이 엔진도 PBR로 바꾸기 전까지 그렇게 그렸습니다. BRDF라는 이름은 &quot;L, V를 받아 비율을 낸다&quot;는 형식만 정하고, 안의 식은 정해 주지 않습니다. 바꾼 이유는 Blinn-Phong이 물리적 조건과 재질 표현에서 약하기 때문입니다.</p>
-<div class="am-table-wrap"><table>
-<thead>
-<tr>
-<th>문제</th>
-<th>Blinn-Phong</th>
-<th>Cook-Torrance (GGX)</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>에너지 보존</td>
-<td>보장이 없다. 정규화 계수가 없는 기본형은 shininess를 올리면 하이라이트가 좁아질 뿐 밝기 총량이 그대로다. 보정하려면 <code>(n+8)/(8π)</code> 같은 계수를 따로 붙여야 한다</td>
-<td>D가 정규화되어 있어서 거칠기를 바꿔도 반사되는 빛의 총량이 일정하다</td>
-</tr>
-<tr>
-<td>프레넬</td>
-<td>없다. 어느 각도에서 봐도 반사율이 같다</td>
-<td>F가 있어서 스치듯 볼수록 반사가 강해진다. 호수나 바닥이 멀리서 거울처럼 보이는 효과가 여기서 나온다</td>
-</tr>
-<tr>
-<td>가림 (G)</td>
-<td>없다</td>
-<td>미세면끼리 가리는 것을 계산한다. 거친 표면의 가장자리가 과하게 밝아지는 것을 막는다</td>
-</tr>
-<tr>
-<td>재질 파라미터</td>
-<td>shininess와 specular 색을 사람이 감으로 맞춘다</td>
-<td>roughness와 metallic 두 값으로 재질을 정한다. 금속은 반사색이 곧 F0이고 확산이 0이라는 식으로, 값마다 물리적 의미가 있다</td>
-</tr>
-<tr>
-<td>하이라이트 모양</td>
-<td>꼬리가 빨리 끊긴다</td>
-<td>중심은 밝고 주변에 은은한 꼬리가 길게 남는다. 실제 측정한 재질과 더 비슷하다</td>
-</tr>
-<tr>
-<td>조명 환경</td>
-<td>조명이 바뀌면 specular 값을 다시 손봐야 한다</td>
-<td>같은 재질 값이 어떤 조명에서든 일관되게 보인다. IBL(환경광)과도 같은 식(F0, roughness)으로 이어진다</td>
-</tr>
-</tbody></table></div>
-<ul>
-<li>마지막 행이 이 엔진에서 가장 중요합니다. 5장의 IBL(split-sum)은 F0와 roughness를 입력으로 받습니다. 직접광을 Blinn-Phong으로 두면 직접광과 환경광이 서로 다른 재질 모델을 쓰게 되어, 한 물체 위에서 두 빛의 재질 느낌이 어긋납니다.</li>
-<li>분모의 <code>4·N·L·N·V</code>는 Cook-Torrance만의 보정입니다. 미세면 이론에서 &quot;H 방향 조각이 L을 V로 반사하는 양&quot;을 L, V 방향의 빛 단위로 바꿀 때 나오는 항이라서, 미세면 이론을 쓰지 않는 Blinn-Phong에는 필요 없습니다.</li>
-<li>가볍고 단순한 장면이라면 정규화한 Blinn-Phong도 쓸 만합니다. 이 엔진은 PBR과 IBL이 목표라서 같은 재질 값으로 직접광과 환경광이 일관되게 보이도록 Cook-Torrance를 씁니다.</li>
-</ul>
-<h3>반사 BRDF = D · G · F / (4 · N·L · N·V)</h3>
-<p>미세면 이론은 표면을 아주 작은 거울 조각의 모임으로 봅니다. L을 V로 반사하는 조각은 노멀이 H인 조각뿐입니다. 세 항이 그 조각을 설명합니다.</p>
-<div class="am-table-wrap"><table>
-<thead>
-<tr>
-<th>항</th>
-<th>질문</th>
-<th>엔진의 식</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>D 분포</td>
-<td>노멀이 H인 조각이 얼마나 많은가</td>
-<td>GGX: α² / (π((N·H)²(α²−1)+1)²), α = roughness²</td>
-</tr>
-<tr>
-<td>G 가림</td>
-<td>그 조각이 이웃에 가려지지 않을 확률</td>
-<td>Smith-Schlick: G₁(N·L)·G₁(N·V), k = (rough+1)²/8</td>
-</tr>
-<tr>
-<td>F 프레넬</td>
-<td>그 조각이 빛을 얼마나 반사하나</td>
-<td>F0 + (1−F0)(1−V·H)⁵</td>
-</tr>
-</tbody></table></div>
-<ul>
-<li>거칠수록 D가 넓고 낮아져 하이라이트가 퍼집니다.</li>
-<li>스치듯 볼수록 F가 1에 가까워집니다. 호수 표면이 멀리서 거울처럼 보이는 이유입니다.</li>
-<li>분모의 0 나눗셈은 <code>EPSILON</code>으로 막습니다.</li>
-</ul>
-<h3>확산 = kd · albedo / π</h3>
-<p><code>kd = (1 − F)(1 − metallic)</code>입니다. 반사로 나간 몫(F)을 빼서 에너지를 보존하고, 금속은 확산을 0으로 만듭니다.</p>
-<h3>왜 π를 곱하나</h3>
-<p>엔진은 조명의 <code>color × intensity</code>를 &quot;빛에 수직인 면이 받는 조도 E&quot;로 봅니다. 이 관례에서는 BRDF에 π를 곱해야 합니다. 확산항은 <code>albedo/π × π</code>로 π가 사라집니다. 덕분에 확산 밝기가 Blinn-Phong 시절과 같아서, 기존 씬의 조명 값을 고치지 않았습니다.</p>
-<h3>감쇠와 스포트</h3>
-<ul>
-<li>점광과 스포트광: <code>(1 − d/range)² / (kc + kl·d + kq·d²)</code>. range에서 정확히 0이 됩니다.</li>
-<li>스포트: 축과 <code>−L</code>의 코사인으로 안쪽 콘 1, 바깥 콘 밖 0, 사이는 선형입니다.</li>
-<li>그림자 맵은 0번 방향광 하나에만 적용됩니다.</li>
-</ul>
+<h3>실제 필터 모양</h3>
+<p>하드웨어 2×2를 3×3 오프셋으로 겹치면 1차원 기준 <strong>4텍셀 폭</strong>입니다. 샘플 위치의 소수부를 <math dir="ltr" data-am-tex="$f$"><mi>f</mi></math>라 하면 가중치는 다음과 같습니다.</p>
+<div class="am-math-block" dir="ltr"><math dir="ltr" data-am-tex="$$w=\tfrac13\,(1-f,\; 1,\; 1,\; f)$$" display="block" class="tml-display" style="display:block math;"><mrow><mi>w</mi><mo>=</mo><mstyle displaystyle="false" scriptlevel="0"><mfrac><mn>1</mn><mn>3</mn></mfrac></mstyle><mspace width="0.1667em"></mspace><mrow><mo fence="true" form="prefix" stretchy="false">(</mo><mn>1</mn><mo>−</mo><mi>f</mi><mo separator="true">,</mo><mspace width="0.2778em"></mspace><mn>1</mn><mo separator="true">,</mo><mspace width="0.2778em"></mspace><mn>1</mn><mo separator="true">,</mo><mspace width="0.2778em"></mspace><mi>f</mi><mo fence="true" form="postfix" stretchy="false">)</mo></mrow></mrow></math></div>
+<p>2차원이면 4×4 텍셀을 덮습니다. 이 엔진에서는 텍셀이 약 0.029 월드 단위이므로 반그림자 폭이 약 0.1 월드 단위입니다. 가장자리 가중치가 <math dir="ltr" data-am-tex="$f$"><mi>f</mi></math>에 따라 0~1/3으로 연속 변하므로, 순수 박스 3×3보다 <strong>움직일 때 덜 깜박입니다</strong>.</p>
 </div></div>
 </section>
 <section class="am-panel" id="panel-E">
-<header class="am-panel-head"><span class="am-panel-id">E</span><h2>5. 환경광: split-sum IBL</h2></header>
-<div class="am-panel-body"><div class="am-md"><p>하늘 전체에서 오는 빛은 반구 적분이라 픽셀마다 풀 수 없습니다. Karis(2013)의 split-sum은 적분을 둘로 쪼개 <strong>미리 구운 텍스처</strong>로 바꿉니다.</p>
-</div>
-<figure class="am-diagram am-flow"><svg viewBox="0 0 770 205" width="770" height="205" role="img" aria-label="Flowchart: 픽셀, t10 확산 조도, t11 반사 프리필터, t12 BRDF LUT, 더함, 환경광 × AO" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am2-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M90,118.4 L155.7,146 Q221.4,173.5 293.5,173.5 L365.7,173.5" marker-end="url(#am2-arrow)"/><g class="am-edge-label"><rect x="186" y="164.5" width="70.7" height="18" rx="3"/><text x="221.4" y="173.5" text-anchor="middle" dominant-baseline="central">샘플 방향 N</text></g></g><g data-step="1"><path class="am-edge" d="M90,102.5 L155.7,102.5 Q221.4,102.5 287,102.5 L352.7,102.5" marker-end="url(#am2-arrow)"/><g class="am-edge-label"><rect x="114" y="93.5" width="214.7" height="18" rx="3"/><text x="221.4" y="102.5" text-anchor="middle" dominant-baseline="central">방향 reflect(−V,N), 밉 = rough×(밉수−1)</text></g></g><g data-step="2"><path class="am-edge" d="M90,86.6 L155.7,59 Q221.4,31.5 290.5,31.5 L359.6,31.5" marker-end="url(#am2-arrow)"/><g class="am-edge-label"><rect x="176.9" y="22.5" width="88.9" height="18" rx="3"/><text x="221.4" y="31.5" text-anchor="middle" dominant-baseline="central">(N·V, 1−rough)</text></g></g><g data-step="3"><path class="am-edge" d="M472.2,173.5 L490.2,173.5 Q508.2,173.5 528.9,146.8 L549.7,120" marker-end="url(#am2-arrow)"/></g><g data-step="4"><path class="am-edge" d="M485.2,102.5 L496.7,102.5 Q508.2,102.5 519.7,102.5 L531.2,102.5" marker-end="url(#am2-arrow)"/></g><g data-step="5"><path class="am-edge" d="M478.3,31.5 L493.3,31.5 Q508.2,31.5 528.9,58.3 L549.7,85" marker-end="url(#am2-arrow)"/></g><g data-step="6"><path class="am-edge" d="M595.2,102.5 L606.7,102.5 Q618.2,102.5 629.7,102.5 L641.2,102.5" marker-end="url(#am2-arrow)"/></g></g><g><g class="am-node am-node--round" data-key="픽셀" data-step="0"><rect class="am-node-shape" x="14" y="85" width="76" height="35" rx="17.5"/><text x="52" y="102.5" text-anchor="middle" dominant-baseline="central">픽셀</text></g><g class="am-node am-node--rect" data-key="t10 확산 조도" data-step="0"><rect class="am-node-shape" x="365.7" y="156" width="106.5" height="35" rx="3"/><text x="419" y="173.5" text-anchor="middle" dominant-baseline="central">t10 확산 조도</text></g><g class="am-node am-node--rect" data-key="t11 반사 프리필터" data-step="1"><rect class="am-node-shape" x="352.7" y="85" width="132.5" height="35" rx="3"/><text x="419" y="102.5" text-anchor="middle" dominant-baseline="central">t11 반사 프리필터</text></g><g class="am-node am-node--rect" data-key="t12 BRDF LUT" data-step="2"><rect class="am-node-shape" x="359.6" y="14" width="118.7" height="35" rx="3"/><text x="419" y="31.5" text-anchor="middle" dominant-baseline="central">t12 BRDF LUT</text></g><g class="am-node am-node--rect" data-key="더함" data-step="3"><rect class="am-node-shape" x="531.2" y="85" width="64" height="35" rx="3"/><text x="563.2" y="102.5" text-anchor="middle" dominant-baseline="central">더함</text></g><g class="am-node am-node--round" data-key="환경광 × AO" data-step="6"><rect class="am-node-shape" x="641.2" y="85" width="114.1" height="35" rx="17.5"/><text x="698.3" y="102.5" text-anchor="middle" dominant-baseline="central">환경광 × AO</text></g></g></svg></figure>
-<div class="am-md"><div class="am-table-wrap"><table>
-<thead>
-<tr>
-<th>텍스처</th>
-<th>내용</th>
-<th>쓰임</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>t10 확산 조도</td>
-<td>노멀 방향 반구의 코사인 가중 평균</td>
-<td><code>kd · albedo · irradiance</code></td>
-</tr>
-<tr>
-<td>t11 반사 프리필터</td>
-<td>반사 방향을 GGX로 미리 흐린 큐브, 밉마다 거칠기가 다름</td>
-<td><code>prefiltered</code></td>
-</tr>
-<tr>
-<td>t12 BRDF LUT</td>
-<td>F0에 곱할 값 A와 더할 값 B의 2D 표</td>
-<td><code>F0·A + B</code></td>
-</tr>
-</tbody></table></div>
-</div>
-<figure class="am-codeblock"><figcaption class="am-code-head"><span class="am-code-title"></span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code"><code><span class="am-ln">환경광 = (kd · albedo · irradiance + prefiltered · (F0 · brdf.x + brdf.y)) × IBL 세기 × ao</span></code></pre></figure>
-<div class="am-md"><ul>
-<li>프레넬은 <code>FresnelSchlickRoughness</code>를 씁니다. 거칠수록 스치는 각의 반사 상한이 1 − rough로 내려갑니다.</li>
-<li>LUT가 없으면 Karis의 모바일 근사식 <code>EnvBRDFApprox</code>가 대신합니다.</li>
-<li>AO는 환경광에만 곱합니다. 직접광에는 곱하지 않습니다.</li>
-<li>환경광은 그림자의 영향을 받지 않습니다.</li>
-</ul>
-<h3>맵이 없을 때의 대체</h3>
-<div class="am-table-wrap"><table>
-<thead>
-<tr>
-<th>슬롯</th>
-<th>1순위</th>
-<th>대체</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>t11 반사</td>
-<td>specular 맵</td>
-<td>스카이박스 밉 체인 → 검은 큐브</td>
-</tr>
-<tr>
-<td>t10 조도</td>
-<td>irradiance 맵</td>
-<td>t11 큐브의 끝에서 두 번째 밉(2×2) → 검은 큐브</td>
-</tr>
-<tr>
-<td>t12 LUT</td>
-<td>brdfLut</td>
-<td>흰 2D + <code>EnvBRDFApprox</code></td>
-</tr>
-</tbody></table></div>
-<p>셋 다 없으면 <code>ambientColor</code> 하나로 대신합니다. 유전체에서는 예전 주변광과 거의 같은 밝기입니다.</p>
-</div></div>
-</section>
-<section class="am-panel" id="panel-F">
-<header class="am-panel-head"><span class="am-panel-id">F</span><h2>6. HDR과 톤매핑</h2></header>
-<div class="am-panel-body"><div class="am-md"><p>IBL 큐브는 부동소수점이라 태양 픽셀이 300을 넘습니다. 엔진은 이를 <code>R16G16B16A16_FLOAT</code>(half float)로 읽습니다. 8비트로 읽으면 태양이 하얀 원판이 되고 금속 반사가 1에서 잘립니다.</p>
-<p>화면은 [0, 1]만 표현하므로 마지막에 <code>ApplyExposureToneMap</code>을 부릅니다.</p>
-<ol>
-<li><code>environment.exposure</code>를 곱합니다.</li>
-<li><code>toneMapping</code>이 켜져 있으면 ACES 근사(Narkowicz 2016)로 [0, 1]에 누릅니다.</li>
-</ol>
-<p>기본값은 노출 1, 톤매핑 끔입니다. 환경이 없는 옛 씬의 색을 지키기 위해서입니다.</p>
-<blockquote>
-<p>알려진 한계: 아직 HDR 렌더 타깃이 없습니다. 톤매핑을 셰이더 끝에서 합니다. 후처리 단계에서 별도 패스로 옮길 계획입니다.</p>
-</blockquote>
-</div></div>
-</section>
-<section class="am-panel" id="panel-G">
-<header class="am-panel-head"><span class="am-panel-id">G</span><h2>7. 픽셀 셰이더의 전체 순서</h2></header>
-<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 1369 134" width="1369" height="134" role="img" aria-label="Flowchart: 표면색, 알파 컷아웃, unlit?, 알베도 출력, PBR 입력, 노멀 매핑, 뷰 벡터·그림자, 환경광 + 발광" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am3-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M93,67 L104.5,67 Q116,67 127.5,67 L139,67" marker-end="url(#am3-arrow)"/></g><g data-step="1"><path class="am-edge" d="M235.9,67 L247.4,67 Q258.9,67 270.4,67 L281.9,67" marker-end="url(#am3-arrow)"/></g><g data-step="2"><path class="am-edge" d="M357.2,77.9 L389.4,90.2 Q421.6,102.5 444.8,102.5 L467.9,102.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="410.9" y="93.5" width="21.5" height="18" rx="3"/><text x="421.6" y="102.5" text-anchor="middle" dominant-baseline="central">예</text></g></g><g data-step="3"><path class="am-edge" d="M357.2,56.1 L389.4,43.8 Q421.6,31.5 447.9,31.5 L474.1,31.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="399.4" y="22.5" width="44.5" height="18" rx="3"/><text x="421.6" y="31.5" text-anchor="middle" dominant-baseline="central">아니오</text></g></g><g data-step="4"><path class="am-edge" d="M558.5,31.5 L573.2,31.5 Q587.8,31.5 599.3,31.5 L610.8,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="5"><path class="am-edge" d="M694.7,31.5 L706.2,31.5 Q717.7,31.5 729.2,31.5 L740.7,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="6"><path class="am-edge" d="M857.9,31.5 L869.4,31.5 Q880.9,31.5 892.4,31.5 L903.9,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="7"><path class="am-edge" d="M1011.9,31.5 L1023.4,31.5 Q1034.9,31.5 1046.4,31.5 L1057.9,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="8"><path class="am-edge" d="M1195.9,31.5 L1207.4,31.5 Q1218.9,31.5 1230.4,31.5 L1241.9,31.5" marker-end="url(#am3-arrow)"/></g></g><g><g class="am-node am-node--round" data-key="표면색" data-step="0"><rect class="am-node-shape" x="14" y="49.5" width="79" height="35" rx="17.5"/><text x="53.5" y="67" text-anchor="middle" dominant-baseline="central">표면색</text></g><g class="am-node am-node--rect" data-key="알파 컷아웃" data-step="0"><rect class="am-node-shape" x="139" y="49.5" width="96.9" height="35" rx="3"/><text x="187.5" y="67" text-anchor="middle" dominant-baseline="central">알파 컷아웃</text></g><g class="am-node am-node--diamond" data-key="unlit?" data-step="1"><polygon class="am-node-shape" points="328.6,39 375.4,67 328.6,95 281.9,67"/><text x="328.6" y="67" text-anchor="middle" dominant-baseline="central">unlit?</text></g><g class="am-node am-node--rect" data-key="알베도 출력" data-step="2"><rect class="am-node-shape" x="467.9" y="85" width="96.9" height="35" rx="3"/><text x="516.3" y="102.5" text-anchor="middle" dominant-baseline="central">알베도 출력</text></g><g class="am-node am-node--rect" data-key="PBR 입력" data-step="3"><rect class="am-node-shape" x="474.1" y="14" width="84.4" height="35" rx="3"/><text x="516.3" y="31.5" text-anchor="middle" dominant-baseline="central">PBR 입력</text></g><g class="am-node am-node--rect" data-key="노멀 매핑" data-step="4"><rect class="am-node-shape" x="610.8" y="14" width="83.9" height="35" rx="3"/><text x="652.7" y="31.5" text-anchor="middle" dominant-baseline="central">노멀 매핑</text></g><g class="am-node am-node--rect" data-key="뷰 벡터·그림자" data-step="5"><rect class="am-node-shape" x="740.7" y="14" width="117.2" height="35" rx="3"/><text x="799.3" y="31.5" text-anchor="middle" dominant-baseline="central">뷰 벡터·그림자</text></g><g class="am-node am-node--rect" data-key="환경광 + 발광" data-step="6"><rect class="am-node-shape" x="903.9" y="14" width="108.1" height="35" rx="3"/><text x="957.9" y="31.5" text-anchor="middle" dominant-baseline="central">환경광 + 발광</text></g><g class="am-node am-node--rect" data-key="조명 루프 최대 8개" data-step="7"><rect class="am-node-shape" x="1057.9" y="14" width="138" height="35" rx="3"/><text x="1126.9" y="31.5" text-anchor="middle" dominant-baseline="central">조명 루프 최대 8개</text></g><g class="am-node am-node--round" data-key="노출·톤매핑" data-step="8"><rect class="am-node-shape" x="1241.9" y="14" width="112.3" height="35" rx="17.5"/><text x="1298.1" y="31.5" text-anchor="middle" dominant-baseline="central">노출·톤매핑</text></g></g></svg></figure>
-<div class="am-md"><ul>
-<li>색공간: 알베도는 sRGB로 읽어 샘플링 시 선형으로 바뀝니다. 금속성/거칠기, AO, 노멀 맵은 선형입니다. 조명 계산은 전부 선형 공간입니다.</li>
-<li>방어 코드: 모든 정규화는 <code>SafeNormalize</code>를 거칩니다. 분모와 range는 <code>EPSILON</code> 이상입니다.</li>
-</ul>
-</div></div>
-</section>
-<section class="am-panel" id="panel-H">
-<header class="am-panel-head"><span class="am-panel-id">H</span><h2>8. 구현 중에 내린 판단</h2></header>
+<header class="am-panel-head"><span class="am-panel-id">E</span><h2>4. 비용과 품질</h2></header>
 <div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
 <thead>
 <tr>
-<th>문제</th>
-<th>판단</th>
+<th>항목</th>
+<th>값</th>
+<th>설명</th>
 </tr>
 </thead>
 <tbody><tr>
-<td>옛 씬의 <code>shininess</code></td>
-<td>읽을 때 <code>roughness = sqrt(sqrt(2/(n+2)))</code>로 환산</td>
+<td>텍스처 호출</td>
+<td>9회 / 픽셀</td>
+<td><code>SampleCmpLevelZero</code> 아홉 번</td>
 </tr>
 <tr>
-<td>IBL 맵 없는 씬의 금속이 검게 남음</td>
-<td>스카이박스 밉으로 반사를 근사</td>
+<td>텍셀 비교</td>
+<td>36회 / 픽셀</td>
+<td>호출마다 2×2 비교(하드웨어)</td>
 </tr>
 <tr>
-<td>샘플 세트가 Env보다 약 2배 밝게 구워짐</td>
-<td>씬의 IBL 세기를 0.5로</td>
+<td>필터 폭</td>
+<td>고정 약 4텍셀</td>
+<td>거리·가림막 크기와 무관</td>
 </tr>
 <tr>
-<td>반사 밉 매핑</td>
-<td>데이터에서 밉 0이 거울임을 확인해 밉 전체에 선형으로 펼침</td>
+<td>경계 품질</td>
+<td>부드럽지만 균일</td>
+<td>계단은 줄지만 접촉 경계도 흐려짐</td>
 </tr>
 <tr>
-<td>헬멧 바이저가 검음</td>
-<td>PBR 탓이 아니라 glTF Z 반사 뒤의 삼각형 감기 순서 버그였음</td>
+<td>메모리 접근</td>
+<td>이웃 텍셀</td>
+<td>캐시 친화적</td>
 </tr>
 </tbody></table></div>
 </div></div>
 </section>
-<section class="am-panel am-panel--bare" id="panel-I">
+<section class="am-panel am-span-wide" id="panel-F">
+<header class="am-panel-head"><span class="am-panel-id">F</span><h2>5. 대안 기법 비교</h2></header>
+<div class="am-panel-body"><div class="am-md"><div class="am-table-wrap"><table>
+<thead>
+<tr>
+<th>기법</th>
+<th>아이디어</th>
+<th>장점</th>
+<th>단점</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>큰 커널 PCF</td>
+<td>N×N 비교 평균</td>
+<td>단순, 정확한 비교</td>
+<td>샘플 수가 N²로 증가</td>
+</tr>
+<tr>
+<td>포아송 디스크 / 회전 샘플</td>
+<td>불규칙 샘플 + 픽셀별 회전</td>
+<td>적은 샘플로 부드러움</td>
+<td>노이즈</td>
+</tr>
+<tr>
+<td>PCSS</td>
+<td>가림막 평균 깊이로 반그림자 폭을 추정</td>
+<td>접촉은 선명, 멀수록 흐림</td>
+<td>블로커 탐색 비용</td>
+</tr>
+<tr>
+<td>VSM / ESM</td>
+<td>깊이 통계를 저장해 필터링 가능</td>
+<td>밉·블러로 싸게 부드럽게</td>
+<td>빛 번짐(light bleeding)</td>
+</tr>
+<tr>
+<td>레이 트레이싱 그림자</td>
+<td>실제 가시성</td>
+<td>정확</td>
+<td>하드웨어·비용</td>
+</tr>
+</tbody></table></div>
+</div></div>
+</section>
+<section class="am-panel am-span-wide" id="panel-G">
+<header class="am-panel-head"><span class="am-panel-id">G</span><h2>6. 흔한 함정</h2></header>
 <div class="am-panel-body"><div class="am-md"><ul>
-<li>엔진 문서: <code>docs/rendering-analysis.html</code>의 11.6, 12.14, 20.15</li>
-<li>Karis, <em>Real Shading in Unreal Engine 4</em> (2013)</li>
-<li>LearnOpenGL, <em>PBR</em> 시리즈</li>
+<li><strong>바이어스와 필터 폭</strong>: 커널이 넓을수록 경사면에서 이웃 텍셀이 더 큰 깊이 차를 보여 acne가 다시 생깁니다. 바이어스를 키우거나 수신자 평면 바이어스를 씁니다.</li>
+<li><strong>고정 폭의 한계</strong>: 접촉 지점도 같은 폭으로 흐려집니다 → PCSS.</li>
+<li><strong>텍셀 단위 정수 오프셋</strong>: 맵 해상도를 바꿔도 코드는 같지만 월드 폭은 변합니다.</li>
+<li><strong><code>SampleCmp</code>와 분기</strong>: 밉이 있는 텍스처에 <code>SampleCmp</code>를 쓰면 암시적 미분이 필요해 분기 안에서 문제가 생깁니다. <code>LevelZero</code> 변형이 안전합니다.</li>
+<li><strong>fxc 디버그 경고</strong>: 조기 반환이 섞이면 -Od에서 X4000 오경고가 나서 <code>ComputeShadowFactor</code>는 단일 반환 구조입니다.</li>
+</ul>
+</div></div>
+</section>
+<section class="am-panel am-span-wide" id="panel-H">
+<header class="am-panel-head"><span class="am-panel-id">H</span><h2>7. 예상 면접 질문</h2></header>
+<div class="am-panel-body"><div class="am-md"><p><strong>Q1. PCF가 무엇인가요?</strong> 그림자 맵의 이웃 텍셀들에 대해 각각 깊이를 비교하고, 그 0/1 결과를 평균하는 필터입니다. 결과는 빛을 받는 비율입니다.</p>
+<p><strong>Q2. 깊이를 bilinear로 샘플링한 뒤 비교하면 안 되나요?</strong> 안 됩니다. 평균 깊이는 어느 표면에도 속하지 않습니다. 비교는 비선형이라 필터링과 순서를 바꿀 수 없으므로 비교 후 평균합니다.</p>
+<p><strong>Q3. 하드웨어 PCF란 무엇인가요?</strong> 비교 샘플러(<code>SamplerComparisonState</code>)에 <code>SampleCmp</code>를 쓰면 GPU가 2×2 텍셀을 비교하고 결과를 이중선형으로 보간해 줍니다. 한 호출로 2×2 PCF를 얻습니다.</p>
+<p><strong>Q4. 이 엔진의 필터 크기는 얼마인가요?</strong> 3×3 오프셋 호출 9번이 각각 2×2를 보므로 4×4 텍셀 영역입니다. 가장자리 가중치가 샘플 위치에 따라 연속으로 변합니다.</p>
+<p><strong>Q5. PCF의 한계는요?</strong> 필터 폭이 고정이라 가림막과의 거리와 무관하게 같은 폭으로 흐립니다. 실제 반그림자는 가림막에서 멀수록 넓어집니다. PCSS가 가림막 평균 깊이로 폭을 추정해 해결합니다.</p>
+<p><strong>Q6. 샘플 수를 늘리지 않고 품질을 올리려면?</strong> 포아송 디스크 샘플을 픽셀마다 회전시키고(노이즈는 TAA 등으로 흡수), 혹은 VSM/ESM처럼 필터링 가능한 표현을 씁니다.</p>
+<p><strong>Q7. 왜 <code>SampleCmpLevelZero</code>를 쓰나요?</strong> 그림자 맵에는 밉이 없고, 분기·루프 안에서도 암시적 미분 없이 쓸 수 있습니다.</p>
+<p><strong>Q8. 이 코드에서 개선한다면?</strong> 먼저 필터 반경을 파라미터로 만들고, 그다음 회전 포아송 샘플로 바꿉니다. 최종적으로 PCSS를 넣어 접촉 그림자를 선명하게 합니다.</p>
+</div></div>
+</section>
+<section class="am-panel am-span-wide" id="panel-I">
+<header class="am-panel-head"><span class="am-panel-id">I</span><h2>8. 참고자료</h2></header>
+<div class="am-panel-body"><div class="am-md"><ul>
+<li>Reeves, Salesin, Cook, <em>Rendering Antialiased Shadows with Depth Maps</em>, SIGGRAPH 1987 — PCF의 원전. <a href="https://doi.org/10.1145/37401.37435">doi:10.1145/37401.37435</a></li>
+<li>Fernando, <em>Percentage-Closer Soft Shadows</em>, NVIDIA — <a href="https://developer.download.nvidia.com/shaderlibrary/docs/shadow_PCSS.pdf">PDF</a></li>
+<li>NVIDIA GPU Gems, ch.11 <em>Shadow Map Antialiasing</em> — <a href="https://developer.nvidia.com/gpugems/gpugems/part-ii-lighting-and-shadows/chapter-11-shadow-map-antialiasing">링크</a></li>
+<li>Microsoft Learn, <code>Texture2D::SampleCmpLevelZero</code> — <a href="https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/texture2d-samplecmplevelzero">링크</a></li>
+<li>Microsoft Learn, <code>D3D11_FILTER</code>(비교 필터) — <a href="https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_filter">링크</a></li>
+<li>LearnOpenGL, <em>Shadow Mapping</em> — PCF 절. <a href="https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping">learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping</a></li>
+<li>이 프로젝트: <code>docs/rendering-analysis.html</code> 11.8 &quot;비교 샘플러와 PCF&quot;, <code>docs/shadow-map-interview.html</code></li>
 </ul>
 </div></div>
 </section>
@@ -1219,249 +1328,142 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <div class="am-lightbox-canvas am-diagram"></div>
 </div>
 </div>
-<footer class="am-colophon">Generated by <a href="https://github.com/QingYunA/answer-me-with-html" target="_blank" rel="noopener">Answer me with HTML</a> 0.5.0 · 2026-10-10 18:22 · <a href="https://github.com/QingYunA/answer-me-with-html" target="_blank" rel="noopener">★ Star on GitHub</a></footer>
+<footer class="am-colophon">Generated by <a href="https://github.com/QingYunA/answer-me-with-html" target="_blank" rel="noopener">Answer me with HTML</a> 0.5.0 · 2026-10-21 11:58 · <a href="https://github.com/QingYunA/answer-me-with-html" target="_blank" rel="noopener">★ Star on GitHub</a></footer>
 <textarea id="am-source" hidden readonly aria-hidden="true">---
 template: doc
 theme: paper
 lang: ko
-title: PBR 처음부터 이해하기
-subtitle: 빛과 표면의 물리에서 SherlockEngine의 셰이더까지
-source: rendering-analysis.html 11.6 · 12.14 · 20.15
+title: PCF 면접 대비 정리
+subtitle: 비교 후 평균, 하드웨어 2×2와 엔진의 3×3, 그리고 PCSS까지
+source: BasicPixelShader.hlsl · Renderer.cpp
 ---
-PBR은 &quot;표면이 빛을 어떻게 받아 어떻게 돌려주는가&quot;를 물리 법칙에 맞춰 계산하는 방식입니다. 재질을 **기본색 · 금속성 · 거칠기** 세 숫자로 정하면, 조명이 바뀌어도 에너지가 보존되고 결과가 자연스럽습니다.
+PCF(Percentage-Closer Filtering)는 그림자 맵의 **비교 결과**를 평균 내어 경계를 부드럽게 만드는 필터입니다. 면접에서는 &quot;왜 깊이를 필터링하면 안 되는가&quot;를 정확히 설명하는 것이 승부처입니다.
 
-## 1. 왜 PBR인가
-옛 방식(Blinn-Phong)은 재질마다 &quot;스페큘러 색&quot;과 &quot;shininess&quot;를 손으로 맞췄습니다. 조명이 바뀌면 다시 맞춰야 했습니다.
-
-```table
+## 한 줄 답변
+```callout ok 30초 답변
+깊이 값을 먼저 평균 내서 비교하면 어느 표면의 깊이도 아닌 값이 나옵니다. PCF는 순서를 바꿔 **먼저 비교(0 또는 1)하고, 그 결과를 평균**합니다. 결과는 &quot;빛을 받는 비율&quot;(0~1)이라 경계가 부드러워집니다. 이 엔진은 하드웨어 비교 샘플러(2×2 보간)를 3×3 오프셋으로 아홉 번 불러 씁니다.
 ```
 
-| 항목 | Blinn-Phong (이전) | PBR (2026-10-08 이후) |
-|---|---|---|
-| 재질 입력 | 기본색, 스페큘러 색, shininess | 기본색, metallic, roughness |
-| 에너지 보존 | no 거친 면과 매끈한 면의 총 반사량이 다름 | ok 반사된 몫을 확산에서 뺌 |
-| 프레넬 (스치는 각의 반사) | no 없음 | ok Schlick 근사 |
-| 금속 표현 | no 못 함 | ok F0 = 기본색, 확산 없음 |
-| 환경 반사 | no 상수 주변광 | ok 큐브맵 IBL |
-| glTF 재질 | warn 근사로 환산 | ok 값을 그대로 옮김 |
-
-## 2. 빛이 표면에서 하는 일
-빛이 표면에 닿으면 두 갈래로 나뉩니다.
-
-- **반사(specular)**: 표면에서 바로 튕깁니다. 하이라이트와 거울 같은 상이 됩니다.
-- **확산(diffuse)**: 표면 속으로 들어갔다가 사방으로 나옵니다. 물체의 &quot;색&quot;으로 보입니다.
-
-금속은 속으로 들어간 빛을 곧바로 흡수합니다. 그래서 금속에는 확산이 없고, 반사가 자기 색을 띱니다. 유전체(플라스틱, 나무, 돌)는 반사가 약하고 무채색이며, 확산이 대부분입니다.
-
+## 1. 왜 깊이를 필터링하면 안 되는가 {span=2}
 ```flow LR
-(빛) -&gt; {표면에 닿음}
-{표면에 닿음} -&gt; [반사 specular]: 바로 튕김
-{표면에 닿음} -&gt; [확산 diffuse]: 속으로 들어감
-[반사 specular] -&gt; [눈]
-[확산 diffuse] -&gt; [눈]
+(깊이 맵) -&gt; [깊이 평균] -&gt; [평균 깊이와 비교] -&gt; [잘못된 이진 결과]
+(깊이 맵) -&gt; *[각 텍셀과 비교] -&gt; [0/1 결과 평균] -&gt; [0~1 연속 값]
+```
+경계에 걸친 두 텍셀의 깊이가 0.2(가림막)와 0.9(바닥)라고 합니다. 평균은 0.55로, 가림막도 바닥도 아닌 허공의 깊이입니다. 수신자 깊이가 0.6이면 &quot;가려짐&quot;으로 판정되어 경계가 엉킵니다. 먼저 비교하면 결과는 1(빛)과 0(그림자)이고 평균은 0.5입니다. 반그림자가 올바르게 생깁니다.
+
+```callout warn 면접 포인트
+&quot;일반 텍스처 필터링(bilinear)을 깊이에 쓰면 안 되는 이유&quot;가 PCF의 존재 이유입니다. 비교는 비선형 연산이라 필터와 순서를 바꿀 수 없습니다.
 ```
 
-## 3. 재질을 정하는 세 숫자
-| 입력 | 뜻 | 엔진 기본값 |
+## 2. 하드웨어 PCF: 비교 샘플러
+`SamplerComparisonState`와 `SampleCmp*`를 쓰면 GPU가 샘플 위치 주변 2×2 텍셀을 각각 비교한 뒤, 그 **결과 네 개를 이중선형 보간**합니다. 비교 함수는 샘플러에 설정합니다. 엔진은 `LessEqual`입니다.
+
+```cpp src=SherlockEngine/Graphics/Renderer.cpp lines=356-366 hl=357,362,363
+```
+
+의미는 다음과 같습니다.
+- 비교값(수신자 깊이) ≤ 저장된 깊이 → 1(빛), 아니면 0.
+- 맵 밖은 Border 색 1 → 빛을 받음.
+- 반환은 이미 보간된 값이라 한 번의 호출에 2×2 PCF가 들어 있습니다.
+
+## 3. 엔진의 3×3 {span=2}
+```hlsl src=SherlockEngine/Shaders/BasicPixelShader.hlsl lines=29-45 hl=33-40,42
+```
+
+- 이웃 오프셋은 `int2(dx, dy)` **정수**입니다. 텍셀 크기를 곱해 UV를 옮길 필요가 없습니다(그래서 `shadowParams.x`를 셰이더가 읽지 않습니다).
+- `[unroll]`로 루프를 펼칩니다. 오프셋이 컴파일 타임 상수여야 `SampleCmp`에 넣을 수 있습니다.
+- `SampleCmpLevelZero`는 밉 0만 읽습니다. 그림자 맵은 밉이 없으므로 맞는 선택입니다. 분기 안에서도 암시적 미분이 필요 없습니다.
+- 마지막에 `shadowParams.z`(세기)로 `lerp(1, lit, 세기)`를 적용합니다.
+
+### 실제 필터 모양
+하드웨어 2×2를 3×3 오프셋으로 겹치면 1차원 기준 **4텍셀 폭**입니다. 샘플 위치의 소수부를 $f$라 하면 가중치는 다음과 같습니다.
+
+$$w=\tfrac13\,(1-f,\; 1,\; 1,\; f)$$
+
+2차원이면 4×4 텍셀을 덮습니다. 이 엔진에서는 텍셀이 약 0.029 월드 단위이므로 반그림자 폭이 약 0.1 월드 단위입니다. 가장자리 가중치가 $f$에 따라 0~1/3으로 연속 변하므로, 순수 박스 3×3보다 **움직일 때 덜 깜박입니다**.
+
+## 4. 비용과 품질
+| 항목 | 값 | 설명 |
 |---|---|---|
-| baseColor | 확산색 (금속이면 반사색) | (1,1,1,1) |
-| metallic | 0 = 유전체, 1 = 금속 | 0 |
-| roughness | 0 = 거울, 1 = 아주 거침 | 0.5 |
-| emissive | 스스로 내는 빛 (조명과 무관) | 0 |
-| AO 텍스처 | 환경광이 닿기 어려운 구석을 어둡게 | 강도 1 |
+| 텍스처 호출 | 9회 / 픽셀 | `SampleCmpLevelZero` 아홉 번 |
+| 텍셀 비교 | 36회 / 픽셀 | 호출마다 2×2 비교(하드웨어) |
+| 필터 폭 | 고정 약 4텍셀 | 거리·가림막 크기와 무관 |
+| 경계 품질 | 부드럽지만 균일 | 계단은 줄지만 접촉 경계도 흐려짐 |
+| 메모리 접근 | 이웃 텍셀 | 캐시 친화적 |
 
-glTF 텍스처는 **G 채널이 거칠기, B 채널이 금속성**, AO는 R 채널입니다. 셰이더는 거칠기를 0.03 아래로 올리지 않습니다. 0이면 GGX 분포가 발산해 NaN이 생깁니다.
-
-### F0: 정면에서 본 반사율
-F0는 표면을 수직으로 볼 때 반사되는 빛의 비율입니다.
-
-```
-F0 = lerp(0.04, baseColor, metallic)
-```
-
-유전체는 대부분 2~5%라서 4%로 고정합니다. 금속은 기본색이 곧 F0입니다. 금이 노란 반사를 내는 이유입니다.
-
-## 4. 직접광: Cook-Torrance
-조명 하나가 주는 빛은 다음과 같습니다.
-
-```
-색 += (kd · albedo + specular · π) × color × intensity × attenuation × N·L
-```
-
-### 식의 각 항은 무엇인가
-| 항 | 정체 | 왜 필요한가 |
-|---|---|---|
-| albedo | 표면의 난반사 색. 밝기 정보 없는 순수한 색 | 빨간 공은 빨간 빛만 반사한다 |
-| kd | 들어온 빛 중 난반사로 쓰이는 몫. `(1−F)(1−metallic)` | 정반사로 빠진 만큼과 금속이 흡수하는 만큼을 빼서 반사 + 확산이 받은 빛보다 밝아지지 않게 한다 (에너지 보존) |
-| specular | 정반사 BRDF `D·G·F / (4·N·L·N·V)` | 하이라이트. F가 이미 들어 있어서 kd를 따로 곱하지 않는다 |
-| color | **광원의** 색 (albedo는 표면의 색) | 표면은 "어떤 색을 반사하나", 광원은 "어떤 색을 쏘나"다. 둘을 곱해야 빨간 공에 파란 빛을 쏘면 어두워진다 |
-| intensity | 광원의 밝기 배율 | 색과 밝기를 분리해서 조절한다 |
-| attenuation | 거리·스포트 콘에 따른 감쇠 | 멀수록 어두워진다 |
-| N·L | 노멀과 빛 방향의 코사인 | 빛을 비스듬히 받을수록 같은 면적이 받는 빛이 줄어든다 |
-
-묶어서 읽으면 `(표면이 반응하는 방식) × (광원 색 × 세기) × (거리 감쇠) × (각도)`입니다. 셰이더에서는 뒤의 세 곱을 `irradiance = color × intensity × attenuation × N·L`로 먼저 만들고, 앞의 괄호 `kd·albedo + specular·π`에 곱합니다. specular에만 π가 붙는 이유는 아래 "왜 π를 곱하나"에 있습니다.
-
-먼저 네 벡터를 정합니다. 모두 표면의 점 P에서 **바깥으로** 나가는 단위 벡터입니다.
-
-| 기호 | 뜻 |
-|---|---|
-| N | 표면 노멀 (노멀 매핑 이후) |
-| L | 표면에서 광원을 향하는 방향 |
-| V | 표면에서 카메라를 향하는 방향 |
-| H | normalize(L + V), 하프 벡터 |
-
-&gt; 함정: `LightData::direction`은 빛이 **나아가는** 방향입니다. 방향광의 L은 `−direction`입니다. 부호를 안 뒤집으면 밝은 면과 어두운 면이 뒤바뀝니다.
-
-### BRDF란 무엇인가
-BRDF(Bidirectional Reflectance Distribution Function, 양방향 반사 분포 함수)는 **"빛이 L 방향에서 들어올 때, V 방향으로 얼마나 나가는가"**를 돌려주는 함수 `f(L, V)`입니다. 표면이 빛에 반응하는 방식을 통째로 담은 것입니다.
-
-- 입력은 빛이 오는 방향 L, 보는 방향 V입니다. 노멀 N과 재질(albedo, roughness, metallic)은 함수 안에 고정된 값으로 들어 있습니다.
-- 출력은 비율입니다. 단위는 1/sr(스테라디안당)이고, 값이 클수록 L로 들어온 빛이 V로 많이 나갑니다.
-- "양방향"은 L과 V 둘 다 인자라는 뜻입니다. 거울은 L의 반사 방향 V에서만 값이 크고, 분필은 어느 V에서 봐도 비슷합니다. 이 차이가 BRDF의 모양 차이입니다.
-
-한 픽셀의 최종 빛은 렌더링 방정식으로 정해집니다.
-
-```
-나가는 빛(V) = ∫ f(L, V) × 들어오는 빛(L) × N·L dL     (반구 전체에 대해 적분)
-```
-
-점광과 방향광은 빛이 오는 방향이 하나뿐이라 적분이 사라지고 곱셈 한 번이 됩니다. 이 엔진의 직접광 식이 그 꼴입니다.
-
-```
-색 += f(L, V) × (color × intensity × attenuation) × N·L
-```
-
-엔진의 BRDF는 두 덩어리를 더한 것입니다.
-
-| 덩어리 | 식 | 방향 의존 | 모습 |
+## 5. 대안 기법 비교 {span=2}
+| 기법 | 아이디어 | 장점 | 단점 |
 |---|---|---|---|
-| 확산 (Lambert) | `kd · albedo / π` | 없음. L, V와 무관한 상수 | 어느 방향에서 봐도 같은 밝기의 무광 표면 |
-| 반사 (Cook-Torrance) | `D · G · F / (4 · N·L · N·V)` | 있음. H = normalize(L+V)에 크게 좌우됨 | 보는 각도에 따라 움직이는 하이라이트 |
+| 큰 커널 PCF | N×N 비교 평균 | 단순, 정확한 비교 | 샘플 수가 N²로 증가 |
+| 포아송 디스크 / 회전 샘플 | 불규칙 샘플 + 픽셀별 회전 | 적은 샘플로 부드러움 | 노이즈 |
+| PCSS | 가림막 평균 깊이로 반그림자 폭을 추정 | 접촉은 선명, 멀수록 흐림 | 블로커 탐색 비용 |
+| VSM / ESM | 깊이 통계를 저장해 필터링 가능 | 밉·블러로 싸게 부드럽게 | 빛 번짐(light bleeding) |
+| 레이 트레이싱 그림자 | 실제 가시성 | 정확 | 하드웨어·비용 |
 
-- 확산의 `1/π`는 "반구 전체에서 N·L을 적분하면 π"라서 생깁니다. π로 나눠야 흰색(albedo = 1) 표면이 받은 빛을 넘겨서 내보내지 않습니다.
-- 물리적으로 옳은 BRDF는 두 조건을 지킵니다. 에너지 보존(나가는 빛 합이 들어온 빛 이하)과 상반성(`f(L,V) = f(V,L)`)입니다. kd가 에너지 보존을 맡습니다.
-- 엔진은 이 BRDF 전체에 π를 곱해서 씁니다. 이유는 아래 "왜 π를 곱하나"에 있습니다.
+## 6. 흔한 함정 {span=2}
+- **바이어스와 필터 폭**: 커널이 넓을수록 경사면에서 이웃 텍셀이 더 큰 깊이 차를 보여 acne가 다시 생깁니다. 바이어스를 키우거나 수신자 평면 바이어스를 씁니다.
+- **고정 폭의 한계**: 접촉 지점도 같은 폭으로 흐려집니다 → PCSS.
+- **텍셀 단위 정수 오프셋**: 맵 해상도를 바꿔도 코드는 같지만 월드 폭은 변합니다.
+- **`SampleCmp`와 분기**: 밉이 있는 텍스처에 `SampleCmp`를 쓰면 암시적 미분이 필요해 분기 안에서 문제가 생깁니다. `LevelZero` 변형이 안전합니다.
+- **fxc 디버그 경고**: 조기 반환이 섞이면 -Od에서 X4000 오경고가 나서 `ComputeShadowFactor`는 단일 반환 구조입니다.
 
-### 왜 Blinn-Phong이 아닌가
-Blinn-Phong의 `(N·H)^shininess`도 L과 V를 받아 값을 돌려주므로 넓은 의미의 BRDF로 쓸 수 있습니다. 실제로 이 엔진도 PBR로 바꾸기 전까지 그렇게 그렸습니다. BRDF라는 이름은 "L, V를 받아 비율을 낸다"는 형식만 정하고, 안의 식은 정해 주지 않습니다. 바꾼 이유는 Blinn-Phong이 물리적 조건과 재질 표현에서 약하기 때문입니다.
+## 7. 예상 면접 질문 {span=2}
+**Q1. PCF가 무엇인가요?** 그림자 맵의 이웃 텍셀들에 대해 각각 깊이를 비교하고, 그 0/1 결과를 평균하는 필터입니다. 결과는 빛을 받는 비율입니다.
 
-| 문제 | Blinn-Phong | Cook-Torrance (GGX) |
-|---|---|---|
-| 에너지 보존 | 보장이 없다. 정규화 계수가 없는 기본형은 shininess를 올리면 하이라이트가 좁아질 뿐 밝기 총량이 그대로다. 보정하려면 `(n+8)/(8π)` 같은 계수를 따로 붙여야 한다 | D가 정규화되어 있어서 거칠기를 바꿔도 반사되는 빛의 총량이 일정하다 |
-| 프레넬 | 없다. 어느 각도에서 봐도 반사율이 같다 | F가 있어서 스치듯 볼수록 반사가 강해진다. 호수나 바닥이 멀리서 거울처럼 보이는 효과가 여기서 나온다 |
-| 가림 (G) | 없다 | 미세면끼리 가리는 것을 계산한다. 거친 표면의 가장자리가 과하게 밝아지는 것을 막는다 |
-| 재질 파라미터 | shininess와 specular 색을 사람이 감으로 맞춘다 | roughness와 metallic 두 값으로 재질을 정한다. 금속은 반사색이 곧 F0이고 확산이 0이라는 식으로, 값마다 물리적 의미가 있다 |
-| 하이라이트 모양 | 꼬리가 빨리 끊긴다 | 중심은 밝고 주변에 은은한 꼬리가 길게 남는다. 실제 측정한 재질과 더 비슷하다 |
-| 조명 환경 | 조명이 바뀌면 specular 값을 다시 손봐야 한다 | 같은 재질 값이 어떤 조명에서든 일관되게 보인다. IBL(환경광)과도 같은 식(F0, roughness)으로 이어진다 |
+**Q2. 깊이를 bilinear로 샘플링한 뒤 비교하면 안 되나요?** 안 됩니다. 평균 깊이는 어느 표면에도 속하지 않습니다. 비교는 비선형이라 필터링과 순서를 바꿀 수 없으므로 비교 후 평균합니다.
 
-- 마지막 행이 이 엔진에서 가장 중요합니다. 5장의 IBL(split-sum)은 F0와 roughness를 입력으로 받습니다. 직접광을 Blinn-Phong으로 두면 직접광과 환경광이 서로 다른 재질 모델을 쓰게 되어, 한 물체 위에서 두 빛의 재질 느낌이 어긋납니다.
-- 분모의 `4·N·L·N·V`는 Cook-Torrance만의 보정입니다. 미세면 이론에서 "H 방향 조각이 L을 V로 반사하는 양"을 L, V 방향의 빛 단위로 바꿀 때 나오는 항이라서, 미세면 이론을 쓰지 않는 Blinn-Phong에는 필요 없습니다.
-- 가볍고 단순한 장면이라면 정규화한 Blinn-Phong도 쓸 만합니다. 이 엔진은 PBR과 IBL이 목표라서 같은 재질 값으로 직접광과 환경광이 일관되게 보이도록 Cook-Torrance를 씁니다.
+**Q3. 하드웨어 PCF란 무엇인가요?** 비교 샘플러(`SamplerComparisonState`)에 `SampleCmp`를 쓰면 GPU가 2×2 텍셀을 비교하고 결과를 이중선형으로 보간해 줍니다. 한 호출로 2×2 PCF를 얻습니다.
 
-### 반사 BRDF = D · G · F / (4 · N·L · N·V)
-미세면 이론은 표면을 아주 작은 거울 조각의 모임으로 봅니다. L을 V로 반사하는 조각은 노멀이 H인 조각뿐입니다. 세 항이 그 조각을 설명합니다.
+**Q4. 이 엔진의 필터 크기는 얼마인가요?** 3×3 오프셋 호출 9번이 각각 2×2를 보므로 4×4 텍셀 영역입니다. 가장자리 가중치가 샘플 위치에 따라 연속으로 변합니다.
 
-| 항 | 질문 | 엔진의 식 |
-|---|---|---|
-| D 분포 | 노멀이 H인 조각이 얼마나 많은가 | GGX: α² / (π((N·H)²(α²−1)+1)²), α = roughness² |
-| G 가림 | 그 조각이 이웃에 가려지지 않을 확률 | Smith-Schlick: G₁(N·L)·G₁(N·V), k = (rough+1)²/8 |
-| F 프레넬 | 그 조각이 빛을 얼마나 반사하나 | F0 + (1−F0)(1−V·H)⁵ |
+**Q5. PCF의 한계는요?** 필터 폭이 고정이라 가림막과의 거리와 무관하게 같은 폭으로 흐립니다. 실제 반그림자는 가림막에서 멀수록 넓어집니다. PCSS가 가림막 평균 깊이로 폭을 추정해 해결합니다.
 
-- 거칠수록 D가 넓고 낮아져 하이라이트가 퍼집니다.
-- 스치듯 볼수록 F가 1에 가까워집니다. 호수 표면이 멀리서 거울처럼 보이는 이유입니다.
-- 분모의 0 나눗셈은 `EPSILON`으로 막습니다.
+**Q6. 샘플 수를 늘리지 않고 품질을 올리려면?** 포아송 디스크 샘플을 픽셀마다 회전시키고(노이즈는 TAA 등으로 흡수), 혹은 VSM/ESM처럼 필터링 가능한 표현을 씁니다.
 
-### 확산 = kd · albedo / π
-`kd = (1 − F)(1 − metallic)`입니다. 반사로 나간 몫(F)을 빼서 에너지를 보존하고, 금속은 확산을 0으로 만듭니다.
+**Q7. 왜 `SampleCmpLevelZero`를 쓰나요?** 그림자 맵에는 밉이 없고, 분기·루프 안에서도 암시적 미분 없이 쓸 수 있습니다.
 
-### 왜 π를 곱하나
-엔진은 조명의 `color × intensity`를 &quot;빛에 수직인 면이 받는 조도 E&quot;로 봅니다. 이 관례에서는 BRDF에 π를 곱해야 합니다. 확산항은 `albedo/π × π`로 π가 사라집니다. 덕분에 확산 밝기가 Blinn-Phong 시절과 같아서, 기존 씬의 조명 값을 고치지 않았습니다.
+**Q8. 이 코드에서 개선한다면?** 먼저 필터 반경을 파라미터로 만들고, 그다음 회전 포아송 샘플로 바꿉니다. 최종적으로 PCSS를 넣어 접촉 그림자를 선명하게 합니다.
 
-### 감쇠와 스포트
-- 점광과 스포트광: `(1 − d/range)² / (kc + kl·d + kq·d²)`. range에서 정확히 0이 됩니다.
-- 스포트: 축과 `−L`의 코사인으로 안쪽 콘 1, 바깥 콘 밖 0, 사이는 선형입니다.
-- 그림자 맵은 0번 방향광 하나에만 적용됩니다.
-
-## 5. 환경광: split-sum IBL
-하늘 전체에서 오는 빛은 반구 적분이라 픽셀마다 풀 수 없습니다. Karis(2013)의 split-sum은 적분을 둘로 쪼개 **미리 구운 텍스처**로 바꿉니다.
-
-```flow LR
-(픽셀) -&gt; [t10 확산 조도]: 샘플 방향 N
-(픽셀) -&gt; [t11 반사 프리필터]: 방향 reflect(−V,N), 밉 = rough×(밉수−1)
-(픽셀) -&gt; [t12 BRDF LUT]: (N·V, 1−rough)
-[t10 확산 조도] -&gt; [더함]
-[t11 반사 프리필터] -&gt; [더함]
-[t12 BRDF LUT] -&gt; [더함]
-[더함] -&gt; (환경광 × AO)
-```
-
-| 텍스처 | 내용 | 쓰임 |
-|---|---|---|
-| t10 확산 조도 | 노멀 방향 반구의 코사인 가중 평균 | `kd · albedo · irradiance` |
-| t11 반사 프리필터 | 반사 방향을 GGX로 미리 흐린 큐브, 밉마다 거칠기가 다름 | `prefiltered` |
-| t12 BRDF LUT | F0에 곱할 값 A와 더할 값 B의 2D 표 | `F0·A + B` |
-
-```
-환경광 = (kd · albedo · irradiance + prefiltered · (F0 · brdf.x + brdf.y)) × IBL 세기 × ao
-```
-
-- 프레넬은 `FresnelSchlickRoughness`를 씁니다. 거칠수록 스치는 각의 반사 상한이 1 − rough로 내려갑니다.
-- LUT가 없으면 Karis의 모바일 근사식 `EnvBRDFApprox`가 대신합니다.
-- AO는 환경광에만 곱합니다. 직접광에는 곱하지 않습니다.
-- 환경광은 그림자의 영향을 받지 않습니다.
-
-### 맵이 없을 때의 대체
-| 슬롯 | 1순위 | 대체 |
-|---|---|---|
-| t11 반사 | specular 맵 | 스카이박스 밉 체인 → 검은 큐브 |
-| t10 조도 | irradiance 맵 | t11 큐브의 끝에서 두 번째 밉(2×2) → 검은 큐브 |
-| t12 LUT | brdfLut | 흰 2D + `EnvBRDFApprox` |
-
-셋 다 없으면 `ambientColor` 하나로 대신합니다. 유전체에서는 예전 주변광과 거의 같은 밝기입니다.
-
-## 6. HDR과 톤매핑
-IBL 큐브는 부동소수점이라 태양 픽셀이 300을 넘습니다. 엔진은 이를 `R16G16B16A16_FLOAT`(half float)로 읽습니다. 8비트로 읽으면 태양이 하얀 원판이 되고 금속 반사가 1에서 잘립니다.
-
-화면은 [0, 1]만 표현하므로 마지막에 `ApplyExposureToneMap`을 부릅니다.
-
-1. `environment.exposure`를 곱합니다.
-2. `toneMapping`이 켜져 있으면 ACES 근사(Narkowicz 2016)로 [0, 1]에 누릅니다.
-
-기본값은 노출 1, 톤매핑 끔입니다. 환경이 없는 옛 씬의 색을 지키기 위해서입니다.
-
-&gt; 알려진 한계: 아직 HDR 렌더 타깃이 없습니다. 톤매핑을 셰이더 끝에서 합니다. 후처리 단계에서 별도 패스로 옮길 계획입니다.
-
-## 7. 픽셀 셰이더의 전체 순서
-```flow LR
-(표면색) -&gt; [알파 컷아웃]
-[알파 컷아웃] -&gt; {unlit?}
-{unlit?} -&gt; [알베도 출력]: 예
-{unlit?} -&gt; [PBR 입력]: 아니오
-[PBR 입력] -&gt; [노멀 매핑]
-[노멀 매핑] -&gt; [뷰 벡터·그림자]
-[뷰 벡터·그림자] -&gt; [환경광 + 발광]
-[환경광 + 발광] -&gt; [조명 루프 최대 8개]
-[조명 루프 최대 8개] -&gt; (노출·톤매핑)
-```
-
-- 색공간: 알베도는 sRGB로 읽어 샘플링 시 선형으로 바뀝니다. 금속성/거칠기, AO, 노멀 맵은 선형입니다. 조명 계산은 전부 선형 공간입니다.
-- 방어 코드: 모든 정규화는 `SafeNormalize`를 거칩니다. 분모와 range는 `EPSILON` 이상입니다.
-
-## 8. 구현 중에 내린 판단
-| 문제 | 판단 |
-|---|---|
-| 옛 씬의 `shininess` | 읽을 때 `roughness = sqrt(sqrt(2/(n+2)))`로 환산 |
-| IBL 맵 없는 씬의 금속이 검게 남음 | 스카이박스 밉으로 반사를 근사 |
-| 샘플 세트가 Env보다 약 2배 밝게 구워짐 | 씬의 IBL 세기를 0.5로 |
-| 반사 밉 매핑 | 데이터에서 밉 0이 거울임을 확인해 밉 전체에 선형으로 펼침 |
-| 헬멧 바이저가 검음 | PBR 탓이 아니라 glTF Z 반사 뒤의 삼각형 감기 순서 버그였음 |
-
-## 더 읽을 것 {bare}
-- 엔진 문서: `docs/rendering-analysis.html`의 11.6, 12.14, 20.15
-- Karis, *Real Shading in Unreal Engine 4* (2013)
-- LearnOpenGL, *PBR* 시리즈
+## 8. 참고자료 {span=2}
+- Reeves, Salesin, Cook, *Rendering Antialiased Shadows with Depth Maps*, SIGGRAPH 1987 — PCF의 원전. [doi:10.1145/37401.37435](https://doi.org/10.1145/37401.37435)
+- Fernando, *Percentage-Closer Soft Shadows*, NVIDIA — [PDF](https://developer.download.nvidia.com/shaderlibrary/docs/shadow_PCSS.pdf)
+- NVIDIA GPU Gems, ch.11 *Shadow Map Antialiasing* — [링크](https://developer.nvidia.com/gpugems/gpugems/part-ii-lighting-and-shadows/chapter-11-shadow-map-antialiasing)
+- Microsoft Learn, `Texture2D::SampleCmpLevelZero` — [링크](https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/texture2d-samplecmplevelzero)
+- Microsoft Learn, `D3D11_FILTER`(비교 필터) — [링크](https://learn.microsoft.com/en-us/windows/win32/api/d3d11/ne-d3d11-d3d11_filter)
+- LearnOpenGL, *Shadow Mapping* — PCF 절. [learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping](https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping)
+- 이 프로젝트: `docs/rendering-analysis.html` 11.8 &quot;비교 샘플러와 PCF&quot;, `docs/shadow-map-interview.html`
 </textarea>
 <script>
+(() => {
+// How a formula reads in a quote. MathML has no plain text, so src/math.js writes the formula as the draft wrote it, delimiters included, in
+// data-am-tex on the <math> element, and the Remark and Reply scripts read page text through this file. On a page without math there is no
+// such element, so formulaOf is null and every text comes out as it did before.
+// A plain ES module for tests; the page gets it with its `export` keyword dropped (src/runtime/compose.js).
+
+const TEX = 'data-am-tex';
+
+// The formula that holds a node, or null.
+const formulaOf = (node) => node.parentElement?.closest(`[${TEX}]`) ?? null;
+
+const firstText = (el) => {
+  for (const child of el.childNodes) {
+    const found = child.nodeType === 3 ? child : firstText(child);
+    if (found) return found;
+  }
+  return null;
+};
+
+// What a text node adds to a quote: its data. The first text node of a formula adds the formula, and the others add nothing.
+// (A formula in an error style is plain text with its delimiters, not a <math>, so it comes out once.)
+function nodeText(node) {
+  const math = formulaOf(node);
+  if (!math) return node.data;
+  return firstText(math) === node ? math.getAttribute(TEX) : '';
+}
+
+// The text of a node as textContent reads it, but with each formula as written.
+const textWithMath = (node) => (node.nodeType === 3 ? nodeText(node) : [...node.childNodes].map(textWithMath).join(''));
+
 (() => {
   const root = document.documentElement;
   // A host that serves this page inside its own document leaves the real root without the page's settings. The toolbar keeps a copy;
@@ -1737,9 +1739,9 @@ if (replyBtn) {
   const asks = [...document.querySelectorAll('.am-ask')];
   // Answers are saved by question text, so they still match after am patch has renumbered the asks.
   // Page text without the word joiners a right-to-left page puts after a Hebrew prefix hyphen (src/bidi.js): the reply and the saved
-  // answers hold the text as the draft wrote it.
+  // answers hold the text as the draft wrote it, a formula too (src/runtime/math-text.js).
   const WJ = new RegExp(String.fromCharCode(0x2060), 'g');
-  const textOf = (el) => el?.textContent.replace(WJ, '').trim();
+  const textOf = (el) => el && textWithMath(el).replace(WJ, '').trim();
   const keyOf = (ask) => textOf(ask.querySelector('legend')) ?? ask.dataset.ask;
   const touched = new Set();
   const boxes = new Map();
@@ -1904,7 +1906,8 @@ function occurrenceKeys(bases) {
   const storeKey = `am-remark:${location.pathname}`;
   // The one definition of a block a reader can mark: the content under <main>. The page and panel titles are left out, because the
   // reply reads them as text; a panel has its Comment button.
-  const BLOCK = 'main :is(h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table,dd,dt,figure):not(.am-head *, .am-panel-head *)';
+  // A $$ block on its own is a div; a $$ formula inside a sentence is a span of its paragraph.
+  const BLOCK = 'main :is(h1,h2,h3,h4,h5,h6,p,li,blockquote,pre,table,dd,dt,figure,div.am-math-block):not(.am-head *, .am-panel-head *)';
   // A click on these does what it always did.
   const LIVE = '.am-remark-pop, .am-toolbar, a, button, input, textarea, select, label';
   const blockAt = (target) => (target.closest(LIVE) ? null : target.closest(BLOCK));
@@ -1916,17 +1919,18 @@ function occurrenceKeys(bases) {
     return inlineBox.get(el);
   };
   // The text of a block as the reader sees it: separate lines, cells and timeline parts are joined by a space (textContent would run
-  // "2026" and "Ship" together), and the note chip is not part of it.
+  // "2026" and "Ship" together), and the note chip is not part of it. A formula is one box and reads as the TeX the draft wrote
+  // (src/runtime/math-text.js), not as the MathML tokens.
   const blockText = (el) => {
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
     let text = '';
     let last = null;
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       if (node.parentElement.closest('.am-mark-note')) continue;
-      let box = node.parentElement;
+      let box = formulaOf(node) ?? node.parentElement;
       while (box !== el && isInline(box)) box = box.parentElement;
       if (last && box !== last) text += ' ';
-      text += node.data.replace(WJ, '');
+      text += nodeText(node).replace(WJ, '');
       last = box;
     }
     return text;
@@ -2520,6 +2524,7 @@ if (panels.length > 1) {
   // Switching theme changes paddings and fonts, hence panel heights.
   document.querySelector('[data-am="theme"]')?.addEventListener('click', later);
 }
+})();
 })();
 </script>
 </body>

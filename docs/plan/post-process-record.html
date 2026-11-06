@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>후처리(PostProcess) 구현 기록</title>
+<title>계획 · 후처리(PostProcess) 구현 기록 — SherlockEngine</title>
 <style>
 :root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
 @media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
@@ -31,8 +31,10 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <main>
 <header>
   <h1>후처리(PostProcess) 구현 기록</h1>
+<div class="box warn"><p><b>경로 표기</b> — 이 문서에 적힌 <code>App/…</code> 경로는 작성 당시 값입니다. 지금은 에디터 코드가 <code>SherlockEngine/Editor/</code> 에, <code>Rigidbody</code> · <code>FollowTarget</code> 이 <code>SherlockEngine/Scene/</code> 에 있습니다. 이 문서는 기록이라 본문은 고치지 않았습니다.</p></div>
+
   <p>2026-10-23 · HDR 타깃·톤매핑 위에 <b>가우시안 블러, 블룸, GreyScale</b>를 올리고, 단계마다 결과를 보여 주는 <b>Post Stages 썸네일 창</b>까지 구현한 내용을 코드와 함께 정리한 기록입니다. 이 문서는 새로 만든 것이며 다른 문서를 고치지 않았습니다.</p>
-  <p class="foot">기준: 커밋 e716094 + 작업 트리(2026-10-23, <b>아직 커밋하지 않음</b>). 코드 조각은 문서를 만들 때 실제 소스 파일에서 그대로 읽어 옵니다. 위치는 "파일 + 함수 이름"이 기준입니다. 앞 단계(HDR 타깃, 톤 패스)는 <a href="hdr-tonemapping-implementation.html">hdr-tonemapping-implementation.html</a> 에 있습니다.</p>
+  <p class="foot">기준: 커밋 e716094 + 작업 트리(2026-10-23, <b>아직 커밋하지 않음</b>). 코드 조각은 문서를 만들 때 실제 소스 파일에서 그대로 읽어 옵니다. 위치는 "파일 + 함수 이름"이 기준입니다. 앞 단계(HDR 타깃, 톤 패스)는 <a href="hdr-tonemapping-record.html">hdr-tonemapping-implementation.html</a> 에 있습니다.</p>
 </header>
 <nav><a href="#summary">1. 요약</a><a href="#design">2. 설계</a><a href="#settings">3. 설정 데이터</a><a href="#binding">4. 상수·바인딩</a><a href="#pass">5. 공통 패스</a><a href="#grade">6. GreyScale</a><a href="#blur">7. 블러</a><a href="#bloom">8. 블룸</a><a href="#pso">9. PSO·셰이더 등록</a><a href="#scratch">10. 스크래치·호출 지점</a><a href="#stages">11. 단계별 썸네일</a><a href="#notes">12. 설계 결정·함정</a><a href="#verify">13. 검증</a><a href="#extend">14. 효과 추가하는 법</a><a href="#files">15. 파일 목록</a></nav>
 

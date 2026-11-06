@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>다중 광원 그림자 구현 계획</title>
+<title>계획 · 다중 광원 그림자 계획 — SherlockEngine</title>
 <style>
 :root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
 @media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
@@ -36,6 +36,8 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <main>
 <header>
   <h1>다중 광원 그림자 구현 계획</h1>
+<div class="box warn"><p><b>경로 표기</b> — 이 문서에 적힌 <code>App/…</code> 경로는 작성 당시 값입니다. 지금은 에디터 코드가 <code>SherlockEngine/Editor/</code> 에, <code>Rigidbody</code> · <code>FollowTarget</code> 이 <code>SherlockEngine/Scene/</code> 에 있습니다. 이 문서는 기록이라 본문은 고치지 않았습니다.</p></div>
+
   <p>섀도 아틀라스 · 스팟 · 포인트 · CSM</p>
   <p>2026-10-29 · 지금은 "방향광 0번 하나"만 그림자를 만듭니다. 이 계획은 그것을 <b>방향광 1개(나중에 CSM) + 스팟·포인트 여러 개</b>가 그림자를 만드는 구조로 바꾸는 구현 순서입니다. 단계마다 손댈 코드 위치, 정해 둔 이름과 시그니처, 확인 방법, 커밋 예시, 그 단계에서 공부할 개념과 참고 자료를 적었습니다. <b>이 문서를 쓴 시점에는 코드를 한 줄도 고치지 않았습니다.</b></p>
   <p class="foot">기준: 커밋 1be6099 + 작업 트리(2026-10-29). 코드 위치는 "파일 + 함수 이름"이 기준이고, 괄호 안 행 번호는 이 시점의 참고용입니다. 앞 단계를 구현하면 뒤 단계의 행 번호는 밀립니다. 기존 분석 문서(<code>rendering-analysis.html</code>)는 고치지 않았습니다.</p>

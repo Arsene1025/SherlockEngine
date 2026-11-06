@@ -25,7 +25,7 @@
 
 DirectX 11 렌더링 엔진입니다. 최종 목표는 RHI(Render Hardware Interface)와 PSO(Pipeline State Object)이며, D3D11 백엔드를 먼저 만들고 D3D12로 추상화를 검증합니다.
 
-렌더러 전체 구조(실행부터 화면 표시까지의 흐름, RHI, 그리기, 엔진·에디터)와 설계 결정, 단계별 기록, 질문과 답은 [docs/Study/rendering-analysis.html](docs/Study/rendering-analysis.html) 한 편에 정리되어 있고, 소스와 함께 읽는 순서는 [docs/Study/study-guide.html](docs/Study/study-guide.html)에 있습니다.
+렌더러 전체 구조(실행부터 화면 표시까지의 흐름, RHI, 그리기, 엔진·에디터)와 설계 결정, 질문과 답은 [docs/overview/rendering-analysis.html](docs/overview/rendering-analysis.html) 한 편에 정리되어 있고, 소스와 함께 읽는 순서는 [docs/overview/reading-guide.html](docs/overview/reading-guide.html)에 있습니다. 단계별 기록은 [docs/overview/phase-record.html](docs/overview/phase-record.html), 문서 전체 목차는 [docs/index.html](docs/index.html) 입니다.
 
 ## 빌드 준비
 
@@ -76,7 +76,7 @@ exe 옆 `Shaders\`에 원본이 없으면(셰이더만 고치고 빌드하지 �
 | `RHI/D3D11/`, `RHI/D3D12/` | 백엔드 구현. **D3D 헤더(`d3d11.h`·`d3d12.h`·`dxgi*.h`)는 각 백엔드 폴더의 `*Common.h`만 include합니다.** |
 | `RHI/DXBC/` | `ShaderCompiler` 구현 (`D3DCompileFromFile`, `D3DReflect`). 두 백엔드가 공유 |
 | `Scene/` | 카메라, 트랜스폼, 게임 오브젝트, 컴포넌트 기반(`Behaviour`), 엔진 컴포넌트(Rigidbody, FollowTarget — `SHERLOCK_BEHAVIOUR` 로 등록, 엔진 DLL 에 있어 모든 프로젝트에서 쓰임), 씬 직렬화 |
-| `../Projects/<이름>/` | **프로젝트** (11-E, 언리얼 .uproject): `<이름>.sherlock` + `Assets\` + `Scripts\`(유니티 MonoBehaviour / `.h`+`.cpp` 쌍, `SHERLOCK_SCRIPT`). 에디터의 File > Projects 로 만들면 `<이름>.sln` 과 `<이름>Scripts.vcxproj`(스크립트 DLL)가 생성된다(옛 형식은 열 때 자동 변환). `Projects\Sample` 이 예제이고 그 `SampleScripts` 는 엔진 솔루션에도 들어 있다 (docs/Study/rendering-analysis.html 17.12~17.13절). 실험·검증용 스크립트는 Sample 이 아니라 별도 실험 프로젝트의 `Scripts\Tests\` 에 둔다 — 예: `Projects\QuaternionLookTest` (쿼터니언 roll 누적 재현, docs/Study/rendering-analysis.html 13.13절), `Projects\SherlockTestScenes` (검증용 씬 모음: HDR 큐브맵 스카이박스 + PBR·IBL(12.14절), 프리팹·Undo 검증(Spawn·Tree), DamagedHelmet·Sponza. 헬멧·Sponza 는 File 메뉴가 아니라 콘텐츠 브라우저에서 씬을 더블클릭해 연다). 생성 솔루션은 `Scripts\**\*.cpp` 를 재귀로 컴파일한다 |
+| `../Projects/<이름>/` | **프로젝트** (11-E, 언리얼 .uproject): `<이름>.sherlock` + `Assets\` + `Scripts\`(유니티 MonoBehaviour / `.h`+`.cpp` 쌍, `SHERLOCK_SCRIPT`). 에디터의 File > Projects 로 만들면 `<이름>.sln` 과 `<이름>Scripts.vcxproj`(스크립트 DLL)가 생성된다(옛 형식은 열 때 자동 변환). `Projects\Sample` 이 예제이고 그 `SampleScripts` 는 엔진 솔루션에도 들어 있다 (docs/overview/rendering-analysis.html 17.12~17.13절). 실험·검증용 스크립트는 Sample 이 아니라 별도 실험 프로젝트의 `Scripts\Tests\` 에 둔다 — 예: `Projects\QuaternionLookTest` (쿼터니언 roll 누적 재현, docs/overview/rendering-analysis.html 13.13절), `Projects\SherlockTestScenes` (검증용 씬 모음: HDR 큐브맵 스카이박스 + PBR·IBL(12.14절), 프리팹·Undo 검증(Spawn·Tree), DamagedHelmet·Sponza. 헬멧·Sponza 는 File 메뉴가 아니라 콘텐츠 브라우저에서 씬을 더블클릭해 연다). 생성 솔루션은 `Scripts\**\*.cpp` 를 재귀로 컴파일한다 |
 | `Shaders/` | HLSL (`BasicVertexShader`·`BasicPixelShader`·`ShadowVertexShader`·`SkyboxVertexShader`·`SkyboxPixelShader` + 공용 `Common.hlsli`) |
 
 `#include`는 엔진 루트(`SherlockEngine\`) 기준으로 씁니다. 예: `#include "RHI/D3D11/D3D11Device.h"`.
