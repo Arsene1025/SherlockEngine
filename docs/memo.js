@@ -156,6 +156,10 @@
       if (!section.contains(it.el) || it.el.id || normText(it.el) !== m[1]) continue;
       if (++found === nth) return it.key;
     }
+    // 합치면서 id 가 새로 붙은 제목(예: 부록의 절 제목)은 id 와 무관하게 텍스트로 찾는다
+    for (var j = 0; j < headings.length; j++) {
+      if (section.contains(headings[j].el) && normText(headings[j].el) === m[1]) return headings[j].key;
+    }
     return null;
   }
   function migrateOld() {
