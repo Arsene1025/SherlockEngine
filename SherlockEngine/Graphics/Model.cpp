@@ -97,12 +97,12 @@ namespace
 	}
 
 	// 이미지 바이트를 모음. GLB 내장(buffer_view), data: URI, 외부 파일 순으로 확인함.
-	bool CollectImage(const cgltf_data* data, const cgltf_image& image, const std::wstring& directory, ModelImage& out)
+	bool CollectImage(const cgltf_data* data, const cgltf_image& image, const std::wstring& directory, std::vector<uint8_t>& out)
 	{
 		if (image.buffer_view != nullptr && image.buffer_view->buffer != nullptr && image.buffer_view->buffer->data != nullptr)
 		{
 			const uint8_t* begin = static_cast<const uint8_t*>(image.buffer_view->buffer->data) + image.buffer_view->offset;
-			out.encoded.assign(begin, begin + image.buffer_view->size);
+			out.assign(begin, begin + image.buffer_view->size);
 			return true;
 		}
 		if (image.uri == nullptr) return false;
@@ -119,7 +119,7 @@ namespace
 			cgltf_options options = {};
 			void* decoded = nullptr;
 			if (cgltf_load_buffer_base64(&options, decodedSize, base64, &decoded) != cgltf_result_success || decoded == nullptr) return false;
-			out.encoded.assign(static_cast<uint8_t*>(decoded), static_cast<uint8_t*>(decoded) + decodedSize);
+			out.assign(static_cast<uint8_t*>(decoded), static_cast<uint8_t*>(decoded) + decodedSize);
 			free(decoded);
 			return true;
 		}
@@ -130,7 +130,7 @@ namespace
 		uri.resize(strlen(uri.c_str()));
 		std::wstring path = directory + ToWide(uri);
 		std::replace(path.begin(), path.end(), L'/', L'\\');
-		if (!ReadWholeFile(path, out.encoded))
+		if (!ReadWholeFile(path, out))
 		{
 			Log::Warn("모델 이미지 파일을 열 수 없음: %s", ToUtf8(path).c_str());
 			return false;
@@ -343,11 +343,13 @@ bool ModelLoader::LoadGltf(const std::wstring& path, const Options& options, Mod
 	{
 		ModelImage image;
 		image.name = ImageName(out.name, data, &data->images[i]);
-		if (!CollectImage(data, data->images[i], directory, image))
+		std::vector<uint8_t> bytes;
+		if (!CollectImage(data, data->images[i], directory, bytes))
 		{
 			Log::Warn("모델 이미지 %zu 를 읽지 못함 (%s). 흰색으로 대체된다.", static_cast<size_t>(i), image.name.c_str());
 			continue;
 		}
+		image.encoded = std::make_shared<const std::vector<uint8_t>>(std::move(bytes));   // 이 뒤로는 읽기만 함
 		out.images.push_back(std::move(image));
 	}
 
@@ -368,7 +370,7 @@ bool ModelLoader::LoadGltf(const std::wstring& path, const Options& options, Mod
 		Mesh mesh;
 		if (!ConvertMesh(data, data->meshes[m], options, defaultSlot, mesh, out.stats)) continue;
 		meshRemap[m] = static_cast<int>(out.meshes.size());
-		out.meshes.push_back(std::move(mesh));
+		out.meshes.push_back(std::make_shared<const Mesh>(std::move(mesh)));
 	}
 
 	// ---- 노드 → 인스턴스. 반사 M = diag(1,1,−1): 행벡터 행렬 A 에 대해 A' = M·A·M ----
@@ -394,7 +396,7 @@ bool ModelLoader::LoadGltf(const std::wstring& path, const Options& options, Mod
 		out.instances.push_back(std::move(instance));
 
 		// 바운드 합집합: 로컬 AABB 의 여덟 꼭짓점을 월드로 옮겨 합침.
-		const Bounds& b = out.meshes[meshIndex].GetBounds();
+		const Bounds& b = out.meshes[meshIndex]->GetBounds();
 		for (int corner = 0; corner < 8; ++corner)
 		{
 			const XMVECTOR p = XMVectorSet((corner & 1) ? b.max.x : b.min.x, (corner & 2) ? b.max.y : b.min.y, (corner & 4) ? b.max.z : b.min.z, 1.0f);

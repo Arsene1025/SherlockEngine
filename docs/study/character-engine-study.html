@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 캐릭터 엔진 로드맵 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+a { color:var(--accent); }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>캐릭터 엔진 로드맵</h1>
+  <p>스켈레탈 애니메이션 · 스키닝 · IK · 캐릭터 물리 — 공부 순서와 참고 자료</p>
+  <p class="foot">작성 2026-11-09. 기준: 커밋 64c02b9. 코드 상태는 이 시점에 확인한 내용입니다.</p>
+  <div class="box"><b>범위.</b> "캐릭터 엔진"을 <b>애니메이션 시스템 + 캐릭터 물리 + 엔진 통합</b>으로 잡았습니다. 피부·머리카락·천 같은 캐릭터 렌더링은 8장에 선택 갈래로 따로 두었습니다.</div>
+  <div class="box warn"><b>링크 표기.</b> 검색으로 실제 존재를 확인한 링크만 URL을 달았습니다. 확인하지 못한 자료는 제목과 저자만 적었으니, 필요하면 직접 검색해 주세요.</div>
+</header>
+<nav><a href="#now">1. 현재 코드</a><a href="#order">2. 공부 순서</a><a href="#detail">3. 단계별 설명</a><a href="#link">4. 엔진 로드맵과 연결</a><a href="#books">5. 책</a><a href="#refs">6. 문서·논문·구현</a><a href="#talks">7. 발표·블로그</a><a href="#render">8. 렌더링 갈래</a><a href="#plan">9. 추천 진행</a></nav>
+
+<section id="now">
+<h2>1. 현재 코드 상태</h2>
+<ul>
+<li><code>SherlockEngine/Graphics/Model.cpp</code>에 <b>cgltf 기반 glTF 로더</b>가 이미 있습니다(<code>vcpkg.json</code>에도 <code>cgltf</code> 등록).</li>
+<li>스킨, 본, 스켈레톤, 애니메이션 클립 코드는 <b>없습니다</b>. 그래서 시작점은 "glTF의 skin과 animation 데이터를 읽는 것"입니다.</li>
+<li>스킨 메시는 정점 속성이 늘어납니다(joint 인덱스, weight). 그러면 <b>input layout과 PSO 변형이 따로 필요</b>합니다. 최종 목표인 RHI/PSO 공부와 바로 이어지는 부분입니다.</li>
+</ul>
+</section>
+
+<section id="order">
+<h2>2. 공부 순서 한눈에</h2>
+<table>
+<tr><th>단계</th><th>주제</th><th>핵심 개념</th></tr>
+<tr><td>0</td><td>수학</td><td>쿼터니언, slerp와 nlerp, 변환 계층(local → model → world), bind pose, inverse bind matrix</td></tr>
+<tr><td>1</td><td>에셋 파이프라인</td><td>glTF skin/animation 파싱, 부모 인덱스 배열 스켈레톤(위상 정렬), 런타임 포맷으로 오프라인 변환</td></tr>
+<tr><td>2</td><td>클립 샘플링</td><td>step/linear/cubic-spline 키, 트랙, 루프, 시간 워핑</td></tr>
+<tr><td>3</td><td>스키닝</td><td>Linear Blend Skinning을 CPU → 버텍스 셰이더 → 컴퓨트 순으로 구현, 본 팔레트, Dual Quaternion Skinning(캔디 래퍼 아티팩트), 모프 타깃</td></tr>
+<tr><td>4</td><td>블렌딩</td><td>크로스페이드, additive, 레이어·마스크, 1D/2D 블렌드 스페이스</td></tr>
+<tr><td>5</td><td>애니메이션 그래프</td><td>상태 머신, 전이, 이벤트, 루트 모션</td></tr>
+<tr><td>6</td><td>IK</td><td>2본 해석적 IK, CCD, FABRIK, 발 접지, look-at</td></tr>
+<tr><td>7</td><td>물리</td><td>킨매틱 캡슐 캐릭터 컨트롤러, 래그돌, 파워드(액티브) 래그돌</td></tr>
+<tr><td>8</td><td>심화</td><td>모션 매칭, 리타게팅, 애니메이션 압축, 프로시저럴 애니메이션</td></tr>
+</table>
+<div class="box">앞 단계가 뒤 단계의 전제입니다. 0~3단계가 기반이고, 4~5단계가 "캐릭터가 움직이는 시스템"의 뼈대, 6~8단계가 품질과 상호작용을 올리는 부분입니다.</div>
+</section>
+
+<section id="detail">
+<h2>3. 단계별 설명</h2>
+<h3>0. 수학</h3>
+<p>스키닝 버그의 대부분은 변환 순서와 좌표계에서 나옵니다. 쿼터니언 곱의 순서, slerp가 최단 경로를 고르는 이유(q와 -q), 행렬 곱 순서(D3D의 행 벡터 관례 포함)를 먼저 손에 익힙니다. 스켈레톤은 local 변환을 부모 순서로 누적해 model 공간 행렬을 얻고, 거기에 inverse bind matrix를 곱해 "바인드 포즈 대비 변화량"을 만듭니다.</p>
+<h3>1. 에셋 파이프라인</h3>
+<p>glTF의 <code>skin</code>은 joint 노드 목록과 inverse bind matrices 접근자를 가집니다. 런타임에서는 노드 그래프 대신 <b>joint 배열 + 부모 인덱스(부모가 항상 자식보다 앞)</b>로 평탄화하면 포즈 계산이 단순한 한 번의 루프가 됩니다. 나중에 오프라인 변환 단계를 두면 로딩이 빨라집니다.</p>
+<h3>2. 클립 샘플링</h3>
+<p>glTF 애니메이션은 채널(노드 + 경로: translation/rotation/scale) 단위이고 보간은 STEP, LINEAR, CUBICSPLINE입니다. 회전은 쿼터니언 slerp, CUBICSPLINE은 접선 데이터가 따로 붙는 점에 주의합니다. 루프 경계의 보간과 시간 정규화가 첫 번째 함정입니다.</p>
+<h3>3. 스키닝</h3>
+<p>정점마다 최대 4개의 joint와 weight를 가지고 <code>Σ wᵢ · (palette[jᵢ] · v)</code>로 계산합니다. CPU로 먼저 구현해 결과를 확인하고, 버텍스 셰이더로 옮기고, 마지막에 컴퓨트로 옮기는 순서가 디버깅에 유리합니다. LBS는 관절이 비틀릴 때 부피가 줄어드는 "캔디 래퍼" 문제가 있고, Dual Quaternion Skinning이 이를 줄이는 대신 부피가 늘어나는 팽창 같은 다른 아티팩트가 생깁니다.</p>
+<h3>4. 블렌딩</h3>
+<p>두 포즈를 joint별로 섞습니다(위치·스케일은 lerp, 회전은 nlerp/slerp). additive는 기준 포즈 대비 차이만 더합니다. 레이어와 마스크는 상체/하체를 따로 재생할 때 씁니다.</p>
+<h3>5. 애니메이션 그래프</h3>
+<p>상태 머신 + 전이 조건 + 블렌드 노드로 구성합니다. 루트 모션(애니메이션이 캐릭터의 이동을 구동)과 코드 주도 이동 중 무엇이 위치를 결정하는지가 설계의 핵심 결정입니다(7장의 Holden 글 참고).</p>
+<h3>6. IK</h3>
+<p>2본 해석적 IK(다리, 팔)는 코사인 법칙으로 풀립니다. 체인이 길면 CCD나 FABRIK 같은 반복 방식을 씁니다. 발 접지는 지면 레이캐스트 + 2본 IK + 골반 높이 보정의 조합입니다.</p>
+<h3>7. 물리</h3>
+<p>캐릭터 컨트롤러는 보통 킨매틱 캡슐이고, 래그돌은 본마다 강체와 관절을 붙인 것입니다. 파워드 래그돌은 애니메이션 포즈를 목표로 관절 모터를 구동합니다. 직접 구현보다는 Jolt 같은 라이브러리를 참고 구현으로 쓰는 편이 효율적입니다.</p>
+<h3>8. 심화</h3>
+<p>모션 매칭은 모션 데이터베이스에서 현재 상태와 가장 가까운 프레임을 찾아 이어 붙이는 방식입니다. 압축(ACL), 리타게팅, 프로시저럴 애니메이션은 필요가 생길 때 하나씩 봅니다.</p>
+</section>
+
+<section id="link">
+<h2>4. 우리 엔진 로드맵과 연결할 지점</h2>
+<ul>
+<li>CPU 스키닝은 <b>언제든</b> 시작할 수 있습니다.</li>
+<li>GPU 컴퓨트 스키닝은 <b>컴퓨트(RHI 확장) 단계 이후</b>에 맞습니다. 순서는 CSM → CPU 라이트 컬링 → 디퍼드 → SSAO → 컴퓨트 → 클러스터드 입니다.</li>
+<li>스킨 메시를 넣을 때 통합해야 할 곳:
+  <ul>
+  <li>애니메이션에 따라 갱신되는 <b>바운딩 볼륨</b>(CPU 라이트 컬링이 쓰는 값)</li>
+  <li><b>CSM 그림자 패스</b>의 스킨 경로(그림자도 같은 포즈로 그려야 함)</li>
+  <li>모션 벡터용 <b>이전 프레임 본 행렬</b></li>
+  <li>업데이트 순서 고정: 애니메이션 → 물리 → 렌더</li>
+  <li>스킨용 <b>input layout / PSO 변형</b></li>
+  </ul></li>
+</ul>
+</section>
+
+<section id="books">
+<h2>5. 책</h2>
+<ul>
+<li><b>Gabor Szauer, <i>Hands-On C++ Game Animation Programming</i></b> (Packt, 2020, 368쪽). <b>메인 교재로 추천</b>. 스키닝, 최적화, 블렌딩, IK, DQS, 인스턴싱 크라우드를 단계별로 구현합니다. 예제는 OpenGL 3.3이라 D3D로 옮겨야 합니다. <a href="https://github.com/packtpublishing/hands-on-game-animation-programming">예제 코드</a></li>
+<li>Jason Gregory, <i>Game Engine Architecture</i> — 애니메이션 장</li>
+<li><i>Real-Time Rendering</i> 4th ed. — 스키닝과 모프 타깃</li>
+<li>Rick Parent, <i>Computer Animation</i></li>
+</ul>
+</section>
+
+<section id="refs">
+<h2>6. 문서 · 논문 · 참고 구현</h2>
+<table>
+<tr><th>단계</th><th>자료</th><th>메모</th></tr>
+<tr><td>1~2</td><td><a href="https://registry.khronos.org/glTF/">glTF 2.0 스펙 (Khronos)</a></td><td>Skins, Animations 절</td></tr>
+<tr><td>1~2</td><td><a href="https://github.khronos.org/glTF-Tutorials/gltfTutorial/gltfTutorial_019_SimpleSkin.html">glTF Tutorial: SimpleSkin</a></td><td>스펙은 설명이 짧아 이쪽이 더 실용적</td></tr>
+<tr><td>3</td><td><a href="https://users.cs.utah.edu/~ladislav/dq/">Skinning with Dual Quaternions (Kavan et al., 2007)</a></td><td>DQS 원논문. 셰이더 수정이 작다는 점이 강점</td></tr>
+<tr><td>1~5</td><td><a href="https://guillaumeblanc.github.io/ozz-animation">ozz-animation</a></td><td>MIT 라이선스 런타임 + 오프라인 툴셋. 스켈레톤·샘플링·블렌딩 구조를 읽어볼 만함</td></tr>
+<tr><td>6</td><td><a href="https://www.andreasaristidou.com/FABRIK">FABRIK 논문 (Aristidou &amp; Lasenby, 2011)</a></td><td>위치 기반 반복 IK</td></tr>
+<tr><td>7</td><td><a href="https://jrouwe.github.io/JoltPhysics/">Jolt Physics 문서</a> / <a href="https://jrouwe.github.io/JoltPhysics/class_character_virtual.html">CharacterVirtual</a></td><td>캐릭터 컨트롤러, 샘플의 Ragdoll(모터 구동) 예제</td></tr>
+<tr><td>8</td><td><a href="https://nfrechette.github.io/2017/06/25/introducing_acl">Animation Compression Library 소개</a> / <a href="https://github.com/nfrechette/acl">acl 저장소</a></td><td>애니메이션 압축. 헤더 기반 C++</td></tr>
+</table>
+</section>
+
+<section id="talks">
+<h2>7. 발표 · 블로그</h2>
+<ul>
+<li><a href="https://www.gdcvault.com/play/1022985/Motion-Matching-and-The-Road">Simon Clavet, Motion Matching and The Road to Next-Gen Animation (GDC 2016)</a></li>
+<li><a href="https://www.theorangeduck.com/page/code-vs-data-driven-displacement">Daniel Holden, Code vs Data Driven Displacement</a> — 위치를 코드가 정할지 애니메이션이 정할지. 5단계 설계에 도움이 됨</li>
+<li><a href="https://github.com/orangeduck/Motion-Matching">Holden의 Motion-Matching 구현</a></li>
+<li><a href="https://www.theorangeduck.com/media/uploads/other_stuff/Learned_Motion_Matching.pdf">Learned Motion Matching (SIGGRAPH 2020)</a></li>
+<li>David Rosen, "Animation Bootcamp" (GDC 2014) — 링크 미확인</li>
+</ul>
+</section>
+
+<section id="render">
+<h2>8. 렌더링 갈래 (선택)</h2>
+<ul>
+<li><a href="https://iryoku.com/separable-sss">Separable Subsurface Scattering (Jimenez et al., 2015)</a> — 화면 공간 SSS를 2패스로. 피부용</li>
+<li>GPU Gems 3, 14장 "Advanced Techniques for Realistic Real-Time Skin Rendering" — 링크 미확인</li>
+</ul>
+<p>피부, 눈, 머리카락, 천 시뮬레이션은 애니메이션 시스템과 독립적으로 진행할 수 있어서 별도 갈래로 두었습니다.</p>
+</section>
+
+<section id="plan">
+<h2>9. 추천 진행</h2>
+<ol>
+<li><b>0~3단계</b>를 먼저 진행합니다. glTF 스킨 로딩, CPU 스키닝, 버텍스 셰이더 스키닝 순입니다. 이 구간에서 PSO 변형 구조를 결정하게 됩니다.</li>
+<li><b>4~5단계</b>로 블렌딩과 상태 머신을 붙입니다.</li>
+<li><b>6단계</b>에서 발 IK 하나를 만들어 봅니다.</li>
+<li>컴퓨트 단계에 들어가면 GPU 스키닝으로 옮깁니다.</li>
+<li>7~8단계는 필요가 생길 때 고릅니다.</li>
+</ol>
+<div class="box ok"><b>첫 목표 제안.</b> glTF 스킨 모델 하나(예: Khronos 샘플의 SimpleSkin이나 CesiumMan)를 불러와 CPU 스키닝으로 클립 하나를 재생하는 것.</div>
+</section>
+</main>
+</body>
+</html>

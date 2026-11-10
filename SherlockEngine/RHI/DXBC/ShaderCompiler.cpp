@@ -201,6 +201,38 @@ bool ShaderCompiler::ValidateConstantBufferSize(std::span<const uint8_t> bytecod
 	return true;
 }
 
+bool ShaderCompiler::ReflectConstantBuffers(std::span<const uint8_t> bytecode, std::vector<ReflectedConstantBuffer>& out)
+{
+	out.clear();
+	ComPtr<ID3D11ShaderReflection> reflection;
+	HRESULT hr = D3DReflect(bytecode.data(), bytecode.size(), IID_PPV_ARGS(reflection.GetAddressOf()));
+	if (FAILED(hr))
+	{
+		Log::Warn("D3DReflect 실패. cbuffer 리플렉션을 건너뜀. %s", Log::HrToString(hr).c_str());
+		return false;
+	}
+
+	D3D11_SHADER_DESC shaderDesc = {};
+	if (FAILED(reflection->GetDesc(&shaderDesc)))
+	{
+		return false;
+	}
+
+	for (UINT i = 0; i < shaderDesc.ConstantBuffers; ++i)
+	{
+		D3D11_SHADER_BUFFER_DESC desc = {};
+		if (FAILED(reflection->GetConstantBufferByIndex(i)->GetDesc(&desc))) continue;
+		// 이 목록에는 StructuredBuffer 의 원소 구조체(D3D_CT_RESOURCE_BIND_INFO)도 들어 있음. cbuffer 만 남김.
+		if (desc.Type != D3D_CT_CBUFFER) continue;
+		ReflectedConstantBuffer entry;
+		entry.name = desc.Name ? desc.Name : "";
+		entry.size = desc.Size;
+		entry.variables = desc.Variables;
+		out.push_back(entry);
+	}
+	return true;
+}
+
 bool ShaderCompiler::ReflectBindings(std::span<const uint8_t> bytecode, std::vector<ReflectedBinding>& out)
 {
 	out.clear();
@@ -231,8 +263,9 @@ bool ShaderCompiler::ReflectBindings(std::span<const uint8_t> bytecode, std::vec
 		case D3D_SIT_CBUFFER:   entry.type = BindingType::ConstantBuffer; break;
 		case D3D_SIT_TEXTURE:   entry.type = BindingType::ShaderResource; break;
 		case D3D_SIT_SAMPLER:   entry.type = BindingType::Sampler; break;
+		case D3D_SIT_STRUCTURED: entry.type = BindingType::BufferResource; break;   // StructuredBuffer<T> (읽기 전용)
 		default:
-			// StructuredBuffer, UAV 등은 아직 레이아웃에 없음. 나오면 경고로 알림.
+			// UAV 등은 아직 레이아웃에 없음. 나오면 경고로 알림.
 			Log::Warn("리플렉션: 지원하지 않는 바인딩 타입 %d ('%s', 슬롯 %u).", static_cast<int>(bind.Type), entry.name.c_str(), bind.BindPoint);
 			continue;
 		}

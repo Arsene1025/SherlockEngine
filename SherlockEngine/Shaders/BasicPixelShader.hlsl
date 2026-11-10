@@ -309,7 +309,7 @@ float4 PS_Main(VSOutput input) : SV_TARGET
     {
         // 그림자가 있는 모든 조명의 계수를 곱해 보여 줌
         float s = 1.0f;
-        for (uint k = 0; k < min(lightCount, MAX_LIGHTS); ++k)
+        for (uint k = 0; k < lightCount; ++k)
         {
             const LightData l = lights[k];
             const float d = length(l.position - input.worldPosition);
@@ -339,7 +339,7 @@ float4 PS_Main(VSOutput input) : SV_TARGET
 
     const float NdotV = max(dot(normal, viewDirection), EPSILON);
     float3 finalColor = EnvironmentLighting(albedo, F0, metal, rough, normal, viewDirection, ao) + emission;
-    const uint activeLightCount = min(lightCount, MAX_LIGHTS);
+    const uint activeLightCount = lightCount;
 
     [loop]
     for (uint i = 0; i < activeLightCount; ++i)

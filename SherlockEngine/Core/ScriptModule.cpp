@@ -1,5 +1,7 @@
 ﻿#include "pch.h"
 #include "Core/ScriptModule.h"
+#include "Scene/Script.h"   // SherlockScriptAbi
+#include <format>
 #include "Core/Project.h"
 #include "Core/Log.h"
 #include "Scene/Behaviour.h"
@@ -67,6 +69,37 @@ size_t ScriptModule::CountScriptSources(const Project& project)
 	return count;
 }
 
+namespace
+{
+	// 스크립트 DLL 이 내보낸 SherlockScriptAbiInfo 를 엔진의 값과 비교함. 다르면 error 에 이유를 적고 false.
+	bool CheckAbi(const std::wstring& path, std::string& error)
+	{
+		HMODULE probe = LoadLibraryExW(path.c_str(), nullptr, DONT_RESOLVE_DLL_REFERENCES);
+		if (probe == nullptr)
+		{
+			error = "LoadLibrary failed (" + Log::HrToString(HRESULT_FROM_WIN32(::GetLastError())) + ")";
+			return false;
+		}
+		bool ok = false;
+		const SherlockScriptAbi* abi = reinterpret_cast<const SherlockScriptAbi*>(GetProcAddress(probe, "SherlockScriptAbiInfo"));
+		if (abi == nullptr)
+		{
+			error = "the script DLL has no ABI stamp (built before the script API check). Rebuild the script project.";
+		}
+		else if (!(*abi == kSherlockScriptAbi))
+		{
+			const SherlockScriptAbi& e = kSherlockScriptAbi;
+			error = std::format("script ABI mismatch — rebuild the script project. DLL / engine: api {} / {}, iterator debug level {} / {}, "
+				"sizeof Behaviour {} / {}, Script {} / {}, GameObject {} / {}, Transform {} / {}",
+				abi->apiVersion, e.apiVersion, abi->iteratorDebugLevel, e.iteratorDebugLevel, abi->sizeofBehaviour, e.sizeofBehaviour,
+				abi->sizeofScript, e.sizeofScript, abi->sizeofGameObject, e.sizeofGameObject, abi->sizeofTransform, e.sizeofTransform);
+		}
+		else ok = true;
+		FreeLibrary(probe);
+		return ok;
+	}
+}
+
 bool ScriptModule::Load(const std::wstring& dllPath, bool copyBeforeLoad)
 {
 	Unload();
@@ -98,6 +131,15 @@ bool ScriptModule::Load(const std::wstring& dllPath, bool copyBeforeLoad)
 			m_lastError = "cannot copy the DLL (" + ec.message() + ")";
 			return false;
 		}
+	}
+
+	// 올리기 전에 ABI 표식을 확인함. DONT_RESOLVE_DLL_REFERENCES 로 매핑만 하면 DllMain 도 정적 초기화도
+	// 실행되지 않으므로, 맞지 않는 DLL 의 코드가 엔진을 건드리기 전에 걸러 낼 수 있음.
+	if (!CheckAbi(copy.wstring(), m_lastError))
+	{
+		Log::Error("스크립트 DLL 을 올리지 않음: %s (%s)", m_lastError.c_str(), Log::ToUtf8(dllPath.c_str()).c_str());
+		if (copyBeforeLoad) fs::remove(copy, ec);
+		return false;
 	}
 
 	// 올리기 전의 이름 목록과 비교해 이 DLL 이 등록한 이름을 알아냄 (정적 초기화가 LoadLibrary 안에서 등록함).

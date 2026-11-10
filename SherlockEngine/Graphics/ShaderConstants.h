@@ -49,6 +49,7 @@ constexpr uint32_t kSRVSlotIrradiance = 10;  // t10 (프레임, IBL 확산 조�
 constexpr uint32_t kSRVSlotPrefiltered = 11; // t11 (프레임, IBL 반사 프리필터 큐브. 밉 = 거칠기)
 constexpr uint32_t kSRVSlotBrdfLut = 12;     // t12 (프레임, split-sum BRDF LUT 2D)
 constexpr uint32_t kSRVSlotCsmMap = 14;      // t14 (프레임, 방향광 CSM 전용 아틀라스. 후처리 셋의 t13 과는 셋이 달라 겹치지 않음)
+constexpr uint32_t kSRVSlotLights = 15;      // t15 (프레임, 조명 구조체 버퍼 StructuredBuffer<LightData>)
 constexpr uint32_t kSRVSlotSceneHdr = 13;   // t13 (후처리 셋, 후처리 패스의 입력 텍스처. 톤 패스는 HDR 씬, 블러·블룸은 앞 단계의 결과)
 constexpr uint32_t kCBSlotPostParams = 4;    // b4 (후처리 셋, 패스마다 올림)
 constexpr uint32_t kCBSlotShadowPass = 5;   // b5 (프레임 셋, VS). 그림자 패스가 뷰마다 올림
@@ -106,9 +107,39 @@ struct alignas(16) PerObjectConstants
 	DirectX::XMFLOAT4X4 worldInvTranspose;
 };
 
+// 조명 하나의 GPU 배치. HLSL(Shaders/Common.hlsli 의 LightData)과 메모리 배치가 바이트 단위로 같아야 함.
+// 씬의 Light (Scene/Light.h) 를 Renderer 가 프레임마다 이것으로 옮겨 구조체 버퍼(t15)에 올림.
+//
+// HLSL 패킹 규칙 (cbuffer 와 같은 순서를 지키면 구조체 버퍼에서도 같음):
+//   - 16바이트 레지스터 단위로 채우며, 벡터 하나가 레지스터 경계를 넘을 수 없음.
+//   - 따라서 float3 다음에는 4바이트 스칼라를 두어 정확히 16바이트를 채움.
+// 아래 필드 순서는 그 규칙에 맞춰 직접 배치한 것임. 필드를 하나 옮기면 HLSL 쪽도 같이 옮겨야 함.
+struct GpuLight
+{
+	DirectX::XMFLOAT3 position;
+	float intensity;
+
+	DirectX::XMFLOAT3 direction;   // 정규화된 진행 방향
+	float range;
+
+	DirectX::XMFLOAT3 color;
+	uint32_t type;                 // LightType
+
+	DirectX::XMFLOAT3 attenuation;
+	float innerConeCos;
+
+	float outerConeCos;
+	uint32_t castShadows;
+	int32_t shadowIndex;           // 이 조명의 첫 그림자 뷰 번호 (b6 의 views 인덱스). −1 = 그림자 없음. Renderer 가 프레임마다 정함
+	float padding;
+};
+static_assert(sizeof(GpuLight) == 80, "GpuLight 는 HLSL LightData 와 같이 80바이트(16바이트 레지스터 5개)여야 함");
+static_assert(offsetof(GpuLight, castShadows) == 68, "castShadows 는 HLSL LightData 의 68바이트 위치여야 함");
+static_assert(offsetof(GpuLight, shadowIndex) == 72, "shadowIndex 는 HLSL LightData 의 72바이트 위치여야 함");
+
+// b2. 조명 배열은 여기 없음 — 구조체 버퍼(t15, StructuredBuffer<LightData>)에 있고 개수만 여기 둠.
 struct alignas(16) LightConstants
 {
-	LightData lights[MAX_LIGHTS];
 	DirectX::XMFLOAT3 ambientColor;
 	uint32_t lightCount;
 };
@@ -183,9 +214,8 @@ static_assert(offsetof(PerFrameConstants, shadowExtra) == 272, "PerFrameConstant
 static_assert(sizeof(PerObjectConstants) == 128, "PerObjectConstants: 64*2");
 static_assert(offsetof(PerObjectConstants, worldInvTranspose) == 64, "PerObjectConstants.worldInvTranspose");
 
-static_assert(sizeof(LightConstants) == 656, "LightConstants: 80*8 + 16");
-static_assert(offsetof(LightConstants, ambientColor) == 640, "LightConstants.ambientColor");
-static_assert(offsetof(LightConstants, lightCount) == 652, "LightConstants.lightCount");
+static_assert(sizeof(LightConstants) == 16, "LightConstants: 16");
+static_assert(offsetof(LightConstants, lightCount) == 12, "LightConstants.lightCount");
 
 static_assert(sizeof(MaterialConstants) == 64, "MaterialConstants: 16 + 16 + 16 + 16");
 static_assert(offsetof(MaterialConstants, emissive) == 16, "MaterialConstants.emissive");

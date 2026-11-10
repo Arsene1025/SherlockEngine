@@ -160,8 +160,10 @@ void D3D11CommandList::SetPipelineState(PipelineHandle handle)
 	state->Bind(m_device->GetContext());
 }
 
-void D3D11CommandList::SetResourceSet(ResourceSetHandle handle)
+void D3D11CommandList::SetResourceSet(uint32_t setIndex, ResourceSetHandle handle)
 {
+	// D3D11 에는 루트 시그니처가 없어 셋 인덱스가 뜻이 없음 — 슬롯의 레지스터 번호로 바로 바인딩함.
+	(void)setIndex;
 	static bool warned = false;
 	const D3D11ResourceSet* set = m_device ? m_device->GetResourceSet(handle) : nullptr;
 	const D3D11BindingLayout* layout = set ? m_device->GetBindingLayout(set->desc.layout) : nullptr;
@@ -201,6 +203,23 @@ void D3D11CommandList::SetResourceSet(ResourceSetHandle handle)
 			{
 				context->PSSetShaderResources(slot.reg, 1, &srv);
 				if (slot.reg < kMaxSrvRegister) m_psSrv[slot.reg] = binding.texture;
+			}
+			break;
+		}
+		case BindingType::BufferResource:
+		{
+			// 구조체 버퍼. Dynamic 이면 이번 프레임 복제본의 SRV — UpdateBuffer 가 쓴 것과 같은 복제본임.
+			D3D11Buffer* buffer = m_device->GetBufferMutable(binding.buffer);
+			ID3D11ShaderResourceView* srv = buffer ? buffer->GetSRV(m_device->GetDevice(), frameIndex) : nullptr;
+			if (slot.stageMask & ShaderStageMask_Vertex)
+			{
+				context->VSSetShaderResources(slot.reg, 1, &srv);
+				if (slot.reg < kMaxSrvRegister) m_vsSrv[slot.reg] = TextureHandle{};   // 이 레지스터에는 이제 텍스처가 없음
+			}
+			if (slot.stageMask & ShaderStageMask_Pixel)
+			{
+				context->PSSetShaderResources(slot.reg, 1, &srv);
+				if (slot.reg < kMaxSrvRegister) m_psSrv[slot.reg] = TextureHandle{};
 			}
 			break;
 		}
@@ -268,9 +287,8 @@ void D3D11CommandList::Draw(uint32_t vertexCount, uint32_t startVertex)
 
 // ------------------------------------------------------------------ 전이·복사
 
-void D3D11CommandList::Barrier(TextureHandle handle, ResourceState before, ResourceState after)
+void D3D11CommandList::Barrier(TextureHandle handle, ResourceState after)
 {
-	++m_stats.barriers;
 	D3D11Texture* texture = m_device ? m_device->GetTexture(handle) : nullptr;
 	if (texture == nullptr)
 	{
@@ -278,17 +296,10 @@ void D3D11CommandList::Barrier(TextureHandle handle, ResourceState before, Resou
 		ErrorOnce(warned, "Barrier : 유효하지 않은 TextureHandle.");
 		return;
 	}
-#if defined(_DEBUG)
-	// D3D11에서는 할 일이 없음. 대신 호출 코드가 적어 놓은 before 가 실제 추적 상태와
-	// 맞는지 확인함. 어긋나면 D3D12에서는 Debug Layer 에러가 나는 경우임.
-	if (texture->state != before)
-	{
-		Log::Warn("Barrier : '%s' 의 현재 상태는 %s 인데 before=%s 로 호출됨 (after=%s).",
-			texture->name.c_str(), ToString(texture->state), ToString(before), ToString(after));
-	}
-#else
-	(void)before;
-#endif
+	// D3D11 은 드라이버가 상태를 추적하므로 할 일이 없음. D3D12 와 같은 값을 기록만 해 둠 (디버그 표시용).
+	// 통계는 D3D12 와 같게 실제로 상태가 바뀐 것만 셈.
+	if (texture->state == after) return;
+	++m_stats.barriers;
 	texture->state = after;
 }
 

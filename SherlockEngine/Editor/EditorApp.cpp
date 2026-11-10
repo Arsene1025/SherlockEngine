@@ -292,18 +292,18 @@ void EditorApp::BuildDemoScene()
 	scene.AddObject(cube, grayMaterial, "GrayCard").GetTransform().SetPosition(14.0f, 1.5f, -14.0f);
 
 	// 조명. 0번 방향광이 그림자를 만듦. 점광·스포트라이트도 두어 여러 종류의 조명을 편집해 볼 수 있게 함.
-	scene.GetLights().push_back(LightData{});
+	scene.GetLights().push_back(Light{});
 
-	LightData pointLight;
-	pointLight.type = static_cast<uint32_t>(LightType::Point);
+	Light pointLight;
+	pointLight.type = LightType::Point;
 	pointLight.position = XMFLOAT3(-6.0f, 5.0f, -4.0f);
 	pointLight.color = XMFLOAT3(1.0f, 0.55f, 0.35f);
 	pointLight.intensity = 3.0f;
 	pointLight.range = 18.0f;
 	scene.GetLights().push_back(pointLight);
 
-	LightData spotLight;
-	spotLight.type = static_cast<uint32_t>(LightType::Spot);
+	Light spotLight;
+	spotLight.type = LightType::Spot;
 	spotLight.position = XMFLOAT3(10.0f, 10.0f, 2.0f);
 	spotLight.direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
 	spotLight.color = XMFLOAT3(0.4f, 0.6f, 1.0f);
@@ -355,17 +355,17 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		floorMat.sampler = SamplerPreset::AnisotropicWrap;
 		scene.AddObject(floor, scene.AddMaterial(floorMat), "Floor");
 
-		LightData sun;
+		Light sun;
 		sun.direction = XMFLOAT3(0.45f, -0.8f, 0.4f);
 		sun.intensity = 1.6f;
 		scene.GetLights().push_back(sun);
-		LightData fill;
-		fill.type = static_cast<uint32_t>(LightType::Point);
+		Light fill;
+		fill.type = LightType::Point;
 		fill.position = XMFLOAT3(-3.0f, 2.5f, -2.0f);
 		fill.color = XMFLOAT3(1.0f, 0.7f, 0.5f);
 		fill.intensity = 1.5f;
 		fill.range = 12.0f;
-		fill.castShadows = 0;   // 지역광 그림자는 타일을 쓰므로 기본은 꺼 둠
+		fill.castShadows = false;   // 지역광 그림자는 타일을 쓰므로 기본은 꺼 둠
 		scene.GetLights().push_back(fill);
 		scene.ambientColor = XMFLOAT3(0.18f, 0.18f, 0.2f);
 		scene.clearColor[0] = 0.12f; scene.clearColor[1] = 0.13f; scene.clearColor[2] = 0.18f; scene.clearColor[3] = 1.0f;
@@ -385,7 +385,7 @@ bool EditorApp::BuildModelScene(SceneMode mode)
 		// Sponza: 건물 안에서 바라봄. 태양광은 가파른 각도로 안뜰에 들어옴.
 		scene.AddModel(model, Transform{});
 
-		LightData sun;
+		Light sun;
 		sun.direction = XMFLOAT3(0.25f, -1.0f, 0.12f);
 		sun.intensity = 2.2f;
 		scene.GetLights().push_back(sun);
@@ -947,297 +947,6 @@ bool EditorApp::LoadSceneFile(const std::wstring& path)
 	return true;
 }
 
-// ------------------------------------------------------------------ 자동 검증
-
-void EditorApp::ParseAutomation()
-{
-	if (!GetCommandLineOption(L"post-stages").empty()) DebugUI::SetShowPostStages(true);   // --post-stages=1 이면 후처리 단계별 썸네일 창을 처음부터 켬
-	const std::wstring exitAfter = GetCommandLineOption(L"exit-after");
-	if (exitAfter.empty()) return;
-	m_auto.active = true;
-	m_auto.exitAfter = static_cast<uint64_t>(_wtoi64(exitAfter.c_str()));
-	m_auto.selectName = Log::ToUtf8(GetCommandLineOption(L"select").c_str());
-	const std::wstring pick = GetCommandLineOption(L"pick");
-	if (!pick.empty()) { m_auto.pick = swscanf_s(pick.c_str(), L"%f,%f", &m_auto.pickU, &m_auto.pickV) == 2; }
-	const std::wstring position = GetCommandLineOption(L"set-position");
-	if (!position.empty()) { m_auto.setPosition = swscanf_s(position.c_str(), L"%f,%f,%f", &m_auto.position.x, &m_auto.position.y, &m_auto.position.z) == 3; }
-	auto resolve = [](const std::wstring& path) -> std::wstring
-	{
-		if (path.empty() || path.find(L':') != std::wstring::npos || path[0] == L'\\') return path;
-		return Paths::GetSceneDir() + path;   // 상대 경로는 씬 폴더 기준
-	};
-	m_auto.savePath = resolve(GetCommandLineOption(L"save"));
-	m_auto.loadPath = resolve(GetCommandLineOption(L"load"));
-	m_auto.screenshotPath = resolve(GetCommandLineOption(L"screenshot"));
-	m_auto.dumpObjects = !GetCommandLineOption(L"dump-objects").empty();
-	m_auto.debugView = _wtoi(GetCommandLineOption(L"debug-view").c_str());
-	m_auto.freezeCascadesAt = static_cast<uint64_t>(_wtoi64(GetCommandLineOption(L"freeze-cascades").c_str()));
-	const std::wstring camLook = GetCommandLineOption(L"cam-look");
-	if (!camLook.empty())
-	{
-		m_auto.camLook = swscanf_s(camLook.c_str(), L"%f,%f,%f;%f,%f,%f", &m_auto.camEye.x, &m_auto.camEye.y, &m_auto.camEye.z,
-			&m_auto.camTarget.x, &m_auto.camTarget.y, &m_auto.camTarget.z) == 6;
-	}
-	m_auto.newScene = !GetCommandLineOption(L"new-scene").empty();
-	m_auto.addPrimitive = GetCommandLineOption(L"add").empty() ? -1 : _wtoi(GetCommandLineOption(L"add").c_str());
-	m_auto.browseDir = GetCommandLineOption(L"browse");
-	const std::wstring drop = GetCommandLineOption(L"drop");
-	if (!drop.empty())
-	{
-		const size_t semicolon = drop.find(L';');
-		m_auto.dropPath = drop.substr(0, semicolon);
-		if (semicolon != std::wstring::npos) swscanf_s(drop.c_str() + semicolon + 1, L"%f,%f,%f", &m_auto.dropPosition.x, &m_auto.dropPosition.y, &m_auto.dropPosition.z);
-	}
-	const std::wstring dropUv = GetCommandLineOption(L"drop-uv");
-	if (!dropUv.empty()) m_auto.dropUv = swscanf_s(dropUv.c_str(), L"%f,%f", &m_auto.dropU, &m_auto.dropV) == 2;
-	m_auto.dropTexture = GetCommandLineOption(L"drop-texture");
-	m_auto.play = !GetCommandLineOption(L"play").empty();
-	m_auto.stopAt = static_cast<uint64_t>(_wtoi64(GetCommandLineOption(L"stop-at").c_str()));
-	m_auto.addComponent = Log::ToUtf8(GetCommandLineOption(L"add-component").c_str());
-	m_auto.newScript = Log::ToUtf8(GetCommandLineOption(L"new-script").c_str());
-	m_auto.buildGame = Log::ToUtf8(GetCommandLineOption(L"build-game").c_str());
-	m_auto.buildScene = Log::ToUtf8(GetCommandLineOption(L"build-scene").c_str());
-	m_auto.newProject = Log::ToUtf8(GetCommandLineOption(L"new-project").c_str());
-	m_auto.buildProject = !GetCommandLineOption(L"build-project").empty();
-	m_auto.launcher = !GetCommandLineOption(L"launcher").empty();
-	const std::wstring rotation = GetCommandLineOption(L"set-rotation");
-	if (!rotation.empty()) { m_auto.setRotation = swscanf_s(rotation.c_str(), L"%f,%f,%f", &m_auto.rotationDeg.x, &m_auto.rotationDeg.y, &m_auto.rotationDeg.z) == 3; }
-	const std::wstring setParent = GetCommandLineOption(L"set-parent");
-	if (!setParent.empty())
-	{
-		const size_t semicolon = setParent.find(L';');
-		m_auto.parentChild = Log::ToUtf8(setParent.substr(0, semicolon).c_str());
-		m_auto.parentName = semicolon != std::wstring::npos ? Log::ToUtf8(setParent.substr(semicolon + 1).c_str()) : std::string();
-	}
-	m_auto.deleteName = Log::ToUtf8(GetCommandLineOption(L"delete").c_str());
-	m_auto.duplicateName = Log::ToUtf8(GetCommandLineOption(L"duplicate").c_str());
-	m_auto.makePrefabName = Log::ToUtf8(GetCommandLineOption(L"make-prefab").c_str());
-	const std::wstring instantiate = GetCommandLineOption(L"instantiate");
-	if (!instantiate.empty())
-	{
-		const size_t semicolon = instantiate.find(L';');
-		m_auto.instantiatePath = instantiate.substr(0, semicolon);
-		if (semicolon != std::wstring::npos) swscanf_s(instantiate.c_str() + semicolon + 1, L"%f,%f,%f", &m_auto.instantiatePosition.x, &m_auto.instantiatePosition.y, &m_auto.instantiatePosition.z);
-	}
-	m_auto.undoCount = _wtoi(GetCommandLineOption(L"undo").c_str());
-	m_auto.redoCount = _wtoi(GetCommandLineOption(L"redo").c_str());
-	m_auto.saveAfterPath = resolve(GetCommandLineOption(L"save-after"));
-	m_auto.gesture = !GetCommandLineOption(L"gesture").empty();
-	Log::Info("자동 검증: exit-after %llu, pick %d, set-position %d, save '%s', load '%s', screenshot '%s', dump %d",
-		m_auto.exitAfter, m_auto.pick ? 1 : 0, m_auto.setPosition ? 1 : 0, Log::ToUtf8(m_auto.savePath.c_str()).c_str(),
-		Log::ToUtf8(m_auto.loadPath.c_str()).c_str(), Log::ToUtf8(m_auto.screenshotPath.c_str()).c_str(), m_auto.dumpObjects ? 1 : 0);
-}
-
-void EditorApp::RunAutomation()
-{
-	Engine& engine = GetEngine();
-	Scene& scene = engine.GetScene();
-	const uint64_t frame = engine.GetTime().GetFrameCount();
-
-	if (frame == 2 && m_auto.debugView != 0) engine.GetRenderer().GetSettings().debugView = m_auto.debugView;
-	// CSM 디버그: 순서는 디버그 뷰(2) → 고정(N) → 카메라 이동(N+1) → 종료 시 스크린샷
-	if (m_auto.freezeCascadesAt != 0 && frame == m_auto.freezeCascadesAt) engine.GetRenderer().SetCascadeFreeze(true, engine.GetCamera());
-	if (m_auto.camLook && frame == (m_auto.freezeCascadesAt != 0 ? m_auto.freezeCascadesAt + 1 : 3)) engine.GetCamera().SetLookAt(m_auto.camEye, m_auto.camTarget);
-	if (frame == 2 && !m_auto.browseDir.empty()) { m_editor.GetContentBrowser().SetDirectory(m_auto.browseDir); m_editor.FocusContentBrowser(); }
-	if (frame == 2 && !m_auto.newScript.empty())
-	{
-		std::string error;
-		if (ScriptCreator::Create(m_auto.newScript, error)) Log::Info("자동 검증: 새 스크립트 %s 생성", m_auto.newScript.c_str());
-		else Log::Error("자동 검증: 새 스크립트 실패: %s", error.c_str());
-	}
-	if (frame == 3 && m_auto.newScene) BuildEmptyScene();
-	if (frame == 2 && m_auto.launcher) m_editor.ShowLauncher();
-	if (frame == 2 && !m_auto.newProject.empty())
-	{
-		std::string error;
-		const bool ok = CreateProject(ProjectLauncher::GetDefaultProjectsDir(), m_auto.newProject, error);
-		Log::Info("자동 검증: new-project %s %s", m_auto.newProject.c_str(), ok ? "성공" : ("실패: " + error).c_str());
-	}
-	if (frame == 4 && m_auto.buildProject && GetProject().IsLoaded())
-	{
-		BuildScripts();
-		Log::Info("자동 검증: build-project → 스크립트 DLL %s (컴포넌트 %zu개)", GetScripts().IsLoaded() ? "올라옴" : "없음", GetScripts().GetTypeNames().size());
-	}
-	if (frame == 3 && !m_auto.buildGame.empty())
-	{
-		GameBuilder::Options options;
-		options.name = m_auto.buildGame;
-		options.startScene = m_auto.buildScene.empty() ? (GetProject().startScene.empty() ? "demo_components.json" : GetProject().startScene) : m_auto.buildScene;
-		options.projectName = GetProject().GetName();
-		options.projectSolution = GetProject().GetSolutionPath();
-		options.openFolder = false;
-		options.releaseBuild = !GetCommandLineOption(L"build-release").empty();   // Release 패키지 검증
-		const GameBuilder::Result result = GameBuilder::Build(options);
-		Log::Info("자동 검증: build-game %s → %s", result.ok ? "성공" : "실패", result.message.c_str());
-	}
-	if (frame == 4 && m_auto.addPrimitive >= 0)
-	{
-		RunCommand("Add object", [&]() { AddPrimitive(m_auto.addPrimitive); m_editor.SetSelectedObject(static_cast<int>(scene.GetObjects().size()) - 1); });
-	}
-	if (frame == 5 && !m_auto.selectName.empty())
-	{
-		int found = -1;
-		for (size_t i = 0; i < scene.GetObjects().size() && found < 0; ++i)
-			if (scene.GetObjects()[i]->GetName() == m_auto.selectName) found = static_cast<int>(i);
-		m_editor.SetSelectedObject(found);
-		Log::Info("자동 검증: select '%s' → %d", m_auto.selectName.c_str(), found);
-	}
-	if (frame == 5 && m_auto.pick)
-	{
-		const int picked = m_editor.PickAt(scene, engine.GetCamera(), m_auto.pickU, m_auto.pickV);
-		m_editor.SetSelectedObject(picked);
-		Log::Info("자동 검증: pick (%.2f, %.2f) → %d %s", m_auto.pickU, m_auto.pickV, picked,
-			picked >= 0 ? scene.GetObjects()[picked]->GetName().c_str() : "(none)");
-	}
-	if (frame == 6 && !m_auto.dropPath.empty())
-	{
-		// 씬 뷰 드롭과 같은 경로. --drop-uv 가 있으면 광선 히트점(오브젝트 AABB 또는 y=0 바닥)에 놓음.
-		XMFLOAT3 position = m_auto.dropPosition;
-		if (m_auto.dropUv)
-		{
-			const int hit = m_editor.RaycastScene(scene, engine.GetCamera(), m_auto.dropU, m_auto.dropV, position);
-			Log::Info("자동 검증: drop-uv (%.2f, %.2f) → 히트 (%.2f, %.2f, %.2f) %s", m_auto.dropU, m_auto.dropV, position.x, position.y, position.z,
-				hit >= 0 ? scene.GetObjects()[hit]->GetName().c_str() : "(ground)");
-		}
-		RunCommand("Place model", [&]() { PlaceModel(m_auto.dropPath, position); });
-	}
-	// 삭제·복제·프리팹 저장·프리팹 배치 — Delete 키·Ctrl+D·Save Prefab·씬 뷰 드롭이 부르는 함수를 그대로 부름
-	if (frame == 6 && !m_auto.deleteName.empty())
-	{
-		GameObject* target = scene.FindObject(m_auto.deleteName);
-		if (target == nullptr) Log::Warn("자동 검증: delete 대상 '%s' 를 찾지 못함", m_auto.deleteName.c_str());
-		else RunCommand("Delete object", [&]() { DeleteObject(static_cast<int>(scene.IndexOf(target))); });
-	}
-	if (frame == 11 && !m_auto.duplicateName.empty())
-	{
-		GameObject* target = scene.FindObject(m_auto.duplicateName);
-		if (target == nullptr) Log::Warn("자동 검증: duplicate 대상 '%s' 를 찾지 못함", m_auto.duplicateName.c_str());
-		else RunCommand("Duplicate", [&]() { DuplicateObject(target->GetId()); });
-	}
-	if (frame == 11 && !m_auto.makePrefabName.empty())
-	{
-		GameObject* target = scene.FindObject(m_auto.makePrefabName);
-		if (target == nullptr) Log::Warn("자동 검증: make-prefab 대상 '%s' 를 찾지 못함", m_auto.makePrefabName.c_str());
-		else RunCommand("Save prefab", [&]() { SavePrefabOf(target->GetId()); });
-	}
-	if (frame == 11 && !m_auto.instantiatePath.empty())
-	{
-		RunCommand("Instantiate prefab", [&]() { InstantiatePrefabAt(m_auto.instantiatePath, m_auto.instantiatePosition); });
-	}
-	if (frame == 11 && m_auto.gesture) m_forceBusy = false;
-	if (frame == 14 && m_auto.undoCount > 0) for (int i = 0; i < m_auto.undoCount; ++i) UndoRedo(true);
-	if (frame == 15 && m_auto.redoCount > 0) for (int i = 0; i < m_auto.redoCount; ++i) UndoRedo(false);
-	if (frame == 18 && !m_auto.saveAfterPath.empty()) SaveSceneFile(m_auto.saveAfterPath);
-	if (frame == 7 && !m_auto.dropTexture.empty())
-	{
-		const int selected = m_editor.GetSelectedObject();
-		if (selected >= 0 && selected < static_cast<int>(scene.GetObjects().size()))
-		{
-			const GameObject& object = *scene.GetObjects()[selected];
-			Material* material = nullptr;
-			for (auto& m : scene.GetMaterials()) if (m.get() == object.GetMaterial()) material = m.get();
-			if (material != nullptr)
-			{
-				RunCommand("Drop texture", [&]()
-				{
-					material->albedoTexture = ContentBrowser::ToMaterialTextureName(m_auto.dropTexture);
-					Log::Info("자동 검증: '%s' 재질 '%s' 알베도 → %s", object.GetName().c_str(), material->name.c_str(), material->albedoTexture.c_str());
-				});
-			}
-			else Log::Warn("자동 검증: 선택 오브젝트에 편집 가능한 재질이 없어 drop-texture 를 건너뜀");
-		}
-		else Log::Warn("자동 검증: 선택된 오브젝트가 없어 drop-texture 를 건너뜀");
-	}
-	if (frame == 9 && m_auto.play) StartPlay();
-	if (frame == 10 && !m_auto.addComponent.empty())
-	{
-		const int selected = m_editor.GetSelectedObject();
-		if (GameObject* object = scene.GetObject(selected < 0 ? SIZE_MAX : static_cast<size_t>(selected)))
-		{
-			Behaviour* added = nullptr;
-			RunCommand("Add component", [&]() { added = object->AddBehaviour(m_auto.addComponent); });
-			Log::Info("자동 검증: '%s' 에 컴포넌트 %s %s", object->GetName().c_str(), m_auto.addComponent.c_str(), added ? "추가" : "추가 실패");
-		}
-		else Log::Warn("자동 검증: 선택된 오브젝트가 없어 add-component 를 건너뜀");
-	}
-	if (m_auto.stopAt != 0 && frame == m_auto.stopAt) StopPlay();
-	if (frame == 8 && m_auto.setPosition)
-	{
-		const int selected = m_editor.GetSelectedObject();
-		if (selected >= 0 && selected < static_cast<int>(scene.GetObjects().size()))
-		{
-			if (m_auto.gesture)
-			{
-				m_forceBusy = true;   // 슬라이더를 잡고 끄는 중: 값은 바뀌지만 아직 단계로 기록되지 않음 (11 프레임째에 입력이 끝남)
-				scene.GetObjects()[selected]->GetTransform().SetPosition(m_auto.position);
-			}
-			else RunCommand("Move", [&]() { scene.GetObjects()[selected]->GetTransform().SetPosition(m_auto.position); });
-			Log::Info("자동 검증: '%s' 위치 → (%.2f, %.2f, %.2f)", scene.GetObjects()[selected]->GetName().c_str(), m_auto.position.x, m_auto.position.y, m_auto.position.z);
-		}
-		else Log::Warn("자동 검증: 선택된 오브젝트가 없어 set-position 을 건너뜀");
-	}
-	if (frame == 8 && m_auto.setRotation)
-	{
-		// 선택 오브젝트의 로컬 회전(도). roll 을 주고 카메라를 자식으로 붙이면 카메라 roll 상속을 검증할 수 있음.
-		const int selected = m_editor.GetSelectedObject();
-		if (GameObject* object = scene.GetObject(selected < 0 ? SIZE_MAX : static_cast<size_t>(selected)))
-		{
-			RunCommand("Rotate", [&]() { object->GetTransform().SetRotation(XMConvertToRadians(m_auto.rotationDeg.x), XMConvertToRadians(m_auto.rotationDeg.y), XMConvertToRadians(m_auto.rotationDeg.z)); });
-			Log::Info("자동 검증: '%s' 회전 → (%.1f, %.1f, %.1f) deg", object->GetName().c_str(), m_auto.rotationDeg.x, m_auto.rotationDeg.y, m_auto.rotationDeg.z);
-		}
-		else Log::Warn("자동 검증: 선택된 오브젝트가 없어 set-rotation 을 건너뜀");
-	}
-	if (frame == 7 && !m_auto.parentChild.empty())
-	{
-		// --set-parent=자식;부모 (부모가 비어 있으면 루트로). 월드 자세는 유지됨 (Hierarchy 드래그와 같은 경로).
-		// set-rotation(8 프레임) 보다 먼저 실행해, 부모를 붙인 뒤 부모를 돌리면 자식(카메라)이 따라 도는지
-		// 검증할 수 있게 함.
-		GameObject* child = scene.FindObject(m_auto.parentChild);
-		GameObject* parent = m_auto.parentName.empty() ? nullptr : scene.FindObject(m_auto.parentName);
-		if (child == nullptr || (parent == nullptr && !m_auto.parentName.empty()))
-			Log::Warn("자동 검증: set-parent 대상을 찾지 못함 ('%s' → '%s')", m_auto.parentChild.c_str(), m_auto.parentName.c_str());
-		else
-		{
-			bool ok = false;
-			RunCommand("Reparent", [&]() { ok = child->SetParent(parent); });
-			const XMFLOAT3 lp = child->GetTransform().GetPosition();
-			const XMFLOAT3 wp = child->GetWorldPosition();
-			Log::Info("자동 검증: set-parent '%s' → '%s' %s, 로컬 (%.2f, %.2f, %.2f) 월드 (%.2f, %.2f, %.2f)", m_auto.parentChild.c_str(),
-				parent != nullptr ? parent->GetName().c_str() : "(root)", ok ? "성공" : "거부(순환)", lp.x, lp.y, lp.z, wp.x, wp.y, wp.z);
-		}
-	}
-	if (frame == 12 && !m_auto.savePath.empty()) SaveSceneFile(m_auto.savePath);
-	if (frame == 16 && !m_auto.loadPath.empty()) LoadSceneFile(m_auto.loadPath);
-	if (frame == 20 && m_auto.dumpObjects)
-	{
-		const Camera& camera = engine.GetCamera();
-		const CameraComponent* active = scene.GetActiveCamera();
-		Log::Info("자동 검증: 카메라 위치 (%.2f, %.2f, %.2f) yaw %.2f pitch %.2f roll %.2f, 활성 카메라 %s", camera.GetPosition().x, camera.GetPosition().y, camera.GetPosition().z,
-			camera.GetYaw(), camera.GetPitch(), camera.GetRoll(), active != nullptr ? active->GetOwner().GetName().c_str() : "(editor)");   // roll 추가
-		for (const auto& object : scene.GetObjects())
-		{
-			const XMFLOAT3& p = object->GetTransform().GetPosition();
-			const char* albedo = object->GetMaterial() != nullptr ? object->GetMaterial()->albedoTexture.c_str() : "";
-			std::string components;
-			for (const auto& b : object->GetBehaviours()) components += std::string(components.empty() ? "" : ",") + b->GetTypeName();
-			std::string parent;   // 부모가 있으면 이름과 월드 위치도 남김 (로컬 값과 비교용)
-			if (object->GetParent() != nullptr)
-			{
-				const XMFLOAT3 wp = object->GetWorldPosition();
-				parent = std::format(" parent='{}' world=({:.2f}, {:.2f}, {:.2f})", object->GetParent()->GetName(), wp.x, wp.y, wp.z);
-			}
-			Log::Info("자동 검증: 오브젝트 '%s' 위치 (%.2f, %.2f, %.2f) albedo=%s components=[%s]%s %s", object->GetName().c_str(), p.x, p.y, p.z, albedo,
-				components.c_str(), parent.c_str(), m_playState == PlayState::Editing ? "(editing)" : "(playing)");
-		}
-	}
-	if (m_auto.exitAfter > 1 && frame == m_auto.exitAfter - 1 && !m_auto.screenshotPath.empty()) engine.RequestScreenshot(m_auto.screenshotPath);
-	if (frame >= m_auto.exitAfter)
-	{
-		Log::Info("자동 검증: %llu 프레임 뒤 종료", frame);
-		PostQuitMessage(0);
-	}
-}
-
 // ------------------------------------------------------------------ 새 씬 · 오브젝트 추가/삭제
 
 void EditorApp::BuildEmptyScene()
@@ -1261,7 +970,7 @@ void EditorApp::BuildEmptyScene()
 	floorMat.uvScale = XMFLOAT2(8.0f, 8.0f);
 	floorMat.sampler = SamplerPreset::AnisotropicWrap;
 	scene.AddObject(floor, scene.AddMaterial(floorMat), "Floor");
-	scene.GetLights().push_back(LightData{});
+	scene.GetLights().push_back(Light{});
 	scene.ambientColor = XMFLOAT3(0.15f, 0.15f, 0.15f);
 	scene.clearColor[0] = 0.1f; scene.clearColor[1] = 0.1f; scene.clearColor[2] = 0.3f; scene.clearColor[3] = 1.0f;
 	ApplyDefaultEnvironment(scene);   // 새 씬(새 프로젝트의 Main.json 포함)도 HDR 환경을 가짐 (유니티의 기본 Skybox 와 같은 관례)

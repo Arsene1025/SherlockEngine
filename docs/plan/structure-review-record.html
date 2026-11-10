@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · 구조 검토 수정 기록 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.step { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>구조 검토 수정 기록</h1>
+  <p>2026-11-10 · <a href="structure-review-plan.html">structure-review-plan.html</a>(구조 점검과 수정 제안)의 A1~A4, B1~B5, C1~C4 를 구현한 내용을 항목 번호별로 정리한 기록입니다. 항목마다 계획의 진단, 수정 전·후 코드(핵심 부분만 발췌), 달라진 점과 남은 한계를 적었습니다. 계획 문서는 고치지 않았습니다.</p>
+  <p class="foot">기준: 커밋 64c02b9(수정 전, <code>git show HEAD:…</code>) ↔ 작업 트리(수정 후, 2026-11-10, 아직 커밋하지 않음). 경로는 <code>SherlockEngine/</code> 기준이고 위치는 "파일 + 함수 이름"으로 적었습니다. 코드 조각은 실제 파일에서 옮긴 발췌이며, 주석을 줄이거나 여러 줄을 한 줄로 합치고 생략한 곳은 <code>...</code> 로 표시했습니다 (기본값 생략 포함).</p>
+</header>
+<nav><a href="#summary">1. 요약</a><a href="#a12">2. A1·A2 셋 인덱스·레지스터</a><a href="#a3">3. A3 깊이·포맷</a><a href="#a4">4. A4 조명</a><a href="#b123">5. B1~B3 프레임 경로</a><a href="#b45">6. B4·B5 씬</a><a href="#c12">7. C1·C2 Renderer 분할</a><a href="#c34">8. C3·C4</a><a href="#notes">9. 계획과 다르게 한 것</a><a href="#verify">10. 검증</a><a href="#files">11. 파일 목록</a></nav>
+
+<section id="summary">
+<h2>1. 요약</h2>
+<table>
+<tr><th>번호</th><th>한 것</th><th>남은 것</th></tr>
+<tr><td><a href="#a1">A1</a></td><td><code>CommandList::SetResourceSet(setIndex, handle)</code>. D3D12 가 레이아웃 탐색 대신 인덱스로 셋을 기억</td><td>한 PSO 의 셋 수 상한 <code>kMaxBindingSets = 4</code> 는 그대로</td></tr>
+<tr><td><a href="#a2">A2</a></td><td>상한 상향(슬롯 24, CBV 14, SRV 32, 샘플러 16), 레지스터 겹침 검사를 PSO(패스) 단위로, D3D12 루트 예산 계산</td><td>지금 레이아웃은 여전히 전역 배정 번호를 씀 (재사용은 허용만 됨)</td></tr>
+<tr><td><a href="#a3">A3</a></td><td><code>Device::GetDepthBuffer</code> 제거, 깊이를 뷰 타깃이 <code>DepthStencil | ShaderResource</code> 로 소유, 포맷 5개 추가</td><td>깊이를 SRV 로 읽는 패스는 아직 없음</td></tr>
+<tr><td><a href="#a4">A4</a></td><td>씬용 <code>Light</code> 와 GPU 배치 <code>GpuLight</code> 분리, 조명 배열을 구조체 버퍼(t15)로, 8개 제한 제거, <code>BindingType::BufferResource</code></td><td>조명은 GameObject 가 아님 (LightComponent 는 하지 않음)</td></tr>
+<tr><td><a href="#b1">B1</a></td><td>오브젝트별 <code>ObjectData</code>(행렬·역행렬·경계 구)를 프레임에 한 번, 메인·미리보기·그림자 뷰마다 절두체 컬링</td><td><code>GetWorldMatrix</code> 자체에는 캐시가 없음</td></tr>
+<tr><td><a href="#b2">B2</a></td><td>GPU 메시·재질·텍스처를 <code>BuildDrawList</code> 에서 미리 만들고, 초기 데이터 업로드를 묶어 한 번만 대기</td><td>디코딩·밉 생성은 여전히 첫 프레임의 CPU 에서 동기</td></tr>
+<tr><td><a href="#b3">B3</a></td><td>재질 입력 스냅숏이 같으면 텍스처 이름 조회·셋 비교를 건너뜀, PSO 핸들을 작은 키로 캐시</td><td>재질 상수는 여전히 재질마다 프레임에 한 번 올림</td></tr>
+<tr><td><a href="#b4">B4</a></td><td><code>Scene::m_objectsById</code> 로 <code>FindById</code> 를 해시 조회로, <code>RemoveObject</code> 의 소속 검사를 집합으로</td><td><code>IndexOf</code>·벡터 삭제는 선형, 에디터 선택·콜백은 인덱스 기준 그대로</td></tr>
+<tr><td><a href="#b5">B5</a></td><td>메시·이미지 바이트를 <code>shared_ptr&lt;const …&gt;</code> 로 AssetManager 캐시와 함께 소유 (복사 없음)</td><td>되돌린 뒤 씬에 남는 메시는 그대로 남음</td></tr>
+<tr><td><a href="#c1">C1</a></td><td>Renderer 를 파일 넷 + <code>TextureCache</code> 로 나눔, <code>ViewTarget</code>, <code>Barrier</code> 의 <code>before</code> 인자와 Renderer 의 상태 멤버 제거</td><td>클래스는 여전히 하나 (파일만 나눔)</td></tr>
+<tr><td><a href="#c2">C2</a></td><td>셰이더·패스·cbuffer 표(<code>kShaders</code>/<code>kPasses</code>/<code>kConstantBuffers</code>)와 루프, 패스별 <code>ValidateBindings</code></td><td>새 패스는 <code>BuildPassDescs</code> 에 래스터라이저·깊이 설정을 손으로 적어야 함</td></tr>
+<tr><td><a href="#c3">C3</a></td><td>스크립트 DLL 이 ABI 표식 <code>SherlockScriptAbiInfo</code> 를 내보내고, 엔진이 올리기 전에 비교</td><td>크기 비교 대상은 Behaviour·Script·GameObject·Transform 넷뿐</td></tr>
+<tr><td><a href="#c4">C4</a></td><td><code>EditorAutomation</code> 구조체와 구현 파일 분리, <code>RunAutomation</code> 을 <code>at(frame, condition, action)</code> 표로</td><td>함수는 여전히 <code>EditorApp</code> 의 멤버</td></tr>
+</table>
+<p>줄 수: <code>Graphics/Renderer.cpp</code> 2,244 → 1,383, <code>RendererPost.cpp</code> 287 → 345, 새 파일 <code>RendererShadow.cpp</code> 523, <code>RendererTargets.cpp</code> 176, <code>TextureCache.cpp/.h</code> 242 + 57, <code>Frustum.h</code> 52. <code>git diff HEAD --numstat -- SherlockEngine</code> 기준 추적 중인 코드 파일만 1,553줄 추가, 2,284줄 삭제입니다(새 파일 제외).</p>
+</section>
+
+<section id="a12">
+<h2>2. A1 · A2 — 셋 인덱스와 레지스터 여유</h2>
+
+<h3 id="a1">A1. 셋을 레이아웃이 아니라 인덱스로 기억</h3>
+<p><b>왜.</b> 계획의 진단: <code>D3D12CommandList::SetResourceSet</code> 이 셋의 레이아웃 핸들로 슬롯을 찾고 없으면 <code>kMaxBindingSets</code>(4)까지만 추가하며, 한 번 들어간 슬롯은 비워지지 않습니다. frame / object / material / post 네 레이아웃으로 이미 가득 차 있어 다섯 번째 레이아웃(G-buffer 라이팅, SSAO)의 셋은 바인딩되지 않습니다.</p>
+<p>수정 전 (<code>RHI/D3D12/D3D12CommandList.cpp</code>):</p>
+<pre><code>void D3D12CommandList::SetResourceSet(ResourceSetHandle handle)
+{
+    ...
+    // 같은 레이아웃의 셋이 이미 있으면 교체, 없으면 추가. 실제 바인딩은 DrawIndexed 직전.
+    for (uint32_t i = 0; i &lt; m_setCount; ++i)
+    {
+        if (m_sets[i].layout == set-&gt;desc.layout) { ... return; }
+    }
+    if (m_setCount &lt; kMaxBindingSets)
+        m_sets[m_setCount++] = BoundSet{ set-&gt;desc.layout, handle, true };
+    else
+        ErrorOnce(warnedFull, "SetResourceSet : 커맨드 리스트의 셋 슬롯(kMaxBindingSets)이 가득 참. ...");
+}</code></pre>
+<p>수정 후:</p>
+<pre><code>void D3D12CommandList::SetResourceSet(uint32_t setIndex, ResourceSetHandle handle)
+{
+    ...
+    if (setIndex &gt;= kMaxBindingSets) { ErrorOnce(warnedIndex, "..."); return; }
+    // 인덱스 자리에 기억만 함. 실제 바인딩은 드로우 직전 (ApplyBindings) — 그때 현재 PSO 의 같은 인덱스
+    // 레이아웃과 맞는지 확인함.
+    BoundSet&amp; bound = m_sets[setIndex];
+    if (bound.set != handle)
+    {
+        bound.layout = set-&gt;desc.layout;
+        bound.set = handle;
+        bound.tablesDirty = true;
+    }
+}
+
+// ApplyBindings: 루트 시그니처의 셋 s 는 m_sets[s] 를 씀
+BoundSet* bound = &amp;m_sets[s];
+if (!bound-&gt;set.IsValid())               { ErrorOnce(warnedMissing, "... 셋 인덱스에 ResourceSet 이 바인딩되지 않음."); continue; }
+if (bound-&gt;layout != binding.layout)     { ErrorOnce(warnedLayout, "... 레이아웃이 PSO 의 그 자리 BindingLayout 과 다름."); continue; }</code></pre>
+<p>Renderer 쪽은 셋 인덱스를 상수로 둡니다 (<code>Graphics/Renderer.h</code>):</p>
+<pre><code>// 메인 { 프레임, 오브젝트, 재질 }, 그림자 { 프레임, 오브젝트 }, 스카이 { 프레임 }, 후처리 { 후처리 }.
+static constexpr uint32_t kSetFrame = 0;
+static constexpr uint32_t kSetObject = 1;
+static constexpr uint32_t kSetMaterial = 2;
+static constexpr uint32_t kSetPost = 0;</code></pre>
+<p><b>달라진 것.</b> 레이아웃 종류 수는 제한이 없고, 한 PSO 가 쓰는 셋 수만 <code>kMaxBindingSets</code>(4) 이하면 됩니다. 후처리 셋이 인덱스 0 을 쓰므로 씬 패스는 그 뒤에 프레임 셋을 인덱스 0 에 다시 꽂습니다(<code>Renderer::DrawItems</code> 첫 줄). D3D11 은 루트 시그니처가 없어 <code>setIndex</code> 를 쓰지 않고 레지스터 번호로 바로 바인딩합니다(<code>(void)setIndex;</code>).</p>
+<p><b>남은 한계.</b> 셋을 PSO 의 몇 번째 자리에 꽂을지는 호출 코드(<code>kSet*</code> 상수)가 맞춰야 합니다. 어긋나면 D3D12 는 드로우 때 오류 로그를 한 번 남기고 그 셋을 건너뛰지만, D3D11 은 검사하지 않습니다.</p>
+
+<h3 id="a2">A2. 레지스터·슬롯 상한과 겹침 검사</h3>
+<p><b>왜.</b> 계획의 진단: CBV 8 / SRV 16 / 레이아웃당 슬롯 16 상한에 남은 자리가 b7, t5~t7, t15, 슬롯 4개뿐이었고, 원인은 "D3D11 의 t#/s# 는 번호 공간이 하나이므로 셋끼리 겹치지 않게 전역으로 나눈다"는 규칙이었습니다.</p>
+<p>수정 전 / 후 (<code>RHI/BindingTypes.h</code>):</p>
+<pre><code>// 전
+constexpr uint32_t kMaxBindingSlots = 16;
+constexpr uint8_t kMaxCbvRegister = 8;
+constexpr uint8_t kMaxSrvRegister = 16;
+constexpr uint8_t kMaxSamplerRegister = 8;
+
+// 후
+constexpr uint32_t kMaxBindingSlots = 24;   // 레이아웃 하나의 슬롯 수
+// 레지스터 번호는 "한 PSO 가 쓰는 레이아웃들 안에서만" 겹치지 않으면 됨. ...
+constexpr uint8_t kMaxCbvRegister = 14;
+constexpr uint8_t kMaxSrvRegister = 32;
+constexpr uint8_t kMaxSamplerRegister = 16;</code></pre>
+<p>겹침 검사는 두 곳에서 패스(PSO) 단위로 합니다.</p>
+<ul>
+  <li><code>D3D12Device::GetOrCreateRootLayout</code>: 한 PSO 의 셋끼리 같은 (레지스터 문자, 번호)를 같은 스테이지에 선언하면 <code>"루트 시그니처 : 셋 %u (%s) 와 셋 %u (%s) 가 같은 레지스터 %c%u 를 같은 스테이지에 선언함."</code> 로그와 함께 <code>nullptr</code>. 텍스처와 구조체 버퍼는 같은 <code>t</code> 공간으로 봅니다(<code>RegisterClassOf</code>).</li>
+  <li>같은 함수가 루트 파라미터 비용(루트 디스크립터 2, 테이블 1 DWORD)을 더해 64 를 넘으면 거절하고, 성공하면 <code>"루트 시그니처 생성: 셋 %u개, 루트 파라미터 %u개, %u / 64 DWORD …"</code> 를 남깁니다.</li>
+  <li><code>Renderer::ValidateBindings</code>: <code>kPasses</code> 의 패스마다 그 패스 레이아웃끼리 겹치는지 봅니다 (<a href="#c2">C2</a>).</li>
+</ul>
+<p><b>달라진 것.</b> 서로 다른 PSO 는 같은 번호를 다른 용도로 써도 되는 구조가 됐습니다. 예: G-buffer 를 읽는 라이팅 패스의 t0~t3 과 재질의 t0~t4.</p>
+<p><b>남은 한계.</b> 지금 있는 레이아웃의 번호는 바꾸지 않았습니다. 재질 t0~t4, 프레임 t8~t15, 후처리 t13 처럼 전역 배정 번호를 그대로 쓰고, <code>Shaders/Common.hlsli</code> 머리 주석의 "재질 셋 t0..t7 / 프레임 셋 t8..t15" 배정표도 남아 있습니다. 재사용은 새 패스를 만들 때 처음 쓰게 됩니다. 프레임 셋은 이제 t8~t12, t14, t15 를 쓰고(t13 은 후처리 셋), 계획 문서의 "남은 것" 표에 있던 t15 는 조명 버퍼가 차지했습니다.</p>
+</section>
+
+<section id="a3">
+<h2>3. A3 — 깊이 버퍼를 뷰가 소유, 포맷 추가</h2>
+<p><b>왜.</b> 계획의 진단: 씬 뷰·미리보기의 깊이 텍스처는 <code>TextureBind_DepthStencil</code> 만 가졌고, 게임 모드는 장치가 소유한 <code>Device::GetDepthBuffer()</code> 를 써서 SRV 로 만들 수 없었습니다. 디퍼드 라이팅·SSAO 가 깊이를 읽을 수 없습니다.</p>
+<p>수정 전 (<code>Renderer::RenderMainPass</code>, <code>Renderer::SetSceneTarget</code>):</p>
+<pre><code>const TextureHandle depth = IsOffscreen() ? m_sceneDepth : m_device-&gt;GetDepthBuffer();
+...
+const TextureDesc depth{
+    .width = width, .height = height,
+    .format = Format::D24_UNORM_S8_UINT,
+    .mipLevels = 1,
+    .bindFlags = TextureBind_DepthStencil,
+    .debugName = "SceneView_Depth",
+};</code></pre>
+<p>수정 후 (<code>Graphics/RendererTargets.cpp</code> 의 <code>Renderer::CreateViewTarget</code>):</p>
+<pre><code>// 깊이도 셰이더에서 읽을 수 있게 만듦 (TYPELESS 리소스 + DSV + SRV). 지금 읽는 패스는 없지만, 깊이를
+// 입력으로 쓰는 패스(SSAO, 디퍼드 라이팅, 소프트 파티클)가 텍스처를 다시 만들지 않고 붙을 수 있음.
+const TextureDesc depth{
+    .width = width, .height = height,
+    .format = Format::D24_UNORM_S8_UINT,
+    .mipLevels = 1,
+    .bindFlags = TextureBind_DepthStencil | TextureBind_ShaderResource,
+    .debugName = depthName.c_str(),
+};
+view.depth = m_device-&gt;CreateTexture(depth);</code></pre>
+<p>게임 모드는 <code>Renderer::EnsureGameTarget</code> 이 출력 크기(<code>SetOutputSize</code>)에 맞춰 색 없는 뷰 타깃(<code>withColor = false</code>, 이름 <code>"Game"</code>)을 만듭니다. <code>Device.h</code> 에서 <code>GetDepthBuffer</code> 가 빠졌고, 두 백엔드의 <code>CreateDepthTexture</code>, <code>m_depthBuffer</code>, <code>Resize</code> 안의 깊이 재생성도 지웠습니다. D3D12 <code>CreateTexture</code> 의 초기 상태 주석은 "깊이 전용(SRV 없음)이면 DEPTH_WRITE, 그 외(그림자 맵·씬 깊이 포함)는 COMMON" 으로 바뀌었고, 씬 패스가 첫 배리어로 <code>DepthWrite</code> 전이를 겁니다(<code>RenderScenePass</code>).</p>
+<p>포맷 (<code>RHI/PipelineTypes.h</code>, 두 백엔드의 <code>Convert</code> 표에 한 줄씩):</p>
+<pre><code>// 아래는 G-buffer·SSAO·속도 버퍼용. 새 값은 끝에 붙임 (기존 값의 번호가 PSO 캐시 키에 들어감).
+R8_UNORM,              // 1채널 8비트 (AO, 마스크)
+R16_FLOAT,             // half 1개 (선형 깊이)
+R16G16_FLOAT,          // half2 (화면 공간 속도, 옥타헤드럴 노멀)
+R10G10B10A2_UNORM,     // 채널당 10비트 + 알파 2비트 (월드 노멀)
+R11G11B10_FLOAT,       // 알파 없는 HDR 색 (FP16 의 절반 크기)</code></pre>
+<p><b>달라진 것.</b> 에디터와 게임 모드가 같은 깊이 경로를 탑니다. 장치는 백버퍼만 갖습니다.</p>
+<p><b>남은 한계.</b> 깊이를 SRV 로 읽는 패스가 아직 없어 이 경로(D24S8 의 SRV 뷰)는 실행으로 확인된 적이 없습니다. 씬 패스는 끝나도 깊이를 <code>DepthWrite</code> 로 둡니다. 새 포맷 다섯 개도 쓰는 곳이 없습니다.</p>
+</section>
+
+<section id="a4">
+<h2>4. A4 — 조명: 씬의 Light 와 GPU 배치 분리, 구조체 버퍼</h2>
+<p><b>왜.</b> 계획의 진단: <code>Scene::m_lights</code> 가 cbuffer 레이아웃 그대로인 <code>LightData</code> 의 벡터라 <code>shadowIndex</code>·패딩까지 씬 데이터에 들어 있었고, <code>MAX_LIGHTS = 8</code> 이 cbuffer 크기(656B)에 박혀 씬을 읽을 때도 8개에서 잘랐습니다. SRV 바인딩은 텍스처만 받아 조명 리스트를 구조체 버퍼로 넘길 길이 없었습니다.</p>
+<h3>씬 쪽 (<code>Scene/Light.h</code>)</h3>
+<pre><code>// 전
+constexpr uint32_t MAX_LIGHTS = 8;
+struct alignas(16) LightData
+{
+    DirectX::XMFLOAT3 position = ...;
+    float intensity = 1.0f;
+    ...
+    uint32_t castShadows = 1;
+    int32_t shadowIndex = -1;
+    float padding = 0.0f;
+};
+static_assert(sizeof(LightData) == 80, "...");
+
+// 후
+struct Light
+{
+    LightType type = LightType::Directional;
+    DirectX::XMFLOAT3 position = ...;
+    DirectX::XMFLOAT3 direction = ...;
+    DirectX::XMFLOAT3 color = ...;
+    float intensity = 1.0f;
+    float range = 50.0f;
+    DirectX::XMFLOAT3 attenuation = ...;
+    float innerConeCos = 0.9238795f;
+    float outerConeCos = 0.8660254f;
+    bool castShadows = true;
+};</code></pre>
+<h3>GPU 쪽 (<code>Graphics/ShaderConstants.h</code>, <code>Shaders/Common.hlsli</code>)</h3>
+<pre><code>struct GpuLight   // HLSL LightData 와 바이트 단위로 같음
+{
+    DirectX::XMFLOAT3 position;    float intensity;
+    DirectX::XMFLOAT3 direction;   float range;
+    DirectX::XMFLOAT3 color;       uint32_t type;
+    DirectX::XMFLOAT3 attenuation; float innerConeCos;
+    float outerConeCos; uint32_t castShadows; int32_t shadowIndex; float padding;
+};
+static_assert(sizeof(GpuLight) == 80, "...");
+
+// b2. 조명 배열은 여기 없음 — 구조체 버퍼(t15)에 있고 개수만 여기 둠.
+struct alignas(16) LightConstants
+{
+    DirectX::XMFLOAT3 ambientColor;
+    uint32_t lightCount;
+};
+static_assert(sizeof(LightConstants) == 16, "LightConstants: 16");
+constexpr uint32_t kSRVSlotLights = 15;</code></pre>
+<pre><code>// Common.hlsli. 전: cbuffer Lights 안에 LightData lights[MAX_LIGHTS] (656바이트)
+cbuffer Lights : register(b2)
+{
+    float3 ambientColor;
+    uint lightCount;          // 아래 lights 의 유효 원소 수
+}
+StructuredBuffer&lt;LightData&gt; lights : register(t15);
+
+// BasicPixelShader.hlsl. 전: min(lightCount, MAX_LIGHTS)
+const uint activeLightCount = lightCount;</code></pre>
+<h3>Renderer 의 흐름</h3>
+<ul>
+  <li><code>Renderer::BuildGpuLights</code>: 씬의 <code>Light</code> → <code>m_gpuLights</code>. 방향을 정규화(0벡터면 아래)하고 <code>shadowIndex = -1</code> 로 둡니다. 예전에 <code>Render</code> 안에 있던 복사·정규화 코드입니다.</li>
+  <li><code>BuildShadowViews(camera, m_gpuLights)</code> 가 <code>shadowIndex</code> 를 채운 뒤 <code>UploadLights</code> 가 올립니다.</li>
+  <li><code>Renderer::UploadLights</code>: 구조체 버퍼 <code>SB_Lights</code>(Dynamic, <code>BufferBind_ShaderResource</code>, stride 80). 처음 64개(<code>kInitialLightCapacity</code>, 5,120바이트), 모자라면 두 배씩 늘려 다시 만들고 <code>m_boundEnvironment</code> 를 비워 프레임 셋을 다시 만들게 합니다. 조명이 0개여도 한 칸은 올립니다(D3D12 Dynamic 버퍼의 갱신 검사).</li>
+  <li>프레임 레이아웃 끝에 <code>frameLayout.Add(BindingType::BufferResource, ShaderStageMask_Pixel, kSRVSlotLights)</code>.</li>
+</ul>
+<h3>RHI: <code>BindingType::BufferResource</code></h3>
+<table>
+<tr><th>곳</th><th>내용</th></tr>
+<tr><td><code>RHI/BindingTypes.h</code></td><td><code>BufferResource</code> = t# 구조체 버퍼. <code>ResourceBinding::buffer</code> 에 <code>BufferBind_ShaderResource</code> 버퍼를 꽂음</td></tr>
+<tr><td>두 백엔드 <code>CreateBindingLayout</code></td><td>상한은 <code>kMaxSrvRegister</code>, 텍스처와 같은 t 공간으로 겹침 검사</td></tr>
+<tr><td>두 백엔드 <code>CreateResourceSet</code></td><td>버퍼가 없거나 <code>BufferBind_ShaderResource</code> 가 없거나 stride 0 이면 오류</td></tr>
+<tr><td>D3D11</td><td><code>D3D11Buffer::GetSRV</code> 가 Dynamic 복제본마다 SRV(<code>DXGI_FORMAT_UNKNOWN</code>, 원소 수 = size / stride)를 처음 요청될 때 만듦. <code>SetResourceSet</code> 이 VS/PS 에 꽂고 그 레지스터의 텍스처 추적(<code>m_psSrv</code>)을 비움</td></tr>
+<tr><td>D3D12</td><td>루트 SRV(<code>D3D12_ROOT_PARAMETER_TYPE_SRV</code>). Dynamic 링 주소가 바뀌므로 CBV 와 같이 드로우마다 <code>SetGraphicsRootShaderResourceView</code>. <code>cbvRoot</code> 배열은 <code>descriptorRoot</code> 로 이름이 바뀜</td></tr>
+<tr><td><code>RHI/DXBC/ShaderCompiler.cpp</code></td><td><code>ReflectBindings</code> 가 <code>D3D_SIT_STRUCTURED</code> 를 <code>BufferResource</code> 로 읽음 (전에는 지원하지 않는 타입 경고)</td></tr>
+</table>
+<h3>에디터·직렬화</h3>
+<ul>
+  <li><code>Scene/SceneSerializer.cpp</code>: <code>LoadFromString</code>, <code>RestoreEditState</code> 의 <code>if (scene.GetLights().size() &lt; MAX_LIGHTS)</code> 잘라내기 제거. <code>type</code> 은 정수로 저장하고, 읽을 때 Spot(2)보다 큰 값은 방향광으로 둡니다. <code>castShadows</code> 는 bool 그대로.</li>
+  <li><code>Editor/DebugUI.cpp</code>: <code>"Lights (%zu / %u)"</code> → <code>"Lights (%zu)"</code>, "Add point light" 버튼의 <code>if (lights.size() &lt; MAX_LIGHTS)</code> 제거. 같은 줄의 지역광 타일 수는 하드코딩 "12" 대신 <code>Renderer::kShadowLocalTileCount</code>(16)를 찍습니다.</li>
+  <li><code>Editor/Editor.cpp</code>, <code>Editor/EditorApp.cpp</code>: <code>LightData</code> → <code>Light</code>, <code>static_cast&lt;uint32_t&gt;(LightType::…)</code> 비교를 enum 비교로.</li>
+</ul>
+<p><b>달라진 것.</b> 씬 데이터에 GPU 배치(패딩, 그림자 뷰 번호)가 없고, 조명 수 상한이 없습니다. 씬의 <code>Light</code> 필드를 바꿔도 HLSL 패킹과 무관합니다. b2 는 656 → 16바이트.</p>
+<p><b>남은 한계.</b> 조명은 계획이 말한 GameObject·컴포넌트가 아니라 여전히 씬의 벡터라 계층·스크립트·안정 ID 가 없고, 에디터의 별도 선택(<code>m_selectedLight</code>)·기즈모·아이콘 코드도 그대로입니다 (<a href="#notes">9장</a>). 셰이더는 여전히 모든 조명을 픽셀마다 돌므로, 조명이 많아지면 라이트 컬링이 필요합니다. 64개를 넘는 씬에서의 버퍼 확장은 실행해 보지 않았습니다.</p>
+</section>
+
+<section id="b123">
+<h2>5. B1 ~ B3 — 프레임 경로의 반복 계산</h2>
+
+<h3 id="b1">B1. 오브젝트 데이터를 프레임에 한 번, 절두체 컬링</h3>
+<p><b>왜.</b> 계획의 진단: <code>BuildDrawList</code> 에 프러스텀 컬링이 없고, 그림자 패스는 지역광만 구 컬링을 했으며(캐스케이드는 <code>cullSphere.w = 0</code>), <code>UploadObjectConstants</code> 가 드로우마다 <code>GameObject::GetWorldMatrix()</code> 와 역행렬을 다시 구했습니다. 한 드로우 항목이 프레임당 <code>BuildDrawList</code> 1 + 경계 구 1 + 그림자 뷰 수 + 메인 1 + 미리보기 1 번 월드 행렬을 계산했습니다.</p>
+<p>수정 전 (<code>Renderer::UploadObjectConstants</code>, 드로우마다 호출):</p>
+<pre><code>void Renderer::UploadObjectConstants(const GameObject&amp; object)
+{
+    const XMMATRIX world = object.GetWorldMatrix();   // 부모 계층을 곱한 월드 행렬
+    PerObjectConstants perObject = {};
+    XMStoreFloat4x4(&amp;perObject.world, XMMatrixTranspose(world));
+    XMStoreFloat4x4(&amp;perObject.worldInvTranspose, XMMatrixInverse(nullptr, world));
+    m_device-&gt;UpdateBuffer(m_perObjectCB, &amp;perObject, sizeof(perObject));
+}</code></pre>
+<p>수정 후 (<code>Renderer::BuildDrawList</code> 에서 오브젝트마다 한 번, <code>UploadObjectConstants</code> 는 복사만):</p>
+<pre><code>struct ObjectData
+{
+    DirectX::XMFLOAT4X4 world;              // 전치해서 저장 (b1 에 그대로 올림)
+    DirectX::XMFLOAT4X4 worldInvTranspose;  // 올리는 값은 W⁻¹
+    DirectX::XMFLOAT4 sphere;               // 월드 경계 구 (xyz = 중심, w = 반지름). 컬링용
+};
+
+// BuildDrawList
+const XMMATRIX world = object.GetWorldMatrix();
+ObjectData data;
+XMStoreFloat4x4(&amp;data.world, XMMatrixTranspose(world));
+XMStoreFloat4x4(&amp;data.worldInvTranspose, XMMatrixInverse(nullptr, world));
+... // 경계 구 = 메시 경계 중심의 월드 변환, 반지름 × 세 축 길이의 최댓값
+m_objects.push_back(data);
+
+void Renderer::UploadObjectConstants(uint32_t object)
+{
+    const ObjectData&amp; data = m_objects[object];
+    PerObjectConstants perObject;
+    perObject.world = data.world;
+    perObject.worldInvTranspose = data.worldInvTranspose;
+    m_device-&gt;UpdateBuffer(m_perObjectCB, &amp;perObject, sizeof(perObject));
+}</code></pre>
+<p>컬링은 새 파일 <code>Graphics/Frustum.h</code> 의 <code>Frustum::FromViewProj</code>(행벡터 관례에서 열로 평면 여섯 개를 뽑는 Gribb–Hartmann)와 <code>Intersects(sphere)</code> 로 합니다.</p>
+<pre><code>// Renderer::DrawItems (메인·미리보기): 그 카메라의 절두체
+const Frustum frustum = Frustum::FromViewProj(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+for (const DrawItem&amp; item : m_drawList)
+{
+    if (!frustum.Intersects(m_objects[item.object].sphere)) { ++m_stats.culled; continue; }
+    ...
+
+// Renderer::RenderShadowAtlasPass (RendererShadow.cpp): 그림자 뷰마다
+const bool perspective = view.params.z == 1.0f;
+const Frustum frustum = Frustum::FromViewProj(XMLoadFloat4x4(&amp;view.viewProj), !perspective);   // 직교 뷰는 near 평면을 뺌
+...
+if (!frustum.Intersects(sphere)) { ++m_stats.shadowCulled; continue; }</code></pre>
+<p><b>달라진 것.</b> 월드 행렬은 오브젝트당 프레임에 한 번입니다. 메인·미리보기 패스는 카메라 절두체 밖의 드로우를, 그림자 패스는 지역광 범위 구 밖과 뷰 절두체 밖(캐스케이드 포함)의 드로우를 건너뜁니다. 직교 그림자 뷰는 near 평면을 빼서 광원 쪽으로 물러난 캐스터를 남깁니다. 통계에 <code>Stats::culled</code> 가 생겼고 <code>shadowCulled</code> 는 절두체 컬링도 셉니다. 예전 <code>m_itemSpheres</code> 와 <code>DrawItem::mirrored</code>·<code>DrawItem::object</code>(포인터)는 <code>m_objects</code> 인덱스로 바뀌었습니다.</p>
+<p><b>남은 한계.</b> <code>GetWorldMatrix</code> 는 여전히 부모를 재귀로 올라가며 캐시 없이 계산합니다(호출 횟수만 줄였음). 계획의 "뷰별 가시성 리스트"는 만들지 않고 드로우 루프 안에서 검사합니다. 구-평면 검사라 모서리 근처의 밖에 있는 구를 남길 수 있습니다(보수적). 컬링으로 줄어든 드로우 수는 재지 않았습니다.</p>
+
+<h3 id="b2">B2. 드로우 루프 밖에서 GPU 리소스 생성, 업로드 묶음</h3>
+<p><b>왜.</b> 계획의 진단: <code>DrawItems</code> 안에서 <code>GetOrCreateGpuMesh</code> / <code>GetOrCreateGpuMaterial</code> → <code>GetOrLoadTexture</code> 가 처음 만난 리소스를 그 자리에서 만들었고, D3D12 는 리소스 하나마다 <code>ExecuteUploadSync</code> → <code>WaitForGpu</code> 였습니다.</p>
+<p>수정 전 (<code>Renderer::DrawItems</code>):</p>
+<pre><code>if (item.material != lastMaterial)
+{
+    const GpuMaterial* gpuMaterial = GetOrCreateGpuMaterial(*item.material, &amp;scene);
+    if (gpuMaterial == nullptr) continue;
+    cmd.SetResourceSet(gpuMaterial-&gt;set);
+    ...
+}
+if (item.mesh != lastMesh)
+{
+    const GpuMesh* gpuMesh = GetOrCreateGpuMesh(*item.mesh);
+    ...</code></pre>
+<p>수정 후: <code>BuildDrawList</code> 가 <code>DrawItem::gpuMesh</code>·<code>gpuMaterial</code>·<code>shadowPipeline</code> 을 채우고, <code>Render</code> 가 그 구간을 묶음으로 감쌉니다.</p>
+<pre><code>// Renderer::Render
+m_device-&gt;BeginResourceUploads();
+ResolveEnvironment(scene.environment);      // 환경 큐브
+UploadPerFrameConstants(camera, totalTime);
+UploadLights(scene);
+BuildDrawList(scene);                       // 메시 버퍼·재질 셋·재질 텍스처
+m_device-&gt;EndResourceUploads();</code></pre>
+<pre><code>// D3D12Device. 전: ExecuteUploadSync = Reset → record → Close → Execute → WaitForGpu (리소스마다)
+bool D3D12Device::RecordUpload(const std::function&lt;void(ID3D12GraphicsCommandList*)&gt;&amp; record, ComPtr&lt;ID3D12Resource&gt; keepAlive)
+{
+    if (!m_uploadListOpen)
+    {
+        HRESULT hr = m_uploadAllocator-&gt;Reset();
+        if (SUCCEEDED(hr)) hr = m_uploadList-&gt;Reset(m_uploadAllocator.Get(), nullptr);
+        if (FAILED(hr))
+        {
+            Log::Error("업로드 커맨드 리스트 Reset 실패. 초기 데이터가 올라가지 않음. %s", ...);
+            return false;
+        }
+        m_uploadListOpen = true;
+    }
+    record(m_uploadList.Get());
+    if (keepAlive) m_uploadKeepAlive.push_back(std::move(keepAlive));
+    // 묶음 밖(로드 시점의 단발 생성)이면 지금 실행하고 기다림. 묶음 안이면 EndResourceUploads 가 한 번에 함.
+    if (m_uploadBatchDepth == 0) FlushUploads();
+    return true;
+}</code></pre>
+<p><code>FlushUploads</code> 는 Close → Execute → <code>WaitForGpu</code> → 업로드 힙 버퍼(<code>m_uploadKeepAlive</code>) 해제입니다. <code>Begin/EndResourceUploads</code> 는 중첩 깊이를 세고 가장 바깥 End 에서 제출합니다. End 를 빠뜨린 채 프레임이 끝나면 <code>EndFrame</code> 이 오류 로그(<code>ErrorOnce</code>)를 남기고 남은 업로드를 제출하고, <code>Resize</code>·<code>ReleaseDevice</code> 도 먼저 <code>FlushUploads</code> 를 부릅니다. D3D11 은 두 함수가 빈 구현입니다(생성 시 드라이버가 복사).</p>
+<p><b>달라진 것.</b> 드로우 루프 안에서는 아무것도 만들지 않습니다. D3D12 에서 한 프레임에 새로 만든 메시·텍스처의 초기 복사는 한 커맨드 리스트로 제출되고 GPU 대기도 한 번입니다.</p>
+<p><b>남은 한계.</b> 계획의 "씬 로드 직후 미리 만드는 단계"는 따로 두지 않고 첫 <code>Render</code> 의 묶음이 그 역할을 합니다. 파일 읽기·디코딩·밉 생성은 그 프레임의 CPU 에서 동기로 하므로 첫 프레임의 멈춤 자체는 남습니다. 묶음 밖에서 만드는 리소스(초기화의 내장 텍스처 등)는 예전처럼 하나씩 제출·대기합니다. 대기 횟수 감소를 시간으로 재지는 않았습니다.</p>
+
+<h3 id="b3">B3. 재질 입력 스냅숏, PSO 작은 키 캐시</h3>
+<p><b>왜.</b> 계획의 진단: <code>GetOrCreateGpuMaterial</code> 이 재질마다 매 프레임 텍스처 이름으로 캐시 키 문자열(<code>name + "|srgb"</code>)을 5번 만들어 해시 조회했고, <code>GetPipelineFor</code>/<code>GetShadowPipelineFor</code> 는 드로우(그림자는 뷰 × 항목)마다 <code>PipelineStateDesc</code> 전체를 복사·해시했습니다.</p>
+<p>수정 전 (<code>GetOrCreateGpuMaterial</code>, 매 프레임):</p>
+<pre><code>const TextureHandle albedo = GetOrLoadTexture(material.albedoTexture, material.albedoSrgb, scene);
+const TextureHandle normal = material.normalTexture.empty() ? m_flatNormalTexture : GetOrLoadTexture(...);
+const TextureHandle metallicRoughness = GetOrLoadTexture(...);
+const TextureHandle occlusion = GetOrLoadTexture(...);
+const TextureHandle emissive = GetOrLoadTexture(...);
+...
+if (!gpuMaterial-&gt;set.IsValid() || gpuMaterial-&gt;boundAlbedo != albedo || ...) { /* 셋 재생성 */ }</code></pre>
+<p>수정 후: <code>GpuMaterial</code> 이 셋을 만들 때 본 입력의 사본(텍스처 이름 다섯, <code>albedoSrgb</code>, 샘플러, <code>TextureCache::GetGeneration()</code>)을 갖고, 같으면 위 조회를 통째로 건너뜁니다.</p>
+<pre><code>const bool unchanged = gpuMaterial-&gt;set.IsValid()
+    &amp;&amp; gpuMaterial-&gt;textureGeneration == m_textures.GetGeneration()
+    &amp;&amp; gpuMaterial-&gt;sampler == sampler
+    &amp;&amp; gpuMaterial-&gt;albedoSrgb == material.albedoSrgb
+    &amp;&amp; gpuMaterial-&gt;albedoName == material.albedoTexture
+    &amp;&amp; gpuMaterial-&gt;normalName == material.normalTexture
+    &amp;&amp; ... ;
+if (!unchanged) { /* Load2D 다섯 번 → 핸들이 다르면 셋 재생성 → 사본 갱신 */ }</code></pre>
+<p>텍스처 캐시도 키 문자열을 만들지 않게 바뀌었습니다: <code>TextureCache</code> 의 2D 캐시는 <code>m_2d[2]</code>(선형/sRGB 두 맵, 키 = 이름)입니다.</p>
+<pre><code>// Renderer::GetPipelineFor. 전: 매번 PipelineStateDesc desc = m_baseDesc; ... return m_device-&gt;CreatePipeline(desc);
+const bool wireframe = m_settings.wireframe || material.wireframe;
+const bool cullBack = m_settings.cullBack &amp;&amp; !material.doubleSided;
+const uint32_t key = static_cast&lt;uint32_t&gt;(vertexFormat) | (mirrored ? 1u &lt;&lt; 8 : 0u) | (wireframe ? 1u &lt;&lt; 9 : 0u) | (cullBack ? 1u &lt;&lt; 10 : 0u);
+auto found = m_mainPipelines.find(key);
+if (found != m_mainPipelines.end()) return found-&gt;second;
+... // 처음 한 번만 Desc 를 채워 CreatePipeline
+if (handle.IsValid()) m_mainPipelines.emplace(key, handle);   // 실패는 기억하지 않음</code></pre>
+<p>그림자 PSO 는 (정점 포맷, mirrored, doubleSided) 키의 <code>m_shadowPipelines</code>, 스카이·톤(<code>[srgbOutput]</code>)·후처리(<code>[additive]</code>)는 핸들 하나씩 캐시합니다. 셰이더 핫리로드의 <code>BuildPassDescs</code> 가 전부 비웁니다. 그림자 PSO 는 <code>BuildDrawList</code> 가 <code>DrawItem::shadowPipeline</code> 에 미리 구해 두므로 그림자 패스는 조회하지 않습니다(unlit 재질은 빈 핸들).</p>
+<p><b>달라진 것.</b> 재질이 그대로인 프레임은 문자열 비교 몇 번으로 끝나고, PSO 는 정수 키 해시 조회 한 번입니다.</p>
+<p><b>남은 한계.</b> 계획이 말한 "값이 그대로여도 상수를 다시 올림"은 남았습니다. 재질 상수(b3)는 예전과 같이 재질마다 프레임에 한 번 올립니다(D3D12 Dynamic 상수버퍼는 프레임마다 갱신돼야 함). 계획의 변경 카운터 대신 입력 사본 비교를 썼으므로 재질 쪽 코드(<code>Material</code>)는 바뀌지 않았습니다. 작은 키 캐시는 Renderer 가 <code>Device::InvalidatePipelines</code> 를 부르는 곳(핫리로드)과 짝이 맞아야 하며, 지금 그 호출은 <code>ReloadShaders</code> 한 곳뿐입니다.</p>
+</section>
+
+<section id="b45">
+<h2>6. B4 · B5 — 씬 조회와 모델 데이터</h2>
+
+<h3 id="b4">B4. ID → 오브젝트 표</h3>
+<p><b>왜.</b> 계획의 진단: <code>Scene::FindById</code>·<code>IndexOf</code>·<code>RemoveObject</code> 가 모두 오브젝트 벡터를 훑고, <code>FlushDestroyed</code> 가 지울 루트마다 <code>FindById</code> + <code>IndexOf</code> 를 불러 생성·파괴가 많으면 O(n²)이었습니다.</p>
+<pre><code>// 전 (Scene::FindById)
+for (auto&amp; object : m_objects) if (object-&gt;GetId() == id) return object.get();
+return nullptr;
+
+// 후
+const auto found = m_objectsById.find(id);
+return found == m_objectsById.end() ? nullptr : found-&gt;second;
+
+// 새 함수 Scene::SetObjectId — 직렬화가 파일의 ID 를 되살릴 때
+bool Scene::SetObjectId(GameObject&amp; object, uint64_t id)
+{
+    if (id == 0) return false;
+    if (id == object.GetId()) return true;
+    if (m_objectsById.find(id) != m_objectsById.end()) return false;   // 다른 오브젝트가 쓰는 ID
+    m_objectsById.erase(object.GetId());
+    object.SetId(id);
+    m_objectsById[id] = &amp;object;
+    return true;
+}</code></pre>
+<pre><code>// Scene::RemoveObject. 전: std::vector&lt;GameObject*&gt; doomed + remove_if 안에서 std::find (항목마다 선형)
+std::unordered_set&lt;GameObject*&gt; doomed;
+...
+for (GameObject* object : doomed) { ...; m_objectsById.erase(object-&gt;GetId()); }
+m_objects.erase(std::remove_if(m_objects.begin(), m_objects.end(),
+    [&amp;doomed](const std::unique_ptr&lt;GameObject&gt;&amp; o) { return doomed.count(o.get()) != 0; }), m_objects.end());</code></pre>
+<p>표는 <code>AddObject</code> / <code>SetObjectId</code> / <code>RemoveObject</code> / <code>ClearObjects</code> / <code>Clear</code> 가 함께 고칩니다. <code>SceneSerializer</code> 는 <code>object.SetId(id)</code> 대신 <code>scene.SetObjectId(object, id)</code> 를 부르고, <code>GameObject::SetId</code> 의 주석은 "Scene 만 부름"으로 바뀌었습니다. <code>m_objectsById</code> 는 <code>Scene</code> 클래스 끝에 붙였습니다.</p>
+<p><b>달라진 것.</b> <code>FindById</code> 는 오브젝트 수와 무관하고, 서브트리 삭제의 소속 검사가 항목당 상수 시간입니다.</p>
+<p><b>남은 한계.</b> <code>IndexOf</code> 는 여전히 선형이고 <code>FlushDestroyed</code> 는 루트마다 <code>RemoveObject(IndexOf(object))</code> 를 불러, 루트마다 벡터를 한 번씩 훑고 지웁니다. 계획의 "에디터 선택과 콜백(<code>deleteObject(int)</code> 등)도 ID 기준으로" 부분은 하지 않았습니다(<code>Editor.h</code> 의 <code>deleteObject</code> 는 여전히 인덱스).</p>
+
+<h3 id="b5">B5. 메시·이미지 바이트를 공유</h3>
+<p><b>왜.</b> 계획의 진단: <code>Scene::AddModel</code> 이 AssetManager 캐시의 메시를 복사했고(<code>Mesh copy = model.meshes[i]</code>), 이미지 바이트도 <code>AddModelImages</code> 로 씬에 다시 넣어 메모리에 두 벌이었습니다.</p>
+<pre><code>// Graphics/Model.h. 전: std::vector&lt;Mesh&gt; meshes;  std::vector&lt;uint8_t&gt; encoded;
+std::vector&lt;std::shared_ptr&lt;const Mesh&gt;&gt; meshes;
+std::shared_ptr&lt;const std::vector&lt;uint8_t&gt;&gt; encoded;   // ModelImage
+
+// Scene::AddModel. 전: Mesh copy = model.meshes[i]; shared = AddMesh(std::move(copy), ...);
+shared = AddSharedMesh(model.meshes[i], MeshSource::FromModel(model.sourcePath, static_cast&lt;uint32_t&gt;(i)));
+
+// Scene::AddModelImages. 전: std::vector&lt;uint8_t&gt; bytes = image.encoded; AddImage(image.name, std::move(bytes));
+AddImage(image.name, image.encoded);   // 바이트는 복사하지 않고 모델(AssetManager 캐시)과 함께 소유함</code></pre>
+<p>씬은 <code>std::vector&lt;std::shared_ptr&lt;const Mesh&gt;&gt; m_meshes</code> 와 <code>unordered_map&lt;string, shared_ptr&lt;const vector&lt;uint8_t&gt;&gt;&gt; m_images</code> 를 갖습니다. 비const <code>GetMeshes()</code> 는 지웠습니다. 씬이 직접 만드는 메시(<code>AddMesh(Mesh&amp;&amp;)</code>)는 <code>make_shared</code> 로 넣고 non-const 포인터를 돌려줍니다. <code>ModelLoader::LoadGltf</code> 는 다 읽은 메시·이미지를 <code>make_shared&lt;const …&gt;</code> 로 넣고, <code>SceneSerializer</code> 의 메시 복원과 <code>AssetManager::EstimateBytes</code> 도 포인터를 따라가게 바뀌었습니다. 재질은 씬에서 편집하는 값이라 계속 복사합니다.</p>
+<p><b>달라진 것.</b> 모델에서 온 정점·인덱스 배열과 이미지 바이트가 AssetManager 캐시와 씬 사이에 한 벌입니다.</p>
+<p><b>남은 한계.</b> 씬의 <code>m_meshes</code> 가 참조를 계속 들고 있으므로, 계획이 기대한 "모델 배치를 되돌리면 메시가 참조가 없어질 때 정리됨"은 일어나지 않습니다(되돌려도 메시는 <code>Scene::Clear</code> 까지 남음). Renderer 의 포인터 키 캐시(<code>m_gpuMeshes</code>)와 <code>InvalidateScene</code> 호출 순서 계약도 그대로입니다. 줄어든 메모리 양은 재지 않았습니다.</p>
+</section>
+
+<section id="c12">
+<h2>7. C1 · C2 — Renderer 분할과 셰이더 표</h2>
+
+<h3 id="c1">C1. 파일 분할, ViewTarget, 상태 추적을 RHI 로</h3>
+<p><b>왜.</b> 계획의 진단: <code>Renderer.cpp</code> 2,244줄 + <code>RendererPost.cpp</code> 287줄에 패스·GPU 캐시·텍스처 IO·셰이더 로드·그림자 계산이 모두 있었고, 메인과 미리보기가 같은 멤버 묶음(color / depth / hdr / 상태 / post set / scratch)을 두 벌 가졌으며, 리소스 상태를 Renderer(<code>m_*State</code>)와 백엔드가 이중으로 추적했습니다.</p>
+<table>
+<tr><th>파일</th><th>맡은 것</th></tr>
+<tr><td><code>Graphics/Renderer.cpp</code></td><td>초기화, 셰이더·패스·cbuffer 표, <code>CreateLayouts</code>, <code>BuildPassDescs</code>, <code>LoadShaders</code>, <code>ValidateBindings</code>, <code>Render</code>, 조명, <code>BuildDrawList</code>, <code>DrawItems</code>, GPU 캐시, PSO</td></tr>
+<tr><td><code>Graphics/RendererShadow.cpp</code> (새)</td><td>아틀라스 리소스, 방향광·CSM·스팟·포인트 뷰 계산, b6 업로드, 아틀라스 패스와 뷰별 절두체 컬링</td></tr>
+<tr><td><code>Graphics/RendererTargets.cpp</code> (새)</td><td><code>CreateViewTarget</code>/<code>DestroyViewTarget</code>, <code>SetSceneTarget</code>, <code>SetPreviewTarget</code>, <code>SetOutputSize</code>, <code>EnsureGameTarget</code>, UI 패스</td></tr>
+<tr><td><code>Graphics/RendererPost.cpp</code></td><td>후처리 셋·패스·톤 패스(이쪽으로 옮김), <code>GetPostPipeline</code> 캐시, <code>ApplyHdrEffects(cmd, view, capture)</code>, 단계별 썸네일</td></tr>
+<tr><td><code>Graphics/TextureCache.h/.cpp</code> (새)</td><td>이름 → 텍스처(<code>Load2D</code>, <code>LoadCube</code>), 내장 텍스처, <code>ReleaseLoaded</code> 와 세대 번호</td></tr>
+</table>
+<p>타깃 묶음 (<code>Graphics/Renderer.h</code>). 전에는 <code>m_sceneColor</code>, <code>m_sceneDepth</code>, <code>m_sceneColorState</code>, <code>m_hdrColor</code>, <code>m_hdrColorState</code>, <code>m_hdrPostSet</code>, <code>m_postMain</code> 과 <code>m_previewColor</code>, <code>m_previewDepth</code>, <code>m_previewColorState</code>, <code>m_previewHdr</code>, <code>m_previewHdrState</code>, <code>m_previewHdrPostSet</code>, <code>m_postPreview</code> 가 따로 있었습니다.</p>
+<pre><code>struct ViewTarget
+{
+    TextureHandle color;       // 최종 출력 RGBA8. 게임 모드의 메인 뷰는 비어 있음 — 백버퍼에 씀
+    TextureHandle depth;       // D24S8. DepthStencil | ShaderResource
+    TextureHandle hdr;         // R16G16B16A16_FLOAT. 씬 패스의 렌더 타깃
+    ResourceSetHandle hdrSet;  // Layout_Post: t13 = hdr (톤 패스·후처리의 입력)
+    PostScratch post;          // 블러·블룸 스크래치 (hdr 크기를 따름)
+    uint32_t width = 0;
+    uint32_t height = 0;
+    bool IsValid() const { return depth.IsValid() &amp;&amp; hdr.IsValid() &amp;&amp; hdrSet.IsValid(); }
+};
+ViewTarget m_mainView;
+ViewTarget m_previewView;</code></pre>
+<p>메인과 미리보기는 같은 <code>RenderScenePass(cmd, scene, view, camera, debugName)</code> 를 탑니다(전: <code>RenderMainPass</code> 와 <code>RenderPreviewPass</code>). 미리보기 패스는 그 카메라의 절두체로 다시 컬링합니다.</p>
+<p>배리어 (<code>RHI/CommandList.h</code>):</p>
+<pre><code>// 전
+virtual void Barrier(TextureHandle texture, ResourceState before, ResourceState after) = 0;
+cmd.Barrier(m_hdrColor, m_hdrColorState, ResourceState::RenderTarget);
+m_hdrColorState = ResourceState::RenderTarget;
+
+// 후
+virtual void Barrier(TextureHandle texture, ResourceState after) = 0;
+cmd.Barrier(view.hdr, ResourceState::RenderTarget);</code></pre>
+<pre><code>// D3D12CommandList::Barrier 후 (D3D11 도 같은 규칙으로 상태만 기록)
+const ResourceState before = texture-&gt;state;
+if (before == after) return;   // 전이 없음 (통계에도 세지 않음)
+++m_stats.barriers;
+... ResourceBarrier(TransitionBarrier(resource, before, after)) ...
+texture-&gt;state = after;</code></pre>
+<p>Renderer 의 상태 멤버(<code>m_shadowMapState</code>, <code>m_csmMapState</code>, <code>m_sceneColorState</code>, <code>m_hdrColorState</code>, <code>m_previewColorState</code>, <code>m_previewHdrState</code>, <code>m_stageThumbStates</code>, 스크래치의 <code>tempState</code>·<code>level.state</code>)와 <code>PostPassDesc::outputBefore</code>, <code>RenderTonemapPass</code> 의 <code>outputBefore</code> 인자가 없어졌습니다. D3D11 의 Debug "before 가 추적 상태와 다름" 경고와 D3D12 의 같은 경고도 지웠습니다. <code>BeginUIPass</code> 는 이제 모드와 무관하게 <code>Barrier(backBuffer, RenderTarget)</code> 을 부르고(게임 모드에서는 톤 패스가 이미 그 상태라 아무 일도 없음), 그림자 패스가 없는 프레임에는 <code>Render</code> 가 그림자 맵 둘을 <code>ShaderResource</code> 로 맞춥니다.</p>
+<p><b>달라진 것.</b> 타깃을 하나 더하면(G-buffer 등) <code>ViewTarget</code> 과 <code>CreateViewTarget</code> 에만 넣으면 두 뷰가 함께 받습니다. 상태의 원본은 백엔드의 텍스처 하나입니다.</p>
+<p><b>남은 한계.</b> Renderer 는 여전히 한 클래스이고 파일만 나눴습니다(<code>Renderer.h</code> 540줄). 같은 텍스처를 한 프레임 안에서 순서 없이 여러 곳이 쓰는 경우의 잘못된 전이는 이제 경고 없이 실제 상태를 따라갑니다. <code>Renderer.h</code> 의 <code>m_gpuMeshes</code> 위 주석("Scene이 메시·재질을 unique_ptr로 소유")은 B5 이후의 shared_ptr 소유와 맞지 않는 채 남아 있습니다.</p>
+
+<h3 id="c2">C2. 셰이더·패스·cbuffer 를 표로</h3>
+<p><b>왜.</b> 계획의 진단: 셰이더 8개가 멤버, <code>LoadShaders</code> 의 두 분기, cbuffer 검증, 생성, 실패 시 파괴, 교체, <code>Shutdown</code>, <code>ReloadShaders</code>, 감시 목록에 각각 손으로 나열돼 있었고, <code>ValidateBindings</code> 는 벡터 8개를 받아 모든 레이아웃의 합집합과 대조했습니다(스카이박스 셰이더가 재질 슬롯을 써도 통과).</p>
+<pre><code>// 전 (Renderer::LoadShaders 일부)
+std::vector&lt;uint8_t&gt; vsCode, psCode, shadowCode, skyVsCode, skyPsCode, screenVsCode, toneMapPsCode, postPsCode;
+...
+if (!ShaderCompiler::LoadOrCompile(kVertexShaderFile, "VS_Main", ShaderStage::Vertex, vsCode, &amp;vsSource)) return false;
+if (!ShaderCompiler::LoadOrCompile(kPixelShaderFile, "PS_Main", ShaderStage::Pixel, psCode, &amp;psSource)) return false;
+... (8줄씩 두 분기)
+layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(vsCode, "PerFrame", sizeof(PerFrameConstants));
+... (13줄)
+if (!ValidateBindings(vsCode, psCode, shadowCode, skyVsCode, skyPsCode, screenVsCode, toneMapPsCode, postPsCode))</code></pre>
+<pre><code>// 후
+const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] =
+{
+    { L"BasicVertexShader.hlsl",   "VS_Main",    ShaderStage::Vertex, "BasicVS" },
+    { L"BasicPixelShader.hlsl",    "PS_Main",    ShaderStage::Pixel,  "BasicPS" },
+    ...
+    { L"PostPixelShader.hlsl",     "PS_Post",    ShaderStage::Pixel,  "PostPS" },
+};
+const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] =
+{
+    { "Main",    Shader_BasicVS,  Shader_BasicPS,   { Layout_Frame, Layout_Object, Layout_Material }, 3 },
+    { "Shadow",  Shader_ShadowVS, Shader_Count,     { Layout_Frame, Layout_Object },                  2 },
+    { "Sky",     Shader_SkyVS,    Shader_SkyPS,     { Layout_Frame },                                 1 },
+    { "Tonemap", Shader_ScreenVS, Shader_TonemapPS, { Layout_Post },                                  1 },
+    { "Post",    Shader_ScreenVS, Shader_PostPS,    { Layout_Post },                                  1 },
+};
+constexpr ConstantBufferInfo kConstantBuffers[] =
+{
+    { "PerFrame", sizeof(PerFrameConstants) }, { "PerObject", sizeof(PerObjectConstants) },
+    { "Lights", sizeof(LightConstants) }, { "Material", sizeof(MaterialConstants) },
+    { "PostParams", sizeof(PostParamsConstants) }, { "ShadowPass", sizeof(ShadowPassConstants) },
+    { "Shadows", sizeof(ShadowConstants) },
+};</code></pre>
+<ul>
+  <li>셰이더 핸들은 <code>ShaderHandle m_shaders[Shader_Count]</code> 하나. 로드·생성·실패 시 파괴·교체·감시 목록·<code>Shutdown</code> 이 표를 도는 루프입니다.</li>
+  <li>cbuffer 대조(Debug): 새 <code>ShaderCompiler::ReflectConstantBuffers</code> 가 셰이더의 cbuffer 를 전부 읽고(<code>D3D_CT_CBUFFER</code> 만, 구조체 버퍼의 원소 구조체는 뺌), 표에 없거나 크기가 다르면 로드 실패입니다. 셰이더마다 무엇을 검사할지 적지 않습니다.</li>
+  <li><code>ValidateBindings(const std::vector&lt;uint8_t&gt;* code)</code>: 패스마다 (1) 그 패스 레이아웃끼리의 레지스터 겹침, (2) VS/PS 가 쓰는 슬롯이 그 패스 레이아웃에 그 스테이지로 선언됐는지를 봅니다. 로그는 <code>"바인딩 대조: [Main] BasicPS t15 ('lights') OK"</code> 형식입니다.</li>
+  <li>PSO Desc 의 고정 부분은 <code>m_passDesc[Pass_Count]</code>(전: <code>m_baseDesc</code>, <code>m_shadowDesc</code>, <code>m_skyDesc</code>, <code>m_tonemapDesc</code>, <code>m_postDesc</code>)이고 <code>BuildPassDescs</code> 가 표에서 셰이더·레이아웃을 채운 뒤 패스별 래스터라이저·깊이 설정을 덮어씁니다. 초기화와 핫리로드가 같은 함수를 부릅니다.</li>
+  <li>레이아웃은 <code>CreateLayouts</code> 가 <code>m_layouts[Layout_Count]</code> 와 선언 사본 <code>m_layoutDescs</code> 로 만듭니다.</li>
+</ul>
+<p><b>달라진 것.</b> 셰이더 추가는 <code>ShaderId</code> 한 줄 + <code>kShaders</code> 한 줄이고, 새 패스면 <code>PassId</code>·<code>kPasses</code> 한 줄과 <code>BuildPassDescs</code> 의 설정이 더해집니다. 스카이박스 셰이더가 재질 슬롯을 쓰면 이제 Sky 패스 대조에서 걸립니다.</p>
+<p><b>남은 한계.</b> 셋의 슬롯 순서(<code>UpdateFrameSet</code>, <code>GetOrCreateGpuMaterial</code>, <code>CreatePostSet</code> 의 <code>bindings</code>)는 여전히 <code>CreateLayouts</code> 의 <code>Add</code> 순서와 손으로 맞춥니다. cbuffer 크기 대조는 <code>#if defined(_DEBUG)</code> 안이라 Release 에서는 돌지 않습니다. 바인딩 대조는 Release 에서도 돌고 <code>Log::Error</code> 를 남기지만 셰이더 로드를 멈추지는 않습니다(Debug 에서만 로드 실패).</p>
+</section>
+
+<section id="c34">
+<h2>8. C3 · C4 — 스크립트 ABI 검사, 자동 검증 분리</h2>
+
+<h3 id="c3">C3. 스크립트 DLL 의 ABI 표식</h3>
+<p><b>왜.</b> 계획의 진단: <code>Scene</code>·<code>GameObject</code>·<code>Transform</code> 이 STL 멤버와 인라인 접근자를 가진 채 export 되고 "멤버는 끝에만 덧붙임" 규율에 의존하며, <code>ScriptModule::Load</code> 에 버전 확인이 없어 엔진 헤더가 바뀐 뒤 오래된 DLL 이 올라오면 조용히 메모리가 깨집니다.</p>
+<pre><code>// Core/EngineApi.h
+#define SHERLOCK_SCRIPT_API_VERSION 1
+
+// Scene/Script.h
+struct SherlockScriptAbi
+{
+    uint32_t apiVersion;         // SHERLOCK_SCRIPT_API_VERSION (사람이 올리는 번호)
+    uint32_t iteratorDebugLevel; // _ITERATOR_DEBUG_LEVEL. Debug 와 Release 는 std::string·vector 의 배치가 다름
+    uint32_t sizeofBehaviour;    // 아래 넷은 자동 검사
+    uint32_t sizeofScript;
+    uint32_t sizeofGameObject;
+    uint32_t sizeofTransform;
+    constexpr bool operator==(const SherlockScriptAbi&amp;) const = default;
+};
+inline constexpr SherlockScriptAbi kSherlockScriptAbi{
+    SHERLOCK_SCRIPT_API_VERSION, _ITERATOR_DEBUG_LEVEL,
+    sizeof(Behaviour), sizeof(Script), sizeof(GameObject), sizeof(Transform),
+};
+#ifndef SHERLOCK_ENGINE_EXPORTS
+extern "C"
+{
+    __declspec(dllexport) __declspec(selectany) SherlockScriptAbi SherlockScriptAbiInfo = kSherlockScriptAbi;
+}
+#endif</code></pre>
+<pre><code>// Core/ScriptModule.cpp — ScriptModule::Load 에서 LoadLibraryW 전에
+bool CheckAbi(const std::wstring&amp; path, std::string&amp; error)
+{
+    HMODULE probe = LoadLibraryExW(path.c_str(), nullptr, DONT_RESOLVE_DLL_REFERENCES);
+    ...
+    const SherlockScriptAbi* abi = reinterpret_cast&lt;const SherlockScriptAbi*&gt;(GetProcAddress(probe, "SherlockScriptAbiInfo"));
+    if (abi == nullptr)
+        error = "the script DLL has no ABI stamp (built before the script API check). Rebuild the script project.";
+    else if (!(*abi == kSherlockScriptAbi))
+        error = std::format("script ABI mismatch — rebuild the script project. DLL / engine: api {} / {}, ...", ...);
+    else ok = true;
+    FreeLibrary(probe);
+    return ok;
+}
+
+if (!CheckAbi(copy.wstring(), m_lastError))
+{
+    Log::Error("스크립트 DLL 을 올리지 않음: %s (%s)", m_lastError.c_str(), ...);
+    if (copyBeforeLoad) fs::remove(copy, ec);
+    return false;
+}</code></pre>
+<p><b>달라진 것.</b> 스크립트 헤더(<code>Scene/Script.h</code>)를 include 한 스크립트 DLL 은 빌드될 때 본 값을 데이터 심볼로 내보내고, 엔진은 그 DLL 의 코드(DllMain·정적 초기화)를 실행하지 않고 비교합니다. 맞지 않으면 <code>LoadLibraryW</code> 까지 가지 않으므로 그 DLL 의 컴포넌트 타입은 등록되지 않습니다. 메시지는 영어로 <code>m_lastError</code> 에 남습니다.</p>
+<p><b>남은 한계.</b> 자동으로 잡는 것은 <code>_ITERATOR_DEBUG_LEVEL</code> 과 네 클래스의 크기뿐입니다. <code>Scene</code>·<code>Camera</code>·<code>Input</code> 의 크기, 크기가 같은 배치·가상 함수 순서 변경은 <code>SHERLOCK_SCRIPT_API_VERSION</code> 을 사람이 올려야 잡힙니다. 이번에 <code>Scene</code> 끝에 <code>m_objectsById</code> 를 붙였지만 버전은 처음 도입한 1 이고, 이전 DLL 은 표식이 없어서 어차피 거부됩니다.</p>
+
+<h3 id="c4">C4. 자동 검증을 파일과 표로</h3>
+<p><b>왜.</b> 계획의 진단: <code>ParseAutomation</code> / <code>RunAutomation</code> 이 <code>EditorApp.cpp</code> 약 952~1240행에서 프레임 번호를 하드코딩한 인자 30여 개를 처리했고, <code>Automation</code> 구조체가 <code>EditorApp.h</code> 의 절반을 차지했습니다.</p>
+<pre><code>// 전 (EditorApp::RunAutomation, 프레임 순서가 섞여 있음)
+if (frame == 2 &amp;&amp; m_auto.debugView != 0) engine.GetRenderer().GetSettings().debugView = m_auto.debugView;
+...
+if (frame == 18 &amp;&amp; !m_auto.saveAfterPath.empty()) SaveSceneFile(m_auto.saveAfterPath);
+if (frame == 7 &amp;&amp; !m_auto.dropTexture.empty()) { ... }
+if (frame == 9 &amp;&amp; m_auto.play) StartPlay();
+...
+if (m_auto.stopAt != 0 &amp;&amp; frame == m_auto.stopAt) StopPlay();
+if (frame == 8 &amp;&amp; m_auto.setPosition) { ... }
+
+// 후 (Editor/EditorAutomation.cpp)
+const auto at = [frame](uint64_t when, bool enabled, auto&amp;&amp; action)
+{
+    if (enabled &amp;&amp; frame == when) action();
+};
+// ---- 2: 설정·창 ----
+at(2, a.debugView != 0, [&amp;] { engine.GetRenderer().GetSettings().debugView = a.debugView; });
+...
+// ---- 12~20: 저장 → 되돌리기 → 다시 하기 → 불러오기 → 다시 저장 → 덤프 ----
+at(12, !a.savePath.empty(), [&amp;] { SaveSceneFile(a.savePath); });
+...
+// ---- 프레임이 인자로 정해지는 것: 정지, 스크린샷, 종료. 같은 프레임의 위 동작들이 끝난 뒤에 실행됨 ----
+at(a.stopAt, a.stopAt != 0, [&amp;] { StopPlay(); });
+at(a.exitAfter - 1, a.exitAfter &gt; 1 &amp;&amp; !a.screenshotPath.empty(), [&amp;] { engine.RequestScreenshot(a.screenshotPath); });</code></pre>
+<p>인자 구조체는 <code>Editor/EditorAutomation.h</code> 의 <code>struct EditorAutomation</code>(인자 설명 주석 포함)이고, <code>EditorApp.h</code> 에는 <code>EditorAutomation m_auto;</code> 한 줄이 남습니다. <code>ParseAutomation</code> 과 <code>RunAutomation</code> 의 본문은 <code>EditorAutomation.cpp</code> 로 옮겼습니다. 줄은 프레임 순서(2 → 3 → … → 20 → 인자로 정해지는 프레임)로 정렬돼 있고, 새 인자는 필드·읽기·<code>at</code> 한 줄을 더하면 됩니다.</p>
+<p><b>남은 한계.</b> 계획의 "별도 클래스"까지는 가지 않았습니다. 두 함수는 여전히 <code>EditorApp</code> 의 멤버(<code>EditorApp::ParseAutomation</code>)이고 <code>EditorApp</code> 의 private 함수(<code>RunCommand</code>, <code>PlaceModel</code> …)를 직접 부릅니다. 프레임 번호 충돌을 기계가 검사하지는 않습니다. 실행 순서 변화는 <a href="#notes">9장</a>.</p>
+</section>
+
+<section id="notes">
+<h2>9. 계획과 다르게 한 것 / 알아둘 점</h2>
+<table>
+<tr><th>주제</th><th>내용</th></tr>
+<tr><td>A4 조명 표현</td><td>계획은 씬 쪽을 <code>LightComponent</code>(또는 최소한 씬용 Light 구조체)로 나누자고 했고, 이번에는 뒤쪽을 택했습니다. 씬의 <code>Light</code> 구조체를 벡터로 유지하고 GPU 배치(<code>GpuLight</code>)만 분리했습니다. 조명을 GameObject 로 만드는 일(계층·스크립트·안정 ID, 에디터의 별도 선택·기즈모 코드 통합)은 남았습니다.</td></tr>
+<tr><td>C4 <code>--stop-at</code> 순서</td><td><code>--stop-at=N</code> 은 이제 같은 프레임의 고정 프레임 단계가 모두 끝난 뒤에 실행됩니다. 예전 코드에서는 <code>StopPlay</code> 줄이 프레임 7 의 <code>--set-parent</code>, 8 의 <code>--set-position</code>·<code>--set-rotation</code>, 12 의 <code>--save</code>, 16 의 <code>--load</code>, 20 의 <code>--dump-objects</code> 보다 앞에 있었습니다(나머지 2~6, 7 의 <code>--drop-texture</code>, 9~11, 14, 15, 18 은 예전에도 앞). 그래서 N 이 7·8·12·16·20 일 때만 결과가 달라질 수 있습니다. 문서들의 예시 <code>--stop-at=15</code> 는 영향이 없습니다.</td></tr>
+<tr><td>배리어 통계</td><td>두 백엔드 모두 <code>Stats::barriers</code> 가 실제 상태 전이만 셉니다. 예전에는 <code>Barrier</code> 호출 수(전이 없음 포함)였으므로 패널의 숫자가 전보다 작게 나옵니다. 예전 수치와 비교할 때 주의.</td></tr>
+<tr><td>스크립트 DLL 다시 빌드</td><td>스크립트 DLL 에는 ABI 표식이 있어야 하므로, 이 엔진으로 바꾼 뒤에는 프로젝트의 스크립트 DLL 을 다시 빌드해야 합니다. 표식이 없는 옛 DLL 은 <code>"스크립트 DLL 을 올리지 않음: the script DLL has no ABI stamp …"</code> 로그와 함께 거부됩니다.</td></tr>
+<tr><td>테스트 솔루션의 에디터 빌드</td><td><code>Projects/SherlockTestScenes/SherlockTestScenes.sln</code>, <code>Projects/QuaternionLookTest/QuaternionLookTest.sln</code> 안의 SherlockEditor 프로젝트는 <code>EditorMain.cpp(2,10): error C1083 'App/EntryPoints.h'</code> 로 빌드에 실패합니다(<code>$(SolutionDir)</code> 기준 include 경로 문제). 이번 수정 이전부터 있던 문제이고, 같은 솔루션의 스크립트 DLL 프로젝트는 빌드됩니다.</td></tr>
+<tr><td>B3 방법</td><td>계획의 "재질 변경 카운터" 대신 GPU 재질이 입력 사본을 들고 비교합니다. <code>Material</code> 구조체를 고치지 않아도 되지만, 비교가 문자열 다섯 개입니다.</td></tr>
+<tr><td>B2 시점</td><td>계획의 "씬 로드 직후 미리 만드는 단계"를 따로 두지 않고, 매 <code>Render</code> 의 그리기 전 구간을 업로드 묶음으로 감쌌습니다. 새로 만들 것이 없는 프레임에는 묶음이 비어 아무것도 제출하지 않습니다.</td></tr>
+<tr><td>그림자 없는 프레임</td><td>그림자 패스를 건너뛰는 프레임에도 <code>Render</code> 가 <code>m_shadowMap</code>·<code>m_csmMap</code> 을 <code>ShaderResource</code> 로 맞춥니다(이미 그 상태면 아무 일도 없음). 예전에는 이 분기가 없었습니다.</td></tr>
+</table>
+</section>
+
+<section id="verify">
+<h2>10. 검증</h2>
+<div class="box ok"><b>빌드:</b> <code>SherlockEngine.sln</code> Debug x64 전체 빌드 성공.</div>
+<h3>스크린샷 비교</h3>
+<p>수정 전 코드로 찍은 기준 이미지와 픽셀 단위로 비교했습니다. 프로젝트는 <code>Projects/SherlockTestScenes</code> 입니다.</p>
+<table>
+<tr><th>백엔드</th><th>대상</th><th>결과</th></tr>
+<tr><td>D3D11</td><td>에디터 8씬(Main, MultiShadow(<code>--post-stages=1</code>), SponzaCascades, DamagedHelmet, NormalBumpShadowMapping, Cubemap, Spawn, CascadeBigScene) + 에디터 Play + 게임 런타임</td><td>9장 완전 일치. CascadeBigScene 만 4픽셀 차이(최대 차 15). 수정 전 코드를 두 번 찍어도 이 씬은 3픽셀(최대 15) 달랐으므로 잡음 범위로 봄</td></tr>
+<tr><td>D3D12</td><td>에디터 4씬(Main, MultiShadow, SponzaCascades, DamagedHelmet) + Play + 게임 런타임</td><td>6장 모두 완전 일치</td></tr>
+</table>
+<p>중간 단계(Renderer 분할만 한 시점)에도 D3D11 전부와 D3D12 3씬을 비교해 같았습니다. 그때 D3D12 나머지 3회는 촬영 도중 셰이더를 고쳐 핫리로드가 끼어들어 무효였고, 최종 상태에서 다시 찍어 확인했습니다.</p>
+<h3>로그</h3>
+<ul>
+  <li>cbuffer 크기 대조 전부 일치 (예: <code>cbuffer 'Lights' 크기 일치: 16 바이트</code>).</li>
+  <li>바인딩 대조 31줄 전부 OK (예: <code>[Main] BasicPS t15 ('lights') OK</code>).</li>
+  <li>D3D12 루트 시그니처: <code>셋 3개, 루트 파라미터 11개, 18 / 64 DWORD</code>.</li>
+  <li>경고는 종료 시 <code>Live ID3D11Device</code> / <code>ID3D12Device</code> 뿐 (수정 전에도 있던 것).</li>
+</ul>
+<h3>C3</h3>
+<ul>
+  <li>옛 스크립트 DLL 이 거부되는 로그를 확인했습니다.</li>
+  <li>다시 빌드한 뒤 <code>스크립트 DLL 로드 … (3개: Lifetime, Rotator, Spawner)</code> 를 확인했습니다.</li>
+  <li><code>dumpbin</code> 으로 DLL 에 <code>SherlockScriptAbiInfo</code> export 가 있는 것을 확인했습니다.</li>
+</ul>
+<div class="box warn"><b>미해결 1건:</b> 게임 런타임 D3D12 실행 7회 중 1회에서 GPU 기반 검증 오류가 40프레임 내내 남았습니다: <code>GPU-BASED VALIDATION: Draw, Incompatible texture barrier layout: Resource 'builtin:flatnormal' … Layout: D3D12_BARRIER_LAYOUT_LEGACY_COPY_DEST</code>. 그 실행도 스크린샷은 기준과 일치했고, 나머지 6회와 에디터 실행에서는 나오지 않았습니다. 원인은 찾지 못했습니다. 이 텍스처는 <code>TextureCache::Initialize</code> 가 초기화 때(업로드 묶음 밖) 만들어 바로 제출·대기하는 경로이고, 이 순서는 수정 전과 같습니다. 추적을 돕기 위해 <code>D3D12Device::RecordUpload</code> 가 업로드 커맨드 리스트 Reset 실패를 오류 로그로 남기게 했습니다(전에는 <code>ExecuteUploadSync</code> 가 조용히 <code>false</code> 를 돌려줌). 그 뒤 5회 실행에서는 오류도 그 로그도 나오지 않았습니다.</div>
+<div class="box warn"><b>하지 않은 것:</b> Release 구성 빌드·실행, 자동화 테스트(프로젝트에 없음), 조명 수가 64개를 넘는 씬에서의 버퍼 확장 동작 실측, 성능 측정(컬링·업로드 묶음·캐시의 효과는 재지 않음).</div>
+</section>
+
+<section id="files">
+<h2>11. 파일 목록</h2>
+<table>
+<tr><th>파일</th><th>항목</th><th>변경</th></tr>
+<tr><td><code>RHI/BindingTypes.h</code></td><td>A2, A4</td><td>상한 상향, <code>BindingType::BufferResource</code></td></tr>
+<tr><td><code>RHI/CommandList.h</code></td><td>A1, C1</td><td><code>SetResourceSet(setIndex, handle)</code>, <code>Barrier(texture, after)</code></td></tr>
+<tr><td><code>RHI/Device.h</code></td><td>A3, B2</td><td><code>GetDepthBuffer</code> 제거, <code>Begin/EndResourceUploads</code></td></tr>
+<tr><td><code>RHI/PipelineTypes.h</code></td><td>A3</td><td>포맷 5개</td></tr>
+<tr><td><code>RHI/ShaderCompiler.h</code>, <code>RHI/DXBC/ShaderCompiler.cpp</code></td><td>A4, C2</td><td><code>ReflectConstantBuffers</code>, <code>D3D_SIT_STRUCTURED</code></td></tr>
+<tr><td><code>RHI/D3D11/*</code> (CommandList, Convert, Device, Resources)</td><td>A1·A3·A4·B2·C1</td><td>셋 인덱스 인자, 버퍼 SRV, 깊이 버퍼 제거, 포맷, 배리어 상태 기록·통계</td></tr>
+<tr><td><code>RHI/D3D12/*</code> (CommandList, Convert, Device, PipelineState)</td><td>A1·A2·A3·A4·B2·C1</td><td>인덱스 셋, 루트 SRV, 셋 간 레지스터 검사·예산 로그, 깊이 버퍼 제거, <code>RecordUpload</code>/<code>FlushUploads</code>, 배리어</td></tr>
+<tr><td><code>Graphics/Renderer.h/.cpp</code></td><td>A1~A4, B1~B3, C1, C2</td><td>표, 레이아웃, 패스 Desc, 조명, 드로우 목록·컬링, 재질 스냅숏, PSO 캐시</td></tr>
+<tr><td><code>Graphics/RendererShadow.cpp</code> (새)</td><td>B1, C1</td><td>그림자 뷰·아틀라스 패스·뷰별 컬링</td></tr>
+<tr><td><code>Graphics/RendererTargets.cpp</code> (새)</td><td>A3, C1</td><td><code>ViewTarget</code>, 씬·미리보기·게임 타깃, UI 패스</td></tr>
+<tr><td><code>Graphics/RendererPost.cpp</code></td><td>B3, C1</td><td>후처리 셋·패스·톤 패스 이동, PSO 캐시, <code>ApplyHdrEffects(view)</code></td></tr>
+<tr><td><code>Graphics/TextureCache.h/.cpp</code> (새)</td><td>B3, C1</td><td>텍스처 이름 해석·IO·내장 텍스처</td></tr>
+<tr><td><code>Graphics/Frustum.h</code> (새)</td><td>B1</td><td>절두체 평면과 구 검사</td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code>, <code>Scene/Light.h</code></td><td>A4</td><td><code>GpuLight</code>, 16바이트 <code>LightConstants</code>, <code>kSRVSlotLights</code>, 씬용 <code>Light</code></td></tr>
+<tr><td><code>Shaders/Common.hlsli</code>, <code>Shaders/BasicPixelShader.hlsl</code></td><td>A4</td><td><code>StructuredBuffer&lt;LightData&gt; lights : register(t15)</code>, <code>MAX_LIGHTS</code> 제거</td></tr>
+<tr><td><code>Graphics/Model.h/.cpp</code>, <code>Core/AssetManager.cpp</code></td><td>B5</td><td>shared_ptr 메시·이미지</td></tr>
+<tr><td><code>Scene/Scene.h/.cpp</code>, <code>Scene/GameObject.h</code></td><td>A4, B4, B5</td><td><code>m_objectsById</code>, <code>SetObjectId</code>, <code>AddSharedMesh</code>, <code>AddImage(shared_ptr)</code>, <code>vector&lt;Light&gt;</code></td></tr>
+<tr><td><code>Scene/SceneSerializer.cpp</code></td><td>A4, B4, B5</td><td>조명 잘라내기 제거, <code>SetObjectId</code>, <code>AddSharedMesh</code></td></tr>
+<tr><td><code>Core/EngineApi.h</code>, <code>Scene/Script.h</code>, <code>Core/ScriptModule.cpp</code></td><td>C3</td><td>API 버전, ABI 표식, <code>CheckAbi</code></td></tr>
+<tr><td><code>Editor/EditorAutomation.h/.cpp</code> (새), <code>Editor/EditorApp.h/.cpp</code></td><td>C4, A4</td><td>자동 검증 분리, <code>LightData</code> → <code>Light</code></td></tr>
+<tr><td><code>Editor/DebugUI.cpp</code>, <code>Editor/Editor.cpp</code></td><td>A4</td><td>조명 8개 제한 제거, <code>Light</code> 타입</td></tr>
+<tr><td><code>SherlockEngine.vcxproj</code>, <code>.filters</code></td><td>—</td><td>새 파일 7개 등록</td></tr>
+</table>
+<p class="foot">이 문서는 <code>structure-review-plan.html</code> 과 다른 문서를 고치지 않았습니다. 계획 문서의 행 번호·"남은 레지스터" 표 등은 수정 전 코드 기준이라 지금 코드와 다릅니다.</p>
+</section>
+</main>
+<script src="../memo.js"></script>
+</body>
+</html>

@@ -45,7 +45,8 @@ public:
     TextureHandle CreateTexture(const TextureDesc& desc, std::span<const TextureSubresource> subresources = {}) override;
     void DestroyTexture(TextureHandle handle) override;
     TextureHandle GetBackBuffer() const override { return m_backBuffer; }
-    TextureHandle GetDepthBuffer() const override { return m_depthBuffer; }
+    void BeginResourceUploads() override {}   // D3D11 은 생성 시 드라이버가 초기 데이터를 복사함
+    void EndResourceUploads() override {}
 
     SamplerHandle CreateSampler(const SamplerDesc& desc) override;
     void DestroySampler(SamplerHandle handle) override;
@@ -77,6 +78,7 @@ public:
     ID3D11DeviceContext* GetContext() const { return m_context.Get(); }
     const D3D11Shader* GetShader(ShaderHandle handle) const { return m_shaders.Get(handle); }
     const D3D11Buffer* GetBuffer(BufferHandle handle) const { return m_buffers.Get(handle); }
+    D3D11Buffer* GetBufferMutable(BufferHandle handle) { return m_buffers.Get(handle); }   // 구조체 버퍼의 SRV 를 처음 만들 때
     D3D11Texture* GetTexture(TextureHandle handle) { return m_textures.Get(handle); }
     const D3D11Sampler* GetSampler(SamplerHandle handle) const { return m_samplers.Get(handle); }
     const D3D11BindingLayout* GetBindingLayout(BindingLayoutHandle handle) const { return m_bindingLayouts.Get(handle); }
@@ -86,7 +88,6 @@ public:
 private:
     bool InitDirect3D();
     bool CreateBackBufferTexture();   // 스왑체인의 버퍼 0을 Texture로 등록
-    bool CreateDepthTexture();
     static void SetDebugName(ID3D11DeviceChild* object, const std::string& name, uint32_t index);
 
 public:
@@ -122,7 +123,6 @@ private:
     D3D11CommandList m_commandList;   // 소유권 없음(D3D11Device* 만 보관). 모든 바인딩·드로우가 이것을 거침
 
     TextureHandle m_backBuffer;
-    TextureHandle m_depthBuffer;
 
     // 타임스탬프 쿼리. 프레임마다 DISJOINT 쿼리 하나 + TIMESTAMP 쿼리 kMaxTimestamps 개.
     // 세트 6개를 돌려 쓰고, 다시 쓰기 직전(6프레임 뒤)에 읽음. DXGI 가 최대 3프레임을 큐에 둘 수 있어

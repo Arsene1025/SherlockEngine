@@ -17,7 +17,7 @@ void D3D12CommandList::Init(D3D12Device* device)
 	m_device = device;
 	m_list = nullptr;
 	m_inPass = false;
-	m_setCount = 0;
+	for (BoundSet& bound : m_sets) bound = BoundSet{};
 }
 
 void D3D12CommandList::BeginFrame(ID3D12GraphicsCommandList* list)
@@ -28,7 +28,7 @@ void D3D12CommandList::BeginFrame(ID3D12GraphicsCommandList* list)
 	m_currentPso = nullptr;
 	m_currentRoot = nullptr;
 	// 기억해 둔 바인딩은 유지하되 (Renderer 가 프레임 초에 다시 설정함) 디스크립터 테이블은 다시 바인딩해야 함.
-	for (uint32_t i = 0; i < m_setCount; ++i) m_sets[i].tablesDirty = true;
+	for (BoundSet& bound : m_sets) bound.tablesDirty = true;
 }
 
 // ------------------------------------------------------------------ 렌더 패스
@@ -160,39 +160,36 @@ void D3D12CommandList::SetPipelineState(PipelineHandle handle)
 		// 루트 시그니처가 바뀌면 루트 파라미터가 전부 무효가 됨. 따라서 테이블을 다시 바인딩하게 함.
 		m_list->SetGraphicsRootSignature(root->rootSignature.Get());
 		m_currentRoot = root;
-		for (uint32_t i = 0; i < m_setCount; ++i) m_sets[i].tablesDirty = true;
+		for (BoundSet& bound : m_sets) bound.tablesDirty = true;
 	}
 	m_list->IASetPrimitiveTopology(pso->GetTopology());
 	m_currentPipeline = handle;
 	m_currentPso = pso;
 }
 
-void D3D12CommandList::SetResourceSet(ResourceSetHandle handle)
+void D3D12CommandList::SetResourceSet(uint32_t setIndex, ResourceSetHandle handle)
 {
 	static bool warned = false;
+	static bool warnedIndex = false;
 	const D3D12ResourceSet* set = m_device ? m_device->GetResourceSet(handle) : nullptr;
 	if (set == nullptr)
 	{
 		ErrorOnce(warned, "SetResourceSet : 유효하지 않은 ResourceSetHandle.");
 		return;
 	}
-	// 같은 레이아웃의 셋이 이미 있으면 교체, 없으면 추가. 실제 바인딩은 DrawIndexed 직전.
-	for (uint32_t i = 0; i < m_setCount; ++i)
+	if (setIndex >= kMaxBindingSets)
 	{
-		if (m_sets[i].layout == set->desc.layout)
-		{
-			if (m_sets[i].set != handle) { m_sets[i].set = handle; m_sets[i].tablesDirty = true; }
-			return;
-		}
+		ErrorOnce(warnedIndex, "SetResourceSet : setIndex 가 kMaxBindingSets 이상. 이 셋은 바인딩되지 않음.");
+		return;
 	}
-	if (m_setCount < kMaxBindingSets)
+	// 인덱스 자리에 기억만 함. 실제 바인딩은 드로우 직전 (ApplyBindings) — 그때 현재 PSO 의 같은 인덱스
+	// 레이아웃과 맞는지 확인함.
+	BoundSet& bound = m_sets[setIndex];
+	if (bound.set != handle)
 	{
-		m_sets[m_setCount++] = BoundSet{ set->desc.layout, handle, true };
-	}
-	else
-	{
-		static bool warnedFull = false;
-		ErrorOnce(warnedFull, "SetResourceSet : 커맨드 리스트의 셋 슬롯(kMaxBindingSets)이 가득 참. 이 셋은 바인딩되지 않음.");
+		bound.layout = set->desc.layout;
+		bound.set = handle;
+		bound.tablesDirty = true;
 	}
 }
 
@@ -228,26 +225,28 @@ void D3D12CommandList::SetIndexBuffer(BufferHandle handle, Format indexFormat)
 	m_list->IASetIndexBuffer(&view);
 }
 
-// 드로우 직전: 현재 루트 시그니처의 셋 순서대로 루트 CBV 와 테이블을 바인딩함.
-// 루트 CBV 는 드로우마다 다시 바인딩함 — 오브젝트 상수버퍼가 드로우마다 UpdateBuffer 로 새 링 주소를 받기 때문임.
+// 드로우 직전: 현재 루트 시그니처의 셋 순서대로 루트 CBV·루트 SRV(구조체 버퍼)와 테이블을 바인딩함.
+// 루트 디스크립터는 드로우마다 다시 바인딩함 — 오브젝트 상수버퍼가 드로우마다 UpdateBuffer 로 새 링 주소를 받기 때문임.
 // 테이블은 셋이나 루트 시그니처가 바뀌었을 때만 다시 바인딩함.
 void D3D12CommandList::ApplyBindings()
 {
 	static bool warnedMissing = false;
 	static bool warnedStale = false;
+	static bool warnedLayout = false;
 	if (m_currentRoot == nullptr) return;
 
 	for (uint32_t s = 0; s < m_currentRoot->setCount; ++s)
 	{
 		const D3D12RootLayout::SetBinding& binding = m_currentRoot->sets[s];
-		BoundSet* bound = nullptr;
-		for (uint32_t i = 0; i < m_setCount; ++i)
+		BoundSet* bound = &m_sets[s];
+		if (!bound->set.IsValid())
 		{
-			if (m_sets[i].layout == binding.layout) { bound = &m_sets[i]; break; }
+			ErrorOnce(warnedMissing, "DrawIndexed : PSO 가 요구하는 셋 인덱스에 ResourceSet 이 바인딩되지 않음.");
+			continue;
 		}
-		if (bound == nullptr)
+		if (bound->layout != binding.layout)
 		{
-			ErrorOnce(warnedMissing, "DrawIndexed : PSO 가 요구하는 BindingLayout 에 ResourceSet 이 바인딩되지 않음.");
+			ErrorOnce(warnedLayout, "DrawIndexed : 셋 인덱스에 꽂힌 ResourceSet 의 레이아웃이 PSO 의 그 자리 BindingLayout 과 다름.");
 			continue;
 		}
 		const D3D12ResourceSet* set = m_device->GetResourceSet(bound->set);
@@ -256,8 +255,9 @@ void D3D12CommandList::ApplyBindings()
 
 		for (uint32_t i = 0; i < layout->desc.slotCount; ++i)
 		{
-			if (layout->desc.slots[i].type != BindingType::ConstantBuffer) continue;
-			const uint32_t root = binding.cbvRoot[i];
+			const BindingType type = layout->desc.slots[i].type;
+			if (type != BindingType::ConstantBuffer && type != BindingType::BufferResource) continue;
+			const uint32_t root = binding.descriptorRoot[i];
 			if (root == UINT32_MAX) continue;
 			const D3D12Buffer* buffer = m_device->GetBuffer(set->desc.bindings[i].buffer);
 			if (buffer == nullptr || buffer->gpuAddress == 0)
@@ -269,7 +269,8 @@ void D3D12CommandList::ApplyBindings()
 			{
 				ErrorOnce(warnedStale, "DrawIndexed : Dynamic 상수버퍼가 이번 프레임에 갱신되지 않음. 이전 프레임의 링 조각은 재사용될 수 있다.");
 			}
-			m_list->SetGraphicsRootConstantBufferView(root, buffer->gpuAddress);
+			if (type == BindingType::ConstantBuffer) m_list->SetGraphicsRootConstantBufferView(root, buffer->gpuAddress);
+			else m_list->SetGraphicsRootShaderResourceView(root, buffer->gpuAddress);   // 구조체 버퍼. 원소 크기는 셰이더의 StructuredBuffer<T> 가 정함
 		}
 		if (bound->tablesDirty)
 		{
@@ -314,9 +315,8 @@ void D3D12CommandList::Draw(uint32_t vertexCount, uint32_t startVertex)
 
 // ------------------------------------------------------------------ 전이·복사
 
-void D3D12CommandList::Barrier(TextureHandle handle, ResourceState before, ResourceState after)
+void D3D12CommandList::Barrier(TextureHandle handle, ResourceState after)
 {
-	++m_stats.barriers;
 	D3D12Texture* texture = m_device ? m_device->GetTexture(handle) : nullptr;
 	if (texture == nullptr || m_list == nullptr)
 	{
@@ -324,17 +324,13 @@ void D3D12CommandList::Barrier(TextureHandle handle, ResourceState before, Resou
 		ErrorOnce(warned, "Barrier : 유효하지 않은 TextureHandle.");
 		return;
 	}
-	// 호출 코드가 넘긴 before 가 추적 상태와 다르면 D3D12 에서는 에러가 남. 따라서 추적 상태를 신뢰하고 경고만 남김.
-	ResourceState actualBefore = texture->state;
-	if (actualBefore != before)
-	{
-		Log::Warn("Barrier : '%s' 의 현재 상태는 %s 인데 before=%s 로 호출됨 (after=%s). 추적 상태를 씀.",
-			texture->name.c_str(), ToString(actualBefore), ToString(before), ToString(after));
-	}
-	if (actualBefore == after) return;   // 전이 없음
+	// before 는 텍스처가 기억하는 상태. 호출 코드가 따로 추적해 넘기지 않으므로 어긋날 수 없음.
+	const ResourceState before = texture->state;
+	if (before == after) return;   // 전이 없음 (통계에도 세지 않음)
+	++m_stats.barriers;
 
 	const D3D12_RESOURCE_BARRIER barrier = D3D12Convert::TransitionBarrier(
-		texture->resource.Get(), D3D12Convert::ToD3D12(actualBefore), D3D12Convert::ToD3D12(after));
+		texture->resource.Get(), D3D12Convert::ToD3D12(before), D3D12Convert::ToD3D12(after));
 	m_list->ResourceBarrier(1, &barrier);
 	texture->state = after;
 }

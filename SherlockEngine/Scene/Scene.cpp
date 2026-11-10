@@ -2,11 +2,12 @@
 #include "Scene/Scene.h"
 #include "Scene/Camera.h"
 #include "Core/Log.h"
-#include "Graphics/Mesh.h"   // unique_ptr<Mesh> 소멸에 완전한 타입 필요
+#include "Graphics/Mesh.h"
 #include "Graphics/Model.h"
 #include "Scene/SceneSerializer.h"
 #include <algorithm>
 #include <cmath>
+#include <unordered_set>
 
 using namespace DirectX;   // 이 파일 안에서만
 
@@ -25,7 +26,18 @@ Mesh* Scene::AddMesh(Mesh&& mesh)
 
 Mesh* Scene::AddMesh(Mesh&& mesh, const MeshSource& source)
 {
-	m_meshes.push_back(std::make_unique<Mesh>(std::move(mesh)));
+	// 씬이 만든 메시. 돌려주는 포인터는 호출자가 방금 넘긴 메시라 non-const 로 줌 (보관은 const 로 함).
+	std::shared_ptr<Mesh> owned = std::make_shared<Mesh>(std::move(mesh));
+	Mesh* raw = owned.get();
+	m_meshes.push_back(std::move(owned));
+	m_meshSources.push_back(source);
+	return raw;
+}
+
+const Mesh* Scene::AddSharedMesh(std::shared_ptr<const Mesh> mesh, const MeshSource& source)
+{
+	if (mesh == nullptr) return nullptr;
+	m_meshes.push_back(std::move(mesh));
 	m_meshSources.push_back(source);
 	return m_meshes.back().get();
 }
@@ -43,9 +55,8 @@ void Scene::AddModelImages(const Model& model)
 {
 	for (const ModelImage& image : model.images)
 	{
-		if (m_images.find(image.name) != m_images.end()) continue;   // 같은 모델을 다시 놓을 때 바이트를 또 복사하지 않음
-		std::vector<uint8_t> bytes = image.encoded;
-		AddImage(image.name, std::move(bytes));
+		if (m_images.find(image.name) != m_images.end()) continue;   // 같은 모델을 다시 놓는 경우
+		AddImage(image.name, image.encoded);   // 바이트는 복사하지 않고 모델(AssetManager 캐시)과 함께 소유함
 	}
 }
 
@@ -90,15 +101,28 @@ Material* Scene::AddMaterial(const Material& material)
 GameObject& Scene::AddObject(const Mesh* mesh, const Material* material, const char* name)
 {
 	m_objects.push_back(std::make_unique<GameObject>(mesh, material, name));
-	m_objects.back()->SetId(m_nextId++);   // 안정 ID. 씬 파일에서 읽은 오브젝트는 직렬화가 곧바로 파일의 값으로 바꿈
-	return *m_objects.back();
+	GameObject& object = *m_objects.back();
+	object.SetId(m_nextId++);   // 안정 ID. 씬 파일에서 읽은 오브젝트는 직렬화가 곧바로 파일의 값으로 바꿈 (SetObjectId)
+	m_objectsById[object.GetId()] = &object;
+	return object;
 }
 
 GameObject* Scene::FindById(uint64_t id)
 {
 	if (id == 0) return nullptr;
-	for (auto& object : m_objects) if (object->GetId() == id) return object.get();
-	return nullptr;
+	const auto found = m_objectsById.find(id);
+	return found == m_objectsById.end() ? nullptr : found->second;
+}
+
+bool Scene::SetObjectId(GameObject& object, uint64_t id)
+{
+	if (id == 0) return false;
+	if (id == object.GetId()) return true;
+	if (m_objectsById.find(id) != m_objectsById.end()) return false;   // 다른 오브젝트가 쓰는 ID — 유일성을 지킴
+	m_objectsById.erase(object.GetId());
+	object.SetId(id);
+	m_objectsById[id] = &object;
+	return true;
 }
 
 const GameObject* Scene::FindById(uint64_t id) const
@@ -118,10 +142,10 @@ void Scene::RemoveObject(size_t index)
 	// 자식도 함께 지움 (유니티와 같음. 언리얼은 떼어 내지만, 여기서 계층은 "묶어서 옮기기" 용도라 함께 지우는
 	// 쪽이 자연스러움). 서브트리를 먼저 모으고, 루트를 부모에서 떼어 낸 뒤, 벡터에서 해당 포인터들을 지움.
 	// 메시·재질은 씬이 계속 소유함 (다른 오브젝트가 쓰고 있을 수 있음).
-	std::vector<GameObject*> doomed;
+	std::unordered_set<GameObject*> doomed;   // 집합: 아래에서 벡터를 한 번만 훑으며 "지울 것인가"를 바로 답함
 	const auto collect = [&doomed](GameObject* object, auto& self) -> void
 	{
-		doomed.push_back(object);
+		doomed.insert(object);
 		for (GameObject* child : object->GetChildren()) self(child, self);
 	};
 	GameObject* root = m_objects[index].get();
@@ -129,10 +153,13 @@ void Scene::RemoveObject(size_t index)
 	// 활성 카메라의 주인이 지워지면 포인터가 dangling 이 되므로 비움 (다음 ApplyActiveCamera 가 남은 카메라
 	// 중에서 다시 고름).
 	for (GameObject* object : doomed)
+	{
 		for (auto& behaviour : object->GetBehaviours()) if (behaviour.get() == m_activeCamera) m_activeCamera = nullptr;
+		m_objectsById.erase(object->GetId());
+	}
 	root->DetachFromHierarchy();   // 부모의 children 에서 빠짐. 자식 링크도 끊지만 자식들은 아래에서 함께 지워짐
 	m_objects.erase(std::remove_if(m_objects.begin(), m_objects.end(),
-		[&doomed](const std::unique_ptr<GameObject>& o) { return std::find(doomed.begin(), doomed.end(), o.get()) != doomed.end(); }), m_objects.end());
+		[&doomed](const std::unique_ptr<GameObject>& o) { return doomed.count(o.get()) != 0; }), m_objects.end());
 	if (doomed.size() > 1) Log::Info("오브젝트 삭제: 자식 %zu 개 포함", doomed.size() - 1);
 }
 
@@ -141,6 +168,7 @@ void Scene::ClearObjects()
 	m_activeCamera = nullptr;
 	m_destroyPending = false;
 	m_objects.clear();
+	m_objectsById.clear();
 }
 
 GameObject* Scene::Instantiate(const std::string& prefabPath)
@@ -421,9 +449,9 @@ size_t Scene::AddModel(Model&& model, const Transform& transform)
 
 size_t Scene::AddModel(const Model& model, const Transform& transform)
 {
-	// 같은 모델(sourcePath)의 메시·재질이 이미 씬에 있으면 그것을 공유하고, 없는 것만 복사해 넣음. 인스턴스는
-	// 인덱스로 참조하므로 순서만 지키면 됨. sourcePath 가 비어 있으면(AssetManager 를 거치지 않은 모델)
-	// 공유할 키가 없으므로 매번 새로 만듦.
+	// 같은 모델(sourcePath)의 메시·재질이 이미 씬에 있으면 그것을 공유하고, 없는 것만 넣음. 메시는 모델의
+	// 것을 함께 소유하고(정점·인덱스를 복사하지 않음) 재질은 복사함. 인스턴스는 인덱스로 참조하므로 순서만
+	// 지키면 됨. sourcePath 가 비어 있으면(AssetManager 를 거치지 않은 모델) 공유할 키가 없으므로 매번 새로 넣음.
 	std::vector<const Mesh*> meshes;
 	meshes.reserve(model.meshes.size());
 	for (size_t i = 0; i < model.meshes.size(); ++i)
@@ -431,8 +459,8 @@ size_t Scene::AddModel(const Model& model, const Transform& transform)
 		const Mesh* shared = FindModelMesh(model.sourcePath, static_cast<uint32_t>(i));
 		if (shared == nullptr)
 		{
-			Mesh copy = model.meshes[i];
-			shared = AddMesh(std::move(copy), MeshSource::FromModel(model.sourcePath, static_cast<uint32_t>(i)));
+			shared = AddSharedMesh(model.meshes[i], MeshSource::FromModel(model.sourcePath, static_cast<uint32_t>(i)));
+			if (shared == nullptr) continue;   // 빈 자리 (일어나지 않음 — 로더는 만든 메시만 넣음)
 		}
 		meshes.push_back(shared);
 	}
@@ -490,6 +518,7 @@ void Scene::Clear()
 	m_playing = false;
 	m_activeCamera = nullptr;
 	m_objects.clear();
+	m_objectsById.clear();
 	m_destroyPending = false;
 	m_prefabResources.clear();   // 프리팹 자원 (메시·재질 포인터)은 m_meshes/m_materials 와 함께 사라짐
 	m_nextId = 1;
@@ -503,12 +532,17 @@ void Scene::Clear()
 
 void Scene::AddImage(const std::string& name, std::vector<uint8_t>&& encoded)
 {
-	m_images[name] = std::move(encoded);
+	m_images[name] = std::make_shared<const std::vector<uint8_t>>(std::move(encoded));
+}
+
+void Scene::AddImage(const std::string& name, std::shared_ptr<const std::vector<uint8_t>> encoded)
+{
+	if (encoded != nullptr) m_images[name] = std::move(encoded);
 }
 
 const std::vector<uint8_t>* Scene::FindImage(const std::string& name) const
 {
 	auto found = m_images.find(name);
-	return found == m_images.end() ? nullptr : &found->second;
+	return found == m_images.end() ? nullptr : found->second.get();
 }
 

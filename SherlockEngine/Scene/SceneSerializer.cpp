@@ -146,10 +146,10 @@ namespace
 		return m;
 	}
 
-	json LightToJson(const LightData& l)
+	json LightToJson(const Light& l)
 	{
 		json j;
-		j["type"] = l.type;
+		j["type"] = static_cast<uint32_t>(l.type);
 		j["position"] = ToJson(l.position);
 		j["direction"] = ToJson(l.direction);
 		j["color"] = ToJson(l.color);
@@ -158,15 +158,15 @@ namespace
 		j["attenuation"] = ToJson(l.attenuation);
 		j["innerConeCos"] = l.innerConeCos;
 		j["outerConeCos"] = l.outerConeCos;
-		j["castShadows"] = l.castShadows != 0;
-		// ShadowIndex는 저장하지 않고 매 프레임 Renderer가 정함.
+		j["castShadows"] = l.castShadows;
 		return j;
 	}
 
-	LightData LightFromJson(const json& j)
+	Light LightFromJson(const json& j)
 	{
-		LightData l;
-		l.type = j.value("type", 0u);
+		Light l;
+		const uint32_t type = j.value("type", 0u);
+		l.type = type <= static_cast<uint32_t>(LightType::Spot) ? static_cast<LightType>(type) : LightType::Directional;   // 모르는 값은 방향광
 		l.position = ToFloat3(j.value("position", json()), l.position);
 		l.direction = ToFloat3(j.value("direction", json()), l.direction);
 		l.color = ToFloat3(j.value("color", json()), l.color);
@@ -176,7 +176,7 @@ namespace
 		l.innerConeCos = j.value("innerConeCos", l.innerConeCos);
 		l.outerConeCos = j.value("outerConeCos", l.outerConeCos);
 		// 키가 없는 옛 파일을 대비해 방향광이면 1, 아니면 0
-		l.castShadows = j.value("castShadows", l.type == static_cast<uint32_t>(LightType::Directional)) ? 1u : 0u;
+		l.castShadows = j.value("castShadows", l.type == LightType::Directional);
 		return l;
 	}
 
@@ -298,8 +298,7 @@ namespace
 			const Mesh* created = scene.FindModelMesh(source.modelPath, source.meshIndex);
 			if (created == nullptr)
 			{
-				Mesh copy = model->meshes[source.meshIndex];
-				created = scene.AddMesh(std::move(copy), source);
+				created = scene.AddSharedMesh(model->meshes[source.meshIndex], source);   // 캐시의 메시를 함께 소유 (복사 없음)
 			}
 			if (std::find(loadedModels.begin(), loadedModels.end(), source.modelPath) == loadedModels.end())
 			{
@@ -396,7 +395,7 @@ namespace
 		if (useId)
 		{
 			const uint64_t id = j.value("id", static_cast<uint64_t>(0));
-			if (id != 0 && scene.FindById(id) == nullptr) object.SetId(id);
+			if (id != 0) scene.SetObjectId(object, id);   // 이미 쓰이는 ID 면 AddObject 가 준 새 ID 를 그대로 둠
 		}
 		if (j.contains("slotMaterials"))
 		{
@@ -641,7 +640,7 @@ std::string SceneSerializer::SaveToString(const Scene& scene, const Camera& came
 	root["materials"] = materials;
 
 	json lights = json::array();
-	for (const LightData& light : scene.GetLights()) lights.push_back(LightToJson(light));
+	for (const Light& light : scene.GetLights()) lights.push_back(LightToJson(light));
 	root["lights"] = lights;
 
 	// 부모는 objects 배열의 인덱스로 (자식이 부모보다 앞에 올 수 있으므로 로드는 두 단계).
@@ -713,7 +712,7 @@ bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager&
 
 	for (const json& j : root.value("lights", json::array()))
 	{
-		if (scene.GetLights().size() < MAX_LIGHTS) scene.GetLights().push_back(LightFromJson(j));
+		scene.GetLights().push_back(LightFromJson(j));
 	}
 
 	CreateObjects(scene, root.value("objects", json::array()), true, meshes, materials);
@@ -757,7 +756,7 @@ std::string SceneSerializer::SaveEditState(const Scene& scene)
 	root["materials"] = materials;
 
 	json lights = json::array();
-	for (const LightData& light : scene.GetLights()) lights.push_back(LightToJson(light));
+	for (const Light& light : scene.GetLights()) lights.push_back(LightToJson(light));
 	root["lights"] = lights;
 
 	IndexMap<GameObject> objectIndex;
@@ -792,7 +791,7 @@ bool SceneSerializer::RestoreEditState(Scene& scene, const std::string& text)
 	scene.GetLights().clear();
 	for (const json& j : root.value("lights", json::array()))
 	{
-		if (scene.GetLights().size() < MAX_LIGHTS) scene.GetLights().push_back(LightFromJson(j));
+		scene.GetLights().push_back(LightFromJson(j));
 	}
 	ApplyAmbientAndClear(scene, root);
 	const json env = root.value("environment", json());

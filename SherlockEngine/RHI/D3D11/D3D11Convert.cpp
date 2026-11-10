@@ -20,6 +20,11 @@ namespace D3D11Convert
 		case Format::R16G16B16A16_FLOAT:  return DXGI_FORMAT_R16G16B16A16_FLOAT;
 		case Format::R16_UINT:            return DXGI_FORMAT_R16_UINT;
 		case Format::R32_UINT:            return DXGI_FORMAT_R32_UINT;
+		case Format::R8_UNORM:             return DXGI_FORMAT_R8_UNORM;
+		case Format::R16_FLOAT:            return DXGI_FORMAT_R16_FLOAT;
+		case Format::R16G16_FLOAT:         return DXGI_FORMAT_R16G16_FLOAT;
+		case Format::R10G10B10A2_UNORM:    return DXGI_FORMAT_R10G10B10A2_UNORM;
+		case Format::R11G11B10_FLOAT:      return DXGI_FORMAT_R11G11B10_FLOAT;
 		default:
 			Log::Error("D3D11Convert : 알 수 없는 Format %d", static_cast<int>(format));
 			return DXGI_FORMAT_UNKNOWN;

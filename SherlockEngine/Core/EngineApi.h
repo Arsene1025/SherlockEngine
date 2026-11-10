@@ -25,3 +25,12 @@
 // 타입을 경계 너머로 넘겨도 안전함. C4275: 내보내는 클래스가 내보내지 않는 기반 클래스(PropertyVisitor 같은
 // 순수 인터페이스)를 상속할 때의 같은 종류 경고.
 #pragma warning(disable : 4251 4275)
+
+// 스크립트 API 버전. 엔진과 스크립트 DLL 이 서로 다른 헤더로 빌드됐는지 올리기 전에 알아내는 데 씀
+// (Scene/Script.h 의 SherlockScriptAbi, Core/ScriptModule.cpp 의 검사).
+//
+// 올려야 하는 때: 스크립트가 보는 클래스(Behaviour·Script·GameObject·Transform·Scene·Camera·Input …)의
+// 가상 함수 순서, 멤버 배치, 내보내는 함수의 시그니처를 바꿨을 때. 올리면 예전에 빌드한 스크립트 DLL 은
+// 올라가지 않고 "다시 빌드하라"는 오류가 남 — 조용히 엉뚱한 메모리를 읽다가 죽는 것을 막음.
+// (클래스 크기가 바뀌는 변경은 표식의 sizeof 비교가 자동으로 잡음. 크기가 그대로인 변경이 이 번호의 몫임.)
+#define SHERLOCK_SCRIPT_API_VERSION 1

@@ -50,6 +50,9 @@
     <ClCompile Include="Editor\EditorApp.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
+    <ClCompile Include="Editor\EditorAutomation.cpp">
+      <Filter>Editor</Filter>
+    </ClCompile>
     <ClCompile Include="Editor\EditorHistory.cpp">
       <Filter>Editor</Filter>
     </ClCompile>
@@ -164,6 +167,15 @@
     <ClCompile Include="Graphics\RendererPost.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RendererShadow.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RendererTargets.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\TextureCache.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\TextureLoader.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
@@ -204,6 +216,9 @@
       <Filter>App</Filter>
     </ClInclude>
     <ClInclude Include="Editor\EditorApp.h">
+      <Filter>Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="Editor\EditorAutomation.h">
       <Filter>Editor</Filter>
     </ClInclude>
     <ClInclude Include="Editor\EditorHistory.h">
@@ -351,6 +366,12 @@
       <Filter>RHI</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\Renderer.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\Frustum.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\TextureCache.h">
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="RHI\RenderPassTypes.h">

@@ -27,7 +27,7 @@ namespace
 	// R 버튼의 기본값. 구조체의 멤버 초기값을 그대로 읽으므로 기본값을 바꿔도 이 파일은 고칠 필요가 없음.
 	const ShadowSettings kShadowDefaults;
 	const SceneEnvironment kEnvironmentDefaults;
-	const LightData kLightDefaults;
+	const Light kLightDefaults;
 	const Material kMaterialDefaults;
 	constexpr float kCameraMoveSpeedDefault = 10.0f;   // EditorApp::m_moveSpeed 의 초기값
 	constexpr float kCameraOrthoHeightDefault = 25.0f; // Camera 생성자의 m_orthoHeight
@@ -430,20 +430,19 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelected)
 {
 	ImGui::Separator();
-	std::vector<LightData>& lights = scene.GetLights();
-	ImGui::TextWrapped("Lights (%zu / %u)   shadows: first directional (cascades) + spot (1 tile) + point (6 tiles), 12 local tiles", lights.size(), MAX_LIGHTS);
+	std::vector<Light>& lights = scene.GetLights();
+	ImGui::TextWrapped("Lights (%zu)   shadows: first directional (cascades) + spot (1 tile) + point (6 tiles), %u local tiles", lights.size(), Renderer::kShadowLocalTileCount);
 	ImGui::ColorEdit3("Ambient", &scene.ambientColor.x);
-	if (lights.size() < MAX_LIGHTS)
 	{
 		SameLineIfFits(ButtonWidth("Add point light"));
 		if (ImGui::Button("Add point light"))
 		{
-			LightData light;
-			light.type = static_cast<uint32_t>(LightType::Point);
+			Light light;
+			light.type = LightType::Point;
 			light.position = XMFLOAT3(0.0f, 6.0f, 0.0f);
 			light.range = 20.0f;
 			light.intensity = 2.0f;
-			light.castShadows = 0;   // 지역광 그림자는 타일을 쓰므로 기본은 꺼 둠 (Cast shadows 체크박스로 켬)
+			light.castShadows = false;   // 지역광 그림자는 타일을 쓰므로 기본은 꺼 둠 (Cast shadows 체크박스로 켬)
 			lights.push_back(light);
 		}
 	}
@@ -451,7 +450,7 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 	int removeIndex = -1;
 	for (int i = 0; i < static_cast<int>(lights.size()); ++i)
 	{
-		LightData& light = lights[i];
+		Light& light = lights[i];
 		ImGui::PushID(i);
 		const int typeIndex = static_cast<int>(light.type) < 3 ? static_cast<int>(light.type) : 0;
 		const bool isSelected = selectedLight != nullptr && *selectedLight == i;
@@ -468,14 +467,14 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 			int selectedType = typeIndex;
 			if (ImGui::Combo("Type", &selectedType, kLightTypeNames, ARRAYSIZE(kLightTypeNames)))
 			{
-				light.type = static_cast<uint32_t>(selectedType);
+				light.type = static_cast<LightType>(selectedType);
 			}
-			if (light.type != static_cast<uint32_t>(LightType::Directional))
+			if (light.type != LightType::Directional)
 			{
 				DragFloat3R("Position", &light.position.x, kLightDefaults.position.x, kLightDefaults.position.y, kLightDefaults.position.z, 0.1f, -60.0f, 60.0f);
 				DragFloatR("Range", &light.range, kLightDefaults.range, 0.1f, 0.1f, 200.0f);
 			}
-			if (light.type != static_cast<uint32_t>(LightType::Point))
+			if (light.type != LightType::Point)
 			{
 				DragFloat3R("Direction", &light.direction.x, kLightDefaults.direction.x, kLightDefaults.direction.y, kLightDefaults.direction.z, 0.01f, -1.0f, 1.0f);
 				SameLineIfFits(ButtonWidth("normalize"));
@@ -488,10 +487,9 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 			ImGui::ColorEdit3("Color", &light.color.x);
 			SliderFloatR("Intensity", &light.intensity, kLightDefaults.intensity, 0.0f, 10.0f);
 
-			bool cast = light.castShadows != 0;
-			if (ImGui::Checkbox("Cast shadows", &cast)) light.castShadows = cast ? 1u : 0u;
+			ImGui::Checkbox("Cast shadows", &light.castShadows);
 
-			if (light.type == static_cast<uint32_t>(LightType::Spot))
+			if (light.type == LightType::Spot)
 			{
 				float inner = XMConvertToDegrees(acosf(light.innerConeCos));
 				float outer = XMConvertToDegrees(acosf(light.outerConeCos));
@@ -500,7 +498,7 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 				if (SliderFloatR("Outer cone (deg)", &outer, XMConvertToDegrees(acosf(kLightDefaults.outerConeCos)), 1.0f, 89.0f)) light.outerConeCos = cosf(XMConvertToRadians(outer));
 				if (light.outerConeCos > light.innerConeCos) light.outerConeCos = light.innerConeCos;
 			}
-			if (light.type != static_cast<uint32_t>(LightType::Directional))
+			if (light.type != LightType::Directional)
 			{
 				DragFloat3R("Attenuation (c, l, q)", &light.attenuation.x, kLightDefaults.attenuation.x, kLightDefaults.attenuation.y, kLightDefaults.attenuation.z, 0.001f, 0.0f, 10.0f, "%.4f");
 			}

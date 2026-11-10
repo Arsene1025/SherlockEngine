@@ -74,11 +74,13 @@ struct SceneEnvironment
 // Renderer는 Render(const Scene&, const Camera&)로 씬을 입력받아 그리기만 함.
 // 예전에는 Renderer가 구 하나, 조명 배열, ImGui 패널을 직접 들고 있었음(D3).
 //
-// 메시와 재질은 unique_ptr로 소유해 포인터(주소)가 바뀌지 않게 함. GameObject가 그
-// 포인터를 들고 있고, Renderer의 GPU 캐시도 그 포인터를 키로 사용함.
+// 메시와 재질은 포인터(주소)가 바뀌지 않게 따로 할당해 둠. GameObject가 그 포인터를 들고 있고, Renderer의
+// GPU 캐시도 그 포인터를 키로 사용함. 재질은 씬이 편집하는 값이라 unique_ptr 로 혼자 소유함. 메시는 만든
+// 뒤로 바뀌지 않는 데이터라 shared_ptr<const Mesh> 로 들고, 모델에서 온 메시는 AssetManager 캐시의 것을
+// 복사하지 않고 함께 소유함 (정점·인덱스 배열이 메모리에 한 벌).
 //
-// 모델(Model)의 메시·재질·이미지를 통째로 받음. 이미지는 인코딩된 바이트 상태로 이름으로 찾을 수 있게
-// 보관하고, Renderer 의 텍스처 캐시가 재질 이름 → 씬 이미지 → 디코딩 순으로 텍스처를 만듦.
+// 모델(Model)의 메시·재질·이미지를 받음. 이미지는 인코딩된 바이트 상태로 이름으로 찾을 수 있게 보관하고
+// (이것도 캐시와 함께 소유함), Renderer 의 텍스처 캐시가 재질 이름 → 씬 이미지 → 디코딩 순으로 텍스처를 만듦.
 class SHERLOCK_API Scene
 {
 public:
@@ -91,8 +93,10 @@ public:
 
 	Mesh* AddMesh(Mesh&& mesh);
 	Mesh* AddMesh(Mesh&& mesh, const MeshSource& source);   // 출처 정보와 함께 추가 (저장 가능)
+	// 이미 있는 메시를 복사하지 않고 함께 소유함 (AssetManager 캐시의 모델 메시). 메시는 const 라 씬에서 바꿀 수 없음.
+	const Mesh* AddSharedMesh(std::shared_ptr<const Mesh> mesh, const MeshSource& source);
 	const MeshSource* GetMeshSource(const Mesh* mesh) const;
-	// 모델의 이미지 바이트만 씬에 넣음 (씬 로드 시 재질은 JSON 에서, 이미지는 모델에서 가져옴).
+	// 모델의 이미지 바이트만 씬에 넣음 (씬 로드 시 재질은 JSON 에서, 이미지는 모델에서 가져옴). 바이트는 복사하지 않고 모델과 함께 소유함.
 	void AddModelImages(const Model& model);
 	Material* AddMaterial(const Material& material);
 	GameObject& AddObject(const Mesh* mesh, const Material* material, const char* name);
@@ -102,8 +106,8 @@ public:
 	// 노드가 둘 이상이면 빈 루트 오브젝트(파일 이름)를 먼저 만들고 인스턴스를 그 자식으로 둠 — 반환값에 루트가 포함됨.
 	// 루트가 transform 을 갖고 자식은 pre(노드 행렬)만 가지므로 월드 행렬은 이전 방식(pre × transform)과 같음.
 	size_t AddModel(Model&& model, const Transform& transform);
-	// AssetManager 캐시의 모델을 넣음 (원본은 그대로 남아 다음 전환 때 다시 쓰임). 씬에 없는 메시·재질만
-	// 복사하고 있는 것은 공유함 (아래).
+	// AssetManager 캐시의 모델을 넣음 (원본은 그대로 남아 다음 전환 때 다시 쓰임). 메시와 이미지 바이트는
+	// 캐시의 것을 함께 소유하고(복사 없음), 재질은 씬에서 편집하는 값이라 씬에 없는 것만 복사함 (아래).
 	size_t AddModel(const Model& model, const Transform& transform);
 
 	// ---- 모델 자원 공유 ----
@@ -128,9 +132,12 @@ public:
 	GameObject* GetObject(size_t index) { return index < m_objects.size() ? m_objects[index].get() : nullptr; }
 	GameObject* FindObject(const std::string& name);
 	// 안정 ID 로 찾음. 없으면(지워졌거나 모르는 ID) nullptr — 오브젝트 포인터를 오래 들고 있는 대신 ID 를
-	// 들고 이것으로 다시 찾음.
+	// 들고 이것으로 다시 찾음. ID → 오브젝트 표(m_objectsById)를 보므로 오브젝트 수와 무관하게 빠름.
 	GameObject* FindById(uint64_t id);
 	const GameObject* FindById(uint64_t id) const;
+	// 오브젝트의 ID 를 바꿈 (직렬화가 파일에 저장된 ID 를 되살릴 때). 그 ID 를 다른 오브젝트가 쓰고 있거나 0
+	// 이면 바꾸지 않고 false. ID 는 반드시 이 함수로 바꿀 것 — GameObject::SetId 를 직접 부르면 표와 어긋남.
+	bool SetObjectId(GameObject& object, uint64_t id);
 	// 직렬화가 읽은 ID 보다 큰 값부터 새 ID 가 나가도록 카운터를 올림 (SceneSerializer 가 오브젝트를 만들기
 	// 전에 호출함).
 	void ReserveIds(uint64_t maxUsed) { if (m_nextId <= maxUsed) m_nextId = maxUsed + 1; }
@@ -173,20 +180,20 @@ public:
 	CameraComponent* FindActiveCamera();
 	CameraComponent* GetActiveCamera() const { return m_activeCamera; }
 
-	std::vector<std::unique_ptr<Mesh>>& GetMeshes() { return m_meshes; }
-	const std::vector<std::unique_ptr<Mesh>>& GetMeshes() const { return m_meshes; }
+	const std::vector<std::shared_ptr<const Mesh>>& GetMeshes() const { return m_meshes; }
 
 	std::vector<std::unique_ptr<Material>>& GetMaterials() { return m_materials; }
 	const std::vector<std::unique_ptr<Material>>& GetMaterials() const { return m_materials; }
 
 	// 이름 → 인코딩된 이미지 바이트. 없으면 nullptr.
 	void AddImage(const std::string& name, std::vector<uint8_t>&& encoded);
+	void AddImage(const std::string& name, std::shared_ptr<const std::vector<uint8_t>> encoded);   // 복사 없이 함께 소유
 	const std::vector<uint8_t>* FindImage(const std::string& name) const;
 	size_t GetImageCount() const { return m_images.size(); }
 
-	// 최대 MAX_LIGHTS개. 넘치는 조명은 Renderer가 잘라냄.
-	std::vector<LightData>& GetLights() { return m_lights; }
-	const std::vector<LightData>& GetLights() const { return m_lights; }
+	// 개수 제한 없음. Renderer 가 프레임마다 GPU 배치(GpuLight)로 옮겨 구조체 버퍼에 올림.
+	std::vector<Light>& GetLights() { return m_lights; }
+	const std::vector<Light>& GetLights() const { return m_lights; }
 
 	DirectX::XMFLOAT3 ambientColor = DirectX::XMFLOAT3(0.12f, 0.12f, 0.12f);
 	float clearColor[4] = { 0.1f, 0.1f, 0.3f, 1.0f };
@@ -195,12 +202,12 @@ public:
 	SceneEnvironment environment;
 
 private:
-	std::vector<std::unique_ptr<Mesh>> m_meshes;
+	std::vector<std::shared_ptr<const Mesh>> m_meshes;
 	std::vector<MeshSource> m_meshSources;   // m_meshes 와 같은 인덱스
 	std::vector<std::unique_ptr<Material>> m_materials;
 	std::vector<std::unique_ptr<GameObject>> m_objects;
-	std::vector<LightData> m_lights;
-	std::unordered_map<std::string, std::vector<uint8_t>> m_images;
+	std::vector<Light> m_lights;
+	std::unordered_map<std::string, std::shared_ptr<const std::vector<uint8_t>>> m_images;
 
 	void ApplyActiveCamera(float dt);
 	bool m_playing = false;
@@ -230,4 +237,7 @@ private:
 	SavedLens m_savedLens;
 	float m_blendFromOrthoHeight = 25.0f;   // 전환 시작 시점의 직교 크기 (보간용)
 	void FlushDestroyed();
+
+	// ID → 오브젝트. m_objects 와 항상 같은 집합 (AddObject / SetObjectId / RemoveObject / ClearObjects / Clear 가 함께 고침).
+	std::unordered_map<uint64_t, GameObject*> m_objectsById;
 };

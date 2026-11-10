@@ -17,6 +17,17 @@ namespace
         Log::Error("%s", message);
     }
 
+    // 레지스터 문자. 텍스처와 구조체 버퍼는 같은 t# 공간을 씀.
+    char RegisterClassOf(BindingType type)
+    {
+        switch (type)
+        {
+        case BindingType::ConstantBuffer: return 'b';
+        case BindingType::Sampler:        return 's';
+        default:                          return 't';
+        }
+    }
+
     D3D12_SHADER_VISIBILITY VisibilityOf(uint8_t stageMask)
     {
         if (stageMask == ShaderStageMask_Vertex) return D3D12_SHADER_VISIBILITY_VERTEX;
@@ -49,7 +60,6 @@ bool D3D12Device::Init(const RHI::DeviceDesc& desc)
     m_commandList.Init(this);
     if (!CreateTimestampResources()) return false;
     if (!CreateBackBufferTextures()) return false;
-    if (!CreateDepthTexture()) return false;
     return true;
 }
 
@@ -283,6 +293,7 @@ void D3D12Device::DeferFree(D3D12DescriptorHeap* heap, uint32_t start, uint32_t 
 void D3D12Device::ReleaseDevice()
 {
     if (!m_device) return;
+    FlushUploads();
     WaitForGpu();
     ShutdownImGui();
 
@@ -297,7 +308,7 @@ void D3D12Device::ReleaseDevice()
     m_buffers.Clear();
     for (uint32_t i = 0; i < kFrameCount; ++i) ReleaseGarbage(i);
     for (TextureHandle& h : m_backBuffers) h = TextureHandle{};
-    m_depthBuffer = TextureHandle{};
+    m_uploadKeepAlive.clear();
 
     m_timestampHeap.Reset();
     m_timestampReadback.Reset();
@@ -372,18 +383,59 @@ void D3D12Device::DumpDebugLayerMessages()
 
 // ------------------------------------------------------------------ 동기 업로드 / 링
 
-bool D3D12Device::ExecuteUploadSync(const std::function<void(ID3D12GraphicsCommandList*)>& record)
+bool D3D12Device::RecordUpload(const std::function<void(ID3D12GraphicsCommandList*)>& record, ComPtr<ID3D12Resource> keepAlive)
 {
-    if (FAILED(m_uploadAllocator->Reset())) return false;
-    if (FAILED(m_uploadList->Reset(m_uploadAllocator.Get(), nullptr))) return false;
+    if (!m_uploadListOpen)
+    {
+        // 실패를 조용히 넘기면 리소스가 COPY_DEST 상태로 남아 뒤늦게 검증 오류로만 드러나므로 여기서 알림.
+        HRESULT hr = m_uploadAllocator->Reset();
+        if (SUCCEEDED(hr)) hr = m_uploadList->Reset(m_uploadAllocator.Get(), nullptr);
+        if (FAILED(hr))
+        {
+            Log::Error("업로드 커맨드 리스트 Reset 실패. 초기 데이터가 올라가지 않음. %s", Log::HrToString(hr).c_str());
+            return false;
+        }
+        m_uploadListOpen = true;
+    }
     record(m_uploadList.Get());
-    if (FAILED(m_uploadList->Close())) return false;
+    if (keepAlive) m_uploadKeepAlive.push_back(std::move(keepAlive));
+    // 묶음 밖(로드 시점의 단발 생성)이면 지금 실행하고 기다림. 묶음 안이면 EndResourceUploads 가 한 번에 함.
+    if (m_uploadBatchDepth == 0) FlushUploads();
+    return true;
+}
+
+void D3D12Device::FlushUploads()
+{
+    if (!m_uploadListOpen) return;
+    m_uploadListOpen = false;
+    if (FAILED(m_uploadList->Close()))
+    {
+        Log::Error("업로드 커맨드 리스트 Close 실패.");
+        m_uploadKeepAlive.clear();
+        return;
+    }
     ID3D12CommandList* lists[] = { m_uploadList.Get() };
     m_queue->ExecuteCommandLists(1, lists);
-    // 큐는 명령을 순서대로 실행하므로 이 펜스까지 기다리면 업로드도 끝난 것임. 로드 시점에만 쓰는 경로라 동기
-    // 방식이어도 됨.
+    // 큐는 명령을 순서대로 실행하므로 이 펜스까지 기다리면 업로드도 끝난 것임. 프레임 커맨드 리스트는 EndFrame
+    // 에서 그 뒤에 제출되므로, 같은 프레임의 드로우가 이 리소스를 읽어도 순서가 맞음.
     WaitForGpu();
-    return true;
+    m_uploadKeepAlive.clear();   // GPU 가 복사를 끝냈으므로 원본을 놓아도 됨
+}
+
+void D3D12Device::BeginResourceUploads()
+{
+    ++m_uploadBatchDepth;
+}
+
+void D3D12Device::EndResourceUploads()
+{
+    if (m_uploadBatchDepth == 0)
+    {
+        static bool warned = false;
+        ErrorOnce(warned, "EndResourceUploads : 짝이 맞는 BeginResourceUploads 가 없음.");
+        return;
+    }
+    if (--m_uploadBatchDepth == 0) FlushUploads();
 }
 
 uint8_t* D3D12Device::AllocateUpload(uint32_t size, D3D12_GPU_VIRTUAL_ADDRESS& outAddress)
@@ -438,6 +490,14 @@ void D3D12Device::EndFrame()
         ErrorOnce(warned, "EndFrame : 렌더 패스가 열린 채 Present. EndRenderPass 를 빠뜨렸다.");
         m_commandList.EndRenderPass();
     }
+    if (m_uploadListOpen)
+    {
+        // 묶음을 닫지 않고 프레임을 끝냄. 이 프레임의 드로우가 업로드 결과를 읽으므로 먼저 제출해야 함.
+        static bool warned = false;
+        ErrorOnce(warned, "EndFrame : EndResourceUploads 를 빠뜨림. 남은 업로드를 지금 제출함.");
+        m_uploadBatchDepth = 0;
+        FlushUploads();
+    }
     // 이번 슬롯에 기록된 타임스탬프를 리드백 버퍼로 Resolve 함. 기록하지 않은 쿼리는 Resolve 하지 않음.
     if (m_timestampHeap && m_timestampWritten[m_frameIndex] > 0)
     {
@@ -475,11 +535,10 @@ void D3D12Device::Resize(int width, int height)
     m_screenHeight = height;
 
     // 백버퍼 참조가 GPU 에도 CPU 에도 남아 있으면 안 됨. GPU 작업을 모두 끝낸 뒤 즉시 해제함.
+    FlushUploads();
     WaitForGpu();
     for (uint32_t i = 0; i < kFrameCount; ++i) ReleaseGarbage(i);
     for (TextureHandle& h : m_backBuffers) { ReleaseTextureNow(h); h = TextureHandle{}; }
-    ReleaseTextureNow(m_depthBuffer);
-    m_depthBuffer = TextureHandle{};
 
     const HRESULT hr = m_swapChain->ResizeBuffers(kBackBufferCount, m_screenWidth, m_screenHeight, DXGI_FORMAT_UNKNOWN, m_swapChainFlags);
     if (FAILED(hr))
@@ -487,9 +546,9 @@ void D3D12Device::Resize(int width, int height)
         Log::Error("ResizeBuffers() 실패. %s", Log::HrToString(hr).c_str());
         return;
     }
-    if (!CreateBackBufferTextures() || !CreateDepthTexture())
+    if (!CreateBackBufferTextures())
     {
-        Log::Error("Resize 후 백버퍼·깊이 버퍼 재생성 실패.");
+        Log::Error("Resize 후 백버퍼 재생성 실패.");
     }
 }
 
@@ -556,10 +615,10 @@ BufferHandle D3D12Device::CreateBuffer(const BufferDesc& descIn, const void* ini
         ID3D12Resource* dst = buffer.resource.Get();
         ID3D12Resource* src = upload.Get();
         const uint64_t bytes = descIn.size;
-        ExecuteUploadSync([dst, src, bytes](ID3D12GraphicsCommandList* list)
+        RecordUpload([dst, src, bytes](ID3D12GraphicsCommandList* list)
         {
             list->CopyBufferRegion(dst, 0, src, 0, bytes);
-        });
+        }, upload);
     }
     return m_buffers.Add(std::move(buffer));
 }
@@ -619,7 +678,7 @@ void D3D12Device::UpdateBuffer(BufferHandle handle, const void* data, uint32_t s
         ID3D12Resource* dst = buffer->resource.Get();
         ID3D12Resource* src = upload.Get();
         const uint64_t bytes = size;
-        ExecuteUploadSync([dst, src, bytes](ID3D12GraphicsCommandList* list) { list->CopyBufferRegion(dst, 0, src, 0, bytes); });
+        RecordUpload([dst, src, bytes](ID3D12GraphicsCommandList* list) { list->CopyBufferRegion(dst, 0, src, 0, bytes); }, upload);
         break;
     }
     case BufferUsage::Staging:
@@ -695,8 +754,8 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
         pClear = &clear;
     }
 
-    // 초기 상태. 초기 데이터가 있으면 COPY_DEST, 깊이 전용이면 DEPTH_WRITE (Renderer 가 배리어를 걸지 않는
-    // 메인 깊이 버퍼), 그 외(그림자 맵 포함)는 COMMON — Renderer 의 첫 배리어가 Common → DepthWrite 임 (D3D11
+    // 초기 상태. 초기 데이터가 있으면 COPY_DEST, 깊이 전용(SRV 없음)이면 DEPTH_WRITE, 그 외(그림자 맵·씬
+    // 깊이 포함)는 COMMON — Renderer 의 첫 배리어가 Common → DepthWrite 임 (D3D11
     // 의 상태 추적과 출발점이 같음).
     const bool hasInit = !subresources.empty();   // span: (nullptr, 0) 검사가 empty() 하나로
     D3D12_RESOURCE_STATES initial = D3D12_RESOURCE_STATE_COMMON;
@@ -759,7 +818,7 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
 
         ID3D12Resource* dstRes = texture.resource.Get();
         ID3D12Resource* srcRes = upload.Get();
-        ExecuteUploadSync([&](ID3D12GraphicsCommandList* list)
+        RecordUpload([&](ID3D12GraphicsCommandList* list)
         {
             for (UINT sub = 0; sub < count; ++sub)
             {
@@ -776,7 +835,7 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
             const D3D12_RESOURCE_BARRIER barrier = D3D12Convert::TransitionBarrier(dstRes,
                 D3D12_RESOURCE_STATE_COPY_DEST, D3D12Convert::ToD3D12(ResourceState::ShaderResource));
             list->ResourceBarrier(1, &barrier);
-        });
+        }, upload);
         texture.state = ResourceState::ShaderResource;
     }
 
@@ -835,21 +894,6 @@ bool D3D12Device::CreateBackBufferTextures()
     }
     m_backBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
     return true;
-}
-
-bool D3D12Device::CreateDepthTexture()
-{
-    const TextureDesc desc{
-        .width = static_cast<uint32_t>(m_screenWidth),
-        .height = static_cast<uint32_t>(m_screenHeight),
-        .format = Format::D24_UNORM_S8_UINT,
-        .mipLevels = 1,
-        .bindFlags = TextureBind_DepthStencil,
-        .sampleCount = 1,
-        .debugName = "DepthBuffer",
-    };
-    m_depthBuffer = CreateTexture(desc);
-    return m_depthBuffer.IsValid();
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12Device::GetRTV(D3D12Texture& texture, bool srgbView)
@@ -996,6 +1040,32 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
     auto found = m_rootLayouts.find(key);
     if (found != m_rootLayouts.end()) return found->second;
 
+    // 한 PSO 의 셋끼리 같은 (종류, 레지스터)를 같은 스테이지에 선언하면 루트 시그니처를 만들 수 없음. 서로 다른
+    // PSO 는 같은 번호를 다른 용도로 써도 되므로, 이 검사는 레이아웃이 아니라 조합(PSO) 단위임.
+    for (uint32_t a = 0; a < desc.bindingLayoutCount; ++a)
+    {
+        const D3D12BindingLayout* la = m_bindingLayouts.Get(desc.bindingLayouts[a]);
+        for (uint32_t b = a + 1; la != nullptr && b < desc.bindingLayoutCount; ++b)
+        {
+            const D3D12BindingLayout* lb = m_bindingLayouts.Get(desc.bindingLayouts[b]);
+            if (lb == nullptr) continue;
+            for (uint32_t i = 0; i < la->desc.slotCount; ++i)
+            {
+                for (uint32_t j = 0; j < lb->desc.slotCount; ++j)
+                {
+                    const BindingSlot& x = la->desc.slots[i];
+                    const BindingSlot& y = lb->desc.slots[j];
+                    if (RegisterClassOf(x.type) == RegisterClassOf(y.type) && x.reg == y.reg && (x.stageMask & y.stageMask) != 0)
+                    {
+                        Log::Error("루트 시그니처 : 셋 %u (%s) 와 셋 %u (%s) 가 같은 레지스터 %c%u 를 같은 스테이지에 선언함.",
+                            a, la->name.c_str(), b, lb->name.c_str(), RegisterClassOf(x.type), x.reg);
+                        return nullptr;
+                    }
+                }
+            }
+        }
+    }
+
     auto layoutSet = std::make_shared<D3D12RootLayout>();
     layoutSet->key = key;
     layoutSet->setCount = desc.bindingLayoutCount;
@@ -1014,7 +1084,7 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
         }
         D3D12RootLayout::SetBinding& sb = layoutSet->sets[s];
         sb.layout = desc.bindingLayouts[s];
-        for (uint32_t& r : sb.cbvRoot) r = UINT32_MAX;
+        for (uint32_t& r : sb.descriptorRoot) r = UINT32_MAX;
 
         std::vector<D3D12_DESCRIPTOR_RANGE> srvRanges, samplerRanges;
         uint8_t srvMask = 0, samplerMask = 0;
@@ -1031,7 +1101,20 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
                 p.Descriptor.ShaderRegister = slot.reg;
                 p.Descriptor.RegisterSpace = 0;
                 p.ShaderVisibility = VisibilityOf(slot.stageMask);
-                sb.cbvRoot[i] = static_cast<uint32_t>(params.size());
+                sb.descriptorRoot[i] = static_cast<uint32_t>(params.size());
+                params.push_back(p);
+                break;
+            }
+            case BindingType::BufferResource:
+            {
+                // 구조체 버퍼: 루트 SRV. Dynamic 버퍼는 링 주소가 프레임마다 바뀌므로 테이블에 넣을 영구
+                // 디스크립터를 만들 수 없음 — CBV 와 같이 드로우마다 GPU 주소를 바인딩함.
+                D3D12_ROOT_PARAMETER p = {};
+                p.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+                p.Descriptor.ShaderRegister = slot.reg;
+                p.Descriptor.RegisterSpace = 0;
+                p.ShaderVisibility = VisibilityOf(slot.stageMask);
+                sb.descriptorRoot[i] = static_cast<uint32_t>(params.size());
                 params.push_back(p);
                 break;
             }
@@ -1085,6 +1168,15 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
         }
     }
 
+    // 루트 시그니처 예산은 64 DWORD: 루트 디스크립터(CBV·SRV) 2, 디스크립터 테이블 1.
+    uint32_t rootCost = 0;
+    for (const D3D12_ROOT_PARAMETER& p : params) rootCost += (p.ParameterType == D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE) ? 1 : 2;
+    if (rootCost > 64)
+    {
+        Log::Error("루트 시그니처 : 예산 초과 (%u DWORD > 64). 이 PSO 의 상수버퍼·구조체 버퍼 슬롯 수를 줄일 것.", rootCost);
+        return nullptr;
+    }
+
     D3D12_ROOT_SIGNATURE_DESC rsd = {};
     rsd.NumParameters = static_cast<UINT>(params.size());
     rsd.pParameters = params.empty() ? nullptr : params.data();
@@ -1106,7 +1198,7 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
         return nullptr;
     }
     SetDebugName(layoutSet->rootSignature.Get(), "RootSignature");
-    Log::Info("루트 시그니처 생성: 셋 %u개, 루트 파라미터 %u개 (CBV 루트 디스크립터 + SRV/샘플러 테이블)", desc.bindingLayoutCount, rsd.NumParameters);
+    Log::Info("루트 시그니처 생성: 셋 %u개, 루트 파라미터 %u개, %u / 64 DWORD (루트 디스크립터 + SRV/샘플러 테이블)", desc.bindingLayoutCount, rsd.NumParameters, rootCost);
     m_rootLayouts.emplace(key, layoutSet);
     return layoutSet;
 }
@@ -1134,6 +1226,7 @@ BindingLayoutHandle D3D12Device::CreateBindingLayout(const BindingLayoutDesc& de
         {
         case BindingType::ConstantBuffer: limit = kMaxCbvRegister; break;
         case BindingType::ShaderResource: limit = kMaxSrvRegister; break;
+        case BindingType::BufferResource: limit = kMaxSrvRegister; break;   // 텍스처와 같은 t# 공간
         case BindingType::Sampler:        limit = kMaxSamplerRegister; break;
         }
         if (slot.reg >= limit)
@@ -1144,7 +1237,7 @@ BindingLayoutHandle D3D12Device::CreateBindingLayout(const BindingLayoutDesc& de
         for (uint32_t j = 0; j < i; ++j)
         {
             const BindingSlot& other = descIn.slots[j];
-            if (other.type == slot.type && other.reg == slot.reg && (other.stageMask & slot.stageMask) != 0)
+            if (RegisterClassOf(other.type) == RegisterClassOf(slot.type) && other.reg == slot.reg && (other.stageMask & slot.stageMask) != 0)
             {
                 Log::Error("CreateBindingLayout : 슬롯 %u 와 %u 가 같은 레지스터를 같은 스테이지에 선언 (%s).", j, i, name);
                 return BindingLayoutHandle{};
@@ -1187,6 +1280,16 @@ ResourceSetHandle D3D12Device::CreateResourceSet(const ResourceSetDesc& descIn)
             if (buffer == nullptr || !(buffer->desc.bindFlags & BufferBind_Constant))
             {
                 Log::Error("CreateResourceSet : 슬롯 %u (b%u) 에 상수버퍼가 아닌 핸들 (%s).", i, slot.reg, name);
+                return ResourceSetHandle{};
+            }
+            break;
+        }
+        case BindingType::BufferResource:
+        {
+            const D3D12Buffer* buffer = m_buffers.Get(binding.buffer);
+            if (buffer == nullptr || !(buffer->desc.bindFlags & BufferBind_ShaderResource) || buffer->desc.stride == 0)
+            {
+                Log::Error("CreateResourceSet : 슬롯 %u (t%u) 에 구조체 버퍼(BufferBind_ShaderResource, stride > 0)가 아닌 핸들 (%s).", i, slot.reg, name);
                 return ResourceSetHandle{};
             }
             break;

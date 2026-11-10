@@ -31,7 +31,6 @@ bool D3D11Device::Init(const RHI::DeviceDesc& desc)
     m_commandList.Init(this);
     if (!CreateTimestampQueries()) return false;
     if (!CreateBackBufferTexture()) return false;
-    if (!CreateDepthTexture()) return false;
 
     return true;
 }
@@ -60,10 +59,9 @@ void D3D11Device::ReleaseDevice()
     m_bindingLayouts.Clear();
     m_shaders.Clear();
     m_samplers.Clear();
-    m_textures.Clear();      // 백버퍼·깊이 버퍼 포함
+    m_textures.Clear();      // 백버퍼 포함
     m_buffers.Clear();
     m_backBuffer = TextureHandle{};
-    m_depthBuffer = TextureHandle{};
 
     m_swapChain.Reset();
     m_context.Reset();
@@ -232,9 +230,7 @@ void D3D11Device::Resize(int width, int height)
     // → (4) 새 핸들로 재생성. 이전 핸들은 세대가 올라가므로 어디서 쓰든 nullptr가 됨.
     m_context->OMSetRenderTargets(0, nullptr, nullptr);
     DestroyTexture(m_backBuffer);
-    DestroyTexture(m_depthBuffer);
     m_backBuffer = TextureHandle{};
-    m_depthBuffer = TextureHandle{};
 
     const HRESULT hr = m_swapChain->ResizeBuffers(
         0,                       // 기존 BufferCount 유지
@@ -251,11 +247,6 @@ void D3D11Device::Resize(int width, int height)
     if (!CreateBackBufferTexture())
     {
         Log::Error("Resize 후 백버퍼 재생성 실패.");
-        return;
-    }
-    if (!CreateDepthTexture())
-    {
-        Log::Error("Resize 후 깊이 버퍼 재생성 실패.");
         return;
     }
 }
@@ -506,24 +497,6 @@ bool D3D11Device::CreateBackBufferTexture()
     return m_backBuffer.IsValid();
 }
 
-bool D3D11Device::CreateDepthTexture()
-{
-    // 깊이·스텐실 텍스처. 크기와 샘플 수는 백버퍼와 일치해야 함.
-    const TextureDesc desc{
-        .width = static_cast<uint32_t>(m_screenWidth),
-        .height = static_cast<uint32_t>(m_screenHeight),
-        .format = Format::D24_UNORM_S8_UINT,
-        .mipLevels = 1,
-        .bindFlags = TextureBind_DepthStencil,
-        .sampleCount = 1,   // 스왑체인과 동일 (MSAA 미사용)
-        .debugName = "DepthBuffer",
-    };
-
-    m_depthBuffer = CreateTexture(desc);
-    if (D3D11Texture* t = m_textures.Get(m_depthBuffer)) t->state = ResourceState::DepthWrite;
-    return m_depthBuffer.IsValid();
-}
-
 // ------------------------------------------------------------------ 샘플러
 
 SamplerHandle D3D11Device::CreateSampler(const SamplerDesc& descIn)
@@ -646,6 +619,7 @@ BindingLayoutHandle D3D11Device::CreateBindingLayout(const BindingLayoutDesc& de
         {
         case BindingType::ConstantBuffer: limit = kMaxCbvRegister; break;
         case BindingType::ShaderResource: limit = kMaxSrvRegister; break;
+        case BindingType::BufferResource: limit = kMaxSrvRegister; break;   // 텍스처와 같은 t# 공간
         case BindingType::Sampler:        limit = kMaxSamplerRegister; break;
         }
         if (slot.reg >= limit)
@@ -657,7 +631,10 @@ BindingLayoutHandle D3D11Device::CreateBindingLayout(const BindingLayoutDesc& de
         for (uint32_t j = 0; j < i; ++j)
         {
             const BindingSlot& other = descIn.slots[j];
-            if (other.type == slot.type && other.reg == slot.reg && (other.stageMask & slot.stageMask) != 0)
+            const bool sameClass = (other.type == slot.type) ||
+                ((other.type == BindingType::ShaderResource || other.type == BindingType::BufferResource) &&
+                 (slot.type == BindingType::ShaderResource || slot.type == BindingType::BufferResource));
+            if (sameClass && other.reg == slot.reg && (other.stageMask & slot.stageMask) != 0)
             {
                 Log::Error("CreateBindingLayout : 슬롯 %u 와 %u 가 같은 레지스터를 같은 스테이지에 선언 (%s).", j, i, name);
                 return BindingLayoutHandle{};
@@ -700,6 +677,16 @@ ResourceSetHandle D3D11Device::CreateResourceSet(const ResourceSetDesc& descIn)
             if (buffer == nullptr || !(buffer->desc.bindFlags & BufferBind_Constant))
             {
                 Log::Error("CreateResourceSet : 슬롯 %u (b%u) 에 상수버퍼가 아닌 핸들 (%s).", i, slot.reg, name);
+                return ResourceSetHandle{};
+            }
+            break;
+        }
+        case BindingType::BufferResource:
+        {
+            const D3D11Buffer* buffer = m_buffers.Get(binding.buffer);
+            if (buffer == nullptr || !(buffer->desc.bindFlags & BufferBind_ShaderResource) || buffer->desc.stride == 0)
+            {
+                Log::Error("CreateResourceSet : 슬롯 %u (t%u) 에 구조체 버퍼(BufferBind_ShaderResource, stride > 0)가 아닌 핸들 (%s).", i, slot.reg, name);
                 return ResourceSetHandle{};
             }
             break;

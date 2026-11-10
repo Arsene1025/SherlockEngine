@@ -17,11 +17,31 @@ struct D3D11Buffer
 	std::string name;
 	// Dynamic 버퍼는 프레임 수만큼 복제함(GraphicsConfig.h 참고). 나머지는 [0]만 씀.
 	ComPtr<ID3D11Buffer> buffers[kFrameCount];
+	// 구조체 버퍼(BufferBind_ShaderResource)의 SRV. 복제본마다 하나, 처음 요청될 때 만듦.
+	ComPtr<ID3D11ShaderResourceView> srvs[kFrameCount];
 
 	ID3D11Buffer* Get(uint32_t frameIndex) const
 	{
 		const uint32_t slot = (desc.usage == BufferUsage::Dynamic) ? (frameIndex % kFrameCount) : 0;
 		return buffers[slot].Get();
+	}
+
+	// HLSL StructuredBuffer<T> 로 읽는 뷰. 원소 수 = size / stride.
+	ID3D11ShaderResourceView* GetSRV(ID3D11Device* device, uint32_t frameIndex)
+	{
+		if (!(desc.bindFlags & BufferBind_ShaderResource) || desc.stride == 0) return nullptr;
+		const uint32_t slot = (desc.usage == BufferUsage::Dynamic) ? (frameIndex % kFrameCount) : 0;
+		if (!srvs[slot] && buffers[slot])
+		{
+			D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
+			viewDesc.Format = DXGI_FORMAT_UNKNOWN;   // 구조체 버퍼는 포맷이 없음 (stride 가 원소 크기)
+			viewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+			viewDesc.Buffer.FirstElement = 0;
+			viewDesc.Buffer.NumElements = desc.size / desc.stride;
+			const HRESULT hr = device->CreateShaderResourceView(buffers[slot].Get(), &viewDesc, srvs[slot].GetAddressOf());
+			if (FAILED(hr)) Log::Error("구조체 버퍼 SRV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+		}
+		return srvs[slot].Get();
 	}
 };
 

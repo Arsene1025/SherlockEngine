@@ -110,7 +110,7 @@ public:
 	// Stop·스크립트 다시 올리기· 씬 불러오기·되돌리기를 거쳐도 같은 오브젝트를 가리킴. 되돌리기 이력, 에디터
 	// 선택, 지연 Destroy, 프리팹 인스턴스가 이것으로 오브젝트를 찾음.
 	uint64_t GetId() const { return id; }
-	void SetId(uint64_t value) { id = value; }   // Scene·SceneSerializer 가 씀. 직접 바꾸면 유일성이 깨짐
+	void SetId(uint64_t value) { id = value; }   // Scene 만 부름 (AddObject, SetObjectId). 직접 바꾸면 유일성과 Scene 의 ID 표가 깨짐
 
 	// 프리팹 인스턴스의 루트면 그 프리팹 경로 (Assets 기준, 비면 아님). 표시와 저장만 함 (오버라이드·되돌리기
 	// 연동은 없음)

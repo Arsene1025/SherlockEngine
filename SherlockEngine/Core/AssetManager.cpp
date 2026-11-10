@@ -21,8 +21,8 @@ std::wstring AssetManager::Normalize(const std::wstring& path)
 size_t AssetManager::EstimateBytes(const Model& model)
 {
 	size_t bytes = 0;
-	for (const Mesh& mesh : model.meshes) bytes += mesh.GetVertices().size() * sizeof(VERTEX) + mesh.GetIndices().size() * sizeof(uint32_t);
-	for (const ModelImage& image : model.images) bytes += image.encoded.size();
+	for (const auto& mesh : model.meshes) bytes += mesh->GetVertices().size() * sizeof(VERTEX) + mesh->GetIndices().size() * sizeof(uint32_t);
+	for (const ModelImage& image : model.images) bytes += image.encoded ? image.encoded->size() : 0;
 	return bytes;
 }
 

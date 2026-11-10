@@ -37,7 +37,17 @@ namespace ShaderCompiler
 	// vector 뿐 아니라 C 배열·ShaderDesc::bytecode 도 그대로 들어옴.
 	bool ValidateConstantBufferSize(std::span<const uint8_t> bytecode, const char* cbufferName, uint32_t expectedSize);
 
-	// 셰이더가 실제로 쓰는 바인딩(b#/t#/s#)을 리플렉션으로 읽음.
+	// 셰이더가 선언한 cbuffer 를 전부 읽음 (이름·크기·변수 수). 호출자가 "어떤 셰이더에 어떤 cbuffer 가
+	// 있는지"를 손으로 적지 않고, 나온 것을 전부 C++ 구조체 표와 대조할 수 있음. 리플렉션 실패면 false.
+	struct ReflectedConstantBuffer
+	{
+		std::string name;
+		uint32_t size = 0;
+		uint32_t variables = 0;
+	};
+	bool ReflectConstantBuffers(std::span<const uint8_t> bytecode, std::vector<ReflectedConstantBuffer>& out);
+
+	// 셰이더가 실제로 쓰는 바인딩(b#/t#/s#)을 리플렉션으로 읽음. StructuredBuffer 는 BufferResource (t#).
 	// Renderer가 직접 선언한 BindingLayout과 대조하는 데 씀.
 	struct ReflectedBinding
 	{

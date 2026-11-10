@@ -162,6 +162,7 @@
     <ClInclude Include="App\AppBase.h" />
     <ClInclude Include="App\GameApp.h" />
     <ClInclude Include="Editor\EditorApp.h" />
+    <ClInclude Include="Editor\EditorAutomation.h" />
     <ClInclude Include="Editor\EditorHistory.h" />
     <ClInclude Include="Editor\Editor.h" />
     <ClInclude Include="Editor\ContentBrowser.h" />
@@ -209,7 +210,9 @@
     <ClInclude Include="Graphics\Model.h" />
     <ClInclude Include="Graphics\Screenshot.h" />
     <ClInclude Include="RHI\PipelineTypes.h" />
+    <ClInclude Include="Graphics\Frustum.h" />
     <ClInclude Include="Graphics\Renderer.h" />
+    <ClInclude Include="Graphics\TextureCache.h" />
     <ClInclude Include="RHI\RenderPassTypes.h" />
     <ClInclude Include="RHI\ResourceDesc.h" />
     <ClInclude Include="Graphics\ShaderConstants.h" />
@@ -236,6 +239,7 @@
     <ClCompile Include="App\AppBase.cpp" />
     <ClCompile Include="App\GameApp.cpp" />
     <ClCompile Include="Editor\EditorApp.cpp" />
+    <ClCompile Include="Editor\EditorAutomation.cpp" />
     <ClCompile Include="Editor\EditorHistory.cpp" />
     <ClCompile Include="Editor\Editor.cpp" />
     <ClCompile Include="Editor\ContentBrowser.cpp" />
@@ -273,6 +277,9 @@
     <ClCompile Include="RHI\RHI.cpp" />
     <ClCompile Include="Graphics\Renderer.cpp" />
     <ClCompile Include="Graphics\RendererPost.cpp" />
+    <ClCompile Include="Graphics\RendererShadow.cpp" />
+    <ClCompile Include="Graphics\RendererTargets.cpp" />
+    <ClCompile Include="Graphics\TextureCache.cpp" />
     <ClCompile Include="Graphics\TextureLoader.cpp" />
     <ClCompile Include="Scene\Camera.cpp" />
     <ClCompile Include="Scene\GameObject.cpp" />

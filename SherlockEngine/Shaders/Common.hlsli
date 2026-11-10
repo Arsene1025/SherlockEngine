@@ -8,11 +8,11 @@
 // 레지스터 배정 (ShaderConstants.h 와 동일):
 //   재질 셋:   t0..t7  s0..s3   — 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 재질 샘플러 s0
 //   프레임 셋: t8..t15 s4..s7   — 그림자 맵 t8, 비교 샘플러 s4, 스카이박스 t9, 환경 샘플러 s5,
-//                                IBL 확산 조도 t10, IBL 반사 프리필터 t11, BRDF LUT t12
+//                                IBL 확산 조도 t10, IBL 반사 프리필터 t11, BRDF LUT t12, CSM 아틀라스 t14,
+//                                조명 구조체 버퍼 t15
 #ifndef SHERLOCK_COMMON_HLSLI
 #define SHERLOCK_COMMON_HLSLI
 
-static const uint MAX_LIGHTS = 8;
 static const uint MAX_SHADOW_VIEWS = 20;   // Scene/Light.h 의 MAX_SHADOW_VIEWS 와 같아야 함 (b6 크기 2000B 가 이 값에 달림)
 static const uint LIGHT_DIRECTIONAL = 0;
 static const uint LIGHT_POINT = 1;
@@ -76,13 +76,16 @@ cbuffer PerObject : register(b1)
     matrix worldInvTranspose;
 }
 
-// b2: 조명. PS만. (656바이트)
+// b2: 조명 공통 값. PS만. (16바이트)
 cbuffer Lights : register(b2)
 {
-    LightData lights[MAX_LIGHTS];
     float3 ambientColor;
-    uint lightCount;
+    uint lightCount;          // 아래 lights 의 유효 원소 수
 }
+
+// t15: 조명 배열 (프레임 셋). cbuffer 의 고정 크기 배열이 아니라 구조체 버퍼라 조명 수에 상한이 없음.
+// 원소 배치는 Graphics/ShaderConstants.h 의 GpuLight 와 같아야 함 (80바이트).
+StructuredBuffer<LightData> lights : register(t15);
 
 struct ShadowViewData
 {

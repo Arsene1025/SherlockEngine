@@ -10,7 +10,7 @@ struct D3D12RootLayout;
 // RHI::CommandList 의 D3D12 구현. Device 가 프레임마다 Reset 하는 ID3D12GraphicsCommandList 에 기록함.
 //
 // D3D11 과 다른 점:
-//   - Barrier 가 실제 ResourceBarrier 를 기록함. before 는 인자보다 텍스처의 추적 상태를 신뢰함.
+//   - Barrier 가 실제 ResourceBarrier 를 기록함. before 는 텍스처의 추적 상태(D3D12Texture::state)에서 얻음.
 //   - SetResourceSet 은 바인딩을 "기억"만 하고, DrawIndexed 직전에 현재 PSO 의 루트 시그니처에 맞춰
 //     루트 CBV(GPU 주소)와 디스크립터 테이블을 바인딩함. Dynamic 상수버퍼의 주소가 UpdateBuffer 마다 바뀌기 때문임.
 //   - BeginRenderPass 는 시저 사각형도 설정함 (D3D12 는 시저 사각형이 없으면 아무것도 그리지 않음).
@@ -25,14 +25,14 @@ public:
 	bool IsInRenderPass() const override { return m_inPass; }
 
 	void SetPipelineState(PipelineHandle handle) override;
-	void SetResourceSet(ResourceSetHandle handle) override;
+	void SetResourceSet(uint32_t setIndex, ResourceSetHandle handle) override;
 	void SetVertexBuffer(BufferHandle handle, uint32_t slot = 0, uint32_t offset = 0) override;
 	void SetIndexBuffer(BufferHandle handle, Format indexFormat = Format::R32_UINT) override;
 
 	void DrawIndexed(uint32_t indexCount, uint32_t startIndex = 0, int32_t baseVertex = 0) override;
 	void Draw(uint32_t vertexCount, uint32_t startVertex = 0) override;
 
-	void Barrier(TextureHandle texture, ResourceState before, ResourceState after) override;
+	void Barrier(TextureHandle texture, ResourceState after) override;
 	void CopyBuffer(BufferHandle dst, BufferHandle src) override;
 
 	void WriteTimestamp(uint32_t slot) override;   // Device 의 쿼리 힙에 위임
@@ -64,8 +64,7 @@ private:
 	PipelineHandle m_currentPipeline;
 	const D3D12PipelineState* m_currentPso = nullptr;
 	const D3D12RootLayout* m_currentRoot = nullptr;
-	BoundSet m_sets[kMaxBindingSets];
-	uint32_t m_setCount = 0;
+	BoundSet m_sets[kMaxBindingSets];   // 인덱스 = PipelineStateDesc::bindingLayouts 의 인덱스. set 이 빈 핸들이면 아직 안 꽂힘
 
 	// 이 패스의 기본 뷰포트 크기 
 	uint32_t m_passWidth = 0;

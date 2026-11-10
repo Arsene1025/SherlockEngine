@@ -16,14 +16,14 @@ public:
 	bool IsInRenderPass() const override { return m_inPass; }
 
 	void SetPipelineState(PipelineHandle handle) override;
-	void SetResourceSet(ResourceSetHandle handle) override;
+	void SetResourceSet(uint32_t setIndex, ResourceSetHandle handle) override;
 	void SetVertexBuffer(BufferHandle handle, uint32_t slot = 0, uint32_t offset = 0) override;
 	void SetIndexBuffer(BufferHandle handle, Format indexFormat = Format::R32_UINT) override;
 
 	void DrawIndexed(uint32_t indexCount, uint32_t startIndex = 0, int32_t baseVertex = 0) override;
 	void Draw(uint32_t vertexCount, uint32_t startVertex = 0) override;
 
-	void Barrier(TextureHandle texture, ResourceState before, ResourceState after) override;
+	void Barrier(TextureHandle texture, ResourceState after) override;
 	void CopyBuffer(BufferHandle dst, BufferHandle src) override;
 
 	void WriteTimestamp(uint32_t slot) override;   // Device 의 쿼리 세트에 위임

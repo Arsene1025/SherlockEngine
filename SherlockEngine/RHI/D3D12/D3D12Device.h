@@ -59,7 +59,8 @@ public:
     TextureHandle CreateTexture(const TextureDesc& desc, std::span<const TextureSubresource> subresources = {}) override;
     void DestroyTexture(TextureHandle handle) override;
     TextureHandle GetBackBuffer() const override { return m_backBuffers[m_backBufferIndex]; }
-    TextureHandle GetDepthBuffer() const override { return m_depthBuffer; }
+    void BeginResourceUploads() override;
+    void EndResourceUploads() override;
 
     SamplerHandle CreateSampler(const SamplerDesc& desc) override;
     void DestroySampler(SamplerHandle handle) override;
@@ -114,12 +115,14 @@ private:
     bool InitSwapChain();
     bool InitFrameResources();
     bool CreateBackBufferTextures();
-    bool CreateDepthTexture();
     void ReleaseTextureNow(TextureHandle handle);   // GPU 유휴 상태에서만 (Resize)
     void WaitForGpu();
     void ReleaseGarbage(uint32_t slot);
-    // 동기 업로드: 별도 커맨드 리스트에 기록·실행·완료 대기. 초기 데이터 전용 (로드 시점).
-    bool ExecuteUploadSync(const std::function<void(ID3D12GraphicsCommandList*)>& record);
+    // 초기 데이터 업로드: 별도 커맨드 리스트에 기록함. 묶음(BeginResourceUploads) 밖이면 바로 실행하고 GPU 를
+    // 기다림. 묶음 안이면 기록만 하고 EndResourceUploads 가 한 번에 실행·대기함. keepAlive = 복사 원본인 업로드
+    // 힙 버퍼 — 실행이 끝날 때까지 살아 있어야 하므로 여기서 붙들어 둠.
+    bool RecordUpload(const std::function<void(ID3D12GraphicsCommandList*)>& record, ComPtr<ID3D12Resource> keepAlive);
+    void FlushUploads();   // 기록된 업로드를 실행하고 GPU 를 기다림 (기록된 것이 없으면 아무것도 안 함)
     // 프레임 업로드 링에서 조각 할당 (256B 정렬). 실패하면 nullptr.
     uint8_t* AllocateUpload(uint32_t size, D3D12_GPU_VIRTUAL_ADDRESS& outAddress);
     static void SetDebugName(ID3D12Object* object, const std::string& name);
@@ -158,6 +161,9 @@ private:
     // 동기 업로드
     ComPtr<ID3D12CommandAllocator> m_uploadAllocator;
     ComPtr<ID3D12GraphicsCommandList> m_uploadList;
+    std::vector<ComPtr<ID3D12Resource>> m_uploadKeepAlive;   // 기록된 복사의 원본 (FlushUploads 가 비움)
+    uint32_t m_uploadBatchDepth = 0;                         // BeginResourceUploads 중첩 깊이
+    bool m_uploadListOpen = false;                           // m_uploadList 가 Reset 되어 기록 중인가
 
     // 업로드 링 (Dynamic 버퍼)
     struct UploadRing
@@ -199,7 +205,6 @@ private:
     D3D12CommandList m_commandList;
 
     TextureHandle m_backBuffers[kBackBufferCount];
-    TextureHandle m_depthBuffer;
 
     // 타임스탬프. 쿼리 힙은 프레임 슬롯마다 kMaxTimestamps 개, 리드백 버퍼는 같은 배치의 uint64 배열.
     // EndFrame 이 이번 슬롯에 기록된 범위를 Resolve 하고, BeginFrame 이 (펜스를 지나) 재사용되는 슬롯의 결과를 읽음.

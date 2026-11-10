@@ -38,6 +38,12 @@ enum class Format : uint8_t
 	R16_UINT,              // 16비트 인덱스 (정점 65535개 이하)
 	R32_UINT,              // 32비트 인덱스
 	R16G16B16A16_FLOAT,    // half4 색. HDR 큐브맵·BRDF LUT (1.0 을 넘는 값을 담음, 최대 65504)
+	// 아래는 G-buffer·SSAO·속도 버퍼용. 새 값은 끝에 붙임 (기존 값의 번호가 PSO 캐시 키에 들어감).
+	R8_UNORM,              // 1채널 8비트 (AO, 마스크)
+	R16_FLOAT,             // half 1개 (선형 깊이)
+	R16G16_FLOAT,          // half2 (화면 공간 속도, 옥타헤드럴 노멀)
+	R10G10B10A2_UNORM,     // 채널당 10비트 + 알파 2비트 (월드 노멀)
+	R11G11B10_FLOAT,       // 알파 없는 HDR 색 (FP16 의 절반 크기)
 };
 
 enum class FillMode : uint8_t

@@ -87,12 +87,12 @@ namespace
 	// 오른쪽 위 모서리에 화면 고정으로 세로로 쌓음 (카메라를 돌려도 같은 자리) — 그 화면 점을 카메라 앞 8
 	// 단위로 역투영한 점을 앵커로 씀.
 	constexpr float kLightPickRadius = 14.0f;
-	XMFLOAT3 LightAnchor(const Camera& camera, const std::vector<LightData>& lights, int index, float x, float y, float width, float height)
+	XMFLOAT3 LightAnchor(const Camera& camera, const std::vector<Light>& lights, int index, float x, float y, float width, float height)
 	{
-		const LightData& light = lights[index];
-		if (light.type != static_cast<uint32_t>(LightType::Directional)) return light.position;
+		const Light& light = lights[index];
+		if (light.type != LightType::Directional) return light.position;
 		int ordinal = 0;
-		for (int i = 0; i < index; ++i) if (lights[i].type == static_cast<uint32_t>(LightType::Directional)) ++ordinal;
+		for (int i = 0; i < index; ++i) if (lights[i].type == LightType::Directional) ++ordinal;
 		const float u = (width - 130.0f) / width;
 		const float v = (110.0f + ordinal * 42.0f) / height;
 		const Ray ray = ScreenToRay(camera, u, v);
@@ -102,7 +102,7 @@ namespace
 	}
 
 	// 광원 방향(+Z)을 향하는 회전 + 이동 행렬 (DirectXMath 행벡터: 행 0 = right, 1 = up, 2 = forward, 3 = 이동)
-	XMFLOAT4X4 LightGizmoMatrix(const LightData& light, const XMFLOAT3& anchor, bool withRotation)
+	XMFLOAT4X4 LightGizmoMatrix(const Light& light, const XMFLOAT3& anchor, bool withRotation)
 	{
 		XMFLOAT4X4 m;
 		XMStoreFloat4x4(&m, XMMatrixIdentity());
@@ -796,7 +796,7 @@ int Editor::PickLight(Engine& engine, float mouseX, float mouseY, float x, float
 {
 	if (playState != PlayState::Editing || width <= 0.0f || height <= 0.0f) return -1;
 	const Camera& camera = engine.GetCamera();
-	const std::vector<LightData>& lights = engine.GetScene().GetLights();
+	const std::vector<Light>& lights = engine.GetScene().GetLights();
 	const XMMATRIX viewProj = camera.GetViewMatrix() * camera.GetProjectionMatrix();
 	int best = -1;
 	float bestDistSq = kLightPickRadius * kLightPickRadius;
@@ -846,7 +846,7 @@ void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float
 {
 	if (playState != PlayState::Editing || width <= 0.0f || height <= 0.0f) return;
 	const Camera& camera = engine.GetCamera();
-	const std::vector<LightData>& lights = engine.GetScene().GetLights();
+	const std::vector<Light>& lights = engine.GetScene().GetLights();
 	const XMMATRIX viewProj = camera.GetViewMatrix() * camera.GetProjectionMatrix();
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 	dl->PushClipRect(ImVec2(x, y), ImVec2(x + width, y + height), true);
@@ -854,7 +854,7 @@ void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float
 
 	for (int i = 0; i < static_cast<int>(lights.size()); ++i)
 	{
-		const LightData& light = lights[i];
+		const Light& light = lights[i];
 		const XMFLOAT3 anchor = LightAnchor(camera, lights, i, x, y, width, height);
 		ImVec2 c;
 		if (!project(anchor, c)) continue;
@@ -874,7 +874,7 @@ void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float
 
 		dl->AddCircleFilled(c, 7.0f, tint);
 		dl->AddCircle(c, 7.0f, outline, 0, thickness);
-		if (light.type == static_cast<uint32_t>(LightType::Point))
+		if (light.type == LightType::Point)
 		{
 			for (int r = 0; r < 8; ++r)   // 사방으로 뻗는 짧은 광선 (화면 고정 크기)
 			{
@@ -882,7 +882,7 @@ void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float
 				dl->AddLine(ImVec2(c.x + cosf(a) * 10.0f, c.y + sinf(a) * 10.0f), ImVec2(c.x + cosf(a) * 14.0f, c.y + sinf(a) * 14.0f), outline, thickness);
 			}
 		}
-		else if (light.type == static_cast<uint32_t>(LightType::Spot))
+		else if (light.type == LightType::Spot)
 		{
 			// 월드 크기의 원뿔: 길이 = min(range, 3), 밑면 반지름은 바깥 원뿔각에서 구함
 			const float length = (std::min)(light.range, 3.0f);
@@ -928,9 +928,9 @@ void Editor::DrawLightGizmo(Engine& engine, float x, float y, float width, float
 	Scene& scene = engine.GetScene();
 	if (playState != PlayState::Editing || m_selectedLight < 0 || m_selectedLight >= static_cast<int>(scene.GetLights().size()) || width <= 0.0f || height <= 0.0f) return;
 	const Camera& camera = engine.GetCamera();
-	LightData& light = scene.GetLights()[m_selectedLight];
-	const bool directional = light.type == static_cast<uint32_t>(LightType::Directional);
-	const bool spot = light.type == static_cast<uint32_t>(LightType::Spot);
+	Light& light = scene.GetLights()[m_selectedLight];
+	const bool directional = light.type == LightType::Directional;
+	const bool spot = light.type == LightType::Spot;
 	// Directional = 회전만 (위치 없음). Spot = 툴바의 이동/회전. Point = 이동만 (방향이 없음).
 	const bool rotate = directional || (spot && m_gizmoOperation == 1);
 

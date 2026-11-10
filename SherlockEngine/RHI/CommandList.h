@@ -40,7 +40,11 @@ namespace RHI
 		// ---- 상태·바인딩 ----
 		virtual void SetPipelineState(PipelineHandle handle) = 0;
 		// 리소스 셋의 모든 슬롯을 바인딩함. D3D11: 슬롯마다 *SSet*. D3D12: SetGraphicsRootDescriptorTable.
-		virtual void SetResourceSet(ResourceSetHandle handle) = 0;
+		// setIndex 는 PipelineStateDesc::bindingLayouts 의 인덱스 (0 ≤ setIndex < kMaxBindingSets). 그 자리의
+		// 레이아웃으로 만든 셋이어야 함. 커맨드 리스트는 인덱스마다 셋 하나를 기억하므로, 레이아웃 종류가 몇
+		// 개든 (패스마다 다른 레이아웃을 써도) 한 PSO 가 쓰는 셋 수만 kMaxBindingSets 이하면 됨. PSO 를 바꿔도
+		// 같은 인덱스에 같은 레이아웃을 쓰면 다시 부를 필요 없음.
+		virtual void SetResourceSet(uint32_t setIndex, ResourceSetHandle handle) = 0;
 		virtual void SetVertexBuffer(BufferHandle handle, uint32_t slot = 0, uint32_t offset = 0) = 0;   // stride 는 desc.stride 를 씀
 		virtual void SetIndexBuffer(BufferHandle handle, Format indexFormat = Format::R32_UINT) = 0;
 
@@ -51,8 +55,9 @@ namespace RHI
 		virtual void Draw(uint32_t vertexCount, uint32_t startVertex = 0) = 0;
 
 		// ---- 전이·복사 ----
-		// D3D11: 상태 추적만 (before 가 기록과 다르면 Debug 경고). D3D12: ResourceBarrier(Transition).
-		virtual void Barrier(TextureHandle texture, ResourceState before, ResourceState after) = 0;
+		// 텍스처를 after 상태로 전이함. 현재 상태는 백엔드가 텍스처마다 추적하므로 호출 코드는 "이제 무엇으로
+		// 쓸지"만 말함 (이미 그 상태면 아무 일도 없음). D3D11: 상태 기록만. D3D12: ResourceBarrier(Transition).
+		virtual void Barrier(TextureHandle texture, ResourceState after) = 0;
 		// 크기가 같은 두 버퍼 사이의 전체 복사.
 		virtual void CopyBuffer(BufferHandle dst, BufferHandle src) = 0;
 

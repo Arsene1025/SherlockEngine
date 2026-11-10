@@ -95,3 +95,34 @@ public:
 	void DestroySelf() { Destroy(&GetOwner()); }
 	GameObject* FindById(uint64_t id);
 };
+
+// ---- 스크립트 DLL 의 ABI 표식 ----
+// 스크립트 DLL 은 엔진의 클래스를 "헤더에 적힌 배치 그대로" 믿고 씀. 엔진만 다시 빌드하고 스크립트 DLL 은
+// 예전 것이면 그 믿음이 틀려 엉뚱한 메모리를 읽음. 그래서 스크립트 DLL 은 자기가 빌드될 때 본 값들을 아래
+// 구조체로 내보내고(SherlockScriptAbiInfo), 엔진은 DLL 을 올리기 전에 — 정적 초기화가 한 줄도 실행되기 전에 —
+// 자기 값과 비교함 (ScriptModule::Load). 다르면 올리지 않음.
+struct SherlockScriptAbi
+{
+	uint32_t apiVersion;         // SHERLOCK_SCRIPT_API_VERSION (사람이 올리는 번호)
+	uint32_t iteratorDebugLevel; // _ITERATOR_DEBUG_LEVEL. Debug 와 Release 는 std::string·vector 의 배치가 다름
+	uint32_t sizeofBehaviour;    // 아래 넷은 자동 검사: 멤버를 더하거나 빼면 크기가 달라짐
+	uint32_t sizeofScript;
+	uint32_t sizeofGameObject;
+	uint32_t sizeofTransform;
+
+	constexpr bool operator==(const SherlockScriptAbi&) const = default;
+};
+inline constexpr SherlockScriptAbi kSherlockScriptAbi{
+	SHERLOCK_SCRIPT_API_VERSION, _ITERATOR_DEBUG_LEVEL,
+	sizeof(Behaviour), sizeof(Script), sizeof(GameObject), sizeof(Transform),
+};
+
+// 엔진 DLL 밖(스크립트 DLL)에서 이 헤더를 include 한 번역 단위마다 정의되고 링커가 하나로 합침 (selectany). 쓰는 곳이 없어도 dllexport 라 DLL 에 남음.
+// 데이터 심볼이라 DLL 의 코드를 실행하지 않고 GetProcAddress 로 읽을 수 있음.
+#ifndef SHERLOCK_ENGINE_EXPORTS
+extern "C"
+{
+	// const 를 붙이지 않음: const 변수는 내부 연결이라 selectany·dllexport 를 쓸 수 없음 (C2496). 아무도 쓰지 않는 값임.
+	__declspec(dllexport) __declspec(selectany) SherlockScriptAbi SherlockScriptAbiInfo = kSherlockScriptAbi;
+}
+#endif

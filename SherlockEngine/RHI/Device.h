@@ -81,14 +81,24 @@ namespace RHI
 
 		// subresources 는 서브리소스마다 하나(GetArraySize(desc) × desc.mipLevels 개, 면 우선 순서 —
 		// ResourceDesc.h). 2D 면 밉 레벨마다 하나. 비어 있으면(기본값) 빈 텍스처. desc.dimension =
-		// TextureCube 는 정사각형 ShaderResource 전용. DepthStencil | ShaderResource 조합(그림자 맵)은
+		// TextureCube 는 정사각형 ShaderResource 전용. DepthStencil | ShaderResource 조합(그림자 맵·씬 깊이)은
 		// 백엔드가 TYPELESS + 포맷별 뷰로 만듦. C++20: (포인터, 개수) → std::span.
 		// std::vector<TextureSubresource> 를 그대로 넘김.
 		virtual TextureHandle CreateTexture(const TextureDesc& desc, std::span<const TextureSubresource> subresources = {}) = 0;
 		virtual void DestroyTexture(TextureHandle handle) = 0;
 		// Resize 할 때마다 새로 만들어짐. 프레임을 넘겨 보관하지 말 것.
 		virtual TextureHandle GetBackBuffer() const = 0;
-		virtual TextureHandle GetDepthBuffer() const = 0;
+		// 깊이 버퍼는 장치가 갖지 않음. 그리는 쪽(Renderer)이 출력 크기에 맞춰 만들고 소유함 — 에디터의 씬
+		// 뷰와 게임 모드가 같은 경로를 타고, 후처리(SSAO·디퍼드)가 깊이를 SRV 로 읽을 수 있음.
+
+		// ---- 초기 데이터 업로드 묶기 ----
+		// Begin 과 End 사이에 초기 데이터와 함께 만든 버퍼·텍스처의 GPU 복사를 한 번에 제출함. D3D12 는 리소스마다
+		// "제출 → GPU 대기"를 하지 않고 End 에서 한 번만 기다림 (묶지 않으면 CreateBuffer/CreateTexture 가 즉시
+		// 동기 업로드함). D3D11 은 생성 시 드라이버가 복사하므로 아무 일도 하지 않음. 중첩 가능 (가장 바깥 End
+		// 에서 제출). 묶음 안에서 만든 리소스는 End 뒤에 그리는 명령에서만 쓸 것 — 같은 프레임의 드로우는 EndFrame
+		// 에서 제출되므로 Render 안에서 묶는 것은 안전함.
+		virtual void BeginResourceUploads() = 0;
+		virtual void EndResourceUploads() = 0;
 
 		virtual SamplerHandle CreateSampler(const SamplerDesc& desc) = 0;
 		virtual void DestroySampler(SamplerHandle handle) = 0;
