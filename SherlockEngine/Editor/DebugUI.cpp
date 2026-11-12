@@ -5,6 +5,8 @@
 #include "Graphics/Renderer.h"
 #include "RHI/Device.h"
 #include "Graphics/Model.h"   // ModelStats
+#include "Graphics/TextureImporter.h"
+#include "Scene/Material.h"
 #include "Core/Engine.h"
 #include "Core/Config.h"
 #include "Core/Log.h"
@@ -15,6 +17,7 @@
 #include <cmath>
 #include <algorithm>
 #include <cfloat>
+#include <map>
 #include <vector>
 
 using namespace DirectX;   // 이 파일 안에서만
@@ -521,7 +524,69 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 	}
 }
 
-void DebugUI::DrawMaterialPanel(Scene& scene)
+void DebugUI::DrawTextureImportSettings(const Material& material, Renderer& renderer)
+{
+	struct Slot { const char* label; const std::string* name; bool srgb; };
+	const Slot slots[] = {
+		{ "Albedo", &material.albedoTexture, true }, { "Normal", &material.normalTexture, false },
+		{ "Metal/Rough", &material.metallicRoughnessTexture, false }, { "AO", &material.occlusionTexture, false },
+		{ "Emissive", &material.emissiveTexture, true },
+	};
+	static std::map<std::string, TextureImportSettings> pending;   // 아직 Apply 하지 않은 편집값 (이름별)
+	static const char* kSizes[] = { "Original", "4096", "2048", "1024", "512", "256", "128" };
+	static const uint32_t kSizeValues[] = { 0, 4096, 2048, 1024, 512, 256, 128 };
+	static const char* kMips[] = { "All", "None", "Top N" };
+
+	bool any = false;
+	for (const Slot& slot : slots)
+	{
+		const std::string& name = *slot.name;
+		if (name.empty() || name.rfind("builtin:", 0) == 0) continue;
+		if (!any) { ImGui::SeparatorText("Texture import"); any = true; }
+		ImGui::PushID(slot.label);
+		if (ImGui::TreeNode("slot", "%s: %s", slot.label, name.c_str()))
+		{
+			if (name.size() > 4 && _stricmp(name.c_str() + name.size() - 4, ".dds") == 0)
+			{
+				ImGui::TextDisabled("DDS source - used as is (import settings do not apply)");
+			}
+			else
+			{
+				const TextureImportSettings saved = TextureImporter::GetSettings(name);
+				TextureImportSettings& edit = pending.try_emplace(name, saved).first->second;
+				ImGui::Checkbox("BC7 compress", &edit.compress);
+				int mipMode = edit.mipLevels == 0 ? 0 : (edit.mipLevels == 1 ? 1 : 2);
+				if (ImGui::Combo("Mips", &mipMode, kMips, IM_ARRAYSIZE(kMips)))
+					edit.mipLevels = mipMode == 0 ? 0 : (mipMode == 1 ? 1 : (std::max)(edit.mipLevels, 6u));
+				if (mipMode == 2)
+				{
+					int levels = static_cast<int>(edit.mipLevels);
+					if (ImGui::SliderInt("Levels", &levels, 2, 13)) edit.mipLevels = static_cast<uint32_t>(levels);
+				}
+				int sizeIndex = 0;
+				for (int i = 0; i < IM_ARRAYSIZE(kSizeValues); ++i) if (kSizeValues[i] == edit.maxSize) sizeIndex = i;
+				if (ImGui::Combo("Max size", &sizeIndex, kSizes, IM_ARRAYSIZE(kSizes))) edit.maxSize = kSizeValues[sizeIndex];
+				const bool changed = !(edit == saved);
+				ImGui::BeginDisabled(!changed);
+				if (ImGui::Button("Apply"))
+				{
+					TextureImporter::SetSettings(name, edit);
+					renderer.ReloadTexture(name);   // 다음 프레임에 새 설정으로 변환·로드 (큰 텍스처는 몇 초 걸림)
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Revert")) edit = saved;
+				ImGui::EndDisabled();
+				if (changed) { ImGui::SameLine(); ImGui::TextDisabled("modified"); }
+				if (!TextureImporter::IsBuildEnabled()) ImGui::TextDisabled("conversion runs in the editor only");
+				ImGui::TextDisabled("%s", slot.srgb ? "color (sRGB)" : "data (linear)");
+			}
+			ImGui::TreePop();
+		}
+		ImGui::PopID();
+	}
+}
+
+void DebugUI::DrawMaterialPanel(Scene& scene, Renderer& renderer)
 {
 	ImGui::Separator();
 	ImGui::Text("Materials (%zu)", scene.GetMaterials().size());
@@ -553,6 +618,7 @@ void DebugUI::DrawMaterialPanel(Scene& scene)
 			}
 			DragFloat2R("UV scale", &material.uvScale.x, kMaterialDefaults.uvScale.x, kMaterialDefaults.uvScale.y, 0.1f, 0.1f, 64.0f);
 			SliderFloatR("Normal strength", &material.normalStrength, kMaterialDefaults.normalStrength, 0.0f, 3.0f);
+			DrawTextureImportSettings(material, renderer);
 			ImGui::Checkbox("Unlit", &material.unlit);
 			SameLineIfFits(CheckboxWidth("Wireframe"));
 			ImGui::Checkbox("Wireframe", &material.wireframe);

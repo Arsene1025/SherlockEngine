@@ -1,22 +1,22 @@
 {
   "ambientColor": [
-    0.15000000596046448,
-    0.15000000596046448,
-    0.15000000596046448
+    0.18000000715255737,
+    0.18000000715255737,
+    0.20000000298023224
   ],
   "camera": {
-    "pitch": 0.39812877774238586,
+    "pitch": 0.15,
     "position": [
-      18.0,
-      16.0,
-      -28.0
+      3,
+      2.5,
+      -6
     ],
-    "yaw": -0.5713375210762024
+    "yaw": -0.46
   },
   "clearColor": [
-    0.10000000149011612,
-    0.10000000149011612,
-    0.30000001192092896,
+    0.11999999731779099,
+    0.12999999523162842,
+    0.18000000715255737,
     1.0
   ],
   "environment": {
@@ -32,6 +32,13 @@
       "blurEnabled": false,
       "blurRadius": 4.0,
       "greyscale": 0.0
+    },
+    "shadow": {
+      "bias": 0.0007999999797903001,
+      "distance": 12.0,
+      "normalOffset": 0.30000001192092896,
+      "orthoSize": 10.0,
+      "strength": 1.0
     },
     "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
     "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
@@ -50,12 +57,12 @@
         1.0
       ],
       "direction": [
-        0.0,
-        -0.4472135901451111,
-        0.8944271802902222
+        0.44999998807907104,
+        -0.800000011920929,
+        0.4000000059604645
       ],
       "innerConeCos": 0.9238795042037964,
-      "intensity": 1.0,
+      "intensity": 1.600000023841858,
       "outerConeCos": 0.8660253882408142,
       "position": [
         0.0,
@@ -64,17 +71,77 @@
       ],
       "range": 50.0,
       "type": 0
+    },
+    {
+      "attenuation": [
+        1.0,
+        0.04500000178813934,
+        0.007499999832361937
+      ],
+      "color": [
+        1.0,
+        0.699999988079071,
+        0.5
+      ],
+      "direction": [
+        0.0,
+        -0.4472135901451111,
+        0.8944271802902222
+      ],
+      "innerConeCos": 0.9238795042037964,
+      "intensity": 1.5,
+      "outerConeCos": 0.8660253882408142,
+      "position": [
+        -3.0,
+        2.5,
+        -2.0
+      ],
+      "range": 12.0,
+      "type": 1
     }
   ],
   "materials": [
     {
       "albedoSrgb": true,
+      "albedoTexture": "Arm_Bone_Skin_Ani/0 heart.png",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "doubleSided": true,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "name": "mArm",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.5,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
       "albedoTexture": "builtin:checker",
       "alphaCutoff": 0.0,
       "baseColor": [
+        0.8500000238418579,
+        0.8500000238418579,
         0.8999999761581421,
-        0.8999999761581421,
-        0.949999988079071,
         1.0
       ],
       "doubleSided": false,
@@ -95,16 +162,21 @@
       "sampler": 2,
       "unlit": false,
       "uvScale": [
-        8.0,
-        8.0
+        3.0,
+        3.0
       ],
       "wireframe": false
     }
   ],
   "meshes": [
     {
-      "a": 21,
-      "b": 21,
+      "meshIndex": 0,
+      "path": "Models\\ArmBone\\Arm_Bone_Skin_Ani.gltf",
+      "type": "model"
+    },
+    {
+      "a": 7,
+      "b": 7,
       "color": [
         1.0,
         1.0,
@@ -112,8 +184,8 @@
         1.0
       ],
       "params": [
-        40.0,
-        40.0,
+        12.0,
+        12.0,
         0.0,
         0.0
       ],
@@ -125,6 +197,39 @@
       "id": 1,
       "material": 0,
       "mesh": 0,
+      "name": "Arm",
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        0
+      ],
+      "components": [
+        {
+          "type": "Animator",
+          "enabled": true,
+          "clip": "",
+          "loop": true,
+          "speed": 1.0
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "material": 1,
+      "mesh": 1,
       "name": "Floor",
       "position": [
         0.0,
@@ -156,19 +261,19 @@
           "type": "CameraComponent"
         }
       ],
-      "id": 2,
+      "id": 3,
       "material": -1,
       "mesh": -1,
       "name": "Main Camera",
       "position": [
-        18.0,
-        16.0,
-        -28.0
+        3,
+        2.5,
+        -6
       ],
       "rotation": [
-        0.39812877774238586,
-        -0.5713375210762024,
-        -1.616549560878866e-08
+        0.15,
+        -0.46,
+        0
       ],
       "scale": [
         0.9999999403953552,

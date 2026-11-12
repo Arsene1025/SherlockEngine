@@ -4,6 +4,7 @@
 #include "Core/ScriptModule.h"
 #include "Core/Paths.h"
 #include "Core/Log.h"
+#include "Graphics/TextureImporter.h"
 #include <nlohmann/json.hpp>
 #include <shellapi.h>
 #include <filesystem>
@@ -244,6 +245,15 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 			else if (fs::exists(found, ec) && !CopyOne(found, outAssets / texture, result.filesCopied, result.message)) return result;
 		}
 		CopyAssetTree(L"Textures", outAssets, result.filesCopied, result.message);   // 이름만으로 참조되는 기본 텍스처(bumps_normal 등)를 위해 전부 복사
+	}
+
+	// 3b. 텍스처 변환 캐시: 게임은 변환하지 않고 캐시가 있으면 쓰기만 하므로 설정(TextureSettings.json, 캐시 키에 들어감)과 캐시 폴더를
+	//     같이 싣음. 캐시 폴더는 프로젝트 Library\TextureCache → 패키지의 TextureCache\ (프로젝트가 없는 게임의 캐시 위치). 쓰이지 않는
+	//     옛 항목도 함께 가므로 용량이 신경 쓰이면 에디터에서 캐시 폴더를 지우고 씬을 한 번 열어 다시 만든 뒤 빌드함.
+	{
+		const fs::path settings = fs::path(Paths::GetAssetRoot()) / L"TextureSettings.json";
+		if (fs::exists(settings, ec) && !CopyOne(settings, outAssets / L"TextureSettings.json", result.filesCopied, result.message)) return result;
+		if (!CopyTree(fs::path(TextureImporter::GetCacheDir()), out / L"TextureCache", result.filesCopied, result.message, false)) return result;
 	}
 
 	// 4. engine.ini: [game] startScene / title 을 빌드 사본에 씀 (원본은 건드리지 않음).

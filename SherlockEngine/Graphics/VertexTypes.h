@@ -28,9 +28,25 @@ struct VERTEX
 };
 using VertexPCNTT = VERTEX;
 
+// 스키닝 정점 속성. 조인트 번호 4개(Skin::joints 의 인덱스, 최대 255)와 가중치 4개(합 1).
+// Mesh 는 VERTEX 배열과 같은 길이의 이 배열을 따로 들고 있고, Renderer 가 GPU 에 올릴 때 VERTEX 뒤에 이어 붙임.
+struct VertexSkin
+{
+	uint8_t joints[4] = { 0, 0, 0, 0 };
+	float weights[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+};
+
+// 스키닝 메시의 GPU 정점: VERTEX(64B) + VertexSkin(20B) = 84B.
+struct VERTEX_SKINNED
+{
+	VERTEX base;
+	VertexSkin skin;
+};
+
 enum class VertexFormat : uint8_t
 {
-	PositionColorNormalTexcoordTangent,   // VERTEX (VertexPCNTT)
+	PositionColorNormalTexcoordTangent,       // VERTEX (VertexPCNTT)
+	PositionColorNormalTexcoordTangentSkin,   // VERTEX_SKINNED. 위 포맷 뒤에 조인트 번호·가중치
 };
 
 // Position / Color / Normal / TexCoord / Tangent 레이아웃. 컴파일 시점 전용(consteval).
@@ -50,6 +66,20 @@ consteval VertexLayoutDesc MakeVertexLayoutPCNTT()
 
 inline constexpr VertexLayoutDesc kVertexLayoutPCNTT = MakeVertexLayoutPCNTT();
 
+// 스키닝 포맷: PCNTT 속성 5개 + BLENDINDICES(R8G8B8A8_UINT) + BLENDWEIGHT(R32G32B32A32_FLOAT).
+consteval VertexLayoutDesc MakeVertexLayoutPCNTTSkin()
+{
+	VertexLayoutDesc layout = MakeVertexLayoutPCNTT();
+	layout.attributes[5] = { .semantic = VertexSemantic::BlendIndices, .format = Format::R8G8B8A8_UINT,     .offset = static_cast<uint16_t>(offsetof(VERTEX_SKINNED, skin.joints)) };
+	layout.attributes[6] = { .semantic = VertexSemantic::BlendWeights, .format = Format::R32G32B32A32_FLOAT, .offset = static_cast<uint16_t>(offsetof(VERTEX_SKINNED, skin.weights)) };
+	layout.attributeCount = 7;
+	layout.stride = sizeof(VERTEX_SKINNED);
+	return layout;
+}
+
+inline constexpr VertexLayoutDesc kVertexLayoutPCNTTSkin = MakeVertexLayoutPCNTTSkin();
+static_assert(kVertexLayoutPCNTTSkin.stride == sizeof(VERTEX) + sizeof(VertexSkin), "스키닝 정점은 VERTEX 바로 뒤에 VertexSkin 이 붙음");
+
 static_assert(kVertexLayoutPCNTT.stride == sizeof(VERTEX), "VertexPCNTT 레이아웃의 stride 가 정점 구조체 크기와 다름");
 static_assert(kVertexLayoutPCNTT.attributeCount == 5, "VertexPCNTT 는 속성 5개(Position/Color/Normal/TexCoord/Tangent)");
 static_assert(kVertexLayoutPCNTT.attributes[4].offset + sizeof(float) * 4 == sizeof(VERTEX), "마지막 속성(Tangent) 뒤에 빈 공간이 없어야 함");
@@ -64,6 +94,8 @@ constexpr const VertexLayoutDesc& GetVertexLayout(VertexFormat format)
 {
 	switch (format)
 	{
+	case VertexFormat::PositionColorNormalTexcoordTangentSkin:
+		return kVertexLayoutPCNTTSkin;
 	case VertexFormat::PositionColorNormalTexcoordTangent:
 	default:
 		return kVertexLayoutPCNTT;

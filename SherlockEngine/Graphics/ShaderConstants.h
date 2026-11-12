@@ -54,6 +54,8 @@ constexpr uint32_t kSRVSlotSceneHdr = 13;   // t13 (후처리 셋, 후처리 패
 constexpr uint32_t kCBSlotPostParams = 4;    // b4 (후처리 셋, 패스마다 올림)
 constexpr uint32_t kCBSlotShadowPass = 5;   // b5 (프레임 셋, VS). 그림자 패스가 뷰마다 올림
 constexpr uint32_t kCBSlotShadows = 6;      // b6 (프레임 셋, PS). 그림자 뷰 배열
+constexpr uint32_t kCBSlotSkin = 7;         // b7 (오브젝트 셋, VS). 스키닝 조인트 행렬 팔레트
+constexpr uint32_t kMaxSkinJoints = 256;    // 팔레트 크기. 정점의 조인트 번호가 uint8 이라 이보다 클 수 없음 (Common.hlsli 의 MAX_JOINTS)
 
 constexpr uint32_t kSamplerSlotPost = 6;     // s6 (후처리 셋, 선형 Clamp. 블룸 축소·확대와 썸네일이 씀. 후처리 패스는 프레임 셋을 바인딩하지 않으므로 s4~s7 과 겹치지 않음)
 constexpr uint32_t kSamplerSlotMaterial = 0; // s0 (재질)
@@ -105,6 +107,12 @@ struct alignas(16) PerObjectConstants
 {
 	DirectX::XMFLOAT4X4 world;
 	DirectX::XMFLOAT4X4 worldInvTranspose;
+};
+
+// b7 Skin — 스키닝 메시를 그릴 때만 올림. 앞의 n 개만 올려도 됨 (셰이더는 정점이 가리키는 조인트만 읽음).
+struct alignas(16) SkinConstants
+{
+	DirectX::XMFLOAT4X4 joints[kMaxSkinJoints];   // 전치해서 저장
 };
 
 // 조명 하나의 GPU 배치. HLSL(Shaders/Common.hlsli 의 LightData)과 메모리 배치가 바이트 단위로 같아야 함.
@@ -212,6 +220,8 @@ static_assert(offsetof(PerFrameConstants, outputParams) == 256, "PerFrameConstan
 static_assert(offsetof(PerFrameConstants, shadowExtra) == 272, "PerFrameConstants.shadowExtra");
 
 static_assert(sizeof(PerObjectConstants) == 128, "PerObjectConstants: 64*2");
+static_assert(IsValidConstantBufferSize(sizeof(SkinConstants)), "SkinConstants 는 16의 배수여야 함");
+static_assert(sizeof(SkinConstants) == 64 * kMaxSkinJoints, "SkinConstants: 64 * 조인트 수 (HLSL cbuffer Skin)");
 static_assert(offsetof(PerObjectConstants, worldInvTranspose) == 64, "PerObjectConstants.worldInvTranspose");
 
 static_assert(sizeof(LightConstants) == 16, "LightConstants: 16");

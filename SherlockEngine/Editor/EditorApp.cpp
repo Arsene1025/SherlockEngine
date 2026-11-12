@@ -3,6 +3,7 @@
 #include "Editor/DebugUI.h"
 #include "Graphics/Mesh.h"
 #include "Graphics/Model.h"
+#include "Graphics/TextureImporter.h"
 #include "Core/Paths.h"
 #include "Core/Log.h"
 #include "Core/Profiler.h"
@@ -46,6 +47,7 @@ EditorApp::EditorApp()
 bool EditorApp::OnInitialize()
 {
 	ParseAutomation();
+	TextureImporter::SetBuildEnabled(true);   // 에디터만 텍스처 변환 캐시를 만듦 (게임 빌드는 있으면 쓰기만 함)
 
 	// 씬은 설정 engine.scene 으로 정함 (실행 인자 --scene= 이 덮어씀). 기본은 데모 씬.
 	// 에디터 콜백 (메뉴·단축키 → 앱)
@@ -590,6 +592,8 @@ void EditorApp::OnUpdate(float dt)
 		if (input.IsKeyPressed(VK_F7)) m_lightOrbit = !m_lightOrbit;
 		if (input.IsKeyPressed(VK_F8)) renderer.GetSettings().shadows = !renderer.GetSettings().shadows;
 		if (input.IsKeyPressed(VK_F9)) renderer.GetSettings().normalMapping = !renderer.GetSettings().normalMapping;
+		// B: 본 디버그 표시 순환 (끔 → 본 + 관절 → 본 + 관절 + 축). 카메라 이동 키(WASD/QE)와 겹치지 않음.
+		if (input.IsKeyPressed('B')) renderer.GetSettings().debugBones = (renderer.GetSettings().debugBones + 1) % 3;
 		// F10 은 재생 일시정지 (편집 중에는 아무것도 움직이지 않으므로).
 		if (input.IsKeyPressed(VK_F10)) TogglePause();
 		// 씬 순환

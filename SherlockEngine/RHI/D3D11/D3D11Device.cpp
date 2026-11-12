@@ -427,6 +427,8 @@ TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, std::span<co
     if (descIn.bindFlags & TextureBind_ShaderResource) td.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
     if (isCube) td.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;   // 이 플래그가 있어야 TEXTURECUBE SRV 를 만들 수 있음
 
+
+
     // 초기 데이터: 서브리소스(면 × 밉)마다 D3D11_SUBRESOURCE_DATA 하나. 순서는 면 0 의 밉 0..N−1, 면 1 의 ...
     // (서브리소스 인덱스 순). 개수가 모자라면 거부함 (모자란 밉에는 쓰레기 값이 들어가 원거리에서 이상한 색이
     // 나옴).

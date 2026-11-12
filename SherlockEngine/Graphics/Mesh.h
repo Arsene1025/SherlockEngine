@@ -43,16 +43,23 @@ public:
 
 	// 외부 데이터(모델 로더)로 만듦. submeshes 가 비면 전체를 서브메시 하나(슬롯 0)로 둠.
 	static Mesh FromData(std::vector<VERTEX>&& vertices, std::vector<uint32_t>&& indices, std::vector<Submesh>&& submeshes = {});
+	// 스키닝 메시. skin 은 vertices 와 같은 길이 (정점마다 조인트 번호 4개·가중치 4개). 길이가 다르면 스키닝을 버리고
+	// 일반 메시로 만듦. 정점 포맷은 PositionColorNormalTexcoordTangentSkin 이 됨.
+	static Mesh FromData(std::vector<VERTEX>&& vertices, std::vector<VertexSkin>&& skin, std::vector<uint32_t>&& indices, std::vector<Submesh>&& submeshes);
 
 	// 탄젠트가 없는 정점 배열에 삼각형별 UV 미분으로 탄젠트를 채움 (Lengyel). 노멀은 이미 있어야 함.
 	// bitangentTowardsIncreasingV: true 면 B = dP/dv (엔진 프리미티브·DirectX 식 노멀 맵: 초록 = v 증가),
 	// false 면 B = −dP/dv (glTF/OpenGL 식 노멀 맵: 초록 = 위). 두 결과는 tangent.w 의 부호만 다름.
 	// UV 가 뒤집힌(미러) 삼각형과 아닌 삼각형이 정점을 공유하면 손잡이별로 정점을 복제해 나눔.
 	// 그래서 vertices 는 뒤에 늘어나고 indices 는 복제본을 가리키도록 바뀜 (서브메시 인덱스 범위는 그대로).
-	static void ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>& indices, bool bitangentTowardsIncreasingV);
+	// skin 을 넘기면 복제한 정점의 스킨 속성도 같은 자리에 복제해 vertices 와 길이를 맞춤.
+	static void ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>& indices, bool bitangentTowardsIncreasingV, std::vector<VertexSkin>* skin = nullptr);
 
 	const std::vector<VERTEX>& GetVertices() const { return vertices; }
 	const std::vector<uint32_t>& GetIndices() const { return indices; }
+	// 스키닝 메시면 GetVertices() 와 같은 길이, 아니면 비어 있음.
+	const std::vector<VertexSkin>& GetSkinVertices() const { return skinVertices; }
+	bool IsSkinned() const { return !skinVertices.empty(); }
 	uint32_t GetVertexCount() const { return static_cast<uint32_t>(vertices.size()); }
 	uint32_t GetIndexCount() const { return static_cast<uint32_t>(indices.size()); }
 	bool IsValid() const { return !vertices.empty() && !indices.empty(); }
@@ -69,6 +76,7 @@ private:
 	void Finalize();
 
 	std::vector<VERTEX> vertices;
+	std::vector<VertexSkin> skinVertices;
 	std::vector<uint32_t> indices;
 	std::vector<Submesh> submeshes;
 	Bounds bounds;

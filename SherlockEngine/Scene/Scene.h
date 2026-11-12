@@ -149,6 +149,7 @@ public:
 	// 에셋 관리자 (프리팹의 모델 메시를 읽는 데 필요함). Engine 이 초기화할 때 한 번 지정함. 없으면 프리팹
 	// Instantiate 는 실패함.
 	void SetAssets(AssetManager* assets) { m_assets = assets; }
+	AssetManager* GetAssets() const { return m_assets; }   // 컴포넌트가 모델의 애니메이션 클립 등을 읽을 때 씀 (nullptr 일 수 있음)
 	// 프리팹(Assets 기준 상대 경로, 예: "Prefabs\\Bullet.prefab")을 씬에 만들고 루트를 돌려줌. 실패하면 nullptr.
 	// position·rotation(라디안)은 루트의 로컬 자세. 자세를 주지 않으면 프리팹에 저장된 값 그대로임.
 	// 재생 중 컴포넌트의 Update 안에서 불러도 안전함: 새 오브젝트는 목록 끝에 붙고, 같은 프레임 순회가

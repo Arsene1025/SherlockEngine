@@ -193,7 +193,7 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 	DebugUI::DrawPostStagesWindow(engine.GetRenderer(), engine.GetDevice());   // 후처리 단계별 썸네일 (체크로 켬)
 
 	DebugUI::BeginPanel("Materials");
-	DebugUI::DrawMaterialPanel(engine.GetScene());
+	DebugUI::DrawMaterialPanel(engine.GetScene(), engine.GetRenderer());
 	DebugUI::EndPanel();
 
 	if (showConsole) DebugUI::DrawLogConsole(&showConsole);
@@ -982,6 +982,94 @@ void Editor::SyncSelection(Scene& scene)
 	m_selectedPrev = m_selected;
 }
 
+namespace
+{
+	// 재질 하나의 편집 위젯. R 버튼의 기본값 = 재질 멤버 초기값.
+	void DrawMaterialFields(Material& material)
+	{
+		static const Material kDefaults;
+		ImGui::ColorEdit4("Base color", &material.baseColor.x);
+		DebugUI::SliderFloatR("Metallic", &material.metallic, kDefaults.metallic, 0.0f, 1.0f);   // PBR
+		DebugUI::SliderFloatR("Roughness", &material.roughness, kDefaults.roughness, 0.0f, 1.0f);
+		ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
+		DebugUI::DragFloat2R("UV scale", &material.uvScale.x, kDefaults.uvScale.x, kDefaults.uvScale.y, 0.1f, 0.1f, 64.0f);
+		DebugUI::SliderFloatR("Normal strength", &material.normalStrength, kDefaults.normalStrength, 0.0f, 3.0f);
+		DebugUI::SliderFloatR("Alpha cutoff", &material.alphaCutoff, kDefaults.alphaCutoff, 0.0f, 1.0f);
+		ImGui::Checkbox("Unlit", &material.unlit);
+		DebugUI::SameLineIfFits(DebugUI::CheckboxWidth("Wireframe"));
+		ImGui::Checkbox("Wireframe", &material.wireframe);
+		DebugUI::SameLineIfFits(DebugUI::CheckboxWidth("Double sided"));
+		ImGui::Checkbox("Double sided", &material.doubleSided);
+		ImGui::TextDisabled("albedo: %s   normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(),
+			material.normalTexture.empty() ? "(none)" : material.normalTexture.c_str());
+	}
+
+	// before → after 에서 바뀐 필드만 target 에 복사함. "모든 재질" 편집기가 한 값만 바꿔도 나머지 재질의 다른 값은 그대로 두기 위함.
+	void ApplyChangedFields(const Material& before, const Material& after, Material& target)
+	{
+		if (before.baseColor.x != after.baseColor.x || before.baseColor.y != after.baseColor.y || before.baseColor.z != after.baseColor.z || before.baseColor.w != after.baseColor.w) target.baseColor = after.baseColor;
+		if (before.emissive.x != after.emissive.x || before.emissive.y != after.emissive.y || before.emissive.z != after.emissive.z) target.emissive = after.emissive;
+		if (before.uvScale.x != after.uvScale.x || before.uvScale.y != after.uvScale.y) target.uvScale = after.uvScale;
+		if (before.metallic != after.metallic) target.metallic = after.metallic;
+		if (before.roughness != after.roughness) target.roughness = after.roughness;
+		if (before.normalStrength != after.normalStrength) target.normalStrength = after.normalStrength;
+		if (before.alphaCutoff != after.alphaCutoff) target.alphaCutoff = after.alphaCutoff;
+		if (before.unlit != after.unlit) target.unlit = after.unlit;
+		if (before.wireframe != after.wireframe) target.wireframe = after.wireframe;
+		if (before.doubleSided != after.doubleSided) target.doubleSided = after.doubleSided;
+	}
+
+	// 이 오브젝트와 자손이 실제로 그리는 모델 슬롯 재질(중복 제거). 슬롯 재질이 있는 오브젝트만 대상임.
+	void CollectSlotMaterials(Scene& scene, const GameObject& object, std::vector<Material*>& out)
+	{
+		if (object.GetMesh() != nullptr && !object.GetSlotMaterials().empty())
+		{
+			for (const Submesh& submesh : object.GetMesh()->GetSubmeshes())
+			{
+				const Material* used = object.GetMaterialForSlot(submesh.materialSlot);
+				if (used == nullptr) continue;
+				for (auto& owned : scene.GetMaterials())
+				{
+					if (owned.get() == used && std::find(out.begin(), out.end(), owned.get()) == out.end()) out.push_back(owned.get());
+				}
+			}
+		}
+		for (const GameObject* child : object.GetChildren()) CollectSlotMaterials(scene, *child, out);
+	}
+
+	// 모델 오브젝트(또는 모델 루트)의 인스펙터 재질 영역. 위쪽 "Material" 콤보는 오브젝트 자체 재질(모델에서는 쓰이지 않는
+	// 기본 슬롯)이라 여기서 고쳐도 화면이 바뀌지 않았음. 그려지는 재질은 서브메시 슬롯의 것이므로 여기서 편집함.
+	void DrawModelMaterials(Scene& scene, const GameObject& object, Renderer& renderer)
+	{
+		std::vector<Material*> materials;
+		CollectSlotMaterials(scene, object, materials);
+		if (materials.empty()) return;
+
+		ImGui::SeparatorText("Model materials");
+		ImGui::TextDisabled("%zu materials used by this object and its children (shared with other instances of the model)", materials.size());
+		if (materials.size() > 1 && ImGui::TreeNodeEx("All materials", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			ImGui::TextDisabled("a changed value is applied to all %zu materials", materials.size());
+			const Material before = *materials[0];   // 표시는 첫 재질의 값. 바뀐 필드만 모두에게 적용함
+			Material edited = before;
+			DrawMaterialFields(edited);
+			for (Material* material : materials) ApplyChangedFields(before, edited, *material);
+			ImGui::TreePop();
+		}
+		for (Material* material : materials)
+		{
+			ImGui::PushID(material);
+			if (ImGui::TreeNode("material", "%s", material->name.c_str()))
+			{
+				DrawMaterialFields(*material);
+				DebugUI::DrawTextureImportSettings(*material, renderer);
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+		}
+	}
+}
+
 void Editor::DrawInspector(Engine& engine)
 {
 	DebugUI::BeginPanel("Inspector");
@@ -1071,9 +1159,10 @@ void Editor::DrawInspector(Engine& engine)
 		}
 		ImGui::EndCombo();
 	}
+	DrawModelMaterials(scene, object, engine.GetRenderer());
 	if (!object.GetSlotMaterials().empty())
 	{
-		ImGui::TextDisabled("submesh slots: %zu (edit in Materials window)", object.GetSlotMaterials().size());
+		ImGui::TextDisabled("submesh slots: %zu", object.GetSlotMaterials().size());
 		// 모델 재질은 같은 모델을 놓은 모든 오브젝트가 공유함 — 편집하면 모두 바뀜. 이 오브젝트만 다르게
 		// 하려면 슬롯별로 분리함.
 		if (object.GetMesh() != nullptr && ImGui::TreeNode("Shared slot materials"))
@@ -1110,24 +1199,9 @@ void Editor::DrawInspector(Engine& engine)
 			ImGui::TreePop();
 		}
 	}
-	if (current >= 0)
+	if (current >= 0 && object.GetSlotMaterials().empty())   // 모델 오브젝트는 슬롯 재질로 그려지므로 위 DrawModelMaterials 에서 편집함
 	{
-		Material& material = *materials[current];
-		ImGui::ColorEdit4("Base color", &material.baseColor.x);
-		static const Material kDefaults;   // R 버튼의 기본값 = 재질 멤버 초기값
-		DebugUI::SliderFloatR("Metallic", &material.metallic, kDefaults.metallic, 0.0f, 1.0f);   // PBR
-		DebugUI::SliderFloatR("Roughness", &material.roughness, kDefaults.roughness, 0.0f, 1.0f);
-		ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
-		DebugUI::DragFloat2R("UV scale", &material.uvScale.x, kDefaults.uvScale.x, kDefaults.uvScale.y, 0.1f, 0.1f, 64.0f);
-		DebugUI::SliderFloatR("Normal strength", &material.normalStrength, kDefaults.normalStrength, 0.0f, 3.0f);
-		DebugUI::SliderFloatR("Alpha cutoff", &material.alphaCutoff, kDefaults.alphaCutoff, 0.0f, 1.0f);
-		ImGui::Checkbox("Unlit", &material.unlit);
-		DebugUI::SameLineIfFits(DebugUI::CheckboxWidth("Wireframe"));
-		ImGui::Checkbox("Wireframe", &material.wireframe);
-		DebugUI::SameLineIfFits(DebugUI::CheckboxWidth("Double sided"));
-		ImGui::Checkbox("Double sided", &material.doubleSided);
-		ImGui::TextDisabled("albedo: %s   normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(),
-			material.normalTexture.empty() ? "(none)" : material.normalTexture.c_str());
+		DrawMaterialFields(*materials[current]);
 	}
 
 	// 컴포넌트
@@ -1629,6 +1703,8 @@ void Editor::DrawRenderSettings(Engine& engine)
 	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion", "Shadow cascade" };
 	ImGui::Combo("Debug view", &settings.debugView, views, IM_ARRAYSIZE(views));
 	if (settings.debugView == 3) DebugUI::SliderFloatR("Depth range", &settings.debugDepthRange, RenderSettings().debugDepthRange, 1.0f, 500.0f);
+	const char* boneModes[] = { "Off", "Bones + joints", "Bones + joints + axes" };
+	ImGui::Combo("Bone debug (B)", &settings.debugBones, boneModes, IM_ARRAYSIZE(boneModes));
 	DebugUI::DrawShadowPanel(engine.GetScene(), engine.GetRenderer(), engine.GetDevice());
 	if (engine.GetScene().environment.shadow.cascadeEnabled || engine.GetRenderer().IsCascadeFrozen())   // Cascades 를 1 로 내려도 고정을 풀 수 있게
 	{

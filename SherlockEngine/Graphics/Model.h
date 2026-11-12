@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <DirectXMath.h>
+#include "Core/EngineApi.h"
 #include "Graphics/Mesh.h"
 #include "Scene/Material.h"
 
@@ -31,6 +32,8 @@ struct ModelInstance
 	uint32_t meshIndex = 0;
 	DirectX::XMFLOAT4X4 world;      // 노드의 월드 변환 (엔진 좌표계, 행벡터 관례)
 	std::string name;
+	int node = -1;                  // Model::nodes 인덱스 (glTF nodes[] 번호)
+	int skin = -1;                  // Model::skins 인덱스. 스킨이 없으면 -1
 };
 
 struct ModelStats
@@ -43,9 +46,56 @@ struct ModelStats
 	uint32_t vertices = 0;
 	uint32_t triangles = 0;
 	uint32_t meshesWith16BitIndices = 0;   // 정점이 65,536개 미만이라 Renderer 가 16비트 인덱스 버퍼를 쓰는 메시 수
+	uint32_t skinnedMeshes = 0;            // 조인트·가중치를 가진 메시 수
 	uint32_t generatedTangentMeshes = 0;   // TANGENT 속성이 없어 로더가 만든 메시 수
 	uint32_t skippedPrimitives = 0;        // 삼각형이 아니거나 POSITION 이 없는 primitive
 	double loadMilliseconds = 0.0;
+};
+
+// glTF nodes[] 와 같은 번호의 노드 표. 애니메이션 채널이 노드 번호로 가리킴.
+// 로컬 변환은 엔진 좌표계(flipZ 반영)의 이동·회전(쿼터니언 xyzw)·스케일이고, options.scale 은 반영하지 않음
+// (그 값은 월드 변환 끝에 곱해짐). 월드 = S·R·T 로 만든 로컬을 자식 → 부모 순으로 곱한 것.
+struct ModelNode
+{
+	std::string name;
+	int parent = -1;                                                  // 부모 노드 번호. 루트면 -1
+	int meshIndex = -1;                                               // Model::meshes 인덱스. 메시가 없거나 건너뛴 메시면 -1
+	int skin = -1;                                                    // Model::skins 인덱스. 스킨이 없으면 -1
+	DirectX::XMFLOAT3 translation = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+	DirectX::XMFLOAT4 rotation = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+	DirectX::XMFLOAT3 scale = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
+};
+
+// glTF skins[] 하나. 조인트 = 노드 번호 목록이고, 스키닝 메시의 JOINTS_0 번호가 이 목록의 위치를 가리킴.
+// inverseBind[i] 는 i 번째 조인트의 역바인드 행렬 (메시 정점 공간 → 조인트 공간). 엔진 좌표계(flipZ 반영), 행벡터 관례.
+// 없으면 단위행렬로 채워 joints 와 같은 길이를 유지함.
+struct ModelSkin
+{
+	std::string name;
+	std::vector<uint32_t> joints;
+	std::vector<DirectX::XMFLOAT4X4> inverseBind;
+};
+
+enum class AnimationPath : uint8_t { Translation, Rotation, Scale, Weights };
+enum class AnimationInterpolation : uint8_t { Linear, Step, CubicSpline };
+
+// 채널 하나 = 노드 하나의 속성 하나를 시간에 따라 바꾸는 키 배열.
+// values 는 키마다 성분 수만큼 이어 붙임: Translation·Scale 3, Rotation 4(xyzw), Weights 는 모프 타깃 수.
+// CubicSpline 이면 키마다 [입력 탄젠트, 값, 출력 탄젠트] 순서로 3배가 됨. 값은 엔진 좌표계(flipZ 반영)로 바꾼 뒤의 것.
+struct AnimationChannel
+{
+	uint32_t node = 0;
+	AnimationPath path = AnimationPath::Translation;
+	AnimationInterpolation interpolation = AnimationInterpolation::Linear;
+	std::vector<float> times;     // 초. 증가하는 순서
+	std::vector<float> values;
+};
+
+struct AnimationClip
+{
+	std::string name;
+	float duration = 0.0f;        // 모든 채널의 마지막 키 시간 중 최댓값
+	std::vector<AnimationChannel> channels;
 };
 
 struct Model
@@ -57,7 +107,10 @@ struct Model
 	std::vector<Material> materials;    // materialSlot → 이 배열의 인덱스
 	std::vector<ModelImage> images;
 	std::vector<ModelInstance> instances;
-	Bounds bounds;                      // 모든 인스턴스를 월드로 옮긴 뒤의 합집합
+	std::vector<ModelNode> nodes;
+	std::vector<ModelSkin> skins;
+	std::vector<AnimationClip> animations;
+	Bounds bounds;                     // 모든 인스턴스를 월드로 옮긴 뒤의 합집합
 	ModelStats stats;
 
 	bool IsValid() const { return !meshes.empty() && !instances.empty(); }
@@ -73,5 +126,6 @@ namespace ModelLoader
 	};
 
 	// glTF 2.0 (.gltf + .bin + 이미지 파일, 또는 .glb). 성공하면 true. 오류·경고는 Log 로 남김.
-	bool LoadGltf(const std::wstring& path, const Options& options, Model& out);
+	// 구현은 Graphics/Import/GltfImporter.cpp (nlohmann-json 으로 직접 파싱).
+	SHERLOCK_API bool LoadGltf(const std::wstring& path, const Options& options, Model& out);
 }

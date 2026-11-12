@@ -76,6 +76,23 @@ cbuffer PerObject : register(b1)
     matrix worldInvTranspose;
 }
 
+// b7: 스키닝 조인트 행렬 팔레트. 스킨 VS(BasicSkinVertexShader, ShadowSkinVertexShader)만 읽음. (16384바이트)
+// palette[j] = 역바인드 · 조인트 월드 · (메시 노드 월드)⁻¹ 를 C++ 가 전치해서 올림 (world 와 같은 관례, mul(v, M)).
+static const uint MAX_JOINTS = 256;   // ShaderConstants.h 의 kMaxSkinJoints 와 같아야 함
+cbuffer Skin : register(b7)
+{
+    matrix joints[MAX_JOINTS];
+}
+
+// 정점의 조인트 번호 4개·가중치 4개로 섞은 스킨 행렬. 가중치 합이 1 이 되게 임포터가 맞춰 둠.
+matrix SkinMatrix(uint4 jointIndices, float4 jointWeights)
+{
+    return joints[jointIndices.x] * jointWeights.x
+         + joints[jointIndices.y] * jointWeights.y
+         + joints[jointIndices.z] * jointWeights.z
+         + joints[jointIndices.w] * jointWeights.w;
+}
+
 // b2: 조명 공통 값. PS만. (16바이트)
 cbuffer Lights : register(b2)
 {

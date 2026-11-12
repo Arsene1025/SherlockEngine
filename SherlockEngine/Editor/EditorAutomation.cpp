@@ -36,6 +36,18 @@ void EditorApp::ParseAutomation()
 	m_auto.screenshotPath = resolve(GetCommandLineOption(L"screenshot"));
 	m_auto.dumpObjects = !GetCommandLineOption(L"dump-objects").empty();
 	m_auto.debugView = _wtoi(GetCommandLineOption(L"debug-view").c_str());
+	m_auto.debugBones = _wtoi(GetCommandLineOption(L"debug-bones").c_str());
+	{
+		const std::string spec = Log::ToUtf8(GetCommandLineOption(L"tex-setting").c_str());   // 이름;압축;밉;최대크기
+		const size_t first = spec.find(';');
+		if (first != std::string::npos)
+		{
+			m_auto.texSettingName = spec.substr(0, first);
+			int compress = 1; unsigned mips = 0, maxSize = 0;
+			sscanf_s(spec.c_str() + first + 1, "%d;%u;%u", &compress, &mips, &maxSize);
+			m_auto.texSetting = { compress != 0, mips, maxSize };
+		}
+	}
 	m_auto.freezeCascadesAt = static_cast<uint64_t>(_wtoi64(GetCommandLineOption(L"freeze-cascades").c_str()));
 	const std::wstring camLook = GetCommandLineOption(L"cam-look");
 	if (!camLook.empty())
@@ -119,6 +131,13 @@ void EditorApp::RunAutomation()
 
 	// ---- 2: 설정·창 ----
 	at(2, a.debugView != 0, [&] { engine.GetRenderer().GetSettings().debugView = a.debugView; });
+	at(12, !a.texSettingName.empty(), [&]
+	{
+		TextureImporter::SetSettings(a.texSettingName, a.texSetting);
+		engine.GetRenderer().ReloadTexture(a.texSettingName);
+		Log::Info("자동 검증: 텍스처 '%s' 설정 변경 (압축 %d, 밉 %u, 최대 %u)", a.texSettingName.c_str(), a.texSetting.compress ? 1 : 0, a.texSetting.mipLevels, a.texSetting.maxSize);
+	});
+	at(2, a.debugBones != 0, [&] { engine.GetRenderer().GetSettings().debugBones = a.debugBones; });
 	at(2, !a.browseDir.empty(), [&] { m_editor.GetContentBrowser().SetDirectory(a.browseDir); m_editor.FocusContentBrowser(); });
 	at(2, !a.newScript.empty(), [&]
 	{
@@ -145,6 +164,7 @@ void EditorApp::RunAutomation()
 		options.projectSolution = GetProject().GetSolutionPath();
 		options.openFolder = false;
 		options.releaseBuild = !GetCommandLineOption(L"build-release").empty();   // Release 패키지 검증
+		options.copyAllAssets = GetCommandLineOption(L"build-minimal").empty();   // --build-minimal=1 이면 시작 씬이 참조하는 에셋만 복사
 		const GameBuilder::Result result = GameBuilder::Build(options);
 		Log::Info("자동 검증: build-game %s → %s", result.ok ? "성공" : "실패", result.message.c_str());
 	});

@@ -44,6 +44,10 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] =
 	{ L"ScreenVertexShader.hlsl",  "VS_Screen",  ShaderStage::Vertex, "ScreenVS" },
 	{ L"TonemapPixelShader.hlsl",  "PS_Tonemap", ShaderStage::Pixel,  "ToneMapPS" },
 	{ L"PostPixelShader.hlsl",     "PS_Post",    ShaderStage::Pixel,  "PostPS" },   // 블러·블룸
+	{ L"BasicSkinVertexShader.hlsl",  "VS_MainSkin",   ShaderStage::Vertex, "BasicSkinVS" },    // 스키닝 메시. PS 는 BasicPS 를 같이 씀
+	{ L"ShadowSkinVertexShader.hlsl", "VS_ShadowSkin", ShaderStage::Vertex, "ShadowSkinVS" },
+	{ L"DebugLineVertexShader.hlsl",  "VS_Line",       ShaderStage::Vertex, "DebugLineVS" },    // 본 표시 등 디버그 선
+	{ L"DebugLinePixelShader.hlsl",   "PS_Line",       ShaderStage::Pixel,  "DebugLinePS" },
 };
 
 struct Renderer::PassInfo
@@ -62,6 +66,9 @@ const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] =
 	{ "Sky",     Shader_SkyVS,    Shader_SkyPS,     { Layout_Frame },                                 1 },
 	{ "Tonemap", Shader_ScreenVS, Shader_TonemapPS, { Layout_Post },                                  1 },
 	{ "Post",    Shader_ScreenVS, Shader_PostPS,    { Layout_Post },                                  1 },
+	{ "MainSkin",   Shader_BasicSkinVS,  Shader_BasicPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
+	{ "ShadowSkin", Shader_ShadowSkinVS, Shader_Count,   { Layout_Frame, Layout_Object },                  2 },
+	{ "DebugLine",  Shader_DebugLineVS,  Shader_DebugLinePS, { Layout_Frame },                             1 },
 };
 
 namespace
@@ -69,6 +76,13 @@ namespace
 	constexpr const wchar_t* kCommonShaderFile = L"Common.hlsli";   // 모든 셰이더가 include 함. 핫리로드 감시 대상
 	constexpr float kHotReloadPollInterval = 0.5f;   // 초
 	constexpr uint32_t kInitialLightCapacity = 64;   // 조명 구조체 버퍼의 처음 원소 수 (5,120바이트)
+	constexpr uint32_t kMaxDebugLineVertices = 65536;   // 디버그 선 동적 정점 버퍼 크기 (16바이트 × 65536 = 1MB)
+
+	uint32_t PackLineColor(float r, float g, float b)
+	{
+		auto channel = [](float v) { return static_cast<uint32_t>((std::min)((std::max)(v, 0.0f), 1.0f) * 255.0f + 0.5f); };
+		return channel(r) | (channel(g) << 8) | (channel(b) << 16) | (255u << 24);
+	}
 
 	// HLSL cbuffer 이름 ↔ C++ 구조체 크기. 셰이더가 선언한 cbuffer 는 전부 여기 있어야 함 (없으면 로드 실패).
 	struct ConstantBufferInfo { const char* name; uint32_t size; };
@@ -81,6 +95,7 @@ namespace
 		{ "PostParams", sizeof(PostParamsConstants) },
 		{ "ShadowPass", sizeof(ShadowPassConstants) },
 		{ "Shadows",    sizeof(ShadowConstants) },
+		{ "Skin",       sizeof(SkinConstants) },
 	};
 
 	// 레지스터 문자. 텍스처와 구조체 버퍼는 같은 t# 공간을 씀.
@@ -124,6 +139,10 @@ bool Renderer::Initialize(RHI::Device* device)
 	};
 	m_perFrameCB = makeCB(sizeof(PerFrameConstants), "CB_PerFrame");
 	m_perObjectCB = makeCB(sizeof(PerObjectConstants), "CB_PerObject");
+	m_skinCB = makeCB(sizeof(SkinConstants), "CB_Skin");   // b7
+	m_skinScratch.resize(kMaxSkinJoints);
+	m_debugLineVB = m_device->CreateBuffer(BufferDesc{ .size = kMaxDebugLineVertices * static_cast<uint32_t>(sizeof(DebugLineVertex)), .usage = BufferUsage::Dynamic,
+		.bindFlags = BufferBind_Vertex, .stride = sizeof(DebugLineVertex), .debugName = "VB_DebugLines" });
 	m_lightCB = makeCB(sizeof(LightConstants), "CB_Lights");
 	// 조명 배열은 상수버퍼가 아니라 구조체 버퍼 (t15). 처음에는 kInitialLightCapacity 개 자리, 모자라면
 	// UploadLights 가 두 배로 다시 만듦.
@@ -133,7 +152,7 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_postParamsCB = makeCB(sizeof(PostParamsConstants), "CB_PostParams");
 	m_shadowPassCB = makeCB(sizeof(ShadowPassConstants), "CB_ShadowPass");   // b5
 	m_shadowsCB = makeCB(sizeof(ShadowConstants), "CB_Shadows");             // b6
-	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_lightCB.IsValid() || !m_lightBuffer.IsValid() || !m_postParamsCB.IsValid() ||
+	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_skinCB.IsValid() || !m_debugLineVB.IsValid() || !m_lightCB.IsValid() || !m_lightBuffer.IsValid() || !m_postParamsCB.IsValid() ||
 		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid())
 	{
 		Log::Error("Renderer::Initialize : 상수버퍼 생성 실패.");
@@ -153,7 +172,7 @@ bool Renderer::Initialize(RHI::Device* device)
 
 	const ResourceSetDesc objectSet{
 		.layout = m_layouts[Layout_Object],
-		.bindings = { { .buffer = m_perObjectCB } },
+		.bindings = { { .buffer = m_perObjectCB }, { .buffer = m_skinCB } },   // 레이아웃의 슬롯 순서: b1, b7
 		.debugName = "Set_Object",
 	};
 	m_objectSet = m_device->CreateResourceSet(objectSet);
@@ -218,6 +237,7 @@ bool Renderer::CreateLayouts()
 	objectLayout = BindingLayoutDesc{};
 	objectLayout.debugName = "Layout_Object";
 	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotPerObject);
+	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotSkin);   // 스키닝 VS 만 읽음. 다른 VS 는 선언만 해 두고 안 씀
 
 	// 재질 셋: 상수(b3, uvScale 때문에 VS도), 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 샘플러 s0.
 	BindingLayoutDesc& materialLayout = m_layoutDescs[Layout_Material];
@@ -274,12 +294,28 @@ void Renderer::BuildPassDescs()
 
 	// 그림자 패스: VS 만(ps 는 빈 핸들), 렌더 타깃 없음, 깊이 D32_FLOAT. 래스터라이저 깊이 바이어스로 자기
 	// 그림자(acne)를 줄임. D32_FLOAT 에서 DepthBias 단위는 2^(지수−23) — z ≈ 0.5 면 한 단위가 6e-8 임.
-	PipelineStateDesc& shadow = m_passDesc[Pass_Shadow];
-	shadow.rasterizer.depthBias = 2000;
-	shadow.rasterizer.depthBiasClamp = 0.01f;
-	shadow.rasterizer.slopeScaledDepthBias = 2.0f;
-	shadow.rtvCount = 0;
-	shadow.dsvFormat = Format::D32_FLOAT;
+	for (PassId id : { Pass_Shadow, Pass_ShadowSkin })
+	{
+		PipelineStateDesc& shadow = m_passDesc[id];
+		shadow.rasterizer.depthBias = 2000;
+		shadow.rasterizer.depthBiasClamp = 0.01f;
+		shadow.rasterizer.slopeScaledDepthBias = 2.0f;
+		shadow.rtvCount = 0;
+		shadow.dsvFormat = Format::D32_FLOAT;
+	}
+
+	// 디버그 선: 선 목록, 깊이 테스트 없음 (메시 안의 본도 보이게), 컬링 없음. 정점 = 월드 위치(float3) + 색(R8G8B8A8_UNORM).
+	{
+		PipelineStateDesc& line = m_passDesc[Pass_DebugLine];
+		line.topology = PrimitiveTopology::LineList;
+		line.rasterizer.cull = CullMode::None;
+		line.depthStencil.depthEnable = false;
+		line.depthStencil.depthWrite = false;
+		line.vertexLayout.attributes[0] = { .semantic = VertexSemantic::Position, .format = Format::R32G32B32_FLOAT, .offset = static_cast<uint16_t>(offsetof(DebugLineVertex, position)) };
+		line.vertexLayout.attributes[1] = { .semantic = VertexSemantic::Color, .format = Format::R8G8B8A8_UNORM, .offset = static_cast<uint16_t>(offsetof(DebugLineVertex, color)) };
+		line.vertexLayout.attributeCount = 2;
+		line.vertexLayout.stride = sizeof(DebugLineVertex);
+	}
 
 	// 스카이박스. 정점 입력이 없으므로 vertexLayout 은 기본값(속성 0개) 그대로 둠 — 입력 레이아웃 없이
 	// SV_VertexID 만 씀. 깊이: 테스트는 켜고(LessEqual — VS 가 만든 깊이 1.0 이 클리어 값 1.0 과 같아도 통과)
@@ -312,6 +348,7 @@ void Renderer::BuildPassDescs()
 	m_mainPipelines.clear();
 	m_shadowPipelines.clear();
 	m_skyPipeline = PipelineHandle{};
+	m_debugLinePipeline = PipelineHandle{};
 	for (PipelineHandle& handle : m_tonemapPipelines) handle = PipelineHandle{};
 	for (PipelineHandle& handle : m_postPipelines) handle = PipelineHandle{};
 }
@@ -709,7 +746,7 @@ void Renderer::Shutdown()
 		m_device->DestroyBindingLayout(layout);
 		layout = BindingLayoutHandle{};
 	}
-	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB })
+	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB })
 	{
 		m_device->DestroyBuffer(*buffer);
 		*buffer = BufferHandle{};
@@ -950,6 +987,12 @@ void Renderer::BuildDrawList(const Scene& scene)
 {
 	m_drawList.clear();
 	m_objects.clear();
+
+	// b7 Skin 은 오브젝트 셋에 항상 묶여 있음. D3D12 의 Dynamic 상수버퍼는 프레임마다 한 번은 써야 하므로(안 쓰면
+	// DrawIndexed 가 거부함) 스키닝 드로우가 없는 프레임에도 단위행렬 하나로 채워 둠. 스키닝 드로우는 그리기 직전에 다시 씀.
+	XMStoreFloat4x4(&m_skinScratch[0], XMMatrixIdentity());
+	m_device->UpdateBuffer(m_skinCB, m_skinScratch.data(), static_cast<uint32_t>(sizeof(XMFLOAT4X4)));
+
 	for (const auto& objectPtr : scene.GetObjects())
 	{
 		const GameObject& object = *objectPtr;   // 씬이 unique_ptr 로 소유함
@@ -973,6 +1016,14 @@ void Renderer::BuildDrawList(const Scene& scene)
 		const float scale = (std::max)({ XMVectorGetX(XMVector3Length(world.r[0])), XMVectorGetX(XMVector3Length(world.r[1])),
 			XMVectorGetX(XMVector3Length(world.r[2])) });
 		data.sphere = XMFLOAT4(center.x, center.y, center.z, mesh->GetBounds().Radius() * scale);
+		if (mesh->IsSkinned())
+		{
+			// 스키닝 메시의 실제 경계는 포즈마다 바뀜 (바인드 포즈 경계는 휘어진 팔을 못 덮음). 정확한 경계를 구하기 전까지
+			// 컬링하지 않음 — 큰 반지름을 줘서 모든 절두체(메인·그림자)를 통과시킴.
+			data.sphere.w = 1.0e9f;
+			data.skinned = true;
+			data.skinPalette = &object.GetSkinPalette();
+		}
 		const uint32_t objectIndex = static_cast<uint32_t>(m_objects.size());
 		m_objects.push_back(data);
 
@@ -1004,6 +1055,8 @@ void Renderer::BuildDrawList(const Scene& scene)
 		}
 	}
 
+	BuildDebugLines(scene);
+
 	// ---- 정렬: PSO → Material → Mesh → 인덱스 범위. 같은 상태가 연속되면 바인딩을 건너뛸 수 있음 ----
 	std::sort(m_drawList.begin(), m_drawList.end(), [](const DrawItem& a, const DrawItem& b)
 	{
@@ -1024,6 +1077,22 @@ void Renderer::UploadObjectConstants(uint32_t object)
 	perObject.world = data.world;
 	perObject.worldInvTranspose = data.worldInvTranspose;
 	m_device->UpdateBuffer(m_perObjectCB, &perObject, sizeof(perObject));
+
+	if (data.skinned)
+	{
+		// b7 Skin: 조인트 팔레트를 전치해서 올림 (world 와 같은 관례). 팔레트가 비었으면(Animator 없음·편집 모드) 단위행렬 = 바인드 포즈.
+		// 팔레트가 있으면 그 길이만큼만 올림 (셰이더는 정점이 가리키는 조인트만 읽음). 없으면 정점이 어느 조인트를 가리킬지
+		// 모르므로 전부 단위행렬로 올림 — 일부만 올리면 나머지는 정의되지 않은 값이 돼 정점이 엉뚱한 곳으로 감.
+		const std::vector<XMFLOAT4X4>* palette = data.skinPalette;
+		const uint32_t count = palette != nullptr ? (std::min)(static_cast<uint32_t>(palette->size()), kMaxSkinJoints) : 0;
+		const uint32_t uploaded = count > 0 ? count : kMaxSkinJoints;
+		for (uint32_t j = 0; j < uploaded; ++j)
+		{
+			if (j < count) XMStoreFloat4x4(&m_skinScratch[j], XMMatrixTranspose(XMLoadFloat4x4(&(*palette)[j])));
+			else XMStoreFloat4x4(&m_skinScratch[j], XMMatrixIdentity());
+		}
+		m_device->UpdateBuffer(m_skinCB, m_skinScratch.data(), uploaded * static_cast<uint32_t>(sizeof(XMFLOAT4X4)));
+	}
 }
 
 void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTarget& view, const Camera& camera, const char* debugName)
@@ -1110,6 +1179,112 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera
 	{
 		DrawSkybox(cmd);
 	}
+
+	DrawDebugLines(cmd);   // 하늘 뒤: 깊이 테스트가 없으므로 항상 위에 그려짐
+}
+
+void Renderer::BuildDebugLines(const Scene& scene)
+{
+	m_debugLines.clear();
+	if (m_settings.debugBones > 0)
+	{
+		auto addLine = [this](const XMFLOAT3& a, const XMFLOAT3& b, uint32_t color)
+		{
+			if (m_debugLines.size() + 2 > kMaxDebugLineVertices) return;
+			m_debugLines.push_back({ a, color });
+			m_debugLines.push_back({ b, color });
+		};
+		const uint32_t boneColor = PackLineColor(0.1f, 1.0f, 0.2f);    // 본 (부모 → 자식): 초록
+		const uint32_t jointColor = PackLineColor(1.0f, 0.9f, 0.1f);   // 관절 십자: 노랑
+		const uint32_t axisX = PackLineColor(1.0f, 0.1f, 0.1f), axisY = PackLineColor(0.1f, 1.0f, 0.1f), axisZ = PackLineColor(0.2f, 0.4f, 1.0f);
+
+		for (const auto& objectPtr : scene.GetObjects())
+		{
+			const GameObject::SkeletonPose& pose = objectPtr->GetSkeletonPose();
+			const size_t count = pose.jointToObject.size();
+			if (count == 0) continue;
+			const XMMATRIX world = objectPtr->GetWorldMatrix();
+
+			// 조인트 월드 변환과 위치
+			std::vector<XMMATRIX> joint(count);
+			std::vector<XMFLOAT3> position(count);
+			for (size_t j = 0; j < count; ++j)
+			{
+				joint[j] = XMLoadFloat4x4(&pose.jointToObject[j]) * world;
+				XMStoreFloat3(&position[j], joint[j].r[3]);
+			}
+			// 조인트마다 "길이": 부모까지의 거리, 부모가 없으면 첫 자식까지의 거리, 둘 다 없으면 작은 기본값. 십자·축 크기가 이 값에 비례해
+			// 모델 크기(단위)와 상관없이 보임.
+			std::vector<float> length(count, 0.0f);
+			auto distance = [&](size_t a, size_t b) { return XMVectorGetX(XMVector3Length(XMVectorSubtract(joint[a].r[3], joint[b].r[3]))); };
+			for (size_t j = 0; j < count; ++j)
+			{
+				const int parent = j < pose.parent.size() ? pose.parent[j] : -1;
+				if (parent >= 0 && static_cast<size_t>(parent) < count) length[j] = distance(j, static_cast<size_t>(parent));
+			}
+			for (size_t j = 0; j < count; ++j)
+			{
+				const int parent = j < pose.parent.size() ? pose.parent[j] : -1;
+				if (parent >= 0 && static_cast<size_t>(parent) < count && length[static_cast<size_t>(parent)] == 0.0f) length[static_cast<size_t>(parent)] = length[j];   // 루트는 자식 길이를 빌림
+			}
+
+			for (size_t j = 0; j < count; ++j)
+			{
+				const int parent = j < pose.parent.size() ? pose.parent[j] : -1;
+				if (parent >= 0 && static_cast<size_t>(parent) < count) addLine(position[static_cast<size_t>(parent)], position[j], boneColor);
+
+				const float unit = length[j] > 1e-5f ? length[j] : 0.05f;
+				const float cross = unit * 0.12f;
+				const XMFLOAT3& p = position[j];
+				addLine(XMFLOAT3(p.x - cross, p.y, p.z), XMFLOAT3(p.x + cross, p.y, p.z), jointColor);
+				addLine(XMFLOAT3(p.x, p.y - cross, p.z), XMFLOAT3(p.x, p.y + cross, p.z), jointColor);
+				addLine(XMFLOAT3(p.x, p.y, p.z - cross), XMFLOAT3(p.x, p.y, p.z + cross), jointColor);
+
+				if (m_settings.debugBones >= 2)
+				{
+					const uint32_t colors[3] = { axisX, axisY, axisZ };
+					for (int axis = 0; axis < 3; ++axis)
+					{
+						// 로컬 축 방향(부모 스케일이 있어도 길이는 unit 기준으로 맞춤)
+						const XMVECTOR direction = XMVector3Normalize(joint[j].r[axis]);
+						XMFLOAT3 end;
+						XMStoreFloat3(&end, XMVectorAdd(joint[j].r[3], XMVectorScale(direction, unit * 0.35f)));
+						addLine(p, end, colors[axis]);
+					}
+				}
+			}
+		}
+	}
+
+	// D3D12 의 Dynamic 버퍼는 프레임마다 한 번은 써야 바인딩됨. 선이 없어도 정점 하나 분량을 올리고 그리지는 않음 (m_debugLineCount = 0).
+	m_debugLineCount = static_cast<uint32_t>(m_debugLines.size());
+	static const DebugLineVertex kNoLine = {};
+	m_device->UpdateBuffer(m_debugLineVB, m_debugLineCount > 0 ? m_debugLines.data() : &kNoLine,
+		(std::max)(m_debugLineCount, 1u) * static_cast<uint32_t>(sizeof(DebugLineVertex)));
+}
+
+void Renderer::DrawDebugLines(RHI::CommandList& cmd)
+{
+	if (m_debugLineCount == 0) return;
+	const PipelineHandle pipeline = GetDebugLinePipeline();
+	if (!pipeline.IsValid()) return;
+	cmd.SetPipelineState(pipeline);
+	cmd.SetVertexBuffer(m_debugLineVB);
+	cmd.Draw(m_debugLineCount, 0);
+	++m_stats.pipelineSwitches;
+	++m_stats.draws;
+}
+
+PipelineHandle Renderer::GetDebugLinePipeline()
+{
+	if (m_debugLinePipeline.IsValid()) return m_debugLinePipeline;
+	// 메인 패스와 같은 타깃(FP16 HDR + D24S8)에 그림 — D3D12 PSO 는 포맷이 같아야 함. 깊이 테스트는 꺼 둠.
+	PipelineStateDesc desc = m_passDesc[Pass_DebugLine];
+	desc.rtvFormats[0] = Format::R16G16B16A16_FLOAT;
+	desc.rtvCount = 1;
+	desc.dsvFormat = Format::D24_UNORM_S8_UINT;
+	m_debugLinePipeline = m_device->CreatePipeline(desc);
+	return m_debugLinePipeline;
 }
 
 void Renderer::DrawSkybox(RHI::CommandList& cmd)
@@ -1165,14 +1340,29 @@ const Renderer::GpuMesh* Renderer::GetOrCreateGpuMesh(const Mesh& mesh)
 	GpuMesh gpuMesh;
 	gpuMesh.vertexFormat = mesh.GetVertexFormat();
 
+	const uint32_t vertexStride = GetVertexStride(mesh.GetVertexFormat());
 	const BufferDesc vbDesc{
-		.size = static_cast<uint32_t>(sizeof(VERTEX) * mesh.GetVertices().size()),
+		.size = static_cast<uint32_t>(vertexStride * mesh.GetVertices().size()),
 		.usage = BufferUsage::Default,
 		.bindFlags = BufferBind_Vertex,
-		.stride = GetVertexStride(mesh.GetVertexFormat()),
+		.stride = vertexStride,
 		.debugName = "VB",
 	};
-	gpuMesh.vertexBuffer = m_device->CreateBuffer(vbDesc, mesh.GetVertices().data());
+	if (mesh.IsSkinned())
+	{
+		// 스키닝 포맷: 정점마다 VERTEX 뒤에 VertexSkin 을 이어 붙인 배열을 올림 (VERTEX_SKINNED)
+		std::vector<VERTEX_SKINNED> skinnedVertices(mesh.GetVertices().size());
+		for (size_t i = 0; i < skinnedVertices.size(); ++i)
+		{
+			skinnedVertices[i].base = mesh.GetVertices()[i];
+			skinnedVertices[i].skin = mesh.GetSkinVertices()[i];
+		}
+		gpuMesh.vertexBuffer = m_device->CreateBuffer(vbDesc, skinnedVertices.data());
+	}
+	else
+	{
+		gpuMesh.vertexBuffer = m_device->CreateBuffer(vbDesc, mesh.GetVertices().data());
+	}
 
 	// 정점이 65,536개 미만이면 16비트 인덱스. 버퍼 크기와 IA 대역폭이 절반으로 줄어듦. CPU 쪽은 32비트 그대로 둠.
 	// size / stride 는 아래 분기에서 채우므로 여기서는 공통 필드만 지정함.
@@ -1325,7 +1515,7 @@ PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat v
 	auto found = m_mainPipelines.find(key);
 	if (found != m_mainPipelines.end()) return found->second;
 
-	PipelineStateDesc desc = m_passDesc[Pass_Main];
+	PipelineStateDesc desc = m_passDesc[vertexFormat == VertexFormat::PositionColorNormalTexcoordTangentSkin ? Pass_MainSkin : Pass_Main];
 	desc.vertexLayout = GetVertexLayout(vertexFormat);
 	desc.rasterizer.frontCounterClockwise = mirrored ? !desc.rasterizer.frontCounterClockwise : desc.rasterizer.frontCounterClockwise;
 	desc.rasterizer.fill = wireframe ? FillMode::Wireframe : FillMode::Solid;
@@ -1347,7 +1537,7 @@ PipelineHandle Renderer::GetShadowPipelineFor(const Material& material, VertexFo
 	auto found = m_shadowPipelines.find(key);
 	if (found != m_shadowPipelines.end()) return found->second;
 
-	PipelineStateDesc desc = m_passDesc[Pass_Shadow];
+	PipelineStateDesc desc = m_passDesc[vertexFormat == VertexFormat::PositionColorNormalTexcoordTangentSkin ? Pass_ShadowSkin : Pass_Shadow];
 	desc.vertexLayout = GetVertexLayout(vertexFormat);
 	desc.rasterizer.frontCounterClockwise = mirrored ? !desc.rasterizer.frontCounterClockwise : desc.rasterizer.frontCounterClockwise;
 	desc.rasterizer.cull = material.doubleSided ? CullMode::None : CullMode::Back;

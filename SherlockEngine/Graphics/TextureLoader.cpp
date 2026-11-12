@@ -58,6 +58,19 @@ namespace
 		return true;
 	}
 
+	// GPU 에 압축 그대로 올릴 수 있는 BC 포맷이면 RHI Format(sRGB 라벨은 srgb 인자로 붙임), 아니면 Unknown.
+	// BC2/BC4/BC5/BC6H 는 지원하지 않아 기존처럼 압축을 풀어 올림 (BC6H 는 HDR 경로, BC5 는 노멀의 Z 를 복원하지 않으므로 같은 결과).
+	Format CompressedGpuFormat(DXGI_FORMAT format, bool srgb)
+	{
+		switch (DirectX::MakeLinear(format))
+		{
+		case DXGI_FORMAT_BC1_UNORM: return srgb ? Format::BC1_UNORM_SRGB : Format::BC1_UNORM;
+		case DXGI_FORMAT_BC3_UNORM: return srgb ? Format::BC3_UNORM_SRGB : Format::BC3_UNORM;
+		case DXGI_FORMAT_BC7_UNORM: return srgb ? Format::BC7_UNORM_SRGB : Format::BC7_UNORM;
+		default:                    return Format::Unknown;
+		}
+	}
+
 	bool FinishImage(DirectX::ScratchImage& base, bool srgb, bool generateMips, TextureImage& out, TextureDimension dimension = TextureDimension::Texture2D)
 	{
 		// 픽셀 바이트는 파일에 든 그대로(sRGB 인코딩된 값)임. *_SRGB 포맷은 "이 바이트를 샘플할 때
@@ -76,6 +89,19 @@ namespace
 		// R16G16B16A16_FLOAT 로 맞춤 (float32 의 절반 크기, 최대 65504 — HDR 환경맵의 태양 ≈ 수백). 부동소수점 데이터는
 		// 이미 선형이므로 sRGB 라벨을 붙이지 않고, 밉도 선형 그대로 평균 냄. srgb 인자는 무시됨.
 		const DXGI_FORMAT sourceFormat = base.GetMetadata().format;
+
+		// 블록 압축(BC1/BC3/BC7) DDS 에 밉이 이미 있으면(또는 밉을 요청하지 않았으면) 압축 그대로 올림 — VRAM 이 줄고 로드가 빠름.
+		// 밉이 1개뿐인데 밉 생성을 요청한 경우는 압축을 풀어 아래에서 밉을 만듦 (BC 에는 밉을 만들 수 없음).
+		// 밉 0 의 가로·세로가 4 의 배수가 아니면 D3D12 가 거부하므로 풀어서 올림. 큐브는 아래 경로(풀어서) 그대로 둠.
+		{
+			const DirectX::TexMetadata& meta = base.GetMetadata();
+			const Format compressed = CompressedGpuFormat(sourceFormat, srgb);
+			if (compressed != Format::Unknown && dimension == TextureDimension::Texture2D && !meta.IsCubemap()
+				&& meta.width % 4 == 0 && meta.height % 4 == 0 && (meta.mipLevels > 1 || !generateMips))
+			{
+				return FromScratchImage(base, compressed, dimension, out);
+			}
+		}
 		const bool hdr = DirectX::FormatDataType(sourceFormat) == DirectX::FORMAT_TYPE_FLOAT
 			|| sourceFormat == DXGI_FORMAT_BC6H_UF16 || sourceFormat == DXGI_FORMAT_BC6H_SF16;
 		if (hdr) srgb = false;
@@ -145,6 +171,8 @@ namespace
 		{
 		case Format::R16G16B16A16_FLOAT:  return "HDR half";
 		case Format::R8G8B8A8_UNORM_SRGB: return "sRGB";
+		case Format::BC1_UNORM_SRGB: case Format::BC3_UNORM_SRGB: case Format::BC7_UNORM_SRGB: return "sRGB, BC";
+		case Format::BC1_UNORM: case Format::BC3_UNORM: case Format::BC7_UNORM: return "linear, BC";
 		default:                          return "linear";
 		}
 	}

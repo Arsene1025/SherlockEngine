@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 class Scene;
+struct Material;
 class Renderer;
 namespace RHI { class Device; }
 class Camera;
@@ -47,7 +48,10 @@ namespace DebugUI
 	// 결과를 톤매핑한 모습으로 나란히 보여 줌.
 	void SetShowPostStages(bool show);
 	void DrawPostStagesWindow(Renderer& renderer, RHI::Device& device);
-	void DrawMaterialPanel(Scene& scene);
+	void DrawMaterialPanel(Scene& scene, Renderer& renderer);
+	// 재질이 쓰는 파일 텍스처마다 임포트 설정(BC7 압축·밉 수준·최대 해상도) 편집 칸. Apply 를 누르면 TextureSettings.json 에 저장하고
+	// 그 텍스처만 다시 읽음 (원본이 DDS 면 설정이 적용되지 않음).
+	void DrawTextureImportSettings(const Material& material, Renderer& renderer);
 	// 현재 씬 이름, 모델 통계 (메시·서브메시·정점·삼각형·16비트 인덱스·탄젠트 생성·로드 시간), 씬 전환 안내를 표시함.
 	void DrawModelPanel(const char* sceneName, const ModelStats& stats, size_t sceneImages, size_t sceneObjects);
 

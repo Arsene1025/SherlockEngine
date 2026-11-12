@@ -208,11 +208,13 @@
     <ClInclude Include="RHI\RHI.h" />
     <ClInclude Include="Graphics\Mesh.h" />
     <ClInclude Include="Graphics\Model.h" />
+    <ClInclude Include="Graphics\Import\ImportCommon.h" />
     <ClInclude Include="Graphics\Screenshot.h" />
     <ClInclude Include="RHI\PipelineTypes.h" />
     <ClInclude Include="Graphics\Frustum.h" />
     <ClInclude Include="Graphics\Renderer.h" />
     <ClInclude Include="Graphics\TextureCache.h" />
+    <ClInclude Include="Graphics\TextureImporter.h" />
     <ClInclude Include="RHI\RenderPassTypes.h" />
     <ClInclude Include="RHI\ResourceDesc.h" />
     <ClInclude Include="Graphics\ShaderConstants.h" />
@@ -271,7 +273,8 @@
     <ClCompile Include="RHI\D3D12\D3D12Device.cpp" />
     <ClCompile Include="RHI\DXBC\ShaderCompiler.cpp" />
     <ClCompile Include="Graphics\Mesh.cpp" />
-    <ClCompile Include="Graphics\Model.cpp" />
+    <ClCompile Include="Graphics\Import\ImportCommon.cpp" />
+    <ClCompile Include="Graphics\Import\GltfImporter.cpp" />
     <ClCompile Include="Graphics\Screenshot.cpp" />
     <ClCompile Include="RHI\PipelineTypes.cpp" />
     <ClCompile Include="RHI\RHI.cpp" />
@@ -280,6 +283,7 @@
     <ClCompile Include="Graphics\RendererShadow.cpp" />
     <ClCompile Include="Graphics\RendererTargets.cpp" />
     <ClCompile Include="Graphics\TextureCache.cpp" />
+    <ClCompile Include="Graphics\TextureImporter.cpp" />
     <ClCompile Include="Graphics\TextureLoader.cpp" />
     <ClCompile Include="Scene\Camera.cpp" />
     <ClCompile Include="Scene\GameObject.cpp" />
@@ -289,6 +293,7 @@
     <ClCompile Include="Scene\Script.cpp" />
     <ClCompile Include="Scene\Rigidbody.cpp" />
     <ClCompile Include="Scene\FollowTarget.cpp" />
+    <ClCompile Include="Scene\Animator.cpp" />
     <ClCompile Include="Scene\SceneSerializer.cpp" />
     <ClCompile Include="Scene\Transform.cpp" />
   </ItemGroup>
@@ -316,6 +321,38 @@
       <ShaderType>Vertex</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <EntryPointName>VS_Shadow</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\BasicSkinVertexShader.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>VS_MainSkin</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ShadowSkinVertexShader.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>VS_ShadowSkin</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\DebugLineVertexShader.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>VS_Line</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\DebugLinePixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>PS_Line</EntryPointName>
       <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
       <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>

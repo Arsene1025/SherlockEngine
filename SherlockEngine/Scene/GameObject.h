@@ -122,6 +122,23 @@ public:
 	bool IsMarkedForDestroy() const { return markedForDestroy; }
 	void MarkForDestroy() { markedForDestroy = true; }
 
+	// ---- 스키닝 ----
+	// 스키닝 메시의 조인트 행렬 팔레트: palette[j] = 역바인드[j] · 조인트 월드[j] · (메시 노드 월드)⁻¹ (행벡터 관례).
+	// 이 행렬로 정점을 변환하면 오브젝트 로컬(= 메시 노드 공간) 안에서 스킨된 위치가 나오고, 그 뒤 오브젝트 월드 행렬이 곱해짐.
+	// Animator 가 프레임마다 채움. 비어 있으면 Renderer 가 단위행렬을 써서 바인드 포즈로 그림 (편집 모드, Animator 없음).
+	const std::vector<DirectX::XMFLOAT4X4>& GetSkinPalette() const { return skinPalette; }
+	void SetSkinPalette(std::vector<DirectX::XMFLOAT4X4>&& palette) { skinPalette = std::move(palette); }
+
+	// 디버그 표시용 스켈레톤 포즈. Animator 가 프레임마다 채움. jointToObject[j] = 조인트 j 의 오브젝트 로컬(메시 노드 공간)
+	// 변환이라 월드 변환은 jointToObject[j] · GetWorldMatrix(). parent[j] = 부모 조인트 번호 (조인트 목록 안에 없으면 -1).
+	struct SkeletonPose
+	{
+		std::vector<DirectX::XMFLOAT4X4> jointToObject;
+		std::vector<int> parent;
+	};
+	const SkeletonPose& GetSkeletonPose() const { return skeletonPose; }
+	void SetSkeletonPose(SkeletonPose&& pose) { skeletonPose = std::move(pose); }
+
 	// ---- Scene 이 호출함 ----
 	// 계층에서 떼어냄: 부모의 children 에서 빠지고 자식들의 parent 를 끊음 (자식은 루트가 됨). 소멸자에서는 하지 않음 —
 	// Scene::Clear 가 벡터를 통째로 지울 때 이미 죽은 부모를 건드리게 되기 때문. RemoveObject 가 지우기 직전에 호출함.
@@ -142,4 +159,6 @@ private:
 	uint64_t id = 0;
 	std::string prefabSource;
 	bool markedForDestroy = false;
+	std::vector<DirectX::XMFLOAT4X4> skinPalette;   // 위 스키닝 절 참고
+	SkeletonPose skeletonPose;
 };

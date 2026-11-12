@@ -306,6 +306,22 @@ Mesh Mesh::FromData(std::vector<VERTEX>&& vertices, std::vector<uint32_t>&& indi
 	return mesh;
 }
 
+Mesh Mesh::FromData(std::vector<VERTEX>&& vertices, std::vector<VertexSkin>&& skin, std::vector<uint32_t>&& indices, std::vector<Submesh>&& submeshes)
+{
+	Mesh mesh;
+	const bool skinned = skin.size() == vertices.size() && !vertices.empty();
+	mesh.vertices = std::move(vertices);
+	if (skinned)
+	{
+		mesh.skinVertices = std::move(skin);
+		mesh.vertexFormat = VertexFormat::PositionColorNormalTexcoordTangentSkin;
+	}
+	mesh.indices = std::move(indices);
+	mesh.submeshes = std::move(submeshes);
+	mesh.Finalize();
+	return mesh;
+}
+
 void Mesh::Finalize()
 {
 	if (submeshes.empty())
@@ -330,7 +346,7 @@ void Mesh::Finalize()
 	XMStoreFloat3(&bounds.max, hi);
 }
 
-void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>& indices, bool bitangentTowardsIncreasingV)
+void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>& indices, bool bitangentTowardsIncreasingV, std::vector<VertexSkin>* skin)
 {
 	// Lengyel, "Computing Tangent Space Basis Vectors for an Arbitrary Mesh".
 	// 삼각형마다 (dP/du, dP/dv) 를 풀어 정점에 누적하고, 마지막에 노멀에 직교화함.
@@ -388,6 +404,7 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>&
 			{
 				alternate[index] = static_cast<uint32_t>(vertices.size());
 				vertices.push_back(vertices[index]);
+				if (skin != nullptr) skin->push_back((*skin)[index]);   // 스킨 속성도 같은 자리에 복제 (길이를 vertices 와 맞춤)
 			}
 			index = alternate[index];   // 손잡이는 두 가지뿐이므로 복제본은 항상 "반대 손잡이" 전용
 		}

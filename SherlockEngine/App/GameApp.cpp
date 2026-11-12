@@ -41,6 +41,8 @@ bool GameApp::OnInitialize()
 	// 자동 검증 인자 (에디터와 같은 이름)
 	const std::wstring exitAfter = GetCommandLineOption(L"exit-after");
 	if (!exitAfter.empty()) m_exitAfter = static_cast<uint64_t>(_wtoi64(exitAfter.c_str()));
+	const std::wstring debugBones = GetCommandLineOption(L"debug-bones");   // 자동 검증: --debug-bones=1|2
+	if (!debugBones.empty()) engine.GetRenderer().GetSettings().debugBones = _wtoi(debugBones.c_str());
 	m_screenshotPath = GetCommandLineOption(L"screenshot");
 	m_dumpObjects = !GetCommandLineOption(L"dump-objects").empty();
 
@@ -66,6 +68,9 @@ void GameApp::OnUpdate(float dt)
 	scene.Update(dt);
 
 	if (engine.GetInput().IsKeyPressed(VK_ESCAPE)) PostQuitMessage(0);
+	// B: 본 디버그 표시 순환 (끔 → 본 + 관절 → 본 + 관절 + 축)
+	RenderSettings& renderSettings = engine.GetRenderer().GetSettings();
+	if (engine.GetInput().IsKeyPressed('B')) renderSettings.debugBones = (renderSettings.debugBones + 1) % 3;
 
 	// 자동 검증
 	if (m_exitAfter == 0) return;

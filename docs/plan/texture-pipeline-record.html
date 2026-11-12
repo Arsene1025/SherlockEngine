@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · 텍스처 파이프라인 구현 기록 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.step { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>텍스처 파이프라인 구현 기록</h1>
+  <p>2026-11-12 · 블록 압축(BC) 텍스처를 압축 그대로 GPU 에 올리고, PNG/JPG 를 읽을 때 BC7 + 밉 체인 DDS 를 자동으로 만들어 캐시하며, 텍스처마다 압축·밉·해상도를 Inspector 에서 고르게 한 작업의 기록입니다. 세 단계를 순서대로 구현했습니다.</p>
+  <p class="foot">기준: 작업 트리(아직 커밋하지 않음). 경로는 <code>SherlockEngine/</code> 기준입니다. D3D11·D3D12, Debug·Release 와 게임 빌드에서 확인했습니다. 마스터치프는 원본이 이미 DDS 라 이 파이프라인을 거치지 않으므로 측정에서 뺐습니다.</p>
+</header>
+
+<section>
+<h2>1. BC 직접 업로드</h2>
+<p>이전에는 BC DDS 를 읽으면 <code>Decompress</code> 로 CPU 에서 R8G8B8A8 로 풀어 올렸습니다. 디스크만 줄고 VRAM 은 그대로였습니다.</p>
+<ul>
+  <li><b>RHI 포맷</b> — <code>Format</code> 끝에 BC1/BC3/BC7 (UNORM, UNORM_SRGB) 6개를 추가했습니다(PSO 캐시 키 번호가 바뀌지 않도록 끝에 붙임). <code>IsBlockCompressed(Format)</code> 헬퍼를 두어 번호 비교에 기대지 않습니다. D3D11·D3D12 의 <code>ToDXGI</code> 에 매핑을 추가했습니다.</li>
+  <li><b>디바이스</b> — 고칠 곳이 없었습니다. D3D11 은 서브리소스의 rowPitch 를, D3D12 는 <code>GetCopyableFootprints</code> 의 행 수·행 크기를 쓰므로 블록 단위 레이아웃도 그대로 맞습니다.</li>
+  <li><b>로더</b> (<code>TextureLoader.cpp</code> 의 <code>FinishImage</code>) — 2D 이고 BC1/BC3/BC7 이며 밉 0 의 가로·세로가 4 의 배수이고, 밉이 이미 2개 이상이거나 밉 생성을 요청하지 않았으면 압축 그대로 둡니다. sRGB 라벨은 기존 규칙대로 <code>srgb</code> 인자로 붙입니다. 그 밖의 경우(BC2/BC4/BC5/BC6H, 큐브, 4의 배수가 아닌 크기, 밉 1개 + 밉 생성 요청)는 이전처럼 풀어서 올립니다.</li>
+</ul>
+<h3>측정</h3>
+<p>로더가 GPU 에 넘기는 서브리소스 크기의 합입니다. 드라이버가 보고하는 실제 사용량은 정렬 때문에 조금 다를 수 있습니다.</p>
+<table>
+<tr><th>DamagedHelmet 텍스처 (2048², 밉 12)</th><th>장당</th><th>5장</th></tr>
+<tr><td>비압축 RGBA8</td><td>21.3MB</td><td>106.5MB</td></tr>
+<tr><td>BC7</td><td>5.3MB</td><td>26.6MB</td></tr>
+</table>
+<p>정확히 4분의 1 입니다 (BC7 은 텍셀당 1바이트, RGBA8 은 4바이트).</p>
+</section>
+
+<section>
+<h2>2. 임포트 변환과 캐시</h2>
+<p>새 <code>Graphics/TextureImporter.h/.cpp</code> 입니다. <code>TextureCache::Load2D</code> 가 모델 내장 이미지와 파일 텍스처 모두 이 함수를 거칩니다.</p>
+<pre><code>원본 바이트 → ResolveCached(이름, 바이트, srgb)
+   ├ DDS 이거나 변환 불필요 → 원본 그대로 읽음
+   ├ 캐시 파일 있음        → 캐시 DDS 를 읽음 (밉 생성 없음)
+   └ 없음 + 에디터         → 변환해 캐시에 쓰고 읽음</code></pre>
+<table>
+<tr><th>항목</th><th>내용</th></tr>
+<tr><td>캐시 위치</td><td><code>&lt;프로젝트&gt;\Library\TextureCache\&lt;해시&gt;.dds</code> (프로젝트가 없으면 <code>&lt;exe&gt;\TextureCache\</code>). <code>.gitignore</code> 에 <code>Projects/*/Library/</code> 를 추가했습니다.</td></tr>
+<tr><td>캐시 키</td><td>원본 바이트의 FNV-1a 64비트 + sRGB 여부 + 설정 + 변환기 버전. 같은 원본을 색과 데이터로 쓰면 파일이 둘이 됩니다. 원본이나 설정이 바뀌면 다른 파일이 되어 자동으로 새로 만들어집니다(옛 파일은 남음).</td></tr>
+<tr><td>변환</td><td>WIC 로 읽기 → RGBA8 → 전체 밉 체인(sRGB 는 선형에서 평균) → 설정에 맞게 위쪽 단계 건너뛰기·자르기 → BC7. 임시 파일에 쓴 뒤 이름을 바꾸므로 쓰다 중단돼도 깨진 캐시가 남지 않습니다.</td></tr>
+<tr><td>인코더</td><td>DirectXTex GPU BC7(임시 D3D11 장치, D3D12 백엔드에서도 동일). 실패하면 CPU <code>BC7_QUICK</code>. 4096² 한 장 기준 CPU 약 7초, GPU 포함 전체 약 2.8초. 2048² 는 0.6~1초.</td></tr>
+<tr><td>변환 제외</td><td>이미 DDS 인 원본, 기본 설정이면서 긴 변이 256 미만인 텍스처. 밉 0 이 4의 배수가 아니면 압축하지 않고 RGBA8 DDS 로 저장합니다.</td></tr>
+<tr><td>게임 빌드</td><td>변환하지 않고 캐시가 있으면 쓰며 없으면 원본을 읽습니다(<code>SetBuildEnabled</code> 는 에디터가 켬).</td></tr>
+<tr><td>패키징</td><td><code>GameBuilder</code> 가 <code>TextureSettings.json</code>(캐시 키에 들어가므로 게임도 같은 설정을 읽어야 함)과 캐시 폴더를 <code>&lt;패키지&gt;\TextureCache\</code> 로 복사합니다. 쓰이지 않는 옛 캐시도 함께 가는 한계가 있습니다.</td></tr>
+</table>
+<div class="box">설정은 처음 제안한 <code>.meta</code> 사이드카가 아니라 프로젝트 <code>Assets/TextureSettings.json</code> 에 <b>텍스처 이름</b>(재질이 저장하는 이름) 기준으로 둡니다. 모델 내장 이미지는 개별 파일이 아니라서 같은 방식으로 한 곳에서 다루려는 선택입니다. 기본값과 다른 항목만 저장합니다.</div>
+</section>
+
+<section>
+<h2>3. 설정과 Inspector</h2>
+<table>
+<tr><th>설정</th><th>값</th><th>기본</th></tr>
+<tr><td>compress</td><td>BC7 압축. 끄면 RGBA8 로 저장(밉·크기 설정만 적용)</td><td>켬</td></tr>
+<tr><td>mipLevels</td><td>0 = 전체, 1 = 밉 없음, N = 상위 N단계</td><td>0</td></tr>
+<tr><td>maxSize</td><td>0 = 원본, 아니면 긴 변이 이 값 이하가 되도록 위쪽 밉을 건너뜀</td><td>0</td></tr>
+</table>
+<ul>
+  <li><b>UI</b> — 재질 패널(<code>DebugUI::DrawTextureImportSettings</code>)과 Inspector 의 모델 재질 칸에 "Texture import" 가 생깁니다. 파일 텍스처 슬롯마다 압축 체크, 밉(All/None/Top N), 최대 해상도(Original~128)를 고르고 <b>Apply</b> 를 누르면 저장한 뒤 그 텍스처만 다시 읽습니다. Revert 로 되돌립니다. 원본이 DDS 면 설정이 적용되지 않는다고 표시합니다.</li>
+  <li><b>부분 재로드</b> — <code>TextureCache::Evict(name)</code> 가 이름 하나의 sRGB·선형 항목을 파괴하고 세대 번호를 올려, 재질 셋이 다음 프레임에 새 텍스처로 다시 만들어집니다(<code>ReleaseLoaded</code> 처럼 전부 지우지 않음). <code>Renderer::ReloadTexture</code> 로 노출했습니다.</li>
+  <li><b>검증용 인자</b> — <code>--tex-setting=이름;압축;밉;최대크기</code> (12 프레임째 같은 코드 경로).</li>
+</ul>
+<h3>검증 결과 (DamagedHelmet)</h3>
+<table>
+<tr><th>설정</th><th>결과</th></tr>
+<tr><td>기본</td><td>2048² BC7, 밉 12, 5.3MB. 두 번째 실행부터 캐시 사용</td></tr>
+<tr><td>maxSize 512, 밉 4</td><td>512² BC7, 밉 4, 0.3MB. 런타임에 다시 읽힘(D3D11·D3D12)</td></tr>
+<tr><td>압축 끔, 밉 없음</td><td>2048² RGBA8, 밉 1, 16.0MB</td></tr>
+</table>
+<p>Inspector 의 Apply 를 마우스로 눌러 보는 검증은 하지 못했고, 같은 경로를 부르는 자동화 인자로 확인했습니다.</p>
+<h3>겪은 문제</h3>
+<ul>
+  <li><b>빌드</b> — <code>windows.h</code> 의 <code>max</code> 매크로 때문에 <code>(std::max)</code> 로 감쌌습니다. HLSL 새 파일에 UTF-8 BOM 이 있으면 fxc 가 <code>Illegal character</code> 로 실패해서 BOM 없이 저장합니다.</li>
+  <li><b>DirectXTex <code>Resize</code></b> — 필터를 바꿔도 모두 <code>E_FAIL</code> 이라 쓰지 않았습니다. 전체 밉 체인을 만든 뒤 maxSize 를 넘는 위쪽 단계를 건너뛰는 방식으로 대신했습니다. 한 단계 아래 밉이 그대로 새 원본이 되므로 결과는 같습니다.</li>
+</ul>
+</section>
+
+<section>
+<h2>4. 남은 일</h2>
+<ul>
+  <li>BC5(노멀)·BC4·BC6H(HDR 큐브)는 아직 풀어서 올립니다. 큐브맵의 BC 직접 업로드도 하지 않았습니다.</li>
+  <li>옛 캐시 파일을 자동으로 정리하지 않습니다. 패키징도 전체 캐시 폴더를 복사합니다.</li>
+  <li>첫 로드에서 큰 텍스처를 변환하는 동안 에디터가 멈춥니다(캐시되면 한 번뿐). 비동기 변환과 진행 표시는 없습니다.</li>
+  <li>모델 내장 이미지의 설정 키는 이름(<code>모델/번호 파일명</code>)이라 모델 파일이나 이미지 순서가 바뀌면 설정이 어긋날 수 있습니다.</li>
+</ul>
+<p class="foot">관련: <a href="skinning-bone-debug-record.html">skinning-bone-debug-record.html</a> (마스터치프와 변환기 인자).</p>
+</section>
+
+</main>
+<script src="../memo.js"></script>
+</body>
+</html>

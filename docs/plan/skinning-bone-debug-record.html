@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · 스키닝 · 본 디버그 구현 기록 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.step { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>스키닝 · 본 디버그 구현 기록</h1>
+  <p>2026-11-12 · glTF 스켈레톤 애니메이션(스키닝)과 본 디버그 표시, 그리고 MasterChief v5.5 walk 임포트와 텍스처 BC7 변환을 구현한 내용의 기록입니다. 개념 설명은 <a href="../study/gltf-study.html">gltf-study.html</a> 에 있습니다.</p>
+  <p class="foot">기준: 작업 트리(아직 커밋하지 않음). 경로는 <code>SherlockEngine/</code> 기준입니다. D3D11·D3D12, Debug·Release 에서 확인했습니다.</p>
+</header>
+
+<section>
+<h2>1. 데이터와 임포터</h2>
+<ul>
+  <li><b>임포터 단일화</b> — cgltf 와 비교 도구를 지우고 <code>ModelLoader::LoadGltf</code>(<code>Graphics/Import/GltfImporter.cpp</code>) 하나만 둡니다. <code>vcpkg.json</code> 의 cgltf 도 뺐습니다.</li>
+  <li><b>모델 데이터</b> — <code>Model.h</code> 에 <code>ModelSkin</code>(조인트 노드 번호, 역바인드 행렬), <code>ModelNode::skin</code>, <code>ModelInstance::node/skin</code>. 역바인드 행렬은 좌표계 변환(mirror·M·mirror)을 거쳐 저장합니다.</li>
+  <li><b>정점</b> — <code>VertexSkin</code>(조인트 4개 R8G8B8A8_UINT + 가중치), <code>VERTEX_SKINNED</code>(84바이트). RHI 에 <code>Format::R8G8B8A8_UINT</code>, <code>VertexSemantic::BlendIndices/BlendWeights</code> 를 추가했고 D3D11·D3D12 변환 표도 고쳤습니다.</li>
+</ul>
+</section>
+
+<section>
+<h2>2. Animator 와 팔레트</h2>
+<p>스킨 메시를 그리는 오브젝트의 Animator 가 매 프레임 조인트 월드를 계산해 팔레트를 만듭니다.</p>
+<pre><code>palette[j] = inverseBind[j] · jointWorld[j] · inverse(meshNodeRestWorld)</code></pre>
+<p>마지막 항은 오브젝트의 월드 행렬이 메시 노드 변환(preTransform)을 다시 곱하기 때문에 상쇄하는 항입니다. 결과는 <code>inverseBind · jointWorld</code> 와 같아서 glTF 규격대로 메시 노드 변환을 무시한 것과 같습니다. 팔레트는 <code>GameObject::SetSkinPalette</code> 로 올립니다.</p>
+<div class="box warn">GameObject 멤버를 덧붙여 <code>sizeof</code> 가 352→384 로 바뀌었으므로 스크립트 DLL 을 모두 다시 빌드해야 합니다.</div>
+</section>
+
+<section>
+<h2>3. 셰이더와 렌더러</h2>
+<table>
+<tr><th>항목</th><th>내용</th></tr>
+<tr><td>셰이더</td><td><code>BasicSkinVertexShader.hlsl</code>(VS_MainSkin), <code>ShadowSkinVertexShader.hlsl</code>(VS_ShadowSkin). <code>Common.hlsli</code> 에 cbuffer <code>Skin</code>(b7, <code>matrix joints[256]</code> 16KB).</td></tr>
+<tr><td>패스</td><td><code>Pass_MainSkin / Pass_ShadowSkin</code>. 정점 포맷이 스킨이면 자동 선택. PS·레이아웃은 기존과 같습니다.</td></tr>
+<tr><td>상수 버퍼</td><td>오브젝트 셋에 b7 을 추가. 팔레트가 비면 단위행렬 256개를 올립니다.</td></tr>
+<tr><td>컬링</td><td>스킨 메시는 반지름 1e9 로 컬링하지 않습니다.</td></tr>
+</table>
+<h3>겪은 문제</h3>
+<ul>
+  <li><b>D3D12 "상수버퍼가 아직 UpdateBuffer 되지 않음"</b> — Dynamic CB 는 프레임마다 한 번은 써야 주소가 생깁니다. 프레임당 단위행렬 1개를 올려 해결했습니다.</li>
+  <li><b>편집 모드에서 모델이 떨림</b> — 팔레트가 비었을 때 0번 조인트만 올려 나머지가 미정의였습니다. 256개 전부 단위행렬로 올리도록 고쳤습니다(Release 에서 영상으로 확인된 문제).</li>
+</ul>
+</section>
+
+<section>
+<h2>4. 본 디버그 표시</h2>
+<ul>
+  <li><b>조작</b> — B 키로 끔 → 본+관절 → 본+관절+로컬 축 순환(에디터·게임). 에디터 Render Settings 의 "Bone debug (B)" 콤보, 실행 인자 <code>--debug-bones=N</code>. F1~F12 는 이미 쓰고 있어서 B 로 정했습니다.</li>
+  <li><b>자료</b> — Animator 가 <code>GameObject::SkeletonPose</code>(jointToObject, 부모 조인트 번호)를 채웁니다.</li>
+  <li><b>그리기</b> — 렌더러에 선 목록 파이프라인(<code>Pass_DebugLine</code>, LineList, 깊이 테스트 없음)과 동적 정점 버퍼(65536 정점)를 추가. <code>BuildDebugLines</code> 가 월드 공간 선을 만들고 <code>DrawDebugLines</code> 가 씬 패스 끝(하늘 뒤)에 그립니다. 본은 초록, 관절 십자는 노랑, 축은 RGB 입니다. 십자·축 길이는 부모까지의 거리에 비례합니다.</li>
+  <li><b>한계</b> — 재생 중에만 그립니다. 마스터치프는 메시 4개에 Animator 가 각각 있어 같은 선이 4번 그려집니다. 선 굵기는 1픽셀입니다.</li>
+</ul>
+</section>
+
+<section>
+<h2>5. MasterChief v5.5 walk 와 텍스처 변환</h2>
+<table>
+<tr><th>항목</th><th>값</th></tr>
+<tr><td>모델</td><td>노드 70, 조인트 65, 클립 1(1.07초, 채널 195), 메시 4(Arms·Chest·Helmet·Legs)</td></tr>
+<tr><td>텍스처</td><td>12장, 4096×4096. PNG 합계 약 185MB → BC7 DDS(밉 13단계) 합계 약 256MB</td></tr>
+<tr><td>포맷</td><td>baseColor = BC7_UNORM_SRGB, normal·metallicRoughness = BC7_UNORM. BC5 는 법선 Z 가 복원되지 않아 쓰지 않았습니다.</td></tr>
+<tr><td>변환 도구</td><td>DirectXTex 로 만든 임시 변환기(WIC 로 읽기 → 밉 → BC7_QUICK 압축). 저장소에는 넣지 않았습니다.</td></tr>
+<tr><td>씬</td><td><code>MasterChiefWalk.json</code>(시작 씬). 이전 MasterChief_v4 모델과 <code>Main.json</code> 은 지웠습니다.</td></tr>
+</table>
+<div class="box">BC7 DDS 는 이 기록을 쓸 때까지 CPU 에서 R8G8B8A8 로 풀어 올렸지만, 이후 로더가 BC1/BC3/BC7 을 압축 그대로 GPU 에 올리도록 바꿨습니다(<a href="texture-pipeline-record.html">texture-pipeline-record.html</a>). 지금은 BC7 이 VRAM 도 4분의 1 로 줄입니다. 4096² BC7 은 최상위 단계만 16.8MB 이고 밉 체인 전체가 22.4MB 입니다. 128 아래의 작은 단계는 합쳐도 수 KB 라서 밉 개수를 줄여도 용량은 거의 줄지 않고, 용량은 최상위 해상도가 정합니다(2048 이면 장당 약 5.6MB). 변환기는 밉 수준 인자(0=전체, 1=없음, N=상위 N단계)를 받으며 마스터치프는 4096·밉 6단계(128까지)로 변환했습니다. 여러 테스트를 위해 해상도는 그대로 둡니다.</div>
+</section>
+
+<section>
+<h2>6. 남은 일 · 제안</h2>
+<ul>
+  <li><b>텍스처 변환 기본화</b> — 구현했습니다. <a href="texture-pipeline-record.html">texture-pipeline-record.html</a> 참고.</li>
+  <li>스킨 메시의 정확한 경계(컬링), <code>options.scale</code> 반영, 조인트 256개 초과, 본의 Hierarchy 표시, 포즈 기준 피킹, 모프 타깃은 아직 없습니다.</li>
+  <li>본 선은 오브젝트당 한 번만 그리도록 정리할 수 있습니다.</li>
+</ul>
+<p class="foot">이 문서는 다른 문서를 고치지 않았습니다.</p>
+</section>
+</main>
+<script src="../memo.js"></script>
+</body>
+</html>

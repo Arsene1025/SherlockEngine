@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
 #include <string>
+#include "Graphics/TextureImporter.h"
 #include <DirectXMath.h>
 
 // 자동 검증 (실행 인자). OS 입력을 주입하지 않고 에디터와 같은 코드 경로를 거침 — 스크린샷은 화면 캡처
@@ -27,6 +28,8 @@ struct EditorAutomation
 	bool setPosition = false; DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
 	std::wstring savePath, loadPath, screenshotPath;
 	bool dumpObjects = false;
+	std::string texSettingName; TextureImportSettings texSetting;   // --tex-setting=이름;압축0|1;밉;최대크기 (12 프레임째 임포트 설정 변경 + 그 텍스처만 다시 읽기. Inspector 의 Apply 와 같은 경로)
+	int debugBones = 0;         // --debug-bones=N (2 프레임째 본 디버그 표시)
 	int debugView = 0;          // --debug-view=N (2 프레임째 Render Settings 의 디버그 뷰)
 	uint64_t freezeCascadesAt = 0;   // --freeze-cascades=N (N 프레임째 에디터 카메라로 캐스케이드 고정. Renderer::SetCascadeFreeze)
 	bool camLook = false; DirectX::XMFLOAT3 camEye = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), camTarget = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --cam-look=ex,ey,ez;tx,ty,tz (고정 다음 프레임, 고정이 없으면 3 프레임째 에디터 카메라 이동)

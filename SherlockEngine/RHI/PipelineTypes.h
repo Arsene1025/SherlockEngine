@@ -44,7 +44,29 @@ enum class Format : uint8_t
 	R16G16_FLOAT,          // half2 (화면 공간 속도, 옥타헤드럴 노멀)
 	R10G10B10A2_UNORM,     // 채널당 10비트 + 알파 2비트 (월드 노멀)
 	R11G11B10_FLOAT,       // 알파 없는 HDR 색 (FP16 의 절반 크기)
+	R8G8B8A8_UINT,         // 정수 4개 (스키닝 조인트 번호). 셰이더에서는 uint4 로 읽음
+	// 블록 압축 텍스처 (샘플 전용, 4×4 텍셀 = 블록 하나). 밉 0 의 가로·세로는 4 의 배수여야 함. 렌더 타깃·깊이로는 쓸 수 없음.
+	BC1_UNORM,             // 8바이트/블록, RGB(+1비트 알파). 가장 작음
+	BC1_UNORM_SRGB,
+	BC3_UNORM,             // 16바이트/블록, RGBA (알파 보간)
+	BC3_UNORM_SRGB,
+	BC7_UNORM,             // 16바이트/블록, RGBA 고품질. 노멀·마스크 등 선형 데이터
+	BC7_UNORM_SRGB,        // 위와 같되 색(알베도)
 };
+
+// 블록 압축 포맷인가 (BC1/BC3/BC7). 새 BC 포맷을 추가하면 여기도 고침 — enum 번호 비교(>=)에 기대지 않음.
+constexpr bool IsBlockCompressed(Format format)
+{
+	switch (format)
+	{
+	case Format::BC1_UNORM: case Format::BC1_UNORM_SRGB:
+	case Format::BC3_UNORM: case Format::BC3_UNORM_SRGB:
+	case Format::BC7_UNORM: case Format::BC7_UNORM_SRGB:
+		return true;
+	default:
+		return false;
+	}
+}
 
 enum class FillMode : uint8_t
 {
@@ -111,6 +133,8 @@ enum class VertexSemantic : uint8_t
 	Color,      // COLOR     정점 색
 	TexCoord,   // TEXCOORD  UV
 	Tangent,    // TANGENT   탄젠트 (노멀맵)
+	BlendIndices,   // BLENDINDICES  스키닝 조인트 번호 (uint4)
+	BlendWeights,   // BLENDWEIGHT   스키닝 가중치 (float4)
 };
 
 enum class ShaderStage : uint8_t

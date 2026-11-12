@@ -41,6 +41,10 @@ struct RenderSettings
 	// 디버그 뷰 (0 조명, 1 알베도, 2 월드 노멀, 3 깊이, 4 그림자 계수, 5 UV) 와 깊이 뷰의 범위(월드 단위)
 	int debugView = 0;
 	float debugDepthRange = 60.0f;
+
+	// 본 디버그 표시 (재생 중 Animator 가 있는 스킨 메시만): 0 끔, 1 본 선 + 관절 십자, 2 = 1 + 조인트 로컬 축(X 빨강·Y 초록·Z 파랑).
+	// 깊이 테스트 없이 메시 위에 그림. 에디터는 Render Settings 와 B 키, 게임은 B 키(끔 → 1 → 2 → 끔).
+	int debugBones = 0;
 };
 
 // 씬을 그림. 씬 데이터는 갖지 않고 입력으로 받음
@@ -159,6 +163,7 @@ public:
 	size_t GetGpuMeshCount() const { return m_gpuMeshes.size(); }
 	size_t GetGpuMaterialCount() const { return m_gpuMaterials.size(); }
 	size_t GetTextureCount() const { return m_textures.GetCount(); }
+	void ReloadTexture(const std::string& name) { m_textures.Evict(name); }   // 임포트 설정을 바꾼 텍스처를 다음 프레임에 다시 읽게 함
 	TextureHandle GetShadowMap() const { return m_shadowMap; }   // 디버그 표시용
 	TextureHandle GetCsmMap() const { return m_csmMap; }         // 디버그 표시용 (CSM 전용 아틀라스)
 
@@ -242,6 +247,8 @@ private:
 		DirectX::XMFLOAT4X4 world;              // 전치해서 저장 (b1 에 그대로 올림)
 		DirectX::XMFLOAT4X4 worldInvTranspose;  // 올리는 값은 W⁻¹ (ShaderConstants.h)
 		DirectX::XMFLOAT4 sphere;               // 월드 경계 구 (xyz = 중심, w = 반지름). 컬링용
+		const std::vector<DirectX::XMFLOAT4X4>* skinPalette = nullptr;   // 스키닝 오브젝트의 조인트 팔레트 (씬이 소유, 이번 프레임 동안 유효). 비면 단위행렬
+		bool skinned = false;                   // 스키닝 메시면 드로우마다 b7 에 팔레트를 올림
 	};
 
 	struct DrawItem
@@ -264,11 +271,12 @@ private:
 
 	// ---- 셰이더·레이아웃·패스 표 (Renderer.cpp 의 kShaders, kPasses) ----
 	// 셰이더를 추가할 때: ShaderId 에 한 줄, kShaders 에 한 줄. 로드·핫리로드 감시·검증·해제는 표를 돌며 함.
-	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_Count };
+	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_BasicSkinVS, Shader_ShadowSkinVS, Shader_DebugLineVS, Shader_DebugLinePS, Shader_Count };
 	enum LayoutId : uint32_t { Layout_Frame, Layout_Object, Layout_Material, Layout_Post, Layout_Count };
 	// 패스 = (VS, PS, 레이아웃 목록). PSO Desc 의 셰이더·bindingLayouts 가 이 표에서 나오고, 바인딩 대조도 패스
 	// 단위로 함 (그 패스의 레이아웃에 선언된 슬롯만 통과).
-	enum PassId : uint32_t { Pass_Main, Pass_Shadow, Pass_Sky, Pass_Tonemap, Pass_Post, Pass_Count };
+	// Pass_MainSkin / Pass_ShadowSkin 은 스키닝 메시용 (정점 포맷 PositionColorNormalTexcoordTangentSkin). 스킨 VS 만 다르고 PS·레이아웃은 같음.
+	enum PassId : uint32_t { Pass_Main, Pass_Shadow, Pass_Sky, Pass_Tonemap, Pass_Post, Pass_MainSkin, Pass_ShadowSkin, Pass_DebugLine, Pass_Count };
 	// 셋 인덱스 = 그 패스의 PipelineStateDesc::bindingLayouts 인덱스 (CommandList::SetResourceSet 의 첫 인자).
 	// 메인 { 프레임, 오브젝트, 재질 }, 그림자 { 프레임, 오브젝트 }, 스카이 { 프레임 }, 후처리 { 후처리 }.
 	static constexpr uint32_t kSetFrame = 0;
@@ -302,6 +310,12 @@ private:
 	// b0 는 호출 전에 그 카메라로 올려 둘 것. 끝나면 view.hdr 는 ShaderResource 상태.
 	void RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTarget& view, const Camera& camera, const char* debugName);
 	void DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera);   // 씬 패스의 드로우 루프 (절두체 컬링, 끝에 스카이박스)
+	// 디버그 선 (본 표시). BuildDebugLines 가 프레임마다 월드 공간 선 목록을 만들어 동적 정점 버퍼에 올리고,
+	// DrawDebugLines 가 씬 패스 끝(하늘 뒤)에 깊이 테스트 없이 그림.
+	struct DebugLineVertex { DirectX::XMFLOAT3 position; uint32_t color; };   // color = R8G8B8A8_UNORM (r | g<<8 | b<<16 | a<<24)
+	void BuildDebugLines(const Scene& scene);
+	void DrawDebugLines(RHI::CommandList& cmd);
+	PipelineHandle GetDebugLinePipeline();
 	void DrawSkybox(RHI::CommandList& cmd);                               // 전체 화면 삼각형 하나 (Draw(3), 정점 버퍼 없음)
 	// HDR: 씬 패스가 그린 HDR 텍스처(hdrSet 의 t13)를 읽어 노출·ACES 를 적용하고 output 에 sRGB 로 씀.
 	// output 은 RenderTarget 으로 전이했다가 끝나면 outputAfter 로 둠. HDR 텍스처는 이미 ShaderResource
@@ -441,6 +455,8 @@ private:
 	ShaderHandle m_shaders[Shader_Count];
 	BufferHandle m_perFrameCB;
 	BufferHandle m_perObjectCB;
+	BufferHandle m_skinCB;                       // b7 Skin (스키닝 조인트 팔레트). 스키닝 드로우마다 올림
+	std::vector<DirectX::XMFLOAT4X4> m_skinScratch;   // 전치한 팔레트를 만드는 임시 배열 (kMaxSkinJoints)
 	BufferHandle m_lightCB;        // b2 Lights (주변광, 조명 수)
 	BufferHandle m_lightBuffer;    // t15 조명 구조체 버퍼 (GpuLight × m_lightCapacity). Dynamic
 	uint32_t m_lightCapacity = 0;  // 원소 수. 모자라면 두 배로 다시 만듦
@@ -471,6 +487,10 @@ private:
 	std::unordered_map<uint32_t, PipelineHandle> m_mainPipelines;
 	std::unordered_map<uint32_t, PipelineHandle> m_shadowPipelines;
 	PipelineHandle m_skyPipeline;
+	PipelineHandle m_debugLinePipeline;
+	BufferHandle m_debugLineVB;                       // 동적 정점 버퍼 (kMaxDebugLineVertices 개)
+	std::vector<DebugLineVertex> m_debugLines;        // 이번 프레임의 선 (정점 2개 = 선 1개)
+	uint32_t m_debugLineCount = 0;                    // 올린 정점 수 (0 이면 그리지 않음)
 	PipelineHandle m_tonemapPipelines[2];   // [srgbOutput]
 	PipelineHandle m_postPipelines[2];      // [additive]
 	RenderSettings m_settings;

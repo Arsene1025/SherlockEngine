@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "Graphics/TextureCache.h"
 #include "Graphics/TextureLoader.h"
+#include "Graphics/TextureImporter.h"
 #include "RHI/Device.h"
 #include "RHI/ResourceDesc.h"
 #include "Scene/Scene.h"
@@ -8,6 +9,7 @@
 #include "Core/Log.h"
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 
 namespace
 {
@@ -18,6 +20,17 @@ namespace
 		std::wstring wide(length > 0 ? length - 1 : 0, L'\0');
 		if (length > 1) MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
 		return wide;
+	}
+
+	bool ReadFileBytes(const std::wstring& path, std::vector<uint8_t>& out)
+	{
+		std::ifstream file(path, std::ios::binary | std::ios::ate);
+		if (!file) return false;
+		const std::streamsize size = file.tellg();
+		if (size <= 0) return false;
+		out.resize(static_cast<size_t>(size));
+		file.seekg(0);
+		return static_cast<bool>(file.read(reinterpret_cast<char*>(out.data()), size));
 	}
 
 	bool IsBuiltin(const std::string& name)
@@ -59,6 +72,21 @@ void TextureCache::Shutdown()
 	m_device->DestroyTexture(m_blackCube);
 	m_blackCube = TextureHandle{};
 	m_device = nullptr;
+}
+
+void TextureCache::Evict(const std::string& name)
+{
+	if (m_device == nullptr || IsBuiltin(name)) return;
+	bool any = false;
+	for (auto& cache : m_2d)
+	{
+		const auto it = cache.find(name);
+		if (it == cache.end()) continue;
+		if (it->second != m_white && it->second != m_flatNormal) m_device->DestroyTexture(it->second);   // 실패해 흰색으로 대체된 항목은 공유 핸들이라 남김
+		cache.erase(it);
+		any = true;
+	}
+	if (any) ++m_generation;
 }
 
 void TextureCache::ReleaseLoaded()
@@ -130,8 +158,15 @@ TextureHandle TextureCache::Load2D(const std::string& name, bool srgb, const Sce
 	else if (const std::vector<uint8_t>* encoded = scene != nullptr ? scene->FindImage(name) : nullptr)
 	{
 		// 모델에서 가져온 이미지. 씬이 인코딩된 바이트를 들고 있고, 여기서 재질의 색공간에 맞춰 디코딩함.
-		ok = TextureLoader::LoadFromMemory(encoded->data(), encoded->size(), srgb, true, image);
-		if (ok) Log::Info("텍스처 디코딩: %s (%ux%u, 밉 %u, %s)", name.c_str(), image.desc.width, image.desc.height, image.desc.mipLevels, srgb ? "sRGB" : "linear");
+		// PNG/JPG 는 임포트 설정에 따라 BC7 + 밉 체인 DDS 캐시로 바꿔 읽음 (TextureImporter). 캐시 DDS 는 밉이 이미 정해져 있으므로 더 만들지 않음.
+		const std::wstring cached = TextureImporter::ResolveCached(name, encoded->data(), encoded->size(), srgb);
+		if (!cached.empty()) ok = TextureLoader::LoadFromFile(cached, srgb, false, image);
+		if (!ok) ok = TextureLoader::LoadFromMemory(encoded->data(), encoded->size(), srgb, true, image);
+		if (ok)
+		{
+			const bool block = IsBlockCompressed(image.desc.format);   // BC 는 압축 그대로 GPU 에 올라감 (VRAM 1/4)
+			Log::Info("텍스처 디코딩: %s (%ux%u, 밉 %u, %s%s, GPU %.1fMB)", name.c_str(), image.desc.width, image.desc.height, image.desc.mipLevels, srgb ? "sRGB" : "linear", block ? ", 블록 압축 유지" : "", image.pixels.size() / (1024.0 * 1024.0));
+		}
 	}
 	else
 	{
@@ -141,7 +176,13 @@ TextureHandle TextureCache::Load2D(const std::string& name, bool srgb, const Sce
 		const std::wstring path = name.rfind(kAssetPrefix, 0) == 0
 			? Paths::GetAssetPath(ToWide(name.substr(6)).c_str())
 			: Paths::GetAssetPath((L"Textures\\" + ToWide(name)).c_str());
-		ok = TextureLoader::LoadFromFile(path, srgb, true, image);
+		std::vector<uint8_t> bytes;
+		if (ReadFileBytes(path, bytes))
+		{
+			const std::wstring cached = TextureImporter::ResolveCached(name, bytes.data(), bytes.size(), srgb);
+			if (!cached.empty()) ok = TextureLoader::LoadFromFile(cached, srgb, false, image);
+		}
+		if (!ok) ok = TextureLoader::LoadFromFile(path, srgb, true, image);
 	}
 
 	TextureHandle handle;

@@ -25,6 +25,13 @@ namespace D3D11Convert
 		case Format::R16G16_FLOAT:         return DXGI_FORMAT_R16G16_FLOAT;
 		case Format::R10G10B10A2_UNORM:    return DXGI_FORMAT_R10G10B10A2_UNORM;
 		case Format::R11G11B10_FLOAT:      return DXGI_FORMAT_R11G11B10_FLOAT;
+		case Format::R8G8B8A8_UINT:        return DXGI_FORMAT_R8G8B8A8_UINT;
+		case Format::BC1_UNORM:            return DXGI_FORMAT_BC1_UNORM;
+		case Format::BC1_UNORM_SRGB:       return DXGI_FORMAT_BC1_UNORM_SRGB;
+		case Format::BC3_UNORM:            return DXGI_FORMAT_BC3_UNORM;
+		case Format::BC3_UNORM_SRGB:       return DXGI_FORMAT_BC3_UNORM_SRGB;
+		case Format::BC7_UNORM:            return DXGI_FORMAT_BC7_UNORM;
+		case Format::BC7_UNORM_SRGB:       return DXGI_FORMAT_BC7_UNORM_SRGB;
 		default:
 			Log::Error("D3D11Convert : 알 수 없는 Format %d", static_cast<int>(format));
 			return DXGI_FORMAT_UNKNOWN;
@@ -130,6 +137,8 @@ namespace D3D11Convert
 		case VertexSemantic::Color:    return "COLOR";
 		case VertexSemantic::TexCoord: return "TEXCOORD";
 		case VertexSemantic::Tangent:  return "TANGENT";
+		case VertexSemantic::BlendIndices: return "BLENDINDICES";
+		case VertexSemantic::BlendWeights: return "BLENDWEIGHT";
 		default:
 			Log::Error("D3D11Convert : 알 수 없는 VertexSemantic %d", static_cast<int>(semantic));
 			return "POSITION";

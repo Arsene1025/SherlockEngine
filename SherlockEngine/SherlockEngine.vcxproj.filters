@@ -23,6 +23,9 @@
     <Filter Include="Graphics">
       <UniqueIdentifier>{0aa83911-1fa1-4769-84ef-01536c8bcac6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Graphics\Import">
+      <UniqueIdentifier>{5b1f3c52-8a0e-4d7b-9c41-2e6d7a90b1c3}</UniqueIdentifier>
+    </Filter>
     <Filter Include="RHI">
       <UniqueIdentifier>{7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f}</UniqueIdentifier>
     </Filter>
@@ -149,8 +152,11 @@
     <ClCompile Include="Graphics\Mesh.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="Graphics\Model.cpp">
-      <Filter>Graphics</Filter>
+    <ClCompile Include="Graphics\Import\ImportCommon.cpp">
+      <Filter>Graphics\Import</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\Import\GltfImporter.cpp">
+      <Filter>Graphics\Import</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\Screenshot.cpp">
       <Filter>Graphics</Filter>
@@ -174,6 +180,9 @@
       <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\TextureCache.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\TextureImporter.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\TextureLoader.cpp">
@@ -201,6 +210,9 @@
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\FollowTarget.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Animator.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\SceneSerializer.cpp">
@@ -359,6 +371,9 @@
     <ClInclude Include="Graphics\Model.h">
       <Filter>Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="Graphics\Import\ImportCommon.h">
+      <Filter>Graphics\Import</Filter>
+    </ClInclude>
     <ClInclude Include="Graphics\Screenshot.h">
       <Filter>Graphics</Filter>
     </ClInclude>
@@ -372,6 +387,9 @@
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="Graphics\TextureCache.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\TextureImporter.h">
       <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="RHI\RenderPassTypes.h">
@@ -437,6 +455,18 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ShadowVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\BasicSkinVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ShadowSkinVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\DebugLineVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\DebugLinePixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\SkyboxVertexShader.hlsl">
