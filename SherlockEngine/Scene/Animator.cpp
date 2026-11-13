@@ -5,9 +5,11 @@
 #include "Scene/SkinPose.h"
 #include "Core/AssetManager.h"
 #include "Core/Log.h"
+#include "Graphics/Mesh.h"
 #include "Graphics/Model.h"
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 
 using namespace DirectX;
 
@@ -15,7 +17,10 @@ using namespace DirectX;
 //
 // 두 가지 모드가 있음.
 //
-//   (1) 스킨 모드: 소유 오브젝트의 메시가 skin 을 가진 노드에서 왔을 때. 클립이 노드 여러 개(본)를 움직여도 됨.
+//   (1) 스킨 모드: 소유 오브젝트나 그 자손의 메시가 skin 을 가진 노드에서 왔을 때. 클립이 노드 여러 개(본)를 움직여도 됨.
+//       Animator 는 모델 루트 오브젝트에 하나만 붙이면 됨 (유니티와 같음): 같은 모델의 스킨 메시 오브젝트(MasterChief 는 팔·가슴·헬멧·다리 4개)를
+//       자손에서 찾아 노드 월드를 한 번만 계산하고 메시마다 팔레트만 만듦. 메시 오브젝트 자신에 붙여도 되고(그 오브젝트만 구동),
+//       자손 중 자기 Animator 를 가진 오브젝트가 있으면 그 아래는 그 Animator 가 맡음.
 //       Scene::AddModel 은 노드를 월드 행렬이 굳은 인스턴스로 펴서 GameObject 를 만들기 때문에 본에는 GameObject 가 없음.
 //       그래서 이 Animator 가 모델의 노드 표(Model::nodes)에서 직접 계층을 계산함: 노드마다 기본 TRS 를 채널로 덮어
 //       쓰고, 부모 → 자식 순으로 곱해 조인트 월드를 구한 뒤, 조인트 행렬 팔레트를 GameObject::SetSkinPalette 로 올림.
@@ -44,12 +49,13 @@ public:
 	{
 		m_clip = nullptr;
 		m_time = 0.0f;
-		m_skin = nullptr;
+		m_skinMode = false;
 		m_model = nullptr;
+		m_targets.clear();
 		Scene* scene = GetContext().scene;
 		if (scene == nullptr || scene->GetAssets() == nullptr) return;
-		const MeshSource* source = scene->GetMeshSource(GetOwner().GetMesh());
-		if (source == nullptr || source->type != MeshSource::Type::Model)
+		const MeshSource* source = FindModelSource(*scene, GetOwner());   // 소유 오브젝트의 메시, 없으면 자손의 메시에서 모델을 찾음
+		if (source == nullptr)
 		{
 			Log::Warn("Animator '%s': 모델에서 온 메시가 아니어서 재생할 수 없음", GetOwner().GetName().c_str());
 			return;
@@ -72,19 +78,26 @@ public:
 			return;
 		}
 
-		// 스킨 모드: 이 메시를 그리는 노드가 skin 을 가지면 계층 전체를 계산함
-		m_skin = FindMeshSkin(*model, source->meshIndex, m_meshNode);   // 편집 모드의 레스트 포즈(ApplyRestSkinPoses)와 같은 인스턴스를 고름
-		if (m_skin != nullptr)
+		// 스킨 모드: 소유 오브젝트와 자손 중 이 모델의 skin 메시가 있으면 계층 전체를 계산함
+		m_model = model;
+		m_rest = model->nodes;
+		m_current = m_rest;
+		m_global.assign(m_rest.size(), XMFLOAT4X4());
+		m_targetScratch.clear();
+		CollectSkinTargets(GetOwner(), m_targetScratch);
+		if (!m_targetScratch.empty())
 		{
-			m_model = model;
+			m_skinMode = true;
 			m_clip = found;
-			m_rest = model->nodes;
-			m_current = m_rest;
-			m_global.assign(m_rest.size(), XMFLOAT4X4());
-			// 메시 노드의 기본 자세 월드 (조인트 월드와 같은 좌표계, options.scale 은 반영하지 않음)
-			XMStoreFloat4x4(&m_meshRest, m_meshNode >= 0 ? ComputeNodeGlobal(m_rest, m_meshNode) : XMMatrixIdentity());
-			Log::Info("Animator '%s': 클립 '%s' 스킨 재생 (길이 %.2f초, 채널 %zu개, 조인트 %zu개)", GetOwner().GetName().c_str(), found->name.c_str(),
-				found->duration, found->channels.size(), m_skin->joints.size());
+			Log::Info("Animator '%s': 클립 '%s' 스킨 재생 (길이 %.2f초, 채널 %zu개, 스킨 메시 오브젝트 %zu개)", GetOwner().GetName().c_str(), found->name.c_str(),
+				found->duration, found->channels.size(), m_targetScratch.size());
+			m_targetScratch.clear();
+			return;
+		}
+		m_model = nullptr;
+		if (scene->GetMeshSource(GetOwner().GetMesh()) != source)   // 단일 노드 모드는 소유 오브젝트 자신의 모델 메시에만 적용함 (자손의 모델 클립을 소유자에게 입히지 않음)
+		{
+			Log::Warn("Animator '%s': 스킨 메시가 없고 소유 오브젝트의 메시도 이 모델에서 온 것이 아니어서 재생할 수 없음", GetOwner().GetName().c_str());
 			return;
 		}
 
@@ -120,7 +133,7 @@ public:
 			else t = (std::clamp)(t, 0.0f, duration);
 		}
 
-		if (m_skin != nullptr)
+		if (m_skinMode)
 		{
 			UpdateSkin(t);
 			return;
@@ -152,6 +165,60 @@ public:
 	float speed = 1.0f;
 
 private:
+	// 스킨 메시 하나(Mesh 단위)의 고정 정보. 메시는 씬 수명 동안 주소가 바뀌지 않아 Mesh* 로 캐시함.
+	struct SkinTarget
+	{
+		const ModelSkin* skin = nullptr;   // 비면 이 모델의 스킨 메시가 아님
+		XMFLOAT4X4 meshRest;               // 메시 노드의 기본 자세 월드 (조인트 월드와 같은 좌표계, options.scale 은 반영하지 않음)
+	};
+
+	// 소유 오브젝트의 메시, 없으면 자손의 메시 중 모델에서 온 첫 번째 출처. 자기 Animator 를 가진 자손 아래는 보지 않음.
+	static const MeshSource* FindModelSource(const Scene& scene, GameObject& object)
+	{
+		const MeshSource* source = scene.GetMeshSource(object.GetMesh());
+		if (source != nullptr && source->type == MeshSource::Type::Model) return source;
+		for (GameObject* child : object.GetChildren())
+		{
+			if (child->GetBehaviour<Animator>() != nullptr) continue;
+			if (const MeshSource* found = FindModelSource(scene, *child)) return found;
+		}
+		return nullptr;
+	}
+
+	// 오브젝트가 이 Animator 의 모델에 속한 스킨 메시를 그리면 그 정보를, 아니면 nullptr. 결과는 메시별로 캐시함.
+	const SkinTarget* ResolveTarget(const GameObject& object)
+	{
+		const Mesh* mesh = object.GetMesh();
+		if (mesh == nullptr || !mesh->IsSkinned()) return nullptr;
+		auto found = m_targets.find(mesh);
+		if (found == m_targets.end())
+		{
+			SkinTarget target;
+			Scene* scene = GetContext().scene;
+			const MeshSource* source = scene->GetMeshSource(mesh);
+			if (source != nullptr && source->type == MeshSource::Type::Model && scene->GetAssets()->GetModel(source->modelPath) == m_model)
+			{
+				int meshNode = -1;
+				target.skin = FindMeshSkin(*m_model, source->meshIndex, meshNode);   // 편집 모드의 레스트 포즈(ApplyRestSkinPoses)와 같은 인스턴스를 고름
+				if (target.skin != nullptr) XMStoreFloat4x4(&target.meshRest, meshNode >= 0 ? ComputeNodeGlobal(m_rest, meshNode) : XMMatrixIdentity());
+			}
+			found = m_targets.emplace(mesh, target).first;
+		}
+		return found->second.skin != nullptr ? &found->second : nullptr;
+	}
+
+	// 이 Animator 가 구동할 스킨 메시 오브젝트를 모음: 소유 오브젝트와 자손. 자기 Animator 를 가진 자손과 그 아래는 그 Animator 의 몫이라 건너뜀
+	// (오브젝트마다 구동하는 Animator 가 정확히 하나). 오브젝트가 삭제되거나 계층이 바뀔 수 있어서 프레임마다 다시 모으고 포인터를 오래 들고 있지 않음.
+	void CollectSkinTargets(GameObject& object, std::vector<GameObject*>& out)
+	{
+		if (ResolveTarget(object) != nullptr) out.push_back(&object);
+		for (GameObject* child : object.GetChildren())
+		{
+			if (child->GetBehaviour<Animator>() != nullptr) continue;
+			CollectSkinTargets(*child, out);
+		}
+	}
+
 	// 스킨 모드 한 프레임: 시간 t 의 노드 TRS → 조인트 월드 → 팔레트
 	void UpdateSkin(float t)
 	{
@@ -172,8 +239,8 @@ private:
 			}
 		}
 
-		// 노드 월드(evalOrder 루프)와 아래 팔레트·포즈 식은 Scene/SkinPose.cpp 의 ComputeSkinPose 에 있음 (식은 그대로 옮김).
-		// 편집 모드의 기본 자세(ApplyRestSkinPoses)도 같은 함수를 써서, 재생을 시작하기 전과 후의 스킨 모양이 같은 식에서 나옴.
+		// 노드 월드(evalOrder 루프)와 아래 팔레트·포즈 식은 Scene/SkinPose.cpp 의 EvaluateNodeGlobals·BuildSkinPalette 에 있음 (식은 그대로 옮김).
+		// 편집 모드의 기본 자세(ApplyRestSkinPoses)도 같은 식을 써서, 재생을 시작하기 전과 후의 스킨 모양이 같은 식에서 나옴.
 
 		// 스킨 팔레트 / 스켈레톤 포즈 계산
 		// 행벡터 규약(DirectXMath): v' = v · M0 · M1 · ... 이라 왼쪽 행렬이 먼저 적용된다.
@@ -198,11 +265,24 @@ private:
 		// 정점은 자기 영향 조인트 인덱스(JOINTS_0)와 가중치(WEIGHTS_0)를 갖고 있고, 정점 셰이더가 이 배열에서
 		// 해당 행렬을 골라 skin = Σ 가중치 · 정점 · palette[인덱스] 로 블렌딩한다.
 		// SetSkinPalette 로 오브젝트에 넘기면 렌더러가 GPU 버퍼(구조체 버퍼 등)로 올려 셰이더가 읽는다.
-		std::vector<XMFLOAT4X4> palette;
-		GameObject::SkeletonPose pose;
-		ComputeSkinPose(m_current, *m_skin, m_meshRest, m_global, palette, pose);
-		GetOwner().SetSkinPalette(std::move(palette));
-		GetOwner().SetSkeletonPose(std::move(pose));
+		// 구동할 스킨 메시 오브젝트마다 팔레트를 만듦. 스킨이 같으면 노드 월드는 한 번만 계산함 (MasterChief 는 4개 메시가 한 스킨을 씀).
+		m_targetScratch.clear();
+		CollectSkinTargets(GetOwner(), m_targetScratch);
+		const ModelSkin* evaluated = nullptr;
+		for (GameObject* object : m_targetScratch)
+		{
+			const SkinTarget* target = ResolveTarget(*object);
+			if (target->skin != evaluated)
+			{
+				EvaluateNodeGlobals(m_current, *target->skin, m_global);
+				evaluated = target->skin;
+			}
+			std::vector<XMFLOAT4X4> palette;
+			GameObject::SkeletonPose pose;
+			BuildSkinPalette(*target->skin, m_global, target->meshRest, palette, pose);
+			object->SetSkinPalette(std::move(palette));
+			object->SetSkeletonPose(std::move(pose));
+		}
 	}
 
 	// 채널을 시간 t 에서 샘플링해 value 에 성분 수(3 또는 4)만큼 씀. t 는 [times.front(), times.back()] 로 자름.
@@ -256,12 +336,12 @@ private:
 
 	// 스킨 모드 상태
 	const Model* m_model = nullptr;
-	const ModelSkin* m_skin = nullptr;       // 비면 단일 노드 모드
-	int m_meshNode = -1;                     // 스킨 메시를 단 노드
+	bool m_skinMode = false;                 // false 면 단일 노드 모드
+	std::unordered_map<const Mesh*, SkinTarget> m_targets;   // 메시별 스킨·메시 노드 기본 월드 캐시 (Start 에서 비움)
+	std::vector<GameObject*> m_targetScratch;   // CollectSkinTargets 결과. 프레임 안에서만 씀 (오래 들고 있지 않음)
 	std::vector<ModelNode> m_rest;           // 모델의 기본 노드 TRS
 	std::vector<ModelNode> m_current;        // 이번 프레임에 채널이 덮은 노드 TRS
 	std::vector<XMFLOAT4X4> m_global;         // 노드 월드 (UpdateSkin 이 evalOrder 의 노드만 채움)
-	XMFLOAT4X4 m_meshRest;
 
 	const AnimationClip* m_clip = nullptr;   // AssetManager 캐시의 모델이 소유함. Start 마다 다시 찾음
 	ModelNode m_base;                        // 채널이 덮지 않는 성분의 기본값 (노드의 원래 TRS)

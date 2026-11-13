@@ -33,8 +33,7 @@ const ModelSkin* FindMeshSkin(const Model& model, uint32_t meshIndex, int& meshN
 	return nullptr;
 }
 
-void ComputeSkinPose(const std::vector<ModelNode>& nodes, const ModelSkin& skin, const XMFLOAT4X4& meshRest,
-	std::vector<XMFLOAT4X4>& global, std::vector<XMFLOAT4X4>& palette, GameObject::SkeletonPose& pose)
+void EvaluateNodeGlobals(const std::vector<ModelNode>& nodes, const ModelSkin& skin, std::vector<XMFLOAT4X4>& global)
 {
 	// 노드 월드: 임포트 때 정해 둔 순서(부모가 항상 앞)로 한 번 훑음. 부모 번호가 범위 밖이면 루트로 봄 (임포터와 같은 규칙).
 	for (const uint32_t n : skin.evalOrder)
@@ -46,7 +45,11 @@ void ComputeSkinPose(const std::vector<ModelNode>& nodes, const ModelSkin& skin,
 		if (node.parent >= 0 && static_cast<size_t>(node.parent) < nodes.size()) world = world * XMLoadFloat4x4(&global[static_cast<size_t>(node.parent)]);
 		XMStoreFloat4x4(&global[n], world);
 	}
+}
 
+void BuildSkinPalette(const ModelSkin& skin, const std::vector<XMFLOAT4X4>& global, const XMFLOAT4X4& meshRest,
+	std::vector<XMFLOAT4X4>& palette, GameObject::SkeletonPose& pose)
+{
 	const XMMATRIX inverseMesh = XMMatrixInverse(nullptr, XMLoadFloat4x4(&meshRest));
 	// 팔레트 = 조인트마다 행렬 1개씩 담은 배열 (palette[j] 는 joints[j] 용). 이번 프레임 값으로 매번 새로 채운다.
 	palette.assign(skin.joints.size(), XMFLOAT4X4());
@@ -66,6 +69,13 @@ void ComputeSkinPose(const std::vector<ModelNode>& nodes, const ModelSkin& skin,
 		// 조인트 로컬 → 오브젝트 공간. 오브젝트 월드를 곱하면 조인트의 실제 월드 위치가 된다.
 		XMStoreFloat4x4(&pose.jointToObject[j], jointWorld * inverseMesh);
 	}
+}
+
+void ComputeSkinPose(const std::vector<ModelNode>& nodes, const ModelSkin& skin, const XMFLOAT4X4& meshRest,
+	std::vector<XMFLOAT4X4>& global, std::vector<XMFLOAT4X4>& palette, GameObject::SkeletonPose& pose)
+{
+	EvaluateNodeGlobals(nodes, skin, global);
+	BuildSkinPalette(skin, global, meshRest, palette, pose);
 }
 
 void ApplyRestSkinPoses(Scene& scene)

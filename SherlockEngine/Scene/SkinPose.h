@@ -18,8 +18,13 @@ DirectX::XMMATRIX ComputeNodeGlobal(const std::vector<ModelNode>& nodes, int n);
 // ApplyRestSkinPoses 가 같은 인스턴스를 고르도록 한 함수에 둠), 그 인스턴스의 메시 노드 번호를 meshNode 로 돌려줌. 없으면 nullptr.
 const ModelSkin* FindMeshSkin(const Model& model, uint32_t meshIndex, int& meshNode);
 
-// nodes = 이번 포즈의 노드 TRS, meshRest = 메시 노드 기본 월드, global = 노드 월드를 담을 작업 공간(nodes 와 같은 길이).
-// palette 는 skin.joints 길이로 채움. 팔레트와 포즈의 의미는 Animator::UpdateSkin 의 주석 참고.
+// 두 단계로 나뉨. 같은 스킨을 쓰는 메시 오브젝트가 여럿이면(MasterChief 는 4개) 노드 월드는 한 번만 구하고 팔레트만 메시마다 만듦.
+//   1) EvaluateNodeGlobals: nodes = 이번 포즈의 노드 TRS → global = 노드 월드 (nodes 와 같은 길이의 작업 공간, skin 이 쓰는 노드만 채움).
+//   2) BuildSkinPalette: global + meshRest(메시 노드 기본 월드) → palette(skin.joints 길이)와 pose. 팔레트와 포즈의 의미는 Animator::UpdateSkin 의 주석 참고.
+void EvaluateNodeGlobals(const std::vector<ModelNode>& nodes, const ModelSkin& skin, std::vector<DirectX::XMFLOAT4X4>& global);
+void BuildSkinPalette(const ModelSkin& skin, const std::vector<DirectX::XMFLOAT4X4>& global, const DirectX::XMFLOAT4X4& meshRest,
+	std::vector<DirectX::XMFLOAT4X4>& palette, GameObject::SkeletonPose& pose);
+// 위 둘을 이어 부르는 편의 함수 (ApplyRestSkinPoses 처럼 메시 하나만 계산할 때).
 void ComputeSkinPose(const std::vector<ModelNode>& nodes, const ModelSkin& skin, const DirectX::XMFLOAT4X4& meshRest,
 	std::vector<DirectX::XMFLOAT4X4>& global, std::vector<DirectX::XMFLOAT4X4>& palette, GameObject::SkeletonPose& pose);
 
