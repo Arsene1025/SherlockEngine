@@ -119,6 +119,12 @@
     <ClCompile Include="Core\Engine.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="Scene\SkeletonDebug.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\SkinPose.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
     <ClCompile Include="RHI\D3D11\D3D11Convert.cpp">
       <Filter>RHI\D3D11</Filter>
     </ClCompile>
@@ -298,6 +304,15 @@
     </ClInclude>
     <ClInclude Include="Core\Engine.h">
       <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics\DebugDraw.h">
+      <Filter>Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SkeletonDebug.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\SkinPose.h">
+      <Filter>Scene</Filter>
     </ClInclude>
     <ClInclude Include="RHI\D3D11\D3D11Common.h">
       <Filter>RHI\D3D11</Filter>

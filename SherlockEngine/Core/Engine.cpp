@@ -5,6 +5,8 @@
 #include "RHI/Device.h"
 #include "RHI/CommandList.h"
 #include "Graphics/Screenshot.h"
+#include "Scene/SkeletonDebug.h"
+#include "Scene/SkinPose.h"
 #include <imgui.h>
 
 using namespace DirectX;   // 이 파일 안에서만
@@ -106,7 +108,12 @@ void Engine::Render()
 		GpuProfileScope gpuFrame(cmd, "Frame");
 		{
 			ProfileScope cpu("Renderer::Render");
-			m_renderer.Render(m_scene, m_camera, m_time.GetTotalTime());
+			// 디버그 선: 업데이트 중에 쌓인 선(Raycast 등)에 더해 본 표시를 지금 쌓고, Render 가 올려 그린 뒤 조건 없이 비움.
+			// (Render 가 일찍 끝나는 프레임에도 선이 다음 프레임으로 새지 않음)
+			ApplyRestSkinPoses(m_scene);   // 팔레트가 비어 있는 스킨 오브젝트(편집 모드 등)에 기본 자세를 채움. 본 표시도 이 포즈를 읽음
+			DrawSkeletonDebug(m_debugDraw, m_scene, m_renderer.GetSettings().debugBones);
+			m_renderer.Render(m_scene, m_camera, m_time.GetTotalTime(), m_debugDraw);
+			m_debugDraw.Clear();
 		}
 		{
 			ProfileScope cpu("UIPass");

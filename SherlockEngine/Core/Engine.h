@@ -2,6 +2,7 @@
 #include <memory>
 #include "RHI/RHI.h"
 #include "Graphics/Renderer.h"
+#include "Graphics/DebugDraw.h"
 #include "Scene/Scene.h"
 #include "Scene/Camera.h"
 #include "Core/Config.h"
@@ -11,7 +12,7 @@
 
 // Engine: 앱이 올라타는 엔진. EditorApp 이 엔진을 조립하는 구조가 아니라, 엔진이 시스템을 소유하고 앱을 그 위에 올림.
 //
-// 소유: RHI Device, Renderer, Scene, Camera, Input, Time, AssetManager, Config. AppBase 는 창과 메시지 루프,
+// 소유: RHI Device, Renderer, Scene, Camera, Input, Time, AssetManager, DebugDraw, Config. AppBase 는 창과 메시지 루프,
 // ImGui 컨텍스트·Win32 백엔드만 갖고 Engine& 을 protected 로 앱에 넘겨줌. 앱(EditorApp)은 OnUpdate 에서 씬을
 // 조작하고 OnGUI 에서 위젯을 더할 뿐, 렌더 순서(BeginFrame → 그림자 → 메인 → UI → Present)는 Engine 이 정함.
 //
@@ -50,6 +51,7 @@ public:
 	Input& GetInput() { return m_input; }
 	Time& GetTime() { return m_time; }
 	AssetManager& GetAssets() { return m_assets; }
+	DebugDraw& GetDebugDraw() { return m_debugDraw; }   // 이번 프레임의 디버그 선 수집기 (Render 직후 비워짐)
 	const Config& GetConfig() const { return m_config; }
 	RHI::Backend GetBackend() const { return m_backend; }
 
@@ -65,6 +67,7 @@ private:
 	Camera m_camera;
 	Input m_input;
 	Time m_time;
+	DebugDraw m_debugDraw;   // CPU 전용. Renderer 가 읽기만 함
 	bool m_imguiRendererReady = false;
 	std::wstring m_screenshotPath;
 };

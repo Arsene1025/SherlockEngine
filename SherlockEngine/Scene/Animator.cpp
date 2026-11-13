@@ -2,6 +2,7 @@
 #include "Scene/Behaviour.h"
 #include "Scene/GameObject.h"
 #include "Scene/Scene.h"
+#include "Scene/SkinPose.h"
 #include "Core/AssetManager.h"
 #include "Core/Log.h"
 #include "Graphics/Model.h"
@@ -72,15 +73,7 @@ public:
 		}
 
 		// 스킨 모드: 이 메시를 그리는 노드가 skin 을 가지면 계층 전체를 계산함
-		for (const ModelInstance& instance : model->instances)
-		{
-			if (instance.meshIndex != source->meshIndex || instance.skin < 0 || static_cast<size_t>(instance.skin) >= model->skins.size()) continue;
-			const ModelSkin& candidate = model->skins[static_cast<size_t>(instance.skin)];
-			if (candidate.joints.empty() || candidate.inverseBind.size() != candidate.joints.size()) continue;
-			m_skin = &candidate;
-			m_meshNode = instance.node;
-			break;
-		}
+		m_skin = FindMeshSkin(*model, source->meshIndex, m_meshNode);   // 편집 모드의 레스트 포즈(ApplyRestSkinPoses)와 같은 인스턴스를 고름
 		if (m_skin != nullptr)
 		{
 			m_model = model;
@@ -89,7 +82,7 @@ public:
 			m_current = m_rest;
 			m_global.assign(m_rest.size(), XMFLOAT4X4());
 			// 메시 노드의 기본 자세 월드 (조인트 월드와 같은 좌표계, options.scale 은 반영하지 않음)
-			XMStoreFloat4x4(&m_meshRest, m_meshNode >= 0 ? NodeGlobal(m_rest, m_meshNode) : XMMatrixIdentity());
+			XMStoreFloat4x4(&m_meshRest, m_meshNode >= 0 ? ComputeNodeGlobal(m_rest, m_meshNode) : XMMatrixIdentity());
 			Log::Info("Animator '%s': 클립 '%s' 스킨 재생 (길이 %.2f초, 채널 %zu개, 조인트 %zu개)", GetOwner().GetName().c_str(), found->name.c_str(),
 				found->duration, found->channels.size(), m_skin->joints.size());
 			return;
@@ -159,24 +152,11 @@ public:
 	float speed = 1.0f;
 
 private:
-	// 기본 자세 노드 표에서 노드 n 의 월드 (재생과 무관, Start 에서 한 번)
-	static XMMATRIX NodeGlobal(const std::vector<ModelNode>& nodes, int n)
-	{
-		XMMATRIX world = XMMatrixIdentity();
-		for (size_t steps = 0; n >= 0 && static_cast<size_t>(n) < nodes.size() && steps <= nodes.size(); ++steps)
-		{
-			const ModelNode& node = nodes[static_cast<size_t>(n)];
-			world = world * XMMatrixScaling(node.scale.x, node.scale.y, node.scale.z) * XMMatrixRotationQuaternion(XMQuaternionNormalize(XMLoadFloat4(&node.rotation)))
-				* XMMatrixTranslation(node.translation.x, node.translation.y, node.translation.z);
-			n = node.parent;
-		}
-		return world;
-	}
-
 	// 스킨 모드 한 프레임: 시간 t 의 노드 TRS → 조인트 월드 → 팔레트
 	void UpdateSkin(float t)
 	{
 		m_current = m_rest;
+		//node의 TRS구하기
 		for (const AnimationChannel& channel : m_clip->channels)
 		{
 			if (channel.node >= m_current.size()) continue;
@@ -192,31 +172,35 @@ private:
 			}
 		}
 
-		// 노드 월드: 임포트 때 정해 둔 순서(부모가 항상 앞)로 한 번 훑음. 부모 번호가 범위 밖이면 루트로 봄 (임포터와 같은 규칙).
-		for (const uint32_t n : m_skin->evalOrder)
-		{
-			const ModelNode& node = m_current[n];
-			const XMVECTOR q = XMQuaternionNormalize(XMLoadFloat4(&node.rotation));
-			XMMATRIX world = XMMatrixScaling(node.scale.x, node.scale.y, node.scale.z) * XMMatrixRotationQuaternion(q)
-				* XMMatrixTranslation(node.translation.x, node.translation.y, node.translation.z);
-			if (node.parent >= 0 && static_cast<size_t>(node.parent) < m_current.size()) world = world * XMLoadFloat4x4(&m_global[static_cast<size_t>(node.parent)]);
-			XMStoreFloat4x4(&m_global[n], world);
-		}
+		// 노드 월드(evalOrder 루프)와 아래 팔레트·포즈 식은 Scene/SkinPose.cpp 의 ComputeSkinPose 에 있음 (식은 그대로 옮김).
+		// 편집 모드의 기본 자세(ApplyRestSkinPoses)도 같은 함수를 써서, 재생을 시작하기 전과 후의 스킨 모양이 같은 식에서 나옴.
 
-		// palette[j] = 역바인드[j] · 조인트 월드[j] · (메시 노드 기본 월드)⁻¹. 마지막 항은 오브젝트의 pre(메시 노드 월드)를
-		// 정점 셰이더 결과에서 상쇄함 (glTF: 스킨 메시의 노드 변환은 무시).
-		const XMMATRIX inverseMesh = XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_meshRest));
-		std::vector<XMFLOAT4X4> palette(m_skin->joints.size());
+		// 스킨 팔레트 / 스켈레톤 포즈 계산
+		// 행벡터 규약(DirectXMath): v' = v · M0 · M1 · ... 이라 왼쪽 행렬이 먼저 적용된다.
+		//
+		// palette[j] = 역바인드[j] · 조인트 월드[j] · (메시 노드 기본 월드)⁻¹
+		//   1) inverseBind[j]  : 메시 정점(바인드 포즈 메시 공간)을 조인트 j 의 로컬 공간으로 보낸다.
+		//                        "바인드 포즈에서 조인트 월드 행렬의 역행렬"이다.
+		//						  joint에 영향을 받는 정점들을 조인트 로컬로 보내서 조인트의 움직임이 정점에 반영되도록 한다.
+		//						  해당 과정을 거치면 정점이 조인트로부터 얼마나 떨저어졌는지 상대 좌표를 알 수 있음
+		//						  이 상태에서 조인트월드를 곱하면 조인트가 움직인 만큼 정점도 움직임(조인트 로컬 ㄷ좌표가 그대로 유지되니까)
+		//   2) jointWorld[j]   : 조인트 로컬 공간을 현재 애니메이션 포즈의 월드(씬) 공간으로 보낸다.
+		//                        (m_global = 로컬 TRS · 부모 월드, 위 evalOrder 루프에서 계산됨)
+		//                       "바인드 포즈 대비 이 조인트가 움직인 변화량" 계산.
+		//                        바인드 포즈 그대로면 inverseBind · jointWorld = 단위행렬이라 정점이 제자리에 남는다.
+		// 
+		//   3) inverseMesh     : 현재 엔진에서는 그릴 때 pre를 곱해서 메시를 씬 공간으로 보냄.
+		//						  하지만 스킨 메시는 이미 inverseBind * jointWorld를 거친 시점에 이미 씬 공간에 있음.
+		//						  ->jointWorld가 씬 기준이기 때문
+		//                        그런 상태에서 pre가 또 곱해지면 씬 공간으로 두 번 감.
+		//                        그레서 pre의 역행렬을 넣어서 상쇄.
+		//                        
+		// 정점은 자기 영향 조인트 인덱스(JOINTS_0)와 가중치(WEIGHTS_0)를 갖고 있고, 정점 셰이더가 이 배열에서
+		// 해당 행렬을 골라 skin = Σ 가중치 · 정점 · palette[인덱스] 로 블렌딩한다.
+		// SetSkinPalette 로 오브젝트에 넘기면 렌더러가 GPU 버퍼(구조체 버퍼 등)로 올려 셰이더가 읽는다.
+		std::vector<XMFLOAT4X4> palette;
 		GameObject::SkeletonPose pose;
-		pose.jointToObject.resize(palette.size());
-		pose.parent = m_skin->jointParent;
-		for (size_t j = 0; j < palette.size(); ++j)
-		{
-			const XMMATRIX inverseBind = XMLoadFloat4x4(&m_skin->inverseBind[j]);
-			const XMMATRIX jointWorld = XMLoadFloat4x4(&m_global[m_skin->joints[j]]);
-			XMStoreFloat4x4(&palette[j], inverseBind * jointWorld * inverseMesh);
-			XMStoreFloat4x4(&pose.jointToObject[j], jointWorld * inverseMesh);
-		}
+		ComputeSkinPose(m_current, *m_skin, m_meshRest, m_global, palette, pose);
 		GetOwner().SetSkinPalette(std::move(palette));
 		GetOwner().SetSkeletonPose(std::move(pose));
 	}

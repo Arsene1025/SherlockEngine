@@ -184,6 +184,9 @@
     <ClInclude Include="Core\Profiler.h" />
     <ClInclude Include="Core\AssetManager.h" />
     <ClInclude Include="Core\Engine.h" />
+    <ClInclude Include="Graphics\DebugDraw.h" />
+    <ClInclude Include="Scene\SkeletonDebug.h" />
+    <ClInclude Include="Scene\SkinPose.h" />
     <ClInclude Include="RHI\D3D11\D3D11Common.h" />
     <ClInclude Include="RHI\D3D11\D3D11Convert.h" />
     <ClInclude Include="RHI\D3D11\D3D11Resources.h" />
@@ -262,6 +265,8 @@
     <ClCompile Include="Core\Profiler.cpp" />
     <ClCompile Include="Core\AssetManager.cpp" />
     <ClCompile Include="Core\Engine.cpp" />
+    <ClCompile Include="Scene\SkeletonDebug.cpp" />
+    <ClCompile Include="Scene\SkinPose.cpp" />
     <ClCompile Include="RHI\D3D11\D3D11Convert.cpp" />
     <ClCompile Include="RHI\D3D11\D3D11Device.cpp" />
     <ClCompile Include="RHI\D3D11\PipelineState.cpp" />

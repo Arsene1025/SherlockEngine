@@ -8,6 +8,7 @@
 #include "Graphics/ShaderConstants.h"
 #include "Graphics/VertexTypes.h"
 #include "Graphics/Frustum.h"
+#include "Graphics/DebugDraw.h"
 #include "Graphics/Mesh.h"
 #include "Scene/Scene.h"
 #include "Scene/Camera.h"
@@ -76,13 +77,6 @@ namespace
 	constexpr const wchar_t* kCommonShaderFile = L"Common.hlsli";   // 모든 셰이더가 include 함. 핫리로드 감시 대상
 	constexpr float kHotReloadPollInterval = 0.5f;   // 초
 	constexpr uint32_t kInitialLightCapacity = 64;   // 조명 구조체 버퍼의 처음 원소 수 (5,120바이트)
-	constexpr uint32_t kMaxDebugLineVertices = 65536;   // 디버그 선 동적 정점 버퍼 크기 (16바이트 × 65536 = 1MB)
-
-	uint32_t PackLineColor(float r, float g, float b)
-	{
-		auto channel = [](float v) { return static_cast<uint32_t>((std::min)((std::max)(v, 0.0f), 1.0f) * 255.0f + 0.5f); };
-		return channel(r) | (channel(g) << 8) | (channel(b) << 16) | (255u << 24);
-	}
 
 	// HLSL cbuffer 이름 ↔ C++ 구조체 크기. 셰이더가 선언한 cbuffer 는 전부 여기 있어야 함 (없으면 로드 실패).
 	struct ConstantBufferInfo { const char* name; uint32_t size; };
@@ -141,7 +135,7 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_perObjectCB = makeCB(sizeof(PerObjectConstants), "CB_PerObject");
 	m_skinCB = makeCB(sizeof(SkinConstants), "CB_Skin");   // b7
 	m_skinScratch.resize(kMaxSkinJoints);
-	m_debugLineVB = m_device->CreateBuffer(BufferDesc{ .size = kMaxDebugLineVertices * static_cast<uint32_t>(sizeof(DebugLineVertex)), .usage = BufferUsage::Dynamic,
+	m_debugLineVB = m_device->CreateBuffer(BufferDesc{ .size = DebugDraw::kMaxVertices * static_cast<uint32_t>(sizeof(DebugLineVertex)), .usage = BufferUsage::Dynamic,
 		.bindFlags = BufferBind_Vertex, .stride = sizeof(DebugLineVertex), .debugName = "VB_DebugLines" });
 	m_lightCB = makeCB(sizeof(LightConstants), "CB_Lights");
 	// 조명 배열은 상수버퍼가 아니라 구조체 버퍼 (t15). 처음에는 kInitialLightCapacity 개 자리, 모자라면
@@ -805,7 +799,7 @@ void Renderer::InvalidateScene(const Scene& scene, bool releaseTextures)
 
 // ------------------------------------------------------------------ 프레임
 
-void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
+void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime, const DebugDraw& debugDraw)
 {
 	if (m_device == nullptr) return;
 
@@ -856,6 +850,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime)
 	UploadLights(scene);
 
 	BuildDrawList(scene);
+	UploadDebugLines(debugDraw);   // 디버그 선(DebugDraw 가 모은 것)을 동적 정점 버퍼에 올림. 프레임마다 한 번은 써야 함
 
 	m_device->EndResourceUploads();
 
@@ -1055,8 +1050,6 @@ void Renderer::BuildDrawList(const Scene& scene)
 		}
 	}
 
-	BuildDebugLines(scene);
-
 	// ---- 정렬: PSO → Material → Mesh → 인덱스 범위. 같은 상태가 연속되면 바인딩을 건너뛸 수 있음 ----
 	std::sort(m_drawList.begin(), m_drawList.end(), [](const DrawItem& a, const DrawItem& b)
 	{
@@ -1080,7 +1073,8 @@ void Renderer::UploadObjectConstants(uint32_t object)
 
 	if (data.skinned)
 	{
-		// b7 Skin: 조인트 팔레트를 전치해서 올림 (world 와 같은 관례). 팔레트가 비었으면(Animator 없음·편집 모드) 단위행렬 = 바인드 포즈.
+		// b7 Skin: 조인트 팔레트를 전치해서 올림 (world 와 같은 관례). 팔레트는 Animator 나 ApplyRestSkinPoses 가 미리 채워 둠.
+		// 그래도 비었으면(모델 정보를 못 찾음) 단위행렬 — 메시 정점이 모델 공간 그대로 그려짐.
 		// 팔레트가 있으면 그 길이만큼만 올림 (셰이더는 정점이 가리키는 조인트만 읽음). 없으면 정점이 어느 조인트를 가리킬지
 		// 모르므로 전부 단위행렬로 올림 — 일부만 올리면 나머지는 정의되지 않은 값이 돼 정점이 엉뚱한 곳으로 감.
 		const std::vector<XMFLOAT4X4>* palette = data.skinPalette;
@@ -1183,83 +1177,14 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera
 	DrawDebugLines(cmd);   // 하늘 뒤: 깊이 테스트가 없으므로 항상 위에 그려짐
 }
 
-void Renderer::BuildDebugLines(const Scene& scene)
+void Renderer::UploadDebugLines(const DebugDraw& debugDraw)
 {
-	m_debugLines.clear();
-	if (m_settings.debugBones > 0)
-	{
-		auto addLine = [this](const XMFLOAT3& a, const XMFLOAT3& b, uint32_t color)
-		{
-			if (m_debugLines.size() + 2 > kMaxDebugLineVertices) return;
-			m_debugLines.push_back({ a, color });
-			m_debugLines.push_back({ b, color });
-		};
-		const uint32_t boneColor = PackLineColor(0.1f, 1.0f, 0.2f);    // 본 (부모 → 자식): 초록
-		const uint32_t jointColor = PackLineColor(1.0f, 0.9f, 0.1f);   // 관절 십자: 노랑
-		const uint32_t axisX = PackLineColor(1.0f, 0.1f, 0.1f), axisY = PackLineColor(0.1f, 1.0f, 0.1f), axisZ = PackLineColor(0.2f, 0.4f, 1.0f);
-
-		for (const auto& objectPtr : scene.GetObjects())
-		{
-			const GameObject::SkeletonPose& pose = objectPtr->GetSkeletonPose();
-			const size_t count = pose.jointToObject.size();
-			if (count == 0) continue;
-			const XMMATRIX world = objectPtr->GetWorldMatrix();
-
-			// 조인트 월드 변환과 위치
-			std::vector<XMMATRIX> joint(count);
-			std::vector<XMFLOAT3> position(count);
-			for (size_t j = 0; j < count; ++j)
-			{
-				joint[j] = XMLoadFloat4x4(&pose.jointToObject[j]) * world;
-				XMStoreFloat3(&position[j], joint[j].r[3]);
-			}
-			// 조인트마다 "길이": 부모까지의 거리, 부모가 없으면 첫 자식까지의 거리, 둘 다 없으면 작은 기본값. 십자·축 크기가 이 값에 비례해
-			// 모델 크기(단위)와 상관없이 보임.
-			std::vector<float> length(count, 0.0f);
-			auto distance = [&](size_t a, size_t b) { return XMVectorGetX(XMVector3Length(XMVectorSubtract(joint[a].r[3], joint[b].r[3]))); };
-			for (size_t j = 0; j < count; ++j)
-			{
-				const int parent = j < pose.parent.size() ? pose.parent[j] : -1;
-				if (parent >= 0 && static_cast<size_t>(parent) < count) length[j] = distance(j, static_cast<size_t>(parent));
-			}
-			for (size_t j = 0; j < count; ++j)
-			{
-				const int parent = j < pose.parent.size() ? pose.parent[j] : -1;
-				if (parent >= 0 && static_cast<size_t>(parent) < count && length[static_cast<size_t>(parent)] == 0.0f) length[static_cast<size_t>(parent)] = length[j];   // 루트는 자식 길이를 빌림
-			}
-
-			for (size_t j = 0; j < count; ++j)
-			{
-				const int parent = j < pose.parent.size() ? pose.parent[j] : -1;
-				if (parent >= 0 && static_cast<size_t>(parent) < count) addLine(position[static_cast<size_t>(parent)], position[j], boneColor);
-
-				const float unit = length[j] > 1e-5f ? length[j] : 0.05f;
-				const float cross = unit * 0.12f;
-				const XMFLOAT3& p = position[j];
-				addLine(XMFLOAT3(p.x - cross, p.y, p.z), XMFLOAT3(p.x + cross, p.y, p.z), jointColor);
-				addLine(XMFLOAT3(p.x, p.y - cross, p.z), XMFLOAT3(p.x, p.y + cross, p.z), jointColor);
-				addLine(XMFLOAT3(p.x, p.y, p.z - cross), XMFLOAT3(p.x, p.y, p.z + cross), jointColor);
-
-				if (m_settings.debugBones >= 2)
-				{
-					const uint32_t colors[3] = { axisX, axisY, axisZ };
-					for (int axis = 0; axis < 3; ++axis)
-					{
-						// 로컬 축 방향(부모 스케일이 있어도 길이는 unit 기준으로 맞춤)
-						const XMVECTOR direction = XMVector3Normalize(joint[j].r[axis]);
-						XMFLOAT3 end;
-						XMStoreFloat3(&end, XMVectorAdd(joint[j].r[3], XMVectorScale(direction, unit * 0.35f)));
-						addLine(p, end, colors[axis]);
-					}
-				}
-			}
-		}
-	}
-
 	// D3D12 의 Dynamic 버퍼는 프레임마다 한 번은 써야 바인딩됨. 선이 없어도 정점 하나 분량을 올리고 그리지는 않음 (m_debugLineCount = 0).
-	m_debugLineCount = static_cast<uint32_t>(m_debugLines.size());
+	const std::vector<DebugLineVertex>& vertices = debugDraw.GetVertices();
+
+	m_debugLineCount = static_cast<uint32_t>(vertices.size());
 	static const DebugLineVertex kNoLine = {};
-	m_device->UpdateBuffer(m_debugLineVB, m_debugLineCount > 0 ? m_debugLines.data() : &kNoLine,
+	m_device->UpdateBuffer(m_debugLineVB, m_debugLineCount > 0 ? vertices.data() : &kNoLine,
 		(std::max)(m_debugLineCount, 1u) * static_cast<uint32_t>(sizeof(DebugLineVertex)));
 }
 

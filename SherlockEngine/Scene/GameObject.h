@@ -125,7 +125,8 @@ public:
 	// ---- 스키닝 ----
 	// 스키닝 메시의 조인트 행렬 팔레트: palette[j] = 역바인드[j] · 조인트 월드[j] · (메시 노드 월드)⁻¹ (행벡터 관례).
 	// 이 행렬로 정점을 변환하면 오브젝트 로컬(= 메시 노드 공간) 안에서 스킨된 위치가 나오고, 그 뒤 오브젝트 월드 행렬이 곱해짐.
-	// Animator 가 프레임마다 채움. 비어 있으면 Renderer 가 단위행렬을 써서 바인드 포즈로 그림 (편집 모드, Animator 없음).
+	// 재생 중에는 Animator 가 프레임마다 채우고, 그 밖(편집 모드 등)에는 ApplyRestSkinPoses 가 모델의 기본 자세로 채움 (Scene/SkinPose.h).
+	// 모델 정보를 못 찾아 끝내 비어 있을 때만 Renderer 가 단위행렬을 씀 (정점이 메시 공간 그대로 그려지므로 모델 크기에 따라 안 보일 수 있음).
 	const std::vector<DirectX::XMFLOAT4X4>& GetSkinPalette() const { return skinPalette; }
 	void SetSkinPalette(std::vector<DirectX::XMFLOAT4X4>&& palette) { skinPalette = std::move(palette); }
 

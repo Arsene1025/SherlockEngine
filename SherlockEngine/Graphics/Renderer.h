@@ -18,6 +18,7 @@
 
 namespace RHI { class Device; class CommandList; }
 class Scene;
+class DebugDraw;
 struct SceneEnvironment;
 class Mesh;
 class GameObject;
@@ -42,7 +43,7 @@ struct RenderSettings
 	int debugView = 0;
 	float debugDepthRange = 60.0f;
 
-	// 본 디버그 표시 (재생 중 Animator 가 있는 스킨 메시만): 0 끔, 1 본 선 + 관절 십자, 2 = 1 + 조인트 로컬 축(X 빨강·Y 초록·Z 파랑).
+	// 본 디버그 표시 (스킨 메시만. 재생 중에는 Animator 의 포즈, 편집 모드에서는 기본 자세): 0 끔, 1 본 선 + 관절 십자, 2 = 1 + 조인트 로컬 축(X 빨강·Y 초록·Z 파랑).
 	// 깊이 테스트 없이 메시 위에 그림. 에디터는 Render Settings 와 B 키, 게임은 B 키(끔 → 1 → 2 → 끔).
 	int debugBones = 0;
 };
@@ -148,7 +149,7 @@ public:
 	void Shutdown();
 
 	// 그림자 패스 + 메인 패스. 프레임의 UI 패스에서는 아래 두 함수 사이에 ImGui 를 그림.
-	void Render(const Scene& scene, const Camera& camera, float totalTime);
+	void Render(const Scene& scene, const Camera& camera, float totalTime, const DebugDraw& debugDraw);
 	void BeginUIPass();   // 백버퍼 UNORM 뷰, 깊이 없음, Load (씬 위에 그림)
 	void EndUIPass();     // 패스 종료 + 백버퍼 RenderTarget → Present 전이
 
@@ -310,10 +311,9 @@ private:
 	// b0 는 호출 전에 그 카메라로 올려 둘 것. 끝나면 view.hdr 는 ShaderResource 상태.
 	void RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTarget& view, const Camera& camera, const char* debugName);
 	void DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera);   // 씬 패스의 드로우 루프 (절두체 컬링, 끝에 스카이박스)
-	// 디버그 선 (본 표시). BuildDebugLines 가 프레임마다 월드 공간 선 목록을 만들어 동적 정점 버퍼에 올리고,
-	// DrawDebugLines 가 씬 패스 끝(하늘 뒤)에 깊이 테스트 없이 그림.
-	struct DebugLineVertex { DirectX::XMFLOAT3 position; uint32_t color; };   // color = R8G8B8A8_UNORM (r | g<<8 | b<<16 | a<<24)
-	void BuildDebugLines(const Scene& scene);
+	// 디버그 선 (본·Raycast 등). 선은 Engine 이 소유한 DebugDraw 가 모으고, Renderer 는 읽기만 함: UploadDebugLines 가 그 월드 공간
+	// 선 목록을 프레임마다 동적 정점 버퍼에 올리고, DrawDebugLines 가 씬 패스 끝(하늘 뒤)에 깊이 테스트 없이 그림.
+	void UploadDebugLines(const DebugDraw& debugDraw);
 	void DrawDebugLines(RHI::CommandList& cmd);
 	PipelineHandle GetDebugLinePipeline();
 	void DrawSkybox(RHI::CommandList& cmd);                               // 전체 화면 삼각형 하나 (Draw(3), 정점 버퍼 없음)
@@ -488,8 +488,7 @@ private:
 	std::unordered_map<uint32_t, PipelineHandle> m_shadowPipelines;
 	PipelineHandle m_skyPipeline;
 	PipelineHandle m_debugLinePipeline;
-	BufferHandle m_debugLineVB;                       // 동적 정점 버퍼 (kMaxDebugLineVertices 개)
-	std::vector<DebugLineVertex> m_debugLines;        // 이번 프레임의 선 (정점 2개 = 선 1개)
+	BufferHandle m_debugLineVB;                       // 동적 정점 버퍼 (DebugDraw::kMaxVertices 개)
 	uint32_t m_debugLineCount = 0;                    // 올린 정점 수 (0 이면 그리지 않음)
 	PipelineHandle m_tonemapPipelines[2];   // [srgbOutput]
 	PipelineHandle m_postPipelines[2];      // [additive]
