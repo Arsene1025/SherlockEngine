@@ -40,6 +40,7 @@ animation
 	   input  accessor → 키프레임 시각들  [0.0, 0.5, 1.0, ...]
 	   output accessor → 각 시각의 값들   [값0, 값1, 값2, ...]
 	   interpolation → LINEAR | STEP | CUBICSPLINE
+weight들의 합은 1이 되어야 함.
 
 
 데이터는 아래에서 위로 쌓임.
@@ -1225,6 +1226,55 @@ namespace
 		return true;
 	}
 
+	//스킨의 계층 정보(evalOrder, jointParent, rootJoints)를 만듦. 조인트가 채워진 뒤 한 번만 부름.
+	//evalOrder: 조인트마다 부모를 따라 올라가며 아직 모으지 않은 조상을 모은 뒤, 위에서 아래(부모 → 자식)로 뒤집어 붙임.
+	//  이미 모은 노드를 만나면 거기서 멈추므로 노드마다 한 번만 들어감. 올라가는 도중 같은 사슬 안의 노드를 다시 만나면 순환(잘못된 파일).
+	//  순환이면 false 를 돌려주고, 부른 쪽이 그 스킨을 비움 (Animator 는 조인트가 없는 스킨을 쓰지 않음).
+	//범위를 벗어난 부모 번호는 루트로 취급함 (Animator 의 계산과 같은 규칙).
+	bool BuildSkinHierarchy(const std::vector<ModelNode>& nodes, ModelSkin& skin)
+	{
+		skin.evalOrder.clear();
+		skin.jointParent.assign(skin.joints.size(), -1);
+		skin.rootJoints.clear();
+
+		const auto parentOf = [&](uint32_t node) { const int p = nodes[node].parent; return (p >= 0 && static_cast<size_t>(p) < nodes.size()) ? p : -1; };
+
+		//0 = 아직 안 봄, 1 = 지금 올라가는 사슬 안, 2 = evalOrder 에 들어감
+		std::vector<uint8_t> state(nodes.size(), 0);
+		std::vector<uint32_t> chain;
+		for (const uint32_t joint : skin.joints)
+		{
+			chain.clear();
+			int n = static_cast<int>(joint);
+			while (n >= 0 && state[static_cast<size_t>(n)] == 0)
+			{
+				state[static_cast<size_t>(n)] = 1;
+				chain.push_back(static_cast<uint32_t>(n));
+				n = parentOf(static_cast<uint32_t>(n));
+			}
+			if (n >= 0 && state[static_cast<size_t>(n)] == 1) return false;   // 순환
+			for (size_t i = chain.size(); i-- > 0;)
+			{
+				state[chain[i]] = 2;
+				skin.evalOrder.push_back(chain[i]);
+			}
+		}
+
+		//부모 조인트. 같은 노드가 joints 에 두 번 나오면 먼저 나온 위치가 이김
+		std::vector<int> nodeToJoint(nodes.size(), -1);
+		for (size_t j = 0; j < skin.joints.size(); ++j)
+		{
+			if (nodeToJoint[skin.joints[j]] < 0) nodeToJoint[skin.joints[j]] = static_cast<int>(j);
+		}
+		for (size_t j = 0; j < skin.joints.size(); ++j)
+		{
+			const int parentNode = parentOf(skin.joints[j]);
+			skin.jointParent[j] = parentNode >= 0 ? nodeToJoint[static_cast<size_t>(parentNode)] : -1;
+			if (skin.jointParent[j] < 0) skin.rootJoints.push_back(static_cast<uint32_t>(j));
+		}
+		return true;
+	}
+
 	//skins[]를 ModelSkin으로 변환. JSON 번호와 같은 번호로 만듦(노드의 skin 번호가 그대로 가리키도록).
 	//읽을 수 없는 skin은 조인트 없는 빈 skin으로 남김
 	//inverseBindMatrices 는 glTF(열 우선 MAT4, 오른손)이고, 엔진 좌표계로 mirror * M * mirror 로 바꿈
@@ -1292,6 +1342,17 @@ namespace
 						XMStoreFloat4x4(&out.inverseBind[i], mirror * inverseBind * mirror);
 					}
 				}
+			}
+
+			//계층 정보 (계산 순서, 부모 조인트, 루트 본)
+			if (!BuildSkinHierarchy(nodes, out))
+			{
+				Log::Warn("glTF skin '%s': 노드 계층에 순환이 있어 이 skin 은 쓰지 않음", out.name.c_str());
+				out.joints.clear();
+				out.inverseBind.clear();
+				out.evalOrder.clear();
+				out.jointParent.clear();
+				out.rootJoints.clear();
 			}
 		}
 		return true;

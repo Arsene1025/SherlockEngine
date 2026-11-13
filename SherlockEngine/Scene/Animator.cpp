@@ -88,19 +88,8 @@ public:
 			m_rest = model->nodes;
 			m_current = m_rest;
 			m_global.assign(m_rest.size(), XMFLOAT4X4());
-			m_state.assign(m_rest.size(), 0);
 			// 메시 노드의 기본 자세 월드 (조인트 월드와 같은 좌표계, options.scale 은 반영하지 않음)
 			XMStoreFloat4x4(&m_meshRest, m_meshNode >= 0 ? NodeGlobal(m_rest, m_meshNode) : XMMatrixIdentity());
-			// 디버그 표시용: 조인트의 부모 조인트 번호 (부모 노드가 조인트 목록에 있을 때만)
-			m_jointParent.assign(m_skin->joints.size(), -1);
-			for (size_t j = 0; j < m_skin->joints.size(); ++j)
-			{
-				const int parentNode = m_rest[m_skin->joints[j]].parent;
-				for (size_t k = 0; k < m_skin->joints.size(); ++k)
-				{
-					if (static_cast<int>(m_skin->joints[k]) == parentNode) { m_jointParent[j] = static_cast<int>(k); break; }
-				}
-			}
 			Log::Info("Animator '%s': 클립 '%s' 스킨 재생 (길이 %.2f초, 채널 %zu개, 조인트 %zu개)", GetOwner().GetName().c_str(), found->name.c_str(),
 				found->duration, found->channels.size(), m_skin->joints.size());
 			return;
@@ -170,24 +159,6 @@ public:
 	float speed = 1.0f;
 
 private:
-	// 노드 n 의 월드 행렬 (S·R·T 로컬을 부모 쪽으로 곱함). 상태: 0 = 미계산, 1 = 계산 중 (순환 감지), 2 = 완료.
-	// 노드는 부모보다 앞에 올 수도 뒤에 올 수도 있으므로(예: 자식이 작은 번호) 번호 순 단일 패스가 아니라 재귀로 구하고 결과를 기억함.
-	XMMATRIX Global(int n)
-	{
-		const size_t i = static_cast<size_t>(n);
-		if (m_state[i] == 2) return XMLoadFloat4x4(&m_global[i]);
-		if (m_state[i] == 1) return XMMatrixIdentity();   // 순환 (잘못된 파일). 끊음
-		m_state[i] = 1;
-		const ModelNode& node = m_current[i];
-		const XMVECTOR q = XMQuaternionNormalize(XMLoadFloat4(&node.rotation));
-		XMMATRIX world = XMMatrixScaling(node.scale.x, node.scale.y, node.scale.z) * XMMatrixRotationQuaternion(q)
-			* XMMatrixTranslation(node.translation.x, node.translation.y, node.translation.z);
-		if (node.parent >= 0 && static_cast<size_t>(node.parent) < m_current.size()) world = world * Global(node.parent);
-		XMStoreFloat4x4(&m_global[i], world);
-		m_state[i] = 2;
-		return world;
-	}
-
 	// 기본 자세 노드 표에서 노드 n 의 월드 (재생과 무관, Start 에서 한 번)
 	static XMMATRIX NodeGlobal(const std::vector<ModelNode>& nodes, int n)
 	{
@@ -220,7 +191,17 @@ private:
 			default: break;
 			}
 		}
-		std::fill(m_state.begin(), m_state.end(), uint8_t(0));
+
+		// 노드 월드: 임포트 때 정해 둔 순서(부모가 항상 앞)로 한 번 훑음. 부모 번호가 범위 밖이면 루트로 봄 (임포터와 같은 규칙).
+		for (const uint32_t n : m_skin->evalOrder)
+		{
+			const ModelNode& node = m_current[n];
+			const XMVECTOR q = XMQuaternionNormalize(XMLoadFloat4(&node.rotation));
+			XMMATRIX world = XMMatrixScaling(node.scale.x, node.scale.y, node.scale.z) * XMMatrixRotationQuaternion(q)
+				* XMMatrixTranslation(node.translation.x, node.translation.y, node.translation.z);
+			if (node.parent >= 0 && static_cast<size_t>(node.parent) < m_current.size()) world = world * XMLoadFloat4x4(&m_global[static_cast<size_t>(node.parent)]);
+			XMStoreFloat4x4(&m_global[n], world);
+		}
 
 		// palette[j] = 역바인드[j] · 조인트 월드[j] · (메시 노드 기본 월드)⁻¹. 마지막 항은 오브젝트의 pre(메시 노드 월드)를
 		// 정점 셰이더 결과에서 상쇄함 (glTF: 스킨 메시의 노드 변환은 무시).
@@ -228,12 +209,11 @@ private:
 		std::vector<XMFLOAT4X4> palette(m_skin->joints.size());
 		GameObject::SkeletonPose pose;
 		pose.jointToObject.resize(palette.size());
-		pose.parent = m_jointParent;
+		pose.parent = m_skin->jointParent;
 		for (size_t j = 0; j < palette.size(); ++j)
 		{
-			const int joint = static_cast<int>(m_skin->joints[j]);
 			const XMMATRIX inverseBind = XMLoadFloat4x4(&m_skin->inverseBind[j]);
-			const XMMATRIX jointWorld = Global(joint);
+			const XMMATRIX jointWorld = XMLoadFloat4x4(&m_global[m_skin->joints[j]]);
 			XMStoreFloat4x4(&palette[j], inverseBind * jointWorld * inverseMesh);
 			XMStoreFloat4x4(&pose.jointToObject[j], jointWorld * inverseMesh);
 		}
@@ -294,11 +274,9 @@ private:
 	const Model* m_model = nullptr;
 	const ModelSkin* m_skin = nullptr;       // 비면 단일 노드 모드
 	int m_meshNode = -1;                     // 스킨 메시를 단 노드
-	std::vector<int> m_jointParent;          // 조인트 j 의 부모 조인트 번호 (없으면 -1). 디버그 표시용
 	std::vector<ModelNode> m_rest;           // 모델의 기본 노드 TRS
 	std::vector<ModelNode> m_current;        // 이번 프레임에 채널이 덮은 노드 TRS
-	std::vector<XMFLOAT4X4> m_global;         // 노드 월드 (Global 이 채움)
-	std::vector<uint8_t> m_state;            // Global 의 계산 상태
+	std::vector<XMFLOAT4X4> m_global;         // 노드 월드 (UpdateSkin 이 evalOrder 의 노드만 채움)
 	XMFLOAT4X4 m_meshRest;
 
 	const AnimationClip* m_clip = nullptr;   // AssetManager 캐시의 모델이 소유함. Start 마다 다시 찾음

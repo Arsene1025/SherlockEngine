@@ -69,11 +69,21 @@ struct ModelNode
 // glTF skins[] 하나. 조인트 = 노드 번호 목록이고, 스키닝 메시의 JOINTS_0 번호가 이 목록의 위치를 가리킴.
 // inverseBind[i] 는 i 번째 조인트의 역바인드 행렬 (메시 정점 공간 → 조인트 공간). 엔진 좌표계(flipZ 반영), 행벡터 관례.
 // 없으면 단위행렬로 채워 joints 와 같은 길이를 유지함.
+//
+// 아래 세 필드는 임포트 때 한 번 만들어 두는 계층 정보 (Model 은 만든 뒤 바뀌지 않으므로 인스턴스끼리 공유함).
+// 노드 번호는 channel.node·joints 가 가리키므로 재배열하지 않고, 순서만 따로 저장함.
 struct ModelSkin
 {
 	std::string name;
 	std::vector<uint32_t> joints;
 	std::vector<DirectX::XMFLOAT4X4> inverseBind;
+
+	// 계산해야 할 노드 번호: 조인트와 그 조상 노드. 부모가 항상 자식보다 앞에 있어서 앞에서부터 한 번 훑으면 월드 행렬이 구해짐.
+	std::vector<uint32_t> evalOrder;
+	// jointParent[j] = 조인트 j 의 부모 조인트 번호 (joints 의 위치). 부모 노드가 조인트가 아니거나 루트면 -1
+	std::vector<int> jointParent;
+	// jointParent 가 -1 인 조인트 번호들 (루트 본). 스킨에 따라 하나일 수도 여럿일 수도 있음
+	std::vector<uint32_t> rootJoints;
 };
 
 enum class AnimationPath : uint8_t { Translation, Rotation, Scale, Weights };
