@@ -36,6 +36,6 @@ namespace TextureImporter
 	// 캐시에 있으면 경로를 돌려주고, 없으면 (에디터라면) 만들어서 돌려줌. 만들 때는 수 초 걸릴 수 있음 (4096² 한 장 약 3초).
 	std::wstring ResolveCached(const std::string& name, const uint8_t* data, size_t size, bool srgb);
 
-	// 캐시 폴더 (끝에 백슬래시 포함). 프로젝트가 있으면 <프로젝트>\Library\TextureCache\, 없으면 <exe>\TextureCache\.
+	// 캐시 폴더 (끝에 백슬래시 포함). 엔진 소스 트리 안의 프로젝트면 <프로젝트>\Library\TextureCache\, 아니면(배포 포함) <exe>\TextureCache\.
 	std::wstring GetCacheDir();
 }

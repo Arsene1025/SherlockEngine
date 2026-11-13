@@ -192,7 +192,8 @@ void TextureImporter::SetSettings(const std::string& name, const TextureImportSe
 
 std::wstring TextureImporter::GetCacheDir()
 {
-	if (Paths::HasProject()) return Paths::GetProjectRoot() + L"Library\\TextureCache\\";
+	// 배포본(엔진 소스 트리 없음)은 .sherlock 이 exe 옆에 있어 HasProject() 가 true 여도 GameBuilder 가 캐시를 <exe>\TextureCache\ 에 싣는다.
+	if (Paths::HasProject() && Paths::HasEngineSourceTree()) return Paths::GetProjectRoot() + L"Library\\TextureCache\\";
 	return Paths::GetExecutableDir() + L"TextureCache\\";
 }
 
