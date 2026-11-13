@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · 클립 전환(SetClip)과 루트 모션 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.step { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>클립 전환(SetClip)과 루트 모션</h1>
+  <p>2026-11-13 · <code>Animator</code> 가 클립 하나만 재생하는 지금 구조를, 런타임 클립 전환 → 크로스페이드 → 루트 모션 순서로 넓히는 구현 계획입니다. <b>이 문서를 쓴 시점에는 이 계획의 코드를 한 줄도 쓰지 않았습니다.</b> (선행 작업인 스킨 계층 순서 계산만 이미 끝났습니다. 아래 0단계.)</p>
+  <div class="box warn"><b>결론:</b> 순서는 <b>FindAnimation → Start 분리 → SetClip → 크로스페이드 → 루트 모션</b>입니다. 가장 먼저 부딪힐 문제는 두 가지입니다. (1) <code>Animator</code> 가 모델 루트가 아니라 <b>메시 오브젝트마다 하나씩</b> 붙어 있어서(MasterChief 는 4개), 루트 모션을 그대로 넣으면 이동량이 4배가 됩니다. (2) mixamo 클립 이름이 전부 <code>Armature|mixamo.com|Layer0</code> 로 같아서, 파일이 여러 개면 이름으로 클립을 고를 수 없습니다.</div>
+  <p class="foot">기준: 커밋 985fed6 (브랜치 <code>refactor/skin-eval-order</code>). 경로는 <code>SherlockEngine/</code> 기준이고 행 번호는 이 시점의 참고용입니다. <code>Transform</code> 클래스의 API 와 Behaviour 업데이트 순서는 읽지 않았으므로 해당 부분은 구현할 때 확인합니다.</p>
+</header>
+<nav><a href="#now">1. 현재 구조</a><a href="#setclip">2. SetClip 설계</a><a href="#blend">3. 크로스페이드</a><a href="#root">4. 루트 모션</a><a href="#steps">5. 구현 순서</a><a href="#decide">6. 정할 것</a><a href="#risk">7. 위험·제외</a></nav>
+
+<section id="now">
+<h2>1. 현재 구조 (코드로 확인한 사실)</h2>
+<table>
+<tr><th>항목</th><th>지금</th><th>위치</th></tr>
+<tr><td>재생 클립</td><td><code>const AnimationClip* m_clip</code> 하나. 클립 데이터는 <code>Model::animations</code> 에 있고 Animator 는 비소유 포인터만 가짐</td><td><code>Scene/Animator.cpp</code></td></tr>
+<tr><td>클립 선택</td><td>직렬화되는 <code>clip</code> 이름 문자열. <code>Start</code> 에서 <code>model-&gt;animations</code> 를 선형 탐색, 빈 문자열이면 첫 클립, 못 찾으면 <code>m_clip = nullptr</code> 로 멈춤</td><td><code>Animator::Start</code></td></tr>
+<tr><td><code>Start</code> 가 하는 일</td><td>모델 바인딩(스킨 탐색, <code>m_rest</code>·<code>m_global</code>·<code>m_meshRest</code>)과 클립 바인딩(단일 노드 모드 검증, <code>m_base</code>)을 한 함수에서 함</td><td><code>Animator::Start</code></td></tr>
+<tr><td>포즈 계산</td><td><code>m_current = m_rest</code> 로 기본 포즈를 깔고 채널이 덮은 노드만 갱신 → <code>evalOrder</code> 순으로 노드 월드 → 팔레트</td><td><code>Animator::UpdateSkin</code></td></tr>
+<tr><td>배치와 포즈</td><td>스킨 모드는 <code>Transform</code> 을 건드리지 않고 팔레트만 올림. 배치(이동·회전·스케일)는 모델 루트 오브젝트의 <code>Transform</code></td><td><code>Scene::AddModel</code></td></tr>
+<tr><td>Animator 개수</td><td>메시 오브젝트(<code>01.Arms</code>·<code>02.Chest</code>·<code>03.Helmet</code>·<code>04.Legs</code>)마다 하나. 모델 루트 오브젝트의 자식들임. 같은 클립을 4번 계산함</td><td><code>MasterChiefWalk.json</code></td></tr>
+<tr><td>루트 본 정보</td><td><code>ModelSkin::rootJoints</code>, <code>jointParent</code>, <code>evalOrder</code> 가 임포트 때 만들어짐 (아직 쓰는 곳 없음)</td><td><code>Graphics/Model.h</code></td></tr>
+</table>
+
+<h3>0단계 (완료): 스킨 계층 순서 계산</h3>
+<ul>
+  <li>커밋 985fed6. 임포트 때 <code>evalOrder</code>(조인트와 조상, 부모가 앞)를 만들고 <code>Animator</code> 는 그 순서를 한 번 훑습니다. 옛 재귀 방식과 조인트 월드 행렬을 약 140프레임 비교해 차이 0 이었습니다.</li>
+  <li>이 계획은 그 위에서 시작합니다. 루트 모션이 <code>rootJoints</code> 와 <code>evalOrder</code> 를 씁니다.</li>
+</ul>
+</section>
+
+<section id="setclip">
+<h2>2. SetClip 설계</h2>
+
+<h3>2-1. Model::FindAnimation (선형 탐색)</h3>
+<ul>
+  <li><code>int FindAnimation(const std::string&amp; name) const</code>. 못 찾으면 -1. 클립이 수 개~수십 개라 선형 탐색으로 충분하고, 해시 맵은 <code>animations</code> 와 어긋날 수 있는 상태를 하나 더 만듭니다. 호출부는 <code>FindAnimation</code> 만 쓰므로 나중에 내부만 맵으로 바꿀 수 있습니다.</li>
+  <li>"빈 이름이면 첫 클립" 규칙은 <code>Model</code> 이 아니라 호출부(Animator)에 둡니다.</li>
+</ul>
+
+<h3>2-2. Start 분리</h3>
+<table>
+<tr><th>함수</th><th>하는 일</th><th>언제</th></tr>
+<tr><td><code>BindModel()</code></td><td>메시 소스 → <code>Model</code>, 스킨 탐색, <code>m_rest</code>·<code>m_global</code>·<code>m_meshRest</code> 준비</td><td><code>Start</code> 에서 한 번</td></tr>
+<tr><td><code>BindClip(const AnimationClip*)</code></td><td>단일 노드 모드 검증(채널 노드가 하나이고 루트인지), <code>m_clip</code>·<code>m_base</code> 설정, <code>m_time = 0</code>, 스킨 모드면 <code>m_current = m_rest</code></td><td><code>Start</code> 와 <code>SetClip</code></td></tr>
+</table>
+<div class="box">검증이 실패하면 <b>이전 클립을 그대로 유지</b>하고 false 를 돌려줍니다. 지금 <code>Start</code> 처럼 <code>nullptr</code> 로 만들면 전환 한 번 잘못에 캐릭터가 멈춥니다.</div>
+
+<h3>2-3. 공개 API</h3>
+<pre><code>bool SetClip(const std::string&amp; name);   // 내부에서 FindAnimation → SetClip(int)
+bool SetClip(int index);                  // 상태 머신이 매 프레임 이름을 조회하지 않도록
+int  GetClipCount() const;
+const char* GetClipName(int index) const;
+int  GetClipIndex() const;                // 지금 재생 중인 클립 (-1 = 없음)</code></pre>
+<ul>
+  <li>같은 클립을 다시 요청하면 무시할지 처음부터 다시 틀지는 6장에서 정합니다. 권장은 <b>무시</b>입니다(걷기 중 걷기 입력이 들어와도 튀지 않도록).</li>
+  <li><code>m_model</code> 이 없으면(Start 실패) 경고만 남기고 false.</li>
+</ul>
+
+<h3>2-4. 직렬화 필드 clip 의 의미</h3>
+<ul>
+  <li>씬 파일에는 시작 클립 이름만 저장되게 두고, <code>SetClip</code> 은 <code>clip</code> 문자열을 덮지 않습니다. 런타임 상태는 <code>m_clip</code> 에만 둡니다. 플레이 중 전환한 결과가 씬에 저장되는 사고를 막습니다.</li>
+</ul>
+</section>
+
+<section id="blend">
+<h2>3. 크로스페이드</h2>
+<ul>
+  <li>즉시 전환이 먼저 동작한 뒤에 붙입니다. <code>SetClip(index, blendSeconds = 0)</code> 로 시간을 받고, 0 이면 즉시 전환입니다.</li>
+  <li><b>방식:</b> 전환하는 순간 마지막 포즈(<code>m_current</code> 의 TRS)를 스냅샷으로 저장하고, 새 클립을 샘플링한 포즈와 <code>blendSeconds</code> 동안 노드 TRS 단위로 섞습니다. 이동·스케일은 lerp, 회전은 slerp(부호가 반대면 한쪽을 뒤집어 짧은 쪽으로).</li>
+  <li>스냅샷 방식은 이전 클립을 계속 샘플링하지 않으므로 구현이 가장 작습니다. 이전 클립이 전환 중에도 계속 움직여야 하는 요구가 생기면 두 클립을 동시에 샘플링하는 방식으로 바꿉니다.</li>
+  <li>섞는 위치는 <code>m_current</code> 가 채워진 직후, <code>evalOrder</code> 순회 이전입니다. 팔레트 계산 코드는 바뀌지 않습니다.</li>
+  <li>스냅샷은 TRS 만 있으면 됩니다. 지금 <code>ModelNode</code> 는 <code>std::string name</code> 을 갖고 있어 복사가 무겁습니다. 전환 순간에만 복사하므로 지금은 감수하고, 프레임마다 복사하는 <code>m_current = m_rest</code> 와 함께 TRS 전용 구조로 줄이는 것은 별도 최적화로 뺍니다.</li>
+</ul>
+</section>
+
+<section id="root">
+<h2>4. 루트 모션</h2>
+<p>루트 모션은 <b>클립 안의 루트 본 이동을 포즈에서 빼서 오브젝트 <code>Transform</code> 의 이동으로 옮기는 것</b>입니다. 지금은 루트 본 이동이 팔레트에 그대로 들어가 메시가 오브젝트 기준으로 움직이고, 루프 경계에서 제자리로 튑니다.</p>
+
+<h3>4-1. 먼저 해결할 구조 문제: 누가 Transform 을 움직이나</h3>
+<ul>
+  <li>MasterChief 는 모델 루트 아래 메시 오브젝트 4개에 <code>Animator</code> 가 각각 있습니다. 모두 루트 모션을 적용하면 이동량이 4배가 되고, 적용 대상도 메시 오브젝트 자신의 <code>Transform</code> 이 아니라 <b>모델 루트의 <code>Transform</code></b> 이어야 합니다.</li>
+  <li><b>1안 (권장, 작음):</b> <code>Animator</code> 에 <code>rootMotion</code> bool 을 <code>Reflect</code> 로 추가하고, 모델 루트당 <b>하나의 Animator 에만</b> 켭니다. 켜진 Animator 는 자기 부모(모델 루트)의 <code>Transform</code> 에 delta 를 더합니다. 다른 Animator 는 포즈에서 루트 이동 성분만 뺍니다(메시가 서로 어긋나지 않도록 <b>모든 Animator 가 같은 규칙으로 성분을 제거</b>해야 합니다).</li>
+  <li><b>2안 (큼):</b> 모델 루트에 포즈 계산을 하는 컴포넌트를 하나만 두고, 메시 오브젝트는 팔레트만 받습니다. 4번 중복 계산도 함께 사라지지만 <code>Scene::AddModel</code>, 씬 직렬화, 에디터 표시를 모두 건드립니다. 이번 범위에서는 제외하고 후속 과제로 둡니다.</li>
+</ul>
+
+<h3>4-2. 루트 본 이동의 추출</h3>
+<ul>
+  <li>루트 본 = <code>ModelSkin::rootJoints[0]</code> 의 노드(<code>joints[j]</code>). 이 모델은 루트 본 1개(Hips 계열)입니다. 루트 본이 여럿이면 첫 번째만 쓰고 경고합니다.</li>
+  <li>그 노드의 Translation 채널을 시간 <code>t</code> 에서 샘플링한 값이 루트 본의 로컬 이동입니다. 클립에 그 채널이 없으면 루트 모션은 0 입니다.</li>
+  <li><b>어느 축을 옮길지:</b> 기본은 수평(X·Z)만 옮기고 높이(Y)는 포즈에 남깁니다. 걷기의 위아래 흔들림을 유지하기 위해서입니다. 점프 같은 클립에서 Y 도 옮기려면 축 마스크가 필요하므로 <code>rootMotionAxes</code> 는 후속으로 두고 첫 구현은 XZ 고정으로 합니다.</li>
+  <li><b>포즈에서 제거:</b> 노드 TRS 를 덮은 직후, 루트 본의 Translation X·Z 를 <b>클립 첫 프레임 값</b>으로 바꿉니다. 그러면 메시는 오브젝트 기준 제자리에서 걷습니다.</li>
+</ul>
+
+<h3>4-3. delta 계산과 적용</h3>
+<table>
+<tr><th>단계</th><th>내용</th></tr>
+<tr><td>1. 이전 값 저장</td><td>프레임마다 이전 루트 이동(<code>m_prevRoot</code>)을 보관. <code>SetClip</code> 과 <code>Start</code> 에서 첫 프레임 값으로 초기화</td></tr>
+<tr><td>2. 로컬 delta</td><td><code>delta = root(t) - m_prevRoot</code> (XZ)</td></tr>
+<tr><td>3. 루프 경계</td><td>시간이 <code>duration</code> 을 넘어 되감기면 <code>delta = (root(duration) - m_prevRoot) + (root(0) - root(0))…</code> 가 아니라, <b>끝까지 간 양과 처음부터 간 양을 따로 더합니다</b>: <code>(root(duration) - prev) + (root(t) - root(0))</code>. 그렇지 않으면 한 프레임에 한 걸음 거꾸로 순간이동함</td></tr>
+<tr><td>4. 공간 변환</td><td>로컬 delta 를 루트 본의 부모 노드 월드(<code>m_global[부모]</code>)로 메시 공간에 옮기고, 모델 루트 <code>Transform</code> 의 회전·스케일을 곱해 월드 이동량으로 만듦</td></tr>
+<tr><td>5. 적용</td><td>모델 루트 <code>Transform</code> 의 위치에 더함 (<code>Transform</code> 의 API 는 구현 때 확인)</td></tr>
+<tr><td>6. 비반복 클립</td><td><code>loop = false</code> 에서 끝에 도달한 뒤에는 delta 0</td></tr>
+</table>
+<ul>
+  <li>좌표계는 이미 엔진 좌표계(flipZ 반영)로 변환된 값입니다. <code>Animator</code> 는 임포트 때 쓴 루트 스케일(<code>options.scale</code>)을 1 로 가정하므로(기존 주석), 루트 모션도 같은 가정을 씁니다.</li>
+  <li>이동 적용은 <code>Update</code> 안이므로, 스크립트가 같은 프레임에 같은 <code>Transform</code> 을 쓰면 실행 순서에 따라 덮일 수 있습니다. Behaviour 업데이트 순서를 읽고 정합니다.</li>
+  <li>편집 모드에서는 루트 모션이 씬의 <code>Transform</code> 을 바꾸지 않아야 하고, 플레이 중 바뀐 값이 씬에 저장되지 않아야 합니다. 현재 플레이/정지 시 씬 복원 방식을 확인한 뒤 같은 경로를 따릅니다.</li>
+</ul>
+
+<h3>4-4. 회전(요) 루트 모션</h3>
+<ul>
+  <li>루트 본의 회전은 첫 구현에서 제외합니다. 이동만으로 "걸어서 앞으로 간다"가 해결되고, 회전 루트 모션이 필요한 클립(제자리 회전 등)이 생기면 같은 구조로 요(Y 회전) delta 를 추가합니다.</li>
+</ul>
+</section>
+
+<section id="steps">
+<h2>5. 구현 순서</h2>
+<p>각 단계는 따로 커밋하고, 앞 단계가 검증된 뒤에 다음으로 갑니다. 1~3단계의 <code>SetClip</code> 관련 부분은 사용자가 직접 구현합니다.</p>
+<table>
+<tr><th>단계</th><th>내용</th><th>파일</th><th>검증</th></tr>
+<tr><td><span class="step">1</span></td><td><code>Model::FindAnimation</code> 추가, <code>Start</code> 가 사용 (동작 불변)</td><td><code>Model.h</code>, <code>Animator.cpp</code></td><td>기존 씬 로그가 이전과 같음 (<code>MasterChiefWalk</code>, <code>ArmBone</code>, <code>BoxAnimation</code>)</td></tr>
+<tr><td><span class="step">2</span></td><td><code>Start</code> 를 <code>BindModel</code> + <code>BindClip</code> 으로 분리 (동작 불변)</td><td><code>Animator.cpp</code></td><td>세 씬의 팔레트·재생이 이전과 같음. 단일 노드 모드(<code>BoxAnimation</code>)도 확인</td></tr>
+<tr><td><span class="step">3</span></td><td><code>SetClip(name/index)</code>, <code>GetClipCount</code>, <code>GetClipName</code>, <code>GetClipIndex</code>. 실패 시 이전 클립 유지</td><td><code>Animator.cpp</code></td><td>클립이 2개 이상인 모델에서 전환. 없는 이름은 경고 후 유지. 클립 하나뿐이면 같은 클립 재요청이 무시됨</td></tr>
+<tr><td><span class="step">4</span></td><td>(선택) 에디터에서 <code>clip</code> 문자열을 드롭다운으로</td><td><code>Animator.cpp</code>, <code>Reflect</code></td><td>목록이 모델의 클립과 일치</td></tr>
+<tr><td><span class="step">5</span></td><td>크로스페이드: 스냅샷, <code>blendSeconds</code>, TRS 보간</td><td><code>Animator.cpp</code></td><td>전환 순간 포즈가 튀지 않음. <code>blendSeconds = 0</code> 이면 3단계와 같음. 회전 부호가 반대인 경우 짧은 쪽으로 도는지 확인</td></tr>
+<tr><td><span class="step">6</span></td><td>루트 모션 준비: 루트 본 노드 찾기(<code>rootJoints</code>), 루트 Translation 채널 샘플링, 포즈에서 XZ 제거(적용은 아직 안 함)</td><td><code>Animator.cpp</code></td><td>루트 이동이 있는 클립이 제자리에서 걷고 루프 경계 점프가 사라짐</td></tr>
+<tr><td><span class="step">7</span></td><td>루트 모션 적용: <code>rootMotion</code> 필드, delta 계산(루프 경계 포함), 모델 루트 <code>Transform</code> 에 더함. 모델 루트당 Animator 하나에만 켬</td><td><code>Animator.cpp</code></td><td>이동 속도가 클립의 원래 속도와 같음(루프 한 바퀴 이동량 = 루트 본 이동량). 4 Animator 에서 이동량이 4배가 아님. 루프 경계에서 순간이동 없음</td></tr>
+<tr><td><span class="step">8</span></td><td>(후속) 회전 루트 모션, 축 마스크, 2안(모델 루트에 포즈 계산 컴포넌트 하나)</td><td>—</td><td>별도 계획</td></tr>
+</table>
+
+<h3>검증 방법</h3>
+<ul>
+  <li>빌드: <code>SherlockEngine.sln</code> 을 <code>/p:Configuration=Debug /p:Platform=x64</code> 로 통째로 빌드. 실행은 <code>SherlockGame.exe --project=&lt;.sherlock&gt; --scene=Assets/Scenes/MasterChiefWalk.json --exit-after=120</code> 의 로그로 확인합니다. 애니메이션은 실시간 <code>dt</code> 로 움직이므로 스크린샷 비교는 매번 달라서 로그와 수치 비교가 낫습니다.</li>
+  <li>동작이 변하지 않아야 하는 1·2단계는 0단계처럼 <b>임시 비교 코드</b>(옛 경로와 새 경로의 팔레트·포즈 최대 차이를 로그로)를 넣었다 확인 후 지우는 방식이 가장 확실합니다.</li>
+  <li>검증용 스크립트(예: 키 입력으로 <code>SetClip</code> 호출)는 Sample 프로젝트가 아니라 별도 실험 프로젝트(<code>Projects/SherlockTestScenes</code> 등)에 둡니다.</li>
+  <li>루트 모션 검증에는 <b>루트 이동이 들어 있는 클립</b>이 필요합니다. 지금 MasterChief walk 가 "In Place" 인지 아닌지부터 확인해야 합니다. 루트 이동이 없다면 mixamo 에서 "In Place" 를 끈 클립을 받아 임포트합니다.</li>
+</ul>
+</section>
+
+<section id="decide">
+<h2>6. 먼저 정할 것</h2>
+<table>
+<tr><th>#</th><th>질문</th><th>권장</th><th>이유</th></tr>
+<tr><td>1</td><td>클립을 여러 개 쓰려면 어떻게 모으나</td><td>한 <code>Model</code> 안에 클립이 모두 있는 경우만 먼저 지원</td><td>클립의 <code>channel.node</code> 는 그 파일의 노드 번호이므로, 다른 파일의 클립은 노드 번호가 달라서 그대로는 못 씀. 이름으로 리타겟하거나 클립을 병합하는 일은 별도의 큰 작업</td></tr>
+<tr><td>2</td><td>mixamo 클립 이름이 전부 같음 (<code>Armature|mixamo.com|Layer0</code>)</td><td>임포트 때 파일 이름 등으로 이름을 바꾸거나, 이름 대신 인덱스로 선택</td><td>이름 탐색은 첫 번째 것만 돌려주므로 두 번째 이후 클립을 고를 수 없음. 파일이 여러 개일 때 반드시 부딪힘</td></tr>
+<tr><td>3</td><td>같은 클립 재요청</td><td>무시</td><td>걷기 입력이 계속 들어와도 처음부터 다시 틀지 않도록</td></tr>
+<tr><td>4</td><td><code>clip</code> 직렬화 값을 <code>SetClip</code> 이 덮을지</td><td>덮지 않음 (시작 클립)</td><td>플레이 중 전환이 씬에 저장되는 사고 방지</td></tr>
+<tr><td>5</td><td>크로스페이드 기본 시간</td><td>0.2초</td><td>걷기↔뛰기 정도에서 자연스러운 값. 호출마다 지정 가능하게 함</td></tr>
+<tr><td>6</td><td>루트 모션을 누가 적용하나</td><td>모델 루트당 Animator 하나에 <code>rootMotion</code> 켬 (1안)</td><td>2안은 <code>AddModel</code>·직렬화·에디터를 건드려서 범위가 큼</td></tr>
+<tr><td>7</td><td>루트 모션 축</td><td>XZ 고정</td><td>걷기 위아래 흔들림 유지. Y 는 후속</td></tr>
+</table>
+</section>
+
+<section id="risk">
+<h2>7. 위험과 제외</h2>
+<div class="box warn"><b>위험</b>
+<ul>
+  <li><b>이동량 4배:</b> 4장의 구조 문제. 7단계 검증에 "여러 Animator 가 있어도 이동량이 한 번만 적용됨"을 반드시 넣습니다.</li>
+  <li><b>메시끼리 어긋남:</b> 일부 Animator 만 루트 이동을 빼면 메시들이 서로 다른 위치에 그려집니다. 포즈에서의 제거는 모든 Animator 가 같은 규칙으로 해야 합니다.</li>
+  <li><b>스크립트와의 충돌:</b> 같은 프레임에 스크립트가 <code>Transform</code> 을 쓰면 루트 모션이 덮이거나 덮습니다. Behaviour 업데이트 순서 확인 필요(읽지 않음).</li>
+  <li><b>회귀:</b> 2단계의 <code>Start</code> 분리가 가장 회귀 위험이 큽니다. 동작 불변 리팩터링으로 따로 커밋해 두면 문제가 생겼을 때 원인을 나누기 쉽습니다.</li>
+</ul></div>
+<div class="box"><b>이 계획에서 제외한 것:</b> 상태 머신·블렌드 트리, 레이어/마스크 블렌딩, 클립 간 리타겟, 모프 타깃(Weights) 애니메이션, 루트 회전 루트 모션, 모델 루트에 포즈 계산 컴포넌트를 하나만 두는 구조 변경(4-1의 2안), 프레임마다의 <code>m_current = m_rest</code> 복사 최적화(TRS 전용 구조).</div>
+<p class="foot">이 계획은 코드를 읽고 쓴 것이며, 위의 "읽지 않음" 항목 외에도 실제 구현에서 달라질 수 있습니다. 구현이 끝나면 별도 구현 기록 문서(<code>*-record.html</code>)로 남깁니다.</p>
+</section>
+</main>
+</body>
+</html>
