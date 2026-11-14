@@ -5,13 +5,13 @@
     0.20000000298023224
   ],
   "camera": {
-    "pitch": 0.15,
+    "pitch": 0.45999741554260254,
     "position": [
-      3,
-      2.5,
-      -6
+      6.577085018157959,
+      12.955789566040039,
+      -27.185760498046875
     ],
-    "yaw": -0.46
+    "yaw": -0.3275015950202942
   },
   "clearColor": [
     0.11999999731779099,
@@ -35,7 +35,13 @@
     },
     "shadow": {
       "bias": 0.0007999999797903001,
+      "cascadeBlend": 0.15000000596046448,
+      "cascadeCount": 4,
+      "cascadeDistance": 200.0,
+      "cascadeEnabled": true,
+      "cascadeLambda": 0.699999988079071,
       "distance": 12.0,
+      "localNormalBias": 1.0,
       "normalOffset": 0.30000001192092896,
       "orthoSize": 10.0,
       "strength": 1.0
@@ -51,6 +57,7 @@
         0.04500000178813934,
         0.007499999832361937
       ],
+      "castShadows": true,
       "color": [
         1.0,
         1.0,
@@ -78,6 +85,7 @@
         0.04500000178813934,
         0.007499999832361937
       ],
+      "castShadows": false,
       "color": [
         1.0,
         0.699999988079071,
@@ -106,10 +114,10 @@
       "albedoTexture": "Arm_Bone_Skin_Ani/0 heart.png",
       "alphaCutoff": 0.0,
       "baseColor": [
-        1,
-        1,
-        1,
-        1
+        1.0,
+        1.0,
+        1.0,
+        1.0
       ],
       "doubleSided": true,
       "emissive": [
@@ -120,6 +128,8 @@
       "emissiveTexture": "",
       "metallic": 0.0,
       "metallicRoughnessTexture": "",
+      "modelMaterial": 0,
+      "modelPath": "Models\\ArmBone\\Arm_Bone_Skin_Ani.gltf",
       "name": "mArm",
       "normalStrength": 1.0,
       "normalTexture": "",
@@ -166,6 +176,216 @@
         3.0
       ],
       "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "SandyLocation_v3.pbr+/1 Image_0.png",
+      "alphaCutoff": 0.5,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "doubleSided": true,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "SandyLocation_v3.pbr+/2 img0_metal1_1-img0_rough1.png",
+      "modelMaterial": 0,
+      "modelPath": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "name": "mIsland1",
+      "normalStrength": 1.0,
+      "normalTexture": "SandyLocation_v3.pbr+/0 img0_normal.png",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "SandyLocation_v3.pbr+/5 Image_1.png",
+      "alphaCutoff": 0.5,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "doubleSided": true,
+      "emissive": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "emissiveTexture": "SandyLocation_v3.pbr+/3 img1_emsv2.png",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "SandyLocation_v3.pbr+/6 img1_metal1-img1_rough1.png",
+      "modelMaterial": 1,
+      "modelPath": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "name": "mObject1",
+      "normalStrength": 1.0,
+      "normalTexture": "SandyLocation_v3.pbr+/4 img1_normal2.png",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "SandyLocation_v3.pbr+/8 Image_2.png",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "doubleSided": true,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "SandyLocation_v3.pbr+/9 img2_edge-img2_rough2.png",
+      "modelMaterial": 2,
+      "modelPath": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "name": "mTerrain1",
+      "normalStrength": 1.0,
+      "normalTexture": "SandyLocation_v3.pbr+/7 img2_normal1.png",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "SandyLocation_v3.pbr+/11 Image_3.png",
+      "alphaCutoff": 0.5,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "doubleSided": true,
+      "emissive": [
+        0.30000001192092896,
+        0.30000001192092896,
+        0.30000001192092896
+      ],
+      "emissiveTexture": "SandyLocation_v3.pbr+/10 Image_4.png",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "modelMaterial": 3,
+      "modelPath": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "name": "mLambert5SG",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.6000000238418579,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        0.5,
+        0.0,
+        1.0
+      ],
+      "doubleSided": true,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "modelMaterial": 4,
+      "modelPath": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "name": "Material.001",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.5,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "modelMaterial": 5,
+      "modelPath": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "name": "SandyLocation_v3.pbr+/material5",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.5,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
     }
   ],
   "meshes": [
@@ -190,63 +410,39 @@
         0.0
       ],
       "type": "plane"
+    },
+    {
+      "meshIndex": 0,
+      "path": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "type": "model"
+    },
+    {
+      "meshIndex": 1,
+      "path": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "type": "model"
+    },
+    {
+      "meshIndex": 2,
+      "path": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "type": "model"
+    },
+    {
+      "meshIndex": 3,
+      "path": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "type": "model"
+    },
+    {
+      "meshIndex": 4,
+      "path": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "type": "model"
+    },
+    {
+      "meshIndex": 5,
+      "path": "Models\\SandyLocation_v3_pbr\\SandyLocation_v3.pbr+.gltf",
+      "type": "model"
     }
   ],
   "objects": [
-    {
-      "id": 1,
-      "material": 0,
-      "mesh": 0,
-      "name": "Arm",
-      "position": [
-        0,
-        0,
-        0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "slotMaterials": [
-        0
-      ],
-      "components": [
-        {
-          "type": "Animator",
-          "enabled": true,
-          "clip": "",
-          "loop": true,
-          "speed": 1.0
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "material": 1,
-      "mesh": 1,
-      "name": "Floor",
-      "position": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ]
-    },
     {
       "components": [
         {
@@ -259,6 +455,13 @@
           "orthographic": false,
           "priority": 0,
           "type": "CameraComponent"
+        },
+        {
+          "boost": 3.0,
+          "enabled": true,
+          "lookSpeed": 0.0024999999441206455,
+          "speed": 4.0,
+          "type": "FreeCamera"
         }
       ],
       "id": 3,
@@ -266,19 +469,328 @@
       "mesh": -1,
       "name": "Main Camera",
       "position": [
-        3,
-        2.5,
-        -6
+        0.10238154232501984,
+        4.451578617095947,
+        -21.846384048461914
       ],
       "rotation": [
-        0.15,
-        -0.46,
-        0
+        0.13465598225593567,
+        -0.0007591428584419191,
+        0.06628939509391785
       ],
       "scale": [
         0.9999999403953552,
+        0.9999997615814209,
+        0.9999997615814209
+      ]
+    },
+    {
+      "id": 7,
+      "material": -1,
+      "mesh": -1,
+      "name": "SandyLocation_v3.pbr+ 1",
+      "position": [
+        -1.0492126941680908,
+        -1.629899024963379,
+        -1.678548812866211
+      ],
+      "rotation": [
+        -0.0,
+        0.0,
+        -0.0
+      ],
+      "scale": [
         1.0,
-        0.9999999403953552
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "id": 8,
+      "material": 7,
+      "mesh": 2,
+      "name": "Object_2",
+      "parent": 1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "preTransform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "id": 9,
+      "material": 7,
+      "mesh": 3,
+      "name": "Object_3",
+      "parent": 1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "preTransform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "id": 10,
+      "material": 7,
+      "mesh": 4,
+      "name": "Object_4",
+      "parent": 1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "preTransform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "id": 11,
+      "material": 7,
+      "mesh": 5,
+      "name": "Object_5.Fire",
+      "parent": 1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "preTransform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        -1.8618274927139282,
+        0.0,
+        1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "id": 12,
+      "material": 7,
+      "mesh": 6,
+      "name": "Text.02",
+      "parent": 1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "preTransform": [
+        2.112879514694214,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -2.518748658530967e-07,
+        -2.112879753112793,
+        0.0,
+        0.0,
+        2.112879753112793,
+        -2.518748658530967e-07,
+        0.0,
+        -18.92310905456543,
+        0.3833458721637726,
+        0.011307526379823685,
+        1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "id": 13,
+      "material": 7,
+      "mesh": 7,
+      "name": "Text.01",
+      "parent": 1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "preTransform": [
+        2.112879514694214,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -2.518748658530967e-07,
+        -2.112879753112793,
+        0.0,
+        0.0,
+        2.112879753112793,
+        -2.518748658530967e-07,
+        0.0,
+        -18.88792610168457,
+        0.5554351210594177,
+        0.01130753941833973,
+        1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
       ]
     }
   ],

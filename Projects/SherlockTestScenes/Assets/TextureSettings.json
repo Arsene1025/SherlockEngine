@@ -1,0 +1,19 @@
+{
+  "textures": {
+    "SandyLocation_v3.pbr+/7 img2_normal1.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SandyLocation_v3.pbr+/8 Image_2.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SandyLocation_v3.pbr+/9 img2_edge-img2_rough2.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    }
+  }
+}
