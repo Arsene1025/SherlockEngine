@@ -827,6 +827,8 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	m_shadowSettings = scene.environment.shadow;   // 씬 파일에 저장된 그림자 값
 
 	// ---- 조명: 씬의 Light → GPU 배치. BuildShadowViews 가 shadowIndex 를 채우므로 올리기(UploadLights) 전에 만듦 ----
+	// CPU 구간 (Profiler 패널): Prepare = 조명·그림자 뷰·환경·상수 준비, BuildDrawList, ShadowPass·MainPass 의 드로우 제출
+	Profiler::BeginCpu("Prepare");
 	BuildGpuLights(scene);
 
 	// ---- 그림자 뷰: 조명마다 아틀라스 타일을 배정하고 shadowIndex 를 채움 → b6(+b5) → b0 (shadowParams.w 가 이 결과를 씀) ----
@@ -848,8 +850,13 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 
 	// ---- b2 Lights + t15 조명 배열 ----
 	UploadLights(scene);
+	Profiler::EndCpu();   // Prepare
 
-	BuildDrawList(scene);
+	{
+		ProfileScope cpuScope("BuildDrawList");
+		BuildDrawList(scene);
+		m_stats.drawItems = static_cast<uint32_t>(m_drawList.size());
+	}
 	UploadDebugLines(debugDraw);   // 디버그 선(DebugDraw 가 모은 것)을 동적 정점 버퍼에 올림. 프레임마다 한 번은 써야 함
 
 	m_device->EndResourceUploads();
@@ -867,6 +874,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	if (m_shadowEnabledThisFrame)
 	{
 		GpuProfileScope gpuScope(cmd, "ShadowPass");
+		ProfileScope cpuScope("ShadowPass");
 		RenderShadowPass(cmd);
 	}
 	else
@@ -877,6 +885,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	}
 	{
 		GpuProfileScope gpuScope(cmd, "MainPass");
+		ProfileScope cpuScope("MainPass");
 		RenderScenePass(cmd, scene, m_mainView, camera, "MainPass");
 	}
 	// HDR 구간 후처리 (블러 → 블룸). 결과는 hdr 에 제자리로 남아 톤 패스가 그대로 읽음.

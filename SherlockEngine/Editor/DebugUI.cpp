@@ -195,8 +195,8 @@ void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)
 	}
 
 	const Renderer::Stats& stats = renderer.GetStats();
-	ImGui::TextWrapped("draws %u (+%u shadow, %u views, culled %u)   PSO switches %u   set switches %u   mesh switches %u",
-		stats.draws, stats.shadowDraws, stats.shadowViews, stats.shadowCulled, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches);
+	ImGui::TextWrapped("draws %u (+%u shadow, %u views)   draw items %u, culled main %u / shadow %u   PSO switches %u   set switches %u   mesh switches %u",
+		stats.draws, stats.shadowDraws, stats.shadowViews, stats.drawItems, stats.culled, stats.shadowCulled, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches);
 	ImGui::TextWrapped("passes %u   barriers %u   PSO cache %zu   GPU meshes %zu   GPU materials %zu   textures %zu   reloads %u   frame slot %u",
 		stats.renderPasses, stats.barriers, renderer.GetPipelineCount(), renderer.GetGpuMeshCount(), renderer.GetGpuMaterialCount(),
 		renderer.GetTextureCount(), stats.shaderReloads, device.GetFrameIndex());

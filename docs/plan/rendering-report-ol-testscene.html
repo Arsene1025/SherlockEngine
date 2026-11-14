@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · OL_TestScene 렌더링 리포트 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.step { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>OL_TestScene 렌더링 리포트</h1>
+  <p>2026-11-15 · 맵 배치 7,065개짜리 OL_TestScene 이 에디터에서 7~9 FPS 로 느렸던 원인을 가르고, 계측(1번)과 Hierarchy 클리퍼(2번)를 넣은 뒤 Release 로 다시 잰 기록입니다.</p>
+  <p class="foot">측정: <code>x64\Release\SherlockEditor.exe</code> (이 작업 트리를 Release 로 빌드), D3D11, 자동화 창 1280x720(씬 뷰 649x251), 399·341·391 프레임째 Stats 패널 값. 표본이 적어 ±10% 정도의 흔들림이 있습니다. 아직 커밋하지 않은 작업 트리 기준입니다.</p>
+</header>
+
+<section>
+  <h2>1. 결론</h2>
+  <div class="box ok"><b>Release 에서는 그림자를 켜도 약 108~121 FPS, 끄면 154~176 FPS</b> 입니다. 처음 보셨던 6.8~9 FPS 는 Debug 빌드 수치였습니다.</div>
+  <ul>
+    <li>CPU 프레임(그림자 켬)은 8.6~9.7ms, GPU 프레임은 2.8~4.5ms 라 <b>병목은 여전히 CPU</b> 입니다. 드로우 콜 수(메인 7,579 + 그림자 27,875)가 많아도 GPU 는 여유가 있습니다.</li>
+    <li>CPU 에서 가장 큰 항목은 <b>BuildDrawList(2.4~3.3ms)</b>, 그다음이 그림자 패스 드로우 제출(2.3~2.9ms)과 GUI(1.9~3.1ms)입니다.</li>
+    <li>예전 Stats 의 <code>culled</code> 는 메인 패스가 아니라 그림자 컬링 수였습니다. 메인 패스 컬링은 동작하고 있었고 표시가 틀렸을 뿐입니다. 이번에 둘 다 따로 표시하게 했습니다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>2. 이번에 바꾼 것</h2>
+  <table>
+    <tr><th>#</th><th>변경</th><th>위치</th></tr>
+    <tr><td>1</td><td>Stats 에 <b>draw items(컬링 전 드로우 목록 크기)</b>, <b>culled main</b>, <b>culled shadow</b> 를 따로 표시. <code>Renderer::Stats::drawItems</code> 추가.</td><td><code>Renderer.h</code>, <code>Renderer.cpp</code>, <code>Editor.cpp</code> (Stats 탭), <code>DebugUI.cpp</code> (Render Settings)</td></tr>
+    <tr><td>1</td><td>Profiler 에 CPU 구간 추가: <code>Prepare</code>(조명·그림자 뷰·환경·상수), <code>BuildDrawList</code>, <code>ShadowPass</code>, <code>MainPass</code> (드로우 제출 시간).</td><td><code>Renderer.cpp</code> <code>Renderer::Render</code></td></tr>
+    <tr><td>2</td><td>Hierarchy: 한 부모 아래 <b>자식이 64개를 넘고 전부 잎</b>이면 <code>ImGuiListClipper</code> 로 보이는 행만 그림. 펼친 자식이 섞이면 행 높이가 달라 예전처럼 전부 그림.</td><td><code>Editor.cpp</code> <code>DrawHierarchyNode</code></td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>3. 프레임 한 번의 흐름</h2>
+  <ol>
+    <li><b>Update</b> — 고정 스텝, 스크립트 (0.001ms)</li>
+    <li><b>GUI</b> — 에디터 패널 전체, Hierarchy 포함</li>
+    <li><b>Renderer::Render</b>
+      <ol>
+        <li>Prepare — 조명, 그림자 뷰 계산, 환경, b0·b2 상수 업로드</li>
+        <li>BuildDrawList — 오브젝트 7,065개의 월드·역행렬·경계 구 계산, 파이프라인·재질 조회, DrawItem 9,545개 정렬</li>
+        <li>ShadowPass — 캐스케이드 4개 × 9,545개를 훑으며 절두체 밖은 건너뜀, 드로우마다 상수 버퍼 Map</li>
+        <li>MainPass — 9,545개를 훑으며 절두체 밖은 건너뜀, 스카이박스</li>
+        <li>Tonemap — 블러·블룸은 이 씬에서 꺼져 있음</li>
+      </ol></li>
+    <li><b>UIPass</b>, <b>Present</b></li>
+  </ol>
+</section>
+
+<section>
+  <h2>4. Release 실측</h2>
+  <h3>4-1. 그림자 켬 (캐스케이드 4개, cascadeDistance 300)</h3>
+  <table>
+    <tr><th>지표</th><th>표본 A (391f)</th><th>표본 B (341f)</th><th>표본 C (391f)</th></tr>
+    <tr><td>FPS / ms</td><td>120.8 / 8.28</td><td>108.1 / 9.25</td><td>108.2 / 9.24</td></tr>
+    <tr><td>CPU frame</td><td>8.587ms</td><td>9.686ms</td><td>9.641ms</td></tr>
+    <tr><td>GPU frame</td><td>2.829ms</td><td>4.320ms</td><td>4.503ms</td></tr>
+    <tr><td>GUI</td><td>1.864ms</td><td>2.815ms</td><td>3.098ms</td></tr>
+    <tr><td>Renderer::Render</td><td>6.610ms</td><td>6.763ms</td><td>6.448ms</td></tr>
+    <tr><td>&nbsp;&nbsp;Prepare</td><td>0.004ms</td><td>0.006ms</td><td>0.005ms</td></tr>
+    <tr><td>&nbsp;&nbsp;BuildDrawList</td><td>2.443ms</td><td>3.344ms</td><td>2.827ms</td></tr>
+    <tr><td>&nbsp;&nbsp;ShadowPass (CPU 제출)</td><td>2.870ms</td><td>2.328ms</td><td>2.473ms</td></tr>
+    <tr><td>&nbsp;&nbsp;MainPass (CPU 제출)</td><td>1.248ms</td><td>1.041ms</td><td>1.107ms</td></tr>
+    <tr><td>GPU ShadowPass</td><td>1.947ms</td><td>3.170ms</td><td>3.330ms</td></tr>
+    <tr><td>GPU MainPass</td><td>0.795ms</td><td>1.066ms</td><td>1.095ms</td></tr>
+    <tr><td>GPU Tonemap / UI</td><td>0.003 / 0.085ms</td><td>0.003 / 0.081ms</td><td>0.003 / 0.075ms</td></tr>
+  </table>
+  <h3>4-2. 그림자 끔 (조명 castShadows 만 false 로 바꾼 임시 씬)</h3>
+  <table>
+    <tr><th>지표</th><th>표본 A (341f)</th><th>표본 B (391f)</th></tr>
+    <tr><td>FPS / ms</td><td>154.3 / 6.48</td><td>175.6 / 5.69</td></tr>
+    <tr><td>CPU frame</td><td>7.344ms</td><td>7.110ms</td></tr>
+    <tr><td>GPU frame</td><td>3.763ms</td><td>2.590ms</td></tr>
+    <tr><td>GUI</td><td>3.145ms</td><td>2.948ms</td></tr>
+    <tr><td>Renderer::Render</td><td>4.105ms</td><td>4.062ms</td></tr>
+    <tr><td>&nbsp;&nbsp;BuildDrawList</td><td>2.816ms</td><td>3.001ms</td></tr>
+    <tr><td>&nbsp;&nbsp;MainPass (CPU 제출)</td><td>1.230ms</td><td>1.003ms</td></tr>
+    <tr><td>GPU MainPass</td><td>3.665ms</td><td>2.508ms</td></tr>
+  </table>
+  <h3>4-3. 드로우 통계 (모든 표본 같음)</h3>
+  <table>
+    <tr><th>항목</th><th>켬</th><th>끔</th></tr>
+    <tr><td>draws (메인 + 스카이박스 + 톤맵)</td><td>7,579</td><td>7,579</td></tr>
+    <tr><td>shadow draws / views</td><td>27,875 / 4</td><td>0 / 0</td></tr>
+    <tr><td>draw items (컬링 전)</td><td>9,545</td><td>9,545</td></tr>
+    <tr><td>culled main / shadow</td><td>1,968 / 10,305</td><td>1,968 / 0</td></tr>
+    <tr><td>triangles (메인만)</td><td>2,388,149</td><td>2,388,149</td></tr>
+    <tr><td>PSO / set / mesh switches</td><td>22 / 1,330 / 약 8,650~8,740</td><td>6 / 1,330 / 약 1,880~1,900</td></tr>
+  </table>
+  <p>검산: 9,545 − 1,968 + 2 = 7,579 (메인 드로우 + 스카이박스 + 톤맵). 27,875 + 10,305 = 38,180 = 4 × 9,545 (그림자 뷰 4개가 훑은 쌍 전체).</p>
+  <p>메시 전환이 그림자 켬에서 6배 가까이 늘어나는 것은 그림자 패스가 재질과 무관하게 메시 단위로 다시 바인딩하기 때문으로 보입니다 (추정).</p>
+</section>
+
+<section>
+  <h2>5. 수정 전과의 비교</h2>
+  <p>수정 전 Release 수치는 같은 씬을 <b>11/7 빌드(메인 패스 컬링이 없던 바이너리)</b>로 잰 값입니다. 창 크기와 씬 뷰 크기(732x251 대 649x251)가 약간 달라 정확한 1:1 비교는 아닙니다.</p>
+  <table>
+    <tr><th>지표 (그림자 켬)</th><th>이전 Release (11/7 빌드)</th><th>지금 Release</th></tr>
+    <tr><td>FPS</td><td>43.0</td><td>108~121</td></tr>
+    <tr><td>CPU frame</td><td>22.34ms</td><td>8.6~9.7ms</td></tr>
+    <tr><td>GUI</td><td>4.81ms</td><td>1.9~3.1ms</td></tr>
+    <tr><td>Renderer::Render</td><td>17.40ms</td><td>6.4~6.8ms</td></tr>
+    <tr><td>draws (메인)</td><td>9,547</td><td>7,579</td></tr>
+    <tr><td>GPU frame</td><td>14.39ms</td><td>2.8~4.5ms</td></tr>
+  </table>
+  <div class="box warn">
+    <b>이득을 항목별로 나눌 수는 없습니다.</b> 이전 바이너리는 11/10 커밋(메인 패스 절두체 컬링)을 포함하지 않아, 개선은 컬링과 클리퍼, 그리고 그 사이 다른 커밋이 합쳐진 결과입니다. 클리퍼만의 효과는 GUI 구간(4.8ms → 1.9~3.1ms)으로 짐작할 수 있지만, 이 구간에는 다른 패널도 들어 있습니다.
+  </div>
+  <div class="box warn">
+    <b>Debug 빌드는 이번에 다시 재지 않았습니다.</b> 처음 보신 6.8~9 FPS (CPU 128~143ms) 가 Debug 수치라는 판단은 Release 가 4~6배 빠르다는 사실에 근거한 추정입니다. Debug 에서는 BuildDrawList 처럼 반복이 많은 구간이 가장 크게 느려질 것으로 보입니다.
+  </div>
+</section>
+
+<section>
+  <h2>6. 지금 남은 병목과 다음 후보</h2>
+  <table>
+    <tr><th>순위</th><th>항목</th><th>Release 비용</th><th>다음 후보</th></tr>
+    <tr><td>1</td><td>BuildDrawList</td><td>2.4~3.3ms</td><td>정적 오브젝트의 월드·역행렬·경계 구 캐시, 정렬 재사용. 무효화 누락(기즈모, Undo, Play 복원) 위험이 있어 신중히.</td></tr>
+    <tr><td>2</td><td>그림자 패스 CPU 제출</td><td>2.3~2.9ms</td><td>먼 캐스케이드에서 작은 물체 제외, 오브젝트 단위 사전 컬링, 상수 일괄 업로드·인스턴싱.</td></tr>
+    <tr><td>3</td><td>GUI</td><td>1.9~3.1ms</td><td>인덱스 맵(포인터→인덱스)을 매 프레임 새로 만드는 부분, 다른 패널 점검.</td></tr>
+    <tr><td>4</td><td>메인 패스 CPU 제출</td><td>1.0~1.2ms</td><td>인스턴싱 (같은 메시·재질 묶기).</td></tr>
+  </table>
+  <p>목표가 60 FPS 이상이면 Release 는 이미 충족합니다. 에디터를 Debug 로 쓰는 경우의 편집 속도가 목표라면 1번(캐시)이 가장 크게 효과를 냅니다.</p>
+</section>
+
+<section>
+  <h2>7. 측정의 한계</h2>
+  <ul>
+    <li>표본은 조건당 2~3개이고 한 프레임 값입니다. FPS 는 평균이지만 구간 시간은 그 프레임 한 번의 값이라 ±10% 이상 흔들립니다.</li>
+    <li>GPU MainPass 는 그림자를 켰을 때(0.8~1.1ms)가 껐을 때(2.5~3.7ms)보다 짧게 나왔습니다. 원인은 확인하지 못했습니다. GPU 클럭 변화나 타임스탬프 구간 경계 영향일 수 있어, GPU 구간 값은 참고용으로만 보십시오.</li>
+    <li>씬 뷰가 649x251 로 작아 픽셀 비용(MainPass GPU)은 실제 사용 크기(1292x626)보다 낮게 나옵니다.</li>
+    <li>카메라는 씬 파일에 저장된 에디터 카메라 한 곳에서만 쟀습니다. 시점에 따라 컬링되는 수가 달라집니다.</li>
+    <li>측정을 위해 <code>x64\Release\imgui.ini</code> 를 임시로 바꿨다가 원래대로 되돌렸고, 그림자 끔 측정용 씬 사본은 지웠습니다.</li>
+  </ul>
+</section>
+
+<p class="foot"><a href="../index.html">← 문서 목록</a></p>
+</main>
+</body>
+</html>

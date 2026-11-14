@@ -778,7 +778,21 @@ void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unor
 	{
 		// 자식 목록을 복사해 순회함: 드롭으로 재부모화하면 순회 중인 벡터가 바뀔 수 있음.
 		const std::vector<GameObject*> children = object.GetChildren();
-		for (GameObject* child : children) DrawHierarchyNode(scene, *child, indexOf);
+		// 자식이 전부 잎이면 모든 행의 높이가 같으므로 화면에 보이는 행만 그림 (ImGuiListClipper). 수천 개를 한
+		// 부모 밑에 두는 씬(맵 배치)에서 매 프레임 전부 제출하면 GUI 가 수십 ms 를 먹음. 펼친 자식이 섞이면 행
+		// 높이가 달라 클리퍼를 쓸 수 없으므로 예전처럼 전부 그림.
+		const bool allLeaves = children.size() > 64 && std::all_of(children.begin(), children.end(), [](const GameObject* c) { return c->GetChildren().empty(); });
+		if (allLeaves)
+		{
+			ImGuiListClipper clipper;
+			clipper.Begin(static_cast<int>(children.size()));
+			while (clipper.Step())
+				for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row) DrawHierarchyNode(scene, *children[row], indexOf);
+		}
+		else
+		{
+			for (GameObject* child : children) DrawHierarchyNode(scene, *child, indexOf);
+		}
 		ImGui::TreePop();
 	}
 	ImGui::PopID();
@@ -1726,8 +1740,8 @@ void Editor::DrawStats(Engine& engine, const char* sceneName, const ModelStats& 
 	const Renderer::Stats& stats = engine.GetRenderer().GetStats();
 	const Time& time = engine.GetTime();
 	ImGui::TextWrapped("%.1f FPS   %.2f ms/frame   scene view %ux%u", time.GetFps(), time.GetAverageFrameMs(), m_sceneWidth, m_sceneHeight);
-	ImGui::TextWrapped("draws %u (+%u shadow, %u views, culled %u)   triangles %u   PSO switches %u   set switches %u   mesh switches %u   PSO cache %zu",
-		stats.draws, stats.shadowDraws, stats.shadowViews, stats.shadowCulled, stats.triangles, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches, engine.GetRenderer().GetPipelineCount());
+	ImGui::TextWrapped("draws %u (+%u shadow, %u views)   draw items %u, culled main %u / shadow %u   triangles %u (main only)   PSO switches %u   set switches %u   mesh switches %u   PSO cache %zu",
+		stats.draws, stats.shadowDraws, stats.shadowViews, stats.drawItems, stats.culled, stats.shadowCulled, stats.triangles, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches, engine.GetRenderer().GetPipelineCount());
 	DebugUI::DrawModelPanel(sceneName, modelStats, engine.GetScene().GetImageCount(), engine.GetScene().GetObjects().size());
 	DebugUI::DrawProfilerPanel();
 	DebugUI::EndPanel();

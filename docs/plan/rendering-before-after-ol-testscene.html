@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · 계측·Hierarchy 클리퍼 비포/애프터 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.step { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+.bar { display:flex; align-items:center; gap:8px; margin:3px 0; font-size:13.5px; } .bar .lbl { width:64px; color:var(--ink2); } .bar .fill { height:16px; border-radius:3px; background:var(--accent); } .bar .fill.before { background:var(--ink3); } .bar .v { color:var(--ink2); font:12.5px ui-monospace,Consolas,monospace; }
+.up { color:var(--ok); font-weight:600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>계측 · Hierarchy 클리퍼 비포/애프터</h1>
+  <p>2026-11-15 · OL_TestScene(오브젝트 7,067)에서 <b>1번(계측 추가)</b>과 <b>2번(Hierarchy ListClipper)</b> 를 적용하기 전과 후를 같은 Release 조건에서 잰 비교입니다. 렌더링 전체 분석은 <a href="rendering-report-ol-testscene.html">OL_TestScene 렌더링 리포트</a> 에 있습니다.</p>
+  <p class="foot">조건: 작업 트리를 Release 로 빌드(D3D11), 같은 씬·같은 카메라·같은 창(1280x720, 씬 뷰 649x251), Stats 패널 값. <b>Before = 커밋된 HEAD 소스를 그대로 빌드</b>(메인 패스 절두체 컬링은 이미 들어 있음), <b>After = HEAD + 이번 변경 4파일</b>. 두 바이너리를 번갈아 빌드해 잰 값이라 이전 리포트의 11/7 바이너리와 다릅니다. 아직 커밋하지 않았습니다.</p>
+</header>
+
+<section>
+  <h2>1. 한눈에 보기</h2>
+  <div class="box ok"><b>그림자 켬 78 → 112 FPS (+43%), 끔 102 → 165 FPS (+62%).</b> 이득의 대부분은 GUI(Hierarchy) 구간에서 나왔습니다 (약 5.2~5.9ms → 2.6~3.1ms).</div>
+  <p><b>열 읽는 법:</b> 두 가지 설정을 곱해서 4열입니다. 같은 씬·같은 카메라에서 아래 두 옵션만 다릅니다.</p>
+  <table>
+    <tr><th>구분</th><th>무엇이 다른가</th></tr>
+    <tr><td><b>Before</b></td><td>이번 변경(1번 계측 + 2번 Hierarchy 클리퍼)을 <b>적용하기 전</b> 소스(커밋된 HEAD)로 빌드한 Release.</td></tr>
+    <tr><td><b>After</b></td><td>이번 변경을 <b>적용한</b> 소스로 빌드한 Release.</td></tr>
+    <tr><td><b>켬</b></td><td>그림자 <b>켠</b> 상태 — 방향광 <code>castShadows = true</code> (캐스케이드 4개, 원래 씬 그대로).</td></tr>
+    <tr><td><b>끔</b></td><td>그림자 <b>끈</b> 상태 — 조명의 <code>castShadows</code> 만 <code>false</code> 로 바꾼 임시 씬 사본.</td></tr>
+  </table>
+  <p>그래서 <b>Before 켬 ↔ After 켬</b> 과 <b>Before 끔 ↔ After 끔</b> 처럼 그림자 설정이 같은 열끼리 비교해야 합니다. (켬과 끔을 서로 비교하면 그림자 비용이 섞입니다.)</p>
+  <table>
+    <tr><th>지표 (평균)</th><th>Before 켬</th><th>After 켬</th><th>Before 끔</th><th>After 끔</th></tr>
+    <tr><td>FPS</td><td>78.3</td><td class="up">112.4</td><td>102.0</td><td class="up">165.0</td></tr>
+    <tr><td>프레임 ms</td><td>12.79</td><td>8.92</td><td>9.81</td><td>6.09</td></tr>
+    <tr><td>CPU frame</td><td>12.74</td><td>9.30</td><td>10.18</td><td>7.23</td></tr>
+    <tr><td>GUI</td><td>5.15</td><td class="up">2.59</td><td>5.87</td><td class="up">3.05</td></tr>
+    <tr><td>Renderer::Render</td><td>7.45</td><td>6.60</td><td>4.20</td><td>4.08</td></tr>
+    <tr><td>GPU frame</td><td>4.69</td><td>3.88</td><td>4.49</td><td>3.18</td></tr>
+  </table>
+  <p>표본은 그림자 켬 3개, 끔 2개이며 시간 단위는 ms 입니다. 각 표본의 원값은 4절에 있습니다.</p>
+</section>
+
+<section>
+  <h2>2. 무엇을 바꿨나</h2>
+  <h3>1번 — 계측 (성능 변화 없음, 보이는 정보만 늘림)</h3>
+  <ul>
+    <li><code>Renderer::Stats::drawItems</code> 추가 (컬링 전 드로우 목록 크기).</li>
+    <li>Stats 탭과 Render Settings 에 <code>draw items</code>, <code>culled main</code>, <code>culled shadow</code> 를 따로 표시. 이전에는 그림자 컬링 수만 <code>culled</code> 라는 이름으로 나와, 메인 패스 컬링이 안 되는 것처럼 보였습니다.</li>
+    <li>Profiler 에 CPU 구간 <code>Prepare</code> · <code>BuildDrawList</code> · <code>ShadowPass</code> · <code>MainPass</code> 추가 (<code>Renderer::Render</code> 안).</li>
+    <li>변경 파일: <code>Renderer.h</code>, <code>Renderer.cpp</code>, <code>Editor.cpp</code>, <code>DebugUI.cpp</code>.</li>
+  </ul>
+  <h3>2번 — Hierarchy ListClipper</h3>
+<pre><code>// Editor::DrawHierarchyNode — 자식 순회부
+const bool allLeaves = children.size() &gt; 64
+    &amp;&amp; std::all_of(children.begin(), children.end(),
+        [](const GameObject* c) { return c-&gt;GetChildren().empty(); });
+if (allLeaves)
+{
+    ImGuiListClipper clipper;
+    clipper.Begin(static_cast&lt;int&gt;(children.size()));
+    while (clipper.Step())
+        for (int row = clipper.DisplayStart; row &lt; clipper.DisplayEnd; ++row)
+            DrawHierarchyNode(scene, *children[row], indexOf);
+}
+else { /* 예전처럼 전부 그림 */ }</code></pre>
+  <ul>
+    <li><b>왜 조건이 있나:</b> 클리퍼는 모든 행의 높이가 같다고 가정합니다. 자식 중에 펼친 노드(자식이 있는 노드)가 섞이면 높이가 달라져 스크롤이 어긋나므로, 전부 잎일 때만 켭니다. 64개 이하일 때는 이득이 없어 건너뜁니다.</li>
+    <li><b>효과 범위:</b> OL_TestScene 처럼 한 루트(<code>OL_Map</code>) 아래에 7,065개가 평평하게 들어 있는 경우입니다. 중첩이 깊은 씬은 지금과 같습니다.</li>
+    <li><b>안 바꾼 것:</b> 포인터→인덱스 맵(<code>indexOf</code>)은 아직 매 프레임 7,067개를 새로 만듭니다. GUI 에 남은 2.6~3.1ms 의 일부일 가능성이 있습니다(추정, 구간을 나눠 재지 않았습니다).</li>
+  </ul>
+</section>
+
+<section>
+  <h2>3. 그래프</h2>
+  <h3>FPS (클수록 좋음)</h3>
+  <p><b>그림자 켬</b></p>
+<div class="bar"><span class="lbl">Before</span><span class="fill before" style="width:26.1%"></span><span class="v">78.3</span></div>
+<div class="bar"><span class="lbl">After</span><span class="fill " style="width:37.5%"></span><span class="v">112.4</span></div>
+
+  <p><b>그림자 끔</b></p>
+<div class="bar"><span class="lbl">Before</span><span class="fill before" style="width:34.0%"></span><span class="v">102</span></div>
+<div class="bar"><span class="lbl">After</span><span class="fill " style="width:55.0%"></span><span class="v">165</span></div>
+
+  <h3>GUI 구간 (ms, 작을수록 좋음)</h3>
+  <p><b>그림자 켬</b></p>
+<div class="bar"><span class="lbl">Before</span><span class="fill before" style="width:38.6%"></span><span class="v">5.15</span></div>
+<div class="bar"><span class="lbl">After</span><span class="fill " style="width:19.4%"></span><span class="v">2.59</span></div>
+
+  <p><b>그림자 끔</b></p>
+<div class="bar"><span class="lbl">Before</span><span class="fill before" style="width:44.0%"></span><span class="v">5.87</span></div>
+<div class="bar"><span class="lbl">After</span><span class="fill " style="width:22.9%"></span><span class="v">3.05</span></div>
+
+  <h3>Renderer::Render (ms) — 이번 변경의 대상이 아닌 구간</h3>
+  <p><b>그림자 켬</b></p>
+<div class="bar"><span class="lbl">Before</span><span class="fill before" style="width:55.9%"></span><span class="v">7.45</span></div>
+<div class="bar"><span class="lbl">After</span><span class="fill " style="width:49.5%"></span><span class="v">6.6</span></div>
+
+  <p><b>그림자 끔</b></p>
+<div class="bar"><span class="lbl">Before</span><span class="fill before" style="width:31.5%"></span><span class="v">4.2</span></div>
+<div class="bar"><span class="lbl">After</span><span class="fill " style="width:30.6%"></span><span class="v">4.08</span></div>
+
+</section>
+
+<section>
+  <h2>4. 표본 원값 (Stats 패널 그대로)</h2>
+  <h3>그림자 켬</h3>
+  <table>
+    <tr><th>구분</th><th>표본</th><th>FPS</th><th>CPU frame</th><th>GPU frame</th><th>GUI</th><th>Renderer::Render</th></tr>
+    <tr><td rowspan="3">Before</td><td>331f</td><td>78.1</td><td>12.255</td><td>5.686</td><td>4.559</td><td>7.566</td></tr>
+    <tr><td>381f</td><td>80.1</td><td>12.507</td><td>4.143</td><td>4.933</td><td>7.369</td></tr>
+    <tr><td>431f</td><td>76.6</td><td>13.474</td><td>4.244</td><td>5.948</td><td>7.415</td></tr>
+    <tr><td rowspan="3">After</td><td>391f</td><td>120.8</td><td>8.587</td><td>2.829</td><td>1.864</td><td>6.610</td></tr>
+    <tr><td>341f</td><td>108.1</td><td>9.686</td><td>4.320</td><td>2.815</td><td>6.763</td></tr>
+    <tr><td>391f</td><td>108.2</td><td>9.641</td><td>4.503</td><td>3.098</td><td>6.448</td></tr>
+  </table>
+  <h3>그림자 끔 (조명 castShadows 만 false 로 바꾼 임시 씬)</h3>
+  <table>
+    <tr><th>구분</th><th>표본</th><th>FPS</th><th>CPU frame</th><th>GPU frame</th><th>GUI</th><th>Renderer::Render</th></tr>
+    <tr><td rowspan="2">Before</td><td>331f</td><td>104.6</td><td>10.165</td><td>3.312</td><td>5.516</td><td>4.543</td></tr>
+    <tr><td>381f</td><td>99.4</td><td>10.185</td><td>5.673</td><td>6.217</td><td>3.854</td></tr>
+    <tr><td rowspan="2">After</td><td>341f</td><td>154.3</td><td>7.344</td><td>3.763</td><td>3.145</td><td>4.105</td></tr>
+    <tr><td>391f</td><td>175.6</td><td>7.110</td><td>2.590</td><td>2.948</td><td>4.062</td></tr>
+  </table>
+  <h3>드로우 통계 (Before·After 동일)</h3>
+  <p>draws 7,579 (+27,875 shadow, 4 views), 컬링 main 1,968 / shadow 10,305, triangles 2,388,149 (메인만), PSO switches 22 (끔: 6), set switches 1,330. 이번 변경은 드로우 제출 경로를 건드리지 않았으므로 숫자가 같은 것이 정상입니다. (Before 바이너리에는 <code>draw items</code> 표시가 없어 <code>culled</code> 한 값만 보였고, 그 값은 그림자 컬링 10,305 였습니다.)</p>
+</section>
+
+<section>
+  <h2>5. 해석과 주의</h2>
+  <ul>
+    <li><b>이득의 출처:</b> GUI 구간이 평균 약 2.6ms(켬) ~ 2.8ms(끔) 줄었습니다. CPU frame 은 그보다 조금 더 줄어(켬 3.4ms, 끔 3.0ms) 표본 흔들림이 섞여 있습니다. 클리퍼 외의 원인으로 나눌 근거는 없습니다.</li>
+    <li><b>Renderer::Render 의 차이</b>(켬 7.45 → 6.60ms)는 이번 변경이 줄이려던 대상이 아니고 표본 편차 범위로 봅니다. 계측용 CPU 구간 4개가 더해졌지만 그 비용은 측정되지 않을 만큼 작았습니다.</li>
+    <li><b>표본이 적습니다.</b> 조건당 2~3개, 구간 시간은 그 프레임 한 번의 값이라 ±10% 이상 흔들립니다. 방향(GUI 가 줄고 FPS 가 오름)은 모든 표본에서 일관되지만 정확한 수치는 근삿값입니다.</li>
+    <li><b>GPU frame 은 비교에 쓰지 않았습니다.</b> 이번 변경은 GPU 작업을 바꾸지 않았고, 표본마다 2.6~5.7ms 로 편차가 큽니다 (GPU 클럭 변화일 수 있으나 확인하지 못했습니다).</li>
+    <li><b>Debug 빌드는 재지 않았습니다.</b> Debug 에서 GUI 27ms 였던 구간이 어떻게 변하는지는 별도 측정이 필요합니다.</li>
+    <li>씬 뷰가 작아(649x251) 픽셀 비용은 실사용 크기보다 낮게 나옵니다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>6. 재현 방법</h2>
+  <ol>
+    <li>Release 로 솔루션 빌드 후, <code>x64\Release</code> 에서 <code>SherlockEditor.exe --project=Projects\SherlockTestScenes --load=...\Scenes\OL_TestScene.json --exit-after=400 --screenshot=out.png</code> 실행.</li>
+    <li>스크린샷의 Stats 탭(Profiler 포함) 값을 읽음. Stats 탭이 기본으로 안 보이면 <code>imgui.ini</code> 에서 Stats 창을 떠 있는 창으로 바꿔야 합니다.</li>
+    <li>Before 는 변경 4파일(<code>Renderer.h</code>, <code>Renderer.cpp</code>, <code>Editor.cpp</code>, <code>DebugUI.cpp</code>)을 HEAD 로 되돌려 같은 방법으로 빌드·측정했습니다.</li>
+  </ol>
+</section>
+
+<p class="foot"><a href="../index.html">← 문서 목록</a> · <a href="rendering-report-ol-testscene.html">렌더링 리포트</a></p>
+</main>
+</body>
+</html>
