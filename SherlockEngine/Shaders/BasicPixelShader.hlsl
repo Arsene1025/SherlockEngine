@@ -257,7 +257,7 @@ float3 EnvironmentLighting(float3 albedo, float3 F0, float metallic, float rough
     return (kd * albedo * irradiance + prefiltered * (F0 * brdf.x + brdf.y)) * intensity * ao;
 }
 
-float4 PS_Main(VSOutput input) : SV_TARGET
+float4 PS_Main(VSOutput input, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
 {
     // 재질의 기본색 × 정점 색 × 텍스처. sRGB 텍스처는 샘플링할 때 하드웨어가 선형으로 변환해 주므로
     // 여기서부터 모든 색은 선형 공간임. 백버퍼에 쓸 때 sRGB 뷰가 다시 인코딩함.
@@ -290,7 +290,10 @@ float4 PS_Main(VSOutput input) : SV_TARGET
 
     // 노멀 매핑. 탄젠트 공간(T, B, N) 의 노멀 맵 값을 월드 공간으로 변환함.
     // 노멀 맵은 선형 텍스처이고 (0.5, 0.5, 1) 이 "평평"을 뜻함. B 는 정점 탄젠트의 손잡이(w)로 복원함.
-    const float3 geometricNormal = SafeNormalize(input.normal, float3(0.0f, 1.0f, 0.0f));
+    // 양면 재질(doubleSided)의 뒷면: 정점 노멀은 앞면 쪽을 향하므로, 카메라 쪽을 보도록 뒤집음. 단면 재질은 뒷면이
+    // 컬링되어 항상 앞면이라 아무 일도 없음. 탄젠트 B 는 아래에서 뒤집힌 노멀로 다시 만들어지므로 함께 따라 뒤집힘.
+    const float faceSign = isFrontFace ? 1.0f : -1.0f;
+    const float3 geometricNormal = faceSign * SafeNormalize(input.normal, float3(0.0f, 1.0f, 0.0f));
     const float3 T = SafeNormalize(input.tangent.xyz - geometricNormal * dot(geometricNormal, input.tangent.xyz), float3(1.0f, 0.0f, 0.0f));
     const float3 B = cross(geometricNormal, T) * input.tangent.w;
     float3 tangentNormal = normalTexture.Sample(albedoSampler, input.uv).xyz * 2.0f - 1.0f;
