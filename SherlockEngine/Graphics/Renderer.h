@@ -32,6 +32,10 @@ struct RenderSettings
 	bool cullBack = true;
 	bool srgbOutput = true;        // 최종 출력(톤 패스의 RTV)을 sRGB 뷰로 씀. 끄면 감마 보정 없이 출력함 (비교용). 씬 패스는 FP16 선형이라 무관함
 	int samplerOverride = -1;      // -1 = 재질 설정대로. 그 외 SamplerPreset 값으로 전부 덮어씀
+	// 가우시안 블러를 컴퓨트 셰이더로 (BlurComputeShader.hlsl). 끄면 풀스크린 PS (PostPixelShader 모드 1). 결과는
+	// 같아야 함 — 두 경로의 스크린샷 비교가 컴퓨트 RHI 의 검증임. 백엔드가 컴퓨트를 지원하지 않으면 켜도 PS 로 감.
+	// 씬 파일에 저장하지 않음 (에디터 Render Settings · --compute-blur=1).
+	bool computeBlur = false;
 
 	// 그림자 (켜고 끄는 스위치. 조명마다는 Light::castShadows) 와 노멀 매핑. 그림자 값(바이어스·세기·노말
 	// 오프셋·직교 크기·거리)은 씬 파일에 들어가도록 SceneEnvironment::shadow 에 둠. 여기에는 켜고 끄는
@@ -280,8 +284,8 @@ private:
 
 	// ---- 셰이더·레이아웃·패스 표 (Renderer.cpp 의 kShaders, kPasses) ----
 	// 셰이더를 추가할 때: ShaderId 에 한 줄, kShaders 에 한 줄. 로드·핫리로드 감시·검증·해제는 표를 돌며 함.
-	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_BasicSkinVS, Shader_ShadowSkinVS, Shader_DebugLineVS, Shader_DebugLinePS, Shader_Count };
-	enum LayoutId : uint32_t { Layout_Frame, Layout_Object, Layout_Material, Layout_Post, Layout_Count };
+	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_BasicSkinVS, Shader_ShadowSkinVS, Shader_DebugLineVS, Shader_DebugLinePS, Shader_BlurCS, Shader_Count };
+	enum LayoutId : uint32_t { Layout_Frame, Layout_Object, Layout_Material, Layout_Post, Layout_BlurCompute, Layout_Count };
 	// 패스 = (VS, PS, 레이아웃 목록). PSO Desc 의 셰이더·bindingLayouts 가 이 표에서 나오고, 바인딩 대조도 패스
 	// 단위로 함 (그 패스의 레이아웃에 선언된 슬롯만 통과).
 	// Pass_MainSkin / Pass_ShadowSkin 은 스키닝 메시용 (정점 포맷 PositionColorNormalTexcoordTangentSkin). 스킨 VS 만 다르고 PS·레이아웃은 같음.
@@ -292,10 +296,16 @@ private:
 	static constexpr uint32_t kSetObject = 1;
 	static constexpr uint32_t kSetMaterial = 2;
 	static constexpr uint32_t kSetPost = 0;
+	// 컴퓨트 패스 = (CS, 레이아웃 목록). 그래픽스 패스 표와 따로 둠 — PSO Desc 가 다르고 (ComputePipelineDesc),
+	// 바인딩 대조의 스테이지가 Compute 임.
+	enum ComputePassId : uint32_t { ComputePass_Blur, ComputePass_Count };
+	static constexpr uint32_t kSetBlurCompute = 0;
 	struct ShaderInfo;   // 파일·진입점·스테이지·이름
 	struct PassInfo;     // 이름·VS·PS·레이아웃 목록
+	struct ComputePassInfo;   // 이름·CS·레이아웃 목록
 	static const ShaderInfo kShaders[Shader_Count];
 	static const PassInfo kPasses[Pass_Count];
+	static const ComputePassInfo kComputePasses[ComputePass_Count];
 
 	// 표(kShaders)의 셰이더를 전부 읽거나 컴파일하고, cbuffer 크기와 패스별 바인딩을 대조한 뒤 핸들을 교체함.
 	bool LoadShaders(bool fromSourceOnly);
@@ -365,6 +375,10 @@ private:
 		uint32_t height = 0;
 		TextureHandle temp;                           // 블러 가로 패스의 결과 (hdr 와 같은 크기·포맷). 블러가 처음 켜질 때 만듦
 		ResourceSetHandle tempSet;                    // Layout_Post: t13 = temp
+		// 컴퓨트 블러의 셋 (Layout_BlurCompute: b4, t13 입력, u0 출력). [0] 가로 = hdr → temp, [1] 세로 = temp → hdr.
+		// hdr 를 가리키므로 hdr 가 다시 만들어지면 같이 버려야 함 — DestroyViewTarget 이 DestroyPostScratch 를 부름.
+		ResourceSetHandle blurComputeSets[2];
+		int8_t blurPath = -1;                         // 지난 프레임의 블러 경로 (0 PS, 1 컴퓨트). 바뀔 때만 로그를 남김 (검증용)
 		BloomLevel bloom[kBloomLevels];               // 블룸 축소 체인. 블룸이 처음 켜질 때 만듦
 		uint32_t bloomCount = 0;
 	};
@@ -385,9 +399,9 @@ private:
 	void DestroyViewTarget(ViewTarget& view);
 	// 게임 모드(오프스크린이 아님): 출력 크기(SetOutputSize)에 맞는 메인 뷰 타깃을 보장함.
 	void EnsureGameTarget();
-	// 필요한 것만 만듦 (needBlur → temp, needBloom → 축소 체인). 크기가 바뀌었으면 전부 버리고 다시 만듦.
-	// 실패하면 false.
-	bool EnsurePostScratch(PostScratch& scratch, uint32_t width, uint32_t height, bool needBlur, bool needBloom);
+	// 필요한 것만 만듦 (needBlur → temp + 컴퓨트 블러 셋, needBloom → 축소 체인). 크기가 바뀌었으면 전부 버리고
+	// 다시 만듦. hdr 는 컴퓨트 블러 셋이 가리킴. 실패하면 false (컴퓨트 셋만 실패하면 true — PS 블러로 감).
+	bool EnsurePostScratch(PostScratch& scratch, TextureHandle hdr, uint32_t width, uint32_t height, bool needBlur, bool needBloom);
 	void DestroyPostScratch(PostScratch& scratch);
 	// view.hdr 가 ShaderResource 상태일 때 부르고, 끝나도 ShaderResource 상태임. 켜진 효과가 없으면 아무것도 안 함.
 	// capture 가 참이면 단계마다 썸네일을 그림 (CapturePostStage).
@@ -396,6 +410,11 @@ private:
 	void DestroyStageThumbs();
 	void CapturePostStage(RHI::CommandList& cmd, uint32_t stage, const char* name, ResourceSetHandle hdrSet, uint32_t hdrWidth, uint32_t hdrHeight, bool skipGrade);
 	PipelineHandle GetPostPipeline(bool additive);   // FP16 출력, 깊이 없음. additive = One/One 블렌드 (블룸 합성)
+	// 컴퓨트 블러 PSO. 백엔드가 컴퓨트를 지원하지 않으면 빈 핸들 (ApplyHdrEffects 가 PS 블러로 감).
+	ComputePipelineHandle GetBlurComputePipeline();
+	// 블러 한 방향을 컴퓨트로: input(SRV) → output(UAV). 상태 전이(output → UnorderedAccess → ShaderResource)까지 함.
+	// PostParams(b4)는 호출 전에 올려 둘 것.
+	void DispatchBlurCompute(RHI::CommandList& cmd, ComputePipelineHandle pipeline, ResourceSetHandle set, TextureHandle output, uint32_t width, uint32_t height);
 	void UploadPostParams(const PostParamsConstants& params);
 	ResourceSetHandle CreatePostSet(TextureHandle input, const char* debugName);   // Layout_Post 순서: b0, b4, t13, s6
 	// 이번 프레임의 환경 바인딩. Scene::environment 의 이름들을 ResolveEnvironment 가 핸들과 셰이더 파라미터로 바꿈.
@@ -479,6 +498,7 @@ private:
 	//   Layout_Object    b1 (VS)
 	//   Layout_Material  b3 (VS|PS), t0 알베도, t1 노멀, t2 금속성/거칠기, t3 AO, t4 발광, t5 반사 세기, t6 반사 색, t16~t18 클리어코트, t19 투과, s0 (모두 PS)
 	//   Layout_Post      b0, b4, t13, s6 (모두 PS)
+	//   Layout_BlurCompute b4, t13 입력, u0 출력 (모두 CS)
 	BindingLayoutHandle m_layouts[Layout_Count];
 	BindingLayoutDesc m_layoutDescs[Layout_Count];
 	ResourceSetHandle m_frameSet;
@@ -501,6 +521,8 @@ private:
 	uint32_t m_debugLineCount = 0;                    // 올린 정점 수 (0 이면 그리지 않음)
 	PipelineHandle m_tonemapPipelines[2];   // [srgbOutput]
 	PipelineHandle m_postPipelines[2];      // [additive]
+	ComputePipelineHandle m_blurComputePipeline;
+	bool m_blurComputeTried = false;        // 한 번 만들어 보고 실패하면 (컴퓨트 미지원 백엔드) 매 프레임 다시 시도하지 않음
 	RenderSettings m_settings;
 	Stats m_stats;
 	uint64_t m_frameNumber = 0;

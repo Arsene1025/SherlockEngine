@@ -24,6 +24,7 @@ namespace
         {
         case BindingType::ConstantBuffer: return 'b';
         case BindingType::Sampler:        return 's';
+        case BindingType::UnorderedAccess: return 'u';
         default:                          return 't';
         }
     }
@@ -736,6 +737,16 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
     if (isRt) rd.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
     if (isDepth) rd.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
     if (isDepth && !isSrv) rd.Flags |= D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+    if (descIn.bindFlags & TextureBind_UnorderedAccess)
+    {
+        // D3D11 백엔드와 같은 규칙 (ResourceDesc.h 의 CanBeUnorderedAccess).
+        if (!CanBeUnorderedAccess(descIn))
+        {
+            Log::Error("CreateTexture : UAV 텍스처는 2D · 비깊이 · MSAA 없음 · 비 sRGB · 비압축이어야 함 (%s).", texture.name.c_str());
+            return TextureHandle{};
+        }
+        rd.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    }
 
     // 최적화 클리어 값: 깊이 1.0. 매 프레임 이 값으로 클리어하므로 일치함.
     D3D12_CLEAR_VALUE clear = {};
@@ -1024,6 +1035,17 @@ PipelineHandle D3D12Device::CreatePipeline(const PipelineStateDesc& desc)
     return m_pipelines.GetOrCreate(*this, desc);
 }
 
+ComputePipelineHandle D3D12Device::CreateComputePipeline(const ComputePipelineDesc& desc)
+{
+    // E 단계에서 구현함 (컴퓨트 루트 시그니처 + D3D12_COMPUTE_PIPELINE_STATE_DESC). 그 전까지는 빈 핸들 —
+    // Renderer 가 IsValid() 로 보고 그래픽스(PS) 경로로 돌아감.
+    (void)desc;
+    static bool warned = false;
+    if (!warned) Log::Warn("CreateComputePipeline : D3D12 컴퓨트는 아직 구현되지 않음. 그래픽스 경로를 씀.");
+    warned = true;
+    return ComputePipelineHandle{};
+}
+
 void D3D12Device::InvalidatePipelines()
 {
     m_pipelines.Clear(*this);
@@ -1221,6 +1243,13 @@ BindingLayoutHandle D3D12Device::CreateBindingLayout(const BindingLayoutDesc& de
             Log::Error("CreateBindingLayout : 슬롯 %u 의 stageMask가 0 (%s).", i, name);
             return BindingLayoutHandle{};
         }
+        // D3D11 백엔드와 같은 규칙: 컴퓨트 슬롯은 단독, UAV 는 컴퓨트 전용.
+        if (((slot.stageMask & ShaderStageMask_Compute) && slot.stageMask != ShaderStageMask_Compute) ||
+            (slot.type == BindingType::UnorderedAccess && slot.stageMask != ShaderStageMask_Compute))
+        {
+            Log::Error("CreateBindingLayout : 슬롯 %u 의 stageMask 가 잘못됨 — 컴퓨트는 단독, UAV 는 컴퓨트 전용 (%s).", i, name);
+            return BindingLayoutHandle{};
+        }
         uint8_t limit = 0;
         switch (slot.type)
         {
@@ -1228,6 +1257,7 @@ BindingLayoutHandle D3D12Device::CreateBindingLayout(const BindingLayoutDesc& de
         case BindingType::ShaderResource: limit = kMaxSrvRegister; break;
         case BindingType::BufferResource: limit = kMaxSrvRegister; break;   // 텍스처와 같은 t# 공간
         case BindingType::Sampler:        limit = kMaxSamplerRegister; break;
+        case BindingType::UnorderedAccess: limit = kMaxUavRegister; break;
         }
         if (slot.reg >= limit)
         {
@@ -1313,6 +1343,18 @@ ResourceSetHandle D3D12Device::CreateResourceSet(const ResourceSetDesc& descIn)
             }
             ++samplerCount;
             break;
+        case BindingType::UnorderedAccess:
+        {
+            // 검증만 함. UAV 디스크립터는 D3D12 컴퓨트 구현(E 단계)에서 테이블에 넣음 — 그 전까지는
+            // CreateComputePipeline 이 빈 핸들을 돌려주므로 이 셋이 Dispatch 에 쓰이지 않음.
+            const D3D12Texture* texture = m_textures.Get(binding.texture);
+            if (texture == nullptr || !(texture->desc.bindFlags & TextureBind_UnorderedAccess) || binding.mip >= texture->desc.mipLevels)
+            {
+                Log::Error("CreateResourceSet : 슬롯 %u (u%u) 에 UAV 가능한 텍스처가 아니거나 밉 %u 이 범위 밖 (%s).", i, slot.reg, binding.mip, name);
+                return ResourceSetHandle{};
+            }
+            break;
+        }
         }
     }
 

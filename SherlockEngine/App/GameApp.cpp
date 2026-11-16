@@ -43,6 +43,8 @@ bool GameApp::OnInitialize()
 	if (!exitAfter.empty()) m_exitAfter = static_cast<uint64_t>(_wtoi64(exitAfter.c_str()));
 	const std::wstring debugBones = GetCommandLineOption(L"debug-bones");   // 자동 검증: --debug-bones=1|2
 	if (!debugBones.empty()) engine.GetRenderer().GetSettings().debugBones = _wtoi(debugBones.c_str());
+	const std::wstring computeBlur = GetCommandLineOption(L"compute-blur");   // --compute-blur=1|0 (RenderSettings::computeBlur)
+	if (!computeBlur.empty()) engine.GetRenderer().GetSettings().computeBlur = _wtoi(computeBlur.c_str()) != 0;
 	m_screenshotPath = GetCommandLineOption(L"screenshot");
 	m_dumpObjects = !GetCommandLineOption(L"dump-objects").empty();
 

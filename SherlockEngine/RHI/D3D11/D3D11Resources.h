@@ -84,6 +84,7 @@ struct D3D11Texture
 	ComPtr<ID3D11RenderTargetView> rtvSrgb;   // *_UNORM_SRGB 뷰. 이 뷰로 백버퍼에 쓰면 하드웨어가 선형→sRGB로 인코딩함
 	ComPtr<ID3D11DepthStencilView> dsv;
 	ComPtr<ID3D11ShaderResourceView> srv;
+	std::vector<ComPtr<ID3D11UnorderedAccessView>> uavs;   // 밉 레벨마다 하나 (TextureBind_UnorderedAccess). 처음 요청될 때 만듦
 
 	// srgbView=true 면 같은 텍스처의 sRGB 포맷 뷰를 돌려줌. 스왑체인 백버퍼는 UNORM으로 만들고
 	// 씬은 sRGB 뷰에, ImGui는 UNORM 뷰에 그림 (flip 모델에서는 백버퍼 자체를 sRGB로 만들 수 없음).
@@ -168,6 +169,25 @@ struct D3D11Texture
 		return srv.Get();
 	}
 
+	// 밉 레벨 하나를 가리키는 UAV (RWTexture2D). 2D 전용 — CreateTexture 가 큐브·깊이·MSAA·sRGB 의 UAV 를 거부함.
+	// TYPELESS 색상 리소스(RT + SRV 인 R8G8B8A8_UNORM)는 뷰 포맷을 원래 포맷(UNORM)으로 명시함.
+	ID3D11UnorderedAccessView* GetUAV(ID3D11Device* device, uint32_t mip)
+	{
+		if (!texture || !(desc.bindFlags & TextureBind_UnorderedAccess) || mip >= desc.mipLevels) return nullptr;
+		if (uavs.size() < desc.mipLevels) uavs.resize(desc.mipLevels);
+		ComPtr<ID3D11UnorderedAccessView>& target = uavs[mip];
+		if (!target)
+		{
+			D3D11_UNORDERED_ACCESS_VIEW_DESC viewDesc = {};
+			viewDesc.Format = D3D11Convert::ToDXGI(desc.format);
+			viewDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+			viewDesc.Texture2D.MipSlice = mip;
+			const HRESULT hr = device->CreateUnorderedAccessView(texture.Get(), &viewDesc, target.GetAddressOf());
+			if (FAILED(hr)) Log::Error("UAV 생성 실패 (%s, 밉 %u). %s", name.c_str(), mip, Log::HrToString(hr).c_str());
+		}
+		return target.Get();
+	}
+
 private:
 	static DXGI_FORMAT ToSrgb(DXGI_FORMAT format)
 	{
@@ -186,7 +206,16 @@ struct D3D11Shader
 	std::string name;
 	ComPtr<ID3D11VertexShader> vs;
 	ComPtr<ID3D11PixelShader> ps;
+	ComPtr<ID3D11ComputeShader> cs;
 	std::vector<uint8_t> bytecode;   // 입력 레이아웃 생성(VS)과 리플렉션에 필요
+};
+
+// 컴퓨트 PSO. D3D11 에는 컴퓨트 상태 객체가 없어 셰이더 하나뿐임 — 레이아웃은 D3D12 의 루트 시그니처 자리라
+// Desc(캐시 키)에만 들어감. 그래픽스 PSO 캐시와 세대를 같이 씀 (InvalidatePipelines 가 둘 다 무효화).
+struct D3D11ComputePipeline
+{
+	ComputePipelineDesc desc;
+	ComPtr<ID3D11ComputeShader> cs;
 };
 
 struct D3D11Sampler

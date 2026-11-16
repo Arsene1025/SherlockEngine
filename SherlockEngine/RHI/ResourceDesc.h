@@ -42,6 +42,10 @@ enum TextureBind : uint8_t
 	TextureBind_RenderTarget   = 1 << 0,
 	TextureBind_DepthStencil   = 1 << 1,
 	TextureBind_ShaderResource = 1 << 2,
+	// 컴퓨트 셰이더가 RWTexture2D 로 씀 (u#). 생성할 때 정해야 하고 깊이·MSAA·sRGB 포맷과는 함께 쓸 수 없음 —
+	// 두 백엔드의 CreateTexture 가 같은 규칙으로 거부함. cs_5_0 에서 float4 같은 다성분 UAV 는 쓰기만 되므로
+	// 읽기는 같은 텍스처의 SRV 로 함 (한 Dispatch 에서 같은 텍스처를 읽고 쓰지 않음).
+	TextureBind_UnorderedAccess = 1 << 3,
 };
 
 // 큐브맵. 큐브는 "면 6장짜리 2D 텍스처 배열 + 큐브로 읽는 뷰"임 — D3D11 은 ArraySize 6 + MISC_TEXTURECUBE,
@@ -70,6 +74,16 @@ struct TextureDesc
 constexpr uint32_t GetArraySize(const TextureDesc& desc)
 {
 	return desc.dimension == TextureDimension::TextureCube ? 6u : 1u;
+}
+
+// TextureBind_UnorderedAccess 를 받을 수 있는 Desc 인가. 두 백엔드의 CreateTexture 가 같은 규칙으로 쓰도록 여기 둠.
+// 2D 만 (큐브 UAV 는 2D 배열 뷰가 필요해 아직 없음), 깊이·MSAA·sRGB·블록 압축은 UAV 가 될 수 없음.
+// 포맷별 typed UAV 쓰기 지원은 장치마다 다르므로 백엔드가 따로 물어봄.
+constexpr bool CanBeUnorderedAccess(const TextureDesc& desc)
+{
+	const bool srgb = desc.format == Format::R8G8B8A8_UNORM_SRGB;
+	return desc.dimension == TextureDimension::Texture2D && !(desc.bindFlags & TextureBind_DepthStencil) &&
+		desc.sampleCount == 1 && !srgb && !IsBlockCompressed(desc.format);
 }
 
 // 텍스처 초기 데이터. 서브리소스(면 × 밉)마다 하나. 밉맵은 CPU에서 만들어 함께 올림.
@@ -128,4 +142,7 @@ enum ShaderStageMask : uint8_t
 {
 	ShaderStageMask_Vertex = 1 << 0,
 	ShaderStageMask_Pixel  = 1 << 1,
+	// 컴퓨트 패스의 레이아웃. 그래픽스 스테이지와 한 슬롯에 섞지 않음 (CreateBindingLayout 이 거부) — D3D12 에서
+	// 컴퓨트 루트 시그니처는 그래픽스와 따로 바인딩되므로 한 레이아웃이 둘 다에 걸치면 뜻이 모호해짐.
+	ShaderStageMask_Compute = 1 << 2,
 };

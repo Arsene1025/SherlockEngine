@@ -20,6 +20,8 @@ namespace RHI
 			uint32_t renderPasses = 0;
 			uint32_t barriers = 0;
 			uint32_t srvUnbinds = 0;   // 렌더 패스 시작 시 attachment 와 겹쳐서 바인딩을 풀어 준 SRV 수
+			uint32_t dispatches = 0;
+			uint32_t uavUnbinds = 0;   // UAV 상태에서 나가거나 들어갈 때 겹치는 바인딩(UAV·SRV)을 풀어 준 수 (D3D11)
 		};
 
 		virtual ~CommandList() = default;
@@ -54,10 +56,25 @@ namespace RHI
 		// 삼각형)에 씀. 그런 PSO 는 vertexLayout.attributeCount = 0 으로 만듦 (입력 레이아웃 없음).
 		virtual void Draw(uint32_t vertexCount, uint32_t startVertex = 0) = 0;
 
+		// ---- 컴퓨트 ----
+		// 렌더 패스 밖에서만 유효함 (안에서 부르면 에러 로그 1회 후 무시). 그래픽스와 바인딩 상태가 따로임:
+		// D3D12 는 컴퓨트 루트 시그니처·루트 인자가 그래픽스와 별개라, SetResourceSet 으로 꽂은 셋은 Dispatch 에
+		// 보이지 않음. 반드시 SetComputeResourceSet 으로 꽂을 것 (setIndex = ComputePipelineDesc::bindingLayouts 의
+		// 인덱스). UAV 로 쓸 텍스처는 Dispatch 전에 Barrier(tex, UnorderedAccess), 결과를 읽기 전에
+		// Barrier(tex, ShaderResource) — D3D11 은 이때 겹치는 SRV·UAV 바인딩을 풀어 줌.
+		virtual void SetComputePipeline(ComputePipelineHandle handle) = 0;
+		virtual void SetComputeResourceSet(uint32_t setIndex, ResourceSetHandle handle) = 0;
+		virtual void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1) = 0;
+
 		// ---- 전이·복사 ----
 		// 텍스처를 after 상태로 전이함. 현재 상태는 백엔드가 텍스처마다 추적하므로 호출 코드는 "이제 무엇으로
 		// 쓸지"만 말함 (이미 그 상태면 아무 일도 없음). D3D11: 상태 기록만. D3D12: ResourceBarrier(Transition).
 		virtual void Barrier(TextureHandle texture, ResourceState after) = 0;
+		// UAV → UAV 의존. 같은 텍스처를 UAV 로 연달아 쓰는 두 Dispatch 사이에서, 앞 Dispatch 의 쓰기가 끝나고 보이게
+		// 된 뒤에 뒤 Dispatch 를 시작하게 함. 상태는 바꾸지 않음 (Barrier 의 "이미 그 상태면 아무 일도 없음" 규칙과
+		// 따로 둔 이유). 텍스처가 UnorderedAccess 상태여야 함. D3D11: 드라이버가 알아서 하므로 할 일 없음.
+		// D3D12: ResourceBarrier(UAV). 다른 텍스처·다른 밉에 쓰거나, 사이에 SRV 전이가 있으면 필요 없음.
+		virtual void UavBarrier(TextureHandle texture) = 0;
 		// 크기가 같은 두 버퍼 사이의 전체 복사.
 		virtual void CopyBuffer(BufferHandle dst, BufferHandle src) = 0;
 

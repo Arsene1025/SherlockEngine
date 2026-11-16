@@ -58,6 +58,7 @@ constexpr uint32_t kSRVSlotCsmMap = 14;      // t14 (프레임, 방향광 CSM �
 constexpr uint32_t kSRVSlotLights = 15;      // t15 (프레임, 조명 구조체 버퍼 StructuredBuffer<LightData>)
 constexpr uint32_t kSRVSlotSceneHdr = 13;   // t13 (후처리 셋, 후처리 패스의 입력 텍스처. 톤 패스는 HDR 씬, 블러·블룸은 앞 단계의 결과)
 constexpr uint32_t kCBSlotPostParams = 4;    // b4 (후처리 셋, 패스마다 올림)
+constexpr uint32_t kUAVSlotPostOutput = 0;   // u0 (컴퓨트 블러 셋, 출력 RWTexture2D)
 constexpr uint32_t kCBSlotShadowPass = 5;   // b5 (프레임 셋, VS). 그림자 패스가 뷰마다 올림
 constexpr uint32_t kCBSlotShadows = 6;      // b6 (프레임 셋, PS). 그림자 뷰 배열
 constexpr uint32_t kCBSlotSkin = 7;         // b7 (오브젝트 셋, VS). 스키닝 조인트 행렬 팔레트

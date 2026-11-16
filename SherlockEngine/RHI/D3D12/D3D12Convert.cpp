@@ -161,6 +161,7 @@ namespace D3D12Convert
 		case ResourceState::CopySource:     return D3D12_RESOURCE_STATE_COPY_SOURCE;
 		case ResourceState::CopyDest:       return D3D12_RESOURCE_STATE_COPY_DEST;
 		case ResourceState::Present:        return D3D12_RESOURCE_STATE_PRESENT;
+		case ResourceState::UnorderedAccess: return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 		default:                            return D3D12_RESOURCE_STATE_COMMON;
 		}
 	}

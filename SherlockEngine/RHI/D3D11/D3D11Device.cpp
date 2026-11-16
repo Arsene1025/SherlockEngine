@@ -49,6 +49,8 @@ void D3D11Device::ReleaseDevice()
 
     // 장치가 만든 객체를 먼저 해제함. 장치보다 오래 살아 있으면 Live Object 경고가 발생함.
     m_pipelines.Clear();
+    m_computePipelines.clear();
+    m_computeLookup.clear();
     for (TimestampSet& set : m_timestampSets)   // 쿼리도 장치 객체임
     {
         set.disjoint.Reset();
@@ -413,6 +415,23 @@ TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, std::span<co
         return TextureHandle{};
     }
 
+    // UAV 규칙 (ResourceDesc.h 의 TextureBind_UnorderedAccess). D3D12 백엔드도 같은 조건으로 거부함.
+    if (descIn.bindFlags & TextureBind_UnorderedAccess)
+    {
+        if (!CanBeUnorderedAccess(descIn))
+        {
+            Log::Error("CreateTexture : UAV 텍스처는 2D · 비깊이 · MSAA 없음 · 비 sRGB · 비압축이어야 함 (%s).", texture.name.c_str());
+            return TextureHandle{};
+        }
+        // FL11_0 에서 이 포맷에 typed UAV 쓰기가 되는지 장치에 물음 (R16G16B16A16_FLOAT·R8G8B8A8_UNORM 등은 필수 지원).
+        UINT support = 0;
+        if (FAILED(m_device->CheckFormatSupport(format, &support)) || !(support & D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW))
+        {
+            Log::Error("CreateTexture : 이 장치는 포맷 %d 의 UAV 를 지원하지 않음 (%s).", static_cast<int>(format), texture.name.c_str());
+            return TextureHandle{};
+        }
+    }
+
     D3D11_TEXTURE2D_DESC td = {};
     td.Width = descIn.width;
     td.Height = descIn.height;
@@ -425,6 +444,7 @@ TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, std::span<co
     if (descIn.bindFlags & TextureBind_RenderTarget)   td.BindFlags |= D3D11_BIND_RENDER_TARGET;
     if (descIn.bindFlags & TextureBind_DepthStencil)   td.BindFlags |= D3D11_BIND_DEPTH_STENCIL;
     if (descIn.bindFlags & TextureBind_ShaderResource) td.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
+    if (descIn.bindFlags & TextureBind_UnorderedAccess) td.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
     if (isCube) td.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;   // 이 플래그가 있어야 TEXTURECUBE SRV 를 만들 수 있음
 
 
@@ -566,6 +586,10 @@ ShaderHandle D3D11Device::CreateShader(const ShaderDesc& desc)
         hr = m_device->CreatePixelShader(desc.bytecode.data(), desc.bytecode.size(), nullptr, shader.ps.GetAddressOf());
         SetDebugName(shader.ps.Get(), shader.name, 0);
         break;
+    case ShaderStage::Compute:
+        hr = m_device->CreateComputeShader(desc.bytecode.data(), desc.bytecode.size(), nullptr, shader.cs.GetAddressOf());
+        SetDebugName(shader.cs.Get(), shader.name, 0);
+        break;
     default:
         Log::Error("CreateShader : 알 수 없는 ShaderStage %d", static_cast<int>(desc.stage));
         return ShaderHandle{};
@@ -592,9 +616,54 @@ PipelineHandle D3D11Device::CreatePipeline(const PipelineStateDesc& desc)
     return m_pipelines.GetOrCreate(*this, desc);
 }
 
+ComputePipelineHandle D3D11Device::CreateComputePipeline(const ComputePipelineDesc& desc)
+{
+    const uint32_t generation = m_pipelines.GetGeneration();
+    if (const auto found = m_computeLookup.find(desc); found != m_computeLookup.end())
+    {
+        return ComputePipelineHandle{ found->second, generation };
+    }
+    const D3D11Shader* shader = m_shaders.Get(desc.cs);
+    if (shader == nullptr || shader->stage != ShaderStage::Compute || !shader->cs)
+    {
+        Log::Error("CreateComputePipeline : cs 가 컴퓨트 셰이더가 아님.");
+        return ComputePipelineHandle{};
+    }
+    if (desc.bindingLayoutCount > kMaxBindingSets)
+    {
+        Log::Error("CreateComputePipeline : 레이아웃이 너무 많음 (%u > %u).", desc.bindingLayoutCount, kMaxBindingSets);
+        return ComputePipelineHandle{};
+    }
+    for (uint32_t i = 0; i < desc.bindingLayoutCount; ++i)
+    {
+        const D3D11BindingLayout* layout = m_bindingLayouts.Get(desc.bindingLayouts[i]);
+        if (layout == nullptr)
+        {
+            Log::Error("CreateComputePipeline : 레이아웃 %u 이 유효하지 않음 (%s).", i, shader->name.c_str());
+            return ComputePipelineHandle{};
+        }
+        for (uint32_t s = 0; s < layout->desc.slotCount; ++s)
+        {
+            if (layout->desc.slots[s].stageMask != ShaderStageMask_Compute)
+            {
+                Log::Error("CreateComputePipeline : 레이아웃 '%s' 의 슬롯 %u 가 컴퓨트 전용이 아님.", layout->name.c_str(), s);
+                return ComputePipelineHandle{};
+            }
+        }
+    }
+
+    const uint32_t index = static_cast<uint32_t>(m_computePipelines.size());
+    m_computePipelines.push_back(D3D11ComputePipeline{ desc, shader->cs });
+    m_computeLookup.emplace(desc, index);
+    Log::Info("컴퓨트 PSO 생성 #%u (%s, layouts=%u, gen=%u)", index, shader->name.c_str(), desc.bindingLayoutCount, generation);
+    return ComputePipelineHandle{ index, generation };
+}
+
 void D3D11Device::InvalidatePipelines()
 {
-    m_pipelines.Clear();
+    m_pipelines.Clear();   // 세대가 올라가므로 이전 컴퓨트 핸들도 GetComputePipeline 에서 무효가 됨
+    m_computePipelines.clear();
+    m_computeLookup.clear();
 }
 
 // ------------------------------------------------------------------ 바인딩 레이아웃 / 리소스 셋
@@ -616,6 +685,13 @@ BindingLayoutHandle D3D11Device::CreateBindingLayout(const BindingLayoutDesc& de
             Log::Error("CreateBindingLayout : 슬롯 %u 의 stageMask가 0 (%s).", i, name);
             return BindingLayoutHandle{};
         }
+        // 컴퓨트 슬롯은 그래픽스 스테이지와 섞지 않고, UAV 는 컴퓨트 전용 (ResourceDesc.h·BindingTypes.h).
+        if (((slot.stageMask & ShaderStageMask_Compute) && slot.stageMask != ShaderStageMask_Compute) ||
+            (slot.type == BindingType::UnorderedAccess && slot.stageMask != ShaderStageMask_Compute))
+        {
+            Log::Error("CreateBindingLayout : 슬롯 %u 의 stageMask 가 잘못됨 — 컴퓨트는 단독, UAV 는 컴퓨트 전용 (%s).", i, name);
+            return BindingLayoutHandle{};
+        }
         uint8_t limit = 0;
         switch (slot.type)
         {
@@ -623,6 +699,7 @@ BindingLayoutHandle D3D11Device::CreateBindingLayout(const BindingLayoutDesc& de
         case BindingType::ShaderResource: limit = kMaxSrvRegister; break;
         case BindingType::BufferResource: limit = kMaxSrvRegister; break;   // 텍스처와 같은 t# 공간
         case BindingType::Sampler:        limit = kMaxSamplerRegister; break;
+        case BindingType::UnorderedAccess: limit = kMaxUavRegister; break;
         }
         if (slot.reg >= limit)
         {
@@ -699,6 +776,16 @@ ResourceSetHandle D3D11Device::CreateResourceSet(const ResourceSetDesc& descIn)
             if (texture == nullptr || !(texture->desc.bindFlags & TextureBind_ShaderResource))
             {
                 Log::Error("CreateResourceSet : 슬롯 %u (t%u) 에 SRV 가능한 텍스처가 아닌 핸들 (%s).", i, slot.reg, name);
+                return ResourceSetHandle{};
+            }
+            break;
+        }
+        case BindingType::UnorderedAccess:
+        {
+            const D3D11Texture* texture = m_textures.Get(binding.texture);
+            if (texture == nullptr || !(texture->desc.bindFlags & TextureBind_UnorderedAccess) || binding.mip >= texture->desc.mipLevels)
+            {
+                Log::Error("CreateResourceSet : 슬롯 %u (u%u) 에 UAV 가능한 텍스처가 아니거나 밉 %u 이 범위 밖 (%s).", i, slot.reg, binding.mip, name);
                 return ResourceSetHandle{};
             }
             break;

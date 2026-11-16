@@ -48,6 +48,7 @@ concept ResourceHandle = kIsHandle<T> && std::is_trivially_copyable_v<T>;   // �
 
 struct ShaderTag;
 struct PipelineTag;
+struct ComputePipelineTag;
 struct BufferTag;
 struct TextureTag;
 struct BindingLayoutTag;
@@ -56,6 +57,7 @@ struct SamplerTag;
 
 using ShaderHandle = Handle<ShaderTag>;
 using PipelineHandle = Handle<PipelineTag>;
+using ComputePipelineHandle = Handle<ComputePipelineTag>;   // 그래픽스 PSO 핸들과 섞어 쓰면 컴파일 에러
 using BufferHandle = Handle<BufferTag>;
 using TextureHandle = Handle<TextureTag>;
 using SamplerHandle = Handle<SamplerTag>;

@@ -21,6 +21,8 @@ enum class BindingType : uint8_t
 	ShaderResource,   // t#  (SRV) — 텍스처
 	Sampler,          // s#
 	BufferResource,   // t#  (SRV) — 구조체 버퍼 (HLSL StructuredBuffer<T>). ResourceBinding::buffer 에 BufferBind_ShaderResource 버퍼를 꽂음
+	UnorderedAccess,  // u#  (UAV) — 텍스처 (HLSL RWTexture2D<T>). ResourceBinding::texture + mip 에 TextureBind_UnorderedAccess 텍스처를 꽂음.
+	                  //       컴퓨트 스테이지 전용 (D3D11 의 PS UAV 는 OMSetRenderTargetsAndUnorderedAccessViews 가 따로 필요해 지원하지 않음)
 };
 
 struct BindingSlot
@@ -45,6 +47,9 @@ constexpr uint32_t kMaxBindingSlots = 24;   // 레이아웃 하나의 슬롯 수
 constexpr uint8_t kMaxCbvRegister = 14;
 constexpr uint8_t kMaxSrvRegister = 32;
 constexpr uint8_t kMaxSamplerRegister = 16;
+// UAV 는 D3D11.0 의 CS 슬롯 수 (D3D11_PS_CS_UAV_REGISTER_COUNT = 8). 64 는 D3D11.1 + FL11_1 이 필요한데 엔진은
+// FL11_0 과 ID3D11DeviceContext 를 씀.
+constexpr uint8_t kMaxUavRegister = 8;
 
 struct BindingLayoutDesc
 {
@@ -63,12 +68,14 @@ struct BindingLayoutDesc
 };
 
 // 슬롯 하나에 꽂는 리소스. 슬롯 타입에 따라 buffer / texture / sampler 중 하나만 사용함
-// (ConstantBuffer·BufferResource → buffer, ShaderResource → texture, Sampler → sampler).
+// (ConstantBuffer·BufferResource → buffer, ShaderResource·UnorderedAccess → texture, Sampler → sampler).
+// mip 은 UnorderedAccess 슬롯에서만 읽음: 그 밉 레벨 하나를 가리키는 UAV (밉마다 따로 쓰는 IBL 프리필터용).
 struct ResourceBinding
 {
 	BufferHandle buffer;
 	TextureHandle texture;
 	SamplerHandle sampler;
+	uint8_t mip = 0;
 };
 
 struct ResourceSetDesc

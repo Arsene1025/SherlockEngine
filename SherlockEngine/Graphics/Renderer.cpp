@@ -49,6 +49,7 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] =
 	{ L"ShadowSkinVertexShader.hlsl", "VS_ShadowSkin", ShaderStage::Vertex, "ShadowSkinVS" },
 	{ L"DebugLineVertexShader.hlsl",  "VS_Line",       ShaderStage::Vertex, "DebugLineVS" },    // 본 표시 등 디버그 선
 	{ L"DebugLinePixelShader.hlsl",   "PS_Line",       ShaderStage::Pixel,  "DebugLinePS" },
+	{ L"BlurComputeShader.hlsl",      "CS_Blur",       ShaderStage::Compute, "BlurCS" },        // 가우시안 블러 한 방향 (컴퓨트 경로)
 };
 
 struct Renderer::PassInfo
@@ -70,6 +71,19 @@ const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] =
 	{ "MainSkin",   Shader_BasicSkinVS,  Shader_BasicPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
 	{ "ShadowSkin", Shader_ShadowSkinVS, Shader_Count,   { Layout_Frame, Layout_Object },                  2 },
 	{ "DebugLine",  Shader_DebugLineVS,  Shader_DebugLinePS, { Layout_Frame },                             1 },
+};
+
+struct Renderer::ComputePassInfo
+{
+	const char* name;
+	uint32_t cs;                          // ShaderId
+	uint32_t layouts[kMaxBindingSets];    // LayoutId. 순서가 곧 셋 인덱스 (SetComputeResourceSet 의 첫 인자)
+	uint32_t layoutCount;
+};
+
+const Renderer::ComputePassInfo Renderer::kComputePasses[Renderer::ComputePass_Count] =
+{
+	{ "BlurCompute", Shader_BlurCS, { Layout_BlurCompute }, 1 },
 };
 
 namespace
@@ -99,6 +113,7 @@ namespace
 		{
 		case BindingType::ConstantBuffer: return 'b';
 		case BindingType::Sampler:        return 's';
+		case BindingType::UnorderedAccess: return 'u';
 		default:                          return 't';
 		}
 	}
@@ -263,6 +278,15 @@ bool Renderer::CreateLayouts()
 	postLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneHdr);  // t13
 	postLayout.Add(BindingType::Sampler, ShaderStageMask_Pixel, kSamplerSlotPost);         // s6
 
+	// 컴퓨트 블러 셋: b4 (PostParams), t13 (입력), u0 (출력). 컴퓨트 슬롯은 그래픽스 스테이지와 섞지 않으므로
+	// Layout_Post 를 같이 쓰지 않고 따로 둠. 입력 레지스터는 PS 블러와 같은 t13 (Common.hlsli 의 t0 은 재질 알베도).
+	BindingLayoutDesc& blurLayout = m_layoutDescs[Layout_BlurCompute];
+	blurLayout = BindingLayoutDesc{};
+	blurLayout.debugName = "Layout_BlurCompute";
+	blurLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotPostParams);   // b4
+	blurLayout.Add(BindingType::ShaderResource, ShaderStageMask_Compute, kSRVSlotSceneHdr);    // t13
+	blurLayout.Add(BindingType::UnorderedAccess, ShaderStageMask_Compute, kUAVSlotPostOutput); // u0
+
 	for (uint32_t i = 0; i < Layout_Count; ++i)
 	{
 		m_layouts[i] = m_device->CreateBindingLayout(m_layoutDescs[i]);
@@ -351,6 +375,8 @@ void Renderer::BuildPassDescs()
 	m_debugLinePipeline = PipelineHandle{};
 	for (PipelineHandle& handle : m_tonemapPipelines) handle = PipelineHandle{};
 	for (PipelineHandle& handle : m_postPipelines) handle = PipelineHandle{};
+	m_blurComputePipeline = ComputePipelineHandle{};
+	m_blurComputeTried = false;
 }
 
 bool Renderer::CreateSamplers()
@@ -652,6 +678,38 @@ bool Renderer::ValidateBindings(const std::vector<uint8_t>* code) const
 		};
 		check(pass.vs, ShaderStageMask_Vertex);
 		check(pass.ps, ShaderStageMask_Pixel);
+	}
+
+	// 컴퓨트 패스: CS 가 쓰는 슬롯이 그 패스의 레이아웃에 Compute 스테이지로 선언됐는지 (위 (2) 와 같은 규칙).
+	for (uint32_t p = 0; p < ComputePass_Count; ++p)
+	{
+		const ComputePassInfo& pass = kComputePasses[p];
+		std::vector<ShaderCompiler::ReflectedBinding> used;
+		if (!ShaderCompiler::ReflectBindings(code[pass.cs], used)) continue;
+		for (const auto& u : used)
+		{
+			bool found = false;
+			for (uint32_t l = 0; l < pass.layoutCount && !found; ++l)
+			{
+				const BindingLayoutDesc& layout = m_layoutDescs[pass.layouts[l]];
+				for (uint32_t i = 0; i < layout.slotCount; ++i)
+				{
+					const BindingSlot& slot = layout.slots[i];
+					if (slot.type == u.type && slot.reg == u.reg && (slot.stageMask & ShaderStageMask_Compute)) { found = true; break; }
+				}
+			}
+			const char typeName = RegisterClassOf(u.type);
+			if (!found)
+			{
+				Log::Error("바인딩 대조: [%s] %s가 %c%u ('%s')를 쓰지만 이 패스의 BindingLayout에 Compute 스테이지로 선언되지 않음.",
+					pass.name, kShaders[pass.cs].name, typeName, u.reg, u.name.c_str());
+				ok = false;
+			}
+			else
+			{
+				Log::Info("바인딩 대조: [%s] %s %c%u ('%s') OK", pass.name, kShaders[pass.cs].name, typeName, u.reg, u.name.c_str());
+			}
+		}
 	}
 	return ok;
 }
@@ -1639,4 +1697,17 @@ PipelineHandle Renderer::GetTonemapPipeline()
 	desc.rtvCount = 1;
 	cached = m_device->CreatePipeline(desc);
 	return cached;
+}
+
+ComputePipelineHandle Renderer::GetBlurComputePipeline()
+{
+	if (m_blurComputePipeline.IsValid() || m_blurComputeTried) return m_blurComputePipeline;
+	m_blurComputeTried = true;   // 실패(컴퓨트 미지원 백엔드)해도 매 프레임 다시 묻지 않음. 핫리로드(BuildPassDescs)가 되돌림
+	const ComputePassInfo& info = kComputePasses[ComputePass_Blur];
+	ComputePipelineDesc desc;
+	desc.cs = m_shaders[info.cs];
+	for (uint32_t i = 0; i < info.layoutCount; ++i) desc.bindingLayouts[i] = m_layouts[info.layouts[i]];
+	desc.bindingLayoutCount = static_cast<uint8_t>(info.layoutCount);
+	m_blurComputePipeline = m_device->CreateComputePipeline(desc);
+	return m_blurComputePipeline;
 }

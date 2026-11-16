@@ -37,6 +37,20 @@ PipelineHandle Renderer::GetPostPipeline(bool additive)
 	return cached;
 }
 
+void Renderer::DispatchBlurCompute(RHI::CommandList& cmd, ComputePipelineHandle pipeline, ResourceSetHandle set, TextureHandle output,
+	uint32_t width, uint32_t height)
+{
+	// 출력 → UnorderedAccess. 입력(셋의 t13)은 앞 단계가 남긴 ShaderResource 상태 그대로임. D3D11 에서는 이 전이가
+	// 출력 텍스처를 SRV 슬롯(PS t13 · CS t13)에서 풀어 줌 — 안 풀면 런타임이 UAV 쪽을 NULL 로 만들어 아무것도 안 써짐.
+	cmd.Barrier(output, ResourceState::UnorderedAccess);
+	cmd.SetComputePipeline(pipeline);
+	cmd.SetComputeResourceSet(kSetBlurCompute, set);   // PostParams 를 올린 뒤에 꽂아야 D3D12 루트 CBV 가 새 주소를 가리킴
+	cmd.Dispatch((width + 7) / 8, (height + 7) / 8, 1);   // BlurComputeShader 의 [numthreads(8, 8, 1)]
+	// 다음 단계(세로 패스의 입력, 블룸, 톤 패스)가 SRV 로 읽음. D3D11 에서는 CS UAV 슬롯에서도 풀어 줌.
+	cmd.Barrier(output, ResourceState::ShaderResource);
+	++m_stats.pipelineSwitches;
+}
+
 ResourceSetHandle Renderer::CreatePostSet(TextureHandle input, const char* debugName)
 {
 	// 슬롯 순서는 CreateLayouts 의 postLayout.Add(...) 순서: b0 PerFrame, b4 PostParams, t13 입력, s6 선형 Clamp.
@@ -101,20 +115,21 @@ void Renderer::RenderTonemapPass(RHI::CommandList& cmd, ResourceSetHandle hdrSet
 	});
 }
 
-bool Renderer::EnsurePostScratch(PostScratch& scratch, uint32_t width, uint32_t height, bool needBlur, bool needBloom)
+bool Renderer::EnsurePostScratch(PostScratch& scratch, TextureHandle hdr, uint32_t width, uint32_t height, bool needBlur, bool needBloom)
 {
 	if (m_device == nullptr || width == 0 || height == 0) return false;
 	if (scratch.width != width || scratch.height != height) DestroyPostScratch(scratch);   // hdr 크기가 바뀌었으면 전부 다시
 
 	// 후처리 텍스처는 전부 FP16 — 1 을 넘는 밝기를 잘라내지 않도록 hdr 와 같은 포맷.
-	auto create = [this](uint32_t w, uint32_t h, const char* name, TextureHandle& texture, ResourceSetHandle& set)
+	// extraBind: 블러 스크래치는 컴퓨트 블러의 출력(가로 패스)이기도 하므로 UAV 를 함께 켬.
+	auto create = [this](uint32_t w, uint32_t h, const char* name, TextureHandle& texture, ResourceSetHandle& set, uint8_t extraBind = 0)
 	{
 		const TextureDesc desc{
 			.width = w,
 			.height = h,
 			.format = Format::R16G16B16A16_FLOAT,
 			.mipLevels = 1,
-			.bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource,
+			.bindFlags = static_cast<uint8_t>(TextureBind_RenderTarget | TextureBind_ShaderResource | extraBind),
 			.debugName = name,
 		};
 		texture = m_device->CreateTexture(desc);
@@ -124,13 +139,28 @@ bool Renderer::EnsurePostScratch(PostScratch& scratch, uint32_t width, uint32_t 
 
 	if (needBlur && !scratch.temp.IsValid())
 	{
-		if (!create(width, height, "PostTemp", scratch.temp, scratch.tempSet))
+		if (!create(width, height, "PostTemp", scratch.temp, scratch.tempSet, TextureBind_UnorderedAccess))
 		{
 			Log::Error("후처리 스크래치 텍스처 생성 실패 (%ux%u).", width, height);
 			DestroyPostScratch(scratch);
 			return false;
 		}
 		Log::Info("후처리 스크래치(블러) %ux%u (R16G16B16A16_FLOAT)", width, height);
+
+		// 컴퓨트 블러 셋. 슬롯 순서는 CreateLayouts 의 blurLayout.Add(...) 순서: b4, t13 입력, u0 출력.
+		// 실패해도 (UAV 를 못 만드는 장치 등) 스크래치는 그대로 쓰고 PS 블러로 감.
+		const ResourceSetDesc horizontal{
+			.layout = m_layouts[Layout_BlurCompute],
+			.bindings = { { .buffer = m_postParamsCB }, { .texture = hdr }, { .texture = scratch.temp } },
+			.debugName = "BlurComputeH",
+		};
+		const ResourceSetDesc vertical{
+			.layout = m_layouts[Layout_BlurCompute],
+			.bindings = { { .buffer = m_postParamsCB }, { .texture = scratch.temp }, { .texture = hdr } },
+			.debugName = "BlurComputeV",
+		};
+		scratch.blurComputeSets[0] = m_device->CreateResourceSet(horizontal);
+		scratch.blurComputeSets[1] = m_device->CreateResourceSet(vertical);
 	}
 	if (needBloom && scratch.bloomCount == 0)
 	{
@@ -165,6 +195,10 @@ void Renderer::DestroyPostScratch(PostScratch& scratch)
 	{
 		// D3D12 는 지연 해제라 이미 기록된 명령이 읽어도 안전함.
 		if (scratch.tempSet.IsValid()) m_device->DestroyResourceSet(scratch.tempSet);
+		for (ResourceSetHandle& set : scratch.blurComputeSets)
+		{
+			if (set.IsValid()) m_device->DestroyResourceSet(set);
+		}
 		if (scratch.temp.IsValid()) m_device->DestroyTexture(scratch.temp);
 		for (PostScratch::BloomLevel& level : scratch.bloom)
 		{
@@ -251,7 +285,7 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 	const PostProcessSettings& post = m_postSettings;
 	bool blur = post.blurEnabled && post.blurRadius > 0.0f;
 	bool bloom = post.bloomEnabled && post.bloomIntensity > 0.0f;
-	if ((blur || bloom) && !EnsurePostScratch(scratch, width, height, blur, bloom))
+	if ((blur || bloom) && !EnsurePostScratch(scratch, hdr, width, height, blur, bloom))
 	{
 		blur = bloom = false;   // 못 만들면 효과만 건너뜀 (씬은 그대로 나감)
 	}
@@ -269,27 +303,47 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 		params.blur = XMFLOAT4((std::max)(effectiveRadius / 2.5f, 0.5f), std::ceil((std::max)(effectiveRadius, 1.0f)), 0.0f, 0.0f);   // 시그마, 반경 (±2.5σ 에서 자름)
 		params.view = XMFLOAT4(w, h, w, h);
 
+		// 컴퓨트 경로: 설정이 켜져 있고 PSO·셋이 모두 있을 때만. 아니면 (D3D12 미구현 등) PS 경로.
+		// 같은 PostParams 를 쓰고 수식이 같아 두 경로의 결과가 같아야 함.
+		const ComputePipelineHandle blurCompute = m_settings.computeBlur ? GetBlurComputePipeline() : ComputePipelineHandle{};
+		const bool useCompute = blurCompute.IsValid() && scratch.blurComputeSets[0].IsValid() && scratch.blurComputeSets[1].IsValid();
+		if (scratch.blurPath != (useCompute ? 1 : 0))
+		{
+			scratch.blurPath = useCompute ? 1 : 0;
+			Log::Info("블러 경로: %s (%ux%u)", useCompute ? "컴퓨트 (BlurCS)" : "픽셀 셰이더 (PostPS)", width, height);
+		}
+
 		params.pass = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.0f);   // 모드 1, 방향 (1, 0)
 		UploadPostParams(params);
-		RenderPostPass(cmd, PostPassDesc{
-			.pipeline = GetPostPipeline(false),
-			.input = hdrSet,
-			.output = scratch.temp,
-			.outputAfter = ResourceState::ShaderResource,
-			.load = LoadOp::DontCare,
-			.debugName = "BlurH",
-		});
+		if (useCompute)
+		{
+			DispatchBlurCompute(cmd, blurCompute, scratch.blurComputeSets[0], scratch.temp, width, height);
+			params.pass = XMFLOAT4(1.0f, 0.0f, 1.0f, 0.0f);   // 방향 (0, 1). 결과를 hdr 에 되돌려 씀
+			UploadPostParams(params);
+			DispatchBlurCompute(cmd, blurCompute, scratch.blurComputeSets[1], hdr, width, height);
+		}
+		else
+		{
+			RenderPostPass(cmd, PostPassDesc{
+				.pipeline = GetPostPipeline(false),
+				.input = hdrSet,
+				.output = scratch.temp,
+				.outputAfter = ResourceState::ShaderResource,
+				.load = LoadOp::DontCare,
+				.debugName = "BlurH",
+			});
 
-		params.pass = XMFLOAT4(1.0f, 0.0f, 1.0f, 0.0f);   // 방향 (0, 1). 결과를 hdr 에 되돌려 씀
-		UploadPostParams(params);
-		RenderPostPass(cmd, PostPassDesc{
-			.pipeline = GetPostPipeline(false),
-			.input = scratch.tempSet,
-			.output = hdr,
-			.outputAfter = ResourceState::ShaderResource,
-			.load = LoadOp::DontCare,
-			.debugName = "BlurV",
-		});
+			params.pass = XMFLOAT4(1.0f, 0.0f, 1.0f, 0.0f);   // 방향 (0, 1). 결과를 hdr 에 되돌려 씀
+			UploadPostParams(params);
+			RenderPostPass(cmd, PostPassDesc{
+				.pipeline = GetPostPipeline(false),
+				.input = scratch.tempSet,
+				.output = hdr,
+				.outputAfter = ResourceState::ShaderResource,
+				.load = LoadOp::DontCare,
+				.debugName = "BlurV",
+			});
+		}
 		if (capture) CapturePostStage(cmd, 1, "Blur", hdrSet, width, height, true);
 	}
 

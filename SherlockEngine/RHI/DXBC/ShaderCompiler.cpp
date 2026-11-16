@@ -21,6 +21,7 @@ namespace
 		{
 		case ShaderStage::Vertex: return "vs_5_0";
 		case ShaderStage::Pixel:  return "ps_5_0";
+		case ShaderStage::Compute: return "cs_5_0";
 		}
 		return nullptr;
 	}
@@ -264,8 +265,9 @@ bool ShaderCompiler::ReflectBindings(std::span<const uint8_t> bytecode, std::vec
 		case D3D_SIT_TEXTURE:   entry.type = BindingType::ShaderResource; break;
 		case D3D_SIT_SAMPLER:   entry.type = BindingType::Sampler; break;
 		case D3D_SIT_STRUCTURED: entry.type = BindingType::BufferResource; break;   // StructuredBuffer<T> (읽기 전용)
+		case D3D_SIT_UAV_RWTYPED: entry.type = BindingType::UnorderedAccess; break;  // RWTexture2D<T> (u#)
 		default:
-			// UAV 등은 아직 레이아웃에 없음. 나오면 경고로 알림.
+			// 버퍼 UAV(RWStructuredBuffer 등)는 아직 레이아웃에 없음. 나오면 경고로 알림.
 			Log::Warn("리플렉션: 지원하지 않는 바인딩 타입 %d ('%s', 슬롯 %u).", static_cast<int>(bind.Type), entry.name.c_str(), bind.BindPoint);
 			continue;
 		}

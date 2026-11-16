@@ -19,6 +19,7 @@
 //   --play=1              9 프레임째 StartPlay (▶ 와 같은 경로)
 //   --stop-at=N           N 프레임째 StopPlay (스냅샷 복원)
 //   --add-component=Name  10 프레임째 선택 오브젝트에 컴포넌트 추가 (Inspector 의 Add Component 와 같은 경로)
+//   --compute-blur=1|0    시작할 때 가우시안 블러 경로 (1 = 컴퓨트, 0 = PS). --exit-after 없이도 동작. 게임 exe 도 같은 인자
 struct EditorAutomation
 {
 	bool active = false;

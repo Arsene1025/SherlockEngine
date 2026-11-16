@@ -54,7 +54,9 @@ bool Renderer::CreateViewTarget(ViewTarget& view, uint32_t width, uint32_t heigh
 		.height = height,
 		.format = Format::R16G16B16A16_FLOAT,   // 선형 half4. 1 을 넘는 값(태양, 강한 조명)을 잘라내지 않고 담음
 		.mipLevels = 1,
-		.bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource,
+		// UAV: 컴퓨트 블러의 세로 패스가 결과를 hdr 에 되돌려 씀 (RenderSettings::computeBlur). FP16 의 typed UAV
+		// 쓰기는 FL11_0 필수 지원이라 따로 확인하지 않음 (못 만들면 CreateTexture 가 에러로 알림).
+		.bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource | TextureBind_UnorderedAccess,
 		.debugName = hdrName.c_str(),
 	};
 	view.hdr = m_device->CreateTexture(hdr);

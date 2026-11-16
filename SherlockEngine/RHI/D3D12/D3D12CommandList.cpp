@@ -335,6 +335,34 @@ void D3D12CommandList::Barrier(TextureHandle handle, ResourceState after)
 	texture->state = after;
 }
 
+void D3D12CommandList::UavBarrier(TextureHandle handle)
+{
+	(void)handle;
+	static bool warned = false;
+	ErrorOnce(warned, "UavBarrier : D3D12 컴퓨트는 아직 구현되지 않음.");
+}
+
+void D3D12CommandList::SetComputePipeline(ComputePipelineHandle handle)
+{
+	(void)handle;
+	static bool warned = false;
+	ErrorOnce(warned, "SetComputePipeline : D3D12 컴퓨트는 아직 구현되지 않음.");
+}
+
+void D3D12CommandList::SetComputeResourceSet(uint32_t setIndex, ResourceSetHandle handle)
+{
+	(void)setIndex; (void)handle;
+	static bool warned = false;
+	ErrorOnce(warned, "SetComputeResourceSet : D3D12 컴퓨트는 아직 구현되지 않음.");
+}
+
+void D3D12CommandList::Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t groupsZ)
+{
+	(void)groupsX; (void)groupsY; (void)groupsZ;
+	static bool warned = false;
+	ErrorOnce(warned, "Dispatch : D3D12 컴퓨트는 아직 구현되지 않음.");
+}
+
 void D3D12CommandList::CopyBuffer(BufferHandle dst, BufferHandle src)
 {
 	const D3D12Buffer* d = m_device ? m_device->GetBuffer(dst) : nullptr;

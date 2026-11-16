@@ -6,6 +6,8 @@
 #include "RHI/D3D11/D3D11CommandList.h"
 #include "RHI/Device.h"
 #include "RHI/GraphicsConfig.h"
+#include <unordered_map>
+#include <vector>
 
 // RHI::Device 의 D3D11 구현. 장치·스왑체인과 리소스 풀을 관리함.
 //
@@ -55,7 +57,8 @@ public:
     void DestroyShader(ShaderHandle handle) override;
 
     PipelineHandle CreatePipeline(const PipelineStateDesc& desc) override;
-    size_t GetPipelineCount() const override { return m_pipelines.Count(); }
+    ComputePipelineHandle CreateComputePipeline(const ComputePipelineDesc& desc) override;
+    size_t GetPipelineCount() const override { return m_pipelines.Count() + m_computePipelines.size(); }
     void InvalidatePipelines() override;
 
     BindingLayoutHandle CreateBindingLayout(const BindingLayoutDesc& desc) override;
@@ -84,6 +87,11 @@ public:
     const D3D11BindingLayout* GetBindingLayout(BindingLayoutHandle handle) const { return m_bindingLayouts.Get(handle); }
     const D3D11ResourceSet* GetResourceSet(ResourceSetHandle handle) const { return m_resourceSets.Get(handle); }
     const PipelineState* GetPipeline(PipelineHandle handle) const { return m_pipelines.Get(handle); }
+    const D3D11ComputePipeline* GetComputePipeline(ComputePipelineHandle handle) const
+    {
+        if (!handle.IsValid() || handle.index >= m_computePipelines.size() || handle.generation != m_pipelines.GetGeneration()) return nullptr;
+        return &m_computePipelines[handle.index];
+    }
 
 private:
     bool InitDirect3D();
@@ -120,6 +128,10 @@ private:
     ResourcePool<D3D11BindingLayout, BindingLayoutHandle> m_bindingLayouts;
     ResourcePool<D3D11ResourceSet, ResourceSetHandle> m_resourceSets;
     PipelineStateCache m_pipelines;
+    // 컴퓨트 PSO 캐시. 인덱스 = 핸들 index, 세대 = m_pipelines 의 세대 (InvalidatePipelines 가 함께 비움).
+    // GetComputePipeline 이 돌려준 포인터는 그 자리에서만 쓰므로 vector 재할당이 문제되지 않음.
+    std::vector<D3D11ComputePipeline> m_computePipelines;
+    std::unordered_map<ComputePipelineDesc, uint32_t, ComputePipelineDescHasher> m_computeLookup;
     D3D11CommandList m_commandList;   // 소유권 없음(D3D11Device* 만 보관). 모든 바인딩·드로우가 이것을 거침
 
     TextureHandle m_backBuffer;

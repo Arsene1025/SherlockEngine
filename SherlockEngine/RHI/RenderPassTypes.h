@@ -77,6 +77,7 @@ enum class ResourceState : uint8_t
 	CopySource,
 	CopyDest,
 	Present,
+	UnorderedAccess,   // 컴퓨트가 UAV 로 씀. Dispatch 전에 이 상태로, 결과를 읽기 전에 ShaderResource 로 전이
 };
 
 inline const char* ToString(ResourceState state)
@@ -90,6 +91,7 @@ inline const char* ToString(ResourceState state)
 	case ResourceState::CopySource:     return "CopySource";
 	case ResourceState::CopyDest:       return "CopyDest";
 	case ResourceState::Present:        return "Present";
+	case ResourceState::UnorderedAccess: return "UnorderedAccess";
 	default:                            return "?";
 	}
 }

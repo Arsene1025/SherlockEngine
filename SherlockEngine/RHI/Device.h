@@ -108,7 +108,11 @@ namespace RHI
 
 		virtual PipelineHandle CreatePipeline(const PipelineStateDesc& desc) = 0;   // 같은 Desc 면 같은 핸들을 돌려줌(캐시)
 		virtual size_t GetPipelineCount() const = 0;
-		virtual void InvalidatePipelines() = 0;   // 캐시를 전부 버림. 이전 핸들은 무효가 됨. 셰이더 핫리로드 뒤에 호출.
+		// 컴퓨트 PSO. 그래픽스와 캐시·핸들 타입이 따로임 (PipelineTypes.h 의 ComputePipelineDesc). 같은 Desc 면 같은
+		// 핸들. 컴퓨트를 지원하지 않는 백엔드는 에러를 한 번 남기고 빈 핸들을 돌려줌 — 호출 쪽은 IsValid() 로 보고
+		// 그래픽스 경로로 돌아감.
+		virtual ComputePipelineHandle CreateComputePipeline(const ComputePipelineDesc& desc) = 0;
+		virtual void InvalidatePipelines() = 0;   // 그래픽스·컴퓨트 캐시를 전부 버림. 이전 핸들은 무효가 됨. 셰이더 핫리로드 뒤에 호출.
 
 		virtual BindingLayoutHandle CreateBindingLayout(const BindingLayoutDesc& desc) = 0;
 		virtual void DestroyBindingLayout(BindingLayoutHandle handle) = 0;

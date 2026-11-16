@@ -141,6 +141,7 @@ enum class ShaderStage : uint8_t
 {
 	Vertex,   // 정점 셰이더
 	Pixel,    // 픽셀 셰이더
+	Compute,  // 컴퓨트 셰이더 (cs_5_0). 그래픽스 PSO 가 아니라 ComputePipelineDesc 로 묶음
 };
 
 // 기본값은 "불투명, 깊이 테스트 켬, 뒷면 컬링, 솔리드". PipelineStateDesc d{};
@@ -252,4 +253,42 @@ struct PipelineStateDesc
 struct PipelineStateDescHasher
 {
 	size_t operator()(const PipelineStateDesc& desc) const { return static_cast<size_t>(desc.Hash()); }
+};
+
+// 컴퓨트 PSO 주문서. 그래픽스 PSO 의 정점 레이아웃·래스터라이저·블렌드·RTV 포맷은 컴퓨트에 뜻이 없으므로
+// PipelineStateDesc 에 끼우지 않고 따로 둠 (해시·비교에 의미 없는 필드가 섞이지 않게). D3D12 의
+// D3D12_COMPUTE_PIPELINE_STATE_DESC 와 같은 모양: 셰이더 하나 + 루트 시그니처(= BindingLayout 나열).
+// Device::CreateComputePipeline 이 같은 Desc 면 같은 핸들을 돌려주고, InvalidatePipelines 가 그래픽스와 함께 비움.
+struct ComputePipelineDesc
+{
+	ShaderHandle cs;   // ShaderStage::Compute 로 만든 셰이더
+	BindingLayoutHandle bindingLayouts[kMaxBindingSets];   // 앞에서 bindingLayoutCount개만 유효. 인덱스 = SetComputeResourceSet 의 setIndex
+	uint8_t bindingLayoutCount = 0;
+
+	uint64_t Hash() const
+	{
+		uint64_t h = 0xCBF29CE484222325ull;   // FNV-1a (PipelineStateDesc::Hash 와 같은 방식)
+		auto mix = [&h](uint64_t v) { h ^= v; h *= 1099511628211ull; };
+		mix(cs.index); mix(cs.generation); mix(bindingLayoutCount);
+		for (uint32_t i = 0; i < bindingLayoutCount && i < kMaxBindingSets; ++i)
+		{
+			mix(bindingLayouts[i].index);
+			mix(bindingLayouts[i].generation);
+		}
+		return h;
+	}
+	bool operator==(const ComputePipelineDesc& o) const
+	{
+		if (cs != o.cs || bindingLayoutCount != o.bindingLayoutCount) return false;
+		for (uint32_t i = 0; i < bindingLayoutCount && i < kMaxBindingSets; ++i)
+		{
+			if (bindingLayouts[i] != o.bindingLayouts[i]) return false;
+		}
+		return true;
+	}
+};
+
+struct ComputePipelineDescHasher
+{
+	size_t operator()(const ComputePipelineDesc& desc) const { return static_cast<size_t>(desc.Hash()); }
 };

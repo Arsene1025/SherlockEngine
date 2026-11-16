@@ -172,6 +172,8 @@ void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)
 	ImGui::Checkbox("sRGB output", &settings.srgbOutput);
 	SameLineIfFits(CheckboxWidth("Normal maps"));
 	ImGui::Checkbox("Normal maps", &settings.normalMapping);
+	SameLineIfFits(CheckboxWidth("Compute blur"));
+	ImGui::Checkbox("Compute blur", &settings.computeBlur);   // 가우시안 블러를 컴퓨트 셰이더로 (결과는 PS 와 같아야 함)
 	bool vsync = device.IsVSync();
 	if (ImGui::Checkbox("VSync", &vsync))
 	{

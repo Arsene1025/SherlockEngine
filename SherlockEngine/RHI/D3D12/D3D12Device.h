@@ -69,6 +69,7 @@ public:
     void DestroyShader(ShaderHandle handle) override;
 
     PipelineHandle CreatePipeline(const PipelineStateDesc& desc) override;
+    ComputePipelineHandle CreateComputePipeline(const ComputePipelineDesc& desc) override;
     size_t GetPipelineCount() const override { return m_pipelines.Count(); }
     void InvalidatePipelines() override;
 

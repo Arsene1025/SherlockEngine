@@ -32,7 +32,13 @@ public:
 	void DrawIndexed(uint32_t indexCount, uint32_t startIndex = 0, int32_t baseVertex = 0) override;
 	void Draw(uint32_t vertexCount, uint32_t startVertex = 0) override;
 
+	// 컴퓨트: E 단계에서 구현. 지금은 CreateComputePipeline 이 빈 핸들을 돌려주므로 호출되지 않아야 함 (호출되면 에러 1회).
+	void SetComputePipeline(ComputePipelineHandle handle) override;
+	void SetComputeResourceSet(uint32_t setIndex, ResourceSetHandle handle) override;
+	void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1) override;
+
 	void Barrier(TextureHandle texture, ResourceState after) override;
+	void UavBarrier(TextureHandle texture) override;
 	void CopyBuffer(BufferHandle dst, BufferHandle src) override;
 
 	void WriteTimestamp(uint32_t slot) override;   // Device 의 쿼리 힙에 위임
