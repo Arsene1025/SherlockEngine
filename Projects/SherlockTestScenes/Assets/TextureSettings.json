@@ -10,22 +10,32 @@
       "maxSize": 0,
       "mipLevels": 1
     },
-    "SC2_Viking/0 Image_1.png": {
+    "SC2_Viking_v2_1.pbr.m4/0 img0_normal.png": {
+      "compress": true,
+      "maxSize": 4096,
+      "mipLevels": 6
+    },
+    "SC2_Viking_v2_1.pbr.m4/1 Image_0.png": {
       "compress": true,
       "maxSize": 0,
       "mipLevels": 1
     },
-    "SC2_Viking/1 Image_0.png": {
+    "SC2_Viking_v2_1.pbr.m4/2 img0_metal1-img0_rough.png": {
       "compress": true,
       "maxSize": 0,
       "mipLevels": 1
     },
-    "SC2_Viking/2 Image_3.png": {
+    "SC2_Viking_v2_1.pbr.m4/3 img2_normal2.png": {
+      "compress": true,
+      "maxSize": 4096,
+      "mipLevels": 6
+    },
+    "SC2_Viking_v2_1.pbr.m4/4 Image_2.png": {
       "compress": true,
       "maxSize": 0,
       "mipLevels": 1
     },
-    "SC2_Viking/3 Image_2.png": {
+    "SC2_Viking_v2_1.pbr.m4/5 img2_metal4-img2_rough.png": {
       "compress": true,
       "maxSize": 0,
       "mipLevels": 1
@@ -45,22 +55,32 @@
       "maxSize": 0,
       "mipLevels": 1
     },
-    "SiegeTank/0 Image_3.png": {
+    "SiegeTank_v2.xxx/0 img2_normal.png": {
       "compress": true,
       "maxSize": 0,
       "mipLevels": 1
     },
-    "SiegeTank/1 Image_2.png": {
+    "SiegeTank_v2.xxx/1 Image_2.png": {
       "compress": true,
       "maxSize": 0,
       "mipLevels": 1
     },
-    "SiegeTank/2 Image_1.png": {
+    "SiegeTank_v2.xxx/2 img2_metal1-img2_rough.png": {
       "compress": true,
       "maxSize": 0,
       "mipLevels": 1
     },
-    "SiegeTank/3 Image_0.png": {
+    "SiegeTank_v2.xxx/3 img0_normal.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SiegeTank_v2.xxx/4 Image_0.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SiegeTank_v2.xxx/5 img0_metal1-img0_rough.png": {
       "compress": true,
       "maxSize": 0,
       "mipLevels": 1

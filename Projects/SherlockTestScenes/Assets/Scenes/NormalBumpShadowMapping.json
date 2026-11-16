@@ -1,17 +1,17 @@
 {
   "ambientColor": [
-    0.03,
-    0.03,
-    0.03
+    0.029999999329447746,
+    0.029999999329447746,
+    0.029999999329447746
   ],
   "camera": {
-    "pitch": 0.28257724475050866,
+    "pitch": 1.1550824642181396,
     "position": [
-      -4.5,
-      3.0,
-      -4.8
+      0.5684037804603577,
+      2.2146506309509277,
+      0.07455485314130783
     ],
-    "yaw": 0.7443253848069943
+    "yaw": -0.1706734299659729
   },
   "clearColor": [
     0.0,
@@ -34,10 +34,16 @@
       "greyscale": 0.0
     },
     "shadow": {
-      "bias": 0.0015,
-      "distance": 16.0,
-      "normalOffset": 0.3,
-      "orthoSize": 24.0,
+      "bias": 0.001500000013038516,
+      "cascadeBlend": 0.15000000596046448,
+      "cascadeCount": 4,
+      "cascadeDistance": 200.0,
+      "cascadeEnabled": true,
+      "cascadeLambda": 0.699999988079071,
+      "distance": 40.0,
+      "localNormalBias": 1.0,
+      "normalOffset": 0.03999999910593033,
+      "orthoSize": 60.0,
       "strength": 1.0
     },
     "skybox": "",
@@ -48,22 +54,23 @@
     {
       "attenuation": [
         1.0,
-        0.045,
-        0.0075
+        0.04500000178813934,
+        0.007499999832361937
       ],
+      "castShadows": true,
       "color": [
         1.0,
         1.0,
         1.0
       ],
       "direction": [
-        0.3491282676376715,
-        -0.847882935691488,
-        0.3990037344430532
+        0.34912827610969543,
+        -0.8478829264640808,
+        0.3990037441253662
       ],
-      "innerConeCos": 0.9238795,
-      "intensity": 1.3,
-      "outerConeCos": 0.8660254,
+      "innerConeCos": 0.9238795042037964,
+      "intensity": 1.2999999523162842,
+      "outerConeCos": 0.8660253882408142,
       "position": [
         0.0,
         10.0,
@@ -98,7 +105,7 @@
       "normalTexture": "asset:Textures\\NormalBumpTest.png",
       "occlusionStrength": 1.0,
       "occlusionTexture": "",
-      "roughness": 0.6,
+      "roughness": 0.6000000238418579,
       "sampler": 2,
       "unlit": false,
       "uvScale": [
@@ -112,9 +119,9 @@
       "albedoTexture": "",
       "alphaCutoff": 0.0,
       "baseColor": [
-        0.6,
-        0.6,
-        0.6,
+        0.6000000238418579,
+        0.6000000238418579,
+        0.6000000238418579,
         1.0
       ],
       "doubleSided": false,
@@ -131,7 +138,7 @@
       "normalTexture": "",
       "occlusionStrength": 1.0,
       "occlusionTexture": "",
-      "roughness": 0.9,
+      "roughness": 0.8999999761581421,
       "sampler": 2,
       "unlit": false,
       "uvScale": [
@@ -374,7 +381,7 @@
           "enabled": true,
           "farZ": 1000.0,
           "fovY": 45.0,
-          "nearZ": 0.1,
+          "nearZ": 0.10000000149011612,
           "orthoSize": 25.0,
           "orthographic": false,
           "priority": 0,
@@ -388,11 +395,11 @@
       "position": [
         -4.5,
         3.0,
-        -4.8
+        -4.800000190734863
       ],
       "rotation": [
-        0.28257724475050866,
-        0.7443253848069943,
+        0.282577246427536,
+        0.7443253993988037,
         0.0
       ],
       "scale": [
