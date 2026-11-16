@@ -75,12 +75,12 @@ std::wstring AppBase::GetCommandLineOption(const wchar_t* name)
 std::wstring AppBase::GetDefaultProjectDir()
 {
     if (!Paths::HasEngineSourceTree()) return L"";
-    // 엔진 루트 = <repo>\SherlockEngine 폴더 → <repo>\Projects\Sample 폴더 (주석 끝의 백슬래시는 줄 연속으로
+    // 엔진 루트 = <repo>\SherlockEngine 폴더 → <repo>\Projects\SherlockTestScenes 폴더 (주석 끝의 백슬래시는 줄 연속으로
     // 처리되므로 피함)
     const std::wstring engine = Paths::GetEngineRoot();
     const size_t slash = engine.find_last_of(L'\\', engine.size() - 2);
     if (slash == std::wstring::npos) return L"";
-    return engine.substr(0, slash + 1) + L"Projects\\Sample\\";
+    return engine.substr(0, slash + 1) + L"Projects\\SherlockTestScenes\\";
 }
 
 void AppBase::ResolveProject()

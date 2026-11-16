@@ -113,7 +113,7 @@ bool EditorApp::OnInitialize()
 	m_editorCallbacks.buildScripts = [this]() { BuildScripts(); };
 	m_editorCallbacks.saveProject = [this]() { return GetProject().Save(); };
 
-	// 프로젝트가 있으면(AppBase 가 --project / exe 상위 폴더 / Projects\Sample 순으로 찾았음) 그 프로젝트의
+	// 프로젝트가 있으면(AppBase 가 --project / exe 상위 폴더 / Projects\SherlockTestScenes 순으로 찾았음) 그 프로젝트의
 	// 시작 씬을 로드함. 없으면 engine.scene 을 씀. 스크립트 DLL 은 AppBase::Initialize 가 이미 올렸음. 옛
 	// 형식 프로젝트면 솔루션을 스크립트 DLL 형식으로 다시 만듦.
 	if (GetProject().IsLoaded())

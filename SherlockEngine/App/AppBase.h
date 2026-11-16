@@ -40,12 +40,12 @@ protected:
     const Config& GetConfig() const { return m_config; }
 
     // 프로젝트. Initialize 가 설정을 읽기 전에 정함 (--project=, exe 상위 폴더의 *.sherlock, 엔진의
-    // Projects\Sample 순). OpenProject 는 실행 중에 프로젝트를 전환함 (Paths 의 프로젝트 루트를 바꿈). 씬
+    // Projects\SherlockTestScenes 순). OpenProject 는 실행 중에 프로젝트를 전환함 (Paths 의 프로젝트 루트를 바꿈). 씬
     // 로드는 앱이 담당함.
     Project& GetProject() { return m_project; }
     const Project& GetProject() const { return m_project; }
     bool OpenProject(const std::wstring& pathOrDir);
-    static std::wstring GetDefaultProjectDir();   // <엔진 저장소>\Projects\Sample\ (소스 트리가 있을 때)
+    static std::wstring GetDefaultProjectDir();   // <엔진 저장소>\Projects\SherlockTestScenes\ (소스 트리가 있을 때)
 
     // 프로젝트 스크립트 DLL. Initialize 가 Engine 초기화 직후(OnInitialize 전, 씬이 빈 때) 한 번 부름.
     // 열린 프로젝트의 <이름>Scripts.dll 을 찾아 올림: exe 옆(패키지된 게임) → <프로젝트>\Binaries\<구성>\ 순.

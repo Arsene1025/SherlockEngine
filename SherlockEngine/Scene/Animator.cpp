@@ -238,34 +238,6 @@ private:
 			default: break;
 			}
 		}
-
-		// 노드 월드(evalOrder 루프)와 아래 팔레트·포즈 식은 Scene/SkinPose.cpp 의 EvaluateNodeGlobals·BuildSkinPalette 에 있음 (식은 그대로 옮김).
-		// 편집 모드의 기본 자세(ApplyRestSkinPoses)도 같은 식을 써서, 재생을 시작하기 전과 후의 스킨 모양이 같은 식에서 나옴.
-
-		// 스킨 팔레트 / 스켈레톤 포즈 계산
-		// 행벡터 규약(DirectXMath): v' = v · M0 · M1 · ... 이라 왼쪽 행렬이 먼저 적용된다.
-		//
-		// palette[j] = 역바인드[j] · 조인트 월드[j] · (메시 노드 기본 월드)⁻¹
-		//   1) inverseBind[j]  : 메시 정점(바인드 포즈 메시 공간)을 조인트 j 의 로컬 공간으로 보낸다.
-		//                        "바인드 포즈에서 조인트 월드 행렬의 역행렬"이다.
-		//						  joint에 영향을 받는 정점들을 조인트 로컬로 보내서 조인트의 움직임이 정점에 반영되도록 한다.
-		//						  해당 과정을 거치면 정점이 조인트로부터 얼마나 떨저어졌는지 상대 좌표를 알 수 있음
-		//						  이 상태에서 조인트월드를 곱하면 조인트가 움직인 만큼 정점도 움직임(조인트 로컬 ㄷ좌표가 그대로 유지되니까)
-		//   2) jointWorld[j]   : 조인트 로컬 공간을 현재 애니메이션 포즈의 월드(씬) 공간으로 보낸다.
-		//                        (m_global = 로컬 TRS · 부모 월드, 위 evalOrder 루프에서 계산됨)
-		//                       "바인드 포즈 대비 이 조인트가 움직인 변화량" 계산.
-		//                        바인드 포즈 그대로면 inverseBind · jointWorld = 단위행렬이라 정점이 제자리에 남는다.
-		// 
-		//   3) inverseMesh     : 현재 엔진에서는 그릴 때 pre를 곱해서 메시를 씬 공간으로 보냄.
-		//						  하지만 스킨 메시는 이미 inverseBind * jointWorld를 거친 시점에 이미 씬 공간에 있음.
-		//						  ->jointWorld가 씬 기준이기 때문
-		//                        그런 상태에서 pre가 또 곱해지면 씬 공간으로 두 번 감.
-		//                        그레서 pre의 역행렬을 넣어서 상쇄.
-		//                        
-		// 정점은 자기 영향 조인트 인덱스(JOINTS_0)와 가중치(WEIGHTS_0)를 갖고 있고, 정점 셰이더가 이 배열에서
-		// 해당 행렬을 골라 skin = Σ 가중치 · 정점 · palette[인덱스] 로 블렌딩한다.
-		// SetSkinPalette 로 오브젝트에 넘기면 렌더러가 GPU 버퍼(구조체 버퍼 등)로 올려 셰이더가 읽는다.
-		// 구동할 스킨 메시 오브젝트마다 팔레트를 만듦. 스킨이 같으면 노드 월드는 한 번만 계산함 (MasterChief 는 4개 메시가 한 스킨을 씀).
 		m_targetScratch.clear();
 		CollectSkinTargets(GetOwner(), m_targetScratch);
 		const ModelSkin* evaluated = nullptr;

@@ -428,16 +428,19 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>&
 	for (size_t i = 0; i < vertices.size(); ++i)
 	{
 		VERTEX& v = vertices[i];
-		const XMVECTOR n = XMVector3Normalize(XMVectorSet(v.nx, v.ny, v.nz, 0.0f));
+		// 노멀이 0 벡터(퇴화)이면 +Y 로 대체함. 이후 계산이 모두 이 n 에 기대므로 NaN/0 이 퍼지지 않게 먼저 막음.
+		XMVECTOR n = XMVectorSet(v.nx, v.ny, v.nz, 0.0f);
+		n = XMVectorGetX(XMVector3LengthSq(n)) < 1e-16f ? XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f) : XMVector3Normalize(n);
+		// 노멀에 수직인 임의의 벡터. n 과 평행하지 않은 축을 골라 외적함.
+		const float ny = XMVectorGetY(n);
+		const XMVECTOR axis = fabsf(ny) < 0.99f ? XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f) : XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+		const XMVECTOR fallbackTangent = XMVector3Normalize(XMVector3Cross(axis, n));
+
 		XMVECTOR t = XMLoadFloat3(&tan1[i]);
-		if (XMVectorGetX(XMVector3LengthSq(t)) < 1e-16f)
-		{
-			// 누적된 값이 없으면(UV 없음 등) 노멀에 수직인 임의의 벡터를 씀.
-			const XMVECTOR axis = fabsf(v.ny) < 0.99f ? XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f) : XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
-			t = XMVector3Cross(axis, n);
-		}
-		// Gram-Schmidt: 노멀 성분을 뺌.
-		t = XMVector3Normalize(XMVectorSubtract(t, XMVectorScale(n, XMVectorGetX(XMVector3Dot(n, t)))));
+		if (XMVectorGetX(XMVector3LengthSq(t)) < 1e-16f) t = fallbackTangent;   // 누적된 값이 없으면(UV 없음 등)
+		// Gram-Schmidt: 노멀 성분을 뺌. 탄젠트가 노멀과 거의 평행하면 결과가 0 에 가까우므로 길이를 확인하고 대체함.
+		t = XMVectorSubtract(t, XMVectorScale(n, XMVectorGetX(XMVector3Dot(n, t))));
+		t = XMVectorGetX(XMVector3LengthSq(t)) < 1e-16f ? fallbackTangent : XMVector3Normalize(t);
 
 		// 손잡이. cross(N, T) 가 dP/dv 와 같은 쪽이면 +1. glTF 는 B 가 −dP/dv 를 가리켜야 하므로 부호를 뒤집음.
 		const XMVECTOR b = XMLoadFloat3(&tan2[i]);
