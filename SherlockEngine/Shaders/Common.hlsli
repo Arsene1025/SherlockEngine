@@ -6,7 +6,7 @@
 // space 는 SM 5.1/6.0 으로 올릴 때 넣음.
 //
 // 레지스터 배정 (ShaderConstants.h 와 동일):
-//   재질 셋:   t0..t7  s0..s3   — 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 재질 샘플러 s0
+//   재질 셋:   t0..t7  s0..s3   — 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 반사 세기 t5, 반사 색 t6, 클리어코트 t16~t18, 투과 t19, 재질 샘플러 s0
 //   프레임 셋: t8..t15 s4..s7   — 그림자 맵 t8, 비교 샘플러 s4, 스카이박스 t9, 환경 샘플러 s5,
 //                                IBL 확산 조도 t10, IBL 반사 프리필터 t11, BRDF LUT t12, CSM 아틀라스 t14,
 //                                조명 구조체 버퍼 t15
@@ -43,7 +43,7 @@ struct LightData
     float padding;
 };
 
-// b0: 프레임에 한 번. VS와 PS 모두 읽음. (288바이트)
+// b0: 프레임에 한 번. VS와 PS 모두 읽음. (304바이트)
 cbuffer PerFrame : register(b0)
 {
     matrix view;
@@ -56,6 +56,7 @@ cbuffer PerFrame : register(b0)
     float4 environmentParams; // x = IBL 세기, y = 반사 큐브 밉 수, z = 확산 조도를 읽을 밉, w = 환경 있음
     float4 outputParams;      // x = 노출, y = 톤매핑, z = BRDF LUT 있음
     float4 shadowExtra;       // x = 노말 섀도 오프셋 (노말맵이 그림자 UV 를 미는 배율)
+    float4 iblTint;           // xyz = IBL 색 배율 (확산 조도·반사 프리필터에 곱함)
 }
 
 // b4: 후처리 패스 파라미터. 후처리 셋(톤 패스·블러·블룸)만 바인딩함. (80바이트, ShaderConstants.h 의
@@ -128,7 +129,7 @@ cbuffer Shadows : register(b6)
     float4 csmAtlasParams;    // xy = 1/CSM 아틀라스 (가로, 세로)
 }
 
-// b3: 재질. VS(uvScale)와 PS 모두. (64바이트)
+// b3: 재질. VS(uvScale)와 PS 모두. (112바이트)
 cbuffer Material : register(b3)
 {
     float4 baseColor;
@@ -140,7 +141,17 @@ cbuffer Material : register(b3)
     float alphaCutoff;        // 알파 컷아웃. 0 = 끔
     float roughness;          // 지각적 거칠기. α = roughness²
     float occlusionStrength;  // AO 텍스처를 얼마나 따를지
-    float materialPadding;
+    float ior;                // KHR_materials_ior. 1.5 = F0 0.04
+    float3 specularColor;     // KHR_materials_specular: 비금속 F0 에 곱함
+    float specularFactor;     // 비금속 반사 세기. F90 으로도 쓰임
+    float clearcoatFactor;    // KHR_materials_clearcoat. 0 = 끔
+    float clearcoatRoughness;
+    float clearcoatNormalScale;
+    float transmissionFactor; // KHR_materials_transmission. 0 = 끔
+    float blended;            // 1 = 블렌딩 패스 재질. 출력 rgb 에 알파를 미리 곱함 (블렌드: One, InvSrcAlpha)
+    float materialPadding1;
+    float materialPadding2;
+    float materialPadding3;
 }
 
 // 재질 셋 (Layout_Material)
@@ -149,6 +160,12 @@ Texture2D normalTexture : register(t1);
 Texture2D metallicRoughnessTexture : register(t2);   // G = 거칠기, B = 금속성 (glTF)
 Texture2D occlusionTexture : register(t3);           // R = AO
 Texture2D emissiveTexture : register(t4);            // sRGB
+Texture2D specularTexture : register(t5);            // A = specularFactor 에 곱함 (KHR_materials_specular)
+Texture2D specularColorTexture : register(t6);       // sRGB. specularColor 에 곱함
+Texture2D clearcoatTexture : register(t16);          // R = clearcoatFactor 에 곱함 (KHR_materials_clearcoat). t7~t15 는 프레임 셋·예약이라 t16 부터
+Texture2D clearcoatRoughnessTexture : register(t17); // G = clearcoatRoughness 에 곱함
+Texture2D transmissionTexture : register(t19);       // R = transmissionFactor 에 곱함 (KHR_materials_transmission)
+Texture2D clearcoatNormalTexture : register(t18);    // 코팅 노멀 맵 (선형). 비면 평평한 노멀 = 기하 노멀
 SamplerState albedoSampler : register(s0);
 
 // 프레임 셋 (Layout_Frame). 그림자 맵은 R32_FLOAT 로 읽는 깊이 텍스처.

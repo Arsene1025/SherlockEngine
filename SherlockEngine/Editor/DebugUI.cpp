@@ -401,6 +401,7 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 		EditEnvironmentName("Specular", "prefiltered cube, mip = roughness (.dds)", env.specular, true);
 		EditEnvironmentName("BRDF LUT", "2D, u = N.V, v = 1 - roughness", env.brdfLut, false);
 		SliderFloatR("IBL intensity", &env.iblIntensity, kEnvironmentDefaults.iblIntensity, 0.0f, 4.0f);
+		ImGui::ColorEdit3("IBL tint", &env.iblTint.x, ImGuiColorEditFlags_Float);   // 확산 조도·반사에 곱하는 색 (스카이박스 배경은 그대로)
 		ImGui::TextDisabled(env.irradiance.empty() && env.specular.empty()
 			? (env.skybox.empty() ? "no environment: ambient color is used" : "no IBL maps: blurred skybox mips are used (approximation)")
 			: "IBL maps in use");
@@ -531,6 +532,9 @@ void DebugUI::DrawTextureImportSettings(const Material& material, Renderer& rend
 		{ "Albedo", &material.albedoTexture, true }, { "Normal", &material.normalTexture, false },
 		{ "Metal/Rough", &material.metallicRoughnessTexture, false }, { "AO", &material.occlusionTexture, false },
 		{ "Emissive", &material.emissiveTexture, true },
+		{ "Specular", &material.specularTexture, false }, { "Specular color", &material.specularColorTexture, true },
+		{ "Clearcoat", &material.clearcoatTexture, false }, { "Clearcoat rough", &material.clearcoatRoughnessTexture, false },
+		{ "Clearcoat normal", &material.clearcoatNormalTexture, false }, { "Transmission", &material.transmissionTexture, false },
 	};
 	static std::map<std::string, TextureImportSettings> pending;   // 아직 Apply 하지 않은 편집값 (이름별)
 	static const char* kSizes[] = { "Original", "4096", "2048", "1024", "512", "256", "128" };
@@ -603,6 +607,13 @@ void DebugUI::DrawMaterialPanel(Scene& scene, Renderer& renderer)
 			ImGui::ColorEdit4("Base color", &material.baseColor.x);
 			SliderFloatR("Metallic", &material.metallic, kMaterialDefaults.metallic, 0.0f, 1.0f);   // PBR
 			SliderFloatR("Roughness", &material.roughness, kMaterialDefaults.roughness, 0.0f, 1.0f);
+			SliderFloatR("IOR", &material.ior, kMaterialDefaults.ior, 1.0f, 3.0f);   // KHR_materials_ior
+			SliderFloatR("Specular", &material.specularFactor, kMaterialDefaults.specularFactor, 0.0f, 1.0f);   // KHR_materials_specular
+			ImGui::ColorEdit3("Specular color", &material.specularColor.x);
+			SliderFloatR("Clearcoat", &material.clearcoatFactor, kMaterialDefaults.clearcoatFactor, 0.0f, 1.0f);   // KHR_materials_clearcoat
+			SliderFloatR("Clearcoat roughness", &material.clearcoatRoughness, kMaterialDefaults.clearcoatRoughness, 0.0f, 1.0f);
+			SliderFloatR("Transmission", &material.transmissionFactor, kMaterialDefaults.transmissionFactor, 0.0f, 1.0f);   // KHR_materials_transmission
+			ImGui::Checkbox("Alpha blend", &material.alphaBlend);
 			ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 			SliderFloatR("Occlusion strength", &material.occlusionStrength, kMaterialDefaults.occlusionStrength, 0.0f, 1.0f);
 			ImGui::TextWrapped("Albedo: %s (%s)   Normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(),
@@ -611,13 +622,16 @@ void DebugUI::DrawMaterialPanel(Scene& scene, Renderer& renderer)
 				material.metallicRoughnessTexture.empty() ? "(none)" : material.metallicRoughnessTexture.c_str(),
 				material.occlusionTexture.empty() ? "(none)" : material.occlusionTexture.c_str(),
 				material.emissiveTexture.empty() ? "(none)" : material.emissiveTexture.c_str());
+			ImGui::TextWrapped("Specular: %s   Specular color: %s",
+				material.specularTexture.empty() ? "(none)" : material.specularTexture.c_str(),
+				material.specularColorTexture.empty() ? "(none)" : material.specularColorTexture.c_str());
 			int sampler = static_cast<int>(material.sampler);
 			if (ImGui::Combo("Sampler", &sampler, kSamplerNames, ARRAYSIZE(kSamplerNames)))
 			{
 				material.sampler = static_cast<SamplerPreset>(sampler);
 			}
 			DragFloat2R("UV scale", &material.uvScale.x, kMaterialDefaults.uvScale.x, kMaterialDefaults.uvScale.y, 0.1f, 0.1f, 64.0f);
-			SliderFloatR("Normal strength", &material.normalStrength, kMaterialDefaults.normalStrength, 0.0f, 3.0f);
+			SliderFloatR("Normal strength", &material.normalStrength, kMaterialDefaults.normalStrength, 0.0f, 5.0f);
 			DrawTextureImportSettings(material, renderer);
 			ImGui::Checkbox("Unlit", &material.unlit);
 			SameLineIfFits(CheckboxWidth("Wireframe"));

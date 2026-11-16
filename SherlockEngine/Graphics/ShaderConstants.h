@@ -43,6 +43,12 @@ constexpr uint32_t kSRVSlotNormal = 1;       // t1 (재질)
 constexpr uint32_t kSRVSlotMetallicRoughness = 2; // t2 (재질, G = 거칠기, B = 금속성)
 constexpr uint32_t kSRVSlotOcclusion = 3;    // t3 (재질, R = AO)
 constexpr uint32_t kSRVSlotEmissive = 4;     // t4 (재질, sRGB)
+constexpr uint32_t kSRVSlotSpecular = 5;     // t5 (재질, A = KHR_materials_specular 의 specularFactor 에 곱함)
+constexpr uint32_t kSRVSlotSpecularColor = 6; // t6 (재질, sRGB. KHR_materials_specular 의 specularColor 에 곱함)
+constexpr uint32_t kSRVSlotClearcoat = 16;   // t16 (재질, R = KHR_materials_clearcoat 의 clearcoatFactor 에 곱함). 재질 셋은 t0~t6 에 이어 프레임 셋(t8~t15)을 피해 t16 부터 씀
+constexpr uint32_t kSRVSlotClearcoatRoughness = 17; // t17 (재질, G = clearcoatRoughness 에 곱함)
+constexpr uint32_t kSRVSlotClearcoatNormal = 18;    // t18 (재질, 코팅 노멀 맵. 선형)
+constexpr uint32_t kSRVSlotTransmission = 19;      // t19 (재질, R = KHR_materials_transmission 의 transmissionFactor 에 곱함)
 constexpr uint32_t kSRVSlotShadowMap = 8;    // t8 (프레임)
 constexpr uint32_t kSRVSlotEnvironment = 9;  // t9 (프레임, 스카이박스 큐브맵)
 constexpr uint32_t kSRVSlotIrradiance = 10;  // t10 (프레임, IBL 확산 조도 큐브)
@@ -82,6 +88,8 @@ struct alignas(16) PerFrameConstants
 	DirectX::XMFLOAT4 outputParams;
 	// 노말 섀도. x = 노말맵이 그림자 UV 를 미는 배율 (에디터의 Normal offset), yzw = 미사용
 	DirectX::XMFLOAT4 shadowExtra;
+	// IBL 색 배율. xyz = 확산 조도·반사 프리필터에 곱할 RGB (기본 1,1,1), w = 미사용
+	DirectX::XMFLOAT4 iblTint;
 };
 
 // 후처리 패스 파라미터 (b4). 패스마다 올림 — 업로드 링을 쓰므로 프레임 안에서 여러 번 올려도 됨 (b0 가
@@ -166,7 +174,17 @@ struct alignas(16) MaterialConstants
 	float alphaCutoff;                 // 알파 컷아웃. 0 = 끔
 	float roughness;
 	float occlusionStrength;
-	float padding;
+	float ior;                         // KHR_materials_ior. 1.5 = F0 0.04
+	DirectX::XMFLOAT3 specularColor;   // KHR_materials_specular. 비금속 F0 에 곱함
+	float specularFactor;              // 비금속 반사 세기 = F90
+	float clearcoatFactor;             // KHR_materials_clearcoat. 0 = 끔
+	float clearcoatRoughness;
+	float clearcoatNormalScale;
+	float transmissionFactor;          // KHR_materials_transmission. 0 = 끔
+	float blended;                     // 1 = 블렌딩 패스로 그리는 재질 (알파 블렌드·투과). 출력을 미리 알파를 곱한 형태로 냄
+	float padding1;
+	float padding2;
+	float padding3;
 };
 
 struct alignas(16) ShadowPassConstants
@@ -210,7 +228,7 @@ static_assert(IsValidConstantBufferSize(sizeof(ShadowConstants)), "ShadowConstan
 static_assert(sizeof(PostParamsConstants) == 80, "PostParamsConstants: 16 * 5");
 
 // lightViewProj 삭제 후: view/proj/viewProj(64*3) + 16 * 6
-static_assert(sizeof(PerFrameConstants) == 288, "PerFrameConstants: 64*3 + 16 * 6");
+static_assert(sizeof(PerFrameConstants) == 304, "PerFrameConstants: 64*3 + 16 * 7");
 static_assert(offsetof(PerFrameConstants, cameraPosition) == 192, "PerFrameConstants.cameraPosition");
 static_assert(offsetof(PerFrameConstants, time) == 204, "PerFrameConstants.time");
 static_assert(offsetof(PerFrameConstants, shadowParams) == 208, "PerFrameConstants.shadowParams");
@@ -218,6 +236,7 @@ static_assert(offsetof(PerFrameConstants, debugParams) == 224, "PerFrameConstant
 static_assert(offsetof(PerFrameConstants, environmentParams) == 240, "PerFrameConstants.environmentParams");
 static_assert(offsetof(PerFrameConstants, outputParams) == 256, "PerFrameConstants.outputParams");
 static_assert(offsetof(PerFrameConstants, shadowExtra) == 272, "PerFrameConstants.shadowExtra");
+static_assert(offsetof(PerFrameConstants, iblTint) == 288, "PerFrameConstants.iblTint");
 
 static_assert(sizeof(PerObjectConstants) == 128, "PerObjectConstants: 64*2");
 static_assert(IsValidConstantBufferSize(sizeof(SkinConstants)), "SkinConstants 는 16의 배수여야 함");
@@ -227,7 +246,7 @@ static_assert(offsetof(PerObjectConstants, worldInvTranspose) == 64, "PerObjectC
 static_assert(sizeof(LightConstants) == 16, "LightConstants: 16");
 static_assert(offsetof(LightConstants, lightCount) == 12, "LightConstants.lightCount");
 
-static_assert(sizeof(MaterialConstants) == 64, "MaterialConstants: 16 + 16 + 16 + 16");
+static_assert(sizeof(MaterialConstants) == 112, "MaterialConstants: 16 * 7");
 static_assert(offsetof(MaterialConstants, emissive) == 16, "MaterialConstants.emissive");
 static_assert(offsetof(MaterialConstants, metallic) == 28, "MaterialConstants.metallic");
 static_assert(offsetof(MaterialConstants, uvScale) == 32, "MaterialConstants.uvScale");
@@ -236,6 +255,12 @@ static_assert(offsetof(MaterialConstants, normalStrength) == 44, "MaterialConsta
 static_assert(offsetof(MaterialConstants, alphaCutoff) == 48, "MaterialConstants.alphaCutoff");
 static_assert(offsetof(MaterialConstants, roughness) == 52, "MaterialConstants.roughness");
 static_assert(offsetof(MaterialConstants, occlusionStrength) == 56, "MaterialConstants.occlusionStrength");
+static_assert(offsetof(MaterialConstants, ior) == 60, "MaterialConstants.ior");
+static_assert(offsetof(MaterialConstants, specularColor) == 64, "MaterialConstants.specularColor");
+static_assert(offsetof(MaterialConstants, specularFactor) == 76, "MaterialConstants.specularFactor");
+static_assert(offsetof(MaterialConstants, clearcoatFactor) == 80, "MaterialConstants.clearcoatFactor");
+static_assert(offsetof(MaterialConstants, transmissionFactor) == 92, "MaterialConstants.transmissionFactor");
+static_assert(offsetof(MaterialConstants, blended) == 96, "MaterialConstants.blended");
 
 static_assert(sizeof(ShadowPassConstants) == 64, "ShadowPassConstants: 64");
 

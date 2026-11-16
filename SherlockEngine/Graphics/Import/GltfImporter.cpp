@@ -785,11 +785,49 @@ namespace
 			material.normalStrength = scale > 0.0f ? scale : 1.0f;
 		}
 
+		//KHR_materials_ior : 굴절률. 기본 1.5(F0 0.04)
+		//KHR_materials_specular : 비금속 반사의 세기(specularFactor, 텍스처 A)와 색(specularColorFactor, 텍스처 RGB)
+		//Blender 는 Principled 의 Specular 를 ior 1000 + specularColorFactor 로 내보내므로 둘을 함께 읽어야 함
+		if (const json* extensions = JsonObject(*source, "extensions"))
+		{
+			if (const json* iorExt = JsonObject(*extensions, "KHR_materials_ior"))
+			{
+				const float ior = JsonFloat(*iorExt, "ior", 1.5f);
+				material.ior = ior >= 1.0f ? ior : 1.5f;
+			}
+			//KHR_materials_clearcoat : 코팅 세기·거칠기와 그 텍스처, 코팅 노멀 맵
+			if (const json* coat = JsonObject(*extensions, "KHR_materials_clearcoat"))
+			{
+				material.clearcoatFactor = JsonFloat(*coat, "clearcoatFactor", 0.0f);
+				material.clearcoatRoughness = JsonFloat(*coat, "clearcoatRoughnessFactor", 0.0f);
+				material.clearcoatTexture = TextureName(modelName, root, JsonObject(*coat, "clearcoatTexture"));
+				material.clearcoatRoughnessTexture = TextureName(modelName, root, JsonObject(*coat, "clearcoatRoughnessTexture"));
+				const json* coatNormal = JsonObject(*coat, "clearcoatNormalTexture");
+				material.clearcoatNormalTexture = TextureName(modelName, root, coatNormal);
+				if (!material.clearcoatNormalTexture.empty() && coatNormal != nullptr) material.clearcoatNormalScale = JsonFloat(*coatNormal, "scale", 1.0f);
+			}
+			//KHR_materials_transmission : 투과 세기와 텍스처(R)
+			if (const json* transmission = JsonObject(*extensions, "KHR_materials_transmission"))
+			{
+				material.transmissionFactor = JsonFloat(*transmission, "transmissionFactor", 0.0f);
+				material.transmissionTexture = TextureName(modelName, root, JsonObject(*transmission, "transmissionTexture"));
+			}
+			if (const json* specular = JsonObject(*extensions, "KHR_materials_specular"))
+			{
+				material.specularFactor = JsonFloat(*specular, "specularFactor", 1.0f);
+				float color[3] = { 1.0f, 1.0f, 1.0f };
+				JsonFloats(*specular, "specularColorFactor", color, 3);
+				material.specularColor = XMFLOAT3(color[0], color[1], color[2]);
+				material.specularTexture = TextureName(modelName, root, JsonObject(*specular, "specularTexture"));
+				material.specularColorTexture = TextureName(modelName, root, JsonObject(*specular, "specularColorTexture"));
+			}
+		}
+
 		//doubleSided : 뒷면도 그릴지 여부. 기본 false
 		const auto doubleSided = source->find("doubleSided");
 		material.doubleSided = doubleSided != source->end() && doubleSided->is_boolean() && doubleSided->get<bool>();
 
-		//alphaMode가 MASK면 alphaCutoff(기본 0.5, 0 이하면 0.5)를 사용, BLEND도 0.5로 둠
+		//alphaMode가 MASK면 alphaCutoff(기본 0.5, 0 이하면 0.5)를 사용, BLEND는 alphaBlend(정렬된 블렌딩 패스)로 그림
 		//OPAQUE(기본)면 건드리지 않음
 		const auto alphaMode = source->find("alphaMode");
 		if (alphaMode != source->end() && alphaMode->is_string())
@@ -802,7 +840,7 @@ namespace
 			}
 			else if (mode == "BLEND")
 			{
-				material.alphaCutoff = 0.5f;
+				material.alphaBlend = true;
 			}
 		}
 		return material;

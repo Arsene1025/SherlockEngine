@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · glTF 재질 확장(ior · specular · clearcoat · transmission) 구현 기록 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.step { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>glTF 재질 확장 구현 기록</h1>
+  <p>2026-11-16 · 알파 로메오와 USN-Hornet 같은 Blender 모델이 쓰는 glTF 확장 <code>KHR_materials_ior</code>, <code>specular</code>, <code>clearcoat</code>, <code>transmission</code> 과 알파 블렌드(<code>alphaMode BLEND</code>)를 엔진이 읽고 그리게 한 작업의 기록입니다.</p>
+  <p class="foot">기준: 작업 트리(아직 커밋하지 않음). 경로는 <code>SherlockEngine/</code> 기준입니다. D3D11·D3D12 에서 Debug 로, Release 는 D3D11·D3D12 로 씬을 열어 오류 없이 그려지는 것까지 확인했습니다.</p>
+</header>
+
+<section>
+<h2>1. 출발점</h2>
+<ul>
+  <li>모든 모델이 Blender 의 glTF 익스포터가 내보낸 <code>pbrMetallicRoughness</code> 라서 "두 가지 형식"을 따로 지원할 필요는 없었습니다. 셰이더는 이미 <code>계수 × 텍스처</code> 를 계산하고, 텍스처가 없으면 흰색이라 계수만 쓰입니다.</li>
+  <li>임포터가 읽지 않던 것은 확장입니다. 모델 14개 중 확장을 쓰는 것은 3개입니다.</li>
+</ul>
+<table>
+<tr><th>모델</th><th>확장</th><th>값</th></tr>
+<tr><td>AlfaRomeo_1933</td><td>clearcoat, transmission, alphaMode BLEND 5개</td><td>clearcoat 1.0 / 거칠기 0.04, transmission 1.0 (각 2개 재질)</td></tr>
+<tr><td>USN-Hornet</td><td>specular, ior, alphaMode BLEND 5개</td><td>ior 1000 (83개), specularColorFactor 0.05, specularColorTexture 6개</td></tr>
+<tr><td>DarkDragon</td><td>specular</td><td>specularTexture 2개</td></tr>
+<tr><td>그 밖의 11개</td><td>없음</td><td>—</td></tr>
+</table>
+<div class="box warn"><b>ior 1000 은 specular 와 함께 읽어야 합니다.</b> Blender 는 Principled 의 Specular 를 <code>ior 1000</code> + <code>specularColorFactor</code> 로 내보냅니다. ior 만 읽으면 F0 = ((ior−1)/(ior+1))² ≈ 0.996 이 되어 비금속이 거울처럼 보입니다.</div>
+</section>
+
+<section>
+<h2>2. 구현 순서와 내용</h2>
+
+<h3><span class="step">1</span>ior + specular</h3>
+<p>비금속의 반사율을 three.js 와 같은 식으로 계산합니다.</p>
+<pre><code>f0Ior   = ((ior − 1) / (ior + 1))²
+F0      = lerp( min(f0Ior · specularColor, 1) · specularWeight,  baseColor,  metallic )
+F90     = lerp( specularWeight,  1,  metallic )          // specularWeight = specularFactor · specularTexture.a</code></pre>
+<ul>
+  <li>기본값(ior 1.5, specular 1, 흰색)은 F0 = 0.04, F90 = 1 로 이전 결과와 같습니다.</li>
+  <li>프레넬 함수(직접광, IBL)와 BRDF LUT 항이 F90 을 쓰도록 바꿨습니다: <code>F0 · A + F90 · B</code>.</li>
+  <li>텍스처: <code>specularTexture</code>(t5, 선형, A 채널), <code>specularColorTexture</code>(t6, sRGB).</li>
+</ul>
+
+<h3><span class="step">2</span>clearcoat</h3>
+<ul>
+  <li>코팅은 F0 0.04 의 두 번째 GGX 로브입니다. 직접광마다 코팅 노멀로 <code>D · G · F / (4 · NdotL · NdotV)</code> 를 더하고, 기본 층은 <code>1 − clearcoat · Fc</code> 만큼 줄입니다. IBL 은 같은 split-sum 을 코팅 노멀·코팅 거칠기로 한 번 더 계산합니다 (<code>EnvironmentClearcoat</code>).</li>
+  <li>코팅 노멀 맵이 없으면 평평한 노멀이 꽂혀 기하 노멀과 같아집니다. glTF 규격대로 코팅은 기본 층의 노멀 맵을 따르지 않습니다.</li>
+  <li>텍스처 3장(세기 R, 거칠기 G, 코팅 노멀)은 재질 셋의 t0~t7 이 차서 t16~t18 에 둡니다. SRV 레지스터 상한은 32 이고 프레임 셋이 t8~t15 를 씁니다.</li>
+  <li>셰이더에서 분기 안에서 샘플하지 않고 항상 샘플합니다 (그래디언트 계산은 균일한 흐름에서만 안전).</li>
+</ul>
+
+<h3><span class="step">3</span>alphaMode BLEND + transmission</h3>
+<ul>
+  <li>엔진에는 블렌딩 경로가 없었고 BLEND 를 MASK(알파 0.5 컷아웃)로 처리했습니다. 이제 <code>Material::alphaBlend</code> 로 보관하고, <code>IsBlended(material)</code>(alphaBlend 또는 transmission &gt; 0)인 재질은 별도 PSO 로 그립니다.</li>
+  <li>PSO: 블렌드 <code>One / InvSrcAlpha</code>(셰이더가 rgb 에 알파를 미리 곱해 내보냄), 깊이는 테스트만 하고 쓰지 않습니다. PSO 키에 비트 11 을 추가했습니다.</li>
+  <li>그리기 순서: 불투명 → 하늘 → <b>블렌딩 항목을 카메라에서 먼 것부터(오브젝트 경계 구 중심 기준)</b> → 디버그 선. 하늘 패스가 PSO 를 바꾸므로 직전 상태 기억을 비우고 프레임·오브젝트 셋을 다시 꽂습니다. <code>BuildDrawList</code> 의 정렬 키 맨 앞에 <code>blended</code> 를 두어 불투명이 앞에 옵니다.</li>
+  <li>블렌딩 재질은 그림자를 만들지 않습니다. 그림자 맵은 불투명한 차폐만 담고, 반투명은 알파가 없어 통째로 가리기 때문입니다.</li>
+  <li><b>transmission 은 근사입니다.</b> 배경을 굴절시키지 않고, 비금속의 확산을 <code>transmission</code> 만큼 줄이는 대신 알파를 <code>1 − transmission · (1 − 시선 프레넬)</code> 로 낮춰 뒤가 그대로 비치게 합니다. 반사(스페큘러)는 줄이지 않고, 틴트는 없습니다.</li>
+</ul>
+</section>
+
+<section>
+<h2>3. 바뀐 곳</h2>
+<table>
+<tr><th>영역</th><th>내용</th></tr>
+<tr><td><code>Scene/Material.h</code></td><td><code>ior, specularFactor, specularColor, specularTexture, specularColorTexture</code>, <code>clearcoat*</code> 6개, <code>transmissionFactor, transmissionTexture, alphaBlend</code>, <code>IsBlended()</code>. 기본값은 이전 동작과 같습니다.</td></tr>
+<tr><td><code>Graphics/Import/GltfImporter.cpp</code></td><td><code>KHR_materials_ior / specular / clearcoat / transmission</code> 파싱. BLEND 는 <code>alphaBlend = true</code>.</td></tr>
+<tr><td><code>Scene/SceneSerializer.cpp</code></td><td>새 필드를 <code>j.value(key, 기본값)</code> 로 읽고 씁니다. 옛 씬은 그대로 열립니다.</td></tr>
+<tr><td><code>Editor/GameBuilder.cpp</code></td><td>텍스처 키 목록에 새 슬롯 6개 추가. 빠지면 배포본에서 텍스처가 조용히 사라집니다.</td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code>, <code>Shaders/Common.hlsli</code></td><td>재질 cbuffer 64 → 112 바이트(<code>static_assert</code> 와 D3DReflect 대조로 C++/HLSL 일치 확인). 텍스처 슬롯 t5, t6, t16~t19.</td></tr>
+<tr><td><code>Shaders/BasicPixelShader.hlsl</code></td><td>F0/F90, 클리어코트(직접광·IBL), 투과, 블렌딩 출력. 디버그 뷰 9 "Specular F0", 10 "Clearcoat".</td></tr>
+<tr><td><code>Graphics/Renderer.h / .cpp</code></td><td>재질 레이아웃에 슬롯 7개 추가(D3D11·D3D12 공통), GpuMaterial 바인딩·이름 비교, 상수 업로드, 블렌드 PSO, 블렌딩 패스.</td></tr>
+<tr><td><code>Editor/Editor.cpp</code>, <code>DebugUI.cpp</code></td><td>IOR, Specular, Specular color, Clearcoat, Clearcoat roughness, Transmission 슬라이더와 Alpha blend 체크박스. "All materials" 편집 반영. 텍스처 임포트 설정 슬롯 추가.</td></tr>
+</table>
+</section>
+
+<section>
+<h2>4. 검증</h2>
+<ul>
+  <li>솔루션 전체 Debug·Release 빌드 통과.</li>
+  <li>Debug 실행 로그의 <code>바인딩 대조</code> 70건이 모두 OK, <code>cbuffer 'Material'</code> 크기 112 바이트 일치.</li>
+  <li><b>임포트 값</b>: 모델을 새 씬에 놓아 저장한 JSON 으로 확인했습니다. Hornet 은 ior 1000 이 83개, specularColor 0.05 가 82개, specularColorTexture 가 6개. DarkDragon 은 specularTexture 2개. 알파 로메오는 clearcoat (1.0, 0.04) 2개, transmission 1.0 이 2개, alphaBlend 3개.</li>
+  <li><b>화면</b>: 알파 로메오에서 clearcoat 를 켠 씬과 끈 씬을 같은 카메라로 비교하면 씬 뷰 픽셀 13,393개가 달라졌고, D3D11 과 D3D12 의 수가 같았습니다. 클리어코트 디버그 뷰에서 차체 재질이 세기 1 로 표시됩니다.</li>
+  <li>블렌딩 패스: 알파 로메오의 BLEND·투과 재질 5개가 D3D11·D3D12 에서 오류 없이 그려지고, 이전에 컷아웃으로 단단해 보이던 부분이 비칩니다.</li>
+  <li>Release 로 MasterChiefWalk 씬을 D3D11·D3D12 에서 열어 오류 로그가 없는 것을 확인했습니다.</li>
+</ul>
+<div class="box warn"><b>확인하지 못한 것</b>
+<ul>
+  <li>기존 모델이 이전과 픽셀 단위로 같다는 비교는 하지 않았습니다. 이전 빌드를 보관하지 않았고, 기본값이 F0 0.04·F90 1 로 수식이 같다는 점으로 갈음합니다.</li>
+  <li><code>SherlockGame.exe</code>(게임 모드)는 실행해 보지 않았습니다.</li>
+  <li>specularTexture 와 클리어코트 텍스처의 화면 효과는 눈으로 확인하지 못했습니다(알파 로메오의 clearcoat 는 계수만 있음).</li>
+</ul></div>
+</section>
+
+<section>
+<h2>5. 알아 둘 점 · 남은 일</h2>
+<ul>
+  <li><b>기존 씬은 재임포트 전까지 값이 비어 있습니다.</b> 씬 JSON 이 재질을 통째로 저장하므로 <code>MasterChiefWalk.json</code> 의 모델 재질에는 새 필드가 없어 기본값으로 그려집니다. 또 BLEND 재질은 이전에 저장된 <code>alphaCutoff 0.5</code> 가 그대로 남아 컷아웃으로 그려집니다. 모델을 다시 놓거나 에디터에서 Alpha blend 를 켜야 새 경로를 탑니다.</li>
+  <li><b>씬 값이 원본에서 벗어나는 문제.</b> 알파 로메오 재질 89개가 전부 <code>roughness 0.5 / metallic 0</code>(<code>Material</code> 의 기본값)이었던 원인은 찾지 못해 이번에는 스크립트로 glTF 값을 다시 써 넣었습니다(<code>MasterChiefWalk.json.bak</code> 에 원본). 같은 어긋남이 SiegeTank·Tychus_Gun·Viking·BlackDragon 에 재질 2개씩 남아 있으나 의도한 편집일 수 있어 건드리지 않았습니다. "모델 값으로 되돌리기" 명령을 엔진에 넣는 것이 근본 해결입니다.</li>
+  <li><b>IOR 슬라이더 범위는 1~3</b> 이라 Hornet 의 1000 을 드래그하면 3 으로 잘립니다. Ctrl+클릭으로 직접 입력하거나 범위를 넓혀야 합니다.</li>
+  <li><b>투과는 근사입니다.</b> 굴절·거칠기에 따른 흐림·틴트·볼륨(<code>KHR_materials_volume</code>)이 없습니다. 제대로 하려면 불투명 씬 컬러의 복사본(밉 포함)을 만들어 읽어야 하는데, RHI 에 텍스처 복사·밉 생성 명령이 없어 양쪽 백엔드에 추가가 필요합니다.</li>
+  <li><b>블렌딩 정렬은 오브젝트 단위</b> 입니다. 한 오브젝트 안의 반투명 삼각형끼리는 정렬하지 않습니다.</li>
+  <li><b>디퍼드와의 관계.</b> 다음 순서가 디퍼드라서, clearcoat 는 G-buffer 채널이 더 필요하고 transmission·블렌딩 재질은 포워드로 남겨야 합니다. 이 때문에 디퍼드를 만들 때 이 기록의 클리어코트 부분을 다시 손봐야 합니다.</li>
+  <li>아직 읽지 않는 확장이 더 있습니다: <code>KHR_materials_volume</code>, <code>sheen</code>, <code>anisotropy</code>, <code>iridescence</code> 등. 지금 모델들에는 쓰이지 않습니다.</li>
+</ul>
+<p class="foot">이 문서는 다른 문서를 고치지 않았습니다. <code>docs/index.html</code> 에는 아직 링크를 걸지 않았습니다.</p>
+</section>
+</main>
+<script src="../memo.js"></script>
+</body>
+</html>

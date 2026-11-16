@@ -1005,10 +1005,17 @@ namespace
 		ImGui::ColorEdit4("Base color", &material.baseColor.x);
 		DebugUI::SliderFloatR("Metallic", &material.metallic, kDefaults.metallic, 0.0f, 1.0f);   // PBR
 		DebugUI::SliderFloatR("Roughness", &material.roughness, kDefaults.roughness, 0.0f, 1.0f);
+		DebugUI::SliderFloatR("IOR", &material.ior, kDefaults.ior, 1.0f, 3.0f);   // KHR_materials_ior. Blender 의 Specular 는 ior 1000 + 반사 색으로 옴
+		DebugUI::SliderFloatR("Specular", &material.specularFactor, kDefaults.specularFactor, 0.0f, 1.0f);   // KHR_materials_specular
+		ImGui::ColorEdit3("Specular color", &material.specularColor.x);
+		DebugUI::SliderFloatR("Clearcoat", &material.clearcoatFactor, kDefaults.clearcoatFactor, 0.0f, 1.0f);   // KHR_materials_clearcoat
+		DebugUI::SliderFloatR("Clearcoat roughness", &material.clearcoatRoughness, kDefaults.clearcoatRoughness, 0.0f, 1.0f);
 		ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 		DebugUI::DragFloat2R("UV scale", &material.uvScale.x, kDefaults.uvScale.x, kDefaults.uvScale.y, 0.1f, 0.1f, 64.0f);
-		DebugUI::SliderFloatR("Normal strength", &material.normalStrength, kDefaults.normalStrength, 0.0f, 3.0f);
+		DebugUI::SliderFloatR("Normal strength", &material.normalStrength, kDefaults.normalStrength, 0.0f, 5.0f);
+		DebugUI::SliderFloatR("Transmission", &material.transmissionFactor, kDefaults.transmissionFactor, 0.0f, 1.0f);   // KHR_materials_transmission (알파 블렌딩으로 근사)
 		DebugUI::SliderFloatR("Alpha cutoff", &material.alphaCutoff, kDefaults.alphaCutoff, 0.0f, 1.0f);
+		ImGui::Checkbox("Alpha blend", &material.alphaBlend);
 		ImGui::Checkbox("Unlit", &material.unlit);
 		DebugUI::SameLineIfFits(DebugUI::CheckboxWidth("Wireframe"));
 		ImGui::Checkbox("Wireframe", &material.wireframe);
@@ -1026,8 +1033,15 @@ namespace
 		if (before.uvScale.x != after.uvScale.x || before.uvScale.y != after.uvScale.y) target.uvScale = after.uvScale;
 		if (before.metallic != after.metallic) target.metallic = after.metallic;
 		if (before.roughness != after.roughness) target.roughness = after.roughness;
+		if (before.ior != after.ior) target.ior = after.ior;
+		if (before.clearcoatFactor != after.clearcoatFactor) target.clearcoatFactor = after.clearcoatFactor;
+		if (before.clearcoatRoughness != after.clearcoatRoughness) target.clearcoatRoughness = after.clearcoatRoughness;
+		if (before.specularFactor != after.specularFactor) target.specularFactor = after.specularFactor;
+		if (before.specularColor.x != after.specularColor.x || before.specularColor.y != after.specularColor.y || before.specularColor.z != after.specularColor.z) target.specularColor = after.specularColor;
 		if (before.normalStrength != after.normalStrength) target.normalStrength = after.normalStrength;
 		if (before.alphaCutoff != after.alphaCutoff) target.alphaCutoff = after.alphaCutoff;
+		if (before.transmissionFactor != after.transmissionFactor) target.transmissionFactor = after.transmissionFactor;
+		if (before.alphaBlend != after.alphaBlend) target.alphaBlend = after.alphaBlend;
 		if (before.unlit != after.unlit) target.unlit = after.unlit;
 		if (before.wireframe != after.wireframe) target.wireframe = after.wireframe;
 		if (before.doubleSided != after.doubleSided) target.doubleSided = after.doubleSided;
@@ -1714,7 +1728,7 @@ void Editor::DrawRenderSettings(Engine& engine)
 	DebugUI::BeginPanel("Render Settings");
 	DebugUI::DrawRenderSettingsPanel(engine.GetRenderer(), engine.GetDevice());
 	RenderSettings& settings = engine.GetRenderer().GetSettings();
-	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion", "Shadow cascade" };
+	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion", "Shadow cascade", "Specular F0", "Clearcoat" };
 	ImGui::Combo("Debug view", &settings.debugView, views, IM_ARRAYSIZE(views));
 	if (settings.debugView == 3) DebugUI::SliderFloatR("Depth range", &settings.debugDepthRange, RenderSettings().debugDepthRange, 1.0f, 500.0f);
 	const char* boneModes[] = { "Off", "Bones + joints", "Bones + joints + axes" };

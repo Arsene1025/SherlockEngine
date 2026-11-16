@@ -231,12 +231,18 @@ private:
 		TextureHandle boundMetallicRoughness;   // PBR
 		TextureHandle boundOcclusion;
 		TextureHandle boundEmissive;
+		TextureHandle boundSpecular;            // KHR_materials_specular
+		TextureHandle boundSpecularColor;
+		TextureHandle boundClearcoat;           // KHR_materials_clearcoat
+		TextureHandle boundClearcoatRoughness;
+		TextureHandle boundClearcoatNormal;
+		TextureHandle boundTransmission;        // KHR_materials_transmission
 		SamplerHandle boundSampler;
 		uint64_t uploadedFrame = UINT64_MAX;   // 이번 프레임에 상수를 올렸는지
 
 		// 셋을 만들 때 본 입력의 사본. 프레임마다 이것과 재질을 비교해, 같으면 텍스처 이름 → 핸들 조회를
 		// 통째로 건너뜀 (바뀌는 것은 재질 편집·샘플러 덮어쓰기·텍스처 캐시 비우기뿐).
-		std::string albedoName, normalName, metallicRoughnessName, occlusionName, emissiveName;
+		std::string albedoName, normalName, metallicRoughnessName, occlusionName, emissiveName, specularName, specularColorName, clearcoatName, clearcoatRoughnessName, clearcoatNormalName, transmissionName;
 		bool albedoSrgb = true;
 		SamplerHandle sampler;
 		uint64_t textureGeneration = UINT64_MAX;   // 셋을 만들 때의 TextureCache::GetGeneration()
@@ -261,6 +267,7 @@ private:
 		const Mesh* mesh;                // 정렬 키
 		const GpuMaterial* gpuMaterial;  // BuildDrawList 가 만들어 둠 (드로우 루프에서는 생성하지 않음)
 		const GpuMesh* gpuMesh;
+		bool blended = false;            // 알파 블렌드·투과 재질. 불투명·하늘 뒤에 먼 것부터 따로 그림 (정렬 키의 맨 앞)
 		uint32_t object = 0;             // m_objects 인덱스
 		uint32_t indexStart = 0;         // 서브메시 범위
 		uint32_t indexCount = 0;
@@ -403,6 +410,7 @@ private:
 		bool hasEnvironment = false;   // 거짓이면 셰이더가 ambientColor 를 씀
 		bool hasBrdfLut = false;
 		float iblIntensity = 1.0f;
+		DirectX::XMFLOAT3 iblTint = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
 		float exposure = 1.0f;
 		bool toneMapping = false;
 
@@ -469,7 +477,7 @@ private:
 	// 갱신 빈도별 레이아웃 (LayoutId 순서). 선언 사본(m_layoutDescs)은 패스별 바인딩 대조가 씀.
 	//   Layout_Frame     b0 (VS|PS), b2 (PS), t8 그림자 맵, s4 비교 샘플러, t9 스카이박스, s5, t10~t12 IBL (모두 PS), b5 그림자 패스 행렬 (VS), b6 그림자 뷰 배열 (PS), t14 CSM, t15 조명 구조체 버퍼
 	//   Layout_Object    b1 (VS)
-	//   Layout_Material  b3 (VS|PS), t0 알베도, t1 노멀, t2 금속성/거칠기, t3 AO, t4 발광, s0 (모두 PS)
+	//   Layout_Material  b3 (VS|PS), t0 알베도, t1 노멀, t2 금속성/거칠기, t3 AO, t4 발광, t5 반사 세기, t6 반사 색, t16~t18 클리어코트, t19 투과, s0 (모두 PS)
 	//   Layout_Post      b0, b4, t13, s6 (모두 PS)
 	BindingLayoutHandle m_layouts[Layout_Count];
 	BindingLayoutDesc m_layoutDescs[Layout_Count];
@@ -547,7 +555,16 @@ private:
 	std::unordered_map<const Mesh*, GpuMesh> m_gpuMeshes;
 	std::unordered_map<const Material*, GpuMaterial> m_gpuMaterials;
 	std::vector<DrawItem> m_drawList;
+	std::vector<const DrawItem*> m_blendedScratch;   // DrawItems 가 뷰마다 거리순으로 다시 정렬하는 블렌딩 항목 (재사용 버퍼)
 	std::vector<ObjectData> m_objects;   // 이번 프레임에 그릴 오브젝트 (DrawItem::object 가 가리킴). BuildDrawList 가 채움
+	// BuildDrawList 의 계층 순회 스택. 프레임마다 재사용함. 칸 하나 = 자식이 있는 오브젝트 하나 + 그 월드 행렬 + 다음에 방문할 자식 번호.
+	struct HierarchyFrame
+	{
+		const GameObject* node;
+		size_t next;
+		DirectX::XMFLOAT4X4 world;
+	};
+	std::vector<HierarchyFrame> m_hierarchyStack;
 
 	// 핫리로드: 감시하는 소스 파일과 마지막 수정 시각
 	struct WatchedFile

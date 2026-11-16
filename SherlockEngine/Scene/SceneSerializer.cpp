@@ -100,6 +100,20 @@ namespace
 		j["unlit"] = m.unlit;
 		j["normalTexture"] = m.normalTexture;
 		j["normalStrength"] = m.normalStrength;
+		j["ior"] = m.ior;     // 반사 확장 (KHR_materials_ior / specular)
+		j["specularFactor"] = m.specularFactor;
+		j["specularColor"] = ToJson(m.specularColor);
+		j["specularTexture"] = m.specularTexture;
+		j["specularColorTexture"] = m.specularColorTexture;
+		j["clearcoatFactor"] = m.clearcoatFactor;     // 클리어코트 (KHR_materials_clearcoat)
+		j["clearcoatRoughness"] = m.clearcoatRoughness;
+		j["clearcoatNormalScale"] = m.clearcoatNormalScale;
+		j["clearcoatTexture"] = m.clearcoatTexture;
+		j["clearcoatRoughnessTexture"] = m.clearcoatRoughnessTexture;
+		j["clearcoatNormalTexture"] = m.clearcoatNormalTexture;
+		j["transmissionFactor"] = m.transmissionFactor;   // 투과 (KHR_materials_transmission)
+		j["transmissionTexture"] = m.transmissionTexture;
+		j["alphaBlend"] = m.alphaBlend;
 		j["alphaCutoff"] = m.alphaCutoff;
 		j["wireframe"] = m.wireframe;
 		j["doubleSided"] = m.doubleSided;
@@ -138,6 +152,20 @@ namespace
 		m.unlit = j.value("unlit", false);
 		m.normalTexture = j.value("normalTexture", "");
 		m.normalStrength = j.value("normalStrength", 1.0f);
+		m.ior = j.value("ior", m.ior);
+		m.specularFactor = j.value("specularFactor", m.specularFactor);
+		m.specularColor = ToFloat3(j.value("specularColor", json()), m.specularColor);
+		m.specularTexture = j.value("specularTexture", m.specularTexture);
+		m.specularColorTexture = j.value("specularColorTexture", m.specularColorTexture);
+		m.clearcoatFactor = j.value("clearcoatFactor", m.clearcoatFactor);
+		m.clearcoatRoughness = j.value("clearcoatRoughness", m.clearcoatRoughness);
+		m.clearcoatNormalScale = j.value("clearcoatNormalScale", m.clearcoatNormalScale);
+		m.clearcoatTexture = j.value("clearcoatTexture", m.clearcoatTexture);
+		m.clearcoatRoughnessTexture = j.value("clearcoatRoughnessTexture", m.clearcoatRoughnessTexture);
+		m.clearcoatNormalTexture = j.value("clearcoatNormalTexture", m.clearcoatNormalTexture);
+		m.transmissionFactor = j.value("transmissionFactor", m.transmissionFactor);
+		m.transmissionTexture = j.value("transmissionTexture", m.transmissionTexture);
+		m.alphaBlend = j.value("alphaBlend", m.alphaBlend);
 		m.alphaCutoff = j.value("alphaCutoff", 0.0f);
 		m.wireframe = j.value("wireframe", false);
 		m.doubleSided = j.value("doubleSided", false);
@@ -462,7 +490,7 @@ namespace
 	{
 		return {
 			{ "skybox", env.skybox }, { "irradiance", env.irradiance }, { "specular", env.specular }, { "brdfLut", env.brdfLut },
-			{ "iblIntensity", env.iblIntensity }, { "exposure", env.exposure }, { "toneMapping", env.toneMapping },
+			{ "iblIntensity", env.iblIntensity }, { "iblTint", ToJson(env.iblTint) }, { "exposure", env.exposure }, { "toneMapping", env.toneMapping },
 			{ "postProcess", {
 				{ "blurEnabled", env.post.blurEnabled }, { "blurRadius", env.post.blurRadius },
 				{ "bloomEnabled", env.post.bloomEnabled }, { "bloomThreshold", env.post.bloomThreshold },
@@ -487,6 +515,7 @@ namespace
 		e.specular = env.value("specular", std::string());
 		e.brdfLut = env.value("brdfLut", std::string());
 		e.iblIntensity = env.value("iblIntensity", 1.0f);
+		e.iblTint = ToFloat3(env.value("iblTint", json()), e.iblTint);
 		e.exposure = env.value("exposure", 1.0f);
 		e.toneMapping = env.value("toneMapping", false);
 		// 후처리. 키가 없으면(이전 씬 파일) 전부 꺼진 기본값

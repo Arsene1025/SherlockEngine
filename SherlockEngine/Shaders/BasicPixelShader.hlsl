@@ -210,15 +210,16 @@ float GeometrySmith(float NdotL, float NdotV, float roughness)
     return GeometrySchlickGGX(NdotL, k) * GeometrySchlickGGX(NdotV, k);
 }
 
-float3 FresnelSchlick(float3 F0, float cosTheta)
+// F90 = 스치는 각도에서의 반사율. 금속과 기본 재질은 1, 비금속은 KHR_materials_specular 의 specularFactor.
+float3 FresnelSchlick(float3 F0, float F90, float cosTheta)
 {
-    return F0 + (1.0f - F0) * pow(1.0f - saturate(cosTheta), 5.0f);
+    return F0 + (F90 - F0) * pow(1.0f - saturate(cosTheta), 5.0f);
 }
 
-// 환경광용. 거칠수록 스치는 각도의 반사가 덜 세지도록 최대값을 1 − roughness 로 누름 (Lagarde/Sébastien).
-float3 FresnelSchlickRoughness(float3 F0, float cosTheta, float roughness)
+// 환경광용. 거칠수록 스치는 각도의 반사가 덜 세지도록 최대값을 (1 − roughness)·F90 으로 누름 (Lagarde/Sébastien).
+float3 FresnelSchlickRoughness(float3 F0, float F90, float cosTheta, float roughness)
 {
-    return F0 + (max((1.0f - roughness).xxx, F0) - F0) * pow(1.0f - saturate(cosTheta), 5.0f);
+    return F0 + (max(((1.0f - roughness) * F90).xxx, F0) - F0) * pow(1.0f - saturate(cosTheta), 5.0f);
 }
 
 // BRDF LUT 가 없을 때의 해석적 근사 (Karis, "Physically Based Shading on Mobile" 2014). 결과는 LUT 의 RG 와 같은 뜻.
@@ -232,12 +233,12 @@ float2 EnvBRDFApprox(float roughness, float NdotV)
 }
 
 // 환경광(IBL, split-sum). 확산 = (1 − F) · (1 − metallic) · albedo · 확산 조도(N),
-// 반사 = 프리필터(R, 거칠기 밉) · (F0 · A + B), (A, B) = BRDF LUT(N·V, 1 − roughness).
+// 반사 = 프리필터(R, 거칠기 밉) · (F0 · A + F90 · B), (A, B) = BRDF LUT(N·V, 1 − roughness).
 // 환경 큐브가 없으면 두 조도를 ambientColor 하나로 대신함 — PBR 이전의 albedo · ambientColor 와 거의 같은 밝기.
-float3 EnvironmentLighting(float3 albedo, float3 F0, float metallic, float roughness, float3 N, float3 V, float ao)
+float3 EnvironmentLighting(float3 albedo, float3 F0, float F90, float metallic, float roughness, float3 N, float3 V, float ao)
 {
     const float NdotV = max(dot(N, V), 0.0f);
-    const float3 F = FresnelSchlickRoughness(F0, NdotV, roughness);
+    const float3 F = FresnelSchlickRoughness(F0, F90, NdotV, roughness);
     const float3 kd = (1.0f - F) * (1.0f - metallic);
 
     float3 irradiance = ambientColor;
@@ -245,16 +246,37 @@ float3 EnvironmentLighting(float3 albedo, float3 F0, float metallic, float rough
     float intensity = 1.0f;
     if (environmentParams.w > 0.5f)
     {
-        irradiance = irradianceMap.SampleLevel(environmentSampler, N, environmentParams.z).rgb;
+        irradiance = irradianceMap.SampleLevel(environmentSampler, N, environmentParams.z).rgb * iblTint.rgb;
         const float maxLod = max(environmentParams.y - 1.0f, 0.0f);
-        prefiltered = prefilteredMap.SampleLevel(environmentSampler, reflect(-V, N), roughness * maxLod).rgb;
+        prefiltered = prefilteredMap.SampleLevel(environmentSampler, reflect(-V, N), roughness * maxLod).rgb * iblTint.rgb;
         intensity = environmentParams.x;
     }
     const float2 brdf = outputParams.z > 0.5f
         ? brdfLut.SampleLevel(environmentSampler, float2(NdotV, 1.0f - roughness), 0.0f).rg
         : EnvBRDFApprox(roughness, NdotV);
 
-    return (kd * albedo * irradiance + prefiltered * (F0 * brdf.x + brdf.y)) * intensity * ao;
+    return (kd * albedo * irradiance + prefiltered * (F0 * brdf.x + F90 * brdf.y)) * intensity * ao;
+}
+
+// 클리어코트의 환경 반사. 코팅은 F0 0.04 의 유전체 층이라 기본 층의 IBL 과 같은 split-sum 을 코팅 노멀·코팅 거칠기로 한 번 더
+// 계산함. fresnel 은 기본 층이 코팅 아래에서 줄어드는 비율(1 − clearcoat · fresnel)을 호출 쪽이 쓰도록 돌려줌.
+float3 EnvironmentClearcoat(float3 N, float3 V, float roughness, float ao, out float fresnel)
+{
+    const float NdotV = max(dot(N, V), 0.0f);
+    fresnel = 0.04f + 0.96f * pow(1.0f - saturate(NdotV), 5.0f);
+
+    float3 prefiltered = ambientColor;
+    float intensity = 1.0f;
+    if (environmentParams.w > 0.5f)
+    {
+        const float maxLod = max(environmentParams.y - 1.0f, 0.0f);
+        prefiltered = prefilteredMap.SampleLevel(environmentSampler, reflect(-V, N), roughness * maxLod).rgb * iblTint.rgb;
+        intensity = environmentParams.x;
+    }
+    const float2 brdf = outputParams.z > 0.5f
+        ? brdfLut.SampleLevel(environmentSampler, float2(NdotV, 1.0f - roughness), 0.0f).rg
+        : EnvBRDFApprox(roughness, NdotV);
+    return prefiltered * (0.04f * brdf.x + brdf.y) * intensity * ao;
 }
 
 float4 PS_Main(VSOutput input, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
@@ -275,7 +297,7 @@ float4 PS_Main(VSOutput input, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
     // HDR: 톤매핑이 톤 패스로 옮겨 가서 이 픽셀도 노출·ACES 를 거침 — 감마 검증은 톤매핑을 끄고 노출 1 에서 할 것.
     if (unlit > 0.5f)
     {
-        return float4(albedo, surface.a);
+        return blended > 0.5f ? float4(albedo * surface.a, surface.a) : float4(albedo, surface.a);
     }
 
     // PBR 입력. 텍스처가 없으면 흰색이라 계수가 그대로 쓰임. 거칠기 하한은 GGX 의 0 나눗셈과 점광원의 바늘
@@ -285,8 +307,15 @@ float4 PS_Main(VSOutput input, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
     const float rough = clamp(roughness * metalRough.g, 0.03f, 1.0f);
     const float ao = lerp(1.0f, occlusionTexture.Sample(albedoSampler, input.uv).r, occlusionStrength);
     const float3 emission = emissive * emissiveTexture.Sample(albedoSampler, input.uv).rgb;
-    // F0: 수직으로 볼 때의 반사율. 유전체는 4%, 금속은 자기 색. 금속은 확산이 없음(kd 의 1 − metallic).
-    const float3 F0 = lerp(float3(0.04f, 0.04f, 0.04f), albedo, metal);
+    // F0: 수직으로 볼 때의 반사율. 유전체는 굴절률에서 나온 값(ior 1.5 → 4%)에 반사 색·세기를 곱한 것, 금속은
+    // 자기 색. F90: 스치는 각도의 반사율 — 유전체는 specularFactor, 금속은 1. 금속은 확산이 없음(kd 의 1 − metallic).
+    // KHR_materials_specular 기본값(factor 1, 흰색)이면 F0 = 0.04, F90 = 1 로 이전과 같음. three.js 와 같은 식.
+    const float specularWeight = saturate(specularFactor * specularTexture.Sample(albedoSampler, input.uv).a);
+    const float3 specularTint = specularColor * specularColorTexture.Sample(albedoSampler, input.uv).rgb;
+    const float iorRatio = (max(ior, 1.0f) - 1.0f) / (max(ior, 1.0f) + 1.0f);
+    const float3 dielectricF0 = min(iorRatio * iorRatio * specularTint, 1.0f) * specularWeight;
+    const float3 F0 = lerp(dielectricF0, albedo, metal);
+    const float F90 = lerp(specularWeight, 1.0f, metal);
 
     // 노멀 매핑. 탄젠트 공간(T, B, N) 의 노멀 맵 값을 월드 공간으로 변환함.
     // 노멀 맵은 선형 텍스처이고 (0.5, 0.5, 1) 이 "평평"을 뜻함. B 는 정점 탄젠트의 손잡이(w)로 복원함.
@@ -302,6 +331,15 @@ float4 PS_Main(VSOutput input, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
 
     const float3 viewDirection = SafeNormalize(
         cameraPosition - input.worldPosition, float3(0.0f, 0.0f, -1.0f));
+
+    // 클리어코트 (KHR_materials_clearcoat). 텍스처가 없으면 흰색이라 계수가 그대로 쓰임. 코팅 노멀 맵이 없으면 평평한
+    // 노멀이 꽂혀 기하 노멀과 같아짐 — 코팅은 기본 층의 노멀 맵을 따르지 않는다는 glTF 규칙. 분기 안에서 샘플하지 않고
+    // 항상 샘플함 (그래디언트 계산이 균일한 흐름에서만 안전하므로).
+    const float clearcoat = saturate(clearcoatFactor * clearcoatTexture.Sample(albedoSampler, input.uv).r);
+    const float clearcoatRough = clamp(clearcoatRoughness * clearcoatRoughnessTexture.Sample(albedoSampler, input.uv).g, 0.03f, 1.0f);
+    float3 coatTangentNormal = clearcoatNormalTexture.Sample(albedoSampler, input.uv).xyz * 2.0f - 1.0f;
+    coatTangentNormal.xy *= clearcoatNormalScale;
+    const float3 clearcoatNormal = SafeNormalize(coatTangentNormal.x * T + coatTangentNormal.y * B + coatTangentNormal.z * geometricNormal, geometricNormal);
 
     // 디버그 뷰. 에디터의 Render Settings 에서 고름.
     const int debugView = (int)debugParams.x;
@@ -323,6 +361,8 @@ float4 PS_Main(VSOutput input, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
     if (debugView == 5) return float4(frac(input.uv), 0.0f, 1.0f);
     if (debugView == 6) return float4(0.0f, rough, metal, 1.0f);   // glTF 의 metallicRoughness 텍스처와 같은 채널 배치
     if (debugView == 7) return float4(ao, ao, ao, 1.0f);
+    if (debugView == 9) return float4(F0, 1.0f);
+    if (debugView == 10) return float4(clearcoat, clearcoatRough, 0.0f, 1.0f);   // R = 코팅 세기, G = 코팅 거칠기   // 유효 F0 (비금속 4% = 약 0.04, 금속은 기본 색)
     if (debugView == 8)
     {
         // 캐스케이드: 0 빨강, 1 초록, 2 파랑, 3 노랑, 마지막 너머는 어두운 회색, CSM 꺼짐은 흰색. 장면을
@@ -341,7 +381,18 @@ float4 PS_Main(VSOutput input, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
     }
 
     const float NdotV = max(dot(normal, viewDirection), EPSILON);
-    float3 finalColor = EnvironmentLighting(albedo, F0, metal, rough, normal, viewDirection, ao) + emission;
+    // 투과 (KHR_materials_transmission): 비금속의 확산을 transmission 만큼 줄이고, 그만큼 뒤가 비치게 알파를 낮춤(아래).
+    // 반사(스페큘러)는 줄이지 않음. 굴절·틴트는 없음 — 뒤의 색이 그대로 비침.
+    const float transmission = saturate(transmissionFactor * transmissionTexture.Sample(albedoSampler, input.uv).r) * (1.0f - metal);
+    const float3 diffuseAlbedo = albedo * (1.0f - transmission);
+    float3 environment = EnvironmentLighting(diffuseAlbedo, F0, F90, metal, rough, normal, viewDirection, ao);
+    if (clearcoat > 0.0f)
+    {
+        float coatFresnel;
+        const float3 coatSpecular = EnvironmentClearcoat(clearcoatNormal, viewDirection, clearcoatRough, ao, coatFresnel);
+        environment = environment * (1.0f - clearcoat * coatFresnel) + clearcoat * coatSpecular;
+    }
+    float3 finalColor = environment + emission;
     const uint activeLightCount = lightCount;
 
     [loop]
@@ -375,7 +426,8 @@ float4 PS_Main(VSOutput input, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
         }
 
         const float NdotL = saturate(dot(normal, surfaceToLight));
-        if (NdotL <= 0.0f)
+        const float NdotLcc = clearcoat > 0.0f ? saturate(dot(clearcoatNormal, surfaceToLight)) : 0.0f;
+        if (NdotL <= 0.0f && NdotLcc <= 0.0f)
         {
             continue;
         }
@@ -388,17 +440,49 @@ float4 PS_Main(VSOutput input, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
         const float NdotH = saturate(dot(normal, halfVector));
         const float VdotH = saturate(dot(viewDirection, halfVector));
 
-        const float D = DistributionGGX(NdotH, rough * rough);
-        const float G = GeometrySmith(NdotL, NdotV, rough);
-        const float3 F = FresnelSchlick(F0, VdotH);
-        const float3 specular = D * G * F / max(4.0f * NdotL * NdotV, EPSILON);
-        const float3 kd = (1.0f - F) * (1.0f - metal);   // 반사된 몫과 금속을 뺀 나머지만 확산함 (에너지 보존)
-
         // 조도 관례(위 주석): BRDF 전체에 π 를 곱하므로 확산항은 kd · albedo, 반사항은 specular · π 가 됨.
-        const float3 irradiance = light.color * max(light.intensity, 0.0f) * attenuation * NdotL;
-        finalColor += (kd * albedo + specular * PI) * irradiance;
+        const float3 radiance = light.color * max(light.intensity, 0.0f) * attenuation;
+        float3 baseTerm = float3(0.0f, 0.0f, 0.0f);
+        if (NdotL > 0.0f)
+        {
+            const float D = DistributionGGX(NdotH, rough * rough);
+            const float G = GeometrySmith(NdotL, NdotV, rough);
+            const float3 F = FresnelSchlick(F0, F90, VdotH);
+            const float3 specular = D * G * F / max(4.0f * NdotL * NdotV, EPSILON);
+            const float3 kd = (1.0f - F) * (1.0f - metal);   // 반사된 몫과 금속을 뺀 나머지만 확산함 (에너지 보존)
+            baseTerm = (kd * diffuseAlbedo + specular * PI) * radiance * NdotL;
+        }
+
+        // 클리어코트: F0 0.04 의 GGX 로브 하나를 코팅 노멀로 더하고, 기본 층은 코팅이 반사한 만큼(1 − clearcoat·Fc) 줄임.
+        // 하프벡터는 노멀과 무관해서 위의 것을 그대로 씀.
+        if (clearcoat > 0.0f)
+        {
+            const float coatFresnel = clearcoat * (0.04f + 0.96f * pow(1.0f - VdotH, 5.0f));
+            float3 coatTerm = float3(0.0f, 0.0f, 0.0f);
+            if (NdotLcc > 0.0f)
+            {
+                const float NdotVcc = max(dot(clearcoatNormal, viewDirection), EPSILON);
+                const float NdotHcc = saturate(dot(clearcoatNormal, halfVector));
+                const float Dcc = DistributionGGX(NdotHcc, clearcoatRough * clearcoatRough);
+                const float Gcc = GeometrySmith(NdotLcc, NdotVcc, clearcoatRough);
+                coatTerm = (Dcc * Gcc * coatFresnel / max(4.0f * NdotLcc * NdotVcc, EPSILON) * PI).xxx * radiance * NdotLcc;
+            }
+            finalColor += baseTerm * (1.0f - coatFresnel) + coatTerm;
+        }
+        else
+        {
+            finalColor += baseTerm;
+        }
     }
 
     // HDR: 선형 HDR 값을 그대로 FP16 타깃에 씀 (1 을 넘어도 잘리지 않음). 노출·ACES 는 TonemapPixelShader 가 함.
+    // 블렌딩 패스 재질은 rgb 에 알파를 미리 곱해 내보냄 (블렌드: One, InvSrcAlpha). 투과로 비치는 몫은 시선 방향의 프레넬
+    // 반사를 뺀 만큼만 알파에서 뺌 (비스듬히 볼수록 유리가 더 거울처럼 보임).
+    if (blended > 0.5f)
+    {
+        const float fresnelView = FresnelSchlick(F0, F90, NdotV).g;
+        const float opacity = saturate(surface.a * (1.0f - transmission * (1.0f - fresnelView)));
+        return float4(finalColor * surface.a, opacity);
+    }
     return float4(finalColor, surface.a);
 }

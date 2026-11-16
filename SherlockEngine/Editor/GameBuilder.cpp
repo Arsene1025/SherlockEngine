@@ -74,7 +74,7 @@ namespace
 		}
 		for (const auto& material : root.value("materials", nlohmann::json::array()))
 		{
-			for (const char* key : { "albedoTexture", "normalTexture", "metallicRoughnessTexture", "occlusionTexture", "emissiveTexture" })
+			for (const char* key : { "albedoTexture", "normalTexture", "metallicRoughnessTexture", "occlusionTexture", "emissiveTexture", "specularTexture", "specularColorTexture", "clearcoatTexture", "clearcoatRoughnessTexture", "clearcoatNormalTexture", "transmissionTexture" })
 			{
 				const std::string name = material.value(key, "");
 				if (name.empty() || name.rfind("builtin:", 0) == 0) continue;

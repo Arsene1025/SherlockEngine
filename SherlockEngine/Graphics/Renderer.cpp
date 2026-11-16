@@ -233,7 +233,7 @@ bool Renderer::CreateLayouts()
 	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotPerObject);
 	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotSkin);   // 스키닝 VS 만 읽음. 다른 VS 는 선언만 해 두고 안 씀
 
-	// 재질 셋: 상수(b3, uvScale 때문에 VS도), 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 샘플러 s0.
+	// 재질 셋: 상수(b3, uvScale 때문에 VS도), 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 반사 세기 t5, 반사 색 t6, 클리어코트 t16~t18, 투과 t19, 샘플러 s0.
 	BindingLayoutDesc& materialLayout = m_layoutDescs[Layout_Material];
 	materialLayout = BindingLayoutDesc{};
 	materialLayout.debugName = "Layout_Material";
@@ -243,6 +243,12 @@ bool Renderer::CreateLayouts()
 	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotMetallicRoughness);
 	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotOcclusion);
 	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotEmissive);
+	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSpecular);
+	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSpecularColor);
+	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotClearcoat);
+	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotClearcoatRoughness);
+	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotClearcoatNormal);
+	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotTransmission);
 	materialLayout.Add(BindingType::Sampler, ShaderStageMask_Pixel, kSamplerSlotMaterial);
 
 	// 후처리 셋: b0 (PerFrame: 노출·톤매핑·디버그 뷰), b4 (PostParams: 패스 파라미터), t13 (입력 텍스처), s6
@@ -420,6 +426,7 @@ void Renderer::ResolveEnvironment(const SceneEnvironment& environment)
 	}
 
 	binding.iblIntensity = environment.iblIntensity;
+	binding.iblTint = environment.iblTint;
 	binding.exposure = environment.exposure;
 	binding.toneMapping = environment.toneMapping;
 	m_environment = binding;
@@ -997,17 +1004,15 @@ void Renderer::BuildDrawList(const Scene& scene)
 	XMStoreFloat4x4(&m_skinScratch[0], XMMatrixIdentity());
 	m_device->UpdateBuffer(m_skinCB, m_skinScratch.data(), static_cast<uint32_t>(sizeof(XMFLOAT4X4)));
 
-	for (const auto& objectPtr : scene.GetObjects())
+	const auto addObject = [&](const GameObject& object, const XMMATRIX& world)
 	{
-		const GameObject& object = *objectPtr;   // 씬이 unique_ptr 로 소유함
 		const Mesh* mesh = object.GetMesh();
-		if (mesh == nullptr || !mesh->IsValid()) continue;
+		if (mesh == nullptr || !mesh->IsValid()) return;
 		const GpuMesh* gpuMesh = GetOrCreateGpuMesh(*mesh);
-		if (gpuMesh == nullptr) continue;
+		if (gpuMesh == nullptr) return;
 
-		// 월드 행렬은 부모 계층을 따라 올라가며 곱하는 값이라 싸지 않음. 오브젝트마다 여기서 한 번만 구하고,
-		// 역행렬·경계 구까지 만들어 둠 — 그림자 뷰 N 개 + 메인 + 미리보기 패스가 모두 이 결과를 씀.
-		const XMMATRIX world = object.GetWorldMatrix();
+		// 월드 행렬은 호출한 쪽이 계층을 따라 내려오며 구해 줌. 여기서는 역행렬·경계 구를 만들어 둠 —
+		// 그림자 뷰 N 개 + 메인 + 미리보기 패스가 모두 이 결과를 씀.
 		ObjectData data;
 		XMStoreFloat4x4(&data.world, XMMatrixTranspose(world));
 		// 노멀 변환 행렬은 (W⁻¹)ᵀ. 전치해서 올려야 하므로 ((W⁻¹)ᵀ)ᵀ = W⁻¹ 를 그대로 저장함.
@@ -1048,7 +1053,9 @@ void Renderer::BuildDrawList(const Scene& scene)
 			item.gpuMaterial = GetOrCreateGpuMaterial(*material, &scene);
 			if (item.gpuMaterial == nullptr) continue;
 			// 감마 검증 카드처럼 조명을 받지 않는 물체는 그림자도 만들지 않음 (빈 핸들 = 그림자 패스에서 건너뜀).
-			item.shadowPipeline = material->unlit ? PipelineHandle{} : GetShadowPipelineFor(*material, mesh->GetVertexFormat(), mirrored);
+			// 블렌딩 재질(유리·반투명)도 그림자를 만들지 않음: 그림자 맵은 불투명한 차폐만 담고, 반투명은 알파가 없어 통째로 가림.
+			item.blended = IsBlended(*material);
+			item.shadowPipeline = (material->unlit || item.blended) ? PipelineHandle{} : GetShadowPipelineFor(*material, mesh->GetVertexFormat(), mirrored);
 			item.material = material;
 			item.mesh = mesh;
 			item.gpuMesh = gpuMesh;
@@ -1057,11 +1064,59 @@ void Renderer::BuildDrawList(const Scene& scene)
 			item.indexCount = submesh.indexCount;
 			m_drawList.push_back(item);
 		}
+	};
+
+	// 부모 → 자식 순으로 내려가며 월드 행렬을 오브젝트당 한 번씩만 구함. 예전에는 오브젝트마다
+	// GetWorldMatrix 가 부모를 재귀로 올라가며 로컬 행렬을 처음부터 다시 만들어 깊이에 비례해 비쌌음.
+	// m_objects 의 순서는 생성 순서라 부모가 자식보다 앞에 온다는 보장이 없으므로(SetParent 는 아무 둘 사이에서나
+	// 가능), 순서에 기대지 않고 루트에서 children 을 따라감. 방문 순서는 아래 정렬이 지우므로 화면에 영향이 없음.
+	size_t visited = 0;
+	for (const auto& rootPtr : scene.GetObjects())
+	{
+		const GameObject& root = *rootPtr;   // 씬이 unique_ptr 로 소유함
+		if (root.GetParent() != nullptr) continue;
+		const XMMATRIX rootWorld = root.GetTransform().GetLocalMatrix();   // 루트는 로컬 = 월드
+		addObject(root, rootWorld);
+		++visited;
+		if (root.GetChildren().empty()) continue;
+
+		m_hierarchyStack.clear();
+		m_hierarchyStack.push_back(HierarchyFrame{ &root, 0, {} });
+		XMStoreFloat4x4(&m_hierarchyStack.back().world, rootWorld);
+		while (!m_hierarchyStack.empty())
+		{
+			HierarchyFrame& frame = m_hierarchyStack.back();
+			const auto& children = frame.node->GetChildren();
+			if (frame.next >= children.size())
+			{
+				m_hierarchyStack.pop_back();
+				continue;
+			}
+			const GameObject& child = *children[frame.next++];
+			// 행벡터 관례: 자식 로컬을 먼저 적용하고 부모로 올라감 (GameObject::GetWorldMatrix 와 같은 곱셈 순서)
+			const XMMATRIX world = child.GetTransform().GetLocalMatrix() * XMLoadFloat4x4(&frame.world);
+			addObject(child, world);
+			++visited;
+			if (!child.GetChildren().empty())
+			{
+				HierarchyFrame next{ &child, 0, {} };
+				XMStoreFloat4x4(&next.world, world);
+				m_hierarchyStack.push_back(next);   // frame 참조는 이 뒤로 쓰지 않음 (벡터가 늘어나며 무효가 될 수 있음)
+			}
+		}
+	}
+	// children 과 parent 가 어긋나면 일부 오브젝트가 조용히 안 그려짐. 한 번만 알림.
+	static bool warnedMismatch = false;
+	if (visited != scene.GetObjects().size() && !warnedMismatch)
+	{
+		warnedMismatch = true;
+		Log::Error("BuildDrawList: 계층 순회가 %zu 개만 방문함 (씬 오브젝트 %zu 개). parent/children 불일치?", visited, scene.GetObjects().size());
 	}
 
 	// ---- 정렬: PSO → Material → Mesh → 인덱스 범위. 같은 상태가 연속되면 바인딩을 건너뛸 수 있음 ----
 	std::sort(m_drawList.begin(), m_drawList.end(), [](const DrawItem& a, const DrawItem& b)
 	{
+		if (a.blended != b.blended) return !a.blended;   // 불투명이 앞, 블렌딩이 뒤 (블렌딩끼리의 순서는 그릴 때 거리로 다시 정함)
 		if (a.pipeline.index != b.pipeline.index) return a.pipeline.index < b.pipeline.index;
 		if (a.material != b.material) return a.material < b.material;
 		if (a.mesh != b.mesh) return a.mesh < b.mesh;
@@ -1140,14 +1195,8 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera
 	const GpuMaterial* lastMaterial = nullptr;
 	const GpuMesh* lastMesh = nullptr;
 
-	for (const DrawItem& item : m_drawList)
+	const auto drawItem = [&](const DrawItem& item)
 	{
-		if (!frustum.Intersects(m_objects[item.object].sphere))
-		{
-			++m_stats.culled;
-			continue;
-		}
-
 		if (item.pipeline != lastPipeline)
 		{
 			cmd.SetPipelineState(item.pipeline);
@@ -1175,12 +1224,45 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera
 		cmd.DrawIndexed(item.indexCount, item.indexStart, 0);
 		m_stats.triangles += item.indexCount / 3;
 		++m_stats.draws;
+	};
+
+	m_blendedScratch.clear();
+	for (const DrawItem& item : m_drawList)
+	{
+		if (!frustum.Intersects(m_objects[item.object].sphere))
+		{
+			++m_stats.culled;
+			continue;
+		}
+		if (item.blended) m_blendedScratch.push_back(&item);   // 하늘 뒤에서 따로 그림
+		else drawItem(item);
 	}
 
 	// 불투명 물체를 다 그린 뒤 하늘. 깊이 버퍼가 채워져 있으므로 가려진 픽셀은 깊이 테스트에서 떨어짐.
 	if (!scene.environment.skybox.empty())
 	{
 		DrawSkybox(cmd);
+	}
+
+	// 알파 블렌드·투과 재질: 하늘까지 그린 뒤, 카메라에서 먼 것부터(오브젝트 경계 구 중심 기준). 깊이는 테스트만 하고 쓰지 않음.
+	// 하늘 패스가 PSO 를 바꿨으므로 직전 상태 기억을 비우고 프레임·오브젝트 셋을 다시 꽂음.
+	if (!m_blendedScratch.empty())
+	{
+		const XMFLOAT3 eye = camera.GetPosition();
+		const auto distanceSq = [&](const DrawItem* item)
+		{
+			const XMFLOAT4& s = m_objects[item->object].sphere;
+			const float dx = s.x - eye.x, dy = s.y - eye.y, dz = s.z - eye.z;
+			return dx * dx + dy * dy + dz * dz;
+		};
+		std::stable_sort(m_blendedScratch.begin(), m_blendedScratch.end(),
+			[&](const DrawItem* a, const DrawItem* b) { return distanceSq(a) > distanceSq(b); });
+		cmd.SetResourceSet(kSetFrame, m_frameSet);
+		cmd.SetResourceSet(kSetObject, m_objectSet);
+		lastPipeline = PipelineHandle{};
+		lastMaterial = nullptr;
+		lastMesh = nullptr;
+		for (const DrawItem* item : m_blendedScratch) drawItem(*item);
 	}
 
 	DrawDebugLines(cmd);   // 하늘 뒤: 깊이 테스트가 없으므로 항상 위에 그려짐
@@ -1253,6 +1335,7 @@ void Renderer::UploadPerFrameConstants(const Camera& camera, float totalTime)
 		m_environment.irradianceLod, m_environment.hasEnvironment ? 1.0f : 0.0f);
 	perFrame.outputParams = XMFLOAT4(m_environment.exposure, m_environment.toneMapping ? 1.0f : 0.0f, m_environment.hasBrdfLut ? 1.0f : 0.0f, 0.0f);
 	perFrame.shadowExtra = XMFLOAT4(m_shadowSettings.normalOffset, 0.0f, 0.0f, 0.0f);
+	perFrame.iblTint = XMFLOAT4(m_environment.iblTint.x, m_environment.iblTint.y, m_environment.iblTint.z, 0.0f);
 	m_device->UpdateBuffer(m_perFrameCB, &perFrame, sizeof(perFrame));
 }
 
@@ -1367,7 +1450,13 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		&& gpuMaterial->normalName == material.normalTexture
 		&& gpuMaterial->metallicRoughnessName == material.metallicRoughnessTexture
 		&& gpuMaterial->occlusionName == material.occlusionTexture
-		&& gpuMaterial->emissiveName == material.emissiveTexture;
+		&& gpuMaterial->emissiveName == material.emissiveTexture
+		&& gpuMaterial->specularName == material.specularTexture
+		&& gpuMaterial->specularColorName == material.specularColorTexture
+		&& gpuMaterial->clearcoatName == material.clearcoatTexture
+		&& gpuMaterial->clearcoatRoughnessName == material.clearcoatRoughnessTexture
+		&& gpuMaterial->clearcoatNormalName == material.clearcoatNormalTexture
+		&& gpuMaterial->transmissionName == material.transmissionTexture;
 	if (!unchanged)
 	{
 		const TextureHandle albedo = m_textures.Load2D(material.albedoTexture, material.albedoSrgb, scene);
@@ -1376,20 +1465,33 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		const TextureHandle metallicRoughness = m_textures.Load2D(material.metallicRoughnessTexture, false, scene);
 		const TextureHandle occlusion = m_textures.Load2D(material.occlusionTexture, false, scene);
 		const TextureHandle emissive = m_textures.Load2D(material.emissiveTexture, true, scene);
+		// 반사 확장: 빈 이름은 흰색 (factor 가 그대로 쓰임). specularTexture 는 A 채널을 읽는 선형 데이터, 반사 색은 sRGB.
+		const TextureHandle specular = m_textures.Load2D(material.specularTexture, false, scene);
+		const TextureHandle specularColor = m_textures.Load2D(material.specularColorTexture, true, scene);
+		// 클리어코트: 세기·거칠기는 흰색 대체, 코팅 노멀은 평평한 노멀 대체 (기하 노멀과 같아짐). 모두 선형.
+		const TextureHandle clearcoat = m_textures.Load2D(material.clearcoatTexture, false, scene);
+		const TextureHandle clearcoatRoughness = m_textures.Load2D(material.clearcoatRoughnessTexture, false, scene);
+		const TextureHandle transmission = m_textures.Load2D(material.transmissionTexture, false, scene);   // 흰색 대체: 계수가 그대로 쓰임
+		const TextureHandle clearcoatNormal = material.clearcoatNormalTexture.empty() ? m_textures.GetFlatNormal() : m_textures.Load2D(material.clearcoatNormalTexture, false, scene);
 
 		// 실제로 꽂히는 핸들이 달라졌을 때만 ResourceSet 을 다시 만듦. ResourceSet은 값 객체라 부분 갱신 기능이
 		// 없음 — D3D12 디스크립터 테이블도 다시 써야 함.
 		if (!gpuMaterial->set.IsValid() || gpuMaterial->boundAlbedo != albedo || gpuMaterial->boundNormal != normal || gpuMaterial->boundSampler != sampler
-			|| gpuMaterial->boundMetallicRoughness != metallicRoughness || gpuMaterial->boundOcclusion != occlusion || gpuMaterial->boundEmissive != emissive)
+			|| gpuMaterial->boundMetallicRoughness != metallicRoughness || gpuMaterial->boundOcclusion != occlusion || gpuMaterial->boundEmissive != emissive
+			|| gpuMaterial->boundSpecular != specular || gpuMaterial->boundSpecularColor != specularColor
+			|| gpuMaterial->boundClearcoat != clearcoat || gpuMaterial->boundClearcoatRoughness != clearcoatRoughness || gpuMaterial->boundClearcoatNormal != clearcoatNormal
+			|| gpuMaterial->boundTransmission != transmission)
 		{
 			m_device->DestroyResourceSet(gpuMaterial->set);
 			// 슬롯 순서는 CreateLayouts 의 materialLayout.Add(...) 순서: b3 상수, t0 알베도, t1 노멀, t2
-			// 금속성/거칠기, t3 AO, t4 발광, s0 샘플러.
+			// 금속성/거칠기, t3 AO, t4 발광, t5 반사 세기, t6 반사 색, t16~t18 클리어코트, t19 투과, s0 샘플러.
 			const ResourceSetDesc setDesc{
 				.layout = m_layouts[Layout_Material],
 				.bindings = {
 					{ .buffer = gpuMaterial->constants }, { .texture = albedo }, { .texture = normal },
-					{ .texture = metallicRoughness }, { .texture = occlusion }, { .texture = emissive }, { .sampler = sampler },
+					{ .texture = metallicRoughness }, { .texture = occlusion }, { .texture = emissive },
+					{ .texture = specular }, { .texture = specularColor },
+					{ .texture = clearcoat }, { .texture = clearcoatRoughness }, { .texture = clearcoatNormal }, { .texture = transmission }, { .sampler = sampler },
 				},
 				.debugName = "Set_Material",
 			};
@@ -1399,6 +1501,12 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 			gpuMaterial->boundMetallicRoughness = metallicRoughness;
 			gpuMaterial->boundOcclusion = occlusion;
 			gpuMaterial->boundEmissive = emissive;
+			gpuMaterial->boundSpecular = specular;
+			gpuMaterial->boundSpecularColor = specularColor;
+			gpuMaterial->boundClearcoat = clearcoat;
+			gpuMaterial->boundClearcoatRoughness = clearcoatRoughness;
+			gpuMaterial->boundClearcoatNormal = clearcoatNormal;
+			gpuMaterial->boundTransmission = transmission;
 			gpuMaterial->boundSampler = sampler;
 			if (!gpuMaterial->set.IsValid())
 			{
@@ -1411,6 +1519,12 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		gpuMaterial->metallicRoughnessName = material.metallicRoughnessTexture;
 		gpuMaterial->occlusionName = material.occlusionTexture;
 		gpuMaterial->emissiveName = material.emissiveTexture;
+		gpuMaterial->specularName = material.specularTexture;
+		gpuMaterial->specularColorName = material.specularColorTexture;
+		gpuMaterial->clearcoatName = material.clearcoatTexture;
+		gpuMaterial->clearcoatRoughnessName = material.clearcoatRoughnessTexture;
+		gpuMaterial->clearcoatNormalName = material.clearcoatNormalTexture;
+		gpuMaterial->transmissionName = material.transmissionTexture;
 		gpuMaterial->albedoSrgb = material.albedoSrgb;
 		gpuMaterial->sampler = sampler;
 		gpuMaterial->textureGeneration = m_textures.GetGeneration();
@@ -1427,6 +1541,14 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		constants.metallic = material.metallic;
 		constants.roughness = material.roughness;
 		constants.occlusionStrength = material.occlusionStrength;
+		constants.ior = material.ior;
+		constants.specularColor = material.specularColor;
+		constants.specularFactor = material.specularFactor;
+		constants.clearcoatFactor = material.clearcoatFactor;
+		constants.clearcoatRoughness = material.clearcoatRoughness;
+		constants.clearcoatNormalScale = material.clearcoatNormalScale;
+		constants.transmissionFactor = material.transmissionFactor;
+		constants.blended = IsBlended(material) ? 1.0f : 0.0f;
 		constants.uvScale = material.uvScale;
 		constants.unlit = material.unlit ? 1.0f : 0.0f;
 		constants.normalStrength = m_settings.normalMapping ? material.normalStrength : 0.0f;
@@ -1445,7 +1567,9 @@ PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat v
 	// PipelineStateDesc 전체를 복사하고 해시해 Device 캐시를 찾는 일이 없어짐.
 	const bool wireframe = m_settings.wireframe || material.wireframe;
 	const bool cullBack = m_settings.cullBack && !material.doubleSided;
-	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (wireframe ? 1u << 9 : 0u) | (cullBack ? 1u << 10 : 0u);
+	const bool blended = IsBlended(material);
+	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (wireframe ? 1u << 9 : 0u) | (cullBack ? 1u << 10 : 0u)
+		| (blended ? 1u << 11 : 0u);
 	auto found = m_mainPipelines.find(key);
 	if (found != m_mainPipelines.end()) return found->second;
 
@@ -1454,6 +1578,17 @@ PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat v
 	desc.rasterizer.frontCounterClockwise = mirrored ? !desc.rasterizer.frontCounterClockwise : desc.rasterizer.frontCounterClockwise;
 	desc.rasterizer.fill = wireframe ? FillMode::Wireframe : FillMode::Solid;
 	desc.rasterizer.cull = cullBack ? CullMode::Back : CullMode::None;
+	if (blended)
+	{
+		// 알파 블렌드·투과: 셰이더가 rgb 에 알파를 미리 곱해 내보냄 → 최종 = Src + Dst · (1 − SrcAlpha). 깊이는 테스트만 함
+		// (뒤의 불투명 물체에 가려지되, 반투명끼리는 먼 것부터 그려 서로 쓰지 않음).
+		desc.blend.rt[0].blendEnable = true;
+		desc.blend.rt[0].srcColor = BlendFactor::One;
+		desc.blend.rt[0].dstColor = BlendFactor::InvSrcAlpha;
+		desc.blend.rt[0].srcAlpha = BlendFactor::One;
+		desc.blend.rt[0].dstAlpha = BlendFactor::InvSrcAlpha;
+		desc.depthStencil.depthWrite = false;
+	}
 	// D3D12 PSO 는 렌더 타깃 뷰의 포맷을 알아야 함. 메인 패스는 FP16 HDR 텍스처에 그리므로 항상 R16G16B16A16_FLOAT.
 	// (sRGB 여부는 톤 패스의 PSO 만 따짐 — GetTonemapPipeline)
 	desc.rtvFormats[0] = Format::R16G16B16A16_FLOAT;
