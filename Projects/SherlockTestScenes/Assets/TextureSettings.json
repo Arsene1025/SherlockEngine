@@ -1,5 +1,35 @@
 {
   "textures": {
+    "BlackDragon_Ani_v2/0 Dragon_Bump_Col2.jpg": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "BlackDragon_Ani_v2/1 Dragon_Nor_mirror2.jpg": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SC2_Viking/0 Image_1.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SC2_Viking/1 Image_0.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SC2_Viking/2 Image_3.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SC2_Viking/3 Image_2.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
     "SandyLocation_v3.pbr+/7 img2_normal1.png": {
       "compress": true,
       "maxSize": 0,
@@ -11,6 +41,46 @@
       "mipLevels": 1
     },
     "SandyLocation_v3.pbr+/9 img2_edge-img2_rough2.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SiegeTank/0 Image_3.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SiegeTank/1 Image_2.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SiegeTank/2 Image_1.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "SiegeTank/3 Image_0.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "Tychus_Gun_v2.2.ani.act3.merge.pbr/0 Image_1.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "Tychus_Gun_v2.2.ani.act3.merge.pbr/1 img0_normal.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "Tychus_Gun_v2.2.ani.act3.merge.pbr/2 Image_0.png": {
+      "compress": true,
+      "maxSize": 0,
+      "mipLevels": 1
+    },
+    "Tychus_Gun_v2.2.ani.act3.merge.pbr/3 img0_metal1-img0_rough2.png": {
       "compress": true,
       "maxSize": 0,
       "mipLevels": 1
