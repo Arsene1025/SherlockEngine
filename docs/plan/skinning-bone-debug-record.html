@@ -46,10 +46,15 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 
 <section>
 <h2>2. Animator 와 팔레트</h2>
-<p>스킨 메시를 그리는 오브젝트의 Animator 가 매 프레임 조인트 월드를 계산해 팔레트를 만듭니다.</p>
+<p>Animator 가 매 프레임 조인트 월드를 계산해 스킨 메시를 그리는 오브젝트마다 팔레트를 만듭니다. (이 기록을 쓸 때는 메시 오브젝트마다 Animator 가 하나씩 있었습니다. 이후 바뀐 구조는 이 절 끝의 상자를 보세요.)</p>
 <pre><code>palette[j] = inverseBind[j] · jointWorld[j] · inverse(meshNodeRestWorld)</code></pre>
 <p>마지막 항은 오브젝트의 월드 행렬이 메시 노드 변환(preTransform)을 다시 곱하기 때문에 상쇄하는 항입니다. 결과는 <code>inverseBind · jointWorld</code> 와 같아서 glTF 규격대로 메시 노드 변환을 무시한 것과 같습니다. 팔레트는 <code>GameObject::SetSkinPalette</code> 로 올립니다.</p>
 <div class="box warn">GameObject 멤버를 덧붙여 <code>sizeof</code> 가 352→384 로 바뀌었으므로 스크립트 DLL 을 모두 다시 빌드해야 합니다.</div>
+<div class="box ok"><b>이후 바뀐 것 (2026-11-13)</b>
+<ul>
+  <li><b>Animator 는 모델 루트 오브젝트에 하나만 붙입니다.</b> Animator 가 소유 오브젝트와 자손 중 같은 모델의 스킨 메시 오브젝트(마스터치프는 4개)를 매 프레임 모아 노드 월드를 한 번만 계산하고 메시마다 팔레트만 만듭니다. 식은 <code>Scene/SkinPose.cpp</code> 의 <code>EvaluateNodeGlobals</code>·<code>BuildSkinPalette</code> 로 옮겼습니다(위의 <code>palette[j]</code> 식은 그대로). 메시 오브젝트 자신에 붙이는 방식도 그대로 동작하고, 자기 Animator 를 가진 자손 아래는 그 Animator 가 맡습니다. <code>MasterChiefWalk.json</code> 은 루트 하나로 옮겼습니다.</li>
+  <li><b>편집 모드의 기본 자세.</b> 팔레트가 비어 있는 스킨 오브젝트에는 <code>ApplyRestSkinPoses</code> 가 모델 노드의 기본 TRS 로 계산한 팔레트와 스켈레톤 포즈를 채웁니다(<code>Engine::Render</code> 가 매 프레임 부름). 그래서 편집 모드에서도 마스터치프가 보이고(이전에는 단위행렬 팔레트로 그려져 보이지 않았습니다) 본 표시도 나옵니다. 단위행렬은 모델 정보를 끝내 찾지 못했을 때만 씁니다.</li>
+</ul></div>
 </section>
 
 <section>
@@ -58,7 +63,7 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <tr><th>항목</th><th>내용</th></tr>
 <tr><td>셰이더</td><td><code>BasicSkinVertexShader.hlsl</code>(VS_MainSkin), <code>ShadowSkinVertexShader.hlsl</code>(VS_ShadowSkin). <code>Common.hlsli</code> 에 cbuffer <code>Skin</code>(b7, <code>matrix joints[256]</code> 16KB).</td></tr>
 <tr><td>패스</td><td><code>Pass_MainSkin / Pass_ShadowSkin</code>. 정점 포맷이 스킨이면 자동 선택. PS·레이아웃은 기존과 같습니다.</td></tr>
-<tr><td>상수 버퍼</td><td>오브젝트 셋에 b7 을 추가. 팔레트가 비면 단위행렬 256개를 올립니다.</td></tr>
+<tr><td>상수 버퍼</td><td>오브젝트 셋에 b7 을 추가. 팔레트가 비면 단위행렬 256개를 올립니다. (이후 편집 모드에서는 기본 자세 팔레트가 채워져서, 단위행렬은 모델 정보를 못 찾았을 때만 올립니다. 2절 끝의 상자 참고.)</td></tr>
 <tr><td>컬링</td><td>스킨 메시는 반지름 1e9 로 컬링하지 않습니다.</td></tr>
 </table>
 <h3>겪은 문제</h3>
@@ -72,9 +77,9 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <h2>4. 본 디버그 표시</h2>
 <ul>
   <li><b>조작</b> — B 키로 끔 → 본+관절 → 본+관절+로컬 축 순환(에디터·게임). 에디터 Render Settings 의 "Bone debug (B)" 콤보, 실행 인자 <code>--debug-bones=N</code>. F1~F12 는 이미 쓰고 있어서 B 로 정했습니다.</li>
-  <li><b>자료</b> — Animator 가 <code>GameObject::SkeletonPose</code>(jointToObject, 부모 조인트 번호)를 채웁니다.</li>
-  <li><b>그리기</b> — 렌더러에 선 목록 파이프라인(<code>Pass_DebugLine</code>, LineList, 깊이 테스트 없음)과 동적 정점 버퍼(65536 정점)를 추가. <code>BuildDebugLines</code> 가 월드 공간 선을 만들고 <code>DrawDebugLines</code> 가 씬 패스 끝(하늘 뒤)에 그립니다. 본은 초록, 관절 십자는 노랑, 축은 RGB 입니다. 십자·축 길이는 부모까지의 거리에 비례합니다.</li>
-  <li><b>한계</b> — 재생 중에만 그립니다. 마스터치프는 메시 4개에 Animator 가 각각 있어 같은 선이 4번 그려집니다. 선 굵기는 1픽셀입니다.</li>
+  <li><b>자료</b> — 재생 중에는 Animator 가, 편집 모드에서는 <code>ApplyRestSkinPoses</code> 가 <code>GameObject::SkeletonPose</code>(jointToObject, 부모 조인트 번호)를 채웁니다.</li>
+  <li><b>그리기</b> — 렌더러에 선 목록 파이프라인(<code>Pass_DebugLine</code>, LineList, 깊이 테스트 없음)과 동적 정점 버퍼(65536 정점)를 추가. 선은 CPU 전용 수집기 <code>DebugDraw</code>(<code>Graphics/DebugDraw.h</code>, Engine 이 소유)가 모읍니다. 본 생산자 <code>DrawSkeletonDebug</code>(<code>Scene/SkeletonDebug.cpp</code>)가 월드 공간 선을 쌓고, 렌더러의 <code>UploadDebugLines</code> 가 동적 정점 버퍼에 올려 <code>DrawDebugLines</code> 가 씬 패스 끝(하늘 뒤)에 그립니다. <code>Engine::Render</code> 가 <code>Renderer::Render</code> 직후 수집기를 비우므로, Raycast·충돌 같은 기능도 렌더러를 모른 채 같은 수집기에 선을 쌓을 수 있습니다(처음에는 <code>Renderer::BuildDebugLines</code> 하나가 본 계산과 올리기를 같이 했습니다). 본은 초록, 관절 십자는 노랑, 축은 RGB 입니다. 십자·축 길이는 부모까지의 거리에 비례합니다.</li>
+  <li><b>한계</b> — 처음에는 재생 중에만 그렸지만 지금은 편집 모드에서도 기본 자세로 그립니다. 마스터치프는 스킨 메시 오브젝트 4개가 각자 포즈를 가져서 같은 선이 4번 그려집니다. 선 굵기는 1픽셀입니다.</li>
 </ul>
 </section>
 

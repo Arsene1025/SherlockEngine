@@ -5749,7 +5749,7 @@ pitch = asin(−m[2][1])               yaw = atan2(m[2][0], m[2][2])            
 <div class="callout amber"><div class="t">분해의 한계</div>
 <p>스케일·회전·이동 세 가지로는 전단(shear)을 표현하지 못합니다. 부모의 스케일이 (1, 2, 1) 처럼 축마다 다르고 자식이 회전해 있으면 자식의 월드 행렬에 전단이 생기고, 이것을 분해한 로컬 값은 근사가 됩니다. 유니티도 같은 한계를 갖습니다.</p></div>
 
-<p>월드 행렬과 그 역행렬은 캐시하지 않고 부를 때마다 계산합니다. 오브젝트 수가 수십~수백 개인 지금은 더티 플래그 캐시가 버그의 원인만 늘린다는 판단이며 <a href="#d7">D7</a> 에 근거가 있습니다.</p>
+<p>월드 행렬과 그 역행렬은 캐시하지 않고 부를 때마다 계산합니다. 더티 플래그 캐시가 버그의 원인이 될 수 있다는 판단이며 <a href="#d7">D7</a> 에 근거가 있습니다. 다만 드로우 목록을 만드는 <code>BuildDrawList</code> 는 이 함수를 부르지 않고 루트에서 내려가며 오브젝트당 한 번씩 구합니다(<a href="#c20-23">20.23</a>).</p>
 
 <!-- c13-03.html -->
 <h3 id="c13-4">13.4 부모-자식 계층</h3>
@@ -6468,7 +6468,7 @@ PipelineHandle Renderer::GetPipelineFor(<span class="kw">const</span> Material&a
 };
 std::vector&lt;DrawItem&gt; m_drawList;   <span class="cm">// 멤버. 매 프레임 clear 후 다시 채움 (용량은 유지)</span></code></pre>
 
-<p><code>BuildDrawList(scene)</code> 은 <code>scene.GetObjects()</code> 를 순서대로 돕니다. 메시가 없거나 유효하지 않은 오브젝트(카메라 오브젝트, 빈 오브젝트)는 건너뜁니다. 메시가 있으면 <strong>서브메시마다</strong> 항목 하나를 만듭니다. 인덱스가 0개인 서브메시는 버립니다. 재질은 <code>GameObject::GetMaterialForSlot(submesh.materialSlot)</code> 이 슬롯 재질, 오브젝트 기본 재질 순으로 고르고, 둘 다 없으면 <code>m_defaultMaterial</code> 을 씁니다. 그 재질과 메시의 정점 포맷으로 <code>GetPipelineFor</code> 를 불러 PSO 핸들을 얻고, 핸들이 유효하지 않으면 그 항목을 목록에 넣지 않습니다.</p>
+<p><code>BuildDrawList(scene)</code> 은 씬의 루트 오브젝트(<code>parent</code> 가 없는 것)에서 시작해 <code>children</code> 을 따라 내려가며 모든 오브젝트를 한 번씩 돕니다. 내려가면서 <code>local × parentWorld</code> 로 월드 행렬을 오브젝트당 한 번만 구해 넘기므로 <code>GameObject::GetWorldMatrix</code> 의 재귀를 부르지 않습니다(<a href="#c20-23">20.23</a>). <code>scene.GetObjects()</code> 의 순서에는 기대지 않습니다. 생성 순서라 부모가 자식보다 앞에 온다는 보장이 없기 때문입니다. 방문 순서는 아래 정렬이 지우므로 화면에 영향이 없습니다. 메시가 없거나 유효하지 않은 오브젝트(카메라 오브젝트, 빈 오브젝트)는 항목을 만들지 않고 건너뛰지만 그 자식은 계속 방문합니다. 메시가 있으면 <strong>서브메시마다</strong> 항목 하나를 만듭니다. 인덱스가 0개인 서브메시는 버립니다. 재질은 <code>GameObject::GetMaterialForSlot(submesh.materialSlot)</code> 이 슬롯 재질, 오브젝트 기본 재질 순으로 고르고, 둘 다 없으면 <code>m_defaultMaterial</code> 을 씁니다. 그 재질과 메시의 정점 포맷으로 <code>GetPipelineFor</code> 를 불러 PSO 핸들을 얻고, 핸들이 유효하지 않으면 그 항목을 목록에 넣지 않습니다.</p>
 
 <p>프리미티브 메시는 서브메시가 전체를 덮는 하나이므로 오브젝트당 항목 하나가 됩니다. 모델 메시는 glTF 프리미티브 수만큼 서브메시를 가지므로 오브젝트 하나가 항목 여러 개가 됩니다(<a href="#c13">13장</a>).</p>
 
@@ -8687,7 +8687,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <tr><td class="n">D4</td><td>프레임</td><td><a href="#d4">프레임 시작/끝의 소유권</a></td><td><span class="pill warn">전환</span></td><td><span class="pill ok">적용</span><span class="sub">렌더 패스 Load/Store, Engine::Render</span></td><td><a href="#p3">3</a>·<a href="#p6">6</a>·<a href="#p10">10단계</a></td></tr>
 <tr><td class="n">D5</td><td>프레임</td><td><a href="#d5">매 프레임 무조건 재바인딩</a></td><td><span class="pill ok">유지</span></td><td><span class="pill ok">유지 + 보강</span><span class="sub">정렬과 직전 상태 건너뛰기 추가</span></td><td><a href="#p4">4단계</a></td></tr>
 <tr><td class="n">D6</td><td>데이터</td><td><a href="#d6">상수버퍼 갱신: UpdateSubresource vs Map</a></td><td><span class="pill info">조건부</span></td><td><span class="pill ok">적용</span><span class="sub">Dynamic = Map(WRITE_DISCARD) + 프레임 슬롯</span></td><td><a href="#p3">3단계</a>, <a href="#p8">8단계</a></td></tr>
-<tr><td class="n">D7</td><td>데이터</td><td><a href="#d7">매 프레임 월드행렬·역행렬 재계산</a></td><td><span class="pill info">조건부</span></td><td><span class="pill none">미착수</span><span class="sub">조건(규모)이 아직 오지 않음</span></td><td>—</td></tr>
+<tr><td class="n">D7</td><td>데이터</td><td><a href="#d7">매 프레임 월드행렬·역행렬 재계산</a></td><td><span class="pill info">조건부</span></td><td><span class="pill warn">일부 적용</span><span class="sub">BuildDrawList 만 계층 순회로(11-16). 캐시는 미착수</span></td><td>—</td></tr>
 <tr><td class="n">D8</td><td>데이터</td><td><a href="#d8">오일러 각 회전과 LookAt 카메라</a></td><td><span class="pill warn">전환</span></td><td><span class="pill ok">적용 (방향 수정)</span><span class="sub">카메라는 회전 행렬, Transform 은 오일러 유지</span></td><td><a href="#p2">2단계</a>, <a href="#p11f">11-F단계</a></td></tr>
 <tr><td class="n">D9</td><td>데이터</td><td><a href="#d9">단일 VERTEX 구조체와 수동 InputLayout</a></td><td><span class="pill warn">전환</span></td><td><span class="pill ok">적용</span><span class="sub">offsetof 레이아웃, PSO 소유, consteval</span></td><td><a href="#p1">1</a>·<a href="#p4">4단계</a>, 2026-09-28</td></tr>
 <tr><td class="n">D10</td><td>데이터</td><td><a href="#d10">32비트 인덱스 고정</a></td><td><span class="pill info">조건부</span></td><td><span class="pill ok">적용</span><span class="sub">업로드 때 16/32비트 선택</span></td><td><a href="#p9">9단계</a></td></tr>
@@ -8820,7 +8820,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 
 <!-- c19-04.html -->
 <div class="decision" id="d7">
-  <header><span class="dn">D7</span><h3>매 프레임 월드행렬과 역행렬 재계산</h3><span class="pill info">조건부 전환</span><span class="pill none">미착수</span></header>
+  <header><span class="dn">D7</span><h3>매 프레임 월드행렬과 역행렬 재계산</h3><span class="pill info">조건부 전환</span><span class="pill warn">일부 적용 · 2026-11-16</span></header>
   <div class="now"><b>분석 당시</b> <code>Transform::GetWorldMatrix()</code> 가 호출마다 S·R·T 를 곱했고 <code>MeshRenderer::UpdateConstantBuffer</code> 가 매 프레임 <code>XMMatrixInverse</code> 를 계산했습니다. 카메라도 <code>GetViewProjectionMatrix()</code> 에서 매번 곱했습니다.</div>
   <p><b>왜 고민해야 했나.</b> 4×4 역행렬은 비싸고, 움직이지 않는 오브젝트는 값이 바뀌지 않습니다. 오브젝트가 수천 개가 되면 CPU 프레임 시간에서 보이기 시작합니다. 반대로 수십 개 수준에서는 캐싱 코드가 버그(더티 플래그를 안 세우는 실수)만 늘립니다.</p>
   <p><b>갈 수 있었던 방향.</b> Transform 에 캐시 행렬과 <code>dirty</code> 플래그를 두고 Set* 에서만 dirty 를 세웁니다. 스케일이 균등하면 역전치 행렬이 회전 부분과 같으므로 역행렬을 건너뛰는 분기도 가능합니다. 부모-자식 계층이 들어오면 dirty 전파가 필요해지므로 그때 함께 설계하는 것이 자연스럽다고 봤습니다.</p>
@@ -8830,9 +8830,9 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
   </div>
   <div class="applied">
     <div class="t">최종 결론</div>
-    <p><b>고른 것.</b> 손대지 않았습니다. 조건(오브젝트 수천 개)이 오지 않았기 때문입니다.</p>
-    <p><b>지금 코드.</b> <code>Scene/Transform.h</code> 의 <code>Transform::GetLocalMatrix</code> 는 여전히 호출마다 계산하고 더티 플래그가 없습니다. <code>Scene/GameObject.h</code> 의 <code>GameObject::GetWorldMatrix</code> 는 부모를 따라 재귀로 곱하며 캐시하지 않습니다. <code>Renderer::UploadObjectConstants</code> 가 드로우마다 <code>XMMatrixInverse</code> 를 부릅니다. 카메라 쪽만 다릅니다. <code>Scene/Camera.cpp</code> 는 뷰·투영 행렬을 값이 바뀔 때(<code>UpdateViewMatrix</code>, <code>UpdateProjectionMatrix</code>) 계산해 <code>XMFLOAT4X4</code> 로 저장해 둡니다.</p>
-    <p><b>예측과 달랐던 점.</b> "계층이 들어오면 dirty 전파를 함께 설계한다"는 예고는 지켜지지 않았습니다. <a href="#p11f">11-F단계</a>의 계층은 캐시 없이 재귀 곱으로 들어갔고, 오브젝트가 수십 개인 지금은 그것으로 충분합니다. 깊은 계층과 많은 오브젝트가 함께 오면 이 항목이 다시 열립니다(<a href="#c22">22장</a>).</p>
+    <p><b>고른 것.</b> 2026-09 에는 손대지 않았습니다. 조건(오브젝트 수천 개)이 오지 않았기 때문입니다. 2026-11-16 에 7,000개 규모 합성 씬으로 비용을 재 보고, 캐시는 넣지 않은 채 <code>BuildDrawList</code> 만 루트에서 내려가는 순회로 바꿨습니다(<a href="#c20-23">20.23</a>).</p>
+    <p><b>지금 코드.</b> <code>Scene/Transform.h</code> 의 <code>Transform::GetLocalMatrix</code> 는 여전히 호출마다 계산하고 더티 플래그가 없습니다. <code>Scene/GameObject.h</code> 의 <code>GameObject::GetWorldMatrix</code> 는 부모를 따라 재귀로 곱하며 캐시하지 않습니다. <code>Renderer::UploadObjectConstants</code> 가 드로우마다 <code>XMMatrixInverse</code> 를 부릅니다. 카메라 쪽만 다릅니다. <code>Scene/Camera.cpp</code> 는 뷰·투영 행렬을 값이 바뀔 때(<code>UpdateViewMatrix</code>, <code>UpdateProjectionMatrix</code>) 계산해 <code>XMFLOAT4X4</code> 로 저장해 둡니다. <code>Renderer::BuildDrawList</code> 는 <code>GetWorldMatrix</code> 를 부르지 않고 루트에서 <code>children</code> 을 따라 내려가며 <code>local × parentWorld</code> 를 오브젝트당 한 번 구합니다. 그 밖의 호출처(스켈레톤 디버그, 카메라 컴포넌트, 피킹 등)는 그대로 재귀입니다.</p>
+    <p><b>예측과 달랐던 점.</b> "계층이 들어오면 dirty 전파를 함께 설계한다"는 예고는 지켜지지 않았습니다. <a href="#p11f">11-F단계</a>의 계층은 캐시 없이 재귀 곱으로 들어갔고, 오브젝트가 수십 개인 지금은 그것으로 충분합니다. 깊은 계층과 많은 오브젝트가 함께 오면 이 항목이 다시 열립니다(<a href="#c22">22장</a>). 11-16 에 7,000개 규모를 재 보니 <code>BuildDrawList</code> 의 오브젝트 루프 전체가 0.4~0.8ms 였고, 순회만 바꿔도 깊이 2 계층에서 루프가 28% 줄었습니다(0.82 → 0.59ms). 평평한 씬은 +4% 였습니다. 이 수치로는 더티 플래그 캐시를 넣을 근거가 아직 없어 열어 둡니다.</p>
   </div>
 </div>
 
@@ -9129,7 +9129,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <thead><tr><th>관찰</th><th>해당 항목</th><th>내용</th></tr></thead>
 <tbody>
 <tr><td>"지금은 유지"가 모두 옳았음</td><td><a href="#d5">D5</a> <a href="#d11">D11</a> <a href="#d13">D13</a> <a href="#d14">D14</a> <a href="#d19">D19</a></td><td>다섯 건 중 바꾼 것은 예고한 단계에서 예고한 방향으로 바꾼 D14·D19 뿐이고, 나머지는 지금도 그대로입니다. 유지 결정에 "재검토 시점"을 붙여 둔 것이 되돌아볼 계기를 만들었습니다.</td></tr>
-<tr><td>"조건부"는 조건이 왔을 때만 바꿨음</td><td><a href="#d6">D6</a> <a href="#d7">D7</a> <a href="#d10">D10</a> <a href="#d15">D15</a></td><td>D6 은 오브젝트 목록(3단계), D10 은 큰 모델(9단계), D15 는 재생 모드(11-C)가 계기였습니다. D7 은 아직 조건이 오지 않아 손대지 않았습니다. 측정 없이 미리 바꾼 것은 없습니다.</td></tr>
+<tr><td>"조건부"는 조건이 왔을 때만 바꿨음</td><td><a href="#d6">D6</a> <a href="#d7">D7</a> <a href="#d10">D10</a> <a href="#d15">D15</a></td><td>D6 은 오브젝트 목록(3단계), D10 은 큰 모델(9단계), D15 는 재생 모드(11-C)가 계기였습니다. D7 은 캐시를 넣지 않았고, 11-16 에 7,000개 규모로 재 본 뒤 <code>BuildDrawList</code> 만 계층 순회로 바꿨습니다(<a href="#c20-23">20.23</a>). 측정 없이 미리 바꾼 것은 없습니다.</td></tr>
 <tr><td>권장 방향이 뒤집힌 유일한 항목</td><td><a href="#d8">D8</a></td><td>"Transform 을 쿼터니언으로"가 아니라 "카메라가 행렬을 받게"가 답이었고, Transform 은 오일러로 남았습니다. 저장 형식이 아니라 <em>전달 경로</em>가 병목이었던 경우입니다. 근거("쿼터니언 누적은 roll 을 쌓는다")는 실험으로 확인했지만 원인 설명은 정정됐습니다.</td></tr>
 <tr><td>미룬 것은 미룬 자리에 정확히 들어갔음</td><td><a href="#i1">#1</a> <a href="#d4">D4</a> <a href="#d12">D12</a> <a href="#d16">D16</a></td><td>1차 수정에서 DepthStencilState(1단계 PSO 몫), 프레임 경계(6단계 RenderPass 몫), .cso 전환(경로 정책 뒤), Logger 본체(10단계)를 일부러 넣지 않았고, 네 가지 모두 예정한 단계에서 예정한 형태로 들어갔습니다. "한 번 쓰고 버릴 코드를 지금 만들지 않는다"가 통했습니다.</td></tr>
 <tr><td>RHI 는 "D3D11 클래스를 RHI 모양으로 먼저"가 맞았음</td><td><a href="#d21">D21</a> <a href="#d22">D22</a></td><td>1단계의 핸들과 PSO Desc, 3~6단계의 기능 표면 위에서 7단계 추출이 끝났고, 8단계 D3D12 가 Renderer 세 줄 변경으로 붙었습니다. D3D12 의미론(RT 포맷, 배리어, 프레임 슬롯)을 D3D11 시절에 미리 넣어 둔 것이 그 대가였습니다.</td></tr>
@@ -9212,6 +9212,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <tr><td class="n">10-15</td><td>미커밋</td><td>요청 "22.6 자잘한 정리 실행" → F10 안내 문구, vcpkg 의 directxtk, ComputeShadowFactor 의 X4000 경고 정리</td><td><a href="#c20-20">20.20</a></td></tr>
 <tr><td class="n">10-28</td><td>미커밋</td><td>요청 "노말맵이 그림자 경계에 영향을 주게" → 노말 섀도(<code>shadowExtra</code>, PerFrame 352바이트), 슬라이더 리셋 R 버튼, 그림자 설정을 씬 JSON 에 저장, 검증 프로젝트를 <code>SherlockTestScenes</code> 로 통합, 노말 섀도 검증 씬</td><td><a href="#c20-21">20.21</a></td></tr>
 <tr><td class="n">11-03</td><td>미커밋</td><td>요청 "서술이 어긋난 모든 문서를 바로잡아" → 다중 광원 그림자(10-29, 커밋 52589a4)와 CSM 전용 아틀라스·균등 1024²·경계 블렌딩·메인 아틀라스 2048²·CSM 켜기/끄기 반영, 11.8절 재작성</td><td><a href="#c20-22">20.22</a></td></tr>
+<tr><td class="n">11-16</td><td>미커밋</td><td>질문 "BuildDrawList 정렬이 병목인가, 오브젝트 루프 비용은" → 7,000개 합성 씬으로 측정(정렬 0.04~0.18ms, 루프 0.4~0.8ms, 월드 행렬이 최대). 요청 "계층 순회로 구현하고 검증해 비교 문서까지" → <code>BuildDrawList</code> 가 루트에서 <code>children</code> 을 따라 내려가며 월드 행렬을 한 번씩 계산</td><td><a href="#c20-23">20.23</a></td></tr>
 </tbody></table></div>
 
 <!-- c20-03.html -->
@@ -10180,6 +10181,33 @@ concept ResourceHandle = kIsHandle&lt;T&gt; &amp;&amp; std::is_trivially_copyabl
   <li><b>고친 문서.</b> 이 문서의 11.8절 재작성, 10.6절의 상수버퍼 표(b0 288, b5, b6)와 레이아웃 격자, 7.7절 프레임 셋 표, 4·8장의 그림자 서술, 용어집의 PCF. <code>csm-study-guide.html</code> 과 <code>multi-light-shadow-plan.html</code> 도 같이 고쳤습니다. <code>shadow-map-interview.html</code> 은 2026-10-27 시점의 스냅샷이라 머리에 안내를 붙였습니다.</li>
   <li><b>일부러 그대로 둔 곳.</b> 20장의 이전 적용 기록(10-15, 10-28 등)과 21장의 옛 질문·답, 부록의 호출 흐름 표(단계별 루트 파라미터 번호, 배리어 수)는 그 시점의 기록이라 고치지 않았습니다. 부록 흐름표의 그림자 패스는 아틀라스가 하나이던 때의 모양입니다.</li>
   <li><b>검증.</b> Debug|x64 솔루션 빌드 성공. D3D11·D3D12 로 <code>CascadeBigScene</code> 등을 실행해 "바인딩 대조 … OK"(t14 포함)와 오류 없는 로그를 확인했고, 스크린샷은 눈으로 보았습니다. <b>확인하지 못한 것:</b> 경계 블렌딩이 이음매를 얼마나 지우는지의 픽셀 비교, 변경 전 단일 뷰 출력과의 픽셀 차이, Release 빌드. 이 문서의 부록 흐름표 숫자는 실행으로 다시 세지 않았습니다.</li>
+</ul>
+
+<h3 id="c20-23">20.23 적용 기록 — 2026-11-16 · BuildDrawList 의 월드 행렬을 계층 순회로</h3>
+<p>질문은 "BuildDrawList 정렬이 병목인가"였고, 7,000개 오브젝트 규모에서 먼저 쟀습니다. 정렬은 0.04~0.18ms 로 병목이 아니었고, 오브젝트 루프(0.4~0.8ms) 안에서는 <code>GameObject::GetWorldMatrix</code> 가 가장 컸습니다. 이 함수는 호출마다 부모를 재귀로 올라가며 로컬 행렬(S·R·T)을 처음부터 다시 만들어 깊이에 비례해 비쌉니다. 요청은 "오브젝트 루프를 계층 순회로 바꾸고 검증해서 비교 문서까지"였습니다. 자세한 표와 그래프는 <a href="../report/hierarchy-world-matrix-before-after.html">월드 행렬 계층 순회 비포/애프터</a> 에 있습니다.</p>
+<ul>
+  <li><b>무엇을.</b> <code>Renderer::BuildDrawList</code> 가 <code>scene.GetObjects()</code> 를 돌며 <code>GetWorldMatrix()</code> 를 부르는 대신, <code>parent</code> 가 없는 루트에서 시작해 <code>children</code> 을 따라 내려가며 <code>local × parentWorld</code> 를 오브젝트당 한 번 계산합니다. 기존 루프 본문은 람다 <code>addObject(object, world)</code> 로 옮겼고, 스택(<code>m_hierarchyStack</code>, 칸 하나 = 자식이 있는 오브젝트와 그 월드 행렬과 다음 자식 번호)은 프레임마다 재사용합니다. 변경 파일은 <code>Graphics/Renderer.cpp</code>, <code>Graphics/Renderer.h</code> 둘이고 <code>GameObject</code> 는 건드리지 않았습니다(스크립트 DLL ABI 무영향).</li>
+  <li><b>부모-자식 순서를 보장하는 방법.</b> 배열 순서에 기대지 않고 구조(<code>children</code>)가 순서를 만들게 했습니다. <code>Scene::m_objects</code> 는 생성 순서이고 <code>SetParent</code> 는 아무 두 오브젝트 사이에서나 가능해서 부모가 자식보다 뒤에 올 수 있기 때문입니다. 불변식을 유지하려고 배열을 재배열하는 안은 인덱스에 기대는 직렬화·선택·되돌리기를 건드려야 해서 고르지 않았습니다.</li>
+  <li><b>고르지 않은 대안.</b> 정렬된 순서를 캐시해 선형 순회하는 안(계층이 바뀔 때 무효화)은 이득이 작고 무효화 누락 위험이 있어 하지 않았습니다. 월드 행렬 자체를 캐시(더티 플래그)하는 안은 <a href="#d7">D7</a> 에 열려 있습니다.</li>
+  <li><b>함정.</b> 첫 측정에서 검증용 <code>GetWorldMatrix()</code> 호출이 신 경로 타이머 안에 들어가 신 경로가 오히려 느리게 나왔습니다. 검증을 시간 재는 프레임에서 끄고 다시 쟀습니다. 또 방문 수가 씬의 오브젝트 수와 다르면(<code>parent</code>/<code>children</code> 불일치) 오브젝트가 조용히 안 그려지므로 그때 한 번만 오류 로그를 냅니다.</li>
+  <li><b>측정</b> (Release, 오브젝트 7,000개 합성 씬, 같은 프로세스에서 구·신 경로를 번갈아 실행한 루프 구간 중앙값, 3회 평균).</li>
+</ul>
+<div class="tbl"><table>
+<thead><tr><th>씬</th><th>평균 부모 깊이</th><th>구 (ms)</th><th>신 (ms)</th><th>차이</th></tr></thead>
+<tbody>
+<tr><td>평평, 재질 8·메시 1종</td><td>0</td><td>0.429</td><td>0.448</td><td>+4.4%</td></tr>
+<tr><td>평평, 재질 50·메시 4종</td><td>0</td><td>0.449</td><td>0.465</td><td>+3.6%</td></tr>
+<tr><td>루트 하나 아래 7,000개 (OL_TestScene 모양)</td><td>1</td><td>0.639</td><td>0.527</td><td>−17.6%</td></tr>
+<tr><td>5단 체인</td><td>2.0</td><td>0.824</td><td>0.590</td><td>−28.4%</td></tr>
+<tr><td>5단 체인, 부모가 뒤 인덱스</td><td>2.0</td><td>0.810</td><td>0.583</td><td>−28.1%</td></tr>
+</tbody></table></div>
+<ul>
+  <li><b>별도 바이너리 비교.</b> 변경 전 소스(<code>GetWorldMatrix</code> 를 거침)와 변경 후 소스를 각각 Release 로 빌드해 같은 7,000개 씬에서 Profiler CPU 구간을 쟀습니다. 계층 씬에서 <code>BuildDrawList</code> 가 21~27%(깊이 2 체인 1.02 → 0.76ms), CPU frame 이 11~13%(2.89 → 2.56ms) 줄었습니다. 평평한 씬은 ±0.05ms 로 거의 같았습니다(번갈아 돌린 비교에서는 +0.02ms, 부호가 방법마다 달라서 원인은 확인하지 못했습니다). FPS 로의 영향은 재지 않았습니다.</li>
+  <li><b>검증.</b> 신 경로가 구한 월드 행렬을 같은 순간 <code>GetWorldMatrix()</code> 와 <code>memcmp</code> 로 비교해 모든 씬에서 비트 불일치 0 (7,000개 합성 씬 다섯 종과 실행 중 재부모화, Sponza, MasterChiefWalk 와 <code>--play=1</code>, ArmBone, CascadeBigScene, demo_components 등). 구·신 드로우 목록을 직렬화해 정렬한 뒤 통째로 비교해 모두 같았습니다. Before·After Release 로 찍은 스크린샷은 실행마다 달라지는 세로 띠를 빼면 차이가 같은 바이너리를 반복할 때의 잡음 수준(0~38 픽셀, 첫 실행에서만 나온 값 포함)이었습니다. Release·Debug 솔루션 빌드 성공.</li>
+  <li><b>크기.</b> 최대 이득이 0.23ms 로 60fps 프레임 예산의 약 1.4% 입니다. FPS 가 눈에 띄게 달라지지는 않습니다. 평평한 씬은 +0.02ms 로 소폭 느려졌습니다(원인은 따로 재지 않았고 스택 준비와 <code>children</code> 확인 때문으로 추정).</li>
+  <li><b>바뀌지 않은 것.</b> <code>GameObject::GetWorldMatrix</code> 함수 자체는 그대로 재귀이고 다른 호출처(스켈레톤 디버그, 카메라 컴포넌트, 피킹, 기즈모)도 그대로입니다. 로컬 행렬을 프레임마다 새로 만드는 일, 재질 GPU 캐시 확인의 문자열 비교, 범용 역행렬도 그대로입니다.</li>
+  <li><b>확인하지 못한 것.</b> (1) 삭제·복제·되돌리기·프리팹 경로의 실행 검증: <code>--delete</code>·<code>--duplicate</code> 자동 검증이 변경 전 바이너리에서도 비정상 종료해서 돌리지 못했습니다(22.4). (2) 정렬 키가 같은 인스턴스끼리의 그리는 순서는 방문 순서가 바뀌어 달라질 수 있고, 겹친 같은 모양 오브젝트에서만 화면에 보일 수 있습니다. 비교 씬에서는 보이지 않았습니다. (3) Debug 빌드의 시간. (4) OL_TestScene 은 이 PC 에 없어 같은 모양의 합성 씬으로 쟀으므로 실제 씬의 절대값은 다를 수 있습니다.</li>
+  <li><b>코드에 남기지 않은 것.</b> 측정용 임시 계측과 합성 씬 파일은 저장소에 넣지 않았습니다. 이 기록 시점에 커밋하지 않았습니다.</li>
 </ul>
 
 <!-- c21-01.html -->
@@ -11179,7 +11207,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <div class="tbl"><table>
 <thead><tr><th>항목</th><th>상태</th><th>남은 것</th></tr></thead>
 <tbody>
-<tr><td><a href="#d7">D7</a> 월드 행렬 재계산</td><td><span class="pill none">미착수</span></td><td>22개 가운데 유일한 미착수입니다. <code>GameObject::GetWorldMatrix</code> 는 캐시 없이 호출마다 부모까지 재귀로 곱합니다. 주석대로 깊이가 한두 단계인 지금은 비용이 무시할 만하고, 오브젝트가 수천 개가 되면 더러움 플래그 캐시가 필요합니다</td></tr>
+<tr><td><a href="#d7">D7</a> 월드 행렬 재계산</td><td><span class="pill warn">일부 적용</span></td><td><code>GameObject::GetWorldMatrix</code> 는 캐시 없이 호출마다 부모까지 재귀로 곱합니다. <code>BuildDrawList</code> 만 2026-11-16 에 루트에서 내려가는 순회로 바꿨고(<a href="#c20-23">20.23</a>), 그 밖의 호출처와 더티 플래그 캐시는 그대로입니다. 7,000개 규모에서 루프 전체가 0.4~0.8ms 라 캐시가 필요하다는 확인은 아직 없습니다</td></tr>
 <tr><td><a href="#d11">D11</a> 조명 8개 고정 배열</td><td><span class="pill ok">유지</span></td><td><code>Common.hlsli</code> 의 <code>MAX_LIGHTS = 8</code> 그대로입니다. 12단계의 Deferred 에서 구조화 버퍼로 옮길 때 재검토합니다</td></tr>
 <tr><td><a href="#d15">D15</a> 컴포넌트와 ECS</td><td><span class="pill warn">일부</span></td><td><code>Behaviour</code> 컴포넌트(11-C)와 계층(11-F)까지 적용했습니다. 메시와 재질은 컴포넌트가 아니라 <code>GameObject</code> 의 직접 참조이고 ECS 는 도입하지 않았습니다</td></tr>
 <tr><td><a href="#d16">D16</a> 로그 서식</td><td><span class="pill warn">일부</span></td><td><code>Log::Info/Warn/Error</code> 의 공개 API 는 printf 서식입니다. <code>std::format</code> 으로 옮기려면 같은 이름에 오버로드를 더하지 말고 이름을 바꿔 한 번에 옮겨야 합니다(<a href="#c20-5">20.5</a>)</td></tr>
@@ -11206,6 +11234,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tr><td>환경이 없는 씬의 금속</td><td>환경도 스카이박스도 없으면 금속은 <code>ambientColor</code> 만 반사해 어둡습니다(헬멧 씬)</td><td>11.6절</td></tr>
 <tr><td>스카이박스는 원근 투영 전제</td><td><code>SkyboxVertexShader.hlsl</code> 은 <code>proj._11</code>·<code>proj._22</code> 로 투영을 거꾸로 풉니다. 카메라를 직교 투영으로 바꾸면 방향이 원근처럼 퍼져 보입니다(직교 카메라에서 하늘의 "올바른" 모습은 단색에 가까움)</td><td>셰이더 주석</td></tr>
 <tr><td>스카이박스 UI 의 화면 확인</td><td>Lights 창의 Skybox 콤보·이름 입력·드롭 칸은 빌드와 실행에서 문제가 없었지만, 자동 검증이 탭을 바꾸거나 드래그를 재현하지 못해 화면으로는 확인하지 않았습니다</td><td><a href="#c20-14">20.14</a></td></tr>
+<tr><td>자동 검증 <code>--delete</code>·<code>--duplicate</code> 가 Release 에서 비정상 종료</td><td>2026-11-16 에 <code>--delete=이름</code>, <code>--duplicate=이름</code> 을 Release 에디터로 실행하면 종료 코드 139(segfault)로 끝납니다. 계층이 없는 <code>floor_cube</code> 씬에서 <code>--delete=Floor</code> 만 줘도 같고, 계층 순회로 바꾸기 전 바이너리에서도 똑같이 나서 그 변경과는 무관합니다. 원인은 찾지 않았습니다. 그래서 삭제·복제·되돌리기·프리팹 경로는 자동 검증으로 돌려 보지 못했습니다(<code>--set-parent</code> 는 정상)</td><td><a href="#c20-23">20.23</a></td></tr>
 <tr><td>자동 검증의 사각</td><td>실행 인자 재생은 입력을 주입하지 않으므로 드래그 앤 드롭과 단축키(F4 핫리로드 등)는 자동으로 재현되지 않습니다. PopID 어서션(<a href="#c20-9">20.9</a>)이 이 사각에서 나왔습니다</td><td><a href="#app-d">부록 D</a></td></tr>
 </tbody></table></div>
 

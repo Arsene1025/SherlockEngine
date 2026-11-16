@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · 월드 행렬 계층 순회 비포/애프터 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --bad:#b3261e; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --bad:#ff8a80; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.foot { color:var(--ink3); font-size:13px; }
+.sub { color:var(--ink3); font-size:12.5px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+.bar { display:flex; align-items:center; gap:8px; margin:3px 0; font-size:13.5px; } .bar .lbl { width:64px; color:var(--ink2); } .bar .fill { height:16px; border-radius:3px; background:var(--accent); } .bar .fill.before { background:var(--ink3); } .bar .v { color:var(--ink2); font:12.5px ui-monospace,Consolas,monospace; }
+.up { color:var(--ok); font-weight:600; }
+.down { color:var(--bad); font-weight:600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>월드 행렬 계층 순회 비포/애프터</h1>
+  <p>2026-11-16 · <code>Renderer::BuildDrawList</code> 의 오브젝트 루프에서 월드 행렬을 구하는 방식을 <b>"오브젝트마다 부모를 재귀로 올라가며 다시 계산"</b> 에서 <b>"루트에서 <code>children</code> 을 따라 내려가며 한 번씩만 계산"</b> 으로 바꾸고, 같은 7,000개 규모 씬에서 시간과 결과 동일성을 확인한 기록입니다.</p>
+  <p class="foot">조건: Release 빌드, 같은 프로세스·같은 프레임 안에서 구 경로와 신 경로를 번갈아 실행해 비교(아래 2절). 7,000개 씬은 이 작업을 위해 만든 합성 씬이며 OL_TestScene 은 이 PC 에 없습니다. 아직 커밋하지 않았습니다.</p>
+</header>
+
+<section>
+  <h2>1. 한눈에 보기</h2>
+  <div class="box ok"><b>부모-자식 계층이 있는 7,000개 씬에서 루프가 약 18~28% 줄었고(0.82 → 0.59ms, 0.64 → 0.53ms), 결과는 비트 단위로 같았습니다.</b> 계층이 없는 평평한 씬은 +0.02ms(약 +4%) 소폭 느려졌습니다.</div>
+  <div class="box warn"><b>범위:</b> <code>GameObject::GetWorldMatrix</code> 함수 자체는 빨라지지 않았습니다(그대로 재귀). <code>BuildDrawList</code> 가 그 함수를 부르지 않도록 우회한 것이라, 오브젝트마다 <code>GetWorldMatrix()</code> 를 부르는 다른 곳(스켈레톤 디버그, 카메라 컴포넌트 등)은 그대로입니다.</div>
+  <p>같은 7,000개 씬을 변경 전·후 <b>별도 바이너리</b>로 재면(7절) 계층 씬에서 <code>BuildDrawList</code> 가 21~27%, CPU frame 이 11~13% 줄었습니다.</p>
+  <table>
+    <tr><th>씬 (오브젝트 7,000개, D3D11)</th><th>평균 부모 깊이</th><th>Before ms</th><th>After ms</th><th>차이 ms</th><th>차이 %</th></tr>
+    <tr><td><b>A 평평 · 재질 8 · 메시 1종</b><br><span class="sub">부모 없음, 7,000개가 모두 루트</span></td><td>0</td><td>0.429<br><span class="sub">0.426~0.435</span></td><td>0.448<br><span class="sub">0.443~0.454</span></td><td class="down">+0.019</td><td class="down">+4.4%</td></tr>
+    <tr><td><b>B 평평 · 재질 50 · 메시 4종</b><br><span class="sub">A 와 같고 상태 종류만 늘림</span></td><td>0</td><td>0.449<br><span class="sub">0.446~0.453</span></td><td>0.465<br><span class="sub">0.460~0.470</span></td><td class="down">+0.016</td><td class="down">+3.6%</td></tr>
+    <tr><td><b>D 루트 하나 아래 7,000개</b><br><span class="sub">OL_TestScene 과 같은 모양 (맵 루트 아래 평평)</span></td><td>1</td><td>0.639<br><span class="sub">0.631~0.651</span></td><td>0.527<br><span class="sub">0.522~0.533</span></td><td class="up">-0.113</td><td class="up">-17.6%</td></tr>
+    <tr><td><b>C 5단 체인 (부모가 앞 인덱스)</b><br><span class="sub">체인 1,400개, 한 체인에 5개</span></td><td>2.0</td><td>0.824<br><span class="sub">0.817~0.835</span></td><td>0.590<br><span class="sub">0.582~0.599</span></td><td class="up">-0.234</td><td class="up">-28.4%</td></tr>
+    <tr><td><b>E 5단 체인 (부모가 뒤 인덱스)</b><br><span class="sub">C 와 같은 계층인데 배열 순서만 뒤집음</span></td><td>2.0</td><td>0.810<br><span class="sub">0.807~0.816</span></td><td>0.583<br><span class="sub">0.576~0.588</span></td><td class="up">-0.228</td><td class="up">-28.1%</td></tr>
+  </table>
+  <p>값은 <b>루프 구간의 중앙값(ms)</b> 이며 3회 실행의 평균입니다. 작은 글씨는 3회 실행 사이의 범위입니다. 루프 구간 = <code>BuildDrawList</code> 에서 정렬을 뺀 오브젝트 루프(월드 행렬·역행렬·경계 구·<code>DrawItem</code> 생성) 전체입니다. Before 는 계층 순회로 바꾸기 전 방식, After 는 바꾼 후 방식입니다.</p>
+  <table>
+    <tr><th>씬 (D3D12)</th><th>평균 부모 깊이</th><th>Before ms</th><th>After ms</th><th>차이 ms</th><th>차이 %</th></tr>
+    <tr><td><b>D · D3D12</b><br><span class="sub">D 와 같은 씬</span></td><td>1</td><td>0.647<br><span class="sub">1회</span></td><td>0.529<br><span class="sub">1회</span></td><td class="up">-0.118</td><td class="up">-18.2%</td></tr>
+    <tr><td><b>C · D3D12</b><br><span class="sub">C 와 같은 씬</span></td><td>2.0</td><td>0.822<br><span class="sub">1회</span></td><td>0.590<br><span class="sub">1회</span></td><td class="up">-0.232</td><td class="up">-28.2%</td></tr>
+  </table>
+  <p>D3D11 과 D3D12 가 같게 나오는 것이 정상입니다. 이 구간은 CPU 에서 행렬을 계산하는 일이고 RHI 백엔드와 무관합니다 (1회씩만 쟀습니다).</p>
+</section>
+
+<section>
+  <h2>2. 무엇을 어떻게 바꿨나</h2>
+  <h3>Before — 오브젝트마다 부모 체인을 재귀로 올라감</h3>
+<pre><code>for (const auto&amp; objectPtr : scene.GetObjects())
+{
+    const GameObject&amp; object = *objectPtr;
+    ...
+    const XMMATRIX world = object.GetWorldMatrix();   // local * parent-&gt;GetWorldMatrix() (재귀)
+    ...
+}</code></pre>
+  <p><code>GameObject::GetWorldMatrix</code> 는 호출마다 자기 <code>GetLocalMatrix</code>(S·R·T 곱)를 만들고, 부모가 있으면 부모의 <code>GetWorldMatrix</code> 를 다시 부릅니다. 캐시가 없어서 깊이 d 인 오브젝트는 로컬 행렬을 d+1 번 만듭니다. 형제가 많으면 같은 부모의 행렬을 형제 수만큼 다시 계산합니다.</p>
+  <h3>After — 루트에서 children 을 따라 내려가며 부모 월드를 넘겨 줌</h3>
+<pre><code>// 루트마다: 로컬 = 월드. 자식이 있으면 스택(m_hierarchyStack)에 올려 자식을 하나씩 방문
+const XMMATRIX world = child.GetTransform().GetLocalMatrix() * XMLoadFloat4x4(&amp;frame.world);
+addObject(child, world);          // 기존 루프 본문을 그대로 람다로 옮긴 것
+if (!child.GetChildren().empty()) // 자식이 있을 때만 이 월드를 저장해 스택에 올림</code></pre>
+  <ul>
+    <li>오브젝트당 <code>GetLocalMatrix</code> 가 정확히 한 번이고, 곱셈 순서(<code>local × parentWorld</code>)는 <code>GetWorldMatrix</code> 와 같습니다.</li>
+    <li><b>순서 보장 방법:</b> <code>Scene::m_objects</code> 는 생성 순서라 부모가 자식보다 앞에 온다는 보장이 없습니다 (<code>SetParent</code> 는 아무 두 오브젝트 사이에서나 가능). 그래서 배열 순서에 기대지 않고 <code>parent == nullptr</code> 인 루트에서 <code>children</code> 을 따라 내려갑니다. 구조가 순서를 만들므로 별도의 불변식이나 재배열이 필요 없습니다.</li>
+    <li>스택 칸 하나 = 자식이 있는 오브젝트와 그 월드 행렬, 다음에 방문할 자식 번호입니다. 깊이만큼만 쌓이고 매 프레임 재사용합니다. 루트 아래에 평평하게 7,000개가 있는 씬에서도 자식마다 행렬을 복사하지 않습니다.</li>
+    <li>방문한 오브젝트 수가 씬의 오브젝트 수와 다르면(<code>parent</code>/<code>children</code> 불일치) 조용히 안 그려지는 오브젝트가 생기므로 한 번만 오류 로그를 냅니다.</li>
+    <li>방문 순서는 바뀌지만 <code>DrawItem</code> 목록은 이어서 PSO → Material → Mesh → 인덱스 범위로 정렬하므로 그리는 결과에는 영향이 없어야 합니다 (정렬 키가 같은 인스턴스끼리의 상대 순서만 달라질 수 있음, 5절 참고).</li>
+    <li>변경 파일: <code>Renderer.cpp</code> (<code>BuildDrawList</code>), <code>Renderer.h</code> (<code>HierarchyFrame</code> 와 <code>m_hierarchyStack</code> 멤버 추가). <code>GameObject</code> 는 건드리지 않았으므로 스크립트 DLL ABI 에 영향이 없습니다.</li>
+  </ul>
+  <h3>측정 방법</h3>
+  <ul>
+    <li>임시 코드로 같은 프로세스 안에서 <b>구 경로</b>(예전 방식 그대로: 모든 오브젝트에 <code>GetWorldMatrix()</code> 를 불러 같은 본문 실행)와 <b>신 경로</b>를 번갈아 돌렸습니다. 홀수 프레임은 구 경로를 먼저, 짝수 프레임은 신 경로를 먼저 돌려 캐시가 데워진 상태의 유리함을 상쇄했습니다.</li>
+    <li>프레임 30~129 의 100프레임에서 구간 시간을 모아 중앙값·평균·최소·최대를 냈고, 씬마다 3회 실행했습니다(D3D12 는 1회).</li>
+    <li>구·신 두 경로가 <code>DrawItem</code> 본문을 같은 코드로 실행하므로 차이는 "월드 행렬을 구하는 방식과 순회" 에서만 납니다. 정렬은 두 경로가 같은 코드라 이 표에 넣지 않았습니다.</li>
+    <li>이 임시 계측과 합성 씬 파일은 저장소에 넣지 않았고, 소스는 계측 코드를 뺀 상태(Release·Debug 모두 오류 없이 빌드)입니다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>3. 그래프 — 루프 구간 (ms, 작을수록 좋음, D3D11 중앙값)</h2>
+  <p><b>A 평평 (부모 없음)</b></p>
+<div class="bar"><span class="lbl">Before</span><span class="fill before" style="width:42.9%"></span><span class="v">0.429</span></div>
+<div class="bar"><span class="lbl">After</span><span class="fill " style="width:44.8%"></span><span class="v">0.448</span></div>
+  <p><b>B 평평 (상태 50종)</b></p>
+<div class="bar"><span class="lbl">Before</span><span class="fill before" style="width:44.9%"></span><span class="v">0.449</span></div>
+<div class="bar"><span class="lbl">After</span><span class="fill " style="width:46.5%"></span><span class="v">0.465</span></div>
+  <p><b>D 루트 하나 아래 7,000개 (깊이 1)</b></p>
+<div class="bar"><span class="lbl">Before</span><span class="fill before" style="width:63.9%"></span><span class="v">0.639</span></div>
+<div class="bar"><span class="lbl">After</span><span class="fill " style="width:52.7%"></span><span class="v">0.527</span></div>
+  <p><b>C 5단 체인 (깊이 2.0)</b></p>
+<div class="bar"><span class="lbl">Before</span><span class="fill before" style="width:82.4%"></span><span class="v">0.824</span></div>
+<div class="bar"><span class="lbl">After</span><span class="fill " style="width:59.0%"></span><span class="v">0.590</span></div>
+  <p><b>E 5단 체인, 부모가 뒤 인덱스 (깊이 2.0)</b></p>
+<div class="bar"><span class="lbl">Before</span><span class="fill before" style="width:81.0%"></span><span class="v">0.810</span></div>
+<div class="bar"><span class="lbl">After</span><span class="fill " style="width:58.3%"></span><span class="v">0.583</span></div>
+</section>
+
+<section>
+  <h2>4. 결과가 같은지 확인한 것</h2>
+  <div class="box ok"><b>월드 행렬은 모든 검사에서 구 방식과 비트 단위로 같았고, 드로우 목록도 같았으며, 스크린샷 차이는 같은 바이너리를 여러 번 돌릴 때의 잡음과 구별되지 않았습니다.</b></div>
+
+  <h3>4-1. 월드 행렬 비트 대조 (신 경로가 계산한 값 vs <code>GetWorldMatrix()</code>)</h3>
+  <p>신 경로가 오브젝트마다 구한 월드를 같은 순간 <code>GetWorldMatrix()</code> 결과와 <code>memcmp</code> 로 비교했습니다 (부동소수 부호 0 까지 구별). 아래 모두 <b>불일치 0</b> 입니다.</p>
+  <table>
+    <tr><th>씬</th><th>오브젝트</th><th>대조 횟수</th><th>불일치</th><th>메모</th></tr>
+    <tr><td>stress A·B·C·D·E</td><td>7,001</td><td>각 210,030</td><td>0</td><td>E 는 부모가 자식보다 뒤 인덱스인 배열</td></tr>
+    <tr><td>stress A + 실행 중 재부모화</td><td>7,001</td><td>210,030</td><td>0</td><td><code>--set-parent=O0;O6999</code> 로 로드 후 부모를 뒤 인덱스로 바꿈 (로그로 적용 확인)</td></tr>
+    <tr><td>stress C + 실행 중 재부모화</td><td>7,001</td><td>210,030</td><td>0</td><td>같은 방법</td></tr>
+    <tr><td>Sponza · SponzaCascades</td><td>2</td><td>각 60</td><td>0</td><td>서브메시 103개</td></tr>
+    <tr><td>MasterChiefWalk (스키닝, 계층)</td><td>20</td><td>600</td><td>0</td><td></td></tr>
+    <tr><td>MasterChiefWalk <code>--play=1</code></td><td>20</td><td>600</td><td>0</td><td>애니메이션 재생 중 본 변환</td></tr>
+    <tr><td>ArmBone</td><td>8</td><td>240</td><td>0</td><td>스키닝</td></tr>
+    <tr><td>CascadeBigScene</td><td>120</td><td>3,600</td><td>0</td><td></td></tr>
+    <tr><td>demo_components · MultiShadow · DamagedHelmet · BoxAnimation</td><td>9 · 13 · 3 · 3</td><td>270 · 390 · 90 · 90</td><td>0</td><td></td></tr>
+  </table>
+  <p class="foot">"대조 횟수" 는 오브젝트 수 × 검사한 프레임 수입니다. 시간을 재는 프레임에서는 검증 코드를 껐습니다(1절 표의 시간에 검증 비용이 섞이지 않도록).</p>
+
+  <h3>4-2. 드로우 목록 대조</h3>
+  <p>같은 프레임에서 신 경로의 <code>DrawItem</code> 목록과 구 경로의 목록을 각각 (PSO, 재질, 메시, 인덱스 범위, 오브젝트의 월드·역행렬·경계 구)로 직렬화해 정렬한 뒤 통째로 비교했습니다. 위 모든 씬에서 <b>항목 수와 내용이 같았습니다</b> (7,000 / 7,000, Sponza 103 / 103, MasterChiefWalk 16 / 16 등).</p>
+
+  <h3>4-3. 스크린샷 대조 (Before 바이너리 vs After 바이너리)</h3>
+  <p>Before = 변경 전 소스를 빌드한 Release, After = 변경 후 Release. 같은 씬을 <code>--exit-after=40 --screenshot</code> 으로 찍어 비교했습니다. 같은 바이너리를 두 번 찍어도 <b>전체 화면 x 278~290, y 403~688 의 세로 띠</b>가 매번 달라서 그 띠(x 270~300)는 비교에서 뺐습니다.</p>
+  <table>
+    <tr><th>씬</th><th>띠 밖 다른 픽셀</th><th>같은 바이너리 두 번 사이 (잡음 기준)</th></tr>
+    <tr><td>Sponza · MasterChiefWalk · MultiShadow · demo_components</td><td>0</td><td>—</td></tr>
+    <tr><td>stress C · E · A+재부모화</td><td>0</td><td>—</td></tr>
+    <tr><td>ArmBone</td><td>1</td><td>0~1</td></tr>
+    <tr><td>CascadeBigScene</td><td>5</td><td>2~7 (Before 끼리, After 끼리 모두)</td></tr>
+    <tr><td>stress D</td><td>38</td><td>첫 실행만 38, 이후 실행은 Before·After 모두 서로 0</td></tr>
+  </table>
+  <p>남은 1~38 픽셀은 모두 같은 바이너리를 반복해도 나오는 수준(ArmBone, CascadeBigScene)이거나 첫 실행에서만 나온 값(stress D: 이후 Before 두 번·After 세 번은 서로 완전히 같음)입니다. 변경 때문에 생긴 화면 차이를 가리키는 증거는 없습니다.</p>
+</section>
+
+<section>
+  <h2>5. 해석과 주의</h2>
+  <ul>
+    <li><b>이득의 크기:</b> 가장 큰 경우(계층 깊이 2)에서 0.23ms 입니다. 60fps 의 프레임 예산 16.7ms 에서 약 1.4% 이고 같은 규모의 평평한 씬은 거의 변화가 없습니다. 이번 변경으로 FPS 가 눈에 띄게 달라지지는 않습니다. 계층이 깊고 오브젝트가 많은 씬에서 CPU 시간이 깊이에 비례해 늘던 것이 사라졌다는 의미입니다.</li>
+    <li><b>평평한 씬은 +0.02ms:</b> 루트를 하나씩 돌며 스택 준비와 <code>children</code> 확인이 더해진 것으로 보이지만 원인을 따로 재지는 않았습니다 (추정). 3회 반복에서 방향이 같았습니다.</li>
+    <li><b>루트 하나 아래에 평평한 경우(D)는 -18%:</b> 부모(<code>OL_Map</code> 같은 루트)의 월드를 자식마다 재귀로 다시 만들던 것이 사라졌습니다. OL_TestScene 이 이 모양이지만 이 PC 에 없어서 같은 모양의 합성 씬으로 쟀습니다. 실제 씬의 절대값은 다를 수 있습니다.</li>
+    <li><b>남은 비용:</b> 로컬 행렬을 매 프레임 오브젝트마다 새로 만드는 일(약 20ns/오브젝트), 재질 GPU 캐시 확인 때의 문자열 5개 비교, <code>DrawItem</code>·<code>ObjectData</code> 쓰기, 범용 역행렬은 그대로입니다. 월드 행렬을 캐시(dirty 플래그)하면 더 줄일 수 있지만 무효화 누락 위험이 있어 이번에는 하지 않았습니다.</li>
+    <li><b>정렬 키가 같은 인스턴스의 그리는 순서:</b> 같은 PSO·재질·메시·범위를 쓰는 오브젝트들의 상대 순서는 예전에도 <code>std::sort</code> 가 보장하지 않았고 이번에 방문 순서가 바뀌어 달라질 수 있습니다. 서로 겹치는 같은 모양 오브젝트(z-fighting)에서만 화면에 보일 수 있습니다. 이번 비교 씬에서는 보이지 않았습니다.</li>
+    <li><b>측정 과정에서 한 번 틀렸습니다:</b> 처음에는 검증용 <code>GetWorldMatrix()</code> 호출을 신 경로 타이머 안에 넣어서 신 경로가 오히려 느리게 나왔습니다. 검증을 시간 재는 프레임에서 끄고 처음부터 다시 쟀고, 위 표는 그 재측정 값입니다.</li>
+    <li><b>Debug 빌드의 시간은 재지 않았습니다.</b> Debug 는 STL·DirectXMath 가 느려서 비율이 다를 수 있습니다 (컴파일 확인만 했습니다).</li>
+    <li>1~3절의 시간은 같은 프로세스 안의 번갈아 비교입니다. 별도 바이너리로 프레임 구간까지 잰 결과는 7절에 있습니다(스크린샷 비교에도 별도 바이너리를 썼습니다).</li>
+  </ul>
+</section>
+
+<section>
+  <h2>6. 재현 방법</h2>
+  <ol>
+    <li>합성 7,000개 씬: 큐브·구·실린더·평면 메시와 서로 다른 재질을 번갈아 쓰는 오브젝트를 격자로 배치한 씬 JSON 을 만듭니다. 계층 씬은 오브젝트 JSON 의 <code>"parent"</code> 에 <b>objects 배열 인덱스</b>를 적습니다 (C: 앞 인덱스가 부모인 5단 체인, E: 뒤 인덱스가 부모, D: 모두 첫 오브젝트 아래).</li>
+    <li><code>SherlockEditor.exe --project=Projects\SherlockTestScenes\SherlockTestScenes.sherlock --scene=&lt;씬.json&gt; --backend=d3d11 --exit-after=140</code> 을 Release 로 실행합니다. 로그에서 <code>BENCH</code>, <code>VERIFY</code> 줄을 읽습니다 (임시 계측 코드가 있는 빌드에서만 나옵니다).</li>
+    <li>재부모화 검증: <code>--set-parent="O0;O6999"</code> 를 같이 줍니다.</li>
+    <li>스크린샷: <code>--exit-after=40 --screenshot=out.png</code> 로 Before·After 바이너리를 각각 찍어 같은 위치 픽셀을 비교합니다 (노이즈 띠 제외).</li>
+  </ol>
+</section>
+
+<section>
+  <h2>7. 별도 바이너리로 프레임 구간까지 비교 (추가 측정)</h2>
+  <p>1~3절은 같은 프로세스 안에서 구·신 경로를 번갈아 돌린 <b>루프 구간</b>의 비교였습니다. 아래는 <b><code>GetWorldMatrix</code> 를 거치는 변경 전 소스</b>와 <b>거치지 않는 변경 후 소스</b>를 각각 따로 Release 로 빌드해서, 같은 7,000개 씬에서 <b>프레임 전체의 CPU 구간</b>을 잰 결과입니다.</p>
+  <ul>
+    <li><b>Before</b> = 변경 전 커밋 소스(<code>Renderer.cpp</code>·<code>Renderer.h</code> 를 HEAD 로 되돌림), <b>After</b> = 변경 후 소스. 두 바이너리에 <b>똑같은 로그 코드</b>(직전 프레임의 Profiler CPU 구간을 모아 중앙값을 냄)만 넣었고 다른 차이는 없습니다.</li>
+    <li>씬마다 Before·After 를 번갈아 3회씩 실행(D3D11, <code>--exit-after=140</code>). 프레임 30~129 의 100프레임에서 구간별 중앙값을 구하고, 3회 실행의 평균을 적었습니다.</li>
+    <li><code>BuildDrawList</code> 는 <b>정렬을 포함</b>합니다(0.04~0.18ms). <code>Renderer::Render</code> 는 그림자·메인 패스의 드로우 제출까지 포함하고, <b>CPU frame</b> 은 그 프레임의 최상위 CPU 구간 합(Update, GUI, 렌더, Present)입니다. GPU 시간은 재지 않았습니다.</li>
+  </ul>
+  <table>
+    <tr><th rowspan="2">씬 (7,000개, D3D11)</th><th colspan="3">BuildDrawList (ms)</th><th colspan="3">Renderer::Render (ms)</th><th colspan="3">CPU frame (ms)</th></tr>
+    <tr><th>Before</th><th>After</th><th>차이</th><th>Before</th><th>After</th><th>차이</th><th>Before</th><th>After</th><th>차이</th></tr>
+    <tr><td><b>A 평평 · 재질 8 · 메시 1종</b></td><td>0.499</td><td>0.451</td><td class="up">-0.049<br><span class="sub">-9.7%</span></td><td>1.350</td><td>1.256</td><td class="up">-0.094<br><span class="sub">-6.9%</span></td><td>2.265</td><td>2.129</td><td class="up">-0.136<br><span class="sub">-6.0%</span></td></tr>
+    <tr><td><b>B 평평 · 재질 50 · 메시 4종</b></td><td>0.652</td><td>0.620</td><td class="up">-0.032<br><span class="sub">-4.9%</span></td><td>1.524</td><td>1.452</td><td class="up">-0.072<br><span class="sub">-4.7%</span></td><td>2.435</td><td>2.311</td><td class="up">-0.124<br><span class="sub">-5.1%</span></td></tr>
+    <tr><td><b>D 루트 하나 아래 7,000개</b></td><td>0.863</td><td>0.680</td><td class="up">-0.183<br><span class="sub">-21.2%</span></td><td>1.761</td><td>1.499</td><td class="up">-0.262<br><span class="sub">-14.9%</span></td><td>2.324</td><td>2.025</td><td class="up">-0.300<br><span class="sub">-12.9%</span></td></tr>
+    <tr><td><b>C 5단 체인</b></td><td>1.020</td><td>0.755</td><td class="up">-0.266<br><span class="sub">-26.0%</span></td><td>1.754</td><td>1.463</td><td class="up">-0.291<br><span class="sub">-16.6%</span></td><td>2.890</td><td>2.561</td><td class="up">-0.329<br><span class="sub">-11.4%</span></td></tr>
+    <tr><td><b>E 5단 체인, 부모가 뒤 인덱스</b></td><td>1.040</td><td>0.760</td><td class="up">-0.280<br><span class="sub">-26.9%</span></td><td>1.766</td><td>1.457</td><td class="up">-0.309<br><span class="sub">-17.5%</span></td><td>2.864</td><td>2.541</td><td class="up">-0.323<br><span class="sub">-11.3%</span></td></tr>
+  </table>
+  <div class="box ok"><b>계층이 있는 씬(C·D·E)에서 BuildDrawList 가 21~27%, Renderer::Render 가 15~18%, CPU frame 이 11~13% 줄었습니다</b> (0.18~0.28ms, 0.26~0.31ms, 0.30~0.33ms). 3회 실행의 범위가 Before 와 After 사이에서 겹치지 않았습니다.</div>
+  <ul>
+    <li><b>루프 비교와 맞는 점:</b> 변경 전 C 의 <code>BuildDrawList</code> 1.02ms 는 2절 방식의 루프 0.82ms + 정렬 0.18ms 와 맞고, 변경 후 0.76ms 도 루프 0.59ms + 정렬 0.18ms 와 맞습니다.</li>
+    <li><b>CPU frame 의 감소량이 BuildDrawList 와 거의 같은 이유:</b> 줄어든 시간은 <code>BuildDrawList</code> 에서만 나옵니다. 그림자·메인 패스의 제출 시간은 두 버전에서 같습니다.</li>
+    <li><b>평평한 씬(A·B)은 달랐습니다:</b> 별도 바이너리에서는 BuildDrawList 가 0.03~0.05ms(−5~−10%) 줄었는데, 1절의 번갈아 돌린 비교에서는 +0.02ms(+4%)였습니다. 부호가 방법에 따라 다르므로 <b>평평한 씬은 "거의 같다(±0.05ms)"</b> 로 읽어야 합니다. 원인은 따로 찾지 않았습니다(두 빌드의 코드 배치·인라이닝 차이일 수 있으나 확인하지 못했습니다).</li>
+    <li><b>FPS 영향은 재지 않았습니다.</b> 에디터에서는 GPU 시간과 화면 동기화가 FPS 를 정하는 경우가 많아서, 이 CPU 시간 감소가 FPS 로 얼마나 이어지는지는 별도 측정이 필요합니다. CPU frame 2.9ms → 2.6ms 정도는 60fps 프레임 예산 16.7ms 의 약 2% 입니다.</li>
+  </ul>
+</section>
+
+<p class="foot"><a href="../index.html">← 문서 목록</a> · <a href="rendering-before-after-ol-testscene.html">계측·Hierarchy 클리퍼 비포/애프터</a></p>
+</main>
+</body>
+</html>

@@ -28,7 +28,7 @@ li span{display:block;color:var(--ink-2);font-size:14px}
 <body>
 <main>
 <h1>SherlockEngine 문서</h1>
-<p class="lede">문서는 목적에 따라 세 폴더로 나뉩니다. 처음이면 개요의 읽기 가이드부터 보면 됩니다.</p>
+<p class="lede">문서는 목적에 따라 네 폴더로 나뉩니다. 처음이면 개요의 읽기 가이드부터 보면 됩니다.</p>
 
 <h2>개요<small>overview/</small></h2>
 <p class="cat">프로젝트가 지금 어떻게 생겼고 어떻게 거기까지 왔는지.</p>
@@ -51,9 +51,17 @@ li span{display:block;color:var(--ink-2);font-size:14px}
   <li><a href="plan/structure-review-record.html">계획 · 구조 검토 수정 기록</a><span>13가지 항목의 수정 이유, 수정 전후 코드, 검증 결과.</span></li>
   <li><a href="plan/skinning-bone-debug-record.html">계획 · 스키닝 · 본 디버그 구현 기록</a><span>스켈레톤 애니메이션, 본 표시, MasterChief 임포트와 BC7 변환.</span></li>
   <li><a href="plan/texture-pipeline-record.html">계획 · 텍스처 파이프라인 구현 기록</a><span>BC 직접 업로드, 임포트 변환 캐시, 텍스처별 압축·밉·해상도 설정.</span></li>
-  <li><a href="plan/rendering-report-ol-testscene.html">계획 · OL_TestScene 렌더링 리포트</a><span>맵 7,065개 씬의 프레임 분석, 계측·Hierarchy 클리퍼 추가, Release 실측.</span></li>
-  <li><a href="plan/rendering-before-after-ol-testscene.html">계획 · 계측·Hierarchy 클리퍼 비포/애프터</a><span>같은 Release 조건에서 적용 전후 비교: 78→112 FPS(그림자 켬), GUI 5.2→2.6ms.</span></li>
   <li><a href="plan/animation-clip-root-motion-plan.html">계획 · 클립 전환(SetClip)과 루트 모션</a><span>클립 전환, 크로스페이드, 루트 모션의 구현 순서와 정할 것.</span></li>
+  <li><a href="plan/rendering-roadmap-plan.html">계획 · 렌더링 구현 순서 계획</a></li>
+</ul>
+
+<h2>보고서<small>report/</small></h2>
+<p class="cat">실측값과 전후 비교, 그 결과로 내린 결정. 이미 끝난 작업의 근거를 날짜·조건별로 찾아보는 문서.</p>
+<ul>
+  <li><a href="report/rendering-report-ol-testscene.html">보고서 · OL_TestScene 렌더링 리포트</a><span>맵 7,065개 씬의 프레임 분석, 계측·Hierarchy 클리퍼 추가, Release 실측.</span></li>
+  <li><a href="report/rendering-before-after-ol-testscene.html">보고서 · 계측·Hierarchy 클리퍼 비포/애프터</a><span>같은 Release 조건에서 적용 전후 비교: 78→112 FPS(그림자 켬), GUI 5.2→2.6ms.</span></li>
+  <li><a href="report/hierarchy-world-matrix-before-after.html">보고서 · 월드 행렬 계층 순회 비포/애프터</a><span>BuildDrawList 의 월드 행렬 계산을 루트에서 내려가는 방식으로 바꾼 전후: 계층 7,000개 씬 루프 0.82→0.59ms, 결과 비트 동일.</span></li>
+  <li><a href="report/hierarchy-world-matrix-decision.html">보고서 · GetWorldMatrix 를 거치지 않기로 한 결정</a><span>결정 이유, 고려한 선택지 6가지, 7,000개 실측 근거, 잠재 위험 9건과 후속 작업.</span></li>
 </ul>
 
 <h2>공부<small>study/</small></h2>

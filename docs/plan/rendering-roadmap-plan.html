@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · 렌더링 구현 순서 계획 — SherlockEngine</title>
+<style>
+:root {
+  --bg: #f6f5f1; --paper: #ffffff; --ink: #1d1f24; --ink2: #4a505c; --ink3: #8a909c;
+  --line: #d9dce3; --fill: #f1f3f7; --accent: #1d5fbf; --accent-bg: #e4ecf8;
+  --ok: #1f7a3d; --ok-bg: #e5f4ea; --warn: #a8620a; --warn-bg: #fdf3e2; --err: #c62828; --err-bg: #fbeaea;
+  --code-bg: #14171c; --code-fg: #e6e9ef;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101216; --paper: #181b21; --ink: #e8eaee; --ink2: #aab0bb; --ink3: #6f7683;
+    --line: #2b303a; --fill: #1f232b; --accent: #6ea8ff; --accent-bg: #16305a;
+    --ok: #5fcf85; --ok-bg: #12301f; --warn: #f0b14a; --warn-bg: #3a2a10; --err: #ff7070; --err-bg: #3b1620;
+    --code-bg: #0b0d10; --code-fg: #dfe3ea;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15.5px/1.75 -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", Roboto, sans-serif; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 24px 16px 80px; display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 28px; }
+nav { position: sticky; top: 16px; align-self: start; font-size: 13.5px; line-height: 1.5; max-height: calc(100vh - 32px); overflow: auto; }
+nav b { display: block; margin: 12px 0 4px; color: var(--ink3); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
+nav a { display: block; padding: 3px 8px; color: var(--ink2); text-decoration: none; border-left: 2px solid var(--line); }
+nav a:hover { color: var(--accent); border-left-color: var(--accent); }
+main { min-width: 0; }
+header.top { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+header.top h1 { margin: 0 0 6px; font-size: 26px; line-height: 1.3; }
+header.top p { margin: 4px 0; color: var(--ink2); }
+section { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+h2 { margin: 0 0 12px; font-size: 21px; line-height: 1.35; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+h3 { margin: 26px 0 8px; font-size: 17px; line-height: 1.4; }
+h4 { margin: 18px 0 6px; font-size: 15px; color: var(--ink2); }
+p { margin: 8px 0; }
+ul, ol { margin: 8px 0; padding-left: 22px; }
+li { margin: 3px 0; }
+code { font: 13.5px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--fill); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--code-bg); color: var(--code-fg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font: 13px/1.6 ui-monospace, "Cascadia Mono", Consolas, monospace; margin: 10px 0; }
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; line-height: 1.55; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+th { background: var(--fill); white-space: nowrap; }
+.box { border-left: 4px solid var(--accent); background: var(--accent-bg); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+.box.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.box.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.box.err { border-left-color: var(--err); background: var(--err-bg); }
+.box p:first-child { margin-top: 0; } .box p:last-child { margin-bottom: 0; }
+.tag { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--accent-bg); color: var(--accent); white-space: nowrap; }
+.tag.v { background: var(--ok-bg); color: var(--ok); }
+.tag.p { background: var(--warn-bg); color: var(--warn); }
+ul.todo { list-style: none; padding-left: 4px; }
+ul.todo > li { margin: 7px 0; padding-left: 26px; position: relative; }
+ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
+.meta { display: grid; grid-template-columns: 110px 1fr; gap: 4px 12px; font-size: 14.5px; margin: 8px 0 4px; }
+.meta b { color: var(--ink2); font-weight: 600; }
+.foot { color: var(--ink3); font-size: 13px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } nav { position: static; max-height: none; } section, header.top { padding: 16px; } .meta { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="목차">
+  <b>시작</b>
+  <a href="#overview">0. 한눈에 보기</a>
+  <a href="#why">1. 순서를 이렇게 정한 근거</a>
+  <a href="#now">2. 현재 엔진 상태</a>
+  <a href="#vfx">3. VFX 범위표</a>
+  <b>단계</b>
+  <a href="#s1">1단계 · 반투명·빌보드·파티클</a>
+  <a href="#s2">2단계 · 디퍼드 기본</a>
+  <a href="#s3">3단계 · 클러스터드 라이팅</a>
+  <a href="#s4">4단계 · 컴퓨트 RHI</a>
+  <a href="#s5">5단계 · SSAO</a>
+  <a href="#s6">6단계 · VSM (선택)</a>
+  <b>마무리</b>
+  <a href="#verify">4. 공통 검증 규칙</a>
+  <a href="#unknown">5. 미확인 사항</a>
+</nav>
+<main>
+
+<header class="top">
+  <h1>렌더링 구현 순서 계획</h1>
+  <div class="box"><p><b>최종 목표.</b> 이 엔진의 최종 목표는 <b>RHI(Render Hardware Interface)와 PSO(Pipeline State Object) 추상화</b>입니다. 아래 기능들은 그 자체가 목적이 아니라, RHI 인터페이스를 넓히고 PSO 변형·캐시를 실제로 써 보는 수단입니다. 단계마다 "RHI/PSO 목표와의 연결"을 따로 적었습니다.</p></div>
+  <p>CSM 과 glTF 스키닝·애니메이션 이후에 구현할 렌더링 기능 여섯 단계의 순서, 범위, 검증 방법입니다.</p>
+  <p>2026-11-13 작성. 기준: 커밋 2a67489 + 작업 트리. <span class="tag p">제안</span> 표시가 붙은 부분은 코드에 아직 없는 설계 권고입니다. <b>이 문서를 쓴 시점에는 코드를 고치지 않았고, 빌드나 실행으로 확인한 것도 없습니다.</b> 코드 근거는 키워드 검색과 해당 줄 주변을 읽은 것입니다.</p>
+  <p class="foot">코드 위치의 행 번호는 이 시점의 참고용입니다. 앞 단계를 구현하면 뒤 단계의 행 번호는 밀립니다. 경로는 <code>SherlockEngine/</code> 프로젝트 폴더 기준입니다. 체크박스는 표시용이며 저장되지 않습니다. 기존 계획 문서(<code>rhi-roadmap-plan.html</code>, <code>multi-light-shadow-plan.html</code>)는 고치지 않았습니다.</p>
+</header>
+
+<section id="overview">
+<h2>0. 한눈에 보기</h2>
+<table>
+<thead><tr><th>단계</th><th>일</th><th>RHI 가 넓어지나</th><th>앞 단계에 기대는 것</th><th>끝났다는 증거</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>반투명 패스 + 빌보드 + 언릿 CPU 파티클</td><td>아니오. 블렌드 PSO 변형을 씬 패스에서 처음 씀</td><td>없음</td><td>불투명 씬 화면이 전과 같고, 파티클이 깊이에 가려지며 블룸을 탐</td></tr>
+<tr><td>2</td><td>디퍼드 기본 + 깊이 읽기 전용 상태 + 소프트 파티클</td><td><b>예</b>(작게). 리소스 상태 하나와 읽기 전용 DSV</td><td>1단계의 반투명 포워드 경로</td><td>포워드와 디퍼드의 픽셀 차이가 몇 레벨 이내</td></tr>
+<tr><td>3</td><td>조명 목록 준비 + CPU 클러스터 비닝 + 클러스터드 라이팅</td><td>아니오. 구조체 버퍼 2개 추가</td><td>2단계의 풀스크린 라이팅 패스</td><td>전체 순회와 픽셀 일치, 조명 많은 씬에서 GPU 시간 감소</td></tr>
+<tr><td>4</td><td>컴퓨트 RHI 확장 → 작은 검증 → GPU 파티클</td><td><b>예</b>(가장 큼). 스테이지·UAV·상태·컴퓨트 PSO·Dispatch</td><td>필수는 없음. GPU 파티클은 1단계의 빌보드 VS 를 재사용</td><td>컴퓨트가 쓴 텍스처를 그래픽스 패스가 읽고, 두 백엔드 픽셀 일치</td></tr>
+<tr><td>5</td><td>SSAO</td><td>아니오</td><td>2단계의 G-buffer. 4단계가 있으면 블러 비교 가능</td><td>AO 디버그 뷰가 맞고, 끄면 4단계 화면과 같음</td></tr>
+<tr><td>6</td><td>VSM <span class="tag">선택</span></td><td>포맷 1~2개</td><td>없음</td><td>PCF 와 나란히 비교한 화면과 비용 기록</td></tr>
+</tbody>
+</table>
+<div class="box">
+<p><b>마일스톤 묶음.</b> 2단계와 3단계는 한 마일스톤으로 봅니다. 다만 커밋과 검증은 반드시 나눕니다. 2단계가 포워드와 일치하는 것을 확인한 뒤에 3단계로 넘어갑니다.</p>
+</div>
+</section>
+
+<section id="why">
+<h2>1. 순서를 이렇게 정한 근거</h2>
+
+<h3>1-1 CPU 라이트 컬링이 독립 단계에서 빠진 이유</h3>
+<p>이전 계획의 1번이던 "CPU 라이트 컬링"은 없어진 것이 아니라 3단계의 앞부분으로 들어갔습니다.</p>
+<ul>
+<li><b>클러스터드가 흡수하는 부분</b>: 픽셀이 순회하는 조명 수를 줄이는 일은 클러스터드가 더 잘 합니다.</li>
+<li><b>남는 부분 — 섀도</b>: 섀도 뷰 선정은 디퍼드나 클러스터드와 무관합니다. 섀도 뷰 상한이 20개(<code>MAX_SHADOW_VIEWS</code>)라, 조명이 수십 개가 되면 누구에게 타일을 줄지 정하는 로직이 꼭 필요합니다. 화면 밖 조명의 섀도 패스를 그리지 않는 것도 여기서만 됩니다.</li>
+<li><b>남는 부분 — 클러스터드 입력</b>: 프러스텀 밖 조명을 버리는 것은 비닝의 첫 단계 그 자체입니다.</li>
+</ul>
+
+<h3>1-2 클러스터드를 컴퓨트 의존에서 끊은 이유</h3>
+<ul>
+<li>클러스터 비닝은 CPU 로 충분합니다. 16×9×24 격자면 클러스터가 3,456개이고, 조명 수백 개까지는 CPU 에서 부담이 없습니다.</li>
+<li>결과는 구조체 버퍼 두 개로 올리면 되고, RHI 에 <code>BufferResource</code> 바인딩이 이미 있어 확장이 필요 없습니다.</li>
+<li>나중에 컴퓨트로 이식하면 CPU 결과가 정답 기준이 되어, 컴퓨트 검증 과제로 쓸 수 있습니다.</li>
+<li>타일드는 생략합니다. 클러스터드는 깊이 버퍼 없이 동작해 반투명 포워드 경로도 같은 목록을 읽을 수 있습니다.</li>
+</ul>
+
+<h3>1-3 디퍼드와 클러스터드를 한 번에 하지 않고 두 단계로 나눈 이유</h3>
+<ul>
+<li>한 번에 하면 새 요소가 세 가지 겹칩니다: G-buffer 인코딩과 위치 복원, 두 백엔드의 MRT 첫 실사용, 클러스터 자료구조와 깊이 슬라이스 계산.</li>
+<li>클러스터드 버그는 "특정 각도에서 조명이 격자 모양으로 끊김"처럼 간헐적으로 나타납니다. 비교할 정답 화면이 없으면 찾기 어렵습니다.</li>
+<li>2단계의 "모든 조명 순회" 라이팅 패스가 그 정답 화면입니다. 기존 포워드 셰이더의 루프를 옮기는 것이라 추가 비용이 거의 없습니다.</li>
+</ul>
+
+<h3>1-4 컴퓨트를 SSAO 앞에 둔 이유 <span class="tag p">약한 권고</span></h3>
+<ul>
+<li>컴퓨트는 남은 일 중 RHI 인터페이스를 가장 크게 넓히므로 최종 목표에 가장 직접 닿습니다.</li>
+<li>SSAO 를 뒤에 두면 블러를 컴퓨트 버전과 PS 버전으로 비교할 수 있습니다.</li>
+<li>SSAO 를 먼저 해도 틀리지 않습니다. SSAO 는 풀스크린 PS 만으로 되고 컴퓨트에 기대지 않습니다.</li>
+<li>컴퓨트를 디퍼드보다 앞에 두지는 않습니다. 디퍼드는 인터페이스를 거의 넓히지 않고 기존 MRT 경로를 처음 실사용하는 검증 단계라, 큰 확장 전에 두는 편이 문제를 좁히기 쉽습니다.</li>
+</ul>
+
+<h3>1-5 VFX 를 맨 앞에 둔 이유와 소프트 파티클의 위치</h3>
+<ul>
+<li>빌보드와 언릿 파티클은 반투명 포워드 경로라, 디퍼드가 들어와도 다시 만들 것이 없습니다.</li>
+<li>디퍼드 계획은 "반투명은 포워드로 남긴다"를 전제로 하는데, 그 반투명 포워드 경로가 지금 없습니다. 1단계에서 먼저 만들면 2단계의 범위가 "불투명만 G-buffer 로 옮긴다"로 줄어듭니다.</li>
+<li>소프트 파티클은 2단계 안에 둡니다. 막는 것은 디퍼드가 아니라 "깊이를 DSV 로 테스트하면서 SRV 로 읽는" 상태가 RHI 에 없다는 점입니다. 디퍼드 라이팅 패스도 깊이를 SRV 로 읽어야 하므로 같은 확장을 두 곳에서 검증하게 됩니다.</li>
+<li>GPU 파티클은 컴퓨트의 첫 검증으로 쓰지 않습니다. 버퍼 UAV, 생존 목록, 간접 드로우가 한꺼번에 들어오기 때문입니다.</li>
+</ul>
+
+<h3>1-6 VSM 을 맨 뒤 선택으로 둔 이유</h3>
+<p>여기서 VSM 은 Variance Shadow Maps 입니다(언리얼의 Virtual Shadow Maps 가 아님). 아틀라스 포맷을 바꿔야 하고 라이트 블리딩 문제가 있으며, RHI 목표에 기여가 작습니다. PCF 와의 비교 실험용입니다.</p>
+</section>
+
+<section id="now">
+<h2>2. 현재 엔진 상태 (코드에서 확인한 것)</h2>
+<table>
+<thead><tr><th>항목</th><th>지금</th><th>위치</th></tr></thead>
+<tbody>
+<tr><td>셰이더 스테이지</td><td>Vertex, Pixel 뿐. 컴퓨트 없음</td><td><code>RHI/PipelineTypes.h:140-144</code></td></tr>
+<tr><td>바인딩 타입</td><td>ConstantBuffer, ShaderResource, Sampler, BufferResource. UAV 없음</td><td><code>RHI/BindingTypes.h:18-24</code></td></tr>
+<tr><td>드로우 API</td><td><code>DrawIndexed</code>, <code>Draw</code> 뿐. 인스턴싱·간접 드로우·Dispatch 없음</td><td><code>RHI/CommandList.h:52</code>, <code>:55</code></td></tr>
+<tr><td>리소스 상태</td><td>Common, RenderTarget, DepthWrite, ShaderResource, CopySource, CopyDest, Present. <b>깊이 읽기 전용과 UAV 상태 없음</b></td><td><code>RHI/RenderPassTypes.h:71-80</code></td></tr>
+<tr><td>블렌드 기술</td><td>렌더 타깃별 블렌드 설정이 있고 PSO 기술에 포함됨. <code>kMaxRenderTargets = 8</code></td><td><code>RHI/PipelineTypes.h:179-203</code>, <code>:235</code></td></tr>
+<tr><td>블렌드 사용처</td><td>블룸 합성용 가산 블렌드 하나뿐. 씬 패스에는 없음</td><td><code>Graphics/Renderer.cpp:334-339</code></td></tr>
+<tr><td>패스 목록</td><td>Main, Shadow, Sky, Tonemap, Post, MainSkin, ShadowSkin, DebugLine. 반투명·G-buffer 패스 없음</td><td><code>Graphics/Renderer.h:280</code></td></tr>
+<tr><td>드로우 정렬</td><td>PSO → 재질 → 메시 → 인덱스 범위의 상태 정렬. 거리 정렬 없음</td><td><code>Graphics/Renderer.cpp:1053-1060</code></td></tr>
+<tr><td>반투명 재질</td><td>glTF <code>BLEND</code> 는 알파 컷아웃 0.5 로 대체</td><td><code>Graphics/Import/GltfImporter.cpp:803-805</code>, <code>Scene/Material.h:52-53</code></td></tr>
+<tr><td>깊이 테스트만 하는 경로</td><td>스카이박스가 테스트 켬(LessEqual), 쓰기 끔으로 그림</td><td><code>Graphics/Renderer.cpp:317-321</code></td></tr>
+<tr><td>씬 패스 안의 그리기 순서</td><td>메시 → 스카이박스 → 디버그 선</td><td><code>Graphics/Renderer.cpp:1174-1177</code></td></tr>
+<tr><td>동적 정점 버퍼</td><td>디버그 선이 <code>BufferUsage::Dynamic</code> 정점 버퍼를 매 프레임 올림. 상한 65,536 정점</td><td><code>Graphics/Renderer.cpp:138</code>, <code>:1187</code>, <code>Graphics/DebugDraw.h:30</code></td></tr>
+<tr><td>버퍼 갱신 의미</td><td><code>UpdateBuffer</code> 는 "이 프레임 슬롯의 내용을 통째로 교체"만 약속. 부분 갱신 없음</td><td><code>RHI/Device.h:22</code>, <code>:80</code></td></tr>
+<tr><td>씬 깊이 텍스처</td><td>D24S8, <code>DepthStencil | ShaderResource</code>. 씬 패스 뒤 <code>DepthWrite</code> 상태로 남음</td><td><code>Graphics/RendererTargets.cpp:46</code>, <code>Graphics/Renderer.h:366</code>, <code>Graphics/Renderer.cpp:1095-1098</code></td></tr>
+<tr><td>깊이를 읽는 셰이더</td><td>찾지 못함. 후처리는 <code>postInput</code>(t13)만 읽음</td><td><code>Shaders/PostPixelShader.hlsl:12</code></td></tr>
+<tr><td>조명 데이터</td><td><code>StructuredBuffer&lt;LightData&gt;</code>(t15) + 개수는 상수버퍼. 용량이 모자라면 두 배로 다시 만듦</td><td><code>Shaders/Common.hlsli:100</code>, <code>:105</code>, <code>Graphics/Renderer.cpp:144</code>, <code>:951</code></td></tr>
+<tr><td>조명 루프</td><td>픽셀 셰이더가 모든 조명을 순회</td><td><code>Shaders/BasicPixelShader.hlsl:314</code>, <code>:347</code></td></tr>
+<tr><td>조명 컬링</td><td>카메라 프러스텀 기준 조명 컬링 없음. 섀도 뷰별 <code>cullSphere</code> 만 있음</td><td><code>Graphics/RendererShadow.cpp:358</code>, <code>:379</code></td></tr>
+<tr><td>섀도 뷰 상한</td><td><code>MAX_SHADOW_VIEWS = 20</code></td><td><code>Shaders/Common.hlsli:16</code></td></tr>
+<tr><td>스키닝</td><td>스킨 전용 VS 와 패스(MainSkin, ShadowSkin), 조인트 256개 팔레트 상수버퍼</td><td><code>Graphics/Renderer.h:279-280</code>, <code>Shaders/Common.hlsli:81-84</code></td></tr>
+</tbody>
+</table>
+<div class="box warn">
+<p><b>기존 문서와 겹치는 부분.</b> <code>rhi-roadmap-plan.html</code> 의 3장(컴퓨트 파이프라인과 UAV), 4장(엔진 안에서 IBL 만들기), 5-5(Deferred)에 더 자세한 작업 순서가 있습니다. 이 문서는 순서와 범위를 정하고, 세부 절차는 그쪽을 따릅니다. 5-5 는 메인 깊이를 D24S8 에서 D32_FLOAT 로 바꾸는 것을 전제로 적었는데, 지금 깊이 텍스처는 이미 SRV 로 만들 수 있게 되어 있으므로 포맷 변경이 꼭 필요한지는 2단계에서 다시 판단합니다.</p>
+</div>
+</section>
+
+<section id="vfx">
+<h2>3. VFX 범위표</h2>
+<table>
+<thead><tr><th>항목</th><th>둘 단계</th><th>선행 조건</th></tr></thead>
+<tbody>
+<tr><td>반투명 패스(뒤→앞 정렬, 알파/가산 블렌드 PSO 변형)</td><td>1단계</td><td>없음</td></tr>
+<tr><td>빌보드(카메라 정면, 축 고정)</td><td>1단계</td><td>반투명 패스</td></tr>
+<tr><td>언릿 CPU 파티클(이미터, 수명, 색·크기 곡선, 플립북)</td><td>1단계</td><td>빌보드</td></tr>
+<tr><td>glTF <code>BLEND</code> 재질을 실제 반투명으로</td><td>1단계 끝 <span class="tag">선택</span></td><td>반투명 패스</td></tr>
+<tr><td>소프트 파티클</td><td>2단계</td><td>깊이 읽기 전용 상태 + 읽기 전용 DSV</td></tr>
+<tr><td>조명받는 파티클</td><td>3단계 <span class="tag">선택</span></td><td>클러스터 조명 목록</td></tr>
+<tr><td>GPU 파티클</td><td>4단계</td><td>컴퓨트 RHI(UAV, Dispatch)</td></tr>
+<tr><td>트레일/리본</td><td>범위 밖</td><td>동적 정점 버퍼 재사용. 신규 RHI 없음</td></tr>
+<tr><td>디퍼드 데칼</td><td>범위 밖</td><td>G-buffer 블렌드, 깊이 SRV</td></tr>
+<tr><td>왜곡/굴절</td><td>범위 밖</td><td>씬 컬러 복사</td></tr>
+</tbody>
+</table>
+<p>"범위 밖" 항목은 이 계획의 여섯 단계에 넣지 않습니다. 1단계가 길어져 디퍼드가 밀리는 것을 막기 위해서입니다.</p>
+</section>
+
+<section id="s1">
+<h2>1단계 — 반투명 패스 + 빌보드 + 언릿 CPU 파티클 <span class="tag">RHI 확장 없음</span></h2>
+<div class="meta">
+<b>목표</b><span>불투명 뒤에 그리는 반투명 포워드 경로를 만들고, 그 위에 빌보드와 언릿 CPU 파티클을 올립니다.</span>
+<b>선행 조건</b><span>없음</span>
+<b>그리는 자리</b><span>HDR 씬 패스 안, 스카이박스 뒤·톤매핑 앞. 가산 파티클이 블룸을 타려면 이 위치여야 합니다.</span>
+<b>범위 밖</b><span>트레일, 데칼, 왜곡, 소프트 파티클, 조명받는 파티클</span>
+</div>
+
+<h3>작업 항목</h3>
+<ul class="todo">
+<li><input type="checkbox"> 반투명 패스 추가: 패스 목록(<code>Renderer.h:280</code>)에 반투명용 항목을 넣고, 깊이 테스트 켬·쓰기 끔으로 설정(스카이박스 설정 <code>Renderer.cpp:317-321</code> 참고)</li>
+<li><input type="checkbox"> 블렌드 PSO 변형 두 가지: 알파 블렌드(SrcAlpha, InvSrcAlpha)와 가산(One, One). 블룸 가산 설정(<code>Renderer.cpp:334-339</code>)이 본보기</li>
+<li><input type="checkbox"> 반투명 드로우 목록을 불투명 목록과 분리하고 카메라 거리 기준 뒤→앞으로 정렬. 불투명은 지금의 상태 정렬(<code>Renderer.cpp:1053-1060</code>) 유지</li>
+<li><input type="checkbox"> 그리는 순서를 메시 → 스카이박스 → <b>반투명</b> → 디버그 선으로 변경(<code>Renderer.cpp:1174-1177</code>)</li>
+<li><input type="checkbox"> 빌보드 셰이더: 카메라 정면 고정과 축 고정 두 가지. 텍스처 한 장 + 색 곱</li>
+<li><input type="checkbox"> 빌보드 정점 공급 방식 결정 <span class="tag p">제안</span>: 파티클을 구조체 버퍼로 올리고 VS 가 <code>SV_VertexID</code> 로 모서리를 만드는 방식. 스카이박스처럼 정점 레이아웃이 없고, 4단계의 GPU 파티클이 VS 를 그대로 씀. 이 방식이 막히면 디버그 선처럼 CPU 에서 사각형을 펼쳐 동적 정점 버퍼로 올림</li>
+<li><input type="checkbox"> 파티클 데이터는 이미터별 버퍼가 아니라 한 버퍼에 모아 프레임당 한 번 올림(<code>UpdateBuffer</code> 가 통째 교체만 약속, <code>RHI/Device.h:22</code>)</li>
+<li><input type="checkbox"> CPU 파티클 시스템: 이미터 컴포넌트, 수명, 속도·중력, 색·크기 곡선, 플립북 UV</li>
+<li><input type="checkbox"> 씬 저장·불러오기와 되돌리기에 이미터 설정 포함</li>
+<li><input type="checkbox"> 통계에 반투명 드로우 수와 파티클 수 추가</li>
+<li><input type="checkbox"> <span class="tag">선택</span> glTF <code>BLEND</code> 재질을 컷아웃 0.5 대체(<code>GltfImporter.cpp:803-805</code>)에서 실제 반투명으로</li>
+</ul>
+
+<h3>검증</h3>
+<ul>
+<li>파티클이 없는 기존 씬은 두 백엔드에서 전후 픽셀 차이가 1~2 레벨 이내.</li>
+<li>파티클이 불투명 물체 뒤에서 가려지고, 반투명끼리 겹칠 때 순서가 카메라를 돌려도 뒤집히지 않음.</li>
+<li>가산 파티클이 블룸에 반영됨.</li>
+<li>파티클은 움직이므로 스크린샷 비교는 시간을 고정하거나 시드를 고정한 정지 상태로 찍음.</li>
+</ul>
+
+<h3>RHI/PSO 목표와의 연결</h3>
+<ul>
+<li>블렌드 상태가 PSO 캐시 키에 제대로 들어가는지 씬 패스에서 처음 확인합니다.</li>
+<li>"깊이 테스트만 하고 쓰지 않는" PSO 변형이 스카이박스 외의 경로로 늘어납니다.</li>
+<li>VS 에서 구조체 버퍼를 읽는 바인딩을 두 백엔드에서 검증합니다(지금 사례가 있는지는 미확인).</li>
+</ul>
+
+<h3>위험</h3>
+<ul>
+<li>반투명 정렬은 물체 단위라 서로 관통하는 메시는 순서가 틀릴 수 있습니다. 이 단계에서는 한계로 기록하고 넘어갑니다.</li>
+<li>D3D12 에서 새 PSO 변형의 렌더 타깃 포맷이 HDR 타깃과 다르면 조용히 깨집니다. Debug Layer 메시지 0건을 확인합니다.</li>
+<li>범위가 늘기 쉬운 단계입니다. 트레일·데칼·왜곡은 넣지 않습니다.</li>
+</ul>
+</section>
+
+<section id="s2">
+<h2>2단계 — 디퍼드 기본 + 깊이 읽기 전용 + 소프트 파티클 <span class="tag">RHI 확장 작음</span></h2>
+<div class="meta">
+<b>목표</b><span>불투명을 G-buffer(MRT)에 그리고 풀스크린 라이팅 패스로 조명을 계산합니다. 조명 루프는 지금의 "모든 조명 순회"를 그대로 옮깁니다.</span>
+<b>선행 조건</b><span>1단계의 반투명 포워드 경로</span>
+<b>공존 규칙</b><span>불투명 = 디퍼드, 반투명·언릿 = 포워드</span>
+<b>세부 절차</b><span><code>rhi-roadmap-plan.html</code> 5-5 참고</span>
+</div>
+
+<h3>패스 구성 <span class="tag p">제안</span></h3>
+<pre><code>Shadow ─▶ GBuffer(불투명, 스킨/비스킨) ─▶ Lighting(풀스크린, IBL 포함, HDR 출력)
+       ─▶ Skybox ─▶ Forward(반투명·파티클, 깊이는 읽기 전용) ─▶ Post ─▶ Tonemap ─▶ UI</code></pre>
+
+<h3>작업 항목</h3>
+<ul class="todo">
+<li><input type="checkbox"> 셰이더 리팩터링 먼저: <code>BasicPixelShader.hlsl</code> 의 BRDF·조명·그림자 계산을 공용 함수로 뽑고, 화면이 안 변하는지 확인</li>
+<li><input type="checkbox"> G-buffer 배치 결정과 기록: 알베도, 노멀, 거칠기·금속성, AO, 발광. 월드 위치는 저장하지 않고 깊이에서 복원. 필요한 포맷이 RHI 에 없으면 추가</li>
+<li><input type="checkbox"> G-buffer 타깃 생성과 크기 변경 대응(<code>RendererTargets.cpp</code> 의 기존 타깃 재생성 패턴)</li>
+<li><input type="checkbox"> G-buffer 패스 PSO: 스킨/비스킨 변형, 알파 컷아웃은 <code>clip</code> 으로 처리</li>
+<li><input type="checkbox"> 풀스크린 라이팅 패스: G-buffer 와 깊이를 읽어 기존 조명 루프(<code>BasicPixelShader.hlsl:314</code>, <code>:347</code>)와 그림자·IBL 을 그대로 계산</li>
+<li><input type="checkbox"> RHI: 깊이 읽기 전용 리소스 상태 추가(<code>RenderPassTypes.h:71-80</code>)와 읽기 전용 DSV. 두 백엔드 모두</li>
+<li><input type="checkbox"> 포워드 반투명 패스가 깊이를 읽기 전용으로 붙이도록 변경</li>
+<li><input type="checkbox"> 소프트 파티클: 씬 깊이를 SRV 로 읽어 파티클 깊이와의 차이로 알파를 줄임</li>
+<li><input type="checkbox"> 디버그 뷰가 G-buffer 각 채널을 직접 보여 주게 연결</li>
+<li><input type="checkbox"> 포워드/디퍼드 전환 토글을 남겨 비교 기준으로 사용</li>
+</ul>
+
+<h3>검증</h3>
+<ul>
+<li>같은 씬을 포워드와 디퍼드로 그려 픽셀 비교. 허용 오차는 노멀 인코딩 때문에 몇 레벨.</li>
+<li>스킨 메시 씬(MasterChief walk)에서도 같은 비교.</li>
+<li>반투명·파티클 씬은 따로 비교하고, 소프트 파티클은 켬/끔 차이가 물체와 만나는 경계에만 나타나는지 확인.</li>
+<li>G-buffer 메모리(해상도 × 채널)를 계산해 기록.</li>
+<li>두 백엔드 픽셀 일치, D3D12 Debug Layer 메시지 0건.</li>
+</ul>
+
+<h3>RHI/PSO 목표와의 연결</h3>
+<ul>
+<li>MRT 를 처음 실사용합니다. PSO 의 렌더 타깃 포맷 배열과 개수가 두 백엔드에서 맞는지 검증합니다.</li>
+<li>리소스 상태가 하나 늘어나는 작은 인터페이스 확장을, 4단계의 큰 확장 전에 연습합니다.</li>
+<li>스킨 × 패스 종류로 PSO 변형이 늘어나므로 캐시 키와 변형 관리 방식을 점검합니다.</li>
+</ul>
+
+<h3>위험</h3>
+<ul>
+<li>D3D11 은 같은 깊이 텍스처를 쓰기 가능한 DSV 와 SRV 로 동시에 붙이면 SRV 를 조용히 풉니다. 읽기 전용 DSV 가 없으면 D3D11 에서만 소프트 파티클이 안 나옵니다.</li>
+<li>깊이에서 위치를 복원할 때 역행렬·깊이 범위·UV 뒤집힘 실수가 흔합니다. 복원한 위치를 디버그 뷰로 먼저 봅니다.</li>
+<li>바인딩 셋 수 상한(<code>kMaxBindingSets = 4</code>)에 걸릴 수 있습니다. 새 레이아웃을 만들기 전에 기존 셋에 넣을 수 있는지 봅니다(<code>multi-light-shadow-plan.html</code> 1장의 RHI 표 참고).</li>
+<li>에디터 미리보기와 게임 런타임 경로에도 G-buffer 가 필요합니다. 에디터에서만 확인하고 끝내지 않습니다.</li>
+</ul>
+</section>
+
+<section id="s3">
+<h2>3단계 — 조명 목록 준비 + CPU 클러스터드 라이팅 <span class="tag">RHI 확장 없음</span></h2>
+<div class="meta">
+<b>목표</b><span>보이는 조명만 추리고 섀도 타일을 중요도 순으로 배정한 뒤, CPU 에서 클러스터별 조명 목록을 만들어 라이팅 패스가 그 목록만 순회하게 합니다.</span>
+<b>선행 조건</b><span>2단계의 풀스크린 라이팅 패스(정답 화면 역할)</span>
+<b>격자</b><span>16×9×24 = 3,456 클러스터 <span class="tag p">제안</span></span>
+<b>생략</b><span>타일드 라이팅</span>
+</div>
+
+<h3>작업 항목</h3>
+<ul class="todo">
+<li><input type="checkbox"> 조명 수십~수백 개 데모 씬을 실험 프로젝트에 만듦(Sample 프로젝트가 아님)</li>
+<li><input type="checkbox"> 조명 목록 준비: 카메라 프러스텀과 조명 구/원뿔 테스트로 화면 밖 조명 제외(<code>BuildGpuLights</code>, <code>Renderer.cpp:909</code>)</li>
+<li><input type="checkbox"> 섀도 타일 우선순위: 화면 점유율·거리·밝기로 점수를 매겨 <code>MAX_SHADOW_VIEWS</code>(20) 안에서 배정. 제외된 조명은 섀도 뷰를 만들지 않음(<code>RendererShadow.cpp</code>)</li>
+<li><input type="checkbox"> 클러스터 격자 정의: 화면 16×9, 깊이 24 슬라이스(지수 분할). 클러스터 AABB 를 뷰 공간에서 계산</li>
+<li><input type="checkbox"> CPU 비닝: 조명마다 겹치는 클러스터를 찾아 목록 작성</li>
+<li><input type="checkbox"> 구조체 버퍼 2개 업로드: 클러스터별 (오프셋, 개수)와 조명 인덱스 목록. 기존 조명 버퍼(<code>Renderer.cpp:144</code>)와 같은 방식</li>
+<li><input type="checkbox"> 라이팅 패스가 픽셀의 클러스터를 계산해 그 목록만 순회</li>
+<li><input type="checkbox"> 포워드 반투명 경로도 같은 목록을 읽게 연결</li>
+<li><input type="checkbox"> 디버그 뷰: 클러스터별 조명 수 히트맵</li>
+<li><input type="checkbox"> "전체 순회 / 클러스터드" 전환 토글 유지</li>
+<li><input type="checkbox"> <span class="tag">선택</span> 조명받는 파티클: 클러스터 목록으로 단순 조명만(그림자·노멀 없음)</li>
+</ul>
+
+<h3>검증</h3>
+<ul>
+<li>같은 씬·같은 카메라에서 전체 순회와 클러스터드의 픽셀 차이가 1~2 레벨 이내. 카메라 각도와 near/far 를 바꿔 여러 장 비교.</li>
+<li>히트맵에서 조명이 있는 곳만 숫자가 올라가는지 확인.</li>
+<li>조명 많은 씬에서 라이팅 패스 GPU 시간(<code>GpuProfileScope</code>)과 섀도 뷰 수 통계의 전후 값 기록.</li>
+<li>섀도 타일을 받지 못한 조명이 그림자 없이 조명만 내는지 확인.</li>
+</ul>
+
+<h3>RHI/PSO 목표와의 연결</h3>
+<ul>
+<li>RHI 확장은 없습니다. 구조체 버퍼 바인딩을 조명 외의 용도로 넓혀 쓰는 단계입니다.</li>
+<li>여기서 만든 CPU 비닝 결과가 4단계 컴퓨트 이식의 정답 기준이 됩니다.</li>
+</ul>
+
+<h3>위험</h3>
+<ul>
+<li>깊이 슬라이스 계산이 셰이더와 CPU 에서 어긋나면 특정 거리에서 조명이 끊깁니다. 슬라이스 식을 한 곳에 정의하고 양쪽이 같은 상수를 씁니다.</li>
+<li>조명 구와 클러스터 AABB 의 테스트가 보수적이지 않으면 경계에서 조명이 빠집니다. 틀릴 때는 넓게 잡는 쪽으로 둡니다.</li>
+<li>인덱스 목록 용량이 넘칠 때의 동작을 정해 둡니다(자르고 통계에 표시).</li>
+<li>우선순위가 프레임마다 바뀌면 그림자가 깜빡입니다. 점수에 이력을 두거나 교체에 여유 폭을 둡니다.</li>
+</ul>
+</section>
+
+<section id="s4">
+<h2>4단계 — 컴퓨트 RHI 확장 <span class="tag">RHI 확장 가장 큼</span></h2>
+<div class="meta">
+<b>목표</b><span>RHI 에 컴퓨트 파이프라인을 추가하고, 작은 작업으로 검증한 뒤 GPU 파티클로 넓힙니다.</span>
+<b>선행 조건</b><span>필수는 없음. GPU 파티클은 1단계의 빌보드 VS 를 재사용</span>
+<b>세부 절차</b><span><code>rhi-roadmap-plan.html</code> 3장·4장 참고</span>
+</div>
+
+<h3>작업 항목 — RHI</h3>
+<ul class="todo">
+<li><input type="checkbox"> <code>ShaderStage</code> 에 Compute 추가(<code>RHI/PipelineTypes.h:140-144</code>)와 셰이더 컴파일 경로</li>
+<li><input type="checkbox"> <code>BindingType</code> 에 UAV(텍스처, 버퍼) 추가(<code>RHI/BindingTypes.h:18-24</code>)와 리플렉션</li>
+<li><input type="checkbox"> 텍스처·버퍼 생성 플래그에 UAV 용도 추가(<code>RHI/ResourceDesc.h</code>)</li>
+<li><input type="checkbox"> 리소스 상태에 UAV 추가, UAV 배리어(<code>RHI/RenderPassTypes.h:71-80</code>)</li>
+<li><input type="checkbox"> 컴퓨트 PSO 기술과 생성, 캐시</li>
+<li><input type="checkbox"> <code>CommandList</code> 에 컴퓨트 PSO 바인딩, 컴퓨트용 리소스 셋 바인딩, <code>Dispatch</code> 추가(<code>RHI/CommandList.h</code>)</li>
+<li><input type="checkbox"> D3D11, D3D12 두 백엔드 구현</li>
+</ul>
+
+<h3>작업 항목 — 검증과 응용 (이 순서로)</h3>
+<ul class="todo">
+<li><input type="checkbox"> 첫 검증: 텍스처 UAV 하나만 쓰는 작업. 블룸 다운샘플 또는 IBL 프리필터 중 하나</li>
+<li><input type="checkbox"> GPU 파티클 단순 버전: 고정 크기 풀, 죽은 파티클은 크기 0 으로 그림. 간접 드로우 없이 <code>Draw(6 × 풀 크기)</code></li>
+<li><input type="checkbox"> <span class="tag">선택</span> GPU 파티클 확장: 생존 목록, 간접 드로우(RHI 추가 필요)</li>
+<li><input type="checkbox"> <span class="tag">선택</span> 클러스터 비닝 컴퓨트 이식: 3단계의 CPU 결과를 정답 기준으로 비교</li>
+</ul>
+
+<h3>검증</h3>
+<ul>
+<li>첫 검증 작업은 같은 일을 하는 PS 버전(블룸) 또는 구워 둔 맵(IBL)과 수치 비교.</li>
+<li>컴퓨트가 쓴 텍스처를 그래픽스 패스가 읽어 화면에 보이고, 두 백엔드에서 픽셀이 일치.</li>
+<li>D3D12 Debug Layer 메시지 0건. 상태 전이 누락이 가장 흔한 실수입니다.</li>
+<li>GPU 파티클은 같은 시드의 CPU 파티클과 눈으로 비교하고, 파티클 수를 늘려 CPU 버전과 프레임 시간을 비교.</li>
+<li>클러스터 이식은 CPU 가 만든 버퍼와 컴퓨트가 만든 버퍼를 직접 비교하거나, 두 경로의 최종 화면을 픽셀 비교.</li>
+</ul>
+
+<h3>RHI/PSO 목표와의 연결</h3>
+<ul>
+<li>이 계획에서 RHI 인터페이스를 가장 크게 넓히는 단계입니다. 스테이지, 바인딩 타입, 리소스 상태, PSO 종류, 커맨드가 모두 늘어납니다.</li>
+<li>그래픽스 PSO 와 컴퓨트 PSO 를 같은 캐시·핸들 체계로 다룰지 결정해야 하고, 이 결정이 PSO 추상화의 모양을 정합니다.</li>
+</ul>
+
+<h3>위험</h3>
+<ul>
+<li>두 백엔드의 차이가 가장 큰 영역입니다. D3D11 은 UAV 와 SRV 가 같은 리소스에 동시에 붙으면 조용히 풀고, D3D12 는 상태와 디스크립터를 직접 맞춰야 합니다.</li>
+<li>첫 검증을 큰 작업으로 잡으면 RHI 버그와 알고리즘 버그가 섞입니다. 그래서 GPU 파티클과 클러스터 이식을 첫 검증으로 쓰지 않습니다.</li>
+<li>IBL 프리필터는 밉 단위·큐브 면 단위 UAV 가 필요해 블룸 다운샘플보다 요구가 큽니다. 더 작은 쪽은 블룸 다운샘플입니다.</li>
+<li>간접 드로우는 별도의 RHI 확장입니다. GPU 파티클 단순 버전이 끝난 뒤에 판단합니다.</li>
+</ul>
+</section>
+
+<section id="s5">
+<h2>5단계 — SSAO <span class="tag">RHI 확장 없음</span></h2>
+<div class="meta">
+<b>목표</b><span>G-buffer 의 깊이와 노멀로 AO 를 계산해 앰비언트/IBL 항에 곱합니다.</span>
+<b>선행 조건</b><span>2단계의 G-buffer. 4단계가 있으면 블러를 컴퓨트 버전과 비교 가능</span>
+</div>
+
+<h3>작업 항목</h3>
+<ul class="todo">
+<li><input type="checkbox"> AO 패스: 깊이·노멀을 읽는 풀스크린 PS, 반구 샘플 커널과 회전 노이즈</li>
+<li><input type="checkbox"> AO 타깃(단일 채널)과 해상도 결정(전체 또는 절반)</li>
+<li><input type="checkbox"> 블러 패스: 깊이를 고려한 블러. 기존 후처리 인프라(<code>RendererPost.cpp</code>) 재사용</li>
+<li><input type="checkbox"> 라이팅 패스에서 AO 를 앰비언트/IBL 항에만 곱함. 직접광에는 곱하지 않음</li>
+<li><input type="checkbox"> 재질의 AO 텍스처(t3)와 합치는 방식 결정(곱 또는 최솟값)</li>
+<li><input type="checkbox"> 설정: 반경, 세기, 샘플 수, 켬/끔. AO 디버그 뷰</li>
+<li><input type="checkbox"> <span class="tag">선택</span> 블러의 컴퓨트 버전을 만들어 PS 버전과 화면·시간 비교</li>
+</ul>
+
+<h3>검증</h3>
+<ul>
+<li>AO 를 끄면 4단계 끝의 화면과 픽셀 차이가 1~2 레벨 이내.</li>
+<li>AO 디버그 뷰에서 구석과 접촉부만 어두워지고 평평한 면은 밝은지 확인.</li>
+<li>카메라를 움직여 노이즈 패턴이 화면에 붙어 보이지 않는지 확인.</li>
+<li>AO 패스와 블러 패스의 GPU 시간 기록.</li>
+</ul>
+
+<h3>RHI/PSO 목표와의 연결</h3>
+<ul>
+<li>새 인터페이스는 없습니다. G-buffer 와 깊이 읽기 경로를 한 번 더 쓰는 단계입니다.</li>
+<li>블러의 컴퓨트 버전을 만들면 4단계의 컴퓨트 경로를 두 번째 작업으로 검증합니다.</li>
+</ul>
+
+<h3>위험</h3>
+<ul>
+<li>반투명은 G-buffer 에 없으므로 AO 를 받지 않습니다. 한계로 기록합니다.</li>
+<li>뷰 공간 위치 복원이 2단계와 어긋나면 AO 가 한쪽으로 쏠립니다. 2단계의 복원 함수를 그대로 씁니다.</li>
+<li>절반 해상도는 경계에서 번집니다. 처음에는 전체 해상도로 맞춘 뒤 줄입니다.</li>
+</ul>
+</section>
+
+<section id="s6">
+<h2>6단계 — VSM <span class="tag">선택</span></h2>
+<div class="meta">
+<b>목표</b><span>Variance Shadow Maps 를 구현해 PCF 와 화질·비용을 비교합니다. 시간이 남을 때 하는 비교 실험입니다.</span>
+<b>선행 조건</b><span>없음. 4단계가 있으면 블러를 컴퓨트로 할 수 있음</span>
+<b>주의</b><span>언리얼의 Virtual Shadow Maps 와는 다른 기법입니다.</span>
+</div>
+
+<h3>작업 항목</h3>
+<ul class="todo">
+<li><input type="checkbox"> 대상 조명을 하나로 한정(방향광 CSM 또는 스팟 하나). 전체 아틀라스를 바꾸지 않음</li>
+<li><input type="checkbox"> 깊이와 깊이 제곱을 담는 2채널 float 타깃. 필요한 포맷이 RHI 에 없으면 추가</li>
+<li><input type="checkbox"> 섀도 패스가 모멘트를 출력하도록 PS 추가</li>
+<li><input type="checkbox"> 분리형 블러 패스</li>
+<li><input type="checkbox"> 체비쇼프 부등식으로 가시성 계산, 라이트 블리딩 완화 파라미터</li>
+<li><input type="checkbox"> PCF 와 전환하는 토글과 비교용 디버그 뷰</li>
+</ul>
+
+<h3>검증</h3>
+<ul>
+<li>같은 씬·같은 조명에서 PCF 와 VSM 스크린샷을 나란히 저장.</li>
+<li>라이트 블리딩이 나타나는 배치(가림막이 겹친 곳)를 일부러 만들어 기록.</li>
+<li>섀도 패스·블러·샘플링의 GPU 시간과 메모리를 PCF 와 비교.</li>
+</ul>
+
+<h3>RHI/PSO 목표와의 연결</h3>
+<ul>
+<li>섀도 패스가 "깊이만"에서 "컬러 타깃 있음"으로 바뀌는 PSO 변형이 하나 생깁니다. 기여는 작습니다.</li>
+</ul>
+
+<h3>위험</h3>
+<ul>
+<li>아틀라스 타일 경계를 넘는 블러는 옆 타일을 오염시킵니다. 대상을 한 조명으로 한정하는 이유입니다.</li>
+<li>float 2채널은 D32 깊이보다 메모리가 큽니다.</li>
+<li>결과가 PCF 보다 나쁠 수 있습니다. 그 경우도 비교 기록으로 남기고 기본값은 PCF 로 둡니다.</li>
+</ul>
+</section>
+
+<section id="verify">
+<h2>4. 공통 검증 규칙</h2>
+<p>단계마다 반복하는 틀입니다. 자세한 방법은 <code>rhi-roadmap-plan.html</code> 1장과 6장에 있습니다.</p>
+<pre><code>[ ] 기준 스크린샷 (d3d11 / d3d12) 저장
+[ ] 변경 구현 (한 번에 한 층)
+[ ] 솔루션 전체 빌드, Debug 빌드 경고 없음, D3D12 Debug Layer 메시지 0건
+[ ] 기준과 픽셀 비교 (의도한 변화만 있음)
+[ ] Stats / 프로파일러 숫자 기록 (전/후)
+[ ] 창 크기 변경, Release, SherlockGame.exe 확인
+[ ] 별도 기록 문서 작성 (무엇을 · 왜 · 검증 · 확인하지 못한 것)</code></pre>
+<ul>
+<li><b>전환 토글을 남깁니다.</b> 포워드/디퍼드, 전체 순회/클러스터드, PCF/VSM 처럼 앞 단계의 경로를 지우지 않고 토글로 남겨 다음 단계의 정답 화면으로 씁니다.</li>
+<li><b>실험용 씬과 스크립트는 실험 프로젝트에 둡니다.</b> Sample 프로젝트에 넣지 않습니다.</li>
+<li><b>두 백엔드를 항상 같이 확인합니다.</b> D3D11 에서만 되고 D3D12 에서 깨지는 일이 이 프로젝트의 대표적인 실수입니다.</li>
+<li><b>기록은 단계마다 별도 문서로 남깁니다.</b> 새 문서로 만들지 기존 문서를 고칠지는 그때 정합니다.</li>
+</ul>
+</section>
+
+<section id="unknown">
+<h2>5. 미확인 사항</h2>
+<p>이 문서의 "현재 엔진 상태"는 키워드 검색과 해당 줄 주변을 읽은 결과입니다. 빌드하거나 실행해 확인하지 않았습니다. 아래는 그중에서도 확정하지 못한 것입니다.</p>
+<ul>
+<li><b>VS 에서 구조체 버퍼를 읽는 사례가 있는지.</b> 바인딩 슬롯에 스테이지 마스크가 있어 가능해 보이지만(<code>RHI/BindingTypes.h:29</code>), 지금 VS 가 <code>BufferResource</code> 를 읽는 코드가 있는지, 두 백엔드에서 동작하는지는 확인하지 못했습니다. 1단계의 빌보드 정점 공급 방식이 여기에 달려 있습니다.</li>
+<li><b>MRT 실사용 여부.</b> <code>Graphics/</code> 에서 G-buffer 나 다중 컬러 타깃 관련 키워드를 찾지 못했다는 것이 근거입니다. 다른 이름으로 쓰는 곳이 있을 가능성은 배제하지 못했습니다. RHI 의 MRT 경로가 두 백엔드에서 실제로 동작하는지도 2단계에서 처음 확인하게 됩니다.</li>
+<li><b>깊이 SRV 읽기.</b> 깊이 텍스처가 SRV 로 만들어진다는 것은 확인했지만(<code>RendererTargets.cpp:46</code>), 실제로 셰이더가 읽는 코드는 찾지 못했습니다. D24S8 을 SRV 로 읽는 뷰 포맷 처리가 두 백엔드에 되어 있는지는 미확인입니다.</li>
+<li><b>깊이 프리패스.</b> 관련 키워드를 찾지 못했습니다. 없다고 보고 계획을 세웠습니다.</li>
+<li><b>포인트 조명이 쓰는 섀도 뷰 수.</b> 섀도 타일 우선순위의 점수 설계에 필요하지만 이번에 읽지 않았습니다.</li>
+<li><b>클러스터 격자 크기와 CPU 비닝 비용.</b> 16×9×24 와 "조명 수백 개까지 부담 없음"은 일반적인 경험치이고, 이 엔진에서 측정한 값이 아닙니다.</li>
+<li><b>G-buffer 에 필요한 포맷이 RHI 에 있는지.</b> 배치를 정한 뒤 변환표를 확인해야 합니다.</li>
+</ul>
+<p class="foot">2026-11-13 작성 · 기준 커밋 2a67489 + 작업 트리 · 이 문서는 계획이며 구현되지 않았습니다. 관련 문서: <code>docs/plan/rhi-roadmap-plan.html</code>(컴퓨트·IBL·Deferred 세부 절차), <code>docs/plan/multi-light-shadow-plan.html</code>(섀도 아틀라스·RHI 제약), <code>docs/plan/post-process-record.html</code>(후처리 인프라).</p>
+</section>
+
+</main>
+</div>
+</body>
+</html>
