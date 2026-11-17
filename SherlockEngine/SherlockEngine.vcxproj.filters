@@ -211,9 +211,9 @@
     </ClCompile>
     <ClCompile Include="Scene\CameraComponent.cpp">
       <Filter>Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Scene\ParticleEmitter.cpp">
       <Filter>Scene</Filter>
-    </ClCompile>
     </ClCompile>
     <ClCompile Include="Scene\Script.cpp">
       <Filter>Scene</Filter>
@@ -454,9 +454,9 @@
     </ClInclude>
     <ClInclude Include="Scene\CameraComponent.h">
       <Filter>Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\ParticleEmitter.h">
       <Filter>Scene</Filter>
-    </ClInclude>
     </ClInclude>
     <ClInclude Include="Scene\Script.h">
       <Filter>Scene</Filter>
