@@ -126,20 +126,51 @@ uint64_t ShaderCompiler::GetLastWriteTime(const std::wstring& path)
 	return (static_cast<uint64_t>(data.ftLastWriteTime.dwHighDateTime) << 32) | data.ftLastWriteTime.dwLowDateTime;
 }
 
+namespace
+{
+	// path 가 #include "…" 로 끌어오는 파일을 재귀로 out 에 더함 (이미 있는 것은 건너뜀 — include guard 와 순환 대비).
+	// 이름은 D3D_COMPILE_STANDARD_FILE_INCLUDE 처럼 include 하는 파일의 폴더 기준으로 풂. 줄 첫머리(공백 뒤)의
+	// #include 만 봄 — // 주석 안의 것이나 #if 로 꺼진 것을 가리지 않지만, 그래도 의존성이 넓어질 뿐 빠지지는 않음.
+	void CollectIncludes(const std::wstring& path, std::vector<std::wstring>& out)
+	{
+		std::vector<uint8_t> bytes;
+		if (!ShaderCompiler::LoadFile(path, bytes)) return;
+		const size_t slash = path.find_last_of(L"\\/");
+		const std::wstring directory = slash == std::wstring::npos ? std::wstring() : path.substr(0, slash + 1);
+
+		const std::string text(bytes.begin(), bytes.end());
+		size_t lineStart = 0;
+		while (lineStart < text.size())
+		{
+			size_t lineEnd = text.find('\n', lineStart);
+			if (lineEnd == std::string::npos) lineEnd = text.size();
+			size_t i = text.find_first_not_of(" \t", lineStart);
+			if (i != std::string::npos && i < lineEnd && text.compare(i, 8, "#include") == 0)
+			{
+				const size_t open = text.find('"', i + 8);
+				const size_t close = open == std::string::npos ? std::string::npos : text.find('"', open + 1);
+				if (close != std::string::npos && close < lineEnd)
+				{
+					const std::string name = text.substr(open + 1, close - open - 1);
+					const std::wstring include = directory + std::wstring(name.begin(), name.end());   // 셰이더 파일 이름은 ASCII
+					bool seen = false;
+					for (const std::wstring& existing : out) seen = seen || existing == include;
+					if (!seen && ShaderCompiler::GetLastWriteTime(include) != 0)
+					{
+						out.push_back(include);
+						CollectIncludes(include, out);
+					}
+				}
+			}
+			lineStart = lineEnd + 1;
+		}
+	}
+}
+
 std::vector<std::wstring> ShaderCompiler::ListIncludeFiles(const std::wstring& sourcePath)
 {
 	std::vector<std::wstring> files;
-	const size_t slash = sourcePath.find_last_of(L"\\/");
-	const std::wstring directory = slash == std::wstring::npos ? std::wstring() : sourcePath.substr(0, slash + 1);
-
-	WIN32_FIND_DATAW data = {};
-	HANDLE find = FindFirstFileW((directory + L"*.hlsli").c_str(), &data);
-	if (find == INVALID_HANDLE_VALUE) return files;
-	do
-	{
-		if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) files.push_back(directory + data.cFileName);
-	} while (FindNextFileW(find, &data));
-	FindClose(find);
+	CollectIncludes(sourcePath, files);
 	return files;
 }
 
@@ -157,7 +188,7 @@ bool ShaderCompiler::LoadOrCompile(const wchar_t* hlslName, const char* entryPoi
 
 #if defined(_DEBUG)
 	// 소스가 .cso보다 새로우면(빌드하지 않고 셰이더만 고친 경우) 소스를 컴파일함.
-	// 공용 헤더(*.hlsli)는 include되므로 그 수정 시각도 확인함.
+	// 이 소스가 include 하는 헤더(재귀)의 수정 시각도 확인함.
 	const std::wstring sourcePath = Paths::GetShaderSourcePath(hlslName);
 	const uint64_t sourceTime = GetLastWriteTime(sourcePath);
 	uint64_t newestSource = sourceTime;

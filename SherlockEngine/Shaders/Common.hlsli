@@ -7,7 +7,7 @@
 //   Post.hlsli          Layout_Post · Layout_BlurCompute · Layout_BlurWeights 공용 (b4, t20)
 //   Sky.hlsli           스카이박스 VS → PS
 //   Particle.hlsli      파티클 공용 (b8, t23, Particle) · ParticleSim.hlsli 시뮬레이션 셋 · ParticleSort.hlsli 정렬 셋
-// 셰이더 폴더의 *.hlsli 는 전부 .cso 신선도 검사와 핫리로드 감시 대상 (ShaderCompiler::ListIncludeFiles).
+// 셰이더가 include 하는 헤더는 (재귀로) .cso 신선도 검사와 핫리로드 감시 대상 (ShaderCompiler::ListIncludeFiles).
 //
 // 상수버퍼 레이아웃은 Graphics/ShaderConstants.h 와 바이트 단위로 같아야 함.
 // C++ 쪽 static_assert와 Debug 빌드의 D3DReflect 대조로 이를 검사함.

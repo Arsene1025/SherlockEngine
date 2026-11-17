@@ -707,8 +707,8 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 		m_shaders[i] = created[i];
 	}
 
-	// 핫리로드 감시 목록: 표의 소스 파일 전부 + 그 폴더의 공용 헤더(*.hlsli) 전부. 목록은 로드할 때마다 다시
-	// 만들므로 새로 추가한 헤더는 다음 리로드부터 감시됨. Release에서도 목록은 만들지만 CheckHotReload가 동작하지 않음.
+	// 핫리로드 감시 목록: 표의 소스 파일 전부 + 그 파일들이 include 하는 헤더 전부. 목록은 로드할 때마다 다시
+	// 만들므로 새로 include 한 헤더는 다음 리로드부터 감시됨. Release에서도 목록은 만들지만 CheckHotReload가 동작하지 않음.
 	m_watched.clear();
 	auto watch = [this](const std::wstring& path)
 	{
