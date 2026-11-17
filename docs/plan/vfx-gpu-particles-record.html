@@ -44,7 +44,7 @@ figure { margin:14px 0; } figure img { width:100%; height:auto; border-radius:6p
   </table>
   <p class="foot">기준: 커밋 04c26bb(컴퓨트 RHI 완료) + 작업 트리. 위치는 "파일 + 함수 이름"이 기준입니다. 이 문서는 새로 만든 것입니다.</p>
 </header>
-<nav><a href="#plan">1. 계획</a><a href="#s1-summary">2. 1단계 요약</a><a href="#s1-flow">3. 흐름</a><a href="#s1-component">4. 컴포넌트</a><a href="#s1-gpu">5. GPU 데이터</a><a href="#s1-sim">6. 시뮬레이션</a><a href="#s1-draw">7. 그리기</a><a href="#s1-notes">8. 설계 결정·함정</a><a href="#s1-verify">9. 1단계 검증</a><a href="#s2">10. 2단계</a><a href="#s2-rhi">10.1 RHI</a><a href="#s2-flow">10.2 흐름</a><a href="#s2-verify">10.3 검증</a><a href="#s3">11. 3단계</a><a href="#s3-rhi">11.1 RHI</a><a href="#s3-pass">11.2 패스</a><a href="#s3-depth">11.3 깊이</a><a href="#s3-sort">11.4 정렬</a><a href="#s3-verify">11.5 검증</a><a href="#arch">12. 지금 구조와 원리</a><a href="#arch-map">12.1 층·파일</a><a href="#arch-frame">12.2 프레임</a><a href="#arch-comp">12.3 컴포넌트</a><a href="#arch-cpu">12.4 CPU</a><a href="#arch-data">12.5 버퍼</a><a href="#arch-bind">12.6 바인딩</a><a href="#arch-sim">12.7 시뮬레이션</a><a href="#arch-sort">12.8 정렬</a><a href="#arch-draw">12.9 그리기</a><a href="#arch-state">12.10 상태</a><a href="#arch-tools">12.11 도구</a><a href="#arch-extend">12.12 고칠 곳</a><a href="#arch-map-code">12.13 코드 위치</a><a href="#files">13. 파일 목록</a></nav>
+<nav><a href="#plan">1. 계획</a><a href="#s1-summary">2. 1단계 요약</a><a href="#s1-flow">3. 흐름</a><a href="#s1-component">4. 컴포넌트</a><a href="#s1-gpu">5. GPU 데이터</a><a href="#s1-sim">6. 시뮬레이션</a><a href="#s1-draw">7. 그리기</a><a href="#s1-notes">8. 설계 결정·함정</a><a href="#s1-verify">9. 1단계 검증</a><a href="#s2">10. 2단계</a><a href="#s2-rhi">10.1 RHI</a><a href="#s2-flow">10.2 흐름</a><a href="#s2-verify">10.3 검증</a><a href="#s3">11. 3단계</a><a href="#s3-rhi">11.1 RHI</a><a href="#s3-pass">11.2 패스</a><a href="#s3-depth">11.3 깊이</a><a href="#s3-sort">11.4 정렬</a><a href="#s3-verify">11.5 검증</a><a href="#arch">12. 지금 구조와 원리</a><a href="#arch-map">12.1 층·파일</a><a href="#arch-frame">12.2 프레임</a><a href="#arch-comp">12.3 컴포넌트</a><a href="#arch-cpu">12.4 CPU</a><a href="#arch-data">12.5 버퍼</a><a href="#arch-bind">12.6 바인딩</a><a href="#arch-sim">12.7 시뮬레이션</a><a href="#arch-sort">12.8 정렬</a><a href="#arch-draw">12.9 그리기</a><a href="#arch-state">12.10 상태</a><a href="#arch-tools">12.11 도구</a><a href="#arch-extend">12.12 고칠 곳</a><a href="#arch-map-code">12.13 코드 위치</a><a href="#arch-threads">12.14 GPU 스레드·셰이더 8개</a><a href="#files">13. 파일 목록</a></nav>
 
 <section id="plan">
 <h2>1. 계획 — 왜 이 세 단계인가</h2>
@@ -461,6 +461,7 @@ float3 velocity; float lifetime;   // 월드 속도(m/s), 수명(초). age &gt;=
 </ul>
 
 <h3 id="arch-sim">12.7 시뮬레이션 원리 — 커널 넷</h3>
+<div class="box">여기서 "스레드"는 컴퓨트 셰이더의 GPU 스레드입니다. 스레드·그룹·디스패치 구조와, 커널을 왜 여러 개로 나눴는지는 <a href="#arch-threads">12.14</a> 에 있습니다.</div>
 <p class="loc"><b>코드</b>: <code>Shaders/Particle{Reset,Sim,Args,Emit}ComputeShader.hlsl</code>, 디스패치 <code>Renderer::SimulateParticles</code> <code>RendererParticles.cpp:272</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
 <p><b>CS_ParticleReset</b> (버퍼를 새로 만든 프레임만, ceil(N/64) 그룹): 모든 파티클을 죽은 상태(age 1, lifetime 0)로, 사망 목록을 <code>N−1, N−2, …, 0</code> 으로, 개수를 0(Dead = N)으로, 인자를 <code>{6,0,0,0}</code> / <code>{0,1,1}</code> 로 씁니다. D3D11 은 초기 데이터 없이 만든 버퍼 내용이 정해져 있지 않아서 필요합니다. 사망 목록을 거꾸로 넣는 이유: 생성이 목록 <b>끝</b>에서 꺼내므로 처음에는 칸 0, 1, 2 … 순서로 쓰입니다.</p>
 <p><b>CS_ParticleSim</b> (<code>DispatchIndirect(args, 16)</code>): 스레드 i 가 입력 목록 i 번째 파티클을 맡습니다(i ≥ SimCount 면 끝).</p>
@@ -682,6 +683,46 @@ GPU: Shaders/*.hlsl — C++ 과 공유하는 선언은 Common.hlsli ↔ Graphics
 <tr><td>같은 인자 (게임)</td><td><code>App/GameApp.cpp:48~51</code></td></tr>
 <tr><td>검증 씬·프리팹</td><td><code>Projects/SherlockTestScenes/Assets/Scenes/Particle*.json</code>, <code>Prefabs/EmitterBurst*.prefab</code> (저장소 루트 기준)</td></tr>
 </table>
+
+<h3 id="arch-threads">12.14 GPU 스레드와 디스패치 — 파티클 셰이더가 8개인 이유</h3>
+<p>이 문서에서 "스레드"는 모두 <b>컴퓨트 셰이더가 GPU 에서 돌리는 스레드</b>를 말합니다. CPU 스레드가 아닙니다. CPU 는 <code>Dispatch</code> 명령을 기록할 뿐이고, 실제 계산은 GPU 스레드 수천~수만 개가 동시에 합니다.</p>
+
+<h4>GPU 스레드의 구조</h4>
+<pre><code>Dispatch(그룹 수, 1, 1)               ← CPU 가 거는 명령 한 번 (간접이면 그룹 수를 GPU 버퍼에서 읽음)
+ └ 스레드 그룹 × 그룹 수               ← [numthreads(64, 1, 1)] 이라 그룹 하나 = 스레드 64 개
+    └ 스레드 64 개                      ← 셰이더 함수(CS_…)가 스레드마다 한 번씩 실행됨
+       SV_DispatchThreadID.x = 그룹 번호 × 64 + 그룹 안 번호    (= 코드의 i 나 t)</code></pre>
+<ul>
+<li>예: 생존 파티클이 1,000 개면 Sim 은 그룹 16 개(16 × 64 = 1,024 스레드). 스레드 i 가 생존 목록 i 번째 파티클 하나를 맡고, 남는 24 개는 <code>if (i &gt;= SimCount) return;</code> 으로 바로 끝납니다.</li>
+<li>하드웨어는 스레드를 32 개 또는 64 개씩 묶어(NVIDIA warp, AMD wave) 같은 명령을 동시에 실행합니다. 그룹 크기 64 는 두 경우 모두 묶음을 꽉 채우는 값입니다.</li>
+<li><b>기다릴 수 있는 범위</b>: 같은 그룹 안의 64 개는 <code>groupshared</code> 메모리와 <code>GroupMemoryBarrierWithGroupSync()</code> 로 서로 기다릴 수 있습니다. <b>다른 그룹끼리는 한 디스패치 안에서 기다릴 방법이 없습니다</b> — 그룹이 어떤 순서로 언제 실행될지는 GPU 가 정합니다. 원자 연산(<code>InterlockedAdd</code>)은 "겹치지 않게 더하기"만 보장하지, "다른 스레드가 다 끝났다"는 알려 주지 않습니다.</li>
+<li>그래서 <b>GPU 전체가 끝나기를 기다려야 하는 지점마다 디스패치를 끊고</b>, 사이에 UAV 배리어(<code>cmd.UavBarrier</code>)를 둡니다. 배리어는 "앞 디스패치의 쓰기가 모두 끝나고 보이게 된 뒤 다음 디스패치를 시작하라"는 뜻입니다(D3D11 은 런타임이 알아서 넣음).</li>
+</ul>
+
+<h4>파티클 셰이더 8개 = 컴퓨트 6 + 그리기 2</h4>
+<table>
+<tr><th>셰이더</th><th>스레드 수 (디스패치)</th><th>따로 있어야 하는 이유</th></tr>
+<tr><td><code>CS_ParticleReset</code></td><td>capacity 개 — <code>ceil(N/64)</code> 그룹. 버퍼를 새로 만든 프레임만</td><td>다른 단계가 버퍼를 쓰기 전에 버퍼 전체(파티클 N 칸, 사망 목록 N 칸, 개수, 인자)가 초기화돼 있어야 함</td></tr>
+<tr><td><code>CS_ParticleSim</code></td><td>지난 프레임 생존 수 — GPU 만 알므로 <b>간접</b> 디스패치(<code>args</code> 바이트 16)</td><td>모든 생존 파티클의 적분·생사 판정이 끝나야 생존 수가 확정됨</td></tr>
+<tr><td><code>CS_ParticleArgs</code></td><td><b>1 개</b> — <code>[numthreads(1,1,1)]</code>, <code>Dispatch(1,1,1)</code></td><td>Sim 의 모든 스레드가 센 생존·사망 수를 읽어 "몇 개 태어날지, 어느 구간에 넣을지"를 정함. 숫자 몇 개만 계산하므로 병렬로 나눌 것이 없음. GPU 에서 하는 이유는 CPU 가 생존 수를 모르기 때문(읽어 오려면 GPU 가 끝날 때까지 기다려야 함). 생성이 0 개인 프레임에도 그리기·다음 디스패치 인자를 써야 하므로 매 프레임 돎</td></tr>
+<tr><td><code>CS_ParticleEmit</code></td><td>CPU 가 원한 생성 수 — <code>ceil(원하는 수/64)</code> 그룹. 0 이면 디스패치하지 않음</td><td>Args 가 정한 구간 시작을 읽어야 원자 연산 없이 자기 칸을 앎</td></tr>
+<tr><td><code>CS_ParticleSortInit</code></td><td>정렬 길이 — <code>정렬 길이/64</code> 그룹, 뷰·이미터마다 한 번</td><td>정렬 대상 (키, 번호) 배열을 먼저 다 채워야 비교를 시작할 수 있음</td></tr>
+<tr><td><code>CS_ParticleSortStep</code></td><td>정렬 길이 — 단계마다 한 번, m(m+1)/2 번 반복 (4,096 칸이면 78 번)</td><td>각 단계가 앞 단계의 교환 결과 전체를 읽음. 반복되는 부분만 떼어 둬야 같은 셰이더를 상수만 바꿔 여러 번 디스패치할 수 있음</td></tr>
+<tr><td><code>VS_Particle</code></td><td>정점 6 × 인스턴스(생존 수) — <code>DrawInstancedIndirect</code></td><td>그래픽스 파이프라인의 정점 단계 (빌보드)</td></tr>
+<tr><td><code>PS_Particle</code></td><td>쿼드가 덮는 픽셀마다</td><td>그래픽스 파이프라인의 픽셀 단계 (모양·소프트·블렌드 값)</td></tr>
+</table>
+<p>한 프레임 안의 순서로 보면 "끝나기를 기다리는 지점"이 디스패치 경계입니다.</p>
+<pre><code>[Reset] ─배리어─▶ Sim ─배리어─▶ Args ─배리어─▶ Emit ─상태 전이─▶ (정렬: Init ─배리어─▶ Step ─배리어─▶ Step …) ─▶ 그리기
+  N 스레드         생존 수        1 스레드       생성 수                길이            길이 × 단계 수</code></pre>
+<p>또 하나의 이유는 빌드 방식입니다. 엔진은 셰이더를 <code>.cso</code> 파일 이름으로 찾고 FxCompile 이 파일마다 진입점 하나로 컴파일하므로, 커널 하나가 파일 하나가 됩니다. 커널들이 같이 쓰는 선언(u0~u5, 개수 칸 번호)은 <code>Common.hlsli</code> 의 <code>PARTICLE_SIM</code>·<code>PARTICLE_SORT</code> 블록에 한 번만 둡니다.</p>
+
+<h4>합칠 수 있었던 것과 없는 것</h4>
+<ul>
+<li><b>합칠 수 없음</b>: Sim·Args·Emit 사이, SortInit·SortStep 사이, SortStep 단계끼리 — 모두 "앞 단계 전체가 끝나야 한다"는 의존이 있습니다.</li>
+<li><b>Reset</b>: 커널 대신 버퍼를 만들 때 초기 데이터로 채우는 방법도 있습니다. 그러려면 CPU 에서 칸 수만큼 배열을 만들어 올려야 해서(최대 262,144 칸이면 파티클 8 MB + 목록 1 MB), 이미 있는 GPU 에서 한 번 채우는 쪽을 택했습니다.</li>
+<li><b>Args 를 Emit 에 넣기</b>: Emit 스레드마다 개수를 직접 계산하고 한 스레드가 인자를 쓰게 할 수도 있지만, 생성 수가 0 인 프레임에는 Emit 을 디스패치하지 않으므로 인자가 갱신되지 않습니다. 같은 칸을 읽고 쓰는 스레드끼리의 경쟁도 따로 막아야 해서 1 스레드 커널로 분리했습니다.</li>
+<li><b>SortInit 을 첫 단계에 넣기</b>: 가능하지만(첫 단계에서 키를 계산하며 비교) 정렬 네트워크를 그대로 두는 쪽이 단순해서 나눴습니다.</li>
+</ul>
 </section>
 
 <section id="files">
