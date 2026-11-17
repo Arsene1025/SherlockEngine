@@ -1,4 +1,5 @@
-#include "Common.hlsli"
+#include "Mesh.hlsli"
+#include "Lighting.hlsli"
 
 // 그림자 맵 패스. 깊이만 쓰므로 픽셀 셰이더가 없고 위치만 출력함.
 // 입력 레이아웃은 메인 패스와 같은 VERTEX(64B)를 씀. VS 가 POSITION 만 읽어도

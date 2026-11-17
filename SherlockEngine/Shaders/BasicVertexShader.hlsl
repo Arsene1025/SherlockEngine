@@ -1,4 +1,5 @@
-#include "Common.hlsli"
+#include "Mesh.hlsli"
+#include "Material.hlsli"
 
 VSOutput VS_Main(VSInput vsInput)
 {

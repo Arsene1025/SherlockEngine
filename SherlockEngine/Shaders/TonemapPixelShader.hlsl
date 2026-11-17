@@ -1,4 +1,4 @@
-#include "Common.hlsli"
+#include "Post.hlsli"
 
 // 톤매핑 패스 픽셀 셰이더 (ScreenVertexShader 와 짝). HDR 씬 텍스처를 읽어 노출·ACES 를 적용함.
 // 샘플러 없이 Load 를 쓰는 이유: 출력과 입력이 같은 크기면 1:1 대응이라 필터가 필요 없음.

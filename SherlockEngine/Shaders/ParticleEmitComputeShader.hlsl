@@ -1,5 +1,4 @@
-#define PARTICLE_SIM
-#include "Common.hlsli"
+#include "ParticleSim.hlsli"
 
 // GPU 파티클 생성 (VFX 2단계). 스레드 t 가 사망 목록에서 슬롯 하나를 꺼내 새 파티클을 쓰고 생존 목록 뒤에 붙임.
 // Dispatch = ceil(원하는 수 / 64) 그룹 (CPU 가 앎). 실제로 태어나는 수는 CS_ParticleArgs 가 정함.

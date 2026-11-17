@@ -1,4 +1,4 @@
-#include "Common.hlsli"
+#include "Post.hlsli"
 
 // 가우시안 블러 한 방향의 컴퓨트 버전 (PostPixelShader.hlsl 모드 1 과 짝). 그래픽스 경로의 풀스크린 삼각형 대신
 // 스레드 하나가 출력 픽셀 하나를 맡음. 수식은 PS 와 글자 그대로 같음 — 같은 Load, 같은 가중치 버퍼(t20), 같은 더하기

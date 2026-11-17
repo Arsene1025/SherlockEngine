@@ -1,5 +1,4 @@
-#define PARTICLE_SIM
-#include "Common.hlsli"
+#include "ParticleSim.hlsli"
 
 // GPU 파티클 시뮬레이션 (VFX 2단계). 지난 프레임 생존 목록만 훑음 — DispatchIndirect, 그룹 수는 지난 프레임의
 // CS_ParticleArgs 가 인자 버퍼 바이트 16 에 써 둠. CPU 는 몇 개가 살아 있는지 모름.

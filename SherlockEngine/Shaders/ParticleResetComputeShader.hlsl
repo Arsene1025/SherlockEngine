@@ -1,5 +1,4 @@
-#define PARTICLE_SIM
-#include "Common.hlsli"
+#include "ParticleSim.hlsli"
 
 // GPU 파티클 (VFX 2단계) — 버퍼를 새로 만든 프레임에 한 번. 파티클을 전부 죽은 상태로, 사망 목록을 모든 슬롯으로,
 // 개수와 간접 인자를 "아무도 없음"으로 씀. D3D11 은 초기 데이터 없이 만든 버퍼의 내용이 정해져 있지 않음.

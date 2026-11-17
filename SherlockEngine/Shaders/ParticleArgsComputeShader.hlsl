@@ -1,5 +1,4 @@
-#define PARTICLE_SIM
-#include "Common.hlsli"
+#include "ParticleSim.hlsli"
 
 // GPU 파티클 (VFX 2단계) — 시뮬레이션과 생성 사이에 스레드 하나. 개수를 확정하고 간접 인자를 씀:
 //   - 이번 프레임에 태어날 수 = min(원하는 수, 사망 목록 길이). 사망 목록이 비면 생성이 멈춤 (1단계는 가장 오래된

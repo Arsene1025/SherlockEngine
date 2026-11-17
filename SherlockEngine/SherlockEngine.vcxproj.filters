@@ -543,6 +543,30 @@
     <None Include="Shaders\Common.hlsli">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Shaders\Lighting.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Mesh.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Material.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Post.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Sky.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Particle.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\ParticleSim.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\ParticleSort.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
     <None Include="Assets\Textures\uv_checker.png">
       <Filter>Assets\Textures</Filter>
     </None>

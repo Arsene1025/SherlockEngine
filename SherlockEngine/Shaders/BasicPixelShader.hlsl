@@ -1,4 +1,6 @@
-#include "Common.hlsli"
+#include "Mesh.hlsli"
+#include "Lighting.hlsli"
+#include "Material.hlsli"
 
 float CalculateDistanceAttenuation(LightData light, float distanceToLight)
 {

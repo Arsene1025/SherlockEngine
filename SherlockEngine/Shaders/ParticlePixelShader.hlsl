@@ -1,4 +1,4 @@
-#include "Common.hlsli"
+#include "Particle.hlsli"
 
 // GPU 파티클 픽셀 셰이더 (VFX). 텍스처 없이 쿼드 안에서 원형으로 부드럽게 줄어드는 점 — (1 − r²)².
 //

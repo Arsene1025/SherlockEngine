@@ -1,4 +1,5 @@
-#include "Common.hlsli"
+#include "Lighting.hlsli"
+#include "Sky.hlsli"
 
 // 스카이박스 픽셀 셰이더. 정점 셰이더(SkyboxVertexShader)가 보간해 준 월드 방향으로 환경 큐브맵을 샘플함.
 // 큐브맵이 sRGB 라벨이면 샘플할 때 하드웨어가 선형으로 풀고, 톤 패스의 sRGB 뷰가 다시 인코딩하므로 원본 색이

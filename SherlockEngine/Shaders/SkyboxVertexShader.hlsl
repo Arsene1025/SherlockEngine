@@ -1,4 +1,5 @@
 #include "Common.hlsli"
+#include "Sky.hlsli"
 
 // 스카이박스. 정점 버퍼 없이 Draw(3) 으로 화면 전체를 덮는 삼각형 하나를 그리고, 픽셀마다 카메라에서 그 픽셀을
 // 지나는 방향으로 환경 큐브맵(t9)을 샘플함 (SkyboxPixelShader). 큐브 메시를 그리는 방식과 결과는 같지만

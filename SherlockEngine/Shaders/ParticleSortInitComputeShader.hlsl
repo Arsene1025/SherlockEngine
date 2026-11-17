@@ -1,5 +1,4 @@
-#define PARTICLE_SORT
-#include "Common.hlsli"
+#include "ParticleSort.hlsli"
 
 // 알파 파티클 정렬 준비 (VFX 3단계). 뷰마다, 이미터마다 한 번. 생존 목록의 앞 생존 수 칸을 (키 = 이 뷰의 뷰 공간 z,
 // 값 = 파티클 번호) 로 옮기고, 나머지 칸 (2 의 거듭제곱까지) 은 가장 가까운 키로 채워 정렬 뒤 끝으로 가게 함.

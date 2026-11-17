@@ -1,5 +1,4 @@
-#define PARTICLE_SORT
-#include "Common.hlsli"
+#include "ParticleSort.hlsli"
 
 // 바이토닉 정렬 한 단계 (VFX 3단계). CPU 가 k = 2, 4, … N 마다 j = k/2, … 1 순서로 디스패치함 (N = 2^m 이면
 // m(m+1)/2 번). (k, j) 는 단계마다 미리 만들어 둔 상수 버퍼 (b11) — 디스패치마다 다른 값을 Dynamic 버퍼 하나에

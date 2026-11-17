@@ -1,4 +1,5 @@
-#include "Common.hlsli"
+#include "Mesh.hlsli"
+#include "Material.hlsli"
 
 // 스키닝 메시용 메인 패스 VS. BasicVertexShader 와 같은 VSOutput 을 내므로 픽셀 셰이더는 그대로 씀.
 // 입력은 VSInput 뒤에 조인트 번호(uint4)와 가중치(float4)가 붙음 (VERTEX_SKINNED 84바이트).

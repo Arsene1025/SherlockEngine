@@ -1,4 +1,4 @@
-#include "Common.hlsli"
+#include "Particle.hlsli"
 
 // GPU 파티클 그리기 (VFX 2단계). 정점 버퍼 없이 DrawInstancedIndirect — 인스턴스 하나가 파티클 하나(쿼드 = 삼각형
 // 2개, 정점 6개)이고 인스턴스 수는 GPU 가 센 생존 수 (CS_ParticleArgs 가 인자 버퍼에 씀). SV_InstanceID 로 생존 목록에서

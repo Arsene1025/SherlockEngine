@@ -1,4 +1,4 @@
-#include "Common.hlsli"
+#include "Post.hlsli"
 
 // HDR 구간 후처리 픽셀 셰이더 (ScreenVertexShader 와 짝). 블러·블룸이 모드(postPass.x)로 갈림.
 // 입력은 후처리 셋의 t13 (앞 단계의 결과), 파라미터는 b4 (PostParams). 선형 HDR 값을 그대로 다루므로 1 을
