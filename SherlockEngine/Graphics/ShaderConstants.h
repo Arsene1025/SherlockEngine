@@ -258,28 +258,28 @@ consteval bool IsValidConstantBufferSize(size_t bytes)
 // 올리면 D3D12 루트 CBV 주소가 바뀌는 순서 문제가 생기므로 나누지 않음.
 struct alignas(16) ParticleEmitterConstants
 {
-	DirectX::XMFLOAT3 position;    // 이미터 월드 위치
-	float deltaTime;               // 이번 프레임 시뮬레이션 시간 (초)
-	DirectX::XMFLOAT3 direction;   // 방출 방향 (월드, 정규화)
-	float spreadCos;               // cos(원뿔 반각)
-	DirectX::XMFLOAT3 color;       // 선형 RGB × intensity
-	float lifetime;
-	DirectX::XMFLOAT3 gravity;
-	float emitRadius;
-	float startSpeed;
-	float speedVariation;
-	float startSize;
-	float endSize;
-	uint32_t capacity;             // 버퍼 원소 수
+	DirectX::XMFLOAT3 position;    // 이미터 월드 위치 (오브젝트 월드 행렬의 원점). Emit: 생성 위치의 중심
+	float deltaTime;               // 이번 프레임 시뮬레이션 시간 (초). --particle-step 이면 고정, 아니면 경과 시간을 [0, 0.1] 로 자름
+	DirectX::XMFLOAT3 direction;   // 방출 방향 (오브젝트 로컬 +Y 의 월드 방향, 정규화). Emit: 원뿔의 축
+	float spreadCos;               // cos(spreadAngle). 1 = 한 방향, −1 = 모든 방향
+	DirectX::XMFLOAT3 color;       // 선형 RGB × intensity (HDR). VS 의 정점 색
+	float lifetime;                // 수명 (초, ≥ 0.01). 태어날 때 파티클에 복사
+	DirectX::XMFLOAT3 gravity;     // 가속도 (m/s², 월드). Emit·Sim
+	float emitRadius;              // 생성 위치가 퍼지는 구의 반지름 (m)
+	float startSpeed;              // 방출 속력 (m/s)
+	float speedVariation;          // 0..1. 속력 = startSpeed × (1 − variation × 난수)
+	float startSize;               // 태어날 때 쿼드 한 변 (m)
+	float endSize;                 // 수명 끝의 쿼드 한 변 (m). 수명 진행률로 보간
+	uint32_t capacity;             // 파티클 버퍼 칸 수 (maxParticles 를 [1, 262144] 로 자름). Reset 범위, 정렬 길이 계산
 	uint32_t spawnCount;           // 이번 프레임에 태어나길 원하는 수 (0 ≤ spawnCount ≤ capacity). 사망 목록이 모자라면 GPU 가 줄임
 	uint32_t seed;                 // 난수 씨앗 (이미터의 프레임 번호). 같은 씨앗·같은 dt 면 같은 파티클이 태어남
 	uint32_t collide;              // 1 이면 깊이 버퍼 충돌
 	float softDistance;            // 소프트 파티클 거리 (m). 0 = 끔
-	float bounce;                  // 충돌 반발 계수
-	float opacity;                 // 알파 모드 불투명도
-	uint32_t blendMode;            // 0 가산, 1 알파
+	float bounce;                  // 충돌 반발 계수 0..1 (0 미끄러짐, 1 완전 탄성)
+	float opacity;                 // 알파 모드의 불투명도 배율 0..1 (PS)
+	uint32_t blendMode;            // 0 가산 (PS 가 알파 0), 1 알파 (프리멀티플라이드, 정렬)
 	DirectX::XMFLOAT3 endTint;     // 수명 끝의 색 배율 (1 → endTint 선형 보간)
-	float padding;
+	float padding;                 // 16바이트 칸 맞춤
 };
 
 // b9: 파티클 충돌 (메인 뷰의 깊이로 화면 공간 충돌). 행렬은 전치해서 올림 (PerFrame 과 같음).

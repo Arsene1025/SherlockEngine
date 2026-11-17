@@ -213,32 +213,37 @@ struct VSOutput
 };
 
 // ---- GPU 파티클 (VFX) ----
-// b8: 이미터 하나. ShaderConstants.h 의 ParticleEmitterConstants 와 같은 순서 (112바이트). 시뮬레이션 셋(CS)과
-// 그리기 셋(VS/PS)이 같은 버퍼를 꽂음.
+// b8: 이미터 하나. ShaderConstants.h 의 ParticleEmitterConstants 와 같은 순서 (128바이트 = 16 × 8). CPU 가 프레임에 한 번
+// 올리고 (Renderer::UpdateParticleEmitters), 시뮬레이션 셋(CS)·정렬 셋(CS)과 그리기 셋(VS/PS)이 같은 버퍼를 꽂음.
+// 괄호 안: 값의 출처 (ParticleEmitter 컴포넌트 속성 / 오브젝트 / 렌더러) → 읽는 셰이더.
+// float3 다음에 float 하나를 붙여 16바이트 칸을 채움 (HLSL 상수 버퍼는 float4 단위로 묶임).
 cbuffer ParticleEmitter : register(b8)
 {
-    float3 particleEmitterPosition;
-    float particleDeltaTime;
-    float3 particleDirection;
-    float particleSpreadCos;
-    float3 particleColor;          // 선형 RGB × intensity (HDR)
-    float particleLifetime;
-    float3 particleGravity;
-    float particleEmitRadius;
-    float particleStartSpeed;
-    float particleSpeedVariation;
-    float particleStartSize;
-    float particleEndSize;
-    uint particleCapacity;         // 버퍼 원소 수
-    uint particleSpawnCount;       // 이번 프레임에 태어나길 원하는 수 (사망 목록이 모자라면 그만큼만 태어남)
-    uint particleSeed;
-    uint particleCollide;          // 1 이면 깊이 버퍼 충돌 (CS_ParticleSim)
-    float particleSoftDistance;    // 소프트 파티클 거리 (m). 0 = 끔
-    float particleBounce;          // 충돌 반발 계수
-    float particleOpacity;         // 알파 모드 불투명도
-    uint particleBlendMode;        // 0 가산, 1 알파 (프리멀티플라이드)
-    float3 particleEndTint;        // 수명 끝의 색 배율 (1 → endTint)
-    float particlePadding;
+    float3 particleEmitterPosition;  // 이미터 월드 위치 = 소유 오브젝트 월드 행렬의 원점 (오브젝트) → Emit: 생성 위치의 중심
+    float particleDeltaTime;         // 이번 프레임 시뮬레이션 시간 (초). --particle-step 이면 고정값, 아니면 실제 경과 시간을 [0, 0.1] 로 자름
+                                     // (렌더러) → Sim: 적분, Emit: 프레임 안 출생 시각
+    float3 particleDirection;        // 방출 방향 = 오브젝트 로컬 +Y 를 월드로 바꿔 정규화 (오브젝트) → Emit: 원뿔의 축
+    float particleSpreadCos;         // cos(spreadAngle). 원뿔 반각의 코사인 — 1 이면 한 방향, −1 이면 모든 방향 (spreadAngle) → Emit
+    float3 particleColor;            // 선형 RGB × intensity. 1 을 넘으면 HDR (블룸에 걸림) (color, intensity) → VS: 정점 색
+    float particleLifetime;          // 수명 (초, ≥ 0.01). 태어날 때 파티클의 lifetime 에 복사됨 (lifetime) → Emit
+    float3 particleGravity;          // 가속도 (m/s², 월드) (gravity) → Emit: 출생 시각만큼 미리 적용, Sim: 매 프레임 속도에 더함
+    float particleEmitRadius;        // 생성 위치가 퍼지는 구의 반지름 (m) (emitRadius) → Emit
+    float particleStartSpeed;        // 방출 속력 (m/s) (startSpeed) → Emit
+    float particleSpeedVariation;    // 0..1. 속력 = startSpeed × (1 − variation × 난수) (speedVariation) → Emit
+    float particleStartSize;         // 태어날 때 쿼드 한 변 (m) (startSize) → VS
+    float particleEndSize;           // 수명 끝의 쿼드 한 변 (m). 수명 진행률로 선형 보간 (endSize) → VS
+    uint particleCapacity;           // 파티클 버퍼 칸 수 = maxParticles 를 [1, 262144] 로 자른 값 (maxParticles) → Reset: 초기화 범위,
+                                     // SortInit·SortStep: 정렬 길이 계산 (ParticleSortCount)
+    uint particleSpawnCount;         // 이번 프레임에 태어나길 원하는 수 = spawnRate × dt + 지난 프레임에 남은 소수 부분의 정수 부분.
+                                     // 사망 목록이 모자라면 Args 가 줄임 (spawnRate, 렌더러) → Args: 생성 수 결정, Emit: 출생 시각의 분모
+    uint particleSeed;               // 난수 씨앗. 이미터마다 프레임마다 1 씩 늘어남 (렌더러) → Emit: PcgHash(t ^ PcgHash(seed))
+    uint particleCollide;            // 1 이면 깊이 버퍼 충돌 (collide) → Sim: Collide 호출 여부
+    float particleSoftDistance;      // 소프트 파티클 거리 (m). 표면과 이 거리보다 가까우면 투명해짐. 0 = 끔 (softness) → PS
+    float particleBounce;            // 충돌 반발 계수 0..1. 0 = 표면을 따라 미끄러짐, 1 = 완전 탄성 (bounce) → Sim: 반사 속도
+    float particleOpacity;           // 알파 모드의 불투명도 배율 0..1 (opacity) → PS
+    uint particleBlendMode;          // 0 가산 (알파 0 을 내보냄), 1 알파 (프리멀티플라이드, 정렬해서 그림) (blendMode) → PS
+    float3 particleEndTint;          // 수명 끝의 색 배율. 1 → endTint 로 선형 보간, 흰색이면 변화 없음 (endTint) → VS
+    float particlePadding;           // 16바이트 칸 맞춤 (쓰지 않음)
 }
 
 // t23: 씬 깊이 (D24S8 의 깊이, DepthRead 상태 — 읽기 전용 DSV 와 동시에 읽음). 파티클 PS (소프트) · CS (충돌).
