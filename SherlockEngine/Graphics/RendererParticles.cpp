@@ -14,11 +14,12 @@
 
 using namespace DirectX;   // 이 파일 안에서만
 
-// GPU 파티클 (VFX 2단계). 흐름은 docs/plan/vfx-gpu-particles-record.html:
+// GPU 파티클 (VFX). 구조와 원리는 docs/plan/vfx-gpu-particles-record.html 12장:
 //   BuildDrawList → CollectEmitter        이미터 컴포넌트를 찾아 월드 위치·방향과 함께 모음
-//   UpdateParticleEmitters (업로드 구간)   버퍼·셋을 만들거나 크기를 맞추고, 원하는 생성 수를 정해 b8 을 올림
-//   SimulateParticles (패스 전)          [Reset] → Sim (간접 디스패치) → Args (스레드 1개) → Emit
-//   DrawItems → DrawParticles (뷰마다)   DrawInstancedIndirect — 인스턴스 수 = GPU 가 센 생존 수
+//   UpdateParticleEmitters (업로드 구간)   버퍼·셋을 만들거나 크기를 맞추고, 원하는 생성 수를 정해 b8 (b9, b10) 을 올림
+//   RenderScenePass (메인 뷰, 패스 1 뒤)  SimulateParticles: [Reset] → Sim (간접 디스패치 + 깊이 충돌) → Args (스레드 1개) → Emit
+//   RenderScenePass (뷰마다, 패스 2 전)   SortParticles: 알파 이미터만 바이토닉 정렬
+//   패스 2 (읽기 전용 깊이) → DrawParticles   DrawInstancedIndirect — 인스턴스 수 = GPU 가 센 생존 수
 //
 // CPU 는 생성률만 앎. 살아 있는 파티클 수와 위치는 GPU 의 생존·사망 목록과 개수 버퍼에만 있음 (읽어 오지 않음).
 // 생존 목록은 두 개를 번갈아 씀: 시뮬레이션이 지난 프레임 목록(입력)을 읽어 이번 프레임 목록(출력)에 씀.

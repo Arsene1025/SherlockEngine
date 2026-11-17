@@ -34,7 +34,7 @@ figure { margin:14px 0; } figure img { width:100%; height:auto; border-radius:6p
 <main>
 <header>
   <h1>GPU 파티클(VFX) 구현 기록</h1>
-  <p>2026-11-17 · 세 단계 모두 완료. 컴퓨트 RHI(<a href="compute-uav-record.html">compute-uav-record.html</a>) 위에 <b>컴퓨트 셰이더로 움직이는 GPU 파티클</b>을 세 단계로 올리는 과정을 단계마다 적는 기록입니다. 단계가 검증되면 그 장을 채우고, 아직 하지 않은 단계는 계획과 "시작 전에 확인할 것"만 둡니다.</p>
+  <p>2026-11-17 · 세 단계 모두 완료. 컴퓨트 RHI(<a href="compute-uav-record.html">compute-uav-record.html</a>) 위에 <b>컴퓨트 셰이더로 움직이는 GPU 파티클</b>을 세 단계로 올리는 과정을 단계마다 적는 기록입니다. 단계가 검증되면 그 장을 채우고, 아직 하지 않은 단계는 계획과 "시작 전에 확인할 것"만 둡니다. <b>지금 코드의 구조와 원리만 보려면 <a href="#arch">12장</a></b>부터 읽으면 됩니다.</p>
   <table>
   <tr><th>단계</th><th>내용</th><th>RHI 변경</th><th>상태</th></tr>
   <tr><td>1</td><td>고정 최대 개수 파티클: CS 가 링 버퍼로 생성·적분, VS 가 <code>SV_VertexID</code> 로 버퍼를 읽어 빌보드, 가산 블렌딩</td><td>없음</td><td><span class="tag v">완료 2026-11-17</span></td></tr>
@@ -43,7 +43,7 @@ figure { margin:14px 0; } figure img { width:100%; height:auto; border-radius:6p
   </table>
   <p class="foot">기준: 커밋 04c26bb(컴퓨트 RHI 완료) + 작업 트리. 위치는 "파일 + 함수 이름"이 기준입니다. 이 문서는 새로 만든 것입니다.</p>
 </header>
-<nav><a href="#plan">1. 계획</a><a href="#s1-summary">2. 1단계 요약</a><a href="#s1-flow">3. 흐름</a><a href="#s1-component">4. 컴포넌트</a><a href="#s1-gpu">5. GPU 데이터</a><a href="#s1-sim">6. 시뮬레이션</a><a href="#s1-draw">7. 그리기</a><a href="#s1-notes">8. 설계 결정·함정</a><a href="#s1-verify">9. 1단계 검증</a><a href="#s2">10. 2단계</a><a href="#s2-rhi">10.1 RHI</a><a href="#s2-flow">10.2 흐름</a><a href="#s2-verify">10.3 검증</a><a href="#s3">11. 3단계</a><a href="#s3-rhi">11.1 RHI</a><a href="#s3-pass">11.2 패스</a><a href="#s3-depth">11.3 깊이</a><a href="#s3-sort">11.4 정렬</a><a href="#s3-verify">11.5 검증</a><a href="#files">12. 파일 목록</a></nav>
+<nav><a href="#plan">1. 계획</a><a href="#s1-summary">2. 1단계 요약</a><a href="#s1-flow">3. 흐름</a><a href="#s1-component">4. 컴포넌트</a><a href="#s1-gpu">5. GPU 데이터</a><a href="#s1-sim">6. 시뮬레이션</a><a href="#s1-draw">7. 그리기</a><a href="#s1-notes">8. 설계 결정·함정</a><a href="#s1-verify">9. 1단계 검증</a><a href="#s2">10. 2단계</a><a href="#s2-rhi">10.1 RHI</a><a href="#s2-flow">10.2 흐름</a><a href="#s2-verify">10.3 검증</a><a href="#s3">11. 3단계</a><a href="#s3-rhi">11.1 RHI</a><a href="#s3-pass">11.2 패스</a><a href="#s3-depth">11.3 깊이</a><a href="#s3-sort">11.4 정렬</a><a href="#s3-verify">11.5 검증</a><a href="#arch">12. 지금 구조와 원리</a><a href="#arch-map">12.1 층·파일</a><a href="#arch-frame">12.2 프레임</a><a href="#arch-comp">12.3 컴포넌트</a><a href="#arch-cpu">12.4 CPU</a><a href="#arch-data">12.5 버퍼</a><a href="#arch-bind">12.6 바인딩</a><a href="#arch-sim">12.7 시뮬레이션</a><a href="#arch-sort">12.8 정렬</a><a href="#arch-draw">12.9 그리기</a><a href="#arch-state">12.10 상태</a><a href="#arch-tools">12.11 도구</a><a href="#arch-extend">12.12 고칠 곳</a><a href="#files">13. 파일 목록</a></nav>
 
 <section id="plan">
 <h2>1. 계획 — 왜 이 세 단계인가</h2>
@@ -58,7 +58,7 @@ figure { margin:14px 0; } figure img { width:100%; height:auto; border-radius:6p
 
 <section id="s1-summary">
 <h2>2. 1단계 요약 (2026-11-17 완료)</h2>
-<div class="box warn">2~9장은 1단계 당시의 코드를 적은 것입니다. 1단계는 커밋하지 않고 바로 2단계로 다시 썼으므로, 링 버퍼·<code>Draw(N × 6)</code>·112 바이트 상수·슬롯 하나짜리 시뮬레이션 셋은 지금 트리에 없습니다. 지금 코드는 10·11장이 기준입니다. 컴포넌트(4장)·빌보드·PS·프레임 순서는 그대로입니다.</div>
+<div class="box warn">2~9장은 1단계 당시의 코드를 적은 것입니다. 1단계는 커밋하지 않고 바로 2단계로 다시 썼으므로, 링 버퍼·<code>Draw(N × 6)</code>·112 바이트 상수·슬롯 하나짜리 시뮬레이션 셋은 지금 트리에 없습니다. 바뀐 점은 10·11장에 있고, <b>지금 코드 전체의 구조와 원리는 <a href="#arch">12장</a></b>에 한 번에 정리했습니다. 4장 컴포넌트는 속성이 더 늘었고(12.3), 시뮬레이션 자리는 프레임 처음에서 씬 패스 사이로 옮겼습니다(12.2).</div>
 <div class="box ok"><code>ParticleEmitter</code> 컴포넌트를 오브젝트에 붙이면, 렌더러가 이미터마다 파티클 버퍼(<code>RWStructuredBuffer</code>)를 만들어 프레임에 한 번 컴퓨트로 생성·적분하고, 메인·미리보기 뷰에서 정점 버퍼 없이 빌보드로 그립니다. RHI 는 고치지 않았습니다. 편집 모드에서도 움직입니다. 이미터가 없는 씬은 이전과 픽셀 단위로 같고, 고정 스텝(<code>--particle-step</code>)에서는 실행마다·두 백엔드 사이 모두 같은 화면입니다.</div>
 <figure><img src="../images/2026-11-17-vfx-stage1.png" alt="ParticleTest 씬: 헬멧 위 연기, 왼쪽 분수, 오른쪽 불꽃"><figcaption>그림 1. <code>ParticleTest.json</code>, D3D12, 고정 스텝 120 프레임. 헬멧 위 연기(위로 뜨며 커짐), 왼쪽 분수(파란색, 중력), 오른쪽 불꽃(전방향, 강한 HDR 색 — 밝은 바닥 위라 잘 안 보임). 블룸이 HDR 색을 번지게 함.</figcaption></figure>
 <figure style="max-width:320px"><img src="../images/2026-11-17-vfx-stage1-preview.png" alt="카메라 미리보기에도 파티클"><figcaption>그림 2. 카메라 미리보기 뷰에도 같은 버퍼가 그려짐 (b0 만 바뀜).</figcaption></figure>
@@ -309,8 +309,262 @@ SortParticles(뷰 번호)               알파 이미터만, 이 뷰의 카메�
 </ul>
 </section>
 
+<section id="arch">
+<h2>12. 지금 코드 구조와 원리 (3단계 기준)</h2>
+<div class="box ok">2~11장은 단계마다 무엇을 바꿨는지를 적은 기록이라, 지금 코드를 이해하려면 여러 장을 이어 읽어야 합니다. 이 장은 <b>지금 트리의 코드만</b> 기준으로 구조(어느 파일·함수·버퍼가 무엇을 하는지)와 원리(왜 그렇게 계산하는지)를 처음부터 끝까지 한 번에 적습니다. 숫자·이름은 2026-11-17 코드에서 확인한 것입니다.</div>
+
+<h3 id="arch-map">12.1 한눈에 보기 — 층과 파일</h3>
+<pre><code>Scene        ParticleEmitter (컴포넌트, 값만)          Scene/ParticleEmitter.h/.cpp
+               │ 렌더러가 매 프레임 읽음 (편집 모드에서도, Play 와 상관없음)
+Renderer     CollectEmitter → UpdateParticleEmitters   Graphics/RendererParticles.cpp
+  (CPU)        GpuEmitter (이미터마다 GPU 버퍼·셋 묶음)   Graphics/Renderer.h
+               │ 버퍼를 만들고, 상수(b8)를 올리고, 명령을 기록
+GPU 컴퓨트   Reset → Sim(+충돌) → Args → Emit          Shaders/Particle{Reset,Sim,Args,Emit}ComputeShader.hlsl
+             SortInit → SortStep × m(m+1)/2 (알파만)    Shaders/ParticleSort{Init,Step}ComputeShader.hlsl
+               │ 결과: 파티클 버퍼, 생존(또는 정렬) 목록, 간접 인자
+GPU 그리기   DrawInstancedIndirect → VS 빌보드 → PS     Shaders/ParticleVertexShader.hlsl · ParticlePixelShader.hlsl
+공용 선언    Particle 구조체, b8/b9 cbuffer, 슬롯, 난수   Shaders/Common.hlsli · Graphics/ShaderConstants.h
+RHI          raw 버퍼, 간접 인자, 읽기 전용 깊이           RHI/*.h, RHI/D3D11, RHI/D3D12  (백엔드 구현은 10.1 · 11.1)</code></pre>
+<p>핵심 원리 세 가지:</p>
+<ul>
+<li><b>CPU 는 "얼마나 태어나야 하는지"만 안다.</b> 살아 있는 수·위치는 GPU 버퍼에만 있고 읽어 오지 않습니다(읽으면 GPU 를 기다려야 함). 그래서 시뮬레이션 디스패치 크기와 그리는 인스턴스 수를 GPU 가 직접 인자 버퍼에 쓰고, CPU 는 <code>DispatchIndirect</code> / <code>DrawInstancedIndirect</code> 로 "그 버퍼에 적힌 만큼"이라고만 명령합니다.</li>
+<li><b>슬롯을 재활용한다.</b> 파티클 버퍼는 <code>maxParticles</code> 칸 고정입니다. 빈 칸 번호는 사망 목록에, 쓰는 칸 번호는 생존 목록에 있고, 파티클이 죽으면 번호가 사망 목록으로 돌아갑니다. 메모리를 새로 잡거나 압축하지 않습니다.</li>
+<li><b>깊이를 같은 프레임에 같이 읽는다.</b> 불투명 물체를 다 그린 깊이를 읽기 전용으로 붙인 채 파티클을 그려서, 깊이 테스트(가려짐)와 깊이 읽기(소프트·충돌)를 깊이 복사 없이 함께 합니다.</li>
+</ul>
+
+<h3 id="arch-frame">12.2 프레임 하나의 호출 순서</h3>
+<pre><code>Renderer::Render
+  BeginResourceUploads
+    BuildDrawList ─ (오브젝트마다) CollectEmitter        이미터 컴포넌트 + 월드 위치·방향(로컬 +Y) → m_frameEmitters
+    UpdateParticleEmitters(totalTime, camera)            dt 결정, GpuEmitter 만들기/크기 맞추기, 생성 수, b8 / b9 / b10 올림,
+                                                         안 보인 이미터 지우기 → m_activeEmitterKeys
+  EndResourceUploads
+  ShadowPass
+  MainPass = RenderScenePass(main view, viewIndex 0)
+    Barrier(depth, DepthWrite)
+    패스 1 "MainPass"           hdr Clear · depth Clear   불투명 → 하늘 → 블렌딩 항목
+    (파티클 또는 디버그 선이 있을 때만)
+    Barrier(depth, DepthRead)
+    SimulateParticles           [ParticleSim]  이미터마다 Reset? → Sim → Args → Emit     ← 메인 뷰에서만, 프레임에 한 번
+    SortParticles(0)            [ParticleSort] 알파 이미터마다 SortInit → SortStep …
+    패스 2 "MainPassEffects"    hdr Load · depth Load + readOnly
+      DrawParticles(0)          알파(정렬됨) 이미터 먼저 → 가산 이미터
+      DrawDebugLines
+  후처리 → TonemapPass
+  PreviewPass = RenderScenePass(preview view, viewIndex 1)   (에디터 카메라 미리보기가 있을 때)
+    패스 1 → Barrier(DepthRead) → SortParticles(1) → 패스 2 "PreviewPassEffects" (같은 파티클을 미리보기 카메라로)
+  …UI, Present. 프레임 끝: 모든 버퍼 상태가 Common 으로 돌아감 (다음 프레임에 다시 Barrier)</code></pre>
+<ul>
+<li>시뮬레이션이 <b>패스 1 과 패스 2 사이</b>인 이유: 충돌이 이번 프레임의 불투명 깊이와 카메라를 써야 하기 때문입니다. 컴퓨트는 렌더 패스 밖이어야 하므로 패스를 둘로 나눴습니다.</li>
+<li>미리보기는 시뮬레이션하지 않고 메인 뷰가 만든 결과를 자기 카메라로 그리기만 합니다. 정렬만은 카메라마다 거리 순서가 달라서 뷰마다 합니다.</li>
+<li>파티클도 디버그 선도 없으면 패스 2 를 열지 않아 패스 수·배리어 수가 파티클 이전과 같습니다.</li>
+</ul>
+
+<h3 id="arch-comp">12.3 컴포넌트 (<code>ParticleEmitter</code>)</h3>
+<p><code>Behaviour</code> 를 상속한 엔진 컴포넌트이고 <code>SHERLOCK_BEHAVIOUR(ParticleEmitter)</code> 로 등록됩니다. <code>Reflect</code> 에 적은 이름이 그대로 씬 JSON 의 키이자 Inspector 항목입니다(이름을 바꾸면 기존 씬 값이 기본값으로 돌아감). <code>Update</code> 를 쓰지 않아 편집 모드에서도 움직입니다 — 렌더러가 매 프레임 값을 읽어 가기 때문입니다.</p>
+<table>
+<tr><th>속성 (기본값)</th><th>뜻</th><th>쓰는 곳</th></tr>
+<tr><td><code>maxParticles</code> (4096)</td><td>버퍼 칸 수. [1, 262,144] 로 자름. 바꾸면 버퍼를 새로 만들고 처음부터</td><td>CPU (버퍼 크기), 모든 커널의 <code>particleCapacity</code></td></tr>
+<tr><td><code>spawnRate</code> (500)</td><td>초당 생성 수</td><td>CPU 가 프레임 생성 수로 바꿈</td></tr>
+<tr><td><code>lifetime</code> (2)</td><td>수명(초). 태어날 때 파티클에 복사</td><td>Emit</td></tr>
+<tr><td><code>startSpeed</code> (3), <code>speedVariation</code> (0.3)</td><td>속도 = startSpeed × (1 − variation × 난수)</td><td>Emit</td></tr>
+<tr><td><code>spreadAngle</code> (20)</td><td>방출 원뿔의 반각(도). 0 한 방향, 180 모든 방향. CPU 가 cos 로 바꿔 넘김</td><td>Emit</td></tr>
+<tr><td><code>emitRadius</code> (0.05)</td><td>생성 위치가 퍼지는 구의 반지름</td><td>Emit</td></tr>
+<tr><td><code>gravity</code> (0, −4, 0)</td><td>가속도 (월드, m/s²)</td><td>Emit, Sim</td></tr>
+<tr><td><code>startSize</code> (0.08), <code>endSize</code> (0.02)</td><td>쿼드 한 변, 수명 동안 선형 보간</td><td>VS</td></tr>
+<tr><td><code>color</code>, <code>intensity</code> (4)</td><td>선형 RGB × 배율 = HDR 색 (1 을 넘으면 블룸)</td><td>CPU 가 곱해서 넘김 → VS</td></tr>
+<tr><td><code>endTint</code> (1,1,1)</td><td>수명 끝의 색 배율. 1 → endTint 로 보간</td><td>VS</td></tr>
+<tr><td><code>blendMode</code> (0)</td><td>0 가산, 1 알파(정렬)</td><td>CPU (정렬 리소스·그리는 순서), PS</td></tr>
+<tr><td><code>opacity</code> (1)</td><td>알파 모드의 불투명도 배율</td><td>PS</td></tr>
+<tr><td><code>softness</code> (0)</td><td>소프트 파티클 거리(m). 0 끔</td><td>PS</td></tr>
+<tr><td><code>collide</code> (false), <code>bounce</code> (0.5)</td><td>깊이 충돌, 반발 계수 0..1</td><td>Sim</td></tr>
+</table>
+<p>위치·방향은 컴포넌트가 아니라 소유 오브젝트의 월드 행렬에서 읽습니다(원점 = 위치, 로컬 +Y = 방향, 스케일은 정규화로 지움). 파티클은 월드 공간에서 움직이므로 오브젝트를 옮겨도 이미 나간 파티클은 따라오지 않습니다. 모든 값은 CPU 가 GPU 로 넘기기 전에 안전한 범위로 자릅니다(음수 색·크기 0 처리, <code>lifetime</code> ≥ 0.01 등 — <code>UpdateParticleEmitters</code>).</p>
+
+<h3 id="arch-cpu">12.4 CPU 쪽 — 함수와 수명 관리</h3>
+<table>
+<tr><th>함수 (RendererParticles.cpp)</th><th>언제</th><th>하는 일</th></tr>
+<tr><td><code>CollectEmitter(object, world)</code></td><td><code>BuildDrawList</code> 가 오브젝트를 방문할 때 (메시가 없어도)</td><td>오브젝트의 <code>ParticleEmitter</code> 마다 키·월드 위치·방향을 <code>m_frameEmitters</code> 에. 꺼진 이미터는 넣지 않음</td></tr>
+<tr><td><code>UpdateParticleEmitters(totalTime, camera)</code></td><td>업로드 구간 안, 프레임에 한 번</td><td>dt 결정 → 이미터마다 GPU 리소스 확인·생성 → parity 뒤집기 → (알파면) 정렬 리소스 → 생성 수 → b8 올림. 끝에 b10(정렬 뷰), b9(충돌) 올리고 안 보인 이미터 삭제</td></tr>
+<tr><td><code>SimulateParticles(cmd, view)</code></td><td>메인 뷰 패스 1 뒤</td><td>이미터마다 배리어 → Reset(새 버퍼만) → Sim(간접) → Args → Emit → 읽을 상태로 배리어</td></tr>
+<tr><td><code>SortParticles(cmd, viewIndex)</code></td><td>뷰마다 패스 2 전</td><td>알파 이미터마다 SortInit 한 번 + SortStep 단계 수만큼</td></tr>
+<tr><td><code>DrawParticles(cmd, view, viewIndex)</code></td><td>패스 2 안</td><td>PSO, 셋 0(프레임)·셋 2(이 뷰 깊이) 꽂고, 정렬된 알파 이미터 → 가산 이미터 순으로 이미터마다 셋 1 바꿔 <code>DrawInstancedIndirect</code></td></tr>
+<tr><td><code>EnsureParticleSortSteps(count)</code></td><td>알파 이미터가 처음 필요할 때</td><td>count 를 정렬할 (k, j) 상수 버퍼·셋을 늘려 둠</td></tr>
+<tr><td><code>DestroyGpuEmitter</code> / <code>DestroyGpuEmitters</code></td><td>크기 변경·이미터 사라짐 / 종료</td><td>버퍼·셋 해제 (D3D12 는 지연 해제라 이전 프레임이 읽는 중이어도 안전)</td></tr>
+</table>
+<ul>
+<li><b>키.</b> <code>오브젝트 ID × 16 + 그 오브젝트 안에서 몇 번째 이미터</code>. ID 는 되돌리기·씬 다시 읽기에도 유지되므로 오브젝트가 다시 만들어져도 같은 GPU 상태를 이어 씁니다. 키는 <code>std::unordered_map&lt;uint64_t, GpuEmitter&gt; m_gpuEmitters</code> 로 찾습니다.</li>
+<li><b>수명.</b> 이번 프레임에 본 키는 <code>lastSeenFrame</code> 을 갱신하고, 프레임 끝까지 갱신되지 않은 키(오브젝트·컴포넌트 삭제, 꺼짐)는 GPU 리소스를 지웁니다. 다시 켜면 빈 버퍼에서 시작합니다.</li>
+<li><b>새로 만들 때.</b> 처음이거나 <code>maxParticles</code> 가 바뀌면 버퍼·셋을 전부 다시 만들고 <code>needsReset = true</code>, <code>parity = 0</code>. 리셋하는 프레임에는 생성하지 않습니다(1단계와 같은 첫 프레임을 만들려고).</li>
+<li><b>parity.</b> 생존 목록 두 개 중 이번 프레임의 입력 번호. 리셋 프레임이 아니면 매 프레임 <code>parity ^= 1</code> — 지난 프레임 출력이 이번 입력이 됩니다(12.5).</li>
+<li><b>dt.</b> <code>--particle-step</code> 이 있으면 그 값(프레임 수에만 의존 → 스크린샷이 실행마다 같음), 아니면 실제 경과 시간을 [0, 0.1] 초로 자른 값(창을 멈췄다 돌아와도 튀지 않게).</li>
+<li><b>생성 수.</b> <code>wanted = spawnRate × dt + spawnCarry</code>, 정수 부분만 생성하고 소수 부분은 다음 프레임으로 넘깁니다. 초당 30 개를 60 fps 로 돌리면 0.5 개씩이라, 넘기지 않으면 영원히 0 개입니다. capacity 를 넘지 않게 자릅니다. 실제로 태어나는 수는 GPU 가 사망 목록 길이로 다시 자릅니다(CPU 는 모름).</li>
+<li><b>seed.</b> 이미터마다 프레임마다 1 씩 늘어 b8 로 넘어갑니다. 같은 프레임 번호·같은 출생 순번이면 같은 난수(12.7).</li>
+<li><b>정렬 리소스.</b> <code>blendMode == 1</code> 이고 <code>--particle-sort=0</code> 이 아니면 처음 알파가 될 때 만들고, 가산으로 돌아가도 남겨 둡니다(크기가 바뀌면 같이 지움). 만들지 못하면 정렬 없이 그립니다.</li>
+<li><b>통계.</b> Stats 창의 <code>particles: emitters / buffer / spawned this frame</code> 은 각각 이미터 수, capacity 합, CPU 가 원한 생성 수입니다(GPU 의 실제 생존 수가 아님).</li>
+</ul>
+
+<h3 id="arch-data">12.5 GPU 데이터 — 버퍼, 개수, 인자</h3>
+<p><b>파티클 하나</b> (<code>Common.hlsli</code> 의 <code>struct Particle</code>, 32 바이트 = <code>kParticleStride</code>):</p>
+<pre><code>float3 position; float age;        // 월드 위치, 나이(초)
+float3 velocity; float lifetime;   // 월드 속도(m/s), 수명(초). age &gt;= lifetime 이면 죽음</code></pre>
+<p><b>이미터 하나의 버퍼</b> (<code>GpuEmitter</code>, N = capacity):</p>
+<table>
+<tr><th>멤버 (debugName)</th><th>크기·종류</th><th>쓰는 쪽 → 읽는 쪽</th></tr>
+<tr><td><code>particles</code> (SB_Particles)</td><td>N × 32, 구조체, SRV + UAV</td><td>Reset·Sim·Emit 이 씀 → VS(t21)·SortInit(t21)</td></tr>
+<tr><td><code>deadList</code> (SB_ParticleDead)</td><td>N × uint, UAV</td><td>빈 칸 번호. Reset 이 채우고 Sim 이 넣고 Emit 이 꺼냄. [0, 카운터 Dead) 가 유효</td></tr>
+<tr><td><code>aliveLists[2]</code> (SB_ParticleAlive0/1)</td><td>N × uint 둘, SRV + UAV</td><td>쓰는 칸 번호. 하나는 입력(지난 프레임), 하나는 출력(이번 프레임) → VS(t22)·SortInit(t22)</td></tr>
+<tr><td><code>counters</code> (SB_ParticleCounters)</td><td>8 × uint, SRV + UAV</td><td>아래 표. SortInit 은 t24 로 읽음</td></tr>
+<tr><td><code>args</code> (RB_ParticleArgs)</td><td>32 바이트, <b>raw</b> + UAV + IndirectArgs</td><td>Reset·Args 가 씀 → <code>DispatchIndirect</code>·<code>DrawInstancedIndirect</code></td></tr>
+<tr><td><code>constants</code> (CB_ParticleEmitter)</td><td>128 바이트 Dynamic 상수 (b8)</td><td>CPU 가 프레임에 한 번 → 모든 커널·VS·PS</td></tr>
+<tr><td><code>sortKeys[2]</code>, <code>sortIndices[2]</code></td><td>정렬 길이 × float / uint, 뷰마다 (알파만)</td><td>SortInit·SortStep → VS(t22 = sortIndices)</td></tr>
+</table>
+<p>인자 버퍼만 raw 인 이유: D3D11 은 간접 인자 버퍼(<code>DRAWINDIRECT_ARGS</code>)를 구조체 버퍼로 만들 수 없어서, GPU 가 인자를 쓰려면 <code>RWByteAddressBuffer</code> 여야 합니다.</p>
+<p><b>개수 버퍼</b> (<code>kCounter*</code>, 8칸 중 6칸 사용):</p>
+<table>
+<tr><th>칸</th><th>이름</th><th>뜻</th><th>누가</th></tr>
+<tr><td>0</td><td>Alive</td><td>이번 프레임 출력 목록에 지금까지 들어간 수</td><td>Sim 이 <code>InterlockedAdd</code>, Args 가 0 으로</td></tr>
+<tr><td>1</td><td>Dead</td><td>사망 목록 길이</td><td>Reset = N, Sim 이 늘리고 Args 가 생성 수만큼 줄임</td></tr>
+<tr><td>2</td><td>SimCount</td><td>최종 생존 수 (= 다음 프레임 Sim 이 훑을 수)</td><td>Args 가 씀, Sim·SortInit 이 읽음</td></tr>
+<tr><td>3</td><td>EmitCount</td><td>이번 프레임 실제로 태어나는 수</td><td>Args → Emit</td></tr>
+<tr><td>4</td><td>EmitDeadBase</td><td>생성이 꺼낼 사망 목록 구간의 시작</td><td>Args → Emit</td></tr>
+<tr><td>5</td><td>EmitAliveBase</td><td>생성이 붙일 출력 목록 구간의 시작</td><td>Args → Emit</td></tr>
+</table>
+<p><b>인자 버퍼</b>: 바이트 0 에 그리기 인자 <code>{정점 6, 인스턴스 = 생존 수, 0, 0}</code>, 바이트 16 에 시뮬레이션 디스패치 인자 <code>{그룹 수, 1, 1}</code>. 그룹 0 개 디스패치는 허용되므로 빈 이미터는 아무것도 하지 않습니다.</p>
+<p><b>생존 목록 두 개를 번갈아 쓰는 원리 (ping-pong)</b>: Sim 이 같은 목록을 읽으면서 쓰면, 다른 스레드가 아직 읽지 않은 칸을 덮을 수 있습니다. 그래서 읽는 목록과 쓰는 목록을 나눕니다.</p>
+<pre><code>프레임 f   (parity p)    Sim: 입력 aliveLists[p]  →  출력 aliveLists[1-p]  ← Emit 도 뒤에 붙임
+                          그리기·정렬: aliveLists[1-p] (drawSets[p], sortSets[v][p])
+프레임 f+1 (parity 1-p)  Sim: 입력 aliveLists[1-p] →  출력 aliveLists[p]
+셋도 두 벌: simSets[p] / stepSets[p] / drawSets[p] 가 위 배치를 미리 묶어 둠 → 프레임마다 셋을 새로 만들지 않음</code></pre>
+
+<h3 id="arch-bind">12.6 바인딩 — 레이아웃·셋·슬롯</h3>
+<table>
+<tr><th>레이아웃</th><th>슬롯</th><th>셋은 어디에</th><th>쓰는 곳 (셋 번호)</th></tr>
+<tr><td><code>Layout_ParticleSim</code></td><td>b8, u0~u5</td><td><code>simSets[2]</code></td><td>Reset·Args·Emit (셋 0)</td></tr>
+<tr><td><code>Layout_ParticleStep</code></td><td>b8, u0~u4 (u5 없음)</td><td><code>stepSets[2]</code></td><td>Sim (셋 0)</td></tr>
+<tr><td><code>Layout_ParticleCollide</code></td><td>b9, t23</td><td>뷰마다 <code>particleCollideSet</code></td><td>Sim (셋 1) — 메인 뷰 것만</td></tr>
+<tr><td><code>Layout_ParticleDraw</code></td><td>b8 (VS·PS), t21, t22</td><td><code>drawSets[2]</code>, <code>drawSortedSets[2]</code></td><td>파티클 PSO (셋 1)</td></tr>
+<tr><td><code>Layout_ParticleDepth</code></td><td>t23 (PS)</td><td>뷰마다 <code>particleDepthSet</code></td><td>파티클 PSO (셋 2)</td></tr>
+<tr><td><code>Layout_ParticleSort</code></td><td>b8, b10, t21, t22, t24, u0, u1</td><td><code>sortSets[뷰][parity]</code></td><td>SortInit·SortStep (셋 0)</td></tr>
+<tr><td><code>Layout_ParticleSortStep</code></td><td>b11</td><td>렌더러 공용 <code>m_particleSortSteps[단계]</code></td><td>SortInit·SortStep (셋 1)</td></tr>
+</table>
+<ul>
+<li>파티클 PSO 의 셋 0 은 일반 프레임 셋(<code>Layout_Frame</code>, b0 = 지금 뷰의 view·proj)이라 같은 드로우가 메인·미리보기 카메라 어느 쪽으로도 그려집니다.</li>
+<li><code>Layout_ParticleStep</code> 이 따로 있는 이유: Sim 을 간접 디스패치하는 동안 인자 버퍼는 <code>IndirectArgument</code> 상태여야 하는데, 같은 버퍼가 u5 UAV 로 꽂혀 있으면 셰이더가 쓰지 않아도 상태 충돌입니다(두 백엔드가 경고).</li>
+<li>컴퓨트 셰이더 네 개가 같은 u0~u5 선언을 쓰도록 <code>Common.hlsli</code> 의 <code>#ifdef PARTICLE_SIM</code> 블록에 두었습니다(정렬은 <code>PARTICLE_SORT</code>). 핫리로드가 <code>Common.hlsli</code> 를 감시하므로 선언을 고치면 관련 셰이더가 같이 다시 컴파일됩니다.</li>
+<li>C++ 과 HLSL 이 같은 숫자를 따로 갖는 곳(<code>kParticleCounterCount</code>, 인자 오프셋, <code>ParticleSortCount</code>, cbuffer 배치)은 양쪽 주석이 서로를 가리키고, cbuffer 크기·오프셋은 <code>static_assert</code> 와 시작 시 리플렉션 대조("cbuffer 크기 일치")로 확인합니다.</li>
+</ul>
+
+<h3 id="arch-sim">12.7 시뮬레이션 원리 — 커널 넷</h3>
+<p><b>CS_ParticleReset</b> (버퍼를 새로 만든 프레임만, ceil(N/64) 그룹): 모든 파티클을 죽은 상태(age 1, lifetime 0)로, 사망 목록을 <code>N−1, N−2, …, 0</code> 으로, 개수를 0(Dead = N)으로, 인자를 <code>{6,0,0,0}</code> / <code>{0,1,1}</code> 로 씁니다. D3D11 은 초기 데이터 없이 만든 버퍼 내용이 정해져 있지 않아서 필요합니다. 사망 목록을 거꾸로 넣는 이유: 생성이 목록 <b>끝</b>에서 꺼내므로 처음에는 칸 0, 1, 2 … 순서로 쓰입니다.</p>
+<p><b>CS_ParticleSim</b> (<code>DispatchIndirect(args, 16)</code>): 스레드 i 가 입력 목록 i 번째 파티클을 맡습니다(i ≥ SimCount 면 끝).</p>
+<pre><code>v ← v + g·dt          반암시적 오일러: 속도를 먼저, 새 속도로 위치를 옮김
+x ← x + v·dt          (명시적 오일러보다 같은 dt 에서 안정적이고 계산은 같음)
+age ← age + dt
+collide 면 Collide(p, 이전 위치)
+age &lt; lifetime ? 출력 목록[InterlockedAdd(Alive)] = 번호 : 사망 목록[InterlockedAdd(Dead)] = 번호</code></pre>
+<p><b>화면 공간 충돌</b> (<code>Collide</code>, b9 = 메인 카메라, t23 = 이번 프레임 깊이):</p>
+<ol>
+<li>새 위치를 메인 카메라로 투영. 카메라 뒤·화면 밖이면 충돌 없음.</li>
+<li>그 픽셀의 깊이 버퍼 값과 파티클 깊이를 둘 다 <b>뷰 공간 z</b> 로 되돌림 (<code>LinearViewDepth</code>, 12.9). 파티클이 표면보다 앞이면 충돌 없음. 너무 뒤(두께 0.3 m × 5 넘게)면 그 물체 뒤를 지나가는 것으로 보고 충돌 없음.</li>
+<li>법선: 그 픽셀과 오른쪽·아래 이웃 픽셀을 월드 위치로 되돌려(<code>invViewProj</code>) 두 차이 벡터의 외적. 시선 방향(픽셀의 근평면 점 → 표면 점)과 반대를 향하도록 뒤집음.</li>
+<li>표면 점에서 법선 방향 거리 <code>dot(x − 표면점, n)</code> 이 −0.3 m 보다 깊으면 충돌 없음. 두께를 시선 방향이 아니라 법선 방향으로 재는 이유: 바닥을 비스듬히(θ) 보면 바닥 아래 h 는 뷰 z 로 h / sin θ 라, 시선 방향으로 재면 빠른 파티클이 한 스텝에 두께를 넘어 뚫고 지나갑니다(11.3).</li>
+<li>충돌이면 위치를 이전 위치로 되돌리고, 표면으로 들어가는 속도 성분만 반사: <code>vn = v·n</code> 이 음수일 때 <code>v ← v − (1 + bounce)·vn·n</code>. bounce 0 이면 표면을 따라 미끄러지고, 1 이면 완전 탄성.</li>
+</ol>
+<p><b>CS_ParticleArgs</b> (스레드 1개): Sim 과 Emit 사이에서 숫자를 확정합니다.</p>
+<pre><code>emit  = min(원하는 수, Dead)          사망 목록이 비면 생성이 멈춤 (버퍼가 다 참)
+total = Alive + emit
+EmitCount = emit, EmitDeadBase = Dead − emit, EmitAliveBase = Alive
+Dead = Dead − emit, SimCount = total, Alive = 0 (다음 프레임 Sim 용)
+args[0]  = {6, total, 0, 0}           이번 프레임 그리기
+args[16] = {ceil(total/64), 1, 1}     다음 프레임 시뮬레이션</code></pre>
+<p>스레드 하나로 구간 시작을 미리 정해 두는 이유: Emit 의 스레드 t 가 원자 연산 없이 "사망 목록 <code>EmitDeadBase + t</code> 칸에서 꺼내 출력 목록 <code>EmitAliveBase + t</code> 칸에 붙인다"는 자기 자리를 압니다. 같은 입력이면 같은 칸이 나와 결과가 결정적입니다.</p>
+<p><b>CS_ParticleEmit</b> (ceil(원하는 수/64) 그룹 — CPU 는 실제 수를 모르므로 원하는 수로 디스패치하고 t ≥ EmitCount 인 스레드는 끝): </p>
+<ul>
+<li><b>난수</b>: <code>rng = PcgHash(t ^ PcgHash(seed))</code>, 이후 <code>Random01</code> 이 상태를 한 번씩 섞어 [0,1) 을 꺼냄(위 24비트 → float 가수부에 정확히 들어감). PCG 해시는 상태를 들고 다니지 않는 정수 섞기라, (seed, t) 만 같으면 어느 GPU·백엔드에서나 같은 값입니다. 칸 번호가 아니라 <b>출생 순번 t</b> 에 묶었기 때문에 칸 배치가 달라져도 같은 파티클이 나옵니다.</li>
+<li><b>방향</b> (<code>RandomInCone</code>): cosθ 를 [cos(spread), 1] 에서 고르게, φ 를 [0, 2π) 에서 고르게 고름. 구면 위 띠의 넓이는 d(cosθ) 에 비례하므로 이렇게 하면 원뿔 안 방향이 넓이 기준으로 고릅니다(θ 를 고르게 고르면 축 근처에 몰림). 방출 방향 d 에 수직인 두 축(t, b)을 외적으로 만들어 조합.</li>
+<li><b>위치</b>: 구 안의 고른 점 — 방향은 구면 전체(<code>RandomInCone(..., −1)</code>), 반지름은 <code>r·u^(1/3)</code>. 반지름 r 안의 부피가 r³ 에 비례하므로 세제곱근을 씁니다.</li>
+<li><b>프레임 안 출생 시각</b>: <code>age = dt·(1 − (t + 0.5)/원하는 생성 수)</code> (분모는 CPU 가 넘긴 <code>particleSpawnCount</code> — 버퍼가 다 차서 덜 태어나는 프레임에는 실제 수와 다름). 앞 번호일수록 프레임 초반에 태어나 이미 조금 움직인 상태로 시작합니다. 위치·속도도 그 나이만큼 등가속 운동식(<code>x = x₀ + v·age + ½g·age²</code>, <code>v = v₀ + g·age</code>)으로 미리 옮깁니다. 이렇게 하지 않으면 한 프레임에 태어난 파티클이 한 점에 뭉쳐 프레임마다 층이 보입니다.</li>
+<li>쓴 뒤 <code>particles[번호] = p</code>, <code>출력 목록[EmitAliveBase + t] = 번호</code>. 태어난 프레임에는 Sim 이 이미 지나갔으므로 적분되지 않습니다.</li>
+</ul>
+<p><b>결정성</b>: 난수·생성 위치·수명은 결정적입니다. 흔들리는 것은 Sim 의 <code>InterlockedAdd</code> 순서(출력 목록 안의 순서)뿐입니다. 가산 이미터는 더하는 순서만 바뀌어 FP16 반올림 차이(최하위 1 단계)만 남고, 알파 이미터는 정렬이 순서를 다시 정하므로 정렬을 켜면 실행마다 거의 같은 그림이 나옵니다(11.5).</p>
+
+<h3 id="arch-sort">12.8 알파 정렬 원리 — 바이토닉 정렬</h3>
+<p><b>왜 정렬하나.</b> 프리멀티플라이드 알파 합성 <code>결과 = c + (1 − a)·목적지</code> 는 순서를 바꾸면 값이 달라집니다(가산 <code>목적지 + c</code> 는 순서와 상관없음). 반투명은 먼 것부터 그려야 가까운 것이 위에 덮입니다. 다만 한 이미터의 색이 모두 같으면 두 장을 어느 순서로 겹쳐도 결과가 같아(<code>c·a₂ + (1−a₂)(c·a₁ + (1−a₁)d)</code> 가 a₁, a₂ 에 대칭) 정렬 효과가 보이지 않습니다 — 색이 수명에 따라 바뀌는 <code>endTint</code> 가 있을 때 차이가 드러납니다.</p>
+<p><b>CS_ParticleSortInit</b> (뷰·이미터마다, 정렬 길이/64 그룹): 정렬 길이 = capacity 이상인 가장 작은 2의 거듭제곱(최소 64, <code>ParticleSortCount</code>). 앞 SimCount 칸은 (키 = 이 뷰의 뷰 공간 z, 값 = 파티클 번호), 나머지 칸은 키 −3×10³⁸(가장 가까움)으로 채워 정렬 뒤 맨 끝으로 가게 합니다. 그리는 인스턴스 수는 SimCount 이므로 끝의 채움 칸은 그려지지 않습니다.</p>
+<p><b>CS_ParticleSortStep</b> (단계마다 한 번): 바이토닉 정렬은 비교·교환할 짝이 데이터와 상관없이 미리 정해진 "정렬 네트워크"라서 GPU 스레드가 서로 기다리지 않고 한 단계를 동시에 할 수 있습니다.</p>
+<pre><code>for k = 2, 4, 8, … N          ← 길이 k 의 정렬된 덩어리를 만든다
+  for j = k/2, k/4, … 1       ← 덩어리 안에서 거리 j 인 짝끼리 비교
+    스레드 i: 짝 l = i XOR j  (l &gt; i 인 쪽만 일함)
+             (i AND k) == 0 이면 내림차순, 아니면 오름차순이 되도록 교환
+단계 수 = m(m+1)/2   (N = 2^m)    예: N = 8 → (2,1) (4,2) (4,1) (8,4) (8,2) (8,1) = 6 단계
+마지막 k = N 단계에서는 (i AND N) 이 늘 0 → 전체가 내림차순 = 먼 것(뷰 z 큰 것)부터</code></pre>
+<ul>
+<li>단계 사이에는 UAV 배리어가 필요합니다(다음 단계가 앞 단계 결과를 읽음). 그래서 단계 하나 = 디스패치 하나입니다. 4,096 칸이면 78 단계, 최대 262,144 칸이면 171 단계 — 뷰마다.</li>
+<li><b>(k, j) 를 넘기는 방법</b>: 디스패치마다 값이 다르지만, D3D12 백엔드의 Dynamic 상수 버퍼는 프레임에 한 번만 쓸 수 있습니다. 그래서 단계마다 <b>초기 데이터를 준 Default 상수 버퍼</b>를 한 번 만들어 두고 셋만 바꿔 꽂습니다(<code>m_particleSortSteps</code>). 길이를 두 배로 늘릴 때는 새 k 의 단계만 뒤에 붙이면 되므로(짧은 길이의 단계 목록 = 긴 목록의 앞부분) 모든 이미터가 한 목록을 같이 씁니다. D3D12 가 상수 버퍼 크기를 256 으로 올리고 그만큼 초기 데이터를 복사하므로 구조체를 256 바이트로 맞췄습니다.</li>
+<li>뷰마다 결과를 따로 둡니다(<code>sortKeys/sortIndices[뷰]</code>) — 메인과 미리보기는 카메라가 달라 순서가 다릅니다. 정렬된 번호 목록이 그리기 셋의 t22 자리에 생존 목록 대신 들어갑니다(<code>drawSortedSets</code>). VS 는 어느 쪽인지 모르고 같은 코드로 읽습니다.</li>
+</ul>
+
+<h3 id="arch-draw">12.9 그리기 원리 — VS·PS·블렌드</h3>
+<p><b>DrawInstancedIndirect(args, 0)</b>: 정점 버퍼 없이 정점 6개 × 인스턴스 total 개. 인스턴스 하나 = 파티클 하나(삼각형 두 개짜리 쿼드).</p>
+<p><b>VS_Particle</b>:</p>
+<pre><code>p      = particles[aliveList[SV_InstanceID]]       ← t22 는 생존 목록 또는 정렬된 목록
+corner = 쿼드 모서리[SV_VertexID % 6]                (−1..1)
+t      = saturate(age / lifetime)                    수명 진행률 0..1
+size   = lerp(startSize, endSize, t)
+뷰 위치 = mul(position, view);  뷰 위치.xy += corner × size/2   ← 빌보드
+SV_Position = mul(뷰 위치, proj)
+fade   = smoothstep(0, 0.1, t) × (1 − t)             처음 10% 켜지고 끝까지 선형으로 꺼짐
+color  = (color × intensity) × lerp(1, endTint, t) × fade</code></pre>
+<p>빌보드를 뷰 공간에서 만드는 이유: 뷰 공간의 xy 평면은 늘 화면과 평행하므로 카메라의 오른쪽·위 축을 따로 구하지 않아도 쿼드가 항상 화면을 향합니다.</p>
+<p><b>PS_Particle</b>:</p>
+<pre><code>r² = |corner|²;  r² ≥ 1 이면 discard              쿼드 안의 원
+falloff = (1 − r²)²                                  가운데 1 → 가장자리 0 으로 부드럽게
+softness &gt; 0 이면  falloff ×= saturate((z_scene − z_particle) / softness)
+가산:  return (color × falloff, 0)
+알파:  coverage = falloff × opacity;  return (color × coverage, fade × coverage)</code></pre>
+<p><b>깊이 → 뷰 z (<code>LinearViewDepth</code>)</b>: 행 벡터 투영 행렬에서 깊이 값은 원근이면 <code>d = A + B / z</code>, 직교면 <code>d = A·z + B</code> 입니다(A = proj[2][2], B = proj[3][2]). 거꾸로 풀면 원근 <code>z = B / (d − A)</code>, 직교 <code>z = (d − B) / A</code>. 깊이 버퍼 값은 원근에서 z 에 대해 비선형이라 그대로 빼면 거리 차이가 되지 않으므로, 소프트 파티클·충돌 모두 뷰 z(미터)로 되돌려 비교합니다.</p>
+<p><b>소프트 파티클 원리</b>: 쿼드는 평면이라 바닥·벽을 뚫는 곳에서 깊이 테스트에 잘려 날카로운 직선이 보입니다. 쿼드 픽셀과 그 뒤 표면 사이 거리가 softness 보다 가까우면 거리에 비례해 투명하게 해서 선을 지웁니다.</p>
+<p><b>블렌드 (PSO 하나로 두 모드)</b>: 색은 <code>One · src + InvSrcAlpha · dst</code>, 알파는 <code>Zero · src + One · dst</code>(타깃의 알파는 건드리지 않음).</p>
+<pre><code>가산 이미터: src = (c, 0)      → dst + c                 (예전 One + One 과 같은 값, 순서 무관)
+알파 이미터: src = (c·a, a)    → c·a + (1 − a)·dst        (프리멀티플라이드 "over", 순서 중요)</code></pre>
+<p>그리는 순서: 정렬된 알파 이미터들을 먼저, 가산 이미터를 그 위에. 가산은 순서와 상관없어 마지막에 와도 되고, 알파끼리(서로 다른 이미터)는 정렬하지 않습니다. 깊이는 테스트만 하고 쓰지 않으므로(<code>depthWrite = false</code>, 읽기 전용 DSV) 파티클끼리 서로 가리지 않고, 불투명 물체 뒤의 파티클만 가려집니다.</p>
+
+<h3 id="arch-state">12.10 리소스 상태와 배리어</h3>
+<table>
+<tr><th>자리</th><th>전이·배리어</th><th>이유</th></tr>
+<tr><td>패스 1 뒤</td><td>depth: DepthWrite → <code>DepthRead</code></td><td>읽기 전용 DSV(패스 2)와 SRV(PS t23, CS t23)를 동시에. D3D12 상태 = <code>DEPTH_READ | PIXEL_SHADER_RESOURCE | NON_PIXEL_SHADER_RESOURCE</code></td></tr>
+<tr><td>Sim 시작</td><td>particles·dead·alive 둘·counters·args → <code>UnorderedAccess</code></td><td>쓰기 전. 버퍼 상태는 프레임 끝에 Common 이 되므로 매 프레임. D3D11 은 이 전이가 지난 프레임 VS 에 남은 SRV 바인딩을 풂</td></tr>
+<tr><td>Reset·Args·Emit 사이</td><td>여섯 버퍼 모두 UAV 배리어</td><td>다음 디스패치가 앞 디스패치 결과를 읽음 (D3D12. D3D11 은 런타임이 처리)</td></tr>
+<tr><td>Sim 직전 / 직후</td><td>args → <code>IndirectArgument</code> / → UnorderedAccess</td><td>간접 디스패치가 인자를 읽는 동안 / Args 가 다시 씀</td></tr>
+<tr><td>Emit 뒤</td><td>particles·출력 목록·counters → ShaderResource, args → IndirectArgument</td><td>VS(t21, t22)·정렬(t21, t22, t24)이 읽고, 그리기가 인자를 읽음</td></tr>
+<tr><td>정렬</td><td>keys·indices → UnorderedAccess, 단계 사이 UAV 배리어, 끝에 indices → ShaderResource</td><td>VS 가 t22 로 읽음</td></tr>
+<tr><td>다음 프레임 패스 1 앞</td><td>depth: DepthRead → DepthWrite</td><td><code>RenderScenePass</code> 처음의 배리어가 되돌림</td></tr>
+</table>
+<p>읽기 전용 깊이의 규칙은 RHI 가 검사합니다: 읽기 전용 패스는 지우지 않음(Load 만), 깊이가 DepthRead 가 아니면 로그, 깊이 쓰기 PSO 로 그리면 로그 후 건너뜀, DepthRead 인 깊이로 쓰기 패스를 열면 로그. D3D11 은 읽기 전용 DSV(<code>READ_ONLY_DEPTH | READ_ONLY_STENCIL</code>)를 처음 쓸 때 만들고, 읽기 전용 패스에서는 같은 깊이의 SRV 를 풀지 않습니다.</p>
+
+<h3 id="arch-tools">12.11 확인 도구</h3>
+<ul>
+<li><code>--particle-step=초</code>: 고정 스텝(에디터·게임). 스크린샷 비교용.</li>
+<li><code>--particle-sort=0</code>: 정렬 끔. 정렬 효과 비교용.</li>
+<li>프로파일러 GPU 구간: <code>ParticleSim</code>, <code>ParticleSort</code> (<code>ParticleSim</code> 은 메인 패스 구간 안, <code>ParticleSort</code> 는 메인·미리보기 패스 구간 안에 각각). 두 번째 렌더 패스의 이름(<code>debugName</code>)은 <code>MainPassEffects</code> / <code>PreviewPassEffects</code>.</li>
+<li>시작 로그: "cbuffer 크기 일치"(b8 128, b9 160, b10 64, b11 256 바이트)와 "바인딩 대조"(레이아웃 슬롯 ↔ 셰이더 리플렉션).</li>
+<li>셰이더 핫리로드: 다른 셰이더와 같은 경로라 파티클 셰이더도 저장하면 다시 컴파일되고 PSO 가 gen 을 올려 다시 만들어짐. 실제로 돌려 본 것은 <code>ParticleSimComputeShader.hlsl</code>(2단계)과 <code>ParticleSortStepComputeShader.hlsl</code>(3단계) 둘.</li>
+<li>검증 씬: <code>Projects/SherlockTestScenes/Assets/Scenes/Particle*.json</code> (13장 표).</li>
+</ul>
+
+<h3 id="arch-extend">12.12 고칠 때 어디를 건드리나</h3>
+<table>
+<tr><th>하고 싶은 일</th><th>건드릴 곳 (순서대로)</th></tr>
+<tr><td>이미터 속성 하나 추가</td><td><code>ParticleEmitter.h</code> 필드 → <code>.cpp</code> 의 <code>Reflect</code> → <code>ParticleEmitterConstants</code>(16 바이트 단위로 채우고 <code>static_assert</code> 크기·오프셋) → <code>Common.hlsli</code> 의 <code>cbuffer ParticleEmitter</code>(같은 순서) → <code>UpdateParticleEmitters</code> 에서 범위를 잘라 복사 → 셰이더에서 사용</td></tr>
+<tr><td>컴퓨트 커널 추가</td><td>셰이더 파일 하나에 진입점 하나(런타임이 파일 이름으로 .cso 를 찾음) → <code>Renderer.h</code> 의 <code>ShaderId</code>·<code>ComputePassId</code> → <code>Renderer.cpp</code> 의 셰이더 표·컴퓨트 패스 표(레이아웃 목록) → <code>SherlockEngine.vcxproj</code>·<code>.filters</code> 의 FxCompile 항목 → <code>SimulateParticles</code> 에서 디스패치와 배리어</td></tr>
+<tr><td>새 슬롯</td><td><code>ShaderConstants.h</code> 의 <code>k*Slot*</code> (새 cbuffer 면 구조체·<code>static_assert</code> 와 <code>Renderer.cpp</code> 의 <code>kConstantBuffers</code> 표 — 시작 시 크기 대조) → 레이아웃 정의(<code>Renderer.cpp</code>) → HLSL 선언. 상한은 <code>kMaxSrvRegister</code> 32, <code>kMaxCbvRegister</code> 14, <code>kMaxUavRegister</code> 8 — 지금 t24·b11·u5 까지 씀</td></tr>
+<tr><td>파티클 모양 바꾸기 (텍스처 등)</td><td><code>PS_Particle</code> 의 falloff 부분. 텍스처를 쓰려면 <code>Layout_ParticleDraw</code> 에 t#·s# 를 더하고 그리기 셋에 꽂음</td></tr>
+</table>
+</section>
+
 <section id="files">
-<h2>12. 파일 목록</h2>
+<h2>13. 파일 목록</h2>
 <table>
 <tr><th>파일</th><th>내용</th></tr>
 <tr><td><code>Scene/ParticleEmitter.h/.cpp</code> (새 파일)</td><td>컴포넌트와 <code>Reflect</code></td></tr>

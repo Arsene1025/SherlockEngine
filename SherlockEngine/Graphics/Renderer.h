@@ -355,10 +355,11 @@ private:
 	void DrawDebugLines(RHI::CommandList& cmd);
 	PipelineHandle GetDebugLinePipeline();
 
-	// ---- GPU 파티클 (VFX 2단계, RendererParticles.cpp) ----
+	// ---- GPU 파티클 (VFX, RendererParticles.cpp) ----
 	// BuildDrawList 가 이미터를 모으고 (CollectEmitter), 업로드 구간 안에서 버퍼·셋을 맞추고 상수를 올림
-	// (UpdateParticleEmitters). 패스 시작 전에 컴퓨트로 한 번 시뮬레이션하고 (SimulateParticles), 씬 패스마다 블렌딩
-	// 항목 뒤에 그림 (DrawParticles — 메인·미리보기 뷰가 같은 버퍼를 읽음).
+	// (UpdateParticleEmitters). RenderScenePass 가 메인 뷰 패스 1 (불투명 깊이) 뒤에 컴퓨트로 한 번 시뮬레이션하고
+	// (SimulateParticles), 뷰마다 알파 이미터를 정렬한 뒤 (SortParticles) 읽기 전용 깊이 패스 2 에서 그림
+	// (DrawParticles — 메인·미리보기 뷰가 같은 버퍼를 읽음). 구조·원리: docs/plan/vfx-gpu-particles-record.html 12장.
 	void CollectEmitter(const GameObject& object, const DirectX::XMMATRIX& world);
 	void UpdateParticleEmitters(float totalTime, const Camera& camera);
 	void SimulateParticles(RHI::CommandList& cmd, const ViewTarget& view);
