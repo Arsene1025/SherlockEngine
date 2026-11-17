@@ -32,7 +32,7 @@ bool D3D12PipelineState::Create(D3D12Device& device, const PipelineStateDesc& de
 	}
 
 	// 루트 시그니처 — 레이아웃 조합이 같으면 공유
-	m_rootLayout = device.GetOrCreateRootLayout(desc);
+	m_rootLayout = device.GetOrCreateRootLayout(desc.bindingLayouts, desc.bindingLayoutCount, false);
 	if (!m_rootLayout)
 	{
 		Log::Error("D3D12PipelineState::Create : 루트 시그니처 생성 실패.");
@@ -92,6 +92,62 @@ bool D3D12PipelineState::Create(D3D12Device& device, const PipelineStateDesc& de
 	return true;
 }
 
+bool D3D12ComputePipelineState::Create(D3D12Device& device, const ComputePipelineDesc& desc)
+{
+	m_desc = desc;
+	ID3D12Device* d3d = device.GetDevice();
+	if (d3d == nullptr)
+	{
+		Log::Error("D3D12ComputePipelineState::Create : Device가 없음.");
+		return false;
+	}
+	const D3D12Shader* cs = device.GetShader(desc.cs);
+	if (cs == nullptr || cs->stage != ShaderStage::Compute || cs->bytecode.empty())
+	{
+		Log::Error("D3D12ComputePipelineState::Create : 컴퓨트 셰이더 핸들이 유효하지 않음.");
+		return false;
+	}
+	// D3D11 백엔드와 같은 규칙: 컴퓨트 PSO 의 레이아웃은 슬롯이 전부 컴퓨트 전용이어야 함.
+	for (uint32_t s = 0; s < desc.bindingLayoutCount; ++s)
+	{
+		const D3D12BindingLayout* layout = device.GetBindingLayout(desc.bindingLayouts[s]);
+		if (layout == nullptr)
+		{
+			Log::Error("D3D12ComputePipelineState::Create : 셋 %u 의 BindingLayoutHandle 이 유효하지 않음.", s);
+			return false;
+		}
+		for (uint32_t i = 0; i < layout->desc.slotCount; ++i)
+		{
+			if (layout->desc.slots[i].stageMask != ShaderStageMask_Compute)
+			{
+				Log::Error("D3D12ComputePipelineState::Create : 셋 %u (%s) 슬롯 %u 가 컴퓨트 전용이 아님.", s, layout->name.c_str(), i);
+				return false;
+			}
+		}
+	}
+
+	m_rootLayout = device.GetOrCreateRootLayout(desc.bindingLayouts, desc.bindingLayoutCount, true);
+	if (!m_rootLayout)
+	{
+		Log::Error("D3D12ComputePipelineState::Create : 루트 시그니처 생성 실패.");
+		return false;
+	}
+
+	D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};
+	pd.pRootSignature = m_rootLayout->rootSignature.Get();
+	pd.CS = { cs->bytecode.data(), cs->bytecode.size() };
+	pd.NodeMask = 0;
+	pd.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+	const HRESULT hr = d3d->CreateComputePipelineState(&pd, IID_PPV_ARGS(m_pso.ReleaseAndGetAddressOf()));
+	if (FAILED(hr))
+	{
+		Log::Error("D3D12ComputePipelineState::Create : CreateComputePipelineState 실패. %s", Log::HrToString(hr).c_str());
+		return false;
+	}
+	m_pso->SetName(L"ComputePSO");
+	return true;
+}
+
 // ------------------------------------------------------------------ 캐시
 
 PipelineHandle D3D12PipelineStateCache::GetOrCreate(D3D12Device& device, const PipelineStateDesc& desc)
@@ -131,19 +187,57 @@ const D3D12PipelineState* D3D12PipelineStateCache::Get(PipelineHandle handle) co
 	return m_states[handle.index].get();
 }
 
+ComputePipelineHandle D3D12PipelineStateCache::GetOrCreateCompute(D3D12Device& device, const ComputePipelineDesc& desc)
+{
+	const auto found = m_computeLookup.find(desc);
+	if (found != m_computeLookup.end())
+	{
+		return ComputePipelineHandle{ found->second, m_generation };
+	}
+
+	auto state = std::make_unique<D3D12ComputePipelineState>();
+	if (!state->Create(device, desc))
+	{
+		Log::Error("D3D12PipelineStateCache : 컴퓨트 PSO 생성 실패.");
+		return ComputePipelineHandle{};
+	}
+
+	const uint32_t index = static_cast<uint32_t>(m_computeStates.size());
+	const D3D12Shader* cs = device.GetShader(desc.cs);
+	m_computeStates.push_back(std::move(state));
+	m_computeLookup.emplace(desc, index);
+	Log::Info("컴퓨트 PSO 생성 #%u (%s, layouts=%u, gen=%u)", index, cs ? cs->name.c_str() : "", desc.bindingLayoutCount, m_generation);
+	return ComputePipelineHandle{ index, m_generation };
+}
+
+const D3D12ComputePipelineState* D3D12PipelineStateCache::GetCompute(ComputePipelineHandle handle) const
+{
+	if (!handle.IsValid() || handle.index >= m_computeStates.size() || handle.generation != m_generation)
+	{
+		return nullptr;
+	}
+	return m_computeStates[handle.index].get();
+}
+
 void D3D12PipelineStateCache::Clear(D3D12Device& device)
 {
-	if (!m_states.empty())
+	if (!m_states.empty() || !m_computeStates.empty())
 	{
-		Log::Info("PSO 캐시 비움 (%zu개). 이전 세대 %u 의 핸들은 무효.", m_states.size(), m_generation);
+		Log::Info("PSO 캐시 비움 (%zu개). 이전 세대 %u 의 핸들은 무효.", m_states.size() + m_computeStates.size(), m_generation);
 	}
 	// GPU 가 아직 이전 프레임에서 이 PSO 를 쓰고 있을 수 있음. 따라서 프레임 펜스를 통과한 뒤 해제함.
 	for (auto& state : m_states)
 	{
 		device.DeferRelease(state->Detach());
 	}
+	for (auto& state : m_computeStates)
+	{
+		device.DeferRelease(state->Detach());
+	}
 	m_lookup.clear();
 	m_states.clear();
+	m_computeLookup.clear();
+	m_computeStates.clear();
 	++m_generation;
 	if (m_generation == 0) m_generation = 1;
 }

@@ -23,6 +23,9 @@ struct D3D12Buffer
 	ComPtr<ID3D12Resource> resource;                 // Default / Staging. Dynamic 은 비어 있음.
 	D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = 0;        // Default: 고정. Dynamic: 마지막 UpdateBuffer 가 받은 링 조각의 주소
 	uint64_t updatedFrame = UINT64_MAX;              // Dynamic: 마지막으로 UpdateBuffer 한 프레임 번호
+	// CommandList::Barrier(BufferHandle) 가 전이시킴 (실제 배리어의 before). 버퍼는 ExecuteCommandLists 가 끝나면
+	// COMMON 으로 감쇠(decay)하므로 EndFrame 이 Common 으로 되돌림 (D3D12CommandList::ResetBufferStates).
+	ResourceState state = ResourceState::Common;
 };
 
 struct D3D12Texture
@@ -67,8 +70,8 @@ struct D3D12ResourceSet
 {
 	ResourceSetDesc desc;
 	std::string name;
-	uint32_t srvTableStart = D3D12DescriptorHeap::kInvalid;
-	uint32_t srvCount = 0;
+	uint32_t srvTableStart = D3D12DescriptorHeap::kInvalid;   // SRV 와 UAV 가 슬롯 순서대로 섞인 한 범위
+	uint32_t srvCount = 0;                                    // SRV + UAV 개수
 	uint32_t samplerTableStart = D3D12DescriptorHeap::kInvalid;
 	uint32_t samplerCount = 0;
 };

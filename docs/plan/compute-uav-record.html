@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · 컴퓨트 RHI(D3D12 컴퓨트·버퍼 UAV) 구현 기록 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.step { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>컴퓨트 RHI 구현 기록 — D3D12 컴퓨트, 버퍼 UAV, 블러 가중치 버퍼</h1>
+  <p>2026-11-17 · <a href="rhi-roadmap-plan.html#compute">RHI 확장 계획 3장(컴퓨트 파이프라인과 UAV)</a>의 나머지, 곧 <b>D3D12 컴퓨트 경로</b>와 <b>버퍼 UAV(<code>RWStructuredBuffer</code>)</b>를 넣고, 그 첫 소비자로 <b>블러 가중치 버퍼</b>를 만든 기록입니다. 컴퓨트 가우시안 블러의 PS↔CS 1단계 차이를 조사한 결과와, 컴퓨트 블러를 기본값으로 바꾼 결정도 함께 적습니다.</p>
+  <p class="foot">기준: 커밋 9435e6b(D3D11 컴퓨트 + 컴퓨트 가우시안 블러) + 작업 트리(2026-11-17, <b>아직 커밋하지 않음</b>). 위치는 "파일 + 함수 이름"이 기준입니다. 같은 날 <a href="rhi-roadmap-plan.html">rhi-roadmap-plan.html</a> 의 진행 상황 표시와 낡은 상수도 고쳤습니다.</p>
+</header>
+<nav><a href="#summary">1. 요약</a><a href="#rhi">2. RHI 표면</a><a href="#d3d11">3. D3D11</a><a href="#d3d12">4. D3D12</a><a href="#weights">5. 블러 가중치 버퍼</a><a href="#diff">6. PS↔CS 차이 조사</a><a href="#notes">7. 설계 결정·함정</a><a href="#verify">8. 검증</a><a href="#files">9. 파일 목록</a></nav>
+
+<section id="summary">
+<h2>1. 요약</h2>
+<div class="box ok">컴퓨트 파이프라인·텍스처 UAV·버퍼 UAV가 <b>D3D11 과 D3D12 두 백엔드 모두</b>에서 동작합니다. 컴퓨트 가우시안 블러는 PS 블러와 결과가 같고 (D3D12 0 픽셀, D3D11 1 픽셀 최하위 비트), 이제 <b>기본 경로</b>입니다 (<code>RenderSettings::computeBlur = true</code>). 컴퓨트 PSO 를 만들 수 없으면 PS 로 내려갑니다.</div>
+<table>
+<tr><th>기능</th><th>D3D11</th><th>D3D12</th><th>시점</th></tr>
+<tr><td>컴퓨트 PSO · <code>Dispatch</code> · <code>SetComputeResourceSet</code></td><td>있음</td><td>있음</td><td>D3D11: 9435e6b / D3D12: 이번</td></tr>
+<tr><td>텍스처 UAV (<code>RWTexture2D</code>, <code>ResourceBinding::mip</code>)</td><td>있음</td><td>있음</td><td>D3D11: 9435e6b / D3D12: 이번</td></tr>
+<tr><td>버퍼 UAV (<code>RWStructuredBuffer</code>) · 버퍼 상태 · <code>Barrier(Buffer)</code></td><td>있음</td><td>있음</td><td>이번</td></tr>
+<tr><td>컴퓨트 블러 + 가중치 버퍼</td><td>있음</td><td>있음 (전에는 PS 로 대체)</td><td>이번</td></tr>
+</table>
+<h3>블러 한 번의 흐름 (뷰마다)</h3>
+<pre><code>프레임 시작   Barrier(m_blurWeights, ShaderResource)      ← 모든 후처리 셋이 t20 에 꽂으므로
+블러 구간     UploadPostParams(시그마, 반경, 방향)
+              Barrier(weights, UnorderedAccess)
+              SetComputePipeline(BlurWeightsCS) · SetComputeResourceSet(0, Set_BlurWeights)
+              Dispatch(ceil((반경 + 1) / 64))              ← w[i] = exp(-i² / 2σ²), i = 0..반경
+              Barrier(weights, ShaderResource)
+              BlurH · BlurV   (CS: Dispatch(ceil(w/8), ceil(h/8)) / PS: 풀스크린)  ← 둘 다 t20 에서 w[|i|] 를 읽음
+프레임 끝     버퍼 상태 → Common (D3D12 의 상태 감쇠에 맞춤. D3D11 도 같은 규칙)</code></pre>
+</section>
+
+<section id="rhi">
+<h2>2. RHI 표면</h2>
+<table>
+<tr><th>항목</th><th>추가·변경</th></tr>
+<tr><td><code>ResourceDesc.h</code></td><td><code>BufferBind_UnorderedAccess = 1 &lt;&lt; 4</code>. Default 사용법과 <code>stride</code>(구조체 크기)가 필수</td></tr>
+<tr><td><code>BindingTypes.h</code></td><td><code>BindingType::BufferUnorderedAccess</code> (u#, <code>RWStructuredBuffer</code>, 컴퓨트 전용), <code>IsBufferBinding()</code></td></tr>
+<tr><td><code>CommandList.h</code></td><td><code>Barrier(BufferHandle, ResourceState)</code>, <code>UavBarrier(BufferHandle)</code>. 버퍼가 가질 수 있는 상태는 Common · ShaderResource · UnorderedAccess. 복사 상태는 <code>CopyBuffer</code> 가 정함</td></tr>
+<tr><td><code>DXBC/ShaderCompiler.cpp</code></td><td>리플렉션의 <code>D3D_SIT_UAV_RWSTRUCTURED</code> → <code>BufferUnorderedAccess</code> (바인딩 대조에 쓰임)</td></tr>
+</table>
+<p>상한 상수 (<code>BindingTypes.h</code>, <code>PipelineTypes.h</code>): <code>kMaxBindingSlots = 24</code>, <code>kMaxCbvRegister = 14</code>, <code>kMaxSrvRegister = 32</code>, <code>kMaxSamplerRegister = 16</code>, <code>kMaxUavRegister = 8</code>, <code>kMaxBindingSets = 4</code>.</p>
+<p>버퍼 상태 규칙: 상태는 <b>프레임 끝에 Common 으로 돌아갑니다</b>. D3D12 에서 버퍼는 <code>ExecuteCommandLists</code> 뒤에 COMMON 으로 감쇠(decay)하므로 그 규칙을 RHI 규칙으로 올렸고, D3D11 도 같은 시점에 기록을 되돌립니다. 따라서 프레임마다 처음 쓰기 전에 <code>Barrier</code> 를 다시 불러야 합니다. UAV 를 쓸 수 있는 버퍼를 SRV 로 읽으려면 ShaderResource 상태여야 합니다 (엄격 검사).</p>
+</section>
+
+<section id="d3d11">
+<h2>3. D3D11 (D3D11CommandList · D3D11Device)</h2>
+<ul>
+<li><b>버퍼 추적 배열</b>: 텍스처용 배열 옆에 <code>m_vsSrvBuf</code> · <code>m_psSrvBuf</code> · <code>m_csSrvBuf</code> · <code>m_csUavBuf</code> 를 둡니다. 같은 레지스터에 텍스처를 꽂으면 버퍼 항목을 지우고, 반대도 마찬가지입니다.</li>
+<li><b>위험(hazard) 처리</b>: UAV 상태로 들어가거나 나올 때 그 버퍼가 꽂힌 SRV·UAV 슬롯을 풉니다 (<code>UnbindShaderResourcesOf</code> / <code>UnbindUavsOf</code>). 같은 자원이 SRV 와 UAV 에 동시에 꽂히면 D3D11 런타임이 한쪽을 NULL 로 만들기 때문입니다.</li>
+<li><code>D3D11Buffer::GetUAV</code>: <code>D3D11_UAV_DIMENSION_BUFFER</code>, 포맷 UNKNOWN, <code>NumElements = size / stride</code>. 생성 시 <code>D3D11_BIND_UNORDERED_ACCESS</code> + 구조체 버퍼 플래그.</li>
+<li><code>UpdateBuffer</code>(Default): UAV 버퍼가 Common 이 아니면 오류. <code>EndFrame</code> 이 리드백 뒤 <code>ResetBufferStates()</code>.</li>
+</ul>
+</section>
+
+<section id="d3d12">
+<h2>4. D3D12</h2>
+<h3>컴퓨트 PSO · 루트 시그니처 (D3D12PipelineState, D3D12Device::GetOrCreateRootLayout)</h3>
+<ul>
+<li><code>D3D12ComputePipelineState::Create</code> 가 CS 스테이지와 "모든 슬롯이 컴퓨트 전용"인지 확인한 뒤 <code>CreateComputePipelineState</code>. 캐시는 그래픽스 PSO 와 세대(generation)를 같이 써서 핫리로드 때 함께 비워집니다.</li>
+<li>컴퓨트용 루트 레이아웃은 따로 만듭니다: IA 플래그 없음, 가시성 <code>D3D12_SHADER_VISIBILITY_ALL</code>. 캐시 키에 compute 플래그가 들어가고, 키가 같아도 저장된 레이아웃 핸들 배열을 다시 비교합니다 (충돌이면 경고 후 덮어씀).</li>
+<li>UAV 는 SRV 와 <b>같은 디스크립터 테이블</b>(CBV/SRV/UAV 힙)에 들어갑니다. 그래서 <code>D3D12ResourceSet::srvTableStart</code> · <code>srvCount</code> 가 SRV + UAV 를 셉니다.</li>
+</ul>
+<h3>커맨드 리스트 (D3D12CommandList)</h3>
+<ul>
+<li>파이프라인 슬롯이 그래픽스·컴퓨트 공용이라, <code>SetComputePipeline</code> 은 현재 그래픽스 PSO 기록을, <code>SetPipelineState</code> 는 컴퓨트 기록을 지웁니다 (다음 드로우·디스패치에서 다시 설정).</li>
+<li><code>ApplyBindings(compute, caller)</code> 가 <code>SetComputeRoot*</code> / <code>SetGraphicsRoot*</code> 로 갈립니다. 셋은 <code>m_computeSets</code> 에 따로 둡니다.</li>
+<li><code>Dispatch</code> 는 렌더 패스 안에서 부르면 거부합니다. <code>UavBarrier</code> 는 실제 <code>D3D12_RESOURCE_BARRIER_TYPE_UAV</code>.</li>
+<li>버퍼 상태 검사: <code>BufferUnorderedAccess</code> 슬롯은 UnorderedAccess, UAV 가능 버퍼를 <code>BufferResource</code> 로 읽으면 ShaderResource 여야 합니다.</li>
+</ul>
+<h3>버퍼 UAV (D3D12Device::CreateBuffer · CreateResourceSet)</h3>
+<ul>
+<li>리소스에 <code>D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS</code>. 업로드 힙 스테이징 버퍼는 이 플래그 없는 desc 를 따로 씁니다.</li>
+<li>디스크립터: <code>D3D12_UAV_DIMENSION_BUFFER</code>, UNKNOWN, <code>NumElements</code>, <code>StructureByteStride</code>. <b>루트 UAV 가 아니라 테이블 디스크립터</b>를 씁니다 — 디스크립터를 거치면 범위 밖 쓰기가 버려지지만 루트 UAV 는 범위 검사가 없습니다.</li>
+<li><code>EndFrame</code> 이 <code>ExecuteCommandLists</code> 바로 뒤 <code>ResetBufferStates()</code> (상태 감쇠와 기록을 맞춤).</li>
+<li><code>CopyBuffer</code>: Common(암묵적 승격) 또는 맞는 복사 상태여야 하고, 끝나면 CopyDest / CopySource 로 기록. D3D11 도 같은 규칙.</li>
+</ul>
+</section>
+
+<section id="weights">
+<h2>5. 블러 가중치 버퍼 (Renderer · RendererPost · 셰이더)</h2>
+<table>
+<tr><th>항목</th><th>값</th></tr>
+<tr><td>버퍼</td><td><code>m_blurWeights</code> "SB_BlurWeights": Default, ShaderResource | UnorderedAccess, stride 4, <code>kMaxBlurRadius + 1</code> = 65 개 float</td></tr>
+<tr><td>쓰는 쪽</td><td><code>BlurWeightsComputeShader.hlsl</code> <code>CS_BlurWeights</code>, <code>[numthreads(64,1,1)]</code>, b4 PostParams + u0. 레이아웃 <code>Layout_BlurWeights</code>, 셋 <code>Set_BlurWeights</code></td></tr>
+<tr><td>읽는 쪽</td><td><code>Common.hlsli</code> 의 <code>StructuredBuffer&lt;float&gt; blurWeights : register(t20)</code>. <code>Layout_Post</code>(PS) 와 <code>Layout_BlurCompute</code>(CS) 에 t20 추가 (<code>kSRVSlotBlurWeights</code>)</td></tr>
+<tr><td>호출</td><td><code>Renderer::DispatchBlurWeights</code> — <code>ApplyHdrEffects</code> 의 블러 구간에서 PostParams 를 올린 직후. 뷰마다 높이가 달라 시그마가 다르므로 미리보기 뷰가 다시 씀</td></tr>
+<tr><td>실패 시</td><td>가중치 PSO 가 없으면 블러를 건너뛰고 한 번만 오류 로그 (두 경로 모두 이 버퍼를 읽음)</td></tr>
+</table>
+<p>컴퓨트 PSO 캐시는 패스별 배열 <code>GetComputePipeline(ComputePassId)</code> 로 일반화했습니다 (<code>kComputePasses</code> 표: BlurCompute, BlurWeights). <code>kMaxBlurRadius</code> 는 <code>ShaderConstants.h</code> 와 <code>Common.hlsli</code> 두 곳에만 둡니다.</p>
+</section>
+
+<section id="diff">
+<h2>6. PS↔CS 1단계 차이 조사</h2>
+<p>9435e6b 에서 D3D11 의 컴퓨트 블러가 PS 블러와 2366 픽셀(최하위 1단계) 달랐습니다. D3D12 는 처음부터 0 이었습니다.</p>
+<table>
+<tr><th>시험</th><th>결과 (D3D11 게임 모드, PS vs CS)</th></tr>
+<tr><td>UAV 저장을 내림(truncate)으로 흉내</td><td>원래 CS 와 비트 단위로 같음 → UAV 저장도 내림</td></tr>
+<tr><td>RNE 반올림으로 흉내</td><td>두 백엔드 모두 약 77k 픽셀 차이 → RTV 쓰기도 RNE 가 아님</td></tr>
+<tr><td>박스 가중치(모두 1)</td><td>0 → 차이는 가중치 계산·누적 쪽</td></tr>
+<tr><td>가중치를 버퍼로 공유 (이번 구현)</td><td>1 픽셀</td></tr>
+<tr><td>+ 두 셰이더 누적 변수에 <code>precise</code></td><td>0 (D3D11 CS = D3D12 CS 도 0). 대신 PS 출력이 변경 전과 39 픽셀 1단계 달라짐</td></tr>
+</table>
+<div class="box warn"><b>원인은 특정하지 못했습니다.</b> 조사 중에 "D3D11 드라이버가 CS 와 PS 의 <code>exp</code> 를 다르게 계산한다"고 결론냈지만, 가중치를 CS 에서 계산하도록 바꿔도 PS 출력이 변경 전과 같았으므로 그 결론은 측정과 맞지 않습니다. 확인된 것은 위 표의 숫자뿐이며, <code>precise</code> 로 차이가 없어지는 것으로 보아 곱셈+덧셈을 mad 로 합치는지가 스테이지마다 다른 것으로 <b>보입니다</b>. 모든 결과는 Debug 셰이더, 이 GPU 한 대에서 확인한 것입니다.</div>
+<p><b>결정 (2026-11-17)</b>: <code>precise</code> 는 넣지 않습니다 — 기본 경로였던 PS 출력을 바꾸지 않는 쪽을 택하고, D3D11 의 PS↔CS 1 픽셀 차이는 받아들입니다. 그리고 컴퓨트 블러를 기본값으로 바꿨습니다.</p>
+</section>
+
+<section id="notes">
+<h2>7. 설계 결정·함정</h2>
+<ul>
+<li><b>버퍼 상태는 프레임마다 Common</b>: D3D12 의 감쇠를 숨기지 않고 규칙으로 올렸습니다. 그래서 <code>Render</code> 가 첫 후처리 패스 전에 <code>Barrier(m_blurWeights, ShaderResource)</code> 를 부릅니다 — 블러가 꺼진 프레임에도 톤 패스가 같은 레이아웃(t20 포함)을 바인딩하기 때문입니다.</li>
+<li><b>컴퓨트 셋은 따로</b>: D3D12 는 컴퓨트 루트 인자가 그래픽스와 별개라 <code>SetResourceSet</code> 으로 꽂은 셋이 <code>Dispatch</code> 에 보이지 않습니다. RHI 도 <code>SetComputeResourceSet</code> 을 따로 둡니다.</li>
+<li><b>PostParams 는 셋보다 먼저</b>: D3D12 루트 CBV 는 셋을 꽂을 때가 아니라 드로우·디스패치마다 다시 바인딩하지만, 업로드 링 주소가 바뀌므로 <code>UploadPostParams</code> 다음에 셋을 꽂는 순서를 지킵니다.</li>
+<li><b>D3D11 의 SRV/UAV 동시 바인딩</b>: 가중치를 쓰려고 UnorderedAccess 로 바꾸는 순간, PS t20 · CS t20 에 남아 있던 같은 버퍼의 SRV 를 풀어야 UAV 가 NULL 이 되지 않습니다. <code>Barrier(Buffer)</code> 가 이 일을 합니다.</li>
+<li><b>비교는 연속 실행끼리만</b>: 조사 중 <code>ComputeBlur.json</code> 이 카메라가 바뀐 채 다시 저장돼, 이전 기준 스크린샷과 큰 차이가 난 적이 있습니다. 같은 씬 상태의 연속 실행끼리만 비교합니다.</li>
+<li><b>stdout 은 블록 버퍼링</b>: <code>setvbuf(_IOLBF)</code> 가 Windows 에서는 완전 버퍼링이라, 실행 중 로그를 보려면 줄마다 flush 되는 <code>x64/Debug/Logs/SherlockEngine.log</code> 를 읽어야 합니다 (핫리로드 자동 검증에서 확인).</li>
+</ul>
+</section>
+
+<section id="verify">
+<h2>8. 검증</h2>
+<p>씬: <code>Projects/SherlockTestScenes</code> 의 <code>ComputeBlur.json</code> (블러+블룸). 에디터는 씬 뷰 (233,72)-(963,515) 를 x 270~300 을 가리고 비교, 게임 모드는 <code>startScene</code> 을 잠깐 바꿔 전체 화면 비교.</p>
+<table>
+<tr><th>확인</th><th>결과</th></tr>
+<tr><td>에디터 PS↔CS (D3D11 · D3D12 · <code>--select="Main Camera"</code>)</td><td>차이 0</td></tr>
+<tr><td>게임 PS↔CS</td><td>D3D12 0 / D3D11 1 픽셀 (998,252) 1단계</td></tr>
+<tr><td>PS 출력: 변경 전 ↔ 후 (두 백엔드)</td><td>차이 0</td></tr>
+<tr><td>플래그 없이 실행</td><td>에디터·게임, 두 백엔드 모두 "블러 경로: 컴퓨트 (BlurCS)"</td></tr>
+<tr><td><code>--post-stages=1</code>, 블러 끈 복사본 씬</td><td>정상 (썸네일 차이는 콘솔 글자뿐), 블러 끈 씬 D3D11↔D3D12 0</td></tr>
+<tr><td>바인딩 대조</td><td><code>[BlurWeights] BlurWeightsCS u0 / b4</code>, <code>[Post] PostPS t20</code>, <code>[BlurCompute] BlurCS t20</code> OK</td></tr>
+<tr><td>셰이더 핫리로드 (파일 수정 시각만 바꿈)</td><td>두 백엔드 모두 컴퓨트 PSO 2개가 gen=2 로 다시 생성, 경고 없음</td></tr>
+<tr><td><code>MasterChiefWalk.json</code> (스킨 씬)</td><td>로그 깨끗. D3D11↔D3D12 한 곳 가장자리 11 픽셀 — HEAD 에서도 같은 종류 5 픽셀</td></tr>
+<tr><td>D3D12 디버그 레이어</td><td>약 30 회 실행 중 1 회를 빼고 메시지 없음. 그 1 회는 아래 상자 참고</td></tr>
+</table>
+<div class="box">D3D12 는 시작할 때와 핫리로드 뒤 첫 프레임 직전에 65~73 초 멈춥니다. 커밋 9435e6b 를 별도 워크트리에서 빌드해도 같은 자리에서 73 초가 걸려 이번 변경과는 무관합니다. GPU 기반 검증(GBV)이 원인임을 확인했습니다 — 같은 날 GBV 를 옵션으로 바꾼 뒤(<code>engine.ini</code> 의 <code>engine.gpuvalidation</code>, 기본 끔 / <code>--gpu-validation=1</code>) D3D12 에디터 40 프레임 실행이 77 초 → 2 초가 됐고 화면은 같습니다. 디버그 레이어는 Debug 빌드에서 그대로 켜져 있습니다.</div>
+<div class="box warn"><b>한 번만 나온 GBV 오류 (원인 모름)</b> — <code>computeBlur</code> 기본값을 바꾼 뒤의 D3D12 에디터 실행 한 번에서 <code>GPU-BASED VALIDATION: Draw, Incompatible texture barrier layout</code> 가 80 줄 나왔습니다. 대상은 재질 텍스처 <code>builtin:flatnormal</code> 하나로, Draw 8 에서 PS SRV 로 읽을 때 레이아웃이 <code>LEGACY_COPY_DEST</code> 였다는 내용입니다. 같은 설정(기본·PS·CS 각 3 회)으로 9 번 다시 돌렸을 때는 나오지 않았습니다. 텍스처 업로드 경로(<code>RecordUpload</code> → COPY_DEST→SRV 전이 → 실행 후 대기)는 이번에 고치지 않았고 순서도 맞아 보이지만, 이번 변경 전에도 있던 일인지는 확인하지 못했습니다.</div>
+<h3>확인하지 못한 것</h3>
+<ul>
+<li>실행 중에 Compute blur 체크박스를 켜고 끄기 (기본값이 바뀌었으므로 다음에 먼저 확인할 것)</li>
+<li>한 번도 실행되지 않은 경로: 버퍼 <code>UavBarrier</code>, <code>CopyBuffer</code> 상태 규칙, <code>UpdateBuffer</code> 의 UAV 검사, 배리어 오류 경로, 루트 레이아웃 키 충돌 경로</li>
+<li><code>--select</code> 의 PS = CS 는 두 경로가 같은 버퍼를 읽기 때문이므로, 뷰마다 가중치가 다시 쓰이는지를 증명하지는 않음</li>
+<li>Release 셰이더, 다른 GPU</li>
+</ul>
+</section>
+
+<section id="files">
+<h2>9. 파일 목록 (작업 트리)</h2>
+<table>
+<tr><th>파일</th><th>내용</th></tr>
+<tr><td><code>RHI/ResourceDesc.h</code>, <code>BindingTypes.h</code>, <code>CommandList.h</code>, <code>ShaderCompiler.h</code>, <code>DXBC/ShaderCompiler.cpp</code></td><td>버퍼 UAV 타입·플래그·배리어 API, 리플렉션</td></tr>
+<tr><td><code>RHI/D3D11/D3D11CommandList.*</code>, <code>D3D11Device.cpp</code>, <code>D3D11Resources.h</code></td><td>버퍼 추적·위험 처리·버퍼 UAV 뷰·상태 리셋</td></tr>
+<tr><td><code>RHI/D3D12/D3D12PipelineState.*</code></td><td><code>D3D12ComputePipelineState</code>, 컴퓨트 PSO 캐시</td></tr>
+<tr><td><code>RHI/D3D12/D3D12Device.*</code>, <code>D3D12Resources.h</code></td><td>컴퓨트 루트 레이아웃, 텍스처·버퍼 UAV 디스크립터, 버퍼 상태</td></tr>
+<tr><td><code>RHI/D3D12/D3D12CommandList.*</code></td><td>컴퓨트 바인딩·Dispatch·배리어·CopyBuffer 규칙</td></tr>
+<tr><td><code>Graphics/Renderer.*</code>, <code>RendererPost.cpp</code>, <code>ShaderConstants.h</code></td><td>가중치 버퍼·레이아웃·셋, <code>GetComputePipeline</code>, <code>DispatchBlurWeights</code>, <code>computeBlur = true</code></td></tr>
+<tr><td><code>Shaders/BlurWeightsComputeShader.hlsl</code> (새 파일), <code>BlurComputeShader.hlsl</code>, <code>PostPixelShader.hlsl</code>, <code>Common.hlsli</code></td><td>가중치 CS, 두 블러가 t20 을 읽음</td></tr>
+<tr><td><code>SherlockEngine.vcxproj(.filters)</code>, <code>Editor/EditorAutomation.h</code></td><td>FxCompile 항목, <code>--compute-blur</code> 도움말</td></tr>
+</table>
+</section>
+</main>
+</body>
+</html>

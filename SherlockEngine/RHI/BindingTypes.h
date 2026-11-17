@@ -23,7 +23,15 @@ enum class BindingType : uint8_t
 	BufferResource,   // t#  (SRV) — 구조체 버퍼 (HLSL StructuredBuffer<T>). ResourceBinding::buffer 에 BufferBind_ShaderResource 버퍼를 꽂음
 	UnorderedAccess,  // u#  (UAV) — 텍스처 (HLSL RWTexture2D<T>). ResourceBinding::texture + mip 에 TextureBind_UnorderedAccess 텍스처를 꽂음.
 	                  //       컴퓨트 스테이지 전용 (D3D11 의 PS UAV 는 OMSetRenderTargetsAndUnorderedAccessViews 가 따로 필요해 지원하지 않음)
+	BufferUnorderedAccess, // u# (UAV) — 구조체 버퍼 (HLSL RWStructuredBuffer<T>). ResourceBinding::buffer 에 BufferBind_UnorderedAccess
+	                  //       버퍼를 꽂음. 텍스처 UAV 와 같은 u# 공간·같은 상한(kMaxUavRegister), 컴퓨트 전용
 };
+
+// 버퍼를 꽂는 슬롯인가 (그 밖은 텍스처 또는 샘플러).
+constexpr bool IsBufferBinding(BindingType type)
+{
+	return type == BindingType::ConstantBuffer || type == BindingType::BufferResource || type == BindingType::BufferUnorderedAccess;
+}
 
 struct BindingSlot
 {
@@ -68,7 +76,7 @@ struct BindingLayoutDesc
 };
 
 // 슬롯 하나에 꽂는 리소스. 슬롯 타입에 따라 buffer / texture / sampler 중 하나만 사용함
-// (ConstantBuffer·BufferResource → buffer, ShaderResource·UnorderedAccess → texture, Sampler → sampler).
+// (ConstantBuffer·BufferResource·BufferUnorderedAccess → buffer, ShaderResource·UnorderedAccess → texture, Sampler → sampler).
 // mip 은 UnorderedAccess 슬롯에서만 읽음: 그 밉 레벨 하나를 가리키는 UAV (밉마다 따로 쓰는 IBL 프리필터용).
 struct ResourceBinding
 {

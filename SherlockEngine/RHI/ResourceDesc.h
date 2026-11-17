@@ -26,6 +26,10 @@ enum BufferBind : uint8_t
 	BufferBind_Index          = 1 << 1,
 	BufferBind_Constant       = 1 << 2,
 	BufferBind_ShaderResource = 1 << 3,   // StructuredBuffer. stride 필요.
+	// 컴퓨트 셰이더가 RWStructuredBuffer 로 씀 (u#). Default usage + stride > 0 만 가능 (두 백엔드의 CreateBuffer 가
+	// 같은 규칙으로 거부함). 상태(ResourceState)를 버퍼마다 추적하므로 쓰기 전 Barrier(buf, UnorderedAccess),
+	// 읽기 전 Barrier(buf, ShaderResource) 가 필요함.
+	BufferBind_UnorderedAccess = 1 << 4,
 };
 
 struct BufferDesc

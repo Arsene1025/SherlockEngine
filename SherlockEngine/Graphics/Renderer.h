@@ -33,9 +33,10 @@ struct RenderSettings
 	bool srgbOutput = true;        // 최종 출력(톤 패스의 RTV)을 sRGB 뷰로 씀. 끄면 감마 보정 없이 출력함 (비교용). 씬 패스는 FP16 선형이라 무관함
 	int samplerOverride = -1;      // -1 = 재질 설정대로. 그 외 SamplerPreset 값으로 전부 덮어씀
 	// 가우시안 블러를 컴퓨트 셰이더로 (BlurComputeShader.hlsl). 끄면 풀스크린 PS (PostPixelShader 모드 1). 결과는
-	// 같아야 함 — 두 경로의 스크린샷 비교가 컴퓨트 RHI 의 검증임. 백엔드가 컴퓨트를 지원하지 않으면 켜도 PS 로 감.
-	// 씬 파일에 저장하지 않음 (에디터 Render Settings · --compute-blur=1).
-	bool computeBlur = false;
+	// 같아야 함 — 두 경로의 스크린샷 비교가 컴퓨트 RHI 의 검증임 (D3D12 0 픽셀, D3D11 1 픽셀 최하위 비트 차이).
+	// 기본은 컴퓨트. 컴퓨트 PSO 를 만들 수 없으면 (미지원 백엔드) 켜져 있어도 PS 로 감.
+	// 씬 파일에 저장하지 않음 (에디터 Render Settings · --compute-blur=0 으로 PS).
+	bool computeBlur = true;
 
 	// 그림자 (켜고 끄는 스위치. 조명마다는 Light::castShadows) 와 노멀 매핑. 그림자 값(바이어스·세기·노말
 	// 오프셋·직교 크기·거리)은 씬 파일에 들어가도록 SceneEnvironment::shadow 에 둠. 여기에는 켜고 끄는
@@ -284,8 +285,8 @@ private:
 
 	// ---- 셰이더·레이아웃·패스 표 (Renderer.cpp 의 kShaders, kPasses) ----
 	// 셰이더를 추가할 때: ShaderId 에 한 줄, kShaders 에 한 줄. 로드·핫리로드 감시·검증·해제는 표를 돌며 함.
-	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_BasicSkinVS, Shader_ShadowSkinVS, Shader_DebugLineVS, Shader_DebugLinePS, Shader_BlurCS, Shader_Count };
-	enum LayoutId : uint32_t { Layout_Frame, Layout_Object, Layout_Material, Layout_Post, Layout_BlurCompute, Layout_Count };
+	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_BasicSkinVS, Shader_ShadowSkinVS, Shader_DebugLineVS, Shader_DebugLinePS, Shader_BlurCS, Shader_BlurWeightsCS, Shader_Count };
+	enum LayoutId : uint32_t { Layout_Frame, Layout_Object, Layout_Material, Layout_Post, Layout_BlurCompute, Layout_BlurWeights, Layout_Count };
 	// 패스 = (VS, PS, 레이아웃 목록). PSO Desc 의 셰이더·bindingLayouts 가 이 표에서 나오고, 바인딩 대조도 패스
 	// 단위로 함 (그 패스의 레이아웃에 선언된 슬롯만 통과).
 	// Pass_MainSkin / Pass_ShadowSkin 은 스키닝 메시용 (정점 포맷 PositionColorNormalTexcoordTangentSkin). 스킨 VS 만 다르고 PS·레이아웃은 같음.
@@ -298,8 +299,9 @@ private:
 	static constexpr uint32_t kSetPost = 0;
 	// 컴퓨트 패스 = (CS, 레이아웃 목록). 그래픽스 패스 표와 따로 둠 — PSO Desc 가 다르고 (ComputePipelineDesc),
 	// 바인딩 대조의 스테이지가 Compute 임.
-	enum ComputePassId : uint32_t { ComputePass_Blur, ComputePass_Count };
+	enum ComputePassId : uint32_t { ComputePass_Blur, ComputePass_BlurWeights, ComputePass_Count };
 	static constexpr uint32_t kSetBlurCompute = 0;
+	static constexpr uint32_t kSetBlurWeights = 0;
 	struct ShaderInfo;   // 파일·진입점·스테이지·이름
 	struct PassInfo;     // 이름·VS·PS·레이아웃 목록
 	struct ComputePassInfo;   // 이름·CS·레이아웃 목록
@@ -410,13 +412,17 @@ private:
 	void DestroyStageThumbs();
 	void CapturePostStage(RHI::CommandList& cmd, uint32_t stage, const char* name, ResourceSetHandle hdrSet, uint32_t hdrWidth, uint32_t hdrHeight, bool skipGrade);
 	PipelineHandle GetPostPipeline(bool additive);   // FP16 출력, 깊이 없음. additive = One/One 블렌드 (블룸 합성)
-	// 컴퓨트 블러 PSO. 백엔드가 컴퓨트를 지원하지 않으면 빈 핸들 (ApplyHdrEffects 가 PS 블러로 감).
-	ComputePipelineHandle GetBlurComputePipeline();
+	// 컴퓨트 패스의 PSO (kComputePasses 표). 처음 부를 때 만들고, 실패하면 빈 핸들을 기억해 매 프레임 다시 묻지 않음.
+	// 블러: 빈 핸들이면 ApplyHdrEffects 가 PS 블러로 감. 가중치: 빈 핸들이면 블러를 건너뜀 (두 경로 모두 가중치 버퍼를 읽음).
+	ComputePipelineHandle GetComputePipeline(ComputePassId pass);
+	// 가우시안 가중치를 m_blurWeights 에 씀 (컴퓨트). PostParams(b4)의 시그마·반경을 쓰므로 호출 전에 올려 둘 것.
+	// 끝나면 버퍼는 ShaderResource 상태 (PS·CS 블러가 t20 으로 읽음).
+	void DispatchBlurWeights(RHI::CommandList& cmd, ComputePipelineHandle pipeline, uint32_t radius);
 	// 블러 한 방향을 컴퓨트로: input(SRV) → output(UAV). 상태 전이(output → UnorderedAccess → ShaderResource)까지 함.
 	// PostParams(b4)는 호출 전에 올려 둘 것.
 	void DispatchBlurCompute(RHI::CommandList& cmd, ComputePipelineHandle pipeline, ResourceSetHandle set, TextureHandle output, uint32_t width, uint32_t height);
 	void UploadPostParams(const PostParamsConstants& params);
-	ResourceSetHandle CreatePostSet(TextureHandle input, const char* debugName);   // Layout_Post 순서: b0, b4, t13, s6
+	ResourceSetHandle CreatePostSet(TextureHandle input, const char* debugName);   // Layout_Post 순서: b0, b4, t13, s6, t20
 	// 이번 프레임의 환경 바인딩. Scene::environment 의 이름들을 ResolveEnvironment 가 핸들과 셰이더 파라미터로 바꿈.
 	struct EnvironmentBinding
 	{
@@ -490,6 +496,11 @@ private:
 	uint32_t m_lightCapacity = 0;  // 원소 수. 모자라면 두 배로 다시 만듦
 	std::vector<GpuLight> m_gpuLights;   // 이번 프레임에 올릴 조명 (BuildGpuLights)
 	BufferHandle m_postParamsCB;   // b4 PostParams
+	// 블러 가우시안 가중치 (float × (kMaxBlurRadius + 1), w[i] = exp(−i²/2σ²), i ≥ 0 반쪽만). 컴퓨트 패스가 블러마다
+	// 쓰고 PS·CS 블러가 t20 으로 읽음 — 두 경로가 같은 가중치를 읽음 (각자 계산하던 때는 D3D11 에서 최하위 비트가 달랐음).
+	// 모든 후처리 셋이 t20 에 꽂으므로 프레임마다 처음에 ShaderResource 로 전이함 (버퍼 상태는 프레임 끝에 Common).
+	BufferHandle m_blurWeights;
+	ResourceSetHandle m_blurWeightsSet;   // Layout_BlurWeights: b4, u0 = m_blurWeights
 	BufferHandle m_shadowPassCB;   // b5 ShadowPass (뷰마다 올림)
 	BufferHandle m_shadowsCB;      // b6 Shadows (프레임에 한 번)
 
@@ -497,8 +508,9 @@ private:
 	//   Layout_Frame     b0 (VS|PS), b2 (PS), t8 그림자 맵, s4 비교 샘플러, t9 스카이박스, s5, t10~t12 IBL (모두 PS), b5 그림자 패스 행렬 (VS), b6 그림자 뷰 배열 (PS), t14 CSM, t15 조명 구조체 버퍼
 	//   Layout_Object    b1 (VS)
 	//   Layout_Material  b3 (VS|PS), t0 알베도, t1 노멀, t2 금속성/거칠기, t3 AO, t4 발광, t5 반사 세기, t6 반사 색, t16~t18 클리어코트, t19 투과, s0 (모두 PS)
-	//   Layout_Post      b0, b4, t13, s6 (모두 PS)
-	//   Layout_BlurCompute b4, t13 입력, u0 출력 (모두 CS)
+	//   Layout_Post      b0, b4, t13, s6, t20 가중치 (모두 PS)
+	//   Layout_BlurCompute b4, t13 입력, u0 출력, t20 가중치 (모두 CS)
+	//   Layout_BlurWeights b4, u0 가중치 버퍼 (모두 CS)
 	BindingLayoutHandle m_layouts[Layout_Count];
 	BindingLayoutDesc m_layoutDescs[Layout_Count];
 	ResourceSetHandle m_frameSet;
@@ -521,8 +533,8 @@ private:
 	uint32_t m_debugLineCount = 0;                    // 올린 정점 수 (0 이면 그리지 않음)
 	PipelineHandle m_tonemapPipelines[2];   // [srgbOutput]
 	PipelineHandle m_postPipelines[2];      // [additive]
-	ComputePipelineHandle m_blurComputePipeline;
-	bool m_blurComputeTried = false;        // 한 번 만들어 보고 실패하면 (컴퓨트 미지원 백엔드) 매 프레임 다시 시도하지 않음
+	ComputePipelineHandle m_computePipelines[ComputePass_Count];
+	bool m_computeTried[ComputePass_Count] = {};   // 한 번 만들어 보고 실패하면 (컴퓨트 미지원 백엔드) 매 프레임 다시 시도하지 않음
 	RenderSettings m_settings;
 	Stats m_stats;
 	uint64_t m_frameNumber = 0;

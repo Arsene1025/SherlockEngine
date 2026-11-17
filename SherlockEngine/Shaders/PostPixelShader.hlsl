@@ -12,8 +12,6 @@
 Texture2D postInput : register(t13);
 SamplerState postSampler : register(s6);
 
-static const int kMaxBlurRadius = 64;
-
 // 밝기(채널 최댓값)가 임계값을 넘는 만큼만 남김. knee 구간에서는 2차 곡선으로 부드럽게 올라감 (경계에서 튀지 않게).
 float3 BrightPass(float3 c)
 {
@@ -37,19 +35,17 @@ float4 PS_Post(float4 position : SV_POSITION) : SV_TARGET
 
     if (mode == 1)
     {
-        // Load + 클램프된 좌표. 가중치는 시그마에서 바로 계산함 (정규화는 합으로 나눔).
+        // Load + 클램프된 좌표. 가중치는 가중치 버퍼(t20)에서 읽음 (정규화는 합으로 나눔). CS 블러와 같은 버퍼·같은 순서.
         const int2 base = (int2)position.xy;
         const int2 maxCoord = (int2)postView.xy - 1;
         const int2 dir = int2((int)postPass.y, (int)postPass.z);
         const int radius = min((int)postBlur.y, kMaxBlurRadius);
-        const float sigma = max(postBlur.x, 0.01f);
-        const float invTwoSigmaSq = 0.5f / (sigma * sigma);
 
         float3 sum = 0.0f;
         float weightSum = 0.0f;
         for (int i = -radius; i <= radius; ++i)
         {
-            const float w = exp(-(float)(i * i) * invTwoSigmaSq);
+            const float w = blurWeights[abs(i)];
             const int2 c = clamp(base + dir * i, int2(0, 0), maxCoord);
             sum += postInput.Load(int3(c, 0)).rgb * w;
             weightSum += w;

@@ -88,6 +88,7 @@ th { background: var(--fill); white-space: nowrap; }
   <h1>RHI 확장 구현 가이드</h1>
   <p>rendering-analysis.html 22.6 의 <b>3번(HDR 타깃·톤매핑)</b>, <b>4번(컴퓨트 파이프라인·UAV)</b>, <b>8번(규모를 위한 일들)</b>을 직접 구현하기 위한 순서와 방법입니다.</p>
   <p>기준: 2026-10-15 작업 트리. 파일 이름·함수 이름은 그날 코드에서 확인한 것이고, <span class="tag p">제안</span> 표시가 붙은 부분은 코드에 아직 없는 설계 권고입니다. 코드를 대신 써 주는 문서가 아니라 "어디를 어떤 순서로 건드리고 무엇으로 확인하는가"를 적은 지도입니다.</p>
+  <p>갱신: 2026-11-17 — 3장(컴퓨트·UAV)의 진행 상황 표시와, 바뀐 상한 상수(<code>kMaxBindingSlots</code>, <code>kMaxSrvRegister</code>)를 고쳤습니다. 본문의 계획 내용은 그대로 두었습니다.</p>
 </header>
 
 <section id="overview">
@@ -96,7 +97,7 @@ th { background: var(--fill); white-space: nowrap; }
 <thead><tr><th>순서</th><th>일</th><th>RHI 가 넓어지나</th><th>앞 단계에 기대는 것</th><th>끝났다는 증거</th></tr></thead>
 <tbody>
 <tr><td>①</td><td>3번 · HDR 타깃 + 톤매핑 패스</td><td>아니오(<code>R16G16B16A16_FLOAT</code> 이미 있음). 풀스크린 패스용 바인딩 레이아웃만 추가</td><td>없음</td><td>화면이 전과 ±1 레벨 이내로 같고, 패스가 하나 늘어남</td></tr>
-<tr><td>②</td><td>4번 · 컴퓨트 파이프라인 + UAV</td><td><b>예</b>. 스테이지·바인딩 타입·상태·핸들·Dispatch 추가, 두 백엔드 수정</td><td>①은 필수 아님. 다만 첫 컴퓨트 응용(블룸·IBL)이 ①의 HDR 타깃을 쓰면 편함</td><td>컴퓨트가 쓴 텍스처를 그래픽스 패스가 읽어 화면에 보임. 두 백엔드 픽셀 일치</td></tr>
+<tr><td>②</td><td>4번 · 컴퓨트 파이프라인 + UAV</td><td><b>예</b>. 스테이지·바인딩 타입·상태·핸들·Dispatch 추가, 두 백엔드 수정</td><td>①은 필수 아님. 다만 첫 컴퓨트 응용(블룸·IBL)이 ①의 HDR 타깃을 쓰면 편함</td><td>컴퓨트가 쓴 텍스처를 그래픽스 패스가 읽어 화면에 보임. 두 백엔드 픽셀 일치<br><span class="tag v">구현됨</span> 두 백엔드 (<a href="#compute">3장</a>)</td></tr>
 <tr><td>③</td><td>4번 후반 · 엔진 안에서 IBL 생성</td><td>UAV 를 밉 단위·배열 단위로 만들 수 있어야 함</td><td>②</td><td>구워진 IBL 맵 없이 스카이박스만으로 반사가 나오고, 구워진 맵과 비교해 수치가 가까움</td></tr>
 <tr><td>④</td><td>8번 · 월드 행렬 캐시 → 컬링 → 메시 공유·인스턴싱 → CSM → (선택) Deferred</td><td>인스턴싱: <code>DrawIndexedInstanced</code> 한 개. CSM: 없음(아틀라스 방식). Deferred: 포맷 몇 개</td><td>컬링은 CSM 의 캐스터 컬링에 쓰임. Deferred 는 ①이 필수, ②가 있으면 타일 라이트 컬링 가능</td><td>각 단계마다 "화면 동일 + 숫자(draw, 시간)가 줄어듦"</td></tr>
 </tbody>
@@ -176,7 +177,7 @@ SherlockEditor.exe --scene=demo --exit-after=60 --backend=d3d12 --screenshot=C:\
 <ul>
 <li><b>정점 셰이더</b>: <code>SkyboxVertexShader.hlsl</code> 가 이미 <code>SV_VertexID</code> 로 전체 화면 삼각형을 만듭니다. 방향 복원 부분을 뺀 <code>FullscreenVertexShader.hlsl</code>(위치 + uv 출력)을 새로 두면 이후 블룸·FXAA 가 같은 VS 를 씁니다.</li>
 <li><b>픽셀 셰이더</b> <code>TonemapPixelShader.hlsl</code>: <code>Texture2D hdr : register(t0)</code>, 샘플러 <code>s0</code>(클램프, 선형), 상수 <code>b0</code>(노출·톤매핑 on/off). 본문은 <code>float3 c = hdr.Sample(...).rgb; return float4(ApplyExposureToneMap(c), 1);</code>. <code>ApplyExposureToneMap</code> 이 <code>outputParams</code>(프레임 상수의 전역)를 읽으니, 새 상수버퍼로 값을 받게 쓰거나 프레임 셋(b0)을 같이 바인딩하는 둘 중 하나를 고릅니다. 프레임 셋을 재사용하면 새 상수버퍼가 없어 가장 작지만, 프레임 레이아웃에 t0 이 없으므로 <b>새 레이아웃이 어차피 필요</b>합니다.</li>
-<li><b>BindingLayout</b>: <code>BindingLayoutDesc</code> 에 <code>.Add(ShaderResource, ShaderStageMask_Pixel, 0)</code>, <code>.Add(Sampler, ShaderStageMask_Pixel, 0)</code> (필요하면 <code>ConstantBuffer</code> b0)를 더한 "post 레이아웃"을 만듭니다. <code>kMaxBindingSlots = 16</code> 안에서 충분합니다.</li>
+<li><b>BindingLayout</b>: <code>BindingLayoutDesc</code> 에 <code>.Add(ShaderResource, ShaderStageMask_Pixel, 0)</code>, <code>.Add(Sampler, ShaderStageMask_Pixel, 0)</code> (필요하면 <code>ConstantBuffer</code> b0)를 더한 "post 레이아웃"을 만듭니다. <code>kMaxBindingSlots</code>(작성 당시 16, 2026-11-17 코드 기준 24) 안에서 충분합니다.</li>
 <li>셰이더 로딩은 <code>Renderer::LoadShaders</code> 의 스카이박스 항목을 그대로 복사해 이름만 바꿉니다. <b>두 군데</b>를 같이 고칩니다: ① <code>SherlockEngine.vcxproj</code> 의 FxCompile 항목(<code>.cso</code> 생성, <code>&lt;ShaderModel&gt;5.0</code>) ② 런타임 컴파일 폴백(<code>LoadOrCompile</code> 이 파일 이름으로 찾으므로 별도 등록 불필요). 22.4 의 "셰이더 모델을 정하는 곳이 두 군데" 항목이 이 일입니다.</li>
 <li><code>ValidateBindings</code> 에 새 셰이더 쌍을 넣어 셰이더가 쓰는 슬롯과 레이아웃을 대조하세요. 슬롯 하나를 빼먹으면 화면이 아니라 시작할 때 오류로 잡힙니다.</li>
 <li>핫리로드 감시 목록(<code>m_watched</code>)에도 새 파일을 넣으면 F4 로 고칠 수 있습니다.</li>
@@ -222,6 +223,7 @@ SherlockEditor.exe --scene=demo --exit-after=60 --backend=d3d12 --screenshot=C:\
 
 <section id="compute">
 <h2>3. 4번 — 컴퓨트 파이프라인과 UAV <span class="tag">크기: 큼</span></h2>
+<div class="box ok"><p><b>구현됨 (D3D11: 2026-11-16 커밋 9435e6b, D3D12·버퍼 UAV: 2026-11-17).</b> A~F 를 이 순서대로 진행했습니다. 첫 응용(F)은 블룸·IBL 대신 <b>컴퓨트 가우시안 블러</b>였고, 버퍼 UAV(<code>BindingType::BufferUnorderedAccess</code>, <code>RWStructuredBuffer</code>)와 버퍼 상태·<code>Barrier(BufferHandle)</code> 를 더해 <b>블러 가중치 버퍼</b>를 컴퓨트로 쓰고 PS·CS 블러가 함께 읽습니다. 컴퓨트 블러는 2026-11-17 부터 기본 경로입니다. 실제 변경과 검증은 <a href="compute-uav-record.html">compute-uav-record.html</a> 에 있습니다. 아래 목록·단계는 구현 전의 계획입니다 — 다른 점: 컴퓨트 셋은 <code>SetComputeResourceSet</code> 으로 따로 꽂고, UAV 는 D3D12 에서 SRV 와 같은 테이블에 들어가며, 버퍼 상태는 프레임 끝에 Common 으로 돌아갑니다. IBL(4장)이 기대는 밉 단위 UAV(<code>ResourceBinding::mip</code>)도 이미 있습니다.</p></div>
 <p>RHI 인터페이스가 처음으로 넓어지는 일입니다. 순서를 지키면 어느 층에서 깨졌는지 알 수 있습니다: <b>(A) 타입 → (B) 셰이더 컴파일 → (C) D3D11 → (D) 첫 시험 → (E) D3D12 → (F) 응용</b>. D3D11 을 먼저 동작시키고 D3D12 를 붙이는 순서가 안전합니다(8단계 때도 그랬습니다).</p>
 
 <h3>필요한 것의 목록</h3>
@@ -366,7 +368,7 @@ SherlockEditor.exe --scene=demo --exit-after=60 --backend=d3d12 --screenshot=C:\
 <ol>
 <li><b>묶기</b>: <code>m_drawList</code> 는 이미 PSO → 재질 → 메시 → 인덱스 범위로 정렬되어 있으니, 연속된 항목 중 (pipeline, material, mesh, indexStart, indexCount)가 같은 것이 한 "런"입니다. 런 길이가 N 이면 드로우 한 번.</li>
 <li><b>RHI</b>: <code>CommandList::DrawIndexedInstanced(indexCount, instanceCount, startIndex, baseVertex, startInstance)</code> 하나를 추가(두 백엔드 모두 한 줄 호출).</li>
-<li><b>인스턴스별 데이터</b>: 오브젝트 상수버퍼(b1)를 드로우마다 올리는 대신, 이번 프레임 전체의 (world, worldInvTranspose)를 <code>StructuredBuffer&lt;PerObjectConstants&gt;</code> 하나에 모아 올립니다. <code>BufferBind_ShaderResource</code> + <code>stride</code> 가 이미 지원됩니다(ResourceDesc.h). 새 SRV 슬롯은 오브젝트 레이아웃에 t13 으로(<code>kMaxSrvRegister = 16</code> 이내; 프레임 셋이 t8~t12, 재질 셋이 t0~t4 를 씀).</li>
+<li><b>인스턴스별 데이터</b>: 오브젝트 상수버퍼(b1)를 드로우마다 올리는 대신, 이번 프레임 전체의 (world, worldInvTranspose)를 <code>StructuredBuffer&lt;PerObjectConstants&gt;</code> 하나에 모아 올립니다. <code>BufferBind_ShaderResource</code> + <code>stride</code> 가 이미 지원됩니다(ResourceDesc.h). 새 SRV 슬롯은 오브젝트 레이아웃에 t13 으로(<code>kMaxSrvRegister</code> 이내 — 작성 당시 16, 2026-11-17 코드 기준 32; 프레임 셋이 t8~t12, 재질 셋이 t0~t4 를 씀). <span class="tag p">2026-11-17 메모</span> 그 뒤 t13 은 후처리 입력(<code>kSRVSlotSceneHdr</code>), t16~t19 는 재질, t20 은 블러 가중치가 쓰므로 인스턴싱 슬롯은 <code>ShaderConstants.h</code> 를 보고 다시 고를 것.</li>
 <li><b>인덱싱</b>: HLSL 의 <code>SV_InstanceID</code> 는 <code>StartInstanceLocation</code> 을 포함하지 않습니다. 런의 첫 인스턴스 번호를 상수(<code>baseInstance</code>)로 드로우마다 넘기거나, 런마다 구조화 버퍼의 연속 구간을 쓰고 셰이더가 <code>baseInstance + SV_InstanceID</code> 로 읽게 하세요.</li>
 <li>VS 가 b1 대신 구조화 버퍼를 읽게 바꾸는 일은 <b>그림자 VS 도 함께</b> 해야 합니다(<code>ShadowVertexShader.hlsl</code>). 안 하면 그림자만 어긋납니다.</li>
 <li>인스턴스가 1 개인 런도 같은 경로로 그려 분기를 없앱니다(코드 경로 하나로 검증이 쉬워짐).</li>

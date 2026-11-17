@@ -35,6 +35,9 @@ namespace RHI
 		int width = 0;
 		int height = 0;
 		bool enableDebugLayer = true;   // Debug 빌드에서만 실제로 켜짐
+		// D3D12 GPU 기반 검증(GBV). enableDebugLayer 가 켜진 Debug 빌드에서만 의미가 있음. 셰이더 실행 시점의
+		// 리소스 상태·디스크립터 오류를 잡지만 매우 느려서 (첫 프레임 직전 1 분 넘게 멈춤) 기본은 끔. D3D11 은 무시.
+		bool enableGpuValidation = false;
 	};
 
 	class Device

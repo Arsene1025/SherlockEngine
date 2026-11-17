@@ -50,6 +50,7 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] =
 	{ L"DebugLineVertexShader.hlsl",  "VS_Line",       ShaderStage::Vertex, "DebugLineVS" },    // 본 표시 등 디버그 선
 	{ L"DebugLinePixelShader.hlsl",   "PS_Line",       ShaderStage::Pixel,  "DebugLinePS" },
 	{ L"BlurComputeShader.hlsl",      "CS_Blur",       ShaderStage::Compute, "BlurCS" },        // 가우시안 블러 한 방향 (컴퓨트 경로)
+	{ L"BlurWeightsComputeShader.hlsl", "CS_BlurWeights", ShaderStage::Compute, "BlurWeightsCS" }, // 블러 가중치 → 구조체 버퍼 (u0)
 };
 
 struct Renderer::PassInfo
@@ -84,6 +85,7 @@ struct Renderer::ComputePassInfo
 const Renderer::ComputePassInfo Renderer::kComputePasses[Renderer::ComputePass_Count] =
 {
 	{ "BlurCompute", Shader_BlurCS, { Layout_BlurCompute }, 1 },
+	{ "BlurWeights", Shader_BlurWeightsCS, { Layout_BlurWeights }, 1 },
 };
 
 namespace
@@ -114,6 +116,7 @@ namespace
 		case BindingType::ConstantBuffer: return 'b';
 		case BindingType::Sampler:        return 's';
 		case BindingType::UnorderedAccess: return 'u';
+		case BindingType::BufferUnorderedAccess: return 'u';
 		default:                          return 't';
 		}
 	}
@@ -159,10 +162,13 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_lightBuffer = m_device->CreateBuffer(BufferDesc{ .size = m_lightCapacity * static_cast<uint32_t>(sizeof(GpuLight)), .usage = BufferUsage::Dynamic,
 		.bindFlags = BufferBind_ShaderResource, .stride = sizeof(GpuLight), .debugName = "SB_Lights" });
 	m_postParamsCB = makeCB(sizeof(PostParamsConstants), "CB_PostParams");
+	// 블러 가중치: GPU 가 쓰고 GPU 가 읽는 구조체 버퍼 (Default + UAV + SRV). 초기 데이터 없음 — 블러 전에 항상 씀.
+	m_blurWeights = m_device->CreateBuffer(BufferDesc{ .size = (kMaxBlurRadius + 1) * static_cast<uint32_t>(sizeof(float)), .usage = BufferUsage::Default,
+		.bindFlags = BufferBind_ShaderResource | BufferBind_UnorderedAccess, .stride = sizeof(float), .debugName = "SB_BlurWeights" });
 	m_shadowPassCB = makeCB(sizeof(ShadowPassConstants), "CB_ShadowPass");   // b5
 	m_shadowsCB = makeCB(sizeof(ShadowConstants), "CB_Shadows");             // b6
 	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_skinCB.IsValid() || !m_debugLineVB.IsValid() || !m_lightCB.IsValid() || !m_lightBuffer.IsValid() || !m_postParamsCB.IsValid() ||
-		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid())
+		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid() || !m_blurWeights.IsValid())
 	{
 		Log::Error("Renderer::Initialize : 상수버퍼 생성 실패.");
 		return false;
@@ -186,7 +192,14 @@ bool Renderer::Initialize(RHI::Device* device)
 	};
 	m_objectSet = m_device->CreateResourceSet(objectSet);
 
-	if (!m_frameSet.IsValid() || !m_objectSet.IsValid())
+	const ResourceSetDesc blurWeightsSet{
+		.layout = m_layouts[Layout_BlurWeights],
+		.bindings = { { .buffer = m_postParamsCB }, { .buffer = m_blurWeights } },   // 레이아웃의 슬롯 순서: b4, u0
+		.debugName = "Set_BlurWeights",
+	};
+	m_blurWeightsSet = m_device->CreateResourceSet(blurWeightsSet);
+
+	if (!m_frameSet.IsValid() || !m_objectSet.IsValid() || !m_blurWeightsSet.IsValid())
 	{
 		Log::Error("Renderer::Initialize : ResourceSet 생성 실패.");
 		return false;
@@ -277,6 +290,7 @@ bool Renderer::CreateLayouts()
 	postLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPostParams); // b4
 	postLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneHdr);  // t13
 	postLayout.Add(BindingType::Sampler, ShaderStageMask_Pixel, kSamplerSlotPost);         // s6
+	postLayout.Add(BindingType::BufferResource, ShaderStageMask_Pixel, kSRVSlotBlurWeights); // t20 (블러 가중치. 블러 패스만 읽음)
 
 	// 컴퓨트 블러 셋: b4 (PostParams), t13 (입력), u0 (출력). 컴퓨트 슬롯은 그래픽스 스테이지와 섞지 않으므로
 	// Layout_Post 를 같이 쓰지 않고 따로 둠. 입력 레지스터는 PS 블러와 같은 t13 (Common.hlsli 의 t0 은 재질 알베도).
@@ -286,6 +300,14 @@ bool Renderer::CreateLayouts()
 	blurLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotPostParams);   // b4
 	blurLayout.Add(BindingType::ShaderResource, ShaderStageMask_Compute, kSRVSlotSceneHdr);    // t13
 	blurLayout.Add(BindingType::UnorderedAccess, ShaderStageMask_Compute, kUAVSlotPostOutput); // u0
+	blurLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotBlurWeights); // t20
+
+	// 블러 가중치 셋: b4 (PostParams 의 시그마·반경), u0 (가중치 구조체 버퍼).
+	BindingLayoutDesc& weightsLayout = m_layoutDescs[Layout_BlurWeights];
+	weightsLayout = BindingLayoutDesc{};
+	weightsLayout.debugName = "Layout_BlurWeights";
+	weightsLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotPostParams);          // b4
+	weightsLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotBlurWeights); // u0
 
 	for (uint32_t i = 0; i < Layout_Count; ++i)
 	{
@@ -375,8 +397,8 @@ void Renderer::BuildPassDescs()
 	m_debugLinePipeline = PipelineHandle{};
 	for (PipelineHandle& handle : m_tonemapPipelines) handle = PipelineHandle{};
 	for (PipelineHandle& handle : m_postPipelines) handle = PipelineHandle{};
-	m_blurComputePipeline = ComputePipelineHandle{};
-	m_blurComputeTried = false;
+	for (ComputePipelineHandle& handle : m_computePipelines) handle = ComputePipelineHandle{};
+	for (bool& tried : m_computeTried) tried = false;
 }
 
 bool Renderer::CreateSamplers()
@@ -799,13 +821,14 @@ void Renderer::Shutdown()
 
 	m_device->DestroyResourceSet(m_frameSet);
 	m_device->DestroyResourceSet(m_objectSet);
-	m_frameSet = m_objectSet = ResourceSetHandle{};
+	m_device->DestroyResourceSet(m_blurWeightsSet);
+	m_frameSet = m_objectSet = m_blurWeightsSet = ResourceSetHandle{};
 	for (BindingLayoutHandle& layout : m_layouts)
 	{
 		m_device->DestroyBindingLayout(layout);
 		layout = BindingLayoutHandle{};
 	}
-	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB })
+	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB, &m_blurWeights })
 	{
 		m_device->DestroyBuffer(*buffer);
 		*buffer = BufferHandle{};
@@ -953,6 +976,9 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		ProfileScope cpuScope("MainPass");
 		RenderScenePass(cmd, scene, m_mainView, camera, "MainPass");
 	}
+	// 모든 후처리 셋이 t20 에 가중치 버퍼를 꽂음. 버퍼 상태는 프레임마다 Common 으로 돌아가므로 첫 후처리 패스 전에
+	// ShaderResource 로 둠 (블러가 꺼진 프레임에도 — 톤 패스가 같은 셋 레이아웃을 바인딩함).
+	cmd.Barrier(m_blurWeights, ResourceState::ShaderResource);
 	// HDR 구간 후처리 (블러 → 블룸). 결과는 hdr 에 제자리로 남아 톤 패스가 그대로 읽음.
 	ApplyHdrEffects(cmd, m_mainView, m_postCapture);
 	{
@@ -1699,15 +1725,16 @@ PipelineHandle Renderer::GetTonemapPipeline()
 	return cached;
 }
 
-ComputePipelineHandle Renderer::GetBlurComputePipeline()
+ComputePipelineHandle Renderer::GetComputePipeline(ComputePassId pass)
 {
-	if (m_blurComputePipeline.IsValid() || m_blurComputeTried) return m_blurComputePipeline;
-	m_blurComputeTried = true;   // 실패(컴퓨트 미지원 백엔드)해도 매 프레임 다시 묻지 않음. 핫리로드(BuildPassDescs)가 되돌림
-	const ComputePassInfo& info = kComputePasses[ComputePass_Blur];
+	ComputePipelineHandle& cached = m_computePipelines[pass];
+	if (cached.IsValid() || m_computeTried[pass]) return cached;
+	m_computeTried[pass] = true;   // 실패(컴퓨트 미지원 백엔드)해도 매 프레임 다시 묻지 않음. 핫리로드(BuildPassDescs)가 되돌림
+	const ComputePassInfo& info = kComputePasses[pass];
 	ComputePipelineDesc desc;
 	desc.cs = m_shaders[info.cs];
 	for (uint32_t i = 0; i < info.layoutCount; ++i) desc.bindingLayouts[i] = m_layouts[info.layouts[i]];
 	desc.bindingLayoutCount = static_cast<uint8_t>(info.layoutCount);
-	m_blurComputePipeline = m_device->CreateComputePipeline(desc);
-	return m_blurComputePipeline;
+	cached = m_device->CreateComputePipeline(desc);
+	return cached;
 }

@@ -15,21 +15,25 @@ class D3D12Device;
 //           구조체 버퍼 슬롯 하나 = 루트 SRV 하나 (같은 이유로 GPU 가상 주소)
 //           SRV 슬롯들   = 디스크립터 테이블 하나 (슬롯마다 range 1개, 순서는 셋의 영구 범위와 같음)
 //           샘플러 슬롯들 = 디스크립터 테이블 하나
+//           UAV 슬롯들   = SRV 와 같은 테이블 (CBV/SRV/UAV 힙이 같으므로 range 종류만 다름). 슬롯 순서 그대로
 // 레지스터 space 는 전부 0 (SM 5.0 DXBC). 한 PSO 의 셋끼리 레지스터가 겹치면 GetOrCreateRootLayout 이 거절함.
+// 컴퓨트 PSO 는 같은 규칙으로 따로 만든 루트 시그니처를 씀 (IA 플래그 없음, 가시성 ALL). 그래픽스와 컴퓨트는
+// 커맨드 리스트에서 루트 시그니처·루트 인자를 따로 가짐 (SetGraphicsRoot* / SetComputeRoot*).
 struct D3D12RootLayout
 {
 	struct SetBinding
 	{
 		BindingLayoutHandle layout;
 		uint32_t descriptorRoot[kMaxBindingSlots];   // 슬롯 → 루트 파라미터 인덱스. CB 는 루트 CBV, 구조체 버퍼는 루트 SRV (그 밖에는 UINT32_MAX)
-		uint32_t srvTableRoot = UINT32_MAX;
+		uint32_t srvTableRoot = UINT32_MAX;          // SRV + UAV 테이블
 		uint32_t samplerTableRoot = UINT32_MAX;
 	};
 
 	ComPtr<ID3D12RootSignature> rootSignature;
 	SetBinding sets[kMaxBindingSets];
 	uint8_t setCount = 0;
-	uint64_t key = 0;   // 레이아웃 핸들들의 해시
+	bool compute = false;
+	uint64_t key = 0;   // 레이아웃 핸들들 + compute 의 해시. 캐시에서 찾은 뒤 sets[].layout 으로 다시 대조함 (해시 충돌 방지)
 };
 
 class D3D12PipelineState
@@ -50,19 +54,41 @@ private:
 	D3D12_PRIMITIVE_TOPOLOGY m_topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 };
 
-// Desc → PSO 캐시. 세대 규칙은 D3D11 의 PipelineStateCache 와 같음.
+// 컴퓨트 PSO. 셰이더 하나 + 루트 시그니처라 그래픽스보다 단순함.
+class D3D12ComputePipelineState
+{
+public:
+	bool Create(D3D12Device& device, const ComputePipelineDesc& desc);
+
+	ID3D12PipelineState* Get() const { return m_pso.Get(); }
+	const D3D12RootLayout* GetRootLayout() const { return m_rootLayout.get(); }
+	const ComputePipelineDesc& GetDesc() const { return m_desc; }
+	ComPtr<ID3D12PipelineState> Detach() { return std::move(m_pso); }
+
+private:
+	ComputePipelineDesc m_desc;
+	ComPtr<ID3D12PipelineState> m_pso;
+	std::shared_ptr<D3D12RootLayout> m_rootLayout;
+};
+
+// Desc → PSO 캐시. 세대 규칙은 D3D11 의 PipelineStateCache 와 같음. 컴퓨트 PSO 도 여기 두어 세대를 공유함
+// (InvalidatePipelines 한 번에 둘 다 무효가 됨 — D3D11 백엔드와 같음).
 // 차이: Clear() 가 PSO 를 바로 지우지 않고 Device 의 지연 해제 목록에 넘김 (GPU 가 아직 쓰고 있을 수 있기 때문).
 class D3D12PipelineStateCache
 {
 public:
 	PipelineHandle GetOrCreate(D3D12Device& device, const PipelineStateDesc& desc);
 	const D3D12PipelineState* Get(PipelineHandle handle) const;
-	size_t Count() const { return m_states.size(); }
+	ComputePipelineHandle GetOrCreateCompute(D3D12Device& device, const ComputePipelineDesc& desc);
+	const D3D12ComputePipelineState* GetCompute(ComputePipelineHandle handle) const;
+	size_t Count() const { return m_states.size() + m_computeStates.size(); }
 	uint32_t GetGeneration() const { return m_generation; }
 	void Clear(D3D12Device& device);
 
 private:
 	std::vector<std::unique_ptr<D3D12PipelineState>> m_states;
 	std::unordered_map<PipelineStateDesc, uint32_t, PipelineStateDescHasher> m_lookup;
+	std::vector<std::unique_ptr<D3D12ComputePipelineState>> m_computeStates;
+	std::unordered_map<ComputePipelineDesc, uint32_t, ComputePipelineDescHasher> m_computeLookup;
 	uint32_t m_generation = 1;
 };

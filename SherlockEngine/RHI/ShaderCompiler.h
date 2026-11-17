@@ -48,7 +48,7 @@ namespace ShaderCompiler
 	bool ReflectConstantBuffers(std::span<const uint8_t> bytecode, std::vector<ReflectedConstantBuffer>& out);
 
 	// 셰이더가 실제로 쓰는 바인딩(b#/t#/s#/u#)을 리플렉션으로 읽음. StructuredBuffer 는 BufferResource (t#),
-	// RWTexture2D 는 UnorderedAccess (u#).
+	// RWTexture2D 는 UnorderedAccess (u#), RWStructuredBuffer 는 BufferUnorderedAccess (u#).
 	// Renderer가 직접 선언한 BindingLayout과 대조하는 데 씀.
 	struct ReflectedBinding
 	{

@@ -136,7 +136,7 @@ bool AppBase::LoadConfig()
     const std::wstring path = Paths::GetAssetPath(L"Config\\engine.ini");
     const bool loaded = m_config.LoadFromFile(path);
 
-    // 실행 인자로 덮어쓰기: --backend=, --scene= 는 짧은 이름을 그대로 쓰고, 그 밖에는 일반형
+    // 실행 인자로 덮어쓰기: --backend=, --scene=, --gpu-validation= 은 짧은 이름을 그대로 쓰고, 그 밖에는 일반형
     // --section.key=value 를 씀.
     int argc = 0;
     LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
@@ -154,6 +154,7 @@ bool AppBase::LoadConfig()
             const std::string value = Log::ToUtf8(arg.substr(equals + 1).c_str());
             if (key == "backend") key = "engine.backend";
             else if (key == "scene") key = "engine.scene";
+            else if (key == "gpu-validation") key = "engine.gpuvalidation";
             m_config.Set(key, value);
         }
         LocalFree(argv);

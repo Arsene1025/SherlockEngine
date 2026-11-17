@@ -202,6 +202,7 @@ void D3D11Device::EndFrame()
         m_commandList.EndRenderPass();
     }
     if (m_readbackRequested) ReadBackBuffer();   // Present 전에 읽음 (flip 모델은 Present 후 백버퍼 내용을 버림)
+    m_commandList.ResetBufferStates();           // 버퍼 상태 → Common (D3D12 의 ExecuteCommandLists 뒤 감쇠와 같게)
     if (m_swapChain)
     {
         // SyncInterval 1 = 수직 동기화(모니터 주사율로 제한), 0 = 제한 없음.
@@ -291,6 +292,18 @@ BufferHandle D3D11Device::CreateBuffer(const BufferDesc& descIn, const void* ini
         bd.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
         bd.StructureByteStride = buffer.desc.stride;
     }
+    if (buffer.desc.bindFlags & BufferBind_UnorderedAccess)
+    {
+        // RWStructuredBuffer: Default + stride 필요 (D3D12 백엔드와 같은 규칙. Dynamic 은 GPU 가 쓸 수 없음).
+        if (buffer.desc.usage != BufferUsage::Default || buffer.desc.stride == 0)
+        {
+            Log::Error("CreateBuffer : UAV 버퍼는 Default usage 와 stride > 0 이 필요함 (%s).", buffer.name.c_str());
+            return BufferHandle{};
+        }
+        bd.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
+        bd.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+        bd.StructureByteStride = buffer.desc.stride;
+    }
 
     switch (buffer.desc.usage)
     {
@@ -368,6 +381,12 @@ void D3D11Device::UpdateBuffer(BufferHandle handle, const void* data, uint32_t s
         break;
     }
     case BufferUsage::Default:
+        // UAV 버퍼는 Common 상태에서만 (D3D12 는 업로드가 별도 커맨드 리스트라 프레임 중간 상태와 섞일 수 없음 — 같은 규칙).
+        if ((buffer->desc.bindFlags & BufferBind_UnorderedAccess) && buffer->state != ResourceState::Common)
+        {
+            Log::Error("UpdateBuffer : UAV 버퍼 '%s' 가 %s 상태 — Common 상태에서만 갱신할 수 있음.", buffer->name.c_str(), ToString(buffer->state));
+            return;
+        }
         // UpdateSubresource는 pDstBox가 없으면 리소스 전체를 덮어씀. 부분 갱신은
         // 상수버퍼에서 허용되지 않으므로 전체 크기만 받음.
         if (size != buffer->desc.size)
@@ -687,7 +706,7 @@ BindingLayoutHandle D3D11Device::CreateBindingLayout(const BindingLayoutDesc& de
         }
         // 컴퓨트 슬롯은 그래픽스 스테이지와 섞지 않고, UAV 는 컴퓨트 전용 (ResourceDesc.h·BindingTypes.h).
         if (((slot.stageMask & ShaderStageMask_Compute) && slot.stageMask != ShaderStageMask_Compute) ||
-            (slot.type == BindingType::UnorderedAccess && slot.stageMask != ShaderStageMask_Compute))
+            ((slot.type == BindingType::UnorderedAccess || slot.type == BindingType::BufferUnorderedAccess) && slot.stageMask != ShaderStageMask_Compute))
         {
             Log::Error("CreateBindingLayout : 슬롯 %u 의 stageMask 가 잘못됨 — 컴퓨트는 단독, UAV 는 컴퓨트 전용 (%s).", i, name);
             return BindingLayoutHandle{};
@@ -700,6 +719,7 @@ BindingLayoutHandle D3D11Device::CreateBindingLayout(const BindingLayoutDesc& de
         case BindingType::BufferResource: limit = kMaxSrvRegister; break;   // 텍스처와 같은 t# 공간
         case BindingType::Sampler:        limit = kMaxSamplerRegister; break;
         case BindingType::UnorderedAccess: limit = kMaxUavRegister; break;
+        case BindingType::BufferUnorderedAccess: limit = kMaxUavRegister; break;   // 텍스처 UAV 와 같은 u# 공간
         }
         if (slot.reg >= limit)
         {
@@ -710,9 +730,18 @@ BindingLayoutHandle D3D11Device::CreateBindingLayout(const BindingLayoutDesc& de
         for (uint32_t j = 0; j < i; ++j)
         {
             const BindingSlot& other = descIn.slots[j];
-            const bool sameClass = (other.type == slot.type) ||
-                ((other.type == BindingType::ShaderResource || other.type == BindingType::BufferResource) &&
-                 (slot.type == BindingType::ShaderResource || slot.type == BindingType::BufferResource));
+            // 레지스터 공간: t# = 텍스처·구조체 버퍼 SRV, u# = 텍스처·구조체 버퍼 UAV
+            auto classOf = [](BindingType t)
+            {
+                switch (t)
+                {
+                case BindingType::ShaderResource: case BindingType::BufferResource: return 't';
+                case BindingType::UnorderedAccess: case BindingType::BufferUnorderedAccess: return 'u';
+                case BindingType::Sampler: return 's';
+                default: return 'b';
+                }
+            };
+            const bool sameClass = classOf(other.type) == classOf(slot.type);
             if (sameClass && other.reg == slot.reg && (other.stageMask & slot.stageMask) != 0)
             {
                 Log::Error("CreateBindingLayout : 슬롯 %u 와 %u 가 같은 레지스터를 같은 스테이지에 선언 (%s).", j, i, name);
@@ -786,6 +815,16 @@ ResourceSetHandle D3D11Device::CreateResourceSet(const ResourceSetDesc& descIn)
             if (texture == nullptr || !(texture->desc.bindFlags & TextureBind_UnorderedAccess) || binding.mip >= texture->desc.mipLevels)
             {
                 Log::Error("CreateResourceSet : 슬롯 %u (u%u) 에 UAV 가능한 텍스처가 아니거나 밉 %u 이 범위 밖 (%s).", i, slot.reg, binding.mip, name);
+                return ResourceSetHandle{};
+            }
+            break;
+        }
+        case BindingType::BufferUnorderedAccess:
+        {
+            const D3D11Buffer* buffer = m_buffers.Get(binding.buffer);
+            if (buffer == nullptr || !(buffer->desc.bindFlags & BufferBind_UnorderedAccess))
+            {
+                Log::Error("CreateResourceSet : 슬롯 %u (u%u) 에 UAV 버퍼(BufferBind_UnorderedAccess)가 아닌 핸들 (%s).", i, slot.reg, name);
                 return ResourceSetHandle{};
             }
             break;

@@ -19,6 +19,10 @@ struct D3D11Buffer
 	ComPtr<ID3D11Buffer> buffers[kFrameCount];
 	// 구조체 버퍼(BufferBind_ShaderResource)의 SRV. 복제본마다 하나, 처음 요청될 때 만듦.
 	ComPtr<ID3D11ShaderResourceView> srvs[kFrameCount];
+	// RWStructuredBuffer 뷰 (BufferBind_UnorderedAccess). Default 전용이라 복제본이 없음. 처음 요청될 때 만듦.
+	ComPtr<ID3D11UnorderedAccessView> uav;
+	// CommandList::Barrier(BufferHandle) 가 추적 (D3D11 에서는 검사용). 프레임 끝에 Common 으로 돌아감 (D3D12 의 감쇠와 맞춤).
+	ResourceState state = ResourceState::Common;
 
 	ID3D11Buffer* Get(uint32_t frameIndex) const
 	{
@@ -42,6 +46,24 @@ struct D3D11Buffer
 			if (FAILED(hr)) Log::Error("구조체 버퍼 SRV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
 		}
 		return srvs[slot].Get();
+	}
+
+	// HLSL RWStructuredBuffer<T> 로 쓰는 뷰. 원소 수 = size / stride.
+	ID3D11UnorderedAccessView* GetUAV(ID3D11Device* device)
+	{
+		if (!(desc.bindFlags & BufferBind_UnorderedAccess) || desc.stride == 0 || !buffers[0]) return nullptr;
+		if (!uav)
+		{
+			D3D11_UNORDERED_ACCESS_VIEW_DESC viewDesc = {};
+			viewDesc.Format = DXGI_FORMAT_UNKNOWN;
+			viewDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+			viewDesc.Buffer.FirstElement = 0;
+			viewDesc.Buffer.NumElements = desc.size / desc.stride;
+			viewDesc.Buffer.Flags = 0;
+			const HRESULT hr = device->CreateUnorderedAccessView(buffers[0].Get(), &viewDesc, uav.GetAddressOf());
+			if (FAILED(hr)) Log::Error("구조체 버퍼 UAV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+		}
+		return uav.Get();
 	}
 };
 

@@ -75,7 +75,14 @@ namespace RHI
 		// 따로 둔 이유). 텍스처가 UnorderedAccess 상태여야 함. D3D11: 드라이버가 알아서 하므로 할 일 없음.
 		// D3D12: ResourceBarrier(UAV). 다른 텍스처·다른 밉에 쓰거나, 사이에 SRV 전이가 있으면 필요 없음.
 		virtual void UavBarrier(TextureHandle texture) = 0;
-		// 크기가 같은 두 버퍼 사이의 전체 복사.
+		// 버퍼판 (BufferBind_UnorderedAccess 버퍼). 규칙은 텍스처와 같음: 버퍼마다 상태를 추적하고 after 만 말함.
+		// 쓸 수 있는 상태: Common, ShaderResource, UnorderedAccess (복사 상태는 CopyBuffer 가 알아서 정함).
+		// 프레임이 끝나면 상태가 Common 으로 돌아감 — D3D12 는 ExecuteCommandLists 가 끝날 때 버퍼가 COMMON 으로
+		// 감쇠(decay)하므로 D3D11 도 같게 맞춤. 따라서 프레임마다 처음 쓰기 전에 다시 Barrier 해야 함.
+		virtual void Barrier(BufferHandle buffer, ResourceState after) = 0;
+		virtual void UavBarrier(BufferHandle buffer) = 0;
+		// 크기가 같은 두 버퍼 사이의 전체 복사. 두 버퍼는 Common (또는 이번 프레임에 이미 같은 복사 상태)이어야 함 —
+		// 복사 뒤 상태는 dst = CopyDest, src = CopySource 로 기록됨 (D3D12 의 암묵 승격과 같음).
 		virtual void CopyBuffer(BufferHandle dst, BufferHandle src) = 0;
 
 		// ---- GPU 타임스탬프 (Profiler) ----

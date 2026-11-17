@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "Graphics/Renderer.h"
 #include "RHI/Device.h"
 #include "RHI/CommandList.h"
@@ -21,8 +21,7 @@ using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
-	constexpr float kReferenceHeight = 720.0f;   // PostProcessSettings 의 블러 반경이 기준으로 삼는 출력 높이
-	constexpr int kMaxBlurRadius = 64;           // PostPixelShader.hlsl 의 kMaxBlurRadius 와 같아야 함
+	constexpr float kReferenceHeight = 720.0f;   // PostProcessSettings 의 블러 반경이 기준으로 삼는 출력 높이 (반경 상한은 ShaderConstants.h 의 kMaxBlurRadius)
 }
 
 PipelineHandle Renderer::GetPostPipeline(bool additive)
@@ -51,12 +50,24 @@ void Renderer::DispatchBlurCompute(RHI::CommandList& cmd, ComputePipelineHandle 
 	++m_stats.pipelineSwitches;
 }
 
+void Renderer::DispatchBlurWeights(RHI::CommandList& cmd, ComputePipelineHandle pipeline, uint32_t radius)
+{
+	// 쓰기 전 UnorderedAccess. D3D11 에서는 이 전이가 PS t20 · CS t20 의 SRV 바인딩을 풀어 줌 (같은 버퍼가 SRV 와 UAV 에
+	// 동시에 꽂히면 런타임이 UAV 쪽을 NULL 로 만듦).
+	cmd.Barrier(m_blurWeights, ResourceState::UnorderedAccess);
+	cmd.SetComputePipeline(pipeline);
+	cmd.SetComputeResourceSet(kSetBlurWeights, m_blurWeightsSet);   // PostParams 를 올린 뒤 (D3D12 루트 CBV 주소)
+	cmd.Dispatch((radius + 1 + 63) / 64, 1, 1);   // BlurWeightsComputeShader 의 [numthreads(64, 1, 1)]. 원소 0..radius
+	cmd.Barrier(m_blurWeights, ResourceState::ShaderResource);   // PS·CS 블러가 t20 으로 읽음
+}
+
 ResourceSetHandle Renderer::CreatePostSet(TextureHandle input, const char* debugName)
 {
-	// 슬롯 순서는 CreateLayouts 의 postLayout.Add(...) 순서: b0 PerFrame, b4 PostParams, t13 입력, s6 선형 Clamp.
+	// 슬롯 순서는 CreateLayouts 의 postLayout.Add(...) 순서: b0 PerFrame, b4 PostParams, t13 입력, s6 선형 Clamp, t20 블러 가중치.
 	const ResourceSetDesc desc{
 		.layout = m_layouts[Layout_Post],
-		.bindings = { { .buffer = m_perFrameCB }, { .buffer = m_postParamsCB }, { .texture = input }, { .sampler = GetSampler(SamplerPreset::LinearClamp) } },
+		.bindings = { { .buffer = m_perFrameCB }, { .buffer = m_postParamsCB }, { .texture = input }, { .sampler = GetSampler(SamplerPreset::LinearClamp) },
+			{ .buffer = m_blurWeights } },
 		.debugName = debugName,
 	};
 	return m_device->CreateResourceSet(desc);
@@ -147,16 +158,16 @@ bool Renderer::EnsurePostScratch(PostScratch& scratch, TextureHandle hdr, uint32
 		}
 		Log::Info("후처리 스크래치(블러) %ux%u (R16G16B16A16_FLOAT)", width, height);
 
-		// 컴퓨트 블러 셋. 슬롯 순서는 CreateLayouts 의 blurLayout.Add(...) 순서: b4, t13 입력, u0 출력.
+		// 컴퓨트 블러 셋. 슬롯 순서는 CreateLayouts 의 blurLayout.Add(...) 순서: b4, t13 입력, u0 출력, t20 가중치.
 		// 실패해도 (UAV 를 못 만드는 장치 등) 스크래치는 그대로 쓰고 PS 블러로 감.
 		const ResourceSetDesc horizontal{
 			.layout = m_layouts[Layout_BlurCompute],
-			.bindings = { { .buffer = m_postParamsCB }, { .texture = hdr }, { .texture = scratch.temp } },
+			.bindings = { { .buffer = m_postParamsCB }, { .texture = hdr }, { .texture = scratch.temp }, { .buffer = m_blurWeights } },
 			.debugName = "BlurComputeH",
 		};
 		const ResourceSetDesc vertical{
 			.layout = m_layouts[Layout_BlurCompute],
-			.bindings = { { .buffer = m_postParamsCB }, { .texture = scratch.temp }, { .texture = hdr } },
+			.bindings = { { .buffer = m_postParamsCB }, { .texture = scratch.temp }, { .texture = hdr }, { .buffer = m_blurWeights } },
 			.debugName = "BlurComputeV",
 		};
 		scratch.blurComputeSets[0] = m_device->CreateResourceSet(horizontal);
@@ -285,6 +296,15 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 	const PostProcessSettings& post = m_postSettings;
 	bool blur = post.blurEnabled && post.blurRadius > 0.0f;
 	bool bloom = post.bloomEnabled && post.bloomIntensity > 0.0f;
+	// 블러는 PS·CS 두 경로 모두 컴퓨트로 쓴 가중치 버퍼를 읽음. 가중치 PSO 를 못 만들면 블러를 건너뜀.
+	const ComputePipelineHandle blurWeights = blur ? GetComputePipeline(ComputePass_BlurWeights) : ComputePipelineHandle{};
+	if (blur && !blurWeights.IsValid())
+	{
+		static bool warned = false;
+		if (!warned) Log::Error("블러 가중치 컴퓨트 PSO 가 없어 블러를 건너뜀.");
+		warned = true;
+		blur = false;
+	}
 	if ((blur || bloom) && !EnsurePostScratch(scratch, hdr, width, height, blur, bloom))
 	{
 		blur = bloom = false;   // 못 만들면 효과만 건너뜀 (씬은 그대로 나감)
@@ -300,12 +320,13 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 		GpuProfileScope gpuScope(cmd, "BlurPass");
 		const float effectiveRadius = (std::min)(post.blurRadius * h / kReferenceHeight, static_cast<float>(kMaxBlurRadius));
 		PostParamsConstants params = {};
-		params.blur = XMFLOAT4((std::max)(effectiveRadius / 2.5f, 0.5f), std::ceil((std::max)(effectiveRadius, 1.0f)), 0.0f, 0.0f);   // 시그마, 반경 (±2.5σ 에서 자름)
+		const float radius = std::ceil((std::max)(effectiveRadius, 1.0f));
+		params.blur = XMFLOAT4((std::max)(effectiveRadius / 2.5f, 0.5f), radius, 0.0f, 0.0f);   // 시그마, 반경 (±2.5σ 에서 자름)
 		params.view = XMFLOAT4(w, h, w, h);
 
-		// 컴퓨트 경로: 설정이 켜져 있고 PSO·셋이 모두 있을 때만. 아니면 (D3D12 미구현 등) PS 경로.
-		// 같은 PostParams 를 쓰고 수식이 같아 두 경로의 결과가 같아야 함.
-		const ComputePipelineHandle blurCompute = m_settings.computeBlur ? GetBlurComputePipeline() : ComputePipelineHandle{};
+		// 컴퓨트 경로: 설정이 켜져 있고 PSO·셋이 모두 있을 때만. 아니면 PS 경로.
+		// 같은 PostParams·같은 가중치 버퍼를 읽고 더하는 순서가 같아 두 경로의 결과가 비트 단위로 같아야 함.
+		const ComputePipelineHandle blurCompute = m_settings.computeBlur ? GetComputePipeline(ComputePass_Blur) : ComputePipelineHandle{};
 		const bool useCompute = blurCompute.IsValid() && scratch.blurComputeSets[0].IsValid() && scratch.blurComputeSets[1].IsValid();
 		if (scratch.blurPath != (useCompute ? 1 : 0))
 		{
@@ -315,6 +336,8 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 
 		params.pass = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.0f);   // 모드 1, 방향 (1, 0)
 		UploadPostParams(params);
+		// 이 뷰의 시그마로 가중치를 씀 (뷰마다 높이가 달라 시그마가 다름 — 미리보기 뷰가 다시 씀).
+		DispatchBlurWeights(cmd, blurWeights, static_cast<uint32_t>(radius));
 		if (useCompute)
 		{
 			DispatchBlurCompute(cmd, blurCompute, scratch.blurComputeSets[0], scratch.temp, width, height);

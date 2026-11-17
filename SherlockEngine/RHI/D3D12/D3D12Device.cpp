@@ -25,6 +25,7 @@ namespace
         case BindingType::ConstantBuffer: return 'b';
         case BindingType::Sampler:        return 's';
         case BindingType::UnorderedAccess: return 'u';
+        case BindingType::BufferUnorderedAccess: return 'u';
         default:                          return 't';
         }
     }
@@ -55,7 +56,7 @@ bool D3D12Device::Init(const RHI::DeviceDesc& desc)
     m_screenHeight = desc.height;
     m_debugLayer = desc.enableDebugLayer;
 
-    if (!InitDevice(desc.enableDebugLayer)) return false;
+    if (!InitDevice(desc.enableDebugLayer, desc.enableGpuValidation)) return false;
     if (!InitSwapChain()) return false;
     if (!InitFrameResources()) return false;
     m_commandList.Init(this);
@@ -74,14 +75,15 @@ void D3D12Device::SetDebugName(ID3D12Object* object, const std::string& name)
 #endif
 }
 
-bool D3D12Device::InitDevice(bool debugLayer)
+bool D3D12Device::InitDevice(bool debugLayer, bool gpuValidation)
 {
     UINT factoryFlags = 0;
 #if defined(_DEBUG)
     if (debugLayer)
     {
-        // Debug Layer + GPU 기반 검증(GBV). GBV 는 배리어 누락·디스크립터 오용을 셰이더 실행 시점에 잡아냄.
-        // 프레임이 수십 배 느려지지만 Debug 의 목적이 검증이므로 항상 켬.
+        // Debug Layer 는 항상 (API 사용 오류). GPU 기반 검증(GBV)은 옵션 — 배리어 누락·디스크립터 오용을 셰이더
+        // 실행 시점에 잡아내지만, 셰이더마다 검증 코드를 끼워 넣느라 첫 프레임 직전에 1 분 넘게 멈추고 프레임도
+        // 수십 배 느려짐. 상용 엔진처럼 필요할 때만 켬: engine.ini 의 engine.gpuvalidation 또는 --gpu-validation=1.
         ComPtr<ID3D12Debug> debug;
         if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(debug.GetAddressOf()))))
         {
@@ -89,14 +91,20 @@ bool D3D12Device::InitDevice(bool debugLayer)
             ComPtr<ID3D12Debug1> debug1;
             if (SUCCEEDED(debug.As(&debug1)))
             {
-                debug1->SetEnableGPUBasedValidation(TRUE);
+                debug1->SetEnableGPUBasedValidation(gpuValidation ? TRUE : FALSE);
                 debug1->SetEnableSynchronizedCommandQueueValidation(TRUE);
             }
+            else if (gpuValidation)
+            {
+                Log::Warn("ID3D12Debug1 을 얻지 못해 GPU 기반 검증을 켜지 못함.");
+            }
             factoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+            Log::Info("D3D12 디버그 레이어 켬. GPU 기반 검증 %s (engine.gpuvalidation / --gpu-validation=1).", gpuValidation ? "켬" : "끔");
         }
     }
 #else
     (void)debugLayer;
+    (void)gpuValidation;
 #endif
 
     HRESULT hr = CreateDXGIFactory2(factoryFlags, IID_PPV_ARGS(m_factory.GetAddressOf()));
@@ -510,6 +518,7 @@ void D3D12Device::EndFrame()
     m_list->Close();
     ID3D12CommandList* lists[] = { m_list.Get() };
     m_queue->ExecuteCommandLists(1, lists);
+    m_commandList.ResetBufferStates();   // 실행이 끝나면 버퍼는 COMMON 으로 감쇠함. 다음 프레임의 배리어 before 가 맞도록
 
     const UINT flags = (!m_vsync && m_tearingSupported) ? DXGI_PRESENT_ALLOW_TEARING : 0;
     const HRESULT hr = m_swapChain->Present(m_vsync ? 1 : 0, flags);
@@ -577,6 +586,14 @@ BufferHandle D3D12Device::CreateBuffer(const BufferDesc& descIn, const void* ini
         buffer.desc.size = (buffer.desc.size + 255) & ~255u;   // 루트 CBV: 256 바이트 정렬
     }
 
+    const bool uav = (buffer.desc.bindFlags & BufferBind_UnorderedAccess) != 0;
+    if (uav && (buffer.desc.usage != BufferUsage::Default || buffer.desc.stride == 0))
+    {
+        // D3D11 백엔드와 같은 규칙. Dynamic 은 리소스가 없는 링 조각이라 UAV 가 될 수 없음.
+        Log::Error("CreateBuffer : UAV 버퍼는 Default usage 와 stride > 0 이 필요함 (%s).", buffer.name.c_str());
+        return BufferHandle{};
+    }
+
     if (buffer.desc.usage == BufferUsage::Dynamic)
     {
         // 리소스 없음. UpdateBuffer 가 프레임 링에서 조각을 할당해 줌 (D3D11 의 WRITE_DISCARD 이름 바꾸기와 같은 역할).
@@ -585,7 +602,7 @@ BufferHandle D3D12Device::CreateBuffer(const BufferDesc& descIn, const void* ini
 
     const bool staging = (buffer.desc.usage == BufferUsage::Staging);
     const D3D12_HEAP_PROPERTIES heap = D3D12Convert::HeapProperties(staging ? D3D12_HEAP_TYPE_READBACK : D3D12_HEAP_TYPE_DEFAULT);
-    const D3D12_RESOURCE_DESC rd = D3D12Convert::BufferDesc(buffer.desc.size);
+    const D3D12_RESOURCE_DESC rd = D3D12Convert::BufferDesc(buffer.desc.size, uav ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS : D3D12_RESOURCE_FLAG_NONE);
     const D3D12_RESOURCE_STATES initial = staging ? D3D12_RESOURCE_STATE_COPY_DEST : D3D12_RESOURCE_STATE_COMMON;
     HRESULT hr = m_device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &rd, initial, nullptr, IID_PPV_ARGS(buffer.resource.GetAddressOf()));
     if (FAILED(hr))
@@ -602,7 +619,8 @@ BufferHandle D3D12Device::CreateBuffer(const BufferDesc& descIn, const void* ini
         // 실행이 끝나면 COMMON 으로 돌아오므로(decay) 배리어가 필요 없음.
         ComPtr<ID3D12Resource> upload;
         const D3D12_HEAP_PROPERTIES uploadHeap = D3D12Convert::HeapProperties(D3D12_HEAP_TYPE_UPLOAD);
-        hr = m_device->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &rd, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(upload.GetAddressOf()));
+        const D3D12_RESOURCE_DESC uploadDesc = D3D12Convert::BufferDesc(buffer.desc.size);   // 업로드 힙은 UAV 플래그를 가질 수 없음
+        hr = m_device->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &uploadDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(upload.GetAddressOf()));
         if (FAILED(hr))
         {
             Log::Error("CreateBuffer : 업로드 버퍼 생성 실패 (%s). %s", buffer.name.c_str(), Log::HrToString(hr).c_str());
@@ -664,6 +682,12 @@ void D3D12Device::UpdateBuffer(BufferHandle handle, const void* data, uint32_t s
         if (size != buffer->desc.size)
         {
             Log::Error("UpdateBuffer : Default 버퍼는 전체 크기로만 갱신할 수 있음 (%s, %u != %u).", buffer->name.c_str(), size, buffer->desc.size);
+            return;
+        }
+        // 업로드는 별도 커맨드 리스트라 프레임 리스트가 기록 중인 상태와 섞이면 안 됨 — UAV 버퍼는 Common 일 때만.
+        if ((buffer->desc.bindFlags & BufferBind_UnorderedAccess) && buffer->state != ResourceState::Common)
+        {
+            Log::Error("UpdateBuffer : UAV 버퍼 '%s' 가 %s 상태 — Common 상태에서만 갱신할 수 있음.", buffer->name.c_str(), ToString(buffer->state));
             return;
         }
         // 드물게 쓰는 경로(Renderer 는 쓰지 않음). 동기 업로드로 정확성만 보장함.
@@ -743,6 +767,14 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
         if (!CanBeUnorderedAccess(descIn))
         {
             Log::Error("CreateTexture : UAV 텍스처는 2D · 비깊이 · MSAA 없음 · 비 sRGB · 비압축이어야 함 (%s).", texture.name.c_str());
+            return TextureHandle{};
+        }
+        // 포맷별 typed UAV 지원은 장치마다 다름 (D3D11 백엔드의 CheckFormatSupport 와 같은 검사).
+        D3D12_FEATURE_DATA_FORMAT_SUPPORT support = { format, D3D12_FORMAT_SUPPORT1_NONE, D3D12_FORMAT_SUPPORT2_NONE };
+        if (FAILED(m_device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &support, sizeof(support))) ||
+            !(support.Support1 & D3D12_FORMAT_SUPPORT1_TYPED_UNORDERED_ACCESS_VIEW))
+        {
+            Log::Error("CreateTexture : 이 장치는 포맷 %d 의 typed UAV 를 지원하지 않음 (%s).", static_cast<int>(format), texture.name.c_str());
             return TextureHandle{};
         }
         rd.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
@@ -1037,13 +1069,7 @@ PipelineHandle D3D12Device::CreatePipeline(const PipelineStateDesc& desc)
 
 ComputePipelineHandle D3D12Device::CreateComputePipeline(const ComputePipelineDesc& desc)
 {
-    // E 단계에서 구현함 (컴퓨트 루트 시그니처 + D3D12_COMPUTE_PIPELINE_STATE_DESC). 그 전까지는 빈 핸들 —
-    // Renderer 가 IsValid() 로 보고 그래픽스(PS) 경로로 돌아감.
-    (void)desc;
-    static bool warned = false;
-    if (!warned) Log::Warn("CreateComputePipeline : D3D12 컴퓨트는 아직 구현되지 않음. 그래픽스 경로를 씀.");
-    warned = true;
-    return ComputePipelineHandle{};
+    return m_pipelines.GetOrCreateCompute(*this, desc);
 }
 
 void D3D12Device::InvalidatePipelines()
@@ -1051,25 +1077,41 @@ void D3D12Device::InvalidatePipelines()
     m_pipelines.Clear(*this);
 }
 
-std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const PipelineStateDesc& desc)
+std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const BindingLayoutHandle* layouts, uint32_t layoutCount, bool compute)
 {
-    uint64_t key = 0xCBF29CE484222325ull ^ desc.bindingLayoutCount;
-    for (uint32_t i = 0; i < desc.bindingLayoutCount; ++i)
+    if (layoutCount > kMaxBindingSets)
     {
-        key = key * 1099511628211ull ^ desc.bindingLayouts[i].index;
-        key = key * 1099511628211ull ^ desc.bindingLayouts[i].generation;
+        Log::Error("루트 시그니처 : 셋이 너무 많음 (%u > %u).", layoutCount, kMaxBindingSets);
+        return nullptr;
+    }
+    uint64_t key = 0xCBF29CE484222325ull ^ layoutCount ^ (compute ? 0x100ull : 0ull);
+    for (uint32_t i = 0; i < layoutCount; ++i)
+    {
+        key = key * 1099511628211ull ^ layouts[i].index;
+        key = key * 1099511628211ull ^ layouts[i].generation;
     }
     auto found = m_rootLayouts.find(key);
-    if (found != m_rootLayouts.end()) return found->second;
+    if (found != m_rootLayouts.end())
+    {
+        // 해시가 같아도 조합이 다를 수 있음 — 핸들 배열로 다시 대조함. 다르면 새로 만들어 그 자리를 덮음
+        // (기존 것을 쓰는 PSO 는 shared_ptr 로 붙들고 있으므로 안전함).
+        const D3D12RootLayout& cached = *found->second;
+        bool same = cached.setCount == layoutCount && cached.compute == compute;
+        for (uint32_t i = 0; same && i < layoutCount; ++i) same = cached.sets[i].layout == layouts[i];
+        if (same) return found->second;
+        Log::Warn("루트 시그니처 : 캐시 키 충돌 (key %llx). 새로 만듦.", static_cast<unsigned long long>(key));
+    }
+    const uint8_t visibilityAll = compute ? ShaderStageMask_Compute : 0;
+    auto visibility = [&](uint8_t stageMask) { return stageMask == visibilityAll ? D3D12_SHADER_VISIBILITY_ALL : VisibilityOf(stageMask); };
 
     // 한 PSO 의 셋끼리 같은 (종류, 레지스터)를 같은 스테이지에 선언하면 루트 시그니처를 만들 수 없음. 서로 다른
     // PSO 는 같은 번호를 다른 용도로 써도 되므로, 이 검사는 레이아웃이 아니라 조합(PSO) 단위임.
-    for (uint32_t a = 0; a < desc.bindingLayoutCount; ++a)
+    for (uint32_t a = 0; a < layoutCount; ++a)
     {
-        const D3D12BindingLayout* la = m_bindingLayouts.Get(desc.bindingLayouts[a]);
-        for (uint32_t b = a + 1; la != nullptr && b < desc.bindingLayoutCount; ++b)
+        const D3D12BindingLayout* la = m_bindingLayouts.Get(layouts[a]);
+        for (uint32_t b = a + 1; la != nullptr && b < layoutCount; ++b)
         {
-            const D3D12BindingLayout* lb = m_bindingLayouts.Get(desc.bindingLayouts[b]);
+            const D3D12BindingLayout* lb = m_bindingLayouts.Get(layouts[b]);
             if (lb == nullptr) continue;
             for (uint32_t i = 0; i < la->desc.slotCount; ++i)
             {
@@ -1090,22 +1132,23 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
 
     auto layoutSet = std::make_shared<D3D12RootLayout>();
     layoutSet->key = key;
-    layoutSet->setCount = desc.bindingLayoutCount;
+    layoutSet->setCount = static_cast<uint8_t>(layoutCount);
+    layoutSet->compute = compute;
 
     std::vector<D3D12_ROOT_PARAMETER> params;
     std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>> ranges;   // 테이블마다 하나. 재할당으로 포인터가 무효화되지 않게 용량을 미리 확보함
-    ranges.reserve(static_cast<size_t>(desc.bindingLayoutCount) * 2);
+    ranges.reserve(static_cast<size_t>(layoutCount) * 2);
 
-    for (uint32_t s = 0; s < desc.bindingLayoutCount; ++s)
+    for (uint32_t s = 0; s < layoutCount; ++s)
     {
-        const D3D12BindingLayout* layout = m_bindingLayouts.Get(desc.bindingLayouts[s]);
+        const D3D12BindingLayout* layout = m_bindingLayouts.Get(layouts[s]);
         if (layout == nullptr)
         {
             Log::Error("루트 시그니처 : 셋 %u 의 BindingLayoutHandle 이 유효하지 않음.", s);
             return nullptr;
         }
         D3D12RootLayout::SetBinding& sb = layoutSet->sets[s];
-        sb.layout = desc.bindingLayouts[s];
+        sb.layout = layouts[s];
         for (uint32_t& r : sb.descriptorRoot) r = UINT32_MAX;
 
         std::vector<D3D12_DESCRIPTOR_RANGE> srvRanges, samplerRanges;
@@ -1122,7 +1165,7 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
                 p.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
                 p.Descriptor.ShaderRegister = slot.reg;
                 p.Descriptor.RegisterSpace = 0;
-                p.ShaderVisibility = VisibilityOf(slot.stageMask);
+                p.ShaderVisibility = visibility(slot.stageMask);
                 sb.descriptorRoot[i] = static_cast<uint32_t>(params.size());
                 params.push_back(p);
                 break;
@@ -1135,7 +1178,7 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
                 p.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
                 p.Descriptor.ShaderRegister = slot.reg;
                 p.Descriptor.RegisterSpace = 0;
-                p.ShaderVisibility = VisibilityOf(slot.stageMask);
+                p.ShaderVisibility = visibility(slot.stageMask);
                 sb.descriptorRoot[i] = static_cast<uint32_t>(params.size());
                 params.push_back(p);
                 break;
@@ -1148,6 +1191,22 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
                 r.BaseShaderRegister = slot.reg;
                 r.RegisterSpace = 0;
                 r.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;   // 셋의 영구 범위와 같은 순서
+                srvRanges.push_back(r);
+                srvMask |= slot.stageMask;
+                break;
+            }
+            case BindingType::UnorderedAccess:
+            case BindingType::BufferUnorderedAccess:
+            {
+                // SRV 와 같은 테이블. CreateResourceSet 이 SRV·UAV 를 슬롯 순서대로 한 범위에 씀.
+                // 버퍼 UAV 도 루트 UAV 가 아니라 테이블에 둠 — 루트 UAV 는 범위 검사가 없어 범위 밖 쓰기가 다른 메모리를
+                // 덮지만, 디스크립터(원소 수가 있는 뷰)는 범위 밖 쓰기를 버림.
+                D3D12_DESCRIPTOR_RANGE r = {};
+                r.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+                r.NumDescriptors = 1;
+                r.BaseShaderRegister = slot.reg;
+                r.RegisterSpace = 0;
+                r.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
                 srvRanges.push_back(r);
                 srvMask |= slot.stageMask;
                 break;
@@ -1173,7 +1232,7 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
             p.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
             p.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(ranges.back().size());
             p.DescriptorTable.pDescriptorRanges = ranges.back().data();
-            p.ShaderVisibility = VisibilityOf(srvMask);
+            p.ShaderVisibility = visibility(srvMask);
             sb.srvTableRoot = static_cast<uint32_t>(params.size());
             params.push_back(p);
         }
@@ -1184,7 +1243,7 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
             p.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
             p.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(ranges.back().size());
             p.DescriptorTable.pDescriptorRanges = ranges.back().data();
-            p.ShaderVisibility = VisibilityOf(samplerMask);
+            p.ShaderVisibility = visibility(samplerMask);
             sb.samplerTableRoot = static_cast<uint32_t>(params.size());
             params.push_back(p);
         }
@@ -1204,7 +1263,7 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
     rsd.pParameters = params.empty() ? nullptr : params.data();
     rsd.NumStaticSamplers = 0;
     rsd.pStaticSamplers = nullptr;
-    rsd.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    rsd.Flags = compute ? D3D12_ROOT_SIGNATURE_FLAG_NONE : D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
     ComPtr<ID3DBlob> blob, error;
     HRESULT hr = D3D12SerializeRootSignature(&rsd, D3D_ROOT_SIGNATURE_VERSION_1, blob.GetAddressOf(), error.GetAddressOf());
@@ -1219,9 +1278,9 @@ std::shared_ptr<D3D12RootLayout> D3D12Device::GetOrCreateRootLayout(const Pipeli
         Log::Error("CreateRootSignature 실패. %s", Log::HrToString(hr).c_str());
         return nullptr;
     }
-    SetDebugName(layoutSet->rootSignature.Get(), "RootSignature");
-    Log::Info("루트 시그니처 생성: 셋 %u개, 루트 파라미터 %u개, %u / 64 DWORD (루트 디스크립터 + SRV/샘플러 테이블)", desc.bindingLayoutCount, rsd.NumParameters, rootCost);
-    m_rootLayouts.emplace(key, layoutSet);
+    SetDebugName(layoutSet->rootSignature.Get(), compute ? "ComputeRootSignature" : "RootSignature");
+    Log::Info("루트 시그니처 생성%s: 셋 %u개, 루트 파라미터 %u개, %u / 64 DWORD (루트 디스크립터 + SRV·UAV/샘플러 테이블)", compute ? " (컴퓨트)" : "", layoutCount, rsd.NumParameters, rootCost);
+    m_rootLayouts[key] = layoutSet;
     return layoutSet;
 }
 
@@ -1245,7 +1304,7 @@ BindingLayoutHandle D3D12Device::CreateBindingLayout(const BindingLayoutDesc& de
         }
         // D3D11 백엔드와 같은 규칙: 컴퓨트 슬롯은 단독, UAV 는 컴퓨트 전용.
         if (((slot.stageMask & ShaderStageMask_Compute) && slot.stageMask != ShaderStageMask_Compute) ||
-            (slot.type == BindingType::UnorderedAccess && slot.stageMask != ShaderStageMask_Compute))
+            ((slot.type == BindingType::UnorderedAccess || slot.type == BindingType::BufferUnorderedAccess) && slot.stageMask != ShaderStageMask_Compute))
         {
             Log::Error("CreateBindingLayout : 슬롯 %u 의 stageMask 가 잘못됨 — 컴퓨트는 단독, UAV 는 컴퓨트 전용 (%s).", i, name);
             return BindingLayoutHandle{};
@@ -1258,6 +1317,7 @@ BindingLayoutHandle D3D12Device::CreateBindingLayout(const BindingLayoutDesc& de
         case BindingType::BufferResource: limit = kMaxSrvRegister; break;   // 텍스처와 같은 t# 공간
         case BindingType::Sampler:        limit = kMaxSamplerRegister; break;
         case BindingType::UnorderedAccess: limit = kMaxUavRegister; break;
+        case BindingType::BufferUnorderedAccess: limit = kMaxUavRegister; break;   // 텍스처 UAV 와 같은 u# 공간
         }
         if (slot.reg >= limit)
         {
@@ -1345,20 +1405,31 @@ ResourceSetHandle D3D12Device::CreateResourceSet(const ResourceSetDesc& descIn)
             break;
         case BindingType::UnorderedAccess:
         {
-            // 검증만 함. UAV 디스크립터는 D3D12 컴퓨트 구현(E 단계)에서 테이블에 넣음 — 그 전까지는
-            // CreateComputePipeline 이 빈 핸들을 돌려주므로 이 셋이 Dispatch 에 쓰이지 않음.
+            // UAV 디스크립터는 SRV 와 같은 테이블(셰이더 가시 CBV/SRV/UAV 힙)에 슬롯 순서대로 들어감.
             const D3D12Texture* texture = m_textures.Get(binding.texture);
             if (texture == nullptr || !(texture->desc.bindFlags & TextureBind_UnorderedAccess) || binding.mip >= texture->desc.mipLevels)
             {
                 Log::Error("CreateResourceSet : 슬롯 %u (u%u) 에 UAV 가능한 텍스처가 아니거나 밉 %u 이 범위 밖 (%s).", i, slot.reg, binding.mip, name);
                 return ResourceSetHandle{};
             }
+            ++srvCount;
+            break;
+        }
+        case BindingType::BufferUnorderedAccess:
+        {
+            const D3D12Buffer* buffer = m_buffers.Get(binding.buffer);
+            if (buffer == nullptr || !(buffer->desc.bindFlags & BufferBind_UnorderedAccess) || !buffer->resource)
+            {
+                Log::Error("CreateResourceSet : 슬롯 %u (u%u) 에 UAV 버퍼(BufferBind_UnorderedAccess)가 아닌 핸들 (%s).", i, slot.reg, name);
+                return ResourceSetHandle{};
+            }
+            ++srvCount;
             break;
         }
         }
     }
 
-    // 디스크립터 테이블: 셰이더 가시 힙의 영구 범위. 슬롯 순서 = 루트 시그니처 range 순서.
+    // 디스크립터 테이블: 셰이더 가시 힙의 영구 범위. 슬롯 순서 = 루트 시그니처 range 순서 (SRV·UAV 가 섞여 한 범위).
     D3D12ResourceSet set;
     set.desc = descIn;
     set.desc.debugName = nullptr;
@@ -1384,6 +1455,32 @@ ResourceSetHandle D3D12Device::CreateResourceSet(const ResourceSetDesc& descIn)
         {
             D3D12Texture* texture = m_textures.Get(binding.texture);
             m_device->CopyDescriptorsSimple(1, m_srvHeap.Cpu(set.srvTableStart + srvOffset++), GetSRV(*texture), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        }
+        else if (slot.type == BindingType::UnorderedAccess)
+        {
+            // UAV 는 스테이징 사본 없이 셰이더 가시 힙에 바로 만듦 (CPU 가 읽을 일이 없으므로 복사 원본이 필요 없음).
+            // 포맷은 typed 포맷 그대로 (sRGB·깊이는 CreateTexture 가 이미 거부함). 밉 하나만 봄.
+            D3D12Texture* texture = m_textures.Get(binding.texture);
+            D3D12_UNORDERED_ACCESS_VIEW_DESC vd = {};
+            vd.Format = D3D12Convert::ToDXGI(texture->desc.format);
+            vd.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+            vd.Texture2D.MipSlice = binding.mip;
+            vd.Texture2D.PlaneSlice = 0;
+            m_device->CreateUnorderedAccessView(texture->resource.Get(), nullptr, &vd, m_srvHeap.Cpu(set.srvTableStart + srvOffset++));
+        }
+        else if (slot.type == BindingType::BufferUnorderedAccess)
+        {
+            // RWStructuredBuffer 뷰. 원소 수 = size / stride (범위 밖 쓰기는 버려짐). 카운터 없음.
+            const D3D12Buffer* buffer = m_buffers.Get(binding.buffer);
+            D3D12_UNORDERED_ACCESS_VIEW_DESC vd = {};
+            vd.Format = DXGI_FORMAT_UNKNOWN;
+            vd.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+            vd.Buffer.FirstElement = 0;
+            vd.Buffer.NumElements = buffer->desc.size / buffer->desc.stride;
+            vd.Buffer.StructureByteStride = buffer->desc.stride;
+            vd.Buffer.CounterOffsetInBytes = 0;
+            vd.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+            m_device->CreateUnorderedAccessView(buffer->resource.Get(), nullptr, &vd, m_srvHeap.Cpu(set.srvTableStart + srvOffset++));
         }
         else if (slot.type == BindingType::Sampler)
         {

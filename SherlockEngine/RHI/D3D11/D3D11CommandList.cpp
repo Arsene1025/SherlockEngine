@@ -36,6 +36,11 @@ void D3D11CommandList::Init(D3D11Device* device)
 	for (TextureHandle& h : m_psSrv) h = TextureHandle{};
 	for (TextureHandle& h : m_csSrv) h = TextureHandle{};
 	for (TextureHandle& h : m_csUav) h = TextureHandle{};
+	for (BufferHandle& h : m_vsSrvBuf) h = BufferHandle{};
+	for (BufferHandle& h : m_psSrvBuf) h = BufferHandle{};
+	for (BufferHandle& h : m_csSrvBuf) h = BufferHandle{};
+	for (BufferHandle& h : m_csUavBuf) h = BufferHandle{};
+	m_touchedBuffers.clear();
 	m_computePipelineSet = false;
 }
 
@@ -194,6 +199,68 @@ void D3D11CommandList::CheckUavState(const D3D11Texture* texture)
 	}
 }
 
+void D3D11CommandList::UnbindShaderResourcesOf(BufferHandle buffer)
+{
+	ID3D11DeviceContext* context = m_device->GetContext();
+	ID3D11ShaderResourceView* nullSrv = nullptr;
+	for (uint32_t slot = 0; slot < kMaxSrvRegister; ++slot)
+	{
+		if (m_vsSrvBuf[slot] == buffer) { context->VSSetShaderResources(slot, 1, &nullSrv); m_vsSrvBuf[slot] = BufferHandle{}; ++m_stats.srvUnbinds; }
+		if (m_psSrvBuf[slot] == buffer) { context->PSSetShaderResources(slot, 1, &nullSrv); m_psSrvBuf[slot] = BufferHandle{}; ++m_stats.srvUnbinds; }
+		if (m_csSrvBuf[slot] == buffer) { context->CSSetShaderResources(slot, 1, &nullSrv); m_csSrvBuf[slot] = BufferHandle{}; ++m_stats.srvUnbinds; }
+	}
+}
+
+void D3D11CommandList::UnbindUavsOf(BufferHandle buffer)
+{
+	ID3D11DeviceContext* context = m_device->GetContext();
+	ID3D11UnorderedAccessView* nullUav = nullptr;
+	for (uint32_t slot = 0; slot < kMaxUavRegister; ++slot)
+	{
+		if (m_csUavBuf[slot] == buffer)
+		{
+			context->CSSetUnorderedAccessViews(slot, 1, &nullUav, nullptr);
+			m_csUavBuf[slot] = BufferHandle{};
+			++m_stats.uavUnbinds;
+		}
+	}
+}
+
+void D3D11CommandList::CheckSrvState(const D3D11Buffer* buffer)
+{
+	static bool warned = false;
+	if (buffer != nullptr && (buffer->desc.bindFlags & BufferBind_UnorderedAccess) && buffer->state != ResourceState::ShaderResource)
+	{
+		if (!warned) Log::Error("SRV 로 읽는 UAV 버퍼 '%s' 가 %s 상태 — Barrier(buf, ShaderResource) 가 빠졌음 (프레임마다 Common 으로 돌아감).", buffer->name.c_str(), ToString(buffer->state));
+		warned = true;
+	}
+}
+
+void D3D11CommandList::CheckUavState(const D3D11Buffer* buffer)
+{
+	static bool warned = false;
+	if (buffer != nullptr && buffer->state != ResourceState::UnorderedAccess)
+	{
+		if (!warned) Log::Error("UAV 로 쓰는 버퍼 '%s' 가 %s 상태 — Barrier(buf, UnorderedAccess) 가 빠졌음.", buffer->name.c_str(), ToString(buffer->state));
+		warned = true;
+	}
+}
+
+void D3D11CommandList::TrackBufferState(BufferHandle handle, D3D11Buffer* buffer, ResourceState after)
+{
+	if (buffer->state == ResourceState::Common && after != ResourceState::Common) m_touchedBuffers.push_back(handle);
+	buffer->state = after;
+}
+
+void D3D11CommandList::ResetBufferStates()
+{
+	for (BufferHandle handle : m_touchedBuffers)
+	{
+		if (D3D11Buffer* buffer = m_device->GetBufferMutable(handle)) buffer->state = ResourceState::Common;
+	}
+	m_touchedBuffers.clear();
+}
+
 // ------------------------------------------------------------------ 상태·바인딩
 
 void D3D11CommandList::SetPipelineState(PipelineHandle handle)
@@ -246,12 +313,12 @@ void D3D11CommandList::SetResourceSet(uint32_t setIndex, ResourceSetHandle handl
 			if (slot.stageMask & ShaderStageMask_Vertex)
 			{
 				context->VSSetShaderResources(slot.reg, 1, &srv);
-				if (slot.reg < kMaxSrvRegister) m_vsSrv[slot.reg] = binding.texture;
+				if (slot.reg < kMaxSrvRegister) { m_vsSrv[slot.reg] = binding.texture; m_vsSrvBuf[slot.reg] = BufferHandle{}; }
 			}
 			if (slot.stageMask & ShaderStageMask_Pixel)
 			{
 				context->PSSetShaderResources(slot.reg, 1, &srv);
-				if (slot.reg < kMaxSrvRegister) m_psSrv[slot.reg] = binding.texture;
+				if (slot.reg < kMaxSrvRegister) { m_psSrv[slot.reg] = binding.texture; m_psSrvBuf[slot.reg] = BufferHandle{}; }
 			}
 			break;
 		}
@@ -259,16 +326,17 @@ void D3D11CommandList::SetResourceSet(uint32_t setIndex, ResourceSetHandle handl
 		{
 			// 구조체 버퍼. Dynamic 이면 이번 프레임 복제본의 SRV — UpdateBuffer 가 쓴 것과 같은 복제본임.
 			D3D11Buffer* buffer = m_device->GetBufferMutable(binding.buffer);
+			CheckSrvState(buffer);
 			ID3D11ShaderResourceView* srv = buffer ? buffer->GetSRV(m_device->GetDevice(), frameIndex) : nullptr;
 			if (slot.stageMask & ShaderStageMask_Vertex)
 			{
 				context->VSSetShaderResources(slot.reg, 1, &srv);
-				if (slot.reg < kMaxSrvRegister) m_vsSrv[slot.reg] = TextureHandle{};   // 이 레지스터에는 이제 텍스처가 없음
+				if (slot.reg < kMaxSrvRegister) { m_vsSrv[slot.reg] = TextureHandle{}; m_vsSrvBuf[slot.reg] = binding.buffer; }   // 이 레지스터에는 이제 텍스처가 없음
 			}
 			if (slot.stageMask & ShaderStageMask_Pixel)
 			{
 				context->PSSetShaderResources(slot.reg, 1, &srv);
-				if (slot.reg < kMaxSrvRegister) m_psSrv[slot.reg] = TextureHandle{};
+				if (slot.reg < kMaxSrvRegister) { m_psSrv[slot.reg] = TextureHandle{}; m_psSrvBuf[slot.reg] = binding.buffer; }
 			}
 			break;
 		}
@@ -281,6 +349,7 @@ void D3D11CommandList::SetResourceSet(uint32_t setIndex, ResourceSetHandle handl
 			break;
 		}
 		case BindingType::UnorderedAccess:
+		case BindingType::BufferUnorderedAccess:
 			break;   // 컴퓨트 전용 (CreateBindingLayout 이 그래픽스 스테이지의 UAV 를 거부하므로 여기 오지 않음)
 		}
 	}
@@ -333,15 +402,16 @@ void D3D11CommandList::SetComputeResourceSet(uint32_t setIndex, ResourceSetHandl
 			CheckSrvState(texture);
 			ID3D11ShaderResourceView* srv = texture ? texture->GetSRV(m_device->GetDevice()) : nullptr;
 			context->CSSetShaderResources(slot.reg, 1, &srv);
-			if (slot.reg < kMaxSrvRegister) m_csSrv[slot.reg] = binding.texture;
+			if (slot.reg < kMaxSrvRegister) { m_csSrv[slot.reg] = binding.texture; m_csSrvBuf[slot.reg] = BufferHandle{}; }
 			break;
 		}
 		case BindingType::BufferResource:
 		{
 			D3D11Buffer* buffer = m_device->GetBufferMutable(binding.buffer);
+			CheckSrvState(buffer);
 			ID3D11ShaderResourceView* srv = buffer ? buffer->GetSRV(m_device->GetDevice(), frameIndex) : nullptr;
 			context->CSSetShaderResources(slot.reg, 1, &srv);
-			if (slot.reg < kMaxSrvRegister) m_csSrv[slot.reg] = TextureHandle{};
+			if (slot.reg < kMaxSrvRegister) { m_csSrv[slot.reg] = TextureHandle{}; m_csSrvBuf[slot.reg] = binding.buffer; }
 			break;
 		}
 		case BindingType::Sampler:
@@ -357,7 +427,16 @@ void D3D11CommandList::SetComputeResourceSet(uint32_t setIndex, ResourceSetHandl
 			CheckUavState(texture);
 			ID3D11UnorderedAccessView* uav = texture ? texture->GetUAV(m_device->GetDevice(), binding.mip) : nullptr;
 			context->CSSetUnorderedAccessViews(slot.reg, 1, &uav, nullptr);
-			if (slot.reg < kMaxUavRegister) m_csUav[slot.reg] = binding.texture;
+			if (slot.reg < kMaxUavRegister) { m_csUav[slot.reg] = binding.texture; m_csUavBuf[slot.reg] = BufferHandle{}; }
+			break;
+		}
+		case BindingType::BufferUnorderedAccess:
+		{
+			D3D11Buffer* buffer = m_device->GetBufferMutable(binding.buffer);
+			CheckUavState(buffer);
+			ID3D11UnorderedAccessView* uav = buffer ? buffer->GetUAV(m_device->GetDevice()) : nullptr;
+			context->CSSetUnorderedAccessViews(slot.reg, 1, &uav, nullptr);
+			if (slot.reg < kMaxUavRegister) { m_csUav[slot.reg] = TextureHandle{}; m_csUavBuf[slot.reg] = binding.buffer; }
 			break;
 		}
 		}
@@ -463,10 +542,47 @@ void D3D11CommandList::UavBarrier(TextureHandle handle)
 	CheckUavState(texture);
 }
 
+void D3D11CommandList::Barrier(BufferHandle handle, ResourceState after)
+{
+	D3D11Buffer* buffer = m_device ? m_device->GetBufferMutable(handle) : nullptr;
+	if (buffer == nullptr)
+	{
+		static bool warned = false;
+		ErrorOnce(warned, "Barrier : 유효하지 않은 BufferHandle.");
+		return;
+	}
+	if (after != ResourceState::Common && after != ResourceState::ShaderResource && after != ResourceState::UnorderedAccess)
+	{
+		static bool warnedState = false;
+		if (!warnedState) Log::Error("Barrier : 버퍼 '%s' 에 쓸 수 없는 상태 %s (Common · ShaderResource · UnorderedAccess 만).", buffer->name.c_str(), ToString(after));
+		warnedState = true;
+		return;
+	}
+	if (after == ResourceState::UnorderedAccess && !(buffer->desc.bindFlags & BufferBind_UnorderedAccess))
+	{
+		static bool warnedFlag = false;
+		if (!warnedFlag) Log::Error("Barrier : 버퍼 '%s' 는 BufferBind_UnorderedAccess 로 만들지 않았음.", buffer->name.c_str());
+		warnedFlag = true;
+		return;
+	}
+	if (buffer->state == after) return;
+	// 텍스처와 같은 규칙: UAV 상태에 드나들 때 겹치는 바인딩을 풂.
+	if (after == ResourceState::UnorderedAccess) UnbindShaderResourcesOf(handle);
+	if (buffer->state == ResourceState::UnorderedAccess) UnbindUavsOf(handle);
+	++m_stats.barriers;
+	TrackBufferState(handle, buffer, after);
+}
+
+void D3D11CommandList::UavBarrier(BufferHandle handle)
+{
+	const D3D11Buffer* buffer = m_device ? m_device->GetBuffer(handle) : nullptr;
+	CheckUavState(buffer);
+}
+
 void D3D11CommandList::CopyBuffer(BufferHandle dst, BufferHandle src)
 {
-	const D3D11Buffer* d = m_device ? m_device->GetBuffer(dst) : nullptr;
-	const D3D11Buffer* s = m_device ? m_device->GetBuffer(src) : nullptr;
+	D3D11Buffer* d = m_device ? m_device->GetBufferMutable(dst) : nullptr;
+	D3D11Buffer* s = m_device ? m_device->GetBufferMutable(src) : nullptr;
 	if (d == nullptr || s == nullptr)
 	{
 		Log::Error("CopyBuffer : 유효하지 않은 BufferHandle.");
@@ -477,8 +593,18 @@ void D3D11CommandList::CopyBuffer(BufferHandle dst, BufferHandle src)
 		Log::Error("CopyBuffer : 크기가 다름 (%s %u, %s %u).", d->name.c_str(), d->desc.size, s->name.c_str(), s->desc.size);
 		return;
 	}
+	// D3D12 의 암묵 승격 규칙과 같게: Common (또는 이미 같은 복사 상태)에서만 복사하고, 복사 뒤 상태를 기록함.
+	if ((d->state != ResourceState::Common && d->state != ResourceState::CopyDest) ||
+		(s->state != ResourceState::Common && s->state != ResourceState::CopySource))
+	{
+		Log::Error("CopyBuffer : 버퍼가 Common 상태가 아님 (%s %s, %s %s). Barrier(buf, Common) 이 먼저 필요함.",
+			d->name.c_str(), ToString(d->state), s->name.c_str(), ToString(s->state));
+		return;
+	}
 	const uint32_t frameIndex = m_device->GetFrameIndex();
 	m_device->GetContext()->CopyResource(d->Get(frameIndex), s->Get(frameIndex));
+	TrackBufferState(dst, d, ResourceState::CopyDest);
+	TrackBufferState(src, s, ResourceState::CopySource);
 }
 
 void D3D11CommandList::WriteTimestamp(uint32_t slot)

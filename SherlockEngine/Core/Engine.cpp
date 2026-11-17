@@ -36,6 +36,7 @@ bool Engine::Initialize(const Config& config, const Desc& desc)
 	deviceDesc.width = desc.width;
 	deviceDesc.height = desc.height;
 	deviceDesc.enableDebugLayer = m_config.GetBool("engine.debuglayer", true);
+	deviceDesc.enableGpuValidation = m_config.GetBool("engine.gpuvalidation", false);   // --gpu-validation=1
 	m_device = RHI::CreateDevice(m_backend, deviceDesc);
 	if (!m_device)
 	{

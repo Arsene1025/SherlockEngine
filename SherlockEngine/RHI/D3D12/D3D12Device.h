@@ -70,7 +70,7 @@ public:
 
     PipelineHandle CreatePipeline(const PipelineStateDesc& desc) override;
     ComputePipelineHandle CreateComputePipeline(const ComputePipelineDesc& desc) override;
-    size_t GetPipelineCount() const override { return m_pipelines.Count(); }
+    size_t GetPipelineCount() const override { return m_pipelines.Count(); }   // 그래픽스 + 컴퓨트
     void InvalidatePipelines() override;
 
     BindingLayoutHandle CreateBindingLayout(const BindingLayoutDesc& desc) override;
@@ -91,11 +91,13 @@ public:
     uint64_t GetFrameNumber() const { return m_frameCounter; }
     const D3D12Shader* GetShader(ShaderHandle handle) const { return m_shaders.Get(handle); }
     const D3D12Buffer* GetBuffer(BufferHandle handle) const { return m_buffers.Get(handle); }
+    D3D12Buffer* GetBufferMutable(BufferHandle handle) { return m_buffers.Get(handle); }   // 상태 추적용
     D3D12Texture* GetTexture(TextureHandle handle) { return m_textures.Get(handle); }
     const D3D12Sampler* GetSampler(SamplerHandle handle) const { return m_samplers.Get(handle); }
     const D3D12BindingLayout* GetBindingLayout(BindingLayoutHandle handle) const { return m_bindingLayouts.Get(handle); }
     const D3D12ResourceSet* GetResourceSet(ResourceSetHandle handle) const { return m_resourceSets.Get(handle); }
     const D3D12PipelineState* GetPipeline(PipelineHandle handle) const { return m_pipelines.Get(handle); }
+    const D3D12ComputePipelineState* GetComputePipeline(ComputePipelineHandle handle) const { return m_pipelines.GetCompute(handle); }
     D3D12DescriptorHeap& GetSrvHeap() { return m_srvHeap; }
     D3D12DescriptorHeap& GetSamplerHeap() { return m_samplerHeap; }
 
@@ -104,15 +106,15 @@ public:
     D3D12_CPU_DESCRIPTOR_HANDLE GetDSV(D3D12Texture& texture);
     D3D12_CPU_DESCRIPTOR_HANDLE GetSRV(D3D12Texture& texture);   // 스테이징 힙
 
-    // 레이아웃 조합 → 루트 시그니처 (캐시)
-    std::shared_ptr<D3D12RootLayout> GetOrCreateRootLayout(const PipelineStateDesc& desc);
+    // 레이아웃 조합 → 루트 시그니처 (캐시). compute 면 컴퓨트용 (IA 플래그 없음, 가시성 ALL).
+    std::shared_ptr<D3D12RootLayout> GetOrCreateRootLayout(const BindingLayoutHandle* layouts, uint32_t layoutCount, bool compute);
 
     // GPU 가 아직 쓰고 있을 수 있는 객체·디스크립터의 해제를 이번 프레임의 펜스가 지날 때까지 미룸.
     void DeferRelease(ComPtr<ID3D12Object> object);
     void DeferFree(D3D12DescriptorHeap* heap, uint32_t start, uint32_t count);
 
 private:
-    bool InitDevice(bool debugLayer);
+    bool InitDevice(bool debugLayer, bool gpuValidation);
     bool InitSwapChain();
     bool InitFrameResources();
     bool CreateBackBufferTextures();

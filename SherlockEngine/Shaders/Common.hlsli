@@ -70,6 +70,12 @@ cbuffer PostParams : register(b4)
     float4 postGrade;         // x = GreyScale 양, y = 1 이면 색 효과를 건너뜀
 }
 
+// 블러 가우시안 가중치 w[i] = exp(-i^2 / 2σ^2), i = 0..반경 (반쪽만, 대칭). BlurWeightsComputeShader 가 블러마다 쓰고
+// PS 블러(PostPixelShader 모드 1)와 CS 블러(BlurComputeShader)가 같은 버퍼를 읽음 — 두 경로가 가중치를 루프 안에서
+// 따로 계산하던 때는 D3D11 에서 결과가 최하위 비트만큼 달랐음 (어느 연산 때문인지는 특정하지 못함). 후처리 셋·컴퓨트 블러 셋의 t20.
+StructuredBuffer<float> blurWeights : register(t20);
+static const int kMaxBlurRadius = 64;   // ShaderConstants.h 의 kMaxBlurRadius 와 같아야 함 (가중치 버퍼 = 65 개)
+
 // b1: 드로우마다. VS만. (128바이트)
 cbuffer PerObject : register(b1)
 {
