@@ -55,6 +55,7 @@ void Collide(inout Particle p, float3 previousPosition)
     if (vn < 0.0f) p.velocity -= (1.0f + particleBounce) * vn * n;
 }
 
+//입자를 움직이고 생사를 판정한다
 [numthreads(64, 1, 1)]
 void CS_ParticleSim(uint3 id : SV_DispatchThreadID)
 {

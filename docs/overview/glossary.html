@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>개요 · 용어집 — SherlockEngine</title>
+<style>
+:root{
+  --bg:#F6F7FB; --surface:#FFFFFF; --surface-2:#EEF0F7; --line:#D6D9E6; --line-strong:#B9BDD0;
+  --ink:#171A2B; --ink-2:#4A4F66; --muted:#7A7F96;
+  --accent:#232767; --accent-ink:#FFFFFF; --accent-soft:#E3E5F5;
+  --amber:#B8781A; --amber-soft:#FBF0DB;
+  --ok:#2E7D4F; --ok-soft:#E1F2E7; --warn:#A6620C; --warn-soft:#FBEDD6; --crit:#B23A3A; --crit-soft:#F9E1E1;
+  --code-bg:#1B1D33; --code-ink:#E7E9F5; --code-kw:#9BA3FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(23,26,43,.06),0 8px 24px rgba(23,26,43,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+    --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+    --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+    --amber:#F0B650; --amber-soft:#3D3560;
+    --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+    --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1A1A4D; --surface:#212357; --surface-2:#292C66; --line:#3A3D7A; --line-strong:#4E528F;
+  --ink:#EDEEFA; --ink-2:#C3C6E3; --muted:#9A9EC4;
+  --accent:#B9BDFF; --accent-ink:#141640; --accent-soft:#2F3378;
+  --amber:#F0B650; --amber-soft:#3D3560;
+  --ok:#7ED39E; --ok-soft:#24404A; --warn:#F2B968; --warn-soft:#45395A; --crit:#FF8C8C; --crit-soft:#4A2D4E;
+  --code-bg:#12132E; --code-ink:#E7E9F5; --code-kw:#A9B0FF; --code-str:#F2C877; --code-cm:#8A90B0;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover,a:focus-visible{border-bottom-color:var(--accent)}
+main{max-width:1080px;margin:0 auto;padding:40px 16px 96px}
+h1{font-size:30px;line-height:1.3;margin:0 0 8px}
+h2{font-size:22px;margin:48px 0 8px;padding-top:8px;scroll-margin-top:16px}
+h2 .num{display:inline-block;min-width:2.2em;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+p{margin:10px 0}
+.lede{color:var(--ink-2)}
+.foot{color:var(--muted);font-size:13px}
+nav.toc{display:flex;flex-wrap:wrap;gap:6px 18px;margin:20px 0 8px;padding:12px 16px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-size:14px}
+code,pre,.mono{font-family:"IBM Plex Mono",Consolas,"D2Coding",monospace}
+code{font-size:.88em;background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.tbl{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:10px 14px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.mono,th.mono{font-size:13px}
+td .sub{display:block;margin-top:3px;font-size:12px;color:var(--muted);line-height:1.35}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;vertical-align:middle}
+.pill.none{background:var(--surface-2);color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+<h1>용어집</h1>
+<p>소스를 읽다가 만나는 타입, 함수, 용어를 네 묶음으로 정리한 사전입니다. 각 항목은 한두 문장의 정의, 이 코드에서 쓰이는 자리, 자세히 다루는 곳(숫자는 <a href="rendering-analysis.html">렌더링 해부</a>의 장)으로 이루어집니다. 2026-10-02 에 "모르겠는 타입·함수"로 적어 두었던 항목(<code>wstring</code>, <code>size_t</code>, <code>LPWSTR</code>, <code>CommandLineToArgvW</code>, <code>GetCommandLineW</code>, namespace, <code>&lt;=&gt;</code>, 콘셉트의 <code>requires</code>, <code>consteval</code>, <code>static_assert</code>, <code>DWORD</code>)은 모두 들어 있습니다. 경로는 <code>SherlockEngine/</code> 아래 기준입니다.</p>
+<p class="lede">2026-11-17 에 <a href="rendering-analysis.html">렌더링 해부</a>의 부록 A(용어·타입 사전)를 이 문서로 옮기고, GPU 컴퓨트·파티클 묶음을 더했습니다. 새 용어는 작업 중에 물어본 것부터 이 문서에 쌓습니다.</p>
+<nav class="toc"><a href="#win32">1. Win32·COM</a><a href="#cpp">2. C++</a><a href="#graphics">3. 그래픽스</a><a href="#compute">4. GPU 컴퓨트·파티클</a></nav>
+<h2 id="win32"><span class="num">1.</span>Win32·COM 타입과 함수</h2>
+
+<p>Windows 헤더의 타입 이름은 16비트 시절의 약어를 그대로 씁니다. 조각의 뜻을 알면 대부분 읽힙니다. <code>LP</code> 는 포인터(Long Pointer), <code>C</code> 는 const, <code>W</code> 는 와이드 문자(<code>wchar_t</code>), <code>STR</code> 은 널로 끝나는 문자열, <code>H</code> 는 핸들입니다. 함수 이름 끝의 <code>W</code> 는 UTF-16 문자열을 받는 판, <code>A</code> 는 ANSI 판입니다.</p>
+
+<div class="tbl"><table>
+<thead><tr><th>이름</th><th>정의</th><th>쓰이는 자리</th><th>장</th></tr></thead>
+<tbody>
+<tr><td class="mono">HRESULT</td><td>COM 과 D3D 함수가 돌려주는 32비트 결과 코드(<code>long</code>). 음수면 실패이고 <code>FAILED(hr)</code>/<code>SUCCEEDED(hr)</code> 로 판정합니다.</td><td><code>Core/Log.h</code> 의 <code>Log::HrToString</code> 이 "0x80070002 (설명)" 꼴 문자열로 바꿉니다. 백엔드의 생성 함수마다 검사합니다.</td><td><a href="rendering-analysis.html#c15">15</a></td></tr>
+<tr><td class="mono">HWND</td><td>창 하나를 가리키는 핸들.</td><td><code>App/AppBase.cpp</code> 가 <code>CreateWindow</code> 로 만들고, <code>RHI/Device.h</code> 의 <code>DeviceDesc::windowHandle</code>(<code>void*</code> 로 선언해 RHI 헤더가 <code>windows.h</code> 를 끌어오지 않게 함)로 넘겨 스왑체인을 붙입니다.</td><td><a href="rendering-analysis.html#c3">3</a></td></tr>
+<tr><td class="mono">HINSTANCE</td><td>실행 모듈(exe)을 가리키는 핸들. <code>wWinMain</code> 의 첫 인자입니다.</td><td><code>SherlockEditor/EditorMain.cpp</code>, <code>SherlockGame/GameMain.cpp</code> (저장소 루트 기준)</td><td><a href="rendering-analysis.html#c3">3</a></td></tr>
+<tr><td class="mono">wWinMain</td><td>Windows 서브시스템 프로그램의 진입점. 콘솔 프로그램의 <code>main(argc, argv)</code> 와 달리 잘라진 인자 배열을 받지 않습니다.</td><td>위 두 파일. 인자는 <code>GetCommandLineW</code> 로 직접 읽습니다.</td><td><a href="rendering-analysis.html#c3">3</a></td></tr>
+<tr><td class="mono">UINT</td><td><code>unsigned int</code>. 32비트 부호 없는 정수.</td><td>D3D 구조체 필드와 맞출 때(<code>static_cast&lt;UINT&gt;(params.size())</code>). 엔진 자체 타입은 <code>uint32_t</code> 를 씁니다.</td><td><a href="rendering-analysis.html#c9">9</a></td></tr>
+<tr><td class="mono">DWORD</td><td><code>unsigned long</code>. Windows 에서는 32비트 부호 없는 정수(Double WORD, WORD 는 16비트).</td><td><code>Core/Paths.cpp</code> 에서 <code>GetModuleFileNameW</code> 의 길이, <code>GetFileAttributesW</code> 의 속성 비트. <code>RHI/BindingTypes.h</code> 주석의 "루트 시그니처 64 DWORD 예산"은 4바이트 단위 64칸이라는 뜻입니다.</td><td><a href="rendering-analysis.html#c7">7</a>, <a href="rendering-analysis.html#c15">15</a></td></tr>
+<tr><td class="mono">LPWSTR<br>PWSTR</td><td><code>wchar_t*</code>. 널로 끝나는 UTF-16 문자열을 가리키는 포인터.</td><td><code>App/AppBase.cpp</code> 의 <code>LPWSTR* argv</code> 는 <code>wchar_t**</code>, 즉 문자열들의 배열입니다. <code>wWinMain</code> 의 세 번째 인자가 <code>PWSTR</code> 입니다.</td><td><a href="rendering-analysis.html#c3">3</a></td></tr>
+<tr><td class="mono">LPCWSTR</td><td><code>const wchar_t*</code>. 읽기 전용 UTF-16 문자열.</td><td>Win32 의 W 계열 함수가 경로를 받는 타입. <code>std::wstring::c_str()</code> 로 넘깁니다.</td><td><a href="rendering-analysis.html#c15">15</a></td></tr>
+<tr><td class="mono">GetCommandLineW()</td><td>프로세스를 실행한 명령줄 전체를 문자열 하나로 돌려줍니다. 포인터는 OS 소유라 해제하지 않습니다.</td><td rowspan="3"><code>App/AppBase.cpp</code> 의 <code>AppBase::GetCommandLineOption</code>. <code>argv[0]</code> 은 exe 경로라 1 부터 돌며 <code>--이름=</code> 접두사를 찾습니다.</td><td rowspan="3"><a href="rendering-analysis.html#c3">3</a>, <a href="rendering-analysis.html#app-d">부록 D</a></td></tr>
+<tr><td class="mono">CommandLineToArgvW()</td><td>그 문자열을 공백과 따옴표 규칙에 따라 잘라 <code>argv</code> 배열로 만들고, 둘째 인자에 개수를 채웁니다. <code>&lt;shellapi.h&gt;</code> 에 있고 A 판은 없습니다.</td></tr>
+<tr><td class="mono">LocalFree()</td><td><code>CommandLineToArgvW</code> 가 할당한 배열을 해제합니다. 빠뜨리면 누수입니다.</td></tr>
+<tr><td class="mono">WPARAM<br>LPARAM<br>LRESULT</td><td>창 메시지의 두 인자와 반환값 타입. 뜻은 메시지마다 다릅니다.</td><td><code>App/AppBase.cpp</code> 의 창 프로시저와 ImGui 의 <code>ImGui_ImplWin32_WndProcHandler</code></td><td><a href="rendering-analysis.html#c4">4</a></td></tr>
+<tr><td class="mono">HANDLE</td><td>커널 객체(이벤트, 파일 등)를 가리키는 일반 핸들.</td><td><code>RHI/D3D12/D3D12Device.h</code> 의 <code>m_fenceEvent</code>. 펜스가 목표 값에 도달하면 신호를 받는 이벤트입니다.</td><td><a href="rendering-analysis.html#c8">8</a></td></tr>
+<tr><td class="mono">IUnknown<br>AddRef / Release</td><td>모든 COM 인터페이스의 바탕. 객체 수명을 참조 카운트로 관리하며, 카운트가 0 이 되면 객체가 스스로 해제됩니다.</td><td>D3D 객체 전부. 직접 부르지 않고 <code>ComPtr</code> 에 맡깁니다.</td><td><a href="rendering-analysis.html#c2">2</a></td></tr>
+<tr><td class="mono">ComPtr&lt;T&gt;</td><td>COM 포인터용 스마트 포인터(<code>Microsoft::WRL</code>). 복사하면 <code>AddRef</code>, 소멸하면 <code>Release</code> 를 부릅니다. <code>Get()</code> 은 생 포인터, <code>GetAddressOf()</code> 는 출력 인자용 주소, <code>As(&amp;other)</code> 는 다른 인터페이스로의 질의입니다.</td><td><code>RHI/D3D11/D3D11Common.h</code>, <code>RHI/D3D12/D3D12Common.h</code> 의 <code>using Microsoft::WRL::ComPtr;</code>. 실제 사용은 두 백엔드 폴더와 <code>RHI/DXBC/ShaderCompiler.cpp</code> 안에만 있습니다.</td><td><a href="rendering-analysis.html#c2">2</a>, <a href="rendering-analysis.html#c9">9</a></td></tr>
+<tr><td class="mono">IID_PPV_ARGS(pp)</td><td>"인터페이스 ID, <code>void**</code>" 두 인자를 한 번에 만들어 주는 매크로. 타입과 ID 가 어긋나는 실수를 막습니다.</td><td><code>RHI/D3D12/D3D12Device.cpp</code> 의 <code>CreateRootSignature(…, IID_PPV_ARGS(…))</code>, <code>RHI/DXBC/ShaderCompiler.cpp</code> 의 <code>D3DReflect</code></td><td><a href="rendering-analysis.html#c9">9</a></td></tr>
+<tr><td class="mono">ID3DBlob</td><td>크기와 포인터를 가진 바이트 덩어리 COM 객체. 컴파일된 셰이더, 직렬화한 루트 시그니처, 에러 메시지를 담습니다.</td><td><code>D3D12Device::GetOrCreateRootLayout</code>, <code>RHI/DXBC/ShaderCompiler.cpp</code></td><td><a href="rendering-analysis.html#c7">7</a>, <a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td class="mono">OutputDebugString</td><td>디버거(Visual Studio 출력 창)로 문자열을 보냅니다.</td><td><code>Core/Log.cpp</code> 의 로그 싱크 네 개 중 하나</td><td><a href="rendering-analysis.html#c15">15</a></td></tr>
+</tbody></table></div>
+
+
+<h2 id="cpp"><span class="num">2.</span>C++ 언어와 표준 라이브러리</h2>
+
+<p>프로젝트의 언어 표준은 C++20 입니다(<code>SherlockEngine.vcxproj</code> 의 <code>stdcpp20</code>). "C++20" 표시가 붙은 항목은 2026-09-28 전환 때 들어온 기능입니다.</p>
+
+<div class="tbl"><table>
+<thead><tr><th>이름</th><th>정의</th><th>쓰이는 자리</th><th>장</th></tr></thead>
+<tbody>
+<tr><td class="mono">namespace</td><td>이름에 소속을 붙여 충돌을 막는 묶음. 전역을 만드는 장치가 아니며 include 를 대신하지 않습니다. 이름 없는 namespace 는 그 <code>.cpp</code> 안에서만 보이는 내부 링키지를 만듭니다.</td><td><code>Core/Log.h</code> 의 <code>namespace Log</code>, <code>Core/Paths.h</code>, <code>Editor/ScriptCreator.h</code>. 이름 없는 형태는 <code>Scene/Camera.cpp</code>, <code>RHI/PipelineTypes.cpp</code></td><td><a href="rendering-analysis.html#c21">21</a></td></tr>
+<tr><td class="mono">std::wstring</td><td><code>wchar_t</code> 문자열(<code>std::basic_string&lt;wchar_t&gt;</code>). Windows 에서는 UTF-16 입니다. 리터럴은 <code>L"…"</code>. <code>std::string</code>(이 코드에서는 UTF-8)과 자동으로 변환되지 않습니다.</td><td>파일 경로 전부(<code>Core/Paths.h</code>). UTF-8 로 바꿀 때는 <code>Log::ToUtf8</code></td><td><a href="rendering-analysis.html#c15">15</a></td></tr>
+<tr><td class="mono">size_t</td><td><code>sizeof</code> 의 결과 타입인 부호 없는 정수. x64 에서 8바이트입니다. 부호가 없어서 <code>0 - 1</code> 은 아주 큰 수가 됩니다.</td><td><code>std::vector::size()</code> 의 반환형. <code>RHI/ResourcePool.h</code> 는 <code>static_cast&lt;uint32_t&gt;(m_slots.size())</code> 로 핸들 인덱스 타입에 맞춥니다.</td><td><a href="rendering-analysis.html#c5">5</a></td></tr>
+<tr><td class="mono">enum class</td><td>범위가 있는 열거형. 정수로 암묵 변환되지 않고 열거자가 타입 이름 안에 갇힙니다. <code>: uint8_t</code> 로 바탕 타입을 정합니다.</td><td><code>RHI/PipelineTypes.h</code> 의 <code>FillMode</code>, <code>CullMode</code>, <code>Format</code>, <code>ShaderStage</code>, <code>Scene/Light.h</code> 의 <code>LightType</code></td><td><a href="rendering-analysis.html#c6">6</a></td></tr>
+<tr><td class="mono">&lt;=&gt;</td><td>3방향 비교 연산자(C++20). <code>= default</code> 로 선언하면 멤버를 선언 순서대로 비교하는 코드와 <code>==</code> 가 함께 생기고, <code>!=</code>·<code>&lt;</code>·<code>&lt;=</code>·<code>&gt;</code>·<code>&gt;=</code> 는 컴파일러가 이 둘에서 재작성합니다.</td><td><code>RHI/Handle.h</code> 의 <code>auto operator&lt;=&gt;(const Handle&amp;) const = default;</code></td><td><a href="rendering-analysis.html#c5">5</a></td></tr>
+<tr><td class="mono">operator== = default</td><td>멤버별 동등 비교를 컴파일러가 생성(C++20). 필드를 추가해도 비교에서 빠지지 않습니다.</td><td><code>RHI/PipelineTypes.h</code> 의 <code>RasterizerDesc</code>, <code>DepthStencilDesc</code>, <code>RenderTargetBlendDesc</code>, <code>VertexAttribute</code>. <code>PipelineStateDesc</code> 는 배열을 "쓰는 만큼"만 비교해야 해서 손으로 씁니다.</td><td><a href="rendering-analysis.html#c6">6</a></td></tr>
+<tr><td class="mono">concept<br>requires</td><td>템플릿 인자가 만족해야 할 컴파일 시점 조건에 이름을 붙인 것(C++20). <code>requires(const T h) { … }</code> 는 "가상의 변수 <code>h</code> 로 이 식들이 컴파일되는가"를 묻는 requires 식입니다.</td><td><code>RHI/Handle.h</code> 의 <code>ResourceHandle</code>(지금은 requires 식이 아니라 <code>kIsHandle&lt;T&gt;</code> 로 판정), <code>Scene/GameObject.h</code> 의 <code>std::derived_from&lt;Behaviour&gt;</code></td><td><a href="rendering-analysis.html#c5">5</a>, <a href="rendering-analysis.html#c21">21</a></td></tr>
+<tr><td>템플릿 부분 특수화</td><td>템플릿 인자가 특정 꼴일 때만 선택되는 별도 정의.</td><td><code>RHI/Handle.h</code> 의 <code>kIsHandle&lt;Handle&lt;Tag&gt;&gt; = true</code></td><td><a href="rendering-analysis.html#c5">5</a></td></tr>
+<tr><td class="mono">constexpr</td><td>컴파일 시점에 계산할 수 <em>있는</em> 변수·함수. 변수에 쓰면 컴파일 시점 상수가 됩니다. <code>inline constexpr</code> 는 헤더에 두어도 정의가 하나로 합쳐집니다.</td><td><code>RHI/GraphicsConfig.h</code> 의 <code>kFrameCount</code>, <code>Graphics/ShaderConstants.h</code> 의 슬롯 번호(<code>kCBSlotPerFrame</code> …), <code>Scene/Camera.cpp</code> 의 <code>kPitchLimit</code></td><td><a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td class="mono">consteval</td><td>컴파일 시점에 <em>반드시</em> 계산되는 함수(C++20). 런타임에 부르는 코드는 컴파일되지 않습니다.</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>IsValidConstantBufferSize</code>, <code>Graphics/VertexTypes.h</code> 의 <code>MakeVertexLayoutPCNTT</code></td><td><a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td class="mono">static_assert</td><td>컴파일 시점의 assert. 조건이 거짓이면 그 자리에서 빌드가 실패합니다. 일반 <code>assert</code> 는 Debug 빌드의 실행 중에만 검사합니다.</td><td><code>Graphics/ShaderConstants.h</code>(<code>sizeof(PerFrameConstants) == 352</code> 과 <code>offsetof</code> 검사), <code>Scene/Light.h</code>(<code>sizeof(LightData) == 80</code>), <code>RHI/Handle.h</code></td><td><a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td class="mono">alignas / offsetof</td><td><code>alignas(16)</code> 은 타입의 정렬을 지정하고, <code>offsetof(T, m)</code> 은 멤버의 바이트 위치를 줍니다. 둘 다 C++ 구조체를 HLSL 상수버퍼 배치와 맞추는 데 씁니다.</td><td><code>Scene/Light.h</code> 의 <code>struct alignas(16) LightData</code>, <code>Graphics/VertexTypes.h</code></td><td><a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td>지정 초기화</td><td><code>T{ .a = 1, .b = 2 }</code> 처럼 멤버 이름으로 채우는 초기화(C++20). 선언 순서를 지켜야 하고, 적지 않은 멤버는 기본값이 됩니다.</td><td><code>Graphics/Renderer.cpp</code> 의 <code>PipelineStateDesc{ .vs = m_vs, … }</code>, <code>RenderPassDesc</code>, <code>ResourceSetDesc</code></td><td><a href="rendering-analysis.html#c5">5</a></td></tr>
+<tr><td class="mono">std::span&lt;T&gt;</td><td>연속된 원소 구간을 가리키는 비소유 뷰(포인터와 길이, C++20). <code>vector</code>, 배열, 포인터+길이를 같은 인자로 받습니다.</td><td><code>RHI/ShaderCompiler.h</code> 의 <code>std::span&lt;const uint8_t&gt; bytecode</code>, <code>RHI/Device.h</code> 의 <code>CreateTexture(…, std::span&lt;const TextureSubresource&gt;)</code></td><td><a href="rendering-analysis.html#c9">9</a>, <a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td class="mono">std::clamp(x, lo, hi)</td><td>x 를 [lo, hi] 범위 안으로 자릅니다. x &lt; lo 면 lo, x &gt; hi 면 hi, 그 사이면 x 그대로. <code>&lt;algorithm&gt;</code>(C++17).</td><td><code>Renderer::UpdateParticleEmitters</code> 의 dt(<code>std::clamp(totalTime - m_lastParticleTime, 0.0f, kMaxParticleStep)</code>)와 이미터 설정값 정리</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-cpu">VFX 12.4</a></td></tr>
+<tr><td class="mono">std::format</td><td>타입 안전한 문자열 서식(C++20). <code>"{}"</code>, <code>"{:.1f}"</code>, <code>"{:08X}"</code>.</td><td><code>Core/Config.cpp</code>, <code>Core/Log.cpp</code>, <code>Graphics/Model.cpp</code>. <code>Log::Info</code> 등 로그 함수 자체는 <code>printf</code> 서식입니다.</td><td><a href="rendering-analysis.html#c15">15</a></td></tr>
+<tr><td class="mono">std::unique_ptr</td><td>단독 소유 스마트 포인터. 복사할 수 없고 이동만 됩니다. 소멸할 때 대상을 지웁니다.</td><td><code>Core/Engine.h</code> 의 <code>std::unique_ptr&lt;RHI::Device&gt; m_device</code>, <code>Scene/Scene.h</code> 의 오브젝트·메시 목록. 주소가 바뀌지 않아 비소유 포인터를 걸 수 있습니다.</td><td><a href="rendering-analysis.html#c2">2</a>, <a href="rendering-analysis.html#c13">13</a></td></tr>
+<tr><td class="mono">std::shared_ptr</td><td>공유 소유. 마지막 소유자가 사라질 때 해제합니다.</td><td><code>RHI/D3D12/D3D12PipelineState.h</code> 의 <code>std::shared_ptr&lt;D3D12RootLayout&gt;</code>(장치의 캐시와 PSO 가 공유)</td><td><a href="rendering-analysis.html#c7">7</a></td></tr>
+<tr><td>이동 의미론<br><span class="mono">T&amp;&amp;, std::move</span></td><td>자원을 복사하지 않고 소유권만 옮기는 것. <code>T&amp;&amp;</code> 는 rvalue 참조, <code>std::move</code> 는 lvalue 를 rvalue 로 캐스팅합니다. 이름 있는 rvalue 참조 변수는 식으로서 lvalue 라 다시 <code>std::move</code> 가 필요합니다.</td><td><code>RHI/ResourcePool.h</code> 의 <code>Add(T&amp;&amp; item)</code>, <code>Scene/Scene.h</code> 의 <code>AddModel(Model&amp;&amp;, …)</code></td><td><a href="rendering-analysis.html#c5">5</a>, <a href="rendering-analysis.html#c21">21</a></td></tr>
+<tr><td>const 멤버 함수<br><span class="mono">const_cast</span></td><td>함수 뒤의 <code>const</code> 는 숨은 인자 <code>this</code> 를 <code>const T*</code> 로 바꿉니다. 그래서 const 판과 비const 판이 오버로딩됩니다. <code>const_cast</code> 는 const 를 명시적으로 떼는 캐스트입니다.</td><td><code>RHI/ResourcePool.h</code> 의 두 <code>Get</code></td><td><a href="rendering-analysis.html#c21">21</a></td></tr>
+<tr><td class="mono">= delete</td><td>함수를 금지합니다. 복사 생성자와 복사 대입에 쓰면 복사할 수 없는 타입이 됩니다.</td><td><code>Scene/GameObject.h</code>(컴포넌트가 소유자 포인터를 들기 때문), <code>Core/Profiler.h</code> 의 스코프 객체</td><td><a href="rendering-analysis.html#c13">13</a></td></tr>
+<tr><td class="mono">virtual / override</td><td>가상 함수와 그 재정의 표시. 런타임에 실제 타입의 함수가 불립니다.</td><td><code>RHI/Device.h</code> 와 <code>RHI/CommandList.h</code> 의 순수 가상 인터페이스, 두 백엔드의 <code>override</code></td><td><a href="rendering-analysis.html#c9">9</a></td></tr>
+<tr><td class="mono">std::unordered_map<br><span class="sub">+ 해시 함수 객체</span></td><td>해시 테이블. 사용자 타입을 키로 쓰려면 해시 함수 객체(세 번째 템플릿 인자)와 <code>operator==</code> 가 필요합니다.</td><td><code>RHI/D3D11/PipelineStateCache.h</code> 의 <code>m_lookup</code>, <code>RHI/PipelineTypes.h</code> 의 <code>PipelineStateDescHasher</code></td><td><a href="rendering-analysis.html#c6">6</a></td></tr>
+<tr><td>람다</td><td>그 자리에서 정의하는 이름 없는 함수 객체. <code>[capture](args) { … }</code>.</td><td><code>Renderer::BuildDrawList</code> 의 <code>std::sort</code> 비교 함수, <code>Scene::RemoveObject</code> 의 서브트리 수집</td><td><a href="rendering-analysis.html#c14">14</a></td></tr>
+<tr><td class="mono">[[nodiscard]]</td><td>반환값을 버리면 경고를 내게 하는 속성. 실패를 돌려주는 생성 함수에 붙이면 결과 확인을 강제할 수 있습니다.</td><td>현재 소스에는 쓰인 곳이 없습니다.</td><td><span class="pill none">해당 없음</span></td></tr>
+</tbody></table></div>
+
+
+<h2 id="graphics"><span class="num">3.</span>그래픽스 용어</h2>
+
+<div class="tbl"><table>
+<thead><tr><th>용어</th><th>정의</th><th>쓰이는 자리</th><th>장</th></tr></thead>
+<tbody>
+<tr><td>RHI<span class="sub">Render Hardware Interface</span></td><td>그래픽 API 를 숨기는 추상 계층. 위쪽 코드는 핸들과 Desc 만 보고, API 타입은 백엔드 폴더 안에만 있습니다.</td><td><code>RHI/Device.h</code>, <code>RHI/CommandList.h</code>(인터페이스), <code>RHI/D3D11/</code>, <code>RHI/D3D12/</code>(구현), <code>RHI/RHI.cpp</code>(팩토리)</td><td><a href="rendering-analysis.html#c9">9</a></td></tr>
+<tr><td>PSO<span class="sub">Pipeline State Object</span></td><td>셰이더, 입력 레이아웃, 래스터라이저·깊이스텐실·블렌드 상태, 토폴로지, 출력 포맷의 조합 전체를 담은 불변 객체. D3D12 에서는 실제 객체이고 D3D11 에서는 상태 객체 묶음으로 흉내 냅니다.</td><td><code>RHI/PipelineTypes.h</code> 의 <code>PipelineStateDesc</code>, <code>RHI/D3D11/PipelineState.cpp</code>, <code>RHI/D3D12/D3D12PipelineState.cpp</code></td><td><a href="rendering-analysis.html#c6">6</a></td></tr>
+<tr><td>Desc<span class="sub">서술자</span></td><td>"무엇을 만들 것인가"를 값으로 적은 구조체. 생성 함수의 인자이고 PSO 의 경우 캐시 키이기도 합니다.</td><td><code>RHI/ResourceDesc.h</code>, <code>RHI/PipelineTypes.h</code>, <code>RHI/BindingTypes.h</code>, <code>RHI/RenderPassTypes.h</code></td><td><a href="rendering-analysis.html#c5">5</a></td></tr>
+<tr><td>핸들 · 세대</td><td>리소스를 가리키는 <code>{index, generation}</code> 값. 슬롯을 해제하면 세대가 올라가 옛 핸들이 무효가 됩니다.</td><td><code>RHI/Handle.h</code>, <code>RHI/ResourcePool.h</code></td><td><a href="rendering-analysis.html#c5">5</a></td></tr>
+<tr><td>RTV / DSV</td><td>렌더 타깃 뷰와 깊이·스텐실 뷰. 텍스처를 "그리는 대상"으로 보는 방식입니다.</td><td>두 백엔드의 <code>BeginRenderPass</code> 가 <code>OMSetRenderTargets</code> 로 바인딩</td><td><a href="rendering-analysis.html#c8">8</a></td></tr>
+<tr><td>SRV</td><td>셰이더 리소스 뷰. 텍스처를 셰이더가 "읽는 대상"으로 보는 방식. HLSL 의 <code>t#</code> 레지스터.</td><td><code>BindingType::ShaderResource</code>. 알베도 <code>t0</code>, 노멀 <code>t1</code>, 그림자 맵 <code>t8</code></td><td><a href="rendering-analysis.html#c7">7</a></td></tr>
+<tr><td>CBV · 상수버퍼</td><td>셰이더에 넘기는 작은 값 묶음(<code>cbuffer</code>, <code>b#</code> 레지스터)과 그 뷰. 16바이트 단위로 채워집니다.</td><td><code>Graphics/ShaderConstants.h</code>(PerFrame <code>b0</code>, PerObject <code>b1</code>, Lights <code>b2</code>, Material <code>b3</code>), <code>Shaders/*.hlsli</code>(바인딩 셋 단위, <a href="rendering-analysis.html#c10-1">10.1</a>)</td><td><a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td>UAV</td><td>순서 없는 접근 뷰. 셰이더가 읽고 쓰는 리소스. 주로 컴퓨트 셰이더에서 씁니다.</td><td><code>BindingType::UnorderedAccess</code>(텍스처, <code>RWTexture2D</code>)와 <code>BindingType::BufferUnorderedAccess</code>(구조체 버퍼, <code>RWStructuredBuffer</code>). 컴퓨트 전용. 블러(<code>BlurComputeShader.hlsl</code> 의 u0)와 GPU 파티클(<code>ParticleSim.hlsli</code> 의 u0~u5)이 씁니다. GPU 컴퓨트 용어는 <a href="#compute">4장</a>.</td><td><a href="rendering-analysis.html#c7">7</a></td></tr>
+<tr><td>샘플러</td><td>텍스처를 읽을 때의 필터와 주소 모드. <code>s#</code> 레지스터. 비교 샘플러는 읽은 값과 기준값을 비교한 결과를 돌려줍니다.</td><td><code>RHI/ResourceDesc.h</code> 의 <code>SamplerDesc</code>. 재질 <code>s0</code>, 그림자 <code>s4</code></td><td><a href="rendering-analysis.html#c12">12</a></td></tr>
+<tr><td>바인딩 레이아웃 · 리소스 셋</td><td>"이 파이프라인이 어떤 슬롯을 쓰는가"의 선언과, 그 슬롯에 실제로 꽂는 핸들 묶음. 프레임·오브젝트·재질 세 벌로 나눕니다.</td><td><code>RHI/BindingTypes.h</code>, <code>Renderer::Initialize</code></td><td><a href="rendering-analysis.html#c7">7</a></td></tr>
+<tr><td>루트 시그니처</td><td>D3D12 에서 셰이더 레지스터와 리소스를 잇는 슬롯표의 설계도. 루트 파라미터(루트 상수, 루트 디스크립터, 디스크립터 테이블)의 목록이고 64 DWORD 한도가 있습니다.</td><td><code>D3D12Device::GetOrCreateRootLayout</code>, <code>RHI/D3D12/D3D12PipelineState.h</code> 의 <code>D3D12RootLayout</code></td><td><a href="rendering-analysis.html#c7">7</a></td></tr>
+<tr><td>디스크립터 · 힙 · 테이블</td><td>디스크립터는 리소스를 보는 방식을 적은 작은 블록, 힙은 그 배열, 테이블은 힙 안의 연속 구간(시작 주소 하나)입니다.</td><td><code>RHI/D3D12/D3D12DescriptorHeap.h</code>, <code>D3D12Device::CreateResourceSet</code>, <code>D3D12CommandList::ApplyBindings</code></td><td><a href="rendering-analysis.html#c7">7</a></td></tr>
+<tr><td>배리어 · 리소스 상태</td><td>D3D12 에서 리소스의 용도(렌더 타깃, 셰이더 읽기, Present 등)를 바꿀 때 명시하는 전이 명령. D3D11 은 드라이버가 알아서 합니다.</td><td><code>RHI/RenderPassTypes.h</code> 의 <code>ResourceState</code>, <code>CommandList::Barrier</code></td><td><a href="rendering-analysis.html#c8">8</a></td></tr>
+<tr><td>렌더 패스</td><td>"어디에 그릴지"를 정하는 구간. 타깃, 시작 처리(<code>LoadOp</code>), 끝 처리(<code>StoreOp</code>), 뷰포트를 묶습니다.</td><td><code>RenderPassDesc</code>, <code>BeginRenderPass</code>/<code>EndRenderPass</code></td><td><a href="rendering-analysis.html#c8">8</a></td></tr>
+<tr><td>커맨드 리스트</td><td>그리기 명령을 기록하는 객체. D3D12 는 기록한 뒤 한꺼번에 제출하고, D3D11 은 호출이 곧 실행입니다.</td><td><code>RHI/CommandList.h</code>, <code>RHI/D3D12/D3D12CommandList.cpp</code></td><td><a href="rendering-analysis.html#c8">8</a></td></tr>
+<tr><td>펜스 · 프레임 자원</td><td>펜스는 GPU 가 어디까지 실행했는지 알려 주는 카운터. GPU 가 아직 읽는 메모리를 덮어쓰지 않도록 프레임별 자원을 <code>kFrameCount</code> 벌 둡니다.</td><td><code>RHI/GraphicsConfig.h</code> 의 <code>kFrameCount</code>, <code>RHI/D3D12/D3D12Device.h</code> 의 <code>m_fence</code></td><td><a href="rendering-analysis.html#c8">8</a></td></tr>
+<tr><td>스왑체인 · 백버퍼 · Present</td><td>화면에 번갈아 표시되는 버퍼 묶음, 그중 지금 그리는 버퍼, 그것을 화면에 내보내는 호출.</td><td>두 장치의 <code>CreateSwapChainForHwnd</code>, <code>Device::GetBackBuffer</code>, <code>Device::EndFrame</code></td><td><a href="rendering-analysis.html#c4">4</a>, <a href="rendering-analysis.html#c9">9</a></td></tr>
+<tr><td>셰이더 모델</td><td>HLSL 기능 수준의 버전. 컴파일 타깃 프로파일(<code>vs_5_0</code>)로 지정합니다. 이 엔진은 두 백엔드 모두 5.0 입니다.</td><td><code>RHI/DXBC/ShaderCompiler.cpp</code> 의 <code>GetTargetProfile</code>, vcxproj 의 <code>ShaderModel</code></td><td><a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td>DXBC / DXIL</td><td>컴파일된 셰이더의 두 바이트코드 형식. DXBC 는 SM 5.1 이하(D3D11 은 5.0 까지), DXIL 은 SM 6.x(D3D12 전용).</td><td>지금은 DXBC 만 씁니다.</td><td><a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td>fxc / dxc</td><td>DXBC 를 만드는 옛 컴파일러(<code>D3DCompile*</code> API 와 같은 엔진)와, DXIL·SPIR-V 를 만드는 새 컴파일러.</td><td>빌드의 FxCompile 과 런타임의 <code>D3DCompileFromFile</code>. dxc 는 쓰지 않습니다.</td><td><a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td class="mono">.cso</td><td>빌드가 미리 컴파일해 둔 셰이더 바이트코드 파일.</td><td><code>ShaderCompiler::LoadOrCompile</code> 이 먼저 찾고, 없으면 <code>.hlsl</code> 을 컴파일</td><td><a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td>리플렉션</td><td>바이트코드에서 상수버퍼 크기와 바인딩 정보를 읽어 내는 것.</td><td><code>ShaderCompiler::ValidateConstantBufferSize</code>, <code>ReflectBindings</code></td><td><a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td>NDC</td><td>정규화 장치 좌표. 투영과 원근 나눗셈 뒤의 좌표로, D3D 에서 x·y 는 −1..1, z 는 0..1 입니다.</td><td><code>BasicPixelShader.hlsl</code> 의 그림자 좌표 변환, <code>Editor/Editor.cpp</code> 의 픽셀 → 광선 변환</td><td><a href="rendering-analysis.html#app-b">부록 B</a></td></tr>
+<tr><td>TBN</td><td>탄젠트·바이탄젠트·노멀로 이루어진 기저. 노멀 맵의 탄젠트 공간 값을 월드 공간으로 옮깁니다.</td><td><code>Shaders/BasicPixelShader.hlsl</code> 의 <code>T</code>, <code>B</code> 계산</td><td><a href="rendering-analysis.html#c11">11</a></td></tr>
+<tr><td>PCF</td><td>Percentage-Closer Filtering. 그림자 맵에서 이웃 텍셀 여러 개의 비교 결과를 평균 내 경계를 부드럽게 합니다.</td><td><code>SampleShadowViewCoverage</code> 의 5×5 <code>SampleCmpLevelZero</code></td><td><a href="rendering-analysis.html#c11">11</a></td></tr>
+<tr><td>sRGB</td><td>표시 장치용 비선형 색 인코딩. <code>_SRGB</code> 포맷은 읽을 때 선형으로, 쓸 때 sRGB 로 자동 변환합니다.</td><td><code>Format::R8G8B8A8_UNORM_SRGB</code>, <code>ColorAttachment::srgbView</code></td><td><a href="rendering-analysis.html#c12">12</a></td></tr>
+<tr><td>MSAA</td><td>픽셀당 여러 샘플로 가장자리를 부드럽게 하는 기법.</td><td>쓰지 않습니다. <code>sampleCount</code> 필드는 모두 1 입니다.</td><td><a href="rendering-analysis.html#c6">6</a></td></tr>
+<tr><td>드로우 콜</td><td>GPU 에 "지금 상태로 이만큼 그려라"고 내리는 호출 한 번.</td><td><code>CommandList::DrawIndexed</code>, <code>Renderer::DrawItems</code></td><td><a href="rendering-analysis.html#c14">14</a></td></tr>
+</tbody></table></div>
+
+<h2 id="compute"><span class="num">4.</span>GPU 컴퓨트·파티클</h2>
+
+<p>컴퓨트 셰이더와 GPU 파티클(VFX)을 읽다가 나온 용어입니다. 2026-11-17 에 <code>docs/plan/vfx-gpu-particles-record.html</code> 을 읽으며 물어본 것을 모았습니다. 셰이더 헤더는 분리 뒤 이름(<code>Particle.hlsli</code>, <code>ParticleSim.hlsli</code>, <code>ParticleSort.hlsli</code>) 기준입니다.</p>
+
+<div class="tbl"><table>
+<thead><tr><th>용어</th><th>정의</th><th>쓰이는 자리</th><th>자세히</th></tr></thead>
+<tbody>
+<tr><td>커널<span class="sub">compute kernel</span></td><td>GPU 에서 수많은 스레드가 동시에 실행하는 컴퓨트 셰이더 함수 하나. <code>[numthreads(…)]</code> 속성이 붙은 진입점 함수가 커널입니다.</td><td>파티클 시뮬레이션 커널 넷(<code>CS_ParticleReset</code>, <code>CS_ParticleSim</code>, <code>CS_ParticleArgs</code>, <code>CS_ParticleEmit</code>)과 정렬 커널 둘(<code>CS_ParticleSortInit</code>, <code>CS_ParticleSortStep</code>). 파일 하나에 하나씩 있습니다.</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-sim">VFX 12.7</a></td></tr>
+<tr><td>디스패치<span class="sub">Dispatch</span></td><td>컴퓨트 셰이더를 실행하라는 명령 하나. 그리기의 <code>Draw</code> 에 해당합니다. <code>Dispatch(X, Y, Z)</code> 는 스레드 그룹을 X×Y×Z 개 실행합니다.</td><td><code>RHI/CommandList.h</code> 의 <code>CommandList::Dispatch</code>. Reset 은 <code>Dispatch((capacity + 63) / 64)</code> 로 칸 하나에 스레드 하나(<code>Renderer::SimulateParticles</code>)</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-threads">VFX 12.14</a></td></tr>
+<tr><td>스레드 그룹 · <code>numthreads</code> · <code>SV_DispatchThreadID</code></td><td>한 그룹에 들어가는 스레드 수는 셰이더의 <code>[numthreads(64,1,1)]</code> 이 정합니다. 그래서 <code>Dispatch(10)</code> 이면 640 개 스레드가 돌고, 스레드마다 <code>SV_DispatchThreadID</code>(0~639)로 자기가 맡을 원소를 고릅니다.</td><td>파티클 커널은 모두 64(<code>kParticleGroupSize</code>, <code>RendererParticles.cpp</code>), Args 만 1</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-threads">VFX 12.14</a></td></tr>
+<tr><td>간접 디스패치 · 간접 그리기<span class="sub">DispatchIndirect / DrawInstancedIndirect</span></td><td>그룹 수나 인스턴스 수를 CPU 가 넘기지 않고 GPU 버퍼(인자 버퍼)에서 읽는 호출. GPU 만 아는 개수(생존 수)로 CPU 리드백 없이 크기를 정합니다.</td><td><code>CommandList::DispatchIndirect</code>(Sim), <code>CommandList::DrawInstancedIndirect</code>(<code>Renderer::DrawParticles</code>). 읽는 동안 인자 버퍼는 <code>ResourceState::IndirectArgument</code></td><td><a href="../plan/vfx-gpu-particles-record.html#s2-rhi">VFX 10.1</a></td></tr>
+<tr><td>인자 버퍼<span class="sub">args</span></td><td>간접 호출의 인자를 담은 버퍼. 파티클은 32 바이트에 그리기 인자 <code>{6, 생존 수, 0, 0}</code>(오프셋 0)과 Sim 디스패치 인자 <code>{그룹 수, 1, 1}</code>(오프셋 16)을 둡니다. <code>CS_ParticleArgs</code> 가 씁니다.</td><td><code>GpuEmitter::args</code>, <code>Graphics/ShaderConstants.h</code> 의 <code>kParticleArgsDrawOffset</code>·<code>kParticleArgsDispatchOffset</code>, <code>ParticleSim.hlsli</code> 의 u5 <code>particleArgs</code></td><td><a href="../plan/vfx-gpu-particles-record.html#arch-data">VFX 12.5</a></td></tr>
+<tr><td>구조체 버퍼<span class="sub">StructuredBuffer</span></td><td>크기가 같은 원소(stride 바이트)가 배열처럼 이어진 버퍼. 셰이더가 <code>buf[i]</code> 로 i 번째 원소를 구조체 타입으로 읽고, UAV 로 꽂으면(<code>RWStructuredBuffer</code>) 씁니다. C++ 구조체를 꼭 올리는 버퍼라는 뜻은 아닙니다. 파티클 버퍼는 CPU 가 올리지 않고 GPU 가 채웁니다.</td><td><code>BufferDesc::stride</code> 를 주면 구조체 버퍼. <code>particles</code>(stride 32 = <code>kParticleStride</code>), <code>deadList</code>·<code>aliveLists</code>·<code>counters</code>(stride 4)</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-data">VFX 12.5</a></td></tr>
+<tr><td>구조체 버퍼와 상수 버퍼의 차이</td><td>상수 버퍼(<code>b#</code>)는 모든 스레드가 같은 값을 읽는 작은 묶음(최대 64KB, 읽기 전용, 16 바이트 경계 규칙, 이름으로 접근). 구조체 버퍼(<code>t#</code>/<code>u#</code>)는 원소가 많은 배열(UAV 면 쓰기 가능, stride 단위로 촘촘, 인덱스로 접근)입니다.</td><td>이미터 설정은 상수 버퍼 b8(<code>ParticleEmitterConstants</code>, CPU 가 프레임에 한 번 올림), 입자 데이터는 구조체 버퍼</td><td><a href="rendering-analysis.html#c10">10</a></td></tr>
+<tr><td>raw 버퍼<span class="sub">ByteAddressBuffer</span></td><td>원소 타입 없이 바이트 주소(4 의 배수)로 읽고 쓰는 버퍼. <code>Load4</code>/<code>Store4</code> 로 접근합니다.</td><td>인자 버퍼만 raw(<code>BufferBind_Raw</code>, HLSL <code>RWByteAddressBuffer</code>). D3D11 에서 간접 인자 버퍼는 구조체 버퍼일 수 없기 때문입니다.</td><td><a href="../plan/vfx-gpu-particles-record.html#s2-rhi">VFX 10.1</a></td></tr>
+<tr><td>UAV 배리어</td><td>앞 디스패치가 UAV 에 쓴 결과를 다음 디스패치가 읽기 전에 쓰기가 끝나기를 기다리게 하는 명령. 상태를 바꾸는 배리어와 달리 같은 UAV 상태 안에서 순서만 맞춥니다. D3D11 은 런타임이 알아서 합니다.</td><td><code>CommandList::UavBarrier</code>. <code>Renderer::SimulateParticles</code> 의 커널 사이, <code>Renderer::SortParticles</code> 의 단계 사이</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-state">VFX 12.10</a></td></tr>
+<tr><td>원자 연산<span class="sub">InterlockedAdd</span></td><td>여러 스레드가 같은 값을 동시에 고쳐도 하나씩 차례로 처리되게 보장하는 연산. <code>InterlockedAdd(c, 1, old)</code> 는 c 를 1 늘리고 늘리기 전 값을 돌려줘, 스레드마다 겹치지 않는 자리를 얻습니다.</td><td><code>CS_ParticleSim</code> 이 생존 목록·사망 목록에 번호를 넣을 때 <code>particleCounters</code> 의 칸을 늘림</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-sim">VFX 12.7</a></td></tr>
+<tr><td>레이스 컨디션</td><td>여러 스레드가 같은 메모리를 순서 보장 없이 읽고 써서 결과가 실행 순서에 따라 달라지는 문제. 예: 한 버퍼를 읽으면서 같은 버퍼에 압축해 쓰면 아직 안 읽은 칸을 덮을 수 있습니다.</td><td>생존 목록을 두 개로 나눈 이유(아래 핑퐁)</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-data">VFX 12.5</a></td></tr>
+<tr><td>카운터 버퍼<span class="sub">counters</span></td><td>셰이더끼리 개수를 주고받는 <code>uint</code> 8 칸. 생존 수, 사망 목록 길이, 다음 Sim 이 훑을 수, 이번 생성 수, 생성이 쓸 구간의 시작을 둡니다. Sim 이 원자적으로 늘리고, Args 가 정리하고, Emit 이 읽습니다.</td><td><code>GpuEmitter::counters</code>, <code>ParticleSim.hlsli</code> 의 u4 <code>particleCounters</code>, 칸 번호는 <code>Particle.hlsli</code> 의 <code>kCounter*</code></td><td><a href="../plan/vfx-gpu-particles-record.html#arch-data">VFX 12.5</a></td></tr>
+<tr><td>사망 목록<span class="sub">dead list · free list</span></td><td>파티클 버퍼에서 지금 비어 있는 칸 번호를 모은 스택. 죽은 입자는 자기 칸 번호를 넣고, Emit 은 여기서 꺼낸 칸에 새 입자를 씁니다. 비면 더 태어나지 않습니다(<code>maxParticles</code> 상한).</td><td><code>GpuEmitter::deadList</code>, u1 <code>particleDead</code>. 처음엔 <code>CS_ParticleReset</code> 이 모든 칸 번호를 넣음</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-sim">VFX 12.7</a></td></tr>
+<tr><td>생존 목록 · 핑퐁<span class="sub">alive list · ping-pong</span></td><td>살아 있는 입자의 칸 번호 목록. 두 개를 두고 한 프레임 안에서는 하나를 읽기(지난 프레임 생존자), 하나를 쓰기(이번 생존자 + 새로 태어난 것)로 나눕니다. 프레임이 바뀌면 역할만 바꿉니다(핑퐁). 버퍼 내용은 복사하지 않습니다.</td><td><code>GpuEmitter::aliveLists[2]</code>, u2 <code>particleAliveIn</code>·u3 <code>particleAliveOut</code>, 그리기에서는 t22 <code>aliveList</code></td><td><a href="../plan/vfx-gpu-particles-record.html#arch-data">VFX 12.5</a></td></tr>
+<tr><td>parity</td><td>두 생존 목록 중 이번 프레임에 어느 쪽이 입력인지 나타내는 0/1. 입력은 <code>aliveLists[parity]</code>, 출력은 <code>aliveLists[1 - parity]</code>. 프레임마다 <code>parity ^= 1</code>. 두 경우의 리소스 셋을 미리 만들어 두고 맞는 쪽을 꽂습니다.</td><td><code>GpuEmitter::parity</code>, <code>simSets[2]</code>·<code>stepSets[2]</code>·<code>drawSets[2]</code>(<code>Renderer::UpdateParticleEmitters</code>)</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-bind">VFX 12.6</a></td></tr>
+<tr><td>알파 블렌드 · 가산 블렌드</td><td>알파는 뒤에 있는 것을 일부 가리는 반투명(연기·먼지), 가산은 뒤 색에 밝기를 더하기만 하는 방식(불꽃·스파크)입니다. 가산은 순서와 상관없지만 알파는 먼 것부터 그려야 맞습니다.</td><td><code>ParticleEmitter::blendMode</code>(0 가산, 1 알파). <code>Renderer::DrawParticles</code> 가 정렬한 알파 이미터를 먼저, 가산을 나중에 그림</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-draw">VFX 12.9</a></td></tr>
+<tr><td>프리멀티플라이드 알파</td><td>색에 알파를 미리 곱해 내보내고 블렌드를 <code>목적지 × (1 − 알파) + 색</code> 으로 하는 방식. 알파 0 을 내보내면 가산과 같아져 PSO 하나로 두 모드를 그립니다.</td><td><code>Renderer.cpp</code> 의 파티클 PSO 블렌드(<code>One</code>, <code>InvSrcAlpha</code>), <code>ParticlePixelShader.hlsl</code> 의 출력</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-draw">VFX 12.9</a></td></tr>
+<tr><td>바이토닉 정렬<span class="sub">bitonic sort</span></td><td>GPU 에서 병렬로 하는 정렬. 길이 N(2 의 거듭제곱)이면 단계가 log₂N(log₂N+1)/2 개이고, 단계마다 스레드 i 가 짝 <code>i ^ j</code> 와 비교해 자리를 바꿉니다. 단계 사이마다 UAV 배리어가 필요합니다.</td><td><code>CS_ParticleSortInit</code>(키 = 뷰 공간 z), <code>CS_ParticleSortStep</code>(b11 의 k, j), <code>Renderer::SortParticles</code>, <code>Renderer::EnsureParticleSortSteps</code></td><td><a href="../plan/vfx-gpu-particles-record.html#arch-sort">VFX 12.8</a></td></tr>
+<tr><td>뷰별 정렬</td><td>카메라가 다르면 "먼 것"의 순서가 달라서 뷰마다 따로 정렬합니다. 정렬 길이는 생존 수가 아니라 capacity 를 2 의 거듭제곱으로 올린 값이라, 살아 있는 입자가 적어도 전체 칸을 정렬합니다(비용 주의).</td><td><code>kMaxParticleViews</code> = 2(메인, 카메라 미리보기), <code>m_particleSortViewCB</code>(b10, 그 뷰의 view 행렬), <code>GpuEmitter::sortKeys</code>·<code>sortIndices</code></td><td><a href="../plan/vfx-gpu-particles-record.html#s3-sort">VFX 11.4</a></td></tr>
+<tr><td><code>ParticleEmitter</code> · <code>FrameEmitter</code> · <code>GpuEmitter</code></td><td>셋 다 입자 하나가 아니라 이미터 하나에 대한 것입니다. <code>ParticleEmitter</code> 는 오브젝트에 붙는 컴포넌트(설정값, 씬 소유), <code>FrameEmitter</code> 는 렌더러가 이번 프레임에 모은 키·위치·방향(한 프레임), <code>GpuEmitter</code> 는 그 이미터의 GPU 버퍼와 상태(프레임을 넘어 유지)입니다.</td><td><code>Scene/ParticleEmitter.h</code>, <code>Graphics/Renderer.h</code> 의 <code>Renderer::FrameEmitter</code>·<code>Renderer::GpuEmitter</code>, <code>m_frameEmitters</code>·<code>m_gpuEmitters</code>·<code>m_activeEmitterKeys</code></td><td><a href="../plan/vfx-gpu-particles-record.html#arch-cpu">VFX 12.4</a></td></tr>
+<tr><td>고정 스텝 dt</td><td>실제 경과 시간 대신 매 프레임 같은 시간만큼 진행하는 것. 결과가 실제 시간이 아니라 프레임 수에만 의존해 검증 스크린샷이 매번 같습니다.</td><td><code>RenderSettings::particleFixedStep</code>(<code>--particle-step=&lt;초&gt;</code>). 아니면 <code>totalTime</code> 차이를 0.1 초(<code>kMaxParticleStep</code>)에서 자름</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-cpu">VFX 12.4</a></td></tr>
+</tbody></table></div>
+
+<p class="foot">위치는 "파일 + 함수 이름"으로 적고 줄 번호는 쓰지 않습니다. 기준: 2026-11-17 main.</p>
+</main>
+</body>
+</html>

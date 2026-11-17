@@ -480,9 +480,6 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
     <li class="sub" data-ch="c22"><a href="#c22-6">22.6 우선순위 제안</a></li>
     <li class="pt"><a href="#part-app-a">부록 · 사전 · 규약 · 목록 · 문헌</a></li>
     <li data-ch="app-a"><a href="#app-a">A. 용어·타입 사전</a></li>
-    <li class="sub" data-ch="app-a"><a href="#app-a-1">A.1 Win32·COM 타입과 함수</a></li>
-    <li class="sub" data-ch="app-a"><a href="#app-a-2">A.2 C++ 언어와 표준 라이브러리</a></li>
-    <li class="sub" data-ch="app-a"><a href="#app-a-3">A.3 그래픽스 용어</a></li>
     <li data-ch="app-b"><a href="#app-b">B. 좌표계와 행렬 규약</a></li>
     <li class="sub" data-ch="app-b"><a href="#app-b-1">B.1 glTF 와의 차이</a></li>
     <li class="sub" data-ch="app-b"><a href="#app-b-2">B.2 초기값</a></li>
@@ -643,7 +640,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
   <li><strong>Part I(1~4장)을 먼저 순서대로 읽습니다.</strong> 프로그램이 켜져서 한 프레임을 그리고 꺼지기까지의 뼈대입니다. 나머지 장은 이 뼈대의 한 지점을 깊이 파는 장이므로, 4장을 읽다가 궁금해진 곳의 링크를 따라가면 됩니다.</li>
   <li><strong>Part I~IV는 현재 코드를 현재형으로 서술합니다.</strong> "예전에는 어땠고 왜 바꿨나"는 Part V(18~20장)에 모았습니다. 본문에서 경위가 필요한 곳에는 <a href="#p6">6단계</a>, <a href="#d12">D12</a>처럼 기록으로 가는 링크만 있습니다.</li>
   <li><strong>코드 위치는 파일 경로와 함수 이름으로 적습니다.</strong> 줄 번호는 금방 낡으므로 쓰지 않았습니다. 경로는 <code>SherlockEngine/</code> 폴더 기준(<code>RHI/Handle.h</code>)이고, 그 밖의 프로젝트는 저장소 루트 기준(<code>SherlockEditor/EditorMain.cpp</code>)입니다.</li>
-  <li><strong>질문에서 출발해 읽을 수도 있습니다.</strong> 작업 중에 나온 질문은 <a href="#c21">21장</a>에 주제별로 모았고, 각 답 끝에 본문 장으로 가는 링크가 있습니다. 낯선 타입이나 용어는 <a href="#app-a">부록 A</a>에서 찾습니다.</li>
+  <li><strong>질문에서 출발해 읽을 수도 있습니다.</strong> 작업 중에 나온 질문은 <a href="#c21">21장</a>에 주제별로 모았고, 각 답 끝에 본문 장으로 가는 링크가 있습니다. 낯선 타입이나 용어는 <a href="glossary.html">용어집</a>에서 찾습니다.</li>
   <li><strong>소스와 함께 읽는 순서</strong>는 <a href="reading-guide.html">study-guide.html</a>에 스텝별로 정리했습니다. 이 문서의 어느 절과 어느 소스 파일을 짝지어 볼지, 무엇을 실행해서 확인할지가 거기 있습니다.</li>
   <li><strong>제목 옆의 「메모」 버튼</strong>으로 절마다 메모를 남길 수 있습니다. 메모는 이 브라우저에만 저장되며, 우측 아래 패널에서 내보내기와 가져오기를 합니다. 통합 이전 문서(<code>phase-*.html</code>)에 남긴 메모도 같은 패널의 「다른 문서의 메모」에서 볼 수 있습니다.</li>
 </ul>
@@ -10367,7 +10364,7 @@ ParticleSort(뷰 번호)       알파 이미터만, 이 뷰의 카메라로
 <tr><td>using 지시문</td><td class="mono">using namespace DirectX;</td><td>namespace 선언이 아니라 "이 범위에서는 한정자를 생략한다"는 지시입니다. <code>.cpp</code> 안에서만 쓰고 헤더에는 두지 않습니다. 헤더에 두면 그 헤더를 include 한 모든 파일로 번집니다.</td></tr>
 </tbody></table></div>
 
-<p>자세히: <a href="#c15">15장</a>(Log), <a href="#app-a">부록 A</a>.</p>
+<p>자세히: <a href="#c15">15장</a>(Log), <a href="glossary.html">용어집</a>.</p>
 
 <h4>Q. 이름 없는 enum(<code>RS_SOLID</code>…, <code>RM_SOLID</code>…)을 <code>enum class LightType</code> 처럼 바꾸면 함수 인자로도 쓸 수 있고 좋지 않나?</h4>
 
@@ -10504,7 +10501,7 @@ ResourcePool* p3 = <span class="kw">const_cast</span>&lt;ResourcePool*&gt;(cp); 
 
 <p>이 코드베이스에서 볼 수 있는 다른 콘셉트 사용은 표준 콘셉트 <code>std::derived_from</code> 입니다. <code>Scene/GameObject.h</code> 의 <code>template &lt;std::derived_from&lt;Behaviour&gt; T&gt; T* GetBehaviour()</code> 는 <code>T</code> 가 <code>Behaviour</code> 파생 클래스일 때만 컴파일됩니다. 이전에는 무엇이든 받아서 <code>dynamic_cast</code> 가 항상 <code>nullptr</code> 를 돌려주는 조용한 실수가 가능했습니다.</p>
 
-<p>자세히: <a href="#c5">5장</a>, <a href="#app-a">부록 A</a>.</p>
+<p>자세히: <a href="#c5">5장</a>, <a href="glossary.html">용어집</a>.</p>
 
 <!-- c21-04.html -->
 <h3 id="c21-2">21.2 핸들 설계</h3>
@@ -11346,104 +11343,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <!-- app-a-1.html -->
 <h2 id="app-a"><span class="num">A.</span>용어·타입 사전</h2>
 
-<p>소스를 읽다가 만나는 타입, 함수, 용어를 세 묶음으로 정리한 사전입니다. 각 항목은 한두 문장의 정의, 이 코드에서 쓰이는 자리, 본문에서 다루는 장으로 이루어집니다. 2026-10-02 에 "모르겠는 타입·함수"로 적어 두었던 항목(<code>wstring</code>, <code>size_t</code>, <code>LPWSTR</code>, <code>CommandLineToArgvW</code>, <code>GetCommandLineW</code>, namespace, <code>&lt;=&gt;</code>, 콘셉트의 <code>requires</code>, <code>consteval</code>, <code>static_assert</code>, <code>DWORD</code>)은 모두 들어 있습니다. 경로는 <code>SherlockEngine/</code> 아래 기준입니다.</p>
-
-<h3 id="app-a-1">A.1 Win32·COM 타입과 함수</h3>
-
-<p>Windows 헤더의 타입 이름은 16비트 시절의 약어를 그대로 씁니다. 조각의 뜻을 알면 대부분 읽힙니다. <code>LP</code> 는 포인터(Long Pointer), <code>C</code> 는 const, <code>W</code> 는 와이드 문자(<code>wchar_t</code>), <code>STR</code> 은 널로 끝나는 문자열, <code>H</code> 는 핸들입니다. 함수 이름 끝의 <code>W</code> 는 UTF-16 문자열을 받는 판, <code>A</code> 는 ANSI 판입니다.</p>
-
-<div class="tbl"><table>
-<thead><tr><th>이름</th><th>정의</th><th>쓰이는 자리</th><th>장</th></tr></thead>
-<tbody>
-<tr><td class="mono">HRESULT</td><td>COM 과 D3D 함수가 돌려주는 32비트 결과 코드(<code>long</code>). 음수면 실패이고 <code>FAILED(hr)</code>/<code>SUCCEEDED(hr)</code> 로 판정합니다.</td><td><code>Core/Log.h</code> 의 <code>Log::HrToString</code> 이 "0x80070002 (설명)" 꼴 문자열로 바꿉니다. 백엔드의 생성 함수마다 검사합니다.</td><td><a href="#c15">15</a></td></tr>
-<tr><td class="mono">HWND</td><td>창 하나를 가리키는 핸들.</td><td><code>App/AppBase.cpp</code> 가 <code>CreateWindow</code> 로 만들고, <code>RHI/Device.h</code> 의 <code>DeviceDesc::windowHandle</code>(<code>void*</code> 로 선언해 RHI 헤더가 <code>windows.h</code> 를 끌어오지 않게 함)로 넘겨 스왑체인을 붙입니다.</td><td><a href="#c3">3</a></td></tr>
-<tr><td class="mono">HINSTANCE</td><td>실행 모듈(exe)을 가리키는 핸들. <code>wWinMain</code> 의 첫 인자입니다.</td><td><code>SherlockEditor/EditorMain.cpp</code>, <code>SherlockGame/GameMain.cpp</code> (저장소 루트 기준)</td><td><a href="#c3">3</a></td></tr>
-<tr><td class="mono">wWinMain</td><td>Windows 서브시스템 프로그램의 진입점. 콘솔 프로그램의 <code>main(argc, argv)</code> 와 달리 잘라진 인자 배열을 받지 않습니다.</td><td>위 두 파일. 인자는 <code>GetCommandLineW</code> 로 직접 읽습니다.</td><td><a href="#c3">3</a></td></tr>
-<tr><td class="mono">UINT</td><td><code>unsigned int</code>. 32비트 부호 없는 정수.</td><td>D3D 구조체 필드와 맞출 때(<code>static_cast&lt;UINT&gt;(params.size())</code>). 엔진 자체 타입은 <code>uint32_t</code> 를 씁니다.</td><td><a href="#c9">9</a></td></tr>
-<tr><td class="mono">DWORD</td><td><code>unsigned long</code>. Windows 에서는 32비트 부호 없는 정수(Double WORD, WORD 는 16비트).</td><td><code>Core/Paths.cpp</code> 에서 <code>GetModuleFileNameW</code> 의 길이, <code>GetFileAttributesW</code> 의 속성 비트. <code>RHI/BindingTypes.h</code> 주석의 "루트 시그니처 64 DWORD 예산"은 4바이트 단위 64칸이라는 뜻입니다.</td><td><a href="#c7">7</a>, <a href="#c15">15</a></td></tr>
-<tr><td class="mono">LPWSTR<br>PWSTR</td><td><code>wchar_t*</code>. 널로 끝나는 UTF-16 문자열을 가리키는 포인터.</td><td><code>App/AppBase.cpp</code> 의 <code>LPWSTR* argv</code> 는 <code>wchar_t**</code>, 즉 문자열들의 배열입니다. <code>wWinMain</code> 의 세 번째 인자가 <code>PWSTR</code> 입니다.</td><td><a href="#c3">3</a></td></tr>
-<tr><td class="mono">LPCWSTR</td><td><code>const wchar_t*</code>. 읽기 전용 UTF-16 문자열.</td><td>Win32 의 W 계열 함수가 경로를 받는 타입. <code>std::wstring::c_str()</code> 로 넘깁니다.</td><td><a href="#c15">15</a></td></tr>
-<tr><td class="mono">GetCommandLineW()</td><td>프로세스를 실행한 명령줄 전체를 문자열 하나로 돌려줍니다. 포인터는 OS 소유라 해제하지 않습니다.</td><td rowspan="3"><code>App/AppBase.cpp</code> 의 <code>AppBase::GetCommandLineOption</code>. <code>argv[0]</code> 은 exe 경로라 1 부터 돌며 <code>--이름=</code> 접두사를 찾습니다.</td><td rowspan="3"><a href="#c3">3</a>, <a href="#app-d">부록 D</a></td></tr>
-<tr><td class="mono">CommandLineToArgvW()</td><td>그 문자열을 공백과 따옴표 규칙에 따라 잘라 <code>argv</code> 배열로 만들고, 둘째 인자에 개수를 채웁니다. <code>&lt;shellapi.h&gt;</code> 에 있고 A 판은 없습니다.</td></tr>
-<tr><td class="mono">LocalFree()</td><td><code>CommandLineToArgvW</code> 가 할당한 배열을 해제합니다. 빠뜨리면 누수입니다.</td></tr>
-<tr><td class="mono">WPARAM<br>LPARAM<br>LRESULT</td><td>창 메시지의 두 인자와 반환값 타입. 뜻은 메시지마다 다릅니다.</td><td><code>App/AppBase.cpp</code> 의 창 프로시저와 ImGui 의 <code>ImGui_ImplWin32_WndProcHandler</code></td><td><a href="#c4">4</a></td></tr>
-<tr><td class="mono">HANDLE</td><td>커널 객체(이벤트, 파일 등)를 가리키는 일반 핸들.</td><td><code>RHI/D3D12/D3D12Device.h</code> 의 <code>m_fenceEvent</code>. 펜스가 목표 값에 도달하면 신호를 받는 이벤트입니다.</td><td><a href="#c8">8</a></td></tr>
-<tr><td class="mono">IUnknown<br>AddRef / Release</td><td>모든 COM 인터페이스의 바탕. 객체 수명을 참조 카운트로 관리하며, 카운트가 0 이 되면 객체가 스스로 해제됩니다.</td><td>D3D 객체 전부. 직접 부르지 않고 <code>ComPtr</code> 에 맡깁니다.</td><td><a href="#c2">2</a></td></tr>
-<tr><td class="mono">ComPtr&lt;T&gt;</td><td>COM 포인터용 스마트 포인터(<code>Microsoft::WRL</code>). 복사하면 <code>AddRef</code>, 소멸하면 <code>Release</code> 를 부릅니다. <code>Get()</code> 은 생 포인터, <code>GetAddressOf()</code> 는 출력 인자용 주소, <code>As(&amp;other)</code> 는 다른 인터페이스로의 질의입니다.</td><td><code>RHI/D3D11/D3D11Common.h</code>, <code>RHI/D3D12/D3D12Common.h</code> 의 <code>using Microsoft::WRL::ComPtr;</code>. 실제 사용은 두 백엔드 폴더와 <code>RHI/DXBC/ShaderCompiler.cpp</code> 안에만 있습니다.</td><td><a href="#c2">2</a>, <a href="#c9">9</a></td></tr>
-<tr><td class="mono">IID_PPV_ARGS(pp)</td><td>"인터페이스 ID, <code>void**</code>" 두 인자를 한 번에 만들어 주는 매크로. 타입과 ID 가 어긋나는 실수를 막습니다.</td><td><code>RHI/D3D12/D3D12Device.cpp</code> 의 <code>CreateRootSignature(…, IID_PPV_ARGS(…))</code>, <code>RHI/DXBC/ShaderCompiler.cpp</code> 의 <code>D3DReflect</code></td><td><a href="#c9">9</a></td></tr>
-<tr><td class="mono">ID3DBlob</td><td>크기와 포인터를 가진 바이트 덩어리 COM 객체. 컴파일된 셰이더, 직렬화한 루트 시그니처, 에러 메시지를 담습니다.</td><td><code>D3D12Device::GetOrCreateRootLayout</code>, <code>RHI/DXBC/ShaderCompiler.cpp</code></td><td><a href="#c7">7</a>, <a href="#c10">10</a></td></tr>
-<tr><td class="mono">OutputDebugString</td><td>디버거(Visual Studio 출력 창)로 문자열을 보냅니다.</td><td><code>Core/Log.cpp</code> 의 로그 싱크 네 개 중 하나</td><td><a href="#c15">15</a></td></tr>
-</tbody></table></div>
-
-<!-- app-a-2.html -->
-<h3 id="app-a-2">A.2 C++ 언어와 표준 라이브러리</h3>
-
-<p>프로젝트의 언어 표준은 C++20 입니다(<code>SherlockEngine.vcxproj</code> 의 <code>stdcpp20</code>). "C++20" 표시가 붙은 항목은 2026-09-28 전환 때 들어온 기능입니다.</p>
-
-<div class="tbl"><table>
-<thead><tr><th>이름</th><th>정의</th><th>쓰이는 자리</th><th>장</th></tr></thead>
-<tbody>
-<tr><td class="mono">namespace</td><td>이름에 소속을 붙여 충돌을 막는 묶음. 전역을 만드는 장치가 아니며 include 를 대신하지 않습니다. 이름 없는 namespace 는 그 <code>.cpp</code> 안에서만 보이는 내부 링키지를 만듭니다.</td><td><code>Core/Log.h</code> 의 <code>namespace Log</code>, <code>Core/Paths.h</code>, <code>Editor/ScriptCreator.h</code>. 이름 없는 형태는 <code>Scene/Camera.cpp</code>, <code>RHI/PipelineTypes.cpp</code></td><td><a href="#c21">21</a></td></tr>
-<tr><td class="mono">std::wstring</td><td><code>wchar_t</code> 문자열(<code>std::basic_string&lt;wchar_t&gt;</code>). Windows 에서는 UTF-16 입니다. 리터럴은 <code>L"…"</code>. <code>std::string</code>(이 코드에서는 UTF-8)과 자동으로 변환되지 않습니다.</td><td>파일 경로 전부(<code>Core/Paths.h</code>). UTF-8 로 바꿀 때는 <code>Log::ToUtf8</code></td><td><a href="#c15">15</a></td></tr>
-<tr><td class="mono">size_t</td><td><code>sizeof</code> 의 결과 타입인 부호 없는 정수. x64 에서 8바이트입니다. 부호가 없어서 <code>0 - 1</code> 은 아주 큰 수가 됩니다.</td><td><code>std::vector::size()</code> 의 반환형. <code>RHI/ResourcePool.h</code> 는 <code>static_cast&lt;uint32_t&gt;(m_slots.size())</code> 로 핸들 인덱스 타입에 맞춥니다.</td><td><a href="#c5">5</a></td></tr>
-<tr><td class="mono">enum class</td><td>범위가 있는 열거형. 정수로 암묵 변환되지 않고 열거자가 타입 이름 안에 갇힙니다. <code>: uint8_t</code> 로 바탕 타입을 정합니다.</td><td><code>RHI/PipelineTypes.h</code> 의 <code>FillMode</code>, <code>CullMode</code>, <code>Format</code>, <code>ShaderStage</code>, <code>Scene/Light.h</code> 의 <code>LightType</code></td><td><a href="#c6">6</a></td></tr>
-<tr><td class="mono">&lt;=&gt;</td><td>3방향 비교 연산자(C++20). <code>= default</code> 로 선언하면 멤버를 선언 순서대로 비교하는 코드와 <code>==</code> 가 함께 생기고, <code>!=</code>·<code>&lt;</code>·<code>&lt;=</code>·<code>&gt;</code>·<code>&gt;=</code> 는 컴파일러가 이 둘에서 재작성합니다.</td><td><code>RHI/Handle.h</code> 의 <code>auto operator&lt;=&gt;(const Handle&amp;) const = default;</code></td><td><a href="#c5">5</a></td></tr>
-<tr><td class="mono">operator== = default</td><td>멤버별 동등 비교를 컴파일러가 생성(C++20). 필드를 추가해도 비교에서 빠지지 않습니다.</td><td><code>RHI/PipelineTypes.h</code> 의 <code>RasterizerDesc</code>, <code>DepthStencilDesc</code>, <code>RenderTargetBlendDesc</code>, <code>VertexAttribute</code>. <code>PipelineStateDesc</code> 는 배열을 "쓰는 만큼"만 비교해야 해서 손으로 씁니다.</td><td><a href="#c6">6</a></td></tr>
-<tr><td class="mono">concept<br>requires</td><td>템플릿 인자가 만족해야 할 컴파일 시점 조건에 이름을 붙인 것(C++20). <code>requires(const T h) { … }</code> 는 "가상의 변수 <code>h</code> 로 이 식들이 컴파일되는가"를 묻는 requires 식입니다.</td><td><code>RHI/Handle.h</code> 의 <code>ResourceHandle</code>(지금은 requires 식이 아니라 <code>kIsHandle&lt;T&gt;</code> 로 판정), <code>Scene/GameObject.h</code> 의 <code>std::derived_from&lt;Behaviour&gt;</code></td><td><a href="#c5">5</a>, <a href="#c21">21</a></td></tr>
-<tr><td>템플릿 부분 특수화</td><td>템플릿 인자가 특정 꼴일 때만 선택되는 별도 정의.</td><td><code>RHI/Handle.h</code> 의 <code>kIsHandle&lt;Handle&lt;Tag&gt;&gt; = true</code></td><td><a href="#c5">5</a></td></tr>
-<tr><td class="mono">constexpr</td><td>컴파일 시점에 계산할 수 <em>있는</em> 변수·함수. 변수에 쓰면 컴파일 시점 상수가 됩니다. <code>inline constexpr</code> 는 헤더에 두어도 정의가 하나로 합쳐집니다.</td><td><code>RHI/GraphicsConfig.h</code> 의 <code>kFrameCount</code>, <code>Graphics/ShaderConstants.h</code> 의 슬롯 번호(<code>kCBSlotPerFrame</code> …), <code>Scene/Camera.cpp</code> 의 <code>kPitchLimit</code></td><td><a href="#c10">10</a></td></tr>
-<tr><td class="mono">consteval</td><td>컴파일 시점에 <em>반드시</em> 계산되는 함수(C++20). 런타임에 부르는 코드는 컴파일되지 않습니다.</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>IsValidConstantBufferSize</code>, <code>Graphics/VertexTypes.h</code> 의 <code>MakeVertexLayoutPCNTT</code></td><td><a href="#c10">10</a></td></tr>
-<tr><td class="mono">static_assert</td><td>컴파일 시점의 assert. 조건이 거짓이면 그 자리에서 빌드가 실패합니다. 일반 <code>assert</code> 는 Debug 빌드의 실행 중에만 검사합니다.</td><td><code>Graphics/ShaderConstants.h</code>(<code>sizeof(PerFrameConstants) == 352</code> 과 <code>offsetof</code> 검사), <code>Scene/Light.h</code>(<code>sizeof(LightData) == 80</code>), <code>RHI/Handle.h</code></td><td><a href="#c10">10</a></td></tr>
-<tr><td class="mono">alignas / offsetof</td><td><code>alignas(16)</code> 은 타입의 정렬을 지정하고, <code>offsetof(T, m)</code> 은 멤버의 바이트 위치를 줍니다. 둘 다 C++ 구조체를 HLSL 상수버퍼 배치와 맞추는 데 씁니다.</td><td><code>Scene/Light.h</code> 의 <code>struct alignas(16) LightData</code>, <code>Graphics/VertexTypes.h</code></td><td><a href="#c10">10</a></td></tr>
-<tr><td>지정 초기화</td><td><code>T{ .a = 1, .b = 2 }</code> 처럼 멤버 이름으로 채우는 초기화(C++20). 선언 순서를 지켜야 하고, 적지 않은 멤버는 기본값이 됩니다.</td><td><code>Graphics/Renderer.cpp</code> 의 <code>PipelineStateDesc{ .vs = m_vs, … }</code>, <code>RenderPassDesc</code>, <code>ResourceSetDesc</code></td><td><a href="#c5">5</a></td></tr>
-<tr><td class="mono">std::span&lt;T&gt;</td><td>연속된 원소 구간을 가리키는 비소유 뷰(포인터와 길이, C++20). <code>vector</code>, 배열, 포인터+길이를 같은 인자로 받습니다.</td><td><code>RHI/ShaderCompiler.h</code> 의 <code>std::span&lt;const uint8_t&gt; bytecode</code>, <code>RHI/Device.h</code> 의 <code>CreateTexture(…, std::span&lt;const TextureSubresource&gt;)</code></td><td><a href="#c9">9</a>, <a href="#c10">10</a></td></tr>
-<tr><td class="mono">std::format</td><td>타입 안전한 문자열 서식(C++20). <code>"{}"</code>, <code>"{:.1f}"</code>, <code>"{:08X}"</code>.</td><td><code>Core/Config.cpp</code>, <code>Core/Log.cpp</code>, <code>Graphics/Model.cpp</code>. <code>Log::Info</code> 등 로그 함수 자체는 <code>printf</code> 서식입니다.</td><td><a href="#c15">15</a></td></tr>
-<tr><td class="mono">std::unique_ptr</td><td>단독 소유 스마트 포인터. 복사할 수 없고 이동만 됩니다. 소멸할 때 대상을 지웁니다.</td><td><code>Core/Engine.h</code> 의 <code>std::unique_ptr&lt;RHI::Device&gt; m_device</code>, <code>Scene/Scene.h</code> 의 오브젝트·메시 목록. 주소가 바뀌지 않아 비소유 포인터를 걸 수 있습니다.</td><td><a href="#c2">2</a>, <a href="#c13">13</a></td></tr>
-<tr><td class="mono">std::shared_ptr</td><td>공유 소유. 마지막 소유자가 사라질 때 해제합니다.</td><td><code>RHI/D3D12/D3D12PipelineState.h</code> 의 <code>std::shared_ptr&lt;D3D12RootLayout&gt;</code>(장치의 캐시와 PSO 가 공유)</td><td><a href="#c7">7</a></td></tr>
-<tr><td>이동 의미론<br><span class="mono">T&amp;&amp;, std::move</span></td><td>자원을 복사하지 않고 소유권만 옮기는 것. <code>T&amp;&amp;</code> 는 rvalue 참조, <code>std::move</code> 는 lvalue 를 rvalue 로 캐스팅합니다. 이름 있는 rvalue 참조 변수는 식으로서 lvalue 라 다시 <code>std::move</code> 가 필요합니다.</td><td><code>RHI/ResourcePool.h</code> 의 <code>Add(T&amp;&amp; item)</code>, <code>Scene/Scene.h</code> 의 <code>AddModel(Model&amp;&amp;, …)</code></td><td><a href="#c5">5</a>, <a href="#c21">21</a></td></tr>
-<tr><td>const 멤버 함수<br><span class="mono">const_cast</span></td><td>함수 뒤의 <code>const</code> 는 숨은 인자 <code>this</code> 를 <code>const T*</code> 로 바꿉니다. 그래서 const 판과 비const 판이 오버로딩됩니다. <code>const_cast</code> 는 const 를 명시적으로 떼는 캐스트입니다.</td><td><code>RHI/ResourcePool.h</code> 의 두 <code>Get</code></td><td><a href="#c21">21</a></td></tr>
-<tr><td class="mono">= delete</td><td>함수를 금지합니다. 복사 생성자와 복사 대입에 쓰면 복사할 수 없는 타입이 됩니다.</td><td><code>Scene/GameObject.h</code>(컴포넌트가 소유자 포인터를 들기 때문), <code>Core/Profiler.h</code> 의 스코프 객체</td><td><a href="#c13">13</a></td></tr>
-<tr><td class="mono">virtual / override</td><td>가상 함수와 그 재정의 표시. 런타임에 실제 타입의 함수가 불립니다.</td><td><code>RHI/Device.h</code> 와 <code>RHI/CommandList.h</code> 의 순수 가상 인터페이스, 두 백엔드의 <code>override</code></td><td><a href="#c9">9</a></td></tr>
-<tr><td class="mono">std::unordered_map<br><span class="sub">+ 해시 함수 객체</span></td><td>해시 테이블. 사용자 타입을 키로 쓰려면 해시 함수 객체(세 번째 템플릿 인자)와 <code>operator==</code> 가 필요합니다.</td><td><code>RHI/D3D11/PipelineStateCache.h</code> 의 <code>m_lookup</code>, <code>RHI/PipelineTypes.h</code> 의 <code>PipelineStateDescHasher</code></td><td><a href="#c6">6</a></td></tr>
-<tr><td>람다</td><td>그 자리에서 정의하는 이름 없는 함수 객체. <code>[capture](args) { … }</code>.</td><td><code>Renderer::BuildDrawList</code> 의 <code>std::sort</code> 비교 함수, <code>Scene::RemoveObject</code> 의 서브트리 수집</td><td><a href="#c14">14</a></td></tr>
-<tr><td class="mono">[[nodiscard]]</td><td>반환값을 버리면 경고를 내게 하는 속성. 실패를 돌려주는 생성 함수에 붙이면 결과 확인을 강제할 수 있습니다.</td><td>현재 소스에는 쓰인 곳이 없습니다.</td><td><span class="pill none">해당 없음</span></td></tr>
-</tbody></table></div>
-
-<!-- app-a-3.html -->
-<h3 id="app-a-3">A.3 그래픽스 용어</h3>
-
-<div class="tbl"><table>
-<thead><tr><th>용어</th><th>정의</th><th>쓰이는 자리</th><th>장</th></tr></thead>
-<tbody>
-<tr><td>RHI<span class="sub">Render Hardware Interface</span></td><td>그래픽 API 를 숨기는 추상 계층. 위쪽 코드는 핸들과 Desc 만 보고, API 타입은 백엔드 폴더 안에만 있습니다.</td><td><code>RHI/Device.h</code>, <code>RHI/CommandList.h</code>(인터페이스), <code>RHI/D3D11/</code>, <code>RHI/D3D12/</code>(구현), <code>RHI/RHI.cpp</code>(팩토리)</td><td><a href="#c9">9</a></td></tr>
-<tr><td>PSO<span class="sub">Pipeline State Object</span></td><td>셰이더, 입력 레이아웃, 래스터라이저·깊이스텐실·블렌드 상태, 토폴로지, 출력 포맷의 조합 전체를 담은 불변 객체. D3D12 에서는 실제 객체이고 D3D11 에서는 상태 객체 묶음으로 흉내 냅니다.</td><td><code>RHI/PipelineTypes.h</code> 의 <code>PipelineStateDesc</code>, <code>RHI/D3D11/PipelineState.cpp</code>, <code>RHI/D3D12/D3D12PipelineState.cpp</code></td><td><a href="#c6">6</a></td></tr>
-<tr><td>Desc<span class="sub">서술자</span></td><td>"무엇을 만들 것인가"를 값으로 적은 구조체. 생성 함수의 인자이고 PSO 의 경우 캐시 키이기도 합니다.</td><td><code>RHI/ResourceDesc.h</code>, <code>RHI/PipelineTypes.h</code>, <code>RHI/BindingTypes.h</code>, <code>RHI/RenderPassTypes.h</code></td><td><a href="#c5">5</a></td></tr>
-<tr><td>핸들 · 세대</td><td>리소스를 가리키는 <code>{index, generation}</code> 값. 슬롯을 해제하면 세대가 올라가 옛 핸들이 무효가 됩니다.</td><td><code>RHI/Handle.h</code>, <code>RHI/ResourcePool.h</code></td><td><a href="#c5">5</a></td></tr>
-<tr><td>RTV / DSV</td><td>렌더 타깃 뷰와 깊이·스텐실 뷰. 텍스처를 "그리는 대상"으로 보는 방식입니다.</td><td>두 백엔드의 <code>BeginRenderPass</code> 가 <code>OMSetRenderTargets</code> 로 바인딩</td><td><a href="#c8">8</a></td></tr>
-<tr><td>SRV</td><td>셰이더 리소스 뷰. 텍스처를 셰이더가 "읽는 대상"으로 보는 방식. HLSL 의 <code>t#</code> 레지스터.</td><td><code>BindingType::ShaderResource</code>. 알베도 <code>t0</code>, 노멀 <code>t1</code>, 그림자 맵 <code>t8</code></td><td><a href="#c7">7</a></td></tr>
-<tr><td>CBV · 상수버퍼</td><td>셰이더에 넘기는 작은 값 묶음(<code>cbuffer</code>, <code>b#</code> 레지스터)과 그 뷰. 16바이트 단위로 채워집니다.</td><td><code>Graphics/ShaderConstants.h</code>(PerFrame <code>b0</code>, PerObject <code>b1</code>, Lights <code>b2</code>, Material <code>b3</code>), <code>Shaders/*.hlsli</code>(바인딩 셋 단위, <a href="#c10-1">10.1</a>)</td><td><a href="#c10">10</a></td></tr>
-<tr><td>UAV</td><td>순서 없는 접근 뷰. 셰이더가 읽고 쓰는 리소스. 주로 컴퓨트 셰이더에서 씁니다.</td><td>이 엔진은 쓰지 않습니다. D3D12 힙 종류 이름(<code>CBV_SRV_UAV</code>)에만 나옵니다.</td><td><a href="#c7">7</a></td></tr>
-<tr><td>샘플러</td><td>텍스처를 읽을 때의 필터와 주소 모드. <code>s#</code> 레지스터. 비교 샘플러는 읽은 값과 기준값을 비교한 결과를 돌려줍니다.</td><td><code>RHI/ResourceDesc.h</code> 의 <code>SamplerDesc</code>. 재질 <code>s0</code>, 그림자 <code>s4</code></td><td><a href="#c12">12</a></td></tr>
-<tr><td>바인딩 레이아웃 · 리소스 셋</td><td>"이 파이프라인이 어떤 슬롯을 쓰는가"의 선언과, 그 슬롯에 실제로 꽂는 핸들 묶음. 프레임·오브젝트·재질 세 벌로 나눕니다.</td><td><code>RHI/BindingTypes.h</code>, <code>Renderer::Initialize</code></td><td><a href="#c7">7</a></td></tr>
-<tr><td>루트 시그니처</td><td>D3D12 에서 셰이더 레지스터와 리소스를 잇는 슬롯표의 설계도. 루트 파라미터(루트 상수, 루트 디스크립터, 디스크립터 테이블)의 목록이고 64 DWORD 한도가 있습니다.</td><td><code>D3D12Device::GetOrCreateRootLayout</code>, <code>RHI/D3D12/D3D12PipelineState.h</code> 의 <code>D3D12RootLayout</code></td><td><a href="#c7">7</a></td></tr>
-<tr><td>디스크립터 · 힙 · 테이블</td><td>디스크립터는 리소스를 보는 방식을 적은 작은 블록, 힙은 그 배열, 테이블은 힙 안의 연속 구간(시작 주소 하나)입니다.</td><td><code>RHI/D3D12/D3D12DescriptorHeap.h</code>, <code>D3D12Device::CreateResourceSet</code>, <code>D3D12CommandList::ApplyBindings</code></td><td><a href="#c7">7</a></td></tr>
-<tr><td>배리어 · 리소스 상태</td><td>D3D12 에서 리소스의 용도(렌더 타깃, 셰이더 읽기, Present 등)를 바꿀 때 명시하는 전이 명령. D3D11 은 드라이버가 알아서 합니다.</td><td><code>RHI/RenderPassTypes.h</code> 의 <code>ResourceState</code>, <code>CommandList::Barrier</code></td><td><a href="#c8">8</a></td></tr>
-<tr><td>렌더 패스</td><td>"어디에 그릴지"를 정하는 구간. 타깃, 시작 처리(<code>LoadOp</code>), 끝 처리(<code>StoreOp</code>), 뷰포트를 묶습니다.</td><td><code>RenderPassDesc</code>, <code>BeginRenderPass</code>/<code>EndRenderPass</code></td><td><a href="#c8">8</a></td></tr>
-<tr><td>커맨드 리스트</td><td>그리기 명령을 기록하는 객체. D3D12 는 기록한 뒤 한꺼번에 제출하고, D3D11 은 호출이 곧 실행입니다.</td><td><code>RHI/CommandList.h</code>, <code>RHI/D3D12/D3D12CommandList.cpp</code></td><td><a href="#c8">8</a></td></tr>
-<tr><td>펜스 · 프레임 자원</td><td>펜스는 GPU 가 어디까지 실행했는지 알려 주는 카운터. GPU 가 아직 읽는 메모리를 덮어쓰지 않도록 프레임별 자원을 <code>kFrameCount</code> 벌 둡니다.</td><td><code>RHI/GraphicsConfig.h</code> 의 <code>kFrameCount</code>, <code>RHI/D3D12/D3D12Device.h</code> 의 <code>m_fence</code></td><td><a href="#c8">8</a></td></tr>
-<tr><td>스왑체인 · 백버퍼 · Present</td><td>화면에 번갈아 표시되는 버퍼 묶음, 그중 지금 그리는 버퍼, 그것을 화면에 내보내는 호출.</td><td>두 장치의 <code>CreateSwapChainForHwnd</code>, <code>Device::GetBackBuffer</code>, <code>Device::EndFrame</code></td><td><a href="#c4">4</a>, <a href="#c9">9</a></td></tr>
-<tr><td>셰이더 모델</td><td>HLSL 기능 수준의 버전. 컴파일 타깃 프로파일(<code>vs_5_0</code>)로 지정합니다. 이 엔진은 두 백엔드 모두 5.0 입니다.</td><td><code>RHI/DXBC/ShaderCompiler.cpp</code> 의 <code>GetTargetProfile</code>, vcxproj 의 <code>ShaderModel</code></td><td><a href="#c10">10</a></td></tr>
-<tr><td>DXBC / DXIL</td><td>컴파일된 셰이더의 두 바이트코드 형식. DXBC 는 SM 5.1 이하(D3D11 은 5.0 까지), DXIL 은 SM 6.x(D3D12 전용).</td><td>지금은 DXBC 만 씁니다.</td><td><a href="#c10">10</a></td></tr>
-<tr><td>fxc / dxc</td><td>DXBC 를 만드는 옛 컴파일러(<code>D3DCompile*</code> API 와 같은 엔진)와, DXIL·SPIR-V 를 만드는 새 컴파일러.</td><td>빌드의 FxCompile 과 런타임의 <code>D3DCompileFromFile</code>. dxc 는 쓰지 않습니다.</td><td><a href="#c10">10</a></td></tr>
-<tr><td class="mono">.cso</td><td>빌드가 미리 컴파일해 둔 셰이더 바이트코드 파일.</td><td><code>ShaderCompiler::LoadOrCompile</code> 이 먼저 찾고, 없으면 <code>.hlsl</code> 을 컴파일</td><td><a href="#c10">10</a></td></tr>
-<tr><td>리플렉션</td><td>바이트코드에서 상수버퍼 크기와 바인딩 정보를 읽어 내는 것.</td><td><code>ShaderCompiler::ValidateConstantBufferSize</code>, <code>ReflectBindings</code></td><td><a href="#c10">10</a></td></tr>
-<tr><td>NDC</td><td>정규화 장치 좌표. 투영과 원근 나눗셈 뒤의 좌표로, D3D 에서 x·y 는 −1..1, z 는 0..1 입니다.</td><td><code>BasicPixelShader.hlsl</code> 의 그림자 좌표 변환, <code>Editor/Editor.cpp</code> 의 픽셀 → 광선 변환</td><td><a href="#app-b">부록 B</a></td></tr>
-<tr><td>TBN</td><td>탄젠트·바이탄젠트·노멀로 이루어진 기저. 노멀 맵의 탄젠트 공간 값을 월드 공간으로 옮깁니다.</td><td><code>Shaders/BasicPixelShader.hlsl</code> 의 <code>T</code>, <code>B</code> 계산</td><td><a href="#c11">11</a></td></tr>
-<tr><td>PCF</td><td>Percentage-Closer Filtering. 그림자 맵에서 이웃 텍셀 여러 개의 비교 결과를 평균 내 경계를 부드럽게 합니다.</td><td><code>SampleShadowViewCoverage</code> 의 5×5 <code>SampleCmpLevelZero</code></td><td><a href="#c11">11</a></td></tr>
-<tr><td>sRGB</td><td>표시 장치용 비선형 색 인코딩. <code>_SRGB</code> 포맷은 읽을 때 선형으로, 쓸 때 sRGB 로 자동 변환합니다.</td><td><code>Format::R8G8B8A8_UNORM_SRGB</code>, <code>ColorAttachment::srgbView</code></td><td><a href="#c12">12</a></td></tr>
-<tr><td>MSAA</td><td>픽셀당 여러 샘플로 가장자리를 부드럽게 하는 기법.</td><td>쓰지 않습니다. <code>sampleCount</code> 필드는 모두 1 입니다.</td><td><a href="#c6">6</a></td></tr>
-<tr><td>드로우 콜</td><td>GPU 에 "지금 상태로 이만큼 그려라"고 내리는 호출 한 번.</td><td><code>CommandList::DrawIndexed</code>, <code>Renderer::DrawItems</code></td><td><a href="#c14">14</a></td></tr>
-</tbody></table></div>
+<p>용어·타입 사전은 2026-11-17 에 별도 문서 <a href="glossary.html">용어집(glossary.html)</a>으로 옮겼습니다. Win32·COM 타입, C++ 언어와 표준 라이브러리, 그래픽스 용어에 GPU 컴퓨트·파티클 용어를 더해 한곳에 모읍니다.</p>
 
 <!-- app-b-1.html -->
 <h2 id="app-b"><span class="num">B.</span>좌표계와 행렬 규약</h2>
