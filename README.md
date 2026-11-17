@@ -60,7 +60,7 @@ msbuild SherlockEngine.sln /p:Configuration=Debug /p:Platform=x64 /m
 | `SherlockGame` | `SherlockGame.exe` | 게임 런타임 진입점 (`RunGame()` → GameApp): 에디터 없이 시작 씬을 로드해 바로 재생. 시작 씬은 프로젝트 파일(`.sherlock`)의 `startScene` 을 먼저 보고, 없으면 `engine.ini` 의 `[game] startScene` 을 쓴다. 에디터의 File > Build Game... 이 `<프로젝트>\Build\<이름>\` 에 패키징 (exe + SherlockEngine.dll + 스크립트 DLL) |
 | `SampleScripts` | `Projects\Sample\Binaries\<구성>\SampleScripts.dll` | 예제 프로젝트의 스크립트 DLL (에디터가 생성한 `Projects\Sample\SampleScripts.vcxproj` 를 엔진 솔루션에도 넣음) |
 
-셰이더는 **빌드할 때** fxc(`FxCompile`, SM 5.0)가 `.cso`로 컴파일해 `x64\<구성>\Shaders\`에 두고, 같은 폴더에 `.hlsl`/`.hlsli` 원본도 복사합니다 (4단계). 실행 파일은 `Core/Paths.h`로 **자기 위치 기준**의 그 폴더에서 `.cso`를 읽습니다(`RHI/DXBC/ShaderCompiler.cpp`의 `LoadOrCompile`). Debug 빌드에서는 소스(`Common.hlsli` 포함)가 `.cso`보다 새로우면 `D3DCompileFromFile`로 소스를 다시 컴파일하고, `.cso`가 아예 없으면 구성과 관계없이 런타임 컴파일로 폴백합니다. 작업 디렉터리는 상관없으므로 탐색기에서 `x64\Debug\SherlockEditor.exe`를 직접 실행해도 됩니다. (문서의 `SherlockEngine.exe` 는 11-D 이전 이름으로, 지금의 `SherlockEditor.exe` 입니다.)
+셰이더는 **빌드할 때** fxc(`FxCompile`, SM 5.0)가 `.cso`로 컴파일해 `x64\<구성>\Shaders\`에 두고, 같은 폴더에 `.hlsl`/`.hlsli` 원본도 복사합니다 (4단계). 실행 파일은 `Core/Paths.h`로 **자기 위치 기준**의 그 폴더에서 `.cso`를 읽습니다(`RHI/DXBC/ShaderCompiler.cpp`의 `LoadOrCompile`). Debug 빌드에서는 소스(같은 폴더의 공용 헤더 `*.hlsli` 포함)가 `.cso`보다 새로우면 `D3DCompileFromFile`로 소스를 다시 컴파일하고, `.cso`가 아예 없으면 구성과 관계없이 런타임 컴파일로 폴백합니다. 작업 디렉터리는 상관없으므로 탐색기에서 `x64\Debug\SherlockEditor.exe`를 직접 실행해도 됩니다. (문서의 `SherlockEngine.exe` 는 11-D 이전 이름으로, 지금의 `SherlockEditor.exe` 입니다.)
 
 exe 옆 `Shaders\`에 원본이 없으면(셰이더만 고치고 빌드하지 않은 경우) 엔진 루트의 `SherlockEngine\Shaders\`로 폴백하고 `[경고]` 로그를 한 줄 남깁니다.
 
@@ -77,7 +77,7 @@ exe 옆 `Shaders\`에 원본이 없으면(셰이더만 고치고 빌드하지 �
 | `RHI/DXBC/` | `ShaderCompiler` 구현 (`D3DCompileFromFile`, `D3DReflect`). 두 백엔드가 공유 |
 | `Scene/` | 카메라, 트랜스폼, 게임 오브젝트, 컴포넌트 기반(`Behaviour`), 엔진 컴포넌트(Rigidbody, FollowTarget — `SHERLOCK_BEHAVIOUR` 로 등록, 엔진 DLL 에 있어 모든 프로젝트에서 쓰임), 씬 직렬화 |
 | `../Projects/<이름>/` | **프로젝트** (11-E, 언리얼 .uproject): `<이름>.sherlock` + `Assets\` + `Scripts\`(유니티 MonoBehaviour / `.h`+`.cpp` 쌍, `SHERLOCK_SCRIPT`). 에디터의 File > Projects 로 만들면 `<이름>.sln` 과 `<이름>Scripts.vcxproj`(스크립트 DLL)가 생성된다(옛 형식은 열 때 자동 변환). `Projects\Sample` 이 예제이고 그 `SampleScripts` 는 엔진 솔루션에도 들어 있다 (docs/overview/rendering-analysis.html 17.12~17.13절). 실험·검증용 스크립트는 Sample 이 아니라 별도 실험 프로젝트의 `Scripts\Tests\` 에 둔다 — 예: `Projects\QuaternionLookTest` (쿼터니언 roll 누적 재현, docs/overview/rendering-analysis.html 13.13절), `Projects\SherlockTestScenes` (검증용 씬 모음: HDR 큐브맵 스카이박스 + PBR·IBL(12.14절), 프리팹·Undo 검증(Spawn·Tree), DamagedHelmet·Sponza. 헬멧·Sponza 는 File 메뉴가 아니라 콘텐츠 브라우저에서 씬을 더블클릭해 연다). 생성 솔루션은 `Scripts\**\*.cpp` 를 재귀로 컴파일한다 |
-| `Shaders/` | HLSL (`BasicVertexShader`·`BasicPixelShader`·`ShadowVertexShader`·`SkyboxVertexShader`·`SkyboxPixelShader` + 공용 `Common.hlsli`) |
+| `Shaders/` | HLSL (`BasicVertexShader`·`BasicPixelShader`·`ShadowVertexShader`·`SkyboxVertexShader`·`SkyboxPixelShader` 등 + 바인딩 셋 단위 공용 헤더 `Common`·`Lighting`·`Mesh`·`Material`·`Post`·`Sky`·`Particle`·`ParticleSim`·`ParticleSort` `.hlsli`) |
 
 `#include`는 엔진 루트(`SherlockEngine\`) 기준으로 씁니다. 예: `#include "RHI/D3D11/D3D11Device.h"`.
 

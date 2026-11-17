@@ -312,7 +312,7 @@ bool Renderer::CreateLayouts()
 	postLayout.Add(BindingType::BufferResource, ShaderStageMask_Pixel, kSRVSlotBlurWeights); // t20 (블러 가중치. 블러 패스만 읽음)
 
 	// 컴퓨트 블러 셋: b4 (PostParams), t13 (입력), u0 (출력). 컴퓨트 슬롯은 그래픽스 스테이지와 섞지 않으므로
-	// Layout_Post 를 같이 쓰지 않고 따로 둠. 입력 레지스터는 PS 블러와 같은 t13 (Common.hlsli 의 t0 은 재질 알베도).
+	// Layout_Post 를 같이 쓰지 않고 따로 둠. 입력 레지스터는 PS 블러와 같은 t13 (Post.hlsli 의 postInput. t0 은 재질 알베도).
 	BindingLayoutDesc& blurLayout = m_layoutDescs[Layout_BlurCompute];
 	blurLayout = BindingLayoutDesc{};
 	blurLayout.debugName = "Layout_BlurCompute";

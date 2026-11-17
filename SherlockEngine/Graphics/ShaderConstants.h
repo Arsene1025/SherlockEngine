@@ -4,7 +4,7 @@
 #include <DirectXMath.h>
 #include "Scene/Light.h"
 
-// 상수버퍼 레이아웃. Shaders/Common.hlsli 의 cbuffer 네 개와 바이트 단위로 같아야 함.
+// 상수버퍼 레이아웃. Shaders/*.hlsli 의 cbuffer 와 바이트 단위로 같아야 함 (헤더는 바인딩 셋 단위로 나뉨 — Common.hlsli 머리 주석의 목록).
 //
 //   갱신 빈도별로 나눔
 //   b0 PerFrame  — 프레임에 한 번. 뷰·투영·광원 ViewProj·카메라
@@ -70,33 +70,33 @@ constexpr uint32_t kSRVSlotParticles = 21;  // t21 (파티클 그리기 셋, VS.
 constexpr uint32_t kSRVSlotParticleAlive = 22; // t22 (파티클 그리기 셋, VS. 이번 프레임 생존 목록 StructuredBuffer<uint>, 알파 이미터는 정렬된 목록)
 constexpr uint32_t kSRVSlotSceneDepth = 23;    // t23 (파티클 깊이 셋 PS · 충돌 셋 CS. 씬 깊이 Texture2D<float>, DepthRead 상태)
 constexpr uint32_t kCBSlotParticleCollision = 9; // b9 (파티클 충돌 셋, CS). 메인 카메라 행렬, 프레임에 한 번
-// 알파 이미터 정렬 (바이토닉). Common.hlsli 의 PARTICLE_SORT 블록과 같음
+// 알파 이미터 정렬 (바이토닉). Shaders/ParticleSort.hlsli 와 같음
 constexpr uint32_t kSRVSlotParticleCounters = 24; // t24 (정렬 셋, CS. 개수 버퍼를 SRV 로)
 constexpr uint32_t kUAVSlotSortKeys = 0;          // u0 (정렬 셋, 키 = 뷰 공간 z)
 constexpr uint32_t kUAVSlotSortIndices = 1;       // u1 (정렬 셋, 파티클 번호 — 그리기 셋의 t22 가 됨)
 constexpr uint32_t kCBSlotParticleSortView = 10;  // b10 (정렬 셋, 뷰마다의 view 행렬. 프레임에 한 번)
 constexpr uint32_t kCBSlotParticleSortStep = 11;  // b11 (정렬 단계 셋, (k, j). 처음에 한 번 만들고 바꾸지 않음)
 
-// 정렬 길이: capacity 이상인 가장 작은 2 의 거듭제곱 (최소 64). Common.hlsli 의 ParticleSortCount 와 같은 식.
+// 정렬 길이: capacity 이상인 가장 작은 2 의 거듭제곱 (최소 64). ParticleSort.hlsli 의 ParticleSortCount 와 같은 식.
 constexpr uint32_t ParticleSortCount(uint32_t capacity)
 {
 	uint32_t n = 64;
 	while (n < capacity) n <<= 1;
 	return n;
 }
-// 파티클 시뮬레이션 셋 u0~u5 (Common.hlsli 의 PARTICLE_SIM 블록과 같은 순서)
+// 파티클 시뮬레이션 셋 u0~u5 (Shaders/ParticleSim.hlsli 와 같은 순서)
 constexpr uint32_t kUAVSlotParticles = 0;         // u0 RWStructuredBuffer<Particle>
 constexpr uint32_t kUAVSlotParticleDead = 1;      // u1 사망 목록 (uint)
 constexpr uint32_t kUAVSlotParticleAliveIn = 2;   // u2 지난 프레임 생존 목록 (uint)
 constexpr uint32_t kUAVSlotParticleAliveOut = 3;  // u3 이번 프레임 생존 목록 (uint)
 constexpr uint32_t kUAVSlotParticleCounters = 4;  // u4 개수 (uint × kParticleCounterCount)
 constexpr uint32_t kUAVSlotParticleArgs = 5;      // u5 간접 인자 (RWByteAddressBuffer)
-constexpr uint32_t kParticleCounterCount = 8;     // Common.hlsli 의 kParticleCounterCount
+constexpr uint32_t kParticleCounterCount = 8;     // Particle.hlsli 의 kParticleCounterCount
 constexpr uint32_t kParticleArgsDrawOffset = 0;      // 바이트. {정점 6, 생존 수, 0, 0} — DrawInstancedIndirect
 constexpr uint32_t kParticleArgsDispatchOffset = 16; // 바이트. {그룹 수, 1, 1} — 시뮬레이션의 DispatchIndirect
 constexpr uint32_t kParticleArgsSize = 32;           // 16 + 12 를 16 의 배수로
-constexpr uint32_t kParticleStride = 32;    // Common.hlsli 의 struct Particle (float3 위치 + 나이, float3 속도 + 수명)
-constexpr uint32_t kMaxSkinJoints = 256;    // 팔레트 크기. 정점의 조인트 번호가 uint8 이라 이보다 클 수 없음 (Common.hlsli 의 MAX_JOINTS)
+constexpr uint32_t kParticleStride = 32;    // Particle.hlsli 의 struct Particle (float3 위치 + 나이, float3 속도 + 수명)
+constexpr uint32_t kMaxSkinJoints = 256;    // 팔레트 크기. 정점의 조인트 번호가 uint8 이라 이보다 클 수 없음 (Mesh.hlsli 의 MAX_JOINTS)
 
 constexpr uint32_t kSamplerSlotPost = 6;     // s6 (후처리 셋, 선형 Clamp. 블룸 축소·확대와 썸네일이 씀. 후처리 패스는 프레임 셋을 바인딩하지 않으므로 s4~s7 과 겹치지 않음)
 constexpr uint32_t kSamplerSlotMaterial = 0; // s0 (재질)
@@ -158,7 +158,7 @@ struct alignas(16) SkinConstants
 	DirectX::XMFLOAT4X4 joints[kMaxSkinJoints];   // 전치해서 저장
 };
 
-// 조명 하나의 GPU 배치. HLSL(Shaders/Common.hlsli 의 LightData)과 메모리 배치가 바이트 단위로 같아야 함.
+// 조명 하나의 GPU 배치. HLSL(Shaders/Lighting.hlsli 의 LightData)과 메모리 배치가 바이트 단위로 같아야 함.
 // 씬의 Light (Scene/Light.h) 를 Renderer 가 프레임마다 이것으로 옮겨 구조체 버퍼(t15)에 올림.
 //
 // HLSL 패킹 규칙 (cbuffer 와 같은 순서를 지키면 구조체 버퍼에서도 같음):
@@ -253,7 +253,7 @@ consteval bool IsValidConstantBufferSize(size_t bytes)
 {
 	return bytes > 0 && bytes % 16 == 0 && bytes <= 65536;
 }
-// b8: 파티클 이미터 하나 (Common.hlsli 의 cbuffer ParticleEmitter 와 같은 순서). 이미터마다 Dynamic 버퍼 한 벌이고
+// b8: 파티클 이미터 하나 (Particle.hlsli 의 cbuffer ParticleEmitter 와 같은 순서). 이미터마다 Dynamic 버퍼 한 벌이고
 // 프레임에 한 번 올림 — 시뮬레이션(CS)과 뷰마다의 그리기(VS/PS)가 같은 값을 읽음. 공용 버퍼를 단계 사이에 다시
 // 올리면 D3D12 루트 CBV 주소가 바뀌는 순서 문제가 생기므로 나누지 않음.
 struct alignas(16) ParticleEmitterConstants
