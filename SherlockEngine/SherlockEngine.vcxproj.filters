@@ -44,6 +44,9 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{72c939d5-1f84-4d43-af2b-3ac097b37210}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders\Particle">
+      <UniqueIdentifier>{f98a04ac-da2b-4d2f-9994-530688c17188}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
@@ -515,28 +518,28 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleSimComputeShader.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleResetComputeShader.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleArgsComputeShader.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleEmitComputeShader.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleSortInitComputeShader.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleSortStepComputeShader.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticleVertexShader.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ParticlePixelShader.hlsl">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
@@ -559,13 +562,13 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Particle.hlsli">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </None>
     <None Include="Shaders\ParticleSim.hlsli">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </None>
     <None Include="Shaders\ParticleSort.hlsli">
-      <Filter>Shaders</Filter>
+      <Filter>Shaders\Particle</Filter>
     </None>
     <None Include="Assets\Textures\uv_checker.png">
       <Filter>Assets\Textures</Filter>

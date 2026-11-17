@@ -10,12 +10,17 @@
 void CS_ParticleSortStep(uint3 id : SV_DispatchThreadID)
 {
     const uint i = id.x;
+    //정렬 길이 밖 스레드는 일 없음
     if (i >= ParticleSortCount(particleCapacity)) return;
+    //비교할 짝 = i 에서 j 비트를 뒤집은 칸 (거리 j)
     const uint l = i ^ sortJ;
+    //짝 중 번호가 작은 쪽 스레드만 비교·교환 (같은 쌍을 두 번 바꾸지 않게)
     if (l <= i) return;
     const float a = sortKeys[i];
     const float b = sortKeys[l];
+    //i 가 속한 길이 k 묶음의 방향. 묶음마다 내림·오름차순이 번갈아야 다음 k 에서 합쳐짐
     const bool descending = (i & sortK) == 0;
+    //방향과 맞지 않으면 키와 번호를 함께 맞바꿈
     if (descending ? (a < b) : (a > b))
     {
         sortKeys[i] = b;

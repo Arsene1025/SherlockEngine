@@ -61,6 +61,7 @@ struct Particle
 // t21 파티클 버퍼, t22 번호 목록. 그리기 셋 (VS) 과 정렬 셋 (CS) 이 같은 레지스터·같은 C++ 슬롯 (kSRVSlotParticles,
 // kSRVSlotParticleAlive) 으로 꽂음. t22 는 정렬 셋과 가산 이미터의 그리기에서는 이번 프레임 생존 목록이고, 알파 이미터의
 // 그리기에서는 그 뷰의 카메라로 먼 것부터 정렬한 번호 (앞 생존 수 칸이 유효).
+//그리기(VS)·정렬(CS)이 읽기 전용으로 꽂는 입자 버퍼와 번호 목록
 StructuredBuffer<Particle> particles : register(t21);
 StructuredBuffer<uint> aliveList : register(t22);
 
@@ -84,6 +85,7 @@ struct ParticleVSOutput
 
 // PCG 해시 (Jarzynski & Olano 2020). 정수 하나 → 고르게 섞인 정수. 상태를 들고 다니지 않아 스레드마다
 // (씨앗, 인덱스) 로 독립된 난수열을 만들 수 있음 — 같은 입력이면 같은 결과 (스크린샷 비교가 결정적).
+//상태 없이 입력 하나로 섞으니까 스레드마다 (씨앗, t) 만 있으면 됨
 uint PcgHash(uint v)
 {
     const uint state = v * 747796405u + 2891336453u;

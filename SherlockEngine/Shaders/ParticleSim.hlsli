@@ -7,7 +7,7 @@
 
 // u0·u1 이 정렬 셋 (ParticleSort.hlsli) 과 다른 리소스라 한 셰이더가 둘을 같이 쓰면 안 됨.
 #ifdef SHERLOCK_PARTICLE_SORT_HLSLI
-#error ParticleSim.hlsli 와 ParticleSort.hlsli 는 u0·u1 의 의미가 달라 한 셰이더에 같이 include 할 수 없음
+#error ParticleSim.hlsli 와 ParticleSort.hlsli 는 u0, u1 의 의미가 달라 한 셰이더에 같이 include 할 수 없음
 #endif
 
 //   u0 particlesRW      파티클 capacity 개
@@ -23,19 +23,27 @@ RWStructuredBuffer<uint> particleAliveOut : register(u3);
 RWStructuredBuffer<uint> particleCounters : register(u4);
 RWByteAddressBuffer particleArgs : register(u5);
 
+//args 버퍼 안의 바이트 위치: 0 그리기 인자, 16 Sim 디스패치 인자
+//C++ 의 kParticleArgsDrawOffset·kParticleArgsDispatchOffset 과 같아야 함
 static const uint kArgsDrawOffset = 0;
 static const uint kArgsDispatchOffset = 16;
+//Sim 의 numthreads 와 같아야 함 (Args 가 다음 Sim 그룹 수를 이 값으로 계산)
 static const uint kParticleSimGroupSize = 64;
 
 // b9: 파티클 충돌 (ShaderConstants.h 의 ParticleCollisionConstants). 메인 뷰 카메라, 프레임에 한 번.
 cbuffer ParticleCollision : register(b9)
 {
+    //메인 카메라 viewProj (입자 위치 → 화면)
     matrix collisionViewProj;
+    //그 역행렬 (깊이 버퍼 한 점 → 월드 위치, 법선 계산용)
     matrix collisionInvViewProj;
+    //LinearViewDepth 에 넘길 투영 값 a, b, 원근 여부
     float collisionDepthA;
     float collisionDepthB;
     float collisionPerspective;
+    //표면 뒤 이 거리(m) 안이면 충돌 (C++ 의 kCollisionThickness)
     float collisionThickness;
+    //깊이 버퍼 크기 (픽셀)
     uint2 collisionDepthSize;
     uint2 collisionPadding;
 }

@@ -35,7 +35,7 @@ figure { margin:14px 0; } figure img { width:100%; height:auto; border-radius:6p
 <main>
 <header>
   <h1>GPU 파티클(VFX) 구현 기록</h1>
-  <p>2026-11-17 · 세 단계 모두 완료. 컴퓨트 RHI(<a href="compute-uav-record.html">compute-uav-record.html</a>) 위에 <b>컴퓨트 셰이더로 움직이는 GPU 파티클</b>을 세 단계로 올리는 과정을 단계마다 적는 기록입니다. 단계가 검증되면 그 장을 채우고, 아직 하지 않은 단계는 계획과 "시작 전에 확인할 것"만 둡니다. <b>지금 코드의 구조와 원리만 보려면 <a href="#arch">12장</a></b>부터 읽으면 됩니다.</p>
+  <p>2026-11-17 · 세 단계 모두 완료. 컴퓨트 RHI(<a href="compute-uav-record.html">compute-uav-record.html</a>) 위에 <b>컴퓨트 셰이더로 움직이는 GPU 파티클</b>을 세 단계로 올리는 과정을 단계마다 적는 기록입니다. 단계가 검증되면 그 장을 채우고, 아직 하지 않은 단계는 계획과 "시작 전에 확인할 것"만 둡니다. <b>지금 코드의 구조와 원리만 보려면 <a href="#arch">12장</a></b>부터 읽으면 됩니다. 소스를 따라 읽는 순서는 <a href="#arch-reading">12.15</a> 에 있습니다.</p>
   <table>
   <tr><th>단계</th><th>내용</th><th>RHI 변경</th><th>상태</th></tr>
   <tr><td>1</td><td>고정 최대 개수 파티클: CS 가 링 버퍼로 생성·적분, VS 가 <code>SV_VertexID</code> 로 버퍼를 읽어 빌보드, 가산 블렌딩</td><td>없음</td><td><span class="tag v">완료 2026-11-17</span></td></tr>
@@ -44,7 +44,7 @@ figure { margin:14px 0; } figure img { width:100%; height:auto; border-radius:6p
   </table>
   <p class="foot">기준: 커밋 04c26bb(컴퓨트 RHI 완료) + 작업 트리. 위치는 "파일 + 함수 이름"이 기준입니다. 이 문서는 새로 만든 것입니다.</p>
 </header>
-<nav><a href="#plan">1. 계획</a><a href="#s1-summary">2. 1단계 요약</a><a href="#s1-flow">3. 흐름</a><a href="#s1-component">4. 컴포넌트</a><a href="#s1-gpu">5. GPU 데이터</a><a href="#s1-sim">6. 시뮬레이션</a><a href="#s1-draw">7. 그리기</a><a href="#s1-notes">8. 설계 결정·함정</a><a href="#s1-verify">9. 1단계 검증</a><a href="#s2">10. 2단계</a><a href="#s2-rhi">10.1 RHI</a><a href="#s2-flow">10.2 흐름</a><a href="#s2-verify">10.3 검증</a><a href="#s3">11. 3단계</a><a href="#s3-rhi">11.1 RHI</a><a href="#s3-pass">11.2 패스</a><a href="#s3-depth">11.3 깊이</a><a href="#s3-sort">11.4 정렬</a><a href="#s3-verify">11.5 검증</a><a href="#arch">12. 지금 구조와 원리</a><a href="#arch-map">12.1 층·파일</a><a href="#arch-frame">12.2 프레임</a><a href="#arch-comp">12.3 컴포넌트</a><a href="#arch-cpu">12.4 CPU</a><a href="#arch-data">12.5 버퍼</a><a href="#arch-bind">12.6 바인딩</a><a href="#arch-sim">12.7 시뮬레이션</a><a href="#arch-sort">12.8 정렬</a><a href="#arch-draw">12.9 그리기</a><a href="#arch-state">12.10 상태</a><a href="#arch-tools">12.11 도구</a><a href="#arch-extend">12.12 고칠 곳</a><a href="#arch-map-code">12.13 코드 위치</a><a href="#arch-threads">12.14 GPU 스레드·셰이더 8개</a><a href="#files">13. 파일 목록</a></nav>
+<nav><a href="#plan">1. 계획</a><a href="#s1-summary">2. 1단계 요약</a><a href="#s1-flow">3. 흐름</a><a href="#s1-component">4. 컴포넌트</a><a href="#s1-gpu">5. GPU 데이터</a><a href="#s1-sim">6. 시뮬레이션</a><a href="#s1-draw">7. 그리기</a><a href="#s1-notes">8. 설계 결정·함정</a><a href="#s1-verify">9. 1단계 검증</a><a href="#s2">10. 2단계</a><a href="#s2-rhi">10.1 RHI</a><a href="#s2-flow">10.2 흐름</a><a href="#s2-verify">10.3 검증</a><a href="#s3">11. 3단계</a><a href="#s3-rhi">11.1 RHI</a><a href="#s3-pass">11.2 패스</a><a href="#s3-depth">11.3 깊이</a><a href="#s3-sort">11.4 정렬</a><a href="#s3-verify">11.5 검증</a><a href="#arch">12. 지금 구조와 원리</a><a href="#arch-map">12.1 층·파일</a><a href="#arch-frame">12.2 프레임</a><a href="#arch-comp">12.3 컴포넌트</a><a href="#arch-cpu">12.4 CPU</a><a href="#arch-data">12.5 버퍼</a><a href="#arch-bind">12.6 바인딩</a><a href="#arch-sim">12.7 시뮬레이션</a><a href="#arch-sort">12.8 정렬</a><a href="#arch-draw">12.9 그리기</a><a href="#arch-state">12.10 상태</a><a href="#arch-tools">12.11 도구</a><a href="#arch-extend">12.12 고칠 곳</a><a href="#arch-map-code">12.13 코드 위치</a><a href="#arch-threads">12.14 GPU 스레드·셰이더 8개</a><a href="#arch-reading">12.15 읽는 순서</a><a href="#files">13. 파일 목록</a></nav>
 
 <section id="plan">
 <h2>1. 계획 — 왜 이 세 단계인가</h2>
@@ -723,6 +723,28 @@ GPU: Shaders/*.hlsl — C++ 과 공유하는 선언은 Particle·ParticleSim·Pa
 <li><b>Args 를 Emit 에 넣기</b>: Emit 스레드마다 개수를 직접 계산하고 한 스레드가 인자를 쓰게 할 수도 있지만, 생성 수가 0 인 프레임에는 Emit 을 디스패치하지 않으므로 인자가 갱신되지 않습니다. 같은 칸을 읽고 쓰는 스레드끼리의 경쟁도 따로 막아야 해서 1 스레드 커널로 분리했습니다.</li>
 <li><b>SortInit 을 첫 단계에 넣기</b>: 가능하지만(첫 단계에서 키를 계산하며 비교) 정렬 네트워크를 그대로 두는 쪽이 단순해서 나눴습니다.</li>
 </ul>
+<h3 id="arch-reading">12.15 코드 읽는 순서</h3>
+<p>소스를 처음부터 따라 읽을 때의 순서입니다. CPU 쪽은 한 프레임에서 불리는 순서대로, 셰이더는 <code>Renderer::SimulateParticles</code> 가 커널을 거는 순서(Reset → Sim → Args → Emit)대로 놓았습니다. 각 셰이더 앞에 공용 헤더를 먼저 보면 버퍼 이름과 카운터 칸 번호가 눈에 익어 커널이 쉽게 읽힙니다. 코드와 셰이더에는 줄마다 짧은 설명 주석(<code>//</code> 다음 공백 없이 쓴 것)이 달려 있습니다. 모르는 용어는 <a href="../overview/glossary.html#compute">용어집 4장</a>에 있습니다.</p>
+<table>
+<tr><th>순서</th><th>파일 · 함수</th><th>무엇을 볼지</th><th>이 문서</th></tr>
+<tr><td>1</td><td><code>Scene/ParticleEmitter.h</code></td><td>사용자가 정하는 설정값(생성률, 수명, 색, 크기, 최대 수, 블렌드 모드)</td><td><a href="#arch-comp">12.3</a></td></tr>
+<tr><td>2</td><td><code>Graphics/Renderer.h</code> 의 <code>GpuEmitter</code>, <code>FrameEmitter</code>, <code>m_gpuEmitters</code>·<code>m_frameEmitters</code>·<code>m_activeEmitterKeys</code></td><td>이미터 하나가 CPU·GPU 에 갖는 것과 수명(한 프레임 / 여러 프레임)</td><td><a href="#arch-cpu">12.4</a>, <a href="#arch-data">12.5</a></td></tr>
+<tr><td>3</td><td><code>Graphics/RendererParticles.cpp</code> 의 <code>Renderer::CollectEmitter</code> (<code>Renderer::BuildDrawList</code> 가 부름)</td><td>키 = 오브젝트 ID × 16 + 순번, 월드 위치·방향 뽑기</td><td><a href="#arch-cpu">12.4</a></td></tr>
+<tr><td>4</td><td><code>Renderer::UpdateParticleEmitters</code></td><td>dt 결정 → 버퍼·셋 만들기(parity 두 벌) → 알파면 정렬 리소스 → 생성 수 → b8 올리기 → 안 보인 이미터 지우기</td><td><a href="#arch-cpu">12.4</a>, <a href="#arch-bind">12.6</a></td></tr>
+<tr><td>5</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::RenderScenePass</code></td><td>두 번째 씬 패스(깊이 읽기 전용) 앞에서 Simulate(메인 뷰만) → Sort → Draw 를 부르는 자리</td><td><a href="#arch-frame">12.2</a>, <a href="#s3-pass">11.2</a></td></tr>
+<tr><td>6</td><td><code>Renderer::SimulateParticles</code></td><td>커널 넷을 거는 순서, 간접 디스패치, 커널 사이 UAV 배리어, 끝의 상태 전이</td><td><a href="#arch-sim">12.7</a>, <a href="#arch-state">12.10</a></td></tr>
+<tr><td>7</td><td><code>Shaders/Particle.hlsli</code>, <code>Shaders/ParticleSim.hlsli</code></td><td>b8 이미터 상수, <code>Particle</code> 구조체, 카운터 칸 번호(<code>kCounter*</code>), u0~u5 버퍼, b9 충돌 상수</td><td><a href="#arch-bind">12.6</a></td></tr>
+<tr><td>8</td><td><code>Shaders/ParticleResetComputeShader.hlsl</code></td><td>사망 목록·카운터·인자가 처음에 어떤 상태로 시작하는지</td><td><a href="#arch-sim">12.7</a></td></tr>
+<tr><td>9</td><td><code>Shaders/ParticleSimComputeShader.hlsl</code></td><td>적분, 깊이 충돌(<code>Collide</code>), 생사 판정과 원자 연산으로 목록에 넣기</td><td><a href="#arch-sim">12.7</a>, <a href="#s3-depth">11.3</a></td></tr>
+<tr><td>10</td><td><code>Shaders/ParticleArgsComputeShader.hlsl</code></td><td>생성 수 확정, 카운터 정리, 그리기·다음 Sim 인자 쓰기</td><td><a href="#arch-data">12.5</a></td></tr>
+<tr><td>11</td><td><code>Shaders/ParticleEmitComputeShader.hlsl</code></td><td>사망 목록에서 칸 꺼내기, 원뿔 방향·구 안 위치 난수, 프레임 안 출생 시각</td><td><a href="#arch-sim">12.7</a></td></tr>
+<tr><td>12</td><td><code>Renderer::EnsureParticleSortSteps</code>, <code>Renderer::SortParticles</code>, <code>Shaders/ParticleSort.hlsli</code></td><td>단계별 (k, j) 상수 버퍼, 뷰마다 정렬, 단계 수 m(m+1)/2</td><td><a href="#arch-sort">12.8</a>, <a href="#s3-sort">11.4</a></td></tr>
+<tr><td>13</td><td><code>Shaders/ParticleSortInitComputeShader.hlsl</code> → <code>ParticleSortStepComputeShader.hlsl</code></td><td>키(뷰 공간 z) 채우기, 바이토닉 한 단계의 비교·교환</td><td><a href="#arch-sort">12.8</a></td></tr>
+<tr><td>14</td><td><code>Renderer::DrawParticles</code>, <code>Renderer::GetParticlePipeline</code></td><td>알파 먼저·가산 나중, 정렬 셋과 일반 셋 고르기, <code>DrawInstancedIndirect</code></td><td><a href="#arch-draw">12.9</a></td></tr>
+<tr><td>15</td><td><code>Shaders/ParticleVertexShader.hlsl</code> → <code>ParticlePixelShader.hlsl</code></td><td>정점 버퍼 없는 빌보드, 수명에 따른 크기·색, 원형 감쇠, 소프트 파티클, 프리멀티플라이드 출력</td><td><a href="#arch-draw">12.9</a>, <a href="#s3-depth">11.3</a></td></tr>
+<tr><td>16</td><td><code>Renderer::DestroyGpuEmitter</code>, <code>Renderer::DestroyGpuEmitters</code></td><td>크기가 바뀔 때와 이미터가 사라질 때 무엇을 지우는지</td><td><a href="#arch-cpu">12.4</a></td></tr>
+</table>
+<p>스레드·그룹·디스패치가 낯설면 7번 전에 <a href="#arch-threads">12.14</a> 를 먼저 읽으세요.</p>
 </section>
 
 <section id="files">

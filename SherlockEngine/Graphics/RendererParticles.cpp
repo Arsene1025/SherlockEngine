@@ -365,12 +365,17 @@ void Renderer::UpdateParticleEmitters(float totalTime, const Camera& camera)
 	}
 }
 
+//이미터마다 컴퓨트 커널 넷(Reset → Sim → Args → Emit)을 돌려 입자를 한 프레임 진행시킴
+//메인 뷰에서 프레임에 한 번만 부름 (미리보기는 같은 결과를 그림)
 void Renderer::SimulateParticles(RHI::CommandList& cmd, const ViewTarget& view)
 {
+	//커널 넷의 컴퓨트 PSO
 	const ComputePipelineHandle resetPipeline = GetComputePipeline(ComputePass_ParticleReset);
 	const ComputePipelineHandle simPipeline = GetComputePipeline(ComputePass_ParticleSim);
 	const ComputePipelineHandle argsPipeline = GetComputePipeline(ComputePass_ParticleArgs);
 	const ComputePipelineHandle emitPipeline = GetComputePipeline(ComputePass_ParticleEmit);
+	//PSO가 하나라도 없거나 충돌 셋(b9 + 깊이 t23)이 없으면 이번 프레임 파티클은 통째로 건너뜀
+	//m_activeEmitterKeys를 비우니까 뒤의 정렬·그리기도 아무것도 안 함
 	if (!resetPipeline.IsValid() || !simPipeline.IsValid() || !argsPipeline.IsValid() || !emitPipeline.IsValid() || !view.particleCollideSet.IsValid())
 	{
 		// 컴퓨트를 못 쓰면 그리지도 않음 (버퍼 내용이 정해져 있지 않음).
@@ -384,12 +389,15 @@ void Renderer::SimulateParticles(RHI::CommandList& cmd, const ViewTarget& view)
 	for (const uint64_t key : m_activeEmitterKeys)
 	{
 		GpuEmitter& gpu = m_gpuEmitters[key];
+		//이번 프레임 parity에 맞는 입력·출력 생존 목록과 셋
 		const BufferHandle aliveIn = gpu.aliveLists[gpu.parity];
 		const BufferHandle aliveOut = gpu.aliveLists[1 - gpu.parity];
 		const ResourceSetHandle simSet = gpu.simSets[gpu.parity];
+		//커널들이 UAV로 쓰는 버퍼 전부. 상태 전이와 UAV 배리어를 이 목록에 한꺼번에 검
 		const BufferHandle written[] = { gpu.particles, gpu.deadList, aliveIn, aliveOut, gpu.counters, gpu.args };
 		// 앞 디스패치가 쓴 것을 다음 디스패치가 읽거나 다시 씀 → 그 사이마다 UAV 배리어 (D3D12. D3D11 은 런타임이 알아서 함).
 		auto uavBarrierAll = [&]() { for (const BufferHandle& b : written) cmd.UavBarrier(b); };
+		//PSO와 셋(셋 번호 kSetParticleSim)을 꽂는 것까지 묶은 함수. 디스패치는 따로 부름
 		auto run = [&](ComputePipelineHandle pipeline, ResourceSetHandle set)
 		{
 			cmd.SetComputePipeline(pipeline);
@@ -400,9 +408,12 @@ void Renderer::SimulateParticles(RHI::CommandList& cmd, const ViewTarget& view)
 		// 전이가 지난 프레임에 VS t21 / t22 에 남은 SRV 바인딩을 풀어 줌.
 		for (const BufferHandle& b : written) cmd.Barrier(b, ResourceState::UnorderedAccess);
 
+		//1. Reset: 버퍼를 새로 만든 프레임에만
+		//모든 칸을 죽은 상태로, 사망 목록에 칸 번호 전부, 카운터·인자 초기화
 		if (gpu.needsReset)
 		{
 			run(resetPipeline, simSet);
+			//칸 하나에 스레드 하나. 64로 나눠 올림 (마지막 그룹의 남는 스레드는 셰이더가 return)
 			cmd.Dispatch((gpu.capacity + kParticleGroupSize - 1) / kParticleGroupSize, 1, 1);
 			uavBarrierAll();
 			gpu.needsReset = false;
@@ -410,25 +421,36 @@ void Renderer::SimulateParticles(RHI::CommandList& cmd, const ViewTarget& view)
 
 		// 지난 프레임 생존 목록 적분. 그룹 수는 GPU 가 앎 (인자 버퍼 바이트 16) → 간접 디스패치. 인자로 읽는 동안
 		// 인자 버퍼는 IndirectArgument 상태여야 하고 UAV 로 바인딩할 수도 없음 → u5 가 없는 셋 (개수는 u4 에 셈).
+		//2. Sim: 입자를 움직이고 생사 판정
+		//산 것은 출력 생존 목록에, 죽은 것은 사망 목록에 번호를 넣음
 		cmd.Barrier(gpu.args, ResourceState::IndirectArgument);
+		//args(u5)가 없는 stepSets를 꽂음
 		run(simPipeline, gpu.stepSets[gpu.parity]);
 		cmd.SetComputeResourceSet(kSetParticleCollide, view.particleCollideSet);   // b9 + t23 (깊이는 DepthRead 상태)
+		//그룹 수 = args 바이트 16의 {그룹 수, 1, 1} (지난 프레임 Args가 써 둔 값)
 		cmd.DispatchIndirect(gpu.args, kParticleArgsDispatchOffset);
+		//Args가 다시 써야 하니 UAV 상태로 되돌림
 		cmd.Barrier(gpu.args, ResourceState::UnorderedAccess);
 		uavBarrierAll();
 
+		//3. Args: 스레드 하나로 개수 정리
 		run(argsPipeline, simSet);   // 생성 수 확정 + 그리기 인자 + 다음 프레임 디스패치 인자
 		cmd.Dispatch(1, 1, 1);
 		uavBarrierAll();
 
+		//4. Emit: 사망 목록에서 칸 번호를 꺼내 새 입자를 씀
+		//원하는 수가 0이면 안 돌림. 실제 생성 수(사망 목록이 모자라면 줄어듦)는 셰이더가 카운터에서 읽음
 		if (gpu.spawnCount > 0)
 		{
 			run(emitPipeline, simSet);
+			//원하는 생성 수만큼 스레드. 넘치는 스레드는 셰이더가 return
 			cmd.Dispatch((gpu.spawnCount + kParticleGroupSize - 1) / kParticleGroupSize, 1, 1);
 		}
 
 		// 메인·미리보기 패스의 VS 가 t21 (파티클) · t22 (출력 생존 목록) 로 읽고, 그리기가 인자 버퍼를 읽음. 정렬은
 		// 파티클·생존 목록·개수 (t24) 를 SRV 로 읽음.
+		//쓰기는 끝났으니 읽는 쪽에 맞는 상태로 바꿈
+		//입자·출력 생존 목록·카운터는 SRV, args는 그리기의 간접 인자
 		cmd.Barrier(gpu.particles, ResourceState::ShaderResource);
 		cmd.Barrier(aliveOut, ResourceState::ShaderResource);
 		cmd.Barrier(gpu.counters, ResourceState::ShaderResource);
@@ -436,22 +458,29 @@ void Renderer::SimulateParticles(RHI::CommandList& cmd, const ViewTarget& view)
 	}
 }
 
+//바이토닉 정렬 단계마다 쓰는 (k, j) 상수 버퍼(b11)와 셋을 count 길이까지 만들어 둠
+//모든 이미터·뷰가 같이 쓰고, 한 번 만든 단계는 지우지 않음 (더 긴 길이가 필요할 때만 뒤에 붙임)
 bool Renderer::EnsureParticleSortSteps(uint32_t count)
 {
+	//지금 만들어 둔 단계로 정렬할 수 있는 길이가 count보다 짧으면 두 배씩 늘림
 	while (m_particleSortStepCount < count)
 	{
 		// 길이를 두 배로: k = 2N 의 단계 (j = N … 1) 를 뒤에 붙임. 짧은 길이의 단계 목록은 긴 목록의 앞부분 그대로.
 		const uint32_t k = m_particleSortStepCount == 0 ? 2 : m_particleSortStepCount * 2;
+		//비교 거리 j = k/2, k/4, … 1 마다 단계 하나
 		for (uint32_t j = k / 2; j > 0; j /= 2)
 		{
 			ParticleSortStepConstants sc = {};
 			sc.k = k;
 			sc.j = j;
 			ParticleSortStep step;
+			//값이 안 바뀌니 Default 버퍼에 초기 데이터로 넣고 끝
+			//디스패치마다 다른 값을 Dynamic 버퍼 하나에 다시 올릴 수 없어서 (D3D12 프레임당 한 번 규칙) 단계마다 버퍼를 따로 둠
 			step.constants = m_device->CreateBuffer(BufferDesc{ .size = sizeof(sc), .usage = BufferUsage::Default,
 				.bindFlags = BufferBind_Constant, .debugName = "CB_ParticleSortStep" }, &sc);
 			step.set = m_device->CreateResourceSet(ResourceSetDesc{
 				.layout = m_layouts[Layout_ParticleSortStep], .bindings = { { .buffer = step.constants } }, .debugName = "Set_ParticleSortStep" });
+			//실패하면 이 단계만 지우고 false (앞에 만든 단계는 그대로 둠)
 			if (!step.constants.IsValid() || !step.set.IsValid())
 			{
 				m_device->DestroyResourceSet(step.set);
@@ -460,11 +489,14 @@ bool Renderer::EnsureParticleSortSteps(uint32_t count)
 			}
 			m_particleSortSteps.push_back(step);
 		}
+		//이제 길이 k까지 정렬할 수 있음
 		m_particleSortStepCount = k;
 	}
 	return true;
 }
 
+//알파 이미터를 이 뷰(viewIndex)의 카메라 기준으로 먼 것부터 정렬
+//씬 패스를 그리는 뷰마다 한 번씩 부름
 void Renderer::SortParticles(RHI::CommandList& cmd, uint32_t viewIndex)
 {
 	if (viewIndex >= kMaxParticleViews) return;
@@ -473,18 +505,23 @@ void Renderer::SortParticles(RHI::CommandList& cmd, uint32_t viewIndex)
 	for (const uint64_t key : m_activeEmitterKeys)
 	{
 		GpuEmitter& gpu = m_gpuEmitters[key];
+		//가산 이미터나 정렬 리소스가 없는 이미터는 건너뜀
 		if (!gpu.sorted) continue;
 		if (!initPipeline.IsValid() || !stepPipeline.IsValid() || m_particleSortSteps.empty())
 		{
 			gpu.sorted = false;   // 정렬 없이 생존 목록 순서로 그림
 			continue;
 		}
+		//정렬 길이(2의 거듭제곱, 최소 64)라 64로 딱 나눠짐
 		const uint32_t count = ParticleSortCount(gpu.capacity);
 		const uint32_t groups = count / kParticleGroupSize;
+		//이 뷰의 정렬 버퍼와 셋. 셋은 parity에 맞춰 이번 프레임 출력 생존 목록을 읽음
 		const BufferHandle keys = gpu.sortKeys[viewIndex];
 		const BufferHandle indices = gpu.sortIndices[viewIndex];
 		const ResourceSetHandle sortSet = gpu.sortSets[viewIndex][gpu.parity];
 
+		//SortInit: 생존 입자의 뷰 공간 z를 키로, 칸 번호를 값으로 채움
+		//생존 수 뒤의 칸은 아주 작은 키로 채워 정렬 끝으로 밀림
 		cmd.Barrier(keys, ResourceState::UnorderedAccess);
 		cmd.Barrier(indices, ResourceState::UnorderedAccess);   // D3D11: 지난 뷰·프레임에 VS t22 에 남은 SRV 를 풂
 		cmd.SetComputePipeline(initPipeline);
@@ -493,9 +530,12 @@ void Renderer::SortParticles(RHI::CommandList& cmd, uint32_t viewIndex)
 		cmd.Dispatch(groups, 1, 1);
 
 		// N = 2^m 이면 단계 m(m+1)/2 개. 단계마다 앞 단계 결과를 읽으므로 사이마다 UAV 배리어.
+		//m = log2(count)
 		uint32_t m = 0;
 		while ((1u << m) < count) ++m;
 		const uint32_t steps = m * (m + 1) / 2;
+		//SortStep: 단계마다 b11의 (k, j)만 바꿔 끼우고 디스패치
+		//짧은 길이의 단계 목록은 긴 목록의 앞부분과 같아서 m_particleSortSteps 앞에서부터 steps개만 씀
 		cmd.SetComputePipeline(stepPipeline);
 		cmd.SetComputeResourceSet(kSetParticleSim, sortSet);
 		for (uint32_t s = 0; s < steps; ++s)
@@ -509,8 +549,10 @@ void Renderer::SortParticles(RHI::CommandList& cmd, uint32_t viewIndex)
 	}
 }
 
+//이 뷰에 파티클을 그림. 파티클 패스(두 번째 씬 패스, 깊이 읽기 전용) 안에서 부름
 void Renderer::DrawParticles(RHI::CommandList& cmd, const ViewTarget& view, uint32_t viewIndex)
 {
+	//PSO 하나로 알파·가산 두 모드를 다 그림 (프리멀티플라이드 블렌드)
 	const PipelineHandle pipeline = GetParticlePipeline();
 	if (!pipeline.IsValid()) return;
 	cmd.SetPipelineState(pipeline);
@@ -518,21 +560,25 @@ void Renderer::DrawParticles(RHI::CommandList& cmd, const ViewTarget& view, uint
 	cmd.SetResourceSet(kSetFrame, m_frameSet);   // b0 = 지금 뷰의 카메라 (미리보기 패스는 b0 를 다시 올렸음)
 	cmd.SetResourceSet(kSetParticleDepth, view.particleDepthSet);   // t23 = 이 뷰의 깊이 (소프트 파티클)
 	// 알파 이미터 먼저 (이미터 안은 정렬됨, 이미터끼리는 정렬하지 않음), 가산 이미터는 그 위에 — 가산은 순서와 상관없음.
+	//pass 0 = 정렬된(알파) 이미터, pass 1 = 나머지(가산, 정렬 못 한 알파)
 	for (uint32_t pass = 0; pass < 2; ++pass)
 	{
 		for (const uint64_t key : m_activeEmitterKeys)
 		{
 			const GpuEmitter& gpu = m_gpuEmitters[key];
 			if (gpu.sorted != (pass == 0)) continue;
+			//정렬된 이미터는 t22에 이 뷰의 정렬된 번호를, 아니면 이번 프레임 출력 생존 목록을 꽂음
 			cmd.SetResourceSet(kSetParticle, gpu.sorted ? gpu.drawSortedSets[(std::min)(viewIndex, kMaxParticleViews - 1)] : gpu.drawSets[gpu.parity]);
 			// 정점 6 개 (쿼드) × 인스턴스 = 생존 수. 정점 버퍼 없음 (VS 가 SV_InstanceID 로 생존 목록·정렬 목록을 읽음).
 			cmd.DrawInstancedIndirect(gpu.args, kParticleArgsDrawOffset);
+			//통계 (드로우 수, 셋 교체 수)
 			++m_stats.draws;
 			++m_stats.resourceSetSwitches;
 		}
 	}
 }
 
+//파티클 그리기 PSO. 처음 필요할 때 한 번 만들고 캐시함
 PipelineHandle Renderer::GetParticlePipeline()
 {
 	if (m_particlePipeline.IsValid()) return m_particlePipeline;
@@ -540,8 +586,12 @@ PipelineHandle Renderer::GetParticlePipeline()
 	return m_particlePipeline;
 }
 
+//이미터 하나의 GPU 버퍼·셋을 지우고 핸들을 비움
+//includeConstants = false: capacity가 바뀌어 다시 만들 때. 상수 버퍼(b8)는 크기가 capacity와 상관없어서 남겨 두고 재사용
+//includeConstants = true: 이미터가 사라졌을 때(삭제, 꺼짐)와 종료 때. 상수 버퍼까지 지움
 void Renderer::DestroyGpuEmitter(GpuEmitter& gpu, bool includeConstants)
 {
+	//parity 0/1 두 벌: 시뮬레이션·간접 디스패치·그리기 셋, 생존 목록
 	for (uint32_t i = 0; i < 2; ++i)
 	{
 		m_device->DestroyResourceSet(gpu.simSets[i]);
@@ -553,6 +603,8 @@ void Renderer::DestroyGpuEmitter(GpuEmitter& gpu, bool includeConstants)
 		gpu.drawSets[i] = {};
 		gpu.aliveLists[i] = {};
 	}
+	//뷰별 정렬 리소스 (알파 이미터였던 적이 없으면 원래 비어 있음 — 빈 핸들을 지워도 괜찮음)
+	//정렬 길이가 capacity에 따라 바뀌니까 같이 지움. 다시 알파로 그릴 때 UpdateParticleEmitters가 다시 만듦
 	for (uint32_t v = 0; v < kMaxParticleViews; ++v)
 	{
 		for (uint32_t p = 0; p < 2; ++p) { m_device->DestroyResourceSet(gpu.sortSets[v][p]); gpu.sortSets[v][p] = {}; }
@@ -564,6 +616,7 @@ void Renderer::DestroyGpuEmitter(GpuEmitter& gpu, bool includeConstants)
 		gpu.sortIndices[v] = {};
 	}
 	gpu.sorted = false;
+	//입자 버퍼, 사망 목록, 카운터, 인자 버퍼
 	m_device->DestroyBuffer(gpu.particles);
 	m_device->DestroyBuffer(gpu.deadList);
 	m_device->DestroyBuffer(gpu.counters);
@@ -579,13 +632,18 @@ void Renderer::DestroyGpuEmitter(GpuEmitter& gpu, bool includeConstants)
 	}
 }
 
+//파티클 GPU 리소스 전부 정리 (렌더러 종료 때)
 void Renderer::DestroyGpuEmitters()
 {
+	//이미터마다 상수 버퍼까지 다 지우고 목록도 비움
 	for (auto& [key, gpu] : m_gpuEmitters) DestroyGpuEmitter(gpu, true);
 	m_gpuEmitters.clear();
+	//이미터들이 같이 쓰던 것들: 충돌 상수(b9)
 	m_device->DestroyBuffer(m_particleCollisionCB);   // 종료 때만 부름. 뷰의 충돌 셋은 뷰를 지울 때 같이 지워짐
 	m_particleCollisionCB = {};
+	//뷰별 정렬 view 행렬 상수(b10)
 	for (BufferHandle& cb : m_particleSortViewCB) { m_device->DestroyBuffer(cb); cb = {}; }
+	//정렬 단계별 (k, j) 상수(b11)와 셋
 	for (ParticleSortStep& step : m_particleSortSteps)
 	{
 		m_device->DestroyResourceSet(step.set);
@@ -593,6 +651,7 @@ void Renderer::DestroyGpuEmitters()
 	}
 	m_particleSortSteps.clear();
 	m_particleSortStepCount = 0;
+	//프레임 목록도 비움 (FrameEmitter의 컴포넌트 포인터가 남지 않게)
 	m_activeEmitterKeys.clear();
 	m_frameEmitters.clear();
 }

@@ -8,8 +8,10 @@
 void CS_ParticleReset(uint3 id : SV_DispatchThreadID)
 {
     const uint i = id.x;
+    //스레드 하나가 칸 하나를 맡음
     if (i < particleCapacity)
     {
+        //age 1 > lifetime 0 이라 죽은 입자
         Particle p;
         p.position = 0.0f;
         p.velocity = 0.0f;
@@ -19,10 +21,13 @@ void CS_ParticleReset(uint3 id : SV_DispatchThreadID)
         // 생성은 목록 끝에서 꺼내므로 (CS_ParticleArgs) 거꾸로 넣어 두면 처음에는 슬롯 0, 1, 2 … 순서로 쓰임.
         particleDead[i] = particleCapacity - 1 - i;
     }
+    //카운터·인자 버퍼는 하나뿐이라 스레드 0 만 씀
     if (i == 0)
     {
         for (uint c = 0; c < kParticleCounterCount; ++c) particleCounters[c] = 0;
+        //처음엔 모든 칸이 비어 있음 → 사망 목록 길이 = capacity
         particleCounters[kCounterDead] = particleCapacity;
+        //그리기 인자: 정점 6, 인스턴스 0 (그릴 것 없음)
         particleArgs.Store4(kArgsDrawOffset, uint4(6, 0, 0, 0));
         particleArgs.Store3(kArgsDispatchOffset, uint3(0, 1, 1));   // 그룹 0 개 = 아무것도 안 함 (허용됨)
     }
