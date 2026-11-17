@@ -24,7 +24,7 @@ namespace ShaderCompiler
 	bool LoadFile(const std::wstring& path, std::vector<uint8_t>& outBytes);
 
 	// .cso 우선, 필요하면 런타임 컴파일.
-	//   Debug : 소스 .hlsl(또는 Common.hlsli)이 .cso보다 새로우면 소스를 컴파일함.
+	//   Debug : 소스 .hlsl 또는 같은 폴더의 .hlsli 중 하나라도 .cso보다 새로우면 소스를 컴파일함.
 	//   Release: .cso를 로드함. 없으면 경고를 남기고 exe 옆 .hlsl을 컴파일함.
 	// hlslName에는 "BasicVertexShader.hlsl" 처럼 파일 이름만 넘김. outSource에는 실제로 사용한 경로가 담김.
 	bool LoadOrCompile(const wchar_t* hlslName, const char* entryPoint, ShaderStage stage,
@@ -61,4 +61,9 @@ namespace ShaderCompiler
 
 	// 파일의 마지막 수정 시각(FILETIME을 64비트 값으로 변환). 파일이 없으면 0.
 	uint64_t GetLastWriteTime(const std::wstring& path);
+
+	// sourcePath(.hlsl 절대 경로)와 같은 폴더의 공용 헤더(*.hlsli) 전부의 절대 경로. #include 를 파싱하지 않고
+	// 폴더의 헤더를 모두 의존성으로 봄 — 헤더 하나를 고치면 그 헤더를 쓰지 않는 셰이더까지 다시 컴파일되지만
+	// 셰이더 수가 적어 상관없고, include 그래프를 따로 관리하지 않아도 됨. .cso 신선도 검사와 핫리로드 감시가 씀.
+	std::vector<std::wstring> ListIncludeFiles(const std::wstring& sourcePath);
 }

@@ -14,7 +14,6 @@
 
 using namespace DirectX;   // 이 파일 안에서만
 
-// GPU 파티클 (VFX). 구조와 원리는 docs/plan/vfx-gpu-particles-record.html 12장:
 //   BuildDrawList → CollectEmitter        이미터 컴포넌트를 찾아 월드 위치·방향과 함께 모음
 //   UpdateParticleEmitters (업로드 구간)   버퍼·셋을 만들거나 크기를 맞추고, 원하는 생성 수를 정해 b8 (b9, b10) 을 올림
 //   RenderScenePass (메인 뷰, 패스 1 뒤)  SimulateParticles: [Reset] → Sim (간접 디스패치 + 깊이 충돌) → Args (스레드 1개) → Emit
@@ -56,26 +55,51 @@ void Renderer::CollectEmitter(const GameObject& object, const XMMATRIX& world)
 
 void Renderer::UpdateParticleEmitters(float totalTime, const Camera& camera)
 {
+	//m_activeEmitterKeys->이번 프레임에 실제로 시뮬레이션 할 Emitter들의 키 목록
 	m_activeEmitterKeys.clear();
 
-	// 이번 프레임 시뮬레이션 시간. 고정 스텝이면 프레임 수에만 의존 (자동 검증의 스크린샷이 실행마다 같음).
+	//이번 프레임 시뮬레이션 시간.
 	float dt = 0.0f;
+	//고정 된 값이 매 프레임 dt가 됨. 0.015를 주면 실제 시간과 관계없이 매 프레임 0.015씩 진행
+	//테스트할 때 매번 같은 화면이 나오게 하려는 의도.
 	if (m_settings.particleFixedStep > 0.0f) dt = m_settings.particleFixedStep;
+	//std::clamp(x, lo, hi)는 [lo, hi] 범위 안으로 잘라 줌.
+	//totalTime - m_lastParticleTime <- 지난 프레임부터 흐른 시간
+	//지난 프레임으로 부터 흐른 시간을 0~0.1사이로 클램프해서 dt로 사용
 	else if (m_lastParticleTime >= 0.0f) dt = std::clamp(totalTime - m_lastParticleTime, 0.0f, kMaxParticleStep);
+	//totalTime -> 엔진 시계의 경과 시간
+	//deltaTime을 받아도 되지만 Render함수인자에 delta가 없음 
+	//Render의 인자를 늘리기 보다는 직접 계산이 맞을 듯
+	//다음 프레임의 dt계산을 위해 totalTime저장
 	m_lastParticleTime = totalTime;
 
+	//FrameEmitter는 입자를 나타내는 것이 아님
+	//ParticleEmitter 컴포넌트 하나.
+	//한 오브젝트에 이미터가 여러개 붙어있으면 FrameEmitter도 여러개 생김
+	/*
+			       ParticleEmitter                      FrameEmitter
+	소유		  씬(Gameobject에 붙은 컴포넌트)       렌더러(m_frameEmitters)
+	수명		  오브젝트가 존재하는 한 계속           한 프레임(메 프레임 비우고 채움)
+	내용       사용자가 정하는 설정 값              렌더러가 이번 프레임의 쓸 값(키, ParticleEmitter포인터, 위치)
+	*/
 	for (const FrameEmitter& frame : m_frameEmitters)
 	{
 		const ParticleEmitter& e = *frame.emitter;
+
 		const uint32_t capacity = static_cast<uint32_t>(std::clamp(e.maxParticles, 1, ParticleEmitter::kMaxParticlesLimit));
+		//GpuEmitter는 이미터 하나가 GPU에 가진 리소스, 상태.
+		//프레임을 넘어 유지됨
 		GpuEmitter& gpu = m_gpuEmitters[frame.key];
 		if (gpu.lastSeenFrame == m_frameNumber) continue;   // 같은 키가 두 번 (오브젝트 ID 중복) — 첫 것만
 		gpu.lastSeenFrame = m_frameNumber;
 
-		// 처음이거나 크기가 바뀌었으면 버퍼·셋을 새로 만듦. 옛 것은 D3D12 에서 지연 해제됨 (이전 프레임이 읽는 중일 수 있음).
+		// 처음이거나 크기가 바뀌었으면 버퍼·셋을 새로 만듦.
+		// 옛 것은 D3D12 에서 지연 해제됨 (이전 프레임이 읽는 중일 수 있음).
 		if (gpu.capacity != capacity || !gpu.particles.IsValid())
 		{
+			//gpu파괴
 			DestroyGpuEmitter(gpu, false);
+			//상수 버퍼가 없으면 만들어줌
 			if (!gpu.constants.IsValid())
 			{
 				gpu.constants = m_device->CreateBuffer(BufferDesc{ .size = sizeof(ParticleEmitterConstants), .usage = BufferUsage::Dynamic,

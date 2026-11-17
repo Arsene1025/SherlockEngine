@@ -105,7 +105,6 @@ const Renderer::ComputePassInfo Renderer::kComputePasses[Renderer::ComputePass_C
 
 namespace
 {
-	constexpr const wchar_t* kCommonShaderFile = L"Common.hlsli";   // 모든 셰이더가 include 함. 핫리로드 감시 대상
 	constexpr float kHotReloadPollInterval = 0.5f;   // 초
 	constexpr uint32_t kInitialLightCapacity = 64;   // 조명 구조체 버퍼의 처음 원소 수 (5,120바이트)
 
@@ -708,22 +707,26 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 		m_shaders[i] = created[i];
 	}
 
-	// 핫리로드 감시 목록: 표의 소스 파일 전부 + Common.hlsli. Release에서도 목록은 만들지만 CheckHotReload가
-	// 동작하지 않음.
+	// 핫리로드 감시 목록: 표의 소스 파일 전부 + 그 폴더의 공용 헤더(*.hlsli) 전부. 목록은 로드할 때마다 다시
+	// 만들므로 새로 추가한 헤더는 다음 리로드부터 감시됨. Release에서도 목록은 만들지만 CheckHotReload가 동작하지 않음.
 	m_watched.clear();
-	auto watch = [this](const wchar_t* file)
+	auto watch = [this](const std::wstring& path)
 	{
-		WatchedFile watched;
-		watched.path = Paths::GetShaderSourcePath(file);
 		for (const WatchedFile& existing : m_watched)
 		{
-			if (existing.path == watched.path) return;   // 같은 파일을 두 셰이더가 쓰는 경우
+			if (existing.path == path) return;   // 같은 파일을 두 셰이더가 쓰는 경우
 		}
-		watched.writeTime = ShaderCompiler::GetLastWriteTime(watched.path);
+		WatchedFile watched;
+		watched.path = path;
+		watched.writeTime = ShaderCompiler::GetLastWriteTime(path);
 		m_watched.push_back(watched);
 	};
-	for (const ShaderInfo& info : kShaders) watch(info.file);
-	watch(kCommonShaderFile);
+	for (const ShaderInfo& info : kShaders)
+	{
+		const std::wstring source = Paths::GetShaderSourcePath(info.file);
+		watch(source);
+		for (const std::wstring& include : ShaderCompiler::ListIncludeFiles(source)) watch(include);
+	}
 
 	std::string loaded;
 	for (uint32_t i = 0; i < Shader_Count; ++i)

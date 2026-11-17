@@ -126,6 +126,23 @@ uint64_t ShaderCompiler::GetLastWriteTime(const std::wstring& path)
 	return (static_cast<uint64_t>(data.ftLastWriteTime.dwHighDateTime) << 32) | data.ftLastWriteTime.dwLowDateTime;
 }
 
+std::vector<std::wstring> ShaderCompiler::ListIncludeFiles(const std::wstring& sourcePath)
+{
+	std::vector<std::wstring> files;
+	const size_t slash = sourcePath.find_last_of(L"\\/");
+	const std::wstring directory = slash == std::wstring::npos ? std::wstring() : sourcePath.substr(0, slash + 1);
+
+	WIN32_FIND_DATAW data = {};
+	HANDLE find = FindFirstFileW((directory + L"*.hlsli").c_str(), &data);
+	if (find == INVALID_HANDLE_VALUE) return files;
+	do
+	{
+		if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0) files.push_back(directory + data.cFileName);
+	} while (FindNextFileW(find, &data));
+	FindClose(find);
+	return files;
+}
+
 bool ShaderCompiler::LoadOrCompile(const wchar_t* hlslName, const char* entryPoint, ShaderStage stage,
 	std::vector<uint8_t>& outBytecode, std::wstring* outSource)
 {
@@ -140,11 +157,15 @@ bool ShaderCompiler::LoadOrCompile(const wchar_t* hlslName, const char* entryPoi
 
 #if defined(_DEBUG)
 	// 소스가 .cso보다 새로우면(빌드하지 않고 셰이더만 고친 경우) 소스를 컴파일함.
-	// Common.hlsli는 include되므로 그 수정 시각도 확인함.
+	// 공용 헤더(*.hlsli)는 include되므로 그 수정 시각도 확인함.
 	const std::wstring sourcePath = Paths::GetShaderSourcePath(hlslName);
 	const uint64_t sourceTime = GetLastWriteTime(sourcePath);
-	const uint64_t commonTime = GetLastWriteTime(Paths::GetShaderSourcePath(L"Common.hlsli"));
-	const uint64_t newestSource = sourceTime > commonTime ? sourceTime : commonTime;
+	uint64_t newestSource = sourceTime;
+	for (const std::wstring& include : ListIncludeFiles(sourcePath))
+	{
+		const uint64_t includeTime = GetLastWriteTime(include);
+		if (includeTime > newestSource) newestSource = includeTime;
+	}
 
 	if (sourceTime != 0 && (csoTime == 0 || newestSource > csoTime))
 	{
