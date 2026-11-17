@@ -42,6 +42,19 @@ void D3D11CommandList::Init(D3D11Device* device)
 	for (BufferHandle& h : m_csUavBuf) h = BufferHandle{};
 	m_touchedBuffers.clear();
 	m_computePipelineSet = false;
+	m_pipelineDepthWrite = false;
+}
+
+bool D3D11CommandList::CheckReadOnlyDepthDraw(const char* caller)
+{
+	if (!m_currentPass.depth.readOnly || !m_currentPass.depth.texture.IsValid() || !m_pipelineDepthWrite) return true;
+	// 읽기 전용 DSV 에 깊이 쓰기 PSO 는 설정 실수임. 쓰기가 버려질지 검증 에러가 될지 백엔드·드라이버마다 다를 수 있어
+	// 두 백엔드 모두 그리지 않음 — 실수가 화면에서 바로 보이게 함.
+	static bool warned = false;
+	if (!warned) Log::Error("%s : 읽기 전용 깊이 패스 (%s) 에서 깊이 쓰기 PSO 로 그림 — PSO 의 depthWrite 를 끌 것. 드로우를 건너뜀.",
+		caller, m_currentPass.debugName ? m_currentPass.debugName : "");
+	warned = true;
+	return false;
 }
 
 // ------------------------------------------------------------------ 렌더 패스
@@ -66,7 +79,9 @@ void D3D11CommandList::BeginRenderPass(const RenderPassDesc& desc)
 		UnbindShaderResourcesOf(desc.colors[i].texture);
 		UnbindUavsOf(desc.colors[i].texture);
 	}
-	if (desc.depth.texture.IsValid()) UnbindShaderResourcesOf(desc.depth.texture);
+	// 읽기 전용 깊이는 풀지 않음: 읽기 전용 DSV 와 같은 리소스의 SRV 는 동시에 바인딩될 수 있고 (런타임도 겹침으로 보지 않음),
+	// 이 패스의 PS 가 그 SRV 로 깊이를 읽음 (소프트 파티클). 남은 슬롯 기록은 다음 쓰기 패스가 이 줄에서 풂.
+	if (desc.depth.texture.IsValid() && !desc.depth.readOnly) UnbindShaderResourcesOf(desc.depth.texture);
 
 	// (2) 뷰를 모음. 뷰포트 기본 크기는 첫 attachment 에서 가져옴.
 	ID3D11RenderTargetView* rtvs[kMaxRenderTargets] = {};
@@ -90,8 +105,33 @@ void D3D11CommandList::BeginRenderPass(const RenderPassDesc& desc)
 		{
 			Log::Error("BeginRenderPass : 깊이 attachment 의 텍스처 핸들이 유효하지 않음 (%s).", desc.debugName ? desc.debugName : "");
 		}
+		else if (desc.depth.readOnly)
+		{
+			// 상태·load 검사는 경고만 하고 진행함 (D3D11 은 그래도 맞게 그려짐 — CheckSrvState 와 같은 태도).
+			static bool warnedState = false;
+			static bool warnedLoad = false;
+			if (texture->state != ResourceState::DepthRead && !warnedState)
+			{
+				warnedState = true;
+				Log::Error("BeginRenderPass : 읽기 전용 깊이 '%s' 가 %s 상태 — Barrier(tex, DepthRead) 가 빠졌음 (%s).", texture->name.c_str(), ToString(texture->state), desc.debugName ? desc.debugName : "");
+			}
+			if (desc.depth.load != LoadOp::Load && !warnedLoad)
+			{
+				warnedLoad = true;
+				Log::Error("BeginRenderPass : 읽기 전용 깊이는 LoadOp::Load 만 됨 — 지우지 않고 시작함 (%s).", desc.debugName ? desc.debugName : "");
+			}
+			// 만들지 못하면 깊이 없이 감. 쓰기 DSV 로 대신하면 위에서 풀지 않은 SRV 와 겹침.
+			dsv = texture->GetReadOnlyDSV(m_device->GetDevice());
+			if (width == 0) { width = texture->desc.width; height = texture->desc.height; }
+		}
 		else
 		{
+			static bool warnedState = false;
+			if (texture->state == ResourceState::DepthRead && !warnedState)
+			{
+				warnedState = true;
+				Log::Error("BeginRenderPass : 깊이 '%s' 가 DepthRead 상태인데 쓰기 패스임 — readOnly 를 켜거나 Barrier(tex, DepthWrite) (%s).", texture->name.c_str(), desc.debugName ? desc.debugName : "");
+			}
 			dsv = texture->GetDSV(m_device->GetDevice());
 			if (width == 0) { width = texture->desc.width; height = texture->desc.height; }
 		}
@@ -110,7 +150,7 @@ void D3D11CommandList::BeginRenderPass(const RenderPassDesc& desc)
 			context->ClearRenderTargetView(rtvs[i], desc.colors[i].clearColor);
 		}
 	}
-	if (dsv && desc.depth.load == LoadOp::Clear)
+	if (dsv && desc.depth.load == LoadOp::Clear && !desc.depth.readOnly)   // 읽기 전용 DSV 는 지울 수 없음
 	{
 		context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, desc.depth.clearDepth, desc.depth.clearStencil);
 	}
@@ -181,6 +221,8 @@ void D3D11CommandList::UnbindUavsOf(TextureHandle texture)
 
 void D3D11CommandList::CheckSrvState(const D3D11Texture* texture)
 {
+	// UnorderedAccess 만 거부함. DepthRead 는 SRV 읽기를 포함하는 상태라 통과 (읽기 전용 깊이 + 소프트 파티클·컴퓨트 충돌).
+	// Common 등은 D3D11 텍스처가 배리어 없이 머무는 기본 상태라 여기서 막지 않음.
 	static bool warned = false;
 	if (texture != nullptr && texture->state == ResourceState::UnorderedAccess)
 	{
@@ -229,9 +271,9 @@ void D3D11CommandList::UnbindUavsOf(BufferHandle buffer)
 void D3D11CommandList::CheckSrvState(const D3D11Buffer* buffer)
 {
 	static bool warned = false;
-	if (buffer != nullptr && (buffer->desc.bindFlags & BufferBind_UnorderedAccess) && buffer->state != ResourceState::ShaderResource)
+	if (buffer != nullptr && IsStateTrackedBuffer(buffer->desc) && buffer->state != ResourceState::ShaderResource)
 	{
-		if (!warned) Log::Error("SRV 로 읽는 UAV 버퍼 '%s' 가 %s 상태 — Barrier(buf, ShaderResource) 가 빠졌음 (프레임마다 Common 으로 돌아감).", buffer->name.c_str(), ToString(buffer->state));
+		if (!warned) Log::Error("SRV 로 읽는 UAV·간접 인자 버퍼 '%s' 가 %s 상태 — Barrier(buf, ShaderResource) 가 빠졌음 (프레임마다 Common 으로 돌아감).", buffer->name.c_str(), ToString(buffer->state));
 		warned = true;
 	}
 }
@@ -273,6 +315,8 @@ void D3D11CommandList::SetPipelineState(PipelineHandle handle)
 		return;
 	}
 	state->Bind(m_device->GetContext());
+	const DepthStencilDesc& ds = state->GetDesc().depthStencil;
+	m_pipelineDepthWrite = ds.depthEnable && ds.depthWrite;   // 테스트를 끄면 쓰기도 일어나지 않음
 }
 
 void D3D11CommandList::SetResourceSet(uint32_t setIndex, ResourceSetHandle handle)
@@ -323,6 +367,7 @@ void D3D11CommandList::SetResourceSet(uint32_t setIndex, ResourceSetHandle handl
 			break;
 		}
 		case BindingType::BufferResource:
+		case BindingType::RawBufferResource:   // raw 도 같은 경로 (GetSRV 가 뷰 종류를 고름)
 		{
 			// 구조체 버퍼. Dynamic 이면 이번 프레임 복제본의 SRV — UpdateBuffer 가 쓴 것과 같은 복제본임.
 			D3D11Buffer* buffer = m_device->GetBufferMutable(binding.buffer);
@@ -350,6 +395,7 @@ void D3D11CommandList::SetResourceSet(uint32_t setIndex, ResourceSetHandle handl
 		}
 		case BindingType::UnorderedAccess:
 		case BindingType::BufferUnorderedAccess:
+		case BindingType::RawBufferUnorderedAccess:
 			break;   // 컴퓨트 전용 (CreateBindingLayout 이 그래픽스 스테이지의 UAV 를 거부하므로 여기 오지 않음)
 		}
 	}
@@ -406,6 +452,7 @@ void D3D11CommandList::SetComputeResourceSet(uint32_t setIndex, ResourceSetHandl
 			break;
 		}
 		case BindingType::BufferResource:
+		case BindingType::RawBufferResource:
 		{
 			D3D11Buffer* buffer = m_device->GetBufferMutable(binding.buffer);
 			CheckSrvState(buffer);
@@ -431,6 +478,7 @@ void D3D11CommandList::SetComputeResourceSet(uint32_t setIndex, ResourceSetHandl
 			break;
 		}
 		case BindingType::BufferUnorderedAccess:
+		case BindingType::RawBufferUnorderedAccess:   // GetUAV 가 구조체·raw 뷰를 고름
 		{
 			D3D11Buffer* buffer = m_device->GetBufferMutable(binding.buffer);
 			CheckUavState(buffer);
@@ -459,6 +507,54 @@ void D3D11CommandList::Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t gro
 	}
 	if (groupsX == 0 || groupsY == 0 || groupsZ == 0) return;
 	m_device->GetContext()->Dispatch(groupsX, groupsY, groupsZ);
+	++m_stats.dispatches;
+}
+
+const D3D11Buffer* D3D11CommandList::GetIndirectArgs(BufferHandle handle, uint32_t offsetBytes, uint32_t argBytes, const char* caller)
+{
+	// D3D11 은 상태가 없지만 D3D12 와 같은 조건을 검사함 — 배리어가 빠진 호출은 D3D12 에서만 틀린 결과로 드러나기 때문.
+	static bool warnedInvalid = false;
+	static bool warnedOffset = false;
+	static bool warnedState = false;
+	const D3D11Buffer* buffer = m_device ? m_device->GetBuffer(handle) : nullptr;
+	if (buffer == nullptr || !(buffer->desc.bindFlags & BufferBind_IndirectArgs) || !buffer->buffers[0])
+	{
+		if (!warnedInvalid) Log::Error("%s : 인자 버퍼가 유효하지 않거나 BufferBind_IndirectArgs 로 만들지 않았음.", caller);
+		warnedInvalid = true;
+		return nullptr;
+	}
+	if (offsetBytes % 4 != 0 || static_cast<uint64_t>(offsetBytes) + argBytes > buffer->desc.size)
+	{
+		if (!warnedOffset) Log::Error("%s : 인자 오프셋 %u 가 4 의 배수가 아니거나 버퍼 '%s' (%u바이트) 범위 밖.", caller, offsetBytes, buffer->name.c_str(), buffer->desc.size);
+		warnedOffset = true;
+		return nullptr;
+	}
+	if (buffer->state != ResourceState::IndirectArgument && !warnedState)
+	{
+		// D3D11 에서는 그래도 맞게 그려지므로 경고만 하고 진행함 (Draw 의 SRV 상태 검사와 같은 태도).
+		warnedState = true;
+		Log::Error("%s : 인자 버퍼 '%s' 가 %s 상태 — Barrier(buf, IndirectArgument) 가 빠졌음.", caller, buffer->name.c_str(), ToString(buffer->state));
+	}
+	return buffer;
+}
+
+void D3D11CommandList::DispatchIndirect(BufferHandle args, uint32_t offsetBytes)
+{
+	static bool warnedInPass = false;
+	static bool warnedNoPipeline = false;
+	if (m_inPass)
+	{
+		ErrorOnce(warnedInPass, "DispatchIndirect : 렌더 패스 안에서 호출됨. EndRenderPass 뒤에 부를 것.");
+		return;
+	}
+	if (!m_computePipelineSet)
+	{
+		ErrorOnce(warnedNoPipeline, "DispatchIndirect : SetComputePipeline 이 먼저 필요함.");
+		return;
+	}
+	const D3D11Buffer* buffer = GetIndirectArgs(args, offsetBytes, 12, "DispatchIndirect");
+	if (buffer == nullptr) return;
+	m_device->GetContext()->DispatchIndirect(buffer->buffers[0].Get(), offsetBytes);
 	++m_stats.dispatches;
 }
 
@@ -498,6 +594,7 @@ void D3D11CommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndex, int
 		ErrorOnce(warnedOutside, "DrawIndexed : 렌더 패스 밖에서 드로우. BeginRenderPass 가 필요하다.");
 		return;
 	}
+	if (!CheckReadOnlyDepthDraw("DrawIndexed")) return;
 	m_device->GetContext()->DrawIndexed(indexCount, startIndex, baseVertex);
 }
 
@@ -509,7 +606,22 @@ void D3D11CommandList::Draw(uint32_t vertexCount, uint32_t startVertex)
 		ErrorOnce(warnedOutside, "Draw : 렌더 패스 밖에서 드로우. BeginRenderPass 가 필요하다.");
 		return;
 	}
+	if (!CheckReadOnlyDepthDraw("Draw")) return;
 	m_device->GetContext()->Draw(vertexCount, startVertex);
+}
+
+void D3D11CommandList::DrawInstancedIndirect(BufferHandle args, uint32_t offsetBytes)
+{
+	static bool warnedOutside = false;
+	if (!m_inPass)
+	{
+		ErrorOnce(warnedOutside, "DrawInstancedIndirect : 렌더 패스 밖에서 드로우. BeginRenderPass 가 필요하다.");
+		return;
+	}
+	if (!CheckReadOnlyDepthDraw("DrawInstancedIndirect")) return;
+	const D3D11Buffer* buffer = GetIndirectArgs(args, offsetBytes, 16, "DrawInstancedIndirect");
+	if (buffer == nullptr) return;
+	m_device->GetContext()->DrawInstancedIndirect(buffer->buffers[0].Get(), offsetBytes);
 }
 
 // ------------------------------------------------------------------ 전이·복사
@@ -521,6 +633,14 @@ void D3D11CommandList::Barrier(TextureHandle handle, ResourceState after)
 	{
 		static bool warned = false;
 		ErrorOnce(warned, "Barrier : 유효하지 않은 TextureHandle.");
+		return;
+	}
+	if (after == ResourceState::DepthRead && !(texture->desc.bindFlags & TextureBind_DepthStencil))
+	{
+		// D3D12 의 DEPTH_READ 는 깊이 리소스에만 쓸 수 있음. 같은 검사를 D3D11 에서도 해 두 백엔드가 같게 거부함.
+		static bool warnedDepth = false;
+		if (!warnedDepth) Log::Error("Barrier : 텍스처 '%s' 는 TextureBind_DepthStencil 이 아니라 DepthRead 로 전이할 수 없음.", texture->name.c_str());
+		warnedDepth = true;
 		return;
 	}
 	// D3D11 은 드라이버가 상태를 추적하므로 할 일이 없음. D3D12 와 같은 값을 기록만 해 둠 (디버그 표시용).
@@ -551,10 +671,11 @@ void D3D11CommandList::Barrier(BufferHandle handle, ResourceState after)
 		ErrorOnce(warned, "Barrier : 유효하지 않은 BufferHandle.");
 		return;
 	}
-	if (after != ResourceState::Common && after != ResourceState::ShaderResource && after != ResourceState::UnorderedAccess)
+	if (after != ResourceState::Common && after != ResourceState::ShaderResource && after != ResourceState::UnorderedAccess &&
+		after != ResourceState::IndirectArgument)
 	{
 		static bool warnedState = false;
-		if (!warnedState) Log::Error("Barrier : 버퍼 '%s' 에 쓸 수 없는 상태 %s (Common · ShaderResource · UnorderedAccess 만).", buffer->name.c_str(), ToString(after));
+		if (!warnedState) Log::Error("Barrier : 버퍼 '%s' 에 쓸 수 없는 상태 %s (Common · ShaderResource · UnorderedAccess · IndirectArgument 만).", buffer->name.c_str(), ToString(after));
 		warnedState = true;
 		return;
 	}
@@ -565,10 +686,18 @@ void D3D11CommandList::Barrier(BufferHandle handle, ResourceState after)
 		warnedFlag = true;
 		return;
 	}
+	if (after == ResourceState::IndirectArgument && !(buffer->desc.bindFlags & BufferBind_IndirectArgs))
+	{
+		static bool warnedIndirect = false;
+		if (!warnedIndirect) Log::Error("Barrier : 버퍼 '%s' 는 BufferBind_IndirectArgs 로 만들지 않았음.", buffer->name.c_str());
+		warnedIndirect = true;
+		return;
+	}
 	if (buffer->state == after) return;
-	// 텍스처와 같은 규칙: UAV 상태에 드나들 때 겹치는 바인딩을 풂.
+	// 텍스처와 같은 규칙: UAV 상태에 드나들 때 겹치는 바인딩을 풂. 간접 인자로 읽을 때도 UAV 에 남아 있으면 안 됨 —
+	// 런타임이 인자 버퍼와 겹치는 CS UAV 를 NULL 로 만들고 경고함 (UAV 상태를 거치지 않은 경로도 있으니 따로 풂).
 	if (after == ResourceState::UnorderedAccess) UnbindShaderResourcesOf(handle);
-	if (buffer->state == ResourceState::UnorderedAccess) UnbindUavsOf(handle);
+	if (buffer->state == ResourceState::UnorderedAccess || after == ResourceState::IndirectArgument) UnbindUavsOf(handle);
 	++m_stats.barriers;
 	TrackBufferState(handle, buffer, after);
 }

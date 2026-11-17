@@ -25,11 +25,18 @@ enum BufferBind : uint8_t
 	BufferBind_Vertex         = 1 << 0,
 	BufferBind_Index          = 1 << 1,
 	BufferBind_Constant       = 1 << 2,
-	BufferBind_ShaderResource = 1 << 3,   // StructuredBuffer. stride 필요.
-	// 컴퓨트 셰이더가 RWStructuredBuffer 로 씀 (u#). Default usage + stride > 0 만 가능 (두 백엔드의 CreateBuffer 가
-	// 같은 규칙으로 거부함). 상태(ResourceState)를 버퍼마다 추적하므로 쓰기 전 Barrier(buf, UnorderedAccess),
-	// 읽기 전 Barrier(buf, ShaderResource) 가 필요함.
+	BufferBind_ShaderResource = 1 << 3,   // StructuredBuffer (stride 필요). Raw 와 함께면 ByteAddressBuffer (stride 0).
+	// 컴퓨트 셰이더가 RWStructuredBuffer 로 씀 (u#). Default usage + stride > 0 만 가능 (Raw 와 함께면 RWByteAddressBuffer,
+	// stride 0). 두 백엔드의 CreateBuffer 가 같은 규칙(ValidateBufferDesc)으로 거부함. 상태(ResourceState)를 버퍼마다
+	// 추적하므로 쓰기 전 Barrier(buf, UnorderedAccess), 읽기 전 Barrier(buf, ShaderResource) 가 필요함.
 	BufferBind_UnorderedAccess = 1 << 4,
+	// ByteAddressBuffer / RWByteAddressBuffer 뷰 (BindingType::RawBufferResource / RawBufferUnorderedAccess). 구조체
+	// 버퍼가 아님: stride 0, 크기는 4 의 배수, Default 전용. ShaderResource · UnorderedAccess · IndirectArgs 와만 겸함.
+	// 따로 둔 이유: D3D11 은 간접 인자 버퍼(DRAWINDIRECT_ARGS)를 구조체 버퍼로 만들 수 없음 — GPU 가 인자를 쓰려면 raw UAV 여야 함.
+	BufferBind_Raw = 1 << 5,
+	// DrawInstancedIndirect / DispatchIndirect 의 인자 버퍼가 될 수 있음. Default 전용, 이 엔진에서는 BufferBind_Raw 필수
+	// (정점·인덱스·상수 버퍼와 겸할 수 없음). 인자를 읽기 전 Barrier(buf, IndirectArgument) 가 필요함.
+	BufferBind_IndirectArgs = 1 << 6,
 };
 
 struct BufferDesc
@@ -40,6 +47,35 @@ struct BufferDesc
 	uint32_t stride = 0;                    // 정점 버퍼: 정점 크기. 구조화 버퍼: 원소 크기.
 	const char* debugName = nullptr;        // Debug Layer 메시지에 나올 이름. 생성 시에만 읽음.
 };
+
+// 버퍼 Desc 의 usage·bindFlags·stride 조합 검사. 맞으면 nullptr, 어긋나면 이유. 두 백엔드의 CreateBuffer 가 같은
+// 규칙으로 거부하도록 여기 둠 (텍스처의 CanBeUnorderedAccess 와 같은 이유). Dynamic 은 GPU 가 쓸 수 없고 D3D12 에서는
+// 리소스가 없는 링 조각이라 UAV·Raw·IndirectArgs 가 될 수 없음.
+constexpr const char* ValidateBufferDesc(const BufferDesc& desc)
+{
+	const bool raw = (desc.bindFlags & BufferBind_Raw) != 0;
+	if ((desc.bindFlags & BufferBind_IndirectArgs) && !raw) return "IndirectArgs 버퍼는 BufferBind_Raw 가 필요함";
+	if (raw)
+	{
+		if (desc.usage != BufferUsage::Default) return "Raw 버퍼는 Default usage 만 가능";
+		if (desc.stride != 0) return "Raw 버퍼는 stride 가 0 이어야 함 (구조체 버퍼를 겸할 수 없음)";
+		if (desc.size % 4 != 0) return "Raw 버퍼 크기는 4 의 배수여야 함";
+		if (desc.bindFlags & (BufferBind_Vertex | BufferBind_Index | BufferBind_Constant)) return "Raw·IndirectArgs 버퍼는 정점·인덱스·상수 버퍼를 겸할 수 없음";
+	}
+	if (desc.bindFlags & BufferBind_UnorderedAccess)
+	{
+		if (desc.usage != BufferUsage::Default) return "UAV 버퍼는 Default usage 만 가능";
+		if (!raw && desc.stride == 0) return "구조체 UAV 버퍼는 stride > 0 이 필요함";
+	}
+	return nullptr;
+}
+
+// 상태를 Barrier 로 명시해야 하는 버퍼 (UAV 또는 간접 인자). 그 밖의 Default 버퍼는 쓰기가 없어 Common 그대로 읽힘
+// (D3D12 의 암묵 승격). SRV 로 읽기 전 ShaderResource 상태인지 검사하는 대상도 이것임.
+constexpr bool IsStateTrackedBuffer(const BufferDesc& desc)
+{
+	return (desc.bindFlags & (BufferBind_UnorderedAccess | BufferBind_IndirectArgs)) != 0;
+}
 
 enum TextureBind : uint8_t
 {

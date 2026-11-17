@@ -31,9 +31,27 @@ struct D3D11Buffer
 	}
 
 	// HLSL StructuredBuffer<T> 로 읽는 뷰. 원소 수 = size / stride.
+	// Raw 버퍼(BufferBind_Raw)면 ByteAddressBuffer 뷰: R32_TYPELESS + BUFFEREX RAW, 원소 = 4바이트 단위 (raw 뷰는
+	// BUFFEREX 차원으로만 만들 수 있음). raw 버퍼는 Default 전용이라 [0] 하나뿐임.
 	ID3D11ShaderResourceView* GetSRV(ID3D11Device* device, uint32_t frameIndex)
 	{
-		if (!(desc.bindFlags & BufferBind_ShaderResource) || desc.stride == 0) return nullptr;
+		if (!(desc.bindFlags & BufferBind_ShaderResource)) return nullptr;
+		if (desc.bindFlags & BufferBind_Raw)
+		{
+			if (!srvs[0] && buffers[0])
+			{
+				D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
+				viewDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+				viewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+				viewDesc.BufferEx.FirstElement = 0;
+				viewDesc.BufferEx.NumElements = desc.size / 4;
+				viewDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
+				const HRESULT hr = device->CreateShaderResourceView(buffers[0].Get(), &viewDesc, srvs[0].GetAddressOf());
+				if (FAILED(hr)) Log::Error("raw 버퍼 SRV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+			}
+			return srvs[0].Get();
+		}
+		if (desc.stride == 0) return nullptr;
 		const uint32_t slot = (desc.usage == BufferUsage::Dynamic) ? (frameIndex % kFrameCount) : 0;
 		if (!srvs[slot] && buffers[slot])
 		{
@@ -49,17 +67,19 @@ struct D3D11Buffer
 	}
 
 	// HLSL RWStructuredBuffer<T> 로 쓰는 뷰. 원소 수 = size / stride.
+	// Raw 버퍼면 RWByteAddressBuffer 뷰: R32_TYPELESS + UAV_FLAG_RAW, 원소 = 4바이트 단위.
 	ID3D11UnorderedAccessView* GetUAV(ID3D11Device* device)
 	{
-		if (!(desc.bindFlags & BufferBind_UnorderedAccess) || desc.stride == 0 || !buffers[0]) return nullptr;
+		const bool raw = (desc.bindFlags & BufferBind_Raw) != 0;
+		if (!(desc.bindFlags & BufferBind_UnorderedAccess) || (!raw && desc.stride == 0) || !buffers[0]) return nullptr;
 		if (!uav)
 		{
 			D3D11_UNORDERED_ACCESS_VIEW_DESC viewDesc = {};
-			viewDesc.Format = DXGI_FORMAT_UNKNOWN;
+			viewDesc.Format = raw ? DXGI_FORMAT_R32_TYPELESS : DXGI_FORMAT_UNKNOWN;
 			viewDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
 			viewDesc.Buffer.FirstElement = 0;
-			viewDesc.Buffer.NumElements = desc.size / desc.stride;
-			viewDesc.Buffer.Flags = 0;
+			viewDesc.Buffer.NumElements = raw ? desc.size / 4 : desc.size / desc.stride;
+			viewDesc.Buffer.Flags = raw ? D3D11_BUFFER_UAV_FLAG_RAW : 0;
 			const HRESULT hr = device->CreateUnorderedAccessView(buffers[0].Get(), &viewDesc, uav.GetAddressOf());
 			if (FAILED(hr)) Log::Error("구조체 버퍼 UAV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
 		}
@@ -105,6 +125,7 @@ struct D3D11Texture
 	ComPtr<ID3D11RenderTargetView> rtv;       // desc.format 그대로
 	ComPtr<ID3D11RenderTargetView> rtvSrgb;   // *_UNORM_SRGB 뷰. 이 뷰로 백버퍼에 쓰면 하드웨어가 선형→sRGB로 인코딩함
 	ComPtr<ID3D11DepthStencilView> dsv;
+	ComPtr<ID3D11DepthStencilView> dsvReadOnly;   // READ_ONLY_DEPTH(|STENCIL). 같은 텍스처의 SRV 와 동시에 바인딩 가능
 	ComPtr<ID3D11ShaderResourceView> srv;
 	std::vector<ComPtr<ID3D11UnorderedAccessView>> uavs;   // 밉 레벨마다 하나 (TextureBind_UnorderedAccess). 처음 요청될 때 만듦
 
@@ -154,6 +175,25 @@ struct D3D11Texture
 			if (FAILED(hr)) Log::Error("DSV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
 		}
 		return dsv.Get();
+	}
+
+	// 읽기 전용 DSV (DepthAttachment::readOnly). 플래그를 넣어야 해서 nullptr desc 를 쓸 수 없음 — 포맷도 명시함.
+	// 스텐실이 있는 포맷은 스텐실 평면도 읽기 전용으로 둠: 쓰기 가능 평면이 남으면 런타임이 같은 리소스의 SRV 를
+	// 출력과 겹친다고 볼 수 있기 때문.
+	ID3D11DepthStencilView* GetReadOnlyDSV(ID3D11Device* device)
+	{
+		if (!dsvReadOnly && texture && (desc.bindFlags & TextureBind_DepthStencil))
+		{
+			const DXGI_FORMAT format = D3D11Convert::ToDXGI(desc.format);
+			D3D11_DEPTH_STENCIL_VIEW_DESC viewDesc = {};
+			viewDesc.Format = format;
+			viewDesc.ViewDimension = desc.sampleCount > 1 ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
+			viewDesc.Flags = D3D11_DSV_READ_ONLY_DEPTH;
+			if (format == DXGI_FORMAT_D24_UNORM_S8_UINT) viewDesc.Flags |= D3D11_DSV_READ_ONLY_STENCIL;
+			const HRESULT hr = device->CreateDepthStencilView(texture.Get(), &viewDesc, dsvReadOnly.GetAddressOf());
+			if (FAILED(hr)) Log::Error("읽기 전용 DSV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+		}
+		return dsvReadOnly.Get();
 	}
 
 	ID3D11ShaderResourceView* GetSRV(ID3D11Device* device)

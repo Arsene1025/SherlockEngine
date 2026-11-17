@@ -3,6 +3,8 @@
 #include "RHI/Device.h"
 #include "RHI/CommandList.h"
 #include "RHI/ResourceDesc.h"
+#include "RHI/BindingTypes.h"
+#include "Graphics/ShaderConstants.h"   // ParticleCollisionConstants
 #include "Core/Log.h"
 #include <string>
 
@@ -47,6 +49,20 @@ bool Renderer::CreateViewTarget(ViewTarget& view, uint32_t width, uint32_t heigh
 		.debugName = depthName.c_str(),
 	};
 	view.depth = m_device->CreateTexture(depth);
+	if (view.depth.IsValid())
+	{
+		// 파티클이 이 뷰의 깊이를 읽는 셋. 깊이를 다시 만들면 (크기 변경) 셋도 같이 다시 만듦.
+		if (!m_particleCollisionCB.IsValid())
+		{
+			m_particleCollisionCB = m_device->CreateBuffer(BufferDesc{ .size = sizeof(ParticleCollisionConstants), .usage = BufferUsage::Dynamic,
+				.bindFlags = BufferBind_Constant, .debugName = "CB_ParticleCollision" });
+		}
+		view.particleDepthSet = m_device->CreateResourceSet(ResourceSetDesc{
+			.layout = m_layouts[Layout_ParticleDepth], .bindings = { { .texture = view.depth } }, .debugName = "Set_ParticleDepth" });
+		view.particleCollideSet = m_device->CreateResourceSet(ResourceSetDesc{
+			.layout = m_layouts[Layout_ParticleCollide], .bindings = { { .buffer = m_particleCollisionCB }, { .texture = view.depth } },
+			.debugName = "Set_ParticleCollide" });
+	}
 
 	// 씬 패스가 그리는 FP16 텍스처와, 톤 패스·후처리가 그것을 읽는 셋 (Layout_Post: b0, b4, t13, s6).
 	const TextureDesc hdr{
@@ -82,6 +98,8 @@ void Renderer::DestroyViewTarget(ViewTarget& view)
 		// D3D12 는 지연 해제라 이미 기록된 명령(이번 프레임의 ImGui 드로우 등)이 읽어도 안전함. D3D11 은
 		// 참조 카운트로 처리됨.
 		if (view.hdrSet.IsValid()) m_device->DestroyResourceSet(view.hdrSet);
+		if (view.particleDepthSet.IsValid()) m_device->DestroyResourceSet(view.particleDepthSet);
+		if (view.particleCollideSet.IsValid()) m_device->DestroyResourceSet(view.particleCollideSet);
 		if (view.hdr.IsValid()) m_device->DestroyTexture(view.hdr);
 		if (view.depth.IsValid()) m_device->DestroyTexture(view.depth);
 		if (view.color.IsValid()) m_device->DestroyTexture(view.color);

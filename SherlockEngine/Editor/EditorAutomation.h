@@ -20,6 +20,9 @@
 //   --stop-at=N           N 프레임째 StopPlay (스냅샷 복원)
 //   --add-component=Name  10 프레임째 선택 오브젝트에 컴포넌트 추가 (Inspector 의 Add Component 와 같은 경로)
 //   --compute-blur=1|0    시작할 때 가우시안 블러 경로 (1 = 컴퓨트 (기본), 0 = PS). --exit-after 없이도 동작. 게임 exe 도 같은 인자
+//   --particle-step=<초>  파티클을 프레임마다 이 시간만큼 진행 (예: 0.0166667). 실제 시간이 아니라 프레임 수에만 의존하므로
+//                         스크린샷이 실행마다 같음. --exit-after 없이도 동작. 게임 exe 도 같은 인자
+//   --particle-sort=0     알파 파티클 (blendMode 1) 을 정렬하지 않고 그림 — 정렬 효과 비교용. 게임 exe 도 같은 인자
 struct EditorAutomation
 {
 	bool active = false;

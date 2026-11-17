@@ -51,6 +51,14 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] =
 	{ L"DebugLinePixelShader.hlsl",   "PS_Line",       ShaderStage::Pixel,  "DebugLinePS" },
 	{ L"BlurComputeShader.hlsl",      "CS_Blur",       ShaderStage::Compute, "BlurCS" },        // 가우시안 블러 한 방향 (컴퓨트 경로)
 	{ L"BlurWeightsComputeShader.hlsl", "CS_BlurWeights", ShaderStage::Compute, "BlurWeightsCS" }, // 블러 가중치 → 구조체 버퍼 (u0)
+	{ L"ParticleResetComputeShader.hlsl", "CS_ParticleReset", ShaderStage::Compute, "ParticleResetCS" }, // 새 버퍼: 전부 죽음, 사망 목록 = 모든 슬롯
+	{ L"ParticleSimComputeShader.hlsl",   "CS_ParticleSim",   ShaderStage::Compute, "ParticleSimCS" },   // 생존 목록 적분 (간접 디스패치)
+	{ L"ParticleArgsComputeShader.hlsl",  "CS_ParticleArgs",  ShaderStage::Compute, "ParticleArgsCS" },  // 생성 수 확정, 간접 인자
+	{ L"ParticleEmitComputeShader.hlsl",  "CS_ParticleEmit",  ShaderStage::Compute, "ParticleEmitCS" },  // 사망 목록 → 새 파티클
+	{ L"ParticleSortInitComputeShader.hlsl", "CS_ParticleSortInit", ShaderStage::Compute, "ParticleSortInitCS" }, // 알파: 생존 목록 → (뷰 z, 번호)
+	{ L"ParticleSortStepComputeShader.hlsl", "CS_ParticleSortStep", ShaderStage::Compute, "ParticleSortStepCS" }, // 알파: 바이토닉 한 단계
+	{ L"ParticleVertexShader.hlsl",   "VS_Particle",   ShaderStage::Vertex, "ParticleVS" },     // 파티클 빌보드 (t21 + t22 생존 목록, SV_InstanceID)
+	{ L"ParticlePixelShader.hlsl",    "PS_Particle",   ShaderStage::Pixel,  "ParticlePS" },
 };
 
 struct Renderer::PassInfo
@@ -72,6 +80,7 @@ const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] =
 	{ "MainSkin",   Shader_BasicSkinVS,  Shader_BasicPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
 	{ "ShadowSkin", Shader_ShadowSkinVS, Shader_Count,   { Layout_Frame, Layout_Object },                  2 },
 	{ "DebugLine",  Shader_DebugLineVS,  Shader_DebugLinePS, { Layout_Frame },                             1 },
+	{ "Particle",   Shader_ParticleVS,   Shader_ParticlePS,  { Layout_Frame, Layout_ParticleDraw, Layout_ParticleDepth }, 3 },
 };
 
 struct Renderer::ComputePassInfo
@@ -86,6 +95,12 @@ const Renderer::ComputePassInfo Renderer::kComputePasses[Renderer::ComputePass_C
 {
 	{ "BlurCompute", Shader_BlurCS, { Layout_BlurCompute }, 1 },
 	{ "BlurWeights", Shader_BlurWeightsCS, { Layout_BlurWeights }, 1 },
+	{ "ParticleReset", Shader_ParticleResetCS, { Layout_ParticleSim }, 1 },   // 셰이더마다 쓰는 슬롯만 다름
+	{ "ParticleSim",   Shader_ParticleSimCS,   { Layout_ParticleStep, Layout_ParticleCollide }, 2 },  // 인자 버퍼를 바인딩하지 않는 레이아웃 (아래 Layout_ParticleStep)
+	{ "ParticleArgs",  Shader_ParticleArgsCS,  { Layout_ParticleSim }, 1 },
+	{ "ParticleEmit",  Shader_ParticleEmitCS,  { Layout_ParticleSim }, 1 },
+	{ "ParticleSortInit", Shader_ParticleSortInitCS, { Layout_ParticleSort, Layout_ParticleSortStep }, 2 },
+	{ "ParticleSortStep", Shader_ParticleSortStepCS, { Layout_ParticleSort, Layout_ParticleSortStep }, 2 },
 };
 
 namespace
@@ -106,6 +121,10 @@ namespace
 		{ "ShadowPass", sizeof(ShadowPassConstants) },
 		{ "Shadows",    sizeof(ShadowConstants) },
 		{ "Skin",       sizeof(SkinConstants) },
+		{ "ParticleEmitter", sizeof(ParticleEmitterConstants) },
+		{ "ParticleCollision", sizeof(ParticleCollisionConstants) },
+		{ "ParticleSortView", sizeof(ParticleSortViewConstants) },
+		{ "ParticleSortStep", sizeof(ParticleSortStepConstants) },
 	};
 
 	// 레지스터 문자. 텍스처와 구조체 버퍼는 같은 t# 공간을 씀.
@@ -117,6 +136,7 @@ namespace
 		case BindingType::Sampler:        return 's';
 		case BindingType::UnorderedAccess: return 'u';
 		case BindingType::BufferUnorderedAccess: return 'u';
+		case BindingType::RawBufferUnorderedAccess: return 'u';
 		default:                          return 't';
 		}
 	}
@@ -309,6 +329,68 @@ bool Renderer::CreateLayouts()
 	weightsLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotPostParams);          // b4
 	weightsLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotBlurWeights); // u0
 
+	// 파티클 시뮬레이션 셋: b8 (이미터 상수), u0~u5 (파티클·사망 목록·생존 목록 둘·개수·간접 인자). 이미터마다
+	// 두 벌 (생존 목록 입출력을 바꾼 것). 파티클 컴퓨트 패스 넷이 같이 씀.
+	BindingLayoutDesc& particleSimLayout = m_layoutDescs[Layout_ParticleSim];
+	particleSimLayout = BindingLayoutDesc{};
+	particleSimLayout.debugName = "Layout_ParticleSim";
+	particleSimLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticle);                  // b8
+	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticles);         // u0
+	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleDead);      // u1
+	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleAliveIn);   // u2
+	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleAliveOut);  // u3
+	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleCounters);  // u4
+	particleSimLayout.Add(BindingType::RawBufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleArgs);   // u5
+
+	// 파티클 시뮬레이션(적분) 셋: 위에서 u5 만 뺀 것. 적분은 간접 디스패치라 그동안 인자 버퍼가 IndirectArgument 상태이고,
+	// 그 상태의 버퍼를 UAV 로 바인딩해 두면 안 됨 (셰이더가 u5 를 쓰지 않아도 바인딩 자체가 위험 — 두 백엔드가 거부함).
+	BindingLayoutDesc& particleStepLayout = m_layoutDescs[Layout_ParticleStep];
+	particleStepLayout = BindingLayoutDesc{};
+	particleStepLayout.debugName = "Layout_ParticleStep";
+	for (uint32_t i = 0; i + 1 < particleSimLayout.slotCount; ++i)
+	{
+		particleStepLayout.Add(particleSimLayout.slots[i].type, particleSimLayout.slots[i].stageMask, particleSimLayout.slots[i].reg);
+	}
+
+	// 파티클 그리기 셋 (셋 1, 프레임 셋 다음): b8 (VS 크기·색), t21 (파티클 버퍼), t22 (이번 프레임 생존 목록).
+	BindingLayoutDesc& particleDrawLayout = m_layoutDescs[Layout_ParticleDraw];
+	particleDrawLayout = BindingLayoutDesc{};
+	particleDrawLayout.debugName = "Layout_ParticleDraw";
+	particleDrawLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex | ShaderStageMask_Pixel, kCBSlotParticle);   // b8 (PS: 소프트·블렌드 모드)
+	particleDrawLayout.Add(BindingType::BufferResource, ShaderStageMask_Vertex, kSRVSlotParticles);     // t21
+	particleDrawLayout.Add(BindingType::BufferResource, ShaderStageMask_Vertex, kSRVSlotParticleAlive); // t22
+
+	// 파티클 깊이 셋 (셋 2, 뷰마다): t23 = 그 뷰의 깊이. 파티클 패스는 깊이를 읽기 전용 DSV 로 테스트하면서 같은
+	// 깊이를 PS 가 읽음 (소프트 파티클).
+	BindingLayoutDesc& particleDepthLayout = m_layoutDescs[Layout_ParticleDepth];
+	particleDepthLayout = BindingLayoutDesc{};
+	particleDepthLayout.debugName = "Layout_ParticleDepth";
+	particleDepthLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneDepth);   // t23
+
+	// 파티클 충돌 셋 (적분 패스의 셋 1, 뷰마다 — 메인 뷰 것만 씀): b9 (메인 카메라), t23 (깊이).
+	BindingLayoutDesc& particleCollideLayout = m_layoutDescs[Layout_ParticleCollide];
+	particleCollideLayout = BindingLayoutDesc{};
+	particleCollideLayout.debugName = "Layout_ParticleCollide";
+	particleCollideLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticleCollision);   // b9
+	particleCollideLayout.Add(BindingType::ShaderResource, ShaderStageMask_Compute, kSRVSlotSceneDepth);         // t23
+
+	// 알파 이미터 정렬 셋 (셋 0, 이미터·뷰·parity 마다): b8 (capacity), b10 (뷰 행렬), t21 파티클, t22 생존 목록, t24 개수,
+	// u0 키, u1 번호. 단계 셋 (셋 1, 단계마다): b11 (k, j).
+	BindingLayoutDesc& particleSortLayout = m_layoutDescs[Layout_ParticleSort];
+	particleSortLayout = BindingLayoutDesc{};
+	particleSortLayout.debugName = "Layout_ParticleSort";
+	particleSortLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticle);            // b8
+	particleSortLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticleSortView);    // b10
+	particleSortLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotParticles);          // t21
+	particleSortLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotParticleAlive);      // t22
+	particleSortLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotParticleCounters);   // t24
+	particleSortLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotSortKeys);    // u0
+	particleSortLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotSortIndices); // u1
+	BindingLayoutDesc& particleSortStepLayout = m_layoutDescs[Layout_ParticleSortStep];
+	particleSortStepLayout = BindingLayoutDesc{};
+	particleSortStepLayout.debugName = "Layout_ParticleSortStep";
+	particleSortStepLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticleSortStep); // b11
+
 	for (uint32_t i = 0; i < Layout_Count; ++i)
 	{
 		m_layouts[i] = m_device->CreateBindingLayout(m_layoutDescs[i]);
@@ -372,6 +454,25 @@ void Renderer::BuildPassDescs()
 	sky.depthStencil.depthWrite = false;
 	sky.depthStencil.depthFunc = CompareFunc::LessEqual;
 
+	// 파티클: 정점 입력 없음 (SV_VertexID), 컬링 없음 (빌보드), 깊이 테스트만 (불투명 뒤에 가려지되 서로는 가리지 않음),
+	// 가산 블렌딩 — 순서와 상관없이 더해지므로 정렬하지 않음. 알파는 기존 값 유지.
+	{
+		PipelineStateDesc& particle = m_passDesc[Pass_Particle];
+		particle.rasterizer.cull = CullMode::None;
+		particle.depthStencil.depthEnable = true;
+		particle.depthStencil.depthWrite = false;
+		particle.blend.rt[0] = RenderTargetBlendDesc{
+			.blendEnable = true,
+			// 프리멀티플라이드: 가산 이미터는 알파 0 을 내보내 목적지 × 1 + 색 (예전의 One + One 과 같은 결과),
+			// 알파 이미터는 색 × 알파와 알파를 내보내 목적지 × (1 − 알파) + 색. PSO 하나로 두 모드를 그림.
+			.srcColor = BlendFactor::One, .dstColor = BlendFactor::InvSrcAlpha, .colorOp = BlendOp::Add,
+			.srcAlpha = BlendFactor::Zero, .dstAlpha = BlendFactor::One, .alphaOp = BlendOp::Add,
+		};
+		particle.rtvFormats[0] = Format::R16G16B16A16_FLOAT;   // 메인 패스와 같은 타깃 (FP16 HDR + D24S8)
+		particle.rtvCount = 1;
+		particle.dsvFormat = Format::D24_UNORM_S8_UINT;
+	}
+
 	// 톤 패스와 블러·블룸: 풀스크린 삼각형, 깊이 없음 (dsvFormat 이 Unknown 이어야 깊이 없는 패스에 쓸 수 있음).
 	for (PassId id : { Pass_Tonemap, Pass_Post })
 	{
@@ -395,6 +496,7 @@ void Renderer::BuildPassDescs()
 	m_shadowPipelines.clear();
 	m_skyPipeline = PipelineHandle{};
 	m_debugLinePipeline = PipelineHandle{};
+	m_particlePipeline = PipelineHandle{};
 	for (PipelineHandle& handle : m_tonemapPipelines) handle = PipelineHandle{};
 	for (PipelineHandle& handle : m_postPipelines) handle = PipelineHandle{};
 	for (ComputePipelineHandle& handle : m_computePipelines) handle = ComputePipelineHandle{};
@@ -821,6 +923,7 @@ void Renderer::Shutdown()
 
 	m_device->DestroyResourceSet(m_frameSet);
 	m_device->DestroyResourceSet(m_objectSet);
+	DestroyGpuEmitters();
 	m_device->DestroyResourceSet(m_blurWeightsSet);
 	m_frameSet = m_objectSet = m_blurWeightsSet = ResourceSetHandle{};
 	for (BindingLayoutHandle& layout : m_layouts)
@@ -946,6 +1049,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		m_stats.drawItems = static_cast<uint32_t>(m_drawList.size());
 	}
 	UploadDebugLines(debugDraw);   // 디버그 선(DebugDraw 가 모은 것)을 동적 정점 버퍼에 올림. 프레임마다 한 번은 써야 함
+	UpdateParticleEmitters(totalTime, camera);   // BuildDrawList 가 모은 이미터의 버퍼·셋을 맞추고 b8 을 올림 (업로드 구간 안)
 
 	m_device->EndResourceUploads();
 
@@ -956,6 +1060,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 
 	// 프레임 셋(b0, b2, t8, s4, t9, s5, t10~t12)과 오브젝트 셋(b1)을 바인딩함. 그림자 패스는 t8(그림자 맵)을
 	// DSV 로 쓰므로 BeginRenderPass 가 t8 SRV 바인딩을 해제함. 씬 패스에서 셋을 다시 바인딩해 t8 을 복구함.
+	// (파티클 시뮬레이션은 메인 씬 패스 안, 불투명 패스와 파티클 패스 사이에서 함 — RenderScenePass.)
 	cmd.SetResourceSet(kSetFrame, m_frameSet);
 	cmd.SetResourceSet(kSetObject, m_objectSet);
 
@@ -974,7 +1079,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	{
 		GpuProfileScope gpuScope(cmd, "MainPass");
 		ProfileScope cpuScope("MainPass");
-		RenderScenePass(cmd, scene, m_mainView, camera, "MainPass");
+		RenderScenePass(cmd, scene, m_mainView, camera, "MainPass", 0);
 	}
 	// 모든 후처리 셋이 t20 에 가중치 버퍼를 꽂음. 버퍼 상태는 프레임마다 Common 으로 돌아가므로 첫 후처리 패스 전에
 	// ShaderResource 로 둠 (블러가 꺼진 프레임에도 — 톤 패스가 같은 셋 레이아웃을 바인딩함).
@@ -999,7 +1104,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		// (컬링은 그 카메라의 절두체로 다시 함).
 		GpuProfileScope gpuScope(cmd, "PreviewPass");
 		UploadPerFrameConstants(*m_previewCamera, totalTime);
-		RenderScenePass(cmd, scene, m_previewView, *m_previewCamera, "PreviewPass");
+		RenderScenePass(cmd, scene, m_previewView, *m_previewCamera, "PreviewPass", 1);
 		ApplyHdrEffects(cmd, m_previewView, false);
 		RenderTonemapPass(cmd, m_previewView.hdrSet, m_previewView.color, ResourceState::ShaderResource, "PreviewTonemapPass",
 			m_previewView.width, m_previewView.height, m_previewView.width, m_previewView.height);
@@ -1088,8 +1193,10 @@ void Renderer::BuildDrawList(const Scene& scene)
 	XMStoreFloat4x4(&m_skinScratch[0], XMMatrixIdentity());
 	m_device->UpdateBuffer(m_skinCB, m_skinScratch.data(), static_cast<uint32_t>(sizeof(XMFLOAT4X4)));
 
+	m_frameEmitters.clear();
 	const auto addObject = [&](const GameObject& object, const XMMATRIX& world)
 	{
+		CollectEmitter(object, world);   // 메시가 없는 오브젝트도 이미터일 수 있으므로 아래 return 보다 먼저
 		const Mesh* mesh = object.GetMesh();
 		if (mesh == nullptr || !mesh->IsValid()) return;
 		const GpuMesh* gpuMesh = GetOrCreateGpuMesh(*mesh);
@@ -1237,11 +1344,11 @@ void Renderer::UploadObjectConstants(uint32_t object)
 	}
 }
 
-void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTarget& view, const Camera& camera, const char* debugName)
+void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTarget& view, const Camera& camera, const char* debugName, uint32_t viewIndex)
 {
 	// HDR: 씬은 선형 FP16 텍스처(view.hdr)에 그림. 최종 출력(씬 뷰 텍스처 또는 백버퍼)과 그 상태 전이는 톤
-	// 패스가 맡음. 깊이는 뷰가 가진 텍스처 — 에디터든 게임 모드든 같은 경로임. 패스가 끝나도 DepthWrite 로
-	// 두고, 깊이를 읽는 패스(SSAO·디퍼드 라이팅)가 생기면 그 패스가 ShaderResource 로 전이해 읽으면 됨.
+	// 패스가 맡음. 깊이는 뷰가 가진 텍스처 — 에디터든 게임 모드든 같은 경로임. 파티클·디버그 선이 없으면
+	// 깊이는 DepthWrite 로 끝나고, 있으면 두 번째 패스 때문에 DepthRead 로 끝남 (다음 프레임 이 함수 처음의 배리어가 되돌림).
 	cmd.Barrier(view.hdr, ResourceState::RenderTarget);
 	cmd.Barrier(view.depth, ResourceState::DepthWrite);
 
@@ -1259,6 +1366,45 @@ void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTa
 	cmd.BeginRenderPass(pass);
 	DrawItems(cmd, scene, camera);
 	cmd.EndRenderPass();
+
+	// 두 번째 패스: 파티클과 디버그 선. 깊이를 "읽기만" 함 — 읽기 전용 DSV 로 깊이 테스트를 하면서 같은 깊이를
+	// 셰이더가 SRV 로 읽을 수 있음 (소프트 파티클·깊이 충돌). 그릴 것이 없으면 패스를 열지 않음 (이전과 같은 패스 수).
+	const bool drawParticles = !m_activeEmitterKeys.empty();
+	if (drawParticles || m_debugLineCount > 0)
+	{
+		cmd.Barrier(view.depth, ResourceState::DepthRead);
+		if (viewIndex == 0 && drawParticles)
+		{
+			// 파티클 시뮬레이션 (컴퓨트). 렌더 패스 밖이어야 하고, 미리보기 패스가 같은 결과를 그리므로 프레임에 한 번
+			// (메인 뷰). 이번 프레임 불투명 깊이가 다 그려진 뒤라 충돌이 이번 프레임 깊이를 씀. 끝나면 파티클 버퍼·생존
+			// 목록은 ShaderResource (VS t21, t22), 인자 버퍼는 IndirectArgument.
+			GpuProfileScope gpuScope(cmd, "ParticleSim");
+			SimulateParticles(cmd, view);
+		}
+		if (drawParticles)
+		{
+			GpuProfileScope gpuScope(cmd, "ParticleSort");
+			SortParticles(cmd, viewIndex);   // 알파 이미터를 이 뷰의 카메라로 먼 것부터 (없으면 아무것도 안 함)
+		}
+		std::string effectsName = std::string(debugName) + "Effects";
+		const RenderPassDesc effects{
+			.colors = { { .texture = view.hdr, .load = LoadOp::Load } },
+			.colorCount = 1,
+			.depth = { .texture = view.depth, .load = LoadOp::Load, .readOnly = true },
+			.debugName = effectsName.c_str(),
+		};
+		cmd.BeginRenderPass(effects);
+		cmd.SetResourceSet(kSetFrame, m_frameSet);   // 컴퓨트를 지났고 새 패스이므로 다시 꽂음 (b0 = 이 뷰의 카메라)
+		cmd.SetResourceSet(kSetObject, m_objectSet);
+		if (drawParticles)
+		{
+			// 셋 1 을 파티클 셋으로 바꾸므로 끝나면 오브젝트 셋을 되돌림 (다음 패스가 셋 1 = 오브젝트 셋을 전제할 수 있음).
+			DrawParticles(cmd, view, viewIndex);
+			cmd.SetResourceSet(kSetObject, m_objectSet);
+		}
+		DrawDebugLines(cmd);   // 깊이 테스트가 없으므로 항상 위에 그려짐
+		cmd.EndRenderPass();
+	}
 
 	// 톤 패스가 t13 으로 읽음.
 	cmd.Barrier(view.hdr, ResourceState::ShaderResource);
@@ -1349,7 +1495,7 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera
 		for (const DrawItem* item : m_blendedScratch) drawItem(*item);
 	}
 
-	DrawDebugLines(cmd);   // 하늘 뒤: 깊이 테스트가 없으므로 항상 위에 그려짐
+	// 파티클·디버그 선은 여기가 아니라 RenderScenePass 의 두 번째 패스 (깊이를 읽기 전용으로 바꾼 뒤) 에서 그림.
 }
 
 void Renderer::UploadDebugLines(const DebugDraw& debugDraw)

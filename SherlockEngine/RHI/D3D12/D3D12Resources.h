@@ -40,6 +40,7 @@ struct D3D12Texture
 	uint32_t rtv = D3D12DescriptorHeap::kInvalid;        // RTV 힙 (desc.format 그대로)
 	uint32_t rtvSrgb = D3D12DescriptorHeap::kInvalid;    // RTV 힙 (*_SRGB 뷰)
 	uint32_t dsv = D3D12DescriptorHeap::kInvalid;        // DSV 힙
+	uint32_t dsvReadOnly = D3D12DescriptorHeap::kInvalid; // DSV 힙 (READ_ONLY_DEPTH|STENCIL). DepthAttachment::readOnly 패스용
 	uint32_t srv = D3D12DescriptorHeap::kInvalid;        // 스테이징 SRV 힙 (CPU 전용). ResourceSet 이 여기서 복사함
 	uint32_t srvVisible = D3D12DescriptorHeap::kInvalid; // 셰이더 가시 힙의 영구 SRV (ImGui::Image 용)
 };

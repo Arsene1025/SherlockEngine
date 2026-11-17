@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "App/GameApp.h"
 #include "Core/Log.h"
 #include "Core/Paths.h"
@@ -45,6 +45,10 @@ bool GameApp::OnInitialize()
 	if (!debugBones.empty()) engine.GetRenderer().GetSettings().debugBones = _wtoi(debugBones.c_str());
 	const std::wstring computeBlur = GetCommandLineOption(L"compute-blur");   // --compute-blur=1|0 (RenderSettings::computeBlur)
 	if (!computeBlur.empty()) engine.GetRenderer().GetSettings().computeBlur = _wtoi(computeBlur.c_str()) != 0;
+	const std::wstring particleStep = GetCommandLineOption(L"particle-step");   // --particle-step=<초> (RenderSettings::particleFixedStep)
+	if (!particleStep.empty()) engine.GetRenderer().GetSettings().particleFixedStep = static_cast<float>(_wtof(particleStep.c_str()));
+	const std::wstring particleSort = GetCommandLineOption(L"particle-sort");   // --particle-sort=0 (RenderSettings::particleSort)
+	if (!particleSort.empty()) engine.GetRenderer().GetSettings().particleSort = particleSort != L"0";
 	m_screenshotPath = GetCommandLineOption(L"screenshot");
 	m_dumpObjects = !GetCommandLineOption(L"dump-objects").empty();
 

@@ -19,6 +19,10 @@ void EditorApp::ParseAutomation()
 	if (!GetCommandLineOption(L"post-stages").empty()) DebugUI::SetShowPostStages(true);   // --post-stages=1 이면 후처리 단계별 썸네일 창을 처음부터 켬
 	const std::wstring computeBlur = GetCommandLineOption(L"compute-blur");   // --compute-blur=1|0: 가우시안 블러를 컴퓨트로 (RenderSettings::computeBlur)
 	if (!computeBlur.empty()) GetEngine().GetRenderer().GetSettings().computeBlur = _wtoi(computeBlur.c_str()) != 0;
+	const std::wstring particleStep = GetCommandLineOption(L"particle-step");   // --particle-step=<초>: 파티클을 프레임마다 고정 시간만큼 (RenderSettings::particleFixedStep)
+	if (!particleStep.empty()) GetEngine().GetRenderer().GetSettings().particleFixedStep = static_cast<float>(_wtof(particleStep.c_str()));
+	const std::wstring particleSort = GetCommandLineOption(L"particle-sort");   // --particle-sort=0: 알파 파티클을 정렬하지 않음 (RenderSettings::particleSort)
+	if (!particleSort.empty()) GetEngine().GetRenderer().GetSettings().particleSort = particleSort != L"0";
 	const std::wstring exitAfter = GetCommandLineOption(L"exit-after");
 	if (exitAfter.empty()) return;
 	m_auto.active = true;

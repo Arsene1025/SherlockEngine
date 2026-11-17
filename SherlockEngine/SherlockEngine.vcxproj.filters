@@ -179,6 +179,9 @@
     <ClCompile Include="Graphics\RendererPost.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RendererParticles.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\RendererShadow.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
@@ -208,6 +211,9 @@
     </ClCompile>
     <ClCompile Include="Scene\CameraComponent.cpp">
       <Filter>Scene</Filter>
+    <ClCompile Include="Scene\ParticleEmitter.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
     </ClCompile>
     <ClCompile Include="Scene\Script.cpp">
       <Filter>Scene</Filter>
@@ -448,6 +454,9 @@
     </ClInclude>
     <ClInclude Include="Scene\CameraComponent.h">
       <Filter>Scene</Filter>
+    <ClInclude Include="Scene\ParticleEmitter.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
     </ClInclude>
     <ClInclude Include="Scene\Script.h">
       <Filter>Scene</Filter>
@@ -503,6 +512,30 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\BlurWeightsComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSimComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleResetComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleArgsComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleEmitComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSortInitComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSortStepComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticlePixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

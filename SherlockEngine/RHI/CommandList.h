@@ -55,6 +55,11 @@ namespace RHI
 		// 인덱스 없는 드로우. 정점 버퍼 없이 VS 가 SV_VertexID 로 위치를 만드는 패스(스카이박스의 전체 화면
 		// 삼각형)에 씀. 그런 PSO 는 vertexLayout.attributeCount = 0 으로 만듦 (입력 레이아웃 없음).
 		virtual void Draw(uint32_t vertexCount, uint32_t startVertex = 0) = 0;
+		// 인자를 GPU 버퍼에서 읽는 Draw. args 의 offsetBytes 위치에 uint 4개 {VertexCountPerInstance, InstanceCount,
+		// StartVertexLocation, StartInstanceLocation} (D3D12_DRAW_ARGUMENTS 와 같은 배치). 컴퓨트가 개수를 정하는 경로
+		// (GPU 파티클)에 씀 — CPU 가 개수를 읽어 오지 않아도 됨. Draw 와 같이 렌더 패스 안에서만. args 는
+		// BufferBind_IndirectArgs 버퍼이고 Barrier(args, IndirectArgument) 뒤여야 함. offsetBytes 는 4 의 배수.
+		virtual void DrawInstancedIndirect(BufferHandle args, uint32_t offsetBytes = 0) = 0;
 
 		// ---- 컴퓨트 ----
 		// 렌더 패스 밖에서만 유효함 (안에서 부르면 에러 로그 1회 후 무시). 그래픽스와 바인딩 상태가 따로임:
@@ -65,18 +70,25 @@ namespace RHI
 		virtual void SetComputePipeline(ComputePipelineHandle handle) = 0;
 		virtual void SetComputeResourceSet(uint32_t setIndex, ResourceSetHandle handle) = 0;
 		virtual void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1) = 0;
+		// 그룹 수를 GPU 버퍼에서 읽는 Dispatch. args 의 offsetBytes 위치에 uint 3개 {X, Y, Z}. Dispatch 와 같이 렌더 패스
+		// 밖에서만. 버퍼 조건은 DrawInstancedIndirect 와 같음 (IndirectArgs + IndirectArgument 상태, 4 의 배수 오프셋).
+		virtual void DispatchIndirect(BufferHandle args, uint32_t offsetBytes = 0) = 0;
 
 		// ---- 전이·복사 ----
 		// 텍스처를 after 상태로 전이함. 현재 상태는 백엔드가 텍스처마다 추적하므로 호출 코드는 "이제 무엇으로
 		// 쓸지"만 말함 (이미 그 상태면 아무 일도 없음). D3D11: 상태 기록만. D3D12: ResourceBarrier(Transition).
+		// DepthRead 는 TextureBind_DepthStencil 텍스처만 됨 (아니면 에러 로그 후 무시). 읽기 전용 깊이 패스 +
+		// 같은 깊이를 SRV 로 읽는 셰이더(그래픽스·컴퓨트)가 이 상태 하나로 함께 됨.
 		virtual void Barrier(TextureHandle texture, ResourceState after) = 0;
 		// UAV → UAV 의존. 같은 텍스처를 UAV 로 연달아 쓰는 두 Dispatch 사이에서, 앞 Dispatch 의 쓰기가 끝나고 보이게
 		// 된 뒤에 뒤 Dispatch 를 시작하게 함. 상태는 바꾸지 않음 (Barrier 의 "이미 그 상태면 아무 일도 없음" 규칙과
 		// 따로 둔 이유). 텍스처가 UnorderedAccess 상태여야 함. D3D11: 드라이버가 알아서 하므로 할 일 없음.
 		// D3D12: ResourceBarrier(UAV). 다른 텍스처·다른 밉에 쓰거나, 사이에 SRV 전이가 있으면 필요 없음.
 		virtual void UavBarrier(TextureHandle texture) = 0;
-		// 버퍼판 (BufferBind_UnorderedAccess 버퍼). 규칙은 텍스처와 같음: 버퍼마다 상태를 추적하고 after 만 말함.
-		// 쓸 수 있는 상태: Common, ShaderResource, UnorderedAccess (복사 상태는 CopyBuffer 가 알아서 정함).
+		// 버퍼판 (BufferBind_UnorderedAccess · BufferBind_IndirectArgs 버퍼). 규칙은 텍스처와 같음: 버퍼마다 상태를
+		// 추적하고 after 만 말함. 쓸 수 있는 상태: Common, ShaderResource, UnorderedAccess (BufferBind_UnorderedAccess
+		// 필요), IndirectArgument (BufferBind_IndirectArgs 필요). 복사 상태는 CopyBuffer 가 알아서 정함.
+		// 컴퓨트가 간접 인자를 쓰는 흐름: UnorderedAccess → Dispatch → IndirectArgument → *Indirect.
 		// 프레임이 끝나면 상태가 Common 으로 돌아감 — D3D12 는 ExecuteCommandLists 가 끝날 때 버퍼가 COMMON 으로
 		// 감쇠(decay)하므로 D3D11 도 같게 맞춤. 따라서 프레임마다 처음 쓰기 전에 다시 Barrier 해야 함.
 		virtual void Barrier(BufferHandle buffer, ResourceState after) = 0;

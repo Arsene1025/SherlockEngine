@@ -100,10 +100,15 @@ public:
     const D3D12ComputePipelineState* GetComputePipeline(ComputePipelineHandle handle) const { return m_pipelines.GetCompute(handle); }
     D3D12DescriptorHeap& GetSrvHeap() { return m_srvHeap; }
     D3D12DescriptorHeap& GetSamplerHeap() { return m_samplerHeap; }
+    // ExecuteIndirect 용 커맨드 시그니처. 만들지 못했으면 nullptr (*Indirect 가 에러 로그 후 무시함).
+    ID3D12CommandSignature* GetDrawIndirectSignature() const { return m_drawIndirectSignature.Get(); }
+    ID3D12CommandSignature* GetDispatchIndirectSignature() const { return m_dispatchIndirectSignature.Get(); }
 
     // 뷰는 처음 요청될 때 만듦.
     D3D12_CPU_DESCRIPTOR_HANDLE GetRTV(D3D12Texture& texture, bool srgbView);
     D3D12_CPU_DESCRIPTOR_HANDLE GetDSV(D3D12Texture& texture);
+    // 읽기 전용 DSV. DSV 힙이 가득 차면 false (out 은 그대로).
+    bool GetReadOnlyDSV(D3D12Texture& texture, D3D12_CPU_DESCRIPTOR_HANDLE& out);
     D3D12_CPU_DESCRIPTOR_HANDLE GetSRV(D3D12Texture& texture);   // 스테이징 힙
 
     // 레이아웃 조합 → 루트 시그니처 (캐시). compute 면 컴퓨트용 (IA 플래그 없음, 가시성 ALL).
@@ -220,6 +225,10 @@ private:
     uint64_t m_lastFrameNumber = 0;
     bool m_hasTimestampResults = false;
     bool CreateTimestampResources();
+    // 간접 드로우·Dispatch 의 커맨드 시그니처 (인자 하나짜리, 루트 인자를 바꾸지 않음). 장치 초기화 때 한 번 만듦.
+    ComPtr<ID3D12CommandSignature> m_drawIndirectSignature;
+    ComPtr<ID3D12CommandSignature> m_dispatchIndirectSignature;
+    void CreateIndirectSignatures();
     // 백버퍼 리드백. EndFrame 이 Close 전에 복사를 기록하고, 실행 뒤 GPU 를 기다려 읽음.
     void RecordBackBufferReadback();
     void FinishBackBufferReadback();

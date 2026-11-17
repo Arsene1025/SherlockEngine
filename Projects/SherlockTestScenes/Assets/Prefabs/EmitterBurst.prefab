@@ -1,0 +1,112 @@
+﻿{
+  "materials": [
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.75,
+        0.75,
+        0.800000011920929,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "name": "Default",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.5,
+      "sampler": 0,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    }
+  ],
+  "meshes": [
+    {
+      "a": 32,
+      "b": 16,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        1.5,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "type": "sphere"
+    }
+  ],
+  "name": "EmitterBurst",
+  "objects": [
+    {
+      "components": [
+        {
+          "type": "Lifetime",
+          "enabled": true,
+          "seconds": 0.6
+        },
+        {
+          "type": "ParticleEmitter",
+          "enabled": true,
+          "maxParticles": 1024,
+          "spawnRate": 800.0,
+          "lifetime": 1.0,
+          "startSpeed": 2.0,
+          "speedVariation": 0.4,
+          "spreadAngle": 40.0,
+          "emitRadius": 0.05,
+          "gravity": [
+            0.0,
+            -4.0,
+            0.0
+          ],
+          "startSize": 0.06,
+          "endSize": 0.02,
+          "color": [
+            0.4,
+            1.0,
+            0.5
+          ],
+          "intensity": 4.0
+        }
+      ],
+      "material": 0,
+      "mesh": 0,
+      "name": "EmitterBurst",
+      "position": [
+        0.0,
+        1.5,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.2,
+        0.2,
+        0.2
+      ]
+    }
+  ],
+  "type": "prefab",
+  "version": 1
+}

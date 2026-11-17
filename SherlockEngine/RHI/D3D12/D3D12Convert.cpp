@@ -162,7 +162,11 @@ namespace D3D12Convert
 		case ResourceState::CopyDest:       return D3D12_RESOURCE_STATE_COPY_DEST;
 		case ResourceState::Present:        return D3D12_RESOURCE_STATE_PRESENT;
 		case ResourceState::UnorderedAccess: return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-		default:                            return D3D12_RESOURCE_STATE_COMMON;
+		case ResourceState::IndirectArgument: return D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+		// 읽기 상태끼리는 OR 로 합칠 수 있음 — 읽기 전용 DSV 와 SRV(PS·CS) 를 전이 없이 함께 씀.
+		// DENY_SHADER_RESOURCE 깊이(SRV 없음)는 셰이더 비트를 빼야 함 — D3D12CommandList::Barrier 가 처리.
+		case ResourceState::DepthRead:      return D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+		default:                           return D3D12_RESOURCE_STATE_COMMON;
 		}
 	}
 

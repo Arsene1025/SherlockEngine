@@ -267,6 +267,8 @@ bool ShaderCompiler::ReflectBindings(std::span<const uint8_t> bytecode, std::vec
 		case D3D_SIT_STRUCTURED: entry.type = BindingType::BufferResource; break;   // StructuredBuffer<T> (읽기 전용)
 		case D3D_SIT_UAV_RWTYPED: entry.type = BindingType::UnorderedAccess; break;  // RWTexture2D<T> (u#)
 		case D3D_SIT_UAV_RWSTRUCTURED: entry.type = BindingType::BufferUnorderedAccess; break;   // RWStructuredBuffer<T> (u#)
+		case D3D_SIT_BYTEADDRESS: entry.type = BindingType::RawBufferResource; break;   // ByteAddressBuffer (t#)
+		case D3D_SIT_UAV_RWBYTEADDRESS: entry.type = BindingType::RawBufferUnorderedAccess; break;   // RWByteAddressBuffer (u#)
 		default:
 			// 그 밖의 버퍼 UAV(RWByteAddressBuffer, Append/Consume 등)는 아직 레이아웃에 없음. 나오면 경고로 알림.
 			Log::Warn("리플렉션: 지원하지 않는 바인딩 타입 %d ('%s', 슬롯 %u).", static_cast<int>(bind.Type), entry.name.c_str(), bind.BindPoint);

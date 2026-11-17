@@ -25,12 +25,24 @@ enum class BindingType : uint8_t
 	                  //       컴퓨트 스테이지 전용 (D3D11 의 PS UAV 는 OMSetRenderTargetsAndUnorderedAccessViews 가 따로 필요해 지원하지 않음)
 	BufferUnorderedAccess, // u# (UAV) — 구조체 버퍼 (HLSL RWStructuredBuffer<T>). ResourceBinding::buffer 에 BufferBind_UnorderedAccess
 	                  //       버퍼를 꽂음. 텍스처 UAV 와 같은 u# 공간·같은 상한(kMaxUavRegister), 컴퓨트 전용
+	// 아래 둘은 뒤에 붙임 (기존 값의 번호를 바꾸지 않음).
+	RawBufferResource, // t# (SRV) — raw 버퍼 (HLSL ByteAddressBuffer). ResourceBinding::buffer 에 BufferBind_Raw | BufferBind_ShaderResource
+	                  //       버퍼를 꽂음. 텍스처와 같은 t# 공간. 그래픽스·컴퓨트 어디서든 읽을 수 있음
+	RawBufferUnorderedAccess, // u# (UAV) — raw 버퍼 (HLSL RWByteAddressBuffer). ResourceBinding::buffer 에 BufferBind_Raw |
+	                  //       BufferBind_UnorderedAccess 버퍼를 꽂음. 같은 u# 공간, 컴퓨트 전용 (간접 인자를 GPU 가 쓰는 경로)
 };
 
 // 버퍼를 꽂는 슬롯인가 (그 밖은 텍스처 또는 샘플러).
 constexpr bool IsBufferBinding(BindingType type)
 {
-	return type == BindingType::ConstantBuffer || type == BindingType::BufferResource || type == BindingType::BufferUnorderedAccess;
+	return type == BindingType::ConstantBuffer || type == BindingType::BufferResource || type == BindingType::BufferUnorderedAccess ||
+		type == BindingType::RawBufferResource || type == BindingType::RawBufferUnorderedAccess;
+}
+
+// UAV 슬롯인가 (텍스처·구조체 버퍼·raw 버퍼). 컴퓨트 전용 규칙과 u# 레지스터 공간 판정에 씀.
+constexpr bool IsUavBinding(BindingType type)
+{
+	return type == BindingType::UnorderedAccess || type == BindingType::BufferUnorderedAccess || type == BindingType::RawBufferUnorderedAccess;
 }
 
 struct BindingSlot
@@ -76,7 +88,8 @@ struct BindingLayoutDesc
 };
 
 // 슬롯 하나에 꽂는 리소스. 슬롯 타입에 따라 buffer / texture / sampler 중 하나만 사용함
-// (ConstantBuffer·BufferResource·BufferUnorderedAccess → buffer, ShaderResource·UnorderedAccess → texture, Sampler → sampler).
+// (ConstantBuffer·BufferResource·BufferUnorderedAccess·RawBufferResource·RawBufferUnorderedAccess → buffer,
+//  ShaderResource·UnorderedAccess → texture, Sampler → sampler).
 // mip 은 UnorderedAccess 슬롯에서만 읽음: 그 밉 레벨 하나를 가리키는 UAV (밉마다 따로 쓰는 IBL 프리필터용).
 struct ResourceBinding
 {

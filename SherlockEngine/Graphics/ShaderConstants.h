@@ -65,6 +65,37 @@ constexpr uint32_t kMaxBlurRadius = 64;      // 블러 반경 상한 (픽셀). �
 constexpr uint32_t kCBSlotShadowPass = 5;   // b5 (프레임 셋, VS). 그림자 패스가 뷰마다 올림
 constexpr uint32_t kCBSlotShadows = 6;      // b6 (프레임 셋, PS). 그림자 뷰 배열
 constexpr uint32_t kCBSlotSkin = 7;         // b7 (오브젝트 셋, VS). 스키닝 조인트 행렬 팔레트
+constexpr uint32_t kCBSlotParticle = 8;     // b8 (파티클 시뮬레이션 셋 CS · 그리기 셋 VS/PS). 이미터마다 한 벌, 프레임에 한 번 올림
+constexpr uint32_t kSRVSlotParticles = 21;  // t21 (파티클 그리기 셋, VS. StructuredBuffer<Particle>)
+constexpr uint32_t kSRVSlotParticleAlive = 22; // t22 (파티클 그리기 셋, VS. 이번 프레임 생존 목록 StructuredBuffer<uint>, 알파 이미터는 정렬된 목록)
+constexpr uint32_t kSRVSlotSceneDepth = 23;    // t23 (파티클 깊이 셋 PS · 충돌 셋 CS. 씬 깊이 Texture2D<float>, DepthRead 상태)
+constexpr uint32_t kCBSlotParticleCollision = 9; // b9 (파티클 충돌 셋, CS). 메인 카메라 행렬, 프레임에 한 번
+// 알파 이미터 정렬 (바이토닉). Common.hlsli 의 PARTICLE_SORT 블록과 같음
+constexpr uint32_t kSRVSlotParticleCounters = 24; // t24 (정렬 셋, CS. 개수 버퍼를 SRV 로)
+constexpr uint32_t kUAVSlotSortKeys = 0;          // u0 (정렬 셋, 키 = 뷰 공간 z)
+constexpr uint32_t kUAVSlotSortIndices = 1;       // u1 (정렬 셋, 파티클 번호 — 그리기 셋의 t22 가 됨)
+constexpr uint32_t kCBSlotParticleSortView = 10;  // b10 (정렬 셋, 뷰마다의 view 행렬. 프레임에 한 번)
+constexpr uint32_t kCBSlotParticleSortStep = 11;  // b11 (정렬 단계 셋, (k, j). 처음에 한 번 만들고 바꾸지 않음)
+
+// 정렬 길이: capacity 이상인 가장 작은 2 의 거듭제곱 (최소 64). Common.hlsli 의 ParticleSortCount 와 같은 식.
+constexpr uint32_t ParticleSortCount(uint32_t capacity)
+{
+	uint32_t n = 64;
+	while (n < capacity) n <<= 1;
+	return n;
+}
+// 파티클 시뮬레이션 셋 u0~u5 (Common.hlsli 의 PARTICLE_SIM 블록과 같은 순서)
+constexpr uint32_t kUAVSlotParticles = 0;         // u0 RWStructuredBuffer<Particle>
+constexpr uint32_t kUAVSlotParticleDead = 1;      // u1 사망 목록 (uint)
+constexpr uint32_t kUAVSlotParticleAliveIn = 2;   // u2 지난 프레임 생존 목록 (uint)
+constexpr uint32_t kUAVSlotParticleAliveOut = 3;  // u3 이번 프레임 생존 목록 (uint)
+constexpr uint32_t kUAVSlotParticleCounters = 4;  // u4 개수 (uint × kParticleCounterCount)
+constexpr uint32_t kUAVSlotParticleArgs = 5;      // u5 간접 인자 (RWByteAddressBuffer)
+constexpr uint32_t kParticleCounterCount = 8;     // Common.hlsli 의 kParticleCounterCount
+constexpr uint32_t kParticleArgsDrawOffset = 0;      // 바이트. {정점 6, 생존 수, 0, 0} — DrawInstancedIndirect
+constexpr uint32_t kParticleArgsDispatchOffset = 16; // 바이트. {그룹 수, 1, 1} — 시뮬레이션의 DispatchIndirect
+constexpr uint32_t kParticleArgsSize = 32;           // 16 + 12 를 16 의 배수로
+constexpr uint32_t kParticleStride = 32;    // Common.hlsli 의 struct Particle (float3 위치 + 나이, float3 속도 + 수명)
 constexpr uint32_t kMaxSkinJoints = 256;    // 팔레트 크기. 정점의 조인트 번호가 uint8 이라 이보다 클 수 없음 (Common.hlsli 의 MAX_JOINTS)
 
 constexpr uint32_t kSamplerSlotPost = 6;     // s6 (후처리 셋, 선형 Clamp. 블룸 축소·확대와 썸네일이 씀. 후처리 패스는 프레임 셋을 바인딩하지 않으므로 s4~s7 과 겹치지 않음)
@@ -222,7 +253,74 @@ consteval bool IsValidConstantBufferSize(size_t bytes)
 {
 	return bytes > 0 && bytes % 16 == 0 && bytes <= 65536;
 }
+// b8: 파티클 이미터 하나 (Common.hlsli 의 cbuffer ParticleEmitter 와 같은 순서). 이미터마다 Dynamic 버퍼 한 벌이고
+// 프레임에 한 번 올림 — 시뮬레이션(CS)과 뷰마다의 그리기(VS/PS)가 같은 값을 읽음. 공용 버퍼를 단계 사이에 다시
+// 올리면 D3D12 루트 CBV 주소가 바뀌는 순서 문제가 생기므로 나누지 않음.
+struct alignas(16) ParticleEmitterConstants
+{
+	DirectX::XMFLOAT3 position;    // 이미터 월드 위치
+	float deltaTime;               // 이번 프레임 시뮬레이션 시간 (초)
+	DirectX::XMFLOAT3 direction;   // 방출 방향 (월드, 정규화)
+	float spreadCos;               // cos(원뿔 반각)
+	DirectX::XMFLOAT3 color;       // 선형 RGB × intensity
+	float lifetime;
+	DirectX::XMFLOAT3 gravity;
+	float emitRadius;
+	float startSpeed;
+	float speedVariation;
+	float startSize;
+	float endSize;
+	uint32_t capacity;             // 버퍼 원소 수
+	uint32_t spawnCount;           // 이번 프레임에 태어나길 원하는 수 (0 ≤ spawnCount ≤ capacity). 사망 목록이 모자라면 GPU 가 줄임
+	uint32_t seed;                 // 난수 씨앗 (이미터의 프레임 번호). 같은 씨앗·같은 dt 면 같은 파티클이 태어남
+	uint32_t collide;              // 1 이면 깊이 버퍼 충돌
+	float softDistance;            // 소프트 파티클 거리 (m). 0 = 끔
+	float bounce;                  // 충돌 반발 계수
+	float opacity;                 // 알파 모드 불투명도
+	uint32_t blendMode;            // 0 가산, 1 알파
+	DirectX::XMFLOAT3 endTint;     // 수명 끝의 색 배율 (1 → endTint 선형 보간)
+	float padding;
+};
+
+// b9: 파티클 충돌 (메인 뷰의 깊이로 화면 공간 충돌). 행렬은 전치해서 올림 (PerFrame 과 같음).
+struct alignas(16) ParticleCollisionConstants
+{
+	DirectX::XMFLOAT4X4 viewProj;
+	DirectX::XMFLOAT4X4 invViewProj;
+	float depthA;                  // 투영 행렬 _33 (행 벡터 기준 [2][2]). 깊이 → 뷰 z 복원
+	float depthB;                  // _43 ([3][2])
+	float perspective;             // 1 원근, 0 직교
+	float thickness;               // 표면 뒤 이 거리(m) 안에 들어온 파티클만 충돌로 봄 (얇은 물체 뒤로 지나가는 것은 통과)
+	uint32_t width;                // 깊이 텍스처 크기
+	uint32_t height;
+	uint32_t padding[2];
+};
+
+// b10: 정렬 키를 만들 뷰의 view 행렬 (전치). 뷰마다 Dynamic 버퍼 하나.
+struct alignas(16) ParticleSortViewConstants
+{
+	DirectX::XMFLOAT4X4 view;
+};
+
+// b11: 바이토닉 정렬 한 단계. 단계마다 Default 상수 버퍼를 초기 데이터로 한 번 만듦 — 디스패치마다 다른 값을 Dynamic
+// 버퍼 하나에 다시 올릴 수 없음 (D3D12 의 프레임당 한 번 규칙). 크기를 256 으로 맞춤: D3D12 백엔드가 상수 버퍼 크기를
+// 256 의 배수로 올리고 그 크기만큼 초기 데이터를 복사함.
+struct alignas(16) ParticleSortStepConstants
+{
+	uint32_t k;
+	uint32_t j;
+	uint32_t padding[62];
+};
+
 static_assert(IsValidConstantBufferSize(sizeof(PerFrameConstants)), "PerFrameConstants 는 16의 배수여야 함");
+static_assert(sizeof(ParticleEmitterConstants) == 128, "ParticleEmitterConstants: 16 * 8");
+static_assert(offsetof(ParticleEmitterConstants, softDistance) == 96, "ParticleEmitterConstants.softDistance");
+static_assert(sizeof(ParticleCollisionConstants) == 160, "ParticleCollisionConstants: 64 * 2 + 16 * 2");
+static_assert(sizeof(ParticleSortViewConstants) == 64, "ParticleSortViewConstants");
+static_assert(sizeof(ParticleSortStepConstants) == 256, "ParticleSortStepConstants: D3D12 가 CB 를 256 으로 올리므로 초기 데이터도 256");
+static_assert(offsetof(ParticleEmitterConstants, startSpeed) == 64, "ParticleEmitterConstants.startSpeed");
+static_assert(offsetof(ParticleEmitterConstants, capacity) == 80, "ParticleEmitterConstants.capacity");
+static_assert(offsetof(ParticleEmitterConstants, seed) == 88, "ParticleEmitterConstants.seed");
 static_assert(IsValidConstantBufferSize(sizeof(PerObjectConstants)), "PerObjectConstants 는 16의 배수여야 함");
 static_assert(IsValidConstantBufferSize(sizeof(LightConstants)), "LightConstants 는 16의 배수여야 함");
 static_assert(IsValidConstantBufferSize(sizeof(MaterialConstants)), "MaterialConstants 는 16의 배수여야 함");

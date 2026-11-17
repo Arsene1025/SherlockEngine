@@ -12,11 +12,24 @@ void D3D12CommandList::ErrorOnce(bool& flag, const char* message)
 	Log::Error("%s", message);
 }
 
+bool D3D12CommandList::CheckReadOnlyDepthDraw(const char* caller) const
+{
+	if (!m_passDepthReadOnly || m_currentPso == nullptr) return true;
+	const DepthStencilDesc& ds = m_currentPso->GetDesc().depthStencil;
+	if (!(ds.depthEnable && ds.depthWrite)) return true;   // 테스트를 끄면 쓰기도 일어나지 않음
+	// 읽기 전용 DSV 에 깊이 쓰기 PSO 는 설정 실수임. 결과가 백엔드·드라이버마다 다를 수 있어 그리지 않음.
+	static bool warned = false;
+	if (!warned) Log::Error("%s : 읽기 전용 깊이 패스에서 깊이 쓰기 PSO 로 그림 — PSO 의 depthWrite 를 끌 것. 드로우를 건너뜀.", caller);
+	warned = true;
+	return false;
+}
+
 void D3D12CommandList::Init(D3D12Device* device)
 {
 	m_device = device;
 	m_list = nullptr;
 	m_inPass = false;
+	m_passDepthReadOnly = false;
 	for (BoundSet& bound : m_sets) bound = BoundSet{};
 	for (BoundSet& bound : m_computeSets) bound = BoundSet{};
 	m_touchedBuffers.clear();
@@ -26,6 +39,7 @@ void D3D12CommandList::BeginFrame(ID3D12GraphicsCommandList* list)
 {
 	m_list = list;
 	m_inPass = false;
+	m_passDepthReadOnly = false;
 	m_currentPipeline = PipelineHandle{};
 	m_currentPso = nullptr;
 	m_currentRoot = nullptr;
@@ -49,6 +63,7 @@ void D3D12CommandList::BeginRenderPass(const RenderPassDesc& desc)
 		EndRenderPass();
 	}
 	m_inPass = true;
+	m_passDepthReadOnly = false;   // 아래에서 읽기 전용 DSV 를 실제로 바인딩할 때만 켬
 	++m_stats.renderPasses;
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvs[kMaxRenderTargets] = {};
@@ -74,8 +89,37 @@ void D3D12CommandList::BeginRenderPass(const RenderPassDesc& desc)
 		{
 			Log::Error("BeginRenderPass : 깊이 attachment 의 텍스처 핸들이 유효하지 않음 (%s).", desc.debugName ? desc.debugName : "");
 		}
+		else if (desc.depth.readOnly)
+		{
+			// 경고만 하고 진행함 (상태가 틀리면 디버그 레이어가 따로 알림).
+			static bool warnedState = false;
+			static bool warnedLoad = false;
+			if (texture->state != ResourceState::DepthRead && !warnedState)
+			{
+				warnedState = true;
+				Log::Error("BeginRenderPass : 읽기 전용 깊이 '%s' 가 %s 상태 — Barrier(tex, DepthRead) 가 빠졌음 (%s).", texture->name.c_str(), ToString(texture->state), desc.debugName ? desc.debugName : "");
+			}
+			if (desc.depth.load != LoadOp::Load && !warnedLoad)
+			{
+				warnedLoad = true;
+				Log::Error("BeginRenderPass : 읽기 전용 깊이는 LoadOp::Load 만 됨 — 지우지 않고 시작함 (%s).", desc.debugName ? desc.debugName : "");
+			}
+			// 할당에 실패하면 깊이 없이 감 (쓰기 DSV 로 대신하지 않음 — DEPTH_READ 상태에서 쓰기 DSV 는 상태 불일치).
+			if (m_device->GetReadOnlyDSV(*texture, dsv))
+			{
+				hasDsv = true;
+				m_passDepthReadOnly = true;
+			}
+			if (width == 0) { width = texture->desc.width; height = texture->desc.height; }
+		}
 		else
 		{
+			static bool warnedState = false;
+			if (texture->state == ResourceState::DepthRead && !warnedState)
+			{
+				warnedState = true;
+				Log::Error("BeginRenderPass : 깊이 '%s' 가 DepthRead 상태인데 쓰기 패스임 — readOnly 를 켜거나 Barrier(tex, DepthWrite) (%s).", texture->name.c_str(), desc.debugName ? desc.debugName : "");
+			}
 			dsv = m_device->GetDSV(*texture);
 			hasDsv = true;
 			if (width == 0) { width = texture->desc.width; height = texture->desc.height; }
@@ -94,7 +138,7 @@ void D3D12CommandList::BeginRenderPass(const RenderPassDesc& desc)
 			m_list->ClearRenderTargetView(rtvs[i], desc.colors[i].clearColor, 0, nullptr);
 		}
 	}
-	if (hasDsv && desc.depth.load == LoadOp::Clear)
+	if (hasDsv && desc.depth.load == LoadOp::Clear && !desc.depth.readOnly)   // 읽기 전용 DSV 는 지울 수 없음
 	{
 		m_list->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, desc.depth.clearDepth, desc.depth.clearStencil, 0, nullptr);
 	}
@@ -144,6 +188,7 @@ void D3D12CommandList::EndRenderPass()
 {
 	// D3D12 의 OMSetRenderTargets 는 참조를 보유하지 않으므로 해제할 것이 없음. Store op 로 할 일도 없음.
 	m_inPass = false;
+	m_passDepthReadOnly = false;
 }
 
 // ------------------------------------------------------------------ 상태·바인딩
@@ -270,7 +315,7 @@ void D3D12CommandList::ApplyBindings(bool compute, const char* caller)
 		for (uint32_t i = 0; i < layout->desc.slotCount; ++i)
 		{
 			const BindingType type = layout->desc.slots[i].type;
-			if (type == BindingType::BufferUnorderedAccess)
+			if (type == BindingType::BufferUnorderedAccess || type == BindingType::RawBufferUnorderedAccess)
 			{
 				// 테이블에 있으므로 바인딩은 아래에서 함. 여기서는 상태만 검사 (D3D11 백엔드와 같은 규칙).
 				const D3D12Buffer* buffer = m_device->GetBuffer(set->desc.bindings[i].buffer);
@@ -279,6 +324,18 @@ void D3D12CommandList::ApplyBindings(bool compute, const char* caller)
 				{
 					warnedUav = true;
 					Log::Error("%s : UAV 로 쓰는 버퍼 '%s' 가 %s 상태 — Barrier(buf, UnorderedAccess) 가 빠졌음.", caller, buffer->name.c_str(), ToString(buffer->state));
+				}
+				continue;
+			}
+			if (type == BindingType::RawBufferResource)
+			{
+				// raw SRV 도 테이블에 있음 (루트 SRV 가 아님). 상태 검사만 — BufferResource 와 같은 규칙.
+				const D3D12Buffer* buffer = m_device->GetBuffer(set->desc.bindings[i].buffer);
+				static bool warnedRawSrv = false;
+				if (buffer != nullptr && IsStateTrackedBuffer(buffer->desc) && buffer->state != ResourceState::ShaderResource && !warnedRawSrv)
+				{
+					warnedRawSrv = true;
+					Log::Error("%s : SRV 로 읽는 UAV·간접 인자 버퍼 '%s' 가 %s 상태 — Barrier(buf, ShaderResource) 가 빠졌음 (프레임마다 Common 으로 돌아감).", caller, buffer->name.c_str(), ToString(buffer->state));
 				}
 				continue;
 			}
@@ -292,11 +349,11 @@ void D3D12CommandList::ApplyBindings(bool compute, const char* caller)
 				warnedStale = true;
 				continue;
 			}
-			if (type == BindingType::BufferResource && (buffer->desc.bindFlags & BufferBind_UnorderedAccess) && buffer->state != ResourceState::ShaderResource)
+			if (type == BindingType::BufferResource && IsStateTrackedBuffer(buffer->desc) && buffer->state != ResourceState::ShaderResource)
 			{
 				// Common 버퍼를 SRV 로 읽으면 암묵 승격되어 추적 상태와 실제 상태가 어긋남 (다음 배리어의 before 가 틀림).
 				static bool warnedSrv = false;
-				if (!warnedSrv) Log::Error("%s : SRV 로 읽는 UAV 버퍼 '%s' 가 %s 상태 — Barrier(buf, ShaderResource) 가 빠졌음 (프레임마다 Common 으로 돌아감).", caller, buffer->name.c_str(), ToString(buffer->state));
+				if (!warnedSrv) Log::Error("%s : SRV 로 읽는 UAV·간접 인자 버퍼 '%s' 가 %s 상태 — Barrier(buf, ShaderResource) 가 빠졌음 (프레임마다 Common 으로 돌아감).", caller, buffer->name.c_str(), ToString(buffer->state));
 				warnedSrv = true;
 			}
 			if (buffer->desc.usage == BufferUsage::Dynamic && buffer->updatedFrame != m_device->GetFrameNumber())
@@ -344,6 +401,7 @@ void D3D12CommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndex, int
 		return;
 	}
 	if (m_list == nullptr || m_currentPso == nullptr) return;
+	if (!CheckReadOnlyDepthDraw("DrawIndexed")) return;
 	ApplyBindings(false, "DrawIndexed");
 	m_list->DrawIndexedInstanced(indexCount, 1, startIndex, baseVertex, 0);
 }
@@ -357,8 +415,59 @@ void D3D12CommandList::Draw(uint32_t vertexCount, uint32_t startVertex)
 		return;
 	}
 	if (m_list == nullptr || m_currentPso == nullptr) return;
+	if (!CheckReadOnlyDepthDraw("Draw")) return;
 	ApplyBindings(false, "Draw");
 	m_list->DrawInstanced(vertexCount, 1, startVertex, 0);
+}
+
+ID3D12Resource* D3D12CommandList::GetIndirectArgs(BufferHandle handle, uint32_t offsetBytes, uint32_t argBytes, const char* caller)
+{
+	static bool warnedInvalid = false;
+	static bool warnedOffset = false;
+	static bool warnedState = false;
+	const D3D12Buffer* buffer = m_device ? m_device->GetBuffer(handle) : nullptr;
+	if (buffer == nullptr || !(buffer->desc.bindFlags & BufferBind_IndirectArgs) || !buffer->resource)
+	{
+		if (!warnedInvalid) Log::Error("%s : 인자 버퍼가 유효하지 않거나 BufferBind_IndirectArgs 로 만들지 않았음.", caller);
+		warnedInvalid = true;
+		return nullptr;
+	}
+	if (offsetBytes % 4 != 0 || static_cast<uint64_t>(offsetBytes) + argBytes > buffer->desc.size)
+	{
+		if (!warnedOffset) Log::Error("%s : 인자 오프셋 %u 가 4 의 배수가 아니거나 버퍼 '%s' (%u바이트) 범위 밖.", caller, offsetBytes, buffer->name.c_str(), buffer->desc.size);
+		warnedOffset = true;
+		return nullptr;
+	}
+	if (buffer->state != ResourceState::IndirectArgument && !warnedState)
+	{
+		// ApplyBindings 의 상태 검사와 같이 경고만 함 (디버그 레이어가 실제 상태 불일치를 따로 알림).
+		warnedState = true;
+		Log::Error("%s : 인자 버퍼 '%s' 가 %s 상태 — Barrier(buf, IndirectArgument) 가 빠졌음.", caller, buffer->name.c_str(), ToString(buffer->state));
+	}
+	return buffer->resource.Get();
+}
+
+void D3D12CommandList::DrawInstancedIndirect(BufferHandle args, uint32_t offsetBytes)
+{
+	static bool warnedOutside = false;
+	static bool warnedSignature = false;
+	if (!m_inPass)
+	{
+		ErrorOnce(warnedOutside, "DrawInstancedIndirect : 렌더 패스 밖에서 드로우. BeginRenderPass 가 필요하다.");
+		return;
+	}
+	if (m_list == nullptr || m_currentPso == nullptr) return;
+	if (!CheckReadOnlyDepthDraw("DrawInstancedIndirect")) return;
+	ID3D12CommandSignature* signature = m_device->GetDrawIndirectSignature();
+	if (signature == nullptr)
+	{
+		ErrorOnce(warnedSignature, "DrawInstancedIndirect : draw 커맨드 시그니처가 없음 (장치 초기화 때 생성 실패).");
+		return;
+	}
+	ID3D12Resource* resource = GetIndirectArgs(args, offsetBytes, static_cast<uint32_t>(sizeof(D3D12_DRAW_ARGUMENTS)), "DrawInstancedIndirect");
+	if (resource == nullptr) return;
+	ApplyBindings(false, "DrawInstancedIndirect");
+	m_list->ExecuteIndirect(signature, 1, resource, offsetBytes, nullptr, 0);
 }
 
 // ------------------------------------------------------------------ 전이·복사
@@ -372,13 +481,29 @@ void D3D12CommandList::Barrier(TextureHandle handle, ResourceState after)
 		ErrorOnce(warned, "Barrier : 유효하지 않은 TextureHandle.");
 		return;
 	}
+	if (after == ResourceState::DepthRead && !(texture->desc.bindFlags & TextureBind_DepthStencil))
+	{
+		// DEPTH_READ 는 ALLOW_DEPTH_STENCIL 리소스에만 쓸 수 있음.
+		static bool warnedDepth = false;
+		if (!warnedDepth) Log::Error("Barrier : 텍스처 '%s' 는 TextureBind_DepthStencil 이 아니라 DepthRead 로 전이할 수 없음.", texture->name.c_str());
+		warnedDepth = true;
+		return;
+	}
 	// before 는 텍스처가 기억하는 상태. 호출 코드가 따로 추적해 넘기지 않으므로 어긋날 수 없음.
 	const ResourceState before = texture->state;
 	if (before == after) return;   // 전이 없음 (통계에도 세지 않음)
 	++m_stats.barriers;
 
+	// SRV 없는 깊이는 DENY_SHADER_RESOURCE 로 만들어져 셰이더 리소스 상태 비트를 가질 수 없음 — DepthRead 에서 그 비트를 뺌.
+	// before 도 같은 규칙으로 바꿔야 직전 배리어의 after 와 정확히 맞음.
+	const bool denySrv = !(texture->desc.bindFlags & TextureBind_ShaderResource);
+	auto toD3D12 = [denySrv](ResourceState state)
+	{
+		if (state == ResourceState::DepthRead && denySrv) return D3D12_RESOURCE_STATE_DEPTH_READ;
+		return D3D12Convert::ToD3D12(state);
+	};
 	const D3D12_RESOURCE_BARRIER barrier = D3D12Convert::TransitionBarrier(
-		texture->resource.Get(), D3D12Convert::ToD3D12(before), D3D12Convert::ToD3D12(after));
+		texture->resource.Get(), toD3D12(before), toD3D12(after));
 	m_list->ResourceBarrier(1, &barrier);
 	texture->state = after;
 }
@@ -479,6 +604,35 @@ void D3D12CommandList::Dispatch(uint32_t groupsX, uint32_t groupsY, uint32_t gro
 	++m_stats.dispatches;
 }
 
+void D3D12CommandList::DispatchIndirect(BufferHandle args, uint32_t offsetBytes)
+{
+	static bool warnedInPass = false;
+	static bool warnedNoPso = false;
+	static bool warnedSignature = false;
+	if (m_inPass)
+	{
+		ErrorOnce(warnedInPass, "DispatchIndirect : 렌더 패스 안에서 Dispatch. EndRenderPass 를 먼저 부를 것.");
+		return;
+	}
+	if (m_list == nullptr) return;
+	if (m_currentComputePso == nullptr)
+	{
+		ErrorOnce(warnedNoPso, "DispatchIndirect : 컴퓨트 PSO 가 설정되지 않음 (SetComputePipeline 이 먼저 필요함).");
+		return;
+	}
+	ID3D12CommandSignature* signature = m_device->GetDispatchIndirectSignature();
+	if (signature == nullptr)
+	{
+		ErrorOnce(warnedSignature, "DispatchIndirect : dispatch 커맨드 시그니처가 없음 (장치 초기화 때 생성 실패).");
+		return;
+	}
+	ID3D12Resource* resource = GetIndirectArgs(args, offsetBytes, static_cast<uint32_t>(sizeof(D3D12_DISPATCH_ARGUMENTS)), "DispatchIndirect");
+	if (resource == nullptr) return;
+	ApplyBindings(true, "DispatchIndirect");
+	m_list->ExecuteIndirect(signature, 1, resource, offsetBytes, nullptr, 0);
+	++m_stats.dispatches;
+}
+
 void D3D12CommandList::TrackBufferState(BufferHandle handle, D3D12Buffer* buffer, ResourceState after)
 {
 	if (buffer->state == ResourceState::Common && after != ResourceState::Common) m_touchedBuffers.push_back(handle);
@@ -510,10 +664,11 @@ void D3D12CommandList::Barrier(BufferHandle handle, ResourceState after)
 		warnedDynamic = true;
 		return;
 	}
-	if (after != ResourceState::Common && after != ResourceState::ShaderResource && after != ResourceState::UnorderedAccess)
+	if (after != ResourceState::Common && after != ResourceState::ShaderResource && after != ResourceState::UnorderedAccess &&
+		after != ResourceState::IndirectArgument)
 	{
 		static bool warnedState = false;
-		if (!warnedState) Log::Error("Barrier : 버퍼 '%s' 에 쓸 수 없는 상태 %s (Common · ShaderResource · UnorderedAccess 만).", buffer->name.c_str(), ToString(after));
+		if (!warnedState) Log::Error("Barrier : 버퍼 '%s' 에 쓸 수 없는 상태 %s (Common · ShaderResource · UnorderedAccess · IndirectArgument 만).", buffer->name.c_str(), ToString(after));
 		warnedState = true;
 		return;
 	}
@@ -524,6 +679,15 @@ void D3D12CommandList::Barrier(BufferHandle handle, ResourceState after)
 		warnedFlag = true;
 		return;
 	}
+	if (after == ResourceState::IndirectArgument && !(buffer->desc.bindFlags & BufferBind_IndirectArgs))
+	{
+		static bool warnedIndirect = false;
+		if (!warnedIndirect) Log::Error("Barrier : 버퍼 '%s' 는 BufferBind_IndirectArgs 로 만들지 않았음.", buffer->name.c_str());
+		warnedIndirect = true;
+		return;
+	}
+	// IndirectArgument 도 일반 전이 (UNORDERED_ACCESS → INDIRECT_ARGUMENT 가 컴퓨트 쓰기 → 간접 인자 읽기의 동기화).
+	// TrackBufferState 가 이번 프레임 목록에 넣으므로 EndFrame 의 Common 복귀에도 포함됨.
 	const ResourceState before = buffer->state;
 	if (before == after) return;
 	++m_stats.barriers;

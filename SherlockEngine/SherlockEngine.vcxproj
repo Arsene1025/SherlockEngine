@@ -232,6 +232,7 @@
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Scene\Behaviour.h" />
     <ClInclude Include="Scene\CameraComponent.h" />
+    <ClInclude Include="Scene\ParticleEmitter.h" />
     <ClInclude Include="Scene\Script.h" />
     <ClInclude Include="Scene\Rigidbody.h" />
     <ClInclude Include="Scene\SceneSerializer.h" />
@@ -285,6 +286,7 @@
     <ClCompile Include="RHI\RHI.cpp" />
     <ClCompile Include="Graphics\Renderer.cpp" />
     <ClCompile Include="Graphics\RendererPost.cpp" />
+    <ClCompile Include="Graphics\RendererParticles.cpp" />
     <ClCompile Include="Graphics\RendererShadow.cpp" />
     <ClCompile Include="Graphics\RendererTargets.cpp" />
     <ClCompile Include="Graphics\TextureCache.cpp" />
@@ -295,6 +297,7 @@
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Scene\Behaviour.cpp" />
     <ClCompile Include="Scene\CameraComponent.cpp" />
+    <ClCompile Include="Scene\ParticleEmitter.cpp" />
     <ClCompile Include="Scene\Script.cpp" />
     <ClCompile Include="Scene\Rigidbody.cpp" />
     <ClCompile Include="Scene\FollowTarget.cpp" />
@@ -416,6 +419,70 @@
       <ShaderType>Compute</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <EntryPointName>CS_BlurWeights</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSimComputeShader.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>CS_ParticleSim</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleResetComputeShader.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>CS_ParticleReset</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleArgsComputeShader.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>CS_ParticleArgs</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleEmitComputeShader.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>CS_ParticleEmit</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSortInitComputeShader.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>CS_ParticleSortInit</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleSortStepComputeShader.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>CS_ParticleSortStep</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticleVertexShader.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>VS_Particle</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ParticlePixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>PS_Particle</EntryPointName>
       <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
       <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>

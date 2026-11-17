@@ -22,6 +22,7 @@ class DebugDraw;
 struct SceneEnvironment;
 class Mesh;
 class GameObject;
+class ParticleEmitter;
 struct PostParamsConstants;   // ShaderConstants.h
 struct GpuLight;              // ShaderConstants.h (조명 하나의 GPU 배치)
 
@@ -37,6 +38,11 @@ struct RenderSettings
 	// 기본은 컴퓨트. 컴퓨트 PSO 를 만들 수 없으면 (미지원 백엔드) 켜져 있어도 PS 로 감.
 	// 씬 파일에 저장하지 않음 (에디터 Render Settings · --compute-blur=0 으로 PS).
 	bool computeBlur = true;
+	// 파티클 시뮬레이션 시간. 0 = 실제 경과 시간 (프레임 사이 시간, 0.1 초에서 자름). 0 보다 크면 프레임마다 이 값만큼
+	// 진행 — 자동 검증(--particle-step=<초>)에서 스크린샷이 실행마다 같아지도록. 씬 파일에 저장하지 않음.
+	float particleFixedStep = 0.0f;
+	// 알파 이미터를 뷰마다 정렬함. 끄면 생존 목록 순서로 그림 — 정렬 효과를 비교하는 검증용 (--particle-sort=0).
+	bool particleSort = true;
 
 	// 그림자 (켜고 끄는 스위치. 조명마다는 Light::castShadows) 와 노멀 매핑. 그림자 값(바이어스·세기·노말
 	// 오프셋·직교 크기·거리)은 씬 파일에 들어가도록 SceneEnvironment::shadow 에 둠. 여기에는 켜고 끄는
@@ -94,6 +100,9 @@ public:
 		uint32_t shadowCulled = 0;    // 그 뷰의 절두체나 지역광 범위 밖이라 그림자 패스에서 건너뛴 (뷰, 드로우) 쌍 수
 		uint32_t culled = 0;          // 카메라 절두체 밖이라 메인·미리보기 패스에서 건너뛴 드로우 수
 		uint32_t drawItems = 0;       // 이번 프레임 드로우 목록 크기 (서브메시 단위, 컬링 전). 메인 패스 draws + culled 와 같음
+		uint32_t particleEmitters = 0;   // 이번 프레임에 시뮬레이션한 이미터 수
+		uint32_t particleCapacity = 0;   // 그 이미터들의 버퍼 원소 합 (= 그리는 쿼드 수. 죽은 것 포함)
+		uint32_t particlesSpawned = 0;   // 이번 프레임에 새로 생긴 파티클 수
 	};
 
 	// 2048² 메인 아틀라스는 지역광(스팟·포인트) 전용: 512² 타일 16개를 4×4 로 배치 (D32 약 16MB). 스팟 =
@@ -285,23 +294,29 @@ private:
 
 	// ---- 셰이더·레이아웃·패스 표 (Renderer.cpp 의 kShaders, kPasses) ----
 	// 셰이더를 추가할 때: ShaderId 에 한 줄, kShaders 에 한 줄. 로드·핫리로드 감시·검증·해제는 표를 돌며 함.
-	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_BasicSkinVS, Shader_ShadowSkinVS, Shader_DebugLineVS, Shader_DebugLinePS, Shader_BlurCS, Shader_BlurWeightsCS, Shader_Count };
-	enum LayoutId : uint32_t { Layout_Frame, Layout_Object, Layout_Material, Layout_Post, Layout_BlurCompute, Layout_BlurWeights, Layout_Count };
+	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_BasicSkinVS, Shader_ShadowSkinVS, Shader_DebugLineVS, Shader_DebugLinePS, Shader_BlurCS, Shader_BlurWeightsCS, Shader_ParticleResetCS, Shader_ParticleSimCS, Shader_ParticleArgsCS, Shader_ParticleEmitCS, Shader_ParticleSortInitCS, Shader_ParticleSortStepCS, Shader_ParticleVS, Shader_ParticlePS, Shader_Count };
+	enum LayoutId : uint32_t { Layout_Frame, Layout_Object, Layout_Material, Layout_Post, Layout_BlurCompute, Layout_BlurWeights, Layout_ParticleSim, Layout_ParticleStep, Layout_ParticleDraw, Layout_ParticleDepth, Layout_ParticleCollide, Layout_ParticleSort, Layout_ParticleSortStep, Layout_Count };
 	// 패스 = (VS, PS, 레이아웃 목록). PSO Desc 의 셰이더·bindingLayouts 가 이 표에서 나오고, 바인딩 대조도 패스
 	// 단위로 함 (그 패스의 레이아웃에 선언된 슬롯만 통과).
 	// Pass_MainSkin / Pass_ShadowSkin 은 스키닝 메시용 (정점 포맷 PositionColorNormalTexcoordTangentSkin). 스킨 VS 만 다르고 PS·레이아웃은 같음.
-	enum PassId : uint32_t { Pass_Main, Pass_Shadow, Pass_Sky, Pass_Tonemap, Pass_Post, Pass_MainSkin, Pass_ShadowSkin, Pass_DebugLine, Pass_Count };
+	enum PassId : uint32_t { Pass_Main, Pass_Shadow, Pass_Sky, Pass_Tonemap, Pass_Post, Pass_MainSkin, Pass_ShadowSkin, Pass_DebugLine, Pass_Particle, Pass_Count };
 	// 셋 인덱스 = 그 패스의 PipelineStateDesc::bindingLayouts 인덱스 (CommandList::SetResourceSet 의 첫 인자).
 	// 메인 { 프레임, 오브젝트, 재질 }, 그림자 { 프레임, 오브젝트 }, 스카이 { 프레임 }, 후처리 { 후처리 }.
 	static constexpr uint32_t kSetFrame = 0;
 	static constexpr uint32_t kSetObject = 1;
 	static constexpr uint32_t kSetMaterial = 2;
 	static constexpr uint32_t kSetPost = 0;
+	static constexpr uint32_t kSetParticle = 1;   // 파티클 그리기 { 프레임, 파티클, 깊이 }
+	static constexpr uint32_t kSetParticleDepth = 2;
 	// 컴퓨트 패스 = (CS, 레이아웃 목록). 그래픽스 패스 표와 따로 둠 — PSO Desc 가 다르고 (ComputePipelineDesc),
 	// 바인딩 대조의 스테이지가 Compute 임.
-	enum ComputePassId : uint32_t { ComputePass_Blur, ComputePass_BlurWeights, ComputePass_Count };
+	enum ComputePassId : uint32_t { ComputePass_Blur, ComputePass_BlurWeights, ComputePass_ParticleReset, ComputePass_ParticleSim, ComputePass_ParticleArgs, ComputePass_ParticleEmit, ComputePass_ParticleSortInit, ComputePass_ParticleSortStep, ComputePass_Count };
 	static constexpr uint32_t kSetBlurCompute = 0;
 	static constexpr uint32_t kSetBlurWeights = 0;
+	static constexpr uint32_t kSetParticleSim = 0;
+	static constexpr uint32_t kSetParticleCollide = 1;   // 적분 패스만 { 적분, 충돌 }
+	static constexpr uint32_t kSetParticleSortStep = 1;  // 정렬 패스 { 정렬, 단계 }
+	static constexpr uint32_t kMaxParticleViews = 2;     // 알파 이미터의 정렬 결과를 따로 두는 뷰: 0 메인, 1 카메라 미리보기
 	struct ShaderInfo;   // 파일·진입점·스테이지·이름
 	struct PassInfo;     // 이름·VS·PS·레이아웃 목록
 	struct ComputePassInfo;   // 이름·CS·레이아웃 목록
@@ -329,13 +344,31 @@ private:
 	void RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas);   // atlas 0 = 메인(m_shadowMap), 1 = CSM(m_csmMap). 그 아틀라스의 뷰만 그림
 	// 뷰 하나의 씬 패스 (메인·미리보기 공통): view.hdr + view.depth 에 불투명 드로우와 스카이박스를 그림.
 	// b0 는 호출 전에 그 카메라로 올려 둘 것. 끝나면 view.hdr 는 ShaderResource 상태.
-	void RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTarget& view, const Camera& camera, const char* debugName);
+	// 패스 두 개: (1) 불투명·하늘·블렌딩 항목 (깊이 씀) (2) 파티클·디버그 선 (깊이 읽기 전용 — 셰이더가 깊이를 SRV 로도
+	// 읽음). viewIndex 0 = 메인 뷰: (1) 과 (2) 사이에서 파티클 시뮬레이션 (프레임에 한 번). 알파 이미터 정렬은 뷰마다.
+	// 끝나면 view.depth 는 (2) 를 열었으면 DepthRead, 아니면 DepthWrite.
+	void RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTarget& view, const Camera& camera, const char* debugName, uint32_t viewIndex);
 	void DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera);   // 씬 패스의 드로우 루프 (절두체 컬링, 끝에 스카이박스)
 	// 디버그 선 (본·Raycast 등). 선은 Engine 이 소유한 DebugDraw 가 모으고, Renderer 는 읽기만 함: UploadDebugLines 가 그 월드 공간
 	// 선 목록을 프레임마다 동적 정점 버퍼에 올리고, DrawDebugLines 가 씬 패스 끝(하늘 뒤)에 깊이 테스트 없이 그림.
 	void UploadDebugLines(const DebugDraw& debugDraw);
 	void DrawDebugLines(RHI::CommandList& cmd);
 	PipelineHandle GetDebugLinePipeline();
+
+	// ---- GPU 파티클 (VFX 2단계, RendererParticles.cpp) ----
+	// BuildDrawList 가 이미터를 모으고 (CollectEmitter), 업로드 구간 안에서 버퍼·셋을 맞추고 상수를 올림
+	// (UpdateParticleEmitters). 패스 시작 전에 컴퓨트로 한 번 시뮬레이션하고 (SimulateParticles), 씬 패스마다 블렌딩
+	// 항목 뒤에 그림 (DrawParticles — 메인·미리보기 뷰가 같은 버퍼를 읽음).
+	void CollectEmitter(const GameObject& object, const DirectX::XMMATRIX& world);
+	void UpdateParticleEmitters(float totalTime, const Camera& camera);
+	void SimulateParticles(RHI::CommandList& cmd, const ViewTarget& view);
+	void SortParticles(RHI::CommandList& cmd, uint32_t viewIndex);   // 알파 이미터만. 렌더 패스 밖, 그 뷰의 파티클 패스 전
+	void DrawParticles(RHI::CommandList& cmd, const ViewTarget& view, uint32_t viewIndex);
+	bool EnsureParticleSortSteps(uint32_t count);   // count (2 의 거듭제곱) 를 정렬할 단계 상수 버퍼·셋까지 만듦
+	PipelineHandle GetParticlePipeline();
+	void DestroyGpuEmitters();
+	struct GpuEmitter;
+	void DestroyGpuEmitter(GpuEmitter& gpu, bool includeConstants);   // includeConstants = false: 크기 변경 (b8 버퍼는 다시 씀)
 	void DrawSkybox(RHI::CommandList& cmd);                               // 전체 화면 삼각형 하나 (Draw(3), 정점 버퍼 없음)
 	// HDR: 씬 패스가 그린 HDR 텍스처(hdrSet 의 t13)를 읽어 노출·ACES 를 적용하고 output 에 sRGB 로 씀.
 	// output 은 RenderTarget 으로 전이했다가 끝나면 outputAfter 로 둠. HDR 텍스처는 이미 ShaderResource
@@ -390,6 +423,8 @@ private:
 		TextureHandle depth;       // D24S8. DepthStencil | ShaderResource 라 후처리가 SRV 로 읽을 수 있음
 		TextureHandle hdr;         // R16G16B16A16_FLOAT. 씬 패스의 렌더 타깃
 		ResourceSetHandle hdrSet;  // Layout_Post: t13 = hdr (톤 패스·후처리의 입력)
+		ResourceSetHandle particleDepthSet;    // Layout_ParticleDepth: t23 = depth (파티클 PS, 소프트 파티클)
+		ResourceSetHandle particleCollideSet;  // Layout_ParticleCollide: b9, t23 = depth (파티클 적분 CS, 충돌. 메인 뷰만 씀)
 		PostScratch post;          // 블러·블룸 스크래치 (hdr 크기를 따름)
 		uint32_t width = 0;
 		uint32_t height = 0;
@@ -529,6 +564,55 @@ private:
 	std::unordered_map<uint32_t, PipelineHandle> m_shadowPipelines;
 	PipelineHandle m_skyPipeline;
 	PipelineHandle m_debugLinePipeline;
+	PipelineHandle m_particlePipeline;
+	BufferHandle m_particleCollisionCB;   // Dynamic b9 (ParticleCollisionConstants). 뷰마다의 충돌 셋이 가리킴
+	BufferHandle m_particleSortViewCB[kMaxParticleViews];   // Dynamic b10, 뷰마다 (알파 이미터가 있는 프레임에 올림)
+	struct ParticleSortStep
+	{
+		BufferHandle constants;   // Default b11 (ParticleSortStepConstants), 초기 데이터로 만들고 바꾸지 않음
+		ResourceSetHandle set;    // Layout_ParticleSortStep
+	};
+	std::vector<ParticleSortStep> m_particleSortSteps;   // k = 2, 4, … 마다 j = k/2 … 1 순서. 큰 N 은 작은 N 의 단계 목록을 앞에 그대로 가짐
+	uint32_t m_particleSortStepCount = 0;                 // m_particleSortSteps 가 정렬할 수 있는 최대 길이
+
+	// 이미터 하나의 GPU 상태. 키 = 오브젝트 ID × 16 + 그 오브젝트 안에서 몇 번째 이미터인지 (undo·씬 로드가 오브젝트를
+	// 다시 만들어도 ID 가 같으면 이어서 씀). 이번 프레임에 보이지 않은 키는 UpdateParticleEmitters 가 지움.
+	struct GpuEmitter
+	{
+		BufferHandle particles;        // Default, SRV + UAV, stride kParticleStride, capacity 개
+		BufferHandle deadList;         // UAV, uint × capacity (비어 있는 슬롯 번호)
+		BufferHandle aliveLists[2];    // SRV + UAV, uint × capacity. 프레임마다 입력·출력이 바뀜
+		BufferHandle counters;         // UAV, uint × kParticleCounterCount
+		BufferHandle args;             // Raw + UAV + IndirectArgs, kParticleArgsSize 바이트
+		BufferHandle constants;        // Dynamic b8 (ParticleEmitterConstants)
+		ResourceSetHandle simSets[2];  // Layout_ParticleSim: b8, u0~u5. [p] = 입력 aliveLists[p], 출력 aliveLists[1 - p]
+		ResourceSetHandle stepSets[2]; // Layout_ParticleStep: simSets 에서 u5 (인자 버퍼) 만 뺀 것 — 간접 디스패치용
+		ResourceSetHandle drawSets[2]; // Layout_ParticleDraw: b8, t21, t22 = aliveLists[1 - p] (그 프레임의 출력)
+		// 알파 이미터 (blendMode 1) 만: 뷰마다 정렬 결과. 길이 = ParticleSortCount(capacity)
+		BufferHandle sortKeys[kMaxParticleViews];        // UAV, float
+		BufferHandle sortIndices[kMaxParticleViews];     // SRV + UAV, uint. 그리기 셋의 t22
+		ResourceSetHandle sortSets[kMaxParticleViews][2];  // Layout_ParticleSort. [뷰][parity] (t22 입력 = 그 프레임의 출력 생존 목록)
+		ResourceSetHandle drawSortedSets[kMaxParticleViews]; // Layout_ParticleDraw, t22 = sortIndices[뷰]
+		bool sorted = false;           // 이번 프레임에 정렬해서 그림 (blendMode 1 이고 정렬 리소스가 있음)
+		uint32_t capacity = 0;
+		uint32_t parity = 0;           // 이번 프레임에 쓸 simSets / drawSets 번호
+		uint32_t spawnCount = 0;       // 이번 프레임에 원하는 생성 수 (Emit 디스패치 크기)
+		uint32_t seed = 0;             // 프레임마다 1 씩
+		float spawnCarry = 0.0f;       // 정수로 떨어지지 않은 생성 수 (다음 프레임으로 넘김)
+		bool needsReset = true;
+		uint64_t lastSeenFrame = 0;
+	};
+	struct FrameEmitter
+	{
+		uint64_t key = 0;
+		const ParticleEmitter* emitter = nullptr;   // 이번 프레임 동안만 유효 (씬이 소유)
+		DirectX::XMFLOAT3 position = {};
+		DirectX::XMFLOAT3 direction = {};
+	};
+	std::unordered_map<uint64_t, GpuEmitter> m_gpuEmitters;
+	std::vector<FrameEmitter> m_frameEmitters;       // BuildDrawList 가 채움
+	std::vector<uint64_t> m_activeEmitterKeys;       // 이번 프레임에 시뮬레이션·그리기할 키 (UpdateParticleEmitters 가 채움)
+	float m_lastParticleTime = -1.0f;
 	BufferHandle m_debugLineVB;                       // 동적 정점 버퍼 (DebugDraw::kMaxVertices 개)
 	uint32_t m_debugLineCount = 0;                    // 올린 정점 수 (0 이면 그리지 않음)
 	PipelineHandle m_tonemapPipelines[2];   // [srgbOutput]

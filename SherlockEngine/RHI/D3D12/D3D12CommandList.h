@@ -36,10 +36,12 @@ public:
 
 	void DrawIndexed(uint32_t indexCount, uint32_t startIndex = 0, int32_t baseVertex = 0) override;
 	void Draw(uint32_t vertexCount, uint32_t startVertex = 0) override;
+	void DrawInstancedIndirect(BufferHandle args, uint32_t offsetBytes = 0) override;   // ExecuteIndirect(draw 시그니처)
 
 	void SetComputePipeline(ComputePipelineHandle handle) override;
 	void SetComputeResourceSet(uint32_t setIndex, ResourceSetHandle handle) override;
 	void Dispatch(uint32_t groupsX, uint32_t groupsY = 1, uint32_t groupsZ = 1) override;
+	void DispatchIndirect(BufferHandle args, uint32_t offsetBytes = 0) override;   // ExecuteIndirect(dispatch 시그니처)
 
 	void Barrier(TextureHandle texture, ResourceState after) override;
 	void UavBarrier(TextureHandle texture) override;
@@ -62,9 +64,13 @@ private:
 	// 드로우·Dispatch 직전에 현재 루트 시그니처에 맞춰 바인딩함. compute 면 SetComputeRoot*, 아니면 SetGraphicsRoot*.
 	void ApplyBindings(bool compute, const char* caller);
 	static void ErrorOnce(bool& flag, const char* message);
+	// 읽기 전용 깊이 패스에서 깊이 쓰기 PSO 로 그리려 하면 에러 로그(1회) 후 false — 드로우를 건너뜀 (D3D11 과 같음).
+	bool CheckReadOnlyDepthDraw(const char* caller) const;
 
 	void ApplyViewport(const Viewport& viewport);
 	void TrackBufferState(BufferHandle handle, D3D12Buffer* buffer, ResourceState after);
+	// *Indirect 의 인자 버퍼 검사 (IndirectArgs 플래그, 4 의 배수 오프셋, offset + argBytes ≤ size, 상태). 못 쓰면 nullptr.
+	ID3D12Resource* GetIndirectArgs(BufferHandle handle, uint32_t offsetBytes, uint32_t argBytes, const char* caller);
 
 private:
 	struct BoundSet
@@ -77,6 +83,7 @@ private:
 	D3D12Device* m_device = nullptr;
 	ID3D12GraphicsCommandList* m_list = nullptr;   // 소유권 없음 (Device 의 것)
 	bool m_inPass = false;
+	bool m_passDepthReadOnly = false;   // 이 패스의 깊이가 읽기 전용 DSV 로 바인딩됨
 	Stats m_stats;
 
 	PipelineHandle m_currentPipeline;

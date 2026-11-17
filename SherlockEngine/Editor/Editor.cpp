@@ -1756,6 +1756,11 @@ void Editor::DrawStats(Engine& engine, const char* sceneName, const ModelStats& 
 	ImGui::TextWrapped("%.1f FPS   %.2f ms/frame   scene view %ux%u", time.GetFps(), time.GetAverageFrameMs(), m_sceneWidth, m_sceneHeight);
 	ImGui::TextWrapped("draws %u (+%u shadow, %u views)   draw items %u, culled main %u / shadow %u   triangles %u (main only)   PSO switches %u   set switches %u   mesh switches %u   PSO cache %zu",
 		stats.draws, stats.shadowDraws, stats.shadowViews, stats.drawItems, stats.culled, stats.shadowCulled, stats.triangles, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches, engine.GetRenderer().GetPipelineCount());
+	if (stats.particleEmitters > 0)
+	{
+		ImGui::TextWrapped("particles: emitters %u   buffer %u (drawn as quads, dead included)   spawned this frame %u",
+			stats.particleEmitters, stats.particleCapacity, stats.particlesSpawned);
+	}
 	DebugUI::DrawModelPanel(sceneName, modelStats, engine.GetScene().GetImageCount(), engine.GetScene().GetObjects().size());
 	DebugUI::DrawProfilerPanel();
 	DebugUI::EndPanel();

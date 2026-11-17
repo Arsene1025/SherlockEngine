@@ -41,6 +41,11 @@ struct DepthAttachment
 	StoreOp store = StoreOp::Store;
 	float clearDepth = 1.0f;
 	uint8_t clearStencil = 0;
+	// 읽기 전용 깊이: 깊이 테스트만 하고 쓰지 않음. 같은 텍스처를 이 패스의 셰이더가 SRV 로 동시에 읽을 수 있음
+	// (소프트 파티클). 텍스처는 ResourceState::DepthRead 여야 하고 load 는 Load 만 됨 — Clear·DontCare 는 에러 로그 후
+	// 지우지 않고 시작함. 깊이 쓰기를 켠 PSO 로 그리면 에러 로그 후 그 드로우를 건너뜀.
+	// D3D11: D3D11_DSV_READ_ONLY_DEPTH(|STENCIL) DSV. D3D12: D3D12_DSV_FLAG_READ_ONLY_DEPTH(|STENCIL) DSV.
+	bool readOnly = false;
 };
 
 struct Viewport
@@ -78,6 +83,11 @@ enum class ResourceState : uint8_t
 	CopyDest,
 	Present,
 	UnorderedAccess,   // 컴퓨트가 UAV 로 씀. Dispatch 전에 이 상태로, 결과를 읽기 전에 ShaderResource 로 전이
+	IndirectArgument,  // DrawInstancedIndirect / DispatchIndirect 가 인자를 읽음 (BufferBind_IndirectArgs 버퍼 전용)
+	// 깊이를 읽기만 함: 읽기 전용 DSV(DepthAttachment::readOnly) 와 SRV(모든 스테이지, 컴퓨트 포함)를 동시에.
+	// TextureBind_DepthStencil 텍스처 전용. D3D12: DEPTH_READ | PIXEL_SHADER_RESOURCE | NON_PIXEL_SHADER_RESOURCE
+	// (TextureBind_ShaderResource 가 없는 깊이는 DENY_SHADER_RESOURCE 라 DEPTH_READ 만).
+	DepthRead,
 };
 
 inline const char* ToString(ResourceState state)
@@ -92,6 +102,8 @@ inline const char* ToString(ResourceState state)
 	case ResourceState::CopyDest:       return "CopyDest";
 	case ResourceState::Present:        return "Present";
 	case ResourceState::UnorderedAccess: return "UnorderedAccess";
-	default:                            return "?";
+	case ResourceState::IndirectArgument: return "IndirectArgument";
+	case ResourceState::DepthRead:      return "DepthRead";
+	default:                           return "?";
 	}
 }
