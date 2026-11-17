@@ -324,7 +324,7 @@ GPU 컴퓨트   Reset → Sim(+충돌) → Args → Emit          Shaders/Partic
              SortInit → SortStep × m(m+1)/2 (알파만)    Shaders/ParticleSort{Init,Step}ComputeShader.hlsl
                │ 결과: 파티클 버퍼, 생존(또는 정렬) 목록, 간접 인자
 GPU 그리기   DrawInstancedIndirect → VS 빌보드 → PS     Shaders/ParticleVertexShader.hlsl · ParticlePixelShader.hlsl
-공용 선언    Particle 구조체, b8/b9 cbuffer, 슬롯, 난수   Shaders/Common.hlsli · Graphics/ShaderConstants.h
+공용 선언    Particle 구조체, b8~b11 cbuffer, 슬롯, 난수   Shaders/Particle·ParticleSim·ParticleSort.hlsli · Graphics/ShaderConstants.h
 RHI          raw 버퍼, 간접 인자, 읽기 전용 깊이           RHI/*.h, RHI/D3D11, RHI/D3D12  (백엔드 구현은 10.1 · 11.1)</code></pre>
 <p>핵심 원리 세 가지:</p>
 <ul>
@@ -408,8 +408,8 @@ RHI          raw 버퍼, 간접 인자, 읽기 전용 깊이           RHI/*.h, 
 </ul>
 
 <h3 id="arch-data">12.5 GPU 데이터 — 버퍼, 개수, 인자</h3>
-<p class="loc"><b>코드</b>: <code>Renderer::GpuEmitter</code> <code>Graphics/Renderer.h:581</code>, 버퍼 생성 <code>RendererParticles.cpp:76~</code>, <code>struct Particle</code> <code>Shaders/Common.hlsli:255</code>, 개수·인자 상수 <code>Graphics/ShaderConstants.h:94~97</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
-<p><b>파티클 하나</b> (<code>Common.hlsli</code> 의 <code>struct Particle</code>, 32 바이트 = <code>kParticleStride</code>):</p>
+<p class="loc"><b>코드</b>: <code>Renderer::GpuEmitter</code> <code>Graphics/Renderer.h:581</code>, 버퍼 생성 <code>RendererParticles.cpp:76~</code>, <code>struct Particle</code> <code>Shaders/Particle.hlsli:53</code>, 개수·인자 상수 <code>Graphics/ShaderConstants.h:94~97</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
+<p><b>파티클 하나</b> (<code>Particle.hlsli</code> 의 <code>struct Particle</code>, 32 바이트 = <code>kParticleStride</code>):</p>
 <pre><code>float3 position; float age;        // 월드 위치, 나이(초)
 float3 velocity; float lifetime;   // 월드 속도(m/s), 수명(초). age &gt;= lifetime 이면 죽음</code></pre>
 <p><b>이미터 하나의 버퍼</b> (<code>GpuEmitter</code>, N = capacity):</p>
@@ -456,7 +456,7 @@ float3 velocity; float lifetime;   // 월드 속도(m/s), 수명(초). age &gt;=
 <ul>
 <li>파티클 PSO 의 셋 0 은 일반 프레임 셋(<code>Layout_Frame</code>, b0 = 지금 뷰의 view·proj)이라 같은 드로우가 메인·미리보기 카메라 어느 쪽으로도 그려집니다.</li>
 <li><code>Layout_ParticleStep</code> 이 따로 있는 이유: Sim 을 간접 디스패치하는 동안 인자 버퍼는 <code>IndirectArgument</code> 상태여야 하는데, 같은 버퍼가 u5 UAV 로 꽂혀 있으면 셰이더가 쓰지 않아도 상태 충돌입니다(두 백엔드가 경고).</li>
-<li>컴퓨트 셰이더 네 개가 같은 u0~u5 선언을 쓰도록 <code>Common.hlsli</code> 의 <code>#ifdef PARTICLE_SIM</code> 블록에 두었습니다(정렬은 <code>PARTICLE_SORT</code>). 핫리로드가 <code>Common.hlsli</code> 를 감시하므로 선언을 고치면 관련 셰이더가 같이 다시 컴파일됩니다.</li>
+<li>컴퓨트 셰이더 네 개가 같은 u0~u5 선언을 쓰도록 <code>ParticleSim.hlsli</code> 에 두었습니다(정렬 셋은 <code>ParticleSort.hlsli</code>, 둘이 같이 쓰는 b8·t21·t22·t23·개수 칸 번호는 <code>Particle.hlsli</code>). 두 셋은 u0·u1 의 뜻이 달라서 한 셰이더가 둘을 같이 include 하면 <code>#error</code> 가 납니다. 핫리로드와 Debug 의 <code>.cso</code> 신선도 검사는 셰이더가 include 하는 헤더를 재귀로 따라가므로(<code>ShaderCompiler::ListIncludeFiles</code>) 선언을 고치면 그 헤더를 쓰는 셰이더만 다시 컴파일됩니다.</li>
 <li>C++ 과 HLSL 이 같은 숫자를 따로 갖는 곳(<code>kParticleCounterCount</code>, 인자 오프셋, <code>ParticleSortCount</code>, cbuffer 배치)은 양쪽 주석이 서로를 가리키고, cbuffer 크기·오프셋은 <code>static_assert</code> 와 시작 시 리플렉션 대조("cbuffer 크기 일치")로 확인합니다.</li>
 </ul>
 
@@ -566,7 +566,7 @@ softness &gt; 0 이면  falloff ×= saturate((z_scene − z_particle) / softness
 <h3 id="arch-extend">12.12 고칠 때 어디를 건드리나</h3>
 <table>
 <tr><th>하고 싶은 일</th><th>건드릴 곳 (순서대로)</th></tr>
-<tr><td>이미터 속성 하나 추가</td><td><code>ParticleEmitter.h</code> 필드 → <code>.cpp</code> 의 <code>Reflect</code> → <code>ParticleEmitterConstants</code>(16 바이트 단위로 채우고 <code>static_assert</code> 크기·오프셋) → <code>Common.hlsli</code> 의 <code>cbuffer ParticleEmitter</code>(같은 순서) → <code>UpdateParticleEmitters</code> 에서 범위를 잘라 복사 → 셰이더에서 사용</td></tr>
+<tr><td>이미터 속성 하나 추가</td><td><code>ParticleEmitter.h</code> 필드 → <code>.cpp</code> 의 <code>Reflect</code> → <code>ParticleEmitterConstants</code>(16 바이트 단위로 채우고 <code>static_assert</code> 크기·오프셋) → <code>Particle.hlsli</code> 의 <code>cbuffer ParticleEmitter</code>(같은 순서) → <code>UpdateParticleEmitters</code> 에서 범위를 잘라 복사 → 셰이더에서 사용</td></tr>
 <tr><td>컴퓨트 커널 추가</td><td>셰이더 파일 하나에 진입점 하나(런타임이 파일 이름으로 .cso 를 찾음) → <code>Renderer.h</code> 의 <code>ShaderId</code>·<code>ComputePassId</code> → <code>Renderer.cpp</code> 의 셰이더 표·컴퓨트 패스 표(레이아웃 목록) → <code>SherlockEngine.vcxproj</code>·<code>.filters</code> 의 FxCompile 항목 → <code>SimulateParticles</code> 에서 디스패치와 배리어</td></tr>
 <tr><td>새 슬롯</td><td><code>ShaderConstants.h</code> 의 <code>k*Slot*</code> (새 cbuffer 면 구조체·<code>static_assert</code> 와 <code>Renderer.cpp</code> 의 <code>kConstantBuffers</code> 표 — 시작 시 크기 대조) → 레이아웃 정의(<code>Renderer.cpp</code>) → HLSL 선언. 상한은 <code>kMaxSrvRegister</code> 32, <code>kMaxCbvRegister</code> 14, <code>kMaxUavRegister</code> 8 — 지금 t24·b11·u5 까지 씀</td></tr>
 <tr><td>파티클 모양 바꾸기 (텍스처 등)</td><td><code>PS_Particle</code> 의 falloff 부분. 텍스처를 쓰려면 <code>Layout_ParticleDraw</code> 에 t#·s# 를 더하고 그리기 셋에 꽂음</td></tr>
@@ -586,7 +586,7 @@ Renderer (class) ─┬─ m_frameEmitters : vector&lt;FrameEmitter&gt;        �
                   └─ m_mainView / m_previewView : ViewTarget         뷰마다 particleDepthSet, particleCollideSet
                          │ RHI::Device 로 만들고 RHI::CommandList 로 기록
 RHI::CommandList (추상 class) ◀── D3D11CommandList / D3D12CommandList (final class)
-GPU: Shaders/*.hlsl — C++ 과 공유하는 선언은 Common.hlsli ↔ Graphics/ShaderConstants.h</code></pre>
+GPU: Shaders/*.hlsl — C++ 과 공유하는 선언은 Particle·ParticleSim·ParticleSort.hlsli ↔ Graphics/ShaderConstants.h</code></pre>
 <p><code>GpuEmitter</code>·<code>FrameEmitter</code>·<code>ParticleSortStep</code>·<code>ViewTarget</code> 은 <code>Renderer</code> 안의 <b>private 중첩 구조체</b>(메서드 없는 데이터 묶음)입니다. 파티클 로직은 별도 클래스가 아니라 전부 <code>Renderer</code> 의 멤버 함수이고, <code>Renderer</code> 가 파일을 나눠 구현합니다(파티클은 <code>Graphics/RendererParticles.cpp</code>).</p>
 
 <h4>씬 (컴포넌트)</h4>
@@ -634,13 +634,13 @@ GPU: Shaders/*.hlsl — C++ 과 공유하는 선언은 Common.hlsli ↔ Graphics
 
 <h4>C++ ↔ HLSL 공유 선언</h4>
 <table>
-<tr><th>C++ (<code>Graphics/ShaderConstants.h</code>)</th><th>HLSL (<code>Shaders/Common.hlsli</code>)</th><th>내용</th></tr>
-<tr><td><code>ParticleEmitterConstants</code> 259 (128 B, <code>static_assert</code> 316~)</td><td><code>cbuffer ParticleEmitter</code> 218 (b8)</td><td>이미터 상수</td></tr>
-<tr><td><code>ParticleCollisionConstants</code> 286 (160 B)</td><td><code>cbuffer ParticleCollision</code> 322 (b9, <code>PARTICLE_SIM</code> 안)</td><td>충돌용 메인 카메라</td></tr>
-<tr><td><code>ParticleSortViewConstants</code> 300 (64 B), <code>ParticleSortStepConstants</code> 308 (256 B)</td><td><code>PARTICLE_SORT</code> 블록 263~ (b10, b11)</td><td>정렬 뷰 행렬, (k, j)</td></tr>
-<tr><td><code>kParticleStride</code> 98</td><td><code>struct Particle</code> 255</td><td>파티클 32 바이트</td></tr>
+<tr><th>C++ (<code>Graphics/ShaderConstants.h</code>)</th><th>HLSL (<code>Shaders/</code>)</th><th>내용</th></tr>
+<tr><td><code>ParticleEmitterConstants</code> 259 (128 B, <code>static_assert</code> 316~)</td><td><code>Particle.hlsli</code> 의 <code>cbuffer ParticleEmitter</code> 13 (b8)</td><td>이미터 상수</td></tr>
+<tr><td><code>ParticleCollisionConstants</code> 286 (160 B)</td><td><code>ParticleSim.hlsli</code> 의 <code>cbuffer ParticleCollision</code> 31 (b9)</td><td>충돌용 메인 카메라</td></tr>
+<tr><td><code>ParticleSortViewConstants</code> 300 (64 B), <code>ParticleSortStepConstants</code> 308 (256 B)</td><td><code>ParticleSort.hlsli</code> 19~ (b10, b11)</td><td>정렬 뷰 행렬, (k, j)</td></tr>
+<tr><td><code>kParticleStride</code> 98</td><td><code>Particle.hlsli</code> 의 <code>struct Particle</code> 53</td><td>파티클 32 바이트</td></tr>
 <tr><td>슬롯 <code>kCBSlotParticle</code>… 68~78, <code>kUAVSlotParticles</code>… 88~93</td><td>각 <code>register(…)</code></td><td>b8~b11, t21~t24, u0~u5</td></tr>
-<tr><td><code>kParticleCounterCount</code> 94, 인자 오프셋·크기 95~97</td><td><code>kCounter*</code>, <code>kArgs*</code> (<code>PARTICLE_SIM</code> 블록 293~)</td><td>개수 버퍼 칸, 인자 버퍼 배치</td></tr>
+<tr><td><code>kParticleCounterCount</code> 94, 인자 오프셋·크기 95~97</td><td><code>kCounter*</code> (<code>Particle.hlsli</code> 68~), <code>kArgs*</code> (<code>ParticleSim.hlsli</code> 26~)</td><td>개수 버퍼 칸, 인자 버퍼 배치</td></tr>
 <tr><td><code>ParticleSortCount</code> 81</td><td><code>ParticleSortCount</code> 287</td><td>정렬 길이 (같은 식)</td></tr>
 <tr><td>—</td><td><code>ParticleVSOutput</code> 336, <code>LinearViewDepth</code> 248, <code>particleSceneDepth</code> (t23) 245, <code>PcgHash</code> 346, <code>Random01</code> 354</td><td>VS→PS, 깊이 → 뷰 z, 난수</td></tr>
 </table>
@@ -714,7 +714,7 @@ GPU: Shaders/*.hlsl — C++ 과 공유하는 선언은 Common.hlsli ↔ Graphics
 <p>한 프레임 안의 순서로 보면 "끝나기를 기다리는 지점"이 디스패치 경계입니다.</p>
 <pre><code>[Reset] ─배리어─▶ Sim ─배리어─▶ Args ─배리어─▶ Emit ─상태 전이─▶ (정렬: Init ─배리어─▶ Step ─배리어─▶ Step …) ─▶ 그리기
   N 스레드         생존 수        1 스레드       생성 수                길이            길이 × 단계 수</code></pre>
-<p>또 하나의 이유는 빌드 방식입니다. 엔진은 셰이더를 <code>.cso</code> 파일 이름으로 찾고 FxCompile 이 파일마다 진입점 하나로 컴파일하므로, 커널 하나가 파일 하나가 됩니다. 커널들이 같이 쓰는 선언(u0~u5, 개수 칸 번호)은 <code>Common.hlsli</code> 의 <code>PARTICLE_SIM</code>·<code>PARTICLE_SORT</code> 블록에 한 번만 둡니다.</p>
+<p>또 하나의 이유는 빌드 방식입니다. 엔진은 셰이더를 <code>.cso</code> 파일 이름으로 찾고 FxCompile 이 파일마다 진입점 하나로 컴파일하므로, 커널 하나가 파일 하나가 됩니다. 커널들이 같이 쓰는 선언은 헤더에 한 번만 둡니다 — 시뮬레이션 셋 u0~u5 는 <code>ParticleSim.hlsli</code>, 정렬 셋은 <code>ParticleSort.hlsli</code>, 둘이 같이 쓰는 개수 칸 번호·파티클 구조체는 <code>Particle.hlsli</code>.</p>
 
 <h4>합칠 수 있었던 것과 없는 것</h4>
 <ul>
