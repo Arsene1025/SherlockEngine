@@ -11,8 +11,7 @@
 //
 // 빌보드: 뷰 공간에서 중심에 모서리 오프셋을 더함 — 카메라의 오른쪽·위 축을 따로 뽑지 않아도 늘 화면을 향함.
 // 알파 이미터는 t22 가 생존 목록이 아니라 이 뷰의 카메라로 먼 것부터 정렬한 목록 (앞 생존 수 칸이 유효).
-StructuredBuffer<Particle> particles : register(t21);
-StructuredBuffer<uint> aliveList : register(t22);
+// t21·t22 선언은 Particle.hlsli (정렬 셋과 같이 씀).
 
 static const float2 kQuadCorners[6] =
 {

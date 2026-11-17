@@ -58,6 +58,21 @@ struct Particle
     float lifetime;    // 초. 태어날 때 이미터 값을 복사함
 };
 
+// t21 파티클 버퍼, t22 번호 목록. 그리기 셋 (VS) 과 정렬 셋 (CS) 이 같은 레지스터·같은 C++ 슬롯 (kSRVSlotParticles,
+// kSRVSlotParticleAlive) 으로 꽂음. t22 는 정렬 셋과 가산 이미터의 그리기에서는 이번 프레임 생존 목록이고, 알파 이미터의
+// 그리기에서는 그 뷰의 카메라로 먼 것부터 정렬한 번호 (앞 생존 수 칸이 유효).
+StructuredBuffer<Particle> particles : register(t21);
+StructuredBuffer<uint> aliveList : register(t22);
+
+// 파티클 개수 버퍼 (u4 particleCounters / 정렬 셋의 t24 sortCounters) 의 칸 번호.
+static const uint kCounterAlive = 0;       // 이번 프레임 생존 목록에 지금까지 들어간 수 (시뮬레이션이 원자적으로 늘림)
+static const uint kCounterDead = 1;        // 사망 목록 길이
+static const uint kCounterSimCount = 2;    // 이번 프레임 시뮬레이션이 훑을 수 (= 지난 프레임 최종 생존 수)
+static const uint kCounterEmitCount = 3;   // 이번 프레임 실제로 태어나는 수
+static const uint kCounterEmitDeadBase = 4;  // 생성이 꺼내 쓸 사망 목록 구간의 시작
+static const uint kCounterEmitAliveBase = 5; // 생성이 쓸 생존 목록 구간의 시작
+static const uint kParticleCounterCount = 8; // ShaderConstants.h 의 kParticleCounterCount
+
 // 파티클 VS → PS (ParticleVertexShader / ParticlePixelShader).
 struct ParticleVSOutput
 {

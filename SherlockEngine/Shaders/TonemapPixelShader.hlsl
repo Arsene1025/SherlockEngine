@@ -4,12 +4,11 @@
 // 샘플러 없이 Load 를 쓰는 이유: 출력과 입력이 같은 크기면 1:1 대응이라 필터가 필요 없음.
 // 출력이 입력보다 작을 수 있음 (단계별 썸네일). 좌표를 postView 의 입력/출력 비로 늘려 읽음 — 같은 크기면
 // 비가 1 이라 이전과 같음. 결과는 선형 — 이 패스의 sRGB RTV 가 인코딩함.
-Texture2D sceneHdr : register(t13);
 
 float4 PS_Tonemap(float4 position : SV_POSITION) : SV_TARGET
 {
     const float2 scale = postView.xy / max(postView.zw, 1.0f);
-    const float3 hdr = sceneHdr.Load(int3((int2)(position.xy * scale), 0)).rgb;
+    const float3 hdr = postInput.Load(int3((int2)(position.xy * scale), 0)).rgb;
 
     // 디버그 뷰(알베도·노멀 등)는 조명 결과가 아니므로 노출·톤매핑을 거치지 않음 (기존에도 톤매핑 전에 반환했음).
     if (debugParams.x > 0.5f)

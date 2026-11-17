@@ -10,10 +10,10 @@ void CS_ParticleSortInit(uint3 id : SV_DispatchThreadID)
 {
     const uint i = id.x;
     if (i >= ParticleSortCount(particleCapacity)) return;
-    if (i < sortCounters[kSortCounterSimCount])
+    if (i < sortCounters[kCounterSimCount])
     {
-        const uint index = sortAliveList[i];
-        sortKeys[i] = mul(float4(sortParticles[index].position, 1.0f), sortView).z;
+        const uint index = aliveList[i];
+        sortKeys[i] = mul(float4(particles[index].position, 1.0f), sortView).z;
         sortIndices[i] = index;
     }
     else

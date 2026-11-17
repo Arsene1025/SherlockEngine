@@ -10,11 +10,10 @@
 //   t13 : 입력 (가로 패스 = hdr, 세로 패스 = 스크래치). SRV 로만 읽음 — cs_5_0 은 float4 UAV 를 읽을 수 없음.
 //   u0  : 출력 (가로 패스 = 스크래치, 세로 패스 = hdr). 같은 Dispatch 에서 입력과 같은 텍스처가 되지 않음.
 //   b4  : PostParams (postPass.yz = 방향, postBlur.y = 반경, postView.xy = 입력 크기, zw = 출력 크기)
-//   t20 : 가중치 (Common.hlsli 의 blurWeights)
+//   t20 : 가중치 (Post.hlsli 의 blurWeights)
 //
 // 그룹은 8×8 = 64 스레드. Dispatch 는 (ceil(w/8), ceil(h/8), 1) 이라 가장자리 그룹에는 텍스처 밖 스레드가 생김 —
 // 그 스레드는 아무것도 쓰지 않고 끝냄.
-Texture2D<float4> blurInput : register(t13);
 RWTexture2D<float4> blurOutput : register(u0);
 
 [numthreads(8, 8, 1)]
@@ -33,7 +32,7 @@ void CS_Blur(uint3 id : SV_DispatchThreadID)
     {
         const float w = blurWeights[abs(i)];
         const int2 c = clamp(base + dir * i, int2(0, 0), maxCoord);
-        sum += blurInput.Load(int3(c, 0)).rgb * w;
+        sum += postInput.Load(int3(c, 0)).rgb * w;
         weightSum += w;
     }
     blurOutput[id.xy] = float4(sum / weightSum, 1.0f);

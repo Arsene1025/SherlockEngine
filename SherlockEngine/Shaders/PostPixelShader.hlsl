@@ -9,8 +9,6 @@
 //   모드 3 : 블룸 축소 (레벨 i-1 → 레벨 i). 선형 샘플러로 4x4 박스.
 //   모드 4 : 블룸 확대 (레벨 i+1 → 레벨 i, 또는 레벨 0 → hdr). 3x3 텐트 필터에 postBloom.z 를 곱함.
 //            출력 PSO 가 가산 블렌드(One/One)라 기존 값에 더해짐 — 입력과 출력이 같은 텍스처가 되지 않음.
-Texture2D postInput : register(t13);
-SamplerState postSampler : register(s6);
 
 // 밝기(채널 최댓값)가 임계값을 넘는 만큼만 남김. knee 구간에서는 2차 곡선으로 부드럽게 올라감 (경계에서 튀지 않게).
 float3 BrightPass(float3 c)
