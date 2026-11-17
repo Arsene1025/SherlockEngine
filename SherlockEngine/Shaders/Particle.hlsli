@@ -6,7 +6,7 @@
 
 #include "Common.hlsli"
 
-// b8: 이미터 하나. ShaderConstants.h 의 ParticleEmitterConstants 와 같은 순서 (128바이트 = 16 × 8). CPU 가 프레임에 한 번
+// b8: 이미터 하나. ShaderConstants.h 의 ParticleEmitterConstants 와 같은 순서 (144바이트 = 16 × 9). CPU 가 프레임에 한 번
 // 올리고 (Renderer::UpdateParticleEmitters), 시뮬레이션 셋(CS)·정렬 셋(CS)과 그리기 셋(VS/PS)이 같은 버퍼를 꽂음.
 // 괄호 안: 값의 출처 (ParticleEmitter 컴포넌트 속성 / 오브젝트 / 렌더러) → 읽는 셰이더.
 // float3 다음에 float 하나를 붙여 16바이트 칸을 채움 (HLSL 상수 버퍼는 float4 단위로 묶임).
@@ -37,6 +37,8 @@ cbuffer ParticleEmitter : register(b8)
     uint particleBlendMode;          // 0 가산 (알파 0 을 내보냄), 1 알파 (프리멀티플라이드, 정렬해서 그림) (blendMode) → PS
     float3 particleEndTint;          // 수명 끝의 색 배율. 1 → endTint 로 선형 보간, 흰색이면 변화 없음 (endTint) → VS
     float particlePadding;           // 16바이트 칸 맞춤 (쓰지 않음)
+    float3 particleWind;             // 바람 = 속도가 끌려가는 목표 (m/s, 월드) (wind) → Sim
+    float particleDrag;              // 끌려가는 세기 (1/초). 0 = 끔 (drag) → Sim
 }
 
 // t23: 씬 깊이 (D24S8 의 깊이, DepthRead 상태 — 읽기 전용 DSV 와 동시에 읽음). 파티클 PS (소프트) · CS (충돌).

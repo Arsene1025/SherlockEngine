@@ -44,7 +44,7 @@ figure { margin:14px 0; } figure img { width:100%; height:auto; border-radius:6p
   </table>
   <p class="foot">기준: 커밋 04c26bb(컴퓨트 RHI 완료) + 작업 트리. 위치는 "파일 + 함수 이름"이 기준입니다. 이 문서는 새로 만든 것입니다.</p>
 </header>
-<nav><a href="#plan">1. 계획</a><a href="#s1-summary">2. 1단계 요약</a><a href="#s1-flow">3. 흐름</a><a href="#s1-component">4. 컴포넌트</a><a href="#s1-gpu">5. GPU 데이터</a><a href="#s1-sim">6. 시뮬레이션</a><a href="#s1-draw">7. 그리기</a><a href="#s1-notes">8. 설계 결정·함정</a><a href="#s1-verify">9. 1단계 검증</a><a href="#s2">10. 2단계</a><a href="#s2-rhi">10.1 RHI</a><a href="#s2-flow">10.2 흐름</a><a href="#s2-verify">10.3 검증</a><a href="#s3">11. 3단계</a><a href="#s3-rhi">11.1 RHI</a><a href="#s3-pass">11.2 패스</a><a href="#s3-depth">11.3 깊이</a><a href="#s3-sort">11.4 정렬</a><a href="#s3-verify">11.5 검증</a><a href="#arch">12. 지금 구조와 원리</a><a href="#arch-map">12.1 층·파일</a><a href="#arch-frame">12.2 프레임</a><a href="#arch-comp">12.3 컴포넌트</a><a href="#arch-cpu">12.4 CPU</a><a href="#arch-data">12.5 버퍼</a><a href="#arch-bind">12.6 바인딩</a><a href="#arch-sim">12.7 시뮬레이션</a><a href="#arch-sort">12.8 정렬</a><a href="#arch-draw">12.9 그리기</a><a href="#arch-state">12.10 상태</a><a href="#arch-tools">12.11 도구</a><a href="#arch-extend">12.12 고칠 곳</a><a href="#arch-map-code">12.13 코드 위치</a><a href="#arch-threads">12.14 GPU 스레드·셰이더 8개</a><a href="#arch-reading">12.15 읽는 순서</a><a href="#files">13. 파일 목록</a></nav>
+<nav><a href="#plan">1. 계획</a><a href="#s1-summary">2. 1단계 요약</a><a href="#s1-flow">3. 흐름</a><a href="#s1-component">4. 컴포넌트</a><a href="#s1-gpu">5. GPU 데이터</a><a href="#s1-sim">6. 시뮬레이션</a><a href="#s1-draw">7. 그리기</a><a href="#s1-notes">8. 설계 결정·함정</a><a href="#s1-verify">9. 1단계 검증</a><a href="#s2">10. 2단계</a><a href="#s2-rhi">10.1 RHI</a><a href="#s2-flow">10.2 흐름</a><a href="#s2-verify">10.3 검증</a><a href="#s3">11. 3단계</a><a href="#s3-rhi">11.1 RHI</a><a href="#s3-pass">11.2 패스</a><a href="#s3-depth">11.3 깊이</a><a href="#s3-sort">11.4 정렬</a><a href="#s3-verify">11.5 검증</a><a href="#arch">12. 지금 구조와 원리</a><a href="#arch-map">12.1 층·파일</a><a href="#arch-frame">12.2 프레임</a><a href="#arch-comp">12.3 컴포넌트</a><a href="#arch-cpu">12.4 CPU</a><a href="#arch-data">12.5 버퍼</a><a href="#arch-bind">12.6 바인딩</a><a href="#arch-sim">12.7 시뮬레이션</a><a href="#arch-sort">12.8 정렬</a><a href="#arch-draw">12.9 그리기</a><a href="#arch-state">12.10 상태</a><a href="#arch-tools">12.11 도구</a><a href="#arch-extend">12.12 고칠 곳</a><a href="#arch-map-code">12.13 코드 위치</a><a href="#arch-threads">12.14 GPU 스레드·셰이더 8개</a><a href="#arch-reading">12.15 읽는 순서</a><a href="#arch-wind">12.16 바람·버스트·모닥불</a><a href="#files">13. 파일 목록</a></nav>
 
 <section id="plan">
 <h2>1. 계획 — 왜 이 세 단계인가</h2>
@@ -380,6 +380,7 @@ RHI          raw 버퍼, 간접 인자, 읽기 전용 깊이           RHI/*.h, 
 <tr><td><code>opacity</code> (1)</td><td>알파 모드의 불투명도 배율</td><td>PS</td></tr>
 <tr><td><code>softness</code> (0)</td><td>소프트 파티클 거리(m). 0 끔</td><td>PS</td></tr>
 <tr><td><code>collide</code> (false), <code>bounce</code> (0.5)</td><td>깊이 충돌, 반발 계수 0..1</td><td>Sim</td></tr>
+<tr><td><code>wind</code> (0,0,0), <code>drag</code> (0)</td><td>바람(속도가 끌려가는 목표, m/s, 월드)과 끌려가는 세기(1/초). <code>drag</code> 0 이면 꺼짐 — <a href="#arch-wind">12.16</a></td><td>Sim</td></tr>
 </table>
 <p>위치·방향은 컴포넌트가 아니라 소유 오브젝트의 월드 행렬에서 읽습니다(원점 = 위치, 로컬 +Y = 방향, 스케일은 정규화로 지움). 파티클은 월드 공간에서 움직이므로 오브젝트를 옮겨도 이미 나간 파티클은 따라오지 않습니다. 모든 값은 CPU 가 GPU 로 넘기기 전에 안전한 범위로 자릅니다(음수 색·크기 0 처리, <code>lifetime</code> ≥ 0.01 등 — <code>UpdateParticleEmitters</code>).</p>
 
@@ -408,7 +409,7 @@ RHI          raw 버퍼, 간접 인자, 읽기 전용 깊이           RHI/*.h, 
 </ul>
 
 <h3 id="arch-data">12.5 GPU 데이터 — 버퍼, 개수, 인자</h3>
-<p class="loc"><b>코드</b>: <code>Renderer::GpuEmitter</code> <code>Graphics/Renderer.h:581</code>, 버퍼 생성 <code>RendererParticles.cpp:76~</code>, <code>struct Particle</code> <code>Shaders/Particle.hlsli:53</code>, 개수·인자 상수 <code>Graphics/ShaderConstants.h:94~97</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
+<p class="loc"><b>코드</b>: <code>Renderer::GpuEmitter</code> <code>Graphics/Renderer.h:581</code>, 버퍼 생성 <code>RendererParticles.cpp:98~</code>, <code>struct Particle</code> <code>Shaders/Particle.hlsli:55</code>, 개수·인자 상수 <code>Graphics/ShaderConstants.h:94~97</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
 <p><b>파티클 하나</b> (<code>Particle.hlsli</code> 의 <code>struct Particle</code>, 32 바이트 = <code>kParticleStride</code>):</p>
 <pre><code>float3 position; float age;        // 월드 위치, 나이(초)
 float3 velocity; float lifetime;   // 월드 속도(m/s), 수명(초). age &gt;= lifetime 이면 죽음</code></pre>
@@ -420,7 +421,7 @@ float3 velocity; float lifetime;   // 월드 속도(m/s), 수명(초). age &gt;=
 <tr><td><code>aliveLists[2]</code> (SB_ParticleAlive0/1)</td><td>N × uint 둘, SRV + UAV</td><td>쓰는 칸 번호. 하나는 입력(지난 프레임), 하나는 출력(이번 프레임) → VS(t22)·SortInit(t22)</td></tr>
 <tr><td><code>counters</code> (SB_ParticleCounters)</td><td>8 × uint, SRV + UAV</td><td>아래 표. SortInit 은 t24 로 읽음</td></tr>
 <tr><td><code>args</code> (RB_ParticleArgs)</td><td>32 바이트, <b>raw</b> + UAV + IndirectArgs</td><td>Reset·Args 가 씀 → <code>DispatchIndirect</code>·<code>DrawInstancedIndirect</code></td></tr>
-<tr><td><code>constants</code> (CB_ParticleEmitter)</td><td>128 바이트 Dynamic 상수 (b8)</td><td>CPU 가 프레임에 한 번 → 모든 커널·VS·PS</td></tr>
+<tr><td><code>constants</code> (CB_ParticleEmitter)</td><td>144 바이트 Dynamic 상수 (b8)</td><td>CPU 가 프레임에 한 번 → 모든 커널·VS·PS</td></tr>
 <tr><td><code>sortKeys[2]</code>, <code>sortIndices[2]</code></td><td>정렬 길이 × float / uint, 뷰마다 (알파만)</td><td>SortInit·SortStep → VS(t22 = sortIndices)</td></tr>
 </table>
 <p>인자 버퍼만 raw 인 이유: D3D11 은 간접 인자 버퍼(<code>DRAWINDIRECT_ARGS</code>)를 구조체 버퍼로 만들 수 없어서, GPU 가 인자를 쓰려면 <code>RWByteAddressBuffer</code> 여야 합니다.</p>
@@ -442,7 +443,7 @@ float3 velocity; float lifetime;   // 월드 속도(m/s), 수명(초). age &gt;=
 셋도 두 벌: simSets[p] / stepSets[p] / drawSets[p] 가 위 배치를 미리 묶어 둠 → 프레임마다 셋을 새로 만들지 않음</code></pre>
 
 <h3 id="arch-bind">12.6 바인딩 — 레이아웃·셋·슬롯</h3>
-<p class="loc"><b>코드</b>: 레이아웃 <code>Graphics/Renderer.cpp:334~392</code>, 슬롯 <code>Graphics/ShaderConstants.h:68~93</code>, 셋 생성 <code>RendererParticles.cpp:98~</code>·<code>RendererTargets.cpp:60~</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
+<p class="loc"><b>코드</b>: 레이아웃 <code>Graphics/Renderer.cpp:334~392</code>, 슬롯 <code>Graphics/ShaderConstants.h:68~93</code>, 셋 생성 <code>RendererParticles.cpp:146~</code>·<code>RendererTargets.cpp:60~</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
 <table>
 <tr><th>레이아웃</th><th>슬롯</th><th>셋은 어디에</th><th>쓰는 곳 (셋 번호)</th></tr>
 <tr><td><code>Layout_ParticleSim</code></td><td>b8, u0~u5</td><td><code>simSets[2]</code></td><td>Reset·Args·Emit (셋 0)</td></tr>
@@ -462,10 +463,11 @@ float3 velocity; float lifetime;   // 월드 속도(m/s), 수명(초). age &gt;=
 
 <h3 id="arch-sim">12.7 시뮬레이션 원리 — 커널 넷</h3>
 <div class="box">여기서 "스레드"는 컴퓨트 셰이더의 GPU 스레드입니다. 스레드·그룹·디스패치 구조와, 커널을 왜 여러 개로 나눴는지는 <a href="#arch-threads">12.14</a> 에 있습니다.</div>
-<p class="loc"><b>코드</b>: <code>Shaders/Particle{Reset,Sim,Args,Emit}ComputeShader.hlsl</code>, 디스패치 <code>Renderer::SimulateParticles</code> <code>RendererParticles.cpp:272</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
+<p class="loc"><b>코드</b>: <code>Shaders/Particle{Reset,Sim,Args,Emit}ComputeShader.hlsl</code>, 디스패치 <code>Renderer::SimulateParticles</code> <code>RendererParticles.cpp:373</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
 <p><b>CS_ParticleReset</b> (버퍼를 새로 만든 프레임만, ceil(N/64) 그룹): 모든 파티클을 죽은 상태(age 1, lifetime 0)로, 사망 목록을 <code>N−1, N−2, …, 0</code> 으로, 개수를 0(Dead = N)으로, 인자를 <code>{6,0,0,0}</code> / <code>{0,1,1}</code> 로 씁니다. D3D11 은 초기 데이터 없이 만든 버퍼 내용이 정해져 있지 않아서 필요합니다. 사망 목록을 거꾸로 넣는 이유: 생성이 목록 <b>끝</b>에서 꺼내므로 처음에는 칸 0, 1, 2 … 순서로 쓰입니다.</p>
 <p><b>CS_ParticleSim</b> (<code>DispatchIndirect(args, 16)</code>): 스레드 i 가 입력 목록 i 번째 파티클을 맡습니다(i ≥ SimCount 면 끝).</p>
 <pre><code>v ← v + g·dt          반암시적 오일러: 속도를 먼저, 새 속도로 위치를 옮김
+drag &gt; 0 면 v ← wind + (v − wind)·e^(−drag·dt)   바람·공기 저항 (12.16)
 x ← x + v·dt          (명시적 오일러보다 같은 dt 에서 안정적이고 계산은 같음)
 age ← age + dt
 collide 면 Collide(p, 이전 위치)
@@ -497,7 +499,7 @@ args[16] = {ceil(total/64), 1, 1}     다음 프레임 시뮬레이션</code></p
 <p><b>결정성</b>: 난수·생성 위치·수명은 결정적입니다. 흔들리는 것은 Sim 의 <code>InterlockedAdd</code> 순서(출력 목록 안의 순서)뿐입니다. 가산 이미터는 더하는 순서만 바뀌어 FP16 반올림 차이(최하위 1 단계)만 남고, 알파 이미터는 정렬이 순서를 다시 정하므로 정렬을 켜면 실행마다 거의 같은 그림이 나옵니다(11.5).</p>
 
 <h3 id="arch-sort">12.8 알파 정렬 원리 — 바이토닉 정렬</h3>
-<p class="loc"><b>코드</b>: <code>Shaders/ParticleSort{Init,Step}ComputeShader.hlsl</code>, <code>Renderer::SortParticles</code> <code>RendererParticles.cpp:372</code>, <code>EnsureParticleSortSteps</code> <code>343</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
+<p class="loc"><b>코드</b>: <code>Shaders/ParticleSort{Init,Step}ComputeShader.hlsl</code>, <code>Renderer::SortParticles</code> <code>RendererParticles.cpp:503</code>, <code>EnsureParticleSortSteps</code> <code>466</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
 <p><b>왜 정렬하나.</b> 프리멀티플라이드 알파 합성 <code>결과 = c + (1 − a)·목적지</code> 는 순서를 바꾸면 값이 달라집니다(가산 <code>목적지 + c</code> 는 순서와 상관없음). 반투명은 먼 것부터 그려야 가까운 것이 위에 덮입니다. 다만 한 이미터의 색이 모두 같으면 두 장을 어느 순서로 겹쳐도 결과가 같아(<code>c·a₂ + (1−a₂)(c·a₁ + (1−a₁)d)</code> 가 a₁, a₂ 에 대칭) 정렬 효과가 보이지 않습니다 — 색이 수명에 따라 바뀌는 <code>endTint</code> 가 있을 때 차이가 드러납니다.</p>
 <p><b>CS_ParticleSortInit</b> (뷰·이미터마다, 정렬 길이/64 그룹): 정렬 길이 = capacity 이상인 가장 작은 2의 거듭제곱(최소 64, <code>ParticleSortCount</code>). 앞 SimCount 칸은 (키 = 이 뷰의 뷰 공간 z, 값 = 파티클 번호), 나머지 칸은 키 −3×10³⁸(가장 가까움)으로 채워 정렬 뒤 맨 끝으로 가게 합니다. 그리는 인스턴스 수는 SimCount 이므로 끝의 채움 칸은 그려지지 않습니다.</p>
 <p><b>CS_ParticleSortStep</b> (단계마다 한 번): 바이토닉 정렬은 비교·교환할 짝이 데이터와 상관없이 미리 정해진 "정렬 네트워크"라서 GPU 스레드가 서로 기다리지 않고 한 단계를 동시에 할 수 있습니다.</p>
@@ -514,7 +516,7 @@ args[16] = {ceil(total/64), 1, 1}     다음 프레임 시뮬레이션</code></p
 </ul>
 
 <h3 id="arch-draw">12.9 그리기 원리 — VS·PS·블렌드</h3>
-<p class="loc"><b>코드</b>: <code>Shaders/ParticleVertexShader.hlsl</code>, <code>ParticlePixelShader.hlsl</code>, <code>Renderer::DrawParticles</code> <code>RendererParticles.cpp:416</code>, PSO <code>Renderer.cpp:460</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
+<p class="loc"><b>코드</b>: <code>Shaders/ParticleVertexShader.hlsl</code>, <code>ParticlePixelShader.hlsl</code>, <code>Renderer::DrawParticles</code> <code>RendererParticles.cpp:556</code>, PSO <code>Renderer.cpp:460</code> (전체 지도는 <a href="#arch-map-code">12.13</a>)</p>
 <p><b>DrawInstancedIndirect(args, 0)</b>: 정점 버퍼 없이 정점 6개 × 인스턴스 total 개. 인스턴스 하나 = 파티클 하나(삼각형 두 개짜리 쿼드).</p>
 <p><b>VS_Particle</b>:</p>
 <pre><code>p      = particles[aliveList[SV_InstanceID]]       ← t22 는 생존 목록 또는 정렬된 목록
@@ -558,7 +560,7 @@ softness &gt; 0 이면  falloff ×= saturate((z_scene − z_particle) / softness
 <li><code>--particle-step=초</code>: 고정 스텝(에디터·게임). 스크린샷 비교용.</li>
 <li><code>--particle-sort=0</code>: 정렬 끔. 정렬 효과 비교용.</li>
 <li>프로파일러 GPU 구간: <code>ParticleSim</code>, <code>ParticleSort</code> (<code>ParticleSim</code> 은 메인 패스 구간 안, <code>ParticleSort</code> 는 메인·미리보기 패스 구간 안에 각각). 두 번째 렌더 패스의 이름(<code>debugName</code>)은 <code>MainPassEffects</code> / <code>PreviewPassEffects</code>.</li>
-<li>시작 로그: "cbuffer 크기 일치"(b8 128, b9 160, b10 64, b11 256 바이트)와 "바인딩 대조"(레이아웃 슬롯 ↔ 셰이더 리플렉션).</li>
+<li>시작 로그: "cbuffer 크기 일치"(b8 144, b9 160, b10 64, b11 256 바이트)와 "바인딩 대조"(레이아웃 슬롯 ↔ 셰이더 리플렉션).</li>
 <li>셰이더 핫리로드: 다른 셰이더와 같은 경로라 파티클 셰이더도 저장하면 다시 컴파일되고 PSO 가 gen 을 올려 다시 만들어짐. 실제로 돌려 본 것은 <code>ParticleSimComputeShader.hlsl</code>(2단계)과 <code>ParticleSortStepComputeShader.hlsl</code>(3단계) 둘.</li>
 <li>검증 씬: <code>Projects/SherlockTestScenes/Assets/Scenes/Particle*.json</code> (13장 표).</li>
 </ul>
@@ -616,15 +618,15 @@ GPU: Shaders/*.hlsl — C++ 과 공유하는 선언은 Particle·ParticleSim·Pa
 <h4>렌더러 — 구현</h4>
 <table>
 <tr><th>이름</th><th>위치</th><th>하는 일</th></tr>
-<tr><td>파일 상수 <code>kParticleGroupSize</code>, <code>kMaxParticleStep</code>, <code>kEmittersPerObject</code>, <code>kCollisionThickness</code></td><td><code>Graphics/RendererParticles.cpp:29~32</code></td><td>64, 0.1 초, 16, 0.3 m</td></tr>
-<tr><td><code>Renderer::CollectEmitter</code></td><td><code>RendererParticles.cpp:35</code> (호출: <code>Renderer.cpp:1199</code> <code>BuildDrawList</code> 안)</td><td>이미터 모으기</td></tr>
-<tr><td><code>Renderer::UpdateParticleEmitters</code></td><td><code>RendererParticles.cpp:57</code> (호출: <code>Renderer.cpp:1052</code>)</td><td>리소스 생성(76~), 정렬 리소스(139~), 생성 수(190~), b8 채우기(197~), b10·b9(228~, 244~), 정리(263~)</td></tr>
-<tr><td><code>Renderer::SimulateParticles</code></td><td><code>RendererParticles.cpp:272</code></td><td>Reset → Sim → Args → Emit 디스패치와 배리어</td></tr>
-<tr><td><code>Renderer::EnsureParticleSortSteps</code></td><td><code>RendererParticles.cpp:343</code></td><td>정렬 단계 상수 버퍼 늘리기</td></tr>
-<tr><td><code>Renderer::SortParticles</code></td><td><code>RendererParticles.cpp:372</code></td><td>SortInit + SortStep 디스패치</td></tr>
-<tr><td><code>Renderer::DrawParticles</code></td><td><code>RendererParticles.cpp:416</code></td><td>알파 → 가산 순으로 <code>DrawInstancedIndirect</code></td></tr>
-<tr><td><code>Renderer::GetParticlePipeline</code></td><td><code>RendererParticles.cpp:440</code></td><td>파티클 PSO 를 처음 쓸 때 만듦</td></tr>
-<tr><td><code>Renderer::DestroyGpuEmitter</code> / <code>DestroyGpuEmitters</code></td><td><code>RendererParticles.cpp:447</code> / <code>486</code> (종료 시 호출: <code>Renderer.cpp:926</code>)</td><td>해제</td></tr>
+<tr><td>파일 상수 <code>kParticleGroupSize</code>, <code>kMaxParticleStep</code>, <code>kEmittersPerObject</code>, <code>kCollisionThickness</code></td><td><code>Graphics/RendererParticles.cpp:28~31</code></td><td>64, 0.1 초, 16, 0.3 m</td></tr>
+<tr><td><code>Renderer::CollectEmitter</code></td><td><code>RendererParticles.cpp:34</code> (호출: <code>Renderer.cpp:1199</code> <code>BuildDrawList</code> 안)</td><td>이미터 모으기</td></tr>
+<tr><td><code>Renderer::UpdateParticleEmitters</code></td><td><code>RendererParticles.cpp:56</code> (호출: <code>Renderer.cpp:1052</code>)</td><td>리소스 생성(98~), 정렬 리소스(196~), 생성 수(270~), b8 채우기(287~), b10·b9(328~, 346~), 정리(362~)</td></tr>
+<tr><td><code>Renderer::SimulateParticles</code></td><td><code>RendererParticles.cpp:373</code></td><td>Reset → Sim → Args → Emit 디스패치와 배리어</td></tr>
+<tr><td><code>Renderer::EnsureParticleSortSteps</code></td><td><code>RendererParticles.cpp:466</code></td><td>정렬 단계 상수 버퍼 늘리기</td></tr>
+<tr><td><code>Renderer::SortParticles</code></td><td><code>RendererParticles.cpp:503</code></td><td>SortInit + SortStep 디스패치</td></tr>
+<tr><td><code>Renderer::DrawParticles</code></td><td><code>RendererParticles.cpp:556</code></td><td>알파 → 가산 순으로 <code>DrawInstancedIndirect</code></td></tr>
+<tr><td><code>Renderer::GetParticlePipeline</code></td><td><code>RendererParticles.cpp:585</code></td><td>파티클 PSO 를 처음 쓸 때 만듦</td></tr>
+<tr><td><code>Renderer::DestroyGpuEmitter</code> / <code>DestroyGpuEmitters</code></td><td><code>RendererParticles.cpp:595</code> / <code>639</code> (종료 시 호출: <code>Renderer.cpp:926</code>)</td><td>해제</td></tr>
 <tr><td><code>Renderer::RenderScenePass</code></td><td><code>Renderer.cpp:1347</code> (호출: 메인 1082, 미리보기 1107)</td><td>패스 1 → <code>DepthRead</code>(1375) → 시뮬레이션·정렬 → 패스 2 <code>…Effects</code>(1389)</td></tr>
 <tr><td>셰이더 표 / 그래픽스 패스 표 / 컴퓨트 패스 표 / cbuffer 크기 표</td><td><code>Renderer.cpp:54~61</code> / <code>83</code> / <code>98~103</code> / <code>124~127</code></td><td>파일·진입점·레이아웃 연결, 시작 시 크기 대조</td></tr>
 <tr><td>레이아웃 정의 (<code>BindingLayoutDesc</code>)</td><td><code>Renderer.cpp:334</code> Sim, <code>347</code> Step, <code>356</code> Draw, <code>365</code> Depth, <code>371</code> Collide, <code>379</code> Sort, <code>389</code> SortStep</td><td>12.6 의 슬롯</td></tr>
@@ -635,12 +637,12 @@ GPU: Shaders/*.hlsl — C++ 과 공유하는 선언은 Particle·ParticleSim·Pa
 <h4>C++ ↔ HLSL 공유 선언</h4>
 <table>
 <tr><th>C++ (<code>Graphics/ShaderConstants.h</code>)</th><th>HLSL (<code>Shaders/</code>)</th><th>내용</th></tr>
-<tr><td><code>ParticleEmitterConstants</code> 259 (128 B, <code>static_assert</code> 316~)</td><td><code>Particle.hlsli</code> 의 <code>cbuffer ParticleEmitter</code> 13 (b8)</td><td>이미터 상수</td></tr>
-<tr><td><code>ParticleCollisionConstants</code> 286 (160 B)</td><td><code>ParticleSim.hlsli</code> 의 <code>cbuffer ParticleCollision</code> 31 (b9)</td><td>충돌용 메인 카메라</td></tr>
-<tr><td><code>ParticleSortViewConstants</code> 300 (64 B), <code>ParticleSortStepConstants</code> 308 (256 B)</td><td><code>ParticleSort.hlsli</code> 19~ (b10, b11)</td><td>정렬 뷰 행렬, (k, j)</td></tr>
-<tr><td><code>kParticleStride</code> 98</td><td><code>Particle.hlsli</code> 의 <code>struct Particle</code> 53</td><td>파티클 32 바이트</td></tr>
+<tr><td><code>ParticleEmitterConstants</code> 259 (144 B, <code>static_assert</code> 318~)</td><td><code>Particle.hlsli</code> 의 <code>cbuffer ParticleEmitter</code> 13 (b8)</td><td>이미터 상수</td></tr>
+<tr><td><code>ParticleCollisionConstants</code> 288 (160 B)</td><td><code>ParticleSim.hlsli</code> 의 <code>cbuffer ParticleCollision</code> 31 (b9)</td><td>충돌용 메인 카메라</td></tr>
+<tr><td><code>ParticleSortViewConstants</code> 302 (64 B), <code>ParticleSortStepConstants</code> 310 (256 B)</td><td><code>ParticleSort.hlsli</code> 19~ (b10, b11)</td><td>정렬 뷰 행렬, (k, j)</td></tr>
+<tr><td><code>kParticleStride</code> 98</td><td><code>Particle.hlsli</code> 의 <code>struct Particle</code> 55</td><td>파티클 32 바이트</td></tr>
 <tr><td>슬롯 <code>kCBSlotParticle</code>… 68~78, <code>kUAVSlotParticles</code>… 88~93</td><td>각 <code>register(…)</code></td><td>b8~b11, t21~t24, u0~u5</td></tr>
-<tr><td><code>kParticleCounterCount</code> 94, 인자 오프셋·크기 95~97</td><td><code>kCounter*</code> (<code>Particle.hlsli</code> 68~), <code>kArgs*</code> (<code>ParticleSim.hlsli</code> 26~)</td><td>개수 버퍼 칸, 인자 버퍼 배치</td></tr>
+<tr><td><code>kParticleCounterCount</code> 94, 인자 오프셋·크기 95~97</td><td><code>kCounter*</code> (<code>Particle.hlsli</code> 71~), <code>kArgs*</code> (<code>ParticleSim.hlsli</code> 26~)</td><td>개수 버퍼 칸, 인자 버퍼 배치</td></tr>
 <tr><td><code>ParticleSortCount</code> 81</td><td><code>ParticleSortCount</code> 287</td><td>정렬 길이 (같은 식)</td></tr>
 <tr><td>—</td><td><code>ParticleVSOutput</code> 336, <code>LinearViewDepth</code> 248, <code>particleSceneDepth</code> (t23) 245, <code>PcgHash</code> 346, <code>Random01</code> 354</td><td>VS→PS, 깊이 → 뷰 z, 난수</td></tr>
 </table>
@@ -745,10 +747,51 @@ GPU: Shaders/*.hlsl — C++ 과 공유하는 선언은 Particle·ParticleSim·Pa
 <tr><td>16</td><td><code>Renderer::DestroyGpuEmitter</code>, <code>Renderer::DestroyGpuEmitters</code></td><td>크기가 바뀔 때와 이미터가 사라질 때 무엇을 지우는지</td><td><a href="#arch-cpu">12.4</a></td></tr>
 </table>
 <p>스레드·그룹·디스패치가 낯설면 7번 전에 <a href="#arch-threads">12.14</a> 를 먼저 읽으세요.</p>
+<h3 id="arch-wind">12.16 바람·공기 저항, 짧은 버스트, 모닥불 (2026-11-17 추가)</h3>
+<p class="loc"><b>코드</b>: 필드 <code>ParticleEmitter::wind</code>·<code>drag</code> (<code>Scene/ParticleEmitter.h</code>), b8 마지막 줄 <code>ParticleEmitterConstants::wind</code>·<code>drag</code> (오프셋 128), <code>Renderer::UpdateParticleEmitters</code> 의 b8 채우기, <code>CS_ParticleSim</code> 의 적분. 예제 스크립트 <code>Projects/SherlockTestScenes/Scripts/Tests/PulseEmitter.h/.cpp</code></p>
+<p><b>바람·공기 저항.</b> 속도를 매 프레임 <code>wind</code> 쪽으로 끌어갑니다. 중력을 더한 바로 뒤, 위치를 옮기기 전에 한 줄입니다.</p>
+<pre><code>v ← v + g·dt
+if (drag &gt; 0)  v ← lerp(wind, v, e^(−drag·dt))     = wind + (v − wind)·e^(−drag·dt)
+x ← x + v·dt</code></pre>
+<ul>
+<li><b>왜 지수형인가</b>: <code>v += (wind − v)·drag·dt</code> 꼴은 <code>drag·dt</code> 가 1 을 넘으면 <code>wind</code> 를 지나쳐 튑니다. 실제 시간 모드에서 dt 상한이 0.1 초라 <code>drag</code> 10 이상이면 생기는 일입니다. <code>e^(−drag·dt)</code> 는 0~1 이라 dt 가 커도 <code>wind</code> 를 넘지 않습니다.</li>
+<li><b><code>drag</code> 0 이면 이전과 같음</b>: <code>if</code> 로 건너뛰어 기존 경로와 결과가 비트 단위로 같습니다. 그래서 <code>wind</code> 만 넣고 <code>drag</code> 를 0 으로 두면 아무 일도 없습니다.</li>
+<li><b><code>drag</code> 는 중력·방출 속도도 줄임</b>: 오래 지나면 속도가 대략 <code>wind + gravity / drag</code> 로 수렴합니다(종단 속도). 위로 쏘던 연기에 <code>drag</code> 를 넣으면 위로 오르는 속도도 같이 줄어듭니다.</li>
+<li><b>음수 <code>drag</code></b>: 속도가 지수로 커지므로 <code>UpdateParticleEmitters</code> 에서 0 이상으로 자릅니다.</li>
+<li><b>Emit 은 그대로</b>: 프레임 안 출생 시각만큼 중력을 미리 적용하는 보정에는 저항을 넣지 않았습니다. 한 프레임 미만이라 차이가 보이지 않습니다.</li>
+<li><b>b8</b>: 128 → 144 바이트. <code>static_assert</code> 크기 144, <code>offsetof(wind) == 128</code>.</li>
+</ul>
+<p><b>짧은 버스트 (<code>PulseEmitter</code> 스크립트).</b> 이미터에는 "한 번에 N 개" 설정이 없고 매 프레임 <code>spawnRate × dt</code> 개를 만듭니다. 그래서 칼이 부딪힐 때 튀는 불꽃 같은 효과는 <code>spawnRate</code> 를 잠깐 올렸다가 0 으로 내려서 만듭니다.</p>
+<ul>
+<li>스크립트가 같은 오브젝트의 <code>ParticleEmitter</code> 를 찾아 주기(<code>interval</code>)의 앞 <code>burstSeconds</code> 동안만 <code>spawnRate = burstRate</code>, 나머지는 0 으로 둡니다. 한 번에 나오는 수는 약 <code>burstRate × burstSeconds</code> (예제 2500 × 0.08 ≈ 200).</li>
+<li><b>이미터를 끄거나 오브젝트를 지우면 안 되는 이유</b>: 그 프레임에 보이지 않은 이미터는 <code>UpdateParticleEmitters</code> 끝에서 GPU 버퍼째 지워져, 이미 날아가던 입자가 그 자리에서 사라집니다. <code>spawnRate</code> 만 0 으로 하면 이미터가 살아 있어 입자가 수명을 다 채웁니다. 일회용으로 쓰려면 <code>Lifetime</code> 을 <code>burstSeconds + lifetime</code> 이상으로 잡습니다(지금 <code>EmitterBurst.prefab</code> 은 <code>Lifetime</code> 0.6 초 &lt; 입자 수명 1.0 초라 꼬리가 잘림).</li>
+<li>이미터가 처음 생기는 프레임은 버퍼를 지우는 프레임이라 생성하지 않습니다(<code>needsReset</code>). 짧은 버스트에서는 이 한 프레임만큼 덜 나옵니다.</li>
+<li>방향은 오브젝트의 로컬 +Y 입니다. 튈 방향(표면 법선 등)으로 오브젝트를 회전시키고 <code>spreadAngle</code> 로 퍼짐을 정합니다.</li>
+<li>스크립트는 재생(Play) 중에만 돌고, 재생을 멈추면 씬이 재생 전 스냅샷으로 돌아가 바뀐 <code>spawnRate</code> 는 남지 않습니다. 예제 이미터는 씬에 <code>spawnRate</code> 0 으로 저장돼 편집 모드에서는 보이지 않습니다.</li>
+</ul>
+<p><b>모닥불 (<code>ParticleAll.json</code> 의 <code>Campfire</code>).</b> 한 오브젝트에 이미터 둘(불꽃, 불티)이고, 둘 다 <code>wind</code>·<code>drag</code> 로 위로 끌려 올라갑니다. 중력은 0 입니다.</p>
+<table>
+<tr><th></th><th>불꽃</th><th>불티</th></tr>
+<tr><td>생성·수명</td><td><code>spawnRate</code> 120, <code>lifetime</code> 0.8</td><td>25, 1.4</td></tr>
+<tr><td>방출</td><td><code>startSpeed</code> 1.0, <code>spreadAngle</code> 12, <code>emitRadius</code> 0.15</td><td>1.6, 20, 0.12</td></tr>
+<tr><td>바람·저항</td><td><code>wind</code> (0, 1.3, 0), <code>drag</code> 1.5</td><td>(0.2, 1.6, 0), 1.2 (옆으로 조금 흘러감)</td></tr>
+<tr><td>크기</td><td>0.22 → 0.12</td><td>0.025 → 0.01</td></tr>
+<tr><td>색</td><td>(1, 0.4, 0.08) × 1.2, <code>endTint</code> (1, 0.25, 0.1) — 노랑 → 빨강</td><td>(1, 0.55, 0.2) × 3, 블룸에 걸리는 작은 점</td></tr>
+</table>
+<p>가산 블렌딩이라 밝은 바닥 앞에서는 흐릿하게 보입니다. 밀도를 올리면 밑동이 하얗게 타고(겹친 가산이 포화), 낮추면 몸통이 바닥에 묻혀서 개수를 줄이고 <code>intensity</code> 를 올리는 쪽으로 맞췄습니다. 같은 씬의 <code>SparkPulse</code> 가 <code>PulseEmitter</code> 예제입니다(1 초마다 0.08 초, 충돌 켬).</p>
+<h3>검증</h3>
+<table>
+<tr><th>항목</th><th>결과</th></tr>
+<tr><td>기본값 회귀: <code>ParticleAll.json</code> (wind·drag 추가 전 씬), 고정 스텝 120 프레임, 변경 전 ↔ 후</td><td>265 / 499 픽셀, 최대 1. 변경 전 두 번 찍은 것끼리 513 픽셀 최대 1 (생존 목록 순서 잡음)과 같은 수준</td></tr>
+<tr><td>효과: 연기에 <code>wind</code> (2.5, 0, 0), <code>drag</code> 1.5 (임시 복사본 씬)</td><td>연기가 오른쪽으로 흘러감. D3D11 ↔ D3D12 419 픽셀 최대 1</td></tr>
+<tr><td>시작 로그</td><td>"cbuffer 'ParticleEmitter' 크기 일치: 144 바이트" 파티클 셰이더 8 개 모두, 오류·경고 0</td></tr>
+<tr><td><code>PulseEmitter</code>·모닥불 (<code>--play=1</code>, D3D12·D3D11)</td><td>버스트가 주기마다 나오고 사라짐(프레임 50·70·90 스크린샷), 오류·경고 0</td></tr>
+</table>
 </section>
 
 <section id="files">
 <h2>13. 파일 목록</h2>
+<p class="box">2026-11-17 테스트 씬 정리: 파티클 씬 11 개를 <b>4 개</b>로 합쳤습니다. <code>ParticleAll.json</code>(분수·불꽃 충돌, 바닥 안개 소프트, 연기 알파 — 충돌·소프트·블렌드·<code>maxParticles</code> 는 인스펙터에서 바꿔 확인), <code>ParticleOrtho.json</code>(직교 카메라), <code>ParticleAlphaSort.json</code>(정렬 방향), <code>ParticleSpawn.json</code>(가산·알파 프리팹 Spawner 두 개). 같은 날 <code>ParticleAll.json</code> 에 <code>SparkPulse</code>(<code>PulseEmitter</code> 버스트)와 <code>Campfire</code>(<code>wind</code>·<code>drag</code> 모닥불)를 더했습니다(12.16). 지운 씬: ParticleTest, ParticleExhaust, ParticleAlpha, ParticleDepth, ParticleDepthOff, ParticleOrthoOff, ParticleSpawnAlpha. 그림 캡션과 아래 표의 씬 이름은 그때의 기록이라 그대로 둡니다. ParticleExhaust 는 ParticleAll 의 분수 <code>maxParticles</code> 를 1024 로, ParticleDepthOff·ParticleOrthoOff 는 <code>collide</code>·<code>softness</code> 를 끄면 같습니다.</p>
 <table>
 <tr><th>파일</th><th>내용</th></tr>
 <tr><td><code>Scene/ParticleEmitter.h/.cpp</code> (새 파일)</td><td>컴포넌트와 <code>Reflect</code></td></tr>

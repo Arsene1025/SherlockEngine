@@ -82,6 +82,9 @@ void CS_ParticleSim(uint3 id : SV_DispatchThreadID)
     const float3 previousPosition = p.position;
     // 반암시적 오일러: 속도를 먼저 갱신하고 새 속도로 위치를 옮김.
     p.velocity += particleGravity * dt;
+    //바람·공기 저항: 속도를 wind 쪽으로 e^(−drag·dt) 만큼 끌어감. 지수형이라 dt·drag 가 커도 wind 를 넘어가지 않음
+    //drag 0 이면 건너뜀 (기존과 같은 결과)
+    if (particleDrag > 0.0f) p.velocity = lerp(particleWind, p.velocity, exp(-particleDrag * dt));
     p.position += p.velocity * dt;
     //나이 증가. lifetime 을 넘으면 아래에서 죽음 처리
     p.age += dt;

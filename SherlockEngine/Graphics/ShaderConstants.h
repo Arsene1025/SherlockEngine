@@ -280,6 +280,8 @@ struct alignas(16) ParticleEmitterConstants
 	uint32_t blendMode;            // 0 가산 (PS 가 알파 0), 1 알파 (프리멀티플라이드, 정렬)
 	DirectX::XMFLOAT3 endTint;     // 수명 끝의 색 배율 (1 → endTint 선형 보간)
 	float padding;                 // 16바이트 칸 맞춤
+	DirectX::XMFLOAT3 wind;        // 바람 = 속도가 끌려가는 목표 (m/s, 월드). Sim
+	float drag;                    // 끌려가는 세기 (1/초, ≥ 0). 0 = 끔. Sim
 };
 
 // b9: 파티클 충돌 (메인 뷰의 깊이로 화면 공간 충돌). 행렬은 전치해서 올림 (PerFrame 과 같음).
@@ -313,7 +315,8 @@ struct alignas(16) ParticleSortStepConstants
 };
 
 static_assert(IsValidConstantBufferSize(sizeof(PerFrameConstants)), "PerFrameConstants 는 16의 배수여야 함");
-static_assert(sizeof(ParticleEmitterConstants) == 128, "ParticleEmitterConstants: 16 * 8");
+static_assert(sizeof(ParticleEmitterConstants) == 144, "ParticleEmitterConstants: 16 * 9");
+static_assert(offsetof(ParticleEmitterConstants, wind) == 128, "ParticleEmitterConstants.wind");
 static_assert(offsetof(ParticleEmitterConstants, softDistance) == 96, "ParticleEmitterConstants.softDistance");
 static_assert(sizeof(ParticleCollisionConstants) == 160, "ParticleCollisionConstants: 64 * 2 + 16 * 2");
 static_assert(sizeof(ParticleSortViewConstants) == 64, "ParticleSortViewConstants");

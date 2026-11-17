@@ -22,6 +22,8 @@ void ParticleEmitter::Reflect(PropertyVisitor& v)
 	v.Float("softness", softness, 0.01f);
 	v.Bool("collide", collide);
 	v.Float("bounce", bounce, 0.01f);
+	v.Float3("wind", wind, 0.05f);
+	v.Float("drag", drag, 0.01f);
 }
 
 SHERLOCK_BEHAVIOUR(ParticleEmitter)

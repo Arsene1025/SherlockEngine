@@ -312,6 +312,9 @@ void Renderer::UpdateParticleEmitters(float totalTime, const Camera& camera)
 		c.opacity = std::clamp(e.opacity, 0.0f, 1.0f);
 		c.blendMode = e.blendMode == 1 ? 1u : 0u;
 		c.endTint = XMFLOAT3((std::max)(e.endTint.x, 0.0f), (std::max)(e.endTint.y, 0.0f), (std::max)(e.endTint.z, 0.0f));
+		//바람과 공기 저항. drag가 음수면 속도가 점점 커져 터지니까 0 이상으로 자름
+		c.wind = e.wind;
+		c.drag = (std::max)(e.drag, 0.0f);
 		//GPU로 올림
 		m_device->UpdateBuffer(gpu.constants, &c, sizeof(c));   // 프레임에 한 번 (D3D12 Dynamic CB 규칙)
 

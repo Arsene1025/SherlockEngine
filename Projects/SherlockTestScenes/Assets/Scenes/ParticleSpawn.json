@@ -563,6 +563,37 @@
           "logEvery": 10
         }
       ]
+    },
+    {
+      "id": 8,
+      "name": "BurstSpawnerAlpha",
+      "material": -1,
+      "position": [
+        2.0,
+        0.3,
+        -1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "Spawner",
+          "enabled": true,
+          "prefab": "Prefabs\\EmitterBurstAlpha.prefab",
+          "interval": 0.1,
+          "maxSpawns": 40,
+          "spacing": 0.1,
+          "logEvery": 10
+        }
+      ]
     }
   ],
   "version": 5

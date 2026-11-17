@@ -5,18 +5,18 @@
     0.20000000298023224
   ],
   "camera": {
-    "pitch": 0.12,
+    "pitch": 0.33750119805336,
     "position": [
-      0.0,
-      0.9,
-      -4.5
+      0.2644030749797821,
+      3.3597493171691895,
+      -9.782715797424316
     ],
-    "yaw": 0.0
+    "yaw": 0.3768288791179657
   },
   "clearColor": [
-    0.02,
-    0.02,
-    0.03,
+    0.019999999552965164,
+    0.019999999552965164,
+    0.029999999329447746,
     1.0
   ],
   "environment": {
@@ -226,9 +226,9 @@
       "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
-        0.12,
-        0.12,
-        0.14,
+        0.11999999731779099,
+        0.11999999731779099,
+        0.14000000059604645,
         1.0
       ],
       "clearcoatFactor": 0.0,
@@ -298,49 +298,6 @@
   ],
   "objects": [
     {
-      "id": 1,
-      "material": 1,
-      "mesh": 0,
-      "name": "node_damagedHelmet_-6514",
-      "position": [
-        0.0,
-        0.95097416639328,
-        0.0
-      ],
-      "preTransform": [
-        1.0,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        -1.1920928955078125e-07,
-        -1.0000001192092896,
-        0.0,
-        0.0,
-        1.0000001192092896,
-        -1.1920928955078125e-07,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
-        1.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "slotMaterials": [
-        0,
-        1
-      ]
-    },
-    {
       "id": 2,
       "material": 2,
       "mesh": 1,
@@ -373,6 +330,13 @@
           "orthographic": false,
           "priority": 0,
           "type": "CameraComponent"
+        },
+        {
+          "boost": 3.0,
+          "enabled": true,
+          "lookSpeed": 0.0024999999441206455,
+          "speed": 4.0,
+          "type": "FreeCamera"
         }
       ],
       "id": 3,
@@ -380,14 +344,14 @@
       "mesh": -1,
       "name": "Main Camera",
       "position": [
-        2.5999999046325684,
-        1.6667722463607788,
+        0.6225904822349548,
+        0.529252290725708,
         -3.200000047683716
       ],
       "rotation": [
-        0.17777074873447418,
-        -0.6823166012763977,
-        -1.1354818418851664e-08
+        -0.0,
+        0.0,
+        -0.0
       ],
       "scale": [
         0.9999999403953552,
@@ -396,162 +360,56 @@
       ]
     },
     {
-      "id": 4,
-      "name": "Fountain",
-      "material": -1,
-      "position": [
-        -1.3,
-        0.0,
-        0.6
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ],
       "components": [
         {
-          "type": "ParticleEmitter",
+          "blendMode": 0,
+          "bounce": 0.4000000059604645,
+          "collide": true,
+          "color": [
+            0.30000001192092896,
+            0.6000000238418579,
+            1.0
+          ],
+          "drag": 0.0,
+          "emitRadius": 0.05000000074505806,
           "enabled": true,
-          "maxParticles": 8192,
-          "spawnRate": 1500.0,
-          "lifetime": 1.8,
-          "startSpeed": 4.5,
-          "speedVariation": 0.3,
-          "spreadAngle": 10.0,
-          "emitRadius": 0.05,
+          "endSize": 0.029999999329447746,
+          "endTint": [
+            1.0,
+            1.0,
+            1.0
+          ],
           "gravity": [
             0.0,
             -6.0,
             0.0
           ],
-          "startSize": 0.05,
-          "endSize": 0.03,
-          "color": [
-            0.3,
-            0.6,
-            1.0
-          ],
           "intensity": 3.0,
-          "collide": true,
-          "bounce": 0.4
-        }
-      ]
-    },
-    {
-      "id": 5,
-      "name": "Sparks",
-      "material": -1,
-      "position": [
-        1.3,
-        0.4,
-        0.6
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "components": [
-        {
+          "lifetime": 1.7999999523162842,
+          "maxParticles": 8192,
+          "opacity": 1.0,
+          "softness": 0.0,
+          "spawnRate": 1500.0,
+          "speedVariation": 0.30000001192092896,
+          "spreadAngle": 10.0,
+          "startSize": 0.05000000074505806,
+          "startSpeed": 4.5,
           "type": "ParticleEmitter",
-          "enabled": true,
-          "maxParticles": 4096,
-          "spawnRate": 800.0,
-          "lifetime": 1.2,
-          "startSpeed": 2.5,
-          "speedVariation": 0.6,
-          "spreadAngle": 180.0,
-          "emitRadius": 0.05,
-          "gravity": [
+          "wind": [
             0.0,
-            -9.8,
-            0.0
-          ],
-          "startSize": 0.04,
-          "endSize": 0.01,
-          "color": [
-            1.0,
-            0.7,
-            0.3
-          ],
-          "intensity": 8.0,
-          "collide": true,
-          "bounce": 0.6
-        }
-      ]
-    },
-    {
-      "id": 6,
-      "name": "Smoke",
-      "material": -1,
-      "position": [
-        0.0,
-        1.6,
-        0.3
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        1.0,
-        1.0,
-        1.0
-      ],
-      "components": [
-        {
-          "type": "ParticleEmitter",
-          "enabled": true,
-          "maxParticles": 1024,
-          "spawnRate": 60.0,
-          "lifetime": 5.0,
-          "startSpeed": 0.5,
-          "speedVariation": 0.3,
-          "spreadAngle": 25.0,
-          "emitRadius": 0.15,
-          "gravity": [
             0.0,
-            0.3,
             0.0
-          ],
-          "startSize": 0.25,
-          "endSize": 0.9,
-          "color": [
-            1.0,
-            0.9,
-            0.75
-          ],
-          "intensity": 1.5,
-          "blendMode": 1,
-          "opacity": 0.8,
-          "endTint": [
-            0.12,
-            0.12,
-            0.15
           ]
         }
-      ]
-    },
-    {
-      "id": 7,
-      "name": "GroundFog",
+      ],
+      "id": 4,
       "material": -1,
+      "mesh": -1,
+      "name": "Fountain",
       "position": [
-        2.0,
-        0.05,
-        0.2
+        -1.2999999523162842,
+        0.0,
+        0.6000000238418579
       ],
       "rotation": [
         0.0,
@@ -562,37 +420,368 @@
         1.0,
         1.0,
         1.0
-      ],
+      ]
+    },
+    {
       "components": [
         {
-          "type": "ParticleEmitter",
+          "blendMode": 0,
+          "bounce": 0.6000000238418579,
+          "collide": true,
+          "color": [
+            1.0,
+            0.699999988079071,
+            0.30000001192092896
+          ],
+          "drag": 0.0,
+          "emitRadius": 0.05000000074505806,
           "enabled": true,
-          "maxParticles": 128,
-          "spawnRate": 8.0,
-          "lifetime": 6.0,
-          "startSpeed": 0.15,
-          "speedVariation": 0.5,
-          "spreadAngle": 80.0,
-          "emitRadius": 0.4,
+          "endSize": 0.009999999776482582,
+          "endTint": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "gravity": [
+            0.0,
+            -9.800000190734863,
+            0.0
+          ],
+          "intensity": 8.0,
+          "lifetime": 1.2000000476837158,
+          "maxParticles": 4096,
+          "opacity": 1.0,
+          "softness": 0.0,
+          "spawnRate": 800.0,
+          "speedVariation": 0.6000000238418579,
+          "spreadAngle": 180.0,
+          "startSize": 0.03999999910593033,
+          "startSpeed": 2.5,
+          "type": "ParticleEmitter",
+          "wind": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "id": 5,
+      "material": -1,
+      "mesh": -1,
+      "name": "Sparks",
+      "position": [
+        1.2999999523162842,
+        0.5104351043701172,
+        0.6000000238418579
+      ],
+      "rotation": [
+        -0.0,
+        0.0,
+        -0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "components": [
+        {
+          "blendMode": 1,
+          "bounce": 0.5,
+          "collide": false,
+          "color": [
+            1.0,
+            0.8999999761581421,
+            0.75
+          ],
+          "drag": 0.0,
+          "emitRadius": 0.15000000596046448,
+          "enabled": true,
+          "endSize": 0.8999999761581421,
+          "endTint": [
+            0.11999999731779099,
+            0.11999999731779099,
+            0.15000000596046448
+          ],
+          "gravity": [
+            0.0,
+            0.30000001192092896,
+            0.0
+          ],
+          "intensity": 1.5,
+          "lifetime": 5.0,
+          "maxParticles": 1024,
+          "opacity": 0.800000011920929,
+          "softness": 0.0,
+          "spawnRate": 60.0,
+          "speedVariation": 0.30000001192092896,
+          "spreadAngle": 25.0,
+          "startSize": 0.25,
+          "startSpeed": 0.5,
+          "type": "ParticleEmitter",
+          "wind": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "id": 6,
+      "material": -1,
+      "mesh": -1,
+      "name": "Smoke",
+      "position": [
+        0.0,
+        0.02847111225128174,
+        0.30000001192092896
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        0.9999999403953552,
+        0.9999999403953552
+      ]
+    },
+    {
+      "components": [
+        {
+          "blendMode": 0,
+          "bounce": 0.5,
+          "collide": false,
+          "color": [
+            0.4000000059604645,
+            0.6000000238418579,
+            1.0
+          ],
+          "drag": 0.0,
+          "emitRadius": 0.4000000059604645,
+          "enabled": true,
+          "endSize": 1.7999999523162842,
+          "endTint": [
+            1.0,
+            1.0,
+            1.0
+          ],
           "gravity": [
             0.0,
             0.0,
             0.0
           ],
-          "startSize": 1.4,
-          "endSize": 1.8,
-          "color": [
-            0.4,
-            0.6,
-            1.0
-          ],
-          "intensity": 0.06,
-          "blendMode": 0,
+          "intensity": 0.05999999865889549,
+          "lifetime": 6.0,
+          "maxParticles": 128,
           "opacity": 1.0,
-          "softness": 0.6,
-          "collide": false,
-          "bounce": 0.5
+          "softness": 0.6000000238418579,
+          "spawnRate": 8.0,
+          "speedVariation": 0.5,
+          "spreadAngle": 80.0,
+          "startSize": 1.399999976158142,
+          "startSpeed": 0.15000000596046448,
+          "type": "ParticleEmitter",
+          "wind": [
+            0.0,
+            0.0,
+            0.0
+          ]
         }
+      ],
+      "id": 7,
+      "material": -1,
+      "mesh": -1,
+      "name": "GroundFog",
+      "position": [
+        5.290566921234131,
+        0.05000000074505806,
+        0.20000000298023224
+      ],
+      "rotation": [
+        -0.0,
+        0.0,
+        -0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "components": [
+        {
+          "blendMode": 0,
+          "bounce": 0.3499999940395355,
+          "collide": true,
+          "color": [
+            1.0,
+            0.75,
+            0.3499999940395355
+          ],
+          "drag": 1.0,
+          "emitRadius": 0.019999999552965164,
+          "enabled": true,
+          "endSize": 0.006000000052154064,
+          "endTint": [
+            1.0,
+            0.4000000059604645,
+            0.15000000596046448
+          ],
+          "gravity": [
+            0.0,
+            -9.800000190734863,
+            0.0
+          ],
+          "intensity": 3.0,
+          "lifetime": 0.6000000238418579,
+          "maxParticles": 512,
+          "opacity": 1.0,
+          "softness": 0.0,
+          "spawnRate": 0.0,
+          "speedVariation": 0.4000000059604645,
+          "spreadAngle": 30.0,
+          "startSize": 0.02500000037252903,
+          "startSpeed": 6.0,
+          "type": "ParticleEmitter",
+          "wind": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "burstRate": 2500.0,
+          "burstSeconds": 0.07999999821186066,
+          "enabled": true,
+          "interval": 1.0,
+          "type": "PulseEmitter"
+        }
+      ],
+      "id": 8,
+      "material": -1,
+      "mesh": -1,
+      "name": "SparkPulse",
+      "position": [
+        3.327427625656128,
+        -0.04030662775039673,
+        0.4756099283695221
+      ],
+      "rotation": [
+        -0.0,
+        0.0,
+        -0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "components": [
+        {
+          "blendMode": 0,
+          "bounce": 0.5,
+          "collide": false,
+          "color": [
+            1.0,
+            0.4000000059604645,
+            0.07999999821186066
+          ],
+          "drag": 1.5,
+          "emitRadius": 0.15000000596046448,
+          "enabled": true,
+          "endSize": 0.11999999731779099,
+          "endTint": [
+            1.0,
+            0.25,
+            0.10000000149011612
+          ],
+          "gravity": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "intensity": 1.2000000476837158,
+          "lifetime": 0.800000011920929,
+          "maxParticles": 2048,
+          "opacity": 1.0,
+          "softness": 0.15000000596046448,
+          "spawnRate": 120.0,
+          "speedVariation": 0.5,
+          "spreadAngle": 12.0,
+          "startSize": 0.2199999988079071,
+          "startSpeed": 1.0,
+          "type": "ParticleEmitter",
+          "wind": [
+            0.0,
+            1.2999999523162842,
+            0.0
+          ]
+        },
+        {
+          "blendMode": 0,
+          "bounce": 0.5,
+          "collide": false,
+          "color": [
+            1.0,
+            0.550000011920929,
+            0.20000000298023224
+          ],
+          "drag": 1.2000000476837158,
+          "emitRadius": 0.11999999731779099,
+          "enabled": true,
+          "endSize": 0.009999999776482582,
+          "endTint": [
+            1.0,
+            0.30000001192092896,
+            0.10000000149011612
+          ],
+          "gravity": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "intensity": 3.0,
+          "lifetime": 1.399999976158142,
+          "maxParticles": 512,
+          "opacity": 1.0,
+          "softness": 0.0,
+          "spawnRate": 25.0,
+          "speedVariation": 0.6000000238418579,
+          "spreadAngle": 20.0,
+          "startSize": 0.02500000037252903,
+          "startSpeed": 1.600000023841858,
+          "type": "ParticleEmitter",
+          "wind": [
+            0.20000000298023224,
+            1.600000023841858,
+            0.0
+          ]
+        }
+      ],
+      "id": 9,
+      "material": -1,
+      "mesh": -1,
+      "name": "Campfire",
+      "position": [
+        -2.4288101196289063,
+        0.019999999552965164,
+        0.5179116129875183
+      ],
+      "rotation": [
+        -0.0,
+        0.0,
+        -0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
       ]
     }
   ],

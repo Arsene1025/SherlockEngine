@@ -38,4 +38,8 @@ public:
 	float softness = 0.0f;        // 소프트 파티클 거리 (m). 0 = 끔
 	bool collide = false;         // 깊이 버퍼 충돌
 	float bounce = 0.5f;          // 충돌 시 법선 방향 속도의 반발 계수 (0 = 붙음, 1 = 완전 탄성)
+	// 바람·공기 저항: 속도가 매 초 drag 의 비율로 wind 쪽으로 끌려감 (v ← wind + (v − wind) × e^(−drag·dt)).
+	// drag 0 이면 wind 를 넣어도 아무 일도 없음. drag 는 중력·방출 속도도 같이 줄여, 끝 속도는 대략 wind + gravity / drag.
+	DirectX::XMFLOAT3 wind = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // 끌려가는 목표 속도 (m/s, 월드)
+	float drag = 0.0f;            // 끌려가는 세기 (1/초). 0 = 끔, 클수록 빨리 wind 를 따라감
 };
