@@ -504,6 +504,11 @@ namespace
 				{ "cascadeEnabled", env.shadow.cascadeEnabled }, { "cascadeCount", env.shadow.cascadeCount }, { "cascadeDistance", env.shadow.cascadeDistance },
 				{ "cascadeLambda", env.shadow.cascadeLambda }, { "cascadeBlend", env.shadow.cascadeBlend },
 			} },
+			{ "ssao", {
+				{ "enabled", env.ssao.enabled }, { "radius", env.ssao.radius }, { "bias", env.ssao.bias },
+				{ "intensity", env.ssao.intensity }, { "power", env.ssao.power }, { "sampleCount", env.ssao.sampleCount },
+				{ "multiply", env.ssao.multiply },
+			} },
 		};
 	}
 
@@ -528,6 +533,16 @@ namespace
 		e.post.bloomKnee = post.value("bloomKnee", defaults.bloomKnee);
 		e.post.bloomIntensity = post.value("bloomIntensity", defaults.bloomIntensity);
 		e.post.greyscale = post.value("greyscale", defaults.greyscale);
+		// SSAO (5단계). 키가 없으면(이전 씬 파일) 꺼진 기본값
+		const SsaoSettings ssaoDefaults;
+		const json ssao = env.value("ssao", json::object());
+		e.ssao.enabled = ssao.value("enabled", ssaoDefaults.enabled);
+		e.ssao.radius = ssao.value("radius", ssaoDefaults.radius);
+		e.ssao.bias = ssao.value("bias", ssaoDefaults.bias);
+		e.ssao.intensity = ssao.value("intensity", ssaoDefaults.intensity);
+		e.ssao.power = ssao.value("power", ssaoDefaults.power);
+		e.ssao.sampleCount = ssao.value("sampleCount", ssaoDefaults.sampleCount);
+		e.ssao.multiply = ssao.value("multiply", ssaoDefaults.multiply);
 		// 그림자. 키가 없으면(이전 씬 파일) 기본값
 		const ShadowSettings shadowDefaults;
 		const json shadow = env.value("shadow", json::object());

@@ -59,6 +59,8 @@ protected:
 
     // 실행 인자 "--name=value" 의 value 를 돌려줌. 없으면 빈 문자열.
     static std::wstring GetCommandLineOption(const wchar_t* name);
+    // 렌더 경로 실행 인자 (--deferred, --clustered, --shadow-priority = 1|0, --ssao = 1|0) 를 설정에 반영. 에디터·게임이 같이 씀.
+    static void ApplyRenderPathOptions(RenderSettings& settings);
 
 private:
     void ResolveProject();      // 프로젝트 파일 찾기 → Paths 루트 설정

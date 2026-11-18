@@ -54,6 +54,20 @@ AppBase::~AppBase()
     if (m_comInitialized) CoUninitialize();
 }
 
+void AppBase::ApplyRenderPathOptions(RenderSettings& settings)
+{
+    const auto flag = [](const wchar_t* name, bool& value)
+    {
+        const std::wstring option = GetCommandLineOption(name);
+        if (!option.empty()) value = option != L"0";
+    };
+    flag(L"deferred", settings.deferred);              // 디퍼드 (2단계)
+    flag(L"clustered", settings.clustered);            // 클러스터드 라이팅 (3b)
+    flag(L"shadow-priority", settings.shadowPriority); // 그림자 타일 우선순위 (3a)
+    const std::wstring ssao = GetCommandLineOption(L"ssao");   // SSAO (5단계) — 씬 값 덮어쓰기
+    if (!ssao.empty()) settings.ssaoOverride = ssao != L"0" ? 1 : 0;
+}
+
 std::wstring AppBase::GetCommandLineOption(const wchar_t* name)
 {
     std::wstring result;

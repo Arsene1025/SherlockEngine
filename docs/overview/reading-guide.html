@@ -196,6 +196,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
     <tr><td class="n">12-E</td><td>프로젝트 시스템</td><td><a href="rendering-analysis.html#c17-12">17.12</a>~<a href="rendering-analysis.html#c17-14">17.14</a> · <a href="rendering-analysis.html#c1-7">1.7</a></td><td><code>Core/Project</code> · <code>Core/Paths</code> 세 루트 · <code>Editor/ProjectGenerator</code> · <code>Editor/ProjectLauncher</code> · <code>Projects\Sample</code> · 생성된 <code>&lt;이름&gt;.sln</code></td><td class="n">1h</td></tr>
     <tr><td class="n">12-F</td><td>오브젝트 계층과 카메라 자세</td><td><a href="rendering-analysis.html#c13-4">13.4</a> · <a href="rendering-analysis.html#c13-11">13.11</a>~<a href="rendering-analysis.html#c13-13">13.13</a> · <a href="rendering-analysis.html#c16-5">16.5</a>·<a href="rendering-analysis.html#c16-6">16.6</a> · <a href="rendering-analysis.html#d8">D8</a></td><td><code>Scene/GameObject.h</code> 의 parent/children · <code>Scene/Transform.h</code>(로컬) · <code>Scene/Camera.h</code> 의 두 입구 · <code>Scene/CameraComponent.cpp</code> · <code>Scene::ApplyActiveCamera</code> 의 slerp · <code>Editor::DrawHierarchyNode / DrawGizmo</code></td><td class="n">1.5h</td></tr>
     <tr><td class="n">13</td><td>되돌아보기</td><td><a href="rendering-analysis.html#c18">18장</a> · <a href="rendering-analysis.html#c19">19장</a> · <a href="rendering-analysis.html#c20">20장</a> · <a href="rendering-analysis.html#c21">21장</a> · <a href="rendering-analysis.html#c22">22장</a> · <a href="rendering-analysis.html#app-e">부록 E</a></td><td>다시 <code>Graphics/Renderer.cpp</code> 전체를 위에서 아래로</td><td class="n">3h</td></tr>
+    <tr><td class="n">14</td><td>(선택) 디퍼드·클러스터드·SSAO</td><td><a href="rendering-analysis.html#c20-26">20.26</a> · <a href="../plan/deferred-clustered-ssao-record.html#reading">디퍼드 기록 4장</a></td><td><code>Shaders/Shading.hlsli</code> · <code>GBufferPixelShader</code> · <code>DeferredLightingPixelShader</code> · <code>Graphics/RendererDeferred.cpp</code>·<code>RendererClusters.cpp</code>·<code>RendererSsao.cpp</code></td><td class="n">5h</td></tr>
   </tbody>
 </table></div>
 
@@ -409,7 +410,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
         <li><code>Graphics/Renderer.h</code> 전체 → <code>Renderer.cpp</code>의 <code>Render</code>·<code>BuildDrawList</code>·<code>DrawItems</code>·<code>UploadPerFrameConstants</code>·<code>UploadObjectConstants</code>·<code>GetOrCreateGpuMesh</code></li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — <code>PerFrameConstants</code>의 크기 304B를 손으로 계산해 <code>static_assert</code>와 맞춘다. 데모 씬에서 바닥 위 오브젝트들이 각자 다른 변환으로 그려진다. <code>RHI/D3D11/</code>·<code>RHI/D3D12/</code>·<code>RHI/DXBC/</code>·<code>RHI/RHI.cpp</code> 밖의 <em>코드</em>에서 <code>ID3D11</code>이 검색되지 않는다(주석에는 남아 있음).</div>
+    <div class="check"><b>확인 포인트</b> — <code>PerFrameConstants</code>의 크기 432B(2026-11-18 기준, 칸 배치는 <a href="rendering-analysis.html#c10-6">10.6</a>)를 손으로 계산해 <code>static_assert</code>와 맞춘다. 데모 씬에서 바닥 위 오브젝트들이 각자 다른 변환으로 그려진다. <code>RHI/D3D11/</code>·<code>RHI/D3D12/</code>·<code>RHI/DXBC/</code>·<code>RHI/RHI.cpp</code> 밖의 <em>코드</em>에서 <code>ID3D11</code>이 검색되지 않는다(주석에는 남아 있음).</div>
   </div>
 </div>
 
@@ -473,7 +474,7 @@ svg text.badge{fill:#fff;font-size:10.5px;font-weight:600;font-family:"IBM Plex 
         <li><code>RHI/RenderPassTypes.h</code>(<code>LoadOp</code>·<code>ResourceState</code>) → <code>RHI/CommandList.h</code></li>
         <li><code>RHI/D3D11/D3D11CommandList.cpp</code> 전체 — SRV 슬롯 추적과 <code>Barrier</code>의 상태 검사</li>
         <li><code>Renderer.cpp</code>의 <code>CreateShadowResources</code>·<code>ComputeLightViewProj</code>·<code>RenderShadowPass</code>·<code>RenderMainPass</code>·<code>EndUIPass</code>(Present 전이)</li>
-        <li><code>Shaders/ShadowVertexShader.hlsl</code>, <code>BasicPixelShader.hlsl</code>의 PCF 루프와 TBN, <code>Lighting.hlsli</code>의 t8·s4</li>
+        <li><code>Shaders/ShadowVertexShader.hlsl</code>, <code>Shading.hlsli</code>의 PCF 루프(<code>SampleShadowView</code>)와 <code>MaterialSurface.hlsli</code>의 TBN, <code>Lighting.hlsli</code>의 t8·s4 — 2026-11-18 에 <code>BasicPixelShader.hlsl</code> 본문이 이 두 헤더로 옮겨 갔습니다</li>
         <li><code>Renderer.cpp</code>의 <code>UpdateFrameSet</code>·<code>DrawSkybox</code>·<code>GetSkyPipeline</code>, <code>Shaders/SkyboxVertexShader.hlsl</code>·<code>SkyboxPixelShader.hlsl</code>, <code>Lighting.hlsli</code>의 t9·s5</li>
       </ul></div>
     </div>
@@ -730,6 +731,27 @@ SherlockEditor.exe --project=..\..\Projects\TestGame --exit-after=40 --play=1 --
   </div>
 </div>
 
+<div class="stage">
+  <div class="tag">S14</div>
+  <div>
+    <h4>(선택) 디퍼드 · 클러스터드 라이팅 · SSAO <span class="time">약 5시간</span></h4>
+    <div class="why">2026-11-18 에 들어간 렌더링 경로입니다. 스텝 4(렌더러)·5(셰이더)·7(패스와 그림자)를 읽은 뒤라면 같은 표면 계산이 포워드·G-buffer·라이팅 세 셰이더에서 어떻게 나뉘어 쓰이는지, 조명 목록이 CPU 에서 어떻게 상자별로 나뉘는지를 따라갈 수 있습니다. 읽는 순서 자체는 기록 문서의 4장이 열한 단계로 자세히 적고 있으므로 여기서는 입구만 적습니다.</div>
+    <div class="cols">
+      <div><h5>읽을 문서</h5><ul>
+        <li><a href="../plan/deferred-clustered-ssao-record.html#overview">디퍼드 기록 0~2장</a> — 프레임 흐름 그림, G-buffer 배치, 깊이에서 위치 복원, 옥타헤드럴 노멀, 클러스터 격자, SSAO 개념</li>
+        <li><a href="../plan/deferred-clustered-ssao-record.html#reading">디퍼드 기록 4장 코드 읽는 순서</a> — 단계마다 확인 질문이 붙어 있음</li>
+        <li><a href="rendering-analysis.html#c20-26">20.26</a> — 이 문서의 서술(패스, 슬롯, b0·b2)이 바뀐 곳 요약</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>Graphics/Renderer.h</code>의 <code>RenderSettings</code>(deferred·clustered·shadowPriority) → <code>ShaderConstants.h</code>의 <code>PerFrameConstants</code></li>
+        <li><code>Shaders/Shading.hlsli</code> → <code>MaterialSurface.hlsli</code> → <code>GBufferPixelShader.hlsl</code> → <code>GBuffer.hlsli</code> → <code>DeferredLightingPixelShader.hlsl</code></li>
+        <li><code>Graphics/RendererDeferred.cpp</code>의 <code>RenderDeferredScene</code>, <code>RendererClusters.cpp</code>의 <code>CullLights</code>·<code>BuildClusters</code>, <code>RendererSsao.cpp</code>의 <code>UploadSsaoConstants</code>·<code>RenderSsao</code></li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — SherlockTestScenes 프로젝트의 <code>ManyLights256.json</code> 에서 Render Settings 의 Clustered lights 를 끄고 켜도 화면이 같고 Profiler 의 MainPass(GPU) 시간만 크게 달라진다. 디버그 뷰 14(상자당 조명 수)와 15(깊이 슬라이스)로 비닝을 눈으로 본다. <code>SsaoBalls.json</code> 에서 디버그 뷰 13 으로 SSAO 만 보고, 환경 패널의 SSAO 반경을 바꿔 본다.</div>
+  </div>
+</div>
+
 <h2 id="s8"><span class="num">8.</span>실행하며 확인하기</h2>
 <p>모든 스텝의 확인 포인트는 실행 중인 앱에서 확인합니다. 단축키는 <code>EditorApp.cpp</code>의 <code>OnUpdate</code>에 모여 있고, 실행 인자는 <code>EditorApp.h</code>의 자동 검증 주석에 있습니다. 전체 목록과 검증 수법은 최종본 <a href="rendering-analysis.html#app-d">부록 D</a>에 있습니다.</p>
 <div class="tbl"><table>
@@ -765,7 +787,7 @@ SherlockEditor.exe --project=..\..\Projects\TestGame --exit-after=40 --play=1 --
   <li>S8의 9.1 폴더 규칙과 grep 검사 (30분). 나머지는 20.3 의 단계 카드 17장의 "목표" 줄만 읽고 마침 (30분).</li>
 </ol>
 <h3>2주 코스: 정독</h3>
-<p>1절 표의 시간 합계가 약 46시간이므로 하루 3시간이면 15일입니다. 하루에 스텝 하나가 기준이고, S9(D3D12)만 이틀을 잡습니다. 각 스텝의 확인 포인트를 통과하기 전에는 다음 스텝으로 넘어가지 않는 것이 규칙입니다. 확인이 안 되면 그 장 끝의 "함정과 해결" 표로 돌아가세요.</p>
+<p>1절 표의 시간 합계가 약 46시간(선택인 S14 의 5시간은 빼고)이므로 하루 3시간이면 15일입니다. 하루에 스텝 하나가 기준이고, S9(D3D12)만 이틀을 잡습니다. 각 스텝의 확인 포인트를 통과하기 전에는 다음 스텝으로 넘어가지 않는 것이 규칙입니다. 확인이 안 되면 그 장 끝의 "함정과 해결" 표로 돌아가세요.</p>
 <h3>D3D12를 모르는 경우</h3>
 <p>S9 전에 7장의 7.1~7.4(슬롯 모델에서 디스크립터까지)와 9.10 의 개념 대응표를 먼저 읽고, 부록 E 의 Microsoft 문서("D3D12 for D3D11 programmers" 계열)를 하루 곁들이면 됩니다. 이 프로젝트는 D3D12의 개념(PSO·루트 시그니처·디스크립터 테이블·배리어·펜스)을 D3D11 위에 미리 그려 두었으므로, S3~S7을 충실히 지나왔다면 낯선 것은 API 이름뿐입니다.</p>
 <h3>이미 D3D11을 잘 아는 경우</h3>

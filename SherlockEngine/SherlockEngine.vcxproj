@@ -229,6 +229,7 @@
     <ClInclude Include="Scene\Material.h" />
     <ClInclude Include="Scene\PostProcessSettings.h" />
     <ClInclude Include="Scene\ShadowSettings.h" />
+    <ClInclude Include="Scene\SsaoSettings.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Scene\Behaviour.h" />
     <ClInclude Include="Scene\CameraComponent.h" />
@@ -288,6 +289,9 @@
     <ClCompile Include="Graphics\RendererPost.cpp" />
     <ClCompile Include="Graphics\RendererParticles.cpp" />
     <ClCompile Include="Graphics\RendererShadow.cpp" />
+    <ClCompile Include="Graphics\RendererSsao.cpp" />
+    <ClCompile Include="Graphics\RendererClusters.cpp" />
+    <ClCompile Include="Graphics\RendererDeferred.cpp" />
     <ClCompile Include="Graphics\RendererTargets.cpp" />
     <ClCompile Include="Graphics\TextureCache.cpp" />
     <ClCompile Include="Graphics\TextureImporter.cpp" />
@@ -487,7 +491,44 @@
       <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
     </FxCompile>
+    <FxCompile Include="Shaders\GBufferPixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>PS_GBuffer</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\DeferredLightingPixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>PS_DeferredLighting</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\SsaoPixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>PS_Ssao</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\SsaoBlurPixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>PS_SsaoBlur</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
     <None Include="Shaders\Common.hlsli" />
+    <None Include="Shaders\Ssao.hlsli" />
+    <None Include="Shaders\GBuffer.hlsli" />
+    <None Include="Shaders\Clusters.hlsli" />
+    <None Include="Shaders\MaterialSurface.hlsli" />
+    <None Include="Shaders\Shading.hlsli" />
     <None Include="Shaders\Lighting.hlsli" />
     <None Include="Shaders\Mesh.hlsli" />
     <None Include="Shaders\Material.hlsli" />

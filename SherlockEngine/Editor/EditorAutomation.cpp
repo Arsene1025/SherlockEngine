@@ -7,6 +7,7 @@
 #include "Scene/CameraComponent.h"
 #include "Core/Paths.h"
 #include "Core/Log.h"
+#include "Core/Profiler.h"
 #include <format>   // C++20: 자동 검증 로그 서식
 
 using namespace DirectX;   // 이 파일 안에서만
@@ -19,6 +20,7 @@ void EditorApp::ParseAutomation()
 	if (!GetCommandLineOption(L"post-stages").empty()) DebugUI::SetShowPostStages(true);   // --post-stages=1 이면 후처리 단계별 썸네일 창을 처음부터 켬
 	const std::wstring computeBlur = GetCommandLineOption(L"compute-blur");   // --compute-blur=1|0: 가우시안 블러를 컴퓨트로 (RenderSettings::computeBlur)
 	if (!computeBlur.empty()) GetEngine().GetRenderer().GetSettings().computeBlur = _wtoi(computeBlur.c_str()) != 0;
+	ApplyRenderPathOptions(GetEngine().GetRenderer().GetSettings());   // --deferred / --clustered / --shadow-priority / --ssao
 	const std::wstring particleStep = GetCommandLineOption(L"particle-step");   // --particle-step=<초>: 파티클을 프레임마다 고정 시간만큼 (RenderSettings::particleFixedStep)
 	if (!particleStep.empty()) GetEngine().GetRenderer().GetSettings().particleFixedStep = static_cast<float>(_wtof(particleStep.c_str()));
 	const std::wstring particleSort = GetCommandLineOption(L"particle-sort");   // --particle-sort=0: 알파 파티클을 정렬하지 않음 (RenderSettings::particleSort)
@@ -359,6 +361,15 @@ void EditorApp::RunAutomation()
 	at(a.exitAfter - 1, a.exitAfter > 1 && !a.screenshotPath.empty(), [&] { engine.RequestScreenshot(a.screenshotPath); });
 	if (frame >= a.exitAfter)
 	{
+		// 렌더 경로 통계 (디퍼드·클러스터드·SSAO 검증용 — docs/plan/deferred-clustered-ssao-record.html 의 검증 절).
+		const Renderer::Stats& s = engine.GetRenderer().GetStats();
+		Log::Info("자동 검증: 렌더 통계 path=%s ssao=%d draws=%u gbuffer=%u forwardOpaque=%u lightsVisible=%u lightsCulled=%u clusterRefs=%u clusterMax=%u overflow=%u shadowViews=%u offscreenShadowViews=%u skippedShadowLights=%u",
+			s.deferredPath ? "deferred" : "forward", s.ssao ? 1 : 0, s.draws, s.gbufferDraws, s.forwardOpaqueDraws, s.lightsVisible, s.lightsCulled,
+			s.clusterLightRefs, s.clusterMaxLights, s.clusterOverflow, s.shadowViews, s.shadowViewsOffscreen, engine.GetRenderer().GetSkippedShadowLights());
+		std::string timings;
+		for (const Profiler::CpuSample& sample : Profiler::GetCpuSamples()) timings += std::format(" cpu:{}={:.3f}", sample.name, sample.milliseconds);
+		for (const Profiler::GpuSample& sample : Profiler::GetGpuSamples()) timings += std::format(" gpu:{}={:.3f}", sample.name, sample.milliseconds);
+		Log::Info("자동 검증: 구간 ms%s", timings.c_str());
 		Log::Info("자동 검증: %llu 프레임 뒤 종료", frame);
 		PostQuitMessage(0);
 	}

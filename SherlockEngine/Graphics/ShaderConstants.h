@@ -77,6 +77,26 @@ constexpr uint32_t kUAVSlotSortIndices = 1;       // u1 (정렬 셋, 파티클 �
 constexpr uint32_t kCBSlotParticleSortView = 10;  // b10 (정렬 셋, 뷰마다의 view 행렬. 프레임에 한 번)
 constexpr uint32_t kCBSlotParticleSortStep = 11;  // b11 (정렬 단계 셋, (k, j). 처음에 한 번 만들고 바꾸지 않음)
 
+// ---- 디퍼드·클러스터드·SSAO (docs/plan/deferred-clustered-ssao-record.html) ----
+// G-buffer 셋 (뷰마다, 디퍼드 라이팅 PS): t23 깊이 + t25~t28 G-buffer + t29 SSAO 결과. t23 은 파티클 깊이 셋과 같은
+// 레지스터지만 두 셋이 한 PSO 에 같이 묶이지 않으므로 겹치지 않음 (같은 "씬 깊이" 라 번호를 맞춤).
+constexpr uint32_t kSRVSlotGBuffer0 = 25;      // t25 GB0 R8G8B8A8_UNORM_SRGB: rgb = albedo, a = 재질 AO
+constexpr uint32_t kSRVSlotGBuffer1 = 26;      // t26 GB1 R16G16B16A16_FLOAT: xy = 셰이딩 노멀(옥타헤드럴), zw = 기하 노멀(옥타헤드럴)
+constexpr uint32_t kSRVSlotGBuffer2 = 27;      // t27 GB2 R8G8B8A8_UNORM_SRGB: rgb = F0, a = 거칠기 (알파는 sRGB 변환 없음)
+constexpr uint32_t kSRVSlotGBuffer3 = 28;      // t28 GB3 R8G8B8A8_UNORM: r = 금속성, g = F90, b = 클리어코트, a = 코팅 거칠기
+constexpr uint32_t kSRVSlotSsao = 29;          // t29 SSAO 결과 R8_UNORM (G-buffer 셋 = 라이팅이 읽음, SSAO 블러 셋 = 블러 입력)
+// 클러스터 (프레임 셋, 뷰마다 다시 올림): 클러스터마다 (조명 목록 시작, 개수), 그리고 조명 번호 목록.
+constexpr uint32_t kSRVSlotClusterGrid = 30;   // t30 StructuredBuffer<uint2>, kClusterCount 개
+constexpr uint32_t kSRVSlotClusterLights = 31; // t31 StructuredBuffer<uint>, 조명 번호 (t15 인덱스)
+constexpr uint32_t kCBSlotSsao = 12;           // b12 SSAO 파라미터 + 커널 (SSAO 셋, 프레임에 한 번)
+
+// 클러스터 격자. Shaders/Clusters.hlsli 의 CLUSTER_X/Y/Z 와 같아야 함. 16:9 화면에서 타일이 거의 정사각형.
+constexpr uint32_t kClusterGridX = 16;
+constexpr uint32_t kClusterGridY = 9;
+constexpr uint32_t kClusterGridZ = 24;
+constexpr uint32_t kClusterCount = kClusterGridX * kClusterGridY * kClusterGridZ;   // 3456
+constexpr uint32_t kMaxSsaoSamples = 32;       // b12 커널 배열 크기. Ssao.hlsli 의 MAX_SSAO_SAMPLES
+
 // 정렬 길이: capacity 이상인 가장 작은 2 의 거듭제곱 (최소 64). ParticleSort.hlsli 의 ParticleSortCount 와 같은 식.
 constexpr uint32_t ParticleSortCount(uint32_t capacity)
 {
@@ -125,6 +145,18 @@ struct alignas(16) PerFrameConstants
 	DirectX::XMFLOAT4 shadowExtra;
 	// IBL 색 배율. xyz = 확산 조도·반사 프리필터에 곱할 RGB (기본 1,1,1), w = 미사용
 	DirectX::XMFLOAT4 iblTint;
+	// ---- 아래는 디퍼드·클러스터드·SSAO 가 씀. 모두 "이 뷰" 기준이라 미리보기 패스에서 다시 올림 ----
+	// viewProj 의 역행렬 (전치). 깊이 + 화면 위치 → 월드 위치 복원 (GBuffer.hlsli 의 ReconstructWorldPosition).
+	DirectX::XMFLOAT4X4 invViewProj;
+	// x, y = 이 뷰의 렌더 타깃 크기 (픽셀), z, w = 그 역수. SV_Position → UV, 클러스터 타일 계산.
+	DirectX::XMFLOAT4 screenParams;
+	// 클러스터드 라이팅. x = 켜짐(1)/꺼짐(0), y = 원근(1)/직교(0), z = near, w = far (이 뷰의 카메라)
+	DirectX::XMFLOAT4 clusterParams;
+	// 깊이 → z 슬라이스: slice = floor(f(z) · x + y). 원근은 f = log2 (지수 분할), 직교는 f(z) = z (균등 분할).
+	// zw = 미사용
+	DirectX::XMFLOAT4 clusterDepth;
+	// SSAO. x = 켜짐(이번 뷰에 SSAO 결과가 있음), y = 합치는 방식 (0 = min(재질 AO, SSAO), 1 = 곱), zw = 미사용
+	DirectX::XMFLOAT4 aoParams;
 };
 
 // 후처리 패스 파라미터 (b4). 패스마다 올림 — 업로드 링을 쓰므로 프레임 안에서 여러 번 올려도 됨 (b0 가
@@ -193,6 +225,22 @@ struct alignas(16) LightConstants
 {
 	DirectX::XMFLOAT3 ambientColor;
 	uint32_t lightCount;
+	// t15 의 앞쪽 directionalCount 개가 방향광 (BuildGpuLights 가 방향광을 앞으로 모음). 클러스터드 경로는 이것만
+	// 전부 돌고, 나머지(지역광)는 클러스터 목록으로 찾음 — 방향광은 범위가 없어 모든 클러스터에 들어가기 때문.
+	uint32_t directionalCount;
+	uint32_t padding[3];
+};
+
+// b12: SSAO (Ssao.hlsli). 커널은 반구 안의 점 (탄젠트 공간, z = 노멀 쪽), 길이가 1 이하. 프레임에 한 번 올림.
+struct alignas(16) SsaoConstants
+{
+	float radius;          // 월드 단위 반경 (m)
+	float bias;            // 자기 가림 방지 (뷰 z 차이, m)
+	float intensity;       // 가림 비율에 곱함
+	float power;           // 최종 AO 에 거듭제곱 (대비)
+	uint32_t sampleCount;  // 1 .. kMaxSsaoSamples
+	uint32_t padding[3];
+	DirectX::XMFLOAT4 kernel[kMaxSsaoSamples];   // xyz = 샘플 오프셋, w = 미사용
 };
 
 // 재질: uvScale·unlit·normalStrength 를 포함함.
@@ -333,7 +381,14 @@ static_assert(IsValidConstantBufferSize(sizeof(ShadowConstants)), "ShadowConstan
 static_assert(sizeof(PostParamsConstants) == 80, "PostParamsConstants: 16 * 5");
 
 // lightViewProj 삭제 후: view/proj/viewProj(64*3) + 16 * 6
-static_assert(sizeof(PerFrameConstants) == 304, "PerFrameConstants: 64*3 + 16 * 7");
+static_assert(sizeof(PerFrameConstants) == 432, "PerFrameConstants: 64*3 + 16 * 7 + 64 + 16 * 4");
+static_assert(offsetof(PerFrameConstants, invViewProj) == 304, "PerFrameConstants.invViewProj");
+static_assert(offsetof(PerFrameConstants, screenParams) == 368, "PerFrameConstants.screenParams");
+static_assert(offsetof(PerFrameConstants, clusterParams) == 384, "PerFrameConstants.clusterParams");
+static_assert(offsetof(PerFrameConstants, clusterDepth) == 400, "PerFrameConstants.clusterDepth");
+static_assert(offsetof(PerFrameConstants, aoParams) == 416, "PerFrameConstants.aoParams");
+static_assert(sizeof(SsaoConstants) == 544, "SsaoConstants: 16 * 2 + 16 * 32");
+static_assert(offsetof(SsaoConstants, kernel) == 32, "SsaoConstants.kernel");
 static_assert(offsetof(PerFrameConstants, cameraPosition) == 192, "PerFrameConstants.cameraPosition");
 static_assert(offsetof(PerFrameConstants, time) == 204, "PerFrameConstants.time");
 static_assert(offsetof(PerFrameConstants, shadowParams) == 208, "PerFrameConstants.shadowParams");
@@ -348,8 +403,9 @@ static_assert(IsValidConstantBufferSize(sizeof(SkinConstants)), "SkinConstants �
 static_assert(sizeof(SkinConstants) == 64 * kMaxSkinJoints, "SkinConstants: 64 * 조인트 수 (HLSL cbuffer Skin)");
 static_assert(offsetof(PerObjectConstants, worldInvTranspose) == 64, "PerObjectConstants.worldInvTranspose");
 
-static_assert(sizeof(LightConstants) == 16, "LightConstants: 16");
+static_assert(sizeof(LightConstants) == 32, "LightConstants: 16 * 2");
 static_assert(offsetof(LightConstants, lightCount) == 12, "LightConstants.lightCount");
+static_assert(offsetof(LightConstants, directionalCount) == 16, "LightConstants.directionalCount");
 
 static_assert(sizeof(MaterialConstants) == 112, "MaterialConstants: 16 * 7");
 static_assert(offsetof(MaterialConstants, emissive) == 16, "MaterialConstants.emissive");

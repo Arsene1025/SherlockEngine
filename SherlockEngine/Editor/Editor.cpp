@@ -1728,7 +1728,10 @@ void Editor::DrawRenderSettings(Engine& engine)
 	DebugUI::BeginPanel("Render Settings");
 	DebugUI::DrawRenderSettingsPanel(engine.GetRenderer(), engine.GetDevice());
 	RenderSettings& settings = engine.GetRenderer().GetSettings();
-	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion", "Shadow cascade", "Specular F0", "Clearcoat" };
+	// 11~15: 디퍼드·클러스터드·SSAO 검증용 (docs/plan/deferred-clustered-ssao-record.html). 13 (SSAO) 은 디퍼드 프레임에서만,
+	// 5 (UV) 는 G-buffer 에 UV 가 없어 그 프레임을 포워드로 그림.
+	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion", "Shadow cascade", "Specular F0", "Clearcoat",
+		"World position (frac)", "Geometric normal", "SSAO", "Cluster light count", "Cluster depth slice" };
 	ImGui::Combo("Debug view", &settings.debugView, views, IM_ARRAYSIZE(views));
 	if (settings.debugView == 3) DebugUI::SliderFloatR("Depth range", &settings.debugDepthRange, RenderSettings().debugDepthRange, 1.0f, 500.0f);
 	const char* boneModes[] = { "Off", "Bones + joints", "Bones + joints + axes" };

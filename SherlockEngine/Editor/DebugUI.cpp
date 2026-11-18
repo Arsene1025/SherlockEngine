@@ -174,6 +174,12 @@ void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)
 	ImGui::Checkbox("Normal maps", &settings.normalMapping);
 	SameLineIfFits(CheckboxWidth("Compute blur"));
 	ImGui::Checkbox("Compute blur", &settings.computeBlur);   // 가우시안 블러를 컴퓨트 셰이더로 (결과는 PS 와 같아야 함)
+	// 렌더 경로 (디퍼드 2단계, 클러스터드 3b, 그림자 우선순위 3a). 끄면 예전 경로 — 결과 비교용.
+	ImGui::Checkbox("Deferred", &settings.deferred);
+	SameLineIfFits(CheckboxWidth("Clustered lights"));
+	ImGui::Checkbox("Clustered lights", &settings.clustered);
+	SameLineIfFits(CheckboxWidth("Shadow priority"));
+	ImGui::Checkbox("Shadow priority", &settings.shadowPriority);
 	bool vsync = device.IsVSync();
 	if (ImGui::Checkbox("VSync", &vsync))
 	{
@@ -202,6 +208,9 @@ void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)
 	ImGui::TextWrapped("passes %u   barriers %u   PSO cache %zu   GPU meshes %zu   GPU materials %zu   textures %zu   reloads %u   frame slot %u",
 		stats.renderPasses, stats.barriers, renderer.GetPipelineCount(), renderer.GetGpuMeshCount(), renderer.GetGpuMaterialCount(),
 		renderer.GetTextureCount(), stats.shaderReloads, device.GetFrameIndex());
+	ImGui::TextWrapped("path %s%s   G-buffer draws %u   forward opaque %u   lights visible %u / culled %u   cluster refs %u (max %u per cluster, overflow %u)   offscreen shadow views %u",
+		stats.deferredPath ? "deferred" : "forward", stats.ssao ? " + SSAO" : "", stats.gbufferDraws, stats.forwardOpaqueDraws,
+		stats.lightsVisible, stats.lightsCulled, stats.clusterLightRefs, stats.clusterMaxLights, stats.clusterOverflow, stats.shadowViewsOffscreen);
 }
 
 void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& device)
@@ -429,6 +438,23 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 		}
 		SliderFloatR("Greyscale", &post.greyscale, kEnvironmentDefaults.post.greyscale, 0.0f, 1.0f);
 		ImGui::Checkbox("Stage thumbnails", &g_showPostStages);   // 씬이 아니라 에디터 설정 — 되돌리기 이력에 들어가지 않음
+		ImGui::TreePop();
+	}
+
+	// SSAO (5단계). 디퍼드 프레임에서만 효과가 있음 (G-buffer 노멀을 씀). 결과는 환경광에만 곱함.
+	if (ImGui::TreeNodeEx("SSAO", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		SsaoSettings& ssao = env.ssao;
+		ImGui::Checkbox("Enabled##ssao", &ssao.enabled);
+		if (ssao.enabled)
+		{
+			SliderFloatR("Radius", &ssao.radius, kEnvironmentDefaults.ssao.radius, 0.05f, 3.0f, "%.2f");
+			SliderFloatR("Bias", &ssao.bias, kEnvironmentDefaults.ssao.bias, 0.0f, 0.2f, "%.3f");
+			SliderFloatR("Intensity", &ssao.intensity, kEnvironmentDefaults.ssao.intensity, 0.0f, 3.0f, "%.2f");
+			SliderFloatR("Power", &ssao.power, kEnvironmentDefaults.ssao.power, 0.5f, 4.0f, "%.2f");
+			ImGui::SliderInt("Samples", &ssao.sampleCount, 4, 32);   // 32 = kMaxSsaoSamples (ShaderConstants.h)
+			ImGui::Checkbox("Multiply with material AO (off = min)", &ssao.multiply);
+		}
 		ImGui::TreePop();
 	}
 }

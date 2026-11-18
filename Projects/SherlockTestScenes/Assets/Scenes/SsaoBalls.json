@@ -1,0 +1,1410 @@
+{
+    "ambientColor": [
+        0.03,
+        0.03,
+        0.03
+    ],
+    "camera": {
+        "pitch": 0.42,
+        "position": [
+            0.2,
+            5.0,
+            -8.0
+        ],
+        "yaw": -0.08
+    },
+    "clearColor": [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+    ],
+    "environment": {
+        "brdfLut": "asset:Cubemap\\CubemapSampleBrdf.dds",
+        "exposure": 1.0,
+        "iblIntensity": 0.8,
+        "irradiance": "asset:Cubemap\\CubemapSampleDiffuseHDR.dds",
+        "postProcess": {
+            "bloomEnabled": false,
+            "bloomIntensity": 0.5,
+            "bloomKnee": 0.5,
+            "bloomThreshold": 1.0,
+            "blurEnabled": false,
+            "blurRadius": 4.0,
+            "greyscale": 0.0
+        },
+        "shadow": {
+            "bias": 0.0015,
+            "distance": 16.0,
+            "normalOffset": 0.3,
+            "orthoSize": 24.0,
+            "strength": 1.0
+        },
+        "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
+        "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
+        "ssao": {
+            "bias": 0.025,
+            "enabled": true,
+            "intensity": 1.0,
+            "multiply": false,
+            "power": 1.5,
+            "radius": 0.8,
+            "sampleCount": 16
+        },
+        "toneMapping": true
+    },
+    "lights": [
+        {
+            "attenuation": [
+                1.0,
+                0.7,
+                1.8
+            ],
+            "castShadows": true,
+            "color": [
+                1.0,
+                0.97,
+                0.9
+            ],
+            "direction": [
+                0.45,
+                -0.8,
+                0.4
+            ],
+            "innerConeCos": 0.9238795,
+            "intensity": 0.35,
+            "outerConeCos": 0.8660254,
+            "position": [
+                0.0,
+                7.0,
+                -12.0
+            ],
+            "range": 50.0,
+            "type": 0
+        }
+    ],
+    "materials": [
+        {
+            "albedoSrgb": true,
+            "albedoTexture": "",
+            "alphaCutoff": 0.0,
+            "baseColor": [
+                0.55,
+                0.55,
+                0.55,
+                1.0
+            ],
+            "doubleSided": false,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "emissiveTexture": "",
+            "metallic": 0.0,
+            "metallicRoughnessTexture": "",
+            "name": "A_Floor",
+            "normalStrength": 1.0,
+            "normalTexture": "",
+            "occlusionStrength": 1.0,
+            "occlusionTexture": "",
+            "roughness": 0.9,
+            "sampler": 2,
+            "unlit": false,
+            "uvScale": [
+                1.0,
+                1.0
+            ],
+            "wireframe": false
+        },
+        {
+            "albedoSrgb": true,
+            "albedoTexture": "",
+            "alphaCutoff": 0.0,
+            "baseColor": [
+                0.6,
+                0.58,
+                0.55,
+                1.0
+            ],
+            "doubleSided": false,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "emissiveTexture": "",
+            "metallic": 0.0,
+            "metallicRoughnessTexture": "",
+            "name": "A_Wall",
+            "normalStrength": 1.0,
+            "normalTexture": "",
+            "occlusionStrength": 1.0,
+            "occlusionTexture": "",
+            "roughness": 0.9,
+            "sampler": 2,
+            "unlit": false,
+            "uvScale": [
+                1.0,
+                1.0
+            ],
+            "wireframe": false
+        },
+        {
+            "albedoSrgb": true,
+            "albedoTexture": "",
+            "alphaCutoff": 0.0,
+            "baseColor": [
+                0.7,
+                0.7,
+                0.7,
+                1.0
+            ],
+            "doubleSided": false,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "emissiveTexture": "",
+            "metallic": 0.0,
+            "metallicRoughnessTexture": "",
+            "name": "A_BallWhite",
+            "normalStrength": 1.0,
+            "normalTexture": "",
+            "occlusionStrength": 1.0,
+            "occlusionTexture": "",
+            "roughness": 0.6,
+            "sampler": 2,
+            "unlit": false,
+            "uvScale": [
+                1.0,
+                1.0
+            ],
+            "wireframe": false
+        },
+        {
+            "albedoSrgb": true,
+            "albedoTexture": "",
+            "alphaCutoff": 0.0,
+            "baseColor": [
+                0.75,
+                0.45,
+                0.28,
+                1.0
+            ],
+            "doubleSided": false,
+            "emissive": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "emissiveTexture": "",
+            "metallic": 0.0,
+            "metallicRoughnessTexture": "",
+            "name": "A_BallWarm",
+            "normalStrength": 1.0,
+            "normalTexture": "",
+            "occlusionStrength": 1.0,
+            "occlusionTexture": "",
+            "roughness": 0.6,
+            "sampler": 2,
+            "unlit": false,
+            "uvScale": [
+                1.0,
+                1.0
+            ],
+            "wireframe": false
+        }
+    ],
+    "meshes": [
+        {
+            "a": 21,
+            "b": 21,
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ],
+            "params": [
+                20.0,
+                20.0,
+                0.0,
+                0.0
+            ],
+            "type": "plane"
+        },
+        {
+            "a": 48,
+            "b": 24,
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ],
+            "params": [
+                0.5,
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": "sphere"
+        },
+        {
+            "a": 0,
+            "b": 0,
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ],
+            "params": [
+                1.0,
+                0.0,
+                0.0,
+                0.0
+            ],
+            "type": "cube"
+        }
+    ],
+    "objects": [
+        {
+            "id": 1,
+            "material": 0,
+            "mesh": 0,
+            "name": "Floor",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 2,
+            "material": 1,
+            "mesh": 2,
+            "name": "WallBack",
+            "position": [
+                0.0,
+                2.0,
+                4.2
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                14.0,
+                4.0,
+                0.4
+            ]
+        },
+        {
+            "id": 3,
+            "material": 1,
+            "mesh": 2,
+            "name": "WallLeft",
+            "position": [
+                -5.2,
+                2.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                0.4,
+                4.0,
+                12.0
+            ]
+        },
+        {
+            "id": 4,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_0_0",
+            "position": [
+                -0.7,
+                0.5,
+                -0.9
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 5,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_0_1",
+            "position": [
+                -0.7,
+                0.5,
+                0.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 6,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_0_2",
+            "position": [
+                -0.7,
+                0.5,
+                1.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 7,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_0_3",
+            "position": [
+                -0.7,
+                0.5,
+                2.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 8,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_1_0",
+            "position": [
+                0.3,
+                0.5,
+                -0.9
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 9,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_1_1",
+            "position": [
+                0.3,
+                0.5,
+                0.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 10,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_1_2",
+            "position": [
+                0.3,
+                0.5,
+                1.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 11,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_1_3",
+            "position": [
+                0.3,
+                0.5,
+                2.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 12,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_2_0",
+            "position": [
+                1.3,
+                0.5,
+                -0.9
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 13,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_2_1",
+            "position": [
+                1.3,
+                0.5,
+                0.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 14,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_2_2",
+            "position": [
+                1.3,
+                0.5,
+                1.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 15,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_2_3",
+            "position": [
+                1.3,
+                0.5,
+                2.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 16,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_3_0",
+            "position": [
+                2.3,
+                0.5,
+                -0.9
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 17,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_3_1",
+            "position": [
+                2.3,
+                0.5,
+                0.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 18,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_3_2",
+            "position": [
+                2.3,
+                0.5,
+                1.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 19,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_0_3_3",
+            "position": [
+                2.3,
+                0.5,
+                2.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 20,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_1_0_0",
+            "position": [
+                -0.2,
+                1.20711,
+                -0.4
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 21,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_1_0_1",
+            "position": [
+                -0.2,
+                1.20711,
+                0.6
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 22,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_1_0_2",
+            "position": [
+                -0.2,
+                1.20711,
+                1.6
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 23,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_1_1_0",
+            "position": [
+                0.8,
+                1.20711,
+                -0.4
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 24,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_1_1_1",
+            "position": [
+                0.8,
+                1.20711,
+                0.6
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 25,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_1_1_2",
+            "position": [
+                0.8,
+                1.20711,
+                1.6
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 26,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_1_2_0",
+            "position": [
+                1.8,
+                1.20711,
+                -0.4
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 27,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_1_2_1",
+            "position": [
+                1.8,
+                1.20711,
+                0.6
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 28,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_1_2_2",
+            "position": [
+                1.8,
+                1.20711,
+                1.6
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 29,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_2_0_0",
+            "position": [
+                0.3,
+                1.91421,
+                0.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 30,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_2_0_1",
+            "position": [
+                0.3,
+                1.91421,
+                1.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 31,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_2_1_0",
+            "position": [
+                1.3,
+                1.91421,
+                0.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 32,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_2_1_1",
+            "position": [
+                1.3,
+                1.91421,
+                1.1
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 33,
+            "material": 2,
+            "mesh": 1,
+            "name": "Pile_3_0_0",
+            "position": [
+                0.8,
+                2.62132,
+                0.6
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 34,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_0_0_0",
+            "position": [
+                -4.5,
+                0.5,
+                1.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 35,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_0_0_1",
+            "position": [
+                -4.5,
+                0.5,
+                2.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 36,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_0_0_2",
+            "position": [
+                -4.5,
+                0.5,
+                3.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 37,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_0_1_0",
+            "position": [
+                -3.5,
+                0.5,
+                1.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 38,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_0_1_1",
+            "position": [
+                -3.5,
+                0.5,
+                2.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 39,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_0_1_2",
+            "position": [
+                -3.5,
+                0.5,
+                3.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 40,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_0_2_0",
+            "position": [
+                -2.5,
+                0.5,
+                1.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 41,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_0_2_1",
+            "position": [
+                -2.5,
+                0.5,
+                2.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 42,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_0_2_2",
+            "position": [
+                -2.5,
+                0.5,
+                3.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 43,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_1_0_0",
+            "position": [
+                -4.0,
+                1.20711,
+                2.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 44,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_1_0_1",
+            "position": [
+                -4.0,
+                1.20711,
+                3.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 45,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_1_1_0",
+            "position": [
+                -3.0,
+                1.20711,
+                2.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 46,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_1_1_1",
+            "position": [
+                -3.0,
+                1.20711,
+                3.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 47,
+            "material": 3,
+            "mesh": 1,
+            "name": "Corner_2_0_0",
+            "position": [
+                -3.5,
+                1.91421,
+                2.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 48,
+            "material": 2,
+            "mesh": 1,
+            "name": "Row_0",
+            "position": [
+                2.0,
+                0.5,
+                3.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 49,
+            "material": 2,
+            "mesh": 1,
+            "name": "Row_1",
+            "position": [
+                3.0,
+                0.5,
+                3.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 50,
+            "material": 2,
+            "mesh": 1,
+            "name": "Row_2",
+            "position": [
+                4.0,
+                0.5,
+                3.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 51,
+            "material": 2,
+            "mesh": 1,
+            "name": "Row_3",
+            "position": [
+                5.0,
+                0.5,
+                3.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 52,
+            "material": 2,
+            "mesh": 1,
+            "name": "Row_4",
+            "position": [
+                6.0,
+                0.5,
+                3.5
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 53,
+            "material": 1,
+            "mesh": 2,
+            "name": "Box",
+            "position": [
+                3.6,
+                0.5,
+                0.2
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "id": 54,
+            "material": 3,
+            "mesh": 1,
+            "name": "BoxBall",
+            "position": [
+                2.6,
+                0.5,
+                0.2
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        }
+    ],
+    "version": 5
+}

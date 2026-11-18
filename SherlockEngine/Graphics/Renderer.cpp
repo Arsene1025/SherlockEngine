@@ -59,6 +59,11 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] =
 	{ L"ParticleSortStepComputeShader.hlsl", "CS_ParticleSortStep", ShaderStage::Compute, "ParticleSortStepCS" }, // 알파: 바이토닉 한 단계
 	{ L"ParticleVertexShader.hlsl",   "VS_Particle",   ShaderStage::Vertex, "ParticleVS" },     // 파티클 빌보드 (t21 + t22 생존 목록, SV_InstanceID)
 	{ L"ParticlePixelShader.hlsl",    "PS_Particle",   ShaderStage::Pixel,  "ParticlePS" },
+	// 디퍼드·SSAO (docs/plan/deferred-clustered-ssao-record.html)
+	{ L"GBufferPixelShader.hlsl",     "PS_GBuffer",    ShaderStage::Pixel,  "GBufferPS" },      // 재질 → G-buffer MRT 5장 (VS 는 BasicVS/BasicSkinVS)
+	{ L"DeferredLightingPixelShader.hlsl", "PS_DeferredLighting", ShaderStage::Pixel, "DeferredLightPS" },   // 풀스크린: G-buffer → 조명 (가산)
+	{ L"SsaoPixelShader.hlsl",        "PS_Ssao",       ShaderStage::Pixel,  "SsaoPS" },         // 풀스크린: 깊이·노멀 → 가림 (R8)
+	{ L"SsaoBlurPixelShader.hlsl",    "PS_SsaoBlur",   ShaderStage::Pixel,  "SsaoBlurPS" },     // 4×4 깊이 가중 블러
 };
 
 struct Renderer::PassInfo
@@ -81,6 +86,11 @@ const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] =
 	{ "ShadowSkin", Shader_ShadowSkinVS, Shader_Count,   { Layout_Frame, Layout_Object },                  2 },
 	{ "DebugLine",  Shader_DebugLineVS,  Shader_DebugLinePS, { Layout_Frame },                             1 },
 	{ "Particle",   Shader_ParticleVS,   Shader_ParticlePS,  { Layout_Frame, Layout_ParticleDraw, Layout_ParticleDepth }, 3 },
+	{ "GBuffer",       Shader_BasicVS,     Shader_GBufferPS,      { Layout_Frame, Layout_Object, Layout_Material }, 3 },   // 메인과 같은 셋 — 같은 드로우 루프가 그림
+	{ "GBufferSkin",   Shader_BasicSkinVS, Shader_GBufferPS,      { Layout_Frame, Layout_Object, Layout_Material }, 3 },
+	{ "DeferredLight", Shader_ScreenVS,    Shader_DeferredLightPS, { Layout_Frame, Layout_GBuffer },                2 },
+	{ "Ssao",          Shader_ScreenVS,    Shader_SsaoPS,         { Layout_Ssao },                                  1 },
+	{ "SsaoBlur",      Shader_ScreenVS,    Shader_SsaoBlurPS,     { Layout_Ssao },                                  1 },
 };
 
 struct Renderer::ComputePassInfo
@@ -124,6 +134,7 @@ namespace
 		{ "ParticleCollision", sizeof(ParticleCollisionConstants) },
 		{ "ParticleSortView", sizeof(ParticleSortViewConstants) },
 		{ "ParticleSortStep", sizeof(ParticleSortStepConstants) },
+		{ "SsaoParams", sizeof(SsaoConstants) },
 	};
 
 	// 레지스터 문자. 텍스처와 구조체 버퍼는 같은 t# 공간을 씀.
@@ -186,8 +197,16 @@ bool Renderer::Initialize(RHI::Device* device)
 		.bindFlags = BufferBind_ShaderResource | BufferBind_UnorderedAccess, .stride = sizeof(float), .debugName = "SB_BlurWeights" });
 	m_shadowPassCB = makeCB(sizeof(ShadowPassConstants), "CB_ShadowPass");   // b5
 	m_shadowsCB = makeCB(sizeof(ShadowConstants), "CB_Shadows");             // b6
+	m_ssaoCB = makeCB(sizeof(SsaoConstants), "CB_Ssao");                     // b12 (SSAO 셋)
+	// 클러스터 (3b): 상자마다 (시작, 개수) 와 조명 번호 목록. 둘 다 프레임 셋(t30, t31)에 꽂히고 뷰마다 다시 올림 (Dynamic).
+	// 번호 목록은 모자라면 EnsureClusterCapacity 가 두 배로 다시 만듦.
+	m_clusterGridBuffer = m_device->CreateBuffer(BufferDesc{ .size = kClusterCount * 2 * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic,
+		.bindFlags = BufferBind_ShaderResource, .stride = 2 * sizeof(uint32_t), .debugName = "SB_ClusterGrid" });
+	m_clusterIndexCapacity = kInitialClusterLightRefs;
+	m_clusterIndexBuffer = m_device->CreateBuffer(BufferDesc{ .size = m_clusterIndexCapacity * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic,
+		.bindFlags = BufferBind_ShaderResource, .stride = sizeof(uint32_t), .debugName = "SB_ClusterLights" });
 	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_skinCB.IsValid() || !m_debugLineVB.IsValid() || !m_lightCB.IsValid() || !m_lightBuffer.IsValid() || !m_postParamsCB.IsValid() ||
-		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid() || !m_blurWeights.IsValid())
+		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid() || !m_blurWeights.IsValid() || !m_ssaoCB.IsValid() || !m_clusterGridBuffer.IsValid() || !m_clusterIndexBuffer.IsValid())
 	{
 		Log::Error("Renderer::Initialize : 상수버퍼 생성 실패.");
 		return false;
@@ -239,7 +258,11 @@ bool Renderer::Initialize(RHI::Device* device)
 		!GetSkyPipeline().IsValid() ||
 		!GetTonemapPipeline().IsValid() ||
 		!GetPostPipeline(false).IsValid() ||
-		!GetPostPipeline(true).IsValid())
+		!GetPostPipeline(true).IsValid() ||
+		!GetGBufferPipelineFor(m_defaultMaterial, VertexFormat::PositionColorNormalTexcoordTangent, false).IsValid() ||
+		!GetDeferredLightPipeline().IsValid() ||
+		!GetSsaoPipeline(false).IsValid() ||
+		!GetSsaoPipeline(true).IsValid())
 	{
 		Log::Error("Renderer::Initialize : 기본 PSO 생성 실패.");
 		return false;
@@ -273,6 +296,9 @@ bool Renderer::CreateLayouts()
 	frameLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotCsmMap);   // t14: CSM 전용 아틀라스
 	// 조명 배열. 텍스처가 아니라 구조체 버퍼 (StructuredBuffer<LightData>) — D3D12 에서는 루트 SRV 로 꽂힘.
 	frameLayout.Add(BindingType::BufferResource, ShaderStageMask_Pixel, kSRVSlotLights);   // t15
+	// 클러스터 (3b): 상자마다 (시작, 개수) t30, 조명 번호 목록 t31. 둘 다 구조체 버퍼 → D3D12 루트 SRV (2 DWORD 씩).
+	frameLayout.Add(BindingType::BufferResource, ShaderStageMask_Pixel, kSRVSlotClusterGrid);     // t30
+	frameLayout.Add(BindingType::BufferResource, ShaderStageMask_Pixel, kSRVSlotClusterLights);   // t31
 
 	BindingLayoutDesc& objectLayout = m_layoutDescs[Layout_Object];
 	objectLayout = BindingLayoutDesc{};
@@ -390,6 +416,29 @@ bool Renderer::CreateLayouts()
 	particleSortStepLayout.debugName = "Layout_ParticleSortStep";
 	particleSortStepLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticleSortStep); // b11
 
+	// G-buffer 셋 (디퍼드 라이팅의 셋 1, 뷰마다): t23 깊이 (DepthRead), t25~t28 G-buffer, t29 SSAO 블러 결과. 전부 Load 로
+	// 읽어 샘플러가 없음.
+	BindingLayoutDesc& gbufferLayout = m_layoutDescs[Layout_GBuffer];
+	gbufferLayout = BindingLayoutDesc{};
+	gbufferLayout.debugName = "Layout_GBuffer";
+	gbufferLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneDepth);   // t23
+	gbufferLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotGBuffer0);     // t25
+	gbufferLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotGBuffer1);     // t26
+	gbufferLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotGBuffer2);     // t27
+	gbufferLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotGBuffer3);     // t28
+	gbufferLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSsao);         // t29
+
+	// SSAO 셋 (SSAO·블러 패스의 셋 0, 뷰마다 두 벌): b0 (proj·invViewProj·화면 크기), b12 (반경·커널), t23 깊이, t26 노멀,
+	// t29 입력 AO (블러 셋만 의미 있음 — SSAO 셋은 흰색을 꽂음).
+	BindingLayoutDesc& ssaoLayout = m_layoutDescs[Layout_Ssao];
+	ssaoLayout = BindingLayoutDesc{};
+	ssaoLayout.debugName = "Layout_Ssao";
+	ssaoLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPerFrame);     // b0
+	ssaoLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotSsao);         // b12
+	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneDepth);  // t23
+	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotGBuffer1);    // t26
+	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSsao);        // t29
+
 	for (uint32_t i = 0; i < Layout_Count; ++i)
 	{
 		m_layouts[i] = m_device->CreateBindingLayout(m_layoutDescs[i]);
@@ -482,6 +531,22 @@ void Renderer::BuildPassDescs()
 		desc.dsvFormat = Format::Unknown;
 	}
 
+	// 디퍼드 라이팅·SSAO: 풀스크린 삼각형, 깊이 없음. 라이팅은 view.hdr 에 가산 (G-buffer 패스가 쓴 발광 + 조명. 알파 유지),
+	// SSAO 는 R8 타깃에 덮어씀. 타깃 포맷은 Get*Pipeline 이 채움.
+	for (PassId id : { Pass_DeferredLight, Pass_Ssao, Pass_SsaoBlur })
+	{
+		PipelineStateDesc& desc = m_passDesc[id];
+		desc.rasterizer.cull = CullMode::None;
+		desc.depthStencil.depthEnable = false;
+		desc.depthStencil.depthWrite = false;
+		desc.dsvFormat = Format::Unknown;
+	}
+	m_passDesc[Pass_DeferredLight].blend.rt[0] = RenderTargetBlendDesc{
+		.blendEnable = true,
+		.srcColor = BlendFactor::One, .dstColor = BlendFactor::One, .colorOp = BlendOp::Add,
+		.srcAlpha = BlendFactor::Zero, .dstAlpha = BlendFactor::One, .alphaOp = BlendOp::Add,
+	};
+
 	// 가산 버전은 블룸 합성용: 출력 = 셰이더 출력 + 기존 값 (알파는 기존 값 유지).
 	m_postAddDesc = m_passDesc[Pass_Post];
 	m_postAddDesc.blend.rt[0] = RenderTargetBlendDesc{
@@ -493,6 +558,9 @@ void Renderer::BuildPassDescs()
 	// Desc 가 바뀌었으므로 (새 셰이더 핸들) 작은 키 → PSO 핸들 캐시는 전부 무효.
 	m_mainPipelines.clear();
 	m_shadowPipelines.clear();
+	m_gbufferPipelines.clear();
+	m_deferredLightPipeline = PipelineHandle{};
+	for (PipelineHandle& handle : m_ssaoPipelines) handle = PipelineHandle{};
 	m_skyPipeline = PipelineHandle{};
 	m_debugLinePipeline = PipelineHandle{};
 	m_particlePipeline = PipelineHandle{};
@@ -591,7 +659,7 @@ bool Renderer::UpdateFrameSet()
 	// 읽어도 안전함.
 	m_device->DestroyResourceSet(m_frameSet);
 	// bindings[i] 는 CreateLayouts 의 frameLayout.Add(...) i 번째 슬롯과 짝임: b0, b2, t8, s4, t9, s5, t10, t11,
-	// t12, b5, b6, t14, t15. 환경 샘플러는 재질 프리셋의 LinearClamp 를 함께 씀 (큐브 샘플은 면 경계를 하드웨어가
+	// t12, b5, b6, t14, t15, t30, t31. 환경 샘플러는 재질 프리셋의 LinearClamp 를 함께 씀 (큐브 샘플은 면 경계를 하드웨어가
 	// 이어 주고, LUT 는 가장자리에서 반복되면 안 됨).
 	const ResourceSetDesc frameSet{
 		.layout = m_layouts[Layout_Frame],
@@ -600,6 +668,7 @@ bool Renderer::UpdateFrameSet()
 			{ .texture = m_environment.skybox }, { .sampler = GetSampler(SamplerPreset::LinearClamp) },
 			{ .texture = m_environment.irradiance }, { .texture = m_environment.specular }, { .texture = m_environment.brdfLut },
 			{ .buffer = m_shadowPassCB }, { .buffer = m_shadowsCB }, { .texture = m_csmMap }, { .buffer = m_lightBuffer },
+			{ .buffer = m_clusterGridBuffer }, { .buffer = m_clusterIndexBuffer },
 		},
 		.debugName = "Set_Frame",
 	};
@@ -934,7 +1003,8 @@ void Renderer::Shutdown()
 		m_device->DestroyBindingLayout(layout);
 		layout = BindingLayoutHandle{};
 	}
-	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB, &m_blurWeights })
+	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB, &m_blurWeights,
+		&m_ssaoCB, &m_clusterGridBuffer, &m_clusterIndexBuffer })
 	{
 		m_device->DestroyBuffer(*buffer);
 		*buffer = BufferHandle{};
@@ -947,6 +1017,9 @@ void Renderer::Shutdown()
 	}
 	m_mainPipelines.clear();
 	m_shadowPipelines.clear();
+	m_gbufferPipelines.clear();
+	m_clusterIndexCapacity = 0;
+	m_ssaoKernel.clear();
 	m_device = nullptr;
 }
 
@@ -1019,13 +1092,20 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	RHI::CommandList& cmd = m_device->GetCommandList();
 
 	m_shadowSettings = scene.environment.shadow;   // 씬 파일에 저장된 그림자 값
+	m_ssaoSettings = scene.environment.ssao;       // 씬 파일에 저장된 SSAO 값 (디퍼드 프레임에서만 씀)
+	if (m_settings.ssaoOverride >= 0) m_ssaoSettings.enabled = m_settings.ssaoOverride != 0;   // --ssao= 실행 인자
 
 	// ---- 조명: 씬의 Light → GPU 배치. BuildShadowViews 가 shadowIndex 를 채우므로 올리기(UploadLights) 전에 만듦 ----
-	// CPU 구간 (Profiler 패널): Prepare = 조명·그림자 뷰·환경·상수 준비, BuildDrawList, ShadowPass·MainPass 의 드로우 제출
+	// 방향광을 앞으로 모음 (안정 정렬 — 같은 종류끼리는 씬 순서). 클러스터드 경로가 "앞쪽 directionalCount 개만 전부 돌기"
+	// 를 하려고. CPU 구간 (Profiler 패널): Prepare = 조명·그림자 뷰·클러스터·환경·상수 준비, BuildDrawList, 패스의 드로우 제출
 	Profiler::BeginCpu("Prepare");
 	BuildGpuLights(scene);
 
+	// ---- 3a: 조명 경계 구 → 메인 카메라 절두체 컬링 → 그림자 후보 점수 순서 ----
+	CullLights(camera);
+
 	// ---- 그림자 뷰: 조명마다 아틀라스 타일을 배정하고 shadowIndex 를 채움 → b6(+b5) → b0 (shadowParams.w 가 이 결과를 씀) ----
+	// 3a 가 켜져 있으면 지역광은 점수 순서로 타일을 받음 (화면 밖 조명은 받지 않음).
 	BuildShadowViews(camera, m_gpuLights);
 	m_shadowEnabledThisFrame = m_shadowViewCount > 0;
 	UploadShadowConstants();
@@ -1039,11 +1119,29 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	// 환경 (스카이박스 t9, IBL t10~t12, 노출·톤매핑). b0 의 environmentParams·outputParams 가 이 값을 씀
 	ResolveEnvironment(scene.environment);
 
-	// ---- b0 PerFrame ----
-	UploadPerFrameConstants(camera, totalTime);
+	// ---- b0 PerFrame (메인 뷰) ----
+	// 이번 프레임 메인 뷰가 디퍼드인가·SSAO 결과가 있는가 — b0 aoParams 가 이것을 씀.
+	const bool mainSsao = UseDeferred(m_mainView) && m_ssaoSettings.enabled && m_mainView.HasSsao();
+	UploadPerFrameConstants(camera, totalTime, m_mainView.width, m_mainView.height, mainSsao);
 
 	// ---- b2 Lights + t15 조명 배열 ----
 	UploadLights(scene);
+
+	// ---- 3b: 클러스터 비닝. 메인과 (있으면) 미리보기를 지금 둘 다 만들어 t31 용량을 한 번에 맞춤 — 미리보기 패스 직전에
+	// 버퍼를 다시 만들면 이미 기록된 메인 패스가 꽂은 프레임 셋이 옛 버퍼를 가리키게 됨. 올리기는 뷰 패스마다 (t30·t31 은
+	// Dynamic 이라 뷰마다 새 메모리) ----
+	const bool previewActive = m_previewCamera != nullptr && m_previewView.IsValid() && m_previewView.color.IsValid();
+	{
+		ProfileScope cpuScope("BuildClusters");
+		BuildClusters(camera, m_mainView.width, m_mainView.height, 0);
+		m_clusterBuilt[1] = false;
+		if (previewActive) BuildClusters(*m_previewCamera, m_previewView.width, m_previewView.height, 1);
+		EnsureClusterCapacity();
+		UploadClusters(0);
+	}
+
+	// ---- b12 SSAO (프레임에 한 번 — 두 뷰가 같은 값) ----
+	UploadSsaoConstants(m_ssaoSettings);
 	Profiler::EndCpu();   // Prepare
 
 	{
@@ -1101,12 +1199,14 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		RenderTonemapPass(cmd, m_mainView.hdrSet, output, after, "TonemapPass",
 			m_mainView.width, m_mainView.height, m_mainView.width, m_mainView.height);
 	}
-	if (m_previewCamera != nullptr && m_previewView.IsValid() && m_previewView.color.IsValid())
+	if (previewActive)
 	{
-		// 선택한 카메라 오브젝트의 시점. b0 만 그 카메라로 바꿔 같은 드로우 목록을 작은 타깃에 다시 그림
-		// (컬링은 그 카메라의 절두체로 다시 함).
+		// 선택한 카메라 오브젝트의 시점. b0 와 클러스터(t30·t31)만 그 카메라로 바꿔 같은 드로우 목록을 작은 타깃에 다시 그림
+		// (컬링은 그 카메라의 절두체로 다시 함). 그림자 뷰·3a 컬링은 메인 카메라 기준 그대로.
 		GpuProfileScope gpuScope(cmd, "PreviewPass");
-		UploadPerFrameConstants(*m_previewCamera, totalTime);
+		const bool previewSsao = UseDeferred(m_previewView) && m_ssaoSettings.enabled && m_previewView.HasSsao();
+		UploadPerFrameConstants(*m_previewCamera, totalTime, m_previewView.width, m_previewView.height, previewSsao);
+		UploadClusters(1);
 		RenderScenePass(cmd, scene, m_previewView, *m_previewCamera, "PreviewPass", 1);
 		ApplyHdrEffects(cmd, m_previewView, false);
 		RenderTonemapPass(cmd, m_previewView.hdrSet, m_previewView.color, ResourceState::ShaderResource, "PreviewTonemapPass",
@@ -1119,8 +1219,16 @@ void Renderer::BuildGpuLights(const Scene& scene)
 	const std::vector<Light>& sceneLights = scene.GetLights();
 	m_gpuLights.clear();   // 용량은 남음 — 프레임마다 다시 할당하지 않음
 	m_gpuLights.reserve(sceneLights.size());
-	for (const Light& light : sceneLights)
+	m_lightSceneIndex.clear();
+	// 두 번 돎: 방향광 먼저, 그다음 지역광. 같은 종류 안에서는 씬 순서 그대로 (안정 정렬과 같음) — "첫 번째 castShadows
+	// 방향광이 CSM 을 받는다"는 규칙이 정렬 전과 같은 조명을 가리킴. m_lightSceneIndex[i] = 정렬 뒤 i 번째의 씬 번호.
+	for (uint32_t pass = 0; pass < 2; ++pass)
+	for (uint32_t sceneIndex = 0; sceneIndex < static_cast<uint32_t>(sceneLights.size()); ++sceneIndex)
 	{
+		const Light& light = sceneLights[sceneIndex];
+		const bool directional = light.type == LightType::Directional;
+		if (directional != (pass == 0)) continue;
+		m_lightSceneIndex.push_back(sceneIndex);
 		GpuLight gpu = {};
 		gpu.position = light.position;
 		gpu.intensity = light.intensity;
@@ -1182,6 +1290,10 @@ bool Renderer::UploadLights(const Scene& scene)
 	LightConstants constants = {};
 	constants.ambientColor = scene.ambientColor;
 	constants.lightCount = uploaded;
+	// BuildGpuLights 가 방향광을 앞으로 모았으므로 앞에서부터 방향광인 동안 셈.
+	uint32_t directionalCount = 0;
+	while (directionalCount < uploaded && m_gpuLights[directionalCount].type == static_cast<uint32_t>(LightType::Directional)) ++directionalCount;
+	constants.directionalCount = directionalCount;
 	m_device->UpdateBuffer(m_lightCB, &constants, sizeof(constants));
 	return uploaded == count;
 }
@@ -1250,6 +1362,14 @@ void Renderer::BuildDrawList(const Scene& scene)
 			// 블렌딩 재질(유리·반투명)도 그림자를 만들지 않음: 그림자 맵은 불투명한 차폐만 담고, 반투명은 알파가 없어 통째로 가림.
 			item.blended = IsBlended(*material);
 			item.shadowPipeline = (material->unlit || item.blended) ? PipelineHandle{} : GetShadowPipelineFor(*material, mesh->GetVertexFormat(), mirrored);
+			// 디퍼드 (2단계): G-buffer 에 담을 수 있는 재질이면 G-buffer PSO 도 만들어 둠. 디퍼드를 꺼도 만들어 두는 이유: 토글할 때
+			// 드로우 목록을 다시 만들지 않으려고 (PSO 는 캐시라 한 번만 생성). 실패하면 포워드로 그림.
+			item.deferred = CanUseDeferred(*material);
+			if (item.deferred)
+			{
+				item.gbufferPipeline = GetGBufferPipelineFor(*material, mesh->GetVertexFormat(), mirrored);
+				item.deferred = item.gbufferPipeline.IsValid();
+			}
 			item.material = material;
 			item.mesh = mesh;
 			item.gpuMesh = gpuMesh;
@@ -1352,23 +1472,32 @@ void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTa
 	// HDR: 씬은 선형 FP16 텍스처(view.hdr)에 그림. 최종 출력(씬 뷰 텍스처 또는 백버퍼)과 그 상태 전이는 톤
 	// 패스가 맡음. 깊이는 뷰가 가진 텍스처 — 에디터든 게임 모드든 같은 경로임. 파티클·디버그 선이 없으면
 	// 깊이는 DepthWrite 로 끝나고, 있으면 두 번째 패스 때문에 DepthRead 로 끝남 (다음 프레임 이 함수 처음의 배리어가 되돌림).
-	cmd.Barrier(view.hdr, ResourceState::RenderTarget);
-	cmd.Barrier(view.depth, ResourceState::DepthWrite);
+	if (UseDeferred(view))
+	{
+		// 디퍼드 (2단계): G-buffer → (SSAO) → 풀스크린 라이팅 → 포워드 (G-buffer 에 못 담는 불투명·하늘·블렌딩).
+		// 끝나면 hdr 는 RenderTarget, depth 는 DepthWrite — 아래 파티클 패스가 이어받는 상태가 포워드 경로와 같음.
+		RenderDeferredScene(cmd, scene, view, camera, debugName, viewIndex);
+	}
+	else
+	{
+		cmd.Barrier(view.hdr, ResourceState::RenderTarget);
+		cmd.Barrier(view.depth, ResourceState::DepthWrite);
 
-	const RenderPassDesc pass{
-		.colors = { {
-			.texture = view.hdr,
-			.load = LoadOp::Clear,
-			.srgbView = false,   // FP16 에는 sRGB 뷰가 없음. 선형 값을 그대로 씀 — sRGB 인코딩은 톤 패스의 RTV 가 함
-			.clearColor = { scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] },   // 선형. 노출·ACES 를 거침
-		} },
-		.colorCount = 1,
-		.depth = { .texture = view.depth, .load = LoadOp::Clear },
-		.debugName = debugName,
-	};
-	cmd.BeginRenderPass(pass);
-	DrawItems(cmd, scene, camera);
-	cmd.EndRenderPass();
+		const RenderPassDesc pass{
+			.colors = { {
+				.texture = view.hdr,
+				.load = LoadOp::Clear,
+				.srgbView = false,   // FP16 에는 sRGB 뷰가 없음. 선형 값을 그대로 씀 — sRGB 인코딩은 톤 패스의 RTV 가 함
+				.clearColor = { scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] },   // 선형. 노출·ACES 를 거침
+			} },
+			.colorCount = 1,
+			.depth = { .texture = view.depth, .load = LoadOp::Clear },
+			.debugName = debugName,
+		};
+		cmd.BeginRenderPass(pass);
+		DrawItems(cmd, scene, camera, DrawMode::All);
+		cmd.EndRenderPass();
+	}
 
 	// 두 번째 패스: 파티클과 디버그 선. 깊이를 "읽기만" 함 — 읽기 전용 DSV 로 깊이 테스트를 하면서 같은 깊이를
 	// 셰이더가 SRV 로 읽을 수 있음 (소프트 파티클·깊이 충돌). 그릴 것이 없으면 패스를 열지 않음 (이전과 같은 패스 수).
@@ -1413,7 +1542,7 @@ void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTa
 	cmd.Barrier(view.hdr, ResourceState::ShaderResource);
 }
 
-void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera)
+void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera, DrawMode mode)
 {
 	// 그림자 패스에서 t8 바인딩이 해제됐고, 후처리 패스가 셋 인덱스 0 에 후처리 셋을 꽂았을 수 있으므로
 	// 프레임 셋을 다시 바인딩함 (이제 그림자 맵은 SRV 상태). 패스마다 새로 바인딩함.
@@ -1428,12 +1557,14 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera
 	const GpuMaterial* lastMaterial = nullptr;
 	const GpuMesh* lastMesh = nullptr;
 
+	const bool gbufferPass = mode == DrawMode::GBuffer;
 	const auto drawItem = [&](const DrawItem& item)
 	{
-		if (item.pipeline != lastPipeline)
+		const PipelineHandle pipeline = gbufferPass ? item.gbufferPipeline : item.pipeline;
+		if (pipeline != lastPipeline)
 		{
-			cmd.SetPipelineState(item.pipeline);
-			lastPipeline = item.pipeline;
+			cmd.SetPipelineState(pipeline);
+			lastPipeline = pipeline;
 			++m_stats.pipelineSwitches;
 		}
 
@@ -1462,14 +1593,24 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera
 	m_blendedScratch.clear();
 	for (const DrawItem& item : m_drawList)
 	{
+		// 이 패스가 맡은 항목만 (컬링 통계도 맡은 항목만 세어 디퍼드 프레임에서 두 번 세지 않음).
+		// G-buffer 패스 = deferred 불투명, 디퍼드의 포워드 패스 = 나머지 (deferred 아닌 불투명 + 블렌딩), All = 전부.
+		const bool mine = mode == DrawMode::All || (gbufferPass ? (item.deferred && !item.blended) : (!item.deferred || item.blended));
+		if (!mine) continue;
 		if (!frustum.Intersects(m_objects[item.object].sphere))
 		{
 			++m_stats.culled;
 			continue;
 		}
 		if (item.blended) m_blendedScratch.push_back(&item);   // 하늘 뒤에서 따로 그림
-		else drawItem(item);
+		else
+		{
+			drawItem(item);
+			if (gbufferPass) ++m_stats.gbufferDraws;
+			else if (mode == DrawMode::ForwardRest) ++m_stats.forwardOpaqueDraws;
+		}
 	}
+	if (gbufferPass) return;   // G-buffer 패스에는 하늘·블렌딩이 없음 (블렌딩 항목은 위에서 걸러져 목록이 비어 있음)
 
 	// 불투명 물체를 다 그린 뒤 하늘. 깊이 버퍼가 채워져 있으므로 가려진 픽셀은 깊이 테스트에서 떨어짐.
 	if (!scene.environment.skybox.empty())
@@ -1549,7 +1690,7 @@ void Renderer::DrawSkybox(RHI::CommandList& cmd)
 	m_stats.triangles += 1;
 }
 
-void Renderer::UploadPerFrameConstants(const Camera& camera, float totalTime)
+void Renderer::UploadPerFrameConstants(const Camera& camera, float totalTime, uint32_t width, uint32_t height, bool ssaoReady)
 {
 	// HLSL은 column_major로 읽고 셰이더는 mul(v, M)을 쓰므로 전치해서 올림 (ShaderConstants.h).
 	// 미리보기 패스에서 다른 카메라로 한 번 더 호출함 (업로드 링을 쓰므로 프레임 안에서 여러 번 올려도 됨).
@@ -1569,6 +1710,16 @@ void Renderer::UploadPerFrameConstants(const Camera& camera, float totalTime)
 	perFrame.outputParams = XMFLOAT4(m_environment.exposure, m_environment.toneMapping ? 1.0f : 0.0f, m_environment.hasBrdfLut ? 1.0f : 0.0f, 0.0f);
 	perFrame.shadowExtra = XMFLOAT4(m_shadowSettings.normalOffset, 0.0f, 0.0f, 0.0f);
 	perFrame.iblTint = XMFLOAT4(m_environment.iblTint.x, m_environment.iblTint.y, m_environment.iblTint.z, 0.0f);
+	// 디퍼드: 깊이 → 월드 위치 복원용 viewProj⁻¹, 픽셀 → UV 용 타깃 크기.
+	XMStoreFloat4x4(&perFrame.invViewProj, XMMatrixTranspose(XMMatrixInverse(nullptr, view * proj)));
+	const float w = static_cast<float>((std::max)(width, 1u));
+	const float h = static_cast<float>((std::max)(height, 1u));
+	perFrame.screenParams = XMFLOAT4(w, h, 1.0f / w, 1.0f / h);
+	// 클러스터드: 켜짐·원근 여부·near·far 와 깊이 → 슬라이스 식의 계수 (C++ 비닝과 같은 식, ClusterDepthParams).
+	perFrame.clusterParams = XMFLOAT4(m_settings.clustered ? 1.0f : 0.0f, camera.IsUsePerspectiveProjection() ? 1.0f : 0.0f, camera.GetNearZ(), camera.GetFarZ());
+	perFrame.clusterDepth = ClusterDepthParams(camera);
+	// SSAO: 이 뷰에 결과가 있으면 라이팅이 t29 를 읽음. 합치는 방식은 씬 설정.
+	perFrame.aoParams = XMFLOAT4(ssaoReady ? 1.0f : 0.0f, m_ssaoSettings.multiply ? 1.0f : 0.0f, 0.0f, 0.0f);
 	m_device->UpdateBuffer(m_perFrameCB, &perFrame, sizeof(perFrame));
 }
 

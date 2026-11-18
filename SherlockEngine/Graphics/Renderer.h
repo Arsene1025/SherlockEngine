@@ -15,6 +15,7 @@
 #include "Scene/Light.h"
 #include "Scene/PostProcessSettings.h"
 #include "Scene/ShadowSettings.h"
+#include "Scene/SsaoSettings.h"
 
 namespace RHI { class Device; class CommandList; }
 class Scene;
@@ -50,7 +51,21 @@ struct RenderSettings
 	bool shadows = true;
 	bool normalMapping = true;
 
-	// 디버그 뷰 (0 조명, 1 알베도, 2 월드 노멀, 3 깊이, 4 그림자 계수, 5 UV) 와 깊이 뷰의 범위(월드 단위)
+	// ---- 2·3단계 (docs/plan/deferred-clustered-ssao-record.html). 씬 파일에 저장하지 않음 — 렌더러 경로 스위치 ----
+	// 디퍼드: 불투명 재질을 G-buffer 에 쓰고 풀스크린 패스 한 번으로 조명함. 끄면 전부 포워드 (기존 경로, 정답 화면).
+	// 켜져 있어도 G-buffer 에 못 담는 재질(unlit·블렌딩·투과·코팅 노멀 맵)과 디버그 뷰 5(UV)는 포워드로 그림.
+	// 에디터 Render Settings · --deferred=1|0.
+	bool deferred = true;
+	// 클러스터드 라이팅: 지역광을 화면 타일 × 깊이 슬라이스 상자(16 × 9 × 24)에 나눠 담고, 픽셀은 자기 상자의 목록만
+	// 돎. 끄면 픽셀마다 조명 전부 (ShadeAllLights). 포워드·디퍼드 둘 다에 적용. --clustered=1|0.
+	bool clustered = true;
+	// 3a: 그림자 타일을 "화면에 보이는 조명" 중 점수 높은 순으로 줌. 끄면 예전처럼 씬 순서대로 앞에서부터. --shadow-priority=1|0.
+	bool shadowPriority = true;
+	// SSAO 켜짐 덮어쓰기: −1 = 씬 파일 값 (environment.ssao.enabled), 0 = 끔, 1 = 켬. --ssao= 실행 인자가 씀 (저장하지 않음).
+	int ssaoOverride = -1;
+
+	// 디버그 뷰 (0 조명, 1 알베도, 2 월드 노멀, 3 깊이, 4 그림자 계수, 5 UV, 6 금속성/거칠기, 7 AO, 8 캐스케이드, 9 F0,
+	// 10 클리어코트, 11 월드 위치, 12 기하 노멀, 13 SSAO, 14 클러스터 조명 수, 15 클러스터 슬라이스) 와 깊이 뷰의 범위(월드 단위)
 	int debugView = 0;
 	float debugDepthRange = 60.0f;
 
@@ -66,11 +81,15 @@ struct RenderSettings
 // 텍스처 캐시(TextureCache), 샘플러 프리셋, 그림자 맵, 뷰 타깃(색·깊이·HDR). 전부 핸들이므로 이 헤더와
 // .cpp에는 D3D 타입이 없음.
 //
-// 구현은 파일 넷으로 나뉨:
+// 구현은 파일 일곱으로 나뉨:
 //   Renderer.cpp         초기화, 셰이더 표, 프레임 흐름(Render), 드로우 목록·컬링, GPU 캐시, PSO
 //   RendererShadow.cpp   그림자 뷰 계산(방향광·CSM·스팟·포인트), 아틀라스 패스
 //   RendererTargets.cpp  뷰 타깃(메인·카메라 미리보기) 생성·해제, UI 패스
 //   RendererPost.cpp     HDR 구간 후처리(블러·블룸), 톤 패스, 단계별 썸네일
+//   RendererDeferred.cpp 디퍼드: G-buffer 생성, G-buffer 패스 → 라이팅 패스 → 포워드 패스, 관련 PSO (2단계)
+//   RendererClusters.cpp 조명 경계 구, 메인 카메라 컬링·그림자 우선순위 (3a), 클러스터 비닝·업로드 (3b)
+//   RendererSsao.cpp     SSAO 타깃·커널·패스 (5단계)
+//   (설계·읽는 순서: docs/plan/deferred-clustered-ssao-record.html)
 //
 // 모든 GPU 명령은 Device::GetCommandList() 를 거침. 프레임은 아래 순서의 렌더 패스로 이루어짐.
 //   1. ShadowPass   깊이 전용. 지역광 아틀라스(2048²)와 CSM 아틀라스(2048²)에 뷰(조명·캐스케이드·큐브 면)마다
@@ -103,6 +122,17 @@ public:
 		uint32_t particleEmitters = 0;   // 이번 프레임에 시뮬레이션한 이미터 수
 		uint32_t particleCapacity = 0;   // 그 이미터들의 버퍼 원소 합 (= 그리는 쿼드 수. 죽은 것 포함)
 		uint32_t particlesSpawned = 0;   // 이번 프레임에 새로 생긴 파티클 수
+		// ---- 디퍼드·클러스터드·SSAO (메인 뷰 기준) ----
+		bool deferredPath = false;       // 이번 프레임 메인 뷰가 디퍼드로 그려졌는가
+		uint32_t gbufferDraws = 0;       // G-buffer 패스 드로우 수
+		uint32_t forwardOpaqueDraws = 0; // 디퍼드 프레임에서 포워드로 간 불투명 드로우 수 (unlit·투과·코팅 노멀 맵)
+		uint32_t lightsVisible = 0;      // 3a: 메인 카메라 절두체에 경계 구가 걸친 지역광 수 (방향광 제외)
+		uint32_t lightsCulled = 0;       // 3a: 절두체 밖이라 그림자·클러스터에서 뺀 지역광 수
+		uint32_t clusterLightRefs = 0;   // 클러스터 목록에 들어간 (클러스터, 조명) 쌍 수 = t31 원소 수
+		uint32_t clusterMaxLights = 0;   // 한 클러스터의 최대 조명 수
+		uint32_t clusterOverflow = 0;    // t31 용량이 모자라 버린 쌍 수 (0 이어야 함)
+		uint32_t shadowViewsOffscreen = 0;   // 메인 카메라 절두체 밖 지역광에 간 그림자 뷰 수 (3a 를 끄면 늘어남 — 낭비된 아틀라스 타일)
+		bool ssao = false;               // 이번 프레임 메인 뷰에 SSAO 를 그렸는가
 	};
 
 	// 2048² 메인 아틀라스는 지역광(스팟·포인트) 전용: 512² 타일 16개를 4×4 로 배치 (D32 약 16MB). 스팟 =
@@ -137,7 +167,7 @@ public:
 		uint32_t atlas = 0;                    // 0 = 메인 아틀라스(m_shadowMap), 1 = CSM 아틀라스(m_csmMap)
 		DirectX::XMFLOAT4 params = {};         // b6 의 params 와 같은 뜻
 		DirectX::XMFLOAT4 cullSphere = {};     // 단계 6. xyz = 광원 위치, w = 범위. w = 0 이면 컬링 안 함
-		uint32_t lightIndex = 0;
+		uint32_t lightIndex = 0;               // 씬 조명 번호 (Scene::GetLights 의 인덱스. BuildShadowViews 끝에서 t15 번호를 바꿔 둠)
 	};
 	uint32_t GetShadowViewCount() const { return m_shadowViewCount; }
 	const ShadowView& GetShadowView(uint32_t index) const { return m_shadowViews[index]; }
@@ -281,6 +311,8 @@ private:
 		const Mesh* mesh;                // 정렬 키
 		const GpuMaterial* gpuMaterial;  // BuildDrawList 가 만들어 둠 (드로우 루프에서는 생성하지 않음)
 		const GpuMesh* gpuMesh;
+		PipelineHandle gbufferPipeline;  // G-buffer 패스 PSO. deferred 가 거짓이면 빈 핸들
+		bool deferred = false;           // G-buffer 에 담을 수 있는 재질 (CanUseDeferred). 디퍼드 프레임에서 포워드 대신 G-buffer 패스로 감
 		bool blended = false;            // 알파 블렌드·투과 재질. 불투명·하늘 뒤에 먼 것부터 따로 그림 (정렬 키의 맨 앞)
 		uint32_t object = 0;             // m_objects 인덱스
 		uint32_t indexStart = 0;         // 서브메시 범위
@@ -294,12 +326,17 @@ private:
 
 	// ---- 셰이더·레이아웃·패스 표 (Renderer.cpp 의 kShaders, kPasses) ----
 	// 셰이더를 추가할 때: ShaderId 에 한 줄, kShaders 에 한 줄. 로드·핫리로드 감시·검증·해제는 표를 돌며 함.
-	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_BasicSkinVS, Shader_ShadowSkinVS, Shader_DebugLineVS, Shader_DebugLinePS, Shader_BlurCS, Shader_BlurWeightsCS, Shader_ParticleResetCS, Shader_ParticleSimCS, Shader_ParticleArgsCS, Shader_ParticleEmitCS, Shader_ParticleSortInitCS, Shader_ParticleSortStepCS, Shader_ParticleVS, Shader_ParticlePS, Shader_Count };
-	enum LayoutId : uint32_t { Layout_Frame, Layout_Object, Layout_Material, Layout_Post, Layout_BlurCompute, Layout_BlurWeights, Layout_ParticleSim, Layout_ParticleStep, Layout_ParticleDraw, Layout_ParticleDepth, Layout_ParticleCollide, Layout_ParticleSort, Layout_ParticleSortStep, Layout_Count };
+	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_BasicSkinVS, Shader_ShadowSkinVS, Shader_DebugLineVS, Shader_DebugLinePS, Shader_BlurCS, Shader_BlurWeightsCS, Shader_ParticleResetCS, Shader_ParticleSimCS, Shader_ParticleArgsCS, Shader_ParticleEmitCS, Shader_ParticleSortInitCS, Shader_ParticleSortStepCS, Shader_ParticleVS, Shader_ParticlePS,
+		Shader_GBufferPS, Shader_DeferredLightPS, Shader_SsaoPS, Shader_SsaoBlurPS, Shader_Count };
+	enum LayoutId : uint32_t { Layout_Frame, Layout_Object, Layout_Material, Layout_Post, Layout_BlurCompute, Layout_BlurWeights, Layout_ParticleSim, Layout_ParticleStep, Layout_ParticleDraw, Layout_ParticleDepth, Layout_ParticleCollide, Layout_ParticleSort, Layout_ParticleSortStep,
+		Layout_GBuffer, Layout_Ssao, Layout_Count };
 	// 패스 = (VS, PS, 레이아웃 목록). PSO Desc 의 셰이더·bindingLayouts 가 이 표에서 나오고, 바인딩 대조도 패스
 	// 단위로 함 (그 패스의 레이아웃에 선언된 슬롯만 통과).
 	// Pass_MainSkin / Pass_ShadowSkin 은 스키닝 메시용 (정점 포맷 PositionColorNormalTexcoordTangentSkin). 스킨 VS 만 다르고 PS·레이아웃은 같음.
-	enum PassId : uint32_t { Pass_Main, Pass_Shadow, Pass_Sky, Pass_Tonemap, Pass_Post, Pass_MainSkin, Pass_ShadowSkin, Pass_DebugLine, Pass_Particle, Pass_Count };
+	// Pass_GBuffer / Pass_GBufferSkin: 디퍼드 G-buffer (MRT 5장, 재질 셋까지 메인과 같은 레이아웃). Pass_DeferredLight: 풀스크린
+	// 라이팅 { 프레임, G-buffer }. Pass_Ssao / Pass_SsaoBlur: 풀스크린 { SSAO }.
+	enum PassId : uint32_t { Pass_Main, Pass_Shadow, Pass_Sky, Pass_Tonemap, Pass_Post, Pass_MainSkin, Pass_ShadowSkin, Pass_DebugLine, Pass_Particle,
+		Pass_GBuffer, Pass_GBufferSkin, Pass_DeferredLight, Pass_Ssao, Pass_SsaoBlur, Pass_Count };
 	// 셋 인덱스 = 그 패스의 PipelineStateDesc::bindingLayouts 인덱스 (CommandList::SetResourceSet 의 첫 인자).
 	// 메인 { 프레임, 오브젝트, 재질 }, 그림자 { 프레임, 오브젝트 }, 스카이 { 프레임 }, 후처리 { 후처리 }.
 	static constexpr uint32_t kSetFrame = 0;
@@ -308,6 +345,8 @@ private:
 	static constexpr uint32_t kSetPost = 0;
 	static constexpr uint32_t kSetParticle = 1;   // 파티클 그리기 { 프레임, 파티클, 깊이 }
 	static constexpr uint32_t kSetParticleDepth = 2;
+	static constexpr uint32_t kSetGBuffer = 1;    // 디퍼드 라이팅 { 프레임, G-buffer }
+	static constexpr uint32_t kSetSsao = 0;       // SSAO·블러 { SSAO }
 	// 컴퓨트 패스 = (CS, 레이아웃 목록). 그래픽스 패스 표와 따로 둠 — PSO Desc 가 다르고 (ComputePipelineDesc),
 	// 바인딩 대조의 스테이지가 Compute 임.
 	enum ComputePassId : uint32_t { ComputePass_Blur, ComputePass_BlurWeights, ComputePass_ParticleReset, ComputePass_ParticleSim, ComputePass_ParticleArgs, ComputePass_ParticleEmit, ComputePass_ParticleSortInit, ComputePass_ParticleSortStep, ComputePass_Count };
@@ -339,7 +378,8 @@ private:
 	// 그릴 것을 모음: 오브젝트마다 월드 행렬·경계 구를 한 번 계산하고(m_objects), 서브메시마다 DrawItem 을 만듦.
 	// GPU 메시·재질(텍스처 포함)도 여기서 만들어 둠 — Render 가 이 구간을 업로드 묶음으로 감쌈.
 	void BuildDrawList(const Scene& scene);
-	void UploadPerFrameConstants(const Camera& camera, float totalTime);   // b0: view/proj 는 이 카메라 기준, 나머지는 프레임 공통 값
+	// b0: view/proj·화면 크기·클러스터 깊이 분할은 이 카메라·타깃 기준, 나머지는 프레임 공통 값. ssaoReady = 이 뷰에 SSAO 결과가 있음.
+	void UploadPerFrameConstants(const Camera& camera, float totalTime, uint32_t width, uint32_t height, bool ssaoReady);
 	void RenderShadowPass(RHI::CommandList& cmd);
 	void RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas);   // atlas 0 = 메인(m_shadowMap), 1 = CSM(m_csmMap). 그 아틀라스의 뷰만 그림
 	// 뷰 하나의 씬 패스 (메인·미리보기 공통): view.hdr + view.depth 에 불투명 드로우와 스카이박스를 그림.
@@ -348,7 +388,47 @@ private:
 	// 읽음). viewIndex 0 = 메인 뷰: (1) 과 (2) 사이에서 파티클 시뮬레이션 (프레임에 한 번). 알파 이미터 정렬은 뷰마다.
 	// 끝나면 view.depth 는 (2) 를 열었으면 DepthRead, 아니면 DepthWrite.
 	void RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTarget& view, const Camera& camera, const char* debugName, uint32_t viewIndex);
-	void DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera);   // 씬 패스의 드로우 루프 (절두체 컬링, 끝에 스카이박스)
+	// 씬 패스의 드로우 루프 (절두체 컬링). mode 가 어느 항목을 그릴지 정함:
+	//   All         포워드 프레임: 불투명 전부 → 하늘 → 블렌딩 (예전 경로)
+	//   GBuffer     디퍼드 G-buffer 패스: deferred 항목만 (G-buffer PSO)
+	//   ForwardRest 디퍼드 프레임의 포워드 패스: deferred 가 아닌 불투명 → 하늘 → 블렌딩
+	enum class DrawMode : uint8_t { All, GBuffer, ForwardRest };
+	void DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera, DrawMode mode = DrawMode::All);
+
+	// ---- 디퍼드 (2단계, RendererDeferred.cpp) ----
+	// G-buffer 에 담을 수 있는 재질인가: 불투명(블렌딩 아님)·조명 받음(unlit 아님)·투과 0·코팅 노멀 맵 없음.
+	bool CanUseDeferred(const Material& material) const;
+	// 이번 프레임 이 뷰를 디퍼드로 그리는가: 설정이 켜져 있고, G-buffer 가 있고, 디버그 뷰가 5(UV)가 아님.
+	bool UseDeferred(const ViewTarget& view) const;
+	bool CreateGBuffer(ViewTarget& view, const std::string& base);   // CreateViewTarget 이 부름. 실패해도 뷰는 유효 (포워드로 감)
+	void DestroyGBuffer(ViewTarget& view);
+	// 디퍼드 씬 패스: G-buffer 패스 → (SSAO) → 라이팅 패스 → 포워드 패스. RenderScenePass 가 디퍼드일 때 부름.
+	void RenderDeferredScene(RHI::CommandList& cmd, const Scene& scene, ViewTarget& view, const Camera& camera, const char* debugName, uint32_t viewIndex);
+	PipelineHandle GetGBufferPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored);
+	PipelineHandle GetDeferredLightPipeline();
+
+	// ---- 3a·3b: 조명 컬링·그림자 우선순위·클러스터 (RendererClusters.cpp) ----
+	// 조명 하나의 경계 구 (월드). 방향광은 w < 0 (무한). 스팟은 원뿔을 담는 가장 작은 구, 포인트는 (위치, 범위).
+	static DirectX::XMFLOAT4 ComputeLightBounds(const GpuLight& light);
+	// 뷰 z → 클러스터 슬라이스 식의 계수 (b0 clusterDepth). 원근: (Z / log2(f/n), −Z · log2(n) / log2(f/n), 1, 0),
+	// 직교: (Z / (f − n), −n · Z / (f − n), 0, 0). 셰이더 ClusterSlice 와 C++ 비닝이 같은 식을 씀.
+	static DirectX::XMFLOAT4 ClusterDepthParams(const Camera& camera);
+	// 3a: 메인 카메라 절두체로 지역광을 거르고 (m_lightVisible), 그림자 후보의 점수를 매겨 높은 순으로 정렬한 조명 번호 목록.
+	void CullLights(const Camera& camera);
+	// 클러스터 비닝: 이 카메라·타깃 크기로 상자 3456 개의 조명 목록을 만듦 (m_clusterGridScratch / m_clusterIndexScratch[viewIndex]).
+	// 메인·미리보기 두 뷰를 Prepare 에서 미리 만들어 두고 (버퍼 크기를 한 번에 맞춤), 각 뷰 패스 직전에 UploadClusters 로 올림.
+	void BuildClusters(const Camera& camera, uint32_t width, uint32_t height, uint32_t viewIndex);
+	// t30·t31 용량을 두 뷰 중 큰 쪽에 맞춤 (모자라면 두 배씩, 상한 kMaxClusterLightRefs). 다시 만들면 프레임 셋도 다시 만들게 함.
+	void EnsureClusterCapacity();
+	void UploadClusters(uint32_t viewIndex);   // t30·t31 에 그 뷰의 목록을 올림 (Dynamic — 클러스터드가 꺼져도 프레임마다 올림)
+
+	// ---- SSAO (5단계, RendererSsao.cpp) ----
+	bool CreateSsaoTargets(ViewTarget& view, const std::string& base);
+	void DestroySsaoTargets(ViewTarget& view);
+	void UploadSsaoConstants(const SsaoSettings& settings);   // b12. 커널은 설정의 sampleCount 가 바뀔 때만 다시 만듦
+	// depth (DepthRead) 와 GB1 (ShaderResource) 을 읽어 ssaoRaw → 블러 → ssaoBlur. 끝나면 ssaoBlur 가 ShaderResource.
+	void RenderSsao(RHI::CommandList& cmd, ViewTarget& view);
+	PipelineHandle GetSsaoPipeline(bool blur);
 	// 디버그 선 (본·Raycast 등). 선은 Engine 이 소유한 DebugDraw 가 모으고, Renderer 는 읽기만 함: UploadDebugLines 가 그 월드 공간
 	// 선 목록을 프레임마다 동적 정점 버퍼에 올리고, DrawDebugLines 가 씬 패스 끝(하늘 뒤)에 깊이 테스트 없이 그림.
 	void UploadDebugLines(const DebugDraw& debugDraw);
@@ -427,9 +507,20 @@ private:
 		ResourceSetHandle particleDepthSet;    // Layout_ParticleDepth: t23 = depth (파티클 PS, 소프트 파티클)
 		ResourceSetHandle particleCollideSet;  // Layout_ParticleCollide: b9, t23 = depth (파티클 적분 CS, 충돌. 메인 뷰만 씀)
 		PostScratch post;          // 블러·블룸 스크래치 (hdr 크기를 따름)
+		// 디퍼드 (2단계): G-buffer 4장 (배치는 Shaders/GBuffer.hlsli) + 라이팅 PS 가 읽는 셋 (t23 깊이, t25~t28, t29 SSAO)
+		TextureHandle gbuffer[4];
+		ResourceSetHandle gbufferSet;
+		// SSAO (5단계): 원본(raw)과 블러 결과. R8_UNORM, 뷰 크기. ssaoSet = { b0, b12, t23 깊이, t26 노멀, t29 흰색 },
+		// ssaoBlurSet = 같은 것에 t29 = ssaoRaw. 라이팅은 G-buffer 셋의 t29 로 ssaoBlur 를 읽음.
+		TextureHandle ssaoRaw;
+		TextureHandle ssaoBlur;
+		ResourceSetHandle ssaoSet;
+		ResourceSetHandle ssaoBlurSet;
 		uint32_t width = 0;
 		uint32_t height = 0;
 		bool IsValid() const { return depth.IsValid() && hdr.IsValid() && hdrSet.IsValid(); }
+		bool HasGBuffer() const { return gbufferSet.IsValid(); }   // 디퍼드로 그릴 수 있는가 (G-buffer 생성 실패면 포워드)
+		bool HasSsao() const { return ssaoSet.IsValid() && ssaoBlurSet.IsValid(); }
 	};
 	// withColor: 최종 출력 텍스처도 만듦 (에디터의 씬 뷰·미리보기). 거짓이면 색은 백버퍼가 맡음 (게임 모드).
 	// 실패하면 만든 것을 모두 지우고 false.
@@ -563,6 +654,30 @@ private:
 	// PSO 핸들 캐시 (작은 키 → 핸들). 키는 Get*PipelineFor 가 만듦.
 	std::unordered_map<uint32_t, PipelineHandle> m_mainPipelines;
 	std::unordered_map<uint32_t, PipelineHandle> m_shadowPipelines;
+	std::unordered_map<uint32_t, PipelineHandle> m_gbufferPipelines;   // GetGBufferPipelineFor (키는 메인과 같은 모양)
+	PipelineHandle m_deferredLightPipeline;
+	PipelineHandle m_ssaoPipelines[2];   // [blur]
+
+	// ---- 클러스터 (3b) ----
+	static constexpr uint32_t kInitialClusterLightRefs = 16384;    // t31 처음 원소 수 (64KB)
+	static constexpr uint32_t kMaxClusterLightRefs = 262144;       // 상한 (1MB). 넘치면 버리고 Stats::clusterOverflow
+	static constexpr uint32_t kClusterViews = 2;                   // 0 메인, 1 카메라 미리보기
+	BufferHandle m_clusterGridBuffer;      // t30 Dynamic, uint2 × kClusterCount
+	BufferHandle m_clusterIndexBuffer;     // t31 Dynamic, uint × m_clusterIndexCapacity
+	uint32_t m_clusterIndexCapacity = 0;
+	std::vector<uint32_t> m_clusterGridScratch[kClusterViews];    // (시작, 개수) 쌍을 펼친 것 — 길이 2 × kClusterCount
+	std::vector<uint32_t> m_clusterIndexScratch[kClusterViews];   // 조명 번호 목록
+	bool m_clusterBuilt[kClusterViews] = {};                      // 이번 프레임에 그 뷰를 비닝했는가
+	std::vector<DirectX::XMFLOAT4> m_lightBounds;                 // 조명마다의 경계 구 (ComputeLightBounds, 이번 프레임)
+	std::vector<uint8_t> m_lightVisible;                          // 3a: 메인 카메라 절두체 안 (방향광은 항상 1)
+	std::vector<uint32_t> m_shadowOrder;                          // 3a: 그림자 후보 조명 번호, 점수 높은 순
+	std::unordered_map<uint32_t, bool> m_shadowHistory;           // 3a: 지난 프레임에 그림자를 받은 씬 조명 번호 (깜빡임 억제용 가산점)
+	std::vector<uint32_t> m_lightSceneIndex;                      // 정렬 뒤 m_gpuLights[i] 가 씬의 몇 번째 조명이었는지
+
+	// ---- SSAO (5단계) ----
+	BufferHandle m_ssaoCB;                 // b12 Dynamic (SsaoConstants)
+	std::vector<DirectX::XMFLOAT4> m_ssaoKernel;   // 반구 커널 (sampleCount 개). 샘플 수가 바뀔 때만 다시 만듦 (시드 고정이라 결정적)
+	SsaoSettings m_ssaoSettings;           // 이번 프레임 (씬 환경에서 복사)
 	PipelineHandle m_skyPipeline;
 	PipelineHandle m_debugLinePipeline;
 	PipelineHandle m_particlePipeline;

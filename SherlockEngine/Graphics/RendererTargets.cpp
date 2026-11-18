@@ -88,6 +88,10 @@ bool Renderer::CreateViewTarget(ViewTarget& view, uint32_t width, uint32_t heigh
 	}
 	view.width = width;
 	view.height = height;
+
+	// 디퍼드 G-buffer + SSAO 타깃 (RendererDeferred.cpp, RendererSsao.cpp). 깊이를 셋에 꽂으므로 깊이 다음에 만듦. 실패해도
+	// 뷰는 유효함 — 그 뷰는 포워드로 그림 (UseDeferred 가 HasGBuffer 를 봄).
+	CreateGBuffer(view, base);
 	return true;
 }
 
@@ -97,6 +101,7 @@ void Renderer::DestroyViewTarget(ViewTarget& view)
 	{
 		// D3D12 는 지연 해제라 이미 기록된 명령(이번 프레임의 ImGui 드로우 등)이 읽어도 안전함. D3D11 은
 		// 참조 카운트로 처리됨.
+		DestroyGBuffer(view);   // G-buffer 셋이 깊이를 가리키므로 깊이보다 먼저 (SSAO 타깃도 함께)
 		if (view.hdrSet.IsValid()) m_device->DestroyResourceSet(view.hdrSet);
 		if (view.particleDepthSet.IsValid()) m_device->DestroyResourceSet(view.particleDepthSet);
 		if (view.particleCollideSet.IsValid()) m_device->DestroyResourceSet(view.particleCollideSet);

@@ -310,8 +310,32 @@ void Renderer::BuildShadowViews(const Camera& drawCamera, std::vector<GpuLight>&
 	for (GpuLight& light : lights) light.shadowIndex = -1;
 	if (!m_settings.shadows) return;
 
+	// 타일을 나눠 줄 순서. 방향광은 앞쪽(BuildGpuLights 가 모아 둠)에서 씬 순서대로 — 첫 castShadows 방향광이 CSM 을 받음.
+	// 지역광: 3a(shadowPriority)가 켜져 있으면 CullLights 가 만든 점수 순서 (메인 카메라 절두체 안의 것만), 꺼져 있으면 예전처럼
+	// 조명 번호 순서. 아틀라스(16 타일)가 모자랄 때 "어느 조명이 그림자를 못 받는가"가 이 순서로 정해짐 — 스팟 1 타일, 포인트 6
+	// 연속 타일. 자리가 없으면 그 조명은 건너뛰고 다음 후보를 봄 (포인트 6 장은 없어도 스팟 1 장은 남았을 수 있음).
+	static thread_local std::vector<uint32_t> order;
+	order.clear();
+	const uint32_t count = static_cast<uint32_t>(lights.size());
+	for (uint32_t i = 0; i < count; ++i)
+	{
+		if (lights[i].type == static_cast<uint32_t>(LightType::Directional)) order.push_back(i);
+	}
+	const bool priority = m_settings.shadowPriority && m_lightVisible.size() == count;
+	if (priority)
+	{
+		order.insert(order.end(), m_shadowOrder.begin(), m_shadowOrder.end());
+	}
+	else
+	{
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			if (lights[i].type != static_cast<uint32_t>(LightType::Directional)) order.push_back(i);
+		}
+	}
+
 	bool directionalDone = false;
-	for (uint32_t i = 0; i < static_cast<uint32_t>(lights.size()); ++i)
+	for (const uint32_t i : order)
 	{
 		GpuLight& light = lights[i];
 		if (light.castShadows == 0) continue;
@@ -380,6 +404,23 @@ void Renderer::BuildShadowViews(const Camera& drawCamera, std::vector<GpuLight>&
 			}
 			if (first != UINT32_MAX) light.shadowIndex = static_cast<int32_t>(first);
 		}
+	}
+
+	// 3a 히스테리시스: 이번 프레임에 그림자를 받은 지역광을 씬 조명 번호로 기록 (다음 프레임 CullLights 가 가산점을 줌).
+	m_shadowHistory.clear();
+	for (uint32_t i = 0; i < count; ++i)
+	{
+		if (lights[i].shadowIndex >= 0 && lights[i].type != static_cast<uint32_t>(LightType::Directional))
+		{
+			m_shadowHistory[i < m_lightSceneIndex.size() ? m_lightSceneIndex[i] : i] = true;
+		}
+	}
+	// 그림자 뷰의 lightIndex 는 에디터 표시(아틀라스 미리보기의 "L번호")용이라 씬 조명 번호로 바꿔 둠 (t15 는 방향광이 앞으로 정렬돼 있음).
+	for (uint32_t v = 0; v < m_shadowViewCount; ++v)
+	{
+		const uint32_t index = m_shadowViews[v].lightIndex;
+		if (index < m_lightVisible.size() && m_lightVisible[index] == 0) ++m_stats.shadowViewsOffscreen;   // 화면에 빛이 닿지 않는 조명의 타일
+		if (index < m_lightSceneIndex.size()) m_shadowViews[v].lightIndex = m_lightSceneIndex[index];
 	}
 }
 

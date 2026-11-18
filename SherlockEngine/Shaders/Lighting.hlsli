@@ -37,11 +37,13 @@ struct LightData
     float padding;
 };
 
-// b2: 조명 공통 값. PS만. (16바이트)
+// b2: 조명 공통 값. PS만. (32바이트)
 cbuffer Lights : register(b2)
 {
     float3 ambientColor;
     uint lightCount;          // 아래 lights 의 유효 원소 수
+    uint directionalCount;    // lights 의 앞쪽 이만큼이 방향광 (C++ BuildGpuLights 가 앞으로 모음). 클러스터드 경로가 씀
+    uint3 lightsPadding;
 }
 
 // t15: 조명 배열 (프레임 셋). cbuffer 의 고정 크기 배열이 아니라 구조체 버퍼라 조명 수에 상한이 없음.

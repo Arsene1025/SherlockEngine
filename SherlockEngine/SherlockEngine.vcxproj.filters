@@ -188,6 +188,15 @@
     <ClCompile Include="Graphics\RendererShadow.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RendererDeferred.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RendererClusters.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RendererSsao.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\RendererTargets.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
@@ -449,6 +458,9 @@
     <ClInclude Include="Scene\ShadowSettings.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\SsaoSettings.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\Scene.h">
       <Filter>Scene</Filter>
     </ClInclude>
@@ -541,8 +553,35 @@
     <FxCompile Include="Shaders\ParticlePixelShader.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\SsaoBlurPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\SsaoPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\DeferredLightingPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\GBufferPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Shaders\Shading.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\MaterialSurface.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Clusters.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\GBuffer.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Ssao.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
     <None Include="Shaders\Common.hlsli">
       <Filter>Shaders</Filter>
     </None>
