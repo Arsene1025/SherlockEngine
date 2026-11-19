@@ -82,35 +82,41 @@ float SampleShadowViewCoverage(uint viewIndex, float3 worldPosition, float3 geom
         //     params.w == 1 이면 CSM 전용 아틀라스(t14, 가로·세로가 다를 수 있음), 아니면 메인 아틀라스(t8).
         const bool csm = view.params.w > 0.5f;
         float2 uv = view.atlasRect.xy + local * view.atlasRect.zw;
-        const float2 border = shadowAtlasParams.y * (csm ? csmAtlasParams.xy : shadowAtlasParams.xx);
+        const float2 texel = csm ? csmAtlasParams.xy : shadowAtlasParams.xx;   // 아틀라스 텍셀 크기 (UV)
+        const float2 border = shadowAtlasParams.y * texel;
         uv = clamp(uv, view.atlasRect.xy + border, view.atlasRect.xy + view.atlasRect.zw - border);
         const float depth = ndc.z - view.params.x;   // 수신자 깊이에서 바이어스를 뺌(자기 그림자 방지)
 
         // (6) PCF: 이웃 텍셀 25개의 비교 결과(0/1)를 평균 냄. SampleCmp 는 비교 후 보간까지 하드웨어에서 처리함.
         //     텍스처는 변수로 고를 수 없어서 아틀라스마다 루프를 따로 둠. 분기 조건은 뷰 단위라 한 드로우
         //     안에서 균일함.
+        //     [loop] 로 둠: [unroll] 이면 이 함수가 인라인되는 자리(캐스케이드·블렌드·스팟·포인트 면 × 전체 순회·
+        //     클러스터 루프)마다 25 탭이 펼쳐져 조명 PS 에 sample_c 가 1000 개 생기고, D3D12 GPU 기반 검증이 그
+        //     셰이더를 계측하다 드라이버 컴파일러가 끝나지 않음 (2026-11-20). 루프 안에서는 오프셋 인자(int2)가
+        //     컴파일 타임 상수여야 해서 쓸 수 없으므로 텍셀 크기를 곱해 UV 에 직접 더함 — 같은 텍셀을 가리키지만
+        //     반올림이 오프셋과 달라 그림자 경계 픽셀 하나가 바뀔 수 있음 (SponzaCascades 포워드에서 1 px).
         float lit = 0.0f;
         if (csm)
         {
-            [unroll]
+            [loop]
             for (int cy = -2; cy <= 2; ++cy)
             {
-                [unroll]
+                [loop]
                 for (int cx = -2; cx <= 2; ++cx)
                 {
-                    lit += csmMap.SampleCmpLevelZero(shadowSampler, uv, depth, int2(cx, cy));
+                    lit += csmMap.SampleCmpLevelZero(shadowSampler, uv + float2(cx, cy) * texel, depth);
                 }
             }
         }
         else
         {
-            [unroll]
+            [loop]
             for (int dy = -2; dy <= 2; ++dy)
             {
-                [unroll]
+                [loop]
                 for (int dx = -2; dx <= 2; ++dx)
                 {
-                    lit += shadowMap.SampleCmpLevelZero(shadowSampler, uv, depth, int2(dx, dy));
+                    lit += shadowMap.SampleCmpLevelZero(shadowSampler, uv + float2(dx, dy) * texel, depth);
                 }
             }
         }

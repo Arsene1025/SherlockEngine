@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>기록 · 결함 수정 기록 (2026-11-20) — SherlockEngine</title>
+<style>
+:root {
+  --bg: #f6f5f1; --paper: #ffffff; --ink: #1d1f24; --ink2: #4a505c; --ink3: #8a909c;
+  --line: #d9dce3; --fill: #f1f3f7; --accent: #1d5fbf; --accent-bg: #e4ecf8;
+  --ok: #1f7a3d; --ok-bg: #e5f4ea; --warn: #a8620a; --warn-bg: #fdf3e2; --err: #c62828; --err-bg: #fbeaea;
+  --code-bg: #14171c; --code-fg: #e6e9ef;
+  --c1: #1d5fbf; --c2: #1f7a3d; --c3: #a8620a; --c4: #8e3fb5; --c5: #c62828;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101216; --paper: #181b21; --ink: #e8eaee; --ink2: #aab0bb; --ink3: #6f7683;
+    --line: #2b303a; --fill: #1f232b; --accent: #6ea8ff; --accent-bg: #16305a;
+    --ok: #5fcf85; --ok-bg: #12301f; --warn: #f0b14a; --warn-bg: #3a2a10; --err: #ff7070; --err-bg: #3b1620;
+    --code-bg: #0b0d10; --code-fg: #dfe3ea;
+    --c1: #6ea8ff; --c2: #5fcf85; --c3: #f0b14a; --c4: #c995ee; --c5: #ff7070;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15.5px/1.75 -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", Roboto, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 28px; }
+nav { position: sticky; top: 16px; align-self: start; font-size: 13.5px; line-height: 1.5; max-height: calc(100vh - 32px); overflow: auto; }
+nav b { display: block; margin: 12px 0 4px; color: var(--ink3); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
+nav a { display: block; padding: 3px 8px; color: var(--ink2); text-decoration: none; border-left: 2px solid var(--line); }
+nav a.sub { padding-left: 20px; font-size: 12.5px; }
+nav a:hover { color: var(--accent); border-left-color: var(--accent); }
+main { min-width: 0; }
+header.top { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+header.top h1 { margin: 0 0 6px; font-size: 26px; line-height: 1.3; }
+header.top p { margin: 4px 0; color: var(--ink2); }
+section { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+h2 { margin: 0 0 12px; font-size: 21px; line-height: 1.35; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+h3 { margin: 28px 0 8px; font-size: 17.5px; line-height: 1.4; }
+h4 { margin: 18px 0 6px; font-size: 15px; color: var(--ink2); }
+p { margin: 8px 0; }
+ul, ol { margin: 8px 0; padding-left: 22px; }
+li { margin: 3px 0; }
+code { font: 13.5px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--fill); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--code-bg); color: var(--code-fg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font: 13px/1.6 ui-monospace, "Cascadia Mono", Consolas, monospace; margin: 10px 0; }
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+pre .c { color: #8b95a7; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; line-height: 1.55; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+th { background: var(--fill); white-space: nowrap; }
+.box { border-left: 4px solid var(--accent); background: var(--accent-bg); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+.box.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.box.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.box.err { border-left-color: var(--err); background: var(--err-bg); }
+.box p:first-child { margin-top: 0; } .box p:last-child { margin-bottom: 0; }
+.tag { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--accent-bg); color: var(--accent); white-space: nowrap; }
+.tag.v { background: var(--ok-bg); color: var(--ok); }
+.tag.p { background: var(--warn-bg); color: var(--warn); }
+.tag.x { background: var(--err-bg); color: var(--err); }
+ul.todo { list-style: none; padding-left: 4px; }
+ul.todo > li { margin: 7px 0; padding-left: 26px; position: relative; }
+ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
+.meta { display: grid; grid-template-columns: 120px 1fr; gap: 4px 12px; font-size: 14.5px; margin: 8px 0 4px; }
+.meta b { color: var(--ink2); font-weight: 600; }
+.loc { font-size: 13.5px; color: var(--ink2); background: var(--fill); border-radius: 6px; padding: 6px 10px; margin: 8px 0; }
+.foot { color: var(--ink3); font-size: 13px; }
+figure { margin: 16px 0; text-align: center; }
+figure svg { max-width: 100%; height: auto; }
+figcaption { font-size: 13.5px; color: var(--ink2); margin-top: 6px; }
+svg text { fill: var(--ink); font: 12px -apple-system, "Segoe UI", "Malgun Gothic", sans-serif; }
+svg text.s { font-size: 10.5px; fill: var(--ink2); }
+svg text.b { font-weight: 700; }
+svg text.m { font: 11px ui-monospace, Consolas, monospace; }
+svg .ln { stroke: var(--ink2); fill: none; stroke-width: 1.4; }
+svg .ln2 { stroke: var(--ink3); fill: none; stroke-width: 1; stroke-dasharray: 4 3; }
+svg .bx { fill: var(--fill); stroke: var(--line); stroke-width: 1.2; }
+svg .acc { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.4; }
+svg .okb { fill: var(--ok-bg); stroke: var(--ok); stroke-width: 1.4; }
+svg .wb { fill: var(--warn-bg); stroke: var(--warn); stroke-width: 1.4; }
+svg .eb { fill: var(--err-bg); stroke: var(--err); stroke-width: 1.4; }
+svg .accl { stroke: var(--accent); fill: none; stroke-width: 1.8; }
+svg .okl { stroke: var(--ok); fill: none; stroke-width: 1.8; }
+svg .wl { stroke: var(--warn); fill: none; stroke-width: 1.8; }
+svg .el { stroke: var(--err); fill: none; stroke-width: 1.8; }
+svg .dot { fill: var(--ink2); }
+svg .adot { fill: var(--accent); }
+svg .edot { fill: var(--err); }
+svg .okdot { fill: var(--ok); }
+svg .arh { fill: var(--ink2); }
+figure img { max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+ol.read > li { margin: 10px 0; }
+.num { color: var(--ink3); margin-right: 4px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } nav { position: static; max-height: none; } section, header.top { padding: 16px; } .meta { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arh"/></marker>
+  </defs>
+</svg>
+<div class="wrap">
+<nav aria-label="목차">
+  <b>시작</b>
+  <a href="#overview">0. 한눈에 보기</a>
+  <b>결함</b>
+  <a href="#d1">1. Release 삭제·복제 자동 검증 segfault</a>
+  <a class="sub" href="#d1-trace">1.1 추적</a>
+  <a class="sub" href="#d1-cause">1.2 원인 — 증분 LTCG</a>
+  <a class="sub" href="#d1-fix">1.3 수정과 검증</a>
+  <a href="#d2">2. 테스트 솔루션의 C1083</a>
+  <a class="sub" href="#d2-cause">2.1 원인</a>
+  <a class="sub" href="#d2-fix">2.2 수정과 검증</a>
+  <a href="#d3">3. D3D12 GPU 기반 검증 멈춤</a>
+  <a class="sub" href="#d3-trace">3.1 추적</a>
+  <a class="sub" href="#d3-exp">3.2 실험</a>
+  <a class="sub" href="#d3-cause">3.3 원인 — 펼친 PCF</a>
+  <a class="sub" href="#d3-fix">3.4 수정</a>
+  <a class="sub" href="#d3-verify">3.5 검증</a>
+  <b>정리</b>
+  <a href="#regress">4. 회귀 확인</a>
+  <a href="#unverified">5. 확인하지 못한 것</a>
+  <a href="#files">6. 바뀐 파일</a>
+</nav>
+<main>
+
+<header class="top">
+  <h1>결함 수정 기록 (2026-11-20)</h1>
+  <p>여러 기록 문서에 "원인 미확인"으로 남아 있던 결함 세 개를 다시 재현해 원인을 찾고 고친 기록입니다. 결함마다 증상, 추적 과정, 원인, 수정, 검증 순서로 적었습니다.</p>
+  <div class="box ok"><p><b>상태.</b> 세 결함 모두 원인을 확인하고 고쳤습니다. Release 에디터의 <code>--delete</code>·<code>--duplicate</code> 는 종료 코드 0, 테스트 솔루션에서 에디터·게임이 빌드되고, D3D12 <code>--gpu-validation=1</code> 은 기본 패치 모드(GUARDED)로 끝까지 돌아 GBV 메시지 0건입니다. 확인하지 못한 것은 <a href="#unverified">5장</a>에 따로 적었습니다.</p></div>
+  <p>기준: 커밋 <code>855139b</code> + 작업 트리. 코드 위치는 "파일 + 함수/타입 이름"으로 적었고 경로는 저장소 루트 기준입니다. 측정한 GPU 는 NVIDIA 하나입니다. 숫자는 모두 이 작업 중에 직접 실행해서 얻은 값입니다.</p>
+</header>
+
+<section id="overview">
+<h2>0. 한눈에 보기</h2>
+<table>
+<tr><th>결함</th><th>증상</th><th>원인</th><th>수정</th></tr>
+<tr><td><a href="#d1">1. Release 삭제·복제 segfault</a></td><td>Release 에디터에서 <code>--delete</code>·<code>--duplicate</code> 가 종료 코드 139</td><td>증분 LTCG 가 옛 클래스 레이아웃으로 컴파일된 인라인 기계어를 <code>.iobj</code> 에서 그대로 복사함. 소스 코드 버그가 아님</td><td>엔진 DLL·스크립트 DLL 세 개·새 프로젝트 템플릿의 Release 링크를 전체 LTCG 로</td></tr>
+<tr><td><a href="#d2">2. 테스트 솔루션 C1083</a></td><td>프로젝트 솔루션에서 에디터를 빌드하면 <code>'App/EntryPoints.h'</code> 를 못 찾음</td><td>에디터·게임 vcxproj 의 경로가 <code>$(SolutionDir)</code> 기준이라 솔루션 위치에 따라 달라짐</td><td>경로를 <code>$(ProjectDir)..\</code> 기준으로, 출력 폴더도 엔진 저장소의 <code>x64\&lt;구성&gt;\</code> 로 고정</td></tr>
+<tr><td><a href="#d3">3. D3D12 GBV 멈춤</a></td><td><code>--gpu-validation=1</code> 이 첫 프레임 전에 끝나지 않고 메모리가 7 GB 넘게 늘어남</td><td><code>[unroll]</code> 로 펼친 PCF 5×5 가 호출 지점마다 인라인돼 조명 PS 하나에 <code>sample_c</code> 가 1000 개. GBV 가 이 셰이더를 계측한 뒤 드라이버 컴파일러가 끝나지 않음</td><td>PCF 를 <code>[loop]</code> 로, 오프셋 인자 대신 아틀라스 텍셀 크기를 곱해 UV 에 더함</td></tr>
+</table>
+<p>세 결함 모두 렌더링이나 에디터 기능의 논리 오류가 아니었습니다. 빌드 설정 둘, 셰이더 코드 모양 하나입니다. 그래서 같은 코드를 Debug 로 돌리거나 엔진 솔루션으로 빌드하거나 GBV 를 끄면 문제가 보이지 않았습니다. 지금까지 원인이 가려져 있던 이유가 이것입니다.</p>
+</section>
+
+<section id="d1">
+<h2>1. Release 삭제·복제 자동 검증 segfault</h2>
+<div class="meta">
+  <b>처음 기록</b><span>2026-11-16, <a href="../overview/rendering-analysis.html#c22-4">rendering-analysis 22.4</a>, <a href="../report/hierarchy-world-matrix-decision.html">계층 월드 행렬 결정 보고서</a> 위험 8</span>
+  <b>증상</b><span>Release 에디터에 <code>--delete=이름</code> 이나 <code>--duplicate=이름</code> 을 주면 종료 코드 139. 계층이 없는 <code>floor_cube</code> 씬에서 <code>--delete=Floor</code> 만 줘도 같음. <code>--set-parent</code> 는 정상. Debug 에서는 나지 않음</span>
+</div>
+
+<h3 id="d1-trace">1.1 추적</h3>
+<ul>
+<li>재현은 매번 됐습니다. cdb 로 붙여 보면 <code>EditorHistory::Commit</code> → <code>SceneSerializer::SaveEditState</code> 에서 <code>SceneEnvironment</code> 의 문자열을 복사하다가 죽습니다. 문자열 길이와 포인터가 쓰레기 값이었습니다.</li>
+<li><code>SaveEditState</code> 가 받은 씬 포인터부터 이상했습니다. 거슬러 올라가니 <code>Editor/EditorAutomation.cpp</code> 의 자동 검증 람다 안에 <code>EditorApp::RunCommand</code> 가 인라인된 복사본이 10 개 있었고, 그중 5 개가 <code>EditorApp</code> 멤버를 지금과 다른 오프셋으로 읽고 있었습니다.</li>
+</ul>
+<table>
+<tr><th>멤버</th><th>잘못된 복사본 5 곳이 쓴 오프셋</th><th>실제 오프셋 (현재 헤더)</th></tr>
+<tr><td><code>m_history</code></td><td><code>this+0x35F8</code></td><td><code>this+0x4510</code></td></tr>
+<tr><td>씬</td><td><code>this+0x1EB8</code></td><td><code>this+0x2DA8</code></td></tr>
+</table>
+<p>나머지 5 곳은 올바른 오프셋을 썼고, <code>--set-parent</code> 가 그쪽에 속해서 정상으로 보였습니다. 엉뚱한 메모리를 기록(history)과 씬으로 알고 직렬화했기 때문에 문자열 복사에서 죽은 것입니다. 소스에는 잘못된 곳이 없었습니다. 같은 소스에서 나온 기계어가 서로 다른 클래스 레이아웃을 쓰고 있었습니다.</p>
+
+<h3 id="d1-cause">1.2 원인 — 증분 LTCG</h3>
+<p>엔진 Release 구성은 <code>WholeProgramOptimization=true</code>(<code>/GL</code>)이고 링크 방식(<code>LinkTimeCodeGeneration</code>)은 적지 않았습니다. 이때 Visual Studio 기본값은 <b>증분 LTCG(<code>/LTCG:incremental</code>)</b>입니다. 이 모드는 바뀌지 않았다고 판단한 함수의 기계어를 지난 링크 결과(<code>.iobj</code>)에서 그대로 복사합니다. 실제 빌드 로그에도 <code>0 of 214 functions compiled, the rest were copied from previous compilation</code> 이 찍혀 있었습니다.</p>
+<p><code>EditorApp</code> 에 멤버가 추가돼 레이아웃이 바뀐 뒤, 다른 번역 단위에 인라인된 일부 함수가 "바뀌지 않음"으로 판정돼 옛 오프셋 그대로 복사된 것으로 보입니다. Debug 는 LTCG 를 쓰지 않아서 이 문제가 없습니다.</p>
+<div class="box"><p><b>원인 확인 방법.</b> 소스는 그대로 두고 <code>.iobj</code>·<code>.ipdb</code> 만 치운 뒤 다시 링크했습니다. 옛 오프셋을 쓰는 복사본이 0 곳이 됐고, delete, duplicate, delete+undo, duplicate+undo+redo 네 가지가 모두 종료 코드 0 이었습니다. 코드를 하나도 고치지 않고 링크 캐시만 버려서 사라졌으므로 원인은 증분 링크입니다.</p></div>
+<p>왜 링커가 레이아웃 변경을 놓쳤는지(어떤 조건에서 함수를 "바뀌지 않음"으로 보는지)는 확인하지 못했습니다. 다만 그 판정을 믿지 않으면 되므로, 수정은 증분 모드를 쓰지 않는 것으로 했습니다.</p>
+
+<h3 id="d1-fix">1.3 수정과 검증</h3>
+<p>Release 링크를 전체 LTCG(<code>/LTCG</code>)로 바꿨습니다. 링크가 느려지는 대신 매번 모든 함수를 다시 코드 생성합니다.</p>
+<pre><code><span class="c">&lt;!-- SherlockEngine/SherlockEngine.vcxproj, Release|Win32·Release|x64 의 &lt;Link&gt; --&gt;</span>
+&lt;LinkTimeCodeGeneration&gt;UseLinkTimeCodeGeneration&lt;/LinkTimeCodeGeneration&gt;</code></pre>
+<p>스크립트 DLL 도 엔진 헤더를 포함해 같은 위험이 있어서 같은 줄을 넣었습니다. 스크립트 DLL 에서 이 문제가 실제로 난 적은 없으니 예방 조치입니다.</p>
+<ul>
+<li><code>Projects/QuaternionLookTest/QuaternionLookTestScripts.vcxproj</code>, <code>Projects/Sample/SampleScripts.vcxproj</code>, <code>Projects/SherlockTestScenes/SherlockTestScenesScripts.vcxproj</code> 의 Release <code>&lt;Link&gt;</code>.</li>
+<li>새 프로젝트를 만드는 <code>SherlockEngine/Editor/ProjectGenerator.cpp</code> 의 vcxproj 템플릿(Release 일 때만 같은 줄을 씀).</li>
+</ul>
+<table>
+<tr><th>확인</th><th>결과</th></tr>
+<tr><td>엔진 링크 명령</td><td><code>/LTCG</code>, <code>:INCREMENTAL</code> 없음. 파일 하나만 바꿔 다시 링크해도 "copied from previous compilation" 이 나오지 않음</td></tr>
+<tr><td>스크립트 DLL 세 개 (각 프로젝트 솔루션, Release)</td><td>빌드 오류 0, 링크 명령 <code>/LTCG</code></td></tr>
+<tr><td>새 프로젝트 템플릿</td><td><code>--new-project</code> 로 임시 프로젝트를 만들어 vcxproj 의 Release <code>&lt;Link&gt;</code> 에 줄이 들어간 것과 Release 빌드(<code>/LTCG</code>)를 확인한 뒤 지움</td></tr>
+<tr><td>자동 검증 (Release 에디터, D3D11)</td><td><code>floor_cube.json</code> 에서 <code>--delete=Floor --undo=1</code>, <code>--duplicate=Floor --undo=1 --redo=1</code> 모두 종료 코드 0, 로그 오류 0. <code>--dump-objects</code> 로 오브젝트 목록이 되돌아온 것까지 확인</td></tr>
+</table>
+</section>
+
+<section id="d2">
+<h2>2. 테스트 솔루션의 C1083</h2>
+<div class="meta">
+  <b>처음 기록</b><span><a href="structure-review-record.html#notes">구조 검토 수정 기록</a>, <a href="undo-prefab-record.html">Undo · 프리팹 구현 기록</a></span>
+  <b>증상</b><span><code>Projects/SherlockTestScenes/SherlockTestScenes.sln</code>, <code>Projects/QuaternionLookTest/QuaternionLookTest.sln</code> 에서 빌드하면 <code>SherlockEditor\EditorMain.cpp(2,10): error C1083 'App/EntryPoints.h'</code>. 엔진 솔루션에서는 빌드됨</span>
+</div>
+
+<h3 id="d2-cause">2.1 원인</h3>
+<p><code>SherlockEditor.vcxproj</code> 와 <code>SherlockGame.vcxproj</code> 는 include 경로와 디버거 작업 폴더를 <code>$(SolutionDir)SherlockEngine</code> 으로 적고 있었습니다. <code>$(SolutionDir)</code> 은 "지금 빌드하는 솔루션의 폴더"입니다. 엔진 솔루션은 저장소 루트에 있어서 맞는 경로가 되지만, 프로젝트 솔루션은 <code>Projects/SherlockTestScenes/</code> 에 있어서 있지도 않은 <code>Projects/SherlockTestScenes/SherlockEngine</code> 이 됩니다.</p>
+<p>엔진 프로젝트는 이미 출력 폴더를 <code>$(ProjectDir)..</code> 기준으로 고쳐 두었는데, 에디터·게임 프로젝트에는 그 수정이 빠져 있었습니다. 출력 폴더도 기본값(<code>$(SolutionDir)x64\…</code>)이라, include 만 고쳤다면 exe 가 엔진 DLL 과 다른 폴더에 생겼을 것입니다.</p>
+
+<h3 id="d2-fix">2.2 수정과 검증</h3>
+<ul>
+<li>두 vcxproj 의 <code>$(SolutionDir)SherlockEngine</code> 8 곳(구성마다 include 경로와 <code>LocalDebuggerWorkingDirectory</code>)을 <code>$(ProjectDir)..\SherlockEngine</code> 으로 바꿨습니다. 프로젝트 파일 위치는 솔루션과 상관없이 고정이므로 어느 솔루션에서 열어도 같은 경로가 됩니다.</li>
+<li>x64 출력 폴더를 <code>$(ProjectDir)..\x64\$(Configuration)\</code> 로 고정했습니다. 엔진과 같은 규칙이라 exe 가 <code>SherlockEngine.dll</code> 옆에 생깁니다.</li>
+</ul>
+<table>
+<tr><th>확인</th><th>결과</th></tr>
+<tr><td>빌드</td><td>SherlockTestScenes.sln (Debug·Release), QuaternionLookTest.sln (Debug·Release), Sample.sln (Release), SherlockEngine.sln (Debug·Release) 모두 오류 0</td></tr>
+<tr><td>출력 위치</td><td>어느 솔루션으로 빌드해도 exe 가 저장소의 <code>x64\&lt;구성&gt;\</code> 에 생김</td></tr>
+<tr><td>실행</td><td>테스트 솔루션으로 빌드한 에디터 종료 코드 0. Release 게임 exe 는 시작 씬을 불러오는 것까지 확인</td></tr>
+</table>
+</section>
+
+<section id="d3">
+<h2>3. D3D12 GPU 기반 검증 멈춤</h2>
+<div class="meta">
+  <b>처음 기록</b><span><a href="deferred-clustered-ssao-record.html#unverified">디퍼드·클러스터드·SSAO 구현 기록 8.4</a>, <a href="../overview/rendering-analysis.html#c22-4">rendering-analysis 22.4</a></span>
+  <b>증상</b><span>Debug, <code>--backend=d3d12 --gpu-validation=1</code> 로 실행하면 첫 프레임 전에 멈춤. 기록에는 다섯 번 중 한 번 통과로 적혀 있었고, 이번에는 네 번 중 네 번 재현됨</span>
+</div>
+
+<h3 id="d3-trace">3.1 추적</h3>
+<ul>
+<li>매번 시작 후 약 0.6 초, 로그의 "PSO 생성 #10" 다음에서 멈췄습니다.</li>
+<li>데드락이 아니었습니다. 메인 스레드가 코어 하나를 계속 쓰면서 메모리가 늘었습니다. 6 분 동안 CPU 시간 378 초, 전용 메모리 7.4 GB 까지 간 것을 보고 직접 종료했습니다.</li>
+<li>멈춘 스택: <code>RenderDeferredScene</code> → <code>SetPipelineState</code>(디퍼드 라이팅 PSO) → D3D12 디버그 레이어의 GBV → NVIDIA 셰이더 컴파일러(<code>nvgpucomp64</code>). GBV 는 PSO 가 처음 쓰일 때 셰이더에 검증 코드를 끼워 넣고 드라이버가 그것을 다시 컴파일합니다. 그 컴파일이 끝나지 않고 있었습니다.</li>
+</ul>
+<p>이후 실험은 전용 메모리 1.5 GB 나 90~180 초를 넘으면 프로세스를 죽이는 감시 스크립트를 붙여 돌렸습니다. 처음 900 초짜리 실행에서 시스템 메모리가 부족해진 일이 있었기 때문입니다.</p>
+
+<h3 id="d3-exp">3.2 실험</h3>
+<p>GBV 셰이더 패치 모드는 <code>ID3D12DebugDevice1::SetDebugParameter</code> 에 <code>D3D12_DEBUG_DEVICE_GPU_BASED_VALIDATION_SETTINGS</code> 를 넘겨 바꿨습니다(실험용 임시 코드, 지금은 없음).</p>
+<table>
+<tr><th>실험</th><th>설정</th><th>결과</th></tr>
+<tr><td>A</td><td>기본 (디퍼드, GUARDED)</td><td><code>Graphics/RendererDeferred.cpp</code> <code>RenderDeferredScene</code> 의 디퍼드 라이팅 PSO 첫 <code>SetPipelineState</code> 에서 멈춤</td></tr>
+<tr><td>B</td><td>포워드 (<code>--deferred=0 --clustered=0</code>)</td><td><code>Graphics/Renderer.cpp</code> <code>DrawItems</code> 의 포워드 메인 PSO 첫 <code>SetPipelineState</code> 에서 멈춤. 디퍼드만의 문제가 아님</td></tr>
+<tr><td>C-1</td><td>패치 모드 UNGUARDED</td><td>90 초에 같은 자리, 약 1.4 GB. A 와 같은 모양</td></tr>
+<tr><td>C-2</td><td>패치 모드 STATE_TRACKING_ONLY (셰이더 계측 없음)</td><td>68 초에 정상 종료. 셰이더를 계측하는 단계가 문제임</td></tr>
+<tr><td>D</td><td>두 조명 PS 를 <code>/Od</code> 없이 최적화해서 빌드</td><td>똑같이 멈춤. Debug 셰이더 설정이 원인이 아님</td></tr>
+<tr><td>E</td><td>PCF 를 펼치지 않는 루프로 임시 수정</td><td><b>GUARDED 그대로 디퍼드 85 초, 포워드 43 초에 정상 종료</b>, GBV 메시지 0</td></tr>
+</table>
+
+<h3 id="d3-cause">3.3 원인 — 펼친 PCF</h3>
+<p><code>SherlockEngine/Shaders/Shading.hlsli</code> 의 <code>SampleShadowViewCoverage</code> 는 5×5 PCF 를 <code>[unroll]</code> 로 펼치고 <code>SampleCmpLevelZero(…, int2(dx, dy))</code> 의 정수 오프셋으로 이웃 텍셀을 읽었습니다. SM 5.0 에서 이 오프셋 인자는 컴파일 타임 상수여야 해서 루프를 펼칠 수밖에 없었습니다.</p>
+<p>이 함수는 그림자를 받는 모든 곳에 인라인됩니다. CSM 캐스케이드와 캐스케이드 블렌드, 스팟, 포인트 큐브 면이 있고, 이것이 전체 조명 순회와 클러스터 순회 양쪽에 들어갑니다. 아틀라스(지역광 / CSM)마다 분기가 따로 있으니 25 탭 × 2 가 호출 지점 수만큼 곱해집니다.</p>
+<table>
+<tr><th>셰이더 (Release 컴파일)</th><th>수정 전 <code>sample_c</code></th><th>수정 전 명령 슬롯</th><th>수정 후 <code>sample_c</code></th><th>수정 후 명령 슬롯</th></tr>
+<tr><td><code>DeferredLightingPixelShader</code></td><td>1000</td><td>약 4006</td><td>40</td><td>약 2842</td></tr>
+<tr><td><code>BasicPixelShader</code> (포워드)</td><td>1000</td><td>약 4070</td><td>40</td><td>약 2908</td></tr>
+</table>
+<p>멈추지 않고 통과하는 G-buffer PS 는 리소스 접근이 9 개뿐입니다. GBV 는 리소스 접근마다 검사 코드를 끼우므로, 접근이 1000 개 넘는 셰이더는 계측 후 크기가 크게 불어납니다. 그것을 받은 NVIDIA 드라이버 컴파일러가 끝나지 않은 것으로 판단했습니다. Debug <code>.cso</code> 크기도 712 KB 에서 531 KB 로 줄었습니다(<code>DeferredLightingPixelShader</code>).</p>
+<div class="box warn"><p><b>단정할 수 있는 범위.</b> 루프로 바꾸면서 "펼침 여부"와 "오프셋 계산 방식"을 함께 바꿨습니다. 그래서 펼친 PCF 가 원인이라는 것까지는 말할 수 있지만, 리소스 접근 수 하나가 원인이라고 가를 수는 없습니다. 드라이버 안에서 무엇이 커지는지도 보지 않았습니다.</p></div>
+
+<h3 id="d3-fix">3.4 수정</h3>
+<p>PCF 를 <code>[loop]</code> 로 바꾸고, 정수 오프셋 대신 아틀라스 텍셀 크기를 곱해 UV 에 직접 더했습니다. 텍셀 크기는 상수 버퍼에 이미 있던 값을 씁니다. 지역광 아틀라스는 <code>shadowAtlasParams.x</code>(= 1 / 아틀라스 크기), CSM 아틀라스는 <code>csmAtlasParams.xy</code>(= 1 / 너비, 1 / 높이)입니다. 둘 다 <code>Graphics/RendererShadow.cpp</code> 가 채웁니다. 원래 타일 여백 계산에 쓰던 같은 값을 <code>texel</code> 변수 하나로 묶었으므로 2048 같은 숫자를 셰이더에 새로 적지 않았습니다.</p>
+<pre><code><span class="c">// 수정 전</span>
+const float2 border = shadowAtlasParams.y * (csm ? csmAtlasParams.xy : shadowAtlasParams.xx);
+...
+[unroll] for (int cy = -2; cy &lt;= 2; ++cy)
+    [unroll] for (int cx = -2; cx &lt;= 2; ++cx)
+        lit += csmMap.SampleCmpLevelZero(shadowSampler, uv, depth, int2(cx, cy));
+
+<span class="c">// 수정 후</span>
+const float2 texel = csm ? csmAtlasParams.xy : shadowAtlasParams.xx;   <span class="c">// 아틀라스 텍셀 크기 (UV)</span>
+const float2 border = shadowAtlasParams.y * texel;
+...
+[loop] for (int cy = -2; cy &lt;= 2; ++cy)
+    [loop] for (int cx = -2; cx &lt;= 2; ++cx)
+        lit += csmMap.SampleCmpLevelZero(shadowSampler, uv + float2(cx, cy) * texel, depth);</code></pre>
+<p>지역광 분기(<code>shadowMap</code>)도 같은 모양입니다. 텍스처는 변수로 고를 수 없어서 아틀라스마다 루프를 따로 두는 구조는 그대로입니다. 분기 조건은 뷰 단위라 한 드로우 안에서 균일합니다.</p>
+</section>
+
+<section id="d3-verify">
+<h2>3.5 검증</h2>
+<h3>GBV</h3>
+<table>
+<tr><th>실행 (Debug, D3D12, <code>--gpu-validation=1</code>, GUARDED)</th><th>결과</th></tr>
+<tr><td><code>DeferredMaterials.json</code> 기본 (디퍼드)</td><td>61 초에 정상 종료, 최대 메모리 약 1.1 GB, GBV·디버그 레이어 오류·경고 0</td></tr>
+<tr><td><code>DeferredMaterials.json</code> 포워드 (<code>--deferred=0 --clustered=0</code>)</td><td>28 초에 정상 종료, 오류·경고 0</td></tr>
+<tr><td><code>MultiShadow.json</code></td><td>28 초에 정상 종료, 오류·경고 0</td></tr>
+</table>
+<p>여전히 시작에 30~60 초가 걸립니다. 이건 GBV 가 모든 셰이더를 계측하는 정상 비용이고, <code>engine.ini</code> 주석의 "켜면 첫 프레임 전에 1 분 넘게 멈춤"과 같은 이야기입니다. 고친 것은 "끝나지 않는" 멈춤입니다.</p>
+
+<h3>화면 비교</h3>
+<p>스크린샷 전체를 비교하면 콘솔 창의 로그 시각 때문에 같은 바이너리로 찍어도 다릅니다. 그래서 씬 뷰 영역(488×270)만 잘라 비교했습니다. 이 영역은 같은 바이너리 두 번이 0 px 로 결정적입니다. Debug, D3D11, 프레임 40.</p>
+<table>
+<tr><th>씬</th><th>기본 (디퍼드)</th><th>디버그 뷰 4 (Shadow factor)</th><th>포워드 (<code>--deferred=0 --clustered=0</code>)</th></tr>
+<tr><td><code>MultiShadow</code></td><td>0 px</td><td>0 px</td><td>0 px</td></tr>
+<tr><td><code>DeferredMaterials</code></td><td>0 px</td><td>0 px</td><td>0 px</td></tr>
+<tr><td><code>SponzaCascades</code></td><td>0 px</td><td>0 px</td><td><b>1 px</b> (최대 22 단계)</td></tr>
+</table>
+<p>SponzaCascades 포워드의 1 px 는 실행 간 잡음이 아닙니다. 수정 후 바이너리로 세 번 찍은 결과는 서로 0 px 였고, 매번 같은 픽셀이 같은 값으로 달랐습니다. 위치는 바닥과 벽이 만나는 그림자 경계입니다. 정수 오프셋은 하드웨어가 텍셀 좌표에서 더하고, 지금은 부동소수점 UV 에서 더하니 반올림이 다릅니다. 그래서 탭 하나의 비교 결과가 경계에서 뒤집힌 것으로 봅니다. 셰이더 주석에도 이 차이를 적었습니다.</p>
+
+<h3>GPU 시간</h3>
+<p>Release, D3D11, 창 2560×1440(씬 뷰 2047×563)입니다. 씬마다 세 번 실행해 종료 직전 프로파일러 값(프레임 하나)의 중앙값을 냈습니다. 단위는 ms.</p>
+<table>
+<tr><th>씬</th><th>MainPass 전 → 후</th><th>DeferredLight 전 → 후</th><th>세 번의 MainPass (전 / 후)</th></tr>
+<tr><td><code>SponzaCascades</code></td><td>0.416 → 0.367</td><td>0.144 → 0.161</td><td>0.42, 0.44, 0.31 / 0.57, 0.32, 0.37</td></tr>
+<tr><td><code>MultiShadow</code></td><td>0.594 → 0.413</td><td>0.506 → 0.285</td><td>0.60, 0.36, 0.59 / 0.65, 0.41, 0.38</td></tr>
+<tr><td><code>ManyLights256</code></td><td>1.268 → 1.313</td><td>1.085 → 1.141</td><td>1.27, 1.27, 1.31 / 1.36, 1.31, 1.30</td></tr>
+<tr><td><code>DeferredMaterials</code></td><td>0.381 → 0.394</td><td>0.191 → 0.208</td><td>0.39, 0.38, 0.38 / 0.39, 0.40, 0.37</td></tr>
+</table>
+<p>읽는 법: 같은 설정의 세 번이 0.36 과 0.60 처럼 두 갈래로 흩어집니다. 그래서 위 차이는 측정 잡음 안에 있습니다. 이 측정으로는 루프 PCF 가 빠르다고도 느리다고도 말할 수 없고, 눈에 띄는 회귀가 없다는 것까지만 말할 수 있습니다.</p>
+</section>
+
+<section id="regress">
+<h2>4. 회귀 확인</h2>
+<p>세 수정을 모두 넣은 최종 트리에서 돌린 것입니다.</p>
+<table>
+<tr><th>실행</th><th>결과</th></tr>
+<tr><td>빌드: SherlockEngine.sln Debug·Release, 프로젝트 솔루션 세 개 Release</td><td>오류 0, 셰이더 경고 없음</td></tr>
+<tr><td>Release D3D11 <code>floor_cube.json --delete=Floor --undo=1 --dump-objects=1</code></td><td>종료 코드 0, 오류 0</td></tr>
+<tr><td>Release D3D11 <code>floor_cube.json --duplicate=Floor --undo=1 --redo=1 --dump-objects=1</code></td><td>종료 코드 0, 오류 0</td></tr>
+<tr><td>Release D3D12 <code>DeferredMaterials.json</code></td><td>종료 코드 0, 오류 0</td></tr>
+<tr><td>Release D3D12 <code>MultiShadow.json --deferred=0 --clustered=0</code></td><td>종료 코드 0, 오류 0</td></tr>
+<tr><td>Release D3D11 <code>SponzaSsao.json</code></td><td>종료 코드 0, 오류 0</td></tr>
+<tr><td>Debug D3D12 GBV 세 번</td><td><a href="#d3-verify">3.5</a></td></tr>
+</table>
+</section>
+
+<section id="unverified">
+<h2>5. 확인하지 못한 것</h2>
+<ul>
+<li><b>다른 GPU.</b> GBV 멈춤과 그 수정은 NVIDIA 드라이버 하나에서만 확인했습니다. AMD·Intel 드라이버에서 원래 코드가 멈췄는지도 모릅니다.</li>
+<li><b>기록에 있던 다른 멈춤 자리.</b> <a href="deferred-clustered-ssao-record.html#unverified">디퍼드 기록 8.4</a> 의 "루트 시그니처 생성" 줄에서의 멈춤(약 8 GB)은 이번에 재현되지 않았습니다. 같은 원인인지 모릅니다. 기록상 한 번 끝까지 돈 이유도 모릅니다.</li>
+<li><b>증분 LTCG 가 레이아웃 변경을 놓친 조건.</b> 링커가 어떤 기준으로 함수를 "바뀌지 않음"으로 보는지는 확인하지 않았습니다. 수정은 그 판정을 쓰지 않는 쪽입니다.</li>
+<li><b>스크립트 DLL 의 증분 LTCG.</b> 스크립트 DLL 에서 같은 문제가 실제로 난 것은 본 적이 없습니다. 전체 LTCG 로 바꾼 것은 예방입니다.</li>
+<li><b>화면 비교 범위.</b> PCF 수정의 화면 비교는 Debug D3D11 세 씬입니다. D3D12 와 Release 는 실행과 로그만 확인했습니다. 같은 HLSL 이라 결과가 다를 이유는 없지만 이미지로 확인하지는 않았습니다.</li>
+<li><b>별개의 GBV 오류.</b> <a href="structure-review-record.html">구조 검토 기록</a>과 <a href="compute-uav-record.html">컴퓨트 RHI 기록</a>의 일회성 <code>Incompatible texture barrier layout</code>(<code>builtin:flatnormal</code>)은 다른 결함입니다. 이번 작업과 관계없고 여전히 원인을 모릅니다.</li>
+</ul>
+</section>
+
+<section id="files">
+<h2>6. 바뀐 파일</h2>
+<table>
+<tr><th>결함</th><th>파일</th><th>바뀐 것</th></tr>
+<tr><td>1</td><td><code>SherlockEngine/SherlockEngine.vcxproj</code></td><td>Release|Win32·Release|x64 <code>&lt;Link&gt;</code> 에 <code>LinkTimeCodeGeneration</code> + 이유 주석</td></tr>
+<tr><td>1</td><td><code>Projects/*/…Scripts.vcxproj</code> (3 개)</td><td>Release|x64 <code>&lt;Link&gt;</code> 에 같은 줄</td></tr>
+<tr><td>1</td><td><code>SherlockEngine/Editor/ProjectGenerator.cpp</code></td><td>vcxproj 템플릿이 Release 에 같은 줄을 씀</td></tr>
+<tr><td>2</td><td><code>SherlockEditor/SherlockEditor.vcxproj</code>, <code>SherlockGame/SherlockGame.vcxproj</code></td><td><code>$(SolutionDir)</code> → <code>$(ProjectDir)..\</code>, x64 <code>OutDir</code> 고정</td></tr>
+<tr><td>3</td><td><code>SherlockEngine/Shaders/Shading.hlsli</code></td><td><code>SampleShadowViewCoverage</code> 의 PCF 를 <code>[loop]</code> + 텍셀 크기 UV 오프셋으로</td></tr>
+</table>
+</section>
+
+</main>
+</div>
+</body>
+</html>

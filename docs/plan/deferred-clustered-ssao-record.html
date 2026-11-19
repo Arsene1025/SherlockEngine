@@ -137,7 +137,7 @@ ol.read > li { margin: 10px 0; }
 <header class="top">
   <h1>디퍼드 · 클러스터드 라이팅 · SSAO 구현 기록</h1>
   <p><a href="deferred-clustered-ssao-plan.html">디퍼드·클러스터드·SSAO 구현 계획</a>의 세 단계(2단계 디퍼드 기본, 3단계 조명 컬링·클러스터드 라이팅, 5단계 SSAO)를 구현하고 검증한 기록입니다. 어느 파일의 어느 함수를 바꿨는지, 구현을 이해하려면 코드를 어떤 순서로 읽으면 되는지, 그 코드가 기대는 개념이 무엇인지를 한 문서에 모았습니다.</p>
-  <div class="box ok"><p><b>상태 (2026-11-18).</b> 세 단계 모두 구현했고 D3D11·D3D12 두 백엔드에서 화면 비교로 검증했습니다. 이전 경로(포워드, 클러스터 없음, 조명 번호 순 그림자)는 실행 인자 셋으로 그대로 되돌릴 수 있고, 그렇게 되돌린 화면은 작업 전 화면과 <b>픽셀 단위로 같습니다</b> (<a href="#v-image">8.1</a>). 아직 커밋하지 않았습니다. <b>D3D12 GPU 기반 검증(<code>--gpu-validation=1</code>)은 미해결</b>입니다 — 한 번 통과한 뒤 같은 바이너리로 네 번 멈췄습니다 (<a href="#unverified">8.4</a>).</p></div>
+  <div class="box ok"><p><b>상태 (2026-11-18).</b> 세 단계 모두 구현했고 D3D11·D3D12 두 백엔드에서 화면 비교로 검증했습니다. 이전 경로(포워드, 클러스터 없음, 조명 번호 순 그림자)는 실행 인자 셋으로 그대로 되돌릴 수 있고, 그렇게 되돌린 화면은 작업 전 화면과 <b>픽셀 단위로 같습니다</b> (<a href="#v-image">8.1</a>). 커밋 <code>855139b</code>. <b>D3D12 GPU 기반 검증(<code>--gpu-validation=1</code>)이 멈추던 문제</b>는 2026-11-20 에 원인을 찾아 고쳤습니다 — 그림자 PCF 의 <code>[unroll]</code> 이 원인이었습니다 (<a href="#unverified">8.4</a>, <a href="defect-fix-record.html#d3">결함 수정 기록 3장</a>).</p></div>
   <p>기준: 커밋 <code>3af4066</code> + 작업 트리. 계획 문서와 다르게 구현한 부분은 해당 절에 <span class="tag p">계획과 다름</span> 으로 표시했습니다. 코드 위치는 "파일 + 함수/타입 이름"으로 적었고 경로는 <code>SherlockEngine/</code> 프로젝트 폴더 기준입니다. 숫자는 이 문서를 쓰면서 실제로 실행해서 얻은 값이고, 얻지 못한 것은 <a href="#unverified">8.4</a> 에 따로 적었습니다.</p>
   <p class="foot">검증 씬은 기존 Crytek Sponza(<code>Projects/SherlockTestScenes/Assets/Models/Sponza</code>) 위에 만들었습니다. 메모에 적어 둔 Intel Sponza 는 내려받지 않았습니다 (파일 다운로드는 사용자 확인이 필요해서). 조명 128 개라는 구성은 그대로 따랐습니다.</p>
 </header>
@@ -566,9 +566,9 @@ for (j = 0; j &lt; cell.y; ++j) color += ShadeLight(s, lights[clusterLightIndice
 
 <h3 id="unverified">8.4 확인하지 못한 것</h3>
 <ul>
-<li><b>D3D12 GPU 기반 검증 (<code>--gpu-validation=1</code>)</b>: <code>DeferredMaterials.json</code> 으로 한 번은 오류 없이 끝까지 돌았습니다. 그 뒤 같은 바이너리로 네 번 더 돌렸는데 네 번 모두 끝나지 않았습니다: 예전 경로(<code>--deferred=0 --clustered=0</code>)로 돌린 DeferredMaterials 는 초기화 중 "루트 시그니처 생성" 줄에서 멈췄고 (프로세스 메모리 약 8 GB), 기본 설정 DeferredMaterials 두 번은 첫 프레임 제출 직전("PSO 생성 #10" 다음), MultiShadow 한 번은 다시 "루트 시그니처 생성" 줄에서 멈췄습니다. 예전 경로에서도 멈췄으므로 디퍼드 패스만의 문제는 아닌 것으로 보이지만, 이번 변경(프레임 셋의 t30·t31 등)과 무관한지는 작업 전 바이너리로 돌려 보지 않아 가르지 못했습니다. <span class="tag x">미해결</span></li>
+<li><b>D3D12 GPU 기반 검증 (<code>--gpu-validation=1</code>)</b>: <code>DeferredMaterials.json</code> 으로 한 번은 오류 없이 끝까지 돌았습니다. 그 뒤 같은 바이너리로 네 번 더 돌렸는데 네 번 모두 끝나지 않았습니다: 예전 경로(<code>--deferred=0 --clustered=0</code>)로 돌린 DeferredMaterials 는 초기화 중 "루트 시그니처 생성" 줄에서 멈췄고 (프로세스 메모리 약 8 GB), 기본 설정 DeferredMaterials 두 번은 첫 프레임 제출 직전("PSO 생성 #10" 다음), MultiShadow 한 번은 다시 "루트 시그니처 생성" 줄에서 멈췄습니다. 예전 경로에서도 멈췄으므로 디퍼드 패스만의 문제는 아닌 것으로 보이지만, 이번 변경(프레임 셋의 t30·t31 등)과 무관한지는 작업 전 바이너리로 돌려 보지 않아 가르지 못했습니다. <span class="tag v">11-20 해결</span> 다시 재현해 보니 GBV 가 조명 PS(디퍼드 라이팅·포워드 메인)를 계측한 뒤 드라이버 셰이더 컴파일러가 끝나지 않는 것이었습니다. <code>SampleShadowViewCoverage</code> 의 <code>[unroll]</code> PCF 5×5 가 호출 지점마다 펼쳐져 두 PS 에 <code>sample_c</code> 가 각각 1000 개였고, 루프로 바꾸자 GUARDED 로 끝까지 돌았습니다. 이번 변경과 무관하게 예전 경로에서도 멈춘 이유도 이것입니다(<a href="defect-fix-record.html#d3">결함 수정 기록 3장</a>). "루트 시그니처 생성" 줄의 멈춤은 다시 재현되지 않았습니다.</li>
 <li><b>게임 exe 화면 비교</b>: <code>SherlockGame.exe</code> 는 <code>--scene</code> 을 받지 않고 프로젝트 시작 씬(<code>MasterChiefWalk.json</code>)을 엽니다. 디퍼드 켬/끔·예전 경로 세 가지 모두 오류 없이 돌았지만, 이 씬은 실시간 애니메이션이라 같은 설정을 두 번 돌려도 9,899 px 가 달라서 이미지 비교는 하지 못했습니다. 게임 경로(<code>withColor = false</code> 뷰 타깃)의 G-buffer 생성은 로그로만 확인했습니다.</li>
-<li><b>Release 빌드</b>: 빌드·측정하지 않았습니다.</li>
+<li><b>Release 빌드</b>: 이 작업에서는 빌드·측정하지 않았습니다. 2026-11-20 결함 수정 때 Release 로 실행하고 GPU 구간 시간을 쟀습니다(<a href="defect-fix-record.html#d3-verify">결함 수정 기록 3.5</a>). ManyLights256 의 CPU 비닝은 Release 한 프레임 약 2.1 ms.</li>
 <li><b>SSAO 수치 검증</b>: 레퍼런스(레이 트레이싱 AO)와 비교하지 않았습니다. 모양만 눈으로 확인했습니다.</li>
 </ul>
 </section>
@@ -578,7 +578,7 @@ for (j = 0; j &lt; cell.y; ++j) color += ShadeLight(s, lights[clusterLightIndice
 <ul>
 <li><b>클러스터 비닝을 컴퓨트로</b>: 지금 RHI 에 컴퓨트·UAV·구조체 버퍼가 다 있으므로 <code>BuildClusters</code> 의 (2)~(4) 를 커널 두 개(조명 → 상자 개수, 누적합 → 채우기)로 옮길 수 있습니다. CPU 5 ms 가 사라집니다.</li>
 <li><b>깊이 정밀도</b>: 깊이를 D32F (가능하면 reversed-Z)로 바꾸면 위치 복원 오차와 그림자 경계 뒤집힘(<a href="#v-image">8.1</a>)이 줄어듭니다. 그림자·파티클 깊이 셋도 함께 봐야 합니다.</li>
-<li><b>GPU 기반 검증이 멈추는 원인</b> (<a href="#unverified">8.4</a>): 작업 전 바이너리로 같은 실행을 해 보고 이번 변경과의 관련을 가립니다.</li>
+<li><s><b>GPU 기반 검증이 멈추는 원인</b> (<a href="#unverified">8.4</a>): 작업 전 바이너리로 같은 실행을 해 보고 이번 변경과의 관련을 가립니다.</s> 11-20 해결 (<a href="defect-fix-record.html#d3">결함 수정 기록 3장</a>).</li>
 <li><b>로드맵 다음 단계</b>: <a href="rendering-roadmap-plan.html">렌더링 구현 순서 계획</a>에서 남은 것은 VSM(선택)입니다.</li>
 </ul>
 </section>

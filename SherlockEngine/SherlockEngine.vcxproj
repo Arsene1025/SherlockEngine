@@ -117,6 +117,9 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <!-- 증분 LTCG(/LTCG:incremental, WholeProgramOptimization 기본값) 는 헤더의 클래스 레이아웃이 바뀌어도 인라인된 옛 기계어를 .iobj 에서 복사해 쓸 수 있음
+           (2026-11-20 삭제 자동 검증 segfault 의 원인). 링크가 느려져도 전체 LTCG 로 한다. -->
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -155,6 +158,9 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <!-- 증분 LTCG(/LTCG:incremental, WholeProgramOptimization 기본값) 는 헤더의 클래스 레이아웃이 바뀌어도 인라인된 옛 기계어를 .iobj 에서 복사해 쓸 수 있음
+           (2026-11-20 삭제 자동 검증 segfault 의 원인). 링크가 느려져도 전체 LTCG 로 한다. -->
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

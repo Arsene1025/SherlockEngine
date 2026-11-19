@@ -135,6 +135,9 @@ namespace
 			s << L"    </ClCompile>\r\n    <Link>\r\n      <SubSystem>Windows</SubSystem>\r\n      <GenerateDebugInformation>true</GenerateDebugInformation>\r\n";
 			s << L"      <AdditionalDependencies>SherlockEngine.lib;%(AdditionalDependencies)</AdditionalDependencies>\r\n";
 			s << L"      <AdditionalLibraryDirectories>$(SherlockRepo)x64\\$(Configuration)\\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>\r\n";
+			// Release 는 전체 LTCG. 기본값인 증분 LTCG 는 엔진 헤더의 클래스 레이아웃이 바뀌어도 인라인된 옛 기계어를
+			// .iobj 에서 복사해 쓸 수 있음 — 엔진 DLL 에서 실제로 일어난 일 (docs/plan/defect-fix-record.html).
+			if (!debug) s << L"      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>\r\n";
 			s << L"    </Link>\r\n  </ItemDefinitionGroup>\r\n";
 		}
 		// Scripts\ 아래 하위 폴더까지 재귀(**). 실험용 스크립트를 Scripts\Tests\ 에 따로 모아 두기 위해서다

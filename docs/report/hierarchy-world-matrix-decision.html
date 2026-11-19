@@ -123,7 +123,7 @@ th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertica
     <tr><td>5</td><td>평평한 씬에서 이득이 없거나 약간 느려짐</td><td>루트마다 스택 준비와 <code>children</code> 확인이 추가됨(추정)</td><td>±0.05ms. 방법에 따라 부호가 다름</td><td>감수. 문서에 명시</td></tr>
     <tr><td>6</td><td>순회 스택이 멤버라 재진입·다중 스레드에 약함</td><td><code>m_hierarchyStack</code> 을 프레임마다 재사용</td><td><code>BuildDrawList</code> 는 렌더 스레드 한 곳에서만 불림</td><td>병렬화나 두 번째 호출처를 만들 때 지역 스택이나 호출자 소유로 바꿀 것</td></tr>
     <tr><td>7</td><td>"월드 행렬이 빨라졌다"는 오해</td><td>함수 자체는 그대로 재귀임</td><td>다른 호출처는 이득 없음. 대부분 선택·디버그 오브젝트에만 불려 비용이 작음</td><td>문서와 D7 카드에 범위를 명시함</td></tr>
-    <tr><td>8</td><td>삭제·복제 자동 검증이 비정상 종료 (이번 변경과 무관)</td><td><code>--delete</code>, <code>--duplicate</code> 를 Release 에디터에서 실행하면 segfault(종료 코드 139). 변경 전 바이너리에서도, 계층 없는 <code>floor_cube</code> 에서도 같음</td><td>원인 미조사</td><td>별도로 조사. 이 문제가 풀리면 위험 2의 미검증 경로를 돌려 볼 수 있음</td></tr>
+    <tr><td>8</td><td>삭제·복제 자동 검증이 비정상 종료 (이번 변경과 무관)</td><td><code>--delete</code>, <code>--duplicate</code> 를 Release 에디터에서 실행하면 segfault(종료 코드 139). 변경 전 바이너리에서도, 계층 없는 <code>floor_cube</code> 에서도 같음</td><td>원인 미조사 → 2026-11-20 해결: Release 증분 LTCG 가 옛 레이아웃의 인라인 코드를 복사한 것(<a href="../plan/defect-fix-record.html#d1">결함 수정 기록 1장</a>)</td><td>별도로 조사. 이 문제가 풀리면 위험 2의 미검증 경로를 돌려 볼 수 있음 — 이제 돌려 볼 수 있음</td></tr>
     <tr><td>9</td><td>합성 씬의 대표성</td><td>OL_TestScene 이 이 PC 에 없어 같은 모양(루트 하나 아래 7,000개)의 합성 씬으로 측정</td><td>실제 씬의 절대값은 다를 수 있음. 비율은 비슷할 것으로 보이나 확인하지 못함</td><td>실제 씬에서 같은 방법으로 재측정</td></tr>
   </table>
 </section>

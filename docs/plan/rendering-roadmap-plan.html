@@ -88,7 +88,7 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
   <p>CSM 과 glTF 스키닝·애니메이션 이후에 구현할 렌더링 기능 여섯 단계의 순서, 범위, 검증 방법입니다.</p>
   <p>2026-11-13 작성. 기준: 커밋 2a67489 + 작업 트리. <span class="tag p">제안</span> 표시가 붙은 부분은 코드에 아직 없는 설계 권고입니다. <b>이 문서를 쓴 시점에는 코드를 고치지 않았고, 빌드나 실행으로 확인한 것도 없습니다.</b> 코드 근거는 키워드 검색과 해당 줄 주변을 읽은 것입니다.</p>
   <p class="foot">코드 위치의 행 번호는 이 시점의 참고용입니다. 앞 단계를 구현하면 뒤 단계의 행 번호는 밀립니다. 경로는 <code>SherlockEngine/</code> 프로젝트 폴더 기준입니다. 체크박스는 표시용이며 저장되지 않습니다. 기존 계획 문서(<code>rhi-roadmap-plan.html</code>, <code>multi-light-shadow-plan.html</code>)는 고치지 않았습니다.</p>
-  <div class="box ok"><p><b>진행 상황 (2026-11-18).</b> 1단계(반투명·빌보드, 파티클은 4단계의 GPU 파티클로 대체)와 4단계(컴퓨트 RHI → GPU 파티클, <a href="vfx-gpu-particles-record.html">VFX 구현 기록</a>)가 끝났고, 2·3·5단계(디퍼드, 조명 컬링 + CPU 클러스터드 라이팅, SSAO)가 2026-11-18 에 끝났습니다 — <a href="deferred-clustered-ssao-record.html">디퍼드·클러스터드·SSAO 구현 기록</a>(미커밋). 남은 것은 6단계 VSM(선택)과, 3단계가 남겨 둔 "CPU 비닝을 컴퓨트로 옮기기"입니다. 아래 본문은 계획 당시 그대로이고, 구현에서 달라진 점은 구현 기록에 있습니다.</p></div>
+  <div class="box ok"><p><b>진행 상황 (2026-11-18).</b> 1단계(반투명·빌보드, 파티클은 4단계의 GPU 파티클로 대체)와 4단계(컴퓨트 RHI → GPU 파티클, <a href="vfx-gpu-particles-record.html">VFX 구현 기록</a>)가 끝났고, 2·3·5단계(디퍼드, 조명 컬링 + CPU 클러스터드 라이팅, SSAO)가 2026-11-18 에 끝났습니다 — <a href="deferred-clustered-ssao-record.html">디퍼드·클러스터드·SSAO 구현 기록</a>(커밋 <code>855139b</code>). 남은 것은 6단계 VSM(선택)과, 3단계가 남겨 둔 "CPU 비닝을 컴퓨트로 옮기기"입니다. 아래 본문은 계획 당시 그대로이고, 구현에서 달라진 점은 구현 기록에 있습니다.</p></div>
 </header>
 
 <section id="overview">
