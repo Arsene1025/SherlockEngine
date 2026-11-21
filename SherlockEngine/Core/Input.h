@@ -31,10 +31,10 @@ public:
 	void OnKeyDown(uint32_t vk);
 	void OnKeyUp(uint32_t vk);
 	void OnMouseButton(MouseButton button, bool down);
-	void OnMouseMove(int x, int y);        // 클라이언트 좌표. 캡처 중에는 음수도 옴.
-	void OnMouseWheel(float delta);        // WHEEL_DELTA(120) 단위로 정규화된 값
-	void OnFocusLost();                    // 모든 상태 초기화. Alt-Tab 후 키 고착 방지.
-	void OnCaptureLost();                  // 마우스 버튼·델타만 초기화 (WM_CAPTURECHANGED)
+	void OnMouseMove(int x, int y);   // 클라이언트 좌표. 캡처 중에는 음수도 옴.
+	void OnMouseWheel(float delta);   // WHEEL_DELTA(120) 단위로 정규화된 값
+	void OnFocusLost();               // 모든 상태 초기화. Alt-Tab 후 키 고착 방지.
+	void OnCaptureLost();             // 마우스 버튼·델타만 초기화 (WM_CAPTURECHANGED)
 
 	// 커서를 SetCursorPos로 옮긴 직후에 호출함. 현재 위치를 바꾸되 델타에는
 	// 반영하지 않음. 이 호출이 없으면 커서를 중앙으로 되돌린 것 자체가 큰 마우스 이동으로 보임.

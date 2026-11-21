@@ -73,11 +73,14 @@ public:
 	{
 		if (Get(handle) == nullptr) return;   // 이미 해제됐거나 세대가 다름
 		Slot& slot = m_slots[handle.index];
-		slot.item = T{};     // 스마트 포인터 멤버가 여기서 해제됨
+		slot.item = T{};   // 스마트 포인터 멤버가 여기서 해제됨
 		// 빈 객체를 이동 대입하면서 기존 Comptr들이 Release()되면서 GPU리소스 해제
 		slot.alive = false;
 		++slot.generation;
-		if (slot.generation == 0) slot.generation = 1;
+		if (slot.generation == 0)
+		{
+			slot.generation = 1;
+		}
 		m_free.push_back(handle.index);
 	}
 

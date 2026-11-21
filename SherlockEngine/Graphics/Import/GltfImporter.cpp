@@ -102,15 +102,27 @@ namespace
 		if (bytes.size() >= 4 && ReadU32(bytes.data()) == kGlbMagic)
 		{
 			//파일 맨 앞 12바이트짜리 헤더를 먼저 읽어야 함.
-			if (bytes.size() < 12) { error = "GLB 헤더가 잘림"; return false; }
+			if (bytes.size() < 12)
+			{
+				error = "GLB 헤더가 잘림";
+				return false;
+			}
 
 			//Version과 총 길이
 			const uint32_t version = ReadU32(bytes.data() + 4);
 			const uint32_t totalLength = ReadU32(bytes.data() + 8);
 			//glTF ver.2버전만 지원
-			if (version != 2) { error = std::format("지원하지 않는 GLB 버전 {}", version); return false; }
+			if (version != 2)
+			{
+				error = std::format("지원하지 않는 GLB 버전 {}", version);
+				return false;
+			}
 			//실제 파일과 헤더의 길이 비교(잘렸는지 확인)
-			if (totalLength > bytes.size()) { error = "GLB 헤더의 길이가 실제 파일보다 큼 (잘린 파일)"; return false; }
+			if (totalLength > bytes.size())
+			{
+				error = "GLB 헤더의 길이가 실제 파일보다 큼 (잘린 파일)";
+				return false;
+			}
 
 			bool foundJson = false;
 
@@ -126,7 +138,11 @@ namespace
 				offset += 8;
 
 				//정상적이라면 전체 길이 - 데이터 시작 지점 이 청크의 길이보다 작을 수 없음.
-				if (chunkLength > totalLength - offset) { error = "GLB 청크 길이가 파일 범위를 벗어남"; return false; }
+				if (chunkLength > totalLength - offset)
+				{
+					error = "GLB 청크 길이가 파일 범위를 벗어남";
+					return false;
+				}
 
 				//실제 데이터위치는 파일 시작 지점 + 데이터 시작 지점으로 구할 수 있음
 				const uint8_t* data = bytes.data() + offset;
@@ -149,14 +165,26 @@ namespace
 				offset += chunkLength;
 			}
 			//json못찾으면 오류
-			if (!foundJson) { error = "GLB 에 JSON 청크가 없음"; return false; }
+			if (!foundJson)
+			{
+				error = "GLB 에 JSON 청크가 없음";
+				return false;
+			}
 		}
 
 		//json범위 구한걸로 파싱
-		root = json::parse(jsonBegin, jsonEnd, nullptr,  false);
+		root = json::parse(jsonBegin, jsonEnd, nullptr, false);
 		//json유효 한지 검사.
-		if (root.is_discarded()) { error = "JSON 문법 오류"; return false; }
-		if (!root.is_object()) { error = "JSON 루트가 객체가 아님"; return false; }
+		if (root.is_discarded())
+		{
+			error = "JSON 문법 오류";
+			return false;
+		}
+		if (!root.is_object())
+		{
+			error = "JSON 루트가 객체가 아님";
+			return false;
+		}
 		return true;
 	}
 
@@ -189,27 +217,27 @@ namespace
 		out.clear();
 		out.reserve(text.size() / 4 * 3);
 
-		
-		uint32_t accumulator = 0; //비트 저장용
-		int bits = 0;			  //저장된 비트 수
+
+		uint32_t accumulator = 0;   //비트 저장용
+		int bits = 0;               //저장된 비트 수
 		for (const char c : text)
 		{
-			if (c == '=') break;											 //패딩이면 끝
-			if (c == '\r' || c == '\n' || c == ' ' || c == '\t') continue;   //공백, 개행 무시
-			const int value = Base64Value(c);								 //0~63으로 변환
-			if (value < 0) return false;									 //범위 밖은 base64아님
-			accumulator = (accumulator << 6) | static_cast<uint32_t>(value); //6비트를 아래에 붙임
+			if (c == '=') break;                                               //패딩이면 끝
+			if (c == '\r' || c == '\n' || c == ' ' || c == '\t') continue;     //공백, 개행 무시
+			const int value = Base64Value(c);                                  //0~63으로 변환
+			if (value < 0) return false;                                       //범위 밖은 base64아님
+			accumulator = (accumulator << 6) | static_cast<uint32_t>(value);   //6비트를 아래에 붙임
 			bits += 6;
-			if (bits >= 8)													 //한 바이트가 모였으면
+			if (bits >= 8)   //한 바이트가 모였으면
 			{
-				bits -= 8;													 //8비트 꺼냄
+				bits -= 8;   //8비트 꺼냄
 				out.push_back(static_cast<uint8_t>((accumulator >> bits) & 0xFF));
 			}
 		}
 		return true;
 	}
 
-	
+
 	/*
 	URI에서 특수 문자는 %뒤에 16진수 두 자리로 인코딩 됨. ex) My%20Texture.png(%20은 공백)
 	외부 파일을 가리키는 uri에 이런 표기가 들어있으면 파일 경로로 쓰지 못함.
@@ -219,12 +247,12 @@ namespace
 	{
 		//'0'~'9', 'a'~'f', 'A'~'F'를 0~15로 변경, 실패시 -1 반환
 		const auto hexValue = [](char c) -> int
-			{
-				if (c >= '0' && c <= '9') return c - '0';
-				if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-				if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-				return -1;
-			};
+		{
+			if (c >= '0' && c <= '9') return c - '0';
+			if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+			if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+			return -1;
+		};
 		std::string decoded;
 		decoded.reserve(uri.size());
 
@@ -238,7 +266,10 @@ namespace
 				decoded.push_back(static_cast<char>(hexValue(uri[i + 1]) * 16 + hexValue(uri[i + 2])));
 				i += 2;
 			}
-			else decoded.push_back(uri[i]);
+			else
+			{
+				decoded.push_back(uri[i]);
+			}
 		}
 		return decoded;
 	}
@@ -251,9 +282,21 @@ namespace
 		if (uri.starts_with("data:"))
 		{
 			const size_t comma = uri.find(',');
-			if (comma == std::string::npos) { error = "data URI 에 ',' 가 없음"; return false; }
-			if (uri.substr(0, comma).find(";base64") == std::string::npos) { error = "base64 가 아닌 data URI 는 지원하지 않음"; return false; }
-			if (!DecodeBase64(std::string_view(uri).substr(comma + 1), out)) { error = "base64 디코딩 실패"; return false; }
+			if (comma == std::string::npos)
+			{
+				error = "data URI 에 ',' 가 없음";
+				return false;
+			}
+			if (uri.substr(0, comma).find(";base64") == std::string::npos)
+			{
+				error = "base64 가 아닌 data URI 는 지원하지 않음";
+				return false;
+			}
+			if (!DecodeBase64(std::string_view(uri).substr(comma + 1), out))
+			{
+				error = "base64 디코딩 실패";
+				return false;
+			}
 			return true;
 		}
 
@@ -261,68 +304,99 @@ namespace
 		//directory + DecodeUriEscapes(uri) → '/'를 '\\'로 바꿔서 ReadWholeFile
 		std::wstring filePath = directory + ModelImport::ToWide(DecodeUriEscapes(uri));
 		std::replace(filePath.begin(), filePath.end(), L'/', L'\\');
-		if (!ModelImport::ReadWholeFile(filePath, out)) { error = "파일을 읽을 수 없음: " + ModelImport::ToUtf8(filePath); return false; }
+		if (!ModelImport::ReadWholeFile(filePath, out))
+		{
+			error = "파일을 읽을 수 없음: " + ModelImport::ToUtf8(filePath);
+			return false;
+		}
 		return true;
 	}
 
 	//buffers[]를 전부 로딩.
-	bool LoadBuffers(const json& root, std::vector<uint8_t>& glbBin, const std::wstring& directory,
-		std::vector<std::vector<uint8_t>>& buffers, std::string& error)
+	bool LoadBuffers(const json& root, std::vector<uint8_t>& glbBin, const std::wstring& directory, std::vector<std::vector<uint8_t>>& buffers, std::string& error)
 	{
 		buffers.clear();
 		const auto found = root.find("buffers");
 		if (found == root.end()) return true;
-		if (!found->is_array()) { error = "buffers 가 배열이 아님"; return false; }
+		if (!found->is_array())
+		{
+			error = "buffers 가 배열이 아님";
+			return false;
+		}
 
 		buffers.resize(found->size());
 		for (size_t i = 0; i < found->size(); ++i)
 		{
 			const json& entry = (*found)[i];
-			if (!entry.is_object()) { error = std::format("buffers[{}] 가 객체가 아님", i); return false; }
+			if (!entry.is_object())
+			{
+				error = std::format("buffers[{}] 가 객체가 아님", i);
+				return false;
+			}
 
 			//byteLength가 필수, 길이는 음수일 수 가 없음.
 			const auto length = entry.find("byteLength");
-			if (length == entry.end() || !length->is_number_unsigned()) { error = std::format("buffers[{}].byteLength 가 없거나 잘못됨", i); return false; }
+			if (length == entry.end() || !length->is_number_unsigned())
+			{
+				error = std::format("buffers[{}].byteLength 가 없거나 잘못됨", i);
+				return false;
+			}
 			const size_t byteLength = length->get<size_t>();
 
-			//Uri가 있는지 
+			//Uri가 있는지
 			const auto uri = entry.find("uri");
 			//uri가 없으면 glb의 bin 청크를 사용하는 경우. glbbin이 비어있으면 안됨.
 			//복사가 되지 않게 move로 옮기기
 			if (uri == entry.end())
 			{
-				if (i != 0 || glbBin.empty()) { error = std::format("buffers[{}] 에 uri 가 없는데 GLB BIN 청크도 없음", i); return false; }
+				if (i != 0 || glbBin.empty())
+				{
+					error = std::format("buffers[{}] 에 uri 가 없는데 GLB BIN 청크도 없음", i);
+					return false;
+				}
 				buffers[i] = std::move(glbBin);
 			}
 			//uri가 있으면 LoadUriBytes사용해서 읽기
 			else
 			{
-				if (!uri->is_string()) { error = std::format("buffers[{}].uri 가 문자열이 아님", i); return false; }
+				if (!uri->is_string())
+				{
+					error = std::format("buffers[{}].uri 가 문자열이 아님", i);
+					return false;
+				}
 				std::string reason;
-				if (!LoadUriBytes(uri->get<std::string>(), directory, buffers[i], reason)) { error = std::format("buffers[{}]: {}", i, reason); return false; }
+				if (!LoadUriBytes(uri->get<std::string>(), directory, buffers[i], reason))
+				{
+					error = std::format("buffers[{}]: {}", i, reason);
+					return false;
+				}
 			}
 			//실제 크기가 byteLength보다 작으면 오류임.
-			if (buffers[i].size() < byteLength) { error = std::format("buffers[{}] 가 byteLength({})보다 짧음 ({})", i, byteLength, buffers[i].size()); return false; }
+			if (buffers[i].size() < byteLength)
+			{
+				error = std::format("buffers[{}] 가 byteLength({})보다 짧음 ({})", i, byteLength, buffers[i].size());
+				return false;
+			}
 		}
 		return true;
 	}
 	//OpenGL상수와 같은 숫자
-	constexpr int kComponentByte = 5120;		 //BYTE (부호있는 8비트)
-	constexpr int kComponentUnsignedByte = 5121; //UNSIGNED_BYTE
-	constexpr int kComponentShort = 5122;		 //Short
-	constexpr int kComponentUnsignedShort = 5123;//U_Short
-	constexpr int kComponentUnsignedInt = 5125;  //u_int
-	constexpr int kComponentFloat = 5126;        //float
+	constexpr int kComponentByte = 5120;            //BYTE (부호있는 8비트)
+	constexpr int kComponentUnsignedByte = 5121;    //UNSIGNED_BYTE
+	constexpr int kComponentShort = 5122;           //Short
+	constexpr int kComponentUnsignedShort = 5123;   //U_Short
+	constexpr int kComponentUnsignedInt = 5125;     //u_int
+	constexpr int kComponentFloat = 5126;           //float
 
 	//읽을 준비가 끝난 accessor
 	struct AccessorView
 	{
-		const uint8_t* data = nullptr; //첫 번째 요소가 있는 메모리 주소
-		size_t count = 0;			   //요소 개수(ex 정점 수)
-		size_t stride = 0;			   //요소와 요소 사이 간격(byte)
-		int componentType = 0;         //성분 하나의 타입
-		int componentCount = 0;        //요소가 가진 성분 수(Vector4 면 4)
-		bool normalized = false;       //정수를 0~1 or -1~1로 정규화 할지
+		const uint8_t* data = nullptr;   //첫 번째 요소가 있는 메모리 주소
+		size_t count = 0;                //요소 개수(ex 정점 수)
+		size_t stride = 0;               //요소와 요소 사이 간격(byte)
+		int componentType = 0;           //성분 하나의 타입
+		int componentCount = 0;          //요소가 가진 성분 수(Vector4 면 4)
+		bool normalized = false;         //정수를 0~1 or -1~1로 정규화 할지
 	};
 
 	//성분 타입에 따라 크기 반환
@@ -330,10 +404,13 @@ namespace
 	{
 		switch (componentType)
 		{
-		case kComponentByte: case kComponentUnsignedByte: return 1;
-		case kComponentShort: case kComponentUnsignedShort: return 2;
-		case kComponentUnsignedInt: case kComponentFloat: return 4;
-		default: return 0;
+		case kComponentByte:
+		case kComponentUnsignedByte:  return 1;
+		case kComponentShort:
+		case kComponentUnsignedShort: return 2;
+		case kComponentUnsignedInt:
+		case kComponentFloat:         return 4;
+		default:                      return 0;
 		}
 	}
 
@@ -380,27 +457,46 @@ namespace
 		}
 		//accessor유효한지 검사
 		const json& accessor = (*accessors)[index];
-		if (!accessor.is_object()) { error = std::format("accessors[{}] 가 객체가 아님", index); return false; }
-		if (accessor.contains("sparse")) { error = std::format("accessors[{}]: sparse accessor 는 지원하지 않음", index); return false; }
+		if (!accessor.is_object())
+		{
+			error = std::format("accessors[{}] 가 객체가 아님", index);
+			return false;
+		}
+		if (accessor.contains("sparse"))
+		{
+			error = std::format("accessors[{}]: sparse accessor 는 지원하지 않음", index);
+			return false;
+		}
 
 		//view안에 대입할 정보들 선언
 		size_t componentType = 0, count = 0, bufferViewIndex = 0, accessorOffset = 0;
 		//그 정보들 있는지 확인
-		if (!ReadSize(accessor, "componentType", true, 0, componentType) || !ReadSize(accessor, "count", true, 0, count)
-			|| !ReadSize(accessor, "bufferView", true, 0, bufferViewIndex) || !ReadSize(accessor, "byteOffset", false, 0, accessorOffset))
+		if (!ReadSize(accessor, "componentType", true, 0, componentType) || !ReadSize(accessor, "count", true, 0, count) || !ReadSize(accessor, "bufferView", true, 0, bufferViewIndex) || !ReadSize(accessor, "byteOffset", false, 0, accessorOffset))
 		{
 			error = std::format("accessors[{}]: componentType/count/bufferView/byteOffset 가 없거나 정수가 아님 (bufferView 없는 accessor 는 지원하지 않음)", index);
 			return false;
 		}
 		//type찾기
 		const auto typeField = accessor.find("type");
-		if (typeField == accessor.end() || !typeField->is_string()) { error = std::format("accessors[{}].type 이 없거나 문자열이 아님", index); return false; }
+		if (typeField == accessor.end() || !typeField->is_string())
+		{
+			error = std::format("accessors[{}].type 이 없거나 문자열이 아님", index);
+			return false;
+		}
 
 		//타입의 크기와 성분 수 확인
 		const size_t componentSize = ComponentSize(static_cast<int>(componentType));
 		const int componentCount = ComponentCountOf(typeField->get<std::string>());
-		if (componentSize == 0) { error = std::format("accessors[{}]: 알 수 없는 componentType {}", index, componentType); return false; }
-		if (componentCount == 0) { error = std::format("accessors[{}]: 알 수 없는 type '{}'", index, typeField->get<std::string>()); return false; }
+		if (componentSize == 0)
+		{
+			error = std::format("accessors[{}]: 알 수 없는 componentType {}", index, componentType);
+			return false;
+		}
+		if (componentCount == 0)
+		{
+			error = std::format("accessors[{}]: 알 수 없는 type '{}'", index, typeField->get<std::string>());
+			return false;
+		}
 		//요소 크기 성분수 * 타입 크기
 		const size_t elementSize = componentSize * static_cast<size_t>(componentCount);
 
@@ -414,13 +510,16 @@ namespace
 		//view에 정보들 채워넣기
 		const json& view = (*views)[bufferViewIndex];
 		size_t bufferIndex = 0, viewOffset = 0, viewLength = 0, byteStride = 0;
-		if (!view.is_object() || !ReadSize(view, "buffer", true, 0, bufferIndex) || !ReadSize(view, "byteLength", true, 0, viewLength)
-			|| !ReadSize(view, "byteOffset", false, 0, viewOffset) || !ReadSize(view, "byteStride", false, 0, byteStride))
+		if (!view.is_object() || !ReadSize(view, "buffer", true, 0, bufferIndex) || !ReadSize(view, "byteLength", true, 0, viewLength) || !ReadSize(view, "byteOffset", false, 0, viewOffset) || !ReadSize(view, "byteStride", false, 0, byteStride))
 		{
 			error = std::format("bufferViews[{}]: buffer/byteLength/byteOffset/byteStride 가 없거나 정수가 아님", bufferViewIndex);
 			return false;
 		}
-		if (bufferIndex >= buffers.size()) { error = std::format("bufferViews[{}]: buffers[{}] 가 없음", bufferViewIndex, bufferIndex); return false; }
+		if (bufferIndex >= buffers.size())
+		{
+			error = std::format("bufferViews[{}]: buffers[{}] 가 없음", bufferViewIndex, bufferIndex);
+			return false;
+		}
 		//생성한 버퍼 넣기?
 		const std::vector<uint8_t>& buffer = buffers[bufferIndex];
 
@@ -435,7 +534,11 @@ namespace
 		//byteStride가 없으면(0) 요소들이 빈틈없이 붙어있는 것이라 stride = 요소 크기
 		//stride가 요소 크기보다 작으면 요소끼리 겹치니까 오류
 		const size_t stride = byteStride != 0 ? byteStride : elementSize;
-		if (stride < elementSize) { error = std::format("bufferViews[{}].byteStride({})가 요소 크기({})보다 작음", bufferViewIndex, stride, elementSize); return false; }
+		if (stride < elementSize)
+		{
+			error = std::format("bufferViews[{}].byteStride({})가 요소 크기({})보다 작음", bufferViewIndex, stride, elementSize);
+			return false;
+		}
 
 		//마지막 요소까지 view 구간 안에 들어가는지 검사
 		//accessorOffset + (count-1) * stride + 요소 크기 <= viewLength 를 오버플로 안 나게 바꾼 식
@@ -466,15 +569,45 @@ namespace
 		switch (componentType)
 		{
 		//값을 memcpy로 읽는 건 정렬 문제 없이 읽기 위해서(ReadU32와 같음)
-		case kComponentFloat: { float v; std::memcpy(&v, p, sizeof(v)); return v; }
+		case kComponentFloat:
+		{
+			float v;
+			std::memcpy(&v, p, sizeof(v));
+			return v;
+		}
 		//normalized면 정수를 최댓값으로 나눠 -1~1로. -128은 -1보다 작아져서 max로 -1에 맞춤
-		case kComponentByte: { int8_t v; std::memcpy(&v, p, sizeof(v)); return normalized ? (std::max)(v / 127.0f, -1.0f) : static_cast<float>(v); }
+		case kComponentByte:
+		{
+			int8_t v;
+			std::memcpy(&v, p, sizeof(v));
+			return normalized ? (std::max)(v / 127.0f, -1.0f) : static_cast<float>(v);
+		}
 		//부호 없는 정수는 최댓값으로 나눠 0~1로
-		case kComponentUnsignedByte: { uint8_t v; std::memcpy(&v, p, sizeof(v)); return normalized ? v / 255.0f : static_cast<float>(v); }
-		case kComponentShort: { int16_t v; std::memcpy(&v, p, sizeof(v)); return normalized ? (std::max)(v / 32767.0f, -1.0f) : static_cast<float>(v); }
-		case kComponentUnsignedShort: { uint16_t v; std::memcpy(&v, p, sizeof(v)); return normalized ? v / 65535.0f : static_cast<float>(v); }
+		case kComponentUnsignedByte:
+		{
+			uint8_t v;
+			std::memcpy(&v, p, sizeof(v));
+			return normalized ? v / 255.0f : static_cast<float>(v);
+		}
+		case kComponentShort:
+		{
+			int16_t v;
+			std::memcpy(&v, p, sizeof(v));
+			return normalized ? (std::max)(v / 32767.0f, -1.0f) : static_cast<float>(v);
+		}
+		case kComponentUnsignedShort:
+		{
+			uint16_t v;
+			std::memcpy(&v, p, sizeof(v));
+			return normalized ? v / 65535.0f : static_cast<float>(v);
+		}
 		//UNSIGNED_INT는 정규화 대상이 아니라서 그대로 float로
-		case kComponentUnsignedInt: { uint32_t v; std::memcpy(&v, p, sizeof(v)); return static_cast<float>(v); }
+		case kComponentUnsignedInt:
+		{
+			uint32_t v;
+			std::memcpy(&v, p, sizeof(v));
+			return static_cast<float>(v);
+		}
 		default: return 0.0f;
 		}
 	}
@@ -488,7 +621,10 @@ namespace
 		const uint8_t* element = view.data + i * view.stride;
 		const size_t componentSize = ComponentSize(view.componentType);
 		//성분을 하나씩 float로 변환. c번째 성분의 위치는 요소 시작 + c * 성분 크기
-		for (size_t c = 0; c < n; ++c) out[c] = ComponentToFloat(element + c * componentSize, view.componentType, view.normalized);
+		for (size_t c = 0; c < n; ++c)
+		{
+			out[c] = ComponentToFloat(element + c * componentSize, view.componentType, view.normalized);
+		}
 		return true;
 	}
 
@@ -502,24 +638,45 @@ namespace
 		//index는 부호 없는 정수(1, 2, 4바이트)만 가능. 크기가 달라도 uint32로 통일해서 반환
 		switch (view.componentType)
 		{
-		case kComponentUnsignedByte: { uint8_t v; std::memcpy(&v, p, sizeof(v)); out = v; return true; }
-		case kComponentUnsignedShort: { uint16_t v; std::memcpy(&v, p, sizeof(v)); out = v; return true; }
-		case kComponentUnsignedInt: { uint32_t v; std::memcpy(&v, p, sizeof(v)); out = v; return true; }
+		case kComponentUnsignedByte:
+		{
+			uint8_t v;
+			std::memcpy(&v, p, sizeof(v));
+			out = v;
+			return true;
+		}
+		case kComponentUnsignedShort:
+		{
+			uint16_t v;
+			std::memcpy(&v, p, sizeof(v));
+			out = v;
+			return true;
+		}
+		case kComponentUnsignedInt:
+		{
+			uint32_t v;
+			std::memcpy(&v, p, sizeof(v));
+			out = v;
+			return true;
+		}
 		default: return false;
 		}
 	}
 	//ImageName
 	std::string ImageName(const std::string& modelName, const json& root, size_t imageIndex);
 	//imageLoad하기
-	bool LoadImages(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const std::wstring& directory,
-		const std::string& modelName, std::vector<ModelImage>& outImages, std::string& error)
+	bool LoadImages(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const std::wstring& directory, const std::string& modelName, std::vector<ModelImage>& outImages, std::string& error)
 	{
 		outImages.clear();
 
 		//images가 없으면 이미지 없는 모델
 		const auto images = root.find("images");
 		if (images == root.end()) return true;
-		if (!images->is_array()) { error = "images 가 배열이 아님"; return false; }
+		if (!images->is_array())
+		{
+			error = "images 가 배열이 아님";
+			return false;
+		}
 
 		outImages.reserve(images->size());
 		for (size_t i = 0; i < images->size(); ++i)
@@ -547,8 +704,7 @@ namespace
 					reason = "bufferView 번호가 잘못됨";
 				}
 				else if (const json& view = (*views)[viewIndex];
-					!view.is_object() || !ReadSize(view, "buffer", true, 0, bufferIndex) || !ReadSize(view, "byteLength", true, 0, viewLength)
-					|| !ReadSize(view, "byteOffset", false, 0, viewOffset) || bufferIndex >= buffers.size())
+						 !view.is_object() || !ReadSize(view, "buffer", true, 0, bufferIndex) || !ReadSize(view, "byteLength", true, 0, viewLength) || !ReadSize(view, "byteOffset", false, 0, viewOffset) || bufferIndex >= buffers.size())
 				{
 					reason = "bufferView 의 buffer/byteOffset/byteLength 가 잘못됨";
 				}
@@ -602,8 +758,14 @@ namespace
 
 		const auto uri = image.find("uri");
 		const auto label = image.find("name");
-		if (uri != image.end() && uri->is_string()) name += " " + uri->get<std::string>();
-		else if (label != image.end() && label->is_string()) name += " " + label->get<std::string>();
+		if (uri != image.end() && uri->is_string())
+		{
+			name += " " + uri->get<std::string>();
+		}
+		else if (label != image.end() && label->is_string())
+		{
+			name += " " + label->get<std::string>();
+		}
 		return name;
 	}
 
@@ -620,7 +782,11 @@ namespace
 		const auto materials = root.find("materials");
 		if (materials != root.end())
 		{
-			if (!materials->is_array()) { error = "materials 가 배열이 아님"; return false; }
+			if (!materials->is_array())
+			{
+				error = "materials 가 배열이 아님";
+				return false;
+			}
 			count = materials->size();
 		}
 
@@ -654,7 +820,10 @@ namespace
 			if (!(*found)[i].is_number()) return false;
 			values[i] = (*found)[i].get<float>();
 		}
-		for (size_t i = 0; i < n; ++i) out[i] = values[i];
+		for (size_t i = 0; i < n; ++i)
+		{
+			out[i] = values[i];
+		}
 		return true;
 	}
 
@@ -717,7 +886,10 @@ namespace
 
 		//name이 있으면 이름으로 사용
 		const auto name = source->find("name");
-		if (name != source->end() && name->is_string() && !name->get<std::string>().empty()) material.name = name->get<std::string>();
+		if (name != source->end() && name->is_string() && !name->get<std::string>().empty())
+		{
+			material.name = name->get<std::string>();
+		}
 
 		//metallic, roughness 기본값은 둘 다 1(glTF 기본값)
 		material.metallic = 1.0f;
@@ -744,8 +916,7 @@ namespace
 			{
 				size_t samplerIndex = 0;
 				const auto samplers = root.find("samplers");
-				if (ReadSize(*texture, "sampler", true, 0, samplerIndex) && samplers != root.end() && samplers->is_array()
-					&& samplerIndex < samplers->size() && (*samplers)[samplerIndex].is_object())
+				if (ReadSize(*texture, "sampler", true, 0, samplerIndex) && samplers != root.end() && samplers->is_array() && samplerIndex < samplers->size() && (*samplers)[samplerIndex].is_object())
 				{
 					material.sampler = ToSamplerPreset(&(*samplers)[samplerIndex]);
 				}
@@ -772,7 +943,10 @@ namespace
 			if (const json* strength = JsonObject(*extensions, "KHR_materials_emissive_strength"))
 			{
 				const float s = JsonFloat(*strength, "emissiveStrength", 1.0f);
-				for (float& e : emissive) e *= s;
+				for (float& e : emissive)
+				{
+					e *= s;
+				}
 			}
 		}
 		material.emissive = XMFLOAT3(emissive[0], emissive[1], emissive[2]);
@@ -805,7 +979,10 @@ namespace
 				material.clearcoatRoughnessTexture = TextureName(modelName, root, JsonObject(*coat, "clearcoatRoughnessTexture"));
 				const json* coatNormal = JsonObject(*coat, "clearcoatNormalTexture");
 				material.clearcoatNormalTexture = TextureName(modelName, root, coatNormal);
-				if (!material.clearcoatNormalTexture.empty() && coatNormal != nullptr) material.clearcoatNormalScale = JsonFloat(*coatNormal, "scale", 1.0f);
+				if (!material.clearcoatNormalTexture.empty() && coatNormal != nullptr)
+				{
+					material.clearcoatNormalScale = JsonFloat(*coatNormal, "scale", 1.0f);
+				}
 			}
 			//KHR_materials_transmission : 투과 세기와 텍스처(R)
 			if (const json* transmission = JsonObject(*extensions, "KHR_materials_transmission"))
@@ -847,21 +1024,22 @@ namespace
 		return material;
 	}
 
-	bool ConvertMesh(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const json& mesh,
-		const ModelLoader::Options& options, uint32_t defaultSlot, Mesh& outMesh, ModelStats& stats);
+	bool ConvertMesh(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const json& mesh, const ModelLoader::Options& options, uint32_t defaultSlot, Mesh& outMesh, ModelStats& stats);
 
 	//meshes[]를 Mesh로 변환
 	//meshRemap[JSON 번호] = outMeshes 번호. 변환에 실패한 mesh는 -1
-	bool LoadMeshes(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const ModelLoader::Options& options,
-		uint32_t defaultSlot, std::vector<std::shared_ptr<const Mesh>>& outMeshes, std::vector<int>& meshRemap,
-		ModelStats& stats, std::string& error)
+	bool LoadMeshes(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const ModelLoader::Options& options, uint32_t defaultSlot, std::vector<std::shared_ptr<const Mesh>>& outMeshes, std::vector<int>& meshRemap, ModelStats& stats, std::string& error)
 	{
 		outMeshes.clear();
 		meshRemap.clear();
 
 		const auto meshes = root.find("meshes");
 		if (meshes == root.end()) return true;
-		if (!meshes->is_array()) { error = "meshes 가 배열이 아님"; return false; }
+		if (!meshes->is_array())
+		{
+			error = "meshes 가 배열이 아님";
+			return false;
+		}
 
 		//전부 -1로 채워 둠
 		meshRemap.assign(meshes->size(), -1);
@@ -897,8 +1075,7 @@ namespace
 	//mesh 하나를 Mesh로 변환
 	//mesh 안의 primitive들을 하나의 정점, 인덱스 배열에 이어 붙이고
 	//primitive마다 Submesh(인덱스 구간 + 재질)를 만듦
-	bool ConvertMesh(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const json& mesh,
-		const ModelLoader::Options& options, uint32_t defaultSlot, Mesh& outMesh, ModelStats& stats)
+	bool ConvertMesh(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const json& mesh, const ModelLoader::Options& options, uint32_t defaultSlot, Mesh& outMesh, ModelStats& stats)
 	{
 		std::vector<VERTEX> vertices;
 		std::vector<VertexSkin> skin;   //vertices와 같은 길이로 채움(hasSkin이 거짓이면 마지막에 버림)
@@ -917,15 +1094,18 @@ namespace
 		for (size_t p = 0; p < primitives->size(); ++p)
 		{
 			const json& primitive = (*primitives)[p];
-			if (!primitive.is_object()) { ++stats.skippedPrimitives; continue; }
+			if (!primitive.is_object())
+			{
+				++stats.skippedPrimitives;
+				continue;
+			}
 
 			//primitive 그리기 모드. 기본 4(TRIANGLES)이고 이것만 지원. 나머지(선, 점 등)는 건너뜀
 			size_t mode = 4;
 			const json* attributes = JsonObject(primitive, "attributes");
 			AccessorView position;
 			//POSITION이 없거나 성분이 3개보다 적으면 건너뜀
-			if (!ReadSize(primitive, "mode", false, 4, mode) || mode != 4
-				|| !FindAttribute(root, buffers, attributes, "POSITION", position) || position.componentCount < 3)
+			if (!ReadSize(primitive, "mode", false, 4, mode) || mode != 4 || !FindAttribute(root, buffers, attributes, "POSITION", position) || position.componentCount < 3)
 			{
 				++stats.skippedPrimitives;
 				continue;
@@ -938,10 +1118,11 @@ namespace
 			const bool hasColor = FindAttribute(root, buffers, attributes, "COLOR_0", color);
 			//스키닝 속성. 조인트 번호와 가중치가 둘 다 있고 VEC4 일 때만 씀
 			AccessorView joints, weights;
-			const bool primitiveSkinned = FindAttribute(root, buffers, attributes, "JOINTS_0", joints) && joints.componentCount == 4
-				&& FindAttribute(root, buffers, attributes, "WEIGHTS_0", weights) && weights.componentCount == 4
-				&& joints.count == position.count && weights.count == position.count;
-			if (primitiveSkinned) hasSkin = true;
+			const bool primitiveSkinned = FindAttribute(root, buffers, attributes, "JOINTS_0", joints) && joints.componentCount == 4 && FindAttribute(root, buffers, attributes, "WEIGHTS_0", weights) && weights.componentCount == 4 && joints.count == position.count && weights.count == position.count;
+			if (primitiveSkinned)
+			{
+				hasSkin = true;
+			}
 
 			//합쳐진 정점 배열에서 이 primitive의 정점이 시작하는 위치. 인덱스에 더해 줌
 			const uint32_t baseVertex = static_cast<uint32_t>(vertices.size());
@@ -975,12 +1156,19 @@ namespace
 			else
 			{
 				local.reserve(vertexCount);
-				for (size_t i = 0; i < vertexCount; ++i) local.push_back(static_cast<uint32_t>(i));
+				for (size_t i = 0; i < vertexCount; ++i)
+				{
+					local.push_back(static_cast<uint32_t>(i));
+				}
 			}
 			//삼각형(3개 단위)으로 떨어지지 않는 나머지는 버림
 			local.resize(local.size() - local.size() % 3);
 			//잘못됐거나 삼각형이 없으면 건너뜀
-			if (!valid || local.empty()) { ++stats.skippedPrimitives; continue; }
+			if (!valid || local.empty())
+			{
+				++stats.skippedPrimitives;
+				continue;
+			}
 
 			vertices.reserve(vertices.size() + vertexCount);
 			for (size_t v = 0; v < vertexCount; ++v)
@@ -990,16 +1178,21 @@ namespace
 				float f[4] = {};
 				ReadFloat(position, v, f, 3);
 				//위치(z는 zSign을 곱해서 좌표계 변환)
-				vertex.x = f[0]; vertex.y = f[1]; vertex.z = f[2] * zSign;
+				vertex.x = f[0];
+				vertex.y = f[1];
+				vertex.z = f[2] * zSign;
 				//법선도 z 변환
 				if (hasNormal && ReadFloat(normal, v, f, 3))
 				{
-					vertex.nx = f[0]; vertex.ny = f[1]; vertex.nz = f[2] * zSign;
+					vertex.nx = f[0];
+					vertex.ny = f[1];
+					vertex.nz = f[2] * zSign;
 				}
 				//uv
 				if (hasTexcoord && ReadFloat(texcoord, v, f, 2))
 				{
-					vertex.u = f[0]; vertex.v = f[1];
+					vertex.u = f[0];
+					vertex.v = f[1];
 				}
 				//정점 색(COLOR_0). VEC3이면 rgb만 읽고 a는 1
 				if (hasColor)
@@ -1007,13 +1200,19 @@ namespace
 					float c[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 					if (ReadFloat(color, v, c, color.componentCount == 3 ? 3 : 4))
 					{
-						vertex.r = c[0]; vertex.g = c[1]; vertex.b = c[2]; vertex.a = c[3];
+						vertex.r = c[0];
+						vertex.g = c[1];
+						vertex.b = c[2];
+						vertex.a = c[3];
 					}
 				}
 				//탄젠트. xyz는 z 변환, w는 방향(부호)이라 flipZ면 뒤집음
 				if (hasTangent && ReadFloat(tangent, v, f, 4))
 				{
-					vertex.tx = f[0]; vertex.ty = f[1]; vertex.tz = f[2] * zSign; vertex.tw = options.flipZ ? -f[3] : f[3];
+					vertex.tx = f[0];
+					vertex.ty = f[1];
+					vertex.tz = f[2] * zSign;
+					vertex.tw = options.flipZ ? -f[3] : f[3];
 				}
 				vertices.push_back(vertex);
 
@@ -1026,13 +1225,22 @@ namespace
 					if (ReadFloat(joints, v, j, 4) && ReadFloat(weights, v, w, 4))
 					{
 						float sum = 0.0f;
-						for (int k = 0; k < 4; ++k) { w[k] = (std::max)(w[k], 0.0f); sum += w[k]; }
+						for (int k = 0; k < 4; ++k)
+						{
+							w[k] = (std::max)(w[k], 0.0f);
+							sum += w[k];
+						}
 						//가중치 합이 0 이면(영향 없는 정점) 기본값(조인트 0, 가중치 1)을 유지. 아니면 합이 1이 되게 다시 맞춤
 						if (sum > 0.0f)
 						{
 							for (int k = 0; k < 4; ++k)
 							{
-								if (j[k] > 255.0f) { skinOverflow = true; j[k] = 0.0f; w[k] = 0.0f; }
+								if (j[k] > 255.0f)
+								{
+									skinOverflow = true;
+									j[k] = 0.0f;
+									w[k] = 0.0f;
+								}
 								vertexSkin.joints[k] = static_cast<uint8_t>(j[k]);
 								vertexSkin.weights[k] = w[k] / sum;
 							}
@@ -1042,22 +1250,34 @@ namespace
 				skin.push_back(vertexSkin);
 			}
 			//TANGENT가 없으면 나중에 계산해야 한다고 표시
-			if (!hasTangent) needTangents = true;
+			if (!hasTangent)
+			{
+				needTangents = true;
+			}
 
 			//Submesh : 합쳐진 인덱스 배열에서 이 primitive가 차지하는 구간(indexStart, indexCount)과 재질 번호
 			Submesh submesh;
 			submesh.indexStart = static_cast<uint32_t>(indices.size());
 			size_t material = defaultSlot;
 			//material이 없거나 범위 밖이면 기본 재질 슬롯(맨 마지막)을 사용
-			if (!ReadSize(primitive, "material", false, defaultSlot, material) || material >= defaultSlot) material = defaultSlot;
+			if (!ReadSize(primitive, "material", false, defaultSlot, material) || material >= defaultSlot)
+			{
+				material = defaultSlot;
+			}
 			submesh.materialSlot = static_cast<uint32_t>(material);
 			//합쳐진 정점 배열 기준이 되도록 baseVertex를 더해서 저장
-			for (const uint32_t index : local) indices.push_back(baseVertex + index);
+			for (const uint32_t index : local)
+			{
+				indices.push_back(baseVertex + index);
+			}
 			submesh.indexCount = static_cast<uint32_t>(indices.size()) - submesh.indexStart;
 			//좌표계를 뒤집으면 삼각형 감는 방향이 뒤집히므로 인덱스 두 개를 서로 바꿈
 			if (options.flipZ)
 			{
-				for (size_t i = submesh.indexStart; i + 2 < indices.size(); i += 3) std::swap(indices[i + 1], indices[i + 2]);
+				for (size_t i = submesh.indexStart; i + 2 < indices.size(); i += 3)
+				{
+					std::swap(indices[i + 1], indices[i + 2]);
+				}
 			}
 			submeshes.push_back(submesh);
 		}
@@ -1077,7 +1297,10 @@ namespace
 			Log::Warn("glTF mesh: 조인트 번호가 255 를 넘는 정점이 있어 해당 영향을 버림 (스킨 조인트는 최대 256개)");
 		}
 		//정점이 65535개 이하면 16비트 인덱스로 쓸 수 있음(통계)
-		if (vertices.size() <= 65535) ++stats.meshesWith16BitIndices;
+		if (vertices.size() <= 65535)
+		{
+			++stats.meshesWith16BitIndices;
+		}
 		//통계 누적
 		stats.vertices += static_cast<uint32_t>(vertices.size());
 		stats.triangles += static_cast<uint32_t>(indices.size() / 3);
@@ -1088,7 +1311,10 @@ namespace
 			++stats.skinnedMeshes;
 			outMesh = Mesh::FromData(std::move(vertices), std::move(skin), std::move(indices), std::move(submeshes));
 		}
-		else outMesh = Mesh::FromData(std::move(vertices), std::move(indices), std::move(submeshes));
+		else
+		{
+			outMesh = Mesh::FromData(std::move(vertices), std::move(indices), std::move(submeshes));
+		}
 		return true;
 	}
 
@@ -1096,14 +1322,16 @@ namespace
 
 	//mesh가 달린 노드를 ModelInstance로 변환
 	//부모 사슬을 따라 월드 행렬을 한 번 계산해서 굳힘(정지 상태용)
-	bool BuildInstances(const json& root, const std::vector<int>& meshRemap, const std::vector<std::shared_ptr<const Mesh>>& meshes,
-		const ModelLoader::Options& options, const std::string& modelName, std::vector<ModelInstance>& outInstances,
-		ModelImport::BoundsAccumulator& bounds, std::string& error)
+	bool BuildInstances(const json& root, const std::vector<int>& meshRemap, const std::vector<std::shared_ptr<const Mesh>>& meshes, const ModelLoader::Options& options, const std::string& modelName, std::vector<ModelInstance>& outInstances, ModelImport::BoundsAccumulator& bounds, std::string& error)
 	{
 		outInstances.clear();
 		const auto nodes = root.find("nodes");
 		if (nodes == root.end()) return true;
-		if (!nodes->is_array()) { error = "nodes 가 배열이 아님"; return false; }
+		if (!nodes->is_array())
+		{
+			error = "nodes 가 배열이 아님";
+			return false;
+		}
 		const size_t count = nodes->size();
 
 		//parent[n] = n번 노드의 부모 번호(없으면 -1)
@@ -1116,7 +1344,10 @@ namespace
 			if (!node.is_object() || children == node.end() || !children->is_array()) continue;
 			for (const json& child : *children)
 			{
-				if (child.is_number_unsigned() && child.get<size_t>() < count && parent[child.get<size_t>()] < 0) parent[child.get<size_t>()] = static_cast<int>(n);
+				if (child.is_number_unsigned() && child.get<size_t>() < count && parent[child.get<size_t>()] < 0)
+				{
+					parent[child.get<size_t>()] = static_cast<int>(n);
+				}
 			}
 		}
 
@@ -1140,7 +1371,11 @@ namespace
 			for (int p = parent[n]; p >= 0; p = parent[static_cast<size_t>(p)])
 			{
 				//부모 사슬이 노드 수보다 길면 순환이라서 오류(무한 루프 방지)
-				if (++steps > count) { error = std::format("nodes[{}] 의 부모 사슬이 순환함", n); return false; }
+				if (++steps > count)
+				{
+					error = std::format("nodes[{}] 의 부모 사슬이 순환함", n);
+					return false;
+				}
 				gltfWorld = gltfWorld * NodeLocalMatrix((*nodes)[static_cast<size_t>(p)]);
 			}
 			//glTF → 엔진 좌표계로 변환(mirror * M * mirror)하고 모델 크기를 곱함
@@ -1152,7 +1387,10 @@ namespace
 			instance.node = static_cast<int>(n);
 			//skin 번호는 skins[] 의 JSON 번호 그대로(LoadSkins 가 같은 번호로 만듦)
 			size_t skinNumber = 0;
-			if (node.contains("skin") && ReadSize(node, "skin", true, 0, skinNumber)) instance.skin = static_cast<int>(skinNumber);
+			if (node.contains("skin") && ReadSize(node, "skin", true, 0, skinNumber))
+			{
+				instance.skin = static_cast<int>(skinNumber);
+			}
 			XMStoreFloat4x4(&instance.world, world);
 			//이름은 노드의 name, 없으면 '모델이름/node번호'
 			const auto name = node.find("name");
@@ -1183,19 +1421,28 @@ namespace
 		JsonFloats(node, "scale", s, 3);
 		//쿼터니언은 정규화해서 사용. 길이가 0이면 회전 없음으로
 		XMVECTOR rotation = XMVectorSet(r[0], r[1], r[2], r[3]);
-		if (XMVectorGetX(XMVector4LengthSq(rotation)) > 0.0f) rotation = XMQuaternionNormalize(rotation);
-		else rotation = XMQuaternionIdentity();
+		if (XMVectorGetX(XMVector4LengthSq(rotation)) > 0.0f)
+		{
+			rotation = XMQuaternionNormalize(rotation);
+		}
+		else
+		{
+			rotation = XMQuaternionIdentity();
+		}
 		return XMMatrixScaling(s[0], s[1], s[2]) * XMMatrixRotationQuaternion(rotation) * XMMatrixTranslation(t[0], t[1], t[2]);
 	}
 
 	//노드 트리를 ModelNode 표로 보존(애니메이션용). 행렬이 아니라 TRS로 저장
-	bool LoadNodes(const json& root, const std::vector<int>& meshRemap, const ModelLoader::Options& options,
-		const std::string& modelName, std::vector<ModelNode>& outNodes, std::string& error)
+	bool LoadNodes(const json& root, const std::vector<int>& meshRemap, const ModelLoader::Options& options, const std::string& modelName, std::vector<ModelNode>& outNodes, std::string& error)
 	{
 		outNodes.clear();
 		const auto nodes = root.find("nodes");
 		if (nodes == root.end()) return true;
-		if (!nodes->is_array()) { error = "nodes 가 배열이 아님"; return false; }
+		if (!nodes->is_array())
+		{
+			error = "nodes 가 배열이 아님";
+			return false;
+		}
 
 		//nodes와 같은 번호로 만듦(애니메이션 channel이 노드 번호로 가리키기 때문)
 		outNodes.resize(nodes->size());
@@ -1210,13 +1457,22 @@ namespace
 			if (!node.is_object()) continue;
 
 			const auto name = node.find("name");
-			if (name != node.end() && name->is_string()) out.name = name->get<std::string>();
+			if (name != node.end() && name->is_string())
+			{
+				out.name = name->get<std::string>();
+			}
 
 			//mesh 번호는 meshRemap으로 변환. 변환에 실패한 mesh면 -1
 			size_t meshNumber = 0;
-			if (node.contains("mesh") && ReadSize(node, "mesh", true, 0, meshNumber) && meshNumber < meshRemap.size()) out.meshIndex = meshRemap[meshNumber];
+			if (node.contains("mesh") && ReadSize(node, "mesh", true, 0, meshNumber) && meshNumber < meshRemap.size())
+			{
+				out.meshIndex = meshRemap[meshNumber];
+			}
 			size_t skinNumber = 0;
-			if (node.contains("skin") && ReadSize(node, "skin", true, 0, skinNumber)) out.skin = static_cast<int>(skinNumber);
+			if (node.contains("skin") && ReadSize(node, "skin", true, 0, skinNumber))
+			{
+				out.skin = static_cast<int>(skinNumber);
+			}
 
 			//자식들의 parent에 내 번호를 기록. 이미 부모가 있으면 유지
 			const auto children = node.find("children");
@@ -1226,7 +1482,10 @@ namespace
 				{
 					if (!child.is_number_unsigned() || child.get<size_t>() >= outNodes.size()) continue;
 					ModelNode& target = outNodes[child.get<size_t>()];
-					if (target.parent < 0) target.parent = static_cast<int>(n);
+					if (target.parent < 0)
+					{
+						target.parent = static_cast<int>(n);
+					}
 				}
 			}
 
@@ -1253,8 +1512,14 @@ namespace
 			JsonFloats(node, "rotation", r, 4);
 			JsonFloats(node, "scale", s, 3);
 			XMVECTOR rotation = XMVectorSet(r[0], r[1], r[2], r[3]);
-			if (XMVectorGetX(XMVector4LengthSq(rotation)) > 0.0f) rotation = XMQuaternionNormalize(rotation);
-			else rotation = XMQuaternionIdentity();
+			if (XMVectorGetX(XMVector4LengthSq(rotation)) > 0.0f)
+			{
+				rotation = XMQuaternionNormalize(rotation);
+			}
+			else
+			{
+				rotation = XMQuaternionIdentity();
+			}
 			XMFLOAT4 q;
 			XMStoreFloat4(&q, rotation);
 			//좌표계 변환. 이동은 z 부호 반전, 회전은 x,y 부호 반전(z축 거울 반사), 크기는 그대로
@@ -1276,7 +1541,11 @@ namespace
 		skin.jointParent.assign(skin.joints.size(), -1);
 		skin.rootJoints.clear();
 
-		const auto parentOf = [&](uint32_t node) { const int p = nodes[node].parent; return (p >= 0 && static_cast<size_t>(p) < nodes.size()) ? p : -1; };
+		const auto parentOf = [&](uint32_t node)
+		{
+			const int p = nodes[node].parent;
+			return (p >= 0 && static_cast<size_t>(p) < nodes.size()) ? p : -1;
+		};
 
 		//0 = 아직 안 봄, 1 = 지금 올라가는 사슬 안, 2 = evalOrder 에 들어감
 		std::vector<uint8_t> state(nodes.size(), 0);
@@ -1303,13 +1572,19 @@ namespace
 		std::vector<int> nodeToJoint(nodes.size(), -1);
 		for (size_t j = 0; j < skin.joints.size(); ++j)
 		{
-			if (nodeToJoint[skin.joints[j]] < 0) nodeToJoint[skin.joints[j]] = static_cast<int>(j);
+			if (nodeToJoint[skin.joints[j]] < 0)
+			{
+				nodeToJoint[skin.joints[j]] = static_cast<int>(j);
+			}
 		}
 		for (size_t j = 0; j < skin.joints.size(); ++j)
 		{
 			const int parentNode = parentOf(skin.joints[j]);
 			skin.jointParent[j] = parentNode >= 0 ? nodeToJoint[static_cast<size_t>(parentNode)] : -1;
-			if (skin.jointParent[j] < 0) skin.rootJoints.push_back(static_cast<uint32_t>(j));
+			if (skin.jointParent[j] < 0)
+			{
+				skin.rootJoints.push_back(static_cast<uint32_t>(j));
+			}
 		}
 		return true;
 	}
@@ -1318,13 +1593,16 @@ namespace
 	//읽을 수 없는 skin은 조인트 없는 빈 skin으로 남김
 	//inverseBindMatrices 는 glTF(열 우선 MAT4, 오른손)이고, 엔진 좌표계로 mirror * M * mirror 로 바꿈
 	//(노드 월드 행렬과 같은 변환). accessor 가 없으면 단위행렬
-	bool LoadSkins(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const ModelLoader::Options& options,
-		const std::vector<ModelNode>& nodes, std::vector<ModelSkin>& outSkins, std::string& error)
+	bool LoadSkins(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const ModelLoader::Options& options, const std::vector<ModelNode>& nodes, std::vector<ModelSkin>& outSkins, std::string& error)
 	{
 		outSkins.clear();
 		const auto skins = root.find("skins");
 		if (skins == root.end()) return true;
-		if (!skins->is_array()) { error = "skins 가 배열이 아님"; return false; }
+		if (!skins->is_array())
+		{
+			error = "skins 가 배열이 아님";
+			return false;
+		}
 
 		const XMMATRIX mirror = XMMatrixScaling(1.0f, 1.0f, options.flipZ ? -1.0f : 1.0f);
 		outSkins.resize(skins->size());
@@ -1335,7 +1613,10 @@ namespace
 			if (!source.is_object()) continue;
 			out.name = std::format("skin{}", s);
 			const auto name = source.find("name");
-			if (name != source.end() && name->is_string() && !name->get<std::string>().empty()) out.name = name->get<std::string>();
+			if (name != source.end() && name->is_string() && !name->get<std::string>().empty())
+			{
+				out.name = name->get<std::string>();
+			}
 
 			//joints : 이 skin이 쓰는 노드 번호 목록
 			const auto joints = source.find("joints");
@@ -1347,7 +1628,11 @@ namespace
 			bool valid = true;
 			for (const json& joint : *joints)
 			{
-				if (!joint.is_number_unsigned() || joint.get<size_t>() >= nodes.size()) { valid = false; break; }
+				if (!joint.is_number_unsigned() || joint.get<size_t>() >= nodes.size())
+				{
+					valid = false;
+					break;
+				}
 				out.joints.push_back(joint.get<uint32_t>());
 			}
 			if (!valid)
@@ -1399,13 +1684,16 @@ namespace
 
 	//animations[]를 AnimationClip으로 변환
 	//animation 하나 = clip 하나, 그 안의 channel마다 AnimationChannel 하나
-	bool LoadAnimations(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const ModelLoader::Options& options,
-		const std::vector<ModelNode>& nodes, std::vector<AnimationClip>& outClips, std::string& error)
+	bool LoadAnimations(const json& root, const std::vector<std::vector<uint8_t>>& buffers, const ModelLoader::Options& options, const std::vector<ModelNode>& nodes, std::vector<AnimationClip>& outClips, std::string& error)
 	{
 		outClips.clear();
 		const auto animations = root.find("animations");
 		if (animations == root.end()) return true;
-		if (!animations->is_array()) { error = "animations 가 배열이 아님"; return false; }
+		if (!animations->is_array())
+		{
+			error = "animations 가 배열이 아님";
+			return false;
+		}
 
 		const float zSign = options.flipZ ? -1.0f : 1.0f;
 		for (size_t a = 0; a < animations->size(); ++a)
@@ -1421,7 +1709,10 @@ namespace
 			//이름 기본값은 'Animation번호'
 			clip.name = std::format("Animation{}", a);
 			const auto name = animation.find("name");
-			if (name != animation.end() && name->is_string() && !name->get<std::string>().empty()) clip.name = name->get<std::string>();
+			if (name != animation.end() && name->is_string() && !name->get<std::string>().empty())
+			{
+				clip.name = name->get<std::string>();
+			}
 
 			for (size_t c = 0; c < channels->size(); ++c)
 			{
@@ -1442,9 +1733,21 @@ namespace
 				AnimationChannel out;
 				out.node = static_cast<uint32_t>(nodeIndex);
 				size_t components = 0;
-				if (pathName == "translation") { out.path = AnimationPath::Translation; components = 3; }
-				else if (pathName == "rotation") { out.path = AnimationPath::Rotation; components = 4; }
-				else if (pathName == "scale") { out.path = AnimationPath::Scale; components = 3; }
+				if (pathName == "translation")
+				{
+					out.path = AnimationPath::Translation;
+					components = 3;
+				}
+				else if (pathName == "rotation")
+				{
+					out.path = AnimationPath::Rotation;
+					components = 4;
+				}
+				else if (pathName == "scale")
+				{
+					out.path = AnimationPath::Scale;
+					components = 3;
+				}
 				else
 				{
 					Log::Warn("glTF 애니메이션 '%s': 지원하지 않는 path '%s' 채널을 건너뜀", clip.name.c_str(), pathName.c_str());
@@ -1458,8 +1761,14 @@ namespace
 				if (interpolation != sampler.end() && interpolation->is_string())
 				{
 					const std::string mode = interpolation->get<std::string>();
-					if (mode == "STEP") out.interpolation = AnimationInterpolation::Step;
-					else if (mode == "CUBICSPLINE") out.interpolation = AnimationInterpolation::CubicSpline;
+					if (mode == "STEP")
+					{
+						out.interpolation = AnimationInterpolation::Step;
+					}
+					else if (mode == "CUBICSPLINE")
+					{
+						out.interpolation = AnimationInterpolation::CubicSpline;
+					}
 				}
 
 				//input = 키프레임 시각 accessor, output = 각 시각의 값 accessor
@@ -1488,10 +1797,23 @@ namespace
 
 				//키프레임 시각들을 읽고, 증가 순서인지 검사
 				out.times.resize(input.count);
-				for (size_t i = 0; i < input.count; ++i) ReadFloat(input, i, &out.times[i], 1);
+				for (size_t i = 0; i < input.count; ++i)
+				{
+					ReadFloat(input, i, &out.times[i], 1);
+				}
 				bool sorted = true;
-				for (size_t i = 1; i < out.times.size(); ++i) if (out.times[i] < out.times[i - 1]) sorted = false;
-				if (!sorted) { error = std::format("animations[{}].samplers[{}] 시간이 증가 순서가 아님", a, samplerIndex); return false; }
+				for (size_t i = 1; i < out.times.size(); ++i)
+				{
+					if (out.times[i] < out.times[i - 1])
+					{
+						sorted = false;
+					}
+				}
+				if (!sorted)
+				{
+					error = std::format("animations[{}].samplers[{}] 시간이 증가 순서가 아님", a, samplerIndex);
+					return false;
+				}
 
 				//output 값들을 읽어서 저장
 				out.values.resize(output.count * components);
@@ -1500,15 +1822,25 @@ namespace
 					float* v = &out.values[i * components];
 					ReadFloat(output, i, v, components);
 					// 우리 좌표계(flipZ)로 바꿈. 탄젠트도 같은 변환 (선형이므로 값과 같음).
-					if (out.path == AnimationPath::Translation) v[2] *= zSign;
-					else if (out.path == AnimationPath::Rotation && options.flipZ) { v[0] = -v[0]; v[1] = -v[1]; }
+					if (out.path == AnimationPath::Translation)
+					{
+						v[2] *= zSign;
+					}
+					else if (out.path == AnimationPath::Rotation && options.flipZ)
+					{
+						v[0] = -v[0];
+						v[1] = -v[1];
+					}
 				}
 				//clip 길이 = 채널들 중 가장 늦은 키 시각
 				clip.duration = (std::max)(clip.duration, out.times.back());
 				clip.channels.push_back(std::move(out));
 			}
 			//채널이 하나도 없으면 clip을 만들지 않음
-			if (!clip.channels.empty()) outClips.push_back(std::move(clip));
+			if (!clip.channels.empty())
+			{
+				outClips.push_back(std::move(clip));
+			}
 		}
 		return true;
 	}
@@ -1550,7 +1882,10 @@ namespace
 			if (!node.is_object() || children == node.end() || !children->is_array()) continue;
 			for (const json& child : *children)
 			{
-				if (child.is_number_unsigned() && child.get<size_t>() < count && parent[child.get<size_t>()] < 0) parent[child.get<size_t>()] = static_cast<int>(n);
+				if (child.is_number_unsigned() && child.get<size_t>() < count && parent[child.get<size_t>()] < 0)
+				{
+					parent[child.get<size_t>()] = static_cast<int>(n);
+				}
 			}
 		}
 
@@ -1567,45 +1902,78 @@ namespace
 			const json* reference = nodeExtensions != nullptr ? JsonObject(*nodeExtensions, "KHR_lights_punctual") : nullptr;
 			size_t lightNumber = 0;
 			if (reference == nullptr || !ReadSize(*reference, "light", true, 0, lightNumber)) continue;
-			if (lightNumber >= definitions->size() || !(*definitions)[lightNumber].is_object()) { ++skipped; continue; }
+			if (lightNumber >= definitions->size() || !(*definitions)[lightNumber].is_object())
+			{
+				++skipped;
+				continue;
+			}
 			const json& definition = (*definitions)[lightNumber];
 
 			const auto typeName = definition.find("type");
 			const std::string type = (typeName != definition.end() && typeName->is_string()) ? typeName->get<std::string>() : "";
 			ModelLight out;
-			if (type == "directional") out.light.type = LightType::Directional;
-			else if (type == "point") out.light.type = LightType::Point;
-			else if (type == "spot") out.light.type = LightType::Spot;
-			else { ++skipped; continue; }
+			if (type == "directional")
+			{
+				out.light.type = LightType::Directional;
+			}
+			else if (type == "point")
+			{
+				out.light.type = LightType::Point;
+			}
+			else if (type == "spot")
+			{
+				out.light.type = LightType::Spot;
+			}
+			else
+			{
+				++skipped;
+				continue;
+			}
 
 			//월드 행렬 = 내 로컬 * 부모 로컬 * ... (BuildInstances 와 같음)
 			XMMATRIX gltfWorld = NodeLocalMatrix(node);
 			size_t steps = 0;
 			for (int p = parent[n]; p >= 0; p = parent[static_cast<size_t>(p)])
 			{
-				if (++steps > count) { error = std::format("nodes[{}] 의 부모 사슬이 순환함", n); return false; }
+				if (++steps > count)
+				{
+					error = std::format("nodes[{}] 의 부모 사슬이 순환함", n);
+					return false;
+				}
 				gltfWorld = gltfWorld * NodeLocalMatrix((*nodes)[static_cast<size_t>(p)]);
 			}
 			const XMMATRIX world = mirror * gltfWorld * mirror * rootScale;
 			//위치 = 노드 원점. 방향 = glTF 로컬 −Z. mirror 를 거친 엔진 로컬에서는 +Z 이므로 (0,0,1)을 엔진 월드 행렬로 옮김
 			XMStoreFloat3(&out.light.position, XMVector3TransformCoord(XMVectorZero(), world));
 			XMVECTOR direction = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), world);
-			if (XMVectorGetX(XMVector3LengthSq(direction)) > 1e-12f) direction = XMVector3Normalize(direction);
-			else direction = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+			if (XMVectorGetX(XMVector3LengthSq(direction)) > 1e-12f)
+			{
+				direction = XMVector3Normalize(direction);
+			}
+			else
+			{
+				direction = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+			}
 			XMStoreFloat3(&out.light.direction, direction);
 
 			float color[3] = { 1.0f, 1.0f, 1.0f };
 			JsonFloats(definition, "color", color, 3);
 			out.light.color = XMFLOAT3(color[0], color[1], color[2]);
 			out.light.intensity = (std::max)(JsonFloat(definition, "intensity", 1.0f), 0.0f);
-			if (out.light.intensity == 0.0f) ++zeroIntensity;
+			if (out.light.intensity == 0.0f)
+			{
+				++zeroIntensity;
+			}
 
 			if (out.light.type != LightType::Directional)
 			{
 				out.light.attenuation = XMFLOAT3(0.0f, 0.0f, 1.0f);
 				const float range = JsonFloat(definition, "range", 0.0f);
 				out.rangeFromFile = range > 0.0f;
-				if (out.rangeFromFile) out.light.range = range * options.scale;
+				if (out.rangeFromFile)
+				{
+					out.light.range = range * options.scale;
+				}
 				else
 				{
 					out.light.range = std::sqrt(out.light.intensity / kLightRangeCutoff);
@@ -1633,14 +2001,11 @@ namespace
 
 		if (!outLights.empty() || skipped > 0)
 		{
-			Log::Info("glTF 조명 (KHR_lights_punctual): %zu 개 (방향 %u, 점 %u, 스팟 %u), range 를 세기로 정한 것 %u, 세기 0 인 것 %u, 건너뜀 %u",
-				outLights.size(), typeCounts[0], typeCounts[1], typeCounts[2], derivedRange, zeroIntensity, skipped);
+			Log::Info("glTF 조명 (KHR_lights_punctual): %zu 개 (방향 %u, 점 %u, 스팟 %u), range 를 세기로 정한 것 %u, 세기 0 인 것 %u, 건너뜀 %u", outLights.size(), typeCounts[0], typeCounts[1], typeCounts[2], derivedRange, zeroIntensity, skipped);
 		}
 		return true;
 	}
 }
-
-
 
 
 //glTF/GLB 로딩 진입점

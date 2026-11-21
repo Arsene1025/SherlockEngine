@@ -10,8 +10,7 @@ namespace
 	// 탄젠트 프레임을 채움. T = u 증가 방향, B = v 증가 방향 (둘 다 해석적으로 구한 값).
 	// T 는 노멀에 직교화(Gram-Schmidt)하고, w 는 cross(N, T) 가 B 와 같은 쪽이면 +1, 반대면 −1.
 	// 픽셀 셰이더는 B 를 cross(N, T) * w 로 복원함. 이 규칙은 정점 포맷의 일부임 (VertexTypes.h).
-	VERTEX MakeVertex(float x, float y, float z, float nx, float ny, float nz, float u, float v,
-		const XMFLOAT3& tangent, const XMFLOAT3& bitangent, const XMFLOAT4& c)
+	VERTEX MakeVertex(float x, float y, float z, float nx, float ny, float nz, float u, float v, const XMFLOAT3& tangent, const XMFLOAT3& bitangent, const XMFLOAT4& c)
 	{
 		VERTEX vertex{ x, y, z, c.x, c.y, c.z, c.w, nx, ny, nz, u, v, 1.0f, 0.0f, 0.0f, 1.0f };
 
@@ -23,7 +22,10 @@ namespace
 
 		XMFLOAT3 tOut;
 		XMStoreFloat3(&tOut, t);
-		vertex.tx = tOut.x; vertex.ty = tOut.y; vertex.tz = tOut.z; vertex.tw = handedness;
+		vertex.tx = tOut.x;
+		vertex.ty = tOut.y;
+		vertex.tz = tOut.z;
+		vertex.tw = handedness;
 		return vertex;
 	}
 }
@@ -46,8 +48,7 @@ Mesh Mesh::CreateSphere(float radius, uint32_t sliceCount, uint32_t stackCount, 
 
 	// UV: u = 경도(theta / 2π), v = 위도(phi / π). 극점은 u = 0.5.
 	// T = dP/dθ (경도 방향), B = dP/dφ (위도 방향, 아래로).
-	mesh.vertices.push_back(MakeVertex(0.0f, radius, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f,
-		XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), color));
+	mesh.vertices.push_back(MakeVertex(0.0f, radius, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f, XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 0.0f, -1.0f), color));
 
 	for (uint32_t i = 1; i <= stackCount - 1; ++i)
 	{
@@ -62,13 +63,11 @@ Mesh Mesh::CreateSphere(float radius, uint32_t sliceCount, uint32_t stackCount, 
 
 			const XMFLOAT3 tangent(-sinf(theta), 0.0f, cosf(theta));
 			const XMFLOAT3 bitangent(cosf(phi) * cosf(theta), -sinf(phi), cosf(phi) * sinf(theta));
-			mesh.vertices.push_back(MakeVertex(radius * nx, radius * ny, radius * nz, nx, ny, nz,
-				theta / XM_2PI, phi / XM_PI, tangent, bitangent, color));
+			mesh.vertices.push_back(MakeVertex(radius * nx, radius * ny, radius * nz, nx, ny, nz, theta / XM_2PI, phi / XM_PI, tangent, bitangent, color));
 		}
 	}
 
-	mesh.vertices.push_back(MakeVertex(0.0f, -radius, 0.0f, 0.0f, -1.0f, 0.0f, 0.5f, 1.0f,
-		XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), color));
+	mesh.vertices.push_back(MakeVertex(0.0f, -radius, 0.0f, 0.0f, -1.0f, 0.0f, 0.5f, 1.0f, XMFLOAT3(1.0f, 0.0f, 0.0f), XMFLOAT3(0.0f, 0.0f, 1.0f), color));
 
 	for (uint32_t i = 1; i <= sliceCount; ++i)
 	{
@@ -114,15 +113,19 @@ Mesh Mesh::CreateCube(float size, const XMFLOAT4& color)
 	// 순서: 앞(−Z) 뒤(+Z) 위(+Y) 아래(−Y) 왼(−X) 오른(+X). 각 면의 인덱스는 (0,1,2)(0,2,3).
 	// UV는 면마다 (0,0)-(1,1). 면의 첫 정점이 (0,1), 둘째가 (0,0)이 되도록 시계방향 순서로 배치함.
 	// T/B 는 각 면에서 u+/v+ 가 향하는 월드 방향임.
-	struct Face { XMFLOAT3 n, t, b; XMFLOAT3 p[4]; float uv[4][2]; };
-	const Face faces[6] =
+	struct Face
 	{
-		{ { 0,0,-1 }, { 1,0,0 },  { 0,-1,0 }, { {-h,-h,-h}, {-h,+h,-h}, {+h,+h,-h}, {+h,-h,-h} }, { {0,1},{0,0},{1,0},{1,1} } },   // 앞
-		{ { 0,0,+1 }, { -1,0,0 }, { 0,-1,0 }, { {-h,-h,+h}, {+h,-h,+h}, {+h,+h,+h}, {-h,+h,+h} }, { {1,1},{0,1},{0,0},{1,0} } },   // 뒤
-		{ { 0,+1,0 }, { 1,0,0 },  { 0,0,-1 }, { {-h,+h,-h}, {-h,+h,+h}, {+h,+h,+h}, {+h,+h,-h} }, { {0,1},{0,0},{1,0},{1,1} } },   // 위
-		{ { 0,-1,0 }, { -1,0,0 }, { 0,0,-1 }, { {-h,-h,-h}, {+h,-h,-h}, {+h,-h,+h}, {-h,-h,+h} }, { {1,1},{0,1},{0,0},{1,0} } },   // 아래
-		{ { -1,0,0 }, { 0,0,-1 }, { 0,-1,0 }, { {-h,-h,+h}, {-h,+h,+h}, {-h,+h,-h}, {-h,-h,-h} }, { {0,1},{0,0},{1,0},{1,1} } },   // 왼
-		{ { +1,0,0 }, { 0,0,+1 }, { 0,-1,0 }, { {+h,-h,-h}, {+h,+h,-h}, {+h,+h,+h}, {+h,-h,+h} }, { {0,1},{0,0},{1,0},{1,1} } },   // 오른
+		XMFLOAT3 n, t, b;
+		XMFLOAT3 p[4];
+		float uv[4][2];
+	};
+	const Face faces[6] = {
+		{ { 0, 0, -1 }, { 1, 0, 0 }, { 0, -1, 0 }, { { -h, -h, -h }, { -h, +h, -h }, { +h, +h, -h }, { +h, -h, -h } }, { { 0, 1 }, { 0, 0 }, { 1, 0 }, { 1, 1 } } },    // 앞
+		{ { 0, 0, +1 }, { -1, 0, 0 }, { 0, -1, 0 }, { { -h, -h, +h }, { +h, -h, +h }, { +h, +h, +h }, { -h, +h, +h } }, { { 1, 1 }, { 0, 1 }, { 0, 0 }, { 1, 0 } } },   // 뒤
+		{ { 0, +1, 0 }, { 1, 0, 0 }, { 0, 0, -1 }, { { -h, +h, -h }, { -h, +h, +h }, { +h, +h, +h }, { +h, +h, -h } }, { { 0, 1 }, { 0, 0 }, { 1, 0 }, { 1, 1 } } },    // 위
+		{ { 0, -1, 0 }, { -1, 0, 0 }, { 0, 0, -1 }, { { -h, -h, -h }, { +h, -h, -h }, { +h, -h, +h }, { -h, -h, +h } }, { { 1, 1 }, { 0, 1 }, { 0, 0 }, { 1, 0 } } },   // 아래
+		{ { -1, 0, 0 }, { 0, 0, -1 }, { 0, -1, 0 }, { { -h, -h, +h }, { -h, +h, +h }, { -h, +h, -h }, { -h, -h, -h } }, { { 0, 1 }, { 0, 0 }, { 1, 0 }, { 1, 1 } } },   // 왼
+		{ { +1, 0, 0 }, { 0, 0, +1 }, { 0, -1, 0 }, { { +h, -h, -h }, { +h, +h, -h }, { +h, +h, +h }, { +h, -h, +h } }, { { 0, 1 }, { 0, 0 }, { 1, 0 }, { 1, 1 } } },   // 오른
 	};
 
 	mesh.vertices.reserve(24);
@@ -132,12 +135,15 @@ Mesh Mesh::CreateCube(float size, const XMFLOAT4& color)
 		const Face& f = faces[face];
 		for (uint32_t i = 0; i < 4; ++i)
 		{
-			mesh.vertices.push_back(MakeVertex(f.p[i].x, f.p[i].y, f.p[i].z, f.n.x, f.n.y, f.n.z,
-				f.uv[i][0], f.uv[i][1], f.t, f.b, color));
+			mesh.vertices.push_back(MakeVertex(f.p[i].x, f.p[i].y, f.p[i].z, f.n.x, f.n.y, f.n.z, f.uv[i][0], f.uv[i][1], f.t, f.b, color));
 		}
 		const uint32_t b = face * 4;
-		mesh.indices.push_back(b + 0); mesh.indices.push_back(b + 1); mesh.indices.push_back(b + 2);
-		mesh.indices.push_back(b + 0); mesh.indices.push_back(b + 2); mesh.indices.push_back(b + 3);
+		mesh.indices.push_back(b + 0);
+		mesh.indices.push_back(b + 1);
+		mesh.indices.push_back(b + 2);
+		mesh.indices.push_back(b + 0);
+		mesh.indices.push_back(b + 2);
+		mesh.indices.push_back(b + 3);
 	}
 	mesh.Finalize();
 	return mesh;
@@ -146,8 +152,14 @@ Mesh Mesh::CreateCube(float size, const XMFLOAT4& color)
 Mesh Mesh::CreatePlane(float width, float depth, uint32_t m, uint32_t n, const XMFLOAT4& color)
 {
 	Mesh mesh;
-	if (m < 2) m = 2;
-	if (n < 2) n = 2;
+	if (m < 2)
+	{
+		m = 2;
+	}
+	if (n < 2)
+	{
+		n = 2;
+	}
 
 	const float halfWidth = 0.5f * width;
 	const float halfDepth = 0.5f * depth;
@@ -188,12 +200,17 @@ Mesh Mesh::CreatePlane(float width, float depth, uint32_t m, uint32_t n, const X
 	return mesh;
 }
 
-Mesh Mesh::CreateCylinder(float bottomRadius, float topRadius, float height,
-	uint32_t sliceCount, uint32_t stackCount, const XMFLOAT4& color)
+Mesh Mesh::CreateCylinder(float bottomRadius, float topRadius, float height, uint32_t sliceCount, uint32_t stackCount, const XMFLOAT4& color)
 {
 	Mesh mesh;
-	if (sliceCount < 3) sliceCount = 3;
-	if (stackCount < 1) stackCount = 1;
+	if (sliceCount < 3)
+	{
+		sliceCount = 3;
+	}
+	if (stackCount < 1)
+	{
+		stackCount = 1;
+	}
 
 	const float stackHeight = height / stackCount;
 	const float radiusStep = (topRadius - bottomRadius) / stackCount;
@@ -220,8 +237,7 @@ Mesh Mesh::CreateCylinder(float bottomRadius, float topRadius, float height,
 			XMFLOAT3 normal;
 			XMStoreFloat3(&normal, XMVector3Normalize(XMVector3Cross(XMLoadFloat3(&tangent), XMLoadFloat3(&bitangent))));
 
-			mesh.vertices.push_back(MakeVertex(r * c, y, r * s, normal.x, normal.y, normal.z,
-				static_cast<float>(j) / sliceCount, 1.0f - static_cast<float>(i) / stackCount, tangent, bitangent, color));
+			mesh.vertices.push_back(MakeVertex(r * c, y, r * s, normal.x, normal.y, normal.z, static_cast<float>(j) / sliceCount, 1.0f - static_cast<float>(i) / stackCount, tangent, bitangent, color));
 		}
 	}
 
@@ -354,7 +370,11 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>&
 	// 미러 모델링(한쪽 면만 만들고 뒤집어 복제)처럼 UV 가 뒤집힌 삼각형은 손잡이(w)가 반대임. 같은 정점을 손잡이가 다른
 	// 삼각형이 공유하면 탄젠트가 서로 상쇄되고 w 도 한쪽으로만 정해지므로, 손잡이별로 정점을 복제해서 나눔.
 	// 복제는 정점 배열 뒤에 붙이고 인덱스만 바꾸므로 서브메시의 인덱스 범위는 그대로 유효함.
-	struct TriangleBasis { XMFLOAT3 sdir, tdir; int8_t handedness = 0; };   // handedness 0 = 퇴화(건너뜀)
+	struct TriangleBasis
+	{
+		XMFLOAT3 sdir, tdir;
+		int8_t handedness = 0;
+	};   // handedness 0 = 퇴화(건너뜀)
 	const size_t triangleCount = indices.size() / 3;
 	std::vector<TriangleBasis> triangles(triangleCount);
 
@@ -398,13 +418,20 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>&
 		for (size_t k = 0; k < 3; ++k)
 		{
 			uint32_t& index = indices[t * 3 + k];
-			if (vertexHandedness[index] == 0) { vertexHandedness[index] = h; continue; }
+			if (vertexHandedness[index] == 0)
+			{
+				vertexHandedness[index] = h;
+				continue;
+			}
 			if (vertexHandedness[index] == h) continue;
 			if (alternate[index] == UINT32_MAX)
 			{
 				alternate[index] = static_cast<uint32_t>(vertices.size());
 				vertices.push_back(vertices[index]);
-				if (skin != nullptr) skin->push_back((*skin)[index]);   // 스킨 속성도 같은 자리에 복제 (길이를 vertices 와 맞춤)
+				if (skin != nullptr)
+				{
+					skin->push_back((*skin)[index]);   // 스킨 속성도 같은 자리에 복제 (길이를 vertices 와 맞춤)
+				}
 			}
 			index = alternate[index];   // 손잡이는 두 가지뿐이므로 복제본은 항상 "반대 손잡이" 전용
 		}
@@ -420,8 +447,12 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>&
 		for (size_t k = 0; k < 3; ++k)
 		{
 			const uint32_t index = indices[t * 3 + k];
-			tan1[index].x += tri.sdir.x; tan1[index].y += tri.sdir.y; tan1[index].z += tri.sdir.z;
-			tan2[index].x += tri.tdir.x; tan2[index].y += tri.tdir.y; tan2[index].z += tri.tdir.z;
+			tan1[index].x += tri.sdir.x;
+			tan1[index].y += tri.sdir.y;
+			tan1[index].z += tri.sdir.z;
+			tan2[index].x += tri.tdir.x;
+			tan2[index].y += tri.tdir.y;
+			tan2[index].z += tri.tdir.z;
 		}
 	}
 
@@ -437,7 +468,10 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>&
 		const XMVECTOR fallbackTangent = XMVector3Normalize(XMVector3Cross(axis, n));
 
 		XMVECTOR t = XMLoadFloat3(&tan1[i]);
-		if (XMVectorGetX(XMVector3LengthSq(t)) < 1e-16f) t = fallbackTangent;   // 누적된 값이 없으면(UV 없음 등)
+		if (XMVectorGetX(XMVector3LengthSq(t)) < 1e-16f)
+		{
+			t = fallbackTangent;   // 누적된 값이 없으면(UV 없음 등)
+		}
 		// Gram-Schmidt: 노멀 성분을 뺌. 탄젠트가 노멀과 거의 평행하면 결과가 0 에 가까우므로 길이를 확인하고 대체함.
 		t = XMVectorSubtract(t, XMVectorScale(n, XMVectorGetX(XMVector3Dot(n, t))));
 		t = XMVectorGetX(XMVector3LengthSq(t)) < 1e-16f ? fallbackTangent : XMVector3Normalize(t);
@@ -445,10 +479,16 @@ void Mesh::ComputeTangents(std::vector<VERTEX>& vertices, std::vector<uint32_t>&
 		// 손잡이. cross(N, T) 가 dP/dv 와 같은 쪽이면 +1. glTF 는 B 가 −dP/dv 를 가리켜야 하므로 부호를 뒤집음.
 		const XMVECTOR b = XMLoadFloat3(&tan2[i]);
 		float w = (XMVectorGetX(XMVector3Dot(XMVector3Cross(n, t), b)) < 0.0f) ? -1.0f : 1.0f;
-		if (!bitangentTowardsIncreasingV) w = -w;
+		if (!bitangentTowardsIncreasingV)
+		{
+			w = -w;
+		}
 
 		XMFLOAT3 out;
 		XMStoreFloat3(&out, t);
-		v.tx = out.x; v.ty = out.y; v.tz = out.z; v.tw = w;
+		v.tx = out.x;
+		v.ty = out.y;
+		v.tz = out.z;
+		v.tw = w;
 	}
 }

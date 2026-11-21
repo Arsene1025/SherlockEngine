@@ -97,7 +97,7 @@ private:
 	// 패스 밖에서 설정한 PSO 도 드로우 때 검사함.
 	bool m_pipelineDepthWrite = false;
 
-	// 이 패스의 기본 뷰포트 크기 
+	// 이 패스의 기본 뷰포트 크기
 	uint32_t m_passWidth = 0;
 	uint32_t m_passHeight = 0;
 };

@@ -21,5 +21,5 @@ public:
 	float burstRate = 2500.0f;    // 뿜는 동안의 초당 생성 수
 
 private:
-	float m_elapsed = 0.0f;       // 이번 주기 안에서 지난 시간
+	float m_elapsed = 0.0f;   // 이번 주기 안에서 지난 시간
 };

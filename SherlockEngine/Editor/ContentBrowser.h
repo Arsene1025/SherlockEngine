@@ -8,7 +8,10 @@
 #include <DirectXMath.h>
 #include "RHI/Handle.h"
 
-namespace RHI { class Device; }
+namespace RHI
+{
+	class Device;
+}
 struct ImDrawList;
 struct ImVec2;
 
@@ -23,7 +26,15 @@ struct ImVec2;
 // 소유하지 않음: 파일 시스템을 읽기만 하고, 씬 변경은 Actions 콜백으로 Editor 에 넘김 (Editor 가 다시 앱에 넘김).
 // 유일하게 소유하는 GPU 자원은 텍스처 썸네일임. 렌더러의 텍스처 캐시와는 완전히 분리함 —
 // Renderer::InvalidateScene(…, true) 가 씬 전환마다 텍스처를 지우기 때문임.
-enum class AssetType : uint8_t { Folder, Model, Texture, Scene, Prefab, Other };   // Prefab (.prefab)
+enum class AssetType : uint8_t
+{
+	Folder,
+	Model,
+	Texture,
+	Scene,
+	Prefab,
+	Other
+};   // Prefab (.prefab)
 
 // 드래그 페이로드. ImGui 가 memcpy 로 복사하므로 POD 고정 크기여야 함 (≈524B, ImGui 는 16B 를 넘으면 힙 버퍼에 복사함).
 struct AssetDragPayload
@@ -38,8 +49,8 @@ class ContentBrowser
 public:
 	struct Actions
 	{
-		std::function<void(const std::wstring& relativePath)> openScene;                                        // 씬 더블클릭·컨텍스트 메뉴
-		std::function<void(const std::wstring& relativePath, const DirectX::XMFLOAT3& position)> placeModel;    // 모델 더블클릭 → 원점
+		std::function<void(const std::wstring& relativePath)> openScene;                                              // 씬 더블클릭·컨텍스트 메뉴
+		std::function<void(const std::wstring& relativePath, const DirectX::XMFLOAT3& position)> placeModel;          // 모델 더블클릭 → 원점
 		std::function<void(const std::wstring& relativePath, const DirectX::XMFLOAT3& position)> instantiatePrefab;   // 프리팹 더블클릭·컨텍스트 메뉴 → 원점
 	};
 
@@ -49,7 +60,11 @@ public:
 	// "Content Browser" 창의 내용. ImGui::Begin/End 는 호출자(Editor) 의 몫.
 	void Draw(RHI::Device& device, const Actions& actions);
 
-	void Refresh() { m_dirty = true; m_rootsDirty = true; }   // 루트(프로젝트)가 바뀌었을 때도 이것을 호출
+	void Refresh()
+	{
+		m_dirty = true;
+		m_rootsDirty = true;
+	}   // 루트(프로젝트)가 바뀌었을 때도 이것을 호출
 	void SetDirectory(const std::wstring& relativeDir, int root = 0);   // L"" = 루트. root 0 = 프로젝트, 1 = 엔진
 	const std::wstring& GetDirectory() const { return m_currentDir; }
 	size_t GetEntryCount() const { return m_entries.size(); }
@@ -66,18 +81,18 @@ public:
 private:
 	struct Root
 	{
-		std::string label;     // "Project" / "Engine"
-		std::wstring dir;      // 절대 경로, 끝 백슬래시
+		std::string label;   // "Project" / "Engine"
+		std::wstring dir;    // 절대 경로, 끝 백슬래시
 	};
 	struct Entry
 	{
 		std::wstring name;
-		std::string nameUtf8;         // ImGui 라벨. 변환은 열거할 때 한 번만
-		std::wstring relativePath;    // 루트 기준
+		std::string nameUtf8;        // ImGui 라벨. 변환은 열거할 때 한 번만
+		std::wstring relativePath;   // 루트 기준
 		std::wstring absolutePath;
 		AssetType type = AssetType::Other;
 		bool isDirectory = false;
-		bool hidden = false;          // .bin/.ini/.log — "Hidden" 토글을 켜야 회색으로 보임
+		bool hidden = false;   // .bin/.ini/.log — "Hidden" 토글을 켜야 회색으로 보임
 		uintmax_t size = 0;
 	};
 	struct TreeNode
@@ -108,21 +123,21 @@ private:
 	void OnDoubleClick(const Entry& entry, const Actions& actions);
 	const Root& CurrentRoot() const { return m_roots[m_currentRoot]; }
 
-	uint64_t RequestThumbnail(const Entry& entry);      // ImTextureID 또는 0 (아직 로드 전이거나 실패). 처음 요청되면 로드 큐에 넣음
-	void PumpThumbnailLoads(uint32_t budget);           // 프레임당 budget 장만 디코딩 (히치 방지)
-	void EvictThumbnails();                             // 상한을 넘으면 오래 안 쓴 것부터 파괴
+	uint64_t RequestThumbnail(const Entry& entry);   // ImTextureID 또는 0 (아직 로드 전이거나 실패). 처음 요청되면 로드 큐에 넣음
+	void PumpThumbnailLoads(uint32_t budget);        // 프레임당 budget 장만 디코딩 (히치 방지)
+	void EvictThumbnails();                          // 상한을 넘으면 오래 안 쓴 것부터 파괴
 	void ClearThumbnails();
 
-	std::vector<Root> m_roots;                           // [0] 프로젝트 (없으면 엔진만), [1] 엔진
+	std::vector<Root> m_roots;   // [0] 프로젝트 (없으면 엔진만), [1] 엔진
 	bool m_rootsDirty = true;
 	int m_currentRoot = 0;
-	std::wstring m_currentDir;                           // 루트 기준 상대. L"" = 루트
+	std::wstring m_currentDir;   // 루트 기준 상대. L"" = 루트
 	std::vector<Entry> m_entries;
-	std::vector<TreeNode> m_trees;                       // 루트마다 하나
+	std::vector<TreeNode> m_trees;   // 루트마다 하나
 	bool m_dirty = true;
-	bool m_expandTreeToCurrent = false;                  // 그리드에서 폴더에 들어갔을 때 트리의 조상을 펼침
+	bool m_expandTreeToCurrent = false;   // 그리드에서 폴더에 들어갔을 때 트리의 조상을 펼침
 	double m_lastPollTime = 0.0;
-	int64_t m_dirStamp = 0;                              // last_write_time. 1초마다 비교해 바뀌면 다시 읽음
+	int64_t m_dirStamp = 0;   // last_write_time. 1초마다 비교해 바뀌면 다시 읽음
 	int m_selected = -1;
 	char m_search[128] = {};
 	float m_tileSize = 96.0f;

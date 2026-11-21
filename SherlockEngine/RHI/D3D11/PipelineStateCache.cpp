@@ -27,13 +27,7 @@ PipelineHandle PipelineStateCache::GetOrCreate(D3D11Device& device, const Pipeli
 	const uint32_t index = static_cast<uint32_t>(m_states.size());
 	m_states.push_back(std::move(state));
 	m_lookup.emplace(desc, index);   // Desc는 값으로 복사돼 키가 됨
-	Log::Info("PSO 생성 #%u (fill=%s, cull=%d, layouts=%u, gen=%u). 캐시 크기 %zu",
-		index,
-		desc.rasterizer.fill == FillMode::Wireframe ? "wire" : "solid",
-		static_cast<int>(desc.rasterizer.cull),
-		desc.bindingLayoutCount,
-		m_generation,
-		m_states.size());
+	Log::Info("PSO 생성 #%u (fill=%s, cull=%d, layouts=%u, gen=%u). 캐시 크기 %zu", index, desc.rasterizer.fill == FillMode::Wireframe ? "wire" : "solid", static_cast<int>(desc.rasterizer.cull), desc.bindingLayoutCount, m_generation, m_states.size());
 	return PipelineHandle{ index, m_generation };
 }
 
@@ -61,5 +55,8 @@ void PipelineStateCache::Clear()
 	m_lookup.clear();
 	m_states.clear();
 	++m_generation;
-	if (m_generation == 0) m_generation = 1;   // uint32 오버플로 시 0(빈 핸들 값)을 건너뜀
+	if (m_generation == 0)
+	{
+		m_generation = 1;   // uint32 오버플로 시 0(빈 핸들 값)을 건너뜀
+	}
 }

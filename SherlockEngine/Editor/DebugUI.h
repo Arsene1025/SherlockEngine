@@ -3,7 +3,10 @@
 class Scene;
 struct Material;
 class Renderer;
-namespace RHI { class Device; }
+namespace RHI
+{
+	class Device;
+}
 class Camera;
 struct ModelStats;
 class Engine;
@@ -21,7 +24,7 @@ namespace DebugUI
 	// 다음 줄로 내림.
 	void SameLineIfFits(float itemWidth);
 	float CheckboxWidth(const char* label);
-	float ButtonWidth(const char* label);        // Button·SmallButton 공통 (가로 패딩은 같음)
+	float ButtonWidth(const char* label);   // Button·SmallButton 공통 (가로 패딩은 같음)
 	float TextItemWidth(const char* text);
 
 	// 기본값 리셋 버튼(R)이 라벨 옆에 붙는 슬라이더·드래그. 값 입력은 ImGui 기본 기능(Ctrl+클릭 /
@@ -55,7 +58,7 @@ namespace DebugUI
 	// 현재 씬 이름, 모델 통계 (메시·서브메시·정점·삼각형·16비트 인덱스·탄젠트 생성·로드 시간), 씬 전환 안내를 표시함.
 	void DrawModelPanel(const char* sceneName, const ModelStats& stats, size_t sceneImages, size_t sceneObjects);
 
-	void DrawEnginePanel(Engine& engine);       // 백엔드·설정 파일·로그 파일·AssetManager·Time
-	void DrawProfilerPanel();                   // CPU 구간 + GPU 타임스탬프 구간 (직전 완료 프레임)
-	void DrawLogConsole(bool* open);            // 별도 창 "Console": 레벨 필터·검색·자동 스크롤·지우기
+	void DrawEnginePanel(Engine& engine);   // 백엔드·설정 파일·로그 파일·AssetManager·Time
+	void DrawProfilerPanel();               // CPU 구간 + GPU 타임스탬프 구간 (직전 완료 프레임)
+	void DrawLogConsole(bool* open);        // 별도 창 "Console": 레벨 필터·검색·자동 스크롤·지우기
 }

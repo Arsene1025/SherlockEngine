@@ -30,13 +30,13 @@ struct ColorAttachment
 	TextureHandle texture;
 	LoadOp load = LoadOp::Clear;
 	StoreOp store = StoreOp::Store;
-	bool srgbView = false;              // UNORM 백버퍼를 sRGB 뷰로 씀
+	bool srgbView = false;                              // UNORM 백버퍼를 sRGB 뷰로 씀
 	float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };   // 선형 값
 };
 
 struct DepthAttachment
 {
-	TextureHandle texture;              // 비어 있으면 깊이 없음 (UI 패스)
+	TextureHandle texture;   // 비어 있으면 깊이 없음 (UI 패스)
 	LoadOp load = LoadOp::Clear;
 	StoreOp store = StoreOp::Store;
 	float clearDepth = 1.0f;
@@ -52,7 +52,7 @@ struct Viewport
 {
 	float x = 0.0f;
 	float y = 0.0f;
-	float width = 0.0f;     // 0 이면 첫 attachment 의 크기를 씀
+	float width = 0.0f;   // 0 이면 첫 attachment 의 크기를 씀
 	float height = 0.0f;
 	float minDepth = 0.0f;
 	float maxDepth = 1.0f;
@@ -82,8 +82,8 @@ enum class ResourceState : uint8_t
 	CopySource,
 	CopyDest,
 	Present,
-	UnorderedAccess,   // 컴퓨트가 UAV 로 씀. Dispatch 전에 이 상태로, 결과를 읽기 전에 ShaderResource 로 전이
-	IndirectArgument,  // DrawInstancedIndirect / DispatchIndirect 가 인자를 읽음 (BufferBind_IndirectArgs 버퍼 전용)
+	UnorderedAccess,    // 컴퓨트가 UAV 로 씀. Dispatch 전에 이 상태로, 결과를 읽기 전에 ShaderResource 로 전이
+	IndirectArgument,   // DrawInstancedIndirect / DispatchIndirect 가 인자를 읽음 (BufferBind_IndirectArgs 버퍼 전용)
 	// 깊이를 읽기만 함: 읽기 전용 DSV(DepthAttachment::readOnly) 와 SRV(모든 스테이지, 컴퓨트 포함)를 동시에.
 	// TextureBind_DepthStencil 텍스처 전용. D3D12: DEPTH_READ | PIXEL_SHADER_RESOURCE | NON_PIXEL_SHADER_RESOURCE
 	// (TextureBind_ShaderResource 가 없는 깊이는 DENY_SHADER_RESOURCE 라 DEPTH_READ 만).
@@ -94,16 +94,16 @@ inline const char* ToString(ResourceState state)
 {
 	switch (state)
 	{
-	case ResourceState::Common:         return "Common";
-	case ResourceState::RenderTarget:   return "RenderTarget";
-	case ResourceState::DepthWrite:     return "DepthWrite";
-	case ResourceState::ShaderResource: return "ShaderResource";
-	case ResourceState::CopySource:     return "CopySource";
-	case ResourceState::CopyDest:       return "CopyDest";
-	case ResourceState::Present:        return "Present";
-	case ResourceState::UnorderedAccess: return "UnorderedAccess";
+	case ResourceState::Common:           return "Common";
+	case ResourceState::RenderTarget:     return "RenderTarget";
+	case ResourceState::DepthWrite:       return "DepthWrite";
+	case ResourceState::ShaderResource:   return "ShaderResource";
+	case ResourceState::CopySource:       return "CopySource";
+	case ResourceState::CopyDest:         return "CopyDest";
+	case ResourceState::Present:          return "Present";
+	case ResourceState::UnorderedAccess:  return "UnorderedAccess";
 	case ResourceState::IndirectArgument: return "IndirectArgument";
-	case ResourceState::DepthRead:      return "DepthRead";
-	default:                           return "?";
+	case ResourceState::DepthRead:        return "DepthRead";
+	default:                              return "?";
 	}
 }

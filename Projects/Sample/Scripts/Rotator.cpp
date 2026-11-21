@@ -11,9 +11,7 @@ void Rotator::Reflect(PropertyVisitor& v)
 
 void Rotator::Update(float dt)
 {
-	Rotate(DirectX::XMConvertToRadians(degreesPerSecond.x) * dt,
-		DirectX::XMConvertToRadians(degreesPerSecond.y) * dt,
-		DirectX::XMConvertToRadians(degreesPerSecond.z) * dt);
+	Rotate(DirectX::XMConvertToRadians(degreesPerSecond.x) * dt, DirectX::XMConvertToRadians(degreesPerSecond.y) * dt, DirectX::XMConvertToRadians(degreesPerSecond.z) * dt);
 }
 
 SHERLOCK_SCRIPT(Rotator)

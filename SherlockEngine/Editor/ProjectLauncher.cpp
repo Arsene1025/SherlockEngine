@@ -27,20 +27,32 @@ namespace
 		if (utf8.empty()) return L"";
 		const int length = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
 		std::wstring wide(length > 0 ? length - 1 : 0, L'\0');
-		if (length > 1) MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
+		if (length > 1)
+		{
+			MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
+		}
 		return wide;
 	}
 	nlohmann::json LoadSettings()
 	{
 		std::ifstream in(SettingsPath(), std::ios::binary);
 		if (!in) return nlohmann::json::object();
-		try { return nlohmann::json::parse(in); }
-		catch (...) { return nlohmann::json::object(); }
+		try
+		{
+			return nlohmann::json::parse(in);
+		}
+		catch (...)
+		{
+			return nlohmann::json::object();
+		}
 	}
 	void SaveSettings(const nlohmann::json& settings)
 	{
 		std::ofstream out(SettingsPath(), std::ios::binary | std::ios::trunc);
-		if (out) out << settings.dump(2);
+		if (out)
+		{
+			out << settings.dump(2);
+		}
 	}
 }
 
@@ -54,7 +66,10 @@ std::vector<ProjectLauncher::Recent> ProjectLauncher::LoadRecent()
 		recent.name = item.value("name", "");
 		recent.path = Wide(item.value("path", ""));
 		std::error_code ec;
-		if (!recent.path.empty() && fs::exists(recent.path, ec)) list.push_back(recent);   // 지워진 프로젝트는 목록에서 뺌
+		if (!recent.path.empty() && fs::exists(recent.path, ec))
+		{
+			list.push_back(recent);   // 지워진 프로젝트는 목록에서 뺌
+		}
 	}
 	return list;
 }
@@ -62,12 +77,22 @@ std::vector<ProjectLauncher::Recent> ProjectLauncher::LoadRecent()
 void ProjectLauncher::AddRecent(const std::string& name, const std::wstring& path)
 {
 	std::vector<Recent> list = LoadRecent();
-	list.erase(std::remove_if(list.begin(), list.end(), [&](const Recent& r) { return _wcsicmp(r.path.c_str(), path.c_str()) == 0; }), list.end());
+	list.erase(std::remove_if(list.begin(), list.end(), [&](const Recent& r)
+	{
+		return _wcsicmp(r.path.c_str(), path.c_str()) == 0;
+	}),
+			   list.end());
 	list.insert(list.begin(), Recent{ name, path });
-	if (list.size() > 10) list.resize(10);
+	if (list.size() > 10)
+	{
+		list.resize(10);
+	}
 	nlohmann::json settings = LoadSettings();
 	nlohmann::json array = nlohmann::json::array();
-	for (const Recent& r : list) array.push_back({ { "name", r.name }, { "path", Log::ToUtf8(r.path.c_str()) } });
+	for (const Recent& r : list)
+	{
+		array.push_back({ { "name", r.name }, { "path", Log::ToUtf8(r.path.c_str()) } });
+	}
 	settings["recentProjects"] = array;
 	SaveSettings(settings);
 }
@@ -75,10 +100,17 @@ void ProjectLauncher::AddRecent(const std::string& name, const std::wstring& pat
 void ProjectLauncher::RemoveRecent(const std::wstring& path)
 {
 	std::vector<Recent> list = LoadRecent();
-	list.erase(std::remove_if(list.begin(), list.end(), [&](const Recent& r) { return _wcsicmp(r.path.c_str(), path.c_str()) == 0; }), list.end());
+	list.erase(std::remove_if(list.begin(), list.end(), [&](const Recent& r)
+	{
+		return _wcsicmp(r.path.c_str(), path.c_str()) == 0;
+	}),
+			   list.end());
 	nlohmann::json settings = LoadSettings();
 	nlohmann::json array = nlohmann::json::array();
-	for (const Recent& r : list) array.push_back({ { "name", r.name }, { "path", Log::ToUtf8(r.path.c_str()) } });
+	for (const Recent& r : list)
+	{
+		array.push_back({ { "name", r.name }, { "path", Log::ToUtf8(r.path.c_str()) } });
+	}
 	settings["recentProjects"] = array;
 	SaveSettings(settings);
 }

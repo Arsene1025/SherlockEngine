@@ -20,11 +20,11 @@
 
 struct VERTEX
 {
-	float x, y, z; 			// 좌표(Position)
-	float r, g, b, a;		// 색상(Diffuse Color)
-	float nx, ny, nz;		// 노멀(Normal)
-	float u, v;				// 텍스처 좌표(TexCoord). (0,0) = 왼쪽 위 (D3D 관례)
-	float tx, ty, tz, tw;	// 탄젠트(Tangent) = u 가 증가하는 방향. w = 손잡이(±1): B = cross(N, T) * w
+	float x, y, z;          // 좌표(Position)
+	float r, g, b, a;       // 색상(Diffuse Color)
+	float nx, ny, nz;       // 노멀(Normal)
+	float u, v;             // 텍스처 좌표(TexCoord). (0,0) = 왼쪽 위 (D3D 관례)
+	float tx, ty, tz, tw;   // 탄젠트(Tangent) = u 가 증가하는 방향. w = 손잡이(±1): B = cross(N, T) * w
 };
 using VertexPCNTT = VERTEX;
 
@@ -54,11 +54,11 @@ consteval VertexLayoutDesc MakeVertexLayoutPCNTT()
 {
 	VertexLayoutDesc layout;
 	// C++20 지정 초기화. VertexAttribute 필드 순서: semantic, semanticIndex, format, offset, inputSlot.
-	layout.attributes[0] = { .semantic = VertexSemantic::Position, .format = Format::R32G32B32_FLOAT,    .offset = static_cast<uint16_t>(offsetof(VERTEX, x)) };
-	layout.attributes[1] = { .semantic = VertexSemantic::Color,    .format = Format::R32G32B32A32_FLOAT, .offset = static_cast<uint16_t>(offsetof(VERTEX, r)) };
-	layout.attributes[2] = { .semantic = VertexSemantic::Normal,   .format = Format::R32G32B32_FLOAT,    .offset = static_cast<uint16_t>(offsetof(VERTEX, nx)) };
-	layout.attributes[3] = { .semantic = VertexSemantic::TexCoord, .format = Format::R32G32_FLOAT,       .offset = static_cast<uint16_t>(offsetof(VERTEX, u)) };
-	layout.attributes[4] = { .semantic = VertexSemantic::Tangent,  .format = Format::R32G32B32A32_FLOAT, .offset = static_cast<uint16_t>(offsetof(VERTEX, tx)) };
+	layout.attributes[0] = { .semantic = VertexSemantic::Position, .format = Format::R32G32B32_FLOAT, .offset = static_cast<uint16_t>(offsetof(VERTEX, x)) };
+	layout.attributes[1] = { .semantic = VertexSemantic::Color, .format = Format::R32G32B32A32_FLOAT, .offset = static_cast<uint16_t>(offsetof(VERTEX, r)) };
+	layout.attributes[2] = { .semantic = VertexSemantic::Normal, .format = Format::R32G32B32_FLOAT, .offset = static_cast<uint16_t>(offsetof(VERTEX, nx)) };
+	layout.attributes[3] = { .semantic = VertexSemantic::TexCoord, .format = Format::R32G32_FLOAT, .offset = static_cast<uint16_t>(offsetof(VERTEX, u)) };
+	layout.attributes[4] = { .semantic = VertexSemantic::Tangent, .format = Format::R32G32B32A32_FLOAT, .offset = static_cast<uint16_t>(offsetof(VERTEX, tx)) };
 	layout.attributeCount = 5;
 	layout.stride = sizeof(VERTEX);
 	return layout;
@@ -70,7 +70,7 @@ inline constexpr VertexLayoutDesc kVertexLayoutPCNTT = MakeVertexLayoutPCNTT();
 consteval VertexLayoutDesc MakeVertexLayoutPCNTTSkin()
 {
 	VertexLayoutDesc layout = MakeVertexLayoutPCNTT();
-	layout.attributes[5] = { .semantic = VertexSemantic::BlendIndices, .format = Format::R8G8B8A8_UINT,     .offset = static_cast<uint16_t>(offsetof(VERTEX_SKINNED, skin.joints)) };
+	layout.attributes[5] = { .semantic = VertexSemantic::BlendIndices, .format = Format::R8G8B8A8_UINT, .offset = static_cast<uint16_t>(offsetof(VERTEX_SKINNED, skin.joints)) };
 	layout.attributes[6] = { .semantic = VertexSemantic::BlendWeights, .format = Format::R32G32B32A32_FLOAT, .offset = static_cast<uint16_t>(offsetof(VERTEX_SKINNED, skin.weights)) };
 	layout.attributeCount = 7;
 	layout.stride = sizeof(VERTEX_SKINNED);

@@ -27,14 +27,22 @@ struct PrefabResources
 // 메시의 출처 정보. 씬을 저장할 때 정점 데이터 대신 이 정보를 기록하고, 로드할 때 이를 바탕으로 메시를 다시 만듦.
 struct MeshSource
 {
-	enum class Type : uint8_t { Custom, Sphere, Cube, Plane, Cylinder, Model };
+	enum class Type : uint8_t
+	{
+		Custom,
+		Sphere,
+		Cube,
+		Plane,
+		Cylinder,
+		Model
+	};
 	Type type = Type::Custom;
 	float params[4] = { 0.0f, 0.0f, 0.0f, 0.0f };   // Sphere: radius / Cube: size / Plane: width, depth / Cylinder: bottom, top, height
-	uint32_t a = 0;                                  // Sphere: slices / Plane: m / Cylinder: slices
-	uint32_t b = 0;                                  // Sphere: stacks / Plane: n / Cylinder: stacks
+	uint32_t a = 0;                                 // Sphere: slices / Plane: m / Cylinder: slices
+	uint32_t b = 0;                                 // Sphere: stacks / Plane: n / Cylinder: stacks
 	DirectX::XMFLOAT4 color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	std::wstring modelPath;                          // Model: Assets 기준 상대 경로
-	uint32_t meshIndex = 0;                          // Model: 모델 안의 메시 번호
+	std::wstring modelPath;   // Model: Assets 기준 상대 경로
+	uint32_t meshIndex = 0;   // Model: 모델 안의 메시 번호
 
 	static MeshSource Sphere(float radius, uint32_t slices, uint32_t stacks, const DirectX::XMFLOAT4& color);
 	static MeshSource Cube(float size, const DirectX::XMFLOAT4& color);
@@ -58,17 +66,17 @@ struct MeshSource
 // 없으면 ambientColor 를 씀.
 struct SceneEnvironment
 {
-	std::string skybox;        // 배경 큐브맵 (보통 HDR 원본)
-	std::string irradiance;    // IBL 확산: 노멀 방향의 코사인 가중 평균 복사휘도 큐브
-	std::string specular;      // IBL 반사: 거칠기별로 미리 거른 큐브. 밉 0 = 거칠기 0, 마지막 밉 = 거칠기 1
-	std::string brdfLut;       // split-sum BRDF LUT (2D, u = N·V, v = 1 − roughness). 비면 해석적 근사
-	float iblIntensity = 1.0f; // 환경광 배율 (IBL 맵이나 스카이박스를 쓸 때만. ambientColor 대체 경로에는 적용 안 함)
+	std::string skybox;                                                // 배경 큐브맵 (보통 HDR 원본)
+	std::string irradiance;                                            // IBL 확산: 노멀 방향의 코사인 가중 평균 복사휘도 큐브
+	std::string specular;                                              // IBL 반사: 거칠기별로 미리 거른 큐브. 밉 0 = 거칠기 0, 마지막 밉 = 거칠기 1
+	std::string brdfLut;                                               // split-sum BRDF LUT (2D, u = N·V, v = 1 − roughness). 비면 해석적 근사
+	float iblIntensity = 1.0f;                                         // 환경광 배율 (IBL 맵이나 스카이박스를 쓸 때만. ambientColor 대체 경로에는 적용 안 함)
 	DirectX::XMFLOAT3 iblTint = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);   // 환경광 색 배율 (확산 조도·반사 프리필터에 곱함). 스카이박스 배경에는 적용 안 함
-	float exposure = 1.0f;     // 최종 색(물체·하늘)에 곱함
-	bool toneMapping = false;  // ACES 근사. HDR 환경에서 켬. 끄면 1 을 넘는 값이 잘림
-	PostProcessSettings post;  // 후처리 (블러·블룸·GreyScale). 환경에 두어 저장·되돌리기가 환경과 함께 됨
-	ShadowSettings shadow;     // 그림자 (바이어스·세기·노말 오프셋·직교 크기·거리). 씬 크기에 맞는 값이 씬 파일에 들어감
-	SsaoSettings ssao;         // SSAO (반경·바이어스·세기·샘플 수). 반경이 씬 크기에 달려 씬 파일에 들어감. 디퍼드 프레임에서만 그림
+	float exposure = 1.0f;                                             // 최종 색(물체·하늘)에 곱함
+	bool toneMapping = false;                                          // ACES 근사. HDR 환경에서 켬. 끄면 1 을 넘는 값이 잘림
+	PostProcessSettings post;                                          // 후처리 (블러·블룸·GreyScale). 환경에 두어 저장·되돌리기가 환경과 함께 됨
+	ShadowSettings shadow;                                             // 그림자 (바이어스·세기·노말 오프셋·직교 크기·거리). 씬 크기에 맞는 값이 씬 파일에 들어감
+	SsaoSettings ssao;                                                 // SSAO (반경·바이어스·세기·샘플 수). 반경이 씬 크기에 달려 씬 파일에 들어감. 디퍼드 프레임에서만 그림
 };
 
 // 씬 = 그릴 대상들의 CPU 쪽 데이터.
@@ -143,7 +151,13 @@ public:
 	bool SetObjectId(GameObject& object, uint64_t id);
 	// 직렬화가 읽은 ID 보다 큰 값부터 새 ID 가 나가도록 카운터를 올림 (SceneSerializer 가 오브젝트를 만들기
 	// 전에 호출함).
-	void ReserveIds(uint64_t maxUsed) { if (m_nextId <= maxUsed) m_nextId = maxUsed + 1; }
+	void ReserveIds(uint64_t maxUsed)
+	{
+		if (m_nextId <= maxUsed)
+		{
+			m_nextId = maxUsed + 1;
+		}
+	}
 	size_t IndexOf(const GameObject* object) const;   // 포인터 → 벡터 인덱스. 없으면 SIZE_MAX
 	void RemoveObject(size_t index);                  // 자식도 함께 지움 (즉시. 재생 중 게임 코드는 Destroy 를 쓸 것)
 	void ClearObjects();                              // 오브젝트만 비움 (메시·재질·조명·환경은 유지). 되돌리기 복원이 씀. ID 카운터는 그대로
@@ -172,7 +186,7 @@ public:
 
 	// ---- 재생 (에디터의 ▶). 재생 중에만 컴포넌트의 Start/Update/FixedUpdate 가 호출됨 ----
 	void BeginPlay(Input* input, Camera* camera);
-	void Update(float dt);          // Start 를 아직 받지 않은 컴포넌트(재생 중 추가된 것 포함)는 Start 를 먼저 호출함
+	void Update(float dt);   // Start 를 아직 받지 않은 컴포넌트(재생 중 추가된 것 포함)는 Start 를 먼저 호출함
 	void FixedUpdate(float fixedDt);
 	void EndPlay();
 	bool IsPlaying() const { return m_playing; }
@@ -217,12 +231,12 @@ private:
 	bool m_playing = false;
 	PlayContext m_playContext;
 	CameraComponent* m_activeCamera = nullptr;
-	CameraPose m_blendFrom;          // 전환 시작 시점의 카메라 자세 (회전은 쿼터니언, slerp 로 보간)
+	CameraPose m_blendFrom;   // 전환 시작 시점의 카메라 자세 (회전은 쿼터니언, slerp 로 보간)
 	float m_blendElapsed = 0.0f;
 	float m_blendDuration = 0.0f;
 
 	// 멤버는 끝에만 덧붙임 (이미 빌드된 스크립트 DLL 과의 ABI 호환)
-	uint64_t m_nextId = 1;           // 다음에 부여할 오브젝트 ID. Clear 에서만 1 로 돌아감
+	uint64_t m_nextId = 1;   // 다음에 부여할 오브젝트 ID. Clear 에서만 1 로 돌아감
 	AssetManager* m_assets = nullptr;
 	std::unordered_map<std::string, PrefabResources> m_prefabResources;
 	bool m_destroyPending = false;   // Destroy 로 표시된 오브젝트가 있음 → 프레임 끝에 FlushDestroyed

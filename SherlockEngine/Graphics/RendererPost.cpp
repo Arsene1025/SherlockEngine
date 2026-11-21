@@ -36,14 +36,13 @@ PipelineHandle Renderer::GetPostPipeline(bool additive)
 	return cached;
 }
 
-void Renderer::DispatchBlurCompute(RHI::CommandList& cmd, ComputePipelineHandle pipeline, ResourceSetHandle set, TextureHandle output,
-	uint32_t width, uint32_t height)
+void Renderer::DispatchBlurCompute(RHI::CommandList& cmd, ComputePipelineHandle pipeline, ResourceSetHandle set, TextureHandle output, uint32_t width, uint32_t height)
 {
 	// 출력 → UnorderedAccess. 입력(셋의 t13)은 앞 단계가 남긴 ShaderResource 상태 그대로임. D3D11 에서는 이 전이가
 	// 출력 텍스처를 SRV 슬롯(PS t13 · CS t13)에서 풀어 줌 — 안 풀면 런타임이 UAV 쪽을 NULL 로 만들어 아무것도 안 써짐.
 	cmd.Barrier(output, ResourceState::UnorderedAccess);
 	cmd.SetComputePipeline(pipeline);
-	cmd.SetComputeResourceSet(kSetBlurCompute, set);   // PostParams 를 올린 뒤에 꽂아야 D3D12 루트 CBV 가 새 주소를 가리킴
+	cmd.SetComputeResourceSet(kSetBlurCompute, set);      // PostParams 를 올린 뒤에 꽂아야 D3D12 루트 CBV 가 새 주소를 가리킴
 	cmd.Dispatch((width + 7) / 8, (height + 7) / 8, 1);   // BlurComputeShader 의 [numthreads(8, 8, 1)]
 	// 다음 단계(세로 패스의 입력, 블룸, 톤 패스)가 SRV 로 읽음. D3D11 에서는 CS UAV 슬롯에서도 풀어 줌.
 	cmd.Barrier(output, ResourceState::ShaderResource);
@@ -57,8 +56,8 @@ void Renderer::DispatchBlurWeights(RHI::CommandList& cmd, ComputePipelineHandle 
 	cmd.Barrier(m_blurWeights, ResourceState::UnorderedAccess);
 	cmd.SetComputePipeline(pipeline);
 	cmd.SetComputeResourceSet(kSetBlurWeights, m_blurWeightsSet);   // PostParams 를 올린 뒤 (D3D12 루트 CBV 주소)
-	cmd.Dispatch((radius + 1 + 63) / 64, 1, 1);   // BlurWeightsComputeShader 의 [numthreads(64, 1, 1)]. 원소 0..radius
-	cmd.Barrier(m_blurWeights, ResourceState::ShaderResource);   // PS·CS 블러가 t20 으로 읽음
+	cmd.Dispatch((radius + 1 + 63) / 64, 1, 1);                     // BlurWeightsComputeShader 의 [numthreads(64, 1, 1)]. 원소 0..radius
+	cmd.Barrier(m_blurWeights, ResourceState::ShaderResource);      // PS·CS 블러가 t20 으로 읽음
 }
 
 ResourceSetHandle Renderer::CreatePostSet(TextureHandle input, const char* debugName)
@@ -66,8 +65,7 @@ ResourceSetHandle Renderer::CreatePostSet(TextureHandle input, const char* debug
 	// 슬롯 순서는 CreateLayouts 의 postLayout.Add(...) 순서: b0 PerFrame, b4 PostParams, t13 입력, s6 선형 Clamp, t20 블러 가중치.
 	const ResourceSetDesc desc{
 		.layout = m_layouts[Layout_Post],
-		.bindings = { { .buffer = m_perFrameCB }, { .buffer = m_postParamsCB }, { .texture = input }, { .sampler = GetSampler(SamplerPreset::LinearClamp) },
-			{ .buffer = m_blurWeights } },
+		.bindings = { { .buffer = m_perFrameCB }, { .buffer = m_postParamsCB }, { .texture = input }, { .sampler = GetSampler(SamplerPreset::LinearClamp) }, { .buffer = m_blurWeights } },
 		.debugName = debugName,
 	};
 	return m_device->CreateResourceSet(desc);
@@ -96,7 +94,7 @@ void Renderer::RenderPostPass(RHI::CommandList& cmd, const PostPassDesc& desc)
 	cmd.BeginRenderPass(pass);
 	cmd.SetPipelineState(desc.pipeline);
 	cmd.SetResourceSet(kSetPost, desc.input);   // b0 (PerFrame) + b4 (PostParams) + t13 (입력) + s6
-	cmd.Draw(3, 0);                   // 정점 버퍼 없음 — ScreenVS 가 SV_VertexID 로 삼각형 하나를 만듦
+	cmd.Draw(3, 0);                             // 정점 버퍼 없음 — ScreenVS 가 SV_VertexID 로 삼각형 하나를 만듦
 	++m_stats.pipelineSwitches;
 	++m_stats.draws;
 	m_stats.triangles += 1;
@@ -106,9 +104,7 @@ void Renderer::RenderPostPass(RHI::CommandList& cmd, const PostPassDesc& desc)
 	cmd.Barrier(desc.output, desc.outputAfter);
 }
 
-void Renderer::RenderTonemapPass(RHI::CommandList& cmd, ResourceSetHandle hdrSet, TextureHandle output,
-	ResourceState outputAfter, const char* debugName,
-	uint32_t srcW, uint32_t srcH, uint32_t dstW, uint32_t dstH, bool skipGrade)
+void Renderer::RenderTonemapPass(RHI::CommandList& cmd, ResourceSetHandle hdrSet, TextureHandle output, ResourceState outputAfter, const char* debugName, uint32_t srcW, uint32_t srcH, uint32_t dstW, uint32_t dstH, bool skipGrade)
 {
 	PostParamsConstants params = {};
 	params.view = XMFLOAT4(static_cast<float>(srcW), static_cast<float>(srcH), static_cast<float>(dstW), static_cast<float>(dstH));
@@ -116,20 +112,23 @@ void Renderer::RenderTonemapPass(RHI::CommandList& cmd, ResourceSetHandle hdrSet
 	UploadPostParams(params);   // 효과가 전부 꺼져도 매 프레임 올림 (D3D12 의 갱신 안 된 Dynamic CB 경고 방지)
 
 	RenderPostPass(cmd, PostPassDesc{
-		.pipeline = GetTonemapPipeline(),
-		.input = hdrSet,
-		.output = output,
-		.outputAfter = outputAfter,
-		.load = LoadOp::DontCare,
-		.srgbView = m_settings.srgbOutput,
-		.debugName = debugName,
-	});
+							.pipeline = GetTonemapPipeline(),
+							.input = hdrSet,
+							.output = output,
+							.outputAfter = outputAfter,
+							.load = LoadOp::DontCare,
+							.srgbView = m_settings.srgbOutput,
+							.debugName = debugName,
+						});
 }
 
 bool Renderer::EnsurePostScratch(PostScratch& scratch, TextureHandle hdr, uint32_t width, uint32_t height, bool needBlur, bool needBloom)
 {
 	if (m_device == nullptr || width == 0 || height == 0) return false;
-	if (scratch.width != width || scratch.height != height) DestroyPostScratch(scratch);   // hdr 크기가 바뀌었으면 전부 다시
+	if (scratch.width != width || scratch.height != height)
+	{
+		DestroyPostScratch(scratch);   // hdr 크기가 바뀌었으면 전부 다시
+	}
 
 	// 후처리 텍스처는 전부 FP16 — 1 을 넘는 밝기를 잘라내지 않도록 hdr 와 같은 포맷.
 	// extraBind: 블러 스크래치는 컴퓨트 블러의 출력(가로 패스)이기도 하므로 UAV 를 함께 켬.
@@ -144,7 +143,10 @@ bool Renderer::EnsurePostScratch(PostScratch& scratch, TextureHandle hdr, uint32
 			.debugName = name,
 		};
 		texture = m_device->CreateTexture(desc);
-		if (texture.IsValid()) set = CreatePostSet(texture, name);
+		if (texture.IsValid())
+		{
+			set = CreatePostSet(texture, name);
+		}
 		return texture.IsValid() && set.IsValid();
 	};
 
@@ -205,16 +207,31 @@ void Renderer::DestroyPostScratch(PostScratch& scratch)
 	if (m_device != nullptr)
 	{
 		// D3D12 는 지연 해제라 이미 기록된 명령이 읽어도 안전함.
-		if (scratch.tempSet.IsValid()) m_device->DestroyResourceSet(scratch.tempSet);
+		if (scratch.tempSet.IsValid())
+		{
+			m_device->DestroyResourceSet(scratch.tempSet);
+		}
 		for (ResourceSetHandle& set : scratch.blurComputeSets)
 		{
-			if (set.IsValid()) m_device->DestroyResourceSet(set);
+			if (set.IsValid())
+			{
+				m_device->DestroyResourceSet(set);
+			}
 		}
-		if (scratch.temp.IsValid()) m_device->DestroyTexture(scratch.temp);
+		if (scratch.temp.IsValid())
+		{
+			m_device->DestroyTexture(scratch.temp);
+		}
 		for (PostScratch::BloomLevel& level : scratch.bloom)
 		{
-			if (level.set.IsValid()) m_device->DestroyResourceSet(level.set);
-			if (level.texture.IsValid()) m_device->DestroyTexture(level.texture);
+			if (level.set.IsValid())
+			{
+				m_device->DestroyResourceSet(level.set);
+			}
+			if (level.texture.IsValid())
+			{
+				m_device->DestroyTexture(level.texture);
+			}
 		}
 	}
 	scratch = PostScratch{};
@@ -226,7 +243,10 @@ void Renderer::RequestPostCapture()
 	// 썸네일 텍스처는 여기(UI 를 만드는 중)에서 만들고 바꿈. Render 에서 바꾸면 이 프레임의 UI 가 이미 집어
 	// 든 ImGui 텍스처 ID(D3D11 은 SRV 포인터)가 UI 패스가 그리기 전에 해제됨. 씬 뷰 텍스처(SetSceneTarget)를
 	// UI 단계에서 바꾸는 것과 같은 규칙임.
-	if (IsOffscreen()) EnsureStageThumbs(m_sceneWidth, m_sceneHeight);
+	if (IsOffscreen())
+	{
+		EnsureStageThumbs(m_sceneWidth, m_sceneHeight);
+	}
 }
 
 void Renderer::EnsureStageThumbs(uint32_t hdrWidth, uint32_t hdrHeight)
@@ -267,22 +287,23 @@ void Renderer::DestroyStageThumbs()
 {
 	for (uint32_t i = 0; i < kPostStageCount; ++i)
 	{
-		if (m_device != nullptr && m_stageThumbs[i].texture.IsValid()) m_device->DestroyTexture(m_stageThumbs[i].texture);   // D3D12 는 지연 해제 (ImGui 가 읽을 수 있음)
+		if (m_device != nullptr && m_stageThumbs[i].texture.IsValid())
+		{
+			m_device->DestroyTexture(m_stageThumbs[i].texture);   // D3D12 는 지연 해제 (ImGui 가 읽을 수 있음)
+		}
 		m_stageThumbs[i] = PostStageThumb{};
 	}
 	m_thumbWidth = m_thumbHeight = 0;
 }
 
-void Renderer::CapturePostStage(RHI::CommandList& cmd, uint32_t stage, const char* name, ResourceSetHandle hdrSet,
-	uint32_t hdrWidth, uint32_t hdrHeight, bool skipGrade)
+void Renderer::CapturePostStage(RHI::CommandList& cmd, uint32_t stage, const char* name, ResourceSetHandle hdrSet, uint32_t hdrWidth, uint32_t hdrHeight, bool skipGrade)
 {
 	PostStageThumb& thumb = m_stageThumbs[stage];
 	if (!thumb.texture.IsValid() || m_thumbWidth == 0) return;
 	// 지금까지의 HDR 결과를 노출·ACES 로 톤매핑해 작은 텍스처에 그림 (톤 패스의 셰이더가 입력/출력 크기 비로
 	// 읽음 = 최근접 축소). 단계 0~2 는 색 효과를 건너뜀 — "이 효과가 한 일"만 보이게. 마지막 Final 만 색
 	// 효과까지 포함.
-	RenderTonemapPass(cmd, hdrSet, thumb.texture, ResourceState::ShaderResource, name,
-		hdrWidth, hdrHeight, m_thumbWidth, m_thumbHeight, skipGrade);
+	RenderTonemapPass(cmd, hdrSet, thumb.texture, ResourceState::ShaderResource, name, hdrWidth, hdrHeight, m_thumbWidth, m_thumbHeight, skipGrade);
 	thumb.active = true;
 }
 
@@ -301,7 +322,10 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 	if (blur && !blurWeights.IsValid())
 	{
 		static bool warned = false;
-		if (!warned) Log::Error("블러 가중치 컴퓨트 PSO 가 없어 블러를 건너뜀.");
+		if (!warned)
+		{
+			Log::Error("블러 가중치 컴퓨트 PSO 가 없어 블러를 건너뜀.");
+		}
 		warned = true;
 		blur = false;
 	}
@@ -309,7 +333,10 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 	{
 		blur = bloom = false;   // 못 만들면 효과만 건너뜀 (씬은 그대로 나감)
 	}
-	if (capture) CapturePostStage(cmd, 0, "Scene", hdrSet, width, height, true);
+	if (capture)
+	{
+		CapturePostStage(cmd, 0, "Scene", hdrSet, width, height, true);
+	}
 
 	const float w = static_cast<float>(width);
 	const float h = static_cast<float>(height);
@@ -348,26 +375,29 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 		else
 		{
 			RenderPostPass(cmd, PostPassDesc{
-				.pipeline = GetPostPipeline(false),
-				.input = hdrSet,
-				.output = scratch.temp,
-				.outputAfter = ResourceState::ShaderResource,
-				.load = LoadOp::DontCare,
-				.debugName = "BlurH",
-			});
+									.pipeline = GetPostPipeline(false),
+									.input = hdrSet,
+									.output = scratch.temp,
+									.outputAfter = ResourceState::ShaderResource,
+									.load = LoadOp::DontCare,
+									.debugName = "BlurH",
+								});
 
 			params.pass = XMFLOAT4(1.0f, 0.0f, 1.0f, 0.0f);   // 방향 (0, 1). 결과를 hdr 에 되돌려 씀
 			UploadPostParams(params);
 			RenderPostPass(cmd, PostPassDesc{
-				.pipeline = GetPostPipeline(false),
-				.input = scratch.tempSet,
-				.output = hdr,
-				.outputAfter = ResourceState::ShaderResource,
-				.load = LoadOp::DontCare,
-				.debugName = "BlurV",
-			});
+									.pipeline = GetPostPipeline(false),
+									.input = scratch.tempSet,
+									.output = hdr,
+									.outputAfter = ResourceState::ShaderResource,
+									.load = LoadOp::DontCare,
+									.debugName = "BlurV",
+								});
 		}
-		if (capture) CapturePostStage(cmd, 1, "Blur", hdrSet, width, height, true);
+		if (capture)
+		{
+			CapturePostStage(cmd, 1, "Blur", hdrSet, width, height, true);
+		}
 	}
 
 	// ---- 블룸: 밝기 추출 + 축소 (hdr → 레벨 0) → 축소 체인 → 확대하며 가산 (레벨 n-1 → … → 0) → hdr 에 intensity 만큼 가산 ----
@@ -388,20 +418,24 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 			params.bloom.z = scale;
 			UploadPostParams(params);
 			RenderPostPass(cmd, PostPassDesc{
-				.pipeline = GetPostPipeline(additive),
-				.input = input,
-				.output = outLevel->texture,
-				.outputAfter = ResourceState::ShaderResource,
-				.load = additive ? LoadOp::Load : LoadOp::DontCare,
-				.debugName = name,
-			});
+									.pipeline = GetPostPipeline(additive),
+									.input = input,
+									.output = outLevel->texture,
+									.outputAfter = ResourceState::ShaderResource,
+									.load = additive ? LoadOp::Load : LoadOp::DontCare,
+									.debugName = name,
+								});
 		};
 
 		run(2.0f, hdrSet, w, h, &levels[0], "BloomPrefilter", false, 1.0f);
 		for (uint32_t i = 1; i < count; ++i)
+		{
 			run(3.0f, levels[i - 1].set, static_cast<float>(levels[i - 1].width), static_cast<float>(levels[i - 1].height), &levels[i], "BloomDown", false, 1.0f);
+		}
 		for (uint32_t i = count - 1; i-- > 0;)
+		{
 			run(4.0f, levels[i + 1].set, static_cast<float>(levels[i + 1].width), static_cast<float>(levels[i + 1].height), &levels[i], "BloomUp", true, 1.0f);
+		}
 
 		// 합성: 레벨 0 → hdr (가산, intensity)
 		params.pass = XMFLOAT4(4.0f, 0.0f, 0.0f, 0.0f);
@@ -409,14 +443,20 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 		params.bloom.z = post.bloomIntensity;
 		UploadPostParams(params);
 		RenderPostPass(cmd, PostPassDesc{
-			.pipeline = GetPostPipeline(true),
-			.input = levels[0].set,
-			.output = hdr,
-			.outputAfter = ResourceState::ShaderResource,
-			.load = LoadOp::Load,
-			.debugName = "BloomComposite",
-		});
-		if (capture) CapturePostStage(cmd, 2, "Bloom", hdrSet, width, height, true);
+								.pipeline = GetPostPipeline(true),
+								.input = levels[0].set,
+								.output = hdr,
+								.outputAfter = ResourceState::ShaderResource,
+								.load = LoadOp::Load,
+								.debugName = "BloomComposite",
+							});
+		if (capture)
+		{
+			CapturePostStage(cmd, 2, "Bloom", hdrSet, width, height, true);
+		}
 	}
-	if (capture) CapturePostStage(cmd, 3, "Final", hdrSet, width, height, false);
+	if (capture)
+	{
+		CapturePostStage(cmd, 3, "Final", hdrSet, width, height, false);
+	}
 }

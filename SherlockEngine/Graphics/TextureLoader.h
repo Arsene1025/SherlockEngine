@@ -18,8 +18,8 @@
 class TextureImage
 {
 public:
-	TextureDesc desc;                            // dimension, format, width, height, mipLevels
-	std::vector<uint8_t> pixels;                 // 모든 서브리소스(면 × 밉)를 이어 붙인 버퍼
+	TextureDesc desc;                               // dimension, format, width, height, mipLevels
+	std::vector<uint8_t> pixels;                    // 모든 서브리소스(면 × 밉)를 이어 붙인 버퍼
 	std::vector<TextureSubresource> subresources;   // 서브리소스마다 pixels 안의 포인터와 rowPitch. 순서는 ResourceDesc.h (면 0 의 밉 전부, 면 1 ...)
 
 	bool IsValid() const { return desc.width > 0 && !subresources.empty(); }
@@ -40,8 +40,7 @@ namespace TextureLoader
 
 	// 절차적 텍스처. 파일 없이 검증할 때 씀.
 	// 체커: cellsPerSide×cellsPerSide 격자, 두 색 교대.
-	bool CreateChecker(uint32_t size, uint32_t cellsPerSide, const uint8_t colorA[4], const uint8_t colorB[4],
-		bool srgb, bool generateMips, TextureImage& out);
+	bool CreateChecker(uint32_t size, uint32_t cellsPerSide, const uint8_t colorA[4], const uint8_t colorB[4], bool srgb, bool generateMips, TextureImage& out);
 	// 단색 (예: 1×1 흰색 = "텍스처 없음"의 기본값, 128 회색 = 감마 검증).
 	bool CreateSolid(uint32_t size, const uint8_t rgba[4], bool srgb, TextureImage& out);
 
@@ -53,6 +52,5 @@ namespace TextureLoader
 	bool LoadCubeFromFile(const std::wstring& path, bool srgb, bool generateMips, TextureImage& out);
 	// 절차적 큐브. 면마다 size×size 텍셀을 돌며 텍셀 중심이 가리키는 정규화된 방향(월드 축 기준)을 shade 에
 	// 넘기고 RGBA 를 받음. 내장 하늘("builtin:sky"), 면 판별용 큐브, 1×1 검은 기본 큐브를 모두 이것으로 만듦.
-	bool CreateCube(uint32_t size, const std::function<void(const float direction[3], uint8_t rgba[4])>& shade,
-		bool srgb, bool generateMips, TextureImage& out);
+	bool CreateCube(uint32_t size, const std::function<void(const float direction[3], uint8_t rgba[4])>& shade, bool srgb, bool generateMips, TextureImage& out);
 }

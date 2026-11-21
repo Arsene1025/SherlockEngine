@@ -8,8 +8,8 @@
 class Test : public Script
 {
 public:
-	const char* GetTypeName() const override;   // SHERLOCK_SCRIPT 가 정의함 (.cpp)
-	void Reflect(PropertyVisitor& v) override;  // Inspector 에 보이고 씬에 저장되는 필드
+	const char* GetTypeName() const override;    // SHERLOCK_SCRIPT 가 정의함 (.cpp)
+	void Reflect(PropertyVisitor& v) override;   // Inspector 에 보이고 씬에 저장되는 필드
 	void Start() override;                       // 재생 시작 때 한 번
 	void Update(float dt) override;              // 매 프레임 (dt 초)
 

@@ -28,100 +28,97 @@ using namespace DirectX;   // 이 파일 안에서만
 
 struct Renderer::ShaderInfo
 {
-	const wchar_t* file;    // Shaders/ 의 파일 이름
-	const char* entry;      // 진입점
+	const wchar_t* file;   // Shaders/ 의 파일 이름
+	const char* entry;     // 진입점
 	ShaderStage stage;
-	const char* name;       // 디버그 이름 (로그, Debug Layer)
+	const char* name;   // 디버그 이름 (로그, Debug Layer)
 };
 
-const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] =
-{
-	{ L"BasicVertexShader.hlsl",   "VS_Main",    ShaderStage::Vertex, "BasicVS" },
-	{ L"BasicPixelShader.hlsl",    "PS_Main",    ShaderStage::Pixel,  "BasicPS" },
-	{ L"ShadowVertexShader.hlsl",  "VS_Shadow",  ShaderStage::Vertex, "ShadowVS" },
-	{ L"SkyboxVertexShader.hlsl",  "VS_Sky",     ShaderStage::Vertex, "SkyboxVS" },
-	{ L"SkyboxPixelShader.hlsl",   "PS_Sky",     ShaderStage::Pixel,  "SkyboxPS" },
+const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] = {
+	{ L"BasicVertexShader.hlsl", "VS_Main", ShaderStage::Vertex, "BasicVS" },
+	{ L"BasicPixelShader.hlsl", "PS_Main", ShaderStage::Pixel, "BasicPS" },
+	{ L"ShadowVertexShader.hlsl", "VS_Shadow", ShaderStage::Vertex, "ShadowVS" },
+	{ L"SkyboxVertexShader.hlsl", "VS_Sky", ShaderStage::Vertex, "SkyboxVS" },
+	{ L"SkyboxPixelShader.hlsl", "PS_Sky", ShaderStage::Pixel, "SkyboxPS" },
 	// 화면을 덮는 삼각형 하나를 그림. 톤매핑·블러·블룸의 실제 처리는 각 PS 가 함.
-	{ L"ScreenVertexShader.hlsl",  "VS_Screen",  ShaderStage::Vertex, "ScreenVS" },
-	{ L"TonemapPixelShader.hlsl",  "PS_Tonemap", ShaderStage::Pixel,  "ToneMapPS" },
-	{ L"PostPixelShader.hlsl",     "PS_Post",    ShaderStage::Pixel,  "PostPS" },   // 블러·블룸
-	{ L"BasicSkinVertexShader.hlsl",  "VS_MainSkin",   ShaderStage::Vertex, "BasicSkinVS" },    // 스키닝 메시. PS 는 BasicPS 를 같이 씀
+	{ L"ScreenVertexShader.hlsl", "VS_Screen", ShaderStage::Vertex, "ScreenVS" },
+	{ L"TonemapPixelShader.hlsl", "PS_Tonemap", ShaderStage::Pixel, "ToneMapPS" },
+	{ L"PostPixelShader.hlsl", "PS_Post", ShaderStage::Pixel, "PostPS" },                   // 블러·블룸
+	{ L"BasicSkinVertexShader.hlsl", "VS_MainSkin", ShaderStage::Vertex, "BasicSkinVS" },   // 스키닝 메시. PS 는 BasicPS 를 같이 씀
 	{ L"ShadowSkinVertexShader.hlsl", "VS_ShadowSkin", ShaderStage::Vertex, "ShadowSkinVS" },
-	{ L"DebugLineVertexShader.hlsl",  "VS_Line",       ShaderStage::Vertex, "DebugLineVS" },    // 본 표시 등 디버그 선
-	{ L"DebugLinePixelShader.hlsl",   "PS_Line",       ShaderStage::Pixel,  "DebugLinePS" },
-	{ L"BlurComputeShader.hlsl",      "CS_Blur",       ShaderStage::Compute, "BlurCS" },        // 가우시안 블러 한 방향 (컴퓨트 경로)
-	{ L"BlurWeightsComputeShader.hlsl", "CS_BlurWeights", ShaderStage::Compute, "BlurWeightsCS" }, // 블러 가중치 → 구조체 버퍼 (u0)
-	{ L"ParticleResetComputeShader.hlsl", "CS_ParticleReset", ShaderStage::Compute, "ParticleResetCS" }, // 새 버퍼: 전부 죽음, 사망 목록 = 모든 슬롯
-	{ L"ParticleSimComputeShader.hlsl",   "CS_ParticleSim",   ShaderStage::Compute, "ParticleSimCS" },   // 생존 목록 적분 (간접 디스패치)
-	{ L"ParticleArgsComputeShader.hlsl",  "CS_ParticleArgs",  ShaderStage::Compute, "ParticleArgsCS" },  // 생성 수 확정, 간접 인자
-	{ L"ParticleEmitComputeShader.hlsl",  "CS_ParticleEmit",  ShaderStage::Compute, "ParticleEmitCS" },  // 사망 목록 → 새 파티클
-	{ L"ParticleSortInitComputeShader.hlsl", "CS_ParticleSortInit", ShaderStage::Compute, "ParticleSortInitCS" }, // 알파: 생존 목록 → (뷰 z, 번호)
-	{ L"ParticleSortStepComputeShader.hlsl", "CS_ParticleSortStep", ShaderStage::Compute, "ParticleSortStepCS" }, // 알파: 바이토닉 한 단계
-	{ L"ParticleVertexShader.hlsl",   "VS_Particle",   ShaderStage::Vertex, "ParticleVS" },     // 파티클 빌보드 (t21 + t22 생존 목록, SV_InstanceID)
-	{ L"ParticlePixelShader.hlsl",    "PS_Particle",   ShaderStage::Pixel,  "ParticlePS" },
+	{ L"DebugLineVertexShader.hlsl", "VS_Line", ShaderStage::Vertex, "DebugLineVS" },   // 본 표시 등 디버그 선
+	{ L"DebugLinePixelShader.hlsl", "PS_Line", ShaderStage::Pixel, "DebugLinePS" },
+	{ L"BlurComputeShader.hlsl", "CS_Blur", ShaderStage::Compute, "BlurCS" },                                       // 가우시안 블러 한 방향 (컴퓨트 경로)
+	{ L"BlurWeightsComputeShader.hlsl", "CS_BlurWeights", ShaderStage::Compute, "BlurWeightsCS" },                  // 블러 가중치 → 구조체 버퍼 (u0)
+	{ L"ParticleResetComputeShader.hlsl", "CS_ParticleReset", ShaderStage::Compute, "ParticleResetCS" },            // 새 버퍼: 전부 죽음, 사망 목록 = 모든 슬롯
+	{ L"ParticleSimComputeShader.hlsl", "CS_ParticleSim", ShaderStage::Compute, "ParticleSimCS" },                  // 생존 목록 적분 (간접 디스패치)
+	{ L"ParticleArgsComputeShader.hlsl", "CS_ParticleArgs", ShaderStage::Compute, "ParticleArgsCS" },               // 생성 수 확정, 간접 인자
+	{ L"ParticleEmitComputeShader.hlsl", "CS_ParticleEmit", ShaderStage::Compute, "ParticleEmitCS" },               // 사망 목록 → 새 파티클
+	{ L"ParticleSortInitComputeShader.hlsl", "CS_ParticleSortInit", ShaderStage::Compute, "ParticleSortInitCS" },   // 알파: 생존 목록 → (뷰 z, 번호)
+	{ L"ParticleSortStepComputeShader.hlsl", "CS_ParticleSortStep", ShaderStage::Compute, "ParticleSortStepCS" },   // 알파: 바이토닉 한 단계
+	{ L"ParticleVertexShader.hlsl", "VS_Particle", ShaderStage::Vertex, "ParticleVS" },                             // 파티클 빌보드 (t21 + t22 생존 목록, SV_InstanceID)
+	{ L"ParticlePixelShader.hlsl", "PS_Particle", ShaderStage::Pixel, "ParticlePS" },
 	// 디퍼드·SSAO (docs/plan/deferred-clustered-ssao-record.html)
-	{ L"GBufferPixelShader.hlsl",     "PS_GBuffer",    ShaderStage::Pixel,  "GBufferPS" },      // 재질 → G-buffer MRT 5장 (VS 는 BasicVS/BasicSkinVS)
+	{ L"GBufferPixelShader.hlsl", "PS_GBuffer", ShaderStage::Pixel, "GBufferPS" },                           // 재질 → G-buffer MRT 5장 (VS 는 BasicVS/BasicSkinVS)
 	{ L"DeferredLightingPixelShader.hlsl", "PS_DeferredLighting", ShaderStage::Pixel, "DeferredLightPS" },   // 풀스크린: G-buffer → 조명 (가산)
-	{ L"SsaoPixelShader.hlsl",        "PS_Ssao",       ShaderStage::Pixel,  "SsaoPS" },         // 풀스크린: 깊이·노멀 → 가림 (R8)
-	{ L"SsaoBlurPixelShader.hlsl",    "PS_SsaoBlur",   ShaderStage::Pixel,  "SsaoBlurPS" },     // 4×4 깊이 가중 블러
+	{ L"SsaoPixelShader.hlsl", "PS_Ssao", ShaderStage::Pixel, "SsaoPS" },                                    // 풀스크린: 깊이·노멀 → 가림 (R8)
+	{ L"SsaoBlurPixelShader.hlsl", "PS_SsaoBlur", ShaderStage::Pixel, "SsaoBlurPS" },                        // 4×4 깊이 가중 블러
 	// GPU 클러스터 비닝 (docs/plan/gpu-cluster-binning-record.html, Shaders/ClusterBin.hlsli)
-	{ L"ClusterViewComputeShader.hlsl",  "CS_ClusterView",  ShaderStage::Compute, "ClusterViewCS" },    // 경계 구 → 뷰 공간
-	{ L"ClusterTileComputeShader.hlsl",  "CS_ClusterTile",  ShaderStage::Compute, "ClusterTileCS" },    // 1단계: 타일 144 개의 조명 비트마스크
+	{ L"ClusterViewComputeShader.hlsl", "CS_ClusterView", ShaderStage::Compute, "ClusterViewCS" },      // 경계 구 → 뷰 공간
+	{ L"ClusterTileComputeShader.hlsl", "CS_ClusterTile", ShaderStage::Compute, "ClusterTileCS" },      // 1단계: 타일 144 개의 조명 비트마스크
 	{ L"ClusterCountComputeShader.hlsl", "CS_ClusterCount", ShaderStage::Compute, "ClusterCountCS" },   // 2단계: 상자마다 개수
-	{ L"ClusterScanComputeShader.hlsl",  "CS_ClusterScan",  ShaderStage::Compute, "ClusterScanCS" },    // 누적합 → (시작, 개수)
-	{ L"ClusterFillComputeShader.hlsl",  "CS_ClusterFill",  ShaderStage::Compute, "ClusterFillCS" },    // 2단계: 번호 채우기
+	{ L"ClusterScanComputeShader.hlsl", "CS_ClusterScan", ShaderStage::Compute, "ClusterScanCS" },      // 누적합 → (시작, 개수)
+	{ L"ClusterFillComputeShader.hlsl", "CS_ClusterFill", ShaderStage::Compute, "ClusterFillCS" },      // 2단계: 번호 채우기
 };
 
 struct Renderer::PassInfo
 {
 	const char* name;
-	uint32_t vs;                          // ShaderId
-	uint32_t ps;                          // ShaderId. Shader_Count = 픽셀 셰이더 없음 (깊이 전용)
-	uint32_t layouts[kMaxBindingSets];    // LayoutId. 순서가 곧 셋 인덱스 (kSetFrame 등)
+	uint32_t vs;                         // ShaderId
+	uint32_t ps;                         // ShaderId. Shader_Count = 픽셀 셰이더 없음 (깊이 전용)
+	uint32_t layouts[kMaxBindingSets];   // LayoutId. 순서가 곧 셋 인덱스 (kSetFrame 등)
 	uint32_t layoutCount;
 };
 
-const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] =
-{
-	{ "Main",    Shader_BasicVS,  Shader_BasicPS,   { Layout_Frame, Layout_Object, Layout_Material }, 3 },
-	{ "Shadow",  Shader_ShadowVS, Shader_Count,     { Layout_Frame, Layout_Object },                  2 },
-	{ "Sky",     Shader_SkyVS,    Shader_SkyPS,     { Layout_Frame },                                 1 },
-	{ "Tonemap", Shader_ScreenVS, Shader_TonemapPS, { Layout_Post },                                  1 },
-	{ "Post",    Shader_ScreenVS, Shader_PostPS,    { Layout_Post },                                  1 },
-	{ "MainSkin",   Shader_BasicSkinVS,  Shader_BasicPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
-	{ "ShadowSkin", Shader_ShadowSkinVS, Shader_Count,   { Layout_Frame, Layout_Object },                  2 },
-	{ "DebugLine",  Shader_DebugLineVS,  Shader_DebugLinePS, { Layout_Frame },                             1 },
-	{ "Particle",   Shader_ParticleVS,   Shader_ParticlePS,  { Layout_Frame, Layout_ParticleDraw, Layout_ParticleDepth }, 3 },
-	{ "GBuffer",       Shader_BasicVS,     Shader_GBufferPS,      { Layout_Frame, Layout_Object, Layout_Material }, 3 },   // 메인과 같은 셋 — 같은 드로우 루프가 그림
-	{ "GBufferSkin",   Shader_BasicSkinVS, Shader_GBufferPS,      { Layout_Frame, Layout_Object, Layout_Material }, 3 },
-	{ "DeferredLight", Shader_ScreenVS,    Shader_DeferredLightPS, { Layout_Frame, Layout_GBuffer },                2 },
-	{ "Ssao",          Shader_ScreenVS,    Shader_SsaoPS,         { Layout_Ssao },                                  1 },
-	{ "SsaoBlur",      Shader_ScreenVS,    Shader_SsaoBlurPS,     { Layout_Ssao },                                  1 },
+const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] = {
+	{ "Main", Shader_BasicVS, Shader_BasicPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
+	{ "Shadow", Shader_ShadowVS, Shader_Count, { Layout_Frame, Layout_Object }, 2 },
+	{ "Sky", Shader_SkyVS, Shader_SkyPS, { Layout_Frame }, 1 },
+	{ "Tonemap", Shader_ScreenVS, Shader_TonemapPS, { Layout_Post }, 1 },
+	{ "Post", Shader_ScreenVS, Shader_PostPS, { Layout_Post }, 1 },
+	{ "MainSkin", Shader_BasicSkinVS, Shader_BasicPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
+	{ "ShadowSkin", Shader_ShadowSkinVS, Shader_Count, { Layout_Frame, Layout_Object }, 2 },
+	{ "DebugLine", Shader_DebugLineVS, Shader_DebugLinePS, { Layout_Frame }, 1 },
+	{ "Particle", Shader_ParticleVS, Shader_ParticlePS, { Layout_Frame, Layout_ParticleDraw, Layout_ParticleDepth }, 3 },
+	{ "GBuffer", Shader_BasicVS, Shader_GBufferPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },   // 메인과 같은 셋 — 같은 드로우 루프가 그림
+	{ "GBufferSkin", Shader_BasicSkinVS, Shader_GBufferPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
+	{ "DeferredLight", Shader_ScreenVS, Shader_DeferredLightPS, { Layout_Frame, Layout_GBuffer }, 2 },
+	{ "Ssao", Shader_ScreenVS, Shader_SsaoPS, { Layout_Ssao }, 1 },
+	{ "SsaoBlur", Shader_ScreenVS, Shader_SsaoBlurPS, { Layout_Ssao }, 1 },
 };
 
 struct Renderer::ComputePassInfo
 {
 	const char* name;
-	uint32_t cs;                          // ShaderId
-	uint32_t layouts[kMaxBindingSets];    // LayoutId. 순서가 곧 셋 인덱스 (SetComputeResourceSet 의 첫 인자)
+	uint32_t cs;                         // ShaderId
+	uint32_t layouts[kMaxBindingSets];   // LayoutId. 순서가 곧 셋 인덱스 (SetComputeResourceSet 의 첫 인자)
 	uint32_t layoutCount;
 };
 
-const Renderer::ComputePassInfo Renderer::kComputePasses[Renderer::ComputePass_Count] =
-{
+const Renderer::ComputePassInfo Renderer::kComputePasses[Renderer::ComputePass_Count] = {
 	{ "BlurCompute", Shader_BlurCS, { Layout_BlurCompute }, 1 },
 	{ "BlurWeights", Shader_BlurWeightsCS, { Layout_BlurWeights }, 1 },
-	{ "ParticleReset", Shader_ParticleResetCS, { Layout_ParticleSim }, 1 },   // 셰이더마다 쓰는 슬롯만 다름
-	{ "ParticleSim",   Shader_ParticleSimCS,   { Layout_ParticleStep, Layout_ParticleCollide }, 2 },  // 인자 버퍼를 바인딩하지 않는 레이아웃 (아래 Layout_ParticleStep)
-	{ "ParticleArgs",  Shader_ParticleArgsCS,  { Layout_ParticleSim }, 1 },
-	{ "ParticleEmit",  Shader_ParticleEmitCS,  { Layout_ParticleSim }, 1 },
+	{ "ParticleReset", Shader_ParticleResetCS, { Layout_ParticleSim }, 1 },                        // 셰이더마다 쓰는 슬롯만 다름
+	{ "ParticleSim", Shader_ParticleSimCS, { Layout_ParticleStep, Layout_ParticleCollide }, 2 },   // 인자 버퍼를 바인딩하지 않는 레이아웃 (아래 Layout_ParticleStep)
+	{ "ParticleArgs", Shader_ParticleArgsCS, { Layout_ParticleSim }, 1 },
+	{ "ParticleEmit", Shader_ParticleEmitCS, { Layout_ParticleSim }, 1 },
 	{ "ParticleSortInit", Shader_ParticleSortInitCS, { Layout_ParticleSort, Layout_ParticleSortStep }, 2 },
 	{ "ParticleSortStep", Shader_ParticleSortStepCS, { Layout_ParticleSort, Layout_ParticleSortStep }, 2 },
-	{ "ClusterView",  Shader_ClusterViewCS,  { Layout_ClusterBin }, 1 },   // 다섯 패스가 같은 셋 하나 (셰이더마다 쓰는 슬롯만 다름)
-	{ "ClusterTile",  Shader_ClusterTileCS,  { Layout_ClusterBin }, 1 },
+	{ "ClusterView", Shader_ClusterViewCS, { Layout_ClusterBin }, 1 },   // 다섯 패스가 같은 셋 하나 (셰이더마다 쓰는 슬롯만 다름)
+	{ "ClusterTile", Shader_ClusterTileCS, { Layout_ClusterBin }, 1 },
 	{ "ClusterCount", Shader_ClusterCountCS, { Layout_ClusterBin }, 1 },
-	{ "ClusterScan",  Shader_ClusterScanCS,  { Layout_ClusterBin }, 1 },
-	{ "ClusterFill",  Shader_ClusterFillCS,  { Layout_ClusterBin }, 1 },
+	{ "ClusterScan", Shader_ClusterScanCS, { Layout_ClusterBin }, 1 },
+	{ "ClusterFill", Shader_ClusterFillCS, { Layout_ClusterBin }, 1 },
 };
 
 namespace
@@ -130,17 +127,20 @@ namespace
 	constexpr uint32_t kInitialLightCapacity = 64;   // 조명 구조체 버퍼의 처음 원소 수 (5,120바이트)
 
 	// HLSL cbuffer 이름 ↔ C++ 구조체 크기. 셰이더가 선언한 cbuffer 는 전부 여기 있어야 함 (없으면 로드 실패).
-	struct ConstantBufferInfo { const char* name; uint32_t size; };
-	constexpr ConstantBufferInfo kConstantBuffers[] =
+	struct ConstantBufferInfo
 	{
-		{ "PerFrame",   sizeof(PerFrameConstants) },
-		{ "PerObject",  sizeof(PerObjectConstants) },
-		{ "Lights",     sizeof(LightConstants) },
-		{ "Material",   sizeof(MaterialConstants) },
+		const char* name;
+		uint32_t size;
+	};
+	constexpr ConstantBufferInfo kConstantBuffers[] = {
+		{ "PerFrame", sizeof(PerFrameConstants) },
+		{ "PerObject", sizeof(PerObjectConstants) },
+		{ "Lights", sizeof(LightConstants) },
+		{ "Material", sizeof(MaterialConstants) },
 		{ "PostParams", sizeof(PostParamsConstants) },
 		{ "ShadowPass", sizeof(ShadowPassConstants) },
-		{ "Shadows",    sizeof(ShadowConstants) },
-		{ "Skin",       sizeof(SkinConstants) },
+		{ "Shadows", sizeof(ShadowConstants) },
+		{ "Skin", sizeof(SkinConstants) },
 		{ "ParticleEmitter", sizeof(ParticleEmitterConstants) },
 		{ "ParticleCollision", sizeof(ParticleCollisionConstants) },
 		{ "ParticleSortView", sizeof(ParticleSortViewConstants) },
@@ -154,12 +154,12 @@ namespace
 	{
 		switch (type)
 		{
-		case BindingType::ConstantBuffer: return 'b';
-		case BindingType::Sampler:        return 's';
-		case BindingType::UnorderedAccess: return 'u';
-		case BindingType::BufferUnorderedAccess: return 'u';
+		case BindingType::ConstantBuffer:           return 'b';
+		case BindingType::Sampler:                  return 's';
+		case BindingType::UnorderedAccess:          return 'u';
+		case BindingType::BufferUnorderedAccess:    return 'u';
 		case BindingType::RawBufferUnorderedAccess: return 'u';
-		default:                          return 't';
+		default:                                    return 't';
 		}
 	}
 }
@@ -195,28 +195,23 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_perObjectCB = makeCB(sizeof(PerObjectConstants), "CB_PerObject");
 	m_skinCB = makeCB(sizeof(SkinConstants), "CB_Skin");   // b7
 	m_skinScratch.resize(kMaxSkinJoints);
-	m_debugLineVB = m_device->CreateBuffer(BufferDesc{ .size = DebugDraw::kMaxVertices * static_cast<uint32_t>(sizeof(DebugLineVertex)), .usage = BufferUsage::Dynamic,
-		.bindFlags = BufferBind_Vertex, .stride = sizeof(DebugLineVertex), .debugName = "VB_DebugLines" });
+	m_debugLineVB = m_device->CreateBuffer(BufferDesc{ .size = DebugDraw::kMaxVertices * static_cast<uint32_t>(sizeof(DebugLineVertex)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_Vertex, .stride = sizeof(DebugLineVertex), .debugName = "VB_DebugLines" });
 	m_lightCB = makeCB(sizeof(LightConstants), "CB_Lights");
 	// 조명 배열은 상수버퍼가 아니라 구조체 버퍼 (t15). 처음에는 kInitialLightCapacity 개 자리, 모자라면
 	// UploadLights 가 두 배로 다시 만듦.
 	m_lightCapacity = kInitialLightCapacity;
-	m_lightBuffer = m_device->CreateBuffer(BufferDesc{ .size = m_lightCapacity * static_cast<uint32_t>(sizeof(GpuLight)), .usage = BufferUsage::Dynamic,
-		.bindFlags = BufferBind_ShaderResource, .stride = sizeof(GpuLight), .debugName = "SB_Lights" });
+	m_lightBuffer = m_device->CreateBuffer(BufferDesc{ .size = m_lightCapacity * static_cast<uint32_t>(sizeof(GpuLight)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = sizeof(GpuLight), .debugName = "SB_Lights" });
 	m_postParamsCB = makeCB(sizeof(PostParamsConstants), "CB_PostParams");
 	// 블러 가중치: GPU 가 쓰고 GPU 가 읽는 구조체 버퍼 (Default + UAV + SRV). 초기 데이터 없음 — 블러 전에 항상 씀.
-	m_blurWeights = m_device->CreateBuffer(BufferDesc{ .size = (kMaxBlurRadius + 1) * static_cast<uint32_t>(sizeof(float)), .usage = BufferUsage::Default,
-		.bindFlags = BufferBind_ShaderResource | BufferBind_UnorderedAccess, .stride = sizeof(float), .debugName = "SB_BlurWeights" });
+	m_blurWeights = m_device->CreateBuffer(BufferDesc{ .size = (kMaxBlurRadius + 1) * static_cast<uint32_t>(sizeof(float)), .usage = BufferUsage::Default, .bindFlags = BufferBind_ShaderResource | BufferBind_UnorderedAccess, .stride = sizeof(float), .debugName = "SB_BlurWeights" });
 	m_shadowPassCB = makeCB(sizeof(ShadowPassConstants), "CB_ShadowPass");   // b5
 	m_shadowsCB = makeCB(sizeof(ShadowConstants), "CB_Shadows");             // b6
 	m_ssaoCB = makeCB(sizeof(SsaoConstants), "CB_Ssao");                     // b12 (SSAO 셋)
 	// 클러스터 (3b): 상자마다 (시작, 개수) 와 조명 번호 목록. 둘 다 프레임 셋(t30, t31)에 꽂히고 뷰마다 다시 올림 (Dynamic).
 	// 번호 목록은 모자라면 EnsureClusterCapacity 가 두 배로 다시 만듦.
-	m_clusterGridBuffer = m_device->CreateBuffer(BufferDesc{ .size = kClusterCount * 2 * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic,
-		.bindFlags = BufferBind_ShaderResource, .stride = 2 * sizeof(uint32_t), .debugName = "SB_ClusterGrid" });
+	m_clusterGridBuffer = m_device->CreateBuffer(BufferDesc{ .size = kClusterCount * 2 * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = 2 * sizeof(uint32_t), .debugName = "SB_ClusterGrid" });
 	m_clusterIndexCapacity = kInitialClusterLightRefs;
-	m_clusterIndexBuffer = m_device->CreateBuffer(BufferDesc{ .size = m_clusterIndexCapacity * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic,
-		.bindFlags = BufferBind_ShaderResource, .stride = sizeof(uint32_t), .debugName = "SB_ClusterLights" });
+	m_clusterIndexBuffer = m_device->CreateBuffer(BufferDesc{ .size = m_clusterIndexCapacity * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = sizeof(uint32_t), .debugName = "SB_ClusterLights" });
 	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_skinCB.IsValid() || !m_debugLineVB.IsValid() || !m_lightCB.IsValid() || !m_lightBuffer.IsValid() || !m_postParamsCB.IsValid() ||
 		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid() || !m_blurWeights.IsValid() || !m_ssaoCB.IsValid() || !m_clusterGridBuffer.IsValid() || !m_clusterIndexBuffer.IsValid())
 	{
@@ -343,41 +338,41 @@ bool Renderer::CreateLayouts()
 	BindingLayoutDesc& postLayout = m_layoutDescs[Layout_Post];
 	postLayout = BindingLayoutDesc{};
 	postLayout.debugName = "Layout_Post";
-	postLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPerFrame);   // b0
-	postLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPostParams); // b4
-	postLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneHdr);  // t13
-	postLayout.Add(BindingType::Sampler, ShaderStageMask_Pixel, kSamplerSlotPost);         // s6
-	postLayout.Add(BindingType::BufferResource, ShaderStageMask_Pixel, kSRVSlotBlurWeights); // t20 (블러 가중치. 블러 패스만 읽음)
+	postLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPerFrame);       // b0
+	postLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPostParams);     // b4
+	postLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneHdr);      // t13
+	postLayout.Add(BindingType::Sampler, ShaderStageMask_Pixel, kSamplerSlotPost);             // s6
+	postLayout.Add(BindingType::BufferResource, ShaderStageMask_Pixel, kSRVSlotBlurWeights);   // t20 (블러 가중치. 블러 패스만 읽음)
 
 	// 컴퓨트 블러 셋: b4 (PostParams), t13 (입력), u0 (출력). 컴퓨트 슬롯은 그래픽스 스테이지와 섞지 않으므로
 	// Layout_Post 를 같이 쓰지 않고 따로 둠. 입력 레지스터는 PS 블러와 같은 t13 (Post.hlsli 의 postInput. t0 은 재질 알베도).
 	BindingLayoutDesc& blurLayout = m_layoutDescs[Layout_BlurCompute];
 	blurLayout = BindingLayoutDesc{};
 	blurLayout.debugName = "Layout_BlurCompute";
-	blurLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotPostParams);   // b4
-	blurLayout.Add(BindingType::ShaderResource, ShaderStageMask_Compute, kSRVSlotSceneHdr);    // t13
-	blurLayout.Add(BindingType::UnorderedAccess, ShaderStageMask_Compute, kUAVSlotPostOutput); // u0
-	blurLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotBlurWeights); // t20
+	blurLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotPostParams);     // b4
+	blurLayout.Add(BindingType::ShaderResource, ShaderStageMask_Compute, kSRVSlotSceneHdr);      // t13
+	blurLayout.Add(BindingType::UnorderedAccess, ShaderStageMask_Compute, kUAVSlotPostOutput);   // u0
+	blurLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotBlurWeights);   // t20
 
 	// 블러 가중치 셋: b4 (PostParams 의 시그마·반경), u0 (가중치 구조체 버퍼).
 	BindingLayoutDesc& weightsLayout = m_layoutDescs[Layout_BlurWeights];
 	weightsLayout = BindingLayoutDesc{};
 	weightsLayout.debugName = "Layout_BlurWeights";
-	weightsLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotPostParams);          // b4
-	weightsLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotBlurWeights); // u0
+	weightsLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotPostParams);            // b4
+	weightsLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotBlurWeights);   // u0
 
 	// 파티클 시뮬레이션 셋: b8 (이미터 상수), u0~u5 (파티클·사망 목록·생존 목록 둘·개수·간접 인자). 이미터마다
 	// 두 벌 (생존 목록 입출력을 바꾼 것). 파티클 컴퓨트 패스 넷이 같이 씀.
 	BindingLayoutDesc& particleSimLayout = m_layoutDescs[Layout_ParticleSim];
 	particleSimLayout = BindingLayoutDesc{};
 	particleSimLayout.debugName = "Layout_ParticleSim";
-	particleSimLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticle);                  // b8
-	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticles);         // u0
-	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleDead);      // u1
-	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleAliveIn);   // u2
-	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleAliveOut);  // u3
-	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleCounters);  // u4
-	particleSimLayout.Add(BindingType::RawBufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleArgs);   // u5
+	particleSimLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticle);                   // b8
+	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticles);          // u0
+	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleDead);       // u1
+	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleAliveIn);    // u2
+	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleAliveOut);   // u3
+	particleSimLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleCounters);   // u4
+	particleSimLayout.Add(BindingType::RawBufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotParticleArgs);    // u5
 
 	// 파티클 시뮬레이션(적분) 셋: 위에서 u5 만 뺀 것. 적분은 간접 디스패치라 그동안 인자 버퍼가 IndirectArgument 상태이고,
 	// 그 상태의 버퍼를 UAV 로 바인딩해 두면 안 됨 (셰이더가 u5 를 쓰지 않아도 바인딩 자체가 위험 — 두 백엔드가 거부함).
@@ -394,8 +389,8 @@ bool Renderer::CreateLayouts()
 	particleDrawLayout = BindingLayoutDesc{};
 	particleDrawLayout.debugName = "Layout_ParticleDraw";
 	particleDrawLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex | ShaderStageMask_Pixel, kCBSlotParticle);   // b8 (PS: 소프트·블렌드 모드)
-	particleDrawLayout.Add(BindingType::BufferResource, ShaderStageMask_Vertex, kSRVSlotParticles);     // t21
-	particleDrawLayout.Add(BindingType::BufferResource, ShaderStageMask_Vertex, kSRVSlotParticleAlive); // t22
+	particleDrawLayout.Add(BindingType::BufferResource, ShaderStageMask_Vertex, kSRVSlotParticles);                         // t21
+	particleDrawLayout.Add(BindingType::BufferResource, ShaderStageMask_Vertex, kSRVSlotParticleAlive);                     // t22
 
 	// 파티클 깊이 셋 (셋 2, 뷰마다): t23 = 그 뷰의 깊이. 파티클 패스는 깊이를 읽기 전용 DSV 로 테스트하면서 같은
 	// 깊이를 PS 가 읽음 (소프트 파티클).
@@ -416,17 +411,17 @@ bool Renderer::CreateLayouts()
 	BindingLayoutDesc& particleSortLayout = m_layoutDescs[Layout_ParticleSort];
 	particleSortLayout = BindingLayoutDesc{};
 	particleSortLayout.debugName = "Layout_ParticleSort";
-	particleSortLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticle);            // b8
-	particleSortLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticleSortView);    // b10
-	particleSortLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotParticles);          // t21
-	particleSortLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotParticleAlive);      // t22
-	particleSortLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotParticleCounters);   // t24
-	particleSortLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotSortKeys);    // u0
-	particleSortLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotSortIndices); // u1
+	particleSortLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticle);              // b8
+	particleSortLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticleSortView);      // b10
+	particleSortLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotParticles);            // t21
+	particleSortLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotParticleAlive);        // t22
+	particleSortLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotParticleCounters);     // t24
+	particleSortLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotSortKeys);      // u0
+	particleSortLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotSortIndices);   // u1
 	BindingLayoutDesc& particleSortStepLayout = m_layoutDescs[Layout_ParticleSortStep];
 	particleSortStepLayout = BindingLayoutDesc{};
 	particleSortStepLayout.debugName = "Layout_ParticleSortStep";
-	particleSortStepLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticleSortStep); // b11
+	particleSortStepLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotParticleSortStep);   // b11
 
 	// G-buffer 셋 (디퍼드 라이팅의 셋 1, 뷰마다): t23 깊이 (DepthRead), t25~t28 G-buffer, t29 SSAO 블러 결과. 전부 Load 로
 	// 읽어 샘플러가 없음.
@@ -445,25 +440,25 @@ bool Renderer::CreateLayouts()
 	BindingLayoutDesc& ssaoLayout = m_layoutDescs[Layout_Ssao];
 	ssaoLayout = BindingLayoutDesc{};
 	ssaoLayout.debugName = "Layout_Ssao";
-	ssaoLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPerFrame);     // b0
-	ssaoLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotSsao);         // b12
-	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneDepth);  // t23
-	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotGBuffer1);    // t26
-	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSsao);        // t29
+	ssaoLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPerFrame);      // b0
+	ssaoLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotSsao);          // b12
+	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneDepth);   // t23
+	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotGBuffer1);     // t26
+	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSsao);         // t29
 
 	// GPU 클러스터 비닝 셋 (컴퓨트 다섯 패스의 셋 0, 뷰마다 한 벌): b13 뷰 값, t7 월드 경계 구, u0~u5 (Shaders/ClusterBin.hlsli).
 	// u3·u4 는 프레임 셋 t30·t31 과 같은 버퍼 (GPU 경로) — 디스패치 전에 UnorderedAccess, 그리기 전에 ShaderResource 로 바꿈.
 	BindingLayoutDesc& clusterBinLayout = m_layoutDescs[Layout_ClusterBin];
 	clusterBinLayout = BindingLayoutDesc{};
 	clusterBinLayout.debugName = "Layout_ClusterBin";
-	clusterBinLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotClusterBin);               // b13
-	clusterBinLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotLightBounds);             // t7
-	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterViewBounds); // u0
-	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterTileCounts); // u1
-	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterTileMasks);  // u2
-	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterGrid);       // u3
-	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterLights);     // u4
-	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterStats);      // u5
+	clusterBinLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotClusterBin);                  // b13
+	clusterBinLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotLightBounds);                // t7
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterViewBounds);   // u0
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterTileCounts);   // u1
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterTileMasks);    // u2
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterGrid);         // u3
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterLights);       // u4
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterStats);        // u5
 
 	for (uint32_t i = 0; i < Layout_Count; ++i)
 	{
@@ -486,7 +481,10 @@ void Renderer::BuildPassDescs()
 		PipelineStateDesc desc;
 		desc.vs = m_shaders[info.vs];
 		desc.ps = info.ps < Shader_Count ? m_shaders[info.ps] : ShaderHandle{};
-		for (uint32_t i = 0; i < info.layoutCount; ++i) desc.bindingLayouts[i] = m_layouts[info.layouts[i]];
+		for (uint32_t i = 0; i < info.layoutCount; ++i)
+		{
+			desc.bindingLayouts[i] = m_layouts[info.layouts[i]];
+		}
 		desc.bindingLayoutCount = static_cast<uint8_t>(info.layoutCount);
 		m_passDesc[p] = desc;
 	}
@@ -539,8 +537,12 @@ void Renderer::BuildPassDescs()
 			.blendEnable = true,
 			// 프리멀티플라이드: 가산 이미터는 알파 0 을 내보내 목적지 × 1 + 색 (예전의 One + One 과 같은 결과),
 			// 알파 이미터는 색 × 알파와 알파를 내보내 목적지 × (1 − 알파) + 색. PSO 하나로 두 모드를 그림.
-			.srcColor = BlendFactor::One, .dstColor = BlendFactor::InvSrcAlpha, .colorOp = BlendOp::Add,
-			.srcAlpha = BlendFactor::Zero, .dstAlpha = BlendFactor::One, .alphaOp = BlendOp::Add,
+			.srcColor = BlendFactor::One,
+			.dstColor = BlendFactor::InvSrcAlpha,
+			.colorOp = BlendOp::Add,
+			.srcAlpha = BlendFactor::Zero,
+			.dstAlpha = BlendFactor::One,
+			.alphaOp = BlendOp::Add,
 		};
 		particle.rtvFormats[0] = Format::R16G16B16A16_FLOAT;   // 메인 패스와 같은 타깃 (FP16 HDR + D24S8)
 		particle.rtvCount = 1;
@@ -569,16 +571,24 @@ void Renderer::BuildPassDescs()
 	}
 	m_passDesc[Pass_DeferredLight].blend.rt[0] = RenderTargetBlendDesc{
 		.blendEnable = true,
-		.srcColor = BlendFactor::One, .dstColor = BlendFactor::One, .colorOp = BlendOp::Add,
-		.srcAlpha = BlendFactor::Zero, .dstAlpha = BlendFactor::One, .alphaOp = BlendOp::Add,
+		.srcColor = BlendFactor::One,
+		.dstColor = BlendFactor::One,
+		.colorOp = BlendOp::Add,
+		.srcAlpha = BlendFactor::Zero,
+		.dstAlpha = BlendFactor::One,
+		.alphaOp = BlendOp::Add,
 	};
 
 	// 가산 버전은 블룸 합성용: 출력 = 셰이더 출력 + 기존 값 (알파는 기존 값 유지).
 	m_postAddDesc = m_passDesc[Pass_Post];
 	m_postAddDesc.blend.rt[0] = RenderTargetBlendDesc{
 		.blendEnable = true,
-		.srcColor = BlendFactor::One, .dstColor = BlendFactor::One, .colorOp = BlendOp::Add,
-		.srcAlpha = BlendFactor::Zero, .dstAlpha = BlendFactor::One, .alphaOp = BlendOp::Add,
+		.srcColor = BlendFactor::One,
+		.dstColor = BlendFactor::One,
+		.colorOp = BlendOp::Add,
+		.srcAlpha = BlendFactor::Zero,
+		.dstAlpha = BlendFactor::One,
+		.alphaOp = BlendOp::Add,
 	};
 
 	// Desc 가 바뀌었으므로 (새 셰이더 핸들) 작은 키 → PSO 핸들 캐시는 전부 무효.
@@ -586,27 +596,47 @@ void Renderer::BuildPassDescs()
 	m_shadowPipelines.clear();
 	m_gbufferPipelines.clear();
 	m_deferredLightPipeline = PipelineHandle{};
-	for (PipelineHandle& handle : m_ssaoPipelines) handle = PipelineHandle{};
+	for (PipelineHandle& handle : m_ssaoPipelines)
+	{
+		handle = PipelineHandle{};
+	}
 	m_skyPipeline = PipelineHandle{};
 	m_debugLinePipeline = PipelineHandle{};
 	m_particlePipeline = PipelineHandle{};
-	for (PipelineHandle& handle : m_tonemapPipelines) handle = PipelineHandle{};
-	for (PipelineHandle& handle : m_postPipelines) handle = PipelineHandle{};
-	for (ComputePipelineHandle& handle : m_computePipelines) handle = ComputePipelineHandle{};
-	for (bool& tried : m_computeTried) tried = false;
+	for (PipelineHandle& handle : m_tonemapPipelines)
+	{
+		handle = PipelineHandle{};
+	}
+	for (PipelineHandle& handle : m_postPipelines)
+	{
+		handle = PipelineHandle{};
+	}
+	for (ComputePipelineHandle& handle : m_computePipelines)
+	{
+		handle = ComputePipelineHandle{};
+	}
+	for (bool& tried : m_computeTried)
+	{
+		tried = false;
+	}
 }
 
 bool Renderer::CreateSamplers()
 {
 	// SamplerPreset 순서와 같아야 함.
-	struct PresetDesc { SamplerFilter filter; SamplerAddress address; float maxLod; const char* name; };
-	const PresetDesc presets[kSamplerPresetCount] =
+	struct PresetDesc
 	{
-		{ SamplerFilter::Linear,      SamplerAddress::Wrap,  1000.0f, "Sampler_LinearWrap" },
-		{ SamplerFilter::Linear,      SamplerAddress::Clamp, 1000.0f, "Sampler_LinearClamp" },
-		{ SamplerFilter::Anisotropic, SamplerAddress::Wrap,  1000.0f, "Sampler_AnisotropicWrap" },
-		{ SamplerFilter::Point,       SamplerAddress::Wrap,  1000.0f, "Sampler_PointWrap" },
-		{ SamplerFilter::Point,       SamplerAddress::Wrap,  0.0f,    "Sampler_PointNoMip" },   // maxLod 0 = 밉 0만
+		SamplerFilter filter;
+		SamplerAddress address;
+		float maxLod;
+		const char* name;
+	};
+	const PresetDesc presets[kSamplerPresetCount] = {
+		{ SamplerFilter::Linear, SamplerAddress::Wrap, 1000.0f, "Sampler_LinearWrap" },
+		{ SamplerFilter::Linear, SamplerAddress::Clamp, 1000.0f, "Sampler_LinearClamp" },
+		{ SamplerFilter::Anisotropic, SamplerAddress::Wrap, 1000.0f, "Sampler_AnisotropicWrap" },
+		{ SamplerFilter::Point, SamplerAddress::Wrap, 1000.0f, "Sampler_PointWrap" },
+		{ SamplerFilter::Point, SamplerAddress::Wrap, 0.0f, "Sampler_PointNoMip" },   // maxLod 0 = 밉 0만
 	};
 	for (uint32_t i = 0; i < kSamplerPresetCount; ++i)
 	{
@@ -646,14 +676,29 @@ void Renderer::ResolveEnvironment(const SceneEnvironment& environment)
 	const TextureHandle sky = load(environment.skybox, skyMips);
 	const TextureHandle irradiance = load(environment.irradiance, irradianceMips);
 	const TextureHandle specular = load(environment.specular, specularMips);
-	if (sky.IsValid()) binding.skybox = sky;
+	if (sky.IsValid())
+	{
+		binding.skybox = sky;
+	}
 
 	// 반사: 프리필터 큐브 → 없으면 스카이박스의 밉 체인으로 근사(박스 필터라 GGX 로 거른 것보다 거칠기 모양이 덜 맞음).
-	if (specular.IsValid()) { binding.specular = specular; binding.specularMips = specularMips; }
-	else if (sky.IsValid()) { binding.specular = sky; binding.specularMips = skyMips; }
+	if (specular.IsValid())
+	{
+		binding.specular = specular;
+		binding.specularMips = specularMips;
+	}
+	else if (sky.IsValid())
+	{
+		binding.specular = sky;
+		binding.specularMips = skyMips;
+	}
 	// 확산: 조도 큐브 → 없으면 스카이박스(또는 반사 큐브)의 끝에서 두 번째 밉. 면당 2×2 라 위·아래·옆의 밝기
 	// 차이 정도만 남음.
-	if (irradiance.IsValid()) { binding.irradiance = irradiance; binding.irradianceLod = 0.0f; }
+	if (irradiance.IsValid())
+	{
+		binding.irradiance = irradiance;
+		binding.irradianceLod = 0.0f;
+	}
 	else if (binding.specular != m_textures.GetBlackCube())
 	{
 		binding.irradiance = binding.specular;
@@ -665,7 +710,11 @@ void Renderer::ResolveEnvironment(const SceneEnvironment& environment)
 	if (!environment.brdfLut.empty())
 	{
 		const TextureHandle lut = m_textures.Load2D(environment.brdfLut, false, nullptr);
-		if (lut != m_textures.GetWhite()) { binding.brdfLut = lut; binding.hasBrdfLut = true; }
+		if (lut != m_textures.GetWhite())
+		{
+			binding.brdfLut = lut;
+			binding.hasBrdfLut = true;
+		}
 	}
 
 	binding.iblIntensity = environment.iblIntensity;
@@ -690,12 +739,22 @@ bool Renderer::UpdateFrameSet()
 	const ResourceSetDesc frameSet{
 		.layout = m_layouts[Layout_Frame],
 		.bindings = {
-			{ .buffer = m_perFrameCB }, { .buffer = m_lightCB }, { .texture = m_shadowMap }, { .sampler = m_shadowSampler },
-			{ .texture = m_environment.skybox }, { .sampler = GetSampler(SamplerPreset::LinearClamp) },
-			{ .texture = m_environment.irradiance }, { .texture = m_environment.specular }, { .texture = m_environment.brdfLut },
-			{ .buffer = m_shadowPassCB }, { .buffer = m_shadowsCB }, { .texture = m_csmMap }, { .buffer = m_lightBuffer },
+			{ .buffer = m_perFrameCB },
+			{ .buffer = m_lightCB },
+			{ .texture = m_shadowMap },
+			{ .sampler = m_shadowSampler },
+			{ .texture = m_environment.skybox },
+			{ .sampler = GetSampler(SamplerPreset::LinearClamp) },
+			{ .texture = m_environment.irradiance },
+			{ .texture = m_environment.specular },
+			{ .texture = m_environment.brdfLut },
+			{ .buffer = m_shadowPassCB },
+			{ .buffer = m_shadowsCB },
+			{ .texture = m_csmMap },
+			{ .buffer = m_lightBuffer },
 			// t30·t31: CPU 비닝이면 Dynamic 버퍼 (뷰마다 올림), GPU 비닝이면 컴퓨트가 쓰는 Default 버퍼
-			{ .buffer = m_clusterGpuThisFrame ? m_clusterGridGpu : m_clusterGridBuffer }, { .buffer = m_clusterGpuThisFrame ? m_clusterIndexGpu : m_clusterIndexBuffer },
+			{ .buffer = m_clusterGpuThisFrame ? m_clusterGridGpu : m_clusterGridBuffer },
+			{ .buffer = m_clusterGpuThisFrame ? m_clusterIndexGpu : m_clusterIndexBuffer },
 		},
 		.debugName = "Set_Frame",
 	};
@@ -747,7 +806,11 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 			const ConstantBufferInfo* expected = nullptr;
 			for (const ConstantBufferInfo& info : kConstantBuffers)
 			{
-				if (buffer.name == info.name) { expected = &info; break; }
+				if (buffer.name == info.name)
+				{
+					expected = &info;
+					break;
+				}
 			}
 			if (expected == nullptr)
 			{
@@ -756,8 +819,7 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 			}
 			else if (buffer.size != expected->size)
 			{
-				Log::Error("%s : cbuffer '%s' 크기 불일치: HLSL %u 바이트, C++ %u 바이트. 패킹 규칙(float3 뒤 스칼라)을 확인할 것.",
-					kShaders[i].name, buffer.name.c_str(), buffer.size, expected->size);
+				Log::Error("%s : cbuffer '%s' 크기 불일치: HLSL %u 바이트, C++ %u 바이트. 패킹 규칙(float3 뒤 스칼라)을 확인할 것.", kShaders[i].name, buffer.name.c_str(), buffer.size, expected->size);
 				layoutOk = false;
 			}
 			else
@@ -793,7 +855,10 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 	if (!allValid)
 	{
 		Log::Error("Renderer : 셰이더 생성 실패.");
-		for (ShaderHandle handle : created) m_device->DestroyShader(handle);
+		for (ShaderHandle handle : created)
+		{
+			m_device->DestroyShader(handle);
+		}
 		return false;
 	}
 
@@ -822,13 +887,19 @@ bool Renderer::LoadShaders(bool fromSourceOnly)
 	{
 		const std::wstring source = Paths::GetShaderSourcePath(info.file);
 		watch(source);
-		for (const std::wstring& include : ShaderCompiler::ListIncludeFiles(source)) watch(include);
+		for (const std::wstring& include : ShaderCompiler::ListIncludeFiles(source))
+		{
+			watch(include);
+		}
 	}
 
 	std::string loaded;
 	for (uint32_t i = 0; i < Shader_Count; ++i)
 	{
-		if (!loaded.empty()) loaded += ", ";
+		if (!loaded.empty())
+		{
+			loaded += ", ";
+		}
 		loaded += kShaders[i].name;
 		loaded += " ";
 		loaded += Log::ToUtf8(source[i].c_str());
@@ -860,8 +931,7 @@ bool Renderer::ValidateBindings(const std::vector<uint8_t>* code) const
 						const BindingSlot& y = lb.slots[j];
 						if (RegisterClassOf(x.type) == RegisterClassOf(y.type) && x.reg == y.reg && (x.stageMask & y.stageMask) != 0)
 						{
-							Log::Error("바인딩 대조: [%s] %s 와 %s 가 같은 레지스터 %c%u 를 같은 스테이지에 선언함.",
-								pass.name, la.debugName, lb.debugName, RegisterClassOf(x.type), x.reg);
+							Log::Error("바인딩 대조: [%s] %s 와 %s 가 같은 레지스터 %c%u 를 같은 스테이지에 선언함.", pass.name, la.debugName, lb.debugName, RegisterClassOf(x.type), x.reg);
 							ok = false;
 						}
 					}
@@ -884,14 +954,17 @@ bool Renderer::ValidateBindings(const std::vector<uint8_t>* code) const
 					for (uint32_t i = 0; i < layout.slotCount; ++i)
 					{
 						const BindingSlot& slot = layout.slots[i];
-						if (slot.type == u.type && slot.reg == u.reg && (slot.stageMask & stage)) { found = true; break; }
+						if (slot.type == u.type && slot.reg == u.reg && (slot.stageMask & stage))
+						{
+							found = true;
+							break;
+						}
 					}
 				}
 				const char typeName = RegisterClassOf(u.type);
 				if (!found)
 				{
-					Log::Error("바인딩 대조: [%s] %s가 %c%u ('%s')를 쓰지만 이 패스의 BindingLayout에 그 스테이지로 선언되지 않음.",
-						pass.name, kShaders[shader].name, typeName, u.reg, u.name.c_str());
+					Log::Error("바인딩 대조: [%s] %s가 %c%u ('%s')를 쓰지만 이 패스의 BindingLayout에 그 스테이지로 선언되지 않음.", pass.name, kShaders[shader].name, typeName, u.reg, u.name.c_str());
 					ok = false;
 				}
 				else
@@ -919,14 +992,17 @@ bool Renderer::ValidateBindings(const std::vector<uint8_t>* code) const
 				for (uint32_t i = 0; i < layout.slotCount; ++i)
 				{
 					const BindingSlot& slot = layout.slots[i];
-					if (slot.type == u.type && slot.reg == u.reg && (slot.stageMask & ShaderStageMask_Compute)) { found = true; break; }
+					if (slot.type == u.type && slot.reg == u.reg && (slot.stageMask & ShaderStageMask_Compute))
+					{
+						found = true;
+						break;
+					}
 				}
 			}
 			const char typeName = RegisterClassOf(u.type);
 			if (!found)
 			{
-				Log::Error("바인딩 대조: [%s] %s가 %c%u ('%s')를 쓰지만 이 패스의 BindingLayout에 Compute 스테이지로 선언되지 않음.",
-					pass.name, kShaders[pass.cs].name, typeName, u.reg, u.name.c_str());
+				Log::Error("바인딩 대조: [%s] %s가 %c%u ('%s')를 쓰지만 이 패스의 BindingLayout에 Compute 스테이지로 선언되지 않음.", pass.name, kShaders[pass.cs].name, typeName, u.reg, u.name.c_str());
 				ok = false;
 			}
 			else
@@ -947,7 +1023,10 @@ bool Renderer::ReloadShaders()
 	{
 		Log::Warn("셰이더 핫리로드 실패. 이전 셰이더를 유지한다.");
 		// 실패해도 수정 시각은 갱신해 같은 파일로 계속 재시도하지 않게 함. 파일을 다시 저장하면 재시도함.
-		for (WatchedFile& w : m_watched) w.writeTime = ShaderCompiler::GetLastWriteTime(w.path);
+		for (WatchedFile& w : m_watched)
+		{
+			w.writeTime = ShaderCompiler::GetLastWriteTime(w.path);
+		}
 		return false;
 	}
 
@@ -970,7 +1049,11 @@ void Renderer::CheckHotReload(float totalTime)
 	for (const WatchedFile& w : m_watched)
 	{
 		const uint64_t now = ShaderCompiler::GetLastWriteTime(w.path);
-		if (now != 0 && now != w.writeTime) { changed = true; break; }
+		if (now != 0 && now != w.writeTime)
+		{
+			changed = true;
+			break;
+		}
 	}
 	if (changed)
 	{
@@ -1033,7 +1116,7 @@ void Renderer::Shutdown()
 		layout = BindingLayoutHandle{};
 	}
 	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB, &m_blurWeights,
-		&m_ssaoCB, &m_clusterGridBuffer, &m_clusterIndexBuffer })
+								  &m_ssaoCB, &m_clusterGridBuffer, &m_clusterIndexBuffer })
 	{
 		m_device->DestroyBuffer(*buffer);
 		*buffer = BufferHandle{};
@@ -1077,8 +1160,14 @@ void Renderer::InvalidateMaterial(const Material* material)
 
 void Renderer::InvalidateScene(const Scene& scene, bool releaseTextures)
 {
-	for (const auto& mesh : scene.GetMeshes()) InvalidateMesh(mesh.get());
-	for (const auto& material : scene.GetMaterials()) InvalidateMaterial(material.get());
+	for (const auto& mesh : scene.GetMeshes())
+	{
+		InvalidateMesh(mesh.get());
+	}
+	for (const auto& material : scene.GetMaterials())
+	{
+		InvalidateMaterial(material.get());
+	}
 	// 드로우 목록은 방금 지운 GPU 메시·재질을 가리킴. 다음 Render 가 다시 만들지만, 그 전에 누가 읽지 않게 비움.
 	m_drawList.clear();
 	m_objects.clear();
@@ -1102,13 +1191,22 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	CheckHotReload(totalTime);
 	// 그릴 타깃(HDR·깊이)이 있어야 함. 에디터는 SetSceneTarget 이 이미 만들었고, 게임 모드는 출력 크기에 맞춰
 	// 여기서 만듦. 만들지 못했으면 이번 프레임은 건너뜀.
-	if (!IsOffscreen()) EnsureGameTarget();
+	if (!IsOffscreen())
+	{
+		EnsureGameTarget();
+	}
 	if (!m_mainView.IsValid()) return;
 	// 단계별 썸네일. 창이 요청한 프레임에만 (요청은 한 번 쓰면 지움 — 창을 닫으면 다음 프레임부터 멈춤).
 	m_postCapture = m_postCaptureRequested && IsOffscreen();
 	m_postCaptureRequested = false;
-	for (PostStageThumb& thumb : m_stageThumbs) thumb.active = false;
-	if (m_postCapture) EnsureStageThumbs(m_mainView.width, m_mainView.height);
+	for (PostStageThumb& thumb : m_stageThumbs)
+	{
+		thumb.active = false;
+	}
+	if (m_postCapture)
+	{
+		EnsureStageThumbs(m_mainView.width, m_mainView.height);
+	}
 	++m_frameNumber;
 	const uint32_t reloads = m_stats.shaderReloads;
 	const uint32_t lastPasses = m_stats.renderPasses;   // 패스·배리어 수는 UI 패스까지 센 지난 프레임 값 (EndUIPass 가 채움)
@@ -1122,7 +1220,10 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 
 	m_shadowSettings = scene.environment.shadow;   // 씬 파일에 저장된 그림자 값
 	m_ssaoSettings = scene.environment.ssao;       // 씬 파일에 저장된 SSAO 값 (디퍼드 프레임에서만 씀)
-	if (m_settings.ssaoOverride >= 0) m_ssaoSettings.enabled = m_settings.ssaoOverride != 0;   // --ssao= 실행 인자
+	if (m_settings.ssaoOverride >= 0)
+	{
+		m_ssaoSettings.enabled = m_settings.ssaoOverride != 0;   // --ssao= 실행 인자
+	}
 
 	// ---- 조명: 씬의 Light → GPU 배치. BuildShadowViews 가 shadowIndex 를 채우므로 올리기(UploadLights) 전에 만듦 ----
 	// 방향광을 앞으로 모음 (안정 정렬 — 같은 종류끼리는 씬 순서). 클러스터드 경로가 "앞쪽 directionalCount 개만 전부 돌기"
@@ -1171,13 +1272,19 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 			ReadGpuClusterStats();
 			UploadLightBounds();
 			UploadClusterBinConstants(camera, 0);
-			if (previewActive) UploadClusterBinConstants(*m_previewCamera, 1);
+			if (previewActive)
+			{
+				UploadClusterBinConstants(*m_previewCamera, 1);
+			}
 		}
 		else
 		{
 			BuildClusters(camera, m_mainView.width, m_mainView.height, 0);
 			m_clusterBuilt[1] = false;
-			if (previewActive) BuildClusters(*m_previewCamera, m_previewView.width, m_previewView.height, 1);
+			if (previewActive)
+			{
+				BuildClusters(*m_previewCamera, m_previewView.width, m_previewView.height, 1);
+			}
 			EnsureClusterCapacity();
 			UploadClusters(0);
 		}
@@ -1192,7 +1299,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		BuildDrawList(scene);
 		m_stats.drawItems = static_cast<uint32_t>(m_drawList.size());
 	}
-	UploadDebugLines(debugDraw);   // 디버그 선(DebugDraw 가 모은 것)을 동적 정점 버퍼에 올림. 프레임마다 한 번은 써야 함
+	UploadDebugLines(debugDraw);                 // 디버그 선(DebugDraw 가 모은 것)을 동적 정점 버퍼에 올림. 프레임마다 한 번은 써야 함
 	UpdateParticleEmitters(totalTime, camera);   // BuildDrawList 가 모은 이미터의 버퍼·셋을 맞추고 b8 을 올림 (업로드 구간 안)
 
 	m_device->EndResourceUploads();
@@ -1246,8 +1353,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		// 이어서 그 위에 그림.
 		const TextureHandle output = IsOffscreen() ? m_mainView.color : m_device->GetBackBuffer();
 		const ResourceState after = IsOffscreen() ? ResourceState::ShaderResource : ResourceState::RenderTarget;
-		RenderTonemapPass(cmd, m_mainView.hdrSet, output, after, "TonemapPass",
-			m_mainView.width, m_mainView.height, m_mainView.width, m_mainView.height);
+		RenderTonemapPass(cmd, m_mainView.hdrSet, output, after, "TonemapPass", m_mainView.width, m_mainView.height, m_mainView.width, m_mainView.height);
 	}
 	if (previewActive)
 	{
@@ -1269,8 +1375,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		}
 		RenderScenePass(cmd, scene, m_previewView, *m_previewCamera, "PreviewPass", 1);
 		ApplyHdrEffects(cmd, m_previewView, false);
-		RenderTonemapPass(cmd, m_previewView.hdrSet, m_previewView.color, ResourceState::ShaderResource, "PreviewTonemapPass",
-			m_previewView.width, m_previewView.height, m_previewView.width, m_previewView.height);
+		RenderTonemapPass(cmd, m_previewView.hdrSet, m_previewView.color, ResourceState::ShaderResource, "PreviewTonemapPass", m_previewView.width, m_previewView.height, m_previewView.width, m_previewView.height);
 	}
 }
 
@@ -1283,35 +1388,37 @@ void Renderer::BuildGpuLights(const Scene& scene)
 	// 두 번 돎: 방향광 먼저, 그다음 지역광. 같은 종류 안에서는 씬 순서 그대로 (안정 정렬과 같음) — "첫 번째 castShadows
 	// 방향광이 CSM 을 받는다"는 규칙이 정렬 전과 같은 조명을 가리킴. m_lightSceneIndex[i] = 정렬 뒤 i 번째의 씬 번호.
 	for (uint32_t pass = 0; pass < 2; ++pass)
-	for (uint32_t sceneIndex = 0; sceneIndex < static_cast<uint32_t>(sceneLights.size()); ++sceneIndex)
 	{
-		const Light& light = sceneLights[sceneIndex];
-		const bool directional = light.type == LightType::Directional;
-		if (directional != (pass == 0)) continue;
-		m_lightSceneIndex.push_back(sceneIndex);
-		GpuLight gpu = {};
-		gpu.position = light.position;
-		gpu.intensity = light.intensity;
-		gpu.range = light.range;
-		gpu.color = light.color;
-		gpu.type = static_cast<uint32_t>(light.type);
-		gpu.attenuation = light.attenuation;
-		gpu.innerConeCos = light.innerConeCos;
-		gpu.outerConeCos = light.outerConeCos;
-		gpu.castShadows = light.castShadows ? 1u : 0u;
-		gpu.shadowIndex = -1;   // BuildShadowViews 가 채움
+		for (uint32_t sceneIndex = 0; sceneIndex < static_cast<uint32_t>(sceneLights.size()); ++sceneIndex)
+		{
+			const Light& light = sceneLights[sceneIndex];
+			const bool directional = light.type == LightType::Directional;
+			if (directional != (pass == 0)) continue;
+			m_lightSceneIndex.push_back(sceneIndex);
+			GpuLight gpu = {};
+			gpu.position = light.position;
+			gpu.intensity = light.intensity;
+			gpu.range = light.range;
+			gpu.color = light.color;
+			gpu.type = static_cast<uint32_t>(light.type);
+			gpu.attenuation = light.attenuation;
+			gpu.innerConeCos = light.innerConeCos;
+			gpu.outerConeCos = light.outerConeCos;
+			gpu.castShadows = light.castShadows ? 1u : 0u;
+			gpu.shadowIndex = -1;   // BuildShadowViews 가 채움
 
-		// 셰이더는 정규화된 방향을 기대함. 0벡터면 아래를 향하게 함.
-		const XMVECTOR direction = XMLoadFloat3(&light.direction);
-		if (XMVectorGetX(XMVector3LengthSq(direction)) > 0.000001f)
-		{
-			XMStoreFloat3(&gpu.direction, XMVector3Normalize(direction));
+			// 셰이더는 정규화된 방향을 기대함. 0벡터면 아래를 향하게 함.
+			const XMVECTOR direction = XMLoadFloat3(&light.direction);
+			if (XMVectorGetX(XMVector3LengthSq(direction)) > 0.000001f)
+			{
+				XMStoreFloat3(&gpu.direction, XMVector3Normalize(direction));
+			}
+			else
+			{
+				gpu.direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
+			}
+			m_gpuLights.push_back(gpu);
 		}
-		else
-		{
-			gpu.direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
-		}
-		m_gpuLights.push_back(gpu);
 	}
 }
 
@@ -1323,9 +1430,11 @@ bool Renderer::UploadLights(const Scene& scene)
 		// 자리가 모자람: 두 배씩 늘려 다시 만듦. 프레임 셋(t15)이 옛 버퍼를 가리키므로 바인딩 기록을 비워
 		// 다음 UpdateFrameSet 이 셋을 다시 만들게 함. 옛 버퍼는 D3D12 에서 지연 해제됨.
 		uint32_t capacity = m_lightCapacity > 0 ? m_lightCapacity : kInitialLightCapacity;
-		while (capacity < count) capacity *= 2;
-		const BufferHandle grown = m_device->CreateBuffer(BufferDesc{ .size = capacity * static_cast<uint32_t>(sizeof(GpuLight)), .usage = BufferUsage::Dynamic,
-			.bindFlags = BufferBind_ShaderResource, .stride = sizeof(GpuLight), .debugName = "SB_Lights" });
+		while (capacity < count)
+		{
+			capacity *= 2;
+		}
+		const BufferHandle grown = m_device->CreateBuffer(BufferDesc{ .size = capacity * static_cast<uint32_t>(sizeof(GpuLight)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = sizeof(GpuLight), .debugName = "SB_Lights" });
 		if (grown.IsValid())
 		{
 			m_device->DestroyBuffer(m_lightBuffer);
@@ -1337,22 +1446,28 @@ bool Renderer::UploadLights(const Scene& scene)
 		else
 		{
 			static bool warned = false;
-			if (!warned) { warned = true; Log::Error("조명 버퍼 확장 실패 (%u개). 앞의 %u개만 그림.", count, m_lightCapacity); }
+			if (!warned)
+			{
+				warned = true;
+				Log::Error("조명 버퍼 확장 실패 (%u개). 앞의 %u개만 그림.", count, m_lightCapacity);
+			}
 		}
 	}
 	const uint32_t uploaded = (std::min)(count, m_lightCapacity);
 
 	// 조명이 0개여도 한 칸은 올림 — D3D12 의 Dynamic 버퍼는 프레임마다 갱신돼야 함 (셰이더는 lightCount 만큼만 읽음).
 	static const GpuLight kNoLight = {};
-	m_device->UpdateBuffer(m_lightBuffer, uploaded > 0 ? m_gpuLights.data() : &kNoLight,
-		(std::max)(uploaded, 1u) * static_cast<uint32_t>(sizeof(GpuLight)));
+	m_device->UpdateBuffer(m_lightBuffer, uploaded > 0 ? m_gpuLights.data() : &kNoLight, (std::max)(uploaded, 1u) * static_cast<uint32_t>(sizeof(GpuLight)));
 
 	LightConstants constants = {};
 	constants.ambientColor = scene.ambientColor;
 	constants.lightCount = uploaded;
 	// BuildGpuLights 가 방향광을 앞으로 모았으므로 앞에서부터 방향광인 동안 셈.
 	uint32_t directionalCount = 0;
-	while (directionalCount < uploaded && m_gpuLights[directionalCount].type == static_cast<uint32_t>(LightType::Directional)) ++directionalCount;
+	while (directionalCount < uploaded && m_gpuLights[directionalCount].type == static_cast<uint32_t>(LightType::Directional))
+	{
+		++directionalCount;
+	}
 	constants.directionalCount = directionalCount;
 	m_device->UpdateBuffer(m_lightCB, &constants, sizeof(constants));
 	return uploaded == count;
@@ -1389,7 +1504,7 @@ void Renderer::BuildDrawList(const Scene& scene)
 		XMFLOAT3 center;
 		XMStoreFloat3(&center, XMVector3TransformCoord(XMLoadFloat3(&localCenter), world));
 		const float scale = (std::max)({ XMVectorGetX(XMVector3Length(world.r[0])), XMVectorGetX(XMVector3Length(world.r[1])),
-			XMVectorGetX(XMVector3Length(world.r[2])) });
+										 XMVectorGetX(XMVector3Length(world.r[2])) });
 		data.sphere = XMFLOAT4(center.x, center.y, center.z, mesh->GetBounds().Radius() * scale);
 		if (mesh->IsSkinned())
 		{
@@ -1411,7 +1526,10 @@ void Renderer::BuildDrawList(const Scene& scene)
 		{
 			if (submesh.indexCount == 0) continue;
 			const Material* material = object.GetMaterialForSlot(submesh.materialSlot);
-			if (material == nullptr) material = &m_defaultMaterial;
+			if (material == nullptr)
+			{
+				material = &m_defaultMaterial;
+			}
 
 			DrawItem item;
 			item.pipeline = GetPipelineFor(*material, mesh->GetVertexFormat(), mirrored);
@@ -1520,8 +1638,14 @@ void Renderer::UploadObjectConstants(uint32_t object)
 		const uint32_t uploaded = count > 0 ? count : kMaxSkinJoints;
 		for (uint32_t j = 0; j < uploaded; ++j)
 		{
-			if (j < count) XMStoreFloat4x4(&m_skinScratch[j], XMMatrixTranspose(XMLoadFloat4x4(&(*palette)[j])));
-			else XMStoreFloat4x4(&m_skinScratch[j], XMMatrixIdentity());
+			if (j < count)
+			{
+				XMStoreFloat4x4(&m_skinScratch[j], XMMatrixTranspose(XMLoadFloat4x4(&(*palette)[j])));
+			}
+			else
+			{
+				XMStoreFloat4x4(&m_skinScratch[j], XMMatrixIdentity());
+			}
 		}
 		m_device->UpdateBuffer(m_skinCB, m_skinScratch.data(), uploaded * static_cast<uint32_t>(sizeof(XMFLOAT4X4)));
 	}
@@ -1547,7 +1671,7 @@ void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTa
 			.colors = { {
 				.texture = view.hdr,
 				.load = LoadOp::Clear,
-				.srgbView = false,   // FP16 에는 sRGB 뷰가 없음. 선형 값을 그대로 씀 — sRGB 인코딩은 톤 패스의 RTV 가 함
+				.srgbView = false,                                                                                      // FP16 에는 sRGB 뷰가 없음. 선형 값을 그대로 씀 — sRGB 인코딩은 톤 패스의 RTV 가 함
 				.clearColor = { scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] },   // 선형. 노출·ACES 를 거침
 			} },
 			.colorCount = 1,
@@ -1662,12 +1786,21 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera
 			++m_stats.culled;
 			continue;
 		}
-		if (item.blended) m_blendedScratch.push_back(&item);   // 하늘 뒤에서 따로 그림
+		if (item.blended)
+		{
+			m_blendedScratch.push_back(&item);   // 하늘 뒤에서 따로 그림
+		}
 		else
 		{
 			drawItem(item);
-			if (gbufferPass) ++m_stats.gbufferDraws;
-			else if (mode == DrawMode::ForwardRest) ++m_stats.forwardOpaqueDraws;
+			if (gbufferPass)
+			{
+				++m_stats.gbufferDraws;
+			}
+			else if (mode == DrawMode::ForwardRest)
+			{
+				++m_stats.forwardOpaqueDraws;
+			}
 		}
 	}
 	if (gbufferPass) return;   // G-buffer 패스에는 하늘·블렌딩이 없음 (블렌딩 항목은 위에서 걸러져 목록이 비어 있음)
@@ -1689,14 +1822,19 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera
 			const float dx = s.x - eye.x, dy = s.y - eye.y, dz = s.z - eye.z;
 			return dx * dx + dy * dy + dz * dz;
 		};
-		std::stable_sort(m_blendedScratch.begin(), m_blendedScratch.end(),
-			[&](const DrawItem* a, const DrawItem* b) { return distanceSq(a) > distanceSq(b); });
+		std::stable_sort(m_blendedScratch.begin(), m_blendedScratch.end(), [&](const DrawItem* a, const DrawItem* b)
+		{
+			return distanceSq(a) > distanceSq(b);
+		});
 		cmd.SetResourceSet(kSetFrame, m_frameSet);
 		cmd.SetResourceSet(kSetObject, m_objectSet);
 		lastPipeline = PipelineHandle{};
 		lastMaterial = nullptr;
 		lastMesh = nullptr;
-		for (const DrawItem* item : m_blendedScratch) drawItem(*item);
+		for (const DrawItem* item : m_blendedScratch)
+		{
+			drawItem(*item);
+		}
 	}
 
 	// 파티클·디버그 선은 여기가 아니라 RenderScenePass 의 두 번째 패스 (깊이를 읽기 전용으로 바꾼 뒤) 에서 그림.
@@ -1709,8 +1847,7 @@ void Renderer::UploadDebugLines(const DebugDraw& debugDraw)
 
 	m_debugLineCount = static_cast<uint32_t>(vertices.size());
 	static const DebugLineVertex kNoLine = {};
-	m_device->UpdateBuffer(m_debugLineVB, m_debugLineCount > 0 ? vertices.data() : &kNoLine,
-		(std::max)(m_debugLineCount, 1u) * static_cast<uint32_t>(sizeof(DebugLineVertex)));
+	m_device->UpdateBuffer(m_debugLineVB, m_debugLineCount > 0 ? vertices.data() : &kNoLine, (std::max)(m_debugLineCount, 1u) * static_cast<uint32_t>(sizeof(DebugLineVertex)));
 }
 
 void Renderer::DrawDebugLines(RHI::CommandList& cmd)
@@ -1765,8 +1902,7 @@ void Renderer::UploadPerFrameConstants(const Camera& camera, float totalTime, ui
 	perFrame.shadowParams = XMFLOAT4(1.0f / kShadowAtlasSize, m_shadowSettings.bias, m_shadowSettings.strength, m_shadowEnabledThisFrame ? 1.0f : 0.0f);
 	perFrame.debugParams = XMFLOAT4(static_cast<float>(m_settings.debugView), m_settings.debugDepthRange, 0.0f, 0.0f);
 	// ResolveEnvironment 가 이번 프레임에 정한 환경 (Render 맨 앞에서 불림)
-	perFrame.environmentParams = XMFLOAT4(m_environment.iblIntensity, static_cast<float>(m_environment.specularMips),
-		m_environment.irradianceLod, m_environment.hasEnvironment ? 1.0f : 0.0f);
+	perFrame.environmentParams = XMFLOAT4(m_environment.iblIntensity, static_cast<float>(m_environment.specularMips), m_environment.irradianceLod, m_environment.hasEnvironment ? 1.0f : 0.0f);
 	perFrame.outputParams = XMFLOAT4(m_environment.exposure, m_environment.toneMapping ? 1.0f : 0.0f, m_environment.hasBrdfLut ? 1.0f : 0.0f, 0.0f);
 	perFrame.shadowExtra = XMFLOAT4(m_shadowSettings.normalOffset, 0.0f, 0.0f, 0.0f);
 	perFrame.iblTint = XMFLOAT4(m_environment.iblTint.x, m_environment.iblTint.y, m_environment.iblTint.z, 0.0f);
@@ -1831,7 +1967,10 @@ const Renderer::GpuMesh* Renderer::GetOrCreateGpuMesh(const Mesh& mesh)
 	if (mesh.GetVertexCount() <= 65535)
 	{
 		std::vector<uint16_t> indices16(mesh.GetIndices().size());
-		for (size_t i = 0; i < indices16.size(); ++i) indices16[i] = static_cast<uint16_t>(mesh.GetIndices()[i]);
+		for (size_t i = 0; i < indices16.size(); ++i)
+		{
+			indices16[i] = static_cast<uint16_t>(mesh.GetIndices()[i]);
+		}
 		ibDesc.size = static_cast<uint32_t>(sizeof(uint16_t) * indices16.size());
 		ibDesc.stride = sizeof(uint16_t);
 		gpuMesh.indexFormat = Format::R16_UINT;
@@ -1884,23 +2023,10 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 	// 비워지지 않았으면, 이름 → 핸들 조회를 건너뜀. 대부분의 프레임이 이 경로임 — 재질 편집(ImGui), 샘플러
 	// 덮어쓰기, 씬 교체 때만 아래로 내려감.
 	const SamplerPreset preset = (m_settings.samplerOverride >= 0 && m_settings.samplerOverride < static_cast<int>(kSamplerPresetCount))
-		? static_cast<SamplerPreset>(m_settings.samplerOverride) : material.sampler;
+		? static_cast<SamplerPreset>(m_settings.samplerOverride)
+		: material.sampler;
 	const SamplerHandle sampler = GetSampler(preset);
-	const bool unchanged = gpuMaterial->set.IsValid()
-		&& gpuMaterial->textureGeneration == m_textures.GetGeneration()
-		&& gpuMaterial->sampler == sampler
-		&& gpuMaterial->albedoSrgb == material.albedoSrgb
-		&& gpuMaterial->albedoName == material.albedoTexture
-		&& gpuMaterial->normalName == material.normalTexture
-		&& gpuMaterial->metallicRoughnessName == material.metallicRoughnessTexture
-		&& gpuMaterial->occlusionName == material.occlusionTexture
-		&& gpuMaterial->emissiveName == material.emissiveTexture
-		&& gpuMaterial->specularName == material.specularTexture
-		&& gpuMaterial->specularColorName == material.specularColorTexture
-		&& gpuMaterial->clearcoatName == material.clearcoatTexture
-		&& gpuMaterial->clearcoatRoughnessName == material.clearcoatRoughnessTexture
-		&& gpuMaterial->clearcoatNormalName == material.clearcoatNormalTexture
-		&& gpuMaterial->transmissionName == material.transmissionTexture;
+	const bool unchanged = gpuMaterial->set.IsValid() && gpuMaterial->textureGeneration == m_textures.GetGeneration() && gpuMaterial->sampler == sampler && gpuMaterial->albedoSrgb == material.albedoSrgb && gpuMaterial->albedoName == material.albedoTexture && gpuMaterial->normalName == material.normalTexture && gpuMaterial->metallicRoughnessName == material.metallicRoughnessTexture && gpuMaterial->occlusionName == material.occlusionTexture && gpuMaterial->emissiveName == material.emissiveTexture && gpuMaterial->specularName == material.specularTexture && gpuMaterial->specularColorName == material.specularColorTexture && gpuMaterial->clearcoatName == material.clearcoatTexture && gpuMaterial->clearcoatRoughnessName == material.clearcoatRoughnessTexture && gpuMaterial->clearcoatNormalName == material.clearcoatNormalTexture && gpuMaterial->transmissionName == material.transmissionTexture;
 	if (!unchanged)
 	{
 		const TextureHandle albedo = m_textures.Load2D(material.albedoTexture, material.albedoSrgb, scene);
@@ -1920,11 +2046,7 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 
 		// 실제로 꽂히는 핸들이 달라졌을 때만 ResourceSet 을 다시 만듦. ResourceSet은 값 객체라 부분 갱신 기능이
 		// 없음 — D3D12 디스크립터 테이블도 다시 써야 함.
-		if (!gpuMaterial->set.IsValid() || gpuMaterial->boundAlbedo != albedo || gpuMaterial->boundNormal != normal || gpuMaterial->boundSampler != sampler
-			|| gpuMaterial->boundMetallicRoughness != metallicRoughness || gpuMaterial->boundOcclusion != occlusion || gpuMaterial->boundEmissive != emissive
-			|| gpuMaterial->boundSpecular != specular || gpuMaterial->boundSpecularColor != specularColor
-			|| gpuMaterial->boundClearcoat != clearcoat || gpuMaterial->boundClearcoatRoughness != clearcoatRoughness || gpuMaterial->boundClearcoatNormal != clearcoatNormal
-			|| gpuMaterial->boundTransmission != transmission)
+		if (!gpuMaterial->set.IsValid() || gpuMaterial->boundAlbedo != albedo || gpuMaterial->boundNormal != normal || gpuMaterial->boundSampler != sampler || gpuMaterial->boundMetallicRoughness != metallicRoughness || gpuMaterial->boundOcclusion != occlusion || gpuMaterial->boundEmissive != emissive || gpuMaterial->boundSpecular != specular || gpuMaterial->boundSpecularColor != specularColor || gpuMaterial->boundClearcoat != clearcoat || gpuMaterial->boundClearcoatRoughness != clearcoatRoughness || gpuMaterial->boundClearcoatNormal != clearcoatNormal || gpuMaterial->boundTransmission != transmission)
 		{
 			m_device->DestroyResourceSet(gpuMaterial->set);
 			// 슬롯 순서는 CreateLayouts 의 materialLayout.Add(...) 순서: b3 상수, t0 알베도, t1 노멀, t2
@@ -1932,10 +2054,19 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 			const ResourceSetDesc setDesc{
 				.layout = m_layouts[Layout_Material],
 				.bindings = {
-					{ .buffer = gpuMaterial->constants }, { .texture = albedo }, { .texture = normal },
-					{ .texture = metallicRoughness }, { .texture = occlusion }, { .texture = emissive },
-					{ .texture = specular }, { .texture = specularColor },
-					{ .texture = clearcoat }, { .texture = clearcoatRoughness }, { .texture = clearcoatNormal }, { .texture = transmission }, { .sampler = sampler },
+					{ .buffer = gpuMaterial->constants },
+					{ .texture = albedo },
+					{ .texture = normal },
+					{ .texture = metallicRoughness },
+					{ .texture = occlusion },
+					{ .texture = emissive },
+					{ .texture = specular },
+					{ .texture = specularColor },
+					{ .texture = clearcoat },
+					{ .texture = clearcoatRoughness },
+					{ .texture = clearcoatNormal },
+					{ .texture = transmission },
+					{ .sampler = sampler },
 				},
 				.debugName = "Set_Material",
 			};
@@ -2012,8 +2143,7 @@ PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat v
 	const bool wireframe = m_settings.wireframe || material.wireframe;
 	const bool cullBack = m_settings.cullBack && !material.doubleSided;
 	const bool blended = IsBlended(material);
-	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (wireframe ? 1u << 9 : 0u) | (cullBack ? 1u << 10 : 0u)
-		| (blended ? 1u << 11 : 0u);
+	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (wireframe ? 1u << 9 : 0u) | (cullBack ? 1u << 10 : 0u) | (blended ? 1u << 11 : 0u);
 	auto found = m_mainPipelines.find(key);
 	if (found != m_mainPipelines.end()) return found->second;
 
@@ -2039,7 +2169,10 @@ PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat v
 	desc.rtvCount = 1;
 	desc.dsvFormat = Format::D24_UNORM_S8_UINT;
 	const PipelineHandle handle = m_device->CreatePipeline(desc);
-	if (handle.IsValid()) m_mainPipelines.emplace(key, handle);   // 실패는 기억하지 않음 (다음에 다시 시도)
+	if (handle.IsValid())
+	{
+		m_mainPipelines.emplace(key, handle);   // 실패는 기억하지 않음 (다음에 다시 시도)
+	}
 	return handle;
 }
 
@@ -2055,7 +2188,10 @@ PipelineHandle Renderer::GetShadowPipelineFor(const Material& material, VertexFo
 	desc.rasterizer.frontCounterClockwise = mirrored ? !desc.rasterizer.frontCounterClockwise : desc.rasterizer.frontCounterClockwise;
 	desc.rasterizer.cull = material.doubleSided ? CullMode::None : CullMode::Back;
 	const PipelineHandle handle = m_device->CreatePipeline(desc);
-	if (handle.IsValid()) m_shadowPipelines.emplace(key, handle);
+	if (handle.IsValid())
+	{
+		m_shadowPipelines.emplace(key, handle);
+	}
 	return handle;
 }
 
@@ -2093,7 +2229,10 @@ ComputePipelineHandle Renderer::GetComputePipeline(ComputePassId pass)
 	const ComputePassInfo& info = kComputePasses[pass];
 	ComputePipelineDesc desc;
 	desc.cs = m_shaders[info.cs];
-	for (uint32_t i = 0; i < info.layoutCount; ++i) desc.bindingLayouts[i] = m_layouts[info.layouts[i]];
+	for (uint32_t i = 0; i < info.layoutCount; ++i)
+	{
+		desc.bindingLayouts[i] = m_layouts[info.layouts[i]];
+	}
 	desc.bindingLayoutCount = static_cast<uint8_t>(info.layoutCount);
 	cached = m_device->CreateComputePipeline(desc);
 	return cached;

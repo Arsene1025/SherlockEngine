@@ -6,9 +6,9 @@
 using namespace DirectX;   // 이 파일 안에서만
 
 Transform::Transform()
-	: position(0.0f, 0.0f, 0.0f),
-	  rotation(0.0f, 0.0f, 0.0f),
-	  scale(1.0f, 1.0f, 1.0f)
+	: position(0.0f, 0.0f, 0.0f)
+	, rotation(0.0f, 0.0f, 0.0f)
+	, scale(1.0f, 1.0f, 1.0f)
 {
 	XMStoreFloat4x4(&preTransform, XMMatrixIdentity());
 }
@@ -124,7 +124,10 @@ bool Transform::SetLocalMatrix(const XMMATRIX& localWithPre)
 {
 	// local = pre × S·R·T 이므로 S·R·T = pre⁻¹ × local.
 	XMMATRIX srt = localWithPre;
-	if (hasPreTransform) srt = XMMatrixInverse(nullptr, XMLoadFloat4x4(&preTransform)) * srt;
+	if (hasPreTransform)
+	{
+		srt = XMMatrixInverse(nullptr, XMLoadFloat4x4(&preTransform)) * srt;
+	}
 	XMVECTOR s, q, t;
 	if (!XMMatrixDecompose(&s, &q, &t, srt)) return false;   // 스케일 0 이거나 행렬이 퇴화하면 실패
 	XMFLOAT4X4 rot;

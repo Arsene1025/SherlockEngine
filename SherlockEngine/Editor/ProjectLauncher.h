@@ -9,13 +9,13 @@ namespace ProjectLauncher
 	struct Recent
 	{
 		std::string name;
-		std::wstring path;    // .sherlock 파일
+		std::wstring path;   // .sherlock 파일
 	};
 	std::vector<Recent> LoadRecent();
 	void AddRecent(const std::string& name, const std::wstring& path);   // 목록 맨 앞에 추가, 최대 10개
 	void RemoveRecent(const std::wstring& path);
 
-	std::wstring BrowseForProjectFile(void* ownerWindow);   // *.sherlock 열기 대화상자. 취소면 빈 문자열
+	std::wstring BrowseForProjectFile(void* ownerWindow);                           // *.sherlock 열기 대화상자. 취소면 빈 문자열
 	std::wstring BrowseForFolder(void* ownerWindow, const std::wstring& initial);   // 새 프로젝트를 만들 부모 폴더
-	std::wstring GetDefaultProjectsDir();                   // <엔진 저장소>\Projects\ (소스 트리가 없으면 문서 폴더)
+	std::wstring GetDefaultProjectsDir();                                           // <엔진 저장소>\Projects\ (소스 트리가 없으면 문서 폴더)
 }

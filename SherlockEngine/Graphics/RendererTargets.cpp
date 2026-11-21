@@ -54,14 +54,12 @@ bool Renderer::CreateViewTarget(ViewTarget& view, uint32_t width, uint32_t heigh
 		// 파티클이 이 뷰의 깊이를 읽는 셋. 깊이를 다시 만들면 (크기 변경) 셋도 같이 다시 만듦.
 		if (!m_particleCollisionCB.IsValid())
 		{
-			m_particleCollisionCB = m_device->CreateBuffer(BufferDesc{ .size = sizeof(ParticleCollisionConstants), .usage = BufferUsage::Dynamic,
-				.bindFlags = BufferBind_Constant, .debugName = "CB_ParticleCollision" });
+			m_particleCollisionCB = m_device->CreateBuffer(BufferDesc{ .size = sizeof(ParticleCollisionConstants), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_Constant, .debugName = "CB_ParticleCollision" });
 		}
 		view.particleDepthSet = m_device->CreateResourceSet(ResourceSetDesc{
 			.layout = m_layouts[Layout_ParticleDepth], .bindings = { { .texture = view.depth } }, .debugName = "Set_ParticleDepth" });
 		view.particleCollideSet = m_device->CreateResourceSet(ResourceSetDesc{
-			.layout = m_layouts[Layout_ParticleCollide], .bindings = { { .buffer = m_particleCollisionCB }, { .texture = view.depth } },
-			.debugName = "Set_ParticleCollide" });
+			.layout = m_layouts[Layout_ParticleCollide], .bindings = { { .buffer = m_particleCollisionCB }, { .texture = view.depth } }, .debugName = "Set_ParticleCollide" });
 	}
 
 	// 씬 패스가 그리는 FP16 텍스처와, 톤 패스·후처리가 그것을 읽는 셋 (Layout_Post: b0, b4, t13, s6).
@@ -102,12 +100,30 @@ void Renderer::DestroyViewTarget(ViewTarget& view)
 		// D3D12 는 지연 해제라 이미 기록된 명령(이번 프레임의 ImGui 드로우 등)이 읽어도 안전함. D3D11 은
 		// 참조 카운트로 처리됨.
 		DestroyGBuffer(view);   // G-buffer 셋이 깊이를 가리키므로 깊이보다 먼저 (SSAO 타깃도 함께)
-		if (view.hdrSet.IsValid()) m_device->DestroyResourceSet(view.hdrSet);
-		if (view.particleDepthSet.IsValid()) m_device->DestroyResourceSet(view.particleDepthSet);
-		if (view.particleCollideSet.IsValid()) m_device->DestroyResourceSet(view.particleCollideSet);
-		if (view.hdr.IsValid()) m_device->DestroyTexture(view.hdr);
-		if (view.depth.IsValid()) m_device->DestroyTexture(view.depth);
-		if (view.color.IsValid()) m_device->DestroyTexture(view.color);
+		if (view.hdrSet.IsValid())
+		{
+			m_device->DestroyResourceSet(view.hdrSet);
+		}
+		if (view.particleDepthSet.IsValid())
+		{
+			m_device->DestroyResourceSet(view.particleDepthSet);
+		}
+		if (view.particleCollideSet.IsValid())
+		{
+			m_device->DestroyResourceSet(view.particleCollideSet);
+		}
+		if (view.hdr.IsValid())
+		{
+			m_device->DestroyTexture(view.hdr);
+		}
+		if (view.depth.IsValid())
+		{
+			m_device->DestroyTexture(view.depth);
+		}
+		if (view.color.IsValid())
+		{
+			m_device->DestroyTexture(view.color);
+		}
 	}
 	DestroyPostScratch(view.post);   // 스크래치는 hdr 크기를 따름. 효과가 켜져 있으면 다음 프레임에 다시 만듦
 	view = ViewTarget{};
@@ -183,7 +199,10 @@ void Renderer::BeginUIPass()
 	{
 		// 씬이 백버퍼에 그려지지 않았으므로 지움 (에디터 배경).
 		pass.colors[0].load = LoadOp::Clear;
-		pass.colors[0].clearColor[0] = 0.13f; pass.colors[0].clearColor[1] = 0.13f; pass.colors[0].clearColor[2] = 0.15f; pass.colors[0].clearColor[3] = 1.0f;
+		pass.colors[0].clearColor[0] = 0.13f;
+		pass.colors[0].clearColor[1] = 0.13f;
+		pass.colors[0].clearColor[2] = 0.15f;
+		pass.colors[0].clearColor[3] = 1.0f;
 	}
 	m_device->GetCommandList().BeginRenderPass(pass);
 }

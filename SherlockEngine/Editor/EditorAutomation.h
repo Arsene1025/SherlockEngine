@@ -35,32 +35,41 @@ struct EditorAutomation
 	bool active = false;
 	uint64_t exitAfter = 0;
 	uint32_t avgFrames = 0;   // --avg-frames=N. 종료 직전 N 프레임의 Profiler 구간 시간 평균을 따로 로그 (한 프레임 샘플은 흔들림)
-	bool pick = false; float pickU = 0.5f, pickV = 0.5f;
+	bool pick = false;
+	float pickU = 0.5f, pickV = 0.5f;
 	std::string selectName;   // --select=<오브젝트 이름>. 이름이 같은 첫 오브젝트를 선택함 (카메라 미리보기 검증 등)
-	bool setPosition = false; DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+	bool setPosition = false;
+	DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
 	std::wstring savePath, loadPath, screenshotPath;
 	bool dumpObjects = false;
-	std::string texSettingName; TextureImportSettings texSetting;   // --tex-setting=이름;압축0|1;밉;최대크기 (12 프레임째 임포트 설정 변경 + 그 텍스처만 다시 읽기. Inspector 의 Apply 와 같은 경로)
-	int debugBones = 0;         // --debug-bones=N (2 프레임째 본 디버그 표시)
-	int debugView = 0;          // --debug-view=N (2 프레임째 Render Settings 의 디버그 뷰)
-	bool lightIconsSelected = false;   // --light-icons=selected (2 프레임째 Gizmo 메뉴의 Selected light only)
-	uint64_t freezeCascadesAt = 0;   // --freeze-cascades=N (N 프레임째 에디터 카메라로 캐스케이드 고정. Renderer::SetCascadeFreeze)
-	bool camLook = false; DirectX::XMFLOAT3 camEye = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), camTarget = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --cam-look=ex,ey,ez;tx,ty,tz (고정 다음 프레임, 고정이 없으면 3 프레임째 에디터 카메라 이동)
-	bool newScene = false;      // --new-scene=1 (3 프레임째 바닥만 있는 새 씬)
-	int addPrimitive = -1;      // --add=0..4 (4 프레임째 오브젝트 추가, 4 는 카메라 오브젝트)
+	std::string texSettingName;
+	TextureImportSettings texSetting;   // --tex-setting=이름;압축0|1;밉;최대크기 (12 프레임째 임포트 설정 변경 + 그 텍스처만 다시 읽기. Inspector 의 Apply 와 같은 경로)
+	int debugBones = 0;                 // --debug-bones=N (2 프레임째 본 디버그 표시)
+	int debugView = 0;                  // --debug-view=N (2 프레임째 Render Settings 의 디버그 뷰)
+	bool lightIconsSelected = false;    // --light-icons=selected (2 프레임째 Gizmo 메뉴의 Selected light only)
+	uint64_t freezeCascadesAt = 0;      // --freeze-cascades=N (N 프레임째 에디터 카메라로 캐스케이드 고정. Renderer::SetCascadeFreeze)
+	bool camLook = false;
+	DirectX::XMFLOAT3 camEye = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), camTarget = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --cam-look=ex,ey,ez;tx,ty,tz (고정 다음 프레임, 고정이 없으면 3 프레임째 에디터 카메라 이동)
+	bool newScene = false;                                                                                             // --new-scene=1 (3 프레임째 바닥만 있는 새 씬)
+	int addPrimitive = -1;                                                                                             // --add=0..4 (4 프레임째 오브젝트 추가, 4 는 카메라 오브젝트)
 	std::wstring browseDir;
-	std::wstring dropPath; DirectX::XMFLOAT3 dropPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-	bool dropUv = false; float dropU = 0.5f, dropV = 0.5f;
+	std::wstring dropPath;
+	DirectX::XMFLOAT3 dropPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+	bool dropUv = false;
+	float dropU = 0.5f, dropV = 0.5f;
 	std::wstring dropTexture;
-	bool play = false; uint64_t stopAt = 0; std::string addComponent;
-	std::string newScript;      // --new-script=Name (2 프레임째 ScriptCreator::Create — Inspector 의 New Script 와 같은 경로, 열지는 않음)
-	std::string buildGame;      // --build-game=Name (3 프레임째 GameBuilder::Build — 에셋 전부, 폴더 열지 않음, 시작 씬 = --build-scene 또는 프로젝트 시작 씬)
+	bool play = false;
+	uint64_t stopAt = 0;
+	std::string addComponent;
+	std::string newScript;   // --new-script=Name (2 프레임째 ScriptCreator::Create — Inspector 의 New Script 와 같은 경로, 열지는 않음)
+	std::string buildGame;   // --build-game=Name (3 프레임째 GameBuilder::Build — 에셋 전부, 폴더 열지 않음, 시작 씬 = --build-scene 또는 프로젝트 시작 씬)
 	std::string buildScene;
-	std::string newProject;     // --new-project=Name (2 프레임째 CreateProject in <repo>\Projects\, 11-E)
-	bool buildProject = false;  // --build-project=1 (4 프레임째 BuildScripts — 프로젝트 스크립트 DLL 을 MSBuild 로 빌드하고 다시 올림)
-	bool launcher = false;      // --launcher=1 (2 프레임째 File > Projects 런처 팝업을 엶 — 문서 스크린샷용)
-	bool setRotation = false; DirectX::XMFLOAT3 rotationDeg = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --set-rotation=p,y,r (도, 8 프레임째 선택 오브젝트, 11-F)
-	std::string parentChild, parentName;   // --set-parent=자식;부모 (7 프레임째 재부모화, 부모가 비면 루트로, 11-F)
+	std::string newProject;      // --new-project=Name (2 프레임째 CreateProject in <repo>\Projects\, 11-E)
+	bool buildProject = false;   // --build-project=1 (4 프레임째 BuildScripts — 프로젝트 스크립트 DLL 을 MSBuild 로 빌드하고 다시 올림)
+	bool launcher = false;       // --launcher=1 (2 프레임째 File > Projects 런처 팝업을 엶 — 문서 스크린샷용)
+	bool setRotation = false;
+	DirectX::XMFLOAT3 rotationDeg = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --set-rotation=p,y,r (도, 8 프레임째 선택 오브젝트, 11-F)
+	std::string parentChild, parentName;                                   // --set-parent=자식;부모 (7 프레임째 재부모화, 부모가 비면 루트로, 11-F)
 	// 되돌리기·프리팹. 입력을 주입하지 못하므로 같은 코드 경로(RunCommand / UndoRedo / SavePrefabOf …)를 직접 부름
 	//   --delete=이름          6 프레임째 그 오브젝트 삭제 (Delete 키와 같은 DeleteObject 를 RunCommand 로)
 	//   --duplicate=이름       11 프레임째 그 오브젝트 복제 (Ctrl+D)
@@ -69,7 +78,8 @@ struct EditorAutomation
 	//   --undo=N / --redo=N    14 / 15 프레임째 Ctrl+Z / Ctrl+Y 를 N 번
 	//   --save-after=path      18 프레임째 씬을 한 번 더 저장 (--save 는 12 프레임째 — 두 파일을 비교해 되돌리기를 검증)
 	std::string deleteName, duplicateName, makePrefabName;
-	std::wstring instantiatePath; DirectX::XMFLOAT3 instantiatePosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+	std::wstring instantiatePath;
+	DirectX::XMFLOAT3 instantiatePosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
 	int undoCount = 0, redoCount = 0;
 	std::wstring saveAfterPath;
 	//   --gesture=1            --set-position 을 RunCommand 가 아니라 "위젯을 끄는 중" 으로 흉내 냄: 8 프레임째 입력 진행 중(busy)으로 두고 값을 바꾼 뒤

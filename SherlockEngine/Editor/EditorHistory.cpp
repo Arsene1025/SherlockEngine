@@ -20,7 +20,11 @@ void EditorHistory::Reset(const Scene& scene)
 
 void EditorHistory::Rebase(const Scene& scene)
 {
-	if (m_states.empty()) { Reset(scene); return; }
+	if (m_states.empty())
+	{
+		Reset(scene);
+		return;
+	}
 	m_bytes -= m_states[m_current].text.size();
 	m_states[m_current].text = SceneSerializer::SaveEditState(scene);
 	m_bytes += m_states[m_current].text.size();
@@ -29,12 +33,19 @@ void EditorHistory::Rebase(const Scene& scene)
 
 bool EditorHistory::Commit(const Scene& scene, const std::string& label)
 {
-	if (m_states.empty()) { Reset(scene); return false; }
+	if (m_states.empty())
+	{
+		Reset(scene);
+		return false;
+	}
 	std::string text = SceneSerializer::SaveEditState(scene);
 	if (text == m_states[m_current].text) return false;   // 바뀐 것이 없음 (선택만 한 클릭 등)
 
 	// 되돌린 뒤 새 편집을 하면 그 뒤의 "다시 실행" 가지는 사라짐
-	for (size_t i = m_current + 1; i < m_states.size(); ++i) m_bytes -= m_states[i].text.size();
+	for (size_t i = m_current + 1; i < m_states.size(); ++i)
+	{
+		m_bytes -= m_states[i].text.size();
+	}
 	m_states.resize(m_current + 1);
 	m_bytes += text.size();
 	m_states.push_back({ label.empty() ? std::string("Edit") : label, std::move(text) });
@@ -47,12 +58,19 @@ void EditorHistory::UpdateGesture(const Scene& scene, bool busy, const std::stri
 {
 	if (busy)
 	{
-		if (!m_gestureActive) { m_gestureActive = true; m_gestureLabel = label; }
+		if (!m_gestureActive)
+		{
+			m_gestureActive = true;
+			m_gestureLabel = label;
+		}
 		return;
 	}
 	if (!m_gestureActive) return;
 	m_gestureActive = false;
-	if (Commit(scene, m_gestureLabel)) Log::Info("되돌리기 이력: '%s' (단계 %zu, %.1f KB)", m_gestureLabel.c_str(), GetStepCount(), m_bytes / 1024.0);
+	if (Commit(scene, m_gestureLabel))
+	{
+		Log::Info("되돌리기 이력: '%s' (단계 %zu, %.1f KB)", m_gestureLabel.c_str(), GetStepCount(), m_bytes / 1024.0);
+	}
 }
 
 void EditorHistory::Restore(Scene& scene)
@@ -104,6 +122,9 @@ void EditorHistory::Trim()
 	{
 		m_bytes -= m_states.front().text.size();
 		m_states.erase(m_states.begin());
-		if (m_current > 0) --m_current;
+		if (m_current > 0)
+		{
+			--m_current;
+		}
 	}
 }

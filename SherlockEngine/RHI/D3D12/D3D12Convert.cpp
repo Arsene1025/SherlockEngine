@@ -20,18 +20,18 @@ namespace D3D12Convert
 		case Format::R16G16B16A16_FLOAT:  return DXGI_FORMAT_R16G16B16A16_FLOAT;
 		case Format::R16_UINT:            return DXGI_FORMAT_R16_UINT;
 		case Format::R32_UINT:            return DXGI_FORMAT_R32_UINT;
-		case Format::R8_UNORM:             return DXGI_FORMAT_R8_UNORM;
-		case Format::R16_FLOAT:            return DXGI_FORMAT_R16_FLOAT;
-		case Format::R16G16_FLOAT:         return DXGI_FORMAT_R16G16_FLOAT;
-		case Format::R10G10B10A2_UNORM:    return DXGI_FORMAT_R10G10B10A2_UNORM;
-		case Format::R11G11B10_FLOAT:      return DXGI_FORMAT_R11G11B10_FLOAT;
-		case Format::R8G8B8A8_UINT:        return DXGI_FORMAT_R8G8B8A8_UINT;
-		case Format::BC1_UNORM:            return DXGI_FORMAT_BC1_UNORM;
-		case Format::BC1_UNORM_SRGB:       return DXGI_FORMAT_BC1_UNORM_SRGB;
-		case Format::BC3_UNORM:            return DXGI_FORMAT_BC3_UNORM;
-		case Format::BC3_UNORM_SRGB:       return DXGI_FORMAT_BC3_UNORM_SRGB;
-		case Format::BC7_UNORM:            return DXGI_FORMAT_BC7_UNORM;
-		case Format::BC7_UNORM_SRGB:       return DXGI_FORMAT_BC7_UNORM_SRGB;
+		case Format::R8_UNORM:            return DXGI_FORMAT_R8_UNORM;
+		case Format::R16_FLOAT:           return DXGI_FORMAT_R16_FLOAT;
+		case Format::R16G16_FLOAT:        return DXGI_FORMAT_R16G16_FLOAT;
+		case Format::R10G10B10A2_UNORM:   return DXGI_FORMAT_R10G10B10A2_UNORM;
+		case Format::R11G11B10_FLOAT:     return DXGI_FORMAT_R11G11B10_FLOAT;
+		case Format::R8G8B8A8_UINT:       return DXGI_FORMAT_R8G8B8A8_UINT;
+		case Format::BC1_UNORM:           return DXGI_FORMAT_BC1_UNORM;
+		case Format::BC1_UNORM_SRGB:      return DXGI_FORMAT_BC1_UNORM_SRGB;
+		case Format::BC3_UNORM:           return DXGI_FORMAT_BC3_UNORM;
+		case Format::BC3_UNORM_SRGB:      return DXGI_FORMAT_BC3_UNORM_SRGB;
+		case Format::BC7_UNORM:           return DXGI_FORMAT_BC7_UNORM;
+		case Format::BC7_UNORM_SRGB:      return DXGI_FORMAT_BC7_UNORM_SRGB;
 		default:
 			Log::Error("D3D12Convert : 알 수 없는 Format %d", static_cast<int>(format));
 			return DXGI_FORMAT_UNKNOWN;
@@ -154,19 +154,19 @@ namespace D3D12Convert
 	{
 		switch (state)
 		{
-		case ResourceState::Common:         return D3D12_RESOURCE_STATE_COMMON;
-		case ResourceState::RenderTarget:   return D3D12_RESOURCE_STATE_RENDER_TARGET;
-		case ResourceState::DepthWrite:     return D3D12_RESOURCE_STATE_DEPTH_WRITE;
-		case ResourceState::ShaderResource: return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-		case ResourceState::CopySource:     return D3D12_RESOURCE_STATE_COPY_SOURCE;
-		case ResourceState::CopyDest:       return D3D12_RESOURCE_STATE_COPY_DEST;
-		case ResourceState::Present:        return D3D12_RESOURCE_STATE_PRESENT;
-		case ResourceState::UnorderedAccess: return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+		case ResourceState::Common:           return D3D12_RESOURCE_STATE_COMMON;
+		case ResourceState::RenderTarget:     return D3D12_RESOURCE_STATE_RENDER_TARGET;
+		case ResourceState::DepthWrite:       return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+		case ResourceState::ShaderResource:   return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+		case ResourceState::CopySource:       return D3D12_RESOURCE_STATE_COPY_SOURCE;
+		case ResourceState::CopyDest:         return D3D12_RESOURCE_STATE_COPY_DEST;
+		case ResourceState::Present:          return D3D12_RESOURCE_STATE_PRESENT;
+		case ResourceState::UnorderedAccess:  return D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
 		case ResourceState::IndirectArgument: return D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
 		// 읽기 상태끼리는 OR 로 합칠 수 있음 — 읽기 전용 DSV 와 SRV(PS·CS) 를 전이 없이 함께 씀.
 		// DENY_SHADER_RESOURCE 깊이(SRV 없음)는 셰이더 비트를 빼야 함 — D3D12CommandList::Barrier 가 처리.
-		case ResourceState::DepthRead:      return D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
-		default:                           return D3D12_RESOURCE_STATE_COMMON;
+		case ResourceState::DepthRead: return D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE;
+		default:                       return D3D12_RESOURCE_STATE_COMMON;
 		}
 	}
 
@@ -174,14 +174,14 @@ namespace D3D12Convert
 	{
 		switch (semantic)
 		{
-		case VertexSemantic::Position: return "POSITION";
-		case VertexSemantic::Normal:   return "NORMAL";
-		case VertexSemantic::Color:    return "COLOR";
-		case VertexSemantic::TexCoord: return "TEXCOORD";
-		case VertexSemantic::Tangent:  return "TANGENT";
+		case VertexSemantic::Position:     return "POSITION";
+		case VertexSemantic::Normal:       return "NORMAL";
+		case VertexSemantic::Color:        return "COLOR";
+		case VertexSemantic::TexCoord:     return "TEXCOORD";
+		case VertexSemantic::Tangent:      return "TANGENT";
 		case VertexSemantic::BlendIndices: return "BLENDINDICES";
 		case VertexSemantic::BlendWeights: return "BLENDWEIGHT";
-		default:                       return "POSITION";
+		default:                           return "POSITION";
 		}
 	}
 
@@ -211,8 +211,7 @@ namespace D3D12Convert
 		dd.StencilEnable = desc.stencilEnable;
 		dd.StencilReadMask = desc.stencilReadMask;
 		dd.StencilWriteMask = desc.stencilWriteMask;
-		const D3D12_DEPTH_STENCILOP_DESC defaultOp =
-		{
+		const D3D12_DEPTH_STENCILOP_DESC defaultOp = {
 			D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS
 		};
 		dd.FrontFace = defaultOp;
@@ -243,7 +242,10 @@ namespace D3D12Convert
 		return bd;
 	}
 
-	bool IsDepthFormat(DXGI_FORMAT f) { return f == DXGI_FORMAT_D32_FLOAT || f == DXGI_FORMAT_D24_UNORM_S8_UINT; }
+	bool IsDepthFormat(DXGI_FORMAT f)
+	{
+		return f == DXGI_FORMAT_D32_FLOAT || f == DXGI_FORMAT_D24_UNORM_S8_UINT;
+	}
 
 	DXGI_FORMAT DepthTypeless(DXGI_FORMAT f)
 	{

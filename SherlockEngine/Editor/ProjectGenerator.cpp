@@ -13,9 +13,9 @@ namespace fs = std::filesystem;
 
 namespace
 {
-	const wchar_t* kEngineGuid = L"{DCC06A61-7D5A-44F5-A959-3D9367E30EE7}";   // SherlockEngine.vcxproj 의 ProjectGuid
-	const wchar_t* kEditorGuid = L"{6F2E9A10-3C4D-4B5E-9F60-1E2D3C4B5A69}";   // SherlockEditor.vcxproj 의 ProjectGuid (엔진 저장소의 것을 그대로 참조)
-	const wchar_t* kScriptsGuid = L"{8B4C1D32-5E6F-4D70-B182-3F4E5D6C7B8C}";  // 생성 프로젝트의 스크립트 DLL (모든 프로젝트가 같은 GUID — 솔루션마다 하나뿐)
+	const wchar_t* kEngineGuid = L"{DCC06A61-7D5A-44F5-A959-3D9367E30EE7}";    // SherlockEngine.vcxproj 의 ProjectGuid
+	const wchar_t* kEditorGuid = L"{6F2E9A10-3C4D-4B5E-9F60-1E2D3C4B5A69}";    // SherlockEditor.vcxproj 의 ProjectGuid (엔진 저장소의 것을 그대로 참조)
+	const wchar_t* kScriptsGuid = L"{8B4C1D32-5E6F-4D70-B182-3F4E5D6C7B8C}";   // 생성 프로젝트의 스크립트 DLL (모든 프로젝트가 같은 GUID — 솔루션마다 하나뿐)
 
 	// 생성기의 형식 번호. vcxproj 첫 주석에 들어가며, EnsureUpToDate 가 이 표시가 없는 프로젝트(옛 형식)를 다시 생성함.
 	// 1 = 11-E 의 <Name>Editor.vcxproj + <Name>.vcxproj (스크립트를 exe 에 컴파일), 2 = <Name>Scripts.vcxproj
@@ -29,7 +29,10 @@ namespace
 		if (utf8.empty()) return L"";
 		const int length = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
 		std::wstring wide(length > 0 ? length - 1 : 0, L'\0');
-		if (length > 1) MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
+		if (length > 1)
+		{
+			MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
+		}
 		return wide;
 	}
 
@@ -39,7 +42,10 @@ namespace
 		std::string utf8;
 		const int length = WideCharToMultiByte(CP_UTF8, 0, text.c_str(), -1, nullptr, 0, nullptr, nullptr);
 		utf8.resize(length > 0 ? length - 1 : 0);
-		if (length > 1) WideCharToMultiByte(CP_UTF8, 0, text.c_str(), -1, &utf8[0], length, nullptr, nullptr);
+		if (length > 1)
+		{
+			WideCharToMultiByte(CP_UTF8, 0, text.c_str(), -1, &utf8[0], length, nullptr, nullptr);
+		}
 		std::ofstream file(path, std::ios::binary | std::ios::trunc);
 		if (!file) return false;
 		file << utf8;
@@ -62,7 +68,10 @@ namespace
 		if (ec || relative.empty()) return repo;
 		std::wstring r = relative.wstring();
 		if (r.empty() || r == L".") return L".\\";
-		if (r.back() != L'\\') r += L'\\';
+		if (r.back() != L'\\')
+		{
+			r += L'\\';
+		}
 		return r;
 	}
 
@@ -81,7 +90,9 @@ namespace
 		s << L"       빌드하면 Binaries\\<구성>\\" << name << L".dll 이 생기고, 켜져 있는 에디터가 1초 안에 다시 올린다(핫리로드). F5 는 엔진의 SherlockEditor.exe 로 이 프로젝트를 연다. -->\r\n";
 		s << L"  <ItemGroup Label=\"ProjectConfigurations\">\r\n";
 		for (const wchar_t* c : { L"Debug", L"Release" })
+		{
 			s << L"    <ProjectConfiguration Include=\"" << c << L"|x64\">\r\n      <Configuration>" << c << L"</Configuration>\r\n      <Platform>x64</Platform>\r\n    </ProjectConfiguration>\r\n";
+		}
 		s << L"  </ItemGroup>\r\n";
 		s << L"  <PropertyGroup Label=\"Globals\">\r\n    <VCProjectVersion>17.0</VCProjectVersion>\r\n    <Keyword>Win32Proj</Keyword>\r\n";
 		s << L"    <ProjectGuid>" << kScriptsGuid << L"</ProjectGuid>\r\n    <RootNamespace>" << name << L"</RootNamespace>\r\n";
@@ -98,7 +109,10 @@ namespace
 			s << L"  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='" << c << L"|x64'\" Label=\"Configuration\">\r\n";
 			s << L"    <ConfigurationType>DynamicLibrary</ConfigurationType>\r\n    <UseDebugLibraries>" << (wcscmp(c, L"Debug") == 0 ? L"true" : L"false") << L"</UseDebugLibraries>\r\n";
 			s << L"    <PlatformToolset>v143</PlatformToolset>\r\n";
-			if (wcscmp(c, L"Release") == 0) s << L"    <WholeProgramOptimization>true</WholeProgramOptimization>\r\n";
+			if (wcscmp(c, L"Release") == 0)
+			{
+				s << L"    <WholeProgramOptimization>true</WholeProgramOptimization>\r\n";
+			}
 			s << L"    <CharacterSet>Unicode</CharacterSet>\r\n  </PropertyGroup>\r\n";
 		}
 		s << L"  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.props\" />\r\n";
@@ -125,7 +139,10 @@ namespace
 			const bool debug = wcscmp(c, L"Debug") == 0;
 			s << L"  <ItemDefinitionGroup Condition=\"'$(Configuration)|$(Platform)'=='" << c << L"|x64'\">\r\n    <ClCompile>\r\n";
 			s << L"      <WarningLevel>Level3</WarningLevel>\r\n";
-			if (!debug) s << L"      <FunctionLevelLinking>true</FunctionLevelLinking>\r\n      <IntrinsicFunctions>true</IntrinsicFunctions>\r\n";
+			if (!debug)
+			{
+				s << L"      <FunctionLevelLinking>true</FunctionLevelLinking>\r\n      <IntrinsicFunctions>true</IntrinsicFunctions>\r\n";
+			}
 			s << L"      <SDLCheck>true</SDLCheck>\r\n";
 			s << L"      <PreprocessorDefinitions>" << (debug ? L"_DEBUG" : L"NDEBUG") << L";_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>\r\n";
 			s << L"      <ConformanceMode>true</ConformanceMode>\r\n      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>\r\n";
@@ -137,7 +154,10 @@ namespace
 			s << L"      <AdditionalLibraryDirectories>$(SherlockRepo)x64\\$(Configuration)\\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>\r\n";
 			// Release 는 전체 LTCG. 기본값인 증분 LTCG 는 엔진 헤더의 클래스 레이아웃이 바뀌어도 인라인된 옛 기계어를
 			// .iobj 에서 복사해 쓸 수 있음 — 엔진 DLL 에서 실제로 일어난 일 (docs/plan/defect-fix-record.html).
-			if (!debug) s << L"      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>\r\n";
+			if (!debug)
+			{
+				s << L"      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>\r\n";
+			}
 			s << L"    </Link>\r\n  </ItemDefinitionGroup>\r\n";
 		}
 		// Scripts\ 아래 하위 폴더까지 재귀(**). 실험용 스크립트를 Scripts\Tests\ 에 따로 모아 두기 위해서다
@@ -181,8 +201,12 @@ namespace
 		s << L"Global\r\n\tGlobalSection(SolutionConfigurationPlatforms) = preSolution\r\n\t\tDebug|x64 = Debug|x64\r\n\t\tRelease|x64 = Release|x64\r\n\tEndGlobalSection\r\n";
 		s << L"\tGlobalSection(ProjectConfigurationPlatforms) = postSolution\r\n";
 		for (const wchar_t* guid : { kScriptsGuid, kEngineGuid, kEditorGuid })
+		{
 			for (const wchar_t* c : { L"Debug", L"Release" })
+			{
 				s << L"\t\t" << guid << L"." << c << L"|x64.ActiveCfg = " << c << L"|x64\r\n\t\t" << guid << L"." << c << L"|x64.Build.0 = " << c << L"|x64\r\n";
+			}
+		}
 		s << L"\tEndGlobalSection\r\n\tGlobalSection(SolutionProperties) = preSolution\r\n\t\tHideSolutionNode = FALSE\r\n\tEndGlobalSection\r\nEndGlobal\r\n";
 		return s.str();
 	}
@@ -199,13 +223,15 @@ std::wstring ProjectGenerator::GetEngineRepoDir()
 bool ProjectGenerator::Generate(const Project& project, std::string& error)
 {
 	const std::wstring repo = GetEngineRepoDir();
-	if (repo.empty()) { error = "engine source tree not found (cannot generate a solution without it)"; return false; }
+	if (repo.empty())
+	{
+		error = "engine source tree not found (cannot generate a solution without it)";
+		return false;
+	}
 	const std::wstring repoFromProject = EngineRepoFromProject(project.GetRoot(), repo);
 	const std::wstring name = Wide(project.GetName());
 	const std::wstring root = project.GetRoot();
-	if (!WriteAll(root + project.GetScriptsProjectName() + L".vcxproj", ScriptsProject(project, repoFromProject))
-		|| !WriteAll(root + project.GetScriptsProjectName() + L".vcxproj.filters", Filters())
-		|| !WriteAll(project.GetSolutionPath(), Solution(project, repoFromProject)))
+	if (!WriteAll(root + project.GetScriptsProjectName() + L".vcxproj", ScriptsProject(project, repoFromProject)) || !WriteAll(root + project.GetScriptsProjectName() + L".vcxproj.filters", Filters()) || !WriteAll(project.GetSolutionPath(), Solution(project, repoFromProject)))
 	{
 		error = "cannot write project files in " + Log::ToUtf8(root.c_str());
 		return false;
@@ -220,8 +246,7 @@ bool ProjectGenerator::Generate(const Project& project, std::string& error)
 		fs::remove(old + L".filters", ec);
 		Log::Info("옛 형식 프로젝트 파일 지움: %s", Log::ToUtf8(old.c_str()).c_str());
 	}
-	Log::Info("프로젝트 솔루션 생성: %s (스크립트 DLL %s, 엔진 저장소 %s)", Log::ToUtf8(project.GetSolutionPath().c_str()).c_str(),
-		Log::ToUtf8(project.GetScriptsProjectName().c_str()).c_str(), Log::ToUtf8(repoFromProject.c_str()).c_str());
+	Log::Info("프로젝트 솔루션 생성: %s (스크립트 DLL %s, 엔진 저장소 %s)", Log::ToUtf8(project.GetSolutionPath().c_str()).c_str(), Log::ToUtf8(project.GetScriptsProjectName().c_str()).c_str(), Log::ToUtf8(repoFromProject.c_str()).c_str());
 	return true;
 }
 
@@ -243,13 +268,16 @@ bool ProjectGenerator::RunMsBuild(const std::wstring& solution, const std::wstri
 	wchar_t programFiles[MAX_PATH] = {};
 	ExpandEnvironmentStringsW(L"%ProgramFiles(x86)%", programFiles, MAX_PATH);
 	const std::wstring vswhere = std::wstring(programFiles) + L"\\Microsoft Visual Studio\\Installer\\vswhere.exe";
-	if (GetFileAttributesW(vswhere.c_str()) == INVALID_FILE_ATTRIBUTES) { error = "vswhere.exe not found (Visual Studio installed?)"; return false; }
+	if (GetFileAttributesW(vswhere.c_str()) == INVALID_FILE_ATTRIBUTES)
+	{
+		error = "vswhere.exe not found (Visual Studio installed?)";
+		return false;
+	}
 
 	std::error_code ec;
 	fs::create_directories(fs::path(logFile).parent_path(), ec);
 	// cmd 에서 두 단계로 실행: vswhere 로 MSBuild 경로를 찾고 그 경로로 빌드. 창은 띄우지 않음.
-	std::wstring command = L"cmd.exe /c \"for /f \"usebackq delims=\" %m in (`\"" + vswhere + L"\" -latest -requires Microsoft.Component.MSBuild -find MSBuild\\**\\Bin\\MSBuild.exe`) do \"%m\" \""
-		+ solution + L"\" /t:" + target + L" /p:Configuration=" + configuration + L" /p:Platform=x64 /m /v:m /nologo " + extraArguments + L" > \"" + logFile + L"\" 2>&1\"";
+	std::wstring command = L"cmd.exe /c \"for /f \"usebackq delims=\" %m in (`\"" + vswhere + L"\" -latest -requires Microsoft.Component.MSBuild -find MSBuild\\**\\Bin\\MSBuild.exe`) do \"%m\" \"" + solution + L"\" /t:" + target + L" /p:Configuration=" + configuration + L" /p:Platform=x64 /m /v:m /nologo " + extraArguments + L" > \"" + logFile + L"\" 2>&1\"";
 	STARTUPINFOW si = { sizeof(si) };
 	PROCESS_INFORMATION pi = {};
 	std::vector<wchar_t> buffer(command.begin(), command.end());

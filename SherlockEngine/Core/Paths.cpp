@@ -49,7 +49,10 @@ namespace
 
 	std::wstring WithSlash(std::wstring dir)
 	{
-		if (!dir.empty() && dir.back() != L'\\') dir += L'\\';
+		if (!dir.empty() && dir.back() != L'\\')
+		{
+			dir += L'\\';
+		}
 		return dir;
 	}
 
@@ -79,7 +82,13 @@ namespace
 	{
 		if (root.empty() || full.size() < root.size() || _wcsnicmp(full.c_str(), root.c_str(), root.size()) != 0) return L"";
 		std::wstring relative = full.substr(root.size());
-		for (wchar_t& c : relative) if (c == L'/') c = L'\\';
+		for (wchar_t& c : relative)
+		{
+			if (c == L'/')
+			{
+				c = L'\\';
+			}
+		}
 		return relative;
 	}
 }
@@ -181,7 +190,10 @@ std::wstring Paths::GetShaderSourcePath(const wchar_t* fileName)
 
 std::wstring Paths::GetAssetPath(const wchar_t* relative)
 {
-	const auto exists = [](const std::wstring& path) { return FileExists(path) || DirectoryExists(path); };   // 스카이박스 폴더
+	const auto exists = [](const std::wstring& path)
+	{
+		return FileExists(path) || DirectoryExists(path);
+	};   // 스카이박스 폴더
 	if (HasProject())
 	{
 		const std::wstring project = s_projectRoot + L"Assets\\" + relative;

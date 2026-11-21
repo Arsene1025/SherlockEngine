@@ -39,19 +39,19 @@ enum class Format : uint8_t
 	R32_UINT,              // 32비트 인덱스
 	R16G16B16A16_FLOAT,    // half4 색. HDR 큐브맵·BRDF LUT (1.0 을 넘는 값을 담음, 최대 65504)
 	// 아래는 G-buffer·SSAO·속도 버퍼용. 새 값은 끝에 붙임 (기존 값의 번호가 PSO 캐시 키에 들어감).
-	R8_UNORM,              // 1채널 8비트 (AO, 마스크)
-	R16_FLOAT,             // half 1개 (선형 깊이)
-	R16G16_FLOAT,          // half2 (화면 공간 속도, 옥타헤드럴 노멀)
-	R10G10B10A2_UNORM,     // 채널당 10비트 + 알파 2비트 (월드 노멀)
-	R11G11B10_FLOAT,       // 알파 없는 HDR 색 (FP16 의 절반 크기)
-	R8G8B8A8_UINT,         // 정수 4개 (스키닝 조인트 번호). 셰이더에서는 uint4 로 읽음
+	R8_UNORM,            // 1채널 8비트 (AO, 마스크)
+	R16_FLOAT,           // half 1개 (선형 깊이)
+	R16G16_FLOAT,        // half2 (화면 공간 속도, 옥타헤드럴 노멀)
+	R10G10B10A2_UNORM,   // 채널당 10비트 + 알파 2비트 (월드 노멀)
+	R11G11B10_FLOAT,     // 알파 없는 HDR 색 (FP16 의 절반 크기)
+	R8G8B8A8_UINT,       // 정수 4개 (스키닝 조인트 번호). 셰이더에서는 uint4 로 읽음
 	// 블록 압축 텍스처 (샘플 전용, 4×4 텍셀 = 블록 하나). 밉 0 의 가로·세로는 4 의 배수여야 함. 렌더 타깃·깊이로는 쓸 수 없음.
-	BC1_UNORM,             // 8바이트/블록, RGB(+1비트 알파). 가장 작음
+	BC1_UNORM,   // 8바이트/블록, RGB(+1비트 알파). 가장 작음
 	BC1_UNORM_SRGB,
-	BC3_UNORM,             // 16바이트/블록, RGBA (알파 보간)
+	BC3_UNORM,   // 16바이트/블록, RGBA (알파 보간)
 	BC3_UNORM_SRGB,
-	BC7_UNORM,             // 16바이트/블록, RGBA 고품질. 노멀·마스크 등 선형 데이터
-	BC7_UNORM_SRGB,        // 위와 같되 색(알베도)
+	BC7_UNORM,        // 16바이트/블록, RGBA 고품질. 노멀·마스크 등 선형 데이터
+	BC7_UNORM_SRGB,   // 위와 같되 색(알베도)
 };
 
 // 블록 압축 포맷인가 (BC1/BC3/BC7). 새 BC 포맷을 추가하면 여기도 고침 — enum 번호 비교(>=)에 기대지 않음.
@@ -59,9 +59,12 @@ constexpr bool IsBlockCompressed(Format format)
 {
 	switch (format)
 	{
-	case Format::BC1_UNORM: case Format::BC1_UNORM_SRGB:
-	case Format::BC3_UNORM: case Format::BC3_UNORM_SRGB:
-	case Format::BC7_UNORM: case Format::BC7_UNORM_SRGB:
+	case Format::BC1_UNORM:
+	case Format::BC1_UNORM_SRGB:
+	case Format::BC3_UNORM:
+	case Format::BC3_UNORM_SRGB:
+	case Format::BC7_UNORM:
+	case Format::BC7_UNORM_SRGB:
 		return true;
 	default:
 		return false;
@@ -128,20 +131,20 @@ enum class BlendOp : uint8_t
 // 정점 속성의 의미. HLSL 시맨틱 이름(POSITION, NORMAL ...)에 대응함.
 enum class VertexSemantic : uint8_t
 {
-	Position,   // POSITION  위치
-	Normal,     // NORMAL    법선
-	Color,      // COLOR     정점 색
-	TexCoord,   // TEXCOORD  UV
-	Tangent,    // TANGENT   탄젠트 (노멀맵)
+	Position,       // POSITION  위치
+	Normal,         // NORMAL    법선
+	Color,          // COLOR     정점 색
+	TexCoord,       // TEXCOORD  UV
+	Tangent,        // TANGENT   탄젠트 (노멀맵)
 	BlendIndices,   // BLENDINDICES  스키닝 조인트 번호 (uint4)
 	BlendWeights,   // BLENDWEIGHT   스키닝 가중치 (float4)
 };
 
 enum class ShaderStage : uint8_t
 {
-	Vertex,   // 정점 셰이더
-	Pixel,    // 픽셀 셰이더
-	Compute,  // 컴퓨트 셰이더 (cs_5_0). 그래픽스 PSO 가 아니라 ComputePipelineDesc 로 묶음
+	Vertex,    // 정점 셰이더
+	Pixel,     // 픽셀 셰이더
+	Compute,   // 컴퓨트 셰이더 (cs_5_0). 그래픽스 PSO 가 아니라 ComputePipelineDesc 로 묶음
 };
 
 // 기본값은 "불투명, 깊이 테스트 켬, 뒷면 컬링, 솔리드". PipelineStateDesc d{};
@@ -187,7 +190,7 @@ struct RenderTargetBlendDesc
 	BlendFactor srcAlpha = BlendFactor::One;    // A: 셰이더 출력 계수
 	BlendFactor dstAlpha = BlendFactor::Zero;   // A: 렌더 타깃 계수
 	BlendOp alphaOp = BlendOp::Add;             // A: 연산
-	uint8_t writeMask = 0xF;					// 기록할 채널 비트 (1=R, 2=G, 4=B, 8=A)
+	uint8_t writeMask = 0xF;                    // 기록할 채널 비트 (1=R, 2=G, 4=B, 8=A)
 
 	bool operator==(const RenderTargetBlendDesc&) const = default;
 };
@@ -198,18 +201,18 @@ constexpr uint32_t kMaxBindingSets = 4;   // 파이프라인 하나가 쓰는 Bi
 
 struct BlendDesc
 {
-	bool alphaToCoverage = false;                   // 알파를 MSAA 커버리지 마스크로 변환 (풀·잎 등)
-	bool independentBlend = false;                  // false면 rt[0] 설정을 모든 RT에 공통 적용
-	RenderTargetBlendDesc rt[kMaxRenderTargets];    // 렌더 타깃별 블렌드 설정
+	bool alphaToCoverage = false;                  // 알파를 MSAA 커버리지 마스크로 변환 (풀·잎 등)
+	bool independentBlend = false;                 // false면 rt[0] 설정을 모든 RT에 공통 적용
+	RenderTargetBlendDesc rt[kMaxRenderTargets];   // 렌더 타깃별 블렌드 설정
 };
 
 struct VertexAttribute
 {
 	VertexSemantic semantic = VertexSemantic::Position;   // HLSL 시맨틱 이름
-	uint8_t semanticIndex = 0;							  // 시맨틱 뒤 숫자 (TEXCOORD0, TEXCOORD1 ...)
+	uint8_t semanticIndex = 0;                            // 시맨틱 뒤 숫자 (TEXCOORD0, TEXCOORD1 ...)
 	Format format = Format::Unknown;                      // 데이터 형식 (float3 = R32G32B32_FLOAT)
-	uint16_t offset = 0;								  // 정점 구조체 안의 바이트 오프셋 (offsetof)
-	uint8_t inputSlot = 0;								  // 정점 버퍼 슬롯 번호 (버퍼 하나면 0)
+	uint16_t offset = 0;                                  // 정점 구조체 안의 바이트 오프셋 (offsetof)
+	uint8_t inputSlot = 0;                                // 정점 버퍼 슬롯 번호 (버퍼 하나면 0)
 
 	bool operator==(const VertexAttribute&) const = default;
 };
@@ -217,30 +220,30 @@ struct VertexAttribute
 struct VertexLayoutDesc
 {
 	VertexAttribute attributes[kMaxVertexAttributes];   // 앞에서 attributeCount개만 유효
-	uint8_t attributeCount = 0;							// 실제 사용 중인 속성 수
-	uint16_t stride = 0;								// 정점 하나의 바이트 크기 (sizeof(Vertex))
+	uint8_t attributeCount = 0;                         // 실제 사용 중인 속성 수
+	uint16_t stride = 0;                                // 정점 하나의 바이트 크기 (sizeof(Vertex))
 };
 
 struct PipelineStateDesc
 {
-	ShaderHandle vs;	// 정점 셰이더
-	ShaderHandle ps;	// 픽셀 셰이더
+	ShaderHandle vs;   // 정점 셰이더
+	ShaderHandle ps;   // 픽셀 셰이더
 	// D3D12의 pRootSignature 자리. 갱신 빈도별 BindingLayout(프레임/오브젝트/재질)을
 	// 순서대로 나열한 것이 루트 시그니처 하나에 해당함. D3D11 PSO 생성에는 쓰이지
 	// 않지만 "이 파이프라인이 어떤 슬롯을 쓰는가"는 파이프라인의 속성이므로 Desc(해시 키)에 넣음.
-	BindingLayoutHandle bindingLayouts[kMaxBindingSets];			// 앞에서 bindingLayoutCount개만 유효
+	BindingLayoutHandle bindingLayouts[kMaxBindingSets];   // 앞에서 bindingLayoutCount개만 유효
 	uint8_t bindingLayoutCount = 0;
-	VertexLayoutDesc vertexLayout;									// 입력 레이아웃 (IA 단계)
-	RasterizerDesc rasterizer;										// 래스터라이저 단계
-	DepthStencilDesc depthStencil;									// 출력 병합: 깊이·스텐실
-	BlendDesc blend;												// 출력 병합: 블렌드
+	VertexLayoutDesc vertexLayout;                                  // 입력 레이아웃 (IA 단계)
+	RasterizerDesc rasterizer;                                      // 래스터라이저 단계
+	DepthStencilDesc depthStencil;                                  // 출력 병합: 깊이·스텐실
+	BlendDesc blend;                                                // 출력 병합: 블렌드
 	PrimitiveTopology topology = PrimitiveTopology::TriangleList;   // 정점을 어떤 도형으로 묶을지
 
 	// D3D11은 이 세 항목을 PSO 생성에 쓰지 않음. D3D12에서는 필수임.
 	Format rtvFormats[kMaxRenderTargets] = { Format::R8G8B8A8_UNORM };   // 렌더 타깃별 포맷
-	uint8_t rtvCount = 1;												 // 동시에 쓰는 렌더 타깃 수 (MRT)
-	Format dsvFormat = Format::D24_UNORM_S8_UINT;						 // 깊이 버퍼 포맷
-	uint8_t sampleCount = 1;											 // MSAA 샘플 수 (1 = 끔)
+	uint8_t rtvCount = 1;                                                // 동시에 쓰는 렌더 타깃 수 (MRT)
+	Format dsvFormat = Format::D24_UNORM_S8_UINT;                        // 깊이 버퍼 포맷
+	uint8_t sampleCount = 1;                                             // MSAA 샘플 수 (1 = 끔)
 
 	// 필드 단위 해시·비교. 구조체를 통째로 memcmp/memcpy하면 패딩 바이트가
 	// 섞여 같은 내용이 다른 키가 됨. PipelineTypes.cpp 참고.
@@ -261,15 +264,21 @@ struct PipelineStateDescHasher
 // Device::CreateComputePipeline 이 같은 Desc 면 같은 핸들을 돌려주고, InvalidatePipelines 가 그래픽스와 함께 비움.
 struct ComputePipelineDesc
 {
-	ShaderHandle cs;   // ShaderStage::Compute 로 만든 셰이더
+	ShaderHandle cs;                                       // ShaderStage::Compute 로 만든 셰이더
 	BindingLayoutHandle bindingLayouts[kMaxBindingSets];   // 앞에서 bindingLayoutCount개만 유효. 인덱스 = SetComputeResourceSet 의 setIndex
 	uint8_t bindingLayoutCount = 0;
 
 	uint64_t Hash() const
 	{
 		uint64_t h = 0xCBF29CE484222325ull;   // FNV-1a (PipelineStateDesc::Hash 와 같은 방식)
-		auto mix = [&h](uint64_t v) { h ^= v; h *= 1099511628211ull; };
-		mix(cs.index); mix(cs.generation); mix(bindingLayoutCount);
+		auto mix = [&h](uint64_t v)
+		{
+			h ^= v;
+			h *= 1099511628211ull;
+		};
+		mix(cs.index);
+		mix(cs.generation);
+		mix(bindingLayoutCount);
 		for (uint32_t i = 0; i < bindingLayoutCount && i < kMaxBindingSets; ++i)
 		{
 			mix(bindingLayouts[i].index);

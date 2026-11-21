@@ -33,7 +33,10 @@ namespace
 		for (const fs::directory_entry& entry : fs::directory_iterator(dir, ec))
 		{
 			const std::wstring ext = entry.path().extension().wstring();
-			if (ext == L".dll") fs::remove(entry.path(), ec);
+			if (ext == L".dll")
+			{
+				fs::remove(entry.path(), ec);
+			}
 		}
 	}
 }
@@ -64,7 +67,10 @@ size_t ScriptModule::CountScriptSources(const Project& project)
 	std::error_code ec;
 	for (const fs::directory_entry& entry : fs::recursive_directory_iterator(project.GetScriptsDir(), ec))
 	{
-		if (entry.is_regular_file(ec) && entry.path().extension() == L".cpp") ++count;
+		if (entry.is_regular_file(ec) && entry.path().extension() == L".cpp")
+		{
+			++count;
+		}
 	}
 	return count;
 }
@@ -90,11 +96,13 @@ namespace
 		{
 			const SherlockScriptAbi& e = kSherlockScriptAbi;
 			error = std::format("script ABI mismatch — rebuild the script project. DLL / engine: api {} / {}, iterator debug level {} / {}, "
-				"sizeof Behaviour {} / {}, Script {} / {}, GameObject {} / {}, Transform {} / {}",
-				abi->apiVersion, e.apiVersion, abi->iteratorDebugLevel, e.iteratorDebugLevel, abi->sizeofBehaviour, e.sizeofBehaviour,
-				abi->sizeofScript, e.sizeofScript, abi->sizeofGameObject, e.sizeofGameObject, abi->sizeofTransform, e.sizeofTransform);
+								"sizeof Behaviour {} / {}, Script {} / {}, GameObject {} / {}, Transform {} / {}",
+								abi->apiVersion, e.apiVersion, abi->iteratorDebugLevel, e.iteratorDebugLevel, abi->sizeofBehaviour, e.sizeofBehaviour, abi->sizeofScript, e.sizeofScript, abi->sizeofGameObject, e.sizeofGameObject, abi->sizeofTransform, e.sizeofTransform);
 		}
-		else ok = true;
+		else
+		{
+			ok = true;
+		}
 		FreeLibrary(probe);
 		return ok;
 	}
@@ -123,7 +131,10 @@ bool ScriptModule::Load(const std::wstring& dllPath, bool copyBeforeLoad)
 	{
 		const fs::path copyDir = original.parent_path() / L"Loaded";
 		fs::create_directories(copyDir, ec);
-		if (m_reloads == 0) CleanOldCopies(copyDir);
+		if (m_reloads == 0)
+		{
+			CleanOldCopies(copyDir);
+		}
 		const std::wstring copyName = original.stem().wstring() + L"_" + std::to_wstring(GetCurrentProcessId()) + L"_" + std::to_wstring(m_reloads) + L".dll";
 		copy = copyDir / copyName;
 		if (!fs::copy_file(original, copy, fs::copy_options::overwrite_existing, ec))
@@ -138,7 +149,10 @@ bool ScriptModule::Load(const std::wstring& dllPath, bool copyBeforeLoad)
 	if (!CheckAbi(copy.wstring(), m_lastError))
 	{
 		Log::Error("스크립트 DLL 을 올리지 않음: %s (%s)", m_lastError.c_str(), Log::ToUtf8(dllPath.c_str()).c_str());
-		if (copyBeforeLoad) fs::remove(copy, ec);
+		if (copyBeforeLoad)
+		{
+			fs::remove(copy, ec);
+		}
 		return false;
 	}
 
@@ -148,7 +162,10 @@ bool ScriptModule::Load(const std::wstring& dllPath, bool copyBeforeLoad)
 	if (module == nullptr)
 	{
 		m_lastError = "LoadLibrary failed (" + Log::HrToString(HRESULT_FROM_WIN32(::GetLastError())) + ")";
-		if (copyBeforeLoad) fs::remove(copy, ec);
+		if (copyBeforeLoad)
+		{
+			fs::remove(copy, ec);
+		}
 		return false;
 	}
 	m_module = module;
@@ -157,10 +174,16 @@ bool ScriptModule::Load(const std::wstring& dllPath, bool copyBeforeLoad)
 	++m_reloads;
 	for (const std::string& name : BehaviourRegistry::GetTypeNames())
 	{
-		if (std::find(before.begin(), before.end(), name) == before.end()) m_typeNames.push_back(name);
+		if (std::find(before.begin(), before.end(), name) == before.end())
+		{
+			m_typeNames.push_back(name);
+		}
 	}
 	std::string list;
-	for (const std::string& name : m_typeNames) list += (list.empty() ? "" : ", ") + name;
+	for (const std::string& name : m_typeNames)
+	{
+		list += (list.empty() ? "" : ", ") + name;
+	}
 	Log::Info("스크립트 DLL 로드: %s (%zu개: %s)", Log::ToUtf8(dllPath.c_str()).c_str(), m_typeNames.size(), list.c_str());
 	return true;
 }
@@ -168,11 +191,17 @@ bool ScriptModule::Load(const std::wstring& dllPath, bool copyBeforeLoad)
 void ScriptModule::Unload()
 {
 	if (m_module == nullptr) return;
-	for (const std::string& name : m_typeNames) BehaviourRegistry::Unregister(name);
+	for (const std::string& name : m_typeNames)
+	{
+		BehaviourRegistry::Unregister(name);
+	}
 	FreeLibrary(static_cast<HMODULE>(m_module));
 	m_module = nullptr;
 	std::error_code ec;
-	if (!m_loadedCopy.empty()) std::filesystem::remove(m_loadedCopy, ec);   // FreeLibrary 뒤에는 잠기지 않음
+	if (!m_loadedCopy.empty())
+	{
+		std::filesystem::remove(m_loadedCopy, ec);   // FreeLibrary 뒤에는 잠기지 않음
+	}
 	Log::Info("스크립트 DLL 내림: %s (컴포넌트 %zu개 등록 해제)", Log::ToUtf8(m_path.c_str()).c_str(), m_typeNames.size());
 	m_typeNames.clear();
 	m_loadedCopy.clear();

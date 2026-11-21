@@ -10,7 +10,7 @@
 // 기본
 #include <windows.h>
 
-#include <DirectXMath.h> // XNA 수학 라이브러리
+#include <DirectXMath.h>   // XNA 수학 라이브러리
 // using namespace DirectX 는 두지 않음.
 // 헤더에서는 DirectX:: 를 붙이고, .cpp에서만 파일 지역 using을 씀.
 

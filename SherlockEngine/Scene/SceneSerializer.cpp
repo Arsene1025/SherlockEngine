@@ -22,13 +22,28 @@ namespace
 {
 	constexpr int kVersion = 5;   // 5: 오브젝트 "id"(안정 ID)와 "prefab"(프리팹 인스턴스 루트). 2: 컴포넌트 추가. 3: "parent"(부모 오브젝트 인덱스). 4: "environment"(스카이박스·IBL·노출)와 PBR 재질. 이전 버전 파일도 그대로 읽힘 (필드 없음 = 루트, 환경 없음)
 
-	json ToJson(const XMFLOAT3& v) { return json::array({ v.x, v.y, v.z }); }
-	json ToJson(const XMFLOAT4& v) { return json::array({ v.x, v.y, v.z, v.w }); }
-	json ToJson(const XMFLOAT2& v) { return json::array({ v.x, v.y }); }
+	json ToJson(const XMFLOAT3& v)
+	{
+		return json::array({ v.x, v.y, v.z });
+	}
+	json ToJson(const XMFLOAT4& v)
+	{
+		return json::array({ v.x, v.y, v.z, v.w });
+	}
+	json ToJson(const XMFLOAT2& v)
+	{
+		return json::array({ v.x, v.y });
+	}
 	json ToJson(const XMFLOAT4X4& m)
 	{
 		json a = json::array();
-		for (int r = 0; r < 4; ++r) for (int c = 0; c < 4; ++c) a.push_back(m.m[r][c]);
+		for (int r = 0; r < 4; ++r)
+		{
+			for (int c = 0; c < 4; ++c)
+			{
+				a.push_back(m.m[r][c]);
+			}
+		}
 		return a;
 	}
 
@@ -48,13 +63,19 @@ namespace
 		return XMFLOAT2(j[0].get<float>(), j[1].get<float>());
 	}
 
-	std::string ToUtf8(const std::wstring& wide) { return Log::ToUtf8(wide.c_str()); }
+	std::string ToUtf8(const std::wstring& wide)
+	{
+		return Log::ToUtf8(wide.c_str());
+	}
 	std::wstring ToWide(const std::string& utf8)
 	{
 		if (utf8.empty()) return L"";
 		const int length = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
 		std::wstring wide(length > 0 ? length - 1 : 0, L'\0');
-		if (length > 1) MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
+		if (length > 1)
+		{
+			MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
+		}
 		return wide;
 	}
 
@@ -62,12 +83,12 @@ namespace
 	{
 		switch (type)
 		{
-		case MeshSource::Type::Sphere: return "sphere";
-		case MeshSource::Type::Cube: return "cube";
-		case MeshSource::Type::Plane: return "plane";
+		case MeshSource::Type::Sphere:   return "sphere";
+		case MeshSource::Type::Cube:     return "cube";
+		case MeshSource::Type::Plane:    return "plane";
 		case MeshSource::Type::Cylinder: return "cylinder";
-		case MeshSource::Type::Model: return "model";
-		default: return "custom";
+		case MeshSource::Type::Model:    return "model";
+		default:                         return "custom";
 		}
 	}
 
@@ -86,7 +107,7 @@ namespace
 		json j;
 		j["name"] = m.name;
 		j["baseColor"] = ToJson(m.baseColor);
-		j["metallic"] = m.metallic;     // PBR
+		j["metallic"] = m.metallic;   // PBR
 		j["roughness"] = m.roughness;
 		j["emissive"] = ToJson(m.emissive);
 		j["metallicRoughnessTexture"] = m.metallicRoughnessTexture;
@@ -100,12 +121,12 @@ namespace
 		j["unlit"] = m.unlit;
 		j["normalTexture"] = m.normalTexture;
 		j["normalStrength"] = m.normalStrength;
-		j["ior"] = m.ior;     // 반사 확장 (KHR_materials_ior / specular)
+		j["ior"] = m.ior;   // 반사 확장 (KHR_materials_ior / specular)
 		j["specularFactor"] = m.specularFactor;
 		j["specularColor"] = ToJson(m.specularColor);
 		j["specularTexture"] = m.specularTexture;
 		j["specularColorTexture"] = m.specularColorTexture;
-		j["clearcoatFactor"] = m.clearcoatFactor;     // 클리어코트 (KHR_materials_clearcoat)
+		j["clearcoatFactor"] = m.clearcoatFactor;   // 클리어코트 (KHR_materials_clearcoat)
 		j["clearcoatRoughness"] = m.clearcoatRoughness;
 		j["clearcoatNormalScale"] = m.clearcoatNormalScale;
 		j["clearcoatTexture"] = m.clearcoatTexture;
@@ -131,7 +152,10 @@ namespace
 		m.name = j.value("name", "");
 		m.baseColor = ToFloat4(j.value("baseColor", json()), m.baseColor);
 		m.metallic = j.value("metallic", m.metallic);
-		if (j.contains("roughness")) m.roughness = j.value("roughness", m.roughness);
+		if (j.contains("roughness"))
+		{
+			m.roughness = j.value("roughness", m.roughness);
+		}
 		else if (j.contains("shininess"))
 		{
 			// 이전(Blinn-Phong) 파일: 광택 지수 → 거칠기. Blinn-Phong 지수 n 과 Beckmann 거칠기 m 의 관계 n =
@@ -212,7 +236,9 @@ namespace
 	class JsonWriteVisitor : public PropertyVisitor
 	{
 	public:
-		explicit JsonWriteVisitor(json& j) : m_j(j) {}
+		explicit JsonWriteVisitor(json& j)
+			: m_j(j)
+		{}
 		void Float(const char* name, float& value, float) override { m_j[name] = value; }
 		void Int(const char* name, int& value) override { m_j[name] = value; }
 		void Bool(const char* name, bool& value) override { m_j[name] = value; }
@@ -224,12 +250,44 @@ namespace
 	class JsonReadVisitor : public PropertyVisitor
 	{
 	public:
-		explicit JsonReadVisitor(const json& j) : m_j(j) {}
-		void Float(const char* name, float& value, float) override { if (m_j.contains(name) && m_j[name].is_number()) value = m_j[name].get<float>(); }
-		void Int(const char* name, int& value) override { if (m_j.contains(name) && m_j[name].is_number()) value = m_j[name].get<int>(); }
-		void Bool(const char* name, bool& value) override { if (m_j.contains(name) && m_j[name].is_boolean()) value = m_j[name].get<bool>(); }
-		void Float3(const char* name, XMFLOAT3& value, float) override { if (m_j.contains(name)) value = ToFloat3(m_j[name], value); }
-		void String(const char* name, std::string& value) override { if (m_j.contains(name) && m_j[name].is_string()) value = m_j[name].get<std::string>(); }
+		explicit JsonReadVisitor(const json& j)
+			: m_j(j)
+		{}
+		void Float(const char* name, float& value, float) override
+		{
+			if (m_j.contains(name) && m_j[name].is_number())
+			{
+				value = m_j[name].get<float>();
+			}
+		}
+		void Int(const char* name, int& value) override
+		{
+			if (m_j.contains(name) && m_j[name].is_number())
+			{
+				value = m_j[name].get<int>();
+			}
+		}
+		void Bool(const char* name, bool& value) override
+		{
+			if (m_j.contains(name) && m_j[name].is_boolean())
+			{
+				value = m_j[name].get<bool>();
+			}
+		}
+		void Float3(const char* name, XMFLOAT3& value, float) override
+		{
+			if (m_j.contains(name))
+			{
+				value = ToFloat3(m_j[name], value);
+			}
+		}
+		void String(const char* name, std::string& value) override
+		{
+			if (m_j.contains(name) && m_j[name].is_string())
+			{
+				value = m_j[name].get<std::string>();
+			}
+		}
 	private:
 		const json& m_j;
 	};
@@ -250,7 +308,10 @@ namespace
 		for (const std::string& missing : object.GetMissingComponents())
 		{
 			json c = json::parse(missing, nullptr, false);
-			if (!c.is_discarded()) components.push_back(std::move(c));
+			if (!c.is_discarded())
+			{
+				components.push_back(std::move(c));
+			}
 		}
 		return components;
 	}
@@ -341,7 +402,10 @@ namespace
 			return nullptr;
 		}
 		const json params = j.value("params", json::array());
-		for (size_t i = 0; i < 4 && i < params.size(); ++i) source.params[i] = params[i].get<float>();
+		for (size_t i = 0; i < 4 && i < params.size(); ++i)
+		{
+			source.params[i] = params[i].get<float>();
+		}
 		source.a = j.value("a", 0u);
 		source.b = j.value("b", 0u);
 		source.color = ToFloat4(j.value("color", json()), source.color);
@@ -386,14 +450,23 @@ namespace
 	{
 		json j;
 		j["name"] = object.GetName();
-		if (withId) j["id"] = object.GetId();
-		if (parentIndex >= 0) j["parent"] = parentIndex;
+		if (withId)
+		{
+			j["id"] = object.GetId();
+		}
+		if (parentIndex >= 0)
+		{
+			j["parent"] = parentIndex;
+		}
 		j["mesh"] = IndexIn(meshes, object.GetMesh());
 		j["material"] = IndexIn(materials, object.GetMaterial());
 		if (!object.GetSlotMaterials().empty())
 		{
 			json slots = json::array();
-			for (const Material* slot : object.GetSlotMaterials()) slots.push_back(IndexIn(materials, slot));
+			for (const Material* slot : object.GetSlotMaterials())
+			{
+				slots.push_back(IndexIn(materials, slot));
+			}
 			j["slotMaterials"] = slots;
 		}
 		const Transform& t = object.GetTransform();
@@ -406,8 +479,14 @@ namespace
 			XMStoreFloat4x4(&pre, t.GetPreTransform());
 			j["preTransform"] = ToJson(pre);
 		}
-		if (!object.GetBehaviours().empty() || !object.GetMissingComponents().empty()) j["components"] = ComponentsToJson(object);
-		if (!object.GetPrefabSource().empty()) j["prefab"] = object.GetPrefabSource();
+		if (!object.GetBehaviours().empty() || !object.GetMissingComponents().empty())
+		{
+			j["components"] = ComponentsToJson(object);
+		}
+		if (!object.GetPrefabSource().empty())
+		{
+			j["prefab"] = object.GetPrefabSource();
+		}
 		return j;
 	}
 
@@ -415,7 +494,10 @@ namespace
 	// useId: 파일의 ID 를 그대로 쓰되, 0 이거나 씬에 이미 있으면 새 ID 를 유지함.
 	GameObject& ObjectFromJson(Scene& scene, const json& j, bool useId, const std::vector<const Mesh*>& meshes, const std::vector<const Material*>& materials)
 	{
-		const auto materialAt = [&materials](int index) -> const Material* { return (index >= 0 && index < static_cast<int>(materials.size())) ? materials[index] : nullptr; };
+		const auto materialAt = [&materials](int index) -> const Material*
+		{
+			return (index >= 0 && index < static_cast<int>(materials.size())) ? materials[index] : nullptr;
+		};
 		const int mi = j.value("mesh", -1);
 		const Mesh* mesh = (mi >= 0 && mi < static_cast<int>(meshes.size())) ? meshes[mi] : nullptr;
 		const std::string name = j.value("name", "");
@@ -423,12 +505,18 @@ namespace
 		if (useId)
 		{
 			const uint64_t id = j.value("id", static_cast<uint64_t>(0));
-			if (id != 0) scene.SetObjectId(object, id);   // 이미 쓰이는 ID 면 AddObject 가 준 새 ID 를 그대로 둠
+			if (id != 0)
+			{
+				scene.SetObjectId(object, id);   // 이미 쓰이는 ID 면 AddObject 가 준 새 ID 를 그대로 둠
+			}
 		}
 		if (j.contains("slotMaterials"))
 		{
 			std::vector<const Material*> slots;
-			for (const json& s : j["slotMaterials"]) slots.push_back(materialAt(s.get<int>()));
+			for (const json& s : j["slotMaterials"])
+			{
+				slots.push_back(materialAt(s.get<int>()));
+			}
 			object.SetSlotMaterials(std::move(slots));
 		}
 		Transform& t = object.GetTransform();
@@ -438,10 +526,19 @@ namespace
 		if (j.contains("preTransform") && j["preTransform"].is_array() && j["preTransform"].size() == 16)
 		{
 			XMFLOAT4X4 pre;
-			for (int r = 0; r < 4; ++r) for (int c = 0; c < 4; ++c) pre.m[r][c] = j["preTransform"][r * 4 + c].get<float>();
+			for (int r = 0; r < 4; ++r)
+			{
+				for (int c = 0; c < 4; ++c)
+				{
+					pre.m[r][c] = j["preTransform"][r * 4 + c].get<float>();
+				}
+			}
 			t.SetPreTransform(XMLoadFloat4x4(&pre));
 		}
-		if (j.contains("components")) ComponentsFromJson(object, j["components"]);
+		if (j.contains("components"))
+		{
+			ComponentsFromJson(object, j["components"]);
+		}
 		object.SetPrefabSource(j.value("prefab", std::string()));
 		return object;
 	}
@@ -451,7 +548,13 @@ namespace
 	uint64_t MaxIdIn(const json& objects)
 	{
 		uint64_t maxId = 0;
-		if (objects.is_array()) for (const json& j : objects) maxId = (std::max)(maxId, j.value("id", static_cast<uint64_t>(0)));
+		if (objects.is_array())
+		{
+			for (const json& j : objects)
+			{
+				maxId = (std::max)(maxId, j.value("id", static_cast<uint64_t>(0)));
+			}
+		}
 		return maxId;
 	}
 
@@ -464,14 +567,19 @@ namespace
 			const int parent = parents[i];
 			if (parent < 0 || parent >= static_cast<int>(created.size()) || parent == static_cast<int>(i)) continue;
 			if (!created[i]->SetParent(created[parent], false))   // 순환이면 SetParent 가 거부함 (손으로 고친 파일)
+			{
 				Log::Warn("씬 로드: 오브젝트 %zu 의 부모 %d 가 순환을 만들어 무시함", i, parent);
+			}
 		}
 	}
 
 	// 오브젝트 배열을 만들어 씬에 넣고 생성한 포인터를 돌려줌 (부모 연결 포함).
 	std::vector<GameObject*> CreateObjects(Scene& scene, const json& objects, bool useId, const std::vector<const Mesh*>& meshes, const std::vector<const Material*>& materials)
 	{
-		if (useId) scene.ReserveIds(MaxIdIn(objects));
+		if (useId)
+		{
+			scene.ReserveIds(MaxIdIn(objects));
+		}
 		std::vector<GameObject*> created;
 		std::vector<int> parents;
 		if (objects.is_array())
@@ -489,26 +597,45 @@ namespace
 	json EnvironmentToJson(const SceneEnvironment& env)
 	{
 		return {
-			{ "skybox", env.skybox }, { "irradiance", env.irradiance }, { "specular", env.specular }, { "brdfLut", env.brdfLut },
-			{ "iblIntensity", env.iblIntensity }, { "iblTint", ToJson(env.iblTint) }, { "exposure", env.exposure }, { "toneMapping", env.toneMapping },
+			{ "skybox", env.skybox },
+			{ "irradiance", env.irradiance },
+			{ "specular", env.specular },
+			{ "brdfLut", env.brdfLut },
+			{ "iblIntensity", env.iblIntensity },
+			{ "iblTint", ToJson(env.iblTint) },
+			{ "exposure", env.exposure },
+			{ "toneMapping", env.toneMapping },
 			{ "postProcess", {
-				{ "blurEnabled", env.post.blurEnabled }, { "blurRadius", env.post.blurRadius },
-				{ "bloomEnabled", env.post.bloomEnabled }, { "bloomThreshold", env.post.bloomThreshold },
-				{ "bloomKnee", env.post.bloomKnee }, { "bloomIntensity", env.post.bloomIntensity },
-				{ "greyscale", env.post.greyscale },
-			} },
+								 { "blurEnabled", env.post.blurEnabled },
+								 { "blurRadius", env.post.blurRadius },
+								 { "bloomEnabled", env.post.bloomEnabled },
+								 { "bloomThreshold", env.post.bloomThreshold },
+								 { "bloomKnee", env.post.bloomKnee },
+								 { "bloomIntensity", env.post.bloomIntensity },
+								 { "greyscale", env.post.greyscale },
+							 } },
 			{ "shadow", {
-				{ "bias", env.shadow.bias }, { "strength", env.shadow.strength }, { "normalOffset", env.shadow.normalOffset },
-				{ "orthoSize", env.shadow.orthoSize }, { "distance", env.shadow.distance },
-				{ "localNormalBias", env.shadow.localNormalBias },
-				{ "cascadeEnabled", env.shadow.cascadeEnabled }, { "cascadeCount", env.shadow.cascadeCount }, { "cascadeDistance", env.shadow.cascadeDistance },
-				{ "cascadeLambda", env.shadow.cascadeLambda }, { "cascadeBlend", env.shadow.cascadeBlend },
-			} },
+							{ "bias", env.shadow.bias },
+							{ "strength", env.shadow.strength },
+							{ "normalOffset", env.shadow.normalOffset },
+							{ "orthoSize", env.shadow.orthoSize },
+							{ "distance", env.shadow.distance },
+							{ "localNormalBias", env.shadow.localNormalBias },
+							{ "cascadeEnabled", env.shadow.cascadeEnabled },
+							{ "cascadeCount", env.shadow.cascadeCount },
+							{ "cascadeDistance", env.shadow.cascadeDistance },
+							{ "cascadeLambda", env.shadow.cascadeLambda },
+							{ "cascadeBlend", env.shadow.cascadeBlend },
+						} },
 			{ "ssao", {
-				{ "enabled", env.ssao.enabled }, { "radius", env.ssao.radius }, { "bias", env.ssao.bias },
-				{ "intensity", env.ssao.intensity }, { "power", env.ssao.power }, { "sampleCount", env.ssao.sampleCount },
-				{ "multiply", env.ssao.multiply },
-			} },
+						  { "enabled", env.ssao.enabled },
+						  { "radius", env.ssao.radius },
+						  { "bias", env.ssao.bias },
+						  { "intensity", env.ssao.intensity },
+						  { "power", env.ssao.power },
+						  { "sampleCount", env.ssao.sampleCount },
+						  { "multiply", env.ssao.multiply },
+					  } },
 		};
 	}
 
@@ -565,16 +692,22 @@ namespace
 	{
 		scene.ambientColor = ToFloat3(root.value("ambientColor", json()), scene.ambientColor);
 		const json clear = root.value("clearColor", json());
-		if (clear.is_array() && clear.size() >= 4) for (int i = 0; i < 4; ++i) scene.clearColor[i] = clear[i].get<float>();
+		if (clear.is_array() && clear.size() >= 4)
+		{
+			for (int i = 0; i < 4; ++i)
+			{
+				scene.clearColor[i] = clear[i].get<float>();
+			}
+		}
 	}
 
 	// 서브트리(루트와 모든 자손)를 부모 먼저(깊이 우선) 순서로 모음. 프리팹 저장과 복제가 씀.
 	struct Subtree
 	{
-		std::vector<const GameObject*> objects;      // objects[0] = 루트
-		std::vector<const Mesh*> meshes;             // 서브트리가 쓰는 메시 (첫 사용 순서)
-		std::vector<const Material*> materials;      // 서브트리가 쓰는 재질 (기본 재질과 슬롯 재질)
-		json objectsJson = json::array();            // 오브젝트 JSON. 메시·재질·부모 인덱스는 위 목록 기준
+		std::vector<const GameObject*> objects;   // objects[0] = 루트
+		std::vector<const Mesh*> meshes;          // 서브트리가 쓰는 메시 (첫 사용 순서)
+		std::vector<const Material*> materials;   // 서브트리가 쓰는 재질 (기본 재질과 슬롯 재질)
+		json objectsJson = json::array();         // 오브젝트 JSON. 메시·재질·부모 인덱스는 위 목록 기준
 	};
 
 	Subtree CollectSubtree(const GameObject& root, bool withId)
@@ -583,7 +716,10 @@ namespace
 		const auto walk = [&tree](const GameObject& object, auto& self) -> void
 		{
 			tree.objects.push_back(&object);
-			for (const GameObject* child : object.GetChildren()) self(*child, self);
+			for (const GameObject* child : object.GetChildren())
+			{
+				self(*child, self);
+			}
 		};
 		walk(root, walk);
 
@@ -592,11 +728,19 @@ namespace
 		IndexMap<Material> materialIndex;
 		const auto addMesh = [&](const Mesh* mesh)
 		{
-			if (mesh != nullptr && !meshIndex.count(mesh)) { meshIndex[mesh] = static_cast<int>(tree.meshes.size()); tree.meshes.push_back(mesh); }
+			if (mesh != nullptr && !meshIndex.count(mesh))
+			{
+				meshIndex[mesh] = static_cast<int>(tree.meshes.size());
+				tree.meshes.push_back(mesh);
+			}
 		};
 		const auto addMaterial = [&](const Material* material)
 		{
-			if (material != nullptr && !materialIndex.count(material)) { materialIndex[material] = static_cast<int>(tree.materials.size()); tree.materials.push_back(material); }
+			if (material != nullptr && !materialIndex.count(material))
+			{
+				materialIndex[material] = static_cast<int>(tree.materials.size());
+				tree.materials.push_back(material);
+			}
 		};
 		for (size_t i = 0; i < tree.objects.size(); ++i)
 		{
@@ -604,7 +748,10 @@ namespace
 			objectIndex[&object] = static_cast<int>(i);
 			addMesh(object.GetMesh());
 			addMaterial(object.GetMaterial());
-			for (const Material* slot : object.GetSlotMaterials()) addMaterial(slot);
+			for (const Material* slot : object.GetSlotMaterials())
+			{
+				addMaterial(slot);
+			}
 		}
 		for (size_t i = 0; i < tree.objects.size(); ++i)
 		{
@@ -684,16 +831,24 @@ std::string SceneSerializer::SaveToString(const Scene& scene, const Camera& came
 	root["materials"] = materials;
 
 	json lights = json::array();
-	for (const Light& light : scene.GetLights()) lights.push_back(LightToJson(light));
+	for (const Light& light : scene.GetLights())
+	{
+		lights.push_back(LightToJson(light));
+	}
 	root["lights"] = lights;
 
 	// 부모는 objects 배열의 인덱스로 (자식이 부모보다 앞에 올 수 있으므로 로드는 두 단계).
 	// position/rotation/scale 은 부모 기준 로컬 값.
 	IndexMap<GameObject> objectIndex;
-	for (size_t i = 0; i < scene.GetObjects().size(); ++i) objectIndex[scene.GetObjects()[i].get()] = static_cast<int>(i);
+	for (size_t i = 0; i < scene.GetObjects().size(); ++i)
+	{
+		objectIndex[scene.GetObjects()[i].get()] = static_cast<int>(i);
+	}
 	json objects = json::array();
 	for (const auto& object : scene.GetObjects())
+	{
 		objects.push_back(ObjectToJson(*object, object->GetParent() != nullptr ? IndexIn(objectIndex, object->GetParent()) : -1, true, meshIndex, materialIndex));
+	}
 	root["objects"] = objects;
 	return root.dump(2);
 }
@@ -702,7 +857,10 @@ bool SceneSerializer::Save(const Scene& scene, const Camera& camera, const std::
 {
 	const std::string text = SaveToString(scene, camera);
 	const size_t slash = path.find_last_of(L"\\/");
-	if (slash != std::wstring::npos) CreateDirectoryW(path.substr(0, slash).c_str(), nullptr);
+	if (slash != std::wstring::npos)
+	{
+		CreateDirectoryW(path.substr(0, slash).c_str(), nullptr);
+	}
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (!file)
 	{
@@ -710,8 +868,7 @@ bool SceneSerializer::Save(const Scene& scene, const Camera& camera, const std::
 		return false;
 	}
 	file << text;
-	Log::Info("씬 저장: %s (오브젝트 %zu, 메시 %zu, 재질 %zu, 조명 %zu)", ToUtf8(path).c_str(),
-		scene.GetObjects().size(), scene.GetMeshes().size(), scene.GetMaterials().size(), scene.GetLights().size());
+	Log::Info("씬 저장: %s (오브젝트 %zu, 메시 %zu, 재질 %zu, 조명 %zu)", ToUtf8(path).c_str(), scene.GetObjects().size(), scene.GetMeshes().size(), scene.GetMaterials().size(), scene.GetLights().size());
 	return true;
 }
 
@@ -749,10 +906,16 @@ bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager&
 	// ---- 메시. 모델 메시는 AssetManager 에서 가져옴 (이미지도 함께). nullptr 자리도 유지 (인덱스 보존) ----
 	std::vector<const Mesh*> meshes;
 	std::vector<std::wstring> loadedModels;
-	for (const json& j : root.value("meshes", json::array())) meshes.push_back(MeshFromJson(scene, assets, j, loadedModels));
+	for (const json& j : root.value("meshes", json::array()))
+	{
+		meshes.push_back(MeshFromJson(scene, assets, j, loadedModels));
+	}
 
 	std::vector<const Material*> materials;
-	for (const json& j : root.value("materials", json::array())) materials.push_back(scene.AddMaterial(MaterialFromJson(j)));
+	for (const json& j : root.value("materials", json::array()))
+	{
+		materials.push_back(scene.AddMaterial(MaterialFromJson(j)));
+	}
 
 	for (const json& j : root.value("lights", json::array()))
 	{
@@ -764,8 +927,14 @@ bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager&
 
 	ApplyAmbientAndClear(scene, root);
 	const json env = root.value("environment", json());
-	if (env.is_object()) ApplyEnvironment(scene, env);
-	else scene.environment.skybox = root.value("skybox", std::string());   // 같은 날 잠시 쓴 형식 (루트의 "skybox" 하나)
+	if (env.is_object())
+	{
+		ApplyEnvironment(scene, env);
+	}
+	else
+	{
+		scene.environment.skybox = root.value("skybox", std::string());   // 같은 날 잠시 쓴 형식 (루트의 "skybox" 하나)
+	}
 
 	const json cam = root.value("camera", json());
 	if (cam.is_object())
@@ -774,8 +943,7 @@ bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager&
 		camera.SetYawPitch(cam.value("yaw", camera.GetYaw()), cam.value("pitch", camera.GetPitch()));
 	}
 
-	Log::Info("씬 로드: %s (오브젝트 %zu, 메시 %zu, 재질 %zu, 조명 %zu, 모델 %zu)", label,
-		scene.GetObjects().size(), scene.GetMeshes().size(), scene.GetMaterials().size(), scene.GetLights().size(), loadedModels.size());
+	Log::Info("씬 로드: %s (오브젝트 %zu, 메시 %zu, 재질 %zu, 조명 %zu, 모델 %zu)", label, scene.GetObjects().size(), scene.GetMeshes().size(), scene.GetMaterials().size(), scene.GetLights().size(), loadedModels.size());
 	return true;
 }
 
@@ -789,7 +957,10 @@ std::string SceneSerializer::SaveEditState(const Scene& scene)
 	root["environment"] = EnvironmentToJson(scene.environment);
 
 	IndexMap<Mesh> meshIndex;
-	for (size_t i = 0; i < scene.GetMeshes().size(); ++i) meshIndex[scene.GetMeshes()[i].get()] = static_cast<int>(i);
+	for (size_t i = 0; i < scene.GetMeshes().size(); ++i)
+	{
+		meshIndex[scene.GetMeshes()[i].get()] = static_cast<int>(i);
+	}
 	IndexMap<Material> materialIndex;
 	json materials = json::array();
 	for (size_t i = 0; i < scene.GetMaterials().size(); ++i)
@@ -800,14 +971,22 @@ std::string SceneSerializer::SaveEditState(const Scene& scene)
 	root["materials"] = materials;
 
 	json lights = json::array();
-	for (const Light& light : scene.GetLights()) lights.push_back(LightToJson(light));
+	for (const Light& light : scene.GetLights())
+	{
+		lights.push_back(LightToJson(light));
+	}
 	root["lights"] = lights;
 
 	IndexMap<GameObject> objectIndex;
-	for (size_t i = 0; i < scene.GetObjects().size(); ++i) objectIndex[scene.GetObjects()[i].get()] = static_cast<int>(i);
+	for (size_t i = 0; i < scene.GetObjects().size(); ++i)
+	{
+		objectIndex[scene.GetObjects()[i].get()] = static_cast<int>(i);
+	}
 	json objects = json::array();
 	for (const auto& object : scene.GetObjects())
+	{
 		objects.push_back(ObjectToJson(*object, object->GetParent() != nullptr ? IndexIn(objectIndex, object->GetParent()) : -1, true, meshIndex, materialIndex));
+	}
 	root["objects"] = objects;
 	return root.dump();   // 이력에 많이 쌓이므로 들여쓰기 없이
 }
@@ -819,7 +998,10 @@ bool SceneSerializer::RestoreEditState(Scene& scene, const std::string& text)
 
 	// 메시 목록은 그대로 둠 (되돌리기 이력은 메시·재질이 늘기만 하는 동안만 유효 — 씬을 비우는 경로는 이력도 비움).
 	std::vector<const Mesh*> meshes;
-	for (const auto& mesh : scene.GetMeshes()) meshes.push_back(mesh.get());
+	for (const auto& mesh : scene.GetMeshes())
+	{
+		meshes.push_back(mesh.get());
+	}
 
 	// 재질은 같은 인덱스의 것을 제자리에서 덮어씀: 주소가 그대로여야 Renderer 캐시와 다른 오브젝트의 참조가 유지됨.
 	size_t index = 0;
@@ -830,7 +1012,10 @@ bool SceneSerializer::RestoreEditState(Scene& scene, const std::string& text)
 		++index;
 	}
 	std::vector<const Material*> materials;
-	for (const auto& material : scene.GetMaterials()) materials.push_back(material.get());
+	for (const auto& material : scene.GetMaterials())
+	{
+		materials.push_back(material.get());
+	}
 
 	scene.GetLights().clear();
 	for (const json& j : root.value("lights", json::array()))
@@ -839,7 +1024,10 @@ bool SceneSerializer::RestoreEditState(Scene& scene, const std::string& text)
 	}
 	ApplyAmbientAndClear(scene, root);
 	const json env = root.value("environment", json());
-	if (env.is_object()) ApplyEnvironment(scene, env);
+	if (env.is_object())
+	{
+		ApplyEnvironment(scene, env);
+	}
 
 	scene.ClearObjects();
 	CreateObjects(scene, root.value("objects", json::array()), true, meshes, materials);
@@ -867,15 +1055,24 @@ bool SceneSerializer::SavePrefab(const Scene& scene, const GameObject& root, con
 	doc["type"] = "prefab";
 	doc["name"] = root.GetName();
 	json meshes = json::array();
-	for (const Mesh* mesh : tree.meshes) meshes.push_back(MeshSourceToJson(*mesh, scene.GetMeshSource(mesh)));
+	for (const Mesh* mesh : tree.meshes)
+	{
+		meshes.push_back(MeshSourceToJson(*mesh, scene.GetMeshSource(mesh)));
+	}
 	doc["meshes"] = meshes;
 	json materials = json::array();
-	for (const Material* material : tree.materials) materials.push_back(MaterialToJson(*material));
+	for (const Material* material : tree.materials)
+	{
+		materials.push_back(MaterialToJson(*material));
+	}
 	doc["materials"] = materials;
 	doc["objects"] = tree.objectsJson;
 
 	const size_t slash = path.find_last_of(L"\\/");
-	if (slash != std::wstring::npos) CreateDirectoryW(path.substr(0, slash).c_str(), nullptr);
+	if (slash != std::wstring::npos)
+	{
+		CreateDirectoryW(path.substr(0, slash).c_str(), nullptr);
+	}
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (!file)
 	{
@@ -887,8 +1084,7 @@ bool SceneSerializer::SavePrefab(const Scene& scene, const GameObject& root, con
 	return true;
 }
 
-GameObject* SceneSerializer::InstantiatePrefab(Scene& scene, AssetManager& assets, const std::string& relativePath,
-	const DirectX::XMFLOAT3* position, const DirectX::XMFLOAT3* rotation)
+GameObject* SceneSerializer::InstantiatePrefab(Scene& scene, AssetManager& assets, const std::string& relativePath, const DirectX::XMFLOAT3* position, const DirectX::XMFLOAT3* rotation)
 {
 	const std::wstring wideRelative = ToWide(relativePath);
 	const std::wstring fullPath = Paths::GetAssetPath(wideRelative.c_str());
@@ -905,8 +1101,14 @@ GameObject* SceneSerializer::InstantiatePrefab(Scene& scene, AssetManager& asset
 	{
 		PrefabResources created;
 		std::vector<std::wstring> loadedModels;
-		for (const json& j : document->value("meshes", json::array())) created.meshes.push_back(MeshFromJson(scene, assets, j, loadedModels));
-		for (const json& j : document->value("materials", json::array())) created.materials.push_back(scene.AddMaterial(MaterialFromJson(j)));
+		for (const json& j : document->value("meshes", json::array()))
+		{
+			created.meshes.push_back(MeshFromJson(scene, assets, j, loadedModels));
+		}
+		for (const json& j : document->value("materials", json::array()))
+		{
+			created.materials.push_back(scene.AddMaterial(MaterialFromJson(j)));
+		}
 		resources = &scene.StorePrefabResources(key, std::move(created));
 	}
 
@@ -914,7 +1116,13 @@ GameObject* SceneSerializer::InstantiatePrefab(Scene& scene, AssetManager& asset
 	if (objects.empty()) return nullptr;
 	GameObject* root = objects[0];
 	root->SetPrefabSource(relativePath);
-	if (position != nullptr) root->GetTransform().SetPosition(*position);
-	if (rotation != nullptr) root->GetTransform().SetRotation(*rotation);
+	if (position != nullptr)
+	{
+		root->GetTransform().SetPosition(*position);
+	}
+	if (rotation != nullptr)
+	{
+		root->GetTransform().SetRotation(*rotation);
+	}
 	return root;
 }

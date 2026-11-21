@@ -11,9 +11,15 @@ namespace
 	std::string Trim(const std::string& text)
 	{
 		size_t begin = 0;
-		while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin]))) ++begin;
+		while (begin < text.size() && std::isspace(static_cast<unsigned char>(text[begin])))
+		{
+			++begin;
+		}
 		size_t end = text.size();
-		while (end > begin && std::isspace(static_cast<unsigned char>(text[end - 1]))) --end;
+		while (end > begin && std::isspace(static_cast<unsigned char>(text[end - 1])))
+		{
+			--end;
+		}
 		return text.substr(begin, end - begin);
 	}
 
@@ -21,7 +27,10 @@ namespace
 	{
 		std::string out;
 		out.reserve(text.size());
-		for (char c : text) out += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+		for (char c : text)
+		{
+			out += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+		}
 		return out;
 	}
 }
@@ -38,26 +47,44 @@ bool Config::LoadFromFile(const std::wstring& path)
 	while (std::getline(file, line))
 	{
 		++lineNumber;
-		if (lineNumber == 1 && line.size() >= 3 && static_cast<unsigned char>(line[0]) == 0xEF) line.erase(0, 3);   // UTF-8 BOM
+		if (lineNumber == 1 && line.size() >= 3 && static_cast<unsigned char>(line[0]) == 0xEF)
+		{
+			line.erase(0, 3);   // UTF-8 BOM
+		}
 
 		// 주석 제거 (; 또는 #). 값 안의 ; 와 # 은 지원하지 않음 — 설정 파일에 그런 값을 둘 일이 없음.
 		const size_t comment = line.find_first_of(";#");
-		if (comment != std::string::npos) line.erase(comment);
+		if (comment != std::string::npos)
+		{
+			line.erase(comment);
+		}
 		line = Trim(line);
 		if (line.empty()) continue;
 
 		if (line.front() == '[')
 		{
 			const size_t close = line.find(']');
-			if (close == std::string::npos) { m_errors += std::format("{}줄: 닫히지 않은 섹션\n", lineNumber); continue; }   // C++20 std::format
+			if (close == std::string::npos)
+			{
+				m_errors += std::format("{}줄: 닫히지 않은 섹션\n", lineNumber);
+				continue;
+			}   // C++20 std::format
 			section = Lower(Trim(line.substr(1, close - 1)));
 			continue;
 		}
 		const size_t equals = line.find('=');
-		if (equals == std::string::npos) { m_errors += std::format("{}줄: '=' 없음\n", lineNumber); continue; }
+		if (equals == std::string::npos)
+		{
+			m_errors += std::format("{}줄: '=' 없음\n", lineNumber);
+			continue;
+		}
 		const std::string key = Lower(Trim(line.substr(0, equals)));
 		const std::string value = Trim(line.substr(equals + 1));
-		if (key.empty()) { m_errors += std::format("{}줄: 키 없음\n", lineNumber); continue; }
+		if (key.empty())
+		{
+			m_errors += std::format("{}줄: 키 없음\n", lineNumber);
+			continue;
+		}
 		m_values[section.empty() ? key : section + "." + key] = value;
 	}
 	return true;
@@ -70,7 +97,14 @@ void Config::Set(const std::string& key, const std::string& value)
 
 bool Config::WriteValue(const std::wstring& path, const std::string& section, const std::string& key, const std::string& value, std::string* error)
 {
-	auto fail = [&](const char* reason) { if (error != nullptr) *error = reason; return false; };
+	auto fail = [&](const char* reason)
+	{
+		if (error != nullptr)
+		{
+			*error = reason;
+		}
+		return false;
+	};
 
 	std::string text;
 	{
@@ -87,13 +121,22 @@ bool Config::WriteValue(const std::wstring& path, const std::string& section, co
 	while (start <= text.size())
 	{
 		size_t end = text.find('\n', start);
-		if (end == std::string::npos) end = text.size();
+		if (end == std::string::npos)
+		{
+			end = text.size();
+		}
 		std::string line = text.substr(start, end - start);
-		if (!line.empty() && line.back() == '\r') line.pop_back();
+		if (!line.empty() && line.back() == '\r')
+		{
+			line.pop_back();
+		}
 		lines.push_back(std::move(line));
 		start = end + 1;
 	}
-	if (!lines.empty() && lines.back().empty()) lines.pop_back();   // 마지막 줄바꿈 뒤의 빈 조각
+	if (!lines.empty() && lines.back().empty())
+	{
+		lines.pop_back();   // 마지막 줄바꿈 뒤의 빈 조각
+	}
 
 	const std::string wantSection = Lower(section);
 	const std::string wantKey = Lower(key);
@@ -104,7 +147,10 @@ bool Config::WriteValue(const std::wstring& path, const std::string& section, co
 	for (size_t i = 0; i < lines.size() && !replaced; ++i)
 	{
 		std::string body = lines[i];
-		if (i == 0 && body.size() >= 3 && static_cast<unsigned char>(body[0]) == 0xEF) body.erase(0, 3);   // BOM
+		if (i == 0 && body.size() >= 3 && static_cast<unsigned char>(body[0]) == 0xEF)
+		{
+			body.erase(0, 3);   // BOM
+		}
 		const size_t comment = body.find_first_of(";#");
 		const std::string code = Trim(comment == std::string::npos ? body : body.substr(0, comment));
 		if (code.empty()) continue;
@@ -112,7 +158,10 @@ bool Config::WriteValue(const std::wstring& path, const std::string& section, co
 		{
 			const size_t close = code.find(']');
 			current = close == std::string::npos ? std::string() : Lower(Trim(code.substr(1, close - 1)));
-			if (current == wantSection && sectionHeader < 0) sectionHeader = static_cast<int>(i);
+			if (current == wantSection && sectionHeader < 0)
+			{
+				sectionHeader = static_cast<int>(i);
+			}
 			continue;
 		}
 		if (current != wantSection) continue;
@@ -125,7 +174,10 @@ bool Config::WriteValue(const std::wstring& path, const std::string& section, co
 		const size_t lineComment = lines[i].find_first_of(";#", lineEquals);
 		size_t valueEnd = lineComment == std::string::npos ? lines[i].size() : lineComment;
 		size_t gapStart = valueEnd;
-		while (gapStart > lineEquals + 1 && std::isspace(static_cast<unsigned char>(lines[i][gapStart - 1]))) --gapStart;
+		while (gapStart > lineEquals + 1 && std::isspace(static_cast<unsigned char>(lines[i][gapStart - 1])))
+		{
+			--gapStart;
+		}
 		const std::string gap = lines[i].substr(gapStart, valueEnd - gapStart);
 		const std::string tail = lineComment == std::string::npos ? std::string() : lines[i].substr(lineComment);
 		lines[i] = lines[i].substr(0, lineEquals + 1) + " " + value + (tail.empty() ? std::string() : (gap.empty() ? " " : gap) + tail);
@@ -134,12 +186,24 @@ bool Config::WriteValue(const std::wstring& path, const std::string& section, co
 	if (!replaced)
 	{
 		const std::string newLine = key + " = " + value;
-		if (sectionHeader >= 0) lines.insert(lines.begin() + (sectionEnd >= 0 ? sectionEnd : sectionHeader) + 1, newLine);
-		else { lines.push_back(std::string()); lines.push_back("[" + section + "]"); lines.push_back(newLine); }
+		if (sectionHeader >= 0)
+		{
+			lines.insert(lines.begin() + (sectionEnd >= 0 ? sectionEnd : sectionHeader) + 1, newLine);
+		}
+		else
+		{
+			lines.push_back(std::string());
+			lines.push_back("[" + section + "]");
+			lines.push_back(newLine);
+		}
 	}
 
 	std::string out;
-	for (const std::string& line : lines) { out += line; out += eol; }
+	for (const std::string& line : lines)
+	{
+		out += line;
+		out += eol;
+	}
 	std::ofstream file(path, std::ios::binary | std::ios::trunc);
 	if (!file) return fail("설정 파일에 쓸 수 없음 (읽기 전용이거나 권한 없음)");
 	file.write(out.data(), static_cast<std::streamsize>(out.size()));

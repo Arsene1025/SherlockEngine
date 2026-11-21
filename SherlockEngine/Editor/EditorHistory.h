@@ -28,8 +28,8 @@ class Scene;
 class EditorHistory
 {
 public:
-	static constexpr size_t kMaxSteps = 100;                  // 되돌릴 수 있는 단계 수
-	static constexpr size_t kMaxBytes = 96u * 1024u * 1024u;  // 상태 문자열 총합 상한. 넘으면 가장 오래된 것부터 버림
+	static constexpr size_t kMaxSteps = 100;                   // 되돌릴 수 있는 단계 수
+	static constexpr size_t kMaxBytes = 96u * 1024u * 1024u;   // 상태 문자열 총합 상한. 넘으면 가장 오래된 것부터 버림
 
 	// 이력을 비우고 지금 씬을 첫 상태로 삼음.
 	void Reset(const Scene& scene);
@@ -65,7 +65,7 @@ private:
 	void Trim();
 
 	std::vector<State> m_states;
-	size_t m_current = 0;     // 지금 씬이 속한 상태. 그 뒤(m_current+1…)가 다시 실행할 단계
+	size_t m_current = 0;   // 지금 씬이 속한 상태. 그 뒤(m_current+1…)가 다시 실행할 단계
 	size_t m_bytes = 0;
 	bool m_gestureActive = false;
 	std::string m_gestureLabel;

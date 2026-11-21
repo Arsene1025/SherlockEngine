@@ -15,7 +15,8 @@ namespace
 	bool FromScratchImage(const DirectX::ScratchImage& scratch, Format format, TextureDimension dimension, TextureImage& out)
 	{
 		const DirectX::TexMetadata& meta = scratch.GetMetadata();
-		out.desc = TextureDesc{   // C++20 지정 초기화. 나열하지 않은 sampleCount / debugName 은 기본값
+		out.desc = TextureDesc{
+			// C++20 지정 초기화. 나열하지 않은 sampleCount / debugName 은 기본값
 			.dimension = dimension,
 			.width = static_cast<uint32_t>(meta.width),
 			.height = static_cast<uint32_t>(meta.height),
@@ -96,15 +97,16 @@ namespace
 		{
 			const DirectX::TexMetadata& meta = base.GetMetadata();
 			const Format compressed = CompressedGpuFormat(sourceFormat, srgb);
-			if (compressed != Format::Unknown && dimension == TextureDimension::Texture2D && !meta.IsCubemap()
-				&& meta.width % 4 == 0 && meta.height % 4 == 0 && (meta.mipLevels > 1 || !generateMips))
+			if (compressed != Format::Unknown && dimension == TextureDimension::Texture2D && !meta.IsCubemap() && meta.width % 4 == 0 && meta.height % 4 == 0 && (meta.mipLevels > 1 || !generateMips))
 			{
 				return FromScratchImage(base, compressed, dimension, out);
 			}
 		}
-		const bool hdr = DirectX::FormatDataType(sourceFormat) == DirectX::FORMAT_TYPE_FLOAT
-			|| sourceFormat == DXGI_FORMAT_BC6H_UF16 || sourceFormat == DXGI_FORMAT_BC6H_SF16;
-		if (hdr) srgb = false;
+		const bool hdr = DirectX::FormatDataType(sourceFormat) == DirectX::FORMAT_TYPE_FLOAT || sourceFormat == DXGI_FORMAT_BC6H_UF16 || sourceFormat == DXGI_FORMAT_BC6H_SF16;
+		if (hdr)
+		{
+			srgb = false;
+		}
 		const DXGI_FORMAT target = hdr ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
 		DirectX::ScratchImage converted;
 		const DirectX::ScratchImage* current = &base;
@@ -124,8 +126,7 @@ namespace
 		}
 		if (current->GetMetadata().format != target)
 		{
-			const HRESULT hr = DirectX::Convert(current->GetImages(), current->GetImageCount(), current->GetMetadata(),
-				target, DirectX::TEX_FILTER_DEFAULT, DirectX::TEX_THRESHOLD_DEFAULT, converted);
+			const HRESULT hr = DirectX::Convert(current->GetImages(), current->GetImageCount(), current->GetMetadata(), target, DirectX::TEX_FILTER_DEFAULT, DirectX::TEX_THRESHOLD_DEFAULT, converted);
 			if (FAILED(hr))
 			{
 				Log::Error("TextureLoader : 포맷 변환 실패. %s", Log::HrToString(hr).c_str());
@@ -141,8 +142,7 @@ namespace
 			// 평균 내고 다시 인코딩함. 감마 공간에서 그대로 평균 내면 밉이 어두워짐
 			// (흰 230 + 검 40 의 절반은 선형에서 ≈ 170, 감마에서 135).
 			const DirectX::TEX_FILTER_FLAGS filter = srgb ? DirectX::TEX_FILTER_SRGB : DirectX::TEX_FILTER_DEFAULT;
-			const HRESULT hr = DirectX::GenerateMipMaps(current->GetImages(), current->GetImageCount(), current->GetMetadata(),
-				filter, 0, mipped);
+			const HRESULT hr = DirectX::GenerateMipMaps(current->GetImages(), current->GetImageCount(), current->GetMetadata(), filter, 0, mipped);
 			if (FAILED(hr))
 			{
 				Log::Error("TextureLoader : 밉맵 생성 실패. %s", Log::HrToString(hr).c_str());
@@ -171,8 +171,12 @@ namespace
 		{
 		case Format::R16G16B16A16_FLOAT:  return "HDR half";
 		case Format::R8G8B8A8_UNORM_SRGB: return "sRGB";
-		case Format::BC1_UNORM_SRGB: case Format::BC3_UNORM_SRGB: case Format::BC7_UNORM_SRGB: return "sRGB, BC";
-		case Format::BC1_UNORM: case Format::BC3_UNORM: case Format::BC7_UNORM: return "linear, BC";
+		case Format::BC1_UNORM_SRGB:
+		case Format::BC3_UNORM_SRGB:
+		case Format::BC7_UNORM_SRGB:      return "sRGB, BC";
+		case Format::BC1_UNORM:
+		case Format::BC3_UNORM:
+		case Format::BC7_UNORM:           return "linear, BC";
 		default:                          return "linear";
 		}
 	}
@@ -215,13 +219,11 @@ bool TextureLoader::LoadFromFile(const std::wstring& path, bool srgb, bool gener
 	{
 		return false;
 	}
-	Log::Info("텍스처 로드: %s (%ux%u, 밉 %u, %s)", Log::ToUtf8(path.c_str()).c_str(),
-		out.desc.width, out.desc.height, out.desc.mipLevels, ColorSpaceName(out));
+	Log::Info("텍스처 로드: %s (%ux%u, 밉 %u, %s)", Log::ToUtf8(path.c_str()).c_str(), out.desc.width, out.desc.height, out.desc.mipLevels, ColorSpaceName(out));
 	return true;
 }
 
-bool TextureLoader::CreateChecker(uint32_t size, uint32_t cellsPerSide, const uint8_t colorA[4], const uint8_t colorB[4],
-	bool srgb, bool generateMips, TextureImage& out)
+bool TextureLoader::CreateChecker(uint32_t size, uint32_t cellsPerSide, const uint8_t colorA[4], const uint8_t colorB[4], bool srgb, bool generateMips, TextureImage& out)
 {
 	DirectX::ScratchImage image;
 	if (FAILED(image.Initialize2D(DXGI_FORMAT_R8G8B8A8_UNORM, size, size, 1, 1)))
@@ -336,8 +338,7 @@ namespace
 	// 면 이미지 파일 이름 후보. 바깥 순서 = D3D 면 순서 +X, −X, +Y, −Y, +Z, −Z. 흔한 세 가지 이름 규칙을 받음.
 	// right/left/top/bottom/front/back 은 LearnOpenGL 등에서 쓰는 이름 — front = +Z 라서 왼손 좌표계(+Z 앞)인
 	// 이 엔진과 그대로 맞음.
-	const wchar_t* const kFaceNames[6][3] =
-	{
+	const wchar_t* const kFaceNames[6][3] = {
 		{ L"px", L"posx", L"right" },
 		{ L"nx", L"negx", L"left" },
 		{ L"py", L"posy", L"top" },
@@ -368,12 +369,36 @@ namespace
 	{
 		switch (face)
 		{
-		case 0:  direction[0] =  1.0f; direction[1] = -t;    direction[2] = -s;    break;   // +X
-		case 1:  direction[0] = -1.0f; direction[1] = -t;    direction[2] =  s;    break;   // −X
-		case 2:  direction[0] =  s;    direction[1] =  1.0f; direction[2] =  t;    break;   // +Y
-		case 3:  direction[0] =  s;    direction[1] = -1.0f; direction[2] = -t;    break;   // −Y
-		case 4:  direction[0] =  s;    direction[1] = -t;    direction[2] =  1.0f; break;   // +Z
-		default: direction[0] = -s;    direction[1] = -t;    direction[2] = -1.0f; break;   // −Z
+		case 0:
+			direction[0] = 1.0f;
+			direction[1] = -t;
+			direction[2] = -s;
+			break;   // +X
+		case 1:
+			direction[0] = -1.0f;
+			direction[1] = -t;
+			direction[2] = s;
+			break;   // −X
+		case 2:
+			direction[0] = s;
+			direction[1] = 1.0f;
+			direction[2] = t;
+			break;   // +Y
+		case 3:
+			direction[0] = s;
+			direction[1] = -1.0f;
+			direction[2] = -t;
+			break;   // −Y
+		case 4:
+			direction[0] = s;
+			direction[1] = -t;
+			direction[2] = 1.0f;
+			break;   // +Z
+		default:
+			direction[0] = -s;
+			direction[1] = -t;
+			direction[2] = -1.0f;
+			break;   // −Z
 		}
 	}
 }
@@ -393,9 +418,7 @@ bool TextureLoader::LoadCubeFromFile(const std::wstring& path, bool srgb, bool g
 			const std::wstring file = FindFaceFile(path, face);
 			if (file.empty())
 			{
-				Log::Error("TextureLoader : 큐브 면 파일이 없음 — '%s' (또는 %s / %s) .png/.jpg/.bmp, 폴더 %s",
-					Log::ToUtf8(kFaceNames[face][0]).c_str(), Log::ToUtf8(kFaceNames[face][1]).c_str(), Log::ToUtf8(kFaceNames[face][2]).c_str(),
-					Log::ToUtf8(path.c_str()).c_str());
+				Log::Error("TextureLoader : 큐브 면 파일이 없음 — '%s' (또는 %s / %s) .png/.jpg/.bmp, 폴더 %s", Log::ToUtf8(kFaceNames[face][0]).c_str(), Log::ToUtf8(kFaceNames[face][1]).c_str(), Log::ToUtf8(kFaceNames[face][2]).c_str(), Log::ToUtf8(path.c_str()).c_str());
 				return false;
 			}
 			DirectX::ScratchImage loaded;
@@ -424,9 +447,7 @@ bool TextureLoader::LoadCubeFromFile(const std::wstring& path, bool srgb, bool g
 			const DirectX::Image* dst = cube.GetImage(0, face, 0);
 			for (uint32_t y = 0; y < size; ++y)
 			{
-				std::memcpy(dst->pixels + y * dst->rowPitch,
-					static_cast<const uint8_t*>(faceImage.subresources[0].data) + static_cast<size_t>(y) * faceImage.subresources[0].rowPitch,
-					static_cast<size_t>(size) * 4);
+				std::memcpy(dst->pixels + y * dst->rowPitch, static_cast<const uint8_t*>(faceImage.subresources[0].data) + static_cast<size_t>(y) * faceImage.subresources[0].rowPitch, static_cast<size_t>(size) * 4);
 			}
 		}
 	}
@@ -440,13 +461,11 @@ bool TextureLoader::LoadCubeFromFile(const std::wstring& path, bool srgb, bool g
 		Log::Error("TextureLoader : 큐브맵 로드 실패 %s", Log::ToUtf8(path.c_str()).c_str());
 		return false;
 	}
-	Log::Info("큐브맵 로드: %s (%ux%u × 6면, 밉 %u, %s)", Log::ToUtf8(path.c_str()).c_str(),
-		out.desc.width, out.desc.height, out.desc.mipLevels, ColorSpaceName(out));
+	Log::Info("큐브맵 로드: %s (%ux%u × 6면, 밉 %u, %s)", Log::ToUtf8(path.c_str()).c_str(), out.desc.width, out.desc.height, out.desc.mipLevels, ColorSpaceName(out));
 	return true;
 }
 
-bool TextureLoader::CreateCube(uint32_t size, const std::function<void(const float direction[3], uint8_t rgba[4])>& shade,
-	bool srgb, bool generateMips, TextureImage& out)
+bool TextureLoader::CreateCube(uint32_t size, const std::function<void(const float direction[3], uint8_t rgba[4])>& shade, bool srgb, bool generateMips, TextureImage& out)
 {
 	DirectX::ScratchImage cube;
 	if (size == 0 || FAILED(cube.InitializeCube(DXGI_FORMAT_R8G8B8A8_UNORM, size, size, 1, 1)))
@@ -467,7 +486,10 @@ bool TextureLoader::CreateCube(uint32_t size, const std::function<void(const flo
 				float direction[3];
 				CubeTexelDirection(face, s, t, direction);
 				const float length = std::sqrt(direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2]);
-				for (float& component : direction) component /= length;
+				for (float& component : direction)
+				{
+					component /= length;
+				}
 				shade(direction, row + x * 4);
 			}
 		}

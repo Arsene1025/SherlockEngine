@@ -18,7 +18,10 @@ namespace
 		if (utf8.empty()) return L"";
 		const int length = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
 		std::wstring wide(length > 0 ? length - 1 : 0, L'\0');
-		if (length > 1) MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
+		if (length > 1)
+		{
+			MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
+		}
 		return wide;
 	}
 
@@ -57,7 +60,10 @@ void TextureCache::Shutdown()
 	{
 		for (auto& entry : cache)
 		{
-			if (entry.second != m_white) m_device->DestroyTexture(entry.second);
+			if (entry.second != m_white)
+			{
+				m_device->DestroyTexture(entry.second);
+			}
 		}
 		cache.clear();
 	}
@@ -66,7 +72,10 @@ void TextureCache::Shutdown()
 	m_flatNormal = TextureHandle{};   // 위 루프가 캐시 항목으로 지웠음
 	for (auto& entry : m_cubes)
 	{
-		if (entry.second.handle != m_blackCube) m_device->DestroyTexture(entry.second.handle);
+		if (entry.second.handle != m_blackCube)
+		{
+			m_device->DestroyTexture(entry.second.handle);
+		}
 	}
 	m_cubes.clear();
 	m_device->DestroyTexture(m_blackCube);
@@ -82,11 +91,17 @@ void TextureCache::Evict(const std::string& name)
 	{
 		const auto it = cache.find(name);
 		if (it == cache.end()) continue;
-		if (it->second != m_white && it->second != m_flatNormal) m_device->DestroyTexture(it->second);   // 실패해 흰색으로 대체된 항목은 공유 핸들이라 남김
+		if (it->second != m_white && it->second != m_flatNormal)
+		{
+			m_device->DestroyTexture(it->second);   // 실패해 흰색으로 대체된 항목은 공유 핸들이라 남김
+		}
 		cache.erase(it);
 		any = true;
 	}
-	if (any) ++m_generation;
+	if (any)
+	{
+		++m_generation;
+	}
 }
 
 void TextureCache::ReleaseLoaded()
@@ -97,17 +112,31 @@ void TextureCache::ReleaseLoaded()
 	{
 		for (auto it = cache.begin(); it != cache.end();)
 		{
-			if (IsBuiltin(it->first)) { ++it; continue; }
+			if (IsBuiltin(it->first))
+			{
+				++it;
+				continue;
+			}
 			// 로드에 실패해 흰색으로 대체된 항목은 내장 핸들을 공유하므로 파괴하지 않음.
-			if (it->second != m_white && it->second != m_flatNormal) m_device->DestroyTexture(it->second);
+			if (it->second != m_white && it->second != m_flatNormal)
+			{
+				m_device->DestroyTexture(it->second);
+			}
 			it = cache.erase(it);
 		}
 	}
 	// 파일에서 읽은 큐브맵도 버림 (내장 큐브는 남김).
 	for (auto it = m_cubes.begin(); it != m_cubes.end();)
 	{
-		if (IsBuiltin(it->first)) { ++it; continue; }
-		if (it->second.handle != m_blackCube) m_device->DestroyTexture(it->second.handle);
+		if (IsBuiltin(it->first))
+		{
+			++it;
+			continue;
+		}
+		if (it->second.handle != m_blackCube)
+		{
+			m_device->DestroyTexture(it->second.handle);
+		}
 		it = m_cubes.erase(it);
 	}
 	++m_generation;   // 핸들을 기억해 둔 쪽(재질 셋)이 다음 프레임에 다시 찾게 함
@@ -160,8 +189,14 @@ TextureHandle TextureCache::Load2D(const std::string& name, bool srgb, const Sce
 		// 모델에서 가져온 이미지. 씬이 인코딩된 바이트를 들고 있고, 여기서 재질의 색공간에 맞춰 디코딩함.
 		// PNG/JPG 는 임포트 설정에 따라 BC7 + 밉 체인 DDS 캐시로 바꿔 읽음 (TextureImporter). 캐시 DDS 는 밉이 이미 정해져 있으므로 더 만들지 않음.
 		const std::wstring cached = TextureImporter::ResolveCached(name, encoded->data(), encoded->size(), srgb);
-		if (!cached.empty()) ok = TextureLoader::LoadFromFile(cached, srgb, false, image);
-		if (!ok) ok = TextureLoader::LoadFromMemory(encoded->data(), encoded->size(), srgb, true, image);
+		if (!cached.empty())
+		{
+			ok = TextureLoader::LoadFromFile(cached, srgb, false, image);
+		}
+		if (!ok)
+		{
+			ok = TextureLoader::LoadFromMemory(encoded->data(), encoded->size(), srgb, true, image);
+		}
 		if (ok)
 		{
 			const bool block = IsBlockCompressed(image.desc.format);   // BC 는 압축 그대로 GPU 에 올라감 (VRAM 1/4)
@@ -180,9 +215,15 @@ TextureHandle TextureCache::Load2D(const std::string& name, bool srgb, const Sce
 		if (ReadFileBytes(path, bytes))
 		{
 			const std::wstring cached = TextureImporter::ResolveCached(name, bytes.data(), bytes.size(), srgb);
-			if (!cached.empty()) ok = TextureLoader::LoadFromFile(cached, srgb, false, image);
+			if (!cached.empty())
+			{
+				ok = TextureLoader::LoadFromFile(cached, srgb, false, image);
+			}
 		}
-		if (!ok) ok = TextureLoader::LoadFromFile(path, srgb, true, image);
+		if (!ok)
+		{
+			ok = TextureLoader::LoadFromFile(path, srgb, true, image);
+		}
 	}
 
 	TextureHandle handle;
@@ -205,7 +246,10 @@ TextureHandle TextureCache::LoadCube(const std::string& name, uint32_t* mipLevel
 	auto found = m_cubes.find(name);
 	if (found != m_cubes.end())
 	{
-		if (mipLevels != nullptr) *mipLevels = found->second.mipLevels;
+		if (mipLevels != nullptr)
+		{
+			*mipLevels = found->second.mipLevels;
+		}
 		return found->second.handle;
 	}
 
@@ -215,7 +259,11 @@ TextureHandle TextureCache::LoadCube(const std::string& name, uint32_t* mipLevel
 	bool ok = false;
 	if (name == "builtin:black")
 	{
-		ok = TextureLoader::CreateCube(1, [](const float[3], uint8_t rgba[4]) { rgba[0] = rgba[1] = rgba[2] = 0; rgba[3] = 255; }, false, false, image);
+		ok = TextureLoader::CreateCube(1, [](const float[3], uint8_t rgba[4])
+		{
+			rgba[0] = rgba[1] = rgba[2] = 0;
+			rgba[3] = 255;
+		}, false, false, image);
 	}
 	else if (name == "builtin:sky")
 	{
@@ -230,7 +278,10 @@ TextureHandle TextureCache::LoadCube(const std::string& name, uint32_t* mipLevel
 			const float y = d[1];
 			const float* target = y >= 0.0f ? zenith : ground;
 			const float t = y >= 0.0f ? powf(y, 0.6f) : (std::min)(1.0f, -y * 4.0f);
-			for (int i = 0; i < 3; ++i) rgba[i] = static_cast<uint8_t>(horizon[i] + (target[i] - horizon[i]) * t + 0.5f);
+			for (int i = 0; i < 3; ++i)
+			{
+				rgba[i] = static_cast<uint8_t>(horizon[i] + (target[i] - horizon[i]) * t + 0.5f);
+			}
 			rgba[3] = 255;
 		}, true, true, image);
 	}
@@ -245,11 +296,29 @@ TextureHandle TextureCache::LoadCube(const std::string& name, uint32_t* mipLevel
 			const float ax = fabsf(d[0]), ay = fabsf(d[1]), az = fabsf(d[2]);
 			int face;
 			float u, v;   // 면 위의 나머지 두 성분 ÷ 주축 → [−1, 1]
-			if (ax >= ay && ax >= az) { face = d[0] > 0.0f ? 0 : 1; u = d[1] / ax; v = d[2] / ax; }
-			else if (ay >= az)        { face = d[1] > 0.0f ? 2 : 3; u = d[0] / ay; v = d[2] / ay; }
-			else                      { face = d[2] > 0.0f ? 4 : 5; u = d[0] / az; v = d[1] / az; }
+			if (ax >= ay && ax >= az)
+			{
+				face = d[0] > 0.0f ? 0 : 1;
+				u = d[1] / ax;
+				v = d[2] / ax;
+			}
+			else if (ay >= az)
+			{
+				face = d[1] > 0.0f ? 2 : 3;
+				u = d[0] / ay;
+				v = d[2] / ay;
+			}
+			else
+			{
+				face = d[2] > 0.0f ? 4 : 5;
+				u = d[0] / az;
+				v = d[1] / az;
+			}
 			const bool line = fabsf(u * 2.0f - roundf(u * 2.0f)) < 0.04f || fabsf(v * 2.0f - roundf(v * 2.0f)) < 0.04f;
-			for (int i = 0; i < 3; ++i) rgba[i] = line ? static_cast<uint8_t>(colors[face][i] / 3) : colors[face][i];
+			for (int i = 0; i < 3; ++i)
+			{
+				rgba[i] = line ? static_cast<uint8_t>(colors[face][i] / 3) : colors[face][i];
+			}
 			rgba[3] = 255;
 		}, true, true, image);
 	}
@@ -278,6 +347,9 @@ TextureHandle TextureCache::LoadCube(const std::string& name, uint32_t* mipLevel
 		entry.mipLevels = 1;
 	}
 	m_cubes.emplace(name, entry);
-	if (mipLevels != nullptr) *mipLevels = entry.mipLevels;
+	if (mipLevels != nullptr)
+	{
+		*mipLevels = entry.mipLevels;
+	}
 	return entry.handle;
 }

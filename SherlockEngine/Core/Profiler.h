@@ -3,7 +3,11 @@
 #include <string>
 #include <vector>
 
-namespace RHI { class Device; class CommandList; }
+namespace RHI
+{
+	class Device;
+	class CommandList;
+}
 
 // 프로파일러. CPU 구간과 GPU 타임스탬프 구간.
 //
@@ -63,7 +67,11 @@ public:
 class GpuProfileScope
 {
 public:
-	GpuProfileScope(RHI::CommandList& cmd, const char* name) : m_cmd(cmd) { Profiler::BeginGpu(cmd, name); }
+	GpuProfileScope(RHI::CommandList& cmd, const char* name)
+		: m_cmd(cmd)
+	{
+		Profiler::BeginGpu(cmd, name);
+	}
 	~GpuProfileScope() { Profiler::EndGpu(m_cmd); }
 	GpuProfileScope(const GpuProfileScope&) = delete;
 	GpuProfileScope& operator=(const GpuProfileScope&) = delete;

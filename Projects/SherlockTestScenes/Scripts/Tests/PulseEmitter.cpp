@@ -23,7 +23,10 @@ void PulseEmitter::Update(float dt)
 
 	//주기 안에서의 시간. 주기를 넘으면 0부터 다시
 	m_elapsed += dt;
-	if (interval > 0.0f) m_elapsed = std::fmod(m_elapsed, interval);
+	if (interval > 0.0f)
+	{
+		m_elapsed = std::fmod(m_elapsed, interval);
+	}
 
 	//주기 앞부분 burstSeconds 동안만 뿜고 나머지는 0
 	//이미터는 계속 살아 있으니 이미 나간 입자는 수명이 다할 때까지 그대로 날아감

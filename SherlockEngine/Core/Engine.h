@@ -36,9 +36,9 @@ public:
 	bool IsInitialized() const { return m_device != nullptr; }
 
 	// ---- 프레임. AppBase::Run 이 이 순서로 호출함 ----
-	float BeginFrame();       // Time.Tick → Profiler 프레임 → ImGui 렌더러 NewFrame. dt 를 돌려줌
-	void Render();            // Device BeginFrame → Renderer(그림자·메인) → UI 패스(ImGui::Render 결과) → EndFrame(Present)
-	void EndFrame();          // Input 프레임 종료
+	float BeginFrame();   // Time.Tick → Profiler 프레임 → ImGui 렌더러 NewFrame. dt 를 돌려줌
+	void Render();        // Device BeginFrame → Renderer(그림자·메인) → UI 패스(ImGui::Render 결과) → EndFrame(Present)
+	void EndFrame();      // Input 프레임 종료
 	void OnResize(int width, int height);
 	// 다음 프레임의 백버퍼(UI 포함)를 PNG 로 저장함. Device 리드백이라 창이 가려져 있어도 정확함.
 	void RequestScreenshot(const std::wstring& path) { m_screenshotPath = path; }

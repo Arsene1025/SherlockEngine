@@ -28,5 +28,5 @@ public:
 private:
 	std::vector<std::unique_ptr<PipelineState>> m_states;
 	std::unordered_map<PipelineStateDesc, uint32_t, PipelineStateDescHasher> m_lookup;   // desc → index
-	uint32_t m_generation = 1;   // Clear()마다 증가. 0은 빈 핸들이므로 건너뜀.
+	uint32_t m_generation = 1;                                                           // Clear()마다 증가. 0은 빈 핸들이므로 건너뜀.
 };

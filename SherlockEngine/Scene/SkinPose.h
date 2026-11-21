@@ -22,11 +22,9 @@ const ModelSkin* FindMeshSkin(const Model& model, uint32_t meshIndex, int& meshN
 //   1) EvaluateNodeGlobals: nodes = 이번 포즈의 노드 TRS → global = 노드 월드 (nodes 와 같은 길이의 작업 공간, skin 이 쓰는 노드만 채움).
 //   2) BuildSkinPalette: global + meshRest(메시 노드 기본 월드) → palette(skin.joints 길이)와 pose. 팔레트와 포즈의 의미는 Animator::UpdateSkin 의 주석 참고.
 void EvaluateNodeGlobals(const std::vector<ModelNode>& nodes, const ModelSkin& skin, std::vector<DirectX::XMFLOAT4X4>& global);
-void BuildSkinPalette(const ModelSkin& skin, const std::vector<DirectX::XMFLOAT4X4>& global, const DirectX::XMFLOAT4X4& meshRest,
-	std::vector<DirectX::XMFLOAT4X4>& palette, GameObject::SkeletonPose& pose);
+void BuildSkinPalette(const ModelSkin& skin, const std::vector<DirectX::XMFLOAT4X4>& global, const DirectX::XMFLOAT4X4& meshRest, std::vector<DirectX::XMFLOAT4X4>& palette, GameObject::SkeletonPose& pose);
 // 위 둘을 이어 부르는 편의 함수 (ApplyRestSkinPoses 처럼 메시 하나만 계산할 때).
-void ComputeSkinPose(const std::vector<ModelNode>& nodes, const ModelSkin& skin, const DirectX::XMFLOAT4X4& meshRest,
-	std::vector<DirectX::XMFLOAT4X4>& global, std::vector<DirectX::XMFLOAT4X4>& palette, GameObject::SkeletonPose& pose);
+void ComputeSkinPose(const std::vector<ModelNode>& nodes, const ModelSkin& skin, const DirectX::XMFLOAT4X4& meshRest, std::vector<DirectX::XMFLOAT4X4>& global, std::vector<DirectX::XMFLOAT4X4>& palette, GameObject::SkeletonPose& pose);
 
 // 스킨 메시인데 팔레트가 비어 있는 오브젝트(편집 모드, 또는 재생 중이어도 Animator 가 아직 못 채운 경우)에 기본 자세 팔레트와
 // 스켈레톤 포즈를 채움. Renderer 는 팔레트가 끝내 비어 있을 때(모델 정보를 못 찾은 경우)만 단위행렬을 씀.

@@ -1,0 +1,146 @@
+# SherlockEngine C++ 코드 스타일 (clang-format 19, Visual Studio 2022 내장판 기준)
+# 저장소 전체에 적용: python tools/format_code.py   (검사만: --check)
+# 중괄호 규칙 중 clang-format 이 표현하지 못하는 두 가지는 tools/format_code.py 가 먼저 적용한다.
+#   - for / while / do / else 몸통은 항상 중괄호
+#   - if 몸통을 중괄호 없이 한 줄로 쓰는 것은 return / continue / break 하나일 때만
+#     (else 가 붙은 if 는 모든 갈래를 중괄호로 감싼다)
+---
+Language: Cpp
+Standard: c++20
+BasedOnStyle: LLVM
+
+# 파일 형식 (.editorconfig 와 같게)
+LineEnding: CRLF
+InsertNewlineAtEOF: true
+KeepEmptyLines:
+  AtEndOfFile: false
+  AtStartOfBlock: true
+  AtStartOfFile: true
+MaxEmptyLinesToKeep: 2
+
+# 들여쓰기: 탭, 폭 4
+UseTab: ForContinuationAndIndentation
+IndentWidth: 4
+TabWidth: 4
+ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 4
+AccessModifierOffset: -4
+IndentAccessModifiers: false
+IndentCaseLabels: false
+IndentCaseBlocks: false
+NamespaceIndentation: All
+IndentPPDirectives: None
+IndentWrappedFunctionNames: false
+IndentExternBlock: NoIndent
+LambdaBodyIndentation: OuterScope
+
+# 줄 길이: 제한 없음 (직접 나눈 줄바꿈을 그대로 둔다)
+ColumnLimit: 0
+ReflowComments: false
+
+# 중괄호: 모두 다음 줄 (Allman)
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterExternBlock: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: true
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+InsertBraces: false
+RemoveBracesLLVM: false
+
+# 한 줄 허용 범위
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: None
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortEnumsOnASingleLine: true
+AllowShortCaseExpressionOnASingleLine: true
+AlignConsecutiveShortCaseStatements:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCaseColons: false
+
+# 공백
+SpaceBeforeParens: ControlStatements
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyBlock: false
+SpacesInParens: Never
+SpacesInSquareBrackets: false
+SpacesInAngles: Never
+SpacesBeforeTrailingComments: 3
+SpacesInLineCommentPrefix:
+  Minimum: 1
+  Maximum: -1
+Cpp11BracedListStyle: false
+
+# 포인터·참조·const
+PointerAlignment: Left
+ReferenceAlignment: Pointer
+DerivePointerAlignment: false
+QualifierAlignment: Leave
+
+# 줄을 나눌 때
+AlignAfterOpenBracket: BlockIndent
+AlignOperands: DontAlign
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeComma
+PackConstructorInitializers: Never
+BreakInheritanceList: BeforeColon
+BinPackArguments: true
+BinPackParameters: true
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+BreakTemplateDeclarations: Leave
+BreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: false
+BreakStringLiterals: false
+
+# 정렬: 이어진 줄들의 줄 끝 주석만 같은 열로 맞추고, 나머지는 맞추지 않는다
+# (Kind: Leave 는 탭 들여쓰기와 함께 쓰면 주석 앞 공백을 탭으로 바꿔 버려서 쓰지 않는다)
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignConsecutiveMacros: None
+AlignConsecutiveBitFields: None
+AlignEscapedNewlines: DontAlign
+AlignArrayOfStructures: None
+
+# include: 정렬하지 않는다
+SortIncludes: Never
+IncludeBlocks: Preserve
+SortUsingDeclarations: Never
+
+# 그 밖
+FixNamespaceComments: false
+CompactNamespaces: false
+EmptyLineBeforeAccessModifier: Leave
+EmptyLineAfterAccessModifier: Leave
+SeparateDefinitionBlocks: Leave
+InsertTrailingCommas: None
+...

@@ -22,8 +22,14 @@ namespace
 		// [−π, π] 범위로 되돌림. 오래 돌려도 값이 계속 커지지 않아 값이 커짐으로서 생기는 정밀도 손실을 막음.
 		// float는 유효 숫자의 개수가 고정되어있음, 값이 커지면 자릿수를 정수 쪽에서 사용하고 소수 쪽에 남는
 		// 자릿수가 줄어듬. 소수 자리수가 줄어들면 필연적으로 정밀도가 손실됨.
-		while (angle > XM_PI) angle -= XM_2PI;
-		while (angle < -XM_PI) angle += XM_2PI;
+		while (angle > XM_PI)
+		{
+			angle -= XM_2PI;
+		}
+		while (angle < -XM_PI)
+		{
+			angle += XM_2PI;
+		}
 		return angle;
 	}
 	/*
@@ -40,13 +46,13 @@ namespace
 }
 
 Camera::Camera()
-	: m_position(0.0f, 0.0f, 0.0f),
-	  m_fovY(XM_PIDIV4),
-	  m_aspect(16.0f / 9.0f),
-	  m_nearZ(0.1f),
-	  m_farZ(1000.0f),
-	  m_orthoHeight(25.0f),
-	  m_usePerspective(true)
+	: m_position(0.0f, 0.0f, 0.0f)
+	, m_fovY(XM_PIDIV4)
+	, m_aspect(16.0f / 9.0f)
+	, m_nearZ(0.1f)
+	, m_farZ(1000.0f)
+	, m_orthoHeight(25.0f)
+	, m_usePerspective(true)
 {
 	XMStoreFloat4x4(&m_rotation, XMMatrixIdentity());
 	XMStoreFloat4x4(&m_view, XMMatrixIdentity());
@@ -106,7 +112,7 @@ float Camera::GetRoll() const
 	// 로그와 DebugUI 가 씀.
 	const XMVECTOR forward = GetForward();
 	const XMVECTOR worldUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-	if (fabsf(XMVectorGetY(forward)) > 0.9999f) return 0.0f;   // 수직으로 보면 roll 과 yaw 를 구분할 수 없음 (짐벌락). 0 으로 보고함
+	if (fabsf(XMVectorGetY(forward)) > 0.9999f) return 0.0f;                             // 수직으로 보면 roll 과 yaw 를 구분할 수 없음 (짐벌락). 0 으로 보고함
 	const XMVECTOR rightNoRoll = XMVector3Normalize(XMVector3Cross(worldUp, forward));   // 왼손: right = up × forward
 	const XMVECTOR upNoRoll = XMVector3Cross(forward, rightNoRoll);
 	const XMVECTOR up = GetUp();

@@ -5,7 +5,7 @@
 #include <d3d12.h>
 #include <d3d12sdklayers.h>   // ID3D12Debug1(GBV), ID3D12InfoQueue, ID3D12DebugDevice
 #include <dxgi1_6.h>
-#include <dxgidebug.h>        // IDXGIDebug1::ReportLiveObjects
+#include <dxgidebug.h>   // IDXGIDebug1::ReportLiveObjects
 #include <wrl/client.h>
 
 #pragma comment(lib, "d3d12.lib")

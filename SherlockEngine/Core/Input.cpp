@@ -5,18 +5,27 @@
 void Input::OnKeyDown(uint32_t vk)
 {
 	// 키 자동 반복(WM_KEYDOWN 연속)은 같은 값을 다시 쓰는 것이라 무해함.
-	if (vk < kKeyCount) m_keys[vk] = true;
+	if (vk < kKeyCount)
+	{
+		m_keys[vk] = true;
+	}
 }
 
 void Input::OnKeyUp(uint32_t vk)
 {
-	if (vk < kKeyCount) m_keys[vk] = false;
+	if (vk < kKeyCount)
+	{
+		m_keys[vk] = false;
+	}
 }
 
 void Input::OnMouseButton(MouseButton button, bool down)
 {
 	const uint32_t index = static_cast<uint32_t>(button);
-	if (index < kButtonCount) m_mouse[index] = down;
+	if (index < kButtonCount)
+	{
+		m_mouse[index] = down;
+	}
 }
 
 void Input::OnMouseMove(int x, int y)

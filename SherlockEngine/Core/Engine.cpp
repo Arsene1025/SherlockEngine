@@ -27,9 +27,19 @@ bool Engine::Initialize(const Config& config, const Desc& desc)
 
 	// ---- 백엔드: 설정 파일이 정함. 값이 올바르지 않으면 D3D11 ----
 	const std::string backend = m_config.GetString("engine.backend", "d3d11");
-	if (_stricmp(backend.c_str(), "d3d12") == 0) m_backend = RHI::Backend::D3D12;
-	else if (_stricmp(backend.c_str(), "d3d11") == 0) m_backend = RHI::Backend::D3D11;
-	else { Log::Warn("engine.backend 값 '%s' 을 모름. D3D11 로 실행.", backend.c_str()); m_backend = RHI::Backend::D3D11; }
+	if (_stricmp(backend.c_str(), "d3d12") == 0)
+	{
+		m_backend = RHI::Backend::D3D12;
+	}
+	else if (_stricmp(backend.c_str(), "d3d11") == 0)
+	{
+		m_backend = RHI::Backend::D3D11;
+	}
+	else
+	{
+		Log::Warn("engine.backend 값 '%s' 을 모름. D3D11 로 실행.", backend.c_str());
+		m_backend = RHI::Backend::D3D11;
+	}
 
 	RHI::DeviceDesc deviceDesc;
 	deviceDesc.windowHandle = desc.windowHandle;
@@ -68,9 +78,7 @@ bool Engine::Initialize(const Config& config, const Desc& desc)
 	m_time.SetFixedStep(m_config.GetFloat("engine.fixedstep", 1.0f / 60.0f));
 	m_time.Reset();
 
-	Log::Info("Engine : 백엔드 %s, %dx%d, vsync %s, 고정 스텝 %.4f s, 설정 %s",
-		m_device->GetBackendName(), desc.width, desc.height, m_device->IsVSync() ? "on" : "off", m_time.GetFixedStep(),
-		m_config.GetPath().empty() ? "(기본값)" : Log::ToUtf8(m_config.GetPath().c_str()).c_str());
+	Log::Info("Engine : 백엔드 %s, %dx%d, vsync %s, 고정 스텝 %.4f s, 설정 %s", m_device->GetBackendName(), desc.width, desc.height, m_device->IsVSync() ? "on" : "off", m_time.GetFixedStep(), m_config.GetPath().empty() ? "(기본값)" : Log::ToUtf8(m_config.GetPath().c_str()).c_str());
 	return true;
 }
 
@@ -94,7 +102,10 @@ float Engine::BeginFrame()
 {
 	const float dt = m_time.Tick();
 	Profiler::BeginFrame(m_device.get());
-	if (m_imguiRendererReady) m_device->NewFrameImGui();
+	if (m_imguiRendererReady)
+	{
+		m_device->NewFrameImGui();
+	}
 	return dt;
 }
 
@@ -119,12 +130,18 @@ void Engine::Render()
 		{
 			ProfileScope cpu("UIPass");
 			GpuProfileScope gpu(cmd, "UIPass");
-			m_renderer.BeginUIPass();          // 백버퍼 UNORM 뷰, 깊이 없음
-			if (m_imguiRendererReady) m_device->RenderImGui();
-			m_renderer.EndUIPass();            // 패스 종료 + 백버퍼 → Present 전이
+			m_renderer.BeginUIPass();   // 백버퍼 UNORM 뷰, 깊이 없음
+			if (m_imguiRendererReady)
+			{
+				m_device->RenderImGui();
+			}
+			m_renderer.EndUIPass();   // 패스 종료 + 백버퍼 → Present 전이
 		}
 	}
-	if (!m_screenshotPath.empty()) m_device->RequestBackBufferReadback();
+	if (!m_screenshotPath.empty())
+	{
+		m_device->RequestBackBufferReadback();
+	}
 	{
 		ProfileScope cpu("Present");
 		m_device->EndFrame();
@@ -133,8 +150,14 @@ void Engine::Render()
 	{
 		std::vector<uint8_t> pixels;
 		uint32_t width = 0, height = 0;
-		if (m_device->TakeReadbackResult(pixels, width, height)) Screenshot::SavePng(m_screenshotPath, pixels, width, height);
-		else Log::Error("스크린샷: 리드백 결과가 없다 (%s)", Log::ToUtf8(m_screenshotPath.c_str()).c_str());
+		if (m_device->TakeReadbackResult(pixels, width, height))
+		{
+			Screenshot::SavePng(m_screenshotPath, pixels, width, height);
+		}
+		else
+		{
+			Log::Error("스크린샷: 리드백 결과가 없다 (%s)", Log::ToUtf8(m_screenshotPath.c_str()).c_str());
+		}
 		m_screenshotPath.clear();
 	}
 }

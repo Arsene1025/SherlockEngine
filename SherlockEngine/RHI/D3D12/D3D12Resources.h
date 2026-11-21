@@ -20,9 +20,9 @@ struct D3D12Buffer
 {
 	BufferDesc desc;
 	std::string name;
-	ComPtr<ID3D12Resource> resource;                 // Default / Staging. Dynamic 은 비어 있음.
-	D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = 0;        // Default: 고정. Dynamic: 마지막 UpdateBuffer 가 받은 링 조각의 주소
-	uint64_t updatedFrame = UINT64_MAX;              // Dynamic: 마지막으로 UpdateBuffer 한 프레임 번호
+	ComPtr<ID3D12Resource> resource;            // Default / Staging. Dynamic 은 비어 있음.
+	D3D12_GPU_VIRTUAL_ADDRESS gpuAddress = 0;   // Default: 고정. Dynamic: 마지막 UpdateBuffer 가 받은 링 조각의 주소
+	uint64_t updatedFrame = UINT64_MAX;         // Dynamic: 마지막으로 UpdateBuffer 한 프레임 번호
 	// CommandList::Barrier(BufferHandle) 가 전이시킴 (실제 배리어의 before). 버퍼는 ExecuteCommandLists 가 끝나면
 	// COMMON 으로 감쇠(decay)하므로 EndFrame 이 Common 으로 되돌림 (D3D12CommandList::ResetBufferStates).
 	ResourceState state = ResourceState::Common;
@@ -33,16 +33,16 @@ struct D3D12Texture
 	TextureDesc desc;
 	std::string name;
 	ComPtr<ID3D12Resource> resource;
-	bool typeless = false;                           // 깊이 + SRV 용도면 리소스를 TYPELESS 로 만듦
-	ResourceState state = ResourceState::Common;     // CommandList::Barrier 가 전이시킴 (D3D12 에서는 실제 배리어를 기록함)
+	bool typeless = false;                         // 깊이 + SRV 용도면 리소스를 TYPELESS 로 만듦
+	ResourceState state = ResourceState::Common;   // CommandList::Barrier 가 전이시킴 (D3D12 에서는 실제 배리어를 기록함)
 
 	// 디스크립터 인덱스. 처음 요청될 때 만듦.
-	uint32_t rtv = D3D12DescriptorHeap::kInvalid;        // RTV 힙 (desc.format 그대로)
-	uint32_t rtvSrgb = D3D12DescriptorHeap::kInvalid;    // RTV 힙 (*_SRGB 뷰)
-	uint32_t dsv = D3D12DescriptorHeap::kInvalid;        // DSV 힙
-	uint32_t dsvReadOnly = D3D12DescriptorHeap::kInvalid; // DSV 힙 (READ_ONLY_DEPTH|STENCIL). DepthAttachment::readOnly 패스용
-	uint32_t srv = D3D12DescriptorHeap::kInvalid;        // 스테이징 SRV 힙 (CPU 전용). ResourceSet 이 여기서 복사함
-	uint32_t srvVisible = D3D12DescriptorHeap::kInvalid; // 셰이더 가시 힙의 영구 SRV (ImGui::Image 용)
+	uint32_t rtv = D3D12DescriptorHeap::kInvalid;           // RTV 힙 (desc.format 그대로)
+	uint32_t rtvSrgb = D3D12DescriptorHeap::kInvalid;       // RTV 힙 (*_SRGB 뷰)
+	uint32_t dsv = D3D12DescriptorHeap::kInvalid;           // DSV 힙
+	uint32_t dsvReadOnly = D3D12DescriptorHeap::kInvalid;   // DSV 힙 (READ_ONLY_DEPTH|STENCIL). DepthAttachment::readOnly 패스용
+	uint32_t srv = D3D12DescriptorHeap::kInvalid;           // 스테이징 SRV 힙 (CPU 전용). ResourceSet 이 여기서 복사함
+	uint32_t srvVisible = D3D12DescriptorHeap::kInvalid;    // 셰이더 가시 힙의 영구 SRV (ImGui::Image 용)
 };
 
 struct D3D12Shader

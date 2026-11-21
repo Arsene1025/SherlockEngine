@@ -21,15 +21,27 @@ bool GameApp::OnInitialize()
 	// 시작 씬: 프로젝트 파일(.sherlock)의 startScene, 없으면 engine.ini 의 [game] startScene 을 씀. 값은
 	// Assets\Scenes\ 기준 파일명 또는 절대 경로임.
 	std::string start = GetProject().IsLoaded() ? GetProject().startScene : "";
-	if (start.empty()) start = config.GetString("game.startScene", "");
+	if (start.empty())
+	{
+		start = config.GetString("game.startScene", "");
+	}
 	if (start.empty())
 	{
 		Log::Error("게임: 시작 씬이 없다 (.sherlock 의 startScene 또는 engine.ini 의 [game] startScene). 에디터의 Build Game 이 채운다.");
 		return false;
 	}
 	std::wstring path(start.begin(), start.end());
-	for (wchar_t& c : path) if (c == L'/') c = L'\\';
-	if (path.find(L':') == std::wstring::npos && path[0] != L'\\') path = Paths::GetAssetPath((L"Scenes\\" + path).c_str());
+	for (wchar_t& c : path)
+	{
+		if (c == L'/')
+		{
+			c = L'\\';
+		}
+	}
+	if (path.find(L':') == std::wstring::npos && path[0] != L'\\')
+	{
+		path = Paths::GetAssetPath((L"Scenes\\" + path).c_str());
+	}
 
 	engine.GetRenderer().InvalidateScene(engine.GetScene(), true);
 	if (!SceneSerializer::Load(engine.GetScene(), engine.GetCamera(), engine.GetAssets(), path))
@@ -40,16 +52,31 @@ bool GameApp::OnInitialize()
 
 	// 자동 검증 인자 (에디터와 같은 이름)
 	const std::wstring exitAfter = GetCommandLineOption(L"exit-after");
-	if (!exitAfter.empty()) m_exitAfter = static_cast<uint64_t>(_wtoi64(exitAfter.c_str()));
+	if (!exitAfter.empty())
+	{
+		m_exitAfter = static_cast<uint64_t>(_wtoi64(exitAfter.c_str()));
+	}
 	const std::wstring debugBones = GetCommandLineOption(L"debug-bones");   // 자동 검증: --debug-bones=1|2
-	if (!debugBones.empty()) engine.GetRenderer().GetSettings().debugBones = _wtoi(debugBones.c_str());
+	if (!debugBones.empty())
+	{
+		engine.GetRenderer().GetSettings().debugBones = _wtoi(debugBones.c_str());
+	}
 	const std::wstring computeBlur = GetCommandLineOption(L"compute-blur");   // --compute-blur=1|0 (RenderSettings::computeBlur)
-	if (!computeBlur.empty()) engine.GetRenderer().GetSettings().computeBlur = _wtoi(computeBlur.c_str()) != 0;
-	ApplyRenderPathOptions(engine.GetRenderer().GetSettings());   // --deferred / --clustered / --shadow-priority / --ssao (에디터와 같은 인자)
+	if (!computeBlur.empty())
+	{
+		engine.GetRenderer().GetSettings().computeBlur = _wtoi(computeBlur.c_str()) != 0;
+	}
+	ApplyRenderPathOptions(engine.GetRenderer().GetSettings());                 // --deferred / --clustered / --shadow-priority / --ssao (에디터와 같은 인자)
 	const std::wstring particleStep = GetCommandLineOption(L"particle-step");   // --particle-step=<초> (RenderSettings::particleFixedStep)
-	if (!particleStep.empty()) engine.GetRenderer().GetSettings().particleFixedStep = static_cast<float>(_wtof(particleStep.c_str()));
+	if (!particleStep.empty())
+	{
+		engine.GetRenderer().GetSettings().particleFixedStep = static_cast<float>(_wtof(particleStep.c_str()));
+	}
 	const std::wstring particleSort = GetCommandLineOption(L"particle-sort");   // --particle-sort=0 (RenderSettings::particleSort)
-	if (!particleSort.empty()) engine.GetRenderer().GetSettings().particleSort = particleSort != L"0";
+	if (!particleSort.empty())
+	{
+		engine.GetRenderer().GetSettings().particleSort = particleSort != L"0";
+	}
 	m_screenshotPath = GetCommandLineOption(L"screenshot");
 	m_dumpObjects = !GetCommandLineOption(L"dump-objects").empty();
 
@@ -57,9 +84,11 @@ bool GameApp::OnInitialize()
 	Scene& scene = engine.GetScene();
 	scene.BeginPlay(&engine.GetInput(), &engine.GetCamera());
 	size_t behaviours = 0;
-	for (const auto& object : scene.GetObjects()) behaviours += object->GetBehaviours().size();
-	Log::Info("게임 시작: %s (오브젝트 %zu, 컴포넌트 %zu, 카메라 %s)", Log::ToUtf8(path.c_str()).c_str(), scene.GetObjects().size(), behaviours,
-		scene.FindActiveCamera() != nullptr ? scene.FindActiveCamera()->GetOwner().GetName().c_str() : "(씬 파일의 카메라)");
+	for (const auto& object : scene.GetObjects())
+	{
+		behaviours += object->GetBehaviours().size();
+	}
+	Log::Info("게임 시작: %s (오브젝트 %zu, 컴포넌트 %zu, 카메라 %s)", Log::ToUtf8(path.c_str()).c_str(), scene.GetObjects().size(), behaviours, scene.FindActiveCamera() != nullptr ? scene.FindActiveCamera()->GetOwner().GetName().c_str() : "(씬 파일의 카메라)");
 	return true;
 }
 
@@ -74,10 +103,16 @@ void GameApp::OnUpdate(float dt)
 	Scene& scene = engine.GetScene();
 	scene.Update(dt);
 
-	if (engine.GetInput().IsKeyPressed(VK_ESCAPE)) PostQuitMessage(0);
+	if (engine.GetInput().IsKeyPressed(VK_ESCAPE))
+	{
+		PostQuitMessage(0);
+	}
 	// B: 본 디버그 표시 순환 (끔 → 본 + 관절 → 본 + 관절 + 축)
 	RenderSettings& renderSettings = engine.GetRenderer().GetSettings();
-	if (engine.GetInput().IsKeyPressed('B')) renderSettings.debugBones = (renderSettings.debugBones + 1) % 3;
+	if (engine.GetInput().IsKeyPressed('B'))
+	{
+		renderSettings.debugBones = (renderSettings.debugBones + 1) % 3;
+	}
 
 	// 자동 검증
 	if (m_exitAfter == 0) return;
@@ -91,11 +126,17 @@ void GameApp::OnUpdate(float dt)
 			const XMFLOAT3& p = object->GetTransform().GetPosition();
 			const XMFLOAT3& r = object->GetTransform().GetRotation();   // 스크립트(Rotator)가 돌았는지 확인용
 			std::string components;
-			for (const auto& b : object->GetBehaviours()) components += std::string(components.empty() ? "" : ",") + b->GetTypeName();
+			for (const auto& b : object->GetBehaviours())
+			{
+				components += std::string(components.empty() ? "" : ",") + b->GetTypeName();
+			}
 			Log::Info("게임 검증: 오브젝트 '%s' 위치 (%.2f, %.2f, %.2f) 회전 (%.2f, %.2f, %.2f) components=[%s]", object->GetName().c_str(), p.x, p.y, p.z, r.x, r.y, r.z, components.c_str());
 		}
 	}
-	if (m_exitAfter > 1 && frame == m_exitAfter - 1 && !m_screenshotPath.empty()) engine.RequestScreenshot(m_screenshotPath);
+	if (m_exitAfter > 1 && frame == m_exitAfter - 1 && !m_screenshotPath.empty())
+	{
+		engine.RequestScreenshot(m_screenshotPath);
+	}
 	if (frame >= m_exitAfter)
 	{
 		Log::Info("게임 검증: %llu 프레임 뒤 종료", frame);

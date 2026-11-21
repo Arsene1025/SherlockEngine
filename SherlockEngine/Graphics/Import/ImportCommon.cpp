@@ -12,7 +12,10 @@ namespace ModelImport
 		if (wide.empty()) return "";
 		const int length = WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, nullptr, 0, nullptr, nullptr);
 		std::string utf8(length > 0 ? length - 1 : 0, '\0');
-		if (length > 1) WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, &utf8[0], length, nullptr, nullptr);
+		if (length > 1)
+		{
+			WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, &utf8[0], length, nullptr, nullptr);
+		}
 		return utf8;
 	}
 
@@ -21,7 +24,10 @@ namespace ModelImport
 		if (utf8.empty()) return L"";
 		const int length = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
 		std::wstring wide(length > 0 ? length - 1 : 0, L'\0');
-		if (length > 1) MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
+		if (length > 1)
+		{
+			MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
+		}
 		return wide;
 	}
 
@@ -82,9 +88,7 @@ namespace ModelImport
 		out.stats.images = static_cast<uint32_t>(out.images.size());
 		out.stats.loadMilliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - startTime).count();
 
-		Log::Info("모델 로드: %s — 메시 %u (서브메시 %u, 인스턴스 %u), 재질 %u, 이미지 %u, 정점 %u, 삼각형 %u, 16비트 인덱스 %u, 탄젠트 생성 %u, 건너뜀 %u, %.0f ms",
-			out.name.c_str(), out.stats.meshes, out.stats.submeshes, out.stats.instances, out.stats.materials, out.stats.images,
-			out.stats.vertices, out.stats.triangles, out.stats.meshesWith16BitIndices, out.stats.generatedTangentMeshes, out.stats.skippedPrimitives, out.stats.loadMilliseconds);
+		Log::Info("모델 로드: %s — 메시 %u (서브메시 %u, 인스턴스 %u), 재질 %u, 이미지 %u, 정점 %u, 삼각형 %u, 16비트 인덱스 %u, 탄젠트 생성 %u, 건너뜀 %u, %.0f ms", out.name.c_str(), out.stats.meshes, out.stats.submeshes, out.stats.instances, out.stats.materials, out.stats.images, out.stats.vertices, out.stats.triangles, out.stats.meshesWith16BitIndices, out.stats.generatedTangentMeshes, out.stats.skippedPrimitives, out.stats.loadMilliseconds);
 		Log::Info("모델 바운드: (%.2f, %.2f, %.2f) ~ (%.2f, %.2f, %.2f)", out.bounds.min.x, out.bounds.min.y, out.bounds.min.z, out.bounds.max.x, out.bounds.max.y, out.bounds.max.z);
 		return out.IsValid();
 	}

@@ -32,15 +32,36 @@ void FreeCamera::Update(float dt)
 
 	// 휠로 이동 속도를 조절함 (한 칸에 10%)
 	const float wheel = input.GetWheelDelta();
-	if (wheel != 0.0f) speed = std::clamp(speed * std::pow(1.1f, wheel), 0.1f, 200.0f);
+	if (wheel != 0.0f)
+	{
+		speed = std::clamp(speed * std::pow(1.1f, wheel), 0.1f, 200.0f);
+	}
 
 	float forward = 0.0f, right = 0.0f, up = 0.0f;
-	if (input.IsKeyDown('W')) forward += 1.0f;
-	if (input.IsKeyDown('S')) forward -= 1.0f;
-	if (input.IsKeyDown('D')) right += 1.0f;
-	if (input.IsKeyDown('A')) right -= 1.0f;
-	if (input.IsKeyDown('E') || input.IsKeyDown(VK_SPACE)) up += 1.0f;
-	if (input.IsKeyDown('Q') || input.IsKeyDown(VK_CONTROL)) up -= 1.0f;
+	if (input.IsKeyDown('W'))
+	{
+		forward += 1.0f;
+	}
+	if (input.IsKeyDown('S'))
+	{
+		forward -= 1.0f;
+	}
+	if (input.IsKeyDown('D'))
+	{
+		right += 1.0f;
+	}
+	if (input.IsKeyDown('A'))
+	{
+		right -= 1.0f;
+	}
+	if (input.IsKeyDown('E') || input.IsKeyDown(VK_SPACE))
+	{
+		up += 1.0f;
+	}
+	if (input.IsKeyDown('Q') || input.IsKeyDown(VK_CONTROL))
+	{
+		up -= 1.0f;
+	}
 
 	const float length = std::sqrt(forward * forward + right * right + up * up);
 	if (length == 0.0f) return;

@@ -102,7 +102,6 @@ namespace RHI
 		// 결과는 Device::GetTimestampResults 로 몇 프레임 뒤에 읽음. 렌더 패스 안팎 어디서든 부를 수 있음.
 		virtual void WriteTimestamp(uint32_t slot) = 0;
 
-		
 
 		virtual const Stats& GetStats() const = 0;
 		virtual void ResetStats() = 0;

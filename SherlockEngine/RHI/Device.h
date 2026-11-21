@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
 #include <cstddef>
-#include <span>     // C++20: 배열 인자는 (포인터, 개수) 대신 std::span 으로 받음
+#include <span>   // C++20: 배열 인자는 (포인터, 개수) 대신 std::span 으로 받음
 #include <vector>
 #include "RHI/Handle.h"
 #include "RHI/PipelineTypes.h"
@@ -134,7 +134,7 @@ namespace RHI
 		// GetImGuiTextureId 의 반환값은 ImTextureID(ImU64) 로 캐스팅해 ImGui::Image 에 넘김. 유효하지 않으면 0.
 		virtual bool InitImGui() = 0;
 		virtual void NewFrameImGui() = 0;
-		virtual void RenderImGui() = 0;      // Renderer::BeginUIPass / EndUIPass 사이에서 호출
+		virtual void RenderImGui() = 0;   // Renderer::BeginUIPass / EndUIPass 사이에서 호출
 		virtual void ShutdownImGui() = 0;
 		virtual uint64_t GetImGuiTextureId(TextureHandle texture) = 0;
 	};

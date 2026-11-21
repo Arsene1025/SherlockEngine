@@ -13,7 +13,7 @@
 class Config
 {
 public:
-	bool LoadFromFile(const std::wstring& path);   // 파일이 없으면 false (기본값으로 계속)
+	bool LoadFromFile(const std::wstring& path);                  // 파일이 없으면 false (기본값으로 계속)
 	void Set(const std::string& key, const std::string& value);   // 실행 인자 덮어쓰기용
 
 	// 파일의 [section] 아래 key 한 줄의 값만 바꿔 저장함 (에디터의 백엔드 선택용). 주석·다른 줄·줄 끝

@@ -21,8 +21,14 @@ std::wstring AssetManager::Normalize(const std::wstring& path)
 size_t AssetManager::EstimateBytes(const Model& model)
 {
 	size_t bytes = 0;
-	for (const auto& mesh : model.meshes) bytes += mesh->GetVertices().size() * sizeof(VERTEX) + mesh->GetIndices().size() * sizeof(uint32_t);
-	for (const ModelImage& image : model.images) bytes += image.encoded ? image.encoded->size() : 0;
+	for (const auto& mesh : model.meshes)
+	{
+		bytes += mesh->GetVertices().size() * sizeof(VERTEX) + mesh->GetIndices().size() * sizeof(uint32_t);
+	}
+	for (const ModelImage& image : model.images)
+	{
+		bytes += image.encoded ? image.encoded->size() : 0;
+	}
 	return bytes;
 }
 
@@ -105,7 +111,10 @@ void AssetManager::Clear()
 std::vector<std::wstring> AssetManager::GetModelPaths() const
 {
 	std::vector<std::wstring> paths;
-	for (const auto& entry : m_models) paths.push_back(entry.first);
+	for (const auto& entry : m_models)
+	{
+		paths.push_back(entry.first);
+	}
 	std::sort(paths.begin(), paths.end());
 	return paths;
 }

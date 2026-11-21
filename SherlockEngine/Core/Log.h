@@ -5,7 +5,7 @@
 #include <vector>
 #include <functional>
 #include <winerror.h>   // HRESULT의 typedef가 여기에 있음. windows.h를 통째로
-                        // 끌어오지 않고도 이 헤더만으로 컴파일되게 하기 위함.
+						// 끌어오지 않고도 이 헤더만으로 컴파일되게 하기 위함.
 
 // Logger.
 //
@@ -21,59 +21,59 @@
 // 클래스보다 namespace 가 적합하고, 싱글턴 인스턴스를 넘겨 다니지 않아도 됨.
 namespace Log
 {
-    enum class Level : uint8_t
-    {
-        Debug = 0,
-        Info,
-        Warn,
-        Error,
-    };
+	enum class Level : uint8_t
+	{
+		Debug = 0,
+		Info,
+		Warn,
+		Error,
+	};
 
-    struct Entry
-    {
-        Level level;
-        double time;          // Init 이후 경과 시간(초)
-        std::string text;     // 접두어 없는 본문
-    };
+	struct Entry
+	{
+		Level level;
+		double time;        // Init 이후 경과 시간(초)
+		std::string text;   // 접두어 없는 본문
+	};
 
-    struct InitDesc
-    {
-        bool console = true;            // 콘솔 싱크. 부모 콘솔에 붙고, 부모 콘솔이 없을 때 allocConsole 이 true 면 새로 엶
-        bool allocConsole = false;      // 콘솔이 전혀 없을 때 AllocConsole (Debug 빌드용)
-        std::wstring filePath;          // 비면 파일 싱크 없음. 절대 경로
-        Level minLevel = Level::Info;
-        size_t historyCapacity = 4000;  // ImGui 콘솔용 링 버퍼
-    };
+	struct InitDesc
+	{
+		bool console = true;         // 콘솔 싱크. 부모 콘솔에 붙고, 부모 콘솔이 없을 때 allocConsole 이 true 면 새로 엶
+		bool allocConsole = false;   // 콘솔이 전혀 없을 때 AllocConsole (Debug 빌드용)
+		std::wstring filePath;       // 비면 파일 싱크 없음. 절대 경로
+		Level minLevel = Level::Info;
+		size_t historyCapacity = 4000;   // ImGui 콘솔용 링 버퍼
+	};
 
-    // 한 번만 호출함. 인자 없는 Init 은 InitDesc 기본값으로 부르는 것과 같음.
-    SHERLOCK_API void Init();
-    SHERLOCK_API void Init(const InitDesc& desc);
-    SHERLOCK_API void Shutdown();   // 파일을 닫음. 이후 로그는 콘솔·디버거·히스토리로만 나감
+	// 한 번만 호출함. 인자 없는 Init 은 InitDesc 기본값으로 부르는 것과 같음.
+	SHERLOCK_API void Init();
+	SHERLOCK_API void Init(const InitDesc& desc);
+	SHERLOCK_API void Shutdown();   // 파일을 닫음. 이후 로그는 콘솔·디버거·히스토리로만 나감
 
-    // 서식은 printf 규칙을 따름.
-    // 주의: 컴파일러 메시지처럼 %가 들어갈 수 있는 문자열은 Log::Error("%s", text) 처럼 인자로 넘길 것.
-    SHERLOCK_API void Debug(const char* fmt, ...);   // "[디버그] " — 기본 레벨(Info)에서는 출력되지 않음
-    SHERLOCK_API void Info(const char* fmt, ...);    // "[정보] "
-    SHERLOCK_API void Warn(const char* fmt, ...);    // "[경고] "
-    SHERLOCK_API void Error(const char* fmt, ...);   // "[실패] "
+	// 서식은 printf 규칙을 따름.
+	// 주의: 컴파일러 메시지처럼 %가 들어갈 수 있는 문자열은 Log::Error("%s", text) 처럼 인자로 넘길 것.
+	SHERLOCK_API void Debug(const char* fmt, ...);   // "[디버그] " — 기본 레벨(Info)에서는 출력되지 않음
+	SHERLOCK_API void Info(const char* fmt, ...);    // "[정보] "
+	SHERLOCK_API void Warn(const char* fmt, ...);    // "[경고] "
+	SHERLOCK_API void Error(const char* fmt, ...);   // "[실패] "
 
-    SHERLOCK_API void SetMinLevel(Level level);
-    SHERLOCK_API Level GetMinLevel();
-    SHERLOCK_API const char* LevelName(Level level);   // "디버그"/"정보"/"경고"/"실패"
-    SHERLOCK_API bool ParseLevel(const std::string& text, Level& out);   // "debug|info|warn|error"
+	SHERLOCK_API void SetMinLevel(Level level);
+	SHERLOCK_API Level GetMinLevel();
+	SHERLOCK_API const char* LevelName(Level level);                     // "디버그"/"정보"/"경고"/"실패"
+	SHERLOCK_API bool ParseLevel(const std::string& text, Level& out);   // "debug|info|warn|error"
 
-    // ImGui 콘솔용 히스토리 스냅샷. 뮤텍스 안에서 복사함. 수천 줄 규모라 프레임마다 불러도 충분히 가벼움.
-    SHERLOCK_API void CopyHistory(std::vector<Entry>& out);
-    SHERLOCK_API void ClearHistory();
-    SHERLOCK_API uint64_t GetHistoryVersion();            // 새 줄이 들어올 때마다 증가 (자동 스크롤 판단용)
-    SHERLOCK_API uint32_t GetCount(Level level);          // Init 이후 레벨별 누적 수
-    SHERLOCK_API const std::wstring& GetFilePath();       // 열린 파일 경로. 없으면 빈 문자열
-    SHERLOCK_API bool HasConsole();
+	// ImGui 콘솔용 히스토리 스냅샷. 뮤텍스 안에서 복사함. 수천 줄 규모라 프레임마다 불러도 충분히 가벼움.
+	SHERLOCK_API void CopyHistory(std::vector<Entry>& out);
+	SHERLOCK_API void ClearHistory();
+	SHERLOCK_API uint64_t GetHistoryVersion();        // 새 줄이 들어올 때마다 증가 (자동 스크롤 판단용)
+	SHERLOCK_API uint32_t GetCount(Level level);      // Init 이후 레벨별 누적 수
+	SHERLOCK_API const std::wstring& GetFilePath();   // 열린 파일 경로. 없으면 빈 문자열
+	SHERLOCK_API bool HasConsole();
 
-    // HRESULT를 "0x80070002 (지정된 파일을 찾을 수 없습니다)" 형태의 문자열로 바꿈.
-    SHERLOCK_API std::string HrToString(HRESULT hr);
+	// HRESULT를 "0x80070002 (지정된 파일을 찾을 수 없습니다)" 형태의 문자열로 바꿈.
+	SHERLOCK_API std::string HrToString(HRESULT hr);
 
-    // 넓은 문자열을 UTF-8로 바꿈. std::cout에 wchar_t*를 넘기면
-    // 문자열이 아니라 포인터 주소가 찍히기 때문에 필요함.
-    SHERLOCK_API std::string ToUtf8(const wchar_t* wide);
+	// 넓은 문자열을 UTF-8로 바꿈. std::cout에 wchar_t*를 넘기면
+	// 문자열이 아니라 포인터 주소가 찍히기 때문에 필요함.
+	SHERLOCK_API std::string ToUtf8(const wchar_t* wide);
 }

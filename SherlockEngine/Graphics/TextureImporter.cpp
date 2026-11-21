@@ -28,7 +28,10 @@ namespace
 	std::map<std::string, TextureImportSettings> g_settings;
 	std::wstring g_settingsLoadedFor;   // g_settings 를 읽은 설정 파일 경로
 
-	std::wstring SettingsPath() { return Paths::GetAssetRoot() + L"TextureSettings.json"; }
+	std::wstring SettingsPath()
+	{
+		return Paths::GetAssetRoot() + L"TextureSettings.json";
+	}
 
 	void EnsureLoaded()   // g_mutex 를 잡은 채 호출
 	{
@@ -51,26 +54,42 @@ namespace
 				g_settings[item.key()] = s;
 			}
 		}
-		catch (const std::exception& e) { Log::Warn("TextureSettings.json 을 읽지 못함: %s", e.what()); }
+		catch (const std::exception& e)
+		{
+			Log::Warn("TextureSettings.json 을 읽지 못함: %s", e.what());
+		}
 	}
 
 	void Save()   // g_mutex 를 잡은 채 호출
 	{
 		const fs::path path = SettingsPath();
 		std::error_code ec;
-		if (g_settings.empty()) { fs::remove(path, ec); return; }
+		if (g_settings.empty())
+		{
+			fs::remove(path, ec);
+			return;
+		}
 		nlohmann::json textures = nlohmann::json::object();
 		for (const auto& [name, s] : g_settings)
+		{
 			textures[name] = { { "compress", s.compress }, { "mipLevels", s.mipLevels }, { "maxSize", s.maxSize } };
+		}
 		fs::create_directories(path.parent_path(), ec);
 		std::ofstream file{ path };
-		if (file) file << nlohmann::json{ { "textures", textures } }.dump(2);
+		if (file)
+		{
+			file << nlohmann::json{ { "textures", textures } }.dump(2);
+		}
 	}
 
 	uint64_t Fnv(const void* data, size_t size, uint64_t hash = 1469598103934665603ull)
 	{
 		const uint8_t* bytes = static_cast<const uint8_t*>(data);
-		for (size_t i = 0; i < size; ++i) { hash ^= bytes[i]; hash *= 1099511628211ull; }
+		for (size_t i = 0; i < size; ++i)
+		{
+			hash ^= bytes[i];
+			hash *= 1099511628211ull;
+		}
 		return hash;
 	}
 
@@ -83,12 +102,18 @@ namespace
 		{
 			tried = true;
 			const HRESULT hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0, D3D11_SDK_VERSION, device.GetAddressOf(), nullptr, nullptr);
-			if (FAILED(hr)) Log::Warn("텍스처 변환: GPU 장치를 만들지 못해 CPU 로 압축함.");
+			if (FAILED(hr))
+			{
+				Log::Warn("텍스처 변환: GPU 장치를 만들지 못해 CPU 로 압축함.");
+			}
 		}
 		return device.Get();
 	}
 
-	bool IsDds(const uint8_t* data, size_t size) { return size >= 4 && data[0] == 'D' && data[1] == 'D' && data[2] == 'S' && data[3] == ' '; }
+	bool IsDds(const uint8_t* data, size_t size)
+	{
+		return size >= 4 && data[0] == 'D' && data[1] == 'D' && data[2] == 'S' && data[3] == ' ';
+	}
 
 	// 원본 → 설정에 맞춘 DDS. 실패하면 false (호출자가 원본을 그대로 씀).
 	bool Build(const uint8_t* data, size_t size, bool srgb, const TextureImportSettings& s, const fs::path& outPath, std::string& summary)
@@ -106,7 +131,10 @@ namespace
 		{
 			if (FAILED(Convert(image.GetImages(), image.GetImageCount(), image.GetMetadata(), rgba, filter, TEX_THRESHOLD_DEFAULT, work))) return false;
 		}
-		else work = std::move(image);
+		else
+		{
+			work = std::move(image);
+		}
 
 		// 밉 체인 + 해상도 축소. 전체 체인을 만든 뒤 maxSize 를 넘는 위쪽 단계를 건너뛰고(= 한 단계 아래 밉이 그대로 새 원본이 됨), 남은 체인을
 		// mipLevels 로 자름. mipLevels 1 + maxSize 0 이면 체인이 필요 없음.
@@ -116,14 +144,27 @@ namespace
 			if (work.GetMetadata().width > 1 || work.GetMetadata().height > 1)
 			{
 				hr = GenerateMipMaps(work.GetImages(), work.GetImageCount(), work.GetMetadata(), filter, 0, chain);
-				if (FAILED(hr)) { Log::Warn("텍스처 변환: 밉 생성 실패 (%s)", Log::HrToString(hr).c_str()); return false; }
+				if (FAILED(hr))
+				{
+					Log::Warn("텍스처 변환: 밉 생성 실패 (%s)", Log::HrToString(hr).c_str());
+					return false;
+				}
 			}
-			else chain = std::move(work);
+			else
+			{
+				chain = std::move(work);
+			}
 			const TexMetadata& cm = chain.GetMetadata();
 			size_t skip = 0;
-			while (s.maxSize > 0 && skip + 1 < cm.mipLevels && (std::max)(chain.GetImage(skip, 0, 0)->width, chain.GetImage(skip, 0, 0)->height) > s.maxSize) ++skip;
+			while (s.maxSize > 0 && skip + 1 < cm.mipLevels && (std::max)(chain.GetImage(skip, 0, 0)->width, chain.GetImage(skip, 0, 0)->height) > s.maxSize)
+			{
+				++skip;
+			}
 			size_t keep = cm.mipLevels - skip;
-			if (s.mipLevels > 0) keep = (std::min)(keep, static_cast<size_t>(s.mipLevels));
+			if (s.mipLevels > 0)
+			{
+				keep = (std::min)(keep, static_cast<size_t>(s.mipLevels));
+			}
 			ScratchImage trimmed;
 			const Image* top = chain.GetImage(skip, 0, 0);
 			hr = trimmed.Initialize2D(cm.format, top->width, top->height, 1, keep);
@@ -147,9 +188,13 @@ namespace
 			const DXGI_FORMAT bc7 = srgb ? DXGI_FORMAT_BC7_UNORM_SRGB : DXGI_FORMAT_BC7_UNORM;
 			hr = E_FAIL;
 			if (ID3D11Device* gpu = GetGpuDevice())
+			{
 				hr = Compress(gpu, work.GetImages(), work.GetImageCount(), meta, bc7, srgb ? TEX_COMPRESS_SRGB_IN : TEX_COMPRESS_DEFAULT, 1.0f, compressed);
+			}
 			if (FAILED(hr))
+			{
 				hr = Compress(work.GetImages(), work.GetImageCount(), meta, bc7, TEX_COMPRESS_BC7_QUICK | TEX_COMPRESS_PARALLEL | (srgb ? TEX_COMPRESS_SRGB_IN : TEX_COMPRESS_DEFAULT), TEX_THRESHOLD_DEFAULT, compressed);
+			}
 			if (FAILED(hr)) return false;
 			result = &compressed;
 			format = "BC7";
@@ -160,7 +205,11 @@ namespace
 		const fs::path temp = fs::path(outPath).concat(L".tmp");   // 쓰다 중단되어도 깨진 캐시가 남지 않게 임시 이름으로 쓴 뒤 바꿈
 		if (FAILED(SaveToDDSFile(result->GetImages(), result->GetImageCount(), result->GetMetadata(), DDS_FLAGS_NONE, temp.c_str()))) return false;
 		fs::rename(temp, outPath, ec);
-		if (ec) { fs::remove(temp, ec); return false; }
+		if (ec)
+		{
+			fs::remove(temp, ec);
+			return false;
+		}
 
 		const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
 		char buffer[160];
@@ -170,8 +219,14 @@ namespace
 	}
 }
 
-void TextureImporter::SetBuildEnabled(bool enabled) { g_buildEnabled = enabled; }
-bool TextureImporter::IsBuildEnabled() { return g_buildEnabled; }
+void TextureImporter::SetBuildEnabled(bool enabled)
+{
+	g_buildEnabled = enabled;
+}
+bool TextureImporter::IsBuildEnabled()
+{
+	return g_buildEnabled;
+}
 
 TextureImportSettings TextureImporter::GetSettings(const std::string& name)
 {
@@ -185,8 +240,14 @@ void TextureImporter::SetSettings(const std::string& name, const TextureImportSe
 {
 	std::lock_guard<std::mutex> lock(g_mutex);
 	EnsureLoaded();
-	if (settings.IsDefault()) g_settings.erase(name);
-	else g_settings[name] = settings;
+	if (settings.IsDefault())
+	{
+		g_settings.erase(name);
+	}
+	else
+	{
+		g_settings[name] = settings;
+	}
 	Save();
 }
 

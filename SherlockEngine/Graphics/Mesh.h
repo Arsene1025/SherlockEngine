@@ -38,8 +38,7 @@ public:
 	// XZ 평면, 노멀 +Y. m×n 정점 격자.
 	static Mesh CreatePlane(float width, float depth, uint32_t m, uint32_t n, const DirectX::XMFLOAT4& color);
 	// Y축 원기둥(원뿔대). bottomRadius == topRadius 이면 원기둥.
-	static Mesh CreateCylinder(float bottomRadius, float topRadius, float height,
-		uint32_t sliceCount, uint32_t stackCount, const DirectX::XMFLOAT4& color);
+	static Mesh CreateCylinder(float bottomRadius, float topRadius, float height, uint32_t sliceCount, uint32_t stackCount, const DirectX::XMFLOAT4& color);
 
 	// 외부 데이터(모델 로더)로 만듦. submeshes 가 비면 전체를 서브메시 하나(슬롯 0)로 둠.
 	static Mesh FromData(std::vector<VERTEX>&& vertices, std::vector<uint32_t>&& indices, std::vector<Submesh>&& submeshes = {});

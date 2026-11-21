@@ -23,12 +23,12 @@ public:
 
 	struct Stats
 	{
-		uint32_t modelLoads = 0;      // 실제 파싱 횟수
-		uint32_t modelHits = 0;       // 캐시 적중
+		uint32_t modelLoads = 0;   // 실제 파싱 횟수
+		uint32_t modelHits = 0;    // 캐시 적중
 		uint32_t fileLoads = 0;
 		uint32_t fileHits = 0;
 		double totalLoadMs = 0.0;
-		size_t cachedBytes = 0;       // 모델 정점·인덱스·이미지 + 파일 바이트
+		size_t cachedBytes = 0;   // 모델 정점·인덱스·이미지 + 파일 바이트
 	};
 
 	// 실패하면 nullptr (로그에 이유). 반환된 포인터는 Unload/Clear 전까지 유효함.

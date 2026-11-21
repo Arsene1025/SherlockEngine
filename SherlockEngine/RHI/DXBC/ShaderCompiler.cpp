@@ -19,16 +19,15 @@ namespace
 	{
 		switch (stage)
 		{
-		case ShaderStage::Vertex: return "vs_5_0";
-		case ShaderStage::Pixel:  return "ps_5_0";
+		case ShaderStage::Vertex:  return "vs_5_0";
+		case ShaderStage::Pixel:   return "ps_5_0";
 		case ShaderStage::Compute: return "cs_5_0";
 		}
 		return nullptr;
 	}
 }
 
-bool ShaderCompiler::CompileFromFile(const std::wstring& path, const char* entryPoint, ShaderStage stage,
-	std::vector<uint8_t>& outBytecode)
+bool ShaderCompiler::CompileFromFile(const std::wstring& path, const char* entryPoint, ShaderStage stage, std::vector<uint8_t>& outBytecode)
 {
 	const char* target = GetTargetProfile(stage);
 	if (target == nullptr)
@@ -53,14 +52,15 @@ bool ShaderCompiler::CompileFromFile(const std::wstring& path, const char* entry
 	ComPtr<ID3DBlob> error;
 	const HRESULT hr = D3DCompileFromFile(
 		path.c_str(),
-		nullptr,                              // 매크로 없음
-		D3D_COMPILE_STANDARD_FILE_INCLUDE,    // #include를 셰이더 파일 위치 기준으로 찾음
+		nullptr,                             // 매크로 없음
+		D3D_COMPILE_STANDARD_FILE_INCLUDE,   // #include를 셰이더 파일 위치 기준으로 찾음
 		entryPoint,
 		target,
 		compileFlags,
 		0,
 		code.GetAddressOf(),
-		error.GetAddressOf());
+		error.GetAddressOf()
+	);
 
 	// 컴파일러가 남긴 메시지. 실패하면 원인이, 성공해도 경고가 들어 있을 수 있음.
 	// "파일(줄,열): error X____: 설명" 형태로 줄 번호가 들어 있음.
@@ -72,8 +72,7 @@ bool ShaderCompiler::CompileFromFile(const std::wstring& path, const char* entry
 
 	if (FAILED(hr))
 	{
-		Log::Error("셰이더 컴파일 실패 : 파일 경로 : %s 진입점 : %s 타깃 : %s",
-			Log::ToUtf8(path.c_str()).c_str(), entryPoint, target);
+		Log::Error("셰이더 컴파일 실패 : 파일 경로 : %s 진입점 : %s 타깃 : %s", Log::ToUtf8(path.c_str()).c_str(), entryPoint, target);
 		if (compilerText != nullptr)
 		{
 			// 컴파일러 텍스트에 %가 들어 있을 수 있으므로 인자로 넘김.
@@ -82,8 +81,7 @@ bool ShaderCompiler::CompileFromFile(const std::wstring& path, const char* entry
 		else
 		{
 			// Blob이 없으면 보통 파일을 못 찾은 경우임. HRESULT를 그대로 보여줌.
-			Log::Error("  (컴파일러 메시지 없음. HRESULT = %s. 셰이더 파일 경로를 확인할 것.)",
-				Log::HrToString(hr).c_str());
+			Log::Error("  (컴파일러 메시지 없음. HRESULT = %s. 셰이더 파일 경로를 확인할 것.)", Log::HrToString(hr).c_str());
 		}
 		return false;
 	}
@@ -143,7 +141,10 @@ namespace
 		while (lineStart < text.size())
 		{
 			size_t lineEnd = text.find('\n', lineStart);
-			if (lineEnd == std::string::npos) lineEnd = text.size();
+			if (lineEnd == std::string::npos)
+			{
+				lineEnd = text.size();
+			}
 			size_t i = text.find_first_not_of(" \t", lineStart);
 			if (i != std::string::npos && i < lineEnd && text.compare(i, 8, "#include") == 0)
 			{
@@ -154,7 +155,10 @@ namespace
 					const std::string name = text.substr(open + 1, close - open - 1);
 					const std::wstring include = directory + std::wstring(name.begin(), name.end());   // 셰이더 파일 이름은 ASCII
 					bool seen = false;
-					for (const std::wstring& existing : out) seen = seen || existing == include;
+					for (const std::wstring& existing : out)
+					{
+						seen = seen || existing == include;
+					}
 					if (!seen && ShaderCompiler::GetLastWriteTime(include) != 0)
 					{
 						out.push_back(include);
@@ -174,13 +178,15 @@ std::vector<std::wstring> ShaderCompiler::ListIncludeFiles(const std::wstring& s
 	return files;
 }
 
-bool ShaderCompiler::LoadOrCompile(const wchar_t* hlslName, const char* entryPoint, ShaderStage stage,
-	std::vector<uint8_t>& outBytecode, std::wstring* outSource)
+bool ShaderCompiler::LoadOrCompile(const wchar_t* hlslName, const char* entryPoint, ShaderStage stage, std::vector<uint8_t>& outBytecode, std::wstring* outSource)
 {
 	// "BasicVertexShader.hlsl" → "BasicVertexShader.cso"
 	std::wstring csoName = hlslName;
 	const size_t dot = csoName.find_last_of(L'.');
-	if (dot != std::wstring::npos) csoName.erase(dot);
+	if (dot != std::wstring::npos)
+	{
+		csoName.erase(dot);
+	}
 	csoName += L".cso";
 
 	const std::wstring csoPath = Paths::GetShaderBinaryPath(csoName.c_str());
@@ -195,31 +201,46 @@ bool ShaderCompiler::LoadOrCompile(const wchar_t* hlslName, const char* entryPoi
 	for (const std::wstring& include : ListIncludeFiles(sourcePath))
 	{
 		const uint64_t includeTime = GetLastWriteTime(include);
-		if (includeTime > newestSource) newestSource = includeTime;
+		if (includeTime > newestSource)
+		{
+			newestSource = includeTime;
+		}
 	}
 
 	if (sourceTime != 0 && (csoTime == 0 || newestSource > csoTime))
 	{
 		if (csoTime == 0)
+		{
 			Log::Info("셰이더 %s : .cso 없음. 소스에서 컴파일.", Log::ToUtf8(hlslName).c_str());
+		}
 		else
+		{
 			Log::Info("셰이더 %s : 소스가 .cso보다 새로움. 소스에서 컴파일.", Log::ToUtf8(hlslName).c_str());
-		if (outSource) *outSource = sourcePath;
+		}
+		if (outSource)
+		{
+			*outSource = sourcePath;
+		}
 		return CompileFromFile(sourcePath, entryPoint, stage, outBytecode);
 	}
 #endif
 
 	if (csoTime != 0 && LoadFile(csoPath, outBytecode))
 	{
-		if (outSource) *outSource = csoPath;
+		if (outSource)
+		{
+			*outSource = csoPath;
+		}
 		return true;
 	}
 
 	// .cso가 없음. exe 옆의 .hlsl(없으면 소스 트리의 .hlsl)로 폴백함.
 	const std::wstring fallback = Paths::GetShaderPath(hlslName);
-	Log::Warn("셰이더 %s : .cso를 찾지 못해 런타임 컴파일로 폴백 (%s).",
-		Log::ToUtf8(hlslName).c_str(), Log::ToUtf8(fallback.c_str()).c_str());
-	if (outSource) *outSource = fallback;
+	Log::Warn("셰이더 %s : .cso를 찾지 못해 런타임 컴파일로 폴백 (%s).", Log::ToUtf8(hlslName).c_str(), Log::ToUtf8(fallback.c_str()).c_str());
+	if (outSource)
+	{
+		*outSource = fallback;
+	}
 	return CompileFromFile(fallback, entryPoint, stage, outBytecode);
 }
 
@@ -245,8 +266,7 @@ bool ShaderCompiler::ValidateConstantBufferSize(std::span<const uint8_t> bytecod
 
 	if (desc.Size != expectedSize)
 	{
-		Log::Error("cbuffer '%s' 크기 불일치: HLSL %u 바이트, C++ %u 바이트. 패킹 규칙(float3 뒤 스칼라)을 확인할 것.",
-			cbufferName, desc.Size, expectedSize);
+		Log::Error("cbuffer '%s' 크기 불일치: HLSL %u 바이트, C++ %u 바이트. 패킹 규칙(float3 뒤 스칼라)을 확인할 것.", cbufferName, desc.Size, expectedSize);
 		return false;
 	}
 
@@ -313,13 +333,13 @@ bool ShaderCompiler::ReflectBindings(std::span<const uint8_t> bytecode, std::vec
 		entry.name = bind.Name ? bind.Name : "";
 		switch (bind.Type)
 		{
-		case D3D_SIT_CBUFFER:   entry.type = BindingType::ConstantBuffer; break;
-		case D3D_SIT_TEXTURE:   entry.type = BindingType::ShaderResource; break;
-		case D3D_SIT_SAMPLER:   entry.type = BindingType::Sampler; break;
-		case D3D_SIT_STRUCTURED: entry.type = BindingType::BufferResource; break;   // StructuredBuffer<T> (읽기 전용)
-		case D3D_SIT_UAV_RWTYPED: entry.type = BindingType::UnorderedAccess; break;  // RWTexture2D<T> (u#)
-		case D3D_SIT_UAV_RWSTRUCTURED: entry.type = BindingType::BufferUnorderedAccess; break;   // RWStructuredBuffer<T> (u#)
-		case D3D_SIT_BYTEADDRESS: entry.type = BindingType::RawBufferResource; break;   // ByteAddressBuffer (t#)
+		case D3D_SIT_CBUFFER:           entry.type = BindingType::ConstantBuffer; break;
+		case D3D_SIT_TEXTURE:           entry.type = BindingType::ShaderResource; break;
+		case D3D_SIT_SAMPLER:           entry.type = BindingType::Sampler; break;
+		case D3D_SIT_STRUCTURED:        entry.type = BindingType::BufferResource; break;             // StructuredBuffer<T> (읽기 전용)
+		case D3D_SIT_UAV_RWTYPED:       entry.type = BindingType::UnorderedAccess; break;            // RWTexture2D<T> (u#)
+		case D3D_SIT_UAV_RWSTRUCTURED:  entry.type = BindingType::BufferUnorderedAccess; break;      // RWStructuredBuffer<T> (u#)
+		case D3D_SIT_BYTEADDRESS:       entry.type = BindingType::RawBufferResource; break;          // ByteAddressBuffer (t#)
 		case D3D_SIT_UAV_RWBYTEADDRESS: entry.type = BindingType::RawBufferUnorderedAccess; break;   // RWByteAddressBuffer (u#)
 		default:
 			// 그 밖의 버퍼 UAV(RWByteAddressBuffer, Append/Consume 등)는 아직 레이아웃에 없음. 나오면 경고로 알림.

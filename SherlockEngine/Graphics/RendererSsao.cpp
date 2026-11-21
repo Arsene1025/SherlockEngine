@@ -73,12 +73,18 @@ void Renderer::DestroySsaoTargets(ViewTarget& view)
 	if (m_device == nullptr) return;
 	for (ResourceSetHandle* set : { &view.ssaoSet, &view.ssaoBlurSet })
 	{
-		if (set->IsValid()) m_device->DestroyResourceSet(*set);
+		if (set->IsValid())
+		{
+			m_device->DestroyResourceSet(*set);
+		}
 		*set = ResourceSetHandle{};
 	}
 	for (TextureHandle* texture : { &view.ssaoRaw, &view.ssaoBlur })
 	{
-		if (texture->IsValid()) m_device->DestroyTexture(*texture);
+		if (texture->IsValid())
+		{
+			m_device->DestroyTexture(*texture);
+		}
 		*texture = TextureHandle{};
 	}
 }
@@ -103,7 +109,10 @@ void Renderer::UploadSsaoConstants(const SsaoSettings& settings)
 		{
 			XMFLOAT3 p(unit(random) * 2.0f - 1.0f, unit(random) * 2.0f - 1.0f, unit(random));
 			XMVECTOR v = XMVector3Normalize(XMLoadFloat3(&p));
-			if (XMVectorGetX(XMVector3LengthSq(v)) < 1.0e-6f) v = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);   // (0,0,0) 이 나온 경우
+			if (XMVectorGetX(XMVector3LengthSq(v)) < 1.0e-6f)
+			{
+				v = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);   // (0,0,0) 이 나온 경우
+			}
 			const float t = (static_cast<float>(i) + unit(random)) / static_cast<float>(sampleCount);
 			v = XMVectorScale(v, 0.2f + 0.8f * t);
 			XMStoreFloat4(&m_ssaoKernel[i], v);

@@ -54,7 +54,10 @@ public:
 				const uint32_t start = m_free[i].start;
 				m_free[i].start += count;
 				m_free[i].count -= count;
-				if (m_free[i].count == 0) m_free.erase(m_free.begin() + i);
+				if (m_free[i].count == 0)
+				{
+					m_free.erase(m_free.begin() + i);
+				}
 				return start;
 			}
 		}
@@ -91,7 +94,11 @@ public:
 	uint32_t GetCapacity() const { return m_capacity; }
 
 private:
-	struct Range { uint32_t start; uint32_t count; };
+	struct Range
+	{
+		uint32_t start;
+		uint32_t count;
+	};
 
 	ComPtr<ID3D12DescriptorHeap> m_heap;
 	D3D12_DESCRIPTOR_HEAP_TYPE m_type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;

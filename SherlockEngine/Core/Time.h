@@ -12,14 +12,14 @@
 class SHERLOCK_API Time
 {
 public:
-	void Reset();            // 시계 시작 (Engine::Initialize 에서 호출)
-	float Tick();            // 프레임마다 한 번 호출함. 클램프된 dt 를 돌려줌
+	void Reset();   // 시계 시작 (Engine::Initialize 에서 호출)
+	float Tick();   // 프레임마다 한 번 호출함. 클램프된 dt 를 돌려줌
 
-	float GetDeltaTime() const { return m_deltaTime; }        // 클램프된 값 (≤ maxDeltaTime)
-	float GetRawDeltaTime() const { return m_rawDeltaTime; }  // 실제 측정값
-	float GetTotalTime() const { return m_totalTime; }        // Reset 이후 경과 시간(초, 일시정지 제외)
+	float GetDeltaTime() const { return m_deltaTime; }         // 클램프된 값 (≤ maxDeltaTime)
+	float GetRawDeltaTime() const { return m_rawDeltaTime; }   // 실제 측정값
+	float GetTotalTime() const { return m_totalTime; }         // Reset 이후 경과 시간(초, 일시정지 제외)
 	uint64_t GetFrameCount() const { return m_frameCount; }
-	float GetFps() const { return m_fps; }                    // 0.5초 구간 평균
+	float GetFps() const { return m_fps; }   // 0.5초 구간 평균
 	float GetAverageFrameMs() const { return m_fps > 0.0f ? 1000.0f / m_fps : 0.0f; }
 
 	// 고정 스텝. while (time.ConsumeFixedStep()) OnFixedUpdate(time.GetFixedStep());
@@ -29,7 +29,7 @@ public:
 	uint32_t GetFixedStepsLastFrame() const { return m_fixedStepsLastFrame; }
 	float GetInterpolationAlpha() const { return m_fixedStep > 0.0f ? m_accumulator / m_fixedStep : 0.0f; }
 
-	float maxDeltaTime = 0.25f;           // 디버거 정지나 창 이동 뒤에 생기는 거대한 dt 를 자름
+	float maxDeltaTime = 0.25f;   // 디버거 정지나 창 이동 뒤에 생기는 거대한 dt 를 자름
 	uint32_t maxFixedStepsPerFrame = 8;
 
 private:

@@ -9,7 +9,7 @@
 
 #include <d3d11.h>
 #include <dxgi.h>
-#include <dxgi1_5.h>      // IDXGIFactory2(CreateSwapChainForHwnd), IDXGIFactory5(ALLOW_TEARING 확인)
+#include <dxgi1_5.h>   // IDXGIFactory2(CreateSwapChainForHwnd), IDXGIFactory5(ALLOW_TEARING 확인)
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 

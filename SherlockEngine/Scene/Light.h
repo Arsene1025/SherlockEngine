@@ -25,8 +25,8 @@ struct Light
 	float range = 50.0f;
 	// constant, linear, quadratic attenuation
 	DirectX::XMFLOAT3 attenuation = DirectX::XMFLOAT3(1.0f, 0.045f, 0.0075f);
-	float innerConeCos = 0.9238795f; // cos(22.5 degrees)
-	float outerConeCos = 0.8660254f; // cos(30 degrees)
+	float innerConeCos = 0.9238795f;   // cos(22.5 degrees)
+	float outerConeCos = 0.8660254f;   // cos(30 degrees)
 	bool castShadows = true;
 };
 

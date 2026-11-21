@@ -16,8 +16,8 @@ namespace fs = std::filesystem;
 
 namespace
 {
-	constexpr uint32_t kThumbnailSize = 128;          // 긴 변
-	constexpr size_t kMaxThumbnails = 256;            // 128² RGBA = 64KB → 최악 16MB. D3D12 shader-visible SRV 힙(4096) 한도도 지킴
+	constexpr uint32_t kThumbnailSize = 128;   // 긴 변
+	constexpr size_t kMaxThumbnails = 256;     // 128² RGBA = 64KB → 최악 16MB. D3D12 shader-visible SRV 힙(4096) 한도도 지킴
 	constexpr size_t kEvictTo = 192;
 	constexpr uint32_t kThumbnailLoadsPerFrame = 1;   // 2048² JPEG 디코드+축소 ≈ 10~30ms. 한 장씩이면 히치가 한 프레임에 그침
 	constexpr int kMaxTreeDepth = 6;
@@ -50,8 +50,10 @@ namespace
 	bool ContainsNoCase(const std::string& haystack, const std::string& needle)
 	{
 		if (needle.empty()) return true;
-		auto it = std::search(haystack.begin(), haystack.end(), needle.begin(), needle.end(),
-			[](char a, char b) { return ::tolower(static_cast<unsigned char>(a)) == ::tolower(static_cast<unsigned char>(b)); });
+		auto it = std::search(haystack.begin(), haystack.end(), needle.begin(), needle.end(), [](char a, char b)
+		{
+			return ::tolower(static_cast<unsigned char>(a)) == ::tolower(static_cast<unsigned char>(b));
+		});
 		return it != haystack.end();
 	}
 
@@ -65,7 +67,10 @@ namespace
 		while (length > 0)
 		{
 			--length;
-			while (length > 0 && (static_cast<unsigned char>(text[length]) & 0xC0) == 0x80) --length;   // UTF-8 연속 바이트는 건너뜀
+			while (length > 0 && (static_cast<unsigned char>(text[length]) & 0xC0) == 0x80)
+			{
+				--length;   // UTF-8 연속 바이트는 건너뜀
+			}
 			if (ImGui::CalcTextSize(text.c_str(), text.c_str() + length).x + ellipsisWidth <= maxWidth) break;
 		}
 		return text.substr(0, length) + ellipsis;
@@ -105,12 +110,12 @@ const char* ContentBrowser::TypeName(AssetType type)
 {
 	switch (type)
 	{
-	case AssetType::Folder: return "Folder";
-	case AssetType::Model: return "Model (glTF)";
+	case AssetType::Folder:  return "Folder";
+	case AssetType::Model:   return "Model (glTF)";
 	case AssetType::Texture: return "Texture";
-	case AssetType::Scene: return "Scene";
-	case AssetType::Prefab: return "Prefab";
-	default: return "File";
+	case AssetType::Scene:   return "Scene";
+	case AssetType::Prefab:  return "Prefab";
+	default:                 return "File";
 	}
 }
 
@@ -132,7 +137,10 @@ void ContentBrowser::DrawTypeIcon(ImDrawList* dl, const ImVec2& min, const ImVec
 	const float h = max.y - min.y;
 	const float s = (std::min)(w, h);
 	const ImVec2 c((min.x + max.x) * 0.5f, (min.y + max.y) * 0.5f);
-	const auto col = [alpha](int r, int g, int b) { return IM_COL32(r, g, b, static_cast<int>(255 * alpha)); };
+	const auto col = [alpha](int r, int g, int b)
+	{
+		return IM_COL32(r, g, b, static_cast<int>(255 * alpha));
+	};
 
 	switch (type)
 	{
@@ -187,8 +195,14 @@ void ContentBrowser::DrawTypeIcon(ImDrawList* dl, const ImVec2& min, const ImVec
 			const float y = a.y + s * (0.32f + 0.14f * i);
 			dl->AddLine(ImVec2(a.x + s * 0.08f, y), ImVec2(b.x - s * 0.08f, y), ink, 2.0f);
 		}
-		if (type == AssetType::Scene) dl->AddRectFilled(ImVec2(a.x + s * 0.08f, b.y - s * 0.20f), ImVec2(a.x + s * 0.22f, b.y - s * 0.06f), col(120, 150, 240));
-		if (type == AssetType::Prefab) dl->AddRectFilled(ImVec2(a.x + s * 0.08f, b.y - s * 0.20f), ImVec2(a.x + s * 0.22f, b.y - s * 0.06f), col(240, 160, 70));
+		if (type == AssetType::Scene)
+		{
+			dl->AddRectFilled(ImVec2(a.x + s * 0.08f, b.y - s * 0.20f), ImVec2(a.x + s * 0.22f, b.y - s * 0.06f), col(120, 150, 240));
+		}
+		if (type == AssetType::Prefab)
+		{
+			dl->AddRectFilled(ImVec2(a.x + s * 0.08f, b.y - s * 0.20f), ImVec2(a.x + s * 0.22f, b.y - s * 0.06f), col(240, 160, 70));
+		}
 		break;
 	}
 	case AssetType::Texture:
@@ -221,12 +235,27 @@ ContentBrowser::~ContentBrowser()
 
 void ContentBrowser::SetDirectory(const std::wstring& relativeDir, int root)
 {
-	if (m_rootsDirty) RefreshRoots();
-	if (root < 0 || root >= static_cast<int>(m_roots.size())) root = 0;
+	if (m_rootsDirty)
+	{
+		RefreshRoots();
+	}
+	if (root < 0 || root >= static_cast<int>(m_roots.size()))
+	{
+		root = 0;
+	}
 	m_currentRoot = root;
 	std::wstring dir = relativeDir;
-	for (wchar_t& c : dir) if (c == L'/') c = L'\\';
-	while (!dir.empty() && dir.back() == L'\\') dir.pop_back();
+	for (wchar_t& c : dir)
+	{
+		if (c == L'/')
+		{
+			c = L'\\';
+		}
+	}
+	while (!dir.empty() && dir.back() == L'\\')
+	{
+		dir.pop_back();
+	}
 	m_currentDir = dir;
 	m_dirty = true;
 	m_expandTreeToCurrent = true;
@@ -238,9 +267,15 @@ void ContentBrowser::EnumerateDirectory()
 	m_entries.clear();
 	m_selected = -1;
 	std::error_code ec;
-	if (m_rootsDirty) RefreshRoots();
+	if (m_rootsDirty)
+	{
+		RefreshRoots();
+	}
 	fs::path dir = fs::path(CurrentRoot().dir);
-	if (!m_currentDir.empty()) dir /= m_currentDir;
+	if (!m_currentDir.empty())
+	{
+		dir /= m_currentDir;
+	}
 	if (!fs::is_directory(dir, ec))
 	{
 		Log::Warn("콘텐츠 브라우저: 폴더가 없어 루트로 돌아감: %s", Log::ToUtf8(dir.c_str()).c_str());
@@ -262,7 +297,10 @@ void ContentBrowser::EnumerateDirectory()
 		entry.size = entry.isDirectory ? 0 : it.file_size(ec);
 		m_entries.push_back(std::move(entry));
 	}
-	if (ec) Log::Warn("콘텐츠 브라우저: 폴더 열거 중 오류 (%s)", ec.message().c_str());
+	if (ec)
+	{
+		Log::Warn("콘텐츠 브라우저: 폴더 열거 중 오류 (%s)", ec.message().c_str());
+	}
 
 	std::sort(m_entries.begin(), m_entries.end(), [](const Entry& a, const Entry& b)
 	{
@@ -288,9 +326,16 @@ void ContentBrowser::EnumerateDirectory()
 void ContentBrowser::RefreshRoots()
 {
 	m_roots.clear();
-	if (Paths::HasProject()) m_roots.push_back(Root{ "Project", Paths::GetAssetRoot() });
+	if (Paths::HasProject())
+	{
+		m_roots.push_back(Root{ "Project", Paths::GetAssetRoot() });
+	}
 	m_roots.push_back(Root{ Paths::HasProject() ? "Engine" : "Engine (no project)", Paths::GetEngineAssetRoot() });
-	if (m_currentRoot >= static_cast<int>(m_roots.size())) { m_currentRoot = 0; m_currentDir.clear(); }
+	if (m_currentRoot >= static_cast<int>(m_roots.size()))
+	{
+		m_currentRoot = 0;
+		m_currentDir.clear();
+	}
 	m_rootsDirty = false;
 	ClearThumbnails();
 	Log::Info("콘텐츠 브라우저 루트: %s", Log::ToUtf8(m_roots[0].dir.c_str()).c_str());
@@ -311,7 +356,10 @@ void ContentBrowser::BuildTree(TreeNode& node, const std::wstring& absoluteDir, 
 		BuildTree(child, it.path().wstring(), depth + 1);
 		node.children.push_back(std::move(child));
 	}
-	std::sort(node.children.begin(), node.children.end(), [](const TreeNode& a, const TreeNode& b) { return _wcsicmp(a.name.c_str(), b.name.c_str()) < 0; });
+	std::sort(node.children.begin(), node.children.end(), [](const TreeNode& a, const TreeNode& b)
+	{
+		return _wcsicmp(a.name.c_str(), b.name.c_str()) < 0;
+	});
 }
 
 // ------------------------------------------------------------------ 그리기
@@ -320,8 +368,15 @@ void ContentBrowser::Draw(RHI::Device& device, const Actions& actions)
 {
 	m_device = &device;
 	++m_frame;
-	if (m_rootsDirty) { RefreshRoots(); m_dirty = true; }
-	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) m_dragCancelled = false;
+	if (m_rootsDirty)
+	{
+		RefreshRoots();
+		m_dirty = true;
+	}
+	if (!ImGui::IsMouseDown(ImGuiMouseButton_Left))
+	{
+		m_dragCancelled = false;
+	}
 
 	// 1초마다 폴더 수정 시각을 보고 바뀌었으면 다시 읽음 (탐색기에서 파일을 넣었을 때).
 	const double now = ImGui::GetTime();
@@ -329,10 +384,19 @@ void ContentBrowser::Draw(RHI::Device& device, const Actions& actions)
 	{
 		m_lastPollTime = now;
 		fs::path dir = fs::path(CurrentRoot().dir);
-		if (!m_currentDir.empty()) dir /= m_currentDir;
-		if (DirectoryStamp(dir) != m_dirStamp) m_dirty = true;
+		if (!m_currentDir.empty())
+		{
+			dir /= m_currentDir;
+		}
+		if (DirectoryStamp(dir) != m_dirStamp)
+		{
+			m_dirty = true;
+		}
 	}
-	if (m_dirty) EnumerateDirectory();
+	if (m_dirty)
+	{
+		EnumerateDirectory();
+	}
 
 	PumpThumbnailLoads(kThumbnailLoadsPerFrame);
 	EvictThumbnails();
@@ -341,7 +405,10 @@ void ContentBrowser::Draw(RHI::Device& device, const Actions& actions)
 
 	const float statusHeight = ImGui::GetFrameHeightWithSpacing();
 	ImGui::BeginChild("##tree", ImVec2(180.0f, -statusHeight), ImGuiChildFlags_ResizeX | ImGuiChildFlags_Borders);
-	for (const TreeNode& tree : m_trees) DrawFolderTree(tree);
+	for (const TreeNode& tree : m_trees)
+	{
+		DrawFolderTree(tree);
+	}
 	m_expandTreeToCurrent = false;
 	ImGui::EndChild();
 	ImGui::SameLine();
@@ -353,12 +420,17 @@ void ContentBrowser::Draw(RHI::Device& device, const Actions& actions)
 
 	// 상태줄
 	int visible = 0;
-	for (const Entry& e : m_entries) if (!e.hidden || m_showHidden) ++visible;
+	for (const Entry& e : m_entries)
+	{
+		if (!e.hidden || m_showHidden)
+		{
+			++visible;
+		}
+	}
 	if (m_selected >= 0 && m_selected < static_cast<int>(m_entries.size()))
 	{
 		const Entry& e = m_entries[m_selected];
-		ImGui::Text("%d items   |   %s   %s%s   %s", visible, e.nameUtf8.c_str(), TypeName(e.type), e.isDirectory ? "" : ("   " + SizeText(e.size)).c_str(),
-			Log::ToUtf8(e.relativePath.c_str()).c_str());
+		ImGui::Text("%d items   |   %s   %s%s   %s", visible, e.nameUtf8.c_str(), TypeName(e.type), e.isDirectory ? "" : ("   " + SizeText(e.size)).c_str(), Log::ToUtf8(e.relativePath.c_str()).c_str());
 	}
 	else
 	{
@@ -374,7 +446,11 @@ void ContentBrowser::DrawToolbar()
 		SetDirectory(slash == std::wstring::npos ? L"" : m_currentDir.substr(0, slash), m_currentRoot);
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Refresh")) { m_dirty = true; ClearThumbnails(); }
+	if (ImGui::Button("Refresh"))
+	{
+		m_dirty = true;
+		ClearThumbnails();
+	}
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(200.0f);
 	ImGui::InputTextWithHint("##search", "search in folder", m_search, sizeof(m_search));
@@ -389,19 +465,30 @@ void ContentBrowser::DrawToolbar()
 
 void ContentBrowser::DrawBreadcrumb()
 {
-	if (ImGui::SmallButton(m_roots.empty() ? "Assets" : CurrentRoot().label.c_str())) SetDirectory(L"", m_currentRoot);
+	if (ImGui::SmallButton(m_roots.empty() ? "Assets" : CurrentRoot().label.c_str()))
+	{
+		SetDirectory(L"", m_currentRoot);
+	}
 	std::wstring prefix;
 	size_t start = 0;
 	int index = 0;
 	while (start < m_currentDir.size())
 	{
 		size_t end = m_currentDir.find(L'\\', start);
-		if (end == std::wstring::npos) end = m_currentDir.size();
+		if (end == std::wstring::npos)
+		{
+			end = m_currentDir.size();
+		}
 		const std::wstring segment = m_currentDir.substr(start, end - start);
 		prefix = prefix.empty() ? segment : prefix + L"\\" + segment;
-		ImGui::SameLine(); ImGui::TextDisabled(">"); ImGui::SameLine();
+		ImGui::SameLine();
+		ImGui::TextDisabled(">");
+		ImGui::SameLine();
 		ImGui::PushID(index++);
-		if (ImGui::SmallButton(Log::ToUtf8(segment.c_str()).c_str())) SetDirectory(prefix, m_currentRoot);
+		if (ImGui::SmallButton(Log::ToUtf8(segment.c_str()).c_str()))
+		{
+			SetDirectory(prefix, m_currentRoot);
+		}
 		ImGui::PopID();
 		start = end + 1;
 	}
@@ -414,18 +501,36 @@ void ContentBrowser::DrawFolderTree(const TreeNode& node)
 	const bool current = sameRoot && _wcsicmp(node.relativePath.c_str(), m_currentDir.c_str()) == 0;
 	const bool ancestor = sameRoot && (node.relativePath.empty() || StartsWithNoCase(m_currentDir, node.relativePath + L"\\"));
 	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth;
-	if (leaf) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-	if (current) flags |= ImGuiTreeNodeFlags_Selected;
-	if (node.relativePath.empty()) flags |= ImGuiTreeNodeFlags_DefaultOpen;
-	if (m_expandTreeToCurrent && ancestor && !leaf) ImGui::SetNextItemOpen(true);
+	if (leaf)
+	{
+		flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	}
+	if (current)
+	{
+		flags |= ImGuiTreeNodeFlags_Selected;
+	}
+	if (node.relativePath.empty())
+	{
+		flags |= ImGuiTreeNodeFlags_DefaultOpen;
+	}
+	if (m_expandTreeToCurrent && ancestor && !leaf)
+	{
+		ImGui::SetNextItemOpen(true);
+	}
 
 	ImGui::PushID(node.nameUtf8.c_str());
 	ImGui::PushID(node.root);
 	const bool open = ImGui::TreeNodeEx("##node", flags, "%s", node.nameUtf8.c_str());
-	if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen()) SetDirectory(node.relativePath, node.root);
+	if (ImGui::IsItemClicked(ImGuiMouseButton_Left) && !ImGui::IsItemToggledOpen())
+	{
+		SetDirectory(node.relativePath, node.root);
+	}
 	if (open && !leaf)
 	{
-		for (const TreeNode& child : node.children) DrawFolderTree(child);
+		for (const TreeNode& child : node.children)
+		{
+			DrawFolderTree(child);
+		}
 		ImGui::TreePop();
 	}
 	ImGui::PopID();
@@ -466,7 +571,10 @@ void ContentBrowser::DrawTileGrid(const Actions& actions)
 			{
 				const int index = row * columns + col;
 				if (index >= static_cast<int>(visible.size())) break;
-				if (col > 0) ImGui::SameLine(0.0f, gap);
+				if (col > 0)
+				{
+					ImGui::SameLine(0.0f, gap);
+				}
 				DrawTile(visible[index], tile, actions);
 			}
 		}
@@ -474,7 +582,10 @@ void ContentBrowser::DrawTileGrid(const Actions& actions)
 	clipper.End();
 
 	// 빈 곳 클릭 → 선택 해제
-	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered()) m_selected = -1;
+	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
+	{
+		m_selected = -1;
+	}
 }
 
 void ContentBrowser::DrawTile(int entryIndex, const ImVec2& tile, const Actions& actions)
@@ -485,16 +596,31 @@ void ContentBrowser::DrawTile(int entryIndex, const ImVec2& tile, const Actions&
 	ImGui::InvisibleButton("##tile", tile);
 	const bool hovered = ImGui::IsItemHovered();
 	const bool selected = m_selected == entryIndex;
-	if (ImGui::IsItemClicked(ImGuiMouseButton_Left) || ImGui::IsItemClicked(ImGuiMouseButton_Right)) m_selected = entryIndex;
-	if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) OnDoubleClick(entry, actions);
+	if (ImGui::IsItemClicked(ImGuiMouseButton_Left) || ImGui::IsItemClicked(ImGuiMouseButton_Right))
+	{
+		m_selected = entryIndex;
+	}
+	if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+	{
+		OnDoubleClick(entry, actions);
+	}
 
 	// ---- 그림: 배경, 썸네일/아이콘, 배지, 라벨 ----
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 	const ImVec2 end(pos.x + tile.x, pos.y + tile.y);
 	const float alpha = entry.hidden ? 0.45f : 1.0f;
-	if (selected) dl->AddRectFilled(pos, end, ImGui::GetColorU32(ImGuiCol_Header), 6.0f);
-	else if (hovered) dl->AddRectFilled(pos, end, ImGui::GetColorU32(ImGuiCol_HeaderHovered), 6.0f);
-	else dl->AddRectFilled(pos, end, ImGui::GetColorU32(ImGuiCol_FrameBg, 0.5f), 6.0f);
+	if (selected)
+	{
+		dl->AddRectFilled(pos, end, ImGui::GetColorU32(ImGuiCol_Header), 6.0f);
+	}
+	else if (hovered)
+	{
+		dl->AddRectFilled(pos, end, ImGui::GetColorU32(ImGuiCol_HeaderHovered), 6.0f);
+	}
+	else
+	{
+		dl->AddRectFilled(pos, end, ImGui::GetColorU32(ImGuiCol_FrameBg, 0.5f), 6.0f);
+	}
 
 	const float pad = 8.0f;
 	const ImVec2 imgMin(pos.x + pad, pos.y + pad);
@@ -514,8 +640,14 @@ void ContentBrowser::DrawTile(int entryIndex, const ImVec2& tile, const Actions&
 	if (!entry.isDirectory)
 	{
 		std::string badge = Log::ToUtf8(Extension(entry.name).c_str());
-		if (!badge.empty()) badge.erase(0, 1);
-		std::transform(badge.begin(), badge.end(), badge.begin(), [](char c) { return static_cast<char>(::toupper(static_cast<unsigned char>(c))); });
+		if (!badge.empty())
+		{
+			badge.erase(0, 1);
+		}
+		std::transform(badge.begin(), badge.end(), badge.begin(), [](char c)
+		{
+			return static_cast<char>(::toupper(static_cast<unsigned char>(c)));
+		});
 		if (!badge.empty())
 		{
 			const ImVec2 size = ImGui::CalcTextSize(badge.c_str());
@@ -536,8 +668,7 @@ void ContentBrowser::DrawTile(int entryIndex, const ImVec2& tile, const Actions&
 	DrawContextMenu(entry, actions);
 	if (hovered && ImGui::GetDragDropPayload() == nullptr)
 	{
-		ImGui::SetTooltip("%s\n%s%s\n%s", entry.nameUtf8.c_str(), TypeName(entry.type), entry.isDirectory ? "" : ("   " + SizeText(entry.size)).c_str(),
-			Log::ToUtf8(entry.relativePath.c_str()).c_str());
+		ImGui::SetTooltip("%s\n%s%s\n%s", entry.nameUtf8.c_str(), TypeName(entry.type), entry.isDirectory ? "" : ("   " + SizeText(entry.size)).c_str(), Log::ToUtf8(entry.relativePath.c_str()).c_str());
 	}
 	ImGui::PopID();
 }
@@ -548,7 +679,11 @@ void ContentBrowser::BeginDragSource(const Entry& entry)
 	if (entry.relativePath.size() >= 260)
 	{
 		static bool warned = false;
-		if (!warned) { warned = true; Log::Warn("콘텐츠 브라우저: 경로가 260자 이상이라 드래그할 수 없음: %s", entry.nameUtf8.c_str()); }
+		if (!warned)
+		{
+			warned = true;
+			Log::Warn("콘텐츠 브라우저: 경로가 260자 이상이라 드래그할 수 없음: %s", entry.nameUtf8.c_str());
+		}
 		return;
 	}
 	if (!ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) return;
@@ -564,17 +699,32 @@ void ContentBrowser::BeginDragSource(const Entry& entry)
 	ImGui::Dummy(ImVec2(previewSize, previewSize));
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 	const uint64_t thumb = entry.type == AssetType::Texture ? RequestThumbnail(entry) : 0;
-	if (thumb != 0) dl->AddImageRounded(static_cast<ImTextureID>(thumb), pos, ImVec2(pos.x + previewSize, pos.y + previewSize), ImVec2(0, 0), ImVec2(1, 1), IM_COL32_WHITE, 4.0f);
-	else DrawTypeIcon(dl, pos, ImVec2(pos.x + previewSize, pos.y + previewSize), entry.type);
+	if (thumb != 0)
+	{
+		dl->AddImageRounded(static_cast<ImTextureID>(thumb), pos, ImVec2(pos.x + previewSize, pos.y + previewSize), ImVec2(0, 0), ImVec2(1, 1), IM_COL32_WHITE, 4.0f);
+	}
+	else
+	{
+		DrawTypeIcon(dl, pos, ImVec2(pos.x + previewSize, pos.y + previewSize), entry.type);
+	}
 	ImGui::SameLine();
 	ImGui::BeginGroup();
 	ImGui::TextUnformatted(entry.nameUtf8.c_str());
 	ImGui::TextDisabled("%s", TypeName(entry.type));
-	if (m_dragCancelled) ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.3f, 1.0f), "cancelled (release)");
-	else ImGui::TextDisabled(entry.type == AssetType::Scene ? "drop on Scene view: load" : (entry.type == AssetType::Prefab ? "drop on Scene view: instantiate   Esc: cancel" : "drop on Scene view   Esc: cancel"));
+	if (m_dragCancelled)
+	{
+		ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.3f, 1.0f), "cancelled (release)");
+	}
+	else
+	{
+		ImGui::TextDisabled(entry.type == AssetType::Scene ? "drop on Scene view: load" : (entry.type == AssetType::Prefab ? "drop on Scene view: instantiate   Esc: cancel" : "drop on Scene view   Esc: cancel"));
+	}
 	ImGui::EndGroup();
 
-	if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) m_dragCancelled = true;
+	if (ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+	{
+		m_dragCancelled = true;
+	}
 	ImGui::EndDragDropSource();
 }
 
@@ -583,11 +733,26 @@ void ContentBrowser::DrawContextMenu(const Entry& entry, const Actions& actions)
 	if (!ImGui::BeginPopupContextItem("##ctx")) return;
 	ImGui::TextDisabled("%s", entry.nameUtf8.c_str());
 	ImGui::Separator();
-	if (entry.isDirectory && ImGui::MenuItem("Open folder")) SetDirectory(entry.relativePath, m_currentRoot);
-	if (entry.type == AssetType::Model && ImGui::MenuItem("Place at origin") && actions.placeModel) actions.placeModel(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
-	if (entry.type == AssetType::Scene && ImGui::MenuItem("Load scene") && actions.openScene) actions.openScene(entry.relativePath);
-	if (entry.type == AssetType::Prefab && ImGui::MenuItem("Instantiate at origin") && actions.instantiatePrefab) actions.instantiatePrefab(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
-	if (ImGui::MenuItem("Copy relative path")) ImGui::SetClipboardText(Log::ToUtf8(entry.relativePath.c_str()).c_str());
+	if (entry.isDirectory && ImGui::MenuItem("Open folder"))
+	{
+		SetDirectory(entry.relativePath, m_currentRoot);
+	}
+	if (entry.type == AssetType::Model && ImGui::MenuItem("Place at origin") && actions.placeModel)
+	{
+		actions.placeModel(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+	}
+	if (entry.type == AssetType::Scene && ImGui::MenuItem("Load scene") && actions.openScene)
+	{
+		actions.openScene(entry.relativePath);
+	}
+	if (entry.type == AssetType::Prefab && ImGui::MenuItem("Instantiate at origin") && actions.instantiatePrefab)
+	{
+		actions.instantiatePrefab(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+	}
+	if (ImGui::MenuItem("Copy relative path"))
+	{
+		ImGui::SetClipboardText(Log::ToUtf8(entry.relativePath.c_str()).c_str());
+	}
 	if (ImGui::MenuItem("Show in Explorer"))
 	{
 		const std::wstring parameters = L"/select,\"" + entry.absolutePath + L"\"";
@@ -601,9 +766,24 @@ void ContentBrowser::OnDoubleClick(const Entry& entry, const Actions& actions)
 	switch (entry.type)
 	{
 	case AssetType::Folder: SetDirectory(entry.relativePath, m_currentRoot); break;
-	case AssetType::Scene: if (actions.openScene) actions.openScene(entry.relativePath); break;
-	case AssetType::Model: if (actions.placeModel) actions.placeModel(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f)); break;
-	case AssetType::Prefab: if (actions.instantiatePrefab) actions.instantiatePrefab(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f)); break;
+	case AssetType::Scene:
+		if (actions.openScene)
+		{
+			actions.openScene(entry.relativePath);
+		}
+		break;
+	case AssetType::Model:
+		if (actions.placeModel)
+		{
+			actions.placeModel(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+		}
+		break;
+	case AssetType::Prefab:
+		if (actions.instantiatePrefab)
+		{
+			actions.instantiatePrefab(entry.relativePath, DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f));
+		}
+		break;
 	default: break;
 	}
 }
@@ -634,8 +814,8 @@ void ContentBrowser::PumpThumbnailLoads(uint32_t budget)
 		const std::wstring absolute = m_pending.front();
 		m_pending.pop_front();
 		auto it = m_thumbnails.find(absolute);
-		if (it == m_thumbnails.end()) continue;                    // 그 사이 지워짐
-		if (m_frame - it->second.lastUsedFrame > 2)                // 스크롤로 사라진 타일. 다시 보이면 다시 요청됨
+		if (it == m_thumbnails.end()) continue;       // 그 사이 지워짐
+		if (m_frame - it->second.lastUsedFrame > 2)   // 스크롤로 사라진 타일. 다시 보이면 다시 요청됨
 		{
 			m_thumbnails.erase(it);
 			continue;
@@ -649,7 +829,10 @@ void ContentBrowser::PumpThumbnailLoads(uint32_t budget)
 		}
 		image.desc.debugName = "Thumbnail";
 		it->second.handle = m_device->CreateTexture(image.desc, image.subresources);   // vector → std::span
-		if (!it->second.handle.IsValid()) it->second.failed = true;
+		if (!it->second.handle.IsValid())
+		{
+			it->second.failed = true;
+		}
 		--budget;
 	}
 }
@@ -660,7 +843,10 @@ void ContentBrowser::EvictThumbnails()
 	std::vector<std::pair<uint64_t, std::wstring>> candidates;
 	for (const auto& entry : m_thumbnails)
 	{
-		if (entry.second.lastUsedFrame != m_frame) candidates.emplace_back(entry.second.lastUsedFrame, entry.first);
+		if (entry.second.lastUsedFrame != m_frame)
+		{
+			candidates.emplace_back(entry.second.lastUsedFrame, entry.first);
+		}
 	}
 	std::sort(candidates.begin(), candidates.end());
 	for (const auto& candidate : candidates)
@@ -668,7 +854,10 @@ void ContentBrowser::EvictThumbnails()
 		if (m_thumbnails.size() <= kEvictTo) break;
 		auto it = m_thumbnails.find(candidate.second);
 		if (it == m_thumbnails.end()) continue;
-		if (it->second.handle.IsValid()) m_device->DestroyTexture(it->second.handle);
+		if (it->second.handle.IsValid())
+		{
+			m_device->DestroyTexture(it->second.handle);
+		}
 		m_thumbnails.erase(it);
 	}
 }
@@ -679,7 +868,10 @@ void ContentBrowser::ClearThumbnails()
 	{
 		for (auto& entry : m_thumbnails)
 		{
-			if (entry.second.handle.IsValid()) m_device->DestroyTexture(entry.second.handle);
+			if (entry.second.handle.IsValid())
+			{
+				m_device->DestroyTexture(entry.second.handle);
+			}
 		}
 	}
 	m_thumbnails.clear();

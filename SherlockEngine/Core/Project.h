@@ -19,27 +19,27 @@ class Project
 public:
 	static constexpr const wchar_t* kExtension = L".sherlock";
 
-	bool Load(const std::wstring& pathOrDir);                  // .sherlock 파일 또는 그것이 든 폴더
+	bool Load(const std::wstring& pathOrDir);   // .sherlock 파일 또는 그것이 든 폴더
 	bool Save() const;
 	bool IsLoaded() const { return !m_root.empty(); }
 
 	// 폴더 골격(Assets\Scenes, Assets\Models, Assets\Textures, Scripts, Build)과 .sherlock 을 만듦. 이미 있으면 실패.
 	static bool Create(const std::wstring& parentDir, const std::string& name, const std::wstring& engineRoot, Project& out, std::string& error);
-	static std::wstring FindProjectFile(const std::wstring& dir);              // dir 안의 첫 *.sherlock. 없으면 빈 문자열
+	static std::wstring FindProjectFile(const std::wstring& dir);                   // dir 안의 첫 *.sherlock. 없으면 빈 문자열
 	static std::wstring FindUpwards(const std::wstring& startDir, int maxLevels);   // startDir 부터 위로 올라가며 찾음 (Binaries\Debug → 프로젝트)
 	static bool IsValidName(const std::string& name);
 
 	const std::string& GetName() const { return m_name; }
-	const std::wstring& GetRoot() const { return m_root; }         // 끝에 백슬래시 포함
-	std::wstring GetFilePath() const;                              // <root><Name>.sherlock
+	const std::wstring& GetRoot() const { return m_root; }   // 끝에 백슬래시 포함
+	std::wstring GetFilePath() const;                        // <root><Name>.sherlock
 	std::wstring GetAssetsDir() const { return m_root + L"Assets\\"; }
 	std::wstring GetScriptsDir() const { return m_root + L"Scripts\\"; }
 	std::wstring GetBinariesDir(const wchar_t* configuration) const { return m_root + L"Binaries\\" + configuration + L"\\"; }
 	std::wstring GetSolutionPath() const;
-	std::wstring GetScriptsProjectName() const;                    // "<Name>Scripts" (vcxproj 이름이자 DLL 이름)
+	std::wstring GetScriptsProjectName() const;   // "<Name>Scripts" (vcxproj 이름이자 DLL 이름)
 
-	std::string startScene;      // Assets\Scenes 기준 파일명
-	std::wstring engineRoot;     // SherlockEngine\ 소스 폴더 (생성 시 기록). 값이 비었거나 그 폴더가 없으면 exe 옆에서 찾음
+	std::string startScene;    // Assets\Scenes 기준 파일명
+	std::wstring engineRoot;   // SherlockEngine\ 소스 폴더 (생성 시 기록). 값이 비었거나 그 폴더가 없으면 exe 옆에서 찾음
 
 private:
 	std::string m_name;

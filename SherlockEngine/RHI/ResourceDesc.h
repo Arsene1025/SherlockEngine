@@ -22,9 +22,9 @@ enum class BufferUsage : uint8_t
 // 비트 플래그. 한 버퍼가 Vertex | ShaderResource 처럼 두 역할을 겸할 수 있음.
 enum BufferBind : uint8_t
 {
-	BufferBind_Vertex         = 1 << 0,
-	BufferBind_Index          = 1 << 1,
-	BufferBind_Constant       = 1 << 2,
+	BufferBind_Vertex = 1 << 0,
+	BufferBind_Index = 1 << 1,
+	BufferBind_Constant = 1 << 2,
 	BufferBind_ShaderResource = 1 << 3,   // StructuredBuffer (stride 필요). Raw 와 함께면 ByteAddressBuffer (stride 0).
 	// 컴퓨트 셰이더가 RWStructuredBuffer 로 씀 (u#). Default usage + stride > 0 만 가능 (Raw 와 함께면 RWByteAddressBuffer,
 	// stride 0). 두 백엔드의 CreateBuffer 가 같은 규칙(ValidateBufferDesc)으로 거부함. 상태(ResourceState)를 버퍼마다
@@ -41,11 +41,11 @@ enum BufferBind : uint8_t
 
 struct BufferDesc
 {
-	uint32_t size = 0;                      // 바이트 단위. 상수버퍼는 16의 배수로 올림 처리됨.
+	uint32_t size = 0;   // 바이트 단위. 상수버퍼는 16의 배수로 올림 처리됨.
 	BufferUsage usage = BufferUsage::Default;
-	uint8_t bindFlags = 0;                  // BufferBind_* 조합
-	uint32_t stride = 0;                    // 정점 버퍼: 정점 크기. 구조화 버퍼: 원소 크기.
-	const char* debugName = nullptr;        // Debug Layer 메시지에 나올 이름. 생성 시에만 읽음.
+	uint8_t bindFlags = 0;             // BufferBind_* 조합
+	uint32_t stride = 0;               // 정점 버퍼: 정점 크기. 구조화 버퍼: 원소 크기.
+	const char* debugName = nullptr;   // Debug Layer 메시지에 나올 이름. 생성 시에만 읽음.
 };
 
 // 버퍼 Desc 의 usage·bindFlags·stride 조합 검사. 맞으면 nullptr, 어긋나면 이유. 두 백엔드의 CreateBuffer 가 같은
@@ -79,8 +79,8 @@ constexpr bool IsStateTrackedBuffer(const BufferDesc& desc)
 
 enum TextureBind : uint8_t
 {
-	TextureBind_RenderTarget   = 1 << 0,
-	TextureBind_DepthStencil   = 1 << 1,
+	TextureBind_RenderTarget = 1 << 0,
+	TextureBind_DepthStencil = 1 << 1,
 	TextureBind_ShaderResource = 1 << 2,
 	// 컴퓨트 셰이더가 RWTexture2D 로 씀 (u#). 생성할 때 정해야 하고 깊이·MSAA·sRGB 포맷과는 함께 쓸 수 없음 —
 	// 두 백엔드의 CreateTexture 가 같은 규칙으로 거부함. cs_5_0 에서 float4 같은 다성분 UAV 는 쓰기만 되므로
@@ -103,9 +103,9 @@ struct TextureDesc
 	TextureDimension dimension = TextureDimension::Texture2D;   // D3D12_RESOURCE_DESC 처럼 첫 필드. 생략하면 2D
 	uint32_t width = 0;
 	uint32_t height = 0;
-	Format format = Format::Unknown;        // sRGB 텍스처는 *_UNORM_SRGB 로 만듦. 샘플링할 때 하드웨어가 선형 값으로 변환함.
+	Format format = Format::Unknown;   // sRGB 텍스처는 *_UNORM_SRGB 로 만듦. 샘플링할 때 하드웨어가 선형 값으로 변환함.
 	uint32_t mipLevels = 1;
-	uint8_t bindFlags = 0;                  // TextureBind_* 조합
+	uint8_t bindFlags = 0;   // TextureBind_* 조합
 	uint32_t sampleCount = 1;
 	const char* debugName = nullptr;
 };
@@ -181,7 +181,7 @@ struct ShaderDesc
 enum ShaderStageMask : uint8_t
 {
 	ShaderStageMask_Vertex = 1 << 0,
-	ShaderStageMask_Pixel  = 1 << 1,
+	ShaderStageMask_Pixel = 1 << 1,
 	// 컴퓨트 패스의 레이아웃. 그래픽스 스테이지와 한 슬롯에 섞지 않음 (CreateBindingLayout 이 거부) — D3D12 에서
 	// 컴퓨트 루트 시그니처는 그래픽스와 따로 바인딩되므로 한 레이아웃이 둘 다에 걸치면 뜻이 모호해짐.
 	ShaderStageMask_Compute = 1 << 2,

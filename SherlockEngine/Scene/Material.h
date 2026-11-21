@@ -14,11 +14,11 @@
 
 enum class SamplerPreset : uint8_t
 {
-	LinearWrap,       // 3선형 + 반복. 기본값
+	LinearWrap,   // 3선형 + 반복. 기본값
 	LinearClamp,
-	AnisotropicWrap,  // 비등방 16x. 바닥처럼 비스듬히 보는 면에 필요
-	PointWrap,        // 최근접(픽셀 아트). 밉맵은 씀
-	PointNoMip,       // 최근접 + 밉맵 끔. "밉맵이 없으면 어떻게 되나"의 대조군
+	AnisotropicWrap,   // 비등방 16x. 바닥처럼 비스듬히 보는 면에 필요
+	PointWrap,         // 최근접(픽셀 아트). 밉맵은 씀
+	PointNoMip,        // 최근접 + 밉맵 끔. "밉맵이 없으면 어떻게 되나"의 대조군
 };
 
 struct Material
@@ -29,25 +29,25 @@ struct Material
 
 	// PBR (glTF metallic-roughness). Blinn-Phong 의 specularColor / shininess 를 대체함.
 	// 직접광은 Cook-Torrance(GGX), 환경광은 IBL(split-sum) 이 이 두 값을 읽음 (BasicPixelShader.hlsl).
-	float metallic = 0.0f;                 // 0 = 유전체(F0 = 0.04), 1 = 금속(F0 = baseColor, 확산 없음)
-	float roughness = 0.5f;                // 지각적 거칠기. GGX 의 α = roughness². IBL 반사 큐브의 밉도 이 값으로 고름
+	float metallic = 0.0f;                                              // 0 = 유전체(F0 = 0.04), 1 = 금속(F0 = baseColor, 확산 없음)
+	float roughness = 0.5f;                                             // 지각적 거칠기. GGX 의 α = roughness². IBL 반사 큐브의 밉도 이 값으로 고름
 	DirectX::XMFLOAT3 emissive = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // 스스로 내는 빛(선형, 1 을 넘어도 됨). 조명·그림자와 무관하게 더해짐
 
-	std::string albedoTexture;             // 위 규칙을 따르는 이름. 비면 흰색
-	bool albedoSrgb = true;                // 색 텍스처는 sRGB. 데이터 텍스처(노멀·마스크)는 false
+	std::string albedoTexture;   // 위 규칙을 따르는 이름. 비면 흰색
+	bool albedoSrgb = true;      // 색 텍스처는 sRGB. 데이터 텍스처(노멀·마스크)는 false
 	SamplerPreset sampler = SamplerPreset::LinearWrap;
 	DirectX::XMFLOAT2 uvScale = DirectX::XMFLOAT2(1.0f, 1.0f);
-	bool unlit = false;                    // 조명 없이 알베도만 출력 (감마 검증용)
+	bool unlit = false;   // 조명 없이 알베도만 출력 (감마 검증용)
 
 	// 노멀 맵. 항상 선형(sRGB 아님). 탄젠트 공간, +X = u 증가, +Y = v 증가(아래), +Z = 표면 밖.
-	std::string normalTexture;             // 비면 평평한 노멀 (128,128,255)
-	float normalStrength = 1.0f;           // xy 배율. 0 이면 노멀 맵을 무시한 것과 같음
+	std::string normalTexture;     // 비면 평평한 노멀 (128,128,255)
+	float normalStrength = 1.0f;   // xy 배율. 0 이면 노멀 맵을 무시한 것과 같음
 
 	// PBR 텍스처. 계수(metallic·roughness·emissive)에 곱해짐 — glTF 규칙. 비면 흰색이라 계수가 그대로 쓰임.
-	std::string metallicRoughnessTexture;  // 선형. G = roughness, B = metallic (glTF 채널 배치)
-	std::string occlusionTexture;          // 선형. R = 앰비언트 오클루전. 환경광(IBL)에만 곱함
-	float occlusionStrength = 1.0f;        // 0 = AO 무시, 1 = 텍스처 값 그대로
-	std::string emissiveTexture;           // sRGB 색 텍스처
+	std::string metallicRoughnessTexture;   // 선형. G = roughness, B = metallic (glTF 채널 배치)
+	std::string occlusionTexture;           // 선형. R = 앰비언트 오클루전. 환경광(IBL)에만 곱함
+	float occlusionStrength = 1.0f;         // 0 = AO 무시, 1 = 텍스처 값 그대로
+	std::string emissiveTexture;            // sRGB 색 텍스처
 
 	// 반사 확장 (KHR_materials_ior, KHR_materials_specular). 기본값(ior 1.5, specular 1, 흰색)은 F0 = 0.04 로
 	// 이전 동작과 같음. 비금속의 F0 = min(((ior-1)/(ior+1))² · specularColor, 1) · specularFactor, F90 = specularFactor.
@@ -55,24 +55,24 @@ struct Material
 	float ior = 1.5f;
 	float specularFactor = 1.0f;
 	DirectX::XMFLOAT3 specularColor = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-	std::string specularTexture;           // 선형. A = specularFactor 에 곱함
-	std::string specularColorTexture;      // sRGB 색 텍스처. RGB = specularColor 에 곱함
+	std::string specularTexture;        // 선형. A = specularFactor 에 곱함
+	std::string specularColorTexture;   // sRGB 색 텍스처. RGB = specularColor 에 곱함
 
 	// 클리어코트 (KHR_materials_clearcoat). 기본 층 위에 얹는 얇은 투명 코팅(차 도장 등). 별도의 GGX 반사 로브(F0 0.04)를
 	// 더하고, 기본 층은 코팅 프레넬만큼 줄임. 코팅 노멀 맵이 없으면 노멀 맵이 아닌 기하 노멀을 씀. 0 = 끔.
 	float clearcoatFactor = 0.0f;
 	float clearcoatRoughness = 0.0f;
 	float clearcoatNormalScale = 1.0f;
-	std::string clearcoatTexture;          // 선형. R = clearcoatFactor 에 곱함
-	std::string clearcoatRoughnessTexture; // 선형. G = clearcoatRoughness 에 곱함
-	std::string clearcoatNormalTexture;    // 선형 노멀 맵. 비면 평평한 노멀
+	std::string clearcoatTexture;            // 선형. R = clearcoatFactor 에 곱함
+	std::string clearcoatRoughnessTexture;   // 선형. G = clearcoatRoughness 에 곱함
+	std::string clearcoatNormalTexture;      // 선형 노멀 맵. 비면 평평한 노멀
 
 	// 투과 (KHR_materials_transmission). 유리처럼 빛이 비치는 정도. 0 = 끔. 비금속에만 적용됨(금속은 0 으로 취급).
 	// 이 엔진은 배경을 굴절시키지 않고, 투과를 알파 블렌딩(뒤에 있는 것이 그대로 비침)으로 근사함. 투과나 alphaBlend 재질은
 	// 불투명 물체와 하늘을 다 그린 뒤 먼 것부터 블렌딩해서 그리고, 그림자는 만들지 않음.
 	float transmissionFactor = 0.0f;
-	std::string transmissionTexture;       // 선형. R = transmissionFactor 에 곱함
-	bool alphaBlend = false;               // glTF alphaMode BLEND. 알파로 뒤와 섞음 (정렬된 별도 패스)
+	std::string transmissionTexture;   // 선형. R = transmissionFactor 에 곱함
+	bool alphaBlend = false;           // glTF alphaMode BLEND. 알파로 뒤와 섞음 (정렬된 별도 패스)
 
 	// 알파 컷아웃 (glTF alphaMode MASK). 0 = 끔. 알베도 알파가 이 값보다 작은 픽셀은 버림(clip).
 	float alphaCutoff = 0.0f;

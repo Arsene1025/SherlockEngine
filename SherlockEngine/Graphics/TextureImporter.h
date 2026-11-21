@@ -12,9 +12,9 @@
 // 기본값과 다른 것만 저장함. 기본값 = 압축 켬, 밉 전체, 해상도 그대로. 작은 텍스처(256 미만)는 기본값일 때 변환하지 않음.
 struct TextureImportSettings
 {
-	bool compress = true;       // BC7 로 압축. 끄면 R8G8B8A8 로 저장 (밉·크기 설정만 적용)
-	uint32_t mipLevels = 0;     // 0 = 1×1 까지 전체, 1 = 밉 없음, N = 상위 N 단계
-	uint32_t maxSize = 0;       // 0 = 원본 크기, 아니면 긴 변이 이 값 이하가 되도록 절반씩 줄임 (2 의 거듭제곱 비율)
+	bool compress = true;     // BC7 로 압축. 끄면 R8G8B8A8 로 저장 (밉·크기 설정만 적용)
+	uint32_t mipLevels = 0;   // 0 = 1×1 까지 전체, 1 = 밉 없음, N = 상위 N 단계
+	uint32_t maxSize = 0;     // 0 = 원본 크기, 아니면 긴 변이 이 값 이하가 되도록 절반씩 줄임 (2 의 거듭제곱 비율)
 
 	bool IsDefault() const { return compress && mipLevels == 0 && maxSize == 0; }
 	bool operator==(const TextureImportSettings& other) const { return compress == other.compress && mipLevels == other.mipLevels && maxSize == other.maxSize; }

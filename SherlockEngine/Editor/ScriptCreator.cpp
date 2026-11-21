@@ -104,23 +104,49 @@ bool ScriptCreator::IsValidClassName(const std::string& name)
 {
 	if (name.empty() || name.size() > 64) return false;
 	if (!(std::isalpha(static_cast<unsigned char>(name[0])) || name[0] == '_')) return false;
-	for (char c : name) if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '_')) return false;
+	for (char c : name)
+	{
+		if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '_')) return false;
+	}
 	static const char* reserved[] = { "Script", "Behaviour", "GameObject", "Scene", "Camera", "Transform", "Input", "Rigidbody", "CameraComponent", "FollowTarget", "class", "int", "float", "void" };
-	for (const char* r : reserved) if (name == r) return false;
+	for (const char* r : reserved)
+	{
+		if (name == r) return false;
+	}
 	return true;
 }
 
 bool ScriptCreator::Create(const std::string& className, std::string& error)
 {
-	if (!IsAvailable()) { error = "no project is open"; return false; }
-	if (!IsValidClassName(className)) { error = "invalid class name (letters, digits, _; not a reserved name)"; return false; }
+	if (!IsAvailable())
+	{
+		error = "no project is open";
+		return false;
+	}
+	if (!IsValidClassName(className))
+	{
+		error = "invalid class name (letters, digits, _; not a reserved name)";
+		return false;
+	}
 	const std::wstring sourcePath = GetScriptPath(className);
 	const std::wstring headerPath = GetScriptHeaderPath(className);
-	if (FileExists(sourcePath) || FileExists(headerPath)) { error = "already exists: " + Log::ToUtf8(sourcePath.c_str()); return false; }
+	if (FileExists(sourcePath) || FileExists(headerPath))
+	{
+		error = "already exists: " + Log::ToUtf8(sourcePath.c_str());
+		return false;
+	}
 
 	CreateDirectoryW(GetScriptsDir().c_str(), nullptr);
-	if (!WriteAll(headerPath, HeaderTemplate(className))) { error = "cannot write " + Log::ToUtf8(headerPath.c_str()); return false; }
-	if (!WriteAll(sourcePath, SourceTemplate(className))) { error = "cannot write " + Log::ToUtf8(sourcePath.c_str()); return false; }
+	if (!WriteAll(headerPath, HeaderTemplate(className)))
+	{
+		error = "cannot write " + Log::ToUtf8(headerPath.c_str());
+		return false;
+	}
+	if (!WriteAll(sourcePath, SourceTemplate(className)))
+	{
+		error = "cannot write " + Log::ToUtf8(sourcePath.c_str());
+		return false;
+	}
 	Log::Info("새 스크립트: %s (+ .h). 스크립트 DLL 프로젝트가 Scripts\\**\\*.cpp 를 와일드카드로 컴파일한다 (하위 폴더 포함) — Build scripts 하면 에디터가 DLL 을 다시 올려 Add Component 에 나타난다", Log::ToUtf8(sourcePath.c_str()).c_str());
 	return true;
 }

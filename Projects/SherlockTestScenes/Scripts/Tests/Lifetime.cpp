@@ -14,7 +14,10 @@ void Lifetime::Start()
 void Lifetime::Update(float dt)
 {
 	m_elapsed += dt;
-	if (m_elapsed >= seconds) DestroySelf();   // 프레임 끝에 지워짐. 이 Update 의 나머지는 그대로 실행됨
+	if (m_elapsed >= seconds)
+	{
+		DestroySelf();   // 프레임 끝에 지워짐. 이 Update 의 나머지는 그대로 실행됨
+	}
 }
 
 SHERLOCK_SCRIPT(Lifetime)

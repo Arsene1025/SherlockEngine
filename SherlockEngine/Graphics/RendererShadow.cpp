@@ -30,7 +30,10 @@ namespace
 	//   │ 12 │ 13 │ 14 │ 15 │
 	//   └────┴────┴────┴────┘
 	// 방향광은 모두 CSM 전용 아틀라스(CsmRect, CsmSingleRect)에 그림.
-	struct AtlasRect { uint32_t x, y, size; };
+	struct AtlasRect
+	{
+		uint32_t x, y, size;
+	};
 
 	// 방향광 단일 뷰(캐스케이드 1)는 CSM 아틀라스 전체를 씀.
 	AtlasRect CsmSingleRect()
@@ -104,10 +107,8 @@ bool Renderer::CreateShadowResources()
 		Log::Error("Renderer : 그림자 맵 리소스 생성 실패.");
 		return false;
 	}
-	Log::Info("섀도 아틀라스: %ux%u D32_FLOAT (지역광 타일 %u × %u²), PCF 5x5", kShadowAtlasSize, kShadowAtlasSize,
-		kShadowLocalTileCount, kShadowTileSize);
-	Log::Info("CSM 아틀라스: %ux%u D32_FLOAT (캐스케이드 %u / %u / %u / %u)", kCsmAtlasWidth, kCsmAtlasHeight,
-		kCsmCascadeSize[0], kCsmCascadeSize[1], kCsmCascadeSize[2], kCsmCascadeSize[3]);
+	Log::Info("섀도 아틀라스: %ux%u D32_FLOAT (지역광 타일 %u × %u²), PCF 5x5", kShadowAtlasSize, kShadowAtlasSize, kShadowLocalTileCount, kShadowTileSize);
+	Log::Info("CSM 아틀라스: %ux%u D32_FLOAT (캐스케이드 %u / %u / %u / %u)", kCsmAtlasWidth, kCsmAtlasHeight, kCsmCascadeSize[0], kCsmCascadeSize[1], kCsmCascadeSize[2], kCsmCascadeSize[3]);
 	return true;
 }
 
@@ -159,8 +160,8 @@ XMMATRIX Renderer::ComputeSpotViewProj(const GpuLight& light, float& outTanHalfF
 XMMATRIX Renderer::ComputePointFaceViewProj(const GpuLight& light, uint32_t face) const
 {
 	// 면 순서는 D3D 큐브맵과 같음 (+X, −X, +Y, −Y, +Z, −Z). PS 의 PointFace 가 같은 번호를 씀.
-	static const XMFLOAT3 kLook[6] = { {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1} };
-	static const XMFLOAT3 kUp[6] = { {0, 1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {0, 1, 0} };
+	static const XMFLOAT3 kLook[6] = { { 1, 0, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 }, { 0, 0, 1 }, { 0, 0, -1 } };
+	static const XMFLOAT3 kUp[6] = { { 0, 1, 0 }, { 0, 1, 0 }, { 0, 0, -1 }, { 0, 0, 1 }, { 0, 1, 0 }, { 0, 1, 0 } };
 	face = (std::min)(face, 5u);
 
 	const XMVECTOR eye = XMVectorSet(light.position.x, light.position.y, light.position.z, 1.0f);
@@ -173,8 +174,7 @@ XMMATRIX Renderer::ComputePointFaceViewProj(const GpuLight& light, uint32_t face
 	return view * XMMatrixPerspectiveFovLH(fov, 1.0f, 0.05f, (std::max)(light.range, 0.06f));
 }
 
-uint32_t Renderer::AddShadowView(const XMMATRIX& viewProj, uint32_t x, uint32_t y, uint32_t size,
-	const XMFLOAT4& params, uint32_t lightIndex, uint32_t atlas)
+uint32_t Renderer::AddShadowView(const XMMATRIX& viewProj, uint32_t x, uint32_t y, uint32_t size, const XMFLOAT4& params, uint32_t lightIndex, uint32_t atlas)
 {
 	static bool warnedFull = false;
 	if (m_shadowViewCount >= MAX_SHADOW_VIEWS)
@@ -225,7 +225,10 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, 
 	const float aspect = camera.GetAspect();
 
 	XMVECTOR direction = XMLoadFloat3(&light.direction);
-	if (XMVectorGetX(XMVector3LengthSq(direction)) < 0.000001f) direction = XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
+	if (XMVectorGetX(XMVector3LengthSq(direction)) < 0.000001f)
+	{
+		direction = XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
+	}
 	direction = XMVector3Normalize(direction);
 	// ComputeLightViewProj 와 같은 up 규칙
 	const XMVECTOR lightUp = (fabsf(XMVectorGetY(direction)) > 0.99f) ? XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
@@ -250,15 +253,24 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, 
 			}
 		}
 
-		for (uint32_t k = 0; k < 8; ++k) XMStoreFloat3(&m_cascadeCorners[c][k], corners[k]);   // 에디터 오버레이용
+		for (uint32_t k = 0; k < 8; ++k)
+		{
+			XMStoreFloat3(&m_cascadeCorners[c][k], corners[k]);   // 에디터 오버레이용
+		}
 
 		// 2) 경계 구: 중심 = 꼭짓점 평균, 반지름 = 가장 먼 꼭짓점까지. 반지름을 1/16 단위로 올림 — 카메라가
 		//    돌아도 투영 크기가 일정해 텍셀 스냅이 유효함.
 		XMVECTOR sphereCenter = XMVectorZero();
-		for (const XMVECTOR& corner : corners) sphereCenter = XMVectorAdd(sphereCenter, corner);
+		for (const XMVECTOR& corner : corners)
+		{
+			sphereCenter = XMVectorAdd(sphereCenter, corner);
+		}
 		sphereCenter = XMVectorScale(sphereCenter, 1.0f / 8.0f);
 		float radius = 0.0f;
-		for (const XMVECTOR& corner : corners) radius = (std::max)(radius, XMVectorGetX(XMVector3Length(XMVectorSubtract(corner, sphereCenter))));
+		for (const XMVECTOR& corner : corners)
+		{
+			radius = (std::max)(radius, XMVectorGetX(XMVector3Length(XMVectorSubtract(corner, sphereCenter))));
+		}
 		radius = ceilf(radius * 16.0f) / 16.0f;
 
 		// 3) 광원 뷰: 눈 = 구 중심에서 빛의 반대로 (r + back). 직교 상자 한 변 2r, 깊이 0 .. 2r + back.
@@ -281,7 +293,10 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, 
 		const float singleRange = m_shadowSettings.distance * 2.0f + m_shadowSettings.orthoSize;
 		const XMFLOAT4 params(m_shadowSettings.bias * singleRange / (2.0f * radius + back), 2.0f * radius / rect.size, 0.0f, 0.0f);
 		const uint32_t index = AddShadowView(view * proj, rect.x, rect.y, rect.size, params, lightIndex, 1);   // 1 = CSM 아틀라스
-		if (c == 0) first = index;
+		if (c == 0)
+		{
+			first = index;
+		}
 	}
 
 	// PS 가 캐스케이드를 고를 때 쓰는 값. 카메라 기준으로 한 번만 만듦.
@@ -295,7 +310,10 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, 
 void Renderer::SetCascadeFreeze(bool freeze, const Camera& camera)
 {
 	m_cascadeFrozen = freeze;
-	if (freeze) m_cascadeFreezeCamera = camera;
+	if (freeze)
+	{
+		m_cascadeFreezeCamera = camera;
+	}
 }
 
 void Renderer::BuildShadowViews(const Camera& drawCamera, std::vector<GpuLight>& lights)
@@ -307,7 +325,10 @@ void Renderer::BuildShadowViews(const Camera& drawCamera, std::vector<GpuLight>&
 	m_cascadeSplits = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
 	m_skippedShadowLights = 0;
 	m_usedLocalTiles = 0;
-	for (GpuLight& light : lights) light.shadowIndex = -1;
+	for (GpuLight& light : lights)
+	{
+		light.shadowIndex = -1;
+	}
 	if (!m_settings.shadows) return;
 
 	// 타일을 나눠 줄 순서. 방향광은 앞쪽(BuildGpuLights 가 모아 둠)에서 씬 순서대로 — 첫 castShadows 방향광이 CSM 을 받음.
@@ -319,7 +340,10 @@ void Renderer::BuildShadowViews(const Camera& drawCamera, std::vector<GpuLight>&
 	const uint32_t count = static_cast<uint32_t>(lights.size());
 	for (uint32_t i = 0; i < count; ++i)
 	{
-		if (lights[i].type == static_cast<uint32_t>(LightType::Directional)) order.push_back(i);
+		if (lights[i].type == static_cast<uint32_t>(LightType::Directional))
+		{
+			order.push_back(i);
+		}
 	}
 	const bool priority = m_settings.shadowPriority && m_lightVisible.size() == count;
 	if (priority)
@@ -330,7 +354,10 @@ void Renderer::BuildShadowViews(const Camera& drawCamera, std::vector<GpuLight>&
 	{
 		for (uint32_t i = 0; i < count; ++i)
 		{
-			if (lights[i].type != static_cast<uint32_t>(LightType::Directional)) order.push_back(i);
+			if (lights[i].type != static_cast<uint32_t>(LightType::Directional))
+			{
+				order.push_back(i);
+			}
 		}
 	}
 
@@ -353,15 +380,24 @@ void Renderer::BuildShadowViews(const Camera& drawCamera, std::vector<GpuLight>&
 			{
 				// CSM. 직교 카메라는 절두체 조각 계산이 맞지 않아 아래의 단일 뷰로 대신함.
 				const uint32_t first = AddCascadeViews(camera, light, i);
-				if (first != UINT32_MAX) light.shadowIndex = static_cast<int32_t>(first);
-				else ++m_skippedShadowLights;
+				if (first != UINT32_MAX)
+				{
+					light.shadowIndex = static_cast<int32_t>(first);
+				}
+				else
+				{
+					++m_skippedShadowLights;
+				}
 				continue;
 			}
 			// 단일 뷰도 CSM 전용 아틀라스(atlas 1)에 그림. 텍셀의 월드 크기는 그 뷰의 해상도 기준.
 			const AtlasRect rect = CsmSingleRect();
 			const XMFLOAT4 params(m_shadowSettings.bias, m_shadowSettings.orthoSize / rect.size, 0.0f, 0.0f);
 			const uint32_t view = AddShadowView(ComputeLightViewProj(light), rect.x, rect.y, rect.size, params, i, 1);
-			if (view != UINT32_MAX) light.shadowIndex = static_cast<int32_t>(view);
+			if (view != UINT32_MAX)
+			{
+				light.shadowIndex = static_cast<int32_t>(view);
+			}
 		}
 		else if (light.type == static_cast<uint32_t>(LightType::Spot))
 		{
@@ -399,10 +435,16 @@ void Renderer::BuildShadowViews(const Camera& drawCamera, std::vector<GpuLight>&
 				const AtlasRect rect = LocalTileRect(m_usedLocalTiles++);
 				const uint32_t view = AddShadowView(ComputePointFaceViewProj(light, face), rect.x, rect.y, rect.size, params, i);
 				if (view == UINT32_MAX) break;   // 위에서 자리를 확인했으므로 일어나지 않음
-				if (face == 0) first = view;
+				if (face == 0)
+				{
+					first = view;
+				}
 				m_shadowViews[view].cullSphere = XMFLOAT4(light.position.x, light.position.y, light.position.z, light.range);
 			}
-			if (first != UINT32_MAX) light.shadowIndex = static_cast<int32_t>(first);
+			if (first != UINT32_MAX)
+			{
+				light.shadowIndex = static_cast<int32_t>(first);
+			}
 		}
 	}
 
@@ -419,8 +461,14 @@ void Renderer::BuildShadowViews(const Camera& drawCamera, std::vector<GpuLight>&
 	for (uint32_t v = 0; v < m_shadowViewCount; ++v)
 	{
 		const uint32_t index = m_shadowViews[v].lightIndex;
-		if (index < m_lightVisible.size() && m_lightVisible[index] == 0) ++m_stats.shadowViewsOffscreen;   // 화면에 빛이 닿지 않는 조명의 타일
-		if (index < m_lightSceneIndex.size()) m_shadowViews[v].lightIndex = m_lightSceneIndex[index];
+		if (index < m_lightVisible.size() && m_lightVisible[index] == 0)
+		{
+			++m_stats.shadowViewsOffscreen;   // 화면에 빛이 닿지 않는 조명의 타일
+		}
+		if (index < m_lightSceneIndex.size())
+		{
+			m_shadowViews[v].lightIndex = m_lightSceneIndex[index];
+		}
 	}
 }
 
@@ -473,7 +521,10 @@ void Renderer::RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas)
 	// 이 아틀라스에 그릴 뷰가 없으면 패스를 열지 않음. 메인 패스가 t8 / t14 를 SRV 로 읽으므로 상태만
 	// ShaderResource 로 맞춤 (이미 그 상태면 RHI 가 아무것도 하지 않음).
 	bool hasViews = false;
-	for (uint32_t v = 0; v < m_shadowViewCount; ++v) hasViews = hasViews || (m_shadowViews[v].atlas == atlas);
+	for (uint32_t v = 0; v < m_shadowViewCount; ++v)
+	{
+		hasViews = hasViews || (m_shadowViews[v].atlas == atlas);
+	}
 	if (!hasViews)
 	{
 		cmd.Barrier(map, ResourceState::ShaderResource);
@@ -500,8 +551,7 @@ void Renderer::RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas)
 		if (view.atlas != atlas) continue;
 
 		// ① 이 뷰의 아틀라스 사각형으로 뷰포트(D3D12 는 시저도) 제한
-		cmd.SetViewport(Viewport{ .x = static_cast<float>(view.x), .y = static_cast<float>(view.y),
-			.width = static_cast<float>(view.size), .height = static_cast<float>(view.size) });
+		cmd.SetViewport(Viewport{ .x = static_cast<float>(view.x), .y = static_cast<float>(view.y), .width = static_cast<float>(view.size), .height = static_cast<float>(view.size) });
 		// ② b5 에 이 뷰의 행렬 (전치). 드로우 직전에 D3D12 가 루트 CBV 를 다시 바인딩하므로 프레임 셋을 다시
 		// 꽂을 필요 없음.
 		ShadowPassConstants passConstants = {};

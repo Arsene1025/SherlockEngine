@@ -21,14 +21,14 @@ namespace Paths
 	SHERLOCK_API const std::wstring& GetExecutableDir();
 
 	// ---- 루트 ----
-	SHERLOCK_API void SetEngineRoot(const std::wstring& dir);      // 프로젝트 파일이 준 엔진 소스 폴더. 존재할 때만 적용
-	SHERLOCK_API const std::wstring& GetEngineRoot();              // 끝에 백슬래시 포함. 배포 환경이면 exe 폴더
-	SHERLOCK_API bool HasEngineSourceTree();                       // 엔진 루트가 소스 트리인지 여부 (배포면 false)
-	SHERLOCK_API void SetProjectRoot(const std::wstring& dir);     // 빈 문자열 = 프로젝트 없음
+	SHERLOCK_API void SetEngineRoot(const std::wstring& dir);    // 프로젝트 파일이 준 엔진 소스 폴더. 존재할 때만 적용
+	SHERLOCK_API const std::wstring& GetEngineRoot();            // 끝에 백슬래시 포함. 배포 환경이면 exe 폴더
+	SHERLOCK_API bool HasEngineSourceTree();                     // 엔진 루트가 소스 트리인지 여부 (배포면 false)
+	SHERLOCK_API void SetProjectRoot(const std::wstring& dir);   // 빈 문자열 = 프로젝트 없음
 	SHERLOCK_API const std::wstring& GetProjectRoot();
 	SHERLOCK_API bool HasProject();
-	SHERLOCK_API std::wstring GetEngineAssetRoot();                // <엔진 루트>\Assets\ (없으면 exe\Assets\)
-	SHERLOCK_API std::wstring GetAssetRoot();                      // 프로젝트 Assets\ (프로젝트가 없으면 엔진 Assets\). 콘텐츠 브라우저의 첫 트리·씬 저장 위치
+	SHERLOCK_API std::wstring GetEngineAssetRoot();   // <엔진 루트>\Assets\ (없으면 exe\Assets\)
+	SHERLOCK_API std::wstring GetAssetRoot();         // 프로젝트 Assets\ (프로젝트가 없으면 엔진 Assets\). 콘텐츠 브라우저의 첫 트리·씬 저장 위치
 
 	// exe\Shaders\<fileName> 의 절대 경로.
 	// 빌드가 .hlsl/.hlsli 원본을 exe 옆 Shaders\ 로 복사함(vcxproj의 CopyShaderSources 타깃. .cso 는

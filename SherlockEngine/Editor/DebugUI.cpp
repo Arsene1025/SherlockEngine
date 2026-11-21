@@ -32,8 +32,8 @@ namespace
 	const SceneEnvironment kEnvironmentDefaults;
 	const Light kLightDefaults;
 	const Material kMaterialDefaults;
-	constexpr float kCameraMoveSpeedDefault = 10.0f;   // EditorApp::m_moveSpeed 의 초기값
-	constexpr float kCameraOrthoHeightDefault = 25.0f; // Camera 생성자의 m_orthoHeight
+	constexpr float kCameraMoveSpeedDefault = 10.0f;     // EditorApp::m_moveSpeed 의 초기값
+	constexpr float kCameraOrthoHeightDefault = 25.0f;   // Camera 생성자의 m_orthoHeight
 }
 
 bool DebugUI::BeginPanel(const char* name, bool* open)
@@ -55,7 +55,10 @@ void DebugUI::EndPanel()
 void DebugUI::SameLineIfFits(float itemWidth)
 {
 	const float right = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;   // 줄 시작 x + 남은 폭 = 오른쪽 끝
-	if (ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + itemWidth <= right) ImGui::SameLine();
+	if (ImGui::GetItemRectMax().x + ImGui::GetStyle().ItemSpacing.x + itemWidth <= right)
+	{
+		ImGui::SameLine();
+	}
 }
 
 float DebugUI::CheckboxWidth(const char* label)
@@ -91,7 +94,10 @@ namespace
 		const bool pressed = ImGui::SmallButton("R");
 		ImGui::EndDisabled();
 		ImGui::PopID();
-		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("Reset to default: %s", defaultText);
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+		{
+			ImGui::SetTooltip("Reset to default: %s", defaultText);
+		}
 		return pressed;
 	}
 }
@@ -102,7 +108,11 @@ bool DebugUI::SliderFloatR(const char* label, float* value, float defaultValue, 
 	bool changed = ImGui::SliderFloat(label, value, min, max, format, flags);
 	char text[32];
 	snprintf(text, sizeof(text), "%g", defaultValue);
-	if (DrawResetButton(label, *value == defaultValue, text)) { *value = defaultValue; changed = true; }
+	if (DrawResetButton(label, *value == defaultValue, text))
+	{
+		*value = defaultValue;
+		changed = true;
+	}
 	return changed;
 }
 
@@ -112,7 +122,11 @@ bool DebugUI::DragFloatR(const char* label, float* value, float defaultValue, fl
 	bool changed = ImGui::DragFloat(label, value, speed, min, max, format);
 	char text[32];
 	snprintf(text, sizeof(text), "%g", defaultValue);
-	if (DrawResetButton(label, *value == defaultValue, text)) { *value = defaultValue; changed = true; }
+	if (DrawResetButton(label, *value == defaultValue, text))
+	{
+		*value = defaultValue;
+		changed = true;
+	}
 	return changed;
 }
 
@@ -122,7 +136,12 @@ bool DebugUI::DragFloat2R(const char* label, float* value, float defaultX, float
 	bool changed = ImGui::DragFloat2(label, value, speed, min, max, format);
 	char text[64];
 	snprintf(text, sizeof(text), "%g, %g", defaultX, defaultY);
-	if (DrawResetButton(label, value[0] == defaultX && value[1] == defaultY, text)) { value[0] = defaultX; value[1] = defaultY; changed = true; }
+	if (DrawResetButton(label, value[0] == defaultX && value[1] == defaultY, text))
+	{
+		value[0] = defaultX;
+		value[1] = defaultY;
+		changed = true;
+	}
 	return changed;
 }
 
@@ -134,7 +153,9 @@ bool DebugUI::DragFloat3R(const char* label, float* value, float defaultX, float
 	snprintf(text, sizeof(text), "%g, %g, %g", defaultX, defaultY, defaultZ);
 	if (DrawResetButton(label, value[0] == defaultX && value[1] == defaultY && value[2] == defaultZ, text))
 	{
-		value[0] = defaultX; value[1] = defaultY; value[2] = defaultZ;
+		value[0] = defaultX;
+		value[1] = defaultY;
+		value[2] = defaultZ;
 		changed = true;
 	}
 	return changed;
@@ -146,16 +167,21 @@ void DebugUI::DrawCameraPanel(Camera& camera, float& moveSpeed)
 	ImGui::TextWrapped("Camera  (WASD/QE move, RMB drag look, Shift fast)");
 	const XMFLOAT3& p = camera.GetPosition();
 	ImGui::Text("pos   %.2f  %.2f  %.2f", p.x, p.y, p.z);
-	ImGui::TextWrapped("yaw   %.1f deg   pitch %.1f deg   roll %.1f deg",
-		XMConvertToDegrees(camera.GetYaw()), XMConvertToDegrees(camera.GetPitch()), XMConvertToDegrees(camera.GetRoll()));   // roll 은 재생 중 부모가 기울어진 카메라에서만 0 이 아님 (11-F)
+	ImGui::TextWrapped("yaw   %.1f deg   pitch %.1f deg   roll %.1f deg", XMConvertToDegrees(camera.GetYaw()), XMConvertToDegrees(camera.GetPitch()), XMConvertToDegrees(camera.GetRoll()));   // roll 은 재생 중 부모가 기울어진 카메라에서만 0 이 아님 (11-F)
 	SliderFloatR("Speed", &moveSpeed, kCameraMoveSpeedDefault, 1.0f, 50.0f);
 	// 에디터 카메라의 투영 선택. 재생 중 카메라 컴포넌트가 카메라를 움직이면 그 컴포넌트의 설정이 덮어씀.
 	bool orthographic = !camera.IsUsePerspectiveProjection();
-	if (ImGui::Checkbox("Orthographic", &orthographic)) camera.SetUsePerspectiveProjection(!orthographic);
+	if (ImGui::Checkbox("Orthographic", &orthographic))
+	{
+		camera.SetUsePerspectiveProjection(!orthographic);
+	}
 	if (orthographic)
 	{
 		float height = camera.GetOrthoHeight();
-		if (SliderFloatR("Ortho height", &height, kCameraOrthoHeightDefault, 1.0f, 100.0f)) camera.SetOrthoHeight(height);
+		if (SliderFloatR("Ortho height", &height, kCameraOrthoHeightDefault, 1.0f, 100.0f))
+		{
+			camera.SetOrthoHeight(height);
+		}
 	}
 	ImGui::TextWrapped("F1 wire  F2 cull  F3 vsync  F4 reload  F5 sRGB  F6 sampler  F7 light orbit  F8 shadows  F9 normal maps  F10 pause");
 }
@@ -207,14 +233,9 @@ void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)
 	}
 
 	const Renderer::Stats& stats = renderer.GetStats();
-	ImGui::TextWrapped("draws %u (+%u shadow, %u views)   draw items %u, culled main %u / shadow %u   PSO switches %u   set switches %u   mesh switches %u",
-		stats.draws, stats.shadowDraws, stats.shadowViews, stats.drawItems, stats.culled, stats.shadowCulled, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches);
-	ImGui::TextWrapped("passes %u   barriers %u   PSO cache %zu   GPU meshes %zu   GPU materials %zu   textures %zu   reloads %u   frame slot %u",
-		stats.renderPasses, stats.barriers, renderer.GetPipelineCount(), renderer.GetGpuMeshCount(), renderer.GetGpuMaterialCount(),
-		renderer.GetTextureCount(), stats.shaderReloads, device.GetFrameIndex());
-	ImGui::TextWrapped("path %s%s   G-buffer draws %u   forward opaque %u   lights visible %u / culled %u   cluster refs %u (max %u per cluster, overflow %u, %s)   offscreen shadow views %u",
-		stats.deferredPath ? "deferred" : "forward", stats.ssao ? " + SSAO" : "", stats.gbufferDraws, stats.forwardOpaqueDraws,
-		stats.lightsVisible, stats.lightsCulled, stats.clusterLightRefs, stats.clusterMaxLights, stats.clusterOverflow, stats.clusterGpu ? "GPU" : "CPU", stats.shadowViewsOffscreen);
+	ImGui::TextWrapped("draws %u (+%u shadow, %u views)   draw items %u, culled main %u / shadow %u   PSO switches %u   set switches %u   mesh switches %u", stats.draws, stats.shadowDraws, stats.shadowViews, stats.drawItems, stats.culled, stats.shadowCulled, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches);
+	ImGui::TextWrapped("passes %u   barriers %u   PSO cache %zu   GPU meshes %zu   GPU materials %zu   textures %zu   reloads %u   frame slot %u", stats.renderPasses, stats.barriers, renderer.GetPipelineCount(), renderer.GetGpuMeshCount(), renderer.GetGpuMaterialCount(), renderer.GetTextureCount(), stats.shaderReloads, device.GetFrameIndex());
+	ImGui::TextWrapped("path %s%s   G-buffer draws %u   forward opaque %u   lights visible %u / culled %u   cluster refs %u (max %u per cluster, overflow %u, %s)   offscreen shadow views %u", stats.deferredPath ? "deferred" : "forward", stats.ssao ? " + SSAO" : "", stats.gbufferDraws, stats.forwardOpaqueDraws, stats.lightsVisible, stats.lightsCulled, stats.clusterLightRefs, stats.clusterMaxLights, stats.clusterOverflow, stats.clusterGpu ? "GPU" : "CPU", stats.shadowViewsOffscreen);
 	if (stats.clusterGpu)
 	{
 		// GPU 비닝의 1단계 (타일) 목록. 통계는 몇 프레임 늦게 읽은 값 (Staging 리드백)
@@ -233,7 +254,10 @@ void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& dev
 	SliderFloatR("Shadow strength", &shadow.strength, kShadowDefaults.strength, 0.0f, 1.0f);
 	SliderFloatR("Normal offset", &shadow.normalOffset, kShadowDefaults.normalOffset, 0.0f, 1.0f, "%.3f");
 	SliderFloatR("Ortho size", &shadow.orthoSize, kShadowDefaults.orthoSize, 10.0f, 150.0f);
-	if (shadow.cascadeEnabled) ImGui::TextDisabled("  (CSM on: Ortho size only scales the bias)");
+	if (shadow.cascadeEnabled)
+	{
+		ImGui::TextDisabled("  (CSM on: Ortho size only scales the bias)");
+	}
 	SliderFloatR("Light distance", &shadow.distance, kShadowDefaults.distance, 5.0f, 120.0f);
 	SliderFloatR("Local normal bias (texels)", &shadow.localNormalBias, kShadowDefaults.localNormalBias, 0.0f, 4.0f);
 	ImGui::Checkbox("CSM (off = single directional view)", &shadow.cascadeEnabled);
@@ -267,9 +291,7 @@ void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& dev
 				draw->AddText(ImVec2(a.x + 3, a.y + 2), IM_COL32(255, 220, 0, 255), label);
 			}
 		}
-		ImGui::Text("views %u / %u   local tiles %u / %u   skipped lights %u",
-			renderer.GetShadowViewCount(), MAX_SHADOW_VIEWS, renderer.GetUsedLocalTiles(), Renderer::kShadowLocalTileCount,
-			renderer.GetSkippedShadowLights());
+		ImGui::Text("views %u / %u   local tiles %u / %u   skipped lights %u", renderer.GetShadowViewCount(), MAX_SHADOW_VIEWS, renderer.GetUsedLocalTiles(), Renderer::kShadowLocalTileCount, renderer.GetSkippedShadowLights());
 		ImGui::TreePop();
 	}
 	// 방향광 CSM 전용 아틀라스. 캐스케이드마다 해상도가 다름 (C0 이 가장 크고 가까운 구간). CSM 이 꺼져
@@ -286,7 +308,7 @@ void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& dev
 			ImDrawList* draw = ImGui::GetWindowDrawList();
 			// 색은 씬의 캐스케이드 디버그 색(빨강·초록·파랑·노랑)과 같음. 캐스케이드 번호 = 이 아틀라스 뷰의 등장 순서.
 			static const ImU32 kCascadeColor[4] = { IM_COL32(255, 64, 64, 255), IM_COL32(64, 255, 64, 255),
-				IM_COL32(96, 128, 255, 255), IM_COL32(255, 220, 0, 255) };
+													IM_COL32(96, 128, 255, 255), IM_COL32(255, 220, 0, 255) };
 			uint32_t cascade = 0;
 			for (uint32_t v = 0; v < renderer.GetShadowViewCount() && cascade < 4; ++v)
 			{
@@ -337,7 +359,10 @@ namespace
 					relative = slash == std::wstring::npos ? std::wstring() : relative.substr(0, slash);
 				}
 				// Textures\ 바로 아래 항목은 이름만, 그 밖은 "asset:" 접두사 (ContentBrowser::ToMaterialTextureName).
-				if (!relative.empty()) value = ContentBrowser::ToMaterialTextureName(relative);
+				if (!relative.empty())
+				{
+					value = ContentBrowser::ToMaterialTextureName(relative);
+				}
 				Log::Info("환경 드롭 (%s): %s", label, value.c_str());
 			}
 		}
@@ -385,11 +410,23 @@ void DebugUI::DrawPostStagesWindow(Renderer& renderer, RHI::Device& device)
 				ImGui::BeginGroup();
 				ImGui::TextUnformatted(stage.name);
 				const uint64_t id = stage.active ? device.GetImGuiTextureId(stage.texture) : 0;
-				if (id != 0) ImGui::Image(static_cast<ImTextureID>(id), size);
-				else ImGui::Dummy(size);   // 꺼진 효과 (Blur/Bloom): 자리만 비움
-				if (!stage.active) ImGui::TextDisabled("off");
+				if (id != 0)
+				{
+					ImGui::Image(static_cast<ImTextureID>(id), size);
+				}
+				else
+				{
+					ImGui::Dummy(size);   // 꺼진 효과 (Blur/Bloom): 자리만 비움
+				}
+				if (!stage.active)
+				{
+					ImGui::TextDisabled("off");
+				}
 				ImGui::EndGroup();
-				if (i + 1 < Renderer::kPostStageCount) ImGui::SameLine();
+				if (i + 1 < Renderer::kPostStageCount)
+				{
+					ImGui::SameLine();
+				}
 			}
 		}
 	}
@@ -408,7 +445,10 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 		for (int i = 0; i < IM_ARRAYSIZE(kPresets); ++i)
 		{
 			const std::string value = i == 0 ? std::string() : kPresets[i];
-			if (ImGui::Selectable(kPresets[i], env.skybox == value)) env.skybox = value;
+			if (ImGui::Selectable(kPresets[i], env.skybox == value))
+			{
+				env.skybox = value;
+			}
 		}
 		ImGui::EndCombo();
 	}
@@ -422,9 +462,7 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 		EditEnvironmentName("BRDF LUT", "2D, u = N.V, v = 1 - roughness", env.brdfLut, false);
 		SliderFloatR("IBL intensity", &env.iblIntensity, kEnvironmentDefaults.iblIntensity, 0.0f, 4.0f);
 		ImGui::ColorEdit3("IBL tint", &env.iblTint.x, ImGuiColorEditFlags_Float);   // 확산 조도·반사에 곱하는 색 (스카이박스 배경은 그대로)
-		ImGui::TextDisabled(env.irradiance.empty() && env.specular.empty()
-			? (env.skybox.empty() ? "no environment: ambient color is used" : "no IBL maps: blurred skybox mips are used (approximation)")
-			: "IBL maps in use");
+		ImGui::TextDisabled(env.irradiance.empty() && env.specular.empty() ? (env.skybox.empty() ? "no environment: ambient color is used" : "no IBL maps: blurred skybox mips are used (approximation)") : "IBL maps in use");
 		ImGui::TreePop();
 	}
 	SliderFloatR("Exposure", &env.exposure, kEnvironmentDefaults.exposure, 0.05f, 8.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
@@ -437,7 +475,10 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 	{
 		PostProcessSettings& post = env.post;
 		ImGui::Checkbox("Gaussian blur", &post.blurEnabled);
-		if (post.blurEnabled) SliderFloatR("Blur radius (px @720p)", &post.blurRadius, kEnvironmentDefaults.post.blurRadius, 0.5f, 32.0f, "%.1f");
+		if (post.blurEnabled)
+		{
+			SliderFloatR("Blur radius (px @720p)", &post.blurRadius, kEnvironmentDefaults.post.blurRadius, 0.5f, 32.0f, "%.1f");
+		}
 		ImGui::Checkbox("Bloom", &post.bloomEnabled);
 		if (post.bloomEnabled)
 		{
@@ -502,7 +543,10 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 			*openSelected = false;
 		}
 		const bool open = ImGui::TreeNodeEx("light", isSelected ? ImGuiTreeNodeFlags_Selected : ImGuiTreeNodeFlags_None, "Light %d  %s", i, kLightTypeNames[typeIndex]);
-		if (selectedLight != nullptr && ImGui::IsItemClicked()) *selectedLight = i;   // 패널에서 눌러도 씬 뷰 기즈모가 붙음
+		if (selectedLight != nullptr && ImGui::IsItemClicked())
+		{
+			*selectedLight = i;   // 패널에서 눌러도 씬 뷰 기즈모가 붙음
+		}
 		if (open)
 		{
 			int selectedType = typeIndex;
@@ -522,7 +566,10 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 				if (ImGui::SmallButton("normalize"))
 				{
 					XMVECTOR d = XMLoadFloat3(&light.direction);
-					if (XMVectorGetX(XMVector3LengthSq(d)) > 0.000001f) XMStoreFloat3(&light.direction, XMVector3Normalize(d));
+					if (XMVectorGetX(XMVector3LengthSq(d)) > 0.000001f)
+					{
+						XMStoreFloat3(&light.direction, XMVector3Normalize(d));
+					}
 				}
 			}
 			ImGui::ColorEdit3("Color", &light.color.x);
@@ -535,9 +582,18 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 				float inner = XMConvertToDegrees(acosf(light.innerConeCos));
 				float outer = XMConvertToDegrees(acosf(light.outerConeCos));
 				// 기본값도 슬라이더와 같은 식(acos → 도)으로 구해야 기본 상태에서 R 이 정확히 비활성이 됨.
-				if (SliderFloatR("Inner cone (deg)", &inner, XMConvertToDegrees(acosf(kLightDefaults.innerConeCos)), 1.0f, 89.0f)) light.innerConeCos = cosf(XMConvertToRadians(inner));
-				if (SliderFloatR("Outer cone (deg)", &outer, XMConvertToDegrees(acosf(kLightDefaults.outerConeCos)), 1.0f, 89.0f)) light.outerConeCos = cosf(XMConvertToRadians(outer));
-				if (light.outerConeCos > light.innerConeCos) light.outerConeCos = light.innerConeCos;
+				if (SliderFloatR("Inner cone (deg)", &inner, XMConvertToDegrees(acosf(kLightDefaults.innerConeCos)), 1.0f, 89.0f))
+				{
+					light.innerConeCos = cosf(XMConvertToRadians(inner));
+				}
+				if (SliderFloatR("Outer cone (deg)", &outer, XMConvertToDegrees(acosf(kLightDefaults.outerConeCos)), 1.0f, 89.0f))
+				{
+					light.outerConeCos = cosf(XMConvertToRadians(outer));
+				}
+				if (light.outerConeCos > light.innerConeCos)
+				{
+					light.outerConeCos = light.innerConeCos;
+				}
 			}
 			if (light.type != LightType::Directional)
 			{
@@ -556,22 +612,38 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 		lights.erase(lights.begin() + removeIndex);
 		if (selectedLight != nullptr)
 		{
-			if (*selectedLight == removeIndex) *selectedLight = -1;
-			else if (*selectedLight > removeIndex) --*selectedLight;
+			if (*selectedLight == removeIndex)
+			{
+				*selectedLight = -1;
+			}
+			else if (*selectedLight > removeIndex)
+			{
+				--*selectedLight;
+			}
 		}
 	}
 }
 
 void DebugUI::DrawTextureImportSettings(const Material& material, Renderer& renderer)
 {
-	struct Slot { const char* label; const std::string* name; bool srgb; };
+	struct Slot
+	{
+		const char* label;
+		const std::string* name;
+		bool srgb;
+	};
 	const Slot slots[] = {
-		{ "Albedo", &material.albedoTexture, true }, { "Normal", &material.normalTexture, false },
-		{ "Metal/Rough", &material.metallicRoughnessTexture, false }, { "AO", &material.occlusionTexture, false },
+		{ "Albedo", &material.albedoTexture, true },
+		{ "Normal", &material.normalTexture, false },
+		{ "Metal/Rough", &material.metallicRoughnessTexture, false },
+		{ "AO", &material.occlusionTexture, false },
 		{ "Emissive", &material.emissiveTexture, true },
-		{ "Specular", &material.specularTexture, false }, { "Specular color", &material.specularColorTexture, true },
-		{ "Clearcoat", &material.clearcoatTexture, false }, { "Clearcoat rough", &material.clearcoatRoughnessTexture, false },
-		{ "Clearcoat normal", &material.clearcoatNormalTexture, false }, { "Transmission", &material.transmissionTexture, false },
+		{ "Specular", &material.specularTexture, false },
+		{ "Specular color", &material.specularColorTexture, true },
+		{ "Clearcoat", &material.clearcoatTexture, false },
+		{ "Clearcoat rough", &material.clearcoatRoughnessTexture, false },
+		{ "Clearcoat normal", &material.clearcoatNormalTexture, false },
+		{ "Transmission", &material.transmissionTexture, false },
 	};
 	static std::map<std::string, TextureImportSettings> pending;   // 아직 Apply 하지 않은 편집값 (이름별)
 	static const char* kSizes[] = { "Original", "4096", "2048", "1024", "512", "256", "128" };
@@ -583,7 +655,11 @@ void DebugUI::DrawTextureImportSettings(const Material& material, Renderer& rend
 	{
 		const std::string& name = *slot.name;
 		if (name.empty() || name.rfind("builtin:", 0) == 0) continue;
-		if (!any) { ImGui::SeparatorText("Texture import"); any = true; }
+		if (!any)
+		{
+			ImGui::SeparatorText("Texture import");
+			any = true;
+		}
 		ImGui::PushID(slot.label);
 		if (ImGui::TreeNode("slot", "%s: %s", slot.label, name.c_str()))
 		{
@@ -598,15 +674,29 @@ void DebugUI::DrawTextureImportSettings(const Material& material, Renderer& rend
 				ImGui::Checkbox("BC7 compress", &edit.compress);
 				int mipMode = edit.mipLevels == 0 ? 0 : (edit.mipLevels == 1 ? 1 : 2);
 				if (ImGui::Combo("Mips", &mipMode, kMips, IM_ARRAYSIZE(kMips)))
+				{
 					edit.mipLevels = mipMode == 0 ? 0 : (mipMode == 1 ? 1 : (std::max)(edit.mipLevels, 6u));
+				}
 				if (mipMode == 2)
 				{
 					int levels = static_cast<int>(edit.mipLevels);
-					if (ImGui::SliderInt("Levels", &levels, 2, 13)) edit.mipLevels = static_cast<uint32_t>(levels);
+					if (ImGui::SliderInt("Levels", &levels, 2, 13))
+					{
+						edit.mipLevels = static_cast<uint32_t>(levels);
+					}
 				}
 				int sizeIndex = 0;
-				for (int i = 0; i < IM_ARRAYSIZE(kSizeValues); ++i) if (kSizeValues[i] == edit.maxSize) sizeIndex = i;
-				if (ImGui::Combo("Max size", &sizeIndex, kSizes, IM_ARRAYSIZE(kSizes))) edit.maxSize = kSizeValues[sizeIndex];
+				for (int i = 0; i < IM_ARRAYSIZE(kSizeValues); ++i)
+				{
+					if (kSizeValues[i] == edit.maxSize)
+					{
+						sizeIndex = i;
+					}
+				}
+				if (ImGui::Combo("Max size", &sizeIndex, kSizes, IM_ARRAYSIZE(kSizes)))
+				{
+					edit.maxSize = kSizeValues[sizeIndex];
+				}
 				const bool changed = !(edit == saved);
 				ImGui::BeginDisabled(!changed);
 				if (ImGui::Button("Apply"))
@@ -615,10 +705,20 @@ void DebugUI::DrawTextureImportSettings(const Material& material, Renderer& rend
 					renderer.ReloadTexture(name);   // 다음 프레임에 새 설정으로 변환·로드 (큰 텍스처는 몇 초 걸림)
 				}
 				ImGui::SameLine();
-				if (ImGui::Button("Revert")) edit = saved;
+				if (ImGui::Button("Revert"))
+				{
+					edit = saved;
+				}
 				ImGui::EndDisabled();
-				if (changed) { ImGui::SameLine(); ImGui::TextDisabled("modified"); }
-				if (!TextureImporter::IsBuildEnabled()) ImGui::TextDisabled("conversion runs in the editor only");
+				if (changed)
+				{
+					ImGui::SameLine();
+					ImGui::TextDisabled("modified");
+				}
+				if (!TextureImporter::IsBuildEnabled())
+				{
+					ImGui::TextDisabled("conversion runs in the editor only");
+				}
 				ImGui::TextDisabled("%s", slot.srgb ? "color (sRGB)" : "data (linear)");
 			}
 			ImGui::TreePop();
@@ -639,12 +739,18 @@ void DebugUI::DrawMaterialPanel(Scene& scene, Renderer& renderer)
 		if (ImGui::TreeNode(material.name.c_str()))
 		{
 			const size_t users = scene.CountMaterialUsers(&material);
-			if (users > 1) ImGui::TextDisabled("Shared by %zu objects - edits affect all of them", users);
-			else ImGui::TextDisabled("Used by %zu object%s", users, users == 1 ? "" : "s");
+			if (users > 1)
+			{
+				ImGui::TextDisabled("Shared by %zu objects - edits affect all of them", users);
+			}
+			else
+			{
+				ImGui::TextDisabled("Used by %zu object%s", users, users == 1 ? "" : "s");
+			}
 			ImGui::ColorEdit4("Base color", &material.baseColor.x);
 			SliderFloatR("Metallic", &material.metallic, kMaterialDefaults.metallic, 0.0f, 1.0f);   // PBR
 			SliderFloatR("Roughness", &material.roughness, kMaterialDefaults.roughness, 0.0f, 1.0f);
-			SliderFloatR("IOR", &material.ior, kMaterialDefaults.ior, 1.0f, 3.0f);   // KHR_materials_ior
+			SliderFloatR("IOR", &material.ior, kMaterialDefaults.ior, 1.0f, 3.0f);                              // KHR_materials_ior
 			SliderFloatR("Specular", &material.specularFactor, kMaterialDefaults.specularFactor, 0.0f, 1.0f);   // KHR_materials_specular
 			ImGui::ColorEdit3("Specular color", &material.specularColor.x);
 			SliderFloatR("Clearcoat", &material.clearcoatFactor, kMaterialDefaults.clearcoatFactor, 0.0f, 1.0f);   // KHR_materials_clearcoat
@@ -653,15 +759,9 @@ void DebugUI::DrawMaterialPanel(Scene& scene, Renderer& renderer)
 			ImGui::Checkbox("Alpha blend", &material.alphaBlend);
 			ImGui::ColorEdit3("Emissive", &material.emissive.x, ImGuiColorEditFlags_HDR | ImGuiColorEditFlags_Float);
 			SliderFloatR("Occlusion strength", &material.occlusionStrength, kMaterialDefaults.occlusionStrength, 0.0f, 1.0f);
-			ImGui::TextWrapped("Albedo: %s (%s)   Normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(),
-				material.albedoSrgb ? "sRGB" : "linear", material.normalTexture.empty() ? "(none)" : material.normalTexture.c_str());
-			ImGui::TextWrapped("Metal/Rough: %s   AO: %s   Emissive: %s",
-				material.metallicRoughnessTexture.empty() ? "(none)" : material.metallicRoughnessTexture.c_str(),
-				material.occlusionTexture.empty() ? "(none)" : material.occlusionTexture.c_str(),
-				material.emissiveTexture.empty() ? "(none)" : material.emissiveTexture.c_str());
-			ImGui::TextWrapped("Specular: %s   Specular color: %s",
-				material.specularTexture.empty() ? "(none)" : material.specularTexture.c_str(),
-				material.specularColorTexture.empty() ? "(none)" : material.specularColorTexture.c_str());
+			ImGui::TextWrapped("Albedo: %s (%s)   Normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(), material.albedoSrgb ? "sRGB" : "linear", material.normalTexture.empty() ? "(none)" : material.normalTexture.c_str());
+			ImGui::TextWrapped("Metal/Rough: %s   AO: %s   Emissive: %s", material.metallicRoughnessTexture.empty() ? "(none)" : material.metallicRoughnessTexture.c_str(), material.occlusionTexture.empty() ? "(none)" : material.occlusionTexture.c_str(), material.emissiveTexture.empty() ? "(none)" : material.emissiveTexture.c_str());
+			ImGui::TextWrapped("Specular: %s   Specular color: %s", material.specularTexture.empty() ? "(none)" : material.specularTexture.c_str(), material.specularColorTexture.empty() ? "(none)" : material.specularColorTexture.c_str());
 			int sampler = static_cast<int>(material.sampler);
 			if (ImGui::Combo("Sampler", &sampler, kSamplerNames, ARRAYSIZE(kSamplerNames)))
 			{
@@ -690,10 +790,8 @@ void DebugUI::DrawModelPanel(const char* sceneName, const ModelStats& stats, siz
 		ImGui::Text("model: none   objects %zu", sceneObjects);
 		return;
 	}
-	ImGui::TextWrapped("model: meshes %u  submeshes %u  instances %u  materials %u  images %u (scene %zu)   load %.0f ms",
-		stats.meshes, stats.submeshes, stats.instances, stats.materials, stats.images, sceneImages, stats.loadMilliseconds);
-	ImGui::TextWrapped("       vertices %u  triangles %u  16-bit index meshes %u/%u  generated tangents %u  skipped primitives %u   objects %zu",
-		stats.vertices, stats.triangles, stats.meshesWith16BitIndices, stats.meshes, stats.generatedTangentMeshes, stats.skippedPrimitives, sceneObjects);
+	ImGui::TextWrapped("model: meshes %u  submeshes %u  instances %u  materials %u  images %u (scene %zu)   load %.0f ms", stats.meshes, stats.submeshes, stats.instances, stats.materials, stats.images, sceneImages, stats.loadMilliseconds);
+	ImGui::TextWrapped("       vertices %u  triangles %u  16-bit index meshes %u/%u  generated tangents %u  skipped primitives %u   objects %zu", stats.vertices, stats.triangles, stats.meshesWith16BitIndices, stats.meshes, stats.generatedTangentMeshes, stats.skippedPrimitives, sceneObjects);
 }
 
 // ------------------------------------------------------------------ 엔진 · 프로파일러 · 로그 콘솔
@@ -704,13 +802,12 @@ void DebugUI::DrawEnginePanel(Engine& engine)
 	const Config& config = engine.GetConfig();
 	const std::string configPath = config.GetPath().empty() ? "(none)" : Log::ToUtf8(config.GetPath().c_str());
 	const std::string logPath = Log::GetFilePath().empty() ? "(none)" : Log::ToUtf8(Log::GetFilePath().c_str());
-	ImGui::TextWrapped("Engine   backend %s (engine.backend = %s)   config %s", engine.GetDevice().GetBackendName(),
-		config.GetString("engine.backend", "?").c_str(), configPath.c_str());
+	ImGui::TextWrapped("Engine   backend %s (engine.backend = %s)   config %s", engine.GetDevice().GetBackendName(), config.GetString("engine.backend", "?").c_str(), configPath.c_str());
 
 	// 백엔드 선택: engine.ini 의 engine.backend 만 바꿔 저장함. 이미 만든 장치는 그대로이고 다음 실행부터 적용됨.
 	// 실행 인자 --backend= 는 ini 보다 우선하므로 인자로 띄운 경우에는 저장해도 다음에 인자가 이김.
 	{
-		static std::string savedBackend;    // 이 실행에서 저장한 값 ("d3d11"/"d3d12"). 비면 아직 저장 안 함 → 현재 설정값을 보임
+		static std::string savedBackend;   // 이 실행에서 저장한 값 ("d3d11"/"d3d12"). 비면 아직 저장 안 함 → 현재 설정값을 보임
 		static std::string saveMessage;
 		static bool saveFailed = false;
 		const char* items[] = { "D3D11", "D3D12" };
@@ -736,28 +833,36 @@ void DebugUI::DrawEnginePanel(Engine& engine)
 			}
 		}
 		ImGui::EndDisabled();
-		if (config.GetPath().empty()) ImGui::TextWrapped("No engine.ini was loaded, so the backend cannot be saved.");
-		else if (!saveMessage.empty()) ImGui::TextWrapped("%s", saveMessage.c_str());
-		else if (shown != "d3d11" && shown != "d3d12") ImGui::TextWrapped("engine.backend '%s' is not d3d11/d3d12.", shown.c_str());
+		if (config.GetPath().empty())
+		{
+			ImGui::TextWrapped("No engine.ini was loaded, so the backend cannot be saved.");
+		}
+		else if (!saveMessage.empty())
+		{
+			ImGui::TextWrapped("%s", saveMessage.c_str());
+		}
+		else if (shown != "d3d11" && shown != "d3d12")
+		{
+			ImGui::TextWrapped("engine.backend '%s' is not d3d11/d3d12.", shown.c_str());
+		}
 		if (!savedBackend.empty() && !saveFailed && _stricmp(savedBackend.c_str(), engine.GetDevice().GetBackendName()) != 0)
+		{
 			ImGui::TextDisabled("Running: %s", engine.GetDevice().GetBackendName());
+		}
 	}
-	ImGui::TextWrapped("Log     file %s   console %s   level %s   info %u  warn %u  error %u", logPath.c_str(),
-		Log::HasConsole() ? "yes" : "no", Log::LevelName(Log::GetMinLevel()),
-		Log::GetCount(Log::Level::Info), Log::GetCount(Log::Level::Warn), Log::GetCount(Log::Level::Error));
+	ImGui::TextWrapped("Log     file %s   console %s   level %s   info %u  warn %u  error %u", logPath.c_str(), Log::HasConsole() ? "yes" : "no", Log::LevelName(Log::GetMinLevel()), Log::GetCount(Log::Level::Info), Log::GetCount(Log::Level::Warn), Log::GetCount(Log::Level::Error));
 	const AssetManager::Stats& assets = engine.GetAssets().GetStats();
-	ImGui::TextWrapped("Assets   models %zu (loads %u, hits %u)   files %zu   %.1f MB cached   %.0f ms total load",
-		engine.GetAssets().GetModelCount(), assets.modelLoads, assets.modelHits, engine.GetAssets().GetFileCount(),
-		assets.cachedBytes / (1024.0 * 1024.0), assets.totalLoadMs);
+	ImGui::TextWrapped("Assets   models %zu (loads %u, hits %u)   files %zu   %.1f MB cached   %.0f ms total load", engine.GetAssets().GetModelCount(), assets.modelLoads, assets.modelHits, engine.GetAssets().GetFileCount(), assets.cachedBytes / (1024.0 * 1024.0), assets.totalLoadMs);
 	const Time& time = engine.GetTime();
-	ImGui::TextWrapped("Time     dt %.2f ms (raw %.2f)   fixed step %.2f ms   steps last frame %u   alpha %.2f",
-		time.GetDeltaTime() * 1000.0f, time.GetRawDeltaTime() * 1000.0f, time.GetFixedStep() * 1000.0f,
-		time.GetFixedStepsLastFrame(), time.GetInterpolationAlpha());
+	ImGui::TextWrapped("Time     dt %.2f ms (raw %.2f)   fixed step %.2f ms   steps last frame %u   alpha %.2f", time.GetDeltaTime() * 1000.0f, time.GetRawDeltaTime() * 1000.0f, time.GetFixedStep() * 1000.0f, time.GetFixedStepsLastFrame(), time.GetInterpolationAlpha());
 	if (ImGui::TreeNode("Config values"))
 	{
 		std::vector<std::pair<std::string, std::string>> values(config.GetAll().begin(), config.GetAll().end());
 		std::sort(values.begin(), values.end());
-		for (const auto& entry : values) ImGui::TextWrapped("%s = %s", entry.first.c_str(), entry.second.c_str());
+		for (const auto& entry : values)
+		{
+			ImGui::TextWrapped("%s = %s", entry.first.c_str(), entry.second.c_str());
+		}
 		ImGui::TreePop();
 	}
 }
@@ -780,17 +885,30 @@ void DebugUI::DrawProfilerPanel()
 
 		void Add(float v)
 		{
-			sum += v; ++count;
-			if (v < minV) minV = v;
-			if (v > maxV) maxV = v;
+			sum += v;
+			++count;
+			if (v < minV)
+			{
+				minV = v;
+			}
+			if (v > maxV)
+			{
+				maxV = v;
+			}
 		}
 		void Commit()
 		{
 			if (count > 0)
 			{
-				shownAvg = (float)(sum / count); shownMin = minV; shownMax = maxV; hasShown = true;
+				shownAvg = (float)(sum / count);
+				shownMin = minV;
+				shownMax = maxV;
+				hasShown = true;
 			}
-			sum = 0.0; count = 0; minV = FLT_MAX; maxV = 0.0f;
+			sum = 0.0;
+			count = 0;
+			minV = FLT_MAX;
+			maxV = 0.0f;
 		}
 	};
 	static std::vector<Series> cpuSeries, gpuSeries;
@@ -801,7 +919,10 @@ void DebugUI::DrawProfilerPanel()
 
 	auto findSeries = [](std::vector<Series>& list, const char* name, uint32_t depth) -> Series&
 	{
-		for (Series& s : list) if (s.depth == depth && s.name == name) return s;
+		for (Series& s : list)
+		{
+			if (s.depth == depth && s.name == name) return s;
+		}
 		list.emplace_back();
 		list.back().name = name;
 		list.back().depth = depth;
@@ -810,19 +931,28 @@ void DebugUI::DrawProfilerPanel()
 
 	ImGui::Separator();
 	bool enabled = Profiler::IsEnabled();
-	if (ImGui::Checkbox("Profiler", &enabled)) Profiler::SetEnabled(enabled);
+	if (ImGui::Checkbox("Profiler", &enabled))
+	{
+		Profiler::SetEnabled(enabled);
+	}
 
 	// 샘플 수집. CPU 는 매 프레임, GPU 는 새 프레임 결과가 나왔을 때만 (쿼리 결과가 1~몇 프레임 늦게 도착함).
 	if (enabled)
 	{
 		cpuFrame.Add(Profiler::GetCpuFrameMs());
-		for (const Profiler::CpuSample& s : Profiler::GetCpuSamples()) findSeries(cpuSeries, s.name, s.depth).Add(s.milliseconds);
+		for (const Profiler::CpuSample& s : Profiler::GetCpuSamples())
+		{
+			findSeries(cpuSeries, s.name, s.depth).Add(s.milliseconds);
+		}
 		const uint64_t gpuNumber = Profiler::GetGpuFrameNumber();
 		if (gpuNumber != lastGpuFrame)
 		{
 			lastGpuFrame = gpuNumber;
 			gpuFrame.Add(Profiler::GetGpuFrameMs());
-			for (const Profiler::GpuSample& s : Profiler::GetGpuSamples()) findSeries(gpuSeries, s.name, s.depth).Add(s.milliseconds);
+			for (const Profiler::GpuSample& s : Profiler::GetGpuSamples())
+			{
+				findSeries(gpuSeries, s.name, s.depth).Add(s.milliseconds);
+			}
 		}
 	}
 
@@ -832,8 +962,14 @@ void DebugUI::DrawProfilerPanel()
 		windowStart = now;
 		cpuFrame.Commit();
 		gpuFrame.Commit();
-		for (Series& s : cpuSeries) s.Commit();
-		for (Series& s : gpuSeries) s.Commit();
+		for (Series& s : cpuSeries)
+		{
+			s.Commit();
+		}
+		for (Series& s : gpuSeries)
+		{
+			s.Commit();
+		}
 	}
 
 	SameLineIfFits(TextItemWidth("CPU frame 0.000 ms   GPU frame 0.000 ms (avg)"));
@@ -879,12 +1015,20 @@ void DebugUI::DrawLogConsole(bool* open)
 		ImGui::End();
 		return;
 	}
-	ImGui::Checkbox("debug", &showLevel[0]); ImGui::SameLine();
-	ImGui::Checkbox("info", &showLevel[1]); ImGui::SameLine();
-	ImGui::Checkbox("warn", &showLevel[2]); ImGui::SameLine();
-	ImGui::Checkbox("error", &showLevel[3]); ImGui::SameLine();
-	ImGui::Checkbox("auto-scroll", &autoScroll); ImGui::SameLine();
-	if (ImGui::Button("Clear")) Log::ClearHistory();
+	ImGui::Checkbox("debug", &showLevel[0]);
+	ImGui::SameLine();
+	ImGui::Checkbox("info", &showLevel[1]);
+	ImGui::SameLine();
+	ImGui::Checkbox("warn", &showLevel[2]);
+	ImGui::SameLine();
+	ImGui::Checkbox("error", &showLevel[3]);
+	ImGui::SameLine();
+	ImGui::Checkbox("auto-scroll", &autoScroll);
+	ImGui::SameLine();
+	if (ImGui::Button("Clear"))
+	{
+		Log::ClearHistory();
+	}
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(200.0f);
 	ImGui::InputTextWithHint("##filter", "filter", filter, sizeof(filter));
@@ -892,7 +1036,10 @@ void DebugUI::DrawLogConsole(bool* open)
 	int level = static_cast<int>(Log::GetMinLevel());
 	ImGui::SetNextItemWidth(90.0f);
 	const char* levels[] = { "debug", "info", "warn", "error" };
-	if (ImGui::Combo("min level", &level, levels, 4)) Log::SetMinLevel(static_cast<Log::Level>(level));
+	if (ImGui::Combo("min level", &level, levels, 4))
+	{
+		Log::SetMinLevel(static_cast<Log::Level>(level));
+	}
 
 	const uint64_t version = Log::GetHistoryVersion();
 	if (version != lastVersion)
@@ -906,12 +1053,24 @@ void DebugUI::DrawLogConsole(bool* open)
 		if (!showLevel[static_cast<int>(entry.level)]) continue;
 		if (filter[0] != '\0' && entry.text.find(filter) == std::string::npos) continue;
 		ImVec4 color(0.25f, 0.25f, 0.25f, 1.0f);
-		if (entry.level == Log::Level::Warn) color = ImVec4(0.75f, 0.45f, 0.0f, 1.0f);
-		else if (entry.level == Log::Level::Error) color = ImVec4(0.8f, 0.1f, 0.1f, 1.0f);
-		else if (entry.level == Log::Level::Debug) color = ImVec4(0.5f, 0.5f, 0.6f, 1.0f);
+		if (entry.level == Log::Level::Warn)
+		{
+			color = ImVec4(0.75f, 0.45f, 0.0f, 1.0f);
+		}
+		else if (entry.level == Log::Level::Error)
+		{
+			color = ImVec4(0.8f, 0.1f, 0.1f, 1.0f);
+		}
+		else if (entry.level == Log::Level::Debug)
+		{
+			color = ImVec4(0.5f, 0.5f, 0.6f, 1.0f);
+		}
 		ImGui::TextColored(color, "[%8.3f] [%s] %s", entry.time, Log::LevelName(entry.level), entry.text.c_str());
 	}
-	if (autoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 2.0f) ImGui::SetScrollHereY(1.0f);
+	if (autoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 2.0f)
+	{
+		ImGui::SetScrollHereY(1.0f);
+	}
 	ImGui::EndChild();
 	ImGui::End();
 }

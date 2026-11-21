@@ -10,15 +10,15 @@ class GameTimer
 public:
 	GameTimer();
 
-	float TotalTime()const; // in seconds
-	float DeltaTime()const; // in seconds
+	float TotalTime() const;   // in seconds
+	float DeltaTime() const;   // in seconds
 
-	float DeltaTimeMS()const; // in mili-seconds, 추가
+	float DeltaTimeMS() const;   // in mili-seconds, 추가
 
-	void Reset(); // Call before message loop.
-	void Start(); // Call when unpaused.
-	void Stop();  // Call when paused.
-	void Tick();  // Call every frame.
+	void Reset();   // Call before message loop.
+	void Start();   // Call when unpaused.
+	void Stop();    // Call when paused.
+	void Tick();    // Call every frame.
 
 private:
 	double mSecondsPerCount;
@@ -30,7 +30,8 @@ private:
 	__int64 mPrevTime;
 	__int64 mCurrTime;
 
-	bool mStopped = false;;
+	bool mStopped = false;
+	;
 };
 
-#endif // GAMETIMER_H
+#endif   // GAMETIMER_H

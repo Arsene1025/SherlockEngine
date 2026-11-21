@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <cstdint>
-#include <span>     // C++20: 바이트코드 읽기 전용 인자
+#include <span>   // C++20: 바이트코드 읽기 전용 인자
 #include <string>
 #include <vector>
 #include "RHI/BindingTypes.h"
@@ -17,8 +17,7 @@ namespace ShaderCompiler
 	// 그 외는 OPTIMIZATION_LEVEL3. 컴파일러 메시지(줄 번호 포함)를 Log로 보냄.
 	// path가 절대 경로여야 셰이더 안의 #include가 그 파일 위치를 기준으로 풀림.
 	// 타깃 프로파일("vs_5_0" 등)은 stage를 보고 구현부가 정함. 호출자는 셰이더 모델을 모름.
-	bool CompileFromFile(const std::wstring& path, const char* entryPoint, ShaderStage stage,
-		std::vector<uint8_t>& outBytecode);
+	bool CompileFromFile(const std::wstring& path, const char* entryPoint, ShaderStage stage, std::vector<uint8_t>& outBytecode);
 
 	// 파일을 통째로 읽음(.cso 로드용).
 	bool LoadFile(const std::wstring& path, std::vector<uint8_t>& outBytes);
@@ -27,8 +26,7 @@ namespace ShaderCompiler
 	//   Debug : 소스 .hlsl 또는 그것이 include 하는 헤더 중 하나라도 .cso보다 새로우면 소스를 컴파일함.
 	//   Release: .cso를 로드함. 없으면 경고를 남기고 exe 옆 .hlsl을 컴파일함.
 	// hlslName에는 "BasicVertexShader.hlsl" 처럼 파일 이름만 넘김. outSource에는 실제로 사용한 경로가 담김.
-	bool LoadOrCompile(const wchar_t* hlslName, const char* entryPoint, ShaderStage stage,
-		std::vector<uint8_t>& outBytecode, std::wstring* outSource = nullptr);
+	bool LoadOrCompile(const wchar_t* hlslName, const char* entryPoint, ShaderStage stage, std::vector<uint8_t>& outBytecode, std::wstring* outSource = nullptr);
 
 	// 리플렉션으로 cbuffer 크기를 C++ 구조체 크기와 대조함. 패킹이 어긋나면
 	// 화면이 조용히 깨지는 대신 여기서 잡힘. 셰이더가 그 cbuffer를 쓰지 않아

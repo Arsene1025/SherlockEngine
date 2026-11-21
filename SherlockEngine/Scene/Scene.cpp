@@ -56,29 +56,58 @@ void Scene::AddModelImages(const Model& model)
 	for (const ModelImage& image : model.images)
 	{
 		if (m_images.find(image.name) != m_images.end()) continue;   // 같은 모델을 다시 놓는 경우
-		AddImage(image.name, image.encoded);   // 바이트는 복사하지 않고 모델(AssetManager 캐시)과 함께 소유함
+		AddImage(image.name, image.encoded);                         // 바이트는 복사하지 않고 모델(AssetManager 캐시)과 함께 소유함
 	}
 }
 
 MeshSource MeshSource::Sphere(float radius, uint32_t slices, uint32_t stacks, const XMFLOAT4& color)
 {
-	MeshSource s; s.type = Type::Sphere; s.params[0] = radius; s.a = slices; s.b = stacks; s.color = color; return s;
+	MeshSource s;
+	s.type = Type::Sphere;
+	s.params[0] = radius;
+	s.a = slices;
+	s.b = stacks;
+	s.color = color;
+	return s;
 }
 MeshSource MeshSource::Cube(float size, const XMFLOAT4& color)
 {
-	MeshSource s; s.type = Type::Cube; s.params[0] = size; s.color = color; return s;
+	MeshSource s;
+	s.type = Type::Cube;
+	s.params[0] = size;
+	s.color = color;
+	return s;
 }
 MeshSource MeshSource::Plane(float width, float depth, uint32_t m, uint32_t n, const XMFLOAT4& color)
 {
-	MeshSource s; s.type = Type::Plane; s.params[0] = width; s.params[1] = depth; s.a = m; s.b = n; s.color = color; return s;
+	MeshSource s;
+	s.type = Type::Plane;
+	s.params[0] = width;
+	s.params[1] = depth;
+	s.a = m;
+	s.b = n;
+	s.color = color;
+	return s;
 }
 MeshSource MeshSource::Cylinder(float bottom, float top, float height, uint32_t slices, uint32_t stacks, const XMFLOAT4& color)
 {
-	MeshSource s; s.type = Type::Cylinder; s.params[0] = bottom; s.params[1] = top; s.params[2] = height; s.a = slices; s.b = stacks; s.color = color; return s;
+	MeshSource s;
+	s.type = Type::Cylinder;
+	s.params[0] = bottom;
+	s.params[1] = top;
+	s.params[2] = height;
+	s.a = slices;
+	s.b = stacks;
+	s.color = color;
+	return s;
 }
 MeshSource MeshSource::FromModel(const std::wstring& path, uint32_t meshIndex)
 {
-	MeshSource s; s.type = Type::Model; s.modelPath = path; s.meshIndex = meshIndex; return s;
+	MeshSource s;
+	s.type = Type::Model;
+	s.modelPath = path;
+	s.meshIndex = meshIndex;
+	return s;
 }
 bool MeshSource::CreatePrimitive(Mesh& out) const
 {
@@ -88,7 +117,7 @@ bool MeshSource::CreatePrimitive(Mesh& out) const
 	case Type::Cube:     out = Mesh::CreateCube(params[0], color); return true;
 	case Type::Plane:    out = Mesh::CreatePlane(params[0], params[1], a, b, color); return true;
 	case Type::Cylinder: out = Mesh::CreateCylinder(params[0], params[1], params[2], a, b, color); return true;
-	default: return false;
+	default:             return false;
 	}
 }
 
@@ -132,7 +161,10 @@ const GameObject* Scene::FindById(uint64_t id) const
 
 GameObject* Scene::FindObject(const std::string& name)
 {
-	for (auto& object : m_objects) if (object->GetName() == name) return object.get();
+	for (auto& object : m_objects)
+	{
+		if (object->GetName() == name) return object.get();
+	}
 	return nullptr;
 }
 
@@ -146,7 +178,10 @@ void Scene::RemoveObject(size_t index)
 	const auto collect = [&doomed](GameObject* object, auto& self) -> void
 	{
 		doomed.insert(object);
-		for (GameObject* child : object->GetChildren()) self(child, self);
+		for (GameObject* child : object->GetChildren())
+		{
+			self(child, self);
+		}
 	};
 	GameObject* root = m_objects[index].get();
 	collect(root, collect);
@@ -154,13 +189,25 @@ void Scene::RemoveObject(size_t index)
 	// 중에서 다시 고름).
 	for (GameObject* object : doomed)
 	{
-		for (auto& behaviour : object->GetBehaviours()) if (behaviour.get() == m_activeCamera) m_activeCamera = nullptr;
+		for (auto& behaviour : object->GetBehaviours())
+		{
+			if (behaviour.get() == m_activeCamera)
+			{
+				m_activeCamera = nullptr;
+			}
+		}
 		m_objectsById.erase(object->GetId());
 	}
 	root->DetachFromHierarchy();   // 부모의 children 에서 빠짐. 자식 링크도 끊지만 자식들은 아래에서 함께 지워짐
-	m_objects.erase(std::remove_if(m_objects.begin(), m_objects.end(),
-		[&doomed](const std::unique_ptr<GameObject>& o) { return doomed.count(o.get()) != 0; }), m_objects.end());
-	if (doomed.size() > 1) Log::Info("오브젝트 삭제: 자식 %zu 개 포함", doomed.size() - 1);
+	m_objects.erase(std::remove_if(m_objects.begin(), m_objects.end(), [&doomed](const std::unique_ptr<GameObject>& o)
+	{
+		return doomed.count(o.get()) != 0;
+	}),
+					m_objects.end());
+	if (doomed.size() > 1)
+	{
+		Log::Info("오브젝트 삭제: 자식 %zu 개 포함", doomed.size() - 1);
+	}
 }
 
 void Scene::ClearObjects()
@@ -173,13 +220,21 @@ void Scene::ClearObjects()
 
 GameObject* Scene::Instantiate(const std::string& prefabPath)
 {
-	if (m_assets == nullptr) { Log::Error("Instantiate: 에셋 관리자가 지정되지 않음 (%s)", prefabPath.c_str()); return nullptr; }
+	if (m_assets == nullptr)
+	{
+		Log::Error("Instantiate: 에셋 관리자가 지정되지 않음 (%s)", prefabPath.c_str());
+		return nullptr;
+	}
 	return SceneSerializer::InstantiatePrefab(*this, *m_assets, prefabPath);
 }
 
 GameObject* Scene::Instantiate(const std::string& prefabPath, const XMFLOAT3& position, const XMFLOAT3& rotation)
 {
-	if (m_assets == nullptr) { Log::Error("Instantiate: 에셋 관리자가 지정되지 않음 (%s)", prefabPath.c_str()); return nullptr; }
+	if (m_assets == nullptr)
+	{
+		Log::Error("Instantiate: 에셋 관리자가 지정되지 않음 (%s)", prefabPath.c_str());
+		return nullptr;
+	}
 	return SceneSerializer::InstantiatePrefab(*this, *m_assets, prefabPath, &position, &rotation);
 }
 
@@ -194,14 +249,20 @@ void Scene::Destroy(GameObject* object)
 	if (!m_playing)
 	{
 		const size_t index = IndexOf(object);
-		if (index != SIZE_MAX) RemoveObject(index);
+		if (index != SIZE_MAX)
+		{
+			RemoveObject(index);
+		}
 		return;
 	}
 	// 자손까지 표시함: 부모와 함께 지워질 것이므로 남은 Update 도 받지 않게 함.
 	const auto mark = [](GameObject* o, auto& self) -> void
 	{
 		o->MarkForDestroy();
-		for (GameObject* child : o->GetChildren()) self(child, self);
+		for (GameObject* child : o->GetChildren())
+		{
+			self(child, self);
+		}
 	};
 	mark(object, mark);
 	m_destroyPending = true;
@@ -215,9 +276,19 @@ void Scene::FlushDestroyed()
 	// 지우는 동안 벡터가 바뀌므로 ID 로 기억함.
 	std::vector<uint64_t> roots;
 	for (const auto& object : m_objects)
-		if (object->IsMarkedForDestroy() && (object->GetParent() == nullptr || !object->GetParent()->IsMarkedForDestroy())) roots.push_back(object->GetId());
+	{
+		if (object->IsMarkedForDestroy() && (object->GetParent() == nullptr || !object->GetParent()->IsMarkedForDestroy()))
+		{
+			roots.push_back(object->GetId());
+		}
+	}
 	for (uint64_t id : roots)
-		if (GameObject* object = FindById(id)) RemoveObject(IndexOf(object));
+	{
+		if (GameObject* object = FindById(id))
+		{
+			RemoveObject(IndexOf(object));
+		}
+	}
 }
 
 PrefabResources* Scene::FindPrefabResources(const std::string& key)
@@ -233,7 +304,10 @@ PrefabResources& Scene::StorePrefabResources(const std::string& key, PrefabResou
 
 size_t Scene::IndexOf(const GameObject* object) const
 {
-	for (size_t i = 0; i < m_objects.size(); ++i) if (m_objects[i].get() == object) return i;
+	for (size_t i = 0; i < m_objects.size(); ++i)
+	{
+		if (m_objects[i].get() == object) return i;
+	}
 	return SIZE_MAX;
 }
 
@@ -252,7 +326,12 @@ void Scene::BeginPlay(Input* input, Camera* camera)
 	}
 	m_playing = true;
 	for (auto& object : m_objects)
-		for (auto& behaviour : object->GetBehaviours()) behaviour->BeginPlay(&m_playContext);
+	{
+		for (auto& behaviour : object->GetBehaviours())
+		{
+			behaviour->BeginPlay(&m_playContext);
+		}
+	}
 }
 
 void Scene::Update(float dt)
@@ -274,7 +353,10 @@ void Scene::Update(float dt)
 				behaviour.MarkStarted();
 				behaviour.Start();
 			}
-			if (behaviour.enabled) behaviour.Update(dt);
+			if (behaviour.enabled)
+			{
+				behaviour.Update(dt);
+			}
 		}
 	}
 	FlushDestroyed();        // 이번 프레임에 Destroy 된 오브젝트를 순회가 끝난 지금 지움
@@ -290,7 +372,10 @@ CameraComponent* Scene::FindActiveCamera()
 		{
 			CameraComponent* camera = dynamic_cast<CameraComponent*>(behaviour.get());
 			if (camera == nullptr || !camera->enabled) continue;
-			if (best == nullptr || camera->priority > best->priority) best = camera;
+			if (best == nullptr || camera->priority > best->priority)
+			{
+				best = camera;
+			}
 		}
 	}
 	return best;
@@ -315,8 +400,7 @@ void Scene::ApplyActiveCamera(float dt)
 		m_blendDuration = m_activeCamera != nullptr ? (std::max)(0.0f, next->blendTime) : 0.0f;
 		m_blendElapsed = 0.0f;
 		m_activeCamera = next;
-		Log::Info("활성 카메라: %s (priority %d%s)", next->GetOwner().GetName().c_str(), next->priority,
-			m_blendDuration > 0.0f ? ", 블렌드" : "");
+		Log::Info("활성 카메라: %s (priority %d%s)", next->GetOwner().GetName().c_str(), next->priority, m_blendDuration > 0.0f ? ", 블렌드" : "");
 	}
 
 	CameraPose pose = next->GetPose();
@@ -356,7 +440,10 @@ void Scene::FixedUpdate(float fixedDt)
 		for (size_t b = 0; b < behaviours.size(); ++b)
 		{
 			Behaviour& behaviour = *behaviours[b];
-			if (behaviour.HasStarted() && behaviour.enabled) behaviour.FixedUpdate(fixedDt);   // Start 전에는 호출하지 않음 (Start 는 Update 에서 먼저 호출됨)
+			if (behaviour.HasStarted() && behaviour.enabled)
+			{
+				behaviour.FixedUpdate(fixedDt);   // Start 전에는 호출하지 않음 (Start 는 Update 에서 먼저 호출됨)
+			}
 		}
 	}
 	FlushDestroyed();
@@ -375,7 +462,12 @@ void Scene::EndPlay()
 		m_savedLens.valid = false;
 	}
 	for (auto& object : m_objects)
-		for (auto& behaviour : object->GetBehaviours()) behaviour->EndPlay();
+	{
+		for (auto& behaviour : object->GetBehaviours())
+		{
+			behaviour->EndPlay();
+		}
+	}
 }
 
 namespace
@@ -431,8 +523,21 @@ size_t Scene::CountMaterialUsers(const Material* material) const
 	for (const auto& object : m_objects)
 	{
 		bool uses = object->GetMaterial() == material;
-		if (!uses) for (const Material* slot : object->GetSlotMaterials()) if (slot == material) { uses = true; break; }
-		if (uses) ++count;
+		if (!uses)
+		{
+			for (const Material* slot : object->GetSlotMaterials())
+			{
+				if (slot == material)
+				{
+					uses = true;
+					break;
+				}
+			}
+		}
+		if (uses)
+		{
+			++count;
+		}
 	}
 	return count;
 }
@@ -488,7 +593,13 @@ size_t Scene::AddModel(const Model& model, const Transform& transform)
 	// 행렬은 이전(pre × placement)과 정확히 같다. 이제 루트 하나를 옮기면 모델 전체가 따라오고, Hierarchy
 	// 에서 접힌다. 노드가 하나면 루트 없이 그 오브젝트가 placement 를 가짐 (이전과 동일).
 	size_t validInstances = 0;
-	for (const ModelInstance& instance : model.instances) if (instance.meshIndex < meshes.size()) ++validInstances;
+	for (const ModelInstance& instance : model.instances)
+	{
+		if (instance.meshIndex < meshes.size())
+		{
+			++validInstances;
+		}
+	}
 	GameObject* root = nullptr;
 	if (validInstances > 1)
 	{
@@ -505,8 +616,14 @@ size_t Scene::AddModel(const Model& model, const Transform& transform)
 		GameObject& object = AddObject(meshes[instance.meshIndex], materials.empty() ? nullptr : materials.back(), instance.name.c_str());
 		std::vector<const Material*> slots = materials;   // 슬롯 번호 = 모델 재질 인덱스
 		object.SetSlotMaterials(std::move(slots));
-		if (root != nullptr) object.SetParent(root, false);   // 로컬 값은 pre 만. keepWorld=false: 아래에서 pre 를 직접 넣음
-		else object.GetTransform() = transform;
+		if (root != nullptr)
+		{
+			object.SetParent(root, false);   // 로컬 값은 pre 만. keepWorld=false: 아래에서 pre 를 직접 넣음
+		}
+		else
+		{
+			object.GetTransform() = transform;
+		}
 		object.GetTransform().SetPreTransform(XMLoadFloat4x4(&instance.world));
 		++created;
 	}
@@ -537,7 +654,10 @@ void Scene::AddImage(const std::string& name, std::vector<uint8_t>&& encoded)
 
 void Scene::AddImage(const std::string& name, std::shared_ptr<const std::vector<uint8_t>> encoded)
 {
-	if (encoded != nullptr) m_images[name] = std::move(encoded);
+	if (encoded != nullptr)
+	{
+		m_images[name] = std::move(encoded);
+	}
 }
 
 const std::vector<uint8_t>* Scene::FindImage(const std::string& name) const
@@ -545,4 +665,3 @@ const std::vector<uint8_t>* Scene::FindImage(const std::string& name) const
 	auto found = m_images.find(name);
 	return found == m_images.end() ? nullptr : found->second.get();
 }
-

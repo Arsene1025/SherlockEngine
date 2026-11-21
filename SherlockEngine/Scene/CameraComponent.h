@@ -23,7 +23,7 @@ struct CameraPose
 {
 	DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
 	DirectX::XMFLOAT4 rotation = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);   // 월드 회전 쿼터니언
-	float fovY = 0.0f;   // 라디안
+	float fovY = 0.0f;                                                        // 라디안
 
 	DirectX::XMMATRIX GetRotationMatrix() const { return DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&rotation)); }
 };
@@ -46,10 +46,10 @@ public:
 	float fovYDegrees = 45.0f;
 	float nearZ = 0.1f;
 	float farZ = 1000.0f;
-	int priority = 0;        // 높은 쪽이 활성. 같으면 오브젝트 목록에서 앞선 것이 우선
-	float blendTime = 0.5f;  // 재생 "도중" 다른 카메라에서 이 카메라로 전환될 때의 보간 시간 (초). 0 = 즉시.
-	                         // Play 시작 때는 언제나 즉시 전환함 — 에디터 시점에서 카메라로 미끄러지듯
-	                         // 이동하지 않음 (Scene::ApplyActiveCamera).
+	int priority = 0;         // 높은 쪽이 활성. 같으면 오브젝트 목록에서 앞선 것이 우선
+	float blendTime = 0.5f;   // 재생 "도중" 다른 카메라에서 이 카메라로 전환될 때의 보간 시간 (초). 0 = 즉시.
+							  // Play 시작 때는 언제나 즉시 전환함 — 에디터 시점에서 카메라로 미끄러지듯
+							  // 이동하지 않음 (Scene::ApplyActiveCamera).
 
 	// 투영 선택. false = 원근(fovY 를 씀), true = 직교(orthoSize 를 씀). 멤버는 끝에만 덧붙임 (스크립트 DLL ABI).
 	// 직교에서 orthoSize 는 화면 세로 길이(월드 단위)이고 가로는 종횡비를 곱한 값. 전환 블렌드 중에는 투영

@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include "Core/EngineApi.h"   // SHERLOCK_API (엔진 DLL 내보내기)
-#include <concepts>   // C++20: std::derived_from
+#include <concepts>           // C++20: std::derived_from
 #include <memory>
 #include <string>
 #include <vector>
@@ -30,7 +30,10 @@ class SHERLOCK_API GameObject
 public:
 	GameObject() = default;
 	GameObject(const Mesh* mesh, const Material* material, const char* name)
-		: mesh(mesh), material(material), name(name ? name : "") {}
+		: mesh(mesh)
+		, material(material)
+		, name(name ? name : "")
+	{}
 	GameObject(const GameObject&) = delete;
 	GameObject& operator=(const GameObject&) = delete;
 
@@ -87,7 +90,13 @@ public:
 		if (!created) return nullptr;
 		return &AddBehaviour(std::move(created));
 	}
-	void RemoveBehaviour(size_t index) { if (index < behaviours.size()) behaviours.erase(behaviours.begin() + index); }
+	void RemoveBehaviour(size_t index)
+	{
+		if (index < behaviours.size())
+		{
+			behaviours.erase(behaviours.begin() + index);
+		}
+	}
 	std::vector<std::unique_ptr<Behaviour>>& GetBehaviours() { return behaviours; }
 	const std::vector<std::unique_ptr<Behaviour>>& GetBehaviours() const { return behaviours; }
 	// C++20: T 는 Behaviour 파생 클래스여야 함 (std::derived_from 콘셉트). 이전에는 무엇이든 받아
@@ -95,7 +104,10 @@ public:
 	// 호출이 컴파일되지 않음.
 	template <std::derived_from<Behaviour> T> T* GetBehaviour()
 	{
-		for (auto& b : behaviours) if (T* typed = dynamic_cast<T*>(b.get())) return typed;
+		for (auto& b : behaviours)
+		{
+			if (T* typed = dynamic_cast<T*>(b.get())) return typed;
+		}
 		return nullptr;
 	}
 
@@ -153,8 +165,8 @@ private:
 	std::string name;
 	std::vector<std::unique_ptr<Behaviour>> behaviours;
 	std::vector<std::string> missingComponents;   // JSON 문자열
-	GameObject* parent = nullptr;          // 비소유. 소유는 Scene 의 벡터
-	std::vector<GameObject*> children;     // 비소유. Hierarchy 표시 순서
+	GameObject* parent = nullptr;                 // 비소유. 소유는 Scene 의 벡터
+	std::vector<GameObject*> children;            // 비소유. Hierarchy 표시 순서
 	// 멤버는 끝에만 덧붙임: 인라인 접근자(GetTransform 등)를 쓰는 이미 빌드된 스크립트 DLL 이 옛 오프셋
 	// 그대로 동작함 (ABI 호환).
 	uint64_t id = 0;

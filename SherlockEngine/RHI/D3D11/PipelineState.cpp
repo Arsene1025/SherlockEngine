@@ -66,7 +66,8 @@ bool PipelineState::Create(D3D11Device& device, const PipelineStateDesc& desc)
 		hr = d3d->CreateInputLayout(
 			elements, desc.vertexLayout.attributeCount,
 			vs->bytecode.data(), vs->bytecode.size(),
-			m_inputLayout.ReleaseAndGetAddressOf());
+			m_inputLayout.ReleaseAndGetAddressOf()
+		);
 		if (FAILED(hr))
 		{
 			Log::Error("PipelineState::Create : CreateInputLayout 실패. %s", Log::HrToString(hr).c_str());

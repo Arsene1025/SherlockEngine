@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
-#include <format>        // C++20: 드롭 라벨 서식
+#include <format>   // C++20: 드롭 라벨 서식
 #include <string_view>
 #include <unordered_map>
 
@@ -48,7 +48,10 @@ namespace
 			}
 			float t1 = (lo[i] - o[i]) / d[i];
 			float t2 = (hi[i] - o[i]) / d[i];
-			if (t1 > t2) std::swap(t1, t2);
+			if (t1 > t2)
+			{
+				std::swap(t1, t2);
+			}
 			tMin = (std::max)(tMin, t1);
 			tMax = (std::min)(tMax, t2);
 			if (tMin > tMax) return false;
@@ -92,7 +95,13 @@ namespace
 		const Light& light = lights[index];
 		if (light.type != LightType::Directional) return light.position;
 		int ordinal = 0;
-		for (int i = 0; i < index; ++i) if (lights[i].type == LightType::Directional) ++ordinal;
+		for (int i = 0; i < index; ++i)
+		{
+			if (lights[i].type == LightType::Directional)
+			{
+				++ordinal;
+			}
+		}
 		const float u = (width - 130.0f) / width;
 		const float v = (110.0f + ordinal * 42.0f) / height;
 		const Ray ray = ScreenToRay(camera, u, v);
@@ -117,7 +126,9 @@ namespace
 			XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(&m.m[1][0]), u);
 			XMStoreFloat3(reinterpret_cast<XMFLOAT3*>(&m.m[2][0]), f);
 		}
-		m.m[3][0] = anchor.x; m.m[3][1] = anchor.y; m.m[3][2] = anchor.z;
+		m.m[3][0] = anchor.x;
+		m.m[3][1] = anchor.y;
+		m.m[3][2] = anchor.z;
 		return m;
 	}
 
@@ -125,9 +136,15 @@ namespace
 	{
 		std::string s = Log::ToUtf8(relativePath.c_str());
 		const size_t slash = s.find_last_of("\\/");
-		if (slash != std::string::npos) s = s.substr(slash + 1);
+		if (slash != std::string::npos)
+		{
+			s = s.substr(slash + 1);
+		}
 		const size_t dot = s.find_last_of('.');
-		if (dot != std::string::npos && dot > 0) s = s.substr(0, dot);
+		if (dot != std::string::npos && dot > 0)
+		{
+			s = s.substr(0, dot);
+		}
 		return s;
 	}
 }
@@ -138,7 +155,10 @@ Editor::Editor()
 
 void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& modelStats, const Callbacks& callbacks)
 {
-	if (scenePath.empty()) scenePath = Paths::GetExecutableDir() + L"Scenes\\scene.json";
+	if (scenePath.empty())
+	{
+		scenePath = Paths::GetExecutableDir() + L"Scenes\\scene.json";
+	}
 
 	// ---- 도킹 공간 (메인 뷰포트 전체, 메뉴 바 아래) ----
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -160,23 +180,56 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 	// 단축키: Ctrl+S 저장, Ctrl+L 로드, 1/2/3 기즈모 (텍스트 입력 중이 아닐 때)
 	if (!ImGui::GetIO().WantTextInput)
 	{
-		if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S) && callbacks.saveScene) m_lastMessage = callbacks.saveScene(scenePath) ? "saved" : "save failed";
-		if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_L) && callbacks.loadScene) callbacks.loadScene(scenePath);   // 결과 메시지·선택 비우기는 명령이 함
+		if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S) && callbacks.saveScene)
+		{
+			m_lastMessage = callbacks.saveScene(scenePath) ? "saved" : "save failed";
+		}
+		if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_L) && callbacks.loadScene)
+		{
+			callbacks.loadScene(scenePath);   // 결과 메시지·선택 비우기는 명령이 함
+		}
 		// 되돌리기·다시 실행·복제. 위젯을 잡고 있는 동안(슬라이더 드래그 등)은 무시함 — 편집이 아직 기록되기 전이므로.
 		if (!ImGui::IsAnyItemActive() && !ImGui::IsMouseDown(ImGuiMouseButton_Left))
 		{
-			if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z) && callbacks.undo) callbacks.undo();
-			if ((ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Y) || ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z)) && callbacks.redo) callbacks.redo();
-			if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_D) && callbacks.duplicateObject && m_selected >= 0) callbacks.duplicateObject(m_selected);
+			if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z) && callbacks.undo)
+			{
+				callbacks.undo();
+			}
+			if ((ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Y) || ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z)) && callbacks.redo)
+			{
+				callbacks.redo();
+			}
+			if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_D) && callbacks.duplicateObject && m_selected >= 0)
+			{
+				callbacks.duplicateObject(m_selected);
+			}
 		}
-		if (ImGui::IsKeyPressed(ImGuiKey_1, false)) m_gizmoOperation = 0;
-		if (ImGui::IsKeyPressed(ImGuiKey_2, false)) m_gizmoOperation = 1;
-		if (ImGui::IsKeyPressed(ImGuiKey_3, false)) m_gizmoOperation = 2;
+		if (ImGui::IsKeyPressed(ImGuiKey_1, false))
+		{
+			m_gizmoOperation = 0;
+		}
+		if (ImGui::IsKeyPressed(ImGuiKey_2, false))
+		{
+			m_gizmoOperation = 1;
+		}
+		if (ImGui::IsKeyPressed(ImGuiKey_3, false))
+		{
+			m_gizmoOperation = 2;
+		}
 		// Ctrl+P 재생/정지 (언리얼 Alt+P, 유니티 Ctrl+P)
 		if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_P))
 		{
-			if (playState == PlayState::Editing) { if (callbacks.play) callbacks.play(); }
-			else if (callbacks.stop) callbacks.stop();
+			if (playState == PlayState::Editing)
+			{
+				if (callbacks.play)
+				{
+					callbacks.play();
+				}
+			}
+			else if (callbacks.stop)
+			{
+				callbacks.stop();
+			}
 		}
 	}
 	DrawSceneView(engine, callbacks);
@@ -196,7 +249,10 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 	DebugUI::DrawMaterialPanel(engine.GetScene(), engine.GetRenderer());
 	DebugUI::EndPanel();
 
-	if (showConsole) DebugUI::DrawLogConsole(&showConsole);
+	if (showConsole)
+	{
+		DebugUI::DrawLogConsole(&showConsole);
+	}
 }
 
 void Editor::BuildDefaultLayout(uint32_t dockspaceId)
@@ -232,25 +288,43 @@ void Editor::DrawMenuBar(Engine& engine, const Callbacks& callbacks)
 	if (ImGui::BeginMenu("File"))
 	{
 		// 프로젝트
-		if (ImGui::MenuItem("New Project...")) m_openLauncher = true;
+		if (ImGui::MenuItem("New Project..."))
+		{
+			m_openLauncher = true;
+		}
 		if (ImGui::MenuItem("Open Project...") && callbacks.openProject)
 		{
 			const std::wstring path = ProjectLauncher::BrowseForProjectFile(nullptr);
-			if (!path.empty()) m_lastMessage = callbacks.openProject(path) ? "project opened" : "open project failed";
+			if (!path.empty())
+			{
+				m_lastMessage = callbacks.openProject(path) ? "project opened" : "open project failed";
+			}
 		}
 		if (ImGui::BeginMenu("Recent Projects"))
 		{
 			const std::vector<ProjectLauncher::Recent> recent = ProjectLauncher::LoadRecent();
-			if (recent.empty()) ImGui::TextDisabled("(none)");
+			if (recent.empty())
+			{
+				ImGui::TextDisabled("(none)");
+			}
 			for (const ProjectLauncher::Recent& r : recent)
 			{
 				const std::string label = r.name + "   " + Log::ToUtf8(r.path.c_str());
-				if (ImGui::MenuItem(label.c_str()) && callbacks.openProject) m_lastMessage = callbacks.openProject(r.path) ? "project opened" : "open project failed";
+				if (ImGui::MenuItem(label.c_str()) && callbacks.openProject)
+				{
+					m_lastMessage = callbacks.openProject(r.path) ? "project opened" : "open project failed";
+				}
 			}
 			ImGui::EndMenu();
 		}
-		if (ImGui::MenuItem("Project Settings...", nullptr, false, project.loaded)) m_openProjectSettings = true;
-		if (ImGui::MenuItem("Projects (launcher)...")) m_openLauncher = true;
+		if (ImGui::MenuItem("Project Settings...", nullptr, false, project.loaded))
+		{
+			m_openProjectSettings = true;
+		}
+		if (ImGui::MenuItem("Projects (launcher)..."))
+		{
+			m_openLauncher = true;
+		}
 		ImGui::Separator();
 		if (m_pathBuffer[0] == '\0')
 		{
@@ -262,19 +336,37 @@ void Editor::DrawMenuBar(Engine& engine, const Callbacks& callbacks)
 		{
 			const int length = MultiByteToWideChar(CP_UTF8, 0, m_pathBuffer, -1, nullptr, 0);
 			scenePath.assign(length > 0 ? length - 1 : 0, L'\0');
-			if (length > 1) MultiByteToWideChar(CP_UTF8, 0, m_pathBuffer, -1, &scenePath[0], length);
+			if (length > 1)
+			{
+				MultiByteToWideChar(CP_UTF8, 0, m_pathBuffer, -1, &scenePath[0], length);
+			}
 		}
 		if (ImGui::MenuItem("Save scene", "Ctrl+S") && callbacks.saveScene)
 		{
 			m_lastMessage = callbacks.saveScene(scenePath) ? "saved" : "save failed";
 		}
-		if (ImGui::MenuItem("Load scene", "Ctrl+L") && callbacks.loadScene) callbacks.loadScene(scenePath);   // 명령 큐. 결과 메시지는 명령이 정함
+		if (ImGui::MenuItem("Load scene", "Ctrl+L") && callbacks.loadScene)
+		{
+			callbacks.loadScene(scenePath);   // 명령 큐. 결과 메시지는 명령이 정함
+		}
 		ImGui::Separator();
-		if (ImGui::MenuItem("New scene (floor only)") && callbacks.newScene) { callbacks.newScene(); m_selected = -1; m_lastMessage = "new scene"; }
+		if (ImGui::MenuItem("New scene (floor only)") && callbacks.newScene)
+		{
+			callbacks.newScene();
+			m_selected = -1;
+			m_lastMessage = "new scene";
+		}
 		ImGui::Separator();
-		if (ImGui::MenuItem("Demo scene") && callbacks.switchScene) { callbacks.switchScene(0); m_selected = -1; }
+		if (ImGui::MenuItem("Demo scene") && callbacks.switchScene)
+		{
+			callbacks.switchScene(0);
+			m_selected = -1;
+		}
 		ImGui::Separator();
-		if (ImGui::MenuItem("Build Game...")) m_openBuildPopup = true;
+		if (ImGui::MenuItem("Build Game..."))
+		{
+			m_openBuildPopup = true;
+		}
 		ImGui::EndMenu();
 	}
 	if (ImGui::BeginMenu("Edit"))
@@ -282,22 +374,50 @@ void Editor::DrawMenuBar(Engine& engine, const Callbacks& callbacks)
 		const bool editing = playState == PlayState::Editing;
 		const std::string undoText = history.canUndo ? "Undo " + history.undoLabel : std::string("Undo");
 		const std::string redoText = history.canRedo ? "Redo " + history.redoLabel : std::string("Redo");
-		if (ImGui::MenuItem(undoText.c_str(), "Ctrl+Z", false, editing && history.canUndo) && callbacks.undo) callbacks.undo();
-		if (ImGui::MenuItem(redoText.c_str(), "Ctrl+Y", false, editing && history.canRedo) && callbacks.redo) callbacks.redo();
+		if (ImGui::MenuItem(undoText.c_str(), "Ctrl+Z", false, editing && history.canUndo) && callbacks.undo)
+		{
+			callbacks.undo();
+		}
+		if (ImGui::MenuItem(redoText.c_str(), "Ctrl+Y", false, editing && history.canRedo) && callbacks.redo)
+		{
+			callbacks.redo();
+		}
 		ImGui::Separator();
 		const bool hasSelection = m_selected >= 0 && m_selected < static_cast<int>(engine.GetScene().GetObjects().size());
-		if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, hasSelection) && callbacks.duplicateObject) callbacks.duplicateObject(m_selected);
-		if (ImGui::MenuItem("Delete", "Del", false, hasSelection) && callbacks.deleteObject) { callbacks.deleteObject(m_selected); m_selected = -1; }
-		if (ImGui::MenuItem("Save selection as Prefab", nullptr, false, hasSelection) && callbacks.savePrefab) callbacks.savePrefab(m_selected);
+		if (ImGui::MenuItem("Duplicate", "Ctrl+D", false, hasSelection) && callbacks.duplicateObject)
+		{
+			callbacks.duplicateObject(m_selected);
+		}
+		if (ImGui::MenuItem("Delete", "Del", false, hasSelection) && callbacks.deleteObject)
+		{
+			callbacks.deleteObject(m_selected);
+			m_selected = -1;
+		}
+		if (ImGui::MenuItem("Save selection as Prefab", nullptr, false, hasSelection) && callbacks.savePrefab)
+		{
+			callbacks.savePrefab(m_selected);
+		}
 		ImGui::Separator();
 		ImGui::TextDisabled("history: %zu steps, %.1f KB%s", history.steps, history.bytes / 1024.0, editing ? "" : " (paused during Play)");
 		ImGui::EndMenu();
 	}
-	if (m_openBuildPopup) { ImGui::OpenPopup("Build Game"); m_openBuildPopup = false; }
+	if (m_openBuildPopup)
+	{
+		ImGui::OpenPopup("Build Game");
+		m_openBuildPopup = false;
+	}
 	DrawBuildPopup();
-	if (m_openProjectSettings) { ImGui::OpenPopup("Project Settings"); m_openProjectSettings = false; }
+	if (m_openProjectSettings)
+	{
+		ImGui::OpenPopup("Project Settings");
+		m_openProjectSettings = false;
+	}
 	DrawProjectSettingsPopup(callbacks);
-	if (m_openLauncher) { ImGui::OpenPopup("Projects"); m_openLauncher = false; }
+	if (m_openLauncher)
+	{
+		ImGui::OpenPopup("Projects");
+		m_openLauncher = false;
+	}
 	DrawLauncher(engine, callbacks);
 	if (ImGui::BeginMenu("View"))
 	{
@@ -315,16 +435,27 @@ void Editor::DrawMenuBar(Engine& engine, const Callbacks& callbacks)
 		ImGui::RadioButton("Translate (1)", &m_gizmoOperation, 0);
 		ImGui::RadioButton("Rotate (2)", &m_gizmoOperation, 1);
 		ImGui::RadioButton("Scale (3)", &m_gizmoOperation, 2);
-		if (ImGui::RadioButton("Local space", !m_gizmoWorld)) m_gizmoWorld = false;
-		if (ImGui::RadioButton("World space", m_gizmoWorld)) m_gizmoWorld = true;
+		if (ImGui::RadioButton("Local space", !m_gizmoWorld))
+		{
+			m_gizmoWorld = false;
+		}
+		if (ImGui::RadioButton("World space", m_gizmoWorld))
+		{
+			m_gizmoWorld = true;
+		}
 		ImGui::Separator();
 		ImGui::TextDisabled("Light icons");
-		if (ImGui::RadioButton("All lights", m_lightIconMode == LightIconMode::All)) m_lightIconMode = LightIconMode::All;
-		if (ImGui::RadioButton("Selected light only", m_lightIconMode == LightIconMode::SelectedOnly)) m_lightIconMode = LightIconMode::SelectedOnly;
+		if (ImGui::RadioButton("All lights", m_lightIconMode == LightIconMode::All))
+		{
+			m_lightIconMode = LightIconMode::All;
+		}
+		if (ImGui::RadioButton("Selected light only", m_lightIconMode == LightIconMode::SelectedOnly))
+		{
+			m_lightIconMode = LightIconMode::SelectedOnly;
+		}
 		ImGui::EndMenu();
 	}
-	ImGui::Text("   %s   |   %s   |   backend %s   |   %s", m_lastMessage.c_str(), project.loaded ? project.name.c_str() : "(no project)", engine.GetDevice().GetBackendName(),
-		m_selected >= 0 && m_selected < static_cast<int>(engine.GetScene().GetObjects().size()) ? engine.GetScene().GetObjects()[m_selected]->GetName().c_str() : "(no selection)");
+	ImGui::Text("   %s   |   %s   |   backend %s   |   %s", m_lastMessage.c_str(), project.loaded ? project.name.c_str() : "(no project)", engine.GetDevice().GetBackendName(), m_selected >= 0 && m_selected < static_cast<int>(engine.GetScene().GetObjects().size()) ? engine.GetScene().GetObjects()[m_selected]->GetName().c_str() : "(no selection)");
 	ImGui::EndMainMenuBar();
 }
 
@@ -337,13 +468,27 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 	// 툴바 한 줄. 재생 버튼이 맨 앞.
 	ImGui::SetCursorPos(ImVec2(6.0f, 4.0f + ImGui::GetCursorPosY()));
 	DrawPlayControls(callbacks);
-	ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
-	ImGui::RadioButton("Move", &m_gizmoOperation, 0); ImGui::SameLine();
-	ImGui::RadioButton("Rotate", &m_gizmoOperation, 1); ImGui::SameLine();
-	ImGui::RadioButton("Scale", &m_gizmoOperation, 2); ImGui::SameLine();
-	ImGui::TextDisabled("|"); ImGui::SameLine();
-	if (ImGui::RadioButton("Local", !m_gizmoWorld)) m_gizmoWorld = false; ImGui::SameLine();   // 기본: 오브젝트 축 기준
-	if (ImGui::RadioButton("World", m_gizmoWorld)) m_gizmoWorld = true; ImGui::SameLine();
+	ImGui::SameLine();
+	ImGui::TextDisabled("|");
+	ImGui::SameLine();
+	ImGui::RadioButton("Move", &m_gizmoOperation, 0);
+	ImGui::SameLine();
+	ImGui::RadioButton("Rotate", &m_gizmoOperation, 1);
+	ImGui::SameLine();
+	ImGui::RadioButton("Scale", &m_gizmoOperation, 2);
+	ImGui::SameLine();
+	ImGui::TextDisabled("|");
+	ImGui::SameLine();
+	if (ImGui::RadioButton("Local", !m_gizmoWorld))
+	{
+		m_gizmoWorld = false;
+	}
+	ImGui::SameLine();   // 기본: 오브젝트 축 기준
+	if (ImGui::RadioButton("World", m_gizmoWorld))
+	{
+		m_gizmoWorld = true;
+	}
+	ImGui::SameLine();
 	ImGui::TextDisabled("RMB: look  WASD: move  LMB: select  1/2/3: gizmo  Ctrl+P: play");
 
 	// 스크립트 DLL 이 안 올라왔거나 새 빌드가 있으면 씬 뷰 위(이미지 앞)에 배너를 표시 — 이미지가 남은 공간을
@@ -357,7 +502,10 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 	m_sceneHeight = height;
 	Renderer& renderer = engine.GetRenderer();
 	renderer.SetSceneTarget(width, height);   // 크기가 같으면 아무것도 하지 않음
-	if (width > 0 && height > 0) engine.GetCamera().SetAspectRatio(static_cast<float>(width) / static_cast<float>(height));
+	if (width > 0 && height > 0)
+	{
+		engine.GetCamera().SetAspectRatio(static_cast<float>(width) / static_cast<float>(height));
+	}
 
 	const ImVec2 imagePos = ImGui::GetCursorScreenPos();
 	const uint64_t textureId = renderer.IsOffscreen() ? engine.GetDevice().GetImGuiTextureId(renderer.GetSceneTexture()) : 0;
@@ -397,7 +545,10 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 			XMFLOAT3 point;
 			const int hitObject = RaycastScene(engine.GetScene(), engine.GetCamera(), u, v, point);
 			DrawDropGhost(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height), asset, point, hitObject);
-			if (payload->IsDelivery()) HandleAssetDrop(engine, callbacks, asset, point, hitObject);
+			if (payload->IsDelivery())
+			{
+				HandleAssetDrop(engine, callbacks, asset, point, hitObject);
+			}
 		}
 		ImGui::EndDragDropTarget();
 	}
@@ -423,7 +574,10 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 		const float u = (mouse.x - imagePos.x) / static_cast<float>(width);
 		const float v = (mouse.y - imagePos.y) / static_cast<float>(height);
 		const int lightHit = PickLight(engine, mouse.x, mouse.y, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
-		if (lightHit >= 0) SelectLight(lightHit);
+		if (lightHit >= 0)
+		{
+			SelectLight(lightHit);
+		}
 		else
 		{
 			m_selectedLight = -1;
@@ -489,7 +643,10 @@ int Editor::Pick(Scene& scene, const Camera& camera, float u, float v, float* ou
 			boxMin = XMFLOAT3(-0.5f, -0.5f, -0.5f);
 			boxMax = XMFLOAT3(0.5f, 0.5f, 0.5f);
 		}
-		else continue;
+		else
+		{
+			continue;
+		}
 		// 광선을 오브젝트 로컬 공간으로 옮겨 로컬 AABB 와 검사함 (회전·스케일이 있어도 정확).
 		const XMMATRIX world = objects[i]->GetWorldMatrix();   // 계층 포함
 		const XMMATRIX invWorld = XMMatrixInverse(nullptr, world);
@@ -508,7 +665,10 @@ int Editor::Pick(Scene& scene, const Camera& camera, float u, float v, float* ou
 			best = i;
 		}
 	}
-	if (outDistance != nullptr && best >= 0) *outDistance = bestT;
+	if (outDistance != nullptr && best >= 0)
+	{
+		*outDistance = bestT;
+	}
 	return best;
 }
 
@@ -543,7 +703,10 @@ void Editor::DrawContentBrowser(Engine& engine, const Callbacks& callbacks)
 	// FirstUseEver 이므로 ini 에 항목이 생긴 뒤에는 사용자가 옮긴 자리를 존중함. 도킹 ID 는 바꾸지 않음.
 	if (ImGuiWindow* stats = ImGui::FindWindowByName("Stats"))
 	{
-		if (stats->DockId != 0) ImGui::SetNextWindowDockID(stats->DockId, ImGuiCond_FirstUseEver);
+		if (stats->DockId != 0)
+		{
+			ImGui::SetNextWindowDockID(stats->DockId, ImGuiCond_FirstUseEver);
+		}
 	}
 	ImGui::Begin("Content Browser", &showContentBrowser);
 	if (m_focusContentBrowserFrames > 0)
@@ -552,9 +715,21 @@ void Editor::DrawContentBrowser(Engine& engine, const Callbacks& callbacks)
 		--m_focusContentBrowserFrames;
 	}
 	ContentBrowser::Actions actions;
-	actions.openScene = [&](const std::wstring& relativePath) { LoadSceneFromAsset(callbacks, relativePath); };
-	actions.placeModel = [&](const std::wstring& relativePath, const XMFLOAT3& position) { PlaceModelFromAsset(engine, callbacks, relativePath, position); };
-	actions.instantiatePrefab = [&](const std::wstring& relativePath, const XMFLOAT3& position) { if (callbacks.instantiatePrefab) callbacks.instantiatePrefab(relativePath, position); };
+	actions.openScene = [&](const std::wstring& relativePath)
+	{
+		LoadSceneFromAsset(callbacks, relativePath);
+	};
+	actions.placeModel = [&](const std::wstring& relativePath, const XMFLOAT3& position)
+	{
+		PlaceModelFromAsset(engine, callbacks, relativePath, position);
+	};
+	actions.instantiatePrefab = [&](const std::wstring& relativePath, const XMFLOAT3& position)
+	{
+		if (callbacks.instantiatePrefab)
+		{
+			callbacks.instantiatePrefab(relativePath, position);
+		}
+	};
 	m_contentBrowser.Draw(engine.GetDevice(), actions);
 	ImGui::End();
 }
@@ -570,7 +745,7 @@ void Editor::LoadSceneFromAsset(const Callbacks& callbacks, const std::wstring& 
 {
 	if (!callbacks.loadScene) return;
 	scenePath = Paths::GetAssetRoot() + relativePath;
-	m_pathBuffer[0] = '\0';   // File 메뉴의 경로 필드를 다음에 열 때 다시 채움
+	m_pathBuffer[0] = '\0';           // File 메뉴의 경로 필드를 다음에 열 때 다시 채움
 	callbacks.loadScene(scenePath);   // 명령 큐. 결과 메시지·선택 비우기는 명령이 함
 }
 
@@ -586,7 +761,10 @@ void Editor::HandleAssetDrop(Engine& engine, const Callbacks& callbacks, const A
 		LoadSceneFromAsset(callbacks, relativePath);
 		break;
 	case AssetType::Prefab:
-		if (callbacks.instantiatePrefab) callbacks.instantiatePrefab(relativePath, point);   // 명령 큐 → Scene::Instantiate
+		if (callbacks.instantiatePrefab)
+		{
+			callbacks.instantiatePrefab(relativePath, point);   // 명령 큐 → Scene::Instantiate
+		}
 		break;
 	case AssetType::Texture:
 	{
@@ -605,7 +783,13 @@ void Editor::HandleAssetDrop(Engine& engine, const Callbacks& callbacks, const A
 			break;
 		}
 		Material* material = nullptr;
-		for (auto& m : scene.GetMaterials()) if (m.get() == object.GetMaterial()) material = m.get();
+		for (auto& m : scene.GetMaterials())
+		{
+			if (m.get() == object.GetMaterial())
+			{
+				material = m.get();
+			}
+		}
 		if (material == nullptr)
 		{
 			m_lastMessage = "object has no editable material";
@@ -631,11 +815,17 @@ void Editor::DrawDropGhost(Engine& engine, float x, float y, float width, float 
 
 	const Camera& camera = engine.GetCamera();
 	const XMMATRIX viewProj = camera.GetViewMatrix() * camera.GetProjectionMatrix();
-	const auto project = [&](const XMFLOAT3& p, ImVec2& out) -> bool { return ProjectToView(viewProj, x, y, width, height, p, out); };
+	const auto project = [&](const XMFLOAT3& p, ImVec2& out) -> bool
+	{
+		return ProjectToView(viewProj, x, y, width, height, p, out);
+	};
 	const auto line = [&](const XMFLOAT3& a, const XMFLOAT3& b, ImU32 color, float thickness)
 	{
 		ImVec2 pa, pb;
-		if (project(a, pa) && project(b, pb)) dl->AddLine(pa, pb, color, thickness);
+		if (project(a, pa) && project(b, pb))
+		{
+			dl->AddLine(pa, pb, color, thickness);
+		}
 	};
 
 	// 놓일 점: 십자 + 원
@@ -664,10 +854,15 @@ void Editor::DrawDropGhost(Engine& engine, float x, float y, float width, float 
 				for (int i = 0; i < 8; ++i)
 				{
 					c[i] = XMFLOAT3((i & 1) ? b.max.x : b.min.x, (i & 2) ? b.max.y : b.min.y, (i & 4) ? b.max.z : b.min.z);
-					c[i].x += offset.x; c[i].y += offset.y; c[i].z += offset.z;
+					c[i].x += offset.x;
+					c[i].y += offset.y;
+					c[i].z += offset.z;
 				}
-				static const int edges[12][2] = { {0,1},{1,3},{3,2},{2,0}, {4,5},{5,7},{7,6},{6,4}, {0,4},{1,5},{2,6},{3,7} };
-				for (const auto& e : edges) line(c[e[0]], c[e[1]], accentSoft, 1.5f);
+				static const int edges[12][2] = { { 0, 1 }, { 1, 3 }, { 3, 2 }, { 2, 0 }, { 4, 5 }, { 5, 7 }, { 7, 6 }, { 6, 4 }, { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 } };
+				for (const auto& e : edges)
+				{
+					line(c[e[0]], c[e[1]], accentSoft, 1.5f);
+				}
 			}
 		}
 	}
@@ -691,27 +886,58 @@ void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 	auto& objects = scene.GetObjects();
 	ImGui::TextWrapped("Objects %zu   Lights %zu", objects.size(), scene.GetLights().size());
 	// 추가/삭제. 새 오브젝트는 원점 위에 기본 재질로 생기고 바로 선택됨.
-	if (ImGui::SmallButton("+ Sphere") && callbacks.addPrimitive) callbacks.addPrimitive(0);   // 명령 큐. 새 오브젝트 선택은 명령이 함
+	if (ImGui::SmallButton("+ Sphere") && callbacks.addPrimitive)
+	{
+		callbacks.addPrimitive(0);   // 명령 큐. 새 오브젝트 선택은 명령이 함
+	}
 	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Cube"));
-	if (ImGui::SmallButton("+ Cube") && callbacks.addPrimitive) callbacks.addPrimitive(1);
+	if (ImGui::SmallButton("+ Cube") && callbacks.addPrimitive)
+	{
+		callbacks.addPrimitive(1);
+	}
 	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Cylinder"));
-	if (ImGui::SmallButton("+ Cylinder") && callbacks.addPrimitive) callbacks.addPrimitive(2);
+	if (ImGui::SmallButton("+ Cylinder") && callbacks.addPrimitive)
+	{
+		callbacks.addPrimitive(2);
+	}
 	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Plane"));
-	if (ImGui::SmallButton("+ Plane") && callbacks.addPrimitive) callbacks.addPrimitive(3);
+	if (ImGui::SmallButton("+ Plane") && callbacks.addPrimitive)
+	{
+		callbacks.addPrimitive(3);
+	}
 	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ Camera"));
-	if (ImGui::SmallButton("+ Camera") && callbacks.addPrimitive) callbacks.addPrimitive(4);   // 현재 에디터 시점 그대로 카메라 오브젝트 추가
+	if (ImGui::SmallButton("+ Camera") && callbacks.addPrimitive)
+	{
+		callbacks.addPrimitive(4);   // 현재 에디터 시점 그대로 카메라 오브젝트 추가
+	}
 	const bool canDelete = m_selected >= 0 && m_selected < static_cast<int>(objects.size());
 	const bool deleteKey = canDelete && (m_sceneFocused || ImGui::IsWindowFocused()) && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Delete, false);
-	if (canDelete) { DebugUI::SameLineIfFits(DebugUI::ButtonWidth("Delete (Del)")); }
-	if (canDelete && (ImGui::SmallButton("Delete (Del)") || deleteKey) && callbacks.deleteObject) { callbacks.deleteObject(m_selected); m_selected = -1; }
+	if (canDelete)
+	{
+		DebugUI::SameLineIfFits(DebugUI::ButtonWidth("Delete (Del)"));
+	}
+	if (canDelete && (ImGui::SmallButton("Delete (Del)") || deleteKey) && callbacks.deleteObject)
+	{
+		callbacks.deleteObject(m_selected);
+		m_selected = -1;
+	}
 	// 복제와 프리팹 저장 (Edit 메뉴와 같은 콜백)
 	if (canDelete && m_selected >= 0)
 	{
 		DebugUI::SameLineIfFits(DebugUI::ButtonWidth("Duplicate"));
-		if (ImGui::SmallButton("Duplicate") && callbacks.duplicateObject) callbacks.duplicateObject(m_selected);
+		if (ImGui::SmallButton("Duplicate") && callbacks.duplicateObject)
+		{
+			callbacks.duplicateObject(m_selected);
+		}
 		DebugUI::SameLineIfFits(DebugUI::ButtonWidth("Save Prefab"));
-		if (ImGui::SmallButton("Save Prefab") && callbacks.savePrefab) callbacks.savePrefab(m_selected);
-		if (ImGui::IsItemHovered()) ImGui::SetTooltip("save the selected object and its children as Assets\\Prefabs\\<name>.prefab");
+		if (ImGui::SmallButton("Save Prefab") && callbacks.savePrefab)
+		{
+			callbacks.savePrefab(m_selected);
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("save the selected object and its children as Assets\\Prefabs\\<name>.prefab");
+		}
 	}
 	ImGui::Separator();
 	// 평면 목록 대신 트리. 루트(부모 없음)부터 그리고 자식은 재귀. 선택은 여전히 씬 벡터의 인덱스이므로
@@ -719,9 +945,17 @@ void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 	// 되고(월드 자세 유지), 빈 곳에 놓으면 루트가 됨.
 	std::unordered_map<const GameObject*, int> indexOf;
 	indexOf.reserve(objects.size());
-	for (int i = 0; i < static_cast<int>(objects.size()); ++i) indexOf[objects[i].get()] = i;
 	for (int i = 0; i < static_cast<int>(objects.size()); ++i)
-		if (objects[i]->GetParent() == nullptr) DrawHierarchyNode(scene, *objects[i], indexOf);
+	{
+		indexOf[objects[i].get()] = i;
+	}
+	for (int i = 0; i < static_cast<int>(objects.size()); ++i)
+	{
+		if (objects[i]->GetParent() == nullptr)
+		{
+			DrawHierarchyNode(scene, *objects[i], indexOf);
+		}
+	}
 	// 빈 공간에 드롭 → 루트로
 	ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x, (std::max)(ImGui::GetContentRegionAvail().y, 24.0f)));
 	if (ImGui::BeginDragDropTarget())
@@ -731,12 +965,18 @@ void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 			const int dragged = *static_cast<const int*>(payload->Data);
 			if (GameObject* object = scene.GetObject(dragged < 0 ? SIZE_MAX : static_cast<size_t>(dragged)))
 			{
-				if (object->SetParent(nullptr)) Log::Info("계층: '%s' 를 루트로", object->GetName().c_str());
+				if (object->SetParent(nullptr))
+				{
+					Log::Info("계층: '%s' 를 루트로", object->GetName().c_str());
+				}
 			}
 		}
 		ImGui::EndDragDropTarget();
 	}
-	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered()) m_selected = -1;
+	if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered())
+	{
+		m_selected = -1;
+	}
 	DebugUI::EndPanel();
 }
 
@@ -746,16 +986,28 @@ void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unor
 	const int index = found != indexOf.end() ? found->second : -1;
 	ImGui::PushID(&object);
 	std::string label = object.GetName().empty() ? "(unnamed)" : object.GetName();
-	if (!object.GetBehaviours().empty()) label += "  [" + std::to_string(object.GetBehaviours().size()) + "]";   // 컴포넌트 수
+	if (!object.GetBehaviours().empty())
+	{
+		label += "  [" + std::to_string(object.GetBehaviours().size()) + "]";   // 컴포넌트 수
+	}
 	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_DefaultOpen;
 	// TreePop 여부는 TreeNodeEx 를 부르는 시점의 자식 유무로 고정함. 아래 드롭 처리에서 SetParent 가 자식
 	// 목록을 바꾸므로, 잎(NoTreePushOnOpen — 푸시 안 함)으로 그린 노드가 같은 프레임에 자식을 얻으면 다시
 	// 물어봤을 때 짝 없는 TreePop 이 나감.
 	const bool hadChildren = !object.GetChildren().empty();
-	if (!hadChildren) flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
-	if (m_selected == index) flags |= ImGuiTreeNodeFlags_Selected;
+	if (!hadChildren)
+	{
+		flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+	}
+	if (m_selected == index)
+	{
+		flags |= ImGuiTreeNodeFlags_Selected;
+	}
 	const bool open = ImGui::TreeNodeEx(label.c_str(), flags);
-	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) m_selected = index;
+	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+	{
+		m_selected = index;
+	}
 
 	// 드래그 소스: 페이로드는 씬 인덱스. 드롭 대상: 이 오브젝트의 자식으로 (자기 자신·자손이면 SetParent 가 거부).
 	if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
@@ -771,8 +1023,14 @@ void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unor
 			const int dragged = *static_cast<const int*>(payload->Data);
 			if (GameObject* child = scene.GetObject(dragged < 0 ? SIZE_MAX : static_cast<size_t>(dragged)))
 			{
-				if (child->SetParent(&object)) Log::Info("계층: '%s' → '%s' 의 자식", child->GetName().c_str(), object.GetName().c_str());
-				else Log::Warn("계층: '%s' 를 '%s' 의 자식으로 만들 수 없음 (자기 자신 또는 자손)", child->GetName().c_str(), object.GetName().c_str());
+				if (child->SetParent(&object))
+				{
+					Log::Info("계층: '%s' → '%s' 의 자식", child->GetName().c_str(), object.GetName().c_str());
+				}
+				else
+				{
+					Log::Warn("계층: '%s' 를 '%s' 의 자식으로 만들 수 없음 (자기 자신 또는 자손)", child->GetName().c_str(), object.GetName().c_str());
+				}
 			}
 		}
 		ImGui::EndDragDropTarget();
@@ -785,17 +1043,28 @@ void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unor
 		// 자식이 전부 잎이면 모든 행의 높이가 같으므로 화면에 보이는 행만 그림 (ImGuiListClipper). 수천 개를 한
 		// 부모 밑에 두는 씬(맵 배치)에서 매 프레임 전부 제출하면 GUI 가 수십 ms 를 먹음. 펼친 자식이 섞이면 행
 		// 높이가 달라 클리퍼를 쓸 수 없으므로 예전처럼 전부 그림.
-		const bool allLeaves = children.size() > 64 && std::all_of(children.begin(), children.end(), [](const GameObject* c) { return c->GetChildren().empty(); });
+		const bool allLeaves = children.size() > 64 && std::all_of(children.begin(), children.end(), [](const GameObject* c)
+		{
+			return c->GetChildren().empty();
+		});
 		if (allLeaves)
 		{
 			ImGuiListClipper clipper;
 			clipper.Begin(static_cast<int>(children.size()));
 			while (clipper.Step())
-				for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row) DrawHierarchyNode(scene, *children[row], indexOf);
+			{
+				for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
+				{
+					DrawHierarchyNode(scene, *children[row], indexOf);
+				}
+			}
 		}
 		else
 		{
-			for (GameObject* child : children) DrawHierarchyNode(scene, *child, indexOf);
+			for (GameObject* child : children)
+			{
+				DrawHierarchyNode(scene, *child, indexOf);
+			}
 		}
 		ImGui::TreePop();
 	}
@@ -805,7 +1074,7 @@ void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unor
 void Editor::SelectLight(int index)
 {
 	m_selectedLight = index;
-	m_selected = -1;              // 오브젝트 선택은 비움 (ID 는 다음 프레임 SyncSelection 이 정리)
+	m_selected = -1;   // 오브젝트 선택은 비움 (ID 는 다음 프레임 SyncSelection 이 정리)
 	m_selectedPrev = -2;
 	m_openSelectedLight = true;   // Lights 패널의 해당 노드를 펼침
 }
@@ -825,7 +1094,11 @@ int Editor::PickLight(Engine& engine, float mouseX, float mouseY, float x, float
 		if (!ProjectToView(viewProj, x, y, width, height, LightAnchor(camera, lights, i, x, y, width, height), p)) continue;
 		const float dx = p.x - mouseX, dy = p.y - mouseY;
 		const float d = dx * dx + dy * dy;
-		if (d < bestDistSq) { bestDistSq = d; best = i; }
+		if (d < bestDistSq)
+		{
+			bestDistSq = d;
+			best = i;
+		}
 	}
 	return best;
 }
@@ -847,7 +1120,7 @@ void Editor::DrawCascadeFrustums(Engine& engine, float x, float y, float width, 
 	dl->PushClipRect(ImVec2(x, y), ImVec2(x + width, y + height), true);
 	static const ImU32 colors[4] = { IM_COL32(255, 60, 60, 255), IM_COL32(60, 255, 60, 255), IM_COL32(80, 120, 255, 255), IM_COL32(255, 255, 60, 255) };
 	// 앞면 사각형 (0,1,3,2), 뒷면 사각형 (4,5,7,6), 앞뒤를 잇는 변 i → i+4
-	static const int edges[12][2] = { {0,1},{1,3},{3,2},{2,0}, {4,5},{5,7},{7,6},{6,4}, {0,4},{1,5},{2,6},{3,7} };
+	static const int edges[12][2] = { { 0, 1 }, { 1, 3 }, { 3, 2 }, { 2, 0 }, { 4, 5 }, { 5, 7 }, { 7, 6 }, { 6, 4 }, { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 } };
 	for (uint32_t c = 0; c < count && c < 4; ++c)
 	{
 		const XMFLOAT3* corners = renderer.GetCascadeFrustumCorners(c);
@@ -855,7 +1128,9 @@ void Editor::DrawCascadeFrustums(Engine& engine, float x, float y, float width, 
 		{
 			ImVec2 a, b;
 			if (ProjectToView(viewProj, x, y, width, height, corners[edge[0]], a) && ProjectToView(viewProj, x, y, width, height, corners[edge[1]], b))
+			{
 				dl->AddLine(a, b, colors[c], 2.0f);
+			}
 		}
 	}
 	dl->PopClipRect();
@@ -869,7 +1144,10 @@ void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float
 	const XMMATRIX viewProj = camera.GetViewMatrix() * camera.GetProjectionMatrix();
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 	dl->PushClipRect(ImVec2(x, y), ImVec2(x + width, y + height), true);
-	const auto project = [&](const XMFLOAT3& p, ImVec2& out) -> bool { return ProjectToView(viewProj, x, y, width, height, p, out); };
+	const auto project = [&](const XMFLOAT3& p, ImVec2& out) -> bool
+	{
+		return ProjectToView(viewProj, x, y, width, height, p, out);
+	};
 
 	for (int i = 0; i < static_cast<int>(lights.size()); ++i)
 	{
@@ -879,17 +1157,21 @@ void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float
 		ImVec2 c;
 		if (!project(anchor, c)) continue;
 		const bool selected = i == m_selectedLight;
-		const ImU32 tint = IM_COL32(static_cast<int>(std::clamp(light.color.x, 0.0f, 1.0f) * 255), static_cast<int>(std::clamp(light.color.y, 0.0f, 1.0f) * 255),
-			static_cast<int>(std::clamp(light.color.z, 0.0f, 1.0f) * 255), 255);
+		const ImU32 tint = IM_COL32(static_cast<int>(std::clamp(light.color.x, 0.0f, 1.0f) * 255), static_cast<int>(std::clamp(light.color.y, 0.0f, 1.0f) * 255), static_cast<int>(std::clamp(light.color.z, 0.0f, 1.0f) * 255), 255);
 		const ImU32 outline = selected ? IM_COL32(255, 200, 40, 255) : IM_COL32(20, 20, 20, 230);
 		const float thickness = selected ? 2.5f : 1.5f;
 
 		const XMVECTOR dir = XMVector3Normalize(XMLoadFloat3(&light.direction));
 		const auto worldLine = [&](const XMVECTOR& a, const XMVECTOR& b, ImU32 color, float t)
 		{
-			XMFLOAT3 fa, fb; ImVec2 pa, pb;
-			XMStoreFloat3(&fa, a); XMStoreFloat3(&fb, b);
-			if (project(fa, pa) && project(fb, pb)) dl->AddLine(pa, pb, color, t);
+			XMFLOAT3 fa, fb;
+			ImVec2 pa, pb;
+			XMStoreFloat3(&fa, a);
+			XMStoreFloat3(&fb, b);
+			if (project(fa, pa) && project(fb, pb))
+			{
+				dl->AddLine(pa, pb, color, t);
+			}
 		};
 
 		dl->AddCircleFilled(c, 7.0f, tint);
@@ -918,7 +1200,10 @@ void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float
 				const float a = s * XM_2PI / 16.0f;
 				const XMVECTOR cur = center + right * (cosf(a) * radius) + up * (sinf(a) * radius);
 				worldLine(prev, cur, outline, thickness);
-				if (s % 4 == 0) worldLine(apex, cur, outline, thickness);
+				if (s % 4 == 0)
+				{
+					worldLine(apex, cur, outline, thickness);
+				}
 				prev = cur;
 			}
 		}
@@ -928,7 +1213,8 @@ void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float
 			const XMVECTOR a = XMLoadFloat3(&anchor);
 			const XMVECTOR b = a + dir * 1.5f;
 			worldLine(a, b, outline, thickness + 0.5f);
-			XMFLOAT3 tip; XMStoreFloat3(&tip, b);
+			XMFLOAT3 tip;
+			XMStoreFloat3(&tip, b);
 			ImVec2 pt;
 			if (project(tip, pt))
 			{
@@ -969,20 +1255,39 @@ void Editor::DrawLightGizmo(Engine& engine, float x, float y, float width, float
 		if (rotate)
 		{
 			const XMVECTOR f = XMVectorSet(world.m[2][0], world.m[2][1], world.m[2][2], 0.0f);
-			if (XMVectorGetX(XMVector3LengthSq(f)) > 1e-8f) XMStoreFloat3(&light.direction, XMVector3Normalize(f));
+			if (XMVectorGetX(XMVector3LengthSq(f)) > 1e-8f)
+			{
+				XMStoreFloat3(&light.direction, XMVector3Normalize(f));
+			}
 		}
-		else light.position = XMFLOAT3(world.m[3][0], world.m[3][1], world.m[3][2]);
+		else
+		{
+			light.position = XMFLOAT3(world.m[3][0], world.m[3][1], world.m[3][2]);
+		}
 	}
-	if (ImGuizmo::IsUsing()) m_gizmoUsing = true;   // TrackHistory 가 busy 로 보고, 끝난 프레임에 한 단계를 기록함
+	if (ImGuizmo::IsUsing())
+	{
+		m_gizmoUsing = true;   // TrackHistory 가 busy 로 보고, 끝난 프레임에 한 단계를 기록함
+	}
 }
 
 void Editor::SyncSelection(Scene& scene)
 {
 	// 조명 선택: 되돌리기·삭제로 개수가 줄었으면 해제. 조명이 새로 골라졌으면(씬 뷰·Lights 패널) 오브젝트
 	// 선택을 비우고, 반대도 마찬가지.
-	if (m_selectedLight >= static_cast<int>(scene.GetLights().size())) m_selectedLight = -1;
-	if (m_selectedLight >= 0 && m_selectedLight != m_selectedLightPrev) { m_selected = -1; m_selectedPrev = -2; }
-	else if (m_selected >= 0 && m_selected != m_selectedPrev) m_selectedLight = -1;
+	if (m_selectedLight >= static_cast<int>(scene.GetLights().size()))
+	{
+		m_selectedLight = -1;
+	}
+	if (m_selectedLight >= 0 && m_selectedLight != m_selectedLightPrev)
+	{
+		m_selected = -1;
+		m_selectedPrev = -2;
+	}
+	else if (m_selected >= 0 && m_selected != m_selectedPrev)
+	{
+		m_selectedLight = -1;
+	}
 	m_selectedLightPrev = m_selectedLight;
 
 	if (m_selected != m_selectedPrev)
@@ -990,14 +1295,20 @@ void Editor::SyncSelection(Scene& scene)
 		// 지난 프레임 이후 UI(또는 앱)가 인덱스를 바꿈 → 그 오브젝트가 새 선택
 		const GameObject* object = scene.GetObject(m_selected < 0 ? SIZE_MAX : static_cast<size_t>(m_selected));
 		m_selectedId = object != nullptr ? object->GetId() : 0;
-		if (object == nullptr) m_selected = -1;
+		if (object == nullptr)
+		{
+			m_selected = -1;
+		}
 	}
 	else if (m_selectedId != 0)
 	{
 		// 인덱스는 그대로인데 오브젝트 벡터가 바뀌었을 수 있음 → ID 로 다시 찾음 (지워졌으면 선택 해제)
 		const GameObject* object = scene.FindById(m_selectedId);
 		m_selected = object != nullptr ? static_cast<int>(scene.IndexOf(object)) : -1;
-		if (object == nullptr) m_selectedId = 0;
+		if (object == nullptr)
+		{
+			m_selectedId = 0;
+		}
 	}
 	m_selectedPrev = m_selected;
 }
@@ -1011,7 +1322,7 @@ namespace
 		ImGui::ColorEdit4("Base color", &material.baseColor.x);
 		DebugUI::SliderFloatR("Metallic", &material.metallic, kDefaults.metallic, 0.0f, 1.0f);   // PBR
 		DebugUI::SliderFloatR("Roughness", &material.roughness, kDefaults.roughness, 0.0f, 1.0f);
-		DebugUI::SliderFloatR("IOR", &material.ior, kDefaults.ior, 1.0f, 3.0f);   // KHR_materials_ior. Blender 의 Specular 는 ior 1000 + 반사 색으로 옴
+		DebugUI::SliderFloatR("IOR", &material.ior, kDefaults.ior, 1.0f, 3.0f);                              // KHR_materials_ior. Blender 의 Specular 는 ior 1000 + 반사 색으로 옴
 		DebugUI::SliderFloatR("Specular", &material.specularFactor, kDefaults.specularFactor, 0.0f, 1.0f);   // KHR_materials_specular
 		ImGui::ColorEdit3("Specular color", &material.specularColor.x);
 		DebugUI::SliderFloatR("Clearcoat", &material.clearcoatFactor, kDefaults.clearcoatFactor, 0.0f, 1.0f);   // KHR_materials_clearcoat
@@ -1027,30 +1338,80 @@ namespace
 		ImGui::Checkbox("Wireframe", &material.wireframe);
 		DebugUI::SameLineIfFits(DebugUI::CheckboxWidth("Double sided"));
 		ImGui::Checkbox("Double sided", &material.doubleSided);
-		ImGui::TextDisabled("albedo: %s   normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(),
-			material.normalTexture.empty() ? "(none)" : material.normalTexture.c_str());
+		ImGui::TextDisabled("albedo: %s   normal: %s", material.albedoTexture.empty() ? "(none)" : material.albedoTexture.c_str(), material.normalTexture.empty() ? "(none)" : material.normalTexture.c_str());
 	}
 
 	// before → after 에서 바뀐 필드만 target 에 복사함. "모든 재질" 편집기가 한 값만 바꿔도 나머지 재질의 다른 값은 그대로 두기 위함.
 	void ApplyChangedFields(const Material& before, const Material& after, Material& target)
 	{
-		if (before.baseColor.x != after.baseColor.x || before.baseColor.y != after.baseColor.y || before.baseColor.z != after.baseColor.z || before.baseColor.w != after.baseColor.w) target.baseColor = after.baseColor;
-		if (before.emissive.x != after.emissive.x || before.emissive.y != after.emissive.y || before.emissive.z != after.emissive.z) target.emissive = after.emissive;
-		if (before.uvScale.x != after.uvScale.x || before.uvScale.y != after.uvScale.y) target.uvScale = after.uvScale;
-		if (before.metallic != after.metallic) target.metallic = after.metallic;
-		if (before.roughness != after.roughness) target.roughness = after.roughness;
-		if (before.ior != after.ior) target.ior = after.ior;
-		if (before.clearcoatFactor != after.clearcoatFactor) target.clearcoatFactor = after.clearcoatFactor;
-		if (before.clearcoatRoughness != after.clearcoatRoughness) target.clearcoatRoughness = after.clearcoatRoughness;
-		if (before.specularFactor != after.specularFactor) target.specularFactor = after.specularFactor;
-		if (before.specularColor.x != after.specularColor.x || before.specularColor.y != after.specularColor.y || before.specularColor.z != after.specularColor.z) target.specularColor = after.specularColor;
-		if (before.normalStrength != after.normalStrength) target.normalStrength = after.normalStrength;
-		if (before.alphaCutoff != after.alphaCutoff) target.alphaCutoff = after.alphaCutoff;
-		if (before.transmissionFactor != after.transmissionFactor) target.transmissionFactor = after.transmissionFactor;
-		if (before.alphaBlend != after.alphaBlend) target.alphaBlend = after.alphaBlend;
-		if (before.unlit != after.unlit) target.unlit = after.unlit;
-		if (before.wireframe != after.wireframe) target.wireframe = after.wireframe;
-		if (before.doubleSided != after.doubleSided) target.doubleSided = after.doubleSided;
+		if (before.baseColor.x != after.baseColor.x || before.baseColor.y != after.baseColor.y || before.baseColor.z != after.baseColor.z || before.baseColor.w != after.baseColor.w)
+		{
+			target.baseColor = after.baseColor;
+		}
+		if (before.emissive.x != after.emissive.x || before.emissive.y != after.emissive.y || before.emissive.z != after.emissive.z)
+		{
+			target.emissive = after.emissive;
+		}
+		if (before.uvScale.x != after.uvScale.x || before.uvScale.y != after.uvScale.y)
+		{
+			target.uvScale = after.uvScale;
+		}
+		if (before.metallic != after.metallic)
+		{
+			target.metallic = after.metallic;
+		}
+		if (before.roughness != after.roughness)
+		{
+			target.roughness = after.roughness;
+		}
+		if (before.ior != after.ior)
+		{
+			target.ior = after.ior;
+		}
+		if (before.clearcoatFactor != after.clearcoatFactor)
+		{
+			target.clearcoatFactor = after.clearcoatFactor;
+		}
+		if (before.clearcoatRoughness != after.clearcoatRoughness)
+		{
+			target.clearcoatRoughness = after.clearcoatRoughness;
+		}
+		if (before.specularFactor != after.specularFactor)
+		{
+			target.specularFactor = after.specularFactor;
+		}
+		if (before.specularColor.x != after.specularColor.x || before.specularColor.y != after.specularColor.y || before.specularColor.z != after.specularColor.z)
+		{
+			target.specularColor = after.specularColor;
+		}
+		if (before.normalStrength != after.normalStrength)
+		{
+			target.normalStrength = after.normalStrength;
+		}
+		if (before.alphaCutoff != after.alphaCutoff)
+		{
+			target.alphaCutoff = after.alphaCutoff;
+		}
+		if (before.transmissionFactor != after.transmissionFactor)
+		{
+			target.transmissionFactor = after.transmissionFactor;
+		}
+		if (before.alphaBlend != after.alphaBlend)
+		{
+			target.alphaBlend = after.alphaBlend;
+		}
+		if (before.unlit != after.unlit)
+		{
+			target.unlit = after.unlit;
+		}
+		if (before.wireframe != after.wireframe)
+		{
+			target.wireframe = after.wireframe;
+		}
+		if (before.doubleSided != after.doubleSided)
+		{
+			target.doubleSided = after.doubleSided;
+		}
 	}
 
 	// 이 오브젝트와 자손이 실제로 그리는 모델 슬롯 재질(중복 제거). 슬롯 재질이 있는 오브젝트만 대상임.
@@ -1064,11 +1425,17 @@ namespace
 				if (used == nullptr) continue;
 				for (auto& owned : scene.GetMaterials())
 				{
-					if (owned.get() == used && std::find(out.begin(), out.end(), owned.get()) == out.end()) out.push_back(owned.get());
+					if (owned.get() == used && std::find(out.begin(), out.end(), owned.get()) == out.end())
+					{
+						out.push_back(owned.get());
+					}
 				}
 			}
 		}
-		for (const GameObject* child : object.GetChildren()) CollectSlotMaterials(scene, *child, out);
+		for (const GameObject* child : object.GetChildren())
+		{
+			CollectSlotMaterials(scene, *child, out);
+		}
 	}
 
 	// 모델 오브젝트(또는 모델 루트)의 인스펙터 재질 영역. 위쪽 "Material" 콤보는 오브젝트 자체 재질(모델에서는 쓰이지 않는
@@ -1087,7 +1454,10 @@ namespace
 			const Material before = *materials[0];   // 표시는 첫 재질의 값. 바뀐 필드만 모두에게 적용함
 			Material edited = before;
 			DrawMaterialFields(edited);
-			for (Material* material : materials) ApplyChangedFields(before, edited, *material);
+			for (Material* material : materials)
+			{
+				ApplyChangedFields(before, edited, *material);
+			}
 			ImGui::TreePop();
 		}
 		for (Material* material : materials)
@@ -1110,15 +1480,24 @@ void Editor::DrawInspector(Engine& engine)
 	Scene& scene = engine.GetScene();
 	if (m_selected < 0 || m_selected >= static_cast<int>(scene.GetObjects().size()))
 	{
-		if (m_selectedLight >= 0) ImGui::TextDisabled("Light %d selected: move/rotate it in the Scene view, edit it in the Lights panel.", m_selectedLight);
-		else ImGui::TextDisabled("Click an object in the Scene view or the Hierarchy.");
+		if (m_selectedLight >= 0)
+		{
+			ImGui::TextDisabled("Light %d selected: move/rotate it in the Scene view, edit it in the Lights panel.", m_selectedLight);
+		}
+		else
+		{
+			ImGui::TextDisabled("Click an object in the Scene view or the Hierarchy.");
+		}
 		DebugUI::EndPanel();
 		return;
 	}
 	GameObject& object = *scene.GetObjects()[m_selected];
 	ImGui::Text("%s", object.GetName().c_str());
 	ImGui::TextDisabled("id %llu%s%s", static_cast<unsigned long long>(object.GetId()), object.GetPrefabSource().empty() ? "" : "   prefab ", object.GetPrefabSource().c_str());
-	if (playState != PlayState::Editing) ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.15f, 1.0f), "Playing: edits are discarded on Stop");
+	if (playState != PlayState::Editing)
+	{
+		ImGui::TextColored(ImVec4(0.9f, 0.7f, 0.15f, 1.0f), "Playing: edits are discarded on Stop");
+	}
 	ImGui::Separator();
 
 	Transform& t = object.GetTransform();
@@ -1126,13 +1505,22 @@ void Editor::DrawInspector(Engine& engine)
 	XMFLOAT3 rotation = t.GetRotation();
 	XMFLOAT3 scale = t.GetScale();
 	XMFLOAT3 rotationDeg(XMConvertToDegrees(rotation.x), XMConvertToDegrees(rotation.y), XMConvertToDegrees(rotation.z));
-	if (DebugUI::DragFloat3R("Position", &position.x, 0.0f, 0.0f, 0.0f, 0.05f, 0.0f, 0.0f)) t.SetPosition(position);
+	if (DebugUI::DragFloat3R("Position", &position.x, 0.0f, 0.0f, 0.0f, 0.05f, 0.0f, 0.0f))
+	{
+		t.SetPosition(position);
+	}
 	if (DebugUI::DragFloat3R("Rotation (deg)", &rotationDeg.x, 0.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.0f))
 	{
 		t.SetRotation(XMFLOAT3(XMConvertToRadians(rotationDeg.x), XMConvertToRadians(rotationDeg.y), XMConvertToRadians(rotationDeg.z)));
 	}
-	if (DebugUI::DragFloat3R("Scale", &scale.x, 1.0f, 1.0f, 1.0f, 0.01f, 0.001f, 1000.0f)) t.SetScale(scale);
-	if (t.HasPreTransform()) ImGui::TextDisabled("(model node pre-transform applied before S*R*T)");
+	if (DebugUI::DragFloat3R("Scale", &scale.x, 1.0f, 1.0f, 1.0f, 0.01f, 0.001f, 1000.0f))
+	{
+		t.SetScale(scale);
+	}
+	if (t.HasPreTransform())
+	{
+		ImGui::TextDisabled("(model node pre-transform applied before S*R*T)");
+	}
 	// 부모가 있으면 위 값은 부모 기준 로컬임을 알리고 월드 위치를 함께 보임. Detach 는 월드 자세를 유지한 채
 	// 루트로 올림.
 	if (const GameObject* parent = object.GetParent())
@@ -1140,20 +1528,44 @@ void Editor::DrawInspector(Engine& engine)
 		const XMFLOAT3 wp = object.GetWorldPosition();
 		ImGui::TextDisabled("local to parent '%s'   world (%.2f, %.2f, %.2f)", parent->GetName().c_str(), wp.x, wp.y, wp.z);
 		ImGui::SameLine();
-		if (ImGui::SmallButton("Detach")) object.SetParent(nullptr);
+		if (ImGui::SmallButton("Detach"))
+		{
+			object.SetParent(nullptr);
+		}
 	}
-	else if (!object.GetChildren().empty()) ImGui::TextDisabled("%zu children follow this object (drag in Hierarchy to reparent)", object.GetChildren().size());
+	else if (!object.GetChildren().empty())
+	{
+		ImGui::TextDisabled("%zu children follow this object (drag in Hierarchy to reparent)", object.GetChildren().size());
+	}
 
 	// 카메라 오브젝트 — 에디터 시점과 자세를 주고받음
 	if (CameraComponent* cameraComponent = object.GetBehaviour<CameraComponent>())
 	{
-		if (ImGui::Button("Look through")) cameraComponent->ApplyTo(engine.GetCamera(), false);   // 에디터 시점 ← 이 카메라 (렌즈는 그대로)
-		if (ImGui::IsItemHovered()) ImGui::SetTooltip("move the editor view to this camera");
+		if (ImGui::Button("Look through"))
+		{
+			cameraComponent->ApplyTo(engine.GetCamera(), false);   // 에디터 시점 ← 이 카메라 (렌즈는 그대로)
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("move the editor view to this camera");
+		}
 		ImGui::SameLine();
-		if (ImGui::Button("Align to view")) cameraComponent->SetFromCamera(engine.GetCamera());   // 이 카메라 ← 에디터 시점
-		if (ImGui::IsItemHovered()) ImGui::SetTooltip("place this camera where the editor view is");
-		if (scene.GetActiveCamera() == cameraComponent) ImGui::TextColored(ImVec4(0.3f, 0.75f, 0.35f, 1.0f), "active camera");
-		else if (playState == PlayState::Editing) ImGui::TextDisabled("rendered through during Play (highest priority wins)");
+		if (ImGui::Button("Align to view"))
+		{
+			cameraComponent->SetFromCamera(engine.GetCamera());   // 이 카메라 ← 에디터 시점
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("place this camera where the editor view is");
+		}
+		if (scene.GetActiveCamera() == cameraComponent)
+		{
+			ImGui::TextColored(ImVec4(0.3f, 0.75f, 0.35f, 1.0f), "active camera");
+		}
+		else if (playState == PlayState::Editing)
+		{
+			ImGui::TextDisabled("rendered through during Play (highest priority wins)");
+		}
 	}
 
 	if (const Mesh* mesh = object.GetMesh())
@@ -1164,31 +1576,43 @@ void Editor::DrawInspector(Engine& engine)
 		{
 			switch (source->type)
 			{
-			case MeshSource::Type::Sphere: type = "sphere"; break;
-			case MeshSource::Type::Cube: type = "cube"; break;
-			case MeshSource::Type::Plane: type = "plane"; break;
+			case MeshSource::Type::Sphere:   type = "sphere"; break;
+			case MeshSource::Type::Cube:     type = "cube"; break;
+			case MeshSource::Type::Plane:    type = "plane"; break;
 			case MeshSource::Type::Cylinder: type = "cylinder"; break;
-			case MeshSource::Type::Model: type = "model"; break;
-			default: break;
+			case MeshSource::Type::Model:    type = "model"; break;
+			default:                         break;
 			}
 		}
 		ImGui::Separator();
 		ImGui::TextWrapped("Mesh: %s   vertices %u   triangles %u   submeshes %zu", type, mesh->GetVertexCount(), mesh->GetIndexCount() / 3, mesh->GetSubmeshes().size());
-		if (source != nullptr && source->type == MeshSource::Type::Model) ImGui::TextDisabled("%s #%u", Log::ToUtf8(source->modelPath.c_str()).c_str(), source->meshIndex);
+		if (source != nullptr && source->type == MeshSource::Type::Model)
+		{
+			ImGui::TextDisabled("%s #%u", Log::ToUtf8(source->modelPath.c_str()).c_str(), source->meshIndex);
+		}
 	}
 
 	// 재질: 씬의 재질 중에서 고르고 그 자리에서 편집함.
 	ImGui::Separator();
 	std::vector<std::unique_ptr<Material>>& materials = scene.GetMaterials();
 	int current = -1;
-	for (int i = 0; i < static_cast<int>(materials.size()); ++i) if (materials[i].get() == object.GetMaterial()) current = i;
+	for (int i = 0; i < static_cast<int>(materials.size()); ++i)
+	{
+		if (materials[i].get() == object.GetMaterial())
+		{
+			current = i;
+		}
+	}
 	const char* currentName = current >= 0 ? materials[current]->name.c_str() : "(renderer default)";
 	if (ImGui::BeginCombo("Material", currentName))
 	{
 		for (int i = 0; i < static_cast<int>(materials.size()); ++i)
 		{
 			ImGui::PushID(i);
-			if (ImGui::Selectable(materials[i]->name.c_str(), i == current)) object.SetMaterial(materials[i].get());
+			if (ImGui::Selectable(materials[i]->name.c_str(), i == current))
+			{
+				object.SetMaterial(materials[i].get());
+			}
 			ImGui::PopID();
 		}
 		ImGui::EndCombo();
@@ -1203,7 +1627,12 @@ void Editor::DrawInspector(Engine& engine)
 		{
 			std::vector<uint32_t> usedSlots;
 			for (const Submesh& submesh : object.GetMesh()->GetSubmeshes())
-				if (std::find(usedSlots.begin(), usedSlots.end(), submesh.materialSlot) == usedSlots.end()) usedSlots.push_back(submesh.materialSlot);
+			{
+				if (std::find(usedSlots.begin(), usedSlots.end(), submesh.materialSlot) == usedSlots.end())
+				{
+					usedSlots.push_back(submesh.materialSlot);
+				}
+			}
 			for (uint32_t slot : usedSlots)
 			{
 				const Material* slotMaterial = object.GetMaterialForSlot(slot);
@@ -1220,7 +1649,10 @@ void Editor::DrawInspector(Engine& engine)
 					{
 						Material* unique = scene.CloneMaterialUnique(*slotMaterial);
 						std::vector<const Material*> slots = object.GetSlotMaterials();
-						if (slot < slots.size()) slots[slot] = unique;
+						if (slot < slots.size())
+						{
+							slots[slot] = unique;
+						}
 						object.SetSlotMaterials(std::move(slots));
 					}
 				}
@@ -1260,7 +1692,10 @@ namespace
 		{
 			char buffer[256];
 			strncpy_s(buffer, value.c_str(), sizeof(buffer) - 1);
-			if (ImGui::InputText(name, buffer, sizeof(buffer))) value = buffer;
+			if (ImGui::InputText(name, buffer, sizeof(buffer)))
+			{
+				value = buffer;
+			}
 		}
 	};
 }
@@ -1273,11 +1708,17 @@ void Editor::DrawCameraGizmos(Engine& engine, float x, float y, float width, flo
 	const XMMATRIX viewProj = editorCamera.GetViewMatrix() * editorCamera.GetProjectionMatrix();
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 	dl->PushClipRect(ImVec2(x, y), ImVec2(x + width, y + height), true);   // 이미지 밖(툴바)으로 선이 새지 않게
-	const auto project = [&](const XMFLOAT3& p, ImVec2& out) -> bool { return ProjectToView(viewProj, x, y, width, height, p, out); };
+	const auto project = [&](const XMFLOAT3& p, ImVec2& out) -> bool
+	{
+		return ProjectToView(viewProj, x, y, width, height, p, out);
+	};
 	const auto line = [&](const XMFLOAT3& a, const XMFLOAT3& b, ImU32 color, float thickness)
 	{
 		ImVec2 pa, pb;
-		if (project(a, pa) && project(b, pb)) dl->AddLine(pa, pb, color, thickness);
+		if (project(a, pa) && project(b, pb))
+		{
+			dl->AddLine(pa, pb, color, thickness);
+		}
 	};
 
 	auto& objects = scene.GetObjects();
@@ -1286,8 +1727,7 @@ void Editor::DrawCameraGizmos(Engine& engine, float x, float y, float width, flo
 		CameraComponent* cameraComponent = objects[i]->GetBehaviour<CameraComponent>();
 		if (cameraComponent == nullptr) continue;
 		// 에디터 눈과 겹치는 카메라(방금 "Align to view" 한 것)는 프러스텀이 화면 테두리와 일치해 의미가 없음 — 건너뜀.
-		const XMFLOAT3 eyeDelta(cameraComponent->GetPose().position.x - editorCamera.GetPosition().x,
-			cameraComponent->GetPose().position.y - editorCamera.GetPosition().y, cameraComponent->GetPose().position.z - editorCamera.GetPosition().z);
+		const XMFLOAT3 eyeDelta(cameraComponent->GetPose().position.x - editorCamera.GetPosition().x, cameraComponent->GetPose().position.y - editorCamera.GetPosition().y, cameraComponent->GetPose().position.z - editorCamera.GetPosition().z);
 		if (eyeDelta.x * eyeDelta.x + eyeDelta.y * eyeDelta.y + eyeDelta.z * eyeDelta.z < 0.01f) continue;
 		const CameraPose pose = cameraComponent->GetPose();
 		const XMMATRIX rotation = pose.GetRotationMatrix();   // 월드 회전 (부모 roll 포함) 그대로
@@ -1325,7 +1765,10 @@ void Editor::DrawCameraGizmos(Engine& engine, float x, float y, float width, flo
 				line(nearCorner[c], corner[c], color, thickness);
 				line(nearCorner[c], nearCorner[(c + 1) % 4], color, thickness);
 			}
-			else line(apex, corner[c], color, thickness);
+			else
+			{
+				line(apex, corner[c], color, thickness);
+			}
 			line(corner[c], corner[(c + 1) % 4], color, thickness);
 		}
 		line(corner[0], top, color, thickness);
@@ -1346,7 +1789,8 @@ void Editor::DrawCameraPreview(Engine& engine, float x, float y, float width, fl
 	Renderer& renderer = engine.GetRenderer();
 	Scene& scene = engine.GetScene();
 	CameraComponent* cameraComponent = (m_selected >= 0 && m_selected < static_cast<int>(scene.GetObjects().size()))
-		? scene.GetObjects()[m_selected]->GetBehaviour<CameraComponent>() : nullptr;
+		? scene.GetObjects()[m_selected]->GetBehaviour<CameraComponent>()
+		: nullptr;
 	// 재생 중 활성 카메라를 선택했으면 씬 뷰가 이미 그 시점임.
 	const bool wanted = cameraComponent != nullptr && !(playState != PlayState::Editing && scene.GetActiveCamera() == cameraComponent) && width >= 240.0f && height >= 160.0f;
 	if (!wanted)
@@ -1411,18 +1855,23 @@ void Editor::DrawProjectBanner(const Callbacks& callbacks)
 	}
 	else
 	{
-		ImGui::TextWrapped("Scripts of project '%s' are not loaded (%s). Objects using them keep working with the other components; build the scripts to use them.",
-			project.name.c_str(), project.scriptsError.empty() ? "not built" : project.scriptsError.c_str());
+		ImGui::TextWrapped("Scripts of project '%s' are not loaded (%s). Objects using them keep working with the other components; build the scripts to use them.", project.name.c_str(), project.scriptsError.empty() ? "not built" : project.scriptsError.c_str());
 		if (project.hasSolution)
 		{
-			if (ImGui::Button("Build scripts") && callbacks.buildScripts) callbacks.buildScripts();
-			if (ImGui::IsItemHovered()) ImGui::SetTooltip("MSBuild %sScripts (%s|x64) in %s, then load the DLL without restarting", project.name.c_str(),
+			if (ImGui::Button("Build scripts") && callbacks.buildScripts)
+			{
+				callbacks.buildScripts();
+			}
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("MSBuild %sScripts (%s|x64) in %s, then load the DLL without restarting", project.name.c_str(),
 #if defined(_DEBUG)
-				"Debug",
+								  "Debug",
 #else
-				"Release",
+								  "Release",
 #endif
-				Log::ToUtf8(project.solutionPath.c_str()).c_str());
+								  Log::ToUtf8(project.solutionPath.c_str()).c_str());
+			}
 			ImGui::SameLine();
 		}
 		ImGui::TextDisabled("or build %sScripts in Visual Studio — the editor reloads it automatically", project.name.c_str());
@@ -1436,15 +1885,31 @@ void Editor::DrawLauncher(Engine& engine, const Callbacks& callbacks)
 	(void)engine;
 	ImGui::SetNextWindowSize(ImVec2(640.0f, 0.0f), ImGuiCond_Appearing);
 	if (!ImGui::BeginPopupModal("Projects", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
-	if (m_newProjectParent.empty()) m_newProjectParent = ProjectLauncher::GetDefaultProjectsDir();
+	if (m_newProjectParent.empty())
+	{
+		m_newProjectParent = ProjectLauncher::GetDefaultProjectsDir();
+	}
 
 	ImGui::SeparatorText("Recent");
 	const std::vector<ProjectLauncher::Recent> recent = ProjectLauncher::LoadRecent();
-	if (recent.empty()) ImGui::TextDisabled("(no recent projects)");
+	if (recent.empty())
+	{
+		ImGui::TextDisabled("(no recent projects)");
+	}
 	for (size_t i = 0; i < recent.size(); ++i)
 	{
 		ImGui::PushID(static_cast<int>(i));
-		if (ImGui::Button("Open")) { if (callbacks.openProject && callbacks.openProject(recent[i].path)) ImGui::CloseCurrentPopup(); else m_launcherMessage = "open failed"; }
+		if (ImGui::Button("Open"))
+		{
+			if (callbacks.openProject && callbacks.openProject(recent[i].path))
+			{
+				ImGui::CloseCurrentPopup();
+			}
+			else
+			{
+				m_launcherMessage = "open failed";
+			}
+		}
 		ImGui::SameLine();
 		ImGui::Text("%s", recent[i].name.c_str());
 		ImGui::SameLine();
@@ -1456,7 +1921,17 @@ void Editor::DrawLauncher(Engine& engine, const Callbacks& callbacks)
 	if (ImGui::Button("Browse for a .sherlock file..."))
 	{
 		const std::wstring path = ProjectLauncher::BrowseForProjectFile(nullptr);
-		if (!path.empty()) { if (callbacks.openProject && callbacks.openProject(path)) ImGui::CloseCurrentPopup(); else m_launcherMessage = "open failed"; }
+		if (!path.empty())
+		{
+			if (callbacks.openProject && callbacks.openProject(path))
+			{
+				ImGui::CloseCurrentPopup();
+			}
+			else
+			{
+				m_launcherMessage = "open failed";
+			}
+		}
 	}
 
 	ImGui::SeparatorText("New");
@@ -1467,20 +1942,37 @@ void Editor::DrawLauncher(Engine& engine, const Callbacks& callbacks)
 	if (ImGui::SmallButton("Browse..."))
 	{
 		const std::wstring dir = ProjectLauncher::BrowseForFolder(nullptr, m_newProjectParent);
-		if (!dir.empty()) m_newProjectParent = dir + L"\\";
+		if (!dir.empty())
+		{
+			m_newProjectParent = dir + L"\\";
+		}
 	}
 	ImGui::TextDisabled("Creates <Location>\\<Name>\\ with Assets, Scripts, a Main.json scene and <Name>.sln (editor + game targets).");
 	ImGui::BeginDisabled(!Project::IsValidName(m_newProjectName));
 	if (ImGui::Button("Create and open") && callbacks.newProject)
 	{
 		std::string error;
-		if (callbacks.newProject(m_newProjectParent, m_newProjectName, error)) { m_launcherMessage.clear(); ImGui::CloseCurrentPopup(); }
-		else m_launcherMessage = error;
+		if (callbacks.newProject(m_newProjectParent, m_newProjectName, error))
+		{
+			m_launcherMessage.clear();
+			ImGui::CloseCurrentPopup();
+		}
+		else
+		{
+			m_launcherMessage = error;
+		}
 	}
 	ImGui::EndDisabled();
-	if (!m_launcherMessage.empty()) ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.3f, 1.0f), "%s", m_launcherMessage.c_str());
+	if (!m_launcherMessage.empty())
+	{
+		ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.3f, 1.0f), "%s", m_launcherMessage.c_str());
+	}
 	ImGui::Separator();
-	if (ImGui::Button("Close")) { m_launcherMessage.clear(); ImGui::CloseCurrentPopup(); }
+	if (ImGui::Button("Close"))
+	{
+		m_launcherMessage.clear();
+		ImGui::CloseCurrentPopup();
+	}
 	ImGui::EndPopup();
 }
 
@@ -1489,36 +1981,60 @@ void Editor::DrawProjectSettingsPopup(const Callbacks& callbacks)
 	if (!ImGui::BeginPopupModal("Project Settings", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) return;
 	ImGui::Text("%s", project.name.c_str());
 	ImGui::TextDisabled("%s", Log::ToUtf8(project.root.c_str()).c_str());
-	if (m_buildScenes.empty()) m_buildScenes = GameBuilder::ListScenes();
+	if (m_buildScenes.empty())
+	{
+		m_buildScenes = GameBuilder::ListScenes();
+	}
 	if (projectStartScene != nullptr)
 	{
 		ImGui::SetNextItemWidth(260.0f);
 		if (ImGui::BeginCombo("Start scene", projectStartScene->c_str()))
 		{
 			for (const std::string& scene : m_buildScenes)
-				if (ImGui::Selectable(scene.c_str(), scene == *projectStartScene)) *projectStartScene = scene;
+			{
+				if (ImGui::Selectable(scene.c_str(), scene == *projectStartScene))
+				{
+					*projectStartScene = scene;
+				}
+			}
 			ImGui::EndCombo();
 		}
 		ImGui::SameLine();
-		if (ImGui::SmallButton("refresh")) m_buildScenes = GameBuilder::ListScenes();
+		if (ImGui::SmallButton("refresh"))
+		{
+			m_buildScenes = GameBuilder::ListScenes();
+		}
 	}
 	ImGui::TextDisabled("Solution: %s", project.hasSolution ? Log::ToUtf8(project.solutionPath.c_str()).c_str() : "(none)");
 	// 스크립트 DLL 상태와 빌드 버튼
 	if (project.scriptsLoaded)
+	{
 		ImGui::TextDisabled("Scripts DLL: loaded, %zu component(s), loaded %u time(s)", project.scriptTypes, project.scriptReloads);
+	}
 	else
+	{
 		ImGui::TextDisabled("Scripts DLL: not loaded (%s)", project.scriptsError.empty() ? "no scripts" : project.scriptsError.c_str());
+	}
 	ImGui::TextDisabled("  %s", Log::ToUtf8(project.scriptsDll.c_str()).c_str());
 	if (project.hasSolution && callbacks.buildScripts)
 	{
-		if (ImGui::Button("Build scripts")) callbacks.buildScripts();
+		if (ImGui::Button("Build scripts"))
+		{
+			callbacks.buildScripts();
+		}
 		ImGui::SameLine();
 		ImGui::TextDisabled("(%zu source file(s); a newer build is also picked up automatically while editing)", project.scriptSources);
 	}
 	ImGui::Separator();
-	if (ImGui::Button("Save") && callbacks.saveProject) m_lastMessage = callbacks.saveProject() ? "project saved" : "project save failed";
+	if (ImGui::Button("Save") && callbacks.saveProject)
+	{
+		m_lastMessage = callbacks.saveProject() ? "project saved" : "project save failed";
+	}
 	ImGui::SameLine();
-	if (ImGui::Button("Close")) ImGui::CloseCurrentPopup();
+	if (ImGui::Button("Close"))
+	{
+		ImGui::CloseCurrentPopup();
+	}
 	ImGui::EndPopup();
 }
 
@@ -1530,14 +2046,23 @@ void Editor::DrawBuildPopup()
 	if (!GameBuilder::IsAvailable())
 	{
 		ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.3f, 1.0f), "no project is open (File > Projects)");
-		if (ImGui::Button("Close")) ImGui::CloseCurrentPopup();
+		if (ImGui::Button("Close"))
+		{
+			ImGui::CloseCurrentPopup();
+		}
 		ImGui::EndPopup();
 		return;
 	}
 	m_buildOptions.projectName = project.name;
 	m_buildOptions.projectSolution = project.solutionPath;
-	if (project.scriptSources > 0 && !project.scriptsLoaded) ImGui::TextColored(ImVec4(0.9f, 0.6f, 0.2f, 1.0f), "warning: %sScripts.dll is not built; the package will not have the scripts (build them first)", project.name.c_str());
-	if (m_buildScenes.empty()) m_buildScenes = GameBuilder::ListScenes();
+	if (project.scriptSources > 0 && !project.scriptsLoaded)
+	{
+		ImGui::TextColored(ImVec4(0.9f, 0.6f, 0.2f, 1.0f), "warning: %sScripts.dll is not built; the package will not have the scripts (build them first)", project.name.c_str());
+	}
+	if (m_buildScenes.empty())
+	{
+		m_buildScenes = GameBuilder::ListScenes();
+	}
 	if (m_buildOptions.startScene.empty() && !m_buildScenes.empty())
 	{
 		// 기본: 지금 열린 씬 파일이 목록에 있으면 그것, 아니면 첫 항목
@@ -1547,33 +2072,60 @@ void Editor::DrawBuildPopup()
 	char name[64];
 	strncpy_s(name, m_buildOptions.name.c_str(), sizeof(name) - 1);
 	ImGui::SetNextItemWidth(260.0f);
-	if (ImGui::InputText("Game name", name, sizeof(name))) m_buildOptions.name = name;
+	if (ImGui::InputText("Game name", name, sizeof(name)))
+	{
+		m_buildOptions.name = name;
+	}
 	ImGui::SetNextItemWidth(260.0f);
 	if (ImGui::BeginCombo("Start scene", m_buildOptions.startScene.c_str()))
 	{
 		for (const std::string& scene : m_buildScenes)
-			if (ImGui::Selectable(scene.c_str(), scene == m_buildOptions.startScene)) m_buildOptions.startScene = scene;
+		{
+			if (ImGui::Selectable(scene.c_str(), scene == m_buildOptions.startScene))
+			{
+				m_buildOptions.startScene = scene;
+			}
+		}
 		ImGui::EndCombo();
 	}
-	if (ImGui::SmallButton("refresh scenes")) m_buildScenes = GameBuilder::ListScenes();
+	if (ImGui::SmallButton("refresh scenes"))
+	{
+		m_buildScenes = GameBuilder::ListScenes();
+	}
 	ImGui::TextDisabled("(save the scene first: Ctrl+S writes Assets\\Scenes)");
 	ImGui::Checkbox("Copy all assets", &m_buildOptions.copyAllAssets);
-	if (ImGui::IsItemHovered()) ImGui::SetTooltip("off: only Config, Textures and the models the start scene references (skips Sponza etc.)");
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("off: only Config, Textures and the models the start scene references (skips Sponza etc.)");
+	}
 	ImGui::Checkbox("Build Release with MSBuild first", &m_buildOptions.releaseBuild);
-	if (ImGui::IsItemHovered()) ImGui::SetTooltip("runs MSBuild on the project's game target (Release|x64); the editor freezes until it finishes. Off: uses the runtime next to this editor");
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("runs MSBuild on the project's game target (Release|x64); the editor freezes until it finishes. Off: uses the runtime next to this editor");
+	}
 	ImGui::Checkbox("Open folder when done", &m_buildOptions.openFolder);
 	ImGui::TextDisabled("%s", Log::ToUtf8((GameBuilder::GetBuildRoot() + std::wstring(m_buildOptions.name.begin(), m_buildOptions.name.end()) + L"\\").c_str()).c_str());
-	if (!m_buildMessage.empty()) ImGui::TextWrapped("%s", m_buildMessage.c_str());
+	if (!m_buildMessage.empty())
+	{
+		ImGui::TextWrapped("%s", m_buildMessage.c_str());
+	}
 	ImGui::Separator();
 	if (ImGui::Button("Build"))
 	{
 		const GameBuilder::Result result = GameBuilder::Build(m_buildOptions);
 		m_buildMessage = result.message;
 		m_lastMessage = result.message;
-		if (result.ok) m_buildMessage += "\n" + Log::ToUtf8(result.outputDir.c_str());
+		if (result.ok)
+		{
+			m_buildMessage += "\n" + Log::ToUtf8(result.outputDir.c_str());
+		}
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Close")) { m_buildMessage.clear(); ImGui::CloseCurrentPopup(); }
+	if (ImGui::Button("Close"))
+	{
+		m_buildMessage.clear();
+		ImGui::CloseCurrentPopup();
+	}
 	ImGui::EndPopup();
 }
 
@@ -1584,25 +2136,40 @@ void Editor::DrawPlayControls(const Callbacks& callbacks)
 	if (editing)
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.6f, 0.3f, 1.0f));
-		if (ImGui::Button("Play") && callbacks.play) callbacks.play();
+		if (ImGui::Button("Play") && callbacks.play)
+		{
+			callbacks.play();
+		}
 		ImGui::PopStyleColor();
 	}
 	else
 	{
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.75f, 0.25f, 0.25f, 1.0f));
-		if (ImGui::Button("Stop") && callbacks.stop) callbacks.stop();
+		if (ImGui::Button("Stop") && callbacks.stop)
+		{
+			callbacks.stop();
+		}
 		ImGui::PopStyleColor();
 	}
 	ImGui::SameLine();
 	ImGui::BeginDisabled(editing);
-	if (ImGui::Button(playing ? "Pause" : "Resume") && callbacks.pauseToggle) callbacks.pauseToggle();
+	if (ImGui::Button(playing ? "Pause" : "Resume") && callbacks.pauseToggle)
+	{
+		callbacks.pauseToggle();
+	}
 	ImGui::SameLine();
-	if (ImGui::Button("Step") && callbacks.stepFrame) callbacks.stepFrame();
+	if (ImGui::Button("Step") && callbacks.stepFrame)
+	{
+		callbacks.stepFrame();
+	}
 	ImGui::EndDisabled();
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(90.0f);
 	DebugUI::SliderFloatR("##timeScale", &timeScale, 1.0f, 0.0f, 4.0f, "x%.2f");
-	if (ImGui::IsItemHovered()) ImGui::SetTooltip("time scale (dt multiplier while playing)");
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("time scale (dt multiplier while playing)");
+	}
 }
 
 void Editor::DrawComponents(GameObject& object)
@@ -1614,8 +2181,14 @@ void Editor::DrawComponents(GameObject& object)
 	{
 		Behaviour& behaviour = *behaviours[i];
 		ImGui::PushID(i);
-		if (ImGui::SmallButton("x")) removeIndex = i;
-		if (ImGui::IsItemHovered()) ImGui::SetTooltip("remove component");
+		if (ImGui::SmallButton("x"))
+		{
+			removeIndex = i;
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("remove component");
+		}
 		ImGui::SameLine();
 		ImGui::Checkbox("##enabled", &behaviour.enabled);
 		ImGui::SameLine();
@@ -1627,7 +2200,10 @@ void Editor::DrawComponents(GameObject& object)
 			{
 				m_lastMessage = ScriptCreator::OpenScript(behaviour.GetTypeName()) ? std::string("opened ") + behaviour.GetTypeName() + ".h/.cpp (Build scripts to reload)" : "script source not found in the project Scripts folder";
 			}
-			if (ImGui::IsItemHovered()) ImGui::SetTooltip("open Scripts/%s.h and .cpp (after editing: Build scripts, or build in Visual Studio — the editor reloads the DLL)", behaviour.GetTypeName());
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::SetTooltip("open Scripts/%s.h and .cpp (after editing: Build scripts, or build in Visual Studio — the editor reloads the DLL)", behaviour.GetTypeName());
+			}
 			ImGui::SameLine();
 		}
 		const bool open = ImGui::TreeNodeEx("##node", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed, "%s%s", behaviour.GetTypeName(), isScript ? "  (Script)" : "");
@@ -1639,7 +2215,10 @@ void Editor::DrawComponents(GameObject& object)
 		}
 		ImGui::PopID();
 	}
-	if (removeIndex >= 0) object.RemoveBehaviour(static_cast<size_t>(removeIndex));
+	if (removeIndex >= 0)
+	{
+		object.RemoveBehaviour(static_cast<size_t>(removeIndex));
+	}
 
 	// 스크립트 DLL 이 없어 만들지 못한 컴포넌트. 값은 보관 중이며 Build scripts 뒤 핫리로드가 되살림
 	auto& missing = object.GetMissingComponents();
@@ -1654,14 +2233,26 @@ void Editor::DrawComponents(GameObject& object)
 			type = missing[i].substr(begin, missing[i].find('"', begin) - begin);
 		}
 		ImGui::PushID(1000 + i);
-		if (ImGui::SmallButton("x")) removeMissing = i;
-		if (ImGui::IsItemHovered()) ImGui::SetTooltip("remove (the saved values are lost)");
+		if (ImGui::SmallButton("x"))
+		{
+			removeMissing = i;
+		}
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("remove (the saved values are lost)");
+		}
 		ImGui::SameLine();
 		ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f), "%s  (Missing script)", type.c_str());
-		if (ImGui::IsItemHovered()) ImGui::SetTooltip("not registered: build the project scripts. Values are kept and restored on reload.");
+		if (ImGui::IsItemHovered())
+		{
+			ImGui::SetTooltip("not registered: build the project scripts. Values are kept and restored on reload.");
+		}
 		ImGui::PopID();
 	}
-	if (removeMissing >= 0) missing.erase(missing.begin() + removeMissing);
+	if (removeMissing >= 0)
+	{
+		missing.erase(missing.begin() + removeMissing);
+	}
 
 	// 추가: 레지스트리에 등록된 C++ 클래스 목록. 스크립트(프로젝트의 Scripts, SHERLOCK_SCRIPT)와 엔진
 	// 컴포넌트를 나눠 보여 줌.
@@ -1684,18 +2275,30 @@ void Editor::DrawComponents(GameObject& object)
 		}
 		ImGui::EndCombo();
 	}
-	if (BehaviourRegistry::GetTypeNames().empty()) ImGui::TextDisabled("(nothing registered — add a class in Scripts with SHERLOCK_SCRIPT)");
+	if (BehaviourRegistry::GetTypeNames().empty())
+	{
+		ImGui::TextDisabled("(nothing registered — add a class in Scripts with SHERLOCK_SCRIPT)");
+	}
 
 	// 새 스크립트 (유니티의 Create > C# Script 에 해당). 파일 생성과 편집기로 열기까지 함. Build scripts 하면
 	// 에디터가 DLL 을 다시 올려 목록에 나타남 (재실행 불필요).
-	if (ImGui::Button("New Script...")) ImGui::OpenPopup("New Script");
-	if (ImGui::IsItemHovered()) ImGui::SetTooltip("create Scripts/<Name>.h + .cpp from a template and open them");
+	if (ImGui::Button("New Script..."))
+	{
+		ImGui::OpenPopup("New Script");
+	}
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("create Scripts/<Name>.h + .cpp from a template and open them");
+	}
 	if (ImGui::BeginPopupModal("New Script", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		if (!ScriptCreator::IsAvailable())
 		{
 			ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.3f, 1.0f), "source tree not found - run from the repository build (x64\\Debug)");
-			if (ImGui::Button("Close")) ImGui::CloseCurrentPopup();
+			if (ImGui::Button("Close"))
+			{
+				ImGui::CloseCurrentPopup();
+			}
 			ImGui::EndPopup();
 		}
 		else
@@ -1705,7 +2308,10 @@ void Editor::DrawComponents(GameObject& object)
 			const bool enter = ImGui::InputText("##name", m_newScriptName, sizeof(m_newScriptName), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CharsNoBlank);
 			ImGui::TextDisabled("%s", Log::ToUtf8((ScriptCreator::GetScriptsDir() + L"<Name>.h  +  <Name>.cpp").c_str()).c_str());
 			ImGui::TextDisabled("Both files open in your editor. Build scripts (or build in Visual Studio) - the editor reloads the DLL.");
-			if (!m_newScriptError.empty()) ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.3f, 1.0f), "%s", m_newScriptError.c_str());
+			if (!m_newScriptError.empty())
+			{
+				ImGui::TextColored(ImVec4(0.9f, 0.4f, 0.3f, 1.0f), "%s", m_newScriptError.c_str());
+			}
 			const bool valid = ScriptCreator::IsValidClassName(m_newScriptName);
 			ImGui::BeginDisabled(!valid);
 			if (ImGui::Button("Create and open") || (enter && valid))
@@ -1719,11 +2325,18 @@ void Editor::DrawComponents(GameObject& object)
 					m_newScriptName[0] = '\0';
 					ImGui::CloseCurrentPopup();
 				}
-				else m_newScriptError = error;
+				else
+				{
+					m_newScriptError = error;
+				}
 			}
 			ImGui::EndDisabled();
 			ImGui::SameLine();
-			if (ImGui::Button("Cancel")) { m_newScriptError.clear(); ImGui::CloseCurrentPopup(); }
+			if (ImGui::Button("Cancel"))
+			{
+				m_newScriptError.clear();
+				ImGui::CloseCurrentPopup();
+			}
 			ImGui::EndPopup();
 		}
 	}
@@ -1737,9 +2350,12 @@ void Editor::DrawRenderSettings(Engine& engine)
 	// 11~15: 디퍼드·클러스터드·SSAO 검증용 (docs/plan/deferred-clustered-ssao-record.html). 13 (SSAO) 은 디퍼드 프레임에서만,
 	// 5 (UV) 는 G-buffer 에 UV 가 없어 그 프레임을 포워드로 그림.
 	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion", "Shadow cascade", "Specular F0", "Clearcoat",
-		"World position (frac)", "Geometric normal", "SSAO", "Cluster light count", "Cluster depth slice" };
+							"World position (frac)", "Geometric normal", "SSAO", "Cluster light count", "Cluster depth slice" };
 	ImGui::Combo("Debug view", &settings.debugView, views, IM_ARRAYSIZE(views));
-	if (settings.debugView == 3) DebugUI::SliderFloatR("Depth range", &settings.debugDepthRange, RenderSettings().debugDepthRange, 1.0f, 500.0f);
+	if (settings.debugView == 3)
+	{
+		DebugUI::SliderFloatR("Depth range", &settings.debugDepthRange, RenderSettings().debugDepthRange, 1.0f, 500.0f);
+	}
 	const char* boneModes[] = { "Off", "Bones + joints", "Bones + joints + axes" };
 	ImGui::Combo("Bone debug (B)", &settings.debugBones, boneModes, IM_ARRAYSIZE(boneModes));
 	DebugUI::DrawShadowPanel(engine.GetScene(), engine.GetRenderer(), engine.GetDevice());
@@ -1749,7 +2365,10 @@ void Editor::DrawRenderSettings(Engine& engine)
 		// (Debug view = Shadow cascade 와 같이 쓰면 이미지처럼 색 띠가 보임)
 		Renderer& renderer = engine.GetRenderer();
 		bool frozen = renderer.IsCascadeFrozen();
-		if (ImGui::Checkbox("Freeze cascade camera", &frozen)) renderer.SetCascadeFreeze(frozen, engine.GetCamera());
+		if (ImGui::Checkbox("Freeze cascade camera", &frozen))
+		{
+			renderer.SetCascadeFreeze(frozen, engine.GetCamera());
+		}
 		ImGui::TextDisabled("Freeze 후 에디터 카메라를 옮겨 보세요. 색 절두체 = 고정된 카메라의 캐스케이드.");
 	}
 	DebugUI::DrawCameraPanel(engine.GetCamera(), cameraMoveSpeed);
@@ -1763,12 +2382,10 @@ void Editor::DrawStats(Engine& engine, const char* sceneName, const ModelStats& 
 	const Renderer::Stats& stats = engine.GetRenderer().GetStats();
 	const Time& time = engine.GetTime();
 	ImGui::TextWrapped("%.1f FPS   %.2f ms/frame   scene view %ux%u", time.GetFps(), time.GetAverageFrameMs(), m_sceneWidth, m_sceneHeight);
-	ImGui::TextWrapped("draws %u (+%u shadow, %u views)   draw items %u, culled main %u / shadow %u   triangles %u (main only)   PSO switches %u   set switches %u   mesh switches %u   PSO cache %zu",
-		stats.draws, stats.shadowDraws, stats.shadowViews, stats.drawItems, stats.culled, stats.shadowCulled, stats.triangles, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches, engine.GetRenderer().GetPipelineCount());
+	ImGui::TextWrapped("draws %u (+%u shadow, %u views)   draw items %u, culled main %u / shadow %u   triangles %u (main only)   PSO switches %u   set switches %u   mesh switches %u   PSO cache %zu", stats.draws, stats.shadowDraws, stats.shadowViews, stats.drawItems, stats.culled, stats.shadowCulled, stats.triangles, stats.pipelineSwitches, stats.resourceSetSwitches, stats.meshSwitches, engine.GetRenderer().GetPipelineCount());
 	if (stats.particleEmitters > 0)
 	{
-		ImGui::TextWrapped("particles: emitters %u   buffer %u (drawn as quads, dead included)   spawned this frame %u",
-			stats.particleEmitters, stats.particleCapacity, stats.particlesSpawned);
+		ImGui::TextWrapped("particles: emitters %u   buffer %u (drawn as quads, dead included)   spawned this frame %u", stats.particleEmitters, stats.particleCapacity, stats.particlesSpawned);
 	}
 	DebugUI::DrawModelPanel(sceneName, modelStats, engine.GetScene().GetImageCount(), engine.GetScene().GetObjects().size());
 	DebugUI::DrawProfilerPanel();

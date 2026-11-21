@@ -88,8 +88,7 @@ bool Renderer::CreateGBuffer(ViewTarget& view, const std::string& base)
 	const std::string setName = "Set_GBuffer_" + base;
 	view.gbufferSet = m_device->CreateResourceSet(ResourceSetDesc{
 		.layout = m_layouts[Layout_GBuffer],
-		.bindings = { { .texture = view.depth }, { .texture = view.gbuffer[0] }, { .texture = view.gbuffer[1] }, { .texture = view.gbuffer[2] },
-			{ .texture = view.gbuffer[3] }, { .texture = ao } },
+		.bindings = { { .texture = view.depth }, { .texture = view.gbuffer[0] }, { .texture = view.gbuffer[1] }, { .texture = view.gbuffer[2] }, { .texture = view.gbuffer[3] }, { .texture = ao } },
 		.debugName = setName.c_str(),
 	});
 	if (!view.gbufferSet.IsValid())
@@ -105,11 +104,17 @@ void Renderer::DestroyGBuffer(ViewTarget& view)
 {
 	if (m_device == nullptr) return;
 	DestroySsaoTargets(view);
-	if (view.gbufferSet.IsValid()) m_device->DestroyResourceSet(view.gbufferSet);
+	if (view.gbufferSet.IsValid())
+	{
+		m_device->DestroyResourceSet(view.gbufferSet);
+	}
 	view.gbufferSet = ResourceSetHandle{};
 	for (TextureHandle& texture : view.gbuffer)
 	{
-		if (texture.IsValid()) m_device->DestroyTexture(texture);
+		if (texture.IsValid())
+		{
+			m_device->DestroyTexture(texture);
+		}
 		texture = TextureHandle{};
 	}
 }
@@ -123,13 +128,15 @@ void Renderer::RenderDeferredScene(RHI::CommandList& cmd, const Scene& scene, Vi
 	// G-buffer 의 클리어 값은 의미가 없음 (배경 픽셀은 라이팅이 읽지 않음).
 	cmd.Barrier(view.hdr, ResourceState::RenderTarget);
 	cmd.Barrier(view.depth, ResourceState::DepthWrite);
-	for (const TextureHandle& texture : view.gbuffer) cmd.Barrier(texture, ResourceState::RenderTarget);
+	for (const TextureHandle& texture : view.gbuffer)
+	{
+		cmd.Barrier(texture, ResourceState::RenderTarget);
+	}
 	{
 		const std::string name = base + "GBuffer";
 		RenderPassDesc pass{
 			.colors = {
-				{ .texture = view.hdr, .load = LoadOp::Clear, .srgbView = false,
-				  .clearColor = { scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] } },
+				{ .texture = view.hdr, .load = LoadOp::Clear, .srgbView = false, .clearColor = { scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] } },
 				// sRGB 포맷(GB0·GB2)은 텍스처 자체가 _SRGB 라 srgbView 를 켜지 않아도 쓸 때 인코딩함. GB3 는 UNORM(TYPELESS 리소스)
 				// 이라 srgbView = false 로 UNORM RTV 를 고름 — 켜면 금속성·F90 이 감마 인코딩된 채 저장됨.
 				{ .texture = view.gbuffer[0], .load = LoadOp::Clear, .srgbView = false },
@@ -148,7 +155,10 @@ void Renderer::RenderDeferredScene(RHI::CommandList& cmd, const Scene& scene, Vi
 	}
 
 	// ---- 2. 읽기 상태로: G-buffer → SRV, 깊이 → DepthRead (DepthRead 는 픽셀 셰이더 SRV 읽기도 포함) ----
-	for (const TextureHandle& texture : view.gbuffer) cmd.Barrier(texture, ResourceState::ShaderResource);
+	for (const TextureHandle& texture : view.gbuffer)
+	{
+		cmd.Barrier(texture, ResourceState::ShaderResource);
+	}
 	cmd.Barrier(view.depth, ResourceState::DepthRead);
 
 	// ---- 3. SSAO (5단계). 꺼져 있어도 G-buffer 셋이 t29 에 ssaoBlur 를 꽂고 있으므로 SRV 상태는 맞춰 둠 ----
@@ -225,11 +235,17 @@ PipelineHandle Renderer::GetGBufferPipelineFor(const Material& material, VertexF
 	desc.rasterizer.cull = cullBack ? CullMode::Back : CullMode::None;
 	// MRT 5장의 포맷을 모두 적음 (D3D12 PSO 는 렌더 타깃 포맷을 알아야 함. 기본값은 [0] 만 있음).
 	desc.rtvFormats[0] = Format::R16G16B16A16_FLOAT;
-	for (uint32_t i = 0; i < 4; ++i) desc.rtvFormats[1 + i] = kGBufferFormats[i];
+	for (uint32_t i = 0; i < 4; ++i)
+	{
+		desc.rtvFormats[1 + i] = kGBufferFormats[i];
+	}
 	desc.rtvCount = 5;
 	desc.dsvFormat = Format::D24_UNORM_S8_UINT;
 	const PipelineHandle handle = m_device->CreatePipeline(desc);
-	if (handle.IsValid()) m_gbufferPipelines.emplace(key, handle);
+	if (handle.IsValid())
+	{
+		m_gbufferPipelines.emplace(key, handle);
+	}
 	return handle;
 }
 

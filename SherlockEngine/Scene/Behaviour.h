@@ -34,8 +34,8 @@ struct PlayContext
 	Scene* scene = nullptr;
 	Input* input = nullptr;
 	Camera* camera = nullptr;
-	float totalTime = 0.0f;       // 재생 시작 뒤 누적 시간 (시간 배율 반영)
-	bool cameraDriven = false;    // 이번 프레임에 어떤 컴포넌트가 카메라를 움직였음 → 앱의 에디터 카메라 컨트롤러는 카메라를 건드리지 않음
+	float totalTime = 0.0f;      // 재생 시작 뒤 누적 시간 (시간 배율 반영)
+	bool cameraDriven = false;   // 이번 프레임에 어떤 컴포넌트가 카메라를 움직였음 → 앱의 에디터 카메라 컨트롤러는 카메라를 건드리지 않음
 };
 
 // 속성 방문자. 컴포넌트는 Reflect 에서 자기 필드를 열거할 뿐, 방문자가 그 필드로 무엇을 하는지는 모름:
@@ -72,8 +72,16 @@ public:
 
 	// ---- Scene / GameObject 가 호출함 ----
 	void Attach(GameObject* owner) { m_owner = owner; }
-	void BeginPlay(PlayContext* context) { m_context = context; m_started = false; }
-	void EndPlay() { m_context = nullptr; m_started = false; }
+	void BeginPlay(PlayContext* context)
+	{
+		m_context = context;
+		m_started = false;
+	}
+	void EndPlay()
+	{
+		m_context = nullptr;
+		m_started = false;
+	}
 	bool HasStarted() const { return m_started; }
 	void MarkStarted() { m_started = true; }
 
@@ -95,15 +103,27 @@ namespace BehaviourRegistry
 	// 가리키기 때문.
 	SHERLOCK_API void Unregister(const std::string& typeName);
 	SHERLOCK_API std::unique_ptr<Behaviour> Create(const std::string& typeName);   // 모르는 이름이면 nullptr (+ 경고 로그)
-	SHERLOCK_API const std::vector<std::string>& GetTypeNames();                    // 정렬된 목록 (Inspector 의 Add Component)
-	SHERLOCK_API bool IsScript(const std::string& typeName);                        // SHERLOCK_SCRIPT 로 등록된 타입인지 여부
+	SHERLOCK_API const std::vector<std::string>& GetTypeNames();                   // 정렬된 목록 (Inspector 의 Add Component)
+	SHERLOCK_API bool IsScript(const std::string& typeName);                       // SHERLOCK_SCRIPT 로 등록된 타입인지 여부
 }
 
 #define SHERLOCK_REGISTER_BEHAVIOUR_(ClassName, IsScript) \
-	const char* ClassName::GetTypeName() const { return #ClassName; } \
-	namespace { struct ClassName##_Registrar { ClassName##_Registrar() { \
-		BehaviourRegistry::Register(#ClassName, []() -> std::unique_ptr<Behaviour> { return std::make_unique<ClassName>(); }, IsScript); } } \
-		s_##ClassName##_Registrar; }
+	const char* ClassName::GetTypeName() const \
+	{ \
+		return #ClassName; \
+	} \
+	namespace \
+	{ \
+		struct ClassName##_Registrar \
+		{ \
+			ClassName##_Registrar() \
+			{ \
+				BehaviourRegistry::Register(#ClassName, []() -> std::unique_ptr<Behaviour> { \
+					return std::make_unique<ClassName>(); \
+				}, IsScript); \
+			} \
+		} s_##ClassName##_Registrar; \
+	}
 
 #define SHERLOCK_BEHAVIOUR(ClassName) SHERLOCK_REGISTER_BEHAVIOUR_(ClassName, false)   // 엔진 컴포넌트
 #define SHERLOCK_SCRIPT(ClassName) SHERLOCK_REGISTER_BEHAVIOUR_(ClassName, true)       // 사용자 스크립트 (Script 상속)

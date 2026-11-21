@@ -94,10 +94,10 @@ private:
 	ComputePipelineHandle m_currentComputePipeline;
 	const D3D12ComputePipelineState* m_currentComputePso = nullptr;
 	const D3D12RootLayout* m_currentComputeRoot = nullptr;
-	BoundSet m_computeSets[kMaxBindingSets];   // 인덱스 = ComputePipelineDesc::bindingLayouts 의 인덱스
+	BoundSet m_computeSets[kMaxBindingSets];      // 인덱스 = ComputePipelineDesc::bindingLayouts 의 인덱스
 	std::vector<BufferHandle> m_touchedBuffers;   // 이번 프레임에 상태가 Common 에서 바뀐 버퍼
 
-	// 이 패스의 기본 뷰포트 크기 
+	// 이 패스의 기본 뷰포트 크기
 	uint32_t m_passWidth = 0;
 	uint32_t m_passHeight = 0;
 };

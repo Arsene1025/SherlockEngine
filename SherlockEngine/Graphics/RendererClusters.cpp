@@ -74,8 +74,7 @@ XMFLOAT4 Renderer::ComputeLightBounds(const GpuLight& light)
 			const bool narrow = cosTheta >= 0.70710678f;   // θ ≤ 45°
 			const float centerDistance = narrow ? range / (2.0f * cosTheta) : range * cosTheta;
 			const float radius = narrow ? range / (2.0f * cosTheta) : range * sinTheta;
-			return XMFLOAT4(light.position.x + light.direction.x * centerDistance, light.position.y + light.direction.y * centerDistance,
-				light.position.z + light.direction.z * centerDistance, radius);
+			return XMFLOAT4(light.position.x + light.direction.x * centerDistance, light.position.y + light.direction.y * centerDistance, light.position.z + light.direction.z * centerDistance, radius);
 		}
 	}
 	return XMFLOAT4(light.position.x, light.position.y, light.position.z, range);
@@ -105,7 +104,11 @@ void Renderer::CullLights(const Camera& camera)
 
 	const Frustum frustum = Frustum::FromViewProj(camera.GetViewMatrix() * camera.GetProjectionMatrix());
 	const XMFLOAT3 eye = camera.GetPosition();
-	struct Candidate { uint32_t index; float score; };
+	struct Candidate
+	{
+		uint32_t index;
+		float score;
+	};
 	std::vector<Candidate> candidates;
 	candidates.reserve(count);
 
@@ -136,7 +139,10 @@ void Renderer::CullLights(const Camera& camera)
 		const float ratio = sphere.w / (std::max)(distance, sphere.w);
 		float score = ratio * ratio * (std::max)(light.intensity, 0.0f) * Luminance(light.color);
 		const uint32_t sceneIndex = i < m_lightSceneIndex.size() ? m_lightSceneIndex[i] : i;
-		if (m_shadowHistory.count(sceneIndex) != 0) score *= kShadowHistoryBonus;
+		if (m_shadowHistory.count(sceneIndex) != 0)
+		{
+			score *= kShadowHistoryBonus;
+		}
 		candidates.push_back({ i, score });
 	}
 
@@ -146,7 +152,10 @@ void Renderer::CullLights(const Camera& camera)
 		if (a.score != b.score) return a.score > b.score;
 		return a.index < b.index;
 	});
-	for (const Candidate& c : candidates) m_shadowOrder.push_back(c.index);
+	for (const Candidate& c : candidates)
+	{
+		m_shadowOrder.push_back(c.index);
+	}
 }
 
 void Renderer::BuildClusters(const Camera& camera, uint32_t width, uint32_t height, uint32_t viewIndex)
@@ -177,18 +186,27 @@ void Renderer::BuildClusters(const Camera& camera, uint32_t width, uint32_t heig
 	// ---- (2) 상자 3456 개 (뷰 공간 AABB). 타일의 NDC 사각형을 슬라이스의 앞·뒤 z 에서 뷰 공간으로 되돌린 꼭짓점 8 개를 감쌈 ----
 	// LH 투영의 x: 원근 x_ndc = (P00 · x + P20 · z) / z → x = (x_ndc − P20) · z / P00, 직교 x_ndc = P00 · x + P30 → x = (x_ndc − P30) / P00.
 	// y 도 같은 꼴 (P11, P21 / P31). 타일 y 는 위→아래 (SV_Position 방향) 라 NDC y 는 1 → −1.
-	struct Box { XMFLOAT3 mn, mx; };
+	struct Box
+	{
+		XMFLOAT3 mn, mx;
+	};
 	static thread_local std::vector<Box> boxes;
 	boxes.resize(kClusterCount);
-	const auto toViewX = [&](float ndc, float z) { return perspective ? (ndc - proj._31) * z / proj._11 : (ndc - proj._41) / proj._11; };
-	const auto toViewY = [&](float ndc, float z) { return perspective ? (ndc - proj._32) * z / proj._22 : (ndc - proj._42) / proj._22; };
+	const auto toViewX = [&](float ndc, float z)
+	{
+		return perspective ? (ndc - proj._31) * z / proj._11 : (ndc - proj._41) / proj._11;
+	};
+	const auto toViewY = [&](float ndc, float z)
+	{
+		return perspective ? (ndc - proj._32) * z / proj._22 : (ndc - proj._42) / proj._22;
+	};
 	for (uint32_t k = 0; k < kClusterGridZ; ++k)
 	{
 		const float z0 = sliceZ[k], z1 = sliceZ[k + 1];
 		for (uint32_t y = 0; y < kClusterGridY; ++y)
 		{
-			const float ny0 = 1.0f - 2.0f * static_cast<float>(y) / kClusterGridY;        // 타일 위
-			const float ny1 = 1.0f - 2.0f * static_cast<float>(y + 1) / kClusterGridY;    // 타일 아래
+			const float ny0 = 1.0f - 2.0f * static_cast<float>(y) / kClusterGridY;       // 타일 위
+			const float ny1 = 1.0f - 2.0f * static_cast<float>(y + 1) / kClusterGridY;   // 타일 아래
 			for (uint32_t x = 0; x < kClusterGridX; ++x)
 			{
 				const float nx0 = -1.0f + 2.0f * static_cast<float>(x) / kClusterGridX;
@@ -235,8 +253,10 @@ void Renderer::BuildClusters(const Camera& camera, uint32_t width, uint32_t heig
 				const float pz = c.z + ((corner & 4) ? r : -r);
 				const float ndcX = perspective ? (proj._11 * px + proj._31 * pz) / pz : proj._11 * px + proj._41;
 				const float ndcY = perspective ? (proj._22 * py + proj._32 * pz) / pz : proj._22 * py + proj._42;
-				minX = (std::min)(minX, ndcX); maxX = (std::max)(maxX, ndcX);
-				minY = (std::min)(minY, ndcY); maxY = (std::max)(maxY, ndcY);
+				minX = (std::min)(minX, ndcX);
+				maxX = (std::max)(maxX, ndcX);
+				minY = (std::min)(minY, ndcY);
+				maxY = (std::max)(maxY, ndcY);
 			}
 			if (maxX < -1.0f || minX > 1.0f || maxY < -1.0f || minY > 1.0f) continue;   // 화면 밖
 			x0 = std::clamp(static_cast<int>(std::floor((minX + 1.0f) * 0.5f * kClusterGridX)), 0, static_cast<int>(kClusterGridX) - 1);
@@ -246,7 +266,9 @@ void Renderer::BuildClusters(const Camera& camera, uint32_t width, uint32_t heig
 		}
 
 		for (int k = k0; k <= k1; ++k)
+		{
 			for (int y = y0; y <= y1; ++y)
+			{
 				for (int x = x0; x <= x1; ++x)
 				{
 					const uint32_t cluster = static_cast<uint32_t>(x) + kClusterGridX * (static_cast<uint32_t>(y) + kClusterGridY * static_cast<uint32_t>(k));
@@ -255,11 +277,16 @@ void Renderer::BuildClusters(const Camera& camera, uint32_t width, uint32_t heig
 					pairCluster.push_back(cluster);
 					pairLight.push_back(i);
 				}
+			}
+		}
 	}
 
 	// ---- (4) 상자마다 개수 → 누적합으로 시작 위치 → 쌍을 순서대로 채움. 상한을 넘는 쌍은 버리고 통계에 남김 ----
 	const uint32_t pairCount = static_cast<uint32_t>(pairCluster.size());
-	for (uint32_t p = 0; p < pairCount; ++p) ++grid[pairCluster[p] * 2 + 1];
+	for (uint32_t p = 0; p < pairCount; ++p)
+	{
+		++grid[pairCluster[p] * 2 + 1];
+	}
 	uint32_t offset = 0;
 	uint32_t maxLights = 0;
 	for (uint32_t cl = 0; cl < kClusterCount; ++cl)
@@ -269,7 +296,10 @@ void Renderer::BuildClusters(const Camera& camera, uint32_t width, uint32_t heig
 		const uint32_t room = kMaxClusterLightRefs - offset;
 		if (cnt > room)
 		{
-			if (viewIndex == 0) m_stats.clusterOverflow += cnt - room;
+			if (viewIndex == 0)
+			{
+				m_stats.clusterOverflow += cnt - room;
+			}
 			cnt = room;
 		}
 		grid[cl * 2 + 0] = offset;
@@ -296,17 +326,22 @@ void Renderer::EnsureClusterCapacity()
 	uint32_t need = 1;
 	for (uint32_t v = 0; v < kClusterViews; ++v)
 	{
-		if (m_clusterBuilt[v]) need = (std::max)(need, static_cast<uint32_t>(m_clusterIndexScratch[v].size()));
+		if (m_clusterBuilt[v])
+		{
+			need = (std::max)(need, static_cast<uint32_t>(m_clusterIndexScratch[v].size()));
+		}
 	}
 	if (need <= m_clusterIndexCapacity) return;
 
 	// 두 배씩 (상한 kMaxClusterLightRefs — BuildClusters 가 이미 그 안으로 잘랐음). 프레임 셋(t31)이 옛 버퍼를 가리키므로
 	// 바인딩 기록을 비워 다음 UpdateFrameSet 이 셋을 다시 만들게 함 (UploadLights 의 조명 버퍼 확장과 같은 방식).
 	uint32_t capacity = (std::max)(m_clusterIndexCapacity, kInitialClusterLightRefs);
-	while (capacity < need) capacity *= 2;
+	while (capacity < need)
+	{
+		capacity *= 2;
+	}
 	capacity = (std::min)(capacity, kMaxClusterLightRefs);
-	const BufferHandle grown = m_device->CreateBuffer(BufferDesc{ .size = capacity * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic,
-		.bindFlags = BufferBind_ShaderResource, .stride = sizeof(uint32_t), .debugName = "SB_ClusterLights" });
+	const BufferHandle grown = m_device->CreateBuffer(BufferDesc{ .size = capacity * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = sizeof(uint32_t), .debugName = "SB_ClusterLights" });
 	if (!grown.IsValid())
 	{
 		Log::Error("클러스터 조명 목록 버퍼 확장 실패 (%u개). 넘치는 목록은 잘림.", capacity);

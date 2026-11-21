@@ -31,7 +31,7 @@ public:
 	// 이 빌드 구성에서 프로젝트의 스크립트 DLL 경로 (<root>Binaries\<구성>\<이름>Scripts.dll). 파일이 없어도
 	// 경로를 돌려줌.
 	static std::wstring GetDllPath(const Project& project);
-	static const wchar_t* GetConfiguration();   // L"Debug" / L"Release" (엔진 빌드 구성)
+	static const wchar_t* GetConfiguration();                   // L"Debug" / L"Release" (엔진 빌드 구성)
 	static size_t CountScriptSources(const Project& project);   // Scripts\ 아래 .cpp 개수 (재귀)
 
 	// 원본 DLL 경로로 올림. 이미 올린 것이 있으면 먼저 Unload 함 (호출자가 씬을 비운 뒤여야 함). 파일이
@@ -42,18 +42,18 @@ public:
 	void Unload();
 
 	bool IsLoaded() const { return m_module != nullptr; }
-	const std::wstring& GetPath() const { return m_path; }                 // 원본 경로 (Load 실패해도 마지막으로 시도한 경로)
+	const std::wstring& GetPath() const { return m_path; }                         // 원본 경로 (Load 실패해도 마지막으로 시도한 경로)
 	const std::vector<std::string>& GetTypeNames() const { return m_typeNames; }   // 이 DLL 이 등록한 컴포넌트
 	const std::string& GetLastError() const { return m_lastError; }
 	bool HasNewerBuild() const;   // 원본이 올린 시점보다 새로 빌드됐는지. 링커가 쓰는 중일 수 있으므로 1초 이상 지난 파일만 참
 	uint32_t GetReloadCount() const { return m_reloads; }
 
 private:
-	void* m_module = nullptr;      // HMODULE (windows.h 를 헤더에 끌어오지 않으려고 void*)
+	void* m_module = nullptr;   // HMODULE (windows.h 를 헤더에 끌어오지 않으려고 void*)
 	std::wstring m_path;
-	std::wstring m_loadedCopy;     // 실제로 올린 복사본
+	std::wstring m_loadedCopy;   // 실제로 올린 복사본
 	uint64_t m_loadedWriteTime = 0;
-	uint64_t m_triedWriteTime = 0; // 마지막으로 올리려고 한 원본의 수정 시각 (실패 포함). HasNewerBuild 의 기준
+	uint64_t m_triedWriteTime = 0;   // 마지막으로 올리려고 한 원본의 수정 시각 (실패 포함). HasNewerBuild 의 기준
 	std::vector<std::string> m_typeNames;
 	std::string m_lastError;
 	uint32_t m_reloads = 0;

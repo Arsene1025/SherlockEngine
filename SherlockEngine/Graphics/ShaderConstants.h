@@ -38,57 +38,57 @@ constexpr uint32_t kCBSlotPerFrame = 0;
 constexpr uint32_t kCBSlotPerObject = 1;
 constexpr uint32_t kCBSlotLights = 2;
 constexpr uint32_t kCBSlotMaterial = 3;
-constexpr uint32_t kSRVSlotAlbedo = 0;       // t0 (재질)
-constexpr uint32_t kSRVSlotNormal = 1;       // t1 (재질)
-constexpr uint32_t kSRVSlotMetallicRoughness = 2; // t2 (재질, G = 거칠기, B = 금속성)
-constexpr uint32_t kSRVSlotOcclusion = 3;    // t3 (재질, R = AO)
-constexpr uint32_t kSRVSlotEmissive = 4;     // t4 (재질, sRGB)
-constexpr uint32_t kSRVSlotSpecular = 5;     // t5 (재질, A = KHR_materials_specular 의 specularFactor 에 곱함)
-constexpr uint32_t kSRVSlotSpecularColor = 6; // t6 (재질, sRGB. KHR_materials_specular 의 specularColor 에 곱함)
-constexpr uint32_t kSRVSlotClearcoat = 16;   // t16 (재질, R = KHR_materials_clearcoat 의 clearcoatFactor 에 곱함). 재질 셋은 t0~t6 에 이어 프레임 셋(t8~t15)을 피해 t16 부터 씀
-constexpr uint32_t kSRVSlotClearcoatRoughness = 17; // t17 (재질, G = clearcoatRoughness 에 곱함)
-constexpr uint32_t kSRVSlotClearcoatNormal = 18;    // t18 (재질, 코팅 노멀 맵. 선형)
-constexpr uint32_t kSRVSlotTransmission = 19;      // t19 (재질, R = KHR_materials_transmission 의 transmissionFactor 에 곱함)
-constexpr uint32_t kSRVSlotShadowMap = 8;    // t8 (프레임)
-constexpr uint32_t kSRVSlotEnvironment = 9;  // t9 (프레임, 스카이박스 큐브맵)
-constexpr uint32_t kSRVSlotIrradiance = 10;  // t10 (프레임, IBL 확산 조도 큐브)
-constexpr uint32_t kSRVSlotPrefiltered = 11; // t11 (프레임, IBL 반사 프리필터 큐브. 밉 = 거칠기)
-constexpr uint32_t kSRVSlotBrdfLut = 12;     // t12 (프레임, split-sum BRDF LUT 2D)
-constexpr uint32_t kSRVSlotCsmMap = 14;      // t14 (프레임, 방향광 CSM 전용 아틀라스. 후처리 셋의 t13 과는 셋이 달라 겹치지 않음)
-constexpr uint32_t kSRVSlotLights = 15;      // t15 (프레임, 조명 구조체 버퍼 StructuredBuffer<LightData>)
-constexpr uint32_t kSRVSlotSceneHdr = 13;   // t13 (후처리 셋, 후처리 패스의 입력 텍스처. 톤 패스는 HDR 씬, 블러·블룸은 앞 단계의 결과)
-constexpr uint32_t kCBSlotPostParams = 4;    // b4 (후처리 셋, 패스마다 올림)
-constexpr uint32_t kUAVSlotPostOutput = 0;   // u0 (컴퓨트 블러 셋, 출력 RWTexture2D)
-constexpr uint32_t kSRVSlotBlurWeights = 20; // t20 (후처리 셋·컴퓨트 블러 셋, 가우시안 가중치 StructuredBuffer<float>. 재질 t16~t19 다음)
-constexpr uint32_t kUAVSlotBlurWeights = 0;  // u0 (가중치 컴퓨트 셋, RWStructuredBuffer<float>)
-constexpr uint32_t kMaxBlurRadius = 64;      // 블러 반경 상한 (픽셀). 가중치 버퍼 = kMaxBlurRadius + 1 개. 셰이더의 kMaxBlurRadius 와 같아야 함
-constexpr uint32_t kCBSlotShadowPass = 5;   // b5 (프레임 셋, VS). 그림자 패스가 뷰마다 올림
-constexpr uint32_t kCBSlotShadows = 6;      // b6 (프레임 셋, PS). 그림자 뷰 배열
-constexpr uint32_t kCBSlotSkin = 7;         // b7 (오브젝트 셋, VS). 스키닝 조인트 행렬 팔레트
-constexpr uint32_t kCBSlotParticle = 8;     // b8 (파티클 시뮬레이션 셋 CS · 그리기 셋 VS/PS). 이미터마다 한 벌, 프레임에 한 번 올림
-constexpr uint32_t kSRVSlotParticles = 21;  // t21 (파티클 그리기 셋, VS. StructuredBuffer<Particle>)
-constexpr uint32_t kSRVSlotParticleAlive = 22; // t22 (파티클 그리기 셋, VS. 이번 프레임 생존 목록 StructuredBuffer<uint>, 알파 이미터는 정렬된 목록)
-constexpr uint32_t kSRVSlotSceneDepth = 23;    // t23 (파티클 깊이 셋 PS · 충돌 셋 CS. 씬 깊이 Texture2D<float>, DepthRead 상태)
-constexpr uint32_t kCBSlotParticleCollision = 9; // b9 (파티클 충돌 셋, CS). 메인 카메라 행렬, 프레임에 한 번
+constexpr uint32_t kSRVSlotAlbedo = 0;                // t0 (재질)
+constexpr uint32_t kSRVSlotNormal = 1;                // t1 (재질)
+constexpr uint32_t kSRVSlotMetallicRoughness = 2;     // t2 (재질, G = 거칠기, B = 금속성)
+constexpr uint32_t kSRVSlotOcclusion = 3;             // t3 (재질, R = AO)
+constexpr uint32_t kSRVSlotEmissive = 4;              // t4 (재질, sRGB)
+constexpr uint32_t kSRVSlotSpecular = 5;              // t5 (재질, A = KHR_materials_specular 의 specularFactor 에 곱함)
+constexpr uint32_t kSRVSlotSpecularColor = 6;         // t6 (재질, sRGB. KHR_materials_specular 의 specularColor 에 곱함)
+constexpr uint32_t kSRVSlotClearcoat = 16;            // t16 (재질, R = KHR_materials_clearcoat 의 clearcoatFactor 에 곱함). 재질 셋은 t0~t6 에 이어 프레임 셋(t8~t15)을 피해 t16 부터 씀
+constexpr uint32_t kSRVSlotClearcoatRoughness = 17;   // t17 (재질, G = clearcoatRoughness 에 곱함)
+constexpr uint32_t kSRVSlotClearcoatNormal = 18;      // t18 (재질, 코팅 노멀 맵. 선형)
+constexpr uint32_t kSRVSlotTransmission = 19;         // t19 (재질, R = KHR_materials_transmission 의 transmissionFactor 에 곱함)
+constexpr uint32_t kSRVSlotShadowMap = 8;             // t8 (프레임)
+constexpr uint32_t kSRVSlotEnvironment = 9;           // t9 (프레임, 스카이박스 큐브맵)
+constexpr uint32_t kSRVSlotIrradiance = 10;           // t10 (프레임, IBL 확산 조도 큐브)
+constexpr uint32_t kSRVSlotPrefiltered = 11;          // t11 (프레임, IBL 반사 프리필터 큐브. 밉 = 거칠기)
+constexpr uint32_t kSRVSlotBrdfLut = 12;              // t12 (프레임, split-sum BRDF LUT 2D)
+constexpr uint32_t kSRVSlotCsmMap = 14;               // t14 (프레임, 방향광 CSM 전용 아틀라스. 후처리 셋의 t13 과는 셋이 달라 겹치지 않음)
+constexpr uint32_t kSRVSlotLights = 15;               // t15 (프레임, 조명 구조체 버퍼 StructuredBuffer<LightData>)
+constexpr uint32_t kSRVSlotSceneHdr = 13;             // t13 (후처리 셋, 후처리 패스의 입력 텍스처. 톤 패스는 HDR 씬, 블러·블룸은 앞 단계의 결과)
+constexpr uint32_t kCBSlotPostParams = 4;             // b4 (후처리 셋, 패스마다 올림)
+constexpr uint32_t kUAVSlotPostOutput = 0;            // u0 (컴퓨트 블러 셋, 출력 RWTexture2D)
+constexpr uint32_t kSRVSlotBlurWeights = 20;          // t20 (후처리 셋·컴퓨트 블러 셋, 가우시안 가중치 StructuredBuffer<float>. 재질 t16~t19 다음)
+constexpr uint32_t kUAVSlotBlurWeights = 0;           // u0 (가중치 컴퓨트 셋, RWStructuredBuffer<float>)
+constexpr uint32_t kMaxBlurRadius = 64;               // 블러 반경 상한 (픽셀). 가중치 버퍼 = kMaxBlurRadius + 1 개. 셰이더의 kMaxBlurRadius 와 같아야 함
+constexpr uint32_t kCBSlotShadowPass = 5;             // b5 (프레임 셋, VS). 그림자 패스가 뷰마다 올림
+constexpr uint32_t kCBSlotShadows = 6;                // b6 (프레임 셋, PS). 그림자 뷰 배열
+constexpr uint32_t kCBSlotSkin = 7;                   // b7 (오브젝트 셋, VS). 스키닝 조인트 행렬 팔레트
+constexpr uint32_t kCBSlotParticle = 8;               // b8 (파티클 시뮬레이션 셋 CS · 그리기 셋 VS/PS). 이미터마다 한 벌, 프레임에 한 번 올림
+constexpr uint32_t kSRVSlotParticles = 21;            // t21 (파티클 그리기 셋, VS. StructuredBuffer<Particle>)
+constexpr uint32_t kSRVSlotParticleAlive = 22;        // t22 (파티클 그리기 셋, VS. 이번 프레임 생존 목록 StructuredBuffer<uint>, 알파 이미터는 정렬된 목록)
+constexpr uint32_t kSRVSlotSceneDepth = 23;           // t23 (파티클 깊이 셋 PS · 충돌 셋 CS. 씬 깊이 Texture2D<float>, DepthRead 상태)
+constexpr uint32_t kCBSlotParticleCollision = 9;      // b9 (파티클 충돌 셋, CS). 메인 카메라 행렬, 프레임에 한 번
 // 알파 이미터 정렬 (바이토닉). Shaders/ParticleSort.hlsli 와 같음
-constexpr uint32_t kSRVSlotParticleCounters = 24; // t24 (정렬 셋, CS. 개수 버퍼를 SRV 로)
-constexpr uint32_t kUAVSlotSortKeys = 0;          // u0 (정렬 셋, 키 = 뷰 공간 z)
-constexpr uint32_t kUAVSlotSortIndices = 1;       // u1 (정렬 셋, 파티클 번호 — 그리기 셋의 t22 가 됨)
-constexpr uint32_t kCBSlotParticleSortView = 10;  // b10 (정렬 셋, 뷰마다의 view 행렬. 프레임에 한 번)
-constexpr uint32_t kCBSlotParticleSortStep = 11;  // b11 (정렬 단계 셋, (k, j). 처음에 한 번 만들고 바꾸지 않음)
+constexpr uint32_t kSRVSlotParticleCounters = 24;   // t24 (정렬 셋, CS. 개수 버퍼를 SRV 로)
+constexpr uint32_t kUAVSlotSortKeys = 0;            // u0 (정렬 셋, 키 = 뷰 공간 z)
+constexpr uint32_t kUAVSlotSortIndices = 1;         // u1 (정렬 셋, 파티클 번호 — 그리기 셋의 t22 가 됨)
+constexpr uint32_t kCBSlotParticleSortView = 10;    // b10 (정렬 셋, 뷰마다의 view 행렬. 프레임에 한 번)
+constexpr uint32_t kCBSlotParticleSortStep = 11;    // b11 (정렬 단계 셋, (k, j). 처음에 한 번 만들고 바꾸지 않음)
 
 // ---- 디퍼드·클러스터드·SSAO (docs/plan/deferred-clustered-ssao-record.html) ----
 // G-buffer 셋 (뷰마다, 디퍼드 라이팅 PS): t23 깊이 + t25~t28 G-buffer + t29 SSAO 결과. t23 은 파티클 깊이 셋과 같은
 // 레지스터지만 두 셋이 한 PSO 에 같이 묶이지 않으므로 겹치지 않음 (같은 "씬 깊이" 라 번호를 맞춤).
-constexpr uint32_t kSRVSlotGBuffer0 = 25;      // t25 GB0 R8G8B8A8_UNORM_SRGB: rgb = albedo, a = 재질 AO
-constexpr uint32_t kSRVSlotGBuffer1 = 26;      // t26 GB1 R16G16B16A16_FLOAT: xy = 셰이딩 노멀(옥타헤드럴), zw = 기하 노멀(옥타헤드럴)
-constexpr uint32_t kSRVSlotGBuffer2 = 27;      // t27 GB2 R8G8B8A8_UNORM_SRGB: rgb = F0, a = 거칠기 (알파는 sRGB 변환 없음)
-constexpr uint32_t kSRVSlotGBuffer3 = 28;      // t28 GB3 R8G8B8A8_UNORM: r = 금속성, g = F90, b = 클리어코트, a = 코팅 거칠기
-constexpr uint32_t kSRVSlotSsao = 29;          // t29 SSAO 결과 R8_UNORM (G-buffer 셋 = 라이팅이 읽음, SSAO 블러 셋 = 블러 입력)
+constexpr uint32_t kSRVSlotGBuffer0 = 25;   // t25 GB0 R8G8B8A8_UNORM_SRGB: rgb = albedo, a = 재질 AO
+constexpr uint32_t kSRVSlotGBuffer1 = 26;   // t26 GB1 R16G16B16A16_FLOAT: xy = 셰이딩 노멀(옥타헤드럴), zw = 기하 노멀(옥타헤드럴)
+constexpr uint32_t kSRVSlotGBuffer2 = 27;   // t27 GB2 R8G8B8A8_UNORM_SRGB: rgb = F0, a = 거칠기 (알파는 sRGB 변환 없음)
+constexpr uint32_t kSRVSlotGBuffer3 = 28;   // t28 GB3 R8G8B8A8_UNORM: r = 금속성, g = F90, b = 클리어코트, a = 코팅 거칠기
+constexpr uint32_t kSRVSlotSsao = 29;       // t29 SSAO 결과 R8_UNORM (G-buffer 셋 = 라이팅이 읽음, SSAO 블러 셋 = 블러 입력)
 // 클러스터 (프레임 셋, 뷰마다 다시 올림): 클러스터마다 (조명 목록 시작, 개수), 그리고 조명 번호 목록.
-constexpr uint32_t kSRVSlotClusterGrid = 30;   // t30 StructuredBuffer<uint2>, kClusterCount 개
-constexpr uint32_t kSRVSlotClusterLights = 31; // t31 StructuredBuffer<uint>, 조명 번호 (t15 인덱스)
-constexpr uint32_t kCBSlotSsao = 12;           // b12 SSAO 파라미터 + 커널 (SSAO 셋, 프레임에 한 번)
+constexpr uint32_t kSRVSlotClusterGrid = 30;     // t30 StructuredBuffer<uint2>, kClusterCount 개
+constexpr uint32_t kSRVSlotClusterLights = 31;   // t31 StructuredBuffer<uint>, 조명 번호 (t15 인덱스)
+constexpr uint32_t kCBSlotSsao = 12;             // b12 SSAO 파라미터 + 커널 (SSAO 셋, 프레임에 한 번)
 // GPU 클러스터 비닝 (컴퓨트, docs/plan/gpu-cluster-binning-record.html). 셋 하나 (Layout_ClusterBin, 뷰마다 한 벌).
 constexpr uint32_t kCBSlotClusterBin = 13;          // b13 ClusterBinConstants (뷰마다 Dynamic 한 벌, 프레임에 한 번)
 constexpr uint32_t kSRVSlotLightBounds = 7;         // t7 조명 경계 구 (월드, float4 — t15 와 같은 번호. w ≤ 0 은 방향광·빛 없음). 비닝 셋 전용 (t32 는 레지스터 상한 32 밖)
@@ -106,36 +106,46 @@ constexpr uint32_t kClusterGridZ = 24;
 constexpr uint32_t kClusterCount = kClusterGridX * kClusterGridY * kClusterGridZ;   // 3456
 constexpr uint32_t kClusterTileCount = kClusterGridX * kClusterGridY;               // 144 (화면 타일, 1단계 비닝의 단위)
 // u5 통계 칸. ClusterBin.hlsli 의 STAT_* 와 같아야 함.
-enum ClusterStat : uint32_t { ClusterStat_Refs, ClusterStat_MaxLights, ClusterStat_Overflow, ClusterStat_TileRefs, ClusterStat_TileMaxLights, ClusterStat_Count };
+enum ClusterStat : uint32_t
+{
+	ClusterStat_Refs,
+	ClusterStat_MaxLights,
+	ClusterStat_Overflow,
+	ClusterStat_TileRefs,
+	ClusterStat_TileMaxLights,
+	ClusterStat_Count
+};
 constexpr uint32_t kClusterStatCount = 8;   // 버퍼 크기 (32 바이트). 앞 ClusterStat_Count 칸만 씀
-constexpr uint32_t kMaxSsaoSamples = 32;       // b12 커널 배열 크기. Ssao.hlsli 의 MAX_SSAO_SAMPLES
+constexpr uint32_t kMaxSsaoSamples = 32;    // b12 커널 배열 크기. Ssao.hlsli 의 MAX_SSAO_SAMPLES
 
 // 정렬 길이: capacity 이상인 가장 작은 2 의 거듭제곱 (최소 64). ParticleSort.hlsli 의 ParticleSortCount 와 같은 식.
 constexpr uint32_t ParticleSortCount(uint32_t capacity)
 {
 	uint32_t n = 64;
-	while (n < capacity) n <<= 1;
+	while (n < capacity)
+	{
+		n <<= 1;
+	}
 	return n;
 }
 // 파티클 시뮬레이션 셋 u0~u5 (Shaders/ParticleSim.hlsli 와 같은 순서)
-constexpr uint32_t kUAVSlotParticles = 0;         // u0 RWStructuredBuffer<Particle>
-constexpr uint32_t kUAVSlotParticleDead = 1;      // u1 사망 목록 (uint)
-constexpr uint32_t kUAVSlotParticleAliveIn = 2;   // u2 지난 프레임 생존 목록 (uint)
-constexpr uint32_t kUAVSlotParticleAliveOut = 3;  // u3 이번 프레임 생존 목록 (uint)
-constexpr uint32_t kUAVSlotParticleCounters = 4;  // u4 개수 (uint × kParticleCounterCount)
-constexpr uint32_t kUAVSlotParticleArgs = 5;      // u5 간접 인자 (RWByteAddressBuffer)
-constexpr uint32_t kParticleCounterCount = 8;     // Particle.hlsli 의 kParticleCounterCount
-constexpr uint32_t kParticleArgsDrawOffset = 0;      // 바이트. {정점 6, 생존 수, 0, 0} — DrawInstancedIndirect
-constexpr uint32_t kParticleArgsDispatchOffset = 16; // 바이트. {그룹 수, 1, 1} — 시뮬레이션의 DispatchIndirect
-constexpr uint32_t kParticleArgsSize = 32;           // 16 + 12 를 16 의 배수로
-constexpr uint32_t kParticleStride = 32;    // Particle.hlsli 의 struct Particle (float3 위치 + 나이, float3 속도 + 수명)
-constexpr uint32_t kMaxSkinJoints = 256;    // 팔레트 크기. 정점의 조인트 번호가 uint8 이라 이보다 클 수 없음 (Mesh.hlsli 의 MAX_JOINTS)
+constexpr uint32_t kUAVSlotParticles = 0;              // u0 RWStructuredBuffer<Particle>
+constexpr uint32_t kUAVSlotParticleDead = 1;           // u1 사망 목록 (uint)
+constexpr uint32_t kUAVSlotParticleAliveIn = 2;        // u2 지난 프레임 생존 목록 (uint)
+constexpr uint32_t kUAVSlotParticleAliveOut = 3;       // u3 이번 프레임 생존 목록 (uint)
+constexpr uint32_t kUAVSlotParticleCounters = 4;       // u4 개수 (uint × kParticleCounterCount)
+constexpr uint32_t kUAVSlotParticleArgs = 5;           // u5 간접 인자 (RWByteAddressBuffer)
+constexpr uint32_t kParticleCounterCount = 8;          // Particle.hlsli 의 kParticleCounterCount
+constexpr uint32_t kParticleArgsDrawOffset = 0;        // 바이트. {정점 6, 생존 수, 0, 0} — DrawInstancedIndirect
+constexpr uint32_t kParticleArgsDispatchOffset = 16;   // 바이트. {그룹 수, 1, 1} — 시뮬레이션의 DispatchIndirect
+constexpr uint32_t kParticleArgsSize = 32;             // 16 + 12 를 16 의 배수로
+constexpr uint32_t kParticleStride = 32;               // Particle.hlsli 의 struct Particle (float3 위치 + 나이, float3 속도 + 수명)
+constexpr uint32_t kMaxSkinJoints = 256;               // 팔레트 크기. 정점의 조인트 번호가 uint8 이라 이보다 클 수 없음 (Mesh.hlsli 의 MAX_JOINTS)
 
-constexpr uint32_t kSamplerSlotPost = 6;     // s6 (후처리 셋, 선형 Clamp. 블룸 축소·확대와 썸네일이 씀. 후처리 패스는 프레임 셋을 바인딩하지 않으므로 s4~s7 과 겹치지 않음)
-constexpr uint32_t kSamplerSlotMaterial = 0; // s0 (재질)
-constexpr uint32_t kSamplerSlotShadow = 4;   // s4 (프레임, 비교 샘플러)
-constexpr uint32_t kSamplerSlotEnvironment = 5; // s5 (프레임, 큐브맵용 선형 Clamp)
-
+constexpr uint32_t kSamplerSlotPost = 6;          // s6 (후처리 셋, 선형 Clamp. 블룸 축소·확대와 썸네일이 씀. 후처리 패스는 프레임 셋을 바인딩하지 않으므로 s4~s7 과 겹치지 않음)
+constexpr uint32_t kSamplerSlotMaterial = 0;      // s0 (재질)
+constexpr uint32_t kSamplerSlotShadow = 4;        // s4 (프레임, 비교 샘플러)
+constexpr uint32_t kSamplerSlotEnvironment = 5;   // s5 (프레임, 큐브맵용 선형 Clamp)
 
 
 struct alignas(16) PerFrameConstants
@@ -145,8 +155,8 @@ struct alignas(16) PerFrameConstants
 	DirectX::XMFLOAT4X4 viewProj;
 	DirectX::XMFLOAT3 cameraPosition;
 	float time;
-	DirectX::XMFLOAT4 shadowParams;      // x = 1/맵 크기, y = 깊이 바이어스, z = 세기(0..1), w = 사용 여부
-	DirectX::XMFLOAT4 debugParams;       // x = 디버그 뷰(0 조명, 1 알베도, 2 노멀, 3 깊이, 4 그림자, 5 UV, 6 금속성/거칠기, 7 AO), y = 깊이 범위
+	DirectX::XMFLOAT4 shadowParams;   // x = 1/맵 크기, y = 깊이 바이어스, z = 세기(0..1), w = 사용 여부
+	DirectX::XMFLOAT4 debugParams;    // x = 디버그 뷰(0 조명, 1 알베도, 2 노멀, 3 깊이, 4 그림자, 5 UV, 6 금속성/거칠기, 7 AO), y = 깊이 범위
 	// 환경광(IBL). x = 세기, y = 반사 큐브(t11)의 밉 수, z = 확산 조도 큐브(t10)를 읽을 밉,
 	// w = 환경 큐브가 있음(1) / 없음(0, ambientColor 로 대체)
 	DirectX::XMFLOAT4 environmentParams;
@@ -219,14 +229,14 @@ struct GpuLight
 	float range;
 
 	DirectX::XMFLOAT3 color;
-	uint32_t type;                 // LightType
+	uint32_t type;   // LightType
 
 	DirectX::XMFLOAT3 attenuation;
 	float innerConeCos;
 
 	float outerConeCos;
 	uint32_t castShadows;
-	int32_t shadowIndex;           // 이 조명의 첫 그림자 뷰 번호 (b6 의 views 인덱스). −1 = 그림자 없음. Renderer 가 프레임마다 정함
+	int32_t shadowIndex;   // 이 조명의 첫 그림자 뷰 번호 (b6 의 views 인덱스). −1 = 그림자 없음. Renderer 가 프레임마다 정함
 	float padding;
 };
 static_assert(sizeof(GpuLight) == 80, "GpuLight 는 HLSL LightData 와 같이 80바이트(16바이트 레지스터 5개)여야 함");
@@ -247,11 +257,11 @@ struct alignas(16) LightConstants
 // b12: SSAO (Ssao.hlsli). 커널은 반구 안의 점 (탄젠트 공간, z = 노멀 쪽), 길이가 1 이하. 프레임에 한 번 올림.
 struct alignas(16) SsaoConstants
 {
-	float radius;          // 월드 단위 반경 (m)
-	float bias;            // 자기 가림 방지 (뷰 z 차이, m)
-	float intensity;       // 가림 비율에 곱함
-	float power;           // 최종 AO 에 거듭제곱 (대비)
-	uint32_t sampleCount;  // 1 .. kMaxSsaoSamples
+	float radius;           // 월드 단위 반경 (m)
+	float bias;             // 자기 가림 방지 (뷰 z 차이, m)
+	float intensity;        // 가림 비율에 곱함
+	float power;            // 최종 AO 에 거듭제곱 (대비)
+	uint32_t sampleCount;   // 1 .. kMaxSsaoSamples
 	uint32_t padding[3];
 	DirectX::XMFLOAT4 kernel[kMaxSsaoSamples];   // xyz = 샘플 오프셋, w = 미사용
 };
@@ -261,13 +271,13 @@ struct alignas(16) SsaoConstants
 // roughness·occlusionStrength 가 들어감. 크기는 64B 그대로.
 struct alignas(16) MaterialConstants
 {
-	DirectX::XMFLOAT4 baseColor;       // 정점 색·텍스처에 곱해짐
-	DirectX::XMFLOAT3 emissive;        // 발광 계수 (선형)
+	DirectX::XMFLOAT4 baseColor;   // 정점 색·텍스처에 곱해짐
+	DirectX::XMFLOAT3 emissive;    // 발광 계수 (선형)
 	float metallic;
-	DirectX::XMFLOAT2 uvScale;         // 타일링
-	float unlit;                       // 1 = 조명 없이 알베도 출력
-	float normalStrength;              // 노멀 맵 xy 배율. 0 = 노멀 맵 무시
-	float alphaCutoff;                 // 알파 컷아웃. 0 = 끔
+	DirectX::XMFLOAT2 uvScale;   // 타일링
+	float unlit;                 // 1 = 조명 없이 알베도 출력
+	float normalStrength;        // 노멀 맵 xy 배율. 0 = 노멀 맵 무시
+	float alphaCutoff;           // 알파 컷아웃. 0 = 끔
 	float roughness;
 	float occlusionStrength;
 	float ior;                         // KHR_materials_ior. 1.5 = F0 0.04
@@ -276,8 +286,8 @@ struct alignas(16) MaterialConstants
 	float clearcoatFactor;             // KHR_materials_clearcoat. 0 = 끔
 	float clearcoatRoughness;
 	float clearcoatNormalScale;
-	float transmissionFactor;          // KHR_materials_transmission. 0 = 끔
-	float blended;                     // 1 = 블렌딩 패스로 그리는 재질 (알파 블렌드·투과). 출력을 미리 알파를 곱한 형태로 냄
+	float transmissionFactor;   // KHR_materials_transmission. 0 = 끔
+	float blended;              // 1 = 블렌딩 패스로 그리는 재질 (알파 블렌드·투과). 출력을 미리 알파를 곱한 형태로 냄
 	float padding1;
 	float padding2;
 	float padding3;
@@ -285,25 +295,25 @@ struct alignas(16) MaterialConstants
 
 struct alignas(16) ShadowPassConstants
 {
-	DirectX::XMFLOAT4X4 shadowViewProj;     // 지금 그리는 그림자 뷰 (전치해서 올림)
+	DirectX::XMFLOAT4X4 shadowViewProj;   // 지금 그리는 그림자 뷰 (전치해서 올림)
 };
 
 struct alignas(16) ShadowViewData
 {
-	DirectX::XMFLOAT4X4 viewProj;           // 월드 → 이 뷰의 클립 (전치해서 올림)
-	DirectX::XMFLOAT4 atlasRect;            // xy = 아틀라스 UV 시작, zw = UV 크기
-	DirectX::XMFLOAT4 params;               // x = NDC 깊이 바이어스, y = 텍셀의 월드 크기(직교) / 그 계수(원근, × 거리),
-	// z = 1 원근 · 0 직교, w = 0 이면 t8 의 메인 아틀라스 · 1 이면 t14 의 CSM 아틀라스
+	DirectX::XMFLOAT4X4 viewProj;   // 월드 → 이 뷰의 클립 (전치해서 올림)
+	DirectX::XMFLOAT4 atlasRect;    // xy = 아틀라스 UV 시작, zw = UV 크기
+	DirectX::XMFLOAT4 params;       // x = NDC 깊이 바이어스, y = 텍셀의 월드 크기(직교) / 그 계수(원근, × 거리),
+									// z = 1 원근 · 0 직교, w = 0 이면 t8 의 메인 아틀라스 · 1 이면 t14 의 CSM 아틀라스
 };
 
 struct alignas(16) ShadowConstants
 {
 	ShadowViewData views[MAX_SHADOW_VIEWS];
-	DirectX::XMFLOAT4 cascadeSplits;        // 단계 7. 캐스케이드 i 가 끝나는 카메라 전방 거리
-	DirectX::XMFLOAT4 cascadeOrigin;        // xyz = 캐스케이드를 계산한 카메라 위치, w = 캐스케이드 수 (0 = CSM 끔)
-	DirectX::XMFLOAT4 cascadeForward;       // xyz = 그 카메라의 전방, w = 캐스케이드 경계 블렌딩 비율 (0 = 끔)
-	DirectX::XMFLOAT4 atlasParams;          // x = 1/아틀라스 크기, y = PCF 여백(텍셀), z = 지역광 노멀 오프셋(텍셀, 단계 5), w = 미사용
-	DirectX::XMFLOAT4 csmAtlasParams;       // xy = 1/CSM 아틀라스 (가로, 세로), zw = 미사용
+	DirectX::XMFLOAT4 cascadeSplits;    // 단계 7. 캐스케이드 i 가 끝나는 카메라 전방 거리
+	DirectX::XMFLOAT4 cascadeOrigin;    // xyz = 캐스케이드를 계산한 카메라 위치, w = 캐스케이드 수 (0 = CSM 끔)
+	DirectX::XMFLOAT4 cascadeForward;   // xyz = 그 카메라의 전방, w = 캐스케이드 경계 블렌딩 비율 (0 = 끔)
+	DirectX::XMFLOAT4 atlasParams;      // x = 1/아틀라스 크기, y = PCF 여백(텍셀), z = 지역광 노멀 오프셋(텍셀, 단계 5), w = 미사용
+	DirectX::XMFLOAT4 csmAtlasParams;   // xy = 1/CSM 아틀라스 (가로, 세로), zw = 미사용
 };
 
 // C++20: consteval 검사 함수. cbuffer 는 16바이트 레지스터 단위로 올라가고 D3D11 은 65,536바이트가 상한임.
@@ -350,11 +360,11 @@ struct alignas(16) ParticleCollisionConstants
 {
 	DirectX::XMFLOAT4X4 viewProj;
 	DirectX::XMFLOAT4X4 invViewProj;
-	float depthA;                  // 투영 행렬 _33 (행 벡터 기준 [2][2]). 깊이 → 뷰 z 복원
-	float depthB;                  // _43 ([3][2])
-	float perspective;             // 1 원근, 0 직교
-	float thickness;               // 표면 뒤 이 거리(m) 안에 들어온 파티클만 충돌로 봄 (얇은 물체 뒤로 지나가는 것은 통과)
-	uint32_t width;                // 깊이 텍스처 크기
+	float depthA;        // 투영 행렬 _33 (행 벡터 기준 [2][2]). 깊이 → 뷰 z 복원
+	float depthB;        // _43 ([3][2])
+	float perspective;   // 1 원근, 0 직교
+	float thickness;     // 표면 뒤 이 거리(m) 안에 들어온 파티클만 충돌로 봄 (얇은 물체 뒤로 지나가는 것은 통과)
+	uint32_t width;      // 깊이 텍스처 크기
 	uint32_t height;
 	uint32_t padding[2];
 };

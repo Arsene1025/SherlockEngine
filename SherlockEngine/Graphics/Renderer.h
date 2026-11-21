@@ -10,7 +10,7 @@
 #include "RHI/RenderPassTypes.h"
 #include "Graphics/VertexTypes.h"   // VertexFormat
 #include "Graphics/TextureCache.h"
-#include "RHI/BindingTypes.h"       // BindingLayoutDesc (레이아웃 선언 사본)
+#include "RHI/BindingTypes.h"   // BindingLayoutDesc (레이아웃 선언 사본)
 #include "Scene/Material.h"
 #include "Scene/Camera.h"   // 캐스케이드 고정용 카메라 사본 (m_cascadeFreezeCamera)
 #include "Scene/Light.h"
@@ -18,7 +18,11 @@
 #include "Scene/ShadowSettings.h"
 #include "Scene/SsaoSettings.h"
 
-namespace RHI { class Device; class CommandList; }
+namespace RHI
+{
+	class Device;
+	class CommandList;
+}
 class Scene;
 class DebugDraw;
 struct SceneEnvironment;
@@ -33,8 +37,8 @@ struct RenderSettings
 {
 	bool wireframe = false;
 	bool cullBack = true;
-	bool srgbOutput = true;        // 최종 출력(톤 패스의 RTV)을 sRGB 뷰로 씀. 끄면 감마 보정 없이 출력함 (비교용). 씬 패스는 FP16 선형이라 무관함
-	int samplerOverride = -1;      // -1 = 재질 설정대로. 그 외 SamplerPreset 값으로 전부 덮어씀
+	bool srgbOutput = true;     // 최종 출력(톤 패스의 RTV)을 sRGB 뷰로 씀. 끄면 감마 보정 없이 출력함 (비교용). 씬 패스는 FP16 선형이라 무관함
+	int samplerOverride = -1;   // -1 = 재질 설정대로. 그 외 SamplerPreset 값으로 전부 덮어씀
 	// 가우시안 블러를 컴퓨트 셰이더로 (BlurComputeShader.hlsl). 끄면 풀스크린 PS (PostPixelShader 모드 1). 결과는
 	// 같아야 함 — 두 경로의 스크린샷 비교가 컴퓨트 RHI 의 검증임 (D3D12 0 픽셀, D3D11 1 픽셀 최하위 비트 차이).
 	// 기본은 컴퓨트. 컴퓨트 PSO 를 만들 수 없으면 (미지원 백엔드) 켜져 있어도 PS 로 감.
@@ -114,44 +118,44 @@ public:
 	{
 		uint32_t draws = 0;
 		uint32_t shadowDraws = 0;
-		uint32_t triangles = 0;        // 메인 패스 삼각형 수
+		uint32_t triangles = 0;   // 메인 패스 삼각형 수
 		uint32_t pipelineSwitches = 0;
 		uint32_t resourceSetSwitches = 0;
 		uint32_t meshSwitches = 0;
 		uint32_t renderPasses = 0;
 		uint32_t barriers = 0;
-		uint32_t shaderReloads = 0;   // 누적
-		uint32_t shadowViews = 0;     // 이번 프레임에 그린 그림자 뷰(아틀라스 타일) 수
-		uint32_t shadowCulled = 0;    // 그 뷰의 절두체나 지역광 범위 밖이라 그림자 패스에서 건너뛴 (뷰, 드로우) 쌍 수
-		uint32_t culled = 0;          // 카메라 절두체 밖이라 메인·미리보기 패스에서 건너뛴 드로우 수
-		uint32_t drawItems = 0;       // 이번 프레임 드로우 목록 크기 (서브메시 단위, 컬링 전). 메인 패스 draws + culled 와 같음
+		uint32_t shaderReloads = 0;      // 누적
+		uint32_t shadowViews = 0;        // 이번 프레임에 그린 그림자 뷰(아틀라스 타일) 수
+		uint32_t shadowCulled = 0;       // 그 뷰의 절두체나 지역광 범위 밖이라 그림자 패스에서 건너뛴 (뷰, 드로우) 쌍 수
+		uint32_t culled = 0;             // 카메라 절두체 밖이라 메인·미리보기 패스에서 건너뛴 드로우 수
+		uint32_t drawItems = 0;          // 이번 프레임 드로우 목록 크기 (서브메시 단위, 컬링 전). 메인 패스 draws + culled 와 같음
 		uint32_t particleEmitters = 0;   // 이번 프레임에 시뮬레이션한 이미터 수
 		uint32_t particleCapacity = 0;   // 그 이미터들의 버퍼 원소 합 (= 그리는 쿼드 수. 죽은 것 포함)
 		uint32_t particlesSpawned = 0;   // 이번 프레임에 새로 생긴 파티클 수
 		// ---- 디퍼드·클러스터드·SSAO (메인 뷰 기준) ----
-		bool deferredPath = false;       // 이번 프레임 메인 뷰가 디퍼드로 그려졌는가
-		uint32_t gbufferDraws = 0;       // G-buffer 패스 드로우 수
-		uint32_t forwardOpaqueDraws = 0; // 디퍼드 프레임에서 포워드로 간 불투명 드로우 수 (unlit·투과·코팅 노멀 맵)
-		uint32_t lightsVisible = 0;      // 3a: 메인 카메라 절두체에 경계 구가 걸친 지역광 수 (방향광 제외)
-		uint32_t lightsCulled = 0;       // 3a: 절두체 밖이라 그림자·클러스터에서 뺀 지역광 수
-		uint32_t clusterLightRefs = 0;   // 클러스터 목록에 들어간 (클러스터, 조명) 쌍 수 = t31 원소 수
-		uint32_t clusterMaxLights = 0;   // 한 클러스터의 최대 조명 수
-		uint32_t clusterOverflow = 0;    // t31 용량이 모자라 버린 쌍 수 (0 이어야 함)
+		bool deferredPath = false;         // 이번 프레임 메인 뷰가 디퍼드로 그려졌는가
+		uint32_t gbufferDraws = 0;         // G-buffer 패스 드로우 수
+		uint32_t forwardOpaqueDraws = 0;   // 디퍼드 프레임에서 포워드로 간 불투명 드로우 수 (unlit·투과·코팅 노멀 맵)
+		uint32_t lightsVisible = 0;        // 3a: 메인 카메라 절두체에 경계 구가 걸친 지역광 수 (방향광 제외)
+		uint32_t lightsCulled = 0;         // 3a: 절두체 밖이라 그림자·클러스터에서 뺀 지역광 수
+		uint32_t clusterLightRefs = 0;     // 클러스터 목록에 들어간 (클러스터, 조명) 쌍 수 = t31 원소 수
+		uint32_t clusterMaxLights = 0;     // 한 클러스터의 최대 조명 수
+		uint32_t clusterOverflow = 0;      // t31 용량이 모자라 버린 쌍 수 (0 이어야 함)
 		// GPU 비닝이면 위 세 값과 아래 두 값은 몇 프레임 (≥ kFrameCount) 전 메인 뷰의 것 (Staging 리드백 — 기다리지 않음)
-		uint32_t clusterTileRefs = 0;    // GPU 1단계: 타일 마스크에 켜진 (타일, 조명) 쌍 수
+		uint32_t clusterTileRefs = 0;   // GPU 1단계: 타일 마스크에 켜진 (타일, 조명) 쌍 수
 		uint32_t clusterTileMaxLights = 0;
-		bool clusterGpu = false;         // 이번 프레임 비닝을 컴퓨트로 했는가
+		bool clusterGpu = false;             // 이번 프레임 비닝을 컴퓨트로 했는가
 		uint32_t shadowViewsOffscreen = 0;   // 메인 카메라 절두체 밖 지역광에 간 그림자 뷰 수 (3a 를 끄면 늘어남 — 낭비된 아틀라스 타일)
-		bool ssao = false;               // 이번 프레임 메인 뷰에 SSAO 를 그렸는가
+		bool ssao = false;                   // 이번 프레임 메인 뷰에 SSAO 를 그렸는가
 	};
 
 	// 2048² 메인 아틀라스는 지역광(스팟·포인트) 전용: 512² 타일 16개를 4×4 로 배치 (D32 약 16MB). 스팟 =
 	// 1타일, 포인트 = 연속 6타일. 방향광(캐스케이드 1~4 모두)은 이 아틀라스가 아니라 아래의 CSM 전용
 	// 아틀라스에 그림.
 	static constexpr uint32_t kShadowAtlasSize = 2048;
-	static constexpr uint32_t kShadowTileSize = 512;             // 지역광 타일
+	static constexpr uint32_t kShadowTileSize = 512;   // 지역광 타일
 	static constexpr uint32_t kShadowLocalTileCount = 16;
-	static constexpr uint32_t kShadowPcfBorder = 3;              // PCF 5×5 반경 2 + 쌍선형 1 (텍셀)
+	static constexpr uint32_t kShadowPcfBorder = 3;   // PCF 5×5 반경 2 + 쌍선형 1 (텍셀)
 
 	// 방향광 전용 아틀라스. 캐스케이드 2~4개면 아래 그림처럼 1024² 칸 네 개, 단일 뷰(캐스케이드 1)면 2048²
 	// 전체를 한 뷰가 씀.
@@ -172,12 +176,12 @@ public:
 	// 1, 포인트 6, 캐스케이드 N).
 	struct ShadowView
 	{
-		DirectX::XMFLOAT4X4 viewProj;          // 행우선 (올릴 때 전치)
-		uint32_t x = 0, y = 0, size = 0;       // 아틀라스 안의 픽셀 사각형 (정사각형)
-		uint32_t atlas = 0;                    // 0 = 메인 아틀라스(m_shadowMap), 1 = CSM 아틀라스(m_csmMap)
-		DirectX::XMFLOAT4 params = {};         // b6 의 params 와 같은 뜻
-		DirectX::XMFLOAT4 cullSphere = {};     // 단계 6. xyz = 광원 위치, w = 범위. w = 0 이면 컬링 안 함
-		uint32_t lightIndex = 0;               // 씬 조명 번호 (Scene::GetLights 의 인덱스. BuildShadowViews 끝에서 t15 번호를 바꿔 둠)
+		DirectX::XMFLOAT4X4 viewProj;        // 행우선 (올릴 때 전치)
+		uint32_t x = 0, y = 0, size = 0;     // 아틀라스 안의 픽셀 사각형 (정사각형)
+		uint32_t atlas = 0;                  // 0 = 메인 아틀라스(m_shadowMap), 1 = CSM 아틀라스(m_csmMap)
+		DirectX::XMFLOAT4 params = {};       // b6 의 params 와 같은 뜻
+		DirectX::XMFLOAT4 cullSphere = {};   // 단계 6. xyz = 광원 위치, w = 범위. w = 0 이면 컬링 안 함
+		uint32_t lightIndex = 0;             // 씬 조명 번호 (Scene::GetLights 의 인덱스. BuildShadowViews 끝에서 t15 번호를 바꿔 둠)
 	};
 	uint32_t GetShadowViewCount() const { return m_shadowViewCount; }
 	const ShadowView& GetShadowView(uint32_t index) const { return m_shadowViews[index]; }
@@ -220,8 +224,8 @@ public:
 	size_t GetGpuMaterialCount() const { return m_gpuMaterials.size(); }
 	size_t GetTextureCount() const { return m_textures.GetCount(); }
 	void ReloadTexture(const std::string& name) { m_textures.Evict(name); }   // 임포트 설정을 바꾼 텍스처를 다음 프레임에 다시 읽게 함
-	TextureHandle GetShadowMap() const { return m_shadowMap; }   // 디버그 표시용
-	TextureHandle GetCsmMap() const { return m_csmMap; }         // 디버그 표시용 (CSM 전용 아틀라스)
+	TextureHandle GetShadowMap() const { return m_shadowMap; }                // 디버그 표시용
+	TextureHandle GetCsmMap() const { return m_csmMap; }                      // 디버그 표시용 (CSM 전용 아틀라스)
 
 	// 씬 뷰를 오프스크린 텍스처에 그림 (에디터용). 0×0 이면 백버퍼에 직접 그림 (기존 동작).
 	// 크기가 바뀌면 텍스처를 다시 만듦. 색 텍스처는 UNORM(TYPELESS) — sRGB 뷰로 그리고 ImGui 는 UNORM SRV 로 읽음.
@@ -285,12 +289,12 @@ private:
 		TextureHandle boundMetallicRoughness;   // PBR
 		TextureHandle boundOcclusion;
 		TextureHandle boundEmissive;
-		TextureHandle boundSpecular;            // KHR_materials_specular
+		TextureHandle boundSpecular;   // KHR_materials_specular
 		TextureHandle boundSpecularColor;
-		TextureHandle boundClearcoat;           // KHR_materials_clearcoat
+		TextureHandle boundClearcoat;   // KHR_materials_clearcoat
 		TextureHandle boundClearcoatRoughness;
 		TextureHandle boundClearcoatNormal;
-		TextureHandle boundTransmission;        // KHR_materials_transmission
+		TextureHandle boundTransmission;   // KHR_materials_transmission
 		SamplerHandle boundSampler;
 		uint64_t uploadedFrame = UINT64_MAX;   // 이번 프레임에 상수를 올렸는지
 
@@ -306,26 +310,26 @@ private:
 	// 구해 두고, 그림자 뷰 여러 개 + 메인 + 미리보기 패스의 모든 드로우가 이것을 다시 씀.
 	struct ObjectData
 	{
-		DirectX::XMFLOAT4X4 world;              // 전치해서 저장 (b1 에 그대로 올림)
-		DirectX::XMFLOAT4X4 worldInvTranspose;  // 올리는 값은 W⁻¹ (ShaderConstants.h)
-		DirectX::XMFLOAT4 sphere;               // 월드 경계 구 (xyz = 중심, w = 반지름). 컬링용
+		DirectX::XMFLOAT4X4 world;                                       // 전치해서 저장 (b1 에 그대로 올림)
+		DirectX::XMFLOAT4X4 worldInvTranspose;                           // 올리는 값은 W⁻¹ (ShaderConstants.h)
+		DirectX::XMFLOAT4 sphere;                                        // 월드 경계 구 (xyz = 중심, w = 반지름). 컬링용
 		const std::vector<DirectX::XMFLOAT4X4>* skinPalette = nullptr;   // 스키닝 오브젝트의 조인트 팔레트 (씬이 소유, 이번 프레임 동안 유효). 비면 단위행렬
-		bool skinned = false;                   // 스키닝 메시면 드로우마다 b7 에 팔레트를 올림
+		bool skinned = false;                                            // 스키닝 메시면 드로우마다 b7 에 팔레트를 올림
 	};
 
 	struct DrawItem
 	{
-		PipelineHandle pipeline;         // 메인 패스 PSO (정렬 키)
-		PipelineHandle shadowPipeline;   // 그림자 패스 PSO. unlit 재질은 빈 핸들 (그림자를 만들지 않음)
-		const Material* material;        // 정렬 키
-		const Mesh* mesh;                // 정렬 키
-		const GpuMaterial* gpuMaterial;  // BuildDrawList 가 만들어 둠 (드로우 루프에서는 생성하지 않음)
+		PipelineHandle pipeline;          // 메인 패스 PSO (정렬 키)
+		PipelineHandle shadowPipeline;    // 그림자 패스 PSO. unlit 재질은 빈 핸들 (그림자를 만들지 않음)
+		const Material* material;         // 정렬 키
+		const Mesh* mesh;                 // 정렬 키
+		const GpuMaterial* gpuMaterial;   // BuildDrawList 가 만들어 둠 (드로우 루프에서는 생성하지 않음)
 		const GpuMesh* gpuMesh;
-		PipelineHandle gbufferPipeline;  // G-buffer 패스 PSO. deferred 가 거짓이면 빈 핸들
-		bool deferred = false;           // G-buffer 에 담을 수 있는 재질 (CanUseDeferred). 디퍼드 프레임에서 포워드 대신 G-buffer 패스로 감
-		bool blended = false;            // 알파 블렌드·투과 재질. 불투명·하늘 뒤에 먼 것부터 따로 그림 (정렬 키의 맨 앞)
-		uint32_t object = 0;             // m_objects 인덱스
-		uint32_t indexStart = 0;         // 서브메시 범위
+		PipelineHandle gbufferPipeline;   // G-buffer 패스 PSO. deferred 가 거짓이면 빈 핸들
+		bool deferred = false;            // G-buffer 에 담을 수 있는 재질 (CanUseDeferred). 디퍼드 프레임에서 포워드 대신 G-buffer 패스로 감
+		bool blended = false;             // 알파 블렌드·투과 재질. 불투명·하늘 뒤에 먼 것부터 따로 그림 (정렬 키의 맨 앞)
+		uint32_t object = 0;              // m_objects 인덱스
+		uint32_t indexStart = 0;          // 서브메시 범위
 		uint32_t indexCount = 0;
 	};
 
@@ -336,18 +340,84 @@ private:
 
 	// ---- 셰이더·레이아웃·패스 표 (Renderer.cpp 의 kShaders, kPasses) ----
 	// 셰이더를 추가할 때: ShaderId 에 한 줄, kShaders 에 한 줄. 로드·핫리로드 감시·검증·해제는 표를 돌며 함.
-	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_BasicSkinVS, Shader_ShadowSkinVS, Shader_DebugLineVS, Shader_DebugLinePS, Shader_BlurCS, Shader_BlurWeightsCS, Shader_ParticleResetCS, Shader_ParticleSimCS, Shader_ParticleArgsCS, Shader_ParticleEmitCS, Shader_ParticleSortInitCS, Shader_ParticleSortStepCS, Shader_ParticleVS, Shader_ParticlePS,
-		Shader_GBufferPS, Shader_DeferredLightPS, Shader_SsaoPS, Shader_SsaoBlurPS,
-		Shader_ClusterViewCS, Shader_ClusterTileCS, Shader_ClusterCountCS, Shader_ClusterScanCS, Shader_ClusterFillCS, Shader_Count };
-	enum LayoutId : uint32_t { Layout_Frame, Layout_Object, Layout_Material, Layout_Post, Layout_BlurCompute, Layout_BlurWeights, Layout_ParticleSim, Layout_ParticleStep, Layout_ParticleDraw, Layout_ParticleDepth, Layout_ParticleCollide, Layout_ParticleSort, Layout_ParticleSortStep,
-		Layout_GBuffer, Layout_Ssao, Layout_ClusterBin, Layout_Count };
+	enum ShaderId : uint32_t
+	{
+		Shader_BasicVS,
+		Shader_BasicPS,
+		Shader_ShadowVS,
+		Shader_SkyVS,
+		Shader_SkyPS,
+		Shader_ScreenVS,
+		Shader_TonemapPS,
+		Shader_PostPS,
+		Shader_BasicSkinVS,
+		Shader_ShadowSkinVS,
+		Shader_DebugLineVS,
+		Shader_DebugLinePS,
+		Shader_BlurCS,
+		Shader_BlurWeightsCS,
+		Shader_ParticleResetCS,
+		Shader_ParticleSimCS,
+		Shader_ParticleArgsCS,
+		Shader_ParticleEmitCS,
+		Shader_ParticleSortInitCS,
+		Shader_ParticleSortStepCS,
+		Shader_ParticleVS,
+		Shader_ParticlePS,
+		Shader_GBufferPS,
+		Shader_DeferredLightPS,
+		Shader_SsaoPS,
+		Shader_SsaoBlurPS,
+		Shader_ClusterViewCS,
+		Shader_ClusterTileCS,
+		Shader_ClusterCountCS,
+		Shader_ClusterScanCS,
+		Shader_ClusterFillCS,
+		Shader_Count
+	};
+	enum LayoutId : uint32_t
+	{
+		Layout_Frame,
+		Layout_Object,
+		Layout_Material,
+		Layout_Post,
+		Layout_BlurCompute,
+		Layout_BlurWeights,
+		Layout_ParticleSim,
+		Layout_ParticleStep,
+		Layout_ParticleDraw,
+		Layout_ParticleDepth,
+		Layout_ParticleCollide,
+		Layout_ParticleSort,
+		Layout_ParticleSortStep,
+		Layout_GBuffer,
+		Layout_Ssao,
+		Layout_ClusterBin,
+		Layout_Count
+	};
 	// 패스 = (VS, PS, 레이아웃 목록). PSO Desc 의 셰이더·bindingLayouts 가 이 표에서 나오고, 바인딩 대조도 패스
 	// 단위로 함 (그 패스의 레이아웃에 선언된 슬롯만 통과).
 	// Pass_MainSkin / Pass_ShadowSkin 은 스키닝 메시용 (정점 포맷 PositionColorNormalTexcoordTangentSkin). 스킨 VS 만 다르고 PS·레이아웃은 같음.
 	// Pass_GBuffer / Pass_GBufferSkin: 디퍼드 G-buffer (MRT 5장, 재질 셋까지 메인과 같은 레이아웃). Pass_DeferredLight: 풀스크린
 	// 라이팅 { 프레임, G-buffer }. Pass_Ssao / Pass_SsaoBlur: 풀스크린 { SSAO }.
-	enum PassId : uint32_t { Pass_Main, Pass_Shadow, Pass_Sky, Pass_Tonemap, Pass_Post, Pass_MainSkin, Pass_ShadowSkin, Pass_DebugLine, Pass_Particle,
-		Pass_GBuffer, Pass_GBufferSkin, Pass_DeferredLight, Pass_Ssao, Pass_SsaoBlur, Pass_Count };
+	enum PassId : uint32_t
+	{
+		Pass_Main,
+		Pass_Shadow,
+		Pass_Sky,
+		Pass_Tonemap,
+		Pass_Post,
+		Pass_MainSkin,
+		Pass_ShadowSkin,
+		Pass_DebugLine,
+		Pass_Particle,
+		Pass_GBuffer,
+		Pass_GBufferSkin,
+		Pass_DeferredLight,
+		Pass_Ssao,
+		Pass_SsaoBlur,
+		Pass_Count
+	};
 	// 셋 인덱스 = 그 패스의 PipelineStateDesc::bindingLayouts 인덱스 (CommandList::SetResourceSet 의 첫 인자).
 	// 메인 { 프레임, 오브젝트, 재질 }, 그림자 { 프레임, 오브젝트 }, 스카이 { 프레임 }, 후처리 { 후처리 }.
 	static constexpr uint32_t kSetFrame = 0;
@@ -356,22 +426,37 @@ private:
 	static constexpr uint32_t kSetPost = 0;
 	static constexpr uint32_t kSetParticle = 1;   // 파티클 그리기 { 프레임, 파티클, 깊이 }
 	static constexpr uint32_t kSetParticleDepth = 2;
-	static constexpr uint32_t kSetGBuffer = 1;    // 디퍼드 라이팅 { 프레임, G-buffer }
-	static constexpr uint32_t kSetSsao = 0;       // SSAO·블러 { SSAO }
+	static constexpr uint32_t kSetGBuffer = 1;   // 디퍼드 라이팅 { 프레임, G-buffer }
+	static constexpr uint32_t kSetSsao = 0;      // SSAO·블러 { SSAO }
 	// 컴퓨트 패스 = (CS, 레이아웃 목록). 그래픽스 패스 표와 따로 둠 — PSO Desc 가 다르고 (ComputePipelineDesc),
 	// 바인딩 대조의 스테이지가 Compute 임.
-	enum ComputePassId : uint32_t { ComputePass_Blur, ComputePass_BlurWeights, ComputePass_ParticleReset, ComputePass_ParticleSim, ComputePass_ParticleArgs, ComputePass_ParticleEmit, ComputePass_ParticleSortInit, ComputePass_ParticleSortStep,
-		ComputePass_ClusterView, ComputePass_ClusterTile, ComputePass_ClusterCount, ComputePass_ClusterScan, ComputePass_ClusterFill, ComputePass_Count };
+	enum ComputePassId : uint32_t
+	{
+		ComputePass_Blur,
+		ComputePass_BlurWeights,
+		ComputePass_ParticleReset,
+		ComputePass_ParticleSim,
+		ComputePass_ParticleArgs,
+		ComputePass_ParticleEmit,
+		ComputePass_ParticleSortInit,
+		ComputePass_ParticleSortStep,
+		ComputePass_ClusterView,
+		ComputePass_ClusterTile,
+		ComputePass_ClusterCount,
+		ComputePass_ClusterScan,
+		ComputePass_ClusterFill,
+		ComputePass_Count
+	};
 	static constexpr uint32_t kSetBlurCompute = 0;
 	static constexpr uint32_t kSetBlurWeights = 0;
 	static constexpr uint32_t kSetParticleSim = 0;
-	static constexpr uint32_t kSetParticleCollide = 1;   // 적분 패스만 { 적분, 충돌 }
-	static constexpr uint32_t kSetParticleSortStep = 1;  // 정렬 패스 { 정렬, 단계 }
-	static constexpr uint32_t kSetClusterBin = 0;        // GPU 클러스터 비닝 { 비닝 } (뷰마다 한 벌)
-	static constexpr uint32_t kMaxParticleViews = 2;     // 알파 이미터의 정렬 결과를 따로 두는 뷰: 0 메인, 1 카메라 미리보기
-	struct ShaderInfo;   // 파일·진입점·스테이지·이름
-	struct PassInfo;     // 이름·VS·PS·레이아웃 목록
-	struct ComputePassInfo;   // 이름·CS·레이아웃 목록
+	static constexpr uint32_t kSetParticleCollide = 1;    // 적분 패스만 { 적분, 충돌 }
+	static constexpr uint32_t kSetParticleSortStep = 1;   // 정렬 패스 { 정렬, 단계 }
+	static constexpr uint32_t kSetClusterBin = 0;         // GPU 클러스터 비닝 { 비닝 } (뷰마다 한 벌)
+	static constexpr uint32_t kMaxParticleViews = 2;      // 알파 이미터의 정렬 결과를 따로 두는 뷰: 0 메인, 1 카메라 미리보기
+	struct ShaderInfo;                                    // 파일·진입점·스테이지·이름
+	struct PassInfo;                                      // 이름·VS·PS·레이아웃 목록
+	struct ComputePassInfo;                               // 이름·CS·레이아웃 목록
 	static const ShaderInfo kShaders[Shader_Count];
 	static const PassInfo kPasses[Pass_Count];
 	static const ComputePassInfo kComputePasses[ComputePass_Count];
@@ -405,7 +490,12 @@ private:
 	//   All         포워드 프레임: 불투명 전부 → 하늘 → 블렌딩 (예전 경로)
 	//   GBuffer     디퍼드 G-buffer 패스: deferred 항목만 (G-buffer PSO)
 	//   ForwardRest 디퍼드 프레임의 포워드 패스: deferred 가 아닌 불투명 → 하늘 → 블렌딩
-	enum class DrawMode : uint8_t { All, GBuffer, ForwardRest };
+	enum class DrawMode : uint8_t
+	{
+		All,
+		GBuffer,
+		ForwardRest
+	};
 	void DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera, DrawMode mode = DrawMode::All);
 
 	// ---- 디퍼드 (2단계, RendererDeferred.cpp) ----
@@ -475,14 +565,12 @@ private:
 	void DestroyGpuEmitters();
 	struct GpuEmitter;
 	void DestroyGpuEmitter(GpuEmitter& gpu, bool includeConstants);   // includeConstants = false: 크기 변경 (b8 버퍼는 다시 씀)
-	void DrawSkybox(RHI::CommandList& cmd);                               // 전체 화면 삼각형 하나 (Draw(3), 정점 버퍼 없음)
+	void DrawSkybox(RHI::CommandList& cmd);                           // 전체 화면 삼각형 하나 (Draw(3), 정점 버퍼 없음)
 	// HDR: 씬 패스가 그린 HDR 텍스처(hdrSet 의 t13)를 읽어 노출·ACES 를 적용하고 output 에 sRGB 로 씀.
 	// output 은 RenderTarget 으로 전이했다가 끝나면 outputAfter 로 둠. HDR 텍스처는 이미 ShaderResource
 	// 상태여야 함. srcW/srcH = HDR 텍스처 크기, dstW/dstH = output 크기 (썸네일은 더 작음).
 	// skipGrade 가 참이면 색 효과(GreyScale 등)를 건너뜀.
-	void RenderTonemapPass(RHI::CommandList& cmd, ResourceSetHandle hdrSet, TextureHandle output,
-		ResourceState outputAfter, const char* debugName,
-		uint32_t srcW, uint32_t srcH, uint32_t dstW, uint32_t dstH, bool skipGrade = false);
+	void RenderTonemapPass(RHI::CommandList& cmd, ResourceSetHandle hdrSet, TextureHandle output, ResourceState outputAfter, const char* debugName, uint32_t srcW, uint32_t srcH, uint32_t dstW, uint32_t dstH, bool skipGrade = false);
 	// 풀스크린 후처리 패스 하나 (톤매핑·블러·블룸 공통). 출력의 상태 전이(→ RenderTarget → after),
 	// 패스 시작·끝, Draw(3), 통계까지 함. 입력 셋(t13)이 가리키는 텍스처는 이미 ShaderResource 상태여야 하고,
 	// PostParams(b4)는 호출 전에 UploadPostParams 로 올려 둘 것. 텍스처의 현재 상태는 RHI 가 추적하므로
@@ -507,31 +595,31 @@ private:
 		static constexpr uint32_t kBloomLevels = 5;
 		struct BloomLevel
 		{
-			TextureHandle texture;                    // 레벨 i 는 hdr 의 1/2^(i+1) 크기
-			ResourceSetHandle set;                    // Layout_Post: t13 = texture
+			TextureHandle texture;   // 레벨 i 는 hdr 의 1/2^(i+1) 크기
+			ResourceSetHandle set;   // Layout_Post: t13 = texture
 			uint32_t width = 0;
 			uint32_t height = 0;
 		};
-		uint32_t width = 0;                           // 이 스크래치가 맞춘 hdr 크기. 바뀌면 전부 다시 만듦
+		uint32_t width = 0;   // 이 스크래치가 맞춘 hdr 크기. 바뀌면 전부 다시 만듦
 		uint32_t height = 0;
-		TextureHandle temp;                           // 블러 가로 패스의 결과 (hdr 와 같은 크기·포맷). 블러가 처음 켜질 때 만듦
-		ResourceSetHandle tempSet;                    // Layout_Post: t13 = temp
+		TextureHandle temp;          // 블러 가로 패스의 결과 (hdr 와 같은 크기·포맷). 블러가 처음 켜질 때 만듦
+		ResourceSetHandle tempSet;   // Layout_Post: t13 = temp
 		// 컴퓨트 블러의 셋 (Layout_BlurCompute: b4, t13 입력, u0 출력). [0] 가로 = hdr → temp, [1] 세로 = temp → hdr.
 		// hdr 를 가리키므로 hdr 가 다시 만들어지면 같이 버려야 함 — DestroyViewTarget 이 DestroyPostScratch 를 부름.
 		ResourceSetHandle blurComputeSets[2];
-		int8_t blurPath = -1;                         // 지난 프레임의 블러 경로 (0 PS, 1 컴퓨트). 바뀔 때만 로그를 남김 (검증용)
-		BloomLevel bloom[kBloomLevels];               // 블룸 축소 체인. 블룸이 처음 켜질 때 만듦
+		int8_t blurPath = -1;             // 지난 프레임의 블러 경로 (0 PS, 1 컴퓨트). 바뀔 때만 로그를 남김 (검증용)
+		BloomLevel bloom[kBloomLevels];   // 블룸 축소 체인. 블룸이 처음 켜질 때 만듦
 		uint32_t bloomCount = 0;
 	};
 	struct ViewTarget
 	{
-		TextureHandle color;       // 최종 출력 RGBA8 (TYPELESS: sRGB RTV + UNORM SRV, ImGui 가 읽음). 게임 모드의 메인 뷰는 비어 있음 — 백버퍼에 씀
-		TextureHandle depth;       // D24S8. DepthStencil | ShaderResource 라 후처리가 SRV 로 읽을 수 있음
-		TextureHandle hdr;         // R16G16B16A16_FLOAT. 씬 패스의 렌더 타깃
-		ResourceSetHandle hdrSet;  // Layout_Post: t13 = hdr (톤 패스·후처리의 입력)
-		ResourceSetHandle particleDepthSet;    // Layout_ParticleDepth: t23 = depth (파티클 PS, 소프트 파티클)
-		ResourceSetHandle particleCollideSet;  // Layout_ParticleCollide: b9, t23 = depth (파티클 적분 CS, 충돌. 메인 뷰만 씀)
-		PostScratch post;          // 블러·블룸 스크래치 (hdr 크기를 따름)
+		TextureHandle color;                    // 최종 출력 RGBA8 (TYPELESS: sRGB RTV + UNORM SRV, ImGui 가 읽음). 게임 모드의 메인 뷰는 비어 있음 — 백버퍼에 씀
+		TextureHandle depth;                    // D24S8. DepthStencil | ShaderResource 라 후처리가 SRV 로 읽을 수 있음
+		TextureHandle hdr;                      // R16G16B16A16_FLOAT. 씬 패스의 렌더 타깃
+		ResourceSetHandle hdrSet;               // Layout_Post: t13 = hdr (톤 패스·후처리의 입력)
+		ResourceSetHandle particleDepthSet;     // Layout_ParticleDepth: t23 = depth (파티클 PS, 소프트 파티클)
+		ResourceSetHandle particleCollideSet;   // Layout_ParticleCollide: b9, t23 = depth (파티클 적분 CS, 충돌. 메인 뷰만 씀)
+		PostScratch post;                       // 블러·블룸 스크래치 (hdr 크기를 따름)
 		// 디퍼드 (2단계): G-buffer 4장 (배치는 Shaders/GBuffer.hlsli) + 라이팅 PS 가 읽는 셋 (t23 깊이, t25~t28, t29 SSAO)
 		TextureHandle gbuffer[4];
 		ResourceSetHandle gbufferSet;
@@ -578,12 +666,12 @@ private:
 	// 이번 프레임의 환경 바인딩. Scene::environment 의 이름들을 ResolveEnvironment 가 핸들과 셰이더 파라미터로 바꿈.
 	struct EnvironmentBinding
 	{
-		TextureHandle skybox;       // t9  (없으면 검은 큐브)
-		TextureHandle irradiance;   // t10 (IBL 확산 조도. 없으면 스카이박스 → 반사 큐브 → 검은 큐브 순으로 대체)
-		TextureHandle specular;     // t11 (IBL 반사 프리필터. 없으면 스카이박스 → 검은 큐브)
-		TextureHandle brdfLut;      // t12 (없으면 흰색 2D, 셰이더는 해석적 근사를 씀)
-		uint32_t specularMips = 1;  // t11 의 밉 수 — 거칠기 → 밉 매핑의 끝
-		float irradianceLod = 0.0f; // t10 을 읽을 밉. 진짜 조도 큐브면 0, 스카이박스로 대체하면 끝에서 두 번째 밉(면당 2×2)
+		TextureHandle skybox;          // t9  (없으면 검은 큐브)
+		TextureHandle irradiance;      // t10 (IBL 확산 조도. 없으면 스카이박스 → 반사 큐브 → 검은 큐브 순으로 대체)
+		TextureHandle specular;        // t11 (IBL 반사 프리필터. 없으면 스카이박스 → 검은 큐브)
+		TextureHandle brdfLut;         // t12 (없으면 흰색 2D, 셰이더는 해석적 근사를 씀)
+		uint32_t specularMips = 1;     // t11 의 밉 수 — 거칠기 → 밉 매핑의 끝
+		float irradianceLod = 0.0f;    // t10 을 읽을 밉. 진짜 조도 큐브면 0, 스카이박스로 대체하면 끝에서 두 번째 밉(면당 2×2)
 		bool hasEnvironment = false;   // 거짓이면 셰이더가 ambientColor 를 씀
 		bool hasBrdfLut = false;
 		float iblIntensity = 1.0f;
@@ -619,8 +707,7 @@ private:
 	// 캐스케이드의 뷰 번호를 돌려줌 (실패 시 UINT32_MAX).
 	uint32_t AddCascadeViews(const Camera& camera, const GpuLight& light, uint32_t lightIndex);
 	// 새 뷰의 번호를 돌려줌. 자리가 없으면 UINT32_MAX.
-	uint32_t AddShadowView(const DirectX::XMMATRIX& viewProj, uint32_t x, uint32_t y, uint32_t size,
-		const DirectX::XMFLOAT4& params, uint32_t lightIndex, uint32_t atlas = 0);
+	uint32_t AddShadowView(const DirectX::XMMATRIX& viewProj, uint32_t x, uint32_t y, uint32_t size, const DirectX::XMFLOAT4& params, uint32_t lightIndex, uint32_t atlas = 0);
 	void UploadShadowConstants();   // b6 전체 + b5 단위 행렬. 그림자가 꺼진 프레임에도 부름 (D3D12 의 Dynamic CB 갱신 검사)
 
 	const GpuMesh* GetOrCreateGpuMesh(const Mesh& mesh);
@@ -641,20 +728,20 @@ private:
 	ShaderHandle m_shaders[Shader_Count];
 	BufferHandle m_perFrameCB;
 	BufferHandle m_perObjectCB;
-	BufferHandle m_skinCB;                       // b7 Skin (스키닝 조인트 팔레트). 스키닝 드로우마다 올림
+	BufferHandle m_skinCB;                            // b7 Skin (스키닝 조인트 팔레트). 스키닝 드로우마다 올림
 	std::vector<DirectX::XMFLOAT4X4> m_skinScratch;   // 전치한 팔레트를 만드는 임시 배열 (kMaxSkinJoints)
-	BufferHandle m_lightCB;        // b2 Lights (주변광, 조명 수)
-	BufferHandle m_lightBuffer;    // t15 조명 구조체 버퍼 (GpuLight × m_lightCapacity). Dynamic
-	uint32_t m_lightCapacity = 0;  // 원소 수. 모자라면 두 배로 다시 만듦
-	std::vector<GpuLight> m_gpuLights;   // 이번 프레임에 올릴 조명 (BuildGpuLights)
-	BufferHandle m_postParamsCB;   // b4 PostParams
+	BufferHandle m_lightCB;                           // b2 Lights (주변광, 조명 수)
+	BufferHandle m_lightBuffer;                       // t15 조명 구조체 버퍼 (GpuLight × m_lightCapacity). Dynamic
+	uint32_t m_lightCapacity = 0;                     // 원소 수. 모자라면 두 배로 다시 만듦
+	std::vector<GpuLight> m_gpuLights;                // 이번 프레임에 올릴 조명 (BuildGpuLights)
+	BufferHandle m_postParamsCB;                      // b4 PostParams
 	// 블러 가우시안 가중치 (float × (kMaxBlurRadius + 1), w[i] = exp(−i²/2σ²), i ≥ 0 반쪽만). 컴퓨트 패스가 블러마다
 	// 쓰고 PS·CS 블러가 t20 으로 읽음 — 두 경로가 같은 가중치를 읽음 (각자 계산하던 때는 D3D11 에서 최하위 비트가 달랐음).
 	// 모든 후처리 셋이 t20 에 꽂으므로 프레임마다 처음에 ShaderResource 로 전이함 (버퍼 상태는 프레임 끝에 Common).
 	BufferHandle m_blurWeights;
 	ResourceSetHandle m_blurWeightsSet;   // Layout_BlurWeights: b4, u0 = m_blurWeights
-	BufferHandle m_shadowPassCB;   // b5 ShadowPass (뷰마다 올림)
-	BufferHandle m_shadowsCB;      // b6 Shadows (프레임에 한 번)
+	BufferHandle m_shadowPassCB;          // b5 ShadowPass (뷰마다 올림)
+	BufferHandle m_shadowsCB;             // b6 Shadows (프레임에 한 번)
 
 	// 갱신 빈도별 레이아웃 (LayoutId 순서). 선언 사본(m_layoutDescs)은 패스별 바인딩 대조가 씀.
 	//   Layout_Frame     b0 (VS|PS), b2 (PS), t8 그림자 맵, s4 비교 샘플러, t9 스카이박스, s5, t10~t12 IBL (모두 PS), b5 그림자 패스 행렬 (VS), b6 그림자 뷰 배열 (PS), t14 CSM, t15 조명 구조체 버퍼
@@ -675,7 +762,7 @@ private:
 	//   Pass_Tonemap  풀스크린 삼각형, 깊이 없음
 	//   Pass_Post     블러·블룸 (톤 패스와 같은 모양, PS 만 다름). RTV 는 FP16
 	PipelineStateDesc m_passDesc[Pass_Count];
-	PipelineStateDesc m_postAddDesc;  // Pass_Post + 가산 블렌드
+	PipelineStateDesc m_postAddDesc;   // Pass_Post + 가산 블렌드
 	// PSO 핸들 캐시 (작은 키 → 핸들). 키는 Get*PipelineFor 가 만듦.
 	std::unordered_map<uint32_t, PipelineHandle> m_mainPipelines;
 	std::unordered_map<uint32_t, PipelineHandle> m_shadowPipelines;
@@ -684,56 +771,56 @@ private:
 	PipelineHandle m_ssaoPipelines[2];   // [blur]
 
 	// ---- 클러스터 (3b) ----
-	static constexpr uint32_t kInitialClusterLightRefs = 16384;    // t31 처음 원소 수 (64KB)
+	static constexpr uint32_t kInitialClusterLightRefs = 16384;   // t31 처음 원소 수 (64KB)
 	// 상한 (4MB). 넘치면 버리고 Stats::clusterOverflow. 버퍼는 필요한 만큼만 두 배씩 키우고 업로드도 실제 개수만큼이라, 상한을 올려도
 	// 실제 쌍이 적은 씬의 비용은 그대로임. 262,144 에서는 Intel Sponza 촛불 1만 개(range 2 m)가 시점에 따라 약 46~49만 쌍이라 넘쳤음 (2026-11-21)
 	static constexpr uint32_t kMaxClusterLightRefs = 1048576;
-	static constexpr uint32_t kClusterViews = 2;                   // 0 메인, 1 카메라 미리보기
-	BufferHandle m_clusterGridBuffer;      // t30 Dynamic, uint2 × kClusterCount
-	BufferHandle m_clusterIndexBuffer;     // t31 Dynamic, uint × m_clusterIndexCapacity
+	static constexpr uint32_t kClusterViews = 2;   // 0 메인, 1 카메라 미리보기
+	BufferHandle m_clusterGridBuffer;              // t30 Dynamic, uint2 × kClusterCount
+	BufferHandle m_clusterIndexBuffer;             // t31 Dynamic, uint × m_clusterIndexCapacity
 	uint32_t m_clusterIndexCapacity = 0;
 	std::vector<uint32_t> m_clusterGridScratch[kClusterViews];    // (시작, 개수) 쌍을 펼친 것 — 길이 2 × kClusterCount
 	std::vector<uint32_t> m_clusterIndexScratch[kClusterViews];   // 조명 번호 목록
 	bool m_clusterBuilt[kClusterViews] = {};                      // 이번 프레임에 그 뷰를 비닝했는가
 	// GPU 비닝 (RendererClusterBin.cpp). t30·t31 은 CPU 경로와 다른 Default + UAV 버퍼 두 개 — 프레임 셋이 경로에 따라 둘 중
 	// 하나를 꽂음 (m_frameSetClusterGpu). t31 은 처음부터 상한 크기 (GPU 는 개수를 세기 전에 버퍼가 있어야 함).
-	BufferHandle m_clusterBinCB[kClusterViews];        // b13 Dynamic, 뷰마다
-	BufferHandle m_lightBoundsBuffer;                  // t7 Dynamic, float4 × m_clusterGpuLightCapacity (월드 경계 구)
-	BufferHandle m_clusterViewBounds;                  // u0 Default, float4 × 용량 (뷰 공간 경계 구)
-	BufferHandle m_clusterTileCounts;                  // u1 Default, uint × kClusterTileCount
-	BufferHandle m_clusterTileMasks;                   // u2 Default, uint × kClusterTileCount × ⌈용량 / 32⌉ (타일마다 고정 구간의 비트마스크)
-	BufferHandle m_clusterGridGpu;                     // u3 / t30 Default, uint2 × kClusterCount
-	BufferHandle m_clusterIndexGpu;                    // u4 / t31 Default, uint × kMaxClusterLightRefs
-	BufferHandle m_clusterStatsBuffer;                 // u5 Default, uint × kClusterStatCount
+	BufferHandle m_clusterBinCB[kClusterViews];   // b13 Dynamic, 뷰마다
+	BufferHandle m_lightBoundsBuffer;             // t7 Dynamic, float4 × m_clusterGpuLightCapacity (월드 경계 구)
+	BufferHandle m_clusterViewBounds;             // u0 Default, float4 × 용량 (뷰 공간 경계 구)
+	BufferHandle m_clusterTileCounts;             // u1 Default, uint × kClusterTileCount
+	BufferHandle m_clusterTileMasks;              // u2 Default, uint × kClusterTileCount × ⌈용량 / 32⌉ (타일마다 고정 구간의 비트마스크)
+	BufferHandle m_clusterGridGpu;                // u3 / t30 Default, uint2 × kClusterCount
+	BufferHandle m_clusterIndexGpu;               // u4 / t31 Default, uint × kMaxClusterLightRefs
+	BufferHandle m_clusterStatsBuffer;            // u5 Default, uint × kClusterStatCount
 	// 통계 리드백 링. kFrameCount 보다 넉넉히 둠 — D3D11 은 드라이버가 몇 프레임을 쌓아 두므로 2 프레임 전 복사가 아직 안 끝났을
 	// 수 있음. 읽지 못한 슬롯은 덮어쓰지 않아 (그 프레임은 복사를 건너뜀), 읽은 값은 항상 한 프레임의 온전한 통계임.
 	static constexpr uint32_t kClusterStatsSlots = 4;
-	BufferHandle m_clusterStatsReadback[kClusterStatsSlots];   // Staging
-	bool m_clusterStatsPending[kClusterStatsSlots] = {};       // 그 슬롯에 아직 읽지 않은 복사가 있음
-	uint32_t m_clusterStatsCursor = 0;                         // 다음에 복사할 슬롯 (메인 뷰 디스패치마다 하나씩)
-	uint64_t m_clusterStatsCopyFrame[kClusterStatsSlots] = {}; // 그 슬롯에 복사한 GPU 비닝 프레임 번호
-	uint64_t m_clusterBinFrame = 0;                            // GPU 비닝을 한 프레임 수 (ReadGpuClusterStats 가 셈)
-	static constexpr uint32_t kClusterStatValues = 8;  // = ShaderConstants.h 의 kClusterStatCount (RendererClusterBin.cpp 가 static_assert)
-	uint32_t m_clusterGpuStats[kClusterStatValues] = {}; // 마지막으로 읽은 통계 (읽지 못한 프레임에도 이 값을 보여 줌)
+	BufferHandle m_clusterStatsReadback[kClusterStatsSlots];     // Staging
+	bool m_clusterStatsPending[kClusterStatsSlots] = {};         // 그 슬롯에 아직 읽지 않은 복사가 있음
+	uint32_t m_clusterStatsCursor = 0;                           // 다음에 복사할 슬롯 (메인 뷰 디스패치마다 하나씩)
+	uint64_t m_clusterStatsCopyFrame[kClusterStatsSlots] = {};   // 그 슬롯에 복사한 GPU 비닝 프레임 번호
+	uint64_t m_clusterBinFrame = 0;                              // GPU 비닝을 한 프레임 수 (ReadGpuClusterStats 가 셈)
+	static constexpr uint32_t kClusterStatValues = 8;            // = ShaderConstants.h 의 kClusterStatCount (RendererClusterBin.cpp 가 static_assert)
+	uint32_t m_clusterGpuStats[kClusterStatValues] = {};         // 마지막으로 읽은 통계 (읽지 못한 프레임에도 이 값을 보여 줌)
 	ResourceSetHandle m_clusterBinSet[kClusterViews];
-	uint32_t m_clusterGpuLightCapacity = 0;            // 위 용량 버퍼들을 만든 조명 수 (= 그때의 m_lightCapacity)
-	bool m_clusterGpuFailed = false;                   // 버퍼 생성 실패 — 다시 시도하지 않고 CPU 경로
-	bool m_clusterGpuThisFrame = false;                // 이번 프레임 GPU 경로
-	bool m_frameSetClusterGpu = false;                 // 프레임 셋 t30·t31 이 GPU 버퍼를 꽂고 있음
-	std::vector<DirectX::XMFLOAT4> m_lightBounds;                 // 조명마다의 경계 구 (ComputeLightBounds, 이번 프레임)
-	std::vector<uint8_t> m_lightVisible;                          // 3a: 메인 카메라 절두체 안 (방향광은 항상 1)
-	std::vector<uint32_t> m_shadowOrder;                          // 3a: 그림자 후보 조명 번호, 점수 높은 순
-	std::unordered_map<uint32_t, bool> m_shadowHistory;           // 3a: 지난 프레임에 그림자를 받은 씬 조명 번호 (깜빡임 억제용 가산점)
-	std::vector<uint32_t> m_lightSceneIndex;                      // 정렬 뒤 m_gpuLights[i] 가 씬의 몇 번째 조명이었는지
+	uint32_t m_clusterGpuLightCapacity = 0;               // 위 용량 버퍼들을 만든 조명 수 (= 그때의 m_lightCapacity)
+	bool m_clusterGpuFailed = false;                      // 버퍼 생성 실패 — 다시 시도하지 않고 CPU 경로
+	bool m_clusterGpuThisFrame = false;                   // 이번 프레임 GPU 경로
+	bool m_frameSetClusterGpu = false;                    // 프레임 셋 t30·t31 이 GPU 버퍼를 꽂고 있음
+	std::vector<DirectX::XMFLOAT4> m_lightBounds;         // 조명마다의 경계 구 (ComputeLightBounds, 이번 프레임)
+	std::vector<uint8_t> m_lightVisible;                  // 3a: 메인 카메라 절두체 안 (방향광은 항상 1)
+	std::vector<uint32_t> m_shadowOrder;                  // 3a: 그림자 후보 조명 번호, 점수 높은 순
+	std::unordered_map<uint32_t, bool> m_shadowHistory;   // 3a: 지난 프레임에 그림자를 받은 씬 조명 번호 (깜빡임 억제용 가산점)
+	std::vector<uint32_t> m_lightSceneIndex;              // 정렬 뒤 m_gpuLights[i] 가 씬의 몇 번째 조명이었는지
 
 	// ---- SSAO (5단계) ----
-	BufferHandle m_ssaoCB;                 // b12 Dynamic (SsaoConstants)
+	BufferHandle m_ssaoCB;                         // b12 Dynamic (SsaoConstants)
 	std::vector<DirectX::XMFLOAT4> m_ssaoKernel;   // 반구 커널 (sampleCount 개). 샘플 수가 바뀔 때만 다시 만듦 (시드 고정이라 결정적)
-	SsaoSettings m_ssaoSettings;           // 이번 프레임 (씬 환경에서 복사)
+	SsaoSettings m_ssaoSettings;                   // 이번 프레임 (씬 환경에서 복사)
 	PipelineHandle m_skyPipeline;
 	PipelineHandle m_debugLinePipeline;
 	PipelineHandle m_particlePipeline;
-	BufferHandle m_particleCollisionCB;   // Dynamic b9 (ParticleCollisionConstants). 뷰마다의 충돌 셋이 가리킴
+	BufferHandle m_particleCollisionCB;                     // Dynamic b9 (ParticleCollisionConstants). 뷰마다의 충돌 셋이 가리킴
 	BufferHandle m_particleSortViewCB[kMaxParticleViews];   // Dynamic b10, 뷰마다 (알파 이미터가 있는 프레임에 올림)
 	struct ParticleSortStep
 	{
@@ -741,32 +828,32 @@ private:
 		ResourceSetHandle set;    // Layout_ParticleSortStep
 	};
 	std::vector<ParticleSortStep> m_particleSortSteps;   // k = 2, 4, … 마다 j = k/2 … 1 순서. 큰 N 은 작은 N 의 단계 목록을 앞에 그대로 가짐
-	uint32_t m_particleSortStepCount = 0;                 // m_particleSortSteps 가 정렬할 수 있는 최대 길이
+	uint32_t m_particleSortStepCount = 0;                // m_particleSortSteps 가 정렬할 수 있는 최대 길이
 
 	// 이미터 하나의 GPU 상태. 키 = 오브젝트 ID × 16 + 그 오브젝트 안에서 몇 번째 이미터인지 (undo·씬 로드가 오브젝트를
 	// 다시 만들어도 ID 가 같으면 이어서 씀). 이번 프레임에 보이지 않은 키는 UpdateParticleEmitters 가 지움.
 	struct GpuEmitter
 	{
-		BufferHandle particles;        // Default, SRV + UAV, stride kParticleStride, capacity 개
-		BufferHandle deadList;         // UAV, uint × capacity (비어 있는 슬롯 번호)
-		BufferHandle aliveLists[2];    // SRV + UAV, uint × capacity. 프레임마다 입력·출력이 바뀜
-		BufferHandle counters;         // UAV, uint × kParticleCounterCount
-		BufferHandle args;             // Raw + UAV + IndirectArgs, kParticleArgsSize 바이트
-		BufferHandle constants;        // Dynamic b8 (ParticleEmitterConstants)
-		ResourceSetHandle simSets[2];  // Layout_ParticleSim: b8, u0~u5. [p] = 입력 aliveLists[p], 출력 aliveLists[1 - p]
-		ResourceSetHandle stepSets[2]; // Layout_ParticleStep: simSets 에서 u5 (인자 버퍼) 만 뺀 것 — 간접 디스패치용
-		ResourceSetHandle drawSets[2]; // Layout_ParticleDraw: b8, t21, t22 = aliveLists[1 - p] (그 프레임의 출력)
+		BufferHandle particles;          // Default, SRV + UAV, stride kParticleStride, capacity 개
+		BufferHandle deadList;           // UAV, uint × capacity (비어 있는 슬롯 번호)
+		BufferHandle aliveLists[2];      // SRV + UAV, uint × capacity. 프레임마다 입력·출력이 바뀜
+		BufferHandle counters;           // UAV, uint × kParticleCounterCount
+		BufferHandle args;               // Raw + UAV + IndirectArgs, kParticleArgsSize 바이트
+		BufferHandle constants;          // Dynamic b8 (ParticleEmitterConstants)
+		ResourceSetHandle simSets[2];    // Layout_ParticleSim: b8, u0~u5. [p] = 입력 aliveLists[p], 출력 aliveLists[1 - p]
+		ResourceSetHandle stepSets[2];   // Layout_ParticleStep: simSets 에서 u5 (인자 버퍼) 만 뺀 것 — 간접 디스패치용
+		ResourceSetHandle drawSets[2];   // Layout_ParticleDraw: b8, t21, t22 = aliveLists[1 - p] (그 프레임의 출력)
 		// 알파 이미터 (blendMode 1) 만: 뷰마다 정렬 결과. 길이 = ParticleSortCount(capacity)
-		BufferHandle sortKeys[kMaxParticleViews];        // UAV, float
-		BufferHandle sortIndices[kMaxParticleViews];     // SRV + UAV, uint. 그리기 셋의 t22
-		ResourceSetHandle sortSets[kMaxParticleViews][2];  // Layout_ParticleSort. [뷰][parity] (t22 입력 = 그 프레임의 출력 생존 목록)
-		ResourceSetHandle drawSortedSets[kMaxParticleViews]; // Layout_ParticleDraw, t22 = sortIndices[뷰]
-		bool sorted = false;           // 이번 프레임에 정렬해서 그림 (blendMode 1 이고 정렬 리소스가 있음)
+		BufferHandle sortKeys[kMaxParticleViews];              // UAV, float
+		BufferHandle sortIndices[kMaxParticleViews];           // SRV + UAV, uint. 그리기 셋의 t22
+		ResourceSetHandle sortSets[kMaxParticleViews][2];      // Layout_ParticleSort. [뷰][parity] (t22 입력 = 그 프레임의 출력 생존 목록)
+		ResourceSetHandle drawSortedSets[kMaxParticleViews];   // Layout_ParticleDraw, t22 = sortIndices[뷰]
+		bool sorted = false;                                   // 이번 프레임에 정렬해서 그림 (blendMode 1 이고 정렬 리소스가 있음)
 		uint32_t capacity = 0;
-		uint32_t parity = 0;           // 이번 프레임에 쓸 simSets / drawSets 번호
-		uint32_t spawnCount = 0;       // 이번 프레임에 원하는 생성 수 (Emit 디스패치 크기)
-		uint32_t seed = 0;             // 프레임마다 1 씩
-		float spawnCarry = 0.0f;       // 정수로 떨어지지 않은 생성 수 (다음 프레임으로 넘김)
+		uint32_t parity = 0;       // 이번 프레임에 쓸 simSets / drawSets 번호
+		uint32_t spawnCount = 0;   // 이번 프레임에 원하는 생성 수 (Emit 디스패치 크기)
+		uint32_t seed = 0;         // 프레임마다 1 씩
+		float spawnCarry = 0.0f;   // 정수로 떨어지지 않은 생성 수 (다음 프레임으로 넘김)
 		bool needsReset = true;
 		uint64_t lastSeenFrame = 0;
 	};
@@ -778,11 +865,11 @@ private:
 		DirectX::XMFLOAT3 direction = {};
 	};
 	std::unordered_map<uint64_t, GpuEmitter> m_gpuEmitters;
-	std::vector<FrameEmitter> m_frameEmitters;       // BuildDrawList 가 채움
-	std::vector<uint64_t> m_activeEmitterKeys;       // 이번 프레임에 시뮬레이션·그리기할 키 (UpdateParticleEmitters 가 채움)
+	std::vector<FrameEmitter> m_frameEmitters;   // BuildDrawList 가 채움
+	std::vector<uint64_t> m_activeEmitterKeys;   // 이번 프레임에 시뮬레이션·그리기할 키 (UpdateParticleEmitters 가 채움)
 	float m_lastParticleTime = -1.0f;
-	BufferHandle m_debugLineVB;                       // 동적 정점 버퍼 (DebugDraw::kMaxVertices 개)
-	uint32_t m_debugLineCount = 0;                    // 올린 정점 수 (0 이면 그리지 않음)
+	BufferHandle m_debugLineVB;             // 동적 정점 버퍼 (DebugDraw::kMaxVertices 개)
+	uint32_t m_debugLineCount = 0;          // 올린 정점 수 (0 이면 그리지 않음)
 	PipelineHandle m_tonemapPipelines[2];   // [srgbOutput]
 	PipelineHandle m_postPipelines[2];      // [additive]
 	ComputePipelineHandle m_computePipelines[ComputePass_Count];
@@ -791,30 +878,30 @@ private:
 	Stats m_stats;
 	uint64_t m_frameNumber = 0;
 
-	Material m_defaultMaterial;     // GameObject.material == nullptr 일 때
+	Material m_defaultMaterial;   // GameObject.material == nullptr 일 때
 
 	// 샘플러 프리셋과 텍스처 캐시 (2D·큐브, 내장 흰색·평평한 노멀·검은 큐브)
 	static constexpr uint32_t kSamplerPresetCount = 5;
 	SamplerHandle m_samplers[kSamplerPresetCount];
 	TextureCache m_textures;
 
-	EnvironmentBinding m_environment;   // 이번 프레임 (ResolveEnvironment)
-	PostProcessSettings m_postSettings;   // 이번 프레임 (ResolveEnvironment 가 씬의 환경에서 복사)
-	ShadowSettings m_shadowSettings;      // 이번 프레임 (Render 가 맨 앞에서 씬의 환경에서 복사. 그림자 행렬과 b0 가 씀)
+	EnvironmentBinding m_environment;        // 이번 프레임 (ResolveEnvironment)
+	PostProcessSettings m_postSettings;      // 이번 프레임 (ResolveEnvironment 가 씬의 환경에서 복사)
+	ShadowSettings m_shadowSettings;         // 이번 프레임 (Render 가 맨 앞에서 씬의 환경에서 복사. 그림자 행렬과 b0 가 씀)
 	EnvironmentBinding m_boundEnvironment;   // 지금 m_frameSet 에 꽂힌 것. 비우면 다음 UpdateFrameSet 이 셋을 다시 만듦
 
 	// 그림자 맵 (D32_FLOAT, DSV + SRV) 과 비교 샘플러. 상태는 Barrier 로 전이함 (현재 상태는 RHI 가 추적).
 	TextureHandle m_shadowMap;
 	SamplerHandle m_shadowSampler;
-	TextureHandle m_csmMap;                // 방향광 CSM 전용 아틀라스 (kCsmAtlasWidth × kCsmAtlasHeight, 같은 비교 샘플러)
+	TextureHandle m_csmMap;   // 방향광 CSM 전용 아틀라스 (kCsmAtlasWidth × kCsmAtlasHeight, 같은 비교 샘플러)
 
 	// 뷰 타깃. 메인: 에디터면 씬 뷰 크기(SetSceneTarget, color 있음), 게임 모드면 출력 크기(EnsureGameTarget,
 	// color 없음 — 톤 패스가 백버퍼에 씀). 미리보기: 선택한 카메라 오브젝트의 시점 (SetPreviewTarget).
 	ViewTarget m_mainView;
 	ViewTarget m_previewView;
-	uint32_t m_sceneWidth = 0;     // SetSceneTarget 이 요청한 씬 뷰 크기 (0 = 오프스크린 아님)
+	uint32_t m_sceneWidth = 0;   // SetSceneTarget 이 요청한 씬 뷰 크기 (0 = 오프스크린 아님)
 	uint32_t m_sceneHeight = 0;
-	uint32_t m_outputWidth = 0;    // 게임 모드 출력(백버퍼) 크기 — SetOutputSize
+	uint32_t m_outputWidth = 0;   // 게임 모드 출력(백버퍼) 크기 — SetOutputSize
 	uint32_t m_outputHeight = 0;
 	PostStageThumb m_stageThumbs[kPostStageCount];   // 단계별 썸네일 (RGBA8, 폭 384). 요청이 있을 때 처음 만듦
 	uint32_t m_thumbWidth = 0;
@@ -829,20 +916,20 @@ private:
 	uint32_t m_usedLocalTiles = 0;        // 이번 프레임에 쓴 지역광 타일 수 (0..kShadowLocalTileCount)
 	// CSM (이번 프레임). 그림자는 메인 카메라 기준으로 한 번만 만들어서, 미리보기 패스에서도 PS 가 이 값으로
 	// 캐스케이드를 고름.
-	uint32_t m_cascadeCount = 0;          // 0 = CSM 아님
+	uint32_t m_cascadeCount = 0;              // 0 = CSM 아님
 	DirectX::XMFLOAT4 m_cascadeSplits = {};   // 캐스케이드 i 가 끝나는 카메라 전방 거리 (없는 칸은 0)
 	DirectX::XMFLOAT3 m_cascadeOrigin = {};   // 캐스케이드를 계산한 카메라의 위치·전방
 	DirectX::XMFLOAT3 m_cascadeForward = {};
 	DirectX::XMFLOAT3 m_cascadeCorners[4][8] = {};   // 에디터 오버레이용 (GetCascadeFrustumCorners)
 	bool m_cascadeFrozen = false;
-	Camera m_cascadeFreezeCamera;                    // 고정 중일 때 캐스케이드를 계산하는 카메라 사본
+	Camera m_cascadeFreezeCamera;   // 고정 중일 때 캐스케이드를 계산하는 카메라 사본
 
 	// Scene이 메시(shared_ptr)·재질(unique_ptr)을 힙에 따로 두므로 포인터가 안정적임. 그래서 키로 씀.
 	std::unordered_map<const Mesh*, GpuMesh> m_gpuMeshes;
 	std::unordered_map<const Material*, GpuMaterial> m_gpuMaterials;
 	std::vector<DrawItem> m_drawList;
 	std::vector<const DrawItem*> m_blendedScratch;   // DrawItems 가 뷰마다 거리순으로 다시 정렬하는 블렌딩 항목 (재사용 버퍼)
-	std::vector<ObjectData> m_objects;   // 이번 프레임에 그릴 오브젝트 (DrawItem::object 가 가리킴). BuildDrawList 가 채움
+	std::vector<ObjectData> m_objects;               // 이번 프레임에 그릴 오브젝트 (DrawItem::object 가 가리킴). BuildDrawList 가 채움
 	// BuildDrawList 의 계층 순회 스택. 프레임마다 재사용함. 칸 하나 = 자식이 있는 오브젝트 하나 + 그 월드 행렬 + 다음에 방문할 자식 번호.
 	struct HierarchyFrame
 	{

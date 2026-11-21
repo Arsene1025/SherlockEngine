@@ -10,13 +10,13 @@
 // 빌드(Ctrl+Shift+B)하고 다시 실행해야 Inspector 목록에 나타남 — 에디터는 컴파일하지 않음.
 namespace ScriptCreator
 {
-	bool IsAvailable();                                             // 프로젝트가 열려 있는지 여부
-	std::wstring GetScriptsDir();                                   // <프로젝트>\Scripts\ (끝 백슬래시)
-	std::wstring GetScriptPath(const std::string& typeName);        // 그 스크립트의 .cpp (존재하지 않을 수도 있음)
-	std::wstring GetScriptHeaderPath(const std::string& typeName);  // 그 스크립트의 .h
-	bool IsValidClassName(const std::string& name);                 // C++ 식별자 + 예약어 아님
+	bool IsAvailable();                                              // 프로젝트가 열려 있는지 여부
+	std::wstring GetScriptsDir();                                    // <프로젝트>\Scripts\ (끝 백슬래시)
+	std::wstring GetScriptPath(const std::string& typeName);         // 그 스크립트의 .cpp (존재하지 않을 수도 있음)
+	std::wstring GetScriptHeaderPath(const std::string& typeName);   // 그 스크립트의 .h
+	bool IsValidClassName(const std::string& name);                  // C++ 식별자 + 예약어 아님
 	// 파일 두 개를 생성함. 실패하면 false 를 반환하고 error 에 이유를 담음. 이미 있으면 실패.
 	bool Create(const std::string& className, std::string& error);
-	bool Open(const std::wstring& path);                            // ShellExecute "open" — 연결 프로그램(보통 VS)
-	bool OpenScript(const std::string& typeName);                   // .h 와 .cpp 를 엶 (있는 파일만)
+	bool Open(const std::wstring& path);            // ShellExecute "open" — 연결 프로그램(보통 VS)
+	bool OpenScript(const std::string& typeName);   // .h 와 .cpp 를 엶 (있는 파일만)
 }

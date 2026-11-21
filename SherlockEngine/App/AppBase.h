@@ -15,72 +15,72 @@
 class AppBase
 {
 public:
-    AppBase();
-    virtual ~AppBase();
+	AppBase();
+	virtual ~AppBase();
 
-    // 설정 파일 → Logger → 창 → ImGui 컨텍스트 → Engine → OnInitialize. 실패하면 false.
-    bool Initialize();
-    int Run();
+	// 설정 파일 → Logger → 창 → ImGui 컨텍스트 → Engine → OnInitialize. 실패하면 false.
+	bool Initialize();
+	int Run();
 
-    virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+	virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 protected:
-    // ---- 앱이 구현하는 것 ----
-    virtual bool OnInitialize() = 0;              // 씬 구성. 호출 시점에 Engine 은 준비되어 있음
-    virtual void OnUpdate(float dt) = 0;          // 매 프레임 호출 (가변 dt)
-    virtual void OnFixedUpdate(float fixedDt) { (void)fixedDt; }   // 고정 스텝 (Time.fixedStep). 필요할 때만 구현
-    virtual void OnGUI() = 0;                     // ImGui::NewFrame 과 Render 사이에서 호출됨. 창과 도킹 공간은 앱이 직접 만듦
-    virtual void OnFocusLost() {}                 // WM_KILLFOCUS / WM_CAPTURECHANGED
-    // false 면 ImGui 컨텍스트·Win32/렌더러 백엔드를 만들지 않음 (게임 런타임 GameApp). OnGUI 도 호출되지 않음.
-    virtual bool WantsGUI() const { return true; }
-    virtual const wchar_t* GetWindowTitle() const { return L"SherlockEngine"; }
+	// ---- 앱이 구현하는 것 ----
+	virtual bool OnInitialize() = 0;                               // 씬 구성. 호출 시점에 Engine 은 준비되어 있음
+	virtual void OnUpdate(float dt) = 0;                           // 매 프레임 호출 (가변 dt)
+	virtual void OnFixedUpdate(float fixedDt) { (void)fixedDt; }   // 고정 스텝 (Time.fixedStep). 필요할 때만 구현
+	virtual void OnGUI() = 0;                                      // ImGui::NewFrame 과 Render 사이에서 호출됨. 창과 도킹 공간은 앱이 직접 만듦
+	virtual void OnFocusLost() {}                                  // WM_KILLFOCUS / WM_CAPTURECHANGED
+	// false 면 ImGui 컨텍스트·Win32/렌더러 백엔드를 만들지 않음 (게임 런타임 GameApp). OnGUI 도 호출되지 않음.
+	virtual bool WantsGUI() const { return true; }
+	virtual const wchar_t* GetWindowTitle() const { return L"SherlockEngine"; }
 
-    Engine& GetEngine() { return m_engine; }
-    HWND GetWindow() const { return m_mainWindow; }
-    const Config& GetConfig() const { return m_config; }
+	Engine& GetEngine() { return m_engine; }
+	HWND GetWindow() const { return m_mainWindow; }
+	const Config& GetConfig() const { return m_config; }
 
-    // 프로젝트. Initialize 가 설정을 읽기 전에 정함 (--project=, exe 상위 폴더의 *.sherlock, 엔진의
-    // Projects\SherlockTestScenes 순). OpenProject 는 실행 중에 프로젝트를 전환함 (Paths 의 프로젝트 루트를 바꿈). 씬
-    // 로드는 앱이 담당함.
-    Project& GetProject() { return m_project; }
-    const Project& GetProject() const { return m_project; }
-    bool OpenProject(const std::wstring& pathOrDir);
-    static std::wstring GetDefaultProjectDir();   // <엔진 저장소>\Projects\SherlockTestScenes\ (소스 트리가 있을 때)
+	// 프로젝트. Initialize 가 설정을 읽기 전에 정함 (--project=, exe 상위 폴더의 *.sherlock, 엔진의
+	// Projects\SherlockTestScenes 순). OpenProject 는 실행 중에 프로젝트를 전환함 (Paths 의 프로젝트 루트를 바꿈). 씬
+	// 로드는 앱이 담당함.
+	Project& GetProject() { return m_project; }
+	const Project& GetProject() const { return m_project; }
+	bool OpenProject(const std::wstring& pathOrDir);
+	static std::wstring GetDefaultProjectDir();   // <엔진 저장소>\Projects\SherlockTestScenes\ (소스 트리가 있을 때)
 
-    // 프로젝트 스크립트 DLL. Initialize 가 Engine 초기화 직후(OnInitialize 전, 씬이 빈 때) 한 번 부름.
-    // 열린 프로젝트의 <이름>Scripts.dll 을 찾아 올림: exe 옆(패키지된 게임) → <프로젝트>\Binaries\<구성>\ 순.
-    // 이미 올린 DLL 이 있으면 먼저 씬을 비우고 내림 — 프로젝트를 바꿀 때 에디터가 다시 부름. hotReload 면
-    // 복사본을 올려 원본을 다시 빌드할 수 있게 함. DLL 이 없으면 false (스크립트 없이 동작. 그 스크립트를
-    // 쓰는 컴포넌트는 씬 로드 때 경고와 함께 빠짐).
-    bool LoadProjectScripts(bool hotReload);
-    void UnloadProjectScripts();   // 씬을 비운 뒤 DLL 을 내림
-    ScriptModule& GetScripts() { return m_scripts; }
+	// 프로젝트 스크립트 DLL. Initialize 가 Engine 초기화 직후(OnInitialize 전, 씬이 빈 때) 한 번 부름.
+	// 열린 프로젝트의 <이름>Scripts.dll 을 찾아 올림: exe 옆(패키지된 게임) → <프로젝트>\Binaries\<구성>\ 순.
+	// 이미 올린 DLL 이 있으면 먼저 씬을 비우고 내림 — 프로젝트를 바꿀 때 에디터가 다시 부름. hotReload 면
+	// 복사본을 올려 원본을 다시 빌드할 수 있게 함. DLL 이 없으면 false (스크립트 없이 동작. 그 스크립트를
+	// 쓰는 컴포넌트는 씬 로드 때 경고와 함께 빠짐).
+	bool LoadProjectScripts(bool hotReload);
+	void UnloadProjectScripts();   // 씬을 비운 뒤 DLL 을 내림
+	ScriptModule& GetScripts() { return m_scripts; }
 
 
-    // 실행 인자 "--name=value" 의 value 를 돌려줌. 없으면 빈 문자열.
-    static std::wstring GetCommandLineOption(const wchar_t* name);
-    // 렌더 경로 실행 인자 (--deferred, --clustered, --shadow-priority = 1|0, --ssao = 1|0) 를 설정에 반영. 에디터·게임이 같이 씀.
-    static void ApplyRenderPathOptions(RenderSettings& settings);
-
-private:
-    void ResolveProject();      // 프로젝트 파일 찾기 → Paths 루트 설정
-    bool LoadConfig();          // Assets\Config\engine.ini 를 읽고 실행 인자로 덮어씀
-    void InitLogger();          // 설정의 [log] 로 Logger 를 엶
-    bool InitMainWindow();
-    bool InitGUI();
+	// 실행 인자 "--name=value" 의 value 를 돌려줌. 없으면 빈 문자열.
+	static std::wstring GetCommandLineOption(const wchar_t* name);
+	// 렌더 경로 실행 인자 (--deferred, --clustered, --shadow-priority = 1|0, --ssao = 1|0) 를 설정에 반영. 에디터·게임이 같이 씀.
+	static void ApplyRenderPathOptions(RenderSettings& settings);
 
 private:
-    Config m_config;
-    Engine m_engine;
-    Project m_project;
-    ScriptModule m_scripts;   // 소멸자는 DLL 을 내리지 않음 — 엔진이 씬을 비우는 시점이 더 늦을 수 있음
+	void ResolveProject();   // 프로젝트 파일 찾기 → Paths 루트 설정
+	bool LoadConfig();       // Assets\Config\engine.ini 를 읽고 실행 인자로 덮어씀
+	void InitLogger();       // 설정의 [log] 로 Logger 를 엶
+	bool InitMainWindow();
+	bool InitGUI();
 
-    int m_screenWidth = 1280;   // 클라이언트 영역 크기 (설정 engine.width/height)
-    int m_screenHeight = 720;
-    HWND m_mainWindow = nullptr;
+private:
+	Config m_config;
+	Engine m_engine;
+	Project m_project;
+	ScriptModule m_scripts;   // 소멸자는 DLL 을 내리지 않음 — 엔진이 씬을 비우는 시점이 더 늦을 수 있음
 
-    // 초기화가 도중에 실패해도 소멸자가 안전하게 동작하도록, 실제로 초기화된 것만 기록해 두고 그것만 되돌림.
-    bool m_guiWin32Initialized = false;
-    bool m_guiContextCreated = false;
-    bool m_comInitialized = false;   // CoInitializeEx (WIC)
+	int m_screenWidth = 1280;   // 클라이언트 영역 크기 (설정 engine.width/height)
+	int m_screenHeight = 720;
+	HWND m_mainWindow = nullptr;
+
+	// 초기화가 도중에 실패해도 소멸자가 안전하게 동작하도록, 실제로 초기화된 것만 기록해 두고 그것만 되돌림.
+	bool m_guiWin32Initialized = false;
+	bool m_guiContextCreated = false;
+	bool m_comInitialized = false;   // CoInitializeEx (WIC)
 };

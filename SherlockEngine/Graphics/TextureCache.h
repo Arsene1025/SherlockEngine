@@ -4,7 +4,10 @@
 #include <unordered_map>
 #include "RHI/Handle.h"
 
-namespace RHI { class Device; }
+namespace RHI
+{
+	class Device;
+}
 class Scene;
 
 // 이름 → 텍스처 핸들 캐시. Renderer 에서 떼어 낸 것 — 텍스처를 읽고 만들고 버리는 일은 "프레임을 그리는

@@ -6,9 +6,9 @@
 #include <DirectXMath.h>
 #include "Editor/ContentBrowser.h"
 #include "Editor/GameBuilder.h"
-#include "App/AppBase.h"          // Project
+#include "App/AppBase.h"   // Project
 #include <vector>
-#include "Scene/Camera.h"          // 카메라 미리보기용 임시 카메라
+#include "Scene/Camera.h"   // 카메라 미리보기용 임시 카메라
 
 class Engine;
 class Scene;
@@ -26,32 +26,32 @@ class Editor
 public:
 	struct Callbacks
 	{
-		std::function<void(int)> switchScene;                  // 0 데모 (헬멧·Sponza 는 메뉴에서 뺌 — 프로젝트의 Scenes\DamagedHelmet.json·Sponza.json 을 콘텐츠 브라우저에서 엶. 1·2 는 F11 순환·--scene 용으로 남김)
+		std::function<void(int)> switchScene;   // 0 데모 (헬멧·Sponza 는 메뉴에서 뺌 — 프로젝트의 Scenes\DamagedHelmet.json·Sponza.json 을 콘텐츠 브라우저에서 엶. 1·2 는 F11 순환·--scene 용으로 남김)
 		std::function<bool(const std::wstring&)> saveScene;
 		std::function<bool(const std::wstring&)> loadScene;
-		std::function<void()> newScene;                       // 바닥만 있는 새 씬
-		std::function<void(int)> addPrimitive;                 // 0 구, 1 큐브, 2 원기둥, 3 평면 — 원점 위에 기본 재질로 생성. 4 카메라 오브젝트 (11-C, 현재 에디터 시점 그대로)
-		std::function<void(int)> deleteObject;                 // 오브젝트 인덱스
+		std::function<void()> newScene;          // 바닥만 있는 새 씬
+		std::function<void(int)> addPrimitive;   // 0 구, 1 큐브, 2 원기둥, 3 평면 — 원점 위에 기본 재질로 생성. 4 카메라 오브젝트 (11-C, 현재 에디터 시점 그대로)
+		std::function<void(int)> deleteObject;   // 오브젝트 인덱스
 		// 콘텐츠 브라우저. 모델(Assets 상대 경로)을 position 에 놓음 — 모델의 바닥면이 position.y 에 닿도록.
 		std::function<void(const std::wstring& relativePath, const DirectX::XMFLOAT3& position)> placeModel;
 		// 재생. 상태(스냅샷·Scene::BeginPlay)는 앱이 갖고, 에디터는 버튼과 표시만 담당함.
-		std::function<void()> play;        // Editing → Playing (씬 스냅샷)
-		std::function<void()> pauseToggle; // Playing ↔ Paused
-		std::function<void()> stop;        // → Editing (스냅샷 복원)
-		std::function<void()> stepFrame;   // Paused 에서 한 프레임
+		std::function<void()> play;          // Editing → Playing (씬 스냅샷)
+		std::function<void()> pauseToggle;   // Playing ↔ Paused
+		std::function<void()> stop;          // → Editing (스냅샷 복원)
+		std::function<void()> stepFrame;     // Paused 에서 한 프레임
 		// 프로젝트. Project 는 앱(AppBase)이 갖고, 에디터는 런처·메뉴만 담당함.
 		std::function<bool(const std::wstring& pathOrDir)> openProject;
 		std::function<bool(const std::wstring& parentDir, const std::string& name, std::string& error)> newProject;   // 폴더·솔루션·기본 씬을 만든 뒤 엶
-		std::function<void()> buildScripts;                  // 프로젝트 스크립트 DLL 을 MSBuild 로 빌드하고 다시 올림
-		std::function<bool()> saveProject;                   // .sherlock 저장 (시작 씬 등)
+		std::function<void()> buildScripts;                                                                           // 프로젝트 스크립트 DLL 을 MSBuild 로 빌드하고 다시 올림
+		std::function<bool()> saveProject;                                                                            // .sherlock 저장 (시작 씬 등)
 		// 되돌리기와 오브젝트 명령. 구조를 바꾸는 명령(추가·삭제·모델·프리팹·불러오기·복제)은 앱이 명령 큐에 넣었다가
 		// 위젯을 모두 그린 뒤(OnGUI 끝)에 실행함 — 그리는 도중에 오브젝트 벡터가 바뀌지 않게 하려는 것임.
 		// 그래서 호출한 직후에는 결과가 아직 없음: 새 오브젝트의 선택·상태 메시지는 명령이 실행될 때 앱이
 		// Editor::SetSelectedObject / SetMessage 로 정함.
 		std::function<void()> undo;
 		std::function<void()> redo;
-		std::function<void(int)> duplicateObject;              // 오브젝트 인덱스. 복제본은 원본과 같은 부모 아래 생기고 선택됨
-		std::function<void(int)> savePrefab;                   // 오브젝트 인덱스 → <프로젝트 Assets>\Prefabs\<이름>.prefab
+		std::function<void(int)> duplicateObject;   // 오브젝트 인덱스. 복제본은 원본과 같은 부모 아래 생기고 선택됨
+		std::function<void(int)> savePrefab;        // 오브젝트 인덱스 → <프로젝트 Assets>\Prefabs\<이름>.prefab
 		std::function<void(const std::wstring& relativePath, const DirectX::XMFLOAT3& position)> instantiatePrefab;
 	};
 
@@ -83,7 +83,12 @@ public:
 		bool hasSolution = false;
 	};
 
-	enum class PlayState : uint8_t { Editing, Playing, Paused };
+	enum class PlayState : uint8_t
+	{
+		Editing,
+		Playing,
+		Paused
+	};
 
 	Editor();
 
@@ -101,13 +106,26 @@ public:
 	// 선택은 인덱스(m_selected)로 쓰지만 ID 로도 기억함 — 오브젝트가 지워지거나 되돌리기·재생 중 Destroy 로
 	// 순서가 바뀌어도 같은 오브젝트를 따라감. 밖에서 인덱스를 바꾸면(SetSelectedObject) 다음 프레임에 그
 	// 오브젝트의 ID 가 새 선택이 됨.
-	void SetSelectedObject(int index) { m_selected = index; m_selectedPrev = -2; }
-	void ClearSelection() { m_selected = -1; m_selectedPrev = -2; m_selectedLight = -1; }
+	void SetSelectedObject(int index)
+	{
+		m_selected = index;
+		m_selectedPrev = -2;
+	}
+	void ClearSelection()
+	{
+		m_selected = -1;
+		m_selectedPrev = -2;
+		m_selectedLight = -1;
+	}
 	uint64_t GetSelectedId() const { return m_selectedId; }
 	int GetSelectedLight() const { return m_selectedLight; }
 	// 씬 뷰 조명 아이콘: All = 전부, SelectedOnly = 고른 조명 하나만 (조명이 수천 개인 씬에서 화면·GUI 시간을 덜 먹게).
 	// SelectedOnly 에서는 클릭 선택도 그 아이콘만 대상이므로 조명은 Lights 패널에서 고름. Gizmo 메뉴에서 바꿈
-	enum class LightIconMode { All = 0, SelectedOnly = 1 };
+	enum class LightIconMode
+	{
+		All = 0,
+		SelectedOnly = 1
+	};
 	void SetLightIconMode(LightIconMode mode) { m_lightIconMode = mode; }
 	void SetMessage(const std::string& message) { m_lastMessage = message; }   // 메뉴 바의 상태 문구. 명령 큐에서 실행된 명령이 결과를 알릴 때 씀
 	// 자동 검증용: 클릭과 같은 코드 경로로 (u, v) 픽셀의 오브젝트를 고름.
@@ -120,19 +138,23 @@ public:
 	// 콘텐츠 브라우저의 에셋을 끌고 있는 동안 참. 이때 앱의 카메라 컨트롤러는 RMB 룩을 시작하지 않음.
 	bool IsAssetDragActive() const { return m_assetDragActive; }
 	ContentBrowser& GetContentBrowser() { return m_contentBrowser; }
-	void FocusContentBrowser() { showContentBrowser = true; m_focusContentBrowserFrames = 3; }   // 도킹 탭을 앞으로 가져옴 (자동 검증 스크린샷용)
+	void FocusContentBrowser()
+	{
+		showContentBrowser = true;
+		m_focusContentBrowserFrames = 3;
+	}   // 도킹 탭을 앞으로 가져옴 (자동 검증 스크린샷용)
 
 	bool showConsole = true;
 	bool showContentBrowser = true;
 	PlayState playState = PlayState::Editing;   // 앱이 매 프레임 넣어 줌 (표시용)
-	float timeScale = 1.0f;                       // 씬 뷰 툴바의 슬라이더. 앱이 읽어 dt 에 곱함
-	ProjectInfo project;                          // 앱이 매 프레임 넣어 줌
-	HistoryInfo history;                          // 앱이 매 프레임 넣어 줌
-	std::string* projectStartScene = nullptr;     // Project Settings 팝업이 편집하는 시작 씬 (앱의 Project::startScene)
-	void OnProjectChanged();                      // 앱이 프로젝트를 열거나 바꾼 뒤 호출: 브라우저·선택·경로 초기화
+	float timeScale = 1.0f;                     // 씬 뷰 툴바의 슬라이더. 앱이 읽어 dt 에 곱함
+	ProjectInfo project;                        // 앱이 매 프레임 넣어 줌
+	HistoryInfo history;                        // 앱이 매 프레임 넣어 줌
+	std::string* projectStartScene = nullptr;   // Project Settings 팝업이 편집하는 시작 씬 (앱의 Project::startScene)
+	void OnProjectChanged();                    // 앱이 프로젝트를 열거나 바꾼 뒤 호출: 브라우저·선택·경로 초기화
 	void ShowLauncher() { m_openLauncher = true; }
 	float cameraMoveSpeed = 10.0f;   // Render Settings 의 카메라 패널이 편집하고 앱의 컨트롤러가 읽음
-	std::wstring scenePath;   // 저장/로드 경로 (메뉴의 텍스트 필드)
+	std::wstring scenePath;          // 저장/로드 경로 (메뉴의 텍스트 필드)
 
 private:
 	void DrawMenuBar(Engine& engine, const Callbacks& callbacks);
@@ -158,18 +180,18 @@ private:
 	// 조명 선택·이동. 조명은 GameObject 가 아니라 Scene::GetLights() 의 값이라 m_selectedLight(인덱스)로 따로
 	// 선택함 (m_selected 와 배타적). 되돌리기는 SaveEditState 가 조명도 직렬화하므로 기즈모를 잡은 동안 busy
 	// 로 잡히는 것만으로 한 단계가 만들어짐.
-	void DrawCascadeFrustums(Engine& engine, float x, float y, float width, float height);   // CSM 디버그: 캐스케이드 절두체 와이어 (Freeze 중일 때만)
-	void DrawLightIcons(Engine& engine, float x, float y, float width, float height);   // 씬 뷰의 조명 아이콘 (Point 원 / Spot 원뿔 / Directional 화살표)
-	void DrawLightGizmo(Engine& engine, float x, float y, float width, float height);    // 선택한 조명의 이동(Point·Spot)·회전(Spot·Directional) 기즈모
+	void DrawCascadeFrustums(Engine& engine, float x, float y, float width, float height);                          // CSM 디버그: 캐스케이드 절두체 와이어 (Freeze 중일 때만)
+	void DrawLightIcons(Engine& engine, float x, float y, float width, float height);                               // 씬 뷰의 조명 아이콘 (Point 원 / Spot 원뿔 / Directional 화살표)
+	void DrawLightGizmo(Engine& engine, float x, float y, float width, float height);                               // 선택한 조명의 이동(Point·Spot)·회전(Spot·Directional) 기즈모
 	int PickLight(Engine& engine, float mouseX, float mouseY, float x, float y, float width, float height) const;   // 마우스 가까이 있는 아이콘의 조명 인덱스, 없으면 -1
 	void SelectLight(int index);
 	int m_selectedLight = -1;
 	LightIconMode m_lightIconMode = LightIconMode::All;
-	int m_selectedLightPrev = -1;       // 지난 프레임 끝의 m_selectedLight (Lights 패널에서 바뀐 것을 SyncSelection 이 알아채려고)
-	bool m_openSelectedLight = false;   // 다음 Lights 패널 그리기에서 그 노드를 펼침
-	void DrawCameraPreview(Engine& engine, float x, float y, float width, float height);  // 선택한 카메라의 시점을 우측 하단에 표시
-	Camera m_previewCamera;   // 선택한 CameraComponent 의 자세를 복사해 Renderer 에 넘김 (Render 까지 살아 있어야 함)
-	char m_newScriptName[64] = {};   // Inspector 의 New Script 팝업
+	int m_selectedLightPrev = -1;                                                          // 지난 프레임 끝의 m_selectedLight (Lights 패널에서 바뀐 것을 SyncSelection 이 알아채려고)
+	bool m_openSelectedLight = false;                                                      // 다음 Lights 패널 그리기에서 그 노드를 펼침
+	void DrawCameraPreview(Engine& engine, float x, float y, float width, float height);   // 선택한 카메라의 시점을 우측 하단에 표시
+	Camera m_previewCamera;                                                                // 선택한 CameraComponent 의 자세를 복사해 Renderer 에 넘김 (Render 까지 살아 있어야 함)
+	char m_newScriptName[64] = {};                                                         // Inspector 의 New Script 팝업
 	std::string m_newScriptError;
 	// File > Build Game...
 	void DrawBuildPopup();
@@ -199,10 +221,10 @@ private:
 	uint32_t m_sceneWidth = 0;
 	uint32_t m_sceneHeight = 0;
 	int m_selected = -1;
-	int m_selectedPrev = -2;       // 지난 프레임 끝의 m_selected. -2 = "밖에서 바꿨으니 인덱스에서 ID 를 다시 구하라"
+	int m_selectedPrev = -2;   // 지난 프레임 끝의 m_selected. -2 = "밖에서 바꿨으니 인덱스에서 ID 를 다시 구하라"
 	uint64_t m_selectedId = 0;
 	void SyncSelection(Scene& scene);
-	int m_gizmoOperation = 0;   // 0 이동, 1 회전, 2 크기
+	int m_gizmoOperation = 0;    // 0 이동, 1 회전, 2 크기
 	bool m_gizmoWorld = false;   // 기본 로컬(오브젝트 축). 툴바의 Local/World 로 고름
 	bool m_layoutBuilt = false;
 	char m_pathBuffer[260] = {};

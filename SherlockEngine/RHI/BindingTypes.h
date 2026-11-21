@@ -17,19 +17,19 @@
 
 enum class BindingType : uint8_t
 {
-	ConstantBuffer,   // b#  (CBV)
-	ShaderResource,   // t#  (SRV) — 텍스처
-	Sampler,          // s#
-	BufferResource,   // t#  (SRV) — 구조체 버퍼 (HLSL StructuredBuffer<T>). ResourceBinding::buffer 에 BufferBind_ShaderResource 버퍼를 꽂음
-	UnorderedAccess,  // u#  (UAV) — 텍스처 (HLSL RWTexture2D<T>). ResourceBinding::texture + mip 에 TextureBind_UnorderedAccess 텍스처를 꽂음.
-	                  //       컴퓨트 스테이지 전용 (D3D11 의 PS UAV 는 OMSetRenderTargetsAndUnorderedAccessViews 가 따로 필요해 지원하지 않음)
-	BufferUnorderedAccess, // u# (UAV) — 구조체 버퍼 (HLSL RWStructuredBuffer<T>). ResourceBinding::buffer 에 BufferBind_UnorderedAccess
-	                  //       버퍼를 꽂음. 텍스처 UAV 와 같은 u# 공간·같은 상한(kMaxUavRegister), 컴퓨트 전용
+	ConstantBuffer,          // b#  (CBV)
+	ShaderResource,          // t#  (SRV) — 텍스처
+	Sampler,                 // s#
+	BufferResource,          // t#  (SRV) — 구조체 버퍼 (HLSL StructuredBuffer<T>). ResourceBinding::buffer 에 BufferBind_ShaderResource 버퍼를 꽂음
+	UnorderedAccess,         // u#  (UAV) — 텍스처 (HLSL RWTexture2D<T>). ResourceBinding::texture + mip 에 TextureBind_UnorderedAccess 텍스처를 꽂음.
+							 //       컴퓨트 스테이지 전용 (D3D11 의 PS UAV 는 OMSetRenderTargetsAndUnorderedAccessViews 가 따로 필요해 지원하지 않음)
+	BufferUnorderedAccess,   // u# (UAV) — 구조체 버퍼 (HLSL RWStructuredBuffer<T>). ResourceBinding::buffer 에 BufferBind_UnorderedAccess
+							 //       버퍼를 꽂음. 텍스처 UAV 와 같은 u# 공간·같은 상한(kMaxUavRegister), 컴퓨트 전용
 	// 아래 둘은 뒤에 붙임 (기존 값의 번호를 바꾸지 않음).
-	RawBufferResource, // t# (SRV) — raw 버퍼 (HLSL ByteAddressBuffer). ResourceBinding::buffer 에 BufferBind_Raw | BufferBind_ShaderResource
-	                  //       버퍼를 꽂음. 텍스처와 같은 t# 공간. 그래픽스·컴퓨트 어디서든 읽을 수 있음
-	RawBufferUnorderedAccess, // u# (UAV) — raw 버퍼 (HLSL RWByteAddressBuffer). ResourceBinding::buffer 에 BufferBind_Raw |
-	                  //       BufferBind_UnorderedAccess 버퍼를 꽂음. 같은 u# 공간, 컴퓨트 전용 (간접 인자를 GPU 가 쓰는 경로)
+	RawBufferResource,          // t# (SRV) — raw 버퍼 (HLSL ByteAddressBuffer). ResourceBinding::buffer 에 BufferBind_Raw | BufferBind_ShaderResource
+								//       버퍼를 꽂음. 텍스처와 같은 t# 공간. 그래픽스·컴퓨트 어디서든 읽을 수 있음
+	RawBufferUnorderedAccess,   // u# (UAV) — raw 버퍼 (HLSL RWByteAddressBuffer). ResourceBinding::buffer 에 BufferBind_Raw |
+								//       BufferBind_UnorderedAccess 버퍼를 꽂음. 같은 u# 공간, 컴퓨트 전용 (간접 인자를 GPU 가 쓰는 경로)
 };
 
 // 버퍼를 꽂는 슬롯인가 (그 밖은 텍스처 또는 샘플러).

@@ -11,5 +11,5 @@
 // AppBase::Initialize 가 설정 파일을 읽은 뒤에 함.
 int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
 {
-    return RunEditor();
+	return RunEditor();
 }

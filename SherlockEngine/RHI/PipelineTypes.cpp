@@ -64,7 +64,10 @@ namespace
 	// float를 비트 패턴(uint32)으로 바꿔 섞음. 반올림 오차 없이 "같은 값 = 같은 비트"가 됨.
 	inline uint64_t HashFloat(uint64_t seed, float f)
 	{
-		if (f == 0.0f) f = 0.0f;   // -0.0f를 +0.0f로
+		if (f == 0.0f)
+		{
+			f = 0.0f;   // -0.0f를 +0.0f로
+		}
 		uint32_t bits = 0;
 		std::memcpy(&bits, &f, sizeof(bits));
 		return HashCombine(seed, bits);

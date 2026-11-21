@@ -7,7 +7,9 @@ using namespace DirectX;   // 이 파일 안에서만
 bool GameObject::IsDescendantOf(const GameObject* ancestor) const
 {
 	for (const GameObject* p = parent; p != nullptr; p = p->parent)
+	{
 		if (p == ancestor) return true;
+	}
 	return false;
 }
 
@@ -26,9 +28,15 @@ bool GameObject::SetParent(GameObject* newParent, bool keepWorld)
 		siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
 	}
 	parent = newParent;
-	if (parent != nullptr) parent->children.push_back(this);
+	if (parent != nullptr)
+	{
+		parent->children.push_back(this);
+	}
 
-	if (keepWorld) SetWorldMatrix(world);
+	if (keepWorld)
+	{
+		SetWorldMatrix(world);
+	}
 	return true;
 }
 
@@ -89,6 +97,9 @@ void GameObject::DetachFromHierarchy()
 		siblings.erase(std::remove(siblings.begin(), siblings.end(), this), siblings.end());
 		parent = nullptr;
 	}
-	for (GameObject* child : children) child->parent = nullptr;
+	for (GameObject* child : children)
+	{
+		child->parent = nullptr;
+	}
 	children.clear();
 }

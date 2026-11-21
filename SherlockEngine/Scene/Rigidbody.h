@@ -13,7 +13,12 @@ public:
 	void Start() override;
 	void FixedUpdate(float dt) override;
 
-	void AddImpulse(float x, float y, float z) { m_velocity.x += x; m_velocity.y += y; m_velocity.z += z; }   // 즉시 속도 변화 (질량 1)
+	void AddImpulse(float x, float y, float z)
+	{
+		m_velocity.x += x;
+		m_velocity.y += y;
+		m_velocity.z += z;
+	}   // 즉시 속도 변화 (질량 1)
 	void SetVelocity(const DirectX::XMFLOAT3& v) { m_velocity = v; }
 	const DirectX::XMFLOAT3& GetVelocity() const { return m_velocity; }
 	bool IsGrounded() const { return m_grounded; }
@@ -21,7 +26,7 @@ public:
 	DirectX::XMFLOAT3 initialVelocity = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
 	float gravity = -9.8f;
 	float bounciness = 0.6f;
-	float radius = 1.5f;     // 바닥에 닿는 아래쪽 반경 (구 반지름 / 큐브 절반)
+	float radius = 1.5f;   // 바닥에 닿는 아래쪽 반경 (구 반지름 / 큐브 절반)
 	float groundY = 0.0f;
 	float drag = 0.1f;
 

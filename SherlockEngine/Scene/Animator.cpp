@@ -70,7 +70,11 @@ public:
 		const AnimationClip* found = nullptr;
 		for (const AnimationClip& candidate : model->animations)
 		{
-			if (clip.empty() || candidate.name == clip) { found = &candidate; break; }
+			if (clip.empty() || candidate.name == clip)
+			{
+				found = &candidate;
+				break;
+			}
 		}
 		if (found == nullptr)
 		{
@@ -89,8 +93,7 @@ public:
 		{
 			m_skinMode = true;
 			m_clip = found;
-			Log::Info("Animator '%s': 클립 '%s' 스킨 재생 (길이 %.2f초, 채널 %zu개, 스킨 메시 오브젝트 %zu개)", GetOwner().GetName().c_str(), found->name.c_str(),
-				found->duration, found->channels.size(), m_targetScratch.size());
+			Log::Info("Animator '%s': 클립 '%s' 스킨 재생 (길이 %.2f초, 채널 %zu개, 스킨 메시 오브젝트 %zu개)", GetOwner().GetName().c_str(), found->name.c_str(), found->duration, found->channels.size(), m_targetScratch.size());
 			m_targetScratch.clear();
 			return;
 		}
@@ -129,8 +132,18 @@ public:
 		float t = m_time;
 		if (duration > 0.0f)
 		{
-			if (loop) { t = fmodf(t, duration); if (t < 0.0f) t += duration; }
-			else t = (std::clamp)(t, 0.0f, duration);
+			if (loop)
+			{
+				t = fmodf(t, duration);
+				if (t < 0.0f)
+				{
+					t += duration;
+				}
+			}
+			else
+			{
+				t = (std::clamp)(t, 0.0f, duration);
+			}
 		}
 
 		if (m_skinMode)
@@ -149,18 +162,19 @@ public:
 			switch (channel.path)
 			{
 			case AnimationPath::Translation: translation = XMFLOAT3(value[0], value[1], value[2]); break;
-			case AnimationPath::Rotation: rotation = XMFLOAT4(value[0], value[1], value[2], value[3]); break;
-			case AnimationPath::Scale: scale = XMFLOAT3(value[0], value[1], value[2]); break;
-			default: break;
+			case AnimationPath::Rotation:    rotation = XMFLOAT4(value[0], value[1], value[2], value[3]); break;
+			case AnimationPath::Scale:       scale = XMFLOAT3(value[0], value[1], value[2]); break;
+			default:                         break;
 			}
 		}
 
 		const XMVECTOR q = XMQuaternionNormalize(XMLoadFloat4(&rotation));
 		GetOwner().GetTransform().SetPreTransform(
-			XMMatrixScaling(scale.x, scale.y, scale.z) * XMMatrixRotationQuaternion(q) * XMMatrixTranslation(translation.x, translation.y, translation.z));
+			XMMatrixScaling(scale.x, scale.y, scale.z) * XMMatrixRotationQuaternion(q) * XMMatrixTranslation(translation.x, translation.y, translation.z)
+		);
 	}
 
-	std::string clip;       // 비우면 첫 클립
+	std::string clip;   // 비우면 첫 클립
 	bool loop = true;
 	float speed = 1.0f;
 
@@ -200,7 +214,10 @@ private:
 			{
 				int meshNode = -1;
 				target.skin = FindMeshSkin(*m_model, source->meshIndex, meshNode);   // 편집 모드의 레스트 포즈(ApplyRestSkinPoses)와 같은 인스턴스를 고름
-				if (target.skin != nullptr) XMStoreFloat4x4(&target.meshRest, meshNode >= 0 ? ComputeNodeGlobal(m_rest, meshNode) : XMMatrixIdentity());
+				if (target.skin != nullptr)
+				{
+					XMStoreFloat4x4(&target.meshRest, meshNode >= 0 ? ComputeNodeGlobal(m_rest, meshNode) : XMMatrixIdentity());
+				}
 			}
 			found = m_targets.emplace(mesh, target).first;
 		}
@@ -211,7 +228,10 @@ private:
 	// (오브젝트마다 구동하는 Animator 가 정확히 하나). 오브젝트가 삭제되거나 계층이 바뀔 수 있어서 프레임마다 다시 모으고 포인터를 오래 들고 있지 않음.
 	void CollectSkinTargets(GameObject& object, std::vector<GameObject*>& out)
 	{
-		if (ResolveTarget(object) != nullptr) out.push_back(&object);
+		if (ResolveTarget(object) != nullptr)
+		{
+			out.push_back(&object);
+		}
 		for (GameObject* child : object.GetChildren())
 		{
 			if (child->GetBehaviour<Animator>() != nullptr) continue;
@@ -233,9 +253,9 @@ private:
 			switch (channel.path)
 			{
 			case AnimationPath::Translation: node.translation = XMFLOAT3(value[0], value[1], value[2]); break;
-			case AnimationPath::Rotation: node.rotation = XMFLOAT4(value[0], value[1], value[2], value[3]); break;
-			case AnimationPath::Scale: node.scale = XMFLOAT3(value[0], value[1], value[2]); break;
-			default: break;
+			case AnimationPath::Rotation:    node.rotation = XMFLOAT4(value[0], value[1], value[2], value[3]); break;
+			case AnimationPath::Scale:       node.scale = XMFLOAT3(value[0], value[1], value[2]); break;
+			default:                         break;
 			}
 		}
 		m_targetScratch.clear();
@@ -264,11 +284,28 @@ private:
 		const size_t count = channel.times.size();
 		const bool cubic = channel.interpolation == AnimationInterpolation::CubicSpline;
 		// 키 k 의 값: 보통은 values[k*c], CubicSpline 은 [입력 탄젠트, 값, 출력 탄젠트] 라 가운데
-		auto valueAt = [&](size_t k) { return &channel.values[(cubic ? k * 3 + 1 : k) * components]; };
-		auto copy = [&](const float* src) { for (size_t c = 0; c < components; ++c) value[c] = src[c]; };
+		auto valueAt = [&](size_t k)
+		{
+			return &channel.values[(cubic ? k * 3 + 1 : k) * components];
+		};
+		auto copy = [&](const float* src)
+		{
+			for (size_t c = 0; c < components; ++c)
+			{
+				value[c] = src[c];
+			}
+		};
 
-		if (t <= channel.times.front() || count == 1) { copy(valueAt(0)); return; }
-		if (t >= channel.times.back()) { copy(valueAt(count - 1)); return; }
+		if (t <= channel.times.front() || count == 1)
+		{
+			copy(valueAt(0));
+			return;
+		}
+		if (t >= channel.times.back())
+		{
+			copy(valueAt(count - 1));
+			return;
+		}
 
 		// times[k] <= t < times[k+1] 인 k
 		const size_t next = static_cast<size_t>(std::upper_bound(channel.times.begin(), channel.times.end(), t) - channel.times.begin());
@@ -277,7 +314,11 @@ private:
 		const float span = t1 - t0;
 		const float u = span > 0.0f ? (t - t0) / span : 0.0f;
 
-		if (channel.interpolation == AnimationInterpolation::Step) { copy(valueAt(k)); return; }
+		if (channel.interpolation == AnimationInterpolation::Step)
+		{
+			copy(valueAt(k));
+			return;
+		}
 
 		if (cubic)
 		{
@@ -285,10 +326,12 @@ private:
 			const float* v0 = valueAt(k);
 			const float* b0 = &channel.values[(k * 3 + 2) * components];   // k 의 출력 탄젠트
 			const float* v1 = valueAt(next);
-			const float* a1 = &channel.values[(next * 3) * components];    // next 의 입력 탄젠트
+			const float* a1 = &channel.values[(next * 3) * components];   // next 의 입력 탄젠트
 			const float u2 = u * u, u3 = u2 * u;
 			for (size_t c = 0; c < components; ++c)
+			{
 				value[c] = (2 * u3 - 3 * u2 + 1) * v0[c] + (u3 - 2 * u2 + u) * span * b0[c] + (-2 * u3 + 3 * u2) * v1[c] + (u3 - u2) * span * a1[c];
+			}
 			if (channel.path == AnimationPath::Rotation)
 			{
 				XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(value), XMQuaternionNormalize(XMLoadFloat4(reinterpret_cast<const XMFLOAT4*>(value))));
@@ -303,17 +346,20 @@ private:
 			XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(value), XMQuaternionSlerp(XMVectorSet(v0[0], v0[1], v0[2], v0[3]), XMVectorSet(v1[0], v1[1], v1[2], v1[3]), u));
 			return;
 		}
-		for (size_t c = 0; c < components; ++c) value[c] = v0[c] + (v1[c] - v0[c]) * u;
+		for (size_t c = 0; c < components; ++c)
+		{
+			value[c] = v0[c] + (v1[c] - v0[c]) * u;
+		}
 	}
 
 	// 스킨 모드 상태
 	const Model* m_model = nullptr;
-	bool m_skinMode = false;                 // false 면 단일 노드 모드
+	bool m_skinMode = false;                                 // false 면 단일 노드 모드
 	std::unordered_map<const Mesh*, SkinTarget> m_targets;   // 메시별 스킨·메시 노드 기본 월드 캐시 (Start 에서 비움)
-	std::vector<GameObject*> m_targetScratch;   // CollectSkinTargets 결과. 프레임 안에서만 씀 (오래 들고 있지 않음)
-	std::vector<ModelNode> m_rest;           // 모델의 기본 노드 TRS
-	std::vector<ModelNode> m_current;        // 이번 프레임에 채널이 덮은 노드 TRS
-	std::vector<XMFLOAT4X4> m_global;         // 노드 월드 (UpdateSkin 이 evalOrder 의 노드만 채움)
+	std::vector<GameObject*> m_targetScratch;                // CollectSkinTargets 결과. 프레임 안에서만 씀 (오래 들고 있지 않음)
+	std::vector<ModelNode> m_rest;                           // 모델의 기본 노드 TRS
+	std::vector<ModelNode> m_current;                        // 이번 프레임에 채널이 덮은 노드 TRS
+	std::vector<XMFLOAT4X4> m_global;                        // 노드 월드 (UpdateSkin 이 evalOrder 의 노드만 채움)
 
 	const AnimationClip* m_clip = nullptr;   // AssetManager 캐시의 모델이 소유함. Start 마다 다시 찾음
 	ModelNode m_base;                        // 채널이 덮지 않는 성분의 기본값 (노드의 원래 TRS)

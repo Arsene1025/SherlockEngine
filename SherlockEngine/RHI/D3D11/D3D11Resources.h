@@ -13,7 +13,7 @@
 
 struct D3D11Buffer
 {
-	BufferDesc desc;               // debugName은 아래 name으로 복사되고 여기서는 nullptr
+	BufferDesc desc;   // debugName은 아래 name으로 복사되고 여기서는 nullptr
 	std::string name;
 	// Dynamic 버퍼는 프레임 수만큼 복제함(GraphicsConfig.h 참고). 나머지는 [0]만 씀.
 	ComPtr<ID3D11Buffer> buffers[kFrameCount];
@@ -47,7 +47,10 @@ struct D3D11Buffer
 				viewDesc.BufferEx.NumElements = desc.size / 4;
 				viewDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
 				const HRESULT hr = device->CreateShaderResourceView(buffers[0].Get(), &viewDesc, srvs[0].GetAddressOf());
-				if (FAILED(hr)) Log::Error("raw 버퍼 SRV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+				if (FAILED(hr))
+				{
+					Log::Error("raw 버퍼 SRV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+				}
 			}
 			return srvs[0].Get();
 		}
@@ -61,7 +64,10 @@ struct D3D11Buffer
 			viewDesc.Buffer.FirstElement = 0;
 			viewDesc.Buffer.NumElements = desc.size / desc.stride;
 			const HRESULT hr = device->CreateShaderResourceView(buffers[slot].Get(), &viewDesc, srvs[slot].GetAddressOf());
-			if (FAILED(hr)) Log::Error("구조체 버퍼 SRV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+			if (FAILED(hr))
+			{
+				Log::Error("구조체 버퍼 SRV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+			}
 		}
 		return srvs[slot].Get();
 	}
@@ -81,7 +87,10 @@ struct D3D11Buffer
 			viewDesc.Buffer.NumElements = raw ? desc.size / 4 : desc.size / desc.stride;
 			viewDesc.Buffer.Flags = raw ? D3D11_BUFFER_UAV_FLAG_RAW : 0;
 			const HRESULT hr = device->CreateUnorderedAccessView(buffers[0].Get(), &viewDesc, uav.GetAddressOf());
-			if (FAILED(hr)) Log::Error("구조체 버퍼 UAV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+			if (FAILED(hr))
+			{
+				Log::Error("구조체 버퍼 UAV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+			}
 		}
 		return uav.Get();
 	}
@@ -92,7 +101,10 @@ struct D3D11Buffer
 // D3D12도 규칙이 정확히 같음.
 namespace D3D11DepthFormat
 {
-	inline bool IsDepth(DXGI_FORMAT f) { return f == DXGI_FORMAT_D32_FLOAT || f == DXGI_FORMAT_D24_UNORM_S8_UINT; }
+	inline bool IsDepth(DXGI_FORMAT f)
+	{
+		return f == DXGI_FORMAT_D32_FLOAT || f == DXGI_FORMAT_D24_UNORM_S8_UINT;
+	}
 	inline DXGI_FORMAT Typeless(DXGI_FORMAT f)
 	{
 		switch (f)
@@ -118,8 +130,8 @@ struct D3D11Texture
 	TextureDesc desc;
 	std::string name;
 	ComPtr<ID3D11Texture2D> texture;
-	bool typeless = false;                        // 깊이 + SRV: 리소스가 TYPELESS 로 만들어짐
-	ResourceState state = ResourceState::Common;  // CommandList::Barrier 가 추적 (D3D11 에서는 검사용)
+	bool typeless = false;                         // 깊이 + SRV: 리소스가 TYPELESS 로 만들어짐
+	ResourceState state = ResourceState::Common;   // CommandList::Barrier 가 추적 (D3D11 에서는 검사용)
 
 	// 뷰는 처음 요청될 때 만듦. bindFlags에 없는 뷰를 요청하면 nullptr를 돌려줌.
 	ComPtr<ID3D11RenderTargetView> rtv;       // desc.format 그대로
@@ -150,7 +162,10 @@ struct D3D11Texture
 			{
 				hr = device->CreateRenderTargetView(texture.Get(), nullptr, target.GetAddressOf());
 			}
-			if (FAILED(hr)) Log::Error("RTV 생성 실패 (%s, srgb=%d). %s", name.c_str(), srgbView ? 1 : 0, Log::HrToString(hr).c_str());
+			if (FAILED(hr))
+			{
+				Log::Error("RTV 생성 실패 (%s, srgb=%d). %s", name.c_str(), srgbView ? 1 : 0, Log::HrToString(hr).c_str());
+			}
 		}
 		return target.Get();
 	}
@@ -172,7 +187,10 @@ struct D3D11Texture
 			{
 				hr = device->CreateDepthStencilView(texture.Get(), nullptr, dsv.GetAddressOf());
 			}
-			if (FAILED(hr)) Log::Error("DSV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+			if (FAILED(hr))
+			{
+				Log::Error("DSV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+			}
 		}
 		return dsv.Get();
 	}
@@ -189,9 +207,15 @@ struct D3D11Texture
 			viewDesc.Format = format;
 			viewDesc.ViewDimension = desc.sampleCount > 1 ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
 			viewDesc.Flags = D3D11_DSV_READ_ONLY_DEPTH;
-			if (format == DXGI_FORMAT_D24_UNORM_S8_UINT) viewDesc.Flags |= D3D11_DSV_READ_ONLY_STENCIL;
+			if (format == DXGI_FORMAT_D24_UNORM_S8_UINT)
+			{
+				viewDesc.Flags |= D3D11_DSV_READ_ONLY_STENCIL;
+			}
 			const HRESULT hr = device->CreateDepthStencilView(texture.Get(), &viewDesc, dsvReadOnly.GetAddressOf());
-			if (FAILED(hr)) Log::Error("읽기 전용 DSV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+			if (FAILED(hr))
+			{
+				Log::Error("읽기 전용 DSV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+			}
 		}
 		return dsvReadOnly.Get();
 	}
@@ -226,7 +250,10 @@ struct D3D11Texture
 				// nullptr desc = 텍스처 포맷 그대로, 모든 밉 레벨. sRGB 포맷이면 샘플링할 때 선형으로 변환됨.
 				hr = device->CreateShaderResourceView(texture.Get(), nullptr, srv.GetAddressOf());
 			}
-			if (FAILED(hr)) Log::Error("SRV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+			if (FAILED(hr))
+			{
+				Log::Error("SRV 생성 실패 (%s). %s", name.c_str(), Log::HrToString(hr).c_str());
+			}
 		}
 		return srv.Get();
 	}
@@ -236,7 +263,10 @@ struct D3D11Texture
 	ID3D11UnorderedAccessView* GetUAV(ID3D11Device* device, uint32_t mip)
 	{
 		if (!texture || !(desc.bindFlags & TextureBind_UnorderedAccess) || mip >= desc.mipLevels) return nullptr;
-		if (uavs.size() < desc.mipLevels) uavs.resize(desc.mipLevels);
+		if (uavs.size() < desc.mipLevels)
+		{
+			uavs.resize(desc.mipLevels);
+		}
 		ComPtr<ID3D11UnorderedAccessView>& target = uavs[mip];
 		if (!target)
 		{
@@ -245,7 +275,10 @@ struct D3D11Texture
 			viewDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
 			viewDesc.Texture2D.MipSlice = mip;
 			const HRESULT hr = device->CreateUnorderedAccessView(texture.Get(), &viewDesc, target.GetAddressOf());
-			if (FAILED(hr)) Log::Error("UAV 생성 실패 (%s, 밉 %u). %s", name.c_str(), mip, Log::HrToString(hr).c_str());
+			if (FAILED(hr))
+			{
+				Log::Error("UAV 생성 실패 (%s, 밉 %u). %s", name.c_str(), mip, Log::HrToString(hr).c_str());
+			}
 		}
 		return target.Get();
 	}
@@ -257,7 +290,7 @@ private:
 		{
 		case DXGI_FORMAT_R8G8B8A8_UNORM: return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 		case DXGI_FORMAT_B8G8R8A8_UNORM: return DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
-		default: return format;
+		default:                         return format;
 		}
 	}
 };

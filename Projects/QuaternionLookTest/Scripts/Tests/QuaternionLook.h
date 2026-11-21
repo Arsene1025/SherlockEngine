@@ -25,10 +25,10 @@ public:
 	void Start() override;
 	void Update(float dt) override;
 
-	int mode = 0;                 // 0: 로컬 yaw·pitch 누적 (roll 누적), 1: 월드 yaw + 로컬 pitch (roll 0)
-	float radiusDeg = 17.0f;      // 가상 마우스 원의 반지름 (도). 한 바퀴당 roll ≈ 2π(1−cos r) rad → 17° 면 약 15.7°
-	int framesPerLoop = 120;      // 한 바퀴에 쓰는 프레임 수. dt 가 아니라 프레임 수로 진행해 자동 검증에서 결정적임
-	int logEvery = 60;            // 이 프레임마다 roll 을 로그로 남김 (0 = 안 남김)
+	int mode = 0;              // 0: 로컬 yaw·pitch 누적 (roll 누적), 1: 월드 yaw + 로컬 pitch (roll 0)
+	float radiusDeg = 17.0f;   // 가상 마우스 원의 반지름 (도). 한 바퀴당 roll ≈ 2π(1−cos r) rad → 17° 면 약 15.7°
+	int framesPerLoop = 120;   // 한 바퀴에 쓰는 프레임 수. dt 가 아니라 프레임 수로 진행해 자동 검증에서 결정적임
+	int logEvery = 60;         // 이 프레임마다 roll 을 로그로 남김 (0 = 안 남김)
 	DirectX::XMFLOAT3 startPosition = DirectX::XMFLOAT3(12.0f, 4.0f, -22.0f);
 	DirectX::XMFLOAT3 lookTarget = DirectX::XMFLOAT3(0.0f, 2.0f, 0.0f);
 

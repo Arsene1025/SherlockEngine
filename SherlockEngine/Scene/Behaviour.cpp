@@ -45,7 +45,10 @@ void BehaviourRegistry::Register(const char* typeName, Factory factory, bool isS
 
 void BehaviourRegistry::Unregister(const std::string& typeName)
 {
-	if (Entries().erase(typeName) > 0) Names().clear();
+	if (Entries().erase(typeName) > 0)
+	{
+		Names().clear();
+	}
 }
 
 std::unique_ptr<Behaviour> BehaviourRegistry::Create(const std::string& typeName)
@@ -64,7 +67,10 @@ const std::vector<std::string>& BehaviourRegistry::GetTypeNames()
 	std::vector<std::string>& names = Names();
 	if (names.empty())
 	{
-		for (const auto& entry : Entries()) names.push_back(entry.first);   // std::map 이라 이미 정렬돼 있음
+		for (const auto& entry : Entries())
+		{
+			names.push_back(entry.first);   // std::map 이라 이미 정렬돼 있음
+		}
 	}
 	return names;
 }

@@ -62,7 +62,10 @@ bool D3D12PipelineState::Create(D3D12Device& device, const PipelineStateDesc& de
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC pd = {};
 	pd.pRootSignature = m_rootLayout->rootSignature.Get();
 	pd.VS = { vs->bytecode.data(), vs->bytecode.size() };
-	if (ps) pd.PS = { ps->bytecode.data(), ps->bytecode.size() };   // 없으면 깊이 전용
+	if (ps)
+	{
+		pd.PS = { ps->bytecode.data(), ps->bytecode.size() };   // 없으면 깊이 전용
+	}
 	pd.BlendState = D3D12Convert::ToD3D12(desc.blend);
 	pd.SampleMask = UINT_MAX;
 	pd.RasterizerState = D3D12Convert::ToD3D12(desc.rasterizer);
@@ -168,13 +171,7 @@ PipelineHandle D3D12PipelineStateCache::GetOrCreate(D3D12Device& device, const P
 	const uint32_t index = static_cast<uint32_t>(m_states.size());
 	m_states.push_back(std::move(state));
 	m_lookup.emplace(desc, index);
-	Log::Info("PSO 생성 #%u (fill=%s, cull=%d, layouts=%u, gen=%u). 캐시 크기 %zu",
-		index,
-		desc.rasterizer.fill == FillMode::Wireframe ? "wire" : "solid",
-		static_cast<int>(desc.rasterizer.cull),
-		desc.bindingLayoutCount,
-		m_generation,
-		m_states.size());
+	Log::Info("PSO 생성 #%u (fill=%s, cull=%d, layouts=%u, gen=%u). 캐시 크기 %zu", index, desc.rasterizer.fill == FillMode::Wireframe ? "wire" : "solid", static_cast<int>(desc.rasterizer.cull), desc.bindingLayoutCount, m_generation, m_states.size());
 	return PipelineHandle{ index, m_generation };
 }
 
@@ -239,5 +236,8 @@ void D3D12PipelineStateCache::Clear(D3D12Device& device)
 	m_computeLookup.clear();
 	m_computeStates.clear();
 	++m_generation;
-	if (m_generation == 0) m_generation = 1;
+	if (m_generation == 0)
+	{
+		m_generation = 1;
+	}
 }

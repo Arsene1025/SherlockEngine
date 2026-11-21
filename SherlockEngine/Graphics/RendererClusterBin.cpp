@@ -28,12 +28,18 @@ using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
-	constexpr uint32_t kBinGroupSize = 64;                       // View·Tile·Count·Fill 의 [numthreads(64, 1, 1)]
+	constexpr uint32_t kBinGroupSize = 64;                        // View·Tile·Count·Fill 의 [numthreads(64, 1, 1)]
 	constexpr uint64_t kMaxTileMaskBytes = 64ull * 1024 * 1024;   // u2 (144 × ⌈조명 용량 / 32⌉ × 4) 상한 — 조명 약 1,170 만 개. 넘으면 CPU 경로
 
-	uint32_t MaskWords(uint32_t lights) { return (lights + 31) / 32; }   // ClusterBin.hlsli 의 BinWordCount 와 같은 식
+	uint32_t MaskWords(uint32_t lights)
+	{
+		return (lights + 31) / 32;
+	}   // ClusterBin.hlsli 의 BinWordCount 와 같은 식
 
-	uint32_t GroupsFor(uint32_t count) { return (std::max)(1u, (count + kBinGroupSize - 1) / kBinGroupSize); }
+	uint32_t GroupsFor(uint32_t count)
+	{
+		return (std::max)(1u, (count + kBinGroupSize - 1) / kBinGroupSize);
+	}
 }
 
 void Renderer::DestroyGpuClusterResources()
@@ -44,7 +50,7 @@ void Renderer::DestroyGpuClusterResources()
 		set = ResourceSetHandle{};
 	}
 	for (BufferHandle* buffer : { &m_clusterBinCB[0], &m_clusterBinCB[1], &m_lightBoundsBuffer, &m_clusterViewBounds, &m_clusterTileCounts, &m_clusterTileMasks,
-		&m_clusterGridGpu, &m_clusterIndexGpu, &m_clusterStatsBuffer, &m_clusterStatsReadback[0], &m_clusterStatsReadback[1], &m_clusterStatsReadback[2], &m_clusterStatsReadback[3] })
+								  &m_clusterGridGpu, &m_clusterIndexGpu, &m_clusterStatsBuffer, &m_clusterStatsReadback[0], &m_clusterStatsReadback[1], &m_clusterStatsReadback[2], &m_clusterStatsReadback[3] })
 	{
 		m_device->DestroyBuffer(*buffer);
 		*buffer = BufferHandle{};
@@ -52,7 +58,10 @@ void Renderer::DestroyGpuClusterResources()
 	static_assert(kClusterViews == 2 && kClusterStatsSlots == 4, "위 목록의 [0] … [3]");
 	m_clusterStatsCursor = 0;
 	m_clusterGpuLightCapacity = 0;
-	for (bool& pending : m_clusterStatsPending) pending = false;
+	for (bool& pending : m_clusterStatsPending)
+	{
+		pending = false;
+	}
 }
 
 bool Renderer::PrepareGpuClusters()
@@ -76,13 +85,11 @@ bool Renderer::PrepareGpuClusters()
 	{
 		for (uint32_t v = 0; v < kClusterViews; ++v)
 		{
-			m_clusterBinCB[v] = m_device->CreateBuffer(BufferDesc{ .size = sizeof(ClusterBinConstants), .usage = BufferUsage::Dynamic,
-				.bindFlags = BufferBind_Constant, .debugName = v == 0 ? "CB_ClusterBin" : "CB_ClusterBinPreview" });
+			m_clusterBinCB[v] = m_device->CreateBuffer(BufferDesc{ .size = sizeof(ClusterBinConstants), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_Constant, .debugName = v == 0 ? "CB_ClusterBin" : "CB_ClusterBinPreview" });
 		}
 		const auto gpuBuffer = [this](uint32_t count, uint32_t stride, const char* name)
 		{
-			return m_device->CreateBuffer(BufferDesc{ .size = count * stride, .usage = BufferUsage::Default,
-				.bindFlags = BufferBind_ShaderResource | BufferBind_UnorderedAccess, .stride = stride, .debugName = name });
+			return m_device->CreateBuffer(BufferDesc{ .size = count * stride, .usage = BufferUsage::Default, .bindFlags = BufferBind_ShaderResource | BufferBind_UnorderedAccess, .stride = stride, .debugName = name });
 		};
 		m_clusterGridGpu = gpuBuffer(kClusterCount, 2 * sizeof(uint32_t), "SB_ClusterGridGpu");
 		// t31 은 상한 크기로 한 번 (4 MiB). CPU 경로처럼 "세고 나서 키우기"를 하려면 개수를 CPU 로 읽고 기다려야 함.
@@ -92,7 +99,10 @@ bool Renderer::PrepareGpuClusters()
 		for (uint32_t i = 0; i < kClusterStatsSlots; ++i)
 		{
 			m_clusterStatsReadback[i] = m_device->CreateBuffer(BufferDesc{ .size = kClusterStatCount * static_cast<uint32_t>(sizeof(uint32_t)),
-				.usage = BufferUsage::Staging, .bindFlags = 0, .stride = sizeof(uint32_t), .debugName = "RB_ClusterStats" });
+																		   .usage = BufferUsage::Staging,
+																		   .bindFlags = 0,
+																		   .stride = sizeof(uint32_t),
+																		   .debugName = "RB_ClusterStats" });
 			if (!m_clusterStatsReadback[i].IsValid()) return fail("통계 Staging 버퍼");
 		}
 		if (!m_clusterBinCB[0].IsValid() || !m_clusterBinCB[1].IsValid() || !m_clusterGridGpu.IsValid() || !m_clusterIndexGpu.IsValid() ||
@@ -125,12 +135,9 @@ bool Renderer::PrepareGpuClusters()
 			m_device->DestroyBuffer(*buffer);
 			*buffer = BufferHandle{};
 		}
-		m_lightBoundsBuffer = m_device->CreateBuffer(BufferDesc{ .size = capacity * static_cast<uint32_t>(sizeof(XMFLOAT4)), .usage = BufferUsage::Dynamic,
-			.bindFlags = BufferBind_ShaderResource, .stride = sizeof(XMFLOAT4), .debugName = "SB_LightBounds" });
-		m_clusterViewBounds = m_device->CreateBuffer(BufferDesc{ .size = capacity * static_cast<uint32_t>(sizeof(XMFLOAT4)), .usage = BufferUsage::Default,
-			.bindFlags = BufferBind_ShaderResource | BufferBind_UnorderedAccess, .stride = sizeof(XMFLOAT4), .debugName = "SB_ClusterViewBounds" });
-		m_clusterTileMasks = m_device->CreateBuffer(BufferDesc{ .size = static_cast<uint32_t>(tileBytes), .usage = BufferUsage::Default,
-			.bindFlags = BufferBind_ShaderResource | BufferBind_UnorderedAccess, .stride = sizeof(uint32_t), .debugName = "SB_ClusterTileMasks" });
+		m_lightBoundsBuffer = m_device->CreateBuffer(BufferDesc{ .size = capacity * static_cast<uint32_t>(sizeof(XMFLOAT4)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = sizeof(XMFLOAT4), .debugName = "SB_LightBounds" });
+		m_clusterViewBounds = m_device->CreateBuffer(BufferDesc{ .size = capacity * static_cast<uint32_t>(sizeof(XMFLOAT4)), .usage = BufferUsage::Default, .bindFlags = BufferBind_ShaderResource | BufferBind_UnorderedAccess, .stride = sizeof(XMFLOAT4), .debugName = "SB_ClusterViewBounds" });
+		m_clusterTileMasks = m_device->CreateBuffer(BufferDesc{ .size = static_cast<uint32_t>(tileBytes), .usage = BufferUsage::Default, .bindFlags = BufferBind_ShaderResource | BufferBind_UnorderedAccess, .stride = sizeof(uint32_t), .debugName = "SB_ClusterTileMasks" });
 		if (!m_lightBoundsBuffer.IsValid() || !m_clusterViewBounds.IsValid() || !m_clusterTileMasks.IsValid()) return fail("조명 용량 버퍼");
 
 		// 셋의 bindings 순서 = CreateLayouts 의 clusterBinLayout.Add 순서: b13, t7, u0 … u5.
@@ -138,8 +145,7 @@ bool Renderer::PrepareGpuClusters()
 		{
 			m_clusterBinSet[v] = m_device->CreateResourceSet(ResourceSetDesc{
 				.layout = m_layouts[Layout_ClusterBin],
-				.bindings = { { .buffer = m_clusterBinCB[v] }, { .buffer = m_lightBoundsBuffer }, { .buffer = m_clusterViewBounds }, { .buffer = m_clusterTileCounts },
-					{ .buffer = m_clusterTileMasks }, { .buffer = m_clusterGridGpu }, { .buffer = m_clusterIndexGpu }, { .buffer = m_clusterStatsBuffer } },
+				.bindings = { { .buffer = m_clusterBinCB[v] }, { .buffer = m_lightBoundsBuffer }, { .buffer = m_clusterViewBounds }, { .buffer = m_clusterTileCounts }, { .buffer = m_clusterTileMasks }, { .buffer = m_clusterGridGpu }, { .buffer = m_clusterIndexGpu }, { .buffer = m_clusterStatsBuffer } },
 				.debugName = v == 0 ? "Set_ClusterBin" : "Set_ClusterBinPreview",
 			});
 			if (!m_clusterBinSet[v].IsValid()) return fail("ResourceSet");
@@ -220,17 +226,26 @@ void Renderer::DispatchClusterBinning(RHI::CommandList& cmd, uint32_t viewIndex)
 	{
 		// 버퍼 상태는 프레임마다 Common 으로 돌아감 → 쓰기 전에 매번 UnorderedAccess (D3D11 은 이때 SRV 바인딩을 풂).
 		const BufferHandle uavs[] = { m_clusterViewBounds, m_clusterTileCounts, m_clusterTileMasks, m_clusterGridGpu, m_clusterIndexGpu, m_clusterStatsBuffer };
-		for (const BufferHandle& buffer : uavs) cmd.Barrier(buffer, ResourceState::UnorderedAccess);
+		for (const BufferHandle& buffer : uavs)
+		{
+			cmd.Barrier(buffer, ResourceState::UnorderedAccess);
+		}
 
 		const uint32_t lightCount = (std::min)(static_cast<uint32_t>(m_lightBounds.size()), m_clusterGpuLightCapacity);
 		// 단계마다 GPU 구간을 남김 (프로파일러 창·--avg-frames 의 gpu:Bin*). 메인 뷰만 — 미리보기는 바깥 PreviewClusterBin 하나.
 		const auto run = [&](ComputePassId pass, uint32_t groups, const char* name, uint32_t groupsY = 1)
 		{
-			if (viewIndex == 0) Profiler::BeginGpu(cmd, name);
+			if (viewIndex == 0)
+			{
+				Profiler::BeginGpu(cmd, name);
+			}
 			cmd.SetComputePipeline(GetComputePipeline(pass));
 			cmd.SetComputeResourceSet(kSetClusterBin, m_clusterBinSet[viewIndex]);
 			cmd.Dispatch(groups, groupsY, 1);
-			if (viewIndex == 0) Profiler::EndGpu(cmd);
+			if (viewIndex == 0)
+			{
+				Profiler::EndGpu(cmd);
+			}
 		};
 		// 1. 경계 구 → 뷰 공간 (+ 통계 칸 비우기)
 		run(ComputePass_ClusterView, GroupsFor(lightCount), "BinView");

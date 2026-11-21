@@ -46,6 +46,5 @@ namespace SceneSerializer
 	// 프리팹(Assets 기준 상대 경로)을 씬에 만들고 루트를 돌려줌. 실패하면 nullptr (로그에 이유).
 	// position·rotation(라디안)을 주면 루트의 로컬 자세를 그 값으로 바꿈. 메시·재질은 프리팹마다 씬에 한 번만
 	// 만들어 인스턴스끼리 공유함.
-	GameObject* InstantiatePrefab(Scene& scene, AssetManager& assets, const std::string& relativePath,
-		const DirectX::XMFLOAT3* position = nullptr, const DirectX::XMFLOAT3* rotation = nullptr);
+	GameObject* InstantiatePrefab(Scene& scene, AssetManager& assets, const std::string& relativePath, const DirectX::XMFLOAT3* position = nullptr, const DirectX::XMFLOAT3* rotation = nullptr);
 }

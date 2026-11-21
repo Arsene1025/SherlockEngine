@@ -37,10 +37,10 @@ struct Handle
 // 조건을 "핸들처럼 생긴 타입"(index / generation / IsValid() 멤버 검사)에서
 // "Handle<Tag> 의 특수화"로 바꿈. 멤버 검사는 덕 타이핑이라 모양만 같은 무관한 타입도 통과했음.
 // kIsHandle 은 기본이 false 이고, T 가 Handle<Tag> 꼴일 때만 부분 특수화가 골라져 true 가 됨.
-template <typename T> 
-inline constexpr bool kIsHandle = false;  // 기본: 핸들이 아님
+template <typename T>
+inline constexpr bool kIsHandle = false;   // 기본: 핸들이 아님
 template <typename Tag>
-inline constexpr bool kIsHandle<Handle<Tag>> = true;  // 부분 특수화: T 가 Handle<Tag> 꼴이면 이쪽이 골라져 핸들로 인정
+inline constexpr bool kIsHandle<Handle<Tag>> = true;   // 부분 특수화: T 가 Handle<Tag> 꼴이면 이쪽이 골라져 핸들로 인정
 
 
 template <typename T>

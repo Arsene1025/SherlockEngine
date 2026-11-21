@@ -20,7 +20,10 @@ void QuaternionLook::Reflect(PropertyVisitor& v)
 void QuaternionLook::Start()
 {
 	// 이 오브젝트를 활성 카메라로. 같은 씬의 Main Camera(priority 0) 보다 앞서게 함.
-	if (CameraComponent* camera = GetComponent<CameraComponent>()) camera->priority = 100;
+	if (CameraComponent* camera = GetComponent<CameraComponent>())
+	{
+		camera->priority = 100;
+	}
 	SetPosition(startPosition);
 	LookAt(lookTarget);   // yaw/pitch 만 설정하고 roll 은 0 — 출발 자세
 	XMStoreFloat4(&m_q, XMQuaternionRotationMatrix(GetTransform().GetRotationMatrix()));
@@ -44,9 +47,13 @@ void QuaternionLook::Update(float)
 	const XMVECTOR qYaw = XMQuaternionRotationAxis(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), dYaw);
 	XMVECTOR q = XMLoadFloat4(&m_q);
 	if (mode == 0)
+	{
 		q = XMQuaternionMultiply(XMQuaternionMultiply(qPitch, qYaw), q);   // 증분이 기존 회전보다 먼저 = 자기 축 기준. roll 이 쌓임
+	}
 	else
+	{
 		q = XMQuaternionMultiply(XMQuaternionMultiply(qPitch, q), qYaw);   // pitch 는 먼저(로컬 X), yaw 는 나중(월드 Y). roll 0 유지
+	}
 	q = XMQuaternionNormalize(q);
 	XMStoreFloat4(&m_q, q);
 
@@ -60,10 +67,7 @@ void QuaternionLook::Update(float)
 		XMStoreFloat4x4(&m, XMMatrixRotationQuaternion(q));
 		const XMFLOAT3 e = Transform::EulerFromRotationMatrix(m);
 		const Camera* camera = GetContext().camera;
-		Log::Info("QuaternionLook[mode %d]: 프레임 %d (%.2f 바퀴) yaw %.1f° pitch %.1f° roll %.1f° | Camera::GetRoll %.1f°",
-			mode, m_frame, static_cast<float>(m_frame) / static_cast<float>(loop),
-			XMConvertToDegrees(e.y), XMConvertToDegrees(e.x), XMConvertToDegrees(e.z),
-			camera != nullptr ? XMConvertToDegrees(camera->GetRoll()) : 0.0f);
+		Log::Info("QuaternionLook[mode %d]: 프레임 %d (%.2f 바퀴) yaw %.1f° pitch %.1f° roll %.1f° | Camera::GetRoll %.1f°", mode, m_frame, static_cast<float>(m_frame) / static_cast<float>(loop), XMConvertToDegrees(e.y), XMConvertToDegrees(e.x), XMConvertToDegrees(e.z), camera != nullptr ? XMConvertToDegrees(camera->GetRoll()) : 0.0f);
 	}
 }
 

@@ -5,12 +5,19 @@
 #include <DirectXMath.h>
 
 // 디버그 선 정점. color = R8G8B8A8_UNORM (r | g<<8 | b<<16 | a<<24). 월드 공간 위치.
-struct DebugLineVertex { DirectX::XMFLOAT3 position; uint32_t color; };
+struct DebugLineVertex
+{
+	DirectX::XMFLOAT3 position;
+	uint32_t color;
+};
 
 // (std::min)/(std::max) 괄호는 windows.h 의 min/max 매크로를 피하려는 것.
 inline uint32_t PackLineColor(float r, float g, float b)
 {
-	auto channel = [](float v) { return static_cast<uint32_t>((std::min)((std::max)(v, 0.0f), 1.0f) * 255.0f + 0.5f); };
+	auto channel = [](float v)
+	{
+		return static_cast<uint32_t>((std::min)((std::max)(v, 0.0f), 1.0f) * 255.0f + 0.5f);
+	};
 	return channel(r) | (channel(g) << 8) | (channel(b) << 16) | (255u << 24);
 }
 

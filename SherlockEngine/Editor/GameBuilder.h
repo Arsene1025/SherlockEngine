@@ -15,25 +15,25 @@ namespace GameBuilder
 {
 	struct Options
 	{
-		std::string name = "MyGame";                  // Build\<name>\ 와 창 제목·exe 이름
-		std::string startScene = "";                  // 프로젝트 Assets\Scenes 기준 파일명 (ListScenes 의 항목)
-		std::string projectName;                      // 11-E: 열린 프로젝트 이름 — 스크립트 DLL(<이름>Scripts.dll) 과 MSBuild 타깃
-		std::wstring projectSolution;                 // 11-E: 프로젝트 솔루션 경로 (스크립트 DLL 을 빌드할 때)
+		std::string name = "MyGame";    // Build\<name>\ 와 창 제목·exe 이름
+		std::string startScene = "";    // 프로젝트 Assets\Scenes 기준 파일명 (ListScenes 의 항목)
+		std::string projectName;        // 11-E: 열린 프로젝트 이름 — 스크립트 DLL(<이름>Scripts.dll) 과 MSBuild 타깃
+		std::wstring projectSolution;   // 11-E: 프로젝트 솔루션 경로 (스크립트 DLL 을 빌드할 때)
 		bool copyAllAssets = true;
-		bool releaseBuild = false;                    // MSBuild Release 빌드 후 Release 런타임·스크립트를 씀. 아니면 현재 에디터와 같은 구성(Debug)의 것을 씀
+		bool releaseBuild = false;   // MSBuild Release 빌드 후 Release 런타임·스크립트를 씀. 아니면 현재 에디터와 같은 구성(Debug)의 것을 씀
 		bool openFolder = true;
 	};
 	struct Result
 	{
 		bool ok = false;
 		std::wstring outputDir;
-		std::string message;                          // 마지막 상태/오류 (메뉴 바 메시지)
+		std::string message;   // 마지막 상태/오류 (메뉴 바 메시지)
 		int filesCopied = 0;
 		double seconds = 0.0;
 	};
 
-	bool IsAvailable();                               // 프로젝트가 열려 있는지 여부
-	std::wstring GetBuildRoot();                      // <프로젝트>\Build 폴더 (끝 백슬래시)
-	std::vector<std::string> ListScenes();            // 프로젝트 Assets\Scenes\*.json
-	Result Build(const Options& options);             // 동기 실행. Release 빌드를 켜면 수십 초 걸림
+	bool IsAvailable();                      // 프로젝트가 열려 있는지 여부
+	std::wstring GetBuildRoot();             // <프로젝트>\Build 폴더 (끝 백슬래시)
+	std::vector<std::string> ListScenes();   // 프로젝트 Assets\Scenes\*.json
+	Result Build(const Options& options);    // 동기 실행. Release 빌드를 켜면 수십 초 걸림
 }
