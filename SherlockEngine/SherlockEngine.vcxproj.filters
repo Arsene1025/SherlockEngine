@@ -194,6 +194,9 @@
     <ClCompile Include="Graphics\RendererClusters.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RendererClusterBin.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\RendererSsao.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
@@ -547,6 +550,21 @@
     <FxCompile Include="Shaders\ParticleSortStepComputeShader.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\ClusterViewComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ClusterTileComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ClusterCountComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ClusterScanComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ClusterFillComputeShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\ParticleVertexShader.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
@@ -574,6 +592,9 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Clusters.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\ClusterBin.hlsli">
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\GBuffer.hlsli">

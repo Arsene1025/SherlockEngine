@@ -4,6 +4,7 @@
 #include "Core/Log.h"
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstring>
 #include <format>
 #include <string_view>
@@ -1511,6 +1512,132 @@ namespace
 		}
 		return true;
 	}
+
+	//KHR_lights_punctual 에 range 가 없을 때 쓰는 기준값. glTF 는 range 가 없으면 역제곱으로 끝없이 닿는다고 정하지만
+	//클러스터드 비닝은 반경이 있어야 하므로, 세기 / d² 가 이 값까지 떨어지는 거리를 range 로 씀 (range = sqrt(세기 / 기준)).
+	//세기 1 → 2 m. Intel Sponza 촛불 1만 개(세기 1)에서 0.1(3.2 m)은 클러스터 참조 상한(kMaxClusterLightRefs)을 넘쳐 조명이 빠졌고
+	//0.25(2 m)는 아트리움 시점에 따라 약 17.6만~48.8만 쌍으로 상한(1,048,576) 안에 들어옴. 놓은 뒤에는 씬 파일·Lights 패널의 range 로 고침
+	constexpr float kLightRangeCutoff = 0.25f;
+	constexpr float kLightMinRange = 0.1f;
+
+	//KHR_lights_punctual: 루트 extensions 의 lights[] 가 조명 정의, 노드의 extensions.KHR_lights_punctual.light 가 그 번호.
+	//조명은 노드의 로컬 −Z 방향을 비춤. 노드의 월드 변환으로 위치·방향을 구하고 메시와 같은 규칙(mirror·rootScale)으로 엔진 좌표계로 옮김.
+	//세기 단위(점·스팟 cd, 방향광 lux)는 그대로 Light::intensity 에 넣고, 점·스팟의 감쇠는 역제곱 (attenuation = 0, 0, 1).
+	//그림자는 확장에 없는 값이라 방향광만 켬 (지역광 그림자는 아틀라스 타일을 쓰므로 Lights 패널에서 골라 켬)
+	bool LoadLights(const json& root, const ModelLoader::Options& options, const std::string& modelName, std::vector<ModelLight>& outLights, std::string& error)
+	{
+		outLights.clear();
+		const json* rootExtensions = JsonObject(root, "extensions");
+		const json* punctual = rootExtensions != nullptr ? JsonObject(*rootExtensions, "KHR_lights_punctual") : nullptr;
+		if (punctual == nullptr) return true;
+		const auto definitions = punctual->find("lights");
+		if (definitions == punctual->end() || !definitions->is_array())
+		{
+			//조명이 없을 뿐 메시는 읽을 수 있으므로 모델 로드를 실패시키지 않음
+			Log::Warn("glTF: KHR_lights_punctual.lights 가 배열이 아님. 조명을 건너뜀 (%s)", modelName.c_str());
+			return true;
+		}
+		const auto nodes = root.find("nodes");
+		if (nodes == root.end() || !nodes->is_array()) return true;
+		const size_t count = nodes->size();
+
+		//parent[n] = n번 노드의 부모 번호 (BuildInstances 와 같은 방법)
+		std::vector<int> parent(count, -1);
+		for (size_t n = 0; n < count; ++n)
+		{
+			const json& node = (*nodes)[n];
+			const auto children = node.is_object() ? node.find("children") : node.end();
+			if (!node.is_object() || children == node.end() || !children->is_array()) continue;
+			for (const json& child : *children)
+			{
+				if (child.is_number_unsigned() && child.get<size_t>() < count && parent[child.get<size_t>()] < 0) parent[child.get<size_t>()] = static_cast<int>(n);
+			}
+		}
+
+		const XMMATRIX mirror = XMMatrixScaling(1.0f, 1.0f, options.flipZ ? -1.0f : 1.0f);
+		const XMMATRIX rootScale = XMMatrixScaling(options.scale, options.scale, options.scale);
+		uint32_t typeCounts[3] = {};
+		uint32_t zeroIntensity = 0, derivedRange = 0, skipped = 0;
+
+		for (size_t n = 0; n < count; ++n)
+		{
+			const json& node = (*nodes)[n];
+			if (!node.is_object()) continue;
+			const json* nodeExtensions = JsonObject(node, "extensions");
+			const json* reference = nodeExtensions != nullptr ? JsonObject(*nodeExtensions, "KHR_lights_punctual") : nullptr;
+			size_t lightNumber = 0;
+			if (reference == nullptr || !ReadSize(*reference, "light", true, 0, lightNumber)) continue;
+			if (lightNumber >= definitions->size() || !(*definitions)[lightNumber].is_object()) { ++skipped; continue; }
+			const json& definition = (*definitions)[lightNumber];
+
+			const auto typeName = definition.find("type");
+			const std::string type = (typeName != definition.end() && typeName->is_string()) ? typeName->get<std::string>() : "";
+			ModelLight out;
+			if (type == "directional") out.light.type = LightType::Directional;
+			else if (type == "point") out.light.type = LightType::Point;
+			else if (type == "spot") out.light.type = LightType::Spot;
+			else { ++skipped; continue; }
+
+			//월드 행렬 = 내 로컬 * 부모 로컬 * ... (BuildInstances 와 같음)
+			XMMATRIX gltfWorld = NodeLocalMatrix(node);
+			size_t steps = 0;
+			for (int p = parent[n]; p >= 0; p = parent[static_cast<size_t>(p)])
+			{
+				if (++steps > count) { error = std::format("nodes[{}] 의 부모 사슬이 순환함", n); return false; }
+				gltfWorld = gltfWorld * NodeLocalMatrix((*nodes)[static_cast<size_t>(p)]);
+			}
+			const XMMATRIX world = mirror * gltfWorld * mirror * rootScale;
+			//위치 = 노드 원점. 방향 = glTF 로컬 −Z. mirror 를 거친 엔진 로컬에서는 +Z 이므로 (0,0,1)을 엔진 월드 행렬로 옮김
+			XMStoreFloat3(&out.light.position, XMVector3TransformCoord(XMVectorZero(), world));
+			XMVECTOR direction = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), world);
+			if (XMVectorGetX(XMVector3LengthSq(direction)) > 1e-12f) direction = XMVector3Normalize(direction);
+			else direction = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+			XMStoreFloat3(&out.light.direction, direction);
+
+			float color[3] = { 1.0f, 1.0f, 1.0f };
+			JsonFloats(definition, "color", color, 3);
+			out.light.color = XMFLOAT3(color[0], color[1], color[2]);
+			out.light.intensity = (std::max)(JsonFloat(definition, "intensity", 1.0f), 0.0f);
+			if (out.light.intensity == 0.0f) ++zeroIntensity;
+
+			if (out.light.type != LightType::Directional)
+			{
+				out.light.attenuation = XMFLOAT3(0.0f, 0.0f, 1.0f);
+				const float range = JsonFloat(definition, "range", 0.0f);
+				out.rangeFromFile = range > 0.0f;
+				if (out.rangeFromFile) out.light.range = range * options.scale;
+				else
+				{
+					out.light.range = std::sqrt(out.light.intensity / kLightRangeCutoff);
+					++derivedRange;
+				}
+				out.light.range = (std::max)(out.light.range, kLightMinRange);
+			}
+			if (out.light.type == LightType::Spot)
+			{
+				//기본값은 확장 정의대로 inner 0, outer π/4. inner 가 outer 보다 크면 outer 에 맞춤
+				const json* spot = JsonObject(definition, "spot");
+				float inner = spot != nullptr ? JsonFloat(*spot, "innerConeAngle", 0.0f) : 0.0f;
+				const float outer = spot != nullptr ? JsonFloat(*spot, "outerConeAngle", XM_PIDIV4) : XM_PIDIV4;
+				inner = (std::min)(inner, outer);
+				out.light.innerConeCos = std::cos(inner);
+				out.light.outerConeCos = std::cos(outer);
+			}
+			out.light.castShadows = out.light.type == LightType::Directional;
+
+			const auto name = node.find("name");
+			out.name = (name != node.end() && name->is_string()) ? name->get<std::string>() : std::format("{}/node{}", modelName, n);
+			++typeCounts[static_cast<uint32_t>(out.light.type)];
+			outLights.push_back(std::move(out));
+		}
+
+		if (!outLights.empty() || skipped > 0)
+		{
+			Log::Info("glTF 조명 (KHR_lights_punctual): %zu 개 (방향 %u, 점 %u, 스팟 %u), range 를 세기로 정한 것 %u, 세기 0 인 것 %u, 건너뜀 %u",
+				outLights.size(), typeCounts[0], typeCounts[1], typeCounts[2], derivedRange, zeroIntensity, skipped);
+		}
+		return true;
+	}
 }
 
 
@@ -1613,6 +1740,13 @@ bool ModelLoader::LoadGltf(const std::wstring& path, const Options& options, Mod
 	if (!LoadAnimations(root, buffers, options, out.nodes, out.animations, error))
 	{
 		Log::Error("glTF 애니메이션 변환 실패 (%s): %s", error.c_str(), ModelImport::ToUtf8(path).c_str());
+		return false;
+	}
+
+	//조명 (KHR_lights_punctual). 씬에 넣는 일은 놓을 때(EditorApp::PlaceModel) 함
+	if (!LoadLights(root, options, out.name, out.lights, error))
+	{
+		Log::Error("glTF 조명 변환 실패 (%s): %s", error.c_str(), ModelImport::ToUtf8(path).c_str());
 		return false;
 	}
 

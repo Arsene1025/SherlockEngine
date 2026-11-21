@@ -195,7 +195,7 @@ svg .arh { fill: var(--ink2); }
 <li><span class="tag v">완료</span> 소프트 파티클과 깊이 충돌: <code>t23</code> 씬 깊이를 파티클 PS·CS 가 읽음.</li>
 <li><span class="tag v">완료</span> 반투명 포워드 경로: <code>Renderer::DrawItems</code> 가 블렌딩 재질(<code>IsBlended</code>)을 불투명·하늘 뒤에 먼 것부터 그림.</li>
 <li><span class="tag v">완료</span> G-buffer·SSAO 용 포맷: <code>R8_UNORM</code>, <code>R16_FLOAT</code>, <code>R16G16_FLOAT</code>, <code>R10G10B10A2_UNORM</code>, <code>R11G11B10_FLOAT</code> 가 <code>Format</code> 열거형과 두 백엔드 변환표에 있음 (<code>RHI/PipelineTypes.h</code> 의 <code>Format</code>, <code>D3D11Convert.cpp</code>, <code>D3D12Convert.cpp</code>).</li>
-<li><span class="tag v">완료</span> 컴퓨트·UAV (로드맵 4단계). 이 문서의 세 단계는 컴퓨트를 쓰지 않지만, 클러스터 비닝과 SSAO 블러를 나중에 컴퓨트로 옮길 때 CPU·PS 결과가 정답 기준이 됨.</li>
+<li><span class="tag v">완료</span> 컴퓨트·UAV (로드맵 4단계). 이 문서의 세 단계는 컴퓨트를 쓰지 않지만, 클러스터 비닝과 SSAO 블러를 나중에 컴퓨트로 옮길 때 CPU·PS 결과가 정답 기준이 됨. 클러스터 비닝은 2026-11-21 에 옮겼음 (<a href="gpu-cluster-binning-record.html">GPU 클러스터 비닝 구현 기록</a>).</li>
 </ul>
 </div>
 
@@ -1082,7 +1082,7 @@ void BinLights(const ClusterGrid&amp;, const XMMATRIX&amp; view, std::span&lt;co
 <thead><tr><th>버퍼</th><th>원소</th><th>크기</th><th>위치</th></tr></thead>
 <tbody>
 <tr><td><code>m_clusterGridBuffer</code></td><td><code>uint2</code> (offset, count)</td><td>3,456 × 8 B = 27,648 B (고정)</td><td>프레임 셋 <b>t30</b></td></tr>
-<tr><td><code>m_clusterIndexBuffer</code></td><td><code>uint</code> 조명 번호</td><td>용량 × 4 B. 처음 16,384 (64 KiB), 모자라면 두 배, 상한 262,144 (1 MiB)</td><td>프레임 셋 <b>t31</b></td></tr>
+<tr><td><code>m_clusterIndexBuffer</code></td><td><code>uint</code> 조명 번호</td><td>용량 × 4 B. 처음 16,384 (64 KiB), 모자라면 두 배, 상한 262,144 (1 MiB). 구현 뒤 1,048,576 (4 MiB) 으로 올림 (구현 기록 참고)</td><td>프레임 셋 <b>t31</b></td></tr>
 </tbody>
 </table>
 <ul>

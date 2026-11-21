@@ -317,6 +317,10 @@ void Editor::DrawMenuBar(Engine& engine, const Callbacks& callbacks)
 		ImGui::RadioButton("Scale (3)", &m_gizmoOperation, 2);
 		if (ImGui::RadioButton("Local space", !m_gizmoWorld)) m_gizmoWorld = false;
 		if (ImGui::RadioButton("World space", m_gizmoWorld)) m_gizmoWorld = true;
+		ImGui::Separator();
+		ImGui::TextDisabled("Light icons");
+		if (ImGui::RadioButton("All lights", m_lightIconMode == LightIconMode::All)) m_lightIconMode = LightIconMode::All;
+		if (ImGui::RadioButton("Selected light only", m_lightIconMode == LightIconMode::SelectedOnly)) m_lightIconMode = LightIconMode::SelectedOnly;
 		ImGui::EndMenu();
 	}
 	ImGui::Text("   %s   |   %s   |   backend %s   |   %s", m_lastMessage.c_str(), project.loaded ? project.name.c_str() : "(no project)", engine.GetDevice().GetBackendName(),
@@ -816,6 +820,7 @@ int Editor::PickLight(Engine& engine, float mouseX, float mouseY, float x, float
 	float bestDistSq = kLightPickRadius * kLightPickRadius;
 	for (int i = 0; i < static_cast<int>(lights.size()); ++i)
 	{
+		if (m_lightIconMode == LightIconMode::SelectedOnly && i != m_selectedLight) continue;   // 보이지 않는 아이콘은 눌리지 않음
 		ImVec2 p;
 		if (!ProjectToView(viewProj, x, y, width, height, LightAnchor(camera, lights, i, x, y, width, height), p)) continue;
 		const float dx = p.x - mouseX, dy = p.y - mouseY;
@@ -868,6 +873,7 @@ void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float
 
 	for (int i = 0; i < static_cast<int>(lights.size()); ++i)
 	{
+		if (m_lightIconMode == LightIconMode::SelectedOnly && i != m_selectedLight) continue;
 		const Light& light = lights[i];
 		const XMFLOAT3 anchor = LightAnchor(camera, lights, i, x, y, width, height);
 		ImVec2 c;

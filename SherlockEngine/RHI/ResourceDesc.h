@@ -16,7 +16,7 @@ enum class BufferUsage : uint8_t
 {
 	Default,   // GPU 읽기/쓰기. CPU 갱신은 UpdateSubresource(전체 덮어쓰기).
 	Dynamic,   // CPU가 매 프레임 씀. Map(WRITE_DISCARD). 프레임 수만큼 내부 복제.
-	Staging,   // CPU 읽기용 사본. 지금은 만들기만 하고 쓰는 곳이 없음.
+	Staging,   // CPU 읽기용 사본. CommandList::CopyBuffer 로 채우고 Device::ReadStagingBuffer 로 읽음 (GPU 클러스터 비닝 통계)
 };
 
 // 비트 플래그. 한 버퍼가 Vertex | ShaderResource 처럼 두 역할을 겸할 수 있음.

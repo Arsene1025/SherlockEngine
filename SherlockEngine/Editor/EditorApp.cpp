@@ -1072,6 +1072,23 @@ void EditorApp::PlaceModel(const std::wstring& relativePath, const XMFLOAT3& pos
 	// "<파일명> N" 이고 자식은 노드 이름 그대로 (이전의 "<파일명> N/<노드명>" 접두어는 트리에서 중복이라 뺌).
 	// 노드 하나면 그 오브젝트가 "<파일명> N".
 	if (created > 0) scene.GetObjects()[first]->SetName(prefix);
+	// 모델의 조명(glTF KHR_lights_punctual)을 배치 변환으로 옮겨 씬 조명에 더함. 씬 조명은 오브젝트에 붙지 않으므로
+	// 놓은 뒤 루트를 옮겨도 조명은 그 자리에 남음. 같은 모델을 다시 놓으면 조명도 다시 더해짐.
+	if (!model->lights.empty())
+	{
+		const XMMATRIX world = placement.GetLocalMatrix();
+		std::vector<Light>& lights = scene.GetLights();
+		lights.reserve(lights.size() + model->lights.size());
+		for (const ModelLight& source : model->lights)
+		{
+			Light light = source.light;
+			XMStoreFloat3(&light.position, XMVector3TransformCoord(XMLoadFloat3(&source.light.position), world));
+			XMVECTOR direction = XMVector3TransformNormal(XMLoadFloat3(&source.light.direction), world);
+			if (XMVectorGetX(XMVector3LengthSq(direction)) > 1e-12f) XMStoreFloat3(&light.direction, XMVector3Normalize(direction));
+			lights.push_back(light);
+		}
+		Log::Info("모델 조명 %zu 개를 씬에 더함 (씬 조명 %zu 개)", model->lights.size(), lights.size());
+	}
 	// 모델을 놓아도 씬 모드는 바꾸지 않음 (삭제할 때만 File 로 바꿈 — DeleteObject).
 	m_modelStats = model->stats;
 	m_editor.SetSelectedObject(created > 0 ? static_cast<int>(first) : -1);   // 루트(또는 유일한 노드)를 선택 — 기즈모로 모델 전체를 옮길 수 있음

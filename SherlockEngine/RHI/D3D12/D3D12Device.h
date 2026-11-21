@@ -45,6 +45,7 @@ public:
     bool GetTimestampResults(std::span<uint64_t> ticks, uint64_t& frequency, uint64_t& frameNumber) override;
     void RequestBackBufferReadback() override { m_readbackRequested = true; }
     bool TakeReadbackResult(std::vector<uint8_t>& rgba, uint32_t& width, uint32_t& height) override;
+    bool ReadStagingBuffer(BufferHandle buffer, void* out, uint32_t size) override;
     void WriteTimestamp(uint32_t slot);   // D3D12CommandList 가 위임함
 
     void Resize(int width, int height) override;

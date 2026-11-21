@@ -105,6 +105,10 @@ public:
 	void ClearSelection() { m_selected = -1; m_selectedPrev = -2; m_selectedLight = -1; }
 	uint64_t GetSelectedId() const { return m_selectedId; }
 	int GetSelectedLight() const { return m_selectedLight; }
+	// 씬 뷰 조명 아이콘: All = 전부, SelectedOnly = 고른 조명 하나만 (조명이 수천 개인 씬에서 화면·GUI 시간을 덜 먹게).
+	// SelectedOnly 에서는 클릭 선택도 그 아이콘만 대상이므로 조명은 Lights 패널에서 고름. Gizmo 메뉴에서 바꿈
+	enum class LightIconMode { All = 0, SelectedOnly = 1 };
+	void SetLightIconMode(LightIconMode mode) { m_lightIconMode = mode; }
 	void SetMessage(const std::string& message) { m_lastMessage = message; }   // 메뉴 바의 상태 문구. 명령 큐에서 실행된 명령이 결과를 알릴 때 씀
 	// 자동 검증용: 클릭과 같은 코드 경로로 (u, v) 픽셀의 오브젝트를 고름.
 	int PickAt(Scene& scene, const Camera& camera, float u, float v) const { return Pick(scene, camera, u, v); }
@@ -160,6 +164,7 @@ private:
 	int PickLight(Engine& engine, float mouseX, float mouseY, float x, float y, float width, float height) const;   // 마우스 가까이 있는 아이콘의 조명 인덱스, 없으면 -1
 	void SelectLight(int index);
 	int m_selectedLight = -1;
+	LightIconMode m_lightIconMode = LightIconMode::All;
 	int m_selectedLightPrev = -1;       // 지난 프레임 끝의 m_selectedLight (Lights 패널에서 바뀐 것을 SyncSelection 이 알아채려고)
 	bool m_openSelectedLight = false;   // 다음 Lights 패널 그리기에서 그 노드를 펼침
 	void DrawCameraPreview(Engine& engine, float x, float y, float width, float height);  // 선택한 카메라의 시점을 우측 하단에 표시

@@ -1823,3 +1823,27 @@ bool D3D12Device::TakeReadbackResult(std::vector<uint8_t>& rgba, uint32_t& width
     m_readbackReady = false;
     return true;
 }
+
+bool D3D12Device::ReadStagingBuffer(BufferHandle handle, void* out, uint32_t size)
+{
+    const D3D12Buffer* buffer = GetBuffer(handle);
+    if (buffer == nullptr || !buffer->resource || out == nullptr || buffer->desc.usage != BufferUsage::Staging || size > buffer->desc.size)
+    {
+        Log::Error("ReadStagingBuffer : Staging 버퍼가 아니거나 크기가 큼.");
+        return false;
+    }
+    // 리드백 힙. 복사를 기록한 프레임의 펜스는 BeginFrame 이 이미 기다렸음 (호출자 규칙 — Device.h). 읽은 범위만 알리고
+    // 쓴 범위는 비움 (CPU 가 쓰지 않음).
+    const D3D12_RANGE readRange{ 0, size };
+    void* mapped = nullptr;
+    const HRESULT hr = buffer->resource->Map(0, &readRange, &mapped);
+    if (FAILED(hr) || mapped == nullptr)
+    {
+        Log::Error("ReadStagingBuffer : Map 실패 (%s). %s", buffer->name.c_str(), Log::HrToString(hr).c_str());
+        return false;
+    }
+    std::memcpy(out, mapped, size);
+    const D3D12_RANGE noWrite{ 0, 0 };
+    buffer->resource->Unmap(0, &noWrite);
+    return true;
+}

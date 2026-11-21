@@ -64,6 +64,12 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] =
 	{ L"DeferredLightingPixelShader.hlsl", "PS_DeferredLighting", ShaderStage::Pixel, "DeferredLightPS" },   // 풀스크린: G-buffer → 조명 (가산)
 	{ L"SsaoPixelShader.hlsl",        "PS_Ssao",       ShaderStage::Pixel,  "SsaoPS" },         // 풀스크린: 깊이·노멀 → 가림 (R8)
 	{ L"SsaoBlurPixelShader.hlsl",    "PS_SsaoBlur",   ShaderStage::Pixel,  "SsaoBlurPS" },     // 4×4 깊이 가중 블러
+	// GPU 클러스터 비닝 (docs/plan/gpu-cluster-binning-record.html, Shaders/ClusterBin.hlsli)
+	{ L"ClusterViewComputeShader.hlsl",  "CS_ClusterView",  ShaderStage::Compute, "ClusterViewCS" },    // 경계 구 → 뷰 공간
+	{ L"ClusterTileComputeShader.hlsl",  "CS_ClusterTile",  ShaderStage::Compute, "ClusterTileCS" },    // 1단계: 타일 144 개의 조명 비트마스크
+	{ L"ClusterCountComputeShader.hlsl", "CS_ClusterCount", ShaderStage::Compute, "ClusterCountCS" },   // 2단계: 상자마다 개수
+	{ L"ClusterScanComputeShader.hlsl",  "CS_ClusterScan",  ShaderStage::Compute, "ClusterScanCS" },    // 누적합 → (시작, 개수)
+	{ L"ClusterFillComputeShader.hlsl",  "CS_ClusterFill",  ShaderStage::Compute, "ClusterFillCS" },    // 2단계: 번호 채우기
 };
 
 struct Renderer::PassInfo
@@ -111,6 +117,11 @@ const Renderer::ComputePassInfo Renderer::kComputePasses[Renderer::ComputePass_C
 	{ "ParticleEmit",  Shader_ParticleEmitCS,  { Layout_ParticleSim }, 1 },
 	{ "ParticleSortInit", Shader_ParticleSortInitCS, { Layout_ParticleSort, Layout_ParticleSortStep }, 2 },
 	{ "ParticleSortStep", Shader_ParticleSortStepCS, { Layout_ParticleSort, Layout_ParticleSortStep }, 2 },
+	{ "ClusterView",  Shader_ClusterViewCS,  { Layout_ClusterBin }, 1 },   // 다섯 패스가 같은 셋 하나 (셰이더마다 쓰는 슬롯만 다름)
+	{ "ClusterTile",  Shader_ClusterTileCS,  { Layout_ClusterBin }, 1 },
+	{ "ClusterCount", Shader_ClusterCountCS, { Layout_ClusterBin }, 1 },
+	{ "ClusterScan",  Shader_ClusterScanCS,  { Layout_ClusterBin }, 1 },
+	{ "ClusterFill",  Shader_ClusterFillCS,  { Layout_ClusterBin }, 1 },
 };
 
 namespace
@@ -135,6 +146,7 @@ namespace
 		{ "ParticleSortView", sizeof(ParticleSortViewConstants) },
 		{ "ParticleSortStep", sizeof(ParticleSortStepConstants) },
 		{ "SsaoParams", sizeof(SsaoConstants) },
+		{ "ClusterBin", sizeof(ClusterBinConstants) },
 	};
 
 	// 레지스터 문자. 텍스처와 구조체 버퍼는 같은 t# 공간을 씀.
@@ -439,6 +451,20 @@ bool Renderer::CreateLayouts()
 	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotGBuffer1);    // t26
 	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSsao);        // t29
 
+	// GPU 클러스터 비닝 셋 (컴퓨트 다섯 패스의 셋 0, 뷰마다 한 벌): b13 뷰 값, t7 월드 경계 구, u0~u5 (Shaders/ClusterBin.hlsli).
+	// u3·u4 는 프레임 셋 t30·t31 과 같은 버퍼 (GPU 경로) — 디스패치 전에 UnorderedAccess, 그리기 전에 ShaderResource 로 바꿈.
+	BindingLayoutDesc& clusterBinLayout = m_layoutDescs[Layout_ClusterBin];
+	clusterBinLayout = BindingLayoutDesc{};
+	clusterBinLayout.debugName = "Layout_ClusterBin";
+	clusterBinLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Compute, kCBSlotClusterBin);               // b13
+	clusterBinLayout.Add(BindingType::BufferResource, ShaderStageMask_Compute, kSRVSlotLightBounds);             // t7
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterViewBounds); // u0
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterTileCounts); // u1
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterTileMasks);  // u2
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterGrid);       // u3
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterLights);     // u4
+	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterStats);      // u5
+
 	for (uint32_t i = 0; i < Layout_Count; ++i)
 	{
 		m_layouts[i] = m_device->CreateBindingLayout(m_layoutDescs[i]);
@@ -652,7 +678,7 @@ void Renderer::ResolveEnvironment(const SceneEnvironment& environment)
 
 bool Renderer::UpdateFrameSet()
 {
-	if (m_frameSet.IsValid() && m_environment.SameTextures(m_boundEnvironment)) return true;
+	if (m_frameSet.IsValid() && m_environment.SameTextures(m_boundEnvironment) && m_frameSetClusterGpu == m_clusterGpuThisFrame) return true;
 
 	// ResourceSet 은 값 객체라 슬롯 하나만 바꾸는 기능이 없음 — 재질 셋과 같이 통째로 다시 만듦 (D3D12
 	// 디스크립터 테이블도 다시 씀). 이전 셋은 D3D12 에서 지연 해제되므로, 이미 기록된 드로우가 그 테이블을
@@ -668,12 +694,14 @@ bool Renderer::UpdateFrameSet()
 			{ .texture = m_environment.skybox }, { .sampler = GetSampler(SamplerPreset::LinearClamp) },
 			{ .texture = m_environment.irradiance }, { .texture = m_environment.specular }, { .texture = m_environment.brdfLut },
 			{ .buffer = m_shadowPassCB }, { .buffer = m_shadowsCB }, { .texture = m_csmMap }, { .buffer = m_lightBuffer },
-			{ .buffer = m_clusterGridBuffer }, { .buffer = m_clusterIndexBuffer },
+			// t30·t31: CPU 비닝이면 Dynamic 버퍼 (뷰마다 올림), GPU 비닝이면 컴퓨트가 쓰는 Default 버퍼
+			{ .buffer = m_clusterGpuThisFrame ? m_clusterGridGpu : m_clusterGridBuffer }, { .buffer = m_clusterGpuThisFrame ? m_clusterIndexGpu : m_clusterIndexBuffer },
 		},
 		.debugName = "Set_Frame",
 	};
 	m_frameSet = m_device->CreateResourceSet(frameSet);
 	m_boundEnvironment = m_environment;
+	m_frameSetClusterGpu = m_clusterGpuThisFrame;
 	if (!m_frameSet.IsValid())
 	{
 		Log::Error("Renderer : 프레임 ResourceSet 생성 실패.");
@@ -996,6 +1024,7 @@ void Renderer::Shutdown()
 	m_device->DestroyResourceSet(m_frameSet);
 	m_device->DestroyResourceSet(m_objectSet);
 	DestroyGpuEmitters();
+	DestroyGpuClusterResources();
 	m_device->DestroyResourceSet(m_blurWeightsSet);
 	m_frameSet = m_objectSet = m_blurWeightsSet = ResourceSetHandle{};
 	for (BindingLayoutHandle& layout : m_layouts)
@@ -1131,13 +1160,27 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	// 버퍼를 다시 만들면 이미 기록된 메인 패스가 꽂은 프레임 셋이 옛 버퍼를 가리키게 됨. 올리기는 뷰 패스마다 (t30·t31 은
 	// Dynamic 이라 뷰마다 새 메모리) ----
 	const bool previewActive = m_previewCamera != nullptr && m_previewView.IsValid() && m_previewView.color.IsValid();
+	// GPU 비닝 (docs/plan/gpu-cluster-binning-record.html): 여기서는 입력(t7 경계 구, 뷰마다 b13)만 올리고, 비닝 자체는 렌더
+	// 패스 밖에서 뷰 패스 직전에 디스패치함 (DispatchClusterBinning). 통계는 몇 프레임 (≥ kFrameCount) 전 것을 읽음.
+	m_clusterGpuThisFrame = PrepareGpuClusters();
+	m_stats.clusterGpu = m_clusterGpuThisFrame;
 	{
 		ProfileScope cpuScope("BuildClusters");
-		BuildClusters(camera, m_mainView.width, m_mainView.height, 0);
-		m_clusterBuilt[1] = false;
-		if (previewActive) BuildClusters(*m_previewCamera, m_previewView.width, m_previewView.height, 1);
-		EnsureClusterCapacity();
-		UploadClusters(0);
+		if (m_clusterGpuThisFrame)
+		{
+			ReadGpuClusterStats();
+			UploadLightBounds();
+			UploadClusterBinConstants(camera, 0);
+			if (previewActive) UploadClusterBinConstants(*m_previewCamera, 1);
+		}
+		else
+		{
+			BuildClusters(camera, m_mainView.width, m_mainView.height, 0);
+			m_clusterBuilt[1] = false;
+			if (previewActive) BuildClusters(*m_previewCamera, m_previewView.width, m_previewView.height, 1);
+			EnsureClusterCapacity();
+			UploadClusters(0);
+		}
 	}
 
 	// ---- b12 SSAO (프레임에 한 번 — 두 뷰가 같은 값) ----
@@ -1162,6 +1205,13 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	// 프레임 셋(b0, b2, t8, s4, t9, s5, t10~t12)과 오브젝트 셋(b1)을 바인딩함. 그림자 패스는 t8(그림자 맵)을
 	// DSV 로 쓰므로 BeginRenderPass 가 t8 SRV 바인딩을 해제함. 씬 패스에서 셋을 다시 바인딩해 t8 을 복구함.
 	// (파티클 시뮬레이션은 메인 씬 패스 안, 불투명 패스와 파티클 패스 사이에서 함 — RenderScenePass.)
+	// GPU 비닝 (메인 뷰). 렌더 패스 밖이어야 하고, 프레임 셋을 꽂기 전에 t30·t31 을 ShaderResource 로 돌려 둠
+	// (D3D11: UnorderedAccess 로 바꿀 때 백엔드가 그 버퍼의 SRV 바인딩을 풂).
+	if (m_clusterGpuThisFrame)
+	{
+		GpuProfileScope gpuScope(cmd, "ClusterBin");
+		DispatchClusterBinning(cmd, 0);
+	}
 	cmd.SetResourceSet(kSetFrame, m_frameSet);
 	cmd.SetResourceSet(kSetObject, m_objectSet);
 
@@ -1206,7 +1256,17 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		GpuProfileScope gpuScope(cmd, "PreviewPass");
 		const bool previewSsao = UseDeferred(m_previewView) && m_ssaoSettings.enabled && m_previewView.HasSsao();
 		UploadPerFrameConstants(*m_previewCamera, totalTime, m_previewView.width, m_previewView.height, previewSsao);
-		UploadClusters(1);
+		if (m_clusterGpuThisFrame)
+		{
+			// 같은 GPU 버퍼에 미리보기 카메라로 다시 비닝 (t30·t31: ShaderResource → UnorderedAccess → ShaderResource). 메인 패스의
+			// 그리기는 명령 순서상 이미 끝났음 — 배리어가 그 순서를 지킴. 프레임 셋은 RenderScenePass 의 각 패스가 다시 꽂음.
+			GpuProfileScope binScope(cmd, "PreviewClusterBin");
+			DispatchClusterBinning(cmd, 1);
+		}
+		else
+		{
+			UploadClusters(1);
+		}
 		RenderScenePass(cmd, scene, m_previewView, *m_previewCamera, "PreviewPass", 1);
 		ApplyHdrEffects(cmd, m_previewView, false);
 		RenderTonemapPass(cmd, m_previewView.hdrSet, m_previewView.color, ResourceState::ShaderResource, "PreviewTonemapPass",

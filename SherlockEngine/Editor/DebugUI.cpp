@@ -178,6 +178,10 @@ void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)
 	ImGui::Checkbox("Deferred", &settings.deferred);
 	SameLineIfFits(CheckboxWidth("Clustered lights"));
 	ImGui::Checkbox("Clustered lights", &settings.clustered);
+	SameLineIfFits(CheckboxWidth("GPU clustering"));
+	ImGui::Checkbox("GPU clustering", &settings.clusterGpu);   // 비닝을 컴퓨트로 (끄면 CPU 비닝 — 결과 비교용)
+	SameLineIfFits(CheckboxWidth("Tile pre-pass"));
+	ImGui::Checkbox("Tile pre-pass", &settings.clusterGpuTiles);   // GPU 비닝의 1단계 (끄면 상자마다 조명 전체)
 	SameLineIfFits(CheckboxWidth("Shadow priority"));
 	ImGui::Checkbox("Shadow priority", &settings.shadowPriority);
 	bool vsync = device.IsVSync();
@@ -208,9 +212,14 @@ void DebugUI::DrawRenderSettingsPanel(Renderer& renderer, RHI::Device& device)
 	ImGui::TextWrapped("passes %u   barriers %u   PSO cache %zu   GPU meshes %zu   GPU materials %zu   textures %zu   reloads %u   frame slot %u",
 		stats.renderPasses, stats.barriers, renderer.GetPipelineCount(), renderer.GetGpuMeshCount(), renderer.GetGpuMaterialCount(),
 		renderer.GetTextureCount(), stats.shaderReloads, device.GetFrameIndex());
-	ImGui::TextWrapped("path %s%s   G-buffer draws %u   forward opaque %u   lights visible %u / culled %u   cluster refs %u (max %u per cluster, overflow %u)   offscreen shadow views %u",
+	ImGui::TextWrapped("path %s%s   G-buffer draws %u   forward opaque %u   lights visible %u / culled %u   cluster refs %u (max %u per cluster, overflow %u, %s)   offscreen shadow views %u",
 		stats.deferredPath ? "deferred" : "forward", stats.ssao ? " + SSAO" : "", stats.gbufferDraws, stats.forwardOpaqueDraws,
-		stats.lightsVisible, stats.lightsCulled, stats.clusterLightRefs, stats.clusterMaxLights, stats.clusterOverflow, stats.shadowViewsOffscreen);
+		stats.lightsVisible, stats.lightsCulled, stats.clusterLightRefs, stats.clusterMaxLights, stats.clusterOverflow, stats.clusterGpu ? "GPU" : "CPU", stats.shadowViewsOffscreen);
+	if (stats.clusterGpu)
+	{
+		// GPU 비닝의 1단계 (타일) 목록. 통계는 몇 프레임 늦게 읽은 값 (Staging 리드백)
+		ImGui::TextWrapped("GPU binning: tile refs %u (max %u per tile)", stats.clusterTileRefs, stats.clusterTileMaxLights);
+	}
 }
 
 void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& device)
@@ -756,24 +765,100 @@ void DebugUI::DrawEnginePanel(Engine& engine)
 void DebugUI::DrawProfilerPanel()
 {
 	ImGui::Separator();
+	// 프레임 단위 값은 눈으로 읽기 어려우므로, 설정한 윈도우(기본 1초) 동안 평균/최소/최대를 모아
+	// 윈도우가 끝날 때만 표시값을 갱신한다.
+	struct Series
+	{
+		std::string name;
+		uint32_t depth = 0;
+		double sum = 0.0;
+		uint32_t count = 0;
+		float minV = FLT_MAX;
+		float maxV = 0.0f;
+		float shownAvg = 0.0f, shownMin = 0.0f, shownMax = 0.0f;
+		bool hasShown = false;
+
+		void Add(float v)
+		{
+			sum += v; ++count;
+			if (v < minV) minV = v;
+			if (v > maxV) maxV = v;
+		}
+		void Commit()
+		{
+			if (count > 0)
+			{
+				shownAvg = (float)(sum / count); shownMin = minV; shownMax = maxV; hasShown = true;
+			}
+			sum = 0.0; count = 0; minV = FLT_MAX; maxV = 0.0f;
+		}
+	};
+	static std::vector<Series> cpuSeries, gpuSeries;
+	static Series cpuFrame, gpuFrame;
+	static uint64_t lastGpuFrame = ~0ull;
+	static double windowStart = 0.0;
+	static float windowSec = 1.0f;
+
+	auto findSeries = [](std::vector<Series>& list, const char* name, uint32_t depth) -> Series&
+	{
+		for (Series& s : list) if (s.depth == depth && s.name == name) return s;
+		list.emplace_back();
+		list.back().name = name;
+		list.back().depth = depth;
+		return list.back();
+	};
+
+	ImGui::Separator();
 	bool enabled = Profiler::IsEnabled();
 	if (ImGui::Checkbox("Profiler", &enabled)) Profiler::SetEnabled(enabled);
-	SameLineIfFits(TextItemWidth("CPU frame 0.000 ms   GPU frame 0.000 ms (frame 0)"));
-	ImGui::TextWrapped("CPU frame %.3f ms   GPU frame %.3f ms (frame %llu)", Profiler::GetCpuFrameMs(), Profiler::GetGpuFrameMs(), Profiler::GetGpuFrameNumber());
+
+	// 샘플 수집. CPU 는 매 프레임, GPU 는 새 프레임 결과가 나왔을 때만 (쿼리 결과가 1~몇 프레임 늦게 도착함).
+	if (enabled)
+	{
+		cpuFrame.Add(Profiler::GetCpuFrameMs());
+		for (const Profiler::CpuSample& s : Profiler::GetCpuSamples()) findSeries(cpuSeries, s.name, s.depth).Add(s.milliseconds);
+		const uint64_t gpuNumber = Profiler::GetGpuFrameNumber();
+		if (gpuNumber != lastGpuFrame)
+		{
+			lastGpuFrame = gpuNumber;
+			gpuFrame.Add(Profiler::GetGpuFrameMs());
+			for (const Profiler::GpuSample& s : Profiler::GetGpuSamples()) findSeries(gpuSeries, s.name, s.depth).Add(s.milliseconds);
+		}
+	}
+
+	const double now = ImGui::GetTime();
+	if (now - windowStart >= windowSec)
+	{
+		windowStart = now;
+		cpuFrame.Commit();
+		gpuFrame.Commit();
+		for (Series& s : cpuSeries) s.Commit();
+		for (Series& s : gpuSeries) s.Commit();
+	}
+
+	SameLineIfFits(TextItemWidth("CPU frame 0.000 ms   GPU frame 0.000 ms (avg)"));
+	ImGui::TextWrapped("CPU frame %.3f ms   GPU frame %.3f ms (avg)", cpuFrame.shownAvg, gpuFrame.shownAvg);
+
+	ImGui::SetNextItemWidth(120.0f);
+	ImGui::SliderFloat("Average window (s)", &windowSec, 0.1f, 5.0f, "%.1f");
+
 	if (ImGui::TreeNodeEx("Timings", ImGuiTreeNodeFlags_DefaultOpen))
 	{
+		auto drawList = [](const char* title, const Series& total, const std::vector<Series>& list)
+		{
+			ImGui::Text("%s", title);
+			ImGui::TextDisabled("%-20s %7s %7s %7s", "", "avg", "min", "max");
+			ImGui::Text("%-20s %7.3f %7.3f %7.3f", "Frame", total.shownAvg, total.shownMin, total.shownMax);
+			for (const Series& s : list)
+			{
+				if (!s.hasShown) continue;
+				ImGui::Text("%*s%-*s %7.3f %7.3f %7.3f", (int)s.depth * 2, "", 20 - (int)s.depth * 2, s.name.c_str(), s.shownAvg, s.shownMin, s.shownMax);
+			}
+		};
 		ImGui::Columns(2, "profiler", false);
-		ImGui::Text("CPU (last frame)");
-		for (const Profiler::CpuSample& sample : Profiler::GetCpuSamples())
-		{
-			ImGui::Text("%*s%-18s %7.3f ms", sample.depth * 2, "", sample.name, sample.milliseconds);
-		}
+		drawList("CPU (ms)", cpuFrame, cpuSeries);
 		ImGui::NextColumn();
-		ImGui::Text("GPU (timestamp queries)");
-		for (const Profiler::GpuSample& sample : Profiler::GetGpuSamples())
-		{
-			ImGui::Text("%*s%-18s %7.3f ms", sample.depth * 2, "", sample.name, sample.milliseconds);
-		}
+		drawList("GPU (ms, timestamp queries)", gpuFrame, gpuSeries);
 		ImGui::Columns(1);
 		ImGui::TreePop();
 	}

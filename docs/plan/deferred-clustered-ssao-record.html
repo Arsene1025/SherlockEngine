@@ -137,7 +137,7 @@ ol.read > li { margin: 10px 0; }
 <header class="top">
   <h1>디퍼드 · 클러스터드 라이팅 · SSAO 구현 기록</h1>
   <p><a href="deferred-clustered-ssao-plan.html">디퍼드·클러스터드·SSAO 구현 계획</a>의 세 단계(2단계 디퍼드 기본, 3단계 조명 컬링·클러스터드 라이팅, 5단계 SSAO)를 구현하고 검증한 기록입니다. 어느 파일의 어느 함수를 바꿨는지, 구현을 이해하려면 코드를 어떤 순서로 읽으면 되는지, 그 코드가 기대는 개념이 무엇인지를 한 문서에 모았습니다.</p>
-  <div class="box ok"><p><b>상태 (2026-11-18).</b> 세 단계 모두 구현했고 D3D11·D3D12 두 백엔드에서 화면 비교로 검증했습니다. 이전 경로(포워드, 클러스터 없음, 조명 번호 순 그림자)는 실행 인자 셋으로 그대로 되돌릴 수 있고, 그렇게 되돌린 화면은 작업 전 화면과 <b>픽셀 단위로 같습니다</b> (<a href="#v-image">8.1</a>). 커밋 <code>855139b</code>. <b>D3D12 GPU 기반 검증(<code>--gpu-validation=1</code>)이 멈추던 문제</b>는 2026-11-20 에 원인을 찾아 고쳤습니다 — 그림자 PCF 의 <code>[unroll]</code> 이 원인이었습니다 (<a href="#unverified">8.4</a>, <a href="defect-fix-record.html#d3">결함 수정 기록 3장</a>).</p></div>
+  <div class="box ok"><p><b>상태 (2026-11-18).</b> 세 단계 모두 구현했고 D3D11·D3D12 두 백엔드에서 화면 비교로 검증했습니다. 이전 경로(포워드, 클러스터 없음, 조명 번호 순 그림자)는 실행 인자 셋으로 그대로 되돌릴 수 있고, 그렇게 되돌린 화면은 작업 전 화면과 <b>픽셀 단위로 같습니다</b> (<a href="#v-image">8.1</a>). 커밋 <code>855139b</code>. <b>D3D12 GPU 기반 검증(<code>--gpu-validation=1</code>)이 멈추던 문제</b>는 2026-11-20 에 원인을 찾아 고쳤습니다 — 그림자 PCF 의 <code>[unroll]</code> 이 원인이었습니다 (<a href="#unverified">8.4</a>, <a href="defect-fix-record.html#d3">결함 수정 기록 3장</a>). 2026-11-21 에 클러스터 비닝이 GPU 로 옮겨졌습니다 (<a href="#c-binning">2.7</a>, <a href="gpu-cluster-binning-record.html">GPU 클러스터 비닝 구현 기록</a>).</p></div>
   <p>기준: 커밋 <code>3af4066</code> + 작업 트리. 계획 문서와 다르게 구현한 부분은 해당 절에 <span class="tag p">계획과 다름</span> 으로 표시했습니다. 코드 위치는 "파일 + 함수/타입 이름"으로 적었고 경로는 <code>SherlockEngine/</code> 프로젝트 폴더 기준입니다. 숫자는 이 문서를 쓰면서 실제로 실행해서 얻은 값이고, 얻지 못한 것은 <a href="#unverified">8.4</a> 에 따로 적었습니다.</p>
   <p class="foot">검증 씬은 기존 Crytek Sponza(<code>Projects/SherlockTestScenes/Assets/Models/Sponza</code>) 위에 만들었습니다. 메모에 적어 둔 Intel Sponza 는 내려받지 않았습니다 (파일 다운로드는 사용자 확인이 필요해서). 조명 128 개라는 구성은 그대로 따랐습니다.</p>
 </header>
@@ -330,8 +330,8 @@ return world.xyz / world.w;                          <span class="c">// 원근 �
 for (i = 0; i &lt; min(directionalCount, lightCount); ++i) color += ShadeLight(s, lights[i], …);   <span class="c">// 방향광은 앞쪽에 모여 있음</span>
 uint2 cell = clusterGrid[ClusterIndex(pixel, viewZ)];                                          <span class="c">// t30: (시작, 개수)</span>
 for (j = 0; j &lt; cell.y; ++j) color += ShadeLight(s, lights[clusterLightIndices[cell.x + j]], …); <span class="c">// t31</span></code></pre>
-<p>목록 버퍼(t31)는 처음 16,384 칸이고 모자라면 두 배씩 키웁니다 (상한 262,144). 상한을 넘는 쌍은 버리고 <code>Stats::clusterOverflow</code> 에 셉니다 — 지금 테스트 씬에서는 모두 0 입니다.</p>
-<div class="box"><p><b>왜 CPU 인가.</b> 이 단계의 목적은 "무엇을 어떻게 나누는가"를 눈으로 확인하는 것이라 CPU 로 먼저 만들었습니다. Debug 빌드에서 조명 256 개 비닝이 약 5 ms 걸립니다 (<a href="#v-time">8.3</a>). 컴퓨트 셰이더로 옮기는 것은 <a href="#next">9장</a>의 다음 일입니다.</p></div>
+<p>목록 버퍼(t31)는 처음 16,384 칸이고 모자라면 두 배씩 키웁니다 (상한 1,048,576 = 4 MiB). 상한을 넘는 쌍은 버리고 <code>Stats::clusterOverflow</code> 에 셉니다 — 지금 테스트 씬에서는 모두 0 입니다. 처음 상한은 262,144 였는데, 2026-11-21 Intel Sponza 촛불 1만 개 씬(<code>IntelSponzaCandles.json</code>, range 2 m)이 시점에 따라 46~49만 쌍이라 넘쳐서 올렸습니다. 버퍼는 필요한 만큼만 키우고 업로드도 실제 개수만큼이라, 쌍이 적은 씬의 비용은 그대로입니다.</p>
+<div class="box"><p><b>왜 CPU 인가.</b> 이 단계의 목적은 "무엇을 어떻게 나누는가"를 눈으로 확인하는 것이라 CPU 로 먼저 만들었습니다. Debug 빌드에서 조명 256 개 비닝이 약 5 ms 걸립니다 (<a href="#v-time">8.3</a>).</p><p><b>2026-11-21 추가.</b> 같은 결과를 컴퓨트 셰이더 다섯 개로 만드는 GPU 비닝이 기본 경로가 됐습니다. 화면 타일로 먼저 거르는 2단계 비닝입니다. 위 CPU 비닝은 <code>--cluster-gpu=0</code> 으로 쓰는 비교·대체 경로로 남았습니다. 설계와 검증은 <a href="gpu-cluster-binning-record.html">GPU 클러스터 비닝 구현 기록</a>에, 세 경로(CPU, GPU 1단계, GPU 2단계)의 측정은 <a href="gpu-cluster-binning-test.html">GPU 클러스터 비닝 측정</a>에 있습니다. 이때 t31 의 GPU 쪽 버퍼는 처음부터 상한(1,048,576 칸) 크기로 잡습니다. GPU 가 버퍼를 스스로 키울 수 없기 때문입니다.</p></div>
 </section>
 
 <section id="c-priority">
@@ -576,7 +576,7 @@ for (j = 0; j &lt; cell.y; ++j) color += ShadeLight(s, lights[clusterLightIndice
 <section id="next">
 <h2>9. 남은 일</h2>
 <ul>
-<li><b>클러스터 비닝을 컴퓨트로</b>: 지금 RHI 에 컴퓨트·UAV·구조체 버퍼가 다 있으므로 <code>BuildClusters</code> 의 (2)~(4) 를 커널 두 개(조명 → 상자 개수, 누적합 → 채우기)로 옮길 수 있습니다. CPU 5 ms 가 사라집니다.</li>
+<li><s><b>클러스터 비닝을 컴퓨트로</b>: 지금 RHI 에 컴퓨트·UAV·구조체 버퍼가 다 있으므로 <code>BuildClusters</code> 의 (2)~(4) 를 커널 두 개(조명 → 상자 개수, 누적합 → 채우기)로 옮길 수 있습니다. CPU 5 ms 가 사라집니다.</s> 2026-11-21 완료. 커널 다섯 개(View, Tile, Count, Scan, Fill)와 2단계 비닝으로 구현했습니다 (<a href="gpu-cluster-binning-record.html">GPU 클러스터 비닝 구현 기록</a>, 측정은 <a href="gpu-cluster-binning-test.html">별도 문서</a>).</li>
 <li><b>깊이 정밀도</b>: 깊이를 D32F (가능하면 reversed-Z)로 바꾸면 위치 복원 오차와 그림자 경계 뒤집힘(<a href="#v-image">8.1</a>)이 줄어듭니다. 그림자·파티클 깊이 셋도 함께 봐야 합니다.</li>
 <li><s><b>GPU 기반 검증이 멈추는 원인</b> (<a href="#unverified">8.4</a>): 작업 전 바이너리로 같은 실행을 해 보고 이번 변경과의 관련을 가립니다.</s> 11-20 해결 (<a href="defect-fix-record.html#d3">결함 수정 기록 3장</a>).</li>
 <li><b>로드맵 다음 단계</b>: <a href="rendering-roadmap-plan.html">렌더링 구현 순서 계획</a>에서 남은 것은 VSM(선택)입니다.</li>

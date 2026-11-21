@@ -22,9 +22,13 @@ using namespace DirectX;   // 이 파일 안에서만
 //                       겹치는 상자에 조명 번호를 넣음 → (시작, 개수) 격자 + 번호 목록
 //   UploadClusters      그 결과를 t30·t31 (프레임 셋, Dynamic) 에 올림. 셰이더 쪽은 Shaders/Clusters.hlsli
 //
-// 왜 CPU 인가: 이 엔진의 학습 순서상 컴퓨트 컬링(타일드) 전에 "무엇을 어떻게 나누는가"를 눈으로 확인하려고. 조명마다 화면에
-// 걸친 타일·슬라이스 범위만 검사함. 측정 (Debug 빌드, ManyLights256, 2026-11-18): 메인 뷰 비닝 약 5 ms — Release 는 재지
-// 않았음. 더 줄이려면 컴퓨트 셰이더로 옮기는 것이 다음 단계 (기록 문서의 "남은 일").
+// BuildClusters·UploadClusters 는 이제 비교·대체 경로임 (--cluster-gpu=0, 또는 컴퓨트를 쓸 수 없을 때). 기본은 같은 결과를
+// 컴퓨트 셰이더로 만드는 GPU 비닝 — Graphics/RendererClusterBin.cpp, docs/plan/gpu-cluster-binning-record.html. CullLights 는
+// 그림자 점수 때문에 어느 경로든 CPU 에서 돎.
+//
+// 처음에 CPU 로 만든 이유: 이 엔진의 학습 순서상 컴퓨트 컬링 전에 "무엇을 어떻게 나누는가"를 눈으로 확인하려고. 조명마다 화면에
+// 걸친 타일·슬라이스 범위만 검사함. 측정: Debug ManyLights256 메인 뷰 약 5 ms (2026-11-18), Release Intel Sponza 촛불 1만 개
+// 씬 시점에 따라 3~17 ms (2026-11-21, docs/plan/gpu-cluster-binning-test.html).
 
 namespace
 {

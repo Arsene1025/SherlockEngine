@@ -483,8 +483,9 @@ ReadIndex(indices, i, index);            // 타입이 BYTE/SHORT/INT 어느 것�
     <tr><td><code>KHR_materials_unlit</code></td><td>조명 계산을 하지 않는 재질</td><td>읽지 않음. 엔진 <code>Material</code> 에 <code>unlit</code> 필드는 있지만 임포터가 채우지 않음</td></tr>
     <tr><td><code>KHR_texture_transform</code></td><td>텍스처의 offset·rotation·scale</td><td>읽지 않음. 이 확장을 쓰는 모델은 UV 가 어긋날 수 있음</td></tr>
     <tr><td><code>KHR_draco_mesh_compression</code></td><td>Draco 로 형상 압축</td><td>읽지 않음. 압축된 정점 데이터는 확장 안에 들어 있어 일반 accessor 방식으로는 정상적으로 읽히지 않음</td></tr>
-    <tr><td><code>KHR_lights_punctual</code></td><td>점·스팟·방향광 정의</td><td>읽지 않음</td></tr>
-    <tr><td>그 밖의 <code>KHR_materials_*</code> (clearcoat, sheen, transmission, volume 등)</td><td>고급 재질 표현</td><td>읽지 않음 (기본 PBR 로 표시)</td></tr>
+    <tr><td><code>KHR_lights_punctual</code></td><td>점·스팟·방향광 정의</td><td><span class="pill ok">읽음</span> (<code>LoadLights</code> → <code>Model::lights</code>. 씬에 넣는 것은 놓을 때 <code>EditorApp::PlaceModel</code>. <code>range</code> 가 없으면 세기로 정함: <code>sqrt(세기 / 0.25)</code>, 그림자는 방향광만)</td></tr>
+    <tr><td><code>KHR_materials_ior</code>·<code>specular</code>·<code>clearcoat</code>·<code>transmission</code></td><td>굴절률, 비금속 반사 세기·색, 코팅층, 투과</td><td><span class="pill ok">읽음</span> (<code>ConvertMaterial</code>, <a href="../plan/material-extensions-record.html">재질 확장 기록</a>)</td></tr>
+    <tr><td>그 밖의 <code>KHR_materials_*</code> (sheen, volume 등)</td><td>고급 재질 표현</td><td>읽지 않음 (기본 PBR 로 표시)</td></tr>
   </table>
   <div class="box">스키닝·애니메이션은 SherlockEngine 의 장기 목표인 캐릭터 쪽 작업입니다. 어떤 순서로 공부할지는 <a href="character-engine-study.html">캐릭터 엔진 로드맵</a> 문서에 있고, 그 시점이 되면 이 문서의 <code>skins</code>/<code>animations</code> 를 다시 펴게 됩니다.</div>
 </section>

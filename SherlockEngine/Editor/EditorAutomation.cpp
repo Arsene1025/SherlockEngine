@@ -29,6 +29,7 @@ void EditorApp::ParseAutomation()
 	if (exitAfter.empty()) return;
 	m_auto.active = true;
 	m_auto.exitAfter = static_cast<uint64_t>(_wtoi64(exitAfter.c_str()));
+	m_auto.avgFrames = static_cast<uint32_t>(_wtoi(GetCommandLineOption(L"avg-frames").c_str()));
 	m_auto.selectName = Log::ToUtf8(GetCommandLineOption(L"select").c_str());
 	const std::wstring pick = GetCommandLineOption(L"pick");
 	if (!pick.empty()) { m_auto.pick = swscanf_s(pick.c_str(), L"%f,%f", &m_auto.pickU, &m_auto.pickV) == 2; }
@@ -44,6 +45,7 @@ void EditorApp::ParseAutomation()
 	m_auto.screenshotPath = resolve(GetCommandLineOption(L"screenshot"));
 	m_auto.dumpObjects = !GetCommandLineOption(L"dump-objects").empty();
 	m_auto.debugView = _wtoi(GetCommandLineOption(L"debug-view").c_str());
+	m_auto.lightIconsSelected = GetCommandLineOption(L"light-icons") == L"selected";
 	m_auto.debugBones = _wtoi(GetCommandLineOption(L"debug-bones").c_str());
 	{
 		const std::string spec = Log::ToUtf8(GetCommandLineOption(L"tex-setting").c_str());   // 이름;압축;밉;최대크기
@@ -139,6 +141,7 @@ void EditorApp::RunAutomation()
 
 	// ---- 2: 설정·창 ----
 	at(2, a.debugView != 0, [&] { engine.GetRenderer().GetSettings().debugView = a.debugView; });
+	at(2, a.lightIconsSelected, [&] { m_editor.SetLightIconMode(Editor::LightIconMode::SelectedOnly); });
 	at(12, !a.texSettingName.empty(), [&]
 	{
 		TextureImporter::SetSettings(a.texSettingName, a.texSetting);
@@ -359,17 +362,35 @@ void EditorApp::RunAutomation()
 	// ---- 프레임이 인자로 정해지는 것: 정지, 스크린샷, 종료. 같은 프레임의 위 동작들이 끝난 뒤에 실행됨 ----
 	at(a.stopAt, a.stopAt != 0, [&] { StopPlay(); });
 	at(a.exitAfter - 1, a.exitAfter > 1 && !a.screenshotPath.empty(), [&] { engine.RequestScreenshot(a.screenshotPath); });
+	// --avg-frames: 종료 전 N 프레임 동안 구간 시간을 이름별로 더함 (CPU 샘플은 지난 프레임, GPU 는 몇 프레임 전 결과). 처음 본 순서를 유지함.
+	static std::vector<std::pair<std::string, std::pair<double, uint32_t>>> averages;
+	if (a.avgFrames > 0 && frame < a.exitAfter && frame + a.avgFrames >= a.exitAfter)
+	{
+		const auto add = [](const std::string& name, float ms)
+		{
+			for (auto& entry : averages) if (entry.first == name) { entry.second.first += ms; ++entry.second.second; return; }
+			averages.push_back({ name, { ms, 1u } });
+		};
+		for (const Profiler::CpuSample& sample : Profiler::GetCpuSamples()) add(std::string("cpu:") + sample.name, sample.milliseconds);
+		for (const Profiler::GpuSample& sample : Profiler::GetGpuSamples()) add(std::string("gpu:") + sample.name, sample.milliseconds);
+	}
 	if (frame >= a.exitAfter)
 	{
 		// 렌더 경로 통계 (디퍼드·클러스터드·SSAO 검증용 — docs/plan/deferred-clustered-ssao-record.html 의 검증 절).
 		const Renderer::Stats& s = engine.GetRenderer().GetStats();
-		Log::Info("자동 검증: 렌더 통계 path=%s ssao=%d draws=%u gbuffer=%u forwardOpaque=%u lightsVisible=%u lightsCulled=%u clusterRefs=%u clusterMax=%u overflow=%u shadowViews=%u offscreenShadowViews=%u skippedShadowLights=%u",
+		Log::Info("자동 검증: 렌더 통계 path=%s ssao=%d draws=%u gbuffer=%u forwardOpaque=%u lightsVisible=%u lightsCulled=%u clusterRefs=%u clusterMax=%u overflow=%u clusterGpu=%d tileRefs=%u tileMax=%u shadowViews=%u offscreenShadowViews=%u skippedShadowLights=%u",
 			s.deferredPath ? "deferred" : "forward", s.ssao ? 1 : 0, s.draws, s.gbufferDraws, s.forwardOpaqueDraws, s.lightsVisible, s.lightsCulled,
-			s.clusterLightRefs, s.clusterMaxLights, s.clusterOverflow, s.shadowViews, s.shadowViewsOffscreen, engine.GetRenderer().GetSkippedShadowLights());
+			s.clusterLightRefs, s.clusterMaxLights, s.clusterOverflow, s.clusterGpu ? 1 : 0, s.clusterTileRefs, s.clusterTileMaxLights, s.shadowViews, s.shadowViewsOffscreen, engine.GetRenderer().GetSkippedShadowLights());
 		std::string timings;
 		for (const Profiler::CpuSample& sample : Profiler::GetCpuSamples()) timings += std::format(" cpu:{}={:.3f}", sample.name, sample.milliseconds);
 		for (const Profiler::GpuSample& sample : Profiler::GetGpuSamples()) timings += std::format(" gpu:{}={:.3f}", sample.name, sample.milliseconds);
 		Log::Info("자동 검증: 구간 ms%s", timings.c_str());
+		if (!averages.empty())
+		{
+			std::string line;
+			for (const auto& entry : averages) line += std::format(" {}={:.3f}", entry.first, entry.second.first / entry.second.second);
+			Log::Info("자동 검증: 구간 평균 ms (%u 프레임)%s", a.avgFrames, line.c_str());
+		}
 		Log::Info("자동 검증: %llu 프레임 뒤 종료", frame);
 		PostQuitMessage(0);
 	}

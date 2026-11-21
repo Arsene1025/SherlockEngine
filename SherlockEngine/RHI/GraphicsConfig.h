@@ -12,5 +12,6 @@
 // kFrameCount 가 1..3 중 어느 값이든 화면은 같아야 함. 다르면 "이전 프레임 데이터에 기대는" 버그가 있다는 뜻임.
 constexpr uint32_t kFrameCount = 2;
 
-// 프레임마다 기록할 수 있는 GPU 타임스탬프 슬롯 수 (Profiler). 슬롯은 0 부터 순서대로 씀.
-constexpr uint32_t kMaxTimestamps = 32;
+// 프레임마다 기록할 수 있는 GPU 타임스탬프 슬롯 수 (Profiler). 슬롯은 0 부터 순서대로 씀. 구간 하나가 두 칸 —
+// GPU 클러스터 비닝의 단계별 구간(Bin*) 5 개가 더해져 32 → 64 (디퍼드·SSAO·블룸·파티클·미리보기를 모두 켜도 남게).
+constexpr uint32_t kMaxTimestamps = 64;

@@ -89,12 +89,25 @@ constexpr uint32_t kSRVSlotSsao = 29;          // t29 SSAO 결과 R8_UNORM (G-bu
 constexpr uint32_t kSRVSlotClusterGrid = 30;   // t30 StructuredBuffer<uint2>, kClusterCount 개
 constexpr uint32_t kSRVSlotClusterLights = 31; // t31 StructuredBuffer<uint>, 조명 번호 (t15 인덱스)
 constexpr uint32_t kCBSlotSsao = 12;           // b12 SSAO 파라미터 + 커널 (SSAO 셋, 프레임에 한 번)
+// GPU 클러스터 비닝 (컴퓨트, docs/plan/gpu-cluster-binning-record.html). 셋 하나 (Layout_ClusterBin, 뷰마다 한 벌).
+constexpr uint32_t kCBSlotClusterBin = 13;          // b13 ClusterBinConstants (뷰마다 Dynamic 한 벌, 프레임에 한 번)
+constexpr uint32_t kSRVSlotLightBounds = 7;         // t7 조명 경계 구 (월드, float4 — t15 와 같은 번호. w ≤ 0 은 방향광·빛 없음). 비닝 셋 전용 (t32 는 레지스터 상한 32 밖)
+constexpr uint32_t kUAVSlotClusterViewBounds = 0;   // u0 경계 구를 이 뷰의 뷰 공간으로 옮긴 것 (float4)
+constexpr uint32_t kUAVSlotClusterTileCounts = 1;   // u1 타일마다 조명 수 (uint × kClusterTileCount, 통계·디버그용)
+constexpr uint32_t kUAVSlotClusterTileMasks = 2;    // u2 타일마다 조명 비트마스크 (비트 j = 조명 w·32 + j). 타일 t 는 [t · tileStride, …) — 고정 간격
+constexpr uint32_t kUAVSlotClusterGrid = 3;         // u3 = 프레임 셋 t30 (GPU 경로의 버퍼)
+constexpr uint32_t kUAVSlotClusterLights = 4;       // u4 = 프레임 셋 t31 (GPU 경로의 버퍼)
+constexpr uint32_t kUAVSlotClusterStats = 5;        // u5 통계 (uint × kClusterStatCount). 메인 뷰 것만 CPU 로 읽음
 
 // 클러스터 격자. Shaders/Clusters.hlsli 의 CLUSTER_X/Y/Z 와 같아야 함. 16:9 화면에서 타일이 거의 정사각형.
 constexpr uint32_t kClusterGridX = 16;
 constexpr uint32_t kClusterGridY = 9;
 constexpr uint32_t kClusterGridZ = 24;
 constexpr uint32_t kClusterCount = kClusterGridX * kClusterGridY * kClusterGridZ;   // 3456
+constexpr uint32_t kClusterTileCount = kClusterGridX * kClusterGridY;               // 144 (화면 타일, 1단계 비닝의 단위)
+// u5 통계 칸. ClusterBin.hlsli 의 STAT_* 와 같아야 함.
+enum ClusterStat : uint32_t { ClusterStat_Refs, ClusterStat_MaxLights, ClusterStat_Overflow, ClusterStat_TileRefs, ClusterStat_TileMaxLights, ClusterStat_Count };
+constexpr uint32_t kClusterStatCount = 8;   // 버퍼 크기 (32 바이트). 앞 ClusterStat_Count 칸만 씀
 constexpr uint32_t kMaxSsaoSamples = 32;       // b12 커널 배열 크기. Ssao.hlsli 의 MAX_SSAO_SAMPLES
 
 // 정렬 길이: capacity 이상인 가장 작은 2 의 거듭제곱 (최소 64). ParticleSort.hlsli 의 ParticleSortCount 와 같은 식.
@@ -362,12 +375,31 @@ struct alignas(16) ParticleSortStepConstants
 	uint32_t padding[62];
 };
 
+// b13: GPU 클러스터 비닝 한 뷰의 값. 뷰마다 Dynamic 버퍼 한 벌 (메인, 미리보기) — 같은 Dynamic 버퍼를 한 프레임에 두 번 올리지
+// 않음. 슬라이스 경계 z 는 CPU 비닝과 같은 값 (std::pow) 을 그대로 올려 상자의 앞·뒤 면이 두 경로에서 같게 함.
+struct alignas(16) ClusterBinConstants
+{
+	DirectX::XMFLOAT4 viewColumn[3];   // 월드 → 뷰: x = dot(float4(p, 1), viewColumn[0]) … (행 벡터 view 의 열 0..2)
+	DirectX::XMFLOAT4 projScale;       // (P._11, P._22, P._31, P._32) — 행 벡터 투영의 x·y 배율과 원근의 z 항
+	DirectX::XMFLOAT4 projOffset;      // (P._41, P._42, near, far) — 직교의 이동 항, 깊이 범위
+	DirectX::XMFLOAT4 sliceZ[7];       // 슬라이스 경계 z_0 .. z_24 (25 개를 float4 7 칸에 채움)
+	uint32_t lightCount;               // t7·t15 의 유효 원소 수
+	uint32_t tileStride;               // u2 에서 타일 하나의 워드 수 (= ⌈조명 버퍼 용량 / 32⌉)
+	uint32_t perspective;              // 1 원근, 0 직교
+	uint32_t maxRefs;                  // u4 용량 (kMaxClusterLightRefs). 넘치는 쌍은 버리고 통계에 남김
+	uint32_t useTiles;                 // 1 = 2단계 (상자가 자기 타일 마스크의 조명만 봄), 0 = 1단계 (상자마다 조명 전체 — 비교 측정용)
+	uint32_t padding[3];
+};
+
 static_assert(IsValidConstantBufferSize(sizeof(PerFrameConstants)), "PerFrameConstants 는 16의 배수여야 함");
 static_assert(sizeof(ParticleEmitterConstants) == 144, "ParticleEmitterConstants: 16 * 9");
 static_assert(offsetof(ParticleEmitterConstants, wind) == 128, "ParticleEmitterConstants.wind");
 static_assert(offsetof(ParticleEmitterConstants, softDistance) == 96, "ParticleEmitterConstants.softDistance");
 static_assert(sizeof(ParticleCollisionConstants) == 160, "ParticleCollisionConstants: 64 * 2 + 16 * 2");
 static_assert(sizeof(ParticleSortViewConstants) == 64, "ParticleSortViewConstants");
+static_assert(sizeof(ClusterBinConstants) == 224, "ClusterBinConstants: 16 * 14");
+static_assert(offsetof(ClusterBinConstants, sliceZ) == 80, "ClusterBinConstants.sliceZ");
+static_assert(offsetof(ClusterBinConstants, lightCount) == 192, "ClusterBinConstants.lightCount");
 static_assert(sizeof(ParticleSortStepConstants) == 256, "ParticleSortStepConstants: D3D12 가 CB 를 256 으로 올리므로 초기 데이터도 256");
 static_assert(offsetof(ParticleEmitterConstants, startSpeed) == 64, "ParticleEmitterConstants.startSpeed");
 static_assert(offsetof(ParticleEmitterConstants, capacity) == 80, "ParticleEmitterConstants.capacity");

@@ -5,6 +5,7 @@
 #include <vector>
 #include <DirectXMath.h>
 #include "RHI/Handle.h"
+#include "RHI/GraphicsConfig.h"   // kFrameCount (GPU 클러스터 통계 리드백 슬롯)
 #include "RHI/PipelineTypes.h"
 #include "RHI/RenderPassTypes.h"
 #include "Graphics/VertexTypes.h"   // VertexFormat
@@ -59,6 +60,11 @@ struct RenderSettings
 	// 클러스터드 라이팅: 지역광을 화면 타일 × 깊이 슬라이스 상자(16 × 9 × 24)에 나눠 담고, 픽셀은 자기 상자의 목록만
 	// 돎. 끄면 픽셀마다 조명 전부 (ShadeAllLights). 포워드·디퍼드 둘 다에 적용. --clustered=1|0.
 	bool clustered = true;
+	// 클러스터 비닝을 컴퓨트 셰이더로 (타일 → 상자 2단계, docs/plan/gpu-cluster-binning-record.html). 끄면 CPU 비닝 (BuildClusters) —
+	// 결과 비교용. 컴퓨트 파이프라인을 못 만들면 CPU 로 돌아감. 에디터 Render Settings · --cluster-gpu=1|0.
+	bool clusterGpu = true;
+	// GPU 비닝의 1단계(화면 타일). 끄면 상자 3456 개가 조명 전체를 직접 검사 (2단계 비닝의 효과 측정용). --cluster-tiles=1|0.
+	bool clusterGpuTiles = true;
 	// 3a: 그림자 타일을 "화면에 보이는 조명" 중 점수 높은 순으로 줌. 끄면 예전처럼 씬 순서대로 앞에서부터. --shadow-priority=1|0.
 	bool shadowPriority = true;
 	// SSAO 켜짐 덮어쓰기: −1 = 씬 파일 값 (environment.ssao.enabled), 0 = 끔, 1 = 켬. --ssao= 실행 인자가 씀 (저장하지 않음).
@@ -131,6 +137,10 @@ public:
 		uint32_t clusterLightRefs = 0;   // 클러스터 목록에 들어간 (클러스터, 조명) 쌍 수 = t31 원소 수
 		uint32_t clusterMaxLights = 0;   // 한 클러스터의 최대 조명 수
 		uint32_t clusterOverflow = 0;    // t31 용량이 모자라 버린 쌍 수 (0 이어야 함)
+		// GPU 비닝이면 위 세 값과 아래 두 값은 몇 프레임 (≥ kFrameCount) 전 메인 뷰의 것 (Staging 리드백 — 기다리지 않음)
+		uint32_t clusterTileRefs = 0;    // GPU 1단계: 타일 마스크에 켜진 (타일, 조명) 쌍 수
+		uint32_t clusterTileMaxLights = 0;
+		bool clusterGpu = false;         // 이번 프레임 비닝을 컴퓨트로 했는가
 		uint32_t shadowViewsOffscreen = 0;   // 메인 카메라 절두체 밖 지역광에 간 그림자 뷰 수 (3a 를 끄면 늘어남 — 낭비된 아틀라스 타일)
 		bool ssao = false;               // 이번 프레임 메인 뷰에 SSAO 를 그렸는가
 	};
@@ -327,9 +337,10 @@ private:
 	// ---- 셰이더·레이아웃·패스 표 (Renderer.cpp 의 kShaders, kPasses) ----
 	// 셰이더를 추가할 때: ShaderId 에 한 줄, kShaders 에 한 줄. 로드·핫리로드 감시·검증·해제는 표를 돌며 함.
 	enum ShaderId : uint32_t { Shader_BasicVS, Shader_BasicPS, Shader_ShadowVS, Shader_SkyVS, Shader_SkyPS, Shader_ScreenVS, Shader_TonemapPS, Shader_PostPS, Shader_BasicSkinVS, Shader_ShadowSkinVS, Shader_DebugLineVS, Shader_DebugLinePS, Shader_BlurCS, Shader_BlurWeightsCS, Shader_ParticleResetCS, Shader_ParticleSimCS, Shader_ParticleArgsCS, Shader_ParticleEmitCS, Shader_ParticleSortInitCS, Shader_ParticleSortStepCS, Shader_ParticleVS, Shader_ParticlePS,
-		Shader_GBufferPS, Shader_DeferredLightPS, Shader_SsaoPS, Shader_SsaoBlurPS, Shader_Count };
+		Shader_GBufferPS, Shader_DeferredLightPS, Shader_SsaoPS, Shader_SsaoBlurPS,
+		Shader_ClusterViewCS, Shader_ClusterTileCS, Shader_ClusterCountCS, Shader_ClusterScanCS, Shader_ClusterFillCS, Shader_Count };
 	enum LayoutId : uint32_t { Layout_Frame, Layout_Object, Layout_Material, Layout_Post, Layout_BlurCompute, Layout_BlurWeights, Layout_ParticleSim, Layout_ParticleStep, Layout_ParticleDraw, Layout_ParticleDepth, Layout_ParticleCollide, Layout_ParticleSort, Layout_ParticleSortStep,
-		Layout_GBuffer, Layout_Ssao, Layout_Count };
+		Layout_GBuffer, Layout_Ssao, Layout_ClusterBin, Layout_Count };
 	// 패스 = (VS, PS, 레이아웃 목록). PSO Desc 의 셰이더·bindingLayouts 가 이 표에서 나오고, 바인딩 대조도 패스
 	// 단위로 함 (그 패스의 레이아웃에 선언된 슬롯만 통과).
 	// Pass_MainSkin / Pass_ShadowSkin 은 스키닝 메시용 (정점 포맷 PositionColorNormalTexcoordTangentSkin). 스킨 VS 만 다르고 PS·레이아웃은 같음.
@@ -349,12 +360,14 @@ private:
 	static constexpr uint32_t kSetSsao = 0;       // SSAO·블러 { SSAO }
 	// 컴퓨트 패스 = (CS, 레이아웃 목록). 그래픽스 패스 표와 따로 둠 — PSO Desc 가 다르고 (ComputePipelineDesc),
 	// 바인딩 대조의 스테이지가 Compute 임.
-	enum ComputePassId : uint32_t { ComputePass_Blur, ComputePass_BlurWeights, ComputePass_ParticleReset, ComputePass_ParticleSim, ComputePass_ParticleArgs, ComputePass_ParticleEmit, ComputePass_ParticleSortInit, ComputePass_ParticleSortStep, ComputePass_Count };
+	enum ComputePassId : uint32_t { ComputePass_Blur, ComputePass_BlurWeights, ComputePass_ParticleReset, ComputePass_ParticleSim, ComputePass_ParticleArgs, ComputePass_ParticleEmit, ComputePass_ParticleSortInit, ComputePass_ParticleSortStep,
+		ComputePass_ClusterView, ComputePass_ClusterTile, ComputePass_ClusterCount, ComputePass_ClusterScan, ComputePass_ClusterFill, ComputePass_Count };
 	static constexpr uint32_t kSetBlurCompute = 0;
 	static constexpr uint32_t kSetBlurWeights = 0;
 	static constexpr uint32_t kSetParticleSim = 0;
 	static constexpr uint32_t kSetParticleCollide = 1;   // 적분 패스만 { 적분, 충돌 }
 	static constexpr uint32_t kSetParticleSortStep = 1;  // 정렬 패스 { 정렬, 단계 }
+	static constexpr uint32_t kSetClusterBin = 0;        // GPU 클러스터 비닝 { 비닝 } (뷰마다 한 벌)
 	static constexpr uint32_t kMaxParticleViews = 2;     // 알파 이미터의 정렬 결과를 따로 두는 뷰: 0 메인, 1 카메라 미리보기
 	struct ShaderInfo;   // 파일·진입점·스테이지·이름
 	struct PassInfo;     // 이름·VS·PS·레이아웃 목록
@@ -421,6 +434,18 @@ private:
 	// t30·t31 용량을 두 뷰 중 큰 쪽에 맞춤 (모자라면 두 배씩, 상한 kMaxClusterLightRefs). 다시 만들면 프레임 셋도 다시 만들게 함.
 	void EnsureClusterCapacity();
 	void UploadClusters(uint32_t viewIndex);   // t30·t31 에 그 뷰의 목록을 올림 (Dynamic — 클러스터드가 꺼져도 프레임마다 올림)
+
+	// ---- GPU 클러스터 비닝 (RendererClusterBin.cpp, docs/plan/gpu-cluster-binning-record.html) ----
+	// 이번 프레임에 GPU 경로를 쓸 수 있는가: 설정이 켜져 있고, 컴퓨트 파이프라인 다섯 개와 버퍼가 준비됨. 버퍼는 조명 버퍼 용량에
+	// 맞춰 (다시) 만듦 — UploadLights 뒤에 부름.
+	bool PrepareGpuClusters();
+	// Prepare 구간: t7 (월드 경계 구) 를 올리고, 뷰의 b13 (뷰 행렬·투영 항·슬라이스 경계) 을 올림. 메인 뷰는 지난 통계도 읽음.
+	void UploadLightBounds();
+	void UploadClusterBinConstants(const Camera& camera, uint32_t viewIndex);
+	void ReadGpuClusterStats();
+	// 렌더 패스 밖에서: 디스패치 다섯 번 → t30·t31 (GPU 버퍼) 을 ShaderResource 로. 메인 뷰는 통계를 Staging 으로 복사.
+	void DispatchClusterBinning(RHI::CommandList& cmd, uint32_t viewIndex);
+	void DestroyGpuClusterResources();
 
 	// ---- SSAO (5단계, RendererSsao.cpp) ----
 	bool CreateSsaoTargets(ViewTarget& view, const std::string& base);
@@ -660,7 +685,9 @@ private:
 
 	// ---- 클러스터 (3b) ----
 	static constexpr uint32_t kInitialClusterLightRefs = 16384;    // t31 처음 원소 수 (64KB)
-	static constexpr uint32_t kMaxClusterLightRefs = 262144;       // 상한 (1MB). 넘치면 버리고 Stats::clusterOverflow
+	// 상한 (4MB). 넘치면 버리고 Stats::clusterOverflow. 버퍼는 필요한 만큼만 두 배씩 키우고 업로드도 실제 개수만큼이라, 상한을 올려도
+	// 실제 쌍이 적은 씬의 비용은 그대로임. 262,144 에서는 Intel Sponza 촛불 1만 개(range 2 m)가 시점에 따라 약 46~49만 쌍이라 넘쳤음 (2026-11-21)
+	static constexpr uint32_t kMaxClusterLightRefs = 1048576;
 	static constexpr uint32_t kClusterViews = 2;                   // 0 메인, 1 카메라 미리보기
 	BufferHandle m_clusterGridBuffer;      // t30 Dynamic, uint2 × kClusterCount
 	BufferHandle m_clusterIndexBuffer;     // t31 Dynamic, uint × m_clusterIndexCapacity
@@ -668,6 +695,31 @@ private:
 	std::vector<uint32_t> m_clusterGridScratch[kClusterViews];    // (시작, 개수) 쌍을 펼친 것 — 길이 2 × kClusterCount
 	std::vector<uint32_t> m_clusterIndexScratch[kClusterViews];   // 조명 번호 목록
 	bool m_clusterBuilt[kClusterViews] = {};                      // 이번 프레임에 그 뷰를 비닝했는가
+	// GPU 비닝 (RendererClusterBin.cpp). t30·t31 은 CPU 경로와 다른 Default + UAV 버퍼 두 개 — 프레임 셋이 경로에 따라 둘 중
+	// 하나를 꽂음 (m_frameSetClusterGpu). t31 은 처음부터 상한 크기 (GPU 는 개수를 세기 전에 버퍼가 있어야 함).
+	BufferHandle m_clusterBinCB[kClusterViews];        // b13 Dynamic, 뷰마다
+	BufferHandle m_lightBoundsBuffer;                  // t7 Dynamic, float4 × m_clusterGpuLightCapacity (월드 경계 구)
+	BufferHandle m_clusterViewBounds;                  // u0 Default, float4 × 용량 (뷰 공간 경계 구)
+	BufferHandle m_clusterTileCounts;                  // u1 Default, uint × kClusterTileCount
+	BufferHandle m_clusterTileMasks;                   // u2 Default, uint × kClusterTileCount × ⌈용량 / 32⌉ (타일마다 고정 구간의 비트마스크)
+	BufferHandle m_clusterGridGpu;                     // u3 / t30 Default, uint2 × kClusterCount
+	BufferHandle m_clusterIndexGpu;                    // u4 / t31 Default, uint × kMaxClusterLightRefs
+	BufferHandle m_clusterStatsBuffer;                 // u5 Default, uint × kClusterStatCount
+	// 통계 리드백 링. kFrameCount 보다 넉넉히 둠 — D3D11 은 드라이버가 몇 프레임을 쌓아 두므로 2 프레임 전 복사가 아직 안 끝났을
+	// 수 있음. 읽지 못한 슬롯은 덮어쓰지 않아 (그 프레임은 복사를 건너뜀), 읽은 값은 항상 한 프레임의 온전한 통계임.
+	static constexpr uint32_t kClusterStatsSlots = 4;
+	BufferHandle m_clusterStatsReadback[kClusterStatsSlots];   // Staging
+	bool m_clusterStatsPending[kClusterStatsSlots] = {};       // 그 슬롯에 아직 읽지 않은 복사가 있음
+	uint32_t m_clusterStatsCursor = 0;                         // 다음에 복사할 슬롯 (메인 뷰 디스패치마다 하나씩)
+	uint64_t m_clusterStatsCopyFrame[kClusterStatsSlots] = {}; // 그 슬롯에 복사한 GPU 비닝 프레임 번호
+	uint64_t m_clusterBinFrame = 0;                            // GPU 비닝을 한 프레임 수 (ReadGpuClusterStats 가 셈)
+	static constexpr uint32_t kClusterStatValues = 8;  // = ShaderConstants.h 의 kClusterStatCount (RendererClusterBin.cpp 가 static_assert)
+	uint32_t m_clusterGpuStats[kClusterStatValues] = {}; // 마지막으로 읽은 통계 (읽지 못한 프레임에도 이 값을 보여 줌)
+	ResourceSetHandle m_clusterBinSet[kClusterViews];
+	uint32_t m_clusterGpuLightCapacity = 0;            // 위 용량 버퍼들을 만든 조명 수 (= 그때의 m_lightCapacity)
+	bool m_clusterGpuFailed = false;                   // 버퍼 생성 실패 — 다시 시도하지 않고 CPU 경로
+	bool m_clusterGpuThisFrame = false;                // 이번 프레임 GPU 경로
+	bool m_frameSetClusterGpu = false;                 // 프레임 셋 t30·t31 이 GPU 버퍼를 꽂고 있음
 	std::vector<DirectX::XMFLOAT4> m_lightBounds;                 // 조명마다의 경계 구 (ComputeLightBounds, 이번 프레임)
 	std::vector<uint8_t> m_lightVisible;                          // 3a: 메인 카메라 절두체 안 (방향광은 항상 1)
 	std::vector<uint32_t> m_shadowOrder;                          // 3a: 그림자 후보 조명 번호, 점수 높은 순

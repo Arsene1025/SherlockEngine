@@ -25,12 +25,16 @@
 //   --particle-sort=0     알파 파티클 (blendMode 1) 을 정렬하지 않고 그림 — 정렬 효과 비교용. 게임 exe 도 같은 인자
 //   --deferred=1|0        디퍼드 경로 (1 = 기본). 0 이면 전부 포워드 — 두 경로 비교용. 게임 exe 도 같은 인자
 //   --clustered=1|0       클러스터드 라이팅 (1 = 기본). 0 이면 픽셀마다 조명 전부를 돎 — 결과가 같은지 비교용
+//   --cluster-gpu=1|0     클러스터 비닝을 컴퓨트로 (1 = 기본). 0 이면 CPU 비닝 — 결과가 같은지 비교용. 게임 exe 도 같은 인자
+//   --cluster-tiles=1|0   GPU 비닝의 타일 단계 (1 = 기본, 2단계 비닝). 0 이면 상자마다 조명 전체 (1단계) — 비용 비교용
+//   --avg-frames=N        종료 직전 N 프레임의 구간 시간(cpu:·gpu:) 평균을 "구간 평균 ms" 줄로 남김 (측정용)
 //   --shadow-priority=1|0 그림자 타일을 화면 기여도 순으로 (1 = 기본). 0 이면 조명 번호 순 (예전 방식)
 //   --ssao=1|0            씬 파일의 SSAO 켜짐 값을 덮어씀 (없으면 씬 값). 디퍼드 프레임에서만 효과가 있음
 struct EditorAutomation
 {
 	bool active = false;
 	uint64_t exitAfter = 0;
+	uint32_t avgFrames = 0;   // --avg-frames=N. 종료 직전 N 프레임의 Profiler 구간 시간 평균을 따로 로그 (한 프레임 샘플은 흔들림)
 	bool pick = false; float pickU = 0.5f, pickV = 0.5f;
 	std::string selectName;   // --select=<오브젝트 이름>. 이름이 같은 첫 오브젝트를 선택함 (카메라 미리보기 검증 등)
 	bool setPosition = false; DirectX::XMFLOAT3 position = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
@@ -39,6 +43,7 @@ struct EditorAutomation
 	std::string texSettingName; TextureImportSettings texSetting;   // --tex-setting=이름;압축0|1;밉;최대크기 (12 프레임째 임포트 설정 변경 + 그 텍스처만 다시 읽기. Inspector 의 Apply 와 같은 경로)
 	int debugBones = 0;         // --debug-bones=N (2 프레임째 본 디버그 표시)
 	int debugView = 0;          // --debug-view=N (2 프레임째 Render Settings 의 디버그 뷰)
+	bool lightIconsSelected = false;   // --light-icons=selected (2 프레임째 Gizmo 메뉴의 Selected light only)
 	uint64_t freezeCascadesAt = 0;   // --freeze-cascades=N (N 프레임째 에디터 카메라로 캐스케이드 고정. Renderer::SetCascadeFreeze)
 	bool camLook = false; DirectX::XMFLOAT3 camEye = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), camTarget = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --cam-look=ex,ey,ez;tx,ty,tz (고정 다음 프레임, 고정이 없으면 3 프레임째 에디터 카메라 이동)
 	bool newScene = false;      // --new-scene=1 (3 프레임째 바닥만 있는 새 씬)

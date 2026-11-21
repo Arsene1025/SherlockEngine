@@ -741,14 +741,15 @@ SherlockEditor.exe --project=..\..\Projects\TestGame --exit-after=40 --play=1 --
         <li><a href="../plan/deferred-clustered-ssao-record.html#overview">디퍼드 기록 0~2장</a> — 프레임 흐름 그림, G-buffer 배치, 깊이에서 위치 복원, 옥타헤드럴 노멀, 클러스터 격자, SSAO 개념</li>
         <li><a href="../plan/deferred-clustered-ssao-record.html#reading">디퍼드 기록 4장 코드 읽는 순서</a> — 단계마다 확인 질문이 붙어 있음</li>
         <li><a href="rendering-analysis.html#c20-26">20.26</a> — 이 문서의 서술(패스, 슬롯, b0·b2)이 바뀐 곳 요약</li>
+        <li><a href="../plan/gpu-cluster-binning-record.html">GPU 클러스터 비닝 기록</a> — 2026-11-21 부터 기본인 컴퓨트 비닝(타일 → 상자 2단계). 10장이 읽는 순서, 측정은 <a href="../plan/gpu-cluster-binning-test.html">별도 문서</a></li>
       </ul></div>
       <div><h5>함께 볼 소스</h5><ul>
         <li><code>Graphics/Renderer.h</code>의 <code>RenderSettings</code>(deferred·clustered·shadowPriority) → <code>ShaderConstants.h</code>의 <code>PerFrameConstants</code></li>
         <li><code>Shaders/Shading.hlsli</code> → <code>MaterialSurface.hlsli</code> → <code>GBufferPixelShader.hlsl</code> → <code>GBuffer.hlsli</code> → <code>DeferredLightingPixelShader.hlsl</code></li>
-        <li><code>Graphics/RendererDeferred.cpp</code>의 <code>RenderDeferredScene</code>, <code>RendererClusters.cpp</code>의 <code>CullLights</code>·<code>BuildClusters</code>, <code>RendererSsao.cpp</code>의 <code>UploadSsaoConstants</code>·<code>RenderSsao</code></li>
+        <li><code>Graphics/RendererDeferred.cpp</code>의 <code>RenderDeferredScene</code>, <code>RendererClusters.cpp</code>의 <code>CullLights</code>·<code>BuildClusters</code>(CPU 비닝, 비교 경로), <code>RendererClusterBin.cpp</code>의 <code>DispatchClusterBinning</code>과 <code>Shaders/ClusterBin.hlsli</code>(GPU 비닝), <code>RendererSsao.cpp</code>의 <code>UploadSsaoConstants</code>·<code>RenderSsao</code></li>
       </ul></div>
     </div>
-    <div class="check"><b>확인 포인트</b> — SherlockTestScenes 프로젝트의 <code>ManyLights256.json</code> 에서 Render Settings 의 Clustered lights 를 끄고 켜도 화면이 같고 Profiler 의 MainPass(GPU) 시간만 크게 달라진다. 디버그 뷰 14(상자당 조명 수)와 15(깊이 슬라이스)로 비닝을 눈으로 본다. <code>SsaoBalls.json</code> 에서 디버그 뷰 13 으로 SSAO 만 보고, 환경 패널의 SSAO 반경을 바꿔 본다.</div>
+    <div class="check"><b>확인 포인트</b> — SherlockTestScenes 프로젝트의 <code>ManyLights256.json</code> 에서 Render Settings 의 Clustered lights 를 끄고 켜도 화면이 같고 Profiler 의 MainPass(GPU) 시간만 크게 달라진다. 디버그 뷰 14(상자당 조명 수)와 15(깊이 슬라이스)로 비닝을 눈으로 본다. GPU clustering·Tile pre-pass 를 꺼도 화면은 같고, Profiler 에서 CPU <code>BuildClusters</code> 와 GPU <code>ClusterBin</code>(<code>BinTile</code>~<code>BinFill</code>) 시간이 바뀐다. <code>SsaoBalls.json</code> 에서 디버그 뷰 13 으로 SSAO 만 보고, 환경 패널의 SSAO 반경을 바꿔 본다.</div>
   </div>
 </div>
 

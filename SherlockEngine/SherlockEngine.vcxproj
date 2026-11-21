@@ -297,6 +297,7 @@
     <ClCompile Include="Graphics\RendererShadow.cpp" />
     <ClCompile Include="Graphics\RendererSsao.cpp" />
     <ClCompile Include="Graphics\RendererClusters.cpp" />
+    <ClCompile Include="Graphics\RendererClusterBin.cpp" />
     <ClCompile Include="Graphics\RendererDeferred.cpp" />
     <ClCompile Include="Graphics\RendererTargets.cpp" />
     <ClCompile Include="Graphics\TextureCache.cpp" />
@@ -481,6 +482,46 @@
       <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
     </FxCompile>
+    <FxCompile Include="Shaders\ClusterViewComputeShader.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>CS_ClusterView</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ClusterTileComputeShader.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>CS_ClusterTile</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ClusterCountComputeShader.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>CS_ClusterCount</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ClusterScanComputeShader.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>CS_ClusterScan</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\ClusterFillComputeShader.hlsl">
+      <ShaderType>Compute</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>CS_ClusterFill</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
     <FxCompile Include="Shaders\ParticleVertexShader.hlsl">
       <ShaderType>Vertex</ShaderType>
       <ShaderModel>5.0</ShaderModel>
@@ -533,6 +574,7 @@
     <None Include="Shaders\Ssao.hlsli" />
     <None Include="Shaders\GBuffer.hlsli" />
     <None Include="Shaders\Clusters.hlsli" />
+    <None Include="Shaders\ClusterBin.hlsli" />
     <None Include="Shaders\MaterialSurface.hlsli" />
     <None Include="Shaders\Shading.hlsli" />
     <None Include="Shaders\Lighting.hlsli" />

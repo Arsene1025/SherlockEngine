@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>테스트 · GPU 클러스터 비닝 측정 (CPU · GPU 1단계 · GPU 2단계) — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:13.5px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:5px 9px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.n { text-align:right; font-variant-numeric: tabular-nums; white-space:nowrap; }
+.rng { display:block; color:var(--ink3); font-size:11.5px; }
+.sub { color:var(--ink3); font-size:12px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>GPU 클러스터 비닝 측정 — CPU · GPU 1단계 · GPU 2단계</h1>
+  <p>2026-11-21 · 클러스터 비닝을 세 경로로 돌려 조명이 적은 씬, 중간 씬, 많은 씬에서 비용을 잰 기록입니다. 구현과 화면 검증은 <a href="gpu-cluster-binning-record.html">GPU 클러스터 비닝 구현 기록</a>에 있습니다. 세 경로의 화면은 모두 같습니다 (전체 순회 기준 0 px, 구현 기록 9장).</p>
+  <ul>
+    <li><b>CPU</b> — <code>--cluster-gpu=0</code>. <code>Renderer::BuildClusters</code> 가 비닝하고 Dynamic 버퍼로 올림 (2026-11-18 부터의 경로)</li>
+    <li><b>GPU 1단계</b> — <code>--cluster-tiles=0</code>. 상자 3,456 개가 조명 전체를 직접 검사</li>
+    <li><b>GPU 2단계</b> — 기본. 화면 타일 144 개의 비트마스크로 먼저 거르고, 상자는 자기 타일 후보만 검사</li>
+  </ul>
+  <p class="foot">기준: 커밋 <code>1c763bf</code> + 작업 트리 (아직 커밋하지 않음). 모든 숫자는 이 문서를 쓰면서 같은 바이너리로 직접 잰 값입니다.</p>
+</header>
+<nav><a href="#summary">1. 요약</a><a href="#method">2. 측정 방법</a><a href="#few">3. 조명 적은 씬</a><a href="#mid">4. 조명 중간 씬</a><a href="#candles">5. 조명 많은 씬</a><a href="#steps">6. 단계별 비용</a><a href="#frame">7. 프레임 전체</a><a href="#lightgap">8. 라이팅 시간 차이 (D3D11)</a><a href="#limits">9. 한계</a></nav>
+
+<section id="summary">
+<h2>1. 요약</h2>
+<div class="box ok">
+<ul>
+<li><b>CPU 비닝 시간은 거의 0이 됩니다.</b> CPU 비닝은 조명 4개 씬 0.13~0.17 ms, 256개 1.2 ms, 촛불 1만 개 씬은 시점에 따라 2.9~17.5 ms였습니다. GPU 경로에서 CPU에 남는 일은 입력(경계 구, 상수) 업로드뿐이고, 0.002~0.02 ms입니다.</li>
+<li><b>GPU에는 비닝 시간이 더해집니다.</b> 2단계 기준으로 조명이 적은 씬 0.03 ms, 256개 0.1 ms, 촛불 씬 1.0~1.9 ms입니다.</li>
+<li><b>2단계는 조명이 많을수록 이득이 큽니다.</b> 조명이 4개면 둘 다 0.03~0.05 ms이고, 차이는 실행마다 흔들리는 범위 안입니다 (DeferredMaterials 는 2단계가 0.005 ms 느리고, LightOrder 는 0.014 ms 빠름). 256개에서는 0.10 대 0.13 ms, 촛불 씬에서는 1.0~1.9 대 3.6~4.9 ms로 2~4배 빠릅니다.</li>
+<li><b>2단계는 목록이 짧아 라이팅도 조금 빨라집니다.</b> 촛불 씬에서 2단계의 (상자, 조명) 쌍은 CPU보다 6~13% 적습니다. 그만큼 DeferredLight 가 8~14% 줄었습니다 (예: 2층 회랑 2.03 → 1.75 ms).</li>
+<li><b>프레임 전체가 빨라지는지는 병목에 달렸습니다.</b> 촛불 씬은 GPU(그림자 패스 15~17 ms)가 병목입니다. CPU 비닝은 그동안 GPU 작업과 겹쳐 돌았기 때문에, GPU로 옮겨도 프레임은 흔들림 범위 안에서 비슷하거나(3개 시점) 약 3 ms 늘었습니다(입구). GPU 1단계는 2단계보다 3~10 ms 느립니다. 조명이 적은 씬에서는 CPU 시간(<code>Engine::Render</code>)이 줄고 GPU Frame 은 0.02~0.1 ms 늘었습니다.</li>
+</ul>
+</div>
+</section>
+
+<section id="method">
+<h2>2. 측정 방법</h2>
+<table>
+<tr><th>항목</th><th>값</th></tr>
+<tr><td>빌드·GPU</td><td>Release x64, NVIDIA GeForce RTX 3070 Ti, D3D11 (8장만 D3D12도). VSync 끔</td></tr>
+<tr><td>실행</td><td>에디터 자동 검증: <code>SherlockEditor.exe --project=… --scene=… --exit-after=160 --avg-frames=100 --light-icons=selected</code> + 경로 인자. 촛불 씬은 로드가 무거워 <code>--exit-after=120 --avg-frames=60</code> 와 <code>--cam-look=눈;목표</code></td></tr>
+<tr><td>화면 크기</td><td>1280×720 에디터 창의 씬 뷰 <b>767×222</b>. 픽셀 수에 비례하는 비용(라이팅, 그림자)은 전체 화면보다 훨씬 작습니다. 비닝 비용은 화면 크기와 거의 무관합니다 (상자 수가 고정)</td></tr>
+<tr><td>값</td><td><code>--avg-frames</code> 가 남기는 "구간 평균 ms" (Profiler 구간의 N 프레임 평균). 경로마다 3번 실행한 <b>중앙값</b>이고, 세 값의 폭이 중앙값의 15%보다 크면 아래에 최소–최대를 작게 적었습니다. 쌍 수는 종료 로그의 "렌더 통계"입니다 (실행마다 같았음)</td></tr>
+<tr><td>열 이름</td><td>CPU 비닝 = <code>cpu:BuildClusters</code> (GPU 경로에서는 입력 업로드). GPU 비닝 = <code>gpu:ClusterBin</code>(메인 뷰 디스패치 전체), Tile·Count·Fill = <code>gpu:BinTile</code>·<code>BinCount</code>·<code>BinFill</code>. View·Scan 은 모든 씬에서 0.005~0.03 ms 라 표에서 뺐습니다</td></tr>
+<tr><td>촛불 씬 시점 (<code>--cam-look</code>)</td><td>입구 <code>16,3,0;-10,6,0</code> · 반대쪽 끝 <code>-14,3,0;16,5,0</code> · 중앙에서 위 <code>2,2,0;2,15,0.5</code> · 2층 회랑 <code>2,8,4;-10,3,-3</code></td></tr>
+</table>
+</section>
+
+<section id="few">
+<h2>3. 조명 적은 씬</h2>
+<table>
+<tr><th>씬</th><th>경로</th><th>쌍 수</th><th>타일 쌍</th><th>상자 최대</th><th>CPU 비닝 ms</th><th>GPU 비닝 ms</th><th>Tile</th><th>Count</th><th>Fill</th><th>DeferredLight ms</th></tr>
+<tr><td rowspan="3">DeferredMaterials<br><span class="sub">조명 4, 보이는 지역광 3</span></td><td>CPU</td><td class="n">1,259</td><td class="n">—</td><td class="n">3</td><td class="n">0.129</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">0.057</td></tr>
+<tr><td>GPU 1단계</td><td class="n">1,259</td><td class="n">—</td><td class="n">3</td><td class="n">0.002</td><td class="n">0.028</td><td class="n">—</td><td class="n">0.005</td><td class="n">0.005</td><td class="n">0.056</td></tr>
+<tr><td>GPU 2단계</td><td class="n">1,174</td><td class="n">261</td><td class="n">3</td><td class="n">0.002</td><td class="n">0.033</td><td class="n">0.005</td><td class="n">0.006</td><td class="n">0.005</td><td class="n">0.056</td></tr>
+<tr><td rowspan="3">LightOrder<br><span class="sub">조명 4, 보이는 3</span></td><td>CPU</td><td class="n">5,634</td><td class="n">—</td><td class="n">3</td><td class="n">0.165<span class="rng">0.153–0.238</span></td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">0.116</td></tr>
+<tr><td>GPU 1단계</td><td class="n">5,634</td><td class="n">—</td><td class="n">3</td><td class="n">0.002</td><td class="n">0.047</td><td class="n">—</td><td class="n">0.007</td><td class="n">0.005<span class="rng">0.005–0.026</span></td><td class="n">0.116</td></tr>
+<tr><td>GPU 2단계</td><td class="n">5,634</td><td class="n">432</td><td class="n">3</td><td class="n">0.002</td><td class="n">0.033</td><td class="n">0.005</td><td class="n">0.006</td><td class="n">0.005</td><td class="n">0.115</td></tr>
+</table>
+<p>조명이 몇 개뿐이면 모든 경로가 0.2 ms 아래입니다. GPU 경로는 디스패치 다섯 번과 배리어의 고정 비용(약 0.03 ms)이 대부분이라, 1단계와 2단계의 차이도 거의 없습니다. 쌍 수는 DeferredMaterials 에서 2단계가 7% 적고(타일 평면이 더 거름), LightOrder 는 세 경로가 같습니다.</p>
+</section>
+
+<section id="mid">
+<h2>4. 조명 중간 씬</h2>
+<table>
+<tr><th>씬</th><th>경로</th><th>쌍 수</th><th>타일 쌍</th><th>상자 최대</th><th>CPU 비닝 ms</th><th>GPU 비닝 ms</th><th>Tile</th><th>Count</th><th>Fill</th><th>DeferredLight ms</th></tr>
+<tr><td rowspan="3">ManyLights64<br><span class="sub">조명 65, 보이는 51</span></td><td>CPU</td><td class="n">16,883</td><td class="n">—</td><td class="n">24</td><td class="n">0.375</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">0.225</td></tr>
+<tr><td>GPU 1단계</td><td class="n">16,904</td><td class="n">—</td><td class="n">24</td><td class="n">0.003</td><td class="n">0.045</td><td class="n">—</td><td class="n">0.013</td><td class="n">0.016</td><td class="n">0.145<span class="rng">0.071–0.185</span></td></tr>
+<tr><td>GPU 2단계</td><td class="n">16,313</td><td class="n">3,897</td><td class="n">24</td><td class="n">0.002</td><td class="n">0.046<span class="rng">0.046–0.066</span></td><td class="n">0.009</td><td class="n">0.011</td><td class="n">0.010</td><td class="n">0.084<span class="rng">0.081–0.137</span></td></tr>
+<tr><td rowspan="3">ManyLights256<br><span class="sub">조명 257, 보이는 214</span></td><td>CPU</td><td class="n">77,186</td><td class="n">—</td><td class="n">85</td><td class="n">1.234</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">1.012</td></tr>
+<tr><td>GPU 1단계</td><td class="n">77,258</td><td class="n">—</td><td class="n">85</td><td class="n">0.003</td><td class="n">0.127<span class="rng">0.107–0.137</span></td><td class="n">—</td><td class="n">0.038</td><td class="n">0.058</td><td class="n">0.207</td></tr>
+<tr><td>GPU 2단계</td><td class="n">75,141</td><td class="n">16,487</td><td class="n">83</td><td class="n">0.004</td><td class="n">0.098<span class="rng">0.082–0.110</span></td><td class="n">0.010</td><td class="n">0.027</td><td class="n">0.030</td><td class="n">0.203</td></tr>
+</table>
+<p>조명 256개에서 CPU 비닝은 1.2 ms이고, GPU는 0.1 ms 안팎입니다. 여기서부터 2단계가 1단계보다 빨라집니다 (Count·Fill 이 0.096 → 0.057 ms, 타일 단계 0.010 ms 추가). DeferredLight 열의 큰 차이(CPU 1.0 ms 대 GPU 0.2 ms)는 비닝 결과의 차이가 아닙니다. D3D11에서만 나타나는 현상이고, <a href="#lightgap">8장</a>에서 따로 다룹니다.</p>
+</section>
+
+<section id="candles">
+<h2>5. 조명 많은 씬 — Intel Sponza 촛불 1만 개</h2>
+<p><code>IntelSponzaCandles.json</code>: 촛불 점광원 약 1만 개(range 2 m)와 방향광. 시점마다 보이는 지역광 수와 겹침 양상이 크게 다릅니다.</p>
+<table>
+<tr><th>씬</th><th>경로</th><th>쌍 수</th><th>타일 쌍</th><th>상자 최대</th><th>CPU 비닝 ms</th><th>GPU 비닝 ms</th><th>Tile</th><th>Count</th><th>Fill</th><th>DeferredLight ms</th></tr>
+<tr><td rowspan="3">입구<br><span class="sub">보이는 9,526</span></td><td>CPU</td><td class="n">175,709</td><td class="n">—</td><td class="n">2,889</td><td class="n">2.936</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">2.136</td></tr>
+<tr><td>GPU 1단계</td><td class="n">192,909</td><td class="n">—</td><td class="n">3,138</td><td class="n">0.015</td><td class="n">3.897<span class="rng">3.600–5.355</span></td><td class="n">—</td><td class="n">1.586<span class="rng">1.390–1.994</span></td><td class="n">2.252<span class="rng">2.135–3.063</span></td><td class="n">2.293</td></tr>
+<tr><td>GPU 2단계</td><td class="n">152,291</td><td class="n">92,949</td><td class="n">2,679</td><td class="n">0.014</td><td class="n">1.833<span class="rng">1.829–2.147</span></td><td class="n">0.078</td><td class="n">0.828<span class="rng">0.801–1.044</span></td><td class="n">0.898</td><td class="n">1.963</td></tr>
+<tr><td rowspan="3">반대쪽 끝<br><span class="sub">보이는 8,997</span></td><td>CPU</td><td class="n">462,263</td><td class="n">—</td><td class="n">2,548</td><td class="n">6.977<span class="rng">6.330–7.509</span></td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">2.269</td></tr>
+<tr><td>GPU 1단계</td><td class="n">476,634</td><td class="n">—</td><td class="n">2,810</td><td class="n">0.018</td><td class="n">4.184<span class="rng">3.653–4.727</span></td><td class="n">—</td><td class="n">1.559<span class="rng">1.496–1.762</span></td><td class="n">2.521<span class="rng">2.134–2.796</span></td><td class="n">2.430</td></tr>
+<tr><td>GPU 2단계</td><td class="n">434,790</td><td class="n">141,115</td><td class="n">2,328</td><td class="n">0.014</td><td class="n">1.945<span class="rng">1.682–2.118</span></td><td class="n">0.075<span class="rng">0.068–0.093</span></td><td class="n">0.805<span class="rng">0.680–0.838</span></td><td class="n">1.030<span class="rng">0.882–1.045</span></td><td class="n">2.078</td></tr>
+<tr><td rowspan="3">중앙에서 위<br><span class="sub">보이는 6,797</span></td><td>CPU</td><td class="n">471,778</td><td class="n">—</td><td class="n">1,375</td><td class="n">17.450</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">3.692</td></tr>
+<tr><td>GPU 1단계</td><td class="n">482,329</td><td class="n">—</td><td class="n">1,444</td><td class="n">0.014</td><td class="n">3.589</td><td class="n">—</td><td class="n">1.447</td><td class="n">2.082</td><td class="n">3.778</td></tr>
+<tr><td>GPU 2단계</td><td class="n">422,476</td><td class="n">183,350</td><td class="n">1,172</td><td class="n">0.012</td><td class="n">0.985</td><td class="n">0.069</td><td class="n">0.370</td><td class="n">0.492</td><td class="n">3.284</td></tr>
+<tr><td rowspan="3">2층 회랑<br><span class="sub">보이는 6,254</span></td><td>CPU</td><td class="n">488,468</td><td class="n">—</td><td class="n">1,182</td><td class="n">14.162<span class="rng">13.159–21.175</span></td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">2.032</td></tr>
+<tr><td>GPU 1단계</td><td class="n">496,270</td><td class="n">—</td><td class="n">1,220</td><td class="n">0.015</td><td class="n">4.855<span class="rng">3.329–5.114</span></td><td class="n">—</td><td class="n">1.773<span class="rng">1.352–1.938</span></td><td class="n">2.839<span class="rng">1.943–2.904</span></td><td class="n">2.034</td></tr>
+<tr><td>GPU 2단계</td><td class="n">452,233</td><td class="n">165,555</td><td class="n">1,048</td><td class="n">0.014</td><td class="n">1.105<span class="rng">1.069–1.317</span></td><td class="n">0.068<span class="rng">0.068–0.090</span></td><td class="n">0.449<span class="rng">0.436–0.504</span></td><td class="n">0.569<span class="rng">0.530–0.626</span></td><td class="n">1.749</td></tr>
+</table>
+<ul>
+<li><b>CPU 비닝은 시점에 따라 2.9~17.5 ms</b>입니다. 조명이 화면 가까이 몰려 상자 범위가 넓은 시점(중앙에서 위, 2층 회랑)이 가장 비쌉니다.</li>
+<li><b>GPU 1단계는 시점과 거의 무관하게 3.6~4.9 ms</b>입니다. 상자마다 조명 1만 개를 모두 검사하기 때문입니다 (검사 3,456 × 1만 = 3,456만 번을 Count와 Fill에서 두 번).</li>
+<li><b>GPU 2단계는 1.0~1.9 ms</b>입니다. 타일 후보가 많은 시점일수록 비쌉니다 (타일당 최대 후보: 입구·반대쪽 끝 4,268 개, 중앙에서 위 1,763 개, 2층 회랑 2,094 개).</li>
+<li>모든 시점에서 넘침은 0입니다 (상한 1,048,576).</li>
+</ul>
+</section>
+
+<section id="steps">
+<h2>6. 단계별 비용 — 타일 단계를 바꾼 전후</h2>
+<p>2단계 비닝을 처음 넣었을 때는 스레드 하나가 타일 하나를 맡아 조명 목록을 만들었습니다. 같은 촛불 씬 2층 회랑 시점에서 잰 단계별 시간입니다. 60 프레임 평균, 한 번 실행한 값이고 위 표와는 다른 실행입니다.</p>
+<table>
+<tr><th>구현</th><th>BinTile</th><th>BinCount</th><th>BinFill</th><th>ClusterBin 전체</th></tr>
+<tr><td>GPU 1단계</td><td class="n">—</td><td class="n">1.439</td><td class="n">2.127</td><td class="n">3.628</td></tr>
+<tr><td>GPU 2단계, 타일 목록 (스레드 144 개)</td><td class="n">1.633</td><td class="n">0.508</td><td class="n">0.682</td><td class="n">2.853</td></tr>
+<tr><td>GPU 2단계, 타일 비트마스크 (스레드 144 × ⌈N/32⌉)</td><td class="n">0.068</td><td class="n">0.450</td><td class="n">0.551</td><td class="n">1.109</td></tr>
+</table>
+<p>타일 단계를 비트마스크로 바꾸자 이 단계가 24배 빨라졌고, 쌍 수와 타일 쌍 수는 그대로였습니다. 지금 2단계의 비용은 대부분 Count와 Fill입니다. 상자마다 스레드 하나가 자기 타일 후보를 차례로 도는 구조이므로, 타일 후보 수(촛불 씬 타일당 최대 1,763~4,268 개)에 비례합니다. 더 줄이려면 이 두 단계를 병렬로 바꿔야 합니다 (구현 기록 11장).</p>
+</section>
+
+<section id="frame">
+<h2>7. 프레임 전체</h2>
+<h3>촛불 씬 (GPU 병목)</h3>
+<table>
+<tr><th>씬</th><th>경로</th><th>CPU Engine::Render ms</th><th>그중 Present 대기</th><th>GPU Frame ms</th><th>그중 ShadowPass</th></tr>
+<tr><td rowspan="3">입구<br><span class="sub">보이는 9,526</span></td><td>CPU</td><td class="n">24.002</td><td class="n">20.069</td><td class="n">24.805</td><td class="n">16.014</td></tr>
+<tr><td>GPU 1단계</td><td class="n">28.858<span class="rng">28.796–36.857</span></td><td class="n">28.036<span class="rng">27.939–35.887</span></td><td class="n">29.505<span class="rng">29.411–37.783</span></td><td class="n">16.458<span class="rng">16.058–22.130</span></td></tr>
+<tr><td>GPU 2단계</td><td class="n">26.938<span class="rng">24.892–36.614</span></td><td class="n">26.146<span class="rng">24.131–35.493</span></td><td class="n">27.617<span class="rng">25.534–37.355</span></td><td class="n">16.705<span class="rng">15.381–22.154</span></td></tr>
+<tr><td rowspan="3">반대쪽 끝<br><span class="sub">보이는 8,997</span></td><td>CPU</td><td class="n">27.267<span class="rng">23.244–35.016</span></td><td class="n">19.244<span class="rng">16.072–26.435</span></td><td class="n">28.484<span class="rng">23.977–35.805</span></td><td class="n">18.214<span class="rng">15.480–24.263</span></td></tr>
+<tr><td>GPU 1단계</td><td class="n">33.366<span class="rng">26.812–38.862</span></td><td class="n">32.186<span class="rng">25.966–37.689</span></td><td class="n">34.282<span class="rng">27.487–39.790</span></td><td class="n">19.108<span class="rng">15.169–22.023</span></td></tr>
+<tr><td>GPU 2단계</td><td class="n">27.310<span class="rng">22.817–32.851</span></td><td class="n">26.464<span class="rng">22.004–31.635</span></td><td class="n">27.767<span class="rng">23.651–33.803</span></td><td class="n">16.983<span class="rng">14.515–20.750</span></td></tr>
+<tr><td rowspan="3">중앙에서 위<br><span class="sub">보이는 6,797</span></td><td>CPU</td><td class="n">25.149<span class="rng">23.710–29.461</span></td><td class="n">7.321<span class="rng">4.583–11.122</span></td><td class="n">25.385<span class="rng">24.488–30.106</span></td><td class="n">15.864<span class="rng">15.185–20.159</span></td></tr>
+<tr><td>GPU 1단계</td><td class="n">26.982</td><td class="n">26.189</td><td class="n">28.179</td><td class="n">15.204</td></tr>
+<tr><td>GPU 2단계</td><td class="n">24.665</td><td class="n">23.803</td><td class="n">25.380</td><td class="n">15.779</td></tr>
+<tr><td rowspan="3">2층 회랑<br><span class="sub">보이는 6,254</span></td><td>CPU</td><td class="n">22.695<span class="rng">20.042–29.517</span></td><td class="n">6.959<span class="rng">6.097–7.587</span></td><td class="n">23.569<span class="rng">20.717–29.171</span></td><td class="n">16.256<span class="rng">14.311–20.424</span></td></tr>
+<tr><td>GPU 1단계</td><td class="n">31.828<span class="rng">23.363–32.840</span></td><td class="n">30.892<span class="rng">22.610–31.636</span></td><td class="n">33.792<span class="rng">24.002–36.931</span></td><td class="n">20.375<span class="rng">14.330–23.257</span></td></tr>
+<tr><td>GPU 2단계</td><td class="n">22.829<span class="rng">20.409–28.324</span></td><td class="n">21.952<span class="rng">19.654–27.286</span></td><td class="n">23.545<span class="rng">21.055–28.886</span></td><td class="n">16.045<span class="rng">14.117–19.563</span></td></tr>
+</table>
+<p>그림자 패스가 15~17 ms이고 GPU Frame 이 23~29 ms라, 이 씬은 GPU가 병목입니다. CPU 경로에서도 CPU는 <code>Present</code> 에서 7~20 ms를 GPU를 기다리며 보냅니다. 그래서 CPU 비닝 3~17 ms는 GPU 작업과 겹쳐 프레임에 거의 드러나지 않았습니다. GPU 비닝은 그 시간을 없애는 대신 GPU에 1~2 ms를 더하고, DeferredLight 를 0.2~0.4 ms 줄입니다. 결과적으로 2단계의 프레임은 CPU 경로와 흔들림 범위 안에서 비슷하거나(반대쪽 끝, 중앙에서 위, 2층 회랑) 약 3 ms 늘었습니다(입구). GPU 1단계는 비닝 비용이 커서 3~10 ms 늘었습니다. 이 씬의 프레임 값은 같은 설정이라도 실행마다 수 ms씩 흔들립니다 (최소–최대 참고).</p>
+<h3>조명 적은 씬과 중간 씬</h3>
+<table>
+<tr><th>씬</th><th>경로</th><th>CPU Engine::Render ms</th><th>그중 Present 대기</th><th>GPU Frame ms</th><th>그중 ShadowPass</th></tr>
+<tr><td rowspan="3">DeferredMaterials<br><span class="sub">조명 4, 보이는 지역광 3</span></td><td>CPU</td><td class="n">0.252</td><td class="n">0.057</td><td class="n">0.242</td><td class="n">0.014</td></tr>
+<tr><td>GPU 1단계</td><td class="n">0.150<span class="rng">0.120–0.175</span></td><td class="n">0.077<span class="rng">0.055–0.099</span></td><td class="n">0.316<span class="rng">0.261–0.333</span></td><td class="n">0.017</td></tr>
+<tr><td>GPU 2단계</td><td class="n">0.159<span class="rng">0.138–0.168</span></td><td class="n">0.077<span class="rng">0.062–0.082</span></td><td class="n">0.342<span class="rng">0.279–0.348</span></td><td class="n">0.017</td></tr>
+<tr><td rowspan="3">LightOrder<br><span class="sub">조명 4, 보이는 3</span></td><td>CPU</td><td class="n">0.315<span class="rng">0.284–0.432</span></td><td class="n">0.072<span class="rng">0.064–0.087</span></td><td class="n">0.298<span class="rng">0.274–0.351</span></td><td class="n">0.017</td></tr>
+<tr><td>GPU 1단계</td><td class="n">0.162<span class="rng">0.148–0.209</span></td><td class="n">0.085</td><td class="n">0.340<span class="rng">0.324–0.404</span></td><td class="n">0.055<span class="rng">0.043–0.064</span></td></tr>
+<tr><td>GPU 2단계</td><td class="n">0.150<span class="rng">0.124–0.155</span></td><td class="n">0.075<span class="rng">0.060–0.083</span></td><td class="n">0.317</td><td class="n">0.066<span class="rng">0.044–0.070</span></td></tr>
+<tr><td rowspan="3">ManyLights64<br><span class="sub">조명 65, 보이는 51</span></td><td>CPU</td><td class="n">0.658</td><td class="n">0.061</td><td class="n">0.970</td><td class="n">0.546</td></tr>
+<tr><td>GPU 1단계</td><td class="n">0.377</td><td class="n">0.117<span class="rng">0.091–0.137</span></td><td class="n">0.933<span class="rng">0.787–0.935</span></td><td class="n">0.519</td></tr>
+<tr><td>GPU 2단계</td><td class="n">0.363</td><td class="n">0.128<span class="rng">0.090–0.142</span></td><td class="n">0.792</td><td class="n">0.487</td></tr>
+<tr><td rowspan="3">ManyLights256<br><span class="sub">조명 257, 보이는 214</span></td><td>CPU</td><td class="n">1.549<span class="rng">1.437–1.679</span></td><td class="n">0.068</td><td class="n">1.722</td><td class="n">0.503</td></tr>
+<tr><td>GPU 1단계</td><td class="n">0.580<span class="rng">0.514–0.637</span></td><td class="n">0.359<span class="rng">0.313–0.404</span></td><td class="n">0.978<span class="rng">0.916–1.072</span></td><td class="n">0.480<span class="rng">0.441–0.513</span></td></tr>
+<tr><td>GPU 2단계</td><td class="n">0.501</td><td class="n">0.277<span class="rng">0.202–0.303</span></td><td class="n">0.932</td><td class="n">0.472</td></tr>
+</table>
+<p>CPU 시간(<code>Engine::Render</code>)은 GPU 경로에서 0.1~1.0 ms 줄었습니다. GPU Frame 은 조명이 적은 씬에서 0.02~0.1 ms 늘었습니다 (디스패치 고정 비용). ManyLights64·256 에서 GPU Frame 이 줄어든 것은 비닝 때문이 아니라 <a href="#lightgap">8장</a>의 DeferredLight 차이 때문입니다.</p>
+</section>
+
+<section id="lightgap">
+<h2>8. 라이팅 시간 차이 (D3D11에서만)</h2>
+<p>D3D11의 ManyLights64·256 에서 DeferredLight 는 CPU 경로일 때만 몇 배 깁니다 (256개: 1.01 ms 대 0.21 ms). 그런데 목록은 거의 같습니다 (CPU 77,186쌍, GPU 1단계 77,258쌍). 비닝 결과의 차이로는 설명되지 않아서 같은 측정을 D3D12에서도 했습니다.</p>
+<table>
+<tr><th>씬</th><th>경로</th><th>쌍 수</th><th>타일 쌍</th><th>상자 최대</th><th>CPU 비닝 ms</th><th>GPU 비닝 ms</th><th>Tile</th><th>Count</th><th>Fill</th><th>DeferredLight ms</th></tr>
+<tr><td rowspan="3">ManyLights64 (D3D12)</td><td>CPU</td><td class="n">16,883</td><td class="n">—</td><td class="n">24</td><td class="n">0.363</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">0.321</td></tr>
+<tr><td>GPU 1단계</td><td class="n">16,904</td><td class="n">—</td><td class="n">24</td><td class="n">0.001</td><td class="n">0.034</td><td class="n">—</td><td class="n">0.011</td><td class="n">0.012</td><td class="n">0.320</td></tr>
+<tr><td>GPU 2단계</td><td class="n">16,313</td><td class="n">3,897</td><td class="n">24</td><td class="n">0.001</td><td class="n">0.035</td><td class="n">0.007</td><td class="n">0.008</td><td class="n">0.008</td><td class="n">0.318</td></tr>
+<tr><td rowspan="3">ManyLights256 (D3D12)</td><td>CPU</td><td class="n">77,186</td><td class="n">—</td><td class="n">85</td><td class="n">1.272</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">1.125</td></tr>
+<tr><td>GPU 1단계</td><td class="n">77,258</td><td class="n">—</td><td class="n">85</td><td class="n">0.001</td><td class="n">0.090</td><td class="n">—</td><td class="n">0.036</td><td class="n">0.042</td><td class="n">1.121</td></tr>
+<tr><td>GPU 2단계</td><td class="n">75,141</td><td class="n">16,487</td><td class="n">83</td><td class="n">0.001</td><td class="n">0.069</td><td class="n">0.007</td><td class="n">0.024</td><td class="n">0.026</td><td class="n">1.114</td></tr>
+</table>
+<table>
+<tr><th>씬</th><th>경로</th><th>CPU Engine::Render ms</th><th>그중 Present 대기</th><th>GPU Frame ms</th><th>그중 ShadowPass</th></tr>
+<tr><td rowspan="3">ManyLights64 (D3D12)</td><td>CPU</td><td class="n">1.079</td><td class="n">0.167</td><td class="n">0.822</td><td class="n">0.408</td></tr>
+<tr><td>GPU 1단계</td><td class="n">0.741</td><td class="n">0.158<span class="rng">0.156–0.186</span></td><td class="n">0.857</td><td class="n">0.410</td></tr>
+<tr><td>GPU 2단계</td><td class="n">0.735</td><td class="n">0.161<span class="rng">0.149–0.174</span></td><td class="n">0.859</td><td class="n">0.409</td></tr>
+<tr><td rowspan="3">ManyLights256 (D3D12)</td><td>CPU</td><td class="n">2.062</td><td class="n">0.174</td><td class="n">1.730</td><td class="n">0.409</td></tr>
+<tr><td>GPU 1단계</td><td class="n">1.723</td><td class="n">0.168</td><td class="n">1.926</td><td class="n">0.408</td></tr>
+<tr><td>GPU 2단계</td><td class="n">1.659</td><td class="n">0.158</td><td class="n">1.870</td><td class="n">0.413</td></tr>
+</table>
+<ul>
+<li>D3D12에서는 <b>세 경로의 DeferredLight 가 같습니다</b> (256개 1.11~1.13 ms, 64개 0.32 ms). 그리고 이 값은 D3D11 CPU 경로와 비슷합니다. 그러니 "D3D11 CPU 경로가 느리다"기보다 <b>"D3D11 GPU 경로만 유난히 빠르게 측정된다"</b>에 가깝습니다.</li>
+<li>D3D12에서는 GPU 비닝이 GPU Frame 을 0.04~0.2 ms 늘리고 CPU <code>Engine::Render</code> 를 0.34~0.40 ms 줄입니다. 조명이 적은 D3D11 씬과 같은 경향입니다.</li>
+<li>원인은 <b>찾지 못했습니다.</b> 경로마다 t30·t31 버퍼의 메모리 종류가 다르기는 합니다 (CPU 경로는 Dynamic, GPU 경로는 Default). 그러나 D3D12 GPU 경로도 Default 버퍼인데 빠르지 않으므로, 이것만으로는 설명되지 않습니다. 화면은 0 px로 같으므로, 라이팅이 덜 계산된 것은 아닙니다. D3D11 타임스탬프의 구간 배정 문제일 가능성도 배제하지 못했습니다. 그래서 이 문서의 결론에는 이 차이를 GPU 비닝의 이득으로 넣지 않았습니다.</li>
+</ul>
+</section>
+
+<section id="limits">
+<h2>9. 한계</h2>
+<ul>
+<li>GPU 한 대(RTX 3070 Ti)에서만 쟀습니다. 상자마다 스레드 하나가 긴 루프를 도는 구조라, GPU에 따라 Count·Fill 비용이 크게 다를 수 있습니다.</li>
+<li>에디터 씬 뷰(767×222)에서 쟀습니다. 비닝 비용은 화면 크기와 거의 무관합니다. 하지만 라이팅·그림자 비용은 전체 화면에서 훨씬 커지므로, 프레임 전체에서 비닝이 차지하는 비중은 더 작아집니다.</li>
+<li>촛불 씬의 프레임 시간은 실행마다 수 ms씩 흔들립니다. 3회 중앙값이라도 1~2 ms 차이는 의미 있게 보기 어렵습니다.</li>
+<li>미리보기 카메라를 켠 경우(<code>PreviewClusterBin</code>, 비닝 두 번)와 게임 exe 는 재지 않았습니다.</li>
+<li>Debug 빌드는 재지 않았습니다. CPU 비닝은 Debug 에서 몇 배 느려지므로(2026-11-18 기록: 256개 약 5 ms), Debug 에서는 GPU 경로의 이득이 더 큽니다.</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

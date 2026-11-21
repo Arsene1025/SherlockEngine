@@ -63,6 +63,8 @@ void AppBase::ApplyRenderPathOptions(RenderSettings& settings)
     };
     flag(L"deferred", settings.deferred);              // 디퍼드 (2단계)
     flag(L"clustered", settings.clustered);            // 클러스터드 라이팅 (3b)
+    flag(L"cluster-gpu", settings.clusterGpu);         // 클러스터 비닝을 컴퓨트로 (docs/plan/gpu-cluster-binning-record.html)
+    flag(L"cluster-tiles", settings.clusterGpuTiles);  // GPU 비닝의 타일 단계 (0 = 1단계 비닝, 비교 측정용)
     flag(L"shadow-priority", settings.shadowPriority); // 그림자 타일 우선순위 (3a)
     const std::wstring ssao = GetCommandLineOption(L"ssao");   // SSAO (5단계) — 씬 값 덮어쓰기
     if (!ssao.empty()) settings.ssaoOverride = ssao != L"0" ? 1 : 0;

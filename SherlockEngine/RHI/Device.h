@@ -71,6 +71,12 @@ namespace RHI
 		virtual void RequestBackBufferReadback() = 0;
 		virtual bool TakeReadbackResult(std::vector<uint8_t>& rgba, uint32_t& width, uint32_t& height) = 0;
 
+		// Staging 버퍼(BufferUsage::Staging, CommandList::CopyBuffer 의 대상)의 앞 size 바이트를 CPU 로 읽음. 기다리지 않음:
+		// GPU 가 아직 그 복사를 끝내지 않았으면 false (D3D11 은 DO_NOT_WAIT 로 물어봄). D3D12 는 그 복사를 기록한 프레임이
+		// kFrameCount 프레임 이상 지났어야 함 — BeginFrame 이 그 프레임의 펜스를 기다렸으므로 (호출자가 GetFrameIndex 슬롯마다
+		// 한 벌씩 두고, 같은 슬롯을 다음에 쓰기 전에 읽으면 됨). 버퍼 단위 비동기 리드백 (GPU 통계를 몇 프레임 늦게 읽는 용도).
+		virtual bool ReadStagingBuffer(BufferHandle buffer, void* out, uint32_t size) = 0;
+
 		virtual void Resize(int width, int height) = 0;
 		virtual void SetVSync(bool enabled) = 0;
 		virtual bool IsVSync() const = 0;

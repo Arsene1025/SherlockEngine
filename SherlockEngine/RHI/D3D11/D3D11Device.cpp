@@ -1092,3 +1092,25 @@ bool D3D11Device::TakeReadbackResult(std::vector<uint8_t>& rgba, uint32_t& width
     m_readbackReady = false;
     return true;
 }
+
+bool D3D11Device::ReadStagingBuffer(BufferHandle handle, void* out, uint32_t size)
+{
+    const D3D11Buffer* buffer = GetBuffer(handle);
+    if (buffer == nullptr || out == nullptr || buffer->desc.usage != BufferUsage::Staging || size > buffer->desc.size)
+    {
+        Log::Error("ReadStagingBuffer : Staging 버퍼가 아니거나 크기가 큼.");
+        return false;
+    }
+    // DO_NOT_WAIT: 복사가 아직 GPU 에 남아 있으면 DXGI_ERROR_WAS_STILL_DRAWING 으로 바로 돌아옴 (CPU 가 멈추지 않음).
+    D3D11_MAPPED_SUBRESOURCE mapped = {};
+    const HRESULT hr = m_context->Map(buffer->Get(0), 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, &mapped);
+    if (hr == DXGI_ERROR_WAS_STILL_DRAWING) return false;
+    if (FAILED(hr))
+    {
+        Log::Error("ReadStagingBuffer : Map 실패 (%s). %s", buffer->name.c_str(), Log::HrToString(hr).c_str());
+        return false;
+    }
+    std::memcpy(out, mapped.pData, size);
+    m_context->Unmap(buffer->Get(0), 0);
+    return true;
+}

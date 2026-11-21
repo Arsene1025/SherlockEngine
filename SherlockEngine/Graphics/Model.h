@@ -6,6 +6,7 @@
 #include <DirectXMath.h>
 #include "Core/EngineApi.h"
 #include "Graphics/Mesh.h"
+#include "Scene/Light.h"
 #include "Scene/Material.h"
 
 // 모델 = Mesh 배열 + Material 배열 + 인스턴스(노드) 배열 + 이미지 바이트.
@@ -34,6 +35,16 @@ struct ModelInstance
 	std::string name;
 	int node = -1;                  // Model::nodes 인덱스 (glTF nodes[] 번호)
 	int skin = -1;                  // Model::skins 인덱스. 스킨이 없으면 -1
+};
+
+// KHR_lights_punctual 조명 하나. light 의 위치·방향은 모델 공간(엔진 좌표계, options.scale 반영)이고,
+// 씬에 놓을 때(EditorApp::PlaceModel) 배치 변환을 곱해 Scene 의 조명 목록에 넣음. 씬 조명은 오브젝트에 붙지 않으므로
+// 놓은 뒤 루트 오브젝트를 옮겨도 조명은 따라가지 않음.
+struct ModelLight
+{
+	std::string name;               // 노드 이름 (없으면 "<모델>/node<번호>")
+	Light light;
+	bool rangeFromFile = false;     // false 면 파일에 range 가 없어 임포터가 세기로 정한 값 (GltfImporter 의 kLightRangeCutoff)
 };
 
 struct ModelStats
@@ -120,7 +131,8 @@ struct Model
 	std::vector<ModelNode> nodes;
 	std::vector<ModelSkin> skins;
 	std::vector<AnimationClip> animations;
-	Bounds bounds;                     // 모든 인스턴스를 월드로 옮긴 뒤의 합집합
+	std::vector<ModelLight> lights;    // KHR_lights_punctual 이 붙은 노드마다 하나
+	Bounds bounds;                    // 모든 인스턴스를 월드로 옮긴 뒤의 합집합
 	ModelStats stats;
 
 	bool IsValid() const { return !meshes.empty() && !instances.empty(); }
