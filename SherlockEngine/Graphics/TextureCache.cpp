@@ -40,6 +40,20 @@ namespace
 	{
 		return name.rfind("builtin:", 0) == 0;
 	}
+
+	// 게임 패키지의 변환 목록(TextureImporter::FindCooked)에 있으면 그 DDS 를 읽음. 목록이 없거나(에디터) 읽지 못하면 false.
+	bool LoadCooked(const std::string& name, bool srgb, TextureImage& image)
+	{
+		const std::wstring cooked = TextureImporter::FindCooked(name, srgb);
+		if (cooked.empty()) return false;
+		if (!TextureLoader::LoadFromFile(cooked, srgb, false, image))
+		{
+			Log::Warn("텍스처 '%s' 의 변환본을 읽지 못함: %s", name.c_str(), Log::ToUtf8(cooked.c_str()).c_str());
+			return false;
+		}
+		Log::Info("텍스처 변환본: %s (%ux%u, 밉 %u, %s%s)", name.c_str(), image.desc.width, image.desc.height, image.desc.mipLevels, srgb ? "sRGB" : "linear", IsBlockCompressed(image.desc.format) ? ", 블록 압축 유지" : "");
+		return true;
+	}
 }
 
 bool TextureCache::Initialize(RHI::Device* device)
@@ -183,6 +197,11 @@ TextureHandle TextureCache::Load2D(const std::string& name, bool srgb, const Sce
 		const uint8_t a[4] = { 230, 230, 230, 255 };
 		const uint8_t b[4] = { 40, 40, 48, 255 };
 		ok = TextureLoader::CreateChecker(512, 16, a, b, srgb, true, image);
+	}
+	else if (LoadCooked(name, srgb, image))
+	{
+		// 게임 패키지: 빌드 때 변환한 DDS 를 목록에서 바로 찾음 — 원본(패키지에 없음)을 읽거나 해시를 계산하지 않음.
+		ok = true;
 	}
 	else if (const std::vector<uint8_t>* encoded = scene != nullptr ? scene->FindImage(name) : nullptr)
 	{

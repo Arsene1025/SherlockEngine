@@ -5,19 +5,37 @@
 #include "Core/Paths.h"
 #include "Core/Log.h"
 #include "Graphics/TextureImporter.h"
+#include "Graphics/Model.h"
 #include <nlohmann/json.hpp>
 #include <shellapi.h>
+#include <algorithm>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <iterator>
 #include <chrono>
+#include <map>
+#include <memory>
 #include <set>
 
 namespace fs = std::filesystem;
 
 namespace
 {
+	// 경로 비교용 키: 정규화 + '\' + 소문자 (Windows 경로는 대소문자를 가리지 않음).
+	std::wstring PathKey(const fs::path& path)
+	{
+		std::wstring key = path.lexically_normal().wstring();
+		std::replace(key.begin(), key.end(), L'/', L'\\');
+		std::transform(key.begin(), key.end(), key.begin(), ::towlower);
+		return key;
+	}
+
+	// 복사하지 않을 출력 파일 (PathKey). 빌드 때 DDS 로 변환되어 원본이 필요 없는 텍스처. Build 가 채우고 끝날 때 비움.
+	// 이전 빌드가 같은 폴더에 남긴 사본은 지움 — 다시 빌드해도 원본이 남지 않게.
+	std::set<std::wstring> g_excludedOutputs;
+	std::set<std::wstring> g_skippedOutputs;   // 실제로 건너뛴 파일 (보고용)
+
 	std::string Utf8(const std::wstring& s)
 	{
 		return Log::ToUtf8(s.c_str());
@@ -37,6 +55,16 @@ namespace
 	bool CopyOne(const fs::path& from, const fs::path& to, int& count, std::string& error)
 	{
 		std::error_code ec;
+		if (!g_excludedOutputs.empty())
+		{
+			const std::wstring key = PathKey(to);
+			if (g_excludedOutputs.count(key) != 0)
+			{
+				fs::remove(to, ec);
+				g_skippedOutputs.insert(key);
+				return true;
+			}
+		}
 		fs::create_directories(to.parent_path(), ec);
 		fs::copy_file(from, to, fs::copy_options::overwrite_existing, ec);
 		if (ec)
@@ -159,6 +187,249 @@ namespace
 			error = "missing folder: " + Utf8(relative);
 		}
 		return any;
+	}
+
+	// ---- 텍스처 변환(쿡): 패키지가 쓰는 텍스처를 DDS 로 만들고, 원본을 뺄 수 있는 파일을 고름 ----
+
+	// 재질의 텍스처 칸과 색공간. Renderer::GetOrCreateGpuMaterial 의 Load2D 호출과 같아야 함 (srgb -1 = albedoSrgb 를 따름).
+	struct TextureSlot
+	{
+		const char* key;
+		std::string Material::* member;
+		int srgb;
+	};
+	constexpr TextureSlot kTextureSlots[] = {
+		{ "albedoTexture", &Material::albedoTexture, -1 },
+		{ "normalTexture", &Material::normalTexture, 0 },
+		{ "metallicRoughnessTexture", &Material::metallicRoughnessTexture, 0 },
+		{ "occlusionTexture", &Material::occlusionTexture, 0 },
+		{ "emissiveTexture", &Material::emissiveTexture, 1 },
+		{ "specularTexture", &Material::specularTexture, 0 },
+		{ "specularColorTexture", &Material::specularColorTexture, 1 },
+		{ "clearcoatTexture", &Material::clearcoatTexture, 0 },
+		{ "clearcoatRoughnessTexture", &Material::clearcoatRoughnessTexture, 0 },
+		{ "clearcoatNormalTexture", &Material::clearcoatNormalTexture, 0 },
+		{ "transmissionTexture", &Material::transmissionTexture, 0 },
+	};
+
+	struct TextureCookInput
+	{
+		std::set<std::pair<std::string, bool>> uses;   // (텍스처 이름, sRGB)
+		std::set<std::wstring> models;                 // Assets 기준 모델 경로
+		std::set<std::wstring> keep;                   // 원본을 반드시 실을 파일 (Assets 기준 PathKey) — 환경 맵(큐브는 변환 캐시를 거치지 않음)
+	};
+
+	void AddUse(TextureCookInput& input, const std::string& name, bool srgb)
+	{
+		if (name.empty() || name.rfind("builtin:", 0) == 0) return;
+		input.uses.emplace(name, srgb);
+	}
+
+	// 재질이 쓰는 텍스처 이름 → Assets 기준 파일 경로. 모델 내장 이미지 이름("<모델>/<번호> …")이면 빈 문자열.
+	std::wstring LooseTexturePath(const std::string& name)
+	{
+		if (name.rfind("asset:", 0) == 0) return Wide(name.substr(6));
+		if (name.find('/') == std::string::npos) return L"Textures\\" + Wide(name);
+		return L"";
+	}
+
+	// 씬·프리팹 JSON 의 재질 텍스처(색공간 포함), 모델 경로, 환경 맵.
+	void CollectTextureUses(const fs::path& jsonPath, TextureCookInput& input)
+	{
+		std::ifstream file(jsonPath, std::ios::binary);
+		if (!file) return;
+		nlohmann::json root;
+		try
+		{
+			root = nlohmann::json::parse(file);
+		}
+		catch (...)
+		{
+			return;
+		}
+		if (!root.is_object()) return;
+		for (const auto& mesh : root.value("meshes", nlohmann::json::array()))
+		{
+			const std::string path = mesh.is_object() ? mesh.value("path", "") : "";
+			if (!path.empty())
+			{
+				std::wstring wide = Wide(path);
+				std::replace(wide.begin(), wide.end(), L'/', L'\\');
+				input.models.insert(wide);
+			}
+		}
+		for (const auto& material : root.value("materials", nlohmann::json::array()))
+		{
+			if (!material.is_object()) continue;
+			const bool albedoSrgb = material.value("albedoSrgb", true);
+			for (const TextureSlot& slot : kTextureSlots)
+			{
+				AddUse(input, material.value(slot.key, ""), slot.srgb < 0 ? albedoSrgb : slot.srgb != 0);
+			}
+		}
+		const nlohmann::json env = root.value("environment", nlohmann::json());
+		if (env.is_object())
+		{
+			for (const char* key : { "skybox", "irradiance", "specular", "brdfLut" })
+			{
+				const std::string name = env.value(key, "");
+				if (name.empty() || name.rfind("builtin:", 0) == 0) continue;
+				const std::wstring relative = name.rfind("asset:", 0) == 0 ? Wide(name.substr(6)) : L"Textures\\" + Wide(name);
+				input.keep.insert(PathKey(relative));
+			}
+		}
+	}
+
+	// 절대 경로 → Assets 기준 PathKey (프로젝트 Assets → 엔진 Assets 순). 어느 쪽 밑도 아니면 빈 문자열.
+	std::wstring AssetRelativeKey(const std::wstring& absolute)
+	{
+		const std::wstring path = PathKey(absolute);
+		std::vector<std::wstring> roots = { Paths::GetEngineAssetRoot() };
+		if (Paths::HasProject())
+		{
+			roots.insert(roots.begin(), Paths::GetAssetRoot());
+		}
+		for (const std::wstring& root : roots)
+		{
+			std::wstring prefix = PathKey(root);
+			if (!prefix.empty() && prefix.back() != L'\\')
+			{
+				prefix += L'\\';
+			}
+			if (path.size() > prefix.size() && path.compare(0, prefix.size(), prefix) == 0) return path.substr(prefix.size());
+		}
+		return L"";
+	}
+
+	struct TextureCookResult
+	{
+		std::vector<TextureImporter::CookedTexture> cooked;
+		std::set<std::wstring> excluded;   // 원본을 뺄 파일 (Assets 기준 PathKey)
+		size_t keptOriginals = 0;          // 변환하지 못해 원본을 싣는 텍스처 (이미 DDS 등)
+	};
+
+	// 씬·프리팹이 쓰는 모델을 읽어(모델 자신의 재질도 사용처에 넣음 — 스크립트가 모델을 놓는 경우) 텍스처마다 CookForBuild 를 부름.
+	// 캐시가 없으면 여기서 변환하므로 처음 빌드는 오래 걸릴 수 있음 (4096² 한 장 약 3초).
+	TextureCookResult CookTextures(const std::vector<fs::path>& jsonFiles)
+	{
+		TextureCookInput input;
+		for (const fs::path& path : jsonFiles)
+		{
+			CollectTextureUses(path, input);
+		}
+
+		std::vector<std::unique_ptr<Model>> models;
+		std::map<std::string, const ModelImage*> images;
+		for (const std::wstring& path : input.models)
+		{
+			auto model = std::make_unique<Model>();
+			if (!ModelLoader::LoadGltf(Paths::GetAssetPath(path.c_str()), ModelLoader::Options{}, *model))
+			{
+				Log::Warn("게임 빌드: 텍스처 변환용 모델 읽기 실패 (%s) — 이 모델의 이미지는 원본을 실음", Utf8(path).c_str());
+				continue;
+			}
+			for (const Material& material : model->materials)
+			{
+				for (const TextureSlot& slot : kTextureSlots)
+				{
+					AddUse(input, material.*slot.member, slot.srgb < 0 ? material.albedoSrgb : slot.srgb != 0);
+				}
+			}
+			for (const ModelImage& image : model->images)
+			{
+				if (image.encoded != nullptr)
+				{
+					images.emplace(image.name, &image);
+				}
+			}
+			models.push_back(std::move(model));
+		}
+
+		TextureCookResult result;
+		std::set<std::wstring> covered;   // 변환본이 있는 원본 파일
+		std::set<std::string> failed;     // 변환하지 못한 텍스처 이름 (보고용)
+		std::vector<uint8_t> bytes;
+		for (const auto& [name, srgb] : input.uses)
+		{
+			const uint8_t* data = nullptr;
+			size_t size = 0;
+			std::wstring source;   // Assets 기준 PathKey. 비면 뺄 파일이 없음 (GLB·data URI 내장 이미지)
+			if (const auto image = images.find(name); image != images.end())
+			{
+				data = image->second->encoded->data();
+				size = image->second->encoded->size();
+				if (!image->second->sourcePath.empty())
+				{
+					source = AssetRelativeKey(image->second->sourcePath);
+				}
+			}
+			else if (const std::wstring relative = LooseTexturePath(name); !relative.empty())
+			{
+				std::ifstream file(Paths::GetAssetPath(relative.c_str()), std::ios::binary | std::ios::ate);
+				if (!file) continue;   // 없는 파일 — 게임도 흰색 (지금과 같음)
+				bytes.resize(static_cast<size_t>(file.tellg()));
+				file.seekg(0);
+				if (bytes.empty() || !file.read(reinterpret_cast<char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()))) continue;
+				data = bytes.data();
+				size = bytes.size();
+				source = PathKey(relative);
+			}
+			else
+			{
+				continue;   // 읽지 못한 모델의 이미지
+			}
+
+			const std::wstring cached = TextureImporter::CookForBuild(name, data, size, srgb);
+			if (cached.empty())
+			{
+				if (failed.insert(name).second)
+				{
+					Log::Info("게임 빌드: 변환하지 않고 원본을 실음 — %s (이미 DDS 이거나 디코딩할 수 없음)", name.c_str());
+				}
+				if (!source.empty())
+				{
+					input.keep.insert(source);
+				}
+				continue;
+			}
+			result.cooked.push_back({ name, srgb, fs::path(cached).filename().wstring() });
+			if (!source.empty())
+			{
+				covered.insert(source);
+			}
+		}
+		// keep 은 파일이거나 폴더(면 이미지 6장이 든 큐브맵 폴더)임 — 폴더면 그 안의 파일도 남김.
+		const auto kept = [&input](const std::wstring& source)
+		{
+			for (const std::wstring& keep : input.keep)
+			{
+				if (source == keep || (source.size() > keep.size() && source.compare(0, keep.size(), keep) == 0 && source[keep.size()] == L'\\')) return true;
+			}
+			return false;
+		};
+		for (const std::wstring& source : covered)
+		{
+			if (!kept(source))
+			{
+				result.excluded.insert(source);
+			}
+		}
+		result.keptOriginals = failed.size();
+		return result;
+	}
+
+	// dir 아래의 확장자 ext 파일 (하위 폴더 포함). 폴더가 없으면 아무것도 넣지 않음.
+	void ListFiles(const fs::path& dir, const wchar_t* ext, std::vector<fs::path>& out)
+	{
+		std::error_code ec;
+		if (!fs::is_directory(dir, ec)) return;
+		for (const fs::directory_entry& entry : fs::recursive_directory_iterator(dir, ec))
+		{
+			if (entry.is_regular_file(ec) && entry.path().extension() == ext)
+			{
+				out.push_back(entry.path());
+			}
+		}
 	}
 }
 
@@ -300,6 +571,39 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 		result.message = "start scene not found: " + options.startScene;
 		return result;
 	}
+
+	// 3a. 텍스처 변환: 패키지에 들어가는 씬(에셋 전부면 모든 씬)과 프리팹이 쓰는 텍스처를 DDS 로 만들어 두고, 변환본이 생긴 원본
+	//     PNG/JPG 는 아래 복사에서 뺌. 환경 맵(큐브)과 변환하지 못한 것(이미 DDS 등)은 원본을 실음.
+	struct ExcludeScope
+	{
+		~ExcludeScope()
+		{
+			g_excludedOutputs.clear();
+			g_skippedOutputs.clear();
+		}
+	} excludeScope;
+	TextureCookResult cook;
+	{
+		std::vector<fs::path> jsonFiles;
+		if (options.copyAllAssets)
+		{
+			ListFiles(fs::path(Paths::GetEngineAssetRoot()) / L"Scenes", L".json", jsonFiles);
+			ListFiles(fs::path(Paths::GetAssetRoot()) / L"Scenes", L".json", jsonFiles);
+		}
+		else
+		{
+			jsonFiles.push_back(scenePath);
+		}
+		ListFiles(fs::path(Paths::GetEngineAssetRoot()) / L"Prefabs", L".prefab", jsonFiles);
+		ListFiles(fs::path(Paths::GetAssetRoot()) / L"Prefabs", L".prefab", jsonFiles);
+		Log::Info("게임 빌드: 텍스처 변환 (씬·프리팹 %zu 개) …", jsonFiles.size());
+		cook = CookTextures(jsonFiles);
+		for (const std::wstring& relative : cook.excluded)
+		{
+			g_excludedOutputs.insert(PathKey(outAssets / relative));
+		}
+	}
+
 	if (options.copyAllAssets)
 	{
 		if (!CopyTree(Paths::GetEngineAssetRoot(), outAssets, result.filesCopied, result.message)) return result;
@@ -352,13 +656,21 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 		CopyAssetTree(L"Textures", outAssets, result.filesCopied, result.message);   // 이름만으로 참조되는 기본 텍스처(bumps_normal 등)를 위해 전부 복사
 	}
 
-	// 3b. 텍스처 변환 캐시: 게임은 변환하지 않고 캐시가 있으면 쓰기만 하므로 설정(TextureSettings.json, 캐시 키에 들어감)과 캐시 폴더를
-	//     같이 싣음. 캐시 폴더는 프로젝트 Library\TextureCache → 패키지의 TextureCache\ (프로젝트가 없는 게임의 캐시 위치). 쓰이지 않는
-	//     옛 항목도 함께 가므로 용량이 신경 쓰이면 에디터에서 캐시 폴더를 지우고 씬을 한 번 열어 다시 만든 뒤 빌드함.
+	// 3b. 변환된 DDS: 3a 가 쓴 것만 패키지의 TextureCache\ (프로젝트가 없는 게임의 캐시 위치)에 싣고, 이름 + 색공간 → 파일 목록
+	//     (manifest.json)을 씀. 게임은 이 목록으로 DDS 를 바로 읽음 (TextureImporter::FindCooked). 캐시 폴더의 옛 항목은 싣지 않음.
+	//     이전 빌드의 TextureCache\ 는 지우고 새로 만듦. DDS 를 싣지 못하면 원본도 없으므로 빌드를 실패로 함.
 	{
-		const fs::path settings = fs::path(Paths::GetAssetRoot()) / L"TextureSettings.json";
-		if (fs::exists(settings, ec) && !CopyOne(settings, outAssets / L"TextureSettings.json", result.filesCopied, result.message)) return result;
-		if (!CopyTree(fs::path(TextureImporter::GetCacheDir()), out / L"TextureCache", result.filesCopied, result.message, false)) return result;
+		const fs::path outCache = out / L"TextureCache";
+		fs::remove_all(outCache, ec);
+		std::set<std::wstring> copied;
+		for (const TextureImporter::CookedTexture& texture : cook.cooked)
+		{
+			if (!copied.insert(texture.file).second) continue;
+			if (!CopyOne(fs::path(TextureImporter::GetCacheDir()) / texture.file, outCache / texture.file, result.filesCopied, result.message)) return result;
+		}
+		if (!TextureImporter::WriteManifest(outCache.wstring() + L"\\", cook.cooked, result.message)) return result;
+		++result.filesCopied;
+		Log::Info("게임 빌드: 텍스처 변환본 %zu 개 (DDS %zu 파일), 원본 %zu 파일 뺌, 변환하지 못해 원본을 싣는 텍스처 %zu 개", cook.cooked.size(), copied.size(), g_skippedOutputs.size(), cook.keptOriginals);
 	}
 
 	// 4. engine.ini: [game] startScene / title 을 빌드 사본에 씀 (원본은 건드리지 않음).

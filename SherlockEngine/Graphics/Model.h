@@ -26,6 +26,8 @@ struct ModelImage
 	std::string name;   // Material 이 참조하는 이름. "<모델>/<번호> <uri>"
 	// PNG/JPG/DDS 파일 내용 그대로. shared_ptr: 씬에 놓을 때 바이트를 복사하지 않고 씬과 함께 소유함
 	std::shared_ptr<const std::vector<uint8_t>> encoded;
+	// 외부 파일(uri)에서 읽었으면 그 파일의 절대 경로. GLB 안이나 data URI 면 빈 문자열. GameBuilder 가 변환한 이미지의 원본을 패키지에서 뺄 때 씀
+	std::wstring sourcePath;
 };
 
 struct ModelInstance

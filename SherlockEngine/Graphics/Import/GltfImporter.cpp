@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "Graphics/Model.h"
 #include "Graphics/Import/ImportCommon.h"
+#include "Graphics/TextureImporter.h"
 #include "Core/Log.h"
 #include <algorithm>
 #include <chrono>
@@ -275,7 +276,8 @@ namespace
 	}
 
 	//uri하나를 byte로 읽기
-	bool LoadUriBytes(const std::string& uri, const std::wstring& directory, std::vector<uint8_t>& out, std::string& error)
+	//filePathOut: 외부 파일을 읽었으면 그 경로를 돌려줌(data URI 면 그대로 둠)
+	bool LoadUriBytes(const std::string& uri, const std::wstring& directory, std::vector<uint8_t>& out, std::string& error, std::wstring* filePathOut = nullptr)
 	{
 		//data:...;base64,XXXX 형식이면 쉼표를 찾음
 		//그리고 그 뒤의 Base64들을 decode함.
@@ -308,6 +310,10 @@ namespace
 		{
 			error = "파일을 읽을 수 없음: " + ModelImport::ToUtf8(filePath);
 			return false;
+		}
+		if (filePathOut != nullptr)
+		{
+			*filePathOut = filePath;
 		}
 		return true;
 	}
@@ -684,7 +690,11 @@ namespace
 			const json& image = (*images)[i];
 			//이미지 이름. 재질의 텍스처 이름과 연결하는 데 쓰임(TextureName도 ImageName을 사용)
 			const std::string name = ImageName(modelName, root, i);
+			//게임 패키지: 빌드 때 DDS 로 변환한 이미지는 텍스처 캐시가 변환 목록에서 바로 읽음.
+			//원본 파일은 패키지에서 빠졌으므로 읽지 않고(GLB 안의 바이트도 들고 있지 않음) 건너뜀
+			if (TextureImporter::HasCooked(name)) continue;
 			std::vector<uint8_t> bytes;
+			std::wstring sourcePath;
 			std::string reason;
 
 			//이미지 바이트를 얻는 방법은 두 가지
@@ -720,7 +730,7 @@ namespace
 			//uri가 있으면 LoadUriBytes로 읽음(파일 or base64)
 			else if (const auto uri = image.find("uri"); uri != image.end() && uri->is_string())
 			{
-				LoadUriBytes(uri->get<std::string>(), directory, bytes, reason);
+				LoadUriBytes(uri->get<std::string>(), directory, bytes, reason, &sourcePath);
 			}
 			else
 			{
@@ -739,6 +749,7 @@ namespace
 			ModelImage entry;
 			entry.name = name;
 			entry.encoded = std::make_shared<const std::vector<uint8_t>>(std::move(bytes));
+			entry.sourcePath = std::move(sourcePath);
 			outImages.push_back(std::move(entry));
 		}
 		return true;

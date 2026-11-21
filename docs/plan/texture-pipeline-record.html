@@ -67,8 +67,8 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <tr><td>변환</td><td>WIC 로 읽기 → RGBA8 → 전체 밉 체인(sRGB 는 선형에서 평균) → 설정에 맞게 위쪽 단계 건너뛰기·자르기 → BC7. 임시 파일에 쓴 뒤 이름을 바꾸므로 쓰다 중단돼도 깨진 캐시가 남지 않습니다.</td></tr>
 <tr><td>인코더</td><td>DirectXTex GPU BC7(임시 D3D11 장치, D3D12 백엔드에서도 동일). 실패하면 CPU <code>BC7_QUICK</code>. 4096² 한 장 기준 CPU 약 7초, GPU 포함 전체 약 2.8초. 2048² 는 0.6~1초.</td></tr>
 <tr><td>변환 제외</td><td>이미 DDS 인 원본, 기본 설정이면서 긴 변이 256 미만인 텍스처. 밉 0 이 4의 배수가 아니면 압축하지 않고 RGBA8 DDS 로 저장합니다.</td></tr>
-<tr><td>게임 빌드</td><td>변환하지 않고 캐시가 있으면 쓰며 없으면 원본을 읽습니다(<code>SetBuildEnabled</code> 는 에디터가 켬).</td></tr>
-<tr><td>패키징</td><td><code>GameBuilder</code> 가 <code>TextureSettings.json</code>(캐시 키에 들어가므로 게임도 같은 설정을 읽어야 함)과 캐시 폴더를 <code>&lt;패키지&gt;\TextureCache\</code> 로 복사합니다. 쓰이지 않는 옛 캐시도 함께 가는 한계가 있습니다.</td></tr>
+<tr><td>게임 빌드</td><td>변환하지 않습니다(<code>SetBuildEnabled</code> 는 에디터가 켬). 패키지의 변환 목록에 있으면 그 DDS 를, 없으면 캐시 → 원본 순으로 읽습니다.</td></tr>
+<tr><td>패키징</td><td>2026-11-22 부터 변환본만 싣습니다. 아래 4장을 보세요. (처음에는 <code>TextureSettings.json</code> 과 캐시 폴더 전체를 복사해서 옛 캐시와 원본이 함께 갔습니다.)</td></tr>
 </table>
 <div class="box">설정은 처음 제안한 <code>.meta</code> 사이드카가 아니라 프로젝트 <code>Assets/TextureSettings.json</code> 에 <b>텍스처 이름</b>(재질이 저장하는 이름) 기준으로 둡니다. 모델 내장 이미지는 개별 파일이 아니라서 같은 방식으로 한 곳에서 다루려는 선택입니다. 기본값과 다른 항목만 저장합니다.</div>
 </section>
@@ -102,10 +102,52 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 </section>
 
 <section>
-<h2>4. 남은 일</h2>
+<h2>4. 게임 패키지에 변환본만 싣기 (2026-11-22)</h2>
+<p>상용 엔진에서 흔히 쓰는 방식(에디터는 원본과 변환 캐시를 두고, 빌드는 변환본만 싣는 것)을 따라, 원본은 에디터에만 두고 패키지에는 변환된 DDS 와 "이름 → 변환본" 목록만 싣습니다. 원본 PNG/JPG 파일과 <code>.gltf</code> 는 고치지 않습니다. 이전에는 게임이 원본을 읽어 해시를 계산해야 캐시를 찾을 수 있어서 원본과 캐시를 둘 다 실었습니다.</p>
+<pre><code>GameBuilder (에디터)
+  3a 씬·프리팹 JSON 의 재질 + 그 모델의 재질 → (텍스처 이름, sRGB) 목록
+     → TextureImporter::CookForBuild (캐시가 없으면 여기서 변환)
+     → 변환본이 생긴 원본 파일은 복사에서 뺌
+  3b 쓰인 DDS 만 &lt;패키지&gt;\TextureCache\ 로 복사 + manifest.json
+
+게임
+  TextureCache::Load2D → FindCooked(이름, srgb) → DDS 를 바로 읽음 (원본·해시 없음)
+  GltfImporter         → HasCooked(이름) 이면 이미지 바이트를 읽지 않음</code></pre>
+<table>
+<tr><th>항목</th><th>내용</th></tr>
+<tr><td>목록 형식</td><td><code>{ "version": 1, "textures": { "&lt;이름&gt;": { "srgb": "&lt;해시&gt;.dds", "linear": "&lt;해시&gt;.dds" } } }</code>. 쓰이는 색공간만 있습니다. 요청한 색공간이 없으면 다른 쪽 변환본을 경고와 함께 씁니다(흰색보다 나음).</td></tr>
+<tr><td>색공간 규칙</td><td>albedo 는 <code>albedoSrgb</code>, emissive·specularColor 는 sRGB, 나머지는 선형. <code>Renderer::GetOrCreateGpuMaterial</code> 의 <code>Load2D</code> 호출과 같아야 합니다(<code>GameBuilder.cpp</code> 의 <code>kTextureSlots</code>).</td></tr>
+<tr><td>대상 씬</td><td>에셋 전부 복사면 모든 씬, 아니면 시작 씬. 프리팹은 항상 전부.</td></tr>
+<tr><td>작은 텍스처</td><td>기본 설정에서 256 미만이라 에디터가 변환하지 않던 것도 빌드 때는 압축 없이 RGBA8 + 밉 DDS 로 만듭니다. 원본을 읽을 때 로더가 만드는 것과 같은 결과입니다.</td></tr>
+<tr><td>원본을 싣는 경우</td><td>원본이 이미 DDS(마스터치프), 디코딩 실패, 환경 맵 파일과 면 이미지 폴더 안의 파일(큐브는 변환 캐시를 거치지 않음), 어떤 씬·프리팹도 쓰지 않는 모델의 이미지.</td></tr>
+<tr><td>줄지 않는 것</td><td>GLB·data URI 안의 이미지는 파일을 다시 쓰지 않으므로 용량이 그대로입니다. 게임은 그 바이트를 메모리에 들지 않을 뿐입니다.</td></tr>
+<tr><td>다시 빌드</td><td><code>&lt;패키지&gt;\TextureCache\</code> 는 지우고 새로 만들고, 뺀 원본이 이전 빌드에 남아 있으면 지웁니다.</td></tr>
+</table>
+<h3>검증 (SherlockTestScenes)</h3>
+<p>에셋 전부 패키지를 Debug 와 Release(<code>--build-release=1</code>)로 만들고, 씬 26 개 전부를 D3D11·D3D12 에서 실행했습니다(4 조합 × 26). 게임은 <code>--scene</code> 을 받지 않으므로 패키지의 <code>.sherlock</code> 시작 씬을 바꿔 가며 띄웠고, 같은 씬을 소스 트리의 같은 구성 <code>SherlockGame.exe</code>(해시 캐시 경로)로 띄워 90 프레임 스크린샷(<code>--particle-step</code> 고정)을 비교했습니다.</p>
+<ul>
+  <li>104 번 모두 정상 종료, "흰색으로 대체"·"읽지 못함"·"검은 큐브로 대체"·"변환본이 패키지에 없어" 경고 0 건. 씬마다 읽은 변환본 수는 네 조합이 같습니다(DemoScene 69, MasterChiefWalk 186, DamagedHelmet 5 …).</li>
+  <li>정적인 씬(Cubemap·DamagedHelmet·MultiShadow·Tree 등)은 픽셀이 같습니다. Sponza 계열은 1~5 픽셀이 다른데, 소스 트리 게임끼리 두 번 돌려도 같은 자리가 달라지고 패키지끼리도 실행마다 값이 바뀌는 타이밍 의존 픽셀입니다. 의심했던 4×4 <code>white.png</code>(빌드 때 새로 RGBA8 로 변환된 유일한 Sponza 텍스처)를 원본으로 되돌려도, 소스 트리 게임이 같은 DDS 를 읽게 해도 결과가 같아 텍스처 내용과는 관계가 없습니다.</li>
+  <li>차이가 큰 씬은 움직이는 것만 다릅니다: 걷는 마스터치프·드래곤(실시간 애니메이션), demo_components 의 회전 오브젝트, ParticleSpawn 의 파티클.</li>
+</ul>
+<table>
+<tr><th>빌드</th><th>결과</th></tr>
+<tr><td>시작 씬만</td><td>변환본 69개(DDS 65파일, 85MB), 원본 69파일 뺌, 원본을 싣는 것 12개(마스터치프 DDS). 패키지 434MB. 남은 PNG 3개는 재질이 쓰지 않는 <code>Textures\</code> 기본 텍스처입니다.</td></tr>
+<tr><td>에셋 전부</td><td>씬 26개 + 프리팹. 변환본 270개(DDS 261파일, 465MB), 원본 261파일 뺌, 20초. 남은 PNG/JPG 42개는 어떤 씬도 쓰지 않는 모델의 이미지입니다. 이전 방식이었다면 캐시 폴더 전체(666파일, 2.5GB)가 함께 갔습니다.</td></tr>
+<tr><td>게임 실행 (DemoScene)</td><td>두 패키지 모두 변환본 69개를 목록으로 읽음(BC7 68 + RGBA8 1). "흰색으로 대체"·"읽지 못함" 경고 0건.</td></tr>
+<tr><td>화면 비교 (DemoScene)</td><td>패키지 게임과 소스 트리의 <code>SherlockGame.exe</code>(해시 캐시 경로)를 90프레임에서 비교: 다른 픽셀 0.44%, 모두 걷는 마스터치프(실시간 애니메이션)와 파티클 한 점. Sponza 는 같습니다.</td></tr>
+<tr><td>MasterChiefWalk (작은 텍스처)</td><td>Alfa Romeo 등 256 미만 텍스처가 RGBA8 변환본으로 읽힘. 변환본 193개, 원본 189파일 뺌. 다른 픽셀 2.8%, 모두 애니메이션 중인 드래곤. 자동차는 같습니다.</td></tr>
+<tr><td>DamagedHelmet (GLB 내장)</td><td>변환본 5개(BC7), 내장 바이트는 읽지 않음. 소스 트리 게임과 픽셀이 완전히 같습니다(차이 0).</td></tr>
+</table>
+<div class="box warn">처음 실행에서 게임이 접근 위반으로 종료했습니다. <code>root.value("textures", …)</code> 가 돌려준 임시 json 에 바로 <code>.items()</code> 를 range-for 로 돌린 탓입니다. range-for 는 바깥 임시 객체(iteration_proxy)만 살려 두므로 json 이 먼저 사라집니다. 지역 변수에 받아 두도록 고쳤습니다.</div>
+<p>한계: 스크립트가 재질과 다른 이름 표기(예: <code>asset:Textures\a.png</code> 대신 <code>a.png</code>)로 같은 파일을 런타임에 지정하면, 그 이름은 목록에 없고 원본도 빠져 있어 흰색이 됩니다. 재질이나 프리팹에 같은 이름으로 한 번 쓰이면 목록에 들어갑니다. 또 씬이 쓰는 모델과 스크립트만 놓는 모델이 같은 이미지 파일을 가리키면, 파일은 빠지는데 뒤쪽 모델의 이미지 이름은 목록에 없어서 흰색이 됩니다. 빌드할 때마다 모델을 다시 읽으므로 에디터가 몇 초(시작 씬만)에서 20초(에셋 전부)쯤 멈춥니다.</p>
+</section>
+
+<section>
+<h2>5. 남은 일</h2>
 <ul>
   <li>BC5(노멀)·BC4·BC6H(HDR 큐브)는 아직 풀어서 올립니다. 큐브맵의 BC 직접 업로드도 하지 않았습니다.</li>
-  <li>옛 캐시 파일을 자동으로 정리하지 않습니다. 패키징도 전체 캐시 폴더를 복사합니다.</li>
+  <li>에디터의 옛 캐시 파일을 자동으로 정리하지 않습니다(패키지에는 쓰이는 것만 갑니다).</li>
   <li>첫 로드에서 큰 텍스처를 변환하는 동안 에디터가 멈춥니다(캐시되면 한 번뿐). 비동기 변환과 진행 표시는 없습니다.</li>
   <li>모델 내장 이미지의 설정 키는 이름(<code>모델/번호 파일명</code>)이라 모델 파일이나 이미지 순서가 바뀌면 설정이 어긋날 수 있습니다.</li>
 </ul>

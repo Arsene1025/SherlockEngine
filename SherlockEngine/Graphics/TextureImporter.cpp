@@ -258,34 +258,160 @@ std::wstring TextureImporter::GetCacheDir()
 	return Paths::GetExecutableDir() + L"TextureCache\\";
 }
 
+namespace
+{
+	// cook = 게임 빌드용: 기본 설정의 작은 텍스처도 압축 없이(R8G8B8A8 + 밉) 변환함.
+	std::wstring Resolve(const std::string& name, const uint8_t* data, size_t size, bool srgb, bool cook)
+	{
+		if (data == nullptr || size == 0 || IsDds(data, size)) return L"";   // DDS 는 사용자가 이미 만든 것 — 그대로 읽음
+		TextureImportSettings settings = TextureImporter::GetSettings(name);
+
+		// 기본 설정이고 작은 텍스처면 변환하지 않음 (빌드용이면 압축만 끔). 크기는 헤더만 읽어 앎.
+		DirectX::TexMetadata meta;
+		if (FAILED(DirectX::GetMetadataFromWICMemory(data, size, DirectX::WIC_FLAGS_NONE, meta))) return L"";
+		if (settings.IsDefault() && (std::max)(meta.width, meta.height) < kMinCompressSize)
+		{
+			if (!cook) return L"";
+			settings.compress = false;
+		}
+
+		// 키: 원본 내용 + 색공간 + 설정 + 변환기 버전. 원본이 바뀌거나 설정이 바뀌면 다른 파일이 됨 (옛 파일은 남음 — 캐시 폴더를 지우면 정리됨).
+		uint64_t hash = Fnv(data, size);
+		const uint32_t key[5] = { srgb ? 1u : 0u, settings.compress ? 1u : 0u, settings.mipLevels, settings.maxSize, kConverterVersion };
+		hash = Fnv(key, sizeof(key), hash);
+		wchar_t file[32];
+		swprintf_s(file, L"%016llx.dds", static_cast<unsigned long long>(hash));
+		const fs::path path = fs::path(TextureImporter::GetCacheDir()) / file;
+
+		std::error_code ec;
+		if (fs::exists(path, ec)) return path.wstring();
+		if (!g_buildEnabled) return L"";
+
+		std::string summary;
+		if (!Build(data, size, srgb, settings, path, summary))
+		{
+			Log::Warn("텍스처 변환 실패: %s (원본을 그대로 씀)", name.c_str());
+			return L"";
+		}
+		Log::Info("텍스처 변환: %s (%s)", name.c_str(), summary.c_str());
+		return path.wstring();
+	}
+
+	// ---- 게임 패키지의 변환 목록 ----
+	// manifest.json: { "version": 1, "textures": { "<이름>": { "srgb": "<해시>.dds", "linear": "<해시>.dds" } } } (쓰이는 색공간만 있음)
+	constexpr int kManifestVersion = 1;
+	struct CookedPair
+	{
+		std::wstring srgb, linear;   // 캐시 폴더 기준 절대 경로. 없으면 빈 문자열
+	};
+	std::map<std::string, CookedPair> g_manifest;
+	std::wstring g_manifestLoadedFor;   // g_manifest 를 읽은 캐시 폴더
+
+	std::wstring Utf8ToWide(const std::string& utf8)
+	{
+		if (utf8.empty()) return L"";
+		const int length = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
+		std::wstring wide(length > 0 ? length - 1 : 0, L'\0');
+		if (length > 1)
+		{
+			MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &wide[0], length);
+		}
+		return wide;
+	}
+
+	// g_mutex 를 잡은 채 호출. 에디터(변환하는 쪽)는 목록을 쓰지 않음 — 항상 원본에서 해시 캐시를 찾음.
+	const std::map<std::string, CookedPair>& Manifest()
+	{
+		if (g_buildEnabled)
+		{
+			static const std::map<std::string, CookedPair> empty;
+			return empty;
+		}
+		const std::wstring dir = TextureImporter::GetCacheDir();
+		if (dir == g_manifestLoadedFor) return g_manifest;
+		g_manifestLoadedFor = dir;
+		g_manifest.clear();
+		std::ifstream file{ fs::path(dir) / L"manifest.json" };
+		if (!file) return g_manifest;
+		try
+		{
+			const nlohmann::json root = nlohmann::json::parse(file);
+			if (root.value("version", 0) != kManifestVersion)
+			{
+				Log::Warn("TextureCache\\manifest.json 버전이 다름 — 무시하고 원본을 읽음.");
+				return g_manifest;
+			}
+			// value() 는 값(임시 객체)을 돌려줌 — 지역 변수에 받아 둬야 함. 임시 객체에 바로 .items() 를 돌리면 range-for 가 시작하기 전에
+			// 그 객체가 사라짐 (C++20 까지는 range-for 가 바깥 임시 객체만 살려 둠).
+			const nlohmann::json textures = root.value("textures", nlohmann::json::object());
+			for (const auto& item : textures.items())
+			{
+				CookedPair pair;
+				const std::string srgb = item.value().value("srgb", "");
+				const std::string linear = item.value().value("linear", "");
+				pair.srgb = srgb.empty() ? L"" : dir + Utf8ToWide(srgb);
+				pair.linear = linear.empty() ? L"" : dir + Utf8ToWide(linear);
+				g_manifest[item.key()] = pair;
+			}
+			Log::Info("텍스처 변환 목록: %zu 개 (%s)", g_manifest.size(), Log::ToUtf8(dir.c_str()).c_str());
+		}
+		catch (const std::exception& e)
+		{
+			Log::Warn("TextureCache\\manifest.json 을 읽지 못함: %s", e.what());
+			g_manifest.clear();
+		}
+		return g_manifest;
+	}
+}
+
 std::wstring TextureImporter::ResolveCached(const std::string& name, const uint8_t* data, size_t size, bool srgb)
 {
-	if (data == nullptr || size == 0 || IsDds(data, size)) return L"";   // DDS 는 사용자가 이미 만든 것 — 그대로 읽음
-	const TextureImportSettings settings = GetSettings(name);
+	return Resolve(name, data, size, srgb, false);
+}
 
-	// 기본 설정이고 작은 텍스처면 변환하지 않음. 크기는 헤더만 읽어 앎.
-	DirectX::TexMetadata meta;
-	if (FAILED(DirectX::GetMetadataFromWICMemory(data, size, DirectX::WIC_FLAGS_NONE, meta))) return L"";
-	if (settings.IsDefault() && (std::max)(meta.width, meta.height) < kMinCompressSize) return L"";
+std::wstring TextureImporter::CookForBuild(const std::string& name, const uint8_t* data, size_t size, bool srgb)
+{
+	return Resolve(name, data, size, srgb, true);
+}
 
-	// 키: 원본 내용 + 색공간 + 설정 + 변환기 버전. 원본이 바뀌거나 설정이 바뀌면 다른 파일이 됨 (옛 파일은 남음 — 캐시 폴더를 지우면 정리됨).
-	uint64_t hash = Fnv(data, size);
-	const uint32_t key[5] = { srgb ? 1u : 0u, settings.compress ? 1u : 0u, settings.mipLevels, settings.maxSize, kConverterVersion };
-	hash = Fnv(key, sizeof(key), hash);
-	wchar_t file[32];
-	swprintf_s(file, L"%016llx.dds", static_cast<unsigned long long>(hash));
-	const fs::path path = fs::path(GetCacheDir()) / file;
-
-	std::error_code ec;
-	if (fs::exists(path, ec)) return path.wstring();
-	if (!g_buildEnabled) return L"";
-
-	std::string summary;
-	if (!Build(data, size, srgb, settings, path, summary))
+bool TextureImporter::WriteManifest(const std::wstring& dir, const std::vector<CookedTexture>& textures, std::string& error)
+{
+	nlohmann::json entries = nlohmann::json::object();
+	for (const CookedTexture& texture : textures)
 	{
-		Log::Warn("텍스처 변환 실패: %s (원본을 그대로 씀)", name.c_str());
-		return L"";
+		entries[texture.name][texture.srgb ? "srgb" : "linear"] = Log::ToUtf8(texture.file.c_str());
 	}
-	Log::Info("텍스처 변환: %s (%s)", name.c_str(), summary.c_str());
-	return path.wstring();
+	std::error_code ec;
+	fs::create_directories(dir, ec);
+	std::ofstream file{ fs::path(dir) / L"manifest.json", std::ios::binary | std::ios::trunc };
+	if (!file)
+	{
+		error = "cannot write " + Log::ToUtf8((fs::path(dir) / L"manifest.json").c_str());
+		return false;
+	}
+	file << nlohmann::json{ { "version", kManifestVersion }, { "textures", entries } }.dump(2);
+	return static_cast<bool>(file);
+}
+
+std::wstring TextureImporter::FindCooked(const std::string& name, bool srgb)
+{
+	std::lock_guard<std::mutex> lock(g_mutex);
+	const auto& manifest = Manifest();
+	const auto found = manifest.find(name);
+	if (found == manifest.end()) return L"";
+	const std::wstring& exact = srgb ? found->second.srgb : found->second.linear;
+	if (!exact.empty()) return exact;
+	const std::wstring& other = srgb ? found->second.linear : found->second.srgb;
+	if (!other.empty())
+	{
+		Log::Warn("텍스처 '%s' 의 %s 변환본이 패키지에 없어 %s 변환본을 씀 (빌드 때 재질에서 이 색공간으로 쓰이지 않았음).", name.c_str(), srgb ? "sRGB" : "linear", srgb ? "linear" : "sRGB");
+	}
+	return other;
+}
+
+bool TextureImporter::HasCooked(const std::string& name)
+{
+	std::lock_guard<std::mutex> lock(g_mutex);
+	const auto& manifest = Manifest();
+	return manifest.find(name) != manifest.end();
 }
