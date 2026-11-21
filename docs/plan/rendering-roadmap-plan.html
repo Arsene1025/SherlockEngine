@@ -156,30 +156,31 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
 </section>
 
 <section id="now">
-<h2>2. 현재 엔진 상태 (코드에서 확인한 것)</h2>
+<h2>2. 엔진 상태: 계획 시점과 지금 (코드에서 확인한 것)</h2>
+<p>"계획 시점" 열은 이 계획을 세운 2026-11-16 의 상태로, 1장의 순서를 정한 근거라 그대로 둡니다. "지금" 열과 위치는 2026-11-21 코드 기준입니다.</p>
 <table>
-<thead><tr><th>항목</th><th>지금</th><th>위치</th></tr></thead>
+<thead><tr><th>항목</th><th>계획 시점 (2026-11-16)</th><th>지금 (2026-11-21)</th><th>위치 (지금)</th></tr></thead>
 <tbody>
-<tr><td>셰이더 스테이지</td><td>Vertex, Pixel 뿐. 컴퓨트 없음</td><td><code>RHI/PipelineTypes.h:140-144</code></td></tr>
-<tr><td>바인딩 타입</td><td>ConstantBuffer, ShaderResource, Sampler, BufferResource. UAV 없음</td><td><code>RHI/BindingTypes.h:18-24</code></td></tr>
-<tr><td>드로우 API</td><td><code>DrawIndexed</code>, <code>Draw</code> 뿐. 인스턴싱·간접 드로우·Dispatch 없음</td><td><code>RHI/CommandList.h:52</code>, <code>:55</code></td></tr>
-<tr><td>리소스 상태</td><td>Common, RenderTarget, DepthWrite, ShaderResource, CopySource, CopyDest, Present. <b>깊이 읽기 전용과 UAV 상태 없음</b></td><td><code>RHI/RenderPassTypes.h:71-80</code></td></tr>
-<tr><td>블렌드 기술</td><td>렌더 타깃별 블렌드 설정이 있고 PSO 기술에 포함됨. <code>kMaxRenderTargets = 8</code></td><td><code>RHI/PipelineTypes.h:179-203</code>, <code>:235</code></td></tr>
-<tr><td>블렌드 사용처</td><td>블룸 합성용 가산 블렌드 하나뿐. 씬 패스에는 없음</td><td><code>Graphics/Renderer.cpp:334-339</code></td></tr>
-<tr><td>패스 목록</td><td>Main, Shadow, Sky, Tonemap, Post, MainSkin, ShadowSkin, DebugLine. 반투명·G-buffer 패스 없음</td><td><code>Graphics/Renderer.h:280</code></td></tr>
-<tr><td>드로우 정렬</td><td>PSO → 재질 → 메시 → 인덱스 범위의 상태 정렬. 거리 정렬 없음</td><td><code>Graphics/Renderer.cpp:1053-1060</code></td></tr>
-<tr><td>반투명 재질</td><td>glTF <code>BLEND</code> 는 알파 컷아웃 0.5 로 대체</td><td><code>Graphics/Import/GltfImporter.cpp:803-805</code>, <code>Scene/Material.h:52-53</code></td></tr>
-<tr><td>깊이 테스트만 하는 경로</td><td>스카이박스가 테스트 켬(LessEqual), 쓰기 끔으로 그림</td><td><code>Graphics/Renderer.cpp:317-321</code></td></tr>
-<tr><td>씬 패스 안의 그리기 순서</td><td>메시 → 스카이박스 → 디버그 선</td><td><code>Graphics/Renderer.cpp:1174-1177</code></td></tr>
-<tr><td>동적 정점 버퍼</td><td>디버그 선이 <code>BufferUsage::Dynamic</code> 정점 버퍼를 매 프레임 올림. 상한 65,536 정점</td><td><code>Graphics/Renderer.cpp:138</code>, <code>:1187</code>, <code>Graphics/DebugDraw.h:30</code></td></tr>
-<tr><td>버퍼 갱신 의미</td><td><code>UpdateBuffer</code> 는 "이 프레임 슬롯의 내용을 통째로 교체"만 약속. 부분 갱신 없음</td><td><code>RHI/Device.h:22</code>, <code>:80</code></td></tr>
-<tr><td>씬 깊이 텍스처</td><td>D24S8, <code>DepthStencil | ShaderResource</code>. 씬 패스 뒤 <code>DepthWrite</code> 상태로 남음</td><td><code>Graphics/RendererTargets.cpp:46</code>, <code>Graphics/Renderer.h:366</code>, <code>Graphics/Renderer.cpp:1095-1098</code></td></tr>
-<tr><td>깊이를 읽는 셰이더</td><td>찾지 못함. 후처리는 <code>postInput</code>(t13)만 읽음</td><td><code>Shaders/PostPixelShader.hlsl:12</code></td></tr>
-<tr><td>조명 데이터</td><td><code>StructuredBuffer&lt;LightData&gt;</code>(t15) + 개수는 상수버퍼. 용량이 모자라면 두 배로 다시 만듦</td><td><code>Shaders/Common.hlsli:100</code>, <code>:105</code>, <code>Graphics/Renderer.cpp:144</code>, <code>:951</code></td></tr>
-<tr><td>조명 루프</td><td>픽셀 셰이더가 모든 조명을 순회</td><td><code>Shaders/BasicPixelShader.hlsl:314</code>, <code>:347</code></td></tr>
-<tr><td>조명 컬링</td><td>카메라 프러스텀 기준 조명 컬링 없음. 섀도 뷰별 <code>cullSphere</code> 만 있음</td><td><code>Graphics/RendererShadow.cpp:358</code>, <code>:379</code></td></tr>
-<tr><td>섀도 뷰 상한</td><td><code>MAX_SHADOW_VIEWS = 20</code></td><td><code>Shaders/Common.hlsli:16</code></td></tr>
-<tr><td>스키닝</td><td>스킨 전용 VS 와 패스(MainSkin, ShadowSkin), 조인트 256개 팔레트 상수버퍼</td><td><code>Graphics/Renderer.h:279-280</code>, <code>Shaders/Common.hlsli:81-84</code></td></tr>
+<tr><td>셰이더 스테이지</td><td>Vertex, Pixel 뿐. 컴퓨트 없음</td><td>Vertex, Pixel, Compute(cs_5_0). 컴퓨트는 <code>ComputePipelineDesc</code> 로 묶음</td><td><code>RHI/PipelineTypes.h:143-148</code></td></tr>
+<tr><td>바인딩 타입</td><td>ConstantBuffer, ShaderResource, Sampler, BufferResource. UAV 없음</td><td>위 넷에 UnorderedAccess(텍스처 UAV), BufferUnorderedAccess(구조체 버퍼 UAV), RawBufferResource·RawBufferUnorderedAccess(ByteAddressBuffer) 추가</td><td><code>RHI/BindingTypes.h:18-33</code></td></tr>
+<tr><td>드로우 API</td><td><code>DrawIndexed</code>, <code>Draw</code> 뿐. 인스턴싱·간접 드로우·Dispatch 없음</td><td><code>DrawIndexed</code>, <code>Draw</code>, <code>DrawInstancedIndirect</code>, <code>Dispatch</code>, <code>DispatchIndirect</code></td><td><code>RHI/CommandList.h:54</code>, <code>:57</code>, <code>:62</code>, <code>:72</code>, <code>:75</code></td></tr>
+<tr><td>리소스 상태</td><td>Common, RenderTarget, DepthWrite, ShaderResource, CopySource, CopyDest, Present. <b>깊이 읽기 전용과 UAV 상태 없음</b></td><td>위 일곱에 UnorderedAccess, IndirectArgument, DepthRead(읽기 전용 DSV + SRV) 추가</td><td><code>RHI/RenderPassTypes.h:76-91</code></td></tr>
+<tr><td>블렌드 기술</td><td>렌더 타깃별 블렌드 설정이 있고 PSO 기술에 포함됨. <code>kMaxRenderTargets = 8</code></td><td>그대로. <code>kMaxRenderTargets = 8</code></td><td><code>RHI/PipelineTypes.h:183-207</code>, <code>:239</code></td></tr>
+<tr><td>블렌드 사용처</td><td>블룸 합성용 가산 블렌드 하나뿐. 씬 패스에는 없음</td><td>블룸 합성 가산, 디퍼드 라이팅 가산, 파티클(프리멀티플라이드 한 PSO 로 가산·알파), 반투명 재질(프리멀티플라이드 알파, 깊이 쓰기 끔)</td><td><code>Graphics/Renderer.cpp:582-592</code>, <code>:529-550</code>, <code>:2155-2165</code></td></tr>
+<tr><td>패스 목록</td><td>Main, Shadow, Sky, Tonemap, Post, MainSkin, ShadowSkin, DebugLine. 반투명·G-buffer 패스 없음</td><td>Main, Shadow, Sky, Tonemap, Post, MainSkin, ShadowSkin, DebugLine, Particle, GBuffer, GBufferSkin, DeferredLight, Ssao, SsaoBlur. 반투명은 별도 PassId 없이 Main/MainSkin PSO 의 블렌드 변형</td><td><code>Graphics/Renderer.h:403-420</code></td></tr>
+<tr><td>드로우 정렬</td><td>PSO → 재질 → 메시 → 인덱스 범위의 상태 정렬. 거리 정렬 없음</td><td>불투명 → 블렌딩 구분 뒤 PSO → 재질 → 메시 → 인덱스 범위. 블렌딩 항목은 그릴 때 카메라 거리로 먼 것부터 다시 정렬</td><td><code>Graphics/Renderer.cpp:1609-1616</code>, <code>:1825</code></td></tr>
+<tr><td>반투명 재질</td><td>glTF <code>BLEND</code> 는 알파 컷아웃 0.5 로 대체</td><td>glTF <code>BLEND</code> 는 <code>alphaBlend</code> 로 정렬된 블렌딩 경로에서 그림. <code>MASK</code> 는 <code>alphaCutoff</code>, 투과(<code>transmissionFactor</code>)도 블렌딩으로 근사</td><td><code>Graphics/Import/GltfImporter.cpp:1008-1022</code>, <code>Scene/Material.h:75-78</code>, <code>:92</code></td></tr>
+<tr><td>깊이 테스트만 하는 경로</td><td>스카이박스가 테스트 켬(LessEqual), 쓰기 끔으로 그림</td><td>스카이박스(LessEqual, 쓰기 끔), 반투명 재질(쓰기 끔), 파티클(읽기 전용 깊이 패스)</td><td><code>Graphics/Renderer.cpp:520-527</code>, <code>:529-535</code>, <code>:2164</code></td></tr>
+<tr><td>씬 패스 안의 그리기 순서</td><td>메시 → 스카이박스 → 디버그 선</td><td>불투명 메시 → 스카이박스 → 반투명(먼 것부터) → (깊이 DepthRead 로 바꾼 뒤) 파티클 → 디버그 선. 디퍼드면 G-buffer → 라이팅 → 포워드 나머지</td><td><code>Graphics/Renderer.cpp:1811</code>, <code>:1825</code>, <code>:1691</code>, <code>:1718</code>, <code>:1721</code></td></tr>
+<tr><td>동적 정점 버퍼</td><td>디버그 선이 <code>BufferUsage::Dynamic</code> 정점 버퍼를 매 프레임 올림. 상한 65,536 정점</td><td>그대로. 디버그 선 정점 버퍼, 상한 65,536 정점</td><td><code>Graphics/Renderer.cpp:198</code>, <code>:1850</code>, <code>Graphics/DebugDraw.h:37</code></td></tr>
+<tr><td>버퍼 갱신 의미</td><td><code>UpdateBuffer</code> 는 "이 프레임 슬롯의 내용을 통째로 교체"만 약속. 부분 갱신 없음</td><td>그대로 (통째 교체만). GPU → CPU 읽기용 <code>ReadStagingBuffer</code> 가 추가됨</td><td><code>RHI/Device.h:22</code>, <code>:78</code>, <code>:89</code></td></tr>
+<tr><td>씬 깊이 텍스처</td><td>D24S8, <code>DepthStencil | ShaderResource</code>. 씬 패스 뒤 <code>DepthWrite</code> 상태로 남음</td><td>D24S8, <code>DepthStencil | ShaderResource</code>. 파티클·디버그 선을 그리기 전에 <code>DepthRead</code> 로 바꿈</td><td><code>Graphics/RendererTargets.cpp:48</code>, <code>Graphics/Renderer.h:617</code>, <code>Graphics/Renderer.cpp:1691</code></td></tr>
+<tr><td>깊이를 읽는 셰이더</td><td>찾지 못함. 후처리는 <code>postInput</code>(t13)만 읽음</td><td>t23 으로 읽음: 디퍼드 라이팅(위치 복원), SSAO, 소프트 파티클 PS, 파티클 깊이 충돌 CS</td><td><code>Shaders/GBuffer.hlsli:22</code>, <code>Shaders/Ssao.hlsli:29</code>, <code>Shaders/Particle.hlsli:45</code></td></tr>
+<tr><td>조명 데이터</td><td><code>StructuredBuffer&lt;LightData&gt;</code>(t15) + 개수는 상수버퍼. 용량이 모자라면 두 배로 다시 만듦</td><td>그대로. <code>StructuredBuffer&lt;LightData&gt;</code>(t15) + b2 의 개수, 모자라면 두 배로 다시 만듦</td><td><code>Shaders/Lighting.hlsli:43</code>, <code>:50</code>, <code>Graphics/Renderer.cpp:203</code>, <code>:1435-1437</code></td></tr>
+<tr><td>조명 루프</td><td>픽셀 셰이더가 모든 조명을 순회</td><td>클러스터드 라이팅을 켜면 픽셀이 속한 클러스터의 조명만 순회. 끄면 전부 순회(정답 경로)</td><td><code>Shaders/Shading.hlsli:424</code>, <code>:489</code>, <code>:508</code></td></tr>
+<tr><td>조명 컬링</td><td>카메라 프러스텀 기준 조명 컬링 없음. 섀도 뷰별 <code>cullSphere</code> 만 있음</td><td>메인 카메라 절두체로 지역광을 거르고, 16×9×24 클러스터에 비닝(CPU 또는 컴퓨트). 섀도 뷰별 <code>cullSphere</code> 도 그대로</td><td><code>Graphics/RendererClusters.cpp:98</code>, <code>:161</code>, <code>Graphics/RendererClusterBin.cpp:223</code>, <code>Graphics/RendererShadow.cpp:418</code></td></tr>
+<tr><td>섀도 뷰 상한</td><td><code>MAX_SHADOW_VIEWS = 20</code></td><td>그대로. <code>MAX_SHADOW_VIEWS = 20</code></td><td><code>Shaders/Lighting.hlsli:12</code></td></tr>
+<tr><td>스키닝</td><td>스킨 전용 VS 와 패스(MainSkin, ShadowSkin), 조인트 256개 팔레트 상수버퍼</td><td>MainSkin, ShadowSkin 에 GBufferSkin 추가. 팔레트는 그대로 256 조인트</td><td><code>Graphics/Renderer.h:403-420</code>, <code>Shaders/Mesh.hlsli:18-22</code></td></tr>
 </tbody>
 </table>
 <div class="box warn">
@@ -218,17 +219,17 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
 
 <h3>작업 항목</h3>
 <ul class="todo">
-<li><input type="checkbox"> 반투명 패스 추가: 패스 목록(<code>Renderer.h:280</code>)에 반투명용 항목을 넣고, 깊이 테스트 켬·쓰기 끔으로 설정(스카이박스 설정 <code>Renderer.cpp:317-321</code> 참고)</li>
-<li><input type="checkbox"> 블렌드 PSO 변형 두 가지: 알파 블렌드(SrcAlpha, InvSrcAlpha)와 가산(One, One). 블룸 가산 설정(<code>Renderer.cpp:334-339</code>)이 본보기</li>
-<li><input type="checkbox"> 반투명 드로우 목록을 불투명 목록과 분리하고 카메라 거리 기준 뒤→앞으로 정렬. 불투명은 지금의 상태 정렬(<code>Renderer.cpp:1053-1060</code>) 유지</li>
-<li><input type="checkbox"> 그리는 순서를 메시 → 스카이박스 → <b>반투명</b> → 디버그 선으로 변경(<code>Renderer.cpp:1174-1177</code>)</li>
+<li><input type="checkbox"> 반투명 패스 추가: 패스 목록(<code>Renderer.h:403</code>)에 반투명용 항목을 넣고, 깊이 테스트 켬·쓰기 끔으로 설정(스카이박스 설정 <code>Renderer.cpp:520-527</code> 참고)</li>
+<li><input type="checkbox"> 블렌드 PSO 변형 두 가지: 알파 블렌드(SrcAlpha, InvSrcAlpha)와 가산(One, One). 블룸 가산 설정(<code>Renderer.cpp:582-592</code>)이 본보기</li>
+<li><input type="checkbox"> 반투명 드로우 목록을 불투명 목록과 분리하고 카메라 거리 기준 뒤→앞으로 정렬. 불투명은 지금의 상태 정렬(<code>Renderer.cpp:1609-1616</code>) 유지</li>
+<li><input type="checkbox"> 그리는 순서를 메시 → 스카이박스 → <b>반투명</b> → 디버그 선으로 변경(<code>Renderer.cpp:1680-1683</code>)</li>
 <li><input type="checkbox"> 빌보드 셰이더: 카메라 정면 고정과 축 고정 두 가지. 텍스처 한 장 + 색 곱</li>
 <li><input type="checkbox"> 빌보드 정점 공급 방식 결정 <span class="tag p">제안</span>: 파티클을 구조체 버퍼로 올리고 VS 가 <code>SV_VertexID</code> 로 모서리를 만드는 방식. 스카이박스처럼 정점 레이아웃이 없고, 4단계의 GPU 파티클이 VS 를 그대로 씀. 이 방식이 막히면 디버그 선처럼 CPU 에서 사각형을 펼쳐 동적 정점 버퍼로 올림</li>
 <li><input type="checkbox"> 파티클 데이터는 이미터별 버퍼가 아니라 한 버퍼에 모아 프레임당 한 번 올림(<code>UpdateBuffer</code> 가 통째 교체만 약속, <code>RHI/Device.h:22</code>)</li>
 <li><input type="checkbox"> CPU 파티클 시스템: 이미터 컴포넌트, 수명, 속도·중력, 색·크기 곡선, 플립북 UV</li>
 <li><input type="checkbox"> 씬 저장·불러오기와 되돌리기에 이미터 설정 포함</li>
 <li><input type="checkbox"> 통계에 반투명 드로우 수와 파티클 수 추가</li>
-<li><input type="checkbox"> <span class="tag">선택</span> glTF <code>BLEND</code> 재질을 컷아웃 0.5 대체(<code>GltfImporter.cpp:803-805</code>)에서 실제 반투명으로</li>
+<li><input type="checkbox"> <span class="tag">선택</span> glTF <code>BLEND</code> 재질을 컷아웃 0.5 대체(<code>GltfImporter.cpp:1008-1022</code>)에서 실제 반투명으로</li>
 </ul>
 
 <h3>검증</h3>
@@ -273,8 +274,8 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
 <li><input type="checkbox"> G-buffer 배치 결정과 기록: 알베도, 노멀, 거칠기·금속성, AO, 발광. 월드 위치는 저장하지 않고 깊이에서 복원. 필요한 포맷이 RHI 에 없으면 추가</li>
 <li><input type="checkbox"> G-buffer 타깃 생성과 크기 변경 대응(<code>RendererTargets.cpp</code> 의 기존 타깃 재생성 패턴)</li>
 <li><input type="checkbox"> G-buffer 패스 PSO: 스킨/비스킨 변형, 알파 컷아웃은 <code>clip</code> 으로 처리</li>
-<li><input type="checkbox"> 풀스크린 라이팅 패스: G-buffer 와 깊이를 읽어 기존 조명 루프(<code>BasicPixelShader.hlsl:314</code>, <code>:347</code>)와 그림자·IBL 을 그대로 계산</li>
-<li><input type="checkbox"> RHI: 깊이 읽기 전용 리소스 상태 추가(<code>RenderPassTypes.h:71-80</code>)와 읽기 전용 DSV. 두 백엔드 모두</li>
+<li><input type="checkbox"> 풀스크린 라이팅 패스: G-buffer 와 깊이를 읽어 기존 조명 루프(<code>Shading.hlsli:429</code>, <code>:450</code>)와 그림자·IBL 을 그대로 계산</li>
+<li><input type="checkbox"> RHI: 깊이 읽기 전용 리소스 상태 추가(<code>RenderPassTypes.h:76-91</code>)와 읽기 전용 DSV. 두 백엔드 모두</li>
 <li><input type="checkbox"> 포워드 반투명 패스가 깊이를 읽기 전용으로 붙이도록 변경</li>
 <li><input type="checkbox"> 소프트 파티클: 씬 깊이를 SRV 로 읽어 파티클 깊이와의 차이로 알파를 줄임</li>
 <li><input type="checkbox"> 디버그 뷰가 G-buffer 각 채널을 직접 보여 주게 연결</li>
@@ -318,11 +319,11 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
 <h3>작업 항목</h3>
 <ul class="todo">
 <li><input type="checkbox"> 조명 수십~수백 개 데모 씬을 실험 프로젝트에 만듦(Sample 프로젝트가 아님)</li>
-<li><input type="checkbox"> 조명 목록 준비: 카메라 프러스텀과 조명 구/원뿔 테스트로 화면 밖 조명 제외(<code>BuildGpuLights</code>, <code>Renderer.cpp:909</code>)</li>
+<li><input type="checkbox"> 조명 목록 준비: 카메라 프러스텀과 조명 구/원뿔 테스트로 화면 밖 조명 제외(<code>BuildGpuLights</code>, <code>Renderer.cpp:1382</code>)</li>
 <li><input type="checkbox"> 섀도 타일 우선순위: 화면 점유율·거리·밝기로 점수를 매겨 <code>MAX_SHADOW_VIEWS</code>(20) 안에서 배정. 제외된 조명은 섀도 뷰를 만들지 않음(<code>RendererShadow.cpp</code>)</li>
 <li><input type="checkbox"> 클러스터 격자 정의: 화면 16×9, 깊이 24 슬라이스(지수 분할). 클러스터 AABB 를 뷰 공간에서 계산</li>
 <li><input type="checkbox"> CPU 비닝: 조명마다 겹치는 클러스터를 찾아 목록 작성</li>
-<li><input type="checkbox"> 구조체 버퍼 2개 업로드: 클러스터별 (오프셋, 개수)와 조명 인덱스 목록. 기존 조명 버퍼(<code>Renderer.cpp:144</code>)와 같은 방식</li>
+<li><input type="checkbox"> 구조체 버퍼 2개 업로드: 클러스터별 (오프셋, 개수)와 조명 인덱스 목록. 기존 조명 버퍼(<code>Renderer.cpp:203</code>)와 같은 방식</li>
 <li><input type="checkbox"> 라이팅 패스가 픽셀의 클러스터를 계산해 그 목록만 순회</li>
 <li><input type="checkbox"> 포워드 반투명 경로도 같은 목록을 읽게 연결</li>
 <li><input type="checkbox"> 디버그 뷰: 클러스터별 조명 수 히트맵</li>
@@ -363,10 +364,10 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
 
 <h3>작업 항목 — RHI</h3>
 <ul class="todo">
-<li><input type="checkbox"> <code>ShaderStage</code> 에 Compute 추가(<code>RHI/PipelineTypes.h:140-144</code>)와 셰이더 컴파일 경로</li>
-<li><input type="checkbox"> <code>BindingType</code> 에 UAV(텍스처, 버퍼) 추가(<code>RHI/BindingTypes.h:18-24</code>)와 리플렉션</li>
+<li><input type="checkbox"> <code>ShaderStage</code> 에 Compute 추가(<code>RHI/PipelineTypes.h:143-148</code>)와 셰이더 컴파일 경로</li>
+<li><input type="checkbox"> <code>BindingType</code> 에 UAV(텍스처, 버퍼) 추가(<code>RHI/BindingTypes.h:18-33</code>)와 리플렉션</li>
 <li><input type="checkbox"> 텍스처·버퍼 생성 플래그에 UAV 용도 추가(<code>RHI/ResourceDesc.h</code>)</li>
-<li><input type="checkbox"> 리소스 상태에 UAV 추가, UAV 배리어(<code>RHI/RenderPassTypes.h:71-80</code>)</li>
+<li><input type="checkbox"> 리소스 상태에 UAV 추가, UAV 배리어(<code>RHI/RenderPassTypes.h:76-91</code>)</li>
 <li><input type="checkbox"> 컴퓨트 PSO 기술과 생성, 캐시</li>
 <li><input type="checkbox"> <code>CommandList</code> 에 컴퓨트 PSO 바인딩, 컴퓨트용 리소스 셋 바인딩, <code>Dispatch</code> 추가(<code>RHI/CommandList.h</code>)</li>
 <li><input type="checkbox"> D3D11, D3D12 두 백엔드 구현</li>
@@ -504,9 +505,9 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
 <h2>5. 미확인 사항</h2>
 <p>이 문서의 "현재 엔진 상태"는 키워드 검색과 해당 줄 주변을 읽은 결과입니다. 빌드하거나 실행해 확인하지 않았습니다. 아래는 그중에서도 확정하지 못한 것입니다.</p>
 <ul>
-<li><b>VS 에서 구조체 버퍼를 읽는 사례가 있는지.</b> 바인딩 슬롯에 스테이지 마스크가 있어 가능해 보이지만(<code>RHI/BindingTypes.h:29</code>), 지금 VS 가 <code>BufferResource</code> 를 읽는 코드가 있는지, 두 백엔드에서 동작하는지는 확인하지 못했습니다. 1단계의 빌보드 정점 공급 방식이 여기에 달려 있습니다.</li>
+<li><b>VS 에서 구조체 버퍼를 읽는 사례가 있는지.</b> 바인딩 슬롯에 스테이지 마스크가 있어 가능해 보이지만(<code>RHI/BindingTypes.h:51</code>), 지금 VS 가 <code>BufferResource</code> 를 읽는 코드가 있는지, 두 백엔드에서 동작하는지는 확인하지 못했습니다. 1단계의 빌보드 정점 공급 방식이 여기에 달려 있습니다.</li>
 <li><b>MRT 실사용 여부.</b> <code>Graphics/</code> 에서 G-buffer 나 다중 컬러 타깃 관련 키워드를 찾지 못했다는 것이 근거입니다. 다른 이름으로 쓰는 곳이 있을 가능성은 배제하지 못했습니다. RHI 의 MRT 경로가 두 백엔드에서 실제로 동작하는지도 2단계에서 처음 확인하게 됩니다. <span class="tag v">2026-11-18 확인: G-buffer 패스가 5장을 써서 두 백엔드에서 동작합니다. D3D12 PSO 는 <code>rtvFormats</code> 다섯 칸을 모두 적어야 하고, RT+SRV 인 UNORM 텍스처는 TYPELESS 라 <code>srgbView = false</code> 가 필요했습니다.</span></li>
-<li><b>깊이 SRV 읽기.</b> 깊이 텍스처가 SRV 로 만들어진다는 것은 확인했지만(<code>RendererTargets.cpp:46</code>), 실제로 셰이더가 읽는 코드는 찾지 못했습니다. D24S8 을 SRV 로 읽는 뷰 포맷 처리가 두 백엔드에 되어 있는지는 미확인입니다. <span class="tag v">2026-11-18 확인: 디퍼드 라이팅과 SSAO 가 t23 으로 D24 깊이를 두 백엔드에서 읽습니다 (VFX 3단계의 소프트 파티클도 먼저 읽었음).</span></li>
+<li><b>깊이 SRV 읽기.</b> 깊이 텍스처가 SRV 로 만들어진다는 것은 확인했지만(<code>RendererTargets.cpp:48</code>), 실제로 셰이더가 읽는 코드는 찾지 못했습니다. D24S8 을 SRV 로 읽는 뷰 포맷 처리가 두 백엔드에 되어 있는지는 미확인입니다. <span class="tag v">2026-11-18 확인: 디퍼드 라이팅과 SSAO 가 t23 으로 D24 깊이를 두 백엔드에서 읽습니다 (VFX 3단계의 소프트 파티클도 먼저 읽었음).</span></li>
 <li><b>깊이 프리패스.</b> 관련 키워드를 찾지 못했습니다. 없다고 보고 계획을 세웠습니다. <span class="tag v">2026-11-18 확인: 없었고 만들지 않았습니다. 그래서 SSAO 는 디퍼드 프레임에서만 돕니다.</span></li>
 <li><b>포인트 조명이 쓰는 섀도 뷰 수.</b> 섀도 타일 우선순위의 점수 설계에 필요하지만 이번에 읽지 않았습니다. <span class="tag v">2026-11-18 확인: 큐브 6면 = 연속 6 타일, 스팟은 1 타일. 점수 설계는 구현 기록 2.8절.</span></li>
 <li><b>클러스터 격자 크기와 CPU 비닝 비용.</b> 16×9×24 와 "조명 수백 개까지 부담 없음"은 일반적인 경험치이고, 이 엔진에서 측정한 값이 아닙니다. <span class="tag v">2026-11-18 측정: Debug 빌드, 조명 256 개에서 약 5 ms. Release 는 재지 않았습니다.</span></li>

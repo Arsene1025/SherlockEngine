@@ -916,7 +916,7 @@ function Shot {
     Select-String -Path "$out\$Name.log" -Pattern "\[실패\]|\[경고\]" | ForEach-Object { $_.Line }
 }
 
-# 게임 실행 파일은 --scene= 을 쓰지 않고 .sherlock 의 startScene 을 엶 (GameApp.cpp 20~22행).
+# 게임 실행 파일은 --scene= 을 쓰지 않고 .sherlock 의 startScene 을 엶 (GameApp.cpp 21~27행).
 # 그래서 startScene 을 잠깐 바꿔 찍고, 끝나면(실패해도) 원래 내용으로 되돌림
 function GameShot {
     param([string]$Name, [string]$Scene, [string]$Backend = "d3d11")

@@ -70,7 +70,7 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 
 <h3 id="a2">A2. 레지스터와 슬롯 여유가 거의 없음</h3>
 <table>
-<tr><th>종류</th><th>상한 (<code>RHI/BindingTypes.h</code> 32~38행)</th><th>사용 중 (<code>Graphics/ShaderConstants.h</code> 37~60행)</th><th>남은 것</th></tr>
+<tr><th>종류</th><th>상한 (<code>RHI/BindingTypes.h</code> 55~72행)</th><th>사용 중 (<code>Graphics/ShaderConstants.h</code> 37~60행)</th><th>남은 것</th></tr>
 <tr><td>CBV</td><td>8</td><td>b0~b6</td><td>b7</td></tr>
 <tr><td>SRV</td><td>16</td><td>t0~t4, t8~t14</td><td>t5~t7, t15</td></tr>
 <tr><td>레이아웃당 슬롯</td><td>16</td><td>프레임 레이아웃 12</td><td>4</td></tr>
@@ -105,7 +105,7 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <h3 id="b1">B1. 메인 패스와 CSM 에 컬링이 없고, 월드 행렬을 패스마다 다시 계산</h3>
 <ul>
   <li><code>Renderer::BuildDrawList</code> (약 1473행)에 프러스텀 컬링이 없습니다. 그림자 패스는 지역광만 구 컬링을 하고 캐스케이드 뷰는 하지 않습니다 (<code>RenderShadowAtlasPass</code> 약 1608행, <code>cullSphere.w = 0</code>). Sponza 는 캐스케이드 4번 + 메인 1번을 전부 그립니다.</li>
-  <li><code>UploadObjectConstants</code> (약 1516행)가 드로우마다 <code>GameObject::GetWorldMatrix()</code> 와 역행렬을 구합니다. <code>GetWorldMatrix</code> 는 부모를 재귀로 올라가며 오일러 → 행렬을 매번 다시 만들고 캐시가 없습니다 (<code>Scene/GameObject.cpp</code> 40행).</li>
+  <li><code>UploadObjectConstants</code> (약 1516행)가 드로우마다 <code>GameObject::GetWorldMatrix()</code> 와 역행렬을 구합니다. <code>GetWorldMatrix</code> 는 부모를 재귀로 올라가며 오일러 → 행렬을 매번 다시 만들고 캐시가 없습니다 (<code>Scene/GameObject.cpp</code> 48행).</li>
   <li>한 드로우 항목이 프레임당 반복하는 횟수: <code>BuildDrawList</code> 1 + 경계 구 1 + 그림자 뷰 수 + 메인 1 + 미리보기 1.</li>
 </ul>
 <div class="box"><b>제안:</b> 프레임 초에 오브젝트별 월드 행렬·역행렬·월드 바운드를 한 번 계산해 <code>DrawItem</code> 에 담고, 뷰(메인·캐스케이드·지역광)별 가시성 리스트를 만듭니다. 이 바운드와 컬링 코드는 A4 뒤의 라이트 컬링에서 그대로 씁니다.</div>
@@ -126,8 +126,8 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 
 <h3 id="b4">B4. 씬 조회가 전부 선형</h3>
 <ul>
-  <li><code>Scene::FindById</code> (<code>Scene/Scene.cpp</code> 97행), <code>IndexOf</code> (206행), <code>RemoveObject</code> (115행)가 모두 오브젝트 벡터를 훑습니다.</li>
-  <li><code>FlushDestroyed</code> (182행)는 지울 루트마다 <code>FindById</code> + <code>IndexOf</code> 를 부릅니다. Spawner 처럼 생성·파괴가 많으면 O(n²)입니다.</li>
+  <li><code>Scene::FindById</code> (<code>Scene/Scene.cpp</code> 139행), <code>IndexOf</code> (305행), <code>RemoveObject</code> (171행)가 모두 오브젝트 벡터를 훑습니다.</li>
+  <li><code>FlushDestroyed</code> (271행)는 지울 루트마다 <code>FindById</code> + <code>IndexOf</code> 를 부릅니다. Spawner 처럼 생성·파괴가 많으면 O(n²)입니다.</li>
   <li>에디터 선택이 인덱스 기준이라 ID ↔ 인덱스 동기화 코드(<code>Editor::SyncSelection</code>)가 따로 필요합니다.</li>
 </ul>
 <div class="box"><b>제안:</b> id → 오브젝트 맵을 두고, 에디터 선택과 콜백(<code>deleteObject(int)</code> 등)도 ID 를 기준으로 바꿉니다.</div>
@@ -166,7 +166,7 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <h3 id="c3">C3. 스크립트 DLL 의 ABI 검사가 없음</h3>
 <ul>
   <li><code>Scene</code>·<code>GameObject</code>·<code>Transform</code> 은 STL 멤버와 인라인 접근자를 가진 채 export 되고, "멤버는 끝에만 덧붙임"이라는 주석 규율에 의존합니다 (<code>Scene/Scene.h</code> 약 213행, <code>Scene/GameObject.h</code> 약 140행).</li>
-  <li><code>ScriptModule::Load</code> (<code>Core/ScriptModule.cpp</code> 70행)에 버전 확인이 없습니다. 엔진 헤더가 바뀐 뒤 오래된 DLL 이 올라오면 조용히 메모리가 깨집니다.</li>
+  <li><code>ScriptModule::Load</code> (<code>Core/ScriptModule.cpp</code> 111행)에 버전 확인이 없습니다. 엔진 헤더가 바뀐 뒤 오래된 DLL 이 올라오면 조용히 메모리가 깨집니다.</li>
 </ul>
 <div class="box"><b>제안:</b> 엔진 API 버전 상수를 헤더에 두고 <code>SHERLOCK_SCRIPT</code> 쪽에서 DLL 에 심은 뒤 로드 때 비교합니다. 다르면 올리지 않고 기존 "Missing Script" 경로로 보냅니다.</div>
 
