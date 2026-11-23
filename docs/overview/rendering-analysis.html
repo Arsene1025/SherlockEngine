@@ -3944,7 +3944,7 @@ Garbage m_garbage[kFrameCount];</code></pre>
 <tbody>
 <tr><td class="mono">Common.hlsli</td><td>(전부)</td><td><code>EPSILON</code>·<code>PI</code>, b0 <code>PerFrame</code>(프레임 셋·후처리 셋·SSAO 셋이 함께 씀), <code>SafeNormalize</code>, 깊이 복원 <code>ViewDepthFromDevice</code>·<code>ReconstructWorldPosition</code>·<code>ViewPositionFromDevice</code>, 노멀 인코딩 <code>EncodeOct</code>·<code>DecodeOct</code>(2026-11-18). 머리 주석에 헤더 목록</td></tr>
 <tr><td class="mono">Lighting.hlsli</td><td>Layout_Frame</td><td><code>LightData</code>·<code>LIGHT_*</code>·<code>MAX_SHADOW_VIEWS</code>, b2 <code>Lights</code>, t15 조명 구조체 버퍼, b5 <code>ShadowPass</code>, b6 <code>Shadows</code>, t8·s4·t14(그림자), t9·s5(환경), t10~t12(IBL)</td></tr>
-<tr><td class="mono">Mesh.hlsli</td><td>Layout_Object</td><td>b1 <code>PerObject</code>, b7 <code>Skin</code>·<code>SkinMatrix</code>, <code>VSInput</code>/<code>VSOutput</code>, <code>TangentHandedness</code></td></tr>
+<tr><td class="mono">Mesh.hlsli</td><td>Layout_Object</td><td>b1 <code>PerObject</code>(2026-11-23 부터 <code>prevWorld</code> 포함), b7 <code>Skin</code>·<code>SkinMatrix</code>, b13 <code>PrevSkin</code>·<code>PrevSkinMatrix</code>(지난 프레임 팔레트), <code>VSInput</code>/<code>VSOutput</code>(<code>currClip</code>·<code>prevClip</code> — 속도용 두 클립 좌표), <code>TangentHandedness</code></td></tr>
 <tr><td class="mono">Material.hlsli</td><td>Layout_Material</td><td>b3 <code>Material</code>, t0~t6·t16~t19, s0</td></tr>
 <tr><td class="mono">Post.hlsli</td><td>Layout_Post · BlurCompute · BlurWeights</td><td>b4 <code>PostParams</code>, t13 입력 <code>postInput</code>, s6, t20 블러 가중치, <code>ApplyExposureToneMap</code></td></tr>
 <tr><td class="mono">Sky.hlsli</td><td>—</td><td>스카이박스 VS → PS 구조체 <code>SkyVSOutput</code></td></tr>
@@ -3955,6 +3955,8 @@ Garbage m_garbage[kFrameCount];</code></pre>
 <tr><td class="mono">MaterialSurface.hlsli</td><td>— (재질 셋을 읽음)</td><td><code>EvaluateMaterialSurface</code> — 재질 셋 + 정점 보간값 → <code>SurfaceData</code>. 포워드 PS 와 G-buffer PS 가 함께 씀 (2026-11-18)</td></tr>
 <tr><td class="mono">GBuffer.hlsli</td><td>Layout_GBuffer</td><td>t23 깊이, t25~t28 GB0~GB3, t29 SSAO 결과, <code>LoadGBufferSurface</code> (2026-11-18)</td></tr>
 <tr><td class="mono">Ssao.hlsli</td><td>Layout_Ssao</td><td>b12 <code>SsaoParams</code>(반경·바이어스·세기·거듭제곱·샘플 수·커널 32), t23 깊이, t26 노멀, t29 입력 (2026-11-18)</td></tr>
+<tr><td class="mono">Velocity.hlsli</td><td>— (셋 선언 없음)</td><td><code>VelocityUV</code>(두 클립 좌표 → UV 속도, w ≤ 0 이면 0, ±2 UV 로 자름), <code>CameraVelocityUV</code>(깊이 재투영 — 디버그 뷰 17) (2026-11-23)</td></tr>
+<tr><td class="mono">Temporal.hlsli</td><td>Layout_Temporal</td><td>t23 깊이, t7 속도, t24 TAA 히스토리, <code>LoadVelocityPixels</code>·<code>LoadDeviceDepth</code>·<code>LinearViewDepth</code>·<code>InterleavedGradientNoise</code>. 속도 디버그·모션 블러·TAA 가 함께 씀 (2026-11-23)</td></tr>
 <tr><td class="mono">ParticleSort.hlsli</td><td>Layout_ParticleSort · SortStep</td><td>t24, u0·u1(키·번호), b10·b11. <code>ParticleSim.hlsli</code> 와 u0·u1 의 뜻이 달라 같이 include 하면 <code>#error</code></td></tr>
 </tbody></table></div>
 <p>2026-11-17 이전에는 이 선언이 전부 <code>Common.hlsli</code> 한 파일에 있었고, 파티클 컴퓨트 셋은 <code>#ifdef PARTICLE_SIM</code>/<code>PARTICLE_SORT</code> 블록으로 숨겨 두었습니다. 핫리로드가 <code>Common.hlsli</code> 하나만 감시했기 때문입니다. 지금은 감시와 <code>.cso</code> 신선도 검사가 셰이더의 <code>#include</code> 를 재귀로 따라가므로(<a href="#c10-3">10.3절</a>) 헤더를 나눠도 됩니다. 이 장의 셰이더 다섯 개가 쓰는 선언은 다음과 같습니다.</p>
@@ -4212,18 +4214,19 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
 <div class="tbl"><table>
 <thead><tr><th>슬롯</th><th>HLSL cbuffer</th><th>C++ 구조체</th><th>크기</th><th>갱신</th><th>읽는 스테이지</th><th>버퍼 핸들</th></tr></thead>
 <tbody>
-<tr><td class="mono">b0</td><td class="mono">PerFrame</td><td class="mono">PerFrameConstants</td><td class="n">432</td><td>뷰마다 (메인, 미리보기가 있으면 그 카메라로 한 번 더)</td><td>VS + PS</td><td class="mono">m_perFrameCB</td></tr>
-<tr><td class="mono">b1</td><td class="mono">PerObject</td><td class="mono">PerObjectConstants</td><td class="n">128</td><td>드로우마다</td><td>VS</td><td class="mono">m_perObjectCB</td></tr>
+<tr><td class="mono">b0</td><td class="mono">PerFrame</td><td class="mono">PerFrameConstants</td><td class="n">576</td><td>뷰마다 (메인, 미리보기가 있으면 그 카메라로 한 번 더)</td><td>VS + PS</td><td class="mono">m_perFrameCB</td></tr>
+<tr><td class="mono">b1</td><td class="mono">PerObject</td><td class="mono">PerObjectConstants</td><td class="n">192</td><td>드로우마다 (2026-11-23 부터 지난 프레임 World 포함)</td><td>VS</td><td class="mono">m_perObjectCB</td></tr>
 <tr><td class="mono">b2</td><td class="mono">Lights</td><td class="mono">LightConstants</td><td class="n">32</td><td>프레임에 한 번. 조명 자체는 t15 구조체 버퍼(원소 80 바이트, 개수 제한 없음)</td><td>PS</td><td class="mono">m_lightCB</td></tr>
 <tr><td class="mono">b3</td><td class="mono">Material</td><td class="mono">MaterialConstants</td><td class="n">64</td><td>재질마다 프레임에 한 번</td><td>VS(<code>uvScale</code>) + PS</td><td class="mono">GpuMaterial::constants</td></tr>
 <tr><td class="mono">b5</td><td class="mono">ShadowPass</td><td class="mono">ShadowPassConstants</td><td class="n">64</td><td>그림자 뷰마다 (2026-10-29)</td><td>VS</td><td class="mono">m_shadowPassCB</td></tr>
 <tr><td class="mono">b6</td><td class="mono">Shadows</td><td class="mono">ShadowConstants</td><td class="n">2000</td><td>프레임에 한 번 (2026-10-29). 뷰 20개 × 96 + 16 × 5</td><td>PS</td><td class="mono">m_shadowsCB</td></tr>
 <tr><td class="mono">b12</td><td class="mono">SsaoParams</td><td class="mono">SsaoConstants</td><td class="n">544</td><td>프레임에 한 번 (2026-11-18). SSAO 가 꺼져 있어도 올림(D3D12 Dynamic)</td><td>PS</td><td class="mono">m_ssaoCB</td></tr>
+<tr><td class="mono">b13</td><td class="mono">PrevSkin</td><td class="mono">PrevSkinConstants</td><td class="n">16384</td><td>스킨 드로우마다 (2026-11-23). 지난 프레임 팔레트, 조인트 수가 다르면 이번 팔레트. 같은 번호의 <code>ClusterBin</code> 은 컴퓨트 비닝 셋 전용</td><td>VS</td><td class="mono">m_prevSkinCB</td></tr>
 </tbody></table></div>
 <p>아래 격자는 한 행이 16바이트 레지스터 하나, 한 칸이 4바이트입니다. 왼쪽 위 숫자는 바이트 오프셋 범위이고, 필드 이름은 C++ 와 HLSL 에서 같습니다.</p>
 
-<h4>b0 PerFrame — 432바이트</h4>
-<p class="sub">2026-10-29 에 <code>lightViewProj</code>(64B)가 빠져 352 에서 288 바이트가 됐습니다. 광원 행렬은 b6 의 뷰 배열로 옮겨 갔습니다. 그 뒤 <code>iblTint</code> 가 붙고, 2026-11-18 에 디퍼드·클러스터드·SSAO 용 다섯 칸(<code>invViewProj</code> ~ <code>aoParams</code>)이 붙어 432 바이트입니다.</p>
+<h4>b0 PerFrame — 576바이트</h4>
+<p class="sub">2026-10-29 에 <code>lightViewProj</code>(64B)가 빠져 352 에서 288 바이트가 됐습니다. 광원 행렬은 b6 의 뷰 배열로 옮겨 갔습니다. 그 뒤 <code>iblTint</code> 가 붙고, 2026-11-18 에 디퍼드·클러스터드·SSAO 용 다섯 칸(<code>invViewProj</code> ~ <code>aoParams</code>)이 붙어 432 바이트, 2026-11-23 에 속도 버퍼·TAA 용 세 칸(<code>unjitteredViewProj</code>·<code>prevUnjitteredViewProj</code>·<code>temporalParams</code>)이 붙어 576 바이트입니다. TAA 가 켜지면 <code>proj</code>·<code>viewProj</code>·<code>invViewProj</code> 에는 지터가 들어가고, 속도는 지터 없는 두 행렬로 구합니다(<a href="#c20-28">20.28</a>).</p>
 <div class="layout">
   <div class="row">0 ~ 63</div>
   <div class="m4">view — matrix / XMFLOAT4X4 (레지스터 4개)</div>
@@ -4255,15 +4258,23 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
   <div>x: 슬라이스 scale</div><div>y: 슬라이스 bias</div><div class="pad">z: 0</div><div class="pad">w: 0</div>
   <div class="row">416 ~ 431 · aoParams</div>
   <div>x: SSAO 결과 있음</div><div>y: 0 min / 1 곱</div><div class="pad">z: 0</div><div class="pad">w: 0</div>
+  <div class="row">432 ~ 495</div>
+  <div class="m4">unjitteredViewProj — 지터 없는 이번 viewProj. 속도 계산용 (2026-11-23)</div>
+  <div class="row">496 ~ 559</div>
+  <div class="m4">prevUnjitteredViewProj — 이 뷰의 지난 프레임 viewProj (지터 없음, 지난 프레임이 없으면 이번 것)</div>
+  <div class="row">560 ~ 575 · temporalParams</div>
+  <div>x: 지터 x (NDC)</div><div>y: 지터 y</div><div>z: 히스토리 유효</div><div>w: 지터 위상 0~7</div>
 </div>
 <p>채우는 곳은 <code>Renderer::UploadPerFrameConstants</code> 입니다. <code>shadowParams</code> 는 <code>(1 / kShadowAtlasSize, m_shadowSettings.bias, m_shadowSettings.strength, m_shadowViewCount &gt; 0 ? 1 : 0)</code> 이고 <code>debugParams</code> 는 <code>(m_settings.debugView, m_settings.debugDepthRange, 0, 0)</code> 입니다. <code>shadowExtra.x</code> 는 <code>m_shadowSettings.normalOffset</code> 입니다(2026-10-28). <code>m_shadowSettings</code> 는 <code>Renderer::Render</code> 가 맨 앞에서 씬의 <code>environment.shadow</code> 를 복사한 값입니다. 2026-10-08 에 붙은 두 줄은 <code>Renderer::ResolveEnvironment</code> 가 그 프레임에 정한 환경을 옮깁니다(<a href="#c11-6">11.6절</a>, <a href="#c12-14">12.14절</a>). 현재 셰이더는 <code>view</code>, <code>proj</code>, <code>time</code>, <code>shadowParams.x</code> 를 읽지 않습니다. 변환에는 <code>viewProj</code> 만 쓰고, PCF 의 이웃 텍셀은 정수 오프셋 인자로 지정하기 때문입니다.</p>
 
-<h4>b1 PerObject — 128바이트</h4>
+<h4>b1 PerObject — 192바이트</h4>
 <div class="layout">
   <div class="row">0 ~ 63</div>
   <div class="m4">world</div>
   <div class="row">64 ~ 127</div>
   <div class="m4">worldInvTranspose — 노멀 변환용 (W⁻¹)ᵀ</div>
+  <div class="row">128 ~ 191</div>
+  <div class="m4">prevWorld — 지난 프레임 World. 처음 보는 오브젝트·그림자 패스는 world 와 같음(속도 0) (2026-11-23)</div>
 </div>
 <p>채우는 곳은 <code>Renderer::UploadObjectConstants</code> 이고 드로우 직전에 호출됩니다. 월드 행렬은 부모 계층을 곱한 <code>GameObject::GetWorldMatrix()</code> 입니다.</p>
 
@@ -6415,7 +6426,10 @@ QuaternionLookTestEditor.exe --scene=quat_roll_world.json --play=1 --exit-after=
     <tr><td class="mono">clusterGpuTiles <span class="sub">true</span></td><td>GPU 비닝의 1단계(타일 비트마스크). 끄면 상자마다 조명 전체를 검사 — 비교 측정용. b13 <code>useTiles</code></td><td>컴퓨트 패스 + b13</td><td>패널</td></tr>
     <tr><td class="mono">shadowPriority <span class="sub">true</span></td><td><code>BuildShadowViews</code> 의 타일 배정 순서 — 켜면 절두체 밖 조명 제외 + 점수 순(<code>CullLights</code>), 끄면 조명 번호 순 (2026-11-18)</td><td>그림자 패스</td><td>패널</td></tr>
     <tr><td class="mono">ssaoOverride <span class="sub">−1</span></td><td>−1 이면 씬의 <code>environment.ssao.enabled</code>, 0·1 이면 덮어씀. 실행 인자 <code>--ssao</code> (2026-11-18)</td><td>패스 + b0</td><td></td></tr>
-    <tr><td class="mono">debugView, debugDepthRange <span class="sub">0, 60</span></td><td><code>debugParams.x</code>(0~15), <code>.y</code> (14.10절)</td><td>b0 상수</td><td></td></tr>
+    <tr><td class="mono">motionBlurOverride, taaOverride <span class="sub">−1, −1</span></td><td>−1 이면 씬의 <code>environment.post.motionBlurEnabled</code>·<code>taaEnabled</code>, 0·1 이면 덮어씀. 실행 인자 <code>--motion-blur</code>·<code>--taa</code> (2026-11-23, <a href="#c20-28">20.28</a>)</td><td>패스</td><td></td></tr>
+    <tr><td class="mono">taaJitter <span class="sub">true</span></td><td>끄면 TAA 가 지터 없이 같은 위치를 섞음 — 배관 검증용 (<code>--taa-jitter=0</code>)</td><td>b0 상수</td><td></td></tr>
+    <tr><td class="mono">motionBlurFpsOverride, frameDeltaOverride <span class="sub">−1, 0</span></td><td>모션 블러 기준 fps(−1 = 씬 값, 0 = 보정 안 함)와 보정에 쓰는 dt 고정(0 = 실제 값). <code>--motion-blur-fps</code>·<code>--frame-dt</code></td><td>b4 상수</td><td></td></tr>
+    <tr><td class="mono">debugView, debugDepthRange <span class="sub">0, 60</span></td><td><code>debugParams.x</code>(0~17), <code>.y</code> (14.10절)</td><td>b0 상수</td><td></td></tr>
   </tbody>
 </table></div>
 
@@ -6719,6 +6733,8 @@ cmd.BeginRenderPass(pass);  DrawItems(cmd, scene);  cmd.EndRenderPass();
     <tr><td class="n">13</td><td>SSAO</td><td>SSAO 결과(1 = 가림 없음). 디퍼드 프레임에서만</td><td>SSAO 반경·세기 (2026-11-18)</td></tr>
     <tr><td class="n">14</td><td>Cluster light count</td><td>픽셀이 속한 상자의 지역광 수. 검정 0 → 파랑 → 초록 → 빨강, 32 이상 흰색</td><td>클러스터 비닝 (2026-11-18)</td></tr>
     <tr><td class="n">15</td><td>Cluster depth slice</td><td>깊이 슬라이스 번호를 색 띠로</td><td>로그(원근)·균등(직교) 분할 (2026-11-18)</td></tr>
+    <tr><td class="n">16</td><td>Velocity</td><td>속도 방향을 색상, 크기를 밝기로. 속도 디버그 패스가 후처리 대신 그림</td><td>속도 버퍼 — 카메라·오브젝트·스킨 움직임 (2026-11-23)</td></tr>
+    <tr><td class="n">17</td><td>Velocity error</td><td>max(|속도 − 깊이 재투영 속도| − 허용치, 0) × 10. 허용치 = 1e-3·|v| + 0.01 픽셀, 하늘은 어두운 파랑</td><td>정지한 표면이 검정이면 카메라 속도가 맞음. 움직이는 물체만 밝아야 함 (2026-11-23)</td></tr>
   </tbody>
 </table></div>
 
@@ -9275,6 +9291,7 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <tr><td class="n">11-17</td><td class="mono">7d48d66<br>07a7a71<br>8641ab9<br>e4281be<br>45f796c</td><td>요청 "Common.hlsli 에 다 몰아넣은 구조에 문제가 없나, 분리 계획을 세우고 진행" → 공용 셰이더 헤더를 C++ 바인딩 셋 단위 아홉 개로 나누고, 의존 헤더를 <code>#include</code> 재귀 추적으로 (<a href="#c20-25">20.25</a>)</td></tr>
 <tr><td class="n">11-18</td><td>미커밋</td><td>요청 "2·3·5단계(디퍼드, 클러스터드, SSAO)를 멈추지 말고 구현하고 record 문서와 테스트 씬까지" → G-buffer(MRT 5장) + 풀스크린 라이팅, 조명 절두체 컬링·그림자 타일 우선순위, CPU 클러스터 비닝(16×9×24) + 클러스터드 셰이딩, SSAO + 블러. 테스트 씬 8개와 생성기 (<a href="#c20-26">20.26</a>)</td></tr>
 <tr><td class="n">11-21</td><td>미커밋</td><td>요청 "비닝을 컴퓨트 셰이더로 옮기는 작업을 새 문서로, 하는 김에 2단계 비닝까지" → 컴퓨트 다섯 개(View·Tile·Count·Scan·Fill), 타일 비트마스크 → 상자 2단계 비닝, 버퍼 리드백(<code>ReadStagingBuffer</code>). 요청 "CPU·GPU 1단계·GPU 2단계를 조명 많은/적은 씬에서 측정해 테스트 문서로" (<a href="#c20-27">20.27</a>)</td></tr>
+<tr><td class="n">11-23</td><td>051ffc7</td><td>요청 "카메라 모션 블러를 먼저" → "TAA 부터 오브젝트별 모션 블러까지 한 번에, 단계는 나누되 구현은 한 번에" → 속도 버퍼, 모션 블러, TAA. 요청 "모션 블러가 왜 이렇게 깔끔하지" → 기준 fps 보정 (<a href="#c20-28">20.28</a>)</td></tr>
 </tbody></table></div>
 
 <!-- c20-03.html -->
@@ -10339,6 +10356,19 @@ Barrier(depth → DepthWrite)
   <li><b>측정 요약.</b> CPU 비닝 시간(촛불 씬 3~17 ms)이 거의 0 이 되고 GPU 에 0.03~1.9 ms(2단계)가 더해짐. 2단계는 조명이 많을수록 1단계보다 빠름(촛불 씬 2~4배). 촛불 씬은 GPU 병목이라 프레임 전체는 비슷하거나 약 3 ms 늘어남 — 숫자는 <a href="../plan/gpu-cluster-binning-test.html">측정 문서</a>.</li>
 </ul>
 
+<h3 id="c20-28">20.28 적용 기록 — 2026-11-23 · 속도 버퍼, 모션 블러, TAA</h3>
+<p>요청은 "카메라 모션 블러를 먼저"에서 "TAA 부터 오브젝트별 모션 블러까지 한 번에, 단계는 나누되 구현은 한 번에"로 바뀌었고, 구현 뒤 "모션 블러가 왜 이렇게 깔끔하지"가 이어졌습니다. 설계와 계획에서 달라진 점은 <a href="../plan/velocity-motionblur-taa-plan.html">속도 버퍼·모션 블러·TAA 구현 계획</a>(맨 위 "구현하면서 바뀐 점", 7장 확인 결과)에 있고, 여기에는 이 문서의 서술이 바뀐 부분만 적습니다.</p>
+<ul>
+  <li><b>속도 버퍼.</b> R16G16_FLOAT, 값은 uv(이번) − uv(지난). VS 가 지터 없는 두 행렬(b0 <code>unjitteredViewProj</code>·<code>prevUnjitteredViewProj</code>)과 b1 <code>prevWorld</code>, 스킨이면 b13 <code>PrevSkin</code> 으로 두 클립 좌표를 내고 PS 가 <code>VelocityUV</code> 로 뺌. 디퍼드는 G-buffer 6장째, 포워드는 RT 1. 반투명 PSO 는 RT 1 쓰기 마스크가 0(<code>independentBlend</code>)이라 속도를 쓰지 않고, 하늘은 카메라 회전만으로 속도를 냄. 지난 값은 오브젝트 id 별 <code>MotionHistory</code> 두 벌(프레임마다 바꿈, <code>BuildDrawList</code>)과 뷰별 <code>TemporalState</code>(<code>UploadPerFrameConstants</code>).</li>
+  <li><b>모션 블러.</b> HDR 구간에서 TAA 다음, 블러·블룸 앞. McGuire 2012 가중치(앞뒤 깊이 비교 + 원뿔·원기둥), 픽셀마다 IGN 지터, 길이 상한은 720p 기준 픽셀. 길이 = 속도 × 셔터 × 1/(기준 fps · dt) — VSync 를 끈 에디터(1600 fps 안팎)에서도 60 fps 와 같은 길이(<code>motionBlurTargetFps</code>, dt 는 <code>Engine::Render</code> → <code>Renderer::SetFrameDeltaTime</code>). hdr → 스크래치 → <code>PS_Post</code> 모드 0 으로 복사.</li>
+  <li><b>TAA.</b> Halton(2,3) 8 위상 지터를 proj·viewProj·invViewProj 에만 곱함. 리졸브는 3×3 에서 가장 가까운 깊이의 속도 → Catmull-Rom 5탭 히스토리 → YCoCg 평균 ± 표준편차 상자로 클립 → 휘도 가중(Karis) 혼합(α = <code>taaFeedback</code>). 히스토리는 뷰마다 두 장 핑퐁.</li>
+  <li><b>슬롯과 레이아웃.</b> b0 576 바이트·b1 192 바이트(<a href="#c10-6">10.6절</a>), b13 <code>PrevSkin</code>(VS), 새 레이아웃 <code>Layout_Temporal</code>(b0·b4·t13·t23·t7 속도·t24 히스토리·s6). 계획의 t32·t33 은 레지스터 상한 32 에 걸려 t7·t24 로 옮김. 같은 번호를 컴퓨트 셋(GPU 비닝의 t7·b13, 파티클 정렬의 t24)도 쓰지만 한 패스에 같이 묶이지 않음.</li>
+  <li><b>히스토리 리셋.</b> 씬 불러오기·새 씬·재생 정지(<code>InvalidateScene</code>), 재생 시작, 되돌리기, 뷰 크기 변경(타깃을 새로 만듦), 미리보기 대상 바뀜(<code>SetPreviewCamera</code> 의 오브젝트 id), 재생 중 보간 없는 카메라 전환(<code>Scene::ConsumeCameraCut</code>). 디버그 뷰에서는 TAA·모션 블러를 건너뜀.</li>
+  <li><b>도구.</b> 디버그 뷰 16(속도)·17(속도 오차), 후처리 단계 썸네일 6칸(Scene·TAA·Motion·Blur·Bloom·Final), 환경 패널의 TAA·Motion blur(Intensity·Target FPS·길이 상한·샘플 수), 실행 인자와 자동화 동작(<a href="#app-d">부록 D</a>).</li>
+  <li><b>함정.</b> (1) SRV 레지스터 상한 32 — <code>Layout_Temporal</code> 생성 실패로 드러남. (2) 뷰 17 을 × 100 하면 FP16 반올림 무늬가 정지 화면을 덮음 — 허용치를 빼고 × 10. (3) 미리보기는 늘 같은 <code>Camera</code> 사본을 넘겨 포인터 비교로는 대상 바뀜을 못 봄 — 오브젝트 id. (4) 속도는 한 프레임 이동량이라 고프레임에서 블러가 사라짐 — 기준 fps 보정. (5) <code>Rigidbody</code> 는 고정 스텝에만 움직이고 렌더 보간이 없어 고프레임에서는 위치가 바뀐 프레임에만 길게 번짐 — 남은 과제(<a href="#c22-4">22.4</a>).</li>
+  <li><b>검증.</b> 효과를 다 끄면 기준 화면과 같음(실행마다 바뀌던 픽셀 제외). 뷰 17 이 카메라 회전·이동·직교·포워드/디퍼드·스핀·따라가기·스킨·미리보기·복제/프리팹/되돌리기에서 검정. 모션 블러 정지 화면 켬 = 끔 0 px, TAA 피드백 1·지터 끔 = 끔 0 px, D3D11 = D3D12, D3D12 GPU 기반 검증 메시지 없음. 리셋 세 경우(미리보기 전환·되돌리기·카메라 컷)는 사건 직후 프레임이 새로 그린 화면과 0 px. 같은 초당 회전을 480 fps 로 돌려도 60 fps 와 비슷한 길이로 번짐(번진 픽셀 3537 / 3782). 테스트 씬 6개: <code>MotionBlur</code>·<code>TaaEdges</code>·<code>TaaPlumbing</code>·<code>TaaSkin</code>·<code>CameraSwitch</code>·<code>TaaMotionBlur</code>.</li>
+</ul>
+
 <!-- c21-01.html -->
 <h2 id="c21"><span class="num">21.</span>질문과 답</h2>
 
@@ -11294,7 +11324,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
     <div><h5>추천 순서</h5><ul>
       <li><b>스카이박스와 환경맵.</b> 끝났습니다(2026-10-08, <a href="#c12-14">12.14절</a>)</li>
       <li><b>PBR(Cook-Torrance)과 IBL.</b> 셰이딩은 끝났습니다(2026-10-08, <a href="#c11-6">11.6절</a>). IBL 맵은 아직 밖에서 구운 것(IBLBaker 등)을 읽기만 하고, 스카이박스 하나에서 확산 조도·반사 프리필터·BRDF LUT 를 엔진이 직접 만드는 일이 남았습니다. 처음에는 이것을 컴퓨트 PSO 의 첫 사용처로 봤지만, 실제 첫 사용처는 컴퓨트 블러(2026-11-16)와 GPU 파티클(2026-11-17)이 됐습니다</li>
-      <li><b>후처리 체인.</b> HDR 타깃 → 톤매핑 → 블룸 → FXAA. 앞의 둘은 끝났습니다(2026-10-23, <a href="../plan/hdr-tonemapping-record.html">구현 기록</a>). 렌더 패스 인프라 위의 풀스크린 패스입니다</li>
+      <li><b>후처리 체인.</b> HDR 타깃 → 톤매핑 → 블룸 → FXAA. 앞의 둘은 끝났습니다(2026-10-23, <a href="../plan/hdr-tonemapping-record.html">구현 기록</a>). 렌더 패스 인프라 위의 풀스크린 패스입니다. 2026-11-23 에 속도 버퍼·모션 블러·TAA 가 들어가 AA 는 TAA 로 갑니다(<a href="#c20-28">20.28</a>)</li>
       <li><b>Deferred Shading, 클러스터드 라이팅, SSAO.</b> 끝났습니다(2026-11-18, <a href="../plan/deferred-clustered-ssao-record.html">디퍼드·클러스터드·SSAO 기록</a>). G-buffer 는 MRT 5장, 조명은 t15 구조체 버퍼 + 클러스터 비닝. 비닝은 2026-11-21 에 컴퓨트로 옮겼습니다(타일 → 상자 2단계, <a href="../plan/gpu-cluster-binning-record.html">GPU 클러스터 비닝 기록</a>). 남은 것은 VSM(선택)</li>
       <li><b>인스턴싱, 프러스텀 컬링, Cascaded Shadow Map</b></li>
       <li><b>GPU 파티클(VFX).</b> 끝났습니다(2026-11-17, <a href="../plan/vfx-gpu-particles-record.html">VFX 구현 기록</a>). 그다음 순서였던 클러스터드 라이팅도 2026-11-18 에 끝났습니다(타일드는 건너뜀)</li>
@@ -11367,6 +11397,7 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tr><td><s>자동 검증 <code>--delete</code>·<code>--duplicate</code> 가 Release 에서 비정상 종료</s> 해결(11-20)</td><td>2026-11-20 에 원인을 찾아 고쳤습니다. 소스 버그가 아니라 Release 의 증분 LTCG(<code>/LTCG:incremental</code>)가 옛 클래스 레이아웃으로 컴파일된 인라인 기계어를 <code>.iobj</code> 에서 복사한 것이었고, Release 링크를 전체 LTCG 로 바꿨습니다(<a href="../plan/defect-fix-record.html#d1">결함 수정 기록 1장</a>). 아래는 처음 기록: 2026-11-16 에 <code>--delete=이름</code>, <code>--duplicate=이름</code> 을 Release 에디터로 실행하면 종료 코드 139(segfault)로 끝납니다. 계층이 없는 <code>floor_cube</code> 씬에서 <code>--delete=Floor</code> 만 줘도 같고, 계층 순회로 바꾸기 전 바이너리에서도 똑같이 나서 그 변경과는 무관합니다. 원인은 찾지 않았습니다. 그래서 삭제·복제·되돌리기·프리팹 경로는 자동 검증으로 돌려 보지 못했습니다(<code>--set-parent</code> 는 정상)</td><td><a href="#c20-23">20.23</a>, <a href="../plan/defect-fix-record.html#d1-fix">수정 후 delete·duplicate·undo·redo 종료 코드 0</a></td></tr>
 <tr><td>GPU 파티클의 한계</td><td>충돌은 메인 뷰 깊이로 하는 화면 공간 충돌이라 화면 밖·가려진 곳·0.3 m 보다 얇은 물체에서 실패합니다. 정렬은 알파 이미터 안에서만 하고(이미터끼리·가산 이미터와는 안 함) 살아 있는 수와 상관없이 최대 개수 크기로 뷰마다 돕니다. 창 크기 변경과 실행 중 <code>blendMode</code>·<code>maxParticles</code> 변경은 손으로 확인하지 않았습니다</td><td><a href="../plan/vfx-gpu-particles-record.html">VFX 구현 기록</a></td></tr>
 <tr><td>디퍼드·클러스터드·SSAO 의 한계</td><td><s>클러스터 비닝이 CPU 라 Debug 에서 조명 256 개에 약 5 ms(Release 한 프레임 약 2.1 ms).</s> 11-21: 비닝이 GPU 로 옮겨져 CPU 쪽은 입력 업로드만 남음. 대신 GPU 에 Release 기준 0.03~1.9 ms 가 더해지고, GPU 가 병목인 촛불 1만 개 씬에서는 프레임이 줄지 않음(비슷하거나 약 3 ms 늘어남)(<a href="../plan/gpu-cluster-binning-test.html">측정</a>). 디퍼드는 D24 깊이에서 위치를 복원해, 노말맵이 그림자 UV 를 미는 바닥에서 그림자 판정이 경계 픽셀마다 뒤집힘(포워드와 최대 110 단계 차이, 흩어진 수십 픽셀). 그림자 타일 우선순위는 메인 카메라 기준이라 미리보기 카메라만 보는 조명은 그림자를 못 받을 수 있음. SSAO 는 디퍼드 프레임에서만. <s>D3D12 GPU 기반 검증이 4번 중 3번 시작 직후 멈춤(원인 미확인)</s> — 11-20 해결: <code>[unroll]</code> PCF 가 조명 PS 에 <code>sample_c</code> 1000 개로 펼쳐진 것이 원인, 루프로 바꿈(<a href="../plan/defect-fix-record.html#d3">결함 수정 기록 3장</a>)</td><td><a href="../plan/deferred-clustered-ssao-record.html#verify">디퍼드 기록 8장</a></td></tr>
+<tr><td>속도 버퍼·모션 블러·TAA 의 한계</td><td><code>Rigidbody</code> 처럼 <code>FixedUpdate</code> 로만 움직이는 물체는 렌더 보간이 없어 높은 fps 에서 계단처럼 움직이고, 기준 fps 보정 뒤에는 위치가 바뀐 프레임에만 길게 번짐. 디버그 선·파티클은 속도를 쓰지 않아 뒤 표면의 속도로 TAA·모션 블러를 받음(본 선 잔상). 게임 코드의 카메라 순간 이동은 감지하지 않음(<code>Renderer::ResetTemporalHistory</code> 를 직접 부름). TAA 타깃 생성이 실패해도 지터가 남음. D3D12 에서 b13 업로드가 스킨 드로우마다 16 KB 링을 씀. 모션 블러에 타일 최대 속도 확장이 없음 (2026-11-23, <a href="#c20-28">20.28</a>)</td></tr>
 <tr><td>자동 검증의 사각</td><td>실행 인자 재생은 입력을 주입하지 않으므로 드래그 앤 드롭과 단축키(F4 핫리로드 등)는 자동으로 재현되지 않습니다. PopID 어서션(<a href="#c20-9">20.9</a>)이 이 사각에서 나왔습니다</td><td><a href="#app-d">부록 D</a></td></tr>
 </tbody></table></div>
 
@@ -11618,6 +11649,10 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tr><td class="n">시작</td><td class="mono">--particle-sort=0</td><td>알파 파티클을 정렬하지 않음(<code>RenderSettings::particleSort</code>). 정렬 효과 비교용. 게임 런타임도 받음</td></tr>
 <tr><td class="n">시작</td><td class="mono">--deferred=0|1<br>--clustered=0|1<br>--shadow-priority=0|1<br>--ssao=0|1</td><td><code>AppBase::ApplyRenderPathOptions</code> — 렌더 경로 스위치(<code>RenderSettings</code> 의 같은 이름 필드, <code>--ssao</code> 는 <code>ssaoOverride</code>). 세 개를 0 으로 주면 작업 전(2026-11-18 이전) 화면과 픽셀 단위로 같음. 게임 런타임도 받음</td></tr>
 <tr><td class="n">시작</td><td class="mono">--cluster-gpu=0|1<br>--cluster-tiles=0|1</td><td>클러스터 비닝 경로 (<code>RenderSettings::clusterGpu</code>·<code>clusterGpuTiles</code>, 기본 1). <code>--cluster-gpu=0</code> 은 CPU 비닝, <code>--cluster-tiles=0</code> 은 GPU 1단계. 세 경로의 화면은 전체 순회와 0 px (2026-11-21, <a href="../plan/gpu-cluster-binning-record.html#verify">GPU 비닝 기록 9장</a>)</td></tr>
+<tr><td class="n">시작</td><td class="mono">--motion-blur=0|1<br>--taa=0|1<br>--taa-jitter=0|1</td><td><code>AppBase::ApplyRenderPathOptions</code> — 씬 값 덮어쓰기(<code>RenderSettings::motionBlurOverride</code>·<code>taaOverride</code>·<code>taaJitter</code>). 게임 런타임도 받음 (2026-11-23)</td></tr>
+<tr><td class="n">시작</td><td class="mono">--motion-blur-fps=N<br>--frame-dt=초</td><td>모션 블러 기준 fps(0 = 한 프레임 이동량 그대로)와 보정에 쓰는 dt 고정. 보정은 실제 dt 에 따라 달라지므로 스크린샷 비교는 0 이나 <code>--frame-dt</code> 로 고정 (2026-11-23)</td></tr>
+<tr><td class="n">매 프레임 (≥2)</td><td class="mono">--cam-orbit=도<br>--cam-move=x,y,z<br>--spin=이름,도<br>--move=이름,x,y,z</td><td><code>EditorApp::RunAutomation</code> — 프레임마다 카메라를 대상 둘레로 돌리거나 옮기고, 이름으로 찾은 오브젝트를 돌리거나 옮김(spin·move 는 편집 중에만). 속도·모션 블러·TAA 검증용 (2026-11-23)</td></tr>
+<tr><td class="n">N</td><td class="mono">--event-frame=N</td><td>선택·복제·인스턴스·삭제·되돌리기·불러오기·<code>--cam-look</code> 을 원래 프레임 대신 N 에서. 스크린샷은 같은 프레임의 렌더 전에 요청되므로 N = exit-after − 1 이면 사건 직후 첫 프레임 (2026-11-23)</td></tr>
 <tr><td class="n">종료 전 N</td><td class="mono">--avg-frames=N</td><td><code>EditorApp::RunAutomation</code> — 종료 직전 N 프레임의 Profiler 구간(<code>cpu:</code>·<code>gpu:</code>) 평균을 "구간 평균 ms" 줄로 남김. 한 프레임 값은 흔들려서 측정에 씀 (2026-11-21)</td></tr>
 <tr><td class="n">끝</td><td class="mono">(로그)</td><td>종료 프레임에 "자동 검증: 렌더 통계 path=… gbuffer=… clusterRefs=… shadowViews=… offscreenShadowViews=…" 와 "자동 검증: 구간 ms cpu:…/gpu:…" 두 줄 (2026-11-18)</td></tr>
 <tr><td class="n">끝−1</td><td class="mono">--screenshot=경로</td><td><code>Engine::RequestScreenshot</code> — 그 프레임의 백버퍼(UI 포함)를 PNG 로 저장</td></tr>

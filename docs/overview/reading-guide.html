@@ -753,6 +753,27 @@ SherlockEditor.exe --project=..\..\Projects\TestGame --exit-after=40 --play=1 --
   </div>
 </div>
 
+<div class="stage">
+  <div class="tag">S15</div>
+  <div>
+    <h4>(선택) 속도 버퍼 · 모션 블러 · TAA <span class="time">약 3시간</span></h4>
+    <div class="why">2026-11-23 에 들어간 시간 축 효과입니다. S14 를 읽은 뒤라면 G-buffer 에 칸 하나(속도)가 더해지고, 후처리 체인 맨 앞에 지난 프레임을 읽는 패스 두 개가 붙는 모습을 따라갈 수 있습니다.</div>
+    <div class="cols">
+      <div><h5>읽을 문서</h5><ul>
+        <li><a href="../plan/velocity-motionblur-taa-plan.html#concept">계획 2장 개념</a> — 속도 버퍼, 카메라·오브젝트 움직임, 모션 블러, TAA, 지터</li>
+        <li><a href="../plan/velocity-motionblur-taa-plan.html">계획 맨 위 "구현하면서 바뀐 점"</a> — 계획과 실제 코드가 다른 곳</li>
+        <li><a href="rendering-analysis.html#c20-28">20.28</a> — 이 문서의 서술(b0·b1·b13, 레이아웃, 디버그 뷰)이 바뀐 곳 요약</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>Shaders/Mesh.hlsli</code>의 <code>currClip</code>·<code>prevClip</code> → <code>Velocity.hlsli</code>의 <code>VelocityUV</code> → <code>BasicPixelShader.hlsl</code>·<code>GBufferPixelShader.hlsl</code>의 속도 출력</li>
+        <li><code>Graphics/Renderer.cpp</code>의 <code>BuildDrawList</code>(<code>MotionHistory</code>)·<code>UploadObjectConstants</code>·<code>UploadPerFrameConstants</code>(지터, <code>TemporalState</code>)</li>
+        <li><code>Graphics/RendererPost.cpp</code>의 <code>ApplyHdrEffects</code> → <code>Shaders/TaaPixelShader.hlsl</code>·<code>MotionBlurPixelShader.hlsl</code>·<code>Temporal.hlsli</code></li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — SherlockTestScenes 프로젝트의 <code>TaaMotionBlur.json</code> 을 재생하고 Lights 탭의 Post process 에서 TAA·Motion blur 를 켜고 끄며 헬멧과 공을 본다. Render Settings 의 디버그 뷰 16(속도)에서는 움직이는 것만 색이 나오고, 17(속도 오차)에서는 정지한 배경이 검정이고 움직이는 물체만 밝다. Target FPS 를 0 으로 하면 블러가 거의 사라지는 이유(프레임이 빠를수록 한 프레임 이동량이 짧음)를 설명할 수 있다.</div>
+  </div>
+</div>
+
 <h2 id="s8"><span class="num">8.</span>실행하며 확인하기</h2>
 <p>모든 스텝의 확인 포인트는 실행 중인 앱에서 확인합니다. 단축키는 <code>EditorApp.cpp</code>의 <code>OnUpdate</code>에 모여 있고, 실행 인자는 <code>EditorApp.h</code>의 자동 검증 주석에 있습니다. 전체 목록과 검증 수법은 최종본 <a href="rendering-analysis.html#app-d">부록 D</a>에 있습니다.</p>
 <div class="tbl"><table>
@@ -788,7 +809,7 @@ SherlockEditor.exe --project=..\..\Projects\TestGame --exit-after=40 --play=1 --
   <li>S8의 9.1 폴더 규칙과 grep 검사 (30분). 나머지는 20.3 의 단계 카드 17장의 "목표" 줄만 읽고 마침 (30분).</li>
 </ol>
 <h3>2주 코스: 정독</h3>
-<p>1절 표의 시간 합계가 약 46시간(선택인 S14 의 5시간은 빼고)이므로 하루 3시간이면 15일입니다. 하루에 스텝 하나가 기준이고, S9(D3D12)만 이틀을 잡습니다. 각 스텝의 확인 포인트를 통과하기 전에는 다음 스텝으로 넘어가지 않는 것이 규칙입니다. 확인이 안 되면 그 장 끝의 "함정과 해결" 표로 돌아가세요.</p>
+<p>1절 표의 시간 합계가 약 46시간(선택인 S14·S15 의 8시간은 빼고)이므로 하루 3시간이면 15일입니다. 하루에 스텝 하나가 기준이고, S9(D3D12)만 이틀을 잡습니다. 각 스텝의 확인 포인트를 통과하기 전에는 다음 스텝으로 넘어가지 않는 것이 규칙입니다. 확인이 안 되면 그 장 끝의 "함정과 해결" 표로 돌아가세요.</p>
 <h3>D3D12를 모르는 경우</h3>
 <p>S9 전에 7장의 7.1~7.4(슬롯 모델에서 디스크립터까지)와 9.10 의 개념 대응표를 먼저 읽고, 부록 E 의 Microsoft 문서("D3D12 for D3D11 programmers" 계열)를 하루 곁들이면 됩니다. 이 프로젝트는 D3D12의 개념(PSO·루트 시그니처·디스크립터 테이블·배리어·펜스)을 D3D11 위에 미리 그려 두었으므로, S3~S7을 충실히 지나왔다면 낯선 것은 API 이름뿐입니다.</p>
 <h3>이미 D3D11을 잘 아는 경우</h3>
