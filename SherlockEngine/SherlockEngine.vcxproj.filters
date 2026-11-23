@@ -302,6 +302,9 @@
     <ClInclude Include="Core\Input.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="Core\LookSmoother.h">
+      <Filter>Core</Filter>
+    </ClInclude>
     <ClInclude Include="Core\Log.h">
       <Filter>Core</Filter>
     </ClInclude>

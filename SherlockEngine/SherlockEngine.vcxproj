@@ -182,6 +182,7 @@
     <ClInclude Include="Core\ScriptModule.h" />
     <ClInclude Include="Core\GameTimer.h" />
     <ClInclude Include="Core\Input.h" />
+    <ClInclude Include="Core\LookSmoother.h" />
     <ClInclude Include="Core\Log.h" />
     <ClInclude Include="Core\Paths.h" />
     <ClInclude Include="Core\Project.h" />

@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "Editor/EditorAutomation.h"
 #include "App/AppBase.h"
+#include "Core/LookSmoother.h"
 #include "Graphics/Model.h"   // ModelStats
 #include "Editor/Editor.h"
 #include "Editor/EditorHistory.h"
@@ -133,5 +134,6 @@ private:
 	bool m_lookActive = false;
 	POINT m_lookAnchorScreen = {};       // 드래그 시작 시 커서 위치(화면 좌표). 매 프레임 커서를 여기로 되돌림.
 	float m_lookSensitivity = 0.0025f;   // 라디안 / 픽셀
+	LookSmoother m_lookSmoother;         // 마우스 회전을 시간에 고르게 나눔 (높은 fps 에서 각속도가 튀어 모션 블러가 번쩍이는 것을 막음)
 	float m_moveSpeed = 10.0f;           // 단위 / 초. Shift로 4배.
 };

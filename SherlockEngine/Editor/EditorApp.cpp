@@ -1035,6 +1035,7 @@ void EditorApp::UpdateCamera(float dt)
 	if (m_playState != PlayState::Editing && GetEngine().GetScene().GetPlayContext().cameraDriven)
 	{
 		EndLook();
+		m_lookSmoother.Reset();
 		return;
 	}
 
@@ -1050,12 +1051,7 @@ void EditorApp::UpdateCamera(float dt)
 
 	if (m_lookActive)
 	{
-		const int dx = input.GetMouseDeltaX();
-		const int dy = input.GetMouseDeltaY();
-		if (dx != 0 || dy != 0)
-		{
-			camera.Rotate(dx * m_lookSensitivity, dy * m_lookSensitivity);
-		}
+		m_lookSmoother.Add(input.GetMouseDeltaX() * m_lookSensitivity, input.GetMouseDeltaY() * m_lookSensitivity);
 
 		// 화면 가장자리에서 회전이 멈추지 않도록 커서를 시작점으로 되돌림.
 		// SetCursorPos가 만드는 WM_MOUSEMOVE가 델타로 잡히지 않도록 Input에 알림.
@@ -1063,6 +1059,13 @@ void EditorApp::UpdateCamera(float dt)
 		POINT client = m_lookAnchorScreen;
 		ScreenToClient(GetWindow(), &client);
 		input.SetMousePositionSilently(client.x, client.y);
+	}
+	// 쌓인 회전을 시간에 고르게 나눠 적용함 (LookSmoother). 버튼을 뗀 뒤에도 남은 몫을 마저 냄.
+	if (m_lookSmoother.HasPending())
+	{
+		float yaw = 0.0f, pitch = 0.0f;
+		m_lookSmoother.Consume(dt, yaw, pitch);
+		camera.Rotate(yaw, pitch);
 	}
 
 	// 이동. 텍스트 필드에 입력 중이면 WASD가 UI로 가야 하므로 무시함. 씬 뷰에 포커스가 있거나 커서가 올라가

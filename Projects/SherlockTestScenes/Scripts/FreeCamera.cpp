@@ -15,6 +15,7 @@ void FreeCamera::Start()
 	// 씬에 놓인 카메라의 방향에서 시작함
 	m_pitch = GetRotation().x;
 	m_yaw = GetRotation().y;
+	m_look.Reset();
 }
 
 void FreeCamera::Update(float dt)
@@ -22,11 +23,18 @@ void FreeCamera::Update(float dt)
 	Input& input = GetInput();
 
 	// 시선 회전: 오른쪽 버튼을 누르고 있는 동안만. 아래로 움직이면 아래를 봄 (pitch 가 양수 = 아래).
+	// 받은 회전량은 쌓아 두고 시간에 고르게 나눠 적용함 (LookSmoother). 버튼을 뗀 뒤에도 남은 몫을 마저 냄.
 	if (input.IsMouseDown(MouseButton::Right))
 	{
+		m_look.Add(static_cast<float>(input.GetMouseDeltaX()) * lookSpeed, static_cast<float>(input.GetMouseDeltaY()) * lookSpeed);
+	}
+	if (m_look.HasPending())
+	{
 		constexpr float kMaxPitch = 1.55f;   // 약 89 도. 수직에서 뒤집히지 않게 함
-		m_yaw += static_cast<float>(input.GetMouseDeltaX()) * lookSpeed;
-		m_pitch = std::clamp(m_pitch + static_cast<float>(input.GetMouseDeltaY()) * lookSpeed, -kMaxPitch, kMaxPitch);
+		float yaw = 0.0f, pitch = 0.0f;
+		m_look.Consume(dt, yaw, pitch);
+		m_yaw += yaw;
+		m_pitch = std::clamp(m_pitch + pitch, -kMaxPitch, kMaxPitch);
 		GetTransform().SetRotation(m_pitch, m_yaw, 0.0f);
 	}
 
