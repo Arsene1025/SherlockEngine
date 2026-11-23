@@ -20,6 +20,9 @@ using namespace DirectX;   // 이 파일 안에서만
 
 namespace
 {
+	// 씬 카메라(에디터 카메라)의 기본 먼 평면 (Engine::Initialize 의 SetLens 와 같음). 이 값이면 씬 파일에 쓰지 않음.
+	constexpr float kDefaultSceneCameraFar = 1000.0f;
+
 	constexpr int kVersion = 5;   // 5: 오브젝트 "id"(안정 ID)와 "prefab"(프리팹 인스턴스 루트). 2: 컴포넌트 추가. 3: "parent"(부모 오브젝트 인덱스). 4: "environment"(스카이박스·IBL·노출)와 PBR 재질. 이전 버전 파일도 그대로 읽힘 (필드 없음 = 루트, 환경 없음)
 
 	json ToJson(const XMFLOAT3& v)
@@ -821,6 +824,11 @@ std::string SceneSerializer::SaveToString(const Scene& scene, const Camera& came
 	json root;
 	root["version"] = kVersion;
 	root["camera"] = { { "position", ToJson(camera.GetPosition()) }, { "yaw", camera.GetYaw() }, { "pitch", camera.GetPitch() } };
+	// 먼 평면은 기본값(1000 m)과 다를 때만 씀 — 기존 씬 파일이 저장만으로 바뀌지 않게. 수평선까지 가는 바다 씬 (OceanHorizon) 이 씀.
+	if (camera.GetFarZ() != kDefaultSceneCameraFar)
+	{
+		root["camera"]["farZ"] = camera.GetFarZ();
+	}
 	root["ambientColor"] = ToJson(scene.ambientColor);
 	root["clearColor"] = json::array({ scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] });
 	root["environment"] = EnvironmentToJson(scene.environment);   // 키가 없으면 환경 없음 (이전 씬 파일과 호환)
@@ -955,6 +963,12 @@ bool SceneSerializer::LoadFromString(Scene& scene, Camera& camera, AssetManager&
 	{
 		camera.SetPosition(ToFloat3(cam.value("position", json()), camera.GetPosition()));
 		camera.SetYawPitch(cam.value("yaw", camera.GetYaw()), cam.value("pitch", camera.GetPitch()));
+		// 키가 없으면 기본값으로 되돌림 (앞서 연 씬의 먼 평면이 남지 않게).
+		const float farZ = cam.value("farZ", kDefaultSceneCameraFar);
+		if (farZ != camera.GetFarZ() && farZ > camera.GetNearZ())
+		{
+			camera.SetLens(camera.GetFovY(), camera.GetAspect(), camera.GetNearZ(), farZ);
+		}
 	}
 
 	Log::Info("씬 로드: %s (오브젝트 %zu, 메시 %zu, 재질 %zu, 조명 %zu, 모델 %zu)", label, scene.GetObjects().size(), scene.GetMeshes().size(), scene.GetMaterials().size(), scene.GetLights().size(), loadedModels.size());

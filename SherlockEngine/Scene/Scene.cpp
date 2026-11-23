@@ -78,12 +78,13 @@ MeshSource MeshSource::Cube(float size, const XMFLOAT4& color)
 	s.color = color;
 	return s;
 }
-MeshSource MeshSource::Plane(float width, float depth, uint32_t m, uint32_t n, const XMFLOAT4& color)
+MeshSource MeshSource::Plane(float width, float depth, uint32_t m, uint32_t n, const XMFLOAT4& color, float spacingGrowth)
 {
 	MeshSource s;
 	s.type = Type::Plane;
 	s.params[0] = width;
 	s.params[1] = depth;
+	s.params[2] = spacingGrowth;   // Mesh::CreatePlane 의 간격 증가 (씬 파일 params[2], 0 = 균일)
 	s.a = m;
 	s.b = n;
 	s.color = color;
@@ -115,7 +116,7 @@ bool MeshSource::CreatePrimitive(Mesh& out) const
 	{
 	case Type::Sphere:   out = Mesh::CreateSphere(params[0], a, b, color); return true;
 	case Type::Cube:     out = Mesh::CreateCube(params[0], color); return true;
-	case Type::Plane:    out = Mesh::CreatePlane(params[0], params[1], a, b, color); return true;
+	case Type::Plane:    out = Mesh::CreatePlane(params[0], params[1], a, b, color, params[2]); return true;
 	case Type::Cylinder: out = Mesh::CreateCylinder(params[0], params[1], params[2], a, b, color); return true;
 	default:             return false;
 	}

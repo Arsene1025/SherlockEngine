@@ -222,16 +222,18 @@ void Renderer::RenderDeferredScene(RHI::CommandList& cmd, const Scene& scene, Vi
 	}
 }
 
-PipelineHandle Renderer::GetGBufferPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored)
+PipelineHandle Renderer::GetGBufferPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored, bool ocean)
 {
-	// 메인 PSO (GetPipelineFor) 와 같은 키에서 블렌딩 비트만 뺀 것 — 블렌딩 재질은 G-buffer 로 오지 않음.
+	// 메인 PSO (GetPipelineFor) 와 같은 키에서 블렌딩 비트만 뺀 것 — 블렌딩 재질은 G-buffer 로 오지 않음. 비트 12 = 바다 VS.
 	const bool wireframe = m_settings.wireframe || material.wireframe;
 	const bool cullBack = m_settings.cullBack && !material.doubleSided;
-	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (wireframe ? 1u << 9 : 0u) | (cullBack ? 1u << 10 : 0u);
+	const bool skinned = vertexFormat == VertexFormat::PositionColorNormalTexcoordTangentSkin;
+	const bool oceanVs = ocean && !skinned;
+	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (wireframe ? 1u << 9 : 0u) | (cullBack ? 1u << 10 : 0u) | (oceanVs ? 1u << 12 : 0u);
 	auto found = m_gbufferPipelines.find(key);
 	if (found != m_gbufferPipelines.end()) return found->second;
 
-	PipelineStateDesc desc = m_passDesc[vertexFormat == VertexFormat::PositionColorNormalTexcoordTangentSkin ? Pass_GBufferSkin : Pass_GBuffer];
+	PipelineStateDesc desc = m_passDesc[skinned ? Pass_GBufferSkin : (oceanVs ? Pass_GBufferOcean : Pass_GBuffer)];
 	desc.vertexLayout = GetVertexLayout(vertexFormat);
 	desc.rasterizer.frontCounterClockwise = mirrored ? !desc.rasterizer.frontCounterClockwise : desc.rasterizer.frontCounterClockwise;
 	desc.rasterizer.fill = wireframe ? FillMode::Wireframe : FillMode::Solid;

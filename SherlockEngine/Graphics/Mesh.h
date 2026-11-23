@@ -35,8 +35,11 @@ public:
 	static Mesh CreateSphere(float radius, uint32_t sliceCount, uint32_t stackCount, const DirectX::XMFLOAT4& color);
 	// 한 변의 길이 size. 면마다 정점 4개(면 노멀) → 24정점 36인덱스.
 	static Mesh CreateCube(float size, const DirectX::XMFLOAT4& color);
-	// XZ 평면, 노멀 +Y. m×n 정점 격자.
-	static Mesh CreatePlane(float width, float depth, uint32_t m, uint32_t n, const DirectX::XMFLOAT4& color);
+	// XZ 평면, 노멀 +Y. m × n 정점 격자. spacingGrowth(g) > 0 이면 가운데가 촘촘하고 가장자리가 성긴 격자: 축마다 t ∈ [−1, 1] 을
+	// x = half · sign(t) · ((1 − g)|t| + g|t|⁷) 로 바꿈 (넓은 바다용, docs/plan/ocean-gerstner-plan.html 3.6). 0 이면 균일 (예전과 같은 결과).
+	// 예: 10 km, 512 정점, g = 0.93 → 간격이 원점 1.37 m, 80 m 안 1.4 m 이하, 300 m 에서 6 m, 가장자리 127 m.
+	// UV 는 g 와 상관없이 정점 번호에 대해 균일.
+	static Mesh CreatePlane(float width, float depth, uint32_t m, uint32_t n, const DirectX::XMFLOAT4& color, float spacingGrowth = 0.0f);
 	// Y축 원기둥(원뿔대). bottomRadius == topRadius 이면 원기둥.
 	static Mesh CreateCylinder(float bottomRadius, float topRadius, float height, uint32_t sliceCount, uint32_t stackCount, const DirectX::XMFLOAT4& color);
 

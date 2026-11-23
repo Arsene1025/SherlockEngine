@@ -14,6 +14,7 @@
 #include "Scene/Material.h"
 #include "Scene/Camera.h"   // 캐스케이드 고정용 카메라 사본 (m_cascadeFreezeCamera)
 #include "Scene/Light.h"
+#include "Scene/Ocean.h"   // OceanWave (m_frameOcean)
 #include "Scene/PostProcessSettings.h"
 #include "Scene/ShadowSettings.h"
 #include "Scene/SsaoSettings.h"
@@ -82,6 +83,8 @@ struct RenderSettings
 	// TAA 켜짐 덮어쓰기 (−1 = 씬 값, --taa=) 와 지터 (끄면 TAA 가 같은 위치를 계속 섞음 — 배관 검증용, --taa-jitter=0).
 	int taaOverride = -1;
 	bool taaJitter = true;
+	// 바다 파도 시간 고정 (초, 음수 = 실제 시간). 스크린샷이 실행마다 같아지고 바다 속도가 카메라 속도만 남음 (뷰 17 검정) — --ocean-time=.
+	float oceanTimeOverride = -1.0f;
 
 	// 디버그 뷰 (0 조명, 1 알베도, 2 월드 노멀, 3 깊이, 4 그림자 계수, 5 UV, 6 금속성/거칠기, 7 AO, 8 캐스케이드, 9 F0,
 	// 10 클리어코트, 11 월드 위치, 12 기하 노멀, 13 SSAO, 14 클러스터 조명 수, 15 클러스터 슬라이스) 와 깊이 뷰의 범위(월드 단위)
@@ -426,6 +429,9 @@ private:
 		Shader_ClusterCountCS,
 		Shader_ClusterScanCS,
 		Shader_ClusterFillCS,
+		Shader_OceanVS,
+		Shader_OceanPS,
+		Shader_OceanGBufferPS,
 		Shader_Count
 	};
 	enum LayoutId : uint32_t
@@ -473,6 +479,8 @@ private:
 		Pass_VelocityDebug,
 		Pass_MotionBlur,
 		Pass_Taa,
+		Pass_Ocean,          // OceanVS + OceanPS (메인과 같은 셋)
+		Pass_GBufferOcean,   // OceanVS + OceanGBufferPS
 		Pass_Count
 	};
 	// 셋 인덱스 = 그 패스의 PipelineStateDesc::bindingLayouts 인덱스 (CommandList::SetResourceSet 의 첫 인자).
@@ -567,7 +575,7 @@ private:
 	void DestroyGBuffer(ViewTarget& view);
 	// 디퍼드 씬 패스: G-buffer 패스 → (SSAO) → 라이팅 패스 → 포워드 패스. RenderScenePass 가 디퍼드일 때 부름.
 	void RenderDeferredScene(RHI::CommandList& cmd, const Scene& scene, ViewTarget& view, const Camera& camera, const char* debugName, uint32_t viewIndex);
-	PipelineHandle GetGBufferPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored);
+	PipelineHandle GetGBufferPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored, bool ocean = false);
 	PipelineHandle GetDeferredLightPipeline();
 
 	// ---- 3a·3b: 조명 컬링·그림자 우선순위·클러스터 (RendererClusters.cpp) ----
@@ -623,6 +631,12 @@ private:
 	bool EnsureParticleSortSteps(uint32_t count);   // count (2 의 거듭제곱) 를 정렬할 단계 상수 버퍼·셋까지 만듦
 	PipelineHandle GetParticlePipeline();
 	void DestroyGpuEmitters();
+
+	// ---- Gerstner 바다 (RendererOcean.cpp, docs/plan/ocean-gerstner-plan.html) ----
+	// BuildDrawList 가 오브젝트마다 CollectOcean 을 불러 첫 번째 바다의 파도를 이번 프레임 것으로 모음 (참 = 이 오브젝트가 바다).
+	// 그 뒤 UploadOceanConstants 가 b9 에 위상을 올림 — 바다가 없어도 프레임마다 한 번 (파도 0 개).
+	bool CollectOcean(const GameObject& object, const DirectX::XMMATRIX& world);
+	void UploadOceanConstants(float totalTime);
 	struct GpuEmitter;
 	void DestroyGpuEmitter(GpuEmitter& gpu, bool includeConstants);   // includeConstants = false: 크기 변경 (b8 버퍼는 다시 씀)
 	void DrawSkybox(RHI::CommandList& cmd);                           // 전체 화면 삼각형 하나 (Draw(3), 정점 버퍼 없음)
@@ -806,7 +820,8 @@ private:
 	// 정의(frontCounterClockwise)를 반대로 둠.
 	// PSO 핸들은 "Desc 를 가르는 몇 비트"를 키로 여기서 한 번 더 캐시함 — 드로우마다 Desc 전체를 복사·해시해
 	// Device 캐시를 찾지 않음. 셰이더 핫리로드(BuildPassDescs)가 비움.
-	PipelineHandle GetPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored = false);
+	// ocean: Gerstner 바다 드로우 (Pass_Ocean·Pass_GBufferOcean 에서 시작, 키 비트 12). 스킨 정점 포맷이면 무시함.
+	PipelineHandle GetPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored = false, bool ocean = false);
 	PipelineHandle GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored = false);
 	PipelineHandle GetSkyPipeline();   // 정점 속성 0개, 깊이 LessEqual + 쓰기 끔, 컬링 없음
 	PipelineHandle GetTonemapPipeline();
@@ -959,6 +974,23 @@ private:
 	std::vector<FrameEmitter> m_frameEmitters;   // BuildDrawList 가 채움
 	std::vector<uint64_t> m_activeEmitterKeys;   // 이번 프레임에 시뮬레이션·그리기할 키 (UpdateParticleEmitters 가 채움)
 	float m_lastParticleTime = -1.0f;
+	// 바다: 이번 프레임의 첫 번째 바다 (CollectOcean) 와 b9. 지난 위상은 time − dt 가 아니라 지난 프레임에 실제로 쓴 시간으로 만듦.
+	struct FrameOcean
+	{
+		bool active = false;
+		uint64_t objectId = 0;
+		int waveCount = 0;
+		OceanWave waves[Ocean::kMaxWaves];
+		DirectX::XMFLOAT3 origin = {};   // 바다 오브젝트 월드 원점 (감쇠 기준)
+		float fadeStart = 0.0f;          // 거리 감쇠 (Ocean::fadeStart·fadeEnd)
+		float fadeEnd = 0.0f;
+	};
+	FrameOcean m_frameOcean;
+	BufferHandle m_oceanCB;                           // b9 Dynamic (OceanConstants). 프레임에 한 번
+	double m_oceanPrevTime = 0.0;                     // 지난 프레임에 바다가 쓴 시간 (초)
+	uint64_t m_oceanPrevObject = 0;                   // 그 바다 오브젝트 id. 다르면 (바다가 바뀜) 지난 위상 = 이번 위상
+	bool m_oceanHasPrev = false;                      // ResetTemporalHistory·바다가 없는 프레임에서 거짓
+	bool m_oceanExtraWarned = false;                  // 두 번째 바다 경고 (한 번만)
 	BufferHandle m_debugLineVB;                       // 동적 정점 버퍼 (DebugDraw::kMaxVertices 개)
 	uint32_t m_debugLineCount = 0;                    // 올린 정점 수 (0 이면 그리지 않음)
 	PipelineHandle m_tonemapPipelines[2];             // [srgbOutput]

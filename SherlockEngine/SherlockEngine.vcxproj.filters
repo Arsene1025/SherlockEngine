@@ -185,6 +185,9 @@
     <ClCompile Include="Graphics\RendererParticles.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RendererOcean.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\RendererShadow.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
@@ -228,6 +231,9 @@
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\ParticleEmitter.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Ocean.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Script.cpp">
@@ -479,6 +485,9 @@
     <ClInclude Include="Scene\ParticleEmitter.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\Ocean.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\Script.h">
       <Filter>Scene</Filter>
     </ClInclude>
@@ -494,6 +503,15 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\BasicVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\OceanVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\OceanPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\OceanGBufferPixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\BasicPixelShader.hlsl">
@@ -628,6 +646,9 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Mesh.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Ocean.hlsli">
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Material.hlsli">

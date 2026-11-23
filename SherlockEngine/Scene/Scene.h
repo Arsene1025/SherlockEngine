@@ -37,7 +37,7 @@ struct MeshSource
 		Model
 	};
 	Type type = Type::Custom;
-	float params[4] = { 0.0f, 0.0f, 0.0f, 0.0f };   // Sphere: radius / Cube: size / Plane: width, depth / Cylinder: bottom, top, height
+	float params[4] = { 0.0f, 0.0f, 0.0f, 0.0f };   // Sphere: radius / Cube: size / Plane: width, depth, 간격 증가 (0 = 균일) / Cylinder: bottom, top, height
 	uint32_t a = 0;                                 // Sphere: slices / Plane: m / Cylinder: slices
 	uint32_t b = 0;                                 // Sphere: stacks / Plane: n / Cylinder: stacks
 	DirectX::XMFLOAT4 color = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -46,7 +46,7 @@ struct MeshSource
 
 	static MeshSource Sphere(float radius, uint32_t slices, uint32_t stacks, const DirectX::XMFLOAT4& color);
 	static MeshSource Cube(float size, const DirectX::XMFLOAT4& color);
-	static MeshSource Plane(float width, float depth, uint32_t m, uint32_t n, const DirectX::XMFLOAT4& color);
+	static MeshSource Plane(float width, float depth, uint32_t m, uint32_t n, const DirectX::XMFLOAT4& color, float spacingGrowth = 0.0f);
 	static MeshSource Cylinder(float bottom, float top, float height, uint32_t slices, uint32_t stacks, const DirectX::XMFLOAT4& color);
 	static MeshSource FromModel(const std::wstring& path, uint32_t meshIndex);
 	// 프리미티브 출처 정보로 메시를 만듦. Model/Custom 이면 false 를 반환함.

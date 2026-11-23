@@ -73,6 +73,10 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] = {
 	{ L"ClusterCountComputeShader.hlsl", "CS_ClusterCount", ShaderStage::Compute, "ClusterCountCS" },   // 2단계: 상자마다 개수
 	{ L"ClusterScanComputeShader.hlsl", "CS_ClusterScan", ShaderStage::Compute, "ClusterScanCS" },      // 누적합 → (시작, 개수)
 	{ L"ClusterFillComputeShader.hlsl", "CS_ClusterFill", ShaderStage::Compute, "ClusterFillCS" },      // 2단계: 번호 채우기
+	// Gerstner 바다 (docs/plan/ocean-gerstner-plan.html). PS 는 BasicPS·GBufferPS 에 픽셀 단위 노멀만 바꾼 것 (3단계)
+	{ L"OceanVertexShader.hlsl", "VS_Ocean", ShaderStage::Vertex, "OceanVS" },
+	{ L"OceanPixelShader.hlsl", "PS_Ocean", ShaderStage::Pixel, "OceanPS" },
+	{ L"OceanGBufferPixelShader.hlsl", "PS_OceanGBuffer", ShaderStage::Pixel, "OceanGBufferPS" },
 };
 
 struct Renderer::PassInfo
@@ -102,6 +106,8 @@ const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] = {
 	{ "VelocityDebug", Shader_ScreenVS, Shader_VelocityDebugPS, { Layout_Temporal }, 1 },
 	{ "MotionBlur", Shader_ScreenVS, Shader_MotionBlurPS, { Layout_Temporal }, 1 },
 	{ "Taa", Shader_ScreenVS, Shader_TaaPS, { Layout_Temporal }, 1 },
+	{ "Ocean", Shader_OceanVS, Shader_OceanPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },   // 메인과 같은 셋 — 같은 드로우 루프가 그림
+	{ "GBufferOcean", Shader_OceanVS, Shader_OceanGBufferPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
 };
 
 struct Renderer::ComputePassInfo
@@ -155,6 +161,7 @@ namespace
 		{ "SsaoParams", sizeof(SsaoConstants) },
 		{ "PrevSkin", sizeof(PrevSkinConstants) },
 		{ "ClusterBin", sizeof(ClusterBinConstants) },
+		{ "Ocean", sizeof(OceanConstants) },
 	};
 
 	// 레지스터 문자. 텍스처와 구조체 버퍼는 같은 t# 공간을 씀.
@@ -203,6 +210,7 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_perObjectCB = makeCB(sizeof(PerObjectConstants), "CB_PerObject");
 	m_skinCB = makeCB(sizeof(SkinConstants), "CB_Skin");               // b7
 	m_prevSkinCB = makeCB(sizeof(PrevSkinConstants), "CB_PrevSkin");   // b13 (속도 버퍼: 지난 프레임 팔레트)
+	m_oceanCB = makeCB(sizeof(OceanConstants), "CB_Ocean");            // b9 (바다 파도, 프레임에 한 번)
 	m_skinScratch.resize(kMaxSkinJoints);
 	m_debugLineVB = m_device->CreateBuffer(BufferDesc{ .size = DebugDraw::kMaxVertices * static_cast<uint32_t>(sizeof(DebugLineVertex)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_Vertex, .stride = sizeof(DebugLineVertex), .debugName = "VB_DebugLines" });
 	m_lightCB = makeCB(sizeof(LightConstants), "CB_Lights");
@@ -221,7 +229,7 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_clusterGridBuffer = m_device->CreateBuffer(BufferDesc{ .size = kClusterCount * 2 * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = 2 * sizeof(uint32_t), .debugName = "SB_ClusterGrid" });
 	m_clusterIndexCapacity = kInitialClusterLightRefs;
 	m_clusterIndexBuffer = m_device->CreateBuffer(BufferDesc{ .size = m_clusterIndexCapacity * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = sizeof(uint32_t), .debugName = "SB_ClusterLights" });
-	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_skinCB.IsValid() || !m_prevSkinCB.IsValid() || !m_debugLineVB.IsValid() || !m_lightCB.IsValid() || !m_lightBuffer.IsValid() || !m_postParamsCB.IsValid() ||
+	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_skinCB.IsValid() || !m_prevSkinCB.IsValid() || !m_oceanCB.IsValid() || !m_debugLineVB.IsValid() || !m_lightCB.IsValid() || !m_lightBuffer.IsValid() || !m_postParamsCB.IsValid() ||
 		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid() || !m_blurWeights.IsValid() || !m_ssaoCB.IsValid() || !m_clusterGridBuffer.IsValid() || !m_clusterIndexBuffer.IsValid())
 	{
 		Log::Error("Renderer::Initialize : 상수버퍼 생성 실패.");
@@ -241,7 +249,7 @@ bool Renderer::Initialize(RHI::Device* device)
 
 	const ResourceSetDesc objectSet{
 		.layout = m_layouts[Layout_Object],
-		.bindings = { { .buffer = m_perObjectCB }, { .buffer = m_skinCB }, { .buffer = m_prevSkinCB } },   // 레이아웃의 슬롯 순서: b1, b7, b13
+		.bindings = { { .buffer = m_perObjectCB }, { .buffer = m_skinCB }, { .buffer = m_prevSkinCB }, { .buffer = m_oceanCB } },   // 레이아웃의 슬롯 순서: b1, b7, b13, b9
 		.debugName = "Set_Object",
 	};
 	m_objectSet = m_device->CreateResourceSet(objectSet);
@@ -320,8 +328,9 @@ bool Renderer::CreateLayouts()
 	objectLayout = BindingLayoutDesc{};
 	objectLayout.debugName = "Layout_Object";
 	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotPerObject);
-	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotSkin);       // 스키닝 VS 만 읽음. 다른 VS 는 선언만 해 두고 안 씀
-	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotPrevSkin);   // b13 지난 프레임 팔레트 (메인·G-buffer 스킨 VS 의 속도)
+	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotSkin);                            // 스키닝 VS 만 읽음. 다른 VS 는 선언만 해 두고 안 씀
+	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotPrevSkin);                        // b13 지난 프레임 팔레트 (메인·G-buffer 스킨 VS 의 속도)
+	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex | ShaderStageMask_Pixel, kCBSlotOcean);   // b9 바다 파도. 바다 VS·PS 만 읽음 (CS 충돌 셋의 b9 와는 한 패스에 같이 묶이지 않음)
 
 	// 재질 셋: 상수(b3, uvScale 때문에 VS도), 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 반사 세기 t5, 반사 색 t6, 클리어코트 t16~t18, 투과 t19, 샘플러 s0.
 	BindingLayoutDesc& materialLayout = m_layoutDescs[Layout_Material];
@@ -1154,7 +1163,7 @@ void Renderer::Shutdown()
 		m_device->DestroyBindingLayout(layout);
 		layout = BindingLayoutHandle{};
 	}
-	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_prevSkinCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB, &m_blurWeights,
+	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_prevSkinCB, &m_oceanCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB, &m_blurWeights,
 								  &m_ssaoCB, &m_clusterGridBuffer, &m_clusterIndexBuffer })
 	{
 		m_device->DestroyBuffer(*buffer);
@@ -1211,6 +1220,7 @@ void Renderer::ResetTemporalHistory()
 		history.objects.clear();
 		history.palettes.clear();
 	}
+	m_oceanHasPrev = false;   // 바다: 다음 프레임은 지난 위상 = 이번 위상 (속도 0)
 }
 
 void Renderer::InvalidateScene(const Scene& scene, bool releaseTextures)
@@ -1369,6 +1379,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	}
 	UploadDebugLines(debugDraw);                 // 디버그 선(DebugDraw 가 모은 것)을 동적 정점 버퍼에 올림. 프레임마다 한 번은 써야 함
 	UpdateParticleEmitters(totalTime, camera);   // BuildDrawList 가 모은 이미터의 버퍼·셋을 맞추고 b8 을 올림 (업로드 구간 안)
+	UploadOceanConstants(totalTime);             // b9: BuildDrawList 가 모은 바다의 파도·위상 (없으면 파도 0 개). 그림자 패스를 포함한 모든 드로우 전
 
 	m_device->EndResourceUploads();
 
@@ -1562,6 +1573,7 @@ void Renderer::BuildDrawList(const Scene& scene)
 	m_device->UpdateBuffer(m_skinCB, m_skinScratch.data(), static_cast<uint32_t>(sizeof(XMFLOAT4X4)));
 
 	m_frameEmitters.clear();
+	m_frameOcean.active = false;
 	const auto addObject = [&](const GameObject& object, const XMMATRIX& world)
 	{
 		CollectEmitter(object, world);   // 메시가 없는 오브젝트도 이미터일 수 있으므로 아래 return 보다 먼저
@@ -1591,6 +1603,12 @@ void Renderer::BuildDrawList(const Scene& scene)
 			data.sphere.w = 1.0e9f;
 			data.skinned = true;
 			data.skinPalette = &object.GetSkinPalette();
+		}
+		// 바다 (첫 번째 하나): 경계 구에 감쇠 전 최대 변위를 더해 화면 가장자리에서 파도 마루가 잘리지 않게 함. 스킨 메시는 바다로 그리지 않음.
+		const bool ocean = !data.skinned && CollectOcean(object, world);
+		if (ocean)
+		{
+			data.sphere.w += Ocean::MaxDisplacement(m_frameOcean.waves, m_frameOcean.waveCount);
 		}
 		// 속도 버퍼: 지난 프레임의 이 오브젝트 (id 는 씬 안에서 고유). 없으면 이번 값 = 속도 0.
 		data.prevWorld = data.world;
@@ -1627,20 +1645,21 @@ void Renderer::BuildDrawList(const Scene& scene)
 			}
 
 			DrawItem item;
-			item.pipeline = GetPipelineFor(*material, mesh->GetVertexFormat(), mirrored);
+			item.pipeline = GetPipelineFor(*material, mesh->GetVertexFormat(), mirrored, ocean);
 			if (!item.pipeline.IsValid()) continue;
 			item.gpuMaterial = GetOrCreateGpuMaterial(*material, &scene);
 			if (item.gpuMaterial == nullptr) continue;
 			// 감마 검증 카드처럼 조명을 받지 않는 물체는 그림자도 만들지 않음 (빈 핸들 = 그림자 패스에서 건너뜀).
 			// 블렌딩 재질(유리·반투명)도 그림자를 만들지 않음: 그림자 맵은 불투명한 차폐만 담고, 반투명은 알파가 없어 통째로 가림.
 			item.blended = IsBlended(*material);
-			item.shadowPipeline = (material->unlit || item.blended) ? PipelineHandle{} : GetShadowPipelineFor(*material, mesh->GetVertexFormat(), mirrored);
+			// 바다도 그림자를 만들지 않음 (받기만 함): 넓고 거의 평평한 면이 그림자 맵에 들어가면 비용만 들고 자기 그림자 여드름이 생김.
+			item.shadowPipeline = (material->unlit || item.blended || ocean) ? PipelineHandle{} : GetShadowPipelineFor(*material, mesh->GetVertexFormat(), mirrored);
 			// 디퍼드 (2단계): G-buffer 에 담을 수 있는 재질이면 G-buffer PSO 도 만들어 둠. 디퍼드를 꺼도 만들어 두는 이유: 토글할 때
 			// 드로우 목록을 다시 만들지 않으려고 (PSO 는 캐시라 한 번만 생성). 실패하면 포워드로 그림.
 			item.deferred = CanUseDeferred(*material);
 			if (item.deferred)
 			{
-				item.gbufferPipeline = GetGBufferPipelineFor(*material, mesh->GetVertexFormat(), mirrored);
+				item.gbufferPipeline = GetGBufferPipelineFor(*material, mesh->GetVertexFormat(), mirrored, ocean);
 				item.deferred = item.gbufferPipeline.IsValid();
 			}
 			item.material = material;
@@ -2290,18 +2309,20 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 
 // ------------------------------------------------------------------ PSO
 
-PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored)
+PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored, bool ocean)
 {
 	// 이 PSO 를 가르는 것은 정점 포맷·미러·채우기·컬링 네 가지뿐. 그 비트를 키로 핸들을 기억해 두면, 드로우마다
 	// PipelineStateDesc 전체를 복사하고 해시해 Device 캐시를 찾는 일이 없어짐.
 	const bool wireframe = m_settings.wireframe || material.wireframe;
 	const bool cullBack = m_settings.cullBack && !material.doubleSided;
 	const bool blended = IsBlended(material);
-	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (wireframe ? 1u << 9 : 0u) | (cullBack ? 1u << 10 : 0u) | (blended ? 1u << 11 : 0u);
+	const bool skinned = vertexFormat == VertexFormat::PositionColorNormalTexcoordTangentSkin;
+	const bool oceanVs = ocean && !skinned;   // 바다 VS 는 스킨 정점을 읽지 않음
+	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (wireframe ? 1u << 9 : 0u) | (cullBack ? 1u << 10 : 0u) | (blended ? 1u << 11 : 0u) | (oceanVs ? 1u << 12 : 0u);
 	auto found = m_mainPipelines.find(key);
 	if (found != m_mainPipelines.end()) return found->second;
 
-	PipelineStateDesc desc = m_passDesc[vertexFormat == VertexFormat::PositionColorNormalTexcoordTangentSkin ? Pass_MainSkin : Pass_Main];
+	PipelineStateDesc desc = m_passDesc[skinned ? Pass_MainSkin : (oceanVs ? Pass_Ocean : Pass_Main)];
 	desc.vertexLayout = GetVertexLayout(vertexFormat);
 	desc.rasterizer.frontCounterClockwise = mirrored ? !desc.rasterizer.frontCounterClockwise : desc.rasterizer.frontCounterClockwise;
 	desc.rasterizer.fill = wireframe ? FillMode::Wireframe : FillMode::Solid;

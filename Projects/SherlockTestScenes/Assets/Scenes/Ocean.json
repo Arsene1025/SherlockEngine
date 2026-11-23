@@ -1,0 +1,286 @@
+{
+  "ambientColor": [
+    0.05,
+    0.06,
+    0.07
+  ],
+  "camera": {
+    "pitch": 0.2803435319988826,
+    "position": [
+      -14.0,
+      8.0,
+      -24.0
+    ],
+    "yaw": 0.5280744484263596
+  },
+  "clearColor": [
+    0.11999999731779099,
+    0.12999999523162842,
+    0.18000000715255737,
+    1.0
+  ],
+  "environment": {
+    "brdfLut": "asset:Cubemap\\CubemapSampleBrdf.dds",
+    "exposure": 1.0,
+    "iblIntensity": 0.5,
+    "irradiance": "asset:Cubemap\\CubemapSampleDiffuseHDR.dds",
+    "postProcess": {
+      "bloomEnabled": false,
+      "bloomIntensity": 0.5,
+      "bloomKnee": 0.5,
+      "bloomThreshold": 1.0,
+      "blurEnabled": false,
+      "blurRadius": 4.0,
+      "greyscale": 0.0
+    },
+    "shadow": {
+      "bias": 0.0007999999797903001,
+      "distance": 60.0,
+      "normalOffset": 0.30000001192092896,
+      "orthoSize": 40.0,
+      "strength": 1.0
+    },
+    "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
+    "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
+    "toneMapping": true
+  },
+  "lights": [
+    {
+      "attenuation": [
+        1.0,
+        0.045,
+        0.0075
+      ],
+      "castShadows": true,
+      "color": [
+        1.0,
+        0.95,
+        0.85
+      ],
+      "direction": [
+        -0.47348388451281187,
+        -0.3420201433256687,
+        -0.8116866591648204
+      ],
+      "innerConeCos": 0.92,
+      "intensity": 2.5,
+      "outerConeCos": 0.87,
+      "position": [
+        0.0,
+        50.0,
+        0.0
+      ],
+      "range": 50.0,
+      "type": 0
+    }
+  ],
+  "materials": [
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.01,
+        0.04,
+        0.05,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "ior": 1.33,
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "name": "Ocean",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.06,
+      "sampler": 2,
+      "specularFactor": 1.0,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.45,
+        0.42,
+        0.38,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "ior": 1.5,
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "name": "Hull",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.6,
+      "sampler": 2,
+      "specularFactor": 1.0,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    }
+  ],
+  "meshes": [
+    {
+      "a": 256,
+      "b": 256,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        200.0,
+        200.0,
+        0.0,
+        0.0
+      ],
+      "type": "plane"
+    },
+    {
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "type": "cube"
+    }
+  ],
+  "objects": [
+    {
+      "components": [
+        {
+          "type": "Ocean",
+          "enabled": true,
+          "waveCount": 6,
+          "windDirection": 30.0,
+          "directionSpread": 40.0,
+          "wavelengthMin": 4.0,
+          "wavelengthMax": 32.0,
+          "amplitude": 0.25,
+          "steepness": 0.4,
+          "speed": 1.0,
+          "seed": 1,
+          "fadeStart": 80.0,
+          "fadeEnd": 300.0
+        }
+      ],
+      "id": 1,
+      "material": 0,
+      "mesh": 0,
+      "name": "Ocean",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "id": 2,
+      "material": 1,
+      "mesh": 1,
+      "name": "ShipStandIn",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        6.0,
+        3.0,
+        16.0
+      ]
+    },
+    {
+      "components": [
+        {
+          "blendTime": 0.5,
+          "enabled": true,
+          "farZ": 1000.0,
+          "fovY": 60.0,
+          "nearZ": 0.1,
+          "orthoSize": 25.0,
+          "orthographic": false,
+          "priority": 0,
+          "type": "CameraComponent"
+        },
+        {
+          "boost": 3.0,
+          "enabled": true,
+          "lookSpeed": 0.0025,
+          "speed": 4.0,
+          "type": "FreeCamera"
+        }
+      ],
+      "id": 3,
+      "material": -1,
+      "mesh": -1,
+      "name": "Main Camera",
+      "position": [
+        -14.0,
+        8.0,
+        -24.0
+      ],
+      "rotation": [
+        0.2803435319988826,
+        0.5280744484263596,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  ],
+  "version": 5
+}

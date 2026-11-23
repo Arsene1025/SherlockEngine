@@ -97,7 +97,12 @@ void AppBase::ApplyRenderPathOptions(RenderSettings& settings)
 	{
 		settings.taaOverride = taa != L"0" ? 1 : 0;
 	}
-	flag(L"taa-jitter", settings.taaJitter);   // TAA 지터 (검증용으로 끔)
+	flag(L"taa-jitter", settings.taaJitter);                              // TAA 지터 (검증용으로 끔)
+	const std::wstring oceanTime = GetCommandLineOption(L"ocean-time");   // 바다 파도 시간 고정 (검증용, 초)
+	if (!oceanTime.empty())
+	{
+		settings.oceanTimeOverride = static_cast<float>(_wtof(oceanTime.c_str()));
+	}
 }
 
 std::wstring AppBase::GetCommandLineOption(const wchar_t* name)

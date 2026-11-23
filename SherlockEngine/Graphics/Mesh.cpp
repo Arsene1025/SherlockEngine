@@ -1,4 +1,5 @@
 ﻿#include "pch.h"
+#include <algorithm>
 #include <cmath>
 #include <cfloat>
 #include "Graphics/Mesh.h"
@@ -149,7 +150,7 @@ Mesh Mesh::CreateCube(float size, const XMFLOAT4& color)
 	return mesh;
 }
 
-Mesh Mesh::CreatePlane(float width, float depth, uint32_t m, uint32_t n, const XMFLOAT4& color)
+Mesh Mesh::CreatePlane(float width, float depth, uint32_t m, uint32_t n, const XMFLOAT4& color, float spacingGrowth)
 {
 	Mesh mesh;
 	if (m < 2)
@@ -171,13 +172,23 @@ Mesh Mesh::CreatePlane(float width, float depth, uint32_t m, uint32_t n, const X
 	// i는 z(뒤에서 앞으로), j는 x(왼쪽에서 오른쪽으로). UV는 (0,0)이 뒤-왼쪽. T = +X, B = −Z.
 	const XMFLOAT3 tangent(1.0f, 0.0f, 0.0f);
 	const XMFLOAT3 bitangent(0.0f, 0.0f, -1.0f);
+	// 간격 증가 (g > 0): 정점 번호로 정한 t ∈ [−1, 1] 을 가운데 촘촘·가장자리 성김으로 바꿈. 기울기가 가운데 (1 − g), 끝 (1 + 6g) 라
+	// 간격 비가 (1 + 6g) / (1 − g). 지수 7 은 가운데의 거의 균일한 구간을 넓게 두려고 (5 면 같은 정점 수로 80 m 안 1.5 m 를 못 맞춤). g = 0 이면 아래 균일 식을 그대로 써서 예전과 비트 단위로 같은 정점이 나옴.
+	const float growth = std::clamp(spacingGrowth, 0.0f, 0.999f);
+	const auto warp = [growth](float t)
+	{
+		const float a = std::fabs(t);
+		const float a2 = a * a;
+		const float w = (1.0f - growth) * a + growth * a2 * a2 * a2 * a;
+		return t < 0.0f ? -w : w;
+	};
 	mesh.vertices.reserve(static_cast<size_t>(m) * n);
 	for (uint32_t i = 0; i < m; ++i)
 	{
-		const float z = halfDepth - i * dz;
+		const float z = growth > 0.0f ? -halfDepth * warp(2.0f * i / (m - 1) - 1.0f) : halfDepth - i * dz;
 		for (uint32_t j = 0; j < n; ++j)
 		{
-			const float x = -halfWidth + j * dx;
+			const float x = growth > 0.0f ? halfWidth * warp(2.0f * j / (n - 1) - 1.0f) : -halfWidth + j * dx;
 			mesh.vertices.push_back(MakeVertex(x, 0.0f, z, 0.0f, 1.0f, 0.0f, j * du, i * dv, tangent, bitangent, color));
 		}
 	}

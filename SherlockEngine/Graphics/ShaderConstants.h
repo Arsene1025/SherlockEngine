@@ -107,6 +107,13 @@ constexpr uint32_t kCBSlotPrevSkin = 13;   // b13 (오브젝트 셋, VS). 지난
 constexpr uint32_t kSRVSlotVelocity = 7;   // t7 속도 R16G16_FLOAT: uv(현재) − uv(이전), 지터 없음. kSRVSlotLightBounds(CS 비닝 셋)와 같은 번호, 같은 패스에 묶이지 않음
 constexpr uint32_t kSRVSlotHistory = 24;   // t24 TAA 히스토리 R16G16B16A16_FLOAT (지난 프레임 결과)
 
+// ---- Gerstner 바다 (docs/plan/ocean-gerstner-plan.html) ----
+// b9 (오브젝트 셋, VS·PS). 바다 VS·PS(Ocean*Shader)만 읽고 다른 셰이더는 선언하지 않음. kCBSlotParticleCollision(CS 충돌 셋)과 같은
+// 번호지만 그쪽은 컴퓨트 전용이라 한 패스에 같이 묶이지 않음 (b13 을 PrevSkin·ClusterBin 이 같이 쓰는 것과 같은 규칙).
+// SM 5.0 은 b0~b13 까지라 빈 번호가 없음.
+constexpr uint32_t kCBSlotOcean = 9;
+constexpr uint32_t kMaxOceanWaves = 8;   // Shaders/Ocean.hlsli 의 MAX_OCEAN_WAVES 와 같아야 함
+
 // 클러스터 격자. Shaders/Clusters.hlsli 의 CLUSTER_X/Y/Z 와 같아야 함. 16:9 화면에서 타일이 거의 정사각형.
 constexpr uint32_t kClusterGridX = 16;
 constexpr uint32_t kClusterGridY = 9;
@@ -231,6 +238,16 @@ struct alignas(16) SkinConstants
 };
 // b13 PrevSkin — 지난 프레임 팔레트. 같은 배치라 같은 구조체를 씀 (HLSL cbuffer PrevSkin). 스키닝 드로우가 속도를 쓸 때만 채움.
 using PrevSkinConstants = SkinConstants;
+
+// b9 Ocean — Gerstner 파도 (Shaders/Ocean.hlsli 의 cbuffer Ocean). 프레임에 한 번 올림 (바다가 없어도 파도 0 개로 — D3D12 Dynamic
+// CB 는 프레임마다 한 번은 써야 함). 위상은 CPU 가 double 로 2π 에 감아서 넘김 (셰이더가 ω·t 를 곱하면 시간이 길어질수록 정밀도가 떨어짐).
+struct alignas(16) OceanConstants
+{
+	DirectX::XMFLOAT4 waveA[kMaxOceanWaves];   // x = 방향 Dx, y = Dz (단위 벡터), z = 파수 k (2π / 파장), w = 진폭 A (m)
+	DirectX::XMFLOAT4 waveB[kMaxOceanWaves];   // x = 경사 s (수평 모임, Σ s ≤ 1), y = 이번 위상 φ(t), z = 지난 위상 φ(t_prev), w = 0
+	DirectX::XMFLOAT4 params;                  // x = 파도 수, y = fadeStart, z = fadeEnd (m, fadeEnd ≤ fadeStart 면 감쇠 없음), w = 0
+	DirectX::XMFLOAT4 origin;                  // xz = 감쇠 기준점 (바다 오브젝트 월드 원점), yw = 0
+};
 
 // 조명 하나의 GPU 배치. HLSL(Shaders/Lighting.hlsli 의 LightData)과 메모리 배치가 바이트 단위로 같아야 함.
 // 씬의 Light (Scene/Light.h) 를 Renderer 가 프레임마다 이것으로 옮겨 구조체 버퍼(t15)에 올림.
@@ -461,6 +478,11 @@ static_assert(offsetof(PerFrameConstants, environmentParams) == 240, "PerFrameCo
 static_assert(offsetof(PerFrameConstants, outputParams) == 256, "PerFrameConstants.outputParams");
 static_assert(offsetof(PerFrameConstants, shadowExtra) == 272, "PerFrameConstants.shadowExtra");
 static_assert(offsetof(PerFrameConstants, iblTint) == 288, "PerFrameConstants.iblTint");
+
+static_assert(sizeof(OceanConstants) == 288, "OceanConstants: 16 * 8 * 2 + 16 * 2");
+static_assert(offsetof(OceanConstants, waveB) == 128, "OceanConstants.waveB");
+static_assert(offsetof(OceanConstants, params) == 256, "OceanConstants.params");
+static_assert(offsetof(OceanConstants, origin) == 272, "OceanConstants.origin");
 
 static_assert(sizeof(PerObjectConstants) == 192, "PerObjectConstants: 64*3");
 static_assert(offsetof(PerObjectConstants, prevWorld) == 128, "PerObjectConstants.prevWorld");
