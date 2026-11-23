@@ -1806,7 +1806,7 @@ void Editor::DrawCameraPreview(Engine& engine, float x, float y, float width, fl
 	renderer.SetPreviewTarget(static_cast<uint32_t>(previewWidth), static_cast<uint32_t>(previewHeight));
 	cameraComponent->ApplyTo(m_previewCamera, true);
 	m_previewCamera.SetAspectRatio(previewWidth / previewHeight);
-	renderer.SetPreviewCamera(&m_previewCamera);   // 이번 프레임의 Render 가 이 카메라로 미리보기 패스를 그림
+	renderer.SetPreviewCamera(&m_previewCamera, scene.GetObjects()[m_selected]->GetId());   // 이번 프레임의 Render 가 이 카메라로 미리보기 패스를 그림. id = 대상이 바뀌면 히스토리 리셋
 
 	const TextureHandle texture = renderer.GetPreviewTexture();
 	if (!texture.IsValid()) return;
@@ -2350,7 +2350,8 @@ void Editor::DrawRenderSettings(Engine& engine)
 	// 11~15: 디퍼드·클러스터드·SSAO 검증용 (docs/plan/deferred-clustered-ssao-record.html). 13 (SSAO) 은 디퍼드 프레임에서만,
 	// 5 (UV) 는 G-buffer 에 UV 가 없어 그 프레임을 포워드로 그림.
 	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion", "Shadow cascade", "Specular F0", "Clearcoat",
-							"World position (frac)", "Geometric normal", "SSAO", "Cluster light count", "Cluster depth slice" };
+							"World position (frac)", "Geometric normal", "SSAO", "Cluster light count", "Cluster depth slice",
+							"Velocity", "Velocity error" };
 	ImGui::Combo("Debug view", &settings.debugView, views, IM_ARRAYSIZE(views));
 	if (settings.debugView == 3)
 	{

@@ -63,6 +63,10 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] = {
 	{ L"DeferredLightingPixelShader.hlsl", "PS_DeferredLighting", ShaderStage::Pixel, "DeferredLightPS" },   // 풀스크린: G-buffer → 조명 (가산)
 	{ L"SsaoPixelShader.hlsl", "PS_Ssao", ShaderStage::Pixel, "SsaoPS" },                                    // 풀스크린: 깊이·노멀 → 가림 (R8)
 	{ L"SsaoBlurPixelShader.hlsl", "PS_SsaoBlur", ShaderStage::Pixel, "SsaoBlurPS" },                        // 4×4 깊이 가중 블러
+	// 속도 버퍼·모션 블러·TAA (docs/plan/velocity-motionblur-taa-plan.html)
+	{ L"VelocityDebugPixelShader.hlsl", "PS_VelocityDebug", ShaderStage::Pixel, "VelocityDebugPS" },   // 디버그 뷰 16(속도)·17(속도 오차) → hdr
+	{ L"MotionBlurPixelShader.hlsl", "PS_MotionBlur", ShaderStage::Pixel, "MotionBlurPS" },            // 속도를 따라 번짐: hdr → 스크래치
+	{ L"TaaPixelShader.hlsl", "PS_Taa", ShaderStage::Pixel, "TaaPS" },                                 // TAA 리졸브: hdr + 히스토리 → 히스토리
 	// GPU 클러스터 비닝 (docs/plan/gpu-cluster-binning-record.html, Shaders/ClusterBin.hlsli)
 	{ L"ClusterViewComputeShader.hlsl", "CS_ClusterView", ShaderStage::Compute, "ClusterViewCS" },      // 경계 구 → 뷰 공간
 	{ L"ClusterTileComputeShader.hlsl", "CS_ClusterTile", ShaderStage::Compute, "ClusterTileCS" },      // 1단계: 타일 144 개의 조명 비트마스크
@@ -95,6 +99,9 @@ const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] = {
 	{ "DeferredLight", Shader_ScreenVS, Shader_DeferredLightPS, { Layout_Frame, Layout_GBuffer }, 2 },
 	{ "Ssao", Shader_ScreenVS, Shader_SsaoPS, { Layout_Ssao }, 1 },
 	{ "SsaoBlur", Shader_ScreenVS, Shader_SsaoBlurPS, { Layout_Ssao }, 1 },
+	{ "VelocityDebug", Shader_ScreenVS, Shader_VelocityDebugPS, { Layout_Temporal }, 1 },
+	{ "MotionBlur", Shader_ScreenVS, Shader_MotionBlurPS, { Layout_Temporal }, 1 },
+	{ "Taa", Shader_ScreenVS, Shader_TaaPS, { Layout_Temporal }, 1 },
 };
 
 struct Renderer::ComputePassInfo
@@ -146,6 +153,7 @@ namespace
 		{ "ParticleSortView", sizeof(ParticleSortViewConstants) },
 		{ "ParticleSortStep", sizeof(ParticleSortStepConstants) },
 		{ "SsaoParams", sizeof(SsaoConstants) },
+		{ "PrevSkin", sizeof(PrevSkinConstants) },
 		{ "ClusterBin", sizeof(ClusterBinConstants) },
 	};
 
@@ -193,7 +201,8 @@ bool Renderer::Initialize(RHI::Device* device)
 	};
 	m_perFrameCB = makeCB(sizeof(PerFrameConstants), "CB_PerFrame");
 	m_perObjectCB = makeCB(sizeof(PerObjectConstants), "CB_PerObject");
-	m_skinCB = makeCB(sizeof(SkinConstants), "CB_Skin");   // b7
+	m_skinCB = makeCB(sizeof(SkinConstants), "CB_Skin");               // b7
+	m_prevSkinCB = makeCB(sizeof(PrevSkinConstants), "CB_PrevSkin");   // b13 (속도 버퍼: 지난 프레임 팔레트)
 	m_skinScratch.resize(kMaxSkinJoints);
 	m_debugLineVB = m_device->CreateBuffer(BufferDesc{ .size = DebugDraw::kMaxVertices * static_cast<uint32_t>(sizeof(DebugLineVertex)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_Vertex, .stride = sizeof(DebugLineVertex), .debugName = "VB_DebugLines" });
 	m_lightCB = makeCB(sizeof(LightConstants), "CB_Lights");
@@ -212,7 +221,7 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_clusterGridBuffer = m_device->CreateBuffer(BufferDesc{ .size = kClusterCount * 2 * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = 2 * sizeof(uint32_t), .debugName = "SB_ClusterGrid" });
 	m_clusterIndexCapacity = kInitialClusterLightRefs;
 	m_clusterIndexBuffer = m_device->CreateBuffer(BufferDesc{ .size = m_clusterIndexCapacity * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = sizeof(uint32_t), .debugName = "SB_ClusterLights" });
-	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_skinCB.IsValid() || !m_debugLineVB.IsValid() || !m_lightCB.IsValid() || !m_lightBuffer.IsValid() || !m_postParamsCB.IsValid() ||
+	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_skinCB.IsValid() || !m_prevSkinCB.IsValid() || !m_debugLineVB.IsValid() || !m_lightCB.IsValid() || !m_lightBuffer.IsValid() || !m_postParamsCB.IsValid() ||
 		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid() || !m_blurWeights.IsValid() || !m_ssaoCB.IsValid() || !m_clusterGridBuffer.IsValid() || !m_clusterIndexBuffer.IsValid())
 	{
 		Log::Error("Renderer::Initialize : 상수버퍼 생성 실패.");
@@ -232,7 +241,7 @@ bool Renderer::Initialize(RHI::Device* device)
 
 	const ResourceSetDesc objectSet{
 		.layout = m_layouts[Layout_Object],
-		.bindings = { { .buffer = m_perObjectCB }, { .buffer = m_skinCB } },   // 레이아웃의 슬롯 순서: b1, b7
+		.bindings = { { .buffer = m_perObjectCB }, { .buffer = m_skinCB }, { .buffer = m_prevSkinCB } },   // 레이아웃의 슬롯 순서: b1, b7, b13
 		.debugName = "Set_Object",
 	};
 	m_objectSet = m_device->CreateResourceSet(objectSet);
@@ -311,7 +320,8 @@ bool Renderer::CreateLayouts()
 	objectLayout = BindingLayoutDesc{};
 	objectLayout.debugName = "Layout_Object";
 	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotPerObject);
-	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotSkin);   // 스키닝 VS 만 읽음. 다른 VS 는 선언만 해 두고 안 씀
+	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotSkin);       // 스키닝 VS 만 읽음. 다른 VS 는 선언만 해 두고 안 씀
+	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotPrevSkin);   // b13 지난 프레임 팔레트 (메인·G-buffer 스킨 VS 의 속도)
 
 	// 재질 셋: 상수(b3, uvScale 때문에 VS도), 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 반사 세기 t5, 반사 색 t6, 클리어코트 t16~t18, 투과 t19, 샘플러 s0.
 	BindingLayoutDesc& materialLayout = m_layoutDescs[Layout_Material];
@@ -446,6 +456,19 @@ bool Renderer::CreateLayouts()
 	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotGBuffer1);     // t26
 	ssaoLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSsao);         // t29
 
+	// 시간 셋 (속도 디버그·모션 블러·TAA 의 셋 0, 뷰마다): b0 (지터 없는 행렬·화면 크기), b4 (패스 파라미터), t13 입력 (hdr),
+	// t23 깊이, t7 속도, t24 히스토리 (TAA 만 의미 있음 — 다른 셋은 흰 텍스처), s6 선형 Clamp.
+	BindingLayoutDesc& temporalLayout = m_layoutDescs[Layout_Temporal];
+	temporalLayout = BindingLayoutDesc{};
+	temporalLayout.debugName = "Layout_Temporal";
+	temporalLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPerFrame);      // b0
+	temporalLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Pixel, kCBSlotPostParams);    // b4
+	temporalLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneHdr);     // t13
+	temporalLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotSceneDepth);   // t23
+	temporalLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotVelocity);     // t7
+	temporalLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotHistory);      // t24
+	temporalLayout.Add(BindingType::Sampler, ShaderStageMask_Pixel, kSamplerSlotPost);            // s6
+
 	// GPU 클러스터 비닝 셋 (컴퓨트 다섯 패스의 셋 0, 뷰마다 한 벌): b13 뷰 값, t7 월드 경계 구, u0~u5 (Shaders/ClusterBin.hlsli).
 	// u3·u4 는 프레임 셋 t30·t31 과 같은 버퍼 (GPU 경로) — 디스패치 전에 UnorderedAccess, 그리기 전에 ShaderResource 로 바꿈.
 	BindingLayoutDesc& clusterBinLayout = m_layoutDescs[Layout_ClusterBin];
@@ -550,7 +573,7 @@ void Renderer::BuildPassDescs()
 	}
 
 	// 톤 패스와 블러·블룸: 풀스크린 삼각형, 깊이 없음 (dsvFormat 이 Unknown 이어야 깊이 없는 패스에 쓸 수 있음).
-	for (PassId id : { Pass_Tonemap, Pass_Post })
+	for (PassId id : { Pass_Tonemap, Pass_Post, Pass_VelocityDebug, Pass_MotionBlur, Pass_Taa })
 	{
 		PipelineStateDesc& desc = m_passDesc[id];
 		desc.rasterizer.cull = CullMode::None;
@@ -608,6 +631,10 @@ void Renderer::BuildPassDescs()
 		handle = PipelineHandle{};
 	}
 	for (PipelineHandle& handle : m_postPipelines)
+	{
+		handle = PipelineHandle{};
+	}
+	for (PipelineHandle& handle : m_temporalPipelines)
 	{
 		handle = PipelineHandle{};
 	}
@@ -723,6 +750,18 @@ void Renderer::ResolveEnvironment(const SceneEnvironment& environment)
 	binding.toneMapping = environment.toneMapping;
 	m_environment = binding;
 	m_postSettings = environment.post;
+	if (m_settings.motionBlurOverride >= 0)
+	{
+		m_postSettings.motionBlurEnabled = m_settings.motionBlurOverride != 0;   // --motion-blur= 실행 인자
+	}
+	if (m_settings.motionBlurFpsOverride >= 0.0f)
+	{
+		m_postSettings.motionBlurTargetFps = m_settings.motionBlurFpsOverride;   // --motion-blur-fps=
+	}
+	if (m_settings.taaOverride >= 0)
+	{
+		m_postSettings.taaEnabled = m_settings.taaOverride != 0;   // --taa= 실행 인자
+	}
 }
 
 bool Renderer::UpdateFrameSet()
@@ -1115,7 +1154,7 @@ void Renderer::Shutdown()
 		m_device->DestroyBindingLayout(layout);
 		layout = BindingLayoutHandle{};
 	}
-	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB, &m_blurWeights,
+	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_prevSkinCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB, &m_blurWeights,
 								  &m_ssaoCB, &m_clusterGridBuffer, &m_clusterIndexBuffer })
 	{
 		m_device->DestroyBuffer(*buffer);
@@ -1158,8 +1197,25 @@ void Renderer::InvalidateMaterial(const Material* material)
 	m_gpuMaterials.erase(found);
 }
 
+void Renderer::ResetTemporalHistory()
+{
+	// 뷰: 지난 카메라 행렬·TAA 히스토리를 버림 (다음 프레임은 이전 = 이번 → 속도 0, TAA 는 이번 프레임을 그대로 씀).
+	for (ViewTarget* view : { &m_mainView, &m_previewView })
+	{
+		view->temporal.hasPrev = false;
+		view->temporal.historyValid = false;
+	}
+	// 오브젝트: 지난 World·팔레트를 버림 (id 가 같아도 씬이 바뀌었으면 다른 물체일 수 있음).
+	for (MotionHistory& history : m_motion)
+	{
+		history.objects.clear();
+		history.palettes.clear();
+	}
+}
+
 void Renderer::InvalidateScene(const Scene& scene, bool releaseTextures)
 {
+	ResetTemporalHistory();   // 씬 불러오기·새 씬·재생 정지(스냅샷 복원)는 모두 여기를 지남
 	for (const auto& mesh : scene.GetMeshes())
 	{
 		InvalidateMesh(mesh.get());
@@ -1252,7 +1308,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	// ---- b0 PerFrame (메인 뷰) ----
 	// 이번 프레임 메인 뷰가 디퍼드인가·SSAO 결과가 있는가 — b0 aoParams 가 이것을 씀.
 	const bool mainSsao = UseDeferred(m_mainView) && m_ssaoSettings.enabled && m_mainView.HasSsao();
-	UploadPerFrameConstants(camera, totalTime, m_mainView.width, m_mainView.height, mainSsao);
+	UploadPerFrameConstants(camera, m_mainView, totalTime, mainSsao);
 
 	// ---- b2 Lights + t15 조명 배열 ----
 	UploadLights(scene);
@@ -1261,6 +1317,18 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	// 버퍼를 다시 만들면 이미 기록된 메인 패스가 꽂은 프레임 셋이 옛 버퍼를 가리키게 됨. 올리기는 뷰 패스마다 (t30·t31 은
 	// Dynamic 이라 뷰마다 새 메모리) ----
 	const bool previewActive = m_previewCamera != nullptr && m_previewView.IsValid() && m_previewView.color.IsValid();
+	// 미리보기를 그리지 않은 프레임이 끼면 그 뒤 첫 프레임의 "지난 프레임" 은 여러 프레임 전이라 쓸 수 없음. 같은 카메라를 다시 골라도
+	// 리셋되게 카메라 기억을 지움 (UploadPerFrameConstants 가 lastCamera 가 다르면 지난 행렬·TAA 히스토리를 버림).
+	if (!previewActive)
+	{
+		m_previewView.temporal.lastCamera = nullptr;
+	}
+	// 미리보기 대상 오브젝트가 바뀜 (카메라 A 를 보다가 B 를 선택): Camera 사본의 주소는 같으므로 id 로 알아내 같은 방법으로 리셋
+	if (previewActive && m_previewSourceId != m_previewLastSourceId)
+	{
+		m_previewView.temporal.lastCamera = nullptr;
+	}
+	m_previewLastSourceId = previewActive ? m_previewSourceId : 0;
 	// GPU 비닝 (docs/plan/gpu-cluster-binning-record.html): 여기서는 입력(t7 경계 구, 뷰마다 b13)만 올리고, 비닝 자체는 렌더
 	// 패스 밖에서 뷰 패스 직전에 디스패치함 (DispatchClusterBinning). 통계는 몇 프레임 (≥ kFrameCount) 전 것을 읽음.
 	m_clusterGpuThisFrame = PrepareGpuClusters();
@@ -1361,7 +1429,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		// (컬링은 그 카메라의 절두체로 다시 함). 그림자 뷰·3a 컬링은 메인 카메라 기준 그대로.
 		GpuProfileScope gpuScope(cmd, "PreviewPass");
 		const bool previewSsao = UseDeferred(m_previewView) && m_ssaoSettings.enabled && m_previewView.HasSsao();
-		UploadPerFrameConstants(*m_previewCamera, totalTime, m_previewView.width, m_previewView.height, previewSsao);
+		UploadPerFrameConstants(*m_previewCamera, m_previewView, totalTime, previewSsao);
 		if (m_clusterGpuThisFrame)
 		{
 			// 같은 GPU 버퍼에 미리보기 카메라로 다시 비닝 (t30·t31: ShaderResource → UnorderedAccess → ShaderResource). 메인 패스의
@@ -1478,6 +1546,16 @@ void Renderer::BuildDrawList(const Scene& scene)
 	m_drawList.clear();
 	m_objects.clear();
 
+	// 속도 버퍼: 지난 프레임 오브젝트 상태(prev)를 읽고 이번 것(current)을 새로 채움. 두 벌을 맞바꾸기만 함.
+	m_motionCurrent ^= 1u;
+	MotionHistory& motionNow = m_motion[m_motionCurrent];
+	const MotionHistory& motionPrev = m_motion[m_motionCurrent ^ 1u];
+	motionNow.objects.clear();
+	motionNow.palettes.clear();
+	// b13 PrevSkin 도 b7 처럼 오브젝트 셋에 항상 묶임 — 스키닝 드로우가 없는 프레임에도 한 번 씀 (D3D12 Dynamic CB 규칙)
+	XMStoreFloat4x4(&m_skinScratch[0], XMMatrixIdentity());
+	m_device->UpdateBuffer(m_prevSkinCB, m_skinScratch.data(), static_cast<uint32_t>(sizeof(XMFLOAT4X4)));
+
 	// b7 Skin 은 오브젝트 셋에 항상 묶여 있음. D3D12 의 Dynamic 상수버퍼는 프레임마다 한 번은 써야 하므로(안 쓰면
 	// DrawIndexed 가 거부함) 스키닝 드로우가 없는 프레임에도 단위행렬 하나로 채워 둠. 스키닝 드로우는 그리기 직전에 다시 씀.
 	XMStoreFloat4x4(&m_skinScratch[0], XMMatrixIdentity());
@@ -1514,6 +1592,23 @@ void Renderer::BuildDrawList(const Scene& scene)
 			data.skinned = true;
 			data.skinPalette = &object.GetSkinPalette();
 		}
+		// 속도 버퍼: 지난 프레임의 이 오브젝트 (id 는 씬 안에서 고유). 없으면 이번 값 = 속도 0.
+		data.prevWorld = data.world;
+		const auto prevFound = motionPrev.objects.find(object.GetId());
+		if (prevFound != motionPrev.objects.end())
+		{
+			data.prevWorld = prevFound->second.world;
+			data.prevPaletteOffset = prevFound->second.paletteOffset;
+			data.prevPaletteCount = prevFound->second.paletteCount;
+		}
+		PrevObject now{ .world = data.world };
+		if (data.skinned && !data.skinPalette->empty())
+		{
+			now.paletteOffset = static_cast<uint32_t>(motionNow.palettes.size());
+			now.paletteCount = static_cast<uint32_t>((std::min)(data.skinPalette->size(), static_cast<size_t>(kMaxSkinJoints)));
+			motionNow.palettes.insert(motionNow.palettes.end(), data.skinPalette->begin(), data.skinPalette->begin() + now.paletteCount);
+		}
+		motionNow.objects[object.GetId()] = now;
 		const uint32_t objectIndex = static_cast<uint32_t>(m_objects.size());
 		m_objects.push_back(data);
 
@@ -1616,7 +1711,7 @@ void Renderer::BuildDrawList(const Scene& scene)
 	});
 }
 
-void Renderer::UploadObjectConstants(uint32_t object)
+void Renderer::UploadObjectConstants(uint32_t object, bool withHistory)
 {
 	// b1 PerObject. 드로우마다 Map(WRITE_DISCARD). 드라이버가 매번 새 메모리를 주므로
 	// 앞 드로우가 아직 실행되지 않았어도 그 데이터를 덮어쓰지 않음. 바인딩은 프레임 초에 한 번만 했음.
@@ -1625,6 +1720,7 @@ void Renderer::UploadObjectConstants(uint32_t object)
 	PerObjectConstants perObject;
 	perObject.world = data.world;
 	perObject.worldInvTranspose = data.worldInvTranspose;
+	perObject.prevWorld = withHistory ? data.prevWorld : data.world;
 	m_device->UpdateBuffer(m_perObjectCB, &perObject, sizeof(perObject));
 
 	if (data.skinned)
@@ -1648,6 +1744,21 @@ void Renderer::UploadObjectConstants(uint32_t object)
 			}
 		}
 		m_device->UpdateBuffer(m_skinCB, m_skinScratch.data(), uploaded * static_cast<uint32_t>(sizeof(XMFLOAT4X4)));
+
+		if (withHistory)
+		{
+			// b13 PrevSkin: 지난 프레임 팔레트. 없거나 조인트 수가 다르면 (첫 프레임·모델 교체) 방금 만든 이번 팔레트를 그대로 —
+			// 스키닝 때문에 생기는 속도는 0 (World 변화로 생기는 속도는 그대로 남음).
+			const MotionHistory& prev = m_motion[m_motionCurrent ^ 1u];
+			if (data.prevPaletteCount > 0 && data.prevPaletteCount == count)
+			{
+				for (uint32_t j = 0; j < count; ++j)
+				{
+					XMStoreFloat4x4(&m_skinScratch[j], XMMatrixTranspose(XMLoadFloat4x4(&prev.palettes[data.prevPaletteOffset + j])));
+				}
+			}
+			m_device->UpdateBuffer(m_prevSkinCB, m_skinScratch.data(), uploaded * static_cast<uint32_t>(sizeof(XMFLOAT4X4)));
+		}
 	}
 }
 
@@ -1665,16 +1776,19 @@ void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTa
 	else
 	{
 		cmd.Barrier(view.hdr, ResourceState::RenderTarget);
+		cmd.Barrier(view.velocity, ResourceState::RenderTarget);
 		cmd.Barrier(view.depth, ResourceState::DepthWrite);
 
 		const RenderPassDesc pass{
 			.colors = { {
-				.texture = view.hdr,
-				.load = LoadOp::Clear,
-				.srgbView = false,                                                                                      // FP16 에는 sRGB 뷰가 없음. 선형 값을 그대로 씀 — sRGB 인코딩은 톤 패스의 RTV 가 함
-				.clearColor = { scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] },   // 선형. 노출·ACES 를 거침
-			} },
-			.colorCount = 1,
+							.texture = view.hdr,
+							.load = LoadOp::Clear,
+							.srgbView = false,                                                                                      // FP16 에는 sRGB 뷰가 없음. 선형 값을 그대로 씀 — sRGB 인코딩은 톤 패스의 RTV 가 함
+							.clearColor = { scene.clearColor[0], scene.clearColor[1], scene.clearColor[2], scene.clearColor[3] },   // 선형. 노출·ACES 를 거침
+						},
+						// 속도 (0 = 움직임 없음으로 지움). 하늘이 없는 씬의 배경도 0
+						{ .texture = view.velocity, .load = LoadOp::Clear, .srgbView = false, .clearColor = { 0.0f, 0.0f, 0.0f, 0.0f } } },
+			.colorCount = 2,
 			.depth = { .texture = view.depth, .load = LoadOp::Clear },
 			.debugName = debugName,
 		};
@@ -1722,8 +1836,9 @@ void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTa
 		cmd.EndRenderPass();
 	}
 
-	// 톤 패스가 t13 으로 읽음.
+	// 톤 패스가 t13 으로 읽음. 속도는 후처리(속도 디버그·모션 블러·TAA)가 t7 로 읽음.
 	cmd.Barrier(view.hdr, ResourceState::ShaderResource);
+	cmd.Barrier(view.velocity, ResourceState::ShaderResource);
 }
 
 void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera, DrawMode mode)
@@ -1768,7 +1883,7 @@ void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera
 		}
 
 		// 서브메시 범위만 그림. 같은 메시의 다른 서브메시는 정렬 덕에 대개 바로 뒤에 옴 (VB/IB 재바인딩 없음).
-		UploadObjectConstants(item.object);
+		UploadObjectConstants(item.object, true);
 		cmd.DrawIndexed(item.indexCount, item.indexStart, 0);
 		m_stats.triangles += item.indexCount / 3;
 		++m_stats.draws;
@@ -1887,12 +2002,35 @@ void Renderer::DrawSkybox(RHI::CommandList& cmd)
 	m_stats.triangles += 1;
 }
 
-void Renderer::UploadPerFrameConstants(const Camera& camera, float totalTime, uint32_t width, uint32_t height, bool ssaoReady)
+void Renderer::UploadPerFrameConstants(const Camera& camera, ViewTarget& target, float totalTime, bool ssaoReady)
 {
+	const uint32_t width = target.width;
+	const uint32_t height = target.height;
 	// HLSL은 column_major로 읽고 셰이더는 mul(v, M)을 쓰므로 전치해서 올림 (ShaderConstants.h).
 	// 미리보기 패스에서 다른 카메라로 한 번 더 호출함 (업로드 링을 쓰므로 프레임 안에서 여러 번 올려도 됨).
 	const XMMATRIX view = camera.GetViewMatrix();
-	const XMMATRIX proj = camera.GetProjectionMatrix();
+	const XMMATRIX unjitteredProj = camera.GetProjectionMatrix();
+	// TAA 지터: 투영 결과를 NDC 에서 (jx, jy) 만큼 옮기는 행렬 J 를 곱함 (원근이면 clip.xy += j · w, 직교면 w = 1 이라 그대로 더함).
+	// 위상 k = 이 뷰의 프레임 수 % 8, 오프셋 = Halton(k+1, 2·3) − 0.5 (픽셀). 같은 프레임 번호면 실행마다 같은 지터 (스크린샷 결정적).
+	// b0 의 proj·viewProj·invViewProj 에만 들어가고 카메라 행렬(컬링·그림자)과 unjitteredViewProj(속도)는 그대로.
+	XMFLOAT2 jitter(0.0f, 0.0f);
+	if (TaaActive() && m_settings.taaJitter && width > 0 && height > 0)
+	{
+		const auto halton = [](uint32_t index, uint32_t base)
+		{
+			float f = 1.0f, r = 0.0f;
+			for (uint32_t i = index; i > 0; i /= base)
+			{
+				f /= static_cast<float>(base);
+				r += f * static_cast<float>(i % base);
+			}
+			return r;
+		};
+		const uint32_t phase = target.temporal.frameIndex % 8 + 1;
+		jitter.x = 2.0f * (halton(phase, 2) - 0.5f) / static_cast<float>(width);
+		jitter.y = -2.0f * (halton(phase, 3) - 0.5f) / static_cast<float>(height);
+	}
+	const XMMATRIX proj = unjitteredProj * XMMatrixTranslation(jitter.x, jitter.y, 0.0f);   // 행 벡터 관례: clip' = clip · P · J
 	PerFrameConstants perFrame = {};
 	XMStoreFloat4x4(&perFrame.view, XMMatrixTranspose(view));
 	XMStoreFloat4x4(&perFrame.proj, XMMatrixTranspose(proj));
@@ -1916,6 +2054,22 @@ void Renderer::UploadPerFrameConstants(const Camera& camera, float totalTime, ui
 	perFrame.clusterDepth = ClusterDepthParams(camera);
 	// SSAO: 이 뷰에 결과가 있으면 라이팅이 t29 를 읽음. 합치는 방식은 씬 설정.
 	perFrame.aoParams = XMFLOAT4(ssaoReady ? 1.0f : 0.0f, m_ssaoSettings.multiply ? 1.0f : 0.0f, 0.0f, 0.0f);
+
+	// ---- 속도 버퍼·TAA: 지터 없는 이번·지난 viewProj. 이 뷰를 그린 카메라가 바뀌었으면 (미리보기 대상 변경·재생 전환)
+	// 지난 프레임이 없는 것으로 봄 → 이전 = 이번 (속도 0) ----
+	TemporalState& temporal = target.temporal;
+	if (temporal.lastCamera != &camera)
+	{
+		temporal.hasPrev = false;
+		temporal.historyValid = false;
+		temporal.lastCamera = &camera;
+	}
+	XMStoreFloat4x4(&perFrame.unjitteredViewProj, XMMatrixTranspose(view * unjitteredProj));
+	perFrame.prevUnjitteredViewProj = temporal.hasPrev ? temporal.prevUnjitteredViewProj : perFrame.unjitteredViewProj;
+	perFrame.temporalParams = XMFLOAT4(jitter.x, jitter.y, temporal.historyValid ? 1.0f : 0.0f, static_cast<float>(temporal.frameIndex % 8));
+	temporal.prevUnjitteredViewProj = perFrame.unjitteredViewProj;
+	temporal.hasPrev = true;
+	++temporal.frameIndex;
 	m_device->UpdateBuffer(m_perFrameCB, &perFrame, sizeof(perFrame));
 }
 
@@ -2162,11 +2316,15 @@ PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat v
 		desc.blend.rt[0].srcAlpha = BlendFactor::One;
 		desc.blend.rt[0].dstAlpha = BlendFactor::InvSrcAlpha;
 		desc.depthStencil.depthWrite = false;
+		// 속도 RT(1)는 쓰지 않음 — 반투명은 속도를 갖지 않고 뒤 불투명 표면의 속도가 남음. RT 별 설정이라 independentBlend.
+		desc.blend.independentBlend = true;
+		desc.blend.rt[1] = RenderTargetBlendDesc{ .writeMask = 0 };
 	}
-	// D3D12 PSO 는 렌더 타깃 뷰의 포맷을 알아야 함. 메인 패스는 FP16 HDR 텍스처에 그리므로 항상 R16G16B16A16_FLOAT.
+	// D3D12 PSO 는 렌더 타깃 뷰의 포맷을 알아야 함. 메인 패스는 FP16 HDR 텍스처 + 속도(RG16F)에 그림.
 	// (sRGB 여부는 톤 패스의 PSO 만 따짐 — GetTonemapPipeline)
 	desc.rtvFormats[0] = Format::R16G16B16A16_FLOAT;
-	desc.rtvCount = 1;
+	desc.rtvFormats[1] = kVelocityFormat;
+	desc.rtvCount = 2;
 	desc.dsvFormat = Format::D24_UNORM_S8_UINT;
 	const PipelineHandle handle = m_device->CreatePipeline(desc);
 	if (handle.IsValid())
@@ -2202,7 +2360,8 @@ PipelineHandle Renderer::GetSkyPipeline()
 	// 와이어프레임 설정은 따르지 않음 — 화면을 덮는 삼각형 하나의 모서리만 보여 의미가 없음.
 	PipelineStateDesc desc = m_passDesc[Pass_Sky];
 	desc.rtvFormats[0] = Format::R16G16B16A16_FLOAT;   // HDR: 메인 PSO 와 같은 FP16 타깃
-	desc.rtvCount = 1;
+	desc.rtvFormats[1] = kVelocityFormat;              // 속도 (하늘은 카메라 회전만으로 움직임 — SkyboxPixelShader)
+	desc.rtvCount = 2;
 	desc.dsvFormat = Format::D24_UNORM_S8_UINT;
 	m_skyPipeline = m_device->CreatePipeline(desc);
 	return m_skyPipeline;

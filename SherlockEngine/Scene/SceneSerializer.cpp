@@ -613,6 +613,13 @@ namespace
 								 { "bloomKnee", env.post.bloomKnee },
 								 { "bloomIntensity", env.post.bloomIntensity },
 								 { "greyscale", env.post.greyscale },
+								 { "motionBlurEnabled", env.post.motionBlurEnabled },
+								 { "motionBlurIntensity", env.post.motionBlurIntensity },
+								 { "motionBlurMaxRadius", env.post.motionBlurMaxRadius },
+								 { "motionBlurSamples", env.post.motionBlurSamples },
+								 { "motionBlurTargetFps", env.post.motionBlurTargetFps },
+								 { "taaEnabled", env.post.taaEnabled },
+								 { "taaFeedback", env.post.taaFeedback },
 							 } },
 			{ "shadow", {
 							{ "bias", env.shadow.bias },
@@ -660,6 +667,13 @@ namespace
 		e.post.bloomKnee = post.value("bloomKnee", defaults.bloomKnee);
 		e.post.bloomIntensity = post.value("bloomIntensity", defaults.bloomIntensity);
 		e.post.greyscale = post.value("greyscale", defaults.greyscale);
+		e.post.motionBlurEnabled = post.value("motionBlurEnabled", defaults.motionBlurEnabled);
+		e.post.motionBlurIntensity = post.value("motionBlurIntensity", defaults.motionBlurIntensity);
+		e.post.motionBlurMaxRadius = post.value("motionBlurMaxRadius", defaults.motionBlurMaxRadius);
+		e.post.motionBlurSamples = post.value("motionBlurSamples", defaults.motionBlurSamples);
+		e.post.motionBlurTargetFps = post.value("motionBlurTargetFps", defaults.motionBlurTargetFps);
+		e.post.taaEnabled = post.value("taaEnabled", defaults.taaEnabled);
+		e.post.taaFeedback = post.value("taaFeedback", defaults.taaFeedback);
 		// SSAO (5단계). 키가 없으면(이전 씬 파일) 꺼진 기본값
 		const SsaoSettings ssaoDefaults;
 		const json ssao = env.value("ssao", json::object());

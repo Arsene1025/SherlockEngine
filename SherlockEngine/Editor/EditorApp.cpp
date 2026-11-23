@@ -625,6 +625,8 @@ void EditorApp::UndoRedo(bool undo)
 	// 선택 해제)
 	const GameObject* selected = scene.FindById(selectedId);
 	m_editor.SetSelectedObject(selected != nullptr ? static_cast<int>(scene.IndexOf(selected)) : -1);
+	// 되돌리기는 오브젝트를 한 번에 옛 자세로 옮김 — 움직임이 아니라 편집이므로 속도·TAA 의 지난 프레임을 버림 (한 프레임 번짐·잔상 방지)
+	GetEngine().GetRenderer().ResetTemporalHistory();
 	m_editor.SetMessage((undo ? "undo: " : "redo: ") + label);
 	Log::Info("%s: '%s' (이력 위치 %zu/%zu)", undo ? "되돌리기" : "다시 실행", label.c_str(), m_history.GetCurrentIndex(), m_history.GetStepCount());
 }
@@ -965,6 +967,7 @@ void EditorApp::StartPlay()
 	Scene& scene = engine.GetScene();
 	m_playSnapshot = SceneSerializer::SaveToString(scene, engine.GetCamera());   // 씬 + 카메라. Stop 에서 이것으로 되돌림
 	scene.BeginPlay(&engine.GetInput(), &engine.GetCamera());
+	engine.GetRenderer().ResetTemporalHistory();   // 재생 시작에서 스크립트가 오브젝트를 옮겨도 그 차이를 속도로 보지 않음
 	m_playState = PlayState::Playing;
 	m_stepOnce = false;
 	size_t behaviours = 0;

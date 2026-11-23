@@ -4,6 +4,7 @@
 // 입력은 후처리 셋의 t13 (앞 단계의 결과), 파라미터는 b4 (PostParams). 선형 HDR 값을 그대로 다루므로 1 을
 // 넘는 밝기가 살아 있음. 효과를 추가할 때는 모드를 하나 늘리거나 (같은 입력·출력 모양이면) 새 PS 파일을 만듦.
 //
+//   모드 0 : 복사 (입력 = 출력 크기, Load). 모션 블러·TAA 가 스크래치·히스토리를 hdr 로 되돌릴 때 씀.
 //   모드 1 : 가우시안 블러 한 방향 (postPass.yz = 방향, 가로 (1,0) / 세로 (0,1)). 입력·출력 크기가 같음.
 //   모드 2 : 블룸 밝기 추출 + 축소 (hdr → 레벨 0). 임계값 아래는 버리고 knee 구간은 부드럽게 이어 줌.
 //   모드 3 : 블룸 축소 (레벨 i-1 → 레벨 i). 선형 샘플러로 4x4 박스.
@@ -30,6 +31,11 @@ float3 SampleInput(float2 uv)
 float4 PS_Post(float4 position : SV_POSITION) : SV_TARGET
 {
     const int mode = (int)(postPass.x + 0.5f);
+
+    if (mode == 0)
+    {
+        return float4(postInput.Load(int3((int2)position.xy, 0)).rgb, 1.0f);
+    }
 
     if (mode == 1)
     {

@@ -73,6 +73,15 @@ struct RenderSettings
 	bool shadowPriority = true;
 	// SSAO 켜짐 덮어쓰기: −1 = 씬 파일 값 (environment.ssao.enabled), 0 = 끔, 1 = 켬. --ssao= 실행 인자가 씀 (저장하지 않음).
 	int ssaoOverride = -1;
+	// 모션 블러 켜짐 덮어쓰기: −1 = 씬 파일 값 (environment.post.motionBlurEnabled), 0 = 끔, 1 = 켬. --motion-blur= (저장하지 않음).
+	int motionBlurOverride = -1;
+	// 모션 블러 기준 fps 덮어쓰기 (−1 = 씬 값, 0 = 맞추지 않음). --motion-blur-fps= (저장하지 않음).
+	float motionBlurFpsOverride = -1.0f;
+	// 모션 블러 길이 보정에 쓰는 프레임 시간 덮어쓰기 (초, 0 = 실제 값). 자동 검증이 실행 속도와 무관한 결과를 얻도록 --frame-dt=.
+	float frameDeltaOverride = 0.0f;
+	// TAA 켜짐 덮어쓰기 (−1 = 씬 값, --taa=) 와 지터 (끄면 TAA 가 같은 위치를 계속 섞음 — 배관 검증용, --taa-jitter=0).
+	int taaOverride = -1;
+	bool taaJitter = true;
 
 	// 디버그 뷰 (0 조명, 1 알베도, 2 월드 노멀, 3 깊이, 4 그림자 계수, 5 UV, 6 금속성/거칠기, 7 AO, 8 캐스케이드, 9 F0,
 	// 10 클리어코트, 11 월드 위치, 12 기하 노멀, 13 SSAO, 14 클러스터 조명 수, 15 클러스터 슬라이스) 와 깊이 뷰의 범위(월드 단위)
@@ -242,14 +251,23 @@ public:
 	// 드로우 목록으로) 작은 텍스처에 그림. 카메라 포인터는 Render 가 끝날 때까지 유효해야 함. nullptr 이거나
 	// 0×0 이면 그리지 않음.
 	void SetPreviewTarget(uint32_t width, uint32_t height);
-	void SetPreviewCamera(const Camera* camera) { m_previewCamera = camera; }
+	// sourceId: 이 카메라를 만든 오브젝트 (GameObject::GetId). 에디터는 늘 같은 Camera 사본을 넘기므로 포인터로는 대상이 바뀐 것을
+	// 알 수 없음 — id 가 바뀌면 미리보기 뷰의 지난 프레임(속도·TAA 히스토리)을 버림.
+	// 이번 프레임의 dt (초) — 장면을 움직인 것과 같은 값 (Engine::Render 가 Time::GetDeltaTime 을 넘김, 시간 배율 전).
+	// 모션 블러가 길이를 기준 fps 에 맞출 때 씀 (PostProcessSettings::motionBlurTargetFps).
+	void SetFrameDeltaTime(float seconds) { m_frameDeltaTime = seconds; }
+	void SetPreviewCamera(const Camera* camera, uint64_t sourceId = 0)
+	{
+		m_previewCamera = camera;
+		m_previewSourceId = sourceId;
+	}
 	TextureHandle GetPreviewTexture() const { return m_previewView.color; }
 
 	// 후처리 단계별 썸네일 (에디터의 "Post Stages" 창). 창이 열려 있는 동안 매 프레임 RequestPostCapture 를 부르면
 	// 다음 Render 가 단계마다 HDR 결과를 톤매핑한 작은 텍스처에 그림. 요청이 없으면 비용이 없음. 메인 카메라,
 	// 에디터(오프스크린) 전용. 단계: 0 Scene (후처리 전), 1 Blur, 2 Bloom (꺼진 효과는 active = false), 3
 	// Final (후처리 + 색 효과). 단계 0~2 는 색 효과를 뺀 그림임.
-	static constexpr uint32_t kPostStageCount = 4;
+	static constexpr uint32_t kPostStageCount = 6;   // Scene, TAA, Motion, Blur, Bloom, Final
 	struct PostStageThumb
 	{
 		TextureHandle texture;
@@ -266,6 +284,9 @@ public:
 	void InvalidateMaterial(const Material* material);
 	// 씬의 모든 메시·재질 캐시를 버림 (Scene::Clear 전에 호출). releaseTextures 가 true 면 내장이 아닌 텍스처도 버림.
 	void InvalidateScene(const Scene& scene, bool releaseTextures);
+	// 속도 버퍼·TAA 의 "지난 프레임"을 모두 버림: 뷰마다 지난 카메라 행렬·TAA 히스토리, 오브젝트마다 지난 World·팔레트.
+	// 씬 불러오기·새 씬·재생 시작/정지처럼 화면이 끊기는 곳에서 부름 — 안 부르면 한 프레임 동안 큰 속도·이전 화면이 남음.
+	void ResetTemporalHistory();
 
 private:
 	struct GpuMesh
@@ -315,6 +336,35 @@ private:
 		DirectX::XMFLOAT4 sphere;                                        // 월드 경계 구 (xyz = 중심, w = 반지름). 컬링용
 		const std::vector<DirectX::XMFLOAT4X4>* skinPalette = nullptr;   // 스키닝 오브젝트의 조인트 팔레트 (씬이 소유, 이번 프레임 동안 유효). 비면 단위행렬
 		bool skinned = false;                                            // 스키닝 메시면 드로우마다 b7 에 팔레트를 올림
+		// 속도 버퍼: 지난 프레임 World (전치, b1 prevWorld). 지난 프레임에 없던 오브젝트면 world 와 같음.
+		DirectX::XMFLOAT4X4 prevWorld;
+		// 지난 프레임 팔레트의 위치 (m_motion[지난].palettes 안). 없으면 prevPaletteCount = 0 → 이번 팔레트를 b13 에도 올림.
+		uint32_t prevPaletteOffset = 0;
+		uint32_t prevPaletteCount = 0;
+	};
+	// 오브젝트 하나의 "지난 프레임" (GameObject::GetId 로 찾음). 팔레트는 MotionHistory::palettes 안의 위치.
+	struct PrevObject
+	{
+		DirectX::XMFLOAT4X4 world;   // 전치 (ObjectData::world 와 같은 관례)
+		uint32_t paletteOffset = 0;
+		uint32_t paletteCount = 0;
+	};
+	// 프레임 하나의 오브젝트 상태 모음. 두 벌을 두고 BuildDrawList 가 프레임마다 맞바꿈 — 이번 것을 쓰면서 지난 것을 읽음.
+	// 맞바꾸기만 하므로 지워진 오브젝트의 항목은 한 프레임 뒤 저절로 사라짐.
+	struct MotionHistory
+	{
+		std::unordered_map<uint64_t, PrevObject> objects;
+		std::vector<DirectX::XMFLOAT4X4> palettes;   // 씬의 팔레트 그대로 (전치 전)
+	};
+	// 뷰 하나의 "지난 프레임" (ViewTarget::temporal). 메인과 미리보기는 서로 다른 카메라라 따로 가짐.
+	struct TemporalState
+	{
+		DirectX::XMFLOAT4X4 prevUnjitteredViewProj;   // 전치 (b0 그대로). hasPrev 가 거짓이면 의미 없음
+		const Camera* lastCamera = nullptr;           // 지난 프레임에 이 뷰를 그린 카메라. 바뀌면 (미리보기 대상·재생 전환) 리셋
+		uint32_t frameIndex = 0;                      // 이 뷰를 그린 프레임 수 (TAA 지터 위상)
+		bool hasPrev = false;
+		bool historyValid = false;   // TAA 히스토리에 쓸 만한 지난 결과가 있음
+		uint32_t current = 0;        // TAA: 이번 프레임이 쓸 히스토리 (0/1)
 	};
 
 	struct DrawItem
@@ -368,6 +418,9 @@ private:
 		Shader_DeferredLightPS,
 		Shader_SsaoPS,
 		Shader_SsaoBlurPS,
+		Shader_VelocityDebugPS,
+		Shader_MotionBlurPS,
+		Shader_TaaPS,
 		Shader_ClusterViewCS,
 		Shader_ClusterTileCS,
 		Shader_ClusterCountCS,
@@ -392,6 +445,7 @@ private:
 		Layout_ParticleSortStep,
 		Layout_GBuffer,
 		Layout_Ssao,
+		Layout_Temporal,
 		Layout_ClusterBin,
 		Layout_Count
 	};
@@ -416,6 +470,9 @@ private:
 		Pass_DeferredLight,
 		Pass_Ssao,
 		Pass_SsaoBlur,
+		Pass_VelocityDebug,
+		Pass_MotionBlur,
+		Pass_Taa,
 		Pass_Count
 	};
 	// 셋 인덱스 = 그 패스의 PipelineStateDesc::bindingLayouts 인덱스 (CommandList::SetResourceSet 의 첫 인자).
@@ -426,8 +483,10 @@ private:
 	static constexpr uint32_t kSetPost = 0;
 	static constexpr uint32_t kSetParticle = 1;   // 파티클 그리기 { 프레임, 파티클, 깊이 }
 	static constexpr uint32_t kSetParticleDepth = 2;
-	static constexpr uint32_t kSetGBuffer = 1;   // 디퍼드 라이팅 { 프레임, G-buffer }
-	static constexpr uint32_t kSetSsao = 0;      // SSAO·블러 { SSAO }
+	static constexpr uint32_t kSetGBuffer = 1;                        // 디퍼드 라이팅 { 프레임, G-buffer }
+	static constexpr uint32_t kSetSsao = 0;                           // SSAO·블러 { SSAO }
+	static constexpr uint32_t kSetTemporal = 0;                       // 속도 디버그·모션 블러·TAA { 시간 }
+	static constexpr Format kVelocityFormat = Format::R16G16_FLOAT;   // 속도 RT. uv(이번) − uv(지난), Shaders/Velocity.hlsli
 	// 컴퓨트 패스 = (CS, 레이아웃 목록). 그래픽스 패스 표와 따로 둠 — PSO Desc 가 다르고 (ComputePipelineDesc),
 	// 바인딩 대조의 스테이지가 Compute 임.
 	enum ComputePassId : uint32_t
@@ -477,7 +536,8 @@ private:
 	// GPU 메시·재질(텍스처 포함)도 여기서 만들어 둠 — Render 가 이 구간을 업로드 묶음으로 감쌈.
 	void BuildDrawList(const Scene& scene);
 	// b0: view/proj·화면 크기·클러스터 깊이 분할은 이 카메라·타깃 기준, 나머지는 프레임 공통 값. ssaoReady = 이 뷰에 SSAO 결과가 있음.
-	void UploadPerFrameConstants(const Camera& camera, float totalTime, uint32_t width, uint32_t height, bool ssaoReady);
+	// view: 지난 프레임 카메라 행렬을 읽고 이번 것을 남김 (속도 버퍼). 뷰마다 프레임에 한 번만 부를 것.
+	void UploadPerFrameConstants(const Camera& camera, ViewTarget& target, float totalTime, bool ssaoReady);
 	void RenderShadowPass(RHI::CommandList& cmd);
 	void RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas);   // atlas 0 = 메인(m_shadowMap), 1 = CSM(m_csmMap). 그 아틀라스의 뷰만 그림
 	// 뷰 하나의 씬 패스 (메인·미리보기 공통): view.hdr + view.depth 에 불투명 드로우와 스카이박스를 그림.
@@ -629,6 +689,17 @@ private:
 		TextureHandle ssaoBlur;
 		ResourceSetHandle ssaoSet;
 		ResourceSetHandle ssaoBlurSet;
+		// 속도 버퍼 (R16G16_FLOAT, 뷰 크기): G-buffer 패스·포워드 패스가 씀. temporalSet = Layout_Temporal { b0, b4, t13 hdr, t23 깊이,
+		// t7 속도, t24 흰 텍스처, s6 } — 속도 디버그·모션 블러가 읽음. temporal = 지난 프레임 카메라 (속도의 "이전").
+		TextureHandle velocity;
+		ResourceSetHandle temporalSet;
+		ResourceSetHandle velocityDebugSet;   // 같은 레이아웃, t13 = 흰 텍스처 — 속도 디버그는 hdr 에 쓰므로 hdr 를 입력으로 꽂지 않음 (SRV·RTV 겹침)
+		// TAA 히스토리 (RGBA16F 두 장, 핑퐁). TAA 가 처음 켜질 때 만듦 (EnsureTaaTargets). taaSet[i] = 시간 셋 (t13 hdr, t24 history[1−i])
+		// 이고 출력은 history[i]. historyPostSet[i] = 후처리 셋 (t13 history[i]) — 결과를 hdr 로 되돌려 복사할 때.
+		TextureHandle history[2];
+		ResourceSetHandle taaSet[2];
+		ResourceSetHandle historyPostSet[2];
+		TemporalState temporal;
 		uint32_t width = 0;
 		uint32_t height = 0;
 		bool IsValid() const { return depth.IsValid() && hdr.IsValid() && hdrSet.IsValid(); }
@@ -639,17 +710,30 @@ private:
 	// 실패하면 만든 것을 모두 지우고 false.
 	bool CreateViewTarget(ViewTarget& view, uint32_t width, uint32_t height, bool withColor, const char* name);
 	void DestroyViewTarget(ViewTarget& view);
+	// Layout_Temporal 셋 (b0, b4, t13 = input, t23 = view.depth, t7 = view.velocity, t24 = history, s6). 속도 디버그·모션 블러·TAA.
+	ResourceSetHandle CreateTemporalSet(const ViewTarget& view, TextureHandle input, TextureHandle history, const char* debugName);
 	// 게임 모드(오프스크린이 아님): 출력 크기(SetOutputSize)에 맞는 메인 뷰 타깃을 보장함.
 	void EnsureGameTarget();
 	// 필요한 것만 만듦 (needBlur → temp + 컴퓨트 블러 셋, needBloom → 축소 체인). 크기가 바뀌었으면 전부 버리고
 	// 다시 만듦. hdr 는 컴퓨트 블러 셋이 가리킴. 실패하면 false (컴퓨트 셋만 실패하면 true — PS 블러로 감).
-	bool EnsurePostScratch(PostScratch& scratch, TextureHandle hdr, uint32_t width, uint32_t height, bool needBlur, bool needBloom);
+	bool EnsurePostScratch(PostScratch& scratch, TextureHandle hdr, uint32_t width, uint32_t height, bool needTemp, bool needBloom);
 	void DestroyPostScratch(PostScratch& scratch);
-	// view.hdr 가 ShaderResource 상태일 때 부르고, 끝나도 ShaderResource 상태임. 켜진 효과가 없으면 아무것도 안 함.
+	// view.hdr 가 ShaderResource 상태일 때 부르고, 끝나도 ShaderResource 상태임. 효과가 없어도 깊이를 DepthRead 로 두고
+	// TAA 히스토리 유효 여부를 갱신함.
 	// capture 가 참이면 단계마다 썸네일을 그림 (CapturePostStage).
 	void ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool capture);
 	void EnsureStageThumbs(uint32_t hdrWidth, uint32_t hdrHeight);
 	void DestroyStageThumbs();
+	// 단계별 썸네일 번호 (kPostStageCount 칸). ApplyHdrEffects 의 패스 순서와 같음.
+	enum PostStage : uint32_t
+	{
+		PostStage_Scene,
+		PostStage_Taa,
+		PostStage_Motion,
+		PostStage_Blur,
+		PostStage_Bloom,
+		PostStage_Final
+	};
 	void CapturePostStage(RHI::CommandList& cmd, uint32_t stage, const char* name, ResourceSetHandle hdrSet, uint32_t hdrWidth, uint32_t hdrHeight, bool skipGrade);
 	PipelineHandle GetPostPipeline(bool additive);   // FP16 출력, 깊이 없음. additive = One/One 블렌드 (블룸 합성)
 	// 컴퓨트 패스의 PSO (kComputePasses 표). 처음 부를 때 만들고, 실패하면 빈 핸들을 기억해 매 프레임 다시 묻지 않음.
@@ -662,6 +746,10 @@ private:
 	// PostParams(b4)는 호출 전에 올려 둘 것.
 	void DispatchBlurCompute(RHI::CommandList& cmd, ComputePipelineHandle pipeline, ResourceSetHandle set, TextureHandle output, uint32_t width, uint32_t height);
 	void UploadPostParams(const PostParamsConstants& params);
+	PipelineHandle GetTemporalPipeline(PassId pass);   // Layout_Temporal 풀스크린 패스의 PSO (FP16 출력 1장). m_temporalPipelines 캐시
+	bool EnsureTaaTargets(ViewTarget& view);           // 히스토리 두 장과 셋. 실패하면 거짓 (그 프레임은 TAA 를 건너뜀)
+	void DestroyTaaTargets(ViewTarget& view);
+	bool TaaActive() const;                                                        // 이번 프레임에 TAA 를 돌리는가 (켜짐 + 디버그 뷰 아님). 지터도 이것을 따름
 	ResourceSetHandle CreatePostSet(TextureHandle input, const char* debugName);   // Layout_Post 순서: b0, b4, t13, s6, t20
 	// 이번 프레임의 환경 바인딩. Scene::environment 의 이름들을 ResolveEnvironment 가 핸들과 셰이더 파라미터로 바꿈.
 	struct EnvironmentBinding
@@ -688,7 +776,9 @@ private:
 	// 프레임 셋(b0, b2, t8, s4, t9, s5, t10, t11, t12, b5, b6, t14, t15)을 m_environment 의 텍스처로 만듦.
 	// 꽂힌 텍스처가 바뀔 때만 다시 만듦 (ResourceSet 은 값 객체).
 	bool UpdateFrameSet();
-	void UploadObjectConstants(uint32_t object);   // b1: m_objects[object] 의 미리 계산한 행렬을 올림
+	// b1: m_objects[object] 의 미리 계산한 행렬을 올림 (+ 스킨이면 b7). withHistory = 속도용 지난 World·팔레트(b13)도 올림 —
+	// 메인·미리보기 패스는 참, 그림자 패스는 거짓 (그림자는 속도를 쓰지 않음. prevWorld 는 world 로 채움).
+	void UploadObjectConstants(uint32_t object, bool withHistory);
 	DirectX::XMMATRIX ComputeLightViewProj(const GpuLight& light) const;
 	// 스팟: 원뿔을 담는 정사각 원근 절두체. outTanHalfFov = tan(시야각 / 2) (텍셀의 월드 크기 계수를 구할 때 씀)
 	DirectX::XMMATRIX ComputeSpotViewProj(const GpuLight& light, float& outTanHalfFov) const;
@@ -729,6 +819,7 @@ private:
 	BufferHandle m_perFrameCB;
 	BufferHandle m_perObjectCB;
 	BufferHandle m_skinCB;                            // b7 Skin (스키닝 조인트 팔레트). 스키닝 드로우마다 올림
+	BufferHandle m_prevSkinCB;                        // b13 PrevSkin (지난 프레임 팔레트). 메인·미리보기의 스키닝 드로우마다 올림
 	std::vector<DirectX::XMFLOAT4X4> m_skinScratch;   // 전치한 팔레트를 만드는 임시 배열 (kMaxSkinJoints)
 	BufferHandle m_lightCB;                           // b2 Lights (주변광, 조명 수)
 	BufferHandle m_lightBuffer;                       // t15 조명 구조체 버퍼 (GpuLight × m_lightCapacity). Dynamic
@@ -868,10 +959,11 @@ private:
 	std::vector<FrameEmitter> m_frameEmitters;   // BuildDrawList 가 채움
 	std::vector<uint64_t> m_activeEmitterKeys;   // 이번 프레임에 시뮬레이션·그리기할 키 (UpdateParticleEmitters 가 채움)
 	float m_lastParticleTime = -1.0f;
-	BufferHandle m_debugLineVB;             // 동적 정점 버퍼 (DebugDraw::kMaxVertices 개)
-	uint32_t m_debugLineCount = 0;          // 올린 정점 수 (0 이면 그리지 않음)
-	PipelineHandle m_tonemapPipelines[2];   // [srgbOutput]
-	PipelineHandle m_postPipelines[2];      // [additive]
+	BufferHandle m_debugLineVB;                       // 동적 정점 버퍼 (DebugDraw::kMaxVertices 개)
+	uint32_t m_debugLineCount = 0;                    // 올린 정점 수 (0 이면 그리지 않음)
+	PipelineHandle m_tonemapPipelines[2];             // [srgbOutput]
+	PipelineHandle m_postPipelines[2];                // [additive]
+	PipelineHandle m_temporalPipelines[Pass_Count];   // 시간 셋 풀스크린 패스 (VelocityDebug 등). FP16 출력 1장, 깊이 없음
 	ComputePipelineHandle m_computePipelines[ComputePass_Count];
 	bool m_computeTried[ComputePass_Count] = {};   // 한 번 만들어 보고 실패하면 (컴퓨트 미지원 백엔드) 매 프레임 다시 시도하지 않음
 	RenderSettings m_settings;
@@ -909,6 +1001,9 @@ private:
 	bool m_postCaptureRequested = false;   // 창이 이번 프레임에 요청함 → 다음 Render 가 읽고 지움
 	bool m_postCapture = false;            // 이번 Render 가 캡처함
 	const Camera* m_previewCamera = nullptr;
+	float m_frameDeltaTime = 1.0f / 60.0f;   // SetFrameDeltaTime
+	uint64_t m_previewSourceId = 0;          // 이번 프레임 미리보기 카메라의 오브젝트 id (SetPreviewCamera)
+	uint64_t m_previewLastSourceId = 0;      // 지난번 미리보기를 그린 오브젝트 id. 다르면 미리보기 뷰 히스토리 리셋
 	bool m_shadowEnabledThisFrame = false;
 	ShadowView m_shadowViews[MAX_SHADOW_VIEWS];
 	uint32_t m_shadowViewCount = 0;
@@ -930,6 +1025,8 @@ private:
 	std::vector<DrawItem> m_drawList;
 	std::vector<const DrawItem*> m_blendedScratch;   // DrawItems 가 뷰마다 거리순으로 다시 정렬하는 블렌딩 항목 (재사용 버퍼)
 	std::vector<ObjectData> m_objects;               // 이번 프레임에 그릴 오브젝트 (DrawItem::object 가 가리킴). BuildDrawList 가 채움
+	MotionHistory m_motion[2];                       // 속도 버퍼의 오브젝트 상태. [m_motionCurrent] = 이번 프레임, 나머지 = 지난 프레임
+	uint32_t m_motionCurrent = 0;
 	// BuildDrawList 의 계층 순회 스택. 프레임마다 재사용함. 칸 하나 = 자식이 있는 오브젝트 하나 + 그 월드 행렬 + 다음에 방문할 자식 번호.
 	struct HierarchyFrame
 	{

@@ -1,17 +1,18 @@
 // 메시 그리기: 오브젝트 셋 (Layout_Object) 과 정점 입출력.
 // 상수버퍼 배치는 Graphics/ShaderConstants.h 와 바이트 단위로 같아야 함.
 //
-//   b1 PerObject (VS), b7 Skin (스킨 VS)
+//   b1 PerObject (VS), b7 Skin (스킨 VS), b13 PrevSkin (스킨 VS, 속도 버퍼)
 #ifndef SHERLOCK_MESH_HLSLI
 #define SHERLOCK_MESH_HLSLI
 
 #include "Common.hlsli"
 
-// b1: 드로우마다. VS만. (128바이트)
+// b1: 드로우마다. VS만. (192바이트)
 cbuffer PerObject : register(b1)
 {
     matrix world;
     matrix worldInvTranspose;
+    matrix prevWorld;           // 지난 프레임 World. 처음 보는 오브젝트·그림자 패스는 world 와 같음 (속도 0)
 }
 
 // b7: 스키닝 조인트 행렬 팔레트. 스킨 VS(BasicSkinVertexShader, ShadowSkinVertexShader)만 읽음. (16384바이트)
@@ -31,6 +32,21 @@ matrix SkinMatrix(uint4 jointIndices, float4 jointWeights)
          + joints[jointIndices.w] * jointWeights.w;
 }
 
+// b13: 지난 프레임 팔레트 (b7 과 같은 배치). 메인·G-buffer 스킨 VS 가 속도용 이전 위치를 만들 때만 읽음. 지난 프레임이
+// 없는 오브젝트는 C++ 가 이번 팔레트를 그대로 올림 (속도 0).
+cbuffer PrevSkin : register(b13)
+{
+    matrix prevJoints[MAX_JOINTS];
+}
+
+matrix PrevSkinMatrix(uint4 jointIndices, float4 jointWeights)
+{
+    return prevJoints[jointIndices.x] * jointWeights.x
+         + prevJoints[jointIndices.y] * jointWeights.y
+         + prevJoints[jointIndices.z] * jointWeights.z
+         + prevJoints[jointIndices.w] * jointWeights.w;
+}
+
 struct VSInput
 {
     float3 position : POSITION;
@@ -48,6 +64,9 @@ struct VSOutput
     float2 uv : TEXCOORD0;
     float3 worldPosition : TEXCOORD1;
     float4 tangent : TANGENT0;
+    // 속도 버퍼: 같은 정점을 이번·지난 프레임의 지터 없는 행렬로 투영한 클립 좌표 (Velocity.hlsli 의 VelocityUV 가 받음)
+    float4 currClip : TEXCOORD2;
+    float4 prevClip : TEXCOORD3;
 };
 
 // 월드 행렬이 반사(행렬식 < 0, 예: scale -1 미러)이면 노멀((W⁻¹)ᵀ)과 탄젠트(W)가 따로 변환되어 cross(N, T) 의

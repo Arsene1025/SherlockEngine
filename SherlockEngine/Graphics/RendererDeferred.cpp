@@ -127,6 +127,7 @@ void Renderer::RenderDeferredScene(RHI::CommandList& cmd, const Scene& scene, Vi
 	// 발광 타깃(view.hdr)은 클리어 색으로 지움 — 라이팅이 깊이 1 픽셀을 버리므로 하늘이 없는 씬은 이 색이 배경으로 남음.
 	// G-buffer 의 클리어 값은 의미가 없음 (배경 픽셀은 라이팅이 읽지 않음).
 	cmd.Barrier(view.hdr, ResourceState::RenderTarget);
+	cmd.Barrier(view.velocity, ResourceState::RenderTarget);
 	cmd.Barrier(view.depth, ResourceState::DepthWrite);
 	for (const TextureHandle& texture : view.gbuffer)
 	{
@@ -143,8 +144,10 @@ void Renderer::RenderDeferredScene(RHI::CommandList& cmd, const Scene& scene, Vi
 				{ .texture = view.gbuffer[1], .load = LoadOp::Clear, .srgbView = false },
 				{ .texture = view.gbuffer[2], .load = LoadOp::Clear, .srgbView = false },
 				{ .texture = view.gbuffer[3], .load = LoadOp::Clear, .srgbView = false },
+				// 속도 (0 = 움직임 없음). 포워드 패스가 Load 로 이어 씀 (포워드 불투명·하늘)
+				{ .texture = view.velocity, .load = LoadOp::Clear, .srgbView = false, .clearColor = { 0.0f, 0.0f, 0.0f, 0.0f } },
 			},
-			.colorCount = 5,
+			.colorCount = 6,
 			.depth = { .texture = view.depth, .load = LoadOp::Clear },
 			.debugName = name.c_str(),
 		};
@@ -202,8 +205,8 @@ void Renderer::RenderDeferredScene(RHI::CommandList& cmd, const Scene& scene, Vi
 	{
 		const std::string name = base + "Forward";
 		const RenderPassDesc pass{
-			.colors = { { .texture = view.hdr, .load = LoadOp::Load } },
-			.colorCount = 1,
+			.colors = { { .texture = view.hdr, .load = LoadOp::Load }, { .texture = view.velocity, .load = LoadOp::Load } },
+			.colorCount = 2,
 			.depth = { .texture = view.depth, .load = LoadOp::Load },
 			.debugName = name.c_str(),
 		};
@@ -239,7 +242,8 @@ PipelineHandle Renderer::GetGBufferPipelineFor(const Material& material, VertexF
 	{
 		desc.rtvFormats[1 + i] = kGBufferFormats[i];
 	}
-	desc.rtvCount = 5;
+	desc.rtvFormats[5] = kVelocityFormat;   // 속도 (GBufferPixelShader 의 SV_Target5)
+	desc.rtvCount = 6;
 	desc.dsvFormat = Format::D24_UNORM_S8_UINT;
 	const PipelineHandle handle = m_device->CreatePipeline(desc);
 	if (handle.IsValid())

@@ -77,6 +77,27 @@ void AppBase::ApplyRenderPathOptions(RenderSettings& settings)
 	{
 		settings.ssaoOverride = ssao != L"0" ? 1 : 0;
 	}
+	const std::wstring motionBlur = GetCommandLineOption(L"motion-blur");   // 모션 블러 — 씬 값 덮어쓰기
+	if (!motionBlur.empty())
+	{
+		settings.motionBlurOverride = motionBlur != L"0" ? 1 : 0;
+	}
+	const std::wstring motionBlurFps = GetCommandLineOption(L"motion-blur-fps");   // 모션 블러 기준 fps (0 = 맞추지 않음) — 씬 값 덮어쓰기
+	if (!motionBlurFps.empty())
+	{
+		settings.motionBlurFpsOverride = static_cast<float>(_wtof(motionBlurFps.c_str()));
+	}
+	const std::wstring frameDt = GetCommandLineOption(L"frame-dt");   // 모션 블러 보정용 프레임 시간 고정 (검증용, 초)
+	if (!frameDt.empty())
+	{
+		settings.frameDeltaOverride = static_cast<float>(_wtof(frameDt.c_str()));
+	}
+	const std::wstring taa = GetCommandLineOption(L"taa");   // TAA — 씬 값 덮어쓰기
+	if (!taa.empty())
+	{
+		settings.taaOverride = taa != L"0" ? 1 : 0;
+	}
+	flag(L"taa-jitter", settings.taaJitter);   // TAA 지터 (검증용으로 끔)
 }
 
 std::wstring AppBase::GetCommandLineOption(const wchar_t* name)

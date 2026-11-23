@@ -140,6 +140,43 @@ void EditorApp::ParseAutomation()
 	m_auto.redoCount = _wtoi(GetCommandLineOption(L"redo").c_str());
 	m_auto.saveAfterPath = resolve(GetCommandLineOption(L"save-after"));
 	m_auto.gesture = !GetCommandLineOption(L"gesture").empty();
+	// 움직임 플래그. 이름에 쉼표가 있어도 되게 숫자는 뒤에서부터 떼어 냄.
+	const auto splitName = [](const std::wstring& spec, int numbers, std::string& name) -> std::wstring
+	{
+		size_t cut = spec.size();
+		for (int i = 0; i < numbers && cut != std::wstring::npos && cut > 0; ++i)
+		{
+			cut = spec.rfind(L',', cut - 1);
+		}
+		if (cut == std::wstring::npos)
+		{
+			name.clear();
+			return std::wstring();
+		}
+		name = Log::ToUtf8(spec.substr(0, cut).c_str());
+		return spec.substr(cut + 1);
+	};
+	m_auto.camOrbitDeg = static_cast<float>(_wtof(GetCommandLineOption(L"cam-orbit").c_str()));
+	const std::wstring spin = GetCommandLineOption(L"spin");
+	if (!spin.empty())
+	{
+		m_auto.spinDeg = static_cast<float>(_wtof(splitName(spin, 1, m_auto.spinName).c_str()));
+	}
+	const std::wstring camMove = GetCommandLineOption(L"cam-move");
+	if (!camMove.empty())
+	{
+		m_auto.camMove = swscanf_s(camMove.c_str(), L"%f,%f,%f", &m_auto.camMoveDelta.x, &m_auto.camMoveDelta.y, &m_auto.camMoveDelta.z) == 3;
+	}
+	const std::wstring move = GetCommandLineOption(L"move");
+	if (!move.empty())
+	{
+		const std::wstring numbers = splitName(move, 3, m_auto.moveName);
+		if (swscanf_s(numbers.c_str(), L"%f,%f,%f", &m_auto.moveDelta.x, &m_auto.moveDelta.y, &m_auto.moveDelta.z) != 3)
+		{
+			m_auto.moveName.clear();
+		}
+	}
+	m_auto.eventFrame = static_cast<uint64_t>(_wtoi64(GetCommandLineOption(L"event-frame").c_str()));
 	Log::Info("자동 검증: exit-after %llu, pick %d, set-position %d, save '%s', load '%s', screenshot '%s', dump %d", m_auto.exitAfter, m_auto.pick ? 1 : 0, m_auto.setPosition ? 1 : 0, Log::ToUtf8(m_auto.savePath.c_str()).c_str(), Log::ToUtf8(m_auto.loadPath.c_str()).c_str(), Log::ToUtf8(m_auto.screenshotPath.c_str()).c_str(), m_auto.dumpObjects ? 1 : 0);
 }
 
@@ -166,12 +203,57 @@ void EditorApp::RunAutomation()
 		return scene.GetObject(selected < 0 ? SIZE_MAX : static_cast<size_t>(selected));
 	};
 
+	// --event-frame 이 있으면 한 번만 일어나는 동작을 그 프레임으로 옮김 (없으면 원래 프레임)
+	const auto eventAt = [&a](uint64_t usual)
+	{
+		return a.eventFrame != 0 ? a.eventFrame : usual;
+	};
+
+	// ---- 프레임마다: 움직임 (속도 버퍼·모션 블러·TAA 검증). 2 프레임째부터 — 1 프레임째는 속도의 "이전"이 없음 ----
+	if (frame >= 2)
+	{
+		Camera& camera = engine.GetCamera();
+		if (a.camOrbitDeg != 0.0f)
+		{
+			camera.Rotate(XMConvertToRadians(a.camOrbitDeg), 0.0f);
+		}
+		if (a.camMove)
+		{
+			const XMFLOAT3& p = camera.GetPosition();
+			camera.SetPosition(XMFLOAT3(p.x + a.camMoveDelta.x, p.y + a.camMoveDelta.y, p.z + a.camMoveDelta.z));
+		}
+		if (!a.spinName.empty() && m_playState == PlayState::Editing)
+		{
+			if (GameObject* object = scene.FindObject(a.spinName))
+			{
+				XMFLOAT3 r = object->GetTransform().GetRotation();
+				r.y += XMConvertToRadians(a.spinDeg);
+				object->GetTransform().SetRotation(r);
+			}
+			else if (frame == 2)
+			{
+				Log::Warn("자동 검증: spin 대상 '%s' 를 찾지 못함", a.spinName.c_str());
+			}
+		}
+		if (!a.moveName.empty() && m_playState == PlayState::Editing)
+		{
+			if (GameObject* object = scene.FindObject(a.moveName))
+			{
+				object->GetTransform().Translate(a.moveDelta);
+			}
+			else if (frame == 2)
+			{
+				Log::Warn("자동 검증: move 대상 '%s' 를 찾지 못함", a.moveName.c_str());
+			}
+		}
+	}
+
 	// ---- 프레임이 인자로 정해지는 것 (CSM 디버그): 디버그 뷰(2) → 고정(N) → 카메라 이동(N+1, 고정이 없으면 3) → 종료 시 스크린샷 ----
 	at(a.freezeCascadesAt, a.freezeCascadesAt != 0, [&]
 	{
 		engine.GetRenderer().SetCascadeFreeze(true, engine.GetCamera());
 	});
-	at(a.freezeCascadesAt != 0 ? a.freezeCascadesAt + 1 : 3, a.camLook, [&]
+	at(eventAt(a.freezeCascadesAt != 0 ? a.freezeCascadesAt + 1 : 3), a.camLook, [&]
 	{
 		engine.GetCamera().SetLookAt(a.camEye, a.camTarget);
 	});
@@ -258,7 +340,7 @@ void EditorApp::RunAutomation()
 	});
 
 	// ---- 5: 선택 ----
-	at(5, !a.selectName.empty(), [&]
+	at(eventAt(5), !a.selectName.empty(), [&]
 	{
 		int found = -1;
 		for (size_t i = 0; i < scene.GetObjects().size() && found < 0; ++i)
@@ -293,7 +375,7 @@ void EditorApp::RunAutomation()
 			PlaceModel(a.dropPath, position);
 		});
 	});
-	at(6, !a.deleteName.empty(), [&]
+	at(eventAt(6), !a.deleteName.empty(), [&]   // --event-frame 이면 그 프레임에 (재생 중 활성 카메라를 지워 카메라 컷 만들기)
 	{
 		GameObject* target = scene.FindObject(a.deleteName);
 		if (target == nullptr)
@@ -425,7 +507,7 @@ void EditorApp::RunAutomation()
 	});
 
 	// ---- 11: 복제·프리팹 저장·프리팹 배치 — Ctrl+D·Save Prefab·씬 뷰 드롭이 부르는 함수를 그대로 부름. 끌기 흉내 끝 ----
-	at(11, !a.duplicateName.empty(), [&]
+	at(eventAt(11), !a.duplicateName.empty(), [&]
 	{
 		GameObject* target = scene.FindObject(a.duplicateName);
 		if (target == nullptr)
@@ -455,7 +537,7 @@ void EditorApp::RunAutomation()
 			});
 		}
 	});
-	at(11, !a.instantiatePath.empty(), [&]
+	at(eventAt(11), !a.instantiatePath.empty(), [&]
 	{
 		RunCommand("Instantiate prefab", [&]()
 		{
@@ -472,7 +554,7 @@ void EditorApp::RunAutomation()
 	{
 		SaveSceneFile(a.savePath);
 	});
-	at(14, a.undoCount > 0, [&]
+	at(eventAt(14), a.undoCount > 0, [&]
 	{
 		for (int i = 0; i < a.undoCount; ++i)
 		{
@@ -486,7 +568,7 @@ void EditorApp::RunAutomation()
 			UndoRedo(false);
 		}
 	});
-	at(16, !a.loadPath.empty(), [&]
+	at(eventAt(16), !a.loadPath.empty(), [&]
 	{
 		LoadSceneFile(a.loadPath);
 	});

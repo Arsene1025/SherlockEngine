@@ -86,4 +86,20 @@ struct EditorAutomation
 	//                          11 프레임째 끝냄 → TrackHistory/EditorHistory::UpdateGesture 경로가 한
 	//                          단계를 만드는지 확인
 	bool gesture = false;
+	// 움직임 (속도 버퍼·모션 블러·TAA 검증, docs/plan/velocity-motionblur-taa-plan.html). 프레임마다 고정량이라 실행마다 같은 화면.
+	//   --cam-orbit=도          에디터 카메라를 프레임마다 그 각도만큼 수직축으로 돌림 (제자리 yaw)
+	//   --spin=이름,도          편집 모드에서 그 오브젝트를 프레임마다 y 축으로 그 각도만큼 돌림 (되돌리기 기록 없음)
+	//   --cam-move=dx,dy,dz     에디터 카메라를 프레임마다 월드 벡터만큼 옮김
+	//   --move=이름,dx,dy,dz    그 오브젝트를 프레임마다 부모 축 벡터만큼 옮김. --cam-move 와 같은 벡터면 "카메라를 따라가는 오브젝트"
+	//   --event-frame=N         한 번만 일어나는 동작(--cam-look, --select, --duplicate, --instantiate, --undo, --load)을 N 프레임째에 검.
+	//                           동작과 스크린샷 요청이 같은 OnUpdate 에서 렌더 전에 실행되므로 N = exit-after − 1 이면 스크린샷이
+	//                           "사건 직후 첫 프레임"을 담음
+	float camOrbitDeg = 0.0f;
+	std::string spinName;
+	float spinDeg = 0.0f;
+	bool camMove = false;
+	DirectX::XMFLOAT3 camMoveDelta = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+	std::string moveName;
+	DirectX::XMFLOAT3 moveDelta = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
+	uint64_t eventFrame = 0;
 };

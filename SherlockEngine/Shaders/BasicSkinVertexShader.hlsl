@@ -28,6 +28,10 @@ VSOutput VS_MainSkin(SkinVSInput vsInput)
 
     vsOutput.position = mul(worldPosition, viewProj);
     vsOutput.worldPosition = worldPosition.xyz;
+    // 속도: 지난 프레임 팔레트로 스킨한 위치를 지난 World·지난 viewProj 로 (지터 없음)
+    const float4 prevSkinnedPosition = mul(float4(vsInput.position, 1.0f), PrevSkinMatrix(vsInput.jointIndices, vsInput.jointWeights));
+    vsOutput.currClip = mul(worldPosition, unjitteredViewProj);
+    vsOutput.prevClip = mul(mul(prevSkinnedPosition, prevWorld), prevUnjitteredViewProj);
     vsOutput.col = vsInput.col;
     vsOutput.uv = vsInput.uv * uvScale;
     vsOutput.normal = normalize(mul(float4(skinnedNormal, 0.0f), worldInvTranspose).xyz);

@@ -601,7 +601,7 @@ void Renderer::RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas)
 				lastMesh = item.gpuMesh;
 				++m_stats.meshSwitches;
 			}
-			UploadObjectConstants(item.object);
+			UploadObjectConstants(item.object, false);   // 그림자는 속도를 쓰지 않음 (b13 업로드 생략)
 			cmd.DrawIndexed(item.indexCount, item.indexStart, 0);
 			++m_stats.shadowDraws;
 		}

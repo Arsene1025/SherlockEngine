@@ -26,7 +26,7 @@
 static const float EPSILON = 0.0001f;
 static const float PI = 3.14159265f;
 
-// b0: 프레임에 한 번 (뷰마다 — 미리보기 패스가 다른 카메라로 다시 올림). VS와 PS 모두 읽음. (432바이트)
+// b0: 프레임에 한 번 (뷰마다 — 미리보기 패스가 다른 카메라로 다시 올림). VS와 PS 모두 읽음. (576바이트)
 cbuffer PerFrame : register(b0)
 {
     matrix view;
@@ -45,6 +45,10 @@ cbuffer PerFrame : register(b0)
     float4 clusterParams;     // x = 클러스터드 켜짐, y = 원근(1)/직교(0), z = near, w = far
     float4 clusterDepth;      // slice = floor(f(z) · x + y). 원근 f = log2, 직교 f = z
     float4 aoParams;          // x = SSAO 결과 있음, y = 0 min(재질 AO, SSAO) / 1 곱
+    // 속도 버퍼·TAA. proj·viewProj·invViewProj 는 TAA 가 켜지면 지터가 들어간 값이고, 속도는 아래 지터 없는 두 행렬로 계산함
+    matrix unjitteredViewProj;      // 이번 프레임, 지터 없음
+    matrix prevUnjitteredViewProj;  // 지난 프레임, 지터 없음 (이 뷰에 지난 프레임이 없으면 unjitteredViewProj 와 같음)
+    float4 temporalParams;          // xy = 이번 지터 (NDC), z = TAA 히스토리 유효, w = 지터 위상 (0~7)
 }
 
 // 깊이 버퍼 값(0..1) → 뷰 공간 z (카메라 앞쪽 거리). LH 투영: 원근 d = (P22 · z + P32) / z, 직교 d = P22 · z + P32.

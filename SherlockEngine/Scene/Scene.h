@@ -197,6 +197,14 @@ public:
 	// 이전 시점에서 보간함. 카메라가 없으면 에디터 카메라를 그대로 씀.
 	CameraComponent* FindActiveCamera();
 	CameraComponent* GetActiveCamera() const { return m_activeCamera; }
+	// 지난 호출 뒤로 활성 카메라가 보간 없이 바뀌었는가 (재생 시작·blendTime 0 전환). 읽으면 지움.
+	// Engine::Render 가 참이면 렌더러의 속도·TAA 히스토리를 버림 — 컷 프레임이 앞 카메라 화면과 섞이지 않게.
+	bool ConsumeCameraCut()
+	{
+		const bool cut = m_cameraCut;
+		m_cameraCut = false;
+		return cut;
+	}
 
 	const std::vector<std::shared_ptr<const Mesh>>& GetMeshes() const { return m_meshes; }
 
@@ -231,7 +239,8 @@ private:
 	bool m_playing = false;
 	PlayContext m_playContext;
 	CameraComponent* m_activeCamera = nullptr;
-	CameraPose m_blendFrom;   // 전환 시작 시점의 카메라 자세 (회전은 쿼터니언, slerp 로 보간)
+	bool m_cameraCut = false;   // 보간 없는 카메라 전환이 있었음 (ConsumeCameraCut)
+	CameraPose m_blendFrom;     // 전환 시작 시점의 카메라 자세 (회전은 쿼터니언, slerp 로 보간)
 	float m_blendElapsed = 0.0f;
 	float m_blendDuration = 0.0f;
 

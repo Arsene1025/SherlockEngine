@@ -99,6 +99,14 @@ constexpr uint32_t kUAVSlotClusterGrid = 3;         // u3 = 프레임 셋 t30 (G
 constexpr uint32_t kUAVSlotClusterLights = 4;       // u4 = 프레임 셋 t31 (GPU 경로의 버퍼)
 constexpr uint32_t kUAVSlotClusterStats = 5;        // u5 통계 (uint × kClusterStatCount). 메인 뷰 것만 CPU 로 읽음
 
+// ---- 속도 버퍼 · 모션 블러 · TAA (docs/plan/velocity-motionblur-taa-plan.html) ----
+constexpr uint32_t kCBSlotPrevSkin = 13;   // b13 (오브젝트 셋, VS). 지난 프레임 스키닝 팔레트 (SkinConstants 와 같은 배치). kCBSlotClusterBin 과 같은 번호지만 그쪽은 CS 비닝 셋 전용이라 한 패스에 같이 묶이지 않음
+// 시간 셋 (Layout_Temporal, 뷰마다): b0, b4, t13 입력, t23 깊이, t7 속도, t24 히스토리, s6. 속도 디버그·모션 블러·TAA PS.
+// RHI 의 SRV 레지스터 상한이 t31 이라 빈 자리 t7 을 쓰고, 히스토리는 파티클 정렬 셋(CS 전용)의 t24 를 같이 씀 — 두 셋이
+// 한 패스에 함께 묶이지 않으므로 겹치지 않음 (t23 을 파티클·G-buffer·SSAO 셋이 같이 쓰는 것과 같음).
+constexpr uint32_t kSRVSlotVelocity = 7;   // t7 속도 R16G16_FLOAT: uv(현재) − uv(이전), 지터 없음. kSRVSlotLightBounds(CS 비닝 셋)와 같은 번호, 같은 패스에 묶이지 않음
+constexpr uint32_t kSRVSlotHistory = 24;   // t24 TAA 히스토리 R16G16B16A16_FLOAT (지난 프레임 결과)
+
 // 클러스터 격자. Shaders/Clusters.hlsli 의 CLUSTER_X/Y/Z 와 같아야 함. 16:9 화면에서 타일이 거의 정사각형.
 constexpr uint32_t kClusterGridX = 16;
 constexpr uint32_t kClusterGridY = 9;
@@ -180,6 +188,14 @@ struct alignas(16) PerFrameConstants
 	DirectX::XMFLOAT4 clusterDepth;
 	// SSAO. x = 켜짐(이번 뷰에 SSAO 결과가 있음), y = 합치는 방식 (0 = min(재질 AO, SSAO), 1 = 곱), zw = 미사용
 	DirectX::XMFLOAT4 aoParams;
+	// ---- 속도 버퍼 · TAA. 모두 "이 뷰" 기준 (뷰마다 지난 프레임 행렬을 따로 가짐 — Renderer::TemporalState) ----
+	// 이번 프레임 viewProj, 지터 없음 (전치). 위의 proj·viewProj·invViewProj 는 TAA 가 켜지면 지터가 들어간 값이고,
+	// 속도는 지터 없는 두 행렬로 계산함 — 지터가 속도에 들어가면 정지 화면에서도 속도가 0 이 아님.
+	DirectX::XMFLOAT4X4 unjitteredViewProj;
+	// 지난 프레임 viewProj, 지터 없음 (전치). 이 뷰에 지난 프레임이 없으면 (첫 프레임·리사이즈·리셋) unjitteredViewProj 와 같음.
+	DirectX::XMFLOAT4X4 prevUnjitteredViewProj;
+	// x, y = 이번 지터 (NDC), z = 이 뷰의 TAA 히스토리가 유효(1)/아님(0), w = 지터 위상 (0~7)
+	DirectX::XMFLOAT4 temporalParams;
 };
 
 // 후처리 패스 파라미터 (b4). 패스마다 올림 — 업로드 링을 쓰므로 프레임 안에서 여러 번 올려도 됨 (b0 가
@@ -205,6 +221,7 @@ struct alignas(16) PerObjectConstants
 {
 	DirectX::XMFLOAT4X4 world;
 	DirectX::XMFLOAT4X4 worldInvTranspose;
+	DirectX::XMFLOAT4X4 prevWorld;   // 지난 프레임 World (전치). 처음 보는 오브젝트·그림자 패스는 world 와 같음 (속도 0)
 };
 
 // b7 Skin — 스키닝 메시를 그릴 때만 올림. 앞의 n 개만 올려도 됨 (셰이더는 정점이 가리키는 조인트만 읽음).
@@ -212,6 +229,8 @@ struct alignas(16) SkinConstants
 {
 	DirectX::XMFLOAT4X4 joints[kMaxSkinJoints];   // 전치해서 저장
 };
+// b13 PrevSkin — 지난 프레임 팔레트. 같은 배치라 같은 구조체를 씀 (HLSL cbuffer PrevSkin). 스키닝 드로우가 속도를 쓸 때만 채움.
+using PrevSkinConstants = SkinConstants;
 
 // 조명 하나의 GPU 배치. HLSL(Shaders/Lighting.hlsli 의 LightData)과 메모리 배치가 바이트 단위로 같아야 함.
 // 씬의 Light (Scene/Light.h) 를 Renderer 가 프레임마다 이것으로 옮겨 구조체 버퍼(t15)에 올림.
@@ -423,7 +442,10 @@ static_assert(IsValidConstantBufferSize(sizeof(ShadowConstants)), "ShadowConstan
 static_assert(sizeof(PostParamsConstants) == 80, "PostParamsConstants: 16 * 5");
 
 // lightViewProj 삭제 후: view/proj/viewProj(64*3) + 16 * 6
-static_assert(sizeof(PerFrameConstants) == 432, "PerFrameConstants: 64*3 + 16 * 7 + 64 + 16 * 4");
+static_assert(sizeof(PerFrameConstants) == 576, "PerFrameConstants: 64*3 + 16 * 7 + 64 + 16 * 4 + 64 * 2 + 16");
+static_assert(offsetof(PerFrameConstants, unjitteredViewProj) == 432, "PerFrameConstants.unjitteredViewProj");
+static_assert(offsetof(PerFrameConstants, prevUnjitteredViewProj) == 496, "PerFrameConstants.prevUnjitteredViewProj");
+static_assert(offsetof(PerFrameConstants, temporalParams) == 560, "PerFrameConstants.temporalParams");
 static_assert(offsetof(PerFrameConstants, invViewProj) == 304, "PerFrameConstants.invViewProj");
 static_assert(offsetof(PerFrameConstants, screenParams) == 368, "PerFrameConstants.screenParams");
 static_assert(offsetof(PerFrameConstants, clusterParams) == 384, "PerFrameConstants.clusterParams");
@@ -440,7 +462,8 @@ static_assert(offsetof(PerFrameConstants, outputParams) == 256, "PerFrameConstan
 static_assert(offsetof(PerFrameConstants, shadowExtra) == 272, "PerFrameConstants.shadowExtra");
 static_assert(offsetof(PerFrameConstants, iblTint) == 288, "PerFrameConstants.iblTint");
 
-static_assert(sizeof(PerObjectConstants) == 128, "PerObjectConstants: 64*2");
+static_assert(sizeof(PerObjectConstants) == 192, "PerObjectConstants: 64*3");
+static_assert(offsetof(PerObjectConstants, prevWorld) == 128, "PerObjectConstants.prevWorld");
 static_assert(IsValidConstantBufferSize(sizeof(SkinConstants)), "SkinConstants 는 16의 배수여야 함");
 static_assert(sizeof(SkinConstants) == 64 * kMaxSkinJoints, "SkinConstants: 64 * 조인트 수 (HLSL cbuffer Skin)");
 static_assert(offsetof(PerObjectConstants, worldInvTranspose) == 64, "PerObjectConstants.worldInvTranspose");

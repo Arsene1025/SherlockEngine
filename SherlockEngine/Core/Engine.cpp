@@ -124,6 +124,11 @@ void Engine::Render()
 			// (Render 가 일찍 끝나는 프레임에도 선이 다음 프레임으로 새지 않음)
 			ApplyRestSkinPoses(m_scene);   // 팔레트가 비어 있는 스킨 오브젝트(편집 모드 등)에 기본 자세를 채움. 본 표시도 이 포즈를 읽음
 			DrawSkeletonDebug(m_debugDraw, m_scene, m_renderer.GetSettings().debugBones);
+			if (m_scene.ConsumeCameraCut())
+			{
+				m_renderer.ResetTemporalHistory();   // 카메라 컷: 속도·TAA 의 지난 프레임이 다른 카메라 것
+			}
+			m_renderer.SetFrameDeltaTime(m_time.GetDeltaTime());   // 모션 블러의 기준 fps 보정용 (이번 프레임에 장면을 움직인 dt)
 			m_renderer.Render(m_scene, m_camera, m_time.GetTotalTime(), m_debugDraw);
 			m_debugDraw.Clear();
 		}

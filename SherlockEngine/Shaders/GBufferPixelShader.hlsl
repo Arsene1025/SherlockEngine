@@ -4,6 +4,7 @@
 // (C++ Renderer::CanUseDeferred).
 #include "MaterialSurface.hlsli"
 #include "GBuffer.hlsli"
+#include "Velocity.hlsli"
 
 struct GBufferOutput
 {
@@ -12,6 +13,7 @@ struct GBufferOutput
     float4 gb1 : SV_Target2;
     float4 gb2 : SV_Target3;
     float4 gb3 : SV_Target4;
+    float2 velocity : SV_Target5;   // view.velocity R16G16_FLOAT (Velocity.hlsli)
 };
 
 GBufferOutput PS_GBuffer(VSOutput input, bool isFrontFace : SV_IsFrontFace)
@@ -32,5 +34,6 @@ GBufferOutput PS_GBuffer(VSOutput input, bool isFrontFace : SV_IsFrontFace)
     o.gb1 = float4(EncodeOct(s.normal), EncodeOct(s.geometricNormal));
     o.gb2 = float4(s.F0, s.roughness);
     o.gb3 = float4(s.metallic, s.F90, s.clearcoat, s.clearcoatRoughness);
+    o.velocity = VelocityUV(input.currClip, input.prevClip);
     return o;
 }

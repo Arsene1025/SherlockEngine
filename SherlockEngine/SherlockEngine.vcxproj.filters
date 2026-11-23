@@ -571,6 +571,15 @@
     <FxCompile Include="Shaders\ParticlePixelShader.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\VelocityDebugPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\MotionBlurPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\TaaPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\SsaoBlurPixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
@@ -585,6 +594,12 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Shaders\Velocity.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Temporal.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
     <None Include="Shaders\Shading.hlsli">
       <Filter>Shaders</Filter>
     </None>

@@ -400,6 +400,10 @@ void Scene::ApplyActiveCamera(float dt)
 		m_blendDuration = m_activeCamera != nullptr ? (std::max)(0.0f, next->blendTime) : 0.0f;
 		m_blendElapsed = 0.0f;
 		m_activeCamera = next;
+		if (m_blendDuration <= 0.0f)
+		{
+			m_cameraCut = true;   // 즉시 전환 = 화면이 끊김 → 렌더러가 지난 프레임을 버려야 함
+		}
 		Log::Info("활성 카메라: %s (priority %d%s)", next->GetOwner().GetName().c_str(), next->priority, m_blendDuration > 0.0f ? ", 블렌드" : "");
 	}
 

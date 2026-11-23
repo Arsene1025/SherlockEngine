@@ -79,7 +79,24 @@ bool Renderer::CreateViewTarget(ViewTarget& view, uint32_t width, uint32_t heigh
 		view.hdrSet = CreatePostSet(view.hdr, setName.c_str());
 	}
 
-	if (!view.IsValid() || (withColor && !view.color.IsValid()))
+	// 속도 버퍼 (R16G16_FLOAT): uv(이번) − uv(지난). G-buffer 패스·포워드 패스가 RT 로 쓰고 후처리가 t7 로 읽음.
+	const std::string velocityName = base + "_Velocity";
+	view.velocity = m_device->CreateTexture(TextureDesc{
+		.width = width,
+		.height = height,
+		.format = kVelocityFormat,
+		.mipLevels = 1,
+		.bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource,
+		.debugName = velocityName.c_str(),
+	});
+	if (view.velocity.IsValid() && view.hdr.IsValid() && view.depth.IsValid())
+	{
+		// 시간 셋: 입력 = hdr, 히스토리 자리는 흰 텍스처 (TAA 셋만 진짜 히스토리를 꽂음)
+		view.temporalSet = CreateTemporalSet(view, view.hdr, m_textures.GetWhite(), ("Set_Temporal_" + base).c_str());
+		view.velocityDebugSet = CreateTemporalSet(view, m_textures.GetWhite(), m_textures.GetWhite(), ("Set_VelocityDebug_" + base).c_str());
+	}
+
+	if (!view.IsValid() || !view.velocity.IsValid() || !view.temporalSet.IsValid() || !view.velocityDebugSet.IsValid() || (withColor && !view.color.IsValid()))
 	{
 		DestroyViewTarget(view);
 		return false;
@@ -93,16 +110,39 @@ bool Renderer::CreateViewTarget(ViewTarget& view, uint32_t width, uint32_t heigh
 	return true;
 }
 
+ResourceSetHandle Renderer::CreateTemporalSet(const ViewTarget& view, TextureHandle input, TextureHandle history, const char* debugName)
+{
+	// 슬롯 순서 = CreateLayouts 의 temporalLayout.Add 순서: b0, b4, t13 입력, t23 깊이, t7 속도, t24 히스토리, s6.
+	return m_device->CreateResourceSet(ResourceSetDesc{
+		.layout = m_layouts[Layout_Temporal],
+		.bindings = { { .buffer = m_perFrameCB }, { .buffer = m_postParamsCB }, { .texture = input }, { .texture = view.depth }, { .texture = view.velocity }, { .texture = history }, { .sampler = GetSampler(SamplerPreset::LinearClamp) } },
+		.debugName = debugName,
+	});
+}
+
 void Renderer::DestroyViewTarget(ViewTarget& view)
 {
 	if (m_device != nullptr)
 	{
 		// D3D12 는 지연 해제라 이미 기록된 명령(이번 프레임의 ImGui 드로우 등)이 읽어도 안전함. D3D11 은
 		// 참조 카운트로 처리됨.
-		DestroyGBuffer(view);   // G-buffer 셋이 깊이를 가리키므로 깊이보다 먼저 (SSAO 타깃도 함께)
+		DestroyGBuffer(view);      // G-buffer 셋이 깊이를 가리키므로 깊이보다 먼저 (SSAO 타깃도 함께)
+		DestroyTaaTargets(view);   // TAA 셋이 깊이·속도·hdr 를 가리킴
 		if (view.hdrSet.IsValid())
 		{
 			m_device->DestroyResourceSet(view.hdrSet);
+		}
+		if (view.temporalSet.IsValid())
+		{
+			m_device->DestroyResourceSet(view.temporalSet);
+		}
+		if (view.velocityDebugSet.IsValid())
+		{
+			m_device->DestroyResourceSet(view.velocityDebugSet);
+		}
+		if (view.velocity.IsValid())
+		{
+			m_device->DestroyTexture(view.velocity);
 		}
 		if (view.particleDepthSet.IsValid())
 		{

@@ -391,7 +391,7 @@ void DebugUI::DrawPostStagesWindow(Renderer& renderer, RHI::Device& device)
 	if (ImGui::Begin("Post Stages", &g_showPostStages))
 	{
 		ImGui::SetWindowFontScale(1.5f);   // 글씨 기본 1.5배
-		ImGui::TextDisabled("HDR 결과를 톤매핑해 본 모습. Scene/Blur/Bloom 은 색 효과(Greyscale) 전, Final 은 후처리 + 색 효과 후.");
+		ImGui::TextDisabled("HDR 결과를 톤매핑해 본 모습. Scene/TAA/Motion/Blur/Bloom 은 색 효과(Greyscale) 전, Final 은 후처리 + 색 효과 후.");
 		const uint32_t sourceW = renderer.GetPostStageWidth();
 		const uint32_t sourceH = renderer.GetPostStageHeight();
 		if (sourceW == 0)
@@ -469,11 +469,24 @@ void DebugUI::DrawEnvironmentPanel(Scene& scene)
 	SameLineIfFits(CheckboxWidth("ACES tone mapping"));
 	ImGui::Checkbox("ACES tone mapping", &env.toneMapping);
 
-	// 후처리. 순서는 Renderer 가 고정함 (HDR 구간: 블러 → 블룸, 톤 패스: 노출 → ACES → 색 효과).
+	// 후처리. 순서는 Renderer 가 고정함 (HDR 구간: TAA → 모션 블러 → 블러 → 블룸, 톤 패스: 노출 → ACES → 색 효과).
 	// 환경의 일부라 씬 JSON 과 되돌리기 이력에 함께 들어감.
 	if (ImGui::TreeNodeEx("Post process", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		PostProcessSettings& post = env.post;
+		ImGui::Checkbox("TAA", &post.taaEnabled);
+		if (post.taaEnabled)
+		{
+			SliderFloatR("TAA feedback (current weight)", &post.taaFeedback, kEnvironmentDefaults.post.taaFeedback, 0.02f, 1.0f, "%.2f");
+		}
+		ImGui::Checkbox("Motion blur", &post.motionBlurEnabled);
+		if (post.motionBlurEnabled)
+		{
+			SliderFloatR("Intensity (shutter, 0.5 = 180 deg)", &post.motionBlurIntensity, kEnvironmentDefaults.post.motionBlurIntensity, 0.0f, 1.0f, "%.2f");
+			SliderFloatR("Target FPS (0 = per frame)", &post.motionBlurTargetFps, kEnvironmentDefaults.post.motionBlurTargetFps, 0.0f, 240.0f, "%.0f");
+			SliderFloatR("Max length (px @720p)", &post.motionBlurMaxRadius, kEnvironmentDefaults.post.motionBlurMaxRadius, 1.0f, 64.0f, "%.0f");
+			ImGui::SliderInt("Motion blur samples", &post.motionBlurSamples, 4, 32);
+		}
 		ImGui::Checkbox("Gaussian blur", &post.blurEnabled);
 		if (post.blurEnabled)
 		{

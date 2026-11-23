@@ -122,7 +122,89 @@ void Renderer::RenderTonemapPass(RHI::CommandList& cmd, ResourceSetHandle hdrSet
 						});
 }
 
-bool Renderer::EnsurePostScratch(PostScratch& scratch, TextureHandle hdr, uint32_t width, uint32_t height, bool needBlur, bool needBloom)
+PipelineHandle Renderer::GetTemporalPipeline(PassId pass)
+{
+	PipelineHandle& cached = m_temporalPipelines[pass];
+	if (cached.IsValid()) return cached;
+	// 시간 셋 풀스크린 패스 (속도 디버그·모션 블러·TAA): FP16 출력 1장 (hdr·스크래치·히스토리), 깊이 없음.
+	PipelineStateDesc desc = m_passDesc[pass];
+	desc.rtvFormats[0] = Format::R16G16B16A16_FLOAT;
+	desc.rtvCount = 1;
+	cached = m_device->CreatePipeline(desc);
+	return cached;
+}
+
+bool Renderer::TaaActive() const
+{
+	// 디버그 뷰는 조명 결과가 아니라 섞으면 읽을 수 없음 → TAA 도 지터도 끔 (뷰를 끈 첫 프레임은 historyValid = false 로 새로 시작)
+	return m_postSettings.taaEnabled && m_settings.debugView == 0;
+}
+
+bool Renderer::EnsureTaaTargets(ViewTarget& view)
+{
+	if (view.history[0].IsValid()) return true;
+	if (m_device == nullptr || !view.hdr.IsValid() || !view.velocity.IsValid()) return false;
+	for (uint32_t i = 0; i < 2; ++i)
+	{
+		const std::string name = "TaaHistory" + std::to_string(i);
+		view.history[i] = m_device->CreateTexture(TextureDesc{
+			.width = view.width,
+			.height = view.height,
+			.format = Format::R16G16B16A16_FLOAT,   // hdr 와 같은 선형 FP16 (1 을 넘는 밝기를 그대로 섞음)
+			.mipLevels = 1,
+			.bindFlags = TextureBind_RenderTarget | TextureBind_ShaderResource,
+			.debugName = name.c_str(),
+		});
+		if (!view.history[i].IsValid()) break;
+		view.historyPostSet[i] = CreatePostSet(view.history[i], ("Set_TaaCopy" + std::to_string(i)).c_str());
+	}
+	for (uint32_t i = 0; i < 2 && view.history[1].IsValid(); ++i)
+	{
+		view.taaSet[i] = CreateTemporalSet(view, view.hdr, view.history[1 - i], ("Set_Taa" + std::to_string(i)).c_str());   // 읽기 = 다른 쪽
+	}
+	const bool ok = view.history[0].IsValid() && view.history[1].IsValid() && view.taaSet[0].IsValid() && view.taaSet[1].IsValid() && view.historyPostSet[0].IsValid() && view.historyPostSet[1].IsValid();
+	if (!ok)
+	{
+		Log::Error("TAA 히스토리 생성 실패 (%ux%u). TAA 를 건너뜀.", view.width, view.height);
+		DestroyTaaTargets(view);
+		return false;
+	}
+	view.temporal.historyValid = false;
+	view.temporal.current = 0;
+	Log::Info("TAA 히스토리 %ux%u x 2 (R16G16B16A16_FLOAT)", view.width, view.height);
+	return true;
+}
+
+void Renderer::DestroyTaaTargets(ViewTarget& view)
+{
+	if (m_device != nullptr)
+	{
+		for (uint32_t i = 0; i < 2; ++i)
+		{
+			if (view.taaSet[i].IsValid())
+			{
+				m_device->DestroyResourceSet(view.taaSet[i]);
+			}
+			if (view.historyPostSet[i].IsValid())
+			{
+				m_device->DestroyResourceSet(view.historyPostSet[i]);
+			}
+			if (view.history[i].IsValid())
+			{
+				m_device->DestroyTexture(view.history[i]);
+			}
+		}
+	}
+	for (uint32_t i = 0; i < 2; ++i)
+	{
+		view.taaSet[i] = ResourceSetHandle{};
+		view.historyPostSet[i] = ResourceSetHandle{};
+		view.history[i] = TextureHandle{};
+	}
+	view.temporal.historyValid = false;
+}
+
+bool Renderer::EnsurePostScratch(PostScratch& scratch, TextureHandle hdr, uint32_t width, uint32_t height, bool needTemp, bool needBloom)
 {
 	if (m_device == nullptr || width == 0 || height == 0) return false;
 	if (scratch.width != width || scratch.height != height)
@@ -150,7 +232,8 @@ bool Renderer::EnsurePostScratch(PostScratch& scratch, TextureHandle hdr, uint32
 		return texture.IsValid() && set.IsValid();
 	};
 
-	if (needBlur && !scratch.temp.IsValid())
+	// temp: 블러의 가로 패스 결과, 모션 블러의 출력 (둘 다 hdr 크기 FP16)
+	if (needTemp && !scratch.temp.IsValid())
 	{
 		if (!create(width, height, "PostTemp", scratch.temp, scratch.tempSet, TextureBind_UnorderedAccess))
 		{
@@ -158,7 +241,7 @@ bool Renderer::EnsurePostScratch(PostScratch& scratch, TextureHandle hdr, uint32
 			DestroyPostScratch(scratch);
 			return false;
 		}
-		Log::Info("후처리 스크래치(블러) %ux%u (R16G16B16A16_FLOAT)", width, height);
+		Log::Info("후처리 스크래치(블러·모션 블러) %ux%u (R16G16B16A16_FLOAT)", width, height);
 
 		// 컴퓨트 블러 셋. 슬롯 순서는 CreateLayouts 의 blurLayout.Add(...) 순서: b4, t13 입력, u0 출력, t20 가중치.
 		// 실패해도 (UAV 를 못 만드는 장치 등) 스크래치는 그대로 쓰고 PS 블러로 감.
@@ -258,7 +341,7 @@ void Renderer::EnsureStageThumbs(uint32_t hdrWidth, uint32_t hdrHeight)
 	if (width == m_thumbWidth && height == m_thumbHeight && m_stageThumbs[0].texture.IsValid()) return;
 
 	DestroyStageThumbs();
-	static const char* const kNames[kPostStageCount] = { "Scene", "Blur", "Bloom", "Final" };
+	static const char* const kNames[kPostStageCount] = { "Scene", "TAA", "Motion", "Blur", "Bloom", "Final" };   // PostStage 순서
 	for (uint32_t i = 0; i < kPostStageCount; ++i)
 	{
 		const TextureDesc desc{
@@ -317,6 +400,18 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 	const PostProcessSettings& post = m_postSettings;
 	bool blur = post.blurEnabled && post.blurRadius > 0.0f;
 	bool bloom = post.bloomEnabled && post.bloomIntensity > 0.0f;
+	// 모션 블러: 디버그 뷰(알베도·노멀·속도 …)에서는 건너뜀 — 디버그 색이 번지면 읽을 수 없음
+	bool motionBlur = post.motionBlurEnabled && post.motionBlurIntensity > 0.0f && m_settings.debugView == 0 && view.temporalSet.IsValid();
+	// TAA: 꺼졌거나 디버그 뷰인 프레임은 히스토리를 버림 → 다시 켠 첫 프레임은 이번 프레임을 그대로 히스토리로 씀
+	bool taa = TaaActive() && view.temporalSet.IsValid();
+	if (taa && !EnsureTaaTargets(view))
+	{
+		taa = false;
+	}
+	if (!taa)
+	{
+		view.temporal.historyValid = false;
+	}
 	// 블러는 PS·CS 두 경로 모두 컴퓨트로 쓴 가중치 버퍼를 읽음. 가중치 PSO 를 못 만들면 블러를 건너뜀.
 	const ComputePipelineHandle blurWeights = blur ? GetComputePipeline(ComputePass_BlurWeights) : ComputePipelineHandle{};
 	if (blur && !blurWeights.IsValid())
@@ -329,17 +424,126 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 		warned = true;
 		blur = false;
 	}
-	if ((blur || bloom) && !EnsurePostScratch(scratch, hdr, width, height, blur, bloom))
+	if ((blur || bloom || motionBlur) && !EnsurePostScratch(scratch, hdr, width, height, blur || motionBlur, bloom))
 	{
-		blur = bloom = false;   // 못 만들면 효과만 건너뜀 (씬은 그대로 나감)
+		blur = bloom = motionBlur = false;   // 못 만들면 효과만 건너뜀 (씬은 그대로 나감)
 	}
 	if (capture)
 	{
-		CapturePostStage(cmd, 0, "Scene", hdrSet, width, height, true);
+		CapturePostStage(cmd, PostStage_Scene, "Scene", hdrSet, width, height, true);
 	}
 
 	const float w = static_cast<float>(width);
 	const float h = static_cast<float>(height);
+
+	// 후처리가 깊이(t23)·속도(t7)를 읽음. 씬 패스가 깊이를 DepthWrite/DepthRead 로 남기므로 SRV 로 읽을 수 있는 DepthRead 로
+	// 둠 (다음 프레임 씬 패스 첫 배리어가 DepthWrite 로 되돌림). 속도는 씬 패스 끝에서 이미 ShaderResource.
+	cmd.Barrier(view.depth, ResourceState::DepthRead);
+
+	// ---- 디버그 뷰 16·17: 속도 버퍼를 hdr 에 그대로 그리고 다른 효과는 건너뜀 (디버그 색이 번지면 읽을 수 없음) ----
+	if (m_settings.debugView == 16 || m_settings.debugView == 17)
+	{
+		const PipelineHandle pipeline = GetTemporalPipeline(Pass_VelocityDebug);
+		if (pipeline.IsValid() && view.velocityDebugSet.IsValid())
+		{
+			PostParamsConstants params = {};
+			params.view = XMFLOAT4(w, h, w, h);
+			UploadPostParams(params);
+			RenderPostPass(cmd, PostPassDesc{
+									.pipeline = pipeline,
+									.input = view.velocityDebugSet,   // t13 = 흰 텍스처 (출력이 hdr 라 hdr 를 입력으로 꽂지 않음)
+									.output = hdr,
+									.outputAfter = ResourceState::ShaderResource,
+									.load = LoadOp::DontCare,
+									.debugName = "VelocityDebug",
+								});
+		}
+		if (capture)
+		{
+			CapturePostStage(cmd, PostStage_Final, "Final", hdrSet, width, height, false);
+		}
+		return;
+	}
+
+	// ---- TAA: hdr (지터된 이번 프레임) + history[1−cur] → history[cur], 그 다음 history[cur] → hdr 복사 (모드 0). 다음 프레임은
+	// 방금 쓴 쪽을 읽음. 모션 블러보다 먼저 — 지터가 남은 이미지를 정리한 뒤 번지게 함 ----
+	const PipelineHandle taaPipeline = taa ? GetTemporalPipeline(Pass_Taa) : PipelineHandle{};
+	if (taaPipeline.IsValid())
+	{
+		GpuProfileScope gpuScope(cmd, "TaaPass");
+		const uint32_t current = view.temporal.current;
+		cmd.Barrier(view.history[current ^ 1u], ResourceState::ShaderResource);   // 처음 만든 직후에는 한 번도 쓰지 않은 상태
+		PostParamsConstants params = {};
+		params.blur = XMFLOAT4(std::clamp(post.taaFeedback, 0.02f, 1.0f), 0.0f, 0.0f, 0.0f);   // 이번 프레임 비중
+		params.view = XMFLOAT4(w, h, w, h);
+		UploadPostParams(params);
+		RenderPostPass(cmd, PostPassDesc{
+								.pipeline = taaPipeline,
+								.input = view.taaSet[current],   // t13 hdr, t23 깊이, t7 속도, t24 history[1−cur]
+								.output = view.history[current],
+								.outputAfter = ResourceState::ShaderResource,
+								.load = LoadOp::DontCare,
+								.debugName = "TaaResolve",
+							});
+		params.pass = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);   // 모드 0: 복사
+		UploadPostParams(params);
+		RenderPostPass(cmd, PostPassDesc{
+								.pipeline = GetPostPipeline(false),
+								.input = view.historyPostSet[current],
+								.output = hdr,
+								.outputAfter = ResourceState::ShaderResource,
+								.load = LoadOp::DontCare,
+								.debugName = "TaaCopy",
+							});
+		view.temporal.historyValid = true;
+		view.temporal.current = current ^ 1u;
+		if (capture)
+		{
+			CapturePostStage(cmd, PostStage_Taa, "TAA", hdrSet, width, height, true);
+		}
+	}
+	else
+	{
+		view.temporal.historyValid = false;
+	}
+
+	// ---- 모션 블러: hdr (+ 깊이·속도) → temp, 그 다음 temp → hdr 복사 (PS_Post 모드 0). 길이 상한은 720p 기준이라 높이에 비례 ----
+	const PipelineHandle motionBlurPipeline = motionBlur ? GetTemporalPipeline(Pass_MotionBlur) : PipelineHandle{};
+	if (motionBlurPipeline.IsValid())
+	{
+		GpuProfileScope gpuScope(cmd, "MotionBlurPass");
+		PostParamsConstants params = {};
+		// 기준 fps 보정: 속도 버퍼는 "지난 프레임 → 이번 프레임" 이동량이라 프레임이 빠를수록 짧음. (1/targetFps) / dt 를 셔터에
+		// 곱해 기준 fps 의 한 프레임 이동량으로 늘리거나 줄임 (프레임이 느리면 줄어듦). dt 가 0 에 가까우면(일시정지 등) 보정 안 함.
+		// 길이는 셰이더에서 maxRadius 로 다시 자름.
+		const float frameDt = m_settings.frameDeltaOverride > 0.0f ? m_settings.frameDeltaOverride : m_frameDeltaTime;
+		const float fpsScale = (post.motionBlurTargetFps > 0.0f && frameDt > 1e-5f) ? 1.0f / (post.motionBlurTargetFps * frameDt) : 1.0f;
+		params.blur = XMFLOAT4((std::min)(post.motionBlurIntensity, 1.0f) * fpsScale, (std::max)(post.motionBlurMaxRadius, 1.0f) * h / kReferenceHeight, static_cast<float>(std::clamp(post.motionBlurSamples, 4, 32)), 0.0f);
+		params.view = XMFLOAT4(w, h, w, h);
+		UploadPostParams(params);
+		RenderPostPass(cmd, PostPassDesc{
+								.pipeline = motionBlurPipeline,
+								.input = view.temporalSet,   // t13 hdr, t23 깊이, t7 속도
+								.output = scratch.temp,
+								.outputAfter = ResourceState::ShaderResource,
+								.load = LoadOp::DontCare,
+								.debugName = "MotionBlur",
+							});
+		params.pass = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);   // 모드 0: 복사
+		UploadPostParams(params);
+		RenderPostPass(cmd, PostPassDesc{
+								.pipeline = GetPostPipeline(false),
+								.input = scratch.tempSet,
+								.output = hdr,
+								.outputAfter = ResourceState::ShaderResource,
+								.load = LoadOp::DontCare,
+								.debugName = "MotionBlurCopy",
+							});
+		if (capture)
+		{
+			CapturePostStage(cmd, PostStage_Motion, "Motion", hdrSet, width, height, true);
+		}
+	}
 
 	// ---- 가우시안 블러: 가로 (hdr → temp) 후 세로 (temp → hdr). 반경은 720p 기준이라 출력 높이에 비례해 스케일함 ----
 	if (blur)
@@ -396,7 +600,7 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 		}
 		if (capture)
 		{
-			CapturePostStage(cmd, 1, "Blur", hdrSet, width, height, true);
+			CapturePostStage(cmd, PostStage_Blur, "Blur", hdrSet, width, height, true);
 		}
 	}
 
@@ -452,11 +656,11 @@ void Renderer::ApplyHdrEffects(RHI::CommandList& cmd, ViewTarget& view, bool cap
 							});
 		if (capture)
 		{
-			CapturePostStage(cmd, 2, "Bloom", hdrSet, width, height, true);
+			CapturePostStage(cmd, PostStage_Bloom, "Bloom", hdrSet, width, height, true);
 		}
 	}
 	if (capture)
 	{
-		CapturePostStage(cmd, 3, "Final", hdrSet, width, height, false);
+		CapturePostStage(cmd, PostStage_Final, "Final", hdrSet, width, height, false);
 	}
 }

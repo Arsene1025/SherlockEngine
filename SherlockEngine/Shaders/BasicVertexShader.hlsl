@@ -11,6 +11,9 @@ VSOutput VS_Main(VSInput vsInput)
 
     vsOutput.position = mul(worldPosition, viewProj);
     vsOutput.worldPosition = worldPosition.xyz;
+    // 속도: 이번 위치와 지난 프레임 위치를 지터 없는 행렬로 (지터는 래스터화 위치에만)
+    vsOutput.currClip = mul(worldPosition, unjitteredViewProj);
+    vsOutput.prevClip = mul(mul(localPosition, prevWorld), prevUnjitteredViewProj);
     vsOutput.col = vsInput.col;
     vsOutput.uv = vsInput.uv * uvScale;
     // 노멀은 (W⁻¹)ᵀ 로 변환함. 그래야 비균등 스케일에서도 표면과 수직을 유지함.
