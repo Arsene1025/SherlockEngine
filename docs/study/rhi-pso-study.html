@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · RHI와 PSO 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>RHI와 PSO 학습 문서</h1>
+  <p>두 그래픽 API를 한 인터페이스 뒤에 두는 방법, 파이프라인 상태를 객체 하나로 묶는 이유, 그 객체를 찾고 버리는 캐시</p>
+  <p>2026-11-25 · 이 프로젝트의 최종 목표인 RHI(Render Hardware Interface)와 PSO(Pipeline State Object)를 한 문서로 모았습니다. 지금까지 이 주제는 <a href="../overview/rendering-analysis.html#c5">rendering-analysis 5장(핸들·풀·Desc)</a>, <a href="../overview/rendering-analysis.html#c6">6장(PSO)</a>, <a href="../overview/rendering-analysis.html#c9">9장(두 백엔드)</a>, <a href="../overview/rendering-analysis.html#c19">19장 설계 결정</a>의 <a href="../overview/rendering-analysis.html#d21">D21</a>·<a href="../overview/rendering-analysis.html#d22">D22</a>, <a href="../overview/phase-record.html#p1-s8">1단계 기록</a>, <a href="../plan/rhi-roadmap-plan.html#overview">RHI 로드맵</a>에 나뉘어 있었습니다. 바인딩(루트 시그니처)은 <a href="../study/binding-study.html">바인딩 학습 문서</a>, 배리어·펜스·프레임 자원은 <a href="../study/gpu-sync-study.html">GPU 동기화 학습 문서</a>에서 따로 다룹니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1장은 RHI가 왜 필요하고 어떤 모양을 골랐는가, 2장은 RHI의 어휘(핸들·풀·Desc), 3장은 계층과 두 인터페이스, 4장은 PSO가 상태를 묶는 이유, 5장은 <code>PipelineStateDesc</code>의 필드와 해시, 6장은 Renderer와 Device의 두 단계 캐시, 7장은 두 백엔드의 PSO 구현, 8장은 셰이더 컴파일과 바인딩 대조, 9장은 리소스 생성 규칙, 10장은 코드 지도, 11장은 실험, 12장은 함정과 한계·다음 단계, 13장은 공부할 개념과 참고 문서입니다. 주제마다 "무슨 문제를 푸는가 → 왜 이 방법인가 → 코드 어디인가 → 한계" 순서로 썼습니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 키 비트 수, PSO 조합 수 같은 값은 코드에서 센 값입니다 <span class="tag chk">계산값</span>. 로그와 화면으로 확인한 결과는 날짜와 함께 <span class="tag ok">확인함</span>으로 표시하고 출처를 링크했습니다. "D3D12 PSO 생성은 수~수십 ms"라는 말은 코드 주석(<code>RHI/PipelineTypes.cpp</code>)과 문서에 적힌 일반론이며, 이 엔진에서 잰 값이 아닙니다.</div>
+</header>
+<nav><a href="#why">1. 왜 RHI인가</a><a href="#vocab">2. 핸들·풀·Desc</a><a href="#layers">3. 계층과 인터페이스</a><a href="#pso">4. PSO가 묶는 것</a><a href="#desc">5. Desc와 해시</a><a href="#cache">6. 두 단계 캐시</a><a href="#backends">7. 두 백엔드의 PSO</a><a href="#shaders">8. 셰이더와 바인딩 대조</a><a href="#resources">9. 리소스 규칙</a><a href="#code">10. 우리 코드</a><a href="#lab">11. 실험</a><a href="#pitfalls">12. 함정·한계·다음 단계</a><a href="#study">13. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 RHI인가</h2>
+<h3>1-1. 같은 그림, 다른 API 두 개</h3>
+<p>이 엔진은 D3D11과 D3D12 두 백엔드를 한 실행 파일에 빌드하고, 시작할 때 하나를 고릅니다(<code>Core/Engine.cpp</code>의 <code>engine.backend</code>, 실행 인자 <code>--backend=d3d12</code>). 두 API는 같은 GPU를 다루지만 사고방식이 다릅니다. D3D11은 드라이버가 동기화·메모리 수명·상태 검증을 대신 해 주는 암묵적 API이고, D3D12는 그 일을 프로그램이 직접 하는 명시적 API입니다.</p>
+<p>렌더러가 API를 직접 부르면 기능 하나를 두 번 써야 하고, 두 코드가 조금씩 어긋납니다. RHI는 그 사이에 얇은 층을 두어 렌더러가 "무엇을 그릴지"만 말하게 합니다. 재질, 드로우 정렬, 패스 순서는 RHI 위의 <code>Renderer</code>가 한 번만 쓰고, API 차이는 <code>RHI/D3D11/</code>과 <code>RHI/D3D12/</code> 안에서만 다룹니다.</p>
+
+<h3>1-2. 세 가지 모양 중 혼합형</h3>
+<p><a href="../overview/rendering-analysis.html#d21">D21</a>은 세 갈래를 비교했습니다. (a) 리소스마다 가상 클래스를 두는 방식, (b) 리소스를 <code>{index, generation}</code> 핸들로 두고 실제 객체를 백엔드 풀에 두는 방식(bgfx·sokol_gfx), (c) <code>using Buffer = D3D11Buffer;</code>처럼 빌드 때 고르는 방식입니다. 고른 것은 리소스는 핸들(b), <code>Device</code>와 <code>CommandList</code>만 가상(a)인 혼합형입니다.</p>
+<table>
+<tr><th>방식</th><th>얻는 것</th><th>잃는 것</th></tr>
+<tr><td>(a) 리소스마다 가상 클래스</td><td>런타임 교체</td><td>리소스마다 vtable·힙 할당, 호출 코드에 포인터가 보임</td></tr>
+<tr><td>(b) 핸들 + 백엔드 풀</td><td>8바이트 값, 복사·비교·해시가 쉬움, 해제 뒤 사용을 세대로 잡음</td><td>호출마다 배열 조회 한 번</td></tr>
+<tr><td>(c) 컴파일 타임 선택</td><td>오버헤드 0</td><td>한 빌드에 백엔드 하나. 두 백엔드를 나란히 비교할 수 없음</td></tr>
+</table>
+<p>드로우마다 생기는 가상 호출 몇 번은 API 호출 비용에 묻히고, 같은 실행 파일에서 <code>--backend</code>만 바꿔 픽셀을 비교할 수 있다는 점이 컸습니다. 실제로 기능을 넣을 때마다 "D3D11 = D3D12 픽셀 동일"을 확인 기준으로 씁니다(11장 E3).</p>
+
+<h3>1-3. D3D12를 기준으로, D3D11은 빈 동작 허용</h3>
+<p>인터페이스를 D3D11에 맞추면 D3D12 쪽이 드라이버 흉내를 내야 하고, D3D12에 맞추면 D3D11 쪽 일부가 아무 일도 하지 않게 됩니다. 이 엔진은 뒤쪽을 골랐습니다(<a href="../overview/rendering-analysis.html#c9-12">rendering-analysis 9.12</a>). 그래서 D3D11에서는 쓸모없는 것이 인터페이스에 남아 있습니다. <code>Barrier</code>는 D3D11에서 상태 기록만 하고, <code>PipelineStateDesc::rtvFormats</code>는 D3D11이 읽지 않으며, <code>bindingLayouts</code>는 D3D11에서 PSO 생성에 쓰이지 않습니다. 반대로 D3D11에서만 편한 것(즉시 Map, 자동 밉 생성, 암묵적 동기화)은 넣지 않았습니다(<code>RHI/Device.h</code> 머리 주석).</p>
+<p>이 순서가 맞았는지는 D3D12 백엔드를 붙일 때 시험됐습니다. 8단계 기록에 따르면 <code>RHI::Device</code>·<code>RHI::CommandList</code>의 메서드는 바뀌지 않았고, D3D11이 감춰 주던 다섯 가지(PSO의 렌더 타깃 포맷, 드로우마다 갱신되는 상수 버퍼, 일반 샘플러의 비교 함수, 시저 사각형, 텍스처 초기 상태)만 고쳤습니다(<a href="../overview/rendering-analysis.html#c9-11">9.11</a>).</p>
+
+<h3>1-4. 새지 않는 것과 새는 것</h3>
+<table>
+<tr><th>구분</th><th>무엇</th><th>지금 코드</th></tr>
+<tr><td>새지 않음</td><td>D3D 타입·헤더</td><td><code>RHI/*.h</code>는 D3D 헤더를 include 하지 않음. D3D 헤더 include는 <code>RHI/D3D11/D3D11Common.h</code>, <code>RHI/D3D12/D3D12Common.h</code>, <code>RHI/DXBC/ShaderCompiler.cpp</code>와 아래 예외 하나</td></tr>
+<tr><td>새지 않음</td><td>백엔드 클래스 이름</td><td>폴더 밖에서 백엔드 헤더를 include 하는 곳은 <code>RHI/RHI.cpp</code>의 <code>RHI::CreateDevice</code>뿐</td></tr>
+<tr><td>새지 않음</td><td>백엔드별 분기</td><td><code>Graphics/</code>·<code>Editor/</code>·<code>UI/</code>에 <code>GetBackend()</code> 분기가 없음. 백엔드를 아는 곳은 <code>Core/Engine.cpp</code>(선택)뿐</td></tr>
+<tr><td>새지 않음</td><td>창·ImGui 타입</td><td><code>DeviceDesc::windowHandle</code>은 <code>void*</code>, <code>GetImGuiTextureId</code>는 <code>uint64_t</code></td></tr>
+<tr><td>샘 (의도)</td><td>D3D12의 요구 사항</td><td><code>rtvFormats</code>·<code>dsvFormat</code>·<code>sampleCount</code>를 D3D11 경로에서도 채워야 함</td></tr>
+<tr><td>샘 (의도)</td><td>HLSL 레지스터 모델</td><td><code>BindingSlot</code>이 <code>b#/t#/s#/u#</code> 번호를 그대로 씀. Vulkan을 붙이면 바인딩 번호로 옮기는 규칙이 필요(<a href="../overview/rendering-analysis.html#c9-12">9.12</a>)</td></tr>
+<tr><td>샘 (의도)</td><td>DXBC 바이트코드</td><td><code>ShaderDesc::bytecode</code>는 fxc가 만든 DXBC. 리플렉션도 <code>ID3D11ShaderReflection</code></td></tr>
+<tr><td>샘 (의도)</td><td>D3D11의 바인딩 충돌 처리</td><td><code>CommandList::Stats</code>의 <code>srvUnbinds</code>·<code>uavUnbinds</code>는 D3D11에서만 의미가 있는 수</td></tr>
+<tr><td>샘 (예외)</td><td>RHI 밖의 D3D11 장치</td><td><code>Graphics/TextureImporter.cpp</code>가 <code>&lt;d3d11.h&gt;</code>를 include 하고 <code>GetGpuDevice</code>에서 렌더러와 별개인 D3D11 장치를 만듦. DirectXTex의 GPU BC7 압축용이며 D3D12 백엔드에서도 씀</td></tr>
+</table>
+</section>
+
+<section id="vocab">
+<h2>2. RHI의 어휘: 핸들, 풀, Desc</h2>
+<h3>2-1. 핸들은 작은 값</h3>
+<p><code>RHI/Handle.h</code>의 <code>Handle&lt;Tag&gt;</code>는 <code>uint32_t index</code>와 <code>uint32_t generation</code> 두 칸짜리 값입니다. 실제 객체는 백엔드의 풀 안에 있고, 호출 코드는 D3D 타입을 전혀 모릅니다. <code>Tag</code>는 정의가 없는 빈 선언이며, <code>BufferHandle</code>과 <code>TextureHandle</code>을 서로 다른 타입으로 만들어 섞어 쓰면 컴파일 에러가 나게 하는 역할만 합니다. 별칭은 여덟 개입니다: <code>ShaderHandle</code>, <code>PipelineHandle</code>, <code>ComputePipelineHandle</code>, <code>BufferHandle</code>, <code>TextureHandle</code>, <code>SamplerHandle</code>, <code>BindingLayoutHandle</code>, <code>ResourceSetHandle</code>.</p>
+<p><code>generation</code> 0은 빈 핸들로 예약돼 있어서, 기본 생성한 핸들은 <code>IsValid()</code>가 거짓입니다. 비교는 <code>operator&lt;=&gt; = default</code> 한 줄로 만들고, <code>ResourceHandle</code> 콘셉트가 "<code>Handle&lt;Tag&gt;</code>의 특수화이고 trivially copyable"인 타입만 풀에 들어가게 막습니다.</p>
+
+<h3>2-2. 세대가 있는 풀</h3>
+<p><code>RHI/ResourcePool.h</code>의 <code>ResourcePool&lt;T, HandleT&gt;</code>는 슬롯 배열과 free list입니다. <code>Remove</code>가 슬롯을 비우면서 세대를 1 올리므로, 해제 전에 받은 핸들은 같은 슬롯이 재사용돼도 <code>Get</code>에서 <code>nullptr</code>가 됩니다. 댕글링 포인터가 "가끔 다른 객체를 가리키는" 대신 "항상 널"이 되는 것이 요점입니다. 세대가 넘쳐 0이 되면 1로 건너뜁니다. 넣을 때는 <code>Add(T&amp;&amp;)</code>로 이동해서, <code>ComPtr</code>의 AddRef/Release와 문자열 복사가 생기지 않게 합니다.</p>
+<p>PSO 캐시는 같은 생각을 캐시 단위로 씁니다. 슬롯마다 세대를 두지 않고 캐시 전체에 세대 하나를 두며, 비울 때 그 값을 올립니다(6-4).</p>
+
+<h3>2-3. Desc를 넘기면 핸들이 돌아온다</h3>
+<p>모든 생성 함수는 <code>CreateBuffer(BufferDesc)</code>, <code>CreateTexture(TextureDesc, span)</code>, <code>CreatePipeline(PipelineStateDesc)</code>처럼 "Desc → 핸들" 한 가지 모양입니다. Desc는 D3D 헤더 없이 <code>uint8_t</code> 열거형과 작은 구조체로만 짜여 있고, 호출 코드는 C++20 지정 초기화로 채웁니다(<code>TextureDesc d{ .width = 2048, ... }</code>). <code>RHI/PipelineTypes.h</code> 주석은 "필드 순서가 계약"이라고 적습니다. 지정 초기화는 선언 순서를 따라야 하므로 필드 순서를 바꾸면 호출 코드가 컴파일되지 않습니다.</p>
+<p>Desc를 값 타입으로 두면 같은 구조체가 세 가지 일을 합니다. 생성 주문서, 캐시 키, 그리고 백엔드가 보관하는 원본(<code>PipelineState::m_desc</code>)입니다. 깊은 설명과 C++20 기능은 <a href="../overview/rendering-analysis.html#c5">rendering-analysis 5장</a>에 있습니다.</p>
+</section>
+
+<section id="layers">
+<h2>3. 계층과 두 인터페이스</h2>
+<figure>
+<svg viewBox="0 0 900 340" role="img" aria-label="Renderer, RHI 인터페이스, D3D11과 D3D12 백엔드, 드라이버로 이어지는 계층도">
+<defs><marker id="rhi-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+<rect x="40" y="16" width="820" height="44" rx="6" style="fill:var(--paper);stroke:var(--accent)"/>
+<text x="56" y="43">Renderer (Graphics/) — 재질·드로우 정렬·패스 순서·PSO Desc 조립. D3D 헤더 없음</text>
+<rect x="40" y="92" width="560" height="56" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<text x="56" y="114">RHI 인터페이스 (RHI/*.h)</text>
+<text x="56" y="136">가상: RHI::Device · RHI::CommandList</text><text x="360" y="136">값: Handle&lt;Tag&gt; · *Desc</text>
+<rect x="620" y="92" width="200" height="56" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="634" y="114">RHI::CreateDevice</text>
+<text x="634" y="136">RHI/RHI.cpp: 백엔드 선택</text>
+<rect x="40" y="184" width="290" height="66" rx="6" style="fill:var(--paper);stroke:var(--c2)"/>
+<text x="54" y="204">D3D11 백엔드 (RHI/D3D11/)</text>
+<text x="54" y="222">PipelineStateCache</text>
+<text x="54" y="240">→ PipelineState (상태 객체 4개)</text>
+<rect x="350" y="184" width="290" height="66" rx="6" style="fill:var(--paper);stroke:var(--c0)"/>
+<text x="364" y="204">D3D12 백엔드 (RHI/D3D12/)</text>
+<text x="364" y="222">D3D12PipelineStateCache</text>
+<text x="364" y="240">→ ID3D12PipelineState + 루트 시그니처</text>
+<rect x="680" y="184" width="190" height="66" rx="6" style="fill:var(--paper);stroke:var(--ink3);stroke-dasharray:4 3"/>
+<text x="694" y="204">RHI/DXBC/</text>
+<text x="694" y="222">ShaderCompiler</text>
+<text x="694" y="240">fxc · DXBC · SM 5.0</text>
+<rect x="40" y="284" width="600" height="40" rx="6" style="fill:var(--fill);stroke:var(--line)"/>
+<text x="56" y="309">d3d11.dll / d3d12.dll → 드라이버 → GPU</text>
+<line class="ln" x1="320" y1="60" x2="320" y2="90" marker-end="url(#rhi-ar)"/>
+<line class="ln" x1="185" y1="148" x2="185" y2="182" marker-end="url(#rhi-ar)"/>
+<line class="ln" x1="495" y1="148" x2="495" y2="182" marker-end="url(#rhi-ar)"/>
+<line class="ln" x1="185" y1="250" x2="185" y2="282" marker-end="url(#rhi-ar)"/>
+<line class="ln" x1="495" y1="250" x2="495" y2="282" marker-end="url(#rhi-ar)"/>
+<line class="ln" x1="845" y1="60" x2="845" y2="182" style="stroke-dasharray:4 3" marker-end="url(#rhi-ar)"/>
+<line class="ln" x1="720" y1="148" x2="560" y2="182" style="stroke-dasharray:4 3" marker-end="url(#rhi-ar)"/>
+</svg>
+<figcaption>그림 1. 계층. 실선은 매 프레임의 호출, 점선은 시작할 때의 일(팩토리가 백엔드 하나를 만듦, Renderer가 <code>ShaderCompiler</code>로 바이트코드를 얻어 <code>CreateShader</code>로 넘김). 두 백엔드가 같은 DXBC를 받습니다.</figcaption>
+</figure>
+<h3>3-1. Device와 CommandList</h3>
+<p><code>RHI::Device</code>(<code>RHI/Device.h</code>)는 프레임 경계(<code>BeginFrame</code>·<code>EndFrame</code>), 리소스 생성·해제, PSO 생성과 무효화(<code>CreatePipeline</code>, <code>CreateComputePipeline</code>, <code>InvalidatePipelines</code>), 바인딩 레이아웃과 리소스 셋, ImGui 어댑터 다섯 메서드를 가집니다. <code>RHI::CommandList</code>(<code>RHI/CommandList.h</code>)는 렌더 패스, PSO·셋·버퍼 바인딩, 드로우와 디스패치(간접 포함), 배리어와 복사, 타임스탬프를 기록합니다. D3D11에서는 즉시 컨텍스트의 얇은 래퍼라 기록이 곧 실행이고, D3D12에서는 커맨드 리스트에 쌓였다가 <code>EndFrame</code>에서 제출됩니다.</p>
+<table>
+<tr><th>RHI 호출</th><th>D3D11</th><th>D3D12</th></tr>
+<tr><td><code>CreateShader</code></td><td>VS/PS/CS 객체 + 바이트코드 사본(입력 레이아웃 검증용)</td><td>셰이더 객체가 없어 바이트코드만 보관, PSO 생성 때 넘김</td></tr>
+<tr><td><code>CreatePipeline</code></td><td>상태 객체 4개 + 셰이더 묶음 (7장)</td><td><code>CreateGraphicsPipelineState</code> (7장)</td></tr>
+<tr><td><code>SetPipelineState</code></td><td><code>PipelineState::Bind</code>의 호출 7개</td><td><code>SetPipelineState</code>, 루트 시그니처가 바뀌면 <code>SetGraphicsRootSignature</code>, <code>IASetPrimitiveTopology</code>. 같은 핸들이면 건너뜀</td></tr>
+<tr><td><code>SetResourceSet</code></td><td>슬롯마다 <code>*SSet*</code></td><td>디스크립터 테이블·루트 CBV (<a href="../study/binding-study.html">바인딩 문서</a>)</td></tr>
+<tr><td><code>Barrier</code></td><td>상태 기록만, 겹치는 SRV·UAV 바인딩 해제</td><td><code>ResourceBarrier</code> (<a href="../study/gpu-sync-study.html">동기화 문서</a>)</td></tr>
+<tr><td><code>BeginFrame</code></td><td>Dynamic 버퍼 슬롯 번호 갱신</td><td>펜스로 프레임 N − <code>kFrameCount</code> 완료를 기다리고 할당자 재사용</td></tr>
+</table>
+</section>
+
+<section id="pso">
+<h2>4. PSO는 무엇을 왜 묶는가</h2>
+<h3>4-1. D3D11의 따로 놓인 상태</h3>
+<p>D3D11은 상태를 단계별로 하나씩 바꿉니다. <code>ID3D11RasterizerState</code>, <code>ID3D11DepthStencilState</code>, <code>ID3D11BlendState</code>를 따로 만들어 <code>RSSetState</code>, <code>OMSetDepthStencilState</code>, <code>OMSetBlendState</code>로 걸고, 셰이더·입력 레이아웃·토폴로지도 각자 <code>Set*</code>이 있습니다. 문제는 두 가지입니다.</p>
+<ul>
+<li><b>드라이버 쪽.</b> 하드웨어에서는 단계 사이에 의존이 있습니다(예: 픽셀 셰이더 출력 형식과 렌더 타깃 포맷, 블렌드 상태). 드라이버는 드로우 직전에야 전체 조합을 알 수 있어서, 그때 GPU 코드를 다시 맞추는 비용을 런타임에 치릅니다.</li>
+<li><b>프로그램 쪽.</b> 상태가 하나씩 바뀌므로 "지금 무엇이 걸려 있는가"를 추적해야만 알 수 있습니다. 다른 코드(예: ImGui 렌더러)가 바꿔 놓은 상태로 다음 드로우가 그려지는 버그가 여기서 나옵니다.</li>
+</ul>
+<h3>4-2. D3D12의 불변 객체</h3>
+<p>D3D12는 셰이더 바이트코드부터 렌더 타깃 포맷까지를 <code>D3D12_GRAPHICS_PIPELINE_STATE_DESC</code> 하나로 받아 불변 객체를 만들고, 드로우 때는 <code>SetPipelineState</code> 한 번으로 바꿉니다. 드라이버가 생성 시점에 전체 조합을 보고 GPU 코드를 끝까지 컴파일하고 검증하므로, 드로우 시점의 비용과 오류가 앞으로 당겨집니다. 대신 생성 자체가 무겁고(코드 주석의 표현으로 수~수십 ms), 조합마다 객체를 미리 만들어 두는 일이 프로그램 몫이 됩니다.</p>
+<p>두 API를 한 인터페이스로 덮을 때, 개별 상태를 인터페이스로 두면 D3D12 쪽이 드로우마다 PSO를 조립하고 캐시해야 하고, PSO를 인터페이스로 두면 D3D11 쪽은 상태 객체 몇 개를 한 클래스에 묶기만 하면 됩니다. 이 엔진이 1단계부터 PSO를 인터페이스로 둔 이유입니다(<a href="../overview/rendering-analysis.html#d22">D22</a>). D3D11에서 성능 이득은 없고, 얻는 것은 "모든 드로우의 상태가 Desc 하나로 설명된다"는 정확성과 이식성입니다.</p>
+<h3>4-3. PSO 안과 밖</h3>
+<table>
+<tr><th>PSO 안 (불변, <code>PipelineStateDesc</code>)</th><th>PSO 밖 (동적, <code>CommandList</code>)</th></tr>
+<tr><td>정점·픽셀 셰이더, 바인딩 레이아웃 목록(루트 시그니처)</td><td>정점·인덱스 버퍼 (<code>SetVertexBuffer</code>, <code>SetIndexBuffer</code>)</td></tr>
+<tr><td>정점 입력 레이아웃, 토폴로지</td><td>렌더 타깃 바인딩과 클리어 (<code>BeginRenderPass</code>)</td></tr>
+<tr><td>래스터라이저, 깊이·스텐실, 블렌드</td><td>뷰포트·시저 (<code>BeginRenderPass</code>, <code>SetViewport</code>)</td></tr>
+<tr><td>렌더 타깃 포맷과 개수, 깊이 포맷, 샘플 수</td><td>상수버퍼·텍스처·샘플러 (<code>SetResourceSet</code>)</td></tr>
+</table>
+<p>스텐실 참조값과 블렌드 팩터는 RHI 호출이 아직 없습니다. D3D11 <code>PipelineState::Bind</code>는 기본값(0, <code>nullptr</code>, <code>0xFFFFFFFF</code>)을 넘기고, D3D12는 <code>SampleMask = UINT_MAX</code>를 넣습니다. 토폴로지는 D3D12에서 PSO에 "종류"(삼각형·선·점)만 들어가고 리스트·스트립 구분은 커맨드 리스트에 걸어서, <code>D3D12CommandList::SetPipelineState</code>가 <code>IASetPrimitiveTopology</code>를 함께 부릅니다.</p>
+</section>
+
+<section id="desc">
+<h2>5. PipelineStateDesc와 해시</h2>
+<h3>5-1. 필드</h3>
+<p><code>RHI/PipelineTypes.h</code>의 <code>PipelineStateDesc</code>는 D3D12 desc의 모양을 따르고, 열거형은 모두 <code>uint8_t</code>입니다(키가 작을수록 좋기 때문). 기본값만으로 "불투명, 깊이 테스트 켬, 뒷면 컬링, 솔리드, 트라이앵글 리스트, 출력 <code>R8G8B8A8_UNORM</code> 1장, 깊이 <code>D24_UNORM_S8_UINT</code>"가 됩니다.</p>
+<table>
+<tr><th>필드</th><th>뜻</th><th>D3D11 백엔드</th><th>D3D12 백엔드</th></tr>
+<tr><td><code>vs</code>, <code>ps</code></td><td>셰이더 핸들. <code>ps</code>가 비면 깊이 전용(그림자)</td><td><code>VSSetShader</code>, <code>PSSetShader(nullptr)</code></td><td><code>pd.VS</code>, <code>pd.PS</code>(비워 둠)</td></tr>
+<tr><td><code>bindingLayouts[4]</code>, <code>bindingLayoutCount</code></td><td>갱신 빈도별 레이아웃 목록 = 루트 시그니처</td><td>생성에 안 씀. 해시 키에는 들어감</td><td><code>GetOrCreateRootLayout</code>이 조합별로 공유</td></tr>
+<tr><td><code>vertexLayout</code></td><td>속성 최대 8개 + <code>stride</code>. 0개면 입력 없음(<code>SV_VertexID</code>)</td><td><code>CreateInputLayout</code>(VS 바이트코드로 시그니처 검증)</td><td><code>InputLayout { elements, n }</code></td></tr>
+<tr><td><code>rasterizer</code></td><td>fill·cull·감기 방향·depth clip·scissor·깊이 바이어스</td><td><code>CreateRasterizerState</code></td><td><code>RasterizerState</code></td></tr>
+<tr><td><code>depthStencil</code></td><td>테스트·쓰기·비교 함수, 스텐실 켬과 마스크(스텐실 연산은 아직 없음)</td><td><code>CreateDepthStencilState</code></td><td><code>DepthStencilState</code></td></tr>
+<tr><td><code>blend</code></td><td><code>alphaToCoverage</code>, <code>independentBlend</code>, <code>rt[8]</code></td><td><code>CreateBlendState</code></td><td><code>BlendState</code></td></tr>
+<tr><td><code>topology</code></td><td>리스트·스트립·선·점</td><td><code>Bind</code>에서 <code>IASetPrimitiveTopology</code></td><td><code>PrimitiveTopologyType</code> + 커맨드 리스트</td></tr>
+<tr><td><code>rtvFormats[8]</code>, <code>rtvCount</code></td><td>렌더 타깃별 포맷과 수(MRT)</td><td>읽지 않음</td><td><code>RTVFormats</code>, <code>NumRenderTargets</code>. 묶은 뷰와 다르면 오류</td></tr>
+<tr><td><code>dsvFormat</code></td><td>깊이 포맷. <code>Unknown</code> = 깊이 없는 패스</td><td>읽지 않음</td><td><code>DSVFormat</code></td></tr>
+<tr><td><code>sampleCount</code></td><td>MSAA 샘플 수</td><td>읽지 않음</td><td><code>SampleDesc.Count</code></td></tr>
+</table>
+<p>D3D11이 읽지 않는 마지막 세 필드를 처음부터 넣어 둔 이유는 헤더 주석에 있습니다. D3D12 PSO는 이 항목 없이 만들 수 없고, 나중에 추가하면 호출 코드를 전부 바꿔야 하기 때문입니다. 그래도 D3D11 시절에는 값이 틀려도 드러나지 않아서, D3D12 첫 실행에서 RTV 포맷 불일치가 처음 잡혔습니다(<a href="../overview/rendering-analysis.html#c6-12">6.12</a>).</p>
+
+<h3>5-2. 내용으로 해시하는 이유</h3>
+<p>렌더러가 드로우 직전에 가진 것은 "원하는 설정"뿐이고 PSO 객체는 아직 없습니다. 그래서 캐시는 "설정 → PSO" 사전이어야 하고 키는 Desc 내용입니다. <code>RHI/PipelineTypes.cpp</code>의 <code>PipelineStateDesc::Hash</code>는 필드를 선언 순서대로 하나씩 섞습니다. 섞는 함수 <code>HashCombine</code>은 boost <code>hash_combine</code>의 64비트판(황금비 상수 <code>0x9E3779B97F4A7C15</code>)이고, 시드만 FNV offset basis를 씁니다. 해시는 <code>unordered_map</code>이 버킷을 고를 때 한 번 쓰이고, 최종 판정은 <code>operator==</code>가 합니다.</p>
+<p>구조체를 <code>memcmp</code>나 바이트 해시로 처리하지 않는 이유가 넷입니다.</p>
+<ol>
+<li><b>패딩.</b> 정렬 패딩 바이트의 값은 정해져 있지 않아서, 같은 내용이 다른 키가 되고 캐시 미스가 계속 납니다.</li>
+<li><b>±0.</b> <code>-0.0f == 0.0f</code>이지만 비트가 다릅니다. <code>HashFloat</code>가 -0을 +0으로 바꿔 넣습니다.</li>
+<li><b>쓰는 만큼만.</b> <code>rtvCount</code> 뒤의 포맷, <code>attributeCount</code> 뒤의 속성, <code>bindingLayoutCount</code> 뒤의 핸들은 섞지도 비교하지도 않습니다. 또 <code>independentBlend</code>가 꺼져 있으면 D3D가 <code>rt[0]</code>만 보므로 해시도 <code>rt[0]</code>만 넣습니다(<code>BlendSlotCount</code>).</li>
+<li><b>접두사 충돌.</b> 배열 길이를 먼저 섞어서 <code>[A]</code>와 <code>[A, B]</code>가 이어지는 값으로 겹치지 않게 합니다.</li>
+</ol>
+<p>핸들은 <code>index</code>와 <code>generation</code>을 둘 다 섞습니다. 같은 슬롯을 재사용한 새 셰이더는 다른 키가 됩니다. 불변식은 "<code>a == b</code>이면 <code>Hash(a) == Hash(b)</code>"이고, 그래서 <code>operator==</code>는 해시와 같은 필드를 같은 범위로 비교합니다. 하위 Desc(<code>RasterizerDesc</code> 등)의 <code>==</code>는 C++20 <code>= default</code>라 필드를 추가해도 비교에서 빠지지 않습니다. <code>PipelineStateDesc</code> 자체는 "쓰는 만큼만" 규칙 때문에 손으로 씁니다.</p>
+</section>
+
+<section id="cache">
+<h2>6. 두 단계 캐시: Renderer의 작은 키, Device의 Desc 키</h2>
+<h3>6-1. 패스 표와 m_passDesc</h3>
+<p>Renderer는 그래픽스 패스를 <code>Graphics/Renderer.h</code>의 <code>PassId</code>(21개 <span class="tag chk">계산값</span>)로 나누고, <code>Graphics/Renderer.cpp</code>의 <code>kPasses</code> 표에 패스마다 (이름, VS, PS, 레이아웃 목록)을 적습니다. 예: <code>{ "Main", Shader_BasicVS, Shader_BasicPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 }</code>. 레이아웃 순서가 곧 셋 인덱스(<code>kSetFrame</code> = 0 등)입니다. 컴퓨트는 <code>ComputePassId</code>(13개 <span class="tag chk">계산값</span>)와 <code>kComputePasses</code>가 따로 있습니다.</p>
+<p><code>Renderer::BuildPassDescs</code>는 이 표와 지금의 셰이더 핸들로 <code>m_passDesc[Pass_Count]</code>를 채운 뒤, 패스마다 다른 고정 부분만 덮어씁니다. 그림자는 <code>rtvCount = 0</code>, <code>dsvFormat = D32_FLOAT</code>, <code>depthBias = 2000</code>·<code>depthBiasClamp = 0.01</code>·<code>slopeScaledDepthBias = 2.0</code>, 스카이는 <code>LessEqual</code>에 쓰기 끔, 풀스크린 패스는 깊이 없음(<code>dsvFormat = Unknown</code>), UI는 알파 블렌딩과 UNORM 출력입니다. 마지막에 작은 키 캐시와 패스별 핸들을 전부 비웁니다. 셰이더를 추가하는 절차(<code>ShaderId</code> → <code>kShaders</code> → 필요하면 <code>PassId</code>·<code>kPasses</code> → <code>BuildPassDescs</code>)는 이 파일 머리 주석에 있고, 로드·핫리로드 감시·cbuffer 대조·바인딩 대조·해제는 모두 표를 돌기 때문에 다른 곳을 고칠 필요가 없습니다.</p>
+
+<h3>6-2. 작은 키</h3>
+<p><code>Renderer::GetPipelineFor</code>는 <code>BuildDrawList</code>에서 드로우 항목마다 매 프레임 불립니다. 여기서 매번 <code>PipelineStateDesc</code> 전체를 복사하고 해시하면 낭비라서, 메인 PSO를 가르는 몇 가지만 비트로 접어 <code>m_mainPipelines</code>(<code>unordered_map&lt;uint32_t, PipelineHandle&gt;</code>)에서 먼저 찾습니다.</p>
+<figure>
+<svg viewBox="0 0 900 190" role="img" aria-label="메인, G-buffer, 그림자 PSO 작은 키의 비트 배치">
+<text x="225" y="30">12</text><text x="325" y="30">11</text><text x="425" y="30">10</text><text x="530" y="30">9</text><text x="630" y="30">8</text><text x="740" y="30">7 … 0</text>
+<text x="20" y="66">메인</text><text x="20" y="82" style="font-size:12px">m_mainPipelines</text>
+<rect x="170" y="44" width="96" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="196" y="69">ocean</text>
+<rect x="270" y="44" width="96" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="290" y="69">blended</text>
+<rect x="370" y="44" width="96" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="388" y="69">cullBack</text>
+<rect x="470" y="44" width="96" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="484" y="69">wireframe</text>
+<rect x="570" y="44" width="96" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="588" y="69">mirrored</text>
+<rect x="670" y="44" width="200" height="40" style="fill:var(--paper);stroke:var(--accent)"/><text x="684" y="69">vertexFormat (0 또는 1)</text>
+<text x="20" y="112">G-buffer</text><text x="20" y="128" style="font-size:12px">m_gbufferPipelines</text>
+<rect x="170" y="94" width="96" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="196" y="119">ocean</text>
+<rect x="270" y="94" width="96" height="40" style="fill:var(--fill);stroke:var(--line)"/><text x="312" y="119">—</text>
+<rect x="370" y="94" width="96" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="388" y="119">cullBack</text>
+<rect x="470" y="94" width="96" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="484" y="119">wireframe</text>
+<rect x="570" y="94" width="96" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="588" y="119">mirrored</text>
+<rect x="670" y="94" width="200" height="40" style="fill:var(--paper);stroke:var(--accent)"/><text x="684" y="119">vertexFormat</text>
+<text x="20" y="160">그림자</text><text x="20" y="176" style="font-size:12px">m_shadowPipelines</text>
+<rect x="170" y="144" width="96" height="40" style="fill:var(--fill);stroke:var(--line)"/><text x="212" y="169">—</text>
+<rect x="270" y="144" width="96" height="40" style="fill:var(--fill);stroke:var(--line)"/><text x="312" y="169">—</text>
+<rect x="370" y="144" width="96" height="40" style="fill:var(--fill);stroke:var(--line)"/><text x="412" y="169">—</text>
+<rect x="470" y="144" width="96" height="40" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="478" y="169">doubleSided</text>
+<rect x="570" y="144" width="96" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="588" y="169">mirrored</text>
+<rect x="670" y="144" width="200" height="40" style="fill:var(--paper);stroke:var(--accent)"/><text x="684" y="169">vertexFormat</text>
+</svg>
+<figcaption>그림 2. 작은 키의 비트. 메인은 <code>Renderer::GetPipelineFor</code>, G-buffer는 <code>RendererDeferred.cpp</code>의 <code>GetGBufferPipelineFor</code>(블렌딩 재질은 G-buffer로 오지 않아 비트 11이 비어 있음), 그림자는 <code>GetShadowPipelineFor</code>(비트 9의 뜻이 <code>doubleSided</code>). 키는 맵마다 따로라 같은 숫자가 다른 뜻이어도 섞이지 않습니다.</figcaption>
+</figure>
+<p>각 비트가 Desc에서 바꾸는 것은 다음과 같습니다. <code>vertexFormat</code>은 정점 레이아웃과 스킨 VS(<code>Pass_MainSkin</code>), <code>mirrored</code>(월드 행렬의 행렬식이 음수)는 <code>frontCounterClockwise</code> 반전, <code>wireframe</code>은 <code>FillMode</code>, <code>cullBack</code>은 <code>CullMode</code>, <code>blended</code>는 프리멀티플라이드 블렌드·깊이 쓰기 끔·속도 RT(1번) 쓰기 막기(<code>independentBlend</code>), <code>ocean</code>은 <code>Pass_Ocean</code>(Gerstner VS)입니다. 바다 VS는 스킨 정점을 읽지 않으므로 스킨 포맷이면 비트 12를 켜지 않습니다. RTV는 항상 FP16 HDR + 속도(<code>R16G16_FLOAT</code>), <code>rtvCount = 2</code>, 깊이 <code>D24_UNORM_S8_UINT</code>입니다. sRGB 출력에 따라 달라지는 것은 톤 패스 PSO(<code>m_tonemapPipelines[2]</code>)뿐입니다(<a href="color-space-study.html#formats">색공간 문서 5장</a>).</p>
+<p>이 키로 나올 수 있는 PSO 수는 메인 48(스킨 아닌 포맷 2⁵ + 스킨 2⁴), G-buffer 24, 그림자 8입니다 <span class="tag chk">계산값</span>. 여기에 패스마다 한두 개인 것(스카이 1, 톤 2, 후처리 2, 디퍼드 라이팅 1, SSAO 2, 시간 패스 3, 파티클 1, 디버그 선 1, UI 2)을 더하면 그래픽스 PSO는 많아야 약 95개입니다 <span class="tag chk">계산값</span>. 실제 씬은 그중 쓰는 조합만 만듭니다.</p>
+
+<h3>6-3. 찾는 흐름</h3>
+<figure>
+<svg viewBox="0 0 900 300" role="img" aria-label="작은 키 조회에서 Device 캐시, 백엔드 생성까지의 흐름">
+<defs><marker id="rhi-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+<text x="20" y="16" style="font-size:12px">Renderer</text>
+<rect x="20" y="24" width="160" height="50" rx="6" style="fill:var(--paper);stroke:var(--accent)"/>
+<text x="32" y="45">드로우 항목마다</text><text x="32" y="63">GetPipelineFor</text>
+<rect x="210" y="24" width="200" height="50" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<text x="222" y="45">작은 키 (비트 0–12)</text><text x="222" y="63">m_mainPipelines 조회</text>
+<rect x="450" y="24" width="430" height="50" rx="6" style="fill:var(--paper);stroke:var(--accent)"/>
+<text x="462" y="45">없음: m_passDesc[패스] 복사</text><text x="462" y="63">정점 레이아웃·fill·cull·블렌드·RTV 포맷 덮어씀</text>
+<rect x="210" y="100" width="200" height="32" rx="6" style="fill:var(--ok-bg);stroke:var(--ok)"/>
+<text x="222" y="121">있음: 저장된 핸들</text>
+<text x="20" y="162" style="font-size:12px">Device (백엔드)</text>
+<rect x="450" y="170" width="430" height="50" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<text x="462" y="191">CreatePipeline → m_lookup.find(desc)</text><text x="462" y="209">Hash() 로 버킷, operator== 로 최종 판정</text>
+<rect x="210" y="170" width="200" height="50" rx="6" style="fill:var(--ok-bg);stroke:var(--ok)"/>
+<text x="222" y="191">핸들 반환</text><text x="222" y="209">{index, 현재 세대}</text>
+<rect x="450" y="250" width="430" height="40" rx="6" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+<text x="462" y="275">미스: 백엔드 Create → m_states·m_lookup 에 추가</text>
+<line class="ln" x1="180" y1="49" x2="208" y2="49" marker-end="url(#rhi-ar2)"/>
+<line class="ln" x1="410" y1="49" x2="448" y2="49" marker-end="url(#rhi-ar2)"/>
+<line class="ln" x1="310" y1="74" x2="310" y2="98" marker-end="url(#rhi-ar2)"/>
+<line class="ln" x1="665" y1="74" x2="665" y2="168" marker-end="url(#rhi-ar2)"/>
+<line class="ln" x1="450" y1="195" x2="412" y2="195" marker-end="url(#rhi-ar2)"/><text x="418" y="187">적중</text>
+<line class="ln" x1="665" y1="220" x2="665" y2="248" marker-end="url(#rhi-ar2)"/>
+<line class="ln" x1="450" y1="270" x2="330" y2="270"/><line class="ln" x1="330" y1="270" x2="330" y2="222" marker-end="url(#rhi-ar2)"/>
+<line class="ln" x1="290" y1="170" x2="290" y2="134" marker-end="url(#rhi-ar2)"/>
+<text x="298" y="155">성공만 저장</text>
+</svg>
+<figcaption>그림 3. PSO를 찾는 두 단계. 위는 Renderer의 작은 키 캐시, 아래는 백엔드의 Desc 캐시(<code>PipelineStateCache::GetOrCreate</code>, <code>D3D12PipelineStateCache::GetOrCreate</code>). 생성에 실패하면 두 단계 모두 기억하지 않아서 다음 요청 때 다시 시도합니다.</figcaption>
+</figure>
+<p>두 단계를 두는 이유는 하는 일이 다르기 때문입니다. 작은 키는 "드로우마다 싸게 찾기"이고, Desc 키는 "내용이 같으면 객체 하나"를 보장합니다. 예를 들어 메인과 G-buffer는 작은 키 모양이 같아도 Desc가 달라 다른 PSO가 되고, 반대로 다른 경로에서 같은 Desc를 만들면 Device가 같은 핸들을 돌려줍니다.</p>
+<p>처음 만나는 조합은 그 프레임에 생성 비용을 치릅니다. 그래서 <code>Renderer::Initialize</code>는 첫 프레임 전에 기본 PSO 열 개(메인·그림자·스카이·톤·후처리 둘·G-buffer·디퍼드 라이팅·SSAO 둘)를 만들어 보고, 하나라도 실패하면 초기화를 실패시킵니다. 생성 실패를 시작할 때 보게 하려는 것입니다.</p>
+<p>찾은 핸들은 정렬에도 쓰입니다. <code>BuildDrawList</code>는 드로우 목록을 불투명 → 블렌딩, 그 안에서 <code>pipeline.index</code> → 재질 → 메시 순으로 정렬하고, <code>DrawItems</code>는 직전 드로우와 핸들이 같으면 <code>SetPipelineState</code>를 건너뜁니다(<code>lastPipeline</code>, 통계 <code>pipelineSwitches</code>). "직전" 기억은 패스 안에서만 유효해서, ImGui나 다른 패스가 상태를 바꿔도 패스의 첫 드로우에서 다시 겁니다.</p>
+
+<h3>6-4. 세대로 한꺼번에 버리기</h3>
+<p>PSO는 하나씩 지우지 않습니다. 셰이더 핫리로드(<code>Renderer::ReloadShaders</code>)는 새 셰이더를 컴파일한 뒤 <code>BuildPassDescs</code>로 새 셰이더 핸들을 Desc에 넣고 작은 키 캐시를 비운 다음, <code>Device::InvalidatePipelines</code>로 Device 캐시를 비웁니다. 캐시의 <code>Clear</code>는 세대를 1 올리므로, 이전 세대의 핸들은 <code>Get</code>에서 <code>nullptr</code>가 됩니다. 캐시가 비면 인덱스가 0부터 다시 시작해서, 세대가 없으면 옛 핸들이 엉뚱한 새 PSO를 가리킬 수 있었습니다. 컴퓨트 PSO도 같은 세대를 씁니다(D3D11은 <code>m_pipelines.GetGeneration()</code>을 빌려 쓰고, D3D12는 같은 캐시 클래스 안에 둠).</p>
+<p>두 백엔드의 차이는 해제 시점입니다. D3D11 <code>PipelineStateCache::Clear</code>는 객체를 바로 놓습니다. D3D12 <code>D3D12PipelineStateCache::Clear</code>는 GPU가 앞 프레임에서 아직 그 PSO를 쓰고 있을 수 있으므로 <code>Detach</code>한 <code>ID3D12PipelineState</code>를 <code>DeferRelease</code>에 넘기고, 그 프레임의 펜스가 지난 뒤 해제합니다(<a href="../study/gpu-sync-study.html">동기화 문서</a>). 컴파일이 실패하면 <code>ReloadShaders</code>가 이전 셰이더를 그대로 두고 캐시도 비우지 않습니다.</p>
+</section>
+
+<section id="backends">
+<h2>7. 두 백엔드의 PSO</h2>
+<h3>7-1. D3D11: 상태 객체를 묶어 흉내 낸다</h3>
+<p><code>RHI/D3D11/PipelineState.cpp</code>의 <code>PipelineState::Create</code>는 Desc 하나로 입력 레이아웃·래스터라이저·깊이스텐실·블렌드 상태 객체 네 개를 만들고 VS·PS·토폴로지와 함께 보관합니다. 입력 레이아웃은 정점 셰이더 바이트코드로 시그니처를 검증하므로, <code>D3D11Shader</code>가 바이트코드 사본을 들고 있습니다. <code>Bind</code>는 D3D12의 <code>SetPipelineState</code> 한 번에 해당하는 호출 일곱 개(<code>IASetInputLayout</code>, <code>IASetPrimitiveTopology</code>, <code>VSSetShader</code>, <code>PSSetShader</code>, <code>RSSetState</code>, <code>OMSetDepthStencilState</code>, <code>OMSetBlendState</code>)를 합니다. 1단계의 완료 기준은 "Renderer 코드에 개별 상태 호출이 남지 않는다"였고, grep으로 이 일곱 줄만 남았음을 확인했습니다 <span class="tag ok">확인함 (2026-09-23)</span> (<a href="../overview/phase-record.html#p1-s8">1단계 검증</a>).</p>
+<p>상태 객체는 PSO마다 따로 만듭니다. 같은 래스터라이저 설정을 여러 PSO가 공유하게 하는 하위 캐시는 "PSO 수가 늘어나면 추가"한다고 주석에 남아 있습니다. <code>D3D11CommandList::SetPipelineState</code>는 같은 핸들이어도 <code>Bind</code>를 다시 하는데, 건너뛰기는 Renderer의 <code>lastPipeline</code>이 맡습니다. 이 함수는 PSO의 깊이 쓰기 여부(<code>m_pipelineDepthWrite</code>)도 기억해 둡니다.</p>
+<h3>7-2. D3D12: 진짜 PSO와 공유 루트 시그니처</h3>
+<p><code>RHI/D3D12/D3D12PipelineState.cpp</code>의 <code>D3D12PipelineState::Create</code>는 먼저 <code>D3D12Device::GetOrCreateRootLayout</code>에서 레이아웃 조합에 맞는 루트 시그니처를 얻고(같은 조합이면 <code>shared_ptr</code>로 공유), <code>D3D12_GRAPHICS_PIPELINE_STATE_DESC</code>를 채워 <code>CreateGraphicsPipelineState</code>를 부릅니다. <code>rtvFormats</code>·<code>dsvFormat</code>·<code>sampleCount</code>가 실제로 쓰이는 곳이 여기입니다. <code>D3D12CommandList::SetPipelineState</code>는 같은 핸들이면 건너뛰고, 루트 시그니처가 바뀌었을 때만 <code>SetGraphicsRootSignature</code>를 부르며 그때 모든 셋의 테이블을 dirty로 표시합니다. 루트 파라미터 배치는 <a href="../study/binding-study.html">바인딩 문서</a>에서 다룹니다.</p>
+<h3>7-3. 컴퓨트 PSO</h3>
+<p><code>ComputePipelineDesc</code>는 셰이더 하나와 레이아웃 목록뿐이라 그래픽스 Desc와 따로 둡니다. 정점 레이아웃·블렌드 같은 의미 없는 필드가 해시에 섞이지 않게 하려는 것입니다. 두 백엔드 모두 레이아웃의 슬롯이 전부 <code>ShaderStageMask_Compute</code>여야 받아들입니다. D3D11에는 컴퓨트 PSO 객체가 없어서 <code>D3D11Device::CreateComputePipeline</code>이 Desc와 <code>ID3D11ComputeShader</code>를 벡터에 넣고, D3D12는 <code>CreateComputePipelineState</code>로 만듭니다. 캐시 키 <code>ComputePipelineDesc::Hash</code>(<code>RHI/PipelineTypes.h</code>)는 그래픽스 쪽과 섞는 방식이 다릅니다. <code>h ^= v; h *= 1099511628211</code>을 되풀이하는 진짜 FNV-1a이고, 그래픽스 <code>PipelineStateDesc::Hash</code>는 시드만 FNV offset basis이고 섞기는 <code>HashCombine</code>입니다(5-2). 그래서 헤더 주석의 "PipelineStateDesc::Hash 와 같은 방식"은 정확하지 않습니다. 두 Desc는 서로 다른 캐시에 들어가므로 동작에는 영향이 없습니다. Renderer 쪽 <code>GetComputePipeline</code>은 실패를 <code>m_computeTried</code>로 기억해 매 프레임 다시 묻지 않습니다. 컴퓨트 경로 전체는 <a href="../study/compute-uav-study.html">컴퓨트·UAV 문서</a>에 있습니다.</p>
+</section>
+
+<section id="shaders">
+<h2>8. 셰이더 컴파일, 리플렉션, 바인딩 대조</h2>
+<h3>8-1. fxc, DXBC, SM 5.0</h3>
+<p>셰이더는 <code>kShaders</code> 표의 39개입니다 <span class="tag chk">계산값</span>. 빌드 때 MSBuild <code>FxCompile</code>(<code>SherlockEngine.vcxproj</code>, <code>&lt;ShaderModel&gt;5.0</code>)이 <code>.cso</code>를 만들고, 실행 시 <code>ShaderCompiler::LoadOrCompile</code>이 이를 읽습니다. Debug 빌드에서는 소스 <code>.hlsl</code>이나 그것이 include 하는 헤더 중 하나라도 <code>.cso</code>보다 새로우면 <code>D3DCompileFromFile</code>로 다시 컴파일합니다(<code>D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION</code>, Release는 <code>OPTIMIZATION_LEVEL3</code>). 프로파일은 <code>RHI/DXBC/ShaderCompiler.cpp</code>의 <code>GetTargetProfile</code>이 스테이지로 정합니다(<code>vs_5_0</code>, <code>ps_5_0</code>, <code>cs_5_0</code>). 호출자는 셰이더 모델을 모릅니다.</p>
+<p>D3D12는 DXBC(SM 5.x)와 DXIL(SM 6.x)을 모두 받습니다. 이 엔진은 두 백엔드에 같은 DXBC를 넘깁니다. <code>D3D12Device.h</code> 주석의 이유는 "두 백엔드가 같은 <code>.cso</code>를 쓰므로 픽셀 비교가 의미 있다"는 것이고, DXIL(dxc)은 SM 6 기능이 필요해지면 들인다고 적혀 있습니다. SM 5.0 DXBC라서 D3D12 루트 시그니처의 레지스터 space도 전부 0입니다(<code>D3D12PipelineState.h</code> 주석).</p>
+<h3>8-2. 리플렉션으로 C++와 HLSL을 대조한다</h3>
+<p><code>Renderer::LoadShaders</code>는 바이트코드를 얻은 뒤 두 가지를 검사하고, 통과해야 <code>CreateShader</code>로 핸들을 바꿉니다. 둘 다 <code>D3DReflect</code>(<code>ID3D11ShaderReflection</code>)로 DXBC를 읽습니다.</p>
+<ol>
+<li><b>cbuffer 크기</b> (Debug만). <code>ReflectConstantBuffers</code>가 셰이더의 cbuffer를 전부 읽어 <code>kConstantBuffers</code> 표의 C++ 구조체 크기와 맞춥니다. 표에 없거나 크기가 다르면 로드 실패입니다. HLSL 패킹 규칙(float3 뒤 스칼라)이 어긋나면 화면이 조용히 깨지는 대신 여기서 잡힙니다.</li>
+<li><b>바인딩 대조</b> (<code>Renderer::ValidateBindings</code>). 패스마다 (1) 그 패스의 레이아웃끼리 같은 레지스터를 같은 스테이지에 선언하지 않았는지, (2) VS·PS가 실제로 쓰는 <code>b#/t#/s#/u#</code>가 그 패스의 레이아웃 중 하나에 그 스테이지로 선언됐는지 봅니다. 컴퓨트 패스도 같은 규칙(스테이지 Compute)입니다.</li>
+</ol>
+<p>로그는 슬롯마다 한 줄입니다. 통과하면 <code>바인딩 대조: [Main] BasicPS t0 ('…') OK</code>처럼, 빠지면 <code>바인딩 대조: [패스] 셰이더가 t3 ('…')를 쓰지만 이 패스의 BindingLayout에 그 스테이지로 선언되지 않음.</code> 꼴로 찍힙니다(<code>[패스]</code>는 <code>kPasses</code>의 이름, 셰이더는 <code>kShaders</code>의 디버그 이름). Debug에서는 실패하면 로드가 실패하고(핫리로드라면 이전 셰이더 유지), Release에서는 에러 로그만 남기고 계속합니다. 검사 단위가 패스인 이유는 레지스터가 PSO 하나 안에서만 유일하면 되기 때문입니다. 다른 패스는 같은 번호를 다른 용도로 써도 됩니다.</p>
+<p>이 검사가 RHI에 특히 중요한 이유는 D3D11과 D3D12가 실수에 다르게 반응하기 때문입니다. D3D11은 선언 안 된 슬롯에 남아 있던 리소스를 그대로 읽어 "우연히 맞는" 화면을 낼 수 있고, D3D12는 루트 시그니처에 없는 레지스터를 쓰는 셰이더로 PSO를 만들지 못합니다. 셰이더를 고칠 때 한쪽 백엔드에서만 드러나는 오류를 로드 시점의 같은 메시지로 바꿔 줍니다.</p>
+</section>
+
+<section id="resources">
+<h2>9. 리소스 생성 규칙 (짧게)</h2>
+<p>리소스도 "Desc → 핸들"입니다. 규칙 중 두 백엔드가 똑같이 지켜야 하는 것은 RHI 헤더의 <code>constexpr</code> 함수로 올려 두어, 두 <code>CreateBuffer</code>·<code>CreateTexture</code>가 같은 이유로 거절합니다.</p>
+<ul>
+<li><code>RHI/ResourceDesc.h</code>의 <code>ValidateBufferDesc</code>: Raw·간접 인자·UAV 버퍼는 Default usage만, Raw는 stride 0·크기 4의 배수, 간접 인자는 Raw 필수. Dynamic 버퍼는 D3D12에서 업로드 링 조각이라 GPU가 쓸 수 없습니다.</li>
+<li><code>CanBeUnorderedAccess</code>: 텍스처 UAV는 2D만, 깊이·MSAA·sRGB·블록 압축은 안 됨.</li>
+<li>바인드 플래그(<code>TextureBind_*</code>, <code>BufferBind_*</code>)는 생성할 때 정합니다. <code>DepthStencil | ShaderResource</code>(그림자 맵·씬 깊이)와 렌더 타깃 + SRV인 UNORM 색 텍스처는 백엔드가 TYPELESS 리소스로 만들고 뷰마다 포맷을 줍니다(<a href="color-space-study.html#formats">색공간 문서 5장</a>).</li>
+<li><code>Format</code> 열거형은 DXGI 포맷의 부분집합이고, 헤더 주석은 "새 값은 끝에 붙임 (기존 값의 번호가 PSO 캐시 키에 들어감)"이라고 적습니다.</li>
+</ul>
+<p>바인딩 레이아웃과 리소스 셋은 <a href="../study/binding-study.html">바인딩 문서</a>, 배리어·펜스·Dynamic 버퍼 링은 <a href="../study/gpu-sync-study.html">동기화 문서</a>, 텍스처 로딩과 포맷 선택은 <a href="../study/texture-pipeline-study.html">텍스처 파이프라인 문서</a>에 있습니다.</p>
+</section>
+
+<section id="code">
+<h2>10. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>핸들</td><td><code>RHI/Handle.h</code> 의 <code>Handle&lt;Tag&gt;</code>, <code>ResourceHandle</code></td><td><code>{index, generation}</code> 값, 별칭 8개, 콘셉트</td></tr>
+<tr><td>풀</td><td><code>RHI/ResourcePool.h</code> 의 <code>ResourcePool</code></td><td>슬롯·세대·free list. 해제 뒤 핸들은 <code>nullptr</code></td></tr>
+<tr><td>인터페이스</td><td><code>RHI/Device.h</code> 의 <code>RHI::Device</code>, <code>RHI/CommandList.h</code> 의 <code>RHI::CommandList</code></td><td>가상 인터페이스 둘. D3D 헤더 없음</td></tr>
+<tr><td>백엔드 선택</td><td><code>Core/Engine.cpp</code> 의 <code>Engine::Initialize</code></td><td><code>engine.backend</code> 값을 읽어 <code>RHI::Backend</code>를 고르고 <code>RHI::CreateDevice</code>에 넘김. 백엔드 헤더는 모름</td></tr>
+<tr><td>팩토리</td><td><code>RHI/RHI.cpp</code> 의 <code>RHI::CreateDevice</code></td><td>고른 백엔드의 Device를 만듦. 백엔드 헤더를 include 하는 유일한 파일</td></tr>
+<tr><td>PSO Desc</td><td><code>RHI/PipelineTypes.h</code> 의 <code>PipelineStateDesc</code>, <code>ComputePipelineDesc</code></td><td>D3D12 desc 모양의 값 타입</td></tr>
+<tr><td>해시·비교</td><td><code>RHI/PipelineTypes.cpp</code> 의 <code>PipelineStateDesc::Hash</code>, <code>operator==</code></td><td>필드 단위, ±0 정규화, 쓰는 만큼만</td></tr>
+<tr><td>D3D11 PSO</td><td><code>RHI/D3D11/PipelineState.cpp</code> 의 <code>Create</code>·<code>Bind</code>, <code>PipelineStateCache.cpp</code> 의 <code>GetOrCreate</code>·<code>Clear</code></td><td>상태 객체 4개 + 셰이더, 호출 7개, 세대</td></tr>
+<tr><td>D3D12 PSO</td><td><code>RHI/D3D12/D3D12PipelineState.cpp</code> 의 <code>D3D12PipelineState::Create</code>, <code>D3D12PipelineStateCache</code></td><td><code>CreateGraphicsPipelineState</code>, 지연 해제</td></tr>
+<tr><td>루트 시그니처 공유</td><td><code>RHI/D3D12/D3D12Device.cpp</code> 의 <code>GetOrCreateRootLayout</code></td><td>레이아웃 조합 → 루트 시그니처 캐시</td></tr>
+<tr><td>PSO 적용</td><td><code>D3D11CommandList::SetPipelineState</code>, <code>D3D12CommandList::SetPipelineState</code></td><td>Bind / PSO·루트 시그니처·토폴로지</td></tr>
+<tr><td>패스 표</td><td><code>Graphics/Renderer.h</code> 의 <code>PassId</code>, <code>Graphics/Renderer.cpp</code> 의 <code>kPasses</code>, <code>BuildPassDescs</code></td><td>패스별 고정 Desc (<code>m_passDesc</code>)</td></tr>
+<tr><td>작은 키 캐시</td><td><code>Renderer::GetPipelineFor</code>, <code>GetShadowPipelineFor</code>, <code>RendererDeferred.cpp</code> 의 <code>GetGBufferPipelineFor</code></td><td>비트 키 → 핸들, 실패는 저장 안 함</td></tr>
+<tr><td>정렬·전환 생략</td><td><code>Renderer::BuildDrawList</code>, <code>DrawItems</code></td><td>PSO 인덱스 순 정렬, <code>lastPipeline</code></td></tr>
+<tr><td>셰이더 로드·대조</td><td><code>Renderer::LoadShaders</code>, <code>ValidateBindings</code>, <code>ReloadShaders</code></td><td>cbuffer 크기·바인딩 대조, 핫리로드와 무효화</td></tr>
+<tr><td>컴파일러</td><td><code>RHI/DXBC/ShaderCompiler.cpp</code> 의 <code>CompileFromFile</code>, <code>LoadOrCompile</code>, <code>ReflectBindings</code></td><td>fxc·DXBC, <code>.cso</code> 우선, 리플렉션</td></tr>
+<tr><td>통계</td><td><code>Editor/DebugUI.cpp</code>, <code>Editor/Editor.cpp</code> (Stats)</td><td><code>PSO switches</code>, <code>PSO cache</code></td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>11. 실험</h2>
+<p>에디터에서 바로 할 수 있는 것부터 적었습니다. 코드를 잠깐 바꾸는 실험(E4, E5)은 확인한 뒤 되돌립니다.</p>
+<h3>E1. 캐시 적중을 로그로 보기 <span class="tag ok">확인함 (2026-09-23)</span></h3>
+<p>F1(와이어프레임)과 컬링을 토글하면 새 조합마다 <code>PSO 생성 #N (fill=…, cull=…, layouts=…, gen=…). 캐시 크기 M</code>이 한 번씩 찍히고, 같은 조합으로 돌아가면 찍히지 않아야 합니다. 1단계 때는 <code>#1 (fill=wire, cull=2). 캐시 크기 2</code> → <code>#2 (fill=wire, cull=0). 캐시 크기 3</code>이었습니다(<a href="../overview/phase-record.html#p1-s8">1단계 검증</a>). 지금은 시작할 때 기본 PSO 열 개를 먼저 만들고 로그 형식에 <code>layouts</code>·<code>gen</code>이 붙어서 번호와 크기는 그때와 다릅니다.</p>
+<h3>E2. 핫리로드와 세대 <span class="tag chk">예상</span></h3>
+<p>Debug 실행 중 <code>Shaders/BasicPixelShader.hlsl</code>을 고쳐 저장합니다. <code>PSO 캐시 비움 (N개). 이전 세대 1 의 핸들은 무효.</code> 뒤에 <code>gen=2</code>로 PSO가 다시 생성되고, Stats의 <code>reloads</code>가 1 늘어야 합니다. 일부러 문법 오류를 내면 "셰이더 핫리로드 실패. 이전 셰이더를 유지한다."가 찍히고 화면은 그대로여야 합니다.</p>
+<h3>E3. 두 백엔드 비교 <span class="tag ok">확인함 (2026-11-23)</span></h3>
+<p>같은 씬을 <code>--backend=d3d11</code>과 <code>--backend=d3d12</code>로 찍어 비교합니다. Gerstner 바다를 넣을 때 기록된 결과는 "D3D11 = D3D12 픽셀 동일"입니다(<a href="../plan/ocean-gerstner-record.html">바다 구현 기록</a>). 같은 DXBC를 두 백엔드에 넘기는 설계(8-1)가 이 비교를 가능하게 합니다.</p>
+<h3>E4. RTV 포맷을 틀리게 넣어 보기 <span class="tag chk">예상</span></h3>
+<p><code>GetPipelineFor</code>에서 <code>desc.rtvFormats[1] = kVelocityFormat</code>을 잠깐 <code>Format::R16G16B16A16_FLOAT</code>로 바꿉니다. D3D11은 이 필드를 읽지 않아 화면이 그대로이고, D3D12는 Debug Layer가 드로우마다 PSO와 RTV의 포맷 불일치를 보고해야 합니다. "D3D11이 감춰 주는 것"을 직접 보는 실험입니다.</p>
+<h3>E5. 바인딩 대조를 깨 보기 <span class="tag chk">예상</span></h3>
+<p><code>Renderer::CreateLayouts</code>에서 <code>Layout_Material</code>의 슬롯 하나(예: <code>Shaders/Material.hlsli</code>가 선언하는 t3 AO)를 잠깐 뺍니다. Debug 실행은 그 레지스터를 실제로 쓰는 셰이더와 패스마다(예: <code>[Main] BasicPS</code>, <code>[MainSkin] BasicPS</code>, G-buffer 패스는 <code>GBufferPS</code>) "선언되지 않음" 에러를 남기고 셰이더 로드에 실패해야 합니다. Release에서는 같은 에러가 찍히고 실행은 계속됩니다.</p>
+<h3>E6. 정렬이 PSO 전환을 줄이는가 <span class="tag chk">예상</span></h3>
+<p>Stats 창에서 <code>draws</code>와 <code>PSO switches</code>를 봅니다. 불투명 재질이 모두 같은 설정이면 메인 패스의 전환은 거의 1입니다. 재질 하나를 양면(<code>doubleSided</code>)으로 바꾸면 메인·G-buffer 키의 <code>cullBack</code>과 그림자 키의 비트 9가 함께 달라지므로, <code>PSO cache</code>는 패스마다 하나씩 최대 세 개 늘고(그 경로가 이번 프레임에 쓰일 때) 각 패스의 전환도 하나씩 늘어야 합니다. 전환 수가 드로우 수에 가까우면 정렬이 동작하지 않는 것입니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>12. 함정, 한계, 다음 단계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>D3D12에서만 드로우 오류</td><td>PSO의 <code>rtvFormats</code>·<code>dsvFormat</code>이 묶은 뷰와 다름</td><td>Get*Pipeline마다 실제 타깃 포맷을 적음. 톤 PSO는 sRGB용·UNORM용 두 개</td></tr>
+<tr><td>D3D12에서 아무것도 안 그려짐</td><td>시저 사각형이 없음</td><td><code>BeginRenderPass</code>·<code>SetViewport</code>가 시저도 함께 설정</td></tr>
+<tr><td>같은 설정인데 PSO가 계속 생김</td><td>패딩·±0·안 쓰는 배열 슬롯이 키에 섞임</td><td>필드 단위 해시 (5-2)</td></tr>
+<tr><td>핫리로드 뒤 옛 핸들이 다른 PSO를 가리킴</td><td>캐시를 비우면 인덱스가 0부터 다시 시작</td><td>캐시 세대. 옛 핸들은 <code>nullptr</code>, <code>SetPipelineState</code>가 에러 1회</td></tr>
+<tr><td>D3D12 핫리로드 중 실행 중인 명령이 깨질 위험</td><td>GPU가 아직 쓰는 PSO를 즉시 해제</td><td><code>DeferRelease</code>로 펜스 뒤 해제 (6-4)</td></tr>
+<tr><td>처음 보는 조합에서 프레임이 튐</td><td>그 프레임에 PSO를 생성</td><td>기본 열 개만 미리 만듦. 나머지는 첫 사용 때</td></tr>
+<tr><td>미러링한 오브젝트가 안 보임</td><td>행렬식이 음수면 감기 순서가 뒤집혀 앞면이 컬링됨</td><td>키 비트 8 <code>mirrored</code>가 <code>frontCounterClockwise</code>를 뒤집음</td></tr>
+<tr><td>반투명이 속도 버퍼를 덮어씀</td><td>MRT 블렌드가 RT마다 같게 적용</td><td><code>independentBlend</code> + <code>rt[1].writeMask = 0</code></td></tr>
+</table>
+<h3>12-1. 알려진 한계</h3>
+<ul>
+<li><b>조합 폭발.</b> PSO 수는 재질 옵션 × 정점 포맷 × 설정 × 패스의 곱입니다. 지금 상한은 약 95개(6-2)라 문제가 없지만, 키 비트가 하나 늘 때마다 메인 조합이 두 배가 됩니다. 대응은 관리입니다(캐시, 개수 통계, 필요하면 미리 생성).</li>
+<li><b>디스크 캐시와 비동기 생성이 없음.</b> D3D12 PSO는 실행마다 처음부터 만들고(<code>ID3D12PipelineLibrary</code>나 cached blob을 쓰지 않음), 생성은 렌더 스레드에서 동기로 합니다.</li>
+<li><b>D3D11 상태 객체를 PSO끼리 공유하지 않음.</b> 하위 캐시는 PSO 수가 늘면 넣는다고 주석에만 있습니다.</li>
+<li><b>스텐실 연산·참조값, 블렌드 팩터가 없음.</b> 쓰는 단계가 오면 Desc와 <code>CommandList</code>에 더합니다.</li>
+<li><b>셰이더 모델이 두 곳에서 정해짐.</b> 런타임은 <code>GetTargetProfile</code>, 빌드는 <code>.vcxproj</code>의 <code>&lt;ShaderModel&gt;5.0</code>. 올릴 때 둘을 같이 바꿔야 합니다(<a href="../overview/rendering-analysis.html#c22-4">22.4</a>).</li>
+<li><b>SM 5.0 고정.</b> 웨이브 연산, 16비트 타입, 메시 셰이더 같은 SM 6 기능은 dxc·DXIL을 들여야 쓸 수 있고, 그 순간 리플렉션 경로(<code>ID3D11ShaderReflection</code>)도 바뀝니다.</li>
+<li><b>핸들의 대소 비교는 쓰는 곳이 없음.</b> <code>&lt;=&gt;</code>가 만든 연산자이고, 정렬은 <code>pipeline.index</code>를 직접 비교합니다(<a href="../overview/rendering-analysis.html#d21">D21</a>).</li>
+</ul>
+<h3>12-2. 다음 단계</h3>
+<p><a href="../plan/rhi-roadmap-plan.html#overview">RHI 로드맵</a> 기준으로 RHI를 넓히는 일 가운데 끝난 것은 HDR 타깃, 컴퓨트 파이프라인과 UAV, GPU 파티클의 간접 그리기입니다(<a href="../plan/rhi-roadmap-plan.html#compute">3장</a>). 남은 것 중 RHI에 닿는 일은 다음과 같습니다.</p>
+<table>
+<tr><th>일</th><th>RHI에 더할 것</th><th>지금 코드</th></tr>
+<tr><td>엔진 안에서 IBL 생성 (<a href="../plan/rhi-roadmap-plan.html#ibl">로드맵 4장</a>)</td><td>큐브(2D 배열) UAV</td><td><code>CanBeUnorderedAccess</code>가 2D만 허용. 밉 단위 UAV(<code>ResourceBinding::mip</code>)는 이미 있음</td></tr>
+<tr><td>인스턴싱 (<a href="../plan/rhi-roadmap-plan.html#s-inst">로드맵 5-3</a>)</td><td><code>CommandList::DrawIndexedInstanced</code> 하나</td><td><code>CommandList</code>에 없음. 정렬은 이미 PSO → 재질 → 메시 순이라 "런"을 묶기만 하면 됨</td></tr>
+<tr><td>세 번째 백엔드 (<a href="../overview/rendering-analysis.html#c9-12">9.12</a>)</td><td>Vulkan은 개념이 거의 그대로 대응(<code>VkPipeline</code>, 디스크립터 셋)</td><td>큰 걸림돌은 셰이더(SPIR-V)와 리플렉션. 인터페이스는 거의 그대로</td></tr>
+</table>
+</section>
+
+<section id="study">
+<h2>13. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>암묵적 API와 명시적 API</td><td>D3D11 드라이버가 대신 하던 일(동기화·수명·상태 검증)을 D3D12에서 누가 하는가</td><td>1-1, 1-3</td></tr>
+<tr><td>핸들 + 세대</td><td>포인터 대신 <code>{index, generation}</code>, 해제 뒤 사용이 "항상 널"이 되는 이유</td><td>2-1, 2-2</td></tr>
+<tr><td>Desc 패턴</td><td>생성 주문서 = 캐시 키 = 보관된 원본, 지정 초기화의 필드 순서</td><td>2-3</td></tr>
+<tr><td>PSO와 동적 상태</td><td>무엇이 불변 객체에 들어가고 무엇이 커맨드 리스트에 남는가</td><td>4</td></tr>
+<tr><td>구조체 해시</td><td>패딩·±0·쓰는 만큼만, <code>a == b ⇒ hash(a) == hash(b)</code></td><td>5-2</td></tr>
+<tr><td>두 단계 캐시</td><td>작은 키는 속도, Desc 키는 중복 방지. 실패를 기억하지 않는 이유</td><td>6-2, 6-3</td></tr>
+<tr><td>세대 무효화와 지연 해제</td><td>핫리로드 뒤 옛 핸들, GPU가 아직 쓰는 객체</td><td>6-4</td></tr>
+<tr><td>DXBC·DXIL과 셰이더 모델</td><td>fxc와 dxc, SM 5.0과 6.x, 같은 바이트코드로 백엔드 비교</td><td>8-1</td></tr>
+<tr><td>셰이더 리플렉션</td><td>cbuffer 크기와 레지스터 사용을 C++ 선언과 대조</td><td>8-2</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Microsoft Learn, <a href="https://learn.microsoft.com/windows/win32/direct3d12/managing-graphics-pipeline-state-in-direct3d-12">Managing Graphics Pipeline State in Direct3D 12</a> — PSO에 들어가는 것과 커맨드 리스트에 남는 동적 상태. 4장</li>
+<li>Microsoft Learn, <a href="https://learn.microsoft.com/windows/win32/direct3d12/pipelines-and-shaders-with-directx-12">Pipelines and Shaders with Direct3D 12</a> — D3D12 파이프라인 단계와 PSO의 관계. 4-2</li>
+<li>Microsoft Learn, <a href="https://learn.microsoft.com/windows/win32/direct3dhlsl/specifying-compiler-targets">Specifying Compiler Targets</a> — 셰이더 모델과 프로파일, fxc와 dxc. 8-1</li>
+<li>NVIDIA, <a href="https://github.com/NVIDIA-RTX/NVRHI">NVRHI</a> — 가상 인터페이스 + 리소스 핸들로 D3D11·D3D12·Vulkan을 덮는 구조. 1-2</li>
+<li>floooh, <a href="https://floooh.github.io/2018/06/17/handles-vs-pointers.html">Handles are the better pointers</a> — sokol_gfx 저자의 핸들·세대 풀 설명. 2장</li>
+<li>우리 문서: <a href="../overview/rendering-analysis.html#c5">rendering-analysis 5장</a>(핸들·풀·Desc), <a href="../overview/rendering-analysis.html#c6">6장</a>(PSO, <a href="../overview/rendering-analysis.html#c6-12">6.12 함정</a>, <a href="../overview/rendering-analysis.html#c6-13">6.13 검증</a>), <a href="../overview/rendering-analysis.html#c9">9장</a>(두 백엔드), <a href="../overview/rendering-analysis.html#d21">D21</a>·<a href="../overview/rendering-analysis.html#d22">D22</a>, <a href="../plan/rhi-roadmap-plan.html#overview">RHI 로드맵</a>, <a href="../overview/glossary.html#graphics">용어집 그래픽스 묶음</a>(RHI, PSO), <a href="../study/binding-study.html">바인딩</a>, <a href="../study/gpu-sync-study.html">GPU 동기화</a>, <a href="../study/compute-uav-study.html">컴퓨트·UAV</a>, <a href="../study/frame-structure-study.html">프레임 구조</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

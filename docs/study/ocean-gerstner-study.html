@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · Gerstner 바다 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Gerstner 바다 학습 문서</h1>
+  <p>정점을 궤도로 움직이는 파도 — 사인 높이장과 무엇이 다른가, 파도 여러 개를 값 몇 개로 만드는 법, 먼 바다의 반짝임을 줄이는 대역 제한, 우리 엔진의 코드 위치</p>
+  <p>2026-11-25 · 바다 이야기는 지금까지 <a href="../plan/ocean-gerstner-plan.html">Gerstner 바다 구현 계획</a>, <a href="../plan/ocean-gerstner-record.html">Gerstner 바다 구현 기록</a>, <a href="../overview/rendering-analysis.html#c20-29">rendering-analysis 20.29</a>에 있었습니다. 이 문서는 수식부터 다시 설명하고, 지금 코드에 맞춰 정리합니다. 기존 문서는 그대로 두었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(왜 Gerstner 인가, 한 파도의 식, 꼬임 조건, 분산 관계), 3장은 한 프레임에서 바다가 지나는 길, 4장은 파도 만들기, 5장은 상수 버퍼와 시간, 6장은 셰이더와 대역 제한, 7장은 넓은 평면과 수평선, 8장은 렌더러에 끼워 넣은 자리, 9장은 코드 지도, 10장은 실험, 11장은 함정, 12장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 파도 표와 정밀도 값은 <code>Ocean::BuildWaves</code> 와 같은 식을 Python 으로 옮겨 계산한 값입니다 <span class="tag chk">계산값</span>. 화면에서 잰 값은 2026-11-23 구현 때 기록 문서에 남은 것이고 <span class="tag ok">확인함</span>으로 표시했습니다. 화면 좌표는 에디터 씬 뷰(732×445) 기준입니다.</div>
+</header>
+<nav><a href="#why">1. 왜 Gerstner 인가</a><a href="#principle">2. 원리</a><a href="#flow">3. 한 프레임의 흐름</a><a href="#waves">4. 파도 만들기</a><a href="#time">5. b9 와 시간</a><a href="#shaders">6. 셰이더와 대역 제한</a><a href="#grid">7. 평면·감쇠·수평선</a><a href="#pipeline">8. 렌더러에 끼운 자리</a><a href="#code">9. 우리 코드</a><a href="#lab">10. 실험</a><a href="#pitfalls">11. 함정</a><a href="#study">12. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 Gerstner 파도인가</h2>
+<h3>1-1. 풀려는 문제</h3>
+<p>요청은 "플레이어가 멈춰 있는 배 위에서 전투를 하고 배경으로 잔잔한 바다가 보이는 장면"이었습니다(<a href="../overview/rendering-analysis.html#c20-29">rendering-analysis 20.29</a>, <a href="../plan/ocean-gerstner-record.html">구현 기록</a> 머리말). 바다는 배경이라 CPU 가 파도 높이를 읽을 일이 없고(부력 없음), 수평선까지 보여야 하며, TAA·모션 블러와 맞으려면 속도 버퍼에 제대로 된 값을 써야 합니다. 사용자와 정한 것은 "Gerstner 만, 배는 고정, 잔잔한 배경 바다" 세 가지입니다(<a href="../plan/ocean-gerstner-plan.html#d-table">계획 3.2</a>).</p>
+<h3>1-2. 바다 표면을 만드는 방법들</h3>
+<table>
+<tr><th>방법</th><th>점이 움직이는 방향</th><th>모양</th><th>비용과 구현</th></tr>
+<tr><td>사인 높이장의 합</td><td>위아래만</td><td>마루와 골이 같은 모양이라 물결보다 젤리처럼 보임</td><td>가장 싸고 노멀도 해석적</td></tr>
+<tr><td>Gerstner 파도의 합 (이 엔진)</td><td>위아래 + 진행 방향 앞뒤 (궤도)</td><td>마루 쪽으로 점이 모여 마루는 뾰족, 골은 넓음</td><td>파도마다 <code>sincos</code> 한 번. 노멀도 해석적</td></tr>
+<tr><td>FFT 스펙트럼 (Tessendorf)</td><td>Gerstner 와 같은 변위를 수만 개 파도로</td><td>실제 바다 스펙트럼(Phillips·JONSWAP)을 따름</td><td>매 프레임 컴퓨트 FFT, 변위·노멀 텍스처, 타일 반복 처리</td></tr>
+<tr><td>유체 시뮬레이션</td><td>물리 그대로</td><td>부서지는 파도·물보라까지</td><td>배경 바다에는 과함</td></tr>
+</table>
+<p>Gerstner 합은 사인 합과 비용이 거의 같으면서 마루가 뾰족한 물결 모양이 나옵니다. FFT 는 더 사실적이지만 컴퓨트 패스와 텍스처가 새로 필요합니다. 방식은 사용자가 "Gerstner 만"으로 정했고(<a href="../plan/ocean-gerstner-plan.html#d-table">계획 3.2</a>), FFT 는 계획 0장의 범위 밖 목록에 들어 있습니다. 파도 6~8 개로 배경 바다를 만드는 데에는 컴퓨트 패스가 필요 없다는 점이 이 선택의 비용상 장점입니다.</p>
+</section>
+
+<section id="principle">
+<h2>2. 원리</h2>
+<h3>2-1. 한 파도의 식</h3>
+<p>평면 위 원래 위치를 x₀ = (x, z), 파도 i 의 진행 방향(xz 단위 벡터)을 Dᵢ, 파수를 kᵢ = 2π / Lᵢ, 진폭을 Aᵢ, 경사를 sᵢ, 위상을 φᵢ 라고 합니다. <code>Shaders/Ocean.hlsli</code> 의 <code>GerstnerPosition</code> 이 계산하는 식은 이것입니다(Y 가 위).</p>
+<pre><code>θᵢ   = kᵢ (Dᵢ · x₀) − φᵢ
+P.xz = x₀ + Σ (sᵢ / kᵢ) Dᵢ cos θᵢ     // 수평 변위
+P.y  =      Σ  Aᵢ          sin θᵢ     // 높이</code></pre>
+<p>φᵢ 가 시간에 따라 커지면 같은 θ 를 갖는 자리가 Dᵢ 쪽으로 옮겨 가므로 파도는 Dᵢ 방향으로 나아갑니다. 평면의 점 하나만 보면 수평으로 반지름 sᵢ/kᵢ, 수직으로 반지름 Aᵢ 인 타원을 돕니다. 마루(sin θ = 1)에서는 cos θ 가 0 근처를 지나며 부호가 바뀌어 주변 점이 마루 쪽으로 모이고, 골에서는 흩어집니다. 그래서 마루가 뾰족하고 골이 넓어집니다.</p>
+<figure>
+<svg viewBox="0 0 900 330" role="img" aria-label="사인 높이장과 Gerstner 파도의 옆모습 비교">
+  <line class="ln" x1="40" y1="150" x2="860" y2="150" style="stroke-dasharray:2 4"/>
+  <polyline points="60.0,150.0 64.0,147.6 68.0,145.2 72.0,142.9 76.0,140.5 80.0,138.2 84.0,136.0 88.0,133.9 92.0,131.8 96.0,129.8 100.0,127.9 104.0,126.1 108.0,124.5 112.0,122.9 116.0,121.5 120.0,120.2 124.0,119.1 128.0,118.1 132.0,117.3 136.0,116.6 140.0,116.1 144.0,115.8 148.0,115.6 152.0,115.6 156.0,115.8 160.0,116.1 164.0,116.6 168.0,117.3 172.0,118.1 176.0,119.1 180.0,120.2 184.0,121.5 188.0,122.9 192.0,124.5 196.0,126.1 200.0,127.9 204.0,129.8 208.0,131.8 212.0,133.9 216.0,136.0 220.0,138.2 224.0,140.5 228.0,142.9 232.0,145.2 236.0,147.6 240.0,150.0 244.0,152.4 248.0,154.8 252.0,157.1 256.0,159.5 260.0,161.8 264.0,164.0 268.0,166.1 272.0,168.2 276.0,170.2 280.0,172.1 284.0,173.9 288.0,175.5 292.0,177.1 296.0,178.5 300.0,179.8 304.0,180.9 308.0,181.9 312.0,182.7 316.0,183.4 320.0,183.9 324.0,184.2 328.0,184.4 332.0,184.4 336.0,184.2 340.0,183.9 344.0,183.4 348.0,182.7 352.0,181.9 356.0,180.9 360.0,179.8 364.0,178.5 368.0,177.1 372.0,175.5 376.0,173.9 380.0,172.1 384.0,170.2 388.0,168.2 392.0,166.1 396.0,164.0 400.0,161.8 404.0,159.5 408.0,157.1 412.0,154.8 416.0,152.4 420.0,150.0 424.0,147.6 428.0,145.2 432.0,142.9 436.0,140.5 440.0,138.2 444.0,136.0 448.0,133.9 452.0,131.8 456.0,129.8 460.0,127.9 464.0,126.1 468.0,124.5 472.0,122.9 476.0,121.5 480.0,120.2 484.0,119.1 488.0,118.1 492.0,117.3 496.0,116.6 500.0,116.1 504.0,115.8 508.0,115.6 512.0,115.6 516.0,115.8 520.0,116.1 524.0,116.6 528.0,117.3 532.0,118.1 536.0,119.1 540.0,120.2 544.0,121.5 548.0,122.9 552.0,124.5 556.0,126.1 560.0,127.9 564.0,129.8 568.0,131.8 572.0,133.9 576.0,136.0 580.0,138.2 584.0,140.5 588.0,142.9 592.0,145.2 596.0,147.6 600.0,150.0 604.0,152.4 608.0,154.8 612.0,157.1 616.0,159.5 620.0,161.8 624.0,164.0 628.0,166.1 632.0,168.2 636.0,170.2 640.0,172.1 644.0,173.9 648.0,175.5 652.0,177.1 656.0,178.5 660.0,179.8 664.0,180.9 668.0,181.9 672.0,182.7 676.0,183.4 680.0,183.9 684.0,184.2 688.0,184.4 692.0,184.4 696.0,184.2 700.0,183.9 704.0,183.4 708.0,182.7 712.0,181.9 716.0,180.9 720.0,179.8 724.0,178.5 728.0,177.1 732.0,175.5 736.0,173.9 740.0,172.1 744.0,170.2 748.0,168.2 752.0,166.1 756.0,164.0 760.0,161.8 764.0,159.5 768.0,157.1 772.0,154.8 776.0,152.4 780.0,150.0" style="fill:none;stroke:var(--ink3);stroke-width:1.5;stroke-dasharray:5 4"/>
+  <polyline points="41.9,172.1 47.2,170.2 52.3,168.2 57.3,166.1 62.2,164.0 66.9,161.8 71.5,159.5 76.0,157.1 80.4,154.8 84.6,152.4 88.6,150.0 92.6,147.6 96.4,145.2 100.0,142.9 103.5,140.5 106.9,138.2 110.2,136.0 113.3,133.9 116.3,131.8 119.2,129.8 121.9,127.9 124.6,126.1 127.2,124.5 129.6,122.9 132.0,121.5 134.3,120.2 136.6,119.1 138.7,118.1 140.9,117.3 142.9,116.6 145.0,116.1 147.0,115.8 149.0,115.6 151.0,115.6 153.0,115.8 155.0,116.1 157.1,116.6 159.1,117.3 161.3,118.1 163.4,119.1 165.7,120.2 168.0,121.5 170.4,122.9 172.8,124.5 175.4,126.1 178.1,127.9 180.8,129.8 183.7,131.8 186.7,133.9 189.8,136.0 193.1,138.2 196.5,140.5 200.0,142.9 203.6,145.2 207.4,147.6 211.4,150.0 215.4,152.4 219.6,154.8 224.0,157.1 228.5,159.5 233.1,161.8 237.8,164.0 242.7,166.1 247.7,168.2 252.8,170.2 258.1,172.1 263.4,173.9 268.8,175.5 274.4,177.1 280.0,178.5 285.7,179.8 291.4,180.9 297.3,181.9 303.1,182.7 309.1,183.4 315.0,183.9 321.0,184.2 327.0,184.4 333.0,184.4 339.0,184.2 345.0,183.9 350.9,183.4 356.9,182.7 362.7,181.9 368.6,180.9 374.3,179.8 380.0,178.5 385.6,177.1 391.2,175.5 396.6,173.9 401.9,172.1 407.2,170.2 412.3,168.2 417.3,166.1 422.2,164.0 426.9,161.8 431.5,159.5 436.0,157.1 440.4,154.8 444.6,152.4 448.6,150.0 452.6,147.6 456.4,145.2 460.0,142.9 463.5,140.5 466.9,138.2 470.2,136.0 473.3,133.9 476.3,131.8 479.2,129.8 481.9,127.9 484.6,126.1 487.2,124.5 489.6,122.9 492.0,121.5 494.3,120.2 496.6,119.1 498.7,118.1 500.9,117.3 502.9,116.6 505.0,116.1 507.0,115.8 509.0,115.6 511.0,115.6 513.0,115.8 515.0,116.1 517.1,116.6 519.1,117.3 521.3,118.1 523.4,119.1 525.7,120.2 528.0,121.5 530.4,122.9 532.8,124.5 535.4,126.1 538.1,127.9 540.8,129.8 543.7,131.8 546.7,133.9 549.8,136.0 553.1,138.2 556.5,140.5 560.0,142.9 563.6,145.2 567.4,147.6 571.4,150.0 575.4,152.4 579.6,154.8 584.0,157.1 588.5,159.5 593.1,161.8 597.8,164.0 602.7,166.1 607.7,168.2 612.8,170.2 618.1,172.1 623.4,173.9 628.8,175.5 634.4,177.1 640.0,178.5 645.7,179.8 651.4,180.9 657.3,181.9 663.1,182.7 669.1,183.4 675.0,183.9 681.0,184.2 687.0,184.4 693.0,184.4 699.0,184.2 705.0,183.9 710.9,183.4 716.9,182.7 722.7,181.9 728.6,180.9 734.3,179.8 740.0,178.5 745.6,177.1 751.2,175.5 756.6,173.9 761.9,172.1 767.2,170.2 772.3,168.2 777.3,166.1 782.2,164.0 786.9,161.8 791.5,159.5 796.0,157.1 800.4,154.8 804.6,152.4 808.6,150.0 812.6,147.6 816.4,145.2 820.0,142.9 823.5,140.5 826.9,138.2 830.2,136.0 833.3,133.9 836.3,131.8 839.2,129.8 841.9,127.9" style="fill:none;stroke:var(--accent);stroke-width:2.2"/>
+  <polyline points="63.9,172.1 70.4,170.2 76.6,168.2 82.6,166.1 88.3,164.0 93.8,161.8 99.1,159.5 104.0,157.1 108.7,154.8 113.2,152.4 117.3,150.0 121.2,147.6 124.7,145.2 128.0,142.9 131.1,140.5 133.8,138.2 136.3,136.0 138.6,133.9 140.6,131.8 142.4,129.8 143.9,127.9 145.2,126.1 146.3,124.5 147.3,122.9 148.0,121.5 148.6,120.2 149.1,119.1 149.5,118.1 149.7,117.3 149.9,116.6 149.9,116.1 150.0,115.8 150.0,115.6 150.0,115.6 150.0,115.8 150.1,116.1 150.1,116.6 150.3,117.3 150.5,118.1 150.9,119.1 151.4,120.2 152.0,121.5 152.7,122.9 153.7,124.5 154.8,126.1 156.1,127.9 157.6,129.8 159.4,131.8 161.4,133.9 163.7,136.0 166.2,138.2 168.9,140.5 172.0,142.9 175.3,145.2 178.8,147.6 182.7,150.0 186.8,152.4 191.3,154.8 196.0,157.1 200.9,159.5 206.2,161.8 211.7,164.0 217.4,166.1 223.4,168.2 229.6,170.2 236.1,172.1 242.8,173.9 249.7,175.5 256.7,177.1 264.0,178.5 271.4,179.8 278.9,180.9 286.5,181.9 294.3,182.7 302.1,183.4 310.1,183.9 318.0,184.2 326.0,184.4 334.0,184.4 342.0,184.2 349.9,183.9 357.9,183.4 365.7,182.7 373.5,181.9 381.1,180.9 388.6,179.8 396.0,178.5 403.3,177.1 410.3,175.5 417.2,173.9 423.9,172.1 430.4,170.2 436.6,168.2 442.6,166.1 448.3,164.0 453.8,161.8 459.1,159.5 464.0,157.1 468.7,154.8 473.2,152.4 477.3,150.0 481.2,147.6 484.7,145.2 488.0,142.9 491.1,140.5 493.8,138.2 496.3,136.0 498.6,133.9 500.6,131.8 502.4,129.8 503.9,127.9 505.2,126.1 506.3,124.5 507.3,122.9 508.0,121.5 508.6,120.2 509.1,119.1 509.5,118.1 509.7,117.3 509.9,116.6 509.9,116.1 510.0,115.8 510.0,115.6 510.0,115.6 510.0,115.8 510.1,116.1 510.1,116.6 510.3,117.3 510.5,118.1 510.9,119.1 511.4,120.2 512.0,121.5 512.7,122.9 513.7,124.5 514.8,126.1 516.1,127.9 517.6,129.8 519.4,131.8 521.4,133.9 523.7,136.0 526.2,138.2 528.9,140.5 532.0,142.9 535.3,145.2 538.8,147.6 542.7,150.0 546.8,152.4 551.3,154.8 556.0,157.1 560.9,159.5 566.2,161.8 571.7,164.0 577.4,166.1 583.4,168.2 589.6,170.2 596.1,172.1 602.8,173.9 609.7,175.5 616.7,177.1 624.0,178.5 631.4,179.8 638.9,180.9 646.5,181.9 654.3,182.7 662.1,183.4 670.1,183.9 678.0,184.2 686.0,184.4 694.0,184.4 702.0,184.2 709.9,183.9 717.9,183.4 725.7,182.7 733.5,181.9 741.1,180.9 748.6,179.8 756.0,178.5 763.3,177.1 770.3,175.5 777.2,173.9 783.9,172.1 790.4,170.2 796.6,168.2 802.6,166.1 808.3,164.0 813.8,161.8 819.1,159.5 824.0,157.1 828.7,154.8 833.2,152.4 837.3,150.0 841.2,147.6 844.7,145.2 848.0,142.9 851.1,140.5 853.8,138.2 856.3,136.0 858.6,133.9" style="fill:none;stroke:var(--warn);stroke-width:1.6"/>
+  <circle cx="88.6" cy="150.0" r="3" style="fill:var(--accent)"/>
+  <circle cx="114.8" cy="132.8" r="3" style="fill:var(--accent)"/>
+  <circle cx="134.3" cy="120.2" r="3" style="fill:var(--accent)"/>
+  <circle cx="150.0" cy="115.6" r="3" style="fill:var(--accent)"/>
+  <circle cx="165.7" cy="120.2" r="3" style="fill:var(--accent)"/>
+  <circle cx="185.2" cy="132.8" r="3" style="fill:var(--accent)"/>
+  <circle cx="211.4" cy="150.0" r="3" style="fill:var(--accent)"/>
+  <circle cx="245.2" cy="167.2" r="3" style="fill:var(--accent)"/>
+  <circle cx="285.7" cy="179.8" r="3" style="fill:var(--accent)"/>
+  <circle cx="330.0" cy="184.4" r="3" style="fill:var(--accent)"/>
+  <circle cx="374.3" cy="179.8" r="3" style="fill:var(--accent)"/>
+  <circle cx="414.8" cy="167.2" r="3" style="fill:var(--accent)"/>
+  <circle cx="448.6" cy="150.0" r="3" style="fill:var(--accent)"/>
+  <circle cx="474.8" cy="132.8" r="3" style="fill:var(--accent)"/>
+  <circle cx="494.3" cy="120.2" r="3" style="fill:var(--accent)"/>
+  <circle cx="510.0" cy="115.6" r="3" style="fill:var(--accent)"/>
+  <circle cx="525.7" cy="120.2" r="3" style="fill:var(--accent)"/>
+  <circle cx="545.2" cy="132.8" r="3" style="fill:var(--accent)"/>
+  <circle cx="571.4" cy="150.0" r="3" style="fill:var(--accent)"/>
+  <circle cx="605.2" cy="167.2" r="3" style="fill:var(--accent)"/>
+  <circle cx="645.7" cy="179.8" r="3" style="fill:var(--accent)"/>
+  <circle cx="690.0" cy="184.4" r="3" style="fill:var(--accent)"/>
+  <circle cx="734.3" cy="179.8" r="3" style="fill:var(--accent)"/>
+  <circle cx="774.8" cy="167.2" r="3" style="fill:var(--accent)"/>
+  <circle cx="808.6" cy="150.0" r="3" style="fill:var(--accent)"/>
+  <ellipse cx="210" cy="150" rx="28.6" ry="34.4" style="fill:none;stroke:var(--ink3);stroke-width:1"/>
+  <circle cx="210" cy="150" r="2" style="fill:var(--ink3)"/>
+  <ellipse cx="390" cy="150" rx="28.6" ry="34.4" style="fill:none;stroke:var(--ink3);stroke-width:1"/>
+  <circle cx="390" cy="150" r="2" style="fill:var(--ink3)"/>
+  <text x="150" y="102" text-anchor="middle">마루</text>
+  <text x="330" y="210" text-anchor="middle">골</text>
+  <line x1="60" y1="290" x2="96" y2="290" style="stroke:var(--ink3);stroke-width:1.5;stroke-dasharray:5 4"/><text x="104" y="294">사인 높이장 (수직만)</text>
+  <line x1="290" y1="290" x2="326" y2="290" style="stroke:var(--accent);stroke-width:2.2"/><text x="334" y="294">Gerstner s = 0.5 (점 = 같은 간격의 x₀)</text>
+  <line x1="640" y1="290" x2="676" y2="290" style="stroke:var(--warn);stroke-width:1.6"/><text x="684" y="294">s = 1 (마루 뾰족)</text>
+  <text x="450" y="318" text-anchor="middle">회색 타원 = 점 하나의 궤도 (가로 반지름 s/k, 세로 반지름 A)</text>
+</svg>
+<figcaption>그림 1. 파도 하나의 옆모습(파장 하나 = 360 px, kA = 0.6 으로 과장). 사인 높이장은 점을 위아래로만 움직여 마루와 골이 대칭입니다. Gerstner 는 같은 간격으로 놓인 점(파란 점)이 마루 쪽으로 모입니다. 보기 쉽게 과장한 값이라 궤도가 세로로 긴 타원으로 보이지만, 엔진 기본값(그림 아래 문단)은 가로로 긴 타원입니다. s = 1 이면 마루가 뾰족한 꼭짓점이 되고, 그보다 크면 표면이 고리처럼 꼬입니다. <span class="tag chk">계산값</span></figcaption>
+</figure>
+<p>궤도가 원이 되는 것은 sᵢ/kᵢ = Aᵢ, 곧 sᵢ = kᵢAᵢ 일 때이고, 이것이 고전적인 트로코이드(trochoid) 파도입니다. 우리 엔진은 sᵢ 와 Aᵢ 를 따로 정합니다. 기본값에서는 sᵢ = 0.0667, kᵢAᵢ = 0.0491 이라 수평 반지름이 수직의 약 1.36 배인 가로로 긴 타원입니다 <span class="tag chk">계산값</span>. 계획 2장은 "점을 원을 그리며 움직인다"고 설명하지만 코드의 궤도는 타원입니다. 계획도 "sᵢ 는 수평으로 얼마나 모이는지를 따로 정하는 값이라 두 값을 독립으로 둡니다"라고 적었습니다(<a href="../plan/ocean-gerstner-plan.html#concept">계획 2장</a>).</p>
+
+<h3>2-2. GPU Gems 의 Q 와 꼬임 조건</h3>
+<p>GPU Gems 1권 1장(Finch, <a href="#refs">참고 문서</a>)의 식 기준으로, 수평 변위는 Qᵢ Aᵢ Dᵢ cos(…) 입니다. 우리 식의 sᵢ/kᵢ 와 맞추면 Qᵢ = sᵢ / (kᵢAᵢ) 입니다. Gems 는 Qᵢ = Q / (kᵢ Aᵢ × 파도 수) 로 나눠 Σ Qᵢ kᵢ Aᵢ = Q ≤ 1 을 지키는데, 이것은 우리 식의 Σ sᵢ ≤ 1 과 같은 조건입니다. 높이를 sin, 수평을 cos 로 두는 짝도 Gems 와 같고, 위상 부호만 다릅니다(GPU Gems 1권 1장의 식 기준으로 Gems 는 + φt, 우리는 − φ).</p>
+<p>조건이 나오는 이유는 수평 방향의 늘어남입니다. 파도 하나를 x 방향으로 보면 ∂P.x/∂x₀ = 1 − s sin θ 이고, 마루(sin θ = 1)에서 1 − s 입니다. s &gt; 1 이면 이 값이 음수가 되어 이웃 점의 순서가 뒤집히고 표면이 고리로 꼬입니다. 여러 파도의 마루가 같은 방향으로 겹치는 최악의 경우가 1 − Σ sᵢ 이므로 Σ sᵢ ≤ 1 이면 안전합니다. <code>Ocean::BuildWaves</code> 는 <code>steepness</code> 를 [0, 1] 로 자르고 파도 수로 똑같이 나눕니다.</p>
+<p>물리적인 가파름은 kA 입니다. 기본값은 모든 파도가 kA ≈ 0.049 로 같고, 파고/파장(2A/L = kA/π)으로 약 1.6 % 입니다 <span class="tag chk">계산값</span>. 깊은 물의 파도는 이 비가 약 1/7(Stokes 한계, H/L ≈ 0.142)에 이르면 부서지므로(<a href="#refs">참고 문서</a>) 기본값은 잔잔한 바다 쪽입니다.</p>
+
+<h3>2-3. 편미분과 노멀</h3>
+<p>노멀은 변위된 표면을 원래 x·z 로 편미분한 두 벡터의 외적입니다. <code>GerstnerSampleFiltered</code> 가 파도마다 더하는 항은 이렇습니다.</p>
+<pre><code>∂P/∂x = ( 1 − Σ sᵢ Dᵢx² sin θᵢ,   Σ kᵢAᵢ Dᵢx cos θᵢ,   − Σ sᵢ Dᵢx Dᵢz sin θᵢ )
+∂P/∂z = ( − Σ sᵢ Dᵢx Dᵢz sin θᵢ,  Σ kᵢAᵢ Dᵢz cos θᵢ,   1 − Σ sᵢ Dᵢz² sin θᵢ )
+N     = normalize( cross(∂P/∂z, ∂P/∂x) )    // 평평할 때 (0, 1, 0)</code></pre>
+<p>외적 순서는 Y 가 위일 때 평평한 면이 (0, 1, 0) 이 나오는 순서이고(cross(ẑ, x̂) = ŷ 는 손 방향과 상관없는 대수 결과입니다), <code>check_gerstner_normals.py</code> 가 유한 차분으로 확인합니다(10장 E1). 탄젠트는 메시 탄젠트(UV u 방향)를 월드로 옮긴 xz 성분 (t.x, t.z)로 ∂P/∂x · t.x + ∂P/∂z · t.z 를 만들어 정규화합니다(<code>OceanSurfaceTangent</code>). 바다 오브젝트를 요로 돌려도 노멀 맵 방향이 UV 와 맞게 하려는 선택이고, 계획의 T = ∂P/∂x 에서 바뀐 점입니다(<a href="../plan/ocean-gerstner-record.html#diff">기록 2장</a>).</p>
+
+<h3>2-4. 깊은 물의 분산 관계</h3>
+<p>파도의 속도는 마음대로 정하지 않고 깊은 물의 분산 관계 ω = √(g k) 를 씁니다(<code>Ocean::BuildWaves</code>, g = 9.81). 위상 속도 c = ω/k = √(g L / 2π) 라 긴 파도가 빠릅니다. 파장마다 속도가 달라 파도들이 서로 미끄러지며 겹치므로, 같은 무늬가 그대로 흘러가는 느낌이 줄어듭니다. <code>speed</code> 는 ω 에 곱하는 배율이고 0 이면 파도가 멈춥니다.</p>
+</section>
+
+<section id="flow">
+<h2>3. 한 프레임에서 바다가 지나는 길</h2>
+<table>
+<tr><th>순서</th><th>어디서</th><th>무엇을</th></tr>
+<tr><td>1</td><td><code>Renderer::BuildDrawList</code> → <code>Renderer::CollectOcean</code></td><td>켜진 <code>Ocean</code> 컴포넌트가 있는 첫 오브젝트를 이번 프레임의 바다로 정하고 <code>BuildWaves</code> 로 파도를 만듦. 그 드로우만 바다 PSO, 그림자 PSO 없음, 경계 구 + <code>Ocean::MaxDisplacement</code></td></tr>
+<tr><td>2</td><td><code>Renderer::UploadOceanConstants</code></td><td>b9 에 파도, 이번·지난 위상, 감쇠 거리, 원점. 바다가 없어도 파도 0 개로 올림. 모든 드로우(그림자 패스 포함) 전</td></tr>
+<tr><td>3</td><td>G-buffer 패스 (디퍼드)</td><td><code>OceanVS</code> + <code>OceanGBufferPS</code>. 디퍼드 조명이 IBL 반사·그림자를 다른 불투명 표면과 똑같이 적용</td></tr>
+<tr><td>3′</td><td>메인 패스 (포워드)</td><td><code>OceanVS</code> + <code>OceanPS</code>. 디퍼드를 끈 경우</td></tr>
+</table>
+<p>바다는 불투명 표면입니다. 깊이와 속도를 써야 TAA·모션 블러가 맞게 동작하고, 배경이라 비침이 필요 없다는 것이 계획의 이유입니다(<a href="../plan/ocean-gerstner-plan.html#d-table">계획 3.2</a>). 색과 거칠기는 오브젝트 재질이 정합니다. 테스트 씬의 재질은 짙은 청록 알베도, 금속성 0, 거칠기 0.06, ior 1.33 이고, 스치는 각도에서는 프레넬 때문에 하늘을 비춥니다(<a href="pbr-study.html">PBR 학습</a>, <a href="ibl-study.html">IBL 학습</a>).</p>
+</section>
+
+<section id="waves">
+<h2>4. 파도 만들기 — <code>Ocean::BuildWaves</code></h2>
+<p>파도를 하나씩 입력하지 않습니다. <code>PropertyVisitor</code>(Reflect)에 배열이 없고, 잔잔한 바다는 값 몇 개로 충분히 조절되기 때문입니다(<a href="../plan/ocean-gerstner-plan.html#d-table">계획 3.2</a>). 컴포넌트의 값과 파도를 만드는 규칙은 이렇습니다(<code>Scene/Ocean.h</code>).</p>
+<table>
+<tr><th>필드</th><th>기본값</th><th>파도 i 에 들어가는 방식</th></tr>
+<tr><td><code>waveCount</code></td><td>6</td><td>[1, 8] 로 자름 (<code>kMaxWaves</code> = <code>kMaxOceanWaves</code> = 8, <code>static_assert</code> 로 묶음)</td></tr>
+<tr><td><code>wavelengthMin</code> / <code>wavelengthMax</code></td><td>4 / 32 m</td><td>Lᵢ = Lmax · (Lmin/Lmax)^(i/(n−1)), 긴 것부터 등비</td></tr>
+<tr><td><code>amplitude</code></td><td>0.25 m</td><td>Aᵢ = amplitude · Lᵢ / Lmax. 모든 파도의 kA 가 같음</td></tr>
+<tr><td><code>steepness</code></td><td>0.4</td><td>sᵢ = clamp(steepness, 0, 1) / n</td></tr>
+<tr><td><code>windDirection</code> / <code>directionSpread</code></td><td>30° / 40°</td><td>각도 = wind + spread · (2r − 1), r 은 LCG 난수. +X 에서 +Z 쪽으로 잰 각</td></tr>
+<tr><td><code>speed</code></td><td>1</td><td>ωᵢ = √(g kᵢ) · speed</td></tr>
+<tr><td><code>seed</code></td><td>1</td><td>LCG 시작값. 파도마다 방향용·초기 위상용 난수를 하나씩 뽑음</td></tr>
+<tr><td><code>fadeStart</code> / <code>fadeEnd</code></td><td>80 / 300 m</td><td>셰이더의 거리 감쇠에 씀 (7장)</td></tr>
+</table>
+<p>난수는 <code>Scene/Ocean.cpp</code> 의 작은 <code>Lcg</code> 입니다. <code>std::rand</code> 는 전역 상태라 쓰지 않고, 같은 값이면 같은 파도가 나옵니다. <code>check_gerstner_normals.py</code> 의 <code>lcg</code> 가 같은 식이라 아래 표를 그대로 다시 만들 수 있습니다.</p>
+<figure>
+<svg viewBox="0 0 640 340" role="img" aria-label="바람 방향과 퍼짐으로 만든 파도 방향 여섯 개">
+  <defs><marker id="ocean-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+  <path d="M150,250 L347.0,284.7 A200,200 0 0 0 218.4,62.1 z" style="fill:var(--accent-bg);stroke:none"/>
+  <line class="ln" x1="120" y1="250" x2="390" y2="250"/><text x="396" y="254">+X</text>
+  <line class="ln" x1="150" y1="280" x2="150" y2="20"/><text x="156" y="32">+Z</text>
+  <line x1="150" y1="250" x2="344.9" y2="137.5" style="stroke:var(--ink3);stroke-width:1.2;stroke-dasharray:6 4"/>
+  <text x="351.5" y="136.0">바람 30°</text>
+  <line x1="150" y1="250" x2="327.6" y2="279.3" style="stroke:var(--accent);stroke-width:1.8" marker-end="url(#ocean-ar)"/>
+  <text x="341.4" y="285.6" text-anchor="middle">1</text>
+  <line x1="150" y1="250" x2="224.2" y2="136.3" style="stroke:var(--accent);stroke-width:1.8" marker-end="url(#ocean-ar)"/>
+  <text x="231.9" y="128.6" text-anchor="middle">2</text>
+  <line x1="150" y1="250" x2="215.6" y2="166.0" style="stroke:var(--accent);stroke-width:1.8" marker-end="url(#ocean-ar)"/>
+  <text x="228.2" y="159.0" text-anchor="middle">3</text>
+  <line x1="150" y1="250" x2="224.2" y2="204.0" style="stroke:var(--accent);stroke-width:1.8" marker-end="url(#ocean-ar)"/>
+  <text x="242" y="218" text-anchor="middle">4</text>
+  <line x1="150" y1="250" x2="186.7" y2="185.0" style="stroke:var(--accent);stroke-width:1.8" marker-end="url(#ocean-ar)"/>
+  <text x="170.7" y="195.0" text-anchor="middle">5</text>
+  <line x1="150" y1="250" x2="215.8" y2="242.3" style="stroke:var(--accent);stroke-width:1.8" marker-end="url(#ocean-ar)"/>
+  <text x="229.7" y="244.7" text-anchor="middle">6</text>
+  <text x="358.8" y="290.1">−10°</text>
+  <text x="224.4" y="62.1">70°</text>
+  <text x="440" y="60" text-anchor="middle">번호</text><text x="525" y="60" text-anchor="end">방향</text><text x="610" y="60" text-anchor="end">파장</text>
+  <text x="440" y="84" text-anchor="middle">1</text><text x="525" y="84" text-anchor="end">−9.4°</text><text x="610" y="84" text-anchor="end">32.00 m</text>
+  <text x="440" y="106" text-anchor="middle">2</text><text x="525" y="106" text-anchor="end">56.9°</text><text x="610" y="106" text-anchor="end">21.11 m</text>
+  <text x="440" y="128" text-anchor="middle">3</text><text x="525" y="128" text-anchor="end">52.0°</text><text x="610" y="128" text-anchor="end">13.93 m</text>
+  <text x="440" y="150" text-anchor="middle">4</text><text x="525" y="150" text-anchor="end">31.8°</text><text x="610" y="150" text-anchor="end">9.19 m</text>
+  <text x="440" y="172" text-anchor="middle">5</text><text x="525" y="172" text-anchor="end">60.6°</text><text x="610" y="172" text-anchor="end">6.06 m</text>
+  <text x="440" y="194" text-anchor="middle">6</text><text x="525" y="194" text-anchor="end">6.6°</text><text x="610" y="194" text-anchor="end">4.00 m</text>
+  <text x="430" y="226">화살표가 길수록 파장이 김</text>
+  <text x="430" y="248">위에서 내려다본 xz 평면</text>
+</svg>
+<figcaption>그림 2. 기본값(seed 1)으로 만든 파도 여섯 개의 방향. 파란 부채꼴이 바람 30° ± 퍼짐 40° 범위이고, 방향은 그 안에서 고르게 뽑은 난수입니다. 바다 스펙트럼처럼 방향별 세기를 정하지는 않습니다. 그림은 위에서 내려다본 xz 평면이며 +Z 를 위로 그렸습니다. <span class="tag chk">계산값</span></figcaption>
+</figure>
+<table>
+<tr><th>파도</th><th>파장 L</th><th>진폭 A</th><th>수평 반지름 s/k</th><th>주기 2π/ω</th><th>위상 속도 c</th></tr>
+<tr><td>1</td><td>32.00 m</td><td>0.250 m</td><td>0.340 m</td><td>4.53 s</td><td>7.07 m/s</td></tr>
+<tr><td>2</td><td>21.11 m</td><td>0.165 m</td><td>0.224 m</td><td>3.68 s</td><td>5.74 m/s</td></tr>
+<tr><td>3</td><td>13.93 m</td><td>0.109 m</td><td>0.148 m</td><td>2.99 s</td><td>4.66 m/s</td></tr>
+<tr><td>4</td><td>9.19 m</td><td>0.072 m</td><td>0.098 m</td><td>2.43 s</td><td>3.79 m/s</td></tr>
+<tr><td>5</td><td>6.06 m</td><td>0.047 m</td><td>0.064 m</td><td>1.97 s</td><td>3.08 m/s</td></tr>
+<tr><td>6</td><td>4.00 m</td><td>0.031 m</td><td>0.042 m</td><td>1.60 s</td><td>2.50 m/s</td></tr>
+</table>
+<p>표는 기본값의 계산값입니다 <span class="tag chk">계산값</span>. <code>Ocean::MaxDisplacement</code> 는 감쇠 전 최대 변위로 Σ A + Σ s/k 를 돌려주고, 기본값에서 0.674 + 0.916 ≈ 1.59 m 입니다. 수직과 수평 최대치를 그냥 더한 값이라 실제 최대 거리보다 크게 잡힌 보수적인 패딩입니다.</p>
+</section>
+
+<section id="time">
+<h2>5. b9 <code>OceanConstants</code> 와 시간</h2>
+<h3>5-1. 배치 (288 B)</h3>
+<table>
+<tr><th>오프셋</th><th>필드</th><th>내용</th></tr>
+<tr><td>0</td><td><code>waveA[8]</code></td><td>x = Dx, y = Dz, z = k, w = A</td></tr>
+<tr><td>128</td><td><code>waveB[8]</code></td><td>x = s, y = 이번 위상, z = 지난 위상, w = 0</td></tr>
+<tr><td>256</td><td><code>params</code></td><td>x = 파도 수, y = fadeStart, z = fadeEnd</td></tr>
+<tr><td>272</td><td><code>origin</code></td><td>xz = 감쇠 기준점 (바다 오브젝트 월드 원점)</td></tr>
+</table>
+<p><code>Graphics/ShaderConstants.h</code> 의 <code>OceanConstants</code> 와 <code>Shaders/Ocean.hlsli</code> 의 <code>cbuffer Ocean</code> 이 같은 배치이고, 크기와 오프셋을 <code>static_assert</code> 로 고정합니다. 슬롯은 <code>kCBSlotOcean</code> = 9 이며 <code>Layout_Object</code> 에 VS|PS 로 묶입니다. 같은 번호의 <code>kCBSlotParticleCollision</code> 은 컴퓨트 충돌 셋 전용이라 한 패스에 같이 묶이지 않습니다(바인딩 규칙은 <a href="binding-study.html">바인딩 학습</a>). D3D12 의 Dynamic 상수 버퍼는 프레임마다 한 번 써야 바인딩되므로 <code>UploadOceanConstants</code> 에는 일찍 끝나는 경로가 없습니다(함수 주석).</p>
+
+<h3>5-2. 위상을 CPU 가 double 로 감는 이유</h3>
+<p>셰이더는 ω·t 를 곱하지 않습니다. CPU 가 φ = fmod(ω·t + φ₀, 2π) 를 double 로 구해 [0, 2π) 범위의 float 로 넘깁니다. 셰이더가 보는 각 k(D·x₀) − φ 는 k(D·x₀) 의 크기만큼만 커지므로 float 정밀도가 위치 쪽 몫에만 걸립니다.</p>
+<table>
+<tr><th>값 (가장 짧은 파도 L = 4 m, ω = 3.93 rad/s)</th><th>크기</th><th>float 한 칸</th></tr>
+<tr><td>k·x, x = 300 m (기본 <code>fadeEnd</code>, 이보다 멀면 진폭·경사 0)</td><td>471 rad</td><td>0.00003 rad</td></tr>
+<tr><td>k·x, x = 5 km (OceanHorizon 가장자리, 기본값에서는 감쇠로 파도 없음)</td><td>7,854 rad</td><td>0.0005 rad</td></tr>
+<tr><td>ω·t, 실행 1 시간</td><td>14,132 rad</td><td>0.001 rad</td></tr>
+<tr><td>ω·t, 실행 하루</td><td>339,163 rad</td><td>0.031 rad</td></tr>
+<tr><td>입력 <code>totalTime</code> 자체, 하루</td><td>86,400 s</td><td>7.8 ms → 위상으로 0.031 rad</td></tr>
+</table>
+<p>표는 계산값입니다 <span class="tag chk">계산값</span>. 마지막 두 줄은 크기가 같습니다. 엔진의 <code>totalTime</code> 이 float 이므로 실행이 길어지면 입력 해상도가 먼저 떨어지고, double 감기는 그 손실을 되돌리지 못합니다. <code>UploadOceanConstants</code> 의 주석도 "입력 자체의 해상도는 그대로"라고 적었습니다. double 감기가 확실히 주는 것은 셰이더의 <code>sincos</code> 인자를 작게 유지하는 일과, 이번·지난 위상을 b0 를 건드리지 않고 한곳에서 관리하는 일입니다(<a href="../plan/ocean-gerstner-plan.html#d-table">계획 3.2</a> 시간 행).</p>
+
+<h3>5-3. 지난 위상과 속도 버퍼</h3>
+<p>속도 버퍼에는 정점의 이번 위치와 지난 프레임 위치가 모두 필요합니다(<a href="velocity-buffer-study.html">속도 버퍼 학습</a>). 바다는 지난 위치를 "지난 World 로 옮긴 평면 정점 + 지난 위상의 파도"로 다시 계산합니다(<code>VS_Ocean</code> 의 <code>basePrev</code>, <code>GerstnerPosition(…, OCEAN_PHASE_PREV)</code>). 지난 위상의 시간은 지난 프레임에 실제로 쓴 시간을 저장해 둔 <code>m_oceanPrevTime</code> 입니다(time − dt 로 추정하지 않음). 다음 경우에는 지난 = 이번(속도 0)으로 둡니다.</p>
+<ul>
+<li>처음 프레임, 바다가 없던 프레임 뒤(<code>m_oceanHasPrev</code> 거짓), <code>Renderer::ResetTemporalHistory</code> 뒤</li>
+<li>바다 오브젝트가 바뀐 프레임(<code>m_oceanPrevObject</code> 가 다름)</li>
+<li><code>--ocean-time=초</code> 로 시간을 고정했을 때(<code>RenderSettings::oceanTimeOverride</code>, <code>AppBase</code> 가 읽음). 이때 바다의 속도는 카메라 움직임만 남으므로 디버그 뷰 17(속도 오차)이 바다 위에서 검정이어야 합니다</li>
+</ul>
+<p>일시정지에서는 <code>totalTime</code> 이 멈추므로 따로 처리하지 않아도 속도가 0 이 됩니다.</p>
+</section>
+
+<section id="shaders">
+<h2>6. 셰이더 — 정점 변위, 픽셀 노멀, 대역 제한</h2>
+<h3>6-1. <code>VS_Ocean</code>: 월드 xz 에서 계산</h3>
+<p>평면 정점을 먼저 <code>world</code> 로 옮긴 뒤 월드 xz 에서 파도를 더합니다. 바다 오브젝트를 옮기거나 요로 돌려도 파도 방향은 월드 기준으로 남고, 노멀을 <code>worldInvTranspose</code> 로 바꿀 필요가 없습니다. 대신 피치·롤은 지원하지 않습니다(파도는 늘 월드 Y 로 솟음). 출력은 공용 <code>VSOutput</code> 뒤에 <code>TEXCOORD4</code> 하나(변위 전 xz, 월드 메시 탄젠트의 xz)를 붙인 <code>OceanVSOutput</code> 이라 다른 픽셀 셰이더의 입력 시그니처는 그대로입니다.</p>
+<h3>6-2. 픽셀에서 노멀을 다시 계산 (3단계)</h3>
+<p>정점 노멀을 보간하면 격자 간격보다 짧은 파도의 기울기가 정점 사이에서 사라지거나 계단이 됩니다. <code>OceanPixelInput</code> 은 픽셀마다 변위 전 xz 로 <code>GerstnerSampleFiltered</code> 를 다시 불러 노멀·탄젠트만 바꾼 <code>VSOutput</code> 을 만듭니다. <code>OceanPixelShader.hlsl</code> 은 <code>BasicPixelShader.hlsl</code> 을, <code>OceanGBufferPixelShader.hlsl</code> 은 <code>GBufferPixelShader.hlsl</code> 을 통째로 include 하고 <code>PS_Main</code>·<code>PS_GBuffer</code> 를 함수로 부릅니다. 바다 전용 셰이딩 코드가 없고, 바다도 일반 불투명 표면과 같은 포워드·G-buffer 셰이더 본문을 탑니다(<a href="deferred-gbuffer-study.html">디퍼드 G-buffer 학습</a>). <code>ddx</code>·<code>ddy</code> 를 쓰므로 분기 밖에서 불러야 합니다.</p>
+<h3>6-3. 대역 제한: 픽셀보다 짧은 파도의 기울기를 뺌</h3>
+<p>2단계 화면에서 먼 바다(약 80~300 m)에 점이 반짝였습니다. 실험해 보니 격자를 촘촘하게 해도 점은 그대로였고, 짧은 파도를 빼면 줄었습니다(<a href="../plan/ocean-gerstner-record.html#v-s3">기록 9.3</a>). 원인은 픽셀 크기였습니다. 멀리서는 픽셀 하나가 파장 여러 개를 덮는데, 픽셀 중심 한 점에서 노멀을 뽑으면 그 점이 마루 비탈에 걸리느냐에 따라 해 반사가 켜졌다 꺼졌다 합니다. 신호 처리로 말하면 나이퀴스트(픽셀당 0.5 주기)를 넘는 신호가 겹쳐 보이는 에일리어싱입니다.</p>
+<pre><code>// Ocean.hlsli 의 OceanBandLimit. dx0·dy0 = ddx·ddy(변위 전 xz)
+cyclesPerPixel = kᵢ · length(float2(dot(dx0, Dᵢ), dot(dy0, Dᵢ))) / 2π
+band           = 1 − smoothstep(0.1, 0.25, cyclesPerPixel)
+// 노멀·편미분의 kᵢAᵢ 와 sᵢ 에만 band 를 곱함. 위치에는 곱하지 않음 (PS 는 위치를 쓰지 않음)</code></pre>
+<p>파도 방향으로 잰 주기 수라, 비스듬히 볼 때 깊이 방향으로만 성긴 픽셀은 그 방향으로 진행하는 파도만 지웁니다. 정점 셰이더는 dx0·dy0 = 0 으로 불러 band = 1 입니다(<code>GerstnerSample</code>).</p>
+<figure>
+<svg viewBox="0 0 640 330" role="img" aria-label="픽셀 하나가 덮는 주기 수에 따른 대역 제한 배율">
+  <line class="ln" x1="70" y1="240" x2="590" y2="240"/><line class="ln" x1="70" y1="240" x2="70" y2="30"/>
+  <polyline points="70.0,40.0 75.2,40.0 80.4,40.0 85.6,40.0 90.8,40.0 96.0,40.0 101.2,40.0 106.4,40.0 111.6,40.0 116.8,40.0 122.0,40.0 127.2,40.0 132.4,40.0 137.6,40.0 142.8,40.0 148.0,40.0 153.2,40.0 158.4,40.0 163.6,40.0 168.8,40.0 174.0,40.0 179.2,40.0 184.4,40.0 189.6,40.0 194.8,40.0 200.0,40.0 205.2,40.0 210.4,40.0 215.6,40.0 220.8,40.0 226.0,40.0 231.2,40.0 236.4,40.0 241.6,40.0 246.8,40.0 252.0,40.0 257.2,40.0 262.4,40.0 267.6,40.0 272.8,40.0 278.0,40.0 283.2,40.0 288.4,40.0 293.6,40.0 298.8,40.0 304.0,40.0 309.2,40.0 314.4,40.0 319.6,40.0 324.8,40.0 330.0,40.0 335.2,40.2 340.4,40.9 345.6,42.1 350.8,43.6 356.0,45.6 361.2,47.9 366.4,50.7 371.6,53.7 376.8,57.1 382.0,60.8 387.2,64.8 392.4,69.0 397.6,73.5 402.8,78.3 408.0,83.2 413.2,88.3 418.4,93.6 423.6,99.1 428.8,104.7 434.0,110.4 439.2,116.2 444.4,122.1 449.6,128.0 454.8,134.0 460.0,140.0 465.2,146.0 470.4,152.0 475.6,157.9 480.8,163.8 486.0,169.6 491.2,175.3 496.4,180.9 501.6,186.4 506.8,191.7 512.0,196.8 517.2,201.7 522.4,206.5 527.6,211.0 532.8,215.2 538.0,219.2 543.2,222.9 548.4,226.3 553.6,229.3 558.8,232.1 564.0,234.4 569.2,236.4 574.4,237.9 579.6,239.1 584.8,239.8 590.0,240.0" style="fill:none;stroke:var(--warn);stroke-width:1.5;stroke-dasharray:6 4"/>
+  <polyline points="70.0,40.0 75.2,40.0 80.4,40.0 85.6,40.0 90.8,40.0 96.0,40.0 101.2,40.0 106.4,40.0 111.6,40.0 116.8,40.0 122.0,40.0 127.2,40.0 132.4,40.0 137.6,40.0 142.8,40.0 148.0,40.0 153.2,40.0 158.4,40.0 163.6,40.0 168.8,40.0 174.0,40.0 179.2,40.7 184.4,42.5 189.6,45.6 194.8,49.7 200.0,54.8 205.2,60.8 210.4,67.6 215.6,75.1 220.8,83.2 226.0,91.9 231.2,100.9 236.4,110.4 241.6,120.1 246.8,130.0 252.0,140.0 257.2,150.0 262.4,159.9 267.6,169.6 272.8,179.1 278.0,188.1 283.2,196.8 288.4,204.9 293.6,212.4 298.8,219.2 304.0,225.2 309.2,230.3 314.4,234.4 319.6,237.5 324.8,239.3 330.0,240.0 335.2,240.0 340.4,240.0 345.6,240.0 350.8,240.0 356.0,240.0 361.2,240.0 366.4,240.0 371.6,240.0 376.8,240.0 382.0,240.0 387.2,240.0 392.4,240.0 397.6,240.0 402.8,240.0 408.0,240.0 413.2,240.0 418.4,240.0 423.6,240.0 428.8,240.0 434.0,240.0 439.2,240.0 444.4,240.0 449.6,240.0 454.8,240.0 460.0,240.0 465.2,240.0 470.4,240.0 475.6,240.0 480.8,240.0 486.0,240.0 491.2,240.0 496.4,240.0 501.6,240.0 506.8,240.0 512.0,240.0 517.2,240.0 522.4,240.0 527.6,240.0 532.8,240.0 538.0,240.0 543.2,240.0 548.4,240.0 553.6,240.0 558.8,240.0 564.0,240.0 569.2,240.0 574.4,240.0 579.6,240.0 584.8,240.0 590.0,240.0" style="fill:none;stroke:var(--accent);stroke-width:2.2"/>
+  <line x1="174.0" y1="240" x2="174.0" y2="40" style="stroke:var(--ink3);stroke-dasharray:2 3"/>
+  <text x="174.0" y="258" text-anchor="middle">0.1</text>
+  <line x1="330.0" y1="240" x2="330.0" y2="40" style="stroke:var(--ink3);stroke-dasharray:2 3"/>
+  <text x="330.0" y="258" text-anchor="middle">0.25</text>
+  <line x1="590.0" y1="240" x2="590.0" y2="40" style="stroke:var(--ink3);stroke-dasharray:2 3"/>
+  <text x="590.0" y="258" text-anchor="middle">0.5</text>
+  <text x="70" y="258" text-anchor="middle">0</text>
+  <text x="179.0" y="26" text-anchor="start">파장당 10 px</text>
+  <text x="335.0" y="26" text-anchor="start">4 px</text>
+  <text x="585.0" y="26" text-anchor="end">2 px (나이퀴스트)</text>
+  <text x="62" y="44" text-anchor="end">1</text><text x="62" y="244" text-anchor="end">0</text>
+  <text x="330" y="280" text-anchor="middle">픽셀 하나가 덮는 주기 수 (파도 방향)</text>
+  <line x1="150" y1="310" x2="186" y2="310" style="stroke:var(--accent);stroke-width:2.2"/><text x="194" y="314">0.1~0.25 (채택)</text>
+  <line x1="360" y1="310" x2="396" y2="310" style="stroke:var(--warn);stroke-width:1.5;stroke-dasharray:6 4"/><text x="404" y="314">0.25~0.5 (실험)</text>
+</svg>
+<figcaption>그림 3. 대역 제한 배율. 채택한 구간은 파장당 10 픽셀에서 4 픽셀 사이에서 기울기를 1 → 0 으로 줄입니다. 나이퀴스트 근처(0.25~0.5)에서 줄이는 안은 깜빡임은 줄었지만 외딴 점이 남았습니다. <span class="tag chk">계산값</span></figcaption>
+</figure>
+<p>측정은 <code>OceanHorizon.json</code> 에서 TAA 를 끄고 했습니다. 깜빡임 = <code>--ocean-time</code> 10.0 과 10.0167 두 장의 휘도 차가 16 이상인 픽셀 수(수평선 아래 전체), 외딴 점 = 수평선 아래 띠(240~330 행)에서 주변 5×5 중앙값과 12 이상 다른 픽셀 수입니다. <span class="tag ok">확인함 (2026-11-23)</span> <a href="../plan/ocean-gerstner-record.html#v-s3">기록 9.3</a></p>
+<table>
+<tr><th>실험</th><th>깜빡임</th><th>외딴 점 (어두움 / 밝음)</th><th>읽은 것</th></tr>
+<tr><td>2단계 그대로 (정점 노멀)</td><td>126</td><td>765 / 486</td><td>기준</td></tr>
+<tr><td>격자만 촘촘하게 (400 m 균일, 0.78 m 간격)</td><td>76</td><td>782 / 623</td><td>점은 격자와 무관</td></tr>
+<tr><td>짧은 파도만 뺌 (<code>wavelengthMin</code> 12)</td><td>76</td><td>108 / 241</td><td>점은 픽셀보다 짧은 파도</td></tr>
+<tr><td>픽셀 노멀, 대역 제한 끔</td><td>149</td><td>1251 / 669</td><td>픽셀 노멀만으로는 오히려 늘어남</td></tr>
+<tr><td>픽셀 노멀, 대역 제한 0.25~0.5</td><td>31</td><td>906 / 578</td><td></td></tr>
+<tr><td>픽셀 노멀, 대역 제한 0.1~0.25 (채택)</td><td>25</td><td>412 / 313</td><td>가까운 바다는 같아 보이고 먼 해 반사 줄만 조금 약해짐</td></tr>
+</table>
+<p>뺀 기울기를 거칠기로 옮기지는 않습니다(LEAN·Toksvig 류의 방법). 그래서 먼 바다의 해 반사 줄이 조금 약해집니다. TAA 를 켜면 2단계에서도 외딴 점이 157 / 5 로 줄었고 <span class="tag ok">확인함 (2026-11-23)</span> <a href="../plan/ocean-gerstner-record.html#v-s3">기록 9.3</a>, 남은 점은 비스듬한 각도에서 변위된 마루가 뒤를 가리는 지오메트리 쪽으로 보았지만 확인하지는 않았습니다(<a href="taa-study.html">TAA 학습</a>).</p>
+</section>
+
+<section id="grid">
+<h2>7. 넓은 평면, 거리 감쇠, 수평선</h2>
+<h3>7-1. 가운데 촘촘·가장자리 성긴 평면</h3>
+<p>수평선까지 보이려면 평면이 커야 하지만, 균일 격자로 10 km 를 배 주변 간격에 맞추면 정점이 너무 많아집니다. <code>Mesh::CreatePlane</code> 의 <code>spacingGrowth</code>(g)는 정점 번호로 정한 t ∈ [−1, 1] 을 휘어서 가운데를 촘촘하게 둡니다.</p>
+<pre><code>x = half · sign(t) · ((1 − g)|t| + g|t|⁷)     // 기울기: 가운데 (1 − g), 끝 (1 + 6g)</code></pre>
+<p>간격 비는 (1 + 6g)/(1 − g) 이고 g = 0.93 이면 94 배입니다 <span class="tag chk">계산값</span>. g = 0 이면 예전 균일 식을 그대로 타서 비트 단위로 같은 정점이 나옵니다. 씬 파일에서는 평면 메시의 <code>params[2]</code> 가 g 입니다(<code>MeshSource::Plane</code>, <code>MeshSource::CreatePrimitive</code>). 에디터에 메시 출처 편집 UI 가 없어 JSON 으로만 넣습니다. UV 는 g 와 상관없이 정점 번호에 대해 균일합니다.</p>
+<table>
+<tr><th>곡선 (10 km, 512 정점)</th><th>원점</th><th>80 m 안 최대</th><th>300 m</th><th>가장자리</th></tr>
+<tr><td>|t|⁵, g 0.93</td><td>1.37 m</td><td>1.58 m</td><td>6.58 m <span class="tag chk">계산값</span></td><td>92 m</td></tr>
+<tr><td>|t|⁷, g 0.93 (채택)</td><td>1.37 m</td><td>1.39 m</td><td>5.99 m</td><td>127 m</td></tr>
+<tr><td>|t|⁹, g 0.93</td><td>1.37 m</td><td>1.37 m</td><td>5.65 m</td><td>163 m</td></tr>
+</table>
+<p>값은 <a href="../plan/ocean-gerstner-record.html#grid">기록 7장</a>의 계산이고, 채택한 줄의 원점 1.37 m·80 m 안 1.39 m·가장자리 127 m 는 이 문서에서도 다시 계산해 같았습니다 <span class="tag chk">계산값</span>. 같은 방법(300 m 를 품은 칸의 폭)으로 다시 계산하면 |t|⁷·|t|⁹ 줄은 기록과 같지만 |t|⁵ 줄의 300 m 는 6.58 m 라 이 표에는 계산값을 적었습니다. 기록은 6.42 m 로 적었습니다. 목표는 "80 m 안 1.5 m 이하"였고, 지수 5 로는 맞출 수 없어 7 로 정했습니다(<code>Mesh::CreatePlane</code> 주석). 계획의 지수 3 에서 바뀐 점입니다.</p>
+<h3>7-2. 거리 감쇠</h3>
+<p><code>OceanFade</code> 는 바다 원점에서의 거리로 진폭과 경사를 <code>fadeStart</code>~<code>fadeEnd</code>(기본 80~300 m)에서 1 → 0 으로 줄입니다(<code>1 − smoothstep</code>). 가장자리의 성긴 격자가 짧은 파도를 담지 못해 생기는 계단과 물결무늬를 막고, 먼 바다는 평평한 거울처럼 하늘을 비춥니다. 기준점이 바다 원점이어서 이번·지난 위치에 같은 배율이 곱해지고 속도가 틀어지지 않습니다. 노멀은 이 배율의 기울기를 무시하는데, 감쇠 구간(220 m)이 파장(최대 32 m)보다 훨씬 넓어 차이가 작다고 보았습니다(<code>Ocean.hlsli</code> 주석). <code>fadeEnd ≤ fadeStart</code> 면 감쇠하지 않습니다.</p>
+<h3>7-3. 먼 평면과 씬 저장</h3>
+<p><code>OceanHorizon.json</code> 은 한 변 10 km 라 카메라 far 를 5000 m 로 둡니다. 에디터 씬 카메라의 far 를 둘 곳이 없어서 <code>SceneSerializer</code> 가 <code>camera.farZ</code> 를 저장·복원하게 했습니다. 기본값 <code>kDefaultSceneCameraFar</code>(1000 m)와 같으면 쓰지 않아 기존 씬 파일은 저장만으로 바뀌지 않고, 키가 없으면 1000 으로 돌아갑니다. 기록에 따르면 바다는 far 에서 잘리고 갑판 8 m 에서 그 자리는 수평선보다 약 0.09° 아래입니다(<a href="../plan/ocean-gerstner-record.html#grid">기록 7장</a>). 화면에서도 틈이 보이지 않았습니다(수평선 아래 첫 행 밝기 164, 하늘 194) <span class="tag ok">확인함 (2026-11-23)</span> <a href="../plan/ocean-gerstner-record.html#v-s2">기록 9.2</a>.</p>
+</section>
+
+<section id="pipeline">
+<h2>8. 렌더러에 끼워 넣은 자리</h2>
+<table>
+<tr><th>항목</th><th>이 엔진에서</th><th>더 읽을 곳</th></tr>
+<tr><td>PSO 분기</td><td><code>GetPipelineFor</code>·<code>GetGBufferPipelineFor</code> 의 인자 <code>ocean</code>, 키 비트 12(바다 VS). 켜지면 <code>Pass_Ocean</code>·<code>Pass_GBufferOcean</code> 의 desc 에서 시작하고 미러·와이어프레임·컬링은 기존 비트(8~10)를 그대로 탐. 스킨 정점 포맷이면 무시</td><td><a href="rhi-pso-study.html">RHI·PSO 학습</a></td></tr>
+<tr><td>그림자</td><td>받기만 함. <code>BuildDrawList</code> 에서 바다면 <code>shadowPipeline</code> 을 비워 그림자 패스에 들어가지 않음. 받는 쪽은 변위된 월드 위치(포워드)·깊이 복원 위치(디퍼드)로 그대로</td><td><a href="shadow-map-study.html">그림자 맵 학습</a></td></tr>
+<tr><td>컬링</td><td>경계 구 반지름에 <code>Ocean::MaxDisplacement</code> 를 더해 화면 가장자리에서 마루가 잘리지 않게 함</td><td><a href="culling-study.html">컬링 학습</a></td></tr>
+<tr><td>바다 개수</td><td>씬에 하나. 둘째부터는 일반 평면으로 그리고 <code>"Ocean: 바다가 둘 이상임…"</code> 경고를 한 번(<code>m_oceanExtraWarned</code>)</td><td></td></tr>
+<tr><td>루트 시그니처</td><td>b9 를 <code>Layout_Object</code> 에 붙여 메인 패스 26 → 28/64 DWORD <span class="tag ok">확인함 (2026-11-23)</span></td><td><a href="../plan/ocean-gerstner-record.html#binding">기록 8장</a></td></tr>
+</table>
+<p>그림자에서 빼는 이유는 계획에 있습니다. 넓고 거의 평평한 바다가 그림자 맵에 들어가면 비용만 들고 자기 그림자 여드름이 생긴다는 것입니다(<a href="../plan/ocean-gerstner-plan.html#d-table">계획 3.2</a>). 기록의 GPU 시간에서 같은 평면을 일반 메시로 그리면 그림자 패스가 약 0.22 ms 늘었고, 바다로 그리면 0.007 ms 였습니다 <span class="tag ok">확인함 (2026-11-23)</span> <a href="../plan/ocean-gerstner-record.html#v-perf">기록 9.4</a>.</p>
+</section>
+
+<section id="code">
+<h2>9. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>컴포넌트</td><td><code>Scene/Ocean.h</code>·<code>Scene/Ocean.cpp</code> 의 <code>Ocean</code>, <code>OceanWave</code></td><td>값 11 개(Reflect 키 = 씬 파일 키), <code>BuildWaves</code>, <code>MaxDisplacement</code>, <code>Lcg</code></td></tr>
+<tr><td>프레임 수집·업로드</td><td><code>Graphics/RendererOcean.cpp</code> 의 <code>Renderer::CollectOcean</code>, <code>Renderer::UploadOceanConstants</code></td><td>첫 바다 선택·경고, 위상 double <code>fmod</code>, 지난 위상 규칙</td></tr>
+<tr><td>드로우 분기</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::BuildDrawList</code>, <code>Renderer::GetPipelineFor</code>, <code>Graphics/RendererDeferred.cpp</code> 의 <code>Renderer::GetGBufferPipelineFor</code></td><td>경계 구 패딩, 그림자 제외, 키 비트 12</td></tr>
+<tr><td>상수 버퍼</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>OceanConstants</code>, <code>kCBSlotOcean</code>, <code>kMaxOceanWaves</code></td><td>288 B 배치와 <code>static_assert</code></td></tr>
+<tr><td>파도 함수</td><td><code>Shaders/Ocean.hlsli</code></td><td><code>OceanFade</code>, <code>GerstnerPosition</code>, <code>GerstnerSampleFiltered</code>, <code>OceanBandLimit</code>, <code>OceanSurfaceTangent</code>, <code>OceanPixelInput</code></td></tr>
+<tr><td>셰이더 진입점</td><td><code>Shaders/OceanVertexShader.hlsl</code> 의 <code>VS_Ocean</code>, <code>OceanPixelShader.hlsl</code> 의 <code>PS_Ocean</code>, <code>OceanGBufferPixelShader.hlsl</code> 의 <code>PS_OceanGBuffer</code></td><td>변위·이전 위치, 픽셀 노멀로 기존 PS 호출</td></tr>
+<tr><td>평면 메시</td><td><code>Graphics/Mesh.cpp</code> 의 <code>Mesh::CreatePlane</code>, <code>Scene/Scene.cpp</code> 의 <code>MeshSource::Plane</code></td><td>간격 증가 g, |t|⁷ 곡선</td></tr>
+<tr><td>far 저장</td><td><code>Scene/SceneSerializer.cpp</code></td><td><code>camera.farZ</code> 는 1000 이 아닐 때만 씀</td></tr>
+<tr><td>시간 고정</td><td><code>App/AppBase.cpp</code>(<code>--ocean-time</code>), <code>Graphics/Renderer.h</code> 의 <code>RenderSettings::oceanTimeOverride</code></td><td>음수면 실제 시간</td></tr>
+<tr><td>테스트 씬·도구</td><td><code>Projects/SherlockTestScenes/Assets/Scenes/Ocean.json</code>·<code>OceanHorizon.json</code>, <code>Scripts/Tests/make_ocean_test_scenes.py</code>·<code>check_gerstner_normals.py</code></td><td>200 m 256² 평면 + 배 자리 상자 / 10 km 512² g 0.93 far 5000. 생성기는 DamagedHelmet 씬의 하늘·IBL 을 가져옴</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>10. 실험</h2>
+<p>E1 은 Python 스크립트, E2·E3 은 에디터 실행 인자, E4·E6 은 Inspector(E4 의 꼬임 확인은 코드 수정), E5 는 셰이더 수정으로 합니다. 에디터를 띄울 때 공통 인자는 <code>--project=…/SherlockTestScenes.sherlock --scene=Ocean.json</code> 입니다.</p>
+<h3>E1. 노멀 식 검사 <span class="tag ok">확인함 (2026-11-23)</span></h3>
+<p><code>python check_gerstner_normals.py</code> 는 <code>BuildWaves</code> 를 옮겨 해석 노멀과 유한 차분 노멀을 비교하고, 평평한 면에서 <code>cross(dP/dz, dP/dx)</code> = (0, 1, 0) 인지 봅니다. 기록에서 각도 차 0.00001° 미만으로 통과했습니다(<a href="../plan/ocean-gerstner-record.html#v-s1">기록 9.1</a>). <code>--steep 1</code> 은 마루에서 야코비안이 0 에 가까워지는 최악의 경우입니다.</p>
+<h3>E2. 시간 고정 + 카메라 회전 <span class="tag ok">확인함 (2026-11-23)</span></h3>
+<p><code>--ocean-time=10 --debug-view=17 --cam-orbit=0.5</code> 로 찍으면 바다의 움직임이 없으므로 속도 오차 뷰의 바다 영역이 0 이어야 합니다. 기록에서 <code>Ocean.json</code> 은 두 백엔드 모두 바다 영역 0 픽셀(<a href="../plan/ocean-gerstner-record.html#v-s1">기록 9.1</a>), <code>OceanHorizon.json</code> 은 0/200,750 픽셀이었습니다(<a href="../plan/ocean-gerstner-record.html#v-s2">기록 9.2</a>). 감쇠가 이번·지난 위치에 같게 걸린다는 확인이기도 합니다.</p>
+<h3>E3. 백엔드와 경로 비교 <span class="tag ok">확인함 (2026-11-23)</span></h3>
+<p><code>--backend=d3d11</code> 과 <code>d3d12</code>, 디퍼드와 포워드(<code>--deferred=0</code>, <code>App/AppBase.cpp</code>)를 바꿔 같은 프레임을 찍습니다. D3D11 = D3D12 는 0 픽셀 차였습니다. 디퍼드 대 포워드 최대 차는 1단계에서 5(<a href="../plan/ocean-gerstner-record.html#v-s1">기록 9.1</a>), 3단계 뒤 4(<a href="../plan/ocean-gerstner-record.html#v-s3">기록 9.3</a>)였고 G-buffer 양자화 때문입니다.</p>
+<h3>E4. 경사를 1 로 <span class="tag chk">예상</span></h3>
+<p>Inspector 에서 <code>steepness</code> 를 1 로 올리고 와이어프레임으로 봅니다. 정점이 마루로 몰리고 마루가 뾰족해지지만 뒤집히지는 않습니다(2-2 의 조건). 기록은 0.4·1 에서 뒤집힘이 없다고 남겼습니다 <span class="tag ok">확인함 (2026-11-23)</span> <a href="../plan/ocean-gerstner-record.html#v-s1">기록 9.1</a>. 코드를 잠깐 고쳐 자르기를 [0, 2] 로 풀면 마루에 고리 모양 꼬임이 보일 것입니다. 확인한 뒤 되돌립니다.</p>
+<h3>E5. 대역 제한 끄기 <span class="tag chk">예상</span></h3>
+<p><code>OceanBandLimit</code> 이 1 을 돌려주게 잠깐 바꾸고 <code>OceanHorizon.json</code> 을 TAA 없이 봅니다. 6-3 표의 "대역 제한 끔" 줄처럼 먼 바다(80~300 m)에 점이 늘어나고 두 프레임 사이 깜빡임이 149 픽셀 수준이 될 것입니다. 확인한 뒤 되돌립니다.</p>
+<h3>E6. 감쇠 거리 바꾸기 <span class="tag chk">예상</span></h3>
+<p>Inspector 에서 <code>fadeEnd</code> 를 <code>fadeStart</code> 이하로 두면 감쇠가 꺼집니다. <code>OceanHorizon.json</code> 에서 300 m 바깥의 성긴 격자(6 m 이상 간격)에 짧은 파도가 계단과 물결무늬로 보일 것입니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>11. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>마루에 고리·뒤집힌 삼각형</td><td>Σ s &gt; 1 (야코비안 음수)</td><td><code>steepness</code> 를 [0, 1] 로 자름</td></tr>
+<tr><td>먼 바다가 반짝이고 깜빡임</td><td>픽셀보다 짧은 파도를 점 표본으로 읽음</td><td>대역 제한 0.1~0.25 (6-3). 뺀 기울기를 거칠기로 옮기지 않아 먼 해 반사 줄이 약해짐</td></tr>
+<tr><td>파도 위 고스팅·모션 블러 번짐</td><td>지난 위치를 time − dt 로 추정하거나 감쇠가 카메라 기준</td><td>지난 위상은 실제 지난 시간, 감쇠는 바다 원점 기준 (5-3, 7-2)</td></tr>
+<tr><td>화면 가장자리에서 마루가 잘림</td><td>경계 구가 변위 전 평면 크기</td><td><code>MaxDisplacement</code> 패딩 (8장)</td></tr>
+<tr><td>바다를 기울였는데 파도가 위로 솟음</td><td>월드 xz 에서 계산</td><td>요만 지원. 피치·롤은 지원하지 않음</td></tr>
+<tr><td>두 번째 바다에 파도가 없음</td><td>b9 를 프레임에 한 번 올림</td><td>씬에 하나, 경고 한 번</td></tr>
+<tr><td>오래 켜 두면 파도가 툭툭 끊김</td><td><code>totalTime</code> 이 float</td><td>하루에 약 8 ms 단위. double 감기로 되돌리지 못함 (5-2)</td></tr>
+<tr><td>SSAO 를 켜면 수평선 아래가 어두움</td><td>넓은 평면을 낮은 각도로 볼 때의 SSAO 한계</td><td>바다를 뺀 평면에서도 같아서 바다와 무관 (<a href="ssao-study.html">SSAO 학습</a>)</td></tr>
+<tr><td>에디터 피킹이 파도와 어긋남</td><td>변위 전 평면으로 맞춤</td><td>진폭 0.25 m 수준이라 무시</td></tr>
+<tr><td>가까이서 표면이 너무 매끈함</td><td>디테일 노멀 맵 없음</td><td>범위 밖</td></tr>
+</table>
+<p>범위 밖으로 남긴 것: FFT 스펙트럼, 거품·물보라, 굴절·투명, 전용 물 셰이딩(심도 색·SSS), 부력, 테셀레이션, 디테일 노멀 맵(<a href="../plan/ocean-gerstner-record.html#limits">기록 10장</a>). 1080p GPU 시간과 시간이 흐를 때 속도의 방향·크기는 기록에서도 확인하지 못한 항목입니다(<a href="../plan/ocean-gerstner-record.html#v-none">기록 9.6</a>).</p>
+</section>
+
+<section id="study">
+<h2>12. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>Gerstner(트로코이드) 파도</td><td>수평 변위가 마루를 뾰족하게 만드는 이유, 원 궤도와 우리 엔진의 타원 궤도</td><td>2-1</td></tr>
+<tr><td>경사 Q 와 꼬임 조건</td><td>Qᵢ = sᵢ/(kᵢAᵢ), Σ s ≤ 1, 야코비안 1 − s sin θ</td><td>2-2</td></tr>
+<tr><td>해석적 노멀</td><td>편미분 두 개의 외적, 외적 순서와 위쪽 방향</td><td>2-3</td></tr>
+<tr><td>깊은 물의 분산 관계</td><td>ω = √(gk), 긴 파도가 빠른 이유</td><td>2-4</td></tr>
+<tr><td>위상 감기와 float 정밀도</td><td>큰 인자의 <code>sincos</code>, 입력 해상도의 한계</td><td>5-2</td></tr>
+<tr><td>절차적 표면의 에일리어싱</td><td>픽셀당 주기 수, 나이퀴스트, 대역 제한과 LEAN·Toksvig</td><td>6-3</td></tr>
+<tr><td>비균일 격자</td><td>가운데 촘촘·가장자리 성김, 간격 비</td><td>7-1</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Mark Finch, "Effective Water Simulation from Physical Models", GPU Gems 1권 1장 (2004) — Gerstner 파도 합, 노멀·탄젠트 식, Q 정규화. 2장</li>
+<li>Jerry Tessendorf, "Simulating Ocean Water", SIGGRAPH 코스 노트 (2001) — 분산 관계 ω = √(gk), FFT 바다로 갈 때의 출발점. 1-2, 2-4</li>
+<li>G. G. Stokes (1880) 의 극한 파도(마루 각 120°)와 J. H. Michell (1893) 의 계산 H/L ≈ 0.142 — 깊은 물 파도가 부서지는 가파름. 유체역학 교과서의 표면파 장에 나옵니다. 2-2</li>
+<li>Marc Olano, Dan Baker, "LEAN Mapping" (I3D 2010) — 지운 기울기를 거칠기로 옮기는 방법. 6-3 의 남은 일</li>
+<li>우리 문서: <a href="../plan/ocean-gerstner-plan.html">Gerstner 바다 구현 계획</a>(설계 결정 표), <a href="../plan/ocean-gerstner-record.html">Gerstner 바다 구현 기록</a>(검증 숫자·한계), <a href="../overview/rendering-analysis.html#c20-29">rendering-analysis 20.29</a>, <a href="velocity-buffer-study.html">속도 버퍼 학습</a>, <a href="taa-study.html">TAA 학습</a>, <a href="deferred-gbuffer-study.html">디퍼드 G-buffer 학습</a>, <a href="culling-study.html">컬링 학습</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

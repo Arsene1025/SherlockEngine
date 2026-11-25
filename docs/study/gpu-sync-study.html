@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · CPU·GPU 동기화 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>CPU·GPU 동기화와 리소스 상태 학습 문서</h1>
+  <p>CPU 와 GPU 가 서로 다른 프레임을 처리하는 동안 데이터가 섞이지 않게 하는 장치 — 프레임 슬롯, 펜스, Present, 리소스 상태와 배리어, 지연 해제, 리드백</p>
+  <p>2026-11-25 · 이 주제는 지금까지 <a href="../overview/rendering-analysis.html#c8">rendering-analysis 8장</a>(배리어·프레임 자원)과 <a href="../overview/rendering-analysis.html#c9">9장</a>(두 백엔드), 타임스탬프는 <a href="../overview/rendering-analysis.html#c15">15장</a>, 버퍼 리드백은 <a href="../plan/gpu-cluster-binning-record.html#readback">GPU 클러스터 비닝 기록 6장</a>에 나뉘어 있었습니다. 이 문서는 "왜 기다리는가, 언제 기다리는가"를 한 줄기로 다시 설명하고 현재 코드와 맞춥니다. 8장에는 버퍼 배리어가 생기기 전의 설명이 일부 남아 있어서, 어긋나는 곳은 이 문서가 코드를 따랐습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1장은 왜 동기화가 필요한가, 2~4장은 시간 축의 동기화(프레임 슬롯·펜스·Present), 5장은 CPU 가 매 프레임 쓰는 메모리, 6~7장은 한 프레임 안의 순서(리소스 상태와 배리어, D3D11 의 대응), 8~9장은 GPU 결과를 CPU 로 읽기와 해제 미루기, 10장 코드 지도, 11장 실험, 12장 함정과 한계, 13장 공부할 개념과 참고 문서입니다. 컴퓨트의 UAV 배리어는 <a href="../study/compute-uav-study.html">컴퓨트·UAV 학습</a>, 바인딩과 디스크립터 힙은 <a href="../study/binding-study.html">바인딩 학습</a>, RHI 전체 구조는 <a href="../study/rhi-pso-study.html">RHI·PSO 학습</a>, 패스 순서는 <a href="../study/frame-structure-study.html">프레임 구조 학습</a>에 있어 여기서는 링크만 겁니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 프레임 수·링 크기·슬롯 수는 코드의 상수입니다. "몇 프레임 늦게 읽히는가"는 상수에서 따라 계산한 값입니다 <span class="tag chk">계산값</span>. 실제로 측정해 기록된 값은 클러스터 통계 리드백 한 건뿐이고 <span class="tag ok">확인함</span>으로 표시했습니다. 대기 시간(ms)은 기록된 측정이 없어 적지 않았습니다.</div>
+</header>
+<nav><a href="#why">1. 왜 동기화하나</a><a href="#frames">2. 프레임 슬롯</a><a href="#fence">3. 펜스와 대기 지점</a><a href="#present">4. Present·vsync</a><a href="#dynamic">5. Dynamic 버퍼</a><a href="#states">6. 상태와 배리어</a><a href="#d3d11">7. D3D11 의 대응</a><a href="#readback">8. 리드백</a><a href="#release">9. 지연 해제</a><a href="#code">10. 코드 지도</a><a href="#lab">11. 실험</a><a href="#pitfalls">12. 함정과 한계</a><a href="#study">13. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 CPU 와 GPU 를 동기화해야 하는가</h2>
+<h3>1-1. GPU 는 나중에 실행한다</h3>
+<p>CPU 가 <code>DrawIndexed</code> 를 부르는 순간 GPU 가 그리는 것은 아닙니다. D3D12 백엔드에서 명령은 커맨드 리스트에 쌓이기만 하고, <code>D3D12Device::EndFrame</code> 이 <code>Close</code> → <code>ExecuteCommandLists</code> 로 큐에 넣은 뒤에야 GPU 가 실행합니다. D3D11 도 즉시 컨텍스트가 명령을 드라이버 버퍼에 모아 두었다가 보내므로 사정은 같고, 드라이버가 그 차이를 숨겨 줄 뿐입니다.</p>
+<p>둘이 서로 기다리지 않고 겹쳐 돌아야 둘 다 쉬지 않습니다. CPU 가 프레임 N+1 의 명령을 만드는 동안 GPU 는 프레임 N 을 그립니다. 대신 같은 메모리를 서로 다른 시점에 만지게 되므로 세 가지 위험이 생깁니다.</p>
+<table>
+<tr><th>위험</th><th>예</th><th>이 엔진의 장치</th></tr>
+<tr><td>GPU 가 아직 읽는 메모리를 CPU 가 덮어씀</td><td>프레임 N 의 상수버퍼를 프레임 N+1 이 같은 자리에 씀</td><td>프레임 슬롯(2장)과 업로드 링(5장)</td></tr>
+<tr><td>GPU 가 아직 쓰는 객체를 CPU 가 해제함</td><td>창 크기가 바뀌어 씬 뷰 텍스처를 다시 만듦</td><td>지연 해제(9장), <code>WaitForGpu</code>(3장)</td></tr>
+<tr><td>GPU 안에서 앞 패스의 쓰기와 뒤 패스의 읽기가 겹침</td><td>HDR 타깃에 그린 직후 톤 패스가 읽음</td><td>리소스 상태와 배리어(6장)</td></tr>
+</table>
+<p>앞의 둘은 CPU 와 GPU 사이의 문제이고 펜스로 풉니다. 셋째는 GPU 명령 사이의 순서 문제이고 배리어로 풉니다. D3D11 은 셋을 모두 드라이버가 처리하고, D3D12 는 셋을 모두 애플리케이션이 처리합니다. 그래서 <code>RHI/Device.h</code> 머리 주석은 "D3D11 에서만 편한 것(즉시 Map, 자동 밉 생성, 암묵적 동기화)은 인터페이스에 넣지 않았음"이라고 적고, 두 백엔드가 D3D12 쪽 규칙을 따르게 했습니다.</p>
+</section>
+
+<section id="frames">
+<h2>2. 프레임 슬롯 — kFrameCount</h2>
+<p><code>RHI/GraphicsConfig.h</code> 의 <code>kFrameCount = 2</code> 가 "동시에 진행 중일 수 있는 프레임 수"입니다. 프레임 N 은 슬롯 <code>N % kFrameCount</code> 를 쓰고(<code>BeginFrame</code> 이 <code>m_frameIndex</code> 로 계산), 슬롯을 다시 쓰기 전에 그 슬롯을 마지막으로 쓴 프레임 N−2 가 GPU 에서 끝났는지 펜스로 확인합니다. CPU 는 GPU 보다 최대 한 프레임 앞서 기록할 수 있다는 뜻입니다.</p>
+<figure><svg viewBox="0 0 940 250" role="img" aria-label="CPU와 GPU 타임라인. 프레임 N+2의 기록은 프레임 N의 GPU 실행이 끝날 때까지 기다린다">
+<defs><marker id="gsync-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+<text x="14" y="75">CPU</text>
+<text x="14" y="175">GPU</text>
+<rect x="70" y="50" width="160" height="40" rx="5" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="82" y="75">기록 N (슬롯 0)</text>
+<rect x="240" y="50" width="160" height="40" rx="5" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="248" y="75">기록 N+1 (슬롯 1)</text>
+<rect x="404" y="50" width="62" height="40" rx="5" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="420" y="75">대기</text>
+<rect x="470" y="50" width="160" height="40" rx="5" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="478" y="75">기록 N+2 (슬롯 0)</text>
+<rect x="634" y="50" width="66" height="40" rx="5" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="652" y="75">대기</text>
+<rect x="704" y="50" width="160" height="40" rx="5" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="712" y="75">기록 N+3 (슬롯 1)</text>
+<rect x="235" y="150" width="230" height="40" rx="5" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="320" y="175">실행 N</text>
+<rect x="470" y="150" width="230" height="40" rx="5" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="550" y="175">실행 N+1</text>
+<rect x="705" y="150" width="225" height="40" rx="5" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="785" y="175">실행 N+2</text>
+<line class="ln" x1="230" y1="92" x2="236" y2="148" marker-end="url(#gsync-ar)"/>
+<text x="74" y="125">제출 + Signal</text>
+<line class="ln" x1="465" y1="148" x2="465" y2="93" marker-end="url(#gsync-ar)"/>
+<text x="474" y="125">프레임 N 의 펜스 값</text>
+<line class="ln" x1="700" y1="148" x2="700" y2="93" marker-end="url(#gsync-ar)"/>
+<text x="709" y="125">N+1 의 펜스 값</text>
+<text x="70" y="225">대기 = BeginFrame 의 WaitForSingleObject(m_fenceEvent). GPU 가 느린 장면에서만 생김</text>
+</svg><figcaption>그림 1. GPU 가 병목인 경우의 타임라인 <span class="tag chk">예상</span>. 기록 N+2 는 같은 슬롯 0 을 쓴 프레임 N 의 펜스를 기다리고, N+1 은 기다리지 않습니다. CPU 가 병목이면 대기 칸이 GPU 쪽에 생기고 CPU 는 기다리지 않습니다.</figcaption></figure>
+<h3 id="frames-slot">2-1. 슬롯마다 따로 있는 것</h3>
+<table>
+<tr><th>자원</th><th>D3D12 (<code>D3D12Device</code>)</th><th>D3D11 (<code>D3D11Device</code>)</th><th>슬롯마다 둬야 하는 이유</th></tr>
+<tr><td>커맨드 할당자</td><td><code>m_allocators[kFrameCount]</code>. 커맨드 리스트 <code>m_list</code> 는 하나</td><td>없음 (즉시 컨텍스트)</td><td>GPU 가 실행 중인 명령의 메모리는 <code>Reset</code> 할 수 없음. 리스트는 제출 직후 다른 할당자로 다시 열 수 있어 하나로 충분</td></tr>
+<tr><td>펜스 값</td><td><code>m_fenceValues[kFrameCount]</code>. 펜스 객체 <code>m_fence</code> 는 하나</td><td>없음</td><td>슬롯을 다시 쓸 때 기다릴 값</td></tr>
+<tr><td>Dynamic 데이터</td><td>업로드 링 <code>m_rings[kFrameCount]</code>, 슬롯마다 8 MB</td><td>Dynamic 버퍼마다 <code>ID3D11Buffer</code> 2개 (<code>D3D11Buffer::buffers</code>)</td><td>5장</td></tr>
+<tr><td>지연 해제 목록</td><td><code>m_garbage[kFrameCount]</code></td><td>없음 (드라이버가 붙들어 줌)</td><td>9장</td></tr>
+<tr><td>타임스탬프 쿼리</td><td>쿼리 힙의 <code>kMaxTimestamps</code>(64)칸 구간 하나</td><td>쿼리 세트 6개를 따로 돌림 (<code>kTimestampSets</code>)</td><td>8장</td></tr>
+</table>
+<p>디스크립터에는 프레임별 링이 없습니다. <code>ResourceSet</code> 은 셰이더 가시 힙에서 연속 범위를 영구히 받고(<code>D3D12DescriptorHeap</code> 의 bump + free list), 드로우 때는 테이블 시작 핸들만 넘깁니다. 프레임마다 바뀌는 상수버퍼는 디스크립터가 아니라 루트 CBV 의 GPU 주소로 넘기므로 디스크립터를 매 프레임 새로 쓸 일이 없습니다. 자세한 구조는 <a href="../study/binding-study.html">바인딩 학습</a>에 있습니다.</p>
+<p><code>GraphicsConfig.h</code> 주석은 "<code>kFrameCount</code> 가 1..3 중 어느 값이든 화면은 같아야 함. 다르면 이전 프레임 데이터에 기대는 버그가 있다는 뜻"이라고 적어 둡니다. 값 1 이면 <code>Engine::Render</code> 의 <code>BeginFrame</code> 마다 앞 프레임의 GPU 일이 끝나기를 기다리므로 겹침이 크게 줄고(게임 업데이트와 ImGui <code>OnGUI</code> 는 그 앞이라 여전히 겹침), 3 이면 CPU 가 두 프레임 앞설 수 있습니다. 값을 바꾸어도 화면이 같다는 확인은 <a href="../plan/rhi-roadmap-plan.html#compute">RHI 로드맵</a>의 검증 항목으로 적혀 있습니다.</p>
+</section>
+
+<section id="fence">
+<h2>3. 펜스와 CPU 가 기다리는 지점</h2>
+<h3>3-1. 펜스 하나, 값은 계속 올라감</h3>
+<p><code>ID3D12Fence</code> 는 GPU 쪽에 있는 64비트 정수입니다. 큐에 <code>Signal(fence, v)</code> 를 넣으면 GPU 가 그 앞의 명령을 다 실행한 시점에 값이 v 가 됩니다. CPU 는 <code>GetCompletedValue()</code> 로 읽고, 아직이면 <code>SetEventOnCompletion(v, event)</code> + <code>WaitForSingleObject</code> 로 잠듭니다. 큐가 하나이고 명령이 순서대로 끝나므로, 값 v 가 지났다면 v 를 Signal 하기 전에 넣은 모든 일이 끝났다는 뜻입니다.</p>
+<pre><code>// D3D12Device::EndFrame (뒷부분)
+m_queue-&gt;ExecuteCommandLists(1, lists);
+m_commandList.ResetBufferStates();
+m_swapChain-&gt;Present(m_vsync ? 1 : 0, flags);
+m_queue-&gt;Signal(m_fence.Get(), m_nextFenceValue);
+m_fenceValues[m_frameIndex] = m_nextFenceValue++;
+
+// D3D12Device::BeginFrame (앞부분)
+m_frameIndex = m_frameCounter % kFrameCount;
+if (m_fenceValues[m_frameIndex] != 0 &amp;&amp; m_fence-&gt;GetCompletedValue() &lt; m_fenceValues[m_frameIndex])
+    { SetEventOnCompletion(...); WaitForSingleObject(m_fenceEvent, INFINITE); }
+ReleaseGarbage(m_frameIndex);  ReadTimestamps(m_frameIndex);  m_rings[m_frameIndex].offset = 0;
+m_allocators[m_frameIndex]-&gt;Reset();  m_list-&gt;Reset(...);</code></pre>
+<p>펜스 값은 프레임 번호가 아닙니다. <code>m_nextFenceValue</code> 는 <code>EndFrame</code> 과 <code>WaitForGpu</code> 가 함께 올리므로, 로드 중에 업로드를 여러 번 기다리면 값이 프레임보다 빨리 커집니다. 기준은 "슬롯마다 마지막으로 Signal 한 값"(<code>m_fenceValues</code>)이고, 처음 쓰는 슬롯은 0 이라 기다리지 않습니다.</p>
+<h3 id="fence-points">3-2. CPU 가 GPU 를 기다리는 곳 전부</h3>
+<table>
+<tr><th>지점</th><th>D3D12</th><th>기다리는 것</th><th>D3D11 에서</th></tr>
+<tr><td>프레임 시작</td><td><code>BeginFrame</code></td><td>같은 슬롯의 프레임 N−2 (이미 끝났으면 기다리지 않음)</td><td>없음. 드라이버가 큐가 가득 차면 <code>Present</code> 나 <code>Map</code> 안에서 기다림</td></tr>
+<tr><td>초기 데이터 업로드</td><td><code>FlushUploads</code> → <code>WaitForGpu</code></td><td>GPU 가 지금까지 받은 모든 일. 묶음(<code>BeginResourceUploads</code>) 밖이면 리소스마다, 안이면 <code>EndResourceUploads</code> 에서 한 번</td><td>없음. 생성 때 드라이버가 복사</td></tr>
+<tr><td>창 크기 변경</td><td><code>Resize</code> → <code>WaitForGpu</code></td><td>전부. 그 뒤 모든 슬롯의 지연 목록을 비우고 백버퍼를 즉시 해제 후 <code>ResizeBuffers</code></td><td><code>D3D11Device::Resize</code> 가 타깃을 풀고 백버퍼를 지운 뒤 <code>ResizeBuffers</code>. GPU 대기는 드라이버 몫</td></tr>
+<tr><td>스크린샷</td><td><code>FinishBackBufferReadback</code> → <code>WaitForGpu</code></td><td>그 프레임 전부 (동기 방식)</td><td><code>ReadBackBuffer</code> 의 <code>Map(READ)</code> 가 기다림</td></tr>
+<tr><td>종료</td><td><code>ReleaseDevice</code> → <code>FlushUploads</code>, <code>WaitForGpu</code></td><td>전부. 그 뒤 풀·힙·큐·장치 순으로 즉시 해제</td><td><code>ClearState</code> + <code>Flush</code></td></tr>
+</table>
+<p><code>WaitForGpu</code> 는 새 값을 Signal 하고 그 값까지 기다리는 함수입니다. 프레임 시작의 대기만 "필요한 만큼"이고 나머지는 큐를 비우는 대기라, 매 프레임 불리면 겹침이 사라집니다. 프레임 도중에 쓰는 <code>UpdateTexture</code>(UI 글리프 아틀라스)는 묶음 안이면 업로드 리스트에 기록되어 같은 큐에서 프레임 리스트보다 먼저 실행되고, 묶음 밖이면 곧바로 제출하고 기다립니다(<code>RHI/Device.h</code> 주석).</p>
+</section>
+
+<section id="present">
+<h2>4. Present · 스왑체인 · vsync</h2>
+<p>두 백엔드 모두 flip 모델 <code>DXGI_SWAP_EFFECT_FLIP_DISCARD</code> 입니다. 백버퍼는 D3D12 가 3장(<code>D3D12Device::kBackBufferCount</code>), D3D11 이 2장(<code>D3D11Device::InitDirect3D</code> 의 <code>BufferCount = 2</code>)입니다. 백버퍼 수와 <code>kFrameCount</code> 는 따로 정해진 값입니다. D3D12 는 이번 프레임에 그릴 백버퍼를 <code>BeginFrame</code> 이 <code>GetCurrentBackBufferIndex()</code> 로 얻고, 백버퍼 텍스처 핸들(<code>GetBackBuffer</code>)은 그 인덱스를 따라갑니다.</p>
+<table>
+<tr><th>설정</th><th>Present 인자</th><th>결과</th></tr>
+<tr><td>vsync 켬</td><td><code>Present(1, 0)</code></td><td>모니터 주사율에 맞춰 화면을 바꿈. 큐가 차면 Present 가 CPU 를 붙잡아 프레임률이 주사율로 묶임</td></tr>
+<tr><td>vsync 끔 + tearing 지원</td><td><code>Present(0, DXGI_PRESENT_ALLOW_TEARING)</code></td><td>기다리지 않고 바로 바꿈. 화면 중간에 찢김이 생길 수 있음</td></tr>
+<tr><td>vsync 끔 + tearing 미지원</td><td><code>Present(0, 0)</code></td><td>창 모드 flip 에서는 컴포지터가 주사율로 묶을 수 있음 (<code>D3D11Device::EndFrame</code> 주석)</td></tr>
+</table>
+<p>tearing 지원은 <code>IDXGIFactory5::CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING)</code> 로 확인하고, 지원하면 스왑체인을 <code>DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING</code> 로 만듭니다(<code>ResizeBuffers</code> 도 같은 플래그). vsync 는 <code>engine.vsync</code>(기본 끔), Render Settings 의 VSync 체크박스(<code>Editor/DebugUI.cpp</code>), 에디터의 F3(<code>EditorApp</code>)으로 바꿉니다.</p>
+<p>입력 지연은 CPU 가 GPU 보다 얼마나 앞서 가는가로 정해집니다. D3D12 에서는 <code>kFrameCount</code> 의 펜스 대기가 CPU 를 붙잡는 첫 장치이고, DXGI 의 Present 큐가 둘째입니다. <code>D3D11Device.h</code> 의 타임스탬프 주석은 "DXGI 가 최대 3프레임을 큐에 둘 수 있어"라고 적고 있고, D3D11 에서는 이것이 유일한 제한입니다. 엔진은 <code>SetMaximumFrameLatency</code> 나 waitable 스왑체인(<code>GetFrameLatencyWaitableObject</code>)을 쓰지 않습니다.</p>
+</section>
+
+<section id="dynamic">
+<h2>5. CPU 가 매 프레임 쓰는 메모리 — Dynamic 버퍼</h2>
+<p>상수버퍼(PerFrame, PerObject, Lights, Material …)는 <code>BufferUsage::Dynamic</code> 입니다. 인터페이스의 약속은 하나입니다. <code>UpdateBuffer</code> 는 "이 프레임 슬롯의 내용을 통째로 교체"합니다. 부분 갱신도, 이전 내용 읽기도 없습니다. 같은 버퍼를 드로우마다 다시 써도 각 드로우가 자기 값을 봐야 한다는 점이 어렵습니다. GPU 는 프레임이 제출된 뒤에 모든 드로우를 실행하기 때문입니다.</p>
+<table>
+<tr><th></th><th>D3D11 — <code>Map(WRITE_DISCARD)</code></th><th>D3D12 — 프레임별 업로드 링</th></tr>
+<tr><td>메모리</td><td>Dynamic 버퍼마다 <code>D3D11_USAGE_DYNAMIC</code> 버퍼 <code>kFrameCount</code> 개</td><td>버퍼 자체에는 리소스가 없음 (<code>D3D12Buffer::resource</code> 비어 있음). 슬롯마다 UPLOAD 힙 8 MB 하나, 영구 매핑</td></tr>
+<tr><td>UpdateBuffer</td><td>이번 슬롯 버퍼를 <code>Map(D3D11_MAP_WRITE_DISCARD)</code> → <code>memcpy</code> → <code>Unmap</code></td><td><code>AllocateUpload</code> 가 링에서 256 B 정렬 조각을 잘라 줌 → <code>memcpy</code> → <code>gpuAddress</code> 에 주소 기억</td></tr>
+<tr><td>드로우마다 다른 값</td><td>드라이버가 Map 마다 새 메모리를 줌 (이름 바꾸기, renaming)</td><td>엔진이 Map 마다 새 조각을 줌. 드로우 직전 <code>ApplyBindings</code> 가 그 주소를 루트 CBV 로 넘김</td></tr>
+<tr><td>재사용</td><td>드라이버가 GPU 가 다 쓴 메모리를 회수</td><td>그 슬롯의 펜스를 지난 <code>BeginFrame</code> 이 <code>offset = 0</code></td></tr>
+<tr><td>가득 차면</td><td>드라이버 몫</td><td><code>ErrorOnce</code> "프레임 업로드 링이 가득 참" 후 갱신을 건너뜀</td></tr>
+</table>
+<figure><svg viewBox="0 0 940 220" role="img" aria-label="프레임 슬롯마다 하나씩 있는 업로드 링. 슬롯 0은 CPU가 이번 프레임에 채우는 중이고 슬롯 1은 GPU가 읽는 중">
+<defs><marker id="gsync-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+<text x="14" y="55">슬롯 0</text>
+<rect x="100" y="35" width="820" height="32" rx="4" style="fill:var(--paper);stroke:var(--line)"/>
+<rect x="100" y="35" width="90" height="32" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="110" y="56">PerFrame</text>
+<rect x="196" y="35" width="70" height="32" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="208" y="56">Obj 0</text>
+<rect x="272" y="35" width="70" height="32" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="284" y="56">Obj 1</text>
+<rect x="348" y="35" width="70" height="32" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="360" y="56">Obj 2</text>
+<rect x="424" y="35" width="80" height="32" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="440" y="56">Lights</text>
+<text x="520" y="56">비어 있음 (8 MB 까지)</text>
+<line class="ln" x1="508" y1="92" x2="508" y2="70" marker-end="url(#gsync-ar2)"/>
+<text x="440" y="108">offset (다음 조각은 256 B 정렬)</text>
+<text x="100" y="88">CPU 가 프레임 N+2 를 기록하며 채움</text>
+<text x="14" y="160">슬롯 1</text>
+<rect x="100" y="140" width="820" height="32" rx="4" style="fill:var(--paper);stroke:var(--line)"/>
+<rect x="100" y="140" width="460" height="32" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="112" y="161">프레임 N+1 의 조각들 — GPU 가 읽는 중</text>
+<text x="100" y="196">CPU 는 손대지 않음. 다음 BeginFrame(슬롯 1)이 펜스 N+1 을 기다린 뒤 offset = 0</text>
+</svg><figcaption>그림 2. 업로드 링 두 개. 같은 상수버퍼(PerObject)를 드로우마다 갱신하면 Obj 0·1·2 처럼 조각이 드로우 수만큼 생기고, 각 드로우는 자기 조각을 봅니다. 조각 크기는 갱신한 크기가 아니라 <code>desc.size</code> 입니다(<code>D3D12Device::UpdateBuffer</code>).</figcaption></figure>
+<p>그래서 Dynamic 버퍼는 "쓰는 프레임에 반드시 갱신"해야 합니다. D3D11 에서는 다음 프레임에 다른 복제본이 바인딩되고, D3D12 에서는 지난 프레임의 조각이 이미 재사용됐을 수 있습니다. D3D12 의 <code>ApplyBindings</code> 는 <code>updatedFrame</code> 이 이번 프레임이 아닌 Dynamic 상수버퍼를 바인딩하면 "이번 프레임에 갱신되지 않음"을 한 번 로그로 남깁니다. D3D11 에서 복제본을 <code>kFrameCount</code> 개 두는 것은 기능상 필요하지 않습니다. <code>GraphicsConfig.h</code> 주석은 "D3D12 때문"이라고만 적고, <a href="../overview/rendering-analysis.html#c8-9">rendering-analysis 8.9절</a>은 이전 슬롯에 기대는 코드가 D3D11 에서도 드러나게 하려는 것이라고 설명합니다.</p>
+<p>링은 <code>UploadRing::peak</code> 로 최고 사용량을 기록하지만 지금은 어디에도 표시하지 않습니다. 8 MB 에 얼마나 여유가 있는지는 측정 기록이 없습니다.</p>
+</section>
+
+<section id="states">
+<h2>6. 리소스 상태와 배리어</h2>
+<h3>6-1. 상태가 왜 있나</h3>
+<p>GPU 는 렌더 타깃에 쓸 때와 텍스처로 읽을 때 메모리를 다르게 다룹니다. 타깃 쓰기는 압축·캐시에 남아 있을 수 있어서, 같은 텍스처를 읽기 전에 캐시를 비우고 압축을 풀고 앞 패스의 쓰기가 끝나기를 기다려야 합니다. D3D12 는 리소스가 매 순간 하나의 상태에 있다고 보고, 용도가 바뀌는 자리에 애플리케이션이 전이 배리어(<code>ResourceBarrier</code> 의 Transition, before → after)를 넣게 합니다. 드라이버는 그 자리에서 필요한 일을 합니다.</p>
+<h3 id="states-list">6-2. RHI 의 상태 10개</h3>
+<p><code>ResourceState</code>(<code>RHI/RenderPassTypes.h</code>)는 <code>D3D12_RESOURCE_STATES</code> 의 부분집합이고 <code>D3D12Convert::ToD3D12</code> 가 바꿉니다.</p>
+<table>
+<tr><th>상태</th><th>D3D12</th><th>쓰는 곳</th></tr>
+<tr><td><code>Common</code></td><td><code>COMMON</code></td><td>만든 직후 텍스처(SRV 없는 깊이는 <code>DepthWrite</code>, 초기 데이터가 있으면 <code>ShaderResource</code> 로 시작), 프레임이 끝난 버퍼, <code>CopyBuffer</code> 전</td></tr>
+<tr><td><code>RenderTarget</code></td><td><code>RENDER_TARGET</code></td><td>색 attachment</td></tr>
+<tr><td><code>DepthWrite</code></td><td><code>DEPTH_WRITE</code></td><td>깊이를 쓰는 패스 (씬·그림자 아틀라스)</td></tr>
+<tr><td><code>DepthRead</code></td><td><code>DEPTH_READ | PIXEL_SR | NON_PIXEL_SR</code> (SRV 없는 깊이는 <code>DEPTH_READ</code> 만)</td><td>읽기 전용 DSV + 같은 깊이를 SRV 로 (파티클·후처리)</td></tr>
+<tr><td><code>ShaderResource</code></td><td><code>PIXEL_SHADER_RESOURCE | NON_PIXEL_SHADER_RESOURCE</code></td><td>모든 스테이지의 SRV 읽기</td></tr>
+<tr><td><code>UnorderedAccess</code></td><td><code>UNORDERED_ACCESS</code></td><td>컴퓨트 UAV 쓰기</td></tr>
+<tr><td><code>IndirectArgument</code></td><td><code>INDIRECT_ARGUMENT</code></td><td><code>DrawInstancedIndirect</code>·<code>DispatchIndirect</code> 의 인자 버퍼</td></tr>
+<tr><td><code>CopySource</code> · <code>CopyDest</code></td><td><code>COPY_SOURCE</code> · <code>COPY_DEST</code></td><td><code>CopyBuffer</code> 가 기록 (암묵 승격과 같게)</td></tr>
+<tr><td><code>Present</code></td><td><code>PRESENT</code> (= <code>COMMON</code>)</td><td>스왑체인 백버퍼의 시작·끝</td></tr>
+</table>
+<p><code>ShaderResource</code> 가 픽셀·비픽셀 두 비트를 늘 합친 것은 단순화입니다. 어느 스테이지가 읽을지 호출 코드가 말하지 않아도 되지만, 픽셀 셰이더만 읽는 경우에도 드라이버에 더 넓은 범위를 알립니다.</p>
+<h3 id="states-api">6-3. 호출 규칙: "이제 무엇으로 쓸지"만 말한다</h3>
+<p><code>CommandList::Barrier(texture, after)</code> 는 before 를 받지 않습니다. 백엔드가 텍스처마다 <code>state</code> 를 기억하고, <code>D3D12CommandList::Barrier</code> 는 그 값을 before 로, 인자를 after 로 <code>ResourceBarrier(1, &amp;barrier)</code> 를 기록한 뒤 <code>state = after</code> 로 고칩니다. 이미 그 상태면 아무것도 하지 않고 통계(<code>Stats::barriers</code>)에도 세지 않습니다. 그래서 "그림자가 꺼진 프레임에도 <code>Barrier(m_shadowMap, ShaderResource)</code>"처럼 상태를 보장하는 호출을 부담 없이 넣을 수 있습니다(<code>Renderer::Render</code>).</p>
+<ul>
+<li><b>텍스처 상태는 프레임을 넘어 유지됩니다.</b> 프레임 끝에 되돌리지 않으므로, 다음 프레임 첫 배리어의 before 는 지난 프레임의 마지막 상태입니다.</li>
+<li><b>버퍼 상태는 프레임마다 <code>Common</code> 으로 돌아갑니다.</b> D3D12 에서 버퍼는 <code>ExecuteCommandLists</code> 가 끝나면 <code>COMMON</code> 으로 감쇠(decay)하므로, <code>EndFrame</code> 이 <code>D3D12CommandList::ResetBufferStates</code> 로 이번 프레임에 건드린 버퍼(<code>m_touchedBuffers</code>)를 <code>Common</code> 으로 돌립니다. D3D11 도 같게 맞춥니다. 그래서 <code>m_blurWeights</code> 같은 버퍼는 매 프레임 처음 쓰기 전에 다시 Barrier 합니다.</li>
+<li><b>버퍼 배리어는 상태 추적 버퍼만.</b> <code>Barrier(BufferHandle)</code> 는 <code>Common · ShaderResource · UnorderedAccess · IndirectArgument</code> 만 받고, 리소스가 없는 Dynamic 버퍼는 거부합니다. 그 밖의 Default 버퍼(정점·인덱스)는 쓰기가 없어 <code>Common</code> 그대로 읽힙니다(<code>ResourceDesc.h</code> 의 <code>IsStateTrackedBuffer</code>).</li>
+<li><b>배리어는 호출마다 하나씩 기록합니다.</b> 여러 전이를 모아 한 번의 <code>ResourceBarrier</code> 로 보내는 묶음도, 시작과 끝을 나누는 split 배리어(<code>BEGIN_ONLY</code>/<code>END_ONLY</code>)도 없습니다. <code>Flags</code> 는 늘 <code>NONE</code>, 서브리소스는 늘 <code>ALL_SUBRESOURCES</code> 입니다(<code>D3D12Convert::TransitionBarrier</code>).</li>
+</ul>
+<p>UAV 를 연달아 쓰는 두 Dispatch 사이의 <code>UavBarrier</code>(상태는 그대로, 앞 쓰기가 보이게만 함)와 클러스터 비닝·파티클의 전이 순서는 <a href="../study/compute-uav-study.html">컴퓨트·UAV 학습</a>에 있습니다.</p>
+<h3 id="states-frame">6-4. 한 프레임 동안의 상태 — 게임 모드, 포워드 경로, 파티클이 있는 프레임</h3>
+<figure><svg viewBox="0 0 940 250" role="img" aria-label="한 프레임 동안 HDR 타깃, 씬 깊이, 백버퍼의 상태 변화">
+<text x="140" y="28">MainPass</text><text x="306" y="28">Effects</text><text x="456" y="28">HDR 후처리</text><text x="606" y="28">Tonemap·캔버스</text><text x="756" y="28">UIPass → Present</text>
+<text x="14" y="65">view.hdr</text>
+<rect x="130" y="45" width="310" height="32" rx="5" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="240" y="66">RenderTarget</text>
+<rect x="450" y="45" width="480" height="32" rx="5" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="600" y="66">ShaderResource (톤 패스 t13)</text>
+<text x="14" y="125">view.depth</text>
+<rect x="130" y="105" width="160" height="32" rx="5" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="170" y="126">DepthWrite</text>
+<rect x="300" y="105" width="630" height="32" rx="5" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="470" y="126">DepthRead (읽기 전용 DSV + t23)</text>
+<text x="14" y="185">백버퍼</text>
+<rect x="130" y="165" width="460" height="32" rx="5" style="fill:var(--fill);stroke:var(--ink3)"/><text x="330" y="186">Present</text>
+<rect x="600" y="165" width="240" height="32" rx="5" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="670" y="186">RenderTarget</text>
+<rect x="850" y="165" width="80" height="32" rx="5" style="fill:var(--fill);stroke:var(--ink3)"/><text x="862" y="186">Present</text>
+<text x="14" y="230">칸이 바뀌는 자리 하나 = Barrier 호출 하나 = D3D12 ResourceBarrier(Transition) 하나. 다음 프레임 첫 칸은 마지막 칸에서 전이함</text>
+</svg><figcaption>그림 3. <code>Renderer::RenderScenePass</code>(hdr·velocity → RenderTarget, depth → DepthWrite, 파티클·디버그 선이 있으면 depth → DepthRead, 끝에 hdr·velocity → ShaderResource), <code>Renderer::ApplyHdrEffects</code>(depth → DepthRead), <code>Renderer::RenderPostPass</code>(백버퍼 → RenderTarget, 게임 모드의 <code>outputAfter</code> 는 RenderTarget), <code>Renderer::EndUIPass</code>(→ Present) 에서 읽은 전이입니다. 그림은 HDR 후처리(블러·블룸·TAA·모션 블러)를 모두 끈 경우입니다. 켜면 결과를 hdr 에 제자리로 되돌려 쓰므로 그 칸 안에서 hdr 자신과 스크래치 텍스처가 RenderTarget·UnorderedAccess 와 ShaderResource 사이를 여러 번 오갑니다(<code>DispatchBlurCompute</code>, <code>RenderPostPass</code>, <a href="../study/post-process-study.html">후처리 학습</a>). 에디터에서는 톤 패스 출력이 씬 뷰 텍스처라 백버퍼는 <code>BeginUIPass</code> 에서야 RenderTarget 이 됩니다.</figcaption></figure>
+<p>엔진의 <code>Barrier</code> 를 거치지 않는 전이도 있습니다. 초기 데이터 업로드와 <code>UpdateTexture</code> 의 <code>COPY_DEST → 최종 상태</code>(업로드 리스트에 직접 기록, 끝난 텍스처는 <code>ShaderResource</code> 로 기록됨)와, 스크린샷 프레임에 <code>D3D12Device::RecordBackBufferReadback</code> 이 거는 <code>PRESENT → COPY_SOURCE → PRESENT</code> 입니다.</p>
+</section>
+
+<section id="d3d11">
+<h2>7. 같은 API 를 D3D11 은 어떻게 처리하나</h2>
+<p>D3D11 에는 상태와 배리어가 없습니다. 드라이버가 바인딩을 보고 해저드를 추적합니다. 대신 런타임 규칙이 하나 있습니다. 같은 리소스가 읽기(SRV)와 쓰기(RTV·DSV·UAV)에 동시에 꽂히면, 런타임이 "still bound" 경고와 함께 한쪽을 NULL 로 만듭니다. 그래서 <code>D3D11CommandList</code> 는 상태를 기록만 하면서, 겹침을 푸는 일을 RHI 호출 자리에서 합니다.</p>
+<table>
+<tr><th>호출</th><th>D3D12CommandList</th><th>D3D11CommandList</th></tr>
+<tr><td><code>Barrier(tex, after)</code></td><td><code>ResourceBarrier(Transition)</code></td><td><code>state = after</code> 기록. UAV 로 들어갈 때 <code>UnbindShaderResourcesOf</code>, UAV 에서 나올 때 <code>UnbindUavsOf</code></td></tr>
+<tr><td><code>Barrier(buf, after)</code></td><td>같음 + <code>m_touchedBuffers</code></td><td>같은 풀기. <code>IndirectArgument</code> 로 갈 때도 CS UAV 를 풂</td></tr>
+<tr><td><code>UavBarrier</code></td><td><code>ResourceBarrier(UAV)</code></td><td>상태 검사만 (<code>CheckUavState</code>). 드라이버가 같은 UAV 를 쓰는 Dispatch 사이에 대기를 넣음</td></tr>
+<tr><td><code>BeginRenderPass</code></td><td>-</td><td>attachment 와 겹치는 SRV·UAV 슬롯을 풂 (<code>Stats::srvUnbinds</code>·<code>uavUnbinds</code>, 읽기 전용 깊이는 풀지 않음)</td></tr>
+<tr><td><code>EndRenderPass</code></td><td><code>m_inPass</code> 만 내림</td><td><code>OMSetRenderTargets(0, …)</code> 로 타깃을 풂</td></tr>
+</table>
+<p>전이 배리어는 두 백엔드가 같게 셉니다. 실제로 상태가 바뀐 <code>Barrier</code> 만 <code>barriers</code> 에 들어갑니다. 다른 점은 <code>UavBarrier</code> 입니다. D3D12 는 실제 배리어를 기록하며 <code>barriers</code> 를 올리고, D3D11 은 <code>CheckUavState</code> 만 부르고 세지 않습니다. 그래서 GPU 클러스터 비닝(기본 켬)이나 GPU 파티클이 도는 장면에서는 D3D12 쪽 값이 <code>UavBarrier</code> 호출 수만큼 큽니다. D3D11 쪽에만 <code>srvUnbinds</code>·<code>uavUnbinds</code> 가 올라갑니다. 디버그 패널(<code>Editor/DebugUI.cpp</code>)의 "passes … barriers …" 줄은 <code>Renderer::EndUIPass</code> 가 읽은 값이라 한 프레임 늦게 보입니다.</p>
+<p>D3D11 로만 개발하면 배리어를 빠뜨려도 화면이 맞게 나옵니다. 그래서 배리어가 맞는지는 D3D12 Debug Layer(Debug 빌드)와 GPU 기반 검증(<code>--gpu-validation=1</code>, 매우 느림)으로만 확인됩니다. D3D12 백엔드 자체도 몇 가지를 미리 잡습니다. 읽기 전용 깊이 패스인데 <code>DepthRead</code> 가 아니면, UAV·SRV 로 바인딩한 상태 추적 버퍼가 맞는 상태가 아니면 <code>BeginRenderPass</code>·<code>ApplyBindings</code> 가 에러를 한 번 남깁니다.</p>
+</section>
+
+<section id="readback">
+<h2>8. GPU 결과를 CPU 로 읽기 — 리드백</h2>
+<p>GPU 가 만든 값을 CPU 가 읽으려면 그 GPU 일이 끝났어야 합니다. 바로 읽으면 기다려야 하므로, 엔진은 프로파일러와 통계에서 몇 프레임 늦게 읽는 비동기 방식을 쓰고 스크린샷만 동기 방식으로 읽습니다.</p>
+<table>
+<tr><th>무엇</th><th>D3D12</th><th>D3D11</th><th>지연</th></tr>
+<tr><td>GPU 타임스탬프 (<code>Profiler</code>, <code>GpuProfileScope</code>)</td><td><code>EndQuery(TIMESTAMP)</code> → <code>EndFrame</code> 이 슬롯 구간을 READBACK 버퍼로 <code>ResolveQueryData</code> → 슬롯을 다시 쓰는 <code>BeginFrame</code> 이 펜스 대기 직후 <code>ReadTimestamps</code></td><td>프레임마다 <code>TIMESTAMP_DISJOINT</code> + <code>TIMESTAMP</code> 쿼리, 세트 6개를 돌려 6프레임 뒤 <code>GetData(DONOTFLUSH)</code>. 준비 안 됐거나 disjoint 면 버림</td><td>D3D12 2프레임, D3D11 6프레임 뒤 <code>BeginFrame</code> 에서 읽힘 <span class="tag chk">계산값</span></td></tr>
+<tr><td>Staging 버퍼 (<code>ReadStagingBuffer</code>, 클러스터 통계)</td><td>완료를 확인하지 않음. 호출자가 <code>kFrameCount</code> 프레임 지난 복사만 읽어야 함</td><td><code>Map(READ, DO_NOT_WAIT)</code>. 아직이면 false</td><td>4칸 링(<code>kClusterStatsSlots</code>), 2프레임 이상 지난 칸부터</td></tr>
+<tr><td>스크린샷 (<code>RequestBackBufferReadback</code>)</td><td>Close 전에 복사 기록, Signal 뒤 <code>WaitForGpu</code></td><td>Present 전에 staging 복사 + <code>Map(READ)</code></td><td>없음 (그 프레임에 CPU 가 기다림)</td></tr>
+</table>
+<p>타임스탬프의 지연은 상수에서 따라 셀 수 있습니다. D3D12 에서 프레임 N 의 값은 같은 슬롯을 다시 여는 프레임 N+2 의 <code>D3D12Device::BeginFrame</code> 에서 읽힙니다. <code>Profiler::BeginFrame</code> 은 <code>Engine::BeginFrame</code> 에서, 즉 장치의 <code>BeginFrame</code> 보다 먼저 결과를 가져가므로 패널에는 프레임 N+3 에 나타납니다. D3D11 은 같은 식으로 N+7 입니다 <span class="tag chk">계산값</span>. <code>Profiler</code> 는 결과에 붙은 <code>frameNumber</code> 로 그 프레임에 열었던 구간 목록(<code>gpuPending</code>)을 찾아 짝을 맞추므로 지연이 달라도 구간 이름이 어긋나지 않습니다.</p>
+<p>D3D11 이 6세트를 쓰는 이유는 <code>D3D11Device.h</code> 주석에 있습니다. DXGI 가 최대 3프레임을 큐에 둘 수 있어 2~3프레임 전 세트가 아직 GPU 에 있을 수 있고, 결과를 읽지 않은 쿼리에 다시 <code>End</code> 를 부르면 Debug Layer 가 경고합니다. Staging 리드백에서 비슷한 증상이 나온 기록이 있습니다. 처음에 <code>kFrameCount</code>(2)칸 링으로 복사하고 같은 칸을 복사 직전에 읽었을 때 ManyLights256 의 2단계 쌍 수가 77,320 으로 1단계(77,258)보다 많게 나왔고, 4칸 링으로 바꾸고 읽지 못한 칸을 건너뛰게 하자 75,141 로 여러 번 실행해도 같았습니다 <span class="tag ok">확인함 (2026-11-21)</span> (<a href="../plan/gpu-cluster-binning-record.html#readback">클러스터 비닝 기록 6장</a>). 기록은 원인을 "D3D11 드라이버가 프레임을 2개 넘게 쌓아 읽기가 밀린 것"으로 추정하고, 직접 확인하지는 않았다고 적습니다.</p>
+</section>
+
+<section id="release">
+<h2>9. 해제 미루기 — 지연 해제</h2>
+<p>D3D11 은 <code>ComPtr</code> 을 놓아도 GPU 가 다 쓸 때까지 드라이버가 객체를 붙들어 줍니다. <code>D3D11Device::DestroyTexture</code> 는 풀에서 지우기만 합니다. D3D12 는 그렇지 않아서, 이미 기록·제출된 명령이 참조하는 리소스를 지우면 GPU 가 해제된 메모리를 읽습니다. 그래서 <code>D3D12Device::DeferRelease(object)</code> 와 <code>DeferFree(heap, start, count)</code> 가 현재 슬롯의 <code>m_garbage</code> 에 넣어 두고, 그 슬롯의 펜스를 지난 <code>BeginFrame</code> 의 <code>ReleaseGarbage</code> 가 비웁니다. 해제가 최대 2프레임 늦어지고 <span class="tag chk">계산값</span>, 그동안 옛것과 새것이 같이 살아 있습니다.</p>
+<table>
+<tr><th>호출</th><th>미뤄지는 것</th></tr>
+<tr><td><code>DestroyBuffer</code></td><td>버퍼 리소스 (Dynamic 은 리소스가 없어 풀 항목만 지움)</td></tr>
+<tr><td><code>DestroyTexture</code></td><td>리소스 + 디스크립터 여섯 칸: RTV, sRGB RTV, DSV, 읽기 전용 DSV, 스테이징 SRV, 셰이더 가시 SRV(ImGui)</td></tr>
+<tr><td><code>DestroySampler</code></td><td>스테이징 샘플러 디스크립터</td></tr>
+<tr><td><code>DestroyResourceSet</code></td><td>셰이더 가시 힙의 SRV·샘플러 테이블 구간</td></tr>
+<tr><td><code>InvalidatePipelines</code> (셰이더 핫리로드)</td><td>캐시의 모든 PSO (<code>D3D12PipelineStateCache::Clear</code>)</td></tr>
+<tr><td><code>ImGuiSrvFree</code></td><td>ImGui 가 쓴 셰이더 가시 SRV 한 칸</td></tr>
+</table>
+<p>예외는 백버퍼입니다. 스왑체인이 <code>ResizeBuffers</code> 하려면 백버퍼 참조가 하나도 남아 있으면 안 되므로, <code>Resize</code> 는 <code>WaitForGpu</code> 로 GPU 를 비운 뒤 모든 슬롯의 지연 목록을 비우고 <code>ReleaseTextureNow</code> 로 즉시 해제합니다. DSV 힙을 32칸으로 잡은 이유도 이 지연과 관련 있습니다. <code>InitFrameResources</code> 주석은 "리사이즈는 해제가 미뤄져 옛것과 새것이 잠시 겹침"이라고 적습니다.</p>
+</section>
+
+<section id="code">
+<h2>10. 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>프레임 수·타임스탬프 칸</td><td><code>RHI/GraphicsConfig.h</code> — <code>kFrameCount</code>, <code>kMaxTimestamps</code></td><td>2, 64</td></tr>
+<tr><td>상태 열거</td><td><code>RHI/RenderPassTypes.h</code> — <code>ResourceState</code></td><td>상태 10개, <code>ToString</code></td></tr>
+<tr><td>배리어 인터페이스</td><td><code>RHI/CommandList.h</code> — <code>Barrier</code>, <code>UavBarrier</code>, <code>CopyBuffer</code>, <code>WriteTimestamp</code></td><td>"after 만 말한다" 규칙, 버퍼 상태의 프레임 끝 복귀</td></tr>
+<tr><td>프레임 경계·리드백 인터페이스</td><td><code>RHI/Device.h</code> — <code>BeginFrame</code>, <code>EndFrame</code>, <code>GetTimestampResults</code>, <code>ReadStagingBuffer</code>, <code>BeginResourceUploads</code></td><td>두 백엔드가 지킬 의미</td></tr>
+<tr><td>펜스·프레임 자원</td><td><code>RHI/D3D12/D3D12Device.cpp</code> — <code>InitFrameResources</code>, <code>BeginFrame</code>, <code>EndFrame</code>, <code>WaitForGpu</code></td><td>할당자 2, 링 2×8 MB, 펜스 대기·Signal</td></tr>
+<tr><td>업로드 링</td><td><code>D3D12Device::AllocateUpload</code>, <code>UpdateBuffer</code></td><td>256 B 정렬 조각, 가득 차면 에러 1회</td></tr>
+<tr><td>동기 업로드</td><td><code>D3D12Device::RecordUpload</code>, <code>FlushUploads</code></td><td>업로드 리스트 실행 후 <code>WaitForGpu</code></td></tr>
+<tr><td>지연 해제</td><td><code>D3D12Device::DeferRelease</code>, <code>DeferFree</code>, <code>ReleaseGarbage</code>, <code>ReleaseTextureNow</code></td><td>슬롯별 쓰레기 목록</td></tr>
+<tr><td>D3D12 배리어</td><td><code>RHI/D3D12/D3D12CommandList.cpp</code> — <code>Barrier</code>, <code>UavBarrier</code>, <code>TrackBufferState</code>, <code>ResetBufferStates</code>; <code>D3D12Convert::ToD3D12</code>, <code>TransitionBarrier</code></td><td>추적 상태를 before 로 한 Transition 하나씩</td></tr>
+<tr><td>D3D11 배리어</td><td><code>RHI/D3D11/D3D11CommandList.cpp</code> — <code>Barrier</code>, <code>UnbindShaderResourcesOf</code>, <code>UnbindUavsOf</code>, <code>CheckUavState</code></td><td>상태 기록 + 겹치는 바인딩 풀기</td></tr>
+<tr><td>D3D11 Dynamic·쿼리</td><td><code>RHI/D3D11/D3D11Device.cpp</code> — <code>UpdateBuffer</code>, <code>WriteTimestamp</code>, <code>ResolveTimestamps</code>, <code>ReadStagingBuffer</code></td><td><code>WRITE_DISCARD</code>, 쿼리 세트 6개, <code>DO_NOT_WAIT</code></td></tr>
+<tr><td>스왑체인</td><td><code>D3D12Device::InitSwapChain</code>, <code>D3D11Device::InitDirect3D</code>, 두 <code>EndFrame</code></td><td>FLIP_DISCARD, 백버퍼 3 / 2, tearing</td></tr>
+<tr><td>렌더러의 배리어</td><td><code>Graphics/Renderer.cpp</code> — <code>Render</code>, <code>RenderScenePass</code>; <code>RendererPost.cpp</code> — <code>RenderPostPass</code>, <code>DispatchBlurCompute</code>, <code>ApplyHdrEffects</code>; <code>RendererTargets.cpp</code> — <code>BeginUIPass</code>, <code>EndUIPass</code>; <code>RendererShadow.cpp</code> — <code>RenderShadowAtlasPass</code></td><td>그림 3 의 전이</td></tr>
+<tr><td>GPU 시간</td><td><code>Core/Profiler.cpp</code> — <code>Profiler::BeginFrame</code>; <code>Core/Engine.cpp</code> — <code>Engine::Render</code> 의 <code>GpuProfileScope</code></td><td>지연된 결과를 <code>frameNumber</code> 로 짝 맞춤</td></tr>
+<tr><td>통계 리드백</td><td><code>Graphics/RendererClusterBin.cpp</code> — <code>ReadGpuClusterStats</code>, <code>DispatchClusterBinning</code></td><td>4칸 Staging 링</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>11. 실험</h2>
+<h3>E1. 백엔드를 바꿔 barriers 값 비교 <span class="tag chk">예상</span></h3>
+<p>같은 씬을 <code>--backend=d3d11</code> 과 <code>--backend=d3d12</code> 로 열고 Render Settings 의 "passes … barriers …" 줄을 봅니다. 클러스터 비닝(<code>--cluster-gpu=0</code>)과 파티클을 끈 씬이면 두 값이 같아야 합니다. 켜면 D3D12 쪽이 <code>UavBarrier</code> 호출 수만큼 커야 합니다(7장). 그 밖의 차이는 한쪽 백엔드의 "이미 그 상태면 아무 일도 없음" 처리가 어긋났다는 뜻입니다.</p>
+<h3>E2. vsync 와 tearing <span class="tag chk">예상</span></h3>
+<p>에디터에서 F3 으로 vsync 를 켜고 끄며 프로파일러의 CPU "Present" 구간과 프레임률을 봅니다. vsync 를 켜면 프레임률이 주사율에 묶이고 대기가 Present(또는 D3D12 의 <code>BeginFrame</code> 펜스 대기)로 옮겨 가야 합니다. 체크박스 옆의 "(tearing OK)"가 안 보이는 환경에서는 vsync 를 꺼도 창 모드에서 주사율에 묶일 수 있습니다.</p>
+<h3>E3. kFrameCount 를 1, 3 으로 빌드 <span class="tag chk">예상</span></h3>
+<p><code>GraphicsConfig.h</code> 의 값을 바꿔 다시 빌드하고 같은 씬의 스크린샷을 비교합니다. 화면은 같아야 하고, 1 에서는 렌더 기록과 GPU 실행이 겹치지 않아 GPU 시간이 큰 씬에서 프레임 시간이 늘어야 합니다. Staging 리드백은 <code>kFrameCount</code> 프레임 지난 복사만 읽으므로 3 에서도 규칙이 지켜집니다.</p>
+<h3>E4. 배리어 하나를 빼고 검증 레이어 보기 <span class="tag chk">예상</span></h3>
+<p>실험 프로젝트 사본에서 <code>RenderScenePass</code> 끝의 <code>Barrier(view.hdr, ShaderResource)</code> 를 지우고 Debug 빌드 D3D12 로 실행합니다. 톤 패스가 RENDER_TARGET 상태의 텍스처를 SRV 로 읽으므로 Debug Layer 가 상태 불일치 에러를 내야 합니다(GPU 기반 검증을 켜면 셰이더 실행 시점에서 잡음). 같은 사본을 D3D11 로 실행하면 화면이 그대로일 수 있습니다. 7장에서 말한 "D3D11 로는 배리어 실수가 보이지 않는다"를 직접 보는 실험입니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>12. 함정과 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>오브젝트가 다른 오브젝트의 행렬·색으로 깜빡임 (D3D12만)</td><td>Dynamic 상수버퍼를 그 프레임에 갱신하지 않아 재사용된 링 조각을 읽음</td><td><code>ApplyBindings</code> 가 "이번 프레임에 갱신되지 않음"을 한 번 로그</td></tr>
+<tr><td>D3D11 에서 컴퓨트 결과가 0</td><td>출력이 SRV 슬롯에 남아 런타임이 UAV 를 NULL 로 만듦</td><td><code>Barrier(tex, UnorderedAccess)</code> 가 겹치는 SRV 를 풂. 이 호출을 빠뜨리면 재현</td></tr>
+<tr><td>Debug Layer 의 before 상태 불일치</td><td>엔진 밖에서 상태를 바꾸고 추적 값을 고치지 않음</td><td>before 는 늘 추적 값이라 RHI 안에서는 어긋나지 않음. 직접 <code>ResourceBarrier</code> 를 거는 곳(업로드·스크린샷)은 원래 상태로 되돌려 놓음</td></tr>
+<tr><td>버퍼 배리어 에러가 다음 프레임에만 남</td><td>버퍼 상태가 프레임 끝에 <code>Common</code> 으로 돌아감</td><td>매 프레임 첫 사용 전에 다시 <code>Barrier</code> (<code>m_blurWeights</code>, 파티클·클러스터 버퍼)</td></tr>
+<tr><td>통계·타이밍 값이 이상하게 남아 있음</td><td>아직 끝나지 않은 GPU 결과를 읽었거나, 읽지 못한 칸을 덮어씀</td><td>8장의 77,320 사례. Staging 링 4칸 + 읽지 못한 칸 건너뛰기</td></tr>
+<tr><td>로드·리사이즈 때 끊김</td><td><code>WaitForGpu</code> 가 큐를 비움</td><td>로드 중 업로드는 <code>BeginResourceUploads</code> 로 묶어 대기 횟수를 줄임</td></tr>
+<tr><td>업로드 링이 가득 참</td><td>한 프레임에 갱신한 Dynamic 버퍼 크기 합이 8 MB 초과</td><td>에러 1회 뒤 그 갱신을 건너뜀. <code>kUploadRingSize</code> 를 키워야 함. 사용량(<code>peak</code>)은 표시하지 않음</td></tr>
+</table>
+<h3 id="limits">구조상의 한계</h3>
+<ul>
+<li><b>큐는 직접 큐 하나.</b> <code>CreateCommandQueue</code> 는 한 번이고 컴퓨트·복사 큐가 없습니다. 비동기 컴퓨트(그래픽스와 컴퓨트를 겹쳐 돌리기)와 백그라운드 복사 큐 업로드가 없고, 초기 데이터 업로드도 같은 직접 큐에서 실행한 뒤 기다립니다.</li>
+<li><b>커맨드 리스트는 프레임에 하나.</b> 여러 스레드가 리스트를 나눠 기록하는 구조가 아닙니다. ImGui 도 같은 리스트에 기록합니다.</li>
+<li><b>배리어 묶음·split 배리어 없음.</b> 전이마다 <code>ResourceBarrier</code> 한 번, 항상 전체 서브리소스입니다. 밉 단위 전이가 필요한 기능(예: 컴퓨트 밉 생성)은 지금 인터페이스로 표현할 수 없습니다.</li>
+<li><b>프레임 지연 제어 없음.</b> <code>SetMaximumFrameLatency</code>·waitable 스왑체인을 쓰지 않아, 입력 지연은 <code>kFrameCount</code> 와 DXGI 기본 큐 깊이로 정해집니다.</li>
+<li><b>Enhanced Barriers 미사용.</b> D3D12 의 새 배리어 API(<code>ID3D12GraphicsCommandList7::Barrier</code>)가 아니라 기존 <code>D3D12_RESOURCE_BARRIER</code> 를 씁니다. 상태 하나로 접근·동기화·레이아웃을 함께 나타내는 방식이라, 6-2절 표처럼 읽기 상태를 OR 로 합쳐 씁니다.</li>
+</ul>
+</section>
+
+<section id="study">
+<h2>13. 공부할 개념</h2>
+<table>
+<tr><th>개념</th><th>한 줄 설명</th><th>이 엔진에서 보는 곳</th></tr>
+<tr><td>frames in flight</td><td>동시에 진행 중일 수 있는 프레임 수(CPU 가 기록 중인 것 + GPU 가 대기·실행 중인 것). 자원을 그만큼 복제함</td><td><code>kFrameCount</code>, <code>m_frameIndex</code></td></tr>
+<tr><td>fence</td><td>GPU 가 지나가며 올리는 정수. CPU 가 그 값을 기다림</td><td><code>D3D12Device::BeginFrame</code>, <code>WaitForGpu</code></td></tr>
+<tr><td>command allocator</td><td>기록된 명령이 사는 메모리. GPU 가 끝내야 Reset 가능</td><td><code>m_allocators</code></td></tr>
+<tr><td>buffer renaming</td><td>Map 마다 새 메모리를 줘 GPU 가 읽는 옛 내용을 지키기</td><td>D3D11 <code>WRITE_DISCARD</code>, D3D12 업로드 링</td></tr>
+<tr><td>resource state / transition barrier</td><td>리소스의 용도 선언과 그 전환 지점</td><td><code>ResourceState</code>, <code>D3D12CommandList::Barrier</code></td></tr>
+<tr><td>state promotion / decay</td><td>버퍼·동시 접근 텍스처가 COMMON 에서 암묵적으로 오르고, 실행 뒤 COMMON 으로 돌아가는 규칙</td><td><code>CopyBuffer</code>, <code>ResetBufferStates</code></td></tr>
+<tr><td>UAV barrier</td><td>상태는 그대로 두고 앞 UAV 쓰기를 뒤 접근에 보이게 함</td><td><code>UavBarrier</code> (<a href="../study/compute-uav-study.html">컴퓨트·UAV 학습</a>)</td></tr>
+<tr><td>split barrier</td><td>전이의 시작과 끝을 나눠 그 사이에 다른 일을 겹침</td><td>쓰지 않음</td></tr>
+<tr><td>flip model / tearing</td><td>스왑체인 버퍼를 복사하지 않고 넘김. vsync 없이 바로 바꾸려면 ALLOW_TEARING</td><td><code>InitSwapChain</code>, <code>EndFrame</code></td></tr>
+<tr><td>timestamp query / disjoint</td><td>GPU 시각 기록. D3D11 은 주파수와 유효성을 disjoint 쿼리로 받음</td><td><code>WriteTimestamp</code>, <code>ResolveTimestamps</code></td></tr>
+<tr><td>deferred release</td><td>GPU 가 다 쓸 때까지 해제를 미루기</td><td><code>m_garbage</code>, <code>ReleaseGarbage</code></td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li><a href="../overview/rendering-analysis.html#c8">rendering-analysis 8장</a> — 렌더 패스·배리어·프레임 자원의 원래 설명 (8.7절의 상태 개수와 버퍼 배리어 설명은 이 문서 6장이 최신)</li>
+<li><a href="../overview/rendering-analysis.html#c9">rendering-analysis 9장</a> — 두 백엔드의 장치·큐·스왑체인 생성</li>
+<li><a href="../overview/rendering-analysis.html#c15">rendering-analysis 15장</a> — Profiler 와 타임스탬프</li>
+<li><a href="../plan/gpu-cluster-binning-record.html#readback">GPU 클러스터 비닝 기록 6장</a> — 버퍼 리드백과 4칸 링의 측정</li>
+<li><a href="../study/compute-uav-study.html">컴퓨트·UAV 학습</a>, <a href="../study/binding-study.html">바인딩 학습</a>, <a href="../study/rhi-pso-study.html">RHI·PSO 학습</a>, <a href="../study/frame-structure-study.html">프레임 구조 학습</a>, <a href="../study/post-process-study.html">후처리 학습</a>, <a href="../study/gpu-particles-study.html">GPU 파티클 학습</a>, <a href="../study/clustered-lighting-study.html">클러스터 라이팅 학습</a></li>
+<li>Microsoft Learn: "Using Resource Barriers to Synchronize Resource States in Direct3D 12", "Synchronization and Multi-Engine", "DXGI flip model" — 외부 문서, 이름으로만 적음</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

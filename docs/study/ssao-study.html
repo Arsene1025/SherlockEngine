@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · SSAO 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>SSAO 학습 문서</h1>
+  <p>화면 공간 앰비언트 오클루전 — 무엇을 근사하는가, 깊이 버퍼로 가림을 세는 방법, 우리 엔진의 두 패스와 적용 자리, 한계</p>
+  <p>2026-11-25 · SSAO 이야기는 지금까지 <a href="../plan/deferred-clustered-ssao-plan.html#c-ssao">디퍼드·클러스터드·SSAO 계획 4장</a>과 <a href="../plan/deferred-clustered-ssao-record.html#c-ssao">구현 기록 2.9</a>, <a href="../overview/rendering-analysis.html#c8-2">rendering-analysis 8.2</a>의 패스 목록에 나뉘어 있었습니다. 이 문서는 원리부터 다시 설명하고 지금 코드에 맞춰 정리합니다. 계획 문서와 코드가 다른 곳은 코드를 따랐고 9장 끝에 모아 두었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(AO가 무엇이고 왜 화면 공간에서 구하는가, 반구 샘플링), 3장은 한 프레임에서 SSAO가 끼는 자리, 4장은 셰이더 세부(위치 복원, 커널, 회전, 비교와 범위 검사, 블러), 5장은 결과를 어디에 곱하는가, 6장은 설정, 7장은 코드 지도, 8장은 실험, 9장은 함정과 한계, 10장은 공부할 개념과 참고 문서입니다. 깊이에서 위치를 복원하는 기초는 <a href="../study/deferred-gbuffer-study.html">디퍼드·G-buffer 학습</a>에 있습니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 식으로 계산한 값은 <span class="tag chk">계산값</span>, 해 보지 않은 실험의 결과는 <span class="tag chk">예상</span>으로 표시했습니다. 화면 비교와 시간 측정은 2026-11-18 구현 기록에서 가져왔고 <span class="tag ok">확인함</span>으로 표시했습니다. SSAO 값을 레이 트레이싱 AO 같은 정답과 비교한 적은 없습니다. 모양만 눈으로 확인했습니다.</div>
+</header>
+<nav><a href="#why">1. 왜 필요한가</a><a href="#principle">2. 원리</a><a href="#flow">3. 프레임 속 자리</a><a href="#detail">4. 셰이더 세부</a><a href="#apply">5. 적용 자리</a><a href="#settings">6. 설정</a><a href="#code">7. 코드 지도</a><a href="#lab">8. 실험</a><a href="#pitfalls">9. 함정과 한계</a><a href="#study">10. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 필요한가</h2>
+<h3>1-1. 환경광은 가려진다</h3>
+<p>환경광(하늘빛, IBL)은 반구 전체에서 들어오는 빛입니다. 열린 바닥은 하늘 반구를 다 보지만, 벽과 바닥이 만나는 모서리나 물체끼리 닿는 틈은 주변 기하가 반구 일부를 막아서 빛을 덜 받습니다. 표면 한 점에서 반구의 몇 퍼센트가 막혀 있는가가 앰비언트 오클루전(AO)입니다. AO 1은 하나도 막히지 않음, 0은 다 막힘입니다.</p>
+<p>그림자 맵은 조명 하나의 방향에 대해서만 가림을 압니다(<a href="../study/shadow-map-study.html">그림자 맵 학습</a>). 방향이 정해지지 않은 환경광에는 그림자 맵을 쓸 수 없어서, 가림이 없으면 구석과 접촉면이 열린 면과 같은 밝기로 떠 보입니다. 물체가 바닥에 붙어 있는지 떠 있는지 구분이 잘 안 되는 것도 이 때문입니다.</p>
+
+<h3>1-2. AO를 얻는 방법들</h3>
+<table>
+<tr><th>방법</th><th>무엇을 아는가</th><th>약점</th><th>이 엔진에서</th></tr>
+<tr><td>재질 AO 텍스처 (구워 둔 AO)</td><td>메시 자기 안의 주름·홈</td><td>다른 물체와의 가림(물체끼리 닿는 틈, 바닥 접촉)은 모름. 움직이면 틀림</td><td>glTF <code>occlusionTexture</code>, <code>occlusionStrength</code> (<code>MaterialSurface.hlsli</code>)</td></tr>
+<tr><td>레이 트레이싱 AO</td><td>장면 전체</td><td>픽셀마다 광선 여러 개. 가속 구조 필요</td><td>없음</td></tr>
+<tr><td>SSAO (화면 공간)</td><td>지금 화면에 보이는 깊이 버퍼</td><td>화면 밖·가려진 뒤쪽 기하를 모름. 두께를 모름</td><td><b>이 문서</b>. 디퍼드 프레임에서만</td></tr>
+<tr><td>HBAO·GTAO</td><td>같은 깊이·노멀 입력을 지평선 각도로 적분</td><td>셰이더가 더 복잡</td><td>없음. 계획 문서는 같은 패스 구조에서 셰이더만 바꿔 실험할 수 있다고 적어 둠 (<a href="../plan/deferred-clustered-ssao-plan.html#c-ssao-limits">계획 4.3</a>)</td></tr>
+</table>
+<p>SSAO는 깊이 버퍼를 "장면의 근사"로 봅니다. 이미 그려 둔 깊이와 노멀만 읽으므로 장면 크기와 상관없이 비용이 화면 해상도에 비례하고, 움직이는 물체에도 그대로 맞습니다. 대신 화면에 보이는 앞면 한 겹밖에 모른다는 한계를 받아들입니다(9장).</p>
+</section>
+
+<section id="principle">
+<h2>2. 원리 — 노멀 방향 반구 샘플링</h2>
+<p>픽셀 하나의 표면 점 P와 노멀 N을 알면, N 쪽으로 반경 r인 반구를 세울 수 있습니다. 반구 안에 점을 여러 개 뿌리고, 각 점이 다른 표면 "속"에 들어가 있는지 봅니다. 속에 들어간 점의 비율이 가려진 비율입니다.</p>
+<p>점이 표면 속인지는 깊이 버퍼로 판정합니다. 점을 화면에 투영하면 그 화면 위치에 이미 그려진 표면의 깊이를 읽을 수 있습니다. 그 표면이 점보다 카메라에 가까우면, 카메라에서 보기에 점은 그 표면 뒤에 숨어 있습니다. 표면 뒤를 "속이 찬 곳"으로 보고 가림으로 셉니다.</p>
+<figure>
+<svg viewBox="0 0 620 250" role="img" aria-label="표면 점 P 위의 반구 안에 샘플을 뿌리고 벽 안에 들어간 샘플을 가림으로 센다">
+  <defs><marker id="ssao-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <rect x="330" y="80" width="70" height="120" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <text x="365" y="100" text-anchor="middle" style="fill:var(--ink)">벽</text>
+  <line x1="30" y1="200" x2="570" y2="200" style="stroke:var(--ink2);stroke-width:2"/>
+  <path d="M140 200 A110 110 0 0 1 360 200" style="fill:var(--accent-bg);fill-opacity:0.5;stroke:var(--accent);stroke-dasharray:5 4"/>
+  <line x1="250" y1="200" x2="250" y2="112" class="ln" marker-end="url(#ssao-ar)"/>
+  <text x="258" y="122">N</text>
+  <circle cx="250" cy="200" r="4.5" style="fill:var(--ink)"/>
+  <text x="262" y="218">P</text>
+  <line x1="140" y1="210" x2="245" y2="210" style="stroke:var(--ink3)"/>
+  <text x="192" y="230" text-anchor="middle">반경 r</text>
+  <circle cx="190" cy="160" r="5" style="fill:var(--accent)"/>
+  <circle cx="220" cy="128" r="5" style="fill:var(--accent)"/>
+  <circle cx="285" cy="150" r="5" style="fill:var(--accent)"/>
+  <circle cx="305" cy="118" r="5" style="fill:var(--accent)"/>
+  <circle cx="268" cy="178" r="5" style="fill:var(--accent)"/>
+  <circle cx="165" cy="188" r="5" style="fill:var(--accent)"/>
+  <circle cx="340" cy="168" r="5" style="fill:var(--warn)"/>
+  <circle cx="350" cy="188" r="5" style="fill:var(--warn)"/>
+  <circle cx="338" cy="146" r="5" style="fill:var(--warn)"/>
+  <circle cx="420" cy="130" r="5" style="fill:var(--accent)"/><text x="432" y="134">열린 샘플 6</text>
+  <circle cx="420" cy="156" r="5" style="fill:var(--warn)"/><text x="432" y="160">가린 샘플 3</text>
+  <text x="414" y="186">AO = (1 − 3/9)^1.5 ≈ 0.54</text>
+</svg>
+<figcaption>그림 1. 벽 옆 바닥의 점 P. 노멀 방향 반구 안의 샘플 9개 중 3개가 벽 속에 들어가 가림으로 셉니다. 기본 설정(세기 1, 거듭제곱 1.5)이면 AO ≈ 0.54입니다 <span class="tag chk">계산값</span>. 반구 아래쪽(바닥 속)에는 처음부터 점을 만들지 않으므로 평평한 바닥이 자기 자신을 가리지 않습니다.</figcaption>
+</figure>
+<p>반구를 노멀 쪽으로만 세우는 이유는 그림 1 캡션 끝에 적은 대로입니다. 구(sphere) 전체에 점을 뿌리면 평평한 면에서도 절반이 바닥 속에 들어가 "가려진 비율 50%"에서 시작합니다. 반구로 세우면 열린 면은 0에서 시작하고 주변 기하가 있을 때만 값이 올라갑니다. 우리 셰이더도 커널을 탄젠트 공간 반구(z ≥ 0, z = 노멀 쪽)에만 만듭니다(4-2).</p>
+</section>
+
+<section id="flow">
+<h2>3. 한 프레임에서 SSAO가 끼는 자리</h2>
+<figure>
+<svg viewBox="0 0 940 160" role="img" aria-label="G-buffer 패스, SSAO 패스, 블러 패스, 디퍼드 라이팅, 포워드 패스 순서">
+  <defs><marker id="ssao-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <rect x="26" y="30" width="160" height="64" rx="8" style="fill:var(--fill);stroke:var(--ink3)"/>
+  <text x="106" y="56" text-anchor="middle" style="fill:var(--ink);font-weight:600">GBuffer</text>
+  <text x="106" y="78" text-anchor="middle">깊이 · GB1 노멀</text>
+  <line x1="187" y1="62" x2="206" y2="62" class="ln" marker-end="url(#ssao-ar2)"/>
+  <rect x="208" y="30" width="160" height="64" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="288" y="56" text-anchor="middle" style="fill:var(--ink);font-weight:600">SsaoRaw</text>
+  <text x="288" y="78" text-anchor="middle">PS_Ssao → ssaoRaw</text>
+  <line x1="369" y1="62" x2="388" y2="62" class="ln" marker-end="url(#ssao-ar2)"/>
+  <rect x="390" y="30" width="160" height="64" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="470" y="56" text-anchor="middle" style="fill:var(--ink);font-weight:600">SsaoBlur</text>
+  <text x="470" y="78" text-anchor="middle">4×4 블러 → ssaoBlur</text>
+  <line x1="551" y1="62" x2="570" y2="62" class="ln" marker-end="url(#ssao-ar2)"/>
+  <rect x="572" y="30" width="160" height="64" rx="8" style="fill:var(--fill);stroke:var(--ink3)"/>
+  <text x="652" y="56" text-anchor="middle" style="fill:var(--ink);font-weight:600">DeferredLight</text>
+  <text x="652" y="78" text-anchor="middle">t29 → 환경광에만</text>
+  <line x1="733" y1="62" x2="752" y2="62" class="ln" marker-end="url(#ssao-ar2)"/>
+  <rect x="754" y="30" width="160" height="64" rx="8" style="fill:var(--fill);stroke:var(--ink3)"/>
+  <text x="834" y="56" text-anchor="middle" style="fill:var(--ink);font-weight:600">Forward</text>
+  <text x="834" y="78" text-anchor="middle">SSAO 없음 (하늘·블렌딩)</text>
+  <text x="106" y="120" text-anchor="middle">끝나면 DepthRead · SR</text>
+  <text x="379" y="120" text-anchor="middle">R8_UNORM 두 장 (뷰마다). 패스는 켜졌을 때만</text>
+  <text x="652" y="120" text-anchor="middle">ao = min(재질 AO, SSAO)</text>
+</svg>
+<figcaption>그림 2. 디퍼드 프레임의 씬 패스 순서(<code>Renderer::RenderDeferredScene</code>). SSAO 두 패스는 G-buffer와 라이팅 사이에 들어갑니다. 둘 다 화면을 덮는 삼각형 하나(<code>ScreenVS</code>)이고 깊이 테스트가 없습니다.</figcaption>
+</figure>
+<table>
+<tr><th>순서</th><th>패스</th><th>읽음</th><th>씀</th><th>코드</th></tr>
+<tr><td>1</td><td>GBuffer</td><td>메시·재질</td><td>GB0~GB3, 깊이 <code>D24_UNORM_S8_UINT</code></td><td><code>RenderDeferredScene</code> 1단계</td></tr>
+<tr><td>2</td><td>배리어</td><td>—</td><td>G-buffer → ShaderResource, 깊이 → DepthRead</td><td>같은 함수 2단계</td></tr>
+<tr><td>3a</td><td>SsaoRaw</td><td>b0, b12, t23 깊이, t26 GB1 노멀, t29 흰색</td><td><code>view.ssaoRaw</code> (R8)</td><td><code>Renderer::RenderSsao</code>, <code>PS_Ssao</code></td></tr>
+<tr><td>3b</td><td>SsaoBlur</td><td>같은 레이아웃의 <code>ssaoBlurSet</code>, t29 = <code>ssaoRaw</code></td><td><code>view.ssaoBlur</code> (R8)</td><td><code>RenderSsao</code>, <code>PS_SsaoBlur</code></td></tr>
+<tr><td>4</td><td>DeferredLight</td><td>G-buffer 셋의 t29 = <code>ssaoBlur</code></td><td><code>view.hdr</code>에 가산</td><td><code>PS_DeferredLighting</code></td></tr>
+<tr><td>5</td><td>Forward</td><td>—</td><td>G-buffer에 못 담는 불투명, 하늘, 블렌딩</td><td>같은 함수 5단계</td></tr>
+</table>
+<p>두 셋(<code>ssaoSet</code>, <code>ssaoBlurSet</code>)은 t29만 다릅니다. SSAO 패스는 입력 AO가 필요 없어 흰 텍스처를 꽂고, 블러 패스는 <code>ssaoRaw</code>를 꽂습니다(<code>Renderer::CreateSsaoTargets</code>). 두 패스 모두 <code>LoadOp::DontCare</code>로 시작합니다. 모든 픽셀을 덮어쓰기 때문입니다.</p>
+
+<h3>3-1. 디퍼드 프레임에서만 도는 이유</h3>
+<p><code>RendererSsao.cpp</code> 머리 주석에 이유가 적혀 있습니다. SSAO는 G-buffer 노멀(GB1)이 있어야 하고, 깊이가 G-buffer 패스에서 이미 다 채워져 있어야 합니다. 포워드 프레임은 깊이와 셰이딩이 한 패스라 셰이딩하는 시점에 깊이가 완성돼 있지 않고, 깊이 프리패스는 따로 두지 않았습니다. 그래서 조건이 셋입니다(<code>RenderDeferredScene</code>).</p>
+<ul>
+<li><code>UseDeferred(view)</code>: <code>RenderSettings::deferred</code>가 켜져 있고, 뷰에 G-buffer가 있고, 디버그 뷰가 5(UV)가 아님.</li>
+<li><code>m_ssaoSettings.enabled</code>: 씬의 <code>environment.ssao.enabled</code>, 또는 <code>--ssao=</code> 실행 인자의 덮어쓰기(<code>RenderSettings::ssaoOverride</code>).</li>
+<li><code>view.HasSsao()</code>: SSAO 타깃 생성에 성공했음. 실패하면 로그를 남기고 G-buffer 셋의 t29에 흰 텍스처를 꽂아 디퍼드는 SSAO 없이 계속 그립니다.</li>
+</ul>
+<p>꺼져 있어도 G-buffer 셋은 t29에 <code>ssaoBlur</code>를 꽂고 있으므로 <code>RenderDeferredScene</code>이 상태만 ShaderResource로 맞춥니다. 라이팅 PS는 b0 <code>aoParams.x</code>를 보고 읽을지 정하므로, 꺼진 프레임에는 지난 값이 남은 텍스처를 읽지 않고 1을 씁니다. b12 상수는 꺼져 있어도 프레임마다 올립니다. D3D12에서 그 프레임에 쓰지 않은 Dynamic 버퍼는 바인딩할 수 없기 때문입니다(<code>Renderer::UploadSsaoConstants</code> 주석).</p>
+</section>
+
+<section id="detail">
+<h2>4. 셰이더 세부</h2>
+<h3>4-1. 뷰 공간 위치와 노멀</h3>
+<p><code>PS_Ssao</code>는 뷰 공간에서 계산합니다. 픽셀 좌표와 깊이로 <code>ViewPositionFromDevice</code>(<code>Common.hlsli</code>)가 뷰 공간 위치 P를 되살립니다. z는 <code>ViewDepthFromDevice</code>가 투영의 깊이 식을 거꾸로 풀어 구하고, x·y는 투영을 되돌립니다. 원근이면 <code>x = (x_ndc − P20)·z / P00</code>, 직교면 <code>x = (x_ndc − P30) / P00</code>입니다. <code>proj[2][3]</code>으로 원근·직교를 고르므로 직교 카메라에서도 같은 셰이더가 돕니다. TAA 지터는 b0 <code>proj</code>에 들어가 원근이면 P20·P21, 직교면 P30·P31 값을 옮기므로(<code>Renderer::UploadPerFrameConstants</code>), 같은 행렬로 되돌리는 복원도 지터를 함께 뺍니다. 깊이 복원의 기초는 <a href="../study/deferred-gbuffer-study.html">디퍼드·G-buffer 학습</a>, 지터는 <a href="../study/taa-study.html">TAA 학습</a>에 있습니다.</p>
+<p>노멀은 GB1의 옥타헤드럴 노멀을 <code>DecodeOct</code>로 풀고 <code>view</code>의 3×3으로 돌립니다. GB1의 첫 노멀은 노멀 맵을 적용한 셰이딩 노멀입니다. 우리 뷰 공간은 왼손 좌표라 z가 클수록 멉니다. 깊이 1(아무것도 그려지지 않은 배경)인 픽셀은 계산하지 않고 1을 냅니다.</p>
+
+<h3>4-2. 커널 — 반구 안의 점</h3>
+<p>커널은 CPU가 만듭니다(<code>Renderer::UploadSsaoConstants</code>). 시드 1337인 <code>std::mt19937</code>로 만들어 실행마다 같은 점이 나오고, 스크린샷 비교가 실행 사이에 흔들리지 않습니다. 샘플 수가 바뀔 때만 다시 만들고 b12 <code>SsaoParams.ssaoKernel[32]</code>에 올립니다(b12는 544 B).</p>
+<ol>
+<li><b>방향</b>: x, y ∈ [−1, 1], z ∈ [0, 1]을 뽑아 정규화. z ≥ 0이라 노멀 쪽 반구만 나옵니다. 상자 안의 점을 정규화하므로 방향은 반구 위에 고르지 않고 상자 모서리 쪽으로 조금 몰립니다. 코사인 가중도 하지 않습니다.</li>
+<li><b>길이</b>: <code>0.2 + 0.8 × (i + u) / n</code>, u는 [0, 1) 난수. 샘플 i가 길이 칸 [i/n, (i+1)/n) 하나씩을 맡는 층화(stratified) 분포라 반경의 0.2~1 사이에 고르게 퍼집니다. 평균 길이는 반경의 0.6배입니다 <span class="tag chk">계산값</span>.</li>
+</ol>
+<p>길이가 반경 방향으로 고르면, 바깥 껍질일수록 부피가 커서 부피당 점 밀도는 1/r²로 중심 쪽이 높습니다. 가까운 가림(접촉면)에 무게가 실리면서도 반경 끝까지 닿습니다. 처음에는 흔한 예제 식 "난수 × lerp(0.1, 1, (i/n)²)"를 썼는데, 난수와 제곱으로 두 번 몰려 평균 길이가 반경의 약 16%였습니다(코드 주석과 기록의 값. 식대로 계산하면 n = 16에서 약 19% <span class="tag chk">계산값</span>). 반경 0.6에서 실제로는 0.1 m 안만 보아서, 쌓인 구 사이 틈처럼 가림 물체가 0.2~0.5 m 떨어진 곳이 거의 어두워지지 않았습니다(<code>SsaoBalls.json</code>에서 발견, <a href="../plan/deferred-clustered-ssao-record.html#c-ssao">기록 2.9</a>). 지금은 반경 값이 실제로 닿는 거리에 가깝습니다.</p>
+
+<h3>4-3. 픽셀마다 커널 돌리기</h3>
+<p>16개 점을 모든 픽셀이 같은 방향으로 쓰면, 넓은 면에서 같은 오차가 이웃 픽셀로 이어져 띠(banding)가 생깁니다. <code>PS_Ssao</code>는 픽셀 좌표의 4×4 베이어 행렬 <code>BAYER4</code>에서 0~15를 골라 22.5°씩 다른 각도를 만들고 <span class="tag chk">계산값</span>, 그 각도의 벡터를 노멀에 수직으로 그람-슈미트 직교화해 탄젠트 T를 만듭니다. B = N × T입니다. 각도 벡터가 노멀과 거의 평행하면(|dot| &gt; 0.99) 다른 축의 벡터로 바꿉니다.</p>
+<p>이렇게 하면 띠가 4×4 주기의 잔무늬로 바뀌고, 바로 뒤의 4×4 블러가 그 무늬를 한 번에 평균합니다. 난수 텍스처 대신 상수 행렬을 쓴 이유는 셰이더 주석에 "결정적 (스크린샷 비교)"으로 적혀 있습니다. 무늬가 프레임마다 같으므로, 프레임마다 회전을 바꾸고 TAA로 누적해 샘플을 늘리는 방식은 쓰지 않습니다.</p>
+
+<h3>4-4. 가림 판정과 범위 검사</h3>
+<p>샘플 하나의 처리는 다음과 같습니다.</p>
+<pre><code>S       = P + (T·k.x + B·k.y + N·k.z) × radius        // 뷰 공간 샘플 점
+clip    = S · proj;  uv = (clip.xy / clip.w) → 0..1    // 화면 밖이면 건너뜀 (continue)
+sceneZ  = ViewDepthFromDevice(깊이[uv 픽셀])           // 그 화면 위치에 그려진 표면의 뷰 z
+range   = smoothstep(0, 1, radius / |P.z − sceneZ|)
+occlusion += (sceneZ ≤ S.z − bias ? 1 : 0) × range</code></pre>
+<figure>
+<svg viewBox="0 0 940 256" role="img" aria-label="가림 판정과 범위 검사를 옆에서 본 그림">
+  <text x="20" y="24" style="fill:var(--ink);font-weight:600">(a) 가림 판정</text>
+  <text x="480" y="24" style="fill:var(--ink);font-weight:600">(b) 범위 검사</text>
+  <line x1="460" y1="10" x2="460" y2="240" style="stroke:var(--line)"/>
+  <path d="M28 98L48 110L28 122z" style="fill:var(--ink3)"/>
+  <text x="38" y="142" text-anchor="middle">카메라</text>
+  <line x1="50" y1="110" x2="430" y2="110" style="stroke:var(--ink3);stroke-dasharray:4 4"/>
+  <line x1="230" y1="60" x2="230" y2="160" style="stroke:var(--warn);stroke-width:4"/>
+  <text x="230" y="50" text-anchor="middle">깊이 버퍼의 표면 (sceneZ)</text>
+  <circle cx="300" cy="110" r="5" style="fill:var(--accent)"/>
+  <text x="312" y="98">샘플 S</text>
+  <line x1="230" y1="182" x2="300" y2="182" style="stroke:var(--ink3)"/>
+  <line x1="230" y1="176" x2="230" y2="188" style="stroke:var(--ink3)"/><line x1="300" y1="176" x2="300" y2="188" style="stroke:var(--ink3)"/>
+  <text x="265" y="202" text-anchor="middle">S가 표면보다 뒤</text>
+  <text x="20" y="232">sceneZ ≤ S.z − bias → 가림으로 셈</text>
+  <path d="M488 138L508 150L488 162z" style="fill:var(--ink3)"/>
+  <text x="498" y="182" text-anchor="middle">카메라</text>
+  <line x1="510" y1="150" x2="864" y2="150" class="ln"/>
+  <line x1="510" y1="150" x2="841" y2="101" style="stroke:var(--ink3);stroke-dasharray:4 4"/>
+  <line x1="620" y1="56" x2="620" y2="138" style="stroke:var(--warn);stroke-width:8"/>
+  <text x="620" y="44" text-anchor="middle">앞 기둥</text>
+  <line x1="870" y1="44" x2="870" y2="182" style="stroke:var(--ink2);stroke-width:3"/>
+  <text x="870" y="34" text-anchor="middle">배경 벽</text>
+  <circle cx="870" cy="150" r="4.5" style="fill:var(--ink)"/><text x="882" y="154">P</text>
+  <circle cx="846" cy="100" r="5" style="fill:var(--accent)"/><text x="834" y="88" text-anchor="middle">S</text>
+  <line x1="620" y1="200" x2="870" y2="200" style="stroke:var(--ink3)"/>
+  <line x1="620" y1="194" x2="620" y2="206" style="stroke:var(--ink3)"/><line x1="870" y1="194" x2="870" y2="206" style="stroke:var(--ink3)"/>
+  <text x="745" y="220" text-anchor="middle">|P.z − sceneZ| ≫ radius</text>
+  <text x="480" y="244">가림이지만 smoothstep 가중으로 줄임 (Δz = 4r 이면 0.16)</text>
+</svg>
+<figcaption>그림 3. 옆에서 본 깊이 비교. (a) 샘플 S를 투영한 화면 위치에 S보다 가까운 표면이 그려져 있으면 S는 그 표면 뒤에 있으므로 가림입니다. (b) 배경 벽의 점 P는 카메라에 보이지만, P 근처의 샘플 S를 투영한 화면 위치(점선)에는 앞 기둥이 그려져 있습니다. S는 기둥 뒤에 있으므로 가림으로 셉니다. 기둥은 벽에서 한참 떨어져 있으니 실제 가림이 아닙니다. 범위 검사가 이런 샘플의 몫을 줄입니다.</figcaption>
+</figure>
+<p><b>바이어스</b>(<code>ssaoBias</code>, 기본 0.025 m)는 비교에 두는 여유입니다. 샘플 점은 화면에 투영된 뒤 정수 픽셀(<code>int2(uv × 화면 크기)</code>)의 깊이와 비교하므로, 기운 면에서는 샘플 위치와 픽셀 중심의 깊이가 조금 다릅니다. 깊이 버퍼의 양자화도 오차를 더합니다. 이 오차로 평평한 면이 자기를 가리는 얼룩을 바이어스가 막습니다.</p>
+<p><b>범위 검사</b>는 가림 물체가 P에서 반경보다 멀리 떨어져 있을수록 그 샘플의 몫을 줄입니다. 기준 깊이는 가운데 픽셀 P의 z이고, 샘플 S의 z는 쓰지 않습니다. 값은 다음과 같습니다 <span class="tag chk">계산값</span>.</p>
+<table>
+<tr><th>|P.z − sceneZ|</th><th>≤ r</th><th>1.5r</th><th>2r</th><th>3r</th><th>4r</th></tr>
+<tr><td>가중 <code>smoothstep(0, 1, r / Δz)</code></td><td>1</td><td>0.74</td><td>0.5</td><td>0.26</td><td>0.16</td></tr>
+</table>
+<p>곧바로 0이 되지 않고 천천히 줄기 때문에, 반경의 2배 떨어진 앞 물체도 절반은 가림으로 셉니다. 9장의 후광 행이 이 꼬리입니다.</p>
+<p>마지막으로 <code>AO = pow(saturate(1 − occlusion / count × intensity), power)</code>입니다. <code>count</code>는 화면 밖이라 건너뛴 샘플도 포함한 전체 샘플 수입니다. 16개 중 4개가 가려지면 기본값에서 0.65, 8개면 0.35입니다 <span class="tag chk">계산값</span>. 출력은 <code>R8_UNORM</code> 한 채널입니다. AO는 0~1 값 하나라 8비트로 충분하고 블러가 계단을 지운다고 <code>CreateSsaoTargets</code> 주석에 적혀 있습니다.</p>
+
+<h3>4-5. 블러 — 깊이로 이웃을 거르는 4×4 상자</h3>
+<p><code>PS_SsaoBlur</code>는 4×4 이웃 16개를 평균합니다. 베이어 무늬의 주기와 같아서 같은 표면 위에서는 무늬가 한 번에 사라집니다. 이웃의 뷰 z가 가운데와 <code>centerZ × 0.05 + bias</code>보다 많이 다르면 그 이웃은 빼고(가중 0), 남은 이웃만 평균합니다. 10 m 앞이면 허용 폭은 0.525 m입니다 <span class="tag chk">계산값</span>. 거리에 비례하는 이유는 멀수록 한 픽셀이 덮는 깊이 폭이 커지기 때문입니다(셰이더 주석).</p>
+<ul>
+<li>가중이 0 또는 1이고 노멀은 보지 않습니다. 셰이더 주석은 "간단한 양방향 필터"라고 부르지만, 거리·값에 따라 연속으로 가중하는 본래의 양방향(bilateral) 필터보다는 깊이로 이웃을 거르는 상자 블러에 가깝습니다.</li>
+<li>오프셋이 −2~+1이라 상자 중심이 픽셀 중심보다 반 픽셀 왼쪽 위에 있습니다. AO가 반 픽셀 밀려 보일 수 있습니다 <span class="tag chk">계산값</span>.</li>
+<li>물체 경계에서 이웃 일부가 빠지면 16개 회전이 다 모이지 않아 무늬가 덜 지워집니다.</li>
+<li>창에 가운데 픽셀 자신이 항상 들어 있어서(깊이 차 0) 가중치 합은 1 이상입니다. "이웃이 하나도 없으면 원본 값을 씀" 분기는 방어용입니다. 배경 픽셀은 1입니다.</li>
+</ul>
+</section>
+
+<section id="apply">
+<h2>5. 결과를 어디에 곱하는가</h2>
+<p><code>PS_DeferredLighting</code>이 t29의 블러 결과를 읽고 재질 AO와 합칩니다.</p>
+<pre><code>ssao = aoParams.x &gt; 0.5 ? ssaoTexture.Load(pixel) : 1
+ao   = aoParams.y &gt; 0.5 ? s.ao × ssao : min(s.ao, ssao)     // 기본은 min
+environment = ShadeEnvironment(s, viewDirection, ao)        // 환경광만 ao 를 받음
+color = ShadeLights(s, ..., environment)                    // 직접광은 ao 없이 더함</code></pre>
+<table>
+<tr><th>빛</th><th>AO를 받는가</th><th>코드</th></tr>
+<tr><td>IBL 확산 + 반사 (환경 큐브가 없으면 <code>ambientColor</code>)</td><td>받음. 합 전체에 <code>× ao</code></td><td><code>Shading.hlsli</code> 의 <code>EnvironmentLighting</code></td></tr>
+<tr><td>클리어코트 환경 반사</td><td>받음</td><td><code>EnvironmentClearcoat</code></td></tr>
+<tr><td>직접광 (방향광·점광·스폿)</td><td>받지 않음. 그 가림은 그림자 맵이 맡음</td><td><code>ShadeLights</code>, <code>ShadeLight</code></td></tr>
+<tr><td>발광</td><td>받지 않음. G-buffer 패스가 <code>view.hdr</code>에 먼저 씀</td><td><code>GBufferPixelShader.hlsl</code></td></tr>
+</table>
+<p>반사 IBL에도 같은 AO를 곱하는 것은 단순화입니다. 반사는 한 방향 근처에서 오는 빛이라 확산과 가림 정도가 다르지만, 따로 나누는 반사 가림(specular occlusion)은 두지 않았습니다. IBL의 두 항은 <a href="../study/ibl-study.html">IBL 학습</a>에 있습니다.</p>
+
+<h3>5-1. 재질 AO와 합치는 방식</h3>
+<p>기본은 <code>min(재질 AO, SSAO)</code>입니다. 재질 AO 텍스처가 이미 담은 홈을 SSAO도 다시 찾으면, 곱했을 때 같은 가림을 두 번 세어 지나치게 어두워지기 때문입니다(<code>SsaoSettings::multiply</code> 주석, <a href="../plan/deferred-clustered-ssao-plan.html#c-ssao-parts">계획 4.2</a>). 비교용으로 곱하기(<code>multiply = true</code>)도 고를 수 있습니다. 예를 들어 재질 0.7, SSAO 0.6이면 min은 0.6, 곱은 0.42입니다 <span class="tag chk">계산값</span>.</p>
+
+<h3>5-2. AO를 받지 않는 물체</h3>
+<ul>
+<li><b>포워드 프레임 전체</b>: <code>BasicPixelShader.hlsl</code>은 재질 AO만 씁니다(<code>ShadeEnvironment(s, viewDirection, s.ao)</code>).</li>
+<li><b>디퍼드 프레임의 포워드 물체</b>: unlit, 투과, 코팅 노멀 맵, 블렌딩 재질은 G-buffer에 들어가지 않고 라이팅 뒤에 그려집니다. 재질 AO는 받지만 SSAO는 받지 않고, SSAO 시점에 깊이에 없으므로 다른 물체에 SSAO를 드리우지도 않습니다. 파티클도 같습니다.</li>
+<li>G-buffer로 그리는 스킨 메시(<code>Pass_GBufferSkin</code>)와 바다(<code>Pass_GBufferOcean</code>)는 받고 드리웁니다.</li>
+</ul>
+
+<h3>5-3. 디버그 뷰</h3>
+<table>
+<tr><th>번호</th><th>이름 (에디터 Debug view)</th><th>보여 주는 값</th></tr>
+<tr><td>13</td><td>SSAO</td><td>블러 뒤 SSAO 값 그대로(합치기 전). 디퍼드 프레임에서만. 포워드 프레임에서 13을 고르면 <code>BasicPS</code>가 처리하지 않아 라이팅된 화면이 나오지만, 디버그 뷰라서 톤 패스가 노출·톤매핑 없이 <code>saturate</code>만 함</td></tr>
+<tr><td>7</td><td>Occlusion</td><td>재질 AO(<code>s.ao</code>)만. SSAO와 합친 값이 아님</td></tr>
+</table>
+<p>디버그 뷰 값은 톤 패스의 sRGB RTV를 거치므로, AO 0.5는 화면 값 128이 아니라 188로 보입니다(<a href="../study/color-space-study.html">색공간 학습</a> E3과 같은 이유) <span class="tag chk">계산값</span>.</p>
+</section>
+
+<section id="settings">
+<h2>6. 설정과 기본값</h2>
+<p>SSAO 설정은 씬에 저장됩니다. 반경은 씬의 크기(미터)에 맞춰야 하기 때문입니다(<code>Scene/SsaoSettings.h</code> 주석). <code>SceneEnvironment::ssao</code>에 들어가 씬 JSON의 <code>environment.ssao</code>로 저장되고, 키가 없는 예전 씬 파일은 꺼진 기본값으로 읽힙니다(<code>SceneSerializer.cpp</code>). 에디터에서는 환경 패널의 SSAO 절(<code>Editor/DebugUI.cpp</code>)에서 바꿉니다.</p>
+<table>
+<tr><th>필드</th><th>기본</th><th>에디터 범위</th><th>뜻</th></tr>
+<tr><td><code>enabled</code></td><td>false</td><td>체크박스</td><td>디퍼드 프레임에서만 효과. <code>--ssao=1|0</code>이 덮어씀(저장하지 않음)</td></tr>
+<tr><td><code>radius</code></td><td>0.5 m</td><td>0.05~3.0</td><td>반구 반경. 범위 검사의 기준이기도 함</td></tr>
+<tr><td><code>bias</code></td><td>0.025 m</td><td>0~0.2</td><td>비교 여유. 블러의 깊이 허용 폭에도 더해짐</td></tr>
+<tr><td><code>intensity</code></td><td>1.0</td><td>0~3</td><td>가려진 비율에 곱함</td></tr>
+<tr><td><code>power</code></td><td>1.5</td><td>0.5~4</td><td>최종 AO에 거듭제곱. 대비를 높임</td></tr>
+<tr><td><code>sampleCount</code></td><td>16</td><td>4~32</td><td>커널 점 수. C++·셰이더 모두 1~32로 자름 (<code>kMaxSsaoSamples</code>, <code>MAX_SSAO_SAMPLES</code>)</td></tr>
+<tr><td><code>multiply</code></td><td>false</td><td>체크박스</td><td>재질 AO와 합치기: false = min, true = 곱</td></tr>
+</table>
+<p>올릴 때 <code>UploadSsaoConstants</code>가 반경은 0.001 이상, 바이어스·세기는 0 이상, 거듭제곱은 0.01 이상으로 자릅니다. 테스트 씬은 <code>SsaoBalls.json</code>(반경 0.8, 세기 1.0)과 <code>SponzaSsao.json</code>(반경 0.5, 세기 1.2)이고 둘 다 샘플 16, 바이어스 0.025, 거듭제곱 1.5입니다. 이번 프레임에 SSAO를 그렸는지는 렌더 통계 줄의 <code>+ SSAO</code>(<code>Renderer::Stats::ssao</code>)로 봅니다.</p>
+</section>
+
+<section id="code">
+<h2>7. 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>설정</td><td><code>Scene/SsaoSettings.h</code> 의 <code>SsaoSettings</code>, <code>Scene/Scene.h</code> 의 <code>SceneEnvironment::ssao</code></td><td>씬 값. 6장 표</td></tr>
+<tr><td>저장·복원</td><td><code>Scene/SceneSerializer.cpp</code> 의 <code>EnvironmentToJson</code>, <code>ApplyEnvironment</code></td><td><code>environment.ssao</code></td></tr>
+<tr><td>실행 인자</td><td><code>App/AppBase.cpp</code> 의 <code>AppBase::ApplyRenderPathOptions</code>, <code>RenderSettings::ssaoOverride</code></td><td><code>--ssao=1|0</code>. −1이면 씬 값</td></tr>
+<tr><td>타깃과 셋</td><td><code>Graphics/RendererSsao.cpp</code> 의 <code>Renderer::CreateSsaoTargets</code>, <code>DestroySsaoTargets</code></td><td>뷰마다 R8 두 장(<code>ssaoRaw</code>, <code>ssaoBlur</code>)과 셋 두 벌. G-buffer와 함께 만들고 지움(<code>RendererDeferred.cpp</code> 의 <code>CreateGBuffer</code>)</td></tr>
+<tr><td>커널과 b12</td><td><code>Renderer::UploadSsaoConstants</code>, <code>Graphics/ShaderConstants.h</code> 의 <code>SsaoConstants</code></td><td>시드 1337 층화 커널, 544 B. 프레임에 한 번 (두 뷰가 같은 값)</td></tr>
+<tr><td>두 패스</td><td><code>Renderer::RenderSsao</code>, <code>Renderer::GetSsaoPipeline</code></td><td>풀스크린 삼각형 둘. PSO는 <code>Pass_Ssao</code>·<code>Pass_SsaoBlur</code> 위에 RTV <code>R8_UNORM</code></td></tr>
+<tr><td>프레임 안의 자리</td><td><code>Graphics/RendererDeferred.cpp</code> 의 <code>Renderer::RenderDeferredScene</code></td><td>G-buffer 뒤, 라이팅 앞. 꺼짐이면 <code>ssaoBlur</code> 상태만 맞춤</td></tr>
+<tr><td>켜짐 여부 전달</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::UploadPerFrameConstants</code></td><td>b0 <code>aoParams</code> (x = 이 뷰에 결과 있음, y = 곱하기)</td></tr>
+<tr><td>셋 선언</td><td><code>Shaders/Ssao.hlsli</code></td><td>b12 <code>SsaoParams</code>, t23·t26·t29, <code>LoadSsaoDepth</code>(화면 밖 좌표는 가장자리로 붙임)</td></tr>
+<tr><td>AO 계산</td><td><code>Shaders/SsaoPixelShader.hlsl</code> 의 <code>PS_Ssao</code>, <code>BAYER4</code></td><td>4장 4-1~4-4</td></tr>
+<tr><td>블러</td><td><code>Shaders/SsaoBlurPixelShader.hlsl</code> 의 <code>PS_SsaoBlur</code></td><td>4-5</td></tr>
+<tr><td>위치 복원</td><td><code>Shaders/Common.hlsli</code> 의 <code>ViewDepthFromDevice</code>, <code>ViewPositionFromDevice</code>, <code>DecodeOct</code></td><td>깊이 → 뷰 z·뷰 위치, 노멀 풀기</td></tr>
+<tr><td>적용</td><td><code>Shaders/DeferredLightingPixelShader.hlsl</code> 의 <code>PS_DeferredLighting</code>, <code>Shaders/Shading.hlsli</code> 의 <code>ShadeEnvironment</code>·<code>EnvironmentLighting</code></td><td>min/곱 → 환경광에만</td></tr>
+<tr><td>에디터</td><td><code>Editor/DebugUI.cpp</code> 의 환경 패널 SSAO 절, <code>Editor/Editor.cpp</code> 의 디버그 뷰 목록</td><td>슬라이더, 디버그 뷰 13</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>8. 실험</h2>
+<p>E1~E3은 구현 기록에 남은 결과이고, E4~E6은 에디터에서 해 볼 수 있는 실험입니다. 화면 비교의 방법(40 프레임째 씬 뷰 영역 395×272를 픽셀 단위로 비교, "&gt;8"은 8단계보다 크게 다른 픽셀 수)은 <a href="../plan/deferred-clustered-ssao-record.html#verify">기록 8장</a>에 있습니다.</p>
+
+<h3>E1. SsaoBalls 켬과 끔 <span class="tag ok">확인함 (2026-11-18)</span></h3>
+<p><code>SsaoBalls.json</code>은 구를 쌓은 더미, 벽 두 장, 바닥으로 만든 씬입니다. IBL을 주 조명으로 두고 방향광을 낮췄습니다. Sponza는 햇빛이 강해 환경광 비중이 작아서 차이가 잘 안 보이기 때문입니다(<a href="../plan/deferred-clustered-ssao-record.html#c-ssao">기록 2.9</a>).</p>
+<figure><img src="../images/2026-11-18-ssao-balls.png" alt="SsaoBalls 씬, SSAO 끔, 켬, 디버그 뷰 13" style="max-width:100%;border-radius:8px;border:1px solid var(--line)"><figcaption>그림 4. 왼쪽 SSAO 끔, 가운데 켬, 오른쪽 디버그 뷰 13(반경 0.8, 세기 1.0, 샘플 16). 구끼리 닿는 틈, 구와 바닥이 닿는 둘레, 벽 모서리가 어두워지고 맨 윗구의 위쪽처럼 열린 면은 1 그대로입니다.</figcaption></figure>
+<table>
+<tr><th>비교</th><th>씬</th><th>결과 (<a href="../plan/deferred-clustered-ssao-record.html#v-image">기록 8.1</a>)</th></tr>
+<tr><td>켬 vs 끔, 고친 커널</td><td>SsaoBalls</td><td>45,766 px 다름, &gt;8은 20,681 px, 최대 218. 예전 커널(반경 0.6)일 때 &gt;8은 7,997 px</td></tr>
+<tr><td>켬 vs 끔, 고친 커널</td><td>SponzaSsao</td><td>84,587 px 다름, &gt;8은 36,513 px, 최대 186. 예전 커널일 때 &gt;8은 21,727 px</td></tr>
+</table>
+<p>SsaoBalls의 예전 값은 반경 0.6, 지금 값은 반경 0.8에서 찍었습니다. 커널과 반경이 함께 바뀌었으므로 두 숫자의 차이를 커널 효과만으로 읽으면 안 됩니다. 둘을 나눠 잰 값은 기록에 없습니다.</p>
+
+<h3>E2. D3D11과 D3D12 <span class="tag ok">확인함 (2026-11-18)</span></h3>
+<p>SSAO를 켠 SsaoBalls·SponzaSsao를 두 백엔드로 찍은 화면은 0 px 다릅니다(<a href="../plan/deferred-clustered-ssao-record.html#v-image">기록 8.1</a>). 커널을 고정 시드로, 회전을 상수 행렬로 만든 덕분에 이런 픽셀 단위 비교가 가능합니다.</p>
+
+<h3>E3. 시간 <span class="tag ok">확인함 (2026-11-18)</span></h3>
+<p>ManyLights256, D3D11, Debug 빌드, 씬 뷰 1,675×973에서 SSAO 구간(두 패스)은 0.5~1.3 ms였습니다(<a href="../plan/deferred-clustered-ssao-record.html#v-time">기록 8.3</a>). 프레임 하나의 GPU 타임스탬프 값이라 참고용입니다. SSAO 구간을 Release로 잰 값은 없습니다. 2026-11-20 결함 수정 때 Release D3D11로 <code>SponzaSsao.json</code>을 오류 없이 돌린 기록만 있습니다(<a href="../plan/defect-fix-record.html#d3-verify">결함 수정 기록 3.5</a>). 같은 크기에서 픽셀당 읽기는 SSAO 패스가 깊이 17 + 노멀 1(샘플 16), 블러가 깊이 17 + AO 16입니다. 화면 전체로 약 163만 픽셀이고, 샘플 수를 32로 올리면 SSAO 패스의 깊이 읽기가 두 배가 됩니다 <span class="tag chk">계산값</span>.</p>
+
+<h3>E4. 반경 바꾸기 <span class="tag chk">예상</span></h3>
+<p>SsaoBalls에서 반경을 0.2와 2.0으로 바꿔 디버그 뷰 13을 봅니다. 0.2에서는 구가 닿는 바로 그 자리만 가늘게 어두워지고, 2.0에서는 구 더미 주변 바닥 전체가 넓게 어두워지며 구 뒤 벽에 후광이 생길 것입니다. 반경이 월드 고정이므로 같은 값을 <code>CascadeBigScene.json</code> 같은 큰 씬에 쓰면 AO가 거의 보이지 않습니다(<a href="../plan/deferred-clustered-ssao-plan.html#s5-risk">계획 5단계-6</a>).</p>
+
+<h3>E5. 샘플 수 4와 32 <span class="tag chk">예상</span></h3>
+<p>샘플 4에서는 블러가 4×4 창으로 16개 회전을 한 번씩 담으므로 면 위의 격자 무늬는 지워지지만 얼룩이 늘고, 물체 경계 쪽에는 무늬가 남고, 32에서는 16과 비슷한 모양에 잡음만 줄어들 것입니다. 블러는 끌 수 없으므로, 블러 전 무늬를 보려면 <code>PS_SsaoBlur</code>가 <code>ssaoInput.Load(int3(pixel, 0))</code>만 내도록 잠깐 바꾸고 확인한 뒤 되돌립니다.</p>
+
+<h3>E6. 화면 가장자리 <span class="tag chk">예상</span></h3>
+<p>벽 모서리를 화면 가운데에 두었다가 카메라를 돌려 화면 끝으로 보냅니다. 가장자리에 가까워지면 화면 밖으로 나간 샘플이 "가리지 않음"으로 세어져 모서리의 AO가 옅어질 것입니다(9장).</p>
+</section>
+
+<section id="pitfalls">
+<h2>9. 함정과 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>앞 물체 둘레의 배경에 어두운 테두리 (후광)</td><td>앞 물체 깊이가 배경 샘플을 가림으로 셈</td><td>범위 검사가 줄이지만 꼬리가 길어 2r 거리에서도 0.5가 남음 (4-4 표)</td></tr>
+<tr><td>화면 가장자리에서 AO가 옅어지고 카메라를 돌리면 바뀜</td><td>화면 밖 기하를 모름</td><td>화면 밖 샘플은 <code>continue</code>로 건너뛰지만 분모는 전체 <code>count</code> → 가리지 않음으로 셈</td></tr>
+<tr><td>얇은 판·기둥 뒤가 지나치게 어두움</td><td>깊이 버퍼는 앞면 한 겹만 담아 두께를 모름</td><td>표면 뒤는 모두 "속이 찬 곳"으로 봄. 앞 물체 뒤에 숨은 기하도 모름</td></tr>
+<tr><td>평평한 면의 얼룩 (자기 가림)</td><td>정수 픽셀 깊이와 샘플 깊이의 차이, 깊이 양자화</td><td>바이어스 0.025 m 고정. 뷰 깊이는 D24 표준 깊이이고, 기본 렌즈(<code>Camera::SetLens</code> 의 near 0.1, far 1000) 기준으로 한 단계가 10 m에서 0.00006 m, 200 m에서 0.024 m <span class="tag chk">계산값</span>. 200 m 넘으면 단계가 바이어스보다 커짐. 계획의 "bias × z" 대안은 넣지 않았음</td></tr>
+<tr><td>물체 경계에 격자 무늬가 남음</td><td>블러가 깊이 다른 이웃을 빼서 16개 회전이 다 모이지 않음</td><td>4-5</td></tr>
+<tr><td>큰 씬에서 AO가 안 보이거나 작은 물체에서 과함</td><td>반경이 월드 단위 고정</td><td>씬마다 설정으로 둔 이유 (<a href="../plan/deferred-clustered-ssao-plan.html#s5-risk">계획 5단계-6</a>)</td></tr>
+<tr><td>노멀 맵이 강한 면에서 AO가 지글거림</td><td>셰이딩 노멀로 반구를 세움</td><td>계획은 기하 노멀로 바꿔 비교하자고 적었으나 지금은 셰이딩 노멀</td></tr>
+<tr><td>포워드로 바꾸면 SSAO가 사라짐</td><td>G-buffer 노멀과 완성된 깊이가 없음</td><td>3-1. 디버그 뷰 13은 라이팅된 화면이 노출·톤매핑 없이 나옴</td></tr>
+<tr><td>유리·unlit·파티클 둘레에 AO 없음</td><td>G-buffer에 없는 물체</td><td>5-2</td></tr>
+<tr><td>햇빛 아래에서 효과가 거의 안 보임</td><td>AO는 환경광에만 곱함</td><td>직접광의 가림은 그림자 몫. Sponza에서 차이가 작았던 이유 (E1)</td></tr>
+<tr><td>재질 AO가 있는 모델이 너무 어두움</td><td>같은 가림을 두 번 셈</td><td>기본 min. <code>multiply</code>를 켰는지 확인</td></tr>
+<tr><td>해상도를 올리면 비용이 그대로 늘어남</td><td>풀 해상도, 픽셀마다 점 샘플 <code>Load</code></td><td>절반 해상도 계산이나 컴퓨트 블러는 두지 않았음. E3</td></tr>
+</table>
+<div class="box warn"><b>계획 문서와 다른 점.</b> <a href="../plan/deferred-clustered-ssao-plan.html#c-ssao">계획</a>은 아래처럼 적었지만 코드는 다릅니다. 이 문서는 코드를 따랐습니다.
+<ul>
+<li>계산 공간: 계획은 월드 공간(<code>viewProj</code>·<code>invViewProj</code>), 코드는 뷰 공간(<code>ViewPositionFromDevice</code>, <code>proj</code>, 노멀을 <code>view</code>로 돌림).</li>
+<li>커널 길이: 계획은 <code>lerp(0.1, 1, (i/N)²)</code>, 코드는 층화 <code>0.2 + 0.8 × (i + u)/n</code> (구현 기록에 고친 이력이 있음).</li>
+<li>샘플 수 범위: 계획은 8~32, 에디터 슬라이더는 4~32, 코드의 자르기는 1~32.</li>
+<li>디버그 뷰 7: 계획은 "합친 뒤 값", 코드는 재질 AO만.</li>
+<li>꺼졌을 때 t29: 계획(과 <code>GBuffer.hlsli</code> 주석)은 흰 텍스처, 코드는 <code>ssaoBlur</code>를 그대로 꽂고 <code>aoParams.x</code>로 읽기를 막음. 흰 텍스처는 타깃 생성에 실패했을 때만.</li>
+</ul></div>
+</section>
+
+<section id="study">
+<h2>10. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>앰비언트 오클루전</td><td>환경광의 가림 비율, 그림자와 무엇이 다른가, 재질 AO와의 차이</td><td>1</td></tr>
+<tr><td>노멀 방향 반구 샘플링</td><td>구 대신 반구로 세우는 이유</td><td>2</td></tr>
+<tr><td>깊이에서 뷰 위치 복원</td><td>투영 되돌리기, 원근·직교, 지터</td><td>4-1</td></tr>
+<tr><td>층화 샘플링</td><td>길이 칸마다 하나씩, 1/r² 밀도</td><td>4-2</td></tr>
+<tr><td>회전 노이즈와 순서 디더(베이어 행렬)</td><td>띠를 고주파 무늬로 바꾸고 같은 주기의 블러로 지움</td><td>4-3, 4-5</td></tr>
+<tr><td>바이어스와 범위 검사</td><td>자기 가림 얼룩, 후광, smoothstep 꼬리</td><td>4-4</td></tr>
+<tr><td>깊이 인지 블러와 양방향 필터</td><td>경계를 넘지 않는 블러, 0/1 가중과 연속 가중의 차이</td><td>4-5</td></tr>
+<tr><td>AO 적용 자리</td><td>환경광에만, min과 곱, 반사 가림</td><td>5</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>LearnOpenGL, <a href="https://learnopengl.com/Advanced-Lighting/SSAO">SSAO</a> — 노멀 방향 반구 커널, 회전 노이즈, 범위 검사를 그림으로 설명. 우리 구조와 뼈대가 같음. 커널 길이 식(4-2), 노이즈 텍스처 대신 베이어 상수(4-3), 깊이로 이웃을 거르는 블러(4-5)가 다름</li>
+<li>Mittring, "Finding Next Gen — CryEngine 2" (SIGGRAPH 2007 강좌) — SSAO를 처음 게임에 쓴 발표. 구 전체 샘플링이라 평면이 회색으로 시작하는 방식</li>
+<li>Bavoil·Sainz, "Image-Space Horizon-Based Ambient Occlusion" (2008) — HBAO. 같은 입력으로 지평선 각도를 적분</li>
+<li>Jimenez 외, "Practical Real-Time Strategies for Accurate Indirect Occlusion" (2016) — GTAO와 반사 가림</li>
+<li>우리 문서: <a href="../plan/deferred-clustered-ssao-plan.html#c-ssao">계획 4장</a>·<a href="../plan/deferred-clustered-ssao-plan.html#s5">5단계</a>, <a href="../plan/deferred-clustered-ssao-record.html#c-ssao">구현 기록 2.9</a>·<a href="../plan/deferred-clustered-ssao-record.html#verify">8장 검증</a>, <a href="../study/deferred-gbuffer-study.html">디퍼드·G-buffer 학습</a>, <a href="../study/ibl-study.html">IBL 학습</a>, <a href="../study/taa-study.html">TAA 학습</a>, <a href="../overview/glossary.html#graphics">용어집 그래픽스 묶음</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 가시성 컬링 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>가시성 컬링 학습 문서</h1>
+  <p>절두체 평면, 경계 구, 평면 검사, 그리고 컬링 카메라 고정: 우리 엔진은 무엇을 언제 버리고, 그 결과를 어떻게 눈으로 확인하는가</p>
+  <p>2026-11-25 · 컬링 이야기는 지금까지 <a href="../overview/rendering-analysis.html#c14-6">rendering-analysis 14.6</a>(드로우 목록은 컬링하지 않는다), <a href="../overview/rendering-analysis.html#c14-7">14.7</a>(드로우 루프와 통계), <a href="../overview/rendering-analysis.html#c20-30">20.30 적용 기록</a>, <a href="../plan/freeze-culling-camera-plan.html">컬링 카메라 고정 계획</a>, <a href="csm-study.html#debug">CSM 학습 5장</a>(캐스케이드 고정)에 나뉘어 있었습니다. 이 문서는 원리부터 다시 설명하고 지금 코드에 맞춰 한곳에 모읍니다. 기존 문서는 그대로 두었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(왜 버리는가, 평면을 어떻게 뽑고 구를 어떻게 검사하는가), 3장은 경계 구를 만드는 법, 4장은 한 프레임에서 컬링이 일어나는 자리, 5~6장은 그림자 뷰와 조명 컬링, 7장은 통계, 8장은 컬링 카메라 고정, 9장은 코드 지도, 10장은 실험, 11장은 함정과 한계, 12장은 공부할 개념과 참고 문서입니다. 클러스터 상자 단위의 조명 컬링은 <a href="clustered-lighting-study.html">클러스터드 라이팅 학습</a>에서 다룹니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 각도·반지름 같은 값은 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 드로우 수·컬링 수·픽셀 차이는 <a href="../plan/freeze-culling-camera-plan.html#r-verify">고정 계획 9장</a>에 2026-11-24 기록된 측정을 옮겼습니다 <span class="tag ok">확인함</span>. 그 측정에 쓴 <code>CascadeBigScene.json</code> 은 작업 트리에서 카메라·환경·재질·오브젝트가 바뀌었으므로, 같은 숫자를 다시 보려면 10장의 주의를 먼저 읽습니다.</div>
+</header>
+<nav><a href="#why">1. 왜 컬링하나</a><a href="#frustum">2. 절두체와 구 검사</a><a href="#bounds">3. 경계 구</a><a href="#flow">4. 한 프레임의 흐름</a><a href="#shadow">5. 그림자 뷰</a><a href="#lights">6. 조명 컬링</a><a href="#stats">7. 통계</a><a href="#freeze">8. 컬링 카메라 고정</a><a href="#code">9. 코드 지도</a><a href="#lab">10. 실험</a><a href="#pitfalls">11. 함정과 한계</a><a href="#study">12. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 컬링하는가</h2>
+<h3>1-1. 화면 밖 메시도 비용은 다 낸다</h3>
+<p>GPU는 화면 밖 삼각형을 클리핑 단계에서 버립니다. 그래서 컬링을 하지 않아도 화면은 맞게 나옵니다. 문제는 버려지기 전까지 드는 비용입니다. 드로우 하나마다 CPU는 PSO·리소스 셋·정점 버퍼를 바꾸고 <code>b1</code> 오브젝트 상수를 올린 뒤 <code>DrawIndexed</code> 를 기록합니다(<code>Renderer::DrawItems</code> 의 <code>drawItem</code> 람다, <code>Renderer::UploadObjectConstants</code>). GPU는 정점을 전부 읽어 정점 셰이더를 돌리고 나서야 그 삼각형이 화면 밖임을 압니다. 이 비용은 그림자 뷰마다 다시 듭니다.</p>
+<p>가시성 컬링은 이 일을 드로우 단위로 미리 거릅니다. 오브젝트를 감싸는 단순한 도형 하나를 절두체와 비교해, 도형이 완전히 밖이면 드로우 자체를 기록하지 않습니다.</p>
+
+<h3>1-2. 애매하면 남긴다</h3>
+<p>컬링은 보수적이어야 합니다. 밖에 있는 것을 남기는 실수(거짓 양성)는 드로우 몇 개가 낭비될 뿐이지만, 보이는 것을 버리는 실수(거짓 음성)는 화면 가장자리에서 메시가 갑자기 사라지는 버그가 됩니다. 이 엔진의 컬링 코드에서 이 원칙이 드러나는 자리는 세 곳입니다.</p>
+<ul>
+<li>검사가 애매하면 남깁니다(2-3의 모서리 문제).</li>
+<li>경계를 정확히 모르면 아주 크게 잡습니다(3-2의 스키닝 메시).</li>
+<li>평면 계수가 퇴화하면 그 평면을 검사에서 뺍니다(<code>Frustum::FromViewProj</code> 의 <code>length &lt; 1e-12f</code>).</li>
+</ul>
+</section>
+
+<section id="frustum">
+<h2>2. 절두체 평면과 구 검사</h2>
+<h3>2-1. ViewProj에서 평면 여섯 개 뽑기 (Gribb–Hartmann)</h3>
+<p>클립 공간에서 절두체는 단순한 부등식입니다. D3D 관례로 <code>−w ≤ x ≤ w</code>, <code>−w ≤ y ≤ w</code>, <code>0 ≤ z ≤ w</code> 입니다. 이 엔진은 행벡터 관례(<code>clip = v · M</code>, <code>M = View · Proj</code>)라서 <code>clip.x</code> 는 월드 점 <code>v</code> 와 M의 0번 열의 내적입니다. 그러면 <code>x ≥ −w</code> 는 <code>v · (col3 + col0) ≥ 0</code> 이 되고, 괄호 안이 그대로 왼쪽 평면의 계수 <code>(a, b, c, d)</code> 입니다. 나머지도 같은 방식입니다.</p>
+<table>
+<tr><th>평면</th><th>클립 공간 조건</th><th>계수</th></tr>
+<tr><td>왼쪽 · 오른쪽</td><td><code>x ≥ −w</code> · <code>x ≤ w</code></td><td><code>col3 + col0</code> · <code>col3 − col0</code></td></tr>
+<tr><td>아래 · 위</td><td><code>y ≥ −w</code> · <code>y ≤ w</code></td><td><code>col3 + col1</code> · <code>col3 − col1</code></td></tr>
+<tr><td>near · far</td><td><code>z ≥ 0</code> · <code>z ≤ w</code></td><td><code>col2</code> · <code>col3 − col2</code></td></tr>
+</table>
+<p><code>Graphics/Frustum.h</code> 의 <code>Frustum::FromViewProj</code> 는 행렬을 전치해서 열을 행처럼 꺼내고(<code>XMMatrixTranspose</code>), 위 여섯 조합을 만든 뒤 각각을 xyz 길이로 나눕니다. 나누고 나면 xyz는 안쪽을 향한 단위 법선이고, 어떤 점 <code>p</code> 에 대해 <code>n·p + w</code> 가 그 평면까지의 부호 있는 거리(안쪽이 양수)가 됩니다. 행렬 하나에서 바로 뽑으므로 원근 카메라, 직교 카메라, 광원의 그림자 행렬에 같은 코드를 씁니다. 역행렬도 필요 없습니다.</p>
+<p>near 평면 계수가 <code>col2</code> 하나인 것은 D3D 깊이 범위가 0..w이기 때문입니다. OpenGL 관례(−w..w)라면 <code>col3 + col2</code> 가 됩니다. 이 엔진의 투영은 <code>XMMatrixPerspectiveFovLH</code>·<code>XMMatrixOrthographicLH</code>(<code>Camera</code> 의 투영 계산)라서 D3D 관례 그대로입니다.</p>
+
+<h3>2-2. 구 하나와 평면 여섯 개</h3>
+<p><code>Frustum::Intersects(sphere)</code> 는 평면마다 중심까지의 거리 <code>d = n·c + w</code> 를 구해, 어느 한 평면에서라도 <code>d &lt; −r</code> 이면(구 전체가 그 평면 바깥) <code>false</code> 를 돌려줍니다. 여섯 평면을 다 통과하면 <code>true</code> 입니다. 곱셈 세 번, 덧셈 세 번, 비교 한 번이 평면 여섯 번이라, 오브젝트 수백 개를 뷰마다 검사해도 CPU 비용이 작습니다.</p>
+<figure>
+<svg viewBox="0 0 930 440" role="img" aria-label="위에서 본 절두체와 경계 구 검사">
+  <defs><marker id="cull-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <polygon points="68.0,227.5 440.0,61.9 440.0,418.1 68.0,252.5" style="fill:var(--accent-bg);stroke:var(--accent);stroke-width:1.5"/>
+  <line x1="40" y1="240" x2="68.0" y2="227.5" class="ln" stroke-dasharray="3 3"/>
+  <line x1="40" y1="240" x2="68.0" y2="252.5" class="ln" stroke-dasharray="3 3"/>
+  <circle cx="40" cy="240" r="4" style="fill:var(--ink)"/><text x="38" y="262">눈</text>
+  <text x="450" y="244">far</text>
+  <text x="74" y="244">near</text>
+  <circle cx="300" cy="240" r="22" style="fill:var(--ok-bg);stroke:var(--ok);stroke-width:1.5"/><text x="300" y="245" text-anchor="middle">A</text>
+  <circle cx="217.6" cy="154.4" r="22" style="fill:var(--accent-bg);stroke:var(--accent);stroke-width:1.5"/><text x="217.6" y="159.4" text-anchor="middle">B</text>
+  <circle cx="170" cy="367.9" r="20" style="fill:var(--fill);stroke:var(--ink3);stroke-width:1.5" stroke-dasharray="4 3"/><text x="170" y="372.9" text-anchor="middle">C</text>
+  <circle cx="457.1" cy="35.6" r="18" style="fill:var(--warn-bg);stroke:var(--warn);stroke-width:1.5"/><text x="457.1" y="40.6" text-anchor="middle">D</text>
+  <line x1="440.0" y1="61.9" x2="494.8" y2="37.5" style="stroke:var(--accent)" stroke-dasharray="3 3"/>
+  <line x1="440.0" y1="61.9" x2="440.0" y2="1.9" style="stroke:var(--accent)" stroke-dasharray="3 3"/>
+  <text x="330" y="245">안 → 그림</text>
+  <text x="250" y="182">걸침 → 그림</text>
+  <text x="140" y="372.9" text-anchor="end">밖 → 버림</text>
+  <text x="429" y="28" text-anchor="end">D: 두 평면 모두 밖이지만 그림</text>
+  <line x1="630" y1="70" x2="630" y2="420" style="stroke:var(--ink2);stroke-width:1.5"/>
+  <text x="630" y="30" text-anchor="middle" style="fill:var(--ink);font-weight:600">평면 하나: d = n·c + w</text>
+  <text x="618" y="56" text-anchor="end">밖 (음수)</text><text x="642" y="56">안 (양수)</text>
+  <line x1="630" y1="95" x2="680" y2="95" class="ln" marker-end="url(#cull-ar)"/><text x="686" y="99">n</text>
+  <circle cx="700" cy="160" r="26" style="fill:var(--ok-bg);stroke:var(--ok);stroke-width:1.5"/><circle cx="700" cy="160" r="2.5" style="fill:var(--ink)"/>
+  <line x1="700" y1="160" x2="630" y2="160" style="stroke:var(--ink3)" stroke-dasharray="2 3"/>
+  <text x="740" y="165">d ≥ 0: 중심이 안쪽</text>
+  <circle cx="618" cy="250" r="26" style="fill:var(--accent-bg);stroke:var(--accent);stroke-width:1.5"/><circle cx="618" cy="250" r="2.5" style="fill:var(--ink)"/>
+  <line x1="618" y1="250" x2="630" y2="250" style="stroke:var(--ink3)" stroke-dasharray="2 3"/>
+  <text x="670" y="255">−r ≤ d &lt; 0: 걸침, 남김</text>
+  <circle cx="555" cy="340" r="26" style="fill:var(--fill);stroke:var(--ink3);stroke-width:1.5"/><circle cx="555" cy="340" r="2.5" style="fill:var(--ink)"/>
+  <line x1="555" y1="340" x2="630" y2="340" style="stroke:var(--ink3)" stroke-dasharray="2 3"/>
+  <text x="670" y="345">d &lt; −r: 완전히 밖, 버림</text>
+</svg>
+<figcaption>그림 1. 위에서 본 절두체(모식도, 각도는 실제보다 좁게 그림)와 오른쪽은 평면 하나에 대한 거리 검사. 위에서 내려다본 그림이라 보이는 옆 평면은 왼쪽·오른쪽 평면이고, 그림 위쪽 변이 카메라 왼쪽 평면, 아래쪽 변이 오른쪽 평면입니다. A는 안, B는 왼쪽 평면에 걸쳐서 남고, C는 오른쪽 평면 바깥으로 <code>d &lt; −r</code> 이라 버려집니다. D는 왼쪽 평면과 far 평면이 만나는 모서리 바깥에 있습니다(2-3 표의 첫 행). 두 평면 각각에서 <code>−r</code> 보다 가까우므로 통과하지만, 실제로는 절두체와 겹치지 않습니다.</figcaption>
+</figure>
+
+<h3>2-3. 모서리에서 남는 구 (보수성의 값)</h3>
+<p>평면별 검사는 "구가 평면 여섯 개 각각의 안쪽 반공간과 겹치는가"를 봅니다. 이것은 "구가 절두체와 겹치는가"보다 약한 조건입니다. 두 평면이 만나는 모서리 바깥에서는 두 평면 모두 <code>−r</code> 이내인데 절두체와는 떨어진 구가 있습니다(그림 1의 D). <code>Frustum::Intersects</code> 주석도 이 점을 적어 두었습니다.</p>
+<p>얼마나 떨어질 수 있는지는 모서리 각도로 정해집니다. 안쪽 각이 α인 모서리에서, 두 평면 모두 정확히 <code>−r</code> 에 있는 구의 중심은 모서리에서 <code>r / sin(α/2)</code> 떨어진 바깥 이등분선 위에 있습니다. 구 표면과 모서리 사이의 틈은 <code>r / sin(α/2) − r</code> 입니다. <span class="tag chk">계산값</span></p>
+<table>
+<tr><th>모서리</th><th>안쪽 각 α</th><th>통과하는 구와 절두체 사이 최대 틈</th></tr>
+<tr><td>far 평면과 왼쪽·오른쪽 평면 (세로 FOV 45°, 16:9일 때 가로 FOV 72.7°)</td><td>90° − 36.4° = 53.6°</td><td>약 1.22 r</td></tr>
+<tr><td>far 평면과 위·아래 평면 (세로 반각 22.5°)</td><td>67.5°</td><td>약 0.80 r</td></tr>
+<tr><td>왼쪽·오른쪽 평면과 위·아래 평면 (16:9)</td><td>103.1°</td><td>약 0.28 r</td></tr>
+</table>
+<p>세로 FOV 45°는 <code>Engine::Initialize</code> 가 부르는 <code>Camera::SetLens(XM_PIDIV4, …)</code> 의 값이고, 16:9는 <code>SetLens</code> 의 기본 인자일 뿐입니다. 실제 가로세로비는 뷰포트 크기에서 옵니다(<code>Engine::Initialize</code>·<code>Engine::OnResize</code>, 에디터 씬 뷰는 <code>Editor.cpp</code> 의 <code>SetAspectRatio</code>). 예를 들어 <a href="../plan/deferred-clustered-ssao-plan.html">디퍼드·클러스터드·SSAO 계획</a>에 적힌 씬 뷰 약 730×443이면 가로 FOV 68.6°, 첫 행의 각은 55.7°, 틈은 약 1.14 r 입니다. 마지막 행은 이 비율에서도 약 0.28 r 입니다. <span class="tag chk">계산값</span></p>
+<p>세 평면이 만나는 꼭짓점 근처에서는 틈이 더 커집니다. 반지름 5 m 기둥이라면 far 모서리에서는 절두체에서 6 m 떨어져 있어도 그려질 수 있다는 뜻입니다. 다만 far 평면은 기본 1000 m 라서, 그보다 작은 씬에서 실제로 만나는 모서리는 주로 옆 평면과 위·아래 평면이 만나는 쪽(약 0.28 r)입니다. 이 손해는 드로우 몇 개이고 화면은 틀리지 않으므로 그대로 둡니다. 더 정확히 하려면 모서리 근처에서 상자 대 절두체 검사(분리축)를 더하거나, 구 대신 상자 꼭짓점을 쓰는 방법이 있습니다(11장).</p>
+</section>
+
+<section id="bounds">
+<h2>3. 경계 구 만들기</h2>
+<h3>3-1. 로컬 상자에서 월드 구로</h3>
+<p>메시는 로드할 때 정점으로 로컬 축 정렬 상자 <code>Bounds</code>(<code>Graphics/Mesh.h</code>, <code>min</code>·<code>max</code>)를 만듭니다. 컬링이 쓰는 것은 이 상자를 감싸는 구입니다. <code>Renderer::BuildDrawList</code> 의 <code>addObject</code> 람다가 오브젝트마다 한 번 계산해 <code>ObjectData::sphere</code> 에 넣습니다.</p>
+<ul>
+<li>중심 = <code>Bounds::Center()</code> 를 월드 행렬로 변환한 점.</li>
+<li>반지름 = <code>Bounds::Radius()</code>(상자 반대각선 길이 = <code>|Extent()|</code>) × 월드 행렬 세 축 길이 중 최댓값. 비균등 스케일에서도 구가 상자를 놓치지 않게 큰 쪽을 씁니다.</li>
+</ul>
+<p>이 엔진에 "상자 대 평면" 검사 코드는 없습니다. 렌더러 컬링에서는 상자를 구를 만드는 데만 쓰고, 그림자 뷰를 포함한 모든 컬링이 이 구 하나를 공유합니다. 구는 회전해도 모양이 같아서 월드 변환이 중심 하나와 스칼라 하나로 끝나고, 검사도 평면당 내적 한 번입니다. 대신 길쭉한 물체에서는 헐렁합니다. <span class="tag chk">계산값</span></p>
+<table>
+<tr><th>로컬 상자</th><th>구 반지름</th><th>구 부피 / 상자 부피</th></tr>
+<tr><td>1 × 1 × 1 정육면체</td><td>0.87</td><td>약 2.7 배</td></tr>
+<tr><td>1 × 10 × 1 기둥</td><td>5.05</td><td>약 54 배</td></tr>
+<tr><td>400 × 400 m 바닥 (높이 0)</td><td>283 m</td><td>바닥은 거의 늘 보이므로 차이 없음</td></tr>
+</table>
+
+<h3>3-2. 스키닝 메시: 사실상 무한대</h3>
+<p>스키닝 메시는 정점 셰이더가 뼈 팔레트로 정점을 옮기므로, 바인드 포즈의 상자는 팔을 뻗은 포즈를 덮지 못합니다. 지금 코드는 경계를 키우는 대신 <code>data.sphere.w = 1.0e9f</code> 로 반지름을 사실상 무한대로 둡니다. 그래서 스키닝 메시는 메인·미리보기·그림자 뷰 어디에서도 컬링되지 않습니다. 코드 주석은 "정확한 경계를 구하기 전까지"라고 적고 있습니다. 포즈별 경계(뼈마다 구를 두고 합치기 등)는 아직 없습니다. 스키닝 자체는 <a href="skinning-study.html">스키닝 학습</a>을 봅니다.</p>
+
+<h3>3-3. Gerstner 바다: 최대 변위만큼 키움</h3>
+<p>바다 메시는 평평한 판인데 <code>OceanVS</code> 가 Gerstner 파도로 정점을 위아래와 옆으로 옮깁니다. <code>BuildDrawList</code> 는 첫 번째 바다 오브젝트(<code>CollectOcean</code> 이 참)에 대해 반지름에 <code>Ocean::MaxDisplacement</code> 를 더합니다. 이 값은 파도마다 세로 변위 <code>|A|</code> 와 가로 변위 <code>s / k</code>(경사 <code>steepness</code> / 파수 <code>k</code>)의 합을 모두 더한 것이라, 위상이 모두 겹치는 최악의 경우도 덮습니다. 거리 감쇠(<code>fadeStart</code>·<code>fadeEnd</code>) 전 값을 쓰므로 실제보다 큽니다. 이것도 보수적인 쪽입니다. 바다는 그림자를 드리우지 않으므로(<code>shadowPipeline</code> 이 빈 핸들) 이 구는 메인·미리보기 컬링에만 쓰입니다. 자세한 파도 식은 <a href="ocean-gerstner-study.html">Gerstner 바다 학습</a>에 있습니다.</p>
+</section>
+
+<section id="flow">
+<h2>4. 한 프레임에서 컬링이 일어나는 자리</h2>
+<p>순서는 "목록을 한 번 만들고 정렬 → 뷰마다 돌면서 거르기"입니다. 드로우 목록 단계에서는 아무것도 버리지 않습니다(<a href="../overview/rendering-analysis.html#c14-6">rendering-analysis 14.6</a>). 뷰가 여럿(그림자 뷰 최대 20 개, 메인, 미리보기)이라, 목록을 뷰마다 다시 만드는 대신 목록 하나를 두고 각 루프가 자기 절두체로 건너뜁니다.</p>
+<table>
+<tr><th>순서</th><th>단계</th><th>쓰는 카메라·절두체</th><th>거르는 것</th><th>코드</th></tr>
+<tr><td>1</td><td>조명 컬링과 그림자 후보 점수</td><td>메인 카메라 (고정 중 lights 항목이면 사본)</td><td>지역광 경계 구</td><td><code>Renderer::CullLights</code> (<code>Renderer::Render</code> 의 Prepare 구간)</td></tr>
+<tr><td>2</td><td>그림자 뷰 만들기</td><td>캐스케이드는 메인 카메라 (고정 중 cascades 항목이면 사본)</td><td>타일이 모자라면 점수 낮은 조명이 그림자를 못 받음</td><td><code>Renderer::BuildShadowViews</code></td></tr>
+<tr><td>3</td><td>드로우 목록과 정렬</td><td>없음</td><td>없음. 서브메시마다 <code>DrawItem</code> 하나, 경계 구는 오브젝트마다</td><td><code>Renderer::BuildDrawList</code></td></tr>
+<tr><td>4</td><td>그림자 패스</td><td>그 그림자 뷰의 <code>viewProj</code></td><td>광원 범위 밖, 뷰 절두체 밖 (5장)</td><td><code>RendererShadow.cpp</code> 의 그림자 패스 드로우 루프</td></tr>
+<tr><td>5</td><td>메인 뷰 (포워드 한 번, 디퍼드는 G-buffer와 나머지 두 번)</td><td><code>ObjectCullCamera(camera, 0)</code></td><td>카메라 절두체 밖 <code>DrawItem</code></td><td><code>Renderer::DrawItems</code>, <code>RenderDeferredScene</code></td></tr>
+<tr><td>6</td><td>카메라 미리보기 뷰</td><td>미리보기 카메라 자신</td><td>같은 방식</td><td><code>Renderer::DrawItems</code> (viewIndex 1)</td></tr>
+</table>
+<h3>4-1. 정렬은 컬링 전에, 반투명만 컬링 뒤에</h3>
+<p><code>BuildDrawList</code> 끝의 <code>std::sort</code> 는 블렌딩 여부(불투명이 앞) → PSO 번호 → 재질 → 메시 → <code>indexStart</code> 순입니다. 같은 상태가 이어지면 <code>DrawItems</code> 가 바인딩을 건너뜁니다. 컬링은 이 정렬된 목록에서 항목을 빼기만 하므로 순서가 깨지지 않고, 빠진 항목 때문에 상태 전환이 늘어나는 일도 없습니다. 정렬을 컬링 뒤로 미루면 뷰마다 다시 정렬해야 합니다.</p>
+<p>반투명(<code>item.blended</code>)은 예외입니다. 컬링을 통과한 것만 <code>m_blendedScratch</code> 에 모았다가, 하늘을 그린 뒤 경계 구 중심과 그리는 카메라 눈의 거리로 먼 것부터 다시 정렬합니다(<code>std::stable_sort</code>). 컬링 카메라와 그리는 카메라가 다를 수 있으므로(8장) 정렬에는 늘 그리는 카메라를 씁니다.</p>
+<h3>4-2. 디퍼드 프레임에서 두 번 세지 않기</h3>
+<p>디퍼드 경로는 <code>DrawItems</code> 를 <code>DrawMode::GBuffer</code> 와 <code>DrawMode::ForwardRest</code> 로 두 번 부릅니다. 각 호출은 자기가 맡은 항목(G-buffer = 디퍼드 가능한 불투명, 나머지 = 그 밖)만 보고 그 항목만 컬링 통계에 셉니다. 그래서 한 항목이 두 번 컬링되거나 두 번 세지지 않습니다. G-buffer와 라이팅은 <a href="deferred-gbuffer-study.html">디퍼드 G-buffer 학습</a>을 봅니다.</p>
+</section>
+
+<section id="shadow">
+<h2>5. 그림자 뷰의 컬링</h2>
+<p>그림자는 카메라 밖 물체도 드리웁니다. 화면 밖 건물이 화면 안 바닥에 그림자를 떨어뜨리는 일이 흔하므로, 그림자 패스는 메인 카메라의 컬링 결과를 쓰지 않고 그림자 뷰마다 그 뷰의 <code>viewProj</code> 로 절두체를 따로 만듭니다. 그림자 뷰마다 드로우 목록 전체를 돌면서 두 단계로 거릅니다.</p>
+<table>
+<tr><th>뷰 종류</th><th>① 광원 범위 구</th><th>② 절두체</th></tr>
+<tr><td>방향광 캐스케이드 (최대 4, <code>AddCascadeViews</code>), 단일 방향광 뷰</td><td>없음 (<code>cullSphere.w = 0</code>)</td><td>직교. near 평면을 뺀 다섯 평면 (<code>FromViewProj(…, true)</code>)</td></tr>
+<tr><td>스팟 (타일 1)</td><td><code>(position, range)</code> 구와 겹치지 않으면 버림</td><td>원근. 여섯 평면</td></tr>
+<tr><td>포인트 (면 6 개, 연속 타일 6)</td><td>같은 구, 면마다 검사</td><td>원근. 면마다 여섯 평면. 반대쪽 면에 있는 물체가 여기서 빠짐</td></tr>
+</table>
+<p>직교 뷰에서 near 평면을 빼는 이유는 <code>Frustum.h</code> 와 그림자 루프 주석에 적혀 있습니다. 광원 쪽으로 near 평면보다 더 물러나 있는 캐스터도 그림자를 드리울 수 있으므로 보수적으로 남깁니다. 캐스케이드 상자를 어떻게 잡는지는 <a href="csm-study.html">CSM 학습</a>, 아틀라스 타일 배정은 <a href="shadow-atlas-study.html">그림자 아틀라스 학습</a>에서 다룹니다.</p>
+<p>그림자 패스에 들어가지 않는 항목도 있습니다. unlit 재질, 블렌딩 재질, 바다는 <code>BuildDrawList</code> 가 <code>shadowPipeline</code> 을 빈 핸들로 두어 루프 맨 앞에서 건너뜁니다. 이것은 컬링 통계(<code>shadowCulled</code>)에 세지 않습니다.</p>
+</section>
+
+<section id="lights">
+<h2>6. 조명 컬링</h2>
+<p>오브젝트처럼 지역광(스팟·포인트)도 경계 구를 만들어 메인 카메라 절두체와 비교합니다. <code>Renderer::CullLights</code> 가 프레임에 한 번 합니다. 방향광은 경계가 무한이라 항상 보입니다(<code>ComputeLightBounds</code> 가 <code>w = −1</code>).</p>
+<ul>
+<li><b>포인트</b>: <code>(position, range)</code> 구. 감쇠가 0이 되는 거리를 담습니다.</li>
+<li><b>스팟</b>: 원뿔(반각 θ, 높이 h = <code>range</code>)과 반경 <code>range</code> 구의 교집합을 담는 더 작은 구. θ ≤ 45° 면 꼭짓점과 밑면 원을 지나는 구(반지름 <code>h / (2 cosθ)</code>), θ &gt; 45° 면 밑면 원을 적도로 하는 구(반지름 <code>h sinθ</code>), θ ≥ 90° 면 포인트와 같은 구입니다.</li>
+</ul>
+<p>결과는 세 군데에 쓰입니다.</p>
+<table>
+<tr><th>결과</th><th>쓰는 곳</th><th>효과</th></tr>
+<tr><td><code>m_lightVisible</code></td><td><code>m_shadowOrder</code> 를 거쳐 <code>BuildShadowViews</code> (<code>shadowPriority</code> 켬일 때)</td><td>보이는 조명만 그림자 후보 순서에 들어감. 점수 <code>(r/D)² × 밝기 × 휘도</code>, 지난 프레임에 그림자를 받았으면 × 1.25 (<code>kShadowHistoryBonus</code>)</td></tr>
+<tr><td>같은 배열</td><td>통계, 에디터 조명 아이콘</td><td><code>lightsVisible</code>·<code>lightsCulled</code>, <code>shadowViewsOffscreen</code>, 고정 중 회색 X 아이콘</td></tr>
+<tr><td><code>m_lightBounds</code></td><td>CPU <code>BuildClusters</code>, GPU 비닝</td><td>클러스터 상자와 구를 다시 비교함. 화면 밖 조명은 원래 어느 상자에도 걸리지 않으므로 <code>m_lightVisible</code> 을 따로 보지 않음</td></tr>
+</table>
+<p>세 번째 줄이 8장의 조명 고정에서 중요합니다. 평소에는 컬링된 조명의 빛을 따로 끌 필요가 없습니다. 고정 중에는 사정이 달라서 <code>CullLights</code> 가 컬링된 조명의 <code>m_lightBounds[i].w</code> 를 0으로 만듭니다. 클러스터 단위의 조명 목록은 <a href="clustered-lighting-study.html">클러스터드 라이팅 학습</a>에서 다룹니다.</p>
+</section>
+
+<section id="stats">
+<h2>7. 에디터에 보이는 통계</h2>
+<p><code>Renderer::Stats</code> 는 <code>Render</code> 첫머리에서 <code>Stats{}</code> 로 비우고 프레임 동안 셉니다. 에디터 통계 줄(<code>Editor::DrawStats</code>), 디버그 UI(<code>Editor/DebugUI.cpp</code>), 자동 검증 로그("자동 검증: 렌더 통계", <code>EditorAutomation.cpp</code>)에 나옵니다.</p>
+<table>
+<tr><th>필드</th><th>세는 것</th><th>주의</th></tr>
+<tr><td><code>drawItems</code></td><td>이번 프레임 드로우 목록 크기 (서브메시 단위, 컬링 전)</td><td>오브젝트 수가 아니라 서브메시 수</td></tr>
+<tr><td><code>culled</code></td><td>카메라 절두체 밖이라 건너뛴 <code>DrawItem</code> 수</td><td>메인과 미리보기 패스의 합. 에디터 표기 "culled main"</td></tr>
+<tr><td><code>shadowCulled</code></td><td>범위 구나 절두체 밖이라 건너뛴 (그림자 뷰, 드로우) 쌍</td><td>뷰마다 따로 세므로 <code>drawItems</code> 보다 커질 수 있음</td></tr>
+<tr><td><code>draws</code>, <code>shadowDraws</code></td><td>실제로 기록한 드로우</td><td><code>draws</code> 에는 하늘·디버그 선·톤 패스·UI 같은 패스 드로우도 들어감</td></tr>
+<tr><td><code>lightsVisible</code>, <code>lightsCulled</code></td><td>절두체에 걸친 / 밖인 지역광</td><td>방향광 제외. lights 항목을 고정 중일 때만 고정 시점 값(<code>Renderer::Render</code> 가 <code>m_cullFrozen &amp;&amp; m_cullFreezeParts.lights</code> 이면 사본으로 <code>CullLights</code> 를 부름)</td></tr>
+<tr><td><code>shadowViewsOffscreen</code></td><td>화면에 빛이 닿지 않는 조명에 간 그림자 타일</td><td><code>shadowPriority</code> 를 끄면(<code>--shadow-priority=0</code>) 늘어날 수 있음</td></tr>
+</table>
+<p><code>Renderer.h</code> 의 <code>drawItems</code> 주석은 "메인 패스 draws + culled 와 같음"이라고 적고 있는데, <code>stats.draws</code> 필드와 <code>stats.culled</code> 필드로 계산하면 위 두 줄의 주의 때문에 그대로는 맞지 않습니다. 오브젝트 컬링이 제대로 되는지 볼 때는 <code>culled</code> 를 미리보기를 끈 상태에서 보는 편이 안전합니다.</p>
+</section>
+
+<section id="freeze">
+<h2>8. 컬링 카메라 고정</h2>
+<h3>8-1. 컬링하는 시점과 그리는 시점을 떼어 보기</h3>
+<p>보통은 한 카메라가 두 가지 일을 합니다. 무엇을 그릴지 고르고(컬링), 고른 것을 화면에 투영합니다(그리기). 둘이 같은 카메라면 컬링 결과는 화면 밖이라 보이지 않습니다. 컬링만 사본 카메라로 하고 그리기는 지금 카메라로 하면, 에디터 카메라를 뒤로 빼서 "그 시점에서 무엇이 버려졌는지"를 바깥에서 볼 수 있습니다. 이 기능은 처음에 CSM 캐스케이드만 고정했고(<a href="csm-study.html#debug">CSM 학습 5장</a>), 2026-11-24에 오브젝트와 조명까지 넓혀 이름이 <code>SetCascadeFreeze</code> 에서 <code>SetCullFreeze</code> 로 바뀌었습니다(<a href="../plan/freeze-culling-camera-plan.html">고정 계획</a>).</p>
+<figure>
+<svg viewBox="0 0 930 400" role="img" aria-label="고정한 컬링 절두체와 옮긴 에디터 카메라">
+  <polygon points="70,200 400,55.0 400,345.0" style="fill:none;stroke:var(--ink);stroke-width:2"/>
+  <circle cx="70" cy="200" r="5" style="fill:var(--ink)"/>
+  <text x="60" y="228" text-anchor="end">고정</text>
+  <rect x="53" y="123" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="98" y="123" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="143" y="123" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="188" y="123" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="233" y="123" width="14" height="14" rx="2" style="fill:var(--ok);stroke:var(--ok)"/>
+  <rect x="278" y="123" width="14" height="14" rx="2" style="fill:var(--ok);stroke:var(--ok)"/>
+  <rect x="323" y="123" width="14" height="14" rx="2" style="fill:var(--ok);stroke:var(--ok)"/>
+  <rect x="368" y="123" width="14" height="14" rx="2" style="fill:var(--ok);stroke:var(--ok)"/>
+  <rect x="413" y="123" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="458" y="123" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="503" y="123" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="548" y="123" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="593" y="123" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="53" y="263" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="98" y="263" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="143" y="263" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="188" y="263" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="233" y="263" width="14" height="14" rx="2" style="fill:var(--ok);stroke:var(--ok)"/>
+  <rect x="278" y="263" width="14" height="14" rx="2" style="fill:var(--ok);stroke:var(--ok)"/>
+  <rect x="323" y="263" width="14" height="14" rx="2" style="fill:var(--ok);stroke:var(--ok)"/>
+  <rect x="368" y="263" width="14" height="14" rx="2" style="fill:var(--ok);stroke:var(--ok)"/>
+  <rect x="413" y="263" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="458" y="263" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="503" y="263" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="548" y="263" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <rect x="593" y="263" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/>
+  <line x1="800" y1="330" x2="247.3" y2="420.3" style="stroke:var(--accent);stroke-width:1.5" stroke-dasharray="6 4"/>
+  <line x1="800" y1="330" x2="445.5" y2="-103.5" style="stroke:var(--accent);stroke-width:1.5" stroke-dasharray="6 4"/>
+  <circle cx="800" cy="330" r="5" style="fill:var(--accent)"/>
+  <text x="812" y="335">에디터 카메라</text><text x="812" y="353">(그리기)</text>
+  <rect x="24" y="336" width="14" height="14" rx="2" style="fill:var(--ok);stroke:var(--ok)"/><text x="46" y="348">고정 절두체 안이거나 걸침: 그려짐</text>
+  <rect x="24" y="358" width="14" height="14" rx="2" style="fill:none;stroke:var(--ink3)" stroke-dasharray="3 2"/><text x="46" y="370">밖: 컬링됨, 빈 자리로 보임</text>
+  <line x1="20" y1="388" x2="40" y2="388" style="stroke:var(--accent);stroke-width:1.5" stroke-dasharray="6 4"/><text x="46" y="392">지금 화면에 보이는 범위</text>
+</svg>
+<figcaption>그림 2. 위에서 본 고정 중의 모습(모식도). 실선 삼각형은 고정해 둔 사본의 절두체(에디터에서는 흰 선), 점선은 옮긴 에디터 카메라의 시야입니다. 에디터 카메라에는 기둥 26 개가 다 들어오지만, 오브젝트 컬링은 사본 기준이라 사본 절두체 밖 18 개는 빈 자리로 보입니다. 그림자는 광원 뷰로 따로 컬링하므로 빈 자리의 그림자는 남습니다.</figcaption>
+</figure>
+
+<h3>8-2. 고정할 수 있는 항목 (<code>CullFreezeParts</code>)</h3>
+<p><code>Renderer::SetCullFreeze(freeze, camera, parts)</code> 는 켜는 순간 넘겨받은 카메라를 <code>m_cullFreezeCamera</code> 로 복사하고, <code>parts</code> 에서 켠 항목만 그 사본으로 계산합니다. 카메라를 호출자가 넘기는 이유는 <code>Render</code> 가 미리보기 카메라로도 불릴 수 있어서입니다(<code>Renderer.h</code> 주석). 런타임 디버그 상태라 씬 파일에는 저장하지 않습니다.</p>
+<table>
+<tr><th>항목 (기본 켬)</th><th>사본을 쓰는 곳</th><th>걸리는 뷰</th><th>화면에서 보이는 것</th></tr>
+<tr><td><code>cascades</code></td><td><code>BuildShadowViews</code> (<code>IsCascadeFrozen()</code>)</td><td>프레임 공용 (미리보기 그림자에도)</td><td>캐스케이드 경계가 고정 시점에 머묾. 색 절두체 와이어</td></tr>
+<tr><td><code>objects</code></td><td><code>DrawItems</code> (<code>ObjectCullCamera</code>)</td><td>메인 뷰(viewIndex 0)만</td><td>사본 절두체 밖 메시가 사라짐. 흰 절두체 와이어</td></tr>
+<tr><td><code>lights</code></td><td><code>CullLights</code> (<code>Render</code> 에서 카메라를 고름)</td><td>프레임 공용</td><td>컬링된 지역광이 꺼짐(<code>m_lightBounds[i].w = 0</code>), 아이콘이 회색 X. 클러스터드를 끈 <code>ShadeAllLights</code> 경로에는 효과 없음</td></tr>
+</table>
+<p>사본으로 바꾸는 것은 절두체와 눈 위치(그림자 점수)뿐입니다. <code>b0</code> 카메라 상수, 클러스터 상자, 반투명 정렬, 파티클, SSAO·TAA·모션 블러는 늘 그리는 카메라를 씁니다. 클러스터 상자는 그리는 화면의 픽셀을 나눈 것이라 사본으로 만들면 픽셀과 맞지 않기 때문입니다(<a href="../plan/freeze-culling-camera-plan.html#concept">고정 계획 2장</a>). 오브젝트 항목을 미리보기에 걸지 않은 이유도 계획 문서에 있습니다. 미리보기는 게임 카메라가 보는 것을 확인하는 창이라 메시가 빠지면 안 되고, 캐스케이드·그림자 타일은 프레임에 한 벌뿐이라 뷰별로 나누려면 그림자 패스가 두 배가 됩니다(<a href="../plan/freeze-culling-camera-plan.html#d-table">3.2 결정 표</a>).</p>
+
+<h3>8-3. 켜고 끄는 곳</h3>
+<ul>
+<li><b>에디터 UI</b>: <code>Editor::DrawRenderSettings</code> 의 <code>Freeze culling camera</code> 체크박스와 그 아래 <code>Cascades</code>·<code>Objects</code>·<code>Lights</code>(<code>Editor.cpp</code>, <code>SetCullFreezeParts</code> 는 사본을 그대로 두고 항목만 바꿈). 고정 중에는 "frozen view: culled draws …, lights visible … / culled …" 줄이 함께 보입니다.</li>
+<li><b>자동 해제</b>: <code>EditorApp::ReleaseCullFreeze</code> 가 씬 교체(<code>EditorApp::ResetHistory</code>), 재생 시작, 재생 정지에서 풀고 "컬링 고정 해제: …" 로그를 남깁니다. 항목 선택은 남깁니다. 다른 씬이나 게임 카메라에 옛 시점이 남지 않게 하려는 것입니다.</li>
+<li><b>자동 검증 인자</b> (<code>EditorAutomation.h</code>): <code>--freeze-culling=N</code>(N 프레임째 고정), <code>--freeze-parts=col</code>(글자 c·o·l로 항목 고름, 없으면 셋 다), <code>--freeze-cascades=N</code>(캐스케이드만, 예전 동작. 둘 다 주면 <code>--freeze-culling</code>). <code>--cam-look</code> 은 고정 다음 프레임에 카메라를 옮깁니다.</li>
+</ul>
+
+<h3>8-4. 오버레이 그리기</h3>
+<p><code>Editor::DrawFreezeOverlay</code> 는 편집 모드에서 고정 중일 때만 씬 뷰 위에 ImGui 선으로 그립니다(<code>DebugDraw</code> 의 월드 선이 아닙니다).</p>
+<ul>
+<li><b>흰 선</b>: objects나 lights 항목이 켜져 있을 때 사본 카메라의 절두체. 사본의 <code>ViewProj</code> 역행렬로 NDC 상자 꼭짓점 여덟 개(x, y = ±1, z = 0·1)를 월드로 되돌려 변 12 개를 잇습니다. 원근·직교 모두 같은 식입니다.</li>
+<li><b>색 선</b>: cascades 항목이 켜져 있을 때 캐스케이드 조각(<code>GetCascadeFrustumCorners</code>). 0 빨강, 1 초록, 2 파랑, 3 노랑으로 디버그 뷰 8의 색과 같습니다.</li>
+<li><b>변 자르기</b>: 사본의 먼 변은 에디터 카메라 뒤로 지나가는 일이 흔합니다. <code>ProjectSegmentToView</code> 는 양 끝이 다 뒤면 버리고, 한 끝만 뒤면 클립 공간에서 <code>w = 0.001</code> 근처로 잘라 앞쪽 몫을 그립니다. 끝점 하나가 뒤면 변을 통째로 버리던 예전 방식으로는 실내 시점에서 흰 절두체가 하나도 안 보였다는 기록이 있습니다(<a href="../plan/freeze-culling-camera-plan.html#r-changes">고정 계획 9장</a>).</li>
+</ul>
+
+<h3>8-5. 테스트 씬 <code>FreezeCulling.json</code></h3>
+<p><code>Projects/SherlockTestScenes/Scripts/Tests/make_freeze_culling_test_scene.py</code> 가 <code>CascadeBigScene.json</code> 을 읽어 카메라만 바꾼 복사본을 씁니다. 기둥 길 안쪽 낮은 자리 <code>(0, 3, 20)</code> 에서 <code>(25, 2, 80)</code> 을 보게 해서, 왼쪽·뒤의 기둥이 절두체 밖이 되도록 했습니다. 원본은 전체를 내려다보는 시점이라 컬링되는 것이 없어 고정해도 볼 것이 없었습니다. 지금 있는 <code>FreezeCulling.json</code> 은 오브젝트 120 개, 방향광 1 개입니다(생성기를 지금 다시 돌리면 119 개, 10장의 주의). 조명 고정은 지역광이 있는 <code>ManyLights64</code> 에서 봅니다.</p>
+</section>
+
+<section id="code">
+<h2>9. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>절두체</td><td><code>Graphics/Frustum.h</code> 의 <code>Frustum::FromViewProj</code>, <code>Frustum::Intersects</code></td><td>열 조합으로 평면 6 개, 정규화, <code>skipNear</code>. 구가 한 평면이라도 <code>−r</code> 밖이면 false</td></tr>
+<tr><td>로컬 경계 상자</td><td><code>Graphics/Mesh.h</code> 의 <code>Bounds</code>, <code>Graphics/Mesh.cpp</code> 의 <code>Bounds::Radius</code></td><td>정점의 min·max, 반대각선 길이</td></tr>
+<tr><td>월드 경계 구</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::BuildDrawList</code> (<code>addObject</code>)</td><td>중심 변환, 반지름 × 최대 축 스케일, 스키닝 1e9, 바다 + 최대 변위</td></tr>
+<tr><td>바다 변위 상한</td><td><code>Scene/Ocean.cpp</code> 의 <code>Ocean::MaxDisplacement</code></td><td>Σ|A| + Σ s/k</td></tr>
+<tr><td>드로우 목록 정렬</td><td><code>Renderer::BuildDrawList</code> 끝의 <code>std::sort</code></td><td>블렌딩 → PSO → 재질 → 메시 → 인덱스 시작</td></tr>
+<tr><td>오브젝트 컬링</td><td><code>Renderer::DrawItems</code>, <code>Renderer::ObjectCullCamera</code> (<code>Renderer.h</code>)</td><td>맡은 항목만 검사, <code>culled</code> 셈, 반투명은 그리는 눈 기준으로 다시 정렬</td></tr>
+<tr><td>그림자 컬링</td><td><code>Graphics/RendererShadow.cpp</code> 의 그림자 패스 루프, <code>AddShadowView</code>, <code>BuildShadowViews</code></td><td><code>cullSphere</code> 범위 검사, 직교는 near 제외, <code>shadowCulled</code></td></tr>
+<tr><td>조명 컬링</td><td><code>Graphics/RendererClusters.cpp</code> 의 <code>Renderer::CullLights</code>, <code>ComputeLightBounds</code>, <code>IsLightCulledByFreeze</code></td><td>지역광 경계 구, 그림자 점수 순서, 고정 중 <code>w = 0</code></td></tr>
+<tr><td>고정 API</td><td><code>Graphics/Renderer.h</code> 의 <code>CullFreezeParts</code>, <code>SetCullFreeze</code>(<code>RendererShadow.cpp</code>), <code>SetCullFreezeParts</code>, <code>IsCascadeFrozen</code></td><td>사본 카메라와 항목</td></tr>
+<tr><td>에디터 UI·오버레이</td><td><code>Editor/Editor.cpp</code> 의 <code>Editor::DrawFreezeOverlay</code>, <code>ProjectSegmentToView</code>, <code>Editor::DrawLightIcons</code>, 렌더 설정 패널</td><td>흰·색 절두체, 회색 X 아이콘, 체크박스와 통계 줄</td></tr>
+<tr><td>자동 해제</td><td><code>Editor/EditorApp.cpp</code> 의 <code>EditorApp::ReleaseCullFreeze</code></td><td>씬 교체·재생 시작·정지</td></tr>
+<tr><td>자동 검증</td><td><code>Editor/EditorAutomation.cpp</code>·<code>.h</code></td><td><code>--freeze-culling</code>·<code>--freeze-parts</code>·<code>--freeze-cascades</code>, 렌더 통계 로그</td></tr>
+<tr><td>통계 표시</td><td><code>Editor::DrawStats</code>, <code>Editor/DebugUI.cpp</code></td><td>draw items, culled main / shadow, lights visible / culled</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>10. 실험</h2>
+<p>명령은 저장소 루트에서 Debug 빌드 기준입니다. <code>--cam-look</code> 에 세미콜론이 있으므로 PowerShell에서는 따옴표로 감쌉니다.</p>
+<div class="box warn"><b>작업 트리 주의.</b> E1·E2의 숫자는 2026-11-24의 <code>FreezeCulling.json</code> 으로 잰 것입니다. 이 파일은 그대로지만, 생성기를 지금 다시 돌리면 작업 트리의 <code>CascadeBigScene.json</code> 을 복사하는데, 이 파일은 커밋과 비교해 카메라·환경·재질·오브젝트가 바뀌었고 오브젝트 하나(<code>Building 1 L</code>)가 빠져 119 개입니다. 그래서 결과가 달라질 수 있습니다. 또 계획 문서의 "원본 카메라 자리" <code>--cam-look</code> 값은 커밋된 <code>CascadeBigScene</code> 카메라이고, 작업 트리의 카메라와는 다릅니다.</div>
+
+<h3>E1. 고정 후 뒤로 빼기 <span class="tag ok">확인함 (2026-11-24)</span></h3>
+<pre><code>x64\Debug\SherlockEditor.exe --project=Projects\SherlockTestScenes\SherlockTestScenes.sherlock `
+  --scene=FreezeCulling.json --freeze-culling=10 `
+  "--cam-look=-81.49,76.35,-27.92;-21.5,26.9,34.8" `
+  --exit-after=40 --screenshot=C:\temp\freeze-culling.png</code></pre>
+<p>기본 시점의 <code>culled</code> 는 24이고, 고정한 채 내려다보는 자리로 옮겨도 24에 머뭅니다. 고정 없이 같은 자리에서 찍으면 0입니다. 스크린샷에서 흰 절두체 밖 기둥이 빠져 있고 그림자는 남아 있어야 합니다(<a href="../plan/freeze-culling-camera-plan.html#r-verify">고정 계획 9장</a>).</p>
+
+<h3>E2. 고정만 하고 움직이지 않기 <span class="tag ok">확인함 (2026-11-24)</span></h3>
+<p>E1에서 <code>--cam-look</code> 을 뺍니다. 사본이 그리는 카메라와 같으므로 화면은 고정하지 않은 실행과 같아야 합니다. 기록된 결과는 다른 픽셀이 화면 맨 위 줄·맨 왼쪽 열(흰 절두체 선)뿐이었고 <code>culled</code> 24는 같았습니다(<a href="../plan/freeze-culling-camera-plan.html#r-verify">고정 계획 9장</a>). 이 검사가 깨지면 사본을 잘못 쓰고 있다는 뜻입니다.</p>
+
+<h3>E3. 조명만 고정 <span class="tag ok">확인함 (2026-11-24)</span></h3>
+<pre><code>  --scene=ManyLights64.json --freeze-culling=10 --freeze-parts=l "--cam-look=1,3,0;12,1.5,0"</code></pre>
+<p>고정 시점 뒤쪽 조명 아이콘이 회색 X가 되고 그 조명이 비추던 면이 어두워집니다. 통계는 이동 뒤에도 <code>lightsVisible 46 / lightsCulled 18</code> 에 머뭅니다. 아이콘을 끄고(<code>--light-icons=selected</code>) Objects만 고정한 실행과 비교했을 때 이 시점에서 8 넘게 다른 픽셀이 1885 개(최대 113)였습니다(<a href="../plan/freeze-culling-camera-plan.html#r-observe">고정 계획 9장</a>). 같은 비교를 <code>--clustered=0</code> 으로 하면 빛이 꺼지지 않아야 합니다 <span class="tag chk">예상</span>(계획 문서에도 확인하지 않은 항목으로 남아 있음).</p>
+
+<h3>E4. 모서리 거짓 양성 찾기 <span class="tag chk">예상</span></h3>
+<p>FreezeCulling에서 Objects만 고정하고(<code>--freeze-parts=o</code>) 카메라를 위로 빼서 흰 절두체 바깥에 남아 있는 메시를 찾습니다. 평면 하나에 걸친 것은 실제로 겹치므로 정상입니다. 다만 이 실험으로는 2-3의 모서리 효과를 따로 가려내기 어렵습니다. 흰 절두체 밖에 남은 메시는 대부분 3-1의 헐렁한 구 때문입니다. 이 씬의 작은 기둥(<code>Pillar N…</code>, 30 개)은 1 m 정육면체를 1.2 × 8 × 1.2 로 늘린 것이라 구 반지름이 약 6.9 m 인데 폭은 1.2 m 이고, 큰 기둥(<code>Pillar Far…</code>, 2 × 14 × 2)은 반지름 약 12.1 m 에 폭 2 m 입니다. 그래서 상자가 평면 밖이어도 구가 평면에 걸쳐 남습니다 <span class="tag chk">계산값</span>. 그중 두 평면이 만나는 모서리 바깥에 있어서 남은 것만 2-3의 거짓 양성입니다. 이 씬은 far(1000 m)까지 닿지 않으므로 해당 모서리는 옆 평면과 위·아래 평면이 만나는 쪽이고, 틈은 구 반지름의 약 0.28 배(작은 기둥 약 1.9 m, 큰 기둥 약 3.4 m) 이내입니다 <span class="tag chk">계산값</span>. 이 씬에 그런 기둥이 꼭 있다는 보장은 없습니다.</p>
+
+<h3>E5. 스키닝 메시는 컬링되지 않음 <span class="tag chk">예상</span></h3>
+<p>캐릭터가 있는 씬(예: <code>MasterChiefWalk</code>)에서 캐릭터가 시야 밖에 있는 시점을 잡아 Objects를 고정한 뒤, 카메라를 뒤로 빼서 흰 절두체 밖의 캐릭터를 봅니다. 사본은 고정을 켤 때 한 번만 복사되므로(<code>Renderer::SetCullFreeze</code>) 고정한 뒤 카메라를 옮겨도 흰 절두체는 따라오지 않습니다. 캐릭터는 사라지지 않아야 합니다(3-2의 반지름 1e9). 통계의 <code>culled</code> 에도 들어가지 않습니다.</p>
+
+<h3>E6. 미리보기는 자기 카메라 <span class="tag ok">확인함 (2026-11-24)</span></h3>
+<p>Objects만 고정한 뒤 카메라 오브젝트를 추가해(<code>--add=4</code>) 미리보기를 켭니다. 기록된 결과는 미리보기 사각형 0 픽셀 차이였고, 드로우 수는 메인 102 + 미리보기 122였습니다(<a href="../plan/freeze-culling-camera-plan.html#r-verify">고정 계획 9장</a>). 미리보기는 오브젝트 항목의 영향을 받지 않는다는 확인입니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>11. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>화면 가장자리에서 메시가 갑자기 사라짐</td><td>경계 구가 정점 셰이더 변위를 덮지 못함</td><td>스키닝은 1e9, 바다는 <code>MaxDisplacement</code> 로 막음. 새 정점 변위(바람에 흔들리는 풀 등)를 넣으면 같은 처리가 필요함</td></tr>
+<tr><td>절두체 밖인데 그려짐</td><td>평면별 구 검사의 모서리 몫, 길쭉한 물체의 헐렁한 구</td><td>의도된 손해 (2-3, 3-1)</td></tr>
+<tr><td>다른 물체 뒤에 완전히 가려진 것도 그림</td><td>가림(occlusion) 컬링 없음</td><td>포워드용 깊이 프리패스, Hi-Z, 가림 쿼리 모두 없음. 깊이 테스트가 픽셀 셰이딩만 줄임</td></tr>
+<tr><td>오브젝트 수에 비례해 CPU 시간이 늘어남</td><td>계층 구조(BVH·옥트리) 없이 목록 전체를 선형으로 검사</td><td>그림자 뷰 최대 20 개 + 메인 + 미리보기가 각각 전체 목록을 돎. 같은 오브젝트의 서브메시마다 같은 구를 다시 검사함</td></tr>
+<tr><td>큰 메시의 일부만 보여도 전체를 그림</td><td>오브젝트(서브메시) 단위 컬링, 메시렛·클러스터 단위 없음</td><td>Sponza처럼 한 오브젝트인 씬은 오브젝트 전체가 절두체 밖일 때만 컬링됨(고정 계획의 ManyLights64 관찰)</td></tr>
+<tr><td>스키닝 캐릭터는 화면 밖에서도 그림자 뷰마다 그려짐</td><td>반지름 1e9</td><td>포즈별 경계가 생기기 전까지의 한계</td></tr>
+<tr><td>고정을 켰는데 미리보기 그림자나 빛도 바뀜</td><td>cascades·lights 항목은 프레임 공용</td><td>의도된 선택, UI 툴팁에 적혀 있음 (8-2)</td></tr>
+<tr><td>Lights 고정을 켰는데 빛이 안 꺼짐</td><td>클러스터드를 끈 <code>ShadeAllLights</code> 경로는 경계 구를 보지 않음</td><td>정답 비교용 경로라 게이트를 넣지 않음 (<a href="../plan/freeze-culling-camera-plan.html#d-table">결정 표</a>)</td></tr>
+<tr><td><code>drawItems</code> 와 <code>draws + culled</code> 가 안 맞음</td><td><code>draws</code> 에 패스 드로우가 섞이고 <code>culled</code> 에 미리보기가 섞임</td><td>7장</td></tr>
+</table>
+<div class="box"><b>대안을 고르는 기준.</b> 지금 씬 규모(오브젝트 수백 개, 그림자 뷰 20 개 이하)에서는 선형 구 검사가 단순하고 빠르며, 결정적이라 스크린샷 비교에 유리합니다. 오브젝트가 수천~수만 개가 되면 BVH나 격자로 검사 횟수를 줄이고, 실내처럼 가림이 많은 씬이면 Hi-Z 가림 컬링, 큰 메시가 많으면 메시렛 단위 GPU 컬링(간접 드로우)이 다음 후보입니다. 간접 드로우 쪽 기반은 <a href="gpu-particles-study.html">GPU 파티클 학습</a>의 인자 버퍼와 같습니다.</div>
+</section>
+
+<section id="study">
+<h2>12. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>보수적 컬링</td><td>거짓 양성은 비용, 거짓 음성은 버그</td><td>1-2</td></tr>
+<tr><td>클립 공간에서 평면 뽑기 (Gribb–Hartmann)</td><td>행벡터·열벡터 관례에 따라 행/열이 바뀜, D3D near = <code>col2</code></td><td>2-1</td></tr>
+<tr><td>평면과 부호 있는 거리</td><td>법선 정규화 뒤 <code>n·p + w</code></td><td>2-1, 2-2</td></tr>
+<tr><td>평면별 검사의 모서리 문제</td><td><code>r / sin(α/2) − r</code></td><td>2-3</td></tr>
+<tr><td>경계 구와 경계 상자</td><td>변환 비용, 헐렁함, 비균등 스케일</td><td>3-1</td></tr>
+<tr><td>변위하는 메시의 경계</td><td>스키닝·파도처럼 셰이더가 정점을 옮기는 경우</td><td>3-2, 3-3</td></tr>
+<tr><td>뷰별 컬링과 그림자 캐스터</td><td>카메라 밖 캐스터, 직교 뷰의 near 제외</td><td>5</td></tr>
+<tr><td>컬링 시점과 그리는 시점 분리</td><td>디버그 고정, 무엇을 사본으로 하고 무엇을 남기나</td><td>8</td></tr>
+<tr><td>가림 컬링·BVH·메시렛</td><td>이 엔진에 없는 것, 언제 필요해지나</td><td>11</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Gil Gribb, Klaus Hartmann, "Fast Extraction of Viewing Frustum Planes from the World-View-Projection Matrix" (2001) — 2-1의 식. <code>Frustum.h</code> 주석이 이 이름을 적고 있음</li>
+<li>Real-Time Rendering 4판, 19장 Acceleration Algorithms — 절두체·가림 컬링, BVH, 22장의 교차 검사</li>
+<li>Christer Ericson, Real-Time Collision Detection — 구·상자·평면 검사와 경계 볼륨 선택</li>
+<li>Microsoft Learn, <a href="https://learn.microsoft.com/windows/win32/api/directxmath/nf-directxmath-xmmatrixperspectivefovlh">XMMatrixPerspectiveFovLH</a> — 이 엔진 투영의 깊이 범위 0..1</li>
+<li>우리 문서: <a href="../plan/freeze-culling-camera-plan.html">컬링 카메라 고정 계획</a>(설계 결정 3장, 구현 결과 9장), <a href="../overview/rendering-analysis.html#c14-6">rendering-analysis 14.6·14.7</a>(드로우 목록과 루프), <a href="../overview/rendering-analysis.html#c20-30">20.30</a>(적용 기록), <a href="csm-study.html">CSM 학습</a>(캐스케이드 고정), <a href="clustered-lighting-study.html">클러스터드 라이팅 학습</a>, <a href="shadow-atlas-study.html">그림자 아틀라스 학습</a>(타일 배정), <a href="frame-structure-study.html">프레임 구조 학습</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

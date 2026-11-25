@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 게임 UI(캔버스) 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>게임 UI(캔버스) 학습 문서</h1>
+  <p>유니티 uGUI 식 런타임 UI — 왜 톤매핑 뒤 따로 그리는가, RectTransform 계산, 글리프 아틀라스와 부분 업로드, 배치와 클립, 이벤트</p>
+  <p>2026-11-25 · 게임 UI 이야기는 지금까지 <a href="../plan/ui-canvas-plan.html">게임 UI(캔버스) 구현 계획</a>(설계 결정과 10장 단계별 구현 결과·측정)에 모여 있었고, 엔진 안의 자리는 <a href="../overview/rendering-analysis.html#c20-31">rendering-analysis 20.31</a>·<a href="../overview/rendering-analysis.html#c16-12">16.12</a>·<a href="../overview/rendering-analysis.html#c17-17">17.17</a>, 용어는 <a href="../overview/glossary.html#gameui">용어집 5장</a>에 있습니다. 따로 된 구현 기록 문서는 없고 계획 문서의 10장이 그 역할을 합니다. 이 문서는 그 내용을 원리부터 다시 설명하고 지금 코드에 맞춰 정리합니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1장은 왜 게임 UI 가 따로 필요한가, 2장은 프레임 안에서 UI 패스의 자리와 감마 공간 블렌딩, 3장은 캔버스 좌표와 RectTransform, 4장은 글자(글꼴·아틀라스·배치), 5장은 그리기 목록·배치·클립, 6장은 위젯·레이아웃·이벤트, 7장은 에디터와 저장, 8장은 코드 지도, 9장은 실험, 10장은 함정, 11장은 공부할 개념과 참고 문서입니다. 색공간은 <a href="color-space-study.html">색공간 학습</a>, 톤매핑은 <a href="hdr-tonemapping-study.html">HDR·톤매핑 학습</a>, 프레임 전체 순서는 <a href="frame-structure-study.html">프레임 구조 학습</a>에 맡기고 여기서는 UI 에 걸린 부분만 씁니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 식으로 계산한 값은 <span class="tag chk">계산값</span>, 해 보면 나올 것으로 보는 결과는 <span class="tag chk">예상</span>, 계획 문서 10장에 기록된 측정은 <span class="tag ok">확인함 (2026-11-24)</span>으로 표시하고 그 절로 링크했습니다. 측정 장면 대부분(UiAnchors·UiText·UiPerf 등)은 저장소에 없고 생성기로 만들어야 합니다(9장).</div>
+</header>
+<nav><a href="#why">1. 왜 필요한가</a><a href="#pass">2. 프레임 속 자리</a><a href="#rect">3. 캔버스와 RectTransform</a><a href="#text">4. 글자</a><a href="#batch">5. 배치와 클립</a><a href="#widgets">6. 위젯·이벤트</a><a href="#editor">7. 에디터·저장</a><a href="#code">8. 코드 지도</a><a href="#lab">9. 실험</a><a href="#pitfalls">10. 함정</a><a href="#study">11. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 게임 UI 가 왜 따로 필요한가</h2>
+<p>게임에는 체력 막대, 메뉴, 인벤토리 같은 화면 요소가 있습니다. 이것들은 장면 물체와 요구가 다릅니다. 화면 픽셀에 딱 맞게 선명해야 하고, 창 크기가 바뀌어도 배치가 유지되어야 하고, 마우스·키보드·패드로 누를 수 있어야 하고, 노출이나 톤매핑 때문에 색이 바뀌면 안 됩니다. 그리고 디자이너가 에디터에서 만들어 씬과 함께 저장할 수 있어야 합니다.</p>
+<p>엔진에는 이미 ImGui 가 있지만 에디터 도구용입니다. 즉시 모드라 배치가 코드에 있고, 해상도 배율·스킨·씬 저장이 없습니다. 계획 문서의 결정 표는 세 가지 길을 비교했습니다(<a href="../plan/ui-canvas-plan.html#d-table">계획 3.2</a>).</p>
+<table>
+<tr><th>방식</th><th>얻는 것</th><th>잃는 것</th></tr>
+<tr><td>유니티 uGUI 식 컴포넌트 (선택)</td><td>UI 요소가 GameObject 에 붙는 Behaviour 라 Hierarchy·Inspector·직렬화·되돌리기·프리팹을 그대로 씀</td><td>레이아웃을 매 프레임 직접 계산해야 함 (<code>Scene::Update</code> 는 재생 중에만 돎)</td></tr>
+<tr><td>UMG 식 별도 위젯 에디터</td><td>전용 디자이너</td><td>위젯 트리·디자이너·저장 형식을 새로 만들어야 함</td></tr>
+<tr><td>게임 UI 에도 ImGui</td><td>추가 코드 없음</td><td>해상도 배율·스킨·씬 저장이 안 됨</td></tr>
+</table>
+<p>그래서 이 엔진의 게임 UI 는 <code>Canvas</code>·<code>CanvasScaler</code>·<code>RectTransform</code>·<code>UIImage</code>·<code>UIText</code>·<code>UIButton</code> … 같은 컴포넌트와, 그것을 매 프레임 읽어 정점 목록을 만드는 <code>UISystem</code>, 그 목록을 GPU 로 그리는 <code>Renderer</code> 의 UI 패스로 나뉩니다. 규칙은 "Scene 쪽(<code>UI/</code>)은 CPU 데이터만, GPU 자원은 Renderer" 입니다(<a href="../plan/ui-canvas-plan.html#d-rules">계획 3.1</a>). 글리프 비트맵도 CPU 쪽이 굽고 Renderer 가 올립니다.</p>
+</section>
+
+<section id="pass">
+<h2>2. 프레임 안에서 UI 패스의 자리</h2>
+<figure>
+<svg viewBox="0 0 920 230" role="img" aria-label="UI 패스가 톤 패스 뒤, ImGui 앞에 놓인 프레임 순서">
+<defs><marker id="uic-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+<text x="228" y="34" text-anchor="middle">HDR 구간 (선형, 노출 전)</text>
+<path class="ln" d="M17,44 L17,50 L439,50 L439,44"/>
+<text x="685" y="34" text-anchor="middle">출력 텍스처 (UNORM 뷰, 감마 공간)</text>
+<path class="ln" d="M467,44 L467,50 L903,50 L903,44"/>
+<rect x="17" y="66" width="136" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="85" y="90" text-anchor="middle">RenderScenePass</text><text x="85" y="110" text-anchor="middle">HDR 색</text>
+<rect x="167" y="66" width="136" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="235" y="90" text-anchor="middle">ApplyHdrEffects</text><text x="235" y="110" text-anchor="middle">TAA·모션 블러·블룸</text>
+<rect x="317" y="66" width="136" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="385" y="90" text-anchor="middle">톤 패스</text><text x="385" y="110" text-anchor="middle">노출·ACES·sRGB</text>
+<rect x="467" y="66" width="136" height="60" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<text x="535" y="90" text-anchor="middle">RenderCanvasPass</text><text x="535" y="110" text-anchor="middle">World → Overlay</text>
+<rect x="617" y="66" width="136" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="685" y="90" text-anchor="middle">ImGui</text><text x="685" y="110" text-anchor="middle">BeginUIPass</text>
+<rect x="767" y="66" width="136" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="835" y="100" text-anchor="middle">Present</text>
+<path class="ln" d="M153,96 L165,96" marker-end="url(#uic-ar)"/>
+<path class="ln" d="M303,96 L315,96" marker-end="url(#uic-ar)"/>
+<path class="ln" d="M453,96 L465,96" marker-end="url(#uic-ar)"/>
+<path class="ln" d="M603,96 L615,96" marker-end="url(#uic-ar)"/>
+<path class="ln" d="M753,96 L765,96" marker-end="url(#uic-ar)"/>
+<rect x="167" y="164" width="200" height="50" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/>
+<text x="267" y="185" text-anchor="middle">UISystem::Build (CPU)</text><text x="267" y="203" text-anchor="middle">레이아웃 → 정점 목록</text>
+<rect x="417" y="164" width="236" height="50" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/>
+<text x="535" y="185" text-anchor="middle">Renderer::UploadUI</text><text x="535" y="203" text-anchor="middle">VB·IB·b4·글리프 아틀라스</text>
+<path class="ln" d="M367,189 L415,189" marker-end="url(#uic-ar)"/>
+<path class="ln" d="M535,164 L535,128" marker-end="url(#uic-ar)"/>
+</svg>
+<figcaption>그림 1. 한 프레임에서 UI 가 지나는 길(메인 뷰). Build 는 OnGUI 뒤 <code>Engine::Render</code> 안에서 <code>Renderer::Render</code> 보다 먼저, 업로드는 렌더 준비 구간, 그리기는 톤 패스 직후입니다. 카메라 미리보기가 켜져 있으면 미리보기 톤 패스 뒤에 <code>RenderCanvasPass(1)</code> 이 한 번 더 돕니다.</figcaption>
+</figure>
+<p>코드 순서는 <code>Graphics/Renderer.cpp</code> 의 <code>Renderer::Render</code> 끝부분입니다. <code>ApplyHdrEffects</code> → <code>RenderTonemapPass</code> → <code>RenderCanvasPass(cmd, 0, …)</code> 순이고, 미리보기 블록 안에서 <code>RenderTonemapPass(… "PreviewTonemapPass" …)</code> 뒤에 <code>RenderCanvasPass(cmd, 1, …)</code> 이 옵니다. 그리는 타깃은 톤 패스의 출력과 같습니다. 에디터는 씬 뷰 텍스처(<code>m_mainView.color</code>)에 그리고 끝에 ShaderResource 로 돌려놓아 ImGui 가 샘플링하고, 게임은 백버퍼에 그리고 RenderTarget 으로 두어 다음 <code>BeginUIPass</code> 가 Load 합니다. 에디터와 게임이 같은 경로를 탑니다.</p>
+<p>CPU 쪽은 <code>Core/Engine.cpp</code> 의 <code>Engine::Render</code> 에서 매 프레임 <code>m_ui.Build(m_scene, mainView, previewView)</code> 를 부르고 <code>m_renderer.SetUIDrawList(&amp;m_ui.GetDrawList())</code> 로 넘깁니다. 편집 중에도 부르므로 재생하지 않아도 배치가 보입니다. 업로드는 <code>Renderer::UploadUI</code> 가 프레임에 한 번 합니다.</p>
+
+<h3 id="pass-why">2.1 왜 톤매핑 뒤인가</h3>
+<p>계획 문서는 Overlay 패스를 톤매핑 직후에 둔 이유를 "TAA 지터·모션 블러·블룸·노출이 UI 에 묻지 않음. 에디터와 게임이 같은 경로" 로 적었습니다(<a href="../plan/ui-canvas-plan.html#d-table">계획 3.2</a>). 하나씩 풀면 이렇습니다.</p>
+<table>
+<tr><th>UI 를 HDR 구간에서 그렸다면</th><th>생기는 문제</th></tr>
+<tr><td>노출·ACES 를 거침</td><td>자동 노출이 바뀔 때마다 버튼 색이 밝아지고 어두워짐. ACES 곡선이 흰 글자를 회색 쪽으로, 채도 높은 색을 덜 진하게 바꿈</td></tr>
+<tr><td>TAA 를 거침</td><td>지터로 흔들린 위치를 히스토리와 섞어 글자 가장자리가 뭉개지고, 글자가 바뀌면 잔상이 남음 (<a href="taa-study.html">TAA 학습</a>)</td></tr>
+<tr><td>모션 블러를 거침</td><td>카메라가 돌면 화면에 고정된 HUD 까지 속도 버퍼 값대로 번짐 (<a href="motion-blur-study.html">모션 블러 학습</a>)</td></tr>
+<tr><td>블룸을 거침</td><td>흰 글자·밝은 버튼 주변에 빛 번짐</td></tr>
+</table>
+<p>World 캔버스(장면 안에 놓인 패널)도 같은 자리에서 그립니다. World 캔버스는 장면에 가려져야 합니다. 톤 패스 뒤에도 깊이 버퍼가 남아 있으므로 <code>Pass_UIWorld</code> 가 그것을 읽기 전용으로 묶습니다(<code>Renderer::BuildPassDescs</code>: <code>depthEnable = true</code>, <code>depthWrite = false</code>, <code>LessEqual</code>, <code>D24_UNORM_S8_UINT</code>). <code>RenderCanvasPass</code> 는 깊이를 <code>ResourceState::DepthRead</code> 로 두고 <code>.readOnly = true</code> 렌더 패스로 World 명령을 먼저 그린 뒤, 깊이 없는 <code>Pass_UI</code> 로 Overlay 명령을 그 위에 그립니다. 계획 문서의 다른 안은 World 캔버스를 Effects 패스(HDR, 파티클 뒤)에 두는 것이었고, 반투명·파티클과의 앞뒤는 맞지만 노출·ACES·TAA 가 묻어 버리므로 택하지 않았습니다.</p>
+
+<h3 id="pass-gamma">2.2 감마 공간 블렌딩</h3>
+<p>UI 의 색은 sRGB 로 인코딩된 값 그대로 다룹니다. 세 군데가 이것을 맞춥니다.</p>
+<ul>
+<li>정점 색: <code>UI/UITypes.h</code> 의 <code>PackUIColor</code> 가 0~1 sRGB 값을 그대로 RGBA8 로 묶고, 입력 레이아웃은 <code>R8G8B8A8_UNORM</code> 입니다.</li>
+<li>텍스처: <code>Renderer::UploadUI</code> 가 <code>m_textures.Load2D(name, false, &amp;scene)</code> 로 읽어 sRGB → 선형 변환을 하지 않습니다.</li>
+<li>타깃: 파이프라인 RTV 형식이 <code>R8G8B8A8_UNORM</code> 이고 렌더 패스가 <code>.srgbView = false</code> 라 쓸 때도 변환이 없습니다.</li>
+</ul>
+<p>블렌드는 색 <code>SrcAlpha / InvSrcAlpha</code>, 알파 <code>One / InvSrcAlpha</code> 이고, 프리멀티플라이하지 않은 알파입니다. 검정 위에 흰색 α 0.5 를 그리면 저장된 바이트끼리 섞여 0.5 × 255 = 128 이 나옵니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r1">계획 10장 1단계</a>). sRGB 뷰에 선형으로 섞었다면 선형 0.5 를 다시 인코딩해 약 188 이 됩니다 <span class="tag chk">계산값</span>. 물리적으로는 선형 쪽이 맞지만, 감마 쪽은 포토샵·피그마에서 고른 색과 반투명 겹침, 글자 안티앨리어싱 굵기가 도구와 같게 나옵니다. ImGui 도 같은 방식(UNORM 뷰)입니다. 이 결정의 기록은 <a href="../plan/ui-canvas-plan.html#d-table">계획 3.2 "블렌딩 색 공간"</a>, 출력 텍스처의 뷰 구조는 <a href="color-space-study.html#formats">색공간 학습 5장</a>에 있습니다. 디버그용으로 <code>srgbOutput</code> 을 끄면 장면만 어두워지고 UI 는 그대로인 것이 정상입니다(<a href="../plan/ui-canvas-plan.html#unknown">계획 7장</a>).</p>
+<p>셰이더는 짧습니다. <code>Shaders/UIVertexShader.hlsl</code> 의 <code>VS_UI</code> 는 정점의 캔버스 번호로 <code>canvasMatrices[]</code> 를 골라 클립 공간으로 옮기고, <code>Shaders/UIPixelShader.hlsl</code> 의 <code>PS_UI</code> 는 클립 사각형 밖이면 <code>discard</code>, 글자 플래그(비트 16)면 <code>float4(color.rgb, color.a × tex.r)</code>, 아니면 <code>tex × color</code> 를 냅니다. <code>Common.hlsli</code> 를 include 하지 않고 프레임 셋(b0)도 묶지 않습니다.</p>
+<p>UI 가 없는 씬은 이전과 같은 결과여야 합니다. <code>RenderCanvasPass</code> 는 그 뷰의 명령 수가 0 이면 배리어를 걸기 전에 돌아갑니다. DamagedHelmet 에서 바뀌기 전 스크린샷과의 차는 0 이었습니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r1">계획 10장 1단계</a>).</p>
+</section>
+
+<section id="rect">
+<h2>3. 캔버스 좌표와 RectTransform</h2>
+<p>캔버스 좌표는 <code>CanvasScaler</code> 를 거친 논리 픽셀이고, 원점은 부모 사각형의 왼쪽 아래, y 는 위가 + 입니다(<code>UI/UITypes.h</code>, 유니티와 같음). 화면 픽셀(y 아래 +)로 바꾸는 일은 캔버스 행렬이 합니다.</p>
+<h3 id="rect-canvas">3.1 Canvas 의 두 모드</h3>
+<table>
+<tr><th></th><th>Overlay (<code>Canvas::Overlay</code>)</th><th>World (<code>Canvas::World</code>)</th></tr>
+<tr><td>루트 사각형</td><td>(0, 0)–(W/scale, H/scale). 루트 RectTransform 값은 무시</td><td>루트 RectTransform 의 <code>sizeDelta</code>·<code>pivot</code> (위치는 Transform)</td></tr>
+<tr><td>캔버스 → 클립</td><td><code>_11 = 2·scale/W</code>, <code>_22 = 2·scale/H</code>, <code>_41 = _42 = −1</code> (캔버스 y 위 + 와 클립 y 위 + 가 같아 뒤집지 않음)</td><td>루트 월드 행렬 × 카메라 <code>GetViewProjectionMatrix()</code></td></tr>
+<tr><td>글자 굽는 배율</td><td>CanvasScaler 의 scale</td><td><code>pixelsPerUnit</code> (기본 1, 거리에 따라 바꾸지 않음)</td></tr>
+<tr><td>깊이</td><td>없음, 맨 위</td><td>검사만, 쓰기 없음. Overlay 보다 먼저</td></tr>
+<tr><td>픽셀 격자 맞춤</td><td>함 (회전·스케일이 없을 때)</td><td>안 함</td></tr>
+</table>
+<p>World 캔버스의 ViewProj 에는 TAA 지터가 없습니다. 지터는 <code>Renderer::UploadPerFrameConstants</code> 가 b0 의 proj·viewProj·invViewProj 에만 곱하고 <code>Camera</code> 의 행렬은 그대로 두기 때문입니다. 대신 장면 깊이는 지터가 들어간 것이라 깊이 경계가 1 px 안쪽에서 흔들릴 수 있습니다(<code>Renderer::BuildPassDescs</code> 주석, 10장).</p>
+<p>캔버스 순서는 <code>UISystem::BuildView</code> 에서 정합니다. World 가 먼저, 같은 모드 안에서는 <code>sortOrder</code> 작은 것부터, 같으면 씬 순서(<code>std::stable_sort</code>)입니다. 캔버스 안에서는 Hierarchy 순서대로 먼저 그린 것이 아래에 깔립니다. 캔버스 행렬은 두 뷰 합쳐 32 개까지이고(<code>kUIMaxCanvases</code>), 넘으면 경고 한 번 뒤 나머지를 그리지 않습니다. 캔버스 아래의 캔버스(중첩)는 지금은 일반 요소로 취급합니다(<code>UISystem::FindCanvas</code>).</p>
+
+<h3 id="rect-scaler">3.2 CanvasScaler</h3>
+<p><code>CanvasScaler::ComputeScale</code> 은 "캔버스 단위 하나가 출력 몇 픽셀인가" 를 냅니다. <code>ConstantPixelSize</code> 는 <code>scaleFactor</code> 그대로, <code>ScaleWithScreenSize</code> 는 가로 비율과 세로 비율을 로그 공간에서 섞습니다.</p>
+<pre><code>scale = 2^( lerp( log2(W / refW), log2(H / refH), match ) )</code></pre>
+<p>로그 공간에서 섞어야 가로로 긴 화면과 세로로 긴 화면이 대칭이 된다는 것이 코드 주석의 설명입니다(유니티 <code>CanvasScaler.HandleScaleWithScreenSize</code> 와 같음). 예를 들어 쇼케이스(<code>UiShowcase.json</code>, 기준 1280×720, match 0.5)를 에디터 씬 뷰 732×445 에서 보면 log2(0.5719) = −0.806, log2(0.6181) = −0.694 의 평균 −0.750 → scale 0.5945 이고 루트 사각형은 1231 × 749 캔버스 단위입니다 <span class="tag chk">계산값</span>. 계획 문서가 기록한 "휠 −3 = 60 단위 × 배율 0.5946 = 35.67 px" 의 35.67 px 는 0.5945 쪽과 맞습니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r5">계획 10장 5단계</a>).</p>
+
+<h3 id="rect-calc">3.3 RectTransform 계산</h3>
+<p><code>RectTransform::ComputeRectWithAnchors</code> 가 부모 사각형에서 자기 사각형을 냅니다. 앵커 두 개가 부모 안의 기준 상자를 정하고, <code>sizeDelta</code> 는 그 상자보다 얼마나 큰가, <code>pivot</code> 은 자기 사각형 안의 기준점(0~1), <code>anchoredPosition</code> 은 앵커 상자의 피벗 비율 지점에서 피벗까지의 거리입니다.</p>
+<pre><code>aMin   = parent.min + anchorMin × parentSize
+aMax   = parent.min + anchorMax × parentSize
+size   = (aMax − aMin) + sizeDelta
+pivotP = aMin + (aMax − aMin) × pivot + anchoredPosition
+rect   = [pivotP − size × pivot,  pivotP − size × pivot + size]</code></pre>
+<figure>
+<svg viewBox="0 0 760 300" role="img" aria-label="아래쪽에 가로로 늘인 RectTransform 계산 예">
+<rect x="60" y="40" width="400" height="200" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="70" y="60">부모 사각형 400×200</text>
+<rect x="70" y="180" width="380" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<text x="80" y="204">자기 사각형 380×40</text>
+<path d="M60,240 L52,254 L68,254 z" style="fill:var(--warn)"/>
+<path d="M460,240 L452,254 L468,254 z" style="fill:var(--warn)"/>
+<text x="60" y="272" text-anchor="middle">anchorMin</text>
+<text x="460" y="272" text-anchor="middle">anchorMax</text>
+<path class="ln" d="M260,240 L260,226" marker-end="url(#uic-ar)"/>
+<circle cx="260" cy="220" r="5" style="fill:none;stroke:var(--accent);stroke-width:2"/>
+<text x="272" y="212">pivotP (200, 20)</text>
+<text x="260" y="290" text-anchor="middle">기준점 (200, 0) 에서 anchoredPosition 만큼 위로</text>
+<text x="500" y="70">anchorMin (0, 0)</text>
+<text x="500" y="92">anchorMax (1, 0)</text>
+<text x="500" y="114">pivot (0.5, 0)</text>
+<text x="500" y="136">anchoredPosition (0, 20)</text>
+<text x="500" y="158">sizeDelta (−20, 40)</text>
+<text x="500" y="190">size = (400 − 20, 0 + 40)</text>
+<text x="500" y="212">rect = (10, 20)–(390, 60)</text>
+</svg>
+<figcaption>그림 2. 아래 변에 가로로 늘인 막대. 앵커가 가로로 벌어져 있으면 그 축의 <code>sizeDelta</code> 는 "부모보다 얼마나 큰가"(−20 = 양쪽 10 씩 안쪽)이고, 앵커가 모인 세로 축의 <code>sizeDelta</code> 는 그냥 높이입니다 <span class="tag chk">계산값</span>.</figcaption>
+</figure>
+<p>앵커가 한 점에 모이면 <code>sizeDelta</code> 가 곧 크기이고 부모 크기가 바뀌어도 크기가 그대로입니다. 앵커가 벌어지면 그 축은 부모를 따라 늘어납니다. 창 비율이 바뀌어도 HUD 가 모서리에 붙어 있는 것은 이 규칙 덕분이고, 에디터 씬 뷰 732×445 와 게임 출력 1280×720·1920×1080·2560×1080(2560×1080 은 match 0·0.5·1 각각)에서 계산한 경계와 찍힌 경계의 차는 모두 0 px 였습니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r1">계획 10장 1단계</a>, <code>check_ui_rects.py</code>).</p>
+<p>캔버스 아래 오브젝트의 위치·크기는 RectTransform 이 정하고, GameObject 의 Transform 에서는 회전 z 와 스케일 xy 만 읽습니다(위치는 무시). <code>UISystem::Visit</code> 은 이것을 피벗 중심 아핀 변환 <code>local = T(pivot) · R · S · T(−pivot)</code> 으로 만들어 <code>UIAffine::Then</code> 으로 부모 변환에 붙입니다. 레이아웃 그룹·Slider·Scrollbar·ScrollRect 가 정하는 자식 사각형은 <code>m_driven</code> 표에 그 프레임에만 덮어쓰고 저장 값은 바꾸지 않습니다(6장).</p>
+</section>
+
+<section id="text">
+<h2>4. 글자: 글꼴, 글리프 아틀라스, 배치</h2>
+<h3 id="text-font">4.1 글꼴 읽기</h3>
+<p><code>UI/Font.cpp</code> 가 stb_truetype 와 stb_rect_pack 의 구현을 정의하는 유일한 파일입니다(vcpkg stb 포트). <code>Font::Load</code> 는 파일 바이트를 <code>m_data</code> 에 들고 <code>stbtt_InitFont</code> 로 엽니다. .ttf 와 .otf(CFF 윤곽) 모두 되지만 가변 글꼴의 축은 읽지 않으므로 정적 글꼴이어야 합니다. 엔진 기본 글꼴은 <code>Assets/Fonts/NotoSansKR-Regular.otf</code>(4.6 MB, SIL OFL)이고, Google Fonts 판은 가변 글꼴이라 정적 SubsetOTF 를 넣었습니다(<a href="../plan/ui-canvas-plan.html#r2">계획 10장 2단계</a>). <code>FontLibrary::Get</code> 의 이름 규칙은 빈 이름·<code>builtin:font</code> = 기본 글꼴, <code>asset:&lt;경로&gt;</code>, 그 밖에는 <code>Assets\Fonts\</code> 아래 파일 이름이고, 못 읽으면 경고 한 번 뒤 기본 글꼴을 씁니다.</p>
+<p>래스터라이저를 고를 때 계획 문서는 FreeType(품질은 좋지만 의존성·빌드가 큼), DirectWrite(D3D12 에서 11on12 가 필요), ImGui 의 <code>imstb_truetype.h</code> 사본(ImGui 버전에 묶임)과 비교했습니다(<a href="../plan/ui-canvas-plan.html#d-table">계획 3.2</a>). 글꼴을 사용자 PC 의 Windows 글꼴에서 읽지 않는 것은 배포 PC 에 없을 수 있고 맑은 고딕은 재배포할 수 없기 때문입니다.</p>
+
+<h3 id="text-atlas">4.2 비트맵 글리프와 아틀라스</h3>
+<p>글자는 크기별 비트맵으로 굽습니다. 화면 공간 UI 는 글자 크기가 정해져 있어 비트맵이 가장 선명하고, 한글은 완성형 음절만 11,172 자(자주 쓰는 것만 2,350 자)라 미리 구워 둘 수 없으므로 화면에 나온 글자만 그때그때 굽습니다. <code>GlyphAtlas::Get</code> 의 키는 (글꼴 id ≪ 48) | (픽셀 크기 ≪ 32) | 글리프 번호이고, 픽셀 크기는 <code>round(fontSize × scale)</code> 입니다. fontSize 18 인 글자를 scale 0.5945 에서 그리면 10.70 → 11 px 로 굽습니다 <span class="tag chk">계산값</span>. 창 크기를 바꾸면 scale 이 바뀌고, 새 픽셀 크기의 글리프를 다시 굽습니다.</p>
+<figure>
+<svg viewBox="0 0 760 280" role="img" aria-label="글리프 아틀라스 패킹과 dirty 사각형 부분 업로드">
+<rect x="30" y="30" width="200" height="200" style="fill:var(--paper);stroke:var(--ink3)"/>
+<rect x="31" y="31" width="22" height="27" style="fill:var(--fill);stroke:var(--ink3)"/>
+<rect x="54" y="31" width="27" height="24" style="fill:var(--fill);stroke:var(--ink3)"/>
+<rect x="82" y="31" width="19" height="27" style="fill:var(--fill);stroke:var(--ink3)"/>
+<rect x="102" y="31" width="29" height="25" style="fill:var(--fill);stroke:var(--ink3)"/>
+<rect x="132" y="31" width="19" height="27" style="fill:var(--fill);stroke:var(--ink3)"/>
+<rect x="152" y="31" width="27" height="26" style="fill:var(--fill);stroke:var(--ink3)"/>
+<rect x="180" y="31" width="22" height="27" style="fill:var(--fill);stroke:var(--ink3)"/>
+<rect x="31" y="60" width="30" height="30" style="fill:var(--fill);stroke:var(--ink3)"/>
+<rect x="62" y="60" width="28" height="28" style="fill:var(--fill);stroke:var(--ink3)"/>
+<rect x="91" y="60" width="28" height="30" style="fill:var(--fill);stroke:var(--ink3)"/>
+<rect x="120" y="60" width="25" height="29" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<rect x="146" y="60" width="24" height="30" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<rect x="31" y="92" width="25" height="26" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<rect x="57" y="92" width="24" height="25" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<rect x="31" y="59" width="140" height="60" style="fill:none;stroke:var(--warn);stroke-width:2;stroke-dasharray:5 3"/>
+<text x="30" y="250">R8 1024² → 2048², 여백 1 px</text>
+<rect x="250" y="40" width="16" height="12" style="fill:var(--fill);stroke:var(--ink3)"/><text x="274" y="51">이미 올린 글자</text>
+<rect x="390" y="40" width="16" height="12" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="414" y="51">이번 프레임에 구운 글자</text>
+<rect x="590" y="40" width="16" height="12" style="fill:none;stroke:var(--warn);stroke-width:2;stroke-dasharray:5 3"/><text x="614" y="51">dirty 사각형</text>
+<rect x="250" y="66" width="490" height="60" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/>
+<text x="262" y="85">GlyphAtlas::Get — 없으면 stbrp_pack_rects 로</text>
+<text x="262" y="102">자리를 잡고 Font::Rasterize 로 CPU 사본에 굽고,</text>
+<text x="262" y="119">UIAtlasImage::MarkDirty 로 감싸는 사각형을 키움</text>
+<rect x="250" y="136" width="490" height="60" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/>
+<text x="262" y="155">Renderer::UploadUIAtlas — version 이 바뀌면</text>
+<text x="262" y="172">CreateTexture 로 전체, 아니면 UpdateTexture</text>
+<text x="262" y="189">(dirty 사각형 하나) 뒤 ClearDirty</text>
+<rect x="250" y="206" width="490" height="60" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<text x="262" y="225">D3D11: UpdateSubresource + D3D11_BOX</text>
+<text x="262" y="242">D3D12: 업로드 버퍼 → CopyTextureRegion,</text>
+<text x="262" y="259">ShaderResource → COPY_DEST → ShaderResource</text>
+<path class="ln" d="M495,126 L495,134" marker-end="url(#uic-ar)"/>
+<path class="ln" d="M495,196 L495,204" marker-end="url(#uic-ar)"/>
+</svg>
+<figcaption>그림 3. 새로 구운 글자들(파랑)을 감싼 사각형 하나만 올립니다. 감싸는 사각형 안에 든 이미 올린 글자(회색)도 함께 다시 올라갑니다. 그림의 칸 배치는 설명용입니다.</figcaption>
+</figure>
+<p>패킹은 stb_rect_pack 의 스카이라인 방식이고, 글리프마다 오른쪽·아래에 1 px 여백을 둡니다(아틀라스는 0 으로 시작). 처음 크기는 1024²(R8 이라 1 MiB), 최대 2048²(4 MiB)입니다 <span class="tag chk">계산값</span>. 꽉 차면 이렇게 처리합니다(<code>UISystem::Build</code>).</p>
+<ol>
+<li><code>Get</code> 이 nullptr 를 돌려주고 <code>Overflowed()</code> 가 참이 됩니다. 이번 Build 는 그 글자를 건너뜁니다.</li>
+<li>Build 가 <code>Grow()</code>(1024 → 2048, 이미 2048 이면 같은 크기로 비움) 뒤 그 프레임을 한 번 더 만듭니다. 두 번째 시도(<code>IsFinalPass</code>)에서도 못 넣은 글자는 □ 로 그리고 경고를 한 번 남깁니다.</li>
+<li>2048² 로 비우고도 넘치면(포화) 매 프레임 비우지 않도록 <code>kSaturatedRetryFrames</code> = 120 프레임 동안 있는 글자만 쓰고, 그 뒤 한 번 다시 해 봅니다.</li>
+<li>가장 큰 아틀라스에도 안 들어가는 글리프(<code>tooLarge</code>)는 넘침으로 치지 않고 □ 로 그립니다. 넘침으로 치면 120 프레임마다 아틀라스를 비우게 됩니다.</li>
+</ol>
+<p>키우거나 비우면 <code>Reset</code> 이 <code>version</code> 을 올리고, Renderer 는 새 텍스처를 만들어 전체를 초기 데이터로 올립니다. 옛 텍스처는 <code>DestroyTexture</code> 의 지연 해제로 GPU 가 다 쓴 뒤 풀리고, 그 리소스 셋은 캐시에서 뺍니다. 앞 프레임이 읽고 있는 텍스처를 덮어쓰지 않는 길입니다. 64 px 한글 400 자는 첫 프레임에 1024² → 2048² 로 다시 구워 □ 없이 나왔고, 96 px 한글 1,200 자는 경고 한 번에 120 프레임마다 한 번씩만 다시 구웠습니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r2">계획 10장 2단계</a>).</p>
+
+<h3 id="text-upload">4.3 RHI 의 텍스처 부분 갱신</h3>
+<p><code>RHI/Device.h</code> 의 <code>UpdateTexture(handle, x, y, width, height, data, rowPitch)</code> 는 2D 텍스처 밉 0 의 사각형을 덮어씁니다. 블록 압축이 아닌 형식만 받고, 텍스처는 ShaderResource 상태여야 하며 끝나도 ShaderResource 입니다.</p>
+<table>
+<tr><th>백엔드</th><th>구현 (<code>D3D11Device::UpdateTexture</code> / <code>D3D12Device::UpdateTexture</code>)</th><th>순서가 맞는 이유</th></tr>
+<tr><td>D3D11</td><td><code>UpdateSubresource</code> + <code>D3D11_BOX</code>. USAGE_DEFAULT 텍스처라 됨</td><td>즉시 컨텍스트의 명령 순서대로 처리되므로 뒤의 드로우가 새 내용을 읽음</td></tr>
+<tr><td>D3D12</td><td>사각형 크기로 <code>GetCopyableFootprints</code>(행 간격 256 B 정렬) → 업로드 힙에 버퍼를 만들어 행마다 복사 → <code>RecordUpload</code> 안에서 <code>ShaderResource</code> → <code>COPY_DEST</code> 배리어, <code>CopyTextureRegion</code>, 다시 <code>ShaderResource</code>(<code>D3D12Convert::ToD3D12</code> 에서 <code>PIXEL_SHADER_RESOURCE | NON_PIXEL_SHADER_RESOURCE</code>)</td><td>업로드 리스트가 이번 프레임 커맨드 리스트보다 먼저 실행되고, 앞 프레임의 읽기는 같은 큐의 앞쪽이라 덮어쓰기 전에 끝남</td></tr>
+</table>
+<p>올리지 못한 프레임이 있으면 <code>ClearDirty</code> 를 하지 않으므로 dirty 사각형이 쌓여 다음 프레임에 올라갑니다. 그릴 명령이 없는 프레임에도 <code>UploadUI</code> 첫머리에서 아틀라스는 올려 둡니다. 실행 중에 "New Text" 를 더해 새 글자 6 개를 부분 갱신으로 올린 화면은 처음부터 그 글자가 있던 씬과 D3D11·D3D12 모두 차 0 이었습니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r2">계획 10장 2단계</a>).</p>
+
+<h3 id="text-layout">4.4 줄 배치</h3>
+<p><code>UIComponents.cpp</code> 의 <code>BuildTextLayout</code> 이 <code>UIText::Populate</code> 와 <code>UIText::GetPreferredSize</code> 가 함께 쓰는 배치를 합니다. 픽셀 단위로 계산합니다.</p>
+<ul>
+<li>UTF-8 을 코드포인트로 풉니다(<code>DecodeUtf8</code>, 잘못된 바이트는 U+FFFD). <code>\r</code> 은 버리고 <code>\t</code> 는 공백으로 바꿉니다.</li>
+<li>전진 폭은 <code>stbtt_GetGlyphHMetrics</code>, 커닝은 <code>stbtt_GetGlyphKernAdvance</code> 입니다. stb_truetype 는 kern 표와 GPOS 쌍 조정을 읽습니다. Noto Sans KR 에서 To −74, LT −134, AV·AY·VA −15 (1/1000 em) 를 읽었습니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r2">계획 10장 2단계</a>).</li>
+<li>줄 높이 = (ascent − descent + lineGap) × <code>lineSpacing</code>. Noto Sans KR 은 ascent 1160, descent −288 (1/1000 em)이라 첫 줄 높이가 1.448 em, 글자 18 이면 26.1 px 입니다 <span class="tag chk">계산값</span>. 기본 상자 160×30 에 24 는 들어가지 않아 기본 글자 크기를 18 로 정했습니다(<a href="../plan/ui-canvas-plan.html#r2">계획 10장 2단계</a>, <code>UIText::fontSize</code> 주석은 "160×30 에 들어가는 크기"라고만 적음).</li>
+<li>줄바꿈은 마지막 공백에서 끊고, 한 낱말이 줄보다 길면 글자 단위로 끊습니다. 띄어쓰기 없는 한글 문장은 글자 단위로 나뉩니다. 공백에서 끊고 넘어온 조각에 이번 글자를 더한 것이 이미 줄보다 길면 이 글자 앞에서 한 번 더 끊습니다.</li>
+<li>세로 넘침은 <code>Overflow</code>·<code>Truncate</code>(들어가지 않는 줄은 그리지 않음)·<code>Ellipsis</code>(마지막 줄 끝을 U+2026, 없으면 마침표 셋). 정렬은 9 방향입니다.</li>
+<li>화면 픽셀 격자 맞춤: 화면 공간 캔버스이고 로컬 → 캔버스 변환이 이동뿐이면 기준선과 글자마다의 시작 x 를 출력 픽셀로 반올림합니다. 펜은 실수로 쌓으므로 반올림 오차가 줄을 따라 누적되지 않습니다. 회전·스케일이 있으면 맞추지 않습니다.</li>
+<li>글꼴에 없는 글자(글리프 0)와 아틀라스에 못 넣은 글자는 흰 텍스처 사각형 네 개로 □ 를 그립니다(글꼴에 U+25A1 이 없을 수 있음).</li>
+</ul>
+<p>한글은 글꼴의 cmap 에 완성형 음절로 들어 있어 코드포인트 하나 = 글리프 하나로 그립니다. 셰이핑(자모 조합, 합자, 오른쪽에서 왼쪽으로 쓰는 문자)은 하지 않습니다. 글자 입력칸(InputField)과 IME 조합도 아직 없습니다(<a href="../plan/ui-canvas-plan.html#out">계획 8장</a>).</p>
+</section>
+
+<section id="batch">
+<h2>5. 그리기 목록, 배치, 클립</h2>
+<h3 id="batch-list">5.1 정점과 명령</h3>
+<p><code>UI/UIDrawList.h</code> 의 <code>UIVertex</code> 는 40 B 이고 <code>Shaders/UI.hlsli</code> 의 <code>UIVSInput</code> 과 같은 배치입니다.</p>
+<table>
+<tr><th>필드</th><th>형식</th><th>뜻</th></tr>
+<tr><td><code>position</code></td><td>float2</td><td>캔버스 좌표 (CPU 에서 요소의 회전·스케일까지 적용한 값)</td></tr>
+<tr><td><code>uv</code></td><td>float2</td><td>텍스처 좌표 (v 아래 +)</td></tr>
+<tr><td><code>color</code></td><td>RGBA8 UNORM</td><td>sRGB 값. Selectable 틴트를 바이트마다 곱한 뒤</td></tr>
+<tr><td><code>clip</code></td><td>float4</td><td>클립 사각형 (캔버스 좌표 minX, minY, maxX, maxY). 마스크가 없으면 아주 큰 사각형</td></tr>
+<tr><td><code>canvas</code></td><td>uint</td><td>아래 16 비트 = 캔버스 행렬 번호, 비트 16 = 글자 (텍스처 R 을 알파로)</td></tr>
+</table>
+<p>사각형 하나는 정점 4 개 + R32 인덱스 6 개 = 184 B 입니다 <span class="tag chk">계산값</span>. 컬링을 끄고 그리므로 감김 방향은 상관없습니다. 캔버스 행렬은 b4 의 <code>UIConstants::canvasMatrices[32]</code>(64 B × 32 = 2,048 B)에 프레임당 한 번 올리고 정점이 번호로 고릅니다. 그래서 캔버스가 여러 개여도 정점 버퍼 하나, 인덱스 버퍼 하나, 상수 버퍼 하나로 끝납니다. 계획 문서는 Dynamic 버퍼가 프레임 슬롯을 통째로 바꾸는 방식이라 드로우마다 상수 버퍼를 바꾸기 어렵다는 것을 이유로 적었습니다(<a href="../plan/ui-canvas-plan.html#d-table">계획 3.2 "정점 형식"</a>).</p>
+<p>같은 이유로 메인 뷰와 미리보기 뷰도 한 목록에 이어 붙입니다. 뷰마다 따로 <code>UpdateBuffer</code> 하면 D3D12 에서 이미 기록한 메인 패스의 정점을 덮어쓰기 때문입니다(<code>UIDrawList.h</code> 머리 주석). 패스는 <code>UIViewRange</code> 의 명령 구간만 고르고, 그 안에서 앞쪽 <code>worldCommandCount</code> 개가 World 캔버스 명령입니다. 버퍼는 처음 정점 1,024·인덱스 1,536 개로 만들고 모자라면 두 배로 다시 만듭니다(<code>Renderer::UploadUI</code>).</p>
+
+<h3 id="batch-merge">5.2 배치: 드로우가 나뉘는 곳</h3>
+<p><code>UIMeshBuilder::AddQuad</code> 는 사각형을 쌓을 때 바로 앞 명령과 텍스처 이름이 같고 인덱스가 이어지면 그 명령의 <code>indexCount</code> 에 6 을 더합니다. 다르면 새 <code>UIDrawCmd</code> 를 만듭니다. 캔버스나 뷰가 바뀔 때는 <code>BreakBatch</code> 로 끊습니다. 즉 드로우 수는 그리는 순서(Hierarchy 깊이 우선)에서 텍스처가 바뀌는 횟수입니다. 순서를 바꾸지 않으므로 겹침은 항상 맞고, 대신 흰 이미지(빈 텍스처 이름) → 글자(<code>builtin:ui-glyphs</code>) → 흰 이미지 처럼 번갈아 나오면 매번 끊깁니다. <code>RenderCanvasPass</code> 는 셋이 바뀔 때만 <code>SetResourceSet</code> 을 다시 부르고 명령마다 <code>DrawIndexed</code> 하나를 냅니다.</p>
+<p>리소스 셋은 둘로 나뉩니다. 셋 0 = { b4 UI 상수, s0 LinearClamp } 하나, 셋 1 = { t0 } 를 텍스처마다 만들어 (index, generation) 키로 캐시합니다(<code>Renderer::GetUITextureSet</code>). 샘플러를 텍스처 셋에서 뺀 것은 D3D12 가 샘플러가 든 셋마다 샘플러 힙 칸을 따로 쓰기 때문입니다(<code>Graphics/ShaderConstants.h</code> 의 <code>kCBSlotUI</code> 주석). 텍스처 캐시의 generation 이 바뀌면(씬 바꿈·다시 읽기) 셋 캐시를 비웁니다. 바인딩 구조는 <a href="rhi-pso-study.html">RHI·PSO 학습</a>을 보세요.</p>
+<p>요소 1,000 개(UiPerf) Release 에서 CPU <code>UISystem::Build</code> 는 0.48~0.50 ms, GPU <code>UICanvasPass</code> 는 0.07 ms, 쇼케이스 Build 는 0.12 ms 였습니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r5">계획 10장 5단계</a>). 비용은 GPU 보다 CPU 쪽이 큽니다. Build 마다 비우고 채우는 맵을 <code>std::pmr::unsynchronized_pool_resource</code> 위에 둔 것이 0.52 → 0.48 ms 를 만든 변경입니다(<code>UISystem.h</code> 주석).</p>
+
+<h3 id="batch-clip">5.3 클립: 정점 클립 사각형 + discard</h3>
+<p><code>UIRectMask</code> 는 자손을 자기 사각형으로 자릅니다. 구현은 정점마다 클립 사각형을 싣고 픽셀 셰이더가 밖을 <code>discard</code> 하는 방식입니다. <code>UISystem::Visit</code> 이 마스크를 만나면 그 사각형을 캔버스 좌표의 축 정렬 상자로 바꿔(<code>CanvasBounds</code>, <code>padding</code> 만큼 안쪽) 지금 클립과 교집합을 만들고, 자식을 다 돈 뒤 원래 클립으로 돌려놓습니다. 히트 테스트(<code>UISystem::ElementContains</code>)도 같은 클립 밖은 무시하므로, 스크롤 뷰포트 밖으로 잘린 버튼 자리를 눌러도 눌리지 않습니다. RHI 의 <code>CommandList</code> 에는 가위 사각형을 따로 정하는 함수가 없습니다(D3D12 의 <code>SetViewport</code> 가 시저를 뷰포트와 같은 영역으로 맞출 뿐입니다).</p>
+<table>
+<tr><th>방식</th><th>장점</th><th>단점</th></tr>
+<tr><td>정점 클립 + <code>discard</code> (선택)</td><td>RHI 확장 없음. World·회전 캔버스에서도 동작. 드로우가 나뉘지 않음</td><td>캔버스 축 정렬 상자만. 잘리는 픽셀도 셰이더는 돎</td></tr>
+<tr><td>가위 사각형</td><td>잘린 픽셀을 래스터에서 버림</td><td>화면 축 정렬만, 마스크가 바뀔 때마다 드로우가 나뉨</td></tr>
+<tr><td>스텐실 마스크</td><td>임의 이미지 모양</td><td>패스·상태가 늘어남. 이번 범위 밖</td></tr>
+</table>
+<p>비교의 근거는 <a href="../plan/ui-canvas-plan.html#d-table">계획 3.2 "마스크"</a>입니다.</p>
+</section>
+
+<section id="widgets">
+<h2>6. 위젯, 레이아웃, 이벤트</h2>
+<p>컴포넌트에는 저장되는 설정과 값만 둡니다. 올림·눌림·선택·색 페이드·스크롤 위치·관성 같은 실행 중 상태는 <code>UISystem</code> 이 오브젝트 id 별로 갖고 재생을 시작·멈출 때(<code>BeginPlay</code>·<code>EndPlay</code>) 비웁니다(<code>UI/UIWidgets.h</code> 머리 주석). 그래서 씬 저장·되돌리기 스냅샷에 섞이지 않습니다. 모든 UI 컴포넌트는 <code>UIBehaviour</code> 를 상속하고 <code>GetUIKind()</code> 로 종류 번호를 주어, <code>UISystem</code> 이 컴포넌트마다 <code>dynamic_cast</code> 를 한 번 하고 switch 로 나눕니다.</p>
+<table>
+<tr><th>컴포넌트</th><th>하는 일</th><th>위치</th></tr>
+<tr><td><code>UIImage</code></td><td>텍스처(없으면 흰색) × 색. Simple(<code>preserveAspect</code>)·Sliced(9-slice, 테두리는 늘이지 않음)·Filled(가로·세로, <code>fillAmount</code>)</td><td><code>UI/UIComponents.h</code></td></tr>
+<tr><td><code>UIText</code></td><td>4장의 배치로 글리프 사각형을 쌓음</td><td><code>UI/UIComponents.h</code></td></tr>
+<tr><td><code>UIButton</code>·<code>UIToggle</code>·<code>UIToggleGroup</code></td><td>누른 요소 위에서 떼면 <code>onClick</code>. Toggle 은 <code>isOn</code> 과 체크 그래픽, 그룹이면 하나만 켬</td><td><code>UI/UIWidgets.h</code></td></tr>
+<tr><td><code>UISlider</code>·<code>UIScrollbar</code></td><td>값으로 fill·handle 의 앵커를 매 프레임 계산 (저장하지 않음)</td><td><code>UI/UIWidgets.h</code></td></tr>
+<tr><td><code>UIScrollRect</code></td><td>content 를 휠·드래그로 옮김. Clamped·Elastic, 관성, 스크롤바 연동</td><td><code>UI/UIWidgets.h</code></td></tr>
+<tr><td><code>UIHorizontalLayout</code>·<code>UIVerticalLayout</code>·<code>UIGridLayout</code></td><td>자식 사각형을 min·preferred·flexible 크기로 나눔 (유니티 Auto Layout 규칙)</td><td><code>UI/UILayout.h</code>, <code>UISystem::LayoutChildren</code>·<code>MeasureGroup</code></td></tr>
+<tr><td><code>UILayoutElement</code>·<code>UIContentSizeFitter</code></td><td>요소 하나의 레이아웃 크기 덮어쓰기 / 자기 크기를 내용 크기로</td><td><code>UI/UILayout.h</code></td></tr>
+<tr><td><code>UIRectMask</code></td><td>5.3 의 클립</td><td><code>UI/UILayout.h</code></td></tr>
+<tr><td><code>UIEventSystem</code></td><td>처음 선택할 요소, 키 반복(0.4 s 뒤 0.1 s 간격), WASD 내비게이션, <code>onCancel</code></td><td><code>UI/UIWidgets.h</code></td></tr>
+</table>
+<p>레이아웃 그룹이 정한 값을 저장하지 않기 때문에, 유니티처럼 씬을 열기만 해도 파일이 바뀐 것처럼 보이는 일이 없습니다. UiLayout·UiShowcase 를 열어 그대로 저장한 파일과 그것을 다시 연 뒤 저장한 파일은 바이트가 같았습니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r5">계획 10장 5단계</a>).</p>
+
+<h3 id="widgets-event">6.1 이벤트 흐름</h3>
+<p><code>UISystem::Update</code> 는 재생 중에만 <code>Scene::Update</code> 첫머리에서 돌고, 지난 프레임 Build 가 남긴 히트 목록(<code>m_hitOrder</code>)을 씁니다.</p>
+<ol>
+<li>포인터 → 출력 픽셀: 에디터는 씬 이미지 사각형(<code>SetPointerViewport</code>), 게임은 창 전체입니다.</li>
+<li><code>UISystem::HitTest</code>: 그린 순서의 역순으로 raycastTarget 이 켜진 Graphic 을 찾습니다. Overlay 는 World 뒤에 그리므로 먼저 나오고 맞으면 바로 끝납니다. World 끼리는 투영 w 가 작은(가까운) 것이 이깁니다. <code>PixelToCanvas</code> 가 화면 점과 캔버스 평면의 교점을 2×2 식으로 풀고 카메라 뒤(w ≤ 0)는 버립니다. 장면 물체에 가렸는지는 보지 않습니다(유니티 기본과 같음).</li>
+<li>맞은 Graphic 에서 위로 올라가며 처음 만나는 Selectable 이 누르기·클릭 대상, 처음 만나는 Slider·Scrollbar·ScrollRect 가 드래그 대상입니다. ScrollRect 에서 출력 10 px(<code>kDragThreshold</code>) 이상 움직이면 드래그로 보고 누른 버튼의 클릭을 취소합니다.</li>
+<li>색 전환(<code>UpdateColors</code>): Normal·Highlighted·Pressed·Selected·Disabled 색을 <code>fadeDuration</code>(기본 0.1 s) 동안 섞어 대상 Graphic 의 색에 곱합니다.</li>
+<li>내비게이션(<code>UpdateNavigation</code>): 방향키, (켜면) WASD, D-pad, 왼쪽 스틱이 0.5 를 넘을 때. 다음 요소는 유니티 <code>Selectable.FindSelectable</code> 과 같은 점수(가장자리 점에서 후보 중심으로의 벡터 v, dot(dir, v) &gt; 0 중 dot / |v|² 최대)로 고릅니다. Submit = Enter·Space·패드 A, Cancel = Esc·패드 B. 패드는 <code>Core/Input.cpp</code> 의 XInput 1.4, 0 번 패드뿐입니다.</li>
+</ol>
+<p>이벤트(<code>UI/UIEvent.h</code> 의 <code>UIEvent&lt;T&gt;</code>)는 두 종류의 연결을 갖습니다. 코드 리스너(<code>AddListener</code>, 저장 안 됨)와 Inspector 에서 고른 저장되는 연결(<code>UIPersistentCall</code>: 대상 오브젝트 상대 경로 + "컴포넌트.함수")입니다. 저장되는 연결의 함수는 스크립트가 <code>SHERLOCK_UI_ACTION(클래스, 함수)</code> 로 등록하고, 스크립트 DLL 을 내릴 때 <code>ScriptModule::Unload</code> 가 그 타입 이름의 등록을 지웁니다. 스크립트는 <code>IsPointerOverUI()</code>·<code>IsPointerCaptured()</code>·<code>HasSelection()</code> 으로 UI 위의 입력을 피할 수 있습니다(테스트 프로젝트의 <code>FreeCamera</code> 가 그렇게 함).</p>
+</section>
+
+<section id="editor">
+<h2>7. 에디터와 저장</h2>
+<ul>
+<li><b>편집 중 표시.</b> Build 가 편집 중에도 돌고, 씬 뷰 툴바의 UI 토글(<code>Engine</code> 의 <code>m_uiVisible</code>)로 켜고 끕니다. 재생 화면이 곧 씬 뷰라서 별도 Game 창은 없습니다.</li>
+<li><b>Rect 툴</b>(<code>Editor::DrawRectTool</code>, 툴바 Rect, 단축키 T): 화면 공간 캔버스 아래 선택한 요소의 부모 사각형, 핸들 8 개, 피벗 원, 앵커 삼각형을 그립니다. 안쪽 드래그 = 이동, 핸들 = 크기(Alt 가운데 기준, Shift 비율 유지), 부모·형제 가장자리에 8 출력 픽셀 스냅(Ctrl 로 끔), 화살표 1 단위(Shift 10). 제자리 클릭은 <code>UISystem::PickElement</code> 로 UI 를 고르고, 같은 자리를 반복해 누르면 아래 요소로 차례로 내려갑니다. 위치 계산에는 <code>UISystem::GetElementGeometry</code> 가 준 부모 공간·변환을 씁니다.</li>
+<li><b>Inspector.</b> 앵커 프리셋(<code>DrawAnchorPresets</code>, 유니티 Alt+Shift 동작), 캔버스 아래 오브젝트는 Transform 의 Position 칸 대신 "UI element: position/size in RectTransform …" 안내 줄을 보여 줌(<code>UISystem::IsUnderCanvas</code>), 레이아웃이 정하는 값에는 "driven:" 안내를 붙입니다.</li>
+<li><b>저장.</b> UI 컴포넌트도 <code>Reflect(PropertyVisitor&amp;)</code> 로 씬 JSON 에 들어갑니다. 새 방문자 함수로 <code>Float2</code>, <code>ObjectRef</code>(소유자 기준 상대 경로 문자열 — <code>"."</code>, <code>"../Handle"</code>), <code>Event</code>(<code>UIEventEncode</code> 의 JSON)가 있습니다. 상대 경로라 복제·프리팹 인스턴스·되돌리기 뒤에도 그대로 맞습니다. <code>UIImage</code> 의 종류는 <code>"imageType"</code> 으로 씁니다 — <code>"type"</code> 은 컴포넌트 JSON 의 타입 이름 키라 덮어쓰면 다시 열 때 예외가 났습니다(<a href="../plan/ui-canvas-plan.html#r3">계획 10장 3단계</a>). 형제 순서가 그리는 순서이므로 <code>SceneSerializer</code> 가 <code>"sibling"</code> 을 저장하고 읽을 때 그 순서로 정렬합니다.</li>
+</ul>
+</section>
+
+<section id="code">
+<h2>8. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>컴포넌트</td><td><code>UI/UIComponents.h/.cpp</code></td><td><code>Canvas</code>, <code>CanvasScaler::ComputeScale</code>, <code>RectTransform::ComputeRectWithAnchors</code>, <code>UIImage::Populate</code>, <code>UIText::Populate</code>·<code>BuildTextLayout</code></td></tr>
+<tr><td>위젯·레이아웃·이벤트</td><td><code>UI/UIWidgets.h</code>, <code>UI/UILayout.h</code>, <code>UI/UIEvent.h/.cpp</code></td><td>Selectable 계열, 레이아웃 그룹·마스크, <code>UIEvent</code>·<code>UIPersistentCall</code>·<code>SHERLOCK_UI_ACTION</code>·<code>UIObjectRef</code></td></tr>
+<tr><td>시스템</td><td><code>UI/UISystem.h/.cpp</code></td><td><code>Build</code>(아틀라스 넘침 재시도)·<code>BuildView</code>(캔버스 정렬·행렬)·<code>Visit</code>(사각형·마스크·그리기), <code>Update</code>(포인터·내비게이션·스크롤·색), <code>UIMeshBuilder::AddQuad</code>(배치)</td></tr>
+<tr><td>그리기 목록</td><td><code>UI/UIDrawList.h</code>, <code>UI/UITypes.h</code></td><td><code>UIVertex</code>(40 B), <code>UIDrawCmd</code>, <code>UIViewRange</code>, <code>UIAtlasImage</code>(dirty 사각형), <code>UIAffine</code>, <code>PackUIColor</code></td></tr>
+<tr><td>글꼴·아틀라스</td><td><code>UI/Font.h/.cpp</code>, <code>UI/GlyphAtlas.h/.cpp</code></td><td>stb_truetype 래퍼, <code>FontLibrary::Get</code>, <code>GlyphAtlas::Get</code>·<code>Grow</code>·<code>Clear</code></td></tr>
+<tr><td>렌더러</td><td><code>Graphics/RendererUI.cpp</code></td><td><code>UploadUI</code>, <code>UploadUIAtlas</code>, <code>GetUITextureSet</code>, <code>RenderCanvasPass</code>, <code>DestroyUIResources</code></td></tr>
+<tr><td>파이프라인·순서</td><td><code>Graphics/Renderer.cpp</code></td><td><code>BuildPassDescs</code> 의 <code>Pass_UI</code>·<code>Pass_UIWorld</code>, 레이아웃 <code>Layout_UICommon</code>·<code>Layout_UITexture</code>, <code>Renderer::Render</code> 의 호출 순서</td></tr>
+<tr><td>셰이더</td><td><code>Shaders/UI.hlsli</code>, <code>UIVertexShader.hlsl</code>, <code>UIPixelShader.hlsl</code></td><td><code>VS_UI</code>(캔버스 행렬), <code>PS_UI</code>(클립 <code>discard</code>, 글자 알파)</td></tr>
+<tr><td>RHI</td><td><code>RHI/Device.h</code>, <code>D3D11Device::UpdateTexture</code>, <code>D3D12Device::UpdateTexture</code></td><td>텍스처 사각형 부분 갱신</td></tr>
+<tr><td>호출</td><td><code>Core/Engine.cpp</code></td><td>OnGUI 뒤 <code>m_ui.Build</code>, <code>SetUIDrawList</code></td></tr>
+<tr><td>에디터</td><td><code>Editor/Editor.cpp</code>, <code>Editor/EditorAutomation.h/.cpp</code></td><td><code>DrawRectTool</code>, <code>DrawAnchorPresets</code>, 자동화 인자(<code>--ui-click</code>·<code>--key</code>·<code>--pad</code>·<code>--tool-drag</code>·<code>--log-rect</code> …)</td></tr>
+<tr><td>테스트</td><td><code>Projects/SherlockTestScenes/</code></td><td><code>Assets/Scenes/UiShowcase.json</code>, <code>Scripts/Tests/UiClickCounter</code>·<code>Billboard</code>, <code>make_ui_test_scenes.py</code>, <code>check_ui_rects/text/widgets/fonts.py</code>, <code>verify_ui_stages.py</code></td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>9. 실험</h2>
+<p>저장소에 남는 UI 씬은 <code>UiShowcase.json</code> 하나입니다. 단계별 검증 씬은 <code>python Projects/SherlockTestScenes/Scripts/Tests/make_ui_test_scenes.py --verify-dir=&lt;폴더&gt;</code> 로 만들고 에디터를 <code>--scene=&lt;절대 경로&gt;</code> 로 엽니다.</p>
+<h3 id="lab-e1">E1. 쇼케이스 둘러보기 <span class="tag">눈으로</span></h3>
+<p><code>UiShowcase.json</code> 을 열고 재생합니다. 위쪽 제목 띠, 왼쪽 메뉴(버튼·토글 그룹·볼륨 슬라이더), 오른쪽 인벤토리 Scroll View, 아래 체력 막대(Filled 0.65)와 단축칸 격자가 Overlay 이고, 헬멧 위 이름표(<code>Billboard</code> 스크립트가 카메라를 향하게 돌림)와 기둥에 반쯤 가려진 키오스크 패널이 World 캔버스입니다. 창 크기를 바꾸면 match 0.5 배율대로 전체가 커지고 작아집니다 <span class="tag chk">예상</span>. 클릭 수 버튼은 <code>UiClickCounter.Increment</code> 에 저장되는 연결로 묶여 있습니다.</p>
+<h3 id="lab-e2">E2. 감마 블렌딩 값 재기 <span class="tag">픽셀</span></h3>
+<p>검증 씬 UiAnchors 의 반투명 Half(검정 위 흰색 α 0.5) 픽셀을 스크린샷에서 읽습니다. 128 ± 1 이면 감마 공간 블렌딩입니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r1">계획 10장 1단계</a>). <code>check_ui_rects.py</code> 가 이 값을 검사합니다. 글자 쪽은 별도 검증 씬 UiText 에서 봅니다. 파란 판 위 빨간 글자는 모든 픽셀이 G = 0, R + B = 255 ± 1 이어야 합니다(<code>check_ui_text.py</code> "Blend").</p>
+<h3 id="lab-e3">E3. 아틀라스가 커지는 순간 <span class="tag">로그</span></h3>
+<p>검증 씬 UiTextAtlas(64 px 한글 400 자)를 열면 첫 프레임 로그에 <code>UI: 글리프 아틀라스 1024² → 2048² 로 다시 구움</code> 과 <code>UI: 글리프 아틀라스 텍스처 2048² (버전 2)</code> 가 나옵니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r2">계획 10장 2단계</a>). 64 px 한글 한 칸을 여백 포함 대략 60×60 텍셀로 잡으면 1024² 에는 (1024 / 60)² ≈ 290 자 정도라 400 자에서 넘치는 것이 맞습니다 <span class="tag chk">계산값</span>(칸 크기는 어림, 실제는 글자마다 다름).</p>
+<h3 id="lab-e4">E4. 톤매핑 뒤라는 것 확인 <span class="tag">비교</span></h3>
+<p>쇼케이스에서 노출을 크게 바꾸거나 TAA·모션 블러를 켜고 카메라를 돌립니다. 장면은 밝기가 바뀌고 번지지만 Overlay HUD 의 픽셀은 그대로입니다 <span class="tag chk">예상</span>. World 패널은 TAA + 모션 블러를 켰을 때 패널 영역 최대 차 13(버튼 부근 6)이 기록되어 있고, 원인은 나누어 보지 않았습니다 <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r8">계획 10장 8단계</a>). 지터가 들어간 깊이와 지터 없는 패널의 경계 차, 패널 뒤 장면 자체가 TAA 로 바뀐 것 중 무엇인지 나눠 보는 것이 다음 실험입니다.</p>
+<h3 id="lab-e5">E5. 전체 자동 검증 <span class="tag">스크립트</span></h3>
+<p><code>python Projects/SherlockTestScenes/Scripts/Tests/verify_ui_stages.py --backend=d3d12</code>(선택: <code>--config=Release</code>, <code>--only=click,widgets,layout,nav,rect,world,showcase,regress</code>). 검증 씬을 임시 폴더에 만들고 에디터를 자동화 인자로 띄워 로그·스크린샷을 기대값과 비교합니다. Debug D3D11·Debug D3D12·Release D3D11 에서 32 / 32 통과했고, 뒤에 넣은 "핫리로드가 실제로 일어남"·종료 코드 검사까지 33 항목으로 Debug D3D11 에서 다시 통과했습니다(종료 코드가 0 이 아니면 그것도 실패로 셉니다) <span class="tag ok">확인함 (2026-11-24)</span>(<a href="../plan/ui-canvas-plan.html#r-all">계획 10장 3~8단계 공통</a>). <code>check_ui_fonts.py</code> 는 <code>Assets/UiTestFonts/Karla-Regular.ttf</code> 가 있을 때만 돕니다(저장소에 없음).</p>
+<h3 id="lab-e6">E6. 배치가 끊기는 것 보기 <span class="tag">통계</span></h3>
+<p>같은 아이콘 텍스처를 쓰는 이미지와 그 이름 글자를 짝으로 열 개 놓으면(Hierarchy 순서 아이콘 → 글자 → 아이콘 …) 텍스처가 매번 바뀌어 명령이 20 개가 됩니다. 겹치지 않는다면 아이콘 열 개를 먼저, 글자 열 개를 뒤에 두는 순서로 바꿔 2 개로 줄일 수 있습니다 <span class="tag chk">예상</span>. <code>RenderCanvasPass</code> 가 명령마다 <code>m_stats.draws</code> 를 하나씩 올리므로 에디터 렌더 통계의 <code>draws</code> 에서 차이를 봅니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>10. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>반투명 UI 가 장면 위에서 "물리적으로" 다르게 보임</td><td>감마 공간 블렌딩</td><td>의도한 선택(2.2). HDR 디스플레이 출력은 고려하지 않음</td></tr>
+<tr><td>World 패널 가장자리가 기둥 경계에서 1 px 흔들림</td><td>장면 깊이는 TAA 지터가 들어간 것, 패널은 지터 없이 그림</td><td><code>BuildPassDescs</code> 주석에 적힌 한계</td></tr>
+<tr><td>World 패널 글자가 가까이서 흐리고 멀리서 거침</td><td>글리프를 <code>pixelsPerUnit</code> 로 한 번 굽고 거리에 따라 바꾸지 않음. 밉맵·SDF 없음</td><td>아틀라스가 흔들리지 않게 하려는 선택 (<code>Canvas</code> 주석). SDF 글자는 범위 밖</td></tr>
+<tr><td>회전·스케일한 글자가 흐림</td><td>픽셀 격자 맞춤을 하지 않고 비트맵이 늘어남</td><td>이동만 있을 때만 맞춤 (4.4)</td></tr>
+<tr><td>회전한 마스크가 넓게 자름</td><td>클립은 캔버스 축 정렬 상자 (<code>CanvasBounds</code>)</td><td>스텐실 마스크 없음 (5.3)</td></tr>
+<tr><td>요소가 많으면 드로우가 늘어남</td><td>텍스처가 바뀌는 곳마다 명령이 끊김. 순서를 바꾸지 않음</td><td>스프라이트 아틀라스 없음 (5.2)</td></tr>
+<tr><td>요소가 많으면 CPU 시간이 늘어남</td><td>매 프레임 전체 Build, 더티 표시 없음</td><td>1,000 요소 0.48~0.50 ms, 목표 0.5 ms 를 겨우 맞춤 (5.2)</td></tr>
+<tr><td>이모지·없는 글자가 □</td><td>대체 글꼴 목록 없음</td><td>□ 는 흰 사각형 네 변 (4.4)</td></tr>
+<tr><td>아랍어·데바나가리 등이 틀림, 합자 없음</td><td>셰이핑 없음, 커닝은 쌍 조정만</td><td>한글 완성형·라틴은 됨</td></tr>
+<tr><td>글자 입력칸이 없음</td><td>WM_CHAR·IME 조합 처리 없음</td><td>InputField 는 범위 밖 (<a href="../plan/ui-canvas-plan.html#out">계획 8장</a>)</td></tr>
+<tr><td>큰 글자를 많이 쓰면 □ 가 섞임</td><td>아틀라스 최대 2048², 포화 시 120 프레임 동안 있는 글자만</td><td>4.2</td></tr>
+<tr><td>dirty 업로드가 생각보다 큼</td><td>새 글자들을 감싼 사각형 하나라 사이의 옛 글자도 다시 올림. D3D12 는 호출마다 업로드 버퍼를 새로 만듦</td><td>글자가 처음 나올 때만 생기는 비용</td></tr>
+<tr><td>캔버스 33 번째부터 안 보임</td><td><code>canvasMatrices[32]</code>, 두 뷰 합계</td><td>경고 한 번 (<code>BuildView</code>)</td></tr>
+<tr><td>World 패널 뒤 물체 너머로도 클릭됨</td><td>히트 테스트가 장면 가림을 보지 않음</td><td>유니티 GraphicRaycaster 기본과 같음 (6.1)</td></tr>
+<tr><td>Constant Pixel Size 캔버스가 미리보기 창에서 넘침</td><td>픽셀 크기 그대로라 작은 타깃을 벗어남</td><td>유니티 Game 뷰를 작게 했을 때와 같음 (<a href="../plan/ui-canvas-plan.html#r1">계획 10장 1단계</a>)</td></tr>
+<tr><td>캔버스 안의 캔버스가 따로 정렬되지 않음</td><td>가장 위 Canvas 만 루트로 봄</td><td><code>UISystem::FindCanvas</code></td></tr>
+</table>
+</section>
+
+<section id="study">
+<h2>11. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>왜 필요한가</th><th>이 문서에서</th></tr>
+<tr><td>감마 공간 블렌딩과 sRGB 뷰</td><td>UI 색이 디자인 도구와 같게 나오는 이유</td><td>2.2, <a href="color-space-study.html">색공간 학습</a></td></tr>
+<tr><td>톤매핑 이후 합성</td><td>노출·ACES·TAA 가 UI 에 묻지 않게 하는 자리</td><td>2.1, <a href="hdr-tonemapping-study.html">HDR·톤매핑 학습</a>, <a href="post-process-study.html">후처리 학습</a></td></tr>
+<tr><td>앵커·피벗 레이아웃</td><td>해상도와 비율이 바뀌어도 배치 유지</td><td>3.3</td></tr>
+<tr><td>로그 공간 배율 섞기</td><td>가로·세로 맞춤 사이의 대칭</td><td>3.2</td></tr>
+<tr><td>2D 아핀 변환과 역변환</td><td>회전한 요소의 그리기와 히트 테스트</td><td>3.3, 6.1</td></tr>
+<tr><td>글리프 메트릭 (ascent·descent·advance·bearing·kerning)</td><td>줄 높이와 글자 간격</td><td>4.4</td></tr>
+<tr><td>스카이라인 사각형 패킹</td><td>필요한 글자만 아틀라스에 넣기</td><td>4.2</td></tr>
+<tr><td>텍스처 부분 갱신과 업로드 힙</td><td>GPU 가 읽는 텍스처를 안전하게 고치기</td><td>4.3, <a href="gpu-sync-study.html">GPU 동기화 학습</a>, <a href="texture-pipeline-study.html">텍스처 파이프라인 학습</a></td></tr>
+<tr><td>배칭과 그리기 순서</td><td>겹침을 지키면서 드로우 줄이기</td><td>5.2</td></tr>
+<tr><td>가위 사각형·스텐실·셰이더 클립</td><td>마스크 구현의 선택지</td><td>5.3</td></tr>
+<tr><td>읽기 전용 깊이 바인딩</td><td>World 캔버스를 장면에 가리게</td><td>2.1, <a href="binding-study.html">바인딩 학습</a></td></tr>
+<tr><td>화면 점 → 평면 교점 (역투영)</td><td>World 캔버스 클릭</td><td>6.1</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li><a href="../plan/ui-canvas-plan.html">게임 UI(캔버스) 구현 계획</a> — 설계 결정 표(<a href="../plan/ui-canvas-plan.html#d-table">3.2</a>), 프레임 흐름(<a href="../plan/ui-canvas-plan.html#d-frame">3.4</a>, 코드와 다른 데가 있음), 미확인 사항 확인 결과(<a href="../plan/ui-canvas-plan.html#unknown">7장</a>), 단계별 구현 결과와 측정(<a href="../plan/ui-canvas-plan.html#result">10장</a>)</li>
+<li><a href="../overview/rendering-analysis.html#c20-31">rendering-analysis 20.31</a> — 엔진 안의 자리, <a href="../overview/rendering-analysis.html#c16-12">16.12</a> Rect 툴과 UI 메뉴, <a href="../overview/rendering-analysis.html#c17-17">17.17</a> 재생 중 이벤트와 스크립트 연결</li>
+<li><a href="../overview/glossary.html#gameui">용어집 5장 게임 UI</a></li>
+<li><a href="frame-structure-study.html">프레임 구조 학습</a> — 이 문서의 그림 1 앞뒤 전체 순서</li>
+<li><a href="taa-study.html">TAA 학습</a>, <a href="motion-blur-study.html">모션 블러 학습</a>, <a href="rhi-pso-study.html">RHI·PSO 학습</a></li>
+<li>외부: Unity uGUI 문서(RectTransform, CanvasScaler, Auto Layout, Selectable Navigation), stb_truetype.h·stb_rect_pack.h 머리 주석</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

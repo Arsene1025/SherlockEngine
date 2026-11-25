@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 색공간 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>색공간 학습 문서</h1>
+  <p>선형·sRGB·감마 — 왜 구분하는가, 우리 엔진에서 색 값이 어떤 공간을 거쳐 화면에 나가는가, 직접 확인하는 실험</p>
+  <p>2026-11-25 · 렌더러 공부 순서 중 "색 파이프라인과 컴퓨트 기초" 묶음의 첫 문서입니다. 색공간 이야기는 지금까지 <a href="../overview/rendering-analysis.html#c12">rendering-analysis 12장</a>, <a href="../plan/texture-pipeline-record.html">텍스처 파이프라인 기록</a>, <a href="../plan/hdr-tonemapping-record.html">HDR 기록</a>에 흩어져 있었습니다. 이 문서는 원리부터 다시 설명하고, 2026-10-23 HDR 전환 뒤의 현재 코드에 맞춰 정리합니다. 기존 rendering-analysis와 기록 문서의 설명은 그대로 두었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(왜 선형으로 계산하는가, sRGB 곡선), 3장은 한 프레임에서 색 값이 거치는 공간, 4장은 텍스처마다 어떤 공간으로 읽는가, 5장은 포맷과 뷰, 6장은 코드 지도, 7장은 실험, 8장은 함정, 9장은 공부할 개념과 참고 문서입니다. 주제마다 "무슨 문제를 푸는가 → 왜 이 방법인가 → 코드 어디인가 → 한계" 순서로 썼습니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> sRGB 변환 값은 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 화면에서 측정한 값은 <span class="tag ok">확인함</span>으로 표시했습니다. 측정은 2026-09-23(HDR 전환 전)에 했기 때문에, 지금 같은 결과를 보려면 톤매핑을 끄고 노출 1에서 해야 합니다(7장 E1).</div>
+</header>
+<nav><a href="#why">1. 왜 구분하나</a><a href="#curve">2. sRGB 곡선</a><a href="#flow">3. 한 프레임의 흐름</a><a href="#textures">4. 텍스처별 공간</a><a href="#formats">5. 포맷과 뷰</a><a href="#code">6. 우리 코드</a><a href="#lab">7. 실험</a><a href="#pitfalls">8. 함정</a><a href="#study">9. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 색공간을 구분하는가</h2>
+<h3>1-1. 저장된 숫자는 밝기에 비례하지 않는다</h3>
+<p>8비트 픽셀 값 0~255는 빛의 세기를 그대로 담지 않습니다. 사람 눈은 어두운 쪽의 차이에 훨씬 민감해서, 세기를 고르게 256단계로 나누면 어두운 쪽은 계단이 보이고 밝은 쪽은 눈으로 구분하지 못하는 단계가 남습니다. 그래서 이미지 파일과 모니터는 값을 <b>비선형으로 인코딩</b>합니다. 어두운 쪽에 단계를 더 주는 곡선이고, 그 표준이 sRGB입니다. 픽셀 값 128은 "밝기 50%"가 아니라 빛의 세기로 약 21.6%입니다.</p>
+<ul>
+<li><b>인코딩된 값(sRGB)</b>: 파일과 모니터가 쓰는 숫자. 사람 눈에 고르게 나뉩니다.</li>
+<li><b>선형 값</b>: 빛의 세기에 비례하는 숫자. 값이 두 배면 빛도 두 배입니다.</li>
+</ul>
+
+<h3>1-2. 조명 계산은 선형에서만 맞다</h3>
+<p>빛은 더하고 곱하는 물리량입니다. 조명 두 개가 비추면 세기가 더해지고, 알베도 0.5인 면은 들어온 빛의 절반을 반사합니다. 이런 계산은 선형 값에서만 맞습니다. 인코딩된 값으로 계산하면 다음처럼 틀어집니다. <span class="tag chk">계산값</span></p>
+<table>
+<tr><th>상황</th><th>선형에서 계산</th><th>인코딩 값에서 계산</th></tr>
+<tr><td>밉맵 평균 (체커 230 / 40)</td><td>선형 0.791과 0.021의 평균 0.406 → sRGB 약 170</td><td>(230 + 40) / 2 = 135. 멀리 있는 바닥(작은 밉)일수록 어두워짐</td></tr>
+<tr><td>같은 빛 두 개 (하나씩 켜면 화면 값 128)</td><td>0.216 + 0.216 = 0.432 → sRGB 약 176</td><td>128 + 128 = 256 → 흰색으로 날아감</td></tr>
+<tr><td>검정과 흰색을 반반 섞기 (블렌딩·필터링)</td><td>선형 0.5 → sRGB 188</td><td>128. 어두운 쪽으로 치우침</td></tr>
+</table>
+<p>그래서 원칙은 하나입니다. <b>입력은 읽을 때 선형으로 풀고, 계산은 선형으로 하고, 화면에 낼 때 딱 한 번 sRGB로 인코딩합니다.</b> 이 중 하나가 빠지거나 두 번 일어나면 화면 색이 틀어집니다(증상은 8장 표).</p>
+</section>
+
+<section id="curve">
+<h2>2. sRGB 전달 함수</h2>
+<pre><code>decode (sRGB c → 선형):  c ≤ 0.04045   이면 c / 12.92,   아니면 ((c + 0.055) / 1.055)^2.4
+encode (선형 l → sRGB):  l ≤ 0.0031308 이면 l × 12.92,   아니면 1.055 × l^(1/2.4) − 0.055</code></pre>
+<p>어두운 끝은 기울기가 무한대가 되지 않도록 직선으로 잇고, 나머지는 지수 2.4 곡선입니다. 전체 모양이 <code>pow(c, 2.2)</code>와 거의 같아서 흔히 "감마 2.2"라고 부르지만, 어두운 쪽에서는 조금 다릅니다.</p>
+<table>
+<tr><th>8비트 값</th><th>sRGB c (값/255)</th><th>선형</th><th>메모</th></tr>
+<tr><td>0</td><td>0</td><td>0</td><td></td></tr>
+<tr><td>55</td><td>0.216</td><td>0.038</td><td>선형 0.216을 인코딩 없이 8비트로 쓰면 55 (0.216 × 255)</td></tr>
+<tr><td>128</td><td>0.502</td><td>0.216</td><td>회색 카드 검증의 기준 값</td></tr>
+<tr><td>188</td><td>0.737</td><td>0.5</td><td>선형 0.5가 화면에 나오는 값</td></tr>
+<tr><td>255</td><td>1</td><td>1</td><td>0과 1은 어느 공간이든 같음</td></tr>
+</table>
+
+<figure>
+<svg viewBox="0 0 560 330" role="img" aria-label="선형 값과 sRGB 인코딩 값의 관계 곡선">
+  <line class="ln" x1="70" y1="270" x2="490" y2="270"/><line class="ln" x1="70" y1="270" x2="70" y2="30"/>
+  <line x1="70" y1="270" x2="490" y2="30" style="stroke:var(--ink3);stroke-dasharray:3 4;stroke-width:1"/>
+  <polyline points="70.0,270.0 74.2,240.4 78.4,229.5 82.6,221.2 86.8,214.4 91.0,208.5 95.2,203.2 99.4,198.3 103.6,193.9 107.8,189.7 112.0,185.7 116.2,182.0 120.4,178.5 124.6,175.1 128.8,171.8 133.0,168.7 137.2,165.7 141.4,162.7 145.6,159.9 149.8,157.2 154.0,154.5 158.2,151.9 162.4,149.4 166.6,146.9 170.8,144.5 175.0,142.2 179.2,139.9 183.4,137.6 187.6,135.4 191.8,133.3 196.0,131.2 200.2,129.1 204.4,127.0 208.6,125.0 212.8,123.0 217.0,121.1 221.2,119.2 225.4,117.3 229.6,115.4 233.8,113.6 238.0,111.8 242.2,110.0 246.4,108.2 250.6,106.5 254.8,104.7 259.0,103.1 263.2,101.4 267.4,99.7 271.6,98.1 275.8,96.5 280.0,94.9 284.2,93.3 288.4,91.7 292.6,90.2 296.8,88.6 301.0,87.1 305.2,85.6 309.4,84.1 313.6,82.6 317.8,81.2 322.0,79.7 326.2,78.3 330.4,76.9 334.6,75.5 338.8,74.1 343.0,72.7 347.2,71.3 351.4,69.9 355.6,68.6 359.8,67.3 364.0,65.9 368.2,64.6 372.4,63.3 376.6,62.0 380.8,60.7 385.0,59.4 389.2,58.1 393.4,56.9 397.6,55.6 401.8,54.4 406.0,53.1 410.2,51.9 414.4,50.7 418.6,49.5 422.8,48.3 427.0,47.1 431.2,45.9 435.4,44.7 439.6,43.5 443.8,42.4 448.0,41.2 452.2,40.1 456.4,38.9 460.6,37.8 464.8,36.7 469.0,35.5 473.2,34.4 477.4,33.3 481.6,32.2 485.8,31.1 490.0,30.0" style="fill:none;stroke:var(--warn);stroke-width:1.5;stroke-dasharray:6 4"/>
+  <polyline points="70.0,270.0 74.2,246.0 78.4,233.6 82.6,224.5 86.8,217.0 91.0,210.5 95.2,204.8 99.4,199.6 103.6,194.8 107.8,190.4 112.0,186.2 116.2,182.3 120.4,178.5 124.6,175.0 128.8,171.6 133.0,168.3 137.2,165.2 141.4,162.2 145.6,159.3 149.8,156.5 154.0,153.7 158.2,151.1 162.4,148.5 166.6,145.9 170.8,143.5 175.0,141.1 179.2,138.8 183.4,136.5 187.6,134.2 191.8,132.0 196.0,129.9 200.2,127.8 204.4,125.7 208.6,123.7 212.8,121.7 217.0,119.7 221.2,117.8 225.4,115.9 229.6,114.0 233.8,112.2 238.0,110.4 242.2,108.6 246.4,106.8 250.6,105.1 254.8,103.4 259.0,101.7 263.2,100.0 267.4,98.3 271.6,96.7 275.8,95.1 280.0,93.5 284.2,91.9 288.4,90.4 292.6,88.9 296.8,87.3 301.0,85.8 305.2,84.3 309.4,82.9 313.6,81.4 317.8,80.0 322.0,78.5 326.2,77.1 330.4,75.7 334.6,74.3 338.8,73.0 343.0,71.6 347.2,70.3 351.4,68.9 355.6,67.6 359.8,66.3 364.0,65.0 368.2,63.7 372.4,62.4 376.6,61.1 380.8,59.9 385.0,58.6 389.2,57.4 393.4,56.1 397.6,54.9 401.8,53.7 406.0,52.5 410.2,51.3 414.4,50.1 418.6,48.9 422.8,47.7 427.0,46.6 431.2,45.4 435.4,44.3 439.6,43.1 443.8,42.0 448.0,40.9 452.2,39.8 456.4,38.6 460.6,37.5 464.8,36.4 469.0,35.4 473.2,34.3 477.4,33.2 481.6,32.1 485.8,31.1 490.0,30.0" style="fill:none;stroke:var(--accent);stroke-width:2.2"/>
+  <line x1="160.7" y1="270" x2="160.7" y2="149.5" style="stroke:var(--ink3);stroke-dasharray:2 3"/>
+  <line x1="70" y1="149.5" x2="160.7" y2="149.5" style="stroke:var(--ink3);stroke-dasharray:2 3"/>
+  <circle cx="160.7" cy="149.5" r="4" style="fill:var(--accent)"/>
+  <text x="168.72" y="165.51999999999998">선형 0.216 → 128</text>
+  <line x1="280.0" y1="270" x2="280.0" y2="93.1" style="stroke:var(--ink3);stroke-dasharray:2 3"/>
+  <circle cx="280.0" cy="93.1" r="4" style="fill:var(--accent)"/>
+  <text x="288.0" y="109.12">선형 0.5 → 188</text>
+  <text x="62" y="274" text-anchor="end">0</text><text x="62" y="34" text-anchor="end">255</text>
+  <text x="62" y="153.51999999999998" text-anchor="end">128</text>
+  <text x="70" y="288" text-anchor="middle">0</text><text x="490" y="288" text-anchor="middle">1</text>
+  <text x="280.0" y="310" text-anchor="middle">선형 값 (빛의 세기)</text>
+  <text x="20" y="150.0" text-anchor="middle" transform="rotate(-90 20 150.0)">저장되는 8비트 값</text>
+  <line x1="350" y1="200" x2="380" y2="200" style="stroke:var(--accent);stroke-width:2.2"/><text x="388" y="204">sRGB encode</text>
+  <line x1="350" y1="222" x2="380" y2="222" style="stroke:var(--warn);stroke-width:1.5;stroke-dasharray:6 4"/><text x="388" y="226">감마 2.2 (l^(1/2.2))</text>
+  <line x1="350" y1="244" x2="380" y2="244" style="stroke:var(--ink3);stroke-dasharray:3 4"/><text x="388" y="248">인코딩 없음</text>
+</svg>
+<figcaption>그림 1. sRGB 인코딩 곡선. 어두운 쪽(왼쪽 아래)에 8비트 단계를 많이 씁니다. 선형 0.216이 128, 0.5가 188로 저장됩니다. 감마 2.2 곡선과 거의 겹치고 어두운 끝에서만 갈라집니다. <span class="tag chk">계산값</span></figcaption>
+</figure>
+<h3>2-1. 변환은 하드웨어가 한다</h3>
+<p>우리 셰이더에는 sRGB 변환 코드(<code>pow</code>)가 없습니다. 텍스처나 렌더 타깃 뷰의 포맷에 <code>_SRGB</code>가 붙어 있으면 GPU가 변환합니다.</p>
+<ul>
+<li><b>SRV(읽기)</b>: <code>R8G8B8A8_UNORM_SRGB</code> 텍스처를 샘플하면 텍셀마다 먼저 선형으로 풀고 나서 필터링(이중선형·밉 보간)합니다. 셰이더가 받는 값은 이미 선형입니다. 셰이더에서 <code>pow</code>로 풀면 필터링이 인코딩된 값끼리 섞인 뒤라 1-2의 오차가 남으므로, 하드웨어 변환이 더 정확합니다.</li>
+<li><b>RTV(쓰기)</b>: <code>_SRGB</code> 뷰에 쓰면 셰이더 출력(선형)을 인코딩해 저장합니다. 블렌딩이 켜져 있으면 저장된 값을 풀어서 선형에서 섞고 다시 인코딩합니다.</li>
+<li><b>알파는 변환하지 않습니다.</b> 알파는 색이 아니라 비율이기 때문입니다. G-buffer GB0의 AO와 GB2의 거칠기를 알파 채널에 넣어도 되는 이유입니다(4-4).</li>
+</ul>
+<p><code>_SRGB</code>는 바이트를 바꾸는 변환이 아니라 "이 바이트는 sRGB로 인코딩된 값이다"라는 <b>라벨</b>입니다. 같은 바이트를 UNORM으로 읽으면 인코딩된 숫자가 그대로 나오고, UNORM_SRGB로 읽으면 풀린 선형 값이 나옵니다. 5-2의 TYPELESS 방법이 이 성질을 이용합니다.</p>
+</section>
+
+<section id="flow">
+<h2>3. 한 프레임에서 색 값이 거치는 공간</h2>
+<figure>
+<svg viewBox="0 0 962 150" role="img" aria-label="한 프레임에서 색 값이 거치는 공간">
+  <defs><marker id="cs-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <rect x="12" y="14" width="14" height="14" rx="3" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="32" y="26">인코딩된 값 (sRGB 바이트)</text>
+  <rect x="230" y="14" width="14" height="14" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="250" y="26">선형 값</text>
+  <rect x="12" y="46" width="122" height="64" rx="8" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <text x="73.0" y="72" text-anchor="middle" style="fill:var(--ink);font-weight:600">텍스처</text>
+  <text x="73.0" y="94" text-anchor="middle">sRGB 바이트</text>
+  <line x1="135" y1="78" x2="146" y2="78" class="ln" marker-end="url(#cs-ar)"/>
+  <rect x="148" y="46" width="122" height="64" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="209.0" y="72" text-anchor="middle" style="fill:var(--ink);font-weight:600">샘플</text>
+  <text x="209.0" y="94" text-anchor="middle">선형으로 풀림</text>
+  <line x1="271" y1="78" x2="282" y2="78" class="ln" marker-end="url(#cs-ar)"/>
+  <rect x="284" y="46" width="122" height="64" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="345.0" y="72" text-anchor="middle" style="fill:var(--ink);font-weight:600">씬 패스</text>
+  <text x="345.0" y="94" text-anchor="middle">FP16 선형</text>
+  <line x1="407" y1="78" x2="418" y2="78" class="ln" marker-end="url(#cs-ar)"/>
+  <rect x="420" y="46" width="122" height="64" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="481.0" y="72" text-anchor="middle" style="fill:var(--ink);font-weight:600">후처리</text>
+  <text x="481.0" y="94" text-anchor="middle">FP16 선형</text>
+  <line x1="543" y1="78" x2="554" y2="78" class="ln" marker-end="url(#cs-ar)"/>
+  <rect x="556" y="46" width="122" height="64" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="617.0" y="72" text-anchor="middle" style="fill:var(--ink);font-weight:600">톤 패스</text>
+  <text x="617.0" y="94" text-anchor="middle">노출·ACES</text>
+  <line x1="679" y1="78" x2="690" y2="78" class="ln" marker-end="url(#cs-ar)"/>
+  <rect x="692" y="46" width="122" height="64" rx="8" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <text x="753.0" y="72" text-anchor="middle" style="fill:var(--ink);font-weight:600">sRGB RTV</text>
+  <text x="753.0" y="94" text-anchor="middle">인코딩</text>
+  <line x1="815" y1="78" x2="826" y2="78" class="ln" marker-end="url(#cs-ar)"/>
+  <rect x="828" y="46" width="122" height="64" rx="8" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <text x="889.0" y="72" text-anchor="middle" style="fill:var(--ink);font-weight:600">UI·화면</text>
+  <text x="889.0" y="94" text-anchor="middle">UNORM 그대로</text>
+  <text x="209.0" y="134" text-anchor="middle">하드웨어 디코딩 (_SRGB SRV)</text>
+  <text x="753.0" y="134" text-anchor="middle">하드웨어 인코딩</text>
+</svg>
+<figcaption>그림 2. 값의 공간이 바뀌는 곳은 두 군데뿐입니다. 텍스처를 읽을 때 한 번 풀리고, 톤 패스의 sRGB RTV에서 한 번 인코딩됩니다. 그 사이는 모두 선형입니다.</figcaption>
+</figure>
+<table>
+<tr><th>순서</th><th>단계</th><th>포맷·뷰</th><th>값의 공간</th><th>코드</th></tr>
+<tr><td>1</td><td>텍스처 읽기</td><td>색 텍스처는 <code>R8G8B8A8_UNORM_SRGB</code>·<code>BC7_UNORM_SRGB</code>, 데이터 텍스처는 UNORM</td><td>샘플 결과는 선형</td><td><code>TextureCache::Load2D</code>, <code>Renderer::GetOrCreateGpuMaterial</code></td></tr>
+<tr><td>2</td><td>재질·조명 계산</td><td>—</td><td>선형. <code>baseColor</code>·조명 색·정점 색 같은 숫자 입력도 선형으로 취급</td><td><code>Shaders/MaterialSurface.hlsli</code> 의 <code>MaterialBaseColor</code>, <code>Shaders/Shading.hlsli</code></td></tr>
+<tr><td>3</td><td>씬 패스 (포워드, 디퍼드 라이팅, 스카이, 파티클, 바다)</td><td>HDR 타깃 <code>R16G16B16A16_FLOAT</code>, <code>srgbView = false</code></td><td>선형. 1을 넘는 값도 그대로 남음</td><td>PSO <code>rtvFormats[0] = R16G16B16A16_FLOAT</code> (<code>Renderer::GetPipelineFor</code> 등)</td></tr>
+<tr><td>4</td><td>HDR 후처리 (블러, 블룸, 모션 블러, TAA)</td><td>FP16</td><td>선형</td><td><code>Renderer::ApplyHdrEffects</code></td></tr>
+<tr><td>5</td><td>톤 패스</td><td>입력 t13 FP16 → 출력 <code>R8G8B8A8_UNORM_SRGB</code> RTV</td><td>노출·ACES 뒤 선형 0~1 → RTV가 sRGB로 인코딩</td><td><code>Shaders/TonemapPixelShader.hlsl</code> 의 <code>PS_Tonemap</code>, <code>Renderer::GetTonemapPipeline</code></td></tr>
+<tr><td>6</td><td>UI (ImGui, 게임 캔버스)</td><td>같은 출력 텍스처의 UNORM 뷰</td><td>인코딩된 값끼리 그대로 섞음(감마 공간)</td><td><code>Renderer::BeginUIPass</code>, <code>Renderer::RenderCanvasPass</code></td></tr>
+<tr><td>7</td><td>화면</td><td>백버퍼 <code>R8G8B8A8_UNORM</code>. 에디터는 씬 뷰 텍스처를 ImGui가 UNORM SRV로 읽어 백버퍼에 그림</td><td>인코딩된 값이 모니터로 감</td><td><code>D3D11Device</code>·<code>D3D12Device</code> 의 스왑체인 생성</td></tr>
+</table>
+<p>디퍼드 경로는 3단계 전에 G-buffer를 거칩니다. albedo와 F0는 G-buffer에 sRGB로 저장되고, 라이팅 패스가 읽을 때 다시 선형으로 풀립니다(4-4).</p>
+
+<h3>3-1. 인코딩 자리가 톤 패스 하나뿐인 이유</h3>
+<p>FP16 포맷에는 <code>_SRGB</code> 변형이 없습니다. 하드웨어 sRGB 변환은 8비트 UNORM 계열(과 BC 계열)에만 있으므로, 씬을 FP16에 그리는 한 인코딩은 8비트로 내리는 마지막 패스, 즉 톤 패스에서만 할 수 있습니다. 또 인코딩은 0~1 범위를 전제로 하므로 1을 넘는 HDR 값을 노출·ACES로 0~1에 접은 다음이어야 합니다. 그래서 톤매핑과 인코딩이 같은 패스에 붙어 있습니다.</p>
+<p>HDR 전환(2026-10-23) 전에는 메인 PS가 끝에서 노출·톤매핑까지 마치고 8비트 sRGB RTV에 바로 썼습니다. 그래서 톤매핑을 끈 씬에서는 조명 합이 1을 넘으면 기록하는 순간 잘려서 흰색으로 날아갔고, 후처리도 0~1로 잘린 값만 받을 수 있었습니다. 지금은 FP16에 그대로 남아 있다가 톤 패스에서 접힙니다. 톤매핑 자체는 다음 문서(HDR·톤매핑)에서 다룹니다.</p>
+
+<h3>3-2. sRGB 출력 끄기 (F5)</h3>
+<p><code>RenderSettings::srgbOutput</code>(기본 켬)을 끄면 톤 패스만 UNORM RTV로 씁니다. 인코딩이 빠지니 화면이 어둡고 대비가 강해집니다. 비교·검증용 스위치이고, 에디터 디버그 UI의 <code>sRGB output</code> 체크박스(<code>Editor/DebugUI.cpp</code>)나 F5로 바꿉니다. D3D12는 PSO의 RTV 포맷이 뷰 포맷과 같아야 해서(5-3) 톤 PSO를 두 개 둡니다(<code>m_tonemapPipelines[2]</code>, 인덱스 = <code>srgbOutput</code>). 씬 패스는 FP16이라 이 스위치와 상관없습니다.</p>
+</section>
+
+<section id="textures">
+<h2>4. 텍스처마다 어떤 공간으로 읽는가</h2>
+<p>규칙은 <b>사람이 보는 색이면 sRGB, 계산에 쓰는 숫자면 선형</b>입니다. 이미지 편집기는 색을 sRGB로 저장하지만, 노멀 맵이나 거칠기 맵의 값은 방향·비율 같은 숫자라서 처음부터 선형입니다. 숫자 텍스처를 sRGB로 풀면 값이 어두운 쪽으로 휘어서 노멀 방향이나 거칠기가 틀어집니다(7장 E5).</p>
+<table>
+<tr><th>텍스처</th><th>공간</th><th>이유·코드</th></tr>
+<tr><td>알베도(base color)</td><td>sRGB (재질의 <code>albedoSrgb</code>, 기본 true)</td><td>색. glTF 규격도 sRGB로 정의하고 <code>GltfImporter.cpp</code> 가 true로 넣음</td></tr>
+<tr><td>발광(emissive)</td><td>sRGB</td><td>색</td></tr>
+<tr><td>반사 색(specularColor, KHR_materials_specular)</td><td>sRGB</td><td>색</td></tr>
+<tr><td>노멀, 코팅 노멀</td><td>선형</td><td>방향 벡터</td></tr>
+<tr><td>금속성·거칠기, AO, specular(A 채널), 클리어코트 세기·거칠기, 투과</td><td>선형</td><td>비율</td></tr>
+<tr><td>8비트 큐브맵(스카이박스)</td><td>sRGB</td><td>색. <code>TextureCache::LoadCube</code> 가 <code>LoadCubeFromFile(path, true, true, …)</code> 로 읽음 (<a href="../overview/rendering-analysis.html#c12-14">rendering-analysis 12.14</a>)</td></tr>
+<tr><td>float DDS, BC6H (HDR 환경맵)</td><td>선형, <code>R16G16B16A16_FLOAT</code></td><td>부동소수점 데이터는 이미 선형. 라벨을 붙이지 않음</td></tr>
+<tr><td>BRDF LUT</td><td>선형</td><td>데이터. <code>Renderer.cpp</code> 의 환경 바인딩이 <code>Load2D(environment.brdfLut, false, …)</code></td></tr>
+<tr><td>내장 흰색, 평평한 노멀</td><td>선형</td><td>흰색 1.0은 어느 공간이든 1.0</td></tr>
+<tr><td>게임 UI 텍스처, 에디터 썸네일</td><td>UNORM (풀지 않음)</td><td>감마 공간에서 그대로 섞어 UNORM 뷰에 씀</td></tr>
+</table>
+<p>재질 칸별 결정은 모두 <code>Renderer::GetOrCreateGpuMaterial</code>의 <code>Load2D(이름, srgb, scene)</code> 호출에 모여 있습니다. 정점 색, <code>Material::baseColor</code>, 조명 색, <code>Scene::clearColor</code> 같은 숫자 입력은 변환 없이 선형으로 씁니다. glTF 규격도 <code>baseColorFactor</code>를 선형 계수로 정의합니다.</p>
+
+<h3>4-1. 로더는 바이트를 바꾸지 않고 라벨만 붙인다</h3>
+<p><code>TextureLoader.cpp</code> 의 <code>FinishImage</code>는 파일에 든 바이트(sRGB로 인코딩된 값)를 그대로 두고, 포맷 라벨만 <code>R8G8B8A8_UNORM_SRGB</code>나 <code>R8G8B8A8_UNORM</code>으로 붙입니다. WIC로 읽을 때도 <code>WIC_FLAGS_IGNORE_SRGB</code>를 줘서 파일의 색공간 메타데이터가 포맷을 바꾸지 못하게 하고, 라벨은 재질 쪽에서 정합니다.</p>
+<div class="box warn"><b>처음 구현 때 밟은 함정.</b> DirectXTex의 <code>Convert</code>로 UNORM → UNORM_SRGB를 하면 "선형 값을 sRGB로 인코딩"하는 변환이 일어납니다. 그 결과 128 회색이 188이 되었고 화면에서도 188로 읽혔습니다. 회색 128 검증(7장 E1)이 없었다면 "조금 밝다" 정도로 지나갔을 오류입니다. 그래서 이미 <code>_SRGB</code>인 DDS는 먼저 <code>OverrideFormat(MakeLinear(...))</code>로 라벨을 떼고, 포맷 변환은 UNORM끼리만 합니다.</div>
+<p>색인지 데이터인지는 이미지가 아니라 재질이 압니다. 같은 이미지가 한 재질에서는 색, 다른 재질에서는 데이터일 수 있습니다. 그래서 해석은 재질과 텍스처가 만나는 <code>Renderer::GetOrCreateGpuMaterial</code>에서 정하고, <code>TextureCache</code>는 색공간별로 캐시를 따로 둡니다(<code>m_2d[srgb ? 1 : 0]</code>).</p>
+
+<h3>4-2. 밉맵은 선형에서 평균 낸다</h3>
+<p>밉맵은 텍셀 넷을 하나로 평균 냅니다. 평균은 빛의 세기를 섞는 계산이라 선형에서 해야 합니다. sRGB 텍스처는 <code>GenerateMipMaps</code>에 <code>TEX_FILTER_SRGB</code>(= <code>SRGB_IN | SRGB_OUT</code>)를 줘서 풀고, 평균 내고, 다시 인코딩합니다. 1-2 표의 체커 예처럼 인코딩 값으로 평균 내면 멀리 있는 바닥이 어두워집니다. 밉을 CPU에서 만드는 이유는 D3D12에 D3D11의 <code>GenerateMips</code> 같은 기능이 없기 때문입니다.</p>
+
+<h3>4-3. BC7 변환본도 색공간별로 만든다</h3>
+<p>임포트 파이프라인(<code>TextureImporter.cpp</code> 의 <code>Build</code>)은 sRGB 텍스처를 <code>BC7_UNORM_SRGB</code>로, 데이터 텍스처를 <code>BC7_UNORM</code>으로 압축합니다. 다만 로더(4-1)와 길이 다릅니다. 로더는 WIC 메타데이터를 무시하고 라벨만 붙이지만, 임포트는 sRGB 텍스처를 <code>WIC_FLAGS_DEFAULT_SRGB</code>로 읽고 작업 포맷을 <code>R8G8B8A8_UNORM_SRGB</code>로 둡니다. 그리고 포맷 변환(<code>Convert</code>)·밉 생성에 <code>TEX_FILTER_SRGB</code>를, 압축(<code>Compress</code>)에 <code>TEX_COMPRESS_SRGB_IN</code>을 줘서 DirectXTex가 처음부터 끝까지 바이트를 sRGB로 인코딩된 값으로 다루게 합니다. 데이터 텍스처는 같은 자리에 <code>WIC_FLAGS_IGNORE_SRGB</code>·<code>TEX_FILTER_DEFAULT</code>가 들어갑니다. 캐시 키에 sRGB 여부가 들어가므로 같은 원본을 색과 데이터로 둘 다 쓰면 변환본이 두 개 생깁니다. 게임 빌드(<code>GameBuilder.cpp</code> 의 <code>kTextureSlots</code>)는 재질 칸별 색공간을 <code>GetOrCreateGpuMaterial</code>과 똑같이 맞춰야 합니다.</p>
+
+<h3>4-4. G-buffer의 색 채널은 sRGB로 저장한다</h3>
+<p>디퍼드 G-buffer에서 GB0(albedo + AO)와 GB2(F0 + 거칠기)는 <code>R8G8B8A8_UNORM_SRGB</code>입니다(<code>Shaders/GBuffer.hlsli</code> 머리 주석, <code>RendererDeferred.cpp</code>). 선형 값을 8비트에 그대로 담으면 어두운 쪽 단계가 모자라 1-1의 계단 문제가 생깁니다. 예를 들어 비금속의 F0 0.04는 선형 8비트로는 10번째 단계라 한 단계가 값의 약 10%나 되지만, sRGB로는 56번째 단계라 훨씬 촘촘합니다. <span class="tag chk">계산값</span> 쓸 때 인코딩하고 읽을 때 푸는 일은 하드웨어가 합니다.</p>
+<p>GB3(금속성·F90·클리어코트·코팅 거칠기)는 비율 값이라 <code>R8G8B8A8_UNORM</code>입니다. RT와 SRV를 겸하는 UNORM 텍스처는 TYPELESS로 만들어지므로(5-2), G-buffer 패스는 <code>srgbView = false</code>로 UNORM RTV를 골라야 합니다. 켜면 금속성이 감마 인코딩된 채 저장됩니다.</p>
+</section>
+
+<section id="formats">
+<h2>5. 포맷과 뷰</h2>
+<h3>5-1. 백버퍼는 UNORM, sRGB는 뷰로</h3>
+<p>스왑체인은 flip 모델(<code>DXGI_SWAP_EFFECT_FLIP_DISCARD</code>)이고, flip 모델은 <code>_SRGB</code> 백버퍼 포맷을 받지 않습니다. 그래서 백버퍼는 <code>R8G8B8A8_UNORM</code>으로 만들고, 인코딩이 필요하면 같은 백버퍼에 <code>R8G8B8A8_UNORM_SRGB</code> RTV를 따로 만듭니다. 백버퍼에만 허용되는 예외입니다. 게임 모드에서는 톤 패스가 이 sRGB RTV로, UI 패스가 UNORM RTV로 씁니다.</p>
+
+<h3>5-2. 에디터 씬 뷰 텍스처: TYPELESS 하나에 뷰 두 개</h3>
+<p>에디터의 씬 뷰와 카메라 미리보기는 톤 패스 결과를 텍스처에 그린 뒤 ImGui 창에 그림으로 띄웁니다. 이때 요구가 둘입니다.</p>
+<ul>
+<li><b>그릴 때</b>: 선형 결과를 sRGB로 인코딩해야 하므로 sRGB RTV가 필요합니다.</li>
+<li><b>ImGui가 읽을 때</b>: 이미 인코딩된 바이트를 그대로 백버퍼(UNORM 뷰)로 옮겨야 하므로 UNORM SRV가 필요합니다. sRGB SRV로 읽으면 선형으로 풀리고, ImGui가 그 값을 UNORM 뷰에 쓰면 인코딩이 빠져서 어두워집니다.</li>
+</ul>
+<p>한 리소스에 포맷이 다른 뷰를 두려면 리소스를 <code>R8G8B8A8_TYPELESS</code>로 만들어야 합니다. 두 백엔드의 <code>CreateTexture</code>는 "RT + SRV 겸용 <code>R8G8B8A8_UNORM</code>" 요청을 보면 자동으로 TYPELESS로 만듭니다(<code>colorRtAndSrv</code>). 패스는 <code>RenderPassDesc</code> 색 첨부의 <code>srgbView</code>로 RTV를 고르고, 뷰는 처음 요청할 때 만듭니다.</p>
+
+<h3>5-3. D3D12 PSO의 RTV 포맷은 뷰 포맷과 같아야 한다</h3>
+<p>D3D12는 PSO를 만들 때 <code>RTVFormats</code>를 고정하고, 실제로 묶은 RTV의 <b>뷰 포맷</b>(리소스 포맷이 아님)과 다르면 오류를 냅니다. D3D11은 이 값을 보지 않아서 D3D11에서만 확인하면 숨어 있다가 D3D12에서 드러납니다. 지금 PSO들의 RTV 포맷은 이렇습니다.</p>
+<table>
+<tr><th>PSO</th><th><code>rtvFormats[0]</code></th></tr>
+<tr><td>메인(포워드), 스카이, 파티클, 디퍼드 라이팅, HDR 후처리</td><td><code>R16G16B16A16_FLOAT</code></td></tr>
+<tr><td>톤 패스</td><td><code>srgbOutput ? R8G8B8A8_UNORM_SRGB : R8G8B8A8_UNORM</code></td></tr>
+<tr><td>UI</td><td><code>R8G8B8A8_UNORM</code></td></tr>
+<tr><td>SSAO</td><td><code>R8_UNORM</code></td></tr>
+</table>
+</section>
+
+<section id="code">
+<h2>6. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>재질 칸별 색공간</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::GetOrCreateGpuMaterial</code></td><td>텍스처 칸마다 <code>Load2D(이름, srgb)</code>. 4장 표의 근거</td></tr>
+<tr><td>색공간별 캐시</td><td><code>Graphics/TextureCache.cpp</code> 의 <code>TextureCache::Load2D</code></td><td><code>m_2d[srgb]</code> 두 맵. 내장 <code>builtin:gray128</code>(감마 검증)·체커·흰색</td></tr>
+<tr><td>라벨 붙이기·밉</td><td><code>Graphics/TextureLoader.cpp</code> 의 <code>FinishImage</code></td><td>바이트 그대로, 라벨만. <code>TEX_FILTER_SRGB</code> 밉. HDR은 FP16, BC는 압축 그대로</td></tr>
+<tr><td>BC7 변환본</td><td><code>Graphics/TextureImporter.cpp</code> 의 <code>Build</code></td><td><code>BC7_UNORM(_SRGB)</code>, <code>TEX_COMPRESS_SRGB_IN</code></td></tr>
+<tr><td>glTF 색공간</td><td><code>Graphics/Import/GltfImporter.cpp</code></td><td><code>albedoSrgb = true</code>, 계수는 선형 그대로</td></tr>
+<tr><td>G-buffer 포맷</td><td><code>Graphics/RendererDeferred.cpp</code>, <code>Shaders/GBuffer.hlsli</code></td><td>GB0·GB2 <code>_SRGB</code>, GB1 FP16, GB3 UNORM(<code>srgbView = false</code>)</td></tr>
+<tr><td>톤 패스와 인코딩</td><td><code>Shaders/TonemapPixelShader.hlsl</code> 의 <code>PS_Tonemap</code>, <code>Graphics/Renderer.cpp</code> 의 <code>Renderer::GetTonemapPipeline</code>, <code>Graphics/RendererPost.cpp</code></td><td>노출·ACES 뒤 선형 출력, sRGB RTV가 인코딩. 디버그 뷰는 <code>saturate</code>만</td></tr>
+<tr><td>sRGB 출력 스위치</td><td><code>Graphics/Renderer.h</code> 의 <code>RenderSettings::srgbOutput</code>, <code>Editor/EditorApp.cpp</code>(F5), <code>Editor/DebugUI.cpp</code></td><td>톤 패스 RTV만 바꿈</td></tr>
+<tr><td>TYPELESS 규칙</td><td><code>RHI/D3D11/D3D11Device.cpp</code>·<code>RHI/D3D12/D3D12Device.cpp</code> 의 <code>CreateTexture</code></td><td><code>colorRtAndSrv</code>면 TYPELESS. sRGB RTV + UNORM SRV</td></tr>
+<tr><td>스왑체인</td><td><code>D3D11Device::InitDirect3D</code>, <code>D3D12Device::InitSwapChain</code></td><td>flip 모델, <code>R8G8B8A8_UNORM</code></td></tr>
+<tr><td>UI 경로</td><td><code>Graphics/RendererTargets.cpp</code> 의 <code>Renderer::BeginUIPass</code>, <code>Graphics/RendererUI.cpp</code> 의 <code>Renderer::RenderCanvasPass</code></td><td>UNORM 뷰에 감마 공간으로 덧그림</td></tr>
+<tr><td>감마 검증 재질</td><td><code>Editor/EditorApp.cpp</code> 의 <code>GrayCard128</code>, <code>Shaders/BasicPixelShader.hlsl</code> 의 unlit 분기</td><td>조명 없이 알베도를 그대로 출력</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>7. 실험</h2>
+<p>에디터에서 바로 해 볼 수 있는 것부터 적었습니다. 코드를 잠깐 바꾸는 실험(E5)은 확인한 뒤 되돌립니다.</p>
+
+<h3>E1. 회색 카드 128 <span class="tag ok">확인함 (2026-09-23)</span></h3>
+<p>데모 씬의 <code>GrayCard128</code>(텍스처 <code>builtin:gray128</code>, unlit)을 화면에서 찍어 픽셀 값을 읽습니다. 텍스처 128 → 선형 0.216으로 풀림 → sRGB RTV가 다시 128로 인코딩하는 왕복이 맞는지 보는 실험입니다. <b>지금 할 때 주의</b>: HDR 전환 뒤에는 unlit 픽셀도 톤 패스의 노출·ACES를 거칩니다. 환경 패널에서 톤매핑이 켜져 있으면 끄고 노출을 1로 둡니다.</p>
+<table>
+<tr><th>측정 지점</th><th>선형 값</th><th>sRGB 켬</th><th>sRGB 끔 (F5)</th></tr>
+<tr><td>회색 카드 (텍스처 128, unlit)</td><td>0.216</td><td>128</td><td>55</td></tr>
+<tr><td>배경 R·G (당시 클리어 0.1)</td><td>0.1</td><td>89</td><td>25</td></tr>
+<tr><td>배경 B (당시 클리어 0.3)</td><td>0.3</td><td>149</td><td>76</td></tr>
+</table>
+<p>예측과 측정이 여섯 값 모두 같았고, D3D11과 D3D12의 결과도 같았습니다. 비교 그림: <a href="../images/2026-09-23-phase5-srgb-compare.png">phase5-srgb-compare.png</a>, <a href="../images/2026-09-23-phase5-srgb-off.png">phase5-srgb-off.png</a>.</p>
+
+<h3>E2. sRGB 출력 끄기 <span class="tag chk">예상</span></h3>
+<p>F5로 <code>srgbOutput</code>을 끕니다. 인코딩이 빠지므로 2장 표의 "선형 → 8비트 그대로" 값이 나옵니다. 중간 톤이 크게 어두워지고(선형 0.5가 188 대신 128로 나옴), 검정과 흰색은 그대로입니다. 어두운 영역이 뭉개져 보이는 것이 1-1의 "어두운 쪽 단계 부족"입니다.</p>
+
+<h3>E3. 노멀 디버그 뷰의 188 <span class="tag chk">계산값</span></h3>
+<p>디버그 뷰 2(노멀)에서 위를 향한 면(노멀 (0, 1, 0))은 <code>n × 0.5 + 0.5</code> = (0.5, 1, 0.5)를 출력합니다. 톤 패스는 디버그 뷰에서 <code>saturate</code>만 하고 sRGB RTV가 인코딩하므로, 화면 값은 (128, 255, 128)이 아니라 (188, 255, 188)입니다. 디버그 색을 픽셀 값으로 읽을 때는 이 인코딩을 되돌려 생각해야 합니다. rendering-analysis에도 같은 값이 적혀 있습니다.</p>
+
+<h3>E4. 밉 평균 비교 <span class="tag ok">그림 있음 (2026-09-23)</span></h3>
+<p>체커 바닥을 비스듬히 멀리까지 보면 작은 밉이 쓰입니다. 선형 평균이면 먼 바닥이 회색 약 170으로 수렴하고, 인코딩 값으로 평균 내면 135 쪽으로 어두워집니다(1-2 표의 계산값). 비교 그림: <a href="../images/2026-09-23-phase5-mip-compare.png">phase5-mip-compare.png</a>.</p>
+
+<h3>E5. 노멀 맵을 sRGB로 잘못 읽어 보기 <span class="tag chk">예상</span></h3>
+<p><code>GetOrCreateGpuMaterial</code>에서 노멀 텍스처의 <code>Load2D(..., false, ...)</code>를 잠깐 <code>true</code>로 바꿉니다. 평평한 노멀의 텍셀 (128, 128, 255)가 선형 (0.216, 0.216, 1.0)으로 풀리고, <code>2c − 1</code>로 바꾸면 (−0.57, −0.57, 1.0)이 되어 정규화 뒤 약 39° 기웁니다. <span class="tag chk">계산값</span> 노멀 맵이 있는 면 전체가 한쪽에서 빛을 받는 것처럼 기울어 보일 것입니다. 확인한 뒤 되돌립니다.</p>
+
+<h3>E6. 에디터 색 견본과 화면 색 <span class="tag chk">예상</span></h3>
+<p>unlit 재질의 Base color를 (0.5, 0.5, 0.5)로 둡니다(톤매핑 끔, 노출 1). Inspector의 ImGui 색 견본은 값을 인코딩된 숫자로 보고 128 회색을 그리지만, 씬은 0.5를 선형으로 계산해 188로 인코딩합니다. 같은 숫자인데 씬 쪽이 더 밝게 보입니다. 에디터 색 선택기가 넣는 값은 변환 없이 선형으로 쓰인다는 뜻입니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>8. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>물 빠진 듯 밝고 대비가 약함</td><td>이중 인코딩 (이미 sRGB인 값을 다시 인코딩)</td><td>DirectXTex <code>Convert</code>의 128 → 188 (4-1). ImGui를 sRGB RTV에 그리면 같은 문제가 생겨서 UI 패스는 UNORM 뷰를 씀</td></tr>
+<tr><td>어둡고 대비가 강함</td><td>인코딩 누락, 또는 인코딩된 값을 한 번 더 풂</td><td>F5 끔(의도된 비교용), 씬 뷰 텍스처를 sRGB SRV로 읽는 경우(5-2)</td></tr>
+<tr><td>노멀 맵 조명이 한쪽으로 기움, 거칠기가 이상함</td><td>데이터 텍스처를 sRGB로 읽음</td><td>노멀·금속성·거칠기·AO는 항상 <code>srgb = false</code> (E5)</td></tr>
+<tr><td>멀리 갈수록 텍스처가 어두워짐</td><td>밉을 인코딩 값으로 평균</td><td><code>TEX_FILTER_SRGB</code> (4-2)</td></tr>
+<tr><td>D3D12에서만 PSO 오류</td><td>PSO RTV 포맷 ≠ 묶은 뷰의 포맷</td><td>톤 PSO 두 개, UI PSO는 UNORM (5-3)</td></tr>
+<tr><td>감마 검증이 128로 안 나옴</td><td>HDR 이후 unlit도 톤 패스를 거침</td><td>톤매핑 끄고 노출 1에서 측정 (E1)</td></tr>
+<tr><td>클리어 색이 지정한 숫자보다 밝음</td><td>클리어 색은 선형 값이라 인코딩됨</td><td>0.1 → 89. HDR 타깃을 클리어하므로 톤매핑·노출도 적용됨</td></tr>
+<tr><td>게임 UI의 반투명 경계 색이 씬 블렌딩과 다름</td><td>UI는 감마 공간에서 섞음</td><td>의도된 선택. 디자인 도구(포토샵·피그마)에서 고른 색과 반투명 겹침이 그대로 나오게 하고, ImGui와도 같은 방식 (<a href="../plan/ui-canvas-plan.html#d-table">UI 캔버스 계획 3.2</a>)</td></tr>
+<tr><td>스크린샷으로 HDR 값을 확인할 수 없음</td><td>백버퍼는 인코딩된 8비트</td><td>1을 넘는 값은 디버그 뷰나 톤매핑 끈 화면으로 간접 확인</td></tr>
+</table>
+<div class="box warn"><b>낡은 서술 주의.</b> <a href="../overview/rendering-analysis.html#c12">rendering-analysis</a>의 일부 문장은 HDR 전환(2026-10-23) 전 구조로 남아 있습니다. 예를 들어 4장의 <code>RenderMainPass</code> 설명과 6장 PSO 예시 코드는 메인 패스가 <code>srgbView = m_settings.srgbOutput</code>, <code>rtvFormats[0] = srgbOutput ? …_SRGB : …</code>로 그린다고 적혀 있습니다. 지금 코드는 이 문서 3장의 구조입니다.</div>
+</section>
+
+<section id="study">
+<h2>9. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>선형 값과 인코딩된 값</td><td>왜 8비트에 비선형 인코딩을 쓰고 계산은 선형으로 하는가</td><td>1-1, 1-2</td></tr>
+<tr><td>sRGB 전달 함수와 감마 2.2</td><td>구간별 식, 0.04045·0.0031308 경계, 128 ↔ 0.216</td><td>2</td></tr>
+<tr><td><code>_SRGB</code> 포맷의 하드웨어 변환</td><td>필터링 전 디코딩, 블렌딩 전후 변환, 알파 제외, 라벨이라는 성질</td><td>2-1</td></tr>
+<tr><td>HDR 타깃과 인코딩 위치</td><td>FP16에 sRGB가 없는 이유, 톤 패스에서 한 번만 인코딩</td><td>3-1</td></tr>
+<tr><td>색 텍스처와 데이터 텍스처</td><td>어느 텍스처를 sRGB로 읽는가</td><td>4</td></tr>
+<tr><td>선형 공간 밉맵</td><td>풀고 → 평균 → 인코딩</td><td>4-2</td></tr>
+<tr><td>TYPELESS와 뷰 포맷</td><td>한 리소스에 sRGB RTV와 UNORM SRV, flip 모델 제약</td><td>5-1, 5-2</td></tr>
+<tr><td>감마 공간 블렌딩</td><td>UI가 왜 일부러 감마 공간에서 섞는가</td><td>3장 6단계, 8</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>LearnOpenGL, <a href="https://learnopengl.com/Advanced-Lighting/Gamma-Correction">Gamma Correction</a> — 감마와 sRGB 텍스처를 그림으로 설명. 1~2장의 입문용</li>
+<li>GPU Gems 3, 24장 <a href="https://developer.nvidia.com/gpugems/gpugems3/part-iv-image-effects/chapter-24-importance-being-linear">The Importance of Being Linear</a> — 선형으로 계산해야 하는 이유와 밉·블렌딩 오차. 1-2와 4-2</li>
+<li>Microsoft Learn, <a href="https://learn.microsoft.com/windows/win32/direct3ddxgi/converting-data-color-space">Converting data for the color space</a> — DXGI <code>_SRGB</code> 포맷의 변환 규칙. 2-1</li>
+<li>Real-Time Rendering 4판, 5.6절 Display Encoding — 전달 함수와 감마의 이론</li>
+<li>우리 문서: <a href="../overview/rendering-analysis.html#c12">rendering-analysis 12장</a>(텍스처와 색공간, 12.5 회색 128 검증, 12.7 로더 함정), <a href="../plan/texture-pipeline-record.html">텍스처 파이프라인 기록</a>(BC7), <a href="../plan/hdr-tonemapping-record.html">HDR 기록</a>(인코딩 자리 이동), <a href="../overview/glossary.html#graphics">용어집 3장</a>(sRGB, 감마 공간 블렌딩)</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

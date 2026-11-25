@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 한 프레임의 구조 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>한 프레임의 구조 학습 문서</h1>
+  <p>엔진 루프에서 Present까지 — 우리 렌더러가 한 프레임에 무엇을 어떤 순서로 하고, 각 단계 문서가 그 안의 어디에 붙는가</p>
+  <p>2026-11-25 · 다른 공부 문서들을 이어 주는 지도 문서입니다. 프레임 흐름은 지금까지 <a href="../overview/rendering-analysis.html#c4">rendering-analysis 4장</a>(메시지 펌프에서 Present까지)과 <a href="../overview/rendering-analysis.html#c14">14장</a>(드로우 목록·씬 타깃·디버그 뷰)에 있었습니다. 두 장은 HDR·디퍼드·후처리가 들어오기 전 구조(<code>RenderMainPass</code>, 백버퍼에 바로 그리는 메인 패스)를 많이 남기고 있어서, 이 문서는 지금 코드를 기준으로 처음부터 다시 정리합니다. 단계 하나하나의 원리는 단계별 문서로 넘기고, 여기서는 순서·소유·수명만 다룹니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1장은 왜 프레임 지도가 필요한가, 2장은 엔진 루프(시간·고정 스텝·에디터와 게임), 3장은 <code>Engine::Render</code>, 4장은 뷰와 <code>ViewTarget</code>, 5장은 프레임 준비, 6장은 드로우 목록, 7장은 패스 순서(이 문서의 중심 그림), 8장은 프레임 단위와 뷰 단위의 구분, 9장은 디버그 뷰·통계·프로파일러, 10장은 자동화 인자, 11장은 코드 지도, 12장은 실험, 13장은 함정과 한계, 14장은 공부할 개념과 참고 문서입니다. 단계마다 두세 문장과 해당 문서 링크만 두었습니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 메모리 크기와 슬롯 수는 코드의 포맷·상수로 계산한 값입니다 <span class="tag chk">계산값</span>. 이 문서를 쓰면서 새로 잰 시간은 없습니다. 패스별 시간은 실험(12장)에서 직접 재 보도록 적었고, 결과를 예상한 곳에는 <span class="tag chk">예상</span>을 붙였습니다.</div>
+</header>
+<nav><a href="#why">1. 왜 지도가 필요한가</a><a href="#loop">2. 엔진 루프</a><a href="#engine">3. Engine::Render</a><a href="#views">4. 뷰와 ViewTarget</a><a href="#prepare">5. 프레임 준비</a><a href="#drawlist">6. 드로우 목록</a><a href="#passes">7. 패스 순서</a><a href="#scope">8. 프레임 단위와 뷰 단위</a><a href="#debug">9. 디버그·통계·프로파일러</a><a href="#auto">10. 자동화 인자</a><a href="#code">11. 코드 지도</a><a href="#lab">12. 실험</a><a href="#pitfalls">13. 함정과 한계</a><a href="#study">14. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 한 프레임의 지도가 필요한가</h2>
+<p>렌더러 기능은 대부분 "앞 단계가 남긴 텍스처를 읽어서 다음 텍스처를 쓰는" 단계로 붙습니다. SSAO는 G-buffer 패스가 쓴 깊이와 노멀을 읽고, TAA는 씬 패스가 쓴 속도 버퍼를 읽고, 톤 패스는 후처리가 끝난 HDR 텍스처를 읽습니다. 단계 하나를 따로 공부하면 그 단계가 무엇을 하는지는 알 수 있지만, 다음 질문에는 답하기 어렵습니다.</p>
+<ul>
+<li>이 텍스처는 누가 만들고, 언제 다시 만들고, 누가 마지막으로 읽는가.</li>
+<li>이 상수(b0 카메라, b12 SSAO)는 프레임에 한 번 올리는가, 뷰마다 올리는가.</li>
+<li>디버그 선이나 반투명 물체가 후처리를 거치는가, 거치지 않는가.</li>
+<li>카메라 미리보기를 켜면 무엇이 두 번 돌고 무엇이 한 번만 도는가.</li>
+</ul>
+<p>상용 엔진은 이런 정보를 <b>렌더 그래프</b>(패스가 읽고 쓰는 리소스를 선언하면 엔진이 순서·배리어·메모리 재사용을 정함)에 모아 둡니다. 우리 엔진에는 렌더 그래프가 없습니다. 순서는 <code>Renderer::Render</code>와 <code>RenderScenePass</code>의 코드 순서이고, 상태 전이는 패스마다 직접 부르는 <code>cmd.Barrier</code>이며, 텍스처 수명은 <code>CreateViewTarget</code>·<code>DestroyViewTarget</code>이 손으로 관리합니다. 그래서 이 지도는 그 코드 순서를 한 장에 펼친 것입니다(7장 그림 2).</p>
+</section>
+
+<section id="loop">
+<h2>2. 엔진 루프 — 메시지에서 Render까지</h2>
+<p><code>AppBase::Run</code>은 <code>PeekMessage</code> 루프입니다. 큐에 메시지가 있으면 하나를 처리하고 다시 돌고, 큐가 비었을 때만 한 프레임을 진행합니다. 한 프레임은 다음 순서입니다.</p>
+<table>
+<tr><th>순서</th><th>호출</th><th>하는 일</th></tr>
+<tr><td>1</td><td><code>Engine::BeginFrame</code></td><td><code>Time::Tick</code>(dt 계산), <code>Profiler::BeginFrame</code>(지난 프레임 CPU 구간과 몇 프레임 전 GPU 결과를 넘김), ImGui 렌더러 백엔드 새 프레임</td></tr>
+<tr><td>2</td><td><code>Input::PollGamepad</code>, <code>ImGui::NewFrame</code></td><td>게임패드는 메시지가 없어 프레임마다 읽음. ImGui 프레임을 Update보다 먼저 열어 <code>WantCaptureMouse</code> 같은 값이 이번 프레임 것이 되게 함. 게임 런타임에는 ImGui 프레임이 없음</td></tr>
+<tr><td>3</td><td><code>while (ConsumeFixedStep()) OnFixedUpdate</code>, <code>OnUpdate(dt)</code></td><td>고정 스텝 0~8번, 그다음 가변 스텝 한 번. 프로파일러 구간 <code>Update</code></td></tr>
+<tr><td>4</td><td><code>OnGUI</code>, <code>ImGui::Render</code></td><td>에디터 창 전부. 씬 창 크기를 재서 <code>Renderer::SetSceneTarget</code>, 카메라 미리보기 크기를 <code>SetPreviewTarget</code>으로 넘김. ImGui는 그리기 목록만 만들고 GPU 명령은 아직 없음</td></tr>
+<tr><td>5</td><td><code>Engine::Render</code></td><td>3장. 렌더러 전체 + ImGui 패스 + Present</td></tr>
+<tr><td>6</td><td><code>Engine::EndFrame</code></td><td><code>Input::EndFrame</code>: Pressed·Released 판정용 이전 상태를 넘기고 마우스 델타를 비움</td></tr>
+</table>
+
+<h3>2-1. 시간: 클램프된 dt와 고정 스텝</h3>
+<p><code>Time::Tick</code>은 원래 dt를 <code>maxDeltaTime = 0.25</code>초로 자릅니다. 디버거 정지나 창 이동 뒤에 생기는 큰 dt가 물리·애니메이션을 한 번에 멀리 보내지 않게 하려는 것입니다. 잘린 dt는 누적기에 더해지고, <code>ConsumeFixedStep</code>이 고정 스텝(<code>engine.fixedstep</code>, 기본 1/60초)만큼 꺼내 씁니다. 한 프레임에 최대 <code>maxFixedStepsPerFrame = 8</code>번까지만 돌고, 그래도 남으면 누적기를 0으로 버립니다(죽음의 나선 방지). 그래서 고정 스텝으로 따라잡을 수 있는 최대 시간은 프레임당 8 × 1/60 ≈ 0.133초입니다 <span class="tag chk">계산값</span>. FPS 표시는 원래 dt로 0.5초 구간 평균을 냅니다.</p>
+<p>렌더러도 이 dt를 받습니다. <code>Engine::Render</code>가 <code>Renderer::SetFrameDeltaTime(Time::GetDeltaTime())</code>을 부르고, 모션 블러가 기준 fps로 길이를 맞출 때 씁니다(<a href="../study/motion-blur-study.html">모션 블러 문서</a>). 시간 배율 적용 전 값입니다.</p>
+
+<h3>2-2. 에디터와 게임의 차이</h3>
+<table>
+<tr><th></th><th>에디터 (<code>EditorApp</code>)</th><th>게임 (<code>GameApp</code>)</th></tr>
+<tr><td>FixedUpdate</td><td>재생 중일 때만 <code>Scene::FixedUpdate(fixedDt × m_timeScale)</code></td><td>항상 <code>Scene::FixedUpdate(fixedDt)</code></td></tr>
+<tr><td>Update</td><td>자동화(<code>RunAutomation</code>), 스크립트 DLL 감시, 에디터 카메라, F1~F12 단축키. 재생 중이면 <code>Scene::Update(dt × m_timeScale)</code>(<code>--frame-dt</code>가 있으면 dt 대신 그 값을 쓰고, 그 값에도 <code>m_timeScale</code>을 곱함). Step 버튼은 고정 스텝 한 번만 진행</td><td><code>Scene::Update(dt)</code></td></tr>
+<tr><td>GUI</td><td>도킹 공간, 씬 창, 계층, 인스펙터, 통계, 콘솔</td><td>없음</td></tr>
+<tr><td>메인 뷰 출력</td><td>씬 창 크기의 오프스크린 텍스처(<code>ViewTarget::color</code>)</td><td>백버퍼에 바로 (색 텍스처 없음)</td></tr>
+<tr><td>카메라</td><td>에디터 카메라. 재생 중 활성 카메라가 있으면 <code>Scene::ApplyActiveCamera</code>가 그 자세를 적용</td><td>활성 카메라</td></tr>
+</table>
+<p>에디터에는 유니티의 Game 창 같은 별도 게임 뷰가 없습니다. 재생 중에도 같은 씬 창(메인 뷰)이 활성 카메라 시점을 보여 주고, 카메라 오브젝트를 선택했고, 그 카메라가 재생 중(일시 정지 포함)의 활성 카메라가 아니며, 씬 창이 240×160 이상일 때만 작은 미리보기 뷰가 하나 더 생깁니다(<code>Editor::DrawCameraPreview</code>, 4장).</p>
+</section>
+
+<section id="engine">
+<h2>3. Engine::Render — 프레임 하나의 뼈대</h2>
+<p><code>Engine::Render</code>는 렌더러를 부르기 전후의 일을 맡습니다. GPU 프로파일러 구간 <code>Frame</code>이 렌더러 전체와 UI 패스를 감쌉니다.</p>
+<ol>
+<li><code>Device::BeginFrame</code> — D3D12는 이번 프레임 슬롯(<code>kFrameCount = 2</code>, <code>m_frameCounter % 2</code>)을 마지막으로 쓴 프레임의 펜스를 기다린 뒤, 그 슬롯의 지연 해제 목록·타임스탬프·업로드 링을 정리하고 명령 할당자와 명령 목록을 리셋합니다. 그래서 CPU가 기록하는 프레임과 GPU가 실행 중인 프레임이 겹칠 수 있고, 슬롯 두 개가 그 거리의 상한입니다. 동기화 자체는 <a href="../study/gpu-sync-study.html">GPU 동기화 문서</a>에서 다룹니다.</li>
+<li>스킨 기본 자세 채우기(<code>ApplyRestSkinPoses</code>)와 본 디버그 선(<code>DrawSkeletonDebug</code>)을 <code>DebugDraw</code>에 쌓습니다.</li>
+<li><code>Scene::ConsumeCameraCut</code>이 참이면 <code>Renderer::ResetTemporalHistory</code> — 카메라 컷 뒤에는 속도·TAA의 지난 프레임이 다른 카메라 것이라 버립니다.</li>
+<li>게임 UI 빌드(<code>UISystem::Build</code>, CPU 구간 <code>UI Build</code>). 메인 뷰와 미리보기 뷰 크기를 받아 그리기 목록만 만들고, 업로드와 그리기는 렌더러 안에서 합니다.</li>
+<li><code>Renderer::Render</code> — 5~7장의 전부. 끝나면 <code>DebugDraw::Clear</code>(일찍 끝나는 프레임에도 선이 다음 프레임으로 새지 않게).</li>
+<li>UI 패스: <code>BeginUIPass</code>(백버퍼 UNORM 뷰, 깊이 없음) → <code>RenderImGui</code> → <code>EndUIPass</code>(백버퍼를 Present 상태로).</li>
+<li>스크린샷 요청이 있으면 <code>RequestBackBufferReadback</code>, <code>Device::EndFrame</code>(제출·Present, CPU 구간 <code>Present</code>), 그 뒤 리드백 결과를 PNG로 저장.</li>
+</ol>
+<p>에디터의 씬 창 이미지는 2장 표 4번의 <code>OnGUI</code>에서 이미 <code>ImGui::Image</code>로 예약되지만, 실제로 텍스처를 그리는 것은 같은 프레임의 <code>Renderer::Render</code>이고 ImGui가 그 텍스처를 읽는 것은 그 뒤의 UI 패스입니다. 명령 목록 안의 순서가 "씬 → ImGui"이므로 씬 창은 이번 프레임 결과를 보여 줍니다.</p>
+</section>
+
+<section id="views">
+<h2>4. 뷰와 ViewTarget</h2>
+<p>"뷰"는 카메라 하나로 장면을 그리는 단위입니다. 지금 렌더러에는 뷰가 두 개뿐입니다.</p>
+<table>
+<tr><th>뷰</th><th>멤버</th><th>만드는 곳</th><th>크기</th><th>출력</th></tr>
+<tr><td>메인 (에디터)</td><td><code>m_mainView</code>, 이름 <code>SceneView</code></td><td><code>SetSceneTarget</code> (<code>Editor::DrawSceneView</code>가 매 프레임 부름)</td><td>씬 창의 남은 내용 영역</td><td><code>color</code> 텍스처 → ImGui가 UNORM SRV로 읽음</td></tr>
+<tr><td>메인 (게임)</td><td><code>m_mainView</code>, 이름 <code>Game</code></td><td><code>EnsureGameTarget</code> (<code>Render</code> 첫머리)</td><td><code>SetOutputSize</code>로 받은 백버퍼 크기</td><td>백버퍼 (색 텍스처 없음)</td></tr>
+<tr><td>카메라 미리보기</td><td><code>m_previewView</code>, 이름 <code>CameraPreview</code></td><td><code>SetPreviewTarget</code> (<code>Editor::DrawCameraPreview</code>)</td><td>씬 창 폭의 32%, 씬 창과 같은 비율</td><td><code>color</code> 텍스처</td></tr>
+</table>
+<p>두 뷰는 같은 함수(<code>CreateViewTarget</code>)로 만들어지고 같은 함수(<code>RenderScenePass</code>, <code>ApplyHdrEffects</code>, <code>RenderTonemapPass</code>, <code>RenderCanvasPass</code>)로 그려집니다. <code>Renderer.h</code>의 주석이 적어 둔 이유는 "G-buffer·SSAO 텍스처를 추가할 때 여기에 넣으면 두 뷰가 함께 받는다"는 것입니다. 깊이도 뷰가 가집니다. 게임 모드도 장치의 깊이 버퍼가 아니라 뷰의 깊이 텍스처에 그립니다.</p>
+<figure>
+<svg viewBox="0 0 920 382" role="img" aria-label="ViewTarget 이 가진 텍스처와 셋">
+  <text x="14" y="26" style="fill:var(--accent);font-weight:600">CreateViewTarget — 뷰를 만들 때 항상</text>
+  <rect x="14" y="36" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="99.0" y="55" text-anchor="middle" style="fill:var(--ink);font-weight:600">color</text><text x="99.0" y="73" text-anchor="middle">RGBA8 TYPELESS</text><text x="99.0" y="91" text-anchor="middle" style="fill:var(--ink3)">4 B/px · 에디터만</text>
+  <rect x="194" y="36" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="279.0" y="55" text-anchor="middle" style="fill:var(--ink);font-weight:600">depth</text><text x="279.0" y="73" text-anchor="middle">D24_UNORM_S8_UINT</text><text x="279.0" y="91" text-anchor="middle" style="fill:var(--ink3)">4 B/px</text>
+  <rect x="374" y="36" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="459.0" y="55" text-anchor="middle" style="fill:var(--ink);font-weight:600">hdr</text><text x="459.0" y="73" text-anchor="middle">R16G16B16A16_FLOAT</text><text x="459.0" y="91" text-anchor="middle" style="fill:var(--ink3)">8 B/px</text>
+  <rect x="554" y="36" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="639.0" y="55" text-anchor="middle" style="fill:var(--ink);font-weight:600">velocity</text><text x="639.0" y="73" text-anchor="middle">R16G16_FLOAT</text><text x="639.0" y="91" text-anchor="middle" style="fill:var(--ink3)">4 B/px</text>
+  <text x="14" y="128" style="fill:var(--accent);font-weight:600">CreateGBuffer · CreateSsaoTargets — 실패하면 포워드</text>
+  <rect x="14" y="138" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="99.0" y="157" text-anchor="middle" style="fill:var(--ink);font-weight:600">gbuffer[0]</text><text x="99.0" y="175" text-anchor="middle">RGBA8_SRGB</text><text x="99.0" y="193" text-anchor="middle" style="fill:var(--ink3)">4 B/px</text>
+  <rect x="194" y="138" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="279.0" y="157" text-anchor="middle" style="fill:var(--ink);font-weight:600">gbuffer[1]</text><text x="279.0" y="175" text-anchor="middle">RGBA16F</text><text x="279.0" y="193" text-anchor="middle" style="fill:var(--ink3)">8 B/px</text>
+  <rect x="374" y="138" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="459.0" y="157" text-anchor="middle" style="fill:var(--ink);font-weight:600">gbuffer[2]</text><text x="459.0" y="175" text-anchor="middle">RGBA8_SRGB</text><text x="459.0" y="193" text-anchor="middle" style="fill:var(--ink3)">4 B/px</text>
+  <rect x="554" y="138" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="639.0" y="157" text-anchor="middle" style="fill:var(--ink);font-weight:600">gbuffer[3]</text><text x="639.0" y="175" text-anchor="middle">RGBA8_UNORM</text><text x="639.0" y="193" text-anchor="middle" style="fill:var(--ink3)">4 B/px</text>
+  <rect x="734" y="138" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="819.0" y="157" text-anchor="middle" style="fill:var(--ink);font-weight:600">ssaoRaw · ssaoBlur</text><text x="819.0" y="175" text-anchor="middle">R8_UNORM ×2</text><text x="819.0" y="193" text-anchor="middle" style="fill:var(--ink3)">2 B/px</text>
+  <text x="14" y="230" style="fill:var(--accent);font-weight:600">효과를 처음 켤 때 — EnsurePostScratch · EnsureTaaTargets</text>
+  <rect x="14" y="240" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="99.0" y="259" text-anchor="middle" style="fill:var(--ink);font-weight:600">post.temp</text><text x="99.0" y="277" text-anchor="middle">hdr 와 같은 포맷</text><text x="99.0" y="295" text-anchor="middle" style="fill:var(--ink3)">8 B/px</text>
+  <rect x="194" y="240" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="279.0" y="259" text-anchor="middle" style="fill:var(--ink);font-weight:600">post.bloom[5]</text><text x="279.0" y="277" text-anchor="middle">1/2 … 1/32</text><text x="279.0" y="295" text-anchor="middle" style="fill:var(--ink3)">약 2.7 B/px</text>
+  <rect x="374" y="240" width="170" height="64" rx="7" style="fill:var(--paper);stroke:var(--ink3)"/><text x="459.0" y="259" text-anchor="middle" style="fill:var(--ink);font-weight:600">history[2]</text><text x="459.0" y="277" text-anchor="middle">RGBA16F ×2</text><text x="459.0" y="295" text-anchor="middle" style="fill:var(--ink3)">16 B/px</text>
+  <text x="14" y="326">셋 (뷰가 가진 텍스처를 가리킴): hdrSet · temporalSet · velocityDebugSet · particleDepthSet · particleCollideSet</text>
+  <text x="14" y="346">gbufferSet · ssaoSet · ssaoBlurSet · taaSet[2] · historyPostSet[2] · post.tempSet · post.blurComputeSets[2]</text>
+  <text x="14" y="368">상태: TemporalState temporal (지난 viewProj · lastCamera · frameIndex · historyValid · current)</text>
+</svg>
+<figcaption>그림 1. <code>ViewTarget</code> 하나가 가진 것. 위 두 줄은 뷰를 만들 때 생기고, 셋째 줄은 그 효과가 처음 켜지는 프레임에 생깁니다. 크기 변경으로 뷰를 다시 만들면 전부 버려지고, 셋째 줄은 다시 지연 생성됩니다.</figcaption>
+</figure>
+<h3>4-1. 만들기·다시 만들기·버리기</h3>
+<ul>
+<li><b>크기 변경.</b> <code>SetSceneTarget</code>·<code>SetPreviewTarget</code>은 크기가 같으면 아무것도 하지 않으므로 매 프레임 불러도 됩니다. 다르면 <code>DestroyViewTarget</code> 후 <code>CreateViewTarget</code>. 게임 모드는 <code>WM_SIZE</code> → <code>Engine::OnResize</code>(스왑체인 <code>Device::Resize</code> + <code>SetOutputSize</code>) → 다음 <code>Render</code>의 <code>EnsureGameTarget</code>이 크기를 비교해 다시 만듭니다.</li>
+<li><b>실패 처리.</b> 색·깊이·hdr·속도·셋 중 하나라도 실패하면 만든 것을 모두 지우고 거짓을 돌려줍니다. G-buffer·SSAO는 실패해도 뷰가 유효하고, 그 뷰는 포워드로 그려집니다(<code>UseDeferred</code>가 <code>HasGBuffer</code>를 봄). 블러·블룸 스크래치를 못 만들면 그 효과만 건너뛰고, TAA 히스토리를 못 만들면 그 프레임은 TAA를 건너뜁니다.</li>
+<li><b>버리는 순서.</b> <code>DestroyViewTarget</code>은 G-buffer(SSAO 포함)와 TAA 타깃을 맨 먼저 버립니다. 코드 주석이 적은 이유는 그 셋들이 깊이·속도·hdr를 가리키기 때문입니다. 후처리 스크래치(<code>DestroyPostScratch</code>)는 텍스처를 다 버린 뒤 마지막에 버리는데, 컴퓨트 블러 셋이 hdr를 가리키므로 모든 셋이 텍스처보다 먼저 버려지는 것은 아닙니다. D3D12는 지연 해제라 이미 기록된 명령(이번 프레임의 ImGui 드로우 등)이 옛 텍스처를 읽어도 안전하다고 코드 주석이 적고 있습니다.</li>
+<li><b>미리보기 끄기.</b> 이 세 조건 가운데 하나라도 빠지면(선택을 풀거나, 재생 중 그 카메라가 활성 카메라이거나, 씬 창이 240×160보다 작으면) <code>Editor::DrawCameraPreview</code>가 <code>SetPreviewTarget(0, 0)</code>으로 텍스처까지 반납합니다.</li>
+</ul>
+<h3>4-2. 뷰 하나의 메모리 <span class="tag chk">계산값</span></h3>
+<p>그림 1의 픽셀당 바이트로 1920×1080 뷰를 계산하면, 뷰를 만들 때 생기는 것(색·깊이·hdr·속도·G-buffer 4장·SSAO 2장)이 42 B/px로 약 83 MiB, 블러·블룸·TAA를 모두 켜면 스크래치(8 B)·블룸 다섯 단계(약 5.3 MiB)·히스토리 두 장(16 B)이 더해져 약 136 MiB입니다. 게임 모드는 색 텍스처가 없어 처음 값이 약 75 MiB입니다. 프레임 단위 리소스인 그림자 아틀라스 두 장(지역광 2048², CSM 2048², 둘 다 <code>D32_FLOAT</code>)은 각각 16 MiB입니다. 미리보기는 씬 창의 32% 폭이라 면적이 약 10%입니다.</p>
+</section>
+
+<section id="prepare">
+<h2>5. 프레임 준비 — Renderer::Render의 앞부분</h2>
+<p>패스를 하나라도 기록하기 전에, 이번 프레임에 필요한 상수와 GPU 리소스를 모두 준비합니다. 순서가 곧 의존 관계입니다.</p>
+<table>
+<tr><th>순서</th><th>단계</th><th>하는 일</th><th>자세히</th></tr>
+<tr><td>0</td><td>앞정리</td><td>셰이더 핫리로드 확인, 게임 모드면 <code>EnsureGameTarget</code>, 메인 뷰가 유효하지 않으면 프레임을 건너뜀. 후처리 단계 썸네일 요청 확인, <code>Stats</code> 초기화</td><td></td></tr>
+<tr><td>1</td><td><code>BuildGpuLights</code></td><td>씬의 <code>Light</code>를 GPU 배치로. 방향광을 앞으로 모음(안정 정렬)</td><td><a href="../study/clustered-lighting-study.html">클러스터드</a></td></tr>
+<tr><td>2</td><td><code>CullLights</code></td><td>조명 경계 구를 메인 카메라 절두체로 컬링 (컬링 고정 중이면 고정된 사본)</td><td><a href="../study/culling-study.html">컬링</a></td></tr>
+<tr><td>3</td><td><code>BuildShadowViews</code>, <code>UploadShadowConstants</code></td><td>조명마다 아틀라스 타일 배정, <code>shadowIndex</code> 채움, 그림자 뷰 행렬(b6, b5)</td><td><a href="../study/shadow-atlas-study.html">그림자 아틀라스</a>, <a href="../study/csm-study.html">CSM</a></td></tr>
+<tr><td>4</td><td><code>BeginResourceUploads</code></td><td>업로드 구간 시작. 이 구간에서 새로 만드는 버퍼·텍스처의 초기 복사를 묶어 한 번에 제출</td><td></td></tr>
+<tr><td>5</td><td><code>ResolveEnvironment</code></td><td>스카이박스·IBL 텍스처, 노출·톤매핑 값, 후처리 설정(<code>m_postSettings = environment.post</code>)</td><td><a href="../study/hdr-tonemapping-study.html">HDR·톤매핑</a></td></tr>
+<tr><td>6</td><td><code>UploadPerFrameConstants</code> (메인)</td><td>b0 576 B: 카메라 행렬(TAA 지터 포함), 그림자·디버그·환경·클러스터·SSAO 파라미터, 지터 없는 이번·지난 viewProj</td><td><a href="../study/taa-study.html">TAA</a>, <a href="../study/velocity-buffer-study.html">속도 버퍼</a></td></tr>
+<tr><td>7</td><td><code>UploadLights</code></td><td>b2와 t15 조명 배열</td><td></td></tr>
+<tr><td>8</td><td>클러스터</td><td>GPU 비닝이면 입력(경계 구, 뷰마다 b13 <code>ClusterBinConstants</code>, CS 전용 비닝 셋)만 올림. CPU 비닝이면 메인과 미리보기를 지금 둘 다 만들고 용량을 한 번에 맞춤</td><td><a href="../study/clustered-lighting-study.html">클러스터드</a></td></tr>
+<tr><td>9</td><td><code>UploadSsaoConstants</code></td><td>b12 (두 뷰가 같은 값)</td><td><a href="../study/ssao-study.html">SSAO</a></td></tr>
+<tr><td>10</td><td><code>BuildDrawList</code></td><td>6장</td><td></td></tr>
+<tr><td>11</td><td>그 밖의 업로드</td><td>디버그 선 정점, 파티클 이미터 버퍼·b8(<code>UpdateParticleEmitters</code>), 바다 b9(<code>UploadOceanConstants</code>), 게임 UI 정점·텍스처(<code>UploadUI</code>)</td><td><a href="../study/gpu-particles-study.html">파티클</a>, <a href="../study/ocean-gerstner-study.html">바다</a>, <a href="../study/ui-canvas-study.html">UI 캔버스</a></td></tr>
+<tr><td>12</td><td><code>EndResourceUploads</code>, <code>UpdateFrameSet</code></td><td>업로드 제출. 프레임 셋(b0, b2, t8 그림자, t9~t12 환경 …)을 꽂힌 텍스처가 바뀌거나 GPU 비닝 켜짐·꺼짐이 바뀔 때(t30·t31이 가리킬 버퍼가 달라짐, <code>m_frameSetClusterGpu</code>)만 다시 만듦</td><td><a href="../study/binding-study.html">바인딩</a></td></tr>
+</table>
+<p>CPU 프로파일러에서는 1~9가 <code>Prepare</code>, 10이 <code>BuildDrawList</code>로 보입니다(<code>BuildClusters</code>는 <code>Prepare</code> 안). 이 구조의 규칙은 코드 주석 그대로 "드로우 루프 안에서는 아무것도 만들지 않음"입니다. D3D12에서 리소스마다 GPU를 기다리지 않으려는 것이 기록된 이유입니다.</p>
+<p>그림자 뷰와 조명 컬링은 메인 카메라 기준으로 한 번만 만듭니다. 미리보기 패스는 같은 그림자 맵을 그대로 씁니다. 미리보기 카메라만 보는 곳의 지역광은 그림자 타일을 받지 못할 수 있습니다(13장).</p>
+</section>
+
+<section id="drawlist">
+<h2>6. 드로우 목록 — BuildDrawList와 DrawItems</h2>
+<p><code>BuildDrawList</code>는 프레임에 한 번, 씬 계층을 루트부터 내려가며 오브젝트마다 월드 행렬을 한 번만 구합니다. 오브젝트마다 <code>ObjectData</code>(월드, 역행렬, 경계 구, 지난 프레임 월드·팔레트 위치)를 만들고, 서브메시마다 <code>DrawItem</code>을 하나 만듭니다. 컬링은 여기서 하지 않습니다. 목록은 모든 뷰·모든 패스가 공유하고, 컬링은 패스마다 그 패스의 절두체로 다시 합니다.</p>
+<table>
+<tr><th>DrawItem 필드</th><th>뜻</th></tr>
+<tr><td><code>pipeline</code></td><td>메인(포워드) PSO. <code>GetPipelineFor</code>가 정점 포맷·미러·와이어·컬링·블렌딩·바다 비트로 캐시에서 고름</td></tr>
+<tr><td><code>shadowPipeline</code></td><td>그림자 PSO. unlit·블렌딩·바다는 빈 핸들(그림자를 만들지 않음)</td></tr>
+<tr><td><code>gbufferPipeline</code>, <code>deferred</code></td><td><code>CanUseDeferred</code>가 참인 재질(블렌딩·unlit·투과·코팅 노멀 맵이 아님)만. 디퍼드를 꺼도 만들어 둠 — 토글할 때 목록을 다시 만들지 않으려고</td></tr>
+<tr><td><code>blended</code></td><td><code>IsBlended</code> = <code>alphaBlend</code> 또는 투과. 알파 컷아웃(MASK)은 불투명으로 분류되고 셰이더의 <code>clip</code>으로 처리됨</td></tr>
+</table>
+<p><code>Pass_*</code>(<code>Pass_Main</code>, <code>Pass_GBuffer</code>, <code>Pass_Shadow</code> …)는 실행 단계 이름이 아니라 PSO 설명의 틀(<code>m_passDesc</code>)입니다. 셰이더·셋 레이아웃·래스터·블렌드의 기본값을 정하고, <code>GetPipelineFor</code> 같은 함수가 재질에 맞게 고쳐 실제 PSO를 만듭니다(<a href="../study/rhi-pso-study.html">RHI·PSO 문서</a>).</p>
+<h3>6-1. 정렬 키</h3>
+<p>목록은 <code>blended</code> → PSO 번호 → 재질 주소 → 메시 주소 → <code>indexStart</code> 순으로 한 번 정렬됩니다. 불투명이 앞, 블렌딩이 뒤입니다. 같은 PSO·재질·메시가 연속되면 <code>DrawItems</code>가 "직전 상태"와 비교해 <code>SetPipelineState</code>·<code>SetResourceSet</code>·정점 버퍼 바인딩을 건너뜁니다. 블렌딩 항목은 이 정렬과 별개로, 그리는 패스에서 그 뷰 카메라와 경계 구 중심 사이 거리로 먼 것부터 다시 정렬합니다(<code>std::stable_sort</code>).</p>
+<h3>6-2. "버킷"은 목록 하나와 필터</h3>
+<p>불투명·블렌딩·이펙트를 따로 담는 목록은 없습니다. 목록은 하나이고, <code>DrawItems</code>의 <code>DrawMode</code>가 패스마다 맡을 항목을 고릅니다.</p>
+<table>
+<tr><th>DrawMode</th><th>쓰는 패스</th><th>맡는 항목</th><th>안에서 그리는 순서</th></tr>
+<tr><td><code>All</code></td><td>포워드 경로의 <code>MainPass</code></td><td>전부</td><td>불투명(정렬 순) → 하늘 → 블렌딩(먼 것부터)</td></tr>
+<tr><td><code>GBuffer</code></td><td>디퍼드의 <code>GBuffer</code></td><td><code>deferred &amp;&amp; !blended</code></td><td>불투명만. 하늘·블렌딩 없음</td></tr>
+<tr><td><code>ForwardRest</code></td><td>디퍼드의 <code>Forward</code></td><td><code>!deferred || blended</code></td><td>G-buffer에 못 담는 불투명 → 하늘 → 블렌딩</td></tr>
+</table>
+<p>하늘은 별도 패스가 아니라 같은 렌더 패스 안에서 불투명 다음에 그려집니다. 깊이가 채워진 뒤라 가려진 픽셀은 깊이 테스트에서 떨어집니다. 파티클과 디버그 선은 <code>DrawItems</code> 밖, 뒤의 Effects 패스에서 그립니다(7장). 오브젝트 컬링은 각 항목의 경계 구를 컬링 카메라 절두체와 비교하고, 밖이면 <code>Stats::culled</code>를 올리고 건너뜁니다. 그림자 패스는 같은 목록을 그림자 뷰마다 그 뷰의 절두체(지역광이면 광원 범위 구까지)로 다시 컬링합니다. 원리는 <a href="../study/culling-study.html">컬링 문서</a>에 있습니다.</p>
+</section>
+
+<section id="passes">
+<h2>7. 패스 순서 — 무엇이 무엇을 읽고 쓰는가</h2>
+<figure>
+<svg viewBox="0 0 932 586" role="img" aria-label="한 프레임의 패스 순서와 각 패스가 읽고 쓰는 타깃">
+  <text x="229.0" y="26" text-anchor="middle" style="fill:var(--ink);font-weight:600">지역광</text><text x="229.0" y="44" text-anchor="middle">아틀라스</text>
+  <text x="295.0" y="26" text-anchor="middle" style="fill:var(--ink);font-weight:600">CSM</text>
+  <text x="361.0" y="26" text-anchor="middle" style="fill:var(--ink);font-weight:600">클러스터</text><text x="361.0" y="44" text-anchor="middle">t30·t31</text>
+  <text x="427.0" y="26" text-anchor="middle" style="fill:var(--ink);font-weight:600">깊이</text><text x="427.0" y="44" text-anchor="middle">D24S8</text>
+  <text x="493.0" y="26" text-anchor="middle" style="fill:var(--ink);font-weight:600">G-buffer</text><text x="493.0" y="44" text-anchor="middle">GB0~3</text>
+  <text x="559.0" y="26" text-anchor="middle" style="fill:var(--ink);font-weight:600">SSAO</text><text x="559.0" y="44" text-anchor="middle">R8</text>
+  <text x="625.0" y="26" text-anchor="middle" style="fill:var(--ink);font-weight:600">hdr</text><text x="625.0" y="44" text-anchor="middle">FP16</text>
+  <text x="691.0" y="26" text-anchor="middle" style="fill:var(--ink);font-weight:600">속도</text><text x="691.0" y="44" text-anchor="middle">RG16F</text>
+  <text x="757.0" y="26" text-anchor="middle" style="fill:var(--ink);font-weight:600">TAA</text><text x="757.0" y="44" text-anchor="middle">히스토리</text>
+  <text x="823.0" y="26" text-anchor="middle" style="fill:var(--ink);font-weight:600">출력</text><text x="823.0" y="44" text-anchor="middle">color</text>
+  <text x="889.0" y="26" text-anchor="middle" style="fill:var(--ink);font-weight:600">백버퍼</text>
+  <text x="12" y="82" style="fill:var(--accent);font-weight:600">렌더 패스 전 — 비닝, 그림자 (그림자는 프레임에 한 번)</text>
+  <line x1="196" y1="90" x2="196" y2="114" style="stroke:var(--line)"/><line x1="262" y1="90" x2="262" y2="114" style="stroke:var(--line)"/><line x1="328" y1="90" x2="328" y2="114" style="stroke:var(--line)"/><line x1="394" y1="90" x2="394" y2="114" style="stroke:var(--line)"/><line x1="460" y1="90" x2="460" y2="114" style="stroke:var(--line)"/><line x1="526" y1="90" x2="526" y2="114" style="stroke:var(--line)"/><line x1="592" y1="90" x2="592" y2="114" style="stroke:var(--line)"/><line x1="658" y1="90" x2="658" y2="114" style="stroke:var(--line)"/><line x1="724" y1="90" x2="724" y2="114" style="stroke:var(--line)"/><line x1="790" y1="90" x2="790" y2="114" style="stroke:var(--line)"/><line x1="856" y1="90" x2="856" y2="114" style="stroke:var(--line)"/><line x1="922" y1="90" x2="922" y2="114" style="stroke:var(--line)"/><text x="22" y="106" style="fill:var(--ink)">ClusterBin (CS)</text><rect x="334" y="93" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="361.0" y="106" text-anchor="middle">쓰기</text><line x1="12" y1="114" x2="922" y2="114" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="114" x2="196" y2="138" style="stroke:var(--line)"/><line x1="262" y1="114" x2="262" y2="138" style="stroke:var(--line)"/><line x1="328" y1="114" x2="328" y2="138" style="stroke:var(--line)"/><line x1="394" y1="114" x2="394" y2="138" style="stroke:var(--line)"/><line x1="460" y1="114" x2="460" y2="138" style="stroke:var(--line)"/><line x1="526" y1="114" x2="526" y2="138" style="stroke:var(--line)"/><line x1="592" y1="114" x2="592" y2="138" style="stroke:var(--line)"/><line x1="658" y1="114" x2="658" y2="138" style="stroke:var(--line)"/><line x1="724" y1="114" x2="724" y2="138" style="stroke:var(--line)"/><line x1="790" y1="114" x2="790" y2="138" style="stroke:var(--line)"/><line x1="856" y1="114" x2="856" y2="138" style="stroke:var(--line)"/><line x1="922" y1="114" x2="922" y2="138" style="stroke:var(--line)"/><text x="22" y="130" style="fill:var(--ink)">ShadowPass</text><rect x="202" y="117" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="229.0" y="130" text-anchor="middle">쓰기</text><line x1="12" y1="138" x2="922" y2="138" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="138" x2="196" y2="162" style="stroke:var(--line)"/><line x1="262" y1="138" x2="262" y2="162" style="stroke:var(--line)"/><line x1="328" y1="138" x2="328" y2="162" style="stroke:var(--line)"/><line x1="394" y1="138" x2="394" y2="162" style="stroke:var(--line)"/><line x1="460" y1="138" x2="460" y2="162" style="stroke:var(--line)"/><line x1="526" y1="138" x2="526" y2="162" style="stroke:var(--line)"/><line x1="592" y1="138" x2="592" y2="162" style="stroke:var(--line)"/><line x1="658" y1="138" x2="658" y2="162" style="stroke:var(--line)"/><line x1="724" y1="138" x2="724" y2="162" style="stroke:var(--line)"/><line x1="790" y1="138" x2="790" y2="162" style="stroke:var(--line)"/><line x1="856" y1="138" x2="856" y2="162" style="stroke:var(--line)"/><line x1="922" y1="138" x2="922" y2="162" style="stroke:var(--line)"/><text x="22" y="154" style="fill:var(--ink)">CsmShadowPass</text><rect x="268" y="141" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="295.0" y="154" text-anchor="middle">쓰기</text><line x1="12" y1="162" x2="922" y2="162" style="stroke:var(--line);stroke-width:0.6"/>
+  <text x="12" y="178" style="fill:var(--accent);font-weight:600">뷰마다 — RenderScenePass (디퍼드)</text>
+  <line x1="196" y1="186" x2="196" y2="210" style="stroke:var(--line)"/><line x1="262" y1="186" x2="262" y2="210" style="stroke:var(--line)"/><line x1="328" y1="186" x2="328" y2="210" style="stroke:var(--line)"/><line x1="394" y1="186" x2="394" y2="210" style="stroke:var(--line)"/><line x1="460" y1="186" x2="460" y2="210" style="stroke:var(--line)"/><line x1="526" y1="186" x2="526" y2="210" style="stroke:var(--line)"/><line x1="592" y1="186" x2="592" y2="210" style="stroke:var(--line)"/><line x1="658" y1="186" x2="658" y2="210" style="stroke:var(--line)"/><line x1="724" y1="186" x2="724" y2="210" style="stroke:var(--line)"/><line x1="790" y1="186" x2="790" y2="210" style="stroke:var(--line)"/><line x1="856" y1="186" x2="856" y2="210" style="stroke:var(--line)"/><line x1="922" y1="186" x2="922" y2="210" style="stroke:var(--line)"/><text x="22" y="202" style="fill:var(--ink)">GBuffer</text><rect x="400" y="189" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="427.0" y="202" text-anchor="middle">쓰기</text><rect x="466" y="189" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="493.0" y="202" text-anchor="middle">쓰기</text><rect x="598" y="189" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="625.0" y="202" text-anchor="middle">쓰기</text><rect x="664" y="189" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="691.0" y="202" text-anchor="middle">쓰기</text><line x1="12" y1="210" x2="922" y2="210" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="210" x2="196" y2="234" style="stroke:var(--line)"/><line x1="262" y1="210" x2="262" y2="234" style="stroke:var(--line)"/><line x1="328" y1="210" x2="328" y2="234" style="stroke:var(--line)"/><line x1="394" y1="210" x2="394" y2="234" style="stroke:var(--line)"/><line x1="460" y1="210" x2="460" y2="234" style="stroke:var(--line)"/><line x1="526" y1="210" x2="526" y2="234" style="stroke:var(--line)"/><line x1="592" y1="210" x2="592" y2="234" style="stroke:var(--line)"/><line x1="658" y1="210" x2="658" y2="234" style="stroke:var(--line)"/><line x1="724" y1="210" x2="724" y2="234" style="stroke:var(--line)"/><line x1="790" y1="210" x2="790" y2="234" style="stroke:var(--line)"/><line x1="856" y1="210" x2="856" y2="234" style="stroke:var(--line)"/><line x1="922" y1="210" x2="922" y2="234" style="stroke:var(--line)"/><text x="22" y="226" style="fill:var(--ink)">Ssao (2 패스)</text><rect x="400" y="213" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="427.0" y="226" text-anchor="middle">읽기</text><rect x="466" y="213" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="493.0" y="226" text-anchor="middle">읽기</text><rect x="532" y="213" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="559.0" y="226" text-anchor="middle">쓰기</text><line x1="12" y1="234" x2="922" y2="234" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="234" x2="196" y2="258" style="stroke:var(--line)"/><line x1="262" y1="234" x2="262" y2="258" style="stroke:var(--line)"/><line x1="328" y1="234" x2="328" y2="258" style="stroke:var(--line)"/><line x1="394" y1="234" x2="394" y2="258" style="stroke:var(--line)"/><line x1="460" y1="234" x2="460" y2="258" style="stroke:var(--line)"/><line x1="526" y1="234" x2="526" y2="258" style="stroke:var(--line)"/><line x1="592" y1="234" x2="592" y2="258" style="stroke:var(--line)"/><line x1="658" y1="234" x2="658" y2="258" style="stroke:var(--line)"/><line x1="724" y1="234" x2="724" y2="258" style="stroke:var(--line)"/><line x1="790" y1="234" x2="790" y2="258" style="stroke:var(--line)"/><line x1="856" y1="234" x2="856" y2="258" style="stroke:var(--line)"/><line x1="922" y1="234" x2="922" y2="258" style="stroke:var(--line)"/><text x="22" y="250" style="fill:var(--ink)">DeferredLight</text><rect x="202" y="237" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="229.0" y="250" text-anchor="middle">읽기</text><rect x="268" y="237" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="295.0" y="250" text-anchor="middle">읽기</text><rect x="334" y="237" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="361.0" y="250" text-anchor="middle">읽기</text><rect x="400" y="237" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="427.0" y="250" text-anchor="middle">읽기</text><rect x="466" y="237" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="493.0" y="250" text-anchor="middle">읽기</text><rect x="532" y="237" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="559.0" y="250" text-anchor="middle">읽기</text><rect x="598" y="237" width="54" height="18" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="625.0" y="250" text-anchor="middle">읽고 씀</text><line x1="12" y1="258" x2="922" y2="258" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="258" x2="196" y2="282" style="stroke:var(--line)"/><line x1="262" y1="258" x2="262" y2="282" style="stroke:var(--line)"/><line x1="328" y1="258" x2="328" y2="282" style="stroke:var(--line)"/><line x1="394" y1="258" x2="394" y2="282" style="stroke:var(--line)"/><line x1="460" y1="258" x2="460" y2="282" style="stroke:var(--line)"/><line x1="526" y1="258" x2="526" y2="282" style="stroke:var(--line)"/><line x1="592" y1="258" x2="592" y2="282" style="stroke:var(--line)"/><line x1="658" y1="258" x2="658" y2="282" style="stroke:var(--line)"/><line x1="724" y1="258" x2="724" y2="282" style="stroke:var(--line)"/><line x1="790" y1="258" x2="790" y2="282" style="stroke:var(--line)"/><line x1="856" y1="258" x2="856" y2="282" style="stroke:var(--line)"/><line x1="922" y1="258" x2="922" y2="282" style="stroke:var(--line)"/><text x="22" y="274" style="fill:var(--ink)">Forward</text><rect x="202" y="261" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="229.0" y="274" text-anchor="middle">읽기</text><rect x="268" y="261" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="295.0" y="274" text-anchor="middle">읽기</text><rect x="334" y="261" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="361.0" y="274" text-anchor="middle">읽기</text><rect x="400" y="261" width="54" height="18" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="427.0" y="274" text-anchor="middle">읽고 씀</text><rect x="598" y="261" width="54" height="18" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="625.0" y="274" text-anchor="middle">읽고 씀</text><rect x="664" y="261" width="54" height="18" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="691.0" y="274" text-anchor="middle">읽고 씀</text><line x1="12" y1="282" x2="922" y2="282" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="282" x2="196" y2="306" style="stroke:var(--line)"/><line x1="262" y1="282" x2="262" y2="306" style="stroke:var(--line)"/><line x1="328" y1="282" x2="328" y2="306" style="stroke:var(--line)"/><line x1="394" y1="282" x2="394" y2="306" style="stroke:var(--line)"/><line x1="460" y1="282" x2="460" y2="306" style="stroke:var(--line)"/><line x1="526" y1="282" x2="526" y2="306" style="stroke:var(--line)"/><line x1="592" y1="282" x2="592" y2="306" style="stroke:var(--line)"/><line x1="658" y1="282" x2="658" y2="306" style="stroke:var(--line)"/><line x1="724" y1="282" x2="724" y2="306" style="stroke:var(--line)"/><line x1="790" y1="282" x2="790" y2="306" style="stroke:var(--line)"/><line x1="856" y1="282" x2="856" y2="306" style="stroke:var(--line)"/><line x1="922" y1="282" x2="922" y2="306" style="stroke:var(--line)"/><text x="22" y="298" style="fill:var(--ink);font-style:italic">MainPass (포워드 경로)</text><rect x="202" y="285" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok);stroke-dasharray:4 3"/><text x="229.0" y="298" text-anchor="middle">읽기</text><rect x="268" y="285" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok);stroke-dasharray:4 3"/><text x="295.0" y="298" text-anchor="middle">읽기</text><rect x="334" y="285" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok);stroke-dasharray:4 3"/><text x="361.0" y="298" text-anchor="middle">읽기</text><rect x="400" y="285" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent);stroke-dasharray:4 3"/><text x="427.0" y="298" text-anchor="middle">쓰기</text><rect x="598" y="285" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent);stroke-dasharray:4 3"/><text x="625.0" y="298" text-anchor="middle">쓰기</text><rect x="664" y="285" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent);stroke-dasharray:4 3"/><text x="691.0" y="298" text-anchor="middle">쓰기</text><line x1="12" y1="306" x2="922" y2="306" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="306" x2="196" y2="330" style="stroke:var(--line)"/><line x1="262" y1="306" x2="262" y2="330" style="stroke:var(--line)"/><line x1="328" y1="306" x2="328" y2="330" style="stroke:var(--line)"/><line x1="394" y1="306" x2="394" y2="330" style="stroke:var(--line)"/><line x1="460" y1="306" x2="460" y2="330" style="stroke:var(--line)"/><line x1="526" y1="306" x2="526" y2="330" style="stroke:var(--line)"/><line x1="592" y1="306" x2="592" y2="330" style="stroke:var(--line)"/><line x1="658" y1="306" x2="658" y2="330" style="stroke:var(--line)"/><line x1="724" y1="306" x2="724" y2="330" style="stroke:var(--line)"/><line x1="790" y1="306" x2="790" y2="330" style="stroke:var(--line)"/><line x1="856" y1="306" x2="856" y2="330" style="stroke:var(--line)"/><line x1="922" y1="306" x2="922" y2="330" style="stroke:var(--line)"/><text x="22" y="322" style="fill:var(--ink)">ParticleSim (CS)</text><rect x="400" y="309" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="427.0" y="322" text-anchor="middle">읽기</text><line x1="12" y1="330" x2="922" y2="330" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="330" x2="196" y2="354" style="stroke:var(--line)"/><line x1="262" y1="330" x2="262" y2="354" style="stroke:var(--line)"/><line x1="328" y1="330" x2="328" y2="354" style="stroke:var(--line)"/><line x1="394" y1="330" x2="394" y2="354" style="stroke:var(--line)"/><line x1="460" y1="330" x2="460" y2="354" style="stroke:var(--line)"/><line x1="526" y1="330" x2="526" y2="354" style="stroke:var(--line)"/><line x1="592" y1="330" x2="592" y2="354" style="stroke:var(--line)"/><line x1="658" y1="330" x2="658" y2="354" style="stroke:var(--line)"/><line x1="724" y1="330" x2="724" y2="354" style="stroke:var(--line)"/><line x1="790" y1="330" x2="790" y2="354" style="stroke:var(--line)"/><line x1="856" y1="330" x2="856" y2="354" style="stroke:var(--line)"/><line x1="922" y1="330" x2="922" y2="354" style="stroke:var(--line)"/><text x="22" y="346" style="fill:var(--ink)">Effects (파티클·선)</text><rect x="400" y="333" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="427.0" y="346" text-anchor="middle">읽기</text><rect x="598" y="333" width="54" height="18" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="625.0" y="346" text-anchor="middle">읽고 씀</text><line x1="12" y1="354" x2="922" y2="354" style="stroke:var(--line);stroke-width:0.6"/>
+  <text x="12" y="370" style="fill:var(--accent);font-weight:600">뷰마다 — ApplyHdrEffects 와 출력</text>
+  <line x1="196" y1="378" x2="196" y2="402" style="stroke:var(--line)"/><line x1="262" y1="378" x2="262" y2="402" style="stroke:var(--line)"/><line x1="328" y1="378" x2="328" y2="402" style="stroke:var(--line)"/><line x1="394" y1="378" x2="394" y2="402" style="stroke:var(--line)"/><line x1="460" y1="378" x2="460" y2="402" style="stroke:var(--line)"/><line x1="526" y1="378" x2="526" y2="402" style="stroke:var(--line)"/><line x1="592" y1="378" x2="592" y2="402" style="stroke:var(--line)"/><line x1="658" y1="378" x2="658" y2="402" style="stroke:var(--line)"/><line x1="724" y1="378" x2="724" y2="402" style="stroke:var(--line)"/><line x1="790" y1="378" x2="790" y2="402" style="stroke:var(--line)"/><line x1="856" y1="378" x2="856" y2="402" style="stroke:var(--line)"/><line x1="922" y1="378" x2="922" y2="402" style="stroke:var(--line)"/><text x="22" y="394" style="fill:var(--ink)">TaaPass (+Copy)</text><rect x="400" y="381" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="427.0" y="394" text-anchor="middle">읽기</text><rect x="598" y="381" width="54" height="18" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="625.0" y="394" text-anchor="middle">읽고 씀</text><rect x="664" y="381" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="691.0" y="394" text-anchor="middle">읽기</text><rect x="730" y="381" width="54" height="18" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="757.0" y="394" text-anchor="middle">읽고 씀</text><line x1="12" y1="402" x2="922" y2="402" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="402" x2="196" y2="426" style="stroke:var(--line)"/><line x1="262" y1="402" x2="262" y2="426" style="stroke:var(--line)"/><line x1="328" y1="402" x2="328" y2="426" style="stroke:var(--line)"/><line x1="394" y1="402" x2="394" y2="426" style="stroke:var(--line)"/><line x1="460" y1="402" x2="460" y2="426" style="stroke:var(--line)"/><line x1="526" y1="402" x2="526" y2="426" style="stroke:var(--line)"/><line x1="592" y1="402" x2="592" y2="426" style="stroke:var(--line)"/><line x1="658" y1="402" x2="658" y2="426" style="stroke:var(--line)"/><line x1="724" y1="402" x2="724" y2="426" style="stroke:var(--line)"/><line x1="790" y1="402" x2="790" y2="426" style="stroke:var(--line)"/><line x1="856" y1="402" x2="856" y2="426" style="stroke:var(--line)"/><line x1="922" y1="402" x2="922" y2="426" style="stroke:var(--line)"/><text x="22" y="418" style="fill:var(--ink)">MotionBlurPass (+Copy)</text><rect x="400" y="405" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="427.0" y="418" text-anchor="middle">읽기</text><rect x="598" y="405" width="54" height="18" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="625.0" y="418" text-anchor="middle">읽고 씀</text><rect x="664" y="405" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="691.0" y="418" text-anchor="middle">읽기</text><line x1="12" y1="426" x2="922" y2="426" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="426" x2="196" y2="450" style="stroke:var(--line)"/><line x1="262" y1="426" x2="262" y2="450" style="stroke:var(--line)"/><line x1="328" y1="426" x2="328" y2="450" style="stroke:var(--line)"/><line x1="394" y1="426" x2="394" y2="450" style="stroke:var(--line)"/><line x1="460" y1="426" x2="460" y2="450" style="stroke:var(--line)"/><line x1="526" y1="426" x2="526" y2="450" style="stroke:var(--line)"/><line x1="592" y1="426" x2="592" y2="450" style="stroke:var(--line)"/><line x1="658" y1="426" x2="658" y2="450" style="stroke:var(--line)"/><line x1="724" y1="426" x2="724" y2="450" style="stroke:var(--line)"/><line x1="790" y1="426" x2="790" y2="450" style="stroke:var(--line)"/><line x1="856" y1="426" x2="856" y2="450" style="stroke:var(--line)"/><line x1="922" y1="426" x2="922" y2="450" style="stroke:var(--line)"/><text x="22" y="442" style="fill:var(--ink)">BlurPass · BloomPass</text><rect x="598" y="429" width="54" height="18" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="625.0" y="442" text-anchor="middle">읽고 씀</text><line x1="12" y1="450" x2="922" y2="450" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="450" x2="196" y2="474" style="stroke:var(--line)"/><line x1="262" y1="450" x2="262" y2="474" style="stroke:var(--line)"/><line x1="328" y1="450" x2="328" y2="474" style="stroke:var(--line)"/><line x1="394" y1="450" x2="394" y2="474" style="stroke:var(--line)"/><line x1="460" y1="450" x2="460" y2="474" style="stroke:var(--line)"/><line x1="526" y1="450" x2="526" y2="474" style="stroke:var(--line)"/><line x1="592" y1="450" x2="592" y2="474" style="stroke:var(--line)"/><line x1="658" y1="450" x2="658" y2="474" style="stroke:var(--line)"/><line x1="724" y1="450" x2="724" y2="474" style="stroke:var(--line)"/><line x1="790" y1="450" x2="790" y2="474" style="stroke:var(--line)"/><line x1="856" y1="450" x2="856" y2="474" style="stroke:var(--line)"/><line x1="922" y1="450" x2="922" y2="474" style="stroke:var(--line)"/><text x="22" y="466" style="fill:var(--ink)">TonemapPass</text><rect x="598" y="453" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="625.0" y="466" text-anchor="middle">읽기</text><rect x="796" y="453" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="823.0" y="466" text-anchor="middle">쓰기</text><rect x="862" y="453" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent);stroke-dasharray:4 3"/><text x="889.0" y="466" text-anchor="middle">쓰기</text><line x1="12" y1="474" x2="922" y2="474" style="stroke:var(--line);stroke-width:0.6"/>
+  <line x1="196" y1="474" x2="196" y2="498" style="stroke:var(--line)"/><line x1="262" y1="474" x2="262" y2="498" style="stroke:var(--line)"/><line x1="328" y1="474" x2="328" y2="498" style="stroke:var(--line)"/><line x1="394" y1="474" x2="394" y2="498" style="stroke:var(--line)"/><line x1="460" y1="474" x2="460" y2="498" style="stroke:var(--line)"/><line x1="526" y1="474" x2="526" y2="498" style="stroke:var(--line)"/><line x1="592" y1="474" x2="592" y2="498" style="stroke:var(--line)"/><line x1="658" y1="474" x2="658" y2="498" style="stroke:var(--line)"/><line x1="724" y1="474" x2="724" y2="498" style="stroke:var(--line)"/><line x1="790" y1="474" x2="790" y2="498" style="stroke:var(--line)"/><line x1="856" y1="474" x2="856" y2="498" style="stroke:var(--line)"/><line x1="922" y1="474" x2="922" y2="498" style="stroke:var(--line)"/><text x="22" y="490" style="fill:var(--ink)">UICanvasPass</text><rect x="400" y="477" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="427.0" y="490" text-anchor="middle">읽기</text><rect x="796" y="477" width="54" height="18" rx="4" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="823.0" y="490" text-anchor="middle">읽고 씀</text><rect x="862" y="477" width="54" height="18" rx="4" style="fill:var(--warn-bg);stroke:var(--warn);stroke-dasharray:4 3"/><text x="889.0" y="490" text-anchor="middle">읽고 씀</text><line x1="12" y1="498" x2="922" y2="498" style="stroke:var(--line);stroke-width:0.6"/>
+  <text x="12" y="514" style="fill:var(--accent);font-weight:600">프레임 끝</text>
+  <line x1="196" y1="522" x2="196" y2="546" style="stroke:var(--line)"/><line x1="262" y1="522" x2="262" y2="546" style="stroke:var(--line)"/><line x1="328" y1="522" x2="328" y2="546" style="stroke:var(--line)"/><line x1="394" y1="522" x2="394" y2="546" style="stroke:var(--line)"/><line x1="460" y1="522" x2="460" y2="546" style="stroke:var(--line)"/><line x1="526" y1="522" x2="526" y2="546" style="stroke:var(--line)"/><line x1="592" y1="522" x2="592" y2="546" style="stroke:var(--line)"/><line x1="658" y1="522" x2="658" y2="546" style="stroke:var(--line)"/><line x1="724" y1="522" x2="724" y2="546" style="stroke:var(--line)"/><line x1="790" y1="522" x2="790" y2="546" style="stroke:var(--line)"/><line x1="856" y1="522" x2="856" y2="546" style="stroke:var(--line)"/><line x1="922" y1="522" x2="922" y2="546" style="stroke:var(--line)"/><text x="22" y="538" style="fill:var(--ink)">UIPass (ImGui)</text><rect x="796" y="525" width="54" height="18" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="823.0" y="538" text-anchor="middle">읽기</text><rect x="862" y="525" width="54" height="18" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="889.0" y="538" text-anchor="middle">쓰기</text><line x1="12" y1="546" x2="922" y2="546" style="stroke:var(--line);stroke-width:0.6"/>
+  <rect x="22" y="557" width="14" height="14" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="42" y="568">쓰기 (RT·DSV·UAV)</text>
+  <rect x="180.60000000000002" y="557" width="14" height="14" rx="3" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="200.60000000000002" y="568">읽기 (SRV·읽기 전용 깊이)</text>
+  <rect x="385.40000000000003" y="557" width="14" height="14" rx="3" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="405.40000000000003" y="568">읽고 씀 (Load 후 덧그림·제자리)</text>
+</svg>
+<figcaption>그림 2. GPU 비닝과 디퍼드가 켜진 에디터 프레임의 GPU 작업 순서(위에서 아래)와 각 작업이 읽고 쓰는 타깃. 점선은 이 프레임에서 일어나지 않는 쪽입니다. 점선 행(<code>MainPass</code>)은 포워드 경로에서 GBuffer~Forward 네 행 대신 들어갑니다. "뷰마다" 묶음은 미리보기가 켜져 있으면 메인 뷰의 <code>UICanvasPass</code> 뒤에 미리보기 <code>ViewTarget</code>으로 한 번 더 돕니다(ParticleSim 제외). <code>TonemapPass</code>와 <code>UICanvasPass</code>는 에디터에서는 출력 color에만 쓰고, 점선인 백버퍼 칸은 게임에서 color 대신 쓰는 곳입니다. CPU 비닝이면 <code>ClusterBin</code> 행이 없습니다. <code>ParticleSort</code>(CS, 뷰마다)는 ParticleSim과 Effects 사이에서 돌지만 그림의 타깃을 건드리지 않아 행을 두지 않았습니다. "뷰마다" 묶음의 패스는 그림자·클러스터를 읽기만 하고, 미리보기 차례 앞에서 클러스터만 미리보기 카메라로 다시 비닝합니다(GPU 비닝이면 <code>PreviewClusterBin</code>, CPU 비닝이면 <code>UploadClusters(1)</code>). 그림자는 다시 그리지 않습니다.</figcaption>
+</figure>
+<h3>7-1. 단계별 요약</h3>
+<table>
+<tr><th>패스</th><th>코드</th><th>요약</th><th>문서</th></tr>
+<tr><td>ClusterBin</td><td><code>DispatchClusterBinning</code></td><td>GPU 비닝이 켜져 있으면 렌더 패스 밖에서 컴퓨트로 클러스터별 조명 목록(t30·t31)을 만듦. 미리보기는 같은 버퍼에 미리보기 카메라로 다시 비닝(<code>PreviewClusterBin</code>)</td><td><a href="../study/clustered-lighting-study.html">클러스터드</a></td></tr>
+<tr><td>ShadowPass, CsmShadowPass</td><td><code>RenderShadowPass</code> → <code>RenderShadowAtlasPass(0/1)</code></td><td>아틀라스 텍스처마다 패스 하나. 전체를 한 번 클리어하고 뷰마다 뷰포트를 바꿔 그림. 그릴 뷰가 없는 아틀라스는 패스를 열지 않고 SRV 상태만 맞춤</td><td><a href="../study/shadow-map-study.html">그림자 맵</a>, <a href="../study/shadow-atlas-study.html">아틀라스</a>, <a href="../study/csm-study.html">CSM</a></td></tr>
+<tr><td>GBuffer</td><td><code>RenderDeferredScene</code> 1단계</td><td>MRT 6장(hdr 발광, GB0~GB3, 속도) + 깊이를 지우고 디퍼드 불투명을 그림. 조명 계산 없음</td><td><a href="../study/deferred-gbuffer-study.html">디퍼드 G-buffer</a></td></tr>
+<tr><td>Ssao</td><td><code>RenderSsao</code></td><td>깊이·노멀 → <code>ssaoRaw</code> → 블러 → <code>ssaoBlur</code>. 풀스크린 패스 두 개</td><td><a href="../study/ssao-study.html">SSAO</a></td></tr>
+<tr><td>DeferredLight</td><td><code>RenderDeferredScene</code> 4단계</td><td>풀스크린 삼각형 하나. 픽셀마다 G-buffer에서 표면을 복원해 포워드와 같은 조명 함수로 hdr에 가산</td><td><a href="../study/deferred-gbuffer-study.html">디퍼드 G-buffer</a></td></tr>
+<tr><td>Forward / MainPass</td><td><code>DrawItems(ForwardRest / All)</code></td><td>6-2의 표. 포워드 경로는 이 패스 하나가 hdr·속도·깊이를 지우고 전부 그림</td><td><a href="../study/pbr-study.html">PBR</a></td></tr>
+<tr><td>ParticleSim, ParticleSort</td><td><code>SimulateParticles</code>, <code>SortParticles</code></td><td>시뮬레이션은 메인 뷰에서 프레임에 한 번(이번 프레임 불투명 깊이로 충돌). 알파 이미터 정렬은 뷰마다 그 카메라로</td><td><a href="../study/gpu-particles-study.html">GPU 파티클</a></td></tr>
+<tr><td>Effects</td><td><code>RenderScenePass</code> 두 번째 패스</td><td>깊이를 읽기 전용 DSV로 묶어 깊이 테스트와 SRV 읽기(소프트 파티클)를 같이 함. 파티클 → 디버그 선. 그릴 것이 없으면 패스를 열지 않음</td><td><a href="../study/gpu-particles-study.html">GPU 파티클</a></td></tr>
+<tr><td>TaaPass</td><td><code>ApplyHdrEffects</code></td><td>hdr + history[1−cur] → history[cur], 그다음 hdr로 복사</td><td><a href="../study/taa-study.html">TAA</a></td></tr>
+<tr><td>MotionBlurPass</td><td><code>ApplyHdrEffects</code></td><td>hdr·깊이·속도 → temp → hdr. TAA 뒤라 지터가 정리된 이미지를 번지게 함</td><td><a href="../study/motion-blur-study.html">모션 블러</a></td></tr>
+<tr><td>BlurPass, BloomPass</td><td><code>ApplyHdrEffects</code></td><td>가우시안 블러(PS 또는 컴퓨트), 블룸 축소·확대 체인 후 hdr에 가산</td><td><a href="../study/post-process-study.html">후처리</a>, <a href="../study/compute-uav-study.html">컴퓨트·UAV</a></td></tr>
+<tr><td>TonemapPass</td><td><code>RenderTonemapPass</code></td><td>hdr → 노출·ACES → sRGB RTV(출력 color 또는 백버퍼)</td><td><a href="../study/hdr-tonemapping-study.html">HDR·톤매핑</a>, <a href="../study/color-space-study.html">색공간</a></td></tr>
+<tr><td>UICanvasPass</td><td><code>RenderCanvasPass</code></td><td>게임 UI. World 캔버스(읽기 전용 깊이 검사) → Overlay 캔버스, UNORM 뷰에 감마 공간으로. 명령이 없으면 아무것도 안 함</td><td><a href="../study/ui-canvas-study.html">UI 캔버스</a></td></tr>
+<tr><td>PreviewPass</td><td><code>Render</code> 끝</td><td>b0를 미리보기 카메라로 다시 올리고 위의 "뷰마다" 묶음을 미리보기 타깃에 반복. 후처리 썸네일 캡처는 하지 않음</td><td></td></tr>
+<tr><td>UIPass</td><td><code>BeginUIPass</code>, <code>RenderImGui</code></td><td>에디터는 백버퍼를 지우고 ImGui(씬 창 이미지, 기즈모, 조명 아이콘, 컬링 고정 오버레이)를 그림. 게임은 톤 패스 결과 위에 Load</td><td><a href="../study/color-space-study.html">색공간</a></td></tr>
+</table>
+<h3>7-2. 경로가 갈리는 곳</h3>
+<p>디퍼드냐 포워드냐는 뷰마다 <code>UseDeferred(view)</code>가 정합니다: <code>RenderSettings::deferred</code>가 켜져 있고(기본 켬, <code>--deferred=</code>), 그 뷰에 G-buffer가 있고, 디버그 뷰가 5(UV)가 아닐 때입니다. G-buffer에는 UV가 없어서 디버그 뷰 5는 프레임 전체를 포워드로 그립니다. 두 경로는 Effects 패스부터 같은 상태(hdr RenderTarget, 깊이 DepthWrite)에서 이어지도록 맞춰져 있어서, 그 뒤 코드는 경로를 모릅니다.</p>
+<h3>7-3. 상태 전이는 패스 경계에서 손으로</h3>
+<p>배리어는 패스 앞뒤에서 <code>cmd.Barrier(texture, 다음 상태)</code>를 직접 불러 겁니다. 현재 상태는 RHI가 텍스처마다 기억합니다. 깊이를 예로 들면, 포워드 경로는 씬 패스 첫머리에 DepthWrite로 둡니다. 디퍼드 경로(그림 2)는 G-buffer 패스 앞에 DepthWrite, G-buffer 뒤에 DepthRead(SSAO·라이팅이 읽음), 포워드 패스 앞에 다시 DepthWrite로 바꿉니다(<code>RenderDeferredScene</code> 1·2·5단계). 두 경로 모두 파티클이나 디버그 선이 있을 때만 Effects 패스 앞에서 DepthRead가 되고, <code>ApplyHdrEffects</code> 첫머리는 어느 경우든 DepthRead로 맞추며, 다음 프레임 씬 패스가 DepthWrite로 되돌립니다. 그림자 패스가 없는 프레임에도 프레임 셋은 t8·t14를 SRV로 가리키므로 두 아틀라스를 ShaderResource로 맞춰 둡니다. 배리어의 뜻은 <a href="../study/gpu-sync-study.html">GPU 동기화 문서</a>에서 다룹니다.</p>
+</section>
+
+<section id="scope">
+<h2>8. 프레임 단위와 뷰 단위</h2>
+<p>미리보기를 켜면 무엇이 두 번 도는지 정리하면 다음과 같습니다. "메인 카메라 기준"인 것은 미리보기 카메라에 맞지 않을 수 있다는 뜻입니다.</p>
+<table>
+<tr><th>프레임에 한 번 (메인 카메라 기준)</th><th>뷰마다</th></tr>
+<tr><td>
+<ul>
+<li>조명 배치·조명 컬링(<code>CullLights</code>)</li>
+<li>그림자 뷰 배정·그림자 패스(아틀라스 두 장)</li>
+<li>b2 조명, b12 SSAO, b8 파티클, b9 바다</li>
+<li><code>BuildDrawList</code>(목록·<code>ObjectData</code>·PSO 고르기)</li>
+<li>CPU 클러스터 비닝(두 뷰를 같이 만들고 올리기만 뷰마다)</li>
+<li>파티클 시뮬레이션(메인 뷰 깊이로 충돌)</li>
+<li>게임 UI 빌드·업로드</li>
+<li>ImGui UI 패스, Present</li>
+</ul>
+</td><td>
+<ul>
+<li>b0 PerFrame — 이름과 달리 뷰마다 다시 올림(업로드 링이라 한 프레임에 여러 번 가능)</li>
+<li>클러스터 업로드 또는 GPU 비닝</li>
+<li>오브젝트 컬링(<code>DrawItems</code>)과 블렌딩 거리 정렬</li>
+<li>씬 패스(디퍼드 또는 포워드), Effects 패스, 파티클 정렬</li>
+<li><code>ApplyHdrEffects</code>, 톤 패스, 캔버스 패스</li>
+<li><code>TemporalState</code>: 지난 viewProj, TAA 지터 위상, 히스토리</li>
+<li><code>ViewTarget</code>의 모든 텍스처</li>
+</ul>
+</td></tr>
+</table>
+<p>시간 상태가 뷰마다 따로인 이유는 <code>Renderer.h</code>의 <code>TemporalState</code> 주석에 있습니다: 메인과 미리보기는 서로 다른 카메라라 "지난 프레임"도 따로입니다. 미리보기를 그리지 않은 프레임이 끼거나 미리보기 대상 오브젝트가 바뀌면(<code>m_previewSourceId</code>) <code>lastCamera</code>를 지워, 다음 프레임에 지난 행렬과 TAA 히스토리를 버리게 합니다.</p>
+</section>
+
+<section id="debug">
+<h2>9. 디버그 뷰, 통계, 프로파일러</h2>
+<h3>9-1. 디버그 뷰가 프레임을 바꾸는 방식</h3>
+<p><code>RenderSettings::debugView</code>는 b0의 <code>debugParams.x</code>로 셰이더에 가고, 셰이더가 조명 대신 그 값을 출력합니다(1 알베도, 2 월드 노멀, 3 깊이, 4 그림자 계수, 5 UV, 6 금속성·거칠기, 7 AO, 8 캐스케이드, 9 F0, 10 클리어코트, 11 월드 위치, 12 기하 노멀, 13 SSAO, 14 클러스터 조명 수, 15 클러스터 슬라이스, 16·17 속도). 프레임 구조에 영향을 주는 것은 셋입니다.</p>
+<ul>
+<li>5(UV): <code>UseDeferred</code>가 거짓 → 포워드 경로.</li>
+<li>0이 아닌 모든 뷰: TAA와 모션 블러를 건너뜀(<code>TaaActive</code>, <code>ApplyHdrEffects</code>). 디버그 색이 번지면 읽을 수 없어서입니다. TAA 지터도 같이 꺼집니다.</li>
+<li>16·17: <code>ApplyHdrEffects</code>가 속도 버퍼를 hdr에 그리고 나머지 후처리를 모두 건너뜀.</li>
+</ul>
+<h3>9-2. 통계 (<code>Renderer::Stats</code>)</h3>
+<p>드로우·삼각형·PSO·셋·메시 전환 수, 컬링 수, 그림자 뷰 수, G-buffer·포워드 불투명 드로우 수, 클러스터 통계, 이번 프레임이 디퍼드였는지·SSAO를 그렸는지가 들어 있습니다. <code>Render</code> 첫머리에서 지우지만 렌더 패스 수와 배리어 수는 <code>EndUIPass</code>가 UI 패스까지 센 값이라 한 프레임 늦게 보입니다. GPU 비닝의 클러스터 통계는 기다리지 않는 리드백이라 몇 프레임(≥ <code>kFrameCount</code>) 전 값입니다.</p>
+<h3>9-3. 프로파일러 구간</h3>
+<p>CPU 구간은 <code>ProfileScope</code>(QueryPerformanceCounter), GPU 구간은 <code>GpuProfileScope</code>(<code>CommandList::WriteTimestamp</code> 두 개)입니다. GPU 결과는 2~3 프레임 늦게 돌아옵니다(<code>Core/Profiler.h</code> 주석). 타임스탬프 슬롯은 <code>kMaxTimestamps = 64</code>라 한 프레임에 GPU 구간 32개까지입니다 <span class="tag chk">계산값</span>(상수는 <code>RHI/GraphicsConfig.h</code>). 넘으면 경고를 한 번 남기고 그 구간을 건너뜁니다(<code>Profiler::BeginGpu</code>). GPU 비닝(타일 단계 포함), 디퍼드, SSAO, 파티클, 후처리 네 개, 게임 UI, 미리보기(미리보기에도 UI 명령이 있을 때)를 모두 켠 에디터 프레임은 메인 쪽 20개(<code>Frame</code> 포함), 미리보기 11개, <code>UIPass</code> 1개로 정확히 32개를 씁니다 <span class="tag chk">계산값</span>. 비닝 단계 구간(<code>Bin*</code>)은 <code>DispatchClusterBinning</code>의 <code>run</code> 람다가 메인 뷰에서만 남기고, 미리보기는 바깥 <code>PreviewClusterBin</code> 하나입니다.</p>
+<table>
+<tr><th>CPU 구간</th><th>GPU 구간 (중첩은 들여 적음)</th></tr>
+<tr><td><code>Update</code>, <code>GUI</code>, <code>Engine::Render</code> › <code>Renderer::Render</code> › <code>UI Build</code>, <code>Prepare</code>(› <code>BuildClusters</code>), <code>BuildDrawList</code>, <code>ShadowPass</code>, <code>MainPass</code>; <code>UIPass</code>, <code>Present</code></td><td><code>Frame</code> › <code>ClusterBin</code>(› <code>BinView</code>, <code>BinTile</code>, <code>BinCount</code>, <code>BinScan</code>, <code>BinFill</code>; 메인 뷰만), <code>ShadowPass</code>, <code>MainPass</code>(› <code>GBuffer</code>, <code>Ssao</code>, <code>DeferredLight</code>, <code>ParticleSim</code>, <code>ParticleSort</code>), <code>TaaPass</code>, <code>MotionBlurPass</code>, <code>BlurPass</code>, <code>BloomPass</code>, <code>TonemapPass</code>, <code>UICanvasPass</code>, <code>PreviewPass</code>(› <code>PreviewClusterBin</code>, 미리보기의 같은 구간들), <code>UIPass</code></td></tr>
+</table>
+<p>후처리 구간과 <code>TonemapPass</code>는 <code>MainPass</code>가 끝난 뒤 같은 깊이에서 열리는 형제 구간입니다. 디퍼드의 <code>Forward</code> 패스와 Effects 패스에는 따로 GPU 구간이 없어서 <code>MainPass</code>에서 자식 구간을 뺀 나머지로 봐야 합니다.</p>
+</section>
+
+<section id="auto">
+<h2>10. 프레임을 움직이는 자동화 인자</h2>
+<p>검증 스크립트는 에디터를 실행 인자로 몰아 정해진 프레임에서 스크린샷을 찍고 끝냅니다. 아래는 <code>Editor/EditorAutomation.cpp</code>와 <code>AppBase::ApplyRenderPathOptions</code>에서 확인한 것만 적었습니다.</p>
+<table>
+<tr><th>인자</th><th>프레임에 주는 영향</th></tr>
+<tr><td><code>--exit-after=N</code></td><td>자동화를 켬. 프레임 N에서 종료</td></tr>
+<tr><td><code>--screenshot=경로</code></td><td>프레임 N−1의 <code>OnUpdate</code>에서 요청 → 그 프레임 UI 패스 뒤 백버퍼 리드백 → Present 뒤 PNG 저장</td></tr>
+<tr><td><code>--avg-frames=K</code></td><td>종료 전 K 프레임 동안 프로파일러 구간 시간을 이름별로 평균 내 로그에 남김</td></tr>
+<tr><td><code>--frame-dt=초</code></td><td>재생 dt와 모션 블러 보정 dt를 고정(실행 속도와 무관한 결과)</td></tr>
+<tr><td><code>--deferred</code>, <code>--clustered</code>, <code>--cluster-gpu</code>, <code>--ssao</code>, <code>--taa</code>, <code>--taa-jitter</code>, <code>--motion-blur</code>, <code>--ocean-time</code></td><td>경로 스위치와 씬 값 덮어쓰기(<code>ApplyRenderPathOptions</code>)</td></tr>
+<tr><td><code>--debug-view</code>, <code>--post-stages</code>, <code>--select</code>, <code>--freeze-culling</code></td><td>디버그 뷰, 후처리 단계 썸네일 창, 오브젝트 선택(카메라를 고르면 미리보기 뷰가 생김), 컬링 고정</td></tr>
+</table>
+</section>
+
+<section id="code">
+<h2>11. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>루프</td><td><code>App/AppBase.cpp</code> 의 <code>AppBase::Run</code>, <code>AppBase::MsgProc</code></td><td>메시지 펌프, 프레임 순서, <code>WM_SIZE</code> → <code>Engine::OnResize</code></td></tr>
+<tr><td>시간</td><td><code>Core/Time.cpp</code> 의 <code>Time::Tick</code>, <code>Time::ConsumeFixedStep</code></td><td>dt 클램프 0.25초, 고정 스텝 누적기, 최대 8번</td></tr>
+<tr><td>앱별 업데이트</td><td><code>Editor/EditorApp.cpp</code> 의 <code>OnFixedUpdate</code>·<code>OnUpdate</code>·<code>OnGUI</code>, <code>App/GameApp.cpp</code></td><td>재생 상태·시간 배율·단축키</td></tr>
+<tr><td>프레임 뼈대</td><td><code>Core/Engine.cpp</code> 의 <code>Engine::BeginFrame</code>·<code>Render</code>·<code>EndFrame</code></td><td>카메라 컷, UI 빌드, 렌더러, ImGui 패스, 스크린샷, Present</td></tr>
+<tr><td>렌더러 입구</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::Render</code></td><td>5장의 준비와 7장의 순서 전부</td></tr>
+<tr><td>드로우 목록</td><td><code>Renderer::BuildDrawList</code>, <code>Renderer::DrawItems</code>, <code>DrawMode</code></td><td>목록·정렬 / 패스별 필터·컬링·블렌딩 정렬</td></tr>
+<tr><td>뷰 씬 패스</td><td><code>Renderer::RenderScenePass</code>, <code>Graphics/RendererDeferred.cpp</code> 의 <code>RenderDeferredScene</code>·<code>UseDeferred</code></td><td>경로 선택, 씬 패스, Effects 패스</td></tr>
+<tr><td>뷰 타깃</td><td><code>Graphics/Renderer.h</code> 의 <code>ViewTarget</code>, <code>Graphics/RendererTargets.cpp</code> 의 <code>CreateViewTarget</code>·<code>DestroyViewTarget</code>·<code>SetSceneTarget</code>·<code>SetPreviewTarget</code>·<code>EnsureGameTarget</code>·<code>BeginUIPass</code>·<code>EndUIPass</code></td><td>4장</td></tr>
+<tr><td>그림자</td><td><code>Graphics/RendererShadow.cpp</code> 의 <code>BuildShadowViews</code>, <code>RenderShadowPass</code>, <code>RenderShadowAtlasPass</code></td><td>그림자 뷰 배정과 아틀라스 패스</td></tr>
+<tr><td>후처리·톤</td><td><code>Graphics/RendererPost.cpp</code> 의 <code>ApplyHdrEffects</code>, <code>RenderTonemapPass</code>, <code>EnsurePostScratch</code>, <code>EnsureTaaTargets</code></td><td>TAA → 모션 블러 → 블러 → 블룸, 톤 패스</td></tr>
+<tr><td>게임 UI</td><td><code>Graphics/RendererUI.cpp</code> 의 <code>RenderCanvasPass</code>, <code>UploadUI</code></td><td>World → Overlay 캔버스</td></tr>
+<tr><td>카메라 상수</td><td><code>Renderer::UploadPerFrameConstants</code>, <code>Graphics/ShaderConstants.h</code> 의 <code>PerFrameConstants</code></td><td>b0 576 B, 지터, <code>TemporalState</code> 갱신</td></tr>
+<tr><td>프로파일러</td><td><code>Core/Profiler.h</code> 의 <code>ProfileScope</code>, <code>GpuProfileScope</code>, <code>RHI/GraphicsConfig.h</code> 의 <code>kMaxTimestamps</code></td><td>CPU·GPU 구간</td></tr>
+<tr><td>자동화</td><td><code>Editor/EditorAutomation.cpp</code>, <code>AppBase::ApplyRenderPathOptions</code></td><td>10장</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>12. 실험</h2>
+<h3>E1. 패스 시간 나눠 보기 <span class="tag chk">예상</span></h3>
+<p>Profiler 패널에서 GPU 구간을 봅니다. 그림자 패스와 <code>GBuffer</code>는 그리는 물체 수를 따라 커지고, <code>DeferredLight</code>는 풀스크린 삼각형 하나라 해상도와 픽셀당 조명 수(클러스터)를 따라가며, 후처리 구간은 해상도만 따라갈 것입니다. 자동화로 재려면 <code>--exit-after=300 --avg-frames=120</code>처럼 주고 로그의 구간 평균을 읽습니다. <code>MainPass</code>에서 자식 구간 합을 빼면 디퍼드의 <code>Forward</code>와 Effects 패스 몫입니다(9-3).</p>
+<h3>E2. 미리보기를 켜면 두 번 도는 것 <span class="tag chk">예상</span></h3>
+<p>같은 씬에서 카메라 오브젝트를 선택하기 전후로 GPU 구간을 비교합니다. <code>PreviewPass</code>가 새로 생기고 그 안에 <code>PreviewClusterBin</code>, <code>GBuffer</code>·<code>Ssao</code>·<code>DeferredLight</code>, 켜진 후처리 구간, <code>PreviewUICanvasPass</code>가 다시 나옵니다. 미리보기의 톤 패스에는 따로 구간이 없어 <code>PreviewPass</code> 몫에 섞입니다. <code>ShadowPass</code>와 <code>ParticleSim</code>은 한 번만 있어야 합니다(8장 표). 미리보기 면적이 메인의 약 10%이므로 해상도에 비례하는 구간은 그만큼 작게 나올 것입니다.</p>
+<h3>E3. 디버그 뷰 5로 경로 바꾸기 <span class="tag chk">예상</span></h3>
+<p>Render Settings에서 디버그 뷰를 5(UV)로 바꾸면 통계의 디퍼드 표시가 꺼지고 GPU 구간에서 <code>GBuffer</code>·<code>Ssao</code>·<code>DeferredLight</code>가 사라질 것입니다. 1(알베도)로 바꾸면 디퍼드는 남고 <code>TaaPass</code>·<code>MotionBlurPass</code>만 사라집니다(9-1).</p>
+<h3>E4. 통계의 draws와 drawItems <span class="tag chk">예상</span></h3>
+<p><code>Stats::drawItems</code> 주석은 "메인 패스 draws + culled 와 같음"이라고 적지만, <code>m_stats.draws</code>는 <code>DrawItems</code>의 드로우 말고도 하늘(<code>DrawSkybox</code>), 디버그 선, 디퍼드 라이팅, SSAO, 파티클, 모든 후처리·톤 패스(<code>RenderPostPass</code>), 게임 UI 드로우에서 올라갑니다. 미리보기가 켜지면 미리보기 패스 몫도 더해집니다. 그래서 톤 패스 하나만으로도 항등식은 맞지 않습니다. <code>draws + culled</code>와 <code>drawItems</code>의 차이를 보고, 하늘·후처리·미리보기를 하나씩 꺼 가며 차이가 위 목록만큼 줄어드는지 확인합니다.</p>
+<h3>E5. 창 크기 바꾸기와 지연 생성 <span class="tag chk">예상</span></h3>
+<p>씬 창 경계를 끌면 프레임마다 <code>SetSceneTarget</code>이 크기를 비교해 뷰를 다시 만들고 로그에 "씬 뷰 텍스처 W×H"가 찍힙니다. 블룸을 켠 상태라면 다시 만든 뒤 첫 프레임에 스크래치가 지연 생성되고, TAA는 히스토리가 새로 생겨 한 프레임 동안 지난 결과 없이 시작합니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>13. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>디버그 선이 블룸에 번지거나 TAA로 흔들림</td><td>디버그 선은 Effects 패스에서 hdr에 그려 후처리를 모두 거침. 속도 버퍼에는 쓰지 않음</td><td>의도된 설계 기록은 없음. 에디터 오버레이(기즈모·아이콘)는 ImGui라 후처리와 무관</td></tr>
+<tr><td>미리보기에서만 지역광 그림자가 빠짐</td><td>조명 컬링·그림자 타일 배정이 메인 카메라 기준</td><td><code>Render</code> 주석: "그림자 뷰·3a 컬링은 메인 카메라 기준 그대로"</td></tr>
+<tr><td>패스를 하나 끼우면 배리어 오류·D3D12 검증 경고</td><td>배리어를 패스마다 손으로 부름. 다음 패스가 기대하는 상태를 직접 맞춰야 함</td><td>렌더 그래프 없음. 디퍼드·포워드가 Effects 패스 앞에서 같은 상태로 끝나도록 맞춘 것이 대표 예</td></tr>
+<tr><td>뷰 텍스처를 추가했는데 크기 변경 뒤 크래시</td><td>셋이 옛 텍스처를 가리킴</td><td>새 텍스처와 그것을 가리키는 셋을 <code>DestroyViewTarget</code>에도 추가해야 함. 지연 생성 텍스처는 <code>Ensure*</code>와 <code>Destroy*</code> 짝</td></tr>
+<tr><td>메모리를 생각보다 많이 씀</td><td>텍스처 재사용(별칭)이 없음. 뷰마다 모든 타깃을 따로 가짐</td><td>1080p 뷰 약 83~136 MiB <span class="tag chk">계산값</span> (4-2)</td></tr>
+<tr><td>패스 순서를 데이터로 바꿀 수 없음</td><td>순서가 <code>Render</code>·<code>RenderScenePass</code>·<code>ApplyHdrEffects</code>의 코드</td><td>효과 순서(TAA → 모션 블러 → 블러 → 블룸)도 고정</td></tr>
+<tr><td>Dynamic 상수버퍼를 안 쓴 프레임에 D3D12 드로우 거부</td><td>D3D12 Dynamic CB는 프레임마다 한 번은 써야 함</td><td>b7(Skin)·b13(PrevSkin, 오브젝트 셋)은 <code>BuildDrawList</code>, b12는 <code>UploadSsaoConstants</code>, b4는 <code>RenderTonemapPass</code>가 효과를 꺼도 매 프레임 씀</td></tr>
+<tr><td>통계·GPU 시간이 지금 화면과 안 맞음</td><td>GPU 타임스탬프와 GPU 비닝 통계는 몇 프레임 늦음, 패스·배리어 수는 한 프레임 늦음</td><td>9-2, 9-3</td></tr>
+<tr><td>GPU 구간을 하나 더 넣었더니 프로파일러에서 다른 구간이 사라짐</td><td>타임스탬프 슬롯 64개 = 구간 32개를 기록 순서대로 나눠 주고, 넘친 구간은 경고 한 번 뒤 건너뜀(<code>Profiler::BeginGpu</code>)</td><td>모든 기능을 켠 에디터 프레임이 이미 32개를 씀 <span class="tag chk">계산값</span>. 구간을 하나 더 넣으면 기록 순서상 마지막 구간(지금은 <code>UIPass</code>)이 빠짐(9-3)</td></tr>
+<tr><td>멀티스레드 기록 없음</td><td>명령 목록 하나를 렌더 스레드 하나가 기록</td><td><code>Profiler.h</code>도 "스레드는 하나"를 가정</td></tr>
+</table>
+<div class="box warn"><b>낡은 서술 주의.</b> <a href="../overview/rendering-analysis.html#c4">rendering-analysis 4장</a>의 프레임 그림은 <code>Engine::Render</code>를 "그림자 → 메인 → UI → Present"로 적고 후처리·톤 패스가 없습니다. <a href="../overview/rendering-analysis.html#c14-8">14.8</a>은 <code>RenderMainPass</code>, <code>m_sceneColor</code>·<code>m_sceneDepth</code>, 상태 멤버(<code>m_sceneColorState</code> 등), 이전·다음 상태를 둘 다 적는 <code>Barrier</code>, 게임 모드의 "백버퍼 sRGB 뷰 + Device 깊이"를 설명합니다. 지금 코드는 <code>RenderScenePass</code>와 <code>ViewTarget</code>이고, 깊이는 뷰가 가지며, <code>Barrier</code>는 다음 상태만 받고 현재 상태는 RHI가 기억합니다.</div>
+</section>
+
+<section id="study">
+<h2>14. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>게임 루프와 고정 스텝</td><td>가변 dt와 고정 스텝 누적기, dt 클램프, 따라잡기 상한</td><td>2-1</td></tr>
+<tr><td>뷰와 렌더 타깃 묶음</td><td>뷰마다 가진 타깃, 크기 변경 시 재생성, 지연 생성</td><td>4</td></tr>
+<tr><td>프레임 준비와 업로드 구간</td><td>패스 기록 전에 리소스를 다 만드는 이유</td><td>5</td></tr>
+<tr><td>드로우 목록과 정렬 키</td><td>상태 변경 최소화, 블렌딩의 먼 것부터 정렬, 패스별 필터</td><td>6</td></tr>
+<tr><td>패스 의존과 리소스 상태</td><td>누가 쓰고 누가 읽는가, 배리어 위치</td><td>7</td></tr>
+<tr><td>프레임 단위와 뷰 단위</td><td>여러 카메라에서 무엇을 공유하는가, 뷰별 시간 상태</td><td>8</td></tr>
+<tr><td>GPU 타임스탬프</td><td>결과가 늦게 오는 이유, 구간 중첩</td><td>9-3</td></tr>
+<tr><td>렌더 그래프</td><td>우리에게 없는 것. 선언 기반 순서·배리어·메모리 별칭</td><td>1, 13</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Glenn Fiedler, <a href="https://gafferongames.com/post/fix_your_timestep/">Fix Your Timestep!</a> — 고정 스텝 누적기와 죽음의 나선. 2-1</li>
+<li>Yuriy O'Donnell, <a href="https://www.gdcvault.com/play/1024612/FrameGraph-Extensible-Rendering-Architecture-in">FrameGraph: Extensible Rendering Architecture in Frostbite</a> (GDC 2017) — 렌더 그래프가 순서·수명·별칭을 어떻게 정하는가. 1장과 13장의 비교 대상</li>
+<li>Adrian Courrèges, <a href="https://www.adriancourreges.com/blog/2015/11/02/gta-v-graphics-study/">GTA V Graphics Study</a> — 상용 게임 한 프레임을 패스별로 따라간 글. 그림 2와 비교해 읽기 좋음</li>
+<li>단계별 문서: <a href="../study/shadow-map-study.html">그림자 맵</a>, <a href="../study/csm-study.html">CSM</a>, <a href="../study/shadow-atlas-study.html">그림자 아틀라스</a>, <a href="../study/culling-study.html">컬링</a>, <a href="../study/deferred-gbuffer-study.html">디퍼드 G-buffer</a>, <a href="../study/ssao-study.html">SSAO</a>, <a href="../study/clustered-lighting-study.html">클러스터드</a>, <a href="../study/gpu-particles-study.html">GPU 파티클</a>, <a href="../study/velocity-buffer-study.html">속도 버퍼</a>, <a href="../study/taa-study.html">TAA</a>, <a href="../study/motion-blur-study.html">모션 블러</a>, <a href="../study/post-process-study.html">후처리</a>, <a href="../study/hdr-tonemapping-study.html">HDR·톤매핑</a>, <a href="../study/color-space-study.html">색공간</a>, <a href="../study/ui-canvas-study.html">UI 캔버스</a>, <a href="../study/gpu-sync-study.html">GPU 동기화</a>, <a href="../study/binding-study.html">바인딩</a>, <a href="../study/rhi-pso-study.html">RHI·PSO</a></li>
+<li>우리 문서: <a href="../overview/rendering-analysis.html#c4">rendering-analysis 4장</a>(루프와 RHI 호출, 일부 낡음), <a href="../overview/rendering-analysis.html#c14-6">14.6 드로우 목록과 정렬</a>, <a href="../overview/rendering-analysis.html#c14-9">14.9 카메라 미리보기</a>, <a href="../overview/rendering-analysis.html#c14-10">14.10 디버그 뷰</a>, <a href="../plan/deferred-clustered-ssao-record.html">디퍼드·클러스터드·SSAO 기록</a>, <a href="../plan/gpu-cluster-binning-record.html">GPU 클러스터 비닝 기록</a>, <a href="../plan/velocity-motionblur-taa-plan.html">속도·모션 블러·TAA 계획</a>, <a href="../plan/rendering-roadmap-plan.html">렌더링 로드맵</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

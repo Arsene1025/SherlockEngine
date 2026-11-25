@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 모션 블러 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>모션 블러 학습 문서</h1>
+  <p>속도 버퍼를 따라 픽셀마다 번지게 하는 후처리 — 재구성 필터의 가중치, 기준 fps 보정, 높은 fps 에서 마우스 회전이 번쩍이던 문제와 <code>LookSmoother</code></p>
+  <p>2026-11-25 · 모션 블러 이야기는 지금까지 <a href="../plan/velocity-motionblur-taa-plan.html#s2">속도 버퍼·모션 블러·TAA 계획 2단계</a>와 그 문서 맨 위 "구현하면서 바뀐 점", <a href="../overview/rendering-analysis.html#c20-28">rendering-analysis 20.28</a>, 커밋 be1ef76(마우스 회전 번쩍임 수정) 메시지에 흩어져 있었습니다. 속도 버퍼 자체는 <a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a>, TAA 는 <a href="../study/taa-study.html">TAA 학습</a>, 후처리 체인 전체는 <a href="../study/post-process-study.html">후처리 학습</a>에 있고 여기서는 되풀이하지 않습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1장은 카메라 셔터와 게임이 블러를 흉내 내는 이유, 2장은 재구성 필터의 원리(샘플 배치와 깊이 가중치), 3장은 우리 엔진에서 패스가 도는 자리, 4장은 길이 계산(셔터·기준 fps·상한), 5장은 마우스 회전 번쩍임과 <code>LookSmoother</code>, 6장은 설정과 실행 인자, 7장은 코드 지도, 8장은 실험, 9장은 함정, 10장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 가중치 예와 마우스 시뮬레이션은 셰이더 식과 <code>LookSmoother</code> 식을 그대로 옮긴 파이썬으로 계산했습니다 <span class="tag chk">계산값</span>. 2026-11-23 구현 때 기록된 측정은 <span class="tag ok">확인함</span>으로 출처와 함께 적었습니다. 커밋 be1ef76 과 <code>Core/LookSmoother.h</code> 주석에 있는 각속도 배율은 화면 측정이 아니라 당시 시뮬레이션 결과입니다.</div>
+</header>
+<nav><a href="#why">1. 왜 흉내 내나</a><a href="#principle">2. 재구성 필터</a><a href="#flow">3. 체인 속 자리</a><a href="#length">4. 번지는 길이</a><a href="#mouse">5. 마우스 번쩍임</a><a href="#settings">6. 설정·실행 인자</a><a href="#code">7. 우리 코드</a><a href="#lab">8. 실험</a><a href="#pitfalls">9. 함정</a><a href="#study">10. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 셔터와 모션 블러</h2>
+<h3>1-1. 카메라는 시간 구간을 찍는다</h3>
+<p>필름이나 센서는 셔터가 열려 있는 동안 들어온 빛을 모두 더합니다. 그 사이에 물체가 움직이면 한 점의 빛이 여러 픽셀에 나뉘어 쌓이고, 움직인 방향으로 늘어난 줄무늬가 남습니다. 영화 카메라는 셔터 각도로 이 시간을 정합니다. 180° 셔터는 프레임 시간의 절반 동안 열려 있다는 뜻이고, 24 fps 라면 1/48 초입니다.</p>
+<p>래스터화는 한 순간의 장면을 찍습니다. 셔터 시간이 0 인 카메라와 같아서 빠른 물체가 프레임마다 다른 자리에 선명하게 찍히고, 눈은 그 사이를 이어 붙이지 못해 끊겨 보입니다(스트로빙). 모션 블러는 이 사이를 번짐으로 채웁니다.</p>
+<h3>1-2. 왜 흉내 내는가</h3>
+<p>정확한 방법은 셔터 시간 안의 여러 시각을 따로 그려 평균하는 것입니다(누적 버퍼, 시간 슈퍼샘플링). 8 시각이면 장면을 8 번 그려야 해서 실시간에는 쓰기 어렵습니다. 게임은 한 번 그린 화면과 픽셀마다 "한 프레임에 얼마나 움직였나"를 담은 속도 버퍼만 가지고, 그 방향으로 색을 끌어다 섞어 번짐을 만듭니다. 비용은 픽셀마다 샘플 몇십 개로 고정됩니다.</p>
+<table>
+<tr><th>방법</th><th>무엇을 하나</th><th>비용</th><th>약점</th></tr>
+<tr><td>누적 (시간 슈퍼샘플링)</td><td>셔터 구간 안 N 시각을 다 그려 평균</td><td>장면 N 번</td><td>실시간에 비쌈</td></tr>
+<tr><td>카메라 전용 블러</td><td>깊이로 지난 위치를 되돌려 카메라 움직임만 번짐</td><td>전체 화면 패스 하나</td><td>움직이는 물체는 번지지 않음</td></tr>
+<tr><td>픽셀별 속도 블러 (이 엔진)</td><td>속도 버퍼 방향으로 샘플, 깊이로 앞뒤를 가려 섞음</td><td>패스 하나 + 속도 RT</td><td>가려졌던 뒤쪽 색이 없음, 실루엣 밖 번짐은 별도 패스 필요</td></tr>
+</table>
+<p>속도 버퍼는 TAA 도 같이 씁니다. 한 번 만든 속도 RT 를 두 효과가 나눠 쓰는 것이 이 방법이 흔히 쓰이는 이유 중 하나입니다. 속도 버퍼가 어떻게 만들어지는지는 <a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a>에 있습니다. 여기서는 <code>Shaders/Temporal.hlsli</code> 의 <code>LoadVelocityPixels</code> 가 UV 단위 속도에 화면 크기를 곱해 픽셀 단위로 바꿔 준다는 것만 알면 됩니다.</p>
+</section>
+
+<section id="principle">
+<h2>2. 재구성 필터의 원리</h2>
+<h3>2-1. 가운데 속도만 쓰면 생기는 일</h3>
+<p>가장 단순한 블러는 이 픽셀의 속도 <code>vc</code> 방향으로 샘플을 늘어놓고 평균하는 것입니다. 이러면 두 가지가 틀립니다. 움직이는 전경 픽셀이 뒤의 정지한 배경까지 같은 무게로 섞어 배경이 앞으로 새어 들어오고, 정지한 배경 픽셀은 속도가 0 이라 옆을 지나가는 빠른 물체의 꼬리를 받지 못합니다. McGuire 2012("A Reconstruction Filter for Plausible Motion Blur")는 샘플마다 깊이와 그 샘플 자신의 속도를 보고 "이 샘플의 색이 가운데 픽셀까지 번져 오는가"를 따지는 가중치로 앞의 문제를 풉니다(<a href="../plan/velocity-motionblur-taa-plan.html#c-mblur">계획 2.3</a>). 뒤의 문제는 원 논문에서 타일 최대 속도 패스(TileMax·NeighborMax)가 맡는데, 우리 엔진에는 이 패스가 없습니다(2-4).</p>
+<h3>2-2. 샘플 배치와 IGN 지터</h3>
+<p><code>PS_MotionBlur</code> 는 샘플 <code>count</code>(4~32, 기본 12)개를 <code>t = (i + 0.5 + jitter) / count − 0.5</code> 자리에 둡니다. <code>t</code> 는 −0.5 ~ 0.5 라 샘플은 픽셀 양쪽으로 길이의 절반씩 퍼지고, 자리는 <code>floor(position.xy + t · vc)</code> 를 화면 안으로 자른 픽셀입니다. 샘플은 점 읽기(<code>Load</code>)라 필터링이 없습니다.</p>
+<p>샘플 간격이 1 픽셀보다 넓으면 번진 자리에 같은 간격의 띠가 보입니다. <code>jitter</code> 는 <code>InterleavedGradientNoise(position.xy) − 0.5</code> 로, 픽셀마다 샘플 열 전체를 한 칸 안에서 조금씩 밀어 띠를 잡음으로 바꿉니다. 이 노이즈(Jimenez 2014)는 픽셀 좌표만 쓰고 프레임 번호를 쓰지 않습니다. <code>Shaders/MotionBlurPixelShader.hlsl</code> 의 <code>PS_MotionBlur</code> 지터 주석은 이것을 "스크린샷 결정적"이라고 적었고, <code>Shaders/Temporal.hlsli</code> 의 <code>InterleavedGradientNoise</code> 주석은 "프레임과 무관해서 스크린샷이 실행마다 같음"이라고 적었습니다. 무늬가 프레임마다 같으므로 시간에 따라 평균되어 사라지지는 않습니다.</p>
+<h3>2-3. 샘플별 가중치</h3>
+<p>가운데 픽셀의 깊이를 <code>zc</code>, 샘플의 깊이를 <code>zs</code>, 가운데에서 샘플까지 거리를 <code>d = |t| · |vc|</code>, 샘플 자신의 번지는 길이를 <code>|vs|</code> 라 하면 가중치는 다음 세 항의 합입니다.</p>
+<pre><code>w = SoftFront(zs, zc) · Cone(d, |vs|)            // 샘플이 앞: 샘플이 자기 속도로 여기까지 번져 오는가
+  + SoftFront(zc, zs) · Cone(d, |vc|)            // 가운데가 앞: 가운데가 번지며 뒤를 드러내는가
+  + Cylinder(d, |vs|) · Cylinder(d, |vc|) · 2    // 같은 물체처럼 둘 다 움직임</code></pre>
+<table>
+<tr><th>함수</th><th>식</th><th>뜻</th></tr>
+<tr><td><code>SoftFront(za, zb)</code></td><td><code>saturate(1 − (za − zb) / (0.02 + 0.02 · min(za, zb)))</code></td><td><code>za</code> 가 <code>zb</code> 보다 앞이면 1, 뒤면 0. 경계 폭이 거리에 비례합니다(먼 곳은 깊이 정밀도가 낮음). 깊이는 <code>LinearViewDepth</code> 로 푼 카메라 앞 거리입니다</td></tr>
+<tr><td><code>Cone(d, v)</code></td><td><code>saturate(1 − d / v)</code></td><td>길이 <code>v</code> 로 번지는 점이 거리 <code>d</code> 에 주는 몫. 멀수록 줄어 끝에서 0</td></tr>
+<tr><td><code>Cylinder(d, v)</code></td><td><code>1 − smoothstep(0.95v, 1.05v, d)</code></td><td>길이 안이면 1, 끝에서 부드럽게 0</td></tr>
+</table>
+<p>가운데 픽셀도 가중치 <code>1 / |vc|</code> 로 더하고 마지막에 가중치 합으로 나눕니다. 길게 번지는 픽셀일수록 자기 색의 비중이 줄어듭니다. 그림 1의 A 는 움직이는 전경의 실루엣 가장자리 픽셀에서 이 식이 내는 값입니다. 전경 샘플은 세 항이 다 살아 3.1~3.9 를 받고, 뒤의 배경 샘플은 둘째 항(가운데의 원뿔)만 남아 0.5~1.0 을 받습니다. 결과는 전경 82%, 배경 18% 입니다 <span class="tag chk">계산값</span>. 전경이 반투명하게 번지며 뒤 배경을 조금 드러내는 모양입니다.</p>
+<figure>
+<svg viewBox="0 0 900 340" role="img" aria-label="속도 선을 따라 놓인 샘플과 깊이 비교로 정한 가중치">
+  <text x="20" y="34">A. 가운데 픽셀이 움직이는 전경 (깊이 2 m, |vc| = 16 px, 샘플 12, 지터 0)</text>
+  <line x1="480" y1="78" x2="480" y2="206" style="stroke:var(--ink);stroke-dasharray:4 3;stroke-width:1.5"/>
+  <text x="480" y="70" text-anchor="middle">가운데 픽셀 (가중치 1/16)</text>
+  <rect x="135" y="114.9" width="30" height="55.1" style="fill:var(--accent)"/>
+  <text x="150" y="108.9" text-anchor="middle">3.08</text>
+  <rect x="122" y="176" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <text x="150" y="192" text-anchor="middle">-7.3</text>
+  <rect x="195" y="111.9" width="30" height="58.1" style="fill:var(--accent)"/>
+  <text x="210" y="105.9" text-anchor="middle">3.25</text>
+  <rect x="182" y="176" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <text x="210" y="192" text-anchor="middle">-6.0</text>
+  <rect x="255" y="108.9" width="30" height="61.1" style="fill:var(--accent)"/>
+  <text x="270" y="102.9" text-anchor="middle">3.42</text>
+  <rect x="242" y="176" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <text x="270" y="192" text-anchor="middle">-4.7</text>
+  <rect x="315" y="106.0" width="30" height="64.0" style="fill:var(--accent)"/>
+  <text x="330" y="100.0" text-anchor="middle">3.58</text>
+  <rect x="302" y="176" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <text x="330" y="192" text-anchor="middle">-3.3</text>
+  <rect x="375" y="103.0" width="30" height="67.0" style="fill:var(--accent)"/>
+  <text x="390" y="97.0" text-anchor="middle">3.75</text>
+  <rect x="362" y="176" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <text x="390" y="192" text-anchor="middle">-2.0</text>
+  <rect x="435" y="100.0" width="30" height="70.0" style="fill:var(--accent)"/>
+  <text x="450" y="94.0" text-anchor="middle">3.92</text>
+  <rect x="422" y="176" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <text x="450" y="192" text-anchor="middle">-0.7</text>
+  <rect x="495" y="152.9" width="30" height="17.1" style="fill:var(--warn)"/>
+  <text x="510" y="146.9" text-anchor="middle">0.96</text>
+  <rect x="482" y="176" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <text x="510" y="192" text-anchor="middle">+0.7</text>
+  <rect x="555" y="154.4" width="30" height="15.6" style="fill:var(--warn)"/>
+  <text x="570" y="148.4" text-anchor="middle">0.88</text>
+  <rect x="542" y="176" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <text x="570" y="192" text-anchor="middle">+2.0</text>
+  <rect x="615" y="155.8" width="30" height="14.2" style="fill:var(--warn)"/>
+  <text x="630" y="149.8" text-anchor="middle">0.79</text>
+  <rect x="602" y="176" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <text x="630" y="192" text-anchor="middle">+3.3</text>
+  <rect x="675" y="157.3" width="30" height="12.7" style="fill:var(--warn)"/>
+  <text x="690" y="151.3" text-anchor="middle">0.71</text>
+  <rect x="662" y="176" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <text x="690" y="192" text-anchor="middle">+4.7</text>
+  <rect x="735" y="158.8" width="30" height="11.2" style="fill:var(--warn)"/>
+  <text x="750" y="152.8" text-anchor="middle">0.62</text>
+  <rect x="722" y="176" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <text x="750" y="192" text-anchor="middle">+6.0</text>
+  <rect x="795" y="160.3" width="30" height="9.7" style="fill:var(--warn)"/>
+  <text x="810" y="154.3" text-anchor="middle">0.54</text>
+  <rect x="782" y="176" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <text x="810" y="192" text-anchor="middle">+7.3</text>
+  <line class="ln" x1="110" y1="170" x2="850" y2="170"/>
+  <text x="20" y="192">오프셋 px</text>
+  <text x="300" y="222" text-anchor="middle">전경 샘플 6개: 몫 82%</text>
+  <text x="660" y="222" text-anchor="middle">배경 샘플 6개 (깊이 10 m, 정지): 몫 18%</text>
+  <text x="20" y="262">B. 가운데 픽셀이 정지한 배경 (카메라 정지, 왼쪽에 빠른 전경)</text>
+  <rect x="122" y="274" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <rect x="182" y="274" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <rect x="242" y="274" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <rect x="302" y="274" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <rect x="362" y="274" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <rect x="422" y="274" width="56" height="24" style="fill:var(--accent-bg);stroke:var(--line)"/>
+  <rect x="482" y="274" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <rect x="542" y="274" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <rect x="602" y="274" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <rect x="662" y="274" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <rect x="722" y="274" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <rect x="782" y="274" width="56" height="24" style="fill:var(--warn-bg);stroke:var(--line)"/>
+  <rect x="482" y="272" width="56" height="28" style="fill:none;stroke:var(--ink);stroke-width:2"/>
+  <text x="510" y="290" text-anchor="middle">가운데</text>
+  <text x="330" y="290" text-anchor="middle">전경</text>
+  <text x="20" y="324">|vc| &lt; 0.5 px 이라 샘플 없이 자기 색을 냄. 왼쪽 전경의 꼬리가 이 픽셀까지 오지 않음</text>
+</svg>
+<figcaption>그림 1. 속도 선 위의 샘플 12개와 가중치. A: 가운데가 깊이 2 m 에서 16 px 로 움직이는 전경이고, 왼쪽 6개는 같은 전경, 오른쪽 6개는 깊이 10 m 의 정지한 배경입니다. 막대 높이가 <code>PS_MotionBlur</code> 의 <code>w</code> 입니다(지터 0, 가운데 가중치 1/16 포함한 몫) <span class="tag chk">계산값</span>. B: 카메라가 정지해 있으면 배경 픽셀은 속도가 0 이라 바로 반환합니다.</figcaption>
+</figure>
+<h3>2-4. 실루엣 밖으로는 번지지 않는다</h3>
+<p><code>PS_MotionBlur</code> 는 <code>|vc| &lt; 0.5</code> 픽셀이면 가운데 색을 그대로 냅니다. 정지 화면에서 켠 것과 끈 것이 비트 단위로 같게 하려는 분기입니다(셰이더 주석). 또 샘플은 가운데 픽셀의 속도 선 위에만 놓입니다. 그래서 카메라가 멈춰 있을 때 빠르게 지나가는 물체 옆의 정지한 배경 픽셀은 그 물체를 샘플할 기회가 없고(그림 1 B), 번짐은 물체의 실루엣 안에서만 생깁니다. 첫째 항(<code>SoftFront(zs, zc) · Cone(d, |vs|)</code>)이 "앞의 샘플이 배경 위로 번져 오는" 경우를 다루지만, 그 샘플이 가운데 픽셀의 속도 선 위에 있을 때만 쓰입니다. 카메라가 움직여 배경 픽셀도 속도를 가질 때가 그런 경우입니다.</p>
+<p>원 논문은 화면을 타일로 나눠(계획은 20×20 타일로 적었습니다) 타일마다 최대 속도(TileMax)를 구하고 이웃 3×3 의 최대(NeighborMax)를 픽셀의 샘플 방향으로 씁니다. 그러면 정지한 배경 픽셀도 옆 타일의 빠른 물체 방향으로 샘플합니다. 계획은 이 패스를 "실루엣 안에서만 번지는 것이 눈에 거슬릴 때만" 하는 선택 단계로 남겼고(<a href="../plan/velocity-motionblur-taa-plan.html#s2-todo">계획 2단계-3</a>), 지금도 하지 않았습니다(<a href="../overview/rendering-analysis.html#c22-4">rendering-analysis 22.4</a>).</p>
+</section>
+
+<section id="flow">
+<h2>3. 후처리 체인 속 자리</h2>
+<p>모션 블러는 <code>Graphics/RendererPost.cpp</code> 의 <code>Renderer::ApplyHdrEffects</code> 안에서 HDR 구간의 둘째 패스로 돕니다. 체인 전체 그림은 <a href="../study/post-process-study.html">후처리 학습</a>에 있습니다.</p>
+<pre><code>씬 패스 (hdr + 속도 RT + 깊이)
+  → [디버그 뷰 16·17 이면 VelocityDebug 만 그리고 끝]
+  → TAA (TaaResolve, TaaCopy)
+  → 모션 블러: MotionBlur (hdr·깊이·속도 → scratch.temp), MotionBlurCopy (temp → hdr, PS_Post 모드 0)
+  → 가우시안 블러 → 블룸 → 톤 패스</code></pre>
+<ul>
+<li><b>TAA 다음.</b> 계획은 "TAA 는 지터가 남은 이미지를 정리해야 하므로 맨 앞에 둡니다(UE 도 TAA → 모션 블러 순서)"라고 적었습니다(<a href="../plan/velocity-motionblur-taa-plan.html#d-chain">계획 3.5</a>). 코드 주석도 "지터가 남은 이미지를 정리한 뒤 번지게 함"입니다. 결과로 모션 블러가 만든 번짐과 IGN 잡음은 TAA 를 거치지 않습니다.</li>
+<li><b>블룸 앞.</b> 계획은 "모션 블러는 블룸 앞에 둬야 밝은 줄무늬가 번진 뒤에 퍼집니다"라고 적었습니다.</li>
+<li><b>제자리 규칙.</b> 결과는 늘 <code>hdr</code> 에 남습니다. 모션 블러는 <code>temporalSet</code>(t13 hdr, t23 깊이, t7 속도)을 읽어 <code>scratch.temp</code> 에 쓰고, 복사 패스로 되돌립니다. <code>EnsurePostScratch</code> 가 모션 블러만 켜져도 <code>temp</code> 를 만들고, 못 만들면 효과만 건너뜁니다.</li>
+<li><b>깊이 상태.</b> 후처리가 깊이를 SRV 로 읽도록 <code>ApplyHdrEffects</code> 가 깊이를 <code>DepthRead</code> 로 바꿔 둡니다. 다음 프레임 씬 패스가 <code>DepthWrite</code> 로 되돌립니다(<a href="../plan/velocity-motionblur-taa-plan.html#unknown">계획 7.3</a>).</li>
+<li><b>건너뛰는 조건.</b> <code>motionBlurEnabled</code> 이고 <code>motionBlurIntensity &gt; 0</code> 이고 <code>debugView == 0</code> 이고 뷰의 <code>temporalSet</code> 이 있을 때만 돕니다. 디버그 뷰(알베도·노멀·속도 …)는 색이 번지면 읽을 수 없어서 건너뜁니다. 같은 이유로 TAA 도 <code>Renderer::TaaActive</code> 에서 디버그 뷰를 막습니다.</li>
+<li><b>뷰마다.</b> <code>ApplyHdrEffects</code> 는 메인 뷰와 미리보기 뷰에 각각 불리고, 길이 상한은 각 뷰의 높이로 계산합니다. dt 는 두 뷰가 같은 <code>m_frameDeltaTime</code> 을 씁니다.</li>
+<li><b>썸네일.</b> 후처리 단계 썸네일 6칸 중 셋째가 <code>PostStage_Motion</code>("Motion")입니다.</li>
+</ul>
+</section>
+
+<section id="length">
+<h2>4. 번지는 길이</h2>
+<h3>4-1. 셔터 배율</h3>
+<p>속도 버퍼는 "지난 프레임 → 이번 프레임" 이동량입니다. <code>BlurVector</code> 는 이 픽셀의 이동량(픽셀)에 <code>postBlur.x</code> 를 곱하고, 길이가 <code>postBlur.y</code> 를 넘으면 그 길이로 자릅니다. 무한대나 NaN 이면 0 입니다. <code>postBlur.x</code> 는 <code>ApplyHdrEffects</code> 가 <code>min(motionBlurIntensity, 1) × fpsScale</code> 로 채웁니다. <code>motionBlurIntensity</code> 0.5 는 한 프레임 이동량의 절반만 번진다는 뜻이고, 1-1 의 180° 셔터에 해당합니다.</p>
+<h3>4-2. 기준 fps 보정</h3>
+<p>셔터 배율만 쓰면 번짐 길이가 실제 프레임 시간에 비례합니다. 처음 계획은 실제 카메라처럼 그대로 두기로 했습니다(<a href="../plan/velocity-motionblur-taa-plan.html#s2-settings">계획 2단계-1</a>). 구현해 보니 VSync 를 끈 에디터(1600 fps 안팎)에서는 블러가 1 픽셀도 안 되었고, <code>motionBlurTargetFps</code>(기본 60)를 추가했습니다(계획 맨 위 "구현하면서 바뀐 점").</p>
+<pre><code>frameDt  = frameDeltaOverride &gt; 0 ? frameDeltaOverride : m_frameDeltaTime
+fpsScale = (targetFps &gt; 0 &amp;&amp; frameDt &gt; 1e-5) ? 1 / (targetFps · frameDt) : 1
+길이     = min(|속도(px/프레임)| × intensity × fpsScale, 상한)</code></pre>
+<p>속도가 초당 <code>s</code> 픽셀이면 한 프레임 이동량은 <code>s · dt</code> 이고, 여기에 <code>1 / (targetFps · dt)</code> 를 곱하면 dt 가 지워져 길이는 <code>s × intensity / targetFps</code> 가 됩니다. 실제 fps 와 상관없이 "기준 fps 로 돌았다면 셔터가 열려 있던 동안의 이동량"입니다 <span class="tag chk">계산값</span>.</p>
+<table>
+<tr><th>실제 fps</th><th>dt</th><th>fpsScale (기준 60)</th><th>intensity 0.5 일 때 한 프레임 이동량에 곱하는 값</th></tr>
+<tr><td>30</td><td>33.3 ms</td><td>0.5</td><td>0.25</td></tr>
+<tr><td>60</td><td>16.7 ms</td><td>1</td><td>0.5</td></tr>
+<tr><td>480</td><td>2.08 ms</td><td>8</td><td>4</td></tr>
+<tr><td>1600</td><td>0.625 ms</td><td>26.7</td><td>13.3</td></tr>
+</table>
+<p class="foot">표의 값은 식으로 계산했습니다 <span class="tag chk">계산값</span>.</p>
+<p>dt 는 <code>Core/Engine.cpp</code> 의 <code>Engine::Render</code> 가 <code>m_renderer.SetFrameDeltaTime(m_time.GetDeltaTime())</code> 으로 넘깁니다. 주석은 "이번 프레임에 장면을 움직인 dt"입니다. <code>Time::GetDeltaTime</code> 은 <code>maxDeltaTime</code>(0.25 초)로 자른 값이고, 에디터 재생의 시간 배율(<code>EditorApp</code> 의 <code>m_timeScale</code>)은 <code>scene.Update</code>·<code>FixedUpdate</code> 에 곱해지고(<code>EditorApp::OnUpdate</code>·<code>OnFixedUpdate</code>) 렌더러에 넘기는 dt 에는 들어가지 않으므로 이 dt 와 무관합니다. <code>targetFps</code> 를 0 으로 두면 보정 없이 한 프레임 이동량을 그대로 씁니다.</p>
+<p>보정은 속도가 프레임마다 고르다는 가정 위에 있습니다. 위치가 어떤 프레임에서만 바뀌면(고정 스텝 물리, 몰려 들어오는 마우스 델타) 그 프레임의 이동량이 몇 배로 커지고, 보정이 그것을 다시 몇 배 키웁니다. 5장의 번쩍임과 9장의 Rigidbody 계단이 이 경우입니다.</p>
+<h3>4-3. 길이 상한은 720p 기준의 전체 길이</h3>
+<p><code>motionBlurMaxRadius</code>(기본 32)는 이름에 radius 가 들어 있지만 셰이더에서는 번지는 벡터 전체의 길이 상한입니다. 샘플이 −0.5 ~ 0.5 에 놓이므로 한쪽으로는 그 절반까지 닿습니다. 에디터 슬라이더 이름도 "Max length (px @720p)"입니다. 값은 720 픽셀 높이 기준이고 <code>ApplyHdrEffects</code> 가 <code>× h / kReferenceHeight</code>(720)로 출력 높이에 비례시킵니다. 가우시안 블러 반경과 같은 관례입니다. 상한은 순간이동한 물체가 화면을 가로질러 번지는 것을 막습니다.</p>
+<table>
+<tr><th>출력 높이</th><th>상한 (기본 32)</th><th>한쪽 도달</th><th>샘플 12개일 때 간격</th></tr>
+<tr><td>720</td><td>32 px</td><td>16 px</td><td>2.7 px</td></tr>
+<tr><td>1080</td><td>48 px</td><td>24 px</td><td>4 px</td></tr>
+<tr><td>2160</td><td>96 px</td><td>48 px</td><td>8 px</td></tr>
+</table>
+<p class="foot">상한까지 번질 때의 값입니다 <span class="tag chk">계산값</span>. 간격이 몇 픽셀씩 벌어지면 IGN 지터가 띠를 잡음으로 바꿔 줍니다(2-2). 높은 해상도에서 잡음이 거슬리면 샘플 수를 늘립니다.</p>
+</section>
+
+<section id="mouse">
+<h2>5. 높은 fps 에서 마우스 회전이 번쩍이던 문제</h2>
+<h3>5-1. 증상과 원인</h3>
+<p>2026-11-23 커밋 be1ef76 은 VSync 를 끈 높은 fps 에서 마우스로 카메라를 돌리면 모션 블러가 번쩍이던 문제를 고쳤습니다. 같은 커밋이 <code>TaaMotionBlur.json</code> 의 카메라와 <code>motionBlurMaxRadius</code>(32)도 함께 고쳤습니다. 원인은 입력 쪽이었습니다. <code>Core/LookSmoother.h</code> 주석이 적은 설명은 이렇습니다.</p>
+<ul>
+<li>마우스 델타는 정수 픽셀이고 <code>WM_MOUSEMOVE</code> 는 마우스 보고 주기(125~1000 Hz)마다 몰려 들어옵니다.</li>
+<li>fps 가 보고 주기보다 높으면 프레임마다 받는 델타가 0, 1, 3, 0 … 처럼 튑니다. 델타를 그대로 회전에 쓰면 카메라 각속도가 프레임마다 튑니다.</li>
+<li>속도 버퍼는 그 프레임의 회전을 그대로 담고, 기준 fps 보정(4-2)이 높은 fps 에서 길이를 몇 배로 늘립니다. 델타가 0 인 프레임은 선명하고 델타가 몰린 프레임은 크게 번집니다.</li>
+</ul>
+<p>125 Hz 마우스와 480 fps 라면 보고 한 번이 약 3.84 프레임에 한 번 옵니다. 손이 일정하게 움직여도 넷 중 세 프레임은 회전이 0 이고 한 프레임에 평균의 4 배가 몰립니다. 그 프레임의 블러 길이는 보정 8 배까지 곱해져 상한에 닿기 쉽습니다 <span class="tag chk">계산값</span>. 보정이 없던 때(<code>targetFps</code> 0)에는 같은 튐이 있어도 길이가 1/8 이라 눈에 띄지 않았을 것입니다.</p>
+<h3>5-2. 쌓아 두고 지수로 꺼내기</h3>
+<p><code>LookSmoother</code> 는 받은 회전량을 두 단계 저장소에 쌓고, 매 프레임 각 단계에서 <code>k = 1 − exp(−dt / τ)</code> 만큼 다음 단계로 넘깁니다. <code>τ</code>(<code>timeConstant</code>)는 8 ms 입니다.</p>
+<pre><code>Add(x, y):          stage1 += (x, y)
+Consume(dt):        k = 1 − exp(−dt / τ)           // τ ≤ 0 이거나 dt ≤ 0 이면 k = 1 (한 번에 냄)
+                    mid = stage1 · k;  stage1 −= mid;  stage2 += mid
+                    out = stage2 · k;  stage2 −= out
+                    |stage1| + |stage2| &lt; 1e-5 rad 이면 남은 것을 out 에 더하고 Reset</code></pre>
+<ul>
+<li><b>총 회전량은 그대로.</b> 쌓은 것을 나눠 내보낼 뿐이라 감도가 바뀌지 않습니다. 주석은 "델타에 dt 를 곱하는 방식은 감도가 fps 에 따라 바뀌므로 쓰지 않음"이라고 적었습니다.</li>
+<li><b>fps 에 거의 무관.</b> 한 단계만 보면 <code>exp(−dt/τ)</code> 는 dt 에 대한 지수라, 프레임을 둘로 쪼개도 남는 양이 같습니다(<code>exp(−a) · exp(−b) = exp(−(a+b))</code>). 두 단계는 한 번의 <code>Consume</code> 안에서 이어지므로(1단계에서 넘긴 몫이 같은 프레임에 2단계에서 바로 <code>k</code> 만큼 나감) 프레임이 길수록 조금 빨리 내보냅니다. 회전을 한 번 넣었을 때 1/60 초 안에 나가는 몫은 60 fps 0.766, 480 fps 0.647, 4800 fps 0.619 입니다(연속 시간 극한 0.616) <span class="tag chk">계산값</span>. 평균 지연은 두 단계라 약 2τ = 16 ms 입니다(주석).</li>
+<li><b>두 단계인 이유.</b> 주석의 시뮬레이션 기록으로는 한 단계(지연 15 ms)가 125 Hz·480 fps 에서 각속도를 평균의 0.7~1.3 배로 남겼고, 두 단계(8 ms × 2)는 0.8~1.2 배, 1000 Hz 마우스는 0.93~1.08 배였습니다. 커밋 be1ef76 메시지에는 dt 지터를 넣은 480 fps 시뮬레이션에서 125 Hz 0~5.8 배 → 0.81~1.17 배, 1000 Hz 0~2.3 배 → 0.93~1.08 배로 적혀 있습니다.</li>
+<li><b>끝 처리.</b> 남은 양이 1e-5 라디안보다 작으면 한 번에 내고 비웁니다. 멈춘 카메라가 끝없이 미세하게 돌아 속도 버퍼가 0 이 안 되는 일을 막는다고 주석이 적었습니다. 0 이 되어야 2-4 의 조기 반환이 걸려 정지 화면이 블러 끈 화면과 같아집니다.</li>
+</ul>
+<figure>
+<svg viewBox="0 0 900 320" role="img" aria-label="480 fps 에서 125 Hz 마우스의 프레임별 회전량: 받은 그대로와 LookSmoother 를 거친 값">
+  <line x1="90" y1="260" x2="870" y2="260" style="stroke:var(--line)"/>
+  <text x="82" y="264" text-anchor="end">0×</text>
+  <line x1="90" y1="210" x2="870" y2="210" style="stroke:var(--line)"/>
+  <text x="82" y="214" text-anchor="end">1×</text>
+  <line x1="90" y1="160" x2="870" y2="160" style="stroke:var(--line)"/>
+  <text x="82" y="164" text-anchor="end">2×</text>
+  <line x1="90" y1="110" x2="870" y2="110" style="stroke:var(--line)"/>
+  <text x="82" y="114" text-anchor="end">3×</text>
+  <line x1="90" y1="60" x2="870" y2="60" style="stroke:var(--line)"/>
+  <text x="82" y="64" text-anchor="end">4×</text>
+  <line x1="90" y1="210" x2="870" y2="210" style="stroke:var(--ink3);stroke-dasharray:4 3"/>
+  <rect x="107" y="211.6" width="11" height="48.4" style="fill:var(--accent)"/>
+  <text x="106" y="278" text-anchor="middle">0</text>
+  <rect x="126" y="60.0" width="11" height="200.0" style="fill:var(--warn)"/>
+  <rect x="139" y="204.8" width="11" height="55.2" style="fill:var(--accent)"/>
+  <rect x="171" y="203.6" width="11" height="56.4" style="fill:var(--accent)"/>
+  <rect x="203" y="206.0" width="11" height="54.0" style="fill:var(--accent)"/>
+  <rect x="235" y="210.4" width="11" height="49.6" style="fill:var(--accent)"/>
+  <text x="234" y="278" text-anchor="middle">4</text>
+  <rect x="254" y="60.0" width="11" height="200.0" style="fill:var(--warn)"/>
+  <rect x="267" y="204.8" width="11" height="55.2" style="fill:var(--accent)"/>
+  <rect x="299" y="204.4" width="11" height="55.6" style="fill:var(--accent)"/>
+  <rect x="331" y="207.2" width="11" height="52.8" style="fill:var(--accent)"/>
+  <rect x="363" y="211.6" width="11" height="48.4" style="fill:var(--accent)"/>
+  <text x="362" y="278" text-anchor="middle">8</text>
+  <rect x="382" y="100.0" width="11" height="160.0" style="fill:var(--warn)"/>
+  <rect x="395" y="208.4" width="11" height="51.6" style="fill:var(--accent)"/>
+  <rect x="427" y="209.2" width="11" height="50.8" style="fill:var(--accent)"/>
+  <rect x="459" y="212.4" width="11" height="47.6" style="fill:var(--accent)"/>
+  <rect x="491" y="216.8" width="11" height="43.2" style="fill:var(--accent)"/>
+  <text x="490" y="278" text-anchor="middle">12</text>
+  <rect x="510" y="60.0" width="11" height="200.0" style="fill:var(--warn)"/>
+  <rect x="523" y="211.2" width="11" height="48.8" style="fill:var(--accent)"/>
+  <rect x="555" y="210.4" width="11" height="49.6" style="fill:var(--accent)"/>
+  <rect x="587" y="212.4" width="11" height="47.6" style="fill:var(--accent)"/>
+  <rect x="619" y="216.0" width="11" height="44.0" style="fill:var(--accent)"/>
+  <text x="618" y="278" text-anchor="middle">16</text>
+  <rect x="638" y="60.0" width="11" height="200.0" style="fill:var(--warn)"/>
+  <rect x="651" y="210.4" width="11" height="49.6" style="fill:var(--accent)"/>
+  <rect x="683" y="209.2" width="11" height="50.8" style="fill:var(--accent)"/>
+  <rect x="715" y="211.6" width="11" height="48.4" style="fill:var(--accent)"/>
+  <rect x="747" y="215.2" width="11" height="44.8" style="fill:var(--accent)"/>
+  <text x="746" y="278" text-anchor="middle">20</text>
+  <rect x="766" y="60.0" width="11" height="200.0" style="fill:var(--warn)"/>
+  <rect x="779" y="209.2" width="11" height="50.8" style="fill:var(--accent)"/>
+  <rect x="811" y="208.4" width="11" height="51.6" style="fill:var(--accent)"/>
+  <rect x="843" y="210.8" width="11" height="49.2" style="fill:var(--accent)"/>
+  <text x="480" y="304" text-anchor="middle">프레임 (480 fps, 2.08 ms 간격)</text>
+  <text x="22" y="150" text-anchor="middle" transform="rotate(-90 22 150)">평균 대비 회전량</text>
+  <rect x="560" y="12" width="14" height="12" style="fill:var(--warn)"/><text x="580" y="23">받은 델타 그대로 (0 또는 3.2~4×)</text>
+  <rect x="560" y="30" width="14" height="12" style="fill:var(--accent)"/><text x="580" y="41">LookSmoother 출력 (τ 8 ms × 2단)</text>
+</svg>
+<figcaption>그림 2. 125 Hz 마우스, 480 fps, 손 속도 일정(600 px/s 가정, dt 지터 없음)일 때 프레임별 회전량을 평균 대비로 그렸습니다. 받은 델타는 네 프레임에 한 번 약 4 배(3.2~4 배)이고 나머지는 0 입니다. <code>LookSmoother</code> 를 거치면 0.84~1.14 배 안에 머뭅니다 <span class="tag chk">계산값</span>. 기록된 시뮬레이션(dt 지터 포함)의 0~5.8 배 → 0.81~1.17 배와 같은 경향입니다.</figcaption>
+</figure>
+<h3>5-3. 어디에 붙어 있나</h3>
+<ul>
+<li><code>Editor/EditorApp.cpp</code> 의 <code>EditorApp::UpdateCamera</code>: 오른쪽 버튼 회전 중에 델타 × 감도를 <code>m_lookSmoother.Add</code> 로 쌓고, <code>HasPending()</code> 이면 버튼을 뗀 뒤에도 <code>Consume(dt)</code> 로 남은 몫을 마저 <code>camera.Rotate</code> 합니다. 재생 중 게임 카메라 컴포넌트가 카메라를 잡으면(<code>cameraDriven</code>) <code>Reset()</code> 으로 버립니다.</li>
+<li>테스트 프로젝트의 <code>Projects/SherlockTestScenes/Scripts/FreeCamera.cpp</code>: 같은 방식으로 <code>m_look.Add</code>·<code>m_look.Consume</code>.</li>
+</ul>
+<p>고친 자리는 입력 쪽입니다. 속도 버퍼는 실제로 일어난 회전을 정확히 담았고, 회전 자체가 프레임마다 튀었습니다. 같은 성질 때문에 고정 스텝으로만 움직이는 물체도 높은 fps 에서 계단처럼 번집니다(9장).</p>
+</section>
+
+<section id="settings">
+<h2>6. 설정과 실행 인자</h2>
+<table>
+<tr><th><code>PostProcessSettings</code> 필드</th><th>기본</th><th>범위 (UI)</th><th>뜻</th></tr>
+<tr><td><code>motionBlurEnabled</code></td><td>false</td><td>체크</td><td>켬/끔. <code>AnyHdrEffect</code> 에 들어감</td></tr>
+<tr><td><code>motionBlurIntensity</code></td><td>0.5</td><td>0~1</td><td>셔터 배율(0.5 = 180°). 코드도 1 로 자름. 0 이면 패스를 건너뜀</td></tr>
+<tr><td><code>motionBlurMaxRadius</code></td><td>32</td><td>1~64</td><td>번지는 전체 길이 상한, 720p 기준 픽셀(4-3)</td></tr>
+<tr><td><code>motionBlurSamples</code></td><td>12</td><td>4~32</td><td>샘플 수. CPU(<code>std::clamp</code>)와 셰이더(<code>clamp</code>) 모두 4~32</td></tr>
+<tr><td><code>motionBlurTargetFps</code></td><td>60</td><td>0~240</td><td>기준 fps. 0 = 보정 안 함(4-2)</td></tr>
+</table>
+<p>씬 파일의 <code>postProcess</code> 에 같은 이름으로 저장됩니다(<code>Scene/SceneSerializer.cpp</code>). 에디터 환경 패널의 "Motion blur" 묶음(<code>Editor/DebugUI.cpp</code>)이 슬라이더를 보여 줍니다.</p>
+<table>
+<tr><th>실행 인자</th><th>들어가는 곳</th><th>뜻</th></tr>
+<tr><td><code>--motion-blur=0|1</code></td><td><code>RenderSettings::motionBlurOverride</code> → <code>Renderer::ResolveEnvironment</code></td><td>씬 값 덮어쓰기(저장 안 함)</td></tr>
+<tr><td><code>--motion-blur-fps=N</code></td><td><code>RenderSettings::motionBlurFpsOverride</code></td><td>기준 fps 덮어쓰기. 0 = 보정 안 함</td></tr>
+<tr><td><code>--frame-dt=초</code></td><td><code>RenderSettings::frameDeltaOverride</code></td><td>보정에 쓰는 dt 고정. 자동 검증이 실행 속도와 무관하게. 에디터 재생의 <code>scene.Update</code> dt 도 이 값(<code>EditorApp::OnUpdate</code>)</td></tr>
+<tr><td><code>--cam-orbit=도</code>, <code>--spin=이름,도</code>, <code>--cam-move=dx,dy,dz</code>, <code>--move=이름,dx,dy,dz</code></td><td><code>Editor/EditorAutomation.cpp</code></td><td>프레임마다 고정량 움직임. 실행마다 같은 화면</td></tr>
+</table>
+<p>세 인자는 <code>App/AppBase.cpp</code> 의 <code>AppBase::ApplyRenderPathOptions</code> 가 읽습니다. 전체 목록은 <a href="../overview/rendering-analysis.html#app-d">rendering-analysis 부록 D</a>에 있습니다.</p>
+<table>
+<tr><th>테스트 씬</th><th>내용</th></tr>
+<tr><td><code>MotionBlur.json</code></td><td>DamagedHelmet 복사본(헬멧·바닥·카메라). 모션 블러 0.5·32·12·60, TAA 도 켜져 있음. 자동화 인자(<code>--cam-orbit</code>, <code>--spin</code>)로 카메라·오브젝트 블러를 나눠 봄</td></tr>
+<tr><td><code>TaaMotionBlur.json</code></td><td>같은 헬멧 복사본에 TAA·모션 블러(intensity 1). 헬멧 <code>Rotator</code> 360°/s. 메시 없는 <code>Ball Pivot</code> 에 <code>Rotator</code> −150°/s 가 붙어 제자리에서 돎. 작업 트리 파일의 <code>Ball</code> 에는 <code>"parent"</code> 가 없어 <code>Ball Pivot</code> 의 자식이 아니고 움직이지 않음(be1ef76 이전 판에는 <code>"parent"</code> 가 있었음). 카메라에 <code>FreeCamera</code>. 재생하며 둘러보는 용도이고, 5장을 고친 커밋 be1ef76 이 이 씬의 카메라와 <code>motionBlurMaxRadius</code> 32 도 함께 고침</td></tr>
+</table>
+</section>
+
+<section id="code">
+<h2>7. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>블러 셰이더</td><td><code>Shaders/MotionBlurPixelShader.hlsl</code> 의 <code>PS_MotionBlur</code>, <code>BlurVector</code>, <code>SoftFront</code>, <code>Cone</code>, <code>Cylinder</code></td><td>샘플 배치·가중치(2장), 길이 자르기(4-1)</td></tr>
+<tr><td>시간 셋 공용 함수</td><td><code>Shaders/Temporal.hlsli</code> 의 <code>LoadVelocityPixels</code>, <code>LoadDeviceDepth</code>, <code>LinearViewDepth</code>, <code>InterleavedGradientNoise</code></td><td>속도를 픽셀 단위로, 장치 깊이를 거리로(원근·직교), IGN</td></tr>
+<tr><td>속도 계산</td><td><code>Shaders/Velocity.hlsli</code> 의 <code>VelocityUV</code></td><td>w ≤ 0 이면 0, ±2 UV 로 자름(<a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a>)</td></tr>
+<tr><td>패스 호출</td><td><code>Graphics/RendererPost.cpp</code> 의 <code>Renderer::ApplyHdrEffects</code></td><td>건너뛰는 조건, <code>fpsScale</code>, 상한 × h/720, <code>MotionBlur</code>·<code>MotionBlurCopy</code></td></tr>
+<tr><td>셰이더·패스 등록</td><td><code>Graphics/Renderer.cpp</code> 의 <code>kShaders</code>(<code>MotionBlurPS</code>), <code>kPasses</code>(<code>"MotionBlur"</code>, <code>Layout_Temporal</code>)</td><td><code>Pass_MotionBlur</code> 를 <code>GetTemporalPipeline</code> 으로 만듦</td></tr>
+<tr><td>dt 전달</td><td><code>Core/Engine.cpp</code> 의 <code>Engine::Render</code>, <code>Graphics/Renderer.h</code> 의 <code>Renderer::SetFrameDeltaTime</code>(<code>m_frameDeltaTime</code>, 기본 1/60)</td><td>기준 fps 보정용 dt</td></tr>
+<tr><td>덮어쓰기</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::ResolveEnvironment</code>, <code>App/AppBase.cpp</code> 의 <code>AppBase::ApplyRenderPathOptions</code></td><td><code>--motion-blur</code>·<code>--motion-blur-fps</code>·<code>--frame-dt</code></td></tr>
+<tr><td>설정</td><td><code>Scene/PostProcessSettings.h</code>, <code>Scene/SceneSerializer.cpp</code>, <code>Editor/DebugUI.cpp</code></td><td>필드·기본값, JSON 키, 슬라이더</td></tr>
+<tr><td>지난 값 버리기</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::ResetTemporalHistory</code></td><td>뷰의 <code>hasPrev</code>, 오브젝트별 <code>MotionHistory</code> 를 비움 → 다음 프레임 속도 0. 씬 교체·되돌리기·카메라 컷 때 한 프레임 크게 번지는 것을 막음</td></tr>
+<tr><td>반투명 속도 끔</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::GetPipelineFor</code>(<code>rt[1].writeMask = 0</code>)</td><td>반투명은 속도를 쓰지 않음 → 뒤 표면의 속도로 번짐</td></tr>
+<tr><td>시선 다듬기</td><td><code>Core/LookSmoother.h</code> 의 <code>LookSmoother::Add</code>·<code>Consume</code>, <code>Editor/EditorApp.cpp</code> 의 <code>EditorApp::UpdateCamera</code></td><td>5장</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>8. 실험</h2>
+<p>테스트 씬은 <code>Projects/SherlockTestScenes/Assets/Scenes</code> 에 있습니다. 후처리 단계 썸네일의 "Motion" 칸과 바로 앞 "TAA" 칸을 비교하면 모션 블러만의 효과가 보입니다.</p>
+<h3>E1. 정지 화면은 켜도 끈 것과 같다 <span class="tag ok">확인함 (2026-11-23)</span></h3>
+<p>카메라·오브젝트를 멈추고 모션 블러를 켠 화면과 끈 화면의 차이가 0 픽셀이었습니다(<a href="../overview/rendering-analysis.html#c20-28">20.28 검증</a>). 2-4 의 <code>|vc| &lt; 0.5</code> 조기 반환이 이것을 보장합니다.</p>
+<h3>E2. 기준 fps 보정 <span class="tag ok">확인함 (2026-11-23)</span></h3>
+<p>같은 초당 회전을 480 fps 로 돌렸을 때 번진 픽셀 수가 60 fps 와 비슷했습니다(3537 / 3782, <a href="../overview/rendering-analysis.html#c20-28">20.28 검증</a>). 직접 해 볼 때는 <code>--frame-dt</code> 로 dt 를 고정하고 <code>--cam-orbit</code> 의 프레임당 각도를 dt 에 비례하게 줍니다(예: <code>--frame-dt=0.016667 --cam-orbit=1</code> 과 <code>--frame-dt=0.0020833 --cam-orbit=0.125</code>, 둘 다 초당 60°). 초당 회전이 크면 두 경우 모두 길이 상한(4-3)에 걸려 비교가 되지 않으므로, 상한보다 짧게 번지는 속도를 고릅니다.</p>
+<h3>E3. 보정을 끄면 고프레임에서 블러가 사라진다 <span class="tag chk">예상</span></h3>
+<p>E2 의 480 fps 쪽에 <code>--motion-blur-fps=0</code> 을 더하면 길이가 1/8 로 줄어듭니다(4-2 표, 상한에 걸리지 않는 속도일 때). VSync 를 끈 에디터에서 Target FPS 슬라이더를 0 으로 내려도 같습니다.</p>
+<h3>E4. 오브젝트만 번지고 실루엣 밖은 선명하다 <span class="tag chk">예상</span></h3>
+<p><code>MotionBlur.json</code> 에서 카메라를 멈추고 <code>--spin=node_damagedHelmet_-6514,3</code> 으로 헬멧을 돌립니다. 헬멧 안쪽만 원호 방향으로 번지고, 헬멧 옆 배경과 바닥의 경계는 선명합니다. 헬멧의 꼬리가 배경 위로 나가지 않는 것이 2-4 의 한계입니다. 같은 씬에 <code>--cam-orbit</code> 를 더하면 배경 픽셀도 속도를 가져 헬멧 가장자리가 배경 쪽으로도 번집니다.</p>
+<h3>E5. 카메라를 따라가는 물체는 선명하다 <span class="tag chk">예상</span></h3>
+<p><code>--cam-move=0.1,0,0 --move=node_damagedHelmet_-6514,0.1,0,0</code> 으로 카메라와 헬멧을 같은 벡터로 옮기면 헬멧은 화면에서 움직이지 않아 선명하고 배경만 번집니다(<a href="../plan/velocity-motionblur-taa-plan.html#s2-verify">계획 2단계-4</a>의 "따라가는 카메라"). 3인칭 대시 상황입니다.</p>
+<h3>E6. 길이 상한 <span class="tag chk">예상</span></h3>
+<p><code>--cam-orbit=30</code> 처럼 프레임당 회전을 크게 주면 번짐 길이가 720p 기준 32 픽셀 × (높이/720)에서 멈춥니다. Max length 슬라이더를 64 로 올리면 상한이 두 배가 되고, 샘플 간격이 벌어져 IGN 잡음이 더 보입니다.</p>
+<h3>E7. LookSmoother 를 끄고 마우스 회전 <span class="tag chk">예상</span></h3>
+<p>VSync 를 끄고 <code>TaaMotionBlur.json</code> 을 재생해 <code>FreeCamera</code> 로 둘러봅니다. 코드에서 <code>LookSmoother::timeConstant</code> 를 잠깐 0 으로 바꾸면(받은 만큼 바로 냄) 5-1 의 번쩍임이 돌아옵니다. 125 Hz 마우스일수록 뚜렷합니다. 확인 뒤 8 ms 로 되돌립니다.</p>
+<h3>E8. 디버그 뷰에서는 건너뛴다 <span class="tag chk">예상</span></h3>
+<p>카메라를 돌리면서 디버그 뷰(예: 노멀)를 켜면 번짐이 사라지고, 뷰 16·17 은 속도 시각화만 나옵니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>9. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>VSync 를 끄면 블러가 거의 안 보임</td><td>속도는 한 프레임 이동량이라 fps 가 높을수록 짧음</td><td><code>motionBlurTargetFps</code> 로 기준 fps 이동량으로 환산(4-2)</td></tr>
+<tr><td>마우스 회전 때 선명·번짐이 번갈아 번쩍임</td><td>마우스 델타가 보고 주기마다 몰려 와 프레임별 회전이 튀고, 보정이 그것을 키움</td><td><code>LookSmoother</code> 두 단계, τ 8 ms(5장). 다른 입력 경로(게임 스크립트의 직접 회전)는 각자 붙여야 함</td></tr>
+<tr><td>물리 물체가 고프레임에서 어떤 프레임만 길게 번짐</td><td>Rigidbody 는 고정 스텝에서만 움직이고 렌더 보간이 없음</td><td>남은 과제(<a href="../overview/rendering-analysis.html#c22-4">22.4</a>)</td></tr>
+<tr><td>빠른 물체 뒤로 꼬리가 생기지 않음</td><td>정지한 배경 픽셀은 조기 반환, 샘플은 가운데 속도 선 위에만</td><td>TileMax·NeighborMax 없음(2-4, <a href="../plan/velocity-motionblur-taa-plan.html#s2-risk">계획 2단계-5</a>)</td></tr>
+<tr><td>번진 전경 뒤로 보이는 배경이 정확하지 않음</td><td>한 장의 화면에는 가려진 뒤쪽 색이 없음. 둘째 항은 샘플 자리의 색(배경이 보이는 곳)만 끌어옴</td><td>재구성 필터 공통 한계. 전경이 화면 가장자리나 다른 전경에 붙으면 더 틀림</td></tr>
+<tr><td>반투명 물체·파티클·디버그 선이 뒤 표면 속도로 번짐</td><td>속도를 쓰지 않음</td><td>반투명 PSO 의 <code>rt[1].writeMask = 0</code>(<code>GetPipelineFor</code>), 파티클·본 디버그 선은 Effects 패스(<a href="../plan/velocity-motionblur-taa-plan.html#unknown">계획 7.8</a>, 22.4)</td></tr>
+<tr><td>화면 가장자리에서 번짐이 끊기거나 가장자리 색이 늘어남</td><td>화면 밖 샘플을 가장자리 픽셀로 자름</td><td><code>PS_MotionBlur</code> 의 <code>clamp(…, maxPixel)</code>, <code>LoadVelocityPixels</code>·<code>LoadDeviceDepth</code> 도 같은 자르기</td></tr>
+<tr><td>번진 자리에 고정된 잡음 무늬</td><td>IGN 은 픽셀 좌표만 써서 프레임마다 같고, TAA 가 모션 블러 앞이라 평균되지 않음</td><td>샘플 수를 늘리거나 상한을 줄임(4-3 표)</td></tr>
+<tr><td>순간이동·씬 교체 직후 한 프레임 화면이 크게 번짐</td><td>지난 위치가 다른 상태의 것</td><td><code>ResetTemporalHistory</code> 가 씬 교체·되돌리기·카메라 컷에서 지난 값을 버림. 게임 코드의 순간이동은 감지하지 않아 직접 불러야 함(22.4). 남은 경우도 상한이 길이를 자름</td></tr>
+<tr><td>에디터에서 기즈모로 끌거나 카메라를 움직이면 번짐</td><td>실제 움직임이라 맞는 동작</td><td>편집 모드 끔 옵션은 없음(<a href="../plan/velocity-motionblur-taa-plan.html#s2-risk">계획 2단계-5</a>)</td></tr>
+</table>
+<div class="box warn"><b>낡은 서술 주의.</b> <a href="../plan/velocity-motionblur-taa-plan.html#s2-settings">계획 2단계-1</a>은 "프레임 시간 정규화(목표 FPS 기준으로 길이를 맞추기)는 넣지 않습니다"라고 적혀 있지만 지금 코드에는 <code>motionBlurTargetFps</code> 가 있습니다. <a href="../plan/velocity-motionblur-taa-plan.html#s2-verify">2단계-4</a> 검증 표는 <code>MotionBlur.json</code> 을 Sponza 복사본이라고 적었지만 실제로는 DamagedHelmet 복사본입니다. 두 곳 모두 같은 문서 맨 위 "구현하면서 바뀐 점"에는 바로잡혀 있습니다. 셰이더 머리 주석의 "움직이는 전경은 배경 위로 번지지만"은 배경 픽셀도 움직일 때(카메라 이동)에만 맞습니다(2-4). <code>Core/LookSmoother.h</code> 머리 주석의 "fps 와 무관하게 같은 반응"은 한 단계에서만 정확하고, 두 단계를 한 프레임 안에 잇는 지금 코드에서는 60 fps 가 480 fps 보다 조금 빨리 내보냅니다(5-2).</div>
+</section>
+
+<section id="study">
+<h2>10. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>셔터 각도</td><td>180° = 프레임 시간의 절반, intensity 0.5</td><td>1-1, 4-1</td></tr>
+<tr><td>재구성 필터</td><td>샘플마다 앞뒤 깊이와 자기 속도를 보는 세 항(원뿔·원기둥)</td><td>2-3</td></tr>
+<tr><td>TileMax·NeighborMax</td><td>실루엣 밖 번짐에 왜 필요한가, 우리 엔진에 없는 이유</td><td>2-4</td></tr>
+<tr><td>Interleaved Gradient Noise</td><td>띠를 잡음으로 바꾸는 지터, 프레임 고정의 장단점</td><td>2-2</td></tr>
+<tr><td>프레임 시간과 블러 길이</td><td><code>1 / (targetFps · dt)</code> 로 dt 가 지워지는 이유</td><td>4-2</td></tr>
+<tr><td>해상도 비례 상한</td><td>720p 기준 픽셀, 전체 길이와 한쪽 도달</td><td>4-3</td></tr>
+<tr><td>입력 양자화와 지수 평활</td><td>보고 주기 &lt; fps 일 때 델타가 튀는 이유, <code>1 − exp(−dt/τ)</code> 가 fps 와 무관한 이유</td><td>5</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Morgan McGuire, Padraic Hennessy, Michael Bukowski, Brian Osman, "A Reconstruction Filter for Plausible Motion Blur", I3D 2012 — 이 엔진의 가중치 식과 TileMax·NeighborMax. 2장</li>
+<li>Jorge Jimenez, "Next Generation Post Processing in Call of Duty: Advanced Warfare", SIGGRAPH 2014 Advances in Real-Time Rendering — Interleaved Gradient Noise 와 모션 블러 샘플링. 2-2</li>
+<li>GPU Gems 3, 27장 "Motion Blur as a Post-Processing Effect" — 깊이로 카메라 움직임만 번지게 하는 방식. 1-2 표의 둘째 줄</li>
+<li>우리 문서: <a href="../plan/velocity-motionblur-taa-plan.html">속도 버퍼·모션 블러·TAA 계획</a>(2단계, 3.5 패스 순서, 7장 확인 결과), <a href="../overview/rendering-analysis.html#c20-28">rendering-analysis 20.28</a>(적용 기록·검증), <a href="../overview/rendering-analysis.html#c22-4">22.4</a>(한계), <a href="../overview/glossary.html#graphics">용어집 3장</a>(속도 버퍼, 모션 블러·셔터)</li>
+<li>함께 읽기: <a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a>, <a href="../study/taa-study.html">TAA 학습</a>, <a href="../study/post-process-study.html">후처리 학습</a>, <a href="../study/hdr-tonemapping-study.html">HDR·톤매핑 학습</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

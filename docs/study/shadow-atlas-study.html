@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 섀도 아틀라스 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>섀도 아틀라스 학습 문서</h1>
+  <p>조명 여러 개의 그림자 — 깊이 텍스처 한 장을 타일로 나눠 쓰는 이유, 스팟·포인트 광원의 뷰, 타일을 누구에게 줄지, 타일 안에서 샘플링하는 법</p>
+  <p>2026-11-25 · 다중 광원 그림자 이야기는 지금까지 <a href="../plan/multi-light-shadow-plan.html">다중 광원 그림자 계획</a>, <a href="../overview/rendering-analysis.html#c11-8">rendering-analysis 11.8</a>, <a href="../overview/rendering-analysis.html#c20-22">20.22 적용 기록</a>, 그림자 우선순위를 다룬 <a href="../plan/deferred-clustered-ssao-record.html#c-priority">디퍼드·클러스터드 기록 2.8</a>에 나뉘어 있었습니다. 그림자 맵 자체는 <a href="shadow-map-study.html">섀도 맵 학습</a>, 필터링은 <a href="pcf-study.html">PCF 학습</a>, 방향광 캐스케이드는 <a href="csm-study.html">CSM 학습</a>이 다룹니다. 이 문서는 그 사이에 빠져 있던 아틀라스 배치, 지역광(스팟·포인트)의 뷰, 뷰 목록 관리에 집중합니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1장은 왜 아틀라스인가, 2장은 두 아틀라스의 배치, 3장은 그림자 뷰 목록(C++ ↔ b6), 4장은 타일을 받는 조명을 고르는 규칙, 5~6장은 스팟과 포인트의 뷰, 7장은 타일 안에서의 샘플링과 바이어스, 8장은 그림자 패스 루프, 9장은 코드 지도, 10장은 실험, 11장은 함정과 한계, 12장은 공부할 개념과 참고 문서입니다. 그림자 맵의 기본 원리(깊이 비교, acne)와 PCF 커널의 이론은 위의 두 문서를 먼저 읽는 편이 좋습니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 아틀라스 크기, 시야각, 텍셀 크기처럼 상수와 식에서 나온 값은 <span class="tag chk">계산값</span>입니다. 실행해 보지 않은 결과는 <span class="tag chk">예상</span>으로 적었습니다. 측정값은 ManyLights 통계(2026-11-18) 하나뿐이고 <span class="tag ok">확인함</span>으로 표시했습니다. 그림 속 타일 배정은 한 가지 예이며, 실제 배정은 카메라와 점수에 따라 프레임마다 달라집니다.</div>
+</header>
+<nav><a href="#why">1. 왜 아틀라스인가</a><a href="#layout">2. 두 아틀라스</a><a href="#views">3. 그림자 뷰 목록</a><a href="#assign">4. 타일 배정</a><a href="#spot">5. 스팟 뷰</a><a href="#point">6. 포인트 6면</a><a href="#sample">7. 샘플링·바이어스</a><a href="#pass">8. 그림자 패스</a><a href="#code">9. 우리 코드</a><a href="#lab">10. 실험</a><a href="#pitfalls">11. 함정·한계</a><a href="#study">12. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 아틀라스인가</h2>
+<h3>1-1. 조명마다 깊이 맵이 하나 이상 필요하다</h3>
+<p>그림자 맵은 "광원에서 본 가장 가까운 깊이"를 저장한 텍스처입니다. 조명이 하나면 맵도 하나지만, 그림자를 드리우는 조명이 여럿이면 조명마다 따로 그려야 합니다. 포인트 광원은 사방으로 빛을 내므로 한 번의 투영으로 담을 수 없고, 큐브의 여섯 면처럼 90° 뷰 여섯 개가 필요합니다. 방향광은 CSM으로 캐스케이드 네 개를 씁니다. 결국 한 프레임에 그릴 "그림자 뷰"의 수는 조명 수보다 많습니다.</p>
+<p>픽셀 셰이더는 각 조명을 계산할 때 그 조명의 뷰를 찾아 깊이를 비교해야 합니다. 뷰마다 텍스처가 따로 있으면 바인딩 슬롯이 뷰 수만큼 늘고, 조명 루프 안에서 "몇 번째 텍스처"를 고르는 일도 번거롭습니다.</p>
+
+<h3>1-2. 선택지</h3>
+<table>
+<tr><th>방법</th><th>어떻게</th><th>이 엔진에서</th></tr>
+<tr><td>뷰마다 텍스처</td><td>깊이 텍스처 N장, SRV N개</td><td>슬롯이 뷰 수에 묶임. 쓰지 않음</td></tr>
+<tr><td><code>Texture2DArray</code></td><td>슬라이스마다 DSV, PS는 배열 인덱스로 읽음</td><td>RHI가 2D 배열 깊이 텍스처를 만들지 못함</td></tr>
+<tr><td>큐브 섀도 맵</td><td>포인트 광원 하나에 <code>TextureCube</code>, 방향 벡터로 읽음</td><td>RHI의 큐브는 SRV 전용 (<code>D3D11Device::CreateTexture</code>가 큐브에 DSV·RTV를 거부)</td></tr>
+<tr><td>섀도 아틀라스</td><td>큰 2D 깊이 텍스처 한 장을 사각형으로 나누고, 뷰포트로 칸을 골라 그림</td><td>채택. 지역광용 t8, 방향광용 t14 두 장</td></tr>
+</table>
+<p>계획 문서의 결정 D1이 이유를 적어 두었습니다(<a href="../plan/multi-light-shadow-plan.html#decisions">계획 3장</a>). RHI에 2D 배열·큐브 DSV가 없었고, Unity URP·Godot·UE4 같은 엔진도 여러 종류의 조명을 섞을 때 아틀라스를 많이 쓰며, 아틀라스는 <code>CommandList::SetViewport</code> 하나만 더하면 되고 PS는 텍스처 하나와 비교 샘플러 하나(s4)를 그대로 쓸 수 있다는 것입니다. 지금도 <code>RHI/ResourceDesc.h</code>의 텍스처 차원은 2D와 큐브뿐이고, 큐브는 정사각형 ShaderResource 전용입니다.</p>
+<p>아틀라스의 비용은 두 가지입니다. 칸 사이에 벽이 없으므로 PCF 커널이 옆 칸을 읽지 않게 막아야 하고(7-2), 뷰마다 "아틀라스 안 어디인가"를 셰이더에 알려 줘야 합니다(3장의 <code>atlasRect</code>).</p>
+</section>
+
+<section id="layout">
+<h2>2. 아틀라스 두 장</h2>
+<figure>
+<svg viewBox="0 0 900 360" role="img" aria-label="메인 아틀라스 4×4 타일과 CSM 아틀라스 2×2 칸, 타일 한 장의 PCF 여백">
+  <rect x="30" y="40" width="256" height="256" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <rect x="30" y="40" width="64" height="64" style="fill:var(--accent-bg);stroke:var(--ink3)"/>
+  <rect x="94" y="40" width="64" height="64" style="fill:var(--accent-bg);stroke:var(--ink3)"/>
+  <rect x="158" y="40" width="64" height="64" style="fill:var(--ok-bg);stroke:var(--ink3)"/>
+  <rect x="222" y="40" width="64" height="64" style="fill:var(--ok-bg);stroke:var(--ink3)"/>
+  <rect x="30" y="104" width="64" height="64" style="fill:var(--ok-bg);stroke:var(--ink3)"/>
+  <rect x="94" y="104" width="64" height="64" style="fill:var(--ok-bg);stroke:var(--ink3)"/>
+  <rect x="158" y="104" width="64" height="64" style="fill:var(--ok-bg);stroke:var(--ink3)"/>
+  <rect x="222" y="104" width="64" height="64" style="fill:var(--ok-bg);stroke:var(--ink3)"/>
+  <line class="ln" x1="30" y1="168" x2="286" y2="168"/><line class="ln" x1="30" y1="232" x2="286" y2="232"/>
+  <line class="ln" x1="94" y1="168" x2="94" y2="296"/><line class="ln" x1="158" y1="168" x2="158" y2="296"/><line class="ln" x1="222" y1="168" x2="222" y2="296"/>
+  <text x="36" y="58">0</text><text x="42" y="84">스팟 A</text>
+  <text x="100" y="58">1</text><text x="106" y="84">스팟 B</text>
+  <text x="164" y="58">2</text><text x="176" y="84">P1 +X</text>
+  <text x="228" y="58">3</text><text x="240" y="84">P1 −X</text>
+  <text x="36" y="122">4</text><text x="48" y="148">P1 +Y</text>
+  <text x="100" y="122">5</text><text x="112" y="148">P1 −Y</text>
+  <text x="164" y="122">6</text><text x="176" y="148">P1 +Z</text>
+  <text x="228" y="122">7</text><text x="240" y="148">P1 −Z</text>
+  <text x="36" y="186">8</text><text x="100" y="186">9</text><text x="164" y="186">10</text><text x="228" y="186">11</text>
+  <text x="36" y="250">12</text><text x="100" y="250">13</text><text x="164" y="250">14</text><text x="228" y="250">15</text>
+  <text x="158" y="320" text-anchor="middle">t8 메인 아틀라스 2048²</text>
+  <text x="158" y="338" text-anchor="middle">512² 타일 16장 (지역광)</text>
+  <rect x="330" y="40" width="256" height="256" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <line class="ln" x1="458" y1="40" x2="458" y2="296"/><line class="ln" x1="330" y1="168" x2="586" y2="168"/>
+  <text x="394" y="100" text-anchor="middle">C0</text><text x="394" y="120" text-anchor="middle">1024²</text>
+  <text x="522" y="100" text-anchor="middle">C1</text><text x="522" y="120" text-anchor="middle">1024²</text>
+  <text x="394" y="228" text-anchor="middle">C2</text><text x="394" y="248" text-anchor="middle">1024²</text>
+  <text x="522" y="228" text-anchor="middle">C3</text><text x="522" y="248" text-anchor="middle">1024²</text>
+  <text x="458" y="320" text-anchor="middle">t14 CSM 아틀라스 2048²</text>
+  <text x="458" y="338" text-anchor="middle">캐스케이드 칸 4개 (방향광)</text>
+  <rect x="650" y="56" width="210" height="210" style="fill:var(--ok-bg);stroke:var(--ink3)"/>
+  <rect x="668" y="74" width="174" height="174" style="fill:none;stroke:var(--warn);stroke-dasharray:5 4;stroke-width:1.5"/>
+  <text x="755" y="150" text-anchor="middle">UV clamp 범위</text>
+  <text x="755" y="170" text-anchor="middle">506 × 506 텍셀</text>
+  <text x="755" y="48" text-anchor="middle">타일 한 장 512²</text>
+  <text x="755" y="290" text-anchor="middle">가장자리 3 텍셀 = PCF 여백</text>
+  <text x="755" y="308" text-anchor="middle">(그림에서는 과장)</text>
+</svg>
+<figcaption>그림 1. 두 아틀라스의 배치. 왼쪽 타일 배정은 예시입니다(스팟 둘 + 포인트 하나 = 8장, <code>MultiShadow.json</code>의 지역광 구성). 포인트의 여섯 면은 연속 번호라 행을 넘어가도 됩니다. 오른쪽은 타일 하나의 PCF 여백입니다(7-2). <span class="tag chk">계산값</span></figcaption>
+</figure>
+<p><code>Graphics/Renderer.h</code>의 상수와 <code>RendererShadow.cpp</code>의 <code>LocalTileRect</code>·<code>CsmRect</code>·<code>CsmSingleRect</code>가 배치를 정합니다.</p>
+<table>
+<tr><th>항목</th><th>메인 아틀라스 (t8)</th><th>CSM 아틀라스 (t14)</th></tr>
+<tr><td>리소스</td><td><code>m_shadowMap</code>, 이름 <code>ShadowMap</code></td><td><code>m_csmMap</code>, 이름 <code>CsmShadowMap</code></td></tr>
+<tr><td>크기·포맷</td><td><code>kShadowAtlasSize</code> 2048², D32_FLOAT</td><td><code>kCsmAtlasWidth</code>·<code>Height</code> 2048², D32_FLOAT</td></tr>
+<tr><td>메모리</td><td>2048 × 2048 × 4 B = 16 MiB <span class="tag chk">계산값</span></td><td>16 MiB <span class="tag chk">계산값</span></td></tr>
+<tr><td>칸</td><td><code>kShadowTileSize</code> 512², <code>kShadowLocalTileCount</code> 16장 (4 × 4, 왼→오, 위→아래)</td><td><code>kCsmCascadeSize</code> 모두 1024², C0 (0,0) · C1 (1024,0) · C2 (0,1024) · C3 (1024,1024)</td></tr>
+<tr><td>누가 쓰나</td><td>스팟 1장, 포인트 연속 6장</td><td>첫 <code>castShadows</code> 방향광. CSM이 꺼져 있거나 직교 카메라면 단일 뷰가 2048² 전체</td></tr>
+<tr><td>셰이더</td><td colspan="2">둘 다 같은 비교 샘플러 s4 (<code>Sampler_ShadowCompare</code>). 뷰의 <code>params.w</code>가 0이면 t8, 1이면 t14를 읽음</td></tr>
+</table>
+<p>처음 계획은 4096²(64 MiB) 한 장에 방향광과 지역광을 같이 두는 것이었습니다. 2026-11-03에 방향광을 CSM 전용 아틀라스로 옮기면서 메인 아틀라스는 지역광 전용 2048²가 되었고, 합계는 32 MiB가 되었습니다(<a href="../overview/rendering-analysis.html#c20-22">20.22</a>). 기록된 이유는 캐스케이드 해상도를 따로 정할 수 있고 지역광 타일이 줄지 않는다는 것입니다. 캐스케이드 칸 크기를 다르게 나눠 본 시도는 되돌렸고, 그 이유와 캐스케이드 분할 자체는 <a href="../study/csm-study.html#theory">CSM 학습 2장</a>에 있습니다.</p>
+<p>지역광 타일 16장으로 만들 수 있는 조합은 스팟 16개, 또는 포인트 2개 + 스팟 4개, 포인트 1개 + 스팟 10개입니다. 포인트 광원은 최대 2개까지만 그림자를 받습니다(6 × 3 = 18 &gt; 16) <span class="tag chk">계산값</span>.</p>
+</section>
+
+<section id="views">
+<h2>3. 그림자 뷰 목록</h2>
+<p>"그림자 뷰"는 아틀라스의 사각형 하나와 그 사각형에 그릴 광원 행렬 하나의 묶음입니다. 방향광 CSM은 뷰 2~4개(<code>cascadeCount</code>를 2~4로 clamp, 기본 4), 스팟은 1개, 포인트는 6개를 씁니다. 프레임마다 <code>Renderer::BuildShadowViews</code>가 목록을 처음부터 다시 만들고, 조명의 GPU 사본 <code>GpuLight::shadowIndex</code>(HLSL <code>LightData.shadowIndex</code>)에 그 조명의 첫 뷰 번호를 적습니다. 그림자가 없는 조명은 −1입니다.</p>
+<table>
+<tr><th>C++ <code>Renderer::ShadowView</code></th><th>GPU <code>ShadowViewData</code> (b6, 96 B)</th><th>뜻</th></tr>
+<tr><td><code>viewProj</code> (행우선)</td><td><code>viewProj</code> (올릴 때 전치)</td><td>월드 → 이 뷰의 클립</td></tr>
+<tr><td><code>x, y, size</code> (픽셀), <code>atlas</code></td><td><code>atlasRect</code> = (x/W, y/H, size/W, size/H)</td><td>아틀라스 안의 UV 사각형. W·H는 그 뷰가 속한 아틀라스 크기</td></tr>
+<tr><td><code>params</code></td><td><code>params</code></td><td>x = NDC 깊이 바이어스, y = 텍셀의 월드 크기(직교) 또는 거리 1에서의 크기(원근), z = 1 원근 · 0 직교, w = 아틀라스 번호 (<code>UploadShadowConstants</code>가 채움)</td></tr>
+<tr><td><code>cullSphere</code></td><td>없음</td><td>지역광의 (위치, 범위). 그림자 패스의 캐스터 컬링에만 씀</td></tr>
+<tr><td><code>lightIndex</code></td><td>없음</td><td>에디터 아틀라스 미리보기의 "L번호". 끝에서 씬 조명 번호로 바꿔 둠</td></tr>
+</table>
+<p>GPU 쪽 목록은 상수버퍼 b6 <code>Shadows</code>의 고정 배열입니다(<code>Shaders/Lighting.hlsli</code>, <code>Graphics/ShaderConstants.h</code>의 <code>ShadowConstants</code>). 조명 배열 t15는 구조체 버퍼라 수에 상한이 없지만, 뷰는 <code>MAX_SHADOW_VIEWS</code> = 20(방향광 4 + 지역광 타일 16, <code>Scene/Light.h</code>)으로 묶여 있습니다. b6 크기는 20 × 96 + 16 × 5 = 2000 B입니다 <span class="tag chk">계산값</span>. 뒤쪽 다섯 개의 <code>float4</code>는 캐스케이드 경계·원점·전방, <code>atlasParams</code>(x = 1/2048, y = PCF 여백 3, z = <code>localNormalBias</code>), <code>csmAtlasParams</code>입니다.</p>
+<p>그림자 패스의 정점 셰이더는 b1 월드 행렬(스킨 메시는 b7 <code>SkinMatrix</code>도)을 곱한 뒤, 뷰 정보로는 b5 <code>ShadowPass</code>(64 B)의 <code>shadowViewProj</code> 하나만 보고 b6는 읽지 않습니다. 뷰마다 b5를 다시 올리고, PS는 b6 전체를 프레임에 한 번 받습니다. 그림자가 꺼진 프레임에도 <code>UploadShadowConstants</code>는 뷰 0개짜리 b6와 단위 행렬 b5를 올립니다. D3D12는 Dynamic 상수버퍼가 프레임마다 갱신되지 않으면 경고하기 때문입니다(코드 주석).</p>
+<p>PS가 뷰를 찾는 규칙은 단순합니다. 스팟은 <code>shadowIndex</code>, CSM은 <code>shadowIndex + 캐스케이드</code>, 포인트는 <code>shadowIndex + 면</code>입니다. 그래서 한 조명의 뷰는 번호가 연속이어야 하고, 포인트는 6칸이 한꺼번에 비어 있을 때만 받습니다.</p>
+</section>
+
+<section id="assign">
+<h2>4. 누가 타일을 받는가</h2>
+<figure>
+<svg viewBox="0 0 900 230" role="img" aria-label="조명 목록에서 점수와 타일 배정을 거쳐 아틀라스 뷰가 되는 흐름">
+  <defs><marker id="satlas-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+  <rect x="20" y="24" width="150" height="58" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="95" y="48" text-anchor="middle">씬 조명 (Light)</text><text x="95" y="68" text-anchor="middle">castShadows</text>
+  <rect x="200" y="24" width="170" height="58" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="285" y="48" text-anchor="middle">BuildGpuLights</text><text x="285" y="68" text-anchor="middle">방향광을 앞으로</text>
+  <rect x="400" y="24" width="220" height="58" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="510" y="48" text-anchor="middle">CullLights</text><text x="510" y="68" text-anchor="middle">절두체 컬링 · 점수 · ×1.25</text>
+  <rect x="650" y="24" width="230" height="58" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="765" y="48" text-anchor="middle">BuildShadowViews</text><text x="765" y="68" text-anchor="middle">방향광 → 점수 순 지역광</text>
+  <line class="ln" x1="170" y1="53" x2="196" y2="53" marker-end="url(#satlas-ar)"/>
+  <line class="ln" x1="370" y1="53" x2="396" y2="53" marker-end="url(#satlas-ar)"/>
+  <line class="ln" x1="620" y1="53" x2="646" y2="53" marker-end="url(#satlas-ar)"/>
+  <rect x="20" y="140" width="200" height="58" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="120" y="164" text-anchor="middle">CSM 아틀라스 (t14)</text><text x="120" y="184" text-anchor="middle">캐스케이드 뷰 2~4개</text>
+  <rect x="240" y="140" width="200" height="58" rx="6" style="fill:var(--ok-bg);stroke:var(--ok)"/>
+  <text x="340" y="164" text-anchor="middle">메인 아틀라스 (t8)</text><text x="340" y="184" text-anchor="middle">스팟 1장 · 포인트 6장</text>
+  <rect x="460" y="140" width="190" height="58" rx="6" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <text x="555" y="164" text-anchor="middle">자리 없음</text><text x="555" y="184" text-anchor="middle">skipped +1, 그림자 없음</text>
+  <rect x="680" y="140" width="200" height="58" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="780" y="164" text-anchor="middle">UploadShadowConstants</text><text x="780" y="184" text-anchor="middle">b6 뷰 배열 2000 B</text>
+  <line class="ln" x1="700" y1="82" x2="124" y2="136" marker-end="url(#satlas-ar)"/>
+  <line class="ln" x1="730" y1="82" x2="344" y2="136" marker-end="url(#satlas-ar)"/>
+  <line class="ln" x1="755" y1="82" x2="558" y2="136" marker-end="url(#satlas-ar)"/>
+  <line class="ln" x1="790" y1="82" x2="784" y2="136" marker-end="url(#satlas-ar)"/>
+</svg>
+<figcaption>그림 2. 조명 목록이 그림자 뷰가 되는 흐름. 모두 <code>Renderer::Render</code> 앞부분에서 CPU가 하고, 그림자 패스(8장)는 그다음입니다.</figcaption>
+</figure>
+<h3>4-1. 그림자 점수 (<code>Renderer::CullLights</code>)</h3>
+<p><code>Graphics/RendererClusters.cpp</code>의 <code>CullLights</code>는 클러스터드 라이팅을 위한 조명 컬링(<a href="clustered-lighting-study.html">클러스터드 라이팅 학습</a>)과 그림자 후보 정렬을 같이 합니다. 지역광마다 경계 구(<code>ComputeLightBounds</code>)를 만들고, 메인 카메라 절두체 밖이면 <code>m_lightVisible = 0</code>으로 두고 그림자 후보에서도 뺍니다. 화면 안에 있고 <code>castShadows</code>인 조명은 점수를 받습니다.</p>
+<pre><code>score = (r / max(D, r))² × max(intensity, 0) × Luminance(color)
+        r = 경계 구 반지름, D = 카메라 ~ 구 중심 거리 (카메라가 구 안이면 1)
+지난 프레임에 그림자를 받았으면 score × kShadowHistoryBonus (1.25)</code></pre>
+<p>(r/D)²는 구가 화면에서 차지하는 입체각에 비례하는 근사입니다. 1.25배 가산점은 점수가 비슷한 두 조명이 프레임마다 자리를 바꿔 그림자가 깜빡이는 것을 막는 히스테리시스입니다(코드 주석, <a href="../plan/deferred-clustered-ssao-record.html#c-priority">기록 2.8</a>). 기록은 <code>BuildShadowViews</code> 끝에서 씬 조명 번호를 키로 <code>m_shadowHistory</code>에 남깁니다. 점수가 같으면 조명 번호 순이라 실행마다 결과가 같습니다.</p>
+
+<h3>4-2. 배정 규칙 (<code>Renderer::BuildShadowViews</code>)</h3>
+<ol>
+<li>순서 목록 = 방향광(<code>BuildGpuLights</code>가 앞으로 모아 둠, 씬 순서) + 점수 순 지역광(<code>m_shadowOrder</code>). <code>--shadow-priority=0</code>(<code>RenderSettings::shadowPriority</code>)이면 지역광은 조명 번호 순이고 화면 밖 조명도 들어갑니다.</li>
+<li>방향광: 첫 <code>castShadows</code> 방향광만 받습니다. CSM이면 <code>AddCascadeViews</code>, 아니면 <code>CsmSingleRect</code>에 단일 뷰. 두 번째 방향광부터는 건너뛰고 <code>m_skippedShadowLights</code>를 올립니다.</li>
+<li>스팟: <code>m_usedLocalTiles</code> &lt; 16이면 다음 타일 하나.</li>
+<li>포인트: 6칸이 남고 뷰 자리도 6개 남을 때만 다음 타일 6장. 모자라면 일부만 주지 않고 통째로 건너뜁니다. 건너뛴 뒤에도 다음 후보를 계속 보므로 6칸은 없어도 1칸이 남았으면 뒤의 스팟은 받습니다.</li>
+</ol>
+<p>건너뛴 조명 수는 <code>Renderer::GetSkippedShadowLights</code>로 나옵니다(<code>Renderer::Stats</code>에는 없음). 에디터 그림자 패널(<code>DebugUI::DrawShadowPanel</code>)의 "Shadow atlas" 트리(<code>Editor/DebugUI.cpp</code>)가 <code>views N / 20 local tiles N / 16 skipped lights N</code>으로 보여 주고, 자동 검증 로그(<code>EditorAutomation.cpp</code>)의 <code>skippedShadowLights=</code>에도 찍힙니다. 우선순위가 켜져 있으면 화면 밖 조명은 처음부터 후보가 아니므로 이 수에 들어가지 않습니다. 화면 밖 조명에 간 타일 수는 <code>Stats::shadowViewsOffscreen</code>입니다.</p>
+<p>계획 단계의 규칙(D10)은 "조명 번호 순 선착순"이었고, 점수 순 배정은 2026-11-18 디퍼드·클러스터드 작업의 3a 단계에서 들어왔습니다. 효과는 아래처럼 기록돼 있습니다.</p>
+<table>
+<tr><th>씬</th><th>3a 켬: 뷰 · 화면 밖 타일 · 못 받은 조명</th><th>3a 끔: 뷰 · 화면 밖 타일 · 못 받은 조명</th></tr>
+<tr><td>ManyLights64</td><td>18 · 0 · 3</td><td>20 · 8 · 12</td></tr>
+<tr><td>ManyLights (128)</td><td>20 · 0 · 4</td><td>20 · 6 · 14</td></tr>
+<tr><td>ManyLights256</td><td>20 · 0 · 7</td><td>20 · 6 · 14</td></tr>
+</table>
+<p class="foot">D3D11, 편집기 씬 뷰. 뷰 수에는 캐스케이드 4개가 들어 있습니다. <span class="tag ok">확인함 (2026-11-18)</span> <a href="../plan/deferred-clustered-ssao-record.html#v-stats">디퍼드·클러스터드 기록 8.2</a></p>
+</section>
+
+<section id="spot">
+<h2>5. 스팟 광원의 뷰</h2>
+<p>스팟은 원뿔 하나라 원근 투영 하나로 덮입니다. <code>Renderer::ComputeSpotViewProj</code>가 광원 위치에서 빛 방향으로 <code>XMMatrixLookToLH</code>를 만들고(빛이 거의 수직이면 up을 +Z로), 투영은 다음과 같습니다.</p>
+<table>
+<tr><th>값</th><th>식</th><th>예: 바깥 원뿔 35° (<code>MultiShadow.json</code>의 스팟)</th></tr>
+<tr><td>시야각</td><td>2 · acos(<code>outerConeCos</code>) + 2°, [5°, 120°]로 clamp</td><td>72° <span class="tag chk">계산값</span></td></tr>
+<tr><td>near · far</td><td>0.1 (범위가 0.2 미만이면 range/2) · <code>range</code></td><td>0.1 · 20</td></tr>
+<tr><td><code>params.y</code></td><td>2 · tan(fov/2) / 512 (거리 1에서 텍셀 하나의 월드 길이)</td><td>2.84 mm, 거리 10 m에서 2.8 cm <span class="tag chk">계산값</span></td></tr>
+</table>
+<p>2°를 더하므로 절두체가 원뿔보다 한쪽에 1°씩 넓고, 원뿔 가장자리가 타일 맨 끝에 붙지 않습니다. 120° 상한은 의도된 한계입니다. 바깥 원뿔이 60°를 넘으면 원뿔 가장자리가 절두체 밖으로 나가 그 부분은 그림자가 없고, 그렇게 넓은 원근 투영은 가장자리 텍셀 밀도도 크게 떨어집니다(<a href="../plan/multi-light-shadow-plan.html#pitfalls">계획 5장 함정 표</a>).</p>
+</section>
+
+<section id="point">
+<h2>6. 포인트 광원: 큐브 여섯 면</h2>
+<figure>
+<svg viewBox="0 0 900 340" role="img" aria-label="포인트 광원의 여섯 면 중 수평 네 면과 넓힌 시야각, 타일 한 장의 텍셀 배분">
+  <rect x="70" y="40" width="240" height="240" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <line x1="70" y1="40" x2="310" y2="280" style="stroke:var(--ink3);stroke-dasharray:4 4"/>
+  <line x1="310" y1="40" x2="70" y2="280" style="stroke:var(--ink3);stroke-dasharray:4 4"/>
+  <circle cx="190" cy="160" r="6" style="fill:var(--c3);stroke:var(--ink3)"/>
+  <text x="275" y="164" text-anchor="middle">+X (0)</text>
+  <text x="105" y="164" text-anchor="middle">−X (1)</text>
+  <text x="190" y="72" text-anchor="middle">+Z (4)</text>
+  <text x="190" y="262" text-anchor="middle">−Z (5)</text>
+  <line x1="190" y1="160" x2="310" y2="25" style="stroke:var(--warn);stroke-width:1.5"/>
+  <line x1="190" y1="160" x2="310" y2="295" style="stroke:var(--warn);stroke-width:1.5"/>
+  <text x="330" y="36">+X 면 절두체</text>
+  <text x="330" y="54">90.68° (과장)</text>
+  <text x="190" y="320" text-anchor="middle">위에서 본 xz 평면. +Y (2)·−Y (3)는 위·아래</text>
+  <text x="520" y="60">타일 한 장의 가로 512 텍셀</text>
+  <rect x="520" y="76" width="340" height="40" style="fill:var(--ok-bg);stroke:var(--ink3)"/>
+  <rect x="520" y="76" width="24" height="40" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <rect x="836" y="76" width="24" height="40" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <text x="690" y="101" text-anchor="middle">506 텍셀 = 정확히 90°</text>
+  <text x="520" y="140">양 끝 3 텍셀: PCF 여백 (그림에서는 과장)</text>
+  <text x="520" y="180">tan(반각) = 512 / (512 − 2·3) = 1.0119</text>
+  <text x="520" y="200">시야각 = 2·atan(1.0119) = 90.68°</text>
+  <text x="520" y="240">PointFace(v): |v|가 가장 큰 축과 부호</text>
+  <text x="520" y="260">면 번호 +X, −X, +Y, −Y, +Z, −Z = 0..5</text>
+  <text x="520" y="280">뷰 번호 = shadowIndex + 면</text>
+</svg>
+<figcaption>그림 3. 포인트 광원의 면. 점선 대각선이 <code>PointFace</code>가 면을 바꾸는 45° 경계이고, 주황 선이 +X 면 절두체의 실제 가장자리입니다. 실제로는 0.34°씩만 바깥으로 나갑니다. <span class="tag chk">계산값</span></figcaption>
+</figure>
+<p>RHI에 큐브 DSV가 없으므로 포인트 광원은 90° 원근 뷰 여섯 개를 타일 여섯 장에 그립니다. <code>Renderer::ComputePointFaceViewProj</code>의 면 순서와 up 벡터는 D3D 큐브맵 관례(+X, −X, +Y, −Y, +Z, −Z)를 따릅니다. 큐브 텍스처를 쓰지는 않지만 관례를 맞춰 두면 나중에 큐브 섀도 맵으로 옮기기 쉽다는 것이 계획의 설명입니다(<a href="../plan/multi-light-shadow-plan.html#s6">계획 6단계</a>).</p>
+<table>
+<tr><th>면</th><th>look</th><th>up</th></tr>
+<tr><td>0, 1</td><td>+X, −X</td><td>+Y</td></tr>
+<tr><td>2, 3</td><td>+Y, −Y</td><td>−Z, +Z</td></tr>
+<tr><td>4, 5</td><td>+Z, −Z</td><td>+Y</td></tr>
+</table>
+<h3>6-1. 면 고르기</h3>
+<p>PS의 <code>PointFace</code>(<code>Shaders/Shading.hlsli</code>)는 광원 → 표면 벡터의 성분 중 절댓값이 가장 큰 축을 고릅니다. 하드웨어가 큐브 텍스처를 샘플할 때 하는 일을 직접 쓴 것입니다. 동률이면 X, 그다음 Y가 이깁니다. <code>ShadowForLight</code>의 포인트 분기는 <code>SampleShadowView(shadowIndex + face, …)</code> 하나만 부르므로, 포인트 광원 하나의 그림자 비용은 스팟과 같은 PCF 25탭입니다.</p>
+<h3>6-2. 면 경계 이음매</h3>
+<p>시야각을 정확히 90°로 잡으면 문제가 생깁니다. 45° 경계 바로 옆 픽셀은 그 면 타일의 맨 가장자리 텍셀을 가리키는데, PCF UV는 가장자리에서 3 텍셀 안쪽으로 clamp됩니다(7-2). clamp된 위치는 실제 방향과 다른 곳의 깊이라서 경계를 따라 선이 생깁니다. 그래서 타일 512 텍셀 중 안쪽 506 텍셀이 정확히 90°를 덮도록 시야각을 넓혔습니다. tan(반각) = 512/506, 시야각 90.68°입니다 <span class="tag chk">계산값</span>. 계획 문서의 90.34°는 타일이 1024²이던 시절의 값입니다.</p>
+<p><code>params.y</code>는 2 · 1.0119 / 512 = 3.95 mm(거리 1 m 기준)이고, 거리 5 m에서 텍셀 하나가 약 2 cm입니다 <span class="tag chk">계산값</span>. 같은 512² 타일이라도 시야각 90°는 스팟 72°보다 텍셀이 1.4배 큽니다.</p>
+</section>
+
+<section id="sample">
+<h2>7. 타일 안에서 샘플링하기</h2>
+<p>모든 뷰는 <code>SampleShadowViewCoverage</code> 하나로 읽습니다. 방향광·캐스케이드·스팟·포인트 면의 차이는 뷰의 <code>params</code>에만 있습니다.</p>
+<ol>
+<li>원근 뷰(<code>params.z</code> = 1)면 받는 쪽 위치를 기하 노멀 방향으로 <code>localNormalBias × params.y × distanceToLight</code>만큼 밉니다. <code>distanceToLight</code>는 표면과 광원 사이의 유클리드 거리입니다.</li>
+<li>월드 → 뷰 클립 → NDC → 타일 안 UV (0..1). y는 뒤집습니다.</li>
+<li>노말 맵 차이(<code>normalDelta</code>)를 같은 행렬로 옮겨 UV에 더합니다(배율 <code>shadowExtra.x</code> = 에디터의 Normal offset).</li>
+<li>뷰 밖이면 "빛 받음"(1). 원근 뷰는 광원 뒤(w ≤ 0)와 near 앞(z &lt; 0)도 밖입니다.</li>
+<li>타일 UV → 아틀라스 UV, 여백만큼 안쪽으로 clamp, 깊이에서 <code>params.x</code>를 빼고 PCF 5×5 (<code>SampleCmpLevelZero</code> 25번). t8과 t14 중 어느 쪽인지는 <code>params.w</code>로 고릅니다.</li>
+</ol>
+<h3>7-1. 뷰 밖 = 빛 받음</h3>
+<p>단일 섀도 맵이던 시절에는 비교 샘플러의 Border 색 1이 "맵 밖은 빛을 받는다"를 맡았습니다. 아틀라스에서는 타일 바로 옆에 다른 타일이 있으므로 Border가 걸리지 않습니다. 그래서 셰이더가 타일 UV 0..1 범위를 직접 검사합니다. 샘플러의 Border 1은 아틀라스 전체 밖에 대한 안전장치로만 남았습니다(<code>CreateShadowResources</code>의 주석). 캐스케이드 블렌딩은 이 검사 결과(<code>coverage</code>)로 "다음 캐스케이드가 이 위치를 덮는가"를 확인합니다(<a href="csm-study.html#select">CSM 학습 3장</a>).</p>
+<h3>7-2. PCF 여백 clamp</h3>
+<p>5×5 커널은 중심에서 ±2 텍셀을 읽고, 비교 샘플러의 쌍선형 보간이 한 텍셀을 더 건드립니다. 그래서 <code>kShadowPcfBorder</code> = 3입니다. UV를 <code>[rect + 3 텍셀, rect + size − 3 텍셀]</code>로 clamp하면 커널이 옆 타일을 읽지 않습니다. 512² 타일에서 쓸 수 있는 영역은 506²이고 한 변의 98.8%입니다 <span class="tag chk">계산값</span>. 커널 자체와 비교 샘플러의 동작은 <a href="pcf-study.html#panel-D">PCF 학습 3장</a>에 있습니다.</p>
+<p>PCF 루프는 <code>[loop]</code>로 둡니다. <code>[unroll]</code>이면 이 함수가 인라인되는 자리마다 25탭이 펼쳐져 조명 PS에 <code>sample_c</code>가 1000개쯤 생기고, D3D12 GPU 기반 검증에서 드라이버 컴파일이 끝나지 않았다는 기록이 주석에 있습니다(2026-11-20).</p>
+<h3>7-3. 뷰 종류마다 다른 바이어스</h3>
+<table>
+<tr><th>뷰</th><th>NDC 바이어스 (<code>params.x</code>)</th><th>노멀 방향 오프셋</th><th>텍셀 월드 크기 (<code>params.y</code>)</th></tr>
+<tr><td>방향광 단일 뷰</td><td><code>ShadowSettings::bias</code> (기본 0.0015)</td><td>없음</td><td><code>orthoSize</code> / 2048. 기본 60이면 2.9 cm <span class="tag chk">계산값</span></td></tr>
+<tr><td>캐스케이드</td><td>bias × 단일 뷰 깊이 범위 / 캐스케이드 깊이 범위 (같은 월드 거리가 되게 환산)</td><td>없음</td><td>2 · 반지름 / 1024</td></tr>
+<tr><td>스팟·포인트 면</td><td>0</td><td><code>localNormalBias</code>(기본 1) × 텍셀 크기 × 거리</td><td>2 · tan(fov/2) / 512, 셰이더가 거리를 곱함</td></tr>
+</table>
+<p>원근 투영의 깊이는 1/z에 비례하는 비선형 값이라, 고정 NDC 바이어스는 광원에서 가까운 곳과 먼 곳에서 전혀 다른 월드 거리가 됩니다. 반면 그 위치의 텍셀 하나가 덮는 월드 크기는 거리에 비례하므로, "텍셀 몇 개만큼 노멀 방향으로 민다"는 거리와 상관없이 같은 효과를 냅니다. 이것이 계획의 결정 D7입니다(<a href="../plan/multi-light-shadow-plan.html#decisions">계획 3장</a>). 그래서 <code>ShadowSettings::localNormalBias</code>의 단위는 텍셀이고, 에디터 슬라이더 이름도 "Local normal bias (texels)"입니다. 캐스케이드 바이어스 환산식은 <a href="csm-study.html#bias">CSM 학습</a>, acne와 peter panning 자체는 <a href="shadow-map-study.html#panel-E">섀도 맵 학습 4장</a>에 있습니다.</p>
+<p>래스터라이저 깊이 바이어스는 모든 뷰가 같은 값을 씁니다(8-2). 계획은 이 값(<code>depthBias</code> 2000, slope 2.0)을 직교 맵 기준으로 맞춘 값이라고 적었고(<a href="../plan/multi-light-shadow-plan.html#s8">계획 8-C</a>), 지역광 전용 PSO를 따로 두는 것은 "acne가 남으면 추가"로 미뤄 둔 상태입니다(<a href="../plan/multi-light-shadow-plan.html#pitfalls">계획 함정 표</a>).</p>
+</section>
+
+<section id="pass">
+<h2>8. 그림자 패스 루프</h2>
+<h3>8-1. 아틀라스마다 패스 하나</h3>
+<p><code>Renderer::RenderShadowPass</code>는 <code>RenderShadowAtlasPass(cmd, 0)</code>(메인)과 <code>(cmd, 1)</code>(CSM)을 차례로 부릅니다. 깊이 텍스처가 둘이라 렌더 패스도 둘입니다. 한 아틀라스의 흐름은 다음과 같습니다.</p>
+<pre><code>그 아틀라스에 뷰가 없으면: Barrier(map, ShaderResource) 하고 끝 (패스를 열지 않음)
+Barrier(map, DepthWrite)
+BeginRenderPass(depth = map, LoadOp::Clear, 1.0)     ← 아틀라스 전체를 한 번 클리어
+for 뷰 v (v.atlas == 이 아틀라스):
+    ① SetViewport(v.x, v.y, v.size, v.size)          D3D12 는 같은 사각형으로 시저도 설정
+    ② b5 ← transpose(v.viewProj)
+    ③ frustum = Frustum::FromViewProj(viewProj, skipNear = 직교 뷰)
+    ④ for 드로우 항목: 지역광이면 광원 범위 구와 겹치는지, 뷰 절두체와 겹치는지 → 그리기
+EndRenderPass
+Barrier(map, ShaderResource)                         메인 패스가 t8 / t14 로 읽음</code></pre>
+<p>타일마다 렌더 패스를 여는 대신 뷰포트만 바꾸는 것은 계획의 결정 D2입니다. 패스와 통계가 늘지 않고 Load/Clear를 타일마다 관리하지 않아도 되며, D3D12의 <code>RSSetViewports</code>·<code>RSSetScissorRects</code>와 1:1로 대응합니다. D3D12 백엔드는 <code>D3D12CommandList::ApplyViewport</code>에서 뷰포트와 같은 시저를 같이 걸어 다른 타일로 래스터가 새지 않게 합니다.</p>
+<p>직교 뷰(방향광·캐스케이드)는 near 평면을 빼고 컬링합니다. 광원 쪽으로 더 물러나 있는 캐스터도 그림자를 드리울 수 있기 때문입니다. 원근 뷰는 평면 여섯 개를 다 쓰고, 그 앞에 <code>cullSphere</code>(광원 위치, 범위)와 물체 경계 구가 겹치는지를 봅니다. 두 검사에서 빠진 (뷰, 드로우) 쌍은 <code>Stats::shadowCulled</code>로 셉니다. 포인트 광원 한 면의 반대쪽 물체가 대부분 여기서 빠집니다.</p>
+<p>그리는 대상은 <code>m_drawList</code> 전체입니다. 메인 카메라 절두체 컬링은 <code>DrawItems</code>가 그릴 때 따로 하므로, 화면 밖 물체도 화면 안으로 그림자를 드리울 수 있습니다.</p>
+<h3>8-2. 그림자 PSO</h3>
+<table>
+<tr><th>항목</th><th>값</th><th>위치</th></tr>
+<tr><td>셰이더</td><td>VS만 (<code>VS_Shadow</code>, 스킨 메시는 <code>VS_ShadowSkin</code>), PS 없음, RTV 0개, DSV D32_FLOAT</td><td><code>Renderer.cpp</code>의 <code>Pass_Shadow</code>·<code>Pass_ShadowSkin</code> 설정</td></tr>
+<tr><td>래스터 깊이 바이어스</td><td><code>depthBias</code> 2000, <code>slopeScaledDepthBias</code> 2.0, <code>depthBiasClamp</code> 0.01</td><td>같은 곳</td></tr>
+<tr><td>컬링</td><td>뒷면 컬링, <code>doubleSided</code> 재질은 없음. 반사 행렬이면 앞면 정의를 뒤집음</td><td><code>Renderer::GetShadowPipelineFor</code> (키: 정점 포맷 · 반사 · 양면)</td></tr>
+<tr><td>그림자를 만들지 않는 것</td><td>unlit, 블렌딩·투과 재질(<code>IsBlended</code>: <code>alphaBlend</code> 또는 <code>transmissionFactor</code> &gt; 0), 바다</td><td><code>BuildDrawList</code>가 <code>shadowPipeline</code>을 빈 핸들로 둠</td></tr>
+</table>
+<p>D32_FLOAT에서 <code>depthBias</code> 한 단위는 2^(지수 − 23)입니다. 깊이가 0.5~1이면 2^−24라서 2000단위는 약 1.2 × 10⁻⁴입니다 <span class="tag chk">계산값</span>. 스킨 메시의 그림자 VS는 메인 패스와 같은 b7 조인트 팔레트로 위치만 스킨합니다. <code>UploadObjectConstants(item.object, false)</code>가 b1과 b7을 올리고, 그림자는 속도를 쓰지 않으므로 b13(지난 프레임 팔레트)은 건너뜁니다.</p>
+<p>b5는 뷰마다 <code>UpdateBuffer</code>로 덮어쓰고 프레임 셋은 다시 꽂지 않습니다. D3D12가 드로우 직전에 루트 CBV를 다시 바인딩하기 때문이라고 주석에 적혀 있습니다.</p>
+</section>
+
+<section id="code">
+<h2>9. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>아틀라스 상수·뷰 구조체</td><td><code>Graphics/Renderer.h</code>의 <code>kShadowAtlasSize</code>·<code>kShadowTileSize</code>·<code>kShadowLocalTileCount</code>·<code>kShadowPcfBorder</code>·<code>kCsmCascadeSize</code>, <code>Renderer::ShadowView</code></td><td>2048² · 512² · 16 · 3 · 1024 ×4</td></tr>
+<tr><td>뷰 상한</td><td><code>Scene/Light.h</code>의 <code>MAX_SHADOW_VIEWS</code>, <code>Shaders/Lighting.hlsli</code>의 같은 이름</td><td>20. 두 곳을 같이 바꿔야 함</td></tr>
+<tr><td>배치</td><td><code>Graphics/RendererShadow.cpp</code>의 <code>LocalTileRect</code>, <code>CsmRect</code>, <code>CsmSingleRect</code></td><td>타일 번호 → 픽셀 사각형</td></tr>
+<tr><td>리소스</td><td><code>Renderer::CreateShadowResources</code></td><td>D32 아틀라스 두 장(TYPELESS + DSV + SRV), 비교 샘플러 LessEqual · Border 1</td></tr>
+<tr><td>점수</td><td><code>Graphics/RendererClusters.cpp</code>의 <code>Renderer::CullLights</code>, <code>ComputeLightBounds</code></td><td>절두체 컬링, (r/D)² × 밝기, ×1.25 → <code>m_shadowOrder</code></td></tr>
+<tr><td>배정</td><td><code>Renderer::BuildShadowViews</code>, <code>Renderer::AddShadowView</code></td><td>방향광 → 점수 순 지역광, 타일·뷰 부족이면 건너뜀, 히스테리시스 기록</td></tr>
+<tr><td>뷰 행렬</td><td><code>ComputeLightViewProj</code>, <code>ComputeSpotViewProj</code>, <code>ComputePointFaceViewProj</code>, <code>AddCascadeViews</code></td><td>직교 단일 · 스팟 원근 · 포인트 90.68° · 캐스케이드</td></tr>
+<tr><td>업로드</td><td><code>Renderer::UploadShadowConstants</code>, <code>Graphics/ShaderConstants.h</code>의 <code>ShadowViewData</code>·<code>ShadowConstants</code></td><td>b6 2000 B (전치, UV 사각형, 아틀라스 번호), b5 단위 행렬</td></tr>
+<tr><td>패스</td><td><code>Renderer::RenderShadowPass</code>, <code>RenderShadowAtlasPass</code></td><td>아틀라스마다 클리어 1번, 뷰마다 뷰포트·b5·컬링·드로우</td></tr>
+<tr><td>PSO</td><td><code>Renderer.cpp</code>의 <code>Pass_Shadow</code> 설정, <code>Renderer::GetShadowPipelineFor</code></td><td>래스터 바이어스, 컬링 모드</td></tr>
+<tr><td>그림자 VS</td><td><code>Shaders/ShadowVertexShader.hlsl</code>, <code>ShadowSkinVertexShader.hlsl</code></td><td>월드 × b5 행렬, 스킨은 b7 팔레트 먼저</td></tr>
+<tr><td>샘플링</td><td><code>Shaders/Shading.hlsli</code>의 <code>SampleShadowViewCoverage</code>, <code>PointFace</code>, <code>ShadowForLight</code></td><td>원근 노멀 오프셋, 타일 UV, 여백 clamp, PCF 5×5, 면 선택</td></tr>
+<tr><td>설정</td><td><code>Scene/ShadowSettings.h</code>, <code>RenderSettings::shadows</code>·<code>shadowPriority</code></td><td>씬에 저장되는 바이어스·<code>localNormalBias</code>, 렌더러 스위치(F8, <code>--shadow-priority</code>)</td></tr>
+<tr><td>에디터 표시</td><td><code>Editor/DebugUI.cpp</code>의 <code>DebugUI::DrawShadowPanel</code> ("Shadow atlas"·"CSM atlas" 트리)</td><td>아틀라스를 R 채널로 보여 주고 뷰 사각형과 L번호, views·tiles·skipped</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>10. 실험</h2>
+<p>테스트 씬은 <code>Projects/SherlockTestScenes/Assets/Scenes/</code>에 있습니다. 제목의 태그가 <span class="tag chk">예상</span>인 실험은 실행해 보지 않았습니다. 숫자가 다르면 먼저 씬의 조명 설정과 카메라 위치를 확인합니다.</p>
+<h3>E1. 아틀라스 미리보기 읽기 <span class="tag chk">예상</span></h3>
+<p><code>MultiShadow.json</code>(방향광 1, 스팟 2, 포인트 1, 모두 <code>castShadows</code>)을 열고 그림자 패널의 "Shadow atlas" 트리를 펼칩니다. 씬 파일에 CSM 키가 없어 기본값(켬, 캐스케이드 4)을 씁니다. 지역광 셋이 모두 화면 안에 있으면 <code>views 12 / 20 local tiles 8 / 16 skipped lights 0</code>이 나올 것입니다. 노란 테두리 중 같은 L번호가 붙은 칸 여섯 개가 포인트 광원입니다. 카메라를 움직여 스팟 하나를 화면 밖으로 보내면 점수 후보에서 빠지므로 타일이 7장으로 줄어야 합니다.</p>
+<h3>E2. 타일이 모자랄 때 <span class="tag chk">예상</span></h3>
+<p>E1 씬에 포인트 광원을 하나 더 두고 Cast shadows를 켭니다. 2 + 6 + 6 = 14 ≤ 16이라 둘 다 받습니다. 세 번째 포인트를 더하면 6칸이 없으므로 점수가 가장 낮은 포인트가 건너뛰어지고 <code>skipped lights 1</code>이 됩니다. 이 상태에서 스팟을 하나 더하면 남은 2칸 중 1칸을 받습니다(포인트를 건너뛰어도 뒤의 후보를 계속 보기 때문). 세 포인트에 가까이 다가가 점수를 바꾸면 그림자를 잃는 포인트가 바뀝니다.</p>
+<h3>E3. 우선순위 끄기 <span class="tag ok">확인함 (2026-11-18)</span></h3>
+<p><code>ManyLights64.json</code>을 <code>--shadow-priority=0</code>과 <code>=1</code>로 열어 통계 줄의 <code>offscreen shadow views</code>와 아틀라스 트리의 <code>skipped lights</code>를 비교합니다. 기록된 값은 4-2의 표입니다. 끄면 16장 중 8장이 화면 밖 조명에 가고, 켜면 0장입니다.</p>
+<h3>E4. 포인트 면 경계 <span class="tag chk">예상</span></h3>
+<p><code>--debug-view=4</code>(모든 조명의 그림자 계수를 곱한 흑백)로 E1 씬을 열고, 카메라를 포인트 광원 주위로 돌리며 바닥·벽의 45° 방향을 봅니다. 선이나 빈틈이 없어야 합니다. <code>ComputePointFaceViewProj</code>의 <code>tanHalf</code>를 잠깐 1.0으로 바꾸면 경계를 따라 PCF가 clamp된 자리에서 줄이 생길 것입니다. 확인한 뒤 되돌립니다.</p>
+<h3>E5. 지역광 노멀 오프셋 <span class="tag chk">예상</span></h3>
+<p>그림자 설정의 "Local normal bias (texels)"를 0, 1, 4로 바꿔 봅니다. 0이면 NDC 바이어스도 0이라 래스터 바이어스만 남아 스팟·포인트가 비추는 비스듬한 면에 acne가 보일 수 있고, 4면 물체와 바닥이 닿는 곳에서 그림자가 떨어져 보일 것입니다(peter panning). 방향광 그림자는 이 값의 영향을 받지 않아야 합니다.</p>
+<h3>E6. 텍셀 크기 비교 <span class="tag chk">계산값</span></h3>
+<table>
+<tr><th>뷰</th><th>거리 2 m</th><th>5 m</th><th>10 m</th></tr>
+<tr><td>포인트 면 (90.68°, 512²)</td><td>7.9 mm</td><td>2.0 cm</td><td>4.0 cm</td></tr>
+<tr><td>스팟 72° (512²)</td><td>5.7 mm</td><td>1.4 cm</td><td>2.8 cm</td></tr>
+<tr><td>방향광 단일 뷰 (orthoSize 60, 2048²)</td><td colspan="3">거리와 무관하게 2.9 cm</td></tr>
+</table>
+<p>포인트 광원의 그림자는 약 7.4 m부터 단일 방향광보다 거칩니다(0.029297 m ÷ 3.95 mm/m <span class="tag chk">계산값</span>). 타일 크기가 고정이라 가까운 조명과 먼 조명이 같은 해상도를 받는 것이 이 차이의 원인입니다(11장).</p>
+</section>
+
+<section id="pitfalls">
+<h2>11. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>타일 가장자리에 옆 조명의 그림자가 비침</td><td>PCF 커널이 타일 밖 텍셀을 읽음</td><td>UV를 여백 3 텍셀 안쪽으로 clamp (7-2)</td></tr>
+<tr><td>포인트 그림자에 45° 방향 선</td><td>시야각을 정확히 90°로 잡음, 또는 C++과 HLSL의 면 순서가 다름</td><td><code>tanHalf</code> = 512/506, <code>kLook</code>와 <code>PointFace</code>가 같은 순서 (6-2)</td></tr>
+<tr><td>면 경계 근처에서 그림자가 한 픽셀씩 빠짐 (가능성)</td><td><code>PointFace</code>는 밀기 전 위치로 면을 고르고, 샘플은 노멀 오프셋·노말 맵 UV 이동 뒤 위치로 함. 여백을 넘으면 "뷰 밖 = 빛 받음"</td><td>여백이 3 텍셀이라 오프셋이 작으면 걸리지 않을 것으로 보임. <code>localNormalBias</code>나 Normal offset을 크게 올릴 때 확인할 것 <span class="tag chk">예상</span></td></tr>
+<tr><td>조명 하나가 그림자를 갑자기 잃음</td><td>타일 16장 부족. 점수 순서가 바뀜</td><td><code>skipped lights</code> 확인. 1.25배 가산점이 경계에서 깜빡임을 줄임 (4-1)</td></tr>
+<tr><td>두 번째 방향광에 그림자가 없음</td><td>CSM 아틀라스는 방향광 하나만</td><td>의도된 규칙. skipped로 셈</td></tr>
+<tr><td>미리보기 카메라에서만 보이는 조명에 그림자가 없음</td><td>점수와 배정은 메인 카메라 기준</td><td>의도된 한계 (<a href="../plan/deferred-clustered-ssao-record.html#notes">기록</a>)</td></tr>
+<tr><td>넓은 스팟의 가장자리에 그림자가 없음</td><td>시야각 120° clamp</td><td>바깥 원뿔 60° 초과 (5장)</td></tr>
+<tr><td>스팟·포인트에 acne 또는 떠 보임</td><td>원근 깊이의 비선형성, 래스터 바이어스가 직교 기준</td><td><code>localNormalBias</code> 조절. 지역광 전용 PSO는 아직 없음 (7-3)</td></tr>
+<tr><td>알파 컷아웃(잎사귀 등) 그림자가 꽉 찬 사각형</td><td>그림자 PSO에 PS가 없어 <code>alphaCutoff</code>로 버리지 못함</td><td>컷아웃 재질도 <code>shadowPipeline</code>을 받음 (<code>BuildDrawList</code>)</td></tr>
+<tr><td>반투명 물체·바다에 그림자가 없음</td><td>블렌딩·투과 재질과 바다는 그림자 패스에서 제외</td><td><code>shadowPipeline</code> 빈 핸들 (8-2)</td></tr>
+</table>
+<h3>구조상의 한계</h3>
+<ul>
+<li><b>타일 크기 고정.</b> 모든 지역광이 512²를 받습니다. 화면을 가득 채우는 가까운 스팟과 멀리 있는 작은 스팟이 같은 해상도입니다. 계획의 결정 D6이 "다음 빈 타일 번호"로 끝나는 단순한 할당과 디버깅 편의를 이유로 고정을 택했고, 크기가 다른 타일과 거리별 해상도는 나중 과제로 남겼습니다.</li>
+<li><b>조명별 해상도 없음.</b> 점수는 "받느냐 못 받느냐"만 정하고 크기를 정하지 않습니다. 가변 크기를 하려면 타일 할당이 사각형 채우기 문제가 되고, 포인트의 "연속 6칸" 규칙도 다시 설계해야 합니다.</li>
+<li><b>정적 그림자 캐시 없음.</b> 아틀라스를 매 프레임 전체 클리어하고 모든 뷰를 다시 그립니다. 조명도 물체도 움직이지 않는 타일까지 다시 그립니다(계획 8-C의 남은 일). 캐시를 하려면 타일이 프레임 사이에 같은 조명에 머물러야 하는데, 지금은 점수 순서가 바뀌면 타일 번호도 바뀝니다.</li>
+<li><b>포인트 비용.</b> 포인트 하나는 캐스터마다 최대 6번 그립니다. 지오메트리 셰이더나 인스턴싱으로 한 번에 여섯 면을 그리는 경로는 없고, 범위 구·면 절두체 컬링(8-1)이 그 수를 줄입니다. 포인트 그림자는 동시에 2개까지입니다.</li>
+<li><b>뷰 상한이 상수버퍼 크기에 묶임.</b> 타일을 늘리면 <code>MAX_SHADOW_VIEWS</code>, b6 크기, HLSL 상수를 같이 바꿔야 합니다.</li>
+</ul>
+<div class="box warn"><b>낡은 서술 주의.</b> <a href="../plan/multi-light-shadow-plan.html">다중 광원 그림자 계획</a>의 4096² 아틀라스, 지역광 타일 1024², 포인트 시야각 90.34°, "조명 번호 순 선착순"(D10), <code>m_itemSpheres</code>는 계획 당시의 내용입니다. 지금은 2048² 두 장, 512² 타일, 90.68°, 점수 순 배정, <code>m_objects[…].sphere</code>입니다. 또 <code>Lighting.hlsli</code>의 t14 주석, <code>CreateShadowResources</code>의 주석, 에디터 CSM 트리의 주석은 "캐스케이드마다 해상도가 다르다"고 적혀 있지만 <code>kCsmCascadeSize</code>는 네 칸 모두 1024입니다.</div>
+</section>
+
+<section id="study">
+<h2>12. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>섀도 아틀라스</td><td>텍스처 배열·큐브 맵과 비교한 장단점, 뷰포트로 칸 고르기</td><td>1, 2, 8-1</td></tr>
+<tr><td>그림자 뷰 목록</td><td>조명 → 첫 뷰 번호 → 연속 뷰, 상수버퍼 배열의 상한</td><td>3</td></tr>
+<tr><td>그림자 예산과 우선순위</td><td>화면 크기 × 밝기 점수, 히스테리시스로 깜빡임 막기</td><td>4</td></tr>
+<tr><td>전방향 그림자</td><td>큐브 6면, 가장 큰 성분 축으로 면 고르기, 면 경계 여백</td><td>6</td></tr>
+<tr><td>타일 경계 PCF</td><td>커널 반경 + 쌍선형 1 텍셀, UV clamp</td><td>7-2</td></tr>
+<tr><td>원근 그림자의 바이어스</td><td>비선형 깊이, 텍셀 크기 단위의 노멀 오프셋</td><td>7-3</td></tr>
+<tr><td>래스터라이저 깊이 바이어스</td><td>D32_FLOAT에서 단위가 지수에 따라 바뀜, slope-scaled</td><td>8-2</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>LearnOpenGL, <a href="https://learnopengl.com/Advanced-Lighting/Shadows/Point-Shadows">Point Shadows</a> — 큐브 섀도 맵. 지오메트리 셰이더로 6면을 한 번에 그리지만 원리는 6장과 같음</li>
+<li>Microsoft Learn, <a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/cascaded-shadow-maps">Cascaded Shadow Maps</a> — "큰 버퍼 하나 + 캐스케이드마다 뷰포트" 방식. 계획 D1의 근거 중 하나</li>
+<li>Microsoft Learn, <a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/common-techniques-to-improve-shadow-depth-maps">Common Techniques to Improve Shadow Depth Maps</a> — 바이어스, slope-scaled 바이어스, PCF. 7-3, 8-2</li>
+<li>Frank Luna, <i>Introduction to 3D Game Programming with DirectX 12</i>, 18.5 Dynamic Cube Maps · 20.4 Shadow Mapping · 20.5 Large PCF Kernels</li>
+<li>우리 문서: <a href="../plan/multi-light-shadow-plan.html">다중 광원 그림자 계획</a>(설계 결정 D1~D10, 함정 표), <a href="../overview/rendering-analysis.html#c11-8">rendering-analysis 11.8</a>, <a href="../overview/rendering-analysis.html#c20-22">20.22</a>, <a href="../plan/deferred-clustered-ssao-record.html#c-priority">디퍼드·클러스터드 기록 2.8</a>, <a href="shadow-map-study.html">섀도 맵 학습</a>, <a href="pcf-study.html">PCF 학습</a>, <a href="csm-study.html">CSM 학습</a>, <a href="clustered-lighting-study.html">클러스터드 라이팅 학습</a>, <a href="../overview/glossary.html#graphics">용어집 3장</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

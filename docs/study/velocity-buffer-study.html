@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 속도 버퍼 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>속도 버퍼 학습 문서</h1>
+  <p>화면 공간 속도(모션 벡터) — 픽셀마다 "지난 프레임에는 어디 있었나"를 어떻게 구하고, 누가 어떻게 읽고, 언제 버리는가</p>
+  <p>2026-11-25 · 렌더러 공부 순서 중 "시간 축 효과" 묶음의 첫 문서입니다. 속도 버퍼 이야기는 지금까지 <a href="../plan/velocity-motionblur-taa-plan.html">속도 버퍼·모션 블러·TAA 구현 계획</a>(맨 위 "구현하면서 바뀐 점" 포함)과 <a href="../overview/rendering-analysis.html#c20-28">rendering-analysis 20.28 적용 기록</a>에 있었습니다. 이 문서는 속도 버퍼만 떼어 원리부터 설명하고, 지금 코드의 이름과 경로에 맞춰 정리합니다. 모션 블러와 TAA 자체는 <a href="../study/motion-blur-study.html">모션 블러 학습</a>, <a href="../study/taa-study.html">TAA 학습</a>이 다룹니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1장은 왜 필요한가, 2장은 식과 단위·부호·정밀도, 3장은 한 프레임에서 속도가 만들어지는 경로, 4장은 무엇이 속도를 만드는가(카메라·Transform·스키닝·바다·하늘), 5장은 지난 프레임을 기억하는 방법과 리셋, 6장은 속도를 읽는 쪽(디버그 뷰 16·17, 모션 블러, TAA), 7장은 코드 지도, 8장은 실험, 9장은 함정과 한계, 10장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 픽셀 수와 FP16 정밀도는 식으로 구한 값입니다 <span class="tag chk">계산값</span>. 직접 돌려 보지 않고 코드에서 짐작한 결과는 <span class="tag chk">예상</span>, 구현 기록에 남은 측정은 <span class="tag ok">확인함 (날짜)</span>과 출처 링크로 표시했습니다. 예시 계산은 세로 시야각 45°(<code>Camera::SetLens</code> 기본값), 16:9, 가로 1280 또는 1920 픽셀을 가정합니다.</div>
+</header>
+<nav><a href="#why">1. 왜 필요한가</a><a href="#math">2. 식과 단위</a><a href="#flow">3. 한 프레임의 흐름</a><a href="#sources">4. 움직임의 출처</a><a href="#history">5. 지난 프레임과 리셋</a><a href="#consumers">6. 읽는 쪽</a><a href="#code">7. 코드 지도</a><a href="#lab">8. 실험</a><a href="#pitfalls">9. 함정과 한계</a><a href="#study">10. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 속도 버퍼가 필요한가</h2>
+<h3>1-1. 시간 축 효과는 "지난 프레임의 같은 표면"을 찾아야 한다</h3>
+<p>한 프레임만 보고 끝나는 효과(블룸, SSAO)와 달리, 여러 프레임을 엮는 효과는 이번 픽셀에 보이는 표면이 지난 프레임에는 화면 어디에 있었는지 알아야 합니다.</p>
+<ul>
+<li><b>TAA</b>: 지난 결과(히스토리)를 그 표면이 있던 자리에서 읽어 이번 프레임과 섞습니다. 자리를 틀리면 잔상이 남습니다.</li>
+<li><b>모션 블러</b>: 한 프레임 동안 표면이 움직인 방향과 거리로 색을 번지게 합니다. 방향과 길이가 곧 속도입니다.</li>
+</ul>
+<p>이 질문에 픽셀마다 답해 두는 텍스처가 속도 버퍼(velocity buffer, motion vector buffer)입니다. 값 하나는 2차원 벡터이고, 단위는 화면 UV입니다.</p>
+
+<h3>1-2. 깊이만으로는 카메라 움직임밖에 모른다</h3>
+<p>깊이 버퍼가 있으면 픽셀을 월드 위치로 되돌린 뒤 지난 프레임의 ViewProj로 다시 투영할 수 있습니다(깊이 재투영). 이 방법은 "모든 표면이 월드에 정지해 있다"고 가정하므로 카메라가 움직일 때만 맞고, 돌아가는 헬멧이나 걷는 캐릭터의 속도는 틀립니다. 속도 버퍼는 정점마다 지난 프레임의 World(스킨이면 지난 팔레트)까지 써서 카메라와 물체의 움직임을 합친 값을 냅니다. 카메라와 같이 움직이는 물체는 화면 속도가 0이 되어 번지지 않습니다(<a href="../plan/velocity-motionblur-taa-plan.html#c-camera-object">계획 2.2</a>).</p>
+<p>우리 엔진은 두 방법을 모두 씁니다. 속도 버퍼가 본 값이고, 깊이 재투영(<code>CameraVelocityUV</code>)은 디버그 뷰 17이 속도 버퍼를 검사할 때 기준으로 씁니다(6-2).</p>
+</section>
+
+<section id="math">
+<h2>2. 식과 단위·부호</h2>
+<h3>2-1. 같은 정점을 두 번 투영한다</h3>
+<p>정점 셰이더가 같은 정점을 이번 프레임 행렬과 지난 프레임 행렬로 한 번씩 투영해 클립 좌표 두 개(<code>VSOutput::currClip</code>·<code>prevClip</code>, <code>Shaders/Mesh.hlsli</code>)를 넘깁니다. 일반 메시(<code>BasicVertexShader.hlsl</code>)는 이렇게 씁니다.</p>
+<pre><code>currClip = mul(worldPosition, unjitteredViewProj);                       // 이번: world · ViewProj (지터 없음)
+prevClip = mul(mul(localPosition, prevWorld), prevUnjitteredViewProj);   // 지난: prevWorld · 지난 ViewProj</code></pre>
+<p>픽셀 셰이더는 보간된 두 클립 좌표를 받아 <code>Shaders/Velocity.hlsli</code> 의 <code>VelocityUV</code>로 뺍니다.</p>
+<pre><code>valid    = currClip.w &gt; 1e-4 &amp;&amp; prevClip.w &gt; 1e-4
+velocity = valid ? clamp((currClip.xy / currClip.w − prevClip.xy / prevClip.w) × (0.5, −0.5), −2, 2) : (0, 0)</code></pre>
+<p>원근 나눗셈을 픽셀 셰이더에서 하는 이유는 보간 방식 때문입니다. 래스터라이저는 클립 좌표를 원근 보정 보간하므로 픽셀마다 정확한 <code>xy</code>·<code>w</code>가 옵니다. 정점 셰이더에서 NDC로 나눈 뒤 넘기면 그 NDC 값이 다시 원근 보정으로 보간되어, 깊이 차가 큰 삼각형(바닥 같은)에서 속도가 틀어집니다.</p>
+
+<figure>
+<svg viewBox="0 0 900 300" role="img" aria-label="지난 프레임과 이번 프레임의 점을 화면에 투영해 속도를 구하는 그림">
+  <defs><marker id="vel-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--accent)"/></marker>
+  <marker id="vel-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <text x="20" y="28" style="fill:var(--ink);font-weight:600">옆에서 본 투영</text>
+  <circle cx="60" cy="160" r="6" style="fill:var(--ink3)"/>
+  <text x="60" y="188" text-anchor="middle">카메라</text>
+  <line x1="160" y1="60" x2="160" y2="260" style="stroke:var(--ink2);stroke-width:2"/>
+  <text x="160" y="278" text-anchor="middle">이미지 평면</text>
+  <line x1="60" y1="160" x2="360" y2="110" style="stroke:var(--warn);stroke-dasharray:4 4"/>
+  <line x1="60" y1="160" x2="380" y2="200" style="stroke:var(--accent)"/>
+  <circle cx="360" cy="110" r="6" style="fill:var(--warn)"/>
+  <circle cx="380" cy="200" r="6" style="fill:var(--accent)"/>
+  <text x="372" y="96">P 지난 프레임</text>
+  <text x="392" y="226">P 이번 프레임</text>
+  <line x1="364" y1="120" x2="377" y2="188" class="ln" marker-end="url(#vel-ar2)"/>
+  <text x="356" y="158" text-anchor="end">prevWorld → world</text>
+  <circle cx="160" cy="143.3" r="4" style="fill:var(--warn)"/>
+  <circle cx="160" cy="172.5" r="4" style="fill:var(--accent)"/>
+  <text x="490" y="28" style="fill:var(--ink);font-weight:600">화면 (UV)</text>
+  <rect x="490" y="50" width="380" height="210" rx="4" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="496" y="66">(0, 0)</text>
+  <text x="864" y="252" text-anchor="end">(1, 1)</text>
+  <text x="680" y="38" text-anchor="middle">u → 오른쪽 +</text>
+  <text x="482" y="160" text-anchor="end">v ↓</text>
+  <circle cx="600" cy="110" r="6" style="fill:var(--warn)"/>
+  <circle cx="740" cy="180" r="6" style="fill:var(--accent)"/>
+  <line x1="606" y1="113" x2="732" y2="176" style="stroke:var(--accent);stroke-width:2" marker-end="url(#vel-ar)"/>
+  <text x="590" y="96" text-anchor="middle">uv(지난)</text>
+  <text x="756" y="184">uv(이번)</text>
+  <text x="680" y="226" text-anchor="middle">velocity = uv(이번) − uv(지난)</text>
+  <text x="680" y="244" text-anchor="middle">읽는 쪽: uv(지난) = uv − velocity</text>
+</svg>
+<figcaption>그림 1. 같은 정점을 지난 프레임(주황, <code>prevWorld</code>와 지난 ViewProj)과 이번 프레임(파랑)으로 투영하면 화면에 점이 두 개 생깁니다. 둘의 UV 차가 이 픽셀의 속도이고, 화살표는 지난 위치에서 이번 위치를 가리킵니다. v는 아래로 +입니다.</figcaption>
+</figure>
+
+<h3>2-2. 단위와 부호</h3>
+<table>
+<tr><th>항목</th><th>규칙</th><th>근거</th></tr>
+<tr><td>단위</td><td>UV (화면 전체 = 1). 픽셀로 바꾸려면 <code>velocity × screenParams.xy</code></td><td><code>Temporal.hlsli</code> 의 <code>LoadVelocityPixels</code>. 계획은 해상도와 무관하다는 이유로 UV를 골랐습니다(<a href="../plan/velocity-motionblur-taa-plan.html#d-table">계획 3.2</a>)</td></tr>
+<tr><td>방향</td><td>지난 위치 → 이번 위치. 오른쪽으로 움직이면 x +, 아래로 움직이면 y +</td><td><code>VelocityUV</code> 의 <code>× (0.5, −0.5)</code>: NDC는 y가 위로 +, UV는 아래로 +</td></tr>
+<tr><td>찾아가기</td><td><code>uv(지난) = uv − velocity</code></td><td><code>TaaPixelShader.hlsl</code> 의 <code>prevUv</code></td></tr>
+<tr><td>정지</td><td>(0, 0). 속도 RT는 패스 시작에 0으로 클리어</td><td><code>RenderScenePass</code>·<code>RenderDeferredScene</code> 의 <code>clearColor = {0, 0, 0, 0}</code></td></tr>
+</table>
+<p>감 잡기용 예: 카메라가 제자리에서 프레임마다 1° 돌면 화면 가운데 픽셀의 속도는 <code>tan(1°) / (tan(22.5°) × 16/9) × 0.5</code> ≈ 0.0119 UV, 가로 1280에서 약 15.2 픽셀, 1920에서 약 22.8 픽셀입니다. <span class="tag chk">계산값</span> 같은 UV 값이 해상도에 따라 다른 픽셀 수가 되므로, 픽셀 길이로 자르는 쪽(모션 블러의 최대 길이)은 출력 높이에 맞춰 상한을 따로 조정합니다.</p>
+
+<h3>2-3. 지터는 속도에 넣지 않는다</h3>
+<p>TAA가 켜지면 <code>Renderer::UploadPerFrameConstants</code>가 Halton(2, 3) 8 위상 지터를 b0의 <code>proj</code>·<code>viewProj</code>·<code>invViewProj</code>에만 곱합니다. 속도는 별도의 <code>unjitteredViewProj</code>·<code>prevUnjitteredViewProj</code>로 만듭니다. 지터를 속도에 넣으면 정지 화면에서도 속도가 프레임마다 흔들려, 모션 블러가 떨리고 TAA가 지터를 되돌려 수렴하지 않습니다(<a href="../plan/velocity-motionblur-taa-plan.html#c-jitter">계획 2.5</a>). 지터 자체는 <a href="../study/taa-study.html">TAA 학습</a>에서 다룹니다.</p>
+
+<h3>2-4. w 가드와 ±2 UV 자르기</h3>
+<p>점이 지난 프레임에 카메라 평면 뒤(<code>w ≤ 0</code>)에 있었으면 <code>xy / w</code>가 뒤집히거나 무한대가 됩니다. 한 프레임에 크게 뒤로 물러난 경우, 뒤에서 들어온 물체, 카메라 컷이 여기에 해당합니다. <code>VelocityUV</code>는 두 클립 좌표의 <code>w</code>가 모두 <code>1e-4</code>보다 커야 값을 내고, 아니면 0을 씁니다. 결과도 ±2 UV(화면 두 장 너비)로 자릅니다. FP16의 무한대·NaN이 후처리로 번지지 않게 하려는 것이라고 <code>Velocity.hlsli</code> 주석에 적혀 있습니다. 모션 블러의 <code>BlurVector</code>도 길이가 <code>1e6</code>을 넘거나 NaN이면 0으로 한 번 더 막습니다.</p>
+<p>±2 UV는 가로 1920에서 3840 픽셀입니다 <span class="tag chk">계산값</span>. 이 값까지 가는 속도는 사실상 "지난 위치를 쓸 수 없음"이고, TAA는 <code>prevUv</code>가 0~1을 벗어나면 히스토리를 쓰지 않습니다.</p>
+
+<h3>2-5. 저장 형식과 정밀도</h3>
+<p>속도 RT는 <code>R16G16_FLOAT</code>(<code>Renderer::kVelocityFormat</code>)입니다. 반정밀도 부동소수는 가수 10비트라, 값의 크기에 비례해 간격이 커집니다. 가로 1920 기준으로 계산하면 이렇습니다. <span class="tag chk">계산값</span></p>
+<table>
+<tr><th>속도 (픽셀/프레임)</th><th>UV 값</th><th>FP16 간격 (픽셀)</th><th>반올림 오차 최대 (픽셀)</th></tr>
+<tr><td>1</td><td>0.00052</td><td>0.0009</td><td>0.0005</td></tr>
+<tr><td>6 (계획·셰이더 주석의 "1° 회전" 예, 아래 상자)</td><td>0.0031</td><td>0.0037</td><td>0.0018</td></tr>
+<tr><td>16</td><td>0.0083</td><td>0.0146</td><td>0.0073</td></tr>
+<tr><td>100</td><td>0.052</td><td>0.059</td><td>0.029</td></tr>
+<tr><td>1920~3840 미만 (±2 UV 상한 바로 아래)</td><td>1 이상 2 미만</td><td>1.875</td><td>0.94</td></tr>
+</table>
+<p>계획의 "1080p 에서 0.01 픽셀 수준"은 가로 1920 기준으로 반올림 오차가 프레임당 30 픽셀까지 0.0073 픽셀 이하라는 뜻으로 맞습니다(간격은 15 픽셀부터 0.01을 넘음). 그보다 빠르면 오차가 커지지만 상대 오차는 늘 0.1% 안쪽이라, 모션 블러·TAA에는 문제가 되지 않습니다. 디버그 뷰 17처럼 0.01 픽셀을 보려는 검사에서는 이 반올림이 보이므로 허용치를 둡니다(6-2).</p>
+</section>
+
+<section id="flow">
+<h2>3. 한 프레임에서 속도가 만들어지는 경로</h2>
+<figure>
+<svg viewBox="0 0 910 130" role="img" aria-label="속도 버퍼가 만들어지고 읽히는 경로">
+  <defs><marker id="vel-ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <rect x="12" y="30" width="166" height="70" rx="8" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <text x="95" y="58" text-anchor="middle" style="fill:var(--ink);font-weight:600">CPU 준비</text>
+  <text x="95" y="82" text-anchor="middle">지난 행렬·팔레트</text>
+  <line x1="179" y1="65" x2="191" y2="65" class="ln" marker-end="url(#vel-ar3)"/>
+  <rect x="192" y="30" width="166" height="70" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="275" y="58" text-anchor="middle" style="fill:var(--ink);font-weight:600">정점 셰이더</text>
+  <text x="275" y="82" text-anchor="middle">currClip · prevClip</text>
+  <line x1="359" y1="65" x2="371" y2="65" class="ln" marker-end="url(#vel-ar3)"/>
+  <rect x="372" y="30" width="166" height="70" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="455" y="58" text-anchor="middle" style="fill:var(--ink);font-weight:600">픽셀 셰이더</text>
+  <text x="455" y="82" text-anchor="middle">VelocityUV</text>
+  <line x1="539" y1="65" x2="551" y2="65" class="ln" marker-end="url(#vel-ar3)"/>
+  <rect x="552" y="30" width="166" height="70" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="635" y="58" text-anchor="middle" style="fill:var(--ink);font-weight:600">속도 RT</text>
+  <text x="635" y="82" text-anchor="middle">R16G16_FLOAT</text>
+  <line x1="719" y1="65" x2="731" y2="65" class="ln" marker-end="url(#vel-ar3)"/>
+  <rect x="732" y="30" width="166" height="70" rx="8" style="fill:var(--ok-bg);stroke:var(--ok)"/>
+  <text x="815" y="58" text-anchor="middle" style="fill:var(--ink);font-weight:600">읽는 쪽 (t7)</text>
+  <text x="815" y="82" text-anchor="middle">TAA · 블러 · 뷰 16·17</text>
+  <text x="95" y="120" text-anchor="middle">b0 · b1 · b13 · b9</text>
+  <text x="635" y="120" text-anchor="middle">디퍼드 RT5 · 포워드 RT1</text>
+</svg>
+<figcaption>그림 2. 속도 버퍼의 경로. CPU가 지난 프레임 값을 상수 버퍼에 올리고, 정점 셰이더가 두 번 투영하고, 픽셀 셰이더가 빼서 씬 패스의 속도 RT에 씁니다. 후처리는 <code>Layout_Temporal</code> 셋의 t7로 읽습니다.</figcaption>
+</figure>
+<table>
+<tr><th>단계</th><th>하는 일</th><th>코드</th></tr>
+<tr><td>1. 뷰 행렬</td><td>뷰마다 이번·지난 지터 없는 ViewProj를 b0에 올림. 지난 값이 없으면 이번 값을 그대로 (속도 0)</td><td><code>Renderer::UploadPerFrameConstants</code>, <code>PerFrameConstants::unjitteredViewProj</code>(오프셋 432)·<code>prevUnjitteredViewProj</code>(496), b0 576 바이트</td></tr>
+<tr><td>2. 오브젝트 상태</td><td>오브젝트마다 지난 World·팔레트 위치를 찾고 이번 값을 기록</td><td><code>Renderer::BuildDrawList</code>, <code>ObjectData::prevWorld</code>·<code>prevPaletteOffset</code></td></tr>
+<tr><td>3. 드로우 상수</td><td>b1 <code>prevWorld</code>(오프셋 128, b1 192 바이트), 스킨이면 b13 <code>PrevSkin</code>. 그림자 패스는 <code>withHistory = false</code>라 <code>prevWorld = world</code></td><td><code>Renderer::UploadObjectConstants</code></td></tr>
+<tr><td>4. 정점 셰이더</td><td><code>currClip</code>·<code>prevClip</code>을 냄 (4장 표의 셰이더 셋)</td><td><code>BasicVertexShader.hlsl</code>, <code>BasicSkinVertexShader.hlsl</code>, <code>OceanVertexShader.hlsl</code></td></tr>
+<tr><td>5. 픽셀 셰이더</td><td><code>VelocityUV</code> 결과를 속도 RT에 씀</td><td>포워드 <code>BasicPixelShader.hlsl</code> 의 <code>PS_Main</code>(SV_Target1), 디퍼드 <code>GBufferPixelShader.hlsl</code>(SV_Target5), 하늘 <code>SkyboxPixelShader.hlsl</code> 의 <code>PS_Sky</code>(SV_Target1)</td></tr>
+<tr><td>6. 후처리</td><td>씬 패스 끝에 속도를 ShaderResource로 바꾸고, 시간 셋 t7로 읽음</td><td><code>Renderer::CreateTemporalSet</code>, <code>Temporal.hlsli</code> 의 <code>velocityTexture</code></td></tr>
+</table>
+
+<h3>3-1. 디퍼드와 포워드에서 속도 RT의 자리</h3>
+<ul>
+<li><b>디퍼드</b>: G-buffer 패스가 RT 6장을 씁니다. RT0 hdr, RT1~4 GB0~GB3, RT5 속도(<code>RendererDeferred.cpp</code> 의 <code>rtvFormats[5] = kVelocityFormat</code>). G-buffer에는 남는 채널이 없어서 6장째를 붙였습니다(<a href="../plan/velocity-motionblur-taa-plan.html#d-table">계획 3.2</a>). 그 뒤 포워드 나머지 패스(G-buffer에 못 담는 재질, 하늘, 반투명)가 hdr와 속도를 <code>LoadOp::Load</code>로 이어 씁니다. G-buffer 구조는 <a href="../study/deferred-gbuffer-study.html">디퍼드 G-buffer 학습</a>을 봅니다.</li>
+<li><b>포워드</b>: 메인 패스가 RT 2장 {hdr, 속도}를 씁니다. 메인 PSO와 스카이박스 PSO가 <code>rtvFormats[1] = kVelocityFormat</code>, <code>rtvCount = 2</code>입니다.</li>
+</ul>
+<p>속도를 위한 별도 패스는 없습니다. <a href="../plan/velocity-motionblur-taa-plan.html#d-table">계획 결정 표</a>는 별도 속도 패스를 "드로우가 두 배"라는 이유로 뺐습니다. 대신 정점 출력이 두 칸(<code>TEXCOORD2</code>·<code>TEXCOORD3</code>) 늘었습니다.</p>
+</section>
+
+<section id="sources">
+<h2>4. 무엇이 속도를 만드는가</h2>
+<table>
+<tr><th>움직임</th><th>지난 값의 출처</th><th>셰이더</th><th>지난 값이 없을 때</th></tr>
+<tr><td>카메라</td><td>뷰마다 <code>TemporalState::prevUnjitteredViewProj</code> → b0</td><td>모든 메시 VS, 하늘 PS</td><td>이번 행렬 그대로 (속도 0)</td></tr>
+<tr><td>오브젝트 Transform (부모 계층 포함)</td><td><code>MotionHistory::objects[GetId()]</code> 의 World → b1 <code>prevWorld</code></td><td><code>BasicVertexShader</code> 등</td><td><code>prevWorld = world</code></td></tr>
+<tr><td>스키닝</td><td><code>MotionHistory::palettes</code> 에 복사해 둔 지난 팔레트 → b13 <code>PrevSkin</code> (16384 바이트, b7과 같은 배치)</td><td><code>BasicSkinVertexShader</code> 의 <code>PrevSkinMatrix</code></td><td>이번 팔레트를 b13에도 올림. 조인트 수가 달라져도 같음. 이때 World 변화로 생기는 속도는 남음</td></tr>
+<tr><td>바다 파도</td><td>지난 위상(<code>OceanConstants::waveB.z</code>), 지난 프레임에 실제로 쓴 시간 <code>m_oceanPrevTime</code>으로 만듦</td><td><code>OceanVertexShader</code>: <code>GerstnerPosition(basePrev, OCEAN_PHASE_PREV)</code>, <code>basePrev</code>는 <code>prevWorld</code>로 옮긴 위치</td><td>첫 프레임·리셋 뒤·바다 오브젝트가 바뀐 프레임·<code>--ocean-time</code> 고정이면 지난 위상 = 이번 위상</td></tr>
+<tr><td>하늘</td><td>카메라 행렬만</td><td><code>PS_Sky</code>: 방향을 <code>w = 0</code>으로 투영</td><td>이번 행렬 그대로(속도 0). 직교 투영은 늘 0</td></tr>
+</table>
+<h3>4-1. 하늘은 회전에만 반응한다</h3>
+<p>하늘은 무한히 먼 방향이라 위치가 없습니다. <code>PS_Sky</code>는 방향 <code>d</code>를 <code>mul(float4(d, 0), M)</code>으로 투영합니다. <code>w = 0</code>이면 행렬의 이동 행이 곱해지지 않으므로 카메라가 옮겨 가도 하늘 속도는 0이고, 회전할 때만 움직입니다. 직교 투영(<code>proj[3][3] &gt; 0.5</code>)은 모든 픽셀의 방향이 같고 <code>w</code>가 0이 되어 나눌 수 없으므로 0을 씁니다.</p>
+<h3>4-2. 바다의 지난 위치</h3>
+<p>바다는 정점 위치를 셰이더에서 시간으로 움직이므로 <code>prevWorld</code>만으로는 속도가 0입니다. <code>Renderer::UploadOceanConstants</code>가 파도마다 이번 위상과 지난 위상을 double로 <code>fmod(ω·t + φ₀, 2π)</code> 해서 올리고, <code>OceanVertexShader</code>가 지난 위상으로 Gerstner 변위를 한 번 더 계산합니다. 지난 시간은 <code>time − dt</code>로 짐작하지 않고 지난 프레임에 실제로 쓴 값을 기억합니다. 일시정지에서는 <code>totalTime</code>이 멈추므로 속도가 저절로 0이 됩니다. 파도 식은 <a href="../study/ocean-gerstner-study.html">Gerstner 바다 학습</a>을 봅니다.</p>
+<h3>4-3. 속도를 쓰지 않는 것</h3>
+<ul>
+<li><b>반투명</b>: <code>Renderer::GetPipelineFor</code>가 블렌딩 PSO에서 <code>independentBlend = true</code>, <code>rt[1].writeMask = 0</code>으로 둡니다. 픽셀 셰이더는 속도를 내지만 버려지고, 뒤 불투명 표면의 속도가 남습니다. 계획은 반투명을 RT 1장짜리 Effects 패스로 옮기려 했지만, RHI에 RT별 쓰기 마스크가 이미 있어 그리는 순서를 바꾸지 않는 쪽을 택했습니다(<a href="../plan/velocity-motionblur-taa-plan.html">계획</a> 맨 위 "구현하면서 바뀐 점").</li>
+<li><b>파티클·디버그 선</b>: hdr 한 장만 묶는 Effects 패스(<code>Renderer::RenderScenePass</code>, <code>colorCount = 1</code>)에서 그리므로(PSO도 <code>rtvCount = 1</code>) 속도 RT에 닿지 않습니다. 뒤 표면 값이 남습니다.</li>
+<li><b>게임 UI</b>: 톤 패스 뒤 출력 텍스처에 그리므로(<code>Renderer::RenderCanvasPass</code>) 속도 버퍼와 TAA·모션 블러를 거치지 않습니다. World Space 캔버스도 같습니다.</li>
+<li><b>그림자 패스</b>: 속도를 쓰지 않으므로 <code>prevWorld</code>를 <code>world</code>로 채우고 b13도 올리지 않습니다.</li>
+</ul>
+</section>
+
+<section id="history">
+<h2>5. 지난 프레임을 기억하는 방법과 리셋</h2>
+<h3>5-1. 오브젝트: <code>MotionHistory</code> 두 벌</h3>
+<p><code>Renderer</code>는 <code>MotionHistory m_motion[2]</code>를 갖고, <code>BuildDrawList</code>가 프레임 처음에 <code>m_motionCurrent ^= 1</code>로 두 벌을 맞바꿉니다. 이번 칸은 비우고 새로 채우고, 다른 칸은 지난 프레임 기록으로 읽기만 합니다.</p>
+<ul>
+<li>키는 <code>GameObject::GetId()</code>(씬 안에서 고유)이고 값은 <code>PrevObject</code>(전치된 World, 팔레트 위치·개수)입니다. 팔레트는 오브젝트마다 따로 두지 않고 <code>MotionHistory::palettes</code> 한 배열에 이어 붙입니다(전치 전, 최대 <code>kMaxSkinJoints</code> 256개).</li>
+<li>맵에 없으면 <code>prevWorld = world</code>라 처음 보는 오브젝트(복제·프리팹 배치·스폰)의 첫 프레임 속도는 0입니다.</li>
+<li>맞바꾸기만 하므로 지워진 오브젝트의 항목은 한 프레임 뒤에 저절로 사라집니다.</li>
+<li><code>BuildDrawList</code>는 프레임에 한 번, 뷰별 컬링보다 먼저 메시가 있는 모든 오브젝트를 돕니다. 그래서 화면 밖에 있던 오브젝트가 들어와도 지난 World가 있습니다. 메인 뷰와 미리보기 뷰가 같은 기록을 씁니다.</li>
+</ul>
+<p>계획은 지난 World를 <code>GameObject</code>에 저장하는 안도 검토했지만, 씬 데이터에 렌더 상태가 섞인다는 이유로 렌더러 쪽 맵을 골랐습니다(<a href="../plan/velocity-motionblur-taa-plan.html#d-table">계획 3.2</a>).</p>
+
+<h3>5-2. 뷰: <code>TemporalState</code></h3>
+<p>메인 뷰와 미리보기 뷰는 서로 다른 카메라로 같은 b0를 올리므로, 지난 카메라 행렬은 <code>ViewTarget::temporal</code>에 뷰마다 둡니다.</p>
+<table>
+<tr><th>필드</th><th>뜻</th></tr>
+<tr><td><code>prevUnjitteredViewProj</code></td><td>지난 프레임에 이 뷰가 올린 지터 없는 ViewProj (전치)</td></tr>
+<tr><td><code>lastCamera</code></td><td>지난 프레임에 이 뷰를 그린 <code>Camera</code>의 주소. 이번 카메라와 다르면 <code>hasPrev</code>·<code>historyValid</code>를 버림</td></tr>
+<tr><td><code>hasPrev</code></td><td>거짓이면 b0 <code>prevUnjitteredViewProj</code> = 이번 값</td></tr>
+<tr><td><code>frameIndex</code></td><td>이 뷰를 그린 프레임 수. TAA 지터 위상(% 8)</td></tr>
+<tr><td><code>historyValid</code>·<code>current</code></td><td>TAA 히스토리 상태 (<a href="../study/taa-study.html">TAA 학습</a>)</td></tr>
+</table>
+<p><code>UploadPerFrameConstants</code>는 b0에 지난 값을 넣은 직후 <code>temporal.prevUnjitteredViewProj</code>를 이번 값으로 바꾸고 <code>hasPrev = true</code>로 둡니다.</p>
+
+<figure>
+<svg viewBox="0 0 900 250" role="img" aria-label="프레임마다 MotionHistory 두 벌을 맞바꾸고 리셋하는 시간표">
+  <text x="20" y="40" style="fill:var(--ink);font-weight:600">프레임</text>
+  <text x="230" y="40" text-anchor="middle" style="fill:var(--ink);font-weight:600">N</text>
+  <text x="400" y="40" text-anchor="middle" style="fill:var(--ink);font-weight:600">N+1</text>
+  <text x="610" y="40" text-anchor="middle" style="fill:var(--ink);font-weight:600">N+2</text>
+  <text x="790" y="40" text-anchor="middle" style="fill:var(--ink);font-weight:600">N+3</text>
+  <text x="20" y="82">이번 칸 (쓰기)</text>
+  <text x="20" y="132">지난 칸 (읽기)</text>
+  <text x="20" y="182">b1 prevWorld</text>
+  <rect x="160" y="60" width="140" height="36" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="230" y="83" text-anchor="middle">A ← N 기록</text>
+  <rect x="330" y="60" width="140" height="36" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="400" y="83" text-anchor="middle">B ← N+1 기록</text>
+  <rect x="540" y="60" width="140" height="36" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="610" y="83" text-anchor="middle">A ← N+2 기록</text>
+  <rect x="720" y="60" width="140" height="36" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="790" y="83" text-anchor="middle">B ← N+3 기록</text>
+  <rect x="160" y="110" width="140" height="36" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="230" y="133" text-anchor="middle">B: N−1 기록</text>
+  <rect x="330" y="110" width="140" height="36" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="400" y="133" text-anchor="middle">A: N 기록</text>
+  <rect x="540" y="110" width="140" height="36" rx="6" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="610" y="133" text-anchor="middle">B: 비어 있음</text>
+  <rect x="720" y="110" width="140" height="36" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="790" y="133" text-anchor="middle">A: N+2 기록</text>
+  <rect x="160" y="160" width="140" height="36" rx="6" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="230" y="183" text-anchor="middle">N−1 의 World</text>
+  <rect x="330" y="160" width="140" height="36" rx="6" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="400" y="183" text-anchor="middle">N 의 World</text>
+  <rect x="540" y="160" width="140" height="36" rx="6" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="610" y="183" text-anchor="middle">= world (속도 0)</text>
+  <rect x="720" y="160" width="140" height="36" rx="6" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="790" y="183" text-anchor="middle">N+2 의 World</text>
+  <line x1="505" y1="50" x2="505" y2="206" style="stroke:var(--warn);stroke-width:2;stroke-dasharray:5 4"/>
+  <text x="505" y="226" text-anchor="middle" style="fill:var(--warn)">ResetTemporalHistory</text>
+  <text x="505" y="242" text-anchor="middle">두 칸 모두 비움</text>
+</svg>
+<figcaption>그림 3. 오브젝트 기록 두 칸(A·B)을 프레임마다 맞바꿉니다. N+1과 N+2 사이에 리셋이 오면 두 칸이 모두 비어, N+2의 모든 오브젝트는 <code>prevWorld = world</code>(속도 0)가 되고 N+3부터 다시 지난 값이 있습니다. 뷰의 <code>TemporalState</code>도 같은 때 <code>hasPrev = false</code>가 됩니다.</figcaption>
+</figure>
+
+<h3>5-3. 리셋이 일어나는 곳</h3>
+<p>화면이 끊기는 프레임에 지난 값을 남겨 두면 그 프레임 하나에 아주 큰 속도가 생기고(모션 블러가 화면 전체를 번지게 함), TAA는 다른 화면의 히스토리를 섞습니다. 리셋 방법은 두 가지입니다. 전부 버리는 <code>Renderer::ResetTemporalHistory</code>(두 뷰의 <code>hasPrev</code>·<code>historyValid</code>, 두 <code>MotionHistory</code>, <code>m_oceanHasPrev</code>)와 뷰 하나만 버리는 <code>lastCamera</code> 비교입니다.</p>
+<table>
+<tr><th>상황</th><th>부르는 곳</th><th>버리는 것</th></tr>
+<tr><td>씬 불러오기, 새 씬, 재생 정지(스냅샷 복원)</td><td><code>Renderer::InvalidateScene</code> → <code>ResetTemporalHistory</code></td><td>전부. id가 같아도 다른 물체일 수 있음</td></tr>
+<tr><td>재생 시작</td><td><code>EditorApp::StartPlay</code></td><td>전부. 시작 시 스크립트가 옮긴 차이를 속도로 보지 않게</td></tr>
+<tr><td>되돌리기·다시 실행</td><td><code>EditorApp::UndoRedo</code></td><td>전부. 옛 자세로 한 번에 옮기는 것은 움직임이 아니라 편집</td></tr>
+<tr><td>재생 중 보간 없는 카메라 전환 (첫 활성화, <code>blendTime</code> 0)</td><td><code>Scene::ApplyActiveCamera</code>가 <code>m_cameraCut</code> 표시 → <code>Engine::Render</code>가 <code>Scene::ConsumeCameraCut</code>으로 확인</td><td>전부</td></tr>
+<tr><td>뷰 크기 변경</td><td><code>Renderer::SetSceneTarget</code> → <code>DestroyViewTarget</code>(<code>view = ViewTarget{}</code>) → <code>CreateViewTarget</code></td><td>그 뷰의 <code>TemporalState</code>. 오브젝트 기록은 남음</td></tr>
+<tr><td>미리보기 대상 바뀜 (카메라 A → B 선택)</td><td><code>Editor</code>가 <code>SetPreviewCamera(&amp;m_previewCamera, id)</code>, <code>Render</code>가 id 변화를 보고 <code>lastCamera = nullptr</code></td><td>미리보기 뷰만</td></tr>
+<tr><td>미리보기를 그리지 않은 프레임</td><td><code>Render</code>가 <code>m_previewView.temporal.lastCamera = nullptr</code></td><td>다음에 그릴 때 미리보기 뷰만</td></tr>
+</table>
+<p>미리보기는 에디터가 늘 같은 <code>Camera</code> 사본(<code>m_previewCamera</code>)을 넘기므로 포인터 비교로는 대상이 바뀐 것을 알 수 없습니다. 그래서 대상 오브젝트의 id를 함께 받습니다(<a href="../overview/rendering-analysis.html#c20-28">20.28</a> 함정 3).</p>
+<p>리셋하지 않는 경우도 있습니다. <code>blendTime</code>이 0보다 큰 카메라 전환은 보간되므로 연속된 움직임으로 봅니다. 스크립트가 오브젝트나 카메라를 순간 이동시키는 경우는 엔진이 알 수 없습니다. 계획 문서는 이때 게임 코드가 직접 <code>Renderer::ResetTemporalHistory</code>를 부르라고 적었습니다. 부르지 않으면 모션 블러는 최대 길이 상한, TAA는 이웃 클리핑이 받아 냅니다(<a href="../plan/velocity-motionblur-taa-plan.html#d-reset">계획 3.6</a>).</p>
+<p>카메라 컷에서도 <code>ResetTemporalHistory</code>가 오브젝트 기록까지 버리므로, 컷 프레임에는 움직이는 물체의 속도도 0이 됩니다. 카메라 컷에는 뷰만 버리는 경로가 없어서, 컷 직후 한 프레임은 물체 블러도 빠집니다.</p>
+</section>
+
+<section id="consumers">
+<h2>6. 속도를 읽는 쪽</h2>
+<p>읽는 쪽은 모두 <code>Layout_Temporal</code> 셋(b0, b4, t13 입력, t23 깊이, t7 속도, t24 히스토리, s6)을 씁니다. 셋은 뷰마다 있고(<code>ViewTarget::temporalSet</code>), 선언은 <code>Shaders/Temporal.hlsli</code>에 모여 있습니다.</p>
+<h3>6-1. 디버그 뷰 16: 속도</h3>
+<p><code>VelocityDebugPixelShader.hlsl</code> 의 <code>PS_VelocityDebug</code>가 속도를 픽셀 단위로 바꿔 방향을 색상, 크기를 밝기로 그립니다. 16 픽셀/프레임에서 가장 밝고, 정지한 곳은 검정입니다. 색상은 <code>atan2(vy, vx) / 2π</code>이므로 방향별 최대 밝기 색은 다음과 같습니다. 디버그 출력도 톤 패스의 sRGB 뷰가 인코딩하므로 화면 값은 선형 0.5가 188로 나옵니다(<a href="../study/color-space-study.html">색공간 학습</a> E3). <span class="tag chk">계산값</span></p>
+<table>
+<tr><th>화면에서 움직이는 방향</th><th>색상 값</th><th>셰이더 출력 (선형)</th><th>화면 8비트</th></tr>
+<tr><td>오른쪽 (vx +)</td><td>0</td><td>(1, 0, 0) 빨강</td><td>(255, 0, 0)</td></tr>
+<tr><td>아래 (vy +)</td><td>0.25</td><td>(0.5, 1, 0) 연두</td><td>(188, 255, 0)</td></tr>
+<tr><td>왼쪽</td><td>0.5</td><td>(0, 1, 1) 청록</td><td>(0, 255, 255)</td></tr>
+<tr><td>위</td><td>0.75</td><td>(0.5, 0, 1) 보라</td><td>(188, 0, 255)</td></tr>
+</table>
+<h3>6-2. 디버그 뷰 17: 속도 오차</h3>
+<p>같은 셰이더가 깊이에서 월드 위치를 복원해(<code>ReconstructWorldPosition</code>) 지터 없는 이번·지난 ViewProj로 다시 투영한 "카메라만의 속도"(<code>CameraVelocityUV</code>)를 구하고, 속도 버퍼와의 차이를 픽셀로 봅니다.</p>
+<pre><code>error     = |velocity − cameraVelocity| × 화면 크기          (픽셀)
+tolerance = 1e-3 × |cameraVelocity 픽셀| + 0.01              (FP16 반올림 + 0.01 픽셀)
+출력      = saturate((error − tolerance) × 10)               (허용치보다 0.1 픽셀 넘게 틀리면 흰색)</code></pre>
+<ul>
+<li>정지한 물체는 두 값이 같아야 하므로 검정이고, 움직이는 오브젝트만 밝게 나옵니다. 카메라만 움직이는 정적 씬에서 화면 전체가 검정이면 b0의 두 행렬과 b1 <code>prevWorld</code>가 맞는 것입니다.</li>
+<li>하늘(깊이 1)은 무한히 먼 방향이라 재투영 값과 다르므로 비교에서 빼고 어두운 파랑 (0, 0, 0.15)으로 칠합니다.</li>
+<li>처음에는 "오차 × 100"이었는데, FP16 반올림 무늬가 정적 화면을 덮어서 허용치를 빼고 × 10으로 바꿨습니다(<a href="../overview/rendering-analysis.html#c20-28">20.28</a> 함정 2). 2-5 표의 반올림 오차가 그 무늬입니다.</li>
+<li>디버그 뷰 16·17에서는 TAA·모션 블러를 건너뛰고(<code>Renderer::ApplyHdrEffects</code> 앞부분의 분기) 지터도 끕니다(<code>Renderer::TaaActive</code>가 <code>debugView == 0</code>일 때만 참).</li>
+</ul>
+<h3>6-3. 모션 블러와 TAA가 읽는 방법</h3>
+<table>
+<tr><th>효과</th><th>속도를 읽는 방법</th><th>자세히</th></tr>
+<tr><td>모션 블러</td><td><code>LoadVelocityPixels(pixel)</code>(픽셀 단위) × 셔터 배율, 최대 길이로 자름(<code>BlurVector</code>). 셔터 배율에는 기준 fps 보정 <code>1 / (targetFps · dt)</code>가 들어감. 속도 버퍼는 "한 프레임 이동량"이라 fps가 높을수록 짧기 때문</td><td><a href="../study/motion-blur-study.html">모션 블러 학습</a></td></tr>
+<tr><td>TAA</td><td>3×3에서 가장 가까운 깊이의 픽셀 속도를 씀(속도 팽창, 물체 가장자리에서 배경 속도를 집지 않게). <code>prevUv = uv − velocity</code>가 화면 밖이면 히스토리를 쓰지 않음</td><td><a href="../study/taa-study.html">TAA 학습</a></td></tr>
+</table>
+<p>순서는 TAA → 모션 블러입니다. 두 효과가 같은 속도 버퍼를 읽고, 속도 버퍼 자체는 후처리 동안 바뀌지 않습니다.</p>
+</section>
+
+<section id="code">
+<h2>7. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>속도 식</td><td><code>Shaders/Velocity.hlsli</code> 의 <code>VelocityUV</code>, <code>CameraVelocityUV</code></td><td>클립 좌표 두 개 → UV 속도, w 가드, ±2 UV. 깊이 재투영 속도(뷰 17용)</td></tr>
+<tr><td>시간 셋 선언</td><td><code>Shaders/Temporal.hlsli</code> 의 <code>velocityTexture</code>(t7), <code>LoadVelocityPixels</code></td><td>읽는 쪽 공용. 픽셀 단위 변환, 화면 밖은 가장자리 값</td></tr>
+<tr><td>정점 출력</td><td><code>Shaders/Mesh.hlsli</code> 의 <code>VSOutput::currClip</code>·<code>prevClip</code>, <code>cbuffer PrevSkin</code>(b13), <code>PrevSkinMatrix</code></td><td>두 클립 좌표, 지난 팔레트</td></tr>
+<tr><td>정점 셰이더</td><td><code>BasicVertexShader.hlsl</code>, <code>BasicSkinVertexShader.hlsl</code>, <code>OceanVertexShader.hlsl</code></td><td>지난 World·팔레트·위상으로 <code>prevClip</code></td></tr>
+<tr><td>속도 쓰기</td><td><code>BasicPixelShader.hlsl</code> 의 <code>PS_Main</code>, <code>GBufferPixelShader.hlsl</code>, <code>SkyboxPixelShader.hlsl</code> 의 <code>PS_Sky</code></td><td>포워드 SV_Target1, 디퍼드 SV_Target5, 하늘</td></tr>
+<tr><td>디버그 뷰</td><td><code>Shaders/VelocityDebugPixelShader.hlsl</code> 의 <code>PS_VelocityDebug</code>, <code>Graphics/RendererPost.cpp</code> 의 <code>Pass_VelocityDebug</code> 분기</td><td>뷰 16·17을 hdr에 그리고 다른 효과는 건너뜀</td></tr>
+<tr><td>상수 배치</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>PerFrameConstants</code>(576 B), <code>PerObjectConstants</code>(192 B), <code>PrevSkinConstants</code>, <code>kCBSlotPrevSkin</code></td><td><code>static_assert</code>로 오프셋 고정</td></tr>
+<tr><td>뷰 상태</td><td><code>Graphics/Renderer.h</code> 의 <code>TemporalState</code>, <code>Graphics/Renderer.cpp</code> 의 <code>Renderer::UploadPerFrameConstants</code></td><td>지난 ViewProj, 카메라 바뀜 감지, 지터</td></tr>
+<tr><td>오브젝트 상태</td><td><code>Renderer.h</code> 의 <code>MotionHistory</code>·<code>PrevObject</code>·<code>ObjectData::prevWorld</code>, <code>Renderer::BuildDrawList</code>, <code>Renderer::UploadObjectConstants</code></td><td>두 벌 맞바꾸기, id로 찾기, b1·b13 올리기</td></tr>
+<tr><td>바다 위상</td><td><code>Graphics/RendererOcean.cpp</code> 의 <code>Renderer::UploadOceanConstants</code></td><td>이번·지난 위상, <code>m_oceanHasPrev</code></td></tr>
+<tr><td>속도 RT</td><td><code>Graphics/RendererTargets.cpp</code> 의 <code>Renderer::CreateViewTarget</code>, <code>Renderer::kVelocityFormat</code></td><td>뷰 크기 <code>R16G16_FLOAT</code>, 시간 셋·속도 디버그 셋</td></tr>
+<tr><td>PSO</td><td><code>Renderer::GetPipelineFor</code>(반투명 <code>rt[1].writeMask = 0</code>), <code>Graphics/RendererDeferred.cpp</code>(<code>rtvFormats[5]</code>)</td><td>RT 자리와 쓰기 마스크</td></tr>
+<tr><td>리셋</td><td><code>Renderer::ResetTemporalHistory</code>, <code>Renderer::InvalidateScene</code>, <code>EditorApp::StartPlay</code>, <code>EditorApp::UndoRedo</code>, <code>Scene::ConsumeCameraCut</code>(<code>Core/Engine.cpp</code>), <code>Renderer::SetPreviewCamera</code></td><td>5-3 표</td></tr>
+<tr><td>자동 검증 인자</td><td><code>Editor/EditorAutomation.h</code>·<code>EditorAutomation.cpp</code> 의 <code>EditorApp::RunAutomation</code>, <code>App/AppBase.cpp</code></td><td><code>--cam-orbit</code> 등 (8장)</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>8. 실험</h2>
+<p>테스트 씬은 <code>Projects/SherlockTestScenes/Assets/Scenes</code>에 있습니다. 예: <code>SherlockEditor.exe --project=…\SherlockTestScenes.sherlock --scene=MotionBlur.json --debug-view=17 --cam-orbit=1 --exit-after=40 --screenshot=a.png</code>. 움직임 인자는 2 프레임째부터 프레임마다 고정량을 적용하므로(1 프레임째에는 "지난"이 없음) 실행마다 같은 화면이 나옵니다.</p>
+<table>
+<tr><th>인자</th><th>하는 일</th></tr>
+<tr><td><code>--cam-orbit=도</code></td><td>에디터 카메라를 프레임마다 그 각도만큼 제자리에서 수직축으로 돌림(<code>Camera::Rotate</code>)</td></tr>
+<tr><td><code>--cam-move=dx,dy,dz</code></td><td>에디터 카메라를 프레임마다 월드 벡터만큼 옮김</td></tr>
+<tr><td><code>--spin=이름,도</code></td><td>편집 모드에서 그 오브젝트를 프레임마다 y축으로 돌림(되돌리기 기록 없음)</td></tr>
+<tr><td><code>--move=이름,dx,dy,dz</code></td><td>편집 모드에서 그 오브젝트를 프레임마다 옮김. <code>--cam-move</code>와 같은 벡터면 카메라를 따라가는 물체</td></tr>
+<tr><td><code>--event-frame=N</code></td><td>한 번만 일어나는 동작(<code>--select</code>, <code>--duplicate</code>, <code>--instantiate</code>, <code>--undo</code>, <code>--load</code> 등)을 N 프레임째에. N = exit-after − 1이면 스크린샷이 사건 직후 첫 프레임을 담음</td></tr>
+<tr><td><code>--frame-dt=초</code></td><td>속도 버퍼는 바꾸지 않음. 모션 블러의 fps 보정과 재생 dt를 고정(<code>RenderSettings::frameDeltaOverride</code>)</td></tr>
+</table>
+
+<h3>E1. 정지 화면은 검정 <span class="tag chk">예상</span></h3>
+<p>아무 씬이나 <code>--debug-view=16</code>으로 열고 움직이지 않습니다. 두 행렬이 같고 모든 <code>prevWorld = world</code>이므로 하늘까지 전부 (0, 0, 0)입니다. 바다가 있는 씬은 파도가 움직여서 바다만 색이 나옵니다. <code>--ocean-time=초</code>로 시간을 고정하면 바다도 검정이 됩니다.</p>
+
+<h3>E2. 카메라 회전·이동에서 오차 0 <span class="tag ok">확인함 (2026-11-23)</span></h3>
+<p><code>--debug-view=17</code>에 <code>--cam-orbit=1</code>, 또는 <code>--cam-move=0.05,0,0</code>을 줍니다. 정적 씬이면 하늘(어두운 파랑)을 뺀 화면 전체가 검정이어야 합니다. 구현 때 카메라 회전·이동·직교·포워드/디퍼드에서 검정이었습니다(<a href="../overview/rendering-analysis.html#c20-28">20.28</a> 검증). 같은 조건에서 <code>--debug-view=16</code>으로 바꾸면, 회전은 화면이 한 방향으로 고르게 칠해지고(빨강 또는 청록 쪽) 이동은 가까운 표면일수록 밝습니다(시차) <span class="tag chk">예상</span>.</p>
+
+<h3>E3. 돌아가는 헬멧만 밝다 <span class="tag chk">예상</span></h3>
+<p><code>MotionBlur.json</code>(DamagedHelmet 복사본)에서 <code>--debug-view=17 --spin=node_damagedHelmet_-6514,2</code>. 카메라가 정지해 있으므로 깊이 재투영 속도는 0이고, 헬멧만 속도 버퍼와 달라 밝게 나옵니다. 계획의 합격선도 "돌아가는 오브젝트만 밝고 배경은 검정"입니다(<a href="../plan/velocity-motionblur-taa-plan.html#s1-verify">1단계 검증</a>). 뷰 16으로 보면 y축으로 도는 헬멧의 보이는 앞면은 한 방향(빨강 또는 청록 쪽)으로 칠해지고, 가운데가 가장 밝고 좌우 실루엣으로 갈수록 어두워질 것입니다 <span class="tag chk">예상</span>. 실루엣 쪽 표면은 카메라를 향해 오거나 멀어지는 방향으로 움직여 화면 속도가 작기 때문입니다.</p>
+
+<h3>E4. 카메라를 따라가는 물체 <span class="tag chk">예상</span></h3>
+<p><code>--debug-view=16 --cam-move=0.05,0,0 --move=&lt;이름&gt;,0.05,0,0</code>(부모가 없는 오브젝트). 배경은 시차만큼 색이 나오고, 따라가는 물체는 화면 위치가 그대로라 검정입니다. 깊이 재투영만 쓰는 엔진이라면 이 물체도 배경처럼 번졌을 것입니다(1-2). 뷰 17에서는 깊이 재투영이 이 물체도 정지해 있다고 보므로 물체가 밝게 나올 것입니다.</p>
+
+<h3>E5. 리셋 직후 프레임 <span class="tag ok">확인함 (2026-11-23)</span></h3>
+<p><code>CameraSwitch.json</code>(Sponza, 카메라 두 대)에서 미리보기 대상을 A에서 B로 바꾸거나(<code>--select=&lt;카메라&gt;</code> + <code>--event-frame</code>), 편집을 한 번 한 뒤 되돌리기(<code>--undo=1</code>, 되돌릴 이력이 없으면 아무 일도 하지 않음)를 <code>--event-frame</code>으로 종료 직전 프레임에 겁니다. 구현 때 세 경우(미리보기 전환·되돌리기·재생 중 카메라 컷)에서 사건 직후 프레임이 처음부터 새로 그린 화면과 0 px 차이였습니다(<a href="../overview/rendering-analysis.html#c20-28">20.28</a>). <code>ResetTemporalHistory</code> 호출을 잠깐 빼고 같은 명령을 돌리면, 되돌리기 직후 프레임의 뷰 16에서 옮겨진 물체만 밝게 나올 것입니다 <span class="tag chk">예상</span>. 확인한 뒤 되돌립니다.</p>
+
+<h3>E6. 바다의 지난 위상 <span class="tag ok">확인함 (2026-11-23)</span></h3>
+<p><code>Ocean.json</code>이나 <code>OceanHorizon.json</code>에서 <code>--ocean-time=10 --debug-view=17 --cam-orbit=1</code>. 시간을 고정하면 지난 위상 = 이번 위상이라 바다도 정적 표면이고, 기록상 뷰 17의 바다 영역이 두 씬·두 백엔드에서 0 픽셀이었습니다(<a href="../plan/ocean-gerstner-record.html">Gerstner 바다 구현 기록</a>, <a href="../overview/rendering-analysis.html#c20-29">20.29</a>). 시간 고정을 빼면 파도가 움직이는 만큼 바다가 밝아집니다 <span class="tag chk">예상</span>.</p>
+
+<h3>E7. 스킨 메시 <span class="tag chk">예상</span></h3>
+<p><code>TaaSkin.json</code>(MasterChiefWalk, 카메라를 용에 맞춤)을 <code>--play=1 --debug-view=16</code>으로 엽니다. 팔레트가 바뀌는 팔다리에 색이 나오고, 프레임마다 끊기지 않고 이어집니다. 재생은 실제 시간으로 움직이므로 픽셀 비교 대신 눈으로 봅니다(<a href="../plan/velocity-motionblur-taa-plan.html#s1-verify">계획 1단계 검증</a>의 스킨 항목과 같은 방법).</p>
+</section>
+
+<section id="pitfalls">
+<h2>9. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>정지 화면인데 속도가 떨림</td><td>속도에 TAA 지터가 섞임</td><td>속도는 <code>unjitteredViewProj</code>만 씀(2-3). 새 셰이더가 <code>viewProj</code>로 <code>currClip</code>을 만들면 생기는 문제</td></tr>
+<tr><td>씬 교체·되돌리기 직후 한 프레임 크게 번짐</td><td>지난 값이 다른 화면 것</td><td>5-3 표의 리셋. 스크립트의 순간 이동은 직접 <code>ResetTemporalHistory</code>를 불러야 함</td></tr>
+<tr><td>카메라 컷 프레임에 움직이는 물체도 블러가 없음</td><td>리셋이 오브젝트 기록까지 비움</td><td><code>Engine::Render</code>가 컷에서 <code>ResetTemporalHistory</code>를 부름. 그 한 프레임만(5-3)</td></tr>
+<tr><td>반투명 물체·파티클이 번지지 않고, TAA에서 약간 끌림</td><td>속도를 쓰지 않아 뒤 표면 속도를 씀</td><td>반투명 <code>writeMask = 0</code>, 파티클 PSO RT 1장(4-3). 계획에 위험으로 적힌 동작(<a href="../plan/velocity-motionblur-taa-plan.html#s3-risk">3단계 위험</a>)</td></tr>
+<tr><td>셰이더에서 정점을 움직이는 새 효과가 번지지 않음</td><td><code>prevClip</code>을 만드는 VS가 세 개뿐</td><td>Basic·BasicSkin·Ocean만 지난 위치를 계산함. 모프 타깃·풀 흔들림 같은 정점 애니메이션을 넣으면 그 VS도 지난 시간으로 한 번 더 계산해야 함. 바다(4-2)가 그 예</td></tr>
+<tr><td>고정 스텝으로 움직이는 물체가 고fps에서 가끔만 길게 번짐</td><td><code>Rigidbody</code>는 고정 스텝에만 움직이고 렌더 보간이 없음</td><td>속도는 실제로 그린 두 프레임의 차이라 그대로 반영됨. 남은 과제(<a href="../overview/rendering-analysis.html#c22-4">22.4</a>)</td></tr>
+<tr><td>스킨 모델을 바꾼 첫 프레임에 팔다리 속도 0</td><td>조인트 수가 달라 지난 팔레트를 못 씀</td><td><code>UploadObjectConstants</code>가 이번 팔레트를 b13에 올림. World 속도는 남음</td></tr>
+<tr><td>뷰 17에 반올림 무늬</td><td>FP16 간격이 값에 비례</td><td>허용치 <code>1e-3·|v| + 0.01</code> 픽셀(6-2)</td></tr>
+<tr><td>카메라를 크게 뒤로 뺀 프레임에 가장자리 속도 0</td><td>w 가드</td><td>지난 프레임에 카메라 뒤였던 점은 지난 위치를 알 수 없어 0을 씀(2-4). TAA는 같은 자리의 히스토리를 읽고 이웃 클리핑에 맡김</td></tr>
+<tr><td>창 크기를 바꾼 첫 프레임에 블러가 없음</td><td>뷰 타깃을 새로 만들면 <code>TemporalState</code>가 초기화됨</td><td>오브젝트 기록은 남지만 카메라 쪽 지난 행렬이 없어 이번 값으로 대신함</td></tr>
+<tr><td>게임 UI가 TAA·블러를 받지 않음</td><td>톤 패스 뒤에 그림</td><td>의도된 구조(4-3). <a href="../study/ui-canvas-study.html">게임 UI 학습</a></td></tr>
+</table>
+<div class="box warn"><b>기록과 다른 곳.</b> <a href="../plan/velocity-motionblur-taa-plan.html#d-reset">계획 3.6</a>은 미리보기 리셋 조건을 "<code>SetPreviewCamera</code>의 포인터가 달라짐"으로 적었지만, 지금 코드는 오브젝트 id(<code>sourceId</code>)를 봅니다(5-3). <code>VelocityDebugPixelShader.hlsl</code> 주석은 FP16 허용치를 "|v| × 약 7e-4"라고 적었고 코드는 <code>1e-3</code>을 씁니다. 코드 쪽이 조금 더 너그럽습니다. 같은 주석과 계획 맨 위 "구현하면서 바뀐 점"의 "뷰 17 표시" 항목은 "1°/프레임 회전(약 6 픽셀)"이라고 적었는데, 2-2의 식(세로 fov 45°, 16:9)으로는 가로 약 506 픽셀 뷰에서만 6 픽셀이고 1280에서는 약 15.2, 1920에서는 약 22.8 픽셀입니다 <span class="tag chk">계산값</span>.</div>
+</section>
+
+<section id="study">
+<h2>10. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>화면 공간 속도(모션 벡터)</td><td>같은 정점을 두 번 투영한 UV 차, 누가 왜 필요로 하는가</td><td>1, 2-1</td></tr>
+<tr><td>깊이 재투영과의 차이</td><td>카메라만 맞는 방법과 물체까지 맞는 방법, 검사 기준으로 쓰기</td><td>1-2, 6-2</td></tr>
+<tr><td>원근 나눗셈 위치</td><td>클립 좌표를 보간하고 PS에서 나누는 이유</td><td>2-1</td></tr>
+<tr><td>단위·부호 관례</td><td>UV, v 아래 +, <code>uv(지난) = uv − velocity</code></td><td>2-2</td></tr>
+<tr><td>지터 분리</td><td>래스터화는 지터 있는 행렬, 속도는 지터 없는 행렬</td><td>2-3</td></tr>
+<tr><td>w ≤ 0과 FP16 정밀도</td><td>카메라 뒤 점, 무한대·NaN 차단, 값에 비례하는 간격</td><td>2-4, 2-5</td></tr>
+<tr><td><code>w = 0</code> 투영</td><td>무한히 먼 방향은 회전에만 반응</td><td>4-1</td></tr>
+<tr><td>지난 상태 기억</td><td>id 키 맵 두 벌 맞바꾸기, 뷰별 상태, 리셋 시점</td><td>5</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>McGuire, Hennessy, Bukowski, Osman, "A Reconstruction Filter for Plausible Motion Blur" (I3D 2012) — 속도 버퍼를 읽는 모션 블러. 우리 모션 블러의 가중치 출처</li>
+<li>Karis, "High Quality Temporal Supersampling" (SIGGRAPH 2014 Advances in Real-Time Rendering) — 속도 팽창(가장 가까운 깊이)과 히스토리 재투영</li>
+<li>Real-Time Rendering 4판, 12.5절 Motion Blur — 속도 버퍼와 재구성의 개관</li>
+<li>우리 문서: <a href="../plan/velocity-motionblur-taa-plan.html">속도 버퍼·모션 블러·TAA 구현 계획</a>(<a href="../plan/velocity-motionblur-taa-plan.html#c-velocity">2.1 개념</a>, <a href="../plan/velocity-motionblur-taa-plan.html#d-table">3.2 결정 표</a>, <a href="../plan/velocity-motionblur-taa-plan.html#d-reset">3.6 리셋</a>, <a href="../plan/velocity-motionblur-taa-plan.html#s1-verify">1단계 검증</a>), <a href="../overview/rendering-analysis.html#c20-28">rendering-analysis 20.28</a>, <a href="../overview/rendering-analysis.html#app-d">부록 D 실행 인자</a></li>
+<li>같은 묶음: <a href="../study/motion-blur-study.html">모션 블러 학습</a>, <a href="../study/taa-study.html">TAA 학습</a>, 관련: <a href="../study/skinning-study.html">스키닝 학습</a>, <a href="../study/ocean-gerstner-study.html">Gerstner 바다 학습</a>, <a href="../study/post-process-study.html">후처리 학습</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

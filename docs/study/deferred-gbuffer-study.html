@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 디퍼드 셰이딩과 G-buffer 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>디퍼드 셰이딩과 G-buffer 학습 문서</h1>
+  <p>포워드와 디퍼드의 비용 차이, 우리 G-buffer의 채널 배치와 메모리, 옥타헤드럴 노멀, 깊이에서 위치 복원, 디퍼드 프레임에 남는 포워드 패스</p>
+  <p>2026-11-25 · 렌더러 공부 순서 중 디퍼드·클러스터드·SSAO 묶음의 첫 문서입니다. 디퍼드 이야기는 지금까지 <a href="../plan/deferred-clustered-ssao-plan.html">디퍼드·클러스터드·SSAO 계획</a>(개념 2장, 2단계)과 <a href="../plan/deferred-clustered-ssao-record.html">같은 이름의 구현 기록</a>(2.1~2.4, 8장 검증), <a href="../overview/rendering-analysis.html#c20-26">rendering-analysis 20.26</a>에 있었습니다. 이 문서는 그 내용을 원리부터 다시 정리하고, 그 뒤에 들어온 속도 버퍼(G-buffer 패스의 여섯 번째 타깃)까지 지금 코드에 맞춰 적었습니다. 클러스터드 라이팅과 SSAO는 <a href="../study/clustered-lighting-study.html">클러스터드 라이팅 학습</a>과 <a href="../study/ssao-study.html">SSAO 학습</a>에서 다루고, 여기서는 디퍼드 프레임 어디에 끼는지만 적었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 포워드와 디퍼드가 비용을 어디서 내는지, 3장은 우리 엔진의 디퍼드 프레임 순서와 두 경로가 HDR 타깃에서 만나는 방식, 4~6장은 G-buffer 배치·노멀 인코딩·위치 복원, 7장은 라이팅 패스, 8장은 디퍼드 프레임에서도 포워드로 남는 재질, 9장은 경로 스위치, 10장은 코드 지도, 11장은 실험, 12장은 함정과 한계, 13장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 바이트 수, 노멀 각도 오차, 깊이 단계 같은 값은 식이나 짧은 스크립트로 계산한 값입니다 <span class="tag chk">계산값</span>. 화면 비교와 시간은 2026-11-18 구현 기록에 적힌 측정이고 <span class="tag ok">확인함</span>으로 표시했습니다. 그 측정은 속도 버퍼가 G-buffer 패스에 들어오기 전(MRT 5장)의 바이너리로 한 것이라, 지금 바이너리로 다시 재면 G-buffer 패스 시간은 조금 다를 수 있습니다.</div>
+</header>
+<nav><a href="#why">1. 왜 디퍼드인가</a><a href="#principle">2. 원리와 맞바꿈</a><a href="#flow">3. 우리 엔진의 흐름</a><a href="#layout">4. G-buffer 배치</a><a href="#oct">5. 옥타헤드럴 노멀</a><a href="#pos">6. 깊이에서 위치 복원</a><a href="#lighting">7. 라이팅 패스</a><a href="#forward">8. 포워드로 남는 것</a><a href="#switch">9. 경로 스위치</a><a href="#code">10. 우리 코드</a><a href="#lab">11. 실험</a><a href="#pitfalls">12. 함정과 한계</a><a href="#study">13. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 디퍼드가 필요한가</h2>
+<h3>1-1. 포워드의 비용은 조각 수 × 조명 수</h3>
+<p>포워드는 물체를 래스터화하면서 그 조각(fragment)의 조명을 픽셀 셰이더 안에서 바로 계산합니다. 우리 포워드 PS는 <code>Shaders/BasicPixelShader.hlsl</code>의 <code>PS_Main</code>이고, 재질을 읽은 뒤(<code>EvaluateMaterialSurface</code>) <code>ShadeEnvironment</code>와 <code>ShadeLights</code>로 조명을 더합니다. 그래서 비용은 대략 "래스터화된 조각 수 × 픽셀마다 도는 조명 수"입니다.</p>
+<p>문제는 조각 수가 화면 픽셀 수보다 크다는 점입니다. 같은 픽셀을 물체 여럿이 덮으면(오버드로) 뒤에 그려진 앞쪽 물체가 결과를 덮어쓰고, 앞에서 계산한 조명은 버려집니다. 우리 엔진은 깊이 프리패스가 없고, 불투명 드로우를 앞에서 뒤 순서가 아니라 PSO·재질·메시 순으로 정렬합니다(<code>Renderer::BuildDrawList</code> 끝의 <code>std::sort</code>). 그래서 하드웨어 조기 깊이 테스트가 버려 주는 조각은 이미 앞쪽 물체가 그려진 자리뿐입니다.</p>
+<h3>1-2. 조명 계산을 화면 픽셀마다 한 번으로</h3>
+<p>디퍼드는 계산을 두 번에 나눕니다. G-buffer 패스는 물체를 그리면서 조명을 하지 않고, 조명에 필요한 표면 값(albedo, 노멀, F0, 거칠기 …)만 여러 렌더 타깃에 적습니다. 라이팅 패스는 화면을 덮는 삼각형 하나를 그리며 픽셀마다 그 값을 읽어 조명을 한 번 계산합니다. 오버드로는 G-buffer 쓰기만 반복시키고, 조명 비용은 "화면 픽셀 × 조명"이 됩니다.</p>
+<table>
+<tr><th>예 (1920×1080, 픽셀마다 조명 256 개를 모두 돎)</th><th>조명 평가 횟수</th></tr>
+<tr><td>포워드, 평균 오버드로 2</td><td>2 × 2,073,600 × 256 ≈ 10.6억 <span class="tag chk">계산값</span></td></tr>
+<tr><td>디퍼드 (오버드로와 무관)</td><td>2,073,600 × 256 ≈ 5.3억 <span class="tag chk">계산값</span></td></tr>
+</table>
+<p>실제로 쟀을 때 차이는 이보다 컸습니다. 조명 256 개 씬(<code>ManyLights256.json</code>, Debug 빌드, D3D11)에서 클러스터 없이 포워드 메인 패스가 48~56 ms, 디퍼드가 13~16 ms였습니다 <span class="tag ok">확인함 (2026-11-18)</span> (<a href="../plan/deferred-clustered-ssao-record.html#v-time">기록 8.3</a>, 자세한 조건은 11장 E6). 다만 픽셀마다 도는 조명 수 자체를 줄이는 일은 클러스터드 라이팅이 맡고, 클러스터드를 켜면 포워드도 2.7~3.7 ms로 내려갑니다. 디퍼드만으로 조명 수 문제가 풀리지는 않습니다.</p>
+<h3>1-3. 이 엔진에서 디퍼드를 넣은 이유</h3>
+<p>계획 문서는 이 엔진에서 디퍼드의 실익을 "오버드로가 큰 씬의 조명 비용"보다 공부와 다음 단계의 토대로 적었습니다. MRT를 처음 실제로 써서 두 백엔드를 검증하고, SSAO가 G-buffer 노멀을 그대로 읽게 하려는 것입니다(<a href="../plan/deferred-clustered-ssao-plan.html#c-deferred-why">계획 2.1</a>). 지금은 SSAO가 디퍼드 프레임에서만 동작하므로(7-2) 이 의존이 코드에 그대로 남아 있습니다.</p>
+</section>
+
+<section id="principle">
+<h2>2. 원리와 맞바꾸는 것</h2>
+<p>디퍼드는 조명 비용을 줄이는 대신 몇 가지를 내줍니다. 아래 표의 "우리 엔진" 칸은 코드에서 확인한 현재 상태입니다.</p>
+<table>
+<tr><th>항목</th><th>포워드</th><th>디퍼드</th><th>우리 엔진</th></tr>
+<tr><td>조명 비용</td><td>조각 × 조명. 오버드로가 곱해짐</td><td>화면 픽셀 × 조명 + G-buffer 쓰기·읽기</td><td>두 경로 모두 클러스터드로 조명 수를 줄임(<a href="../study/clustered-lighting-study.html">클러스터드 문서</a>)</td></tr>
+<tr><td>메모리·대역폭</td><td>HDR + 속도 + 깊이 (16 B/px)</td><td>+ G-buffer 4장 (20 B/px)</td><td>1080p에서 G-buffer만 39.6 MiB <span class="tag chk">계산값</span> (4-2)</td></tr>
+<tr><td>반투명</td><td>먼 것부터 블렌딩하면 됨</td><td>G-buffer는 픽셀마다 표면 하나라 담을 수 없음</td><td>블렌딩·투과 재질은 디퍼드 프레임에서도 포워드로 (8장)</td></tr>
+<tr><td>재질 다양성</td><td>셰이더 안에서 자유</td><td>G-buffer에 담긴 값으로만 조명</td><td>unlit, 코팅 노멀 맵이 있는 재질은 포워드로 (8장)</td></tr>
+<tr><td>MSAA</td><td>쉬움</td><td>샘플마다 G-buffer와 조명이 필요해 어려움</td><td>MSAA를 쓰지 않음. 모든 텍스처가 <code>sampleCount = 1</code>(<code>RHI/ResourceDesc.h</code> 기본값). 가장자리 계단을 줄이려면 TAA를 켬(씬 후처리 설정 <code>taaEnabled</code>, 기본 끔. <a href="../study/taa-study.html">TAA 문서</a>)</td></tr>
+<tr><td>화면 공간 효과</td><td>깊이만 남음</td><td>노멀·거칠기가 화면에 남아 SSAO 등이 바로 읽음</td><td>SSAO가 깊이와 GB1 노멀을 읽음</td></tr>
+</table>
+<h3>2-1. 대역폭이 디퍼드의 가장 큰 비용</h3>
+<p>G-buffer 패스는 덮은 조각마다 20 B를 더 쓰고, 라이팅 패스는 화면 픽셀마다 그것을 다시 읽습니다. 1080p 한 프레임에서 라이팅 패스가 읽는 양은 깊이 4 + G-buffer 20 + SSAO 1 = 25 B/px, 약 49.4 MiB이고, 가산 블렌딩이라 HDR 타깃 8 B를 읽고 8 B를 다시 씁니다(합계 41 B/px, 약 81.1 MiB) <span class="tag chk">계산값</span>. 캐시와 압축을 빼고 센 단순 합이라 실제 메모리 트래픽과는 다르지만, 조명이 적은 씬에서는 이 고정 비용이 디퍼드가 아끼는 조명 계산보다 클 수 있습니다. 조명 수가 아주 적고 오버드로가 작은 씬이라면 포워드가 더 쌀 수 있다는 뜻입니다.</p>
+</section>
+
+<section id="flow">
+<h2>3. 우리 엔진의 디퍼드 프레임</h2>
+<p>씬 패스의 갈림길은 <code>Graphics/Renderer.cpp</code>의 <code>Renderer::RenderScenePass</code>입니다. <code>UseDeferred(view)</code>가 참이면 <code>Graphics/RendererDeferred.cpp</code>의 <code>Renderer::RenderDeferredScene</code>을 부르고, 거짓이면 예전 포워드 패스 하나(<code>DrawMode::All</code>)로 그립니다. 그 뒤의 파티클·디버그 선 패스와 HDR 후처리는 두 경로가 같습니다.</p>
+<figure>
+<svg viewBox="0 0 920 200" role="img" aria-label="디퍼드 프레임의 패스 순서">
+  <defs><marker id="dgb-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <rect x="12" y="8" width="14" height="14" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="32" y="20">디퍼드 프레임 전용</text>
+  <rect x="176" y="8" width="14" height="14" rx="3" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="196" y="20">G-buffer에 못 담는 것</text>
+  <rect x="366" y="8" width="14" height="14" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="386" y="20">두 경로 공통</text>
+  <rect x="12" y="34" width="132" height="76" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="78" y="58" text-anchor="middle" style="fill:var(--ink);font-weight:600">G-buffer 패스</text>
+  <text x="78" y="78" text-anchor="middle">MRT 6장 + 깊이</text>
+  <text x="78" y="96" text-anchor="middle">조명 없음</text>
+  <line x1="146" y1="72" x2="163" y2="72" class="ln" marker-end="url(#dgb-ar)"/>
+  <rect x="166" y="34" width="132" height="76" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="232" y="58" text-anchor="middle" style="fill:var(--ink);font-weight:600">SSAO (켜면)</text>
+  <text x="232" y="78" text-anchor="middle">깊이·GB1 → R8</text>
+  <text x="232" y="96" text-anchor="middle">블러</text>
+  <line x1="300" y1="72" x2="317" y2="72" class="ln" marker-end="url(#dgb-ar)"/>
+  <rect x="320" y="34" width="132" height="76" rx="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="386" y="58" text-anchor="middle" style="fill:var(--ink);font-weight:600">디퍼드 라이팅</text>
+  <text x="386" y="78" text-anchor="middle">풀스크린 삼각형</text>
+  <text x="386" y="96" text-anchor="middle">hdr 에 가산</text>
+  <line x1="454" y1="72" x2="471" y2="72" class="ln" marker-end="url(#dgb-ar)"/>
+  <rect x="474" y="34" width="132" height="76" rx="8" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <text x="540" y="58" text-anchor="middle" style="fill:var(--ink);font-weight:600">포워드 패스</text>
+  <text x="540" y="78" text-anchor="middle">불투명 → 하늘</text>
+  <text x="540" y="96" text-anchor="middle">→ 블렌딩</text>
+  <line x1="608" y1="72" x2="625" y2="72" class="ln" marker-end="url(#dgb-ar)"/>
+  <rect x="628" y="34" width="132" height="76" rx="8" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="694" y="58" text-anchor="middle" style="fill:var(--ink);font-weight:600">파티클·선</text>
+  <text x="694" y="78" text-anchor="middle">깊이 읽기 전용</text>
+  <line x1="762" y1="72" x2="779" y2="72" class="ln" marker-end="url(#dgb-ar)"/>
+  <rect x="782" y="34" width="132" height="76" rx="8" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="848" y="58" text-anchor="middle" style="fill:var(--ink);font-weight:600">HDR 후처리·톤</text>
+  <text x="848" y="78" text-anchor="middle">블룸·TAA·ACES</text>
+  <line x1="12" y1="124" x2="606" y2="124" class="ln"/>
+  <text x="309" y="142" text-anchor="middle">RenderDeferredScene (DrawMode::GBuffer → ForwardRest)</text>
+  <line x1="628" y1="124" x2="914" y2="124" class="ln"/>
+  <text x="771" y="142" text-anchor="middle">포워드 프레임과 같은 경로</text>
+  <text x="12" y="180">포워드 프레임(--deferred=0)은 앞의 네 칸 대신 패스 하나(DrawMode::All)가 불투명 → 하늘 → 블렌딩을 그립니다.</text>
+</svg>
+<figcaption>그림 1. 디퍼드 프레임의 씬 패스 순서. 범례의 "디퍼드 프레임 전용" 칸은 디퍼드 프레임에만 있는 패스, "G-buffer에 못 담는 것" 칸은 그런 재질과 하늘·블렌딩을 그리는 포워드 패스, "두 경로 공통" 칸은 포워드 프레임에서도 똑같이 도는 패스입니다.</figcaption>
+</figure>
+<table>
+<tr><th>순서</th><th>패스 이름</th><th>타깃과 상태</th><th>그리는 것</th></tr>
+<tr><td>1</td><td><code>GBuffer</code></td><td><code>view.hdr</code> + GB0~GB3 + <code>view.velocity</code> 를 모두 Clear, 깊이 Clear·DepthWrite</td><td><code>DrawMode::GBuffer</code>: <code>item.deferred &amp;&amp; !item.blended</code> 인 항목만, G-buffer PSO로</td></tr>
+<tr><td>2</td><td>(배리어)</td><td>GB0~GB3 → ShaderResource, 깊이 → DepthRead</td><td>—</td></tr>
+<tr><td>3</td><td><code>Ssao</code></td><td>켜져 있을 때만. 끄면 <code>ssaoBlur</code>를 SRV 상태로만 맞춤</td><td><code>RenderSsao</code> (<a href="../study/ssao-study.html">SSAO 문서</a>)</td></tr>
+<tr><td>4</td><td><code>DeferredLight</code></td><td><code>view.hdr</code> Load, 깊이 없음</td><td>풀스크린 삼각형 하나 (<code>cmd.Draw(3, 0)</code>)</td></tr>
+<tr><td>5</td><td><code>Forward</code></td><td>깊이 → DepthWrite, <code>view.hdr</code>·<code>view.velocity</code>·깊이 모두 Load</td><td><code>DrawMode::ForwardRest</code>: deferred가 아닌 불투명 → 하늘 → 블렌딩(먼 것부터)</td></tr>
+</table>
+<p><code>GBuffer</code>·<code>Ssao</code>·<code>DeferredLight</code>는 GPU 프로파일러 구간(<code>GpuProfileScope</code>) 이름입니다. <code>Forward</code>는 프로파일러 구간이 없고 렌더 패스 <code>debugName</code>(뷰 접두어 + <code>"Forward"</code>)으로만 붙습니다. 5단계가 끝나면 <code>view.hdr</code>는 RenderTarget, 깊이는 DepthWrite 상태입니다. 포워드 경로가 끝났을 때와 같은 상태라서 뒤의 파티클 패스는 어느 경로로 왔는지 몰라도 됩니다(<code>RenderScenePass</code>의 주석).</p>
+
+<h3 id="meet">3-1. 두 결과는 HDR 타깃 하나에서 만난다</h3>
+<p>디퍼드 프레임에 따로 "합성" 패스는 없습니다. 모든 결과가 같은 FP16 타깃 <code>view.hdr</code>에 차례로 쌓입니다.</p>
+<ol>
+<li><b>G-buffer 패스</b>가 <code>view.hdr</code>를 씬의 클리어 색으로 지우고, 그 위에 디퍼드 물체의 발광(rgb)과 기본색 알파(a)를 씁니다(<code>PS_GBuffer</code>의 <code>SV_Target0</code>). 별도 발광 텍스처를 두지 않은 이유입니다.</li>
+<li><b>라이팅 패스</b>가 환경광 + 직접광을 가산합니다. 블렌드는 색 <code>One + One</code>, 알파 <code>Zero + One</code>이라 알파는 1단계 값이 그대로 남습니다(<code>Renderer::BuildPassDescs</code>의 <code>Pass_DeferredLight</code>). 깊이 1인 픽셀은 버리므로 배경은 클리어 색 그대로입니다.</li>
+<li><b>포워드 패스</b>가 같은 타깃과 같은 깊이를 Load로 이어받습니다. 포워드 불투명은 깊이 테스트로 디퍼드 물체 앞에 있는 부분만 덮어쓰고, 하늘은 G-buffer 깊이에 가려진 픽셀을 건너뛰며, 블렌딩 재질은 그 위에 섞입니다.</li>
+</ol>
+<p>속도 버퍼도 같은 식입니다. G-buffer 패스가 여섯 번째 타깃(<code>SV_Target5</code>)으로 디퍼드 물체의 속도를 쓰고, 포워드 패스가 Load로 이어 씁니다(<a href="../study/velocity-buffer-study.html">속도 버퍼 문서</a>). 두 경로가 같은 타깃에 쓰는 값이 같은 의미(선형 HDR 색, 같은 속도 규칙)를 가지므로, 픽셀 하나가 디퍼드로 그려졌는지 포워드로 그려졌는지는 뒤의 후처리(<a href="../study/post-process-study.html">후처리 문서</a>, <a href="../study/hdr-tonemapping-study.html">HDR·톤매핑 문서</a>)가 알 필요가 없습니다.</p>
+
+<h3 id="shared">3-2. 조명 함수는 한 벌</h3>
+<p>디퍼드를 넣을 때 포워드 PS를 둘로 쪼개 헤더로 옮겼습니다(<a href="../plan/deferred-clustered-ssao-record.html#c-shared">기록 2.4</a>). 그래서 두 경로의 차이는 "<code>SurfaceData</code>를 어디서 얻나"와 "위치를 어디서 얻나" 두 가지뿐입니다.</p>
+<table>
+<tr><th>헤더</th><th>하는 일</th><th>포워드</th><th>디퍼드</th></tr>
+<tr><td><code>Shaders/MaterialSurface.hlsli</code></td><td>재질 셋 + 보간 값 → <code>SurfaceData</code> (<code>MaterialBaseColor</code>, <code>EvaluateMaterialSurface</code>)</td><td><code>PS_Main</code></td><td><code>PS_GBuffer</code></td></tr>
+<tr><td><code>Shaders/GBuffer.hlsli</code></td><td>G-buffer 한 픽셀 → <code>SurfaceData</code> (<code>LoadGBufferSurface</code>)</td><td>—</td><td><code>PS_DeferredLighting</code></td></tr>
+<tr><td><code>Shaders/Shading.hlsli</code></td><td><code>SurfaceData</code> + 위치 + 시선 → 색 (<code>ShadeEnvironment</code>, <code>ShadeLights</code>, 디버그 색)</td><td><code>PS_Main</code></td><td><code>PS_DeferredLighting</code></td></tr>
+</table>
+<p>조명 수식이 한 벌이므로 두 경로의 화면 차이는 G-buffer 양자화(8비트 albedo·F0·거칠기, FP16 노멀)와 깊이에서 복원한 위치의 오차만 남습니다. <code>RendererDeferred.cpp</code> 머리 주석과 기록 8.1이 이 차이를 잰 결과를 적어 두었습니다(11장 E1).</p>
+</section>
+
+<section id="layout">
+<h2>4. G-buffer 배치</h2>
+<p>배치는 <code>Shaders/GBuffer.hlsli</code> 머리 주석의 표와 <code>RendererDeferred.cpp</code>의 <code>kGBufferFormats</code>가 같이 정합니다(두 곳이 같아야 함). PSO 쪽은 <code>Renderer::GetGBufferPipelineFor</code>가 <code>rtvFormats[0..5]</code>와 <code>rtvCount = 6</code>을 모두 적습니다. D3D12는 PSO의 RTV 포맷이 실제 타깃과 다르면 거부하기 때문입니다.</p>
+<figure>
+<svg viewBox="4 0 940 340" role="img" aria-label="G-buffer 패스가 쓰는 타깃의 채널 배치">
+  <rect x="12" y="8" width="14" height="14" rx="3" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="32" y="20">sRGB로 저장 (하드웨어 변환)</text>
+  <rect x="236" y="8" width="14" height="14" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="256" y="20">선형 값</text>
+  <rect x="336" y="8" width="14" height="14" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="356" y="20">포워드에도 있는 타깃</text>
+  <text x="560" y="20">막대 80 px = 8비트</text>
+
+  <text x="12" y="63" style="fill:var(--ink);font-weight:600">view.hdr · 8 B</text><text x="135" y="63">R16G16B16A16_FLOAT</text>
+  <rect x="300" y="44" width="160" height="28" style="fill:var(--paper);stroke:var(--ink3)"/><text x="380" y="63" text-anchor="middle">발광 r</text>
+  <rect x="460" y="44" width="160" height="28" style="fill:var(--paper);stroke:var(--ink3)"/><text x="540" y="63" text-anchor="middle">발광 g</text>
+  <rect x="620" y="44" width="160" height="28" style="fill:var(--paper);stroke:var(--ink3)"/><text x="700" y="63" text-anchor="middle">발광 b</text>
+  <rect x="780" y="44" width="160" height="28" style="fill:var(--paper);stroke:var(--ink3)"/><text x="860" y="63" text-anchor="middle">기본색 알파</text>
+
+  <text x="12" y="101" style="fill:var(--ink);font-weight:600">GB0 · 4 B</text><text x="135" y="101">R8G8B8A8_UNORM_SRGB</text>
+  <rect x="300" y="82" width="80" height="28" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="340" y="101" text-anchor="middle">albedo r</text>
+  <rect x="380" y="82" width="80" height="28" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="420" y="101" text-anchor="middle">albedo g</text>
+  <rect x="460" y="82" width="80" height="28" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="500" y="101" text-anchor="middle">albedo b</text>
+  <rect x="540" y="82" width="80" height="28" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="580" y="101" text-anchor="middle">재질 AO</text>
+
+  <text x="12" y="139" style="fill:var(--ink);font-weight:600">GB1 · 8 B</text><text x="135" y="139">R16G16B16A16_FLOAT</text>
+  <rect x="300" y="120" width="160" height="28" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="380" y="139" text-anchor="middle">셰이딩 노멀 oct.x</text>
+  <rect x="460" y="120" width="160" height="28" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="540" y="139" text-anchor="middle">셰이딩 노멀 oct.y</text>
+  <rect x="620" y="120" width="160" height="28" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="700" y="139" text-anchor="middle">기하 노멀 oct.x</text>
+  <rect x="780" y="120" width="160" height="28" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="860" y="139" text-anchor="middle">기하 노멀 oct.y</text>
+
+  <text x="12" y="177" style="fill:var(--ink);font-weight:600">GB2 · 4 B</text><text x="135" y="177">R8G8B8A8_UNORM_SRGB</text>
+  <rect x="300" y="158" width="80" height="28" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="340" y="177" text-anchor="middle">F0 r</text>
+  <rect x="380" y="158" width="80" height="28" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="420" y="177" text-anchor="middle">F0 g</text>
+  <rect x="460" y="158" width="80" height="28" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="500" y="177" text-anchor="middle">F0 b</text>
+  <rect x="540" y="158" width="80" height="28" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="580" y="177" text-anchor="middle">거칠기</text>
+
+  <text x="12" y="215" style="fill:var(--ink);font-weight:600">GB3 · 4 B</text><text x="135" y="215">R8G8B8A8_UNORM</text>
+  <rect x="300" y="196" width="80" height="28" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="340" y="215" text-anchor="middle">금속성</text>
+  <rect x="380" y="196" width="80" height="28" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="420" y="215" text-anchor="middle">F90</text>
+  <rect x="460" y="196" width="80" height="28" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="500" y="215" text-anchor="middle">코팅 세기</text>
+  <rect x="540" y="196" width="80" height="28" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="580" y="215" text-anchor="middle">코팅 거칠기</text>
+
+  <text x="12" y="253" style="fill:var(--ink);font-weight:600">velocity · 4 B</text><text x="135" y="253">R16G16_FLOAT</text>
+  <rect x="300" y="234" width="160" height="28" style="fill:var(--paper);stroke:var(--ink3)"/><text x="380" y="253" text-anchor="middle">속도 u</text>
+  <rect x="460" y="234" width="160" height="28" style="fill:var(--paper);stroke:var(--ink3)"/><text x="540" y="253" text-anchor="middle">속도 v</text>
+
+  <text x="12" y="291" style="fill:var(--ink);font-weight:600">depth · 4 B</text><text x="135" y="291">D24_UNORM_S8_UINT</text>
+  <rect x="300" y="272" width="240" height="28" style="fill:var(--paper);stroke:var(--ink3)"/><text x="420" y="291" text-anchor="middle">깊이 24비트 (위치 복원 입력)</text>
+  <rect x="540" y="272" width="80" height="28" style="fill:var(--paper);stroke:var(--ink3);stroke-dasharray:4 3"/><text x="580" y="291" text-anchor="middle">스텐실</text>
+
+  <text x="12" y="328">G-buffer 전용 20 B/px, 패스가 쓰는 전부 36 B/px. 1920×1080 에서 각각 39.6 MiB, 71.2 MiB</text>
+</svg>
+<figcaption>그림 2. G-buffer 패스(<code>PS_GBuffer</code>)가 쓰는 여섯 타깃과 깊이. 막대 길이는 비트 수에 비례합니다. 범례의 "포워드에도 있는 타깃" 칸(<code>view.hdr</code>, 속도, 깊이)을 빼면 디퍼드가 더하는 것은 GB0~GB3입니다. 스텐실은 쓰지 않습니다. <span class="tag chk">계산값</span></figcaption>
+</figure>
+
+<h3 id="channels">4-1. 채널마다 왜 그 포맷인가</h3>
+<table>
+<tr><th>값</th><th>자리</th><th>이유</th></tr>
+<tr><td>발광</td><td><code>view.hdr</code> rgb</td><td>1을 넘는 HDR 값. 라이팅이 그 위에 가산하므로 HDR 타깃을 그대로 쓰면 발광 텍스처가 따로 필요 없음. 디버그 뷰가 켜져 있으면 0을 씀(라이팅이 디버그 색을 가산하므로)</td></tr>
+<tr><td>albedo, F0</td><td>GB0·GB2 rgb, <code>_SRGB</code></td><td>작은 값(비금속 F0 ≈ 0.04, 어두운 albedo)에 8비트 단계를 더 주려고 sRGB로 저장. 자세한 계산은 <a href="../study/color-space-study.html#textures">색공간 문서 4-4</a></td></tr>
+<tr><td>재질 AO, 거칠기</td><td>GB0·GB2 a</td><td>알파 채널은 sRGB 변환을 받지 않아 선형 값을 넣어도 됨. 거칠기는 읽을 때 <code>max(g2.a, 0.03)</code>으로 재질 쪽과 같은 하한을 다시 걸어 8비트 양자화로 0.03 밑으로 내려가지 않게 함</td></tr>
+<tr><td>노멀 둘</td><td>GB1, FP16 × 4</td><td>옥타헤드럴로 노멀 하나를 두 값에 담아 셰이딩 노멀과 기하 노멀을 한 장에 넣음(5장). 기하 노멀은 그림자 노멀 오프셋과 노멀 맵 그림자 이동이 씀</td></tr>
+<tr><td>금속성, F90, 코팅 세기·거칠기</td><td>GB3, UNORM</td><td>0~1 비율. UNORM RT+SRV 텍스처는 TYPELESS로 만들어지므로 패스에서 <code>srgbView = false</code>를 줘야 함(<a href="../study/color-space-study.html#formats">색공간 문서 5-2</a>)</td></tr>
+<tr><td>위치</td><td>저장 안 함</td><td>깊이와 픽셀 좌표로 복원(6장)</td></tr>
+<tr><td>투과, 코팅 노멀, UV</td><td>저장 안 함</td><td>칸이 없음. 투과·코팅 노멀 맵 재질은 포워드로, UV 디버그 뷰는 프레임 전체를 포워드로(8장)</td></tr>
+</table>
+<p><code>LoadGBufferSurface</code>는 저장하지 않은 칸을 이렇게 채웁니다: <code>alpha = 1</code>, <code>emission = 0</code>(이미 <code>view.hdr</code>에 있음), <code>transmission = 0</code>, <code>clearcoatNormal = geometricNormal</code>. 이 가정이 틀리는 재질이 G-buffer로 오지 않게 막는 것이 <code>Renderer::CanUseDeferred</code>입니다.</p>
+
+<h3 id="bytes">4-2. 픽셀당 바이트와 1080p 메모리</h3>
+<table>
+<tr><th>무엇을 세나</th><th>B/px</th><th>1920×1080 (2,073,600 px)</th></tr>
+<tr><td>GB0~GB3 (디퍼드가 더하는 것, 계획 문서의 20 B)</td><td>4 + 8 + 4 + 4 = 20</td><td>41,472,000 B ≈ 39.6 MiB <span class="tag chk">계산값</span></td></tr>
+<tr><td>+ <code>view.hdr</code> (기록 문서의 "28 바이트 + 깊이")</td><td>28</td><td>58,060,800 B ≈ 55.4 MiB <span class="tag chk">계산값</span></td></tr>
+<tr><td>+ 속도 + D24S8 (G-buffer 패스가 쓰는 전부)</td><td>36</td><td>74,649,600 B ≈ 71.2 MiB <span class="tag chk">계산값</span></td></tr>
+<tr><td>포워드 프레임에도 있는 것 (hdr + 속도 + 깊이)</td><td>16</td><td>33,177,600 B ≈ 31.6 MiB <span class="tag chk">계산값</span></td></tr>
+<tr><td>SSAO 타깃 <code>ssaoRaw</code>·<code>ssaoBlur</code> (R8 둘, G-buffer와 함께 만들어짐)</td><td>2</td><td>4,147,200 B ≈ 4.0 MiB <span class="tag chk">계산값</span></td></tr>
+<tr><td>(비교) 위치 텍스처를 따로 둔다면 <code>R32G32B32A32_FLOAT</code></td><td>16</td><td>33,177,600 B ≈ 31.6 MiB <span class="tag chk">계산값</span></td></tr>
+</table>
+<p>MiB는 2<sup>20</sup> 바이트입니다. 이 메모리는 뷰마다 듭니다. <code>Graphics/RendererTargets.cpp</code>의 <code>CreateViewTarget</code>이 깊이를 만든 뒤 <code>CreateGBuffer</code>를 조건 없이 부르므로, 에디터의 메인 씬 뷰와 카메라 미리보기 뷰가 각자 G-buffer를 가지고, <code>--deferred=0</code>으로 꺼도 할당은 그대로 남습니다. 생성에 실패하면 로그를 남기고 그 뷰만 포워드로 그립니다(<code>ViewTarget::HasGBuffer</code>).</p>
+</section>
+
+<section id="oct">
+<h2>5. 옥타헤드럴 노멀 인코딩</h2>
+<h3>5-1. 왜 두 값으로 줄이나</h3>
+<p>단위 벡터는 길이가 1로 정해져 있어 자유도가 2입니다. xyz 세 값을 그대로 담으면 한 값은 낭비이고, 노멀 둘을 넣으려면 여섯 칸이 필요해 RGBA 한 장에 들어가지 않습니다. 두 값으로 줄이는 방법 중 구면 좌표(각도 둘)는 삼각함수가 들고 극 근처에 값이 몰립니다. 옥타헤드럴 인코딩은 덧셈과 절댓값만으로 구 전체를 정사각형 하나에 고르게 펴서, GB1 한 장(FP16 × 4)에 셰이딩 노멀(xy)과 기하 노멀(zw)을 함께 담을 수 있게 합니다. 코드는 <code>Shaders/Common.hlsli</code>의 <code>OctWrap</code>·<code>EncodeOct</code>·<code>DecodeOct</code>이고, SSAO도 같은 함수로 GB1을 읽기 때문에 <code>GBuffer.hlsli</code>가 아니라 <code>Common.hlsli</code>에 있습니다.</p>
+<figure>
+<svg viewBox="0 0 780 300" role="img" aria-label="옥타헤드럴 인코딩의 정사각형 배치">
+  <defs><marker id="dgb-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <polygon points="60,40 170,40 60,150" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <polygon points="170,40 280,40 280,150" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <polygon points="60,150 60,260 170,260" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <polygon points="280,150 280,260 170,260" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <polygon points="170,40 280,150 170,260 60,150" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="80" y="62" text-anchor="middle">z&lt;0</text>
+  <text x="260" y="62" text-anchor="middle">z&lt;0</text>
+  <text x="80" y="248" text-anchor="middle">z&lt;0</text>
+  <text x="260" y="248" text-anchor="middle">z&lt;0</text>
+  <text x="170" y="200" text-anchor="middle">z ≥ 0 (위 반구)</text>
+  <circle cx="170" cy="150" r="3.5" style="fill:var(--accent)"/><text x="170" y="170" text-anchor="middle">+z (0, 0)</text>
+  <text x="170" y="28" text-anchor="middle">+y (0, 1)</text>
+  <text x="288" y="154">+x (1, 0)</text>
+  <text x="288" y="44">네 귀퉁이 = −z</text>
+  <circle cx="206.7" cy="113.3" r="3.5" style="fill:var(--accent)"/>
+  <circle cx="243.3" cy="76.7" r="3.5" style="fill:var(--warn)"/>
+  <line x1="210" y1="110" x2="238" y2="82" style="stroke:var(--ink3);stroke-dasharray:3 3;fill:none" marker-end="url(#dgb-ar2)"/>
+  <text x="60" y="280" text-anchor="middle">−1</text><text x="280" y="280" text-anchor="middle">+1</text><text x="170" y="280" text-anchor="middle">f.x</text>
+  <text x="420" y="70">① n / (|x| + |y| + |z|) : 팔면체 위로 옮김</text>
+  <text x="420" y="104">② z ≥ 0 이면 (x, y) 그대로 → 안쪽 마름모</text>
+  <text x="420" y="138">③ z &lt; 0 이면 (1 − |y|, 1 − |x|) × 부호</text>
+  <text x="440" y="158">→ 바깥 귀퉁이로 접어 넣음 (OctWrap)</text>
+  <text x="420" y="192">④ 결과는 [−1, 1]² 의 두 값</text>
+  <text x="440" y="212">→ FP16 두 칸에 그대로 (0..1 로 옮기지 않음)</text>
+</svg>
+<figcaption>그림 3. 옥타헤드럴 인코딩의 정사각형. 위 반구는 안쪽 마름모에, 아래 반구의 네 삼각형은 바깥 귀퉁이에 들어갑니다. 예로 (0.577, 0.577, 0.577)은 마름모 안의 (0.33, 0.33), z만 뒤집은 (0.577, 0.577, −0.577)은 마름모 변을 넘어 접혀 귀퉁이 쪽 (0.67, 0.67)이 됩니다(점선 화살표). <span class="tag chk">계산값</span></figcaption>
+</figure>
+<p>디코드(<code>DecodeOct</code>)는 거꾸로 갑니다. (f.x, f.y, 1 − |f.x| − |f.y|)를 만들면 z가 음수인 점이 귀퉁이에 있던 점이고, <code>t = saturate(−z)</code>만큼 xy를 안쪽으로 되돌린 뒤 <code>normalize</code>합니다. 부호 고르기는 성분별 삼항 연산(<code>v &gt;= 0 ? 1 : −1</code>)으로 썼습니다. fxc(SM 5.0)의 벡터 삼항 연산은 성분마다 골라 HLSL 2021의 <code>select</code>와 같은 뜻이라는 것이 <code>OctWrap</code>의 주석이고, SM 5.0 fxc에 <code>select()</code>가 없다는 함정은 구현 기록에 적혀 있습니다(<a href="../plan/deferred-clustered-ssao-record.html#c-oct">기록 2.3</a>).</p>
+<h3>5-2. 오차</h3>
+<p>균일한 무작위 단위 벡터 200만 개를 인코딩 → 양자화 → 디코드해서 원래 방향과의 각도를 쟀습니다(numpy 스크립트, 디코드 식은 <code>DecodeOct</code>와 같게). <span class="tag chk">계산값</span></p>
+<table>
+<tr><th>저장 방식</th><th>노멀 하나에 드는 비트</th><th>평균 오차</th><th>최대 오차</th></tr>
+<tr><td>옥타헤드럴, FP16 두 칸 (우리 GB1, 가까운 값으로 반올림 가정)</td><td>32</td><td>0.015°</td><td>0.059°</td></tr>
+<tr><td>같은 것, 0 쪽으로 버림 가정</td><td>32</td><td>0.035°</td><td>0.117°</td></tr>
+<tr><td>옥타헤드럴, UNORM 8비트 두 칸</td><td>16</td><td>0.34°</td><td>0.94°</td></tr>
+<tr><td>xyz를 UNORM 8비트 세 칸 (<code>n × 0.5 + 0.5</code>)</td><td>24</td><td>0.17°</td><td>0.39°</td></tr>
+</table>
+<p>FP32 → FP16 변환을 렌더 타깃이 어떤 반올림으로 하는지는 확인하지 않아 두 경우를 함께 적었습니다. 어느 쪽이든 0.12° 안쪽입니다. FP16은 0 근처가 촘촘하고 ±1 근처가 성기므로, 오차는 +z(정사각형 가운데) 근처가 작고(z &gt; 0.9에서 최대 0.016°, z &gt; 0.95에서 최대 0.009°, 반올림 가정 <span class="tag chk">계산값</span>) 아래 반구가 놓이는 바깥 쪽에서 커집니다. 8비트 두 칸으로 줄이면 하이라이트에 띠가 보일 수 있다는 것이 계획 문서가 FP16을 고른 이유입니다(<a href="../plan/deferred-clustered-ssao-plan.html#c-deferred-gbuffer">계획 2.3</a>).</p>
+<p>실제로도 노멀 정밀도는 두 경로 차이의 원인이 아니었습니다. GB1을 FP32(<code>R32G32B32A32_FLOAT</code>)로 바꿔도 포워드 대비 8단계 넘게 다른 픽셀 수가 75 → 75로 같았습니다 <span class="tag ok">확인함 (2026-11-18)</span> (<a href="../plan/deferred-clustered-ssao-record.html#c-oct">기록 2.3</a>).</p>
+</section>
+
+<section id="pos">
+<h2>6. 깊이에서 위치 복원</h2>
+<p>포워드 PS는 정점 셰이더가 보간해 준 <code>worldPosition</code>을 받습니다. 라이팅 패스는 화면을 덮는 삼각형 하나라 그런 값이 없습니다. 위치 텍스처를 두면 1080p에서 31.6 MiB가 더 들고(4-2), 깊이는 이미 있으므로 픽셀 좌표와 깊이로 위치를 되돌립니다.</p>
+<pre><code>// Shaders/Common.hlsli — ReconstructWorldPosition(pixel = SV_Position.xy, deviceDepth)
+uv    = pixel * screenParams.zw;                                // 픽셀 중심(+0.5 포함) → 0..1, v 아래로
+ndc   = float4(uv.x * 2 - 1, 1 - uv.y * 2, deviceDepth, 1);     // y 는 위가 +1
+world = mul(ndc, invViewProj);                                  // viewProj 의 역
+return world.xyz / world.w;                                     // 원근 나눗셈을 되돌림</code></pre>
+<p>정점은 <code>clip = world · viewProj</code>, 화면은 <code>ndc = clip / clip.w</code>입니다. ndc의 xy는 픽셀 위치에서, z는 깊이 버퍼에서 알 수 있으므로 <code>(ndc, 1) · viewProj⁻¹</code>은 world / clip.w에 비례하는 점이 되고, 그 w로 나누면 월드 위치가 나옵니다. 원근·직교 모두 같은 식입니다(직교면 w = 1). 역행렬과 화면 크기는 <code>Renderer::UploadPerFrameConstants</code>가 b0의 <code>invViewProj</code>(<code>XMMatrixInverse(view * proj)</code>를 전치)와 <code>screenParams</code>(뷰 너비·높이와 역수)에 올립니다. 화면 크기가 뷰마다 다르므로(메인과 미리보기) 이 값도 뷰마다 올립니다. TAA가 켜지면 <code>invViewProj</code>에도 지터가 들어가 래스터화와 같은 행렬로 되돌립니다.</p>
+<p>뷰 공간 z만 필요한 곳(클러스터 슬라이스, SSAO)은 역행렬 없이 투영 식을 거꾸로 푸는 <code>ViewDepthFromDevice</code>를 씁니다. 원근이면 z = P32 / (d − P22)입니다. 이 함수와 SSAO의 <code>ViewPositionFromDevice</code>는 <a href="../study/ssao-study.html">SSAO 문서</a>에서 다룹니다.</p>
+<h3>6-1. 정밀도</h3>
+<p>깊이는 <code>D24_UNORM_S8_UINT</code>이고, 원근 깊이는 1/z에 비례해서 먼 곳일수록 한 단계가 덮는 거리가 커집니다. 한 단계 Δz ≈ z² · 2<sup>−24</sup> / near이고, 카메라 기본 near는 0.1 m(<code>Scene/Camera.cpp</code>의 생성자)입니다. <span class="tag chk">계산값</span></p>
+<table>
+<tr><th>거리 z</th><th>10 m</th><th>100 m</th><th>1000 m</th></tr>
+<tr><td>깊이 한 단계 Δz (near 0.1)</td><td>약 0.06 mm</td><td>약 6 mm</td><td>약 0.6 m</td></tr>
+</table>
+<p>보통 셰이딩에는 보이지 않는 크기지만, 그림자 비교처럼 문턱값에 걸린 판정은 뒤집힐 수 있습니다. 기록 8.1에서 디퍼드와 포워드의 큰 차이 픽셀이 노멀 맵 범프 바닥 위에 점처럼 흩어져 있었고, 재질 입력(디버그 뷰 1·2·6·9·12)은 최대 1단계 차이로 같았으며, 차이는 그림자 계수(디버그 뷰 4)에서 났습니다. 노멀 맵이 그림자 UV를 옮기는 탓에 지역광 그림자 계수가 픽셀마다 급변하는 무늬가 생기고, 그 경계에 걸린 픽셀에서 복원 위치의 미세한 차이가 판정을 뒤집는다는 결론입니다 <span class="tag ok">확인함 (2026-11-18)</span> (<a href="../plan/deferred-clustered-ssao-record.html#v-image">기록 8.1</a>). 줄이려면 깊이를 D32F(가능하면 reversed-Z)로 바꾸거나 위치를 직접 저장해야 하고, 기록 9장에 남은 일로 적혀 있습니다.</p>
+</section>
+
+<section id="lighting">
+<h2>7. 라이팅 패스</h2>
+<p>라이팅 패스는 <code>Shaders/ScreenVertexShader.hlsl</code>의 <code>VS_Screen</code>(정점 버퍼 없이 <code>SV_VertexID</code> 0·1·2로 화면을 덮는 삼각형 하나)과 <code>Shaders/DeferredLightingPixelShader.hlsl</code>의 <code>PS_DeferredLighting</code>입니다. 사각형(삼각형 둘) 대신 큰 삼각형 하나를 쓰면 대각선 경계에서 픽셀 셰이더가 두 번 도는 일이 없습니다. PS가 픽셀마다 하는 일은 이렇습니다.</p>
+<ol>
+<li><code>gbufferDepth.Load</code>로 깊이를 읽고 1 이상(아무것도 안 그려진 배경)이면 <code>discard</code>. 하늘은 뒤의 포워드 패스가 그림</li>
+<li><code>ReconstructWorldPosition</code>으로 월드 위치, <code>LoadGBufferSurface</code>로 <code>SurfaceData</code>, 카메라 위치에서 시선 방향, <code>ViewDepthFromDevice</code>로 뷰 z(클러스터 찾기용)</li>
+<li>SSAO 결과가 있으면 t29에서 읽어 재질 AO와 합침. 기본은 <code>min</code>(같은 가림을 두 번 세지 않음), 설정에 따라 곱</li>
+<li>디버그 뷰면 디버그 색을 알파 0으로 내보내고 끝 (<code>SurfaceDebugColor</code>, <code>ClusterDebugColor</code>, 13 = SSAO)</li>
+<li><code>ShadeEnvironment(s, V, ao)</code>로 환경광(AO는 여기에만), <code>ShadeLights</code>로 직접광과 그림자를 더해 <code>view.hdr</code>에 가산</li>
+</ol>
+<p>텍스처는 샘플러 없이 <code>Load</code>로 읽습니다. G-buffer와 화면 픽셀이 1:1이라 필터링할 이유가 없습니다. 리소스 셋은 두 개입니다. 셋 0은 포워드와 같은 프레임 셋(조명·그림자·IBL·클러스터), 셋 1은 뷰마다 만든 G-buffer 셋(<code>Layout_GBuffer</code>: t23 깊이, t25~t28 GB0~GB3, t29 SSAO)입니다. G-buffer 셋은 <code>Renderer::CreateGBuffer</code>가 만들고, SSAO 타깃을 못 만들었으면 t29에 흰색 1×1을 꽂아 AO가 1이 되게 합니다.</p>
+<h3>7-1. 깊이를 읽으면서 쓰지 않기</h3>
+<p>라이팅 패스 동안 깊이는 DepthRead 상태로 SRV로만 읽고, 패스에 깊이 첨부가 없습니다(<code>Pass_DeferredLight</code>는 깊이 테스트·쓰기 끔). 포워드 패스로 넘어갈 때 다시 DepthWrite로 바꿉니다. 한 텍스처를 같은 패스에서 RTV(또는 쓰기 DSV)이면서 SRV로 쓸 수 없다는 규칙 때문에 배리어가 이 자리에 있습니다(<a href="../plan/deferred-clustered-ssao-plan.html#c-deferred-mrt">계획 2.2</a>).</p>
+<h3 id="plugins">7-2. 클러스터드와 SSAO가 끼는 자리</h3>
+<ul>
+<li><b>클러스터드</b>: 라이팅 PS가 부르는 <code>ShadeLights</code>가 픽셀의 (화면 위치, 뷰 z)로 상자를 찾아 그 상자의 지역광만 돕니다. 포워드 PS도 같은 함수를 부르므로 클러스터드는 두 경로에 똑같이 붙습니다(<a href="../study/clustered-lighting-study.html">클러스터드 문서</a>).</li>
+<li><b>SSAO</b>: G-buffer 패스와 라이팅 패스 사이(3장 표의 3단계)에서 깊이와 GB1 노멀을 읽어 R8 타깃에 AO를 만듭니다. G-buffer 노멀이 필요해서 디퍼드 프레임에서만 돌고, 포워드 PS는 SSAO를 쓰지 않습니다(<code>BasicPixelShader.hlsl</code>의 주석). 그래서 디퍼드 프레임 안에서도 포워드로 그린 물체는 SSAO를 받지 않습니다(<a href="../study/ssao-study.html">SSAO 문서</a>).</li>
+</ul>
+</section>
+
+<section id="forward">
+<h2>8. 디퍼드 프레임에서도 포워드로 남는 것</h2>
+<p>재질마다 G-buffer로 갈 수 있는지는 <code>Renderer::CanUseDeferred</code>가 정합니다. <code>Renderer::BuildDrawList</code>가 드로우 항목마다 이 결과를 <code>DrawItem::deferred</code>에 넣고, 참이면 G-buffer PSO(<code>item.gbufferPipeline</code>)도 미리 만들어 둡니다. 디퍼드를 꺼도 만들어 두는 이유는 스위치를 바꿀 때 드로우 목록을 다시 만들지 않기 위해서입니다(코드 주석). PSO를 못 만들면 그 항목은 포워드로 갑니다.</p>
+<table>
+<tr><th>재질·상황</th><th>어디로</th><th>이유 (<code>CanUseDeferred</code> 주석 등)</th></tr>
+<tr><td>알파 블렌딩 (<code>alphaBlend</code>)</td><td>포워드, 하늘 뒤에 먼 것부터</td><td>한 픽셀에 표면이 여럿 겹쳐야 하는데 G-buffer는 표면 하나</td></tr>
+<tr><td>투과 (<code>transmissionFactor &gt; 0</code>)</td><td>포워드 (블렌딩)</td><td>확산을 줄이고 알파를 바꾸는 값을 담을 칸이 없음. 지금은 <code>IsBlended</code>(<code>Scene/Material.h</code>)가 투과를 이미 블렌딩으로 분류하므로 <code>CanUseDeferred</code>의 투과 검사는 방어용</td></tr>
+<tr><td>unlit</td><td>포워드 불투명</td><td>조명을 받지 않고 알베도를 그대로 냄. 라이팅 패스를 거치면 안 됨(감마 검증 카드 <code>GrayCard128</code> 등)</td></tr>
+<tr><td>클리어코트 + 코팅 노멀 맵</td><td>포워드 불투명</td><td>세 번째 노멀을 담을 칸이 없음. 코팅 노멀 맵이 없는 클리어코트는 코팅 노멀 = 기하 노멀이라 디퍼드로 감</td></tr>
+<tr><td>디버그 뷰 5 (UV)</td><td>그 프레임 전체가 포워드</td><td>G-buffer에 UV가 없음. <code>Renderer::UseDeferred</code>가 <code>debugView != 5</code>를 봄</td></tr>
+<tr><td>알파 컷아웃 (glTF MASK)</td><td>디퍼드</td><td><code>PS_GBuffer</code>가 <code>clip</code>으로 구멍 난 픽셀의 깊이·G-buffer를 쓰지 않음</td></tr>
+<tr><td>스킨 메시, 바다</td><td>디퍼드</td><td>스킨은 VS만 다른 PSO(<code>Pass_GBufferSkin</code>), 바다는 VS·PS가 다른 PSO(<code>Pass_GBufferOcean</code>: <code>OceanVS</code> + <code>PS_OceanGBuffer</code>, 픽셀에서 노멀·탄젠트를 다시 계산)</td></tr>
+<tr><td>하늘, 파티클, 디버그 선</td><td>포워드 패스 / 그 뒤 패스</td><td>재질 드로우가 아님. 하늘은 G-buffer 깊이로 가려진 채 그림</td></tr>
+</table>
+<p>G-buffer 패스와 포워드 패스는 같은 드로우 목록을 두 번 훑으며 맡은 항목만 그립니다(<code>Renderer::DrawItems</code>). G-buffer 패스는 <code>deferred &amp;&amp; !blended</code>, 포워드 패스는 그 나머지입니다. 절두체 컬링 통계도 맡은 항목만 세어 두 번 세지 않습니다. 기록의 <code>DeferredMaterials.json</code>은 G-buffer 드로우 6, 디퍼드 프레임의 포워드 불투명 2(unlit, 코팅 노멀 맵), 블렌딩 2(투과, 알파 블렌드)였고, Sponza는 G-buffer 103, 포워드 불투명 0이었습니다 <span class="tag ok">확인함 (2026-11-18)</span> (<a href="../plan/deferred-clustered-ssao-record.html#v-stats">기록 8.2</a>).</p>
+</section>
+
+<section id="switch">
+<h2>9. 경로 스위치와 설정</h2>
+<p>한 뷰를 디퍼드로 그리는 조건은 <code>Renderer::UseDeferred</code>의 세 가지가 모두 참일 때입니다: <code>RenderSettings::deferred</code>가 켜져 있고(기본 켬), 그 뷰에 G-buffer가 있고(<code>HasGBuffer</code>), 디버그 뷰가 5가 아님. 여기에 항목 단위 조건(8장)이 더해집니다.</p>
+<table>
+<tr><th>무엇</th><th>어디서</th><th>메모</th></tr>
+<tr><td>Render Settings 의 <code>Deferred</code> 체크박스</td><td><code>Editor/DebugUI.cpp</code></td><td>실행 중 바로 바뀜. 씬 파일에 저장하지 않음(렌더러 경로 스위치)</td></tr>
+<tr><td><code>--deferred=1|0</code></td><td><code>App/AppBase.cpp</code> 의 <code>ApplyRenderPathOptions</code></td><td>에디터와 게임 exe가 같이 씀. 0이면 전부 포워드 — 비교용 기준 화면</td></tr>
+<tr><td>예전 경로 전체로 되돌리기</td><td><code>--deferred=0 --clustered=0 --shadow-priority=0</code></td><td>이 셋으로 작업 전 화면과 픽셀 단위로 같았음 <span class="tag ok">확인함 (2026-11-18)</span> (<a href="../plan/deferred-clustered-ssao-record.html#v-image">기록 8.1</a>)</td></tr>
+<tr><td><code>--backend=d3d11|d3d12</code></td><td><code>App/AppBase.cpp</code>(인자 <code>backend</code>를 설정 키 <code>engine.backend</code>로 덮어씀), <code>Core/Engine.cpp</code>(그 설정을 읽어 백엔드 생성)</td><td>RHI 백엔드를 고르는 인자이고 렌더 경로와는 별개. 디퍼드는 두 백엔드에서 같은 화면(Sponza 0 px) <span class="tag ok">확인함 (2026-11-18)</span> (<a href="../plan/deferred-clustered-ssao-record.html#v-image">기록 8.1</a>)</td></tr>
+<tr><td>어느 경로로 그렸는지 보기</td><td><code>Renderer::Stats</code> 의 <code>deferredPath</code>·<code>gbufferDraws</code>·<code>forwardOpaqueDraws</code>·<code>ssao</code></td><td>Render Settings 의 통계 줄("path deferred + SSAO  G-buffer draws …"), 자동 검증 로그의 "렌더 통계 path=…" 줄</td></tr>
+</table>
+<p>SSAO 켜짐은 씬 환경 값(씬 파일에 저장)이고 <code>--ssao=1|0</code>으로 덮어씁니다. 디퍼드가 꺼진 프레임에서는 효과가 없습니다.</p>
+</section>
+
+<section id="code">
+<h2>10. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>경로 갈림길</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::RenderScenePass</code></td><td><code>UseDeferred</code>면 <code>RenderDeferredScene</code>, 아니면 <code>DrawMode::All</code> 한 패스</td></tr>
+<tr><td>디퍼드 씬 패스</td><td><code>Graphics/RendererDeferred.cpp</code> 의 <code>Renderer::RenderDeferredScene</code></td><td>G-buffer → 배리어 → SSAO → 라이팅 → 포워드. 3장 표</td></tr>
+<tr><td>재질 판정·뷰 판정</td><td><code>Renderer::CanUseDeferred</code>, <code>Renderer::UseDeferred</code></td><td>8장, 9장의 조건</td></tr>
+<tr><td>G-buffer 만들기·지우기</td><td><code>Renderer::CreateGBuffer</code>·<code>DestroyGBuffer</code>, 부르는 곳 <code>Graphics/RendererTargets.cpp</code> 의 <code>CreateViewTarget</code></td><td>GB0~GB3 텍스처, SSAO 타깃, G-buffer 셋. 실패하면 그 뷰는 포워드</td></tr>
+<tr><td>포맷 표</td><td><code>RendererDeferred.cpp</code> 의 <code>kGBufferFormats</code>, <code>Shaders/GBuffer.hlsli</code> 머리 주석</td><td>두 곳이 같아야 함</td></tr>
+<tr><td>PSO</td><td><code>Renderer::GetGBufferPipelineFor</code>, <code>GetDeferredLightPipeline</code>, <code>BuildPassDescs</code> 의 <code>Pass_DeferredLight</code> 블렌드</td><td>메인 PSO 키에서 블렌딩 비트를 뺀 키, <code>rtvCount = 6</code>. 라이팅은 가산, 깊이 없음</td></tr>
+<tr><td>드로우 목록 나누기</td><td><code>Renderer::BuildDrawList</code>(<code>DrawItem::deferred</code>·<code>gbufferPipeline</code>), <code>Renderer::DrawItems</code>(<code>DrawMode</code>)</td><td>한 목록을 두 패스가 나눠 그림</td></tr>
+<tr><td>G-buffer PS</td><td><code>Shaders/GBufferPixelShader.hlsl</code> 의 <code>PS_GBuffer</code></td><td>재질 → <code>SurfaceData</code> → MRT 6장. 조명 없음</td></tr>
+<tr><td>G-buffer 읽기</td><td><code>Shaders/GBuffer.hlsli</code> 의 <code>LoadGBufferSurface</code></td><td>저장 안 한 칸을 기본값으로 채움</td></tr>
+<tr><td>라이팅 PS</td><td><code>Shaders/DeferredLightingPixelShader.hlsl</code> 의 <code>PS_DeferredLighting</code>, <code>Shaders/ScreenVertexShader.hlsl</code> 의 <code>VS_Screen</code></td><td>7장</td></tr>
+<tr><td>인코딩·복원</td><td><code>Shaders/Common.hlsli</code> 의 <code>EncodeOct</code>·<code>DecodeOct</code>·<code>OctWrap</code>, <code>ReconstructWorldPosition</code>, <code>ViewDepthFromDevice</code></td><td>5장, 6장</td></tr>
+<tr><td>공용 재질·조명</td><td><code>Shaders/MaterialSurface.hlsli</code>, <code>Shaders/Shading.hlsli</code></td><td>포워드·디퍼드가 함께 씀(3-2)</td></tr>
+<tr><td>포워드 PS</td><td><code>Shaders/BasicPixelShader.hlsl</code> 의 <code>PS_Main</code>·<code>ShadeForward</code></td><td>디퍼드 프레임에서는 8장 재질만. 디버그 뷰 5나 <code>--deferred=0</code>이면 전부</td></tr>
+<tr><td>b0 값</td><td><code>Renderer::UploadPerFrameConstants</code>, <code>Graphics/ShaderConstants.h</code></td><td><code>invViewProj</code>, <code>screenParams</code>, <code>aoParams</code></td></tr>
+<tr><td>스위치</td><td><code>Graphics/Renderer.h</code> 의 <code>RenderSettings::deferred</code>, <code>App/AppBase.cpp</code>, <code>Editor/DebugUI.cpp</code></td><td>9장</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>11. 실험</h2>
+<p>자동 검증 인자로 같은 씬을 두 번 찍어 비교하는 방법이 기본입니다. 예: <code>SherlockEditor.exe --project=…\SherlockTestScenes.sherlock --scene=DeferredMaterials.json --exit-after=40 --screenshot=a.png --deferred=0</code>, 그다음 <code>--deferred=1</code>로 <code>b.png</code>를 찍어 씬 뷰 영역을 픽셀 단위로 비교합니다. 코드를 잠깐 바꾸는 실험은 확인한 뒤 되돌립니다.</p>
+
+<h3>E1. 디퍼드 대 포워드 화면 비교 <span class="tag ok">확인함 (2026-11-18)</span></h3>
+<p><a href="../plan/deferred-clustered-ssao-record.html#v-image">기록 8.1</a>의 결과입니다(씬 뷰 395×272, 차이 px = 한 채널이라도 다른 픽셀, &gt;8 = 8단계보다 크게 다른 픽셀).</p>
+<table>
+<tr><th>씬</th><th>결과</th><th>원인</th></tr>
+<tr><td>Sponza</td><td>62,667 px, 최대 3</td><td>G-buffer 양자화</td></tr>
+<tr><td>DamagedHelmet · Cubemap</td><td>&gt;8 은 1 px씩, 최대 11</td><td>양자화</td></tr>
+<tr><td>MultiShadow</td><td>36,833 px, &gt;8 은 11 px, 최대 66</td><td>노멀 맵 바닥의 그림자 경계 뒤집힘(6-1)</td></tr>
+<tr><td>DeferredMaterials (SSAO 끔)</td><td>42,356 px, &gt;8 은 75 px, 최대 110</td><td>같음</td></tr>
+<tr><td>D3D11 대 D3D12 (디퍼드), Sponza</td><td>0 px</td><td>—</td></tr>
+</table>
+<p>"차이 px"가 큰 것은 대부분 1~3단계의 양자화이고, 눈에 띄는 차이는 &gt;8 열만 봐도 됩니다.</p>
+
+<h3>E2. 재질 입력만 비교하기 <span class="tag ok">확인함 (2026-11-18)</span></h3>
+<p>디버그 뷰 1(albedo), 2(셰이딩 노멀), 6(금속성·거칠기), 9(F0), 12(기하 노멀)로 두 경로를 찍으면 G-buffer에 담긴 값 자체를 비교할 수 있습니다. 기록에서는 모두 최대 1단계 차이였습니다(<a href="../plan/deferred-clustered-ssao-record.html#v-image">기록 8.1</a>). 조명 화면의 차이를 볼 때 이 비교를 먼저 하면 "G-buffer 값이 틀렸나, 조명 단계에서 갈렸나"를 가를 수 있습니다. 다음으로 디버그 뷰 4(그림자 계수)를 보면 6-1의 원인이 드러납니다.</p>
+
+<h3>E3. 복원 위치를 눈으로 보기 <span class="tag ok">확인함 (2026-11-18)</span></h3>
+<p>디버그 뷰 11(월드 위치 frac)은 복원 위치의 소수부를 색으로 냅니다. 복원이 맞으면 1 m 간격의 정수 격자가 바닥과 벽에 보입니다. 기록 그림: <a href="../plan/deferred-clustered-ssao-record.html#c-grid">기록 2.6 그림 2-1</a>(<a href="../images/2026-11-18-deferred-debugviews.png">deferred-debugviews.png</a>)의 위 줄 첫 장(<code>MultiShadow.json</code>의 디버그 뷰 11). 일부러 <code>ReconstructWorldPosition</code>에서 y 부호(<code>1 - uv.y * 2</code>)를 뒤집어 보면 격자가 화면 위아래로 뒤집힌 위치에 그려질 것입니다 <span class="tag chk">예상</span>.</p>
+
+<h3>E4. 어느 재질이 포워드로 가는지 세기 <span class="tag chk">예상</span></h3>
+<p><code>DeferredMaterials.json</code>을 열고 Render Settings 의 통계 줄에서 <code>G-buffer draws</code>와 <code>forward opaque</code>를 봅니다(기록 값 6과 2). unlit 재질의 unlit을 끄면 G-buffer 드로우가 하나 늘고 포워드 불투명이 하나 줄 것입니다. 디버그 뷰를 5(UV)로 바꾸면 통계 줄의 <code>path</code>가 <code>forward</code>로 바뀌고 SSAO 표시도 사라질 것입니다.</p>
+
+<h3>E5. GB1 정밀도 <span class="tag ok">확인함 (2026-11-18)</span></h3>
+<p><code>kGBufferFormats[1]</code>을 <code>R32G32B32A32_FLOAT</code>로 바꾸면 G-buffer가 1080p에서 15.8 MiB 늘어나지만 <span class="tag chk">계산값</span>, 포워드와의 &gt;8 차이는 75 → 75로 그대로였습니다(5-2). 바꿀 때는 <code>GetGBufferPipelineFor</code>가 같은 표에서 <code>rtvFormats</code>를 채우므로 한 곳만 고치면 됩니다.</p>
+
+<h3>E6. 조명이 많을 때의 시간 <span class="tag ok">확인함 (2026-11-18)</span></h3>
+<p>기록 8.3: <code>ManyLights256.json</code>, D3D11, Debug 빌드, 씬 뷰 1,675×973, 240 프레임째 GPU 타임스탬프. 조명 범위·세기를 키우기 전 씬으로 쟀고, 같은 설정에서 값이 두 갈래로 나뉘는 실행이 있었습니다(<a href="../plan/deferred-clustered-ssao-record.html#v-time">기록 8.3</a>).</p>
+<table>
+<tr><th>설정</th><th>GPU 메인 패스</th><th>그중 G-buffer / 라이팅</th></tr>
+<tr><td>포워드, 클러스터 없음</td><td>48~56 ms</td><td>—</td></tr>
+<tr><td>디퍼드, 클러스터 없음</td><td>13~16 ms</td><td>0.6~1.4 / 11~16 ms</td></tr>
+<tr><td>포워드, 클러스터드</td><td>2.7~3.7 ms</td><td>—</td></tr>
+<tr><td>디퍼드, 클러스터드</td><td>1.7~5.3 ms (두 번 약 17 ms)</td><td>0.5~1.2 / 1.0~4.4 ms</td></tr>
+</table>
+<p>클러스터 없이는 디퍼드가 약 3~4배 빠르고, 클러스터드를 켜면 두 경로가 비슷한 범위로 모입니다. Release 빌드와 속도 버퍼가 들어온 뒤로는 이 표를 다시 재지 않았습니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>12. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>D3D12에서만 G-buffer PSO 생성 실패</td><td>PSO의 <code>rtvCount</code>·<code>rtvFormats</code>가 패스의 타깃과 다름</td><td><code>GetGBufferPipelineFor</code>가 여섯 칸을 모두 적음. 타깃을 더하면 <code>RenderDeferredScene</code>의 <code>colorCount</code>, <code>PS_GBuffer</code>의 출력과 같이 고쳐야 함</td></tr>
+<tr><td>금속성·F90이 이상하게 밝음</td><td>GB3를 sRGB RTV로 씀</td><td>GB3 첨부는 <code>srgbView = false</code> (<a href="../study/color-space-study.html#formats">색공간 문서 5장</a>)</td></tr>
+<tr><td>디퍼드 디버그 뷰 색이 포워드보다 밝음</td><td>발광 위에 디버그 색이 가산됨</td><td>디버그 뷰면 <code>PS_GBuffer</code>가 발광 0을 씀</td></tr>
+<tr><td>노멀 맵 바닥에 점 같은 그림자 차이</td><td>D24 깊이로 복원한 위치의 미세한 차이가 그림자 판정을 뒤집음</td><td>고치지 않음. D32F·reversed-Z가 남은 일(6-1)</td></tr>
+<tr><td>포워드로 그린 물체(unlit, 코팅 노멀 맵 등)만 AO가 없고, 그 물체가 옆 바닥에 접촉 AO도 만들지 않음</td><td>SSAO는 G-buffer 패스 직후 깊이·GB1로 계산하는데, 그때 포워드 물체는 아직 깊이에도 GB1에도 없음</td><td>디퍼드 물체는 유리 뒤에 있어도 4단계에서 SSAO를 받고, 유리는 그 위에 섞임. 포워드 물체는 SSAO를 받지도 주지도 않음(7-2)</td></tr>
+<tr><td>코팅 노멀 맵을 넣었더니 그 물체만 SSAO가 빠짐</td><td>그 재질이 포워드로 감</td><td><code>CanUseDeferred</code>. 의도된 동작</td></tr>
+<tr><td>새 재질 값을 넣었는데 디퍼드에서만 반영 안 됨</td><td>G-buffer에 칸이 없음</td><td><code>LoadGBufferSurface</code>가 기본값을 넣음. 칸을 늘리거나 <code>CanUseDeferred</code>에서 포워드로 보내야 함(<a href="../study/material-extensions-study.html">재질 확장 문서</a>)</td></tr>
+<tr><td>디퍼드를 꺼도 메모리가 그대로</td><td>G-buffer는 뷰를 만들 때 항상 할당</td><td>1080p 뷰 하나에 G-buffer + SSAO 약 43.5 MiB <span class="tag chk">계산값</span>. 미리보기 뷰도 따로 가짐</td></tr>
+<tr><td>가장자리 계단</td><td>MSAA 없음</td><td>MSAA를 쓰지 않으니 디퍼드와 MSAA가 부딪칠 일도 없음. 계단을 줄이는 길은 TAA(기본 끔)</td></tr>
+<tr><td>반투명끼리 겹친 순서가 틀림</td><td>블렌딩은 물체 경계 구 중심 거리로만 정렬</td><td>디퍼드와 무관하게 포워드 블렌딩의 한계. 같은 물체 안 삼각형 순서는 정렬하지 않음</td></tr>
+</table>
+<div class="box warn"><b>문서와 코드가 다른 곳.</b> <code>Shaders/GBuffer.hlsli</code>·<code>GBufferPixelShader.hlsl</code> 머리 주석, <code>RendererDeferred.cpp</code>의 G-buffer 패스 주석(<code>RenderDeferredScene</code>)과 <code>Renderer::GetGBufferPipelineFor</code>의 RTV 포맷 주석, <code>Renderer.cpp</code> 셰이더 표의 <code>GBufferPS</code> 줄 주석, <code>Renderer.h</code>의 <code>Pass_GBuffer</code> 주석, 구현 기록은 "MRT 5장", "rtvCount = 5"로 적혀 있습니다. <code>RendererDeferred.cpp</code> 머리 주석의 1단계 설명("view.hdr (발광) + GB0~GB3 + 깊이")에도 속도 타깃이 빠져 있고, <code>kGBufferFormats</code> 위 주석의 "[0] 은 view.hdr"는 RTV 순서 이야기라 GB0부터 담는 이 4칸 배열의 [0]과 맞지 않습니다. 지금 코드는 속도 버퍼가 들어와 G-buffer 패스가 6장(<code>colorCount = 6</code>, <code>rtvCount = 6</code>)을 씁니다. 기록의 "픽셀당 28 바이트 + 깊이"도 속도 4 B가 빠진 값입니다. 이 문서는 지금 코드를 따랐습니다.</div>
+</section>
+
+<section id="study">
+<h2>13. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>포워드 대 디퍼드 비용</td><td>조각 × 조명과 화면 픽셀 × 조명, 오버드로, 대역폭이라는 고정 비용</td><td>1, 2</td></tr>
+<tr><td>MRT</td><td>여러 타깃에 한 번에 쓰기, PSO 포맷 일치, RTV와 SRV를 같은 패스에서 겸할 수 없음</td><td>4, 7-1</td></tr>
+<tr><td>G-buffer 설계</td><td>채널마다 포맷 고르기, sRGB 저장, 알파 채널 활용, 저장하지 않는 값</td><td>4-1</td></tr>
+<tr><td>옥타헤드럴 인코딩</td><td>L1 정규화, 아래 반구 접기, FP16 오차</td><td>5</td></tr>
+<tr><td>깊이에서 위치 복원</td><td>NDC → 역 viewProj → w 나눗셈, D24 정밀도</td><td>6</td></tr>
+<tr><td>풀스크린 삼각형</td><td><code>SV_VertexID</code>로 삼각형 하나, <code>Load</code>로 1:1 읽기</td><td>7</td></tr>
+<tr><td>하이브리드 경로</td><td>G-buffer에 못 담는 재질을 포워드로, HDR 타깃 하나에서 합치기</td><td>3-1, 8</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>LearnOpenGL, <a href="https://learnopengl.com/Advanced-Lighting/Deferred-Shading">Deferred Shading</a> — G-buffer와 라이팅 패스, 포워드와 섞기를 그림으로 설명하는 입문용. 1~3장</li>
+<li>Cigolle 외, <a href="https://jcgt.org/published/0003/02/01/">A Survey of Efficient Representations for Independent Unit Vectors</a> (JCGT, 2014) — 옥타헤드럴 인코딩을 정리·비교한 논문이고 <code>Common.hlsli</code>가 인용함. 5장</li>
+<li>Real-Time Rendering 4판, 20장 Efficient Shading — 포워드·디퍼드·타일드·클러스터드의 비교</li>
+<li>Matt Pettineo, <a href="https://therealmjp.github.io/posts/position-from-depth-3/">Reconstructing Position From Depth</a> — 깊이에서 위치 복원 방법들. 6장</li>
+<li>우리 문서: <a href="../plan/deferred-clustered-ssao-plan.html#c-deferred-why">디퍼드 계획 2장</a>(개념), <a href="../plan/deferred-clustered-ssao-record.html#c-gbuffer">구현 기록 2.1~2.4</a>와 <a href="../plan/deferred-clustered-ssao-record.html#verify">8장 검증</a>, <a href="../study/color-space-study.html#textures">색공간 문서 4-4</a>(GB0·GB2 sRGB), <a href="../study/clustered-lighting-study.html">클러스터드 라이팅 학습</a>, <a href="../study/ssao-study.html">SSAO 학습</a>, <a href="../overview/glossary.html#graphics">용어집 3장</a>(G-buffer, 옥타헤드럴 노멀 인코딩, 깊이에서 위치 복원, MSAA)</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

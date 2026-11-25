@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · HDR·톤매핑 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>HDR·톤매핑 학습 문서</h1>
+  <p>FP16 선형 HDR 타깃, 노출, ACES 근사 — 씬이 1을 넘는 밝기를 어디에 담고 어디서 화면 범위로 접는가</p>
+  <p>2026-11-25 · 렌더러 공부 순서 중 "색 파이프라인과 컴퓨트 기초" 묶음의 두 번째 문서입니다. 이 주제는 지금까지 <a href="../plan/hdr-tonemapping-plan.html">HDR 계획</a>(2026-10-16), <a href="../plan/hdr-tonemapping-record.html">HDR 구현 기록</a>(2026-10-23), <a href="../overview/rendering-analysis.html#c12-14">rendering-analysis 12.14</a>, <a href="pbr-study.html#panel-F">PBR 학습 6장</a>에 나뉘어 있었습니다. PBR 학습 6장은 톤매핑이 무엇인지만 짧게 다루므로, 이 문서는 우리 구현의 구조와 숫자를 깊게 봅니다. sRGB 인코딩은 <a href="color-space-study.html#flow">색공간 학습 3장</a>에서 다루었으므로 여기서는 다시 설명하지 않습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1장은 HDR 타깃이 왜 필요한가와 2026-10-23 전에 무엇이 잘렸는가, 2장은 노출과 톤 곡선의 원리, 3장은 한 프레임에서 HDR 값이 지나는 패스, 4장은 FP16 타깃과 HDR 환경맵, 5장은 톤 패스 안쪽, 6장은 설정과 기본값, 7장은 코드 지도, 8장은 실험, 9장은 함정과 한계, 10장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 톤 곡선 값, FP16 범위·정밀도, 메모리 크기는 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 실행해서 확인한 것은 구현 기록에 남은 2026-10-23·10-24 실행뿐이며 <span class="tag ok">확인함</span>으로 표시했습니다. 화면 측정값은 새로 만들지 않았습니다.</div>
+</header>
+<nav><a href="#why">1. 왜 HDR 타깃인가</a><a href="#curve">2. 노출과 톤 곡선</a><a href="#flow">3. 한 프레임의 흐름</a><a href="#target">4. FP16 타깃·HDR 환경맵</a><a href="#tonepass">5. 톤 패스</a><a href="#settings">6. 설정과 기본값</a><a href="#code">7. 우리 코드</a><a href="#lab">8. 실험</a><a href="#pitfalls">9. 함정과 한계</a><a href="#study">10. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 HDR 타깃이 필요한가</h2>
+<h3>1-1. 조명 합은 1을 넘는다</h3>
+<p>PBR 셰이더가 내는 값은 복사휘도에 비례하는 선형 숫자이고 위쪽 한계가 없습니다. 강한 방향광 아래의 흰 표면, 금속의 거울 반사, HDR 하늘의 태양은 쉽게 1을 넘습니다. 기본 환경 세트(<code>Assets\Cubemap</code> 의 <code>*HDR.dds</code>)는 원본이 <code>R32G32B32A32_FLOAT</code>이고 태양 픽셀이 300을 넘는다고 <a href="../overview/rendering-analysis.html#c12-14">rendering-analysis 12.14</a>에 적혀 있습니다.</p>
+<p>모니터로 나가는 값은 0~1(8비트 0~255)뿐입니다. 그러니 어딘가에서 [0, ∞)를 [0, 1]로 접어야 하는데, 접기 전의 값을 담아 둘 자리가 없으면 1을 넘는 부분은 기록하는 순간 사라집니다. 이 엔진은 씬을 FP16 텍스처에 그려 값을 그대로 담고, 마지막 톤 패스 한 곳에서만 접습니다.</p>
+
+<h3>1-2. 2026-10-23 전에는 무엇이 잘렸나</h3>
+<p>HDR은 두 번에 걸쳐 들어왔습니다. 입력(HDR 큐브)이 먼저, 출력 구조(HDR 타깃과 톤 패스)가 나중입니다.</p>
+<table>
+<tr><th>시기</th><th>구조</th><th>1을 넘는 값</th><th>근거</th></tr>
+<tr><td>HDR 큐브 지원 전</td><td>로더가 부동소수점 DDS를 8비트로 바꿔 올림</td><td>텍스처를 읽는 순간 잘림. 태양이 하얀 원판, 금속 반사가 1에서 멈춤</td><td><a href="../overview/rendering-analysis.html#c12-14">12.14</a> 함정 표</td></tr>
+<tr><td>HDR 큐브 지원 뒤 ~ 2026-10-23</td><td>큐브는 FP16. 머티리얼·스카이 PS 마지막 줄에서 <code>ApplyExposureToneMap</code>을 부르고 8비트 sRGB RTV에 씀</td><td>톤매핑 켬: 픽셀마다 눌려서 기록됨(잘리지는 않음). 톤매핑 끔: 기록할 때 잘림. 어느 쪽이든 타깃에는 1 이하만 남음</td><td><a href="../plan/hdr-tonemapping-plan.html#now">계획 1장</a></td></tr>
+<tr><td>2026-10-23 ~</td><td>씬 패스는 FP16 선형 타깃, 톤 패스가 노출·ACES 후 8비트로</td><td>톤 패스 전까지 그대로 남음</td><td><a href="../plan/hdr-tonemapping-record.html#flow">기록 2장</a></td></tr>
+</table>
+<p>가운데 시기의 문제는 "타깃에 1 이하만 남는다"는 점입니다. 톤매핑을 켜 두면 화면은 자연스럽게 보였지만, 타깃에 남은 값은 이미 접힌 값이었습니다. 그래서 반투명·가산 블렌딩은 접힌 값끼리 섞였고, 블룸처럼 "1을 넘는 부분"을 찾아야 하는 효과는 들어갈 자리가 없었습니다. 지금의 <code>Graphics/RendererPost.cpp</code> 머리 주석은 HDR 구간 후처리를 "선형 HDR 값에서 해야 1 을 넘는 밝기가 살아 있으므로 톤매핑 앞에 둠"이라고 적고 있습니다.</p>
+
+<h3>1-3. 바뀐 것과 바뀌지 않은 것</h3>
+<p>톤매핑 함수 자체는 새로 만들지 않았습니다. 계획서가 "노출과 ACES 톤매핑은 이미 있습니다"라고 적은 대로(<a href="../plan/hdr-tonemapping-plan.html#now">계획 1장</a>) 같은 식을 셰이더 끝에서 별도 패스로 옮겼고, 대신 중간 HDR 타깃과 톤 패스가 새로 생겼습니다. 기록이 의도된 변화로 적은 것은 두 가지입니다. 클리어 색이 이제 HDR 타깃에 선형으로 칠해지고 톤 패스를 거치므로 톤매핑을 켰거나 노출이 1이 아닌 씬은 배경색이 달라지고, unlit 재질도 노출·ACES를 거칩니다(<a href="../plan/hdr-tonemapping-record.html#decisions">기록 6장</a>, 코드는 <code>Renderer::RenderScenePass</code>의 <code>clearColor</code> 주석 "선형. 노출·ACES 를 거침"). 전후 화면의 픽셀 비교는 하지 않았다고 기록에 적혀 있습니다.</p>
+</section>
+
+<section id="curve">
+<h2>2. 노출과 톤 곡선</h2>
+<h3>2-1. 노출은 곱셈 하나</h3>
+<p><code>Shaders/Post.hlsli</code>의 <code>ApplyExposureToneMap</code>은 먼저 <code>color *= outputParams.x</code>를 합니다. 노출은 카메라의 조리개·셔터를 숫자 하나로 줄인 것으로, 장면 전체를 같은 비율로 밝히거나 어둡게 합니다. 에디터 슬라이더(<code>Editor/DebugUI.cpp</code>의 <code>Exposure</code>)는 0.05~8 범위의 로그 슬라이더입니다. 노출 2배는 사진의 1스톱(EV +1)과 같습니다.</p>
+<p>노출은 톤 곡선 앞에 있으므로 곡선의 어느 부분을 쓸지를 고르는 역할도 합니다. 노출을 올리면 같은 장면이 곡선의 어깨(평평한 쪽)로 밀려 밝은 부분의 차이가 줄고, 내리면 발끝(어두운 쪽)으로 밀립니다.</p>
+
+<h3>2-2. ACES 근사 (Narkowicz 2016)</h3>
+<p>톤매핑이 켜져 있으면(<code>outputParams.y &gt; 0.5</code>) 채널마다 다음 유리식을 적용하고 <code>saturate</code>합니다.</p>
+<pre><code>f(x) = saturate( x(2.51x + 0.03) / ( x(2.43x + 0.59) + 0.14 ) )</code></pre>
+<p>ACES는 영화 업계의 색 관리 체계이고, 그 안의 기준 톤 곡선(RRT·ODT)은 행렬 변환과 여러 단계로 되어 있습니다. Narkowicz의 식은 그 곡선의 모양만 유리식 하나로 맞춘 근사입니다. 우리 코드는 이 근사를 RGB 채널마다 따로 적용하며, ACES의 색공간 변환 행렬은 쓰지 않습니다.</p>
+<p>식에서 바로 나오는 성질입니다 <span class="tag chk">계산값</span>.</p>
+<ul>
+<li>x → ∞ 일 때 2.51 / 2.43 ≈ 1.033으로 갑니다. 1을 조금 넘으므로 <code>saturate</code>가 필요하고, f(x) = 1이 되는 지점은 x ≈ 7.24입니다. 노출을 곱한 값이 7.24를 넘는 픽셀은 모두 흰색 1이 됩니다.</li>
+<li>f(x) = x 인 점이 x ≈ 0.062와 0.728 두 곳입니다. 0.062 아래(발끝)는 입력보다 어둡게, 0.062~0.728은 밝게, 0.728 위(어깨)는 어둡게 눌립니다. 그래서 같은 노출 1에서도 톤매핑을 켜면 어두운 곳은 더 어둡고 중간 톤은 더 밝아져 대비가 올라 보입니다.</li>
+</ul>
+
+<figure>
+<svg viewBox="0 0 760 310" role="img" aria-label="톤 곡선 비교: ACES 근사, Reinhard, 잘라내기. 가로축 입력 0~8, 세로축 출력 0~1">
+<line class="ln" x1="70" y1="262" x2="710" y2="262"/>
+<line class="ln" x1="70" y1="262" x2="70" y2="42"/>
+<line x1="70" y1="42" x2="710" y2="42" style="stroke:var(--line);stroke-dasharray:4 4"/>
+<line x1="70" y1="152" x2="710" y2="152" style="stroke:var(--line);stroke-dasharray:4 4"/>
+<line x1="150" y1="262" x2="150" y2="42" style="stroke:var(--line);stroke-dasharray:4 4"/>
+<text x="62" y="266" text-anchor="end">0</text>
+<text x="62" y="156" text-anchor="end">0.5</text>
+<text x="62" y="46" text-anchor="end">1</text>
+<text x="70" y="282" text-anchor="middle">0</text>
+<text x="150" y="282" text-anchor="middle">1</text>
+<text x="230" y="282" text-anchor="middle">2</text>
+<text x="390" y="282" text-anchor="middle">4</text>
+<text x="550" y="282" text-anchor="middle">6</text>
+<text x="710" y="282" text-anchor="middle">8</text>
+<text x="390" y="302" text-anchor="middle">입력 (노출을 곱한 선형 값)</text>
+<text x="20" y="30">출력 (선형, sRGB 인코딩 전)</text>
+<polyline points="70.0,262.0 150.0,42.0 710.0,42.0" style="fill:none;stroke:var(--ink3);stroke-width:2;stroke-dasharray:6 4"/>
+<polyline points="70.0,262.0 74.0,251.5 78.0,242.0 82.0,233.3 86.0,225.3 90.0,218.0 94.0,211.2 98.0,205.0 102.0,199.1 106.0,193.7 110.0,188.7 114.0,183.9 118.0,179.5 122.0,175.3 126.0,171.4 130.0,167.7 134.0,164.2 138.0,160.9 142.0,157.8 146.0,154.8 150.0,152.0 154.0,149.3 158.0,146.8 162.0,144.3 166.0,142.0 170.0,139.8 174.0,137.7 178.0,135.6 182.0,133.7 186.0,131.8 190.0,130.0 194.0,128.3 198.0,126.6 202.0,125.0 206.0,123.5 210.0,122.0 214.0,120.6 218.0,119.2 222.0,117.9 226.0,116.6 230.0,115.3 234.0,114.1 238.0,113.0 242.0,111.8 246.0,110.8 250.0,109.7 254.0,108.7 258.0,107.7 262.0,106.7 266.0,105.8 270.0,104.9 274.0,104.0 278.0,103.1 282.0,102.3 286.0,101.5 290.0,100.7 294.0,99.9 298.0,99.1 302.0,98.4 306.0,97.7 310.0,97.0 314.0,96.3 318.0,95.7 322.0,95.0 326.0,94.4 330.0,93.8 334.0,93.2 338.0,92.6 342.0,92.0 346.0,91.4 350.0,90.9 354.0,90.4 358.0,89.8 362.0,89.3 366.0,88.8 370.0,88.3 374.0,87.8 378.0,87.4 382.0,86.9 386.0,86.4 390.0,86.0 394.0,85.6 398.0,85.1 402.0,84.7 406.0,84.3 410.0,83.9 414.0,83.5 418.0,83.1 422.0,82.7 426.0,82.4 430.0,82.0 434.0,81.6 438.0,81.3 442.0,80.9 446.0,80.6 450.0,80.3 454.0,79.9 458.0,79.6 462.0,79.3 466.0,79.0 470.0,78.7 474.0,78.4 478.0,78.1 482.0,77.8 486.0,77.5 490.0,77.2 494.0,76.9 498.0,76.6 502.0,76.4 506.0,76.1 510.0,75.8 514.0,75.6 518.0,75.3 522.0,75.1 526.0,74.8 530.0,74.6 534.0,74.4 538.0,74.1 542.0,73.9 546.0,73.7 550.0,73.4 554.0,73.2 558.0,73.0 562.0,72.8 566.0,72.6 570.0,72.3 574.0,72.1 578.0,71.9 582.0,71.7 586.0,71.5 590.0,71.3 594.0,71.1 598.0,70.9 602.0,70.8 606.0,70.6 610.0,70.4 614.0,70.2 618.0,70.0 622.0,69.8 626.0,69.7 630.0,69.5 634.0,69.3 638.0,69.2 642.0,69.0 646.0,68.8 650.0,68.7 654.0,68.5 658.0,68.3 662.0,68.2 666.0,68.0 670.0,67.9 674.0,67.7 678.0,67.6 682.0,67.4 686.0,67.3 690.0,67.1 694.0,67.0 698.0,66.9 702.0,66.7 706.0,66.6 710.0,66.4" style="fill:none;stroke:var(--c1);stroke-width:2"/>
+<polyline points="70.0,262.0 74.0,252.3 78.0,234.3 82.0,214.6 86.0,196.1 90.0,179.7 94.0,165.5 98.0,153.4 102.0,143.0 106.0,134.1 110.0,126.4 114.0,119.7 118.0,113.9 122.0,108.7 126.0,104.2 130.0,100.1 134.0,96.5 138.0,93.2 142.0,90.3 146.0,87.6 150.0,85.2 154.0,82.9 158.0,80.9 162.0,79.0 166.0,77.3 170.0,75.7 174.0,74.2 178.0,72.8 182.0,71.5 186.0,70.2 190.0,69.1 194.0,68.0 198.0,67.0 202.0,66.1 206.0,65.2 210.0,64.3 214.0,63.5 218.0,62.8 222.0,62.1 226.0,61.4 230.0,60.7 234.0,60.1 238.0,59.5 242.0,59.0 246.0,58.4 250.0,57.9 254.0,57.4 258.0,56.9 262.0,56.5 266.0,56.0 270.0,55.6 274.0,55.2 278.0,54.8 282.0,54.5 286.0,54.1 290.0,53.7 294.0,53.4 298.0,53.1 302.0,52.8 306.0,52.5 310.0,52.2 314.0,51.9 318.0,51.6 322.0,51.4 326.0,51.1 330.0,50.8 334.0,50.6 338.0,50.4 342.0,50.1 346.0,49.9 350.0,49.7 354.0,49.5 358.0,49.3 362.0,49.1 366.0,48.9 370.0,48.7 374.0,48.5 378.0,48.4 382.0,48.2 386.0,48.0 390.0,47.8 394.0,47.7 398.0,47.5 402.0,47.4 406.0,47.2 410.0,47.1 414.0,46.9 418.0,46.8 422.0,46.7 426.0,46.5 430.0,46.4 434.0,46.3 438.0,46.1 442.0,46.0 446.0,45.9 450.0,45.8 454.0,45.7 458.0,45.6 462.0,45.5 466.0,45.3 470.0,45.2 474.0,45.1 478.0,45.0 482.0,44.9 486.0,44.8 490.0,44.7 494.0,44.6 498.0,44.6 502.0,44.5 506.0,44.4 510.0,44.3 514.0,44.2 518.0,44.1 522.0,44.0 526.0,44.0 530.0,43.9 534.0,43.8 538.0,43.7 542.0,43.6 546.0,43.6 550.0,43.5 554.0,43.4 558.0,43.4 562.0,43.3 566.0,43.2 570.0,43.1 574.0,43.1 578.0,43.0 582.0,43.0 586.0,42.9 590.0,42.8 594.0,42.8 598.0,42.7 602.0,42.6 606.0,42.6 610.0,42.5 614.0,42.5 618.0,42.4 622.0,42.4 626.0,42.3 630.0,42.2 634.0,42.2 638.0,42.1 642.0,42.1 646.0,42.0 650.0,42.0 654.0,42.0 658.0,42.0 662.0,42.0 666.0,42.0 670.0,42.0 674.0,42.0 678.0,42.0 682.0,42.0 686.0,42.0 690.0,42.0 694.0,42.0 698.0,42.0 702.0,42.0 706.0,42.0 710.0,42.0" style="fill:none;stroke:var(--accent);stroke-width:2.5"/>
+<rect x="500" y="170" width="206" height="76" rx="6" style="fill:var(--paper);stroke:var(--line)"/>
+<line x1="512" y1="190" x2="540" y2="190" style="stroke:var(--accent);stroke-width:2.5"/>
+<text x="548" y="194">ACES 근사 (우리 코드)</text>
+<line x1="512" y1="210" x2="540" y2="210" style="stroke:var(--c1);stroke-width:2"/>
+<text x="548" y="214">Reinhard x/(1+x)</text>
+<line x1="512" y1="230" x2="540" y2="230" style="stroke:var(--ink3);stroke-width:2;stroke-dasharray:6 4"/>
+<text x="548" y="234">잘라내기 (톤매핑 끔)</text>
+</svg>
+<figcaption>그림 1. 세 곡선 비교 <span class="tag chk">계산값</span>. 톤매핑을 끄면 x = 1에서 꺾여 그 위가 모두 1이 됩니다. ACES 근사는 x ≈ 7.24에서 1에 닿고 그 뒤로 잘라내기 선과 겹칩니다. Reinhard는 1에 닿지 않습니다.</figcaption>
+</figure>
+
+<h3>2-3. 곡선 값 표</h3>
+<table>
+<tr><th>입력 x</th><th>ACES 근사</th><th>Reinhard</th><th>잘라내기</th><th>ACES 결과의 8비트 sRGB 값</th></tr>
+<tr><td>0.05</td><td>0.044</td><td>0.048</td><td>0.05</td><td>59</td></tr>
+<tr><td>0.18 (중간 회색)</td><td>0.267</td><td>0.153</td><td>0.18</td><td>141</td></tr>
+<tr><td>0.5</td><td>0.616</td><td>0.333</td><td>0.5</td><td>206</td></tr>
+<tr><td>1</td><td>0.804</td><td>0.5</td><td>1</td><td>232</td></tr>
+<tr><td>2</td><td>0.915</td><td>0.667</td><td>1</td><td>245</td></tr>
+<tr><td>4</td><td>0.973</td><td>0.8</td><td>1</td><td>252</td></tr>
+<tr><td>8 이상</td><td>1</td><td>0.889 (x=8)</td><td>1</td><td>255</td></tr>
+</table>
+<p>모두 <span class="tag chk">계산값</span>입니다. 마지막 열은 톤 패스의 sRGB RTV가 인코딩한 결과를 반올림한 값입니다. ACES 근사에서 x = 1인 픽셀은 232로 나가므로, 톤매핑을 켠 씬에서 "흰색 1"은 순백이 아닙니다. 255가 되려면 노출을 곱한 값이 7.24를 넘어야 합니다.</p>
+
+<h3>2-4. 왜 ACES 근사인가</h3>
+<p>어떤 곡선을 고를지에 대한 기록은 남아 있지 않습니다. 근사는 HDR 타깃보다 먼저 PS 끝에 들어와 있었고(12.14절을 처음 쓴 2026-10-08에 이미 있었음), HDR 작업은 그것을 그대로 옮겼습니다(<a href="../plan/hdr-tonemapping-plan.html#now">계획 1장</a>). 아래는 후보들의 차이를 정리한 설명입니다.</p>
+<table>
+<tr><th>곡선</th><th>장점</th><th>단점</th></tr>
+<tr><td>잘라내기 (<code>saturate</code>만)</td><td>1 이하는 그대로. 감마 검증·디버그에 좋음</td><td>1 위가 전부 흰색. 하이라이트가 평평하게 날아감</td></tr>
+<tr><td>Reinhard x/(1+x)</td><td>식이 가장 단순, 어떤 값도 1에 닿지 않음</td><td>중간 톤이 많이 어두워짐(0.18 → 0.153). 흰색이 나오지 않아 화면이 탁함</td></tr>
+<tr><td>ACES 근사 (Narkowicz)</td><td>나눗셈 하나. 발끝과 어깨가 있어 대비가 살고, 7.24에서 흰색에 닿음</td><td>채널별 적용이라 밝은 포화색이 흰색 쪽으로 물 빠짐. 중간 톤을 밝혀 노출 1에서 원래 색과 다름</td></tr>
+<tr><td>Hable(Uncharted 2), AgX 등</td><td>매개변수로 모양 조정, 색상 이동이 적은 변형도 있음</td><td>매개변수와 흰 점을 정해야 함. 이 엔진에는 없음</td></tr>
+</table>
+</section>
+
+<section id="flow">
+<h2>3. 한 프레임에서 HDR 값이 지나는 패스</h2>
+<figure>
+<svg viewBox="0 0 900 250" role="img" aria-label="패스 흐름: 씬 패스 FP16, HDR 후처리, 톤 패스, sRGB RTV, 네 가지 출력">
+<defs><marker id="hdr-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+<rect x="20" y="30" width="150" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="95" y="55" text-anchor="middle">씬 패스</text>
+<text x="95" y="75" text-anchor="middle">FP16 선형</text>
+<rect x="200" y="30" width="210" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="305" y="55" text-anchor="middle">HDR 후처리 (제자리)</text>
+<text x="305" y="75" text-anchor="middle">TAA·모션 블러·블러·블룸</text>
+<rect x="440" y="30" width="210" height="60" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<text x="545" y="55" text-anchor="middle">톤 패스 PS_Tonemap</text>
+<text x="545" y="75" text-anchor="middle">노출 → ACES → GreyScale</text>
+<rect x="680" y="30" width="200" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="780" y="55" text-anchor="middle">sRGB RTV 인코딩</text>
+<text x="780" y="75" text-anchor="middle">R8G8B8A8_UNORM_SRGB</text>
+<line class="ln" x1="170" y1="60" x2="198" y2="60" marker-end="url(#hdr-ar)"/>
+<line class="ln" x1="410" y1="60" x2="438" y2="60" marker-end="url(#hdr-ar)"/>
+<line class="ln" x1="650" y1="60" x2="678" y2="60" marker-end="url(#hdr-ar)"/>
+<line class="ln" x1="780" y1="90" x2="780" y2="120"/>
+<line class="ln" x1="120" y1="120" x2="780" y2="120"/>
+<line class="ln" x1="120" y1="120" x2="120" y2="148" marker-end="url(#hdr-ar)"/>
+<line class="ln" x1="340" y1="120" x2="340" y2="148" marker-end="url(#hdr-ar)"/>
+<line class="ln" x1="560" y1="120" x2="560" y2="148" marker-end="url(#hdr-ar)"/>
+<line class="ln" x1="780" y1="120" x2="780" y2="148" marker-end="url(#hdr-ar)"/>
+<rect x="20" y="150" width="200" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="120" y="175" text-anchor="middle">에디터 씬 뷰 텍스처</text>
+<text x="120" y="195" text-anchor="middle">ImGui 가 UNORM 으로 읽음</text>
+<rect x="240" y="150" width="200" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="340" y="175" text-anchor="middle">게임 백버퍼</text>
+<text x="340" y="195" text-anchor="middle">게임 UI → Present</text>
+<rect x="460" y="150" width="200" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="560" y="175" text-anchor="middle">카메라 미리보기</text>
+<text x="560" y="195" text-anchor="middle">자기 HDR 에서 한 번 더</text>
+<rect x="680" y="150" width="200" height="60" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/>
+<text x="780" y="175" text-anchor="middle">단계 썸네일 (폭 384)</text>
+<text x="780" y="195" text-anchor="middle">후처리 단계마다 캡처</text>
+<text x="450" y="236" text-anchor="middle">왼쪽 두 출력은 같은 프레임의 메인 뷰 중 하나 (IsOffscreen 여부)</text>
+</svg>
+<figcaption>그림 2. HDR 구간과 출력. 톤 패스 앞까지는 FP16 선형 값만 다루고, 8비트로 내려가는 곳은 톤 패스 하나입니다. 썸네일은 에디터의 <code>Post Stages</code> 창이 열려 있을 때만 그립니다.</figcaption>
+</figure>
+<p>순서는 <code>Graphics/Renderer.cpp</code>의 <code>Renderer::Render</code> 끝부분에 있습니다. <code>RenderScenePass</code>(메인 뷰) → <code>ApplyHdrEffects</code> → <code>RenderTonemapPass</code> → <code>RenderCanvasPass</code>(게임 UI) 다음, 카메라 미리보기가 켜져 있으면 미리보기 카메라로 b0를 다시 올리고 같은 네 단계를 미리보기 뷰(<code>m_previewView</code>)에 한 번 더 합니다.</p>
+<table>
+<tr><th>단계</th><th>타깃</th><th>값</th><th>코드</th></tr>
+<tr><td>씬 패스 (포워드·디퍼드 라이팅·스카이·파티클·바다)</td><td><code>ViewTarget::hdr</code>, <code>R16G16B16A16_FLOAT</code></td><td>선형, 1을 넘어도 그대로</td><td>PSO <code>rtvFormats[0] = R16G16B16A16_FLOAT</code>: <code>GetPipelineFor</code>, <code>GetSkyPipeline</code>, <code>GetDebugLinePipeline</code>, 파티클 PSO, <code>RendererDeferred.cpp</code></td></tr>
+<tr><td>HDR 후처리</td><td>같은 <code>hdr</code>에 제자리로</td><td>선형</td><td><code>Renderer::ApplyHdrEffects</code>. 순서 TAA → 모션 블러 → 블러 → 블룸 고정</td></tr>
+<tr><td>톤 패스</td><td>에디터 <code>m_mainView.color</code>, 게임 <code>GetBackBuffer()</code></td><td>노출·ACES·GreyScale 뒤 선형 0~1, RTV가 sRGB로</td><td><code>Renderer::RenderTonemapPass</code>, <code>GetTonemapPipeline</code></td></tr>
+<tr><td>UI</td><td>같은 출력의 UNORM 뷰</td><td>인코딩된 값</td><td><code>RenderCanvasPass</code>, <code>BeginUIPass</code> (<a href="color-space-study.html#flow">색공간 3장</a>)</td></tr>
+</table>
+<p>메인 톤 패스를 미리보기 패스보다 앞에 둔 이유는 코드 주석과 기록에 있습니다. 미리보기가 b0를 다른 카메라로 덮어쓰기 전에 끝내 두어, 톤 패스가 카메라 값에 의존하지 않게 하려는 것입니다(<a href="../plan/hdr-tonemapping-record.html#decisions">기록 6장</a>). 지금 톤 패스가 b0에서 읽는 것은 <code>outputParams</code>와 <code>debugParams</code>뿐이고, 노출·톤매핑은 씬 환경 값이라 두 카메라가 같습니다.</p>
+</section>
+
+<section id="target">
+<h2>4. FP16 타깃과 HDR 환경맵</h2>
+<h3>4-1. 왜 R16G16B16A16_FLOAT인가</h3>
+<p><code>Renderer::CreateViewTarget</code>(<code>Graphics/RendererTargets.cpp</code>)가 뷰마다 <code>hdr</code> 텍스처를 만듭니다. 주석은 "선형 half4. 1 을 넘는 값(태양, 강한 조명)을 잘라내지 않고 담음"입니다. half의 성질은 다음과 같습니다 <span class="tag chk">계산값</span>.</p>
+<table>
+<tr><th>항목</th><th>값</th><th>의미</th></tr>
+<tr><td>최댓값</td><td>65504</td><td>HDR 큐브의 태양(수백)과 강한 조명 합을 담기에 충분</td></tr>
+<tr><td>가수 10비트</td><td>상대 오차 약 2<sup>−11</sup> ≈ 0.05%</td><td>값의 크기와 상관없이 비율로 정밀함. 8비트 UNORM의 고정 간격 1/255와 다름</td></tr>
+<tr><td>픽셀 크기</td><td>8바이트 (8비트 RGBA의 2배)</td><td>1920×1080이면 16,588,800바이트 ≈ 15.8 MiB</td></tr>
+<tr><td>하드웨어 sRGB 변형</td><td>없음</td><td>인코딩은 8비트로 내리는 톤 패스에서만 (<a href="color-space-study.html#flow">색공간 3-1</a>)</td></tr>
+</table>
+<p>32비트 float는 크기가 두 배이고 정밀도는 화면용으로 남습니다. <code>R11G11B10_FLOAT</code>는 4바이트라 작지만 알파가 없고 가수가 6·5비트입니다. 이 엔진이 FP16을 고른 이유로 기록된 것은 "1.0 을 넘는 값을 잃지 않도록"과 "float32 의 절반 크기"(<code>TextureLoader.cpp</code> 주석, 환경맵 쪽)이며, 렌더 타깃 쪽은 이미 RHI에 있던 포맷을 썼다고 계획서에 적혀 있습니다(<a href="../plan/hdr-tonemapping-plan.html#now">계획 1장</a>). 바인드 플래그는 RT·SRV·UAV입니다. UAV는 컴퓨트 블러의 세로 패스가 결과를 <code>hdr</code>에 되돌려 쓰기 위한 것입니다.</p>
+<p>뷰마다 따로 있습니다. 에디터 씬 뷰(<code>SetSceneTarget</code> → <code>"SceneView"</code>), 게임 모드(<code>EnsureGameTarget</code> → <code>"Game"</code>, 색 텍스처 없이 톤 패스가 백버퍼에 바로 씀), 카메라 미리보기(<code>SetPreviewTarget</code> → <code>"CameraPreview"</code>)가 각자 HDR·깊이·후처리 셋을 갖습니다. 크기가 바뀔 때만 다시 만들고, 씬 뷰와 게임 모드는 그때마다 <code>HDR 텍스처 WxH (R16G16B16A16_FLOAT)</code> 로그를 한 줄 남깁니다(미리보기는 실패할 때만 로그).</p>
+
+<h3>4-2. HDR 환경맵도 FP16</h3>
+<p><code>TextureLoader.cpp</code>의 <code>FinishImage</code>는 원본이 부동소수점(<code>FORMAT_TYPE_FLOAT</code>)이거나 BC6H면 <code>R16G16B16A16_FLOAT</code>로 바꾸고 sRGB 라벨 요청을 무시합니다. 부동소수점 데이터는 이미 선형이기 때문입니다. 큐브 면 이미지 폴더는 8비트만 받으므로 HDR 큐브는 큐브 DDS로 줘야 합니다(<code>LoadCubeFromFile</code>의 오류 메시지).</p>
+<p><code>Shaders/SkyboxPixelShader.hlsl</code>의 <code>PS_Sky</code>는 큐브를 샘플한 선형 값을 그대로 FP16 타깃에 씁니다. 주석: "HDR 큐브(1 을 넘는 값)도 옴. 선형 값 그대로 FP16 타깃에 씀 — 노출·톤매핑은 TonemapPixelShader 가 함." 그러니 하늘과 물체가 같은 노출·같은 곡선을 거칩니다. <code>PS_Sky</code>는 큐브 값에 아무것도 곱하지 않으므로, IBL 세기(<code>iblIntensity</code>)·색(<code>iblTint</code>)은 배경 하늘에 영향을 주지 않습니다. 큐브와 IBL 자체는 <a href="ibl-study.html">IBL 학습</a>에서 다룹니다.</p>
+</section>
+
+<section id="tonepass">
+<h2>5. 톤 패스 안쪽</h2>
+<h3>5-1. PS_Tonemap 순서</h3>
+<ol>
+<li><b>읽기.</b> 샘플러 없이 <code>postInput.Load</code>(t13)로 읽습니다. 좌표는 <code>postView.xy / postView.zw</code>(입력/출력 크기 비)로 늘려서 읽으므로, 출력이 작으면 최근접 축소가 됩니다. 같은 크기면 비가 1입니다.</li>
+<li><b>디버그 뷰 우회.</b> <code>debugParams.x &gt; 0.5</code>, 즉 디버그 뷰가 0이 아니면 <code>saturate(hdr)</code>만 하고 끝냅니다. 노출·ACES·GreyScale을 모두 건너뜁니다. 출력 RTV는 그대로라 sRGB 인코딩은 여전히 일어납니다.</li>
+<li><b>노출·톤 곡선.</b> <code>ApplyExposureToneMap(hdr)</code>.</li>
+<li><b>색 효과.</b> <code>postGrade.y &lt; 0.5</code>면 GreyScale(Rec.709 휘도로 <code>lerp</code>, 양 <code>postGrade.x</code>)을 적용합니다. 톤매핑을 끝낸 선형 값에 적용하며, 셰이더 주석은 대비·채도·비네트 같은 새 색 효과를 여기에 이어 붙인다고 적고 있습니다.</li>
+</ol>
+<p>상수는 두 곳에서 옵니다. 노출·톤매핑 스위치·디버그 번호는 b0 <code>PerFrame</code>의 <code>outputParams</code>·<code>debugParams</code>(<code>Renderer::UploadPerFrameConstants</code>가 채움. <code>outputParams</code>는 <code>m_environment</code>, <code>debugParams</code>는 <code>m_settings.debugView</code>·<code>debugDepthRange</code>에서 옴), 크기 비와 GreyScale은 b4 <code>PostParams</code>(<code>RenderTonemapPass</code>가 매 호출 올림)입니다. 셋은 <code>Layout_Post</code>(b0·b4·t13·s6·t20)이고 블러·블룸 패스와 같은 레이아웃을 씁니다.</p>
+
+<h3>5-2. 왜 각 PS의 끝이 아니라 따로 된 패스인가</h3>
+<p>기록된 이유와 구조에서 따라 나오는 결과를 나눠 적습니다.</p>
+<table>
+<tr><th>이유</th><th>출처</th></tr>
+<tr><td>후처리(블러·블룸 …)는 1을 넘는 선형 값에서 해야 하므로 톤매핑 앞에 있어야 함</td><td><code>RendererPost.cpp</code> 머리 주석</td></tr>
+<tr><td>노출 → ACES → sRGB를 "한 번만" 적용. 씬 패스는 선형만 다룸</td><td><a href="../plan/hdr-tonemapping-record.html">기록 1장</a>, <a href="../plan/hdr-tonemapping-plan.html#design">계획 2장</a></td></tr>
+<tr><td>FP16에는 sRGB 변형이 없으므로 인코딩은 8비트로 내리는 패스에서만 가능</td><td><a href="../plan/hdr-tonemapping-record.html#decisions">기록 6장</a></td></tr>
+<tr><td>씬 PSO는 항상 FP16 하나, sRGB 여부는 톤 PSO만 따짐 (D3D12 PSO의 RTV 포맷 일치)</td><td><code>GetPipelineFor</code> 주석, <a href="../plan/hdr-tonemapping-plan.html#pitfalls">계획 4장</a></td></tr>
+</table>
+<p>구조에서 따라 나오는 결과도 있습니다. 반투명·가산 파티클·바다가 HDR 값끼리 섞이고, 픽셀마다 한 번만 곡선을 지나므로 겹쳐 그린 픽셀도 곡선을 두 번 지나지 않습니다. 대가는 화면 크기 FP16 텍스처 하나(1080p 15.8 MiB <span class="tag chk">계산값</span>)와 전체 화면 삼각형 패스 하나입니다.</p>
+
+<h3>5-3. 디버그 뷰는 톤매핑을 건너뛴다</h3>
+<p>알베도·노멀·깊이 같은 디버그 뷰(<code>RenderSettings::debugView</code> 1~17)는 조명 결과가 아니라 0~1로 정한 색이므로, 노출을 곱하거나 곡선을 지나면 값을 읽을 수 없습니다. 톤 PS 주석은 "기존에도 톤매핑 전에 반환했음"이라고 적고 있어, PS 끝에서 톤매핑하던 시절의 의미를 그대로 지킨 것입니다. HDR 후처리 쪽도 디버그 뷰를 따로 다룹니다.</p>
+<ul>
+<li>TAA: <code>Renderer::TaaActive</code>가 <code>debugView == 0</code>일 때만 켭니다.</li>
+<li>모션 블러: <code>ApplyHdrEffects</code>가 <code>debugView == 0</code>일 때만 켭니다.</li>
+<li>뷰 16·17(속도): 속도 버퍼를 <code>hdr</code>에 그리고 다른 효과를 모두 건너뛴 채 반환합니다.</li>
+<li>블러·블룸: 조건에 <code>debugView</code>가 없습니다. 켜 두면 디버그 뷰 1~15에도 적용됩니다.</li>
+</ul>
+
+<h3>5-4. 출력이 넷, 셰이더는 하나</h3>
+<p><code>RenderTonemapPass</code>는 입력 셋(<code>hdrSet</code>), 출력 텍스처와 입력/출력 크기, 끝난 뒤 상태(<code>outputAfter</code>), <code>skipGrade</code>, 디버그 이름만 받습니다. 그래서 같은 PSO·같은 셰이더가 네 곳에 쓰입니다.</p>
+<table>
+<tr><th>출력</th><th>호출하는 곳</th><th>특징</th></tr>
+<tr><td>에디터 씬 뷰 텍스처</td><td><code>Renderer.cpp</code> 프레임 끝 (<code>"TonemapPass"</code>)</td><td>끝나면 <code>ShaderResource</code>. ImGui가 UNORM SRV로 읽음</td></tr>
+<tr><td>게임 백버퍼</td><td>같은 자리, <code>IsOffscreen()</code>이 거짓일 때</td><td>끝나면 <code>RenderTarget</code>으로 남겨 UI 패스가 이어 그림</td></tr>
+<tr><td>카메라 미리보기</td><td><code>"PreviewTonemapPass"</code></td><td>미리보기 뷰의 자기 HDR을 같은 크기로</td></tr>
+<tr><td>후처리 단계 썸네일</td><td><code>Renderer::CapturePostStage</code></td><td>폭 min(384, HDR 폭)(<code>EnsureStageThumbs</code>), 6단계(Scene·TAA·Motion·Blur·Bloom·Final). Final만 GreyScale 포함, 나머지는 <code>skipGrade</code></td></tr>
+</table>
+<p>썸네일은 "지금까지의 HDR 결과를 톤매핑해 본 모습"입니다. 각 효과 직후의 <code>hdr</code>를 같은 노출·곡선으로 보여 주므로, 효과가 바꾼 것만 비교할 수 있습니다.</p>
+
+<h3>5-5. 톤 PSO 두 개</h3>
+<p><code>Renderer::GetTonemapPipeline</code>은 <code>m_tonemapPipelines[srgbOutput]</code>에 PSO 둘을 캐시합니다. RTV 포맷이 <code>R8G8B8A8_UNORM_SRGB</code>인 것과 <code>R8G8B8A8_UNORM</code>인 것입니다. 깊이는 없습니다(<code>Pass_Tonemap</code>의 <code>dsvFormat</code> Unknown). F5 스위치 자체는 <a href="color-space-study.html#flow">색공간 3-2</a>에 있습니다.</p>
+</section>
+
+<section id="settings">
+<h2>6. 설정과 기본값</h2>
+<table>
+<tr><th>설정</th><th>위치</th><th>구조체 기본값</th><th>내장·새 씬</th><th>저장</th></tr>
+<tr><td><code>exposure</code></td><td><code>Scene/Scene.h</code> 의 <code>SceneEnvironment</code></td><td>1.0</td><td>1.0</td><td>씬 JSON <code>"environment"</code>, 없으면 1.0</td></tr>
+<tr><td><code>toneMapping</code></td><td>같은 곳</td><td><code>false</code></td><td><code>true</code></td><td>같은 곳, 없으면 <code>false</code></td></tr>
+<tr><td><code>srgbOutput</code></td><td><code>Graphics/Renderer.h</code> 의 <code>RenderSettings</code></td><td><code>true</code></td><td>—</td><td>씬에 저장하지 않음 (F5)</td></tr>
+<tr><td>블룸 <code>bloomEnabled</code>·<code>bloomThreshold</code>·<code>bloomKnee</code>·<code>bloomIntensity</code></td><td><code>Scene/PostProcessSettings.h</code></td><td>끔, 1.0, 0.5, 0.5</td><td>—</td><td>씬 파일 <code>environment.postProcess</code>로 함께 저장 (<code>SceneEnvironment::post</code>)</td></tr>
+</table>
+<p>기본값이 둘인 데는 기록된 이유가 있습니다. 구조체와 직렬화 기본값(<code>SceneSerializer.cpp</code>의 <code>env.value("toneMapping", false)</code>)은 톤매핑 끔입니다. "환경이 없는 옛 씬의 색을 지키기 위해서"입니다(<a href="pbr-study.html#panel-F">PBR 학습 6장</a>, <a href="../overview/rendering-analysis.html#c12-14">12.14</a>). 반면 <code>Editor/EditorApp.cpp</code>의 <code>ApplyDefaultEnvironment</code>는 내장 씬(데모·헬멧·Sponza·새 씬·새 프로젝트)에 HDR IBL 세트를 깔고 톤매핑을 켭니다. 주석은 "HDR 이라 톤매핑을 켬"입니다.</p>
+<p>엔진 값은 <code>Renderer::ResolveEnvironment</code>가 씬 환경을 <code>m_environment</code>로 옮기고, <code>UploadPerFrameConstants</code>가 <code>outputParams = (exposure, toneMapping ? 1 : 0, hasBrdfLut ? 1 : 0, 0)</code>로 b0에 올립니다. 에디터 UI는 환경 패널의 <code>Exposure</code> 슬라이더와 <code>ACES tone mapping</code> 체크박스, 그 아래 <code>Post process</code> 묶음입니다(<code>Editor/DebugUI.cpp</code>). 환경의 일부이므로 되돌리기 이력과 씬 파일에 같이 들어갑니다.</p>
+<p>블룸은 HDR 구간 후처리 중 1을 넘는 값을 직접 쓰는 효과입니다. <code>PostPixelShader.hlsl</code> 모드 2가 채널 최댓값이 임계값(기본 1.0)을 넘는 만큼만 남기고 knee 구간을 2차 곡선으로 잇습니다. 축소 체인 5단계(<code>PostScratch::kBloomLevels</code>)를 거쳐 <code>hdr</code>에 가산합니다. 자세한 구조는 <a href="post-process-study.html">후처리 학습</a>에서 다룹니다.</p>
+</section>
+
+<section id="code">
+<h2>7. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>노출·ACES 식</td><td><code>Shaders/Post.hlsli</code> 의 <code>ApplyExposureToneMap</code></td><td><code>color *= outputParams.x</code>, 켜져 있으면 Narkowicz 유리식 + <code>saturate</code>. 호출처는 톤 PS 하나</td></tr>
+<tr><td>톤 PS</td><td><code>Shaders/TonemapPixelShader.hlsl</code> 의 <code>PS_Tonemap</code></td><td>크기 비로 <code>Load</code>, 디버그 우회, 노출·ACES, GreyScale</td></tr>
+<tr><td>전체 화면 삼각형</td><td><code>Shaders/ScreenVertexShader.hlsl</code> 의 <code>VS_Screen</code></td><td>정점 버퍼 없이 <code>SV_VertexID</code> 0~2</td></tr>
+<tr><td>상수 배치</td><td><code>Shaders/Common.hlsli</code> 의 <code>PerFrame.outputParams</code>, <code>Post.hlsli</code> 의 <code>PostParams</code></td><td>x 노출, y 톤매핑, z BRDF LUT / <code>postView</code>, <code>postGrade</code></td></tr>
+<tr><td>HDR 타깃</td><td><code>Graphics/RendererTargets.cpp</code> 의 <code>Renderer::CreateViewTarget</code>, <code>SetSceneTarget</code>, <code>EnsureGameTarget</code>, <code>SetPreviewTarget</code></td><td>뷰마다 <code>hdr</code>(FP16, RT·SRV·UAV)와 <code>hdrSet</code>(<code>Layout_Post</code>)</td></tr>
+<tr><td>톤 패스 호출</td><td><code>Graphics/RendererPost.cpp</code> 의 <code>Renderer::RenderTonemapPass</code></td><td>b4 올림, <code>srgbView = m_settings.srgbOutput</code>, <code>LoadOp::DontCare</code></td></tr>
+<tr><td>톤 PSO</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::GetTonemapPipeline</code></td><td><code>m_tonemapPipelines[2]</code>, RTV 포맷만 다름</td></tr>
+<tr><td>씬 PSO 포맷</td><td><code>Renderer::GetPipelineFor</code>, <code>GetSkyPipeline</code>, <code>GetDebugLinePipeline</code>, <code>Graphics/RendererDeferred.cpp</code>, 파티클 PSO</td><td>항상 <code>R16G16B16A16_FLOAT</code></td></tr>
+<tr><td>HDR 후처리</td><td><code>Renderer::ApplyHdrEffects</code></td><td>TAA → 모션 블러 → 블러 → 블룸, 결과는 <code>hdr</code> 제자리</td></tr>
+<tr><td>단계 썸네일</td><td><code>Renderer::EnsureStageThumbs</code>, <code>CapturePostStage</code>, <code>RequestPostCapture</code></td><td>폭 min(384, HDR 폭) UNORM 6장, 톤 패스로 축소해 그림</td></tr>
+<tr><td>설정 값 → b0</td><td><code>Renderer::ResolveEnvironment</code>, <code>UploadPerFrameConstants</code></td><td><code>m_environment.exposure</code>·<code>toneMapping</code> → <code>outputParams</code></td></tr>
+<tr><td>HDR 텍스처 읽기</td><td><code>Graphics/TextureLoader.cpp</code> 의 <code>FinishImage</code></td><td>float·BC6H → <code>R16G16B16A16_FLOAT</code>, sRGB 무시</td></tr>
+<tr><td>스카이</td><td><code>Shaders/SkyboxPixelShader.hlsl</code> 의 <code>PS_Sky</code></td><td>큐브 값을 그대로 FP16에</td></tr>
+<tr><td>설정·UI</td><td><code>Scene/Scene.h</code> 의 <code>SceneEnvironment</code>, <code>Scene/SceneSerializer.cpp</code>, <code>Editor/DebugUI.cpp</code>, <code>Editor/EditorApp.cpp</code> 의 <code>ApplyDefaultEnvironment</code></td><td>기본값, 저장, 슬라이더, 내장 씬 기본 환경</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>8. 실험</h2>
+<p>모두 에디터 환경 패널에서 바로 할 수 있습니다. 기본 HDR 세트가 깔린 내장 씬이나 <code>Projects/SherlockTestScenes</code>의 <code>Cubemap.json</code>이 좋습니다.</p>
+
+<h3>E1. 구현 직후 확인 <span class="tag ok">확인함 (2026-10-24)</span></h3>
+<p>구현 기록의 실행입니다(<a href="../plan/hdr-tonemapping-record.html#verify">기록 7장</a>). D3D11 Debug x64로 CubemapTest를 열었을 때 바인딩 대조에서 <code>ToneMapPS</code>의 t13·b0·b4가 OK였고, HDR 텍스처는 1280x662로 만들어진 뒤 패널 크기가 바뀔 때만(732x386, 732x371) 다시 만들어졌습니다. 오류 로그는 없었습니다. 10-23 첫 실행은 기록의 10-24 정정대로 프로젝트 경로가 잘못 주어진 실행이었고, 그때 스크린샷은 톤매핑 켬·노출 1·IBL 0.5에서 "구체·헬멧·하늘이 정상"이었다고 적혀 있습니다. 같은 기록에 "이전 화면과의 픽셀 비교, D3D12 실행, 게임 모드와 미리보기 실행은 하지 않음"도 적혀 있습니다.</p>
+
+<h3>E2. 톤매핑 끄고 켜기 <span class="tag chk">예상</span></h3>
+<p>노출 1에서 <code>ACES tone mapping</code>을 끕니다. 하늘의 태양 주변과 금속 하이라이트가 넓은 흰 면으로 뭉치고(그림 1의 잘라내기), 어두운 곳은 조금 밝아집니다(f(x) &lt; x 인 발끝이 사라지므로). 다시 켜면 하이라이트 안의 밝기 차이가 돌아오고 중간 톤이 밝아집니다.</p>
+
+<h3>E3. 노출 스톱 <span class="tag chk">예상</span></h3>
+<p>톤매핑을 켠 채 노출을 0.5 → 1 → 2로 바꿉니다. 화면 전체가 같은 비율로 바뀌지 않습니다. 밝은 쪽은 어깨에 눌려 조금만, 중간 톤은 많이 바뀝니다. 노출 0.05~8 범위 끝에서는 거의 검정 또는 대부분 흰색이 됩니다.</p>
+
+<h3>E4. 회색 카드 128의 값 <span class="tag chk">계산값</span></h3>
+<p>회색 128 텍스처는 선형 0.216으로 풀립니다(<a href="color-space-study.html#flow">색공간 학습</a>). unlit 카드는 이 값이 그대로 HDR 타깃에 들어가므로, 톤 패스 뒤 화면 값은 아래와 같아야 합니다.</p>
+<table>
+<tr><th>설정</th><th>톤 곡선 뒤 선형</th><th>화면 8비트</th></tr>
+<tr><td>톤매핑 끔, 노출 1</td><td>0.216</td><td>128</td></tr>
+<tr><td>톤매핑 켬, 노출 1</td><td>0.324</td><td>154</td></tr>
+<tr><td>톤매핑 켬, 노출 0.5</td><td>0.140</td><td>105</td></tr>
+<tr><td>톤매핑 켬, 노출 2</td><td>0.567</td><td>198</td></tr>
+</table>
+<p>감마 검증을 톤매핑 끔·노출 1에서 해야 하는 이유가 이 표입니다(<a href="../plan/hdr-tonemapping-record.html#decisions">기록 6장</a>).</p>
+
+<h3>E5. 디버그 뷰와 노출 <span class="tag chk">예상</span></h3>
+<p>디버그 뷰를 알베도로 두고 노출 슬라이더를 끝까지 움직입니다. 화면이 변하지 않아야 합니다(5-3). 블룸을 켜면 알베도 뷰에도 번짐이 보이는지도 확인할 수 있습니다. 코드상 블룸 조건에 <code>debugView</code>가 없어서 블룸이 적용됩니다. 다만 디버그 색은 1 이하라 기본 임계값 1.0·knee 0.5에서는 밝기 0.5~1 구간만 조금 추출되고(최대 비율 0.125, 세기 0.5를 곱함) 번짐은 약하게 보일 것입니다. 임계값을 낮추면 뚜렷해집니다. <span class="tag chk">예상</span></p>
+
+<h3>E6. 후처리 단계 썸네일 <span class="tag chk">예상</span></h3>
+<p>에디터의 <code>Post Stages</code> 창을 열고 블룸을 켭니다. Scene과 Bloom 썸네일은 같은 노출·곡선으로 그려지므로 차이는 블룸이 더한 빛뿐입니다. GreyScale을 올리면 Final만 흑백이 되어야 합니다(<code>skipGrade</code>).</p>
+</section>
+
+<section id="pitfalls">
+<h2>9. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>중간 톤이 뜨고 흰색이 232 아래에서 멈춰 대비·채도가 빠짐</td><td>톤매핑 이중 적용 (PS 끝과 톤 패스 둘 다). 노출 1에서 0.18 → 0.267 → 0.397, 1 → 0.804 → 0.753 <span class="tag chk">계산값</span></td><td>계획서 함정 1번(계획서는 "어두움"이라고 적었지만 식으로는 중간 톤이 밝아짐). 지금 <code>ApplyExposureToneMap</code> 호출처는 톤 PS 하나</td></tr>
+<tr><td>톤매핑을 켰는데 회색 카드가 128이 아님</td><td>unlit도 톤 패스를 거침</td><td>의도된 동작. 0.216 → 154 (E4)</td></tr>
+<tr><td>배경 클리어 색이 지정한 숫자와 다름</td><td>클리어 색도 HDR 타깃에 선형으로 칠해지고 톤 패스를 거침</td><td>기록 6장에서 허용한 변화</td></tr>
+<tr><td>밝은 빨강·파랑 광원이 흰색 쪽으로 물 빠짐</td><td>곡선을 RGB 채널마다 따로 적용</td><td>ACES 색공간 변환이나 휘도 기반 곡선은 없음</td></tr>
+<tr><td>아주 밝은 영역 안의 차이가 안 보임</td><td>노출 곱한 값 7.24 이상은 전부 1</td><td>노출을 내려 확인</td></tr>
+<tr><td>스크린샷으로 1을 넘는 값을 확인할 수 없음</td><td>스크린샷은 톤 패스 뒤 8비트 출력을 읽음</td><td>HDR 값 확인용 디버그 뷰는 없음 (계획서 함정 표의 마지막 행)</td></tr>
+<tr><td>디버그 뷰가 번져 보임</td><td>블러·블룸은 디버그 뷰를 따지지 않음</td><td>TAA·모션 블러만 <code>debugView == 0</code> 조건이 있음 (5-3)</td></tr>
+</table>
+<h3>9-1. 없는 것</h3>
+<ul>
+<li><b>자동 노출(눈 적응).</b> 화면 평균 휘도나 히스토그램으로 노출을 정하는 코드가 없습니다(<code>Graphics</code>·<code>Shaders</code>·<code>Scene</code>에서 검색해 찾지 못함). 노출은 씬 파일의 숫자 하나이고, 밝은 바깥과 어두운 실내를 오가는 장면은 손으로 맞춰야 합니다.</li>
+<li><b>HDR 디스플레이 출력.</b> 스왑체인은 <code>R8G8B8A8_UNORM</code>이고 HDR10(<code>R10G10B10A2</code> + PQ) 경로가 없습니다. RHI에 <code>R10G10B10A2_UNORM</code>은 있지만 주석은 "(월드 노멀)"이고 출력에는 쓰지 않습니다(<code>RHI/PipelineTypes.h</code>).</li>
+<li><b>곡선 선택.</b> ACES 근사와 잘라내기 둘뿐입니다. 흰 점·어깨 모양을 조정하는 매개변수가 없습니다.</li>
+<li><b>카메라별 노출.</b> 노출은 씬 환경에 있으므로 메인 카메라와 미리보기 카메라가 같은 값을 씁니다.</li>
+</ul>
+<p>블룸은 있습니다(기본 꺼짐, 6장). PBR 학습 6장의 "아직 HDR 렌더 타깃이 없습니다. 톤매핑을 셰이더 끝에서 합니다"는 2026-10-23 전의 서술입니다.</p>
+</section>
+
+<section id="study">
+<h2>10. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>장면 휘도와 표시 범위</td><td>왜 선형 값에 상한이 없고 어디서 접는가</td><td>1-1</td></tr>
+<tr><td>타깃 정밀도와 클리핑</td><td>8비트에 기록하는 순간 잃는 것, 블렌딩·후처리가 볼 수 있는 값</td><td>1-2, 4-1</td></tr>
+<tr><td>노출과 스톱</td><td>곱셈 하나, 2배 = 1스톱, 곡선의 어느 구간을 쓸지 정함</td><td>2-1, E3</td></tr>
+<tr><td>톤 곡선의 발끝과 어깨</td><td>f(x) = x 인 두 점, 7.24 흰 점, 중간 회색 0.18 → 0.267</td><td>2-2, 2-3</td></tr>
+<tr><td>채널별 톤매핑과 색상 이동</td><td>RGB 따로 누르면 밝은 포화색이 물 빠짐</td><td>2-4, 9</td></tr>
+<tr><td>half float</td><td>65504, 상대 정밀도, 8바이트/픽셀, sRGB 변형 없음</td><td>4-1</td></tr>
+<tr><td>전체 화면 패스</td><td>정점 버퍼 없는 삼각형, <code>Load</code>로 1:1 읽기, 크기 비로 축소</td><td>5-1</td></tr>
+<tr><td>자동 노출</td><td>평균 로그 휘도·히스토그램, 적응 속도 (이 엔진에는 없음)</td><td>9-1</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Krzysztof Narkowicz, <a href="https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/">ACES Filmic Tone Mapping Curve</a> (2016) — 우리 식의 출처. 계수와 맞춘 방법은 원문에서 확인</li>
+<li>LearnOpenGL, <a href="https://learnopengl.com/Advanced-Lighting/HDR">HDR</a> — 부동소수점 타깃, Reinhard, 노출을 그림으로 설명. 1~2장 입문용</li>
+<li>John Hable, <a href="http://filmicworlds.com/blog/filmic-tonemapping-operators/">Filmic Tonemapping Operators</a> — 잘라내기·Reinhard·필름 곡선 비교. 2-4</li>
+<li>Reinhard 외, Photographic Tone Reproduction for Digital Images (SIGGRAPH 2002) — x/(1+x)와 키 값(중간 회색) 개념</li>
+<li>Real-Time Rendering 4판, 8.2절 Scene to Screen — 노출, 톤매핑, 색 등급의 이론</li>
+<li>우리 문서: <a href="../plan/hdr-tonemapping-plan.html">HDR 계획</a>(옮기기 전 구조와 함정), <a href="../plan/hdr-tonemapping-record.html">HDR 구현 기록</a>(프레임 흐름, 설계 결정, 검증), <a href="pbr-study.html#panel-F">PBR 학습 6장</a>, <a href="color-space-study.html#flow">색공간 학습 3장</a>, <a href="../overview/rendering-analysis.html#c12-14">rendering-analysis 12.14</a>(HDR 큐브), <a href="post-process-study.html">후처리 학습</a>(블러·블룸), <a href="../overview/glossary.html#graphics">용어집 3장</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

@@ -5,13 +5,13 @@
     0.36000001430511475
   ],
   "camera": {
-    "pitch": 0.5175020098686218,
+    "pitch": 0.47077998518943787,
     "position": [
-      -81.48789978027344,
-      76.35005187988281,
-      -27.924575805664063
+      -77.22467803955078,
+      61.535743713378906,
+      -48.78013610839844
     ],
-    "yaw": 0.7656598091125488
+    "yaw": 0.7432405948638916
   },
   "clearColor": [
     0.3499999940395355,
@@ -23,6 +23,11 @@
     "brdfLut": "",
     "exposure": 1.0,
     "iblIntensity": 1.0,
+    "iblTint": [
+      1.0,
+      1.0,
+      1.0
+    ],
     "irradiance": "",
     "postProcess": {
       "bloomEnabled": false,
@@ -31,7 +36,14 @@
       "bloomThreshold": 1.0,
       "blurEnabled": false,
       "blurRadius": 4.0,
-      "greyscale": 0.0
+      "greyscale": 0.0,
+      "motionBlurEnabled": false,
+      "motionBlurIntensity": 0.5,
+      "motionBlurMaxRadius": 32.0,
+      "motionBlurSamples": 12,
+      "motionBlurTargetFps": 60.0,
+      "taaEnabled": false,
+      "taaFeedback": 0.10000000149011612
     },
     "shadow": {
       "bias": 0.001500000013038516,
@@ -48,6 +60,15 @@
     },
     "skybox": "",
     "specular": "",
+    "ssao": {
+      "bias": 0.02500000037252903,
+      "enabled": false,
+      "intensity": 1.0,
+      "multiply": false,
+      "power": 1.5,
+      "radius": 0.5,
+      "sampleCount": 16
+    },
     "toneMapping": true
   },
   "lights": [
@@ -84,6 +105,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "builtin:checker",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         1.0,
@@ -91,6 +113,12 @@
         1.0,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -98,6 +126,7 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 0.0,
       "metallicRoughnessTexture": "",
       "name": "Ground Checker",
@@ -107,6 +136,16 @@
       "occlusionTexture": "",
       "roughness": 0.8999999761581421,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         100.0,
@@ -117,6 +156,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.7200000286102295,
@@ -124,6 +164,12 @@
         0.699999988079071,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -131,6 +177,7 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 0.0,
       "metallicRoughnessTexture": "",
       "name": "Pillar",
@@ -140,6 +187,16 @@
       "occlusionTexture": "",
       "roughness": 0.800000011920929,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -150,6 +207,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.6499999761581421,
@@ -157,6 +215,12 @@
         0.44999998807907104,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -164,6 +228,7 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 0.0,
       "metallicRoughnessTexture": "",
       "name": "Building",
@@ -173,6 +238,16 @@
       "occlusionTexture": "",
       "roughness": 0.800000011920929,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -183,6 +258,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.44999998807907104,
@@ -190,6 +266,12 @@
         0.699999988079071,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -197,6 +279,7 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 0.0,
       "metallicRoughnessTexture": "",
       "name": "Box",
@@ -206,6 +289,16 @@
       "occlusionTexture": "",
       "roughness": 0.800000011920929,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -216,6 +309,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.75,
@@ -223,6 +317,12 @@
         0.3499999940395355,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -230,6 +330,7 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 0.0,
       "metallicRoughnessTexture": "",
       "name": "Wall",
@@ -239,6 +340,16 @@
       "occlusionTexture": "",
       "roughness": 0.800000011920929,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -1227,27 +1338,6 @@
         2.0,
         14.0,
         2.0
-      ]
-    },
-    {
-      "id": 46,
-      "material": 2,
-      "mesh": 1,
-      "name": "Building 1 L",
-      "position": [
-        -43.81100082397461,
-        7.357999801635742,
-        37.0
-      ],
-      "rotation": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "scale": [
-        9.942999839782715,
-        14.71500015258789,
-        9.942999839782715
       ]
     },
     {

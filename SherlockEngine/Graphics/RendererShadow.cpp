@@ -353,11 +353,15 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, 
 		// 따라서 정수 텍셀 단위로만 움직이도록 변경
 		const AtlasRect rect = CsmRect(c);
 		const float tile = static_cast<float>(rect.size);
-		XMVECTOR origin = XMVector4Transform(XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f), view * proj);
-		origin = XMVectorScale(origin, tile * 0.5f);   // NDC [-1,1] → 텍셀 단위
-		const XMVECTOR snapped = XMVectorRound(origin);
-		const XMVECTOR offset = XMVectorScale(XMVectorSubtract(snapped, origin), 2.0f / tile);
-		proj.r[3] = XMVectorAdd(proj.r[3], XMVectorSet(XMVectorGetX(offset), XMVectorGetY(offset), 0.0f, 0.0f));
+		XMVECTOR origin = XMVector4Transform(XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f), view * proj);						//1) 월드 원점이 광원 NDC 어디에 오는지
+		origin = XMVectorScale(origin, tile * 0.5f);     															//2) NDC [-1,1] → 텍셀 단위(x512)
+		const XMVECTOR snapped = XMVectorRound(origin);																//3) 가장 가까운 정수 텍셀
+		const XMVECTOR offset = XMVectorScale(XMVectorSubtract(snapped, origin), 2.0f / tile);						//4) 모자란 양을 다시 NDC단위로
+		proj.r[3] = XMVectorAdd(proj.r[3], XMVectorSet(XMVectorGetX(offset), XMVectorGetY(offset), 0.0f, 0.0f));	//5) 투영 행렬 이동 성분에 더함
+		//이 과정을 거치면 월드 원점이 텍셀 격자점 위에 떨어짐
+		//원점 하나만맞춰도 월드의 모든 점이 같은 격자에 붙음
+
+
 
 		// 5) 사각형과 params. 바이어스는 단일 뷰와 같은 "월드 거리"가 되도록 깊이 범위 비로 환산함.
 		const float singleRange = m_shadowSettings.distance * 2.0f + m_shadowSettings.orthoSize;

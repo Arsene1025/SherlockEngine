@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 텍스처 파이프라인 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>텍스처 파이프라인 학습 문서</h1>
+  <p>파일에서 GPU까지 — 디코딩, 밉 체인, BC7 압축, 디스크 변환 캐시, 런타임 캐시, 업로드, 샘플링</p>
+  <p>2026-11-25 · 텍스처가 어떤 단계를 거쳐 셰이더에 닿는지는 지금까지 <a href="../plan/texture-pipeline-record.html">텍스처 파이프라인 구현 기록</a>(BC 직접 업로드, 임포트 변환 캐시, 게임 패키지)과 <a href="../overview/rendering-analysis.html#c12">rendering-analysis 12장</a>에 나뉘어 있었습니다. 이 문서는 밉맵과 블록 압축의 원리부터 설명하고, 지금 코드의 경로를 한 줄로 이어 정리합니다. 색공간은 <a href="color-space-study.html">색공간 학습</a>, glTF의 텍스처 참조는 <a href="gltf-study.html#material">glTF 학습</a>, 환경 큐브와 프리필터는 <a href="ibl-study.html">IBL 학습</a>에서 다루므로 여기서는 연결만 합니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 왜 변환이 필요한가와 밉·블록 압축의 원리, 3장은 한 장의 텍스처가 지나는 전체 흐름, 4장은 에디터의 임포트 변환과 디스크 캐시, 5장은 로더가 포맷을 고르는 규칙, 6장은 런타임 캐시와 대체 텍스처, 7장은 GPU 업로드, 8장은 샘플러와 노멀 맵 해석, 9장은 메모리 계산, 10장은 코드 지도, 11장은 실험, 12장은 함정, 13장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 텍스처 크기와 메모리는 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 변환 시간과 DamagedHelmet·패키지 용량은 <a href="../plan/texture-pipeline-record.html">구현 기록</a>에 적힌 측정이며 <span class="tag ok">확인함</span>으로 표시했습니다. 변환 시간은 GPU·CPU에 따라 달라집니다. 메모리 값은 로더가 넘기는 서브리소스 크기의 합이라 드라이버가 보고하는 실제 사용량과는 정렬만큼 차이가 납니다.</div>
+</header>
+<nav><a href="#why">1. 왜 변환하나</a><a href="#principle">2. 밉과 블록 압축</a><a href="#flow">3. 전체 흐름</a><a href="#import">4. 임포트 변환·디스크 캐시</a><a href="#loader">5. 로더의 포맷 규칙</a><a href="#cache">6. TextureCache</a><a href="#upload">7. 업로드</a><a href="#sampling">8. 샘플링·노멀 맵</a><a href="#memory">9. 메모리</a><a href="#code">10. 우리 코드</a><a href="#lab">11. 실험</a><a href="#pitfalls">12. 함정</a><a href="#study">13. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 파일을 그대로 올리지 않는가</h2>
+<h3>1-1. 파일 크기와 VRAM 크기는 다르다</h3>
+<p>PNG와 JPG는 디스크에서 작게 보관하기 위한 형식입니다. GPU는 이 형식을 샘플할 수 없어서, 읽을 때 CPU가 풀어 텍셀마다 4바이트(<code>R8G8B8A8</code>)인 이미지로 만든 뒤 올려야 합니다. 2048² 텍스처는 JPG 파일이 훨씬 작아도 VRAM에서는 밉 0만 16 MB, 밉 체인까지 21.3 MB입니다 <span class="tag chk">계산값</span>. 재질 하나가 알베도·노멀·금속성/거칠기·AO·발광 다섯 장을 쓰면 100 MB를 넘습니다.</p>
+<p>GPU가 압축된 채로 읽을 수 있는 형식이 블록 압축(BC)입니다. BC7은 텍셀당 1바이트라 같은 텍스처가 5.3 MB가 됩니다 <span class="tag chk">계산값</span>. 구현 기록의 DamagedHelmet 측정은 다섯 장 106.5 MB → 26.6 MB, 약 4분의 1이었습니다 <span class="tag ok">확인함 (2026-11-12)</span> (<a href="../plan/texture-pipeline-record.html">기록</a> 1장). 4×4보다 작은 밉도 16 B 블록 하나를 차지하므로 정확한 비율은 4분의 1보다 조금 큽니다. 2048² 밉 12단계는 BC7 5,592,432 B, RGBA8 22,369,620 B입니다 <span class="tag chk">계산값</span>.</p>
+<h3>1-2. 변환은 비싸서 미리 한다</h3>
+<p>밉 체인을 만들고 BC7로 압축하는 일은 로드마다 하기에는 느립니다. 기록에 따르면 4096² 한 장의 BC7 압축이 CPU로 약 7초, GPU 인코더를 써도 전체 약 2.8초였고, 2048²는 0.6~1초였습니다 <span class="tag ok">확인함 (2026-11-12)</span> (<a href="../plan/texture-pipeline-record.html">기록</a> 2장). 그래서 이 엔진은 에디터가 처음 읽을 때 한 번 변환해 디스크에 DDS로 두고, 다음부터는 그 DDS를 압축 그대로 GPU에 올립니다. 게임 패키지에는 변환된 DDS만 싣습니다.</p>
+<h3>1-3. 색공간 요약</h3>
+<p>알베도·발광·반사 색은 <code>_SRGB</code> 라벨, 노멀과 마스크는 UNORM으로 읽습니다. 밉 평균(<code>TEX_FILTER_SRGB</code>)과 BC7 인코딩(<code>TEX_COMPRESS_SRGB_IN</code>)도 sRGB 텍스처는 선형으로 풀어서 계산합니다. 자세한 이유와 함정은 <a href="color-space-study.html#textures">색공간 학습 4장</a>에 있습니다.</p>
+</section>
+
+<section id="principle">
+<h2>2. 밉맵과 블록 압축의 원리</h2>
+<h3>2-1. 밉 체인</h3>
+<p>멀리 있는 면은 화면 픽셀 하나가 텍셀 여러 개를 덮습니다. 밉 0에서 한 점만 읽으면 우연히 걸린 텍셀 하나가 덮인 영역 전체를 대신하게 되어, 카메라가 조금만 움직여도 반짝이는 앨리어싱이 생깁니다. 밉 체인은 가로·세로를 절반씩 줄이며 미리 평균 낸 이미지들입니다. 하드웨어는 픽셀 사이 UV 변화량(미분)으로 단계를 골라 그 단계에서 읽고, 3선형 필터는 이웃한 두 단계를 다시 섞습니다.</p>
+<p>단계 수는 긴 변 기준 ⌊log₂(max(w, h))⌋ + 1입니다. 2048²는 12단계, 4096²는 13단계입니다. 각 단계가 앞 단계의 1/4이므로 전체는 1 + 1/4 + 1/16 + … ≈ 4/3, 밉 0보다 약 33% 많습니다 <span class="tag chk">계산값</span>.</p>
+<h3>2-2. 블록 압축</h3>
+<p>BC 포맷은 이미지를 4×4 텍셀 블록으로 나누고 블록마다 고정 바이트로 저장합니다. 블록 안의 색을 끝점 두 개와 그 사이를 고르는 텍셀별 인덱스로 표현하는 방식입니다. 블록 크기가 고정이라 GPU가 임의 텍셀의 주소를 바로 계산할 수 있고, 샘플할 때 하드웨어가 풉니다. PNG처럼 내용에 따라 길이가 변하는 압축은 이 성질이 없어서 GPU가 직접 읽지 못합니다.</p>
+<figure>
+<svg viewBox="0 0 940 230" role="img" aria-label="밉 체인 크기와 4×4 BC 블록">
+  <defs><marker id="tex-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <text x="20" y="26">밉 체인 (2048², BC7)</text>
+  <rect x="20" y="42" width="128" height="128" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <rect x="170" y="106" width="64" height="64" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <rect x="256" y="138" width="32" height="32" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <rect x="316" y="154" width="16" height="16" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <rect x="362" y="162" width="8" height="8" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="392" y="170">…</text>
+  <text x="84" y="188" text-anchor="middle">2048²</text>
+  <text x="84" y="204" text-anchor="middle">4 MB</text>
+  <text x="202" y="188" text-anchor="middle">1024²</text>
+  <text x="202" y="204" text-anchor="middle">1 MB</text>
+  <text x="272" y="188" text-anchor="middle">512²</text>
+  <text x="272" y="204" text-anchor="middle">256 KB</text>
+  <text x="324" y="188" text-anchor="middle">256²</text>
+  <text x="366" y="188" text-anchor="middle">128²</text>
+  <text x="20" y="222">1×1까지 12단계, 합 ≈ 5.33 MB (밉 0의 4/3)</text>
+  <text x="480" y="26">BC 블록: 4×4 텍셀 → 고정 크기</text>
+  <g style="fill:var(--paper);stroke:var(--ink3)">
+    <rect x="490" y="50" width="20" height="20"/><rect x="510" y="50" width="20" height="20"/><rect x="530" y="50" width="20" height="20"/><rect x="550" y="50" width="20" height="20"/>
+    <rect x="490" y="70" width="20" height="20"/><rect x="510" y="70" width="20" height="20"/><rect x="530" y="70" width="20" height="20"/><rect x="550" y="70" width="20" height="20"/>
+    <rect x="490" y="90" width="20" height="20"/><rect x="510" y="90" width="20" height="20"/><rect x="530" y="90" width="20" height="20"/><rect x="550" y="90" width="20" height="20"/>
+    <rect x="490" y="110" width="20" height="20"/><rect x="510" y="110" width="20" height="20"/><rect x="530" y="110" width="20" height="20"/><rect x="550" y="110" width="20" height="20"/>
+  </g>
+  <text x="530" y="148" text-anchor="middle">텍셀 16개</text>
+  <path class="ln" d="M582 90H640" marker-end="url(#tex-ar2)"/>
+  <rect x="650" y="66" width="260" height="48" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="780" y="86" text-anchor="middle">16바이트 = 128비트 (BC7)</text>
+  <text x="780" y="104" text-anchor="middle">끝점 색 + 텍셀별 인덱스</text>
+  <text x="650" y="148">BC7·BC3·BC5: 16 B/블록 → 1 B/텍셀</text>
+  <text x="650" y="168">BC1·BC4: 8 B/블록 → 0.5 B/텍셀</text>
+  <text x="650" y="188">비압축 RGBA8: 64 B/블록 → 4 B/텍셀</text>
+</svg>
+<figcaption>왼쪽은 밉 체인(크기는 BC7 기준, 1 MB = 2²⁰ 바이트), 오른쪽은 BC 블록 하나. 4×4보다 작은 밉(2×2, 1×1)도 블록 하나(16바이트)를 차지합니다 <span class="tag chk">계산값</span>.</figcaption>
+</figure>
+<table>
+<tr><th>포맷</th><th>바이트/텍셀</th><th>채널</th><th>흔한 용도</th><th>이 엔진</th></tr>
+<tr><td>BC1</td><td>0.5</td><td>RGB + 1비트 알파</td><td>알파 없는 색</td><td>DDS면 압축 그대로 올림. 만들지는 않음</td></tr>
+<tr><td>BC3</td><td>1</td><td>RGB + 부드러운 알파</td><td>알파 있는 색</td><td>DDS면 압축 그대로 올림</td></tr>
+<tr><td>BC4</td><td>0.5</td><td>R 하나</td><td>AO, 높이 같은 한 채널</td><td>풀어서 RGBA8로 올림</td></tr>
+<tr><td>BC5</td><td>1</td><td>R, G</td><td>노멀 맵(z는 셰이더가 복원)</td><td>풀어서 RGBA8로 올림. 셰이더는 z를 복원하지 않음(12장)</td></tr>
+<tr><td>BC6H</td><td>1</td><td>RGB 부동소수점</td><td>HDR 환경 맵</td><td>풀어서 <code>R16G16B16A16_FLOAT</code></td></tr>
+<tr><td>BC7</td><td>1</td><td>RGB(A) 고품질</td><td>색, 마스크, 노멀</td><td>임포트 변환이 모든 칸에 만듦. 압축 그대로 올림</td></tr>
+</table>
+<h3>2-3. 이 엔진이 BC7 하나만 만드는 데서 생기는 득실</h3>
+<p>역할별로 포맷을 고르는 엔진이 많습니다. 노멀은 BC5, 한 채널 마스크는 BC4, 알파 없는 색은 BC1처럼 고르는 식입니다. <code>TextureImporter.cpp</code> 의 <code>Build</code>는 역할을 받지 않고 압축이 켜져 있으면 항상 <code>BC7_UNORM</code> 또는 <code>BC7_UNORM_SRGB</code>를 만듭니다. 구분은 sRGB 여부뿐입니다. 이렇게 하면 인코더 경로가 하나이고, 노멀 맵의 z가 그대로 남아 셰이더가 BC5 전용 복원을 하지 않아도 됩니다. 대신 AO처럼 한 채널만 쓰는 텍스처도 텍셀당 1바이트를 씁니다(BC4라면 0.5). 기록의 "남은 일"에도 BC5·BC4·BC6H가 남아 있습니다. 역할별 선택을 하지 않은 이유는 기록에 적혀 있지 않습니다.</p>
+</section>
+
+<section id="flow">
+<h2>3. 한 장의 텍스처가 지나는 길</h2>
+<figure>
+<svg viewBox="0 0 940 250" role="img" aria-label="원본 이미지에서 재질 셋까지의 텍스처 흐름">
+  <defs><marker id="tex-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <text x="15" y="20">TextureImporter::Build — 에디터, 처음 한 번</text>
+  <g style="fill:var(--accent-bg);stroke:var(--accent)">
+    <rect x="15" y="30" width="135" height="44" rx="6"/><rect x="170" y="30" width="135" height="44" rx="6"/><rect x="325" y="30" width="135" height="44" rx="6"/>
+    <rect x="480" y="30" width="135" height="44" rx="6"/><rect x="635" y="30" width="135" height="44" rx="6"/><rect x="790" y="30" width="135" height="44" rx="6"/>
+  </g>
+  <text x="82" y="48" text-anchor="middle">원본 PNG·JPG</text><text x="82" y="65" text-anchor="middle">파일 또는 모델</text>
+  <text x="237" y="48" text-anchor="middle">WIC 디코딩</text><text x="237" y="65" text-anchor="middle">DirectXTex</text>
+  <text x="392" y="48" text-anchor="middle">RGBA8 맞춤</text><text x="392" y="65" text-anchor="middle">Convert</text>
+  <text x="547" y="48" text-anchor="middle">밉 체인</text><text x="547" y="65" text-anchor="middle">GenerateMipMaps</text>
+  <text x="702" y="48" text-anchor="middle">BC7 압축</text><text x="702" y="65" text-anchor="middle">GPU, 실패 시 CPU</text>
+  <text x="857" y="48" text-anchor="middle">캐시 DDS</text><text x="857" y="65" text-anchor="middle">&lt;해시&gt;.dds</text>
+  <path class="ln" d="M150 52H168" marker-end="url(#tex-ar)"/><path class="ln" d="M305 52H323" marker-end="url(#tex-ar)"/><path class="ln" d="M460 52H478" marker-end="url(#tex-ar)"/>
+  <path class="ln" d="M615 52H633" marker-end="url(#tex-ar)"/><path class="ln" d="M770 52H788" marker-end="url(#tex-ar)"/>
+  <path class="ln" d="M857 74V122H130V148" marker-end="url(#tex-ar)"/>
+  <text x="480" y="114" text-anchor="middle">변환본이 있으면 그 DDS (밉 생성 없음)</text>
+  <path class="ln" d="M45 74V148" style="stroke-dasharray:4 3" marker-end="url(#tex-ar)"/>
+  <text x="54" y="104">원본</text>
+  <g style="fill:var(--paper);stroke:var(--ink3)">
+    <rect x="15" y="150" width="160" height="44" rx="6"/><rect x="197" y="150" width="160" height="44" rx="6"/><rect x="379" y="150" width="160" height="44" rx="6"/>
+    <rect x="561" y="150" width="160" height="44" rx="6"/><rect x="743" y="150" width="160" height="44" rx="6"/>
+  </g>
+  <text x="95" y="168" text-anchor="middle">TextureLoader</text><text x="95" y="185" text-anchor="middle">FinishImage</text>
+  <text x="277" y="168" text-anchor="middle">TextureImage</text><text x="277" y="185" text-anchor="middle">desc + 서브리소스</text>
+  <text x="459" y="168" text-anchor="middle">CreateTexture</text><text x="459" y="185" text-anchor="middle">D3D11 · D3D12</text>
+  <text x="641" y="168" text-anchor="middle">TextureCache</text><text x="641" y="185" text-anchor="middle">(이름, sRGB) → 핸들</text>
+  <text x="823" y="168" text-anchor="middle">재질 셋</text><text x="823" y="185" text-anchor="middle">t0~t6·t16~t19 + s0</text>
+  <path class="ln" d="M175 172H195" marker-end="url(#tex-ar)"/><path class="ln" d="M357 172H377" marker-end="url(#tex-ar)"/>
+  <path class="ln" d="M539 172H559" marker-end="url(#tex-ar)"/><path class="ln" d="M721 172H741" marker-end="url(#tex-ar)"/>
+  <text x="15" y="222">게임 패키지: manifest.json 의 변환본을 FindCooked 가 바로 넘김 (원본을 읽거나 해시를 계산하지 않음)</text>
+  <text x="15" y="240">원본 그대로(점선): 이미 DDS, 기본 설정 + 긴 변 256 미만, 게임에서 캐시가 없을 때. 이때 밉이 1개뿐이면 로더가 만듦</text>
+</svg>
+<figcaption>위 줄은 에디터에서 한 번만 일어나는 변환, 아래 줄은 매 로드 경로입니다. 큐브맵(스카이박스·IBL)은 위 줄을 거치지 않고 <code>TextureLoader::LoadCubeFromFile</code> 로 바로 읽습니다.</figcaption>
+</figure>
+<p>재질이 텍스처 이름을 들고 있으면 <code>Renderer::GetOrCreateGpuMaterial</code>이 칸마다 <code>TextureCache::Load2D(이름, srgb, scene)</code>를 부릅니다. <code>Load2D</code>는 캐시에 없을 때 아래 순서로 이미지를 얻습니다.</p>
+<ol>
+<li><code>builtin:*</code>: 흰색, 평평한 노멀, <code>gray128</code>, 체커, UI 패널을 코드로 만듭니다(<code>TextureLoader::CreateSolid</code>·<code>CreateChecker</code>·<code>CreateRoundedRect</code>).</li>
+<li>게임 패키지의 변환 목록: <code>LoadCooked</code> → <code>TextureImporter::FindCooked</code>. 에디터에서는 목록을 쓰지 않습니다.</li>
+<li>씬이 들고 있는 모델 이미지(<code>Scene::FindImage</code>, 이름 <code>&lt;모델&gt;/&lt;번호&gt; &lt;uri 또는 name&gt;</code>): 인코딩된 바이트로 <code>ResolveCached</code>를 부르고, 변환본이 없으면 <code>LoadFromMemory(…, generateMips = true)</code>.</li>
+<li>파일: <code>Assets/Textures/</code> 기준, <code>asset:</code>이면 <code>Assets/</code> 기준. 바이트를 읽어 <code>ResolveCached</code>, 없으면 <code>LoadFromFile(path, srgb, true)</code>.</li>
+</ol>
+<p>어느 경로든 결과는 <code>TextureImage</code>(desc + 밉별 서브리소스)이고, <code>m_device->CreateTexture(image.desc, image.subresources)</code>로 GPU 텍스처가 됩니다. 실패하면 흰색 핸들로 대체하고 그 결과도 캐시에 넣습니다.</p>
+</section>
+
+<section id="import">
+<h2>4. 임포트 변환과 디스크 캐시 (<code>TextureImporter</code>)</h2>
+<h3>4-1. 변환 단계</h3>
+<p><code>TextureImporter.cpp</code> 의 <code>Build</code>가 하는 일을 순서대로 적습니다.</p>
+<ol>
+<li><code>LoadFromWICMemory</code>로 디코딩합니다. sRGB 텍스처는 <code>WIC_FLAGS_DEFAULT_SRGB</code>, 선형은 <code>WIC_FLAGS_IGNORE_SRGB</code>입니다.</li>
+<li><code>R8G8B8A8_UNORM(_SRGB)</code>가 아니면 <code>Convert</code>로 맞춥니다.</li>
+<li><code>GenerateMipMaps(…, filter, 0, chain)</code>로 1×1까지 전체 체인을 만듭니다. <code>filter</code>는 sRGB면 <code>TEX_FILTER_SRGB</code>, 아니면 <code>TEX_FILTER_DEFAULT</code>입니다. 필터 모드를 지정하지 않으므로 실제 필터는 DirectXTex가 고릅니다. 로더 쪽 주석은 "박스 필터"라고 적고 있습니다.</li>
+<li><code>maxSize</code>를 넘는 위쪽 단계를 건너뛰고 <code>mipLevels</code>만큼 자릅니다. 한 단계 아래 밉이 그대로 새 원본이 되는 방식입니다. 기록에 따르면 DirectXTex <code>Resize</code>가 필터를 바꿔도 모두 <code>E_FAIL</code>이라 이 방법으로 대신했습니다(<a href="../plan/texture-pipeline-record.html">기록 3장</a>).</li>
+<li>압축이 켜져 있고 남은 밉 0의 가로·세로가 4의 배수면 BC7로 압축합니다. 먼저 <code>GetGpuDevice</code>가 만든 임시 D3D11 장치로 DirectXTex GPU 인코더를 쓰고(D3D12 백엔드에서도 같음), 실패하면 CPU <code>TEX_COMPRESS_BC7_QUICK | TEX_COMPRESS_PARALLEL</code>로 압축합니다. 4의 배수가 아니면 RGBA8 DDS로 저장합니다.</li>
+<li><code>&lt;해시&gt;.dds.tmp</code>에 쓴 뒤 이름을 바꿉니다. 쓰다가 중단되어도 깨진 캐시가 남지 않습니다. 로그에 "<code>가로x세로 BC7, 밉 N, 걸린 초</code>" 형식의 요약을 남깁니다.</li>
+</ol>
+<h3>4-2. 설정</h3>
+<table>
+<tr><th>필드 (<code>TextureImportSettings</code>)</th><th>뜻</th><th>기본</th></tr>
+<tr><td><code>compress</code></td><td>BC7 압축. 끄면 RGBA8 DDS(밉·크기 설정만 적용)</td><td>켬</td></tr>
+<tr><td><code>mipLevels</code></td><td>0 = 1×1까지, 1 = 밉 없음, N = 상위 N단계</td><td>0</td></tr>
+<tr><td><code>maxSize</code></td><td>0 = 원본, 아니면 긴 변이 이 값 이하가 되도록 절반씩</td><td>0</td></tr>
+</table>
+<p>설정은 텍스처 이름(재질이 저장하는 이름 그대로) 단위로 프로젝트의 <code>Assets\TextureSettings.json</code>에 기본값과 다른 것만 저장합니다. 기록은 <code>.meta</code> 사이드카 대신 이 방식을 고른 이유로, 모델 내장 이미지는 개별 파일이 없으니 파일 텍스처와 함께 한 곳에서 다루려 했다고 적었습니다. 에디터에서는 재질 패널의 "Texture import"(<code>DebugUI::DrawTextureImportSettings</code>)에서 바꾸고, Apply가 <code>TextureImporter::SetSettings</code>와 <code>Renderer::ReloadTexture</code>(= <code>TextureCache::Evict</code>)를 부릅니다.</p>
+<h3>4-3. 캐시 키, 위치, 무효화</h3>
+<table>
+<tr><th>항목</th><th>내용</th></tr>
+<tr><td>키</td><td>원본 바이트 전체의 FNV-1a 64비트 해시에 <code>{sRGB, compress, mipLevels, maxSize, kConverterVersion}</code>을 이어 해시. 파일 이름은 16자리 16진수 + <code>.dds</code></td></tr>
+<tr><td>위치</td><td><code>TextureImporter::GetCacheDir</code>: 프로젝트가 있고 엔진 소스 트리를 찾은 개발 환경이면(<code>Paths::HasEngineSourceTree</code>, 배포본은 false) <code>&lt;프로젝트&gt;\Library\TextureCache\</code>, 아니면(배포본 포함) <code>&lt;exe&gt;\TextureCache\</code></td></tr>
+<tr><td>무효화</td><td>원본 내용이나 설정이 바뀌면 키가 달라져 새 파일이 생깁니다. 변환 방식(필터·인코더)을 바꾸면 <code>kConverterVersion</code>(지금 1)을 올립니다. 옛 파일은 지우지 않습니다</td></tr>
+<tr><td>변환하지 않는 것</td><td>이미 DDS인 원본(<code>IsDds</code>, 사용자가 만든 것으로 봄), 기본 설정이면서 긴 변이 <code>kMinCompressSize</code> 256 미만(UI·아이콘·1×1)</td></tr>
+<tr><td>누가 만드나</td><td>에디터만(<code>EditorApp</code>이 <code>SetBuildEnabled(true)</code>). 게임은 있으면 읽기만 함</td></tr>
+</table>
+<p>키가 이름이 아니라 내용이라서, 파일 이름을 바꿔도 같은 캐시를 찾고, 같은 이름의 파일을 덮어쓰면 새로 변환합니다. 같은 원본을 색과 데이터로 둘 다 쓰면 sRGB 비트가 달라 캐시 파일이 둘 생깁니다. 대가는 로드마다 원본 바이트를 전부 읽어 해시하는 비용입니다. 게임 패키지가 목록(<code>manifest.json</code>)을 따로 두는 이유가 이것입니다.</p>
+<h3>4-4. 게임 패키지</h3>
+<p><code>Editor/GameBuilder.cpp</code>는 씬·프리팹이 쓰는 (텍스처 이름, sRGB) 쌍마다 <code>TextureImporter::CookForBuild</code>를 부릅니다. 이 함수는 <code>ResolveCached</code>와 같지만, 256 미만의 작은 텍스처도 압축 없이 RGBA8 + 밉 DDS로 만듭니다. 쓰인 DDS와 <code>{"version":1,"textures":{"이름":{"srgb":"…","linear":"…"}}}</code> 목록만 싣고 원본 PNG/JPG는 뺍니다. 게임에서는 <code>FindCooked</code>가 목록에서 DDS 경로를 바로 찾고, <code>GltfImporter</code>는 <code>HasCooked</code>인 이미지의 바이트를 읽지 않습니다. 요청한 색공간 변환본이 없으면 다른 쪽을 경고와 함께 씁니다. 에셋 전부 패키지에서 변환본 270개(DDS 261파일, 465 MB)가 실렸고, 예전 방식이면 캐시 폴더 전체 2.5 GB가 실렸을 것이라고 기록은 적습니다 <span class="tag ok">확인함 (2026-11-22)</span> (<a href="../plan/texture-pipeline-record.html">기록</a> 4장).</p>
+</section>
+
+<section id="loader">
+<h2>5. 로더가 포맷을 고르는 규칙 (<code>TextureLoader</code>)</h2>
+<h3>5-1. 읽을 수 있는 원본</h3>
+<table>
+<tr><th>원본</th><th>읽는 함수</th><th>비고</th></tr>
+<tr><td>PNG, JPG, BMP (TIFF, GIF)</td><td><code>LoadFromWICFile</code> / <code>LoadFromWICMemory</code></td><td><code>WIC_FLAGS_FORCE_RGB | WIC_FLAGS_IGNORE_SRGB</code>. 헤더는 PNG·JPG·BMP를, cpp 주석은 TIFF·GIF까지 적음</td></tr>
+<tr><td>DDS (2D, 큐브, BC, float)</td><td><code>LoadFromDDSFile</code> / <code>LoadFromDDSMemory</code></td><td>확장자 <code>.dds</code> 또는 바이트 <code>"DDS "</code>로 판단</td></tr>
+<tr><td>큐브 면 이미지 6장</td><td><code>LoadCubeFromFile</code>(폴더)</td><td><code>px/nx/…</code>, <code>posx/…</code>, <code>right/left/…</code> 규칙. 8비트만</td></tr>
+<tr><td>HDR, EXR, KTX2, TGA</td><td>없음</td><td>코드에 로더가 없습니다. HDR 환경은 float DDS로 넣어야 함</td></tr>
+</table>
+<p>DirectXTex가 디코딩과 밉 생성을 맡지만, 로더는 DirectXTex의 D3D11 헬퍼(<code>CreateTexture</code> 등)를 쓰지 않고 API 중립인 <code>TextureImage</code>를 돌려줍니다. <code>TextureLoader.h</code> 주석이 이유를 적고 있습니다. 그 헬퍼를 쓰면 로더가 D3D11 폴더에 들어가야 하기 때문입니다.</p>
+<h3>5-2. <code>FinishImage</code>의 분기</h3>
+<table>
+<tr><th>조건</th><th>결과 포맷</th><th>밉</th></tr>
+<tr><td>BC1·BC3·BC7, 2D, 밉 0이 4의 배수, (밉이 이미 2개 이상 또는 밉 생성을 요청하지 않음)</td><td>같은 BC 포맷 그대로 (sRGB 라벨은 인자로)</td><td>파일 그대로</td></tr>
+<tr><td>그 밖의 BC(BC2·BC4·BC5), 큐브의 BC, 밉 1개 + 밉 생성 요청</td><td><code>Decompress</code> → <code>R8G8B8A8_UNORM(_SRGB)</code></td><td>필요하면 생성</td></tr>
+<tr><td>부동소수점 원본, BC6H</td><td><code>R16G16B16A16_FLOAT</code>, sRGB 인자 무시</td><td>필요하면 생성(선형 평균)</td></tr>
+<tr><td>나머지 8비트</td><td><code>R8G8B8A8_UNORM(_SRGB)</code></td><td>밉이 1개고 요청하면 <code>GenerateMipMaps</code></td></tr>
+</table>
+<p>변환 캐시 DDS는 밉이 이미 들어 있으므로 <code>Load2D</code>가 <code>generateMips = false</code>로 읽고, BC7이면 첫 줄 경로로 압축 그대로 올라갑니다. 원본 PNG를 직접 읽는 경로는 <code>generateMips = true</code>라 로드마다 CPU에서 밉을 만듭니다. 4의 배수 조건은 D3D12가 그렇지 않은 BC 텍스처를 거부하기 때문이라고 <code>FinishImage</code> 주석이 적고 있습니다. 큐브 텍스처는 BC여도 항상 풀어서 올립니다. 환경 큐브의 이후 처리(프리필터, 거칠기 → 밉)는 <a href="ibl-study.html">IBL 학습</a>을 보세요.</p>
+</section>
+
+<section id="cache">
+<h2>6. 런타임 캐시와 대체 텍스처 (<code>TextureCache</code>)</h2>
+<h3>6-1. 키와 중복 제거</h3>
+<p>2D 캐시는 <code>m_2d[2]</code>, 선형과 sRGB 맵 두 개이고 키는 텍스처 이름입니다. 조회할 때 <code>"이름|srgb"</code> 같은 문자열을 새로 만들지 않으려고 맵을 둘로 나눴다고 주석에 적혀 있습니다. 중복 제거는 이름 단위라서, 같은 파일을 <code>a.png</code>와 <code>asset:Textures\a.png</code>처럼 다른 표기로 부르면 GPU 텍스처가 두 개 생깁니다. 반대로 같은 이름을 알베도(sRGB)와 데이터(선형)로 쓰면 의도대로 두 개가 됩니다. 큐브는 <code>m_cubes</code> 하나이고 항상 sRGB로 읽습니다(float DDS는 라벨 무시).</p>
+<h3>6-2. 대체 텍스처</h3>
+<table>
+<tr><th>상황</th><th>대체물</th><th>왜 그 값인가</th></tr>
+<tr><td>빈 이름, 로드 실패 (알베도·금속성/거칠기·AO·발광·반사·클리어코트·투과)</td><td><code>builtin:white</code> 1×1 (255, 255, 255, 255)</td><td>셰이더가 계수 × 텍스처로 쓰므로 흰색이면 계수만 남음. 발광은 <code>Material::emissive</code> 기본 (0, 0, 0)이라 흰색이어도 빛나지 않음</td></tr>
+<tr><td>노멀·코팅 노멀 칸이 빔</td><td><code>builtin:flatnormal</code> 1×1 (128, 128, 255)</td><td>탄젠트 공간 (0, 0, 1) = 기하 노멀 그대로</td></tr>
+<tr><td>큐브 없음·실패</td><td><code>builtin:black</code> 1×1 큐브</td><td>t9~t11에 꽂혀 환경광을 0으로</td></tr>
+</table>
+<p>검은 2D 텍스처는 없습니다. 노멀 칸은 빈 이름일 때만 평평한 노멀이고, 이름이 있는데 읽지 못하면 흰색(255, 255, 255)으로 대체되므로 노멀이 (1, 1, 1) 방향으로 기웁니다(12장). 실패한 이름도 대체 핸들로 캐시에 남아 프레임마다 다시 읽지 않습니다.</p>
+<h3>6-3. 수명</h3>
+<ul>
+<li><code>ReleaseLoaded</code>: <code>Renderer::InvalidateScene(scene, releaseTextures = true)</code>에서 불려 <code>builtin:</code>이 아닌 2D·큐브를 모두 파괴하고 세대 번호(<code>m_generation</code>)를 올립니다.</li>
+<li><code>Evict(name)</code>: 이름 하나의 sRGB·선형 항목만 파괴하고 세대 번호를 올립니다. 임포트 설정을 바꾼 텍스처를 다시 읽게 할 때 씁니다.</li>
+<li>대체 핸들(흰색·평평한 노멀·검은 큐브)은 여러 항목이 공유하므로 파괴할 때 건너뛰고, <code>Shutdown</code>에서 한 번만 지웁니다.</li>
+<li><code>Renderer::GetOrCreateGpuMaterial</code>은 재질 셋을 만들 때의 세대 번호·텍스처 이름·샘플러를 기억해 두고, 모두 같으면 이름 → 핸들 조회를 건너뜁니다. 대부분의 프레임이 이 경로입니다. 핸들이 실제로 바뀐 경우에만 <code>ResourceSet</code>을 다시 만듭니다.</li>
+</ul>
+<p>참조 카운트나 LRU 같은 축출은 없습니다. 한 번 읽은 텍스처는 씬을 바꾸거나 Evict할 때까지 남습니다.</p>
+</section>
+
+<section id="upload">
+<h2>7. GPU 업로드</h2>
+<h3>7-1. RHI 계약</h3>
+<p><code>Device::CreateTexture(const TextureDesc&amp;, std::span&lt;const TextureSubresource&gt;)</code>는 서브리소스마다 <code>{data, rowPitch}</code> 하나를 받습니다. 순서는 서브리소스 인덱스 순(면 0의 밉 0..N−1, 면 1의 …)이고, 개수가 모자라면 두 백엔드 모두 거부합니다. BC 포맷의 <code>rowPitch</code>는 블록 한 줄(4텍셀 높이)의 바이트 수이며, DirectXTex가 돌려준 값을 <code>FromScratchImage</code>가 그대로 옮깁니다. 기록에 따르면 BC 직접 업로드를 붙일 때 디바이스 쪽은 고칠 곳이 없었습니다.</p>
+<table>
+<tr><th></th><th>D3D11 (<code>D3D11Device::CreateTexture</code>)</th><th>D3D12 (<code>D3D12Device::CreateTexture</code>)</th></tr>
+<tr><td>리소스</td><td><code>D3D11_USAGE_DEFAULT</code></td><td>DEFAULT 힙, 초기 상태 <code>COPY_DEST</code></td></tr>
+<tr><td>초기 데이터</td><td><code>D3D11_SUBRESOURCE_DATA[]</code>를 생성 호출에 넘김 (<code>SysMemPitch = rowPitch</code>)</td><td><code>GetCopyableFootprints</code> → UPLOAD 힙 하나에 행 단위 복사(행 간격 256바이트 정렬) → 서브리소스마다 <code>CopyTextureRegion</code> → 배리어</td></tr>
+<tr><td>동기화</td><td>드라이버가 처리</td><td><code>RecordUpload</code>가 업로드 리스트에 기록. 묶음 밖이면 바로 <code>FlushUploads</code>(실행 후 <code>WaitForGpu</code>)</td></tr>
+</table>
+<p><code>Renderer::Render</code>는 프레임 앞에서 <code>BeginResourceUploads</code>를 부르고 환경 큐브·메시·재질 텍스처를 만든 뒤 <code>EndResourceUploads</code>로 묶어 한 번에 제출합니다. 주석은 "D3D12: 리소스마다 GPU를 기다리지 않음"이라고 적습니다. 묶음이어도 제출 뒤에는 GPU를 기다리므로, 큰 씬을 처음 열 때의 정지 시간에 업로드가 포함됩니다.</p>
+<h3>7-2. 부분 갱신 <code>UpdateTexture</code></h3>
+<p><code>Device::UpdateTexture(handle, x, y, w, h, data, rowPitch)</code>는 밉 0의 사각형 하나를 덮어씁니다. 지금 쓰는 곳은 게임 UI 글리프 아틀라스 하나입니다. <code>Renderer::UploadUIAtlas</code>가 <code>R8_UNORM</code> 아틀라스(1024², 넘치면 2048²)를 만들고, 그 뒤로는 새 글리프가 들어간 dirty 사각형만 올립니다. D3D11은 <code>UpdateSubresource</code>에 박스를 주고, D3D12는 사각형 크기의 업로드 버퍼 → <code>ShaderResource</code> → <code>COPY_DEST</code> 배리어 → <code>CopyTextureRegion</code> → 되돌리는 배리어입니다. 2D·비압축·범위 안만 받고, D3D12는 텍스처가 <code>ShaderResource</code> 상태가 아니면 거부합니다. UI 쪽 자세한 내용은 <a href="../study/ui-canvas-study.html">UI 캔버스 학습</a>에서 다룹니다.</p>
+</section>
+
+<section id="sampling">
+<h2>8. 샘플러와 노멀 맵 해석</h2>
+<h3>8-1. 샘플러 프리셋</h3>
+<p>재질마다 <code>SamplerPreset</code>(<code>Scene/Material.h</code>) 하나를 고르고, 재질의 모든 텍스처(t0~t6, t16~t19)가 이 샘플러 <code>s0</code>(<code>albedoSampler</code>) 하나로 읽힙니다. 샘플러는 <code>Renderer::CreateSamplers</code>가 미리 다섯 개 만듭니다.</p>
+<table>
+<tr><th>프리셋</th><th>필터 (D3D)</th><th>주소</th><th>maxLod</th></tr>
+<tr><td><code>LinearWrap</code></td><td><code>MIN_MAG_MIP_LINEAR</code> (3선형)</td><td>Wrap</td><td>1000</td></tr>
+<tr><td><code>LinearClamp</code></td><td><code>MIN_MAG_MIP_LINEAR</code></td><td>Clamp</td><td>1000</td></tr>
+<tr><td><code>AnisotropicWrap</code></td><td><code>ANISOTROPIC</code>, 16x</td><td>Wrap</td><td>1000</td></tr>
+<tr><td><code>PointWrap</code></td><td><code>MIN_MAG_MIP_POINT</code></td><td>Wrap</td><td>1000</td></tr>
+<tr><td><code>PointNoMip</code></td><td><code>MIN_MAG_MIP_POINT</code></td><td>Wrap</td><td>0 (밉 0만)</td></tr>
+</table>
+<p>다섯 개 모두 <code>maxAnisotropy = 16</code>을 넘기지만 의미가 있는 것은 비등방 필터뿐입니다. <code>MipLODBias</code>는 D3D11·D3D12 백엔드 모두 0으로 고정이고 <code>SamplerDesc</code>에 필드가 없습니다. <code>Material::sampler</code>의 기본값은 <code>LinearWrap</code>이지만, glTF에서 가져온 재질은 <code>GltfImporter</code>의 <code>ConvertMaterial</code>·<code>ToSamplerPreset</code>이 <code>AnisotropicWrap</code>을 기본으로 넣습니다(<code>magFilter</code> NEAREST면 <code>PointWrap</code>, wrap에 CLAMP_TO_EDGE가 있으면 <code>LinearClamp</code>, glTF 재질 구조는 <a href="../study/gltf-study.html#material">glTF 학습</a>). 디버그 설정 <code>RenderSettings::samplerOverride</code>로 모든 재질을 한 프리셋으로 덮어쓸 수 있습니다.</p>
+<h3>8-2. 채널 읽기</h3>
+<p><code>Shaders/MaterialSurface.hlsli</code>가 glTF 규칙대로 읽습니다. 금속성은 <code>metallicRoughnessTexture.b</code>, 거칠기는 <code>.g</code>, AO는 <code>occlusionTexture.r</code>, 반사 세기는 <code>specularTexture.a</code>입니다. ORM을 한 장으로 합친 텍스처는 같은 이름을 두 칸에 넣으면 됩니다. 둘 다 선형이라 캐시에서 한 텍스처로 합쳐집니다.</p>
+<h3>8-3. 노멀 맵</h3>
+<pre><code>float3 tangentNormal = normalTexture.Sample(albedoSampler, input.uv).xyz * 2.0f - 1.0f;
+tangentNormal.xy *= normalStrength;
+s.normal = SafeNormalize(tangentNormal.x * T + tangentNormal.y * B + tangentNormal.z * s.geometricNormal, …);</code></pre>
+<p>세 채널을 모두 읽고 <code>[0, 1] → [−1, 1]</code>로 펼칩니다. z를 √(1 − x² − y²)로 복원하지 않습니다. <code>B = cross(N, T) × tangent.w</code>이고 G 채널을 뒤집는 옵션은 없습니다. 이 해석은 glTF 노멀 맵(+Y가 비탄젠트 방향)에 맞습니다. DirectX 관례(G가 반대)로 구운 노멀 맵을 넣으면 요철의 위아래가 뒤집혀 보일 것입니다 <span class="tag chk">예상</span>. <code>normalStrength</code>는 xy만 키우고 정규화하므로, 0이면 기하 노멀이 됩니다.</p>
+</section>
+
+<section id="memory">
+<h2>9. 메모리 계산</h2>
+<p>정사각 텍스처, 1×1까지 전체 밉 체인, 1 MB = 2²⁰ 바이트 기준입니다. BC는 4×4보다 작은 밉도 블록 하나로 셉니다 <span class="tag chk">계산값</span>.</p>
+<table>
+<tr><th>크기</th><th>밉 단계</th><th>RGBA8 밉 0만</th><th>RGBA8 + 밉</th><th>BC7 + 밉</th><th>BC1 + 밉 (참고)</th></tr>
+<tr><td>256²</td><td>9</td><td>0.25 MB</td><td>0.33 MB</td><td>0.083 MB</td><td>0.042 MB</td></tr>
+<tr><td>1024²</td><td>11</td><td>4 MB</td><td>5.33 MB</td><td>1.33 MB</td><td>0.67 MB</td></tr>
+<tr><td>2048²</td><td>12</td><td>16 MB</td><td>21.33 MB</td><td>5.33 MB</td><td>2.67 MB</td></tr>
+<tr><td>4096²</td><td>13</td><td>64 MB</td><td>85.33 MB</td><td>21.33 MB</td><td>10.67 MB</td></tr>
+</table>
+<p>기록의 DamagedHelmet(2048², 밉 12) 측정은 장당 RGBA8 21.3 MB → BC7 5.3 MB, 다섯 장 106.5 MB → 26.6 MB로 반올림 범위에서 위 계산과 같습니다. <code>maxSize 512</code>, 밉 4로 바꾸면 512² BC7 4단계 0.3 MB, 압축 끄고 밉 없음이면 2048² RGBA8 16.0 MB였습니다 <span class="tag ok">확인함 (2026-11-12)</span> (<a href="../plan/texture-pipeline-record.html">기록</a> 3장). <code>maxSize</code>를 한 단계 낮출 때마다 메모리는 1/4이 됩니다. <code>TextureCache::Load2D</code>는 로드할 때 "<code>GPU 5.3MB</code>"처럼 서브리소스 합을 로그로 남깁니다(모델 이미지 경로).</p>
+</section>
+
+<section id="code">
+<h2>10. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>칸별 로드 호출</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::GetOrCreateGpuMaterial</code></td><td>칸마다 <code>Load2D(이름, srgb, scene)</code>, 노멀 빈 칸은 <code>GetFlatNormal</code>. 세대 번호로 재조회 생략</td></tr>
+<tr><td>런타임 캐시</td><td><code>Graphics/TextureCache.cpp</code> 의 <code>TextureCache::Load2D</code>·<code>LoadCube</code>·<code>Evict</code>·<code>ReleaseLoaded</code></td><td>(이름, sRGB) → 핸들, 내장 텍스처, 실패 시 흰색·검은 큐브</td></tr>
+<tr><td>변환·디스크 캐시</td><td><code>Graphics/TextureImporter.cpp</code> 의 <code>Build</code>·<code>Resolve</code>·<code>GetCacheDir</code></td><td>WIC → RGBA8 → 밉 → BC7 → <code>&lt;해시&gt;.dds</code>. FNV-1a 키</td></tr>
+<tr><td>임포트 설정</td><td><code>TextureImportSettings</code>, <code>TextureImporter::GetSettings</code>·<code>SetSettings</code>, <code>Editor/DebugUI.cpp</code> 의 <code>DebugUI::DrawTextureImportSettings</code></td><td><code>Assets\TextureSettings.json</code>, Apply → <code>Renderer::ReloadTexture</code></td></tr>
+<tr><td>패키지 변환본</td><td><code>TextureImporter::CookForBuild</code>·<code>WriteManifest</code>·<code>FindCooked</code>·<code>HasCooked</code>, <code>Editor/GameBuilder.cpp</code></td><td>쓰이는 DDS와 <code>manifest.json</code>만 실음</td></tr>
+<tr><td>디코딩·포맷 결정</td><td><code>Graphics/TextureLoader.cpp</code> 의 <code>FinishImage</code>·<code>CompressedGpuFormat</code>·<code>LoadScratchFromFile</code>·<code>FromScratchImage</code></td><td>BC1/3/7 직접, 나머지는 풀기, HDR은 FP16, 밉 생성</td></tr>
+<tr><td>큐브·절차적 텍스처</td><td><code>TextureLoader::LoadCubeFromFile</code>·<code>CreateCube</code>·<code>CreateSolid</code>·<code>CreateChecker</code>·<code>CreateRoundedRect</code></td><td>스카이·면 판별 큐브, 흰색·노멀·회색·체커·UI 패널</td></tr>
+<tr><td>BC 포맷 목록</td><td><code>RHI/PipelineTypes.h</code> 의 <code>Format</code>, <code>IsBlockCompressed</code></td><td>BC1/BC3/BC7 (UNORM, UNORM_SRGB)</td></tr>
+<tr><td>서브리소스 계약</td><td><code>RHI/ResourceDesc.h</code> 의 <code>TextureDesc</code>·<code>TextureSubresource</code>·<code>SamplerDesc</code></td><td>순서 규칙, <code>maxLod</code>, LOD 바이어스 필드 없음</td></tr>
+<tr><td>업로드</td><td><code>D3D11Device::CreateTexture</code>·<code>UpdateTexture</code>, <code>D3D12Device::CreateTexture</code>·<code>UpdateTexture</code>·<code>RecordUpload</code>·<code>FlushUploads</code></td><td>초기 데이터, 업로드 힙, 부분 갱신</td></tr>
+<tr><td>업로드 묶음</td><td><code>Renderer::Render</code> 의 <code>BeginResourceUploads</code>·<code>EndResourceUploads</code></td><td>프레임 앞에서 만든 리소스를 한 번에 제출</td></tr>
+<tr><td>샘플러</td><td><code>Renderer::CreateSamplers</code>, <code>Scene/Material.h</code> 의 <code>SamplerPreset</code>, <code>D3D11Convert</code>·<code>D3D12Convert</code> 의 필터 변환</td><td>프리셋 다섯 개, 16x, 바이어스 0</td></tr>
+<tr><td>glTF 이미지·샘플러</td><td><code>Graphics/Import/GltfImporter.cpp</code> 의 <code>LoadImages</code>·<code>ImageName</code>·<code>TextureName</code>·<code>ToSamplerPreset</code></td><td>이미지 바이트를 씬에 보관, 이름 <code>&lt;모델&gt;/&lt;번호&gt; &lt;uri 또는 name&gt;</code></td></tr>
+<tr><td>셰이더 쪽</td><td><code>Shaders/Material.hlsli</code>, <code>Shaders/MaterialSurface.hlsli</code></td><td>t0~t6·t16~t19 + s0, 채널 읽기, 노멀 <code>xyz × 2 − 1</code></td></tr>
+<tr><td>UI 아틀라스</td><td><code>Graphics/RendererUI.cpp</code> 의 <code>Renderer::UploadUIAtlas</code>, <code>UI/GlyphAtlas.h</code></td><td><code>R8_UNORM</code> 1024²/2048², dirty 사각형만 <code>UpdateTexture</code></td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>11. 실험</h2>
+<p>에디터와 로그로 확인할 수 있는 것부터 적었습니다.</p>
+<h3>E1. 변환은 처음 한 번 <span class="tag ok">확인함 (2026-11-12)</span></h3>
+<p><code>Library\TextureCache\</code>를 지우고 DamagedHelmet 씬을 엽니다. 첫 실행 로그에 텍스처마다 "<code>텍스처 변환: … (2048x2048 BC7, 밉 12, …초)</code>"가 찍히고, 두 번째 실행부터는 이 줄 없이 "<code>블록 압축 유지</code>"로 읽힙니다. 기록의 검증 결과와 같은 절차입니다(<a href="../plan/texture-pipeline-record.html">기록 3장</a>).</p>
+<h3>E2. 해상도 줄이기 <span class="tag ok">확인함 (2026-11-12)</span></h3>
+<p><code>--tex-setting=이름;1;4;512</code>(압축 켬, 밉 4, 최대 512)로 실행하면 12프레임째 Inspector Apply와 같은 경로(<code>EditorAutomation</code> → <code>SetSettings</code> → <code>ReloadTexture</code>)가 돕니다. 기록에서는 512² BC7, 밉 4, 0.3 MB가 D3D11·D3D12 모두 런타임에 다시 읽혔습니다(<a href="../plan/texture-pipeline-record.html">기록 3장</a>). 이때 새 캐시 파일이 하나 더 생기고 옛 파일은 남는 것도 폴더에서 볼 수 있습니다.</p>
+<h3>E3. 밉을 끄면 <span class="tag chk">예상</span></h3>
+<p>디버그 설정의 샘플러 덮어쓰기를 <code>PointNoMip</code>(<code>maxLod 0</code>)으로 바꾸고 체커 바닥이나 Sponza 바닥을 비스듬히 봅니다. 멀리 갈수록 텍셀이 건너뛰어져 무늬가 모아레로 깨지고, 카메라를 움직이면 반짝입니다. <code>PointWrap</code>으로 바꾸면 밉 덕분에 먼 곳은 뭉개지지만 반짝임이 사라지고, <code>AnisotropicWrap</code>은 비스듬한 방향의 흐림까지 줄입니다.</p>
+<h3>E4. 압축 품질 비교 <span class="tag chk">예상</span></h3>
+<p>같은 텍스처를 압축 켬/끔으로 두 번 Apply하고 같은 카메라로 스크린샷을 찍어 비교합니다. BC7은 블록마다 끝점이 정해지므로 가는 선이나 색 경계가 많은 4×4 블록에서 차이가 보이고, 사진 같은 알베도에서는 거의 구분되지 않을 것입니다. VRAM 로그는 4배 차이가 나야 합니다 <span class="tag chk">계산값</span>.</p>
+<h3>E5. BC5 노멀 맵 넣어 보기 <span class="tag chk">예상</span></h3>
+<p>BC5로 압축한 노멀 맵 DDS를 노멀 칸에 넣습니다. BC5에는 B 채널이 없습니다. 로더는 BC5를 압축 그대로 올리지 않고 RGBA8로 푸는데, 이때 B가 채워지는 값을 그대로 z로 씁니다. DirectXTex가 B를 0으로 채운다면 z = 0 × 2 − 1 = −1이 되어 노멀이 표면 뒤쪽을 향하고 조명이 어두워지거나 뒤집혀 보일 것입니다. 채워지는 값은 코드로 확인하지 않았습니다. 조명이 이상하게 보이면 원인은 이 문서 8-3의 해석 방식입니다. BC7 변환 경로(PNG 원본)는 z를 저장하므로 이 문제가 없습니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>12. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>에디터에서 큰 모델을 처음 열 때 수 초씩 멈춤</td><td>BC7 변환을 <code>Load2D</code>를 부른 자리에서 동기로 함</td><td>4096² 한 장 약 3초. 비동기 변환·진행 표시 없음. 캐시된 뒤에는 없음</td></tr>
+<tr><td>캐시 폴더가 계속 커짐</td><td>키가 내용 + 설정이라 바뀔 때마다 새 파일, 옛 파일 정리 없음</td><td>폴더를 지우면 다시 만듦. 패키지에는 쓰이는 것만 감</td></tr>
+<tr><td>노멀 맵 조명이 한쪽으로 기움</td><td>노멀 이름이 있는데 읽기 실패 → 흰색 (255, 255, 255) 대체</td><td>평평한 노멀 대체는 빈 이름일 때만. 로그의 "흰색으로 대체" 확인</td></tr>
+<tr><td>BC5 노멀 맵이 이상함</td><td>BC5는 R·G만 담음. RGBA8로 풀 때 채워진 B(0이면 z = −1)를 z로 그대로 씀, z 복원 없음</td><td>노멀은 PNG로 넣어 BC7 변환을 거치게 함 (E5)</td></tr>
+<tr><td>요철이 뒤집혀 보임</td><td>DirectX 관례(G 반대) 노멀 맵</td><td>G 뒤집기 옵션 없음. 원본을 뒤집어 저장해야 함</td></tr>
+<tr><td>같은 파일인데 VRAM이 두 번 듦</td><td>캐시 키가 이름이라 표기가 다르면 다른 항목</td><td><code>a.png</code>와 <code>asset:Textures\a.png</code>. 패키지에서는 목록에 없는 표기가 흰색이 될 수 있음(기록 4장 한계)</td></tr>
+<tr><td>작은 텍스처가 압축되지 않음</td><td>기본 설정에서 256 미만은 변환 제외</td><td>원본을 직접 읽고 로더가 RGBA8 밉을 만듦. 의도된 선택</td></tr>
+<tr><td>4의 배수가 아닌 텍스처가 크게 남음</td><td>BC는 밉 0이 4의 배수여야 함</td><td>임포트는 RGBA8 DDS로 저장, 로더도 그런 BC DDS는 풂</td></tr>
+<tr><td>HDR·EXR 파일을 못 읽음</td><td>WIC·DDS 로더만 있음</td><td>float DDS로 변환해 넣음. KTX2도 없음</td></tr>
+<tr><td>TAA를 켜면 텍스처가 약간 흐림 <span class="tag chk">예상</span></td><td>지터 누적에 맞춘 음의 LOD 바이어스가 없음</td><td><code>MipLODBias = 0</code> 고정 (<a href="taa-study.html">TAA 학습</a>)</td></tr>
+<tr><td>모델 이미지 설정이 엉뚱한 텍스처에 붙음</td><td>설정 키가 <code>&lt;모델&gt;/&lt;번호&gt; …</code> 이름</td><td>모델 파일이나 이미지 순서가 바뀌면 어긋날 수 있음(기록 5장)</td></tr>
+<tr><td>VRAM보다 큰 씬</td><td>스트리밍·가상 텍스처링 없음, 축출은 씬 교체뿐</td><td>읽은 텍스처는 전부 상주. <code>maxSize</code>로 수동 축소</td></tr>
+</table>
+</section>
+
+<section id="study">
+<h2>13. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>밉맵과 LOD 선택</td><td>UV 미분으로 단계를 고르는 식, 3선형 필터, 4/3 크기</td><td>2-1, 9장</td></tr>
+<tr><td>비등방 필터링</td><td>비스듬한 면에서 한 방향으로 여러 번 읽는 이유, 16x의 뜻</td><td>8-1, E3</td></tr>
+<tr><td>블록 압축(BC1~BC7)</td><td>4×4 블록, 끝점 + 인덱스, 포맷별 채널과 바이트</td><td>2-2</td></tr>
+<tr><td>BC7 모드와 인코더 품질</td><td>파티션·모드 탐색이 느린 이유, QUICK 플래그의 의미</td><td>4-1</td></tr>
+<tr><td>서브리소스와 행 간격</td><td>밉·면 순서, BC의 블록 행, D3D12 256바이트 정렬</td><td>7-1</td></tr>
+<tr><td>업로드 힙과 복사 큐</td><td>CPU 쓰기 가능한 힙 → DEFAULT 힙 복사, 펜스로 기다리기</td><td>7장, <a href="gpu-sync-study.html">GPU 동기화 학습</a></td></tr>
+<tr><td>탄젠트 공간 노멀 맵</td><td>TBN, <code>tangent.w</code>, OpenGL/DirectX 관례, BC5 z 복원</td><td>8-3</td></tr>
+<tr><td>콘텐츠 해시 캐시</td><td>키에 무엇을 넣어야 하는가(내용·설정·버전), 원자적 쓰기</td><td>4-3</td></tr>
+<tr><td>텍스처 스트리밍·가상 텍스처링</td><td>밉 단위로 필요한 것만 올리는 방식, 피드백 버퍼</td><td>12장 (없음)</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li><a href="../plan/texture-pipeline-record.html">텍스처 파이프라인 구현 기록</a> — BC 직접 업로드, 임포트 변환 캐시, Inspector 설정, 게임 패키지 변환본, 측정값과 남은 일</li>
+<li><a href="color-space-study.html#textures">색공간 학습 4장</a> — 텍스처별 sRGB·선형, <code>TEX_FILTER_SRGB</code>, BC7 sRGB 변환본</li>
+<li><a href="gltf-study.html#material">glTF 학습</a> — 재질이 텍스처·이미지를 참조하는 방식</li>
+<li><a href="ibl-study.html">IBL 학습</a> — 환경 큐브, 프리필터, BRDF LUT</li>
+<li><a href="../overview/rendering-analysis.html#c12">rendering-analysis 12장</a>, <a href="../overview/rendering-analysis.html#c12-14">12.14 큐브맵</a> — 텍스처와 색공간 전체 분석</li>
+<li><a href="binding-study.html">바인딩 학습</a> — 재질 셋(<code>ResourceSet</code>)과 t·s 슬롯</li>
+<li><a href="taa-study.html">TAA 학습</a> — 지터와 텍스처 선명도</li>
+<li><a href="ui-canvas-study.html">UI 캔버스 학습</a> — 글리프 아틀라스와 <code>UpdateTexture</code> 부분 갱신</li>
+</ul>
+</section>
+</main>
+</body>
+</html>

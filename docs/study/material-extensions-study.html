@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 재질 확장 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>재질 확장 학습 문서</h1>
+  <p>metallic-roughness 너머 — 발광 세기·반사 세기와 색(F0·F90)·클리어코트·투과·알파 모드를 우리 엔진이 어떻게 읽고, 어떤 셰이더 경로로 그리고, 디퍼드에서 어디로 보내는가</p>
+  <p>2026-11-25 · 재질 확장 이야기는 지금까지 <a href="../plan/material-extensions-record.html">재질 확장 구현 기록</a>(2026-11-16, 디퍼드 전), <a href="../plan/deferred-clustered-ssao-record.html#c-gbuffer">디퍼드 기록 2.1 G-buffer 배치</a>, <a href="../study/gltf-study.html#skip">glTF 학습 문서의 "읽지 않는 것"</a>에 나뉘어 있었습니다. 이 문서는 확장마다 원리를 짧게 설명하고, 디퍼드 도입 뒤 셰이더가 <code>MaterialSurface.hlsli</code>·<code>Shading.hlsli</code>로 나뉜 지금 코드에 맞춰 정리합니다. 기본 PBR(Cook-Torrance, F0, 금속성·거칠기)은 <a href="../study/pbr-study.html">PBR 학습 문서</a>, 환경광은 <a href="../study/ibl-study.html">IBL 학습 문서</a>에 있으므로 되풀이하지 않습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1장은 확장 전체를 한 표로 묶은 지도, 2~5장은 확장별 원리와 코드(반사 세기·색, 클리어코트, 투과와 블렌딩, 알파·양면·unlit·발광), 6장은 디퍼드에서 어느 재질이 G-buffer로 가고 GB3에 무엇이 담기는가, 7장은 코드 지도, 8장은 실험, 9장은 함정과 지원하지 않는 확장, 10장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 프레넬·F0·양자화 값은 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 화면 측정은 기록 문서에 적힌 것만 옮기고 <span class="tag ok">확인함</span>으로 표시했습니다. 클리어코트 화면 비교(8장 E2)는 디퍼드가 들어오기 전(2026-11-16, 포워드만 있던 때)에 잰 값입니다.</div>
+</header>
+<nav><a href="#why">1. 왜 필요한가·지도</a><a href="#specular">2. 반사 세기와 색</a><a href="#clearcoat">3. 클리어코트</a><a href="#transmission">4. 투과와 블렌딩</a><a href="#alpha">5. 알파·양면·unlit·발광</a><a href="#deferred">6. 디퍼드 경로</a><a href="#code">7. 코드 지도</a><a href="#lab">8. 실험</a><a href="#pitfalls">9. 함정과 한계</a><a href="#study">10. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 확장이 필요한가, 그리고 한눈에 보는 지도</h2>
+<h3>1-1. metallic-roughness만으로는 모자란 재질</h3>
+<p>glTF의 기본 재질은 기본색·금속성·거칠기·노멀·AO·발광입니다. 비금속은 반사율 F0가 항상 0.04(굴절률 1.5)로 고정되고, 반사층은 하나뿐이며, 빛이 물체를 뚫고 지나가는 경우를 표현하지 못합니다. 그래서 다음 재질이 기본 PBR로는 틀리게 나옵니다.</p>
+<ul>
+<li>천이나 고무처럼 반사가 거의 없는 비금속, 보석처럼 반사가 센 비금속 — F0가 0.04가 아님</li>
+<li>자동차 도장, 니스 칠한 나무 — 거친 바탕 위에 매끈한 코팅이 한 겹 더 있음</li>
+<li>유리, 투명 플라스틱 — 뒤가 비침</li>
+<li>네온 간판, 화면처럼 밝게 빛나는 면 — 발광 계수가 0~1에 묶이면 HDR 밝기를 못 냄</li>
+</ul>
+<p>glTF는 이런 것을 <code>KHR_materials_*</code> 확장으로 덧붙입니다. 우리 테스트 모델 14개 중 확장을 쓰는 것은 3개입니다. <code>AlfaRomeo_1933</code>은 clearcoat·transmission, <code>USN-Hornet</code>은 specular·ior, <code>DarkDragon</code>(<code>BlackDragon_Ani_v2.gltf</code>)은 specular를 씁니다. 세 파일의 <code>extensionsUsed</code>에서 확인했고, 나머지 모델에는 확장이 없습니다. <code>KHR_materials_emissive_strength</code>를 쓰는 모델은 없습니다.</p>
+
+<h3>1-2. 확장 → 엔진 필드 지도</h3>
+<p>임포터(<code>Graphics/Import/GltfImporter.cpp</code>의 <code>ConvertMaterial</code>)가 확장을 읽어 <code>Scene/Material.h</code>의 <code>Material</code>에 넣고, <code>Renderer::GetOrCreateGpuMaterial</code>이 b3 상수버퍼(<code>MaterialConstants</code>, 112바이트)와 텍스처 칸으로 올립니다. 텍스처가 비면 흰색 1×1이 꽂혀 계수가 그대로 쓰이고, 노멀 칸은 평평한 노멀이 꽂힙니다.</p>
+<table>
+<tr><th>glTF</th><th>Material 필드</th><th>텍스처 (레지스터, 채널, 색공간)</th><th>디퍼드에서</th></tr>
+<tr><td><code>KHR_materials_emissive_strength</code></td><td><code>emissive</code>에 곱해서 넣음 (따로 저장하지 않음)</td><td><code>emissiveTexture</code> t4, RGB, sRGB</td><td>G-buffer 패스가 <code>view.hdr</code>에 바로 씀</td></tr>
+<tr><td><code>KHR_materials_ior</code></td><td><code>ior</code> (1 미만이면 1.5)</td><td>없음</td><td>F0에 섞여 GB2로</td></tr>
+<tr><td><code>KHR_materials_specular</code></td><td><code>specularFactor</code>, <code>specularColor</code></td><td><code>specularTexture</code> t5, A, 선형 · <code>specularColorTexture</code> t6, RGB, sRGB</td><td>F0는 GB2, F90은 GB3.g</td></tr>
+<tr><td><code>KHR_materials_clearcoat</code></td><td><code>clearcoatFactor</code>, <code>clearcoatRoughness</code>, <code>clearcoatNormalScale</code></td><td>t16 R · t17 G · t18 코팅 노멀, 모두 선형</td><td>GB3.b·a. 코팅 노멀 맵이 있으면 포워드</td></tr>
+<tr><td><code>KHR_materials_transmission</code></td><td><code>transmissionFactor</code></td><td><code>transmissionTexture</code> t19, R, 선형</td><td>블렌딩 패스(포워드)</td></tr>
+<tr><td><code>alphaMode</code> MASK / BLEND</td><td><code>alphaCutoff</code> / <code>alphaBlend</code></td><td>기본색 텍스처 t0의 A</td><td>MASK는 G-buffer, BLEND는 포워드</td></tr>
+<tr><td><code>doubleSided</code></td><td><code>doubleSided</code></td><td>—</td><td>둘 다 (PSO 컬링만 다름)</td></tr>
+<tr><td><code>KHR_materials_unlit</code></td><td>읽지 않음. 엔진 자체 플래그 <code>unlit</code>은 있음</td><td>—</td><td><code>unlit</code>이면 포워드</td></tr>
+</table>
+<p>레지스터가 t6에서 t16으로 건너뛰는 것은 t8~t15를 프레임 셋(그림자 맵·IBL 큐브·BRDF LUT·조명 버퍼)이 쓰기 때문입니다(<code>Graphics/ShaderConstants.h</code>의 <code>kSRVSlotClearcoat</code> 주석). t7은 재질·프레임 셋에서 쓰지 않습니다(후처리 셋의 속도 <code>kSRVSlotVelocity</code>, 비닝 셋의 조명 경계 <code>kSRVSlotLightBounds</code>가 이 번호를 씀). 텍스처의 색공간 규칙 자체(색 텍스처만 sRGB)는 <a href="../study/color-space-study.html#textures">색공간 문서 4장</a>을 보세요.</p>
+</section>
+
+<section id="specular">
+<h2>2. 반사 세기와 색 — ior·specular, F0와 F90</h2>
+<h3>2-1. 무엇을 바꾸는가</h3>
+<p>Schlick 프레넬은 수직으로 볼 때의 반사율 F0에서 스치는 각도의 반사율 F90까지 <code>(1 − cosθ)⁵</code>로 올라가는 곡선입니다. 기본 PBR은 F90을 항상 1로 둡니다. 두 확장은 비금속의 이 곡선을 이렇게 바꿉니다.</p>
+<ul>
+<li><code>ior</code>: F0의 바탕값 <code>((ior − 1) / (ior + 1))²</code>. 물 1.33 → 0.020, 기본 1.5 → 0.040, 2.4(다이아몬드) → 0.170 <span class="tag chk">계산값</span></li>
+<li><code>specularColor</code>: F0에 색을 곱함 (비금속 반사에 색이 끼는 표현)</li>
+<li><code>specularFactor</code>: F0와 F90 둘 다에 곱하는 세기. 0이면 비금속 반사가 모든 각도에서 사라짐</li>
+</ul>
+<p>금속은 이 값들을 쓰지 않습니다(F0 = 기본색, F90 = 1). 확장의 기본값(ior 1.5, factor 1, 흰색)이면 F0 = 0.04, F90 = 1이라 확장 전과 같은 식이 됩니다.</p>
+<pre><code>// Shaders/MaterialSurface.hlsli — EvaluateMaterialSurface
+specularWeight = saturate(specularFactor * specularTexture.a)
+specularTint   = specularColor * specularColorTexture.rgb
+dielectricF0   = min(((ior-1)/(ior+1))² * specularTint, 1) * specularWeight
+F0  = lerp(dielectricF0,  albedo, metallic)
+F90 = lerp(specularWeight, 1,     metallic)</code></pre>
+<p>코드 주석은 three.js와 같은 식이라고 적고 있습니다. F90은 <code>SurfaceData::F90</code>에 담겨 세 곳에서 쓰입니다. 직접광의 <code>FresnelSchlick(F0, F90, VdotH)</code>, 환경광의 <code>FresnelSchlickRoughness</code>(최대값을 <code>(1 − roughness) · F90</code>으로 누름), split-sum 반사항 <code>F0 · A + F90 · B</code>(<code>Shading.hlsli</code>의 <code>EnvironmentLighting</code>)입니다. 확산 쪽은 <code>kd = (1 − F)(1 − metallic)</code>이라 반사가 줄어든 만큼 확산이 늘어납니다.</p>
+
+<figure>
+<svg viewBox="0 0 560 330" role="img" aria-label="specularFactor 에 따른 Schlick 프레넬 곡선">
+  <line class="ln" x1="70" y1="270" x2="490" y2="270"/><line class="ln" x1="70" y1="270" x2="70" y2="30"/>
+  <polyline points="70.0,260.4 77.0,260.4 84.0,260.4 91.0,260.4 98.0,260.4 105.0,260.4 112.0,260.4 119.0,260.4 126.0,260.4 133.0,260.4 140.0,260.4 147.0,260.4 154.0,260.4 161.0,260.4 168.0,260.4 175.0,260.4 182.0,260.4 189.0,260.4 196.0,260.4 203.0,260.4 210.0,260.4 217.0,260.4 224.0,260.4 231.0,260.4 238.0,260.3 245.0,260.3 252.0,260.3 259.0,260.2 266.0,260.1 273.0,260.0 280.0,259.9 287.0,259.7 294.0,259.5 301.0,259.2 308.0,258.8 315.0,258.3 322.0,257.7 329.0,256.9 336.0,255.9 343.0,254.7 350.0,253.2 357.0,251.4 364.0,249.2 371.0,246.6 378.0,243.5 385.0,239.7 392.0,235.3 399.0,230.2 406.0,224.1 413.0,217.0 420.0,208.9 427.0,199.4 434.0,188.6 441.0,176.1 448.0,162.0 455.0,145.9 462.0,127.7 469.0,107.3 476.0,84.3 483.0,58.6 490.0,30.0" style="fill:none;stroke:var(--accent);stroke-width:2.2"/>
+  <polyline points="70.0,265.2 77.0,265.2 84.0,265.2 91.0,265.2 98.0,265.2 105.0,265.2 112.0,265.2 119.0,265.2 126.0,265.2 133.0,265.2 140.0,265.2 147.0,265.2 154.0,265.2 161.0,265.2 168.0,265.2 175.0,265.2 182.0,265.2 189.0,265.2 196.0,265.2 203.0,265.2 210.0,265.2 217.0,265.2 224.0,265.2 231.0,265.2 238.0,265.2 245.0,265.2 252.0,265.1 259.0,265.1 266.0,265.1 273.0,265.0 280.0,265.0 287.0,264.9 294.0,264.7 301.0,264.6 308.0,264.4 315.0,264.1 322.0,263.8 329.0,263.4 336.0,262.9 343.0,262.3 350.0,261.6 357.0,260.7 364.0,259.6 371.0,258.3 378.0,256.7 385.0,254.9 392.0,252.7 399.0,250.1 406.0,247.1 413.0,243.5 420.0,239.4 427.0,234.7 434.0,229.3 441.0,223.1 448.0,216.0 455.0,208.0 462.0,198.9 469.0,188.6 476.0,177.2 483.0,164.3 490.0,150.0" style="fill:none;stroke:var(--warn);stroke-width:1.8;stroke-dasharray:6 4"/>
+  <line x1="443.3" y1="270" x2="443.3" y2="40" style="stroke:var(--ink3);stroke-dasharray:2 3"/>
+  <circle cx="443.3" cy="171.6" r="4" style="fill:var(--accent)"/><text x="434" y="165" text-anchor="end">0.41</text>
+  <circle cx="443.3" cy="220.8" r="4" style="fill:var(--warn)"/><text x="452" y="242">0.205</text>
+  <text x="62" y="274" text-anchor="end">0</text><text x="62" y="154" text-anchor="end">0.5</text><text x="62" y="34" text-anchor="end">1</text>
+  <text x="70" y="288" text-anchor="middle">0°</text><text x="210" y="288" text-anchor="middle">30°</text><text x="350" y="288" text-anchor="middle">60°</text><text x="443" y="288" text-anchor="middle">80°</text><text x="490" y="288" text-anchor="middle">90°</text>
+  <text x="280" y="312" text-anchor="middle">보는 각도 θ (면의 수직에서 잰 각)</text>
+  <text x="20" y="150" text-anchor="middle" transform="rotate(-90 20 150)">반사율 F</text>
+  <line x1="90" y1="52" x2="120" y2="52" style="stroke:var(--accent);stroke-width:2.2"/><text x="128" y="56">기본값: F0 0.04, F90 1</text>
+  <line x1="90" y1="74" x2="120" y2="74" style="stroke:var(--warn);stroke-width:1.8;stroke-dasharray:6 4"/><text x="128" y="78">specularFactor 0.5: F0 0.02, F90 0.5</text>
+  <text x="90" y="100">specularFactor 0: 모든 각도에서 0 (x축)</text>
+</svg>
+<figcaption>그림 1. specularFactor가 비금속 프레넬 곡선에 주는 효과. F0와 F90을 같은 비율로 누르므로 곡선 전체가 낮아집니다. 60°까지는 거의 평평하고(0.04 → 0.07), 80°를 넘어서야 크게 오릅니다. <span class="tag chk">계산값</span></figcaption>
+</figure>
+
+<h3>2-2. Blender의 ior 1000</h3>
+<p><code>USN-Hornet</code>의 재질 84개 중 83개가 <code>ior: 1000</code>이고 82개가 <code>specularColorFactor: 0.05</code>입니다(glTF 파일에서 확인). 기록 문서에 따르면 Blender가 Principled BSDF의 Specular를 이렇게 내보냅니다. ior만 읽으면 F0 = (999/1001)² ≈ 0.996으로 비금속이 거울이 되고, 색까지 곱하면 0.996 × 0.05 ≈ 0.050으로 기본 0.04에 가까운 값이 됩니다 <span class="tag chk">계산값</span>. 그래서 임포터는 두 확장을 같은 <code>extensions</code> 객체에서 함께 읽습니다. 이 사정은 <code>GltfImporter.cpp</code>와 <code>Material.h</code> 주석, <a href="../plan/material-extensions-record.html">구현 기록 1장</a>에 적혀 있습니다.</p>
+</section>
+
+<section id="clearcoat">
+<h2>3. 클리어코트 — 두 번째 반사 로브</h2>
+<h3>3-1. 층 구조와 에너지 나눔</h3>
+<p>클리어코트는 기본 층 위에 얇은 투명 유전체 막이 한 겹 있다고 보는 모델입니다. 막은 굴절률 1.5로 고정이라 F0 = 0.04이고, 자기 거칠기와 자기 노멀을 가집니다. 빛은 먼저 막에서 일부(<code>Fc</code>)가 반사되고, 나머지가 기본 층에 닿아 평소처럼 반응한 뒤 다시 막을 지나 나옵니다. 우리 셰이더는 이를 "막이 반사한 만큼 기본 층을 줄인다"는 한 줄로 근사합니다.</p>
+<figure>
+<svg viewBox="0 0 700 330" role="img" aria-label="클리어코트 층과 기본 층의 에너지 나눔">
+  <defs><marker id="matx-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+  <rect x="60" y="120" width="580" height="30" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="380" y="140">코팅 층: F0 0.04, 코팅 노멀·거칠기</text>
+  <rect x="60" y="200" width="580" height="50" rx="4" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="400" y="230">기본 층 (albedo, F0·F90, 노멀 맵)</text>
+  <line x1="120" y1="30" x2="215" y2="118" class="ln" marker-end="url(#matx-ar)"/>
+  <text x="96" y="26">빛</text>
+  <line x1="220" y1="120" x2="300" y2="40" style="stroke:var(--accent);stroke-width:1.6" marker-end="url(#matx-ar)"/>
+  <text x="314" y="40">코팅 반사: c · 코팅 GGX(Fc)</text>
+  <line x1="222" y1="150" x2="262" y2="198" class="ln" marker-end="url(#matx-ar)"/>
+  <text x="80" y="184">1 − c · Fc 만큼 통과</text>
+  <line x1="285" y1="200" x2="370" y2="62" style="stroke:var(--ink3);stroke-width:1.2;stroke-dasharray:5 4" marker-end="url(#matx-ar)"/>
+  <text x="378" y="80">기본 층 결과 × (1 − c · Fc)</text>
+  <text x="60" y="284">결과 = 기본 층 × (1 − c · Fc) + c · 코팅 로브,  Fc = 0.04 + 0.96 · (1 − cosθ)⁵</text>
+  <text x="60" y="306">직접광: cosθ = V·H (하프벡터),  환경광: cosθ = N·V (코팅 노멀). c = clearcoat 세기</text>
+</svg>
+<figcaption>그림 2. <code>ShadeLight</code>·<code>ShadeEnvironment</code>가 쓰는 층 구조. 기본 층은 확산과 반사 모두 같은 비율로 줄어듭니다. 막 안에서의 굴절이나 막과 기본 층 사이의 여러 번 반사는 계산하지 않습니다.</figcaption>
+</figure>
+<p>코팅 세기 1일 때 기본 층이 남는 비율 <code>1 − Fc</code>는 0°에서 0.96, 60°에서 0.93, 80°에서 0.59, 85°에서 0.35입니다 <span class="tag chk">계산값</span>. 정면에서는 코팅이 바탕을 거의 가리지 않고, 비스듬히 볼수록 코팅의 반사가 바탕을 덮습니다. 자동차 차체의 가장자리가 하늘을 비추는 거울처럼 보이는 것이 이 효과입니다.</p>
+
+<h3>3-2. 직접광: ShadeLight</h3>
+<p><code>Shading.hlsli</code>의 <code>ShadeLight</code>는 기본 층 항(<code>baseTerm</code>)을 평소처럼 계산한 뒤, <code>s.clearcoat &gt; 0</code>이면 코팅 노멀로 GGX 로브 하나를 더 계산합니다. 하프벡터는 노멀과 무관해서 기본 층의 것을 그대로 쓰고, <code>NdotLcc</code>·<code>NdotVcc</code>·<code>NdotHcc</code>만 코팅 노멀로 다시 구합니다. 코팅의 프레넬은 <code>clearcoat · (0.04 + 0.96 · (1 − VdotH)⁵)</code>이고, 결과는 <code>baseTerm · (1 − coatFresnel) + coatTerm</code>입니다. 빛 판정도 둘 중 하나라도 빛을 받으면(<code>NdotL &gt; 0 || NdotLcc &gt; 0</code>) 계산하도록 넓혀 두었습니다. 코팅 노멀과 셰이딩 노멀이 다르면 한쪽만 빛을 받는 픽셀이 있기 때문입니다.</p>
+
+<h3>3-3. 환경광: EnvironmentClearcoat</h3>
+<p>코팅의 IBL은 기본 층과 같은 split-sum을 한 번 더 합니다. <code>EnvironmentClearcoat</code>가 코팅 노멀의 반사 방향으로 프리필터 큐브를 코팅 거칠기 밉에서 읽고, BRDF LUT 항을 F0 0.04, F90 1로 곱합니다(<code>prefiltered · (0.04 · A + B)</code>). 같이 돌려주는 <code>fresnel</code>은 <code>N·V</code>로 구한 값이고, <code>ShadeEnvironment</code>가 <code>environment · (1 − c · fresnel) + c · coatSpecular</code>로 합칩니다. 추가 비용은 프리필터 큐브 샘플 한 번과 BRDF LUT 샘플(또는 <code>EnvBRDFApprox</code>) 한 번입니다. split-sum 자체는 <a href="../study/ibl-study.html">IBL 문서</a>에 있습니다.</p>
+
+<h3>3-4. 코팅 노멀과 텍스처</h3>
+<ul>
+<li>코팅은 기본 층의 노멀 맵을 따르지 않습니다. 코팅 노멀 맵(t18)이 없으면 평평한 노멀 텍스처가 꽂혀 결과가 기하 노멀과 같아집니다. 주석에 glTF 규칙이라고 적혀 있습니다. 거친 바탕 위의 매끈한 막이라는 모델과 맞는 선택입니다.</li>
+<li>세 텍스처(t16 세기 R, t17 거칠기 G, t18 노멀)는 분기 밖에서 항상 샘플합니다. 분기 안의 <code>Sample</code>은 그래디언트(밉 선택)가 불균일한 흐름에서 정의되지 않기 때문이라고 주석이 설명합니다.</li>
+<li>코팅 거칠기는 기본 층과 같이 0.03 아래로 내려가지 않게 자릅니다. <code>clearcoatRoughness</code>의 기본값은 0이라 실제로는 0.03이 됩니다.</li>
+</ul>
+<div class="box warn"><b>발광과 코팅.</b> 포워드(<code>ShadeForward</code>)는 발광을 <code>ShadeEnvironment</code> 결과 뒤에 더하고, 디퍼드는 G-buffer 패스가 발광을 <code>view.hdr</code>에 먼저 씁니다. 어느 쪽이든 코팅이 발광을 줄이지 않습니다. KHR_materials_clearcoat 규격의 Emission 항목은 "코팅 층은 발광 위에 있다"고 보고 <code>coated_emission = emission · (1 − clearcoat · clearcoat_fresnel)</code>로 어둡게 하므로, 발광하는 코팅 재질에서는 규격보다 정면은 약 4%, 가장자리는 그보다 많이 밝게 나옵니다. 지금 테스트 모델에 발광하는 코팅 재질은 없습니다.</div>
+</section>
+
+<section id="transmission">
+<h2>4. 투과와 블렌딩 패스</h2>
+<h3>4-1. 규격의 투과와 우리 근사</h3>
+<p>KHR_materials_transmission은 빛이 표면을 지나 뒤로 빠져나가는 비율입니다. 제대로 하려면 불투명 장면을 먼저 그린 색 텍스처를 굴절 방향으로, 거칠기만큼 흐리게 읽어야 합니다. 우리 엔진은 이것을 알파 블렌딩으로 근사합니다(<code>Material.h</code> 주석과 <a href="../plan/material-extensions-record.html">구현 기록 5장</a>). 기록에 남은 이유는 장면 색의 밉 사본이 필요한데 RHI에 텍스처 복사·밉 생성 명령이 없었다는 것입니다.</p>
+<table>
+<tr><th>항목</th><th>규격이 뜻하는 것</th><th>우리 코드</th></tr>
+<tr><td>확산</td><td>투과한 만큼 확산이 줄어듦</td><td><code>DiffuseAlbedo(s) = albedo · (1 − transmission)</code>. 직접광·환경광 모두</td></tr>
+<tr><td>반사</td><td>그대로</td><td>그대로 (스페큘러는 줄이지 않음)</td></tr>
+<tr><td>뒤로 보이는 색</td><td>굴절된 배경, 기본색으로 틴트</td><td>블렌딩으로 뒤의 색이 그대로 비침. 굴절·틴트·흐림 없음</td></tr>
+<tr><td>금속</td><td>투과 없음</td><td><code>transmission · (1 − metallic)</code></td></tr>
+<tr><td>그림자</td><td>(규격 밖)</td><td>그림자를 만들지 않음</td></tr>
+</table>
+
+<h3>4-2. 불투명도 식</h3>
+<p><code>BasicPixelShader.hlsl</code>의 <code>ShadeForward</code>는 블렌딩 재질(<code>blended &gt; 0.5</code>)이면 rgb에 기본색 알파를 미리 곱해 내보내고, 알파는 투과와 시선 프레넬로 따로 정합니다.</p>
+<pre><code>fresnelView = FresnelSchlick(F0, F90, N·V).g
+opacity     = saturate(alpha · (1 − transmission · (1 − fresnelView)))
+output      = float4(finalColor · alpha, opacity)     // 블렌드: One, InvSrcAlpha</code></pre>
+<p>투과 1, 알파 1인 유리는 화면 = 반사광 + 배경 × (1 − Fv)가 됩니다. 정면 Fv = 0.04라 배경이 96% 비치고, N·V = 0.2(약 78°)에서는 Fv ≈ 0.35, 0.05에서는 0.78이라 가장자리로 갈수록 거울처럼 됩니다 <span class="tag chk">계산값</span>.</p>
+<p>rgb에는 <code>opacity</code> 대신 기본색 알파를 곱합니다. 금속성 0인 투과 재질(예: <code>F_Transmission</code>)의 기본색 알파를 0.25로 내리면, 불투명도는 정면 0.25 × 0.04 = 0.01이고 반사광도 0.25배로 줄어듭니다 <span class="tag chk">계산값</span>. 유리가 거의 보이지 않는 쪽으로 기우는 조합입니다.</p>
+<p><code>AlfaRomeo_1933</code>의 투과 재질 두 개(<code>…_diff_6_2</code>, <code>…_diff_6_3</code>)는 <code>alphaMode: BLEND</code>에 기본색 알파 0.25, transmission 1이지만 glTF에 <code>metallicFactor</code>가 없습니다. <code>GltfImporter.cpp</code>의 <code>ConvertMaterial</code>은 규격 기본값대로 <code>JsonFloat(*pbr, "metallicFactor", 1.0f)</code>를 읽으므로 금속성이 1이 되고, <code>MaterialSurface.hlsli</code>의 <code>transmission · (1 − metallic)</code>이 0이 됩니다. 투과 1이지만 금속성이 기본값 1로 읽혀 실제 투과는 0이 되고, 불투명도 0.25의 일반 블렌딩(금속 반사)으로 그려집니다. 반사광 0.25배이며, F0는 기본색 그대로이고 확산은 없습니다 <span class="tag chk">계산값</span>.</p>
+
+<h3>4-3. 블렌딩 패스</h3>
+<ul>
+<li><code>IsBlended(material)</code> = <code>alphaBlend || transmissionFactor &gt; 0</code>. glTF가 OPAQUE라도 투과가 있으면 블렌딩 패스로 갑니다.</li>
+<li>PSO(<code>Renderer::GetPipelineFor</code>, 키 비트 11): 블렌드 One / InvSrcAlpha, 깊이는 테스트만 하고 쓰지 않음, RT 1(속도)의 쓰기 마스크 0. 반투명은 속도를 남기지 않아 뒤 표면의 속도가 쓰입니다(<a href="../study/taa-study.html">TAA 문서</a>와 관련).</li>
+<li>순서(<code>Renderer::DrawItems</code>): 불투명 → 하늘 → 블렌딩 항목을 오브젝트 경계 구 중심이 카메라에서 먼 것부터. 한 오브젝트 안의 삼각형끼리는 정렬하지 않습니다.</li>
+<li><code>BuildDrawList</code>가 블렌딩 재질에는 그림자 PSO를 만들지 않습니다(빈 핸들). 그림자 맵은 차폐 여부만 담아서 반투명 물체가 통째로 그림자를 드리우게 되기 때문입니다.</li>
+</ul>
+</section>
+
+<section id="alpha">
+<h2>5. 알파 모드·양면·unlit·발광</h2>
+<table>
+<tr><th>기능</th><th>읽기 (임포터)</th><th>셰이더·PSO</th></tr>
+<tr><td>MASK</td><td><code>alphaCutoff</code>(기본 0.5, 0 이하면 0.5). 엔진에서 0은 "끔"이라 glTF의 cutoff 0은 표현하지 못함</td><td><code>ShadeForward</code>·<code>PS_GBuffer</code> 모두 <code>clip(alpha − alphaCutoff)</code>. 구멍 난 픽셀은 깊이와 G-buffer를 쓰지 않음</td></tr>
+<tr><td>BLEND</td><td><code>alphaBlend = true</code></td><td>4-3의 블렌딩 패스</td></tr>
+<tr><td>doubleSided</td><td>불리언 그대로</td><td>메인·G-buffer·그림자 PSO 모두 컬링 끔. <code>EvaluateMaterialSurface</code>가 <code>SV_IsFrontFace</code>로 뒷면의 기하 노멀을 뒤집고, 탄젠트 B는 그 노멀로 다시 만들어 함께 뒤집힘</td></tr>
+<tr><td>unlit</td><td><code>KHR_materials_unlit</code>은 읽지 않음. <code>Material::unlit</code>은 에디터·씬 JSON에서만 켬</td><td>조명 없이 기본색만 출력(발광도 더하지 않음). 그림자를 만들지 않고, 디퍼드에서는 포워드</td></tr>
+<tr><td>발광 세기</td><td><code>emissiveFactor × emissiveStrength</code>를 <code>emissive</code> 하나에 넣음</td><td><code>emissive × emissiveTexture(t4, sRGB)</code>. 조명·그림자·AO와 무관하게 더함</td></tr>
+</table>
+<p>발광은 선형 HDR 값이라 1을 넘어도 FP16 타깃에서 잘리지 않고, 노출·톤매핑에서 처리됩니다(<a href="../study/hdr-tonemapping-study.html">HDR·톤매핑 문서</a>). 에디터의 Emissive 색 편집기도 HDR 플래그(<code>ImGuiColorEditFlags_HDR</code>)라 1을 넘는 값을 넣을 수 있습니다. emissive_strength를 쓰는 모델이 없어서, 1을 넘는 발광이 임포트에서 끝까지 이어지는지는 화면으로 확인하지 않았습니다 <span class="tag chk">예상</span>. 세기를 곱해서 저장하므로 씬 JSON과 인스펙터에는 원래의 factor와 strength가 아니라 그 곱이 보입니다.</p>
+</section>
+
+<section id="deferred">
+<h2>6. 디퍼드에서 어디로 가는가</h2>
+<h3>6-1. CanUseDeferred</h3>
+<p>디퍼드 프레임에서 재질이 G-buffer 패스로 갈지 포워드 패스에 남을지는 <code>Graphics/RendererDeferred.cpp</code>의 <code>Renderer::CanUseDeferred</code>가 정합니다. 규칙과 이유는 <a href="../study/deferred-gbuffer-study.html">디퍼드·G-buffer 문서 8장</a>에 있으므로, 여기서는 재질 확장 기준으로 순서만 그림으로 둡니다.</p>
+<figure>
+<svg viewBox="0 0 900 360" role="img" aria-label="재질이 G-buffer 패스와 포워드 패스 중 어디로 가는지 판정하는 순서">
+  <defs><marker id="matx-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+  <rect x="10" y="20" width="140" height="36" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="80" y="43" text-anchor="middle">재질 (DrawItem)</text>
+  <line x1="150" y1="38" x2="188" y2="38" class="ln" marker-end="url(#matx-ar2)"/>
+  <rect x="190" y="20" width="330" height="36" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="355" y="43" text-anchor="middle">IsBlended: alphaBlend 또는 transmission &gt; 0</text>
+  <rect x="190" y="84" width="330" height="36" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="355" y="107" text-anchor="middle">unlit</text>
+  <rect x="190" y="148" width="330" height="36" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="355" y="171" text-anchor="middle">transmissionFactor &gt; 0 (방어용 검사)</text>
+  <rect x="190" y="212" width="330" height="36" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="355" y="235" text-anchor="middle">clearcoat &gt; 0 이고 코팅 노멀 맵 있음</text>
+  <rect x="190" y="276" width="330" height="36" rx="6" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="355" y="299" text-anchor="middle">G-buffer 패스: view.hdr 발광 + GB0~GB3</text>
+  <line x1="355" y1="56" x2="355" y2="82" class="ln" marker-end="url(#matx-ar2)"/><text x="364" y="74">아니오</text>
+  <line x1="355" y1="120" x2="355" y2="146" class="ln" marker-end="url(#matx-ar2)"/><text x="364" y="138">아니오</text>
+  <line x1="355" y1="184" x2="355" y2="210" class="ln" marker-end="url(#matx-ar2)"/><text x="364" y="202">아니오</text>
+  <line x1="355" y1="248" x2="355" y2="274" class="ln" marker-end="url(#matx-ar2)"/><text x="364" y="266">아니오</text>
+  <rect x="580" y="20" width="310" height="36" rx="6" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="735" y="43" text-anchor="middle">블렌딩 패스: 하늘 뒤, 먼 것부터</text>
+  <rect x="580" y="84" width="310" height="36" rx="6" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="735" y="107" text-anchor="middle">포워드 패스: 조명 없음</text>
+  <rect x="580" y="148" width="310" height="36" rx="6" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="735" y="171" text-anchor="middle">포워드 패스: 투과 칸 없음</text>
+  <rect x="580" y="212" width="310" height="36" rx="6" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="735" y="235" text-anchor="middle">포워드 패스: 세 번째 노멀 칸 없음</text>
+  <line x1="520" y1="38" x2="578" y2="38" class="ln" marker-end="url(#matx-ar2)"/><text x="540" y="32">예</text>
+  <line x1="520" y1="102" x2="578" y2="102" class="ln" marker-end="url(#matx-ar2)"/><text x="540" y="96">예</text>
+  <line x1="520" y1="166" x2="578" y2="166" class="ln" marker-end="url(#matx-ar2)"/><text x="540" y="160">예</text>
+  <line x1="520" y1="230" x2="578" y2="230" class="ln" marker-end="url(#matx-ar2)"/><text x="540" y="224">예</text>
+  <text x="10" y="342">G-buffer PSO 생성에 실패해도 포워드. 디버그 뷰 5 (UV) 이면 그 프레임 전체가 포워드 (Renderer::UseDeferred)</text>
+</svg>
+<figcaption>그림 3. <code>CanUseDeferred</code>의 판정 순서. 코팅 노멀 맵이 없는 클리어코트, 컷아웃(MASK), 양면, ior·specular 재질은 모두 G-buffer로 갑니다.</figcaption>
+</figure>
+
+<h3>6-2. GB3: 금속성·F90·코팅·코팅 거칠기</h3>
+<p>GB3의 네 칸 중 셋(F90, 코팅, 코팅 거칠기)이 확장의 값입니다. 재질 확장 기록도 디퍼드를 만들기 전에 "clearcoat 는 G-buffer 채널이 더 필요"하다고 적어 두었습니다(<a href="../plan/material-extensions-record.html">기록 5장</a>). <code>PS_GBuffer</code>(<code>Shaders/GBufferPixelShader.hlsl</code>)는 <code>SurfaceData</code>를 포워드와 같은 <code>EvaluateMaterialSurface</code>로 만든 뒤 이렇게 나눠 씁니다.</p>
+<table>
+<tr><th>타깃</th><th>포맷</th><th>내용</th><th>확장과의 관계</th></tr>
+<tr><td>GB2</td><td><code>R8G8B8A8_UNORM_SRGB</code></td><td>rgb 유효 F0, a 거칠기</td><td>ior·specular·specularColor가 다 섞인 결과 F0만 저장</td></tr>
+<tr><td>GB3</td><td><code>R8G8B8A8_UNORM</code></td><td>r 금속성, g F90, b 클리어코트, a 코팅 거칠기</td><td>F90과 코팅 둘이 여기 들어감</td></tr>
+<tr><td>GB1</td><td><code>R16G16B16A16_FLOAT</code></td><td>셰이딩 노멀·기하 노멀 (옥타헤드럴 둘)</td><td>코팅 노멀 칸이 없어서 <code>LoadGBufferSurface</code>가 코팅 노멀 = 기하 노멀로 되살림</td></tr>
+</table>
+<p>F0는 rgb 셋이 필요하지만 F90은 스칼라라서 한 칸이면 됩니다. ior·specular 확장은 F0 rgb와 F90 하나로 완전히 줄어들기 때문에 원래 계수를 G-buffer에 넣을 필요가 없습니다. 투과는 <code>LoadGBufferSurface</code>에서 0으로, 발광은 0으로(이미 <code>view.hdr</code>에 있음) 채웁니다.</p>
+<p>8비트 양자화의 크기 <span class="tag chk">계산값</span>: GB2는 sRGB라 F0 0.04가 코드 56(되읽으면 0.0395, 한 단계 0.0014)으로 저장됩니다. UNORM이었다면 코드 10(0.0392), 한 단계 0.0039라 sRGB 쪽이 작은 F0를 약 세 배 촘촘하게 담습니다. GB3의 F90과 코팅 값은 1/255 단계입니다. 코팅 거칠기 0.04(알파 로메오 차체)는 10/255 = 0.0392로 저장되고, <code>LoadGBufferSurface</code>가 <code>max(…, 0.03)</code>으로 재질 쪽과 같은 하한을 다시 걸어 둡니다. 디퍼드와 포워드의 화면 비교는 8장 E3에 있습니다. 디퍼드 전체 구조는 <a href="../study/deferred-gbuffer-study.html">디퍼드·G-buffer 문서</a>를 보세요.</p>
+</section>
+
+<section id="code">
+<h2>7. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>재질 데이터</td><td><code>Scene/Material.h</code> 의 <code>Material</code>, <code>IsBlended</code></td><td>확장 필드와 기본값(확장 전과 같은 결과가 되는 값)</td></tr>
+<tr><td>임포트</td><td><code>Graphics/Import/GltfImporter.cpp</code> 의 <code>ConvertMaterial</code>, <code>TextureName</code></td><td>emissive_strength·ior·clearcoat·transmission·specular, alphaMode, doubleSided. 텍스처는 모두 TEXCOORD_0</td></tr>
+<tr><td>상수버퍼 배치</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>MaterialConstants</code>, <code>Shaders/Material.hlsli</code> 의 <code>cbuffer Material</code></td><td>b3, 112바이트, 바이트 단위로 같아야 함. 텍스처 레지스터 t0~t6, t16~t19</td></tr>
+<tr><td>GPU 재질</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::GetOrCreateGpuMaterial</code></td><td>칸마다 <code>Load2D(이름, srgb)</code>(albedo는 <code>albedoSrgb</code>(기본 sRGB), emissive·specularColor는 항상 sRGB, 나머지는 선형), 상수를 프레임에 한 번 올림. 이름·핸들이 바뀔 때만 ResourceSet 재생성</td></tr>
+<tr><td>재질 레이아웃</td><td><code>Renderer.cpp</code> 의 <code>Renderer::CreateLayouts</code> (<code>materialLayout.Add</code>)</td><td>슬롯 순서. <code>ResourceSetDesc</code> 바인딩 순서와 같아야 함</td></tr>
+<tr><td>표면 값</td><td><code>Shaders/MaterialSurface.hlsli</code> 의 <code>MaterialBaseColor</code>, <code>EvaluateMaterialSurface</code></td><td>F0·F90, 노멀·뒷면 뒤집기, 코팅 값·코팅 노멀, 투과. 포워드와 G-buffer가 같이 씀</td></tr>
+<tr><td>조명</td><td><code>Shaders/Shading.hlsli</code> 의 <code>ShadeLight</code>, <code>EnvironmentLighting</code>, <code>EnvironmentClearcoat</code>, <code>ShadeEnvironment</code>, <code>DiffuseAlbedo</code>, <code>FresnelSchlick(Roughness)</code></td><td>F90 프레넬, 코팅 로브, 기본 층 감쇠, 투과 확산 감소</td></tr>
+<tr><td>포워드 출력</td><td><code>Shaders/BasicPixelShader.hlsl</code> 의 <code>ShadeForward</code></td><td>컷아웃, unlit, 블렌딩 재질의 미리 곱한 알파와 투과 불투명도</td></tr>
+<tr><td>G-buffer</td><td><code>Shaders/GBufferPixelShader.hlsl</code> 의 <code>PS_GBuffer</code>, <code>Shaders/GBuffer.hlsli</code> 의 <code>LoadGBufferSurface</code></td><td>GB3 = 금속성·F90·코팅·코팅 거칠기</td></tr>
+<tr><td>경로 판정·PSO</td><td><code>Graphics/RendererDeferred.cpp</code> 의 <code>CanUseDeferred</code>, <code>Renderer.cpp</code> 의 <code>GetPipelineFor</code>, <code>BuildDrawList</code>, <code>DrawItems</code></td><td>6-1 판정, 블렌드 PSO, 그림자 제외, 먼 것부터 정렬</td></tr>
+<tr><td>인스펙터</td><td><code>Editor/Editor.cpp</code> 의 <code>DrawMaterialFields</code>, <code>ApplyChangedFields</code>; <code>Editor/DebugUI.cpp</code></td><td>IOR(1~3)·Specular·Specular color·Clearcoat·Clearcoat roughness·Transmission·Alpha cutoff·Alpha blend·Unlit·Double sided·Emissive(HDR). 코팅 노멀 배율 슬라이더는 없음. 텍스처 칸별 임포트 설정은 <code>DebugUI::DrawTextureImportSettings</code></td></tr>
+<tr><td>저장·배포</td><td><code>Scene/SceneSerializer.cpp</code>, <code>Editor/GameBuilder.cpp</code></td><td>새 필드를 <code>j.value(키, 기본값)</code>로 읽어 옛 씬도 열림. 배포본에 텍스처 키 목록을 넘김</td></tr>
+<tr><td>디버그 뷰</td><td><code>Shading.hlsli</code> 의 <code>SurfaceDebugColor</code></td><td>9 "Specular F0" = 유효 F0, 10 "Clearcoat" = (세기, 코팅 거칠기, 0)</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>8. 실험</h2>
+<h3>E1. Hornet의 유효 F0 <span class="tag chk">예상</span></h3>
+<p><code>USN-Hornet</code>을 놓고 디버그 뷰 9(Specular F0)를 켭니다. 비금속 부품의 F0는 0.0498이라, 디버그 색이 sRGB 타깃에서 인코딩되어 화면 값 약 63이 나와야 합니다. 기본 재질의 0.04는 약 56입니다 <span class="tag chk">계산값</span>. 부품이 255 근처의 흰색으로 보인다면 ior만 읽고 specularColor를 빠뜨린 상태입니다(2-2). 디버그 색의 인코딩은 <a href="../study/color-space-study.html#lab">색공간 문서 E3</a>와 같은 방식입니다.</p>
+
+<h3>E2. 클리어코트 켜고 끄기 <span class="tag ok">확인함 (2026-11-16)</span></h3>
+<p>알파 로메오에서 클리어코트를 켠 씬과 끈 씬을 같은 카메라로 비교했을 때 씬 뷰 픽셀 13,393개가 달랐고, D3D11과 D3D12의 수가 같았습니다. 디버그 뷰 10에서 차체 재질이 세기 1로 보였습니다. 출처: <a href="../plan/material-extensions-record.html">재질 확장 구현 기록 4장</a>. 디퍼드 전 포워드 경로에서 잰 값이라, 지금 같은 비교를 하려면 <code>--deferred=0</code>으로 하거나 디퍼드에서 다시 재야 합니다. 같은 기록은 specular 텍스처와 클리어코트 텍스처의 화면 효과는 눈으로 확인하지 못했다고 적고 있습니다(알파 로메오의 코팅은 계수만 있음).</p>
+
+<h3>E3. DeferredMaterials: G-buffer 재질과 포워드 재질 <span class="tag ok">확인함 (2026-11-18)</span></h3>
+<p>테스트 씬 <code>DeferredMaterials.json</code>은 범프 바닥 위에 G-buffer로 가는 재질 넷(<code>D_Dielectric</code>, <code>D_Metal</code>, <code>D_Clearcoat</code> 코팅 1·코팅 거칠기 0.05, <code>D_Cutout</code>)과 포워드에 남는 재질 넷(<code>F_ClearcoatNormal</code>, <code>F_Transmission</code>, <code>F_Unlit</code>, <code>F_Blend</code>)을 둡니다(<a href="../plan/deferred-clustered-ssao-record.html#scenes">디퍼드 기록 7장</a>). 디퍼드와 포워드의 차이는 SSAO를 끄고 42,356 px, 8을 넘는 차이는 75 px, 최대 110이었습니다. 디버그 뷰로 재질 입력을 비교하면 albedo·금속·거칠기·F0·노멀이 모두 최대 1이었고, 큰 차이는 노멀 맵 바닥의 그림자 경계로 추적되었습니다. 다만 이 비교에 F90과 코팅 칸(디버그 뷰 10)은 따로 들어 있지 않았습니다. 출처: <a href="../plan/deferred-clustered-ssao-record.html#v-image">디퍼드 기록 8.1</a>.</p>
+
+<h3>E4. Specular 슬라이더 <span class="tag chk">예상</span></h3>
+<p>비금속 구의 Specular를 1 → 0.5 → 0으로 내립니다. 그림 1대로 정면 하이라이트와 가장자리 반사가 같이 약해지고, 0에서는 반사가 모두 사라집니다. 확산은 <code>kd = 1 − F</code>라 반사가 줄어든 만큼 아주 조금 밝아집니다. 금속성 1인 구에서는 아무 변화가 없어야 합니다(F0 = 기본색, F90 = 1).</p>
+
+<h3>E5. 투과 유리의 가장자리 <span class="tag chk">예상</span></h3>
+<p><code>F_Transmission</code>(투과 1, 알파 1, 거칠기 0.05)을 정면과 비스듬히 번갈아 봅니다. 4-2 식대로 정면은 배경이 96% 비치고 가장자리는 환경 반사가 덮어야 합니다. 같은 재질의 Base color 알파를 0.25로 내리면 반사광까지 0.25배가 되어 유리가 거의 사라지는 것을 볼 수 있습니다(금속성 0일 때의 4-2 계산값 0.01). 알파 로메오 유리는 알파는 같아도 금속성이 1이라 투과가 꺼진 다른 조합입니다(4-2).</p>
+</section>
+
+<section id="pitfalls">
+<h2>9. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>Blender 모델의 비금속이 거울처럼 반짝임</td><td>ior 1000만 읽고 specularColor를 빠뜨림</td><td>임포터가 둘을 함께 읽음 (2-2). 인스펙터 IOR 슬라이더는 1~3이라 드래그하면 1000이 3으로 바뀜(기록 5장). Ctrl+클릭으로 입력</td></tr>
+<tr><td>나뭇잎 구멍 모양이 그림자에 없음</td><td>그림자 패스가 VS만 쓰고 픽셀 셰이더가 없어 <code>clip</code>을 못 함</td><td>MASK 재질은 메시 윤곽 그대로 그림자를 드리움</td></tr>
+<tr><td>유리 뒤가 굴절되지 않고 기본색 틴트도 없음</td><td>투과를 블렌딩으로 근사</td><td>4-1 표. <code>KHR_materials_volume</code>(두께·감쇠 색)도 읽지 않음</td></tr>
+<tr><td>겹친 유리의 앞뒤가 뒤바뀜</td><td>정렬이 오브젝트 경계 구 중심 기준</td><td>한 오브젝트 안의 반투명 삼각형은 정렬하지 않음</td></tr>
+<tr><td>발광 코팅 재질이 규격보다 밝음</td><td>발광을 코팅 감쇠 뒤에 더함</td><td>3-4 상자</td></tr>
+<tr><td>코팅 노멀 맵을 넣은 재질만 SSAO 어두움이 사라짐</td><td>세 번째 노멀 칸이 없어 포워드로 감</td><td>6-1. 포워드 물체는 SSAO를 쓰지 않음(<code>ShadeForward</code> 주석)</td></tr>
+<tr><td>unlit 모델이 조명을 받아 어둡게 나옴</td><td><code>KHR_materials_unlit</code>을 읽지 않음</td><td>에디터에서 Unlit을 켜야 함</td></tr>
+<tr><td>metallicFactor 없이 내보낸 "유리"가 금속처럼 보이고 뒤가 비치지 않음</td><td>glTF <code>metallicFactor</code> 기본값이 1이라 금속성 1로 읽히고, 투과에 <code>(1 − metallic)</code>이 곱해짐</td><td><code>AlfaRomeo_1933</code>의 투과 재질 두 개가 이 경우(4-2). 인스펙터에서 Metallic을 0으로 내려야 투과가 켜짐</td></tr>
+<tr><td>옛 씬에서 확장 효과가 안 보임</td><td>씬 JSON이 재질을 통째로 저장, 새 필드는 기본값</td><td>모델을 다시 놓거나 값을 직접 넣음(기록 5장)</td></tr>
+</table>
+<h3>9-1. 읽지 않는 확장 (코드 검색으로 확인)</h3>
+<p><code>GltfImporter.cpp</code>에서 이름으로 찾는 재질 확장은 emissive_strength·ior·clearcoat·transmission·specular 다섯뿐입니다. 아래 확장은 이름이 코드에 없고, <code>Material</code>에도 대응하는 필드가 없어서 무시되고 기본 PBR로 그려집니다. <code>extensionsRequired</code>도 검사하지 않으므로, 필수 확장이 빠져도 경고 없이 열립니다.</p>
+<table>
+<tr><th>확장</th><th>표현하는 것</th><th>넣으려면</th></tr>
+<tr><td><code>KHR_materials_sheen</code></td><td>천의 가장자리 광택 (별도 로브)</td><td>로브 하나와 그 IBL LUT, G-buffer 칸</td></tr>
+<tr><td><code>KHR_materials_anisotropy</code></td><td>머리카락·브러시드 금속의 늘어난 하이라이트</td><td>이방성 GGX, 탄젠트 방향 저장</td></tr>
+<tr><td><code>KHR_materials_volume</code></td><td>두께·감쇠 거리·감쇠 색 (유리 안의 색)</td><td>투과를 장면 색 사본으로 다시 만든 뒤에야 의미가 있음</td></tr>
+<tr><td><code>KHR_materials_iridescence</code></td><td>비눗방울·기름막의 박막 간섭색</td><td>박막 프레넬</td></tr>
+<tr><td><code>KHR_materials_unlit</code></td><td>조명 없는 재질</td><td>임포터에서 <code>unlit = true</code>만 넣으면 됨 (경로는 이미 있음)</td></tr>
+<tr><td><code>KHR_texture_transform</code>, <code>texCoord</code> 1</td><td>텍스처별 UV 변환, 두 번째 UV</td><td>지금은 모든 텍스처를 TEXCOORD_0으로, 재질 전체의 <code>uvScale</code>만 적용</td></tr>
+<tr><td><code>KHR_materials_pbrSpecularGlossiness</code></td><td>옛 specular-glossiness 워크플로</td><td>지금 모델은 모두 metallic-roughness라 필요 없음</td></tr>
+</table>
+</section>
+
+<section id="study">
+<h2>10. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>F0와 F90</td><td>Schlick 곡선의 두 끝, 굴절률에서 F0, specularFactor가 둘을 함께 누르는 이유</td><td>2-1, 그림 1</td></tr>
+<tr><td>Blender의 Specular 내보내기</td><td>ior 1000 + specularColor, 두 확장을 함께 읽기</td><td>2-2</td></tr>
+<tr><td>층 BRDF (layering)</td><td>위 층의 프레넬만큼 아래 층을 줄이는 근사와, 빠진 것(막 안 굴절·다중 반사)</td><td>3-1, 그림 2</td></tr>
+<tr><td>코팅의 split-sum</td><td>같은 프리필터·LUT를 코팅 노멀·거칠기로 한 번 더</td><td>3-3</td></tr>
+<tr><td>미리 곱한 알파</td><td>One / InvSrcAlpha 블렌드에서 rgb와 알파를 따로 정하기</td><td>4-2</td></tr>
+<tr><td>화면 공간 투과</td><td>장면 색 사본·굴절 오프셋·거칠기 밉. 우리 근사와의 차이</td><td>4-1</td></tr>
+<tr><td>G-buffer에 재질 담기</td><td>셰이딩에 쓰는 값(F0·F90)만 저장, 담지 못하는 재질은 포워드</td><td>6</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Khronos glTF 확장 저장소: <a href="https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_materials_specular">KHR_materials_specular</a>, <a href="https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_materials_clearcoat">KHR_materials_clearcoat</a>, <a href="https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_materials_transmission">KHR_materials_transmission</a> — 각 확장의 정의와 권장 구현 식. 2~4장</li>
+<li>Filament 문서, <a href="https://google.github.io/filament/Filament.html">Physically Based Rendering in Filament</a>의 Clear coat model 절 — 코팅 로브와 기본 층 감쇠(<code>1 − Fc</code>)의 유도. 3장</li>
+<li>Real-Time Rendering 4판, 9장의 Layered Materials 절 — 층 재질 이론의 개요</li>
+<li>우리 문서: <a href="../plan/material-extensions-record.html">재질 확장 구현 기록</a>(구현 순서·검증·남은 일), <a href="../plan/deferred-clustered-ssao-record.html#c-gbuffer">디퍼드 기록 2.1</a>(G-buffer 배치), <a href="../study/gltf-study.html#material">glTF 문서의 재질 절</a>, <a href="../study/pbr-study.html">PBR 문서</a>, <a href="../study/ibl-study.html">IBL 문서</a>, <a href="../overview/rendering-analysis.html#c14">rendering-analysis 14장</a>(GpuMaterial 캐시), <a href="../overview/glossary.html#graphics">용어집 3장</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

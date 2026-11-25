@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · TAA 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>TAA 학습 문서</h1>
+  <p>시간 누적 안티에일리어싱 — 서브픽셀 지터, 속도로 재투영, 히스토리 클리핑, 우리 엔진의 리졸브 패스와 리셋 규칙</p>
+  <p>2026-11-25 · 렌더러 공부 순서 중 "시간 축 효과" 묶음의 문서입니다. TAA 이야기는 지금까지 <a href="../plan/velocity-motionblur-taa-plan.html#s3">속도 버퍼·모션 블러·TAA 구현 계획 3단계</a>(맨 위 "구현하면서 바뀐 점" 포함), <a href="../overview/rendering-analysis.html#c20-28">rendering-analysis 20.28 적용 기록</a>, <a href="../overview/glossary.html#graphics">용어집</a>의 TAA·서브픽셀 지터·히스토리 클리핑 행에 흩어져 있었습니다. 이 문서는 원리부터 다시 설명하고 현재 코드에 맞춰 정리합니다. 속도 버퍼 자체는 <a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a>, 모션 블러는 <a href="../study/motion-blur-study.html">모션 블러 학습</a>, 후처리 체인 전체는 <a href="../study/post-process-study.html">후처리 학습</a>에 있으므로 여기서는 링크만 겁니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(왜 시간으로 모으는가, 누적·재투영·거부), 3장은 한 프레임 안에서 TAA 가 끼는 자리, 4장은 지터, 5장은 리졸브 셰이더의 여섯 단계, 6장은 히스토리 텍스처와 리셋, 7장은 설정·도구·테스트 씬, 8장은 코드 지도, 9장은 실험, 10장은 함정과 한계, 11장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> Halton 오프셋, 피드백 α 의 반감기, 휘도 가중 뒤의 실제 비중, 메모리 크기는 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 화면에서 잰 값은 2026-11-23 구현 때의 검증 기록(<a href="../overview/rendering-analysis.html#c20-28">20.28</a>)에서 가져왔고 <span class="tag ok">확인함</span>으로 표시했습니다. 기록에 없는 화면 결과는 <span class="tag chk">예상</span>으로 적었습니다.</div>
+</header>
+<nav><a href="#why">1. 왜 필요한가</a><a href="#principle">2. 원리</a><a href="#flow">3. 프레임 안의 자리</a><a href="#jitter">4. 지터</a><a href="#resolve">5. 리졸브</a><a href="#history">6. 히스토리와 리셋</a><a href="#settings">7. 설정·도구·씬</a><a href="#code">8. 코드 지도</a><a href="#lab">9. 실험</a><a href="#pitfalls">10. 함정과 한계</a><a href="#study">11. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 필요한가</h2>
+<h3>1-1. 픽셀 하나에 샘플 하나</h3>
+<p>래스터라이저는 픽셀 가운데 한 점에서만 삼각형을 덮었는지 판정하고, 픽셀 셰이더도 그 점에서 한 번 돕니다. 화면에 보이는 색은 픽셀 넓이의 평균이어야 하는데, 실제로는 한 점의 값입니다. 이 차이가 세 가지 증상으로 나타납니다.</p>
+<ul>
+<li><b>기하 계단</b>: 비스듬한 가장자리가 픽셀 단위로 끊겨 보입니다. 카메라가 조금 움직이면 계단이 기어갑니다.</li>
+<li><b>셰이딩 깜빡임</b>: 거칠기가 낮은 면의 하이라이트나 먼 곳의 가는 무늬가 픽셀보다 작으면, 가운데 점에 걸리는 프레임과 안 걸리는 프레임이 번갈아 나옵니다.</li>
+<li><b>잡음</b>: SSAO 처럼 픽셀마다 적은 샘플로 근사하는 효과의 무늬가 그대로 남습니다.</li>
+</ul>
+<p>해결은 픽셀 안의 여러 위치에서 값을 구해 평균하는 것입니다. 문제는 그 샘플을 언제 구하느냐입니다.</p>
+
+<h3>1-2. 다른 방법과 비교</h3>
+<table>
+<tr><th>방법</th><th>추가 샘플을 얻는 곳</th><th>비용</th><th>우리 엔진과 맞지 않는 점</th></tr>
+<tr><td>SSAA (슈퍼샘플링)</td><td>해상도를 N 배로 그리고 줄임</td><td>픽셀 셰이더·대역폭이 N 배</td><td>4 배만 해도 G-buffer 와 디퍼드 라이팅이 모두 4 배</td></tr>
+<tr><td>MSAA</td><td>한 픽셀에 커버리지 샘플 여러 개, 셰이딩은 한 번</td><td>깊이·색 메모리 N 배</td><td>가장자리만 고침(셰이딩 깜빡임·SSAO 잡음은 그대로). 디퍼드 G-buffer 와 함께 쓰려면 샘플별 라이팅이 필요. RHI 에 <code>sampleCount</code> 칸은 있지만(기본 1) <code>Graphics/</code> 에서 바꾸는 곳이 없어 MSAA 를 쓰지 않음</td></tr>
+<tr><td>FXAA·SMAA (후처리 필터)</td><td>새 샘플 없음. 완성된 화면에서 가장자리를 찾아 흐림</td><td>풀스크린 패스 1~3 개</td><td>픽셀보다 작은 하이라이트는 정보가 없어 못 고침. 프레임마다 따로 판정해 움직이면 깜빡임이 남음. 엔진에 없음</td></tr>
+<tr><td>TAA</td><td>지난 프레임들. 매 프레임 픽셀 안의 다른 위치를 그려 쌓음</td><td>풀스크린 패스 2 개(리졸브 + 복사), 히스토리 텍스처 2 장</td><td>속도 버퍼가 꼭 있어야 하고, 틀리면 잔상(고스팅)이나 흐림이 생김</td></tr>
+</table>
+<p>TAA 는 프레임당 셰이딩 비용을 늘리지 않고 시간 방향으로 샘플을 나눠 얻습니다. 기하·셰이딩·잡음을 한 번에 다룬다는 점도 FXAA 계열과 다릅니다. 그 대가는 "지난 프레임의 그 표면이 지금 어디 있는가"를 정확히 알아야 한다는 것이고, 이것이 속도 버퍼(<a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a>)입니다. 계획 문서의 개념 설명은 <a href="../plan/velocity-motionblur-taa-plan.html#c-taa">계획 2.4</a>에 있습니다.</p>
+</section>
+
+<section id="principle">
+<h2>2. 원리 — 지터, 누적, 재투영, 거부</h2>
+<h3>2-1. 지터와 지수 이동 평균</h3>
+<p>투영 행렬을 프레임마다 1 픽셀보다 작게 옮기면(지터), 같은 화면 픽셀이 장면의 조금 다른 위치를 샘플합니다. 이 결과를 지난 결과와 섞어 두면 여러 프레임에 걸쳐 픽셀 안의 여러 위치를 평균한 값이 됩니다. 모든 지난 프레임을 저장할 수는 없으므로 직전 결과 한 장(히스토리)만 두고 지수 이동 평균을 씁니다.</p>
+<pre><code>out(n) = α · current(n) + (1 − α) · history(n − 1)        α = taaFeedback (기본 0.1)</code></pre>
+<p>k 프레임 전 샘플의 무게는 α(1 − α)<sup>k</sup> 입니다. α = 0.1 이면 다음과 같습니다. <span class="tag chk">계산값</span></p>
+<table>
+<tr><th>양</th><th>값</th><th>뜻</th></tr>
+<tr><td>반감기</td><td>6.6 프레임</td><td>ln 0.5 / ln 0.9. 화면이 바뀌면 옛 색이 절반으로 줄기까지</td></tr>
+<tr><td>무게 90 % 가 모이는 범위</td><td>21.9 프레임</td><td>ln 0.1 / ln 0.9</td></tr>
+<tr><td>잡음 분산 기준 등가 샘플 수</td><td>19</td><td>(2 − α) / α. 독립 잡음이면 분산이 1/19 로 줄어듦</td></tr>
+<tr><td>60 fps 에서 시간 상수</td><td>약 167 ms</td><td>1/α = 10 프레임. <code>PostProcessSettings</code> 주석의 "약 10 프레임 평균"</td></tr>
+</table>
+<p>α 를 줄이면 더 매끈해지지만 화면 변화에 늦게 반응하고, 늘리면 반응은 빠르지만 지터 흔들림과 잡음이 덜 걸러집니다.</p>
+
+<h3>2-2. 재투영</h3>
+<p>카메라나 물체가 움직이면 히스토리의 같은 픽셀 자리에는 다른 표면이 있습니다. 그래서 히스토리를 읽을 위치를 속도로 옮깁니다. 우리 속도 버퍼는 <code>uv(이번) − uv(지난)</code> 를 UV 단위로 담으므로(<code>Shaders/Temporal.hlsli</code> 의 <code>velocityTexture</code> 주석), 지난 위치는 <code>uv − velocity</code> 입니다. 이 위치는 보통 텍셀 가운데가 아니어서 히스토리를 보간해 읽어야 하고, 보간 필터가 흐리면 매 프레임 조금씩 흐려진 값이 다시 쌓입니다(5-3).</p>
+
+<h3>2-3. 거부 — 히스토리를 믿을 수 없을 때</h3>
+<p>재투영이 맞아도 히스토리가 틀리는 경우가 있습니다. 앞 물체가 비켜나며 드러난 배경(disocclusion)은 지난 프레임에 아예 보이지 않았고, 조명이 바뀐 곳은 같은 표면이라도 색이 다릅니다. 속도가 없는 파티클·반투명은 뒤 표면의 속도로 재투영되어 엉뚱한 자리를 읽습니다. 이런 히스토리를 그대로 섞으면 잔상(고스팅)이 남습니다.</p>
+<p>흔한 해법은 "이번 프레임의 3×3 이웃 색이 만드는 범위 밖의 히스토리는 틀렸다"고 보고 범위 안으로 끌어오는 것입니다. 범위를 이웃의 최솟값·최댓값 상자로 잡으면 이웃 클램프, 평균 ± 표준편차 상자로 잡으면 분산 클리핑입니다. 우리 엔진은 분산 클리핑만 씁니다(5-4). 상자가 좁으면 잔상은 줄지만 실제 서브픽셀 정보까지 잘려 깜빡임과 흐림이 돌아오고, 넓으면 반대입니다.</p>
+</section>
+
+<section id="flow">
+<h2>3. 한 프레임 안에서 TAA 가 끼는 자리</h2>
+<ol>
+<li><b>상수 올리기</b> — <code>Renderer::UploadPerFrameConstants</code>(<code>Graphics/Renderer.cpp</code>)가 이 뷰의 지터를 정해 b0 의 <code>proj</code>·<code>viewProj</code>·<code>invViewProj</code> 에 넣고, 지터 없는 <code>unjitteredViewProj</code>·<code>prevUnjitteredViewProj</code> 와 <code>temporalParams</code>(xy 지터, z 히스토리 유효, w 위상)를 함께 올립니다.</li>
+<li><b>씬 패스</b> — 불투명·반투명이 지터된 행렬로 래스터화됩니다. 포워드는 바로 hdr(R16G16B16A16_FLOAT)에, 디퍼드는 G-buffer 에 쓴 뒤 라이팅 패스가 hdr 를 채우고, 깊이도 지터된 위치로 남습니다. 속도는 지터 없는 행렬로 계산되어 속도 RT 에 들어갑니다. 반투명은 속도 RT 쓰기 마스크가 0 입니다(<code>Renderer::GetPipelineFor</code>).</li>
+<li><b>Effects 패스</b> — 파티클과 디버그 선이 같은 hdr 에 그려집니다. 이들은 속도를 쓰지 않습니다.</li>
+<li><b>HDR 구간</b> — <code>Renderer::ApplyHdrEffects</code>(<code>Graphics/RendererPost.cpp</code>): (속도 디버그 뷰면 그것만) → <b>TAA 리졸브 → 복사</b> → 모션 블러 → 블러 → 블룸.</li>
+<li><b>톤 패스와 UI</b> — 노출·ACES·색 효과 뒤 sRGB 로 인코딩하고, 게임 UI 는 그 위에 지터 없이 그립니다. 그래서 UI 는 TAA 를 받지 않습니다.</li>
+</ol>
+<p>순서의 이유는 코드 주석과 계획에 적혀 있습니다. TAA 를 모션 블러 앞에 두는 것은 "지터가 남은 이미지를 정리한 뒤 번지게" 하려는 것이고(<code>ApplyHdrEffects</code> 의 TAA 절 주석, <a href="../plan/velocity-motionblur-taa-plan.html#d-chain">계획 3.5</a>, UE 도 같은 순서), 체인 전체의 순서는 <a href="../study/post-process-study.html">후처리 학습</a>에 있습니다. 하나 덧붙이면, 히스토리에는 모션 블러 전 결과가 저장되므로 블러가 다음 프레임의 히스토리로 되먹임되지 않습니다.</p>
+<p>메인 뷰와 카메라 미리보기 뷰는 <code>ViewTarget</code> 을 따로 가지므로 지터 위상, 지난 행렬, 히스토리 두 장이 모두 뷰마다 따로입니다.</p>
+</section>
+
+<section id="jitter">
+<h2>4. 서브픽셀 지터</h2>
+<h3>4-1. Halton(2,3) 8 위상</h3>
+<p>지터 위치는 픽셀 안에 고르게 퍼져야 하고, 몇 프레임만 모아도 한쪽으로 몰리지 않아야 합니다. 난수는 뭉치는 곳이 생기므로 저불일치 수열인 Halton 수열을 씁니다. x 는 2 진, y 는 3 진으로 자릿수를 소수점 뒤로 뒤집은 값입니다. 코드는 <code>UploadPerFrameConstants</code> 안의 람다 <code>halton</code> 입니다.</p>
+<pre><code>phase = frameIndex % 8 + 1                      // 이 뷰를 그린 프레임 수 (TemporalState::frameIndex)
+ox = Halton(phase, 2) − 0.5,  oy = Halton(phase, 3) − 0.5     // 픽셀 단위, −0.5 ~ 0.5
+jitter.x =  2 · ox / width,   jitter.y = −2 · oy / height    // NDC (y 는 위가 +)
+proj = P · Translation(jitter.x, jitter.y, 0)    // 행 벡터 관례: clip' = clip · P · J</code></pre>
+<p>원근 투영에서 <code>J</code> 를 뒤에 곱하면 clip.xy 에 <code>jitter · w</code> 가 더해지고, w 로 나눈 뒤 NDC 에서 정확히 <code>jitter</code> 만큼 옮겨집니다. 직교 투영은 w = 1 이라 그대로 더해집니다. 그래서 거리와 무관하게 화면 전체가 같은 서브픽셀 양만큼 움직입니다.</p>
+<table>
+<tr><th>k (위상)</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+<tr><td>ox (px)</td><td>0</td><td>−0.25</td><td>0.25</td><td>−0.375</td><td>0.125</td><td>−0.125</td><td>0.375</td><td>−0.4375</td></tr>
+<tr><td>oy (px)</td><td>−0.167</td><td>0.167</td><td>−0.389</td><td>−0.056</td><td>0.278</td><td>−0.278</td><td>0.056</td><td>0.389</td></tr>
+</table>
+<p>여덟 위상의 평균은 x −0.055 px, y 0 입니다 <span class="tag chk">계산값</span>. 2 진 수열을 8 개에서 끊으면 0.5 아래쪽 값이 하나 더 들어가기 때문입니다. 그만큼 정지 화면 결과가 왼쪽으로 아주 조금 치우칩니다.</p>
+<figure>
+<svg viewBox="0 0 640 320" role="img" aria-label="Halton(2,3) 8 위상의 지터 위치를 픽셀 안에 찍은 그림">
+  <rect x="60" y="40" width="240" height="240" style="fill:var(--paper);stroke:var(--ink3);stroke-width:1.5"/>
+  <line x1="120" y1="40" x2="120" y2="280" style="stroke:var(--line)"/><line x1="180" y1="40" x2="180" y2="280" style="stroke:var(--line)"/><line x1="240" y1="40" x2="240" y2="280" style="stroke:var(--line)"/>
+  <line x1="60" y1="100" x2="300" y2="100" style="stroke:var(--line)"/><line x1="60" y1="160" x2="300" y2="160" style="stroke:var(--line)"/><line x1="60" y1="220" x2="300" y2="220" style="stroke:var(--line)"/>
+  <line x1="172" y1="160" x2="188" y2="160" style="stroke:var(--ink3);stroke-width:1.5"/><line x1="180" y1="152" x2="180" y2="168" style="stroke:var(--ink3);stroke-width:1.5"/>
+  <circle cx="180" cy="120" r="5" style="fill:var(--accent)"/><text x="188" y="116">0</text>
+  <circle cx="120" cy="200" r="5" style="fill:var(--accent)"/><text x="128" y="196">1</text>
+  <circle cx="240" cy="66.7" r="5" style="fill:var(--accent)"/><text x="248" y="63">2</text>
+  <circle cx="90" cy="146.7" r="5" style="fill:var(--accent)"/><text x="98" y="143">3</text>
+  <circle cx="210" cy="226.7" r="5" style="fill:var(--accent)"/><text x="218" y="223">4</text>
+  <circle cx="150" cy="93.3" r="5" style="fill:var(--accent)"/><text x="158" y="90">5</text>
+  <circle cx="270" cy="173.3" r="5" style="fill:var(--accent)"/><text x="278" y="170">6</text>
+  <circle cx="75" cy="253.3" r="5" style="fill:var(--accent)"/><text x="83" y="250">7</text>
+  <text x="60" y="30">픽셀 한 칸 (격자 한 칸 = 1/4 px)</text>
+  <text x="180" y="302" text-anchor="middle">x (오른쪽 +)</text>
+  <text x="36" y="160" text-anchor="middle" transform="rotate(-90 36 160)">y (화면 아래 +)</text>
+  <circle cx="340" cy="70" r="5" style="fill:var(--accent)"/><text x="354" y="74">위상 k 의 오프셋 (ox, oy)</text>
+  <line x1="332" y1="100" x2="348" y2="100" style="stroke:var(--ink3);stroke-width:1.5"/><line x1="340" y1="92" x2="340" y2="108" style="stroke:var(--ink3);stroke-width:1.5"/><text x="354" y="104">픽셀 가운데 (오프셋 0)</text>
+  <text x="332" y="146">이웃한 위상끼리 서로 멀리</text>
+  <text x="332" y="164">떨어지도록 놓임</text>
+  <text x="332" y="200">8 위상 평균: x −0.055 px, y 0</text>
+  <text x="332" y="236">반복 주기 8 프레임 (60 fps 에서 133 ms)</text>
+</svg>
+<figcaption>그림 1. Halton(2,3) 8 위상. 점은 위상 k 에서 장면이 화면에서 옮겨지는 양을 픽셀 가운데 기준으로 찍은 것입니다(y 는 화면 아래가 +, NDC 로 바꿀 때 부호가 뒤집힘). <span class="tag chk">계산값</span></figcaption>
+</figure>
+
+<h3>4-2. 지터가 들어가는 곳과 안 들어가는 곳</h3>
+<table>
+<tr><th>값</th><th>지터</th><th>근거와 설명</th></tr>
+<tr><td>b0 <code>proj</code>·<code>viewProj</code>·<code>invViewProj</code></td><td>들어감</td><td>래스터화 위치를 옮기는 것이 목적. <code>invViewProj</code> 도 같이 바뀌어 디퍼드 위치 복원이 지터된 깊이와 맞음</td></tr>
+<tr><td>b0 <code>unjitteredViewProj</code>·<code>prevUnjitteredViewProj</code></td><td>안 들어감</td><td>속도에 지터가 섞이면 정지 화면에서도 속도가 0 이 아니게 되고, TAA 가 지터를 되돌려 수렴하지 않음(<a href="../plan/velocity-motionblur-taa-plan.html#c-jitter">계획 2.5</a>)</td></tr>
+<tr><td>카메라 행렬(컬링·그림자 캐스케이드)</td><td>안 들어감</td><td><code>UploadPerFrameConstants</code> 의 지터 주석("카메라 행렬(컬링·그림자)은 그대로"). 그림자 맵까지 흔들면 그림자 텍셀 경계가 따로 떨리게 됨</td></tr>
+<tr><td>파티클 빌보드·디버그 선</td><td>들어감</td><td>b0 를 쓰므로 같이 흔들림(계획 3단계-1)</td></tr>
+<tr><td>게임 UI</td><td>안 들어감</td><td>톤 패스 뒤에 지터 없이 그림. World 캔버스는 지터된 깊이로 가려지므로 가장자리가 1 px 안쪽에서 흔들릴 수 있음(<code>Renderer.cpp</code> 의 <code>Pass_UIWorld</code> 설정 주석)</td></tr>
+</table>
+<p>지터 여부는 <code>TaaActive() &amp;&amp; m_settings.taaJitter</code> 로 정합니다. <code>TaaActive</code> 는 TAA 켜짐이고 디버그 뷰가 아닐 때 참입니다. 같은 프레임 번호면 실행마다 같은 지터라서 자동화 스크린샷이 결정적입니다.</p>
+<p><code>temporalParams</code> 의 xy(지터)와 w(위상)는 올라가지만 지금 셰이더에서 읽는 곳은 없습니다. 셰이더가 읽는 것은 z(히스토리 유효)뿐입니다. SSAO 의 회전 패턴(<code>Shaders/SsaoPixelShader.hlsl</code> 의 <code>BAYER4</code>)도 위상을 쓰지 않는 고정 무늬입니다(10장).</p>
+</section>
+
+<section id="resolve">
+<h2>5. 리졸브 셰이더 — <code>PS_Taa</code> 의 여섯 단계</h2>
+<p><code>Shaders/TaaPixelShader.hlsl</code> 의 <code>PS_Taa</code> 는 시간 셋(<code>Layout_Temporal</code>, <code>Shaders/Temporal.hlsli</code>)으로 t13 hdr(지터된 이번 프레임), t23 깊이, t7 속도, t24 지난 결과를 읽고, 이번 히스토리 한 장에 씁니다. 파일 머리 주석이 단계 번호 (1)~(6) 을 붙여 두었고, 코드 순서는 (1) (2) (3) (5)의 이웃 통계 (4) (5)의 클립 (6) 입니다.</p>
+
+<h3>5-1. (1) 바로 내보내기</h3>
+<p>α ≥ 1 이거나 <code>temporalParams.z</code> 가 0(히스토리 없음)이면 이번 색을 그대로 냅니다. 맨 앞에서 끝내는 이유는 주석에 있습니다. YCoCg 왕복과 가중치 계산을 거치지 않아야 "피드백 1 + 지터 끔" 배관 검증이 TAA 를 끈 화면과 비트 단위로 같습니다(9장 E1).</p>
+
+<h3>5-2. (2)(3) 속도 팽창과 재투영</h3>
+<p>3×3 이웃 깊이(<code>LoadDeviceDepth</code>, 표준 Z 라 작을수록 가까움) 중 가장 가까운 픽셀을 찾고, 그 픽셀의 속도를 씁니다. 물체 가장자리 픽셀은 지터와 안티에일리어싱 때문에 배경 깊이·속도를 가질 수 있는데, 그대로 쓰면 움직이는 물체의 테두리가 배경 속도로 재투영되어 끌립니다(셰이더 주석). 가장 가까운 표면의 속도를 1 픽셀 바깥까지 넓혀 테두리가 물체를 따라가게 합니다. 비교는 엄격한 <code>&lt;</code> 라서 깊이가 같으면 먼저 본(왼쪽 위) 픽셀이 이기고, 아홉 개 모두 1(하늘)이면 가운데 픽셀의 속도를 씁니다.</p>
+<p>지난 위치는 <code>prevUv = position.xy · screenParams.zw − velocity</code> 입니다. 0~1 밖이면 화면 밖에서 들어온 표면이므로 히스토리 없이 이번 색을 냅니다.</p>
+
+<h3>5-3. (4) Catmull-Rom 5 탭</h3>
+<p>쌍선형 보간은 텍셀 사이를 읽을 때마다 저역 통과 필터를 한 번 거는 것과 같아서, 카메라가 천천히 움직이면 프레임마다 흐림이 쌓입니다. Catmull-Rom 은 4×4 텍셀을 쓰는 3 차 보간이고 바깥 텍셀에 음수 무게를 줘 날카로움을 지킵니다. <code>SampleHistoryCatmullRom</code> 은 가운데 2×2 를 쌍선형 한 번으로 묶고 네 모서리 탭을 빼서 쌍선형 샘플 5 번으로 줄였습니다. 모서리 무게는 음수 로브 둘의 곱이라 f = 0.5 에서 탭당 +0.0039, 넷 합 +0.016 이라 빼도 차이가 작습니다 <span class="tag chk">계산값</span>. 음수 로브 때문에 음수가 나올 수 있어 0 에서 자릅니다.</p>
+<p>속도가 0 인 정지 화면에서는 <code>prevUv</code> 가 텍셀 가운데에 정확히 떨어져 분수부 f = 0 이 되고, 무게가 (0, 1, 0, 0) 이 되어 텍셀을 그대로 읽습니다 <span class="tag chk">계산값</span>. 정지 화면이 끈 화면보다 부드러운 것은 리샘플링 때문이 아니라 지터 샘플들의 평균, 즉 안티에일리어싱 자체 때문입니다.</p>
+
+<h3>5-4. (5) YCoCg 분산 클리핑</h3>
+<p>이번 프레임 3×3 이웃 아홉 색을 YCoCg 로 바꿔 평균 μ 와 표준편차 σ 를 구하고(<code>m1</code>·<code>m2</code> 누적), 히스토리를 상자 [μ − γσ, μ + γσ] (γ = <code>kClipGamma</code> = 1.0) 안으로 넣습니다.</p>
+<ul>
+<li><b>YCoCg</b> (<code>RgbToYCoCg</code>): Y = (R + 2G + B)/4 밝기, Co = (R − B)/2, Cg = (−R + 2G − B)/4. 이웃 색은 보통 밝기 방향으로 길게 퍼지는데, RGB 축 상자는 그 방향을 비스듬히 감싸 빈 공간이 많습니다. 밝기를 한 축으로 떼면 상자가 덜 길쭉합니다(셰이더 주석).</li>
+<li><b>분산 상자</b>: 최솟값·최댓값 상자는 튀는 이웃 하나에 크게 넓어지지만, μ ± σ 는 이웃 대부분이 모인 곳만 감쌉니다. 우리 셰이더는 min/max 클램프를 하지 않고, 분산 상자를 min/max 상자와 겹쳐 자르지도 않습니다.</li>
+<li><b>중심 방향 클립</b> (<code>ClipTowardCenter</code>): 히스토리가 상자 밖이면 μ 에서 히스토리로 가는 선분이 상자 면과 만나는 점으로 옮깁니다. 축마다 따로 자르면 색 비율이 바뀌어 색조가 틀어지는데, 한 선분 위에서 줄이면 덜 틀어집니다(주석: Playdead INSIDE 의 방식). 상자 안이면 그대로 둡니다.</li>
+</ul>
+<figure>
+<svg viewBox="0 0 640 300" role="img" aria-label="YCoCg 이웃 상자와 히스토리를 상자 가운데 쪽으로 자르는 그림">
+  <defs><marker id="taa-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <line class="ln" x1="60" y1="270" x2="600" y2="270" marker-end="url(#taa-ar)"/><line class="ln" x1="60" y1="270" x2="60" y2="20" marker-end="url(#taa-ar)"/>
+  <text x="596" y="288" text-anchor="end">Co</text>
+  <text x="44" y="145" text-anchor="middle" transform="rotate(-90 44 145)">Y (밝기)</text>
+  <rect x="200" y="112" width="200" height="96" style="fill:none;stroke:var(--ink3);stroke-dasharray:5 4"/>
+  <rect x="230" y="125" width="140" height="70" style="fill:var(--accent-bg);stroke:var(--accent);stroke-width:1.5"/>
+  <circle cx="200" cy="170" r="3.5" style="fill:var(--ink2)"/><circle cx="400" cy="140" r="3.5" style="fill:var(--ink2)"/><circle cx="290" cy="112" r="3.5" style="fill:var(--ink2)"/>
+  <circle cx="320" cy="208" r="3.5" style="fill:var(--ink2)"/><circle cx="260" cy="150" r="3.5" style="fill:var(--ink2)"/><circle cx="342" cy="182" r="3.5" style="fill:var(--ink2)"/>
+  <circle cx="270" cy="188" r="3.5" style="fill:var(--ink2)"/><circle cx="330" cy="140" r="3.5" style="fill:var(--ink2)"/><circle cx="308" cy="170" r="3.5" style="fill:var(--ink2)"/>
+  <line x1="300" y1="160" x2="440" y2="30" style="stroke:var(--warn);stroke-dasharray:4 3;stroke-width:1.3"/>
+  <circle cx="300" cy="160" r="5" style="fill:var(--accent)"/><text x="286" y="164" text-anchor="end">μ</text>
+  <circle cx="440" cy="30" r="5.5" style="fill:var(--warn)"/><text x="452" y="34">히스토리 H</text>
+  <circle cx="337.7" cy="125" r="5.5" style="fill:var(--ok)"/>
+  <line x1="334" y1="120" x2="322" y2="104" style="stroke:var(--ink3)"/><text x="330" y="98" text-anchor="end">중심 방향 클립 (우리 코드)</text>
+  <rect x="365" y="120" width="10" height="10" style="fill:none;stroke:var(--c0);stroke-width:1.5"/><line x1="377" y1="122" x2="416" y2="120" style="stroke:var(--ink3)"/><text x="420" y="124">축별 클램프 (색조가 틀어짐)</text>
+  <text x="200" y="232">실선 상자: μ ± γσ, γ = 1 (분산 클리핑)</text>
+  <text x="200" y="252">점선 상자: 이웃 min/max (이웃 클램프, 쓰지 않음)</text>
+</svg>
+<figcaption>그림 2. 3×3 이웃(회색 점 9 개)의 YCoCg 상자를 Y–Co 평면에 그린 것입니다(Cg 축은 생략). 상자 밖의 히스토리 H 는 μ 쪽 선분 위에서 상자 면까지 끌려옵니다(초록). 축마다 따로 자르면 모서리(빨간 네모)로 가서 색 방향이 바뀝니다. 점 위치는 설명용입니다.</figcaption>
+</figure>
+
+<h3>5-5. (6) 휘도 역가중 섞기</h3>
+<p>섞기는 YCoCg 공간에서 두 색에 각각 무게를 주고 정규화합니다(Karis 2014).</p>
+<pre><code>wCurrent = α / (1 + Y_current),   wHistory = (1 − α) / (1 + Y_history)
+result   = (current · wCurrent + history · wHistory) / (wCurrent + wHistory)</code></pre>
+<p>HDR 값은 1 을 훨씬 넘을 수 있어서, 아주 밝은 픽셀 하나(반딧불이)가 들어오면 평균이 크게 튀고 그 뒤 몇 프레임 동안 깜빡입니다. 밝은 쪽 무게를 줄여 이를 누릅니다. 두 밝기가 같으면 실제 비중은 α 그대로입니다. 실제 이번 프레임 비중은 다음과 같습니다(α = 0.1). <span class="tag chk">계산값</span></p>
+<table>
+<tr><th>이번 Y</th><th>히스토리 Y</th><th>이번 프레임의 실제 비중</th><th>뜻</th></tr>
+<tr><td>1</td><td>1</td><td>0.100</td><td>밝기가 같으면 α</td></tr>
+<tr><td>10</td><td>0.5</td><td>0.015</td><td>튄 밝은 샘플이 약 1/7 로 눌림</td></tr>
+<tr><td>100</td><td>0.5</td><td>0.0016</td><td>태양 반사 같은 값은 거의 안 들어감</td></tr>
+<tr><td>0.5</td><td>10</td><td>0.449</td><td>밝은 히스토리가 어두운 이번 값으로 빨리 바뀜</td></tr>
+</table>
+<p>Y 는 노출·톤매핑 전 선형 HDR 값입니다. 가중은 노출을 곱하기 전 값에 걸리므로 노출 설정과 무관하고, 조명이 세서 HDR 값이 큰 씬일수록 세집니다. 마지막에 RGB 로 되돌리고 0 에서 자릅니다.</p>
+
+<h3>5-6. 섞지 않는 것</h3>
+<p>리졸브는 이번 프레임 값을 재구성 필터로 다시 거르지 않고 지터된 한 샘플을 그대로 씁니다. 그래서 결과에는 이번 지터가 α 만큼 남습니다. 리졸브 뒤 샤프닝 패스는 없고, 텍스처 밉 LOD 음수 바이어스도 없습니다(두 RHI 의 샘플러 생성이 <code>MipLODBias = 0</code>). 계획에서 범위 밖으로 둔 항목입니다(<a href="../plan/velocity-motionblur-taa-plan.html#s3-settings">계획 3단계-3</a>).</p>
+</section>
+
+<section id="history">
+<h2>6. 히스토리 텍스처와 리셋</h2>
+<h3>6-1. 두 장 핑퐁</h3>
+<p>같은 텍스처를 읽으면서 쓸 수는 없으므로 뷰마다 히스토리 두 장(<code>ViewTarget::history[2]</code>, R16G16B16A16_FLOAT, hdr 와 같은 선형 FP16)을 둡니다. <code>TemporalState::current</code> 가 이번에 쓸 쪽이고, 다른 쪽을 읽습니다. 셋도 미리 두 벌 만들어 둡니다. <code>taaSet[i]</code> 는 t24 에 <code>history[1 − i]</code> 를 꽂은 시간 셋, <code>historyPostSet[i]</code> 는 <code>history[i]</code> 를 hdr 로 복사할 때 쓰는 후처리 셋입니다.</p>
+<figure>
+<svg viewBox="0 0 900 250" role="img" aria-label="TAA 히스토리 두 장을 프레임마다 번갈아 읽고 쓰는 시간 흐름">
+  <defs><marker id="taa-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <rect x="35" y="190" width="170" height="40" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/><text x="120" y="215" text-anchor="middle">history[1] · N−1 결과</text>
+  <rect x="255" y="110" width="170" height="40" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="340" y="135" text-anchor="middle" style="fill:var(--ink)">리졸브 N (cur = 0)</text>
+  <rect x="255" y="30" width="170" height="40" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/><text x="340" y="55" text-anchor="middle">history[0] · N 결과</text>
+  <rect x="475" y="110" width="170" height="40" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="560" y="135" text-anchor="middle" style="fill:var(--ink)">리졸브 N+1 (cur = 1)</text>
+  <rect x="475" y="190" width="170" height="40" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/><text x="560" y="215" text-anchor="middle">history[1] · N+1 결과</text>
+  <rect x="695" y="110" width="170" height="40" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="780" y="135" text-anchor="middle" style="fill:var(--ink)">리졸브 N+2 (cur = 0)</text>
+  <rect x="695" y="30" width="170" height="40" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/><text x="780" y="55" text-anchor="middle">history[0] · N+2 결과</text>
+  <line x1="205" y1="200" x2="268" y2="152" class="ln" marker-end="url(#taa-ar2)"/><text x="244" y="196">읽기</text>
+  <line x1="340" y1="110" x2="340" y2="72" class="ln" marker-end="url(#taa-ar2)"/><text x="348" y="96">쓰기</text>
+  <line x1="425" y1="60" x2="488" y2="108" class="ln" marker-end="url(#taa-ar2)"/>
+  <line x1="560" y1="150" x2="560" y2="188" class="ln" marker-end="url(#taa-ar2)"/>
+  <line x1="645" y1="200" x2="708" y2="152" class="ln" marker-end="url(#taa-ar2)"/>
+  <line x1="780" y1="110" x2="780" y2="72" class="ln" marker-end="url(#taa-ar2)"/>
+  <text x="35" y="55">프레임마다 cur 를 뒤집음</text>
+</svg>
+<figcaption>그림 3. 리졸브 N 은 history[1] 을 읽어 history[0] 에 쓰고, 다음 프레임은 방금 쓴 history[0] 을 읽어 history[1] 에 씁니다. 각 리졸브 뒤에는 <code>TaaCopy</code> 가 방금 쓴 히스토리를 hdr 로 복사하고, 모션 블러부터는 hdr 를 읽습니다.</figcaption>
+</figure>
+<p><code>ApplyHdrEffects</code> 의 TAA 절은 두 패스입니다. <code>TaaResolve</code> 가 <code>taaSet[cur]</code> 로 <code>history[cur]</code> 에 쓰고, <code>TaaCopy</code> 가 <code>PS_Post</code> 모드 0(복사)으로 <code>history[cur]</code> 를 hdr 에 옮깁니다. 그 뒤 <code>historyValid = true</code>, <code>current ^= 1</code> 입니다. 리졸브 앞의 <code>Barrier(history[cur ^ 1], ShaderResource)</code> 는 처음 만든 직후 한 번도 쓰지 않은 텍스처를 읽을 상태로 바꾸려는 것입니다.</p>
+<p>텍스처는 TAA 가 처음 켜지는 프레임에 <code>Renderer::EnsureTaaTargets</code> 가 만듭니다. 크기는 1920×1080 에서 장당 16.6 MB, 두 장 33.2 MB 입니다(픽셀당 8 바이트) <span class="tag chk">계산값</span>. 하나라도 실패하면 로그를 남기고 전부 지운 뒤 그 프레임은 TAA 를 건너뜁니다. 지우는 곳(<code>DestroyTaaTargets</code>)은 뷰 타깃을 없앨 때(<code>DestroyViewTarget</code>, 리사이즈 포함)와 생성 실패 때뿐이라, TAA 를 꺼도 히스토리 두 장은 남아 있습니다.</p>
+
+<h3>6-2. 히스토리 유효 플래그</h3>
+<p>셰이더가 보는 <code>temporalParams.z</code> 는 프레임 처음 <code>UploadPerFrameConstants</code> 가 <code>TemporalState::historyValid</code> 를 옮긴 값입니다. 이 플래그는 리졸브를 돌린 프레임 끝에 참이 되고, 아래 계기로 거짓이 됩니다. 거짓인 프레임의 리졸브는 5-1 의 (1) 로 이번 색을 그대로 히스토리에 쓰므로, 리셋 다음 프레임부터 새로 쌓입니다.</p>
+<p>씬 불러오기, 재생 시작·정지, 되돌리기·다시 실행, 재생 중 카메라 컷, 미리보기 대상 변경은 속도 버퍼의 지난 값과 함께 버리는 계기라 <a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a> 5-3 표에 정리되어 있습니다. 이 경로들은 <code>Renderer::ResetTemporalHistory</code> 를 부르거나 뷰의 <code>lastCamera</code> 를 지우고, 다음 <code>UploadPerFrameConstants</code> 가 그 뷰의 <code>historyValid</code> 를 내립니다. TAA 에만 있는 계기는 다음 둘입니다.</p>
+<table>
+<tr><th>계기</th><th>어디서</th><th>무엇을 버림</th></tr>
+<tr><td>뷰 크기 변경</td><td><code>DestroyViewTarget</code> → <code>DestroyTaaTargets</code></td><td>그 뷰의 히스토리 두 장(다음 TAA 프레임에 <code>EnsureTaaTargets</code> 가 새로 만듦)</td></tr>
+<tr><td>TAA 끔·디버그 뷰·타깃 생성 실패</td><td><code>ApplyHdrEffects</code> 에서 <code>taa</code> 가 거짓</td><td>그 뷰의 유효 플래그. 다시 켠 첫 프레임은 새로 시작</td></tr>
+</table>
+<p>게임 코드가 카메라를 순간 이동시키는 경우는 감지하지 않으므로 그 코드가 <code>Renderer::ResetTemporalHistory</code> 를 직접 불러야 합니다(<a href="../overview/rendering-analysis.html#c22-4">rendering-analysis 22.4</a>).</p>
+
+<h3>6-3. 디버그 뷰</h3>
+<p>디버그 뷰(알베도·노멀·속도 …)가 켜지면 <code>TaaActive</code> 가 거짓이라 지터도 리졸브도 없습니다. 디버그 색을 여러 프레임 섞으면 읽을 수 없기 때문입니다(<code>TaaActive</code> 주석). 뷰 16·17(속도·속도 오차)은 TAA 절에 오기 전에 속도 디버그 패스만 그리고 함수를 끝냅니다. 디버그 뷰를 끈 첫 프레임은 히스토리가 없는 상태라 옛 디버그 색이 섞이지 않습니다. 블러·블룸은 뷰 16·17 을 빼면 디버그 뷰에서도 돕니다(<a href="../plan/velocity-motionblur-taa-plan.html#unknown">계획 7.4</a>).</p>
+</section>
+
+<section id="settings">
+<h2>7. 설정·도구·테스트 씬</h2>
+<h3>7-1. 설정과 실행 인자</h3>
+<table>
+<tr><th>이름</th><th>기본값</th><th>어디</th><th>하는 일</th></tr>
+<tr><td><code>taaEnabled</code></td><td>false</td><td><code>Scene/PostProcessSettings.h</code>, 씬 JSON <code>environment.postProcess</code>(C++ 멤버는 <code>post</code>)</td><td>TAA 와 지터를 켬. <code>AnyHdrEffect</code> 에 포함</td></tr>
+<tr><td><code>taaFeedback</code></td><td>0.1</td><td>같음. 환경 패널 슬라이더 "TAA feedback (current weight)" 0.02~1</td><td>α (이번 프레임 비중). <code>ApplyHdrEffects</code> 가 0.02~1 로 잘라 b4 <code>blur.x</code> 로 넘김</td></tr>
+<tr><td><code>--taa=0|1</code></td><td>−1 (씬 값)</td><td><code>AppBase::ApplyRenderPathOptions</code> → <code>RenderSettings::taaOverride</code>, <code>Renderer::ResolveEnvironment</code> 가 적용</td><td>씬 값을 덮어씀</td></tr>
+<tr><td><code>--taa-jitter=0|1</code></td><td>1</td><td><code>RenderSettings::taaJitter</code></td><td>끄면 같은 위치를 계속 섞음. 배관 검증용</td></tr>
+</table>
+<p>환경 패널의 "Stage thumbnails" 체크로 여는 별도 창 "Post Stages"(<code>DebugUI::DrawPostStagesWindow</code>)에 후처리 단계 썸네일 6 칸(<code>kPostStageCount</code>: Scene, TAA, Motion, Blur, Bloom, Final)이 있고, 그중 "TAA" 칸이 리졸브 직후 hdr 를 톤매핑해 보여 줍니다(<code>CapturePostStage</code> 의 <code>PostStage_Taa</code>). 움직임 자동화(<code>--cam-orbit</code>, <code>--cam-move</code>, <code>--spin</code>, <code>--move</code>, <code>--event-frame</code>)는 <code>EditorAutomation.h</code> 와 <a href="../overview/rendering-analysis.html#app-d">rendering-analysis 부록 D</a>에 있습니다.</p>
+
+<h3>7-2. 테스트 씬 (<code>Projects/SherlockTestScenes/Assets/Scenes</code>)</h3>
+<table>
+<tr><th>씬</th><th>내용</th><th>보는 것</th></tr>
+<tr><td><code>TaaEdges.json</code></td><td>Sponza, TAA 켬, 피드백 0.1</td><td>정지 화면 가장자리 계단, 같은 바이너리 두 번 실행이 같은지</td></tr>
+<tr><td><code>TaaPlumbing.json</code></td><td>Sponza, TAA 켬, 피드백 1</td><td><code>--taa-jitter=0</code> 과 함께 끈 화면과 비트 단위 비교</td></tr>
+<tr><td><code>TaaSkin.json</code></td><td><code>Animator</code> 스킨 모델 넷(SiegeTank, Tychus_Gun, Viking, BlackDragon)과 정적 모델(USN-Nornet, 대포·총·자동차), 바닥. 카메라 (22, 12, −58) 에서 BlackDragon 쪽(yaw 약 −43.5°)을 봄. TAA 켬, 피드백 0.1. 계획에는 MasterChiefWalk 복사본으로 적혀 있지만 지금 파일에 MasterChief 는 없음</td><td>재생하며 스킨 팔다리 잔상</td></tr>
+<tr><td><code>CameraSwitch.json</code></td><td>Sponza, 카메라 두 대(<code>blendTime</code> 0, 우선순위 0·1), TAA·모션 블러 켬</td><td>미리보기 A → B 전환과 재생 중 카메라 컷의 리셋</td></tr>
+<tr><td><code>TaaMotionBlur.json</code></td><td>헬멧 복사본, TAA·모션 블러 켬. 재생하면 헬멧이 초당 360° 돎. <code>Ball Pivot</code> 도 돌지만 지금 파일에서 <code>Ball</code> 이 그 자식이 아니라 공은 제자리</td><td>자유 카메라로 둘러보며 두 효과를 같이 봄</td></tr>
+</table>
+</section>
+
+<section id="code">
+<h2>8. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>지터</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::UploadPerFrameConstants</code></td><td>Halton 8 위상, <code>J</code> 를 <code>proj</code> 에 곱함, 지터 없는 두 행렬과 <code>temporalParams</code></td></tr>
+<tr><td>뷰별 시간 상태</td><td><code>Graphics/Renderer.h</code> 의 <code>Renderer::TemporalState</code></td><td><code>prevUnjitteredViewProj</code>·<code>hasPrev</code>·<code>frameIndex</code>·<code>historyValid</code>·<code>current</code>·<code>lastCamera</code></td></tr>
+<tr><td>b0 칸</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>PerFrameConstants</code>, <code>Shaders/Common.hlsli</code></td><td><code>unjitteredViewProj</code>(432)·<code>prevUnjitteredViewProj</code>(496)·<code>temporalParams</code>(560) 오프셋 <code>static_assert</code></td></tr>
+<tr><td>켜짐 판정</td><td><code>Graphics/RendererPost.cpp</code> 의 <code>Renderer::TaaActive</code></td><td>켜짐 + 디버그 뷰 아님. 지터도 이것을 따름</td></tr>
+<tr><td>히스토리 생성·해제</td><td><code>Renderer::EnsureTaaTargets</code>, <code>Renderer::DestroyTaaTargets</code></td><td>FP16 두 장과 <code>taaSet</code>·<code>historyPostSet</code> 두 벌</td></tr>
+<tr><td>패스</td><td><code>Renderer::ApplyHdrEffects</code>, <code>Renderer::GetTemporalPipeline(Pass_Taa)</code></td><td><code>TaaResolve</code> → <code>TaaCopy</code>, 썸네일, <code>current</code> 뒤집기</td></tr>
+<tr><td>시간 셋</td><td><code>Graphics/RendererTargets.cpp</code> 의 <code>Renderer::CreateTemporalSet</code>, <code>Shaders/Temporal.hlsli</code></td><td>b0·b4·t13·t23·t7·t24·s6. 다른 패스의 t24 는 흰 텍스처</td></tr>
+<tr><td>리졸브 셰이더</td><td><code>Shaders/TaaPixelShader.hlsl</code> 의 <code>PS_Taa</code>, <code>SampleHistoryCatmullRom</code>, <code>ClipTowardCenter</code>, <code>RgbToYCoCg</code></td><td>5장의 여섯 단계</td></tr>
+<tr><td>리셋</td><td><code>Renderer::ResetTemporalHistory</code>, <code>Renderer::InvalidateScene</code>, <code>EditorApp::StartPlay</code>, <code>EditorApp::UndoRedo</code>, <code>Core/Engine.cpp</code> 의 <code>Scene::ConsumeCameraCut</code> 확인</td><td>6-2, <a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a> 5-3</td></tr>
+<tr><td>설정</td><td><code>Scene/PostProcessSettings.h</code>, <code>Scene/SceneSerializer.cpp</code>, <code>Editor/DebugUI.cpp</code></td><td><code>taaEnabled</code>·<code>taaFeedback</code> 저장·UI</td></tr>
+<tr><td>실행 인자</td><td><code>App/AppBase.cpp</code> 의 <code>AppBase::ApplyRenderPathOptions</code>, <code>Graphics/Renderer.h</code> 의 <code>RenderSettings</code></td><td><code>--taa</code>, <code>--taa-jitter</code></td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>9. 실험</h2>
+<p>모두 테스트 씬과 실행 인자로 할 수 있습니다. 스크린샷을 비교할 때는 <code>--exit-after</code> 를 고정하면 지터 위상까지 같아집니다.</p>
+
+<h3>E1. 배관 검증 <span class="tag ok">확인함 (2026-11-23)</span></h3>
+<p><code>TaaPlumbing.json</code>(피드백 1)을 <code>--taa-jitter=0</code> 으로 찍은 화면과 <code>--taa=0</code> 으로 찍은 화면을 비교합니다. 5-1 의 (1) 에서 이번 색을 그대로 내고 복사도 값을 바꾸지 않으므로 차이가 0 픽셀이어야 합니다. 기록은 0 px 이고, D3D11 과 D3D12 의 결과도 같았습니다(<a href="../overview/rendering-analysis.html#c20-28">20.28</a>).</p>
+
+<h3>E2. 지터가 보이는지 <span class="tag chk">예상</span></h3>
+<p>같은 씬(피드백 1)에서 <code>--taa-jitter=1</code> 로 <code>--exit-after=40</code> 과 <code>41</code> 을 찍으면 위상이 하나 달라 화면이 1 픽셀 미만으로 어긋납니다. <code>--taa-jitter=0</code> 이면 두 장이 같습니다. 계획의 합격선(<a href="../plan/velocity-motionblur-taa-plan.html#s3-todo">계획 3-2</a>)이고 측정 숫자는 기록에 없습니다.</p>
+
+<h3>E3. 정지 화면 안티에일리어싱 <span class="tag chk">예상</span></h3>
+<p><code>TaaEdges.json</code> 을 <code>--exit-after=40</code> 으로 TAA 켬·끔 두 번 찍어 비스듬한 가장자리를 확대합니다. 40 프레임이면 반감기(6.6 프레임)의 여섯 배가 지나 거의 수렴한 상태입니다. 같은 인자로 두 번 실행하면 같은 화면이어야 합니다(결정적 지터).</p>
+
+<h3>E4. 피드백 바꿔 보기 <span class="tag chk">예상</span></h3>
+<p>환경 패널에서 피드백을 0.02, 0.1, 0.5 로 바꾸며 <code>--cam-orbit=1</code> 같은 회전을 봅니다. 0.02 는 정지 화면이 가장 매끈하지만 움직일 때 흐림과 잔상이 길고(반감기 34 프레임 <span class="tag chk">계산값</span>), 0.5 는 반응이 빠르지만 가장자리 흔들림이 남습니다.</p>
+
+<h3>E5. 고스팅 <span class="tag chk">예상</span></h3>
+<p><code>TaaMotionBlur.json</code> 을 재생합니다. 헬멧이 <code>Rotator</code> 로 초당 360° 돌고 뒤에 바닥이 보입니다. <code>TaaEdges.json</code> 은 Sponza 한 덩어리(<code>Sponza/node0</code>)와 카메라뿐이라 <code>--spin</code> 을 주면 씬 전체가 돌아 잔상을 볼 배경이 없습니다. 회전하는 물체 뒤에 잔상 띠가 없어야 합니다(<a href="../plan/velocity-motionblur-taa-plan.html#s3-verify">계획 3단계-5</a>). <code>kClipGamma</code> 를 잠깐 3 으로 올리면 상자가 넓어져 드러난 배경에 옛 색이 남는 것을 볼 수 있습니다. 확인한 뒤 되돌립니다.</p>
+
+<h3>E6. 리셋 <span class="tag ok">확인함 (2026-11-23)</span></h3>
+<p><code>CameraSwitch.json</code> 같은 씬에서 <code>--event-frame</code> 을 <code>exit-after − 1</code> 로 두고 미리보기 전환(<code>--select</code>)·되돌리기(<code>--undo</code>)·재생 중 카메라 컷을 일으키면, 사건 직후 첫 프레임이 처음부터 새로 그린 화면과 같아야 합니다. 기록된 세 경우(미리보기 전환·되돌리기·카메라 컷) 모두 0 px 입니다(<a href="../overview/rendering-analysis.html#c20-28">20.28</a>). 씬 뷰 크기 변경은 자동화 수단이 없어 손으로 확인합니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>10. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>정지 화면이 끈 화면보다 부드러움</td><td>지터 샘플 평균 자체가 픽셀 넓이의 상자 필터</td><td>샤프닝·밉 LOD 음수 바이어스 없음(5-6). 피드백을 올리면 덜하지만 가장자리가 흔들림</td></tr>
+<tr><td>파티클·디버그 선 뒤로 옅은 잔상</td><td>속도를 쓰지 않아 뒤 표면 속도로 재투영됨</td><td>Effects 패스(3장). 빠른 파티클은 클리핑에 걸려 대체로 괜찮음. 반응성 마스크는 남은 과제(<a href="../plan/velocity-motionblur-taa-plan.html#s3-risk">계획 3단계-6</a>, <a href="../overview/rendering-analysis.html#c22-4">22.4</a>)</td></tr>
+<tr><td>반투명 물체가 뒤 배경을 따라 끌림</td><td>반투명 PSO 는 속도 RT 쓰기 마스크 0</td><td><code>Renderer::GetPipelineFor</code>. 반투명 밑 불투명 표면의 속도가 남음</td></tr>
+<tr><td>SSAO 무늬가 사라지지 않음</td><td>4×4 베이어 회전이 화면 픽셀에 고정되어 프레임마다 같은 잡음</td><td><code>BAYER4</code> 가 지터 위상을 쓰지 않음. 위상으로 돌리는 것은 선택 항목(계획 3단계-6)</td></tr>
+<tr><td>드러난 배경에 짧은 옛 색</td><td>γ = 1 상자 안에 우연히 들어온 히스토리는 그대로 섞임</td><td>분산 상자 하나만 씀. 속도·깊이로 거부하는 조건은 없음</td></tr>
+<tr><td>게임 코드의 순간 이동 뒤 한 프레임 겹침</td><td>리셋 계기가 아님</td><td>그 코드가 <code>ResetTemporalHistory</code> 를 불러야 함(6-2)</td></tr>
+<tr><td>TAA 가 꺼졌는데 화면이 떨림</td><td>지터는 <code>TaaActive</code> 만 보고 타깃 생성 성공을 보지 않음</td><td><code>EnsureTaaTargets</code> 실패 프레임은 지터만 남음(22.4 에 기록된 한계)</td></tr>
+<tr><td>World 캔버스 UI 경계가 깜빡임</td><td>UI 는 지터 없이, 가리는 깊이는 지터된 값</td><td><code>Pass_UIWorld</code> 주석의 1 px 한계</td></tr>
+<tr><td>고정 스텝 물체 주변 잔상·번짐</td><td><code>Rigidbody</code> 는 렌더 보간이 없어 높은 fps 에서 계단처럼 움직임</td><td>속도가 스텝 프레임에만 생김(22.4). 모션 블러 쪽 영향이 더 큼</td></tr>
+<tr><td>밝은 하이라이트가 늦게 나타남</td><td>휘도 역가중이 밝은 이번 값의 비중을 줄임</td><td>5-5 표: Y 10 이면 실제 비중 0.015</td></tr>
+</table>
+<div class="box warn"><b>계획 문서와 다른 곳.</b> <a href="../plan/velocity-motionblur-taa-plan.html#s3-resolve">계획 3단계-2</a>는 섞기를 <code>lerp(history, current, α)</code> 로 적고 휘도 가중을 덧붙였는데, 코드는 처음부터 YCoCg 에서 휘도 가중으로 섞습니다(5-5). 또 계획은 히스토리 유효 검사를 화면 밖 검사와 같은 단계에 두었지만, 코드는 α ≥ 1 검사와 함께 맨 앞(1)에서 합니다. 계획 3.6 표의 "미리보기 포인터 비교"는 구현에서 오브젝트 id 비교로 바뀌었습니다(맨 위 "구현하면서 바뀐 점"에 기록됨).</div>
+</section>
+
+<section id="study">
+<h2>11. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>샘플링과 에일리어싱</td><td>픽셀 하나에 샘플 하나가 만드는 계단·깜빡임·잡음</td><td>1-1</td></tr>
+<tr><td>지수 이동 평균</td><td>α 와 반감기·등가 샘플 수의 관계</td><td>2-1</td></tr>
+<tr><td>저불일치 수열</td><td>Halton 2 진·3 진, 몇 개만 모아도 고르게 퍼지는 성질</td><td>4-1</td></tr>
+<tr><td>투영 행렬 지터</td><td>NDC 이동을 clip 에서 w 배로 넣는 이유, 지터 없는 행렬을 따로 두는 이유</td><td>4-1, 4-2</td></tr>
+<tr><td>재투영과 속도 팽창</td><td><code>uv − velocity</code>, 가장 가까운 깊이의 속도</td><td>2-2, 5-2</td></tr>
+<tr><td>3 차 보간</td><td>Catmull-Rom 무게, 쌍선형 5 번으로 줄이는 법</td><td>5-3</td></tr>
+<tr><td>히스토리 거부</td><td>이웃 클램프와 분산 클리핑, YCoCg, 중심 방향 클립</td><td>2-3, 5-4</td></tr>
+<tr><td>HDR 반딧불이 억제</td><td>1/(1 + Y) 가중과 실제 비중</td><td>5-5</td></tr>
+<tr><td>핑퐁 렌더 타깃</td><td>읽으면서 쓰지 않기, 셋을 두 벌 미리 만들기</td><td>6-1</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Brian Karis, "High Quality Temporal Supersampling", SIGGRAPH 2014 Advances in Real-Time Rendering — UE4 TAA. 휘도 가중, YCoCg, 속도 팽창. 5장 전체</li>
+<li>Lasse Jon Fuglsang Pedersen, "Temporal Reprojection Anti-Aliasing in INSIDE", GDC 2016 — 중심 방향 클립(5-4)</li>
+<li>Marco Salvi, "An Excursion in Temporal Supersampling", GDC 2016 — 분산 클리핑(μ ± γσ)</li>
+<li>Lei Yang 외, "A Survey of Temporal Antialiasing Techniques", Eurographics 2020 STAR — 지터 수열·히스토리 거부·한계 정리</li>
+<li>우리 문서: <a href="../plan/velocity-motionblur-taa-plan.html#s3">속도 버퍼·모션 블러·TAA 계획 3단계</a>(설계와 검증 합격선), <a href="../plan/velocity-motionblur-taa-plan.html#d-reset">계획 3.6 히스토리 리셋</a>, <a href="../overview/rendering-analysis.html#c20-28">rendering-analysis 20.28</a>(적용 기록과 검증 결과), <a href="../overview/rendering-analysis.html#c22-4">22.4</a>(한계), <a href="../overview/glossary.html#graphics">용어집 3장</a>(TAA, 서브픽셀 지터, 히스토리 클리핑), <a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a>, <a href="../study/motion-blur-study.html">모션 블러 학습</a>, <a href="../study/post-process-study.html">후처리 학습</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

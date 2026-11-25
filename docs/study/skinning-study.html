@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 스키닝 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>스키닝 학습 문서</h1>
+  <p>조인트·역바인드 행렬·스킨 팔레트·선형 블렌드 스키닝 — 뼈대 애니메이션이 정점 셰이더에서 어떻게 그려지는가</p>
+  <p>2026-11-25 · 스키닝 이야기는 지금까지 <a href="../plan/skinning-bone-debug-record.html">스키닝 · 본 디버그 구현 기록</a>(2026-11-12)과 <a href="../plan/velocity-motionblur-taa-plan.html#d-cb">속도 버퍼 계획</a>(지난 프레임 팔레트), 공부 순서를 적은 <a href="character-engine-study.html">캐릭터 엔진 로드맵</a>에 흩어져 있었습니다. 이 문서는 렌더러가 하는 일을 중심으로 원리부터 다시 설명하고 현재 코드에 맞춰 정리합니다. glTF 파일 형식(<code>skins</code>·<code>accessors</code>)은 <a href="gltf-study.html">glTF 학습</a>에 맡겼습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(왜 정점마다 행렬을 섞는가, 역바인드 행렬), 3장은 한 프레임의 흐름, 4장은 팔레트 식과 메시 노드 관례, 5장은 정점 셰이더와 상수 버퍼, 6장은 속도·그림자·디퍼드 경로, 7장은 애니메이션 샘플링(짧게), 8장은 본 디버그 표시, 9장은 코드 지도, 10장은 실험, 11장은 함정과 한계, 12장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 바이트 수와 LBS 수축 비율은 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 테스트 모델의 조인트 수 중 마스터치프 값은 구현 기록에 적힌 값이고 <span class="tag ok">확인함 (2026-11-12)</span>, 나머지 모델은 이 문서를 쓰면서 glTF 파일의 <code>skins[].joints</code> 길이를 센 값입니다. 실험 결과는 기록된 측정이 없어서 모두 <span class="tag chk">예상</span>입니다.</div>
+</header>
+<nav><a href="#why">1. 왜 필요한가</a><a href="#principle">2. 원리</a><a href="#flow">3. 한 프레임의 흐름</a><a href="#palette">4. 팔레트와 메시 노드</a><a href="#shader">5. 정점 셰이더</a><a href="#passes">6. 속도·그림자·디퍼드</a><a href="#sampling">7. 샘플링</a><a href="#bones">8. 본 디버그</a><a href="#code">9. 우리 코드</a><a href="#lab">10. 실험</a><a href="#pitfalls">11. 함정</a><a href="#study">12. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 스키닝이 필요한가</h2>
+<h3>1-1. 노드마다 굳은 행렬로는 관절이 갈라진다</h3>
+<p>스키닝이 없는 모델은 노드 하나에 메시 하나가 붙고, 메시 전체가 그 노드의 월드 행렬 하나로 움직입니다. 우리 엔진에서는 <code>Scene::AddModel</code> 이 노드마다 월드 행렬을 굳혀 <code>Transform</code> 의 pre 행렬로 넣습니다. 팔을 위팔·아래팔 두 메시로 나누면 팔꿈치를 굽힐 때 두 조각 사이가 벌어지거나 겹칩니다. 피부처럼 이어진 표면을 만들려면 정점마다 "어느 뼈를 얼마나 따라갈지"를 따로 정해야 합니다.</p>
+<h3>1-2. 정점 수만큼 CPU 로 계산하면 비싸다</h3>
+<p>뼈(조인트)는 수십~수백 개이고 정점은 수만~수십만 개입니다. 매 프레임 바뀌는 것은 조인트 행렬뿐이므로, CPU 는 조인트 행렬 배열(팔레트)만 만들고 정점 변환은 정점 셰이더가 합니다. 정점 버퍼는 한 번 올린 뒤 바뀌지 않습니다. 이것이 이 엔진이 쓰는 방식(정점 셰이더 스키닝)입니다. 컴퓨트 셰이더로 스킨된 정점을 버퍼에 한 번 써 두고 여러 패스가 다시 읽는 방식은 아직 없습니다(11장).</p>
+</section>
+
+<section id="principle">
+<h2>2. 원리: 바인드 포즈, 역바인드, 팔레트</h2>
+<h3>2-1. 조인트 계층과 조인트 월드</h3>
+<p>조인트는 glTF 노드입니다. 노드마다 로컬 이동·회전(쿼터니언)·스케일이 있고, 부모를 따라 곱하면 월드가 됩니다. 행벡터 관례(<code>v' = v · M</code>)에서는 <code>global[n] = S · R · T · global[parent]</code> 입니다. 애니메이션은 이 로컬 TRS 를 시간에 따라 바꾸는 것이고, 렌더러가 받는 것은 그 결과인 조인트 월드뿐입니다.</p>
+<h3>2-2. 역바인드 행렬은 "정점을 조인트 로컬로 보내는 행렬"</h3>
+<p>메시는 바인드 포즈(모델러가 뼈를 심을 때의 자세)로 저장됩니다. 조인트 j 의 바인드 포즈 월드를 <code>B<sub>j</sub></code> 라고 하면 역바인드 행렬은 <code>B<sub>j</sub><sup>-1</sup></code> 입니다. 정점에 이것을 곱하면 "조인트 j 에서 본 상대 위치"가 됩니다. 그 상대 위치에 지금 포즈의 조인트 월드 <code>J<sub>j</sub></code> 를 곱하면, 조인트가 움직인 만큼 정점이 따라 움직입니다. 바인드 포즈 그대로면 <code>B<sub>j</sub><sup>-1</sup> · J<sub>j</sub></code> 가 단위행렬이라 정점은 제자리에 있습니다. glTF 는 <code>inverseBindMatrices</code> 로 이 행렬을 미리 계산해 줍니다.</p>
+<figure>
+<svg viewBox="0 0 900 330" role="img" aria-label="바인드 포즈와 포즈 상태의 조인트 사슬, 그리고 정점이 거치는 행렬 순서">
+  <defs><marker id="skin-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+  <text x="30" y="28">바인드 포즈</text>
+  <line x1="60" y1="110" x2="200" y2="110" style="stroke:var(--ok);stroke-width:3"/>
+  <line x1="200" y1="110" x2="330" y2="110" style="stroke:var(--ok);stroke-width:3"/>
+  <circle cx="60" cy="110" r="6" style="fill:var(--c3)"/><circle cx="200" cy="110" r="6" style="fill:var(--c3)"/><circle cx="330" cy="110" r="6" style="fill:var(--c3)"/>
+  <text x="52" y="136">J0</text><text x="192" y="136">J1</text><text x="322" y="136">J2</text>
+  <line x1="200" y1="110" x2="270" y2="90" style="stroke:var(--ink3);stroke-dasharray:3 3"/>
+  <circle cx="270" cy="90" r="5" style="fill:var(--accent)"/><text x="280" y="82">v</text>
+  <text x="30" y="170">v 는 J1 기준 상대 위치로 바뀜 (inverseBind)</text>
+  <text x="480" y="28">포즈 (J1 이 45° 회전)</text>
+  <line x1="500" y1="130" x2="640" y2="130" style="stroke:var(--ok);stroke-width:3"/>
+  <line x1="640" y1="130" x2="732" y2="38" style="stroke:var(--ok);stroke-width:3"/>
+  <line x1="640" y1="130" x2="770" y2="130" style="stroke:var(--ink3);stroke-dasharray:2 4"/>
+  <circle cx="500" cy="130" r="6" style="fill:var(--c3)"/><circle cx="640" cy="130" r="6" style="fill:var(--c3)"/><circle cx="732" cy="38" r="6" style="fill:var(--c3)"/>
+  <text x="492" y="156">J0</text><text x="632" y="156">J1</text><text x="744" y="42">J2</text>
+  <line x1="640" y1="130" x2="675" y2="66" style="stroke:var(--ink3);stroke-dasharray:3 3"/>
+  <circle cx="675" cy="66" r="5" style="fill:var(--accent)"/><text x="652" y="60">v'</text>
+  <text x="480" y="170">같은 상대 위치에 지금의 J1 월드를 곱함 (jointWorld)</text>
+  <rect x="20" y="214" width="110" height="34" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="75" y="236" text-anchor="middle">v (메시 공간)</text>
+  <rect x="158" y="214" width="120" height="34" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="218" y="236" text-anchor="middle">inverseBind[j]</text>
+  <rect x="306" y="214" width="120" height="34" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="366" y="236" text-anchor="middle">jointWorld[j]</text>
+  <rect x="454" y="214" width="110" height="34" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="509" y="236" text-anchor="middle">meshRest⁻¹</text>
+  <rect x="592" y="214" width="110" height="34" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="647" y="236" text-anchor="middle">world (b1)</text>
+  <rect x="730" y="214" width="110" height="34" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="785" y="236" text-anchor="middle">viewProj (b0)</text>
+  <line class="ln" x1="130" y1="231" x2="156" y2="231" marker-end="url(#skin-ar)"/>
+  <line class="ln" x1="278" y1="231" x2="304" y2="231" marker-end="url(#skin-ar)"/>
+  <line class="ln" x1="426" y1="231" x2="452" y2="231" marker-end="url(#skin-ar)"/>
+  <line class="ln" x1="564" y1="231" x2="590" y2="231" marker-end="url(#skin-ar)"/>
+  <line class="ln" x1="702" y1="231" x2="728" y2="231" marker-end="url(#skin-ar)"/>
+  <text x="218" y="268" text-anchor="middle">조인트 로컬로</text>
+  <text x="366" y="268" text-anchor="middle">지금 포즈로</text>
+  <text x="509" y="268" text-anchor="middle">메시 노드 상쇄</text>
+  <text x="647" y="268" text-anchor="middle">메시 노드 · 배치</text>
+  <text x="785" y="268" text-anchor="middle">클립 공간</text>
+  <line x1="158" y1="290" x2="564" y2="290" style="stroke:var(--accent);stroke-width:1.5"/>
+  <line x1="158" y1="284" x2="158" y2="296" style="stroke:var(--accent);stroke-width:1.5"/><line x1="564" y1="284" x2="564" y2="296" style="stroke:var(--accent);stroke-width:1.5"/>
+  <text x="361" y="314" text-anchor="middle">palette[j] — CPU 가 만들어 b7 에 올림</text>
+</svg>
+<figcaption>그림 1. 위: 정점 v 는 바인드 포즈에서 J1 기준 상대 위치를 기억하고, J1 이 회전하면 같은 상대 위치를 유지한 채 v' 로 갑니다. 아래: 정점이 거치는 행렬 순서(행벡터 관례라 왼쪽부터 적용). 파란 세 칸을 CPU 가 미리 곱한 것이 팔레트 한 칸입니다.</figcaption>
+</figure>
+<h3>2-3. 선형 블렌드 스키닝(LBS)</h3>
+<p>정점은 조인트 번호 4개와 가중치 4개를 가집니다. 정점 셰이더는 네 팔레트 행렬을 가중치로 더한 행렬 하나를 만들고 정점에 곱합니다: <code>skin = Σ w<sub>i</sub> · palette[j<sub>i</sub>]</code>, <code>v' = v · skin</code>. 가중치 합이 1 이면 같은 조인트만 따라가는 정점은 그 조인트와 함께 굳게 움직이고, 경계의 정점은 두 위치 사이로 섞입니다. 행렬을 섞든 변환된 위치를 섞든 결과는 같습니다(선형이라서). 이 단순함 때문에 LBS 가 실시간 스키닝의 기본이지만, 섞인 행렬은 더 이상 회전이 아니어서 부피가 줄어드는 문제가 있습니다(11장, 그림 2).</p>
+</section>
+
+<section id="flow">
+<h2>3. 우리 엔진에서 한 프레임의 흐름</h2>
+<table>
+<tr><th>#</th><th>단계</th><th>위치</th><th>결과</th></tr>
+<tr><td>0</td><td>임포트 (한 번)</td><td><code>Graphics/Import/GltfImporter.cpp</code> 의 <code>LoadSkins</code>·<code>BuildSkinHierarchy</code>·<code>LoadAnimations</code>, 메시의 <code>JOINTS_0</code>/<code>WEIGHTS_0</code></td><td><code>ModelSkin</code>(joints·inverseBind·evalOrder), <code>AnimationClip</code>, <code>VertexSkin</code> 배열</td></tr>
+<tr><td>1</td><td>GPU 정점 버퍼 (한 번)</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::GetOrCreateGpuMesh</code></td><td><code>VERTEX</code> 뒤에 <code>VertexSkin</code> 을 붙인 <code>VERTEX_SKINNED</code>(84 B) 배열</td></tr>
+<tr><td>2</td><td>포즈 (재생 중)</td><td><code>Scene/Animator.cpp</code> 의 <code>Animator::UpdateSkin</code></td><td>채널 샘플링 → 노드 TRS → <code>EvaluateNodeGlobals</code> → 메시 오브젝트마다 <code>BuildSkinPalette</code> → <code>GameObject::SetSkinPalette</code></td></tr>
+<tr><td>2'</td><td>포즈 (편집 모드)</td><td><code>Scene/SkinPose.cpp</code> 의 <code>ApplyRestSkinPoses</code>(<code>Engine::Render</code> 가 매 프레임 부름)</td><td>팔레트가 빈 스킨 오브젝트만 기본 자세로 채움. Animator 값이 있으면 건드리지 않음</td></tr>
+<tr><td>3</td><td>오브젝트 수집</td><td><code>Renderer::BuildDrawList</code></td><td><code>ObjectData::skinPalette</code> 포인터, 경계 구 반지름 1e9, 이번 팔레트를 다음 프레임용으로 <code>MotionHistory::palettes</code> 에 복사하고, 지난 프레임 팔레트 위치(<code>prevPaletteOffset</code>)를 찾음</td></tr>
+<tr><td>4</td><td>드로우마다 업로드</td><td><code>Renderer::UploadObjectConstants</code></td><td>b1 PerObject, b7 Skin(전치), 속도를 쓰는 패스면 b13 PrevSkin</td></tr>
+<tr><td>5</td><td>정점 셰이더</td><td><code>Shaders/BasicSkinVertexShader.hlsl</code> 의 <code>VS_MainSkin</code>, <code>Shaders/ShadowSkinVertexShader.hlsl</code> 의 <code>VS_ShadowSkin</code></td><td>스킨 → world → viewProj. 픽셀 셰이더는 스킨이 아닌 메시와 같음</td></tr>
+</table>
+<p>마스터치프 모델은 메시 4개(Arms·Chest·Helmet·Legs)가 스킨 하나를 같이 씁니다. Animator 는 모델 루트 오브젝트에 하나만 붙이고, 자손의 스킨 메시 오브젝트를 모아 노드 월드는 한 번만 구하고 팔레트만 메시마다 만듭니다(<code>Animator::UpdateSkin</code> 의 <code>evaluated</code> 비교). 자기 Animator 를 가진 자손 아래는 그 Animator 가 맡습니다.</p>
+</section>
+
+<section id="palette">
+<h2>4. 팔레트 식과 메시 노드 관례</h2>
+<p><code>Scene/SkinPose.cpp</code> 의 <code>BuildSkinPalette</code> 가 조인트마다 다음 행렬을 만듭니다.</p>
+<pre><code>palette[j] = inverseBind[j] · jointWorld[j] · inverse(meshRest)
+pose.jointToObject[j] = jointWorld[j] · inverse(meshRest)   // 본 디버그용 (inverseBind 없음)</code></pre>
+<h3>4-1. 왜 메시 노드의 기본 월드를 빼는가</h3>
+<p>glTF 규격은 스킨 메시가 붙은 노드의 변환을 무시하고 조인트 변환만 쓰라고 정합니다. 우리 엔진의 메시 오브젝트는 다른 메시처럼 노드 월드(<code>ModelInstance::world</code>)를 pre 행렬로 갖고, 그 위에 에디터 배치가 곱해집니다. 조인트 월드는 이미 모델 공간에 있으므로 그대로 두면 메시 노드 변환이 한 번 더 곱해집니다. 그래서 팔레트 끝에 <code>inverse(meshRest)</code> 를 붙여 셰이더의 <code>world</code> 가 곱하는 메시 노드 변환을 상쇄합니다. 결과는 <code>inverseBind · jointWorld · 배치</code> 로, 규격대로 메시 노드를 무시한 것과 같습니다(<a href="../plan/skinning-bone-debug-record.html">구현 기록 2절</a>). 덕분에 셰이더는 스킨 메시와 일반 메시가 같은 b1 <code>world</code> 를 쓰고, 에디터에서 모델을 옮기거나 돌리는 것도 그대로 적용됩니다.</p>
+<h3>4-2. 조인트 월드 계산 순서</h3>
+<p><code>BuildSkinHierarchy</code> 가 임포트 때 <code>evalOrder</code>(조인트와 그 조상 노드, 부모가 항상 앞)를 한 번 만들어 둡니다. <code>EvaluateNodeGlobals</code> 는 그 순서로 한 번 훑으며 <code>로컬 · global[parent]</code> 를 채웁니다. 조인트가 아닌 조상 노드(Armature 같은 빈 노드)도 들어가므로 그 노드의 스케일·회전도 조인트 월드에 반영됩니다. 계층에 순환이 있으면 그 스킨은 쓰지 않습니다(경고 로그). <code>meshRest</code> 는 메시 노드가 <code>evalOrder</code> 에 없을 수 있어서 <code>ComputeNodeGlobal</code> 로 노드 표에서 따로 구합니다.</p>
+<h3>4-3. 좌표계 변환</h3>
+<p>glTF 는 오른손 좌표계, 엔진은 왼손입니다. <code>flipZ</code> 일 때 네 곳이 같은 z 거울을 거칩니다. <code>ConvertMesh</code> 는 정점 위치·노멀의 z 부호를 바꾸고, <code>LoadNodes</code> 는 노드 기본 TRS 를 바꿉니다(<code>matrix</code> 로 적힌 노드는 <code>mirror · NodeLocalMatrix(node) · mirror</code>, TRS 로 적힌 노드는 이동 z 부호와 쿼터니언 x·y). <code>LoadSkins</code> 는 역바인드 행렬을 <code>mirror · M · mirror</code> 로 바꾸고, <code>LoadAnimations</code> 는 키의 이동 z 부호를 바꾸고 쿼터니언의 x·y 를 뒤집습니다. 정점·노드 기본 TRS·역바인드·키 값이 모두 같은 거울을 거쳐야 팔레트가 맞습니다. 하나라도 빠지면 팔이 반대쪽으로 꺾입니다.</p>
+</section>
+
+<section id="shader">
+<h2>5. 정점 셰이더와 상수 버퍼</h2>
+<h3>5-1. 정점 레이아웃</h3>
+<table>
+<tr><th>속성</th><th>시맨틱</th><th>포맷</th><th>오프셋</th></tr>
+<tr><td>위치·색·노멀·UV·탄젠트</td><td><code>POSITION</code> … <code>TANGENT0</code></td><td>일반 메시와 같음 (<code>VERTEX</code>)</td><td>0 ~ 63</td></tr>
+<tr><td>조인트 번호 4개</td><td><code>BLENDINDICES</code></td><td><code>R8G8B8A8_UINT</code> → HLSL <code>uint4</code></td><td>64</td></tr>
+<tr><td>가중치 4개</td><td><code>BLENDWEIGHT</code></td><td><code>R32G32B32A32_FLOAT</code></td><td>68</td></tr>
+</table>
+<p>합계 84 B(<code>VERTEX</code> 64 B + <code>VertexSkin</code> 20 B)입니다 <span class="tag chk">계산값</span>. 레이아웃은 <code>Graphics/VertexTypes.h</code> 의 <code>MakeVertexLayoutPCNTTSkin</code> 이 만들고, 정점 포맷 <code>PositionColorNormalTexcoordTangentSkin</code> 이면 <code>Renderer::GetPipelineFor</code>·<code>GetShadowPipelineFor</code>·<code>GetGBufferPipelineFor</code> 가 각각 <code>Pass_MainSkin</code>·<code>Pass_ShadowSkin</code>·<code>Pass_GBufferSkin</code> 을 고릅니다. 세 패스는 VS 만 다르고 PS·바인딩 레이아웃은 스킨이 아닌 패스와 같습니다. 조인트 번호가 <code>uint8</code> 이라 정점 하나가 가리킬 수 있는 조인트는 0~255 입니다.</p>
+<h3>5-2. 임포터가 맞춰 두는 것</h3>
+<ul>
+<li>음수 가중치는 0 으로 자르고 합이 1 이 되게 다시 나눕니다. 합이 0 이면 조인트 0 에 가중치 1 을 줍니다. 번호가 255 를 넘는 조인트의 영향은 버리는데(경고 로그 1회), 나누는 합에는 버리기 전 가중치가 들어 있어서 그런 정점은 가중치 합이 1 보다 작게 남습니다.</li>
+<li>번호가 255 를 넘는 영향은 버리고(가중치 0) 경고를 한 번 남깁니다.</li>
+<li><code>JOINTS_0</code>·<code>WEIGHTS_0</code> 만 읽습니다. 영향이 5개 이상인 모델의 <code>JOINTS_1</code>·<code>WEIGHTS_1</code> 은 읽지 않습니다.</li>
+<li>스킨 메시 안에 스킨 속성이 없는 primitive 가 섞여 있으면 그 정점은 조인트 0 에 가중치 1 입니다.</li>
+<li>탄젠트를 만들면서 정점을 복제할 때 <code>Mesh::ComputeTangents</code> 가 스킨 속성도 같은 자리에 복제합니다.</li>
+</ul>
+<h3>5-3. <code>VS_MainSkin</code></h3>
+<p><code>Shaders/Mesh.hlsli</code> 의 <code>SkinMatrix</code> 가 네 행렬을 가중치로 더하고, <code>VS_MainSkin</code> 이 위치(w = 1)·노멀(w = 0)·탄젠트(w = 0)에 같은 행렬을 곱합니다. 그 뒤는 일반 메시의 VS 와 같습니다: 위치는 <code>world</code> → <code>viewProj</code>, 노멀은 b1 <code>worldInvTranspose</code>, 탄젠트는 <code>world</code> 와 <code>TangentHandedness</code>. 출력이 <code>VSOutput</code> 그대로라 <code>BasicPS</code>·<code>GBufferPS</code> 를 바꾸지 않고 씁니다.</p>
+<p>노멀에 스킨 행렬의 역전치 대신 스킨 행렬 자체를 곱하는 것은 조인트가 회전·이동·균일 스케일일 때만 정확합니다. 조인트에 비균일 스케일이 있거나 가중치로 섞여 행렬이 회전에서 벗어나면 노멀 방향이 조금 틀어집니다. 마지막 <code>normalize</code> 는 길이만 고칩니다(11장).</p>
+<h3>5-4. b7 Skin: 크기와 업로드</h3>
+<table>
+<tr><th>항목</th><th>값</th><th>근거</th></tr>
+<tr><td>배열</td><td><code>matrix joints[256]</code>, 16384 B (64 B × 256)</td><td><code>ShaderConstants.h</code> 의 <code>SkinConstants</code>, <code>kMaxSkinJoints</code>, <code>Mesh.hlsli</code> 의 <code>MAX_JOINTS</code>. <code>static_assert</code> 로 크기 고정</td></tr>
+<tr><td>256 의 이유</td><td>정점의 조인트 번호가 <code>uint8</code></td><td><code>kMaxSkinJoints</code> 주석</td></tr>
+<tr><td>API 상한</td><td>상수 버퍼 하나 64 KB (float4 4096개) → 4×4 행렬이면 1024개</td><td>D3D11·D3D12 공통 규칙 <span class="tag chk">계산값</span></td></tr>
+<tr><td>올리는 양</td><td>팔레트 길이만큼: 조인트 수 × 64 B. 마스터치프 65개 = 4160 B, 블랙 드래곤 235개 = 15040 B</td><td><code>UploadObjectConstants</code> <span class="tag chk">계산값</span></td></tr>
+<tr><td>팔레트가 없을 때</td><td>256개 전부 단위행렬</td><td>일부만 올리면 나머지가 정의되지 않은 값이라 정점이 튐 (기록된 버그, 11장)</td></tr>
+<tr><td>스킨이 없는 프레임</td><td>프레임 초에 단위행렬 1개를 b7·b13 에 씀</td><td>D3D12 Dynamic CB 는 프레임마다 한 번은 써야 함. 안 쓰면 <code>DrawIndexed</code> 가 거부함 (<code>BuildDrawList</code> 주석)</td></tr>
+</table>
+<p>업로드는 드로우(서브메시) 하나마다 다시 합니다. 같은 오브젝트의 서브메시가 이어서 나와도, 그림자 뷰마다 다시 그려도 매번 올립니다. 팔레트는 CPU 에서 <code>XMMatrixTranspose</code> 로 전치해 <code>m_skinScratch</code> 에 채운 뒤 올립니다(<code>world</code> 와 같은 관례, HLSL 은 <code>mul(v, M)</code>). 스킨 오브젝트가 몇 개 안 되는 지금은 문제가 없지만, 캐릭터가 많아지면 오브젝트당 한 번 올리는 구조나 구조체 버퍼로 바꿀 자리입니다.</p>
+</section>
+
+<section id="passes">
+<h2>6. 속도 버퍼, 그림자, 디퍼드</h2>
+<h3>6-1. 지난 프레임 팔레트 (b13 PrevSkin)</h3>
+<p>속도 버퍼는 같은 정점의 이번·지난 화면 위치 차이입니다(<a href="velocity-buffer-study.html">속도 버퍼 학습</a>). 스킨 메시는 오브젝트가 가만히 있어도 정점이 움직이므로 지난 World 만으로는 부족합니다. <code>VS_MainSkin</code> 은 같은 정점을 <code>PrevSkinMatrix</code>(b13)로 한 번 더 스킨하고 <code>prevWorld</code>·<code>prevUnjitteredViewProj</code> 로 투영해 <code>prevClip</code> 을 만듭니다.</p>
+<ul>
+<li><code>BuildDrawList</code> 가 오브젝트 id 마다 이번 팔레트를 <code>MotionHistory::palettes</code> 에 복사해 두고, 다음 프레임에 그 위치(<code>prevPaletteOffset</code>·<code>prevPaletteCount</code>)를 찾습니다. <code>m_motion[2]</code> 를 번갈아 씁니다.</li>
+<li>지난 팔레트가 없거나 조인트 수가 다르면(첫 프레임, 모델 교체) 이번 팔레트를 b13 에도 올립니다. 스킨 때문에 생기는 속도는 0 이고, World 변화로 생기는 속도는 남습니다.</li>
+<li><code>ResetTemporalHistory</code> 가 지난 팔레트를 버립니다(씬이 바뀌면 같은 id 가 다른 물체일 수 있음).</li>
+<li>b7 을 32 KB 로 늘려 두 팔레트를 한 버퍼에 넣는 안은 스킨이 아닌 드로우에도 크기가 따라와서 쓰지 않았습니다(<a href="../plan/velocity-motionblur-taa-plan.html#d-table">속도 버퍼 계획 3.2 결정 표</a>).</li>
+</ul>
+<h3>6-2. 그림자 패스</h3>
+<p>그림자도 같은 포즈로 그려야 몸과 그림자가 어긋나지 않습니다. <code>VS_ShadowSkin</code> 은 위치만 스킨해서 <code>world</code> → <code>shadowViewProj</code>(b5) 로 보냅니다. 입력 레이아웃은 메인 패스와 같은 84 B 정점을 쓰고 셰이더가 필요한 세 속성만 읽습니다. <code>Renderer::RenderShadowAtlasPass</code> 는 <code>UploadObjectConstants(item.object, false)</code> 로 불러서 b13 업로드를 건너뜁니다. 캐스케이드·스팟·포인트 면마다 드로우가 따로 있으므로 b7 업로드도 그 수만큼 반복됩니다. 그림자 쪽 원리는 <a href="shadow-map-study.html">그림자 맵 학습</a>, <a href="csm-study.html">CSM 학습</a>에 있습니다.</p>
+<h3>6-3. 디퍼드 G-buffer</h3>
+<p><code>Pass_GBufferSkin</code> 은 <code>BasicSkinVS</code> 와 <code>GBufferPS</code> 를 묶은 것입니다. 스킨 VS 의 출력이 일반 VS 와 같아서 G-buffer 쪽은 바꿀 것이 없습니다(<a href="deferred-gbuffer-study.html">디퍼드 G-buffer 학습</a>).</p>
+<h3>6-4. 컬링하지 않음</h3>
+<p>스킨 메시의 실제 경계는 포즈마다 바뀌고 바인드 포즈 경계는 뻗은 팔을 덮지 못합니다. 그래서 <code>BuildDrawList</code> 는 스킨 메시의 경계 구 반지름을 1e9 로 두어 메인·그림자의 모든 절두체를 통과시킵니다. 화면 밖 캐릭터도 모든 패스에서 그려집니다.</p>
+</section>
+
+<section id="sampling">
+<h2>7. 애니메이션 샘플링 (짧게)</h2>
+<p>렌더러 입장에서 애니메이션은 "팔레트를 채우는 쪽"입니다. <code>Animator</code> 컴포넌트의 설정은 <code>clip</code>(비우면 첫 클립)·<code>loop</code>·<code>speed</code> 셋이고, 클립 데이터는 씬 파일이 아니라 모델에 있습니다.</p>
+<table>
+<tr><th>보간</th><th><code>Animator::Sample</code> 의 처리</th></tr>
+<tr><td><code>STEP</code></td><td>구간 앞 키 값 그대로</td></tr>
+<tr><td><code>LINEAR</code></td><td>이동·스케일은 선형 보간, 회전은 <code>XMQuaternionSlerp</code></td></tr>
+<tr><td><code>CUBICSPLINE</code></td><td>glTF 3차 에르미트(탄젠트에 구간 길이를 곱함), 회전은 끝에 정규화. 키마다 [입력 탄젠트, 값, 출력 탄젠트]</td></tr>
+</table>
+<ul>
+<li>시간은 <code>loop</code> 면 <code>fmodf</code> 로 감고, 아니면 [0, duration] 으로 자릅니다. 첫 키 전·마지막 키 뒤는 끝 값을 그대로 씁니다.</li>
+<li>채널 path 는 translation·rotation·scale 만 읽습니다. <code>weights</code>(모프 타깃) 채널은 임포트 때 경고를 남기고 건너뜁니다.</li>
+<li>스킨이 없는 모델은 "채널이 모두 부모 없는 노드 하나"일 때만 그 노드의 TRS 를 오브젝트 pre 행렬로 재생합니다(단일 노드 모드).</li>
+<li>클립 전환·블렌딩·루트 모션은 없습니다. 지금은 루트 본 이동이 팔레트에 그대로 들어가 메시가 오브젝트 기준으로 움직이고, 루프 경계에서 제자리로 돌아옵니다. 계획은 <a href="../plan/animation-clip-root-motion-plan.html#root">클립·루트 모션 계획 4장</a>에 있습니다. <code>ModelSkin::rootJoints</code> 는 루트 본 번호를 모아 둔 계층 정보일 뿐 루트 모션 기능이 아닙니다.</li>
+</ul>
+<p>테스트 모델이 쓰는 보간은 <code>LINEAR</code> 와 <code>STEP</code> 뿐이라 <code>CUBICSPLINE</code> 경로는 이 모델들로는 확인되지 않습니다(10장 E5).</p>
+</section>
+
+<section id="bones">
+<h2>8. 본 디버그 표시</h2>
+<p>스키닝 버그는 대부분 행렬 순서와 좌표계에서 나오고, 화면에서는 "메시가 찌그러졌다"로만 보입니다. 조인트 자체를 선으로 그리면 문제가 팔레트 이전(포즈)인지 이후(역바인드·셰이더)인지 가를 수 있습니다.</p>
+<table>
+<tr><th>항목</th><th>내용</th></tr>
+<tr><td>조작</td><td>B 키: 끔 → 본+관절 → 본+관절+로컬 축 순환(<code>Editor/EditorApp.cpp</code>, <code>App/GameApp.cpp</code>). 에디터 Render Settings 의 "Bone debug (B)", 실행 인자 <code>--debug-bones=N</code></td></tr>
+<tr><td>자료</td><td><code>GameObject::SkeletonPose</code>: <code>jointToObject[j]</code>(= <code>jointWorld · inverse(meshRest)</code>, 역바인드 없음)와 부모 조인트 번호. 월드 위치는 <code>jointToObject[j] · GetWorldMatrix()</code></td></tr>
+<tr><td>그리기</td><td><code>Scene/SkeletonDebug.cpp</code> 의 <code>DrawSkeletonDebug</code> 가 <code>DebugDraw</code>(<code>Graphics/DebugDraw.h</code>, 정점 65536개 상한)에 선을 쌓고, 렌더러가 씬 패스 끝에 깊이 테스트 없이 그림. 본 초록, 관절 십자 노랑, 축 RGB</td></tr>
+<tr><td>한계</td><td>스킨 오브젝트마다 따로 그려서 마스터치프는 같은 선이 4번 그려짐. 선 굵기 1 픽셀</td></tr>
+</table>
+<p>본 선이 맞게 움직이는데 메시가 틀리면 역바인드·가중치·셰이더 쪽이고, 본 선부터 틀리면 샘플링·좌표계·계층 쪽입니다.</p>
+</section>
+
+<section id="code">
+<h2>9. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>스킨·클립 자료</td><td><code>Graphics/Model.h</code> 의 <code>ModelSkin</code>·<code>ModelNode</code>·<code>AnimationChannel</code>·<code>AnimationClip</code></td><td>조인트 노드 번호, 역바인드, <code>evalOrder</code>·<code>jointParent</code>, 키 배열</td></tr>
+<tr><td>임포트</td><td><code>Graphics/Import/GltfImporter.cpp</code> 의 <code>LoadSkins</code>·<code>BuildSkinHierarchy</code>·<code>LoadAnimations</code></td><td>좌표계 변환, 순환 검사, 가중치 정규화(메시 로드 안)</td></tr>
+<tr><td>정점 형식</td><td><code>Graphics/VertexTypes.h</code> 의 <code>VertexSkin</code>·<code>VERTEX_SKINNED</code>·<code>MakeVertexLayoutPCNTTSkin</code></td><td>84 B, <code>BLENDINDICES</code> <code>R8G8B8A8_UINT</code></td></tr>
+<tr><td>스킨 메시</td><td><code>Graphics/Mesh.h</code> 의 <code>Mesh::FromData</code>·<code>IsSkinned</code></td><td>정점과 같은 길이의 <code>skinVertices</code></td></tr>
+<tr><td>포즈 계산</td><td><code>Scene/SkinPose.cpp</code> 의 <code>EvaluateNodeGlobals</code>·<code>BuildSkinPalette</code>·<code>FindMeshSkin</code>·<code>ApplyRestSkinPoses</code></td><td>노드 월드 → 팔레트·스켈레톤 포즈</td></tr>
+<tr><td>재생</td><td><code>Scene/Animator.cpp</code> 의 <code>Animator::UpdateSkin</code>·<code>Sample</code>·<code>CollectSkinTargets</code></td><td>샘플링, 스킨 메시 오브젝트 모으기</td></tr>
+<tr><td>팔레트 보관</td><td><code>Scene/GameObject.h</code> 의 <code>SetSkinPalette</code>·<code>SetSkeletonPose</code></td><td>오브젝트가 소유, 렌더러는 포인터로 읽음</td></tr>
+<tr><td>수집·업로드</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::BuildDrawList</code>·<code>UploadObjectConstants</code>·<code>GetOrCreateGpuMesh</code></td><td>컬링 제외, 지난 팔레트 보관, b7·b13 전치 업로드</td></tr>
+<tr><td>상수 배치</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>SkinConstants</code>·<code>PrevSkinConstants</code>·<code>kCBSlotSkin</code>·<code>kCBSlotPrevSkin</code>·<code>kMaxSkinJoints</code></td><td>b7·b13, 16384 B</td></tr>
+<tr><td>셰이더</td><td><code>Shaders/Mesh.hlsli</code> 의 <code>SkinMatrix</code>·<code>PrevSkinMatrix</code>, <code>BasicSkinVertexShader.hlsl</code> 의 <code>VS_MainSkin</code>, <code>ShadowSkinVertexShader.hlsl</code> 의 <code>VS_ShadowSkin</code></td><td>LBS, 속도용 이전 위치, 그림자 위치</td></tr>
+<tr><td>PSO 선택</td><td><code>Renderer::GetPipelineFor</code>·<code>GetShadowPipelineFor</code>, <code>Graphics/RendererDeferred.cpp</code> 의 <code>GetGBufferPipelineFor</code></td><td>정점 포맷이 스킨이면 <code>Pass_*Skin</code></td></tr>
+<tr><td>본 표시</td><td><code>Scene/SkeletonDebug.cpp</code> 의 <code>DrawSkeletonDebug</code>, <code>Graphics/DebugDraw.h</code></td><td>본·관절·축 선</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>10. 실험</h2>
+<p>테스트 씬은 <code>Projects/SherlockTestScenes/Assets/Scenes/MasterChiefWalk.json</code> 입니다. 마스터치프 외에 시즈 탱크·바이킹·타이커스·블랙 드래곤에도 Animator 가 붙어 있습니다. <code>TaaSkin.json</code> 은 속도 버퍼 확인용으로 만든 씬으로, 카메라를 용에 맞췄고 마스터치프 없이 나머지 네 모델에 Animator 가 붙어 있습니다. 테스트 모델의 스킨 크기는 다음과 같습니다.</p>
+<table>
+<tr><th>모델</th><th>조인트</th><th>스킨 메시 노드</th><th>보간</th><th>출처</th></tr>
+<tr><td>MasterChief v5.5 walk</td><td>65 (노드 70, 클립 1개 1.07초, 채널 195)</td><td>4</td><td>LINEAR, STEP</td><td><a href="../plan/skinning-bone-debug-record.html">구현 기록 5절</a> <span class="tag ok">확인함 (2026-11-12)</span></td></tr>
+<tr><td>BlackDragon_Ani_v2</td><td>235</td><td>1</td><td>LINEAR</td><td>파일에서 셈 <span class="tag chk">계산값</span></td></tr>
+<tr><td>SiegeTank_v2</td><td>88</td><td>4</td><td>LINEAR, STEP</td><td>파일에서 셈 <span class="tag chk">계산값</span></td></tr>
+<tr><td>Tychus_Gun_v2.2</td><td>86</td><td>3</td><td>LINEAR</td><td>파일에서 셈 <span class="tag chk">계산값</span></td></tr>
+<tr><td>SC2_Viking_v2_1</td><td>68</td><td>2</td><td>LINEAR</td><td>파일에서 셈 <span class="tag chk">계산값</span></td></tr>
+</table>
+<p>블랙 드래곤의 235개는 상한 256 에 가깝습니다. 조인트가 256개를 넘는 모델은 지금 구조로 그릴 수 없습니다.</p>
+
+<h3>E1. 본 표시로 포즈와 메시 맞대기 <span class="tag chk">예상</span></h3>
+<p><code>--play=1 --debug-bones=2</code> 로 실행합니다. 초록 본이 메시 팔다리 안쪽을 따라가고, 축이 관절과 함께 돕니다. 편집 모드(재생 전)에도 기본 자세로 같은 선이 보여야 합니다(<code>ApplyRestSkinPoses</code>).</p>
+<h3>E2. 역바인드를 빼 보기 <span class="tag chk">예상</span></h3>
+<p><code>BuildSkinPalette</code> 에서 잠깐 <code>inverseBind</code> 를 단위행렬로 바꿉니다. 정점이 바인드 포즈 상대 위치가 아니라 모델 공간 좌표 그대로 조인트에 붙으므로, 메시 조각들이 각 조인트 위치로 밀려 크게 흩어집니다. 확인한 뒤 되돌립니다.</p>
+<h3>E3. 메시 노드 상쇄를 빼 보기 <span class="tag chk">예상</span></h3>
+<p><code>inverse(meshRest)</code> 를 빼면 메시 노드 변환이 두 번 곱해집니다. 메시 노드가 단위 변환이 아닌 모델(Armature 아래에 회전·스케일이 있는 경우)에서는 캐릭터가 통째로 기울거나 커집니다. 단위 변환인 모델에서는 차이가 없을 수 있습니다.</p>
+<h3>E4. 속도 버퍼에서 스킨 확인 <span class="tag chk">예상</span></h3>
+<p><code>TaaSkin.json</code> 을 <code>--play=1</code> 로 열고 디버그 뷰 16(속도)을 봅니다. 오브젝트가 서 있어도 움직이는 팔다리에 속도 색이 나와야 합니다. <code>UploadObjectConstants</code> 에서 b13 에 이번 팔레트를 올리도록 잠깐 바꾸면 팔다리 속도가 사라지고 TAA·모션 블러에서 잔상이 생깁니다(<a href="motion-blur-study.html">모션 블러 학습</a>).</p>
+<h3>E5. 보간 종류 확인 <span class="tag chk">예상</span></h3>
+<p>테스트 모델에는 <code>CUBICSPLINE</code> 이 없습니다. Khronos 샘플 모델 중 CUBICSPLINE 클립을 가진 모델(예: InterpolationTest)을 실험 프로젝트에 넣으면 세 보간을 비교할 수 있습니다. 이 모델은 스킨이 없어서 <code>Animator</code> 가 단일 노드 모드로 돕니다. 큐브 오브젝트마다 <code>Animator</code> 를 하나씩 붙이고 그 큐브의 클립 이름을 적어야 하며(비우면 첫 클립), 클립의 채널이 모두 그 큐브의 노드 하나를 가리키고 그 노드가 루트여야 재생됩니다. 이 실험은 <code>Sample</code> 의 보간을 확인할 뿐 <code>UpdateSkin</code> 은 거치지 않습니다. STEP 은 키에서 뚝 끊기고, CUBICSPLINE 은 키 사이에서 넘쳤다 돌아오는 곡선이 나와야 합니다.</p>
+<h3>E6. LBS 수축 계산 <span class="tag chk">계산값</span></h3>
+<p>두 조인트가 0.5·0.5 로 섞인 정점에서 한 조인트만 뼈 축으로 θ 돌리면, 축에서 r 떨어진 정점은 <code>r · cos(θ/2)</code> 위치로 갑니다. 90° 에서 0.707 r, 120° 에서 0.5 r, 180° 에서 0 입니다. 손목을 크게 비틀면 단면이 한 점으로 모입니다(그림 2).</p>
+</section>
+
+<section id="pitfalls">
+<h2>11. 함정과 알려진 한계</h2>
+<figure>
+<svg viewBox="0 0 860 300" role="img" aria-label="두 조인트를 반씩 섞은 정점이 뼈 축 쪽으로 끌려 들어가는 모습">
+  <text x="20" y="28">θ = 90° (뼈 축 방향에서 본 단면)</text>
+  <circle cx="210" cy="160" r="100" style="fill:none;stroke:var(--ink3);stroke-dasharray:4 4"/>
+  <line x1="210" y1="160" x2="310" y2="160" style="stroke:var(--ink3)"/>
+  <line x1="210" y1="160" x2="210" y2="60" style="stroke:var(--ink3)"/>
+  <line x1="310" y1="160" x2="210" y2="60" style="stroke:var(--warn);stroke-dasharray:5 4"/>
+  <line x1="210" y1="160" x2="260" y2="110" style="stroke:var(--accent);stroke-width:2"/>
+  <circle cx="210" cy="160" r="4" style="fill:var(--ink3)"/>
+  <circle cx="310" cy="160" r="5" style="fill:var(--c0)"/><circle cx="210" cy="60" r="5" style="fill:var(--c2)"/>
+  <circle cx="260" cy="110" r="6" style="fill:var(--accent)"/>
+  <text x="320" y="164">A = v · M0</text>
+  <text x="222" y="54">B = v · M1</text>
+  <text x="270" y="102">P</text>
+  <text x="218" y="180">C (축)</text>
+  <text x="120" y="285">|CP| = r · cos 45° = 0.707 r</text>
+  <text x="460" y="28">θ = 180°</text>
+  <circle cx="650" cy="160" r="100" style="fill:none;stroke:var(--ink3);stroke-dasharray:4 4"/>
+  <line x1="550" y1="160" x2="750" y2="160" style="stroke:var(--warn);stroke-dasharray:5 4"/>
+  <circle cx="750" cy="160" r="5" style="fill:var(--c0)"/><circle cx="550" cy="160" r="5" style="fill:var(--c2)"/>
+  <circle cx="650" cy="160" r="6" style="fill:var(--accent)"/>
+  <text x="758" y="146">A</text>
+  <text x="530" y="146">B</text>
+  <text x="630" y="196">P = 축 (0)</text>
+  <text x="560" y="285">단면이 한 점으로 모임 (캔디 래퍼)</text>
+</svg>
+<figcaption>그림 2. 정점 v 가 조인트 0 과 1 을 반씩 따릅니다. 조인트 1 만 뼈 축으로 θ 돌면 A(조인트 0 을 따른 위치)와 B(조인트 1 을 따른 위치)는 같은 원 위에 있지만, LBS 는 두 점의 중점 P(현 위의 점)을 고릅니다. 회전을 섞는 것이 아니라 위치를 직선으로 섞기 때문에 반지름이 <code>cos(θ/2)</code> 배로 줄어듭니다. <span class="tag chk">계산값</span></figcaption>
+</figure>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>손목·어깨를 비틀면 사탕 포장지처럼 조여짐, 팔꿈치 안쪽이 꺼짐</td><td>LBS 는 행렬을 선형으로 섞어서 섞인 행렬이 회전이 아님 (그림 2)</td><td>LBS 만 있음. 듀얼 쿼터니언 스키닝(DQS)은 없음. 보조 트위스트 본을 넣은 모델은 덜함</td></tr>
+<tr><td>편집 모드에서 모델이 떨리거나 엉뚱한 곳에 그려짐</td><td>팔레트가 비었을 때 0번만 올려 나머지 조인트가 정의되지 않은 값</td><td>기록된 버그. 팔레트가 없으면 256개 전부 단위행렬로 고침(<a href="../plan/skinning-bone-debug-record.html">구현 기록 3절</a>). 지금은 <code>ApplyRestSkinPoses</code> 가 기본 자세를 채워 단위행렬은 모델 정보를 못 찾을 때만 씀</td></tr>
+<tr><td>D3D12 에서만 "상수버퍼가 아직 UpdateBuffer 되지 않음"</td><td>Dynamic CB 는 프레임마다 한 번은 써야 함. 스킨 드로우가 없는 프레임에는 b7 을 아무도 안 씀</td><td>기록된 버그. 프레임 초에 단위행렬 1개를 b7·b13 에 씀 (<code>BuildDrawList</code>)</td></tr>
+<tr><td>편집 모드에서 스킨 메시가 안 보임</td><td>단위행렬 팔레트로 그리면 정점이 메시 공간 그대로라 위치·크기가 틀림</td><td>기록된 문제. <code>ApplyRestSkinPoses</code> 추가로 해결 (2026-11-13)</td></tr>
+<tr><td>조인트가 256개를 넘는 모델이 깨짐</td><td>정점 조인트 번호 <code>uint8</code>, b7 배열 256</td><td>255 초과 영향은 버리고 경고. 버린 뒤 다시 나누지 않아 그 정점은 가중치 합이 1 보다 작고, 셰이더 <code>SkinMatrix</code> 도 합을 맞추지 않음. 블랙 드래곤 235개가 가장 큼. 늘리려면 정점 포맷과 b7 을 같이 바꿔야 함(4×3 행렬이면 64 KB 에 1365개 <span class="tag chk">계산값</span>)</td></tr>
+<tr><td>영향 5개 이상인 정점이 어색하게 휨</td><td><code>JOINTS_1</code>·<code>WEIGHTS_1</code> 을 읽지 않음</td><td>앞의 4개만 쓰고 합을 1 로 맞춤</td></tr>
+<tr><td>조인트에 비균일 스케일이 있으면 조명이 어긋남</td><td>노멀에 스킨 행렬의 역전치 대신 스킨 행렬 자체를 곱함</td><td>회전·균일 스케일 조인트에서는 정확. 비균일 스케일 애니메이션은 테스트 모델에 없음</td></tr>
+<tr><td>화면 밖 캐릭터도 그림자·메인 드로우 수에 남음</td><td>포즈마다 경계가 바뀌어 반지름 1e9 로 컬링하지 않음</td><td>정확한 스킨 경계는 남은 일 (구현 기록 6절)</td></tr>
+<tr><td>드로우 수가 많으면 업로드가 늘어남</td><td>팔레트를 서브메시·뷰마다 다시 올림</td><td>블랙 드래곤은 드로우 하나에 15040 B. 그림자 뷰 수만큼 반복. 대안인 컴퓨트 스키닝(스킨된 정점을 버퍼에 한 번 써 두고 패스마다 다시 읽기)은 아직 없음</td></tr>
+<tr><td>캐릭터가 모델 루트에서 벗어나 걷다가 루프에서 튐</td><td>루트 본 이동이 팔레트에 그대로 들어감</td><td>루트 모션 없음 (<a href="../plan/animation-clip-root-motion-plan.html#root">계획 4장</a>)</td></tr>
+<tr><td>모델을 <code>options.scale</code> ≠ 1 로 불러오면 맞지 않을 수 있음</td><td>Animator 가 루트 스케일 1 을 가정</td><td><code>Animator</code> 주석과 구현 기록 6절의 남은 일</td></tr>
+<tr><td>팔이 반대로 꺾임</td><td>정점·노드 기본 TRS·역바인드·키 값 중 일부만 좌표계 변환을 거침</td><td>4-3 의 네 곳이 모두 <code>flipZ</code> 를 따라야 함</td></tr>
+</table>
+<div class="box warn"><b>낡은 서술 주의.</b> <a href="../plan/skinning-bone-debug-record.html">구현 기록</a> 3절은 <code>cbuffer Skin</code> 이 <code>Common.hlsli</code> 에 있다고 적었지만 지금은 <code>Shaders/Mesh.hlsli</code> 에 있습니다. <a href="gltf-study.html">glTF 학습</a>의 요소 표는 <code>skins</code>·<code>animations</code> 를 "읽지 않음"으로, <a href="character-engine-study.html">캐릭터 엔진 로드맵</a>은 스킨 코드가 없다고 적고 있습니다. 둘 다 스키닝 구현(2026-11-12) 전에 쓴 문서입니다.</div>
+</section>
+
+<section id="study">
+<h2>12. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>조인트 계층과 행벡터 곱 순서</td><td><code>S · R · T · parent</code>, 왼쪽 행렬이 먼저 적용</td><td>2-1, 4-2</td></tr>
+<tr><td>바인드 포즈와 역바인드 행렬</td><td>정점을 조인트 로컬로 보내는 행렬, 바인드 포즈에서 팔레트 = 단위행렬</td><td>2-2</td></tr>
+<tr><td>스킨 팔레트와 메시 노드 상쇄</td><td><code>inverseBind · jointWorld · inverse(meshRest)</code>, glTF 의 "스킨 메시 노드 변환 무시" 규칙</td><td>4-1</td></tr>
+<tr><td>선형 블렌드 스키닝</td><td>4개 영향, 가중치 합 1, 위치를 섞는 것과 행렬을 섞는 것이 같은 이유</td><td>2-3, 5-3</td></tr>
+<tr><td>노멀 변환</td><td>역전치가 필요한 경우와 스킨 행렬로 충분한 경우</td><td>5-3</td></tr>
+<tr><td>상수 버퍼 크기와 갱신</td><td>64 KB 상한, 부분 업로드, D3D12 Dynamic CB 규칙</td><td>5-4</td></tr>
+<tr><td>지난 프레임 팔레트</td><td>스킨 메시의 속도, 첫 프레임 처리</td><td>6-1</td></tr>
+<tr><td>쿼터니언 slerp 와 3차 에르미트</td><td>회전 보간, glTF CUBICSPLINE 의 키 배치</td><td>7</td></tr>
+<tr><td>LBS 의 부피 손실과 대안</td><td>캔디 래퍼, 듀얼 쿼터니언 스키닝, 컴퓨트 스키닝</td><td>11</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Khronos, <a href="https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#skins">glTF 2.0 규격 — Skins</a> — 역바인드 행렬, 조인트 계층, 스킨 메시 노드 변환을 무시하는 규칙. 2장과 4-1</li>
+<li>Khronos, <a href="https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#interpolation-cubic">glTF 2.0 규격 — Cubic Spline Interpolation</a> — <code>Animator::Sample</code> 의 에르미트 식. 7장</li>
+<li>Ladislav Kavan 외, <i>Geometric Skinning with Approximate Dual Quaternion Blending</i> (ACM TOG, 2008) — LBS 의 캔디 래퍼 문제와 DQS. 11장</li>
+<li>Gabor Szauer, <i>Hands-On C++ Game Animation Programming</i> (Packt, 2020) — 스키닝·샘플링·DQS 를 단계별로 구현. 로드맵의 메인 교재</li>
+<li>Real-Time Rendering 4판, 4.4절 Vertex Blending — LBS 의 식과 한계</li>
+<li>우리 문서: <a href="../plan/skinning-bone-debug-record.html">스키닝 · 본 디버그 구현 기록</a>(버그와 결정), <a href="../plan/velocity-motionblur-taa-plan.html#d-cb">속도 버퍼 계획 3장</a>(b13), <a href="../plan/animation-clip-root-motion-plan.html">클립·루트 모션 계획</a>(남은 일), <a href="gltf-study.html">glTF 학습</a>(파일 형식), <a href="character-engine-study.html">캐릭터 엔진 로드맵</a>(공부 순서), <a href="velocity-buffer-study.html">속도 버퍼 학습</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

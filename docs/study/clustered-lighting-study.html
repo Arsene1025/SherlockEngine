@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 클러스터드 라이팅 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>클러스터드 라이팅 학습 문서</h1>
+  <p>조명이 수백~수만 개일 때 픽셀이 자기에게 닿는 조명만 계산하게 하는 방법. 격자와 깊이 슬라이스, CPU·GPU 비닝, 셰이더 조회, 측정과 한계</p>
+  <p>2026-11-25 · 렌더러 공부 순서 중 "조명과 디퍼드" 묶음의 문서입니다. 클러스터드 라이팅 이야기는 지금까지 <a href="../plan/deferred-clustered-ssao-record.html#c-grid">디퍼드·클러스터드·SSAO 기록 2.6~2.8</a>(CPU 비닝, 2026-11-18), <a href="../plan/gpu-cluster-binning-record.html">GPU 클러스터 비닝 기록</a>과 <a href="../plan/gpu-cluster-binning-test.html">측정 문서</a>(2026-11-21), <a href="../plan/rendering-roadmap-plan.html#s3">로드맵 3단계</a>, <a href="../overview/rendering-analysis.html#c20-26">rendering-analysis 20.26·20.27</a>에 나뉘어 있었습니다. 이 문서는 원리부터 다시 설명하고 지금 코드에 맞춰 정리합니다. 기존 문서는 그대로 두었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 왜 필요한가와 원리(타일드와 클러스터드), 3장은 한 프레임의 흐름, 4장은 격자와 깊이 슬라이스, 5장은 CPU 쪽(경계 구, 컬링, CPU 비닝), 6장은 GPU 비닝, 7장은 픽셀 셰이더의 조회, 8장은 설정과 측정, 9장은 코드 지도, 10장은 실험, 11장은 함정, 12장은 공부할 개념과 참고 문서입니다. 컴퓨트 셰이더의 기초(스레드·그룹, UAV, 배리어)는 <a href="../study/compute-uav-study.html">컴퓨트·UAV 학습</a>, G-buffer와 라이팅 패스는 <a href="../study/deferred-gbuffer-study.html">디퍼드·G-buffer 학습</a>에 있어 여기서는 다시 설명하지 않습니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 식으로 구한 값은 <span class="tag chk">계산값</span>, 해 보지 않은 결과는 <span class="tag chk">예상</span>입니다. 기록 문서에서 가져온 측정은 <span class="tag ok">확인함 (날짜)</span>으로 표시하고 출처를 링크했습니다. 측정은 세 묶음(2026-11-18 Debug, 2026-11-21 Release D3D11, 같은 날 D3D12)이고 빌드·화면 크기·씬 값이 서로 달라서 표를 섞지 않았습니다. Intel Sponza 촛불 1만 개 씬은 측정 뒤 저장소에서 지웠으므로 그 숫자는 다시 잴 수 없습니다.</div>
+</header>
+<nav><a href="#why">1. 왜 필요한가</a><a href="#principle">2. 원리</a><a href="#flow">3. 한 프레임의 흐름</a><a href="#grid">4. 격자와 슬라이스</a><a href="#cpu">5. CPU 쪽</a><a href="#gpu">6. GPU 비닝</a><a href="#lookup">7. 셰이더 조회</a><a href="#measure">8. 설정과 측정</a><a href="#code">9. 우리 코드</a><a href="#lab">10. 실험</a><a href="#pitfalls">11. 함정</a><a href="#study">12. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 필요한가</h2>
+<h3>1-1. 조명 루프는 픽셀 수 × 조명 수</h3>
+<p>클러스터드를 끈 정답 경로 <code>ShadeAllLights</code>(<code>Shaders/Shading.hlsli</code>)는 픽셀마다 t15 <code>lights</code>의 조명 <code>lightCount</code>개를 전부 돌며 <code>ShadeLight</code>를 더합니다. 비용은 픽셀 수 × 조명 수에 비례합니다. 1280×720 화면의 픽셀마다 한 번씩(디퍼드 라이팅처럼) 조명 257개(ManyLights256)를 돌면 한 프레임에 <code>ShadeLight</code> 호출이 약 2.37억 번입니다 <span class="tag chk">계산값</span>.</p>
+<p>그런데 대부분의 호출은 0을 더합니다. 지역광의 감쇠 <code>CalculateDistanceAttenuation</code>은 <code>saturate(1 − d / range)²</code>를 곱하므로 <code>range</code> 밖에서 정확히 0이고, 스팟은 바깥 원뿔 밖에서 0입니다. ManyLights 씬의 포인트 범위는 3.5~7 m라서 조명 하나가 닿는 영역은 화면의 일부뿐입니다. 클러스터드 라이팅은 "이 픽셀에 0이 아닌 값을 줄 수 있는 조명"의 목록을 미리 만들어, 픽셀이 그 목록만 돌게 합니다.</p>
+<h3>1-2. 디퍼드만으로는 줄지 않는다</h3>
+<p>디퍼드 셰이딩은 겹쳐 그린 픽셀(overdraw)을 없애 화면 픽셀마다 조명 계산을 한 번만 하게 합니다. 하지만 그 한 번 안에서 조명 전부를 도는 것은 그대로입니다. 2026-11-18 Debug 측정에서 ManyLights256의 디퍼드 라이팅은 클러스터 없이 11~16 ms, 클러스터드로 1.0~4.4 ms였습니다 <span class="tag ok">확인함 (2026-11-18)</span> (<a href="../plan/deferred-clustered-ssao-record.html#v-time">기록 8.3</a>, 8-3절의 조건 참고). 두 방법은 서로 다른 낭비를 줄이므로 함께 씁니다.</p>
+<h3>1-3. 결과는 정답 경로와 같아야 한다</h3>
+<p>목록을 만들 때 쓰는 판정은 보수적입니다. 조명의 빛이 닿을 수 있는 영역을 빠짐없이 덮는 경계 구(5-1)와 상자를 비교하므로, 목록에서 빠진 조명은 원래도 0을 더했을 조명입니다. 0을 더하는 것과 더하지 않는 것은 부동소수점에서도 같고, 목록의 번호가 오름차순이라 덧셈 순서도 같습니다(7장). 그래서 클러스터드 켬과 끔의 화면은 픽셀 단위로 같아야 하고, 실제로 테스트 씬에서 0 px(실행마다 바뀌는 잡음 픽셀 제외)이었습니다 <span class="tag ok">확인함 (2026-11-18, 2026-11-21)</span> (<a href="../plan/deferred-clustered-ssao-record.html#v-image">디퍼드 기록 8.1</a>, <a href="../plan/gpu-cluster-binning-record.html#verify">GPU 비닝 기록 9장</a>). <code>--clustered=0</code>으로 언제든 정답 경로와 비교할 수 있게 남겨 둔 이유입니다.</p>
+</section>
+
+<section id="principle">
+<h2>2. 원리 — 비닝과 조회, 타일드와 클러스터드</h2>
+<h3>2-1. 두 부분: 비닝과 조회</h3>
+<ul>
+<li><b>비닝(binning)</b>: 화면(과 깊이)을 칸으로 나누고, 칸마다 겹치는 조명 번호를 모읍니다. 프레임에 한 번, 뷰마다 합니다. 우리 엔진은 기본으로 컴퓨트 셰이더가 하고(6장), CPU 경로도 남아 있습니다(5-3).</li>
+<li><b>조회(lookup)</b>: 픽셀 셰이더가 자기 픽셀이 속한 칸 번호를 계산하고 그 칸의 목록만 돕니다(7장).</li>
+</ul>
+<h3>2-2. 타일드와 클러스터드</h3>
+<table>
+<tr><th></th><th>타일드 (Forward+ 등)</th><th>클러스터드 (이 엔진)</th></tr>
+<tr><td>칸</td><td>화면 2D 타일 (예: 16×16 px)</td><td>화면 타일 × 깊이 슬라이스의 3D 상자</td></tr>
+<tr><td>깊이 범위</td><td>보통 깊이 버퍼에서 타일의 최소·최대 깊이를 구해 씀</td><td>고정된 슬라이스 경계. 깊이 버퍼가 필요 없음</td></tr>
+<tr><td>반투명</td><td>깊이 버퍼에 없는 표면이라 타일 깊이 범위가 맞지 않음</td><td>같은 목록을 그대로 읽음</td></tr>
+<tr><td>깊이 불연속</td><td>가까운 물체 가장자리와 먼 배경이 한 타일에 있으면 범위가 넓어져 목록이 길어짐</td><td>픽셀이 자기 깊이의 슬라이스만 봄</td></tr>
+<tr><td>비닝 비용</td><td>칸 수가 화면 크기에 비례</td><td>칸 수 고정 (3,456)</td></tr>
+</table>
+<p>로드맵은 타일드를 건너뛴 이유를 "클러스터드는 깊이 버퍼 없이 동작해 반투명 포워드 경로도 같은 목록을 읽을 수 있다"고 적었습니다 (<a href="../plan/rendering-roadmap-plan.html#why">로드맵 1-2</a>). 우리 엔진의 포워드 패스(<code>Main</code>, <code>MainSkin</code>)는 <code>BasicPS</code>로 그리고 <code>BasicPS</code>가 같은 <code>ShadeLights</code>를 부르므로, 디퍼드 프레임에서 포워드로 남는 블렌딩 재질 같은 표면도 같은 목록을 읽습니다(7장).</p>
+<h3>2-3. 판정용 모양은 구와 상자</h3>
+<p>조명 쪽은 경계 구(xyz 중심 + w 반지름), 칸 쪽은 뷰 공간 축 정렬 상자(AABB)입니다. 구-AABB 검사는 "상자 안에서 구 중심에 가장 가까운 점까지의 거리² ≤ r²" 한 줄입니다(<code>SphereIntersectsBox</code>, GPU는 <code>BinSphereIntersectsBox</code>). 원근 상자는 실제로는 잘린 각뿔이라 AABB가 조금 크고, 경계 구도 스팟을 정확히 담지는 않습니다. 둘 다 크게 잡는 쪽이라 목록에 0을 더할 조명이 섞일 수는 있어도 빠지지는 않습니다. 성능만 손해이고 화면은 같습니다.</p>
+</section>
+
+<section id="flow">
+<h2>3. 한 프레임의 흐름</h2>
+<p><code>Graphics/Renderer.cpp</code>의 <code>Renderer::Render</code> 안에서 조명과 클러스터에 관련된 순서입니다. 경로가 GPU 비닝(기본)인지 CPU 비닝인지는 프레임마다 <code>PrepareGpuClusters</code>의 결과(<code>m_clusterGpuThisFrame</code>)로 정합니다.</p>
+<table>
+<tr><th>순서</th><th>함수</th><th>하는 일</th></tr>
+<tr><td>1</td><td><code>BuildGpuLights</code></td><td>씬 조명 → GPU 배치. 방향광을 앞으로 모음(두 번 돌기, 같은 종류끼리는 씬 순서). <code>m_lightSceneIndex</code>에 씬 번호를 기억</td></tr>
+<tr><td>2</td><td><code>CullLights</code></td><td>조명마다 경계 구 <code>m_lightBounds</code>, 메인 카메라 절두체 컬링, 그림자 후보 점수 순서 <code>m_shadowOrder</code> (5-2)</td></tr>
+<tr><td>3</td><td><code>BuildShadowViews</code></td><td>점수 순서로 그림자 아틀라스 타일 배정</td></tr>
+<tr><td>4</td><td><code>UploadPerFrameConstants</code></td><td>b0 <code>clusterParams</code>(켜짐, 원근, near, far), <code>clusterDepth</code>(슬라이스 식의 계수), <code>screenParams</code>(뷰 크기)</td></tr>
+<tr><td>5</td><td><code>UploadLights</code></td><td>b2(<code>lightCount</code>, <code>directionalCount</code>) + t15 조명 배열</td></tr>
+<tr><td>6a (GPU)</td><td><code>ReadGpuClusterStats</code>, <code>UploadLightBounds</code>, <code>UploadClusterBinConstants</code></td><td>몇 프레임 전 통계 읽기, t7 경계 구, 뷰마다 b13</td></tr>
+<tr><td>6b (CPU)</td><td><code>BuildClusters</code> ×(메인, 미리보기), <code>EnsureClusterCapacity</code>, <code>UploadClusters(0)</code></td><td>두 뷰를 다 비닝한 뒤 t31 용량을 한 번에 맞추고 메인 뷰를 올림</td></tr>
+<tr><td>7</td><td><code>UpdateFrameSet</code></td><td>프레임 셋에 t30·t31을 꽂음 (경로에 따라 CPU용 Dynamic 버퍼나 GPU용 Default 버퍼)</td></tr>
+<tr><td>8 (GPU)</td><td><code>DispatchClusterBinning(cmd, 0)</code></td><td>렌더 패스 밖, 프레임 셋을 바인딩(<code>SetResourceSet</code>)하기 전에 컴퓨트 다섯 번 (6장)</td></tr>
+<tr><td>9</td><td>그림자 패스 → 메인 씬 패스</td><td>포워드 <code>BasicPS</code>·디퍼드 라이팅 PS가 <code>ShadeLights</code>로 조회</td></tr>
+<tr><td>10</td><td>미리보기 패스</td><td>GPU면 같은 버퍼에 <code>DispatchClusterBinning(cmd, 1)</code>, CPU면 <code>UploadClusters(1)</code></td></tr>
+</table>
+<p>CPU 경로에서 두 뷰를 미리 다 비닝하는 데는 기록된 이유가 있습니다. 메인 패스와 미리보기 패스는 같은 명령 목록에 차례로 기록되므로, 미리보기 직전에 t31을 더 큰 버퍼로 바꾸면 이미 기록된 메인 패스의 프레임 셋이 지워진 버퍼를 가리키게 됩니다 (<a href="../plan/deferred-clustered-ssao-record.html#notes">기록 6장</a>).</p>
+</section>
+
+<section id="grid">
+<h2>4. 격자와 깊이 슬라이스</h2>
+<h3>4-1. 16 × 9 × 24 = 3,456 상자</h3>
+<p>격자 크기는 <code>Graphics/ShaderConstants.h</code>의 <code>kClusterGridX/Y/Z</code> = 16, 9, 24이고, 셰이더 쪽 <code>Shaders/Clusters.hlsli</code>의 <code>CLUSTER_X/Y/Z</code>, <code>Shaders/ClusterBin.hlsli</code>의 <code>BIN_CLUSTER_X/Y/Z</code>가 같은 값을 따로 적고 있습니다(세 곳을 함께 바꿔야 함). 상자 수 <code>kClusterCount</code> = 3,456, 화면 타일 수 <code>kClusterTileCount</code> = 144입니다.</p>
+<ul>
+<li>타일은 픽셀 크기가 아니라 화면 비율로 나눕니다. 1280×720이면 타일 80×80 px, 1920×1080이면 120×120 px입니다 <span class="tag chk">계산값</span>. 16:9 화면에서 타일이 거의 정사각형이 되도록 16×9를 골랐다고 코드 주석에 적혀 있습니다.</li>
+<li>번호는 <code>c = x + 16 · (y + 9 · z)</code>입니다. x는 왼쪽→오른쪽, y는 위→아래(<code>SV_Position</code>과 같은 방향), z는 가까운 쪽→먼 쪽입니다.</li>
+</ul>
+<h3>4-2. 슬라이스 식</h3>
+<p>원근 카메라는 깊이를 지수 간격으로 나눕니다. 슬라이스 경계 <code>z_k = n · (f/n)^(k/24)</code>이고, 그 역함수가 셰이더의 <code>ClusterSlice</code>입니다.</p>
+<pre><code>slice = floor( log2(z) · S / log2(f/n) − S · log2(n) / log2(f/n) )   // 원근, S = 24, 0..23 으로 자름
+slice = floor( z · S / (f − n) − n · S / (f − n) )                     // 직교, 균등 분할</code></pre>
+<p><code>Renderer::ClusterDepthParams</code>가 앞의 계수(scale, bias)를 뷰마다 b0 <code>clusterDepth</code>에 올리고, 원근 여부는 <code>clusterParams.y</code>입니다. 셰이더는 <code>log2</code> 하나와 곱셈·덧셈 하나로 슬라이스를 구합니다. near 앞과 far 뒤는 첫·마지막 슬라이스에 붙입니다. CPU 비닝의 <code>SliceOf</code>가 같은 식을 쓰고, GPU 비닝은 CPU가 <code>std::pow</code>로 구한 경계 25개를 b13 <code>sliceZ[7]</code>로 받아 씁니다. GPU <code>pow</code>와 마지막 비트가 달라 상자 경계가 어긋나는 일을 막으려는 선택입니다 (<a href="../plan/gpu-cluster-binning-record.html#notes">GPU 비닝 기록 8장</a>).</p>
+<figure>
+<svg viewBox="0 0 900 350" role="img" aria-label="뷰 절두체를 옆에서 본 그림. 깊이 방향을 지수 간격 슬라이스로, 화면 방향을 타일 행으로 나눈 클러스터">
+  <defs><marker id="clustered-ar1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+  <polygon points="362.5,151.6 550,137.5 550,175 362.5,175" style="fill:var(--accent-bg);stroke:var(--accent);stroke-width:2"/> <rect x="362.5" y="137.5" width="187.5" height="37.5" style="fill:none;stroke:var(--accent);stroke-dasharray:4 3"/> <circle cx="470" cy="186" r="17" style="fill:var(--warn-bg);stroke:var(--warn);stroke-width:1.5;opacity:0.9"/>
+  <circle cx="470" cy="186" r="3" style="fill:var(--warn)"/> <line x1="50" y1="175" x2="850" y2="295" class="ln"/> <line x1="50" y1="175" x2="850" y2="235" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="50" y1="175" x2="850" y2="175" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/> <line x1="50" y1="175" x2="850" y2="115" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/> <line x1="50" y1="175" x2="850" y2="55" class="ln"/>
+  <line x1="68.6" y1="172.2" x2="68.6" y2="177.8" style="stroke:var(--ink3);stroke-width:1.6"/> <line x1="79.8" y1="170.5" x2="79.8" y2="179.5" style="stroke:var(--ink3);stroke-width:1"/> <line x1="97.7" y1="167.8" x2="97.7" y2="182.2" style="stroke:var(--ink3);stroke-width:1"/>
+  <line x1="126.3" y1="163.6" x2="126.3" y2="186.4" style="stroke:var(--ink3);stroke-width:1"/> <line x1="172.1" y1="156.7" x2="172.1" y2="193.3" style="stroke:var(--ink3);stroke-width:1"/> <line x1="245.3" y1="145.7" x2="245.3" y2="204.3" style="stroke:var(--ink3);stroke-width:1"/>
+  <line x1="362.5" y1="128.1" x2="362.5" y2="221.9" style="stroke:var(--ink3);stroke-width:1"/> <line x1="550" y1="100" x2="550" y2="250" style="stroke:var(--ink3);stroke-width:1"/> <line x1="850" y1="55" x2="850" y2="295" style="stroke:var(--ink3);stroke-width:1.6"/>
+  <circle cx="50" cy="175" r="4" style="fill:var(--ink)"/> <text x="50" y="197" text-anchor="middle">눈</text> <text x="68.6" y="158.2" text-anchor="middle">near</text>
+  <text x="850" y="45" text-anchor="middle">far</text> <text x="74.2" y="318" text-anchor="middle">0</text> <text x="88.8" y="318" text-anchor="middle">1</text> <text x="112" y="318" text-anchor="middle">2</text>
+  <text x="149.2" y="318" text-anchor="middle">3</text> <text x="208.7" y="318" text-anchor="middle">4</text> <text x="303.9" y="318" text-anchor="middle">5</text>
+  <text x="456.2" y="318" text-anchor="middle">6</text> <text x="700" y="318" text-anchor="middle">7</text> <text x="450" y="340" text-anchor="middle">슬라이스 번호 (뷰 공간 z →, 경계 z_k = n · r^k)</text>
+  <text x="560" y="40">상자 하나 (클러스터)</text> <line x1="575" y1="46" x2="476.2" y2="157.8" style="stroke:var(--ink3)" marker-end="url(#clustered-ar1)"/> <text x="300" y="40">그 AABB (점선)</text>
+  <line x1="350" y1="46" x2="380.5" y2="136.5" style="stroke:var(--ink3)" marker-end="url(#clustered-ar1)"/> <text x="560" y="292">조명 경계 구</text> <line x1="575" y1="280" x2="480" y2="203" style="stroke:var(--ink3)" marker-end="url(#clustered-ar1)"/>
+  <text x="96" y="62">타일 행 경계 = 눈을 지나는 평면</text> <line x1="150" y1="68" x2="200" y2="149.5" style="stroke:var(--ink3)" marker-end="url(#clustered-ar1)"/>
+</svg>
+<figcaption>그림 1. 뷰 절두체를 옆에서 본 모식도. 깊이는 경계가 등비로 늘어나는 슬라이스로, 화면 방향은 눈을 지나는 평면으로 나눕니다. 실제 격자는 슬라이스 24개, 타일 행 9개지만 그림은 슬라이스 8개(공비 1.6), 행 4개로 줄였습니다. 칠한 사다리꼴이 상자 하나이고, 점선 사각형이 비닝이 쓰는 그 상자의 AABB입니다. 경계 구는 이 상자와 바로 아래 행의 상자, 두 상자의 목록에 들어갑니다.</figcaption>
+</figure>
+<p>near 0.1, far 1000(<code>Camera::SetLens</code> 기본값, ManyLights64 씬 카메라 값)이면 <code>f/n</code> = 10⁴라서 경계가 10배마다 6 슬라이스씩 놓입니다. 공비는 10^(1/6) ≈ 1.468입니다 <span class="tag chk">계산값</span>.</p>
+<table>
+<tr><th>k</th><th>0</th><th>3</th><th>6</th><th>9</th><th>12</th><th>15</th><th>18</th><th>21</th><th>24</th></tr>
+<tr><td>z_k (m)</td><td>0.1</td><td>0.316</td><td>1</td><td>3.16</td><td>10</td><td>31.6</td><td>100</td><td>316</td><td>1000</td></tr>
+</table>
+<p>깊이 0.5 m·2 m·5 m·20 m·50 m의 점은 슬라이스 4·7·10·13·16에 들어갑니다 <span class="tag chk">계산값</span>. 같은 near·far를 균등으로 나누면 슬라이스 하나가 41.7 m라서 실내 씬 전체가 슬라이스 0에 들어갑니다 <span class="tag chk">계산값</span>.</p>
+<h3>4-3. 왜 지수 간격인가</h3>
+<p>원근 투영에서 타일 하나가 덮는 뷰 공간 폭은 깊이 z에 비례합니다. 슬라이스 두께도 z에 비례하게 하면(등비 분할) 상자의 가로·세로·깊이 비율이 깊이와 관계없이 비슷해집니다. <code>Clusters.hlsli</code>의 주석이 이 이유("가까울수록 얇은 슬라이스 — 화면에서 비슷한 두께")를 적고 있습니다. 직교 카메라는 폭이 깊이에 따라 변하지 않으므로 균등 분할입니다.</p>
+<p>대가도 있습니다. 슬라이스 분포는 <code>log2(f/n)</code>에 달려 있어서, near를 작게 잡으면 1 m 안쪽에 슬라이스 6개를 쓰고 far를 크게 잡으면 100 m 너머에도 6개를 씁니다. 1 m~100 m 사이에 놓이는 슬라이스는 12개입니다 <span class="tag chk">계산값</span>. 실내 씬이라면 양 끝 슬라이스에는 표면이 거의 없을 것입니다. 앞쪽 몇 슬라이스를 하나로 합치는 엔진도 있지만, 우리 엔진은 식 하나로 둡니다.</p>
+<h3>4-4. 상자 만들기</h3>
+<p>상자 하나는 타일의 NDC 사각형을 슬라이스 앞·뒤 z에서 뷰 공간으로 되돌린 꼭짓점 8개를 감싼 AABB입니다. 원근 투영이 <code>x_ndc = (P11 · x + P31 · z) / z</code>(행 벡터 관례의 <code>_11</code>, <code>_31</code>)이므로 거꾸로 <code>x = (x_ndc − P31) · z / P11</code>이고, y도 같은 꼴입니다. CPU는 <code>BuildClusters</code>의 (2) 단계에서 3,456개를 미리 만들어 두고, GPU는 상자를 맡은 스레드가 <code>BinClusterBox</code>로 그때그때 계산합니다.</p>
+</section>
+
+<section id="cpu">
+<h2>5. CPU 쪽 — 경계 구, 컬링, CPU 비닝</h2>
+<h3>5-1. 조명의 경계 구</h3>
+<p><code>Graphics/RendererClusters.cpp</code>의 <code>Renderer::ComputeLightBounds</code>가 조명마다 구 하나를 만듭니다. 감쇠가 정확히 0이 되는 범위를 담는 구라서 보수적입니다.</p>
+<table>
+<tr><th>조명</th><th>중심</th><th>반지름</th></tr>
+<tr><td>포인트</td><td>조명 위치</td><td><code>range</code></td></tr>
+<tr><td>스팟, 반각 θ ≤ 45°</td><td>꼭짓점 + 방향 · h / (2cosθ)</td><td>h / (2cosθ) — 꼭짓점과 밑면 원을 지나는 구</td></tr>
+<tr><td>스팟, 45° &lt; θ &lt; 90°</td><td>꼭짓점 + 방향 · h·cosθ</td><td>h·sinθ — 밑면 원을 적도로 하는 구</td></tr>
+<tr><td>스팟, θ ≥ 90°</td><td>꼭짓점</td><td><code>range</code> (포인트처럼)</td></tr>
+<tr><td>방향광</td><td colspan="2">w = −1 (무한). 비닝 대상이 아니고 셰이더가 항상 전부 돎</td></tr>
+</table>
+<p>h는 <code>range</code>, θ는 <code>outerConeCos</code>의 각입니다. 범위가 0인 조명은 w = 0이 되어 비닝에서 빠집니다.</p>
+<h3>5-2. 절두체 컬링과 그림자 점수 (<code>CullLights</code>)</h3>
+<p><code>Renderer::CullLights</code>는 메인 카메라 절두체(<code>Frustum::FromViewProj</code>)로 경계 구를 검사해 <code>m_lightVisible</code>을 채우고, 그림자를 드리우는 보이는 지역광에 점수를 매깁니다. 점수는 <code>(r / D)² × intensity × luminance(color)</code>이고(카메라가 구 안이면 비율 1), 지난 프레임에 그림자를 받은 조명은 × 1.25(<code>kShadowHistoryBonus</code>)를 받습니다. 점수 내림차순(같으면 번호 순)으로 줄 세운 <code>m_shadowOrder</code>를 <code>BuildShadowViews</code>가 받아 2048² 아틀라스의 512² 타일(<code>kShadowAtlasSize</code>, <code>kShadowTileSize</code>, 타일 16개 <code>kShadowLocalTileCount</code>)을 나눠 줍니다. 아틀라스 쪽은 <a href="../study/shadow-atlas-study.html">그림자 아틀라스 학습</a>에서 다룹니다.</p>
+<p>이 컬링 결과는 클러스터 목록에는 쓰이지 않습니다. 비닝은 <code>m_lightBounds</code>를 직접 보고, 화면 밖 조명은 비닝 자신의 깊이·타일 검사에서 떨어집니다. 예외는 컬링 고정 디버그(<code>m_cullFrozen</code> + <code>m_cullFreezeParts.lights</code>)뿐입니다. 이때는 고정 시점에서 컬링된 조명의 <code>w</code>를 0으로 만들어 CPU·GPU 비닝 둘 다 건너뛰게 하므로, 자유 시점 화면에서 그 조명이 꺼져 보입니다. 경계 배열이 두 뷰 공용이라 미리보기에도 걸리고, <code>ShadeAllLights</code> 경로에는 효과가 없습니다. 컬링 일반은 <a href="../study/culling-study.html">컬링 학습</a>에 있습니다.</p>
+<h3>5-3. CPU 비닝 (<code>BuildClusters</code>)</h3>
+<p><code>--cluster-gpu=0</code>이거나 컴퓨트 파이프라인·버퍼를 만들 수 없을 때 쓰는 경로입니다. 함수 안은 네 단계입니다.</p>
+<ol>
+<li>슬라이스 경계 25개 (<code>std::pow</code>).</li>
+<li>상자 3,456개의 뷰 공간 AABB (4-4).</li>
+<li>지역광마다: 경계 구를 뷰 공간으로 옮김(<code>XMVector3TransformCoord</code>) → 깊이가 [near, far] 밖이면 버림 → 슬라이스 범위 k0..k1 → 구를 감싼 상자의 꼭짓점 8개를 투영한 NDC 사각형으로 타일 범위 x0..x1, y0..y1(화면 밖이면 버림). 구가 near 평면에 걸치면 투영이 뒤집히므로 타일 범위를 화면 전체로 둡니다(<code>crossesNear</code>). 그 범위 안의 상자만 구-AABB 정밀 검사를 하고 통과한 (상자, 조명) 쌍을 쌓습니다.</li>
+<li>압축: 상자마다 개수를 세고 → 누적합으로 시작 위치 → 쌍을 순서대로 채움. 총합이 상한 <code>kMaxClusterLightRefs</code>를 넘으면 넘는 몫을 버리고 <code>Stats::clusterOverflow</code>에 셉니다.</li>
+</ol>
+<p>조명을 번호 순으로 돌기 때문에 쌍도 조명 순으로 쌓이고, 상자 안 목록은 저절로 오름차순입니다.</p>
+<figure>
+<svg viewBox="0 0 900 330" role="img" aria-label="상자마다 개수, 누적합으로 구한 시작 위치, t30 격자와 t31 조명 번호 목록의 관계">
+  <defs><marker id="clustered-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker></defs>
+  <text x="20" y="50">상자 번호 c</text> <text x="250" y="50" text-anchor="middle" style="fill:var(--ink)">c0</text> <text x="360" y="50" text-anchor="middle" style="fill:var(--ink)">c1</text> <text x="470" y="50" text-anchor="middle" style="fill:var(--ink)">c2</text>
+  <text x="580" y="50" text-anchor="middle" style="fill:var(--ink)">c3</text> <text x="690" y="50" text-anchor="middle" style="fill:var(--ink)">c4</text> <text x="800" y="50" text-anchor="middle" style="fill:var(--ink)">c5</text> <text x="20" y="98">① 개수 (Count)</text>
+  <rect x="200" y="78" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/> <text x="250" y="98" text-anchor="middle">2</text> <rect x="310" y="78" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/> <text x="360" y="98" text-anchor="middle">0</text>
+  <rect x="420" y="78" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/> <text x="470" y="98" text-anchor="middle">3</text> <rect x="530" y="78" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/> <text x="580" y="98" text-anchor="middle">1</text>
+  <rect x="640" y="78" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/> <text x="690" y="98" text-anchor="middle">0</text> <rect x="750" y="78" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/> <text x="800" y="98" text-anchor="middle">2</text>
+  <text x="20" y="146">② 배타적 누적합</text> <rect x="200" y="126" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/> <text x="250" y="146" text-anchor="middle">0</text> <rect x="310" y="126" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/>
+  <text x="360" y="146" text-anchor="middle">2</text> <rect x="420" y="126" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/> <text x="470" y="146" text-anchor="middle">2</text> <rect x="530" y="126" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/>
+  <text x="580" y="146" text-anchor="middle">5</text> <rect x="640" y="126" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/> <text x="690" y="146" text-anchor="middle">6</text> <rect x="750" y="126" width="100" height="30" rx="4" style="fill:var(--paper);stroke:var(--line)"/>
+  <text x="800" y="146" text-anchor="middle">6</text> <text x="20" y="194">t30 clusterGrid[c]</text> <rect x="200" y="174" width="100" height="30" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/> <text x="250" y="194" text-anchor="middle">(0, 2)</text>
+  <rect x="310" y="174" width="100" height="30" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/> <text x="360" y="194" text-anchor="middle">(2, 0)</text> <rect x="420" y="174" width="100" height="30" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/> <text x="470" y="194" text-anchor="middle">(2, 3)</text>
+  <rect x="530" y="174" width="100" height="30" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/> <text x="580" y="194" text-anchor="middle">(5, 1)</text> <rect x="640" y="174" width="100" height="30" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/> <text x="690" y="194" text-anchor="middle">(6, 0)</text>
+  <rect x="750" y="174" width="100" height="30" rx="4" style="fill:var(--accent-bg);stroke:var(--accent)"/> <text x="800" y="194" text-anchor="middle">(6, 2)</text> <text x="20" y="282">t31 clusterLightIndices</text> <rect x="200" y="262" width="64" height="30" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/>
+  <text x="232" y="282" text-anchor="middle">L1</text> <text x="232" y="256" text-anchor="middle" style="fill:var(--ink3)">0</text> <rect x="272" y="262" width="64" height="30" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/> <text x="304" y="282" text-anchor="middle">L3</text>
+  <text x="304" y="256" text-anchor="middle" style="fill:var(--ink3)">1</text> <rect x="344" y="262" width="64" height="30" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/> <text x="376" y="282" text-anchor="middle">L0</text> <text x="376" y="256" text-anchor="middle" style="fill:var(--ink3)">2</text>
+  <rect x="416" y="262" width="64" height="30" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/> <text x="448" y="282" text-anchor="middle">L1</text> <text x="448" y="256" text-anchor="middle" style="fill:var(--ink3)">3</text> <rect x="488" y="262" width="64" height="30" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/>
+  <text x="520" y="282" text-anchor="middle">L4</text> <text x="520" y="256" text-anchor="middle" style="fill:var(--ink3)">4</text> <rect x="560" y="262" width="64" height="30" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/> <text x="592" y="282" text-anchor="middle">L4</text>
+  <text x="592" y="256" text-anchor="middle" style="fill:var(--ink3)">5</text> <rect x="632" y="262" width="64" height="30" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/> <text x="664" y="282" text-anchor="middle">L2</text> <text x="664" y="256" text-anchor="middle" style="fill:var(--ink3)">6</text>
+  <rect x="704" y="262" width="64" height="30" rx="4" style="fill:var(--ok-bg);stroke:var(--ok)"/> <text x="736" y="282" text-anchor="middle">L3</text> <text x="736" y="256" text-anchor="middle" style="fill:var(--ink3)">7</text> <line x1="250" y1="204" x2="232" y2="240" style="stroke:var(--accent);stroke-width:1.4" marker-end="url(#clustered-ar2)"/>
+  <line x1="470" y1="204" x2="376" y2="240" style="stroke:var(--accent);stroke-width:1.4" marker-end="url(#clustered-ar2)"/> <line x1="580" y1="204" x2="592" y2="240" style="stroke:var(--accent);stroke-width:1.4" marker-end="url(#clustered-ar2)"/> <line x1="800" y1="204" x2="664" y2="240" style="stroke:var(--accent);stroke-width:1.4" marker-end="url(#clustered-ar2)"/> <line x1="204" y1="300" x2="332" y2="300" style="stroke:var(--ink3)"/>
+  <text x="268" y="318" text-anchor="middle">c0</text> <line x1="348" y1="300" x2="548" y2="300" style="stroke:var(--ink3)"/> <text x="448" y="318" text-anchor="middle">c2</text> <line x1="564" y1="300" x2="620" y2="300" style="stroke:var(--ink3)"/>
+  <text x="592" y="318" text-anchor="middle">c3</text> <line x1="636" y1="300" x2="764" y2="300" style="stroke:var(--ink3)"/> <text x="700" y="318" text-anchor="middle">c5</text>
+</svg>
+<figcaption>그림 2. 압축 단계의 작은 예. 상자 6개, 조명 L0~L4. 상자마다 개수(①)의 배타적 누적합(②)이 그 상자 목록의 시작 위치이고, t30에는 (시작, 개수), t31에는 번호들이 상자 순서대로 이어 붙습니다. 빈 상자(c1, c4)도 시작 위치를 갖지만 개수가 0이라 읽지 않습니다. 상한이 7이었다면 c5는 (6, 1)이 되어 L3이 버려지고 넘침이 1입니다 <span class="tag chk">계산값</span>.</figcaption>
+</figure>
+<h3>5-4. CPU 경로의 버퍼</h3>
+<table>
+<tr><th>슬롯</th><th>버퍼</th><th>크기</th></tr>
+<tr><td>t30 <code>clusterGrid</code></td><td><code>m_clusterGridBuffer</code>, Dynamic, <code>uint2</code> × 3,456</td><td>27,648 바이트 <span class="tag chk">계산값</span></td></tr>
+<tr><td>t31 <code>clusterLightIndices</code></td><td><code>m_clusterIndexBuffer</code>, Dynamic, <code>uint</code></td><td>처음 16,384칸(64 KiB, <code>kInitialClusterLightRefs</code>), 모자라면 두 배씩, 상한 1,048,576칸(4 MiB)</td></tr>
+</table>
+<p><code>EnsureClusterCapacity</code>가 두 뷰 중 큰 쪽에 맞춰 키우고, 키우면 <code>m_boundEnvironment</code>를 비워 다음 <code>UpdateFrameSet</code>이 프레임 셋을 다시 만들게 합니다(조명 버퍼 확장과 같은 방식). D3D12의 Dynamic 버퍼는 그 프레임에 쓰지 않으면 바인딩할 수 없어서, <code>UploadClusters</code>는 클러스터드가 꺼져 있어도 빈 격자를 올립니다.</p>
+</section>
+
+<section id="gpu">
+<h2>6. GPU 비닝 — 컴퓨트 다섯 번</h2>
+<h3>6-1. 왜 GPU로 옮겼나</h3>
+<p>CPU 비닝은 조명이 화면 가까이 몰리면 상자 범위가 넓어져 비싸집니다. Release 측정에서 조명 256개 1.2 ms, 촛불 1만 개 씬은 시점에 따라 2.9~17.5 ms였고, 같은 결과를 GPU 2단계 비닝은 0.1 ms, 1.0~1.9 ms에 만들었습니다 <span class="tag ok">확인함 (2026-11-21)</span> (<a href="../plan/gpu-cluster-binning-test.html#candles">측정 문서 5장</a>). 결과 형식(t30, t31, 상자 안 오름차순)이 CPU와 같아서 셰이더 조회 코드는 고치지 않았습니다. 처음에 CPU로 만든 이유는 코드 주석에 "컴퓨트 컬링 전에 '무엇을 어떻게 나누는가'를 눈으로 확인하려고"라고 적혀 있습니다(<code>RendererClusters.cpp</code> 머리 주석). 로드맵은 나중에 컴퓨트로 옮기면 CPU 결과가 컴퓨트 검증의 정답 기준이 된다는 점도 들었습니다(<a href="../plan/rendering-roadmap-plan.html#why">로드맵 1-2</a>).</p>
+<h3>6-2. 커널 다섯 개</h3>
+<p>공통 선언은 <code>Shaders/ClusterBin.hlsli</code>, 디스패치는 <code>Graphics/RendererClusterBin.cpp</code>의 <code>Renderer::DispatchClusterBinning</code>입니다. 셋 하나(<code>Layout_ClusterBin</code>: b13, t7, u0~u5)를 뷰마다 한 벌(<code>m_clusterBinSet[2]</code>) 둡니다.</p>
+<figure>
+<svg viewBox="0 0 930 270" role="img" aria-label="GPU 클러스터 비닝의 컴퓨트 디스패치 다섯 개와 그 결과를 그리기 패스가 읽는 흐름">
+  <defs><marker id="clustered-ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+  <rect x="15" y="30" width="168" height="104" rx="6" style="fill:var(--paper);stroke:var(--line)"/> <text x="99" y="52" text-anchor="middle" style="fill:var(--ink)">1 CS_ClusterView</text> <text x="99" y="78" text-anchor="middle">조명마다 스레드 1</text>
+  <text x="99" y="98" text-anchor="middle">⌈N/64⌉ 그룹</text> <text x="99" y="118" text-anchor="middle">t7 → u0 (뷰 공간 구)</text> <line x1="184" y1="82" x2="195" y2="82" class="ln" marker-end="url(#clustered-ar3)"/>
+  <rect x="196" y="30" width="168" height="104" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/> <text x="280" y="52" text-anchor="middle" style="fill:var(--ink)">2 CS_ClusterTile</text> <text x="280" y="78" text-anchor="middle">(타일, 워드)마다 1</text>
+  <text x="280" y="98" text-anchor="middle">(⌈W/64⌉, 144) 그룹</text> <text x="280" y="118" text-anchor="middle">u0 → u2 비트마스크</text> <line x1="365" y1="82" x2="376" y2="82" class="ln" marker-end="url(#clustered-ar3)"/>
+  <rect x="377" y="30" width="168" height="104" rx="6" style="fill:var(--paper);stroke:var(--line)"/> <text x="461" y="52" text-anchor="middle" style="fill:var(--ink)">3 CS_ClusterCount</text> <text x="461" y="78" text-anchor="middle">상자마다 스레드 1</text>
+  <text x="461" y="98" text-anchor="middle">54 그룹</text> <text x="461" y="118" text-anchor="middle">u2·u0 → u3[c].y</text> <line x1="546" y1="82" x2="557" y2="82" class="ln" marker-end="url(#clustered-ar3)"/>
+  <rect x="558" y="30" width="168" height="104" rx="6" style="fill:var(--paper);stroke:var(--line)"/> <text x="642" y="52" text-anchor="middle" style="fill:var(--ink)">4 CS_ClusterScan</text> <text x="642" y="78" text-anchor="middle">그룹 1 개, 1024 스레드</text>
+  <text x="642" y="98" text-anchor="middle">누적합 10 단계</text> <text x="642" y="118" text-anchor="middle">u3.y → u3 (시작, 개수)</text> <line x1="727" y1="82" x2="738" y2="82" class="ln" marker-end="url(#clustered-ar3)"/>
+  <rect x="739" y="30" width="168" height="104" rx="6" style="fill:var(--paper);stroke:var(--line)"/> <text x="823" y="52" text-anchor="middle" style="fill:var(--ink)">5 CS_ClusterFill</text> <text x="823" y="78" text-anchor="middle">상자마다 스레드 1</text>
+  <text x="823" y="98" text-anchor="middle">54 그룹</text> <text x="823" y="118" text-anchor="middle">u2·u0·u3 → u4 번호</text> <text x="465" y="160" text-anchor="middle">단계 사이마다 UavBarrier · 타일 단계는 --cluster-tiles=0 이면 건너뜀 (3·5 가 조명 전체를 봄)</text>
+  <rect x="140" y="196" width="700" height="44" rx="6" style="fill:var(--ok-bg);stroke:var(--ok)"/> <text x="490" y="223" text-anchor="middle">그리기 패스: u3 → t30, u4 → t31 (ShaderResource) · ShadeClusteredLights 가 읽음</text> <line x1="823" y1="136" x2="823" y2="194" class="ln" marker-end="url(#clustered-ar3)"/>
+</svg>
+<figcaption>그림 3. GPU 비닝의 디스패치 순서. N = 조명 수, W = ⌈N/32⌉ 마스크 워드 수, 54 = ⌈3456/64⌉. 1번 커널의 스레드 0은 통계 칸(u5)도 비웁니다. 4번이 끝나면 u3에 (시작, 개수)가 다 차고, 5번이 그 구간에 번호를 씁니다. 끝에서 u3·u4를 ShaderResource로 돌려 그리기 패스가 t30·t31로 읽습니다.</figcaption>
+</figure>
+<table>
+<tr><th>커널</th><th>스레드 하나가 맡는 것</th><th>하는 일</th></tr>
+<tr><td><code>CS_ClusterView</code></td><td>조명 하나</td><td>t7 월드 경계 구 → u0 뷰 공간 구. 뒤 단계가 같은 조명을 여러 번 읽으므로 변환을 한 번만 해 둠</td></tr>
+<tr><td><code>CS_ClusterTile</code></td><td>(타일, 조명 32개 워드) 하나</td><td>타일 절두체와 겹치는 조명의 비트를 켜서 u2에 워드째 씀 (6-3)</td></tr>
+<tr><td><code>CS_ClusterCount</code></td><td>상자 하나</td><td><code>BinWalkCluster(c, false, …)</code>로 개수를 세어 u3[c].y. z = 0 상자는 타일 통계(u1, 통계 칸)도 남김</td></tr>
+<tr><td><code>CS_ClusterScan</code></td><td>그룹 하나, 스레드마다 상자 4개</td><td>배타적 누적합 → u3 = (시작, 개수), 상한 자르기, 통계 (6-5)</td></tr>
+<tr><td><code>CS_ClusterFill</code></td><td>상자 하나</td><td>Count와 같은 검사를 다시 하며 u4[시작 …]에 번호를 씀 (<code>BinWalkCluster(c, true, …)</code>)</td></tr>
+</table>
+<p>Count와 Fill이 같은 함수 <code>BinWalkCluster</code>를 쓰는 것이 중요합니다. 검사가 조금이라도 다르면 센 개수와 채운 칸 수가 어긋납니다. Fill은 <code>limit</code>(센 개수)에서 멈추므로 옆 구간을 덮어쓰지는 않지만, 채우지 못한 칸에 지난 프레임 값이 남거나 조명이 빠집니다.</p>
+<h3>6-3. 2단계 비닝과 타일 비트마스크</h3>
+<p>타일 단계가 없으면(<code>--cluster-tiles=0</code>) 상자 3,456개가 조명 N개 전체를 검사합니다. 촛불 1만 개면 Count와 Fill에서 3,456만 번씩입니다. 2단계 비닝은 먼저 화면 타일 144개마다 후보를 고르고, 같은 타일의 상자 24개가 그 후보만 검사합니다 (<a href="../plan/gpu-cluster-binning-record.html#two-level">GPU 비닝 기록 5장</a>).</p>
+<ul>
+<li><b>타일 검사</b>: 원근이면 타일 절두체를 눈을 지나는 옆면 평면 4개로 나타냅니다. 왼쪽 면은 <code>x_ndc ≥ nx0 ⇔ P11·x + (P31 − nx0)·z ≥ 0</code>이고, 정규화한 네 평면 모두에서 구 중심의 부호 거리가 −r 이상이면 통과입니다. 모서리 바깥을 지나는 구도 통과하는 보수적 검사입니다. 타일의 AABB로 검사하지 않는 이유는 near~far 전체를 감싼 AABB가 절두체의 절반 가까이를 덮어 거의 거르지 못하기 때문입니다. 직교는 x·y 구간 비교입니다.</li>
+<li><b>비트마스크</b>: 비트 j가 조명 <code>w·32 + j</code>입니다. 스레드가 32개를 검사해 워드 하나를 통째로 쓰므로 원자 연산도 그룹 동기화도 필요 없습니다. 타일 t의 워드는 u2의 <code>[t · tileStride, …)</code> 고정 구간이고, <code>tileStride</code> = ⌈조명 버퍼 용량 / 32⌉입니다.</li>
+<li><b>읽기</b>: 상자를 맡은 스레드는 워드를 앞에서부터, 워드 안에서는 <code>firstbitlow</code>로 가장 낮은 켜진 비트를 찾고 <code>bits &amp;= bits − 1</code>로 끕니다. 워드가 <code>0b10111</code>이면 L0, L1, L2, L4 순서로 나오고, 상자 검사에서 L2가 떨어지면 목록은 (L0, L1, L4)입니다 <span class="tag chk">계산값</span>.</li>
+</ul>
+<p>마스크 크기는 144 × ⌈용량/32⌉ × 4 바이트입니다. 조명 257개면 용량 512(64에서 두 배씩)라 9,216 바이트, 용량 16,384면 288 KiB입니다 <span class="tag chk">계산값</span>. 이번 프레임 조명 수만큼의 워드(<code>BinWordCount</code>)만 쓰고 읽으므로 지난 프레임 비트가 섞이지 않습니다.</p>
+<table>
+<tr><th>촛불 씬 2층 회랑 시점 (ms, 60프레임 평균)</th><th>BinTile</th><th>BinCount</th><th>BinFill</th><th>ClusterBin 전체</th></tr>
+<tr><td>GPU 1단계 (타일 없음)</td><td>—</td><td>1.439</td><td>2.127</td><td>3.628</td></tr>
+<tr><td>2단계, 타일 목록 (처음 구현, 스레드 144개)</td><td>1.633</td><td>0.508</td><td>0.682</td><td>2.853</td></tr>
+<tr><td>2단계, 타일 비트마스크 (지금)</td><td>0.068</td><td>0.450</td><td>0.551</td><td>1.109</td></tr>
+</table>
+<p><span class="tag ok">확인함 (2026-11-21)</span> Release, D3D11, RTX 3070 Ti (<a href="../plan/gpu-cluster-binning-test.html#steps">측정 문서 6장</a>). 처음 구현은 스레드 하나가 타일 하나의 조명 1만 개를 차례로 돌아 타일 단계만 1.6 ms였고, (타일, 워드)마다 스레드를 두자 약 4.5만 스레드로 늘어 24배 빨라졌습니다.</p>
+<h3>6-4. 원자 연산 없이 오름차순 지키기</h3>
+<p>상자 하나를 스레드 하나가 맡아 후보를 번호 순으로 차례로 도는 구조라서, 원자 연산 없이 목록이 오름차순입니다. 계획은 상자 하나를 그룹 하나가 맡아 조명 64개씩 groupshared 누적합으로 자리를 정하는 것이었지만, 반복 횟수가 버퍼 값인 루프 안에 <code>GroupMemoryBarrierWithGroupSync</code>를 두면 fxc(SM 5.0)가 X3663 오류를 내서 바꿨습니다 (<a href="../plan/gpu-cluster-binning-record.html#plan">GPU 비닝 기록 2장</a>). 대가로 Count·Fill이 타일 후보 수에 비례하는 긴 루프가 되고, 지금 비닝 시간의 대부분이 이 두 단계입니다.</p>
+<h3>6-5. 누적합 (<code>CS_ClusterScan</code>)</h3>
+<p>그룹 하나, 스레드 1,024개가 상자를 4개씩 맡습니다(1,024 × 4 = 4,096 ≥ 3,456). 스레드마다 부분합을 groupshared <code>gsScan</code>에 놓고, 힐리스-스틸(Hillis–Steele) 방식으로 거리 1, 2, 4, …, 512 앞의 값을 더하기를 10번 반복합니다. 반복 횟수가 상수라 루프 안의 그룹 동기화가 허용됩니다. 결과는 포함적(inclusive) 합이라, 자기 부분합을 빼서 배타적 시작 위치를 얻습니다.</p>
+<p>상한 자르기는 CPU와 같은 규칙입니다. <code>시작 = min(앞의 합, maxRefs)</code>, <code>개수 = min(앞의 합 + 개수, maxRefs) − 시작</code>, 버린 쌍 = <code>max(전체 − maxRefs, 0)</code>. 상자 최대 조명 수는 자르기 전 값입니다. 처음에는 <code>t &gt;= offset ? gsScan[t − offset] : 0</code>을 썼는데, 삼항 연산자는 양쪽을 다 계산해 groupshared를 범위 밖으로 읽으므로 <code>if</code>로 바꿨습니다.</p>
+<h3>6-6. GPU 경로의 버퍼와 통계</h3>
+<ul>
+<li>t30·t31은 CPU 경로와 다른 Default + UAV 버퍼 <code>m_clusterGridGpu</code>, <code>m_clusterIndexGpu</code>이고, 프레임 셋이 경로에 따라 둘 중 하나를 꽂습니다(<code>m_frameSetClusterGpu</code>). t31은 처음부터 상한 크기(4 MiB)입니다. CPU 경로처럼 세고 나서 키우려면 개수를 CPU로 읽어 기다려야 하기 때문입니다.</li>
+<li>버퍼 상태는 프레임마다 Common으로 돌아가므로 디스패치 전에 매번 UnorderedAccess로 바꾸고, 단계 사이에 <code>UavBarrier</code>, 끝에서 ShaderResource로 바꿉니다. 배리어의 뜻은 <a href="../study/compute-uav-study.html">컴퓨트·UAV 학습</a>에 있습니다.</li>
+<li>통계(u5, 8칸)는 메인 뷰만 Staging 링 4칸에 복사하고, <code>ReadGpuClusterStats</code>가 <code>kFrameCount</code>(2) 프레임 이상 지난 칸만 읽습니다. 기다리지 않는 대신 화면의 숫자는 몇 프레임 늦습니다. 처음에는 2칸이었는데 통계가 이상해서(2단계 쌍 수가 1단계보다 많음) 4칸으로 늘렸습니다 (<a href="../plan/gpu-cluster-binning-record.html#readback">GPU 비닝 기록 6장</a>). 동기화 일반은 <a href="../study/gpu-sync-study.html">GPU 동기화 학습</a>을 보세요.</li>
+<li>u2·u0·t7은 조명 버퍼 용량에 묶여 있어, 용량이 바뀌면 <code>PrepareGpuClusters</code>가 다시 만들고 셋도 다시 만듭니다. 마스크가 64 MiB(<code>kMaxTileMaskBytes</code>)를 넘으면 CPU 경로로 돌아갑니다.</li>
+</ul>
+<h3>6-7. CPU 결과와 다른 점</h3>
+<p>타일 단계의 거르는 방법이 다릅니다. CPU는 경계 구를 감싼 상자의 NDC 투영으로 타일 범위를 구하고, GPU는 타일 옆면 평면으로 거릅니다. 둘 다 보수적이라 픽셀이 받는 조명은 같지만 쌍 수는 조금 다릅니다. ManyLights64에서 CPU 16,883쌍, GPU 2단계 16,313쌍이었고, GPU 목록을 CPU 목록과 전부 대조해 빠진 570쌍이 모두 타일 평면이 더 거른 것(그 상자에 빛이 0인 조명)임을 확인했습니다 <span class="tag ok">확인함 (2026-11-21)</span> (<a href="../plan/gpu-cluster-binning-record.html#verify">GPU 비닝 기록 9장</a>).</p>
+</section>
+
+<section id="lookup">
+<h2>7. 픽셀 셰이더의 조회</h2>
+<p>포워드 <code>BasicPS</code>(<code>Shaders/BasicPixelShader.hlsl</code>)와 디퍼드 라이팅 PS(<code>Shaders/DeferredLightingPixelShader.hlsl</code>)가 모두 <code>Shading.hlsli</code>의 <code>ShadeLights</code>를 부릅니다. <code>clusterParams.x</code>가 켜져 있으면 <code>ShadeClusteredLights</code>, 아니면 <code>ShadeAllLights</code>입니다.</p>
+<pre><code>// Shading.hlsli — ShadeClusteredLights (줄임)
+for (uint i = 0; i &lt; min(directionalCount, lightCount); ++i)      // 방향광: t15 앞쪽에 모여 있음
+    color += ShadeLight(s, lights[i], worldPosition, viewDirection, NdotV);
+const uint2 cell = clusterGrid[ClusterIndex(pixel, viewZ)];        // t30: (시작, 개수)
+for (uint j = 0; j &lt; cell.y; ++j)                                  // t31: 오름차순 번호
+    color += ShadeLight(s, lights[clusterLightIndices[cell.x + j]], worldPosition, viewDirection, NdotV);</code></pre>
+<ul>
+<li><b>상자 번호</b>: <code>Clusters.hlsli</code>의 <code>ClusterIndex</code>가 <code>SV_Position.xy × screenParams.zw × (16, 9)</code>로 타일을, <code>ClusterSlice(viewZ)</code>로 슬라이스를 구합니다. <code>screenParams</code>가 뷰마다 다르므로 메인과 미리보기의 타일 계산이 각자 맞습니다.</li>
+<li><b>viewZ</b>: 포워드는 <code>ViewDepthFromWorld</code>(월드 위치 × <code>view</code>의 z), 디퍼드는 <code>Shaders/Common.hlsli</code>의 <code>ViewDepthFromDevice</code>(D24 깊이 → 거리)로 구합니다. 포워드가 깊이 버퍼를 읽지 않으므로 반투명 표면도 자기 깊이의 상자를 찾습니다.</li>
+<li><b>순서</b>: 방향광이 먼저, 그다음 지역광이 번호 오름차순입니다. 전체 순회와 같은 덧셈 순서라 1-3의 "픽셀 단위로 같음"이 성립합니다. 방향광을 앞으로 모으는 것은 <code>BuildGpuLights</code>이고, 방향광을 맨 뒤에 둔 <code>LightOrder.json</code>이 원래 씬과 같은 화면임을 확인했습니다 <span class="tag ok">확인함 (2026-11-18)</span> (<a href="../plan/deferred-clustered-ssao-record.html#notes">기록 6장</a>, 차이는 에디터 조명 이름표 글자뿐).</li>
+</ul>
+<p>디버그 뷰 14·15는 <code>ClusterDebugColor</code>가 그립니다. 14는 상자당 지역광 수의 히트맵(0 검정 → 파랑 → 초록 → 빨강, 32개 이상 흰색), 15는 슬라이스 색띠입니다. 32는 색이 포화되는 지점일 뿐이고 상자당 개수 상한은 없습니다.</p>
+</section>
+
+<section id="measure">
+<h2>8. 설정과 측정</h2>
+<h3>8-1. 스위치와 통계</h3>
+<table>
+<tr><th>설정 (<code>RenderSettings</code>)</th><th>실행 인자</th><th>에디터 Render Settings</th><th>기본</th><th>끄면</th></tr>
+<tr><td><code>clustered</code></td><td><code>--clustered=1|0</code></td><td>Clustered lights</td><td>켬</td><td>픽셀마다 조명 전부 (<code>ShadeAllLights</code>)</td></tr>
+<tr><td><code>clusterGpu</code></td><td><code>--cluster-gpu=1|0</code></td><td>GPU clustering</td><td>켬</td><td>CPU 비닝 (<code>BuildClusters</code>)</td></tr>
+<tr><td><code>clusterGpuTiles</code></td><td><code>--cluster-tiles=1|0</code></td><td>Tile pre-pass</td><td>켬</td><td>GPU 1단계 (상자가 조명 전체를 봄)</td></tr>
+<tr><td><code>shadowPriority</code></td><td><code>--shadow-priority=1|0</code></td><td>Shadow priority</td><td>켬</td><td>그림자 타일을 조명 번호 순으로</td></tr>
+</table>
+<p>인자는 <code>App/AppBase.cpp</code>의 <code>AppBase::ApplyRenderPathOptions</code>가 읽고, 씬 파일에는 저장하지 않습니다. 디버그 뷰는 <code>--debug-view=14</code>·<code>15</code>입니다. 통계는 <code>Renderer::Stats</code>의 <code>clusterLightRefs</code>(쌍 수), <code>clusterMaxLights</code>, <code>clusterOverflow</code>, <code>clusterTileRefs</code>, <code>clusterTileMaxLights</code>, <code>clusterGpu</code>이고, <code>Editor/DebugUI.cpp</code>의 통계 줄과 자동 검증 종료 로그("자동 검증: 렌더 통계 … clusterRefs=… overflow=… tileRefs=…", <code>Editor/EditorAutomation.cpp</code>)에 나옵니다. 프로파일러 구간은 CPU <code>BuildClusters</code>(GPU 경로에서는 입력 업로드), GPU <code>ClusterBin</code>과 <code>BinView</code>·<code>BinTile</code>·<code>BinCount</code>·<code>BinScan</code>·<code>BinFill</code>, 미리보기는 <code>PreviewClusterBin</code> 하나입니다.</p>
+<h3>8-2. 테스트 씬</h3>
+<p><code>Projects/SherlockTestScenes/Assets/Scenes/</code>에 있고, 생성기 <code>Projects/SherlockTestScenes/Scripts/Tests/make_deferred_test_scenes.py</code>가 시드 고정으로 만듭니다 (<a href="../plan/deferred-clustered-ssao-record.html#scenes">기록 7장</a>).</p>
+<table>
+<tr><th>씬</th><th>내용</th><th>무엇을 보나</th></tr>
+<tr><td><code>ManyLights64</code> · <code>ManyLights</code>(128) · <code>ManyLights256</code></td><td>Crytek Sponza 복사본 + 포인트·스팟을 회랑과 마당에 무작위 배치(포인트 범위 3.5~7 m), 방향광·IBL을 낮춤</td><td>클러스터드 성능, 켬/끔 동일성, 그림자 우선순위, t31 확장</td></tr>
+<tr><td><code>LightOrder</code></td><td>MultiShadow의 조명 순서만 바꿔 방향광을 맨 뒤로</td><td>방향광 정렬·번호 바꾸기</td></tr>
+<tr><td><code>OrthoLights</code></td><td>DeferredMaterials + 직교 카메라 "Ortho Camera"</td><td>균등 분할, 직교 상자 (<code>--select="Ortho Camera"</code> 미리보기)</td></tr>
+<tr><td><code>DeferredMaterials</code></td><td>지역광 3개, 디퍼드·포워드 재질 혼합</td><td>조명이 적을 때의 고정 비용</td></tr>
+</table>
+<h3>8-3. 기록된 측정</h3>
+<p><b>A. 2026-11-18, Debug, D3D11, ManyLights256, 씬 뷰 1,675×973</b> <span class="tag ok">확인함 (2026-11-18)</span> (<a href="../plan/deferred-clustered-ssao-record.html#v-time">기록 8.3</a>). 조명 범위를 키우기 전 씬(포인트 2~4.5 m)이고, 같은 설정에서 값이 두 갈래로 나뉜 실행이 있어 관측 범위만 적었습니다.</p>
+<table>
+<tr><th>설정</th><th>GPU MainPass</th><th>그중 라이팅</th><th>CPU 비닝</th></tr>
+<tr><td>포워드, 클러스터 없음</td><td>48~56 ms</td><td>—</td><td>—</td></tr>
+<tr><td>포워드, 클러스터드</td><td>2.7~3.7 ms</td><td>—</td><td>4.9~5.8 ms</td></tr>
+<tr><td>디퍼드, 클러스터 없음</td><td>13~16 ms</td><td>11~16 ms</td><td>—</td></tr>
+<tr><td>디퍼드, 클러스터드</td><td>1.7~5.3 ms (두 번 약 17 ms)</td><td>1.0~4.4 ms (두 번 약 15 ms)</td><td>4.8~6.9 ms</td></tr>
+</table>
+<p><b>B. 2026-11-21, Release, D3D11, RTX 3070 Ti, 씬 뷰 767×222, 3회 중앙값</b> <span class="tag ok">확인함 (2026-11-21)</span> (<a href="../plan/gpu-cluster-binning-test.html#mid">측정 문서 4~5장</a>). 넘침은 모든 경우 0입니다.</p>
+<table>
+<tr><th>씬</th><th>경로</th><th>쌍 수</th><th>상자 최대</th><th>CPU 비닝 ms</th><th>GPU 비닝 ms</th></tr>
+<tr><td rowspan="3">ManyLights64 (조명 65, 보이는 51)</td><td>CPU</td><td>16,883</td><td>24</td><td>0.375</td><td>—</td></tr>
+<tr><td>GPU 1단계</td><td>16,904</td><td>24</td><td>0.003</td><td>0.045</td></tr>
+<tr><td>GPU 2단계</td><td>16,313</td><td>24</td><td>0.002</td><td>0.046</td></tr>
+<tr><td rowspan="3">ManyLights256 (조명 257, 보이는 214)</td><td>CPU</td><td>77,186</td><td>85</td><td>1.234</td><td>—</td></tr>
+<tr><td>GPU 1단계</td><td>77,258</td><td>85</td><td>0.003</td><td>0.127</td></tr>
+<tr><td>GPU 2단계</td><td>75,141</td><td>83</td><td>0.004</td><td>0.098</td></tr>
+<tr><td rowspan="3">촛불 1만 개, 2층 회랑 (보이는 6,254)</td><td>CPU</td><td>488,468</td><td>1,182</td><td>14.162</td><td>—</td></tr>
+<tr><td>GPU 1단계</td><td>496,270</td><td>1,220</td><td>0.015</td><td>4.855</td></tr>
+<tr><td>GPU 2단계</td><td>452,233</td><td>1,048</td><td>0.014</td><td>1.105</td></tr>
+</table>
+<p>ManyLights256 GPU 2단계의 상자 평균은 75,141 / 3,456 ≈ 21.7개로, 조명 257개를 다 도는 것의 약 12분의 1입니다 <span class="tag chk">계산값</span>. 다만 이는 빈 상자를 포함한 상자 평균이고 픽셀 평균이 아닙니다.</p>
+<p>프레임 전체는 병목에 달렸습니다. 촛불 씬은 그림자 패스(15~17 ms)가 병목이라 CPU 비닝이 GPU 작업과 겹쳐 돌았고, GPU로 옮겨도 프레임은 비슷하거나(3개 시점) 약 3 ms 늘었습니다(입구 시점) <span class="tag ok">확인함 (2026-11-21)</span> (<a href="../plan/gpu-cluster-binning-test.html#frame">측정 문서 7장</a>). 조명이 적거나 중간인 씬에서는 CPU 시간(<code>Engine::Render</code>)이 0.1~1.0 ms 줄었고, 조명이 적은 씬의 GPU Frame은 0.02~0.1 ms 늘었습니다(디스패치 다섯 번의 고정 비용).</p>
+<p><b>C. 같은 날 D3D12</b>. D3D11에서는 ManyLights256의 DeferredLight가 CPU 경로 1.01 ms, GPU 경로 0.21 ms로 크게 달랐지만, D3D12에서는 세 경로가 1.11~1.13 ms로 같았습니다 <span class="tag ok">확인함 (2026-11-21)</span> (<a href="../plan/gpu-cluster-binning-test.html#lightgap">측정 문서 8장</a>). 목록은 거의 같고 원인을 찾지 못했으므로, 이 차이를 GPU 비닝의 이득으로 보지 않습니다.</p>
+</section>
+
+<section id="code">
+<h2>9. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>격자 상수</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>kClusterGridX/Y/Z</code>, <code>kClusterCount</code>, <code>kClusterTileCount</code>, <code>ClusterStat</code></td><td>16·9·24, 3,456, 144, 통계 칸. 셰이더 쪽 같은 값은 <code>Clusters.hlsli</code>·<code>ClusterBin.hlsli</code></td></tr>
+<tr><td>b0 클러스터 값</td><td><code>PerFrameConstants::clusterParams</code>·<code>clusterDepth</code>, <code>Renderer::UploadPerFrameConstants</code></td><td>켜짐·원근·near·far, 슬라이스 계수</td></tr>
+<tr><td>슬라이스 계수</td><td><code>Graphics/RendererClusters.cpp</code> 의 <code>Renderer::ClusterDepthParams</code>, <code>SliceOf</code></td><td>원근 log2 분할, 직교 균등 분할</td></tr>
+<tr><td>경계 구</td><td><code>Renderer::ComputeLightBounds</code></td><td>포인트·스팟·방향광 (5-1)</td></tr>
+<tr><td>컬링·그림자 순서</td><td><code>Renderer::CullLights</code></td><td>절두체 컬링, 점수, 히스테리시스, 컬링 고정 시 w = 0</td></tr>
+<tr><td>CPU 비닝</td><td><code>Renderer::BuildClusters</code>, <code>SphereIntersectsBox</code></td><td>상자 3,456개, 조명별 범위 → 정밀 검사 → 개수·누적합·채우기</td></tr>
+<tr><td>CPU 버퍼</td><td><code>Renderer::EnsureClusterCapacity</code>, <code>Renderer::UploadClusters</code></td><td>t31 두 배씩 확장, t30·t31 Dynamic 업로드</td></tr>
+<tr><td>GPU 준비</td><td><code>Graphics/RendererClusterBin.cpp</code> 의 <code>Renderer::PrepareGpuClusters</code>, <code>UploadLightBounds</code>, <code>UploadClusterBinConstants</code></td><td>파이프라인·버퍼 확인, t7, b13 <code>ClusterBinConstants</code>(224 바이트)</td></tr>
+<tr><td>GPU 디스패치</td><td><code>Renderer::DispatchClusterBinning</code></td><td>배리어, 다섯 커널, 통계 복사</td></tr>
+<tr><td>통계 리드백</td><td><code>Renderer::ReadGpuClusterStats</code></td><td>Staging 링 4칸, kFrameCount 프레임 뒤 읽기</td></tr>
+<tr><td>GPU 공통 함수</td><td><code>Shaders/ClusterBin.hlsli</code> 의 <code>BinClusterBox</code>, <code>BinSphereIntersectsBox</code>, <code>BinWalkCluster</code></td><td>상자, 겹침 검사, 마스크 순회 (Count·Fill 공용)</td></tr>
+<tr><td>커널</td><td><code>Shaders/ClusterViewComputeShader.hlsl</code> · <code>ClusterTileComputeShader.hlsl</code> · <code>ClusterCountComputeShader.hlsl</code> · <code>ClusterScanComputeShader.hlsl</code> · <code>ClusterFillComputeShader.hlsl</code></td><td><code>CS_ClusterView</code> … <code>CS_ClusterFill</code> (6-2)</td></tr>
+<tr><td>조회</td><td><code>Shaders/Clusters.hlsli</code> 의 <code>ClusterSlice</code>, <code>ClusterIndex</code></td><td>픽셀 + 뷰 z → 상자 번호</td></tr>
+<tr><td>조명 루프</td><td><code>Shaders/Shading.hlsli</code> 의 <code>ShadeLights</code>, <code>ShadeClusteredLights</code>, <code>ShadeAllLights</code>, <code>ClusterDebugColor</code></td><td>경로 선택, 목록 순회, 정답 경로, 디버그 뷰 14·15</td></tr>
+<tr><td>호출 쪽</td><td><code>Shaders/BasicPixelShader.hlsl</code>, <code>Shaders/DeferredLightingPixelShader.hlsl</code></td><td>포워드·디퍼드 둘 다 <code>ShadeLights</code></td></tr>
+<tr><td>프레임 순서</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::Render</code></td><td>3장의 표</td></tr>
+<tr><td>스위치</td><td><code>Graphics/Renderer.h</code> 의 <code>RenderSettings</code>, <code>App/AppBase.cpp</code>, <code>Editor/DebugUI.cpp</code></td><td>8-1의 표</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>10. 실험</h2>
+<p>ManyLights 씬과 OrthoLights로 할 수 있는 것만 적었습니다. 코드를 잠깐 바꾸는 실험(E6)은 확인한 뒤 되돌립니다.</p>
+<h3>E1. 켬/끔 동일성 <span class="tag ok">확인함 (2026-11-18, 2026-11-21)</span></h3>
+<p>ManyLights256을 <code>--clustered=0</code>과 기본값으로 각각 찍어 씬 뷰 영역을 픽셀 비교합니다. 기록에서는 디퍼드·포워드, D3D11·D3D12, 직교 미리보기 모두 0 px이었습니다(D3D12 원근 미리보기 실행의 씬 뷰는 알려진 깜박임 픽셀 1 px 제외). 다만 클러스터와 무관하게 실행마다 바뀌는 픽셀이 한두 개 있어서(원인 모름), 기준 화면을 여러 장 찍고 기준끼리도 다른 픽셀은 빼고 비교합니다 (<a href="../plan/gpu-cluster-binning-record.html#verify">GPU 비닝 기록 9장</a>).</p>
+<h3>E2. 히트맵과 슬라이스 띠 <span class="tag ok">그림 있음 (2026-11-18)</span></h3>
+<p><code>--debug-view=14</code>로 상자당 조명 수를, <code>15</code>로 슬라이스를 봅니다. 원근에서는 띠 하나의 월드 두께가 멀수록 등비로 커지고, 직교에서는 일정합니다. 기록의 직교 그림은 OrthoLights를 재생 모드(<code>--play=1</code>)로 돌려 직교 카메라가 화면 전체를 그리게 해서 찍었습니다. 그림: <a href="../images/2026-11-18-deferred-debugviews.png">2026-11-18-deferred-debugviews.png</a>.</p>
+<h3>E3. CPU · GPU 1단계 · GPU 2단계 쌍 수 <span class="tag ok">확인함 (2026-11-21)</span></h3>
+<p><code>--cluster-gpu=0</code>, <code>--cluster-tiles=0</code>, 기본값 세 번을 돌려 종료 로그의 <code>clusterRefs</code>를 비교합니다. 8-3 B 표처럼 GPU 2단계가 가장 적고, GPU 1단계가 CPU보다 조금 많습니다. CPU는 정밀 검사 전에 NDC 타일 범위와 슬라이스 범위로 한 번 더 거르기 때문입니다. 화면은 셋 다 같습니다.</p>
+<h3>E4. near를 바꾸면 띠가 움직인다 <span class="tag chk">예상</span></h3>
+<p>에디터 씬 뷰는 편집 카메라로 그리고 클러스터 통계도 메인 뷰 것만 남으므로, 씬 카메라를 바꾼 효과는 재생 모드(<code>--play=1</code>)에서 봅니다. 씬 카메라 near를 0.1에서 1로 바꾸면 <code>f/n</code>이 10⁴에서 10³이 되어 10배마다 슬라이스 8개가 됩니다 <span class="tag chk">계산값</span>. 공비가 1.468에서 1.334로 줄어 1 m 너머의 띠가 모두 조금씩 얇아지고, 1 m 안쪽에 쓰던 슬라이스 6개가 사라질 것입니다. 쌍 수(<code>clusterRefs</code>)와 상자 최대도 같이 보면 분포가 바뀐 효과를 숫자로 볼 수 있습니다.</p>
+<h3>E5. 타일 단계 끄기 <span class="tag chk">예상</span></h3>
+<p>ManyLights256에서 <code>--cluster-tiles=0</code>과 기본값의 <code>gpu:BinCount</code>·<code>gpu:BinFill</code>을 비교합니다(<code>--avg-frames=100</code>). 기록에서는 0.096 → 0.057 ms였습니다 <span class="tag ok">확인함 (2026-11-21)</span> (<a href="../plan/gpu-cluster-binning-test.html#mid">측정 문서 4장</a>). 조명이 4개인 DeferredMaterials에서는 차이가 흔들림 범위 안일 것입니다.</p>
+<h3>E6. 일부러 넘치게 하기 <span class="tag chk">예상</span></h3>
+<p><code>Renderer.h</code>의 <code>kMaxClusterLightRefs</code>를 잠깐 50,000으로 낮추고 ManyLights256을 봅니다. GPU 2단계 쌍 수 75,141 기준으로 약 25,141쌍이 넘칠 것입니다 <span class="tag chk">계산값</span>. 상자 번호 순서로 쌓다가 잘리므로 번호가 큰 상자, 곧 먼 슬라이스부터 조명이 빠져 멀리 있는 면이 어두워질 것입니다. 통계 줄의 overflow가 0이 아니게 되는지 확인하고 되돌립니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>11. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>특정 각도에서 조명이 격자 모양으로 끊김</td><td>판정이 보수적이지 않음, 또는 비닝과 조회의 상자 경계가 다름</td><td>경계 구가 감쇠 0 영역을 덮음, 슬라이스 식은 C++·HLSL 같은 식, GPU는 CPU의 경계 값을 b13으로 받음. 로드맵 1-3은 이런 버그가 정답 화면 없이는 찾기 어렵다고 적음 → <code>--clustered=0</code> 비교</td></tr>
+<tr><td>먼 쪽 면의 조명이 빠짐</td><td>쌍 수가 t31 상한(1,048,576)을 넘음</td><td>상자 번호 순서로 잘려 먼 슬라이스부터 빠짐. <code>clusterOverflow</code>에 셈. 지금까지 모든 씬에서 0 (E6은 예상)</td></tr>
+<tr><td>목록이 길어 라이팅이 느림</td><td>범위가 큰 조명, near에 걸친 조명</td><td>near에 걸치면 타일 범위를 화면 전체로 둠(CPU). 상자당 개수 상한은 없음</td></tr>
+<tr><td>CPU 비닝이 시점에 따라 급증</td><td>조명이 화면 가까이 몰려 조명마다 검사할 상자가 많아짐</td><td>촛불 씬 2.9~17.5 ms (8-3 B). 기본은 GPU 경로</td></tr>
+<tr><td>GPU 비닝이 GPU에 따라 다를 수 있음</td><td>Count·Fill이 상자마다 스레드 하나의 긴 루프</td><td>RTX 3070 Ti 한 대에서만 잼. 병렬화는 남은 일 (<a href="../plan/gpu-cluster-binning-record.html#next">GPU 비닝 기록 11장</a>)</td></tr>
+<tr><td>조명 수가 아주 많으면 GPU 비닝이 꺼짐</td><td>u2 마스크 = 144 × ⌈용량/32⌉ × 4 바이트, 상한 64 MiB</td><td>용량 약 373만에서 넘음. 용량은 64에서 두 배씩 늘므로 실제로는 조명이 2,097,152개를 넘어 용량이 4,194,304(마스크 약 72 MiB)가 될 때 <span class="tag chk">계산값</span>. <code>RendererClusterBin.cpp</code>의 <code>kMaxTileMaskBytes</code> 주석은 "조명 약 1,170 만 개"라고 적었지만, 64 MiB ÷ (144 × 4 B) × 32 ≈ 3,728,270개가 맞는 값입니다 <span class="tag chk">계산값</span>. 넘으면 <code>m_clusterGpuFailed</code>로 CPU 경로. 조명 수 자체의 상한은 없음(t15는 두 배씩 확장)</td></tr>
+<tr><td>GPU 경로 t31이 항상 4 MiB</td><td>GPU는 개수를 세기 전에 버퍼가 있어야 함</td><td>조명이 적은 씬에서도 고정. CPU 경로는 64 KiB부터</td></tr>
+<tr><td>통계 숫자가 늦음</td><td>Staging 리드백을 기다리지 않음</td><td>kFrameCount 프레임 이상 늦은 값. 읽지 못한 프레임에는 마지막 값을 보여 줌</td></tr>
+<tr><td>슬라이스가 양 끝에 낭비됨</td><td>지수 분할이 near·far에만 맞춰짐</td><td>near 0.1·far 1000이면 1 m 안쪽과 100 m 너머에 각 6개 (4-3)</td></tr>
+<tr><td>미리보기 카메라에서만 보이는 조명의 그림자가 없음</td><td>그림자 우선순위(<code>CullLights</code>, 5-2)는 메인 카메라 기준</td><td>의도한 단순화 (<a href="../plan/deferred-clustered-ssao-record.html#notes">기록 6장</a>)</td></tr>
+<tr><td>컬링 고정 중 미리보기에서도 조명이 꺼짐</td><td>경계 배열이 두 뷰 공용</td><td><code>CullLights</code> 주석에 적힌 동작. 클러스터드를 끄면 효과 없음</td></tr>
+<tr><td>D3D11 DeferredLight 시간이 경로마다 다름</td><td>원인 모름 (목록은 거의 같음)</td><td>D3D12에서는 같음. 이득으로 계산하지 않음 (8-3 C)</td></tr>
+</table>
+</section>
+
+<section id="study">
+<h2>12. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>조명 루프 비용</td><td>픽셀 × 조명, 감쇠가 정확히 0인 영역, 디퍼드가 줄이는 것과 못 줄이는 것</td><td>1</td></tr>
+<tr><td>타일드와 클러스터드</td><td>2D 칸과 3D 칸, 깊이 버퍼 의존, 반투명, 깊이 불연속</td><td>2-2</td></tr>
+<tr><td>보수적 판정</td><td>경계 구와 AABB, 왜 화면이 비트 단위로 같아지는가</td><td>1-3, 2-3, 5-1</td></tr>
+<tr><td>지수 깊이 분할</td><td>log2 식과 역함수, near·far가 분포를 정함</td><td>4-2, 4-3</td></tr>
+<tr><td>압축 목록 (offset, count)</td><td>개수 → 배타적 누적합 → 채우기, 상한 자르기</td><td>5-3, 그림 2</td></tr>
+<tr><td>병렬 누적합</td><td>힐리스-스틸, 포함적·배타적, groupshared 동기화</td><td>6-5</td></tr>
+<tr><td>2단계 비닝과 비트마스크</td><td>타일 옆면 평면, 워드 단위 쓰기, <code>firstbitlow</code></td><td>6-3</td></tr>
+<tr><td>원자 연산 없는 순서 보장</td><td>상자마다 스레드 하나, X3663 제약</td><td>6-4</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Ola Olsson, Markus Billeter, Ulf Assarsson, "Clustered Deferred and Forward Shading", HPG 2012 — 클러스터드 셰이딩을 처음 정리한 논문. 깊이 분할과 반투명 포워드 경로</li>
+<li>Takahiro Harada, Jay McKee, Jason C. Yang, "Forward+: Bringing Deferred Lighting to the Next Level", Eurographics 2012 — 타일드 포워드. 2-2의 비교 대상</li>
+<li>Emil Persson(Avalanche Studios), "Practical Clustered Shading" 발표 — 지수 깊이 분할과 게임 엔진에서의 운용</li>
+<li>Ángel Ortiz, <a href="http://www.aortiz.me/2018/12/21/CG.html">A Primer On Efficient Rendering Algorithms &amp; Clustered Shading</a> — 그림이 많은 입문 글. 1~4장과 함께 읽기 좋음</li>
+<li>우리 문서: <a href="../plan/deferred-clustered-ssao-record.html#c-bounds">디퍼드·클러스터드·SSAO 기록 2.5~2.8</a>(경계 구, 격자, CPU 비닝, 그림자 우선순위), <a href="../plan/gpu-cluster-binning-record.html#kernels">GPU 클러스터 비닝 기록</a>(커널, 2단계 비닝, 함정, 검증), <a href="../plan/gpu-cluster-binning-test.html">GPU 클러스터 비닝 측정</a>, <a href="../plan/rendering-roadmap-plan.html#s3">로드맵 3단계</a>, <a href="../overview/rendering-analysis.html#c20-27">rendering-analysis 20.27</a>, <a href="../overview/glossary.html#graphics">용어집 3장</a>(타일드·클러스터드 라이트 컬링, 2단계 비닝·타일 비트마스크)</li>
+<li>함께 읽을 학습 문서: <a href="../study/compute-uav-study.html">컴퓨트·UAV</a>, <a href="../study/deferred-gbuffer-study.html">디퍼드·G-buffer</a>, <a href="../study/shadow-atlas-study.html">그림자 아틀라스</a>, <a href="../study/culling-study.html">컬링</a>, <a href="../study/gpu-sync-study.html">GPU 동기화</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

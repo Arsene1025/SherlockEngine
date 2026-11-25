@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 후처리 체인 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>후처리 체인 학습 문서</h1>
+  <p>씬을 다 그린 뒤 화면 전체에 거는 효과들 — 어떤 순서로 돌고, 어떤 텍스처를 누가 갖고, 효과 하나를 어떻게 끼워 넣는가</p>
+  <p>2026-11-25 · 후처리 이야기는 지금까지 <a href="../plan/post-process-record.html">후처리 구현 기록</a>(블러·블룸·GreyScale·단계별 썸네일, 2026-10-23)과 <a href="../plan/compute-uav-record.html">컴퓨트 RHI 기록</a>(컴퓨트 블러·가중치 버퍼, 2026-11-17)에 나뉘어 있었고, 그 뒤 모션 블러와 TAA가 같은 체인에 들어왔습니다. 이 문서는 체인을 하나의 시스템으로 보고 현재 코드에 맞춰 정리합니다. 모션 블러·TAA·SSAO·톤매핑의 원리는 각자의 문서에 있고, 여기서는 체인 안의 자리만 다룹니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 후처리가 무엇이고 왜 톤매핑 앞에 두는가, 3장은 한 프레임의 체인 순서, 4장은 텍스처와 그 소유자, 5장은 효과를 추가하는 데 필요한 부품(패스·PSO·바인딩·상수), 6장은 톤 패스 안의 색 효과, 7~8장은 블러와 블룸, 9장은 디버그 뷰와 단계별 썸네일, 10장은 설정, 11장은 코드 지도, 12장은 실험, 13장은 함정, 14장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 커널 가중치, 텍스처 크기, 메모리 양은 코드의 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 화면 비교 결과는 기록 문서에 남은 측정이며 날짜와 출처를 붙였습니다 <span class="tag ok">확인함</span>. 이 문서를 쓰면서 새로 측정한 것은 없습니다. 12장의 실험 중 <span class="tag chk">예상</span>이 붙은 것은 아직 돌려 보지 않은 것입니다.</div>
+</header>
+<nav><a href="#why">1. 왜 필요한가</a><a href="#principle">2. 원리</a><a href="#chain">3. 체인 순서</a><a href="#targets">4. 텍스처와 소유</a><a href="#extend">5. 효과 추가하기</a><a href="#grade">6. 톤 패스의 색 효과</a><a href="#blur">7. 블러</a><a href="#bloom">8. 블룸</a><a href="#debug">9. 디버그 뷰·단계별 썸네일</a><a href="#settings">10. 설정</a><a href="#code">11. 코드 지도</a><a href="#lab">12. 실험</a><a href="#pitfalls">13. 함정</a><a href="#study">14. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 필요한가</h2>
+<h3>1-1. 그려진 이미지 위에서만 할 수 있는 일</h3>
+<p>씬 패스는 오브젝트를 하나씩 그리기 때문에, 한 픽셀을 계산할 때 이웃 픽셀의 결과를 모릅니다. 흐림(블러), 밝은 곳 주변의 번짐(블룸), 움직임을 따라 번지는 모션 블러, 지난 프레임과 섞는 TAA는 모두 "다 그려진 화면"을 입력으로 받아야 합니다. 이런 효과를 씬 패스 뒤에 화면 크기 텍스처를 읽고 쓰는 패스로 따로 돌리는 것이 후처리입니다. 비용은 오브젝트 수와 무관하고 해상도에 비례합니다.</p>
+
+<h3>1-2. 톤매핑 앞이어야 하는 효과</h3>
+<p>우리 씬은 <code>R16G16B16A16_FLOAT</code> HDR 타깃에 선형 값으로 그려지고, 톤 패스가 마지막에 0~1로 접습니다(<a href="../study/hdr-tonemapping-study.html">HDR·톤매핑 학습</a>). 빛을 섞는 효과는 접기 전에 해야 결과가 물리적으로 맞습니다. 예를 들어 밝기 20인 태양 픽셀 하나와 0인 픽셀 셋을 평균 내면 5가 남아 여전히 눈부시지만, 톤매핑을 먼저 하면 1 근처로 잘린 값을 평균 내서 0.25 정도의 흐린 점이 됩니다 <span class="tag chk">계산값</span>. 블룸은 "1을 넘는 부분"을 골라 번지게 하는 효과라 톤매핑 뒤에서는 아예 고를 것이 없습니다. 그래서 블러·블룸·모션 블러·TAA는 모두 FP16 선형 구간(<code>Renderer::ApplyHdrEffects</code>)에 있습니다.</p>
+
+<h3>1-3. 순서를 엔진이 고정하는 이유</h3>
+<p>효과의 순서는 결과를 바꿉니다. 코드 주석이 적어 둔 순서의 이유는 둘입니다. TAA를 모션 블러 앞에 두어 지터가 남은 이미지를 먼저 정리한 뒤 번지게 하고(<code>ApplyHdrEffects</code>의 TAA 블록 주석), 모션 블러를 블룸 앞에 두어 밝은 줄무늬가 번진 뒤에 퍼지게 합니다(<code>PostProcessSettings.h</code> 주석). 우리 엔진은 순서를 코드에 고정하고 사용자는 효과를 켜고 끄고 값만 바꿉니다. <code>Scene/PostProcessSettings.h</code> 머리 주석과 <a href="../plan/post-process-record.html#design">후처리 기록 2장</a>에 이 결정이 적혀 있습니다.</p>
+</section>
+
+<section id="principle">
+<h2>2. 원리</h2>
+<h3>2-1. 풀스크린 패스</h3>
+<p>후처리 패스 하나는 "입력 텍스처 하나를 읽어 출력 텍스처 하나를 덮어쓰는 그리기"입니다. 정점 버퍼 없이 <code>Draw(3)</code>으로 화면을 덮는 삼각형 하나를 그리고(<code>ScreenVS</code>가 <code>SV_VertexID</code>로 꼭짓점을 만듦), 픽셀 셰이더가 출력 픽셀마다 입력을 읽어 계산합니다. 깊이 테스트도, 컬링도, 재질도 없습니다. 컴퓨트 셰이더로 같은 일을 할 수도 있고, 우리 블러는 두 방법을 모두 갖고 있습니다(7장).</p>
+
+<h3>2-2. 같은 텍스처를 읽으면서 쓰지 않는다</h3>
+<p>한 패스 안에서 입력과 출력이 같은 텍스처이면, 어떤 픽셀이 이웃을 읽을 때 그 이웃이 이미 덮어써졌는지 알 수 없습니다. D3D11은 같은 리소스가 SRV와 RTV(또는 UAV)에 동시에 꽂히면 한쪽을 NULL로 풀어 버리고, D3D12는 한 리소스가 읽기 상태와 쓰기 상태를 동시에 가질 수 없습니다. 그래서 효과마다 출력용 텍스처가 하나 더 있고, 결과를 다시 원래 텍스처로 옮기는 패스가 따라옵니다. 두 텍스처를 번갈아 쓰는 이 방식을 흔히 핑퐁이라 부릅니다. 우리 엔진에서 어떻게 쓰는지는 4장에서 봅니다.</p>
+
+<h3>2-3. 분리 가능한 커널</h3>
+<p>반경 r인 2D 가우시안을 그대로 하면 픽셀마다 (2r+1)²번 읽어야 합니다. 가우시안은 <code>g(x, y) = g(x) · g(y)</code>로 나뉘므로, 가로로 한 번 흐리고 그 결과를 세로로 한 번 흐리면 같은 결과가 2(2r+1)번 읽기로 나옵니다. 반경 4에서 81번이 18번으로, 반경 64에서 16,641번이 258번으로 줄어듭니다 <span class="tag chk">계산값</span>. 대신 중간 결과를 담을 텍스처가 하나 필요하고 패스가 둘이 됩니다.</p>
+
+<h3>2-4. 색만 바꾸는 효과는 한 패스에 모은다</h3>
+<p>흑백·대비·채도·비네트처럼 "픽셀 하나의 색만 보고 바꾸는" 효과는 이웃을 읽지 않습니다. 이런 효과마다 풀스크린 패스를 하나씩 두면 패스마다 화면 전체를 한 번 읽고 한 번 씁니다. 이미 화면 전체를 읽고 쓰는 마지막 패스(우리는 톤 패스)의 셰이더 안에 차례로 이어 붙이면 추가 메모리 왕복이 없습니다. 효과 여러 개를 셰이더 하나에 넣는 이 방식을 흔히 uber 셰이더라고 부릅니다(6장).</p>
+</section>
+
+<section id="chain">
+<h2>3. 한 프레임의 체인 순서</h2>
+<p><code>Renderer::Render</code>(<code>Graphics/Renderer.cpp</code>)는 메인 뷰에 대해 씬 패스 → <code>Barrier(m_blurWeights, ShaderResource)</code> → <code>ApplyHdrEffects</code> → <code>RenderTonemapPass</code> → <code>RenderCanvasPass</code>(게임 UI) 순으로 기록합니다. 카메라 미리보기가 켜져 있으면 미리보기 뷰도 같은 세 단계를 자기 타깃으로 한 번 더 거칩니다. <code>ApplyHdrEffects</code>(<code>Graphics/RendererPost.cpp</code>) 안의 순서는 다음과 같습니다.</p>
+<table>
+<tr><th>순서</th><th>단계</th><th>켜지는 조건</th><th>패스</th><th>읽기 → 쓰기</th><th>자세히</th></tr>
+<tr><td>0</td><td>준비</td><td>깊이 전이는 항상, 스크래치는 블러·블룸·모션 블러가 켜졌을 때</td><td>—</td><td>깊이를 <code>DepthRead</code>로, 스크래치 확보(<code>EnsurePostScratch</code>)</td><td>4장</td></tr>
+<tr><td>(0')</td><td>속도 디버그 뷰 16·17</td><td><code>debugView</code>가 16 또는 17</td><td>1, 그 뒤 반환</td><td>속도 → hdr</td><td><a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a></td></tr>
+<tr><td>1</td><td>TAA</td><td><code>taaEnabled</code>, 디버그 뷰 아님</td><td>2 (해결 + 복사)</td><td>hdr + history[1−cur] → history[cur] → hdr</td><td><a href="../study/taa-study.html">TAA 학습</a></td></tr>
+<tr><td>2</td><td>모션 블러</td><td><code>motionBlurEnabled</code>, 세기 &gt; 0, 디버그 뷰 아님</td><td>2 (번짐 + 복사)</td><td>hdr + 깊이·속도 → temp → hdr</td><td><a href="../study/motion-blur-study.html">모션 블러 학습</a></td></tr>
+<tr><td>3</td><td>가우시안 블러</td><td><code>blurEnabled</code>, 반경 &gt; 0</td><td>디스패치 1 (가중치) + 가로·세로 2 (디스패치 또는 그리기)</td><td>hdr → temp → hdr</td><td>7장</td></tr>
+<tr><td>4</td><td>블룸</td><td><code>bloomEnabled</code>, 세기 &gt; 0</td><td>추출 1 + 축소 (n−1) + 확대 (n−1) + 합성 1</td><td>hdr → L0 … L(n−1) → … → L0 → hdr에 가산</td><td>8장</td></tr>
+<tr><td>5</td><td>톤 패스 + 색 효과</td><td>항상</td><td>1</td><td>hdr → 최종 출력 (씬 뷰 텍스처 또는 백버퍼)</td><td>6장, <a href="../study/hdr-tonemapping-study.html">HDR·톤매핑 학습</a></td></tr>
+</table>
+<p>SSAO는 이 체인에 없습니다. SSAO는 디퍼드 라이팅이 환경광에 곱하는 값이라 씬 패스 안(라이팅 전)에서 돌고, 결과가 hdr에 들어올 때는 이미 조명에 녹아 있습니다(<a href="../study/ssao-study.html">SSAO 학습</a>). 컴퓨트 경로의 일반 규칙은 <a href="../study/compute-uav-study.html">컴퓨트·UAV 학습</a>에 있습니다.</p>
+
+<figure><svg viewBox="0 0 940 320" role="img" aria-label="후처리 체인: 단계 순서와 각 단계가 쓰는 텍스처">
+<defs><marker id="pp-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink3)"/></marker></defs>
+<rect x="10" y="20" width="120" height="40" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="70" y="45" text-anchor="middle">씬 패스</text>
+<rect x="145" y="20" width="120" height="40" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="205" y="45" text-anchor="middle">1 TAA</text>
+<rect x="280" y="20" width="120" height="40" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="340" y="45" text-anchor="middle">2 모션 블러</text>
+<rect x="415" y="20" width="120" height="40" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="475" y="45" text-anchor="middle">3 블러</text>
+<rect x="550" y="20" width="120" height="40" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="610" y="45" text-anchor="middle">4 블룸</text>
+<rect x="685" y="20" width="135" height="40" rx="6" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="752" y="45" text-anchor="middle">5 톤 패스 + 색 효과</text>
+<rect x="835" y="20" width="95" height="40" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="882" y="45" text-anchor="middle">UI</text>
+<path class="ln" d="M130,40 L143,40" marker-end="url(#pp-ar)"/><path class="ln" d="M265,40 L278,40" marker-end="url(#pp-ar)"/><path class="ln" d="M400,40 L413,40" marker-end="url(#pp-ar)"/><path class="ln" d="M535,40 L548,40" marker-end="url(#pp-ar)"/><path class="ln" d="M670,40 L683,40" marker-end="url(#pp-ar)"/><path class="ln" d="M820,40 L833,40" marker-end="url(#pp-ar)"/>
+<rect x="10" y="110" width="660" height="34" rx="6" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="340" y="132" text-anchor="middle">hdr (R16G16B16A16_FLOAT) — 효과마다 결과를 여기에 되돌려 씀</text>
+<path class="ln" d="M70,60 L70,108" marker-end="url(#pp-ar)"/><text x="78" y="90">그림</text>
+<path class="ln" d="M670,127 L752,127 L752,62" marker-end="url(#pp-ar)"/><text x="680" y="166">t13 = hdrSet</text>
+<rect x="145" y="200" width="120" height="34" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/><text x="205" y="222" text-anchor="middle">history[cur]</text>
+<rect x="280" y="200" width="120" height="34" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/><text x="340" y="222" text-anchor="middle">temp</text>
+<rect x="415" y="200" width="120" height="34" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/><text x="475" y="222" text-anchor="middle">temp</text>
+<rect x="550" y="200" width="120" height="34" rx="6" style="fill:var(--fill);stroke:var(--ink3)"/><text x="610" y="222" text-anchor="middle">L0~L4</text>
+<path class="ln" d="M180,144 L180,198" marker-end="url(#pp-ar)"/><path class="ln" d="M230,200 L230,146" marker-end="url(#pp-ar)"/>
+<path class="ln" d="M315,144 L315,198" marker-end="url(#pp-ar)"/><path class="ln" d="M365,200 L365,146" marker-end="url(#pp-ar)"/>
+<path class="ln" d="M450,144 L450,198" marker-end="url(#pp-ar)"/><path class="ln" d="M500,200 L500,146" marker-end="url(#pp-ar)"/>
+<path class="ln" d="M585,144 L585,198" marker-end="url(#pp-ar)"/><path class="ln" d="M635,200 L635,146" marker-end="url(#pp-ar)"/>
+<text x="205" y="254" text-anchor="middle">↓ 섞기 ↑ 복사</text>
+<text x="340" y="254" text-anchor="middle">↓ 번짐 ↑ 복사</text>
+<text x="475" y="254" text-anchor="middle">↓ 가로 ↑ 세로</text>
+<text x="610" y="254" text-anchor="middle">↓ 추출·축소 ↑ 가산</text>
+<text x="145" y="290">history 두 장은 프레임마다 역할을 바꿈 (current ^= 1). temp 한 장을 모션 블러와 블러가 같이 씀.</text>
+</svg><figcaption>그림 1. 체인의 순서(위)와 각 단계가 쓰는 텍스처(아래). 모든 효과는 hdr에서 읽고 결과를 hdr로 돌려놓으므로, 톤 패스는 어떤 효과가 켜졌는지 모르고 항상 같은 셋(<code>ViewTarget::hdrSet</code>)을 읽습니다. 블룸 레벨 L0~L4는 hdr의 1/2~1/32 크기입니다.</figcaption></figure>
+
+<h3>3-1. "제자리" 규칙</h3>
+<p>모든 효과는 끝나면 결과가 <code>view.hdr</code>에 있어야 합니다. 이 규칙 덕분에 효과 사이의 결합이 없습니다. 다음 효과는 앞 효과가 켜졌는지 모르고 hdr를 읽고, 톤 패스도 마찬가지입니다. <code>RendererPost.cpp</code> 머리 주석과 <a href="../plan/post-process-record.html#design">후처리 기록 2장</a>이 이유로 "효과를 추가해도 톤 패스는 안 바뀐다"를 들고 있습니다.</p>
+<p>대가는 복사 패스입니다. 블러는 가로 → temp, 세로 → hdr로 원래 두 패스가 필요하므로 공짜로 hdr에 돌아오지만, TAA와 모션 블러는 결과를 다른 텍스처에 쓴 뒤 <code>PS_Post</code> 모드 0(<code>Load</code> 그대로 복사)으로 hdr에 옮깁니다. 1280×720 FP16 한 장은 7.4 MB이므로 복사 한 번이 읽기 7.4 MB + 쓰기 7.4 MB입니다 <span class="tag chk">계산값</span>. 핸들을 바꿔 끼우면(hdr와 temp의 역할을 교대) 복사를 없앨 수 있지만, 그러면 톤 패스·다음 효과가 읽는 셋이 프레임마다 달라지고 뷰마다 "지금 어느 쪽이 결과인가"를 들고 다녀야 합니다. 지금 구조는 그 단순함을 복사 비용과 바꾼 것입니다.</p>
+
+<h3>3-2. 상태 전이</h3>
+<p><code>ApplyHdrEffects</code>는 hdr가 <code>ShaderResource</code> 상태일 때 시작하고 같은 상태로 끝납니다(<code>Renderer.h</code>의 선언 주석). 모든 풀스크린 패스는 <code>RenderPostPass</code>를 거치는데, 이 함수가 출력을 <code>RenderTarget</code>으로 바꾸고 그린 뒤 <code>PostPassDesc::outputAfter</code>(후처리 안에서는 항상 <code>ShaderResource</code>)로 되돌립니다. 그래서 각 단계는 앞 단계가 남긴 상태를 신경 쓰지 않습니다. 깊이는 모션 블러·TAA가 SRV로 읽으므로 체인 시작에서 <code>DepthRead</code>로 바꿉니다. 효과가 모두 꺼져도 이 전이는 하고, 다음 프레임 씬 패스가 <code>DepthWrite</code>로 되돌립니다.</p>
+</section>
+
+<section id="targets">
+<h2>4. 텍스처와 그 소유자</h2>
+<p>후처리 자원은 "뷰마다 하나"인 것과 "렌더러에 하나"인 것으로 나뉩니다. 뷰는 메인 뷰(<code>m_mainView</code>)와 카메라 미리보기(<code>m_previewView</code>) 두 개이고, 둘 다 <code>Renderer::ViewTarget</code>입니다.</p>
+<table>
+<tr><th>자원</th><th>소유</th><th>포맷·크기</th><th>만드는 때</th><th>쓰는 곳</th></tr>
+<tr><td><code>hdr</code>, <code>hdrSet</code></td><td><code>ViewTarget</code></td><td>FP16, 뷰 크기, RT + SRV + UAV</td><td><code>CreateViewTarget</code> (<code>RendererTargets.cpp</code>)</td><td>씬 패스의 타깃, 모든 효과의 입출력, 톤 패스 입력</td></tr>
+<tr><td><code>post.temp</code>, <code>tempSet</code></td><td><code>ViewTarget::post</code> (<code>PostScratch</code>)</td><td>FP16, 뷰 크기, RT + SRV + UAV</td><td>블러나 모션 블러가 처음 켜질 때</td><td>블러 가로 결과, 모션 블러 결과</td></tr>
+<tr><td><code>post.blurComputeSets[2]</code></td><td><code>PostScratch</code></td><td>—</td><td>temp와 같이</td><td>컴퓨트 블러 [0] hdr → temp, [1] temp → hdr</td></tr>
+<tr><td><code>post.bloom[5]</code></td><td><code>PostScratch</code></td><td>FP16, 1/2 ~ 1/32</td><td>블룸이 처음 켜질 때</td><td>블룸 축소 체인</td></tr>
+<tr><td><code>history[2]</code>, <code>taaSet[2]</code>, <code>historyPostSet[2]</code></td><td><code>ViewTarget</code></td><td>FP16, 뷰 크기</td><td>TAA가 처음 켜질 때 (<code>EnsureTaaTargets</code>)</td><td>TAA 히스토리 (프레임 사이 핑퐁)</td></tr>
+<tr><td><code>m_postParamsCB</code></td><td><code>Renderer</code></td><td>80 B 상수 버퍼</td><td>초기화</td><td>모든 후처리 패스의 b4</td></tr>
+<tr><td><code>m_blurWeights</code></td><td><code>Renderer</code></td><td>float × 65, SRV + UAV</td><td>초기화</td><td>블러 가중치 t20</td></tr>
+<tr><td><code>m_stageThumbs[6]</code></td><td><code>Renderer</code></td><td>RGBA8, 폭 384</td><td>Post Stages 창이 처음 요청할 때</td><td>단계별 썸네일 (메인 뷰만)</td></tr>
+</table>
+<p>뷰마다 둔 것은 크기가 뷰를 따라야 하는 것입니다. 메인 뷰가 1280×720이고 미리보기가 그보다 작아도 각자 맞는 temp와 블룸 레벨을 갖습니다. 렌더러에 하나만 둔 상수 버퍼와 가중치 버퍼는 패스마다 다시 씁니다. 가중치는 시그마가 뷰 높이를 따르므로(7장) 미리보기 뷰의 블러가 메인 뷰가 쓴 값을 덮어씁니다. 명령 순서상 메인 뷰의 블러가 이미 끝난 뒤라 문제가 없고, 메인 뷰와 미리보기를 한 커맨드 리스트에 차례로 기록하므로(<code>Renderer::Render</code>) 순서가 지켜지고, <code>DispatchBlurWeights</code>의 배리어는 그 사이의 SRV ↔ UAV 전이를 맡습니다.</p>
+
+<h3>4-1. 수명</h3>
+<ul>
+<li><b>필요할 때 처음 만듦.</b> 효과가 모두 꺼진 씬에서는 temp도 블룸 레벨도 히스토리도 없습니다. <code>EnsurePostScratch(…, needTemp, needBloom)</code>가 켜진 효과에 필요한 것만 만듭니다.</li>
+<li><b>크기가 바뀌면 전부 버림.</b> <code>PostScratch::width·height</code>가 hdr 크기와 다르면 <code>DestroyPostScratch</code> 후 다시 만듭니다. <code>DestroyViewTarget</code>도 <code>DestroyPostScratch</code>를 부릅니다. 컴퓨트 블러 셋이 hdr를 직접 가리키므로 hdr가 새로 만들어지면 셋도 같이 버려야 하기 때문입니다(<code>PostScratch</code> 주석).</li>
+<li><b>효과를 꺼도 남음.</b> 한 번 만든 스크래치와 TAA 히스토리는 효과를 꺼도 지우지 않습니다(뷰를 없애거나 크기가 바뀔 때, 만들기에 실패했을 때만 지움). 다시 켤 때 할당이 없지만, 그동안 메모리는 그대로 듭니다.</li>
+<li><b>만들기 실패.</b> 스크래치를 못 만들면 블러·블룸·모션 블러를 그 프레임에 건너뛰고 씬은 그대로 나갑니다. 컴퓨트 블러 셋만 실패하면 스크래치는 쓰고 PS 블러로 갑니다.</li>
+</ul>
+<p>1280×720 메인 뷰에서 전부 켰을 때의 추가 메모리는 temp 7.4 MB + 히스토리 14.7 MB + 블룸 5레벨 2.5 MB(640×360 · 320×180 · 160×90 · 80×45 · 40×23, 크기는 <code>(w + 1) / 2</code> 규칙)로 약 24.6 MB입니다 <span class="tag chk">계산값</span>. 블룸은 레벨이 5개(<code>PostScratch::kBloomLevels</code>)에 닿거나 한 변이 4 미만인 레벨을 만들면 거기서 멈춥니다.</p>
+</section>
+
+<section id="extend">
+<h2>5. 효과 하나를 추가하는 부품</h2>
+<h3>5-1. 공통 패스 함수 <code>RenderPostPass</code></h3>
+<p>풀스크린 패스는 모두 <code>Renderer::RenderPostPass(cmd, PostPassDesc)</code> 하나로 기록합니다. <code>PostPassDesc</code>는 PSO, 입력 셋, 출력 텍스처, 출력의 다음 상태, <code>LoadOp</code>, sRGB 뷰 여부, 디버그 이름을 받습니다. 출력 전체를 덮어쓰는 패스는 <code>LoadOp::DontCare</code>, 기존 값에 더하는 블룸 확대·합성만 <code>LoadOp::Load</code>를 씁니다. 호출하는 쪽은 그 전에 <code>UploadPostParams</code>로 b4를 올립니다.</p>
+
+<h3>5-2. 상수 <code>PostParamsConstants</code> (b4, 80 B)</h3>
+<table>
+<tr><th>필드</th><th>x</th><th>y</th><th>z</th><th>w</th></tr>
+<tr><td><code>pass</code></td><td>모드 (0 복사, 1 블러, 2 블룸 추출·축소, 3 축소, 4 확대)</td><td colspan="2">블러 방향 (1,0) / (0,1)</td><td>비어 있음</td></tr>
+<tr><td><code>blur</code></td><td>시그마 (TAA는 이번 프레임 비중, 모션 블러는 셔터 배율)</td><td>반경 (모션 블러는 길이 상한)</td><td>(모션 블러) 샘플 수</td><td>비어 있음</td></tr>
+<tr><td><code>bloom</code></td><td>임계값</td><td>임계값 × knee</td><td>확대 결과 배율</td><td>비어 있음</td></tr>
+<tr><td><code>view</code></td><td colspan="2">입력 크기</td><td colspan="2">출력 크기</td></tr>
+<tr><td><code>grade</code></td><td>GreyScale 양</td><td>1이면 색 효과 건너뜀</td><td colspan="2">비어 있음</td></tr>
+</table>
+<p>C++ 쪽은 <code>Graphics/ShaderConstants.h</code>, HLSL 쪽은 <code>Shaders/Post.hlsli</code>의 <code>cbuffer PostParams</code>이고, <code>static_assert(sizeof(PostParamsConstants) == 80)</code>이 크기를 지킵니다. TAA와 모션 블러는 <code>blur</code> 칸을 자기 뜻으로 다시 씁니다. 같은 칸을 패스마다 다른 의미로 쓰는 셈이라 칸을 아끼는 대신 읽을 때 패스를 함께 봐야 합니다.</p>
+<p>상수 버퍼는 하나인데 한 프레임에 패스마다 내용을 바꿔 올립니다. 그래도 앞 패스의 값이 덮이지 않는 것은 백엔드가 갱신할 때마다 새 메모리를 주기 때문입니다. D3D12는 <code>UpdateBuffer</code>가 프레임 업로드 링에서 새 조각을 받고 그리기 시점에 최신 주소를 묶으며(<a href="../plan/post-process-record.html#notes">후처리 기록 12장</a>), D3D11은 Dynamic 버퍼를 <code>Map(WRITE_DISCARD)</code>로 갱신해 드라이버가 이름을 바꿔 줍니다(<code>D3D11Device::UpdateBuffer</code>). 컴퓨트 디스패치는 그래서 "PostParams를 올린 뒤에 셋을 꽂는다"는 순서를 지킵니다(<code>DispatchBlurCompute</code> 주석, D3D12 루트 CBV 주소).</p>
+
+<h3>5-3. 바인딩 레이아웃</h3>
+<table>
+<tr><th>레이아웃</th><th>슬롯</th><th>쓰는 패스</th></tr>
+<tr><td><code>Layout_Post</code></td><td>b0 PerFrame, b4 PostParams, t13 입력, s6 선형 Clamp, t20 블러 가중치 (모두 PS)</td><td>톤 패스, <code>PS_Post</code>(복사·블러·블룸)</td></tr>
+<tr><td><code>Layout_Temporal</code></td><td>b0, b4, t13 입력, t23 깊이, t7 속도, t24 히스토리, s6</td><td>속도 디버그, 모션 블러, TAA</td></tr>
+<tr><td><code>Layout_BlurCompute</code></td><td>b4, t13 입력, u0 출력, t20 (모두 CS)</td><td>컴퓨트 블러</td></tr>
+<tr><td><code>Layout_BlurWeights</code></td><td>b4, u0 가중치 (CS)</td><td>가중치 계산</td></tr>
+</table>
+<p>입력이 바뀌는 패스는 레이아웃이 같은 셋을 텍스처마다 하나씩 미리 만들어 둡니다(<code>CreatePostSet(texture)</code> → <code>hdrSet</code>, <code>tempSet</code>, 블룸 레벨마다 <code>set</code>). 셰이더가 쓰지 않는 슬롯에도 늘 유효한 뷰가 꽂혀 있어 D3D12 디스크립터 테이블이 안전하다는 것이 <a href="../plan/post-process-record.html#design">레이아웃을 하나로 공유한 이유</a>입니다. 그 대가로, 블러가 꺼진 프레임에도 톤 패스가 t20을 묶으므로 <code>Render</code>가 첫 후처리 패스 전에 가중치 버퍼를 <code>ShaderResource</code>로 바꿔 둡니다(버퍼 상태는 프레임 끝에 <code>Common</code>으로 돌아감, <a href="../plan/compute-uav-record.html#notes">컴퓨트 RHI 기록 7장</a>). 바인딩 일반론은 <a href="../study/binding-study.html">바인딩 학습</a>에 있습니다.</p>
+
+<h3>5-4. PSO</h3>
+<p>패스 표 <code>Renderer::kPasses</code>에 <code>Tonemap</code>·<code>Post</code>·<code>VelocityDebug</code>·<code>MotionBlur</code>·<code>Taa</code>가 모두 <code>ScreenVS</code> + 각자의 PS로 들어 있고, <code>BuildPassDescs</code>가 이 다섯을 한 루프에서 "컬링 없음, 깊이 끔, <code>dsvFormat = Unknown</code>"으로 맞춥니다. 깊이 없는 패스에 기본값 D24 DSV가 남으면 PSO가 거부되기 때문입니다(<a href="../plan/post-process-record.html#pso">후처리 기록 9장</a>). RTV 포맷은 가져오는 함수가 채웁니다.</p>
+<ul>
+<li><code>GetPostPipeline(additive)</code>: <code>Pass_Post</code>, FP16. 가산 버전은 <code>m_postAddDesc</code>(색 One + One, 알파는 기존 값 유지)로 블룸 확대·합성에 씁니다.</li>
+<li><code>GetTemporalPipeline(pass)</code>: 속도 디버그·모션 블러·TAA, FP16.</li>
+<li><code>GetTonemapPipeline()</code>: <code>srgbOutput</code>에 따라 <code>R8G8B8A8_UNORM_SRGB</code> 또는 UNORM. D3D12는 PSO의 RTV 포맷이 뷰 포맷과 같아야 해서 둘을 따로 캐시합니다(<a href="color-space-study.html#formats">색공간 학습 5-3</a>).</li>
+<li><code>GetComputePipeline(ComputePass_Blur / _BlurWeights)</code>: 실패해도 한 번만 시도합니다(<code>m_computeTried</code>).</li>
+</ul>
+
+<h3>5-5. 두 가지 추가 방법</h3>
+<table>
+<tr><th>효과의 모양</th><th>할 일</th><th>예</th></tr>
+<tr><td>색만 바꿈 (이웃을 읽지 않음)</td><td><code>PostProcessSettings</code> 필드 → 직렬화·UI → <code>PostParamsConstants</code>의 빈 칸(<code>grade.zw</code> 등) → <code>TonemapPixelShader.hlsl</code>의 색 효과 구간. 패스·텍스처 0</td><td>GreyScale</td></tr>
+<tr><td>입력 하나, 같은 모양</td><td><code>PostPixelShader.hlsl</code>에 모드 하나 → <code>ApplyHdrEffects</code>에 블록 하나(필요하면 <code>EnsurePostScratch</code>에 텍스처) → 마지막에 hdr로 되돌림. 레이아웃·PSO는 그대로</td><td>블러(PS 경로), 블룸</td></tr>
+<tr><td>깊이·속도·히스토리가 필요</td><td>셰이더 파일 새로 → <code>kPasses</code>에 행 하나 → 깊이 없는 패스 루프에 추가 → <code>GetTemporalPipeline</code> → <code>Layout_Temporal</code> 셋 → 결과가 다른 텍스처면 모드 0 복사</td><td>모션 블러, TAA</td></tr>
+</table>
+<p>첫 두 방법은 <a href="../plan/post-process-record.html#extend">후처리 기록 14장</a>에 적혀 있고, 세 번째는 모션 블러·TAA가 들어오면서 생긴 방법입니다. 어느 경우든 썸네일 단계를 하나 더 보이려면 <code>kPostStageCount</code>, <code>PostStage</code> 열거형, <code>EnsureStageThumbs</code>의 이름 배열을 같이 늘립니다.</p>
+</section>
+
+<section id="grade">
+<h2>6. 톤 패스 안의 색 효과 (GreyScale)</h2>
+<p><code>Shaders/TonemapPixelShader.hlsl</code>의 <code>PS_Tonemap</code>은 hdr를 읽어 노출과 ACES(<code>ApplyExposureToneMap</code>)를 적용한 뒤, <code>postGrade.y</code>가 0이면 색 효과를 이어서 적용합니다. 지금 있는 색 효과는 GreyScale 하나입니다.</p>
+<pre><code>luma  = dot(color, float3(0.2126, 0.7152, 0.0722))   // Rec.709 휘도
+color = lerp(color, luma, saturate(postGrade.x))     // 0 = 원본, 1 = 흑백</code></pre>
+<ul>
+<li><b>자리.</b> 톤매핑을 끝낸 선형 0~1 값에 적용하고, 그 뒤 sRGB RTV가 인코딩합니다. 휘도 계수는 선형 값에 대한 것이라 이 자리가 맞습니다(<a href="color-space-study.html#flow">색공간 학습 3장</a>).</li>
+<li><b>왜 여기인가.</b> 2-4의 이유입니다. 톤 패스는 어차피 화면 전체를 한 번 읽고 한 번 쓰므로, 색 효과를 여기 붙이면 패스도 텍스처도 늘지 않습니다. 셰이더 주석은 대비·채도·비네트·그레인을 같은 자리에 이어 붙일 후보로 적어 두었습니다.</li>
+<li><b>건너뛰기.</b> 단계별 썸네일의 Scene~Bloom 칸은 <code>skipGrade = true</code>로 <code>postGrade.y = 1</code>을 올려 색 효과를 뺍니다. 그래야 "그 효과가 한 일"만 보입니다. Final 칸과 실제 화면은 색 효과를 포함합니다.</li>
+<li><b>디버그 뷰.</b> <code>debugParams.x &gt; 0.5</code>이면 <code>saturate(hdr)</code>을 바로 반환하므로 노출·ACES·색 효과를 모두 거치지 않습니다. 알베도·노멀 같은 디버그 색이 흑백이 되지 않습니다.</li>
+</ul>
+<p>톤 패스는 효과가 모두 꺼져도 매 프레임 <code>UploadPostParams</code>를 부릅니다. 갱신하지 않은 Dynamic 상수 버퍼를 D3D12에서 경고가 나기 때문입니다(<code>RenderTonemapPass</code> 주석).</p>
+<div class="box warn"><b>색 효과의 한계.</b> 이 구조는 픽셀 하나만 보는 효과에만 맞습니다. FXAA처럼 톤매핑된 LDR 이미지의 이웃을 읽어야 하는 효과는 톤 패스 출력이 최종 출력(씬 뷰 텍스처나 백버퍼)으로 바로 가기 때문에 넣을 자리가 없습니다. LDR 중간 텍스처를 하나 두는 구조 변경이 먼저 필요하다고 <a href="../plan/post-process-record.html#extend">후처리 기록 14장</a>에 적혀 있습니다.</div>
+</section>
+
+<section id="blur">
+<h2>7. 가우시안 블러</h2>
+<h3>7-1. 반경과 시그마</h3>
+<p>설정의 <code>blurRadius</code>는 "720p 기준 픽셀"입니다. <code>ApplyHdrEffects</code>가 뷰 높이에 비례해 늘리고 64(<code>kMaxBlurRadius</code>)에서 자릅니다. 씬 뷰 크기를 바꾸거나 작은 미리보기에서도 흐림이 화면 대비 같은 비율이 되게 하려는 것입니다(<code>PostProcessSettings</code> 주석).</p>
+<pre><code>effectiveRadius = min(blurRadius × height / 720, 64)
+radius          = ceil(max(effectiveRadius, 1))     // 탭 반경 (정수)
+sigma           = max(effectiveRadius / 2.5, 0.5)   // ±2.5σ 에서 자름</code></pre>
+<table>
+<tr><th><code>blurRadius</code></th><th>뷰 높이</th><th>반경</th><th>σ</th><th>한 방향 탭</th><th>분리 합계 / 2D 한 번</th></tr>
+<tr><td>4 (기본)</td><td>720</td><td>4</td><td>1.6</td><td>9</td><td>18 / 81</td></tr>
+<tr><td>4</td><td>1080</td><td>6</td><td>2.4</td><td>13</td><td>26 / 169</td></tr>
+<tr><td>32 (슬라이더 최대)</td><td>1440</td><td>64</td><td>25.6</td><td>129</td><td>258 / 16,641</td></tr>
+<tr><td>32</td><td>2160</td><td>64 (96에서 잘림)</td><td>25.6</td><td>129</td><td>258 / 16,641</td></tr>
+</table>
+<p>모두 <span class="tag chk">계산값</span>입니다. 마지막 줄처럼 높이 1440을 넘는 뷰에서 큰 반경을 쓰면 상한에 걸려 화면 대비 흐림이 줄어듭니다(13장).</p>
+
+<figure><svg viewBox="0 0 940 270" role="img" aria-label="반경 4 가우시안 가중치 막대와, 2D 커널과 분리 커널의 탭 수 비교">
+<text x="30" y="24">정규화한 가중치 w[i] / Σw (반경 4, σ 1.6)</text>
+<line x1="30" y1="210" x2="400" y2="210" class="ln"/>
+<rect x="40" y="203.4" width="30" height="6.6" style="fill:var(--accent)"/>
+<rect x="80" y="184.1" width="30" height="25.9" style="fill:var(--accent)"/>
+<rect x="120" y="141.2" width="30" height="68.8" style="fill:var(--accent)"/>
+<rect x="160" y="86.4" width="30" height="123.6" style="fill:var(--accent)"/>
+<rect x="200" y="59.8" width="30" height="150.2" style="fill:var(--accent)"/>
+<rect x="240" y="86.4" width="30" height="123.6" style="fill:var(--accent)"/>
+<rect x="280" y="141.2" width="30" height="68.8" style="fill:var(--accent)"/>
+<rect x="320" y="184.1" width="30" height="25.9" style="fill:var(--accent)"/>
+<rect x="360" y="203.4" width="30" height="6.6" style="fill:var(--accent)"/>
+<text x="55" y="228" text-anchor="middle">−4</text><text x="95" y="228" text-anchor="middle">−3</text><text x="135" y="228" text-anchor="middle">−2</text><text x="175" y="228" text-anchor="middle">−1</text><text x="215" y="228" text-anchor="middle">0</text><text x="255" y="228" text-anchor="middle">1</text><text x="295" y="228" text-anchor="middle">2</text><text x="335" y="228" text-anchor="middle">3</text><text x="375" y="228" text-anchor="middle">4</text>
+<text x="215" y="52" text-anchor="middle">.250</text><text x="255" y="79" text-anchor="middle">.206</text><text x="295" y="134" text-anchor="middle">.115</text><text x="335" y="177" text-anchor="middle">.043</text><text x="375" y="196" text-anchor="middle">.011</text>
+<text x="30" y="254">버퍼에는 i = 0..4 의 exp(−i²/2σ²) 다섯 개만 있고, 셰이더가 |i| 로 읽고 합으로 나눔</text>
+<rect x="480" y="50" width="126" height="126" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+<path class="ln" d="M494,50 V176 M508,50 V176 M522,50 V176 M536,50 V176 M550,50 V176 M564,50 V176 M578,50 V176 M592,50 V176 M480,64 H606 M480,78 H606 M480,92 H606 M480,106 H606 M480,120 H606 M480,134 H606 M480,148 H606 M480,162 H606"/>
+<text x="543" y="200" text-anchor="middle">2D 한 번: 9 × 9 = 81 탭</text>
+<rect x="700" y="50" width="126" height="126" style="fill:var(--paper);stroke:var(--ink3)"/>
+<rect x="700" y="106" width="126" height="14" style="fill:var(--accent)"/>
+<rect x="756" y="50" width="14" height="126" style="fill:var(--c1)"/>
+<path class="ln" d="M714,50 V176 M728,50 V176 M742,50 V176 M756,50 V176 M770,50 V176 M784,50 V176 M798,50 V176 M812,50 V176 M700,64 H826 M700,78 H826 M700,92 H826 M700,106 H826 M700,120 H826 M700,134 H826 M700,148 H826 M700,162 H826"/>
+<text x="763" y="200" text-anchor="middle">가로 9 + 세로 9 = 18 탭</text>
+<text x="763" y="222" text-anchor="middle">(사이에 temp 한 장)</text>
+</svg><figcaption>그림 2. 왼쪽은 기본값(720p, 반경 4)의 한 방향 커널입니다 <span class="tag chk">계산값</span>. 오른쪽은 같은 흐림을 2D 커널로 한 번에 할 때와 가로·세로로 나눠 할 때의 읽기 수입니다.</figcaption></figure>
+
+<h3>7-2. 가중치 버퍼</h3>
+<p>가중치는 블러를 돌릴 때마다 컴퓨트 셰이더가 먼저 씁니다. <code>DispatchBlurWeights</code>가 <code>m_blurWeights</code>를 <code>UnorderedAccess</code>로 바꾸고 <code>CS_BlurWeights</code>(<code>[numthreads(64,1,1)]</code>, 스레드 하나가 <code>w[i] = exp(−i²/2σ²)</code> 하나)를 <code>ceil((반경 + 1) / 64)</code> 그룹 돌린 뒤 <code>ShaderResource</code>로 되돌립니다. 정규화는 읽는 쪽이 합으로 나눕니다. PS 블러와 CS 블러가 이 버퍼(t20)를 같이 읽습니다.</p>
+<p>버퍼를 둔 이유는 두 경로의 결과를 맞추기 위해서입니다. 처음에는 두 셰이더가 루프 안에서 가중치를 각자 계산했고, D3D11에서 CS와 PS가 2,366 픽셀에서 최하위 1단계 달랐습니다. 버퍼를 같이 읽게 하자 1 픽셀로 줄었고 D3D12는 처음부터 0이었습니다. 누적 변수에 <code>precise</code>를 붙이면 0이 되지만 기본 경로였던 PS 출력이 39 픽셀 바뀌어 넣지 않았습니다. 원인은 특정하지 못했습니다 <span class="tag ok">확인함 (2026-11-17)</span> <a href="../plan/compute-uav-record.html#diff">컴퓨트 RHI 기록 6장</a>.</p>
+
+<h3>7-3. PS 경로와 컴퓨트 경로</h3>
+<table>
+<tr><th></th><th>PS 경로</th><th>컴퓨트 경로</th></tr>
+<tr><td>셰이더</td><td><code>PostPixelShader.hlsl</code> <code>PS_Post</code> 모드 1</td><td><code>BlurComputeShader.hlsl</code> <code>CS_Blur</code></td></tr>
+<tr><td>실행 단위</td><td>풀스크린 삼각형, 픽셀 하나</td><td><code>[numthreads(8,8,1)]</code>, 디스패치 <code>(ceil(w/8), ceil(h/8), 1)</code>. 텍스처 밖 스레드는 바로 끝냄</td></tr>
+<tr><td>출력</td><td>RTV (<code>RenderPostPass</code>)</td><td>UAV u0 (<code>DispatchBlurCompute</code>가 앞뒤로 <code>UnorderedAccess</code> ↔ <code>ShaderResource</code>)</td></tr>
+<tr><td>셋</td><td><code>hdrSet</code> → temp, <code>tempSet</code> → hdr</td><td><code>blurComputeSets[0]</code> hdr → temp, <code>[1]</code> temp → hdr</td></tr>
+<tr><td>계산</td><td colspan="2">글자 그대로 같음: 클램프한 정수 좌표로 <code>Load</code>, <code>blurWeights[abs(i)]</code>, 같은 더하기 순서, 합으로 나눔</td></tr>
+<tr><td>고르는 곳</td><td colspan="2"><code>RenderSettings::computeBlur</code>(기본 true)이고 CS PSO와 두 셋이 모두 있으면 컴퓨트, 아니면 PS. 경로가 바뀔 때만 "블러 경로: …" 로그</td></tr>
+</table>
+<p>컴퓨트 블러가 입력을 UAV로 읽지 않고 t13 SRV로 읽는 것은 <code>cs_5_0</code>이 float4 UAV를 읽을 수 없기 때문입니다(<code>Post.hlsli</code> 주석). 그래서 temp와 hdr은 RT·SRV·UAV를 모두 켜고 만듭니다(세로 패스가 hdr에 되돌려 씀). 이 블러는 공유 메모리(groupshared)에 타일을 올리지 않고 탭마다 텍스처를 읽으므로, 두 경로의 차이는 "같은 계산을 다른 스테이지에서" 돌린다는 것뿐입니다. 컴퓨트 블러의 첫 역할은 컴퓨트 RHI가 PS와 같은 결과를 내는지 보는 검증이었습니다(<code>BlurComputeShader.hlsl</code> 머리 주석, <code>RenderSettings::computeBlur</code> 주석). 경로별 성능 비교 측정은 기록에 없습니다.</p>
+</section>
+
+<section id="bloom">
+<h2>8. 블룸</h2>
+<p>블룸은 밝은 곳의 빛이 주변으로 번지는 효과입니다. 별도 학습 문서가 없으므로 체인 안의 동작을 여기 정리합니다. 모두 <code>PS_Post</code>의 모드로 돌고, 축소 체인은 <code>PostScratch::bloom</code>입니다.</p>
+<ol>
+<li><b>추출 + 축소 (모드 2)</b>: hdr → L0(1/2). 입력 텍셀 모서리 네 곳을 선형 샘플러로 읽어 4×4 박스를 만들고, 각 샘플에 <code>BrightPass</code>를 겁니다. 채널 최댓값이 임계값을 넘는 만큼만 남기고, knee 구간은 2차 곡선으로 이어 경계가 튀지 않게 합니다.</li>
+<li><b>축소 (모드 3)</b>: L(i−1) → L(i), 같은 4×4 박스.</li>
+<li><b>확대 (모드 4, 가산)</b>: L(i+1) → L(i), 3×3 텐트(1 2 1 / 2 4 2 / 1 2 1 ÷ 16). PSO가 가산 블렌드라 축소 때 그 레벨에 있던 값에 더해집니다. PSO의 알파 블렌드가 Zero/One(<code>m_postAddDesc</code>)이라 기존 알파가 그대로 남습니다(셰이더는 알파 0을 냄).</li>
+<li><b>합성 (모드 4, 가산)</b>: L0 → hdr, <code>postBloom.z = bloomIntensity</code>. hdr를 렌더 타깃(<code>Load</code>)으로 쓰고 입력은 L0이므로 같은 텍스처를 읽고 쓰지 않습니다.</li>
+</ol>
+<p>1280×720에서 레벨 5개면 패스는 추출 1 + 축소 4 + 확대 4 + 합성 1 = 10개입니다 <span class="tag chk">계산값</span>. 임계값은 노출 전 선형 HDR 값에 대한 것이라, 노출을 낮춘 어두운 장면에서는 같은 임계값에서도 번지는 양이 달라집니다(<a href="../plan/post-process-record.html#notes">후처리 기록 12장</a>).</p>
+</section>
+
+<section id="debug">
+<h2>9. 디버그 뷰와 단계별 썸네일</h2>
+<h3>9-1. 디버그 뷰에서 무엇을 건너뛰나</h3>
+<p>디버그 뷰(<code>RenderSettings::debugView</code>, <a href="../overview/rendering-analysis.html#c14-10">rendering-analysis 14.10</a>)는 알베도·노멀·깊이처럼 조명 결과가 아닌 값을 hdr에 그립니다. 이 색이 번지거나 섞이면 읽을 수 없으므로 일부 효과를 건너뜁니다. 다만 건너뛰는 범위는 효과마다 다릅니다.</p>
+<table>
+<tr><th>단계</th><th>그 밖의 디버그 뷰</th><th>디버그 뷰 16·17 (속도)</th><th>근거</th></tr>
+<tr><td>TAA</td><td>건너뜀, 지터도 끔, 히스토리 버림</td><td>건너뜀</td><td><code>Renderer::TaaActive</code></td></tr>
+<tr><td>모션 블러</td><td>건너뜀</td><td>건너뜀</td><td><code>ApplyHdrEffects</code>의 <code>debugView == 0</code> 조건</td></tr>
+<tr><td>블러, 블룸</td><td><b>그대로 돎</b></td><td>건너뜀</td><td>조건 없음 / 16·17은 속도 디버그를 그리고 바로 반환</td></tr>
+<tr><td>톤 패스</td><td colspan="2">노출·ACES·색 효과 없이 <code>saturate</code>만</td><td><code>PS_Tonemap</code>의 <code>debugParams.x</code> 분기</td></tr>
+</table>
+<p>블러를 켠 채 알베도 디버그 뷰를 보면 흐린 알베도가 나옵니다. 16·17은 속도 디버그 PS가 hdr에 직접 쓰므로, 입력 셋(<code>velocityDebugSet</code>)의 t13에는 hdr 대신 흰 텍스처를 꽂습니다(SRV·RTV 겹침 방지).</p>
+
+<h3>9-2. Post Stages 창</h3>
+<p>에디터 환경 패널의 <code>Stage thumbnails</code> 체크(또는 <code>--post-stages=</code> 뒤에 아무 값)로 여는 창입니다(<code>DebugUI::DrawPostStagesWindow</code>). 각 단계가 끝난 직후의 hdr를 톤매핑해 폭 384 썸네일 여섯 칸(Scene, TAA, Motion, Blur, Bloom, Final)에 나란히 보여 줍니다. 이번 프레임에 돌지 않은 단계는 "off"로 비웁니다.</p>
+<ul>
+<li><b>요청이 있는 프레임에만.</b> 창이 매 프레임 <code>RequestPostCapture</code>를 부르고, <code>Render</code>가 요청을 읽어 <code>m_postCapture</code>로 바꾼 뒤 지웁니다. 창을 닫으면 다음 프레임부터 비용이 없습니다. 오프스크린(에디터)의 메인 뷰만 캡처합니다.</li>
+<li><b>그리는 방법.</b> 단계마다 <code>CapturePostStage</code>가 톤 패스 셰이더로 hdr를 썸네일에 그립니다. <code>postView</code>의 입력/출력 크기 비로 <code>Load</code> 좌표를 늘려 읽으므로 최근접 축소입니다. 텍스처 복사 명령이 없어서 그리기로 한다고 <a href="../plan/post-process-record.html#stages">후처리 기록 11장</a>에 적혀 있습니다.</li>
+<li><b>만드는 시점.</b> 썸네일 텍스처는 UI를 만드는 중(<code>RequestPostCapture</code>)에 만들고 바꿉니다. 처음에는 <code>Render</code> 안에서 만들었는데, D3D11의 ImGui 텍스처 ID가 SRV 포인터라서 창 크기가 바뀐 프레임에 해제된 SRV를 그려 크래시가 났습니다(6/6 재현, 옮긴 뒤 9회 정상) <span class="tag ok">확인함 (2026-10-23)</span> <a href="../plan/post-process-record.html#stages">후처리 기록 11장</a>.</li>
+</ul>
+<p>자동 검증 플래그는 <code>Editor/EditorAutomation.cpp</code>가 읽습니다. <code>--post-stages=1</code>은 창을 처음부터 켜고, <code>--select=&lt;이름&gt;</code>은 그 이름의 첫 오브젝트를 선택하고(카메라 오브젝트면 미리보기 뷰가 켜짐), <code>--compute-blur=1|0</code>은 블러 경로를 고릅니다. <code>--compute-blur</code>는 게임 exe(<code>App/GameApp.cpp</code>)도 받습니다. 검증 방법(씬 복사본, 씬 뷰 비교 영역)은 <a href="../plan/compute-uav-record.html#verify">컴퓨트 RHI 기록 8장</a>에 있습니다.</p>
+</section>
+
+<section id="settings">
+<h2>10. 설정</h2>
+<p>효과의 값은 <code>Scene/PostProcessSettings.h</code>의 <code>PostProcessSettings</code>에 있고, 씬의 환경(<code>SceneEnvironment::post</code>)에 들어가 씬 JSON(<code>postProcess</code> 객체)으로 저장·복원되며 되돌리기 이력에도 들어갑니다. 키가 없는 옛 씬 파일은 기본값(전부 꺼짐)으로 열립니다. 렌더러는 <code>Renderer::ResolveEnvironment</code>에서 매 프레임 <code>m_postSettings</code>로 복사하고, 실행 인자 <code>--motion-blur=</code>, <code>--motion-blur-fps=</code>, <code>--taa=</code>가 있으면 그 자리에서 덮어씁니다.</p>
+<table>
+<tr><th>필드</th><th>기본값</th><th>에디터 범위</th><th>쓰는 곳</th></tr>
+<tr><td><code>blurEnabled</code>, <code>blurRadius</code></td><td>꺼짐, 4</td><td>0.5~32 (720p 픽셀)</td><td>7장</td></tr>
+<tr><td><code>bloomEnabled</code>, <code>bloomThreshold</code>, <code>bloomKnee</code>, <code>bloomIntensity</code></td><td>꺼짐, 1.0, 0.5, 0.5</td><td>0~8, 0~1, 0~4</td><td>8장</td></tr>
+<tr><td><code>greyscale</code></td><td>0</td><td>0~1</td><td>6장</td></tr>
+<tr><td><code>motionBlur*</code> (세기·길이 상한·샘플·기준 fps)</td><td>꺼짐, 0.5, 32, 12, 60</td><td>0~1, 1~64, 4~32, 0~240</td><td><a href="../study/motion-blur-study.html">모션 블러 학습</a></td></tr>
+<tr><td><code>taaEnabled</code>, <code>taaFeedback</code></td><td>꺼짐, 0.1</td><td>0.02~1</td><td><a href="../study/taa-study.html">TAA 학습</a></td></tr>
+</table>
+<p>씬마다 달라야 하는 값은 여기에 두고, 장비나 검증에 관한 스위치는 <code>RenderSettings</code>(<code>Graphics/Renderer.h</code>)에 둡니다. <code>computeBlur</code>, <code>srgbOutput</code>, <code>debugView</code>가 그쪽이고 씬 파일에 저장하지 않습니다. 에디터는 <code>computeBlur</code>를 Render Settings 패널의 <code>Compute blur</code> 체크박스로 보여 줍니다(<code>DebugUI::DrawRenderSettingsPanel</code>). 노출과 톤매핑 켜기는 환경의 다른 칸에 있습니다(<a href="../study/hdr-tonemapping-study.html">HDR·톤매핑 학습</a>).</p>
+<p>효과를 추가할 때 손대는 순서도 <code>PostProcessSettings.h</code> 머리 주석에 있습니다: 필드 → <code>SceneSerializer</code>의 환경 JSON(저장·로드 두 곳) → <code>DebugUI</code>의 Post process 섹션 → 렌더러 체인.</p>
+</section>
+
+<section id="code">
+<h2>11. 우리 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>체인</td><td><code>Graphics/RendererPost.cpp</code> 의 <code>Renderer::ApplyHdrEffects</code></td><td>조건 판단, 스크래치 확보, TAA → 모션 블러 → 블러 → 블룸, 단계별 캡처</td></tr>
+<tr><td>호출 지점</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::Render</code></td><td>가중치 버퍼 상태 맞춤, 메인 뷰·미리보기 뷰마다 체인 → 톤 패스 → 캔버스</td></tr>
+<tr><td>공통 패스</td><td><code>RendererPost.cpp</code> 의 <code>RenderPostPass</code>, <code>UploadPostParams</code>, <code>CreatePostSet</code></td><td>출력 전이·패스·<code>Draw(3)</code>, b4 갱신, <code>Layout_Post</code> 셋</td></tr>
+<tr><td>톤 패스</td><td><code>RendererPost.cpp</code> 의 <code>RenderTonemapPass</code>, <code>Shaders/TonemapPixelShader.hlsl</code> 의 <code>PS_Tonemap</code></td><td>노출·ACES·GreyScale, 썸네일 축소 읽기</td></tr>
+<tr><td>후처리 PS</td><td><code>Shaders/PostPixelShader.hlsl</code> 의 <code>PS_Post</code>, <code>BrightPass</code></td><td>모드 0 복사, 1 블러, 2~4 블룸</td></tr>
+<tr><td>공용 선언</td><td><code>Shaders/Post.hlsli</code></td><td><code>cbuffer PostParams</code>(b4), t13, s6, t20 <code>blurWeights</code>, <code>kMaxBlurRadius</code></td></tr>
+<tr><td>컴퓨트 블러</td><td><code>Shaders/BlurComputeShader.hlsl</code> 의 <code>CS_Blur</code>, <code>RendererPost.cpp</code> 의 <code>DispatchBlurCompute</code></td><td>한 방향 블러, UAV 전이</td></tr>
+<tr><td>가중치</td><td><code>Shaders/BlurWeightsComputeShader.hlsl</code> 의 <code>CS_BlurWeights</code>, <code>DispatchBlurWeights</code></td><td><code>m_blurWeights</code>에 반쪽 가중치</td></tr>
+<tr><td>스크래치</td><td><code>Graphics/Renderer.h</code> 의 <code>PostScratch</code>·<code>ViewTarget</code>, <code>EnsurePostScratch</code>·<code>DestroyPostScratch</code></td><td>temp, 컴퓨트 셋, 블룸 레벨</td></tr>
+<tr><td>뷰 타깃</td><td><code>Graphics/RendererTargets.cpp</code> 의 <code>CreateViewTarget</code>·<code>DestroyViewTarget</code></td><td>hdr·<code>hdrSet</code>, 뷰 정리 때 스크래치도 버림</td></tr>
+<tr><td>PSO</td><td><code>Renderer.cpp</code> 의 <code>kPasses</code>, <code>BuildPassDescs</code>, <code>GetTonemapPipeline</code>, <code>GetComputePipeline</code>; <code>RendererPost.cpp</code> 의 <code>GetPostPipeline</code>, <code>GetTemporalPipeline</code></td><td>깊이 없는 풀스크린 PSO, 가산 버전, 컴퓨트 PSO</td></tr>
+<tr><td>레이아웃</td><td><code>Renderer.cpp</code> 의 <code>CreateLayouts</code></td><td><code>Layout_Post</code>·<code>Layout_Temporal</code>·<code>Layout_BlurCompute</code>·<code>Layout_BlurWeights</code></td></tr>
+<tr><td>상수·슬롯</td><td><code>Graphics/ShaderConstants.h</code></td><td><code>PostParamsConstants</code>(80 B), <code>kCBSlotPostParams</code>, <code>kSRVSlotSceneHdr</code>, <code>kSRVSlotBlurWeights</code>, <code>kSamplerSlotPost</code></td></tr>
+<tr><td>썸네일</td><td><code>RendererPost.cpp</code> 의 <code>RequestPostCapture</code>, <code>EnsureStageThumbs</code>, <code>CapturePostStage</code>; <code>Editor/DebugUI.cpp</code> 의 <code>DrawPostStagesWindow</code></td><td>단계별 그림, 창</td></tr>
+<tr><td>설정</td><td><code>Scene/PostProcessSettings.h</code>, <code>Scene/SceneSerializer.cpp</code>, <code>Editor/DebugUI.cpp</code> 의 <code>DrawEnvironmentPanel</code>, <code>Renderer::ResolveEnvironment</code></td><td>값, 저장·로드, UI, 실행 인자 덮어쓰기</td></tr>
+<tr><td>자동 검증</td><td><code>Editor/EditorAutomation.cpp</code>, <code>App/GameApp.cpp</code></td><td><code>--post-stages</code>, <code>--select</code>, <code>--compute-blur</code></td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>12. 실험</h2>
+<p>테스트 씬은 <code>Projects/SherlockTestScenes</code>의 <code>ComputeBlur.json</code>(블러 + 블룸)이 기본입니다. 씬 파일을 바꿔야 하는 실험은 복사본에서 합니다.</p>
+
+<h3>E1. 효과를 모두 끄면 예전 화면과 같다 <span class="tag ok">확인함 (2026-10-23)</span></h3>
+<p>후처리를 넣기 전 기준 스크린샷과, 효과를 모두 끈 씬 뷰를 비교하면 차이가 0이었습니다. 켜진 효과가 없으면 스크래치도 패스도 없으므로 톤 패스 하나만 남습니다. D3D12와 D3D11의 차이는 최대 채널 1 이하였습니다(<a href="../plan/post-process-record.html#verify">후처리 기록 13장</a>).</p>
+
+<h3>E2. PS 블러와 컴퓨트 블러 비교 <span class="tag ok">확인함 (2026-11-17)</span></h3>
+<p><code>--compute-blur=0</code>과 <code>--compute-blur=1</code>로 같은 씬을 찍어 비교합니다. 에디터에서는 D3D11·D3D12·<code>--select="Main Camera"</code> 모두 차이 0, 게임 모드는 D3D12 0, D3D11 1 픽셀 1단계였습니다. 로그의 "블러 경로: 컴퓨트 (BlurCS)" 줄로 실제 경로를 확인합니다(<a href="../plan/compute-uav-record.html#verify">컴퓨트 RHI 기록 8장</a>).</p>
+
+<h3>E3. 단계별 썸네일로 순서 보기 <span class="tag chk">예상</span></h3>
+<p>TAA·모션 블러·블러·블룸을 모두 켜고 <code>--post-stages=1</code>로 엽니다. 카메라를 움직이는 동안 Motion 칸에서 번짐이 생기고, Blur 칸에서 전체가 흐려지고, Bloom 칸에서 밝은 곳이 퍼질 것입니다. GreyScale을 1로 두면 Scene~Bloom 칸은 색이 있고 Final 칸만 흑백일 것입니다(6장 건너뛰기).</p>
+
+<h3>E4. 블러가 해상도를 따라가는지 <span class="tag chk">예상</span></h3>
+<p>블러 반경 4로 씬 뷰 창 크기를 바꿔 봅니다. 화면 대비 흐림 정도는 그대로이고, 높이 720에서 탭 반경 4, 1080에서 6이 될 것입니다(7-1 표). 반경 32에서 뷰 높이를 1440보다 크게 하면 반경이 64에 묶여 상대적으로 덜 흐려질 것입니다.</p>
+
+<h3>E5. 디버그 뷰와 블러 <span class="tag chk">예상</span></h3>
+<p>블러와 모션 블러를 켠 채 알베도 디버그 뷰로 바꿉니다. 알베도는 흐려지고(블러는 디버그 뷰를 가리지 않음), 카메라를 움직여도 번지지 않을 것입니다(모션 블러는 건너뜀). 디버그 뷰 16으로 바꾸면 블러도 사라질 것입니다(9-1 표).</p>
+
+<h3>E6. 미리보기 뷰의 같은 체인 <span class="tag ok">확인함 (2026-10-23)</span></h3>
+<p><code>--select=&lt;카메라 이름&gt;</code>으로 카메라 미리보기를 띄우면 켠 효과가 미리보기에도 걸리고, 미리보기 크기용 스크래치 생성 로그("후처리 스크래치 …")가 따로 나왔습니다(<a href="../plan/post-process-record.html#verify">후처리 기록 13장</a>). 썸네일은 메인 뷰만 그립니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>13. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>효과가 아무것도 안 쓰거나 검게 나옴 (D3D11)</td><td>같은 리소스가 SRV와 UAV/RTV에 동시에 꽂혀 런타임이 한쪽을 NULL로 품</td><td><code>DispatchBlurCompute</code>·<code>DispatchBlurWeights</code>의 앞뒤 <code>Barrier</code>가 슬롯을 풀어 줌. 효과마다 입력과 출력을 항상 다른 텍스처로 둠(2-2)</td></tr>
+<tr><td>D3D12에서만 PSO 오류</td><td>깊이 없는 패스에 DSV 포맷이 남음, 또는 RTV 포맷 ≠ 뷰 포맷</td><td>풀스크린 패스 루프의 <code>dsvFormat = Unknown</code>, 톤 PSO 두 개(5-4)</td></tr>
+<tr><td>블러가 꺼진 프레임에 D3D12 상태 오류</td><td>톤 패스 셋도 t20을 묶는데 버퍼 상태는 프레임마다 <code>Common</code></td><td><code>Render</code>가 첫 후처리 패스 전에 <code>Barrier(m_blurWeights, ShaderResource)</code></td></tr>
+<tr><td>창 크기를 바꾸면 에디터가 죽음</td><td>UI가 쥔 ImGui 텍스처 ID(SRV)를 <code>Render</code>가 해제</td><td>썸네일 생성을 <code>RequestPostCapture</code>로 옮김(9-2)</td></tr>
+<tr><td>4K 같은 큰 뷰에서 블러가 약해짐</td><td>반경이 <code>kMaxBlurRadius</code> 64에서 잘림</td><td>720p 기준 32는 높이 1440까지만 비례(7-1)</td></tr>
+<tr><td>디버그 뷰가 흐리거나 번져 보임</td><td>블러·블룸은 디버그 뷰를 건너뛰지 않음</td><td>TAA·모션 블러만 <code>debugView == 0</code> 조건(9-1)</td></tr>
+<tr><td>효과를 꺼도 GPU 메모리가 그대로</td><td>스크래치는 크기가 바뀔 때만 다시 만들고 효과를 꺼도 지우지 않음</td><td>720p 전부 켬 약 24.6 MB(4장)</td></tr>
+<tr><td>TAA·모션 블러가 켜지면 패스가 하나씩 더</td><td>결과를 hdr로 되돌리는 모드 0 복사</td><td>"제자리" 규칙의 비용(3-1)</td></tr>
+<tr><td>FXAA·LDR 샤픈 같은 효과를 넣을 자리가 없음</td><td>톤 패스가 최종 출력에 바로 씀</td><td>LDR 중간 텍스처가 필요(6장 상자)</td></tr>
+<tr><td>효과 순서를 바꿀 수 없음</td><td>순서를 코드에 고정</td><td>의도된 선택(1-3). 바꾸려면 <code>ApplyHdrEffects</code>의 블록 순서와 <code>PostStage</code> 순서를 같이 바꿈</td></tr>
+<tr><td>D3D11에서 PS와 CS 블러가 1 픽셀 다름</td><td>스테이지마다 곱셈+덧셈을 합치는 방식이 다른 것으로 보임 (원인 미특정)</td><td><code>precise</code>를 넣지 않기로 결정(7-2)</td></tr>
+</table>
+<div class="box warn"><b>낡은 서술 주의.</b> 코드 주석 일부가 썸네일이 네 칸(Scene, Blur, Bloom, Final)이던 때로 남아 있습니다. <code>Renderer.h</code>의 <code>kPostStageCount</code> 위 주석("0 Scene, 1 Blur, 2 Bloom, 3 Final", "단계 0~2"), <code>DrawPostStagesWindow</code>의 "4칸" 주석, <code>RendererPost.cpp</code> 머리의 "블러 → 블룸"이 그렇습니다. 지금은 여섯 칸이고 체인은 3장의 순서입니다. <a href="../plan/post-process-record.html">후처리 기록</a>도 작성 당시 이름(<code>m_hdrPostSet</code>, <code>m_postMain</code>·<code>m_postPreview</code>, <code>Common.hlsli</code>의 <code>PostParams</code>, 루프 안 가중치 계산)으로 적혀 있습니다.</div>
+</section>
+
+<section id="study">
+<h2>14. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>후처리와 풀스크린 패스</td><td>이미지 공간 효과, 정점 버퍼 없는 삼각형 하나</td><td>1-1, 2-1</td></tr>
+<tr><td>HDR 구간과 LDR 구간</td><td>빛을 섞는 효과는 톤매핑 앞, 색만 바꾸는 효과는 톤 패스 안</td><td>1-2, 6</td></tr>
+<tr><td>핑퐁과 제자리 규칙</td><td>같은 텍스처를 읽으며 쓰지 않음, 결과를 hdr로 되돌리는 비용</td><td>2-2, 3-1</td></tr>
+<tr><td>분리 가능한 가우시안</td><td>(2r+1)² → 2(2r+1), 시그마와 자르는 반경, 정규화</td><td>2-3, 7-1</td></tr>
+<tr><td>uber 셰이더</td><td>여러 색 효과를 한 패스에 모으는 이유와 한계</td><td>2-4, 6</td></tr>
+<tr><td>뷰별 자원과 전역 자원</td><td>크기를 따라야 하는 것과 패스마다 다시 쓰는 것</td><td>4</td></tr>
+<tr><td>상수 버퍼를 한 프레임에 여러 번 갱신</td><td>업로드 링, <code>WRITE_DISCARD</code></td><td>5-2</td></tr>
+<tr><td>컴퓨트 블러와 UAV 전이</td><td>스레드 그룹, 디스패치 크기, SRV ↔ UAV 배리어</td><td>7-3</td></tr>
+<tr><td>블룸 축소·확대 체인</td><td>밝기 추출, 4×4 박스 축소, 텐트 확대의 가산</td><td>8</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>LearnOpenGL, <a href="https://learnopengl.com/Advanced-Lighting/Bloom">Bloom</a> — HDR 위의 밝기 추출과 핑퐁 가우시안. 2장·8장의 입문용</li>
+<li>LearnOpenGL, <a href="https://learnopengl.com/Advanced-OpenGL/Framebuffers">Framebuffers</a> — 화면 크기 텍스처에 그리고 풀스크린으로 후처리하는 기본 구조. 2-1</li>
+<li>Jorge Jimenez, "Next Generation Post Processing in Call of Duty: Advanced Warfare" (SIGGRAPH 2014) — 13탭 축소와 텐트 확대로 만드는 블룸 체인. 8장과 비교해 볼 것</li>
+<li>Real-Time Rendering 4판, 12장 Image-Space Effects — 분리 가능한 필터, 블룸, 후처리 순서의 이론</li>
+<li>우리 문서: <a href="../plan/post-process-record.html">후처리 구현 기록</a>(설계·블룸·썸네일·검증), <a href="../plan/compute-uav-record.html">컴퓨트 RHI 기록</a>(가중치 버퍼, PS↔CS 차이), <a href="../plan/hdr-tonemapping-record.html">HDR 기록</a>(hdr 타깃과 톤 패스), <a href="color-space-study.html">색공간 학습</a>, <a href="../study/hdr-tonemapping-study.html">HDR·톤매핑 학습</a>, <a href="../study/compute-uav-study.html">컴퓨트·UAV 학습</a>, <a href="../study/motion-blur-study.html">모션 블러 학습</a>, <a href="../study/taa-study.html">TAA 학습</a>, <a href="../study/ssao-study.html">SSAO 학습</a>, <a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a>, <a href="../study/binding-study.html">바인딩 학습</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · GPU 파티클 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>GPU 파티클 학습 문서</h1>
+  <p>파티클 풀·생존/사망 목록·간접 인자 — CPU가 파티클 하나하나를 모르는 채로 시뮬레이션하고 정렬해서 그리는 방법</p>
+  <p>2026-11-25 · 렌더러 공부 문서 묶음 중 하나입니다. GPU 파티클 이야기는 지금까지 <a href="../plan/vfx-gpu-particles-record.html">VFX GPU 파티클 구현 기록</a>(1~3단계, 2026-11-17)과 그 <a href="../plan/vfx-gpu-particles-record.html#arch">12장 구조 설명</a>, <a href="../overview/rendering-analysis.html#c20-24">rendering-analysis 20.24 적용 기록</a>, <a href="../overview/glossary.html#compute">용어집 4장 "GPU 컴퓨트·파티클"</a>에 있었습니다. 이 문서는 원리부터 다시 설명하고 현재 코드에 맞춰 정리합니다. 컴퓨트 셰이더·UAV·배리어의 기초는 <a href="../study/compute-uav-study.html">컴퓨트·UAV 학습 문서</a>에 있으므로 여기서는 다시 설명하지 않습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1장은 왜 GPU에서 하는가, 2장은 버퍼 배치, 3장은 한 프레임의 호출 순서, 4장은 시뮬레이션 커널 넷과 원자 연산, 5장은 간접 인자, 6장은 깊이를 읽는 두 기능(소프트 파티클·충돌), 7장은 알파 정렬, 8장은 그리기와 속도 버퍼·TAA와의 관계, 9장은 이미터 설정·저장·결정성, 10장은 코드 지도, 11장은 실험, 12장은 함정과 한계, 13장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 버퍼 크기·디스패치 수·정상 상태 파티클 수는 코드의 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 기록 문서의 측정은 모두 2026-11-17의 픽셀 비교 검증(스크린샷 차이 픽셀 수와 최대 단계)이고 <span class="tag ok">확인함</span>으로 표시했습니다. CPU 시뮬레이션과 GPU 시뮬레이션의 시간을 비교한 측정은 기록에 없습니다. 측정에 쓴 씬 중 <code>ParticleTest.json</code>·<code>ParticleExhaust.json</code>·<code>ParticleDepth.json</code>·<code>ParticleDepthOff.json</code>·<code>ParticleAlpha.json</code>·<code>ParticleSpawnAlpha.json</code>은 지금 저장소에 없습니다. 실험(11장)은 남아 있는 <code>ParticleAll</code>·<code>ParticleAlphaSort</code>·<code>ParticleOrtho</code>로 짰습니다.</div>
+</header>
+<nav><a href="#why">1. 왜 GPU에서</a><a href="#data">2. 버퍼 배치</a><a href="#frame">3. 한 프레임의 흐름</a><a href="#sim">4. 시뮬레이션 커널</a><a href="#indirect">5. 간접 인자</a><a href="#depth">6. 소프트·충돌</a><a href="#sort">7. 알파 정렬</a><a href="#draw">8. 그리기</a><a href="#emitter">9. 이미터 설정</a><a href="#code">10. 코드 지도</a><a href="#lab">11. 실험</a><a href="#pitfalls">12. 함정과 한계</a><a href="#study">13. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 GPU에서 시뮬레이션하는가</h2>
+<h3>1-1. CPU 파티클의 비용 구조</h3>
+<p>CPU에서 파티클을 돌리면 매 프레임 파티클 수만큼 위치·속도를 갱신하고, 그 결과를 정점 버퍼로 GPU에 올립니다. 계산량과 업로드량이 둘 다 파티클 수에 비례합니다. 파티클 하나의 계산은 몇 줄의 곱셈·덧셈이고 다른 파티클과 상관이 없어서, 한 스레드가 파티클 하나를 맡는 컴퓨트 셰이더에 잘 맞습니다. 데이터를 GPU에만 두면 업로드도 없어집니다.</p>
+<p>대신 CPU는 결과를 모르게 됩니다. 몇 개가 살아 있는지, 어디에 있는지는 GPU 버퍼에만 있고 우리 엔진은 그것을 읽어 오지 않습니다(리드백 없음, <code>Graphics/RendererParticles.cpp</code> 머리 주석). 그래서 "이번 프레임에 몇 개를 그릴지", "다음 프레임에 몇 스레드를 돌릴지"도 GPU가 정해야 하고, 그 수단이 간접 인자 버퍼(5장)입니다.</p>
+<h3>1-2. 세 단계로 넘긴 것</h3>
+<p>구현 기록은 핵심을 "CPU 가 파티클 하나하나를 모르게 하는 것"이라고 적고, 단계마다 CPU가 아는 것을 하나씩 GPU로 넘겼습니다(<a href="../plan/vfx-gpu-particles-record.html#plan">기록 1장</a>). 세 단계 모두 2026-11-17에 끝났습니다.</p>
+<table>
+<tr><th>단계</th><th>CPU가 아는 것</th><th>GPU가 하는 것</th></tr>
+<tr><td>1 (링 버퍼)</td><td>생성 수, 링 버퍼 위치, 버퍼 크기 = 그리는 쿼드 수</td><td>생성 초기값, 적분, 빌보드</td></tr>
+<tr><td>2 (지금 구조의 뼈대)</td><td>이미터의 생성률뿐</td><td>사망 목록에서 꺼내 생성, 생존 목록 작성, 그리기·디스패치 인자 작성</td></tr>
+<tr><td>3</td><td>정렬 기준(카메라)</td><td>뷰마다 깊이 정렬, 깊이 버퍼와 충돌, 소프트 파티클</td></tr>
+</table>
+<p>이 방식의 대가도 코드에 남아 있습니다. CPU가 생존 수를 모르니 통계는 "원하는 생성 수"만 보여 주고(9-4), 알파 정렬은 생존 수가 아니라 버퍼 크기 전체를 정렬합니다(7-3). 생존 목록의 순서는 스레드 실행 순서에 달려 있어 실행마다 조금씩 다릅니다(9-3).</p>
+</section>
+
+<section id="data">
+<h2>2. 버퍼 배치</h2>
+<p>이미터 하나가 GPU에 가진 것은 <code>Graphics/Renderer.h</code>의 <code>GpuEmitter</code>입니다. <code>Renderer::UpdateParticleEmitters</code>가 처음 보거나 <code>capacity</code>가 바뀐 이미터에 대해 만듭니다. <code>capacity</code>는 <code>maxParticles</code>를 [1, 262,144]로 자른 값입니다(<code>ParticleEmitter::kMaxParticlesLimit = 1 &lt;&lt; 18</code>).</p>
+<table>
+<tr><th>버퍼 (debugName)</th><th>크기</th><th>바인딩</th><th>내용</th></tr>
+<tr><td><code>SB_Particles</code></td><td>capacity × 32 B</td><td>u0 / t21</td><td>파티클 풀. <code>struct Particle</code> = <code>float3 position, float age, float3 velocity, float lifetime</code> (<code>kParticleStride</code> 32). <code>age &gt;= lifetime</code>이면 죽은 칸</td></tr>
+<tr><td><code>SB_ParticleDead</code></td><td>capacity × 4 B</td><td>u1</td><td>사망 목록. 비어 있는 슬롯 번호를 쌓는 스택. [0, <code>Dead</code>)가 유효</td></tr>
+<tr><td><code>SB_ParticleAlive0</code>, <code>Alive1</code></td><td>capacity × 4 B 두 개</td><td>u2 입력 / u3 출력 / t22</td><td>생존 목록. 지난 프레임 목록을 읽고 이번 프레임 목록에 씀. 프레임마다 역할이 바뀜(핑퐁)</td></tr>
+<tr><td><code>SB_ParticleCounters</code></td><td>8 × 4 B</td><td>u4 / 정렬 셋 t24</td><td>개수 6칸: <code>Alive</code>, <code>Dead</code>, <code>SimCount</code>, <code>EmitCount</code>, <code>EmitDeadBase</code>, <code>EmitAliveBase</code> (<code>Particle.hlsli</code>의 <code>kCounter*</code>)</td></tr>
+<tr><td><code>RB_ParticleArgs</code></td><td>32 B (raw)</td><td>u5 / 간접 인자</td><td>바이트 0: 그리기 인자, 바이트 16: 시뮬레이션 디스패치 인자(5장)</td></tr>
+<tr><td><code>CB_ParticleEmitter</code></td><td>144 B (Dynamic)</td><td>b8</td><td>이미터 설정·dt·씨앗·생성 수. 시뮬레이션·정렬·그리기 셋이 같은 버퍼를 꽂음</td></tr>
+<tr><td><code>SB_ParticleSortKeys</code>, <code>SortIndices</code></td><td>N × 4 B 두 개, 뷰마다</td><td>정렬 셋 u0·u1 / t22</td><td>알파 이미터만. N = <code>ParticleSortCount(capacity)</code>(7장)</td></tr>
+</table>
+<p>버퍼 크기는 정렬 버퍼와 144 B 상수 버퍼를 빼면 이미터마다 44 × capacity + 64 바이트입니다. 기본값 4,096이면 180,288 B(약 176 KB), 상한 262,144면 약 11 MB입니다. 알파 이미터는 뷰 2개 × 8 B × N이 더 붙습니다(N 1,024면 16 KB, 262,144면 4 MB). <span class="tag chk">계산값</span></p>
+<p>생존 목록 두 개는 <code>parity</code>로 고릅니다. <code>simSets[p]</code>는 u2 = <code>aliveLists[p]</code>, u3 = <code>aliveLists[1 − p]</code>이고, 그리기 셋 <code>drawSets[p]</code>의 t22는 그 프레임의 출력 <code>aliveLists[1 − p]</code>입니다. <code>UpdateParticleEmitters</code>가 버퍼를 새로 만든 프레임이 아니면 <code>parity ^= 1</code>로 바꿔서, 지난 프레임의 출력이 이번 프레임의 입력이 됩니다. 한 커널 안에서 같은 목록을 읽으면서 쓰지 않으려고 둘로 나눈 것입니다.</p>
+<figure>
+<svg viewBox="0 0 900 470" role="img" aria-label="capacity 8 인 이미터 하나에서 한 프레임 동안 버퍼가 바뀌는 모습">
+  <defs><marker id="gp-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <text x="12" y="26" style="fill:var(--ink);font-weight:600">지난 프레임 끝 (Sim 직전)</text><text x="12" y="59">particles (슬롯 0~7)</text><rect x="220" y="40" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="246.0" y="58.0" text-anchor="middle">0</text><rect x="278" y="40" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="304.0" y="58.0" text-anchor="middle">1</text><rect x="336" y="40" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="362.0" y="58.0" text-anchor="middle">2</text><rect x="394" y="40" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="420.0" y="58.0" text-anchor="middle">3</text>
+  <rect x="452" y="40" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="478.0" y="58.0" text-anchor="middle">4</text><rect x="510" y="40" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="536.0" y="58.0" text-anchor="middle">5</text><rect x="568" y="40" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="594.0" y="58.0" text-anchor="middle">6</text><rect x="626" y="40" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="652.0" y="58.0" text-anchor="middle">7</text><text x="694" y="59">칸 = Particle 32 B</text><text x="12" y="97">dead (사망 목록)</text><rect x="220" y="78" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="246.0" y="96.0" text-anchor="middle">7</text><rect x="278" y="78" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="304.0" y="96.0" text-anchor="middle">6</text><rect x="336" y="78" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="362.0" y="96.0" text-anchor="middle">4</text>
+  <rect x="394" y="78" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="420.0" y="96.0" text-anchor="middle">1</text><rect x="452" y="78" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="478.0" y="96.0" text-anchor="middle"></text><rect x="510" y="78" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/>
+  <text x="536.0" y="96.0" text-anchor="middle"></text><rect x="568" y="78" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="594.0" y="96.0" text-anchor="middle"></text><rect x="626" y="78" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="652.0" y="96.0" text-anchor="middle"></text><text x="694" y="97">Dead = 4</text>
+  <text x="12" y="135">alive[p] (입력)</text><rect x="220" y="116" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="246.0" y="134.0" text-anchor="middle">0</text><rect x="278" y="116" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="304.0" y="134.0" text-anchor="middle">2</text>
+  <rect x="336" y="116" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="362.0" y="134.0" text-anchor="middle">3</text><rect x="394" y="116" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="420.0" y="134.0" text-anchor="middle">5</text><rect x="452" y="116" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/>
+  <text x="478.0" y="134.0" text-anchor="middle"></text><rect x="510" y="116" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="536.0" y="134.0" text-anchor="middle"></text><rect x="568" y="116" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="594.0" y="134.0" text-anchor="middle"></text>
+  <rect x="626" y="116" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="652.0" y="134.0" text-anchor="middle"></text><text x="694" y="135">SimCount = 4</text><line x1="200" y1="150" x2="200" y2="176" class="ln" marker-end="url(#gp-ar)"/><text x="214" y="168">CS_ParticleSim: 슬롯 3 이 수명을 다함, 각 스레드가 InterlockedAdd 로 자리를 받음</text>
+  <text x="12" y="200" style="fill:var(--ink);font-weight:600">Sim 직후</text><text x="12" y="231">dead</text><rect x="220" y="212" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="246.0" y="230.0" text-anchor="middle">7</text><rect x="278" y="212" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="304.0" y="230.0" text-anchor="middle">6</text>
+  <rect x="336" y="212" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="362.0" y="230.0" text-anchor="middle">4</text><rect x="394" y="212" width="52" height="28" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="420.0" y="230.0" text-anchor="middle">1</text><rect x="452" y="212" width="52" height="28" rx="3" style="fill:var(--warn-bg);stroke:var(--warn)"/>
+  <text x="478.0" y="230.0" text-anchor="middle">3</text><rect x="510" y="212" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="536.0" y="230.0" text-anchor="middle"></text><rect x="568" y="212" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="594.0" y="230.0" text-anchor="middle"></text>
+  <rect x="626" y="212" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="652.0" y="230.0" text-anchor="middle"></text><text x="694" y="231">Dead = 5 (3 이 뒤에 붙음)</text><text x="12" y="269">alive[1−p] (출력)</text><rect x="220" y="250" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="246.0" y="268.0" text-anchor="middle">0</text>
+  <rect x="278" y="250" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="304.0" y="268.0" text-anchor="middle">5</text><rect x="336" y="250" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="362.0" y="268.0" text-anchor="middle">2</text><rect x="394" y="250" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/>
+  <text x="420.0" y="268.0" text-anchor="middle"></text><rect x="452" y="250" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="478.0" y="268.0" text-anchor="middle"></text><rect x="510" y="250" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="536.0" y="268.0" text-anchor="middle"></text>
+  <rect x="568" y="250" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="594.0" y="268.0" text-anchor="middle"></text><rect x="626" y="250" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="652.0" y="268.0" text-anchor="middle"></text><text x="694" y="269">Alive = 3 (순서 가변)</text>
+  <line x1="200" y1="284" x2="200" y2="310" class="ln" marker-end="url(#gp-ar)"/><text x="214" y="302">CS_ParticleArgs (스레드 1개): 원하는 수 2, emit = min(2, 5) = 2</text><text x="12" y="334" style="fill:var(--ink);font-weight:600">Args·Emit 뒤</text><text x="12" y="372">counters [0..5]</text><text x="255" y="344" text-anchor="middle">Alive</text>
+  <rect x="220" y="354" width="70" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="255.0" y="372.0" text-anchor="middle">0</text><text x="331" y="344" text-anchor="middle">Dead</text><rect x="296" y="354" width="70" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="331.0" y="372.0" text-anchor="middle">3</text><text x="407" y="344" text-anchor="middle">SimCount</text>
+  <rect x="372" y="354" width="70" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="407.0" y="372.0" text-anchor="middle">5</text><text x="483" y="344" text-anchor="middle">EmitCount</text><rect x="448" y="354" width="70" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="483.0" y="372.0" text-anchor="middle">2</text>
+  <text x="559" y="344" text-anchor="middle">DeadBase</text><rect x="524" y="354" width="70" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="559.0" y="372.0" text-anchor="middle">3</text><text x="635" y="344" text-anchor="middle">AliveBase</text><rect x="600" y="354" width="70" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/>
+  <text x="635.0" y="372.0" text-anchor="middle">3</text><text x="12" y="416">alive[1−p] (최종)</text><rect x="220" y="396" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="246.0" y="414.0" text-anchor="middle">0</text><rect x="278" y="396" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="304.0" y="414.0" text-anchor="middle">5</text>
+  <rect x="336" y="396" width="52" height="28" rx="3" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="362.0" y="414.0" text-anchor="middle">2</text><rect x="394" y="396" width="52" height="28" rx="3" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="420.0" y="414.0" text-anchor="middle">1</text><rect x="452" y="396" width="52" height="28" rx="3" style="fill:var(--ok-bg);stroke:var(--ok)"/>
+  <text x="478.0" y="414.0" text-anchor="middle">3</text><rect x="510" y="396" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="536.0" y="414.0" text-anchor="middle"></text><rect x="568" y="396" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="594.0" y="414.0" text-anchor="middle"></text>
+  <rect x="626" y="396" width="52" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="652.0" y="414.0" text-anchor="middle"></text><text x="694" y="415">앞 3칸 Sim, 뒤 2칸 Emit</text><text x="12" y="456">args (raw 32 B)</text><rect x="220" y="436" width="170" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="305.0" y="454.0" text-anchor="middle">바이트 0: {6, 5, 0, 0}</text>
+  <rect x="400" y="436" width="170" height="28" rx="3" style="fill:var(--fill);stroke:var(--line)"/><text x="485.0" y="454.0" text-anchor="middle">바이트 16: {1, 1, 1}</text><text x="590" y="455">그리기 인스턴스 5 / 다음 프레임 Sim 1 그룹</text>
+</svg>
+<figcaption>그림 1. capacity 8인 이미터에서 한 프레임 동안 버퍼가 바뀌는 예. 파란 칸은 살아 있는 슬롯, 주황 칸은 Sim이 방금 사망 목록에 넣은 슬롯, 초록 칸은 Emit이 사망 목록 끝에서 꺼내 새 파티클을 쓴 슬롯(1과 3)입니다. 생존 목록 앞 3칸의 순서는 <code>InterlockedAdd</code>를 받은 순서라 실행마다 다를 수 있습니다. 예시 값입니다.</figcaption>
+</figure>
+</section>
+
+<section id="frame">
+<h2>3. 한 프레임의 흐름</h2>
+<h3>3-1. CPU 쪽</h3>
+<ul>
+<li><code>Renderer::BuildDrawList</code> → <code>CollectEmitter</code>: 오브젝트마다 <code>ParticleEmitter</code> 컴포넌트를 찾아 <code>FrameEmitter</code>(키, 컴포넌트 포인터, 월드 행렬 원점 = 위치, 로컬 +Y를 정규화한 방향)를 모읍니다. 메시가 없는 오브젝트도 이미터일 수 있어서 메시 검사보다 먼저 부릅니다. 컬링은 하지 않으므로 화면 밖 이미터도 시뮬레이션합니다.</li>
+<li><code>UpdateParticleEmitters</code>(업로드 구간): dt를 정하고, 버퍼·셋을 만들거나 다시 만들고, 이번 프레임 생성 수를 정해 b8을 올립니다. 알파 이미터가 있으면 뷰마다 view 행렬(b10), 이미터가 있으면 충돌용 메인 카메라 행렬(b9)도 올립니다. 이번 프레임에 보이지 않은 키(삭제·꺼짐)의 GPU 리소스는 여기서 지웁니다.</li>
+</ul>
+<p>생성 수는 <code>spawnRate × dt + spawnCarry</code>의 정수 부분이고, 소수 부분은 <code>spawnCarry</code>로 다음 프레임에 넘깁니다. 60 fps에서 <code>spawnRate</code> 1,500인 분수는 프레임마다 25개, 8인 바닥 안개는 7~8 프레임에 한 개 꼴입니다. <span class="tag chk">계산값</span></p>
+<h3>3-2. GPU 쪽</h3>
+<p><code>Renderer::RenderScenePass</code>는 첫 번째 패스(포워드 또는 디퍼드. 불투명 → 하늘 → 반투명)를 끝낸 뒤, 파티클이나 디버그 선이 있을 때만 두 번째 패스를 엽니다. 깊이를 <code>DepthRead</code>로 바꾸고, 메인 뷰(<code>viewIndex == 0</code>)에서만 <code>SimulateParticles</code>를, 뷰마다 <code>SortParticles</code>를 렌더 패스 밖에서 돌린 다음, hdr을 Load하고 깊이를 읽기 전용으로 붙인 Effects 패스에서 <code>DrawParticles</code>와 <code>DrawDebugLines</code>를 부릅니다.</p>
+<figure>
+<svg viewBox="0 0 900 280" role="img" aria-label="파티클이 있는 프레임에서 메인 뷰와 미리보기 뷰의 호출 순서">
+  <defs><marker id="gp-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
+  <rect x="12" y="64" width="112" height="52" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="68.0" y="86" text-anchor="middle" style="fill:var(--ink);font-weight:600">패스 1</text><text x="68.0" y="106" text-anchor="middle">불투명~반투명</text><line x1="125" y1="90" x2="135" y2="90" class="ln" marker-end="url(#gp-ar2)"/>
+  <rect x="136" y="64" width="84" height="52" rx="6" style="fill:var(--fill);stroke:var(--line);stroke-dasharray:4 3"/><text x="178.0" y="86" text-anchor="middle" style="fill:var(--ink);font-weight:600">Reset</text><text x="178.0" y="106" text-anchor="middle">새 버퍼만</text><line x1="221" y1="90" x2="231" y2="90" class="ln" marker-end="url(#gp-ar2)"/>
+  <rect x="232" y="64" width="132" height="52" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="298.0" y="86" text-anchor="middle" style="fill:var(--ink);font-weight:600">Sim</text><text x="298.0" y="106" text-anchor="middle">DispatchIndirect</text><line x1="365" y1="90" x2="375" y2="90" class="ln" marker-end="url(#gp-ar2)"/>
+  <rect x="376" y="64" width="84" height="52" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="418.0" y="86" text-anchor="middle" style="fill:var(--ink);font-weight:600">Args</text><text x="418.0" y="106" text-anchor="middle">스레드 1개</text><line x1="461" y1="90" x2="471" y2="90" class="ln" marker-end="url(#gp-ar2)"/>
+  <rect x="472" y="64" width="112" height="52" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="528.0" y="86" text-anchor="middle" style="fill:var(--ink);font-weight:600">Emit</text><text x="528.0" y="106" text-anchor="middle">CPU 가 정한 크기</text><line x1="585" y1="90" x2="595" y2="90" class="ln" marker-end="url(#gp-ar2)"/>
+  <rect x="596" y="64" width="76" height="52" rx="6" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="634.0" y="86" text-anchor="middle" style="fill:var(--ink);font-weight:600">Sort</text><text x="634.0" y="106" text-anchor="middle">알파만</text><line x1="673" y1="90" x2="683" y2="90" class="ln" marker-end="url(#gp-ar2)"/>
+  <rect x="684" y="64" width="104" height="52" rx="6" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="736.0" y="86" text-anchor="middle" style="fill:var(--ink);font-weight:600">패스 2</text><text x="736.0" y="106" text-anchor="middle">DrawIndirect</text><line x1="789" y1="90" x2="799" y2="90" class="ln" marker-end="url(#gp-ar2)"/>
+  <rect x="800" y="64" width="80" height="52" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="840.0" y="86" text-anchor="middle" style="fill:var(--ink);font-weight:600">톤·후처리</text><text x="12" y="20" style="fill:var(--ink);font-weight:600">메인 뷰 (viewIndex 0)</text><path d="M136 54 V46 H584 V54" style="fill:none;stroke:var(--ink3)"/>
+  <text x="360.0" y="40" text-anchor="middle">SimulateParticles (메인 뷰에서 프레임에 한 번)</text><path d="M596 54 V30 H672 V54" style="fill:none;stroke:var(--ink3)"/><text x="634.0" y="24" text-anchor="middle">SortParticles</text><path d="M684 54 V46 H788 V54" style="fill:none;stroke:var(--ink3)"/><text x="736.0" y="40" text-anchor="middle">DrawParticles</text><text x="130" y="134">↑ depth → DepthRead</text>
+  <text x="12" y="212" style="fill:var(--ink);font-weight:600">카메라 미리보기 뷰 (viewIndex 1, 있을 때)</text><rect x="12" y="224" width="112" height="40" rx="6" style="fill:var(--paper);stroke:var(--ink3)"/><text x="68.0" y="249" text-anchor="middle">패스 1</text><rect x="596" y="224" width="76" height="40" rx="6" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="634.0" y="249" text-anchor="middle">Sort</text>
+  <rect x="684" y="224" width="104" height="40" rx="6" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="736.0" y="249" text-anchor="middle">패스 2</text><line x1="125" y1="244" x2="595" y2="244" class="ln" style="stroke-dasharray:4 3" marker-end="url(#gp-ar2)"/><text x="140" y="238">시뮬레이션 없이 같은 버퍼</text><line x1="673" y1="244" x2="683" y2="244" class="ln" marker-end="url(#gp-ar2)"/>
+  <path d="M418.0 117 V166 H366" style="fill:none;stroke:var(--accent);stroke-dasharray:5 4" marker-end="url(#gp-ar2)"/><rect x="232" y="150" width="132" height="32" rx="6" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="298.0" y="171" text-anchor="middle">다음 프레임 Sim</text><text x="426.0" y="160">args 바이트 16 (그룹 수)</text><text x="426.0" y="178">args 바이트 0 은 이번 프레임 패스 2 가 읽음</text>
+</svg>
+<figcaption>그림 2. 파티클이 있는 프레임의 호출 순서. 패스 1은 불투명·하늘·반투명을 깊이와 함께 그리는 첫 번째 패스입니다. Reset은 버퍼를 새로 만든 프레임에만 돕니다. 카메라 미리보기 뷰는 시뮬레이션 없이 같은 버퍼를 자기 카메라로 정렬하고 그립니다. Args가 쓴 인자 중 바이트 0은 이번 프레임 그리기가, 바이트 16은 다음 프레임 Sim이 읽습니다.</figcaption>
+</figure>
+<p>시뮬레이션을 불투명 패스 뒤에 두는 이유는 주석에 적혀 있습니다. 컴퓨트는 렌더 패스 밖이어야 하고, 이번 프레임 불투명 깊이가 다 그려진 뒤라 충돌이 이번 프레임 깊이를 쓸 수 있습니다(<code>RenderScenePass</code>, <a href="../plan/vfx-gpu-particles-record.html#s3-pass">기록 11.2</a>). 두 구간은 <code>GpuProfileScope</code> 이름 <code>"ParticleSim"</code>·<code>"ParticleSort"</code>로 묶여 있어 <code>DebugUI::DrawProfilerPanel</code>의 GPU 구간에 나옵니다.</p>
+<h3>3-3. 이미터 하나의 배리어</h3>
+<p><code>SimulateParticles</code>는 이미터마다 다음 순서로 기록합니다. 배리어의 일반 원리는 <a href="../study/compute-uav-study.html">컴퓨트·UAV 학습 문서</a>에 있습니다.</p>
+<pre><code>Barrier(버퍼 6개 → UnorderedAccess)
+[needsReset] Reset, Dispatch(ceil(capacity/64))      → UavBarrier × 6
+Barrier(args → IndirectArgument)
+Sim (stepSets + 충돌 셋), DispatchIndirect(args, 16)
+Barrier(args → UnorderedAccess)                        → UavBarrier × 6
+Args, Dispatch(1, 1, 1)                                → UavBarrier × 6
+[spawnCount &gt; 0] Emit, Dispatch(ceil(spawnCount/64))
+Barrier(particles, aliveOut, counters → ShaderResource), Barrier(args → IndirectArgument)</code></pre>
+<p>같은 버퍼를 연달아 쓰는 디스패치 사이마다 <code>UavBarrier</code>가 들어갑니다. Sim이 쓴 개수를 Args가 읽고, Args가 쓴 구간 시작을 Emit이 읽기 때문입니다.</p>
+</section>
+
+<section id="sim">
+<h2>4. 시뮬레이션 커널 넷</h2>
+<table>
+<tr><th>커널</th><th>디스패치</th><th>하는 일</th></tr>
+<tr><td><code>CS_ParticleReset</code></td><td>ceil(capacity / 64), 버퍼를 만든 프레임만</td><td>모든 칸을 죽은 파티클(age 1, lifetime 0)로, 사망 목록을 <code>capacity − 1 − i</code>로 채움(끝에서 꺼내므로 처음엔 슬롯 0, 1, 2… 순서로 쓰임). <code>Dead = capacity</code>, 인자 {6, 0, 0, 0}·{0, 1, 1}. D3D11은 초기 데이터 없이 만든 버퍼의 내용이 정해져 있지 않아서 필요함</td></tr>
+<tr><td><code>CS_ParticleSim</code></td><td>간접, 지난 프레임 Args가 정한 그룹 수</td><td>스레드 i가 입력 생존 목록 i번째 파티클을 적분하고, 살았으면 출력 생존 목록, 죽었으면 사망 목록에 <code>InterlockedAdd</code>로 넣음. <code>i &gt;= SimCount</code>이면 바로 돌아감(마지막 그룹의 남는 스레드)</td></tr>
+<tr><td><code>CS_ParticleArgs</code></td><td>1 × 1 × 1, 스레드 하나</td><td>생성 수 확정 <code>emit = min(spawnCount, Dead)</code>, 구간 시작 기록, <code>Alive</code>를 0으로 되돌림, 그리기·다음 Sim 인자 기록</td></tr>
+<tr><td><code>CS_ParticleEmit</code></td><td>ceil(spawnCount / 64), CPU가 아는 크기</td><td>스레드 t가 <code>dead[EmitDeadBase + t]</code> 슬롯에 새 파티클을 쓰고 <code>aliveOut[EmitAliveBase + t]</code>에 붙임. <code>t &gt;= EmitCount</code>이면 돌아감</td></tr>
+</table>
+<h3>4-1. 원자 연산으로 목록 만들기</h3>
+<p>Sim의 스레드들은 동시에 끝나고, 각자 살았는지 죽었는지에 따라 두 목록 중 하나에 자기 번호를 넣어야 합니다. 같은 자리에 두 스레드가 쓰면 하나가 사라지므로, 자리를 원자 연산으로 받습니다.</p>
+<pre><code>InterlockedAdd(particleCounters[kCounterAlive], 1, slot);   // 늘리기 전 값이 slot 으로 돌아옴
+particleAliveOut[slot] = index;</code></pre>
+<p><code>InterlockedAdd</code>는 더하기 전 값을 돌려주므로 스레드마다 서로 다른 <code>slot</code>을 받습니다. 결과 목록은 빈칸 없이 앞에서부터 채워집니다. 살아 있는 것만 골라 빽빽하게 모으는 이 작업을 스트림 압축(stream compaction)이라고 부릅니다. 죽은 슬롯은 같은 방법으로 사망 목록 끝(<code>kCounterDead</code>)에 붙습니다. 풀 자체는 옮기지 않으니 파티클 데이터를 복사하는 일은 없고, 번호 목록만 다시 만듭니다.</p>
+<p>원자적 덧붙이기는 순서를 보장하지 않습니다. 누적합(스캔)으로 각 스레드의 자리를 미리 계산하면 순서까지 고정할 수 있지만 패스가 더 필요합니다. 우리 엔진은 순서가 바뀌어도 그림이 같은 가산 이미터를 기본으로 두고, 순서가 중요한 알파 이미터는 따로 정렬합니다(7장). 순서 차이의 영향은 9-3에 있습니다.</p>
+<h3>4-2. Emit은 원자 연산 없이 자리를 안다</h3>
+<p>Args가 스레드 하나로 구간을 정해 둡니다. 사망 목록 끝에서 <code>emit</code>개를 꺼내므로 시작은 <code>Dead − emit</code>, 생존 목록에는 Sim이 채운 칸 바로 뒤(<code>Alive</code>)에 붙입니다. Emit 스레드 t는 이 두 시작값에 t만 더하면 되므로 원자 연산이 필요 없고, 같은 사망 목록이면 같은 슬롯에 같은 파티클이 들어갑니다(<code>CS_ParticleArgs</code> 주석).</p>
+<p>사망 목록이 비면 생성이 멈춥니다. 1단계 링 버퍼는 가장 오래된 파티클을 덮어썼는데, 지금은 빈 칸이 생길 때까지 기다립니다. 기록의 고갈 시험에서는 capacity 1,024인 분수(필요량 약 2,700)가 41 프레임 만에 다 차고, 첫 파티클이 죽는 108 프레임 무렵까지 생성이 멈춰 끊긴 덩어리로 나왔습니다 <span class="tag ok">확인함 (2026-11-17)</span> (<a href="../plan/vfx-gpu-particles-record.html#s2-verify">기록 10.3</a>, 그림 3).</p>
+<figure style="max-width:620px"><img src="../images/2026-11-17-vfx-stage2-exhaust.png" alt="사망 목록 고갈로 끊긴 분수"><figcaption>그림 3. 사망 목록 고갈(<code>ParticleExhaust.json</code>, 240 프레임, 기록 문서의 그림 4). 이 씬 파일은 지금 저장소에 없습니다.</figcaption></figure>
+<h3>4-3. 적분</h3>
+<ul>
+<li><b>반암시적 오일러</b>: 속도에 <code>gravity × dt</code>를 먼저 더하고, 새 속도로 위치를 옮깁니다. 나이는 <code>age += dt</code>.</li>
+<li><b>바람·저항</b>: <code>drag &gt; 0</code>이면 <code>v = lerp(wind, v, exp(−drag·dt))</code>. <code>v += (wind − v)·drag·dt</code> 꼴은 <code>drag·dt</code>가 1을 넘으면 <code>wind</code>를 지나쳐 튀므로 지수형을 썼다고 기록돼 있습니다(<a href="../plan/vfx-gpu-particles-record.html#arch-wind">기록 12.16</a>). 오래 지나면 속도는 대략 <code>wind + gravity / drag</code>로 수렴합니다.</li>
+<li><b>프레임 안 출생 시각</b>: Emit은 t번째 파티클의 나이를 <code>dt × (1 − (t + 0.5) / spawnCount)</code>로 주고 그만큼 이미 움직인 위치·속도로 씁니다. 이렇게 하지 않으면 한 프레임에 태어난 파티클이 한 점에 뭉쳐 프레임마다 "층"이 보인다고 주석에 적혀 있습니다. 태어난 프레임에는 Sim이 돌지 않습니다(Sim이 Emit보다 먼저이므로).</li>
+<li><b>생성 위치·방향</b>: 반지름 <code>emitRadius</code> 구 안의 고른 점(반지름은 난수의 세제곱근)과, 방향 둘레 원뿔 안의 고른 방향(<code>cosθ</code>를 [<code>cos(spreadAngle)</code>, 1]에서 고르게)입니다(<code>RandomInCone</code>).</li>
+</ul>
+</section>
+
+<section id="indirect">
+<h2>5. 간접 인자</h2>
+<p>CPU가 생존 수를 모르므로 그리기와 시뮬레이션 디스패치의 크기는 GPU가 인자 버퍼에 직접 씁니다. <code>CS_ParticleArgs</code>가 프레임 끝 값을 확정하고 두 자리를 채웁니다.</p>
+<table>
+<tr><th>오프셋</th><th>값</th><th>읽는 호출</th><th>시점</th></tr>
+<tr><td>0 (<code>kParticleArgsDrawOffset</code>)</td><td>{6, total, 0, 0} = 정점 6, 인스턴스 total, 시작 정점 0, 시작 인스턴스 0</td><td><code>DrawInstancedIndirect</code></td><td>이번 프레임 Effects 패스(뷰마다)</td></tr>
+<tr><td>16 (<code>kParticleArgsDispatchOffset</code>)</td><td>{ceil(total / 64), 1, 1}</td><td><code>DispatchIndirect</code></td><td>다음 프레임 Sim</td></tr>
+</table>
+<p><code>total = Alive + emit</code>은 이번 프레임 최종 생존 수이고, 같은 값이 <code>SimCount</code>에도 들어가 다음 프레임 Sim의 범위 검사와 이번 프레임 정렬(t24)에 쓰입니다. 그룹 수 0인 디스패치도 허용되므로, 아무도 없으면 Sim은 아무 일도 하지 않습니다(<code>CS_ParticleReset</code> 주석).</p>
+<p>코드에 적힌 제약이 둘 있습니다.</p>
+<ul>
+<li><b>raw 버퍼</b>: 인자 버퍼는 구조체 버퍼일 수 없습니다. D3D11의 <code>DRAWINDIRECT_ARGS</code>는 <code>BUFFER_STRUCTURED</code>와 같이 쓸 수 없어서 <code>BufferBind_Raw | BufferBind_UnorderedAccess | BufferBind_IndirectArgs</code>로 만들고, 셰이더는 <code>RWByteAddressBuffer</code>의 <code>Store4</code>·<code>Store3</code>로 씁니다(<code>UpdateParticleEmitters</code> 주석).</li>
+<li><b>u5를 뺀 셋</b>: Sim이 도는 동안 인자 버퍼는 <code>IndirectArgument</code> 상태입니다. 그 상태의 버퍼를 UAV로 꽂아 두면 셰이더가 쓰지 않아도 두 백엔드가 거부하므로, Sim은 u5만 뺀 <code>Layout_ParticleStep</code>/<code>stepSets</code>를 씁니다(<code>Renderer.cpp</code>의 레이아웃 생성 주석).</li>
+</ul>
+<p>Emit 디스패치만은 CPU가 아는 <code>spawnCount</code>로 크기를 정합니다. 실제 생성 수는 Args가 줄일 수 있으므로 남는 스레드는 <code>EmitCount</code> 검사에서 돌아갑니다.</p>
+</section>
+
+<section id="depth">
+<h2>6. 깊이를 읽는 두 기능</h2>
+<p>Effects 패스는 깊이를 읽기 전용 DSV로 붙입니다. 깊이 테스트를 하면서 같은 깊이 텍스처를 PS(소프트 파티클)와 CS(충돌)가 t23으로 읽을 수 있습니다. 백엔드별 처리는 <a href="../plan/vfx-gpu-particles-record.html#s3-rhi">기록 11.1</a>에 있습니다. 둘 다 깊이 값을 뷰 공간 z로 되돌리는 <code>LinearViewDepth(d, a, b, perspective)</code>를 씁니다. a = 투영 <code>[2][2]</code>, b = <code>[3][2]</code>이고 원근이면 <code>b / (d − a)</code>, 직교면 <code>(d − b) / a</code>입니다.</p>
+<h3>6-1. 소프트 파티클</h3>
+<p>평평한 쿼드가 바닥이나 벽을 뚫고 지나가면 만나는 자리에 딱 끊긴 선이 보입니다. <code>softness &gt; 0</code>이면 <code>PS_Particle</code>이 같은 픽셀의 씬 z와 파티클 z의 차이를 <code>softness</code>로 나눈 값(0~1)을 곱해 표면 근처에서 흐려지게 합니다. <code>GroundFog</code>(softness 0.6)는 표면에서 0.3 m 떨어진 픽셀이 절반 밝기입니다 <span class="tag chk">계산값</span>. 기록의 끔/켬 차이 그림은 안개 쿼드가 바닥과 만나는 띠에서만 최대 30 단계 어두워졌습니다 <span class="tag ok">확인함 (2026-11-17)</span> (<a href="../plan/vfx-gpu-particles-record.html#s3-depth">기록 11.3</a>).</p>
+<p>TAA 지터는 투영 행렬의 0·1열만 바꿉니다(<code>UploadPerFrameConstants</code>의 <code>proj = unjitteredProj × Translation(jitter)</code>, 행 벡터). 소프트 파티클이 꺼내 쓰는 <code>_m22</code>·<code>_m32</code>·<code>_m23</code>은 그대로라 깊이 복원에는 영향이 없습니다 <span class="tag chk">계산값</span>.</p>
+<h3>6-2. 화면 공간 충돌</h3>
+<p><code>collide</code>를 켠 이미터는 Sim의 적분 뒤 <code>Collide</code>를 부릅니다.</p>
+<ol>
+<li>새 위치를 메인 카메라(b9 <code>collisionViewProj</code>)로 투영합니다. 카메라 뒤, 화면 밖, 깊이 범위 밖이면 그대로 둡니다.</li>
+<li>그 픽셀의 씬 z보다 파티클이 앞이면 충돌이 아닙니다. 씬 z + 0.3 m × 5보다 더 뒤면 다른 물체 뒤를 지나는 것으로 보고 통과시킵니다.</li>
+<li>이웃 두 픽셀을 월드로 되돌려 외적으로 법선을 만들고 카메라 쪽으로 방향을 맞춥니다. 표면 접평면에서 법선 방향으로 0.3 m(<code>kCollisionThickness</code>)보다 깊으면 통과시킵니다.</li>
+<li>충돌이면 위치를 적분 전으로 되돌리고, 표면으로 들어가는 속도 성분만 <code>(1 + bounce)</code>배 빼서 반사합니다. <code>bounce</code> 0이면 그 성분만 없어져 표면을 따라 미끄러집니다.</li>
+</ol>
+<p>두께를 법선 방향으로 재는 이유는 기록에 있습니다. 처음에는 뷰 z 차이로 쟀는데, 바닥을 10° 정도로 비스듬히 보는 직교 게임 화면에서 바닥 아래 0.1 m가 뷰 z로 0.57 m가 되어 빠른 파티클이 한 스텝에 두께를 넘었습니다. <code>ParticleOrtho.json</code>의 바닥 아래 밝은 픽셀은 충돌 끔 10,516 → 뷰 z 두께 1,050 → 법선 방향 두께 106이었습니다 <span class="tag ok">확인함 (2026-11-17)</span> (<a href="../plan/vfx-gpu-particles-record.html#s3-depth">기록 11.3</a>).</p>
+<p>깊이 버퍼는 보이는 표면 하나만 담습니다. 그래서 화면 밖이나 다른 물체에 가려진 곳에서는 충돌하지 않고, 미리보기 카메라가 있어도 메인 뷰의 깊이만 씁니다. 두께 0.3 m는 보이는 표면 뒤 이만큼까지를 충돌로 치는 허용치입니다. 표면 뒤로 법선 방향 0.3 m보다 깊이 들어간 파티클은 통과하고, 0.3 m보다 얇은 물체는 바로 뒤를 지나는 파티클까지 튕길 수 있습니다. 메시 충돌체나 SDF를 쓰는 방식보다 정확도는 낮지만, 씬 구조를 GPU에 따로 올리지 않아도 되는 방식입니다.</p>
+</section>
+
+<section id="sort">
+<h2>7. 알파 이미터 정렬</h2>
+<h3>7-1. 왜 정렬하는가</h3>
+<p>가산 블렌딩은 <code>dst + c</code>라 그리는 순서와 상관없이 결과가 같습니다(부동소수 반올림 차이만 남음). 알파 블렌딩(over 연산)은 <code>c·a + (1 − a)·dst</code>라 순서를 바꾸면 결과가 달라지고, 뒤에서 앞으로 그려야 맞습니다. 알파 이미터(<code>blendMode</code> 1)만 뷰마다 먼 것부터 정렬합니다. 정렬 순서는 카메라에 따라 다르므로 메인 뷰와 미리보기 뷰가 결과를 따로 가집니다(<code>kMaxParticleViews</code> 2).</p>
+<p>기록에는 시험하다 알게 된 점이 하나 있습니다. 한 이미터의 파티클 색이 모두 같으면 프리멀티플라이드 알파의 결과도 순서와 상관없습니다(c·a₂ + (1−a₂)(c·a₁ + (1−a₁)d)가 a₁, a₂에 대칭). 그래서 정렬 효과를 보려고 수명 끝 색 배율 <code>endTint</code>를 더했습니다(<a href="../plan/vfx-gpu-particles-record.html#s3-sort">기록 11.4</a>).</p>
+<h3>7-2. 키와 바이토닉 정렬</h3>
+<p><code>CS_ParticleSortInit</code>이 생존 목록의 앞 <code>SimCount</code>칸을 (키 = 이 뷰의 b10 view 행렬로 바꾼 뷰 공간 z, 값 = 파티클 번호)로 옮기고, 나머지 칸은 키 −3.0e38로 채웁니다. 내림차순으로 정렬하면 이 칸들이 맨 끝으로 가고, 그리기는 앞 total칸까지만 읽습니다.</p>
+<p>바이토닉 정렬은 비교 위치가 데이터와 상관없이 정해진 정렬망이라, 단계마다 스레드 하나가 짝 하나를 맡는 디스패치로 옮기기 쉽습니다. 길이가 2의 거듭제곱이어야 해서 <code>ParticleSortCount</code>가 capacity를 2의 거듭제곱으로 올립니다(최소 64 = 그룹 하나). <code>CS_ParticleSortStep</code>의 스레드 i는 짝 <code>l = i ^ j</code>와 비교하고(<code>l &gt; i</code>인 쪽만 일함), <code>(i &amp; k) == 0</code>인 묶음은 내림차순, 아니면 오름차순으로 맞춥니다. 마지막 k = N 단계 뒤 전체가 내림차순입니다.</p>
+<figure>
+<svg viewBox="0 0 720 340" role="img" aria-label="원소 8개의 바이토닉 정렬망. 우리 셰이더와 같은 비교 방향">
+  <defs><marker id="gp-ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink2)"/></marker></defs>
+  <line x1="86" y1="70" x2="562" y2="70" style="stroke:var(--line)"/><line x1="86" y1="100" x2="562" y2="100" style="stroke:var(--line)"/><line x1="86" y1="130" x2="562" y2="130" style="stroke:var(--line)"/><line x1="86" y1="160" x2="562" y2="160" style="stroke:var(--line)"/><line x1="86" y1="190" x2="562" y2="190" style="stroke:var(--line)"/><line x1="86" y1="220" x2="562" y2="220" style="stroke:var(--line)"/>
+  <line x1="86" y1="250" x2="562" y2="250" style="stroke:var(--line)"/><line x1="86" y1="280" x2="562" y2="280" style="stroke:var(--line)"/><text x="14" y="75">i=0</text><text x="14" y="105">i=1</text><text x="14" y="135">i=2</text><text x="14" y="165">i=3</text><text x="14" y="195">i=4</text><text x="14" y="225">i=5</text><text x="14" y="255">i=6</text><text x="14" y="285">i=7</text>
+  <text x="70" y="54" text-anchor="middle" style="fill:var(--ink);font-weight:600">키</text><rect x="57" y="59" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="70" y="75" text-anchor="middle">3</text><rect x="57" y="89" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="70" y="105" text-anchor="middle">7</text>
+  <rect x="57" y="119" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="70" y="135" text-anchor="middle">4</text><rect x="57" y="149" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="70" y="165" text-anchor="middle">8</text><rect x="57" y="179" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="70" y="195" text-anchor="middle">6</text><rect x="57" y="209" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="70" y="225" text-anchor="middle">2</text><rect x="57" y="239" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="70" y="255" text-anchor="middle">1</text>
+  <rect x="57" y="269" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="70" y="285" text-anchor="middle">5</text><text x="111.0" y="54" text-anchor="middle">j=1</text><line x1="122" y1="96" x2="122" y2="76" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/>
+  <circle cx="122" cy="70" r="3" style="fill:var(--accent)"/><circle cx="122" cy="100" r="3" style="fill:var(--accent)"/><line x1="122" y1="134" x2="122" y2="154" style="stroke:var(--warn);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="122" cy="130" r="3" style="fill:var(--warn)"/><circle cx="122" cy="160" r="3" style="fill:var(--warn)"/>
+  <line x1="122" y1="216" x2="122" y2="196" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="122" cy="190" r="3" style="fill:var(--accent)"/><circle cx="122" cy="220" r="3" style="fill:var(--accent)"/><line x1="122" y1="254" x2="122" y2="274" style="stroke:var(--warn);stroke-width:2" marker-end="url(#gp-ar3)"/>
+  <circle cx="122" cy="250" r="3" style="fill:var(--warn)"/><circle cx="122" cy="280" r="3" style="fill:var(--warn)"/><text x="158" y="54" text-anchor="middle" style="fill:var(--ink);font-weight:600">k=2 뒤</text><rect x="145" y="59" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="158" y="75" text-anchor="middle">7</text>
+  <rect x="145" y="89" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="158" y="105" text-anchor="middle">3</text><rect x="145" y="119" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="158" y="135" text-anchor="middle">4</text><rect x="145" y="149" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="158" y="165" text-anchor="middle">8</text><rect x="145" y="179" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="158" y="195" text-anchor="middle">6</text><rect x="145" y="209" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="158" y="225" text-anchor="middle">2</text>
+  <rect x="145" y="239" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="158" y="255" text-anchor="middle">1</text><rect x="145" y="269" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="158" y="285" text-anchor="middle">5</text><text x="210.0" y="54" text-anchor="middle">j=2</text>
+  <line x1="210" y1="126" x2="210" y2="76" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="210" cy="70" r="3" style="fill:var(--accent)"/><circle cx="210" cy="130" r="3" style="fill:var(--accent)"/><line x1="210" y1="194" x2="210" y2="244" style="stroke:var(--warn);stroke-width:2" marker-end="url(#gp-ar3)"/>
+  <circle cx="210" cy="190" r="3" style="fill:var(--warn)"/><circle cx="210" cy="250" r="3" style="fill:var(--warn)"/><line x1="232" y1="156" x2="232" y2="106" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="232" cy="100" r="3" style="fill:var(--accent)"/><circle cx="232" cy="160" r="3" style="fill:var(--accent)"/>
+  <line x1="232" y1="224" x2="232" y2="274" style="stroke:var(--warn);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="232" cy="220" r="3" style="fill:var(--warn)"/><circle cx="232" cy="280" r="3" style="fill:var(--warn)"/><text x="257.0" y="54" text-anchor="middle">j=1</text><line x1="268" y1="96" x2="268" y2="76" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/>
+  <circle cx="268" cy="70" r="3" style="fill:var(--accent)"/><circle cx="268" cy="100" r="3" style="fill:var(--accent)"/><line x1="268" y1="156" x2="268" y2="136" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="268" cy="130" r="3" style="fill:var(--accent)"/><circle cx="268" cy="160" r="3" style="fill:var(--accent)"/>
+  <line x1="268" y1="194" x2="268" y2="214" style="stroke:var(--warn);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="268" cy="190" r="3" style="fill:var(--warn)"/><circle cx="268" cy="220" r="3" style="fill:var(--warn)"/><line x1="268" y1="254" x2="268" y2="274" style="stroke:var(--warn);stroke-width:2" marker-end="url(#gp-ar3)"/>
+  <circle cx="268" cy="250" r="3" style="fill:var(--warn)"/><circle cx="268" cy="280" r="3" style="fill:var(--warn)"/><text x="304" y="54" text-anchor="middle" style="fill:var(--ink);font-weight:600">k=4 뒤</text><rect x="291" y="59" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="304" y="75" text-anchor="middle">8</text>
+  <rect x="291" y="89" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="304" y="105" text-anchor="middle">7</text><rect x="291" y="119" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="304" y="135" text-anchor="middle">4</text><rect x="291" y="149" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="304" y="165" text-anchor="middle">3</text><rect x="291" y="179" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="304" y="195" text-anchor="middle">1</text><rect x="291" y="209" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="304" y="225" text-anchor="middle">2</text>
+  <rect x="291" y="239" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="304" y="255" text-anchor="middle">5</text><rect x="291" y="269" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="304" y="285" text-anchor="middle">6</text><text x="378.0" y="54" text-anchor="middle">j=4</text>
+  <line x1="356" y1="186" x2="356" y2="76" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="356" cy="70" r="3" style="fill:var(--accent)"/><circle cx="356" cy="190" r="3" style="fill:var(--accent)"/><line x1="378" y1="216" x2="378" y2="106" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/>
+  <circle cx="378" cy="100" r="3" style="fill:var(--accent)"/><circle cx="378" cy="220" r="3" style="fill:var(--accent)"/><line x1="400" y1="246" x2="400" y2="136" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="400" cy="130" r="3" style="fill:var(--accent)"/><circle cx="400" cy="250" r="3" style="fill:var(--accent)"/>
+  <line x1="422" y1="276" x2="422" y2="166" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="422" cy="160" r="3" style="fill:var(--accent)"/><circle cx="422" cy="280" r="3" style="fill:var(--accent)"/><text x="458.0" y="54" text-anchor="middle">j=2</text><line x1="458" y1="126" x2="458" y2="76" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/>
+  <circle cx="458" cy="70" r="3" style="fill:var(--accent)"/><circle cx="458" cy="130" r="3" style="fill:var(--accent)"/><line x1="458" y1="246" x2="458" y2="196" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="458" cy="190" r="3" style="fill:var(--accent)"/><circle cx="458" cy="250" r="3" style="fill:var(--accent)"/>
+  <line x1="480" y1="156" x2="480" y2="106" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="480" cy="100" r="3" style="fill:var(--accent)"/><circle cx="480" cy="160" r="3" style="fill:var(--accent)"/><line x1="480" y1="276" x2="480" y2="226" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/>
+  <circle cx="480" cy="220" r="3" style="fill:var(--accent)"/><circle cx="480" cy="280" r="3" style="fill:var(--accent)"/><text x="505.0" y="54" text-anchor="middle">j=1</text><line x1="516" y1="96" x2="516" y2="76" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="516" cy="70" r="3" style="fill:var(--accent)"/><circle cx="516" cy="100" r="3" style="fill:var(--accent)"/>
+  <line x1="516" y1="156" x2="516" y2="136" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="516" cy="130" r="3" style="fill:var(--accent)"/><circle cx="516" cy="160" r="3" style="fill:var(--accent)"/><line x1="516" y1="216" x2="516" y2="196" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/>
+  <circle cx="516" cy="190" r="3" style="fill:var(--accent)"/><circle cx="516" cy="220" r="3" style="fill:var(--accent)"/><line x1="516" y1="276" x2="516" y2="256" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><circle cx="516" cy="250" r="3" style="fill:var(--accent)"/><circle cx="516" cy="280" r="3" style="fill:var(--accent)"/>
+  <text x="552" y="54" text-anchor="middle" style="fill:var(--ink);font-weight:600">k=8 뒤</text><rect x="539" y="59" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="552" y="75" text-anchor="middle">8</text><rect x="539" y="89" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="552" y="105" text-anchor="middle">7</text>
+  <rect x="539" y="119" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="552" y="135" text-anchor="middle">6</text><rect x="539" y="149" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="552" y="165" text-anchor="middle">5</text><rect x="539" y="179" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/>
+  <text x="552" y="195" text-anchor="middle">4</text><rect x="539" y="209" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="552" y="225" text-anchor="middle">3</text><rect x="539" y="239" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="552" y="255" text-anchor="middle">2</text>
+  <rect x="539" y="269" width="26" height="22" rx="3" style="fill:var(--paper);stroke:var(--ink3)"/><text x="552" y="285" text-anchor="middle">1</text><line x1="70" y1="312" x2="70" y2="296" style="stroke:var(--accent);stroke-width:2" marker-end="url(#gp-ar3)"/><text x="82" y="310">(i &amp; k) == 0: 내림차순 — 큰 키가 위(작은 i)로</text>
+  <line x1="420" y1="296" x2="420" y2="312" style="stroke:var(--warn);stroke-width:2" marker-end="url(#gp-ar3)"/><text x="432" y="310">(i &amp; k) != 0: 오름차순 — 큰 키가 아래로</text>
+</svg>
+<figcaption>그림 4. 원소 8개의 바이토닉 정렬망(설명용. 실제 최소 길이는 64). 단계 (k, j) = (2,1), (4,2), (4,1), (8,4), (8,2), (8,1)의 여섯 번이고, 각 세로선이 <code>CS_ParticleSortStep</code> 스레드 하나의 비교·교환입니다. 화살표는 큰 키가 가는 쪽입니다. k 묶음이 끝날 때마다 길이 k인 열이 번갈아 내림·오름차순이 되고, 다음 k에서 그 둘이 합쳐집니다.</figcaption>
+</figure>
+<h3>7-3. 단계 수와 비용</h3>
+<p>N = 2<sup>m</sup>이면 단계는 m(m+1)/2번이고, 단계마다 N/64 그룹을 디스패치하고 그 앞에 키·번호 버퍼의 UAV 배리어를 겁니다(<code>SortParticles</code>). <span class="tag chk">계산값</span></p>
+<table>
+<tr><th>capacity</th><th>N</th><th>단계 수 (+ 준비 1)</th><th>단계당 그룹</th></tr>
+<tr><td>64 이하</td><td>64</td><td>21</td><td>1</td></tr>
+<tr><td>1,000 / 1,024 (<code>ParticleOrtho</code>·<code>ParticleAll</code>의 Smoke)</td><td>1,024</td><td>55</td><td>16</td></tr>
+<tr><td>4,096 (기본값)</td><td>4,096</td><td>78</td><td>64</td></tr>
+<tr><td>262,144 (상한)</td><td>262,144</td><td>171</td><td>4,096</td></tr>
+</table>
+<p>이 수는 뷰마다 곱해집니다. CPU가 생존 수를 모르므로 생존 파티클이 300개여도 capacity 전체를 정렬합니다(<a href="../plan/vfx-gpu-particles-record.html#s3-verify">기록 11.5 한계</a>). 그룹 공유 메모리 안에서 작은 j 단계를 한 번에 처리하거나 기수 정렬을 쓰면 디스패치 수를 줄일 수 있지만 지금 코드는 단계마다 한 번 디스패치하는 가장 단순한 형태입니다.</p>
+<p>(k, j)는 단계마다 미리 만든 Default 상수 버퍼(b11)에 들어 있습니다. 디스패치마다 다른 값을 Dynamic 버퍼 하나에 다시 올릴 수 없는 D3D12의 "프레임당 한 번" 규칙 때문이고, D3D12가 상수 버퍼를 256 B로 올리므로 <code>ParticleSortStepConstants</code>도 256 B입니다(<code>CS_ParticleSortStep</code> 주석, <code>EnsureParticleSortSteps</code>). 큰 N의 단계 목록은 작은 N의 목록을 앞에 그대로 가지므로 모든 이미터·뷰가 같이 씁니다.</p>
+</section>
+
+<section id="draw">
+<h2>8. 그리기</h2>
+<h3>8-1. 정점 버퍼 없는 빌보드</h3>
+<p><code>VS_Particle</code>은 정점 입력이 없습니다. 인스턴스 하나가 파티클 하나이고, <code>SV_InstanceID</code>로 t22 목록(가산은 생존 목록, 정렬한 알파는 정렬된 번호)에서 파티클 번호를, <code>SV_VertexID % 6</code>으로 쿼드 모서리(삼각형 2개)를 정합니다. 파티클 중심을 뷰 공간으로 옮긴 뒤 xy에 <code>corner × size / 2</code>를 더하므로 카메라의 오른쪽·위 축을 따로 구하지 않아도 늘 화면을 향합니다.</p>
+<ul>
+<li>크기: <code>lerp(startSize, endSize, t)</code>, t = <code>age / lifetime</code>.</li>
+<li>페이드: <code>smoothstep(0, 0.1, t) × (1 − t)</code>. 처음 10% 동안 켜지고 끝까지 선형으로 꺼집니다(갑자기 생기고 사라지는 깜빡임 방지).</li>
+<li>색: <code>particleColor × lerp(1, endTint, t) × fade</code>. b8의 <code>particleColor</code>는 <code>color × intensity</code>라 1을 넘을 수 있습니다.</li>
+</ul>
+<h3>8-2. 픽셀 셰이더와 블렌드</h3>
+<p><code>PS_Particle</code>은 텍스처 없이 쿼드 안 거리로 원형 감쇠 <code>(1 − r²)²</code>를 만들고 원 밖은 <code>discard</code>합니다. 반지름 절반 지점이 0.5625입니다 <span class="tag chk">계산값</span>. 그다음 소프트 감쇠를 곱하고 블렌드 모드에 따라 내보냅니다.</p>
+<table>
+<tr><th>모드</th><th>PS 출력</th><th>결과 (PSO: 색 <code>One + InvSrcAlpha</code>)</th><th>정렬</th></tr>
+<tr><td>0 가산</td><td><code>(color × falloff, 0)</code></td><td><code>dst × 1 + color</code></td><td>안 함</td></tr>
+<tr><td>1 알파</td><td><code>(color × cov, fade × cov)</code>, <code>cov = falloff × opacity</code></td><td><code>dst × (1 − α) + color·cov</code> (프리멀티플라이드)</td><td>뷰마다</td></tr>
+</table>
+<p>PSO 하나(<code>Pass_Particle</code>)로 두 모드를 그립니다. 컬링 없음, 깊이 테스트만 하고 쓰지 않음(불투명 뒤에 가려지되 서로는 가리지 않음), 알파 채널은 <code>Zero + One</code>으로 목적지 값 유지, 타깃은 메인 패스와 같은 FP16 hdr + D24S8입니다. <code>DrawParticles</code>는 정렬한 알파 이미터를 먼저, 나머지(가산, 정렬하지 않은 알파)를 그 위에 그립니다.</p>
+<p>파티클은 HDR 선형 값을 hdr 타깃에 더하므로 1을 넘는 불티는 블룸에 걸리고 노출·톤매핑을 거칩니다(<a href="../study/hdr-tonemapping-study.html">HDR·톤매핑 학습 문서</a>). 조명은 받지 않습니다. 색은 이미터 상수뿐이고 그림자도 드리우지 않습니다. 디퍼드 경로에서도 라이팅이 끝난 뒤 같은 Effects 패스에서 그리므로 G-buffer와 상관이 없습니다.</p>
+<h3>8-3. 속도 버퍼·TAA와의 관계</h3>
+<p>Effects 패스는 색 타깃이 hdr 하나(<code>colorCount = 1</code>)이고 파티클 PSO도 <code>rtvCount = 1</code>이라 파티클은 속도를 쓰지 않습니다. 파티클이 덮은 픽셀의 속도 버퍼에는 뒤 표면의 값(배경이 없으면 0)이 남습니다. 반면 VS는 b0의 지터된 <code>proj</code>를 쓰므로 TAA 지터는 같이 받습니다. TAA는 파티클 픽셀을 뒤 표면의 움직임으로 재투영하고, 모션 블러도 뒤 표면의 속도로 번집니다. 계획 문서는 빠른 파티클은 히스토리 클리핑에 걸려 대체로 괜찮지만 약한 잔상이 남을 수 있다고 위험으로 적었고(<a href="../plan/velocity-motionblur-taa-plan.html#s3-risk">TAA 계획 3단계 위험</a>), 잔상을 따로 잰 기록은 없습니다. 원리는 <a href="../study/velocity-buffer-study.html">속도 버퍼</a>, <a href="../study/taa-study.html">TAA</a>, <a href="../study/motion-blur-study.html">모션 블러</a> 문서에 있습니다.</p>
+<p>반투명 메시도 깊이를 쓰지 않고(<code>GetPipelineFor</code>의 blended 분기) 첫 번째 패스에서 먼저 그려지므로, 유리 뒤에 있는 파티클도 유리 위에 덧그려집니다. 반투명 메시와 파티클 사이의 정렬은 없습니다.</p>
+</section>
+
+<section id="emitter">
+<h2>9. 이미터 설정·저장·결정성</h2>
+<h3>9-1. 컴포넌트 속성</h3>
+<p><code>Scene/ParticleEmitter.h</code>의 <code>ParticleEmitter</code>는 값만 들고 있는 <code>Behaviour</code>이고 <code>Update</code>를 쓰지 않습니다. 시뮬레이션은 렌더러가 하므로 편집 모드에서도 파티클이 움직입니다. 위치는 소유 오브젝트의 월드 원점, 방향은 로컬 +Y이고, 파티클은 월드 공간에서 움직여서 오브젝트를 옮겨도 이미 나간 파티클은 따라오지 않습니다.</p>
+<table>
+<tr><th>속성 (기본값)</th><th>뜻</th><th>쓰는 곳</th></tr>
+<tr><td><code>maxParticles</code> (4096)</td><td>버퍼 칸 수. 바꾸면 버퍼를 다시 만듦</td><td>CPU, Reset, 정렬 길이</td></tr>
+<tr><td><code>spawnRate</code> (500), <code>lifetime</code> (2)</td><td>초당 생성 수, 수명(≥ 0.01초로 자름)</td><td>CPU 생성 수, Emit</td></tr>
+<tr><td><code>startSpeed</code> (3), <code>speedVariation</code> (0.3), <code>spreadAngle</code> (20°), <code>emitRadius</code> (0.05)</td><td>방출 속력·흔들림·원뿔 반각·생성 구 반지름</td><td>Emit</td></tr>
+<tr><td><code>gravity</code> (0, −4, 0), <code>wind</code> (0), <code>drag</code> (0)</td><td>가속도, 끌려가는 목표 속도와 세기</td><td>Emit(중력만), Sim</td></tr>
+<tr><td><code>startSize</code> (0.08), <code>endSize</code> (0.02)</td><td>쿼드 한 변(m)</td><td>VS</td></tr>
+<tr><td><code>color</code> (1, 0.55, 0.2), <code>intensity</code> (4), <code>endTint</code> (1, 1, 1)</td><td>선형 색, HDR 배율, 수명 끝 색 배율</td><td>VS</td></tr>
+<tr><td><code>blendMode</code> (0), <code>opacity</code> (1)</td><td>0 가산, 1 알파(정렬), 알파 모드 불투명도</td><td>PS, 정렬 여부</td></tr>
+<tr><td><code>softness</code> (0), <code>collide</code> (false), <code>bounce</code> (0.5)</td><td>소프트 거리, 깊이 충돌, 반발 계수</td><td>PS, Sim</td></tr>
+</table>
+<p>정상 상태의 생존 수는 대략 <code>spawnRate × lifetime</code>입니다. <code>ParticleAll</code>의 분수는 1,500 × 1.8 = 2,700개(capacity 8,192), 연기는 60 × 5 = 300개(1,024)라 둘 다 고갈되지 않습니다 <span class="tag chk">계산값</span>. 한 번에 N개를 내는 설정은 없고, 짧은 버스트는 스크립트가 <code>spawnRate</code>를 잠깐 올렸다 0으로 내리는 식으로 만듭니다(<code>PulseEmitter</code>, <a href="../plan/vfx-gpu-particles-record.html#arch-wind">기록 12.16</a>).</p>
+<h3>9-2. 저장과 GPU 상태의 수명</h3>
+<ul>
+<li><b>저장</b>: <code>ParticleEmitter::Reflect</code>가 열거하는 이름이 그대로 씬 파일의 JSON 키입니다(<code>SceneSerializer</code>의 <code>JsonWriteVisitor</code>·<code>JsonReadVisitor</code>, 컴포넌트 <code>"type": "ParticleEmitter"</code>). 같은 <code>Reflect</code>가 인스펙터 편집 항목도 만듭니다. 이름을 바꾸면 기존 씬의 값이 기본값으로 돌아간다고 주석에 적혀 있습니다.</li>
+<li><b>키</b>: GPU 상태는 <code>오브젝트 ID × 16 + 순번</code>으로 찾습니다. undo나 씬 로드로 오브젝트를 다시 만들어도 ID가 같으면 이어서 씁니다. 순번이 15에서 잘리므로 한 오브젝트에서 17번째 이후 이미터는 키가 겹쳐 무시됩니다(<code>CollectEmitter</code>, <code>gpu.lastSeenFrame</code> 검사).</li>
+<li><b>지움</b>: 꺼지거나 삭제돼 이번 프레임에 보이지 않은 이미터는 버퍼째 지워지므로 날아가던 파티클도 그 자리에서 사라집니다. 다시 켜면 빈 버퍼에서 시작합니다. <code>maxParticles</code>를 바꾸면 상수 버퍼만 남기고 다시 만들어 파티클이 모두 사라집니다(<code>DestroyGpuEmitter</code>).</li>
+<li><b>첫 프레임</b>: 버퍼를 새로 만든 프레임은 Reset만 하고 생성하지 않습니다(<code>needsReset</code>이면 <code>spawnCount</code> 0).</li>
+</ul>
+<h3>9-3. 시간과 결정성</h3>
+<p>dt는 <code>RenderSettings::particleFixedStep</code>이 있으면 그 값, 없으면 엔진 시계 차이를 [0, 0.1]초로 자른 값입니다(<code>kMaxParticleStep</code>, 멈췄다 돌아올 때 튀지 않게). <code>--particle-step=&lt;초&gt;</code>(에디터·게임 exe)로 시뮬레이션을 프레임 수에만 묶을 수 있습니다.</p>
+<p>난수는 <code>PcgHash(t ^ PcgHash(seed))</code>입니다. 상태를 들고 다니지 않는 해시라 스레드마다 (씨앗, t)만 있으면 되고, 같은 입력이면 같은 파티클이 나옵니다. 씨앗은 속성이 아니라 <code>GpuEmitter::seed</code>이고 0에서 시작해 프레임마다 1씩 늘어납니다. <code>maxParticles</code>를 바꿔 버퍼를 다시 만들어도(<code>DestroyGpuEmitter(gpu, false)</code>) 이어지고, 이미터를 껐다 켜거나 지우면 <code>UpdateParticleEmitters</code>가 <code>GpuEmitter</code>를 지우므로 0부터 다시 시작합니다. 모든 이미터가 0에서 시작하므로 같은 프레임에 생긴 이미터 둘은 같은 난수열을 씁니다.</p>
+<p>그래도 결과가 비트 단위로 같지는 않습니다. Sim의 <code>InterlockedAdd</code> 순서가 실행마다 달라 생존·사망 목록 순서가 바뀌고, 사망 목록 순서가 바뀌면 새 파티클이 들어가는 슬롯도 바뀝니다. 가산 이미터는 FP16 덧셈 순서 차이로 최하위 단계만 흔들립니다. 기록의 측정은 다음과 같습니다 <span class="tag ok">확인함 (2026-11-17)</span>.</p>
+<table>
+<tr><th>비교</th><th>결과</th><th>출처</th></tr>
+<tr><td>2단계 실행 두 번 (씬 이름은 기록에 없음. 앞 행으로 보아 <code>ParticleTest</code>, 고정 스텝 120 프레임)</td><td>D3D11 431 / D3D12 522 픽셀, 최대 1</td><td><a href="../plan/vfx-gpu-particles-record.html#s2-verify">기록 10.3</a></td></tr>
+<tr><td>알파 정렬 켬, 두 번 (<code>ParticleAlpha</code>)</td><td>D3D11 185 / D3D12 74 픽셀, 최대 1</td><td rowspan="2"><a href="../plan/vfx-gpu-particles-record.html#s3-verify">기록 11.5</a></td></tr>
+<tr><td>알파 정렬 끔, 두 번</td><td>10,676 / 16,180 픽셀, 최대 2~3</td></tr>
+<tr><td><code>ParticleAll</code>(바람·저항 추가 전 씬) 두 번</td><td>513 픽셀, 최대 1</td><td><a href="../plan/vfx-gpu-particles-record.html#arch-wind">기록 12.16</a></td></tr>
+</table>
+<p>정렬을 끄면 차이가 커지는 것은 알파 블렌딩이 목록 순서에 민감하기 때문이고, 정렬하면 순서가 키로 정해져 다시 작아집니다.</p>
+<h3>9-4. 통계와 디버그</h3>
+<p><code>Renderer::Stats</code>의 <code>particleEmitters</code>·<code>particleCapacity</code>·<code>particlesSpawned</code>가 <code>Editor::DrawStats</code>에 한 줄로 나옵니다. <code>particlesSpawned</code>는 CPU가 원한 수라 사망 목록이 모자라 실제로 덜 태어났는지는 알 수 없습니다. 이 줄의 문구는 "buffer %u (drawn as quads, dead included)"이고, <code>Renderer.h</code>의 <code>Stats::particleCapacity</code> 주석은 "(= 그리는 쿼드 수. 죽은 것 포함)"입니다. 둘 다 버퍼 전체를 그리던 1단계 설명입니다. 지금은 간접 그리기라 생존 수만큼만 그립니다. <code>--particle-sort=0</code>은 알파 이미터를 정렬하지 않고 생존 목록 순서로 그리는 비교용 인자입니다.</p>
+</section>
+
+<section id="code">
+<h2>10. 코드 지도</h2>
+<table>
+<tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
+<tr><td>컴포넌트</td><td><code>Scene/ParticleEmitter.h/.cpp</code> <code>ParticleEmitter</code>, <code>Reflect</code></td><td>설정 값, 저장 키, 인스펙터 항목</td></tr>
+<tr><td>이미터 수집</td><td><code>Graphics/Renderer.cpp</code> <code>BuildDrawList</code> → <code>Graphics/RendererParticles.cpp</code> <code>CollectEmitter</code></td><td>키·위치·방향을 <code>m_frameEmitters</code>에</td></tr>
+<tr><td>CPU 준비</td><td><code>RendererParticles.cpp</code> <code>UpdateParticleEmitters</code>, <code>DestroyGpuEmitter</code></td><td>dt, 버퍼·셋 생성과 해제, 생성 수, b8·b9·b10 업로드</td></tr>
+<tr><td>시뮬레이션 기록</td><td><code>RendererParticles.cpp</code> <code>SimulateParticles</code></td><td>Reset → Sim(간접) → Args → Emit, 배리어</td></tr>
+<tr><td>정렬 기록</td><td><code>RendererParticles.cpp</code> <code>SortParticles</code>, <code>EnsureParticleSortSteps</code></td><td>준비 1 + 단계 m(m+1)/2, (k, j) 상수 버퍼</td></tr>
+<tr><td>그리기 기록</td><td><code>RendererParticles.cpp</code> <code>DrawParticles</code>, <code>GetParticlePipeline</code></td><td>알파 먼저, <code>DrawInstancedIndirect</code></td></tr>
+<tr><td>패스 배치</td><td><code>Renderer.cpp</code> <code>RenderScenePass</code></td><td>DepthRead 전이, 메인 뷰만 시뮬레이션, Effects 패스</td></tr>
+<tr><td>PSO·레이아웃</td><td><code>Renderer.cpp</code> <code>Pass_Particle</code> 설정, <code>Layout_ParticleSim/Step/Draw/Depth/Collide/Sort/SortStep</code></td><td>블렌드, 깊이, 슬롯</td></tr>
+<tr><td>상수·슬롯</td><td><code>Graphics/ShaderConstants.h</code> <code>ParticleEmitterConstants</code>(144 B), <code>ParticleCollisionConstants</code>(160 B), <code>ParticleSortCount</code>, <code>kParticleArgs*</code></td><td>셰이더와 바이트 배치 일치(<code>static_assert</code>)</td></tr>
+<tr><td>공용 셰이더</td><td><code>Shaders/Particle.hlsli</code>, <code>ParticleSim.hlsli</code>, <code>ParticleSort.hlsli</code></td><td>b8, <code>Particle</code>, <code>kCounter*</code>, <code>PcgHash</code>, <code>LinearViewDepth</code>, 셋 선언</td></tr>
+<tr><td>컴퓨트 커널</td><td><code>Shaders/Particle{Reset,Sim,Args,Emit,SortInit,SortStep}ComputeShader.hlsl</code></td><td>4장, 7장</td></tr>
+<tr><td>그리기 셰이더</td><td><code>Shaders/ParticleVertexShader.hlsl</code> <code>VS_Particle</code>, <code>ParticlePixelShader.hlsl</code> <code>PS_Particle</code></td><td>빌보드, 원형 감쇠, 소프트, 블렌드 모드</td></tr>
+<tr><td>실행 인자</td><td><code>Editor/EditorAutomation.cpp</code>, <code>App/GameApp.cpp</code></td><td><code>--particle-step</code>, <code>--particle-sort</code></td></tr>
+<tr><td>통계</td><td><code>Editor/Editor.cpp</code> <code>DrawStats</code>, <code>Editor/DebugUI.cpp</code> <code>DrawProfilerPanel</code></td><td>개수 줄, GPU 구간 시간</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>11. 실험</h2>
+<p>씬은 <code>Projects/SherlockTestScenes/Assets/Scenes</code>의 <code>ParticleAll.json</code>(분수·불꽃 충돌, 연기 알파, 바닥 안개 소프트, 모닥불), <code>ParticleAlphaSort.json</code>, <code>ParticleOrtho.json</code>(직교 메인 카메라)을 씁니다. 씬 파일을 바꾸는 실험은 복사본에서 합니다. 스크린샷을 비교할 때는 <code>--particle-step=0.0166667</code>로 시간을 고정합니다.</p>
+<h3>E1. 같은 실행을 두 번 <span class="tag chk">예상</span></h3>
+<p><code>ParticleAll</code>을 고정 스텝 120 프레임으로 두 번 찍어 비교합니다. 기록은 513 픽셀 최대 1이었습니다 <span class="tag ok">확인함 (2026-11-17)</span>(9-3 표, <a href="../plan/vfx-gpu-particles-record.html#arch-wind">기록 12.16</a>). 다만 그때는 모닥불·<code>SparkPulse</code>가 생기기 전의 씬이라 지금 숫자는 다를 수 있습니다. 0이 아닌 이유는 생존 목록 순서입니다. 같은 비교를 <code>--particle-sort=0</code>으로 하면 연기(알파) 영역의 차이가 커질 것입니다 <span class="tag chk">예상</span>.</p>
+<h3>E2. 정렬 끔과 켬 <span class="tag ok">확인함 (2026-11-17)</span></h3>
+<p><code>ParticleAlphaSort</code>는 파티클이 카메라 쪽으로 날아오며 어두워지는 연기입니다. <code>--particle-sort=0</code>과 기본(정렬)을 비교하면 정렬 쪽 구름이 더 어둡습니다. 가까운(오래된, 어두운) 파티클이 위에 그려지기 때문입니다. 기록은 구름 영역에서 정렬 쪽이 더 밝은 픽셀 0개, 안 정렬 쪽이 더 밝은 픽셀 6,651개(최대 20 단계)였습니다(<a href="../plan/vfx-gpu-particles-record.html#s3-sort">기록 11.4 그림 8</a>).</p>
+<h3>E3. 충돌 두께 <span class="tag ok">확인함 (2026-11-17)</span></h3>
+<p><code>ParticleOrtho</code>를 게임 모드로 돌리고 분수의 <code>collide</code>를 끈 것·켠 것을 비교합니다. 화면 아래 20%의 밝은 픽셀이 기록에서는 10,516 → 106이었습니다(6-2). 코드에서 <code>Collide</code>의 법선 방향 검사(<code>dot(p.position − center, n) &lt; −collisionThickness</code>)를 잠시 빼면 뷰 z 두께만 남아 다시 새기 시작할 것입니다 <span class="tag chk">예상</span>.</p>
+<h3>E4. 사망 목록 고갈 <span class="tag chk">예상</span></h3>
+<p><code>ParticleAll</code> 복사본에서 <code>Fountain</code>의 <code>maxParticles</code>를 1,024로 줄입니다. 원하는 수가 프레임당 25개라 41 프레임쯤에 다 차고, 첫 파티클이 죽는 1.8초(108 프레임) 무렵까지 생성이 멈춥니다. 분수는 <a href="../plan/vfx-gpu-particles-record.html#s2-flow">기록</a>의 그림 4처럼 덩어리로 끊겨 나와야 하고, 통계 줄의 <code>spawned this frame</code>은 모든 이미터의 합이라, 그동안에도 분수 몫 25가 빠지지 않고 들어 있을 것입니다(CPU는 고갈을 모름).</p>
+<h3>E5. 소프트 파티클 <span class="tag chk">예상</span></h3>
+<p><code>ParticleAll</code> 복사본에서 <code>GroundFog</code>의 <code>softness</code>를 0.6 → 0으로 바꿔 비교합니다. 차이는 안개 쿼드가 바닥과 만나는 띠에만 생겨야 합니다. 기록의 같은 비교(지금 없는 <code>ParticleDepthOff</code>/<code>ParticleDepth</code>)는 최대 30 단계였습니다.</p>
+<h3>E6. 정렬 비용 보기 <span class="tag chk">예상</span></h3>
+<p>프로파일러 패널에서 <code>ParticleSort</code> 구간을 봅니다. <code>ParticleAll</code>의 Smoke(1,024 → 준비 1 + 55 단계)를 <code>blendMode</code> 0으로 바꾸면 이 구간이 거의 0이 되고, <code>maxParticles</code>를 8,192로 올리면 단계가 91로 늘어 시간이 늘 것입니다. 기록된 시간 값은 없으므로 직접 재야 합니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>12. 함정과 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>분수가 덩어리로 끊김</td><td>사망 목록 고갈, <code>spawnRate × lifetime &gt; capacity</code></td><td>오래된 파티클을 덮어쓰지 않고 생성을 멈춤(4-2). 통계는 원하는 수만 보여 줌</td></tr>
+<tr><td>스크린샷이 실행마다 최하위 1 단계 다름</td><td><code>InterlockedAdd</code> 순서</td><td>가산은 FP16 덧셈 순서, 알파는 정렬로 줄임(9-3)</td></tr>
+<tr><td>겹친 알파 이미터의 앞뒤가 틀림</td><td>정렬은 이미터 안에서만</td><td>알파 이미터끼리, 반투명 메시와 파티클 사이는 정렬하지 않음</td></tr>
+<tr><td>정렬 비용이 생존 수와 상관없음</td><td>CPU가 생존 수를 모름</td><td>capacity를 2의 거듭제곱으로 올린 길이 전체, 뷰마다(7-3)</td></tr>
+<tr><td>화면 밖·가려진 곳에서 파티클이 바닥을 뚫음</td><td>화면 공간 충돌</td><td>메인 뷰 깊이 하나, 두께 0.3 m. 실루엣 픽셀에서는 법선이 옆을 향해 허공에서 튈 수 있음(<a href="../plan/vfx-gpu-particles-record.html#s3-verify">기록 11.5</a>)</td></tr>
+<tr><td>버스트 꼬리가 잘림</td><td>이미터를 끄거나 오브젝트를 지우면 GPU 버퍼째 지움</td><td><code>spawnRate</code>만 0으로 내려야 수명을 다 채움(<a href="../plan/vfx-gpu-particles-record.html#arch-wind">기록 12.16</a>)</td></tr>
+<tr><td><code>maxParticles</code>를 바꾸면 파티클이 다 사라짐</td><td>버퍼를 다시 만들고 Reset</td><td>그 프레임은 생성도 없음(9-2)</td></tr>
+<tr><td>Sim 간접 디스패치에서 바인딩 오류</td><td>IndirectArgument 상태 버퍼를 UAV로 꽂음</td><td>u5를 뺀 <code>Layout_ParticleStep</code>(5장)</td></tr>
+<tr><td>TAA·모션 블러 뒤 파티클 잔상 가능성</td><td>파티클은 속도를 쓰지 않음</td><td>뒤 표면 속도로 재투영. 측정 기록 없음(8-3)</td></tr>
+<tr><td>파티클이 조명·그림자와 어울리지 않음</td><td>조명 계산 없음</td><td>이미터 상수 색뿐, 텍스처·플립북·그림자 없음</td></tr>
+</table>
+<div class="box warn"><b>낡은 주석.</b> 코드 몇 곳은 알파 모드가 생기기 전 설명으로 남아 있습니다. <code>Pass_Particle</code> 설정 바로 위 주석은 "가산 블렌딩 — … 정렬하지 않음"이라고 적혀 있지만 블록 안 주석과 실제 값은 프리멀티플라이드 두 모드입니다. <code>CS_ParticleSim</code> 머리 주석의 "가산 블렌딩이라 그림은 같고"도 가산 이미터에만 맞습니다. <code>Stats::particleCapacity</code> 주석 "(= 그리는 쿼드 수. 죽은 것 포함)"과 <code>DrawStats</code> 문구 "drawn as quads, dead included"는 1단계 설명입니다(9-4).</div>
+</section>
+
+<section id="study">
+<h2>13. 공부할 개념</h2>
+<table>
+<tr><th>개념</th><th>이 문서에서</th><th>더 볼 것</th></tr>
+<tr><td>스트림 압축, 원자적 덧붙이기</td><td>4-1</td><td>누적합(스캔)으로 순서를 고정하는 방법과 비교</td></tr>
+<tr><td>사망 목록(free list) 스택</td><td>2장, 4-2</td><td>링 버퍼(1단계)와의 차이: 덮어쓰기 대 대기</td></tr>
+<tr><td>간접 그리기·디스패치</td><td>5장</td><td>D3D12 <code>ExecuteIndirect</code>, 인자 구조체 배치</td></tr>
+<tr><td>바이토닉 정렬망</td><td>7장</td><td>그룹 공유 메모리로 작은 단계를 묶는 방법, GPU 기수 정렬</td></tr>
+<tr><td>프리멀티플라이드 알파</td><td>8-2</td><td>가산과 알파를 한 블렌드 식으로 그리는 이유</td></tr>
+<tr><td>소프트 파티클, 깊이 복원</td><td>6-1</td><td>투영 행렬 원소로 뷰 z를 되돌리는 식(원근·직교)</td></tr>
+<tr><td>화면 공간 충돌</td><td>6-2</td><td>깊이 버퍼 법선 복원, SDF·메시 충돌과 비교</td></tr>
+<tr><td>반암시적 오일러, 지수 감쇠</td><td>4-3</td><td>dt가 클 때의 안정성</td></tr>
+<tr><td>상태 없는 해시 난수(PCG)</td><td>9-3</td><td>스레드마다 독립 난수열을 만드는 방법</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li><a href="../plan/vfx-gpu-particles-record.html">VFX GPU 파티클 구현 기록</a> — <a href="../plan/vfx-gpu-particles-record.html#arch-sim">12.7 시뮬레이션 원리</a>, <a href="../plan/vfx-gpu-particles-record.html#arch-sort">12.8 정렬 원리</a>, <a href="../plan/vfx-gpu-particles-record.html#arch-draw">12.9 그리기 원리</a>, <a href="../plan/vfx-gpu-particles-record.html#arch-state">12.10 리소스 상태와 배리어</a>, <a href="../plan/vfx-gpu-particles-record.html#arch-threads">12.14 GPU 스레드와 디스패치</a>, <a href="../plan/vfx-gpu-particles-record.html#arch-reading">12.15 코드 읽는 순서</a></li>
+<li><a href="../overview/glossary.html#compute">용어집 4장 GPU 컴퓨트·파티클</a> — 사망 목록, 생존 목록·핑퐁, parity, 바이토닉 정렬, 뷰별 정렬, 고정 스텝 dt</li>
+<li><a href="../plan/velocity-motionblur-taa-plan.html#s3-risk">속도·모션 블러·TAA 계획 3단계 위험</a> — 파티클 잔상</li>
+<li>같이 읽기: <a href="../study/compute-uav-study.html">컴퓨트·UAV</a>, <a href="../study/hdr-tonemapping-study.html">HDR·톤매핑</a>, <a href="../study/post-process-study.html">후처리</a>, <a href="../study/taa-study.html">TAA</a>, <a href="../study/gpu-sync-study.html">GPU 동기화</a>, <a href="../study/binding-study.html">바인딩</a>, <a href="../study/frame-structure-study.html">프레임 구조</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>
