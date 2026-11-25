@@ -33,6 +33,7 @@ enum class AssetType : uint8_t
 	Texture,
 	Scene,
 	Prefab,
+	Font,   // .ttf·.otf — 게임 UI Text 의 font 칸에 끌어다 놓음
 	Other
 };   // Prefab (.prefab)
 

@@ -95,6 +95,12 @@ namespace RHI
 		// std::vector<TextureSubresource> 를 그대로 넘김.
 		virtual TextureHandle CreateTexture(const TextureDesc& desc, std::span<const TextureSubresource> subresources = {}) = 0;
 		virtual void DestroyTexture(TextureHandle handle) = 0;
+		// 2D 텍스처 밉 0 의 사각형 (x, y, width, height) 를 data 로 덮어씀. 블록 압축이 아닌 형식만, rowPitch 는 data 의 행 간격.
+		// 게임 UI 글리프 아틀라스가 프레임마다 새 글자 영역을 올림 (docs/plan/ui-canvas-plan.html 2단계).
+		// 텍스처는 ShaderResource 상태여야 하고 끝나도 ShaderResource. D3D11 은 UpdateSubresource(즉시 컨텍스트 순서),
+		// D3D12 는 초기 데이터와 같은 업로드 리스트(CopyTextureRegion + 배리어) — 이번 프레임 커맨드 리스트보다 먼저 실행됨.
+		// 앞 프레임들의 읽기는 같은 큐의 앞쪽이라 덮어쓰기 전에 끝남. 묶음(BeginResourceUploads) 밖이면 곧바로 제출하고 기다림.
+		virtual bool UpdateTexture(TextureHandle handle, uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, uint32_t rowPitch) = 0;
 		// Resize 할 때마다 새로 만들어짐. 프레임을 넘겨 보관하지 말 것.
 		virtual TextureHandle GetBackBuffer() const = 0;
 		// 깊이 버퍼는 장치가 갖지 않음. 그리는 쪽(Renderer)이 출력 크기에 맞춰 만들고 소유함 — 에디터의 씬

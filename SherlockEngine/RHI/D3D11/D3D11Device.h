@@ -47,6 +47,7 @@ public:
 
 	TextureHandle CreateTexture(const TextureDesc& desc, std::span<const TextureSubresource> subresources = {}) override;
 	void DestroyTexture(TextureHandle handle) override;
+	bool UpdateTexture(TextureHandle handle, uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, uint32_t rowPitch) override;
 	TextureHandle GetBackBuffer() const override { return m_backBuffer; }
 	void BeginResourceUploads() override {}   // D3D11 은 생성 시 드라이버가 초기 데이터를 복사함
 	void EndResourceUploads() override {}

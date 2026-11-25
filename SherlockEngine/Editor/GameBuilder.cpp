@@ -96,6 +96,45 @@ namespace
 	}
 
 	// 시작 씬이 참조하는 에셋을 수집함: 모델 경로의 앞 두 단계(Models\Sponza)와 재질의 텍스처 이름.
+	// 게임 UI 컴포넌트가 쓰는 텍스처 이름 (UIImage 의 "texture"). 하위 오브젝트까지 objects 배열에 평평하게 들어 있음.
+	// UI 는 텍스처를 선형(UNORM)으로 읽음 — docs/plan/ui-canvas-plan.html 3.2 감마 블렌딩.
+	template <typename Visit>
+	void ForEachUITexture(const nlohmann::json& root, Visit&& visit)
+	{
+		for (const auto& object : root.value("objects", nlohmann::json::array()))
+		{
+			if (!object.is_object()) continue;
+			for (const auto& component : object.value("components", nlohmann::json::array()))
+			{
+				if (!component.is_object() || component.value("type", "") != "UIImage") continue;
+				const std::string name = component.value("texture", "");
+				if (!name.empty() && name.rfind("builtin:", 0) != 0)
+				{
+					visit(name);
+				}
+			}
+		}
+	}
+
+	// UIText 의 "font" 중 "asset:" 경로 (Assets\Fonts 밖에 둔 프로젝트 글꼴). Fonts 폴더는 통째로 복사하므로 따로 모으지 않음.
+	template <typename Visit>
+	void ForEachUIFont(const nlohmann::json& root, Visit&& visit)
+	{
+		for (const auto& object : root.value("objects", nlohmann::json::array()))
+		{
+			if (!object.is_object()) continue;
+			for (const auto& component : object.value("components", nlohmann::json::array()))
+			{
+				if (!component.is_object() || component.value("type", "") != "UIText") continue;
+				const std::string name = component.value("font", "");
+				if (name.rfind("asset:", 0) == 0)
+				{
+					visit(name.substr(6));
+				}
+			}
+		}
+	}
+
 	void CollectReferences(const fs::path& scenePath, std::set<std::wstring>& modelFolders, std::set<std::wstring>& textures)
 	{
 		std::ifstream file(scenePath, std::ios::binary);
@@ -141,6 +180,21 @@ namespace
 				}
 			}
 		}
+		ForEachUIFont(root, [&](const std::string& relative)
+		{
+			textures.insert(Wide(relative));   // 아래 복사 루프가 Assets 기준 파일 하나로 복사함
+		});
+		ForEachUITexture(root, [&](const std::string& name)
+		{
+			if (name.rfind("asset:", 0) == 0)
+			{
+				textures.insert(Wide(name.substr(6)));
+			}
+			else if (name.find('/') == std::string::npos)
+			{
+				textures.insert(L"Textures\\" + Wide(name));
+			}
+		});
 		// 스카이박스와 IBL 맵. 재질 텍스처와 같은 이름 규칙. 큐브 DDS·LUT 파일이거나 면 이미지 6장이 든
 		// 폴더임 (복사 루프가 둘 다 처리함).
 		const nlohmann::json env = root.value("environment", nlohmann::json());
@@ -267,6 +321,10 @@ namespace
 				AddUse(input, material.value(slot.key, ""), slot.srgb < 0 ? albedoSrgb : slot.srgb != 0);
 			}
 		}
+		ForEachUITexture(root, [&](const std::string& name)
+		{
+			AddUse(input, name, false);   // UI 는 선형으로 읽음
+		});
 		const nlohmann::json env = root.value("environment", nlohmann::json());
 		if (env.is_object())
 		{
@@ -654,6 +712,14 @@ GameBuilder::Result GameBuilder::Build(const Options& options)
 			}
 		}
 		CopyAssetTree(L"Textures", outAssets, result.filesCopied, result.message);   // 이름만으로 참조되는 기본 텍스처(bumps_normal 등)를 위해 전부 복사
+		{
+			// 게임 UI 글꼴: 엔진 기본(Noto Sans KR)과 프로젝트 Assets\Fonts 를 통째로. 텍스트가 없는 게임도 기본 글꼴은 실음 (4.6 MB)
+			std::string fontError;
+			if (!CopyAssetTree(L"Fonts", outAssets, result.filesCopied, fontError))
+			{
+				Log::Warn("게임 빌드: Fonts 폴더가 없음 — UI 글자를 그리지 못함");
+			}
+		}
 	}
 
 	// 3b. 변환된 DDS: 3a 가 쓴 것만 패키지의 TextureCache\ (프로젝트가 없는 게임의 캐시 위치)에 싣고, 이름 + 색공간 → 파일 목록

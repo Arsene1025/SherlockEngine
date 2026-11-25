@@ -774,6 +774,47 @@ SherlockEditor.exe --project=..\..\Projects\TestGame --exit-after=40 --play=1 --
   </div>
 </div>
 
+<div class="stage">
+  <div class="tag">S16</div>
+  <div>
+    <h4>(선택) Gerstner 바다 <span class="time">약 2시간</span></h4>
+    <div class="why">2026-11-23 에 들어간 배경 바다입니다. 컴포넌트 하나가 드로우 하나의 PSO 를 바꾸고, 정점 셰이더가 메시를 움직이면서 속도 버퍼(S15)까지 맞추는 예입니다. S15 를 먼저 읽으면 "지난 위상"이 왜 필요한지 바로 보입니다.</div>
+    <div class="cols">
+      <div><h5>읽을 문서</h5><ul>
+        <li><a href="../plan/ocean-gerstner-plan.html#concept">계획 2장 개념</a> — Gerstner 파도 식, 편미분과 노멀, 꼬임 조건</li>
+        <li><a href="../plan/ocean-gerstner-record.html">Gerstner 바다 구현 기록</a> — 계획과 달라진 점, 프레임 흐름, 대역 제한, 검증 숫자. 12장이 읽는 순서</li>
+        <li><a href="rendering-analysis.html#c20-29">20.29</a> — 이 문서의 서술(b9, 평면, 설정)이 바뀐 곳 요약</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>Scene/Ocean.h</code>의 필드 → <code>Ocean.cpp</code>의 <code>BuildWaves</code> → <code>Graphics/RendererOcean.cpp</code>의 <code>CollectOcean</code>·<code>UploadOceanConstants</code></li>
+        <li><code>Graphics/Renderer.cpp</code>의 <code>BuildDrawList</code>(바다 분기)·<code>GetPipelineFor</code>(키 비트 12)</li>
+        <li><code>Shaders/Ocean.hlsli</code> → <code>OceanVertexShader.hlsl</code> → <code>OceanPixelShader.hlsl</code>·<code>OceanGBufferPixelShader.hlsl</code></li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — SherlockTestScenes 프로젝트의 <code>OceanHorizon.json</code> 을 열고 Ocean 오브젝트의 Inspector 에서 steepness·wavelengthMin·fadeStart 를 바꿔 본다. <code>--ocean-time=10 --debug-view=17 --cam-orbit=0.5</code> 로 실행하면 바다가 검정이고, <code>--ocean-time</code> 을 빼면 바다가 밝아지는 이유(파도가 움직이는 만큼 카메라 재투영과 다름)를 설명할 수 있다. 디버그 뷰 2 에서 먼 바다의 노멀이 평평해지는 것이 감쇠와 대역 제한 중 어느 쪽 때문인지 구분한다.</div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="tag">S17</div>
+  <div>
+    <h4>(선택) 게임 UI (캔버스) <span class="time">약 3시간</span></h4>
+    <div class="why">2026-11-24 에 들어간 유니티 uGUI 식 게임 UI 입니다. ImGui 가 아닌 UI 를 엔진에 넣으면 무엇이 생기는지 — 컴포넌트로 된 UI 트리, 매 프레임 레이아웃, CPU 정점 목록, 톤매핑 뒤 덧그리기, 재생 중 입력과 이벤트 — 를 한 기능 안에서 따라갈 수 있습니다. S12(재생 모드·스크립트)를 먼저 읽으면 이벤트 연결과 핫리로드 부분이 쉽습니다.</div>
+    <div class="cols">
+      <div><h5>읽을 문서</h5><ul>
+        <li><a href="../plan/ui-canvas-plan.html">게임 UI(캔버스) 구현 계획</a> — 0장 단계 표, 2장 uGUI 구조(앵커·피벗·스케일러), 10장 단계별 결과와 검증 숫자</li>
+        <li><a href="rendering-analysis.html#c4-10">4.10</a>(그리기 흐름), <a href="rendering-analysis.html#c16-12">16.12</a>(에디터), <a href="rendering-analysis.html#c17-17">17.17</a>(재생 중 이벤트), <a href="rendering-analysis.html#c20-31">20.31</a>(적용 기록)</li>
+      </ul></div>
+      <div><h5>함께 볼 소스</h5><ul>
+        <li><code>UI/UIComponents.h</code>(Canvas·RectTransform·UIImage·UIText) → <code>UI/UISystem.cpp</code>의 <code>Build</code>·<code>Visit</code>·<code>LayoutChildren</code></li>
+        <li><code>Core/Engine.cpp</code>의 <code>Render</code>(UI Build) → <code>Graphics/RendererUI.cpp</code>의 <code>UploadUI</code>·<code>RenderCanvasPass</code> → <code>Shaders/UI.hlsli</code></li>
+        <li><code>UI/UISystem.cpp</code>의 <code>Update</code>·<code>HitTest</code>·<code>FindNavigationTarget</code>, <code>UI/UIEvent.h</code>의 <code>SHERLOCK_UI_ACTION</code></li>
+      </ul></div>
+    </div>
+    <div class="check"><b>확인 포인트</b> — SherlockTestScenes 프로젝트의 <code>UiShowcase.json</code> 을 열고 재생한다. 버튼·토글·볼륨 슬라이더·인벤토리 스크롤(휠·드래그)·단축칸을 눌러 상태 줄이 바뀌는지, 방향키·Enter·Esc(또는 패드)로 메뉴를 돌 수 있는지, 메뉴 위에서 오른쪽 버튼을 끌면 카메라가 돌지 않는지 본다. 편집 모드에서 T(Rect 툴)로 요소를 끌어 보고, 기둥 뒤 키오스크 패널이 가려지는지 확인한다. 자동 검증은 <code>Scripts/Tests/verify_ui_stages.py</code>.</div>
+  </div>
+</div>
+
 <h2 id="s8"><span class="num">8.</span>실행하며 확인하기</h2>
 <p>모든 스텝의 확인 포인트는 실행 중인 앱에서 확인합니다. 단축키는 <code>EditorApp.cpp</code>의 <code>OnUpdate</code>에 모여 있고, 실행 인자는 <code>EditorApp.h</code>의 자동 검증 주석에 있습니다. 전체 목록과 검증 수법은 최종본 <a href="rendering-analysis.html#app-d">부록 D</a>에 있습니다.</p>
 <div class="tbl"><table>
@@ -809,7 +850,7 @@ SherlockEditor.exe --project=..\..\Projects\TestGame --exit-after=40 --play=1 --
   <li>S8의 9.1 폴더 규칙과 grep 검사 (30분). 나머지는 20.3 의 단계 카드 17장의 "목표" 줄만 읽고 마침 (30분).</li>
 </ol>
 <h3>2주 코스: 정독</h3>
-<p>1절 표의 시간 합계가 약 46시간(선택인 S14·S15 의 8시간은 빼고)이므로 하루 3시간이면 15일입니다. 하루에 스텝 하나가 기준이고, S9(D3D12)만 이틀을 잡습니다. 각 스텝의 확인 포인트를 통과하기 전에는 다음 스텝으로 넘어가지 않는 것이 규칙입니다. 확인이 안 되면 그 장 끝의 "함정과 해결" 표로 돌아가세요.</p>
+<p>1절 표의 시간 합계가 약 46시간(선택인 S14~S17 의 13시간은 빼고)이므로 하루 3시간이면 15일입니다. 하루에 스텝 하나가 기준이고, S9(D3D12)만 이틀을 잡습니다. 각 스텝의 확인 포인트를 통과하기 전에는 다음 스텝으로 넘어가지 않는 것이 규칙입니다. 확인이 안 되면 그 장 끝의 "함정과 해결" 표로 돌아가세요.</p>
 <h3>D3D12를 모르는 경우</h3>
 <p>S9 전에 7장의 7.1~7.4(슬롯 모델에서 디스크립터까지)와 9.10 의 개념 대응표를 먼저 읽고, 부록 E 의 Microsoft 문서("D3D12 for D3D11 programmers" 계열)를 하루 곁들이면 됩니다. 이 프로젝트는 D3D12의 개념(PSO·루트 시그니처·디스크립터 테이블·배리어·펜스)을 D3D11 위에 미리 그려 두었으므로, S3~S7을 충실히 지나왔다면 낯선 것은 API 이름뿐입니다.</p>
 <h3>이미 D3D11을 잘 아는 경우</h3>

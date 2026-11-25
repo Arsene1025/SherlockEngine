@@ -112,6 +112,8 @@ void TextureCache::Evict(const std::string& name)
 		cache.erase(it);
 		any = true;
 	}
+	m_sizes[0].erase(name);
+	m_sizes[1].erase(name);
 	if (any)
 	{
 		++m_generation;
@@ -139,6 +141,10 @@ void TextureCache::ReleaseLoaded()
 			it = cache.erase(it);
 		}
 	}
+	for (auto& sizes : m_sizes)
+	{
+		std::erase_if(sizes, [](const auto& entry) { return !IsBuiltin(entry.first); });
+	}
 	// 파일에서 읽은 큐브맵도 버림 (내장 큐브는 남김).
 	for (auto it = m_cubes.begin(); it != m_cubes.end();)
 	{
@@ -154,6 +160,16 @@ void TextureCache::ReleaseLoaded()
 		it = m_cubes.erase(it);
 	}
 	++m_generation;   // 핸들을 기억해 둔 쪽(재질 셋)이 다음 프레임에 다시 찾게 함
+}
+
+bool TextureCache::GetSize2D(const std::string& name, bool srgb, uint32_t& width, uint32_t& height) const
+{
+	const auto& sizes = m_sizes[srgb ? 1 : 0];
+	const auto found = sizes.find(name);
+	if (found == sizes.end()) return false;
+	width = found->second.first;
+	height = found->second.second;
+	return true;
 }
 
 TextureHandle TextureCache::Load2D(const std::string& name, bool srgb, const Scene* scene)
@@ -191,6 +207,11 @@ TextureHandle TextureCache::Load2D(const std::string& name, bool srgb, const Sce
 		// 감마 검증용. sRGB 128 → 선형 0.216 → sRGB 뷰에 쓰면 다시 128.
 		const uint8_t gray[4] = { 128, 128, 128, 255 };
 		ok = TextureLoader::CreateSolid(4, gray, srgb, image);
+	}
+	else if (name == "builtin:ui-panel")
+	{
+		// 게임 UI 9-slice 용 둥근 사각형 (32×32, 반지름 10, 흰색 + 가장자리 알파 안티앨리어싱). UIImage border 12 로 씀
+		ok = TextureLoader::CreateRoundedRect(32, 10.0f, image);
 	}
 	else if (name == "builtin:checker")
 	{
@@ -250,6 +271,10 @@ TextureHandle TextureCache::Load2D(const std::string& name, bool srgb, const Sce
 	{
 		image.desc.debugName = debugName.c_str();
 		handle = m_device->CreateTexture(image.desc, image.subresources);   // C++20: vector → std::span (포인터+개수 대신)
+		if (handle.IsValid())
+		{
+			m_sizes[srgb ? 1 : 0][name] = { image.desc.width, image.desc.height };
+		}
 	}
 	if (!handle.IsValid())
 	{

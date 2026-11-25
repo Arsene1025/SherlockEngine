@@ -41,6 +41,9 @@
     <Filter Include="Scene">
       <UniqueIdentifier>{0daac1b8-d7a9-4d5b-b83d-1789184214c2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="UI">
+      <UniqueIdentifier>{f819e6db-5038-43a0-a1a5-6042d9d943c0}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Shaders">
       <UniqueIdentifier>{72c939d5-1f84-4d43-af2b-3ac097b37210}</UniqueIdentifier>
     </Filter>
@@ -184,6 +187,30 @@
     </ClCompile>
     <ClCompile Include="Graphics\RendererParticles.cpp">
       <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics\RendererUI.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\UIComponents.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\UISystem.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\Font.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\GlyphAtlas.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\UILayout.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\UIWidgets.cpp">
+      <Filter>UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UI\UIEvent.cpp">
+      <Filter>UI</Filter>
     </ClCompile>
     <ClCompile Include="Graphics\RendererOcean.cpp">
       <Filter>Graphics</Filter>
@@ -485,6 +512,33 @@
     <ClInclude Include="Scene\ParticleEmitter.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="UI\UITypes.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\UIDrawList.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\UIComponents.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\UISystem.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\Font.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\GlyphAtlas.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\UILayout.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\UIWidgets.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UI\UIEvent.h">
+      <Filter>UI</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\Ocean.h">
       <Filter>Scene</Filter>
     </ClInclude>
@@ -503,6 +557,12 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\BasicVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\UIVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\UIPixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\OceanVertexShader.hlsl">
@@ -646,6 +706,9 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Mesh.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\UI.hlsli">
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Ocean.hlsli">

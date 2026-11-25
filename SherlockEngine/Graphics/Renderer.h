@@ -12,12 +12,15 @@
 #include "Graphics/TextureCache.h"
 #include "RHI/BindingTypes.h"   // BindingLayoutDesc (레이아웃 선언 사본)
 #include "Scene/Material.h"
-#include "Scene/Camera.h"   // 캐스케이드 고정용 카메라 사본 (m_cascadeFreezeCamera)
+#include "Scene/Camera.h"   // 컬링 고정용 카메라 사본 (m_cullFreezeCamera)
 #include "Scene/Light.h"
 #include "Scene/Ocean.h"   // OceanWave (m_frameOcean)
 #include "Scene/PostProcessSettings.h"
 #include "Scene/ShadowSettings.h"
 #include "Scene/SsaoSettings.h"
+
+struct UIDrawList;
+struct UIAtlasImage;
 
 namespace RHI
 {
@@ -79,6 +82,7 @@ struct RenderSettings
 	// 모션 블러 기준 fps 덮어쓰기 (−1 = 씬 값, 0 = 맞추지 않음). --motion-blur-fps= (저장하지 않음).
 	float motionBlurFpsOverride = -1.0f;
 	// 모션 블러 길이 보정에 쓰는 프레임 시간 덮어쓰기 (초, 0 = 실제 값). 자동 검증이 실행 속도와 무관한 결과를 얻도록 --frame-dt=.
+	// 에디터 재생의 scene.Update dt 도 이 값을 씀 (EditorApp::OnUpdate).
 	float frameDeltaOverride = 0.0f;
 	// TAA 켜짐 덮어쓰기 (−1 = 씬 값, --taa=) 와 지터 (끄면 TAA 가 같은 위치를 계속 섞음 — 배관 검증용, --taa-jitter=0).
 	int taaOverride = -1;
@@ -200,14 +204,25 @@ public:
 	uint32_t GetSkippedShadowLights() const { return m_skippedShadowLights; }
 	uint32_t GetUsedLocalTiles() const { return m_usedLocalTiles; }
 
-	// ---- CSM 디버그: 캐스케이드 카메라 고정 ----
-	// 켜면 그 순간 camera 의 위치·방향·렌즈를 사본으로 잡고, 이후 캐스케이드(분할·광원 뷰·PS 의 구간 판정)를
-	// 항상 그 사본 기준으로 계산함. 에디터 카메라를 자유롭게 옮겨서 "고정된 카메라에서 본 거리 구간"을
-	// 바깥에서 볼 수 있음. 끄면 다시 매 프레임 현재 카메라를 따라감. 런타임 디버그 상태일 뿐이라 씬 파일에는
-	// 저장하지 않음. 카메라는 호출자가 직접 넘김 (Render 는 한 프레임에 여러 번 불려 미리보기 카메라를 잡을
-	// 수 있음).
-	void SetCascadeFreeze(bool freeze, const Camera& camera);
-	bool IsCascadeFrozen() const { return m_cascadeFrozen; }
+	// ---- 디버그: 컬링 카메라 고정 (docs/plan/freeze-culling-camera-plan.html) ----
+	// 켜면 그 순간 camera 의 위치·방향·렌즈를 사본으로 잡고, 켜 둔 항목을 그 사본 기준으로 계산함. 에디터 카메라를
+	// 자유롭게 옮겨서 "고정된 시점에서 무엇이 버려졌는지"를 바깥에서 볼 수 있음. 그리는 일(b0·클러스터 상자·반투명 정렬·
+	// TAA·파티클)은 늘 지금 카메라. 끄면 다시 매 프레임 현재 카메라를 따라감. 런타임 디버그 상태일 뿐이라 씬 파일에는
+	// 저장하지 않음. 카메라는 호출자가 직접 넘김 (Render 는 한 프레임에 여러 번 불려 미리보기 카메라를 잡을 수 있음).
+	struct CullFreezeParts
+	{
+		bool cascades = true;   // BuildShadowViews 의 캐스케이드 분할·광원 뷰 (프레임 공용 — 미리보기 그림자에도 걸림)
+		bool objects = true;    // DrawItems 의 오브젝트 절두체 컬링 (메인 뷰만)
+		bool lights = true;     // CullLights 의 절두체·그림자 점수 + 컬링된 지역광을 클러스터에서 뺌 (프레임 공용, 클러스터드일 때만 빛이 꺼짐)
+	};
+	void SetCullFreeze(bool freeze, const Camera& camera, CullFreezeParts parts = {});
+	void SetCullFreezeParts(CullFreezeParts parts) { m_cullFreezeParts = parts; }   // 고정 중 항목만 바꿈 (카메라 사본은 그대로)
+	bool IsCullFrozen() const { return m_cullFrozen; }
+	CullFreezeParts GetCullFreezeParts() const { return m_cullFreezeParts; }
+	const Camera& GetCullFreezeCamera() const { return m_cullFreezeCamera; }   // 오버레이용 (고정 중일 때만 의미 있음)
+	bool IsCascadeFrozen() const { return m_cullFrozen && m_cullFreezeParts.cascades; }
+	// 고정 시점에서 절두체 밖이라 컬링된 지역광인가 (씬 조명 번호). 고정 중이고 lights 항목이 켜져 있을 때만 true 가 나옴.
+	bool IsLightCulledByFreeze(uint32_t sceneLightIndex) const;
 	// 이번 프레임의 캐스케이드별 절두체 조각 꼭짓점 8개: [0..3] 앞면 (−x−y, +x−y, −x+y, +x+y), [4..7] 뒷면
 	// 같은 순서. 월드 좌표. GetCascadeFrustumCount() 가 0 이면 이번 프레임에 CSM 을 안 쓴 것.
 	uint32_t GetCascadeFrustumCount() const { return m_cascadeCount; }
@@ -265,6 +280,19 @@ public:
 		m_previewSourceId = sourceId;
 	}
 	TextureHandle GetPreviewTexture() const { return m_previewView.color; }
+	// 이번 프레임에 미리보기를 그릴 수 있는 상태면 그 크기를 돌려줌 (Render 의 previewActive 와 같은 조건). UI 시스템이 미리보기용
+	// 레이아웃을 만들 때 씀.
+	bool GetPreviewSize(uint32_t& width, uint32_t& height) const;
+	// 메인 뷰 출력 크기 (에디터 = 씬 창, 게임 = 백버퍼)
+	uint32_t GetMainViewWidth() const;
+	uint32_t GetMainViewHeight() const;
+	const Camera* GetPreviewCamera() const { return m_previewCamera; }
+	// UI 텍스처의 픽셀 크기 (9-slice·preserveAspect·레이아웃). 처음 물으면 읽어 둠 (UI 가 그릴 때와 같은 선형 색공간). 실패면 false
+	bool GetUITextureSize(const std::string& name, const Scene& scene, uint32_t& width, uint32_t& height);
+
+	// 게임 UI (docs/plan/ui-canvas-plan.html). UISystem::Build 가 만든 그리기 목록을 Render 전에 넘김 — Render 안에서 올리고
+	// 톤 패스 뒤에 그림. 목록은 Render 가 끝날 때까지 살아 있어야 함. nullptr 이거나 비어 있으면 UI 패스 없음.
+	void SetUIDrawList(const UIDrawList* list) { m_uiDrawList = list; }
 
 	// 후처리 단계별 썸네일 (에디터의 "Post Stages" 창). 창이 열려 있는 동안 매 프레임 RequestPostCapture 를 부르면
 	// 다음 Render 가 단계마다 HDR 결과를 톤매핑한 작은 텍스처에 그림. 요청이 없으면 비용이 없음. 메인 카메라,
@@ -432,6 +460,8 @@ private:
 		Shader_OceanVS,
 		Shader_OceanPS,
 		Shader_OceanGBufferPS,
+		Shader_UIVS,
+		Shader_UIPS,
 		Shader_Count
 	};
 	enum LayoutId : uint32_t
@@ -453,6 +483,8 @@ private:
 		Layout_Ssao,
 		Layout_Temporal,
 		Layout_ClusterBin,
+		Layout_UICommon,    // b4 UI 상수 + s0 (UI 패스에 하나)
+		Layout_UITexture,   // t0 (텍스처마다 하나)
 		Layout_Count
 	};
 	// 패스 = (VS, PS, 레이아웃 목록). PSO Desc 의 셰이더·bindingLayouts 가 이 표에서 나오고, 바인딩 대조도 패스
@@ -481,6 +513,8 @@ private:
 		Pass_Taa,
 		Pass_Ocean,          // OceanVS + OceanPS (메인과 같은 셋)
 		Pass_GBufferOcean,   // OceanVS + OceanGBufferPS
+		Pass_UI,             // 게임 UI 캔버스 { UI 공통, UI 텍스처 }
+		Pass_UIWorld,        // World 캔버스: Pass_UI + 읽기 전용 깊이 검사 (LessEqual, 쓰기 없음)
 		Pass_Count
 	};
 	// 셋 인덱스 = 그 패스의 PipelineStateDesc::bindingLayouts 인덱스 (CommandList::SetResourceSet 의 첫 인자).
@@ -494,6 +528,8 @@ private:
 	static constexpr uint32_t kSetGBuffer = 1;                        // 디퍼드 라이팅 { 프레임, G-buffer }
 	static constexpr uint32_t kSetSsao = 0;                           // SSAO·블러 { SSAO }
 	static constexpr uint32_t kSetTemporal = 0;                       // 속도 디버그·모션 블러·TAA { 시간 }
+	static constexpr uint32_t kSetUICommon = 0;                       // 게임 UI { UI 공통, UI 텍스처 }
+	static constexpr uint32_t kSetUITexture = 1;
 	static constexpr Format kVelocityFormat = Format::R16G16_FLOAT;   // 속도 RT. uv(이번) − uv(지난), Shaders/Velocity.hlsli
 	// 컴퓨트 패스 = (CS, 레이아웃 목록). 그래픽스 패스 표와 따로 둠 — PSO Desc 가 다르고 (ComputePipelineDesc),
 	// 바인딩 대조의 스테이지가 Compute 임.
@@ -564,7 +600,13 @@ private:
 		GBuffer,
 		ForwardRest
 	};
-	void DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera, DrawMode mode = DrawMode::All);
+	// camera = 그리는 카메라 (반투명 정렬의 눈 위치), cullCamera = 오브젝트 절두체 컬링 카메라 (보통 같음, 고정 중 메인 뷰는 사본).
+	void DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera, const Camera& cullCamera, DrawMode mode);
+	// 이 뷰가 오브젝트 컬링에 쓸 카메라: 고정 중이고 objects 항목이 켜져 있으면 메인 뷰(viewIndex 0)만 사본.
+	const Camera& ObjectCullCamera(const Camera& drawCamera, uint32_t viewIndex) const
+	{
+		return m_cullFrozen && m_cullFreezeParts.objects && viewIndex == 0 ? m_cullFreezeCamera : drawCamera;
+	}
 
 	// ---- 디퍼드 (2단계, RendererDeferred.cpp) ----
 	// G-buffer 에 담을 수 있는 재질인가: 불투명(블렌딩 아님)·조명 받음(unlit 아님)·투과 0·코팅 노멀 맵 없음.
@@ -617,6 +659,18 @@ private:
 	void UploadDebugLines(const DebugDraw& debugDraw);
 	void DrawDebugLines(RHI::CommandList& cmd);
 	PipelineHandle GetDebugLinePipeline();
+
+	// ---- 게임 UI 캔버스 (RendererUI.cpp) ----
+	// UploadUI: 업로드 구간 안에서 텍스처를 읽고(셋 캐시) 정점·인덱스·캔버스 행렬을 프레임에 한 번 올림. 목록이 비면 아무것도
+	// 올리지 않고 m_uiReady = false (D3D12: 그 프레임에 쓰지 않은 Dynamic 버퍼는 묶지 않음).
+	// RenderCanvasPass: 뷰 하나(0 메인, 1 미리보기)의 명령을 target 에 UNORM 뷰로 그리고 endState 로 돌려놓음. 명령이 없으면 아무것도 안 함.
+	void UploadUI(const Scene& scene);
+	// depth: 그 뷰의 깊이 (World 캔버스가 장면에 가려짐). 비어 있으면 World 캔버스 명령을 건너뜀.
+	void RenderCanvasPass(RHI::CommandList& cmd, uint32_t viewIndex, TextureHandle target, TextureHandle depth, ResourceState endState, uint32_t width, uint32_t height);
+	PipelineHandle GetUIPipeline();
+	ResourceSetHandle GetUITextureSet(TextureHandle texture);
+	void UploadUIAtlas(UIAtlasImage& atlas);
+	void DestroyUIResources();
 
 	// ---- GPU 파티클 (VFX, RendererParticles.cpp) ----
 	// BuildDrawList 가 이미터를 모으고 (CollectEmitter), 업로드 구간 안에서 버퍼·셋을 맞추고 상수를 올림
@@ -992,6 +1046,22 @@ private:
 	bool m_oceanHasPrev = false;                      // ResetTemporalHistory·바다가 없는 프레임에서 거짓
 	bool m_oceanExtraWarned = false;                  // 두 번째 바다 경고 (한 번만)
 	BufferHandle m_debugLineVB;                       // 동적 정점 버퍼 (DebugDraw::kMaxVertices 개)
+	// 게임 UI (RendererUI.cpp)
+	const UIDrawList* m_uiDrawList = nullptr;
+	BufferHandle m_uiVB;                              // Dynamic. 모자라면 두 배로 다시 만듦 (VB·IB 는 셋에 넣지 않고 직접 묶음)
+	BufferHandle m_uiIB;
+	uint32_t m_uiVertexCapacity = 0;
+	uint32_t m_uiIndexCapacity = 0;
+	BufferHandle m_uiCB;                              // b4 UIConstants
+	ResourceSetHandle m_uiCommonSet;                  // Layout_UICommon: b4, s0
+	std::unordered_map<uint64_t, ResourceSetHandle> m_uiTextureSets;   // 키 = 텍스처 핸들 (index << 32 | generation)
+	uint64_t m_uiTextureGeneration = 0;               // TextureCache 세대가 바뀌면 셋 캐시를 비움
+	std::vector<ResourceSetHandle> m_uiCommandSets;   // 이번 프레임 명령마다 고른 텍스처 셋
+	PipelineHandle m_uiPipeline;
+	PipelineHandle m_uiWorldPipeline;
+	TextureHandle m_uiAtlasTexture;                   // 글리프 아틀라스 (R8). 버전이 바뀌면 새로 만듦, 아니면 dirty 만 UpdateTexture
+	uint64_t m_uiAtlasVersion = 0;
+	bool m_uiReady = false;                           // 이번 프레임에 UI 버퍼를 올렸음
 	uint32_t m_debugLineCount = 0;                    // 올린 정점 수 (0 이면 그리지 않음)
 	PipelineHandle m_tonemapPipelines[2];             // [srgbOutput]
 	PipelineHandle m_postPipelines[2];                // [additive]
@@ -1048,8 +1118,9 @@ private:
 	DirectX::XMFLOAT3 m_cascadeOrigin = {};   // 캐스케이드를 계산한 카메라의 위치·전방
 	DirectX::XMFLOAT3 m_cascadeForward = {};
 	DirectX::XMFLOAT3 m_cascadeCorners[4][8] = {};   // 에디터 오버레이용 (GetCascadeFrustumCorners)
-	bool m_cascadeFrozen = false;
-	Camera m_cascadeFreezeCamera;   // 고정 중일 때 캐스케이드를 계산하는 카메라 사본
+	bool m_cullFrozen = false;          // SetCullFreeze
+	CullFreezeParts m_cullFreezeParts;  // 고정 중 사본을 쓰는 항목
+	Camera m_cullFreezeCamera;          // 고정 중일 때 켜 둔 항목을 계산하는 카메라 사본
 
 	// Scene이 메시(shared_ptr)·재질(unique_ptr)을 힙에 따로 두므로 포인터가 안정적임. 그래서 키로 씀.
 	std::unordered_map<const Mesh*, GpuMesh> m_gpuMeshes;

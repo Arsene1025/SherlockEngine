@@ -8,6 +8,7 @@
     "directxmath",
     "nlohmann-json",
     "imguizmo",
+    "stb",
     {
       "name": "directxtex",
       "features": [ "dx11" ]

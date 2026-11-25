@@ -9,9 +9,13 @@
 #include "Core/Profiler.h"
 #include "Core/Paths.h"
 #include "Core/AssetManager.h"
+#include "Graphics/DebugDraw.h"
 #include "Graphics/Mesh.h"
 #include "Graphics/Model.h"
 #include "Scene/CameraComponent.h"
+#include "UI/UIComponents.h"
+#include "UI/UIEvent.h"
+#include "UI/UISystem.h"
 #include "RHI/Device.h"
 #include <imgui.h>
 #include <imgui_internal.h>   // DockBuilder (아직 내부 API)
@@ -83,6 +87,27 @@ namespace
 		const float w = XMVectorGetW(clip);
 		if (w <= 1e-4f) return false;
 		out = ImVec2(x + (XMVectorGetX(clip) / w * 0.5f + 0.5f) * width, y + (0.5f - XMVectorGetY(clip) / w * 0.5f) * height);
+		return true;
+	}
+
+	// 월드 선분 → 씬 뷰 픽셀 선분. ProjectToView 와 달리 한 끝만 카메라 뒤면 버리지 않고 w = 근평면 근처에서 잘라 앞쪽 몫을 그림
+	// (컬링 고정 오버레이: 고정 카메라 절두체의 먼 변은 에디터 카메라 뒤로 지나가는 일이 흔함).
+	bool ProjectSegmentToView(const XMMATRIX& viewProj, float x, float y, float width, float height, const XMFLOAT3& p0, const XMFLOAT3& p1, ImVec2& out0, ImVec2& out1)
+	{
+		constexpr float kMinW = 1e-3f;
+		XMVECTOR c0 = XMVector3Transform(XMLoadFloat3(&p0), viewProj);
+		XMVECTOR c1 = XMVector3Transform(XMLoadFloat3(&p1), viewProj);
+		const float w0 = XMVectorGetW(c0), w1 = XMVectorGetW(c1);
+		if (w0 <= kMinW && w1 <= kMinW) return false;
+		if (w0 <= kMinW) c0 = XMVectorLerp(c0, c1, (kMinW - w0) / (w1 - w0));
+		else if (w1 <= kMinW) c1 = XMVectorLerp(c1, c0, (kMinW - w1) / (w0 - w1));
+		const auto toPixel = [&](const XMVECTOR& c)
+		{
+			const float w = XMVectorGetW(c);
+			return ImVec2(x + (XMVectorGetX(c) / w * 0.5f + 0.5f) * width, y + (0.5f - XMVectorGetY(c) / w * 0.5f) * height);
+		};
+		out0 = toPixel(c0);
+		out1 = toPixel(c1);
 		return true;
 	}
 
@@ -215,6 +240,10 @@ void Editor::Draw(Engine& engine, const char* sceneName, const ModelStats& model
 		if (ImGui::IsKeyPressed(ImGuiKey_3, false))
 		{
 			m_gizmoOperation = 2;
+		}
+		if (ImGui::IsKeyPressed(ImGuiKey_T, false) && !ImGui::IsMouseDown(ImGuiMouseButton_Right))
+		{
+			m_gizmoOperation = 3;   // Rect 툴 (유니티 T)
 		}
 		// Ctrl+P 재생/정지 (언리얼 Alt+P, 유니티 Ctrl+P)
 		if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_P))
@@ -477,6 +506,12 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 	ImGui::SameLine();
 	ImGui::RadioButton("Scale", &m_gizmoOperation, 2);
 	ImGui::SameLine();
+	ImGui::RadioButton("Rect", &m_gizmoOperation, 3);
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("T: UI rect tool — drag inside to move, handles to resize (Alt: from center, Shift: keep aspect), pivot circle, anchor triangles. Snap 8 px (Ctrl: off). Arrows: 1 unit (Shift 10)");
+	}
+	ImGui::SameLine();
 	ImGui::TextDisabled("|");
 	ImGui::SameLine();
 	if (ImGui::RadioButton("Local", !m_gizmoWorld))
@@ -489,7 +524,16 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 		m_gizmoWorld = true;
 	}
 	ImGui::SameLine();
-	ImGui::TextDisabled("RMB: look  WASD: move  LMB: select  1/2/3: gizmo  Ctrl+P: play");
+	ImGui::TextDisabled("|");
+	ImGui::SameLine();
+	ImGui::Checkbox("UI", &m_showUI);
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::SetTooltip("draw screen-space canvases over the Scene view while editing (always drawn while playing)");
+	}
+	engine.SetUIVisible(m_showUI || playState != PlayState::Editing);   // 이번 프레임 Engine::Render 의 UI Build 가 읽음
+	ImGui::SameLine();
+	ImGui::TextDisabled("RMB: look  WASD: move  LMB: select  1/2/3/T: gizmo  Ctrl+P: play");
 
 	// 스크립트 DLL 이 안 올라왔거나 새 빌드가 있으면 씬 뷰 위(이미지 앞)에 배너를 표시 — 이미지가 남은 공간을
 	// 다 쓰므로 이미지보다 먼저 그림
@@ -508,6 +552,8 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 	}
 
 	const ImVec2 imagePos = ImGui::GetCursorScreenPos();
+	m_sceneImageX = imagePos.x;
+	m_sceneImageY = imagePos.y;
 	const uint64_t textureId = renderer.IsOffscreen() ? engine.GetDevice().GetImGuiTextureId(renderer.GetSceneTexture()) : 0;
 	if (textureId != 0)
 	{
@@ -519,6 +565,15 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 	}
 	m_sceneHovered = ImGui::IsItemHovered();   // 드래그 중에는 ImGui 가 false 를 돌려줌 (활성 소스 아이템이 막음) — 드롭 판정은 아래 드롭 타깃에서만 함
 	m_sceneFocused = ImGui::IsWindowFocused();
+	// 게임 UI 포인터 = 씬 이미지 사각형 (다음 프레임 UISystem::Update 가 씀). 다른 창이 위를 덮으면 꺼서 클릭이 새지 않게 —
+	// 누른 채 밖으로 끄는 드래그(슬라이더)는 계속. 자동화 입력은 창 위 커서와 상관없이.
+	UISystem& ui = engine.GetUI();
+	ui.SetPointerViewport(imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height), m_sceneHovered || ui.IsPointerCaptured() || engine.GetInput().IsSimulated());
+	const bool editing = playState == PlayState::Editing;
+	if (editing)
+	{
+		DrawWorldCanvasOutlines(engine);
+	}
 
 	// 재생 중 표시 — 언리얼 PIE 처럼 씬 뷰에 테두리를 그림 (재생 초록, 일시정지 노랑)
 	if (playState != PlayState::Editing)
@@ -555,11 +610,17 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 
 	// 씬 안의 카메라 오브젝트를 프러스텀 아이콘으로 표시 (편집 중에만 — 재생 중에는 그 카메라로 보고 있음)
 	DrawCameraGizmos(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
+	DrawUISelection(engine, imagePos.x, imagePos.y);
+	const bool rectToolTookPress = DrawRectTool(engine, imagePos.x, imagePos.y, editing);
+	if (editing && m_sceneFocused && !ImGui::GetIO().WantTextInput && !ImGui::IsMouseDown(ImGuiMouseButton_Right))
+	{
+		NudgeSelectedUI(engine);
+	}
 	// 선택한 카메라의 시점 미리보기 (우측 하단)
 	DrawCameraPreview(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 
 	// 선택된 오브젝트의 기즈모. 이미지 위에 그림. 에셋을 끌고 있는 동안은 끔.
-	DrawCascadeFrustums(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
+	DrawFreezeOverlay(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 	DrawLightIcons(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 	ImGuizmo::Enable(!m_assetDragActive);
 	DrawGizmo(engine, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
@@ -568,22 +629,29 @@ void Editor::DrawSceneView(Engine& engine, const Callbacks& callbacks)
 
 	// 클릭 선택. 기즈모를 잡고 있거나 커서가 기즈모 위에 있으면 제외. 조명 아이콘이 오브젝트보다 우선함
 	// (작아서 오브젝트에 가려 안 눌리는 걸 막으려고).
-	if (m_sceneHovered && !m_assetDragActive && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsOver() && !ImGuizmo::IsUsing())
+	// 재생 중 게임 UI 를 누른 클릭은 게임 것 (에디터 선택이 바뀌지 않게). 편집 중 UI 가 보이면 UI 사각형을 3D 보다 먼저 (7단계).
+	const ToolMouse tool = GetToolMouse();
+	const bool toolInside = tool.x >= 0.0f && tool.y >= 0.0f && tool.x < static_cast<float>(width) && tool.y < static_cast<float>(height);
+	const bool clicked = m_toolPointer.active ? (tool.pressed && toolInside) : (m_sceneHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left));
+	const bool uiTookClick = !editing && (ui.IsPointerOverUI() || ui.IsPointerCaptured());
+	if (clicked && !rectToolTookPress && !uiTookClick && !m_assetDragActive && !ImGuizmo::IsOver() && !ImGuizmo::IsUsing())
 	{
-		const ImVec2 mouse = ImGui::GetMousePos();
-		const float u = (mouse.x - imagePos.x) / static_cast<float>(width);
-		const float v = (mouse.y - imagePos.y) / static_cast<float>(height);
+		const ImVec2 mouse(imagePos.x + tool.x, imagePos.y + tool.y);
+		const float u = tool.x / static_cast<float>(width);
+		const float v = tool.y / static_cast<float>(height);
 		const int lightHit = PickLight(engine, mouse.x, mouse.y, imagePos.x, imagePos.y, static_cast<float>(width), static_cast<float>(height));
 		if (lightHit >= 0)
 		{
 			SelectLight(lightHit);
 		}
-		else
+		else if (!(editing && engine.IsUIVisible() && PickUI(engine, tool.x, tool.y)))
 		{
 			m_selectedLight = -1;
 			m_selected = Pick(engine.GetScene(), engine.GetCamera(), u, v);
 		}
 	}
+	m_toolPointer.prevDown = m_toolPointer.down;
+	m_prevToolDown = tool.down;
 	ImGui::End();
 }
 
@@ -595,6 +663,9 @@ void Editor::DrawGizmo(Engine& engine, float x, float y, float width, float heig
 
 	GameObject& object = *scene.GetObjects()[m_selected];
 	const Camera& camera = engine.GetCamera();
+	// 캔버스 아래 오브젝트는 3D 기즈모가 의미 없음 (위치는 RectTransform, Rect 툴). World 캔버스 루트만 3D 로 옮김
+	const GameObject* canvasObject = nullptr;
+	if (const Canvas* canvas = UISystem::FindCanvas(object, &canvasObject); canvas != nullptr && !(canvas->renderMode == Canvas::World && canvasObject == &object)) return;
 
 	// DirectXMath 행벡터 행렬과 ImGuizmo(열벡터, 열우선 메모리)는 메모리 배치가 같음 — 이동 성분이 [12..14]
 	// 에 있는 것이 그 증거임.
@@ -606,7 +677,7 @@ void Editor::DrawGizmo(Engine& engine, float x, float y, float width, float heig
 	ImGuizmo::SetOrthographic(!camera.IsUsePerspectiveProjection());   // 직교 카메라에서도 기즈모가 맞게
 	ImGuizmo::SetDrawlist();
 	ImGuizmo::SetRect(x, y, width, height);
-	const ImGuizmo::OPERATION operation = m_gizmoOperation == 0 ? ImGuizmo::TRANSLATE : (m_gizmoOperation == 1 ? ImGuizmo::ROTATE : ImGuizmo::SCALE);
+	const ImGuizmo::OPERATION operation = m_gizmoOperation == 1 ? ImGuizmo::ROTATE : (m_gizmoOperation == 2 ? ImGuizmo::SCALE : ImGuizmo::TRANSLATE);   // Rect(3) 는 UI 가 아니면 이동
 	const ImGuizmo::MODE mode = (m_gizmoWorld && m_gizmoOperation != 2) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
 	if (ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], operation, mode, &world.m[0][0]))
 	{
@@ -879,10 +950,112 @@ void Editor::DrawDropGhost(Engine& engine, float x, float y, float width, float 
 	dl->AddText(at, IM_COL32(255, 255, 255, 255), label.c_str());
 }
 
+// ------------------------------------------------------------------ UI 사각형 도우미 (Rect 툴·재부모화)
+
+namespace
+{
+	// 사각형(부모 공간, 회전 전) → RectTransform 값 (앵커·피벗은 주어진 것). ComputeRectWithAnchors 의 역
+	void ApplyRectValues(RectTransform& rt, const UIRect& parent, const UIRect& rect, const XMFLOAT2& anchorMin, const XMFLOAT2& anchorMax, const XMFLOAT2& pivot)
+	{
+		const float pw = parent.Width();
+		const float ph = parent.Height();
+		const XMFLOAT2 aMin(parent.min.x + anchorMin.x * pw, parent.min.y + anchorMin.y * ph);
+		const XMFLOAT2 aMax(parent.min.x + anchorMax.x * pw, parent.min.y + anchorMax.y * ph);
+		const XMFLOAT2 size(rect.Width(), rect.Height());
+		rt.anchorMin = anchorMin;
+		rt.anchorMax = anchorMax;
+		rt.pivot = pivot;
+		rt.sizeDelta = XMFLOAT2(size.x - (aMax.x - aMin.x), size.y - (aMax.y - aMin.y));
+		const XMFLOAT2 p(rect.min.x + size.x * pivot.x, rect.min.y + size.y * pivot.y);
+		rt.anchoredPosition = XMFLOAT2(p.x - (aMin.x + (aMax.x - aMin.x) * pivot.x), p.y - (aMin.y + (aMax.y - aMin.y) * pivot.y));
+	}
+
+	// 오브젝트 자신의 회전 z·스케일 (UISystem::Visit 와 같은 식, 피벗 기준의 선형 부분)
+	UIAffine LocalLinear(const GameObject& object)
+	{
+		const XMFLOAT3& r = object.GetTransform().GetRotation();
+		const XMFLOAT3& s = object.GetTransform().GetScale();
+		UIAffine m;
+		m.a = std::cos(r.z) * s.x;
+		m.b = std::sin(r.z) * s.x;
+		m.c = -std::sin(r.z) * s.y;
+		m.d = std::cos(r.z) * s.y;
+		return m;
+	}
+
+	// 피벗을 P → P' 로 옮길 때 화면의 사각형이 그대로 있도록 더할 이동 t = (RS − I)(P' − P)
+	XMFLOAT2 PivotCorrection(const UIAffine& rs, const XMFLOAT2& from, const XMFLOAT2& to)
+	{
+		const XMFLOAT2 d(to.x - from.x, to.y - from.y);
+		return XMFLOAT2(rs.a * d.x + rs.c * d.y - d.x, rs.b * d.x + rs.d * d.y - d.y);
+	}
+
+	XMFLOAT2 LinearApply(const UIAffine& m, const XMFLOAT2& v)
+	{
+		return XMFLOAT2(m.a * v.x + m.c * v.y, m.b * v.x + m.d * v.y);
+	}
+
+	// 0·0.5·1 근처면 붙임
+	float SnapUnit(float v, float threshold)
+	{
+		for (float t : { 0.0f, 0.5f, 1.0f })
+		{
+			if (std::fabs(v - t) < threshold) return t;
+		}
+		return v;
+	}
+
+	// 재부모화 전 상태 (화면 사각형 유지용)
+	struct UIKeep
+	{
+		bool valid = false;
+		XMFLOAT2 centerCanvas{};
+		XMFLOAT2 size{};
+		float parentScale = 1.0f;   // 옛 부모 공간 1 단위 = 캔버스 몇 단위
+	};
+
+	UIKeep CaptureUIKeep(const UISystem* ui, const GameObject& object)
+	{
+		UIKeep keep;
+		UISystem::ElementGeometry g;
+		if (ui == nullptr || object.GetBehaviour<RectTransform>() == nullptr || !ui->GetElementGeometry(&object, g)) return keep;
+		const XMFLOAT2 c((g.rect.min.x + g.rect.max.x) * 0.5f, (g.rect.min.y + g.rect.max.y) * 0.5f);
+		keep.centerCanvas = g.toCanvas.Apply(c);
+		keep.size = XMFLOAT2(g.rect.Width(), g.rect.Height());
+		keep.parentScale = std::sqrt(std::fabs(g.parentToCanvas.a * g.parentToCanvas.d - g.parentToCanvas.b * g.parentToCanvas.c));
+		keep.valid = true;
+		return keep;
+	}
+
+	// 새 부모의 사각형 안에서 같은 화면 사각형이 되도록 anchoredPosition·sizeDelta 를 다시 계산 (SetParent(keepWorld) 의 UI 판)
+	void RestoreUIKeep(const UISystem* ui, GameObject& object, const UIKeep& keep)
+	{
+		RectTransform* rt = object.GetBehaviour<RectTransform>();
+		const GameObject* parent = object.GetParent();
+		UISystem::ElementGeometry pg;
+		if (!keep.valid || rt == nullptr || parent == nullptr || ui == nullptr || !ui->GetElementGeometry(parent, pg)) return;
+		UIAffine inv;
+		if (!pg.toCanvas.Invert(inv)) return;
+		const float newScale = std::sqrt(std::fabs(pg.toCanvas.a * pg.toCanvas.d - pg.toCanvas.b * pg.toCanvas.c));
+		const float ratio = newScale > 1e-6f ? keep.parentScale / newScale : 1.0f;
+		const XMFLOAT2 size(keep.size.x * ratio, keep.size.y * ratio);
+		const XMFLOAT2 cq = inv.Apply(keep.centerCanvas);
+		// RS(c_r − P) + P = c_q, c_r = m + s/2, P = m + s·pivot → m = c_q − s·pivot − RS(s·(0.5 − pivot))
+		const UIAffine rs = LocalLinear(object);
+		const XMFLOAT2 half(size.x * (0.5f - rt->pivot.x), size.y * (0.5f - rt->pivot.y));
+		const XMFLOAT2 rotated = LinearApply(rs, half);
+		UIRect rect;
+		rect.min = XMFLOAT2(cq.x - size.x * rt->pivot.x - rotated.x, cq.y - size.y * rt->pivot.y - rotated.y);
+		rect.max = XMFLOAT2(rect.min.x + size.x, rect.min.y + size.y);
+		ApplyRectValues(*rt, pg.rect, rect, rt->anchorMin, rt->anchorMax, rt->pivot);
+	}
+}
+
 void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 {
 	DebugUI::BeginPanel("Hierarchy");
 	Scene& scene = engine.GetScene();
+	m_hierarchyUI = &engine.GetUI();
 	auto& objects = scene.GetObjects();
 	ImGui::TextWrapped("Objects %zu   Lights %zu", objects.size(), scene.GetLights().size());
 	// 추가/삭제. 새 오브젝트는 원점 위에 기본 재질로 생기고 바로 선택됨.
@@ -909,6 +1082,37 @@ void Editor::DrawHierarchy(Engine& engine, const Callbacks& callbacks)
 	if (ImGui::SmallButton("+ Camera") && callbacks.addPrimitive)
 	{
 		callbacks.addPrimitive(4);   // 현재 에디터 시점 그대로 카메라 오브젝트 추가
+	}
+	DebugUI::SameLineIfFits(DebugUI::ButtonWidth("+ UI"));
+	if (ImGui::SmallButton("+ UI"))
+	{
+		ImGui::OpenPopup("AddUIPopup");
+	}
+	if (ImGui::BeginPopup("AddUIPopup"))
+	{
+		// 선택한 오브젝트가 캔버스 아래면 그 자식으로 (앱이 판단)
+		if (ImGui::MenuItem("Canvas") && callbacks.addUI)
+		{
+			callbacks.addUI(0, m_selected);
+		}
+		if (ImGui::MenuItem("Image") && callbacks.addUI)
+		{
+			callbacks.addUI(1, m_selected);
+		}
+		if (ImGui::MenuItem("Text") && callbacks.addUI)
+		{
+			callbacks.addUI(2, m_selected);
+		}
+		// 위젯 묶음 (유니티 GameObject > UI 메뉴와 같은 자식 구조, 기본 둥근 사각형 builtin:ui-panel 9-slice)
+		static const char* const kWidgets[] = { "Button", "Toggle", "Slider", "Scroll View", "Panel", "Event System" };
+		for (int i = 0; i < 6; ++i)
+		{
+			if (ImGui::MenuItem(kWidgets[i]) && callbacks.addUI)
+			{
+				callbacks.addUI(3 + i, m_selected);
+			}
+		}
+		ImGui::EndPopup();
 	}
 	const bool canDelete = m_selected >= 0 && m_selected < static_cast<int>(objects.size());
 	const bool deleteKey = canDelete && (m_sceneFocused || ImGui::IsWindowFocused()) && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Delete, false);
@@ -1018,22 +1222,87 @@ void Editor::DrawHierarchyNode(Scene& scene, GameObject& object, const std::unor
 	}
 	if (ImGui::BeginDragDropTarget())
 	{
-		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SHERLOCK_OBJECT"))
+		// 항목의 위·아래 1/4 = 그 형제 앞·뒤에 끼움 (선 표시), 가운데 = 자식으로. 루트끼리는 순서를 바꾸지 않으므로 늘 자식
+		const ImVec2 itemMin = ImGui::GetItemRectMin();
+		const ImVec2 itemMax = ImGui::GetItemRectMax();
+		const float mouseY = ImGui::GetMousePos().y;
+		const float quarter = (itemMax.y - itemMin.y) * 0.25f;
+		int zone = 0;
+		if (object.GetParent() != nullptr)
+		{
+			zone = mouseY < itemMin.y + quarter ? -1 : (mouseY > itemMax.y - quarter ? 1 : 0);
+		}
+		const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SHERLOCK_OBJECT", ImGuiDragDropFlags_AcceptBeforeDelivery | ImGuiDragDropFlags_AcceptNoDrawDefaultRect);
+		if (payload != nullptr && payload->DataSize == sizeof(int))
+		{
+			ImDrawList* dl = ImGui::GetWindowDrawList();
+			const ImU32 color = ImGui::GetColorU32(ImGuiCol_DragDropTarget);
+			if (zone == 0)
+			{
+				dl->AddRect(itemMin, itemMax, color, 0.0f, 0, 2.0f);
+			}
+			else
+			{
+				const float lineY = zone < 0 ? itemMin.y : itemMax.y;
+				dl->AddLine(ImVec2(itemMin.x, lineY), ImVec2(itemMax.x, lineY), color, 2.0f);
+			}
+		}
+		if (payload != nullptr && payload->IsDelivery() && payload->DataSize == sizeof(int))
 		{
 			const int dragged = *static_cast<const int*>(payload->Data);
-			if (GameObject* child = scene.GetObject(dragged < 0 ? SIZE_MAX : static_cast<size_t>(dragged)))
+			GameObject* child = scene.GetObject(dragged < 0 ? SIZE_MAX : static_cast<size_t>(dragged));
+			GameObject* newParent = zone == 0 ? &object : object.GetParent();
+			if (child != nullptr && child != &object)
 			{
-				if (child->SetParent(&object))
+				if (!ReparentKeepingUI(m_hierarchyUI, *child, newParent))   // UI 면 화면 사각형 그대로 (새 부모 기준 값으로)
 				{
-					Log::Info("계층: '%s' → '%s' 의 자식", child->GetName().c_str(), object.GetName().c_str());
+					Log::Warn("계층: '%s' 를 '%s' 아래로 옮길 수 없음 (자기 자신 또는 자손)", child->GetName().c_str(), newParent->GetName().c_str());
 				}
 				else
 				{
-					Log::Warn("계층: '%s' 를 '%s' 의 자식으로 만들 수 없음 (자기 자신 또는 자손)", child->GetName().c_str(), object.GetName().c_str());
+					if (zone != 0)
+					{
+						size_t target = object.GetSiblingIndex() + (zone > 0 ? 1 : 0);
+						if (child->GetSiblingIndex() < target)
+						{
+							--target;   // 자기 자리를 빼면 한 칸 당겨짐
+						}
+						child->SetSiblingIndex(target);
+						Log::Info("계층: '%s' → '%s' %s", child->GetName().c_str(), object.GetName().c_str(), zone < 0 ? "앞" : "뒤");
+					}
+					else
+					{
+						Log::Info("계층: '%s' → '%s' 의 자식", child->GetName().c_str(), object.GetName().c_str());
+					}
 				}
 			}
 		}
 		ImGui::EndDragDropTarget();
+	}
+
+	// 형제 순서 (UI 는 먼저 그린 것이 아래). 드래그 재부모화는 끝에 붙이므로 순서는 여기서 바꿈
+	if (ImGui::BeginPopupContextItem("##order"))
+	{
+		m_selected = index;
+		const size_t sibling = object.GetSiblingIndex();
+		const size_t siblings = object.GetParent() != nullptr ? object.GetParent()->GetChildren().size() : 0;
+		if (ImGui::MenuItem("Move Up", nullptr, false, object.GetParent() != nullptr && sibling > 0))
+		{
+			object.SetSiblingIndex(sibling - 1);
+		}
+		if (ImGui::MenuItem("Move Down", nullptr, false, object.GetParent() != nullptr && sibling + 1 < siblings))
+		{
+			object.SetSiblingIndex(sibling + 1);
+		}
+		if (ImGui::MenuItem("Move to First", nullptr, false, object.GetParent() != nullptr && sibling > 0))
+		{
+			object.SetSiblingIndex(0);
+		}
+		if (ImGui::MenuItem("Move to Last", nullptr, false, object.GetParent() != nullptr && sibling + 1 < siblings))
+		{
+			object.SetSiblingIndex(siblings - 1);
+		}
+		ImGui::EndPopup();
 	}
 
 	if (open && hadChildren)
@@ -1103,34 +1372,58 @@ int Editor::PickLight(Engine& engine, float mouseX, float mouseY, float x, float
 	return best;
 }
 
-// CSM 디버그 오버레이: 캐스케이드 조각마다 절두체 와이어 (0 빨강, 1 초록, 2 파랑, 3 노랑 — 디버그 뷰 8 의 색과 같음).
-// 고정(Freeze) 중일 때만 그림 — 고정하지 않으면 지금 카메라 자신의 절두체라 변이 화면 가장자리에만 얹혀 정보가 없음.
-// 꼭짓점이 에디터 카메라 뒤인 변은 ProjectToView 가 걸러서 건너뜀.
-void Editor::DrawCascadeFrustums(Engine& engine, float x, float y, float width, float height)
+// 컬링 고정 디버그 오버레이 (docs/plan/freeze-culling-camera-plan.html). 고정 중일 때만 그림 — 고정하지 않으면 지금 카메라
+// 자신의 절두체라 변이 화면 가장자리에만 얹혀 정보가 없음. 한 끝이 에디터 카메라 뒤인 변은 앞쪽 몫만 그림 (ProjectSegmentToView).
+// 이 기능 전의 캐스케이드 와이어는 그런 변을 통째로 건너뛰었음.
+//   흰 선      고정 카메라의 전체 절두체 (objects·lights 항목 중 하나라도 켜져 있을 때. 캐스케이드만 고정하면 예전 화면 그대로)
+//   색 선      캐스케이드 조각마다 (0 빨강, 1 초록, 2 파랑, 3 노랑 — 디버그 뷰 8 의 색과 같음). cascades 항목이 켜져 있을 때
+void Editor::DrawFreezeOverlay(Engine& engine, float x, float y, float width, float height)
 {
 	if (playState != PlayState::Editing || width <= 0.0f || height <= 0.0f) return;
 	const Renderer& renderer = engine.GetRenderer();
-	if (!renderer.IsCascadeFrozen()) return;
-	const uint32_t count = renderer.GetCascadeFrustumCount();
-	if (count == 0) return;
+	if (!renderer.IsCullFrozen()) return;
+	const Renderer::CullFreezeParts parts = renderer.GetCullFreezeParts();
 
 	const Camera& camera = engine.GetCamera();
 	const XMMATRIX viewProj = camera.GetViewMatrix() * camera.GetProjectionMatrix();
 	ImDrawList* dl = ImGui::GetWindowDrawList();
 	dl->PushClipRect(ImVec2(x, y), ImVec2(x + width, y + height), true);
-	static const ImU32 colors[4] = { IM_COL32(255, 60, 60, 255), IM_COL32(60, 255, 60, 255), IM_COL32(80, 120, 255, 255), IM_COL32(255, 255, 60, 255) };
+	// 꼭짓점 순서 [0..3] 앞면 (−x−y, +x−y, −x+y, +x+y), [4..7] 뒷면 같은 순서 (GetCascadeFrustumCorners 와 같음).
 	// 앞면 사각형 (0,1,3,2), 뒷면 사각형 (4,5,7,6), 앞뒤를 잇는 변 i → i+4
 	static const int edges[12][2] = { { 0, 1 }, { 1, 3 }, { 3, 2 }, { 2, 0 }, { 4, 5 }, { 5, 7 }, { 7, 6 }, { 6, 4 }, { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 } };
-	for (uint32_t c = 0; c < count && c < 4; ++c)
+	const auto drawBox = [&](const XMFLOAT3* corners, ImU32 color, float thickness)
 	{
-		const XMFLOAT3* corners = renderer.GetCascadeFrustumCorners(c);
 		for (const auto& edge : edges)
 		{
 			ImVec2 a, b;
-			if (ProjectToView(viewProj, x, y, width, height, corners[edge[0]], a) && ProjectToView(viewProj, x, y, width, height, corners[edge[1]], b))
+			if (ProjectSegmentToView(viewProj, x, y, width, height, corners[edge[0]], corners[edge[1]], a, b))
 			{
-				dl->AddLine(a, b, colors[c], 2.0f);
+				dl->AddLine(a, b, color, thickness);
 			}
+		}
+	};
+
+	if (parts.objects || parts.lights)
+	{
+		// 고정 카메라 ViewProj 의 역행렬로 NDC 상자 (x, y = ±1, D3D z = 0·1) 꼭짓점을 월드로 되돌림. 원근·직교 둘 다 같은 식.
+		const Camera& frozen = renderer.GetCullFreezeCamera();
+		const XMMATRIX inverse = XMMatrixInverse(nullptr, frozen.GetViewMatrix() * frozen.GetProjectionMatrix());
+		XMFLOAT3 corners[8];
+		for (int k = 0; k < 8; ++k)
+		{
+			const XMVECTOR ndc = XMVectorSet((k & 1) ? 1.0f : -1.0f, (k & 2) ? 1.0f : -1.0f, (k & 4) ? 1.0f : 0.0f, 1.0f);
+			XMStoreFloat3(&corners[k], XMVector3TransformCoord(ndc, inverse));
+		}
+		drawBox(corners, IM_COL32(255, 255, 255, 230), 1.5f);
+	}
+
+	if (parts.cascades)
+	{
+		static const ImU32 colors[4] = { IM_COL32(255, 60, 60, 255), IM_COL32(60, 255, 60, 255), IM_COL32(80, 120, 255, 255), IM_COL32(255, 255, 60, 255) };
+		const uint32_t count = renderer.GetCascadeFrustumCount();
+		for (uint32_t c = 0; c < count && c < 4; ++c)
+		{
+			drawBox(renderer.GetCascadeFrustumCorners(c), colors[c], 2.0f);
 		}
 	}
 	dl->PopClipRect();
@@ -1157,7 +1450,9 @@ void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float
 		ImVec2 c;
 		if (!project(anchor, c)) continue;
 		const bool selected = i == m_selectedLight;
-		const ImU32 tint = IM_COL32(static_cast<int>(std::clamp(light.color.x, 0.0f, 1.0f) * 255), static_cast<int>(std::clamp(light.color.y, 0.0f, 1.0f) * 255), static_cast<int>(std::clamp(light.color.z, 0.0f, 1.0f) * 255), 255);
+		// 컬링 고정 디버그: 고정 시점에서 컬링된 지역광은 회색 + X (빛도 꺼져 있음 — Renderer::CullLights)
+		const bool culledByFreeze = engine.GetRenderer().IsLightCulledByFreeze(static_cast<uint32_t>(i));
+		const ImU32 tint = culledByFreeze ? IM_COL32(110, 110, 110, 255) : IM_COL32(static_cast<int>(std::clamp(light.color.x, 0.0f, 1.0f) * 255), static_cast<int>(std::clamp(light.color.y, 0.0f, 1.0f) * 255), static_cast<int>(std::clamp(light.color.z, 0.0f, 1.0f) * 255), 255);
 		const ImU32 outline = selected ? IM_COL32(255, 200, 40, 255) : IM_COL32(20, 20, 20, 230);
 		const float thickness = selected ? 2.5f : 1.5f;
 
@@ -1176,6 +1471,11 @@ void Editor::DrawLightIcons(Engine& engine, float x, float y, float width, float
 
 		dl->AddCircleFilled(c, 7.0f, tint);
 		dl->AddCircle(c, 7.0f, outline, 0, thickness);
+		if (culledByFreeze)
+		{
+			dl->AddLine(ImVec2(c.x - 4.5f, c.y - 4.5f), ImVec2(c.x + 4.5f, c.y + 4.5f), IM_COL32(30, 30, 30, 255), 2.0f);
+			dl->AddLine(ImVec2(c.x - 4.5f, c.y + 4.5f), ImVec2(c.x + 4.5f, c.y - 4.5f), IM_COL32(30, 30, 30, 255), 2.0f);
+		}
 		if (light.type == LightType::Point)
 		{
 			for (int r = 0; r < 8; ++r)   // 사방으로 뻗는 짧은 광선 (화면 고정 크기)
@@ -1505,7 +1805,13 @@ void Editor::DrawInspector(Engine& engine)
 	XMFLOAT3 rotation = t.GetRotation();
 	XMFLOAT3 scale = t.GetScale();
 	XMFLOAT3 rotationDeg(XMConvertToDegrees(rotation.x), XMConvertToDegrees(rotation.y), XMConvertToDegrees(rotation.z));
-	if (DebugUI::DragFloat3R("Position", &position.x, 0.0f, 0.0f, 0.0f, 0.05f, 0.0f, 0.0f))
+	const bool isUI = UISystem::IsUnderCanvas(object);
+	if (isUI)
+	{
+		// 화면 공간 캔버스 아래: 위치·크기는 RectTransform, Transform 은 피벗 중심 회전 z 와 스케일 xy 만 씀
+		ImGui::TextDisabled("UI element: position/size in RectTransform; rotation z and scale xy turn around the pivot");
+	}
+	else if (DebugUI::DragFloat3R("Position", &position.x, 0.0f, 0.0f, 0.0f, 0.05f, 0.0f, 0.0f))
 	{
 		t.SetPosition(position);
 	}
@@ -1672,7 +1978,7 @@ void Editor::DrawInspector(Engine& engine)
 
 	// 컴포넌트
 	ImGui::Separator();
-	DrawComponents(object);
+	DrawComponents(engine, object);
 	DebugUI::EndPanel();
 }
 
@@ -1684,10 +1990,154 @@ namespace
 	class ImGuiPropertyVisitor : public PropertyVisitor
 	{
 	public:
+		ImGuiPropertyVisitor(GameObject* owner = nullptr, Scene* scene = nullptr)
+			: m_owner(owner), m_scene(scene)
+		{}
+		// 오브젝트 상대 경로 칸 + Hierarchy 에서 끌어 놓기 (놓으면 이 컴포넌트의 오브젝트 기준 경로로 바꿈). 못 찾으면 빨간 표시
+		void ObjectRef(const char* name, std::string& value) override
+		{
+			char buffer[256];
+			strncpy_s(buffer, value.c_str(), _TRUNCATE);
+			if (ImGui::InputTextWithHint(name, "drop an object from Hierarchy, or path (. .. Child/Name)", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue))
+			{
+				value = buffer;
+			}
+			DropObject(value);
+			if (m_owner != nullptr && !value.empty() && UIObjectRef::Resolve(*m_owner, value) == nullptr)
+			{
+				ImGui::SameLine();
+				ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f), "missing");
+			}
+		}
+		// UIEvent 의 저장되는 연결 목록 (유니티 UnityEvent 의 Inspector): 대상 · 함수 · 인자
+		void Event(const char* name, UIEventBase& value) override
+		{
+			ImGui::PushID(name);
+			ImGui::TextUnformatted(name);
+			ImGui::SameLine();
+			ImGui::TextDisabled("(%s)", UIValueKindName(value.GetValueKind()));
+			ImGui::SameLine();
+			if (ImGui::SmallButton("+"))
+			{
+				value.calls.push_back(UIPersistentCall{ ".", "", true, {} });
+			}
+			int removeAt = -1;
+			for (int i = 0; i < static_cast<int>(value.calls.size()); ++i)
+			{
+				UIPersistentCall& call = value.calls[i];
+				ImGui::PushID(i);
+				ImGui::Indent();
+				if (ImGui::SmallButton("x"))
+				{
+					removeAt = i;
+				}
+				ImGui::SameLine();
+				ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.5f);
+				char buffer[256];
+				strncpy_s(buffer, call.target.c_str(), _TRUNCATE);
+				if (ImGui::InputTextWithHint("##target", "target (drop object)", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue))
+				{
+					call.target = buffer;
+				}
+				DropObject(call.target);
+				ImGui::SameLine();
+				// 대상 오브젝트의 컴포넌트마다 SHERLOCK_UI_ACTION 으로 올린 함수
+				GameObject* target = m_owner != nullptr ? UIObjectRef::Resolve(*m_owner, call.target) : nullptr;
+				const UIActionRegistry::Action* current = UIActionRegistry::Find(call.method);
+				ImGui::SetNextItemWidth(-FLT_MIN);
+				if (ImGui::BeginCombo("##method", call.method.empty() ? "(no function)" : call.method.c_str()))
+				{
+					if (target == nullptr)
+					{
+						ImGui::TextDisabled("target not found");
+					}
+					else
+					{
+						for (const auto& b : target->GetBehaviours())
+						{
+							for (const UIActionRegistry::Action* action : UIActionRegistry::ListFor(b->GetTypeName()))
+							{
+								const std::string label = action->fullName + " (" + UIValueKindName(action->argument) + ")";
+								if (ImGui::Selectable(label.c_str(), action->fullName == call.method))
+								{
+									call.method = action->fullName;
+									call.dynamic = action->argument == value.GetValueKind() && action->argument != UIValue::None;
+									call.argument = UIValue{};
+									call.argument.kind = action->argument;
+								}
+							}
+						}
+					}
+					ImGui::EndCombo();
+				}
+				if (current == nullptr && !call.method.empty())
+				{
+					ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f), "function not registered (script DLL not loaded?)");
+				}
+				else if (current != nullptr && current->argument != UIValue::None)
+				{
+					// 이벤트 값을 그대로 넘길 수 있으면 (종류가 같음) dynamic 선택, 아니면 고정 인자
+					const bool canDynamic = current->argument == value.GetValueKind();
+					if (canDynamic)
+					{
+						ImGui::Checkbox("dynamic (use event value)", &call.dynamic);
+					}
+					else
+					{
+						call.dynamic = false;
+					}
+					if (!call.dynamic)
+					{
+						call.argument.kind = current->argument;
+						switch (current->argument)
+						{
+						case UIValue::Float: ImGui::DragFloat("argument", &call.argument.f, 0.01f); break;
+						case UIValue::Int: ImGui::DragInt("argument", &call.argument.i); break;
+						case UIValue::Bool: ImGui::Checkbox("argument", &call.argument.b); break;
+						case UIValue::String:
+						{
+							char text[256];
+							strncpy_s(text, call.argument.s.c_str(), _TRUNCATE);
+							if (ImGui::InputText("argument", text, sizeof(text)))
+							{
+								call.argument.s = text;
+							}
+							break;
+						}
+						default: break;
+						}
+					}
+				}
+				ImGui::Unindent();
+				ImGui::PopID();
+			}
+			if (removeAt >= 0)
+			{
+				value.calls.erase(value.calls.begin() + removeAt);
+			}
+			ImGui::PopID();
+		}
 		void Float(const char* name, float& value, float speed) override { ImGui::DragFloat(name, &value, speed); }
 		void Int(const char* name, int& value) override { ImGui::DragInt(name, &value); }
 		void Bool(const char* name, bool& value) override { ImGui::Checkbox(name, &value); }
 		void Float3(const char* name, XMFLOAT3& value, float speed) override { ImGui::DragFloat3(name, &value.x, speed); }
+		void Float2(const char* name, XMFLOAT2& value, float speed) override { ImGui::DragFloat2(name, &value.x, speed); }
+		void Color(const char* name, XMFLOAT4& value) override { ImGui::ColorEdit4(name, &value.x, ImGuiColorEditFlags_AlphaBar); }
+		void Enum(const char* name, int& value, const char* const* names, int count) override
+		{
+			const char* preview = value >= 0 && value < count ? names[value] : "?";
+			if (ImGui::BeginCombo(name, preview))
+			{
+				for (int i = 0; i < count; ++i)
+				{
+					if (ImGui::Selectable(names[i], i == value))
+					{
+						value = i;
+					}
+				}
+				ImGui::EndCombo();
+			}
+		}
 		void String(const char* name, std::string& value) override
 		{
 			char buffer[256];
@@ -1697,7 +2147,547 @@ namespace
 				value = buffer;
 			}
 		}
+		// 에셋 이름 칸 + 콘텐츠 브라우저 드롭. 이름 규칙은 재질 텍스처와 같음 (Textures\ 바로 아래는 이름만, 그 밖은 "asset:<Assets 기준>")
+		void MultilineString(const char* name, std::string& value) override
+		{
+			// 한글 입력 가능 (ImGui 가 WM_CHAR 의 UTF-16 을 받음). 4 KB 까지
+			char buffer[4096];
+			strncpy_s(buffer, value.c_str(), _TRUNCATE);
+			if (ImGui::InputTextMultiline(name, buffer, sizeof(buffer), ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 4.0f)))
+			{
+				value = buffer;
+			}
+		}
+		void Asset(const char* name, std::string& value, AssetKind kind) override
+		{
+			// Enter 로만 적용 (글자마다 적용하면 칠 때마다 반쯤 친 이름을 읽으려다 실패 경고가 남음 — 실패도 캐시에 남음)
+			char buffer[260];
+			strncpy_s(buffer, value.c_str(), _TRUNCATE);
+			if (ImGui::InputTextWithHint(name, kind == AssetKind::Font ? "default (Noto Sans KR) or drop a .ttf/.otf, Enter" : "name or drop a texture, Enter to apply", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue))
+			{
+				value = buffer;
+			}
+			if (!ImGui::BeginDragDropTarget()) return;
+			const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kAssetPayloadType);
+			if (payload != nullptr && payload->DataSize == sizeof(AssetDragPayload))
+			{
+				AssetDragPayload asset = *static_cast<const AssetDragPayload*>(payload->Data);
+				asset.relativePath[259] = L'\0';   // 종료 문자 방어
+				if (kind == AssetKind::Texture && asset.type == AssetType::Texture)
+				{
+					value = ContentBrowser::ToMaterialTextureName(asset.relativePath);
+				}
+				else if (kind == AssetKind::Font && asset.type == AssetType::Font)
+				{
+					value = "asset:" + Log::ToUtf8(asset.relativePath);   // FontLibrary 이름 규칙: Assets 기준 경로
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+	private:
+		void DropObject(std::string& value)
+		{
+			if (m_owner == nullptr || m_scene == nullptr || !ImGui::BeginDragDropTarget()) return;
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SHERLOCK_OBJECT"); payload != nullptr && payload->DataSize == sizeof(int))
+			{
+				const int index = *static_cast<const int*>(payload->Data);
+				if (index >= 0 && index < static_cast<int>(m_scene->GetObjects().size()))
+				{
+					value = UIObjectRef::MakePath(*m_owner, *m_scene->GetObjects()[index]);
+				}
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+		GameObject* m_owner;
+		Scene* m_scene;
 	};
+
+	// RectTransform 앵커 프리셋 (유니티 Anchor Presets 의 Alt+Shift 동작: 앵커·피벗을 정하고 위치를 그 자리에 붙임).
+	// 늘이는 축은 sizeDelta 를 0 으로 (부모를 꽉 채움), 아닌 축은 크기를 그대로 둠.
+	struct AnchorPreset
+	{
+		const char* name;
+		float minX, minY, maxX, maxY;
+	};
+	constexpr AnchorPreset kAnchorPresets[] = {
+		{ "top left", 0, 1, 0, 1 }, { "top center", 0.5f, 1, 0.5f, 1 }, { "top right", 1, 1, 1, 1 },
+		{ "middle left", 0, 0.5f, 0, 0.5f }, { "center", 0.5f, 0.5f, 0.5f, 0.5f }, { "middle right", 1, 0.5f, 1, 0.5f },
+		{ "bottom left", 0, 0, 0, 0 }, { "bottom center", 0.5f, 0, 0.5f, 0 }, { "bottom right", 1, 0, 1, 0 },
+		{ "stretch top", 0, 1, 1, 1 }, { "stretch middle", 0, 0.5f, 1, 0.5f }, { "stretch bottom", 0, 0, 1, 0 },
+		{ "stretch left", 0, 0, 0, 1 }, { "stretch center", 0.5f, 0, 0.5f, 1 }, { "stretch right", 1, 0, 1, 1 },
+		{ "stretch all", 0, 0, 1, 1 },
+	};
+
+	// 레이아웃 그룹·ContentSizeFitter·Slider 가 정한 값은 Inspector 에서 고쳐도 다음 프레임에 덮임 — 유니티의 "Some values driven by ..." 표시
+	void DrawDrivenNote(const UISystem& ui, const GameObject& object)
+	{
+		UISystem::ElementGeometry g;
+		if (!ui.GetElementGeometry(&object, g)) return;
+		if (!g.driven[0] && !g.driven[1] && !g.drivenAnchors) return;
+		std::string text = "driven:";
+		if (g.drivenAnchors) text += " anchors";
+		if (g.driven[0]) text += " x/width";
+		if (g.driven[1]) text += " y/height";
+		ImGui::TextColored(ImVec4(0.55f, 0.75f, 1.0f, 1.0f), "%s (by layout / fitter / slider — edits are overwritten)", text.c_str());
+	}
+
+	void DrawAnchorPresets(RectTransform& rt)
+	{
+		const char* current = "custom";
+		for (const AnchorPreset& p : kAnchorPresets)
+		{
+			if (rt.anchorMin.x == p.minX && rt.anchorMin.y == p.minY && rt.anchorMax.x == p.maxX && rt.anchorMax.y == p.maxY)
+			{
+				current = p.name;
+			}
+		}
+		if (!ImGui::BeginCombo("anchor preset", current)) return;
+		for (const AnchorPreset& p : kAnchorPresets)
+		{
+			if (!ImGui::Selectable(p.name, p.name == current)) continue;
+			const bool stretchX = p.minX != p.maxX;
+			const bool stretchY = p.minY != p.maxY;
+			rt.anchorMin = XMFLOAT2(p.minX, p.minY);
+			rt.anchorMax = XMFLOAT2(p.maxX, p.maxY);
+			rt.pivot = XMFLOAT2(stretchX ? 0.5f : p.minX, stretchY ? 0.5f : p.minY);
+			rt.anchoredPosition = XMFLOAT2(0.0f, 0.0f);
+			if (stretchX)
+			{
+				rt.sizeDelta.x = 0.0f;
+			}
+			if (stretchY)
+			{
+				rt.sizeDelta.y = 0.0f;
+			}
+		}
+		ImGui::EndCombo();
+	}
+}
+
+void Editor::DrawUISelection(Engine& engine, float x, float y)
+{
+	Scene& scene = engine.GetScene();
+	if (m_selected < 0 || m_selected >= static_cast<int>(scene.GetObjects().size()) || !engine.IsUIVisible()) return;
+	XMFLOAT2 quad[4];
+	// 지난 프레임의 Build 결과 (이번 프레임 Build 는 OnGUI 뒤). 캔버스 아래가 아니면 false
+	if (!engine.GetUI().GetScreenQuad(scene.GetObjects()[m_selected].get(), quad)) return;
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+	ImVec2 points[4];
+	for (int i = 0; i < 4; ++i)
+	{
+		points[i] = ImVec2(x + quad[i].x, y + quad[i].y);
+	}
+	dl->AddPolyline(points, 4, IM_COL32(255, 200, 40, 255), ImDrawFlags_Closed, 1.5f);
+}
+
+// ------------------------------------------------------------------ Rect 툴 (7단계) — 도우미는 Hierarchy 앞에 (재부모화가 씀)
+
+bool Editor::ReparentKeepingUI(const UISystem* ui, GameObject& child, GameObject* parent)
+{
+	const UIKeep keep = child.GetParent() != parent ? CaptureUIKeep(ui, child) : UIKeep{};
+	if (child.GetParent() != parent && !child.SetParent(parent)) return false;
+	RestoreUIKeep(ui, child, keep);
+	return true;
+}
+
+Editor::ToolMouse Editor::GetToolMouse() const
+{
+	ToolMouse m;
+	if (m_toolPointer.active)
+	{
+		m.x = m_toolPointer.x;
+		m.y = m_toolPointer.y;
+		m.down = m_toolPointer.down;
+		m.pressed = m_toolPointer.down && !m_toolPointer.prevDown;
+		m.released = !m_toolPointer.down && m_toolPointer.prevDown;
+		m.shift = m_toolPointer.shift;
+		m.alt = m_toolPointer.alt;
+		m.ctrl = m_toolPointer.ctrl;
+		return m;
+	}
+	const ImGuiIO& io = ImGui::GetIO();
+	m.x = io.MousePos.x - m_sceneImageX;
+	m.y = io.MousePos.y - m_sceneImageY;
+	m.down = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+	m.pressed = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+	m.released = ImGui::IsMouseReleased(ImGuiMouseButton_Left);
+	m.shift = io.KeyShift;
+	m.alt = io.KeyAlt;
+	m.ctrl = io.KeyCtrl;
+	return m;
+}
+
+bool Editor::PickUI(Engine& engine, float px, float py)
+{
+	Scene& scene = engine.GetScene();
+	const UISystem& ui = engine.GetUI();
+	// 같은 자리(3 px)를 다시 누르면 지금 고른 것 아래의 요소 (유니티 씬 뷰와 같음)
+	uint64_t after = 0;
+	if (std::fabs(px - m_lastUIPickX) < 3.0f && std::fabs(py - m_lastUIPickY) < 3.0f)
+	{
+		if (const GameObject* selected = scene.GetObject(m_selected < 0 ? SIZE_MAX : static_cast<size_t>(m_selected)))
+		{
+			after = selected->GetId();
+		}
+	}
+	m_lastUIPickX = px;
+	m_lastUIPickY = py;
+	const uint64_t id = ui.PickElement(px, py, after);
+	if (id == 0) return false;
+	const auto& objects = scene.GetObjects();
+	for (int i = 0; i < static_cast<int>(objects.size()); ++i)
+	{
+		if (objects[i]->GetId() == id)
+		{
+			m_selected = i;
+			m_selectedLight = -1;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Editor::DrawRectTool(Engine& engine, float x, float y, bool editing)
+{
+	const ToolMouse mouse = GetToolMouse();
+	Scene& scene = engine.GetScene();
+	UISystem& ui = engine.GetUI();
+	if (m_rectDrag.active && !mouse.down)
+	{
+		// 끌지 않고 뗀 안쪽 클릭 = 선택 (겹친 요소를 차례로 고르기)
+		const bool click = m_rectDrag.mode == 0 && !m_rectDrag.moved;
+		m_rectDrag.active = false;
+		if (click && engine.IsUIVisible())
+		{
+			PickUI(engine, mouse.x, mouse.y);
+		}
+		return true;
+	}
+	if (!editing || m_gizmoOperation != 3 || !engine.IsUIVisible()) return false;
+	GameObject* object = scene.GetObject(m_selected < 0 ? SIZE_MAX : static_cast<size_t>(m_selected));
+	RectTransform* rt = object != nullptr ? object->GetBehaviour<RectTransform>() : nullptr;
+	UISystem::ElementGeometry g;
+	if (rt == nullptr || object->GetParent() == nullptr || !ui.GetElementGeometry(object, g) || g.scale <= 0.0f) return false;
+	if (m_rectDrag.active && m_rectDrag.objectId != object->GetId())
+	{
+		m_rectDrag.active = false;
+	}
+
+	// 캔버스 ↔ 씬 뷰 픽셀 (Overlay: y 위 + 캔버스, y 아래 + 픽셀)
+	const float scale = g.scale;
+	const float viewH = static_cast<float>(g.viewHeight);
+	const auto toScreen = [&](const XMFLOAT2& c) { return ImVec2(x + c.x * scale, y + viewH - c.y * scale); };
+	const auto toCanvas = [&](float px, float py) { return XMFLOAT2(px / scale, (viewH - py) / scale); };
+	const auto local = [&](const XMFLOAT2& p) { return toScreen(g.toCanvas.Apply(p)); };
+	const UIRect& r = g.rect;
+	const XMFLOAT2 size(r.Width(), r.Height());
+	const XMFLOAT2 pivotLocal(r.min.x + size.x * rt->pivot.x, r.min.y + size.y * rt->pivot.y);
+	const float pw = g.parentRect.Width();
+	const float ph = g.parentRect.Height();
+	const XMFLOAT2 anchorPoints[4] = {
+		XMFLOAT2(g.parentRect.min.x + rt->anchorMin.x * pw, g.parentRect.min.y + rt->anchorMin.y * ph),
+		XMFLOAT2(g.parentRect.min.x + rt->anchorMax.x * pw, g.parentRect.min.y + rt->anchorMin.y * ph),
+		XMFLOAT2(g.parentRect.min.x + rt->anchorMax.x * pw, g.parentRect.min.y + rt->anchorMax.y * ph),
+		XMFLOAT2(g.parentRect.min.x + rt->anchorMin.x * pw, g.parentRect.min.y + rt->anchorMax.y * ph),
+	};
+
+	// ---- 그리기: 부모 사각형(점선 대신 흐린 선), 핸들 8 개, 피벗 원, 앵커 삼각형 4 개 ----
+	ImDrawList* dl = ImGui::GetWindowDrawList();
+	{
+		const XMFLOAT2 pc[4] = { g.parentRect.min, XMFLOAT2(g.parentRect.max.x, g.parentRect.min.y), g.parentRect.max, XMFLOAT2(g.parentRect.min.x, g.parentRect.max.y) };
+		ImVec2 pts[4];
+		for (int i = 0; i < 4; ++i)
+		{
+			pts[i] = toScreen(g.parentToCanvas.Apply(pc[i]));
+		}
+		dl->AddPolyline(pts, 4, IM_COL32(255, 255, 255, 70), ImDrawFlags_Closed, 1.0f);
+	}
+	const ImU32 handleColor = IM_COL32(80, 150, 255, 255);
+	ImVec2 handles[3][3];
+	for (int hy = -1; hy <= 1; ++hy)
+	{
+		for (int hx = -1; hx <= 1; ++hx)
+		{
+			const XMFLOAT2 p(r.min.x + size.x * (hx + 1) * 0.5f, r.min.y + size.y * (hy + 1) * 0.5f);
+			handles[hy + 1][hx + 1] = local(p);
+			if (hx == 0 && hy == 0) continue;
+			const ImVec2 h = handles[hy + 1][hx + 1];
+			dl->AddRectFilled(ImVec2(h.x - 3.5f, h.y - 3.5f), ImVec2(h.x + 3.5f, h.y + 3.5f), IM_COL32(255, 255, 255, 255));
+			dl->AddRect(ImVec2(h.x - 3.5f, h.y - 3.5f), ImVec2(h.x + 3.5f, h.y + 3.5f), handleColor);
+		}
+	}
+	const ImVec2 pivotScreen = local(pivotLocal);
+	dl->AddCircle(pivotScreen, 5.0f, handleColor, 16, 2.0f);
+	ImVec2 anchorScreen[4];
+	for (int i = 0; i < 4; ++i)
+	{
+		anchorScreen[i] = toScreen(g.parentToCanvas.Apply(anchorPoints[i]));
+		// 삼각형 꼭짓점이 앵커, 바깥쪽(그 모서리 방향)으로 벌어짐
+		const float sx = (i == 0 || i == 3) ? -1.0f : 1.0f;
+		const float sy = (i == 0 || i == 1) ? 1.0f : -1.0f;   // 픽셀 y 아래 +
+		const ImVec2 a = anchorScreen[i];
+		dl->AddTriangleFilled(a, ImVec2(a.x + sx * 9.0f, a.y + sy * 4.0f), ImVec2(a.x + sx * 4.0f, a.y + sy * 9.0f), IM_COL32(255, 255, 255, 230));
+		dl->AddTriangle(a, ImVec2(a.x + sx * 9.0f, a.y + sy * 4.0f), ImVec2(a.x + sx * 4.0f, a.y + sy * 9.0f), IM_COL32(40, 40, 40, 255));
+	}
+	if (g.driven[0] || g.driven[1] || g.drivenAnchors)
+	{
+		dl->AddText(ImVec2(handles[2][0].x, handles[2][0].y - 18.0f), IM_COL32(140, 190, 255, 255), "driven by layout");
+	}
+
+	const ImVec2 m(x + mouse.x, y + mouse.y);
+	const auto isNear = [&](const ImVec2& p, float radius) { return std::fabs(p.x - m.x) <= radius && std::fabs(p.y - m.y) <= radius; };
+
+	// ---- 누름: 피벗 → 앵커 → 핸들 → 안쪽 ----
+	if (mouse.pressed && !m_rectDrag.active)
+	{
+		const bool inside = mouse.x >= 0.0f && mouse.y >= 0.0f && mouse.x < static_cast<float>(m_sceneWidth) && mouse.y < static_cast<float>(m_sceneHeight);
+		if (!inside) return false;
+		int mode = -1, hx = 0, hy = 0, anchor = 0;
+		if (isNear(pivotScreen, 6.0f))
+		{
+			mode = 2;
+		}
+		for (int i = 0; i < 4 && mode < 0; ++i)
+		{
+			const float sx = (i == 0 || i == 3) ? -1.0f : 1.0f;
+			const float sy = (i == 0 || i == 1) ? 1.0f : -1.0f;
+			if (isNear(ImVec2(anchorScreen[i].x + sx * 5.0f, anchorScreen[i].y + sy * 5.0f), 5.0f))
+			{
+				mode = 3;
+				anchor = i;
+			}
+		}
+		for (int iy = -1; iy <= 1 && mode < 0; ++iy)
+		{
+			for (int ix = -1; ix <= 1 && mode < 0; ++ix)
+			{
+				if ((ix != 0 || iy != 0) && isNear(handles[iy + 1][ix + 1], 6.0f))
+				{
+					mode = 1;
+					hx = ix;
+					hy = iy;
+				}
+			}
+		}
+		if (mode < 0)
+		{
+			UIAffine inv;
+			if (g.toCanvas.Invert(inv))
+			{
+				const XMFLOAT2 lm = inv.Apply(toCanvas(mouse.x, mouse.y));
+				if (lm.x >= r.min.x && lm.x <= r.max.x && lm.y >= r.min.y && lm.y <= r.max.y)
+				{
+					mode = 0;
+				}
+			}
+		}
+		if (mode < 0) return false;
+		m_rectDrag.active = true;
+		m_rectDrag.mode = mode;
+		m_rectDrag.hx = hx;
+		m_rectDrag.hy = hy;
+		m_rectDrag.anchor = anchor;
+		m_rectDrag.objectId = object->GetId();
+		m_rectDrag.moved = false;
+		m_rectDrag.startX = mouse.x;
+		m_rectDrag.startY = mouse.y;
+		m_rectDrag.startAnchoredPosition = rt->anchoredPosition;
+		m_rectDrag.startSizeDelta = rt->sizeDelta;
+		m_rectDrag.startPivot = rt->pivot;
+		m_rectDrag.startAnchorMin = rt->anchorMin;
+		m_rectDrag.startAnchorMax = rt->anchorMax;
+		m_rectStartGeometry = g;
+		return true;
+	}
+	if (!m_rectDrag.active) return false;
+
+	// ---- 드래그: 시작 상태 + 포인터 이동량 (매 프레임 시작 값에서 다시 계산 — 쌓이는 반올림 없음) ----
+	if (std::fabs(mouse.x - m_rectDrag.startX) + std::fabs(mouse.y - m_rectDrag.startY) >= 2.0f)
+	{
+		m_rectDrag.moved = true;
+	}
+	if (!m_rectDrag.moved) return true;
+	const UISystem::ElementGeometry& g0 = m_rectStartGeometry;
+	const XMFLOAT2 c0 = toCanvas(m_rectDrag.startX, m_rectDrag.startY);
+	const XMFLOAT2 c1 = toCanvas(mouse.x, mouse.y);
+	const UIRect& r0 = g0.rect;
+	const XMFLOAT2 size0(r0.Width(), r0.Height());
+	const XMFLOAT2 pivot0 = m_rectDrag.startPivot;
+	const XMFLOAT2 pivotPoint0(r0.min.x + size0.x * pivot0.x, r0.min.y + size0.y * pivot0.y);
+	const UIAffine rs = LocalLinear(*object);
+	const bool rotated = std::fabs(rs.b) > 1e-5f || std::fabs(rs.c) > 1e-5f;
+	UIAffine invParent, invLocal;
+	if (!g0.parentToCanvas.Invert(invParent) || !g0.toCanvas.Invert(invLocal)) return true;
+	const float parentScale = std::sqrt(std::fabs(g0.parentToCanvas.a * g0.parentToCanvas.d - g0.parentToCanvas.b * g0.parentToCanvas.c));
+	const float snapDistance = mouse.ctrl ? 0.0f : 8.0f / (scale * (std::max)(parentScale, 1e-4f));   // 8 출력 픽셀 → 부모 단위
+
+	// 스냅 대상: 부모 사각형의 가장자리·가운데, 형제 사각형의 가장자리·가운데 (부모 공간)
+	std::vector<float> targets[2];
+	const auto addTargets = [&](const UIRect& t)
+	{
+		targets[0].insert(targets[0].end(), { t.min.x, (t.min.x + t.max.x) * 0.5f, t.max.x });
+		targets[1].insert(targets[1].end(), { t.min.y, (t.min.y + t.max.y) * 0.5f, t.max.y });
+	};
+	addTargets(g0.parentRect);
+	for (const GameObject* sibling : object->GetParent()->GetChildren())
+	{
+		UISystem::ElementGeometry sg;
+		if (sibling != object && ui.GetElementGeometry(sibling, sg))
+		{
+			addTargets(sg.rect);
+		}
+	}
+	// values 중 대상에 가장 가까운 것까지의 차 (snapDistance 안에서). 없으면 0
+	const auto snapDelta = [&](int axis, std::initializer_list<float> values)
+	{
+		float best = 0.0f;
+		float bestDistance = snapDistance;
+		for (float v : values)
+		{
+			for (float t : targets[axis])
+			{
+				const float d = std::fabs(t - v);
+				if (d < bestDistance)
+				{
+					bestDistance = d;
+					best = t - v;
+				}
+			}
+		}
+		return best;
+	};
+
+	if (m_rectDrag.mode == 0)
+	{
+		// 이동: 부모 공간의 포인터 이동량
+		XMFLOAT2 d = LinearApply(invParent, XMFLOAT2(c1.x - c0.x, c1.y - c0.y));
+		if (snapDistance > 0.0f && !rotated)
+		{
+			d.x += snapDelta(0, { r0.min.x + d.x, (r0.min.x + r0.max.x) * 0.5f + d.x, r0.max.x + d.x });
+			d.y += snapDelta(1, { r0.min.y + d.y, (r0.min.y + r0.max.y) * 0.5f + d.y, r0.max.y + d.y });
+		}
+		rt->anchoredPosition = XMFLOAT2(m_rectDrag.startAnchoredPosition.x + d.x, m_rectDrag.startAnchoredPosition.y + d.y);
+	}
+	else if (m_rectDrag.mode == 1)
+	{
+		// 크기: 요소 자신의 축(회전 전 사각형 공간)에서 핸들 쪽 변을 옮김. Alt = 반대쪽도 같이 (가운데 고정), Shift = 비율 유지
+		const XMFLOAT2 l0 = invLocal.Apply(c0);
+		const XMFLOAT2 l1 = invLocal.Apply(c1);
+		XMFLOAT2 d(l1.x - l0.x, l1.y - l0.y);
+		const int hx = m_rectDrag.hx;
+		const int hy = m_rectDrag.hy;
+		if (snapDistance > 0.0f && !rotated)
+		{
+			if (hx != 0) d.x += snapDelta(0, { (hx < 0 ? r0.min.x : r0.max.x) + d.x });
+			if (hy != 0) d.y += snapDelta(1, { (hy < 0 ? r0.min.y : r0.max.y) + d.y });
+		}
+		float w = size0.x + static_cast<float>(hx) * d.x * (mouse.alt ? 2.0f : 1.0f);
+		float h = size0.y + static_cast<float>(hy) * d.y * (mouse.alt ? 2.0f : 1.0f);
+		if (mouse.shift && hx != 0 && hy != 0 && size0.x > 0.0f && size0.y > 0.0f)
+		{
+			const float sx = w / size0.x;
+			const float sy = h / size0.y;
+			const float s = std::fabs(sx - 1.0f) >= std::fabs(sy - 1.0f) ? sx : sy;
+			w = size0.x * s;
+			h = size0.y * s;
+		}
+		w = (std::max)(w, 0.0f);
+		h = (std::max)(h, 0.0f);
+		UIRect nr;
+		const auto place = [&](int handle, float lo, float hi, float newSize, float& outMin)
+		{
+			if (mouse.alt || handle == 0) outMin = (lo + hi) * 0.5f - newSize * 0.5f;   // 가운데 고정 (핸들이 없는 축도 가운데 기준)
+			else if (handle > 0) outMin = lo;                                          // 오른쪽·위 핸들: 왼쪽·아래 고정
+			else outMin = hi - newSize;
+		};
+		if (hx == 0) w = size0.x;
+		if (hy == 0) h = size0.y;
+		place(hx, r0.min.x, r0.max.x, w, nr.min.x);
+		place(hy, r0.min.y, r0.max.y, h, nr.min.y);
+		if (hx == 0) nr.min.x = r0.min.x;
+		if (hy == 0) nr.min.y = r0.min.y;
+		nr.max = XMFLOAT2(nr.min.x + w, nr.min.y + h);
+		ApplyRectValues(*rt, g0.parentRect, nr, m_rectDrag.startAnchorMin, m_rectDrag.startAnchorMax, pivot0);
+		// 회전한 요소: 피벗(회전 중심)이 옮겨간 만큼 되돌려 고정한 변이 화면에서 그대로 있게
+		const XMFLOAT2 pivotPoint1(nr.min.x + w * pivot0.x, nr.min.y + h * pivot0.y);
+		const XMFLOAT2 t = PivotCorrection(rs, pivotPoint0, pivotPoint1);
+		rt->anchoredPosition.x += t.x;
+		rt->anchoredPosition.y += t.y;
+	}
+	else if (m_rectDrag.mode == 2)
+	{
+		// 피벗: 사각형은 그대로, 회전 중심만 옮김 (0·0.5·1 근처에서 붙음)
+		const XMFLOAT2 l1 = invLocal.Apply(c1);
+		XMFLOAT2 pivot(size0.x > 0.0f ? (l1.x - r0.min.x) / size0.x : pivot0.x, size0.y > 0.0f ? (l1.y - r0.min.y) / size0.y : pivot0.y);
+		if (!mouse.ctrl)
+		{
+			pivot.x = SnapUnit(pivot.x, 0.05f);
+			pivot.y = SnapUnit(pivot.y, 0.05f);
+		}
+		ApplyRectValues(*rt, g0.parentRect, r0, m_rectDrag.startAnchorMin, m_rectDrag.startAnchorMax, pivot);
+		const XMFLOAT2 pivotPoint1(r0.min.x + size0.x * pivot.x, r0.min.y + size0.y * pivot.y);
+		const XMFLOAT2 t = PivotCorrection(rs, pivotPoint0, pivotPoint1);
+		rt->anchoredPosition.x += t.x;
+		rt->anchoredPosition.y += t.y;
+	}
+	else
+	{
+		// 앵커: 부모 사각형 안의 비율 (0~1, 0·0.5·1 근처에서 붙음). 사각형은 그대로
+		const XMFLOAT2 p1 = invParent.Apply(c1);
+		XMFLOAT2 a(pw > 0.0f ? (p1.x - g0.parentRect.min.x) / pw : 0.0f, ph > 0.0f ? (p1.y - g0.parentRect.min.y) / ph : 0.0f);
+		a.x = (std::clamp)(mouse.ctrl ? a.x : SnapUnit(a.x, 0.03f), 0.0f, 1.0f);
+		a.y = (std::clamp)(mouse.ctrl ? a.y : SnapUnit(a.y, 0.03f), 0.0f, 1.0f);
+		XMFLOAT2 amin = m_rectDrag.startAnchorMin;
+		XMFLOAT2 amax = m_rectDrag.startAnchorMax;
+		const int i = m_rectDrag.anchor;
+		if (i == 0 || i == 3) amin.x = (std::min)(a.x, amax.x); else amax.x = (std::max)(a.x, amin.x);
+		if (i == 0 || i == 1) amin.y = (std::min)(a.y, amax.y); else amax.y = (std::max)(a.y, amin.y);
+		ApplyRectValues(*rt, g0.parentRect, r0, amin, amax, pivot0);
+	}
+	return true;
+}
+
+void Editor::NudgeSelectedUI(Engine& engine)
+{
+	Scene& scene = engine.GetScene();
+	GameObject* object = scene.GetObject(m_selected < 0 ? SIZE_MAX : static_cast<size_t>(m_selected));
+	RectTransform* rt = object != nullptr && object->GetParent() != nullptr && UISystem::IsUnderScreenCanvas(*object) ? object->GetBehaviour<RectTransform>() : nullptr;
+	if (rt == nullptr) return;
+	const float step = ImGui::GetIO().KeyShift ? 10.0f : 1.0f;
+	if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow)) rt->anchoredPosition.x -= step;
+	if (ImGui::IsKeyPressed(ImGuiKey_RightArrow)) rt->anchoredPosition.x += step;
+	if (ImGui::IsKeyPressed(ImGuiKey_UpArrow)) rt->anchoredPosition.y += step;
+	if (ImGui::IsKeyPressed(ImGuiKey_DownArrow)) rt->anchoredPosition.y -= step;
+}
+
+void Editor::DrawWorldCanvasOutlines(Engine& engine)
+{
+	// World 캔버스 루트의 사각형 (sizeDelta·피벗, 루트 월드 행렬). 편집 중 위치를 잡을 때 보이게
+	DebugDraw& debug = engine.GetDebugDraw();
+	for (const auto& owned : engine.GetScene().GetObjects())
+	{
+		const GameObject& object = *owned;
+		const GameObject* canvasObject = nullptr;
+		const Canvas* canvas = UISystem::FindCanvas(object, &canvasObject);
+		if (canvas == nullptr || canvasObject != &object || canvas->renderMode != Canvas::World) continue;
+		const RectTransform* rt = object.GetBehaviour<RectTransform>();
+		const XMFLOAT2 size = rt != nullptr ? rt->sizeDelta : XMFLOAT2(100.0f, 100.0f);
+		const XMFLOAT2 pivot = rt != nullptr ? rt->pivot : XMFLOAT2(0.5f, 0.5f);
+		const XMMATRIX world = object.GetWorldMatrix();
+		const float x0 = -size.x * pivot.x, y0 = -size.y * pivot.y;
+		const XMFLOAT2 corners[4] = { XMFLOAT2(x0, y0), XMFLOAT2(x0 + size.x, y0), XMFLOAT2(x0 + size.x, y0 + size.y), XMFLOAT2(x0, y0 + size.y) };
+		XMFLOAT3 p[4];
+		for (int i = 0; i < 4; ++i)
+		{
+			XMStoreFloat3(&p[i], XMVector3TransformCoord(XMVectorSet(corners[i].x, corners[i].y, 0.0f, 1.0f), world));
+		}
+		for (int i = 0; i < 4; ++i)
+		{
+			debug.Line(p[i], p[(i + 1) % 4], 0xFFE0E0E0u);
+		}
+	}
 }
 
 void Editor::DrawCameraGizmos(Engine& engine, float x, float y, float width, float height)
@@ -2172,7 +3162,7 @@ void Editor::DrawPlayControls(const Callbacks& callbacks)
 	}
 }
 
-void Editor::DrawComponents(GameObject& object)
+void Editor::DrawComponents(Engine& engine, GameObject& object)
 {
 	auto& behaviours = object.GetBehaviours();
 	ImGui::Text("Components (%zu)", behaviours.size());
@@ -2209,7 +3199,16 @@ void Editor::DrawComponents(GameObject& object)
 		const bool open = ImGui::TreeNodeEx("##node", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed, "%s%s", behaviour.GetTypeName(), isScript ? "  (Script)" : "");
 		if (open)
 		{
-			ImGuiPropertyVisitor visitor;
+			if (RectTransform* rt = dynamic_cast<RectTransform*>(&behaviour))
+			{
+				DrawAnchorPresets(*rt);
+			}
+			UIObjectRef::SetSceneContext(&engine.GetScene());
+			ImGuiPropertyVisitor visitor(&object, &engine.GetScene());
+			if (dynamic_cast<RectTransform*>(&behaviour) != nullptr)
+			{
+				DrawDrivenNote(engine.GetUI(), object);
+			}
 			behaviour.Reflect(visitor);
 			ImGui::TreePop();
 		}
@@ -2360,17 +3359,37 @@ void Editor::DrawRenderSettings(Engine& engine)
 	const char* boneModes[] = { "Off", "Bones + joints", "Bones + joints + axes" };
 	ImGui::Combo("Bone debug (B)", &settings.debugBones, boneModes, IM_ARRAYSIZE(boneModes));
 	DebugUI::DrawShadowPanel(engine.GetScene(), engine.GetRenderer(), engine.GetDevice());
-	if (engine.GetScene().environment.shadow.cascadeEnabled || engine.GetRenderer().IsCascadeFrozen())   // Cascades 를 1 로 내려도 고정을 풀 수 있게
 	{
-		// CSM 디버그: 지금 카메라로 캐스케이드를 고정하고, 에디터 카메라를 옮겨 바깥에서 거리 구간을 봄
-		// (Debug view = Shadow cascade 와 같이 쓰면 이미지처럼 색 띠가 보임)
+		// 컬링 고정 디버그 (docs/plan/freeze-culling-camera-plan.html): 지금 카메라 사본으로 켜 둔 항목을 계산하고, 에디터
+		// 카메라를 옮겨 바깥에서 결과를 봄. 캐스케이드는 Debug view = Shadow cascade 와 같이 쓰면 색 띠가 보임.
+		// 씬 불러오기·재생 시작·정지에서 자동으로 풀림 (EditorApp::ReleaseCullFreeze).
 		Renderer& renderer = engine.GetRenderer();
-		bool frozen = renderer.IsCascadeFrozen();
-		if (ImGui::Checkbox("Freeze cascade camera", &frozen))
+		bool frozen = renderer.IsCullFrozen();
+		if (ImGui::Checkbox("Freeze culling camera", &frozen))
 		{
-			renderer.SetCascadeFreeze(frozen, engine.GetCamera());
+			renderer.SetCullFreeze(frozen, engine.GetCamera(), renderer.GetCullFreezeParts());   // 항목은 지난번 고른 값을 이어 씀
 		}
-		ImGui::TextDisabled("Freeze 후 에디터 카메라를 옮겨 보세요. 색 절두체 = 고정된 카메라의 캐스케이드.");
+		if (frozen)
+		{
+			ImGui::Indent();
+			Renderer::CullFreezeParts parts = renderer.GetCullFreezeParts();
+			bool changed = ImGui::Checkbox("Cascades", &parts.cascades);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("CSM splits and light views from the frozen camera (also the camera preview's shadows)");
+			ImGui::SameLine();
+			changed |= ImGui::Checkbox("Objects", &parts.objects);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("frustum-cull objects with the frozen camera (main view only)");
+			ImGui::SameLine();
+			changed |= ImGui::Checkbox("Lights", &parts.lights);
+			if (ImGui::IsItemHovered()) ImGui::SetTooltip("cull local lights and pick shadow lights with the frozen camera; culled lights go dark.\nAlso applies to the camera preview. No effect on light while Clustered is off.");
+			if (changed)
+			{
+				renderer.SetCullFreezeParts(parts);
+			}
+			ImGui::Unindent();
+			const Renderer::Stats& stats = renderer.GetStats();
+			ImGui::TextDisabled("frozen view: culled draws %u, lights visible %u / culled %u", stats.culled, stats.lightsVisible, stats.lightsCulled);
+		}
+		ImGui::TextDisabled("Freeze 후 에디터 카메라를 옮겨 보세요. 흰 절두체 = 고정 카메라, 색 절두체 = 캐스케이드, 회색 아이콘 = 컬링된 조명.");
 	}
 	DebugUI::DrawCameraPanel(engine.GetCamera(), cameraMoveSpeed);
 	DebugUI::DrawEnginePanel(engine);

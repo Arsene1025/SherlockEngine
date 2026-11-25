@@ -5,6 +5,7 @@
 #include "Graphics/Mesh.h"
 #include "Graphics/Model.h"
 #include "Scene/SceneSerializer.h"
+#include "UI/UISystem.h"
 #include <algorithm>
 #include <cmath>
 #include <unordered_set>
@@ -314,12 +315,17 @@ size_t Scene::IndexOf(const GameObject* object) const
 
 // ------------------------------------------------------------------ 재생
 
-void Scene::BeginPlay(Input* input, Camera* camera)
+void Scene::BeginPlay(Input* input, Camera* camera, UISystem* ui)
 {
 	m_playContext = PlayContext{};
 	m_playContext.scene = this;
 	m_playContext.input = input;
 	m_playContext.camera = camera;
+	m_playContext.ui = ui;
+	if (ui != nullptr)
+	{
+		ui->BeginPlay();
+	}
 	m_savedLens = SavedLens{};
 	if (camera != nullptr)
 	{
@@ -340,6 +346,11 @@ void Scene::Update(float dt)
 	if (!m_playing) return;
 	m_playContext.totalTime += dt;
 	m_playContext.cameraDriven = false;
+	// 게임 UI 이벤트 (지난 프레임에 계산한 사각형으로 히트 테스트): 버튼 리스너가 오브젝트를 Destroy 해도 아래 FlushDestroyed 가 지움
+	if (m_playContext.ui != nullptr && m_playContext.input != nullptr)
+	{
+		m_playContext.ui->Update(*this, *m_playContext.input, dt);
+	}
 	// 인덱스로 순회함: 컴포넌트가 재생 중 오브젝트를 추가해도(벡터 재할당) 안전함. 삭제는 순회 중에 하지 말 것.
 	for (size_t i = 0; i < m_objects.size(); ++i)
 	{
@@ -457,6 +468,10 @@ void Scene::FixedUpdate(float fixedDt)
 void Scene::EndPlay()
 {
 	m_playing = false;
+	if (m_playContext.ui != nullptr)
+	{
+		m_playContext.ui->EndPlay(*this);
+	}
 	m_activeCamera = nullptr;
 	if (m_savedLens.valid && m_playContext.camera != nullptr)   // 재생 중 카메라 컴포넌트가 바꾼 렌즈를 재생 전 값으로
 	{

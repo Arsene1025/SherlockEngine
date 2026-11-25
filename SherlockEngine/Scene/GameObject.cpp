@@ -40,6 +40,25 @@ bool GameObject::SetParent(GameObject* newParent, bool keepWorld)
 	return true;
 }
 
+size_t GameObject::GetSiblingIndex() const
+{
+	if (parent == nullptr) return 0;
+	const auto& siblings = parent->children;
+	const auto found = std::find(siblings.begin(), siblings.end(), this);
+	return found != siblings.end() ? static_cast<size_t>(found - siblings.begin()) : 0;
+}
+
+void GameObject::SetSiblingIndex(size_t index)
+{
+	if (parent == nullptr) return;
+	auto& siblings = parent->children;
+	const auto found = std::find(siblings.begin(), siblings.end(), this);
+	if (found == siblings.end()) return;
+	siblings.erase(found);
+	index = (std::min)(index, siblings.size());
+	siblings.insert(siblings.begin() + static_cast<std::ptrdiff_t>(index), this);
+}
+
 XMMATRIX GameObject::GetParentWorldMatrix() const
 {
 	return parent != nullptr ? parent->GetWorldMatrix() : XMMatrixIdentity();

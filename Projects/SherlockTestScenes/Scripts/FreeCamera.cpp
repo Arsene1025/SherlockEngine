@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "FreeCamera.h"
+#include "UI/UISystem.h"
 #include <algorithm>
 #include <cmath>
 
@@ -21,10 +22,17 @@ void FreeCamera::Start()
 void FreeCamera::Update(float dt)
 {
 	Input& input = GetInput();
+	// 게임 UI 위에서 시작한 누름·휠은 UI 것 (유니티 EventSystem.IsPointerOverGameObject 와 같은 쓰임)
+	const UISystem* ui = GetUI();
+	const bool overUI = ui != nullptr && (ui->IsPointerOverUI() || ui->IsPointerCaptured());
+	if (input.IsMousePressed(MouseButton::Right))
+	{
+		m_lookBlocked = overUI;
+	}
 
 	// 시선 회전: 오른쪽 버튼을 누르고 있는 동안만. 아래로 움직이면 아래를 봄 (pitch 가 양수 = 아래).
 	// 받은 회전량은 쌓아 두고 시간에 고르게 나눠 적용함 (LookSmoother). 버튼을 뗀 뒤에도 남은 몫을 마저 냄.
-	if (input.IsMouseDown(MouseButton::Right))
+	if (input.IsMouseDown(MouseButton::Right) && !m_lookBlocked)
 	{
 		m_look.Add(static_cast<float>(input.GetMouseDeltaX()) * lookSpeed, static_cast<float>(input.GetMouseDeltaY()) * lookSpeed);
 	}
@@ -40,7 +48,7 @@ void FreeCamera::Update(float dt)
 
 	// 휠로 이동 속도를 조절함 (한 칸에 10%)
 	const float wheel = input.GetWheelDelta();
-	if (wheel != 0.0f)
+	if (wheel != 0.0f && !overUI)
 	{
 		speed = std::clamp(speed * std::pow(1.1f, wheel), 0.1f, 200.0f);
 	}

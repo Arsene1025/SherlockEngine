@@ -9,6 +9,7 @@
 #include "Core/Input.h"
 #include "Core/Time.h"
 #include "Core/AssetManager.h"
+#include "UI/UISystem.h"
 
 // Engine: 앱이 올라타는 엔진. EditorApp 이 엔진을 조립하는 구조가 아니라, 엔진이 시스템을 소유하고 앱을 그 위에 올림.
 //
@@ -52,6 +53,10 @@ public:
 	Time& GetTime() { return m_time; }
 	AssetManager& GetAssets() { return m_assets; }
 	DebugDraw& GetDebugDraw() { return m_debugDraw; }   // 이번 프레임의 디버그 선 수집기 (Render 직후 비워짐)
+	UISystem& GetUI() { return m_ui; }                   // 게임 UI (캔버스). Render 가 매 프레임 Build 함
+	// 화면 공간 UI 를 그릴지. 게임은 늘 켬. 에디터는 재생 중이거나 씬 뷰 툴바의 UI 토글이 켜졌을 때 (매 프레임 정함).
+	void SetUIVisible(bool visible) { m_uiVisible = visible; }
+	bool IsUIVisible() const { return m_uiVisible; }
 	const Config& GetConfig() const { return m_config; }
 	RHI::Backend GetBackend() const { return m_backend; }
 
@@ -70,4 +75,6 @@ private:
 	DebugDraw m_debugDraw;   // CPU 전용. Renderer 가 읽기만 함
 	bool m_imguiRendererReady = false;
 	std::wstring m_screenshotPath;
+	UISystem m_ui;   // CPU 전용. 그리기 목록을 Renderer 가 읽기만 함
+	bool m_uiVisible = true;
 };

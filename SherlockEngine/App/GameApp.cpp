@@ -82,7 +82,7 @@ bool GameApp::OnInitialize()
 
 	// 바로 재생. 카메라 오브젝트가 있으면 첫 Update 에서 그 시점으로 바뀜 (없으면 씬 파일의 카메라를 씀).
 	Scene& scene = engine.GetScene();
-	scene.BeginPlay(&engine.GetInput(), &engine.GetCamera());
+	scene.BeginPlay(&engine.GetInput(), &engine.GetCamera(), &engine.GetUI());
 	size_t behaviours = 0;
 	for (const auto& object : scene.GetObjects())
 	{

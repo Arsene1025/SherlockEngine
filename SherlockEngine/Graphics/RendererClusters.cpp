@@ -125,6 +125,15 @@ void Renderer::CullLights(const Camera& camera)
 		if (!visible)
 		{
 			++m_stats.lightsCulled;
+			// 컬링 고정 디버그 (lights 항목): camera 는 고정된 사본. 그리는 카메라의 클러스터는 m_lightBounds 를 직접 보고
+			// 거르므로 (m_lightVisible 은 그림자 타일에만 씀), 그대로 두면 고정 시점 밖 조명도 자유 시점 화면을 계속 비춤.
+			// w = 0 이면 CPU BuildClusters·GPU 비닝 둘 다 건너뜀 → 컬링된 조명의 빛이 꺼져 보임. 경계 배열이 두 뷰 공용이라
+			// 미리보기 뷰에도 걸리고, 클러스터드를 끈 ShadeAllLights 경로(t15 전부)에는 효과 없음. 고정이 아니면 화면 밖
+			// 조명은 원래 클러스터에 걸리지 않으므로 손대지 않음.
+			if (m_cullFrozen && m_cullFreezeParts.lights)
+			{
+				m_lightBounds[i].w = 0.0f;
+			}
 			continue;
 		}
 		++m_stats.lightsVisible;
@@ -156,6 +165,18 @@ void Renderer::CullLights(const Camera& camera)
 	{
 		m_shadowOrder.push_back(c.index);
 	}
+}
+
+bool Renderer::IsLightCulledByFreeze(uint32_t sceneLightIndex) const
+{
+	if (!m_cullFrozen || !m_cullFreezeParts.lights) return false;
+	// m_lightVisible 은 정렬 뒤(방향광이 앞) 번호 — 씬 번호로 거꾸로 찾음. 조명 수가 적어 선형 탐색.
+	const size_t count = (std::min)(m_lightSceneIndex.size(), m_lightVisible.size());
+	for (size_t i = 0; i < count; ++i)
+	{
+		if (m_lightSceneIndex[i] == sceneLightIndex) return m_lightVisible[i] == 0;
+	}
+	return false;
 }
 
 void Renderer::BuildClusters(const Camera& camera, uint32_t width, uint32_t height, uint32_t viewIndex)

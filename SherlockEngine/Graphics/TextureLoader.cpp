@@ -264,6 +264,34 @@ bool TextureLoader::CreateSolid(uint32_t size, const uint8_t rgba[4], bool srgb,
 	return FinishImage(image, srgb, false, out);
 }
 
+bool TextureLoader::CreateRoundedRect(uint32_t size, float radius, TextureImage& out)
+{
+	DirectX::ScratchImage image;
+	if (FAILED(image.Initialize2D(DXGI_FORMAT_R8G8B8A8_UNORM, size, size, 1, 1)))
+	{
+		return false;
+	}
+	const DirectX::Image* img = image.GetImage(0, 0, 0);
+	const float half = static_cast<float>(size) * 0.5f;
+	for (uint32_t y = 0; y < size; ++y)
+	{
+		uint8_t* row = img->pixels + y * img->rowPitch;
+		for (uint32_t x = 0; x < size; ++x)
+		{
+			// 둥근 사각형의 부호 거리 (안이 음수). 픽셀 중심에서 잼
+			const float px = std::fabs(static_cast<float>(x) + 0.5f - half) - (half - radius);
+			const float py = std::fabs(static_cast<float>(y) + 0.5f - half) - (half - radius);
+			const float ox = (std::max)(px, 0.0f);
+			const float oy = (std::max)(py, 0.0f);
+			const float distance = std::sqrt(ox * ox + oy * oy) + (std::min)((std::max)(px, py), 0.0f) - radius;
+			const float coverage = (std::min)((std::max)(0.5f - distance, 0.0f), 1.0f);
+			const uint8_t rgba[4] = { 255, 255, 255, static_cast<uint8_t>(coverage * 255.0f + 0.5f) };
+			std::memcpy(row + x * 4, rgba, 4);
+		}
+	}
+	return FinishImage(image, false, false, out);
+}
+
 bool TextureLoader::LoadThumbnail(const std::wstring& path, uint32_t maxSize, TextureImage& out)
 {
 	DirectX::ScratchImage image;

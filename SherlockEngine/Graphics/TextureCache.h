@@ -32,6 +32,9 @@ public:
 	// 항상 sRGB 로 읽음. mipLevels 가 있으면 그 큐브의 밉 수를 돌려줌 (반사 프리필터의 거칠기 → 밉 매핑에 씀).
 	TextureHandle LoadCube(const std::string& name, uint32_t* mipLevels = nullptr);
 
+	// Load2D 로 읽은 텍스처의 픽셀 크기 (밉 0). 아직 읽지 않았거나 실패(흰색 대체)면 false
+	bool GetSize2D(const std::string& name, bool srgb, uint32_t& width, uint32_t& height) const;
+
 	TextureHandle GetWhite() const { return m_white; }             // "텍스처 없음"의 기본값
 	TextureHandle GetFlatNormal() const { return m_flatNormal; }   // 탄젠트 공간 (0, 0, 1)
 	TextureHandle GetBlackCube() const { return m_blackCube; }     // 환경이 없을 때 t9~t11 에 꽂는 1×1 큐브
@@ -58,6 +61,7 @@ private:
 	TextureHandle m_flatNormal;
 	TextureHandle m_blackCube;
 	std::unordered_map<std::string, TextureHandle> m_2d[2];   // [0] 선형, [1] sRGB. 키 = 이름 (조회할 때 문자열을 새로 만들지 않음)
+	std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> m_sizes[2];   // 같은 키 → 밉 0 크기 (성공한 것만)
 	std::unordered_map<std::string, CubeEntry> m_cubes;
 	uint64_t m_generation = 0;
 };

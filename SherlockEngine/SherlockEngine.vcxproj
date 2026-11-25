@@ -242,6 +242,15 @@
     <ClInclude Include="Scene\CameraComponent.h" />
     <ClInclude Include="Scene\ParticleEmitter.h" />
     <ClInclude Include="Scene\Ocean.h" />
+    <ClInclude Include="UI\UITypes.h" />
+    <ClInclude Include="UI\UIDrawList.h" />
+    <ClInclude Include="UI\UIComponents.h" />
+    <ClInclude Include="UI\UISystem.h" />
+    <ClInclude Include="UI\Font.h" />
+    <ClInclude Include="UI\GlyphAtlas.h" />
+    <ClInclude Include="UI\UILayout.h" />
+    <ClInclude Include="UI\UIWidgets.h" />
+    <ClInclude Include="UI\UIEvent.h" />
     <ClInclude Include="Scene\Script.h" />
     <ClInclude Include="Scene\Rigidbody.h" />
     <ClInclude Include="Scene\SceneSerializer.h" />
@@ -297,6 +306,7 @@
     <ClCompile Include="Graphics\RendererPost.cpp" />
     <ClCompile Include="Graphics\RendererParticles.cpp" />
     <ClCompile Include="Graphics\RendererOcean.cpp" />
+    <ClCompile Include="Graphics\RendererUI.cpp" />
     <ClCompile Include="Graphics\RendererShadow.cpp" />
     <ClCompile Include="Graphics\RendererSsao.cpp" />
     <ClCompile Include="Graphics\RendererClusters.cpp" />
@@ -313,6 +323,13 @@
     <ClCompile Include="Scene\CameraComponent.cpp" />
     <ClCompile Include="Scene\ParticleEmitter.cpp" />
     <ClCompile Include="Scene\Ocean.cpp" />
+    <ClCompile Include="UI\UIComponents.cpp" />
+    <ClCompile Include="UI\UISystem.cpp" />
+    <ClCompile Include="UI\Font.cpp" />
+    <ClCompile Include="UI\GlyphAtlas.cpp" />
+    <ClCompile Include="UI\UILayout.cpp" />
+    <ClCompile Include="UI\UIWidgets.cpp" />
+    <ClCompile Include="UI\UIEvent.cpp" />
     <ClCompile Include="Scene\Script.cpp" />
     <ClCompile Include="Scene\Rigidbody.cpp" />
     <ClCompile Include="Scene\FollowTarget.cpp" />
@@ -328,6 +345,22 @@
       <ShaderType>Vertex</ShaderType>
       <ShaderModel>5.0</ShaderModel>
       <EntryPointName>VS_Main</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\UIVertexShader.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>VS_UI</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\UIPixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>PS_UI</EntryPointName>
       <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
       <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
@@ -634,6 +667,7 @@
     <None Include="Shaders\Lighting.hlsli" />
     <None Include="Shaders\Mesh.hlsli" />
     <None Include="Shaders\Ocean.hlsli" />
+    <None Include="Shaders\UI.hlsli" />
     <None Include="Shaders\Material.hlsli" />
     <None Include="Shaders\Post.hlsli" />
     <None Include="Shaders\Sky.hlsli" />

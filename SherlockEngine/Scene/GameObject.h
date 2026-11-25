@@ -67,6 +67,10 @@ public:
 	// (유니티 SetParent(parent, worldPositionStays=true)). 자기 자신이나 자기 자손을 부모로 지정하면 false 를
 	// 돌려주고 아무것도 하지 않음.
 	bool SetParent(GameObject* newParent, bool keepWorld = true);
+	// 부모 안에서의 순서 (Hierarchy 표시 순서 = UI 그리는 순서). 루트는 0 을 돌려주고 SetSiblingIndex 는 아무것도
+	// 하지 않음 (루트 순서는 Scene 의 오브젝트 배열 순서). index 가 범위를 넘으면 끝으로.
+	size_t GetSiblingIndex() const;
+	void SetSiblingIndex(size_t index);
 
 	// 월드 행렬 = local × parent.world (재귀). 부모가 없으면 로컬 행렬 그대로. 렌더러·기즈모·픽킹·카메라가 씀.
 	DirectX::XMMATRIX GetWorldMatrix() const;
@@ -107,6 +111,14 @@ public:
 		for (auto& b : behaviours)
 		{
 			if (T* typed = dynamic_cast<T*>(b.get())) return typed;
+		}
+		return nullptr;
+	}
+	template <std::derived_from<Behaviour> T> const T* GetBehaviour() const
+	{
+		for (const auto& b : behaviours)
+		{
+			if (const T* typed = dynamic_cast<const T*>(b.get())) return typed;
 		}
 		return nullptr;
 	}

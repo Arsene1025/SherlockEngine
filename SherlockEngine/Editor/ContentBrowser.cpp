@@ -103,6 +103,7 @@ AssetType ContentBrowser::Classify(const std::wstring& relativePath, bool isDire
 	if (ext == L".png" || ext == L".jpg" || ext == L".jpeg" || ext == L".bmp" || ext == L".dds" || ext == L".tga") return AssetType::Texture;
 	if (ext == L".json" && StartsWithNoCase(relativePath, L"Scenes\\")) return AssetType::Scene;
 	if (ext == L".prefab") return AssetType::Prefab;
+	if (ext == L".ttf" || ext == L".otf") return AssetType::Font;
 	return AssetType::Other;
 }
 
@@ -115,6 +116,7 @@ const char* ContentBrowser::TypeName(AssetType type)
 	case AssetType::Texture: return "Texture";
 	case AssetType::Scene:   return "Scene";
 	case AssetType::Prefab:  return "Prefab";
+	case AssetType::Font:    return "Font";
 	default:                 return "File";
 	}
 }
@@ -177,6 +179,7 @@ void ContentBrowser::DrawTypeIcon(ImDrawList* dl, const ImVec2& min, const ImVec
 	}
 	case AssetType::Scene:
 	case AssetType::Prefab:
+	case AssetType::Font:
 	case AssetType::Other:
 	{
 		// 문서: 접힌 모서리 + 줄. 씬은 파란 줄 + 작은 큐브 점.

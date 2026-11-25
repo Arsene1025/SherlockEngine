@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · 컬링 카메라 고정 계획 — SherlockEngine</title>
+<style>
+:root {
+  --bg: #f6f5f1; --paper: #ffffff; --ink: #1d1f24; --ink2: #4a505c; --ink3: #8a909c;
+  --line: #d9dce3; --fill: #f1f3f7; --accent: #1d5fbf; --accent-bg: #e4ecf8;
+  --ok: #1f7a3d; --ok-bg: #e5f4ea; --warn: #a8620a; --warn-bg: #fdf3e2; --err: #c62828; --err-bg: #fbeaea;
+  --code-bg: #14171c; --code-fg: #e6e9ef;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101216; --paper: #181b21; --ink: #e8eaee; --ink2: #aab0bb; --ink3: #6f7683;
+    --line: #2b303a; --fill: #1f232b; --accent: #6ea8ff; --accent-bg: #16305a;
+    --ok: #5fcf85; --ok-bg: #12301f; --warn: #f0b14a; --warn-bg: #3a2a10; --err: #ff7070; --err-bg: #3b1620;
+    --code-bg: #0b0d10; --code-fg: #dfe3ea;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15.5px/1.75 -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", Roboto, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 28px; }
+nav { position: sticky; top: 16px; align-self: start; font-size: 13.5px; line-height: 1.5; max-height: calc(100vh - 32px); overflow: auto; }
+nav b { display: block; margin: 12px 0 4px; color: var(--ink3); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
+nav a { display: block; padding: 3px 8px; color: var(--ink2); text-decoration: none; border-left: 2px solid var(--line); }
+nav a.sub { padding-left: 20px; font-size: 12.5px; }
+nav a:hover { color: var(--accent); border-left-color: var(--accent); }
+main { min-width: 0; }
+header.top { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+header.top h1 { margin: 0 0 6px; font-size: 26px; line-height: 1.3; }
+header.top p { margin: 4px 0; color: var(--ink2); }
+section { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+h2 { margin: 0 0 12px; font-size: 21px; line-height: 1.35; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+h3 { margin: 28px 0 8px; font-size: 17.5px; line-height: 1.4; }
+p { margin: 8px 0; }
+ul, ol { margin: 8px 0; padding-left: 22px; }
+li { margin: 3px 0; }
+code { font: 13.5px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--fill); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--code-bg); color: var(--code-fg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font: 13px/1.6 ui-monospace, "Cascadia Mono", Consolas, monospace; margin: 10px 0; }
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+pre .c { color: #8b95a7; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; line-height: 1.55; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+th { background: var(--fill); white-space: nowrap; }
+.box { border-left: 4px solid var(--accent); background: var(--accent-bg); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+.box.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.box.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.box p:first-child { margin-top: 0; } .box p:last-child { margin-bottom: 0; }
+.tag { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--accent-bg); color: var(--accent); white-space: nowrap; }
+.tag.v { background: var(--ok-bg); color: var(--ok); }
+.tag.p { background: var(--warn-bg); color: var(--warn); }
+ul.todo { list-style: none; padding-left: 4px; }
+ul.todo > li { margin: 7px 0; padding-left: 26px; position: relative; }
+ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
+.foot { color: var(--ink3); font-size: 13px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } nav { position: static; max-height: none; } section, header.top { padding: 16px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="목차">
+  <b>시작</b>
+  <a href="#overview">0. 한눈에 보기</a>
+  <a href="#now">1. 지금 엔진 (코드 확인 결과)</a>
+  <b>개념</b>
+  <a href="#concept">2. 개념: 컬링 시점과 그리는 시점</a>
+  <b>설계</b>
+  <a href="#design">3. 설계 결정</a>
+  <a class="sub" href="#d-rules">3.1 모든 단계에 걸리는 규칙</a>
+  <a class="sub" href="#d-table">3.2 결정 표</a>
+  <a class="sub" href="#d-api">3.3 Renderer 인터페이스</a>
+  <a class="sub" href="#d-ui">3.4 에디터 UI와 오버레이</a>
+  <b>단계</b>
+  <a href="#s1">1단계 · 컬링 카메라 분리</a>
+  <a href="#s2">2단계 · 컬링된 조명 끄기</a>
+  <a href="#s3">3단계 · UI · 오버레이 · 자동화</a>
+  <b>마무리</b>
+  <a href="#verify">4. 공통 검증 절차</a>
+  <a href="#commits">5. 커밋 단위와 순서</a>
+  <a href="#files">6. 바뀌는 파일</a>
+  <a href="#unknown">7. 미확인 사항</a>
+  <a href="#refs">8. 참고 자료</a>
+  <b>결과</b>
+  <a href="#result">9. 구현 결과 (2026-11-24)</a>
+</nav>
+<main>
+<header class="top">
+  <h1>컬링 카메라 고정 계획</h1>
+  <p>지금은 <b>Freeze cascade camera</b>를 켜면 캐스케이드만 고정된 카메라로 계산되고, 에디터 카메라는 자유롭게 움직이며 그 결과를 밖에서 볼 수 있습니다. 이 계획은 같은 고정 카메라를 <b>오브젝트 절두체 컬링</b>과 <b>조명 컬링</b>에도 써서, 자유 시점으로 돌아다니며 "고정된 시점에서 무엇이 버려졌는지"를 눈으로 확인하게 만드는 것입니다.</p>
+  <p>디버그 기능이므로 고정하지 않았을 때의 화면과 성능은 지금과 같아야 합니다. RHI 확장도 셰이더 변경도 없습니다.</p>
+  <div class="box"><p><b>진행 방식.</b> 1단계에서 Renderer 안에서 컬링에 쓰는 카메라를 그리는 카메라와 분리합니다. 2단계는 컬링된 조명이 자유 시점에서도 꺼져 보이게 하고, 3단계에서 에디터 UI·오버레이·자동화 인자를 붙입니다. 단계마다 스크린샷으로 확인하고 이상이 없으면 다음 단계로 넘어갑니다.</p></div>
+  <div class="box ok"><p><b>구현 완료 (2026-11-24).</b> 1~3단계를 모두 구현했습니다. 계획과 달라진 점과 검증 숫자는 <a href="#result">9장</a>에 있습니다. 요약: 테스트 씬 <code>FreezeCulling.json</code> 을 새로 만듦(CascadeBigScene 기본 시점은 <code>culled = 0</code>), 항목을 고르는 <code>--freeze-parts=col</code> 추가, 오버레이 변을 카메라 앞에서 잘라 그림, 컬링된 오브젝트 윤곽(선택 항목)은 하지 않음.</p></div>
+  <p class="foot">작성 2026-11-24 · 기준 커밋 3d19842</p>
+</header>
+
+<section id="overview">
+<h2>0. 한눈에 보기</h2>
+<h3>단계</h3>
+<table>
+<thead><tr><th>단계</th><th>무엇을</th><th>끝나면 보이는 것</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Renderer 에 컬링 고정 카메라 하나를 두고 캐스케이드·오브젝트 컬링·조명 점수가 그 카메라를 쓰게 함. 메인 뷰에만 적용.</td><td>고정 뒤 카메라를 옮기면 고정 시점 절두체 밖 메시가 통째로 사라짐. 통계 <code>culled</code>·<code>lightsCulled</code> 가 고정 시점 값으로 멈춤.</td></tr>
+<tr><td>2</td><td>고정 중에는 고정 시점에서 컬링된 지역광의 경계 구 반지름을 0 으로 만들어 클러스터에서 뺌.</td><td>고정 시점 밖 점광원·스폿광의 빛이 자유 시점에서 꺼짐.</td></tr>
+<tr><td>3</td><td>체크박스를 늘 보이게 하고 항목별 체크(캐스케이드·오브젝트·조명), 고정 카메라 절두체 와이어, 컬링된 조명 아이콘 표시, <code>--freeze-culling=N</code>.</td><td>씬 뷰에 흰 절두체 와이어와 회색 조명 아이콘. 자동 검증으로 같은 화면을 재현할 수 있음.</td></tr>
+</tbody>
+</table>
+<div class="box warn"><p><b>대화에서 한 말 정정.</b> 계획 전에 "조명 컬링을 고정하면 컬링된 조명의 빛이 꺼지는 게 보인다"고 했는데, 코드를 보니 틀렸습니다. <code>CullLights</code> 가 만드는 <code>m_lightVisible</code> 은 그림자 타일 배정(<code>BuildShadowViews</code>)에서만 읽고, 클러스터 비닝(CPU <code>BuildClusters</code>, GPU <code>RendererClusterBin.cpp</code>)은 컬링 결과 없이 <code>m_lightBounds</code> 를 그대로 씁니다. 클러스터 격자가 그리는 카메라의 화면 안에만 있으니 화면 밖 조명은 원래 저절로 빠지는 구조입니다. 그래서 컬링 카메라만 고정하면 <b>그림자를 받는 조명이 바뀔 뿐 빛은 그대로</b>입니다. 이것을 눈으로 보이게 하려고 2단계를 따로 둡니다.</p></div>
+</section>
+
+<section id="now">
+<h2>1. 지금 엔진 (코드 확인 결과)</h2>
+<p>카메라를 받는 곳을 모두 찾아 "고정할 것"과 "그리는 카메라에 남길 것"으로 나눴습니다.</p>
+<table>
+<thead><tr><th>쓰는 곳</th><th>카메라로 하는 일</th><th>고정?</th></tr></thead>
+<tbody>
+<tr><td><code>Graphics/RendererShadow.cpp</code> <code>BuildShadowViews</code></td><td>캐스케이드 분할·절두체 꼭짓점(<code>m_cascadeCorners</code>). 이미 <code>m_cascadeFrozen ? m_cascadeFreezeCamera : drawCamera</code></td><td><span class="tag v">이미 고정</span></td></tr>
+<tr><td><code>Graphics/Renderer.cpp</code> <code>DrawItems</code> 첫머리</td><td><code>Frustum::FromViewProj(camera.View·Proj)</code> 로 오브젝트 경계 구 컬링, <code>m_stats.culled</code></td><td><span class="tag p">고정</span></td></tr>
+<tr><td><code>Graphics/Renderer.cpp</code> <code>DrawItems</code> 반투명 정렬</td><td><code>camera.GetPosition()</code> 에서 먼 것부터</td><td>그리는 카메라</td></tr>
+<tr><td><code>Graphics/RendererClusters.cpp</code> <code>CullLights</code></td><td>지역광 경계 구 절두체 컬링(<code>m_lightVisible</code>), 그림자 점수 <code>(r/D)²</code> 의 눈 위치</td><td><span class="tag p">고정</span></td></tr>
+<tr><td><code>Graphics/RendererClusters.cpp</code> <code>BuildClusters</code>, <code>Graphics/RendererClusterBin.cpp</code> <code>UploadClusterBinConstants</code></td><td>그리는 화면의 16×9×24 상자</td><td>그리는 카메라</td></tr>
+<tr><td><code>Graphics/Renderer.cpp</code> <code>UploadPerFrameConstants</code></td><td>b0 ViewProj·지터·이전 ViewProj</td><td>그리는 카메라</td></tr>
+<tr><td><code>Graphics/RendererParticles.cpp</code> <code>UpdateParticleEmitters</code></td><td>정렬용 뷰 상수. CPU 컬링 없음</td><td>그리는 카메라</td></tr>
+<tr><td><code>Graphics/RendererShadow.cpp</code> 그림자 패스 컬링</td><td>조명 자신의 뷰로 <code>FromViewProj</code></td><td>카메라 무관</td></tr>
+<tr><td>SSAO·TAA·모션 블러</td><td>그리는 화면의 깊이·속도</td><td>그리는 카메라</td></tr>
+</tbody>
+</table>
+<p>그 밖에 확인한 것:</p>
+<ul>
+<li><code>Render</code> 는 <code>CullLights(camera)</code> → <code>BuildShadowViews(camera, …)</code> → 클러스터(메인, 있으면 미리보기) 순서로 한 번 준비하고, 뷰마다 <code>RenderScenePass(…, viewIndex)</code> 를 부릅니다. 포워드는 <code>DrawItems</code> 를 한 번, 디퍼드(<code>RendererDeferred.cpp</code> <code>RenderDeferredScene</code>)는 G-buffer·포워드 나머지로 두 번 부릅니다. <code>DrawItems</code> 는 <code>viewIndex</code> 를 받지 않습니다.</li>
+<li>셰이더의 조명 루프(<code>Shaders/Shading.hlsli</code> <code>ShadeLights</code>)는 b0 <code>clusterParams.x</code> 로 둘 중 하나를 고릅니다. 클러스터드가 켜져 있으면(<code>RenderSettings::clustered</code>, 기본 켬) <code>ShadeClusteredLights</code> 가 t30·t31 클러스터 목록을, 꺼져 있으면 <code>ShadeAllLights</code> 가 t15 조명 전부를 돕니다. 뒤쪽은 경계 구를 보지 않습니다.</li>
+<li><code>m_lightBounds</code> 를 읽는 곳은 <code>CullLights</code>, CPU <code>BuildClusters</code>, GPU 비닝 업로드(<code>UploadLightBounds</code>, <code>UploadClusterBinConstants</code>)뿐입니다. 메인·미리보기 두 뷰가 같은 배열(GPU 는 같은 <code>SB_LightBounds</code>)을 씁니다.</li>
+<li>에디터 쪽: 체크박스(<code>Editor.cpp</code> <code>Editor::DrawRenderSettings</code>)는 <code>cascadeEnabled || IsCascadeFrozen()</code> 일 때만 보입니다. 오버레이 <code>Editor::DrawCascadeFrustums</code> 는 편집 모드에서 고정 중이고 캐스케이드가 1 개 이상일 때만 그립니다. 고정을 푸는 곳은 체크박스뿐이라 씬을 바꾸거나 재생을 시작해도 고정이 남습니다.</li>
+<li>자동화 <code>--freeze-cascades=N</code>(<code>EditorAutomation.cpp</code>)은 N 프레임째 고정하고 다음 프레임에 <code>--cam-look</code> 으로 카메라를 옮깁니다. 문서는 <code>docs/study/csm-study.html</code> 에서만 씁니다.</li>
+<li>로그의 "자동 검증: 렌더 통계" 줄에는 <code>lightsVisible</code>·<code>lightsCulled</code> 는 있지만 오브젝트 <code>culled</code> 는 없습니다.</li>
+</ul>
+</section>
+
+<section id="concept">
+<h2>2. 개념: 컬링 시점과 그리는 시점</h2>
+<p>보통은 한 카메라가 두 가지 일을 합니다. 무엇을 그릴지 고르는 일(컬링)과, 고른 것을 화면에 투영하는 일(그리기)입니다. 둘을 떼어 컬링은 고정해 둔 사본으로, 그리기는 지금 카메라로 하면, 컬링 결과를 바깥에서 볼 수 있습니다. 고정 시점 절두체 밖에 있어서 버려진 메시는 자유 시점에서 뻥 뚫린 자리로 보입니다.</p>
+<p>이 방법으로 잡을 수 있는 문제:</p>
+<ul>
+<li><b>경계 구가 너무 작음.</b> 정점 셰이더가 메시를 경계 밖으로 옮기는 경우(바다 변위, 스킨 메시)에 화면 가장자리에서 메시가 갑자기 사라집니다. 고정하면 절두체 근처에서 버려진 메시가 보입니다.</li>
+<li><b>컬링이 너무 느슨함.</b> 평면별 구 검사(<code>Frustum::Intersects</code>)는 모서리 근처에서 밖에 있는 구를 남깁니다. 고정 절두체 밖인데도 그려지는 메시가 그 몫입니다.</li>
+<li><b>조명·그림자 선택.</b> 그림자 아틀라스 16 타일이 어느 조명에 갔는지, 화면 밖 조명이 빠졌는지를 고정 시점 기준으로 볼 수 있습니다.</li>
+</ul>
+<p>그리는 쪽에 남겨야 하는 것도 있습니다. 클러스터 상자는 그리는 화면의 픽셀을 나눈 것이라 고정 카메라로 만들면 자유 시점 픽셀과 맞지 않습니다. 반투명 정렬, 화면 공간 효과, 속도 버퍼도 그리는 시점이 기준입니다.</p>
+</section>
+
+<section id="design">
+<h2>3. 설계 결정</h2>
+<h3 id="d-rules">3.1 모든 단계에 걸리는 규칙</h3>
+<ul>
+<li><b>고정하지 않으면 지금과 같은 결과.</b> 고정이 꺼진 동안 화면 픽셀과 통계가 바뀌면 안 됩니다. 1단계 검증의 첫 항목입니다.</li>
+<li><b>고정 직후 카메라를 움직이기 전에는 같은 화면.</b> 고정 카메라가 그리는 카메라의 사본이라 절두체가 같기 때문입니다. 다르면 사본을 잘못 쓴 것입니다.</li>
+<li><b>오브젝트 컬링은 메인 뷰만.</b> 카메라 미리보기 뷰(<code>m_previewCamera</code>, <code>viewIndex</code> 1)는 자기 카메라로 오브젝트를 컬링합니다. 캐스케이드·조명 컬링(그림자 타일 배정, 2단계 조명 게이트)은 <code>Render</code> 가 두 뷰를 그리기 전에 프레임당 한 번 하므로 미리보기에도 걸립니다. 지금 캐스케이드 고정도 이미 그렇습니다.</li>
+<li><b>바꾸는 것은 절두체와 눈 위치뿐.</b> b0, 클러스터, 반투명 정렬, 파티클, TAA 는 그리는 카메라를 그대로 씁니다.</li>
+</ul>
+
+<h3 id="d-table">3.2 결정 표</h3>
+<table>
+<thead><tr><th>항목</th><th>선택 (<span class="tag v">결정</span> 표시가 없는 행은 <span class="tag p">제안</span>)</th><th>이유</th><th>검토한 다른 안</th></tr></thead>
+<tbody>
+<tr><td>고정 카메라 수 <span class="tag v">결정 11-24</span></td><td>하나(<code>m_cullFreezeCamera</code>)에 항목별 켜기: 캐스케이드·오브젝트·조명, 기본 모두 켬</td><td>시점이 섞이면 화면을 해석하기 어려움. 그래도 캐스케이드만 보고 싶을 때(바깥 그림자 받는 면이 사라지면 곤란)가 있어 항목은 끌 수 있게 함</td><td>항목마다 따로 고정: 시점이 여럿이 되어 혼란. 하나로 묶고 끌 수 없음: 기존 캐스케이드 관찰 용도가 깨짐</td></tr>
+<tr><td>적용 뷰</td><td>오브젝트 컬링은 메인 뷰(<code>viewIndex</code> 0)만. 캐스케이드·조명은 프레임 공용이라 두 뷰 모두</td><td>미리보기는 게임 카메라가 무엇을 보는지 확인하는 창이라 메시가 빠지면 안 됨. 캐스케이드·그림자 타일은 프레임에 한 벌뿐이라 뷰별로 나누려면 그림자 패스가 두 배가 됨</td><td>오브젝트도 모든 뷰: 미리보기가 엉뚱하게 비어 보임. 그림자까지 뷰별: 비용에 비해 얻는 것이 없음</td></tr>
+<tr><td>조명을 보이게 하는 법</td><td>2단계: 고정 중 조명 항목이 켜져 있으면 컬링된 지역광의 <code>m_lightBounds[i].w = 0</code>. 클러스터드가 꺼져 있으면 효과 없음(UI 에 적음)</td><td><code>w ≤ 0</code> 건너뛰기가 CPU·GPU 비닝 양쪽에 이미 있어 셰이더를 고치지 않음. 화면에서 바로 보임. 클러스터드 끔은 비교용 정답 경로라 디버그 게이트를 넣지 않음</td><td>아이콘·통계로만 표시: 빛이 남아 있어 "이 조명은 버려졌다"가 화면과 어긋남. 경계 배열을 뷰별로 둘: GPU 버퍼가 하나라 버퍼·셋이 늘어남</td></tr>
+<tr><td>조명 게이트와 미리보기 <span class="tag v">결정 11-24</span></td><td>미리보기에도 걸림을 받아들이고 UI 툴팁에 적음</td><td>경계 배열(<code>m_lightBounds</code>, GPU 는 <code>SB_LightBounds</code> 하나)이 두 뷰 공용. 고정과 미리보기를 같이 쓰는 일은 드묾. 캐스케이드·그림자 타일도 이미 두 뷰가 한 벌을 씀</td><td>미리보기가 열려 있으면 게이트 끄기: 동작이 조건에 따라 달라져 더 헷갈림</td></tr>
+<tr><td>고정 해제 시점 <span class="tag v">결정 11-24</span></td><td>체크박스, 씬 불러오기, 재생 시작·정지</td><td>지금은 씬을 바꿔도 캐스케이드 고정이 남아 다른 씬에서 엉뚱한 그림자가 됨. <code>EditorApp</code> 의 TAA 히스토리 리셋과 같은 자리에서 풂</td><td>계속 유지: 지금 동작이지만 실수하기 쉬움</td></tr>
+<tr><td>이름</td><td><code>SetCascadeFreeze</code> → <code>SetCullFreeze</code>, <code>IsCascadeFrozen</code> 은 "고정 중이고 캐스케이드 항목이 켜짐"으로 남김</td><td>호출처가 에디터 두 곳뿐</td><td>옛 함수를 감싸서 남김: 쓸 곳이 없음</td></tr>
+<tr><td>자동화 인자 <span class="tag v">결정 11-24</span></td><td>새 <code>--freeze-culling=N</code>(모든 항목). <code>--freeze-cascades=N</code> 은 캐스케이드만 고정하는 예전 동작 유지</td><td><code>csm-study.html</code> 의 명령이 같은 스크린샷을 내야 함</td><td><code>--freeze-cascades</code> 를 모든 항목으로 넓힘: 옛 기록과 결과가 달라짐</td></tr>
+</tbody>
+</table>
+
+<h3 id="d-api">3.3 Renderer 인터페이스</h3>
+<pre><code><span class="c">// Graphics/Renderer.h</span>
+struct CullFreezeParts
+{
+	bool cascades = true;   <span class="c">// BuildShadowViews 의 캐스케이드 분할</span>
+	bool objects = true;    <span class="c">// DrawItems 의 오브젝트 절두체 컬링 (메인 뷰)</span>
+	bool lights = true;     <span class="c">// CullLights 의 절두체·그림자 점수 + (2단계) 클러스터 게이트</span>
+};
+void SetCullFreeze(bool freeze, const Camera&amp; camera, CullFreezeParts parts = {});
+void SetCullFreezeParts(CullFreezeParts parts);   <span class="c">// 고정 중 항목만 바꿈 (카메라 사본은 그대로)</span>
+bool IsCullFrozen() const;
+CullFreezeParts GetCullFreezeParts() const;
+const Camera&amp; GetCullFreezeCamera() const;     <span class="c">// 오버레이용</span>
+bool IsCascadeFrozen() const { return m_cullFrozen &amp;&amp; m_cullFreezeParts.cascades; }
+
+<span class="c">// 내부: 항목별로 고를 카메라</span>
+const Camera&amp; CullCamera(const Camera&amp; drawCamera, bool part) const
+{ return m_cullFrozen &amp;&amp; part ? m_cullFreezeCamera : drawCamera; }</code></pre>
+<p><code>DrawItems</code> 는 컬링 카메라를 따로 받습니다. 기본값을 두지 않고 호출처 세 곳(포워드 1, 디퍼드 2)에서 모두 명시합니다. <code>RenderScenePass</code>·<code>RenderDeferredScene</code> 은 이미 <code>viewIndex</code> 를 알고 있어서 <code>viewIndex == 0 ? CullCamera(camera, parts.objects) : camera</code> 를 넘기면 됩니다.</p>
+<pre><code>void DrawItems(RHI::CommandList&amp; cmd, const Scene&amp; scene, const Camera&amp; camera, const Camera&amp; cullCamera, DrawMode mode);
+<span class="c">//   frustum ← cullCamera,  반투명 정렬 eye ← camera</span></code></pre>
+
+<h3 id="d-ui">3.4 에디터 UI와 오버레이</h3>
+<ul>
+<li><b>체크박스.</b> Render Settings 의 그림자 패널 뒤, 조건 없이 <code>Freeze culling camera</code>. 켜져 있을 때만 아래에 <code>Cascades</code>·<code>Objects</code>·<code>Lights</code> 세 체크박스를 들여 써서 보여 줍니다. 그 아래 한 줄 안내(<code>TextDisabled</code>)와 고정 시점 통계 한 줄(<code>culled</code>, <code>lightsVisible</code>/<code>lightsCulled</code>).</li>
+<li><b>절두체 와이어.</b> <code>DrawCascadeFrustums</code> 를 <code>DrawFreezeOverlay</code> 로 넓혀서, 고정 중이고 Objects 나 Lights 항목이 켜져 있으면 고정 카메라의 전체 절두체를 흰 선으로 그립니다. 캐스케이드만 고정한 경우(<code>--freeze-cascades</code>)는 지금과 같은 화면이 되도록 흰 선을 그리지 않습니다. 꼭짓점은 고정 카메라 <code>View·Proj</code> 의 역행렬로 NDC 여덟 점(x, y = ±1, z = 0·1)을 되돌려 얻습니다. 캐스케이드 항목이 켜져 있으면 지금처럼 캐스케이드 색 와이어를 덧그립니다.</li>
+<li><b>조명 아이콘.</b> 조명 항목이 켜져 있으면 <code>DrawLightIcons</code> 에서 고정 시점에서 컬링된 지역광 아이콘을 회색으로 칠합니다. Renderer 에는 씬 조명 번호로 묻는 <code>IsLightCulledByFreeze(sceneIndex)</code> 를 둡니다. GPU 배열은 방향광을 앞으로 모아 정렬하므로 번호가 달라서, 이미 있는 대응표 <code>m_lightSceneIndex</code>(정렬 뒤 <code>m_gpuLights[i]</code> 의 씬 번호)로 거꾸로 찾습니다.</li>
+<li><b>컬링된 오브젝트 윤곽</b> <span class="tag">선택</span>: 고정 시점에서 버린 오브젝트의 경계 구를 씬 뷰에 회색 원으로 그림. 뚫린 자리가 무엇이었는지 알려 줍니다. 3단계 끝에서 화면을 보고 넣을지 정합니다.</li>
+</ul>
+</section>
+
+<section id="s1">
+<h2>1단계 — 컬링 카메라 분리 <span class="tag">RHI 확장 없음</span></h2>
+<h3 id="s1-todo">1단계 작업 순서</h3>
+<ul class="todo">
+<li><input type="checkbox" disabled checked> <code>Graphics/Renderer.h</code>: <code>m_cascadeFrozen</code>·<code>m_cascadeFreezeCamera</code> 를 <code>m_cullFrozen</code>·<code>m_cullFreezeCamera</code>·<code>m_cullFreezeParts</code> 로 바꾸고 3.3 의 함수 선언. <code>DrawItems</code> 시그니처에 <code>cullCamera</code>.</li>
+<li><input type="checkbox" disabled checked> <code>Graphics/RendererShadow.cpp</code>: <code>SetCascadeFreeze</code> → <code>SetCullFreeze</code>·<code>SetCullFreezeParts</code>. <code>BuildShadowViews</code> 는 <code>CullCamera(drawCamera, parts.cascades)</code>.</li>
+<li><input type="checkbox" disabled checked> <code>Graphics/Renderer.cpp</code> <code>Render</code>: <code>CullLights(CullCamera(camera, parts.lights))</code>.</li>
+<li><input type="checkbox" disabled checked> <code>Graphics/Renderer.cpp</code> <code>DrawItems</code>: 절두체는 <code>cullCamera</code>, 반투명 정렬 <code>eye</code> 는 <code>camera</code>. <code>RenderScenePass</code> 와 <code>Graphics/RendererDeferred.cpp</code> <code>RenderDeferredScene</code> 의 호출 세 곳에서 3.3 처럼 넘김.</li>
+<li><input type="checkbox" disabled checked> <code>Editor/Editor.cpp</code>·<code>Editor/EditorAutomation.cpp</code>: 옛 호출 두 곳을 <code>SetCullFreeze(…, {.cascades = true, .objects = false, .lights = false})</code> 로 바꿔 동작을 유지(UI 는 3단계).</li>
+<li><input type="checkbox" disabled checked> 임시로 <code>--freeze-culling=N</code> 파싱만 먼저 넣어 검증에 씀(모든 항목 켬). 3단계에서 정리.</li>
+<li><input type="checkbox" disabled checked> <code>Editor/EditorAutomation.cpp</code> 렌더 통계 로그 줄에 <code>culled=%u</code> 추가.</li>
+</ul>
+<h3 id="s1-verify">1단계 검증</h3>
+<ul>
+<li><b>고정 없음 = 기준.</b> CascadeBigScene·ManyLights64·Ocean 에서 바뀌기 전 바이너리와 스크린샷·통계가 같음(씬 뷰 영역, 4장 잡음 기준).</li>
+<li><b>고정만, 이동 없음 = 같은 화면.</b> <code>--freeze-culling=10</code> 만 주고 <code>--cam-look</code> 없이: 고정 없는 실행과 같은 픽셀·같은 <code>culled</code>.</li>
+<li><b>고정 후 이동.</b> <code>--freeze-culling=10 "--cam-look=…"</code> 으로 고정 시점 뒤·위로 뺌: 로그의 <code>culled</code>·<code>lightsCulled</code> 가 이동 전 값과 같고, 스크린샷에 고정 절두체 밖 메시가 빠져 있음. 같은 이동을 고정 없이 찍은 것과 비교해 차이가 그 메시들뿐인지 눈으로 확인.</li>
+<li><b>디퍼드·포워드</b> 두 경로 모두(로그 <code>path=</code> 로 확인), <b>D3D11·D3D12</b> 같은 결과.</li>
+<li><b>미리보기의 메시는 그대로.</b> <code>--select=</code> 로 카메라 오브젝트를 골라 미리보기를 켠 채 Objects 항목만 고정·이동(임시 인자에 항목 지정이 없으면 이 검사만 코드에서 항목을 바꿔 한 번): 미리보기 화면이 고정 없는 실행과 같음. 캐스케이드·조명까지 고정하면 미리보기 그림자가 바뀌는 것이 정상.</li>
+<li><b><code>--freeze-cascades</code> 회귀.</b> <code>csm-study.html</code> 의 명령이 바뀌기 전과 같은 스크린샷.</li>
+</ul>
+<h3 id="s1-risk">1단계 위험</h3>
+<ul>
+<li>디퍼드의 두 <code>DrawItems</code> 호출 중 하나만 바꾸면 G-buffer 와 포워드 나머지가 다른 절두체를 씀. 고정 후 이동 화면에서 반투명·unlit 만 남거나 빠지면 이것.</li>
+<li>Camera 사본은 고정 시점의 화면비를 그대로 가짐. 고정 뒤 창 크기를 바꿔도 컬링 절두체는 옛 화면비 — 의도한 동작으로 둠.</li>
+</ul>
+</section>
+
+<section id="s2">
+<h2>2단계 — 컬링된 조명 끄기 <span class="tag">RHI 확장 없음</span></h2>
+<p>1단계만으로는 고정 시점 밖 조명도 자유 시점 화면을 계속 비춥니다(0장 정정 참고). 고정 중에만 컬링 결과를 클러스터에 반영합니다.</p>
+<h3 id="s2-todo">2단계 작업 순서</h3>
+<ul class="todo">
+<li><input type="checkbox" disabled checked> <code>Graphics/RendererClusters.cpp</code> <code>CullLights</code>: 고정 중이고 조명 항목이 켜져 있으면, 컬링된 지역광(<code>visible == false</code>)의 <code>m_lightBounds[i].w = 0</code>. 고정이 아니면 손대지 않음(그리는 카메라 기준이라 어차피 클러스터에 안 걸림).</li>
+<li><input type="checkbox" disabled checked> 같은 자리에 주석: <code>w = 0</code> 은 CPU <code>BuildClusters</code> 와 GPU 비닝이 이미 건너뜀. 경계 배열이 두 뷰 공용이라 미리보기에도 걸림. 클러스터드를 끈 <code>ShadeAllLights</code> 경로에는 효과 없음.</li>
+</ul>
+<h3 id="s2-verify">2단계 검증</h3>
+<ul>
+<li>ManyLights64 에서 고정 후 이동: 고정 절두체 밖 조명이 비추던 바닥이 어두워짐. 로그 <code>clusterLightRefs</code> 가 1단계 같은 이동보다 줄어듦.</li>
+<li>CPU 비닝(<code>--cluster-gpu=0</code>)과 GPU 비닝이 같은 화면.</li>
+<li>고정 없음·고정만(이동 없음)은 1단계와 같은 픽셀 — 그리는 카메라 절두체 밖 조명은 원래 빛이 닿는 픽셀이 없으니 이동 없이는 화면 차이가 없어야 함. <code>clusterRefs</code> 는 상자 검사가 보수적이라 절두체 가장자리 조명 몫만큼 조금 줄 수 있음.</li>
+</ul>
+</section>
+
+<section id="s3">
+<h2>3단계 — UI · 오버레이 · 자동화</h2>
+<h3 id="s3-todo">3단계 작업 순서</h3>
+<ul class="todo">
+<li><input type="checkbox" disabled checked> <code>Editor/Editor.cpp</code>: 3.4 의 체크박스 묶음. 체크박스가 늘 보이게 조건 제거. 항목을 바꾸면 <code>SetCullFreezeParts</code>. Lights 툴팁에 "미리보기 뷰 조명에도 걸림, Clustered 를 끄면 빛은 그대로".</li>
+<li><input type="checkbox" disabled checked> <code>Editor/Editor.cpp</code> <code>DrawCascadeFrustums</code> → <code>DrawFreezeOverlay</code>: 흰 전체 절두체 + (캐스케이드 항목) 색 와이어. <code>Editor.h</code> 선언 갱신.</li>
+<li><input type="checkbox" disabled checked> <code>Graphics/Renderer.h</code>·<code>RendererClusters.cpp</code>: <code>IsLightCulledByFreeze(sceneIndex)</code>. <code>Editor/Editor.cpp</code> <code>DrawLightIcons</code> 에서 회색 아이콘.</li>
+<li><input type="checkbox" disabled checked> 고정 해제: 씬 불러오기·재생 시작·정지에서 <code>SetCullFreeze(false, …)</code>. <code>Editor/EditorApp.cpp</code> 에서 <code>ResetTemporalHistory</code> 를 부르는 자리(<code>EditorApp::ResetHistory</code>, 재생 시작)와 같은 곳. 재생 정지가 <code>ResetHistory</code> 를 거치는지는 그때 확인.</li>
+<li><input type="checkbox" disabled checked> <code>Editor/EditorAutomation.h/.cpp</code>: <code>--freeze-culling=N</code> 정식 파싱과 머리 주석, <code>--cam-look</code> 순서 보장(<code>freezeCascadesAt</code> 와 같이 N+1 프레임째).</li>
+<li><input type="checkbox" disabled> <span class="tag">선택</span> 컬링된 오브젝트 경계 구 윤곽. <b>하지 않음</b> — 흰 절두체와 남은 그림자(9장)로 빠진 자리를 충분히 알아볼 수 있었음.</li>
+</ul>
+<h3 id="s3-verify">3단계 검증</h3>
+<ul>
+<li>고정 후 이동 스크린샷에 흰 절두체 와이어와 회색 조명 아이콘. 와이어 안쪽 메시는 남고 바깥 메시는 빠짐.</li>
+<li>캐스케이드를 1 개로 둔 씬에서도 체크박스가 보이고 흰 와이어가 그려짐.</li>
+<li><code>csm-study.html</code> 의 <code>--freeze-cascades</code> 명령이 1단계 이전과 같은 스크린샷(흰 선 없음).</li>
+<li>고정한 채 다른 씬을 불러오면 고정이 풀림. 재생을 시작해도 풀림.</li>
+<li>항목 하나씩 끄기: Objects 만 끄면 메시가 다시 나타나고 조명은 꺼진 채. Cascades 만 끄면 캐스케이드가 그리는 카메라를 따라감.</li>
+</ul>
+</section>
+
+<section id="verify">
+<h2>4. 공통 검증 절차</h2>
+<ul>
+<li>빌드: 솔루션 전체 Debug x64(Git Bash 에서는 <code>-p:Configuration=Debug -p:Platform=x64 -m</code>).</li>
+<li>실행: <code>x64/Debug/SherlockEditor.exe --project=Projects/SherlockTestScenes/… --scene=&lt;씬&gt;.json --exit-after=40 --screenshot=&lt;png&gt;</code>, 필요하면 <code>--backend=d3d11|d3d12</code>, <code>--freeze-culling=10</code>, <code>"--cam-look=ex,ey,ez;tx,ty,tz"</code>(PowerShell 은 따옴표).</li>
+<li>비교 영역은 씬 뷰 (233,72)–(963,515), 실행마다 달라지는 세로 띠(전체 화면 x 270~300)는 가림. 같은 바이너리를 두 번 찍어 잡음 수준을 먼저 잼.</li>
+<li>로그 "자동 검증: 렌더 통계" 줄의 <code>culled</code>·<code>lightsVisible</code>·<code>lightsCulled</code>·<code>clusterRefs</code>·<code>shadowViews</code> 를 단계마다 표로 남김.</li>
+<li>테스트 씬: CascadeBigScene(오브젝트가 많고 캐스케이드도 봄), ManyLights64(조명), Ocean(변위 메시의 경계 구). 컬링은 서브메시가 아니라 오브젝트 경계 구 단위라 Sponza 처럼 모델 하나인 씬에서는 메시가 빠지지 않음 — ManyLights64 는 조명용으로만 씀. 1단계 첫 실행에서 CascadeBigScene 의 보통 시점 <code>culled &gt; 0</code> 을 확인하고, 0 이면 그때 씬을 다시 고름. 새 씬은 만들지 않을 계획.</li>
+<li>디퍼드·포워드: 로그 <code>path=</code> 로 실제 경로를 확인하고 두 경로를 한 번씩 찍음(전환 방법은 7장).</li>
+</ul>
+</section>
+
+<section id="commits">
+<h2>5. 커밋 단위와 순서</h2>
+<ol>
+<li>1단계: 컬링 카메라 분리 + <code>culled</code> 로그 + 임시 <code>--freeze-culling</code>.</li>
+<li>2단계: 고정 중 컬링된 조명 클러스터 게이트.</li>
+<li>3단계: UI·오버레이·고정 해제·자동화 정리.</li>
+<li>문서: <code>rendering-analysis.html</code>(그림자 디버그·부록 D 실행 인자), <code>csm-study.html</code> 의 체크박스 이름, 용어집은 사용자에게 물어본 뒤.</li>
+</ol>
+</section>
+
+<section id="files">
+<h2>6. 바뀌는 파일</h2>
+<table>
+<thead><tr><th>파일</th><th>단계</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td><code>Graphics/Renderer.h</code></td><td>1, 3</td><td>고정 상태·<code>CullFreezeParts</code>·<code>DrawItems</code> 시그니처, <code>IsLightCulledByFreeze</code></td></tr>
+<tr><td><code>Graphics/Renderer.cpp</code></td><td>1</td><td><code>Render</code> 의 <code>CullLights</code> 카메라, <code>DrawItems</code> 절두체, <code>RenderScenePass</code> 호출</td></tr>
+<tr><td><code>Graphics/RendererDeferred.cpp</code></td><td>1</td><td><code>DrawItems</code> 두 호출</td></tr>
+<tr><td><code>Graphics/RendererShadow.cpp</code></td><td>1</td><td><code>SetCullFreeze</code>, <code>BuildShadowViews</code> 카메라 선택</td></tr>
+<tr><td><code>Graphics/RendererClusters.cpp</code></td><td>2, 3</td><td>고정 중 <code>w = 0</code>, 조명 번호 질의</td></tr>
+<tr><td><code>Editor/Editor.cpp</code>, <code>Editor/Editor.h</code></td><td>1, 3</td><td>체크박스, <code>DrawFreezeOverlay</code>, 조명 아이콘</td></tr>
+<tr><td><code>Editor/EditorApp.cpp</code></td><td>3</td><td>씬 불러오기·재생 시작·정지에서 고정 해제</td></tr>
+<tr><td><code>Editor/EditorAutomation.cpp</code>, <code>.h</code></td><td>1, 3</td><td><code>--freeze-culling=N</code>, <code>culled</code> 로그</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="unknown">
+<h2>7. 미확인 사항</h2>
+<ul>
+<li><b>먼 far 의 와이어.</b> OceanHorizon 처럼 far 5000 인 카메라는 절두체 뒷면이 아주 멀어 선이 화면을 가로지름. 거슬리면 표시용 far 를 줄일지 3단계 화면을 보고 정함.</li>
+<li><b>재생 중 고정.</b> 재생 중에는 고정을 막을지(체크박스 비활성), 허용할지. 지금 제안은 시작·정지 때 풀기만 함.</li>
+<li><b>디퍼드·포워드 전환 인자.</b> <span class="tag v">확인</span> <code>--deferred=0|1</code>(<code>App/AppBase.cpp</code>).</li>
+<li><b>각 씬의 <code>--cam-look</code> 값.</b> <span class="tag v">확인</span> FreezeCulling <code>-81.49,76.35,-27.92;-21.5,26.9,34.8</code>(원본 CascadeBigScene 카메라 자리), ManyLights64 <code>-6,7,0;12,0,0</code>(위층 회랑에서 고정 카메라 쪽을 봄).</li>
+<li><b>고정 시 TAA.</b> 고정은 b0 를 건드리지 않으니 히스토리에 영향이 없어야 하지만, 메시가 한 프레임에 사라지는 순간 히스토리 클리핑으로 잔상이 남는지 TAA 켠 씬에서 한 번 봄.</li>
+</ul>
+</section>
+
+<section id="refs">
+<h2>8. 참고 자료</h2>
+<ul>
+<li>Unreal Engine 콘솔 명령 <code>FreezeRendering</code>: 가시성 판정을 지금 시점에 멈추고 카메라를 움직여 컬링 결과를 보는 같은 종류의 디버그 기능.</li>
+<li>이 엔진 문서: <a href="../study/csm-study.html">CSM 학습</a>(캐스케이드 고정·<code>--freeze-cascades</code>), <a href="deferred-clustered-ssao-record.html">디퍼드·클러스터드·SSAO 구현 기록</a>(3a 조명 컬링·그림자 점수), <a href="gpu-cluster-binning-record.html">GPU 클러스터 비닝 구현 기록</a>(<code>w ≤ 0</code> 건너뛰기).</li>
+</ul>
+</section>
+
+<section id="result">
+<h2>9. 구현 결과 (2026-11-24)</h2>
+<h3 id="r-changes">계획과 달라진 점</h3>
+<ul>
+<li><b>테스트 씬을 하나 만듦.</b> CascadeBigScene 은 전체를 내려다보는 기본 시점이라 <code>culled = 0</code> 이어서 고정해도 빠지는 메시가 없음. 카메라만 기둥 길 안쪽 (0, 3, 20) 으로 옮긴 복사본 <code>Projects/SherlockTestScenes/Assets/Scenes/FreezeCulling.json</code> 을 생성기 <code>Scripts/Tests/make_freeze_culling_test_scene.py</code> 로 만듦(기본 시점 <code>culled = 24</code>). Ocean 은 파도가 실제 시간으로 움직여 <code>--ocean-time=5</code> 로 비교함.</li>
+<li><b><code>--freeze-parts=col</code> 추가.</b> 글자 c·o·l 로 캐스케이드·오브젝트·조명을 고름(없으면 셋 다). 미리보기 검증(Objects 만)과 조명만 고정한 비교에 씀. <code>--freeze-culling</code> 과 <code>--freeze-cascades</code> 를 둘 다 주면 <code>--freeze-culling</code>.</li>
+<li><b>오버레이 변을 잘라 그림.</b> 고정 카메라의 먼 변은 에디터 카메라 뒤로 지나가는 일이 흔해서, 끝점 하나가 뒤면 변을 통째로 버리던 방식으로는 실내 시점에서 흰 절두체가 하나도 안 보였음. <code>Editor.cpp</code> <code>ProjectSegmentToView</code> 가 클립 공간에서 w = 0.001 근처로 잘라 앞쪽 몫을 그림. 캐스케이드 색 와이어도 같은 함수를 씀(<code>csm-study.html</code> 명령 스크린샷은 그대로 — 아래 표).</li>
+<li><b>고정 해제 자리.</b> 씬 교체는 <code>EditorApp::ResetHistory</code> 안에서 함께 풂(새 씬·불러오기·프로젝트 전환 때마다 불리는 함수). 재생은 <code>StartPlay</code>·<code>StopPlay</code>. 풀 때 로그 <code>컬링 고정 해제: 씬 교체 / 재생 시작 / 재생 정지</code>. 항목 선택은 남김.</li>
+<li><b>함수 이름.</b> 3.3 의 <code>CullCamera(drawCamera, part)</code> 대신 오브젝트용 <code>ObjectCullCamera(camera, viewIndex)</code> 하나만 둠. 캐스케이드는 <code>IsCascadeFrozen()</code>, 조명은 <code>Render</code> 에서 직접 고름.</li>
+<li><b>UI 통계 줄.</b> <code>culled</code> 는 메인·미리보기 패스에서 건너뛴 드로우(서브메시) 합이라 "culled draws" 로 적음.</li>
+<li>컬링된 오브젝트 경계 구 윤곽(선택 항목)은 하지 않음.</li>
+</ul>
+<h3 id="r-observe">화면에서 보이는 것</h3>
+<ul>
+<li><b>Objects 만 고정하고 옮기면</b> 흰 절두체 밖 기둥·건물이 사라지지만 <b>그림자는 남음</b>. 그림자 패스는 광원 뷰로 따로 컬링하기 때문 — 카메라 밖 물체도 화면 안에 그림자를 드리울 수 있으니 맞는 동작.</li>
+<li><b>Lights 만 고정하면</b> 고정 시점 뒤쪽 조명 아이콘이 회색 X 로 바뀌고, 그 조명이 비추던 면이 어두워짐. 통계는 이동 뒤에도 고정 시점 값 <code>lightsVisible 46 / lightsCulled 18</code> 에 머묾. 빛만의 차이를 재려고 아이콘을 끄고(<code>--light-icons=selected</code>) Objects 만 고정한 실행과 비교함 — 흰 절두체는 양쪽에 다 있고 Sponza 는 오브젝트 하나라 컬링되지 않으므로 남는 차이는 조명뿐. 컬링된 조명 12 개가 모인 동쪽 끝(x 10~13)을 보는 <code>--cam-look=1,3,0;12,1.5,0</code> 에서 8 넘는 픽셀 1885 개(최대 113): 빨간 휘장·사자 머리 주변이 어두워짐. 컬링된 조명이 거의 안 보이는 위층 회랑 시점 <code>-6,7,0;12,0,0</code> 에서는 204 개(최대 13)뿐. 아이콘을 켠 채 잰 첫 숫자(3121)는 회색 X 아이콘이 대부분이었음.</li>
+</ul>
+<h3 id="r-verify">검증 숫자</h3>
+<p>씬 뷰 영역 (233,72)–(963,515), 세로 띠 x 270~300 가림. 같은 바이너리를 두 번 찍은 잡음: CascadeBigScene 8 픽셀(최대 17).</p>
+<table>
+<thead><tr><th>검사</th><th>조건</th><th>결과</th></tr></thead>
+<tbody>
+<tr><td>고정 없음 = 바뀌기 전</td><td>CascadeBigScene·ManyLights64·FreezeCulling·Ocean(<code>--ocean-time=5</code>), 옛 바이너리와 비교</td><td>CascadeBigScene 은 옛 바이너리 두 장과 각각 16 픽셀(최대 23)·8 픽셀(최대 23), ManyLights64·FreezeCulling·Ocean 은 1·1·0 픽셀 — 잡음 수준(옛 바이너리끼리 8 픽셀, 최대 17). 통계 같음</td></tr>
+<tr><td>고정만, 이동 없음</td><td>FreezeCulling·ManyLights64 <code>--freeze-culling=10</code></td><td>다른 픽셀은 화면 맨 위 줄·맨 왼쪽 열(흰 절두체 선)뿐. <code>culled 24</code>, <code>lightsCulled 18</code> 같음</td></tr>
+<tr><td>고정 후 이동</td><td>FreezeCulling, 원본 카메라 자리로 <code>--cam-look</code></td><td>이동 뒤에도 <code>culled 24</code>(고정 없이 같은 자리 <code>culled 0</code>), 절두체 밖 기둥이 빠짐</td></tr>
+<tr><td>조명 게이트 CPU·GPU 비닝</td><td>ManyLights64 Lights 고정 + 이동, <code>--cluster-gpu=0</code> 과 비교</td><td>0 픽셀</td></tr>
+<tr><td>D3D11·D3D12</td><td>FreezeCulling 모든 항목, ManyLights64 Lights</td><td>2 픽셀(최대 10) · 0 픽셀</td></tr>
+<tr><td>디퍼드·포워드</td><td>같은 두 경우 <code>--deferred=0</code></td><td>8 넘는 픽셀 9 개(최대 16) · 0 개(최대 3)</td></tr>
+<tr><td>미리보기 메시 그대로</td><td>FreezeCulling, Objects 만 2 프레임째 고정 → 3 이동 → 4 <code>--add=4</code> 로 그 자리에 카메라 추가(선택되어 미리보기 켜짐)</td><td>미리보기 사각형 0 픽셀 차이. 드로우 수: 메인 102 + 미리보기 122</td></tr>
+<tr><td><code>--freeze-cascades</code> 회귀</td><td><code>csm-study.html</code> 5-3 명령(D3D11, 디버그 뷰 8)</td><td>옛 바이너리와 6 픽셀 차이 — 잡음 수준</td></tr>
+<tr><td>고정 해제</td><td><code>--load</code>, <code>--play=1</code>, <code>--play=1 --stop-at=20</code></td><td>각각 "컬링 고정 해제: 씬 교체 / 재생 시작 / 재생 정지" 로그</td></tr>
+</tbody>
+</table>
+<p>확인하지 않은 것: 에디터 체크박스 UI 경로(자동화는 <code>SetCullFreeze</code> 를 직접 부름 — <code>SetCullFreezeParts</code>·툴팁·캐스케이드 1 개 씬의 표시), 클러스터드를 끈 경로(<code>--clustered=0</code>, 게이트가 효과 없어야 함), TAA 를 켠 채 고정 후 이동했을 때의 잔상(7장), Release 빌드, 게임 모드(<code>SherlockGame</code> 은 고정을 부르지 않으므로 바뀐 경로가 없음 — Debug 빌드만 확인). 렌더 통계 로그 줄은 <code>draws=</code> 뒤에 <code>culled=</code> 가 끼었음 — 저장소에 이 줄을 순서대로 읽는 스크립트는 없음(문서에는 인용만).</p>
+</section>
+</main>
+</div>
+</body>
+</html>

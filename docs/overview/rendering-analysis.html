@@ -405,6 +405,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
     <li class="sub" data-ch="c16"><a href="#c16-9">16.9 콘텐츠 브라우저</a></li>
     <li class="sub" data-ch="c16"><a href="#c16-10">16.10 에디터의 자동 검증</a></li>
     <li class="sub" data-ch="c16"><a href="#c16-11">16.11 함정과 해결</a></li>
+    <li class="sub" data-ch="c16"><a href="#c16-12">16.12 게임 UI 편집 — Rect 툴과 UI 메뉴</a></li>
     <li data-ch="c17"><a href="#c17">17. 재생 모드·스크립트·게임 빌드·프로젝트 시스템</a></li>
     <li class="sub" data-ch="c17"><a href="#c17-1">17.1 왜 재생 모드가 필요했나</a></li>
     <li class="sub" data-ch="c17"><a href="#c17-2">17.2 Behaviour — C++ 클래스 하나가 스크립트 하나</a></li>
@@ -422,6 +423,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
     <li class="sub" data-ch="c17"><a href="#c17-14">17.14 예제·실험 프로젝트와 EditorApp 이라는 이름</a></li>
     <li class="sub" data-ch="c17"><a href="#c17-15">17.15 함정과 해결</a></li>
     <li class="sub" data-ch="c17"><a href="#c17-16">17.16 검증</a></li>
+    <li class="sub" data-ch="c17"><a href="#c17-17">17.17 재생 중 게임 UI — 이벤트와 스크립트 연결</a></li>
     <li class="pt"><a href="#part-c18">Part V · 기록</a></li>
     <li data-ch="c18"><a href="#c18">18. 출발점(커밋 867c380)과 문제 20건</a></li>
     <li class="sub" data-ch="c18"><a href="#c18-1">18.1 출발점 스냅샷 — 무엇이 있었나</a></li>
@@ -525,7 +527,7 @@ h2,h3,.decision,.phase,tr[id],.part{scroll-margin-top:16px}
   <div><div class="k">실행 파일</div><div class="v">SherlockEditor · SherlockGame<small>엔진은 DLL 하나(SherlockEngine.dll). 두 exe 와 프로젝트 스크립트 DLL 이 그것을 공유</small></div></div>
   <div><div class="k">그리는 것</div><div class="v">씬 파일 · glTF 모델<small>PBR(Cook-Torrance GGX) + IBL, 광원 최대 8개, 그림자(방향광 CSM 최대 4단 · 스팟/포인트 아틀라스 · 5×5 PCF), 노멀 매핑, sRGB, HDR 큐브맵 스카이박스</small></div></div>
   <div><div class="k">셰이더</div><div class="v">HLSL · SM 5.0 DXBC<small>한 번 컴파일한 바이트코드를 두 백엔드가 함께 씀</small></div></div>
-  <div><div class="k">기준 시점</div><div class="v">2026-10-08 작업 트리 + 그림자 장은 2026-11-03<small>커밋 4595bb0 기준 본문. 그림자는 11.8절·20.21·20.22절이 2026-11-03 작업 트리(커밋 cd5f680 + 미커밋) 기준. 셰이더 헤더 구성(10.1·10.3·10.4절)은 2026-11-17 커밋 45f796c 기준</small></div></div>
+  <div><div class="k">기준 시점</div><div class="v">2026-10-08 작업 트리 + 그림자 장은 2026-11-03<small>커밋 4595bb0 기준 본문. 그림자는 11.8절·20.21·20.22절이 2026-11-03 작업 트리(커밋 cd5f680 + 미커밋) 기준. 셰이더 헤더 구성(10.1·10.3·10.4절)은 2026-11-17 커밋 45f796c 기준. 게임 UI(1.2 폴더, 4.10, 10.3·10.6, 15.5, 16.12, 17.17, 20.31)는 2026-11-24 작업 트리(커밋 3d19842 + 미커밋) 기준</small></div></div>
 </div>
 
 <div class="callout">
@@ -734,6 +736,8 @@ SherlockEngine\             <span class="cm">엔진 DLL. "엔진 루트"</span>
 │               ScriptModule, EngineApi.h
 ├─ Scene\       Scene, GameObject, Transform, Camera, CameraComponent, Behaviour, Script,
 │               SceneSerializer, Material.h, Light.h
+├─ UI\          UISystem, UIComponents, UIWidgets, UILayout, UIEvent, Font, GlyphAtlas,
+│               UIDrawList.h, UITypes.h  <span class="cm">← 게임 UI (20.31절)</span>
 ├─ Game\Components\   Rigidbody, FollowTarget
 ├─ Graphics\    Renderer, Mesh, Model, TextureLoader, Screenshot, ShaderConstants.h, VertexTypes.h
 ├─ RHI\         Device.h, CommandList.h, Handle.h, ResourcePool.h, PipelineTypes, ResourceDesc.h,
@@ -764,7 +768,8 @@ vcpkg_installed\, docs\, images\, logs\
 <tr><td class="mono">RHI/D3D11/<br>RHI/D3D12/</td><td>백엔드 구현. D3D·DXGI 헤더와 <code>ComPtr</code> 이 있는 유일한 자리</td><td>자기 폴더, <code>RHI/</code>, <code>Core/Log.h</code></td><td>상대 백엔드, 씬, 렌더러</td></tr>
 <tr><td class="mono">RHI/DXBC/</td><td>HLSL 컴파일과 리플렉션(<code>D3DCompileFromFile</code>, <code>D3DReflect</code>). 두 백엔드가 공유</td><td><code>RHI/</code>, <code>Core/</code></td><td>Device</td></tr>
 <tr><td class="mono">Graphics/</td><td>그리기 정책. 렌더 패스 구성, 드로우 정렬, GPU 캐시, 메시·모델·텍스처의 CPU 데이터</td><td><code>RHI/</code>, <code>Scene/</code>, <code>Core/</code></td><td>D3D 타입, 백엔드 클래스 이름, 창, ImGui 창</td></tr>
-<tr><td class="mono">Scene/</td><td>그릴 대상의 CPU 데이터와 컴포넌트. GPU 자원을 갖지 않음</td><td><code>Scene/</code>, <code>Graphics/</code>(<code>Mesh</code>·<code>Model</code>), <code>Core/</code></td><td><code>RHI/</code>, 렌더러, ImGui</td></tr>
+<tr><td class="mono">Scene/</td><td>그릴 대상의 CPU 데이터와 컴포넌트. GPU 자원을 갖지 않음</td><td><code>Scene/</code>, <code>Graphics/</code>(<code>Mesh</code>·<code>Model</code>), <code>Core/</code>, <code>UI/UISystem.h</code>(<code>Scene.cpp</code> 가 재생 중 UI 를 갱신, 2026-11-24)</td><td><code>RHI/</code>, 렌더러, ImGui</td></tr>
+<tr><td class="mono">UI/</td><td>게임 UI. Canvas·RectTransform·Image·Text·위젯·레이아웃·이벤트 컴포넌트, 글꼴(stb_truetype)과 글리프 아틀라스, 매 프레임 레이아웃·입력 처리와 CPU 정점 목록(<code>UISystem</code>). GPU 자원을 갖지 않음 (2026-11-24, <a href="#c20-31">20.31</a>)</td><td><code>UI/</code>, <code>Scene/</code>, <code>Core/</code></td><td><code>RHI/</code>, 렌더러(<code>Graphics/RendererUI.cpp</code> 가 <code>UIDrawList</code> 를 읽어 그림), ImGui</td></tr>
 <tr><td class="mono">Scene/</td><td>엔진이 제공하는 컴포넌트</td><td><code>Scene/</code></td><td>렌더러, RHI</td></tr>
 <tr><td class="mono">Core/</td><td>그래픽스와 무관한 기반(<code>Log</code>·<code>Config</code>·<code>Paths</code>·<code>Project</code>·<code>Time</code>·<code>Input</code>)과, 시스템을 묶는 <code>Engine</code></td><td>기반 파일은 <code>Core/</code> 만. 예외는 아래</td><td><code>App/</code></td></tr>
 <tr><td class="mono">App/</td><td>창, 메시지 루프, ImGui 컨텍스트, 에디터 UI, 게임 런타임 앱</td><td>전부</td><td>D3D 타입(ImGui 렌더러 백엔드는 Device 가 고름)</td></tr>
@@ -1718,7 +1723,16 @@ m_device-&gt;EndFrame();                  <span class="cm">// Present</span>
 
 <p><code>Device::RenderImGui</code> 는 D3D11 에서 <code>ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData())</code>, D3D12 에서 <code>ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_list.Get())</code> 입니다. ImGui 백엔드는 자기 셰이더와 상태로 그립니다. D3D11 백엔드는 자기가 건드린 상태를 백업했다가 복원합니다. D3D12 에서는 엔진의 셰이더 가시 SRV 힙을 ImGui 에 그대로 넘겨 두었으므로 힙 바인딩이 바뀌지 않습니다. 엔진 쪽 PSO 기억은 다음 프레임의 <code>D3D12CommandList::BeginFrame</code> 이 지우므로, UI 패스가 프레임의 마지막 패스인 한 ImGui 가 PSO 를 바꿔 놓아도 문제가 없습니다. 씬 뷰와 카메라 미리보기 이미지는 이때 씬 타깃 텍스처를 샘플링해 그려집니다.</p>
 
-<p><code>Renderer::EndUIPass</code> 는 패스를 닫고 백버퍼를 <code>RenderTarget</code> → <code>Present</code> 로 전이합니다. 프레임의 마지막 배리어입니다. 에디터의 한 프레임에는 렌더 패스 3개와 배리어 6개(그림자 맵 2, 씬 타깃 2, 백버퍼 2)가 있습니다.</p>
+<p><code>Renderer::EndUIPass</code> 는 패스를 닫고 백버퍼를 <code>RenderTarget</code> → <code>Present</code> 로 전이합니다. 프레임의 마지막 배리어입니다. 에디터의 한 프레임에는 렌더 패스 3개와 배리어 6개(그림자 맵 2, 씬 타깃 2, 백버퍼 2)가 있습니다. (아래 게임 UI 가 있으면 뷰마다 캔버스 패스가 하나 더 붙습니다.)</p>
+
+<h4>게임 UI 캔버스 — ImGui 와 다른 패스 (2026-11-24)</h4>
+<p>이 절의 UI 패스는 에디터의 ImGui 입니다. 게임에 쓰는 UI(유니티 uGUI 식 Canvas, <a href="#c20-31">20.31</a>)는 ImGui 를 쓰지 않고 <code>Renderer::Render</code> 안에서 그립니다. 흐름은 세 단계입니다.</p>
+<ol>
+  <li><b>CPU 목록.</b> <code>Engine::Render</code> 가 <code>OnGUI</code> 뒤(이번 프레임의 씬 창 크기와 Inspector 수정이 반영된 뒤)에 <code>UISystem::Build</code> 를 부릅니다. 메인 뷰와(있으면) 미리보기 뷰의 레이아웃을 계산하고, 정점(<code>UIVertex</code> 40 바이트)·인덱스·그리기 명령(텍스처가 같으면 이어 붙임)·캔버스 행렬을 <code>UIDrawList</code> 하나에 담아 <code>Renderer::SetUIDrawList</code> 로 넘깁니다. Profiler 구간 이름은 <code>UI Build</code>.</li>
+  <li><b>업로드.</b> <code>Renderer::Render</code> 의 업로드 구간에서 <code>UploadUI</code> 가 명령마다 텍스처 셋을 고르고(캐시) VB·IB·b4 를 프레임에 한 번 올립니다. 글자 아틀라스가 바뀌었으면 <code>UploadUIAtlas</code> 가 <code>Device::UpdateTexture</code>(부분 갱신)로 올립니다.</li>
+  <li><b>그리기.</b> 톤 패스 바로 뒤 <code>RenderCanvasPass(0)</code> 이 출력 텍스처(에디터는 씬 텍스처, 게임은 백버퍼)를 UNORM 뷰로 열어 덧그리고, 톤 패스가 남긴 상태로 돌려놓습니다. 미리보기는 미리보기 톤 패스 뒤 <code>RenderCanvasPass(1)</code>. 뷰마다 World Space 캔버스 명령이 앞에 모여 있어 <code>Pass_UIWorld</code>(뷰 깊이를 읽기 전용으로, LessEqual)로 먼저 그리고 Overlay 를 <code>Pass_UI</code>(깊이 없음)로 그 위에 그립니다. UI 명령이 없으면 배리어 전에 돌아갑니다.</li>
+</ol>
+<p>그래서 게임 UI 는 TAA·모션 블러·톤매핑 뒤에 있어 흐려지지 않고, 에디터에서는 ImGui 가 보여 주는 씬 텍스처 안에 들어 있습니다(씬 뷰 스크린샷에 같이 찍힘). 색은 ImGui 와 같은 이유로 sRGB 값 그대로 다룹니다 — 텍스처는 선형 변환 없이 읽고 UNORM 뷰에 써서 감마 공간에서 섞습니다.</p>
 
 <!-- c04-5.html -->
 <h3 id="c4-11">4.11 <code>Device::EndFrame</code> · Present · <code>Input::EndFrame</code></h3>
@@ -3928,7 +3942,7 @@ Garbage m_garbage[kFrameCount];</code></pre>
 </tbody></table></div>
 
 <h3 id="c10-1">10.1 셰이더 파일 구성과 진입점</h3>
-<p>이 장이 다루는 메시·그림자·스카이박스 셰이더는 아래 다섯 개입니다(그 밖에 스킨 VS 두 개, 디버그 선, 후처리, 컴퓨트 블러, GPU 파티클, 디퍼드·SSAO 셰이더가 있어 모두 26개). 각 셰이더는 공용 헤더 중 필요한 것만 include 합니다. 스테이지마다 파일을 나눈 이유는 Visual Studio 의 <code>FxCompile</code> 항목이 파일 하나에 진입점 하나와 셰이더 종류 하나만 지정할 수 있기 때문입니다.</p>
+<p>이 장이 다루는 메시·그림자·스카이박스 셰이더는 아래 다섯 개입니다(그 밖에 스킨 VS 두 개, 디버그 선, 후처리, 컴퓨트 블러, GPU 파티클, 디퍼드·SSAO, GPU 클러스터 비닝, 속도·모션 블러·TAA, 바다 셰이더가 있어 2026-11-23 기준 모두 37개). 각 셰이더는 공용 헤더 중 필요한 것만 include 합니다. 스테이지마다 파일을 나눈 이유는 Visual Studio 의 <code>FxCompile</code> 항목이 파일 하나에 진입점 하나와 셰이더 종류 하나만 지정할 수 있기 때문입니다.</p>
 <div class="tbl"><table>
 <thead><tr><th>파일</th><th>진입점</th><th>스테이지</th><th>쓰는 패스</th><th>읽는 것</th></tr></thead>
 <tbody>
@@ -3957,6 +3971,8 @@ Garbage m_garbage[kFrameCount];</code></pre>
 <tr><td class="mono">Ssao.hlsli</td><td>Layout_Ssao</td><td>b12 <code>SsaoParams</code>(반경·바이어스·세기·거듭제곱·샘플 수·커널 32), t23 깊이, t26 노멀, t29 입력 (2026-11-18)</td></tr>
 <tr><td class="mono">Velocity.hlsli</td><td>— (셋 선언 없음)</td><td><code>VelocityUV</code>(두 클립 좌표 → UV 속도, w ≤ 0 이면 0, ±2 UV 로 자름), <code>CameraVelocityUV</code>(깊이 재투영 — 디버그 뷰 17) (2026-11-23)</td></tr>
 <tr><td class="mono">Temporal.hlsli</td><td>Layout_Temporal</td><td>t23 깊이, t7 속도, t24 TAA 히스토리, <code>LoadVelocityPixels</code>·<code>LoadDeviceDepth</code>·<code>LinearViewDepth</code>·<code>InterleavedGradientNoise</code>. 속도 디버그·모션 블러·TAA 가 함께 씀 (2026-11-23)</td></tr>
+<tr><td class="mono">Ocean.hlsli</td><td>Layout_Object (b9)</td><td>b9 <code>Ocean</code>(파도 8 개, 이번·지난 위상, 감쇠, 원점), <code>OceanFade</code>, <code>GerstnerPosition</code>·<code>GerstnerSample</code>·<code>GerstnerSampleFiltered</code>(대역 제한 <code>OceanBandLimit</code>), 바다 VS 출력 <code>OceanVSOutput</code>(<code>VSOutput</code> + <code>TEXCOORD4</code>), PS 용 <code>OceanPixelInput</code>. 바다 VS·PS 만 include (2026-11-23, <a href="#c20-29">20.29</a>)</td></tr>
+<tr><td class="mono">UI.hlsli</td><td>Layout_UICommon · Layout_UITexture</td><td>b4 <code>UIConstants</code>(캔버스 → 클립 행렬 32 개), t0 <code>uiTexture</code>, s0, 정점 입력 <code>UIVSInput</code>(위치·uv·색·클립 사각형·캔버스 번호와 글자 비트 16). <code>Common.hlsli</code> 를 include 하지 않음 — UI 패스는 프레임 셋(b0)을 묶지 않음. <code>UIVertexShader.hlsl</code>·<code>UIPixelShader.hlsl</code> 만 include (2026-11-24, <a href="#c20-31">20.31</a>)</td></tr>
 <tr><td class="mono">ParticleSort.hlsli</td><td>Layout_ParticleSort · SortStep</td><td>t24, u0·u1(키·번호), b10·b11. <code>ParticleSim.hlsli</code> 와 u0·u1 의 뜻이 달라 같이 include 하면 <code>#error</code></td></tr>
 </tbody></table></div>
 <p>2026-11-17 이전에는 이 선언이 전부 <code>Common.hlsli</code> 한 파일에 있었고, 파티클 컴퓨트 셋은 <code>#ifdef PARTICLE_SIM</code>/<code>PARTICLE_SORT</code> 블록으로 숨겨 두었습니다. 핫리로드가 <code>Common.hlsli</code> 하나만 감시했기 때문입니다. 지금은 감시와 <code>.cso</code> 신선도 검사가 셰이더의 <code>#include</code> 를 재귀로 따라가므로(<a href="#c10-3">10.3절</a>) 헤더를 나눠도 됩니다. 이 장의 셰이더 다섯 개가 쓰는 선언은 다음과 같습니다.</p>
@@ -4218,8 +4234,10 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
 <tr><td class="mono">b1</td><td class="mono">PerObject</td><td class="mono">PerObjectConstants</td><td class="n">192</td><td>드로우마다 (2026-11-23 부터 지난 프레임 World 포함)</td><td>VS</td><td class="mono">m_perObjectCB</td></tr>
 <tr><td class="mono">b2</td><td class="mono">Lights</td><td class="mono">LightConstants</td><td class="n">32</td><td>프레임에 한 번. 조명 자체는 t15 구조체 버퍼(원소 80 바이트, 개수 제한 없음)</td><td>PS</td><td class="mono">m_lightCB</td></tr>
 <tr><td class="mono">b3</td><td class="mono">Material</td><td class="mono">MaterialConstants</td><td class="n">64</td><td>재질마다 프레임에 한 번</td><td>VS(<code>uvScale</code>) + PS</td><td class="mono">GpuMaterial::constants</td></tr>
+<tr><td class="mono">b4</td><td class="mono">UIConstants</td><td class="mono">UIConstants</td><td class="n">2048</td><td>프레임에 한 번, UI 명령이 있을 때만 (2026-11-24). 메인·미리보기 뷰의 캔버스가 번호 32 개를 나눠 씀. 게임 UI 패스 전용 셋 <code>Layout_UICommon</code>(b4 + s0)</td><td>VS</td><td class="mono">m_uiCB</td></tr>
 <tr><td class="mono">b5</td><td class="mono">ShadowPass</td><td class="mono">ShadowPassConstants</td><td class="n">64</td><td>그림자 뷰마다 (2026-10-29)</td><td>VS</td><td class="mono">m_shadowPassCB</td></tr>
 <tr><td class="mono">b6</td><td class="mono">Shadows</td><td class="mono">ShadowConstants</td><td class="n">2000</td><td>프레임에 한 번 (2026-10-29). 뷰 20개 × 96 + 16 × 5</td><td>PS</td><td class="mono">m_shadowsCB</td></tr>
+<tr><td class="mono">b9</td><td class="mono">Ocean</td><td class="mono">OceanConstants</td><td class="n">288</td><td>프레임에 한 번 (2026-11-23). 바다가 없어도 파도 0 개로 올림(D3D12 Dynamic). 같은 번호의 <code>ParticleCollision</code> 은 컴퓨트 충돌 셋 전용</td><td>VS + PS (바다 셰이더만)</td><td class="mono">m_oceanCB</td></tr>
 <tr><td class="mono">b12</td><td class="mono">SsaoParams</td><td class="mono">SsaoConstants</td><td class="n">544</td><td>프레임에 한 번 (2026-11-18). SSAO 가 꺼져 있어도 올림(D3D12 Dynamic)</td><td>PS</td><td class="mono">m_ssaoCB</td></tr>
 <tr><td class="mono">b13</td><td class="mono">PrevSkin</td><td class="mono">PrevSkinConstants</td><td class="n">16384</td><td>스킨 드로우마다 (2026-11-23). 지난 프레임 팔레트, 조인트 수가 다르면 이번 팔레트. 같은 번호의 <code>ClusterBin</code> 은 컴퓨트 비닝 셋 전용</td><td>VS</td><td class="mono">m_prevSkinCB</td></tr>
 </tbody></table></div>
@@ -4300,6 +4318,19 @@ layoutOk &amp;= ShaderCompiler::ValidateConstantBufferSize(shadowCode, <span cla
   <div>alphaCutoff</div><div>roughness</div><div>occlusionStrength</div><div class="pad">padding</div>
 </div>
 <p>채우는 곳은 <code>Renderer::GetOrCreateGpuMaterial</code> 입니다. <code>Scene/Material.h</code> 의 <code>Material</code> 에서 값을 옮기되 <code>bool unlit</code> 은 0 또는 1 의 <code>float</code> 로, <code>normalStrength</code> 는 렌더 설정의 <code>normalMapping</code> 이 꺼져 있으면 0 으로 넣습니다. 패딩 필드의 이름은 HLSL 에서 <code>materialPadding</code>, C++ 에서 <code>padding</code> 으로 다르지만 배치는 이름이 아니라 순서와 타입으로 정해지므로 영향이 없습니다.</p>
+
+<h4>b9 Ocean — 288바이트</h4>
+<p class="sub">2026-11-23 추가(<a href="#c20-29">20.29</a>). 오브젝트 셋(<code>Layout_Object</code>)에 VS|PS 로 묶이지만 바다 셰이더(<code>OceanVS</code>·<code>OceanPS</code>·<code>OceanGBufferPS</code>)만 선언합니다. 채우는 곳은 <code>Graphics/RendererOcean.cpp</code> 의 <code>Renderer::UploadOceanConstants</code> 입니다.</p>
+<div class="layout">
+  <div class="row">0 ~ 127</div>
+  <div class="m4">waveA[8] — 파도마다 x = 방향 Dx, y = Dz, z = 파수 k, w = 진폭 A</div>
+  <div class="row">128 ~ 255</div>
+  <div class="m4">waveB[8] — 파도마다 x = 경사 s, y = 이번 위상, z = 지난 위상 (CPU 가 double 로 2π 나머지), w = 0</div>
+  <div class="row">256 ~ 271 · params</div>
+  <div>x: 파도 수</div><div>y: fadeStart</div><div>z: fadeEnd</div><div class="pad">padding</div>
+  <div class="row">272 ~ 287 · origin</div>
+  <div>x: 감쇠 기준 x</div><div class="pad">0</div><div>z: 감쇠 기준 z</div><div class="pad">padding</div>
+</div>
 
 <h4>D3D 가 요구하는 크기 정렬</h4>
 <p>상수버퍼의 크기는 16바이트의 배수여야 합니다. D3D11 백엔드의 <code>CreateBuffer</code> 는 <code>BufferBind_Constant</code> 버퍼의 크기를 16 의 배수로 올림해 만들고, D3D12 백엔드는 업로드 조각을 256바이트 경계에 맞춥니다(루트 CBV 의 정렬 요건). 네 구조체는 이미 16 의 배수라 D3D11 에서 올림이 일어나지 않습니다.</p>
@@ -5899,7 +5930,7 @@ XMMATRIX GameObject::GetWorldMatrix() <span class="kw">const</span>
 <tbody>
 <tr><td class="mono">CreateSphere(radius, sliceCount, stackCount, color)</td><td>극점 2개 + 위도 링 (stack − 1)개. 링마다 정점 slice + 1 개(첫 정점을 끝에 복제해 텍스처 이음새를 만듦). slice 최소 3, stack 최소 2</td><td>u = θ / 2π(경도), v = φ / π(위도, 위 0). 극점은 u = 0.5. T = (−sin θ, 0, cos θ), B 는 위도가 증가하는 방향</td></tr>
 <tr><td class="mono">CreateCube(size, color)</td><td>면마다 정점 4개 → 24 정점, 36 인덱스. 정점 8개를 공유하면 노멀을 평균 내야 해 모서리가 둥글게 보이므로 면마다 따로 둠</td><td>면마다 (0,0)–(1,1). T·B 는 그 면에서 u·v 가 증가하는 방향</td></tr>
-<tr><td class="mono">CreatePlane(width, depth, m, n, color)</td><td>XZ 평면, 노멀 +Y. m(깊이 방향) × n(너비 방향) 정점 격자. 각 최소 2</td><td>(0,0) 이 뒤-왼쪽(+Z, −X). T = +X, B = −Z</td></tr>
+<tr><td class="mono">CreatePlane(width, depth, m, n, color, spacingGrowth = 0)</td><td>XZ 평면, 노멀 +Y. m(깊이 방향) × n(너비 방향) 정점 격자. 각 최소 2. <code>spacingGrowth</code>(g) &gt; 0 이면 축마다 <code>x = half · sign(t) · ((1 − g)|t| + g|t|⁷)</code> 로 가운데 촘촘·가장자리 성김 — 넓은 바다용, 씬 파일 <code>params[2]</code> (2026-11-23, <a href="#c20-29">20.29</a>)</td><td>(0,0) 이 뒤-왼쪽(+Z, −X). T = +X, B = −Z. UV 는 g 와 상관없이 정점 번호에 대해 균일</td></tr>
 <tr><td class="mono">CreateCylinder(bottomRadius, topRadius, height, sliceCount, stackCount, color)</td><td>Y 축 원뿔대(두 반지름이 같으면 원기둥). 옆면 링 (stack + 1)개 + 위·아래 뚜껑(둘레 정점 + 중심). slice 최소 3, stack 최소 1</td><td>옆면: u 는 둘레, v 는 위 0·아래 1. 뚜껑: 위에서 본 평면 투영, T = +X, B = −Z</td></tr>
 <tr><td class="mono">FromData(vertices, indices, submeshes)</td><td>외부 데이터(모델 로더)로 만듦. <code>submeshes</code> 가 비면 전체를 서브메시 하나(슬롯 0)로 둠</td><td>호출자가 채움</td></tr>
 </tbody></table></div>
@@ -6429,6 +6460,7 @@ QuaternionLookTestEditor.exe --scene=quat_roll_world.json --play=1 --exit-after=
     <tr><td class="mono">motionBlurOverride, taaOverride <span class="sub">−1, −1</span></td><td>−1 이면 씬의 <code>environment.post.motionBlurEnabled</code>·<code>taaEnabled</code>, 0·1 이면 덮어씀. 실행 인자 <code>--motion-blur</code>·<code>--taa</code> (2026-11-23, <a href="#c20-28">20.28</a>)</td><td>패스</td><td></td></tr>
     <tr><td class="mono">taaJitter <span class="sub">true</span></td><td>끄면 TAA 가 지터 없이 같은 위치를 섞음 — 배관 검증용 (<code>--taa-jitter=0</code>)</td><td>b0 상수</td><td></td></tr>
     <tr><td class="mono">motionBlurFpsOverride, frameDeltaOverride <span class="sub">−1, 0</span></td><td>모션 블러 기준 fps(−1 = 씬 값, 0 = 보정 안 함)와 보정에 쓰는 dt 고정(0 = 실제 값). <code>--motion-blur-fps</code>·<code>--frame-dt</code></td><td>b4 상수</td><td></td></tr>
+    <tr><td class="mono">oceanTimeOverride <span class="sub">−1</span></td><td>0 이상이면 바다 파도 시간을 그 초로 고정 — 지난 위상 = 이번 위상이라 바다의 속도는 카메라 속도만 남음. 실행 인자 <code>--ocean-time</code> (2026-11-23, <a href="#c20-29">20.29</a>)</td><td>b9 상수</td><td></td></tr>
     <tr><td class="mono">debugView, debugDepthRange <span class="sub">0, 60</span></td><td><code>debugParams.x</code>(0~17), <code>.y</code> (14.10절)</td><td>b0 상수</td><td></td></tr>
   </tbody>
 </table></div>
@@ -6565,7 +6597,7 @@ std::sort(m_drawList.begin(), m_drawList.end(), [](<span class="kw">const</span>
 
 <div class="callout amber">
   <div class="t">이 목록이 하지 않는 것</div>
-  <p><strong>컬링이 없습니다.</strong> 메시가 있는 오브젝트는 카메라 절두체 밖에 있어도 목록에 들어가고 그려집니다. <strong>깊이 정렬이 없습니다.</strong> 불투명 물체를 앞에서 뒤로 그리는 최적화도, 반투명 물체를 뒤에서 앞으로 그리는 큐도 없습니다. 블렌딩 상태가 없으므로 지금은 순서가 결과에 영향을 주지 않습니다. 알파는 <code>clip</code> 으로 잘라 내는 컷아웃뿐입니다. <strong>인스턴싱이 없습니다.</strong> 같은 메시·재질을 쓰는 오브젝트도 드로우마다 b1 을 올리고 따로 그립니다. 셋 다 아직 구현하지 않은 기능입니다(남은 일은 <a href="#c22">22장</a>).</p>
+  <p><strong>목록 단계에서는 컬링하지 않습니다.</strong> 메시가 있는 오브젝트는 카메라 절두체 밖에 있어도 목록에 들어갑니다. 걸러 내는 일은 그리는 루프 <code>DrawItems</code> 가 합니다. 오브젝트 경계 구가 <em>컬링 카메라</em>의 절두체(<code>Frustum::FromViewProj</code>) 밖이면 상수 업로드와 드로우를 건너뛰고 <code>m_stats.culled</code> 를 셉니다. 컬링 카메라는 보통 그리는 카메라와 같고, 컬링 고정 중에는 메인 뷰만 고정된 사본입니다(<code>ObjectCullCamera</code>, <a href="#c20-30">20.30</a>). 그래서 목록 하나를 여러 뷰가 함께 씁니다. <strong>불투명 물체는 깊이로 정렬하지 않습니다.</strong> 앞에서 뒤로 그리는 최적화는 없습니다. 블렌딩 재질 항목은 하늘을 그린 뒤 그리는 카메라에서 먼 것부터 다시 정렬해 그립니다. <strong>인스턴싱이 없습니다.</strong> 같은 메시·재질을 쓰는 오브젝트도 드로우마다 b1 을 올리고 따로 그립니다. 셋 다 아직 구현하지 않은 기능입니다(남은 일은 <a href="#c22">22장</a>).</p>
 </div>
 
 <h3 id="c14-7">14.7 드로우 루프, 상태 캐시, 통계</h3>
@@ -6599,6 +6631,7 @@ std::sort(m_drawList.begin(), m_drawList.end(), [](<span class="kw">const</span>
   <thead><tr><th>Stats 필드</th><th>증가하는 곳</th><th>읽는 법</th></tr></thead>
   <tbody>
     <tr><td class="mono">draws, triangles</td><td><code>DrawItems</code></td><td>메인 패스. 미리보기 패스가 켜지면 두 배가 됩니다</td></tr>
+    <tr><td class="mono">culled</td><td><code>DrawItems</code></td><td>컬링 카메라의 절두체 밖이라 건너뛴 드로우(메인·미리보기). 컬링 고정 중에는 메인 뷰가 고정 시점 기준이라, 카메라를 움직여도 고정할 때의 값에 머뭅니다(<a href="#c20-30">20.30</a>)</td></tr>
     <tr><td class="mono">shadowDraws</td><td><code>RenderShadowPass</code></td><td><code>unlit</code> 항목을 뺀 수</td></tr>
     <tr><td class="mono">resourceSetSwitches</td><td><code>DrawItems</code> 의 재질 셋 바인딩</td><td>프레임 셋·오브젝트 셋 바인딩은 세지 않습니다</td></tr>
     <tr><td class="mono">pipelineSwitches, meshSwitches</td><td>두 루프 모두</td><td>그림자 + 메인(+ 미리보기)의 합</td></tr>
@@ -7044,6 +7077,9 @@ EndFrame()        : prev ← cur, m_dx = m_dy = 0, m_wheel = 0</code></pre>
 
 <h4>WantCapture 의 타이밍</h4>
 <p>ImGui 의 <code>io.WantCaptureMouse</code>·<code>WantCaptureKeyboard</code>·<code>WantTextInput</code> 은 <code>ImGui::NewFrame()</code> 안에서 갱신됩니다. 그래서 <code>AppBase::Run</code> 은 <code>ImGui::NewFrame()</code> 을 <code>OnUpdate</code> 보다 먼저 부릅니다. 순서가 반대면 갱신 코드는 한 프레임 전의 값을 읽습니다. 에디터에서는 화면 전체가 도킹된 ImGui 창이라 <code>WantCaptureMouse</code>·<code>WantCaptureKeyboard</code> 가 씬 위에서도 항상 참입니다. 그래서 소비 측은 이 둘 대신 "씬 뷰 위에 커서가 있는가"(<code>Editor::IsSceneViewHovered</code>)와 "텍스트를 입력 중인가"(<code>io.WantTextInput</code>)를 봅니다. <code>EditorApp::OnUpdate</code> 의 F1~F12 단축키도 <code>!io.WantTextInput</code> 일 때만 처리합니다. 게임 런타임은 ImGui 프레임을 열지 않으므로 이 판단 자체가 없고, 재생 중 스크립트는 <code>Scene::BeginPlay</code> 가 넘겨준 <code>Input*</code> 로 같은 질의를 합니다.</p>
+<h4>게임패드와 가짜 입력 (2026-11-24)</h4>
+<p>XInput 패드는 메시지가 없어서 <code>AppBase::Run</code> 이 프레임마다 <code>Input::PollGamepad</code> 로 0번 패드를 읽습니다(<code>xinput.lib</code>, XInput 1.4). 질의는 키와 같은 모양입니다 — <code>IsPadDown</code>·<code>IsPadPressed</code>·<code>IsPadReleased</code>(<code>PadButton</code> 값은 <code>XINPUT_GAMEPAD_*</code> 비트), 데드존을 뺀 스틱 −1~1, 트리거 0~1. 연결이 끊기면 모두 0 입니다. 게임 UI 의 방향 내비게이션·Submit·Cancel(<a href="#c20-31">20.31</a>)이 방향키·패드·왼쪽 스틱을 함께 읽습니다.</p>
+<p>자동 검증용으로 <code>SetSimulated(true)</code> 를 켜면 <code>On*</code>(Win32 메시지)를 무시하고 <code>SimulateKey</code>·<code>SimulateMouseButton</code>·<code>SimulateMouseMove</code>·<code>SimulateWheel</code>·<code>SimulatePad</code> 만 받습니다. 실행 중 실제 마우스가 창 위를 지나가도 결과가 같습니다. 에디터 자동 검증은 UI 입력 인자가 있으면 첫 프레임부터 켭니다(<a href="#app-d-1">D.1</a>).</p>
 <h3 id="c15-6">15.6 마우스 룩과 에디터 카메라 컨트롤러</h3>
 
 <p>에디터의 자유 카메라는 <code>EditorApp::UpdateCamera(dt)</code> 가 매 프레임 <code>Input</code> 을 읽어 <code>Camera</code> 를 움직이는 방식입니다. 조작 체계는 아래와 같고, <code>Camera::Rotate</code>·<code>Camera::Move</code> 안의 수학(yaw/pitch, 뷰 행렬)은 <a href="#c13">13장</a>에 있습니다.</p>
@@ -7584,7 +7620,7 @@ ImGui::PopID();</code></pre>
 <tr><td>Lights</td><td class="mono">DrawEnvironmentPanel<br>DrawLightPanel</td><td>환경: 스카이박스(내장 프리셋 콤보), 스카이박스·Irradiance·Specular·BRDF LUT 이름 칸(Enter 로 적용, 콘텐츠 브라우저의 텍스처 드롭 — 큐브 칸은 <code>.dds</code> 면 그 파일, 그 밖의 이미지는 그 폴더), IBL 세기, 노출, ACES 톤매핑(<a href="#c12-14">12.14절</a>). 주변광 색, Add point light(<code>MAX_LIGHTS</code> 미만일 때), 조명마다 종류·위치·범위·방향(normalize 버튼)·색·세기·감쇠, 스포트라이트의 안쪽·바깥쪽 원뿔각(도로 편집하고 코사인으로 저장, 바깥쪽이 안쪽보다 좁아지지 않게 보정), Remove(조명이 둘 이상일 때)</td></tr>
 <tr><td>Materials</td><td class="mono">DrawMaterialPanel</td><td>씬의 모든 재질. Inspector 의 재질 필드에 샘플러 프리셋 콤보와 알베도 색공간 표시가 더해짐. 모델의 슬롯 재질은 여기서 편집</td></tr>
 <tr><td rowspan="5">Render Settings</td><td class="mono">DrawRenderSettingsPanel</td><td>백엔드 이름, Wireframe, Cull back faces, sRGB output, Normal maps, VSync, Reload shaders, 샘플러 덮어쓰기, 드로우·패스·배리어·캐시 통계</td></tr>
-<tr><td>(<code>Editor::DrawRenderSettings</code>)</td><td>Debug view 콤보와 Depth range 슬라이더</td></tr>
+<tr><td>(<code>Editor::DrawRenderSettings</code>)</td><td>Debug view 콤보와 Depth range 슬라이더. <b>Freeze culling camera</b> 체크박스(옛 이름 Freeze cascade camera): 켜면 지금 에디터 카메라를 복사해 고정하고(<code>Renderer::SetCullFreeze</code>), 그 아래에 Cascades·Objects·Lights 항목과 고정 시점 통계 한 줄("frozen view: culled draws …")이 나옴. 고정 중에는 씬 뷰에 고정 카메라의 흰 절두체와 캐스케이드 색 와이어(<code>Editor::DrawFreezeOverlay</code>), 컬링된 조명의 회색 아이콘이 그려짐. 씬 교체·재생 시작·재생 정지 때 고정이 풀림(<code>EditorApp::ReleaseCullFreeze</code>, 2026-11-24, <a href="#c20-30">20.30</a>)</td></tr>
 <tr><td class="mono">DrawShadowPanel</td><td>그림자 켜기, bias, strength, normal offset, ortho size, light distance(값은 씬의 <code>environment.shadow</code> 에 저장되어 되돌리기·저장에 포함), 그림자 맵 미리보기(256×256). 슬라이더·드래그 대부분은 라벨 옆에 기본값 리셋 <code>R</code> 버튼이 붙음(<code>DebugUI::SliderFloatR</code>·<code>DragFloatR</code>·<code>DragFloat2R</code>·<code>DragFloat3R</code>. 기본값은 구조체 멤버 초기값이고, 값이 기본값이면 R 은 흐려짐. 값 직접 입력은 ImGui 의 Ctrl+클릭)</td></tr>
 <tr><td class="mono">DrawCameraPanel</td><td>카메라 위치와 yaw·pitch·roll, 이동 속도 슬라이더</td></tr>
 <tr><td class="mono">DrawEnginePanel</td><td>설정 파일·로그·AssetManager 통계·Time, 설정 값 목록</td></tr>
@@ -7766,6 +7802,20 @@ SherlockEditor.exe --scene=test.json --exit-after=60 --dump-objects=1 --screensh
 <tr><td>재생 버튼의 ▶ 가 네모로 나옴</td><td>쓰는 폰트에 그 글리프가 없음</td><td>버튼을 글자 "Play"·"Stop" 으로</td></tr>
 <tr><td>검증 도구가 사용자 화면을 침범</td><td>화면 캡처와 입력 주입이 포커스를 가진 다른 창에 닿음</td><td>리드백 스크린샷과 실행 인자 재생, 창은 화면 밖에 포커스 없이 (16.10)</td></tr>
 </tbody></table></div>
+
+<h3 id="c16-12">16.12 게임 UI 편집 — Rect 툴과 UI 메뉴 (2026-11-24)</h3>
+<p>게임 UI 는 언리얼 UMG 처럼 위젯 에디터를 따로 두지 않고, UI 요소도 <code>GameObject</code> 의 컴포넌트로 만들어 Hierarchy·Inspector·씬 저장·되돌리기·프리팹을 그대로 씁니다(<a href="#c20-31">20.31</a>, 설계는 <a href="../plan/ui-canvas-plan.html">게임 UI(캔버스) 구현 계획</a>). 에디터에 더해진 것은 아래와 같습니다.</p>
+<div class="tbl"><table>
+<thead><tr><th>자리</th><th>하는 일</th></tr></thead>
+<tbody>
+<tr><td>Hierarchy <b>+ UI</b> 메뉴</td><td>Canvas·Image·Text 와 위젯 묶음(Button·Toggle·Slider·Scroll View·Panel — 유니티와 같은 자식 구조, 기본 9-slice 텍스처 <code>builtin:ui-panel</code>). 캔버스 밖에서 만들면 Canvas(Scale With Screen Size)를 먼저 만들고, EventSystem 이 없으면 그것도 만듦 (<code>EditorApp::AddUIElement</code>·<code>AddUIWidget</code>)</td></tr>
+<tr><td>툴바 <b>Rect</b> (단축키 T)</td><td>선택한 UI 요소의 부모 사각형·핸들 8 개·피벗 원·앵커 삼각형을 씬 뷰에 그림. 안쪽 드래그 = 이동, 핸들 = 크기(반대편 고정, Alt 가운데 기준, Shift 비율 유지), 회전한 요소는 로컬 축. 부모·형제 가장자리와 가운데에 8 픽셀 스냅(Ctrl 로 끔), 화살표 1 단위(Shift 10). 드래그 한 번이 되돌리기 한 단계</td></tr>
+<tr><td>씬 뷰 클릭</td><td>편집 모드에서는 3D 픽킹보다 UI 를 먼저 봄(<code>UISystem::PickElement</code>). 같은 자리를 다시 누르면 아래 요소로 차례로 넘어감. 재생 중 UI 위 클릭은 에디터 선택으로 가지 않음</td></tr>
+<tr><td>Hierarchy 끌어 놓기</td><td>행의 위·아래 4분의 1 에 놓으면 형제 사이(선 표시), 가운데는 자식(<a href="#c16-6">16.6</a>). UI 요소의 부모를 바꾸면 화면 사각형을 유지하도록 anchoredPosition·sizeDelta 와 회전·스케일을 보정(<code>Editor::ReparentKeepingUI</code>)</td></tr>
+<tr><td>Inspector</td><td><code>PropertyVisitor</code> 의 Float2·Color·Enum·Asset·ObjectRef(상대 경로)와 이벤트 칸(대상 오브젝트·함수 콤보·고정 인자). 레이아웃 그룹·Slider 가 매 프레임 정하는 값은 저장하지 않고 회색으로 "driven" 안내</td></tr>
+<tr><td>World 캔버스</td><td>편집 모드에서 테두리 선을 그림. 렌더 모드를 World 로 바꾸면 캔버스 오브젝트의 Transform 으로 월드에 놓임</td></tr>
+</tbody></table></div>
+<p>자동 검증 인자(<code>--tool=rect</code>·<code>--tool-click</code>·<code>--tool-drag</code>·<code>--log-rect</code>·<code>--set-parent</code>)는 <a href="#app-d-1">D.1</a>.</p>
 
 <!-- c17-1.html -->
 <h2 id="c17"><span class="num">17.</span>재생 모드·스크립트·게임 빌드·프로젝트 시스템</h2>
@@ -8373,6 +8423,15 @@ SHERLOCK_SCRIPT(PlayerController)</code></pre>
 <tr><td>패키지에 DLL 이 들어간다</td><td class="mono">SherlockEditor.exe --project=… --build-game=X --build-release=1 --exit-after=30</td><td>출력 폴더에 <code>X.exe</code>·<code>SherlockEngine.dll</code>·<code>XScripts.dll</code>. <code>X.exe --dump-objects=1</code> 의 로그에 <code>스크립트 DLL 로드: …\XScripts.dll</code> 과 스크립트 컴포넌트가 붙은 오브젝트</td></tr>
 </tbody></table></div>
 <p>시작할 때의 로그 한 줄이 세 루트를 한꺼번에 보여 줍니다. <code>AppBase::Initialize</code> 가 남기는 <code>프로젝트 루트: … (엔진 루트 …)</code> 이고, 배포 환경이면 엔진 루트 뒤에 <code>배포</code> 가 붙습니다. 몇 줄 뒤에 스크립트 DLL 을 올렸는지(<code>스크립트 DLL 로드</code> 또는 경고)가 나옵니다. 재생·스냅샷·컴포넌트는 Scene 계층의 일이라 백엔드와 무관하므로, 같은 명령에 <code>--backend=d3d12</code> 를 붙여도 덤프가 같아야 합니다.</p>
+
+<h3 id="c17-17">17.17 재생 중 게임 UI — 이벤트와 스크립트 연결 (2026-11-24)</h3>
+<p><code>UISystem</code> 은 <code>Engine</code> 의 멤버입니다. 레이아웃과 그리기 목록은 편집 모드에서도 매 프레임 만들지만(<a href="#c4-10">4.10</a>), 입력은 재생 중에만 받습니다. <code>Scene::BeginPlay(input, camera, ui)</code> 가 UI 시스템을 받아 두고 <code>Scene::Update</code> 첫머리에서 <code>UISystem::Update</code> 를 부릅니다 — 포인터 히트 테스트(위에 그린 것 먼저, World 캔버스는 카메라 광선과 캔버스 평면의 교점), 눌림·클릭·드래그(Slider·Scrollbar·ScrollRect), 색 전환, 방향 내비게이션·Submit·Cancel(<a href="#c15-5">15.5</a> 의 패드 포함). <code>EndPlay</code> 는 코드 리스너·눌림·선택을 비웁니다. 에디터 재생과 게임 런타임(<code>GameApp</code>)이 같은 길을 씁니다.</p>
+<ul>
+  <li><b>스크립트에서.</b> <code>Script::GetUI()</code> 로 <code>IsPointerOverUI</code>·<code>IsPointerCaptured</code> 를 봅니다. 예: 테스트 프로젝트의 <code>FreeCamera</code> 는 UI 위에서 누른 오른쪽 버튼으로는 시점을 돌리지 않습니다. 코드 리스너는 <code>UIButton::onClick</code> 같은 <code>UIEvent</code> 에 붙입니다.</li>
+  <li><b>저장되는 연결.</b> Inspector 에서 고른 연결(<code>UIPersistentCall</code>)은 씬 파일에 대상(상대 경로 <code>UIObjectRef</code>)·<code>"클래스.함수"</code>·인자(동적 또는 고정 float·int·bool·string)로 저장됩니다. 이름으로 함수를 찾기 위해 스크립트 쪽에서 <code>SHERLOCK_UI_ACTION(클래스, 함수)</code> 로 등록합니다(<code>UIActionRegistry</code>, 엔진 DLL 에 한 벌).</li>
+  <li><b>핫리로드.</b> 등록된 호출기는 스크립트 DLL 의 코드이므로 <code>ScriptModule</code> 이 DLL 을 내리기 전에 그 타입의 등록을 지웁니다(<code>UIActionRegistry::RemoveType</code>). 다시 올리면 정적 등록이 다시 돕니다(<a href="#c17-13">17.13</a>).</li>
+  <li><b>패키징.</b> Build Game 은 엔진 기본 글꼴(Noto Sans KR, 약 4.6 MB)과 프로젝트 <code>Assets\Fonts</code> 를 통째로 복사하고, <code>Assets\Fonts</code> 밖의 <code>asset:</code> 글꼴은 씬에서 모아 복사합니다(<code>GameBuilder</code>, <a href="#c17-11">17.11</a>).</li>
+</ul>
 
 <div class="part" id="part-c18"><div class="pt">Part V</div><div class="pn">기록</div><p>지금 구조에 이르기까지의 경위입니다. 출발점의 코드와 문제 목록, 설계 결정 22건, 단계별 연대기, 작업 중 나온 질문과 답, 그리고 남은 일을 모았습니다.</p></div>
 
@@ -9292,6 +9351,9 @@ BasicVertexShader.hlsl(13,5-10): error X3000: unrecognized identifier flaot4
 <tr><td class="n">11-18</td><td>미커밋</td><td>요청 "2·3·5단계(디퍼드, 클러스터드, SSAO)를 멈추지 말고 구현하고 record 문서와 테스트 씬까지" → G-buffer(MRT 5장) + 풀스크린 라이팅, 조명 절두체 컬링·그림자 타일 우선순위, CPU 클러스터 비닝(16×9×24) + 클러스터드 셰이딩, SSAO + 블러. 테스트 씬 8개와 생성기 (<a href="#c20-26">20.26</a>)</td></tr>
 <tr><td class="n">11-21</td><td>미커밋</td><td>요청 "비닝을 컴퓨트 셰이더로 옮기는 작업을 새 문서로, 하는 김에 2단계 비닝까지" → 컴퓨트 다섯 개(View·Tile·Count·Scan·Fill), 타일 비트마스크 → 상자 2단계 비닝, 버퍼 리드백(<code>ReadStagingBuffer</code>). 요청 "CPU·GPU 1단계·GPU 2단계를 조명 많은/적은 씬에서 측정해 테스트 문서로" (<a href="#c20-27">20.27</a>)</td></tr>
 <tr><td class="n">11-23</td><td>051ffc7</td><td>요청 "카메라 모션 블러를 먼저" → "TAA 부터 오브젝트별 모션 블러까지 한 번에, 단계는 나누되 구현은 한 번에" → 속도 버퍼, 모션 블러, TAA. 요청 "모션 블러가 왜 이렇게 깔끔하지" → 기준 fps 보정 (<a href="#c20-28">20.28</a>)</td></tr>
+<tr><td class="n">11-23</td><td>3d19842</td><td>요청 "멈춰 있는 배 위에서 전투, 배경으로 잔잔한 바다" → Gerstner 바다 계획 → "바다 계획 구현 진행" → "끝까지 구현" → 정점 변위, 수평선까지 넓은 평면과 거리 감쇠, 픽셀 단위 노멀과 대역 제한 (<a href="#c20-29">20.29</a>)</td></tr>
+<tr><td class="n">11-24</td><td>미커밋</td><td>질문 "캐스케이드 고정을 다른 렌더링에도 적용해서 자유 시점으로 컬링된 부분을 보면 어떤가" → 컬링 카메라 고정 계획 → "멈추지 말고 끝까지 구현" → 오브젝트·조명 컬링을 고정 카메라로, 고정 시점에서 컬링된 지역광 끄기, 항목별 체크박스·흰 절두체 오버레이·자동 해제 (<a href="#c20-30">20.30</a>)</td></tr>
+<tr><td class="n">11-24</td><td>미커밋</td><td>질문 "UI 를 언리얼처럼 따로 에디터를 만들지 말고 유니티 식으로" → "실제 게임 제작용이라 ImGui 는 아님" → 게임 UI(캔버스) 계획 8단계 → "확인 못 한 것과 위험을 철저히 검증하고 진행" → "8단계까지 진행하고 검증, 테스트 씬은 하나만" → Canvas·RectTransform·Image·Text(한글 글리프 아틀라스)·Button·Slider·Toggle·레이아웃·스크롤·키보드·패드 내비게이션·Rect 툴·World Space 캔버스, 쇼케이스 씬 하나와 자동 검증 스크립트 (<a href="#c20-31">20.31</a>)</td></tr>
 </tbody></table></div>
 
 <!-- c20-03.html -->
@@ -10369,6 +10431,45 @@ Barrier(depth → DepthWrite)
   <li><b>검증.</b> 효과를 다 끄면 기준 화면과 같음(실행마다 바뀌던 픽셀 제외). 뷰 17 이 카메라 회전·이동·직교·포워드/디퍼드·스핀·따라가기·스킨·미리보기·복제/프리팹/되돌리기에서 검정. 모션 블러 정지 화면 켬 = 끔 0 px, TAA 피드백 1·지터 끔 = 끔 0 px, D3D11 = D3D12, D3D12 GPU 기반 검증 메시지 없음. 리셋 세 경우(미리보기 전환·되돌리기·카메라 컷)는 사건 직후 프레임이 새로 그린 화면과 0 px. 같은 초당 회전을 480 fps 로 돌려도 60 fps 와 비슷한 길이로 번짐(번진 픽셀 3537 / 3782). 테스트 씬 6개: <code>MotionBlur</code>·<code>TaaEdges</code>·<code>TaaPlumbing</code>·<code>TaaSkin</code>·<code>CameraSwitch</code>·<code>TaaMotionBlur</code>.</li>
 </ul>
 
+<h3 id="c20-29">20.29 적용 기록 — 2026-11-23 · Gerstner 바다</h3>
+<p>요청은 "플레이어가 멈춰 있는 배 위에서 전투를 하고 배경으로 잔잔한 바다가 보이는 장면"이었고, Gerstner 파도만, 배는 고정(부력 없음), 잔잔한 배경 바다로 정한 뒤 계획을 세워 1~3단계를 구현했습니다. 계획은 <a href="../plan/ocean-gerstner-plan.html">Gerstner 바다 구현 계획</a>(맨 위 "구현하면서 바뀐 점"), 지금 코드·검증 숫자는 <a href="../plan/ocean-gerstner-record.html">Gerstner 바다 구현 기록</a>에 있습니다.</p>
+<ul>
+  <li><b>컴포넌트.</b> <code>Scene/Ocean.h/.cpp</code> 의 <code>Ocean : Behaviour</code> — 파도 수·바람 방향·퍼짐·파장 범위·진폭·경사·속도·시드·감쇠 거리. <code>BuildWaves</code> 가 시드 LCG 로 파도 최대 8 개(등비 파장, kA 일정, Σ s ≤ 1, ω = √(gk)). 평면 메시를 가진 오브젝트에 붙이면 렌더러가 그 드로우만 바다 PSO 로 바꿈. 씬에 하나(둘째부터 경고 한 번).</li>
+  <li><b>렌더러.</b> <code>BuildDrawList</code> → <code>CollectOcean</code>(첫 번째 하나, 경계 구 + <code>MaxDisplacement</code>, 그림자 패스 제외) → <code>UploadOceanConstants</code>(b9, 위상은 double <code>fmod</code>, 바다가 없어도 올림). 두 함수는 <code>Graphics/RendererOcean.cpp</code>. PSO 키 비트 12(바다 VS), <code>Pass_Ocean</code>(OceanVS + OceanPS)·<code>Pass_GBufferOcean</code>(OceanVS + OceanGBufferPS). b9 를 <code>Layout_Object</code> 에 VS|PS 로 붙여 메인 패스 루트 시그니처 26 → 28/64 DWORD.</li>
+  <li><b>셰이더.</b> <code>Ocean.hlsli</code> 의 Gerstner 합(월드 xz, 노멀 = cross(∂P/∂z, ∂P/∂x)), <code>OceanVertexShader.hlsl</code> 이 이번 위치와 지난 위치(지난 위상 + <code>prevWorld</code>)로 속도까지 냄. 3단계 PS 두 개는 <code>BasicPixelShader.hlsl</code>·<code>GBufferPixelShader.hlsl</code> 을 include 하고 노멀·탄젠트만 픽셀에서 다시 계산.</li>
+  <li><b>대역 제한.</b> 파도 방향으로 픽셀 하나가 덮는 주기 수 0.1 → 0.25 에서 그 파도의 기울기를 1 → 0. 먼 바다의 점이 격자가 아니라 픽셀보다 짧은 파도 때문이라는 것을 실험으로 확인한 뒤 넣음(TAA 끔, 깜빡임 126 → 25 픽셀, 외딴 점 765 → 412).</li>
+  <li><b>넓은 평면.</b> <code>Mesh::CreatePlane</code> 의 간격 증가 g(<code>MeshSource</code> <code>params[2]</code>, |t|⁷ 곡선, 0 이면 예전과 같음), 거리 감쇠 80~300 m, 씬 카메라 <code>farZ</code> 직렬화(<code>SceneSerializer</code>, 1000 이 아닐 때만 씀).</li>
+  <li><b>도구.</b> <code>--ocean-time=초</code>(<code>RenderSettings::oceanTimeOverride</code>), 테스트 씬 <code>Ocean.json</code>·<code>OceanHorizon.json</code> 과 생성기 <code>make_ocean_test_scenes.py</code>, 노멀 수식 검사 <code>check_gerstner_normals.py</code>.</li>
+  <li><b>함정.</b> (1) 계획의 |t|³ 곡선으로는 512 정점에서 "80 m 안 1.5 m 이하"가 안 됨 — 지수 7. (2) 픽셀 단위 노멀만 넣으면 먼 바다 점이 오히려 늘어남 — 대역 제한. (3) <code>Log::Warning</code> 은 없고 <code>Log::Warn</code>.</li>
+  <li><b>검증.</b> D3D11 = D3D12 0 픽셀, 디퍼드 대 포워드 최대 차 4~5, 시간 고정 + 카메라 회전에서 뷰 17 의 바다 0 픽셀(두 씬, 두 백엔드), Release = Debug, 바다 없는 씬은 변경 전끼리의 잡음과 같은 차이만. 1080p GPU 시간·재생 시작/정지 직후·게임 런타임은 확인하지 못함.</li>
+</ul>
+
+<h3 id="c20-30">20.30 적용 기록 — 2026-11-24 · 컬링 카메라 고정</h3>
+<p>질문은 "캐스케이드 카메라 고정을 다른 렌더링에도 적용해서, 고정한 뒤 자유 시점으로 컬링된 부분을 볼 수 있게 하면 어떤가"였습니다. 항목별 체크박스, 씬 불러오기·재생 시작·정지 때 자동 해제, <code>--freeze-cascades</code> 의 예전 동작 유지, 조명 끄기가 미리보기 뷰에도 걸리는 것을 받아들이기로 정한 뒤 1~3단계를 구현했습니다. 설계·결정·검증 숫자는 <a href="../plan/freeze-culling-camera-plan.html">컬링 카메라 고정 계획</a>(9장 구현 결과)에 있고, 여기에는 이 문서의 서술이 바뀐 부분만 적습니다.</p>
+<ul>
+  <li><b>카메라 분리.</b> Renderer 가 고정 여부, 항목(<code>CullFreezeParts</code> 의 <code>cascades</code>·<code>objects</code>·<code>lights</code>), 고정 카메라 사본(<code>m_cullFreezeCamera</code>)을 가짐. <code>SetCullFreeze(freeze, camera, parts)</code> 가 고정하는 순간 받은 카메라를 복사(옛 <code>SetCascadeFreeze</code>). 캐스케이드는 <code>BuildShadowViews</code> 가 <code>IsCascadeFrozen()</code> 일 때 사본으로 계산하고, 오브젝트는 <code>DrawItems</code> 의 새 인자 <code>cullCamera</code> 로 컬링함(<code>ObjectCullCamera</code> — 메인 뷰만 사본, 미리보기는 자기 카메라). 조명은 <code>CullLights</code> 에 사본을 넘김. 그리는 일(행렬, 반투명 정렬의 눈 위치, 클러스터, TAA)은 지금 카메라로 함.</li>
+  <li><b>컬링된 조명 끄기.</b> 조명 항목이 켜져 있으면 <code>CullLights</code> 가 절두체 밖 지역광의 <code>m_lightBounds</code> w 를 0 으로 둠. CPU·GPU 클러스터 비닝이 w ≤ 0 을 건너뛰므로 그 조명은 클러스터에 들어가지 않고 빛이 꺼짐. <code>CullLights</code> 는 프레임에 한 번 돌고 두 뷰가 결과를 함께 쓰므로 미리보기 뷰에도 걸림(받아들인 한계). 클러스터드를 끄면 셰이더가 모든 조명을 돌기 때문에(<code>ShadeAllLights</code>) 빛이 꺼지지 않음.</li>
+  <li><b>그림자는 남음.</b> 그림자 패스는 광원 뷰로 따로 컬링하므로 Objects 만 고정하면 화면에서 빠진 물체의 그림자가 남음. 의도한 동작.</li>
+  <li><b>에디터.</b> Render Settings 의 Freeze culling camera(옛 Freeze cascade camera, 이제 CSM 이 꺼져 있어도 보임)와 Cascades·Objects·Lights 항목(<a href="#c16-7">16.7절</a>). 오버레이 <code>DrawFreezeOverlay</code>(옛 <code>DrawCascadeFrustums</code>)는 오브젝트나 조명 항목이 켜져 있으면 고정 카메라의 전체 절두체를 흰 선으로 그림(역 ViewProj 로 NDC 상자 여덟 점을 되돌림). 캐스케이드 항목이 켜져 있으면 캐스케이드 색 와이어를 덧그림. 끝점 하나가 카메라 뒤인 변은 <code>ProjectSegmentToView</code> 가 클립 공간에서 잘라 앞쪽 몫만 그림. 컬링된 조명 아이콘은 회색에 X(<code>IsLightCulledByFreeze</code>). <code>EditorApp::ReleaseCullFreeze</code> 가 씬 교체(<code>ResetHistory</code>)·재생 시작·재생 정지 때 고정을 풀고, 항목 선택은 남김.</li>
+  <li><b>도구.</b> <code>--freeze-culling=N</code>·<code>--freeze-parts=col</code> 추가. <code>--freeze-cascades=N</code> 은 캐스케이드만 고정함(예전 동작). 렌더 통계 로그 줄에 <code>culled=</code> 추가(<a href="#app-d">부록 D</a>). 테스트 씬 <code>FreezeCulling.json</code>(<code>CascadeBigScene</code> 에서 카메라만 바꿈, 기본 시점 culled 24)과 생성기 <code>make_freeze_culling_test_scene.py</code>.</li>
+  <li><b>함정.</b> (1) <code>CascadeBigScene</code> 의 기본 시점에서는 컬링되는 오브젝트가 없어(culled 0) 컬링을 검증할 수 없음. 그래서 카메라를 옮긴 씬을 만듦. (2) 실내 시점에서 흰 절두체가 보이지 않음. 끝점이 카메라 뒤에 있는 변을 통째로 버렸기 때문이고, 자르기로 고침. (3) 조명 끄기의 픽셀 차이 대부분이 회색 아이콘 몫이었음. <code>--light-icons=selected</code> 로 아이콘을 빼고 다시 잼.</li>
+  <li><b>검증.</b> 고정하지 않으면 바뀌기 전 바이너리와 잡음 수준만 다름(씬 4개). 고정만 하고 움직이지 않으면 다른 픽셀은 화면 테두리의 흰 선뿐. 고정한 뒤 이동해도 통계가 고정 시점 값에 머묾(culled 24, lightsCulled 18). 아이콘을 빼고 조명만 고정한 실행과 오브젝트만 고정한 실행을 비교하면 값 차이 8 넘는 픽셀이 1885 개. CPU·GPU 비닝 0 px, D3D11·D3D12 와 디퍼드·포워드는 작은 차이, Objects 만 고정한 미리보기 0 px. <a href="../study/csm-study.html">CSM 학습</a>의 <code>--freeze-cascades</code> 명령은 예전과 같은 스크린샷을 냄. 체크박스 UI 경로, <code>--clustered=0</code>, TAA 잔상, Release 는 확인하지 못함.</li>
+</ul>
+
+<h3 id="c20-31">20.31 적용 기록 — 2026-11-24 · 게임 UI (캔버스)</h3>
+<p>요청은 "UI 를 넣고 싶은데 언리얼처럼 UI 에디터를 따로 만드는 것은 오래 걸리니 유니티 식으로", 그리고 "실제 게임 제작용이라 ImGui 는 아님"이었습니다. 범위는 사용자가 정한 대로 Screen Space Overlay·World Space 캔버스, RectTransform·CanvasScaler, Image(단순·9-slice·채우기), Text(한글), Button·Slider·Toggle, 레이아웃 그룹·RectMask·ScrollRect, 키보드·게임패드 내비게이션, 에디터 Rect 툴이고 InputField 는 뺐습니다. 계획·단계별 결과·검증 숫자는 <a href="../plan/ui-canvas-plan.html#result">게임 UI(캔버스) 구현 계획 10장</a>에 있습니다.</p>
+<ul>
+  <li><b>구조.</b> UI 요소는 <code>Behaviour</code> 컴포넌트(<code>UI/UIComponents</code>·<code>UIWidgets</code>·<code>UILayout</code>). <code>UISystem</code> 이 매 프레임 레이아웃(앵커·피벗·스케일러, 레이아웃 그룹의 min·preferred·flexible)을 계산해 CPU 정점 목록을 만들고, 그룹이 정한 값은 저장하지 않는 "구동 값" 표에만 둠. 렌더러는 그 목록만 읽음(<a href="#c4-10">4.10</a>).</li>
+  <li><b>렌더링.</b> <code>Graphics/RendererUI.cpp</code> — 톤 패스 뒤 출력 텍스처의 UNORM 뷰에 덧그리는 <code>RenderCanvasPass</code>, <code>Pass_UI</code>·<code>Pass_UIWorld</code>(읽기 전용 깊이 LessEqual, D24S8), b4 <code>UIConstants</code>(캔버스 행렬 32 개, <a href="#c10-6">10.6</a>), 셰이더 <code>UI.hlsli</code>·<code>UIVertexShader.hlsl</code>·<code>UIPixelShader.hlsl</code>(마스크는 정점의 클립 사각형과 픽셀 셰이더 <code>clip</code>). 기본 텍스처 <code>builtin:ui-panel</code>(32² 둥근 사각형, 반지름 10).</li>
+  <li><b>RHI.</b> <code>Device::UpdateTexture</code>(텍스처 부분 갱신) — 글리프 아틀라스에 새 글자만 굽고 바뀐 영역만 올림. D3D11 <code>UpdateSubresource</code>, D3D12 업로드 힙의 footprint + <code>CopyTextureRegion</code>.</li>
+  <li><b>글자.</b> <code>UI/Font</code>(stb_truetype, 기본 Noto Sans KR), <code>UI/GlyphAtlas</code>(필요한 글자만, 크기별 키, 모자라면 1024² → 2048² 로 다시 굽고 그래도 넘치면 경고 후 120 프레임마다 비우고 다시 굽기). <code>UIText</code> 의 정렬·줄바꿈·넘침(Truncate 는 다 들어가지 않는 줄을 뺌)·줄 간격.</li>
+  <li><b>입력.</b> XInput 패드와 가짜 입력(<a href="#c15-5">15.5</a>), 재생 중 <code>UISystem::Update</code>·저장되는 연결·<code>SHERLOCK_UI_ACTION</code>(<a href="#c17-17">17.17</a>). 방향 내비게이션 점수는 유니티 <code>Selectable.FindSelectable</code> 과 같음(내 사각형 가장자리 점에서 후보 가운데로, dot / 거리²).</li>
+  <li><b>에디터.</b> Rect 툴·UI 클릭 선택·형제 사이 끌어 놓기·부모 바꿀 때 화면 위치 유지(<a href="#c16-12">16.12</a>).</li>
+  <li><b>도구.</b> 자동 검증 인자 <code>--ui-click</code>·<code>--mouse</code>·<code>--ui-drag</code>·<code>--ui-wheel</code>·<code>--key</code>·<code>--pad</code>·<code>--log-rect</code>·<code>--tool=rect</code>·<code>--tool-click</code>·<code>--tool-drag</code>·<code>--add-ui</code>·<code>--reload-scripts</code>(<a href="#app-d-1">D.1</a>). 테스트 프로젝트에 남는 UI 씬은 <code>UiShowcase.json</code> 하나이고, 단계별 검증 씬은 <code>Scripts/Tests/make_ui_test_scenes.py --verify-dir</code> 로 만들어 <code>verify_ui_stages.py</code> 가 돌림(33 항목). 테스트 스크립트 <code>Tests/UiClickCounter</code>·<code>Tests/Billboard</code>.</li>
+  <li><b>함정.</b> (1) <code>UIImage</code> 의 직렬화 이름 <code>type</code> 이 컴포넌트 JSON 의 타입 이름 키를 덮어써 Sliced·Filled 이미지가 있는 씬을 다시 열면 nlohmann 예외로 종료 — <code>imageType</code> 으로 바꾸고 <code>SceneSerializer</code> 의 <code>ComponentsFromJson</code> 은 타입 이름이 문자열이 아니면 경고 후 건너뜀. (2) 휠 부호를 두 번 뒤집어 스크롤이 반대였음. (3) 포인터 문이 지난 프레임의 <code>IsSimulated</code> 를 봐서 자동화의 첫 클릭을 놓침 — 가짜 입력을 첫 프레임부터 켬. (4) <code>--frame-dt</code> 가 에디터 재생의 <code>scene.Update</code> dt 에는 쓰이지 않아 탄성 스크롤 검증이 실행 속도에 따라 달랐음. (5) 요소 1,000 개 씬의 UI Build 가 Release 0.52 ms 로 목표 0.5 ms 초과 — 매 Build 비우고 채우는 맵을 <code>std::pmr::unsynchronized_pool_resource</code> 위의 <code>std::pmr::unordered_map</code> 으로 바꿔 편집 0.48 · 재생 0.50 ms.</li>
+  <li><b>검증.</b> <code>verify_ui_stages.py</code> 가 Debug D3D11·D3D12·Release 에서 통과(클릭·겹침·가림, 저장 뒤 연결, 핫리로드, 9-slice·Filled 픽셀, Slider·Toggle 그룹, 레이아웃 사각형 손 계산과 0 px, 휠·Elastic, 저장 안정성, 키보드·패드 경로, Rect 툴 값, 부모 바꾸기, World 캔버스 가림·기울어진 클릭, UI 위 오른쪽 드래그 가로채기). 1~2단계 회귀 검사 두 백엔드 통과, World UI D3D11 = D3D12, 쇼케이스 패키지 게임 두 백엔드 같은 화면, D3D12 디버그 레이어 메시지 없음. 실제 패드, 창을 옮긴 상태의 클릭 좌표, 프리팹 인스턴스의 연결 등은 손으로 확인하지 않음(계획 문서 10장 끝).</li>
+</ul>
+
 <!-- c21-01.html -->
 <h2 id="c21"><span class="num">21.</span>질문과 답</h2>
 
@@ -11398,7 +11499,9 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tr><td>GPU 파티클의 한계</td><td>충돌은 메인 뷰 깊이로 하는 화면 공간 충돌이라 화면 밖·가려진 곳·0.3 m 보다 얇은 물체에서 실패합니다. 정렬은 알파 이미터 안에서만 하고(이미터끼리·가산 이미터와는 안 함) 살아 있는 수와 상관없이 최대 개수 크기로 뷰마다 돕니다. 창 크기 변경과 실행 중 <code>blendMode</code>·<code>maxParticles</code> 변경은 손으로 확인하지 않았습니다</td><td><a href="../plan/vfx-gpu-particles-record.html">VFX 구현 기록</a></td></tr>
 <tr><td>디퍼드·클러스터드·SSAO 의 한계</td><td><s>클러스터 비닝이 CPU 라 Debug 에서 조명 256 개에 약 5 ms(Release 한 프레임 약 2.1 ms).</s> 11-21: 비닝이 GPU 로 옮겨져 CPU 쪽은 입력 업로드만 남음. 대신 GPU 에 Release 기준 0.03~1.9 ms 가 더해지고, GPU 가 병목인 촛불 1만 개 씬에서는 프레임이 줄지 않음(비슷하거나 약 3 ms 늘어남)(<a href="../plan/gpu-cluster-binning-test.html">측정</a>). 디퍼드는 D24 깊이에서 위치를 복원해, 노말맵이 그림자 UV 를 미는 바닥에서 그림자 판정이 경계 픽셀마다 뒤집힘(포워드와 최대 110 단계 차이, 흩어진 수십 픽셀). 그림자 타일 우선순위는 메인 카메라 기준이라 미리보기 카메라만 보는 조명은 그림자를 못 받을 수 있음. SSAO 는 디퍼드 프레임에서만. <s>D3D12 GPU 기반 검증이 4번 중 3번 시작 직후 멈춤(원인 미확인)</s> — 11-20 해결: <code>[unroll]</code> PCF 가 조명 PS 에 <code>sample_c</code> 1000 개로 펼쳐진 것이 원인, 루프로 바꿈(<a href="../plan/defect-fix-record.html#d3">결함 수정 기록 3장</a>)</td><td><a href="../plan/deferred-clustered-ssao-record.html#verify">디퍼드 기록 8장</a></td></tr>
 <tr><td>속도 버퍼·모션 블러·TAA 의 한계</td><td><code>Rigidbody</code> 처럼 <code>FixedUpdate</code> 로만 움직이는 물체는 렌더 보간이 없어 높은 fps 에서 계단처럼 움직이고, 기준 fps 보정 뒤에는 위치가 바뀐 프레임에만 길게 번짐. 디버그 선·파티클은 속도를 쓰지 않아 뒤 표면의 속도로 TAA·모션 블러를 받음(본 선 잔상). 게임 코드의 카메라 순간 이동은 감지하지 않음(<code>Renderer::ResetTemporalHistory</code> 를 직접 부름). TAA 타깃 생성이 실패해도 지터가 남음. D3D12 에서 b13 업로드가 스킨 드로우마다 16 KB 링을 씀. 모션 블러에 타일 최대 속도 확장이 없음 (2026-11-23, <a href="#c20-28">20.28</a>)</td></tr>
+<tr><td>Gerstner 바다의 한계</td><td>씬에 바다 하나, 바다 오브젝트는 요만(피치·롤 무시), 에디터 피킹은 변위 전 평면. 대역 제한으로 뺀 기울기를 거칠기로 옮기지 않아 먼 해 반사 줄이 약함. <code>totalTime</code> 이 float 라 오래 실행하면 위상 입력 해상도가 떨어짐(하루 약 8 ms 단위). SSAO 를 켜면 수평선 쪽 먼 바다가 어두워지는데, 바다를 뺀 평평한 평면에서도 같아 넓은 평면을 낮은 각도로 볼 때의 SSAO 한계임 (<a href="#c20-29">20.29</a>)</td></tr>
 <tr><td>자동 검증의 사각</td><td>실행 인자 재생은 입력을 주입하지 않으므로 드래그 앤 드롭과 단축키(F4 핫리로드 등)는 자동으로 재현되지 않습니다. PopID 어서션(<a href="#c20-9">20.9</a>)이 이 사각에서 나왔습니다</td><td><a href="#app-d">부록 D</a></td></tr>
+<tr><td>게임 UI 의 한계</td><td>UI Build 는 더티 표시 없이 매 프레임 전부 다시 계산 — 요소 1,000 개에서 Release 0.48~0.50 ms 로 목표 0.5 ms 에 여유가 거의 없음. 이미지·글자가 번갈아 나오면 텍스처가 바뀌어 그리기 명령이 끊김. InputField 없음, 중첩 캔버스는 일반 요소로 취급. World 캔버스는 장면 물체에 가려진 부분도 클릭되고(유니티 기본과 같음), 깊이는 TAA 지터가 들어간 것이라 가림 경계가 1 픽셀 흔들릴 수 있음. 색은 감마 공간에서 섞음. 실제 XInput 패드·창을 옮긴 상태의 클릭 좌표·프리팹 인스턴스의 저장되는 연결·리스너 안에서 씬 바꾸기는 시험하지 않음</td><td><a href="../plan/ui-canvas-plan.html#result">계획 10장</a>, <code>verify_ui_stages.py</code></td></tr>
 </tbody></table></div>
 
 <!-- c22-03.html -->
@@ -11650,11 +11753,18 @@ m_list-&gt;IASetPrimitiveTopology(pso-&gt;GetTopology());
 <tr><td class="n">시작</td><td class="mono">--deferred=0|1<br>--clustered=0|1<br>--shadow-priority=0|1<br>--ssao=0|1</td><td><code>AppBase::ApplyRenderPathOptions</code> — 렌더 경로 스위치(<code>RenderSettings</code> 의 같은 이름 필드, <code>--ssao</code> 는 <code>ssaoOverride</code>). 세 개를 0 으로 주면 작업 전(2026-11-18 이전) 화면과 픽셀 단위로 같음. 게임 런타임도 받음</td></tr>
 <tr><td class="n">시작</td><td class="mono">--cluster-gpu=0|1<br>--cluster-tiles=0|1</td><td>클러스터 비닝 경로 (<code>RenderSettings::clusterGpu</code>·<code>clusterGpuTiles</code>, 기본 1). <code>--cluster-gpu=0</code> 은 CPU 비닝, <code>--cluster-tiles=0</code> 은 GPU 1단계. 세 경로의 화면은 전체 순회와 0 px (2026-11-21, <a href="../plan/gpu-cluster-binning-record.html#verify">GPU 비닝 기록 9장</a>)</td></tr>
 <tr><td class="n">시작</td><td class="mono">--motion-blur=0|1<br>--taa=0|1<br>--taa-jitter=0|1</td><td><code>AppBase::ApplyRenderPathOptions</code> — 씬 값 덮어쓰기(<code>RenderSettings::motionBlurOverride</code>·<code>taaOverride</code>·<code>taaJitter</code>). 게임 런타임도 받음 (2026-11-23)</td></tr>
-<tr><td class="n">시작</td><td class="mono">--motion-blur-fps=N<br>--frame-dt=초</td><td>모션 블러 기준 fps(0 = 한 프레임 이동량 그대로)와 보정에 쓰는 dt 고정. 보정은 실제 dt 에 따라 달라지므로 스크린샷 비교는 0 이나 <code>--frame-dt</code> 로 고정 (2026-11-23)</td></tr>
+<tr><td class="n">시작</td><td class="mono">--motion-blur-fps=N<br>--frame-dt=초</td><td>모션 블러 기준 fps(0 = 한 프레임 이동량 그대로)와 보정에 쓰는 dt 고정. 보정은 실제 dt 에 따라 달라지므로 스크린샷 비교는 0 이나 <code>--frame-dt</code> 로 고정 (2026-11-23). 2026-11-24 부터 <code>--frame-dt</code> 는 에디터 재생의 <code>scene.Update</code> dt 에도 쓰임(게임 UI 의 탄성 스크롤·키 반복을 실행 속도와 무관하게)</td></tr>
 <tr><td class="n">매 프레임 (≥2)</td><td class="mono">--cam-orbit=도<br>--cam-move=x,y,z<br>--spin=이름,도<br>--move=이름,x,y,z</td><td><code>EditorApp::RunAutomation</code> — 프레임마다 카메라를 대상 둘레로 돌리거나 옮기고, 이름으로 찾은 오브젝트를 돌리거나 옮김(spin·move 는 편집 중에만). 속도·모션 블러·TAA 검증용 (2026-11-23)</td></tr>
 <tr><td class="n">N</td><td class="mono">--event-frame=N</td><td>선택·복제·인스턴스·삭제·되돌리기·불러오기·<code>--cam-look</code> 을 원래 프레임 대신 N 에서. 스크린샷은 같은 프레임의 렌더 전에 요청되므로 N = exit-after − 1 이면 사건 직후 첫 프레임 (2026-11-23)</td></tr>
+<tr><td class="n">시작</td><td class="mono">--ocean-time=초</td><td><code>AppBase::ApplyRenderPathOptions</code> — 바다 파도 시간 고정(<code>RenderSettings::oceanTimeOverride</code>). 스크린샷 비교가 실행마다 같아지고, <code>--debug-view=17 --cam-orbit</code> 에서 바다가 검정이어야 함. 게임 런타임도 받음 (2026-11-23)</td></tr>
+<tr><td class="n">N</td><td class="mono">--freeze-culling=N<br>--freeze-parts=col<br>--freeze-cascades=N</td><td><code>Renderer::SetCullFreeze</code> — N 프레임째의 에디터 카메라로 컬링을 고정. Render Settings 의 Freeze culling camera 와 같은 함수. <code>--freeze-parts</code> 의 글자 c·o·l 이 캐스케이드·오브젝트·조명을 고름(없으면 셋 다). <code>--freeze-cascades</code> 는 캐스케이드만 고정하는 예전 동작이고, 둘 다 주면 <code>--freeze-culling</code> 을 씀 (2026-11-24, <a href="#c20-30">20.30</a>)</td></tr>
+<tr><td class="n">N</td><td class="mono">--ui-click=x,y@N<br>--mouse=x,y@N<br>--ui-drag=x0,y0,x1,y1@N:F[:r]<br>--ui-wheel=x,y,d@N<br>--key=이름@N<br>--pad=이름@N</td><td>게임 UI 가짜 입력(<code>Input::SetSimulated</code> 를 첫 프레임부터, <a href="#c15-5">15.5</a>). 좌표는 씬 이미지 왼쪽 위 기준 픽셀. 클릭은 N 누름·N+1 뗌, 드래그는 N+1..N+F 사이를 고르게 옮기고 N+F+1 뗌(<code>:r</code> 오른쪽 버튼), 휠 d 칸(+ 위). 키 이름 Up·Down·Left·Right·Enter·Space·Esc·Tab·A..Z, 패드 A·B·X·Y·Up·Down·Left·Right·Start·Back·Stick*. 같은 종류 여러 개는 <code>;</code> 로(<code>--key=Down@40;Enter@50</code>). 키·패드 다음 프레임에 "UI 선택 '이름'" 로그 (2026-11-24, <a href="#c20-31">20.31</a>)</td></tr>
+<tr><td class="n">2 · N</td><td class="mono">--tool=rect<br>--tool-click=x,y@N<br>--tool-drag=x0,y0,x1,y1@N:F[:sac]<br>--log-rect=이름@N</td><td>Rect 툴(<a href="#c16-12">16.12</a>)을 2 프레임째 켜고 씬 뷰 클릭 선택·드래그(s Shift, a Alt, c Ctrl). 드래그를 뗀 프레임과 <code>--log-rect</code> 프레임에 RectTransform 값과 화면 사각형 네 점을 로그</td></tr>
+<tr><td class="n">10</td><td class="mono">--add-ui=0|1</td><td>Hierarchy "+ UI" 의 Canvas(0)·Image(1)를 선택한 오브젝트 기준으로 추가(<code>AddUIElement</code>)</td></tr>
+<tr><td class="n">5</td><td class="mono">--reload-scripts=1</td><td><code>ReloadScripts</code> — 스크립트 DLL 을 내리고 다시 올림. 결과를 "자동 검증: reload-scripts → 성공|실패" 로 로그(게임 UI 액션 등록 해제·재등록 확인)</td></tr>
+<tr><td class="n">고정 + 1 (없으면 3)</td><td class="mono">--cam-look=ex,ey,ez;tx,ty,tz</td><td>에디터 카메라를 eye 에서 target 을 보게 옮김. 고정한 다음 프레임이라 고정 시점 밖에서 결과를 봄. <code>--event-frame</code> 이 있으면 그 프레임. 명령 예는 <a href="../study/csm-study.html">CSM 학습</a> 5장</td></tr>
 <tr><td class="n">종료 전 N</td><td class="mono">--avg-frames=N</td><td><code>EditorApp::RunAutomation</code> — 종료 직전 N 프레임의 Profiler 구간(<code>cpu:</code>·<code>gpu:</code>) 평균을 "구간 평균 ms" 줄로 남김. 한 프레임 값은 흔들려서 측정에 씀 (2026-11-21)</td></tr>
-<tr><td class="n">끝</td><td class="mono">(로그)</td><td>종료 프레임에 "자동 검증: 렌더 통계 path=… gbuffer=… clusterRefs=… shadowViews=… offscreenShadowViews=…" 와 "자동 검증: 구간 ms cpu:…/gpu:…" 두 줄 (2026-11-18)</td></tr>
+<tr><td class="n">끝</td><td class="mono">(로그)</td><td>종료 프레임에 "자동 검증: 렌더 통계 path=… draws=… culled=… gbuffer=… clusterRefs=… shadowViews=… offscreenShadowViews=…" 와 "자동 검증: 구간 ms cpu:…/gpu:…" 두 줄 (2026-11-18, <code>culled=</code> 는 2026-11-24)</td></tr>
 <tr><td class="n">끝−1</td><td class="mono">--screenshot=경로</td><td><code>Engine::RequestScreenshot</code> — 그 프레임의 백버퍼(UI 포함)를 PNG 로 저장</td></tr>
 <tr><td class="n">끝</td><td class="mono">--exit-after=N</td><td><code>PostQuitMessage</code></td></tr>
 </tbody></table></div>

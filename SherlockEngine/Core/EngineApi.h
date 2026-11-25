@@ -33,4 +33,4 @@
 // 가상 함수 순서, 멤버 배치, 내보내는 함수의 시그니처를 바꿨을 때. 올리면 예전에 빌드한 스크립트 DLL 은
 // 올라가지 않고 "다시 빌드하라"는 오류가 남 — 조용히 엉뚱한 메모리를 읽다가 죽는 것을 막음.
 // (클래스 크기가 바뀌는 변경은 표식의 sizeof 비교가 자동으로 잡음. 크기가 그대로인 변경이 이 번호의 몫임.)
-#define SHERLOCK_SCRIPT_API_VERSION 1
+#define SHERLOCK_SCRIPT_API_VERSION 2   // 2: PlayContext::ui, PropertyVisitor::Event, Input 게임패드 (게임 UI 3~6단계)

@@ -153,7 +153,7 @@ void Renderer::RenderDeferredScene(RHI::CommandList& cmd, const Scene& scene, Vi
 		};
 		GpuProfileScope gpuScope(cmd, "GBuffer");
 		cmd.BeginRenderPass(pass);
-		DrawItems(cmd, scene, camera, DrawMode::GBuffer);
+		DrawItems(cmd, scene, camera, ObjectCullCamera(camera, viewIndex), DrawMode::GBuffer);
 		cmd.EndRenderPass();
 	}
 
@@ -211,7 +211,7 @@ void Renderer::RenderDeferredScene(RHI::CommandList& cmd, const Scene& scene, Vi
 			.debugName = name.c_str(),
 		};
 		cmd.BeginRenderPass(pass);
-		DrawItems(cmd, scene, camera, DrawMode::ForwardRest);   // 셋 1 을 오브젝트 셋으로 되돌려 꽂음 (라이팅이 G-buffer 셋을 꽂았음)
+		DrawItems(cmd, scene, camera, ObjectCullCamera(camera, viewIndex), DrawMode::ForwardRest);   // 셋 1 을 오브젝트 셋으로 되돌려 꽂음 (라이팅이 G-buffer 셋을 꽂았음)
 		cmd.EndRenderPass();
 	}
 

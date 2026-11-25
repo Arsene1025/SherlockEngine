@@ -5,13 +5,13 @@
     0.15000000596046448
   ],
   "camera": {
-    "pitch": 0.5131336450576782,
+    "pitch": 0.08063516765832901,
     "position": [
-      64.05386352539063,
-      34.16709899902344,
-      -91.23326873779297
+      23.4085693359375,
+      1.0143954753875732,
+      -99.69757080078125
     ],
-    "yaw": -1.748331069946289
+    "yaw": 1.3716647624969482
   },
   "clearColor": [
     0.10000000149011612,
@@ -36,7 +36,14 @@
       "bloomThreshold": 1.0,
       "blurEnabled": false,
       "blurRadius": 3.799999952316284,
-      "greyscale": 0.0
+      "greyscale": 0.0,
+      "motionBlurEnabled": false,
+      "motionBlurIntensity": 0.5,
+      "motionBlurMaxRadius": 32.0,
+      "motionBlurSamples": 12,
+      "motionBlurTargetFps": 60.0,
+      "taaEnabled": false,
+      "taaFeedback": 0.10000000149011612
     },
     "shadow": {
       "bias": 0.001500000013038516,
@@ -53,6 +60,15 @@
     },
     "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
     "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
+    "ssao": {
+      "bias": 0.02500000037252903,
+      "enabled": false,
+      "intensity": 1.0,
+      "multiply": false,
+      "power": 1.5,
+      "radius": 0.5,
+      "sampleCount": 16
+    },
     "toneMapping": false
   },
   "lights": [
@@ -10577,6 +10593,271 @@
         1.0
       ],
       "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "MasterChief_v5.5_walk/1 Tex/Arms_baseColor.dds",
+      "alphaBlend": false,
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
+      "doubleSided": true,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "ior": 1.5,
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "MasterChief_v5.5_walk/2 Tex/Arms_metallicRoughness.dds",
+      "modelMaterial": 0,
+      "modelPath": "Models\\MasterChiefWalk\\MasterChief_v5.5_walk.gltf",
+      "name": "mArms.001",
+      "normalStrength": 1.0,
+      "normalTexture": "MasterChief_v5.5_walk/0 Tex/Arms_normal.dds",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "MasterChief_v5.5_walk/4 Tex/Chest_baseColor.dds",
+      "alphaBlend": false,
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
+      "doubleSided": true,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "ior": 1.5,
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "MasterChief_v5.5_walk/5 Tex/Chest_metallicRoughness.dds",
+      "modelMaterial": 1,
+      "modelPath": "Models\\MasterChiefWalk\\MasterChief_v5.5_walk.gltf",
+      "name": "mChest.001",
+      "normalStrength": 1.0,
+      "normalTexture": "MasterChief_v5.5_walk/3 Tex/Chest_normal.dds",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "MasterChief_v5.5_walk/7 Tex/Helmet_baseColor.dds",
+      "alphaBlend": false,
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
+      "doubleSided": true,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "ior": 1.5,
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "MasterChief_v5.5_walk/8 Tex/Helmet_metallicRoughness.dds",
+      "modelMaterial": 2,
+      "modelPath": "Models\\MasterChiefWalk\\MasterChief_v5.5_walk.gltf",
+      "name": "mHelmet.001",
+      "normalStrength": 1.0,
+      "normalTexture": "MasterChief_v5.5_walk/6 Tex/Helmet_normal.dds",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "MasterChief_v5.5_walk/10 Tex/Legs_baseColor.dds",
+      "alphaBlend": false,
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
+      "doubleSided": true,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "ior": 1.5,
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "MasterChief_v5.5_walk/11 Tex/Legs_metallicRoughness.dds",
+      "modelMaterial": 3,
+      "modelPath": "Models\\MasterChiefWalk\\MasterChief_v5.5_walk.gltf",
+      "name": "mLegs.001",
+      "normalStrength": 1.0,
+      "normalTexture": "MasterChief_v5.5_walk/9 Tex/Legs_normal.dds",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 1.0,
+      "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaBlend": false,
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "ior": 1.5,
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "modelMaterial": 4,
+      "modelPath": "Models\\MasterChiefWalk\\MasterChief_v5.5_walk.gltf",
+      "name": "MasterChief_v5.5_walk/material4",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.5,
+      "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
     }
   ],
   "meshes": [
@@ -12370,6 +12651,26 @@
     {
       "meshIndex": 119,
       "path": "Models\\AlfaRomeo_1933\\alfa_romeo_spider_1933_v2.gltf",
+      "type": "model"
+    },
+    {
+      "meshIndex": 0,
+      "path": "Models\\MasterChiefWalk\\MasterChief_v5.5_walk.gltf",
+      "type": "model"
+    },
+    {
+      "meshIndex": 1,
+      "path": "Models\\MasterChiefWalk\\MasterChief_v5.5_walk.gltf",
+      "type": "model"
+    },
+    {
+      "meshIndex": 2,
+      "path": "Models\\MasterChiefWalk\\MasterChief_v5.5_walk.gltf",
+      "type": "model"
+    },
+    {
+      "meshIndex": 3,
+      "path": "Models\\MasterChiefWalk\\MasterChief_v5.5_walk.gltf",
       "type": "model"
     }
   ],
@@ -53416,6 +53717,224 @@
         195,
         196,
         197
+      ]
+    },
+    {
+      "components": [
+        {
+          "clip": "",
+          "enabled": true,
+          "loop": true,
+          "speed": 1.0,
+          "type": "Animator"
+        }
+      ],
+      "id": 1089,
+      "material": -1,
+      "mesh": -1,
+      "name": "MasterChief_v5.5_walk 1",
+      "position": [
+        27.24582290649414,
+        0.005508840084075928,
+        -99.22328186035156
+      ],
+      "rotation": [
+        -0.0,
+        0.0,
+        -0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "id": 1090,
+      "material": 202,
+      "mesh": 356,
+      "name": "01.Arms",
+      "parent": 364,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "preTransform": [
+        0.009999999776482582,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.19209286886246e-09,
+        -0.010000000707805157,
+        0.0,
+        0.0,
+        0.010000000707805157,
+        -1.19209286886246e-09,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        198,
+        199,
+        200,
+        201,
+        202
+      ]
+    },
+    {
+      "id": 1091,
+      "material": 202,
+      "mesh": 357,
+      "name": "02.Chest",
+      "parent": 364,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "preTransform": [
+        0.009999999776482582,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.19209286886246e-09,
+        -0.010000000707805157,
+        0.0,
+        0.0,
+        0.010000000707805157,
+        -1.19209286886246e-09,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        198,
+        199,
+        200,
+        201,
+        202
+      ]
+    },
+    {
+      "id": 1092,
+      "material": 202,
+      "mesh": 358,
+      "name": "03.Helmet",
+      "parent": 364,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "preTransform": [
+        0.009999999776482582,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.19209286886246e-09,
+        -0.010000000707805157,
+        0.0,
+        0.0,
+        0.010000000707805157,
+        -1.19209286886246e-09,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        198,
+        199,
+        200,
+        201,
+        202
+      ]
+    },
+    {
+      "id": 1093,
+      "material": 202,
+      "mesh": 359,
+      "name": "04.Legs",
+      "parent": 364,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "preTransform": [
+        0.009999999776482582,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.19209286886246e-09,
+        -0.010000000707805157,
+        0.0,
+        0.0,
+        0.010000000707805157,
+        -1.19209286886246e-09,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        198,
+        199,
+        200,
+        201,
+        202
       ]
     }
   ],

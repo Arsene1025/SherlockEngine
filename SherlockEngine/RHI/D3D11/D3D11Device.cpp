@@ -559,6 +559,22 @@ TextureHandle D3D11Device::CreateTexture(const TextureDesc& descIn, std::span<co
 	return m_textures.Add(std::move(texture));
 }
 
+bool D3D11Device::UpdateTexture(TextureHandle handle, uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, uint32_t rowPitch)
+{
+	D3D11Texture* texture = m_textures.Get(handle);
+	if (texture == nullptr || data == nullptr || width == 0 || height == 0) return false;
+	const TextureDesc& desc = texture->desc;
+	if (desc.dimension != TextureDimension::Texture2D || IsBlockCompressed(desc.format) || x + width > desc.width || y + height > desc.height)
+	{
+		Log::Error("UpdateTexture : 2D·비압축·범위 안만 됨 (%s, (%u,%u) %ux%u, 텍스처 %ux%u).", texture->name.c_str(), x, y, width, height, desc.width, desc.height);
+		return false;
+	}
+	// USAGE_DEFAULT 텍스처라 UpdateSubresource 가 됨. 즉시 컨텍스트의 명령 순서대로 처리되므로 뒤의 드로우가 새 내용을 읽음.
+	const D3D11_BOX box = { x, y, 0, x + width, y + height, 1 };
+	m_context->UpdateSubresource(texture->texture.Get(), 0, &box, data, rowPitch, 0);
+	return true;
+}
+
 void D3D11Device::DestroyTexture(TextureHandle handle)
 {
 	m_textures.Remove(handle);

@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>기록 · Gerstner 바다 구현 기록 — SherlockEngine</title>
+<style>
+:root {
+  --bg: #f6f5f1; --paper: #ffffff; --ink: #1d1f24; --ink2: #4a505c; --ink3: #8a909c;
+  --line: #d9dce3; --fill: #f1f3f7; --accent: #1d5fbf; --accent-bg: #e4ecf8;
+  --ok: #1f7a3d; --ok-bg: #e5f4ea; --warn: #a8620a; --warn-bg: #fdf3e2; --err: #c62828; --err-bg: #fbeaea;
+  --code-bg: #14171c; --code-fg: #e6e9ef;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101216; --paper: #181b21; --ink: #e8eaee; --ink2: #aab0bb; --ink3: #6f7683;
+    --line: #2b303a; --fill: #1f232b; --accent: #6ea8ff; --accent-bg: #16305a;
+    --ok: #5fcf85; --ok-bg: #12301f; --warn: #f0b14a; --warn-bg: #3a2a10; --err: #ff7070; --err-bg: #3b1620;
+    --code-bg: #0b0d10; --code-fg: #dfe3ea;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15.5px/1.75 -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", Roboto, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 28px; }
+nav { position: sticky; top: 16px; align-self: start; font-size: 13.5px; line-height: 1.5; max-height: calc(100vh - 32px); overflow: auto; }
+nav b { display: block; margin: 12px 0 4px; color: var(--ink3); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
+nav a { display: block; padding: 3px 8px; color: var(--ink2); text-decoration: none; border-left: 2px solid var(--line); }
+nav a.sub { padding-left: 20px; font-size: 12.5px; }
+nav a:hover { color: var(--accent); border-left-color: var(--accent); }
+main { min-width: 0; }
+header.top { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+header.top h1 { margin: 0 0 6px; font-size: 26px; line-height: 1.3; }
+header.top p { margin: 4px 0; color: var(--ink2); }
+section { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+h2 { margin: 0 0 12px; font-size: 21px; line-height: 1.35; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+h3 { margin: 28px 0 8px; font-size: 17.5px; line-height: 1.4; }
+p { margin: 8px 0; }
+ul, ol { margin: 8px 0; padding-left: 22px; }
+li { margin: 3px 0; }
+code { font: 13.5px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--fill); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--code-bg); color: var(--code-fg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font: 13px/1.6 ui-monospace, "Cascadia Mono", Consolas, monospace; margin: 10px 0; }
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+pre .c { color: #8b95a7; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; line-height: 1.55; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+th { background: var(--fill); white-space: nowrap; }
+td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.box { border-left: 4px solid var(--accent); background: var(--accent-bg); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+.box.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.box.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.box p:first-child { margin-top: 0; } .box p:last-child { margin-bottom: 0; }
+.tag { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--accent-bg); color: var(--accent); white-space: nowrap; }
+.tag.v { background: var(--ok-bg); color: var(--ok); }
+.tag.p { background: var(--warn-bg); color: var(--warn); }
+.foot { color: var(--ink3); font-size: 13px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } nav { position: static; max-height: none; } section, header.top { padding: 16px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="목차">
+  <b>시작</b>
+  <a href="#summary">1. 요약</a>
+  <a href="#diff">2. 계획과 달라진 점</a>
+  <b>구조</b>
+  <a href="#flow">3. 프레임 흐름과 코드 위치</a>
+  <a href="#waves">4. 파도 만들기 (CPU)</a>
+  <a href="#shaders">5. 셰이더</a>
+  <a class="sub" href="#sh-hlsli">5.1 Ocean.hlsli</a>
+  <a class="sub" href="#sh-vs">5.2 정점 셰이더</a>
+  <a class="sub" href="#sh-ps">5.3 픽셀 셰이더 (3단계)</a>
+  <a class="sub" href="#sh-band">5.4 대역 제한</a>
+  <a href="#time">6. 시간과 속도 버퍼</a>
+  <a href="#grid">7. 넓은 평면·감쇠·수평선</a>
+  <a href="#binding">8. 바인딩·PSO·컬링</a>
+  <b>검증</b>
+  <a href="#verify">9. 검증</a>
+  <a class="sub" href="#v-s1">9.1 1단계</a>
+  <a class="sub" href="#v-s2">9.2 2단계</a>
+  <a class="sub" href="#v-s3">9.3 3단계와 원인 실험</a>
+  <a class="sub" href="#v-perf">9.4 GPU 시간</a>
+  <a class="sub" href="#v-reg">9.5 회귀</a>
+  <a class="sub" href="#v-none">9.6 확인하지 못한 것</a>
+  <b>마무리</b>
+  <a href="#limits">10. 한계와 남은 일</a>
+  <a href="#tools">11. 테스트 씬과 도구</a>
+  <a href="#read">12. 코드 읽는 순서</a>
+  <a href="#files">13. 파일 목록</a>
+</nav>
+<main>
+<header class="top">
+  <h1>Gerstner 바다 구현 기록 — 정점 변위, 수평선까지 넓은 평면, 픽셀 단위 노멀</h1>
+  <p>2026-11-23 · <a href="ocean-gerstner-plan.html">Gerstner 바다 구현 계획</a>의 1~3단계를 구현한 기록입니다. 플레이어가 멈춰 있는 배 위에서 전투를 하고 배경으로 잔잔한 바다가 보이는 장면이 목표입니다. 파도는 GPU 에서만 계산하고 CPU 는 파도 높이를 읽지 않습니다(부력 없음).</p>
+  <p>계획 문서는 계획 당시 그대로 두고 맨 위 "구현하면서 바뀐 점" 상자만 덧붙였습니다. 이 문서는 지금 코드가 어떻게 되어 있는지, 무엇을 어떻게 확인했는지를 다룹니다.</p>
+  <p class="foot">기준: 커밋 <code>3d19842</code>. 코드 위치는 "파일 + 함수/타입 이름"으로 적었고, 경로는 <code>SherlockEngine/</code> 프로젝트 폴더 기준입니다. 숫자는 구현하면서 에디터 자동화(<code>--screenshot</code>, <code>--avg-frames</code>)로 실행해 얻은 값이고, 화면 좌표는 에디터 씬 뷰(732×445) 기준입니다.</p>
+</header>
+
+<section id="summary">
+<h2>1. 요약</h2>
+<table>
+<thead><tr><th>단계</th><th>무엇을</th><th>결과</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>Ocean</code> 컴포넌트, b9 <code>OceanConstants</code>(288 B), <code>Ocean.hlsli</code>, <code>OceanVertexShader.hlsl</code>, 메인·G-buffer PSO 분기(키 비트 12), 그림자 패스 제외, 컬링 패딩, 이전 위치(속도 버퍼), <code>--ocean-time</code>, 테스트 씬 <code>Ocean.json</code></td><td>D3D11 = D3D12 픽셀 동일, 디퍼드·포워드 최대 차 5. 시간 고정 + 카메라 회전에서 뷰 17 의 바다가 0 픽셀. 바다 없는 씬은 기준끼리의 잡음 수준만 다름</td></tr>
+<tr><td>2</td><td>평면 메시 "간격 증가" <code>g</code>(씬 <code>params[2]</code>), 거리 감쇠 <code>fadeStart</code>·<code>fadeEnd</code>, 씬 카메라 <code>farZ</code> 저장, 테스트 씬 <code>OceanHorizon.json</code>(10 km, 512², g 0.93, far 5000 m)</td><td>정점 간격 원점 1.37 m, 80 m 안 1.4 m 이하, 가장자리 127 m. 수평선에 틈 없음. 뷰 17 바다 0/200,750 픽셀</td></tr>
+<tr><td>3</td><td><code>OceanPixelShader.hlsl</code>·<code>OceanGBufferPixelShader.hlsl</code> 가 노멀·탄젠트를 픽셀에서 다시 계산, 픽셀보다 짧은 파도의 기울기를 빼는 대역 제한</td><td>먼 바다 깜빡임(TAA 끔, 연속 두 프레임 차 ≥ 16) 126 → 25 픽셀, 외딴 점 765 → 412. 대역 제한을 끄면 149·1251 로 나빠짐</td></tr>
+</tbody>
+</table>
+<pre><code><span class="c">// 프레임 안에서 바다가 지나는 길</span>
+BuildDrawList ─ 오브젝트에 Ocean 컴포넌트 → CollectOcean (첫 번째 하나) → 그 드로우만 바다 PSO
+             └ DrawItem: pipeline = Pass_Ocean, gbufferPipeline = Pass_GBufferOcean, shadowPipeline = 없음, 경계 구 + 최대 변위
+Prepare      ─ UploadOceanConstants (b9: 파도 8 개, 이번·지난 위상, 감쇠, 원점. 바다가 없어도 파도 0 개로 올림)
+G-buffer 패스 ─ OceanVS + OceanGBufferPS (GBufferPS + 픽셀 단위 노멀) → 디퍼드 조명이 IBL 반사·그림자를 그대로 적용
+포워드 패스   ─ OceanVS + OceanPS      (BasicPS + 픽셀 단위 노멀, 디퍼드를 끈 경우)</code></pre>
+</section>
+
+<section id="diff">
+<h2>2. 계획과 달라진 점</h2>
+<table>
+<thead><tr><th>항목</th><th>계획</th><th>구현</th><th>이유</th></tr></thead>
+<tbody>
+<tr><td>렌더러 코드 위치</td><td><code>Renderer.cpp</code></td><td><code>Graphics/RendererOcean.cpp</code> 에 <code>CollectOcean</code>·<code>UploadOceanConstants</code></td><td><code>RendererDeferred</code>·<code>RendererShadow</code>·<code>RendererParticles</code> 처럼 기능별로 멤버 함수 구현 파일을 나누는 기존 관례. <code>Renderer.cpp</code>(2,400 줄)에는 표 항목·b9 생성·<code>BuildDrawList</code> 분기·PSO 키만 남김</td></tr>
+<tr><td>탄젠트</td><td><code>T = normalize(∂P/∂x)</code>, 손잡이 +1</td><td>월드로 옮긴 메시 탄젠트의 xz 를 변위된 표면 위로: <code>T = ∂P/∂x · t.x + ∂P/∂z · t.z</code>, 손잡이 <code>TangentHandedness</code></td><td>바다 오브젝트를 요로 돌려도 노멀 맵 방향이 UV 와 맞음. 평평할 때는 메시 탄젠트와 같음</td></tr>
+<tr><td>간격 곡선</td><td><code>(1 − g)|t| + g|t|³</code></td><td><code>(1 − g)|t| + g|t|⁷</code>, g = 0.93</td><td>지수 3·5 로는 512 정점으로 "80 m 안 1.5 m 이하"를 맞출 수 없음(지수 5, g 0.93 이면 80 m 안 최대 1.58 m). 지수 7 은 가운데의 거의 균일한 구간이 넓음(<a href="#grid">7장</a>)</td></tr>
+<tr><td>카메라 far</td><td>"카메라 far 5000 m"</td><td><code>SceneSerializer</code> 가 씬 카메라 <code>farZ</code> 를 저장·복원(기본값 1000 m 이면 쓰지 않음, 키가 없으면 1000 으로 되돌림). 게임 카메라는 <code>CameraComponent::farZ</code></td><td>에디터 씬 카메라의 far 를 씬 파일에 둘 곳이 없었음. 기존 씬 파일은 저장만으로 바뀌지 않음</td></tr>
+<tr><td>3단계 PS</td><td>노멀 입력을 함수로 빼는 정도</td><td><code>OceanPixelShader.hlsl</code> 이 <code>BasicPixelShader.hlsl</code> 을, <code>OceanGBufferPixelShader.hlsl</code> 이 <code>GBufferPixelShader.hlsl</code> 을 통째로 include 하고 <code>PS_Main</code>·<code>PS_GBuffer</code> 를 함수로 부름</td><td>셰이딩 코드를 한 줄도 복사하지 않음. 공용 <code>VSOutput</code> 은 그대로 두고 바다 VS 출력만 <code>OceanVSOutput</code>(뒤에 <code>TEXCOORD4</code> 하나)</td></tr>
+<tr><td>대역 제한</td><td>없음("먼 거리 노멀은 감쇠로 평평해지는 것을 그대로 둠")</td><td>파도마다 "픽셀 하나가 덮는 주기 수" 0.1 → 0.25 에서 기울기 1 → 0</td><td>먼 바다의 점은 격자가 아니라 픽셀 문제였음 — 픽셀 단위 노멀만으로는 점이 줄지 않음(<a href="#v-s3">9.3</a>)</td></tr>
+<tr><td>테스트 씬</td><td>기존 씬을 복사</td><td>생성기 <code>Scripts/Tests/make_ocean_test_scenes.py</code> 가 DamagedHelmet 의 하늘·IBL 을 가져다 두 씬을 만듦. 수식 검사 <code>check_gerstner_normals.py</code></td><td>씬 두 개가 크기·정점 수·간격만 다르고 나머지가 같음</td></tr>
+<tr><td><code>Ocean.json</code> 감쇠</td><td>1단계는 감쇠 없음</td><td>컴포넌트 기본값(80/300 m)을 씀</td><td>2단계에서 다시 생성. 200 m 평면이라 감쇠는 가장자리 쪽(80~141 m)에만 걸림</td></tr>
+</tbody>
+</table>
+<div class="box"><p><b>7장 미확인 사항의 결과.</b> (1) D3D12 루트 시그니처: 메인 패스 26 → 28/64 DWORD, <code>ValidateBindings</code> 가 <code>OceanVS b9</code>·<code>OceanPS b9</code>·<code>OceanGBufferPS b9</code> 를 OK 로 대조. (2) 평면 직렬화: <code>SceneSerializer</code> 가 <code>params</code> 4 칸을 모두 쓰고 읽음 — 키 추가 없이 <code>params[2]</code> 사용. (3) 에디터에 메시 출처 편집 UI 가 없어 <code>g</code> 는 씬 JSON 으로만 넣음. (4) 거리 안개 없음 — far·크기로 해결. (5) <code>RenderSettings</code> 는 <code>Graphics/Renderer.h</code>, 오버라이드는 <code>AppBase::ApplyRenderPathOptions</code>. (6) 미리보기 뷰는 같은 b9 로 문제없음. (7) SSAO: 상자 주변은 괜찮지만 수평선 쪽 먼 바다가 어두워짐(<a href="#limits">10장</a>, 바다와 무관한 기존 한계).</p></div>
+</section>
+
+<section id="flow">
+<h2>3. 프레임 흐름과 코드 위치</h2>
+<table>
+<thead><tr><th>단계</th><th>코드</th><th>하는 일</th></tr></thead>
+<tbody>
+<tr><td>컴포넌트</td><td><code>Scene/Ocean.h/.cpp</code> 의 <code>Ocean</code>, <code>OceanWave</code></td><td>값만 들고 있음(<code>Update</code> 없음 — 편집 모드에서도 파도가 움직임). <code>BuildWaves</code> 가 파도 최대 8 개, <code>MaxDisplacement</code> 가 감쇠 전 최대 변위 Σ A + Σ s/k</td></tr>
+<tr><td>드로우 목록</td><td><code>Graphics/Renderer.cpp</code> 의 <code>BuildDrawList</code></td><td>프레임 시작에 <code>m_frameOcean.active = false</code>. 오브젝트마다 스킨이 아니면 <code>CollectOcean</code>. 바다면 경계 구 반지름 + <code>MaxDisplacement</code>, <code>GetPipelineFor(..., ocean)</code>·<code>GetGBufferPipelineFor(..., ocean)</code>, <code>shadowPipeline</code> 비움</td></tr>
+<tr><td>바다 찾기</td><td><code>Graphics/RendererOcean.cpp</code> 의 <code>Renderer::CollectOcean</code></td><td>켜진 첫 <code>Ocean</code> 만. 둘째부터는 <code>Log::Warn</code> 한 번 남기고 일반 평면. 파도·원점(<code>world.r[3]</code>)·감쇠 값을 <code>FrameOcean</code> 에 담음</td></tr>
+<tr><td>상수 올리기</td><td><code>RendererOcean.cpp</code> 의 <code>Renderer::UploadOceanConstants</code>, <code>Renderer::Render</code> 에서 <code>UpdateParticleEmitters</code> 다음</td><td>b9 를 프레임에 한 번. 위상은 double <code>fmod</code>. 바다가 없어도 파도 0 개로 올림(D3D12 Dynamic CB)</td></tr>
+<tr><td>PSO</td><td><code>Renderer::GetPipelineFor</code>, <code>RendererDeferred.cpp</code> 의 <code>GetGBufferPipelineFor</code></td><td>키 비트 12(바다 VS). 스킨 정점 포맷이면 무시. desc 는 <code>Pass_Ocean</code>·<code>Pass_GBufferOcean</code> 에서 시작</td></tr>
+<tr><td>셰이더</td><td><code>Shaders/Ocean.hlsli</code>, <code>OceanVertexShader.hlsl</code>, <code>OceanPixelShader.hlsl</code>, <code>OceanGBufferPixelShader.hlsl</code></td><td><a href="#shaders">5장</a></td></tr>
+<tr><td>리셋</td><td><code>Renderer::ResetTemporalHistory</code></td><td><code>m_oceanHasPrev = false</code> — 다음 프레임은 지난 위상 = 이번 위상</td></tr>
+<tr><td>설정</td><td><code>RenderSettings::oceanTimeOverride</code>(<code>Renderer.h</code>), <code>AppBase::ApplyRenderPathOptions</code> 의 <code>--ocean-time=</code></td><td>음수 = 끔. 바다 시간을 고정(검증용)</td></tr>
+<tr><td>평면</td><td><code>Graphics/Mesh.cpp</code> 의 <code>Mesh::CreatePlane(..., spacingGrowth)</code>, <code>Scene/Scene.cpp</code> 의 <code>MeshSource::Plane</code>·<code>CreatePrimitive</code></td><td>간격 증가 <code>g</code> = <code>params[2]</code>. 0 이면 예전과 같은 식</td></tr>
+<tr><td>씬 카메라</td><td><code>Scene/SceneSerializer.cpp</code> 의 <code>SaveToString</code>·불러오기의 <code>"camera"</code>, <code>kDefaultSceneCameraFar</code></td><td><code>farZ</code> 를 1000 이 아닐 때만 씀</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="waves">
+<h2>4. 파도 만들기 (CPU)</h2>
+<p><code>Ocean::BuildWaves</code> 가 컴포넌트 값으로 파도를 만듭니다. 같은 값이면 같은 파도입니다. 난수는 시드로 만든 작은 LCG(<code>state = seed · 747796405 + 2891336453</code>, 다음 값 <code>state · 1664525 + 1013904223</code>, 출력 <code>(state &gt;&gt; 8) / 2²⁴</code>)이고 <code>std::rand</code> 는 쓰지 않습니다.</p>
+<pre><code>n      = clamp(waveCount, 1, 8)
+Lᵢ     = Lmax · (Lmin / Lmax)^(i / (n − 1))      <span class="c">// 가장 긴 것에서 짧은 것까지 등비</span>
+kᵢ     = 2π / Lᵢ
+Aᵢ     = amplitude · Lᵢ / Lmax                   <span class="c">// 모든 파도의 가파름 kA 가 같음 (기본 ≈ 0.05)</span>
+sᵢ     = clamp(steepness, 0, 1) / n              <span class="c">// Σ s ≤ 1 → 마루가 뒤집히지 않음</span>
+angleᵢ = windDirection + directionSpread · (2r − 1)   <span class="c">// 도, +X 에서 +Z 쪽</span>
+ωᵢ     = sqrt(9.81 · kᵢ) · speed                 <span class="c">// 깊은 물의 분산 관계. 긴 파도가 빠름</span>
+φ0ᵢ    = 2π · r</code></pre>
+<p>기본값: 파도 6, 바람 30°, 퍼짐 ±40°, 파장 4~32 m, 진폭 0.25 m, 경사 0.4, 속도 1, 시드 1, 감쇠 80~300 m. 수식은 <code>Projects/SherlockTestScenes/Scripts/Tests/check_gerstner_normals.py</code> 가 <code>BuildWaves</code> 를 그대로 옮겨 해석 노멀과 유한 차분 노멀을 비교합니다 — 각도 차 0.00001° 미만, 노멀 y 최솟값 0.975(steepness 1 이면 0.962).</p>
+</section>
+
+<section id="shaders">
+<h2>5. 셰이더</h2>
+<h3 id="sh-hlsli">5.1 <code>Ocean.hlsli</code></h3>
+<table>
+<thead><tr><th>이름</th><th>하는 일</th></tr></thead>
+<tbody>
+<tr><td><code>cbuffer Ocean : register(b9)</code></td><td><code>oceanWaveA[8]</code>(Dx, Dz, k, A), <code>oceanWaveB[8]</code>(s, 이번 위상, 지난 위상, 0), <code>oceanParams</code>(파도 수, fadeStart, fadeEnd, 0), <code>oceanOrigin</code>(xz = 감쇠 기준점). <code>ShaderConstants.h</code> 의 <code>OceanConstants</code> 와 바이트 단위로 같음</td></tr>
+<tr><td><code>OceanFade(xz)</code></td><td>바다 원점에서의 거리로 1 → 0(smoothstep). <code>fadeEnd ≤ fadeStart</code> 면 1. 카메라가 아니라 바다 원점 기준이라 이번·지난 위치에 같은 값이 곱해짐</td></tr>
+<tr><td><code>GerstnerPosition(base, phaseSlot)</code></td><td>변위된 위치만. 속도 버퍼의 지난 위치용</td></tr>
+<tr><td><code>GerstnerSampleFiltered(base, phaseSlot, dx0, dy0)</code></td><td>위치·노멀·∂P/∂x·∂P/∂z. <code>dx0</code>·<code>dy0</code>(변위 전 xz 의 화면 미분)가 0 이 아니면 노멀·편미분만 대역 제한</td></tr>
+<tr><td><code>GerstnerSample(base, phaseSlot)</code></td><td><code>GerstnerSampleFiltered</code> 에 미분 0 — 정점 셰이더용</td></tr>
+<tr><td><code>OceanVSOutput</code></td><td><code>VSOutput base</code> + <code>float4 oceanBase : TEXCOORD4</code>(xy = 변위 전 월드 xz, zw = 월드로 옮긴 메시 탄젠트 xz)</td></tr>
+<tr><td><code>OceanSurfaceTangent(sample, tangentXZ)</code></td><td>메시 탄젠트를 변위된 표면 위 방향으로. 길이가 0 이면 ∂P/∂x</td></tr>
+<tr><td><code>OceanPixelInput(input)</code></td><td>픽셀 셰이더용: 노멀·탄젠트를 픽셀에서 다시 구한 <code>VSOutput</code>. <code>ddx</code>·<code>ddy</code> 를 쓰므로 분기 밖에서 부름</td></tr>
+</tbody>
+</table>
+<pre><code><span class="c">// 파도 i (Ocean.hlsli 머리 주석과 같음). fade 는 진폭과 경사에 같이 곱함</span>
+θᵢ   = kᵢ (Dᵢ · x₀) − φᵢ
+P.xz = x₀ + Σ (sᵢ / kᵢ) Dᵢ cos θᵢ
+P.y  =      Σ  Aᵢ          sin θᵢ
+∂P/∂x = (1 − Σ sᵢ Dx² sin θᵢ,  Σ kᵢAᵢ Dx cos θᵢ,  − Σ sᵢ Dx Dz sin θᵢ)
+∂P/∂z = (− Σ sᵢ Dx Dz sin θᵢ,  Σ kᵢAᵢ Dz cos θᵢ,  1 − Σ sᵢ Dz² sin θᵢ)
+N    = normalize(cross(∂P/∂z, ∂P/∂x))    <span class="c">// 평평할 때 (0, 1, 0)</span></code></pre>
+
+<h3 id="sh-vs">5.2 정점 셰이더 <code>VS_Ocean</code></h3>
+<ol>
+<li>평면 정점을 먼저 <code>world</code>·<code>prevWorld</code> 로 옮김(<code>baseNow</code>, <code>basePrev</code>). 파도는 월드 xz 에서 더하므로 바다를 옮기거나 요로 돌려도 파도 방향은 월드 기준입니다. 피치·롤은 지원하지 않습니다.</li>
+<li><code>GerstnerSample(baseNow, NOW)</code> → 위치·노멀·편미분. <code>GerstnerPosition(basePrev, PREV)</code> → 지난 위치.</li>
+<li><code>position</code> 은 <code>viewProj</code>(지터 포함), <code>currClip</code>·<code>prevClip</code> 은 지터 없는 두 행렬(<code>unjitteredViewProj</code>·<code>prevUnjitteredViewProj</code>).</li>
+<li>탄젠트는 <code>OceanSurfaceTangent(now, meshTangent.xz)</code>, 손잡이는 <code>TangentHandedness(tangent.w, world)</code>.</li>
+<li><code>oceanBase = (baseNow.xz, meshTangent.xz)</code> 를 픽셀 셰이더로 넘김.</li>
+</ol>
+
+<h3 id="sh-ps">5.3 픽셀 셰이더 (3단계)</h3>
+<pre><code><span class="c">// OceanPixelShader.hlsl — BasicPixelShader.hlsl 을 include (PS_Main 은 여기서 진입점이 아님)</span>
+ForwardOutput PS_Ocean(OceanVSOutput input, bool isFrontFace : SV_IsFrontFace)
+{
+    return PS_Main(OceanPixelInput(input), isFrontFace);
+}
+<span class="c">// OceanGBufferPixelShader.hlsl — GBufferPixelShader.hlsl 을 include</span>
+GBufferOutput PS_OceanGBuffer(OceanVSOutput input, bool isFrontFace : SV_IsFrontFace)
+{
+    return PS_GBuffer(OceanPixelInput(input), isFrontFace);
+}</code></pre>
+<p>정점 노멀은 격자 간격보다 촘촘한 굴곡을 담지 못하고, 성긴 격자에서는 삼각형 단위로 꺾입니다. 픽셀 셰이더가 변위 전 xz 로 파도를 다시 계산하면 격자 밀도와 상관없는 매끈한 노멀이 나옵니다. 속도·UV·위치는 VS 값을 그대로 씁니다. PS 가 b9 를 읽으므로 <code>Layout_Object</code> 의 b9 단계가 VS|PS 입니다.</p>
+
+<h3 id="sh-band">5.4 대역 제한</h3>
+<pre><code><span class="c">// Ocean.hlsli 의 OceanBandLimit. dx0·dy0 = ddx·ddy(변위 전 xz)</span>
+cyclesPerPixel = kᵢ · length(float2(dot(dx0, Dᵢ), dot(dy0, Dᵢ))) / 2π
+band           = 1 − smoothstep(0.1, 0.25, cyclesPerPixel)     <span class="c">// 파장당 10 픽셀 → 4 픽셀</span>
+<span class="c">// 노멀·편미분의 kᵢAᵢ 와 sᵢ 에 band 를 곱함. 위치에는 곱하지 않음</span></code></pre>
+<ul>
+<li>파도 방향으로 잰 주기 수라 비스듬한 각도에서 깊이 방향으로만 성긴 픽셀이 그 방향 파도만 지웁니다.</li>
+<li>구간은 <code>OceanHorizon.json</code> 실험으로 정했습니다(<a href="#v-s3">9.3</a>). 0.25~0.5(나이퀴스트 근처)는 깜빡임은 줄지만 외딴 점이 남았습니다.</li>
+<li>뺀 기울기를 거칠기로 옮기지는 않습니다(LEAN·Toksvig 류). 그래서 먼 바다의 해 반사 줄이 조금 약해집니다.</li>
+</ul>
+</section>
+
+<section id="time">
+<h2>6. 시간과 속도 버퍼</h2>
+<ul>
+<li><b>위상.</b> 이번·지난 위상 <code>φ = fmod(ω · t + φ0, 2π)</code> 를 CPU 가 double 로 구해 b9 에 넣습니다. 셰이더는 <code>ω · t</code> 를 곱하지 않습니다.</li>
+<li><b>지난 시간.</b> <code>time − dt</code> 가 아니라 지난 프레임에 실제로 쓴 시간(<code>m_oceanPrevTime</code>)입니다. 처음 프레임, <code>ResetTemporalHistory</code> 뒤, 바다 오브젝트가 바뀐 프레임(<code>m_oceanPrevObject</code>), <code>--ocean-time</code> 고정이면 지난 = 이번(속도 0). 일시정지에서는 <code>totalTime</code> 이 멈추므로 저절로 0 입니다.</li>
+<li><b>감쇠.</b> 바다 원점 기준이라 이번·지난 위치에 같은 배율이 곱해집니다.</li>
+<li><b>시간 고정.</b> <code>--ocean-time=T</code> 면 바다의 속도는 카메라 속도만 남으므로 뷰 17 이 검정이어야 합니다. 스크린샷 비교도 실행마다 같아집니다.</li>
+<li><b>정밀도.</b> 엔진의 <code>totalTime</code> 이 float 라 실행 시간이 길면 입력 해상도가 떨어집니다(하루에 약 8 ms 단위). 위상 감기는 double 이지만 입력 해상도는 그대로입니다.</li>
+</ul>
+</section>
+
+<section id="grid">
+<h2>7. 넓은 평면·감쇠·수평선</h2>
+<p><code>Mesh::CreatePlane</code> 에 <code>spacingGrowth</code>(g)를 추가했습니다. 축마다 정점 번호로 정한 <code>t ∈ [−1, 1]</code> 을 아래처럼 바꿉니다. 기울기가 가운데 (1 − g), 끝 (1 + 6g) 라 간격 비는 (1 + 6g)/(1 − g) 입니다. g = 0 이면 예전 균일 식을 그대로 써서 비트 단위로 같은 정점이 나옵니다. UV 는 g 와 상관없이 정점 번호에 대해 균일합니다.</p>
+<pre><code>x = half · sign(t) · ((1 − g)|t| + g|t|⁷)</code></pre>
+<table>
+<thead><tr><th>곡선 (10 km, 512 정점)</th><th>원점</th><th>80 m 안 최대</th><th>150 m</th><th>300 m</th><th>가장자리</th></tr></thead>
+<tbody>
+<tr><td>|t|⁵, g 0.93</td><td class="n">1.37 m</td><td class="n">1.58 m</td><td></td><td class="n">6.42 m</td><td class="n">92 m</td></tr>
+<tr><td>|t|⁵, g 0.95</td><td class="n">0.98 m</td><td class="n">1.56 m</td><td></td><td class="n">7.40 m</td><td class="n">93 m</td></tr>
+<tr><td><b>|t|⁷, g 0.93 (채택)</b></td><td class="n">1.37 m</td><td class="n">1.39 m</td><td class="n">1.92 m</td><td class="n">5.99 m</td><td class="n">127 m</td></tr>
+<tr><td>|t|⁹, g 0.93</td><td class="n">1.37 m</td><td class="n">1.37 m</td><td class="n">1.54 m</td><td class="n">5.65 m</td><td class="n">163 m</td></tr>
+</tbody>
+</table>
+<ul>
+<li><b>감쇠.</b> <code>fadeStart</code>~<code>fadeEnd</code>(기본 80~300 m)에서 진폭과 경사를 함께 0 으로. 성긴 격자가 짧은 파도를 담지 못해 생기는 계단을 막고, 먼 바다는 평평하게 하늘을 비춥니다.</li>
+<li><b>수평선.</b> <code>OceanHorizon.json</code> 은 바다 한 변 10 km, 씬 카메라·게임 카메라 far 5000 m 입니다. 바다는 far 에서 잘리고, 갑판 8 m 에서 그 자리는 수평선보다 약 0.09° 아래(씬 뷰에서 1 픽셀 미만)입니다. 수평선 바로 아래 행의 밝기는 164, 하늘 194, 조금 앞 바다 174~180 으로 틈은 없습니다.</li>
+<li><b>에디터.</b> 메시 출처 편집 UI 가 없어 <code>g</code> 는 씬 JSON 의 <code>params[2]</code> 로만 넣습니다.</li>
+</ul>
+</section>
+
+<section id="binding">
+<h2>8. 바인딩·PSO·컬링</h2>
+<ul>
+<li><b>b9.</b> <code>kCBSlotOcean = 9</code>, <code>Layout_Object</code> 에 VS|PS 로 b13 다음. 오브젝트 셋 바인딩 순서는 b1, b7, b13, b9. 같은 번호의 <code>kCBSlotParticleCollision</code> 은 컴퓨트 충돌 셋 전용이라 한 패스에 같이 묶이지 않습니다(b13 을 <code>PrevSkin</code>·<code>ClusterBin</code> 이 같이 쓰는 것과 같은 규칙). SM 5.0 은 b0~b13 이라 빈 번호가 없습니다.</li>
+<li><b>늘 올림.</b> D3D12 의 Dynamic 상수 버퍼는 프레임마다 한 번은 써야 바인딩되므로 바다가 없어도 파도 0 개로 올립니다(b7·b13 과 같음).</li>
+<li><b>루트 시그니처.</b> 메인 패스 26 → 28/64 DWORD.</li>
+<li><b>대조.</b> <code>kConstantBuffers</code> 의 <code>{ "Ocean", 288 }</code> 로 <code>OceanVS</code>·<code>OceanPS</code>·<code>OceanGBufferPS</code> 의 cbuffer 크기, <code>ValidateBindings</code> 로 b9 슬롯을 시작 로그에서 확인합니다.</li>
+<li><b>PSO 키.</b> 비트 0~7 정점 포맷, 8 미러, 9 와이어프레임, 10 뒷면 컬링, 11 블렌딩(메인만), <b>12 바다 VS</b>. 와이어프레임·미러·컬링은 기존 코드를 그대로 탑니다.</li>
+<li><b>그림자.</b> 바다는 <code>shadowPipeline</code> 이 비어 그림자 패스에 들어가지 않습니다. 받는 쪽은 변위된 월드 위치(포워드)·깊이 복원 위치(디퍼드)로 그대로 됩니다.</li>
+<li><b>컬링.</b> 경계 구 반지름에 <code>Ocean::MaxDisplacement</code>(감쇠 전 Σ A + Σ s/k)를 더합니다.</li>
+<li><b>바다 개수.</b> 씬에 하나. 둘째부터 "Ocean: 바다가 둘 이상임…" 경고 한 번.</li>
+</ul>
+</section>
+
+<section id="verify">
+<h2>9. 검증</h2>
+<p>공통: 솔루션 Debug·Release 빌드 에러·경고 0, 테스트 스크립트 DLL(<code>SherlockTestScenesScripts</code>) Debug·Release 빌드 OK. 실행 로그의 <code>[실패]</code>·<code>[경고]</code>·D3D12 ERROR 는 기준선에도 있는 Live Device 경고 하나뿐입니다.</p>
+<h3 id="v-s1">9.1 1단계 (<code>Ocean.json</code>, <code>--ocean-time=10</code>)</h3>
+<table>
+<thead><tr><th>항목</th><th>결과</th></tr></thead>
+<tbody>
+<tr><td>수식 검사 스크립트</td><td>통과(각도 차 0.00001° 미만)</td></tr>
+<tr><td>바인딩·크기 대조</td><td><code>OceanVS b9 OK</code>, cbuffer <code>Ocean</code> 288 B 일치</td></tr>
+<tr><td>D3D11·D3D12 × 디퍼드·포워드</td><td>백엔드끼리 0 픽셀 차. 디퍼드 대 포워드 최대 차 5(G-buffer 양자화). 드로우 수 디퍼드 5(G-buffer 2)·포워드 4</td></tr>
+<tr><td>뷰 2·와이어프레임</td><td>노멀이 파도를 따라 기울고 평평한 곳은 위. steepness 0.4·1 에서 정점이 마루로 모이고 뒤집힘 없음</td></tr>
+<tr><td>뷰 4(그림자)</td><td>상자 그림자가 파도 모양을 따라 떨어짐</td></tr>
+<tr><td>시간 고정 + <code>--cam-orbit=0.5</code>, 뷰 17</td><td>바다 영역 0 픽셀(두 백엔드). 0 이 아닌 픽셀은 하늘(속도 없음 표시)과 조명 기즈모뿐</td></tr>
+<tr><td>뷰 16(시간 흐름)</td><td>부드럽고 값이 작음(최대 9). 방향·크기는 판별하지 못함</td></tr>
+<tr><td>TAA·모션 블러 + 회전, 재생 모드</td><td>파도 위 고스팅 안 보임(눈으로)</td></tr>
+<tr><td>미리보기 카메라, SSAO, 둘째 바다</td><td>오류 0. 둘째 바다는 경고 한 번 남기고 일반 평면</td></tr>
+<tr><td>에디터 자동화</td><td><code>--select=Floor --add-component=Ocean --save=…</code> 로 추가, 값(steepness 0.7, seed 5)을 바꾼 씬을 다시 불러와 저장해도 유지</td></tr>
+<tr><td>Release</td><td>Debug 와 2 픽셀(최대 1) 차, 백엔드끼리 0</td></tr>
+</tbody>
+</table>
+<h3 id="v-s2">9.2 2단계 (<code>OceanHorizon.json</code>)</h3>
+<table>
+<thead><tr><th>항목</th><th>결과</th></tr></thead>
+<tbody>
+<tr><td>정점 간격</td><td>원점 1.37 m, 80 m 안 1.39 m, 300 m 6 m, 가장자리 127 m(계산)</td></tr>
+<tr><td>수평선</td><td>틈 없음. 수평선 아래 첫 행 164, 하늘 194, 앞 바다 174~180</td></tr>
+<tr><td>뷰 17(시간 고정 + 회전)</td><td>바다 0/200,750 픽셀 — 감쇠가 이번·지난 위치에 같게 걸림</td></tr>
+<tr><td>저장·불러오기</td><td><code>camera.farZ</code> 5000, 메시 <code>params[2]</code> 0.93, 정점 512, 감쇠 80/300 유지</td></tr>
+<tr><td>g = 0 동일성</td><td>평면이 있는 <code>MotionBlur.json</code> 이 변경 전과 0 픽셀 차</td></tr>
+</tbody>
+</table>
+<h3 id="v-s3">9.3 3단계와 원인 실험</h3>
+<p>2단계 화면에서 먼 바다(수평선 아래 20~100 행, 약 80~300 m)에 점이 보였습니다. 측정은 TAA 를 끄고 두 가지로 했습니다. 깜빡임 = <code>--ocean-time</code> 10.0 과 10.0167(한 프레임 뒤) 두 장의 휘도 차가 16 이상인 픽셀 수(수평선 아래 전체). 외딴 점 = 수평선 아래 띠(240~330 행)에서 주변 5×5 중앙값과 12 이상 다른 픽셀 수.</p>
+<table>
+<thead><tr><th>실험</th><th class="n">깜빡임</th><th class="n">그중 256~275 행</th><th class="n">외딴 점 (어두움 / 밝음)</th><th>읽은 것</th></tr></thead>
+<tbody>
+<tr><td>2단계 그대로</td><td class="n">126</td><td class="n">60</td><td class="n">765 / 486</td><td>기준</td></tr>
+<tr><td>격자만 촘촘하게 (400 m 균일, 0.78 m 간격)</td><td class="n">76</td><td class="n">25</td><td class="n">782 / 623</td><td>깜빡임 일부는 격자, 점은 격자와 무관</td></tr>
+<tr><td>짧은 파도만 뺌 (<code>wavelengthMin</code> 12)</td><td class="n">76</td><td class="n">14</td><td class="n">108 / 241</td><td>점은 픽셀보다 짧은 파도 — 픽셀 문제</td></tr>
+<tr><td>3단계, 대역 제한 끔</td><td class="n">149</td><td class="n">61</td><td class="n">1251 / 669</td><td>픽셀 단위 노멀만으로는 오히려 점이 늘어남</td></tr>
+<tr><td>3단계, 대역 제한 0.25~0.5</td><td class="n">31</td><td class="n">8</td><td class="n">906 / 578</td><td></td></tr>
+<tr><td><b>3단계, 대역 제한 0.1~0.25 (채택)</b></td><td class="n">25</td><td class="n">2</td><td class="n">412 / 313</td><td>가까운 바다는 같아 보이고 먼 해 반사 줄만 조금 약해짐</td></tr>
+</tbody>
+</table>
+<p>TAA 를 켜면 2단계에서도 외딴 점이 157 / 5 로 줄어듭니다. 남은 점은 비스듬한 각도에서 변위된 마루가 뒤를 가리는 지오메트리 쪽으로 봅니다(확인하지 않음).</p>
+<p>3단계 뒤 다시 확인: D3D11 = D3D12 0 픽셀, 디퍼드 대 포워드 최대 4, Release = Debug(2 픽셀, 최대 1), 뷰 17 바다 0, 미리보기·SSAO·<code>--select=Ocean</code>·TAA + 모션 블러 오류 0, 시작 로그 <code>[Ocean] OceanPS b9 OK</code>·<code>[GBufferOcean] OceanGBufferPS b9 OK</code>.</p>
+
+<h3 id="v-perf">9.4 GPU 시간</h3>
+<p>Release, 씬 뷰 732×445, <code>--avg-frames=200</code>. 1080p 는 재지 못했습니다(에디터에 창 크기 인자가 없음). 계획의 "1080p 에서 바다 몫 0.5 ms 이하" 기준은 판정하지 못했습니다.</p>
+<table>
+<thead><tr><th>씬</th><th>백엔드</th><th class="n">Frame</th><th class="n">GBuffer</th><th class="n">DeferredLight</th><th class="n">ShadowPass</th></tr></thead>
+<tbody>
+<tr><td>OceanHorizon (바다)</td><td>D3D11</td><td class="n">0.423</td><td class="n">0.166</td><td class="n">0.115</td><td class="n">0.007</td></tr>
+<tr><td>OceanHorizon (바다)</td><td>D3D12</td><td class="n">0.311</td><td class="n">0.120</td><td class="n">0.106</td><td class="n">0.007</td></tr>
+<tr><td>같은 평면, 컴포넌트 뺌</td><td>D3D11</td><td class="n">0.580</td><td class="n">0.141</td><td class="n">0.081</td><td class="n">0.218</td></tr>
+<tr><td>같은 평면, 컴포넌트 뺌</td><td>D3D12</td><td class="n">0.584</td><td class="n">0.156</td><td class="n">0.106</td><td class="n">0.226</td></tr>
+<tr><td>바다 오브젝트 없음</td><td>D3D11</td><td class="n">0.168</td><td class="n">0.018</td><td class="n">0.023</td><td class="n">0.006</td></tr>
+<tr><td>바다 오브젝트 없음</td><td>D3D12</td><td class="n">0.128</td><td class="n">0.014</td><td class="n">0.025</td><td class="n">0.007</td></tr>
+</tbody>
+</table>
+<p>단위 ms. 이 크기에서 바다의 G-buffer 몫은 0.11~0.15 ms 입니다. 일반 평면으로 그려도 G-buffer 가 비슷해서 바다 셰이더 자체의 추가 비용은 작고, 대부분은 26만 정점과 화면 면적입니다. 같은 평면을 일반 메시로 그리면 그림자 패스가 0.22 ms 늘어나는데, 바다는 그림자 패스에서 빠져 0.007 ms 입니다.</p>
+
+<h3 id="v-reg">9.5 회귀 (바다 없는 씬)</h3>
+<table>
+<thead><tr><th>씬</th><th>변경 후 대 변경 전</th><th>변경 전끼리</th><th>드로우</th></tr></thead>
+<tbody>
+<tr><td>MotionBlur</td><td>0 픽셀 (두 백엔드)</td><td>0</td><td>7 / G-buffer 2 (같음)</td></tr>
+<tr><td>ManyLights64</td><td>0~1 픽셀, 최대 15 (실행마다 바뀜)</td><td>1 픽셀, 최대 15</td><td>106 / 103 (같음)</td></tr>
+<tr><td>TaaEdges</td><td>5~81 픽셀, 최대 2~22 (실행마다 바뀜)</td><td>41 픽셀 최대 22, 37 픽셀 최대 7</td><td>110 / 103 (같음)</td></tr>
+</tbody>
+</table>
+<p>ManyLights64·TaaEdges 의 차이는 변경 전 바이너리끼리 찍어도 같은 크기로 나오는 타이밍 의존 픽셀입니다.</p>
+
+<h3 id="v-none">9.6 확인하지 못한 것</h3>
+<ul>
+<li>재생 시작·정지 직후 한 프레임 튐(리셋 경로는 코드로만 확인).</li>
+<li>게임 런타임(<code>SherlockGame.exe</code>)과 게임 패키지. <code>GameBuilder</code> 가 셰이더 폴더를 통째로 복사하므로 새 <code>.cso</code> 도 실리는 것은 코드로 확인했습니다.</li>
+<li>시간이 흐를 때 속도(뷰 16)의 방향·크기.</li>
+<li>에디터에서 직접 하는 값 드래그·되돌리기, 기본값의 눈 맞춤.</li>
+<li>1080p GPU 시간.</li>
+</ul>
+</section>
+
+<section id="limits">
+<h2>10. 한계와 남은 일</h2>
+<table>
+<thead><tr><th>항목</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td>SSAO 와 넓은 평면</td><td>SSAO 를 켜면 수평선 아래 약 25 행이 어두워짐(밝기 174 → 120). 바다 컴포넌트를 뺀 평평한 평면에서도 똑같이 나와, 넓은 평면을 낮은 각도로 볼 때의 기존 SSAO 한계입니다. 고치지 않았습니다.</td></tr>
+<tr><td>대역 제한의 에너지</td><td>뺀 기울기를 거칠기로 옮기지 않아 먼 해 반사 줄이 약해짐</td></tr>
+<tr><td>시간 정밀도</td><td><code>totalTime</code> 이 float(하루 약 8 ms 단위)</td></tr>
+<tr><td>에디터 피킹</td><td>변위 전 평면으로 맞춤(진폭 0.25 m 수준이라 무시)</td></tr>
+<tr><td>바다 오브젝트 회전</td><td>요만 지원. 피치·롤을 주어도 파도는 월드 Y 로 솟음</td></tr>
+<tr><td>바다 하나</td><td>b9 를 프레임에 한 번 올리므로 씬에 하나</td></tr>
+<tr><td>범위 밖</td><td>거품, 물보라, 굴절·투명, 부력, FFT, 테셀레이션, 디테일 노멀 맵, 전용 물 셰이딩(심도 색·SSS)</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="tools">
+<h2>11. 테스트 씬과 도구</h2>
+<table>
+<thead><tr><th>이름</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td><code>Projects/SherlockTestScenes/Assets/Scenes/Ocean.json</code></td><td>200 m 평면, 256×256 정점 + <code>Ocean</code>, 원점에 6×3×16 m 배 자리 상자(<code>ShipStandIn</code>), 카메라 (−14, 8, −24) 에서 원점, 해 고도 20°(카메라 앞쪽), 그림자 거리 60 m. 재질 Ocean(알베도 0.01, 0.04, 0.05, 거칠기 0.06, ior 1.33)</td></tr>
+<tr><td><code>OceanHorizon.json</code></td><td>10 km 평면, 512×512, g 0.93, 씬 카메라·게임 카메라 far 5000 m, 카메라가 수평선 쪽을 봄</td></tr>
+<tr><td><code>Scripts/Tests/make_ocean_test_scenes.py</code></td><td>두 씬 생성기. <code>make_ocean_scene(size, verts, camera_pos, camera_target, far_z, ocean_extra, growth)</code> 를 다른 실험 씬에도 씀. DamagedHelmet.json 의 하늘·IBL 을 가져옴(그 씬은 고치지 않음)</td></tr>
+<tr><td><code>Scripts/Tests/check_gerstner_normals.py</code></td><td><code>BuildWaves</code> 를 옮겨 해석 노멀과 유한 차분 노멀 비교</td></tr>
+<tr><td><code>--ocean-time=초</code></td><td>바다 시간 고정. 에디터·게임 둘 다(<code>AppBase</code>)</td></tr>
+</tbody>
+</table>
+<pre><code><span class="c">// 예: 시간 고정 + 카메라 회전에서 속도 오차 뷰 (바다는 검정이어야 함)</span>
+SherlockEditor.exe --project=…/SherlockTestScenes.sherlock --scene=OceanHorizon.json --backend=d3d12 ^
+  --ocean-time=10 --debug-view=17 --cam-orbit=0.5 --exit-after=40 --screenshot=…\h17.png</code></pre>
+</section>
+
+<section id="read">
+<h2>12. 코드 읽는 순서</h2>
+<ol>
+<li><code>Scene/Ocean.h</code> — 필드와 기본값, 머리 주석.</li>
+<li><code>Scene/Ocean.cpp</code> 의 <code>BuildWaves</code>·<code>MaxDisplacement</code>.</li>
+<li><code>Graphics/ShaderConstants.h</code> 의 <code>OceanConstants</code>·<code>kCBSlotOcean</code>.</li>
+<li><code>Graphics/RendererOcean.cpp</code> — 머리 주석의 프레임 흐름, <code>CollectOcean</code>, <code>UploadOceanConstants</code>.</li>
+<li><code>Graphics/Renderer.cpp</code> 의 <code>BuildDrawList</code>(바다 분기), <code>GetPipelineFor</code>(비트 12), 초기화의 <code>objectLayout</code>·<code>m_oceanCB</code>.</li>
+<li><code>Shaders/Ocean.hlsli</code> → <code>OceanVertexShader.hlsl</code> → <code>OceanPixelShader.hlsl</code>·<code>OceanGBufferPixelShader.hlsl</code>.</li>
+<li><code>Graphics/Mesh.cpp</code> 의 <code>CreatePlane</code>(간격 증가), <code>Scene/SceneSerializer.cpp</code> 의 카메라 <code>farZ</code>.</li>
+</ol>
+</section>
+
+<section id="files">
+<h2>13. 파일 목록</h2>
+<table>
+<thead><tr><th>파일</th><th>단계</th><th>변경</th></tr></thead>
+<tbody>
+<tr><td><code>Scene/Ocean.h</code>, <code>Scene/Ocean.cpp</code> <span class="tag v">새</span></td><td>1, 2</td><td>컴포넌트, 파도 생성, 감쇠 필드</td></tr>
+<tr><td><code>Shaders/Ocean.hlsli</code>, <code>OceanVertexShader.hlsl</code> <span class="tag v">새</span></td><td>1~3</td><td>파도 함수, 대역 제한, 바다 VS</td></tr>
+<tr><td><code>Shaders/OceanPixelShader.hlsl</code>, <code>OceanGBufferPixelShader.hlsl</code> <span class="tag v">새</span></td><td>3</td><td>픽셀 단위 노멀</td></tr>
+<tr><td><code>Graphics/RendererOcean.cpp</code> <span class="tag v">새</span></td><td>1, 2</td><td><code>CollectOcean</code>, <code>UploadOceanConstants</code></td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code></td><td>1</td><td><code>OceanConstants</code>, <code>kCBSlotOcean</code>, <code>kMaxOceanWaves</code></td></tr>
+<tr><td><code>Graphics/Renderer.h</code>, <code>Renderer.cpp</code></td><td>1~3</td><td>셰이더·패스·cbuffer 표, <code>Layout_Object</code> b9, <code>m_oceanCB</code>, <code>BuildDrawList</code>, <code>GetPipelineFor</code>, <code>ResetTemporalHistory</code>, <code>RenderSettings::oceanTimeOverride</code></td></tr>
+<tr><td><code>Graphics/RendererDeferred.cpp</code></td><td>1</td><td><code>GetGBufferPipelineFor</code> 인자·키</td></tr>
+<tr><td><code>App/AppBase.cpp</code></td><td>1</td><td><code>--ocean-time=</code></td></tr>
+<tr><td><code>Graphics/Mesh.h/.cpp</code>, <code>Scene/Scene.h/.cpp</code></td><td>2</td><td>평면 간격 증가</td></tr>
+<tr><td><code>Scene/SceneSerializer.cpp</code></td><td>2</td><td>씬 카메라 <code>farZ</code></td></tr>
+<tr><td><code>SherlockEngine.vcxproj</code>, <code>.filters</code></td><td>1~3</td><td>새 소스·셰이더 항목</td></tr>
+<tr><td><code>Projects/SherlockTestScenes/…</code></td><td>1, 2</td><td><code>Ocean.json</code>, <code>OceanHorizon.json</code>, 생성기, 수식 검사</td></tr>
+</tbody>
+</table>
+</section>
+</main>
+</div>
+</body>
+</html>

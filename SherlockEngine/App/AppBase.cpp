@@ -364,6 +364,7 @@ int AppBase::Run()
 		// io.WantCaptureMouse/Keyboard 는 ImGui::NewFrame 에서 갱신되므로, 그 뒤에 Update 가 읽어야 "이번
 		// 프레임" 값을 얻음.
 		const float dt = m_engine.BeginFrame();
+		m_engine.GetInput().PollGamepad();   // 게임패드는 메시지가 없어 프레임마다 읽음
 		const bool gui = m_guiWin32Initialized;   // 게임 런타임에는 ImGui 프레임이 없음
 		if (gui)
 		{

@@ -42,7 +42,9 @@ private:
 	bool SaveSceneFile(const std::wstring& path);
 	bool LoadSceneFile(const std::wstring& path);
 	void BuildEmptyScene();                          // 바닥만 있는 새 씬 (File 모드)
-	void AddPrimitive(int type);                     // 0 구, 1 큐브, 2 원기둥, 3 평면, 4 카메라 오브젝트 (11-C)
+	void AddPrimitive(int type);
+	GameObject& AddUIWidget(int kind, GameObject& parent, const std::function<std::string(const char*)>& uniqueName);   // AddUIElement 의 3~7
+	int AddUIElement(int kind, int parentIndex);   // 0 Canvas, 1 Image, 2 Text, 3 Button, 4 Toggle, 5 Slider, 6 Scroll View, 7 Panel, 8 Event System. 새 오브젝트의 인덱스 (docs/plan/ui-canvas-plan.html)                     // 0 구, 1 큐브, 2 원기둥, 3 평면, 4 카메라 오브젝트 (11-C)
 	GameObject& AddCameraObject(const char* name);   // 11-C: 메시 없는 오브젝트 + CameraComponent 를 현재 에디터 시점에 만듦
 	void DeleteObject(int index);
 	// 명령 큐와 되돌리기 (Editor/EditorHistory.h).
@@ -65,6 +67,7 @@ private:
 	void SavePrefabOf(uint64_t id);
 	void InstantiatePrefabAt(const std::wstring& relativePath, const DirectX::XMFLOAT3& position);
 	void ResetHistory();   // 씬을 통째로 갈아 끼운 뒤 (새 씬·불러오기·프로젝트 전환): 이력을 비우고 현재 씬을 첫 상태로
+	void ReleaseCullFreeze(const char* reason);   // 컬링 고정 디버그를 풂 (씬 교체·재생 시작·정지 — 다른 씬·게임 카메라에 옛 시점이 남지 않게)
 	// 콘텐츠 브라우저 드롭. 모델(Assets 상대 경로)을 바닥면이 position.y 에 닿도록 position 에 놓음.
 	void PlaceModel(const std::wstring& relativePath, const DirectX::XMFLOAT3& position);
 

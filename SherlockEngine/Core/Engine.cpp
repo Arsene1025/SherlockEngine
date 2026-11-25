@@ -60,6 +60,11 @@ bool Engine::Initialize(const Config& config, const Desc& desc)
 		Log::Error("Engine : Renderer 초기화 실패");
 		return false;
 	}
+	// 게임 UI 의 9-slice·레이아웃이 텍스처 픽셀 크기를 물음 (Renderer 의 텍스처 캐시가 읽어 둠)
+	m_ui.SetTextureSizeProvider([this](const std::string& name, uint32_t& width, uint32_t& height)
+	{
+		return m_renderer.GetUITextureSize(name, m_scene, width, height);
+	});
 	// HDR: 게임 모드의 HDR 타깃은 백버퍼와 같은 크기. 에디터는 씬 뷰 크기를 따로 알려 주므로 이 값을 쓰지 않음.
 	m_renderer.SetOutputSize(static_cast<uint32_t>(desc.width), static_cast<uint32_t>(desc.height));
 
@@ -129,6 +134,16 @@ void Engine::Render()
 				m_renderer.ResetTemporalHistory();   // 카메라 컷: 속도·TAA 의 지난 프레임이 다른 카메라 것
 			}
 			m_renderer.SetFrameDeltaTime(m_time.GetDeltaTime());   // 모션 블러의 기준 fps 보정용 (이번 프레임에 장면을 움직인 dt)
+			{
+				// 게임 UI: OnGUI 뒤라 이번 프레임의 씬 창 크기·Inspector 수정이 반영됨. CPU 목록만 만들고 업로드·그리기는 Renderer::Render 안에서.
+				ProfileScope uiCpu("UI Build");
+				UISystem::ViewSize mainView{ m_renderer.GetMainViewWidth(), m_renderer.GetMainViewHeight(), m_uiVisible, &m_camera };
+				UISystem::ViewSize previewView;
+				previewView.enabled = m_uiVisible && m_renderer.GetPreviewSize(previewView.width, previewView.height);
+				previewView.camera = m_renderer.GetPreviewCamera();
+				m_ui.Build(m_scene, mainView, previewView);
+				m_renderer.SetUIDrawList(&m_ui.GetDrawList());
+			}
 			m_renderer.Render(m_scene, m_camera, m_time.GetTotalTime(), m_debugDraw);
 			m_debugDraw.Clear();
 		}

@@ -73,6 +73,7 @@ public:
 	// ---- 엔진 시스템 (재생 중) ----
 	Input& GetInput();   // 키보드·마우스. VK_LEFT, 'A', VK_SPACE …
 	Scene& GetScene();
+	UISystem* GetUI() { return GetContext().ui; }   // 게임 UI (IsPointerOverUI 등 — UI/UISystem.h). 게임·에디터 재생에서는 늘 있음
 	float GetTime() { return GetContext().totalTime; }   // 재생 시작 뒤 누적 초
 	GameObject* Find(const std::string& name);           // 이름으로 다른 오브젝트를 찾음. 없으면 nullptr
 

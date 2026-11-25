@@ -9,11 +9,14 @@
 #include "App/AppBase.h"   // Project
 #include <vector>
 #include "Scene/Camera.h"   // 카메라 미리보기용 임시 카메라
+#include "UI/UISystem.h"     // ElementGeometry (Rect 툴)
 
 class Engine;
 class Scene;
 class Camera;
 class GameObject;
+class RectTransform;
+class UISystem;
 struct ModelStats;
 
 // 에디터 UI. ImGui Dockspace 위의 창들: Scene(오프스크린 씬 뷰 + ImGuizmo + 클릭 선택), Hierarchy,
@@ -32,6 +35,9 @@ public:
 		std::function<void()> newScene;          // 바닥만 있는 새 씬
 		std::function<void(int)> addPrimitive;   // 0 구, 1 큐브, 2 원기둥, 3 평면 — 원점 위에 기본 재질로 생성. 4 카메라 오브젝트 (11-C, 현재 에디터 시점 그대로)
 		std::function<void(int)> deleteObject;   // 오브젝트 인덱스
+		// 게임 UI (docs/plan/ui-canvas-plan.html). kind: 0 Canvas, 1 Image, 2 Text. parentIndex 가 캔버스 아래 오브젝트면 그 자식으로,
+		// 아니면 첫 캔버스 아래 (없으면 캔버스부터 만듦). 새 오브젝트가 선택됨.
+		std::function<void(int kind, int parentIndex)> addUI;
 		// 콘텐츠 브라우저. 모델(Assets 상대 경로)을 position 에 놓음 — 모델의 바닥면이 position.y 에 닿도록.
 		std::function<void(const std::wstring& relativePath, const DirectX::XMFLOAT3& position)> placeModel;
 		// 재생. 상태(스냅샷·Scene::BeginPlay)는 앱이 갖고, 에디터는 버튼과 표시만 담당함.
@@ -98,7 +104,24 @@ public:
 	// ---- 씬 뷰 상태 (앱의 카메라 컨트롤러가 참조함) ----
 	bool IsSceneViewHovered() const { return m_sceneHovered; }
 	bool IsSceneViewFocused() const { return m_sceneFocused; }
-	bool IsGizmoUsing() const { return m_gizmoUsing; }
+	bool IsGizmoUsing() const { return m_gizmoUsing || m_rectDrag.active; }   // Rect 툴 드래그도 (되돌리기 한 단계로 묶음)
+	// 씬 이미지의 왼쪽 위 (창 클라이언트 좌표 = ImGui 화면 좌표, 멀티 뷰포트 아님). 자동화가 씬 뷰 픽셀 → 창 좌표로 바꿀 때
+	float GetSceneImageX() const { return m_sceneImageX; }
+	float GetSceneImageY() const { return m_sceneImageY; }
+	// 자동화용 가짜 포인터 (씬 뷰 픽셀 좌표). Rect 툴과 씬 뷰 클릭 선택이 ImGui 마우스 대신 이것을 읽음
+	void SetToolPointer(bool active, float x, float y, bool down, bool shift = false, bool alt = false, bool ctrl = false)
+	{
+		m_toolPointer.active = active;
+		m_toolPointer.x = x;
+		m_toolPointer.y = y;
+		m_toolPointer.down = down;
+		m_toolPointer.shift = shift;
+		m_toolPointer.alt = alt;
+		m_toolPointer.ctrl = ctrl;
+	}
+	void SetGizmoOperation(int operation) { m_gizmoOperation = operation; }
+	// 재부모화. UI 요소(RectTransform)면 화면 사각형이 그대로 있도록 새 부모 기준 값을 다시 계산 (Hierarchy 드롭·자동화가 같이 씀)
+	static bool ReparentKeepingUI(const UISystem* ui, GameObject& child, GameObject* parent);
 	uint32_t GetSceneViewWidth() const { return m_sceneWidth; }
 	uint32_t GetSceneViewHeight() const { return m_sceneHeight; }
 
@@ -127,6 +150,7 @@ public:
 		SelectedOnly = 1
 	};
 	void SetLightIconMode(LightIconMode mode) { m_lightIconMode = mode; }
+	void SetShowUI(bool show) { m_showUI = show; }   // 씬 뷰 툴바 "UI" (자동 검증 --show-ui=0)
 	void SetMessage(const std::string& message) { m_lastMessage = message; }   // 메뉴 바의 상태 문구. 명령 큐에서 실행된 명령이 결과를 알릴 때 씀
 	// 자동 검증용: 클릭과 같은 코드 경로로 (u, v) 픽셀의 오브젝트를 고름.
 	int PickAt(Scene& scene, const Camera& camera, float u, float v) const { return Pick(scene, camera, u, v); }
@@ -175,12 +199,25 @@ private:
 	void PlaceModelFromAsset(Engine& engine, const Callbacks& callbacks, const std::wstring& relativePath, const DirectX::XMFLOAT3& position);
 	void LoadSceneFromAsset(const Callbacks& callbacks, const std::wstring& relativePath);
 	void DrawPlayControls(const Callbacks& callbacks);
-	void DrawComponents(GameObject& object);
+	void DrawComponents(Engine& engine, GameObject& object);
 	void DrawCameraGizmos(Engine& engine, float x, float y, float width, float height);   // 씬 안의 카메라 오브젝트 프러스텀
+	void DrawUISelection(Engine& engine, float x, float y);                                // 선택한 UI 요소의 사각형 테두리 (화면 공간 캔버스)
+	// 7단계 Rect 툴 (툴바 Rect, T). 화면 공간 캔버스 아래 선택한 요소의 핸들·피벗·앵커를 그리고 드래그를 처리함. 누름을 가져가면 true
+	bool DrawRectTool(Engine& engine, float x, float y, bool editing);
+	void NudgeSelectedUI(Engine& engine);                                                  // 방향키 1 (Shift 10) 캔버스 단위
+	bool PickUI(Engine& engine, float px, float py);                                       // 씬 뷰 픽셀의 UI 요소 선택 (같은 자리 반복이면 아래 것). 골랐으면 true
+	void DrawWorldCanvasOutlines(Engine& engine);                                           // World 캔버스 루트의 사각형을 3D 선으로
+	struct ToolMouse
+	{
+		float x = 0.0f, y = 0.0f;   // 씬 뷰 픽셀
+		bool down = false, pressed = false, released = false;
+		bool shift = false, alt = false, ctrl = false;
+	};
+	ToolMouse GetToolMouse() const;
 	// 조명 선택·이동. 조명은 GameObject 가 아니라 Scene::GetLights() 의 값이라 m_selectedLight(인덱스)로 따로
 	// 선택함 (m_selected 와 배타적). 되돌리기는 SaveEditState 가 조명도 직렬화하므로 기즈모를 잡은 동안 busy
 	// 로 잡히는 것만으로 한 단계가 만들어짐.
-	void DrawCascadeFrustums(Engine& engine, float x, float y, float width, float height);                          // CSM 디버그: 캐스케이드 절두체 와이어 (Freeze 중일 때만)
+	void DrawFreezeOverlay(Engine& engine, float x, float y, float width, float height);                            // 컬링 고정 디버그: 고정 카메라 절두체·캐스케이드 와이어 (고정 중일 때만)
 	void DrawLightIcons(Engine& engine, float x, float y, float width, float height);                               // 씬 뷰의 조명 아이콘 (Point 원 / Spot 원뿔 / Directional 화살표)
 	void DrawLightGizmo(Engine& engine, float x, float y, float width, float height);                               // 선택한 조명의 이동(Point·Spot)·회전(Spot·Directional) 기즈모
 	int PickLight(Engine& engine, float mouseX, float mouseY, float x, float y, float width, float height) const;   // 마우스 가까이 있는 아이콘의 조명 인덱스, 없으면 -1
@@ -224,8 +261,32 @@ private:
 	int m_selectedPrev = -2;   // 지난 프레임 끝의 m_selected. -2 = "밖에서 바꿨으니 인덱스에서 ID 를 다시 구하라"
 	uint64_t m_selectedId = 0;
 	void SyncSelection(Scene& scene);
-	int m_gizmoOperation = 0;    // 0 이동, 1 회전, 2 크기
+	int m_gizmoOperation = 0;    // 0 이동, 1 회전, 2 크기, 3 Rect (UI 요소. 그 밖의 오브젝트는 이동)
+	float m_sceneImageX = 0.0f, m_sceneImageY = 0.0f;
+	struct ToolPointer
+	{
+		bool active = false;
+		float x = 0.0f, y = 0.0f;
+		bool down = false, prevDown = false;
+		bool shift = false, alt = false, ctrl = false;
+	} m_toolPointer;
+	struct RectDrag
+	{
+		bool active = false;
+		int mode = 0;               // 0 이동, 1 크기(핸들), 2 피벗, 3 앵커
+		int hx = 0, hy = 0;         // 핸들 방향 (-1, 0, 1)
+		int anchor = 0;             // 앵커 삼각형 (0 min·min, 1 max·min, 2 max·max, 3 min·max)
+		uint64_t objectId = 0;
+		bool moved = false;
+		float startX = 0.0f, startY = 0.0f;   // 씬 뷰 픽셀
+		DirectX::XMFLOAT2 startAnchoredPosition{}, startSizeDelta{}, startPivot{}, startAnchorMin{}, startAnchorMax{};
+	} m_rectDrag;
+	bool m_prevToolDown = false;
+	UISystem::ElementGeometry m_rectStartGeometry;   // 드래그 시작 때의 사각형 (매 프레임 여기서 다시 계산)
+	float m_lastUIPickX = -1000.0f, m_lastUIPickY = -1000.0f;
+	UISystem* m_hierarchyUI = nullptr;   // DrawHierarchy 동안 (UI 오브젝트 재부모화 때 화면 사각형 유지)
 	bool m_gizmoWorld = false;   // 기본 로컬(오브젝트 축). 툴바의 Local/World 로 고름
+	bool m_showUI = true;        // 편집 중 씬 뷰에 화면 공간 UI 를 그릴지 (툴바 "UI"). 재생 중에는 늘 그림
 	bool m_layoutBuilt = false;
 	char m_pathBuffer[260] = {};
 	std::string m_lastMessage;

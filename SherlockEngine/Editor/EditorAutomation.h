@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
 #include <string>
+#include <vector>
 #include "Graphics/TextureImporter.h"
 #include <DirectXMath.h>
 
@@ -16,6 +17,7 @@
 //   --drop=rel;x,y,z      6 프레임째 PlaceModel — 씬 뷰 드롭과 같은 코드 경로
 //   --drop-uv=u,v         --drop 의 위치 대신 씬 뷰 (u,v) 광선의 히트점 (Editor::RaycastScene)
 //   --drop-texture=rel    7 프레임째 선택 오브젝트 재질의 알베도에 텍스처 에셋 지정 (드롭과 같은 이름 규칙)
+//   --reload-scripts=1    5 프레임째 ReloadScripts (DLL 내리고 다시 올림 — 게임 UI 이벤트 액션 등록 해제·재등록 확인)
 //   --play=1              9 프레임째 StartPlay (▶ 와 같은 경로)
 //   --stop-at=N           N 프레임째 StopPlay (스냅샷 복원)
 //   --add-component=Name  10 프레임째 선택 오브젝트에 컴포넌트 추가 (Inspector 의 Add Component 와 같은 경로)
@@ -30,6 +32,9 @@
 //   --avg-frames=N        종료 직전 N 프레임의 구간 시간(cpu:·gpu:) 평균을 "구간 평균 ms" 줄로 남김 (측정용)
 //   --shadow-priority=1|0 그림자 타일을 화면 기여도 순으로 (1 = 기본). 0 이면 조명 번호 순 (예전 방식)
 //   --ssao=1|0            씬 파일의 SSAO 켜짐 값을 덮어씀 (없으면 씬 값). 디퍼드 프레임에서만 효과가 있음
+//   --freeze-culling=N    N 프레임째 에디터 카메라로 컬링 고정 (Renderer::SetCullFreeze). --cam-look 은 N+1 프레임째
+//   --freeze-parts=col    --freeze-culling 의 항목: c 캐스케이드, o 오브젝트, l 조명 (없으면 셋 다)
+//   --freeze-cascades=N   N 프레임째 캐스케이드만 고정 (예전 동작, docs/study/csm-study.html)
 struct EditorAutomation
 {
 	bool active = false;
@@ -47,7 +52,9 @@ struct EditorAutomation
 	int debugBones = 0;                 // --debug-bones=N (2 프레임째 본 디버그 표시)
 	int debugView = 0;                  // --debug-view=N (2 프레임째 Render Settings 의 디버그 뷰)
 	bool lightIconsSelected = false;    // --light-icons=selected (2 프레임째 Gizmo 메뉴의 Selected light only)
-	uint64_t freezeCascadesAt = 0;      // --freeze-cascades=N (N 프레임째 에디터 카메라로 캐스케이드 고정. Renderer::SetCascadeFreeze)
+	uint64_t freezeCascadesAt = 0;      // --freeze-cascades=N (N 프레임째 에디터 카메라로 캐스케이드만 고정 — 예전 동작. Renderer::SetCullFreeze)
+	uint64_t freezeCullingAt = 0;       // --freeze-culling=N (N 프레임째 에디터 카메라로 컬링 고정, 항목은 --freeze-parts. 둘 다 주면 이쪽)
+	bool freezeParts[3] = { true, true, true };   // --freeze-parts=col 중 고를 글자 (c 캐스케이드, o 오브젝트, l 조명). 없으면 셋 다
 	bool camLook = false;
 	DirectX::XMFLOAT3 camEye = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f), camTarget = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);   // --cam-look=ex,ey,ez;tx,ty,tz (고정 다음 프레임, 고정이 없으면 3 프레임째 에디터 카메라 이동)
 	bool newScene = false;                                                                                             // --new-scene=1 (3 프레임째 바닥만 있는 새 씬)
@@ -59,8 +66,10 @@ struct EditorAutomation
 	float dropU = 0.5f, dropV = 0.5f;
 	std::wstring dropTexture;
 	bool play = false;
+	bool reloadScripts = false;
 	uint64_t stopAt = 0;
 	std::string addComponent;
+	int addUI = -1;   // --add-ui=0|1: Hierarchy "+ UI" 의 Canvas·Image (선택한 오브젝트 기준, AddUIElement)
 	std::string newScript;   // --new-script=Name (2 프레임째 ScriptCreator::Create — Inspector 의 New Script 와 같은 경로, 열지는 않음)
 	std::string buildGame;   // --build-game=Name (3 프레임째 GameBuilder::Build — 에셋 전부, 폴더 열지 않음, 시작 씬 = --build-scene 또는 프로젝트 시작 씬)
 	std::string buildScene;
@@ -102,4 +111,32 @@ struct EditorAutomation
 	std::string moveName;
 	DirectX::XMFLOAT3 moveDelta = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
 	uint64_t eventFrame = 0;
+	// 게임 UI 입력 (docs/plan/ui-canvas-plan.html 4장). Input::SetSimulated 로 가짜 입력 — 창 위 실제 커서와 상관없음.
+	// 좌표는 씬 뷰 픽셀 (씬 이미지 왼쪽 위 기준). 여러 개는 ';' 로 (예: --key=Down@40;Enter@50)
+	//   --ui-click=x,y@N          N 프레임 누르고 N+1 뗌
+	//   --mouse=x,y@N             N 프레임 포인터만 옮김
+	//   --ui-drag=x0,y0,x1,y1@N:F N 누름, N+1..N+F 사이를 고르게 옮김, N+F+1 뗌. 끝에 :r 이면 오른쪽 버튼
+	//   --ui-wheel=x,y,d@N        N 프레임 포인터를 옮기고 휠 d 칸 (+ 위)
+	//   --key=이름|VK@N           N 누름, N+1 뗌. 이름: Up Down Left Right Enter Space Esc Tab A..Z
+	//   --pad=이름@N              N 누름, N+1 뗌. 이름: A B X Y Up Down Left Right Start Back StickUp StickDown StickLeft StickRight
+	// 에디터 Rect 툴 (7단계). 가짜 포인터는 Editor::SetToolPointer (씬 뷰 픽셀)
+	//   --tool=rect               2 프레임째 Rect 툴
+	//   --tool-click=x,y@N        N 누름, N+1 뗌 (씬 뷰 클릭 선택)
+	//   --tool-drag=x0,y0,x1,y1@N:F[:sac]  Rect 툴 드래그 (s Shift, a Alt, c Ctrl). 뗀 프레임에 선택 RectTransform 을 로그
+	//   --log-rect=이름@N         N 프레임에 그 오브젝트 RectTransform 값과 화면 사각형을 로그
+	struct InputEvent
+	{
+		enum Kind { Click, Mouse, Drag, Wheel, Key, Pad, ToolClick, ToolDrag, LogRect } kind = Click;
+		uint64_t frame = 0;
+		uint32_t frames = 0;
+		float x0 = 0.0f, y0 = 0.0f, x1 = 0.0f, y1 = 0.0f, wheel = 0.0f;
+		uint32_t vk = 0;
+		uint16_t pad = 0;
+		float stickX = 0.0f, stickY = 0.0f;
+		bool shift = false, alt = false, ctrl = false;
+		bool right = false;   // --ui-drag 의 :r — 오른쪽 버튼 (카메라 보기 가로채기 검사)
+		std::string name;
+	};
+	std::vector<InputEvent> inputEvents;
+	bool rectTool = false;
 };

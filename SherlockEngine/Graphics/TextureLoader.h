@@ -43,6 +43,8 @@ namespace TextureLoader
 	bool CreateChecker(uint32_t size, uint32_t cellsPerSide, const uint8_t colorA[4], const uint8_t colorB[4], bool srgb, bool generateMips, TextureImage& out);
 	// 단색 (예: 1×1 흰색 = "텍스처 없음"의 기본값, 128 회색 = 감마 검증).
 	bool CreateSolid(uint32_t size, const uint8_t rgba[4], bool srgb, TextureImage& out);
+	// 흰 둥근 사각형 (게임 UI 9-slice 기본 텍스처 builtin:ui-panel). 알파 = 가장자리에서 픽셀 중심까지 거리로 안티앨리어싱. 선형 UNORM
+	bool CreateRoundedRect(uint32_t size, float radius, TextureImage& out);
 
 	// ---- 큐브맵 (desc.dimension = TextureCube, 면 6장) ----
 	// path 가 폴더면 그 안의 면 이미지 6장(px/nx/py/ny/pz/nz, posx/negx/..., right/left/top/bottom/front/back

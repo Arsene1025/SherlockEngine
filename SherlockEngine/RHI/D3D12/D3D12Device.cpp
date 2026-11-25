@@ -1018,6 +1018,71 @@ TextureHandle D3D12Device::CreateTexture(const TextureDesc& descIn, std::span<co
 	return m_textures.Add(std::move(texture));
 }
 
+bool D3D12Device::UpdateTexture(TextureHandle handle, uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, uint32_t rowPitch)
+{
+	D3D12Texture* texture = m_textures.Get(handle);
+	if (texture == nullptr || data == nullptr || width == 0 || height == 0) return false;
+	const TextureDesc& desc = texture->desc;
+	if (desc.dimension != TextureDimension::Texture2D || IsBlockCompressed(desc.format) || x + width > desc.width || y + height > desc.height)
+	{
+		Log::Error("UpdateTexture : 2D·비압축·범위 안만 됨 (%s, (%u,%u) %ux%u, 텍스처 %ux%u).", texture->name.c_str(), x, y, width, height, desc.width, desc.height);
+		return false;
+	}
+	if (texture->state != ResourceState::ShaderResource)
+	{
+		Log::Error("UpdateTexture : ShaderResource 상태가 아님 (%s). 업로드 리스트의 배리어가 이 상태를 가정함.", texture->name.c_str());
+		return false;
+	}
+	// 사각형 크기의 footprint (행 간격 256 바이트 정렬) 를 업로드 힙에 만들고 CopyTextureRegion 으로 (x, y) 에 복사.
+	D3D12_RESOURCE_DESC box = texture->resource->GetDesc();
+	box.Width = width;
+	box.Height = height;
+	box.MipLevels = 1;
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT layout = {};
+	UINT numRows = 0;
+	UINT64 rowSize = 0;
+	UINT64 totalBytes = 0;
+	m_device->GetCopyableFootprints(&box, 0, 1, 0, &layout, &numRows, &rowSize, &totalBytes);
+
+	ComPtr<ID3D12Resource> upload;
+	const D3D12_HEAP_PROPERTIES uploadHeap = D3D12Convert::HeapProperties(D3D12_HEAP_TYPE_UPLOAD);
+	const D3D12_RESOURCE_DESC ud = D3D12Convert::BufferDesc(totalBytes);
+	HRESULT hr = m_device->CreateCommittedResource(&uploadHeap, D3D12_HEAP_FLAG_NONE, &ud, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(upload.GetAddressOf()));
+	if (FAILED(hr))
+	{
+		Log::Error("UpdateTexture : 업로드 버퍼 생성 실패 (%s). %s", texture->name.c_str(), Log::HrToString(hr).c_str());
+		return false;
+	}
+	uint8_t* mapped = nullptr;
+	const D3D12_RANGE noRead = { 0, 0 };
+	if (FAILED(upload->Map(0, &noRead, reinterpret_cast<void**>(&mapped)))) return false;
+	const uint8_t* src = static_cast<const uint8_t*>(data);
+	for (UINT row = 0; row < numRows; ++row)
+	{
+		std::memcpy(mapped + layout.Offset + static_cast<size_t>(row) * layout.Footprint.RowPitch, src + static_cast<size_t>(row) * rowPitch, static_cast<size_t>(rowSize));
+	}
+	upload->Unmap(0, nullptr);
+
+	ID3D12Resource* dstRes = texture->resource.Get();
+	ID3D12Resource* srcRes = upload.Get();
+	return RecordUpload([&](ID3D12GraphicsCommandList* list)
+	{
+		const D3D12_RESOURCE_BARRIER toCopy = D3D12Convert::TransitionBarrier(dstRes, D3D12Convert::ToD3D12(ResourceState::ShaderResource), D3D12_RESOURCE_STATE_COPY_DEST);
+		list->ResourceBarrier(1, &toCopy);
+		D3D12_TEXTURE_COPY_LOCATION dst = {};
+		dst.pResource = dstRes;
+		dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+		dst.SubresourceIndex = 0;
+		D3D12_TEXTURE_COPY_LOCATION srcLoc = {};
+		srcLoc.pResource = srcRes;
+		srcLoc.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		srcLoc.PlacedFootprint = layout;
+		list->CopyTextureRegion(&dst, x, y, 0, &srcLoc, nullptr);
+		const D3D12_RESOURCE_BARRIER toRead = D3D12Convert::TransitionBarrier(dstRes, D3D12_RESOURCE_STATE_COPY_DEST, D3D12Convert::ToD3D12(ResourceState::ShaderResource));
+		list->ResourceBarrier(1, &toRead);
+	}, upload);
+}
+
 void D3D12Device::DestroyTexture(TextureHandle handle)
 {
 	D3D12Texture* texture = m_textures.Get(handle);

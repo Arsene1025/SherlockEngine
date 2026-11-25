@@ -59,6 +59,7 @@ public:
 
 	TextureHandle CreateTexture(const TextureDesc& desc, std::span<const TextureSubresource> subresources = {}) override;
 	void DestroyTexture(TextureHandle handle) override;
+	bool UpdateTexture(TextureHandle handle, uint32_t x, uint32_t y, uint32_t width, uint32_t height, const void* data, uint32_t rowPitch) override;
 	TextureHandle GetBackBuffer() const override { return m_backBuffers[m_backBufferIndex]; }
 	void BeginResourceUploads() override;
 	void EndResourceUploads() override;

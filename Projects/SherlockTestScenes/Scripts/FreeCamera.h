@@ -20,5 +20,6 @@ public:
 private:
 	float m_yaw = 0.0f;
 	float m_pitch = 0.0f;
+	bool m_lookBlocked = false;   // 오른쪽 버튼을 게임 UI 위에서 눌렀음 (뗄 때까지 시선 회전 안 함)
 	LookSmoother m_look;   // 마우스 회전을 시간에 고르게 나눔 (높은 fps 에서 모션 블러가 번쩍이는 것을 막음)
 };

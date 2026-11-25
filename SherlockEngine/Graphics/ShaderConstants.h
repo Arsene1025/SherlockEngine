@@ -114,6 +114,14 @@ constexpr uint32_t kSRVSlotHistory = 24;   // t24 TAA 히스토리 R16G16B16A16_
 constexpr uint32_t kCBSlotOcean = 9;
 constexpr uint32_t kMaxOceanWaves = 8;   // Shaders/Ocean.hlsli 의 MAX_OCEAN_WAVES 와 같아야 함
 
+// ---- 게임 UI 캔버스 (docs/plan/ui-canvas-plan.html) ----
+// UI 패스는 자기 레이아웃 둘만 묶음 (셋 0 = { b4 UI 상수, s0 }, 셋 1 = { t0 텍스처 }). 번호는 후처리 b4·재질 t0/s0 과 같지만 한 패스에
+// 같이 묶이지 않음 (b9·b13 공유와 같은 규칙). 샘플러를 텍스처 셋에서 뺀 이유: D3D12 는 샘플러가 든 셋마다 샘플러 힙 칸을 따로 씀.
+constexpr uint32_t kCBSlotUI = 4;
+constexpr uint32_t kSRVSlotUITexture = 0;
+constexpr uint32_t kSamplerSlotUI = 0;
+constexpr uint32_t kMaxUICanvases = 32;   // Shaders/UI.hlsli 의 MAX_UI_CANVASES, UI/UIDrawList.h 의 kUIMaxCanvases 와 같아야 함
+
 // 클러스터 격자. Shaders/Clusters.hlsli 의 CLUSTER_X/Y/Z 와 같아야 함. 16:9 화면에서 타일이 거의 정사각형.
 constexpr uint32_t kClusterGridX = 16;
 constexpr uint32_t kClusterGridY = 9;
@@ -522,3 +530,10 @@ static_assert(offsetof(ShadowConstants, cascadeOrigin) == 1936, "ShadowConstants
 static_assert(offsetof(ShadowConstants, cascadeForward) == 1952, "ShadowConstants.cascadeForward");
 static_assert(offsetof(ShadowConstants, atlasParams) == 1968, "ShadowConstants.atlasParams");
 static_assert(offsetof(ShadowConstants, csmAtlasParams) == 1984, "ShadowConstants.csmAtlasParams");
+
+// UI 캔버스 행렬 (b4, UI 셋). 캔버스 좌표 → 클립. 메인·미리보기 두 뷰의 캔버스를 한 배열에 (전치해서 올림)
+struct alignas(16) UIConstants
+{
+	DirectX::XMFLOAT4X4 canvasMatrices[kMaxUICanvases];
+};
+static_assert(sizeof(UIConstants) == 64 * kMaxUICanvases, "UIConstants: 64 * 32");

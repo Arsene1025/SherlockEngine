@@ -217,9 +217,9 @@ params.y    = 2r / 칸크기                                   // 텍셀 1개의
 <tr><td>그림자 샘플링</td><td><code>Shading.hlsli</code> <code>SampleShadowViewCoverage</code>/<code>SampleShadowView</code>, <code>ShadowForLight</code></td><td>PCF 5×5, 노멀 오프셋, 칸 안 clamp, 뷰의 아틀라스(t8/t14) 선택. 방향광이면 <code>SelectCascade</code>로 뷰 번호를 정하고 3-2의 경계 블렌딩을 적용</td></tr>
 <tr><td><b>신규</b> CSM 아틀라스 뷰어</td><td><code>DebugUI.cpp</code> "CSM atlas" 트리</td><td>Render Settings의 섀도 아틀라스 뷰어 아래에 있음. 캐스케이드마다 색 테두리와 "C0 1024" 같은 라벨을 얹어 그림. 메인 아틀라스 뷰어는 이제 지역광 타일만 표시. 단일 뷰(CSM 끔)는 이 트리에 "C0 2048" 한 칸으로 나옴</td></tr>
 <tr><td>디버그 뷰 8</td><td><code>Shading.hlsli:462</code></td><td>캐스케이드 색(0 빨강·1 초록·2 파랑·3 노랑), 마지막 너머는 어두운 회색, CSM 꺼짐은 흰색. 알베도를 30% 섞음</td></tr>
-<tr><td><b>신규</b> 카메라 고정</td><td><code>Renderer.h</code> <code>SetCascadeFreeze</code>/<code>IsCascadeFrozen</code>, <code>RendererShadow.cpp:310</code></td><td>고정하는 순간 호출자가 넘긴 카메라를 복사해 두고, 이후 캐스케이드를 항상 그 사본 기준으로 계산. 씬 파일에는 저장하지 않음(런타임 디버그 상태)</td></tr>
+<tr><td><b>신규</b> 카메라 고정</td><td><code>Renderer.h</code> <code>SetCullFreeze</code>/<code>IsCascadeFrozen</code>, <code>RendererShadow.cpp</code> <code>Renderer::SetCullFreeze</code></td><td>고정하는 순간 호출자가 넘긴 카메라를 복사해 두고, 이후 캐스케이드를 항상 그 사본 기준으로 계산. 씬 파일에는 저장하지 않음(런타임 디버그 상태). 2026-11-24 에 오브젝트·조명 컬링까지 고정하는 기능으로 넓혔고 이름이 <code>SetCascadeFreeze</code> 에서 바뀜 — <a href="../plan/freeze-culling-camera-plan.html">컬링 카메라 고정 계획</a></td></tr>
 <tr><td><b>신규</b> 절두체 꼭짓점 getter</td><td><code>Renderer.h</code> <code>GetCascadeFrustumCount</code>/<code>GetCascadeFrustumCorners</code></td><td>캐스케이드별 8개 월드 좌표. 앞면 4개(−x−y, +x−y, −x+y, +x+y) 다음 뒷면 4개</td></tr>
-<tr><td><b>신규</b> 오버레이</td><td><code>Editor.cpp:1109 DrawCascadeFrustums</code></td><td>ImGui <code>ImDrawList</code>로 12개 변을 캐스케이드 색으로 그림. 꼭짓점이 에디터 카메라 뒤인 변은 <code>ProjectToView</code>가 걸러서 건너뜀. <b>고정 중일 때만</b> 표시(고정하지 않으면 지금 카메라 자신의 절두체라 변이 화면 가장자리에만 얹힘)</td></tr>
+<tr><td><b>신규</b> 오버레이</td><td><code>Editor.cpp</code> <code>DrawFreezeOverlay</code> (옛 이름 <code>DrawCascadeFrustums</code>)</td><td>ImGui <code>ImDrawList</code>로 12개 변을 캐스케이드 색으로 그림. 처음에는 꼭짓점이 에디터 카메라 뒤인 변을 통째로 건너뛰었고, 지금은 <code>ProjectSegmentToView</code>가 카메라 앞쪽 몫만 잘라 그림. <b>고정 중일 때만</b> 표시(고정하지 않으면 지금 카메라 자신의 절두체라 변이 화면 가장자리에만 얹힘)</td></tr>
 <tr><td><b>신규</b> 고정 체크박스</td><td><code>Editor.cpp:2368</code> (Render Settings 패널)</td><td>CSM이 켜져 있거나 이미 고정 중일 때 보임(CSM을 꺼도 고정을 풀 수 있게). 체크하는 순간의 <b>에디터 카메라</b>를 고정</td></tr>
 <tr><td><b>신규</b> 자동 검증 옵션</td><td><code>EditorAutomation.cpp:80-81</code> 파싱, <code>RunAutomation</code></td><td><code>--freeze-cascades=N</code>, <code>--cam-look=ex,ey,ez;tx,ty,tz</code> (5장)</td></tr>
 <tr><td><b>신규</b> 큰 테스트 씬</td><td><code>Projects/SherlockTestScenes/Assets/Scenes/CascadeBigScene.json</code></td><td>오브젝트 120개. 5장</td></tr>
@@ -242,7 +242,7 @@ params.y    = 2r / 칸크기                                   // 텍셀 1개의
 <ol>
 <li>File에서 <code>CascadeBigScene.json</code>을 엽니다 (프로젝트 <code>SherlockTestScenes</code>). 이 씬은 이미 Cascades 4, 거리 150, λ 0.7입니다.</li>
 <li>Render Settings 패널에서 Debug view를 <b>Shadow cascade</b>로 바꿉니다.</li>
-<li>같은 패널의 <b>Freeze cascade camera</b>를 체크합니다. (Shadow 패널의 CSM이 켜져 있을 때만 나타남)</li>
+<li>같은 패널의 <b>Freeze culling camera</b>를 체크합니다(처음 이름은 Freeze cascade camera, CSM이 켜져 있을 때만 나타났음). 캐스케이드만 보려면 아래 항목에서 <b>Objects</b>·<b>Lights</b>를 끕니다.</li>
 <li>WASD와 마우스 오른쪽 버튼 드래그로 에디터 카메라를 뒤쪽 위로 빼서 내려다봅니다. 이미지처럼 색 띠와 절두체가 보입니다.</li>
 <li>체크를 끄면 다시 매 프레임 현재 카메라를 따라갑니다.</li>
 </ol>

@@ -14,6 +14,7 @@
 #include "Scene/SsaoSettings.h"
 
 class Mesh;
+class UISystem;
 struct Model;
 class AssetManager;
 
@@ -185,7 +186,7 @@ public:
 	PrefabResources& StorePrefabResources(const std::string& key, PrefabResources&& resources);
 
 	// ---- 재생 (에디터의 ▶). 재생 중에만 컴포넌트의 Start/Update/FixedUpdate 가 호출됨 ----
-	void BeginPlay(Input* input, Camera* camera);
+	void BeginPlay(Input* input, Camera* camera, UISystem* ui = nullptr);   // ui: 게임 UI 이벤트 (PlayContext::ui)
 	void Update(float dt);   // Start 를 아직 받지 않은 컴포넌트(재생 중 추가된 것 포함)는 Start 를 먼저 호출함
 	void FixedUpdate(float fixedDt);
 	void EndPlay();

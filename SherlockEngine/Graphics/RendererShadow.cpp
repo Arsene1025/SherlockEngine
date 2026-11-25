@@ -201,13 +201,17 @@ uint32_t Renderer::AddShadowView(const XMMATRIX& viewProj, uint32_t x, uint32_t 
 
 uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, uint32_t lightIndex)
 {
+	//캐스케이드 1은 일반 방향광과 똑같기 때문에 2~4만 처리
 	const uint32_t count = static_cast<uint32_t>(std::clamp(m_shadowSettings.cascadeCount, 2, 4));
+	//방향광 4개, 섀도우 아틀라스 16개 = 20
+	//20개가 넘어가면 그림자를 못그림
 	if (m_shadowViewCount + count > MAX_SHADOW_VIEWS) return UINT32_MAX;   // 캐스케이드는 번호가 연속이어야 하므로 통째로 거절
 
 	// ---- 분할 (practical split): s[i] = λ · n · (f/n)^(i/N) + (1 − λ) · (n + (f − n) · i/N), s[0] = n, s[N] = f ----
 	const float nearZ = camera.GetNearZ();
 	const float farZ = (std::max)((std::min)(camera.GetFarZ(), m_shadowSettings.cascadeDistance), nearZ + 0.01f);
 	const float lambda = std::clamp(m_shadowSettings.cascadeLambda, 0.0f, 1.0f);
+	//경계가 카메라 앞쪽으로 몇 M에 있는지 숫자를 구함
 	float split[5] = {};
 	for (uint32_t i = 0; i <= count; ++i)
 	{
@@ -225,12 +229,18 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, 
 	const float aspect = camera.GetAspect();
 
 	XMVECTOR direction = XMLoadFloat3(&light.direction);
+	//방향 벡터는 길이의 제곱의 합이므로 음수가 될 수 없음
+	// < 0.000001f는 거의 0인가를 묻는 조건
+	// 해당 경우에 대해서는 (0, -1, 0) 방향광이 머리 위에서 수직으로 내려 꽂는다고 가정.
 	if (XMVectorGetX(XMVector3LengthSq(direction)) < 0.000001f)
 	{
 		direction = XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);
 	}
 	direction = XMVector3Normalize(direction);
 	// ComputeLightViewProj 와 같은 up 규칙
+	// 뷰 행렬은 UP벡터가 필요함
+	// 하지만 빛 방향과 UP벡터가 거의 평행하면 광원의 뷰 행렬을 만들 수 없음
+	//fabsf(XMVectorGetY(direction)는 빛이 거의 수직이라는 의미 이므로 고려해서 up벡터 구함
 	const XMVECTOR lightUp = (fabsf(XMVectorGetY(direction)) > 0.99f) ? XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	const float back = m_shadowSettings.distance;   // 조각 뒤(광원 쪽)로 캐스터를 잡는 거리
 
@@ -241,14 +251,50 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, 
 		XMVECTOR corners[8];
 		for (uint32_t k = 0; k < 2; ++k)
 		{
+			//단면 사각형 구하기
+			/*
+					┌ ← 단면 위 끝
+				   /|
+				  / | h  (반 높이)
+				 /  |
+			 eye ●──┼── forward
+				 \θ |     θ = fovY/2
+				  \ | h
+				   \|
+					└ ← 단면 아래 끝
+				 |←d→|
+
+				 d = 단면 까지의 거리 split[c]면 조각의 앞면, split[c+1]이면 뒷면
+				 h = d · tan(fovY/2): 단면의 반 높이, 직각삼각형에서 밑변이 d이고 각이 fovY/2면 높이는 d·tan(각)
+				 w = h · aspect: 단면의 반 너비, aspect는 가로 ÷ 세로라서 높이에 곱하면 너비가 나옴
+				 center = eye + forward · d: 카메라 위치에서 앞쪽으로 d만큼 간 점, 즉 단면 사각형의 한가운데
+			*/
 			const float d = split[c + k];
 			const float h = d * tanHalfFovY;
 			const float w = h * aspect;
 			const XMVECTOR center = XMVectorAdd(eyePosition, XMVectorScale(forward, d));
 			for (uint32_t m = 0; m < 4; ++m)
 			{
+				//모서리는 중심에서 오른쪽으로 ±w, 위로 ±h만큼 간 점
+				//corner = center + right · (±w) + cameraUp · (±h)
+				/*
+				┌─────┬─────┬────────────┬────────────┬─────────────┐
+				│  m  │ 2진  │ sx (m & 1) │ sy (m & 2) │   모서리    │
+				├─────┼─────┼────────────┼────────────┼─────────────┤
+				│ 0   │ 00  │ −1         │ −1         │ 왼쪽 아래    │
+				├─────┼─────┼────────────┼────────────┼─────────────┤
+				│ 1   │ 01  │ +1         │ −1         │ 오른쪽 아래   │
+				├─────┼─────┼────────────┼────────────┼─────────────┤
+				│ 2   │ 10  │ −1         │ +1         │ 왼쪽 위      │
+				├─────┼─────┼────────────┼────────────┼─────────────┤
+				│ 3   │ 11  │ +1         │ +1         │ 오른쪽 위     │
+				└─────┴─────┴────────────┴────────────┴─────────────┘
+				*/
 				const float sx = (m & 1) ? 1.0f : -1.0f;
 				const float sy = (m & 2) ? 1.0f : -1.0f;
+				//저장위치
+				// k = 0(앞면, split[c])이면 corners[0..3]
+				// k = 1(뒷면, split[c + 1]) 이면 corners[4..7]
 				corners[k * 4 + m] = XMVectorAdd(center, XMVectorAdd(XMVectorScale(right, sx * w), XMVectorScale(cameraUp, sy * h)));
 			}
 		}
@@ -258,29 +304,53 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, 
 			XMStoreFloat3(&m_cascadeCorners[c][k], corners[k]);   // 에디터 오버레이용
 		}
 
+		// 1)에서 구한 꼭짓점 8개로 조각을 덮는 관원 시점의 직교 상자 만들기 2) ~ 4)
+		
 		// 2) 경계 구: 중심 = 꼭짓점 평균, 반지름 = 가장 먼 꼭짓점까지. 반지름을 1/16 단위로 올림 — 카메라가
 		//    돌아도 투영 크기가 일정해 텍셀 스냅이 유효함.
 		XMVECTOR sphereCenter = XMVectorZero();
+		//꼭짓점 평균 구하기
 		for (const XMVECTOR& corner : corners)
 		{
 			sphereCenter = XMVectorAdd(sphereCenter, corner);
 		}
 		sphereCenter = XMVectorScale(sphereCenter, 1.0f / 8.0f);
+		//
 		float radius = 0.0f;
 		for (const XMVECTOR& corner : corners)
 		{
 			radius = (std::max)(radius, XMVectorGetX(XMVector3Length(XMVectorSubtract(corner, sphereCenter))));
 		}
-		radius = ceilf(radius * 16.0f) / 16.0f;
+		radius = ceilf(radius * 16.0f) / 16.0f; // 1/16 m 단위로 올림
+		//조각을 감싸는 구를 만듬.
+		//구를 만드는 이유 -> 크기가 회전에 따라 변하지 않음
+		//꼭짓점 8개에 딱 맞는 상자를 쓰면 카메라가 돌 때 마다 광원 쪽에서 본 모양이 달라져셔 크기가 메 프레임 바뀜
+		//크기가 바뀌면 텍셀 크기(상자폭 % 1024)도 바뀌고 그림자 가장자리가 흔들림
+		//구석 공간이 남아서 낭비되는 해상도를 감안 하고서라도 텍셀 크기를 일정하게 유지하는 것이 중요
 
 		// 3) 광원 뷰: 눈 = 구 중심에서 빛의 반대로 (r + back). 직교 상자 한 변 2r, 깊이 0 .. 2r + back.
 		const XMVECTOR lightEye = XMVectorSubtract(sphereCenter, XMVectorScale(direction, radius + back));
 		const XMMATRIX view = XMMatrixLookToLH(lightEye, direction, lightUp);
 		XMMATRIX proj = XMMatrixOrthographicLH(2.0f * radius, 2.0f * radius, 0.0f, 2.0f * radius + back);
+		/*
+		빛 →→→→→→→→→→→→→→→→→→→→→→→→→→→→→→→
+		 lightEye           ┌──── 구 ────┐
+			●── back ──────┤     ●      ├
+			0             back  중심   back+2r  (깊이)
+			|←───────── far = 2r + back ──────→|
+		- 눈 위치: 구 중심에서 빛이 오는 쪽으로 r + back만큼 물러난 점. direction이 빛이 나아가는 방향이라 빼면 광원 쪽으로
+		- LookTo: 그 점에서 빛 방향을 봄. up에는 앞서 고른 lightUp
+		- 직교 상자 가로·세로 2r: 구를 딱 덮는 크기. 방향광은 평행광이라 원근 투영 대신 직교 투영
+		- 깊이 0 ~ 2r + back: 구 앞쪽 끝(깊이 back)부터 뒤쪽 끝(back + 2r)에, 구 앞의 back 구간이 더해진 범위
+
+		*/
 
 		// 4) 텍셀 스냅: 월드 원점이 광원 클립에서 놓이는 위치를 텍셀 격자에 맞춤. 카메라가 움직여도 그림자
 		//    텍셀이 월드에 붙어 있어 가장자리가 반짝이지 않음. 격자는 이 캐스케이드의 해상도(캐스케이드마다
 		//    다름) 기준이어야 함.
+		// 카메라가 움직이면 구 중심도 연속적으로 움직이고 그림자 맵 격자도 텍셀의 소수 단위만큼 미끄러짐
+		// 그러면 같은 벽 모서리가 프레임마다 텍셀 경계의 다른 위치에 걸려서 그림자 가장자리가 꿈틀거림
+		// 따라서 정수 텍셀 단위로만 움직이도록 변경
 		const AtlasRect rect = CsmRect(c);
 		const float tile = static_cast<float>(rect.size);
 		XMVECTOR origin = XMVector4Transform(XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f), view * proj);
@@ -307,19 +377,20 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, 
 	return first;
 }
 
-void Renderer::SetCascadeFreeze(bool freeze, const Camera& camera)
+void Renderer::SetCullFreeze(bool freeze, const Camera& camera, CullFreezeParts parts)
 {
-	m_cascadeFrozen = freeze;
+	m_cullFrozen = freeze;
+	m_cullFreezeParts = parts;
 	if (freeze)
 	{
-		m_cascadeFreezeCamera = camera;
+		m_cullFreezeCamera = camera;
 	}
 }
 
 void Renderer::BuildShadowViews(const Camera& drawCamera, std::vector<GpuLight>& lights)
 {
-	// 고정 중이면 캐스케이드는 잡아 둔 사본 기준. 로컬 광원 등 나머지는 카메라를 쓰지 않음.
-	const Camera& camera = m_cascadeFrozen ? m_cascadeFreezeCamera : drawCamera;
+	// 고정 중(cascades 항목)이면 캐스케이드는 잡아 둔 사본 기준. 로컬 광원 등 나머지는 카메라를 쓰지 않음.
+	const Camera& camera = IsCascadeFrozen() ? m_cullFreezeCamera : drawCamera;
 	m_shadowViewCount = 0;
 	m_cascadeCount = 0;
 	m_cascadeSplits = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);

@@ -10,6 +10,10 @@
 #include "Scene/SceneSerializer.h"
 #include "Scene/CameraComponent.h"
 #include "Scene/Rigidbody.h"
+#include "UI/UIComponents.h"
+#include "UI/UISystem.h"
+#include "UI/UILayout.h"
+#include "UI/UIWidgets.h"
 #include "Editor/ScriptCreator.h"
 #include "Editor/GameBuilder.h"
 #include "Editor/ProjectGenerator.h"
@@ -85,6 +89,23 @@ bool EditorApp::OnInitialize()
 		{
 			AddPrimitive(type);
 			m_editor.SetSelectedObject(static_cast<int>(GetEngine().GetScene().GetObjects().size()) - 1);   // 새 오브젝트는 목록 끝에 붙음
+		});
+	};
+	m_editorCallbacks.addUI = [this](int kind, int parentIndex)
+	{
+		// 부모는 인덱스가 아니라 ID 로 넘김 (큐 실행 전에 벡터가 바뀔 수 있음)
+		const GameObject* parent = GetEngine().GetScene().GetObject(parentIndex < 0 ? SIZE_MAX : static_cast<size_t>(parentIndex));
+		const uint64_t parentId = parent != nullptr ? parent->GetId() : 0;
+		static const char* const kLabels[] = { "Add Canvas", "Add UI Image", "Add UI Text", "Add UI Button", "Add UI Toggle", "Add UI Slider", "Add UI Scroll View", "Add UI Panel", "Add Event System" };
+		Enqueue(kind >= 0 && kind < 9 ? kLabels[kind] : "Add UI", [this, kind, parentId]()
+		{
+			Scene& scene = GetEngine().GetScene();
+			const GameObject* target = parentId != 0 ? scene.FindById(parentId) : nullptr;
+			const int created = AddUIElement(kind, target != nullptr ? static_cast<int>(scene.IndexOf(target)) : -1);
+			if (created >= 0)
+			{
+				m_editor.SetSelectedObject(created);
+			}
 		});
 	};
 	m_editorCallbacks.deleteObject = [this](int index)
@@ -606,6 +627,15 @@ void EditorApp::TrackHistory()
 void EditorApp::ResetHistory()
 {
 	m_history.Reset(GetEngine().GetScene());
+	ReleaseCullFreeze("씬 교체");   // 씬을 통째로 갈아 끼울 때마다 불리므로 여기서 같이 풂
+}
+
+void EditorApp::ReleaseCullFreeze(const char* reason)
+{
+	Renderer& renderer = GetEngine().GetRenderer();
+	if (!renderer.IsCullFrozen()) return;
+	renderer.SetCullFreeze(false, GetEngine().GetCamera(), renderer.GetCullFreezeParts());   // 항목 선택은 남김
+	Log::Info("컬링 고정 해제: %s", reason);
 }
 
 void EditorApp::UndoRedo(bool undo)
@@ -789,7 +819,9 @@ void EditorApp::OnUpdate(float dt)
 	(void)totalTime;
 	if (m_playState == PlayState::Playing)
 	{
-		scene.Update(dt * m_timeScale);
+		// --frame-dt= 가 있으면 재생 dt 도 그 값 (자동 검증이 실행 속도와 무관하게 — ScrollRect 탄성·키 반복 등)
+		const float frameDt = engine.GetRenderer().GetSettings().frameDeltaOverride;
+		scene.Update((frameDt > 0.0f ? frameDt : dt) * m_timeScale);
 	}
 	else if (m_stepOnce)
 	{
@@ -966,8 +998,9 @@ void EditorApp::StartPlay()
 	Engine& engine = GetEngine();
 	Scene& scene = engine.GetScene();
 	m_playSnapshot = SceneSerializer::SaveToString(scene, engine.GetCamera());   // 씬 + 카메라. Stop 에서 이것으로 되돌림
-	scene.BeginPlay(&engine.GetInput(), &engine.GetCamera());
+	scene.BeginPlay(&engine.GetInput(), &engine.GetCamera(), &engine.GetUI());
 	engine.GetRenderer().ResetTemporalHistory();   // 재생 시작에서 스크립트가 오브젝트를 옮겨도 그 차이를 속도로 보지 않음
+	ReleaseCullFreeze("재생 시작");
 	m_playState = PlayState::Playing;
 	m_stepOnce = false;
 	size_t behaviours = 0;
@@ -998,6 +1031,7 @@ void EditorApp::StopPlay()
 	m_playSnapshot.clear();
 	m_playState = PlayState::Editing;
 	m_stepOnce = false;
+	ReleaseCullFreeze("재생 정지");
 	Log::Info("재생 정지: 스냅샷 복원 (오브젝트 %zu)", scene.GetObjects().size());
 }
 
@@ -1305,6 +1339,215 @@ void EditorApp::AddPrimitive(int type)
 	scene.AddObject(mesh, material, uniqueName.c_str()).GetTransform().SetPosition(0.0f, y, 0.0f);
 	// 오브젝트를 추가해도 씬 모드는 유지함 (삭제할 때만 File 로 바꿈 — DeleteObject).
 	Log::Info("오브젝트 추가: %s", uniqueName.c_str());
+}
+
+int EditorApp::AddUIElement(int kind, int parentIndex)
+{
+	Scene& scene = GetEngine().GetScene();
+	const auto uniqueName = [&scene](const char* base)
+	{
+		int count = 1;
+		for (const auto& object : scene.GetObjects())
+		{
+			if (object->GetName().rfind(base, 0) == 0)
+			{
+				++count;
+			}
+		}
+		return std::string(base) + " " + std::to_string(count);
+	};
+	const auto findEventSystem = [&scene]()
+	{
+		for (const auto& object : scene.GetObjects())
+		{
+			if (object->GetBehaviour<UIEventSystem>() != nullptr) return true;
+		}
+		return false;
+	};
+	const auto addEventSystem = [&]() -> GameObject&
+	{
+		GameObject& es = scene.AddObject(nullptr, nullptr, "EventSystem");
+		es.AddBehaviour("UIEventSystem");
+		return es;
+	};
+	const auto addCanvas = [&]() -> GameObject&
+	{
+		// CanvasScaler 기본값: Scale With Screen Size, 기준 1920×1080, match 0 (가로 맞춤. 유니티 기본 match 도 0)
+		GameObject& canvas = scene.AddObject(nullptr, nullptr, uniqueName("Canvas").c_str());
+		canvas.AddBehaviour("Canvas");
+		canvas.AddBehaviour("CanvasScaler");
+		// 키보드·패드 내비게이션과 Cancel 은 EventSystem 이 설정을 가짐 — 첫 캔버스와 함께 하나 (유니티와 같음)
+		if (!findEventSystem())
+		{
+			addEventSystem();
+		}
+		return canvas;
+	};
+
+	if (kind == 8)
+	{
+		if (findEventSystem())
+		{
+			Log::Warn("UI 추가: EventSystem 이 이미 있음 (첫 것만 씀)");
+		}
+		GameObject& es = addEventSystem();
+		return static_cast<int>(scene.IndexOf(&es));
+	}
+	if (kind == 0)
+	{
+		GameObject& canvas = addCanvas();
+		Log::Info("UI 추가: %s", canvas.GetName().c_str());
+		return static_cast<int>(scene.IndexOf(&canvas));
+	}
+
+	// Image: 선택한 오브젝트가 캔버스 아래면 그 자식, 아니면 첫 캔버스 루트, 없으면 캔버스부터
+	GameObject* parent = scene.GetObject(parentIndex < 0 ? SIZE_MAX : static_cast<size_t>(parentIndex));
+	if (parent == nullptr || !UISystem::IsUnderCanvas(*parent))
+	{
+		parent = nullptr;
+		for (const auto& object : scene.GetObjects())
+		{
+			const GameObject* canvasObject = nullptr;
+			if (UISystem::FindCanvas(*object, &canvasObject) != nullptr && canvasObject == object.get())
+			{
+				parent = object.get();
+				break;
+			}
+		}
+	}
+	if (parent == nullptr)
+	{
+		parent = &addCanvas();
+	}
+	if (kind >= 3)
+	{
+		GameObject& widget = AddUIWidget(kind, *parent, uniqueName);
+		Log::Info("UI 추가: %s (부모 %s)", widget.GetName().c_str(), parent->GetName().c_str());
+		return static_cast<int>(scene.IndexOf(&widget));
+	}
+	const bool text = kind == 2;
+	GameObject& image = scene.AddObject(nullptr, nullptr, uniqueName(text ? "Text" : "Image").c_str());
+	Behaviour* rt = image.AddBehaviour("RectTransform");   // 가운데 앵커, 100×100 (Text 는 160×30 — 유니티 기본)
+	if (text)
+	{
+		if (RectTransform* r = dynamic_cast<RectTransform*>(rt))
+		{
+			r->sizeDelta = XMFLOAT2(160.0f, 30.0f);
+		}
+		image.AddBehaviour("UIText");
+	}
+	else
+	{
+		image.AddBehaviour("UIImage");
+	}
+	image.SetParent(parent);
+	Log::Info("UI 추가: %s (부모 %s)", image.GetName().c_str(), parent->GetName().c_str());
+	return static_cast<int>(scene.IndexOf(&image));
+}
+
+GameObject& EditorApp::AddUIWidget(int kind, GameObject& parent, const std::function<std::string(const char*)>& uniqueName)
+{
+	Scene& scene = GetEngine().GetScene();
+	// 자식 하나: RectTransform (앵커 min·max, 피벗, 위치, sizeDelta)
+	const auto child = [&scene](GameObject& owner, const char* name, XMFLOAT2 anchorMin, XMFLOAT2 anchorMax, XMFLOAT2 sizeDelta, XMFLOAT2 position = XMFLOAT2(0.0f, 0.0f), XMFLOAT2 pivot = XMFLOAT2(0.5f, 0.5f)) -> GameObject&
+	{
+		GameObject& o = scene.AddObject(nullptr, nullptr, name);
+		RectTransform* rt = dynamic_cast<RectTransform*>(o.AddBehaviour("RectTransform"));
+		rt->anchorMin = anchorMin;
+		rt->anchorMax = anchorMax;
+		rt->sizeDelta = sizeDelta;
+		rt->anchoredPosition = position;
+		rt->pivot = pivot;
+		o.SetParent(&owner);
+		return o;
+	};
+	const auto panel = [](GameObject& o, XMFLOAT4 color, bool raycast = true) -> UIImage&
+	{
+		UIImage* image = dynamic_cast<UIImage*>(o.AddBehaviour("UIImage"));
+		image->texture = "builtin:ui-panel";
+		image->type = UIImage::Sliced;
+		image->borderLeft = image->borderRight = image->borderTop = image->borderBottom = 12.0f;
+		image->color = color;
+		image->raycastTarget = raycast;
+		return *image;
+	};
+	const auto label = [](GameObject& o, const char* text, int alignment, int fontSize) -> UIText&
+	{
+		UIText* t = dynamic_cast<UIText*>(o.AddBehaviour("UIText"));
+		t->text = text;
+		t->alignment = alignment;
+		t->fontSize = fontSize;
+		t->color = XMFLOAT4(0.196f, 0.196f, 0.196f, 1.0f);
+		t->raycastTarget = false;   // 누름은 부모 위젯이 받음
+		return *t;
+	};
+	const XMFLOAT2 center(0.5f, 0.5f);
+	const XMFLOAT2 zero(0.0f, 0.0f), one(1.0f, 1.0f);
+	const XMFLOAT4 white(1.0f, 1.0f, 1.0f, 1.0f);
+
+	if (kind == 3)   // Button: 160×30, 가운데 글자
+	{
+		GameObject& root = child(parent, uniqueName("Button").c_str(), center, center, XMFLOAT2(160.0f, 30.0f));
+		panel(root, white);
+		root.AddBehaviour("UIButton");
+		label(child(root, "Text", zero, one, zero), "Button", UIText::MiddleCenter, 18);
+		return root;
+	}
+	if (kind == 4)   // Toggle: 왼쪽 상자 + 체크 + 글자
+	{
+		GameObject& root = child(parent, uniqueName("Toggle").c_str(), center, center, XMFLOAT2(160.0f, 20.0f));
+		UIToggle* toggle = dynamic_cast<UIToggle*>(root.AddBehaviour("UIToggle"));
+		toggle->targetGraphic = "Background";
+		toggle->graphic = "Background/Checkmark";
+		GameObject& background = child(root, "Background", XMFLOAT2(0.0f, 1.0f), XMFLOAT2(0.0f, 1.0f), XMFLOAT2(20.0f, 20.0f), XMFLOAT2(10.0f, -10.0f));
+		panel(background, white);
+		panel(child(background, "Checkmark", zero, one, XMFLOAT2(-8.0f, -8.0f)), XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f), false);
+		label(child(root, "Label", zero, one, XMFLOAT2(-28.0f, 0.0f), XMFLOAT2(14.0f, 0.0f)), "Toggle", UIText::MiddleLeft, 16).color = white;
+		return root;
+	}
+	if (kind == 5)   // Slider: 배경 막대 + 채움 + 손잡이 (Fill·Handle 앵커는 Slider 가 정함)
+	{
+		GameObject& root = child(parent, uniqueName("Slider").c_str(), center, center, XMFLOAT2(160.0f, 20.0f));
+		UISlider* slider = dynamic_cast<UISlider*>(root.AddBehaviour("UISlider"));
+		slider->fillRect = "Fill Area/Fill";
+		slider->handleRect = "Handle Slide Area/Handle";
+		slider->targetGraphic = "Handle Slide Area/Handle";
+		panel(child(root, "Background", XMFLOAT2(0.0f, 0.25f), XMFLOAT2(1.0f, 0.75f), zero), XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f));
+		GameObject& fillArea = child(root, "Fill Area", XMFLOAT2(0.0f, 0.25f), XMFLOAT2(1.0f, 0.75f), XMFLOAT2(-20.0f, 0.0f));
+		panel(child(fillArea, "Fill", zero, one, XMFLOAT2(10.0f, 0.0f)), XMFLOAT4(0.35f, 0.6f, 1.0f, 1.0f), false);
+		GameObject& handleArea = child(root, "Handle Slide Area", zero, one, XMFLOAT2(-20.0f, 0.0f));
+		panel(child(handleArea, "Handle", zero, one, XMFLOAT2(20.0f, 0.0f)), white);
+		return root;
+	}
+	if (kind == 6)   // Scroll View: 배경 + 마스크 뷰포트 + 세로 레이아웃 내용 + 세로 스크롤바
+	{
+		GameObject& root = child(parent, uniqueName("Scroll View").c_str(), center, center, XMFLOAT2(220.0f, 220.0f));
+		panel(root, XMFLOAT4(1.0f, 1.0f, 1.0f, 0.39f));
+		UIScrollRect* scroll = dynamic_cast<UIScrollRect*>(root.AddBehaviour("UIScrollRect"));
+		scroll->content = "Viewport/Content";
+		scroll->viewport = "Viewport";
+		scroll->verticalScrollbar = "Scrollbar Vertical";
+		GameObject& viewport = child(root, "Viewport", zero, one, XMFLOAT2(-17.0f, 0.0f), zero, XMFLOAT2(0.0f, 1.0f));
+		viewport.AddBehaviour("UIRectMask");
+		GameObject& content = child(viewport, "Content", XMFLOAT2(0.0f, 1.0f), one, XMFLOAT2(0.0f, 300.0f), zero, XMFLOAT2(0.0f, 1.0f));
+		UIVerticalLayout* layout = dynamic_cast<UIVerticalLayout*>(content.AddBehaviour("UIVerticalLayout"));
+		layout->paddingLeft = layout->paddingRight = layout->paddingTop = layout->paddingBottom = 4;
+		layout->spacing = 4.0f;
+		layout->controlChildHeight = false;   // 자식 높이는 자기 sizeDelta
+		content.AddBehaviour("UIContentSizeFitter");   // 세로 = 자식 높이 합
+		GameObject& bar = child(root, "Scrollbar Vertical", XMFLOAT2(1.0f, 0.0f), one, XMFLOAT2(17.0f, 0.0f), zero, one);
+		panel(bar, XMFLOAT4(0.25f, 0.25f, 0.25f, 1.0f));
+		UIScrollbar* scrollbar = dynamic_cast<UIScrollbar*>(bar.AddBehaviour("UIScrollbar"));
+		scrollbar->handleRect = "Sliding Area/Handle";
+		scrollbar->targetGraphic = "Sliding Area/Handle";
+		GameObject& area = child(bar, "Sliding Area", zero, one, XMFLOAT2(-6.0f, -6.0f));
+		panel(child(area, "Handle", zero, one, zero), XMFLOAT4(0.85f, 0.85f, 0.85f, 1.0f));
+		return root;
+	}
+	// Panel: 부모를 꽉 채우는 반투명 판
+	GameObject& root = child(parent, uniqueName("Panel").c_str(), zero, one, zero);
+	panel(root, XMFLOAT4(1.0f, 1.0f, 1.0f, 0.39f));
+	return root;
 }
 
 void EditorApp::PlaceModel(const std::wstring& relativePath, const XMFLOAT3& position)

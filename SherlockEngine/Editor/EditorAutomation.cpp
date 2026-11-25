@@ -8,6 +8,10 @@
 #include "Core/Paths.h"
 #include "Core/Log.h"
 #include "Core/Profiler.h"
+#include "Core/Input.h"
+#include "UI/UIComponents.h"
+#include "UI/UISystem.h"
+#include <cmath>
 #include <format>   // C++20: 자동 검증 로그 서식
 
 using namespace DirectX;   // 이 파일 안에서만
@@ -78,6 +82,14 @@ void EditorApp::ParseAutomation()
 		}
 	}
 	m_auto.freezeCascadesAt = static_cast<uint64_t>(_wtoi64(GetCommandLineOption(L"freeze-cascades").c_str()));
+	m_auto.freezeCullingAt = static_cast<uint64_t>(_wtoi64(GetCommandLineOption(L"freeze-culling").c_str()));
+	const std::wstring freezeParts = GetCommandLineOption(L"freeze-parts");
+	if (!freezeParts.empty())
+	{
+		m_auto.freezeParts[0] = freezeParts.find(L'c') != std::wstring::npos;
+		m_auto.freezeParts[1] = freezeParts.find(L'o') != std::wstring::npos;
+		m_auto.freezeParts[2] = freezeParts.find(L'l') != std::wstring::npos;
+	}
 	const std::wstring camLook = GetCommandLineOption(L"cam-look");
 	if (!camLook.empty())
 	{
@@ -103,8 +115,17 @@ void EditorApp::ParseAutomation()
 	}
 	m_auto.dropTexture = GetCommandLineOption(L"drop-texture");
 	m_auto.play = !GetCommandLineOption(L"play").empty();
+	m_auto.reloadScripts = !GetCommandLineOption(L"reload-scripts").empty();
 	m_auto.stopAt = static_cast<uint64_t>(_wtoi64(GetCommandLineOption(L"stop-at").c_str()));
 	m_auto.addComponent = Log::ToUtf8(GetCommandLineOption(L"add-component").c_str());
+	{
+		const std::wstring addUI = GetCommandLineOption(L"add-ui");
+		m_auto.addUI = addUI.empty() ? -1 : _wtoi(addUI.c_str());
+	}
+	if (GetCommandLineOption(L"show-ui") == L"0")
+	{
+		m_editor.SetShowUI(false);
+	}
 	m_auto.newScript = Log::ToUtf8(GetCommandLineOption(L"new-script").c_str());
 	m_auto.buildGame = Log::ToUtf8(GetCommandLineOption(L"build-game").c_str());
 	m_auto.buildScene = Log::ToUtf8(GetCommandLineOption(L"build-scene").c_str());
@@ -177,6 +198,105 @@ void EditorApp::ParseAutomation()
 		}
 	}
 	m_auto.eventFrame = static_cast<uint64_t>(_wtoi64(GetCommandLineOption(L"event-frame").c_str()));
+	// 게임 UI·Rect 툴 입력 (EditorAutomation::InputEvent)
+	{
+		const auto split = [](const std::wstring& text)
+		{
+			std::vector<std::wstring> parts;
+			size_t start = 0;
+			while (start < text.size())
+			{
+				const size_t semi = text.find(L';', start);
+				parts.push_back(text.substr(start, semi == std::wstring::npos ? std::wstring::npos : semi - start));
+				if (semi == std::wstring::npos) break;
+				start = semi + 1;
+			}
+			return parts;
+		};
+		const auto keyCode = [](const std::wstring& name) -> uint32_t
+		{
+			static const std::pair<const wchar_t*, uint32_t> kKeys[] = { { L"Up", VK_UP }, { L"Down", VK_DOWN }, { L"Left", VK_LEFT }, { L"Right", VK_RIGHT }, { L"Enter", VK_RETURN }, { L"Space", VK_SPACE }, { L"Esc", VK_ESCAPE }, { L"Tab", VK_TAB } };
+			for (const auto& k : kKeys)
+			{
+				if (name == k.first) return k.second;
+			}
+			if (name.size() == 1 && iswalnum(name[0])) return static_cast<uint32_t>(towupper(name[0]));
+			return static_cast<uint32_t>(_wtoi(name.c_str()));
+		};
+		const auto add = [&](const wchar_t* option, EditorAutomation::InputEvent::Kind kind)
+		{
+			for (const std::wstring& part : split(GetCommandLineOption(option)))
+			{
+				const size_t at = part.rfind(L'@');
+				if (at == std::wstring::npos) continue;
+				EditorAutomation::InputEvent e;
+				e.kind = kind;
+				const std::wstring head = part.substr(0, at);
+				const std::wstring tail = part.substr(at + 1);
+				e.frame = static_cast<uint64_t>(_wtoi64(tail.c_str()));
+				const size_t colon = tail.find(L':');
+				if (colon != std::wstring::npos)
+				{
+					e.frames = static_cast<uint32_t>((std::max)(1, _wtoi(tail.c_str() + colon + 1)));
+					const size_t colon2 = tail.find(L':', colon + 1);
+					if (colon2 != std::wstring::npos)
+					{
+						const std::wstring mods = tail.substr(colon2 + 1);
+						e.shift = mods.find(L's') != std::wstring::npos;
+						e.alt = mods.find(L'a') != std::wstring::npos;
+						e.ctrl = mods.find(L'c') != std::wstring::npos;
+						e.right = mods.find(L'r') != std::wstring::npos;
+					}
+				}
+				switch (kind)
+				{
+				case EditorAutomation::InputEvent::Key:
+					e.vk = keyCode(head);
+					break;
+				case EditorAutomation::InputEvent::Pad:
+				{
+					static const std::pair<const wchar_t*, uint16_t> kPad[] = { { L"A", static_cast<uint16_t>(PadButton::A) }, { L"B", static_cast<uint16_t>(PadButton::B) }, { L"X", static_cast<uint16_t>(PadButton::X) }, { L"Y", static_cast<uint16_t>(PadButton::Y) },
+						{ L"Up", static_cast<uint16_t>(PadButton::DPadUp) }, { L"Down", static_cast<uint16_t>(PadButton::DPadDown) }, { L"Left", static_cast<uint16_t>(PadButton::DPadLeft) }, { L"Right", static_cast<uint16_t>(PadButton::DPadRight) },
+						{ L"Start", static_cast<uint16_t>(PadButton::Start) }, { L"Back", static_cast<uint16_t>(PadButton::Back) } };
+					for (const auto& p : kPad)
+					{
+						if (head == p.first) e.pad = p.second;
+					}
+					if (head == L"StickUp") e.stickY = 1.0f;
+					if (head == L"StickDown") e.stickY = -1.0f;
+					if (head == L"StickLeft") e.stickX = -1.0f;
+					if (head == L"StickRight") e.stickX = 1.0f;
+					break;
+				}
+				case EditorAutomation::InputEvent::LogRect:
+					e.name = Log::ToUtf8(head.c_str());
+					break;
+				default:
+					swscanf_s(head.c_str(), L"%f,%f,%f,%f", &e.x0, &e.y0, &e.x1, &e.y1);
+					if (kind == EditorAutomation::InputEvent::Wheel)
+					{
+						e.wheel = e.x1;
+					}
+					break;
+				}
+				m_auto.inputEvents.push_back(e);
+			}
+		};
+		add(L"ui-click", EditorAutomation::InputEvent::Click);
+		add(L"mouse", EditorAutomation::InputEvent::Mouse);
+		add(L"ui-drag", EditorAutomation::InputEvent::Drag);
+		add(L"ui-wheel", EditorAutomation::InputEvent::Wheel);
+		add(L"key", EditorAutomation::InputEvent::Key);
+		add(L"pad", EditorAutomation::InputEvent::Pad);
+		add(L"tool-click", EditorAutomation::InputEvent::ToolClick);
+		add(L"tool-drag", EditorAutomation::InputEvent::ToolDrag);
+		add(L"log-rect", EditorAutomation::InputEvent::LogRect);
+		m_auto.rectTool = GetCommandLineOption(L"tool") == L"rect";
+		if (!m_auto.inputEvents.empty())
+		{
+			Log::Info("자동 검증: UI 입력 %zu 개", m_auto.inputEvents.size());
+		}
+	}
 	Log::Info("자동 검증: exit-after %llu, pick %d, set-position %d, save '%s', load '%s', screenshot '%s', dump %d", m_auto.exitAfter, m_auto.pick ? 1 : 0, m_auto.setPosition ? 1 : 0, Log::ToUtf8(m_auto.savePath.c_str()).c_str(), Log::ToUtf8(m_auto.loadPath.c_str()).c_str(), Log::ToUtf8(m_auto.screenshotPath.c_str()).c_str(), m_auto.dumpObjects ? 1 : 0);
 }
 
@@ -208,6 +328,94 @@ void EditorApp::RunAutomation()
 	{
 		return a.eventFrame != 0 ? a.eventFrame : usual;
 	};
+
+	// ---- 프레임마다: 게임 UI·Rect 툴 가짜 입력 (scene.Update 보다 먼저라 이번 프레임 UISystem::Update 가 읽음) ----
+	if (!a.inputEvents.empty())
+	{
+		Input& input = engine.GetInput();
+		// 처음부터 가짜 입력 상태로 둠. 게임 UI 포인터 문(SetPointerViewport)은 지난 프레임의 IsSimulated 를 쓰므로
+		// 첫 이벤트 프레임에 켜면 그 프레임의 누름을 놓침
+		input.SetSimulated(true);
+		const float ox = m_editor.GetSceneImageX();
+		const float oy = m_editor.GetSceneImageY();
+		const auto pointer = [&](float x, float y)
+		{
+			input.SetSimulated(true);
+			input.SimulateMouseMove(static_cast<int>(std::lround(ox + x)), static_cast<int>(std::lround(oy + y)));
+		};
+		const auto logSelected = [&](const char* why)
+		{
+			const GameObject* selected = scene.FindById(engine.GetUI().GetSelectedId());
+			Log::Info("자동 검증: %s 뒤 UI 선택 '%s'", why, selected != nullptr ? selected->GetName().c_str() : "(없음)");
+		};
+		const auto logRect = [&](const GameObject* object, const char* why)
+		{
+			const RectTransform* rt = object != nullptr ? object->GetBehaviour<RectTransform>() : nullptr;
+			if (rt == nullptr)
+			{
+				Log::Warn("자동 검증: %s — RectTransform 없음", why);
+				return;
+			}
+			XMFLOAT2 q[4] = {};
+			const bool quad = engine.GetUI().GetScreenQuad(object, q);
+			Log::Info("자동 검증: rect %s '%s' pos (%.3f, %.3f) size (%.3f, %.3f) pivot (%.3f, %.3f) anchors (%.3f, %.3f)-(%.3f, %.3f) screen %s (%.2f, %.2f) (%.2f, %.2f) (%.2f, %.2f) (%.2f, %.2f)", why, object->GetName().c_str(),
+				rt->anchoredPosition.x, rt->anchoredPosition.y, rt->sizeDelta.x, rt->sizeDelta.y, rt->pivot.x, rt->pivot.y, rt->anchorMin.x, rt->anchorMin.y, rt->anchorMax.x, rt->anchorMax.y,
+				quad ? "" : "(없음)", q[0].x, q[0].y, q[1].x, q[1].y, q[2].x, q[2].y, q[3].x, q[3].y);
+		};
+		for (const EditorAutomation::InputEvent& e : a.inputEvents)
+		{
+			if (frame < e.frame) continue;
+			const uint64_t k = frame - e.frame;
+			switch (e.kind)
+			{
+			case EditorAutomation::InputEvent::Click:
+				if (k == 0) { pointer(e.x0, e.y0); input.SimulateMouseButton(MouseButton::Left, true); Log::Info("자동 검증: ui-click (%.0f, %.0f)", e.x0, e.y0); }
+				if (k == 1) input.SimulateMouseButton(MouseButton::Left, false);
+				break;
+			case EditorAutomation::InputEvent::Mouse:
+				if (k == 0) pointer(e.x0, e.y0);
+				break;
+			case EditorAutomation::InputEvent::Drag:
+				if (k == 0) { pointer(e.x0, e.y0); input.SimulateMouseButton(e.right ? MouseButton::Right : MouseButton::Left, true); }
+				else if (k <= e.frames) { const float t = static_cast<float>(k) / static_cast<float>(e.frames); pointer(e.x0 + (e.x1 - e.x0) * t, e.y0 + (e.y1 - e.y0) * t); }
+				else if (k == e.frames + 1) input.SimulateMouseButton(e.right ? MouseButton::Right : MouseButton::Left, false);
+				break;
+			case EditorAutomation::InputEvent::Wheel:
+				if (k == 0) { pointer(e.x0, e.y0); input.SimulateWheel(e.wheel); }
+				break;
+			case EditorAutomation::InputEvent::Key:
+				if (k == 0) { input.SetSimulated(true); input.SimulateKey(e.vk, true); }
+				if (k == 1) input.SimulateKey(e.vk, false);
+				if (k == 2) logSelected("key");
+				break;
+			case EditorAutomation::InputEvent::Pad:
+				if (k == 0) { input.SetSimulated(true); input.SimulatePad(e.pad, e.stickX, e.stickY); }
+				if (k == 1) input.SimulatePad(0, 0.0f, 0.0f);
+				if (k == 2) logSelected("pad");
+				break;
+			case EditorAutomation::InputEvent::ToolClick:
+				if (k == 0) m_editor.SetToolPointer(true, e.x0, e.y0, true);
+				if (k == 1) m_editor.SetToolPointer(true, e.x0, e.y0, false);
+				if (k == 2) { m_editor.SetToolPointer(false, e.x0, e.y0, false); logRect(scene.GetObject(m_editor.GetSelectedObject() < 0 ? SIZE_MAX : static_cast<size_t>(m_editor.GetSelectedObject())), "tool-click 선택"); }
+				break;
+			case EditorAutomation::InputEvent::ToolDrag:
+			{
+				const float t = k == 0 ? 0.0f : (std::min)(1.0f, static_cast<float>(k) / static_cast<float>((std::max)(1u, e.frames)));
+				if (k <= e.frames) m_editor.SetToolPointer(true, e.x0 + (e.x1 - e.x0) * t, e.y0 + (e.y1 - e.y0) * t, true, e.shift, e.alt, e.ctrl);
+				if (k == e.frames + 1) m_editor.SetToolPointer(true, e.x1, e.y1, false, e.shift, e.alt, e.ctrl);
+				if (k == e.frames + 2) { m_editor.SetToolPointer(false, e.x1, e.y1, false); logRect(scene.GetObject(m_editor.GetSelectedObject() < 0 ? SIZE_MAX : static_cast<size_t>(m_editor.GetSelectedObject())), "tool-drag 뒤"); }
+				break;
+			}
+			case EditorAutomation::InputEvent::LogRect:
+				if (k == 0) logRect(scene.FindObject(e.name), "log");
+				break;
+			}
+		}
+	}
+	at(2, a.rectTool, [&]
+	{
+		m_editor.SetGizmoOperation(3);
+	});
 
 	// ---- 프레임마다: 움직임 (속도 버퍼·모션 블러·TAA 검증). 2 프레임째부터 — 1 프레임째는 속도의 "이전"이 없음 ----
 	if (frame >= 2)
@@ -249,11 +457,23 @@ void EditorApp::RunAutomation()
 	}
 
 	// ---- 프레임이 인자로 정해지는 것 (CSM 디버그): 디버그 뷰(2) → 고정(N) → 카메라 이동(N+1, 고정이 없으면 3) → 종료 시 스크린샷 ----
-	at(a.freezeCascadesAt, a.freezeCascadesAt != 0, [&]
+	// --freeze-culling 이 있으면 그것을, 없으면 --freeze-cascades (캐스케이드만 — 예전 동작, docs/study/csm-study.html 의 명령)
+	const uint64_t freezeAt = a.freezeCullingAt != 0 ? a.freezeCullingAt : a.freezeCascadesAt;
+	at(freezeAt, freezeAt != 0, [&]
 	{
-		engine.GetRenderer().SetCascadeFreeze(true, engine.GetCamera());
+		Renderer::CullFreezeParts parts;
+		if (a.freezeCullingAt != 0)
+		{
+			parts = { .cascades = a.freezeParts[0], .objects = a.freezeParts[1], .lights = a.freezeParts[2] };
+		}
+		else
+		{
+			parts = { .cascades = true, .objects = false, .lights = false };
+		}
+		engine.GetRenderer().SetCullFreeze(true, engine.GetCamera(), parts);
+		Log::Info("자동 검증: 컬링 고정 (cascades %d, objects %d, lights %d)", parts.cascades ? 1 : 0, parts.objects ? 1 : 0, parts.lights ? 1 : 0);
 	});
-	at(eventAt(a.freezeCascadesAt != 0 ? a.freezeCascadesAt + 1 : 3), a.camLook, [&]
+	at(eventAt(freezeAt != 0 ? freezeAt + 1 : 3), a.camLook, [&]
 	{
 		engine.GetCamera().SetLookAt(a.camEye, a.camTarget);
 	});
@@ -439,7 +659,7 @@ void EditorApp::RunAutomation()
 		bool ok = false;
 		RunCommand("Reparent", [&]()
 		{
-			ok = child->SetParent(parent);
+			ok = Editor::ReparentKeepingUI(&engine.GetUI(), *child, parent);   // UI 요소면 화면 사각형 유지 (Hierarchy 드롭과 같은 경로)
 		});
 		const XMFLOAT3 lp = child->GetTransform().GetPosition();
 		const XMFLOAT3 wp = child->GetWorldPosition();
@@ -485,6 +705,11 @@ void EditorApp::RunAutomation()
 		Log::Info("자동 검증: '%s' 회전 → (%.1f, %.1f, %.1f) deg", object->GetName().c_str(), a.rotationDeg.x, a.rotationDeg.y, a.rotationDeg.z);
 	});
 
+	at(5, a.reloadScripts, [&]
+	{
+		Log::Info("자동 검증: reload-scripts → %s", ReloadScripts() ? "성공" : "실패");
+	});
+
 	// ---- 9~10: 재생, 컴포넌트 추가 ----
 	at(9, a.play, [&]
 	{
@@ -504,6 +729,22 @@ void EditorApp::RunAutomation()
 			added = object->AddBehaviour(a.addComponent);
 		});
 		Log::Info("자동 검증: '%s' 에 컴포넌트 %s %s", object->GetName().c_str(), a.addComponent.c_str(), added ? "추가" : "추가 실패");
+	});
+
+	at(10, a.addUI >= 0, [&]
+	{
+		int created = -1;
+		const GameObject* selected = selectedObject();
+		const int parentIndex = selected != nullptr ? static_cast<int>(scene.IndexOf(selected)) : -1;
+		RunCommand(a.addUI == 0 ? "Add Canvas" : (a.addUI == 1 ? "Add UI Image" : "Add UI Text"), [&]()
+		{
+			created = AddUIElement(a.addUI, parentIndex);
+		});
+		if (created >= 0)
+		{
+			m_editor.SetSelectedObject(created);
+		}
+		Log::Info("자동 검증: add-ui %d → %d", a.addUI, created);
 	});
 
 	// ---- 11: 복제·프리팹 저장·프리팹 배치 — Ctrl+D·Save Prefab·씬 뷰 드롭이 부르는 함수를 그대로 부름. 끌기 흉내 끝 ----
@@ -639,7 +880,7 @@ void EditorApp::RunAutomation()
 	{
 		// 렌더 경로 통계 (디퍼드·클러스터드·SSAO 검증용 — docs/plan/deferred-clustered-ssao-record.html 의 검증 절).
 		const Renderer::Stats& s = engine.GetRenderer().GetStats();
-		Log::Info("자동 검증: 렌더 통계 path=%s ssao=%d draws=%u gbuffer=%u forwardOpaque=%u lightsVisible=%u lightsCulled=%u clusterRefs=%u clusterMax=%u overflow=%u clusterGpu=%d tileRefs=%u tileMax=%u shadowViews=%u offscreenShadowViews=%u skippedShadowLights=%u", s.deferredPath ? "deferred" : "forward", s.ssao ? 1 : 0, s.draws, s.gbufferDraws, s.forwardOpaqueDraws, s.lightsVisible, s.lightsCulled, s.clusterLightRefs, s.clusterMaxLights, s.clusterOverflow, s.clusterGpu ? 1 : 0, s.clusterTileRefs, s.clusterTileMaxLights, s.shadowViews, s.shadowViewsOffscreen, engine.GetRenderer().GetSkippedShadowLights());
+		Log::Info("자동 검증: 렌더 통계 path=%s ssao=%d draws=%u culled=%u gbuffer=%u forwardOpaque=%u lightsVisible=%u lightsCulled=%u clusterRefs=%u clusterMax=%u overflow=%u clusterGpu=%d tileRefs=%u tileMax=%u shadowViews=%u offscreenShadowViews=%u skippedShadowLights=%u", s.deferredPath ? "deferred" : "forward", s.ssao ? 1 : 0, s.draws, s.culled, s.gbufferDraws, s.forwardOpaqueDraws, s.lightsVisible, s.lightsCulled, s.clusterLightRefs, s.clusterMaxLights, s.clusterOverflow, s.clusterGpu ? 1 : 0, s.clusterTileRefs, s.clusterTileMaxLights, s.shadowViews, s.shadowViewsOffscreen, engine.GetRenderer().GetSkippedShadowLights());
 		std::string timings;
 		for (const Profiler::CpuSample& sample : Profiler::GetCpuSamples())
 		{

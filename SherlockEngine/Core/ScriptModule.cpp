@@ -5,6 +5,7 @@
 #include "Core/Project.h"
 #include "Core/Log.h"
 #include "Scene/Behaviour.h"
+#include "UI/UIEvent.h"
 #include <algorithm>
 #include <filesystem>
 
@@ -194,6 +195,7 @@ void ScriptModule::Unload()
 	for (const std::string& name : m_typeNames)
 	{
 		BehaviourRegistry::Unregister(name);
+		UIActionRegistry::RemoveType(name);   // SHERLOCK_UI_ACTION 호출기도 이 DLL 의 코드
 	}
 	FreeLibrary(static_cast<HMODULE>(m_module));
 	m_module = nullptr;

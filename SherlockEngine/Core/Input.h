@@ -10,6 +10,25 @@ enum class MouseButton : uint8_t
 	Count
 };
 
+// XInput 패드 버튼 (값은 XINPUT_GAMEPAD_* 비트와 같음)
+enum class PadButton : uint16_t
+{
+	DPadUp = 0x0001,
+	DPadDown = 0x0002,
+	DPadLeft = 0x0004,
+	DPadRight = 0x0008,
+	Start = 0x0010,
+	Back = 0x0020,
+	LeftThumb = 0x0040,
+	RightThumb = 0x0080,
+	LeftShoulder = 0x0100,
+	RightShoulder = 0x0200,
+	A = 0x1000,
+	B = 0x2000,
+	X = 0x4000,
+	Y = 0x8000,
+};
+
 // 프레임 단위 입력 상태.
 //
 // Win32 메시지(WM_KEYDOWN 등)는 AppBase::MsgProc가 받아 On* 함수로 넣어 줌.
@@ -58,7 +77,48 @@ public:
 	int GetMouseDeltaY() const { return m_dy; }
 	float GetWheelDelta() const { return m_wheel; }
 
+	// ---- 게임패드 (XInput 0번). AppBase::Run 이 프레임마다 PollGamepad. 연결이 끊기면 모든 값이 0 ----
+	void PollGamepad();
+	bool IsPadConnected() const { return m_pad.connected; }
+	bool IsPadDown(PadButton button) const { return (m_pad.buttons & static_cast<uint16_t>(button)) != 0; }
+	bool IsPadPressed(PadButton button) const { return IsPadDown(button) && (m_prevPad.buttons & static_cast<uint16_t>(button)) == 0; }
+	bool IsPadReleased(PadButton button) const { return !IsPadDown(button) && (m_prevPad.buttons & static_cast<uint16_t>(button)) != 0; }
+	float GetPadLeftX() const { return m_pad.lx; }    // 데드존을 뺀 −1~1 (오른쪽 +)
+	float GetPadLeftY() const { return m_pad.ly; }    // 위 +
+	float GetPadRightX() const { return m_pad.rx; }
+	float GetPadRightY() const { return m_pad.ry; }
+	float GetPadLeftTrigger() const { return m_pad.lt; }    // 0~1
+	float GetPadRightTrigger() const { return m_pad.rt; }
+
+	// ---- 자동 검증용 가짜 입력 (에디터 --ui-click·--key·--pad 등) ----
+	// 켜면 Win32 메시지(On*)를 무시하고 Simulate* 만 받음 — 검증 중 실제 마우스가 창 위를 지나가도 결과가 같음.
+	void SetSimulated(bool simulated) { m_simulated = simulated; }
+	bool IsSimulated() const { return m_simulated; }
+	void SimulateKey(uint32_t vk, bool down);
+	void SimulateMouseButton(MouseButton button, bool down);
+	void SimulateMouseMove(int x, int y);
+	void SimulateWheel(float delta);
+	void SimulatePad(uint16_t buttons, float leftX, float leftY);   // 다음 PollGamepad 부터 실제 패드 대신 이 값
+
 private:
+	struct PadState
+	{
+		bool connected = false;
+		uint16_t buttons = 0;
+		float lx = 0.0f, ly = 0.0f, rx = 0.0f, ry = 0.0f, lt = 0.0f, rt = 0.0f;
+	};
+	void KeyImpl(uint32_t vk, bool down);
+	void MouseButtonImpl(MouseButton button, bool down);
+	void MouseMoveImpl(int x, int y);
+
+	PadState m_pad;
+	PadState m_prevPad;
+	PadState m_simulatedPad;
+	bool m_padSimulated = false;
+	bool m_padWasConnected = false;
+	uint32_t m_padRetryFrames = 0;   // 끊긴 패드를 매 프레임 찾으면 XInputGetState 가 느림 → 60 프레임마다
+	bool m_simulated = false;
+
 	static constexpr uint32_t kKeyCount = 256;
 	static constexpr uint32_t kButtonCount = static_cast<uint32_t>(MouseButton::Count);
 

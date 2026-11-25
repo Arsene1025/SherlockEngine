@@ -11,6 +11,12 @@ class Transform;
 class Scene;
 class Input;
 class Camera;
+class UISystem;
+class UIEventBase;
+
+// UI 이벤트의 저장되는 연결 ↔ JSON 배열 텍스트 (UI/UIEvent.cpp). PropertyVisitor::Event 의 기본 구현이 씀.
+SHERLOCK_API std::string UIEventEncode(const UIEventBase& e);
+SHERLOCK_API void UIEventDecode(UIEventBase& e, const std::string& text);
 
 // 모든 컴포넌트의 기반 클래스. 유니티의 Component 에 해당함.
 //
@@ -36,6 +42,7 @@ struct PlayContext
 	Camera* camera = nullptr;
 	float totalTime = 0.0f;      // 재생 시작 뒤 누적 시간 (시간 배율 반영)
 	bool cameraDriven = false;   // 이번 프레임에 어떤 컴포넌트가 카메라를 움직였음 → 앱의 에디터 카메라 컨트롤러는 카메라를 건드리지 않음
+	UISystem* ui = nullptr;      // 게임 UI (포인터가 UI 위인가, 선택한 요소). 재생 중 Scene::Update 첫머리에 이벤트를 처리함
 };
 
 // 속성 방문자. 컴포넌트는 Reflect 에서 자기 필드를 열거할 뿐, 방문자가 그 필드로 무엇을 하는지는 모름:
@@ -49,6 +56,62 @@ public:
 	virtual void Bool(const char* name, bool& value) = 0;
 	virtual void Float3(const char* name, DirectX::XMFLOAT3& value, float speed = 0.1f) = 0;
 	virtual void String(const char* name, std::string& value) = 0;
+
+	// ---- 게임 UI 가 쓰는 종류 (docs/plan/ui-canvas-plan.html 1단계) ----
+	// 끝에 붙임: 이미 빌드된 스크립트 DLL 이 위 함수를 부르는 vtable 순서가 그대로임. 기본 구현은 위의 기본 종류로
+	// 풀어 씀 — 새 방문자를 만들 때 다 구현하지 않아도 값이 사라지지 않음.
+	enum class AssetKind : int
+	{
+		Texture,
+		Font,
+	};
+	virtual void Float2(const char* name, DirectX::XMFLOAT2& value, float speed = 0.1f)
+	{
+		DirectX::XMFLOAT3 v(value.x, value.y, 0.0f);
+		Float3(name, v, speed);
+		value = DirectX::XMFLOAT2(v.x, v.y);
+	}
+	// 색: rgba 0~1, sRGB 값 그대로 (UI 는 감마 공간에서 섞음)
+	virtual void Color(const char* name, DirectX::XMFLOAT4& value)
+	{
+		DirectX::XMFLOAT3 rgb(value.x, value.y, value.z);
+		Float3(name, rgb, 0.01f);
+		value = DirectX::XMFLOAT4(rgb.x, rgb.y, rgb.z, value.w);
+	}
+	// 정수 하나를 이름 목록 중 하나로 고름. 저장은 정수 그대로.
+	virtual void Enum(const char* name, int& value, const char* const* names, int count)
+	{
+		(void)names;
+		(void)count;
+		Int(name, value);
+	}
+	// 에셋 경로 (TextureCache::Load2D 이름 규칙: "builtin:*", "asset:<Assets 기준>", 또는 Assets/Textures 기준)
+	virtual void Asset(const char* name, std::string& value, AssetKind kind)
+	{
+		(void)kind;
+		String(name, value);
+	}
+	// 다른 오브젝트 참조. 소유 오브젝트 기준 상대 경로 ("Fill", "Area/Fill", "..", "../Handle"). 빈 문자열 = 없음.
+	virtual void ObjectRef(const char* name, std::string& value)
+	{
+		String(name, value);
+	}
+	// 여러 줄 문자열 (UIText.text). 저장은 String 과 같음, Inspector 만 여러 줄 입력칸
+	virtual void MultilineString(const char* name, std::string& value)
+	{
+		String(name, value);
+	}
+	// UI 이벤트의 저장되는 연결 목록 (Button.onClick 등). 기본 구현은 JSON 배열 텍스트 문자열 하나로 풀어 씀
+	virtual void Event(const char* name, UIEventBase& value)
+	{
+		std::string text = UIEventEncode(value);
+		const std::string before = text;
+		String(name, text);
+		if (text != before)
+		{
+			UIEventDecode(value, text);
+		}
+	}
 };
 
 class SHERLOCK_API Behaviour

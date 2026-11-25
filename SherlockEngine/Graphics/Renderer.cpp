@@ -6,6 +6,7 @@
 #include "RHI/ResourceDesc.h"
 #include "RHI/BindingTypes.h"
 #include "Graphics/ShaderConstants.h"
+#include "UI/UIDrawList.h"
 #include "Graphics/VertexTypes.h"
 #include "Graphics/Frustum.h"
 #include "Graphics/DebugDraw.h"
@@ -77,6 +78,9 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] = {
 	{ L"OceanVertexShader.hlsl", "VS_Ocean", ShaderStage::Vertex, "OceanVS" },
 	{ L"OceanPixelShader.hlsl", "PS_Ocean", ShaderStage::Pixel, "OceanPS" },
 	{ L"OceanGBufferPixelShader.hlsl", "PS_OceanGBuffer", ShaderStage::Pixel, "OceanGBufferPS" },
+	// 게임 UI 캔버스 (docs/plan/ui-canvas-plan.html, Shaders/UI.hlsli)
+	{ L"UIVertexShader.hlsl", "VS_UI", ShaderStage::Vertex, "UIVS" },
+	{ L"UIPixelShader.hlsl", "PS_UI", ShaderStage::Pixel, "UIPS" },
 };
 
 struct Renderer::PassInfo
@@ -108,6 +112,8 @@ const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] = {
 	{ "Taa", Shader_ScreenVS, Shader_TaaPS, { Layout_Temporal }, 1 },
 	{ "Ocean", Shader_OceanVS, Shader_OceanPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },   // 메인과 같은 셋 — 같은 드로우 루프가 그림
 	{ "GBufferOcean", Shader_OceanVS, Shader_OceanGBufferPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
+	{ "UI", Shader_UIVS, Shader_UIPS, { Layout_UICommon, Layout_UITexture }, 2 },   // 톤 패스 뒤, UNORM 뷰 (RendererUI.cpp)
+	{ "UIWorld", Shader_UIVS, Shader_UIPS, { Layout_UICommon, Layout_UITexture }, 2 },   // World 캔버스: 같은 셰이더 + 읽기 전용 깊이
 };
 
 struct Renderer::ComputePassInfo
@@ -162,6 +168,7 @@ namespace
 		{ "PrevSkin", sizeof(PrevSkinConstants) },
 		{ "ClusterBin", sizeof(ClusterBinConstants) },
 		{ "Ocean", sizeof(OceanConstants) },
+		{ "UIConstants", sizeof(UIConstants) },
 	};
 
 	// 레지스터 문자. 텍스처와 구조체 버퍼는 같은 t# 공간을 씀.
@@ -224,13 +231,14 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_shadowPassCB = makeCB(sizeof(ShadowPassConstants), "CB_ShadowPass");   // b5
 	m_shadowsCB = makeCB(sizeof(ShadowConstants), "CB_Shadows");             // b6
 	m_ssaoCB = makeCB(sizeof(SsaoConstants), "CB_Ssao");                     // b12 (SSAO 셋)
+	m_uiCB = makeCB(sizeof(UIConstants), "CB_UI");                           // b4 (게임 UI 셋. 캔버스 행렬, 프레임에 한 번)
 	// 클러스터 (3b): 상자마다 (시작, 개수) 와 조명 번호 목록. 둘 다 프레임 셋(t30, t31)에 꽂히고 뷰마다 다시 올림 (Dynamic).
 	// 번호 목록은 모자라면 EnsureClusterCapacity 가 두 배로 다시 만듦.
 	m_clusterGridBuffer = m_device->CreateBuffer(BufferDesc{ .size = kClusterCount * 2 * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = 2 * sizeof(uint32_t), .debugName = "SB_ClusterGrid" });
 	m_clusterIndexCapacity = kInitialClusterLightRefs;
 	m_clusterIndexBuffer = m_device->CreateBuffer(BufferDesc{ .size = m_clusterIndexCapacity * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = sizeof(uint32_t), .debugName = "SB_ClusterLights" });
 	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_skinCB.IsValid() || !m_prevSkinCB.IsValid() || !m_oceanCB.IsValid() || !m_debugLineVB.IsValid() || !m_lightCB.IsValid() || !m_lightBuffer.IsValid() || !m_postParamsCB.IsValid() ||
-		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid() || !m_blurWeights.IsValid() || !m_ssaoCB.IsValid() || !m_clusterGridBuffer.IsValid() || !m_clusterIndexBuffer.IsValid())
+		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid() || !m_blurWeights.IsValid() || !m_ssaoCB.IsValid() || !m_clusterGridBuffer.IsValid() || !m_clusterIndexBuffer.IsValid() || !m_uiCB.IsValid())
 	{
 		Log::Error("Renderer::Initialize : 상수버퍼 생성 실패.");
 		return false;
@@ -261,7 +269,13 @@ bool Renderer::Initialize(RHI::Device* device)
 	};
 	m_blurWeightsSet = m_device->CreateResourceSet(blurWeightsSet);
 
-	if (!m_frameSet.IsValid() || !m_objectSet.IsValid() || !m_blurWeightsSet.IsValid())
+	m_uiCommonSet = m_device->CreateResourceSet(ResourceSetDesc{
+		.layout = m_layouts[Layout_UICommon],
+		.bindings = { { .buffer = m_uiCB }, { .sampler = GetSampler(SamplerPreset::LinearClamp) } },   // b4, s0
+		.debugName = "Set_UICommon",
+	});
+
+	if (!m_frameSet.IsValid() || !m_objectSet.IsValid() || !m_blurWeightsSet.IsValid() || !m_uiCommonSet.IsValid())
 	{
 		Log::Error("Renderer::Initialize : ResourceSet 생성 실패.");
 		return false;
@@ -492,6 +506,17 @@ bool Renderer::CreateLayouts()
 	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterLights);       // u4
 	clusterBinLayout.Add(BindingType::BufferUnorderedAccess, ShaderStageMask_Compute, kUAVSlotClusterStats);        // u5
 
+	// 게임 UI: 셋 0 = { b4 UI 상수, s0 } 하나, 셋 1 = { t0 } 텍스처마다. 샘플러를 텍스처 셋에서 뺀 이유는 ShaderConstants.h 의 kCBSlotUI 주석
+	BindingLayoutDesc& uiCommonLayout = m_layoutDescs[Layout_UICommon];
+	uiCommonLayout = BindingLayoutDesc{};
+	uiCommonLayout.debugName = "Layout_UICommon";
+	uiCommonLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotUI);   // b4
+	uiCommonLayout.Add(BindingType::Sampler, ShaderStageMask_Pixel, kSamplerSlotUI);      // s0
+	BindingLayoutDesc& uiTextureLayout = m_layoutDescs[Layout_UITexture];
+	uiTextureLayout = BindingLayoutDesc{};
+	uiTextureLayout.debugName = "Layout_UITexture";
+	uiTextureLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotUITexture);   // t0
+
 	for (uint32_t i = 0; i < Layout_Count; ++i)
 	{
 		m_layouts[i] = m_device->CreateBindingLayout(m_layoutDescs[i]);
@@ -623,7 +648,45 @@ void Renderer::BuildPassDescs()
 		.alphaOp = BlendOp::Add,
 	};
 
+	// 게임 UI: 정점 = 캔버스 위치 float2 + uv float2 + 색 RGBA8 + 클립 float4 + 캔버스 번호 uint (UI/UIDrawList.h 의 UIVertex).
+	// 깊이 없음, 컬링 없음, 알파 블렌딩 (색: SrcAlpha/InvSrcAlpha, 알파: One/InvSrcAlpha). 타깃 = 출력 텍스처의 UNORM 뷰.
+	{
+		PipelineStateDesc& ui = m_passDesc[Pass_UI];
+		ui.rasterizer.cull = CullMode::None;
+		ui.depthStencil.depthEnable = false;
+		ui.depthStencil.depthWrite = false;
+		ui.dsvFormat = Format::Unknown;
+		ui.rtvFormats[0] = Format::R8G8B8A8_UNORM;
+		ui.rtvCount = 1;
+		ui.blend.rt[0] = RenderTargetBlendDesc{
+			.blendEnable = true,
+			.srcColor = BlendFactor::SrcAlpha,
+			.dstColor = BlendFactor::InvSrcAlpha,
+			.colorOp = BlendOp::Add,
+			.srcAlpha = BlendFactor::One,
+			.dstAlpha = BlendFactor::InvSrcAlpha,
+			.alphaOp = BlendOp::Add,
+		};
+		ui.vertexLayout.attributes[0] = { .semantic = VertexSemantic::Position, .format = Format::R32G32_FLOAT, .offset = static_cast<uint16_t>(offsetof(UIVertex, position)) };
+		ui.vertexLayout.attributes[1] = { .semantic = VertexSemantic::TexCoord, .format = Format::R32G32_FLOAT, .offset = static_cast<uint16_t>(offsetof(UIVertex, uv)) };
+		ui.vertexLayout.attributes[2] = { .semantic = VertexSemantic::Color, .format = Format::R8G8B8A8_UNORM, .offset = static_cast<uint16_t>(offsetof(UIVertex, color)) };
+		ui.vertexLayout.attributes[3] = { .semantic = VertexSemantic::TexCoord, .semanticIndex = 1, .format = Format::R32G32B32A32_FLOAT, .offset = static_cast<uint16_t>(offsetof(UIVertex, clip)) };
+		ui.vertexLayout.attributes[4] = { .semantic = VertexSemantic::BlendIndices, .format = Format::R32_UINT, .offset = static_cast<uint16_t>(offsetof(UIVertex, canvas)) };
+		ui.vertexLayout.attributeCount = 5;
+		ui.vertexLayout.stride = sizeof(UIVertex);
+
+		// World 캔버스: 장면 깊이로 가려짐. 깊이는 TAA 지터가 들어간 것이고 UI 는 지터 없이 그려 경계가 1 px 안쪽에서 흔들릴 수 있음 (3.2 한계)
+		PipelineStateDesc& world = m_passDesc[Pass_UIWorld];
+		world = ui;   // 같은 셰이더·레이아웃 (kPasses 의 두 줄이 같음)
+		world.depthStencil.depthEnable = true;
+		world.depthStencil.depthWrite = false;
+		world.depthStencil.depthFunc = CompareFunc::LessEqual;
+		world.dsvFormat = Format::D24_UNORM_S8_UINT;
+	}
+
 	// Desc 가 바뀌었으므로 (새 셰이더 핸들) 작은 키 → PSO 핸들 캐시는 전부 무효.
+	m_uiPipeline = PipelineHandle{};
+	m_uiWorldPipeline = PipelineHandle{};
 	m_mainPipelines.clear();
 	m_shadowPipelines.clear();
 	m_gbufferPipelines.clear();
@@ -1116,6 +1179,8 @@ void Renderer::Shutdown()
 {
 	if (m_device == nullptr) return;
 
+	DestroyUIResources();   // 텍스처 셋이 텍스처를 가리키므로 텍스처 캐시보다 먼저
+
 	for (auto& entry : m_gpuMeshes)
 	{
 		m_device->DestroyBuffer(entry.second.vertexBuffer);
@@ -1252,6 +1317,7 @@ void Renderer::InvalidateScene(const Scene& scene, bool releaseTextures)
 
 void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime, const DebugDraw& debugDraw)
 {
+	m_uiReady = false;   // UploadUI 가 이번 프레임에 올렸을 때만 그림 (일찍 끝나는 프레임에 지난 프레임 버퍼를 묶지 않게)
 	if (m_device == nullptr) return;
 
 	CheckHotReload(totalTime);
@@ -1298,7 +1364,8 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	BuildGpuLights(scene);
 
 	// ---- 3a: 조명 경계 구 → 메인 카메라 절두체 컬링 → 그림자 후보 점수 순서 ----
-	CullLights(camera);
+	// 컬링 고정 중이고 lights 항목이 켜져 있으면 고정된 사본 기준 (컬링된 지역광은 클러스터에서도 빠짐 — CullLights).
+	CullLights(m_cullFrozen && m_cullFreezeParts.lights ? m_cullFreezeCamera : camera);
 
 	// ---- 그림자 뷰: 조명마다 아틀라스 타일을 배정하고 shadowIndex 를 채움 → b6(+b5) → b0 (shadowParams.w 가 이 결과를 씀) ----
 	// 3a 가 켜져 있으면 지역광은 점수 순서로 타일을 받음 (화면 밖 조명은 받지 않음).
@@ -1380,6 +1447,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	UploadDebugLines(debugDraw);                 // 디버그 선(DebugDraw 가 모은 것)을 동적 정점 버퍼에 올림. 프레임마다 한 번은 써야 함
 	UpdateParticleEmitters(totalTime, camera);   // BuildDrawList 가 모은 이미터의 버퍼·셋을 맞추고 b8 을 올림 (업로드 구간 안)
 	UploadOceanConstants(totalTime);             // b9: BuildDrawList 가 모은 바다의 파도·위상 (없으면 파도 0 개). 그림자 패스를 포함한 모든 드로우 전
+	UploadUI(scene);                             // 게임 UI: 텍스처 셋 + 정점·인덱스·캔버스 행렬 (목록이 비면 아무것도 안 올림)
 
 	m_device->EndResourceUploads();
 
@@ -1434,6 +1502,13 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		const ResourceState after = IsOffscreen() ? ResourceState::ShaderResource : ResourceState::RenderTarget;
 		RenderTonemapPass(cmd, m_mainView.hdrSet, output, after, "TonemapPass", m_mainView.width, m_mainView.height, m_mainView.width, m_mainView.height);
 	}
+	{
+		// 게임 UI (Screen Space Overlay). 톤 패스가 남긴 상태에서 RenderTarget 으로 바꿔 덧그리고 같은 상태로 돌려놓음 — 에디터는 ImGui 가
+		// 샘플링하므로 ShaderResource, 게임은 다음 BeginUIPass 가 Load 하므로 RenderTarget. 명령이 없으면 아무것도 하지 않음.
+		const TextureHandle output = IsOffscreen() ? m_mainView.color : m_device->GetBackBuffer();
+		const ResourceState after = IsOffscreen() ? ResourceState::ShaderResource : ResourceState::RenderTarget;
+		RenderCanvasPass(cmd, 0, output, m_mainView.depth, after, m_mainView.width, m_mainView.height);
+	}
 	if (previewActive)
 	{
 		// 선택한 카메라 오브젝트의 시점. b0 와 클러스터(t30·t31)만 그 카메라로 바꿔 같은 드로우 목록을 작은 타깃에 다시 그림
@@ -1455,6 +1530,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		RenderScenePass(cmd, scene, m_previewView, *m_previewCamera, "PreviewPass", 1);
 		ApplyHdrEffects(cmd, m_previewView, false);
 		RenderTonemapPass(cmd, m_previewView.hdrSet, m_previewView.color, ResourceState::ShaderResource, "PreviewTonemapPass", m_previewView.width, m_previewView.height, m_previewView.width, m_previewView.height);
+		RenderCanvasPass(cmd, 1, m_previewView.color, m_previewView.depth, ResourceState::ShaderResource, m_previewView.width, m_previewView.height);
 	}
 }
 
@@ -1812,7 +1888,7 @@ void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTa
 			.debugName = debugName,
 		};
 		cmd.BeginRenderPass(pass);
-		DrawItems(cmd, scene, camera, DrawMode::All);
+		DrawItems(cmd, scene, camera, ObjectCullCamera(camera, viewIndex), DrawMode::All);
 		cmd.EndRenderPass();
 	}
 
@@ -1860,15 +1936,16 @@ void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTa
 	cmd.Barrier(view.velocity, ResourceState::ShaderResource);
 }
 
-void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera, DrawMode mode)
+void Renderer::DrawItems(RHI::CommandList& cmd, const Scene& scene, const Camera& camera, const Camera& cullCamera, DrawMode mode)
 {
 	// 그림자 패스에서 t8 바인딩이 해제됐고, 후처리 패스가 셋 인덱스 0 에 후처리 셋을 꽂았을 수 있으므로
 	// 프레임 셋을 다시 바인딩함 (이제 그림자 맵은 SRV 상태). 패스마다 새로 바인딩함.
 	cmd.SetResourceSet(kSetFrame, m_frameSet);
 	cmd.SetResourceSet(kSetObject, m_objectSet);
 
-	// 이 카메라의 절두체. 경계 구가 완전히 밖에 있는 오브젝트는 드로우(상수 업로드 포함)를 건너뜀.
-	const Frustum frustum = Frustum::FromViewProj(camera.GetViewMatrix() * camera.GetProjectionMatrix());
+	// 컬링 카메라의 절두체. 경계 구가 완전히 밖에 있는 오브젝트는 드로우(상수 업로드 포함)를 건너뜀. 보통 그리는 카메라와
+	// 같고, 컬링 고정 중 메인 뷰만 고정된 사본 (ObjectCullCamera). 반투명 정렬의 눈 위치는 그리는 카메라.
+	const Frustum frustum = Frustum::FromViewProj(cullCamera.GetViewMatrix() * cullCamera.GetProjectionMatrix());
 
 	// ---- 드로우. "직전" 상태 기억은 이 패스 안에서만 유효함 ----
 	PipelineHandle lastPipeline;

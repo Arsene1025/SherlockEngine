@@ -1,0 +1,7371 @@
+{
+  "ambientColor": [
+    0.18000000715255737,
+    0.18000000715255737,
+    0.20000000298023224
+  ],
+  "camera": {
+    "pitch": 0.05,
+    "position": [
+      0.6,
+      1.35,
+      -3.6
+    ],
+    "yaw": 0.0
+  },
+  "clearColor": [
+    0.11999999731779099,
+    0.12999999523162842,
+    0.18000000715255737,
+    1.0
+  ],
+  "environment": {
+    "brdfLut": "asset:Cubemap\\CubemapSampleBrdf.dds",
+    "exposure": 1.0,
+    "iblIntensity": 0.5,
+    "irradiance": "asset:Cubemap\\CubemapSampleDiffuseHDR.dds",
+    "postProcess": {
+      "bloomEnabled": false,
+      "bloomIntensity": 0.5,
+      "bloomKnee": 0.5,
+      "bloomThreshold": 1.0,
+      "blurEnabled": false,
+      "blurRadius": 4.0,
+      "greyscale": 0.0
+    },
+    "shadow": {
+      "bias": 0.0007999999797903001,
+      "distance": 12.0,
+      "normalOffset": 0.30000001192092896,
+      "orthoSize": 10.0,
+      "strength": 1.0
+    },
+    "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
+    "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
+    "toneMapping": true
+  },
+  "lights": [
+    {
+      "attenuation": [
+        1.0,
+        0.04500000178813934,
+        0.007499999832361937
+      ],
+      "color": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "direction": [
+        0.44999998807907104,
+        -0.800000011920929,
+        0.4000000059604645
+      ],
+      "innerConeCos": 0.9238795042037964,
+      "intensity": 1.600000023841858,
+      "outerConeCos": 0.8660253882408142,
+      "position": [
+        0.0,
+        10.0,
+        -10.0
+      ],
+      "range": 50.0,
+      "type": 0
+    },
+    {
+      "attenuation": [
+        1.0,
+        0.04500000178813934,
+        0.007499999832361937
+      ],
+      "color": [
+        1.0,
+        0.699999988079071,
+        0.5
+      ],
+      "direction": [
+        0.0,
+        -0.4472135901451111,
+        0.8944271802902222
+      ],
+      "innerConeCos": 0.9238795042037964,
+      "intensity": 1.5,
+      "outerConeCos": 0.8660253882408142,
+      "position": [
+        -3.0,
+        2.5,
+        -2.0
+      ],
+      "range": 12.0,
+      "type": 1
+    }
+  ],
+  "materials": [
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "DamagedHelmet/0",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "emissiveTexture": "DamagedHelmet/2",
+      "metallic": 1.0,
+      "metallicRoughnessTexture": "DamagedHelmet/1",
+      "name": "Material_MR",
+      "normalStrength": 1.0,
+      "normalTexture": "DamagedHelmet/4",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "DamagedHelmet/3",
+      "roughness": 1.0,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "name": "DamagedHelmet/material1",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.5,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        1.0,
+        1.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "builtin:checker",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.8500000238418579,
+        0.8500000238418579,
+        0.8999999761581421,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "name": "Floor",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.75,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        3.0,
+        3.0
+      ],
+      "wireframe": false
+    },
+    {
+      "albedoSrgb": true,
+      "albedoTexture": "",
+      "alphaCutoff": 0.0,
+      "baseColor": [
+        0.55,
+        0.55,
+        0.6,
+        1.0
+      ],
+      "doubleSided": false,
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "emissiveTexture": "",
+      "metallic": 0.0,
+      "metallicRoughnessTexture": "",
+      "name": "Pillar",
+      "normalStrength": 1.0,
+      "normalTexture": "",
+      "occlusionStrength": 1.0,
+      "occlusionTexture": "",
+      "roughness": 0.7,
+      "sampler": 2,
+      "unlit": false,
+      "uvScale": [
+        3.0,
+        3.0
+      ],
+      "wireframe": false
+    }
+  ],
+  "meshes": [
+    {
+      "meshIndex": 0,
+      "path": "Models\\DamagedHelmet\\DamagedHelmet.glb",
+      "type": "model"
+    },
+    {
+      "a": 7,
+      "b": 7,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        12.0,
+        12.0,
+        0.0,
+        0.0
+      ],
+      "type": "plane"
+    },
+    {
+      "a": 0,
+      "b": 0,
+      "color": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "params": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "type": "cube"
+    }
+  ],
+  "objects": [
+    {
+      "id": 1,
+      "material": 1,
+      "mesh": 0,
+      "name": "node_damagedHelmet_-6514",
+      "position": [
+        0.0,
+        0.95097416639328,
+        0.0
+      ],
+      "preTransform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -1.1920928955078125e-07,
+        -1.0000001192092896,
+        0.0,
+        0.0,
+        1.0000001192092896,
+        -1.1920928955078125e-07,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "slotMaterials": [
+        0,
+        1
+      ]
+    },
+    {
+      "id": 2,
+      "material": 2,
+      "mesh": 1,
+      "name": "Floor",
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "components": [
+        {
+          "blendTime": 0.5,
+          "enabled": true,
+          "farZ": 1000.0,
+          "fovY": 45.0,
+          "nearZ": 0.10000000149011612,
+          "orthoSize": 25.0,
+          "orthographic": false,
+          "priority": 0,
+          "type": "CameraComponent"
+        },
+        {
+          "type": "FreeCamera",
+          "enabled": true,
+          "speed": 3.0,
+          "boost": 3.0,
+          "lookSpeed": 0.0025
+        }
+      ],
+      "id": 3,
+      "material": -1,
+      "mesh": -1,
+      "name": "Main Camera",
+      "position": [
+        0.6,
+        1.35,
+        -3.6
+      ],
+      "rotation": [
+        0.05,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.9999999403953552,
+        1.0,
+        0.9999999403953552
+      ]
+    },
+    {
+      "name": "HUD",
+      "id": 4,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "Canvas",
+          "enabled": true,
+          "renderMode": 0,
+          "sortOrder": 0,
+          "pixelsPerUnit": 1.0
+        },
+        {
+          "type": "CanvasScaler",
+          "enabled": true,
+          "mode": 1,
+          "scaleFactor": 1.0,
+          "referenceResolution": [
+            1280.0,
+            720.0
+          ],
+          "match": 0.5
+        }
+      ]
+    },
+    {
+      "name": "Top Bar",
+      "id": 5,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            0,
+            84
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.04,
+            0.05,
+            0.09,
+            0.78
+          ],
+          "raycastTarget": false,
+          "texture": ""
+        }
+      ],
+      "parent": 3,
+      "sibling": 0
+    },
+    {
+      "name": "Title",
+      "id": 6,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0.5,
+            1
+          ],
+          "anchorMax": [
+            0.5,
+            1
+          ],
+          "pivot": [
+            0.5,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -10
+          ],
+          "sizeDelta": [
+            700,
+            40
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "SherlockEngine 게임 UI",
+          "font": "",
+          "fontSize": 30,
+          "alignment": 1,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 3,
+      "sibling": 1
+    },
+    {
+      "name": "Hint",
+      "id": 7,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0.5,
+            1
+          ],
+          "anchorMax": [
+            0.5,
+            1
+          ],
+          "pivot": [
+            0.5,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -50
+          ],
+          "sizeDelta": [
+            900,
+            26
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.8,
+            0.85,
+            0.95,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "마우스 · 방향키/Enter/Esc · 게임패드 · 오른쪽 버튼으로 시점, WASD 이동",
+          "font": "",
+          "fontSize": 16,
+          "alignment": 1,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 3,
+      "sibling": 2
+    },
+    {
+      "name": "Status",
+      "id": 8,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            1,
+            1
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            1,
+            1
+          ],
+          "anchoredPosition": [
+            -24,
+            -96
+          ],
+          "sizeDelta": [
+            420,
+            30
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            1,
+            0.9,
+            0.5,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "상태: 준비",
+          "font": "",
+          "fontSize": 20,
+          "alignment": 2,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 3,
+      "sibling": 3
+    },
+    {
+      "name": "Status Log",
+      "id": 9,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "UiClickCounter",
+          "enabled": true,
+          "label": "../Status",
+          "prefix": "상태",
+          "count": 0,
+          "writeOnStart": false
+        }
+      ],
+      "parent": 3,
+      "sibling": 4
+    },
+    {
+      "name": "Menu",
+      "id": 10,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0.5
+          ],
+          "anchorMax": [
+            0,
+            0.5
+          ],
+          "pivot": [
+            0,
+            0.5
+          ],
+          "anchoredPosition": [
+            24,
+            -20
+          ],
+          "sizeDelta": [
+            300,
+            470
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.08,
+            0.1,
+            0.16,
+            0.88
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIVerticalLayout",
+          "enabled": true,
+          "paddingLeft": 18,
+          "paddingRight": 18,
+          "paddingTop": 18,
+          "paddingBottom": 18,
+          "childAlignment": 0,
+          "spacing": 10.0,
+          "controlChildWidth": true,
+          "controlChildHeight": false,
+          "childForceExpandWidth": true,
+          "childForceExpandHeight": false
+        },
+        {
+          "type": "UIToggleGroup",
+          "enabled": true,
+          "allowSwitchOff": false
+        }
+      ],
+      "parent": 3,
+      "sibling": 5
+    },
+    {
+      "name": "Header",
+      "id": 11,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "메뉴",
+          "font": "",
+          "fontSize": 24,
+          "alignment": 3,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 9,
+      "sibling": 0
+    },
+    {
+      "name": "Click Log",
+      "id": 12,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "UiClickCounter",
+          "enabled": true,
+          "label": "../Clicks",
+          "prefix": "클릭",
+          "count": 0,
+          "writeOnStart": true
+        }
+      ],
+      "parent": 9,
+      "sibling": 1
+    },
+    {
+      "name": "Play",
+      "id": 13,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            40
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../Click Log",
+              "method": "UiClickCounter.Increment",
+              "dynamic": true
+            }
+          ]
+        }
+      ],
+      "parent": 9,
+      "sibling": 2
+    },
+    {
+      "name": "Text",
+      "id": 14,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "클릭",
+          "font": "",
+          "fontSize": 18,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 12,
+      "sibling": 0
+    },
+    {
+      "name": "Reset",
+      "id": 15,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            40
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.85,
+            0.85,
+            0.9,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../Click Log",
+              "method": "UiClickCounter.ResetCount",
+              "dynamic": true
+            }
+          ]
+        }
+      ],
+      "parent": 9,
+      "sibling": 3
+    },
+    {
+      "name": "Text",
+      "id": 16,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "초기화",
+          "font": "",
+          "fontSize": 18,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 14,
+      "sibling": 0
+    },
+    {
+      "name": "Clicks",
+      "id": 17,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            28
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.7,
+            0.9,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "클릭: 0",
+          "font": "",
+          "fontSize": 20,
+          "alignment": 3,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 9,
+      "sibling": 4
+    },
+    {
+      "name": "Quality Header",
+      "id": 18,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            24
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.8,
+            0.8,
+            0.85,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "그래픽 품질",
+          "font": "",
+          "fontSize": 18,
+          "alignment": 3,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 9,
+      "sibling": 5
+    },
+    {
+      "name": "Quality 낮음",
+      "id": 19,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            22
+          ]
+        },
+        {
+          "type": "UIToggle",
+          "enabled": true,
+          "isOn": false,
+          "graphic": "Background/Checkmark",
+          "group": "..",
+          "targetGraphic": "Background",
+          "onValueChanged": [
+            {
+              "target": "../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "품질: 낮음"
+            }
+          ]
+        }
+      ],
+      "parent": 9,
+      "sibling": 6
+    },
+    {
+      "name": "Background",
+      "id": 20,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            10,
+            -10
+          ],
+          "sizeDelta": [
+            20,
+            20
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        }
+      ],
+      "parent": 18,
+      "sibling": 0
+    },
+    {
+      "name": "Checkmark",
+      "id": 21,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            -8,
+            -8
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.2,
+            0.2,
+            0.2,
+            1
+          ],
+          "raycastTarget": false,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 6.0,
+          "borderRight": 6.0,
+          "borderTop": 6.0,
+          "borderBottom": 6.0
+        }
+      ],
+      "parent": 19,
+      "sibling": 0
+    },
+    {
+      "name": "Label",
+      "id": 22,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            14,
+            0
+          ],
+          "sizeDelta": [
+            -28,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "낮음",
+          "font": "",
+          "fontSize": 16,
+          "alignment": 3,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 18,
+      "sibling": 1
+    },
+    {
+      "name": "Quality 보통",
+      "id": 23,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            22
+          ]
+        },
+        {
+          "type": "UIToggle",
+          "enabled": true,
+          "isOn": true,
+          "graphic": "Background/Checkmark",
+          "group": "..",
+          "targetGraphic": "Background",
+          "onValueChanged": [
+            {
+              "target": "../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "품질: 보통"
+            }
+          ]
+        }
+      ],
+      "parent": 9,
+      "sibling": 7
+    },
+    {
+      "name": "Background",
+      "id": 24,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            10,
+            -10
+          ],
+          "sizeDelta": [
+            20,
+            20
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        }
+      ],
+      "parent": 22,
+      "sibling": 0
+    },
+    {
+      "name": "Checkmark",
+      "id": 25,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            -8,
+            -8
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.2,
+            0.2,
+            0.2,
+            1
+          ],
+          "raycastTarget": false,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 6.0,
+          "borderRight": 6.0,
+          "borderTop": 6.0,
+          "borderBottom": 6.0
+        }
+      ],
+      "parent": 23,
+      "sibling": 0
+    },
+    {
+      "name": "Label",
+      "id": 26,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            14,
+            0
+          ],
+          "sizeDelta": [
+            -28,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "보통",
+          "font": "",
+          "fontSize": 16,
+          "alignment": 3,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 22,
+      "sibling": 1
+    },
+    {
+      "name": "Quality 높음",
+      "id": 27,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            22
+          ]
+        },
+        {
+          "type": "UIToggle",
+          "enabled": true,
+          "isOn": false,
+          "graphic": "Background/Checkmark",
+          "group": "..",
+          "targetGraphic": "Background",
+          "onValueChanged": [
+            {
+              "target": "../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "품질: 높음"
+            }
+          ]
+        }
+      ],
+      "parent": 9,
+      "sibling": 8
+    },
+    {
+      "name": "Background",
+      "id": 28,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            10,
+            -10
+          ],
+          "sizeDelta": [
+            20,
+            20
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        }
+      ],
+      "parent": 26,
+      "sibling": 0
+    },
+    {
+      "name": "Checkmark",
+      "id": 29,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            -8,
+            -8
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.2,
+            0.2,
+            0.2,
+            1
+          ],
+          "raycastTarget": false,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 6.0,
+          "borderRight": 6.0,
+          "borderTop": 6.0,
+          "borderBottom": 6.0
+        }
+      ],
+      "parent": 27,
+      "sibling": 0
+    },
+    {
+      "name": "Label",
+      "id": 30,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            14,
+            0
+          ],
+          "sizeDelta": [
+            -28,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "높음",
+          "font": "",
+          "fontSize": 16,
+          "alignment": 3,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 26,
+      "sibling": 1
+    },
+    {
+      "name": "Volume Header",
+      "id": 31,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            24
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.8,
+            0.8,
+            0.85,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "볼륨",
+          "font": "",
+          "fontSize": 18,
+          "alignment": 3,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 9,
+      "sibling": 9
+    },
+    {
+      "name": "Volume Log",
+      "id": 32,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "UiClickCounter",
+          "enabled": true,
+          "label": "../Volume Value",
+          "prefix": "볼륨",
+          "count": 0,
+          "writeOnStart": false
+        }
+      ],
+      "parent": 9,
+      "sibling": 10
+    },
+    {
+      "name": "Volume",
+      "id": 33,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            22
+          ]
+        },
+        {
+          "type": "UISlider",
+          "enabled": true,
+          "minValue": 0.0,
+          "maxValue": 100.0,
+          "value": 70.0,
+          "wholeNumbers": true,
+          "direction": 0,
+          "fillRect": "Fill Area/Fill",
+          "handleRect": "Handle Slide Area/Handle",
+          "targetGraphic": "Handle Slide Area/Handle",
+          "onValueChanged": [
+            {
+              "target": "../Volume Log",
+              "method": "UiClickCounter.ShowValue",
+              "dynamic": true
+            }
+          ]
+        }
+      ],
+      "parent": 9,
+      "sibling": 11
+    },
+    {
+      "name": "Background",
+      "id": 34,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0.25
+          ],
+          "anchorMax": [
+            1,
+            0.75
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.8,
+            0.8,
+            0.8,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 5.0,
+          "borderRight": 5.0,
+          "borderTop": 5.0,
+          "borderBottom": 5.0
+        }
+      ],
+      "parent": 32,
+      "sibling": 0
+    },
+    {
+      "name": "Fill Area",
+      "id": 35,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0.25
+          ],
+          "anchorMax": [
+            1,
+            0.75
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            -20,
+            0
+          ]
+        }
+      ],
+      "parent": 32,
+      "sibling": 1
+    },
+    {
+      "name": "Fill",
+      "id": 36,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            10,
+            0
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.35,
+            0.6,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 5.0,
+          "borderRight": 5.0,
+          "borderTop": 5.0,
+          "borderBottom": 5.0
+        }
+      ],
+      "parent": 34,
+      "sibling": 0
+    },
+    {
+      "name": "Handle Slide Area",
+      "id": 37,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            -20,
+            0
+          ]
+        }
+      ],
+      "parent": 32,
+      "sibling": 2
+    },
+    {
+      "name": "Handle",
+      "id": 38,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            20,
+            0
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 10.0,
+          "borderRight": 10.0,
+          "borderTop": 10.0,
+          "borderBottom": 10.0
+        }
+      ],
+      "parent": 36,
+      "sibling": 0
+    },
+    {
+      "name": "Volume Value",
+      "id": 39,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            24
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.7,
+            0.9,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "볼륨: 70",
+          "font": "",
+          "fontSize": 18,
+          "alignment": 3,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 9,
+      "sibling": 12
+    },
+    {
+      "name": "Inventory Header",
+      "id": 40,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            1,
+            0.5
+          ],
+          "anchorMax": [
+            1,
+            0.5
+          ],
+          "pivot": [
+            1,
+            0
+          ],
+          "anchoredPosition": [
+            -24,
+            175
+          ],
+          "sizeDelta": [
+            220,
+            30
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "인벤토리",
+          "font": "",
+          "fontSize": 22,
+          "alignment": 3,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 3,
+      "sibling": 6
+    },
+    {
+      "name": "Inventory",
+      "id": 41,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            1,
+            0.5
+          ],
+          "anchorMax": [
+            1,
+            0.5
+          ],
+          "pivot": [
+            1,
+            0.5
+          ],
+          "anchoredPosition": [
+            -24,
+            10
+          ],
+          "sizeDelta": [
+            220,
+            330
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            0.39
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIScrollRect",
+          "enabled": true,
+          "content": "Viewport/Content",
+          "viewport": "Viewport",
+          "horizontal": false,
+          "vertical": true,
+          "movementType": 1,
+          "elasticity": 0.1,
+          "inertia": true,
+          "decelerationRate": 0.135,
+          "scrollSensitivity": 20.0,
+          "verticalScrollbar": "Scrollbar Vertical"
+        }
+      ],
+      "parent": 3,
+      "sibling": 7
+    },
+    {
+      "name": "Viewport",
+      "id": 42,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            -17,
+            0
+          ]
+        },
+        {
+          "type": "UIRectMask",
+          "enabled": true,
+          "padding": [
+            0,
+            0
+          ]
+        }
+      ],
+      "parent": 40,
+      "sibling": 0
+    },
+    {
+      "name": "Content",
+      "id": 43,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            0,
+            300
+          ]
+        },
+        {
+          "type": "UIVerticalLayout",
+          "enabled": true,
+          "paddingLeft": 4,
+          "paddingRight": 4,
+          "paddingTop": 4,
+          "paddingBottom": 4,
+          "childAlignment": 0,
+          "spacing": 4.0,
+          "controlChildWidth": true,
+          "controlChildHeight": false,
+          "childForceExpandWidth": true,
+          "childForceExpandHeight": false
+        },
+        {
+          "type": "UIContentSizeFitter",
+          "enabled": true,
+          "horizontalFit": 0,
+          "verticalFit": 2
+        }
+      ],
+      "parent": 41,
+      "sibling": 0
+    },
+    {
+      "name": "Scrollbar Vertical",
+      "id": 44,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            1,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            1,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            17,
+            0
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.25,
+            0.25,
+            0.25,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 6.0,
+          "borderRight": 6.0,
+          "borderTop": 6.0,
+          "borderBottom": 6.0
+        },
+        {
+          "type": "UIScrollbar",
+          "enabled": true,
+          "direction": 2,
+          "value": 1.0,
+          "size": 0.4,
+          "handleRect": "Sliding Area/Handle",
+          "targetGraphic": "Sliding Area/Handle"
+        }
+      ],
+      "parent": 40,
+      "sibling": 1
+    },
+    {
+      "name": "Sliding Area",
+      "id": 45,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            -6,
+            -6
+          ]
+        }
+      ],
+      "parent": 43,
+      "sibling": 0
+    },
+    {
+      "name": "Handle",
+      "id": 46,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.85,
+            0.85,
+            0.85,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 5.0,
+          "borderRight": 5.0,
+          "borderTop": 5.0,
+          "borderBottom": 5.0
+        }
+      ],
+      "parent": 44,
+      "sibling": 0
+    },
+    {
+      "name": "Item 1",
+      "id": 47,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 검"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 0
+    },
+    {
+      "name": "Text",
+      "id": 48,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "1. 검",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 46,
+      "sibling": 0
+    },
+    {
+      "name": "Item 2",
+      "id": 49,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 방패"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 1
+    },
+    {
+      "name": "Text",
+      "id": 50,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "2. 방패",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 48,
+      "sibling": 0
+    },
+    {
+      "name": "Item 3",
+      "id": 51,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 활"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 2
+    },
+    {
+      "name": "Text",
+      "id": 52,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "3. 활",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 50,
+      "sibling": 0
+    },
+    {
+      "name": "Item 4",
+      "id": 53,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 화살 ×20"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 3
+    },
+    {
+      "name": "Text",
+      "id": 54,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "4. 화살 ×20",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 52,
+      "sibling": 0
+    },
+    {
+      "name": "Item 5",
+      "id": 55,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 물약"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 4
+    },
+    {
+      "name": "Text",
+      "id": 56,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "5. 물약",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 54,
+      "sibling": 0
+    },
+    {
+      "name": "Item 6",
+      "id": 57,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 해독제"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 5
+    },
+    {
+      "name": "Text",
+      "id": 58,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "6. 해독제",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 56,
+      "sibling": 0
+    },
+    {
+      "name": "Item 7",
+      "id": 59,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 지도"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 6
+    },
+    {
+      "name": "Text",
+      "id": 60,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "7. 지도",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 58,
+      "sibling": 0
+    },
+    {
+      "name": "Item 8",
+      "id": 61,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 열쇠"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 7
+    },
+    {
+      "name": "Text",
+      "id": 62,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "8. 열쇠",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 60,
+      "sibling": 0
+    },
+    {
+      "name": "Item 9",
+      "id": 63,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 횃불"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 8
+    },
+    {
+      "name": "Text",
+      "id": 64,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "9. 횃불",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 62,
+      "sibling": 0
+    },
+    {
+      "name": "Item 10",
+      "id": 65,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 밧줄"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 9
+    },
+    {
+      "name": "Text",
+      "id": 66,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "10. 밧줄",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 64,
+      "sibling": 0
+    },
+    {
+      "name": "Item 11",
+      "id": 67,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 보석"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 10
+    },
+    {
+      "name": "Text",
+      "id": 68,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "11. 보석",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 66,
+      "sibling": 0
+    },
+    {
+      "name": "Item 12",
+      "id": 69,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 편지"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 11
+    },
+    {
+      "name": "Text",
+      "id": 70,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "12. 편지",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 68,
+      "sibling": 0
+    },
+    {
+      "name": "Item 13",
+      "id": 71,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 망치"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 12
+    },
+    {
+      "name": "Text",
+      "id": 72,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "13. 망치",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 70,
+      "sibling": 0
+    },
+    {
+      "name": "Item 14",
+      "id": 73,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 곡괭이"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 13
+    },
+    {
+      "name": "Text",
+      "id": 74,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "14. 곡괭이",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 72,
+      "sibling": 0
+    },
+    {
+      "name": "Item 15",
+      "id": 75,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 빵"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 14
+    },
+    {
+      "name": "Text",
+      "id": 76,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "15. 빵",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 74,
+      "sibling": 0
+    },
+    {
+      "name": "Item 16",
+      "id": 77,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            0,
+            1
+          ],
+          "pivot": [
+            0,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            100,
+            34
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.92,
+            0.94,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "선택: 물병"
+            }
+          ]
+        }
+      ],
+      "parent": 42,
+      "sibling": 15
+    },
+    {
+      "name": "Text",
+      "id": 78,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "16. 물병",
+          "font": "",
+          "fontSize": 17,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 76,
+      "sibling": 0
+    },
+    {
+      "name": "Health",
+      "id": 79,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0.5,
+            0
+          ],
+          "anchorMax": [
+            0.5,
+            0
+          ],
+          "pivot": [
+            0.5,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            96
+          ],
+          "sizeDelta": [
+            420,
+            26
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0,
+            0,
+            0,
+            0.6
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 8.0,
+          "borderRight": 8.0,
+          "borderTop": 8.0,
+          "borderBottom": 8.0
+        }
+      ],
+      "parent": 3,
+      "sibling": 8
+    },
+    {
+      "name": "Fill",
+      "id": 80,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            -6,
+            -6
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.85,
+            0.2,
+            0.25,
+            1
+          ],
+          "raycastTarget": false,
+          "texture": "builtin:ui-panel",
+          "imageType": 2,
+          "fillMethod": 0,
+          "fillOrigin": 0,
+          "fillAmount": 0.65
+        }
+      ],
+      "parent": 78,
+      "sibling": 0
+    },
+    {
+      "name": "Label",
+      "id": 81,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "HP 65 / 100",
+          "font": "",
+          "fontSize": 16,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 78,
+      "sibling": 1
+    },
+    {
+      "name": "Hotbar",
+      "id": 82,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0.5,
+            0
+          ],
+          "anchorMax": [
+            0.5,
+            0
+          ],
+          "pivot": [
+            0.5,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            20
+          ],
+          "sizeDelta": [
+            420,
+            64
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0,
+            0,
+            0,
+            0.5
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIGridLayout",
+          "enabled": true,
+          "paddingLeft": 4,
+          "paddingRight": 4,
+          "paddingTop": 4,
+          "paddingBottom": 4,
+          "childAlignment": 4,
+          "cellSize": [
+            56,
+            56
+          ],
+          "spacing": [
+            8,
+            8
+          ],
+          "startCorner": 0,
+          "startAxis": 0,
+          "constraint": 2,
+          "constraintCount": 1
+        }
+      ],
+      "parent": 3,
+      "sibling": 9
+    },
+    {
+      "name": "Slot 1",
+      "id": 83,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            0,
+            0
+          ],
+          "pivot": [
+            0,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            56,
+            56
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.75,
+            0.8,
+            0.9,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "단축칸 1"
+            }
+          ]
+        }
+      ],
+      "parent": 81,
+      "sibling": 0
+    },
+    {
+      "name": "Text",
+      "id": 84,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "1",
+          "font": "",
+          "fontSize": 22,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 82,
+      "sibling": 0
+    },
+    {
+      "name": "Slot 2",
+      "id": 85,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            0,
+            0
+          ],
+          "pivot": [
+            0,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            56,
+            56
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.75,
+            0.8,
+            0.9,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "단축칸 2"
+            }
+          ]
+        }
+      ],
+      "parent": 81,
+      "sibling": 1
+    },
+    {
+      "name": "Text",
+      "id": 86,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "2",
+          "font": "",
+          "fontSize": 22,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 84,
+      "sibling": 0
+    },
+    {
+      "name": "Slot 3",
+      "id": 87,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            0,
+            0
+          ],
+          "pivot": [
+            0,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            56,
+            56
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.75,
+            0.8,
+            0.9,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "단축칸 3"
+            }
+          ]
+        }
+      ],
+      "parent": 81,
+      "sibling": 2
+    },
+    {
+      "name": "Text",
+      "id": 88,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "3",
+          "font": "",
+          "fontSize": 22,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 86,
+      "sibling": 0
+    },
+    {
+      "name": "Slot 4",
+      "id": 89,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            0,
+            0
+          ],
+          "pivot": [
+            0,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            56,
+            56
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.75,
+            0.8,
+            0.9,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "단축칸 4"
+            }
+          ]
+        }
+      ],
+      "parent": 81,
+      "sibling": 3
+    },
+    {
+      "name": "Text",
+      "id": 90,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "4",
+          "font": "",
+          "fontSize": 22,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 88,
+      "sibling": 0
+    },
+    {
+      "name": "Slot 5",
+      "id": 91,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            0,
+            0
+          ],
+          "pivot": [
+            0,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            56,
+            56
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.75,
+            0.8,
+            0.9,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "단축칸 5"
+            }
+          ]
+        }
+      ],
+      "parent": 81,
+      "sibling": 4
+    },
+    {
+      "name": "Text",
+      "id": 92,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "5",
+          "font": "",
+          "fontSize": 22,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 90,
+      "sibling": 0
+    },
+    {
+      "name": "Slot 6",
+      "id": 93,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            0,
+            0
+          ],
+          "pivot": [
+            0,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            56,
+            56
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.75,
+            0.8,
+            0.9,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../../Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "단축칸 6"
+            }
+          ]
+        }
+      ],
+      "parent": 81,
+      "sibling": 5
+    },
+    {
+      "name": "Text",
+      "id": 94,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "6",
+          "font": "",
+          "fontSize": 22,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 92,
+      "sibling": 0
+    },
+    {
+      "name": "EventSystem",
+      "id": 95,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "UIEventSystem",
+          "enabled": true,
+          "firstSelected": "../HUD/Menu/Play",
+          "repeatDelay": 0.4,
+          "repeatRate": 0.1,
+          "wasdNavigation": false,
+          "onCancel": [
+            {
+              "target": "../HUD/Status Log",
+              "method": "UiClickCounter.Say",
+              "dynamic": false,
+              "string": "취소 (Esc / B)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Nameplate",
+      "id": 96,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        2.05,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.003,
+        0.003,
+        0.003
+      ],
+      "components": [
+        {
+          "type": "Canvas",
+          "enabled": true,
+          "renderMode": 1,
+          "sortOrder": 0,
+          "pixelsPerUnit": 2.0
+        },
+        {
+          "type": "CanvasScaler",
+          "enabled": true,
+          "mode": 0,
+          "scaleFactor": 1.0,
+          "referenceResolution": [
+            1920.0,
+            1080.0
+          ],
+          "match": 0.5
+        },
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            0.5,
+            0.5
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            320,
+            64
+          ]
+        },
+        {
+          "type": "Billboard",
+          "enabled": true,
+          "yawOnly": true
+        }
+      ]
+    },
+    {
+      "name": "Back",
+      "id": 97,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0,
+            0,
+            0,
+            0.6
+          ],
+          "raycastTarget": false,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        }
+      ],
+      "parent": 95,
+      "sibling": 0
+    },
+    {
+      "name": "Name",
+      "id": 98,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            1,
+            0.9,
+            0.5,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "Damaged Helmet",
+          "font": "",
+          "fontSize": 32,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 95,
+      "sibling": 1
+    },
+    {
+      "name": "Pillar",
+      "id": 99,
+      "mesh": 2,
+      "material": 3,
+      "position": [
+        0.95,
+        1.2,
+        -1.5
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        0.15,
+        2.4,
+        0.15
+      ],
+      "components": []
+    },
+    {
+      "name": "Kiosk",
+      "id": 100,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        1.35,
+        1.15,
+        -0.9
+      ],
+      "rotation": [
+        0.0,
+        -0.6108652381980153,
+        0.0
+      ],
+      "scale": [
+        0.003,
+        0.003,
+        0.003
+      ],
+      "components": [
+        {
+          "type": "Canvas",
+          "enabled": true,
+          "renderMode": 1,
+          "sortOrder": 0,
+          "pixelsPerUnit": 2.0
+        },
+        {
+          "type": "CanvasScaler",
+          "enabled": true,
+          "mode": 0,
+          "scaleFactor": 1.0,
+          "referenceResolution": [
+            1920.0,
+            1080.0
+          ],
+          "match": 0.5
+        },
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0.5,
+            0.5
+          ],
+          "anchorMax": [
+            0.5,
+            0.5
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0,
+            0
+          ],
+          "sizeDelta": [
+            360,
+            240
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Back",
+      "id": 101,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            0.1,
+            0.15,
+            0.25,
+            0.92
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        }
+      ],
+      "parent": 99,
+      "sibling": 0
+    },
+    {
+      "name": "Title",
+      "id": 102,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            1
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            1
+          ],
+          "anchoredPosition": [
+            0,
+            -12
+          ],
+          "sizeDelta": [
+            -24,
+            44
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "키오스크 (World Space)",
+          "font": "",
+          "fontSize": 28,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 99,
+      "sibling": 1
+    },
+    {
+      "name": "Count",
+      "id": 103,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            0
+          ],
+          "pivot": [
+            0.5,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            92
+          ],
+          "sizeDelta": [
+            -24,
+            40
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.8,
+            0.9,
+            1,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "누름: 0",
+          "font": "",
+          "fontSize": 28,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 99,
+      "sibling": 2
+    },
+    {
+      "name": "Counter",
+      "id": 104,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "UiClickCounter",
+          "enabled": true,
+          "label": "../Count",
+          "prefix": "누름",
+          "count": 0,
+          "writeOnStart": true
+        }
+      ],
+      "parent": 99,
+      "sibling": 3
+    },
+    {
+      "name": "Press",
+      "id": 105,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0.5,
+            0
+          ],
+          "anchorMax": [
+            0.5,
+            0
+          ],
+          "pivot": [
+            0.5,
+            0
+          ],
+          "anchoredPosition": [
+            0,
+            22
+          ],
+          "sizeDelta": [
+            220,
+            56
+          ]
+        },
+        {
+          "type": "UIImage",
+          "enabled": true,
+          "color": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "raycastTarget": true,
+          "texture": "builtin:ui-panel",
+          "imageType": 1,
+          "borderLeft": 12.0,
+          "borderRight": 12.0,
+          "borderTop": 12.0,
+          "borderBottom": 12.0
+        },
+        {
+          "type": "UIButton",
+          "enabled": true,
+          "interactable": true,
+          "targetGraphic": ".",
+          "navigation": 0,
+          "onClick": [
+            {
+              "target": "../Counter",
+              "method": "UiClickCounter.Increment",
+              "dynamic": true
+            }
+          ]
+        }
+      ],
+      "parent": 99,
+      "sibling": 4
+    },
+    {
+      "name": "Text",
+      "id": 106,
+      "mesh": -1,
+      "material": -1,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "components": [
+        {
+          "type": "RectTransform",
+          "enabled": true,
+          "anchorMin": [
+            0,
+            0
+          ],
+          "anchorMax": [
+            1,
+            1
+          ],
+          "pivot": [
+            0.5,
+            0.5
+          ],
+          "anchoredPosition": [
+            0.0,
+            0.0
+          ],
+          "sizeDelta": [
+            0,
+            0
+          ]
+        },
+        {
+          "type": "UIText",
+          "enabled": true,
+          "color": [
+            0.196,
+            0.196,
+            0.196,
+            1
+          ],
+          "raycastTarget": false,
+          "text": "누르기",
+          "font": "",
+          "fontSize": 26,
+          "alignment": 4,
+          "lineSpacing": 1.0,
+          "wrap": true,
+          "verticalOverflow": 0
+        }
+      ],
+      "parent": 104,
+      "sibling": 0
+    }
+  ],
+  "version": 5
+}

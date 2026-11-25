@@ -247,6 +247,12 @@ namespace
 		void Bool(const char* name, bool& value) override { m_j[name] = value; }
 		void Float3(const char* name, XMFLOAT3& value, float) override { m_j[name] = ToJson(value); }
 		void String(const char* name, std::string& value) override { m_j[name] = value; }
+		void Float2(const char* name, XMFLOAT2& value, float) override { m_j[name] = json::array({ value.x, value.y }); }
+		void Color(const char* name, XMFLOAT4& value) override { m_j[name] = json::array({ value.x, value.y, value.z, value.w }); }
+		void Enum(const char* name, int& value, const char* const*, int) override { m_j[name] = value; }
+		void Asset(const char* name, std::string& value, AssetKind) override { m_j[name] = value; }
+		void ObjectRef(const char* name, std::string& value) override { m_j[name] = value; }
+		void Event(const char* name, UIEventBase& value) override { m_j[name] = json::parse(UIEventEncode(value)); }
 	private:
 		json& m_j;
 	};
@@ -291,6 +297,45 @@ namespace
 				value = m_j[name].get<std::string>();
 			}
 		}
+		void Float2(const char* name, XMFLOAT2& value, float) override
+		{
+			if (m_j.contains(name) && m_j[name].is_array() && m_j[name].size() >= 2 && m_j[name][0].is_number() && m_j[name][1].is_number())
+			{
+				value = XMFLOAT2(m_j[name][0].get<float>(), m_j[name][1].get<float>());
+			}
+		}
+		void Color(const char* name, XMFLOAT4& value) override
+		{
+			if (m_j.contains(name) && m_j[name].is_array() && m_j[name].size() >= 3)
+			{
+				const json& c = m_j[name];
+				for (size_t i = 0; i < c.size(); ++i)
+				{
+					if (!c[i].is_number()) return;
+				}
+				value = XMFLOAT4(c[0].get<float>(), c[1].get<float>(), c[2].get<float>(), c.size() >= 4 ? c[3].get<float>() : 1.0f);
+			}
+		}
+		void Enum(const char* name, int& value, const char* const*, int count) override
+		{
+			if (m_j.contains(name) && m_j[name].is_number_integer())
+			{
+				const int read = m_j[name].get<int>();
+				if (read >= 0 && read < count)
+				{
+					value = read;
+				}
+			}
+		}
+		void Asset(const char* name, std::string& value, AssetKind) override { String(name, value); }
+		void ObjectRef(const char* name, std::string& value) override { String(name, value); }
+		void Event(const char* name, UIEventBase& value) override
+		{
+			if (m_j.contains(name) && m_j[name].is_array())
+			{
+				UIEventDecode(value, m_j[name].dump());
+			}
+		}
 	private:
 		const json& m_j;
 	};
@@ -324,7 +369,13 @@ namespace
 		if (!components.is_array()) return;
 		for (const json& c : components)
 		{
-			Behaviour* behaviour = object.AddBehaviour(c.value("type", ""));
+			// "type" 과 "enabled" 는 모든 컴포넌트가 쓰는 키라 Reflect 필드 이름으로 쓰면 안 됨. 잘못된 파일이면 그 컴포넌트만 건너뜀
+			if (!c.is_object() || !c.contains("type") || !c["type"].is_string())
+			{
+				Log::Warn("씬 로드: '%s' 의 컴포넌트에 타입 이름이 없어 건너뜀", object.GetName().c_str());
+				continue;
+			}
+			Behaviour* behaviour = object.AddBehaviour(c["type"].get<std::string>());
 			if (behaviour == nullptr)
 			{
 				// 모르는 타입(레지스트리가 경고를 남김). 버리지 않고 원본을 보관해 저장·핫리로드 때 되살림
@@ -460,6 +511,9 @@ namespace
 		if (parentIndex >= 0)
 		{
 			j["parent"] = parentIndex;
+			// 부모 안 순서. 오브젝트 배열 순서와 자식 순서가 다를 수 있으므로 (부모 바꾸기는 자식 목록 끝에 붙임, 형제 순서
+			// 바꾸기) 따로 저장함. 없으면 읽을 때 배열 순서 그대로 (옛 파일).
+			j["sibling"] = object.GetSiblingIndex();
 		}
 		j["mesh"] = IndexIn(meshes, object.GetMesh());
 		j["material"] = IndexIn(materials, object.GetMaterial());
@@ -563,7 +617,8 @@ namespace
 
 	// created[i] 의 부모를 parents[i] (created 안의 인덱스, −1 = 루트)로 연결함. 저장된 값이 이미 로컬이므로
 	// keepWorld = false.
-	void LinkParents(const std::vector<GameObject*>& created, const std::vector<int>& parents)
+	// siblings[i] = 저장된 부모 안 순서 (−1 = 없음, 옛 파일). 연결이 끝난 뒤 그 값으로 자식 순서를 맞춤.
+	void LinkParents(const std::vector<GameObject*>& created, const std::vector<int>& parents, const std::vector<int>& siblings)
 	{
 		for (size_t i = 0; i < parents.size(); ++i)
 		{
@@ -573,6 +628,20 @@ namespace
 			{
 				Log::Warn("씬 로드: 오브젝트 %zu 의 부모 %d 가 순환을 만들어 무시함", i, parent);
 			}
+		}
+		// 형제 순서: 저장된 번호가 작은 것부터 그 자리에 넣음. 번호가 같거나 없는 것은 배열 순서 그대로 남음.
+		std::vector<size_t> order;
+		for (size_t i = 0; i < siblings.size(); ++i)
+		{
+			if (siblings[i] >= 0 && created[i]->GetParent() != nullptr)
+			{
+				order.push_back(i);
+			}
+		}
+		std::stable_sort(order.begin(), order.end(), [&siblings](size_t a, size_t b) { return siblings[a] < siblings[b]; });
+		for (size_t i : order)
+		{
+			created[i]->SetSiblingIndex(static_cast<size_t>(siblings[i]));
 		}
 	}
 
@@ -585,15 +654,17 @@ namespace
 		}
 		std::vector<GameObject*> created;
 		std::vector<int> parents;
+		std::vector<int> siblings;
 		if (objects.is_array())
 		{
 			for (const json& j : objects)
 			{
 				parents.push_back(j.value("parent", -1));
+				siblings.push_back(j.contains("parent") ? j.value("sibling", -1) : -1);
 				created.push_back(&ObjectFromJson(scene, j, useId, meshes, materials));
 			}
 		}
-		LinkParents(created, parents);
+		LinkParents(created, parents, siblings);
 		return created;
 	}
 
