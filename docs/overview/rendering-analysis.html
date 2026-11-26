@@ -4316,7 +4316,7 @@ compileFlags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
   <div class="row">608 ~ 623 · rainMapY</div>
   <div>x: 맵 윗면 y</div><div>y: 깊이 범위 (m)</div><div>z: 높이 비교 여유 (m)</div><div>w: 해상도</div>
   <div class="row">624 ~ 639 · rainSurface</div>
-  <div>x: 물결 세기</div><div>y: 웅덩이 양</div><div class="pad">z: 0</div><div class="pad">w: 0</div>
+  <div>x: 물결 켬</div><div>y: 웅덩이 양</div><div>z: 물결 칸 비율 (빗방울 비율 × 세기)</div><div class="pad">w: 0</div>
 </div>
 <p>채우는 곳은 <code>Renderer::UploadPerFrameConstants</code> 입니다. <code>shadowParams</code> 는 <code>(1 / kShadowAtlasSize, m_shadowSettings.bias, m_shadowSettings.strength, m_shadowViewCount &gt; 0 ? 1 : 0)</code> 이고 <code>debugParams</code> 는 <code>(m_settings.debugView, m_settings.debugDepthRange, 0, 0)</code> 입니다. <code>shadowExtra.x</code> 는 <code>m_shadowSettings.normalOffset</code> 입니다(2026-10-28). <code>m_shadowSettings</code> 는 <code>Renderer::Render</code> 가 맨 앞에서 씬의 <code>environment.shadow</code> 를 복사한 값입니다. 2026-10-08 에 붙은 두 줄은 <code>Renderer::ResolveEnvironment</code> 가 그 프레임에 정한 환경을 옮깁니다(<a href="#c11-6">11.6절</a>, <a href="#c12-14">12.14절</a>). 현재 셰이더는 <code>view</code>, <code>proj</code>, <code>time</code>, <code>shadowParams.x</code> 를 읽지 않습니다. 변환에는 <code>viewProj</code> 만 쓰고, PCF 의 이웃 텍셀은 정수 오프셋 인자로 지정하기 때문입니다.</p>
 

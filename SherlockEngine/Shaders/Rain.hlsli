@@ -139,13 +139,15 @@ float RainPuddle(float3 p, float up, float wet)
 }
 
 // 빗방울이 떨어진 자리에서 퍼지는 동심원 (Lagarde, "Water drop 2b"). 격자 칸마다 해시로 중심·시작 시각을 정하고, 칸 두 겹을 엇갈려
-// 겹침. 돌려주는 값 = 노멀의 xz 기울기 (높이장의 기울기). 비가 그치면 (rainParams.x = 0) 0.
+// 겹침. 돌려주는 값 = 노멀의 xz 기울기 (높이장의 기울기). 링이 생기는 칸의 비율 = rainSurface.z (빗방울 비율 × 세기, CPU 가 정함) —
+// 빗방울이 적을수록 링이 드문드문 생김. 비가 그치면 (z = 0) 0.
 float2 RainRipple(float3 p)
 {
-    const float strength = rainSurface.x * rainParams.x;
+    const float strength = rainSurface.x;
+    const float density = rainSurface.z;
     const float distanceFade = saturate(1.0f - length(cameraPosition - p) / 25.0f);   // 멀리서는 픽셀보다 작아 반짝이기만 함
     float2 slope = float2(0.0f, 0.0f);
-    if (strength > 0.0f && distanceFade > 0.0f)
+    if (strength > 0.0f && density > 0.0f && distanceFade > 0.0f)
     {
         const float cellSize = 0.35f;   // m
         [unroll]
@@ -161,7 +163,8 @@ float2 RainRipple(float3 p)
             const float d = length(offset);
             const float radius = phase * 0.25f;   // 칸의 1/4 까지 퍼짐
             const float x = (d - radius) * 24.0f;   // 링 단면 (−π..π 가 링 하나)
-            if (abs(x) < 3.14159265f && d > 1.0e-4f)
+            const bool active = RainHash01(h ^ 0x165667b1u) < density;   // 이 칸에 링이 생기는지
+            if (active && abs(x) < 3.14159265f && d > 1.0e-4f)
             {
                 const float fade = (1.0f - phase) * (1.0f - phase);
                 slope += (offset / d) * cos(x * 0.5f) * sin(x) * fade;

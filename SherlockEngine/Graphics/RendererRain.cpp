@@ -30,6 +30,7 @@ namespace
 	constexpr float kSplashPeriod = 0.35f;      // 튐 하나의 수명 (초)
 	constexpr float kSplashSize = 0.12f;        // 튐 크기 (m)
 	constexpr float kSoftDistance = 0.3f;       // 빗줄기가 장면 깊이와 만나는 곳을 흐리게 하는 거리 (m)
+	constexpr float kReferenceDrops = 20000.0f; // maxDrops 기본값. 튐 수·물결 밀도는 이 수에 대한 빗방울 비율(최대 1)을 곱함
 	constexpr double kRainTimeWrap = 1000.0;    // b0 rainParams.w (물결 시간) 를 감는 주기 (초)
 
 	// 512·1024·2048 중 가장 가까운 것 (텍스처를 아무 크기로 만들지 않게).
@@ -139,7 +140,10 @@ void Renderer::PrepareRain(const Scene& scene, const Camera& camera, float total
 	frame.rainMapXZ = XMFLOAT4(centerX - 0.5f * size, centerZ - 0.5f * size, 1.0f / size, texel);
 	// 높이 비교 여유: 텍셀 두 개 + 5 cm. 경사 지붕은 텍셀 안에서도 높이가 바뀌고, 젖음은 이 위치에서 맵을 읽은 그 면 자체가 "가장 위" 임.
 	frame.rainMapY = XMFLOAT4(top, kMapDepthRange, 2.0f * texel + 0.05f, static_cast<float>(resolution));
-	frame.rainSurface = XMFLOAT4(rain->ripples ? 1.0f : 0.0f, std::clamp(rain->puddles, 0.0f, 1.0f), 0.0f, 0.0f);
+	// 빗방울이 적으면 바닥을 때리는 빗방울도 적음: 튐 수와 물결이 생기는 칸의 비율을 maxDrops / 기본값 (최대 1) 만큼 줄임.
+	// 세기는 링 높이가 아니라 링 수로 반영 (빗방울 하나가 만드는 링의 크기는 같음).
+	const float dropRatio = std::clamp(static_cast<float>(rain->maxDrops) / kReferenceDrops, 0.0f, 1.0f);
+	frame.rainSurface = XMFLOAT4(rain->ripples ? 1.0f : 0.0f, std::clamp(rain->puddles, 0.0f, 1.0f), dropRatio * intensity, 0.0f);
 
 	// ---- b8: 빗줄기·튐 ----
 	RainConstants& c = frame.constants;
@@ -161,7 +165,7 @@ void Renderer::PrepareRain(const Scene& scene, const Camera& camera, float total
 	c.nearFade = (std::max)(rain->nearFade, 0.01f);
 	c.softDistance = kSoftDistance;
 	c.seed = static_cast<uint32_t>(rain->seed);
-	c.splashCount = (rain->splashes && hasMap) ? static_cast<uint32_t>(std::lround(std::clamp(rain->maxSplashes, 0, 20000) * intensity)) : 0u;
+	c.splashCount = (rain->splashes && hasMap) ? static_cast<uint32_t>(std::lround(std::clamp(rain->maxSplashes, 0, 20000) * intensity * dropRatio)) : 0u;
 	c.splashPeriod = kSplashPeriod;
 	c.splashTime = static_cast<float>(std::fmod(time, static_cast<double>(kSplashPeriod) * 4096.0));   // 24 분에 한 번 감음 (그 순간만 튐 배치가 바뀜)
 	c.splashRadius = radius * 0.8f;

@@ -229,7 +229,7 @@ struct alignas(16) PerFrameConstants
 	DirectX::XMFLOAT4 rainMapXZ;
 	// 차폐 맵의 높이: x = 맵 윗면 y (직교 카메라 위치), y = 깊이 범위 (m, 깊이 1 = 윗면 − 범위), z = 높이 비교 여유 (m), w = 해상도 (텍셀)
 	DirectX::XMFLOAT4 rainMapY;
-	// 젖은 표면 (3단계): x = 물결 세기 (0 = 끔), y = 웅덩이 양 0..1, zw = 미사용
+	// 젖은 표면 (3단계): x = 물결 켬 (0 = 끔), y = 웅덩이 양 0..1, z = 링이 생기는 칸 비율 (min(maxDrops / 20000, 1) × 세기), w = 미사용
 	DirectX::XMFLOAT4 rainSurface;
 };
 

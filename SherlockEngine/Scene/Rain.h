@@ -17,7 +17,7 @@ public:
 	void Reflect(PropertyVisitor& visitor) override;
 
 	float intensity = 1.0f;   // 비 세기 0..1. 그리는 빗방울 수 = maxDrops × intensity, 젖음 목표 = wetness × intensity
-	int maxDrops = 20000;     // 세기 1 일 때 빗방울 수. [0, 100000] 으로 자름
+	int maxDrops = 20000;     // 세기 1 일 때 빗방울 수. [0, 100000] 으로 자름. 20000 보다 적으면 튐 수·물결도 그 비율만큼 줄어듦
 	float areaRadius = 15.0f;   // 카메라 중심 상자의 가로 반폭 (m)
 	float areaHeight = 12.0f;   // 상자 높이 (m). 카메라 아래 1/3, 위 2/3
 	float fallSpeed = 9.0f;     // 낙하 속력 (m/s)
@@ -35,7 +35,7 @@ public:
 	int seed = 1;                 // 빗방울 해시 씨앗
 	// ---- 3단계 ----
 	bool splashes = true;   // 지붕·바닥에서 튀는 물방울
-	int maxSplashes = 2000; // 세기 1 일 때 튐 수. [0, 20000]
-	bool ripples = true;    // 위를 보는 젖은 면의 동심원 물결
+	int maxSplashes = 2000; // 세기 1, maxDrops 20000 이상일 때 튐 수. [0, 20000]
+	bool ripples = true;    // 위를 보는 젖은 면의 동심원 물결. 링이 생기는 칸 수 = maxDrops / 20000 (최대 1) × 세기
 	float puddles = 0.5f;   // 웅덩이 양 0..1 (0 = 없음). 젖음이 충분할 때부터 자람
 };

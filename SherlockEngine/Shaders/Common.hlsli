@@ -59,7 +59,7 @@ cbuffer PerFrame : register(b0)
     float4 rainParams;    // x = 빗줄기 세기, y = 젖음, z = 차폐 맵 있음, w = 비 시간 (초, 감음)
     float4 rainMapXZ;     // xy = 차폐 맵 최소 모서리 월드 xz, z = 1 / 한 변, w = 텍셀 크기 (m)
     float4 rainMapY;      // x = 맵 윗면 y, y = 깊이 범위 (m), z = 높이 비교 여유 (m), w = 해상도
-    float4 rainSurface;   // x = 물결 세기, y = 웅덩이 양
+    float4 rainSurface;   // x = 물결 켬, y = 웅덩이 양, z = 물결 칸 비율 (빗방울 비율 × 세기)
 }
 
 // 깊이 버퍼 값(0..1) → 뷰 공간 z (카메라 앞쪽 거리). LH 투영: 원근 d = (P22 · z + P32) / z, 직교 d = P22 · z + P32.
