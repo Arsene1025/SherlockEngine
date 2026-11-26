@@ -5,13 +5,13 @@
     0.36000001430511475
   ],
   "camera": {
-    "pitch": 0.19652165442768607,
+    "pitch": 0.9790252447128296,
     "position": [
-      7.5,
-      2.8,
-      0.8
+      -1.1563218832015991,
+      5.589395999908447,
+      -0.3489195704460144
     ],
-    "yaw": -1.6661583736973056
+    "yaw": -1.1661593914031982
   },
   "clearColor": [
     0.3499999940395355,
@@ -23,6 +23,11 @@
     "brdfLut": "asset:Cubemap\\CubemapSampleBrdf.dds",
     "exposure": 1.0,
     "iblIntensity": 0.5,
+    "iblTint": [
+      1.0,
+      1.0,
+      1.0
+    ],
     "irradiance": "asset:Cubemap\\CubemapSampleDiffuseHDR.dds",
     "postProcess": {
       "bloomEnabled": false,
@@ -31,17 +36,39 @@
       "bloomThreshold": 1.0,
       "blurEnabled": false,
       "blurRadius": 4.0,
-      "greyscale": 0.0
+      "greyscale": 0.0,
+      "motionBlurEnabled": false,
+      "motionBlurIntensity": 0.5,
+      "motionBlurMaxRadius": 32.0,
+      "motionBlurSamples": 12,
+      "motionBlurTargetFps": 60.0,
+      "taaEnabled": false,
+      "taaFeedback": 0.10000000149011612
     },
     "shadow": {
       "bias": 0.0006000000284984708,
+      "cascadeBlend": 0.15000000596046448,
+      "cascadeCount": 4,
+      "cascadeDistance": 200.0,
+      "cascadeEnabled": true,
+      "cascadeLambda": 0.699999988079071,
       "distance": 29.766834259033203,
+      "localNormalBias": 1.0,
       "normalOffset": 0.30000001192092896,
       "orthoSize": 32.7435188293457,
       "strength": 1.0
     },
     "skybox": "asset:Cubemap\\CubemapSampleEnvHDR.dds",
     "specular": "asset:Cubemap\\CubemapSampleSpecularHDR.dds",
+    "ssao": {
+      "bias": 0.02500000037252903,
+      "enabled": false,
+      "intensity": 1.0,
+      "multiply": false,
+      "power": 1.5,
+      "radius": 0.5,
+      "sampleCount": 16
+    },
     "toneMapping": true
   },
   "lights": [
@@ -51,6 +78,7 @@
         0.04500000178813934,
         0.007499999832361937
       ],
+      "castShadows": true,
       "color": [
         1.0,
         1.0,
@@ -77,6 +105,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/1 5061699253647017043.png",
+      "alphaBlend": false,
       "alphaCutoff": 0.5,
       "baseColor": [
         0.5879999995231628,
@@ -84,6 +113,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": true,
       "emissive": [
         0.0,
@@ -91,8 +126,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/2 11872827283454512094.jpg",
+      "modelMaterial": 0,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material0",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/0 8773302468495022225.jpg",
@@ -100,6 +138,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -110,6 +158,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/7 7268504077753552595.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -117,6 +166,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -124,8 +179,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/8 8503262930880235456.jpg",
+      "modelMaterial": 1,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material1",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/6 4477655471536070370.jpg",
@@ -133,6 +191,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -143,6 +211,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/68 white.png",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -150,6 +219,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -157,8 +232,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 0.0,
       "metallicRoughnessTexture": "",
+      "modelMaterial": 2,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material2",
       "normalStrength": 1.0,
       "normalTexture": "",
@@ -166,6 +244,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -176,6 +264,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/4 8006627369776289000.png",
+      "alphaBlend": false,
       "alphaCutoff": 0.5,
       "baseColor": [
         0.5879999995231628,
@@ -183,6 +272,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": true,
       "emissive": [
         0.0,
@@ -190,8 +285,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/5 715093869573992647.jpg",
+      "modelMaterial": 3,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material3",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/3 12501374198249454378.jpg",
@@ -199,6 +297,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -209,6 +317,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/10 8750083169368950601.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -216,6 +325,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -223,8 +338,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/11 16885566240357350108.jpg",
+      "modelMaterial": 4,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material4",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/9 13982482287905699490.jpg",
@@ -232,6 +350,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -242,6 +370,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/13 5792855332885324923.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -249,6 +378,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -256,8 +391,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/14 11968150294050148237.jpg",
+      "modelMaterial": 5,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material5",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/12 16299174074766089871.jpg",
@@ -265,6 +403,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -275,6 +423,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/16 14650633544276105767.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -282,6 +431,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -289,8 +444,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/17 4871783166746854860.jpg",
+      "modelMaterial": 6,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material6",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/15 2051777328469649772.jpg",
@@ -298,6 +456,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -308,6 +476,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/19 15295713303328085182.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -315,6 +484,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -322,8 +497,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/20 9916269861720640319.jpg",
+      "modelMaterial": 7,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material7",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/18 10388182081421875623.jpg",
@@ -331,6 +509,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -341,6 +529,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/22 6047387724914829168.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -348,6 +537,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -355,8 +550,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/23 8051790464816141987.jpg",
+      "modelMaterial": 8,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material8",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/21 15722799267630235092.jpg",
@@ -364,6 +562,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -374,6 +582,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/25 5823059166183034438.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -381,6 +590,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -388,8 +603,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/26 13824894030729245199.jpg",
+      "modelMaterial": 9,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material9",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/24 14267839433702832875.jpg",
@@ -397,6 +615,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -407,6 +635,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/28 7441062115984513793.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -414,6 +643,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -421,8 +656,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/29 8114461559286000061.jpg",
+      "modelMaterial": 10,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material10",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/27 6667038893015345571.jpg",
@@ -430,6 +668,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -440,6 +688,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/31 11490520546946913238.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -447,6 +696,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -454,8 +709,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/32 3455394979645218238.jpg",
+      "modelMaterial": 11,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material11",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/30 3628158980083700836.jpg",
@@ -463,6 +721,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -473,6 +741,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/34 6151467286084645207.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -480,6 +749,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -487,8 +762,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/35 8783994986360286082.jpg",
+      "modelMaterial": 12,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material12",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/33 7645212358685992005.jpg",
@@ -496,6 +774,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -506,6 +794,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/37 4975155472559461469.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -513,6 +802,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -520,8 +815,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/38 3371964815757888145.jpg",
+      "modelMaterial": 13,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material13",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/36 2299742237651021498.jpg",
@@ -529,6 +827,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -539,6 +847,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/40 4675343432951571524.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -546,6 +855,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -553,8 +868,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/41 7815564343179553343.jpg",
+      "modelMaterial": 14,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material14",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/39 7056944414013900257.jpg",
@@ -562,6 +880,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -572,6 +900,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/43 2775690330959970771.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -579,6 +908,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -586,8 +921,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/41 7815564343179553343.jpg",
+      "modelMaterial": 15,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material15",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/42 2374361008830720677.jpg",
@@ -595,6 +933,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -605,6 +953,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/45 2185409758123873465.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -612,6 +961,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -619,8 +974,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/41 7815564343179553343.jpg",
+      "modelMaterial": 16,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material16",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/44 332936164838540657.jpg",
@@ -628,6 +986,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -638,6 +1006,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/47 17876391417123941155.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -645,6 +1014,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -652,8 +1027,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/48 466164707995436622.jpg",
+      "modelMaterial": 17,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material17",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/46 6593109234861095314.jpg",
@@ -661,6 +1039,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -671,6 +1059,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/50 11474523244911310074.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -678,6 +1067,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -685,8 +1080,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/48 466164707995436622.jpg",
+      "modelMaterial": 18,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material18",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/49 4601176305987539675.jpg",
@@ -694,6 +1092,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -704,6 +1112,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/52 9288698199695299068.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -711,6 +1120,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -718,8 +1133,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/48 466164707995436622.jpg",
+      "modelMaterial": 19,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material19",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/51 4910669866631290573.jpg",
@@ -727,6 +1145,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -737,6 +1165,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/54 16275776544635328252.png",
+      "alphaBlend": false,
       "alphaCutoff": 0.5,
       "baseColor": [
         0.5879999995231628,
@@ -744,6 +1173,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": true,
       "emissive": [
         0.0,
@@ -751,8 +1186,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/55 1219024358953944284.jpg",
+      "modelMaterial": 20,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material20",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/53 14170708867020035030.jpg",
@@ -760,6 +1198,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -770,6 +1218,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/57 755318871556304029.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -777,6 +1226,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -784,8 +1239,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/58 2411100444841994089.jpg",
+      "modelMaterial": 21,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material21",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/56 3827035219084910048.jpg",
@@ -793,6 +1251,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -803,6 +1271,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/60 8481240838833932244.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -810,6 +1279,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -817,8 +1292,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/61 17556969131407844942.jpg",
+      "modelMaterial": 22,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material22",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/59 10381718147657362067.jpg",
@@ -826,6 +1304,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -836,6 +1324,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/63 6772804448157695701.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -843,6 +1332,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -850,8 +1345,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/64 13196865903111448057.jpg",
+      "modelMaterial": 23,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material23",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/62 759203620573749278.jpg",
@@ -859,6 +1357,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -869,6 +1377,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/66 2969916736137545357.jpg",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         0.5879999995231628,
@@ -876,6 +1385,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -883,8 +1398,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 1.0,
       "metallicRoughnessTexture": "Sponza/67 8747919177698443163.jpg",
+      "modelMaterial": 24,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material24",
       "normalStrength": 1.0,
       "normalTexture": "Sponza/65 14118779221266351425.jpg",
@@ -892,6 +1410,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -902,6 +1430,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
         1.0,
@@ -909,6 +1438,12 @@
         1.0,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -916,8 +1451,11 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 0.0,
       "metallicRoughnessTexture": "",
+      "modelMaterial": 25,
+      "modelPath": "Models\\Sponza\\Sponza.gltf",
       "name": "Sponza/material25",
       "normalStrength": 1.0,
       "normalTexture": "",
@@ -925,6 +1463,16 @@
       "occlusionTexture": "",
       "roughness": 0.5,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -935,13 +1483,20 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
-        0.45,
-        0.32,
+        0.44999998807907104,
+        0.3199999928474426,
         0.25,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -949,6 +1504,7 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 0.0,
       "metallicRoughnessTexture": "",
       "name": "RainTest/Roof",
@@ -956,8 +1512,18 @@
       "normalTexture": "",
       "occlusionStrength": 1.0,
       "occlusionTexture": "",
-      "roughness": 0.8,
+      "roughness": 0.800000011920929,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -968,13 +1534,20 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "",
+      "alphaBlend": false,
       "alphaCutoff": 0.0,
       "baseColor": [
-        0.7,
-        0.7,
-        0.68,
+        0.699999988079071,
+        0.699999988079071,
+        0.6800000071525574,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": false,
       "emissive": [
         0.0,
@@ -982,6 +1555,7 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 0.0,
       "metallicRoughnessTexture": "",
       "name": "RainTest/Pillar",
@@ -989,8 +1563,18 @@
       "normalTexture": "",
       "occlusionStrength": 1.0,
       "occlusionTexture": "",
-      "roughness": 0.8,
+      "roughness": 0.800000011920929,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -1001,6 +1585,7 @@
     {
       "albedoSrgb": true,
       "albedoTexture": "Sponza/1 5061699253647017043.png",
+      "alphaBlend": false,
       "alphaCutoff": 0.5,
       "baseColor": [
         0.5879999995231628,
@@ -1008,6 +1593,12 @@
         0.5879999995231628,
         1.0
       ],
+      "clearcoatFactor": 0.0,
+      "clearcoatNormalScale": 1.0,
+      "clearcoatNormalTexture": "",
+      "clearcoatRoughness": 0.0,
+      "clearcoatRoughnessTexture": "",
+      "clearcoatTexture": "",
       "doubleSided": true,
       "emissive": [
         0.0,
@@ -1015,6 +1606,7 @@
         0.0
       ],
       "emissiveTexture": "",
+      "ior": 1.5,
       "metallic": 0.0,
       "metallicRoughnessTexture": "Sponza/2 11872827283454512094.jpg",
       "name": "RainTest/Leaves",
@@ -1024,6 +1616,16 @@
       "occlusionTexture": "",
       "roughness": 1.0,
       "sampler": 2,
+      "specularColor": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "specularColorTexture": "",
+      "specularFactor": 1.0,
+      "specularTexture": "",
+      "transmissionFactor": 0.0,
+      "transmissionTexture": "",
       "unlit": false,
       "uvScale": [
         1.0,
@@ -1161,12 +1763,12 @@
       "name": "Main Camera",
       "position": [
         7.5,
-        2.8,
-        0.8
+        2.799999952316284,
+        0.800000011920929
       ],
       "rotation": [
-        0.19652165442768607,
-        -1.6661583736973056,
+        0.19652165472507477,
+        -1.6661583185195923,
         0.0
       ],
       "scale": [
@@ -1192,7 +1794,7 @@
       ],
       "scale": [
         3.0,
-        0.2,
+        0.20000000298023224,
         3.0
       ]
     },
@@ -1202,9 +1804,9 @@
       "mesh": 1,
       "name": "RainTest/Pillar0",
       "position": [
-        -4.3,
-        1.2,
-        -1.3
+        -4.300000190734863,
+        1.2000000476837158,
+        -1.2999999523162842
       ],
       "rotation": [
         0.0,
@@ -1212,9 +1814,9 @@
         0.0
       ],
       "scale": [
-        0.15,
-        2.4,
-        0.15
+        0.15000000596046448,
+        2.4000000953674316,
+        0.15000000596046448
       ]
     },
     {
@@ -1223,9 +1825,9 @@
       "mesh": 1,
       "name": "RainTest/Pillar1",
       "position": [
-        -1.7,
-        1.2,
-        -1.3
+        -1.7000000476837158,
+        1.2000000476837158,
+        -1.2999999523162842
       ],
       "rotation": [
         0.0,
@@ -1233,9 +1835,9 @@
         0.0
       ],
       "scale": [
-        0.15,
-        2.4,
-        0.15
+        0.15000000596046448,
+        2.4000000953674316,
+        0.15000000596046448
       ]
     },
     {
@@ -1244,9 +1846,9 @@
       "mesh": 1,
       "name": "RainTest/Pillar2",
       "position": [
-        -4.3,
-        1.2,
-        1.3
+        -4.300000190734863,
+        1.2000000476837158,
+        1.2999999523162842
       ],
       "rotation": [
         0.0,
@@ -1254,9 +1856,9 @@
         0.0
       ],
       "scale": [
-        0.15,
-        2.4,
-        0.15
+        0.15000000596046448,
+        2.4000000953674316,
+        0.15000000596046448
       ]
     },
     {
@@ -1265,9 +1867,9 @@
       "mesh": 1,
       "name": "RainTest/Pillar3",
       "position": [
-        -1.7,
-        1.2,
-        1.3
+        -1.7000000476837158,
+        1.2000000476837158,
+        1.2999999523162842
       ],
       "rotation": [
         0.0,
@@ -1275,9 +1877,9 @@
         0.0
       ],
       "scale": [
-        0.15,
-        2.4,
-        0.15
+        0.15000000596046448,
+        2.4000000953674316,
+        0.15000000596046448
       ]
     },
     {
@@ -1287,7 +1889,7 @@
       "name": "RainTest/Leaves",
       "position": [
         3.0,
-        1.8,
+        1.7999999523162842,
         0.0
       ],
       "rotation": [
@@ -1302,6 +1904,40 @@
       ]
     },
     {
+      "components": [
+        {
+          "areaHeight": 12.0,
+          "areaRadius": 15.0,
+          "brightness": 1.0,
+          "color": [
+            0.699999988079071,
+            0.75,
+            0.800000011920929
+          ],
+          "dryTime": 60.0,
+          "enabled": true,
+          "fallSpeed": 9.0,
+          "intensity": 1.0,
+          "maxDrops": 20000,
+          "nearFade": 0.5,
+          "occlusionResolution": 1024,
+          "occlusionSize": 80.0,
+          "puddles": 0.5,
+          "ripples": true,
+          "seed": 1,
+          "splashes": false,
+          "streakLength": 0.4000000059604645,
+          "streakWidth": 0.004000000189989805,
+          "type": "Rain",
+          "wetTime": 20.0,
+          "wetness": 1.0,
+          "wind": [
+            1.5,
+            0.0,
+            0.5
+          ]
+        }
+      ],
       "id": 9,
       "material": -1,
       "mesh": -1,
@@ -1320,41 +1956,6 @@
         1.0,
         1.0,
         1.0
-      ],
-      "components": [
-        {
-          "type": "Rain",
-          "enabled": true,
-          "intensity": 1.0,
-          "maxDrops": 20000,
-          "areaRadius": 15.0,
-          "areaHeight": 12.0,
-          "fallSpeed": 9.0,
-          "wind": [
-            1.5,
-            0.0,
-            0.5
-          ],
-          "streakLength": 0.4,
-          "streakWidth": 0.004,
-          "color": [
-            0.7,
-            0.75,
-            0.8
-          ],
-          "brightness": 1.0,
-          "nearFade": 0.5,
-          "wetness": 1.0,
-          "wetTime": 20.0,
-          "dryTime": 60.0,
-          "occlusionSize": 80.0,
-          "occlusionResolution": 1024,
-          "seed": 1,
-          "splashes": true,
-          "maxSplashes": 2000,
-          "ripples": true,
-          "puddles": 0.5
-        }
       ]
     }
   ],

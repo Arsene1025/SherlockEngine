@@ -138,9 +138,46 @@ float RainPuddle(float3 p, float up, float wet)
     return puddle;
 }
 
-// 빗방울이 떨어진 자리에서 퍼지는 동심원 (Lagarde, "Water drop 2b"). 격자 칸마다 해시로 중심·시작 시각을 정하고, 칸 두 겹을 엇갈려
-// 겹침. 돌려주는 값 = 노멀의 xz 기울기 (높이장의 기울기). 링이 생기는 칸의 비율 = rainSurface.z (빗방울 비율 × 세기, CPU 가 정함) —
-// 빗방울이 적을수록 링이 드문드문 생김. 비가 그치면 (z = 0) 0.
+// ---- 빗방울이 닿는 자리 (물결 RainRipple 과 튐 RainSplashVertexShader 가 같이 씀) ----
+// 위를 보는 면을 0.35 m 칸으로 나누고 칸 두 겹을 엇갈려 겹침. 칸마다 1.3 Hz 로 빗방울이 하나씩 떨어지고, 떨어질 때마다 (주기 번호를
+// 해시에 섞어) 칸 안의 새 자리와 "이번에 떨어지는지" 를 다시 정함. 떨어지는 칸의 비율 = rainSurface.z (빗방울 비율 × 세기, CPU).
+// 물결은 그 자리에서 퍼지는 링, 튐은 같은 자리·같은 순간에 터지는 왕관이라 둘이 늘 짝을 이룸. 시간은 둘 다 b0 rainParams.w.
+// 칸 크기는 Graphics/RendererRain.cpp 의 kImpactCell 과 같아야 함 (튐 격자 크기 계산).
+static const float kRainImpactCell = 0.35f;   // m
+static const float kRainImpactRate = 1.3f;    // 칸마다 초당 떨어지는 횟수
+
+struct RainImpact
+{
+    float2 xz;      // 떨어진 자리 (월드)
+    float phase;    // 이번 주기에서 지난 몫 0..1 (떨어진 순간 0). 지난 시간 = phase / kRainImpactRate 초
+    bool active;    // 이번 주기에 이 칸에 떨어졌는지
+    uint hash;      // 이번 주기의 해시 (튐 크기 등)
+};
+
+// 겹 0·1 의 격자 어긋남 (칸 단위). 격자 좌표 = 월드 xz / 칸 + 어긋남.
+float2 RainImpactLayerOffset(int layer)
+{
+    return layer == 0 ? float2(0.0f, 0.0f) : float2(0.5f, 0.37f);
+}
+
+RainImpact RainImpactInCell(int2 cell, int layer)
+{
+    const uint h = RainHash2i(cell, 101u + (uint)layer);
+    const float cyclePosition = rainParams.w * kRainImpactRate + RainHash01(h ^ 0x27d4eb2du);   // 칸마다 시작 시각이 다름
+    const float cycle = floor(cyclePosition);
+    const uint hc = RainHash(h ^ RainHash((uint)(int)cycle));
+    const float2 center = float2(RainHash01(hc), RainHash01(hc ^ 0x5bd1e995u)) * 0.5f + 0.25f;   // 칸 가운데 절반 — 링이 칸을 넘지 않음
+
+    RainImpact impact;
+    impact.xz = ((float2)cell + center - RainImpactLayerOffset(layer)) * kRainImpactCell;
+    impact.phase = cyclePosition - cycle;
+    impact.active = RainHash01(hc ^ 0x165667b1u) < rainSurface.z;
+    impact.hash = hc;
+    return impact;
+}
+
+// 빗방울이 떨어진 자리에서 퍼지는 동심원 (Lagarde, "Water drop 2b"). 돌려주는 값 = 노멀의 xz 기울기 (높이장의 기울기).
+// 링이 생기는 칸의 비율 = rainSurface.z — 빗방울이 적을수록 드문드문. 비가 그치면 (z = 0) 0.
 float2 RainRipple(float3 p)
 {
     const float strength = rainSurface.x;
@@ -149,24 +186,18 @@ float2 RainRipple(float3 p)
     float2 slope = float2(0.0f, 0.0f);
     if (strength > 0.0f && density > 0.0f && distanceFade > 0.0f)
     {
-        const float cellSize = 0.35f;   // m
         [unroll]
         for (int layer = 0; layer < 2; ++layer)
         {
-            const float2 grid = p.xz / cellSize + (layer == 0 ? float2(0.0f, 0.0f) : float2(0.5f, 0.37f));
-            const int2 cell = (int2)floor(grid);
-            const float2 local = grid - cell;
-            const uint h = RainHash2i(cell, 101u + (uint)layer);
-            const float2 center = float2(RainHash01(h), RainHash01(h ^ 0x5bd1e995u)) * 0.5f + 0.25f;
-            const float phase = frac(rainParams.w * 1.3f + RainHash01(h ^ 0x27d4eb2du));   // 칸마다 1.3 Hz, 시작 시각은 해시
-            const float2 offset = local - center;
+            const int2 cell = (int2)floor(p.xz / kRainImpactCell + RainImpactLayerOffset(layer));
+            const RainImpact impact = RainImpactInCell(cell, layer);
+            const float2 offset = (p.xz - impact.xz) / kRainImpactCell;   // 칸 단위
             const float d = length(offset);
-            const float radius = phase * 0.25f;   // 칸의 1/4 까지 퍼짐
-            const float x = (d - radius) * 24.0f;   // 링 단면 (−π..π 가 링 하나)
-            const bool active = RainHash01(h ^ 0x165667b1u) < density;   // 이 칸에 링이 생기는지
-            if (active && abs(x) < 3.14159265f && d > 1.0e-4f)
+            const float radius = impact.phase * 0.25f;   // 칸의 1/4 까지 퍼짐
+            const float x = (d - radius) * 24.0f;        // 링 단면 (−π..π 가 링 하나)
+            if (impact.active && abs(x) < 3.14159265f && d > 1.0e-4f)
             {
-                const float fade = (1.0f - phase) * (1.0f - phase);
+                const float fade = (1.0f - impact.phase) * (1.0f - impact.phase);
                 slope += (offset / d) * cos(x * 0.5f) * sin(x) * fade;
             }
         }
@@ -191,7 +222,7 @@ cbuffer Rain : register(b8)
     float rainSoftDistance;   // m
     uint rainSeed;
     uint rainSplashCount;
-    float rainSplashTime;     // 초 (주기의 배수로 감음)
+    uint rainSplashGrid;      // 튐 격자 한 변의 칸 수 (겹 하나 = 한 변²). 튐 번호 → 칸
     float rainSplashRadius;   // m
     float rainSplashPeriod;   // 초
     float rainSplashSize;     // m

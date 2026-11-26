@@ -22,7 +22,6 @@ void Rain::Reflect(PropertyVisitor& v)
 	v.Int("occlusionResolution", occlusionResolution);
 	v.Int("seed", seed);
 	v.Bool("splashes", splashes);
-	v.Int("maxSplashes", maxSplashes);
 	v.Bool("ripples", ripples);
 	v.Float("puddles", puddles, 0.01f);
 }

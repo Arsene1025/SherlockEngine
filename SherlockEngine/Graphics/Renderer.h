@@ -157,7 +157,7 @@ public:
 		// ---- 비 (docs/plan/rain-plan.html) ----
 		bool rainActive = false;            // 이번 프레임에 Rain 이 있음
 		uint32_t rainDrops = 0;             // 그린 빗방울 수 (뷰 하나 기준. 차폐 판정으로 접힌 것 포함)
-		uint32_t rainSplashes = 0;          // 그린 튐 수 (뷰 하나 기준)
+		uint32_t rainSplashes = 0;          // 그린 튐 칸 수 (뷰 하나 기준, 빗방울이 안 떨어진 칸 포함)
 		uint32_t rainOcclusionDraws = 0;    // 차폐 맵 패스 드로우 수
 		uint32_t rainOcclusionCulled = 0;   // 차폐 맵 상자 밖이라 건너뛴 드로우 수
 		float rainWetness = 0.0f;           // b0 에 올린 젖음 (보간된 값)

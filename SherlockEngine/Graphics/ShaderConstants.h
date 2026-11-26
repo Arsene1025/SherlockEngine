@@ -248,8 +248,8 @@ struct alignas(16) RainConstants
 	float nearFade;                 // 카메라 근접 페이드 거리 (m)
 	float softDistance;             // 장면 깊이와 가까우면 흐려지는 거리 (m)
 	uint32_t seed;                  // 빗방울 해시 씨앗
-	uint32_t splashCount;           // 이번 프레임 그릴 튐 수 (3단계)
-	float splashTime;               // 튐 시간 (초, 튐 주기의 배수로 감음)
+	uint32_t splashCount;           // 이번 프레임 그릴 튐 칸 수 = 2 × splashGrid² (3단계. 빗방울이 안 떨어진 칸은 VS 가 버림)
+	uint32_t splashGrid;            // 튐 격자 한 변의 칸 수 (칸 = 물결 칸 0.35 m, 카메라가 든 칸이 가운데)
 	float splashRadius;             // 튐이 생기는 원의 반지름 (m, 카메라 xz 중심)
 	float splashPeriod;             // 튐 하나의 수명 (초)
 	float splashSize;               // 튐 크기 (m)
@@ -523,7 +523,7 @@ static_assert(offsetof(PerFrameConstants, rainParams) == 576, "PerFrameConstants
 static_assert(offsetof(PerFrameConstants, rainSurface) == 624, "PerFrameConstants.rainSurface");
 static_assert(sizeof(RainConstants) == 96, "RainConstants: 16 * 6");
 static_assert(offsetof(RainConstants, nearFade) == 64, "RainConstants.nearFade");
-static_assert(offsetof(RainConstants, splashTime) == 80, "RainConstants.splashTime");
+static_assert(offsetof(RainConstants, splashGrid) == 80, "RainConstants.splashGrid");
 static_assert(offsetof(PerFrameConstants, unjitteredViewProj) == 432, "PerFrameConstants.unjitteredViewProj");
 static_assert(offsetof(PerFrameConstants, prevUnjitteredViewProj) == 496, "PerFrameConstants.prevUnjitteredViewProj");
 static_assert(offsetof(PerFrameConstants, temporalParams) == 560, "PerFrameConstants.temporalParams");

@@ -87,7 +87,7 @@ def main():
     rain = {"type": "Rain", "enabled": True, "intensity": 1.0, "maxDrops": 20000, "areaRadius": 15.0, "areaHeight": 12.0,
             "fallSpeed": 9.0, "wind": [1.5, 0.0, 0.5], "streakLength": 0.4, "streakWidth": 0.004, "color": [0.7, 0.75, 0.8],
             "brightness": 1.0, "nearFade": 0.5, "wetness": 1.0, "wetTime": 20.0, "dryTime": 60.0, "occlusionSize": 80.0,
-            "occlusionResolution": 1024, "seed": 1, "splashes": True, "maxSplashes": 2000, "ripples": True, "puddles": 0.5}
+            "occlusionResolution": 1024, "seed": 1, "splashes": True, "ripples": True, "puddles": 0.5}
     add_object(scene, "Rain", components=[rain])
 
     # 카메라: 안뜰 (x −9..8 m, z −2..2 m) 동쪽 끝 2.8 m 높이에서 서쪽 (잎 판·상자 지붕·양쪽 회랑이 같이 보임)

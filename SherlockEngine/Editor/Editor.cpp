@@ -3418,7 +3418,7 @@ void Editor::DrawStats(Engine& engine, const char* sceneName, const ModelStats& 
 	}
 	if (stats.rainActive)
 	{
-		ImGui::TextWrapped("rain: drops %u   splashes %u   wetness %.2f   occlusion map draws %u (culled %u)", stats.rainDrops, stats.rainSplashes, stats.rainWetness, stats.rainOcclusionDraws, stats.rainOcclusionCulled);
+		ImGui::TextWrapped("rain: drops %u   splash cells %u   wetness %.2f   occlusion map draws %u (culled %u)", stats.rainDrops, stats.rainSplashes, stats.rainWetness, stats.rainOcclusionDraws, stats.rainOcclusionCulled);
 	}
 	DebugUI::DrawModelPanel(sceneName, modelStats, engine.GetScene().GetImageCount(), engine.GetScene().GetObjects().size());
 	DebugUI::DrawProfilerPanel();

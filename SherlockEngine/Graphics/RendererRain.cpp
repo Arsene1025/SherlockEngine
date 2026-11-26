@@ -27,10 +27,12 @@ namespace
 {
 	constexpr float kMapHeightAbove = 100.0f;   // 차폐 맵 윗면 = 카메라 y (1 m 로 내림) + 이 값. 이보다 높은 지붕은 차폐로 보지 않음
 	constexpr float kMapDepthRange = 200.0f;    // 윗면에서 아래로 이 거리까지. 그 아래는 "열린 하늘" (깊이 1 = 아무것도 없음)
-	constexpr float kSplashPeriod = 0.35f;      // 튐 하나의 수명 (초)
+	constexpr float kSplashPeriod = 0.35f;      // 튐 하나의 수명 (초). 칸의 빗방울 주기 1 / 1.3 초보다 짧아야 함
+	constexpr float kImpactCell = 0.35f;        // 빗방울이 닿는 칸 크기 (m). Shaders/Rain.hlsli 의 kRainImpactCell 과 같아야 함
+	constexpr uint32_t kMaxSplashGrid = 256;    // 튐 격자 한 변의 최대 칸 수 (겹 둘 → 최대 13만 개)
 	constexpr float kSplashSize = 0.12f;        // 튐 크기 (m)
 	constexpr float kSoftDistance = 0.3f;       // 빗줄기가 장면 깊이와 만나는 곳을 흐리게 하는 거리 (m)
-	constexpr float kReferenceDrops = 20000.0f; // maxDrops 기본값. 튐 수·물결 밀도는 이 수에 대한 빗방울 비율(최대 1)을 곱함
+	constexpr float kReferenceDrops = 20000.0f; // maxDrops 기본값. 빗방울이 닿는 칸 비율(물결·튐)은 이 수에 대한 빗방울 비율(최대 1)을 곱함
 	constexpr double kRainTimeWrap = 1000.0;    // b0 rainParams.w (물결 시간) 를 감는 주기 (초)
 
 	// 512·1024·2048 중 가장 가까운 것 (텍스처를 아무 크기로 만들지 않게).
@@ -165,10 +167,14 @@ void Renderer::PrepareRain(const Scene& scene, const Camera& camera, float total
 	c.nearFade = (std::max)(rain->nearFade, 0.01f);
 	c.softDistance = kSoftDistance;
 	c.seed = static_cast<uint32_t>(rain->seed);
-	c.splashCount = (rain->splashes && hasMap) ? static_cast<uint32_t>(std::lround(std::clamp(rain->maxSplashes, 0, 20000) * intensity * dropRatio)) : 0u;
-	c.splashPeriod = kSplashPeriod;
-	c.splashTime = static_cast<float>(std::fmod(time, static_cast<double>(kSplashPeriod) * 4096.0));   // 24 분에 한 번 감음 (그 순간만 튐 배치가 바뀜)
+	// 튐은 물결과 같은 칸 (Rain.hlsli 의 RainImpactInCell) 에서 터짐: 카메라 주변 splashRadius 를 덮는 정사각 격자 두 겹의 칸마다 하나씩
+	// 그리고, 이번 주기에 빗방울이 떨어지지 않은 칸은 VS 가 버림. 그래서 그리는 수 = 칸 수, 실제로 보이는 수 ≈ 원 안 칸 × rainSurface.z ×
+	// (splashPeriod × 1.3).
 	c.splashRadius = radius * 0.8f;
+	c.splashGrid = (std::min)(static_cast<uint32_t>(std::ceil(2.0f * c.splashRadius / kImpactCell)) + 2u, kMaxSplashGrid);
+	const bool splashes = rain->splashes && hasMap && frame.rainSurface.z > 0.0f;
+	c.splashCount = splashes ? 2u * c.splashGrid * c.splashGrid : 0u;
+	c.splashPeriod = kSplashPeriod;
 	c.splashSize = kSplashSize;
 	frame.drawRain = c.dropCount > 0 || c.splashCount > 0;
 
