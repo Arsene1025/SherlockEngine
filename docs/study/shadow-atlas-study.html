@@ -299,9 +299,9 @@ Barrier(map, ShaderResource)                         메인 패스가 t8 / t14 �
 <h3>8-2. 그림자 PSO</h3>
 <table>
 <tr><th>항목</th><th>값</th><th>위치</th></tr>
-<tr><td>셰이더</td><td>VS만 (<code>VS_Shadow</code>, 스킨 메시는 <code>VS_ShadowSkin</code>), PS 없음, RTV 0개, DSV D32_FLOAT</td><td><code>Renderer.cpp</code>의 <code>Pass_Shadow</code>·<code>Pass_ShadowSkin</code> 설정</td></tr>
+<tr><td>셰이더</td><td>VS만 (<code>VS_Shadow</code>, 스킨 메시는 <code>VS_ShadowSkin</code>), PS 없음, RTV 0개, DSV D32_FLOAT. 알파 컷아웃 재질·디졸브 중인 오브젝트는 알파 테스트 변형(<code>VS_ShadowAlpha</code>·<code>VS_ShadowAlphaSkin</code> + <code>PS_ShadowAlpha</code>, 재질 셋까지 묶음)</td><td><code>Renderer.cpp</code>의 <code>Pass_Shadow</code>·<code>Pass_ShadowSkin</code>·<code>Pass_ShadowAlpha</code>·<code>Pass_ShadowAlphaSkin</code> 설정</td></tr>
 <tr><td>래스터 깊이 바이어스</td><td><code>depthBias</code> 2000, <code>slopeScaledDepthBias</code> 2.0, <code>depthBiasClamp</code> 0.01</td><td>같은 곳</td></tr>
-<tr><td>컬링</td><td>뒷면 컬링, <code>doubleSided</code> 재질은 없음. 반사 행렬이면 앞면 정의를 뒤집음</td><td><code>Renderer::GetShadowPipelineFor</code> (키: 정점 포맷 · 반사 · 양면)</td></tr>
+<tr><td>컬링</td><td>뒷면 컬링, <code>doubleSided</code> 재질은 없음. 반사 행렬이면 앞면 정의를 뒤집음</td><td><code>Renderer::GetShadowPipelineFor</code> (키: 정점 포맷 · 반사 · 양면 · 알파 테스트)</td></tr>
 <tr><td>그림자를 만들지 않는 것</td><td>unlit, 블렌딩·투과 재질(<code>IsBlended</code>: <code>alphaBlend</code> 또는 <code>transmissionFactor</code> &gt; 0), 바다</td><td><code>BuildDrawList</code>가 <code>shadowPipeline</code>을 빈 핸들로 둠</td></tr>
 </table>
 <p>D32_FLOAT에서 <code>depthBias</code> 한 단위는 2^(지수 − 23)입니다. 깊이가 0.5~1이면 2^−24라서 2000단위는 약 1.2 × 10⁻⁴입니다 <span class="tag chk">계산값</span>. 스킨 메시의 그림자 VS는 메인 패스와 같은 b7 조인트 팔레트로 위치만 스킨합니다. <code>UploadObjectConstants(item.object, false)</code>가 b1과 b7을 올리고, 그림자는 속도를 쓰지 않으므로 b13(지난 프레임 팔레트)은 건너뜁니다.</p>
@@ -364,7 +364,7 @@ Barrier(map, ShaderResource)                         메인 패스가 t8 / t14 �
 <tr><td>미리보기 카메라에서만 보이는 조명에 그림자가 없음</td><td>점수와 배정은 메인 카메라 기준</td><td>의도된 한계 (<a href="../plan/deferred-clustered-ssao-record.html#notes">기록</a>)</td></tr>
 <tr><td>넓은 스팟의 가장자리에 그림자가 없음</td><td>시야각 120° clamp</td><td>바깥 원뿔 60° 초과 (5장)</td></tr>
 <tr><td>스팟·포인트에 acne 또는 떠 보임</td><td>원근 깊이의 비선형성, 래스터 바이어스가 직교 기준</td><td><code>localNormalBias</code> 조절. 지역광 전용 PSO는 아직 없음 (7-3)</td></tr>
-<tr><td>알파 컷아웃(잎사귀 등) 그림자가 꽉 찬 사각형</td><td>그림자 PSO에 PS가 없어 <code>alphaCutoff</code>로 버리지 못함</td><td>컷아웃 재질도 <code>shadowPipeline</code>을 받음 (<code>BuildDrawList</code>)</td></tr>
+<tr><td>알파 컷아웃(잎사귀 등) 그림자가 꽉 찬 사각형 (2026-11-26 해결)</td><td>예전 그림자 PSO에 PS가 없어 <code>alphaCutoff</code>로 버리지 못함</td><td>지금은 컷아웃 재질·디졸브 중인 오브젝트가 알파 테스트 그림자 PSO(<code>Pass_ShadowAlpha</code>)를 받아 <code>PS_ShadowAlpha</code>가 <code>clip</code> 함 (<code>BuildDrawList</code>의 <code>shadowAlpha</code>, 8-2)</td></tr>
 <tr><td>반투명 물체·바다에 그림자가 없음</td><td>블렌딩·투과 재질과 바다는 그림자 패스에서 제외</td><td><code>shadowPipeline</code> 빈 핸들 (8-2)</td></tr>
 </table>
 <h3>구조상의 한계</h3>

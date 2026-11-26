@@ -1632,6 +1632,7 @@ namespace
 		DebugUI::SliderFloatR("Normal strength", &material.normalStrength, kDefaults.normalStrength, 0.0f, 5.0f);
 		DebugUI::SliderFloatR("Transmission", &material.transmissionFactor, kDefaults.transmissionFactor, 0.0f, 1.0f);   // KHR_materials_transmission (알파 블렌딩으로 근사)
 		DebugUI::SliderFloatR("Alpha cutoff", &material.alphaCutoff, kDefaults.alphaCutoff, 0.0f, 1.0f);
+		DebugUI::DrawDissolveNoiseFields(material);
 		ImGui::Checkbox("Alpha blend", &material.alphaBlend);
 		ImGui::Checkbox("Unlit", &material.unlit);
 		DebugUI::SameLineIfFits(DebugUI::CheckboxWidth("Wireframe"));
@@ -1699,6 +1700,14 @@ namespace
 		if (before.alphaBlend != after.alphaBlend)
 		{
 			target.alphaBlend = after.alphaBlend;
+		}
+		if (before.dissolveNoiseTexture != after.dissolveNoiseTexture)
+		{
+			target.dissolveNoiseTexture = after.dissolveNoiseTexture;
+		}
+		if (before.dissolveNoiseScale != after.dissolveNoiseScale)
+		{
+			target.dissolveNoiseScale = after.dissolveNoiseScale;
 		}
 		if (before.unlit != after.unlit)
 		{

@@ -9,7 +9,7 @@
 // 이름 → TextureHandle 변환은 Renderer의 텍스처 캐시가 맡음.
 //   - 파일 경로: Assets/Textures/ 기준 상대 경로 ("uv_checker.png")
 //   - 에셋 경로: "asset:Models\Sponza\lion.jpg" — Assets/ 기준 상대 경로 (콘텐츠 브라우저 드롭)
-//   - 내장:      "builtin:white", "builtin:checker", "builtin:gray128", "builtin:flatnormal"
+//   - 내장:      "builtin:white", "builtin:checker", "builtin:gray128", "builtin:flatnormal", "builtin:noise"(디졸브 기본 노이즈)
 //   - 빈 문자열: 텍스처 없음 (알베도·금속성/거칠기·AO·발광은 1×1 흰색, 노멀 맵은 평평한 노멀로 대체)
 
 enum class SamplerPreset : uint8_t
@@ -75,7 +75,14 @@ struct Material
 	bool alphaBlend = false;           // glTF alphaMode BLEND. 알파로 뒤와 섞음 (정렬된 별도 패스)
 
 	// 알파 컷아웃 (glTF alphaMode MASK). 0 = 끔. 알베도 알파가 이 값보다 작은 픽셀은 버림(clip).
+	// 그림자도 같은 알파로 구멍이 남 (그림자 패스의 알파 테스트 변형, Shaders/ShadowAlpha.hlsli).
 	float alphaCutoff = 0.0f;
+
+	// 디졸브 노이즈 (Dissolve 컴포넌트가 붙은 오브젝트에서만 쓰임, docs/plan/object-highlight-record.html 7장). 진행도는 오브젝트별
+	// (Dissolve 컴포넌트 → b1), 노이즈 무늬는 재질별. 비면 엔진 기본 노이즈(builtin:noise)를 씀 — 재질이 여러 개인 모델도 칸을
+	// 채우지 않아도 사라짐. 선형, R 채널을 읽음. UV 는 uvScale 을 곱한 값에 dissolveNoiseScale 을 한 번 더 곱함.
+	std::string dissolveNoiseTexture;
+	float dissolveNoiseScale = 1.0f;
 
 	// 파이프라인 상태에 영향을 주는 옵션. 값이 다르면 다른 PSO를 사용함.
 	bool wireframe = false;

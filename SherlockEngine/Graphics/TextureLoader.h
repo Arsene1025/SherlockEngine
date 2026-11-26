@@ -45,6 +45,9 @@ namespace TextureLoader
 	bool CreateSolid(uint32_t size, const uint8_t rgba[4], bool srgb, TextureImage& out);
 	// 흰 둥근 사각형 (게임 UI 9-slice 기본 텍스처 builtin:ui-panel). 알파 = 가장자리에서 픽셀 중심까지 거리로 안티앨리어싱. 선형 UNORM
 	bool CreateRoundedRect(uint32_t size, float radius, TextureImage& out);
+	// 이음매 없이 타일링되는 값 노이즈 (fBm, 옥타브마다 격자 2배). 값은 순위로 다시 매겨 [0, 1] 에 고르게 퍼뜨림 — 디졸브 진행도 a 가
+	// 사라진 면적의 비율과 거의 같아지게 (builtin:noise). RGBA 모두 같은 값, 선형 UNORM, 밉 있음. 같은 seed 면 같은 결과.
+	bool CreateTileableNoise(uint32_t size, uint32_t baseCells, uint32_t octaves, uint32_t seed, TextureImage& out);
 
 	// ---- 큐브맵 (desc.dimension = TextureCube, 면 6장) ----
 	// path 가 폴더면 그 안의 면 이미지 6장(px/nx/py/ny/pz/nz, posx/negx/..., right/left/top/bottom/front/back

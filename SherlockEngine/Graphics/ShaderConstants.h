@@ -9,7 +9,7 @@
 //   갱신 빈도별로 나눔
 //   b0 PerFrame  — 프레임에 한 번. 뷰·투영·광원 ViewProj·카메라
 //   위치·시간·그림자·환경광(IBL)·출력(노출·톤매핑) 파라미터. VS와 PS 모두.
-//   b1 PerObject — 드로우마다. 월드 행렬과 노멀 변환용 역전치.          VS만.
+//   b1 PerObject — 드로우마다. 월드 행렬·노멀 변환용 역전치(VS), 오브젝트별 강조 색·디졸브(PS). VS와 PS.
 //   b2 Lights    — 프레임에 한 번(조명이 바뀔 때만이어도 됨).           PS만.
 //   b3 Material  — 재질마다. 기본색·금속성·거칠기·발광·UV 배율·노멀 맵 세기·AO 세기. VS(uvScale)와 PS.
 // 예전에는 b0 하나(world·view·proj·wvp, 320B)를 드로우마다 통째로 올렸음.
@@ -30,12 +30,12 @@
 //
 // 레지스터 배정. D3D11의 t#/s# 는 스테이지마다 번호 공간이 하나뿐이므로 셋끼리 겹치지 않게 나눔.
 // D3D12 에서는 이 구간이 그대로 디스크립터 테이블 범위가 됨.
-//   재질 셋:   t0..t6, t16..t19   s0   (알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 반사 t5·t6,
-//                                       클리어코트 t16~t18, 투과 t19, 재질 샘플러 s0)
+//   재질 셋:   t0..t6, t16..t20   s0   (알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 반사 t5·t6,
+//                                       클리어코트 t16~t18, 투과 t19, 디졸브 노이즈 t20, 재질 샘플러 s0)
 //   프레임 셋: t8..t12, t14, t15, t30, t31   s4, s5   (그림자 맵 t8, 비교 샘플러 s4, 스카이박스 t9, 환경 샘플러 s5,
 //                                 IBL 확산 조도 t10, IBL 반사 프리필터 t11, BRDF LUT t12, CSM t14, 조명 t15, 클러스터 t30·t31)
 //   그 밖의 셋(후처리 t13·s6·t20, 파티클, G-buffer, SSAO, 시간 셋·비닝 셋의 t7 등)은 아래 상수마다 적음. 한 패스에 같이
-//   묶이지 않는 셋끼리는 번호를 같이 씀 (t7·t23·t24, b4·b9·b13).
+//   묶이지 않는 셋끼리는 번호를 같이 씀 (t7·t20·t23·t24, b4·b9·b13).
 
 constexpr uint32_t kCBSlotPerFrame = 0;
 constexpr uint32_t kCBSlotPerObject = 1;
@@ -52,6 +52,7 @@ constexpr uint32_t kSRVSlotClearcoat = 16;            // t16 (재질, R = KHR_ma
 constexpr uint32_t kSRVSlotClearcoatRoughness = 17;   // t17 (재질, G = clearcoatRoughness 에 곱함)
 constexpr uint32_t kSRVSlotClearcoatNormal = 18;      // t18 (재질, 코팅 노멀 맵. 선형)
 constexpr uint32_t kSRVSlotTransmission = 19;         // t19 (재질, R = KHR_materials_transmission 의 transmissionFactor 에 곱함)
+constexpr uint32_t kSRVSlotDissolveNoise = 20;        // t20 (재질, R = 디졸브 노이즈. 비면 builtin:noise). 후처리 셋의 kSRVSlotBlurWeights 와 같은 번호 — 같은 패스에 묶이지 않음
 constexpr uint32_t kSRVSlotShadowMap = 8;             // t8 (프레임)
 constexpr uint32_t kSRVSlotEnvironment = 9;           // t9 (프레임, 스카이박스 큐브맵)
 constexpr uint32_t kSRVSlotIrradiance = 10;           // t10 (프레임, IBL 확산 조도 큐브)
@@ -62,7 +63,7 @@ constexpr uint32_t kSRVSlotLights = 15;               // t15 (프레임, 조명 
 constexpr uint32_t kSRVSlotSceneHdr = 13;             // t13 (후처리 셋, 후처리 패스의 입력 텍스처. 톤 패스는 HDR 씬, 블러·블룸은 앞 단계의 결과)
 constexpr uint32_t kCBSlotPostParams = 4;             // b4 (후처리 셋, 패스마다 올림)
 constexpr uint32_t kUAVSlotPostOutput = 0;            // u0 (컴퓨트 블러 셋, 출력 RWTexture2D)
-constexpr uint32_t kSRVSlotBlurWeights = 20;          // t20 (후처리 셋·컴퓨트 블러 셋, 가우시안 가중치 StructuredBuffer<float>. 재질 t16~t19 다음)
+constexpr uint32_t kSRVSlotBlurWeights = 20;          // t20 (후처리 셋·컴퓨트 블러 셋, 가우시안 가중치 StructuredBuffer<float>. 재질 셋의 디졸브 노이즈와 같은 번호 — 같은 패스에 묶이지 않음)
 constexpr uint32_t kUAVSlotBlurWeights = 0;           // u0 (가중치 컴퓨트 셋, RWStructuredBuffer<float>)
 constexpr uint32_t kMaxBlurRadius = 64;               // 블러 반경 상한 (픽셀). 가중치 버퍼 = kMaxBlurRadius + 1 개. 셰이더의 kMaxBlurRadius 와 같아야 함
 constexpr uint32_t kCBSlotShadowPass = 5;             // b5 (프레임 셋, VS). 그림자 패스가 뷰마다 올림
@@ -241,6 +242,14 @@ struct alignas(16) PerObjectConstants
 	DirectX::XMFLOAT4X4 world;
 	DirectX::XMFLOAT4X4 worldInvTranspose;
 	DirectX::XMFLOAT4X4 prevWorld;   // 지난 프레임 World (전치). 처음 보는 오브젝트·그림자 패스는 world 와 같음 (속도 0)
+	// 오브젝트별 표면 강조 (Scene/Highlight.h). PS 가 읽음. 강조가 없는 오브젝트는 모두 0 — 화면이 예전과 같음.
+	DirectX::XMFLOAT4 highlightTint;    // rgb = 섞을 색 (선형), a = 섞는 양 [0, 1]
+	DirectX::XMFLOAT4 highlightFlash;   // rgb = 발광에 더할 색 (색 × 세기), a = 디졸브 경계 폭 (≥ 0. 남는 칸을 빌림 — 아래)
+	DirectX::XMFLOAT4 highlightRim;     // rgb = 가장자리 빛 (색 × 세기), a = 지수 (≥ 0.1)
+	// 디졸브 (Scene/Dissolve.h, Shaders/Dissolve.hlsli). PS 가 읽음. 디졸브가 없는 오브젝트는 0 (경계 폭 highlightFlash.a 도 0).
+	// 다섯 값(진행도·폭·경계 색 셋)을 float4 하나 + highlightFlash.a 에 넣어 전체를 256 B 로 맞춤: D3D12 는 루트 CBV 크기를 256 단위로
+	// 올려 업로드 링에서 떼므로(D3D12Device::CreateBuffer), 272 B 면 드로우마다 512 B 를 써서 한 프레임에 그릴 수 있는 드로우가 반으로 줆.
+	DirectX::XMFLOAT4 dissolveEdge;     // rgb = 경계 빛 (색 × 세기), a = 진행도 [0, 1] (0 = 끔)
 };
 
 // b7 Skin — 스키닝 메시를 그릴 때만 올림. 앞의 n 개만 올려도 됨 (셰이더는 정점이 가리키는 조인트만 읽음).
@@ -316,7 +325,7 @@ struct alignas(16) SsaoConstants
 
 // 재질: uvScale·unlit·normalStrength 를 포함함.
 // PBR. specularColor·shininess 자리(16~31)에 emissive·metallic 이, 끝의 패딩 자리에
-// roughness·occlusionStrength 가 들어감. 크기는 64B 그대로.
+// roughness·occlusionStrength 가 들어감. 그 뒤로 확장 필드가 붙어 지금은 112B (아래 static_assert).
 struct alignas(16) MaterialConstants
 {
 	DirectX::XMFLOAT4 baseColor;   // 정점 색·텍스처에 곱해짐
@@ -336,7 +345,7 @@ struct alignas(16) MaterialConstants
 	float clearcoatNormalScale;
 	float transmissionFactor;   // KHR_materials_transmission. 0 = 끔
 	float blended;              // 1 = 블렌딩 패스로 그리는 재질 (알파 블렌드·투과). 출력을 미리 알파를 곱한 형태로 냄
-	float padding1;
+	float dissolveNoiseScale;   // 디졸브 노이즈 UV 배율 (Material::dissolveNoiseScale). 예전 padding1 자리
 	float padding2;
 	float padding3;
 };
@@ -496,8 +505,12 @@ static_assert(offsetof(OceanConstants, waveB) == 128, "OceanConstants.waveB");
 static_assert(offsetof(OceanConstants, params) == 256, "OceanConstants.params");
 static_assert(offsetof(OceanConstants, origin) == 272, "OceanConstants.origin");
 
-static_assert(sizeof(PerObjectConstants) == 192, "PerObjectConstants: 64*3");
+static_assert(sizeof(PerObjectConstants) == 256, "PerObjectConstants: 64*3 + 16*4 (256 을 넘으면 D3D12 업로드 링 조각이 512 B 가 됨)");
 static_assert(offsetof(PerObjectConstants, prevWorld) == 128, "PerObjectConstants.prevWorld");
+static_assert(offsetof(PerObjectConstants, highlightTint) == 192, "PerObjectConstants.highlightTint");
+static_assert(offsetof(PerObjectConstants, highlightFlash) == 208, "PerObjectConstants.highlightFlash");
+static_assert(offsetof(PerObjectConstants, highlightRim) == 224, "PerObjectConstants.highlightRim");
+static_assert(offsetof(PerObjectConstants, dissolveEdge) == 240, "PerObjectConstants.dissolveEdge");
 static_assert(IsValidConstantBufferSize(sizeof(SkinConstants)), "SkinConstants 는 16의 배수여야 함");
 static_assert(sizeof(SkinConstants) == 64 * kMaxSkinJoints, "SkinConstants: 64 * 조인트 수 (HLSL cbuffer Skin)");
 static_assert(offsetof(PerObjectConstants, worldInvTranspose) == 64, "PerObjectConstants.worldInvTranspose");
@@ -521,6 +534,7 @@ static_assert(offsetof(MaterialConstants, specularFactor) == 76, "MaterialConsta
 static_assert(offsetof(MaterialConstants, clearcoatFactor) == 80, "MaterialConstants.clearcoatFactor");
 static_assert(offsetof(MaterialConstants, transmissionFactor) == 92, "MaterialConstants.transmissionFactor");
 static_assert(offsetof(MaterialConstants, blended) == 96, "MaterialConstants.blended");
+static_assert(offsetof(MaterialConstants, dissolveNoiseScale) == 100, "MaterialConstants.dissolveNoiseScale");
 
 static_assert(sizeof(ShadowPassConstants) == 64, "ShadowPassConstants: 64");
 

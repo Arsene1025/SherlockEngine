@@ -24,6 +24,8 @@ GBufferOutput PS_GBuffer(VSOutput input, bool isFrontFace : SV_IsFrontFace)
     {
         clip(surface.a - alphaCutoff);
     }
+    // 디졸브 (Dissolve.hlsli). 버린 픽셀은 깊이도 G-buffer 도 쓰지 않음 — 뒤의 물체가 그대로 보임.
+    DissolveClip(DissolveNoise(input.uv));
     const SurfaceData s = EvaluateMaterialSurface(input, isFrontFace, surface);
 
     GBufferOutput o;

@@ -33,13 +33,20 @@ float4 ShadeForward(VSOutput input, bool isFrontFace)
     {
         clip(surface.a - alphaCutoff);
     }
+    // 디졸브 (Dissolve.hlsli). 진행도 0 이면 아무것도 하지 않음.
+    const float dissolveNoise = DissolveNoise(input.uv);
+    DissolveClip(dissolveNoise);
 
     float4 result;
     // 감마 검증용: 조명 없이 알베도를 그대로 출력함. 128 회색 텍스처가 화면에서 128로 읽혀야 함.
     // HDR: 톤매핑이 톤 패스로 옮겨 가서 이 픽셀도 노출·ACES 를 거침 — 감마 검증은 톤매핑을 끄고 노출 1 에서 할 것.
+    // 오브젝트별 강조도 받음 (기본색 섞기 + 번쩍임·가장자리 빛을 더함. 강조가 없으면 예전과 같은 값).
     if (unlit > 0.5f)
     {
-        result = blended > 0.5f ? float4(albedo * surface.a, surface.a) : float4(albedo, surface.a);
+        const float faceSign = isFrontFace ? 1.0f : -1.0f;
+        const float3 geometricNormal = faceSign * SafeNormalize(input.normal, float3(0.0f, 1.0f, 0.0f));
+        const float3 unlitColor = HighlightAlbedo(albedo) + HighlightEmission(geometricNormal, input.worldPosition) + DissolveEdgeEmission(dissolveNoise);
+        result = blended > 0.5f ? float4(unlitColor * surface.a, surface.a) : float4(unlitColor, surface.a);
     }
     else
     {

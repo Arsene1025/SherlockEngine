@@ -213,6 +213,11 @@ TextureHandle TextureCache::Load2D(const std::string& name, bool srgb, const Sce
 		// 게임 UI 9-slice 용 둥근 사각형 (32×32, 반지름 10, 흰색 + 가장자리 알파 안티앨리어싱). UIImage border 12 로 씀
 		ok = TextureLoader::CreateRoundedRect(32, 10.0f, image);
 	}
+	else if (name == "builtin:noise")
+	{
+		// 디졸브 기본 노이즈 (Material::dissolveNoiseTexture 가 비었을 때). 256², 격자 8 → 64 (옥타브 4), 값은 [0, 1] 에 고르게. 항상 선형.
+		ok = TextureLoader::CreateTileableNoise(256, 8, 4, 1, image);
+	}
 	else if (name == "builtin:checker")
 	{
 		const uint8_t a[4] = { 230, 230, 230, 255 };

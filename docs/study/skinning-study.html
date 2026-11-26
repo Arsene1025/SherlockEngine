@@ -144,7 +144,7 @@ pose.jointToObject[j] = jointWorld[j] · inverse(meshRest)   // 본 디버그용
 <tr><td>조인트 번호 4개</td><td><code>BLENDINDICES</code></td><td><code>R8G8B8A8_UINT</code> → HLSL <code>uint4</code></td><td>64</td></tr>
 <tr><td>가중치 4개</td><td><code>BLENDWEIGHT</code></td><td><code>R32G32B32A32_FLOAT</code></td><td>68</td></tr>
 </table>
-<p>합계 84 B(<code>VERTEX</code> 64 B + <code>VertexSkin</code> 20 B)입니다 <span class="tag chk">계산값</span>. 레이아웃은 <code>Graphics/VertexTypes.h</code> 의 <code>MakeVertexLayoutPCNTTSkin</code> 이 만들고, 정점 포맷 <code>PositionColorNormalTexcoordTangentSkin</code> 이면 <code>Renderer::GetPipelineFor</code>·<code>GetShadowPipelineFor</code>·<code>GetGBufferPipelineFor</code> 가 각각 <code>Pass_MainSkin</code>·<code>Pass_ShadowSkin</code>·<code>Pass_GBufferSkin</code> 을 고릅니다. 세 패스는 VS 만 다르고 PS·바인딩 레이아웃은 스킨이 아닌 패스와 같습니다. 조인트 번호가 <code>uint8</code> 이라 정점 하나가 가리킬 수 있는 조인트는 0~255 입니다.</p>
+<p>합계 84 B(<code>VERTEX</code> 64 B + <code>VertexSkin</code> 20 B)입니다 <span class="tag chk">계산값</span>. 레이아웃은 <code>Graphics/VertexTypes.h</code> 의 <code>MakeVertexLayoutPCNTTSkin</code> 이 만들고, 정점 포맷 <code>PositionColorNormalTexcoordTangentSkin</code> 이면 <code>Renderer::GetPipelineFor</code>·<code>GetShadowPipelineFor</code>·<code>GetGBufferPipelineFor</code> 가 각각 <code>Pass_MainSkin</code>·<code>Pass_ShadowSkin</code>·<code>Pass_GBufferSkin</code> 을 고릅니다(알파 테스트 그림자면 <code>Pass_ShadowAlphaSkin</code>). 이 패스들은 VS 만 다르고 PS·바인딩 레이아웃은 스킨이 아닌 패스와 같습니다. 조인트 번호가 <code>uint8</code> 이라 정점 하나가 가리킬 수 있는 조인트는 0~255 입니다.</p>
 <h3>5-2. 임포터가 맞춰 두는 것</h3>
 <ul>
 <li>음수 가중치는 0 으로 자르고 합이 1 이 되게 다시 나눕니다. 합이 0 이면 조인트 0 에 가중치 1 을 줍니다. 번호가 255 를 넘는 조인트의 영향은 버리는데(경고 로그 1회), 나누는 합에는 버리기 전 가중치가 들어 있어서 그런 정점은 가중치 합이 1 보다 작게 남습니다.</li>
@@ -180,7 +180,7 @@ pose.jointToObject[j] = jointWorld[j] · inverse(meshRest)   // 본 디버그용
 <li>b7 을 32 KB 로 늘려 두 팔레트를 한 버퍼에 넣는 안은 스킨이 아닌 드로우에도 크기가 따라와서 쓰지 않았습니다(<a href="../plan/velocity-motionblur-taa-plan.html#d-table">속도 버퍼 계획 3.2 결정 표</a>).</li>
 </ul>
 <h3>6-2. 그림자 패스</h3>
-<p>그림자도 같은 포즈로 그려야 몸과 그림자가 어긋나지 않습니다. <code>VS_ShadowSkin</code> 은 위치만 스킨해서 <code>world</code> → <code>shadowViewProj</code>(b5) 로 보냅니다. 입력 레이아웃은 메인 패스와 같은 84 B 정점을 쓰고 셰이더가 필요한 세 속성만 읽습니다. <code>Renderer::RenderShadowAtlasPass</code> 는 <code>UploadObjectConstants(item.object, false)</code> 로 불러서 b13 업로드를 건너뜁니다. 캐스케이드·스팟·포인트 면마다 드로우가 따로 있으므로 b7 업로드도 그 수만큼 반복됩니다. 그림자 쪽 원리는 <a href="shadow-map-study.html">그림자 맵 학습</a>, <a href="csm-study.html">CSM 학습</a>에 있습니다.</p>
+<p>그림자도 같은 포즈로 그려야 몸과 그림자가 어긋나지 않습니다. <code>VS_ShadowSkin</code> 은 위치만 스킨해서 <code>world</code> → <code>shadowViewProj</code>(b5) 로 보냅니다. 입력 레이아웃은 메인 패스와 같은 84 B 정점을 쓰고 셰이더가 필요한 세 속성만 읽습니다. <code>Renderer::RenderShadowAtlasPass</code> 는 <code>UploadObjectConstants(item.object, false)</code> 로 불러서 b13 업로드를 건너뜁니다. 컷아웃 재질이나 디졸브 중인 스킨 메시는 <code>VS_ShadowAlphaSkin</code> 이 UV·정점 색까지 넘기고 <code>PS_ShadowAlpha</code> 가 <code>clip</code> 합니다(2026-11-26). 캐스케이드·스팟·포인트 면마다 드로우가 따로 있으므로 b7 업로드도 그 수만큼 반복됩니다. 그림자 쪽 원리는 <a href="shadow-map-study.html">그림자 맵 학습</a>, <a href="csm-study.html">CSM 학습</a>에 있습니다.</p>
 <h3>6-3. 디퍼드 G-buffer</h3>
 <p><code>Pass_GBufferSkin</code> 은 <code>BasicSkinVS</code> 와 <code>GBufferPS</code> 를 묶은 것입니다. 스킨 VS 의 출력이 일반 VS 와 같아서 G-buffer 쪽은 바꿀 것이 없습니다(<a href="deferred-gbuffer-study.html">디퍼드 G-buffer 학습</a>).</p>
 <h3>6-4. 컬링하지 않음</h3>

@@ -60,7 +60,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <p>glTF는 이런 것을 <code>KHR_materials_*</code> 확장으로 덧붙입니다. 우리 테스트 모델 14개 중 확장을 쓰는 것은 3개입니다. <code>AlfaRomeo_1933</code>은 clearcoat·transmission, <code>USN-Hornet</code>은 specular·ior, <code>DarkDragon</code>(<code>BlackDragon_Ani_v2.gltf</code>)은 specular를 씁니다. 세 파일의 <code>extensionsUsed</code>에서 확인했고, 나머지 모델에는 확장이 없습니다. <code>KHR_materials_emissive_strength</code>를 쓰는 모델은 없습니다.</p>
 
 <h3>1-2. 확장 → 엔진 필드 지도</h3>
-<p>임포터(<code>Graphics/Import/GltfImporter.cpp</code>의 <code>ConvertMaterial</code>)가 확장을 읽어 <code>Scene/Material.h</code>의 <code>Material</code>에 넣고, <code>Renderer::GetOrCreateGpuMaterial</code>이 b3 상수버퍼(<code>MaterialConstants</code>, 112바이트)와 텍스처 칸으로 올립니다. 텍스처가 비면 흰색 1×1이 꽂혀 계수가 그대로 쓰이고, 노멀 칸은 평평한 노멀이 꽂힙니다.</p>
+<p>임포터(<code>Graphics/Import/GltfImporter.cpp</code>의 <code>ConvertMaterial</code>)가 확장을 읽어 <code>Scene/Material.h</code>의 <code>Material</code>에 넣고, <code>Renderer::GetOrCreateGpuMaterial</code>이 b3 상수버퍼(<code>MaterialConstants</code>, 112바이트)와 텍스처 칸으로 올립니다. 텍스처가 비면 흰색 1×1이 꽂혀 계수가 그대로 쓰이고, 노멀 칸은 평평한 노멀이, 디졸브 노이즈 칸(t20)은 <code>builtin:noise</code>가 꽂힙니다.</p>
 <table>
 <tr><th>glTF</th><th>Material 필드</th><th>텍스처 (레지스터, 채널, 색공간)</th><th>디퍼드에서</th></tr>
 <tr><td><code>KHR_materials_emissive_strength</code></td><td><code>emissive</code>에 곱해서 넣음 (따로 저장하지 않음)</td><td><code>emissiveTexture</code> t4, RGB, sRGB</td><td>G-buffer 패스가 <code>view.hdr</code>에 바로 씀</td></tr>
@@ -250,7 +250,7 @@ output      = float4(finalColor · alpha, opacity)     // 블렌드: One, InvSrc
 <tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
 <tr><td>재질 데이터</td><td><code>Scene/Material.h</code> 의 <code>Material</code>, <code>IsBlended</code></td><td>확장 필드와 기본값(확장 전과 같은 결과가 되는 값)</td></tr>
 <tr><td>임포트</td><td><code>Graphics/Import/GltfImporter.cpp</code> 의 <code>ConvertMaterial</code>, <code>TextureName</code></td><td>emissive_strength·ior·clearcoat·transmission·specular, alphaMode, doubleSided. 텍스처는 모두 TEXCOORD_0</td></tr>
-<tr><td>상수버퍼 배치</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>MaterialConstants</code>, <code>Shaders/Material.hlsli</code> 의 <code>cbuffer Material</code></td><td>b3, 112바이트, 바이트 단위로 같아야 함. 텍스처 레지스터 t0~t6, t16~t19</td></tr>
+<tr><td>상수버퍼 배치</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>MaterialConstants</code>, <code>Shaders/Material.hlsli</code> 의 <code>cbuffer Material</code></td><td>b3, 112바이트, 바이트 단위로 같아야 함. 텍스처 레지스터 t0~t6, t16~t20 (t20은 디졸브 노이즈, 그 배율은 오프셋 100의 <code>dissolveNoiseScale</code>)</td></tr>
 <tr><td>GPU 재질</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::GetOrCreateGpuMaterial</code></td><td>칸마다 <code>Load2D(이름, srgb)</code>(albedo는 <code>albedoSrgb</code>(기본 sRGB), emissive·specularColor는 항상 sRGB, 나머지는 선형), 상수를 프레임에 한 번 올림. 이름·핸들이 바뀔 때만 ResourceSet 재생성</td></tr>
 <tr><td>재질 레이아웃</td><td><code>Renderer.cpp</code> 의 <code>Renderer::CreateLayouts</code> (<code>materialLayout.Add</code>)</td><td>슬롯 순서. <code>ResourceSetDesc</code> 바인딩 순서와 같아야 함</td></tr>
 <tr><td>표면 값</td><td><code>Shaders/MaterialSurface.hlsli</code> 의 <code>MaterialBaseColor</code>, <code>EvaluateMaterialSurface</code></td><td>F0·F90, 노멀·뒷면 뒤집기, 코팅 값·코팅 노멀, 투과. 포워드와 G-buffer가 같이 씀</td></tr>
@@ -287,7 +287,7 @@ output      = float4(finalColor · alpha, opacity)     // 블렌드: One, InvSrc
 <table>
 <tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
 <tr><td>Blender 모델의 비금속이 거울처럼 반짝임</td><td>ior 1000만 읽고 specularColor를 빠뜨림</td><td>임포터가 둘을 함께 읽음 (2-2). 인스펙터 IOR 슬라이더는 1~3이라 드래그하면 1000이 3으로 바뀜(기록 5장). Ctrl+클릭으로 입력</td></tr>
-<tr><td>나뭇잎 구멍 모양이 그림자에 없음</td><td>그림자 패스가 VS만 쓰고 픽셀 셰이더가 없어 <code>clip</code>을 못 함</td><td>MASK 재질은 메시 윤곽 그대로 그림자를 드리움</td></tr>
+<tr><td>나뭇잎 구멍 모양이 그림자에 없음 (2026-11-26 해결)</td><td>예전 그림자 패스는 VS만 쓰고 픽셀 셰이더가 없어 <code>clip</code>을 못 함</td><td>지금은 MASK 재질(<code>alphaCutoff</code> &gt; 0)을 알파 테스트 그림자 PSO(<code>Pass_ShadowAlpha</code>, <code>PS_ShadowAlpha</code>)로 그려 구멍이 그림자에도 뚫림</td></tr>
 <tr><td>유리 뒤가 굴절되지 않고 기본색 틴트도 없음</td><td>투과를 블렌딩으로 근사</td><td>4-1 표. <code>KHR_materials_volume</code>(두께·감쇠 색)도 읽지 않음</td></tr>
 <tr><td>겹친 유리의 앞뒤가 뒤바뀜</td><td>정렬이 오브젝트 경계 구 중심 기준</td><td>한 오브젝트 안의 반투명 삼각형은 정렬하지 않음</td></tr>
 <tr><td>발광 코팅 재질이 규격보다 밝음</td><td>발광을 코팅 감쇠 뒤에 더함</td><td>3-4 상자</td></tr>

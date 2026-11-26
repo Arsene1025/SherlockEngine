@@ -1,18 +1,24 @@
 // 메시 그리기: 오브젝트 셋 (Layout_Object) 과 정점 입출력.
 // 상수버퍼 배치는 Graphics/ShaderConstants.h 와 바이트 단위로 같아야 함.
 //
-//   b1 PerObject (VS), b7 Skin (스킨 VS), b13 PrevSkin (스킨 VS, 속도 버퍼)
+//   b1 PerObject (VS·PS), b7 Skin (스킨 VS), b13 PrevSkin (스킨 VS, 속도 버퍼)
 #ifndef SHERLOCK_MESH_HLSLI
 #define SHERLOCK_MESH_HLSLI
 
 #include "Common.hlsli"
 
-// b1: 드로우마다. VS만. (192바이트)
+// b1: 드로우마다. 행렬은 VS, 강조 색·디졸브는 PS (MaterialSurface.hlsli, Dissolve.hlsli). (256바이트 — 넘기지 말 것, ShaderConstants.h 참고)
 cbuffer PerObject : register(b1)
 {
     matrix world;
     matrix worldInvTranspose;
     matrix prevWorld;           // 지난 프레임 World. 처음 보는 오브젝트·그림자 패스는 world 와 같음 (속도 0)
+    // 오브젝트별 강조 (C++ Scene/Highlight.h). 강조가 없으면 모두 0.
+    float4 highlightTint;       // rgb = 섞을 색 (선형), a = 섞는 양 [0, 1]
+    float4 highlightFlash;      // rgb = 발광에 더할 색 × 세기, a = 디졸브 경계 폭 (노이즈 값 단위. 남는 칸을 빌림)
+    float4 highlightRim;        // rgb = 가장자리 빛 색 × 세기, a = 지수 (C++ 가 0.1 이상으로 자름)
+    // 디졸브 (C++ Scene/Dissolve.h, Dissolve.hlsli). 디졸브가 없으면 모두 0.
+    float4 dissolveEdge;        // rgb = 경계 빛 색 × 세기, a = 진행도 [0, 1] (0 = 끔)
 }
 
 // b7: 스키닝 조인트 행렬 팔레트. 스킨 VS(BasicSkinVertexShader, ShadowSkinVertexShader)만 읽음. (16384바이트)

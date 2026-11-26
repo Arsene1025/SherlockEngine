@@ -139,6 +139,15 @@ namespace
 		j["transmissionTexture"] = m.transmissionTexture;
 		j["alphaBlend"] = m.alphaBlend;
 		j["alphaCutoff"] = m.alphaCutoff;
+		// 디졸브 노이즈: 기본값(빈 이름 = builtin:noise, 배율 1)이면 키를 쓰지 않음 — 이전 파일과 같은 모양
+		if (!m.dissolveNoiseTexture.empty())
+		{
+			j["dissolveNoiseTexture"] = m.dissolveNoiseTexture;
+		}
+		if (m.dissolveNoiseScale != 1.0f)
+		{
+			j["dissolveNoiseScale"] = m.dissolveNoiseScale;
+		}
 		j["wireframe"] = m.wireframe;
 		j["doubleSided"] = m.doubleSided;
 		if (m.modelMaterialIndex >= 0 && !m.modelPath.empty())   // 모델 공유 재질의 출처 (없으면 키 자체를 쓰지 않아 이전 파일과 같은 모양)
@@ -194,6 +203,8 @@ namespace
 		m.transmissionTexture = j.value("transmissionTexture", m.transmissionTexture);
 		m.alphaBlend = j.value("alphaBlend", m.alphaBlend);
 		m.alphaCutoff = j.value("alphaCutoff", 0.0f);
+		m.dissolveNoiseTexture = j.value("dissolveNoiseTexture", m.dissolveNoiseTexture);
+		m.dissolveNoiseScale = j.value("dissolveNoiseScale", m.dissolveNoiseScale);
 		m.wireframe = j.value("wireframe", false);
 		m.doubleSided = j.value("doubleSided", false);
 		m.modelPath = ToWide(j.value("modelPath", ""));

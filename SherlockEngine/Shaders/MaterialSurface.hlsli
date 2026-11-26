@@ -3,13 +3,15 @@
 //
 // 두 단계로 나뉨:
 //   MaterialBaseColor        기본색·알파 (텍스처 × 정점 색 × baseColor). 알파 컷아웃과 unlit 판정이 이 값만 씀
-//   EvaluateMaterialSurface  나머지 PBR 입력과 노멀 (노말맵·뒷면 뒤집기·클리어코트 노멀)
+//   EvaluateMaterialSurface  나머지 PBR 입력과 노멀 (노말맵·뒷면 뒤집기·클리어코트 노멀), 오브젝트별 강조·디졸브 경계 빛 (b1)
+// 디졸브의 clip 은 PS 가 컷아웃 clip 바로 뒤에서 직접 부름 (DissolveClip) — 이 파일은 경계 빛만 발광에 더함.
 #ifndef SHERLOCK_MATERIAL_SURFACE_HLSLI
 #define SHERLOCK_MATERIAL_SURFACE_HLSLI
 
 #include "Mesh.hlsli"
 #include "Material.hlsli"
 #include "Shading.hlsli"
+#include "Dissolve.hlsli"
 
 // 재질의 기본색 × 정점 색 × 텍스처. sRGB 텍스처는 샘플링할 때 하드웨어가 선형으로 변환해 주므로
 // 여기서부터 모든 색은 선형 공간임.
@@ -19,11 +21,29 @@ float4 MaterialBaseColor(VSOutput input)
     return input.col * baseColor * texel;
 }
 
+// 오브젝트별 강조 (b1 PerObject 의 highlight*, C++ Scene/Highlight.h). 강조가 없는 오브젝트는 값이 모두 0 이라 lerp(…, 0) 과
+// + 0 이 되어 결과가 강조 이전과 같음. 포워드의 unlit 경로(BasicPixelShader.hlsl)도 같은 두 함수를 씀.
+// 기본색 섞기: F0 를 만들기 전에 섞어야 금속도 색이 바뀜 (금속은 확산이 없고 F0 = 기본색).
+float3 HighlightAlbedo(float3 albedo)
+{
+    return lerp(albedo, highlightTint.rgb, saturate(highlightTint.a));
+}
+
+// 발광에 더할 값: 번쩍임 + 가장자리 빛. 가장자리 빛은 기하 노멀(노말맵 전)로 계산함 — 실루엣을 따라야 하고, 노말맵의 잔무늬가
+// 반짝이지 않게. 시선 방향은 포워드 조명과 같은 식 (카메라 위치 − 픽셀 위치). 지수는 C++ 가 0.1 이상으로 넘기지만 여기서도 자름
+// (0 지수의 pow(0, 0) 이 NaN 이 되지 않게).
+float3 HighlightEmission(float3 geometricNormal, float3 worldPosition)
+{
+    const float3 viewDirection = SafeNormalize(cameraPosition - worldPosition, float3(0.0f, 0.0f, -1.0f));
+    const float rim = pow(saturate(1.0f - saturate(dot(geometricNormal, viewDirection))), max(highlightRim.a, 0.1f));
+    return highlightFlash.rgb + highlightRim.rgb * rim;
+}
+
 // baseColorAlpha = MaterialBaseColor 의 결과. isFrontFace = SV_IsFrontFace (양면 재질의 뒷면 노멀을 뒤집음).
 SurfaceData EvaluateMaterialSurface(VSOutput input, bool isFrontFace, float4 baseColorAlpha)
 {
     SurfaceData s;
-    s.albedo = baseColorAlpha.rgb;
+    s.albedo = HighlightAlbedo(baseColorAlpha.rgb);
     s.alpha = baseColorAlpha.a;
 
     // PBR 입력. 텍스처가 없으면 흰색이라 계수가 그대로 쓰임. 거칠기 하한은 GGX 의 0 나눗셈과 점광원의 바늘
@@ -67,6 +87,9 @@ SurfaceData EvaluateMaterialSurface(VSOutput input, bool isFrontFace, float4 bas
     // 투과 (KHR_materials_transmission): 비금속의 확산을 transmission 만큼 줄이고, 블렌딩 재질은 그만큼 뒤가 비치게
     // 알파를 낮춤 (BasicPS 끝). 반사(스페큘러)는 줄이지 않음. 굴절·틴트는 없음 — 뒤의 색이 그대로 비침.
     s.transmission = saturate(transmissionFactor * transmissionTexture.Sample(albedoSampler, input.uv).r) * (1.0f - s.metallic);
+
+    // 오브젝트별 강조의 발광 몫과 디졸브 경계 빛. 포워드는 조명 결과에, 디퍼드는 G-buffer 의 발광 칸(view.hdr)에 그대로 실림.
+    s.emission += HighlightEmission(s.geometricNormal, input.worldPosition) + DissolveEdgeEmission(DissolveNoise(input.uv));
     return s;
 }
 

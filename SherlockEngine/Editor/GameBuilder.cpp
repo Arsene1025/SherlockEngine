@@ -166,7 +166,7 @@ namespace
 		}
 		for (const auto& material : root.value("materials", nlohmann::json::array()))
 		{
-			for (const char* key : { "albedoTexture", "normalTexture", "metallicRoughnessTexture", "occlusionTexture", "emissiveTexture", "specularTexture", "specularColorTexture", "clearcoatTexture", "clearcoatRoughnessTexture", "clearcoatNormalTexture", "transmissionTexture" })
+			for (const char* key : { "albedoTexture", "normalTexture", "metallicRoughnessTexture", "occlusionTexture", "emissiveTexture", "specularTexture", "specularColorTexture", "clearcoatTexture", "clearcoatRoughnessTexture", "clearcoatNormalTexture", "transmissionTexture", "dissolveNoiseTexture" })
 			{
 				const std::string name = material.value(key, "");
 				if (name.empty() || name.rfind("builtin:", 0) == 0) continue;
@@ -264,6 +264,7 @@ namespace
 		{ "clearcoatRoughnessTexture", &Material::clearcoatRoughnessTexture, 0 },
 		{ "clearcoatNormalTexture", &Material::clearcoatNormalTexture, 0 },
 		{ "transmissionTexture", &Material::transmissionTexture, 0 },
+		{ "dissolveNoiseTexture", &Material::dissolveNoiseTexture, 0 },   // 비면 builtin:noise (패키지에 실을 것 없음)
 	};
 
 	struct TextureCookInput

@@ -13,6 +13,8 @@
 #include "Graphics/Mesh.h"
 #include "Scene/Scene.h"
 #include "Scene/Camera.h"
+#include "Scene/Highlight.h"
+#include "Scene/Dissolve.h"
 #include "Core/Paths.h"
 #include "Core/Log.h"
 #include "Core/Profiler.h"   // GPU 구간
@@ -81,6 +83,10 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] = {
 	// 게임 UI 캔버스 (docs/plan/ui-canvas-plan.html, Shaders/UI.hlsli)
 	{ L"UIVertexShader.hlsl", "VS_UI", ShaderStage::Vertex, "UIVS" },
 	{ L"UIPixelShader.hlsl", "PS_UI", ShaderStage::Pixel, "UIPS" },
+	// 알파 테스트 그림자 (컷아웃 재질·디졸브. Shaders/ShadowAlpha.hlsli)
+	{ L"ShadowAlphaVertexShader.hlsl", "VS_ShadowAlpha", ShaderStage::Vertex, "ShadowAlphaVS" },
+	{ L"ShadowAlphaSkinVertexShader.hlsl", "VS_ShadowAlphaSkin", ShaderStage::Vertex, "ShadowAlphaSkinVS" },
+	{ L"ShadowAlphaPixelShader.hlsl", "PS_ShadowAlpha", ShaderStage::Pixel, "ShadowAlphaPS" },
 };
 
 struct Renderer::PassInfo
@@ -114,6 +120,8 @@ const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] = {
 	{ "GBufferOcean", Shader_OceanVS, Shader_OceanGBufferPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
 	{ "UI", Shader_UIVS, Shader_UIPS, { Layout_UICommon, Layout_UITexture }, 2 },   // 톤 패스 뒤, UNORM 뷰 (RendererUI.cpp)
 	{ "UIWorld", Shader_UIVS, Shader_UIPS, { Layout_UICommon, Layout_UITexture }, 2 },   // World 캔버스: 같은 셰이더 + 읽기 전용 깊이
+	{ "ShadowAlpha", Shader_ShadowAlphaVS, Shader_ShadowAlphaPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },   // 그림자 + 알파 테스트 (재질 셋의 알베도 알파·노이즈)
+	{ "ShadowAlphaSkin", Shader_ShadowAlphaSkinVS, Shader_ShadowAlphaPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
 };
 
 struct Renderer::ComputePassInfo
@@ -143,6 +151,18 @@ const Renderer::ComputePassInfo Renderer::kComputePasses[Renderer::ComputePass_C
 namespace
 {
 	constexpr float kHotReloadPollInterval = 0.5f;   // 초
+
+	// 오브젝트에 켜진 T(Highlight·Dissolve)가 있으면 그것, 없으면 조상에게서 물려받은 것 (가까운 쪽이 이김).
+	template <typename T>
+	const T* ResolveInherited(const GameObject& object, const T* inherited)
+	{
+		for (const auto& behaviour : object.GetBehaviours())
+		{
+			const T* own = dynamic_cast<const T*>(behaviour.get());
+			if (own != nullptr && own->enabled) return own;
+		}
+		return inherited;
+	}
 	constexpr uint32_t kInitialLightCapacity = 64;   // 조명 구조체 버퍼의 처음 원소 수 (5,120바이트)
 
 	// HLSL cbuffer 이름 ↔ C++ 구조체 크기. 셰이더가 선언한 cbuffer 는 전부 여기 있어야 함 (없으면 로드 실패).
@@ -341,12 +361,12 @@ bool Renderer::CreateLayouts()
 	BindingLayoutDesc& objectLayout = m_layoutDescs[Layout_Object];
 	objectLayout = BindingLayoutDesc{};
 	objectLayout.debugName = "Layout_Object";
-	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotPerObject);
+	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex | ShaderStageMask_Pixel, kCBSlotPerObject);   // b1: 행렬은 VS, 강조 색(highlight*)은 PS
 	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotSkin);                            // 스키닝 VS 만 읽음. 다른 VS 는 선언만 해 두고 안 씀
 	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex, kCBSlotPrevSkin);                        // b13 지난 프레임 팔레트 (메인·G-buffer 스킨 VS 의 속도)
 	objectLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex | ShaderStageMask_Pixel, kCBSlotOcean);   // b9 바다 파도. 바다 VS·PS 만 읽음 (CS 충돌 셋의 b9 와는 한 패스에 같이 묶이지 않음)
 
-	// 재질 셋: 상수(b3, uvScale 때문에 VS도), 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 반사 세기 t5, 반사 색 t6, 클리어코트 t16~t18, 투과 t19, 샘플러 s0.
+	// 재질 셋: 상수(b3, uvScale 때문에 VS도), 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 반사 세기 t5, 반사 색 t6, 클리어코트 t16~t18, 투과 t19, 디졸브 노이즈 t20, 샘플러 s0.
 	BindingLayoutDesc& materialLayout = m_layoutDescs[Layout_Material];
 	materialLayout = BindingLayoutDesc{};
 	materialLayout.debugName = "Layout_Material";
@@ -362,6 +382,7 @@ bool Renderer::CreateLayouts()
 	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotClearcoatRoughness);
 	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotClearcoatNormal);
 	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotTransmission);
+	materialLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotDissolveNoise);   // t20 디졸브 노이즈
 	materialLayout.Add(BindingType::Sampler, ShaderStageMask_Pixel, kSamplerSlotMaterial);
 
 	// 후처리 셋: b0 (PerFrame: 노출·톤매핑·디버그 뷰), b4 (PostParams: 패스 파라미터), t13 (입력 텍스처), s6
@@ -549,9 +570,9 @@ void Renderer::BuildPassDescs()
 	// 나머지(깊이 테스트 켬, 불투명, 트라이앵글 리스트)는 Desc 기본값. 패스마다 다른 부분만 적음.
 	// 메인 패스: 재질·설정에 따라 달라지는 필드(fill, cull, 정점 레이아웃, 타깃 포맷)는 GetPipelineFor 가 채움.
 
-	// 그림자 패스: VS 만(ps 는 빈 핸들), 렌더 타깃 없음, 깊이 D32_FLOAT. 래스터라이저 깊이 바이어스로 자기
+	// 그림자 패스: VS 만(ps 는 빈 핸들. 알파 테스트 변형 Pass_ShadowAlpha* 만 PS 가 있음), 렌더 타깃 없음, 깊이 D32_FLOAT. 래스터라이저 깊이 바이어스로 자기
 	// 그림자(acne)를 줄임. D32_FLOAT 에서 DepthBias 단위는 2^(지수−23) — z ≈ 0.5 면 한 단위가 6e-8 임.
-	for (PassId id : { Pass_Shadow, Pass_ShadowSkin })
+	for (PassId id : { Pass_Shadow, Pass_ShadowSkin, Pass_ShadowAlpha, Pass_ShadowAlphaSkin })
 	{
 		PipelineStateDesc& shadow = m_passDesc[id];
 		shadow.rasterizer.depthBias = 2000;
@@ -1650,7 +1671,7 @@ void Renderer::BuildDrawList(const Scene& scene)
 
 	m_frameEmitters.clear();
 	m_frameOcean.active = false;
-	const auto addObject = [&](const GameObject& object, const XMMATRIX& world)
+	const auto addObject = [&](const GameObject& object, const XMMATRIX& world, const Highlight* highlight, const Dissolve* dissolve)
 	{
 		CollectEmitter(object, world);   // 메시가 없는 오브젝트도 이미터일 수 있으므로 아래 return 보다 먼저
 		const Mesh* mesh = object.GetMesh();
@@ -1685,6 +1706,27 @@ void Renderer::BuildDrawList(const Scene& scene)
 		if (ocean)
 		{
 			data.sphere.w += Ocean::MaxDisplacement(m_frameOcean.waves, m_frameOcean.waveCount);
+		}
+		// 오브젝트별 강조 (b1). 값의 범위는 여기서 자름: 섞는 양 [0, 1], 세기 ≥ 0, 가장자리 지수 ≥ 0.1 (셰이더 pow 의 0 지수 방지).
+		if (highlight != nullptr)
+		{
+			const float tintAmount = std::clamp(highlight->tintAmount, 0.0f, 1.0f);
+			const float flash = (std::max)(highlight->flashIntensity, 0.0f);
+			const float rim = (std::max)(highlight->rimIntensity, 0.0f);
+			data.highlightTint = XMFLOAT4(highlight->tintColor.x, highlight->tintColor.y, highlight->tintColor.z, tintAmount);
+			data.highlightFlash = XMFLOAT4(highlight->flashColor.x * flash, highlight->flashColor.y * flash, highlight->flashColor.z * flash, 0.0f);
+			data.highlightRim = XMFLOAT4(highlight->rimColor.x * rim, highlight->rimColor.y * rim, highlight->rimColor.z * rim,
+										 (std::max)(highlight->rimPower, 0.1f));
+		}
+		// 디졸브 (b1). 진행도 [0, 1], 경계 폭·세기 ≥ 0. 진행도 0 이면 셰이더가 아무것도 하지 않고 그림자도 빠른 경로 그대로.
+		bool dissolving = false;
+		if (dissolve != nullptr)
+		{
+			const float amount = std::clamp(dissolve->amount, 0.0f, 1.0f);
+			const float edge = (std::max)(dissolve->edgeIntensity, 0.0f);
+			data.dissolveEdge = XMFLOAT4(dissolve->edgeColor.x * edge, dissolve->edgeColor.y * edge, dissolve->edgeColor.z * edge, amount);
+			data.highlightFlash.w = (std::max)(dissolve->edgeWidth, 0.0f);   // b1 을 256 B 로 맞추려고 번쩍임의 남는 칸에 둠 (ShaderConstants.h)
+			dissolving = amount > 0.0f;
 		}
 		// 속도 버퍼: 지난 프레임의 이 오브젝트 (id 는 씬 안에서 고유). 없으면 이번 값 = 속도 0.
 		data.prevWorld = data.world;
@@ -1729,7 +1771,9 @@ void Renderer::BuildDrawList(const Scene& scene)
 			// 블렌딩 재질(유리·반투명)도 그림자를 만들지 않음: 그림자 맵은 불투명한 차폐만 담고, 반투명은 알파가 없어 통째로 가림.
 			item.blended = IsBlended(*material);
 			// 바다도 그림자를 만들지 않음 (받기만 함): 넓고 거의 평평한 면이 그림자 맵에 들어가면 비용만 들고 자기 그림자 여드름이 생김.
-			item.shadowPipeline = (material->unlit || item.blended || ocean) ? PipelineHandle{} : GetShadowPipelineFor(*material, mesh->GetVertexFormat(), mirrored);
+			// 컷아웃 재질과 디졸브 중인 오브젝트는 알파 테스트 그림자 (PS 가 같은 알파·노이즈로 구멍을 냄). 나머지는 PS 없는 빠른 경로.
+			item.shadowAlpha = material->alphaCutoff > 0.0f || dissolving;
+			item.shadowPipeline = (material->unlit || item.blended || ocean) ? PipelineHandle{} : GetShadowPipelineFor(*material, mesh->GetVertexFormat(), mirrored, item.shadowAlpha);
 			// 디퍼드 (2단계): G-buffer 에 담을 수 있는 재질이면 G-buffer PSO 도 만들어 둠. 디퍼드를 꺼도 만들어 두는 이유: 토글할 때
 			// 드로우 목록을 다시 만들지 않으려고 (PSO 는 캐시라 한 번만 생성). 실패하면 포워드로 그림.
 			item.deferred = CanUseDeferred(*material);
@@ -1758,12 +1802,14 @@ void Renderer::BuildDrawList(const Scene& scene)
 		const GameObject& root = *rootPtr;   // 씬이 unique_ptr 로 소유함
 		if (root.GetParent() != nullptr) continue;
 		const XMMATRIX rootWorld = root.GetTransform().GetLocalMatrix();   // 루트는 로컬 = 월드
-		addObject(root, rootWorld);
+		const Highlight* rootHighlight = ResolveInherited<Highlight>(root, nullptr);
+		const Dissolve* rootDissolve = ResolveInherited<Dissolve>(root, nullptr);
+		addObject(root, rootWorld, rootHighlight, rootDissolve);
 		++visited;
 		if (root.GetChildren().empty()) continue;
 
 		m_hierarchyStack.clear();
-		m_hierarchyStack.push_back(HierarchyFrame{ &root, 0, {} });
+		m_hierarchyStack.push_back(HierarchyFrame{ &root, 0, {}, rootHighlight, rootDissolve });
 		XMStoreFloat4x4(&m_hierarchyStack.back().world, rootWorld);
 		while (!m_hierarchyStack.empty())
 		{
@@ -1777,11 +1823,13 @@ void Renderer::BuildDrawList(const Scene& scene)
 			const GameObject& child = *children[frame.next++];
 			// 행벡터 관례: 자식 로컬을 먼저 적용하고 부모로 올라감 (GameObject::GetWorldMatrix 와 같은 곱셈 순서)
 			const XMMATRIX world = child.GetTransform().GetLocalMatrix() * XMLoadFloat4x4(&frame.world);
-			addObject(child, world);
+			const Highlight* childHighlight = ResolveInherited<Highlight>(child, frame.highlight);
+			const Dissolve* childDissolve = ResolveInherited<Dissolve>(child, frame.dissolve);
+			addObject(child, world, childHighlight, childDissolve);
 			++visited;
 			if (!child.GetChildren().empty())
 			{
-				HierarchyFrame next{ &child, 0, {} };
+				HierarchyFrame next{ &child, 0, {}, childHighlight, childDissolve };
 				XMStoreFloat4x4(&next.world, world);
 				m_hierarchyStack.push_back(next);   // frame 참조는 이 뒤로 쓰지 않음 (벡터가 늘어나며 무효가 될 수 있음)
 			}
@@ -1816,6 +1864,10 @@ void Renderer::UploadObjectConstants(uint32_t object, bool withHistory)
 	perObject.world = data.world;
 	perObject.worldInvTranspose = data.worldInvTranspose;
 	perObject.prevWorld = withHistory ? data.prevWorld : data.world;
+	perObject.highlightTint = data.highlightTint;     // 그림자 패스(알파 테스트 변형이 아니면 PS 없음)에서도 버퍼 전체를 채워 올림 — perObject 는 초기화하지 않은 지역 변수
+	perObject.highlightFlash = data.highlightFlash;
+	perObject.highlightRim = data.highlightRim;
+	perObject.dissolveEdge = data.dissolveEdge;   // 그림자 알파 PS 도 읽음
 	m_device->UpdateBuffer(m_perObjectCB, &perObject, sizeof(perObject));
 
 	if (data.skinned)
@@ -2276,7 +2328,7 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		? static_cast<SamplerPreset>(m_settings.samplerOverride)
 		: material.sampler;
 	const SamplerHandle sampler = GetSampler(preset);
-	const bool unchanged = gpuMaterial->set.IsValid() && gpuMaterial->textureGeneration == m_textures.GetGeneration() && gpuMaterial->sampler == sampler && gpuMaterial->albedoSrgb == material.albedoSrgb && gpuMaterial->albedoName == material.albedoTexture && gpuMaterial->normalName == material.normalTexture && gpuMaterial->metallicRoughnessName == material.metallicRoughnessTexture && gpuMaterial->occlusionName == material.occlusionTexture && gpuMaterial->emissiveName == material.emissiveTexture && gpuMaterial->specularName == material.specularTexture && gpuMaterial->specularColorName == material.specularColorTexture && gpuMaterial->clearcoatName == material.clearcoatTexture && gpuMaterial->clearcoatRoughnessName == material.clearcoatRoughnessTexture && gpuMaterial->clearcoatNormalName == material.clearcoatNormalTexture && gpuMaterial->transmissionName == material.transmissionTexture;
+	const bool unchanged = gpuMaterial->set.IsValid() && gpuMaterial->textureGeneration == m_textures.GetGeneration() && gpuMaterial->sampler == sampler && gpuMaterial->albedoSrgb == material.albedoSrgb && gpuMaterial->albedoName == material.albedoTexture && gpuMaterial->normalName == material.normalTexture && gpuMaterial->metallicRoughnessName == material.metallicRoughnessTexture && gpuMaterial->occlusionName == material.occlusionTexture && gpuMaterial->emissiveName == material.emissiveTexture && gpuMaterial->specularName == material.specularTexture && gpuMaterial->specularColorName == material.specularColorTexture && gpuMaterial->clearcoatName == material.clearcoatTexture && gpuMaterial->clearcoatRoughnessName == material.clearcoatRoughnessTexture && gpuMaterial->clearcoatNormalName == material.clearcoatNormalTexture && gpuMaterial->transmissionName == material.transmissionTexture && gpuMaterial->dissolveNoiseName == material.dissolveNoiseTexture;
 	if (!unchanged)
 	{
 		const TextureHandle albedo = m_textures.Load2D(material.albedoTexture, material.albedoSrgb, scene);
@@ -2293,14 +2345,16 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		const TextureHandle clearcoatRoughness = m_textures.Load2D(material.clearcoatRoughnessTexture, false, scene);
 		const TextureHandle transmission = m_textures.Load2D(material.transmissionTexture, false, scene);   // 흰색 대체: 계수가 그대로 쓰임
 		const TextureHandle clearcoatNormal = material.clearcoatNormalTexture.empty() ? m_textures.GetFlatNormal() : m_textures.Load2D(material.clearcoatNormalTexture, false, scene);
+		// 디졸브 노이즈: 빈 이름은 흰색이 아니라 엔진 기본 노이즈 — 흰색(1)이면 진행도가 끝날 때까지 안 사라지다 한꺼번에 사라짐.
+		const TextureHandle dissolveNoise = m_textures.Load2D(material.dissolveNoiseTexture.empty() ? std::string("builtin:noise") : material.dissolveNoiseTexture, false, scene);
 
 		// 실제로 꽂히는 핸들이 달라졌을 때만 ResourceSet 을 다시 만듦. ResourceSet은 값 객체라 부분 갱신 기능이
 		// 없음 — D3D12 디스크립터 테이블도 다시 써야 함.
-		if (!gpuMaterial->set.IsValid() || gpuMaterial->boundAlbedo != albedo || gpuMaterial->boundNormal != normal || gpuMaterial->boundSampler != sampler || gpuMaterial->boundMetallicRoughness != metallicRoughness || gpuMaterial->boundOcclusion != occlusion || gpuMaterial->boundEmissive != emissive || gpuMaterial->boundSpecular != specular || gpuMaterial->boundSpecularColor != specularColor || gpuMaterial->boundClearcoat != clearcoat || gpuMaterial->boundClearcoatRoughness != clearcoatRoughness || gpuMaterial->boundClearcoatNormal != clearcoatNormal || gpuMaterial->boundTransmission != transmission)
+		if (!gpuMaterial->set.IsValid() || gpuMaterial->boundAlbedo != albedo || gpuMaterial->boundNormal != normal || gpuMaterial->boundSampler != sampler || gpuMaterial->boundMetallicRoughness != metallicRoughness || gpuMaterial->boundOcclusion != occlusion || gpuMaterial->boundEmissive != emissive || gpuMaterial->boundSpecular != specular || gpuMaterial->boundSpecularColor != specularColor || gpuMaterial->boundClearcoat != clearcoat || gpuMaterial->boundClearcoatRoughness != clearcoatRoughness || gpuMaterial->boundClearcoatNormal != clearcoatNormal || gpuMaterial->boundTransmission != transmission || gpuMaterial->boundDissolveNoise != dissolveNoise)
 		{
 			m_device->DestroyResourceSet(gpuMaterial->set);
 			// 슬롯 순서는 CreateLayouts 의 materialLayout.Add(...) 순서: b3 상수, t0 알베도, t1 노멀, t2
-			// 금속성/거칠기, t3 AO, t4 발광, t5 반사 세기, t6 반사 색, t16~t18 클리어코트, t19 투과, s0 샘플러.
+			// 금속성/거칠기, t3 AO, t4 발광, t5 반사 세기, t6 반사 색, t16~t18 클리어코트, t19 투과, t20 디졸브 노이즈, s0 샘플러.
 			const ResourceSetDesc setDesc{
 				.layout = m_layouts[Layout_Material],
 				.bindings = {
@@ -2316,6 +2370,7 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 					{ .texture = clearcoatRoughness },
 					{ .texture = clearcoatNormal },
 					{ .texture = transmission },
+					{ .texture = dissolveNoise },
 					{ .sampler = sampler },
 				},
 				.debugName = "Set_Material",
@@ -2332,6 +2387,7 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 			gpuMaterial->boundClearcoatRoughness = clearcoatRoughness;
 			gpuMaterial->boundClearcoatNormal = clearcoatNormal;
 			gpuMaterial->boundTransmission = transmission;
+			gpuMaterial->boundDissolveNoise = dissolveNoise;
 			gpuMaterial->boundSampler = sampler;
 			if (!gpuMaterial->set.IsValid())
 			{
@@ -2350,6 +2406,7 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		gpuMaterial->clearcoatRoughnessName = material.clearcoatRoughnessTexture;
 		gpuMaterial->clearcoatNormalName = material.clearcoatNormalTexture;
 		gpuMaterial->transmissionName = material.transmissionTexture;
+		gpuMaterial->dissolveNoiseName = material.dissolveNoiseTexture;
 		gpuMaterial->albedoSrgb = material.albedoSrgb;
 		gpuMaterial->sampler = sampler;
 		gpuMaterial->textureGeneration = m_textures.GetGeneration();
@@ -2378,6 +2435,7 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		constants.unlit = material.unlit ? 1.0f : 0.0f;
 		constants.normalStrength = m_settings.normalMapping ? material.normalStrength : 0.0f;
 		constants.alphaCutoff = material.alphaCutoff;
+		constants.dissolveNoiseScale = material.dissolveNoiseScale;
 		m_device->UpdateBuffer(gpuMaterial->constants, &constants, sizeof(constants));
 		gpuMaterial->uploadedFrame = m_frameNumber;
 	}
@@ -2432,14 +2490,16 @@ PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat v
 	return handle;
 }
 
-PipelineHandle Renderer::GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored)
+PipelineHandle Renderer::GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored, bool alphaTest)
 {
 	// 그림자는 항상 솔리드로 그림 (와이어프레임 재질도 실체는 있음). 양면 재질은 컬링 없이 그림.
-	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (material.doubleSided ? 1u << 9 : 0u);
+	// 알파 테스트(컷아웃·디졸브)는 PS 가 있는 변형 — 셋도 재질 셋까지 셋이라 루트 시그니처가 다름 (비트 10).
+	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (material.doubleSided ? 1u << 9 : 0u) | (alphaTest ? 1u << 10 : 0u);
 	auto found = m_shadowPipelines.find(key);
 	if (found != m_shadowPipelines.end()) return found->second;
 
-	PipelineStateDesc desc = m_passDesc[vertexFormat == VertexFormat::PositionColorNormalTexcoordTangentSkin ? Pass_ShadowSkin : Pass_Shadow];
+	const bool skinned = vertexFormat == VertexFormat::PositionColorNormalTexcoordTangentSkin;
+	PipelineStateDesc desc = m_passDesc[alphaTest ? (skinned ? Pass_ShadowAlphaSkin : Pass_ShadowAlpha) : (skinned ? Pass_ShadowSkin : Pass_Shadow)];
 	desc.vertexLayout = GetVertexLayout(vertexFormat);
 	desc.rasterizer.frontCounterClockwise = mirrored ? !desc.rasterizer.frontCounterClockwise : desc.rasterizer.frontCounterClockwise;
 	desc.rasterizer.cull = material.doubleSided ? CullMode::None : CullMode::Back;

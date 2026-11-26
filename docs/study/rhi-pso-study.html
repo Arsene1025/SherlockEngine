@@ -203,7 +203,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <section id="cache">
 <h2>6. 두 단계 캐시: Renderer의 작은 키, Device의 Desc 키</h2>
 <h3>6-1. 패스 표와 m_passDesc</h3>
-<p>Renderer는 그래픽스 패스를 <code>Graphics/Renderer.h</code>의 <code>PassId</code>(21개 <span class="tag chk">계산값</span>)로 나누고, <code>Graphics/Renderer.cpp</code>의 <code>kPasses</code> 표에 패스마다 (이름, VS, PS, 레이아웃 목록)을 적습니다. 예: <code>{ "Main", Shader_BasicVS, Shader_BasicPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 }</code>. 레이아웃 순서가 곧 셋 인덱스(<code>kSetFrame</code> = 0 등)입니다. 컴퓨트는 <code>ComputePassId</code>(13개 <span class="tag chk">계산값</span>)와 <code>kComputePasses</code>가 따로 있습니다.</p>
+<p>Renderer는 그래픽스 패스를 <code>Graphics/Renderer.h</code>의 <code>PassId</code>(23개 <span class="tag chk">계산값</span>)로 나누고, <code>Graphics/Renderer.cpp</code>의 <code>kPasses</code> 표에 패스마다 (이름, VS, PS, 레이아웃 목록)을 적습니다. 예: <code>{ "Main", Shader_BasicVS, Shader_BasicPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 }</code>. 레이아웃 순서가 곧 셋 인덱스(<code>kSetFrame</code> = 0 등)입니다. 컴퓨트는 <code>ComputePassId</code>(13개 <span class="tag chk">계산값</span>)와 <code>kComputePasses</code>가 따로 있습니다.</p>
 <p><code>Renderer::BuildPassDescs</code>는 이 표와 지금의 셰이더 핸들로 <code>m_passDesc[Pass_Count]</code>를 채운 뒤, 패스마다 다른 고정 부분만 덮어씁니다. 그림자는 <code>rtvCount = 0</code>, <code>dsvFormat = D32_FLOAT</code>, <code>depthBias = 2000</code>·<code>depthBiasClamp = 0.01</code>·<code>slopeScaledDepthBias = 2.0</code>, 스카이는 <code>LessEqual</code>에 쓰기 끔, 풀스크린 패스는 깊이 없음(<code>dsvFormat = Unknown</code>), UI는 알파 블렌딩과 UNORM 출력입니다. 마지막에 작은 키 캐시와 패스별 핸들을 전부 비웁니다. 셰이더를 추가하는 절차(<code>ShaderId</code> → <code>kShaders</code> → 필요하면 <code>PassId</code>·<code>kPasses</code> → <code>BuildPassDescs</code>)는 이 파일 머리 주석에 있고, 로드·핫리로드 감시·cbuffer 대조·바인딩 대조·해제는 모두 표를 돌기 때문에 다른 곳을 고칠 필요가 없습니다.</p>
 
 <h3>6-2. 작은 키</h3>
@@ -228,12 +228,12 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <text x="20" y="160">그림자</text><text x="20" y="176" style="font-size:12px">m_shadowPipelines</text>
 <rect x="170" y="144" width="96" height="40" style="fill:var(--fill);stroke:var(--line)"/><text x="212" y="169">—</text>
 <rect x="270" y="144" width="96" height="40" style="fill:var(--fill);stroke:var(--line)"/><text x="312" y="169">—</text>
-<rect x="370" y="144" width="96" height="40" style="fill:var(--fill);stroke:var(--line)"/><text x="412" y="169">—</text>
+<rect x="370" y="144" width="96" height="40" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="384" y="169">alphaTest</text>
 <rect x="470" y="144" width="96" height="40" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="478" y="169">doubleSided</text>
 <rect x="570" y="144" width="96" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="588" y="169">mirrored</text>
 <rect x="670" y="144" width="200" height="40" style="fill:var(--paper);stroke:var(--accent)"/><text x="684" y="169">vertexFormat</text>
 </svg>
-<figcaption>그림 2. 작은 키의 비트. 메인은 <code>Renderer::GetPipelineFor</code>, G-buffer는 <code>RendererDeferred.cpp</code>의 <code>GetGBufferPipelineFor</code>(블렌딩 재질은 G-buffer로 오지 않아 비트 11이 비어 있음), 그림자는 <code>GetShadowPipelineFor</code>(비트 9의 뜻이 <code>doubleSided</code>). 키는 맵마다 따로라 같은 숫자가 다른 뜻이어도 섞이지 않습니다.</figcaption>
+<figcaption>그림 2. 작은 키의 비트. 메인은 <code>Renderer::GetPipelineFor</code>, G-buffer는 <code>RendererDeferred.cpp</code>의 <code>GetGBufferPipelineFor</code>(블렌딩 재질은 G-buffer로 오지 않아 비트 11이 비어 있음), 그림자는 <code>GetShadowPipelineFor</code>(비트 9의 뜻이 <code>doubleSided</code>, 비트 10은 알파 테스트 변형 <code>Pass_ShadowAlpha</code>). 키는 맵마다 따로라 같은 숫자가 다른 뜻이어도 섞이지 않습니다.</figcaption>
 </figure>
 <p>각 비트가 Desc에서 바꾸는 것은 다음과 같습니다. <code>vertexFormat</code>은 정점 레이아웃과 스킨 VS(<code>Pass_MainSkin</code>), <code>mirrored</code>(월드 행렬의 행렬식이 음수)는 <code>frontCounterClockwise</code> 반전, <code>wireframe</code>은 <code>FillMode</code>, <code>cullBack</code>은 <code>CullMode</code>, <code>blended</code>는 프리멀티플라이드 블렌드·깊이 쓰기 끔·속도 RT(1번) 쓰기 막기(<code>independentBlend</code>), <code>ocean</code>은 <code>Pass_Ocean</code>(Gerstner VS)입니다. 바다 VS는 스킨 정점을 읽지 않으므로 스킨 포맷이면 비트 12를 켜지 않습니다. RTV는 항상 FP16 HDR + 속도(<code>R16G16_FLOAT</code>), <code>rtvCount = 2</code>, 깊이 <code>D24_UNORM_S8_UINT</code>입니다. sRGB 출력에 따라 달라지는 것은 톤 패스 PSO(<code>m_tonemapPipelines[2]</code>)뿐입니다(<a href="color-space-study.html#formats">색공간 문서 5장</a>).</p>
 <p>이 키로 나올 수 있는 PSO 수는 메인 48(스킨 아닌 포맷 2⁵ + 스킨 2⁴), G-buffer 24, 그림자 8입니다 <span class="tag chk">계산값</span>. 여기에 패스마다 한두 개인 것(스카이 1, 톤 2, 후처리 2, 디퍼드 라이팅 1, SSAO 2, 시간 패스 3, 파티클 1, 디버그 선 1, UI 2)을 더하면 그래픽스 PSO는 많아야 약 95개입니다 <span class="tag chk">계산값</span>. 실제 씬은 그중 쓰는 조합만 만듭니다.</p>
@@ -293,7 +293,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <section id="shaders">
 <h2>8. 셰이더 컴파일, 리플렉션, 바인딩 대조</h2>
 <h3>8-1. fxc, DXBC, SM 5.0</h3>
-<p>셰이더는 <code>kShaders</code> 표의 39개입니다 <span class="tag chk">계산값</span>. 빌드 때 MSBuild <code>FxCompile</code>(<code>SherlockEngine.vcxproj</code>, <code>&lt;ShaderModel&gt;5.0</code>)이 <code>.cso</code>를 만들고, 실행 시 <code>ShaderCompiler::LoadOrCompile</code>이 이를 읽습니다. Debug 빌드에서는 소스 <code>.hlsl</code>이나 그것이 include 하는 헤더 중 하나라도 <code>.cso</code>보다 새로우면 <code>D3DCompileFromFile</code>로 다시 컴파일합니다(<code>D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION</code>, Release는 <code>OPTIMIZATION_LEVEL3</code>). 프로파일은 <code>RHI/DXBC/ShaderCompiler.cpp</code>의 <code>GetTargetProfile</code>이 스테이지로 정합니다(<code>vs_5_0</code>, <code>ps_5_0</code>, <code>cs_5_0</code>). 호출자는 셰이더 모델을 모릅니다.</p>
+<p>셰이더는 <code>kShaders</code> 표의 42개입니다 <span class="tag chk">계산값</span>. 빌드 때 MSBuild <code>FxCompile</code>(<code>SherlockEngine.vcxproj</code>, <code>&lt;ShaderModel&gt;5.0</code>)이 <code>.cso</code>를 만들고, 실행 시 <code>ShaderCompiler::LoadOrCompile</code>이 이를 읽습니다. Debug 빌드에서는 소스 <code>.hlsl</code>이나 그것이 include 하는 헤더 중 하나라도 <code>.cso</code>보다 새로우면 <code>D3DCompileFromFile</code>로 다시 컴파일합니다(<code>D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION</code>, Release는 <code>OPTIMIZATION_LEVEL3</code>). 프로파일은 <code>RHI/DXBC/ShaderCompiler.cpp</code>의 <code>GetTargetProfile</code>이 스테이지로 정합니다(<code>vs_5_0</code>, <code>ps_5_0</code>, <code>cs_5_0</code>). 호출자는 셰이더 모델을 모릅니다.</p>
 <p>D3D12는 DXBC(SM 5.x)와 DXIL(SM 6.x)을 모두 받습니다. 이 엔진은 두 백엔드에 같은 DXBC를 넘깁니다. <code>D3D12Device.h</code> 주석의 이유는 "두 백엔드가 같은 <code>.cso</code>를 쓰므로 픽셀 비교가 의미 있다"는 것이고, DXIL(dxc)은 SM 6 기능이 필요해지면 들인다고 적혀 있습니다. SM 5.0 DXBC라서 D3D12 루트 시그니처의 레지스터 space도 전부 0입니다(<code>D3D12PipelineState.h</code> 주석).</p>
 <h3>8-2. 리플렉션으로 C++와 HLSL을 대조한다</h3>
 <p><code>Renderer::LoadShaders</code>는 바이트코드를 얻은 뒤 두 가지를 검사하고, 통과해야 <code>CreateShader</code>로 핸들을 바꿉니다. 둘 다 <code>D3DReflect</code>(<code>ID3D11ShaderReflection</code>)로 DXBC를 읽습니다.</p>
@@ -355,7 +355,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <h3>E5. 바인딩 대조를 깨 보기 <span class="tag chk">예상</span></h3>
 <p><code>Renderer::CreateLayouts</code>에서 <code>Layout_Material</code>의 슬롯 하나(예: <code>Shaders/Material.hlsli</code>가 선언하는 t3 AO)를 잠깐 뺍니다. Debug 실행은 그 레지스터를 실제로 쓰는 셰이더와 패스마다(예: <code>[Main] BasicPS</code>, <code>[MainSkin] BasicPS</code>, G-buffer 패스는 <code>GBufferPS</code>) "선언되지 않음" 에러를 남기고 셰이더 로드에 실패해야 합니다. Release에서는 같은 에러가 찍히고 실행은 계속됩니다.</p>
 <h3>E6. 정렬이 PSO 전환을 줄이는가 <span class="tag chk">예상</span></h3>
-<p>Stats 창에서 <code>draws</code>와 <code>PSO switches</code>를 봅니다. 불투명 재질이 모두 같은 설정이면 메인 패스의 전환은 거의 1입니다. 재질 하나를 양면(<code>doubleSided</code>)으로 바꾸면 메인·G-buffer 키의 <code>cullBack</code>과 그림자 키의 비트 9가 함께 달라지므로, <code>PSO cache</code>는 패스마다 하나씩 최대 세 개 늘고(그 경로가 이번 프레임에 쓰일 때) 각 패스의 전환도 하나씩 늘어야 합니다. 전환 수가 드로우 수에 가까우면 정렬이 동작하지 않는 것입니다.</p>
+<p>Stats 창에서 <code>draws</code>와 <code>PSO switches</code>를 봅니다. 불투명 재질이 모두 같은 설정이면 메인 패스의 전환은 거의 1입니다. 재질 하나를 양면(<code>doubleSided</code>)으로 바꾸면 메인·G-buffer 키의 <code>cullBack</code>과 그림자 키의 비트 9가 함께 달라지므로, <code>PSO cache</code>는 패스마다 하나씩 최대 세 개 늘고(그 경로가 이번 프레임에 쓰일 때) 각 패스의 전환도 하나씩 늘어야 합니다. 재질의 <code>alphaCutoff</code>를 0보다 크게 하면 메인·G-buffer 키는 그대로이고 그림자 키의 비트 10만 달라지므로 그림자 쪽만 하나 늘어야 합니다. 전환 수가 드로우 수에 가까우면 정렬이 동작하지 않는 것입니다.</p>
 </section>
 
 <section id="pitfalls">

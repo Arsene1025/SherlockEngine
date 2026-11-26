@@ -292,6 +292,68 @@ bool TextureLoader::CreateRoundedRect(uint32_t size, float radius, TextureImage&
 	return FinishImage(image, false, false, out);
 }
 
+bool TextureLoader::CreateTileableNoise(uint32_t size, uint32_t baseCells, uint32_t octaves, uint32_t seed, TextureImage& out)
+{
+	DirectX::ScratchImage image;
+	if (size == 0 || baseCells == 0 || FAILED(image.Initialize2D(DXGI_FORMAT_R8G8B8A8_UNORM, size, size, 1, 1)))
+	{
+		return false;
+	}
+	// 격자점 값: (옥타브, x, y) 를 섞은 정수 해시 → [0, 1). 격자 좌표를 cells 로 감아서 텍스처 가장자리가 이어짐.
+	const auto lattice = [seed](uint32_t octave, uint32_t x, uint32_t y)
+	{
+		uint32_t h = seed * 0x9E3779B1u ^ octave * 0x85EBCA77u ^ x * 0xC2B2AE3Du ^ y * 0x27D4EB2Fu;
+		h ^= h >> 15;
+		h *= 0x2C1B3C6Du;
+		h ^= h >> 12;
+		h *= 0x297A2D39u;
+		h ^= h >> 15;
+		return static_cast<float>(h >> 8) / static_cast<float>(1u << 24);
+	};
+	std::vector<float> values(static_cast<size_t>(size) * size);
+	for (uint32_t y = 0; y < size; ++y)
+	{
+		for (uint32_t x = 0; x < size; ++x)
+		{
+			float sum = 0.0f;
+			float amplitude = 1.0f;
+			uint32_t cells = baseCells;
+			for (uint32_t o = 0; o < octaves; ++o)
+			{
+				// 픽셀 중심 → 격자 좌표. smoothstep 으로 보간 (격자 모양이 덜 보임)
+				const float gx = (static_cast<float>(x) + 0.5f) * static_cast<float>(cells) / static_cast<float>(size);
+				const float gy = (static_cast<float>(y) + 0.5f) * static_cast<float>(cells) / static_cast<float>(size);
+				const uint32_t x0 = static_cast<uint32_t>(gx) % cells, y0 = static_cast<uint32_t>(gy) % cells;
+				const uint32_t x1 = (x0 + 1) % cells, y1 = (y0 + 1) % cells;
+				float fx = gx - std::floor(gx), fy = gy - std::floor(gy);
+				fx = fx * fx * (3.0f - 2.0f * fx);
+				fy = fy * fy * (3.0f - 2.0f * fy);
+				const float top = lattice(o, x0, y0) + (lattice(o, x1, y0) - lattice(o, x0, y0)) * fx;
+				const float bottom = lattice(o, x0, y1) + (lattice(o, x1, y1) - lattice(o, x0, y1)) * fx;
+				sum += amplitude * (top + (bottom - top) * fy);
+				amplitude *= 0.5f;
+				cells *= 2;
+			}
+			values[static_cast<size_t>(y) * size + x] = sum;
+		}
+	}
+	// 순위로 다시 매김: 값이 k 번째로 작은 픽셀 → k / (N − 1). fBm 은 가운데 값이 몰려 있어 그대로 쓰면 진행도 0.5 근처에서 갑자기
+	// 많이 사라짐.
+	std::vector<uint32_t> order(values.size());
+	for (uint32_t i = 0; i < order.size(); ++i) order[i] = i;
+	std::sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) { return values[a] < values[b] || (values[a] == values[b] && a < b); });
+	const DirectX::Image* img = image.GetImage(0, 0, 0);
+	const float last = static_cast<float>(order.size() - 1);
+	for (uint32_t rank = 0; rank < order.size(); ++rank)
+	{
+		const uint32_t i = order[rank];
+		const uint8_t v = static_cast<uint8_t>(static_cast<float>(rank) / last * 255.0f + 0.5f);
+		uint8_t* p = img->pixels + (i / size) * img->rowPitch + (i % size) * 4;
+		p[0] = p[1] = p[2] = p[3] = v;
+	}
+	return FinishImage(image, false, true, out);
+}
+
 bool TextureLoader::LoadThumbnail(const std::wstring& path, uint32_t maxSize, TextureImage& out)
 {
 	DirectX::ScratchImage image;

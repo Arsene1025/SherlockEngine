@@ -176,7 +176,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <table>
 <tr><th>DrawItem 필드</th><th>뜻</th></tr>
 <tr><td><code>pipeline</code></td><td>메인(포워드) PSO. <code>GetPipelineFor</code>가 정점 포맷·미러·와이어·컬링·블렌딩·바다 비트로 캐시에서 고름</td></tr>
-<tr><td><code>shadowPipeline</code></td><td>그림자 PSO. unlit·블렌딩·바다는 빈 핸들(그림자를 만들지 않음)</td></tr>
+<tr><td><code>shadowPipeline</code></td><td>그림자 PSO. unlit·블렌딩·바다는 빈 핸들(그림자를 만들지 않음). 컷아웃 재질·디졸브 중이면 <code>shadowAlpha</code>가 켜지고 알파 테스트 변형(재질 셋까지 묶음)</td></tr>
 <tr><td><code>gbufferPipeline</code>, <code>deferred</code></td><td><code>CanUseDeferred</code>가 참인 재질(블렌딩·unlit·투과·코팅 노멀 맵이 아님)만. 디퍼드를 꺼도 만들어 둠 — 토글할 때 목록을 다시 만들지 않으려고</td></tr>
 <tr><td><code>blended</code></td><td><code>IsBlended</code> = <code>alphaBlend</code> 또는 투과. 알파 컷아웃(MASK)은 불투명으로 분류되고 셰이더의 <code>clip</code>으로 처리됨</td></tr>
 </table>

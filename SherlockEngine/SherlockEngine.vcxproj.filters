@@ -260,6 +260,12 @@
     <ClCompile Include="Scene\ParticleEmitter.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Scene\Dissolve.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Highlight.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Scene\Ocean.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
@@ -539,6 +545,12 @@
     <ClInclude Include="UI\UIEvent.h">
       <Filter>UI</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\Dissolve.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Highlight.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\Ocean.h">
       <Filter>Scene</Filter>
     </ClInclude>
@@ -575,6 +587,15 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\BasicPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ShadowAlphaVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ShadowAlphaSkinVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\ShadowAlphaPixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="Shaders\ShadowVertexShader.hlsl">
@@ -712,6 +733,12 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Ocean.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Dissolve.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\ShadowAlpha.hlsli">
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Material.hlsli">

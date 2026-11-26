@@ -55,6 +55,8 @@ namespace DebugUI
 	// 재질이 쓰는 파일 텍스처마다 임포트 설정(BC7 압축·밉 수준·최대 해상도) 편집 칸. Apply 를 누르면 TextureSettings.json 에 저장하고
 	// 그 텍스처만 다시 읽음 (원본이 DDS 면 설정이 적용되지 않음).
 	void DrawTextureImportSettings(const Material& material, Renderer& renderer);
+	// 재질의 디졸브 노이즈 칸 (텍스처 이름 입력 + UV 배율). 비우면 builtin:noise. Inspector 와 Materials 탭이 같이 씀.
+	void DrawDissolveNoiseFields(Material& material);
 	// 현재 씬 이름, 모델 통계 (메시·서브메시·정점·삼각형·16비트 인덱스·탄젠트 생성·로드 시간), 씬 전환 안내를 표시함.
 	void DrawModelPanel(const char* sceneName, const ModelStats& stats, size_t sceneImages, size_t sceneObjects);
 

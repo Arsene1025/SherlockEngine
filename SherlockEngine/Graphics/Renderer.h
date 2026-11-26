@@ -33,6 +33,8 @@ struct SceneEnvironment;
 class Mesh;
 class GameObject;
 class ParticleEmitter;
+class Highlight;
+class Dissolve;
 struct PostParamsConstants;   // ShaderConstants.h
 struct GpuLight;              // ShaderConstants.h (조명 하나의 GPU 배치)
 
@@ -347,12 +349,13 @@ private:
 		TextureHandle boundClearcoatRoughness;
 		TextureHandle boundClearcoatNormal;
 		TextureHandle boundTransmission;   // KHR_materials_transmission
+		TextureHandle boundDissolveNoise;  // t20 디졸브 노이즈 (비면 builtin:noise)
 		SamplerHandle boundSampler;
 		uint64_t uploadedFrame = UINT64_MAX;   // 이번 프레임에 상수를 올렸는지
 
 		// 셋을 만들 때 본 입력의 사본. 프레임마다 이것과 재질을 비교해, 같으면 텍스처 이름 → 핸들 조회를
 		// 통째로 건너뜀 (바뀌는 것은 재질 편집·샘플러 덮어쓰기·텍스처 캐시 비우기뿐).
-		std::string albedoName, normalName, metallicRoughnessName, occlusionName, emissiveName, specularName, specularColorName, clearcoatName, clearcoatRoughnessName, clearcoatNormalName, transmissionName;
+		std::string albedoName, normalName, metallicRoughnessName, occlusionName, emissiveName, specularName, specularColorName, clearcoatName, clearcoatRoughnessName, clearcoatNormalName, transmissionName, dissolveNoiseName;
 		bool albedoSrgb = true;
 		SamplerHandle sampler;
 		uint64_t textureGeneration = UINT64_MAX;   // 셋을 만들 때의 TextureCache::GetGeneration()
@@ -372,6 +375,12 @@ private:
 		// 지난 프레임 팔레트의 위치 (m_motion[지난].palettes 안). 없으면 prevPaletteCount = 0 → 이번 팔레트를 b13 에도 올림.
 		uint32_t prevPaletteOffset = 0;
 		uint32_t prevPaletteCount = 0;
+		// 오브젝트별 강조 (b1 의 highlight*, Scene/Highlight.h). 자기나 조상의 Highlight 에서 옴. 없으면 0 (강조 없음).
+		DirectX::XMFLOAT4 highlightTint = {};
+		DirectX::XMFLOAT4 highlightFlash = {};
+		DirectX::XMFLOAT4 highlightRim = {};
+		// 디졸브 (b1 의 dissolveEdge: rgb 경계 빛, a 진행도. 경계 폭은 highlightFlash.w). 자기나 조상의 Dissolve 에서 옴. 없으면 0.
+		DirectX::XMFLOAT4 dissolveEdge = {};
 	};
 	// 오브젝트 하나의 "지난 프레임" (GameObject::GetId 로 찾음). 팔레트는 MotionHistory::palettes 안의 위치.
 	struct PrevObject
@@ -402,6 +411,7 @@ private:
 	{
 		PipelineHandle pipeline;          // 메인 패스 PSO (정렬 키)
 		PipelineHandle shadowPipeline;    // 그림자 패스 PSO. unlit 재질은 빈 핸들 (그림자를 만들지 않음)
+		bool shadowAlpha = false;         // 그림자가 알파 테스트 변형 (컷아웃 재질 또는 디졸브 중) — 그림자 패스가 재질 셋도 묶음
 		const Material* material;         // 정렬 키
 		const Mesh* mesh;                 // 정렬 키
 		const GpuMaterial* gpuMaterial;   // BuildDrawList 가 만들어 둠 (드로우 루프에서는 생성하지 않음)
@@ -462,6 +472,9 @@ private:
 		Shader_OceanGBufferPS,
 		Shader_UIVS,
 		Shader_UIPS,
+		Shader_ShadowAlphaVS,       // 알파 테스트 그림자 (컷아웃·디졸브, Shaders/ShadowAlpha.hlsli)
+		Shader_ShadowAlphaSkinVS,
+		Shader_ShadowAlphaPS,
 		Shader_Count
 	};
 	enum LayoutId : uint32_t
@@ -489,7 +502,7 @@ private:
 	};
 	// 패스 = (VS, PS, 레이아웃 목록). PSO Desc 의 셰이더·bindingLayouts 가 이 표에서 나오고, 바인딩 대조도 패스
 	// 단위로 함 (그 패스의 레이아웃에 선언된 슬롯만 통과).
-	// Pass_MainSkin / Pass_ShadowSkin 은 스키닝 메시용 (정점 포맷 PositionColorNormalTexcoordTangentSkin). 스킨 VS 만 다르고 PS·레이아웃은 같음.
+	// Pass_MainSkin / Pass_ShadowSkin / Pass_ShadowAlphaSkin 은 스키닝 메시용 (정점 포맷 PositionColorNormalTexcoordTangentSkin). 스킨 VS 만 다르고 PS·레이아웃은 같음.
 	// Pass_GBuffer / Pass_GBufferSkin: 디퍼드 G-buffer (MRT 6장 = 발광 hdr + GB0~GB3 + 속도, 재질 셋까지 메인과 같은 레이아웃). Pass_DeferredLight: 풀스크린
 	// 라이팅 { 프레임, G-buffer }. Pass_Ssao / Pass_SsaoBlur: 풀스크린 { SSAO }.
 	enum PassId : uint32_t
@@ -515,6 +528,8 @@ private:
 		Pass_GBufferOcean,   // OceanVS + OceanGBufferPS
 		Pass_UI,             // 게임 UI 캔버스 { UI 공통, UI 텍스처 }
 		Pass_UIWorld,        // World 캔버스: Pass_UI + 읽기 전용 깊이 검사 (LessEqual, 쓰기 없음)
+		Pass_ShadowAlpha,       // ShadowAlphaVS + ShadowAlphaPS (프레임·오브젝트·재질 셋). 컷아웃 재질·디졸브 중인 오브젝트의 그림자
+		Pass_ShadowAlphaSkin,   // ShadowAlphaSkinVS + ShadowAlphaPS
 		Pass_Count
 	};
 	// 셋 인덱스 = 그 패스의 PipelineStateDesc::bindingLayouts 인덱스 (CommandList::SetResourceSet 의 첫 인자).
@@ -876,7 +891,8 @@ private:
 	// Device 캐시를 찾지 않음. 셰이더 핫리로드(BuildPassDescs)가 비움.
 	// ocean: Gerstner 바다 드로우 (Pass_Ocean·Pass_GBufferOcean 에서 시작, 키 비트 12). 스킨 정점 포맷이면 무시함.
 	PipelineHandle GetPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored = false, bool ocean = false);
-	PipelineHandle GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored = false);
+	// alphaTest: 알파 테스트 변형 (Pass_ShadowAlpha·Pass_ShadowAlphaSkin, 키 비트 10). 컷아웃 재질이나 디졸브 중인 오브젝트.
+	PipelineHandle GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored = false, bool alphaTest = false);
 	PipelineHandle GetSkyPipeline();   // 정점 속성 0개, 깊이 LessEqual + 쓰기 끔, 컬링 없음
 	PipelineHandle GetTonemapPipeline();
 	SamplerHandle GetSampler(SamplerPreset preset) const;
@@ -906,7 +922,7 @@ private:
 	// 갱신 빈도별 레이아웃 (LayoutId 순서). 선언 사본(m_layoutDescs)은 패스별 바인딩 대조가 씀.
 	//   Layout_Frame     b0 (VS|PS), b2 (PS), t8 그림자 맵, s4 비교 샘플러, t9 스카이박스, s5, t10~t12 IBL (모두 PS), b5 그림자 패스 행렬 (VS), b6 그림자 뷰 배열 (PS), t14 CSM, t15 조명 구조체 버퍼, t30·t31 클러스터 (모두 PS)
 	//   Layout_Object    b1, b7 스킨 팔레트, b13 지난 팔레트 (VS), b9 바다 (VS|PS)
-	//   Layout_Material  b3 (VS|PS), t0 알베도, t1 노멀, t2 금속성/거칠기, t3 AO, t4 발광, t5 반사 세기, t6 반사 색, t16~t18 클리어코트, t19 투과, s0 (모두 PS)
+	//   Layout_Material  b3 (VS|PS), t0 알베도, t1 노멀, t2 금속성/거칠기, t3 AO, t4 발광, t5 반사 세기, t6 반사 색, t16~t18 클리어코트, t19 투과, t20 디졸브 노이즈, s0 (모두 PS)
 	//   Layout_Post      b0, b4, t13, s6, t20 가중치 (모두 PS)
 	//   Layout_BlurCompute b4, t13 입력, u0 출력, t20 가중치 (모두 CS)
 	//   Layout_BlurWeights b4, u0 가중치 버퍼 (모두 CS)
@@ -919,6 +935,7 @@ private:
 	// 패스별 PSO Desc 의 고정 부분 (BuildPassDescs 가 표에서 채움). 설정·재질에 따라 달라지는 필드는 Get*Pipeline 이 덮어씀.
 	//   Pass_Main     셰이더·레이아웃 { 프레임, 오브젝트, 재질 }
 	//   Pass_Shadow   VS만, RTV 0개, DSV D32_FLOAT, 깊이 바이어스
+	//   Pass_ShadowAlpha  Pass_Shadow + 알파 테스트 PS, 레이아웃 { 프레임, 오브젝트, 재질 } (컷아웃 재질·디졸브 중인 오브젝트)
 	//   Pass_Sky      프레임 레이아웃 하나만 씀
 	//   Pass_Tonemap  풀스크린 삼각형, 깊이 없음
 	//   Pass_Post     블러·블룸 (톤 패스와 같은 모양, PS 만 다름). RTV 는 FP16
@@ -1137,6 +1154,8 @@ private:
 		const GameObject* node;
 		size_t next;
 		DirectX::XMFLOAT4X4 world;
+		const Highlight* highlight;   // node 에 적용되는 강조 (node 자신 또는 가장 가까운 조상의 것). 자식이 물려받음
+		const Dissolve* dissolve;     // 같은 규칙의 디졸브
 	};
 	std::vector<HierarchyFrame> m_hierarchyStack;
 

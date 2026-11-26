@@ -620,6 +620,7 @@ void Renderer::RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas)
 
 	PipelineHandle lastPipeline;
 	const GpuMesh* lastMesh = nullptr;
+	const GpuMaterial* lastMaterial = nullptr;   // 알파 테스트 변형만 재질 셋을 묶음 (PS 없는 변형의 PSO 는 셋이 둘이라 꽂혀 있어도 무시됨)
 	for (uint32_t v = 0; v < m_shadowViewCount; ++v)
 	{
 		const ShadowView& view = m_shadowViews[v];
@@ -668,6 +669,12 @@ void Renderer::RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas)
 				cmd.SetPipelineState(item.shadowPipeline);
 				lastPipeline = item.shadowPipeline;
 				++m_stats.pipelineSwitches;
+			}
+			if (item.shadowAlpha && item.gpuMaterial != lastMaterial)
+			{
+				cmd.SetResourceSet(kSetMaterial, item.gpuMaterial->set);   // 알베도 알파(t0)·노이즈(t20)·b3
+				lastMaterial = item.gpuMaterial;
+				++m_stats.resourceSetSwitches;
 			}
 			if (item.gpuMesh != lastMesh)
 			{

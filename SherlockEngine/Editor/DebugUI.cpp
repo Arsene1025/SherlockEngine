@@ -637,6 +637,20 @@ void DebugUI::DrawLightPanel(Scene& scene, int* selectedLight, bool* openSelecte
 	}
 }
 
+void DebugUI::DrawDissolveNoiseFields(Material& material)
+{
+	// 디졸브 노이즈 (Dissolve 컴포넌트가 붙은 오브젝트에서만 쓰임). 이름 규칙은 다른 텍스처 칸과 같음 (Assets/Textures 기준, "asset:", "builtin:").
+	// 비우면 builtin:noise. Enter 로 확정.
+	char buffer[260];
+	strncpy_s(buffer, material.dissolveNoiseTexture.c_str(), _TRUNCATE);
+	if (ImGui::InputTextWithHint("Dissolve noise", "builtin:noise", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue))
+	{
+		material.dissolveNoiseTexture = buffer;
+	}
+	static const Material kDefaults;
+	SliderFloatR("Dissolve noise scale", &material.dissolveNoiseScale, kDefaults.dissolveNoiseScale, 0.1f, 16.0f);
+}
+
 void DebugUI::DrawTextureImportSettings(const Material& material, Renderer& renderer)
 {
 	struct Slot
@@ -657,6 +671,7 @@ void DebugUI::DrawTextureImportSettings(const Material& material, Renderer& rend
 		{ "Clearcoat rough", &material.clearcoatRoughnessTexture, false },
 		{ "Clearcoat normal", &material.clearcoatNormalTexture, false },
 		{ "Transmission", &material.transmissionTexture, false },
+		{ "Dissolve noise", &material.dissolveNoiseTexture, false },
 	};
 	static std::map<std::string, TextureImportSettings> pending;   // 아직 Apply 하지 않은 편집값 (이름별)
 	static const char* kSizes[] = { "Original", "4096", "2048", "1024", "512", "256", "128" };
@@ -782,6 +797,7 @@ void DebugUI::DrawMaterialPanel(Scene& scene, Renderer& renderer)
 			}
 			DragFloat2R("UV scale", &material.uvScale.x, kMaterialDefaults.uvScale.x, kMaterialDefaults.uvScale.y, 0.1f, 0.1f, 64.0f);
 			SliderFloatR("Normal strength", &material.normalStrength, kMaterialDefaults.normalStrength, 0.0f, 5.0f);
+			DrawDissolveNoiseFields(material);
 			DrawTextureImportSettings(material, renderer);
 			ImGui::Checkbox("Unlit", &material.unlit);
 			SameLineIfFits(CheckboxWidth("Wireframe"));

@@ -145,7 +145,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <text x="277" y="168" text-anchor="middle">TextureImage</text><text x="277" y="185" text-anchor="middle">desc + 서브리소스</text>
   <text x="459" y="168" text-anchor="middle">CreateTexture</text><text x="459" y="185" text-anchor="middle">D3D11 · D3D12</text>
   <text x="641" y="168" text-anchor="middle">TextureCache</text><text x="641" y="185" text-anchor="middle">(이름, sRGB) → 핸들</text>
-  <text x="823" y="168" text-anchor="middle">재질 셋</text><text x="823" y="185" text-anchor="middle">t0~t6·t16~t19 + s0</text>
+  <text x="823" y="168" text-anchor="middle">재질 셋</text><text x="823" y="185" text-anchor="middle">t0~t6·t16~t20 + s0</text>
   <path class="ln" d="M175 172H195" marker-end="url(#tex-ar)"/><path class="ln" d="M357 172H377" marker-end="url(#tex-ar)"/>
   <path class="ln" d="M539 172H559" marker-end="url(#tex-ar)"/><path class="ln" d="M721 172H741" marker-end="url(#tex-ar)"/>
   <text x="15" y="222">게임 패키지: manifest.json 의 변환본을 FindCooked 가 바로 넘김 (원본을 읽거나 해시를 계산하지 않음)</text>
@@ -155,7 +155,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 </figure>
 <p>재질이 텍스처 이름을 들고 있으면 <code>Renderer::GetOrCreateGpuMaterial</code>이 칸마다 <code>TextureCache::Load2D(이름, srgb, scene)</code>를 부릅니다. <code>Load2D</code>는 캐시에 없을 때 아래 순서로 이미지를 얻습니다.</p>
 <ol>
-<li><code>builtin:*</code>: 흰색, 평평한 노멀, <code>gray128</code>, 체커, UI 패널을 코드로 만듭니다(<code>TextureLoader::CreateSolid</code>·<code>CreateChecker</code>·<code>CreateRoundedRect</code>).</li>
+<li><code>builtin:*</code>: 흰색, 평평한 노멀, <code>gray128</code>, 체커, UI 패널, 디졸브 노이즈(<code>noise</code>)를 코드로 만듭니다(<code>TextureLoader::CreateSolid</code>·<code>CreateChecker</code>·<code>CreateRoundedRect</code>·<code>CreateTileableNoise</code>).</li>
 <li>게임 패키지의 변환 목록: <code>LoadCooked</code> → <code>TextureImporter::FindCooked</code>. 에디터에서는 목록을 쓰지 않습니다.</li>
 <li>씬이 들고 있는 모델 이미지(<code>Scene::FindImage</code>, 이름 <code>&lt;모델&gt;/&lt;번호&gt; &lt;uri 또는 name&gt;</code>): 인코딩된 바이트로 <code>ResolveCached</code>를 부르고, 변환본이 없으면 <code>LoadFromMemory(…, generateMips = true)</code>.</li>
 <li>파일: <code>Assets/Textures/</code> 기준, <code>asset:</code>이면 <code>Assets/</code> 기준. 바이트를 읽어 <code>ResolveCached</code>, 없으면 <code>LoadFromFile(path, srgb, true)</code>.</li>
@@ -228,6 +228,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><th>상황</th><th>대체물</th><th>왜 그 값인가</th></tr>
 <tr><td>빈 이름, 로드 실패 (알베도·금속성/거칠기·AO·발광·반사·클리어코트·투과)</td><td><code>builtin:white</code> 1×1 (255, 255, 255, 255)</td><td>셰이더가 계수 × 텍스처로 쓰므로 흰색이면 계수만 남음. 발광은 <code>Material::emissive</code> 기본 (0, 0, 0)이라 흰색이어도 빛나지 않음</td></tr>
 <tr><td>노멀·코팅 노멀 칸이 빔</td><td><code>builtin:flatnormal</code> 1×1 (128, 128, 255)</td><td>탄젠트 공간 (0, 0, 1) = 기하 노멀 그대로</td></tr>
+<tr><td>디졸브 노이즈 칸(t20)이 빔</td><td><code>builtin:noise</code> 256² 타일링 노이즈 (선형, 밉 있음)</td><td>값이 [0, 1]에 고르게 퍼져 디졸브 진행도와 사라진 면적의 비율이 거의 같아짐 (<code>TextureLoader::CreateTileableNoise</code>)</td></tr>
 <tr><td>큐브 없음·실패</td><td><code>builtin:black</code> 1×1 큐브</td><td>t9~t11에 꽂혀 환경광을 0으로</td></tr>
 </table>
 <p>검은 2D 텍스처는 없습니다. 노멀 칸은 빈 이름일 때만 평평한 노멀이고, 이름이 있는데 읽지 못하면 흰색(255, 255, 255)으로 대체되므로 노멀이 (1, 1, 1) 방향으로 기웁니다(12장). 실패한 이름도 대체 핸들로 캐시에 남아 프레임마다 다시 읽지 않습니다.</p>
@@ -259,7 +260,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <section id="sampling">
 <h2>8. 샘플러와 노멀 맵 해석</h2>
 <h3>8-1. 샘플러 프리셋</h3>
-<p>재질마다 <code>SamplerPreset</code>(<code>Scene/Material.h</code>) 하나를 고르고, 재질의 모든 텍스처(t0~t6, t16~t19)가 이 샘플러 <code>s0</code>(<code>albedoSampler</code>) 하나로 읽힙니다. 샘플러는 <code>Renderer::CreateSamplers</code>가 미리 다섯 개 만듭니다.</p>
+<p>재질마다 <code>SamplerPreset</code>(<code>Scene/Material.h</code>) 하나를 고르고, 재질의 모든 텍스처(t0~t6, t16~t20)가 이 샘플러 <code>s0</code>(<code>albedoSampler</code>) 하나로 읽힙니다. 샘플러는 <code>Renderer::CreateSamplers</code>가 미리 다섯 개 만듭니다.</p>
 <table>
 <tr><th>프리셋</th><th>필터 (D3D)</th><th>주소</th><th>maxLod</th></tr>
 <tr><td><code>LinearWrap</code></td><td><code>MIN_MAG_MIP_LINEAR</code> (3선형)</td><td>Wrap</td><td>1000</td></tr>
@@ -308,7 +309,7 @@ s.normal = SafeNormalize(tangentNormal.x * T + tangentNormal.y * B + tangentNorm
 <tr><td>업로드 묶음</td><td><code>Renderer::Render</code> 의 <code>BeginResourceUploads</code>·<code>EndResourceUploads</code></td><td>프레임 앞에서 만든 리소스를 한 번에 제출</td></tr>
 <tr><td>샘플러</td><td><code>Renderer::CreateSamplers</code>, <code>Scene/Material.h</code> 의 <code>SamplerPreset</code>, <code>D3D11Convert</code>·<code>D3D12Convert</code> 의 필터 변환</td><td>프리셋 다섯 개, 16x, 바이어스 0</td></tr>
 <tr><td>glTF 이미지·샘플러</td><td><code>Graphics/Import/GltfImporter.cpp</code> 의 <code>LoadImages</code>·<code>ImageName</code>·<code>TextureName</code>·<code>ToSamplerPreset</code></td><td>이미지 바이트를 씬에 보관, 이름 <code>&lt;모델&gt;/&lt;번호&gt; &lt;uri 또는 name&gt;</code></td></tr>
-<tr><td>셰이더 쪽</td><td><code>Shaders/Material.hlsli</code>, <code>Shaders/MaterialSurface.hlsli</code></td><td>t0~t6·t16~t19 + s0, 채널 읽기, 노멀 <code>xyz × 2 − 1</code></td></tr>
+<tr><td>셰이더 쪽</td><td><code>Shaders/Material.hlsli</code>, <code>Shaders/MaterialSurface.hlsli</code></td><td>t0~t6·t16~t20 + s0, 채널 읽기, 노멀 <code>xyz × 2 − 1</code></td></tr>
 <tr><td>UI 아틀라스</td><td><code>Graphics/RendererUI.cpp</code> 의 <code>Renderer::UploadUIAtlas</code>, <code>UI/GlyphAtlas.h</code></td><td><code>R8_UNORM</code> 1024²/2048², dirty 사각형만 <code>UpdateTexture</code></td></tr>
 </table>
 </section>

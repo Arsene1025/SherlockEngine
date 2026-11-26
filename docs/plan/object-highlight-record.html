@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>계획 · 오브젝트별 강조·디졸브 구현 기록 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 960px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:22px 0 6px; font-size:16.5px; }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>오브젝트별 강조·디졸브 구현 기록</h1>
+  <p>2026-11-26 · 피격 때 붉게 번쩍이는 효과처럼 재질은 공유한 채로 오브젝트 하나만 색을 바꾸는 기능을 넣은 작업의 기록입니다. 강조 효과는 세 가지(색 섞기, 발광 번쩍임, 가장자리 빛)입니다. 값은 새 <code>Highlight</code> 컴포넌트에 두고, 드로우마다 올리는 b1 <code>PerObject</code> 상수 버퍼에 실어 픽셀 셰이더가 읽습니다(1~5장). 이어서 넣은 디졸브는 진행도를 b1 에, 노이즈를 재질 셋(t20)에 두고, 그림자 패스에 알파 테스트 변형을 더해 그림자까지 같이 사라지게 했습니다. 이 변형은 컷아웃 재질의 그림자에도 쓰여서 잎 모양 그림자가 생겼습니다(<a href="#dissolve">7장</a>).</p>
+  <p class="foot">기준: 작업 트리(아직 커밋하지 않음), 바로 앞 커밋 <code>1fc0e12</code>. 경로는 <code>SherlockEngine/</code> 기준이고, 테스트 씬과 스크립트는 <code>Projects/SherlockTestScenes/</code> 기준입니다. D3D11·D3D12, 디퍼드·포워드에서 확인했습니다. 1~5장은 강조만 들어갔을 때의 기록이라 b1 크기를 240 B 로 적었습니다. 디졸브까지 들어간 지금도 256 B 입니다. 디졸브는 <code>float4</code> 하나와 번쩍임의 남는 칸(<code>highlightFlash.a</code>)을 씁니다(7.1).</p>
+</header>
+
+<nav>
+  <a href="#why">1. 왜 b1 인가</a><a href="#use">2. 쓰는 법</a><a href="#flow">3. 값이 지나는 길</a><a href="#shader">4. 셰이더</a><a href="#verify">5. 검증</a><a href="#todo">6. 남은 일</a><a href="#dissolve">7. 디졸브</a>
+</nav>
+
+<section id="why">
+<h2>1. 왜 재질도 셰이더도 아니고 b1 인가</h2>
+<table>
+<tr><th>방법</th><th>문제</th></tr>
+<tr><td>재질 옵션</td><td><code>Renderer::GetOrCreateGpuMaterial</code> 은 GPU 재질을 <code>Material</code> 포인터 기준으로 캐시하고, 재질 상수(b3)는 프레임에 한 번 올립니다. 그래서 재질 색을 바꾸면 그 재질을 쓰는 오브젝트가 전부 바뀝니다. 오브젝트마다 재질 복사본을 만들면 재질 캐시와 ResourceSet 이 그만큼 늘어납니다.</td></tr>
+<tr><td>셰이더 변형</td><td>PSO 가 포워드·G-buffer·스킨·바다·블렌드 조합으로 나뉘어 있어서, "강조" 변형을 더하면 모든 조합이 두 배가 됩니다. 0.1초 번쩍일 때마다 PSO 도 바뀝니다.</td></tr>
+<tr><td><b>b1 PerObject</b> (고른 방법)</td><td>b1 은 이미 드로우마다 <code>UpdateBuffer</code> 로 올리고 있습니다. 여기에 <code>float4</code> 세 개(48 B)를 더하면 재질과 PSO 는 그대로 공유됩니다. 유니티의 <code>MaterialPropertyBlock</code>, 언리얼의 Custom Primitive Data 와 같은 생각입니다.</td></tr>
+</table>
+<p>세 효과 모두 값이 0 이면 결과가 그대로 나오도록 짰습니다(<code>lerp(x, c, 0)</code> 과 <code>+ 0</code>). 그래서 셰이더 분기도 PSO 변형도 없이 모든 메시 드로우가 같은 코드를 탑니다. 강조가 없는 씬은 바뀌기 전과 픽셀이 완전히 같습니다(<a href="#verify">5장</a>).</p>
+</section>
+
+<section id="use">
+<h2>2. 쓰는 법</h2>
+<p>오브젝트에 <b>Add Component → Highlight</b> 를 붙입니다. 모델은 루트 아래에 자식 메시로 들어오므로 <b>루트에 붙이면 모든 자식이 물려받습니다</b>. 자손이 자기 <code>Highlight</code> 를 가지면 그 아래로는 가까운 쪽이 이깁니다. 꺼진(<code>enabled = false</code>) 컴포넌트는 없는 것으로 봅니다.</p>
+<table>
+<tr><th>필드</th><th>뜻</th><th>기본</th></tr>
+<tr><td><code>tintColor</code>, <code>tintAmount</code></td><td>기본색(알베도)을 이 색 쪽으로 섞음 [0, 1]. 조명을 받은 색이 됩니다. 금속도 색이 바뀝니다(4장).</td><td>빨강, 0</td></tr>
+<tr><td><code>flashColor</code>, <code>flashIntensity</code></td><td>발광에 색 × 세기를 더함. 조명과 상관없이 밝아집니다(HDR, 1 을 넘어도 됨).</td><td>흰색, 0</td></tr>
+<tr><td><code>rimColor</code>, <code>rimIntensity</code>, <code>rimPower</code></td><td>가장자리 빛 (1 − N·V)<sup>rimPower</sup> × 색 × 세기를 발광에 더함. 지수가 클수록 테두리가 얇습니다.</td><td>주황, 0, 3</td></tr>
+</table>
+<p>색은 재질의 Base color 처럼 <b>선형 값 그대로</b> 씁니다(인스펙터의 <code>ColorEdit4</code> 값, 알파는 무시). 범위는 렌더러가 자릅니다: 섞는 양 [0, 1], 세기 ≥ 0, 지수 ≥ 0.1.</p>
+<h3>피격 연출 예: <code>HitFlash</code> 스크립트</h3>
+<p>컴포넌트는 값만 들고 있고 시간에 따라 바꾸지 않습니다. 연출은 스크립트가 만듭니다. 실험 프로젝트에 예제를 두었습니다(<code>Projects/SherlockTestScenes/Scripts/Tests/HitFlash.h/.cpp</code>).</p>
+<pre><code>Highlight* highlight = GetOwner().GetBehaviour&lt;Highlight&gt;();
+//맞은 순간 1 → duration 뒤 0
+const float k = std::clamp(1.0f - m_elapsed / duration, 0.0f, 1.0f);
+highlight-&gt;tintAmount = peakTint * k;
+highlight-&gt;flashIntensity = peakFlash * k;</code></pre>
+<p>예제는 <code>interval</code> 초마다 맞은 것으로 칩니다. 실제 게임에서는 "맞았을 때" 이벤트에서 <code>m_elapsed = 0</code> 으로 되돌리면 됩니다. 가장자리 빛은 건드리지 않으므로 "선택됨"이나 "무적" 같은 상태 표시를 씬에 따로 둘 수 있습니다.</p>
+</section>
+
+<section id="flow">
+<h2>3. 값이 지나는 길</h2>
+<pre><code>Highlight 컴포넌트 (Scene/Highlight.h, Reflect → 인스펙터·씬 파일 자동)
+  │
+Renderer::BuildDrawList — 루트에서 children 을 따라 내려감
+  │  ResolveInherited&lt;Highlight&gt;(오브젝트, 부모에게서 물려받은 것)  → 자기 것이 있으면 그것, 없으면 물려받은 것
+  │  HierarchyFrame::highlight 로 자식에게 넘김
+  │  addObject: 범위를 자르고 ObjectData::highlightTint / Flash / Rim 에 저장 (없으면 0)
+  │
+Renderer::UploadObjectConstants — 드로우마다 b1 에 행렬 셋 + 강조 셋 (240 B. 디졸브 칸이 더해져 지금은 256 B)
+  │
+PS: MaterialSurface.hlsli 의 EvaluateMaterialSurface
+       ├ 처음: s.albedo = HighlightAlbedo(기본색)              (F0 를 만들기 전)
+       └ 끝:   s.emission += HighlightEmission(기하 노멀, 위치)
+     포워드 → 조명 결과에 발광으로 더해짐
+     디퍼드 → GBufferPS 가 발광 칸(view.hdr)에 씀 → 라이팅 패스가 그 위에 조명을 더함
+     unlit  → BasicPixelShader.hlsl 의 unlit 분기가 같은 두 함수를 직접 부름</code></pre>
+<h3>바뀐 파일</h3>
+<table>
+<tr><th>파일</th><th>내용</th></tr>
+<tr><td><code>Scene/Highlight.h/.cpp</code> (새 파일)</td><td>컴포넌트. <code>SHERLOCK_BEHAVIOUR(Highlight)</code>, <code>Reflect</code> 키 7개. vcxproj·filters 에 추가</td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code></td><td><code>PerObjectConstants</code> 192 → 240 B (<code>highlightTint</code> 192, <code>highlightFlash</code> 208, <code>highlightRim</code> 224). <code>static_assert</code> 크기·오프셋, 머리 주석 "VS만" → "VS와 PS"</td></tr>
+<tr><td><code>Shaders/Mesh.hlsli</code></td><td><code>cbuffer PerObject</code> 에 같은 세 칸</td></tr>
+<tr><td><code>Graphics/Renderer.cpp</code></td><td><code>CreateLayouts</code>: b1 을 <code>ShaderStageMask_Vertex | ShaderStageMask_Pixel</code> 로(D3D11 은 <code>D3D11CommandList.cpp</code> 가 마스크의 Pixel 비트를 보고 <code>PSSetConstantBuffers</code> 도 부르고, D3D12 는 <code>D3D12Device.cpp</code> 의 <code>VisibilityOf</code> 가 <code>D3D12_SHADER_VISIBILITY_VERTEX</code> 대신 <code>ALL</code> 을 줌). <code>ResolveHighlight</code>(디졸브 때 템플릿 <code>ResolveInherited&lt;T&gt;</code> 로 바뀜), <code>BuildDrawList</code> 의 상속, <code>UploadObjectConstants</code> 복사</td></tr>
+<tr><td><code>Graphics/Renderer.h</code></td><td><code>ObjectData</code> 에 강조 셋(<code>= {}</code> 로 0 초기화), <code>HierarchyFrame::highlight</code></td></tr>
+<tr><td><code>Shaders/MaterialSurface.hlsli</code></td><td><code>HighlightAlbedo</code>, <code>HighlightEmission</code>, <code>EvaluateMaterialSurface</code> 에서 호출</td></tr>
+<tr><td><code>Shaders/BasicPixelShader.hlsl</code></td><td>unlit 분기도 강조를 받음</td></tr>
+</table>
+<p>바다 PS(<code>OceanPixelShader.hlsl</code>, <code>OceanGBufferPixelShader.hlsl</code>)는 위 두 PS 를 include 하고 노멀만 바꿔 넣으므로 따로 고칠 것이 없습니다. <code>Ocean.hlsli</code> 의 <code>OceanPixelInput</code> 이 <code>normal</code> 을 픽셀에서 다시 구한 파도 노멀로 바꿔 넣으므로, 바다의 가장자리 빛은 그 노멀을 따릅니다. 바다에 Highlight 를 붙여 화면으로 확인하지는 않았습니다.</p>
+</section>
+
+<section id="shader">
+<h2>4. 셰이더와 결정한 것</h2>
+<pre><code>float3 HighlightAlbedo(float3 albedo)
+{
+    return lerp(albedo, highlightTint.rgb, saturate(highlightTint.a));
+}
+
+float3 HighlightEmission(float3 geometricNormal, float3 worldPosition)
+{
+    const float3 viewDirection = SafeNormalize(cameraPosition - worldPosition, float3(0.0f, 0.0f, -1.0f));
+    const float rim = pow(saturate(1.0f - saturate(dot(geometricNormal, viewDirection))), max(highlightRim.a, 0.1f));
+    return highlightFlash.rgb + highlightRim.rgb * rim;
+}</code></pre>
+<table>
+<tr><th>결정</th><th>이유</th></tr>
+<tr><td>색 섞기는 F0 를 만들기 <b>전에</b></td><td>금속은 확산이 없고 F0 = 기본색입니다. 나중에 알베도만 바꾸면 금속 부품은 색이 안 바뀝니다. 테스트 씬의 <code>D_Metal</code> 상자가 갈색에서 검붉은색으로 바뀌는 것으로 확인했습니다.</td></tr>
+<tr><td>가장자리 빛은 <b>기하 노멀</b>(노말맵 전)로</td><td>실루엣을 따라야 하는 효과라서입니다. 노말맵 노멀을 쓰면 표면의 잔무늬가 테두리처럼 반짝입니다.</td></tr>
+<tr><td>디퍼드는 G-buffer 패스에서 계산</td><td>라이팅 패스는 화면 픽셀만 보고 어느 오브젝트인지 모릅니다. 그래서 가장자리 빛과 번쩍임을 GBufferPS 에서 발광 칸에 미리 넣습니다. 포워드와 같은 함수(<code>EvaluateMaterialSurface</code>)라 두 경로가 따로 놀지 않습니다.</td></tr>
+<tr><td>지수 0.1 하한을 C++ 와 셰이더 양쪽에</td><td><code>pow(0, 0)</code> 은 NaN 이고 <code>NaN × 0</code> 도 NaN 이라, 강조가 없는 오브젝트에서 블룸·TAA 로 번질 수 있습니다. 셰이더에서도 <code>max</code> 로 자르는 것은 상수 버퍼가 어떤 이유로든 0 일 때를 대비한 것입니다.</td></tr>
+<tr><td>그림자 패스에도 강조 셋을 채워 올림</td><td>그림자 VS 에는 PS 가 없어 읽지 않지만, <code>PerObjectConstants perObject;</code> 는 초기화되지 않은 지역 변수라 칸을 비워 두면 쓰레기 값이 올라갑니다. 모든 경로에서 세 칸을 대입합니다.</td></tr>
+<tr><td>디버그 뷰에서는 번쩍임·가장자리 빛이 안 보임</td><td>G-buffer 경로는 디버그 뷰가 켜지면 발광을 0 으로 쓰고, <code>Shading.hlsli</code> 의 <code>SurfaceDebugColor</code> 는 발광을 쓰는 뷰가 없습니다. 그래서 번쩍임과 가장자리 빛은 조명 화면(뷰 0)에서만 보입니다. 색 섞기는 알베도를 바꾸므로 알베도 뷰(1)에도 나타납니다.</td></tr>
+</table>
+</section>
+
+<section id="verify">
+<h2>5. 검증</h2>
+<p>에디터 자동 검증(<code>--exit-after=40 --screenshot</code>)으로 씬 뷰 (233,72)-(963,515) 를 비교했습니다. 실행마다 달라지는 세로 띠(전체 화면 x 270~300)는 가렸습니다. 기준 화면은 같은 날 HEAD(<code>1fc0e12</code>)를 빌드해 고치기 전에 찍었습니다. 바다 씬은 <code>--ocean-time=3</code> 으로 시간을 고정했습니다.</p>
+<h3>테스트 씬 (<code>Assets/Scenes/</code>, 생성기 <code>Scripts/Tests/make_highlight_test_scenes.py</code>)</h3>
+<table>
+<tr><th>씬</th><th>내용</th></tr>
+<tr><td><code>HighlightZero.json</code></td><td><code>DeferredMaterials.json</code> 의 모든 메시 오브젝트에 값이 0 인 Highlight</td></tr>
+<tr><td><code>Highlight.json</code></td><td><code>DeferredMaterials.json</code> 의 재질마다 효과 하나씩. 디퍼드 재질(D_Dielectric 색, D_Metal 색, D_Clearcoat 번쩍임, D_Cutout 가장자리)과 포워드로 빠지는 재질(F_ClearcoatNormal 색+가장자리, F_Transmission 번쩍임, F_Unlit 색+가장자리, F_Blend 번쩍임). D_BehindBlend·Floor 는 그대로(대조군)</td></tr>
+<tr><td><code>HighlightHierarchy.json</code></td><td><code>MasterChiefWalk.json</code> 의 마스터치프 루트(메시 없음)에 빨강 + 가장자리. 첫 자식 <code>01.Arms</code> 에는 값이 0 인 Highlight</td></tr>
+<tr><td><code>HighlightHitFlash.json</code></td><td><code>Highlight.json</code> + D_Dielectric 에 <code>HitFlash</code> 스크립트(1 초마다 번쩍임)</td></tr>
+</table>
+<h3>결과</h3>
+<table>
+<tr><th>비교</th><th>다른 픽셀</th><th>판정</th></tr>
+<tr><td>강조 없는 씬: 기준 vs 수정 후 (DamagedHelmet, MasterChiefWalk, Ocean, DeferredMaterials × D3D11 디퍼드·D3D12 디퍼드·D3D11 포워드, 12 쌍)</td><td>12 쌍 모두 0</td><td>회귀 없음</td></tr>
+<tr><td>같은 바이너리 두 번 (잡음 기준)</td><td>4 씬 모두 0</td><td>—</td></tr>
+<tr><td>HighlightZero vs DeferredMaterials (기준) × 3 경로</td><td>0, 0, 0</td><td>값이 0 이면 컴포넌트가 없는 것과 같음</td></tr>
+<tr><td>Highlight vs DeferredMaterials</td><td>32,286 (8 초과 30,917, 최대 236)</td><td>효과가 보임</td></tr>
+<tr><td>Highlight: D3D11 vs D3D12</td><td>3 (최대 1)</td><td>같음</td></tr>
+<tr><td>Highlight: 디퍼드 vs 포워드, 강조로 바뀐 30,917 픽셀 안에서</td><td>최대 18, 평균 1.08 (같은 자리의 기준끼리 차이: 최대 22, 평균 1.53)</td><td>두 경로가 강조를 같게 그림</td></tr>
+<tr><td>HighlightHierarchy vs MasterChiefWalk</td><td>10,924 (최대 226)</td><td>루트의 강조를 자식이 물려받음. <code>01.Arms</code> 만 원래 녹색(가까운 쪽이 이김)</td></tr>
+<tr><td>HighlightHierarchy: D3D11 vs D3D12</td><td>1 (최대 1)</td><td>같음</td></tr>
+<tr><td>HighlightHierarchy: 디퍼드 vs 포워드, 바뀐 픽셀 안에서</td><td>최대 2, 평균 0.48 (기준: 최대 2, 평균 0.58)</td><td>같음</td></tr>
+<tr><td>HighlightHitFlash, <code>--play=1</code>, 12·40·120·300 프레임</td><td>12·40 프레임은 공이 하얗게 번쩍이고, 120·300 프레임은 원래 색</td><td>스크립트로 시간에 따라 바뀜 (실시간이라 픽셀 비교는 안 함)</td></tr>
+</table>
+<ul>
+  <li><b>로그</b> — <code>cbuffer 'PerObject' 크기 일치: 240 바이트</code> 를 BasicVS·BasicSkinVS·ShadowVS·ShadowSkinVS·OceanVS·BasicPS·GBufferPS·OceanPS·OceanGBufferPS 에서 확인했습니다. <code>바인딩 대조</code> 는 OK 가 아닌 줄이 없고, 경고는 기준과 같은 종료 시 Live Device 줄뿐입니다.</li>
+  <li><b>인스펙터</b> — <code>--select=D_Cutout</code> 화면에서 Components 에 Highlight 와 색·값 칸이 나오는 것을 확인했습니다. 마우스로 값을 바꿔 보는 검증은 하지 않았습니다(같은 <code>Reflect</code> 경로를 씬 파일 읽기로 확인).</li>
+  <li><b>D3D12 GPU 기반 검증</b> — <code>Highlight.json</code> 을 <code>--backend=d3d12 --gpu-validation=1</code> 로 40 프레임 돌렸습니다. <code>D3D12:</code> 로 시작하는 줄은 GBV 시작 안내와 종료 시 Live Device 두 줄뿐이고 오류는 없었습니다. 화면은 GBV 를 끈 D3D12 결과와 픽셀이 같습니다(차이 0). 바뀐 것은 b1 의 루트 CBV 가시성뿐이고 리소스 상태·배리어는 건드리지 않았습니다.</li>
+</ul>
+</section>
+
+<section id="todo">
+<h2>6. 남은 일</h2>
+<ul>
+  <li><b>디졸브</b> — 구현했습니다(<a href="#dissolve">7장</a>). 남은 것: 메시 UV 를 노이즈 좌표로 쓰므로 UV 섬 경계에서 무늬가 끊기고, UV 가 없거나 겹친 모델은 무늬가 이상합니다. 그런 모델용으로 오브젝트 공간 좌표(트라이플래너) 방식을 고를 수 있게 하는 것은 하지 않았습니다. 움직이는 경계를 TAA 를 켠 상태에서 따로 보지는 않았고, 컷아웃 재질이 많은 씬에서 그림자 패스가 PS 를 돌리게 된 비용(Sponza 는 26 개 중 3 개)도 시간으로 재지 않았습니다. 파티클·UI 에는 디졸브가 없습니다.</li>
+  <li><b>짧은 번쩍임과 TAA</b> — 한두 프레임짜리 번쩍임은 TAA 히스토리와 섞여 흐려질 수 있습니다. TAA 를 켠 씬에서 <code>HitFlash</code> 를 확인하지는 않았습니다. <code>duration</code> 기본 0.15초는 60fps 기준 약 9 프레임이라 크게 문제 되지 않을 것으로 보지만, 더 짧게 할 때는 TAA 를 켜고 화면으로 확인해야 합니다.</li>
+  <li><b>다른 문서의 낡은 숫자</b> — 디졸브 작업 때 현재형 문서를 고쳤습니다: <code>overview/rendering-analysis.html</code>(b1 크기·단계, 재질 셋 t20, 그림자 패스의 PS), <code>study/binding-study.html</code> 슬롯 표, <code>study/velocity-buffer-study.html</code> 의 b1 크기. 계획 문서(<code>velocity-motionblur-taa-plan</code>, <code>ocean-gerstner-plan</code>)는 그 시점의 기록이라 그대로 둡니다.</li>
+</ul>
+</section>
+
+<section id="dissolve">
+<h2>7. 디졸브</h2>
+<p>강조와 같은 날 이어서 넣었습니다. 노이즈 값이 문턱보다 작은 픽셀을 버려서 몸이 타 들어가듯 사라지게 하고, 문턱 바로 위의 띠에 발광을 더해 타는 테두리를 만듭니다. 강조와 달리 <b>텍스처(노이즈)</b>와 <b>그림자 패스의 PS</b> 가 필요해서 b1 만으로는 끝나지 않았습니다.</p>
+
+<h3 id="dissolve-split">7.1 값을 어디에 두었나</h3>
+<table>
+<tr><th>값</th><th>자리</th><th>이유</th></tr>
+<tr><td>진행도, 경계 폭, 경계 색 × 세기</td><td>새 <code>Dissolve</code> 컴포넌트 → b1 <code>dissolveEdge</code>(rgb 경계 빛, a 진행도)와 <code>highlightFlash.a</code>(경계 폭). <code>PerObjectConstants</code> 240 → 256 B</td><td>오브젝트마다 다르고 매 프레임 바뀝니다. 강조와 같은 이유로 b1 입니다. 경계 폭을 번쩍임의 남는 칸에 둔 이유는 아래 상자.</td></tr>
+<tr><td>노이즈 텍스처</td><td><code>Material::dissolveNoiseTexture</code> → 재질 셋 <b>t20</b></td><td>텍스처는 상수 버퍼에 못 넣습니다. 재질 셋은 재질마다 하나씩 이미 만들어 두므로 칸 하나만 늘리면 됩니다. 상용 엔진도 "노이즈는 재질 파라미터(기본값 있음), 진행도는 인스턴스 값"으로 나눕니다.</td></tr>
+<tr><td>노이즈 UV 배율</td><td><code>Material::dissolveNoiseScale</code> → b3 의 예전 <code>padding1</code> 자리 (오프셋 100)</td><td>무늬 크기는 노이즈와 짝이라 재질에 둡니다. <code>MaterialConstants</code> 크기(112 B)는 그대로입니다.</td></tr>
+</table>
+<div class="box warn"><b>b1 을 256 B 로 맞춘 이유.</b> 처음에는 <code>float4</code> 두 칸(진행도·폭, 경계 색)을 더해 272 B 로 만들었습니다. 그런데 D3D12 는 상수 버퍼 크기를 256 단위로 올리고(<code>D3D12Device.cpp</code> 의 <code>CreateBuffer</code>, 루트 CBV 정렬), 업로드 링에서 <code>UpdateBuffer</code> 한 번마다 그 크기만큼 떼어 갑니다. 272 B 는 512 B 조각이 되어 드로우 하나가 링을 두 배로 씁니다. 8 MB 링으로 그릴 수 있는 일반 드로우가 프레임당 약 32,000 번에서 약 16,000 번으로 줄고(그림자 뷰마다의 드로우 포함), 넘치면 그 갱신은 버려집니다. 다섯 값을 <code>float4</code> 하나와 쓰지 않던 <code>highlightFlash.a</code> 에 넣어 256 B 를 지켰습니다. <code>static_assert(sizeof(PerObjectConstants) == 256)</code> 에 이유를 적어 두었습니다. 셰이더는 <code>DissolveAmount()</code>·<code>DissolveWidth()</code> 로만 읽으므로 칸 배치는 한 곳에 모여 있습니다. 다시 접은 뒤에도 디졸브 화면은 접기 전과 픽셀이 같았습니다(7.6).</div>
+<p><b>재질 칸이 비면 엔진 기본 노이즈 <code>builtin:noise</code></b> 를 씁니다(다른 텍스처 칸처럼 흰색이 아님). 흰색(1)이면 진행도가 1 이 될 때까지 아무것도 안 사라지다가 한 번에 사라집니다. 기본 노이즈 덕분에 재질이 여러 개인 모델(마스터치프는 재질 4 개)도 칸을 하나도 채우지 않고 사라집니다.</p>
+<p>t20 은 후처리 셋의 <code>kSRVSlotBlurWeights</code>(BlurCS 의 가중치 버퍼)와 번호가 같습니다. 두 셋은 같은 패스에서 같이 묶이지 않고, 엔진 시작 때 <code>바인딩 대조</code> 가 패스마다 레이아웃과 셰이더를 맞춰 보므로(BlurCompute t20, ShadowAlpha t20 모두 OK) 겹쳐도 됩니다.</p>
+
+<h3 id="dissolve-use">7.2 쓰는 법</h3>
+<p><b>Add Component → Dissolve</b>. 계층 규칙은 Highlight 와 같습니다(루트에 붙이면 자손이 물려받고, 가까운 쪽이 이기고, 꺼진 것은 없는 것). <b>미리 붙여 둘 필요는 없습니다</b>: 재생 중에 스크립트가 <code>AddBehaviour</code> 로 붙여도 다음 순회에서 <code>Start</code> 가 불리고 그 프레임부터 그려집니다(<code>Scene::Update</code> 가 인덱스로 순회함). 미리 붙여 둔 <code>amount = 0</code> 도 비용이 거의 없습니다(아래 7.4).</p>
+<table>
+<tr><th>필드</th><th>뜻</th><th>기본</th></tr>
+<tr><td><code>amount</code></td><td>진행도 [0, 1]. 0 은 끔, 1 은 완전히 사라짐. 기본 노이즈에서는 사라진 면적의 비율과 거의 같습니다.</td><td>0</td></tr>
+<tr><td><code>edgeWidth</code></td><td>경계 띠의 폭(노이즈 값 단위). 0 이면 테두리 빛 없음</td><td>0.05</td></tr>
+<tr><td><code>edgeColor</code>, <code>edgeIntensity</code></td><td>경계 빛 색 × 세기(선형, HDR)</td><td>주황, 4</td></tr>
+</table>
+<p>재질 쪽은 인스펙터의 재질 칸과 Materials 탭에 <b>Dissolve noise</b>(텍스처 이름, Enter 로 확정, 비우면 <code>builtin:noise</code>)와 <b>Dissolve noise scale</b> 이 생겼습니다. 이름 규칙은 다른 텍스처 칸과 같고(<code>Assets/Textures</code> 기준, <code>asset:</code>, <code>builtin:</code>) 선형으로 읽어 R 채널을 씁니다. 씬 파일에는 기본값이 아닐 때만 <code>dissolveNoiseTexture</code>·<code>dissolveNoiseScale</code> 키를 씁니다(예전 씬 파일과 모양이 같음).</p>
+<p>연출 예제는 <code>Projects/SherlockTestScenes/Scripts/Tests/DissolveOut.h/.cpp</code> 입니다. <code>Start</code> 에서 <code>Dissolve</code> 가 없으면 붙이고, <code>delay</code> 뒤 <code>duration</code> 초 동안 <code>amount</code> 를 0 → 1 로 올린 뒤 <code>hold</code> 초 쉬고 되풀이합니다.</p>
+
+<h3 id="dissolve-shader">7.3 셰이더</h3>
+<pre><code>// Shaders/Dissolve.hlsli
+float DissolveNoise(float2 uv)            // uv 는 이미 uvScale 을 곱한 메시 UV
+{
+    return dissolveNoiseTexture.Sample(albedoSampler, uv * dissolveNoiseScale).r;
+}
+float DissolveAmount() { return dissolveEdge.a; }                // a: 진행도
+float DissolveWidth()  { return max(highlightFlash.a, 0.0f); }   // w: 경계 폭 (번쩍임의 남는 칸)
+float DissolveThreshold()                 // t = a(1 + w) − w : a = 0 이면 −w (아무것도 안 버림), a = 1 이면 1 (전부 버림)
+{
+    return DissolveAmount() * (1.0f + DissolveWidth()) - DissolveWidth();
+}
+void DissolveClip(float noise)
+{
+    if (DissolveAmount() &gt; 0.0f) clip(noise - DissolveThreshold() - 0.0001f);
+}
+float3 DissolveEdgeEmission(float noise)  // 문턱 위 폭 w 의 띠: 문턱에 가까울수록 밝음
+{
+    if (DissolveAmount() &lt;= 0.0f || DissolveWidth() &lt;= 0.0f) return 0.0f;
+    return dissolveEdge.rgb * (1.0f - saturate((noise - DissolveThreshold()) / DissolveWidth()));
+}</code></pre>
+<p class="foot">실제 파일은 같은 식을 <code>if</code> 블록으로 썼습니다. 위는 줄여 옮긴 것입니다.</p>
+<table>
+<tr><th>자리</th><th>하는 일</th></tr>
+<tr><td><code>BasicPixelShader.hlsl</code> (포워드·블렌드·unlit·바다 포워드)</td><td>알파 컷아웃 <code>clip</code> 바로 뒤에 <code>DissolveClip</code>. unlit 분기도 경계 빛을 더함</td></tr>
+<tr><td><code>GBufferPixelShader.hlsl</code> (디퍼드·바다 디퍼드)</td><td>같은 자리에 <code>DissolveClip</code></td></tr>
+<tr><td><code>MaterialSurface.hlsli</code> 의 <code>EvaluateMaterialSurface</code></td><td><code>s.emission += HighlightEmission(...) + DissolveEdgeEmission(...)</code> — 포워드는 조명 결과에, 디퍼드는 G-buffer 발광 칸에 들어감(강조와 같은 길)</td></tr>
+<tr><td><code>ShadowAlphaPixelShader.hlsl</code> (새 파일)</td><td>그림자 패스용. 알파 컷아웃과 디졸브로 버릴 픽셀만 고르고 색은 내지 않음(7.4)</td></tr>
+</table>
+<table>
+<tr><th>결정</th><th>이유</th></tr>
+<tr><td>노이즈 좌표는 메시 UV</td><td>사용자가 고른 방식입니다. 계산이 싸고 재질의 UV 배율을 그대로 따릅니다. 대신 UV 섬 경계에서 무늬가 끊기고, UV 가 없는 메시나 UV 가 겹친 모델은 무늬가 이상할 수 있습니다(<a href="#todo">6장</a>).</td></tr>
+<tr><td>기본 노이즈는 엔진이 만듦 (<code>TextureLoader::CreateTileableNoise</code>)</td><td>256², 격자 8 → 64 의 4 옥타브 값 노이즈(fBm). 가장자리가 이어지도록 격자를 감고, 같은 시드면 항상 같은 결과입니다. 값을 <b>순위로 다시 매겨</b> [0, 1] 에 고르게 퍼뜨렸습니다. fBm 은 가운데 값이 몰려 있어서 그대로 쓰면 진행도 0.5 근처에서 한꺼번에 많이 사라집니다. 순위로 펴면 <code>amount</code> 가 사라진 면적 비율과 거의 같아집니다(밉으로 흐려지는 먼 곳은 예외).</td></tr>
+<tr><td>문턱 식 <code>a(1 + w) − w</code></td><td>경계 띠 폭만큼 문턱을 아래로 밀어서, 시작할 때(a 가 0 에 가까울 때) 아직 아무것도 안 버린 표면에 띠만 먼저 나타나고, a = 1 에서 띠까지 모두 사라지게 했습니다. <code>clip</code> 의 0.0001 여유는 노이즈 값 1(255)인 픽셀이 a = 1 에서 남지 않게 합니다.</td></tr>
+<tr><td><code>a = 0</code> 이면 아무것도 안 함</td><td><code>DissolveClip</code>·<code>DissolveEdgeEmission</code> 이 모두 <code>DissolveAmount() &gt; 0</code> 을 봅니다. 컴포넌트가 없는 오브젝트는 b1 칸이 0 이라 같은 길을 탑니다. 강조와 마찬가지로 셰이더 변형이 없습니다.</td></tr>
+<tr><td>메인 패스의 early-Z</td><td>메인 PS 와 G-buffer PS 에는 원래 알파 컷아웃 <code>clip</code> 이 있었습니다. 그래서 <code>clip</code> 이 하나 더 들어가도 셰이더의 성질(깊이를 PS 뒤에 쓰는지)은 바뀌지 않습니다. 그림자 패스는 아래처럼 필요한 드로우만 PS 있는 변형으로 보냅니다.</td></tr>
+</table>
+
+<h3 id="dissolve-shadow">7.4 그림자: 알파 테스트 변형</h3>
+<p>그림자 패스(<code>Pass_Shadow</code>·<code>Pass_ShadowSkin</code>)는 VS 만 있고 셋도 프레임·오브젝트 둘뿐이라, 그대로 두면 몸이 사라져도 그림자는 남습니다. 그래서 PS 가 있는 변형을 하나 더 만들었습니다.</p>
+<pre><code>Pass_ShadowAlpha      ShadowAlphaVS     + ShadowAlphaPS   셋: 프레임, 오브젝트, <b>재질</b>
+Pass_ShadowAlphaSkin  ShadowAlphaSkinVS + ShadowAlphaPS   (깊이 바이어스·포맷은 Pass_Shadow 와 같음 — BuildPassDescs 의 같은 반복문)
+
+BuildDrawList:  item.shadowAlpha = material-&gt;alphaCutoff &gt; 0 || 디졸브 중(amount &gt; 0)
+                item.shadowPipeline = GetShadowPipelineFor(재질, 정점 형식, mirrored, item.shadowAlpha)   // 키 비트 10
+RenderShadowPass: shadowAlpha 인 드로우만, 재질이 바뀔 때 cmd.SetResourceSet(kSetMaterial, gpuMaterial-&gt;set)</code></pre>
+<ul>
+  <li>PS 는 메인 패스와 같은 식으로 알파(정점 색 × <code>baseColor</code> × 알베도 텍스처 a)를 구해 컷아웃을 하고, 같은 노이즈·문턱으로 <code>DissolveClip</code> 을 합니다. 그래서 그림자에도 몸과 같은 무늬로 구멍이 납니다.</li>
+  <li><b>컷아웃 재질도 이 변형으로 갑니다</b>. 예전에는 나뭇잎 같은 컷아웃 재질의 그림자가 구멍 없이 꽉 찬 다각형이었는데, 이제 잎 모양대로 납니다. 화면이 바뀌는 쪽의 변경이라 따로 측정했습니다(7.6).</li>
+  <li>디졸브가 없는 불투명 재질은 예전과 같은 PS 없는 빠른 경로입니다. 디졸브도 <code>amount = 0</code> 이면 빠른 경로이고, 0 보다 커지는 프레임부터 변형으로 바뀝니다.</li>
+  <li>D3D12 는 루트 시그니처가 바뀌면 테이블이 다시 묶여야 하므로, 변형 PSO 를 고른 뒤 재질 셋을 꽂습니다. PS 없는 변형의 루트 레이아웃에는 재질 셋이 없어 꽂혀 있어도 <code>ApplyBindings</code> 가 무시합니다.</li>
+</ul>
+
+<h3 id="dissolve-files">7.5 바뀐 파일</h3>
+<table>
+<tr><th>파일</th><th>내용</th></tr>
+<tr><td><code>Scene/Dissolve.h/.cpp</code> (새 파일)</td><td>컴포넌트. <code>Reflect</code> 키 4 개, <code>SHERLOCK_BEHAVIOUR(Dissolve)</code>. vcxproj·filters 에 추가</td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code></td><td><code>PerObjectConstants</code> 240 → 256 B (<code>dissolveEdge</code> 240, 경계 폭은 <code>highlightFlash</code> 의 a), <code>MaterialConstants::padding1</code> → <code>dissolveNoiseScale</code>(100), <code>kSRVSlotDissolveNoise = 20</code></td></tr>
+<tr><td><code>Shaders/Mesh.hlsli</code>, <code>Shaders/Material.hlsli</code></td><td>b1 에 두 칸, b3 의 <code>dissolveNoiseScale</code>, <code>Texture2D dissolveNoiseTexture : register(t20)</code></td></tr>
+<tr><td><code>Shaders/Dissolve.hlsli</code> (새 파일)</td><td>위 7.3 의 네 함수</td></tr>
+<tr><td><code>Shaders/ShadowAlpha.hlsli</code>, <code>ShadowAlphaVertexShader.hlsl</code>, <code>ShadowAlphaSkinVertexShader.hlsl</code>, <code>ShadowAlphaPixelShader.hlsl</code> (새 파일)</td><td>알파 테스트 그림자. VS 는 기존 그림자 VS 에 정점 색·UV(× <code>uvScale</code>)를 더 넘김. vcxproj 의 FxCompile 항목 추가</td></tr>
+<tr><td><code>Shaders/BasicPixelShader.hlsl</code>, <code>GBufferPixelShader.hlsl</code>, <code>MaterialSurface.hlsli</code></td><td><code>DissolveClip</code> 과 경계 빛</td></tr>
+<tr><td><code>Graphics/Renderer.h/.cpp</code></td><td><code>ResolveHighlight</code> → 템플릿 <code>ResolveInherited&lt;T&gt;</code>(Highlight·Dissolve 공용), <code>HierarchyFrame::dissolve</code>, <code>ObjectData</code> 의 두 칸과 범위 자르기, 재질 레이아웃에 t20, <code>GetOrCreateGpuMaterial</code> 의 노이즈 로드·바인딩·<code>dissolveNoiseName</code> 비교, 셰이더 3 개·패스 2 개, <code>GetShadowPipelineFor</code> 의 <code>alphaTest</code>, <code>DrawItem::shadowAlpha</code></td></tr>
+<tr><td><code>Graphics/RendererShadow.cpp</code></td><td>그림자 반복문에서 <code>shadowAlpha</code> 드로우의 재질 셋 바인딩</td></tr>
+<tr><td><code>Graphics/TextureLoader.h/.cpp</code>, <code>TextureCache.cpp</code></td><td><code>CreateTileableNoise</code>, <code>builtin:noise</code></td></tr>
+<tr><td><code>Scene/Material.h</code>, <code>Scene/SceneSerializer.cpp</code></td><td>재질 필드 두 개와 저장·읽기(기본값이면 키를 쓰지 않음)</td></tr>
+<tr><td><code>Editor/Editor.cpp</code>, <code>Editor/DebugUI.h/.cpp</code></td><td><code>DebugUI::DrawDissolveNoiseFields</code>(인스펙터 재질 칸과 Materials 탭 공용), 여러 오브젝트 동시 편집의 <code>ApplyChangedFields</code>, 텍스처 임포트 설정 목록에 노이즈 칸</td></tr>
+<tr><td><code>Editor/GameBuilder.cpp</code></td><td>패키지 빌드가 <code>dissolveNoiseTexture</code> 를 모으고 선형으로 변환해 실음</td></tr>
+</table>
+
+<h3 id="dissolve-verify">7.6 검증</h3>
+<p>방법은 5장과 같습니다. 기준 화면은 디졸브를 넣기 직전(강조까지 들어간 작업 트리)에 찍었습니다.</p>
+<table>
+<tr><th>씬 (생성기 <code>Scripts/Tests/make_dissolve_test_scenes.py</code>)</th><th>내용</th></tr>
+<tr><td><code>DissolveZero.json</code></td><td><code>DamagedHelmet.json</code> 의 헬멧에 <code>amount = 0</code></td></tr>
+<tr><td><code>Dissolve.json</code></td><td>헬멧 <code>amount = 0.5</code>, 노이즈 칸 비움(기본 노이즈)</td></tr>
+<tr><td><code>DissolveChecker.json</code></td><td><code>Dissolve.json</code> + 헬멧 재질 둘의 노이즈를 <code>builtin:checker</code> 로(재질별 노이즈)</td></tr>
+<tr><td><code>DissolveFile.json</code></td><td>노이즈를 파일(<code>NormalBumpTest.png</code>)로. 패키지 빌드 확인용</td></tr>
+<tr><td><code>DissolveGone.json</code>, <code>DissolveNoHelmet.json</code></td><td>헬멧 <code>amount = 1</code>, 그리고 헬멧 오브젝트를 뺀 씬</td></tr>
+<tr><td><code>DissolveHierarchy.json</code></td><td><code>MasterChiefWalk.json</code> 의 루트에 0.5, 첫 자식 <code>01.Arms</code> 에 0</td></tr>
+<tr><td><code>DissolveOut.json</code></td><td>헬멧에 <code>DissolveOut</code> 스크립트만(Dissolve 는 재생 중에 붙음)</td></tr>
+</table>
+<table>
+<tr><th>비교</th><th>다른 픽셀</th><th>판정</th></tr>
+<tr><td>컷아웃 그림자가 달라지지 않는 씬: 기준 vs 수정 후 (DamagedHelmet, MasterChiefWalk, DeferredMaterials, Highlight, HighlightHierarchy, Ocean × D3D11 디퍼드·D3D12 디퍼드·D3D11 포워드, 18 쌍. DeferredMaterials·Highlight 의 <code>D_Cutout</code> 은 아래 행)</td><td>18 쌍 모두 0</td><td>회귀 없음</td></tr>
+<tr><td>컷아웃 그림자: <code>Sponza.json</code> (컷아웃 재질 26 개 중 3 개)</td><td>2,480 (8 초과 211, 최대 45). D3D12 같은 수, 포워드 2,461 (209, 45). 잡음 기준(같은 바이너리 두 번)은 1</td><td>화분 식물·사슬 주변 바닥과 기둥의 그림자가 잎·고리 모양으로 뚫림. 의도한 변화</td></tr>
+<tr><td>컷아웃 그림자: <code>SponzaCascades.json</code></td><td>1,622 (8 초과 284, 최대 34). D3D12 같은 수, 포워드 1,636 (280, 34). 잡음 기준 0</td><td>같음</td></tr>
+<tr><td>컷아웃 그림자: <code>DeferredMaterials.json</code> 의 <code>D_Cutout</code></td><td>0</td><td>알베도 텍스처가 없어 알파가 어디나 1 이라 버릴 픽셀이 없음(PSO 만 변형으로 바뀜)</td></tr>
+<tr><td>DissolveZero vs DamagedHelmet (기준) × 3 경로</td><td>0, 0, 0</td><td><code>amount = 0</code> 은 없는 것과 같음</td></tr>
+<tr><td>DissolveGone vs DissolveNoHelmet × 3 경로, 그리고 그림자 디버그 뷰(<code>--debug-view=4</code>)</td><td>모두 0</td><td>몸과 그림자가 모두 사라짐</td></tr>
+<tr><td>Dissolve vs DamagedHelmet</td><td>37,155 (8 초과 25,762, 최대 254)</td><td>헬멧 절반이 사라지고 주황 테두리. 그림자 디버그 뷰에서 바닥 그림자도 같은 무늬로 뚫림</td></tr>
+<tr><td>Dissolve: D3D11 vs D3D12 / 디퍼드 vs 포워드</td><td>0 / 최대 8, 8 초과 0 (기준 DamagedHelmet 의 디퍼드 vs 포워드: 최대 11, 8 초과 3)</td><td>백엔드·경로가 같게 그림</td></tr>
+<tr><td>DissolveChecker: D3D11 vs D3D12</td><td>0</td><td>격자 모양으로 사라짐(재질별 노이즈가 기본 노이즈를 대신함)</td></tr>
+<tr><td>DissolveHierarchy vs MasterChiefWalk</td><td>8,665 (최대 244)</td><td>자식 스킨 메시 넷이 물려받아 사라짐(노이즈 칸을 채우지 않은 재질 4 개). <code>01.Arms</code> 만 그대로</td></tr>
+<tr><td>DissolveHierarchy: D3D11 vs D3D12 / 디퍼드 vs 포워드</td><td>1 (최대 1) / 8 초과 3, 최대 23 (기준 MasterChiefWalk: 8 초과 3, 최대 23)</td><td>같음. 스킨 그림자 변형(<code>Pass_ShadowAlphaSkin</code>)도 이 씬에서 돎</td></tr>
+<tr><td>DissolveOut, <code>--play=1</code>, 12·150·300·450 프레임</td><td>12·150 은 그대로, 300·450 에서 점점 사라짐</td><td>재생 중 <code>AddBehaviour</code> 로 붙인 Dissolve 가 그려짐(실시간이라 픽셀 비교는 안 함)</td></tr>
+</table>
+<ul>
+  <li><b>로그</b> — <code>cbuffer 'PerObject' 크기 일치: 256 바이트</code> 를 12 개 셰이더(ShadowAlphaVS·ShadowAlphaSkinVS·ShadowAlphaPS 포함)에서, <code>cbuffer 'Material' 크기 일치: 112 바이트</code> 를 확인했습니다. <code>바인딩 대조</code> 는 OK 가 아닌 줄이 없습니다(ShadowAlpha·ShadowAlphaSkin 의 b1·b3·b5·t0·t20·s0 포함).</li>
+  <li><b>D3D12 GPU 기반 검증</b> — <code>Dissolve</code>·<code>DissolveHierarchy</code>·<code>Sponza</code> 를 <code>--backend=d3d12 --gpu-validation=1</code> 로 40 프레임 돌렸습니다. <code>D3D12:</code> 줄은 GBV 시작 안내와 종료 시 Live Device 뿐이고 오류는 없었습니다. b1 을 256 B 로 다시 접은 뒤에 다시 돌린 결과입니다.</li>
+  <li><b>다시 접은 뒤</b> — b1 을 272 → 256 B 로 바꾼 뒤 위 표의 씬을 모두 다시 찍었습니다. 디졸브 씬 4 개(Dissolve·DissolveChecker·DissolveHierarchy·DissolveGone) × 3 경로는 접기 전과 픽셀이 같았고(차이 0), Sponza·SponzaCascades 는 잡음 수준(±1 픽셀)만 달랐습니다.</li>
+  <li><b>인스펙터</b> — <code>--select</code> 화면에서 Components 에 Dissolve 와 네 칸(amount·edgeWidth·edgeColor·edgeIntensity)이 나오는 것을 확인했습니다. 재질 쪽 <b>Dissolve noise</b>·<b>Dissolve noise scale</b> 칸은 화면으로 보지 않았습니다(같은 값을 씬 파일로 읽는 경로는 DissolveChecker·DissolveFile 로 확인).</li>
+  <li><b>패키지 빌드</b> — <code>DissolveFile.json</code> 을 시작 씬으로 <code>--build-game --build-minimal=1</code> 로 빌드했습니다. 노이즈 파일이 <code>TextureCache</code> 에 선형 DDS 로 변환돼 실렸고(<code>텍스처 변환본: NormalBumpTest.png (1024x1024, 밉 11, linear)</code>), 패키지 실행 화면이 에디터와 같은 무늬로 사라졌습니다. 빈 칸(<code>builtin:noise</code>)은 실을 파일이 없습니다. 확인한 뒤 빌드 폴더는 지웠습니다.</li>
+</ul>
+</section>
+
+<p class="foot">관련 문서: <a href="material-extensions-record.html">재질 확장 구현 기록</a>(<code>MaterialSurface.hlsli</code> 의 구조), <a href="deferred-clustered-ssao-record.html">디퍼드 구현 기록</a>(G-buffer 발광 칸), <a href="../study/binding-study.html">리소스 바인딩 공부</a>(b1 과 레이아웃).</p>
+</main>
+</body>
+</html>
