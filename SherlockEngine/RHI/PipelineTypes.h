@@ -270,7 +270,7 @@ struct ComputePipelineDesc
 
 	uint64_t Hash() const
 	{
-		uint64_t h = 0xCBF29CE484222325ull;   // FNV-1a (PipelineStateDesc::Hash 와 같은 방식)
+		uint64_t h = 0xCBF29CE484222325ull;   // FNV-1a 상수로 64비트 값 단위로 섞음 (PipelineStateDesc::Hash 는 boost 식 HashCombine — 방식이 다름)
 		auto mix = [&h](uint64_t v)
 		{
 			h ^= v;

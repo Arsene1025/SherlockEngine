@@ -73,7 +73,7 @@ private:
 
 // 게임 UI 시스템. Engine 이 하나 가짐.
 //
-// Build 는 편집·재생 모두 매 프레임 부름 (OnGUI 뒤, Engine::Render 앞 — 에디터가 그 프레임에 씬 창 크기와 Inspector
+// Build 는 편집·재생 모두 매 프레임 부름 (OnGUI 뒤, Engine::Render 안에서 Renderer::Render 앞 — 에디터가 그 프레임에 씬 창 크기와 Inspector
 // 값을 바꾼 뒤): 캔버스 찾기 → World 먼저, sortOrder 정렬 → 루트 사각형(CanvasScaler) → 깊이 우선으로 RectTransform 계산
 // (레이아웃 그룹·Slider·Scrollbar·ScrollRect 가 정하는 자식 사각형은 이 프레임에만 덮어씀) → Graphic 이 사각형을 쌓음.
 // 결과는 CPU 그리기 목록과 메인 뷰의 히트 목록뿐이고 GPU 업로드는 Renderer::Render 안에서 함.

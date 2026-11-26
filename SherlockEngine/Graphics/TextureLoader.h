@@ -7,7 +7,7 @@
 
 // 텍스처 파일 → CPU 이미지(밉 체인 포함). API 중립.
 //
-// 디코딩과 밉맵 생성은 DirectXTex(vcpkg)가 맡음. WIC(PNG·JPG·BMP)와 DDS를 읽음.
+// 디코딩과 밉맵 생성은 DirectXTex(vcpkg)가 맡음. WIC(PNG·JPG·BMP·TIFF·GIF 등)와 DDS를 읽음.
 // 결과는 TextureDesc + 밉 레벨별 TextureSubresource 배열이므로 Device::CreateTexture에
 // 그대로 넘김. D3D 헤더는 쓰지 않음 — DirectXTex의 D3D11 헬퍼(CreateTexture 등)도
 // 일부러 쓰지 않음. 그것을 쓰면 로더가 D3D11 폴더에 들어가야 함.

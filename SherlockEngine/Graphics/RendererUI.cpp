@@ -11,7 +11,7 @@
 // 게임 UI 캔버스 (Renderer 의 멤버 함수를 파일만 나눠 구현함). 설계: docs/plan/ui-canvas-plan.html.
 //
 // 프레임 안에서 UI 가 지나는 길:
-//   (CPU) UISystem::Build   Engine::Render 앞. 메인·미리보기 두 뷰의 정점·인덱스·명령·캔버스 행렬을 한 목록에
+//   (CPU) UISystem::Build   Engine::Render 안, Renderer::Render 앞. 메인·미리보기 두 뷰의 정점·인덱스·명령·캔버스 행렬을 한 목록에
 //   Prepare 업로드 구간       UploadUI: 명령마다 텍스처를 읽어 셋을 고르고(캐시), VB·IB·b4 를 프레임에 한 번 올림
 //   톤 패스 뒤               RenderCanvasPass(0): 출력 텍스처(에디터 씬 텍스처 / 게임 백버퍼)의 UNORM 뷰에 덧그림
 //   미리보기 톤 패스 뒤       RenderCanvasPass(1): 미리보기 텍스처

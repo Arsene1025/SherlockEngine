@@ -60,7 +60,7 @@ namespace RHI
 
 		// 가장 최근에 완료된 프레임의 타임스탬프. ticks[i] = 그 프레임에서 slot i 에 기록한 값 (기록 안 했으면 0),
 		// frequency = 초당 틱. 아직 어떤 프레임도 끝나지 않았으면 false. 호출해도 CPU 가 대기하지 않음
-		// (D3D12: 펜스가 이미 지난 슬롯, D3D11: 2프레임 전 쿼리). C++20: (uint64_t*, count) → std::span.
+		// (D3D12: 펜스가 이미 지난 슬롯, D3D11: 6프레임 전 쿼리 — kTimestampSets). C++20: (uint64_t*, count) → std::span.
 		// 호출자의 C 배열이 크기와 함께 넘어오므로 count 를 따로 적을 일이 없음. ticks.size() 가
 		// kMaxTimestamps 보다 크면 kMaxTimestamps 개까지만 채움.
 		virtual bool GetTimestampResults(std::span<uint64_t> ticks, uint64_t& frequency, uint64_t& frameNumber) = 0;

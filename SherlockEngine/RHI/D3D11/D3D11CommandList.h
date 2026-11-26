@@ -82,7 +82,7 @@ private:
 	TextureHandle m_vsSrv[kMaxSrvRegister];
 	TextureHandle m_psSrv[kMaxSrvRegister];
 	// 컴퓨트도 같은 규칙: 같은 리소스가 CS 의 SRV 와 UAV 에 (또는 UAV 와 다른 스테이지의 SRV·RTV 에) 동시에
-	// 바인딩되면 런타임이 한쪽을 NULL 로 만들고 경고함. Barrier 가 UAV 상태에 드나들 때 겹치는 쪽을 먼저 풂.
+	// 바인딩되면 런타임이 한쪽(문서상 SRV 쪽)을 NULL 로 만들고 경고함. Barrier 가 UAV 상태에 드나들 때 겹치는 쪽을 먼저 풂.
 	TextureHandle m_csSrv[kMaxSrvRegister];
 	TextureHandle m_csUav[kMaxUavRegister];
 	// 같은 레지스터의 버퍼판 (구조체 버퍼 SRV·UAV). 한 레지스터에는 텍스처 아니면 버퍼 하나만 기록됨 — 한쪽을

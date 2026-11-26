@@ -52,15 +52,15 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] = {
 	{ L"BlurComputeShader.hlsl", "CS_Blur", ShaderStage::Compute, "BlurCS" },                                       // 가우시안 블러 한 방향 (컴퓨트 경로)
 	{ L"BlurWeightsComputeShader.hlsl", "CS_BlurWeights", ShaderStage::Compute, "BlurWeightsCS" },                  // 블러 가중치 → 구조체 버퍼 (u0)
 	{ L"ParticleResetComputeShader.hlsl", "CS_ParticleReset", ShaderStage::Compute, "ParticleResetCS" },            // 새 버퍼: 전부 죽음, 사망 목록 = 모든 슬롯
-	{ L"ParticleSimComputeShader.hlsl", "CS_ParticleSim", ShaderStage::Compute, "ParticleSimCS" },                  // 생존 목록 적분 (간접 디스패치)
+	{ L"ParticleSimComputeShader.hlsl", "CS_ParticleSim", ShaderStage::Compute, "ParticleSimCS" },                  // 생존 목록 적분 + (켜져 있으면) 화면 공간 충돌 (간접 디스패치)
 	{ L"ParticleArgsComputeShader.hlsl", "CS_ParticleArgs", ShaderStage::Compute, "ParticleArgsCS" },               // 생성 수 확정, 간접 인자
 	{ L"ParticleEmitComputeShader.hlsl", "CS_ParticleEmit", ShaderStage::Compute, "ParticleEmitCS" },               // 사망 목록 → 새 파티클
 	{ L"ParticleSortInitComputeShader.hlsl", "CS_ParticleSortInit", ShaderStage::Compute, "ParticleSortInitCS" },   // 알파: 생존 목록 → (뷰 z, 번호)
 	{ L"ParticleSortStepComputeShader.hlsl", "CS_ParticleSortStep", ShaderStage::Compute, "ParticleSortStepCS" },   // 알파: 바이토닉 한 단계
-	{ L"ParticleVertexShader.hlsl", "VS_Particle", ShaderStage::Vertex, "ParticleVS" },                             // 파티클 빌보드 (t21 + t22 생존 목록, SV_InstanceID)
+	{ L"ParticleVertexShader.hlsl", "VS_Particle", ShaderStage::Vertex, "ParticleVS" },                             // 파티클 빌보드 (t21 + t22 생존 목록 또는 알파 이미터의 정렬된 번호, SV_InstanceID)
 	{ L"ParticlePixelShader.hlsl", "PS_Particle", ShaderStage::Pixel, "ParticlePS" },
 	// 디퍼드·SSAO (docs/plan/deferred-clustered-ssao-record.html)
-	{ L"GBufferPixelShader.hlsl", "PS_GBuffer", ShaderStage::Pixel, "GBufferPS" },                           // 재질 → G-buffer MRT 5장 (VS 는 BasicVS/BasicSkinVS)
+	{ L"GBufferPixelShader.hlsl", "PS_GBuffer", ShaderStage::Pixel, "GBufferPS" },                           // 재질 → MRT 6장 (발광 hdr + G-buffer 넷 + 속도. VS 는 BasicVS/BasicSkinVS)
 	{ L"DeferredLightingPixelShader.hlsl", "PS_DeferredLighting", ShaderStage::Pixel, "DeferredLightPS" },   // 풀스크린: G-buffer → 조명 (가산)
 	{ L"SsaoPixelShader.hlsl", "PS_Ssao", ShaderStage::Pixel, "SsaoPS" },                                    // 풀스크린: 깊이·노멀 → 가림 (R8)
 	{ L"SsaoBlurPixelShader.hlsl", "PS_SsaoBlur", ShaderStage::Pixel, "SsaoBlurPS" },                        // 4×4 깊이 가중 블러
@@ -584,7 +584,7 @@ void Renderer::BuildPassDescs()
 	sky.depthStencil.depthFunc = CompareFunc::LessEqual;
 
 	// 파티클: 정점 입력 없음 (SV_VertexID), 컬링 없음 (빌보드), 깊이 테스트만 (불투명 뒤에 가려지되 서로는 가리지 않음),
-	// 가산 블렌딩 — 순서와 상관없이 더해지므로 정렬하지 않음. 알파는 기존 값 유지.
+	// 프리멀티플라이드 블렌딩 하나로 가산·알파 두 모드를 그림 (알파 이미터는 SortParticles 가 뷰마다 먼 것부터 정렬). 목적지 알파는 유지.
 	{
 		PipelineStateDesc& particle = m_passDesc[Pass_Particle];
 		particle.rasterizer.cull = CullMode::None;
@@ -1644,7 +1644,7 @@ void Renderer::BuildDrawList(const Scene& scene)
 	m_device->UpdateBuffer(m_prevSkinCB, m_skinScratch.data(), static_cast<uint32_t>(sizeof(XMFLOAT4X4)));
 
 	// b7 Skin 은 오브젝트 셋에 항상 묶여 있음. D3D12 의 Dynamic 상수버퍼는 프레임마다 한 번은 써야 하므로(안 쓰면
-	// DrawIndexed 가 거부함) 스키닝 드로우가 없는 프레임에도 단위행렬 하나로 채워 둠. 스키닝 드로우는 그리기 직전에 다시 씀.
+	// ApplyBindings 가 에러를 한 번 남기고 옛 링 조각이나 빈 루트 CBV 로 그대로 그림) 스키닝 드로우가 없는 프레임에도 단위행렬 하나로 채워 둠. 스키닝 드로우는 그리기 직전에 다시 씀.
 	XMStoreFloat4x4(&m_skinScratch[0], XMMatrixIdentity());
 	m_device->UpdateBuffer(m_skinCB, m_skinScratch.data(), static_cast<uint32_t>(sizeof(XMFLOAT4X4)));
 
@@ -2269,9 +2269,9 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		gpuMaterial = &m_gpuMaterials.emplace(&material, created).first->second;
 	}
 
-	// 셋에 들어가는 입력(텍스처 이름 다섯·알베도 색공간·샘플러)이 셋을 만들 때와 같고 텍스처 캐시가 그 뒤로
-	// 비워지지 않았으면, 이름 → 핸들 조회를 건너뜀. 대부분의 프레임이 이 경로임 — 재질 편집(ImGui), 샘플러
-	// 덮어쓰기, 씬 교체 때만 아래로 내려감.
+	// 셋에 들어가는 입력(텍스처 이름 열하나·알베도 색공간·샘플러)이 셋을 만들 때와 같고 텍스처 캐시 세대
+	// (GetGeneration — ReleaseLoaded·Evict 가 올림)가 그 뒤로 그대로면, 이름 → 핸들 조회를 건너뜀. 대부분의 프레임이 이 경로임 — 재질 편집(ImGui), 샘플러
+	// 덮어쓰기, 텍스처 다시 읽기(Evict), 씬 교체 때만 아래로 내려감.
 	const SamplerPreset preset = (m_settings.samplerOverride >= 0 && m_settings.samplerOverride < static_cast<int>(kSamplerPresetCount))
 		? static_cast<SamplerPreset>(m_settings.samplerOverride)
 		: material.sampler;
@@ -2388,7 +2388,7 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 
 PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored, bool ocean)
 {
-	// 이 PSO 를 가르는 것은 정점 포맷·미러·채우기·컬링 네 가지뿐. 그 비트를 키로 핸들을 기억해 두면, 드로우마다
+	// 이 PSO 를 가르는 것은 정점 포맷·미러·채우기·컬링·블렌딩·바다 VS 여섯 가지뿐. 그 비트를 키로 핸들을 기억해 두면, 드로우마다
 	// PipelineStateDesc 전체를 복사하고 해시해 Device 캐시를 찾는 일이 없어짐.
 	const bool wireframe = m_settings.wireframe || material.wireframe;
 	const bool cullBack = m_settings.cullBack && !material.doubleSided;

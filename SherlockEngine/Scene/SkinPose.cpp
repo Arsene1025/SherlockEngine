@@ -49,7 +49,7 @@ void EvaluateNodeGlobals(const std::vector<ModelNode>& nodes, const ModelSkin& s
 		XMStoreFloat4x4(&global[n], world);
 	}
 }
-// 노드 월드(evalOrder 루프)와 아래 팔레트·포즈 식은 Scene/SkinPose.cpp 의 EvaluateNodeGlobals·BuildSkinPalette 에 있음 (식은 그대로 옮김).
+// 노드 월드(위 EvaluateNodeGlobals 의 evalOrder 루프)와 아래 팔레트·포즈 식(BuildSkinPalette)은 재생 중 Animator 도 같은 함수를 부름.
 // 편집 모드의 기본 자세(ApplyRestSkinPoses)도 같은 식을 써서, 재생을 시작하기 전과 후의 스킨 모양이 같은 식에서 나옴.
 
 // 스킨 팔레트 / 스켈레톤 포즈 계산
@@ -62,7 +62,7 @@ void EvaluateNodeGlobals(const std::vector<ModelNode>& nodes, const ModelSkin& s
 //						  해당 과정을 거치면 정점이 조인트로부터 얼마나 떨저어졌는지 상대 좌표를 알 수 있음
 //						  이 상태에서 조인트월드를 곱하면 조인트가 움직인 만큼 정점도 움직임(조인트 로컬 ㄷ좌표가 그대로 유지되니까)
 //   2) jointWorld[j]   : 조인트 로컬 공간을 현재 애니메이션 포즈의 월드(씬) 공간으로 보낸다.
-//                        (m_global = 로컬 TRS · 부모 월드, 위 evalOrder 루프에서 계산됨)
+//                        (global = 로컬 TRS · 부모 월드, 위 EvaluateNodeGlobals 의 evalOrder 루프에서 계산됨)
 //                       "바인드 포즈 대비 이 조인트가 움직인 변화량" 계산.
 //                        바인드 포즈 그대로면 inverseBind · jointWorld = 단위행렬이라 정점이 제자리에 남는다.
 //
@@ -74,7 +74,8 @@ void EvaluateNodeGlobals(const std::vector<ModelNode>& nodes, const ModelSkin& s
 //
 // 정점은 자기 영향 조인트 인덱스(JOINTS_0)와 가중치(WEIGHTS_0)를 갖고 있고, 정점 셰이더가 이 배열에서
 // 해당 행렬을 골라 skin = Σ 가중치 · 정점 · palette[인덱스] 로 블렌딩한다.
-// SetSkinPalette 로 오브젝트에 넘기면 렌더러가 GPU 버퍼(구조체 버퍼 등)로 올려 셰이더가 읽는다.
+// SetSkinPalette 로 오브젝트에 넘기면 렌더러가 전치해서 상수 버퍼 b7 (Shaders/Mesh.hlsli 의 cbuffer Skin) 에 올려 스킨 VS 가 읽는다.
+// 지난 프레임 팔레트는 같은 배치의 b13 (cbuffer PrevSkin) 으로 올라가 속도 버퍼의 이전 위치에 쓰임.
 // 구동할 스킨 메시 오브젝트마다 팔레트를 만듦. 스킨이 같으면 노드 월드는 한 번만 계산함 (MasterChief 는 4개 메시가 한 스킨을 씀).
 void BuildSkinPalette(const ModelSkin& skin, const std::vector<XMFLOAT4X4>& global, const XMFLOAT4X4& meshRest, std::vector<XMFLOAT4X4>& palette, GameObject::SkeletonPose& pose)
 {

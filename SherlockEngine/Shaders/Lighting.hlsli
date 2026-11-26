@@ -77,7 +77,7 @@ cbuffer Shadows : register(b6)
 // 그림자 맵은 R32_FLOAT 로 읽는 깊이 텍스처.
 Texture2D shadowMap : register(t8);
 SamplerComparisonState shadowSampler : register(s4);
-// 방향광 CSM 전용 아틀라스 (캐스케이드마다 해상도가 다름). ShadowViewData.params.w == 1 인 뷰가 읽음. 같은
+// 방향광 CSM 전용 아틀라스 (캐스케이드 칸은 모두 1024², Graphics/RendererShadow.cpp 의 CsmRect). ShadowViewData.params.w == 1 인 뷰가 읽음. 같은
 // 비교 샘플러(s4)를 씀.
 Texture2D csmMap : register(t14);
 // 씬의 스카이박스 큐브맵 (없으면 1×1 검은 큐브). 방향 벡터로 샘플함 — 길이는 상관없음.

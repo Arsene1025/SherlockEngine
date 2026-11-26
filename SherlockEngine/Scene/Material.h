@@ -14,7 +14,7 @@
 
 enum class SamplerPreset : uint8_t
 {
-	LinearWrap,   // 3선형 + 반복. 기본값
+	LinearWrap,   // 3선형 + 반복. Material 구조체 기본값 (glTF 임포터는 보통 AnisotropicWrap, nearest 는 PointWrap, clamp 는 LinearClamp)
 	LinearClamp,
 	AnisotropicWrap,   // 비등방 16x. 바닥처럼 비스듬히 보는 면에 필요
 	PointWrap,         // 최근접(픽셀 아트). 밉맵은 씀

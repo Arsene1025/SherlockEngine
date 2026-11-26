@@ -29,7 +29,7 @@ using namespace DirectX;   // 이 파일 안에서만
 namespace
 {
 	constexpr uint32_t kBinGroupSize = 64;                        // View·Tile·Count·Fill 의 [numthreads(64, 1, 1)]
-	constexpr uint64_t kMaxTileMaskBytes = 64ull * 1024 * 1024;   // u2 (144 × ⌈조명 용량 / 32⌉ × 4) 상한 — 조명 약 1,170 만 개. 넘으면 CPU 경로
+	constexpr uint64_t kMaxTileMaskBytes = 64ull * 1024 * 1024;   // u2 (144 × ⌈조명 용량 / 32⌉ × 4) 상한 — 조명 약 373 만 개 (32 의 배수로 3,728,256). 넘으면 CPU 경로
 
 	uint32_t MaskWords(uint32_t lights)
 	{

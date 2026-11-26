@@ -44,7 +44,7 @@ public:
 	// 이름 하나의 2D 텍스처(sRGB·선형 둘 다)만 파괴하고 캐시에서 지움. 임포트 설정을 바꾼 텍스처를 다시 읽게 할 때 씀.
 	// 세대 번호가 올라가 재질 셋이 다음 프레임에 새로 읽은 텍스처로 다시 만들어짐. 없는 이름이면 아무 일도 없음.
 	void Evict(const std::string& name);
-	// ReleaseLoaded 가 부를 때마다 1 증가. 핸들을 기억해 둔 쪽(재질 셋)이 "내가 본 뒤로 캐시가 비워졌는가"를
+	// ReleaseLoaded 를 부를 때와 Evict 가 실제로 지운 게 있을 때 1 증가. 핸들을 기억해 둔 쪽(재질 셋)이 "내가 본 뒤로 캐시가 비워졌는가"를
 	// 이 값 하나로 판단함.
 	uint64_t GetGeneration() const { return m_generation; }
 	size_t GetCount() const { return m_2d[0].size() + m_2d[1].size() + m_cubes.size(); }

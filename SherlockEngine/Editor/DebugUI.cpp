@@ -294,7 +294,7 @@ void DebugUI::DrawShadowPanel(Scene& scene, Renderer& renderer, RHI::Device& dev
 		ImGui::Text("views %u / %u   local tiles %u / %u   skipped lights %u", renderer.GetShadowViewCount(), MAX_SHADOW_VIEWS, renderer.GetUsedLocalTiles(), Renderer::kShadowLocalTileCount, renderer.GetSkippedShadowLights());
 		ImGui::TreePop();
 	}
-	// 방향광 CSM 전용 아틀라스. 캐스케이드마다 해상도가 다름 (C0 이 가장 크고 가까운 구간). CSM 이 꺼져
+	// 방향광 CSM 전용 아틀라스. 캐스케이드 칸은 모두 1024² (C0 이 가장 가까운 구간). CSM 이 꺼져
 	// 있으면 마지막 CSM 프레임의 깊이가 남아 있거나 비어 있음.
 	if (ImGui::TreeNode("CSM atlas (2048x2048 D32, directional, shown as R)"))
 	{

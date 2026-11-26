@@ -1,7 +1,8 @@
 // 재질 셋 (Layout_Material). 상수버퍼 배치는 Graphics/ShaderConstants.h 와 바이트 단위로 같아야 함.
 //
 //   b3 Material (VS 의 uvScale, PS), 알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 반사 세기 t5, 반사 색 t6,
-//   클리어코트 t16~t18, 투과 t19, 재질 샘플러 s0. t7~t15 는 프레임 셋·예약이라 클리어코트부터 t16 을 씀.
+//   클리어코트 t16~t18, 투과 t19, 재질 샘플러 s0. t8~t15 는 프레임 셋 (t13 은 후처리 셋의 입력), t7 은 다른 셋 (속도·조명 경계 구)
+//   이 쓰는 번호라 클리어코트부터 t16 을 씀.
 #ifndef SHERLOCK_MATERIAL_HLSLI
 #define SHERLOCK_MATERIAL_HLSLI
 

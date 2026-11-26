@@ -91,7 +91,7 @@ struct RenderSettings
 	float oceanTimeOverride = -1.0f;
 
 	// 디버그 뷰 (0 조명, 1 알베도, 2 월드 노멀, 3 깊이, 4 그림자 계수, 5 UV, 6 금속성/거칠기, 7 AO, 8 캐스케이드, 9 F0,
-	// 10 클리어코트, 11 월드 위치, 12 기하 노멀, 13 SSAO, 14 클러스터 조명 수, 15 클러스터 슬라이스) 와 깊이 뷰의 범위(월드 단위)
+	// 10 클리어코트, 11 월드 위치, 12 기하 노멀, 13 SSAO, 14 클러스터 조명 수, 15 클러스터 슬라이스, 16 속도, 17 속도 오차) 와 깊이 뷰의 범위(월드 단위)
 	int debugView = 0;
 	float debugDepthRange = 60.0f;
 
@@ -144,10 +144,10 @@ public:
 		uint32_t shadowViews = 0;        // 이번 프레임에 그린 그림자 뷰(아틀라스 타일) 수
 		uint32_t shadowCulled = 0;       // 그 뷰의 절두체나 지역광 범위 밖이라 그림자 패스에서 건너뛴 (뷰, 드로우) 쌍 수
 		uint32_t culled = 0;             // 카메라 절두체 밖이라 메인·미리보기 패스에서 건너뛴 드로우 수
-		uint32_t drawItems = 0;          // 이번 프레임 드로우 목록 크기 (서브메시 단위, 컬링 전). 메인 패스 draws + culled 와 같음
+		uint32_t drawItems = 0;          // 이번 프레임 드로우 목록 크기 (서브메시 단위, 컬링 전). draws·culled 는 미리보기 뷰와 풀스크린·파티클·UI 드로우까지 세므로 draws + culled 와 같지 않음
 		uint32_t particleEmitters = 0;   // 이번 프레임에 시뮬레이션한 이미터 수
-		uint32_t particleCapacity = 0;   // 그 이미터들의 버퍼 원소 합 (= 그리는 쿼드 수. 죽은 것 포함)
-		uint32_t particlesSpawned = 0;   // 이번 프레임에 새로 생긴 파티클 수
+		uint32_t particleCapacity = 0;   // 그 이미터들의 버퍼 원소 합 (용량. 그리는 쿼드는 간접 드로우라 생존 수만큼)
+		uint32_t particlesSpawned = 0;   // 이번 프레임에 생성을 요청한 수 (spawnCount 합. 사망 목록이 모자라면 실제로는 덜 태어남)
 		// ---- 디퍼드·클러스터드·SSAO (메인 뷰 기준) ----
 		bool deferredPath = false;         // 이번 프레임 메인 뷰가 디퍼드로 그려졌는가
 		uint32_t gbufferDraws = 0;         // G-buffer 패스 드로우 수
@@ -183,7 +183,7 @@ public:
 	//   │ 1024²   │ 1024²   │
 	//   └─────────┴─────────┘   2048² (D32 약 16MB)
 	// 균등 해상도: 분할(practical split)이 "캐스케이드마다 해상도가 같다"는 전제로 화면 픽셀당 텍셀 밀도를 맞추기 때문.
-	// 해상도를 바꾸려면 kCsmCascadeSize 와 CsmRect(Renderer.cpp)의 배치를 같이 고칠 것.
+	// 해상도를 바꾸려면 kCsmCascadeSize 와 CsmRect(RendererShadow.cpp)의 배치를 같이 고칠 것.
 	static constexpr uint32_t kCsmAtlasWidth = 2048;
 	static constexpr uint32_t kCsmAtlasHeight = 2048;
 	static constexpr uint32_t kCsmCascadeSize[4] = { 1024, 1024, 1024, 1024 };
@@ -296,8 +296,8 @@ public:
 
 	// 후처리 단계별 썸네일 (에디터의 "Post Stages" 창). 창이 열려 있는 동안 매 프레임 RequestPostCapture 를 부르면
 	// 다음 Render 가 단계마다 HDR 결과를 톤매핑한 작은 텍스처에 그림. 요청이 없으면 비용이 없음. 메인 카메라,
-	// 에디터(오프스크린) 전용. 단계: 0 Scene (후처리 전), 1 Blur, 2 Bloom (꺼진 효과는 active = false), 3
-	// Final (후처리 + 색 효과). 단계 0~2 는 색 효과를 뺀 그림임.
+	// 에디터(오프스크린) 전용. 단계: 0 Scene (후처리 전), 1 TAA, 2 Motion, 3 Blur, 4 Bloom (꺼진 효과는
+	// active = false), 5 Final (후처리 + 색 효과). 단계 0~4 는 색 효과를 뺀 그림임.
 	static constexpr uint32_t kPostStageCount = 6;   // Scene, TAA, Motion, Blur, Bloom, Final
 	struct PostStageThumb
 	{
@@ -490,7 +490,7 @@ private:
 	// 패스 = (VS, PS, 레이아웃 목록). PSO Desc 의 셰이더·bindingLayouts 가 이 표에서 나오고, 바인딩 대조도 패스
 	// 단위로 함 (그 패스의 레이아웃에 선언된 슬롯만 통과).
 	// Pass_MainSkin / Pass_ShadowSkin 은 스키닝 메시용 (정점 포맷 PositionColorNormalTexcoordTangentSkin). 스킨 VS 만 다르고 PS·레이아웃은 같음.
-	// Pass_GBuffer / Pass_GBufferSkin: 디퍼드 G-buffer (MRT 5장, 재질 셋까지 메인과 같은 레이아웃). Pass_DeferredLight: 풀스크린
+	// Pass_GBuffer / Pass_GBufferSkin: 디퍼드 G-buffer (MRT 6장 = 발광 hdr + GB0~GB3 + 속도, 재질 셋까지 메인과 같은 레이아웃). Pass_DeferredLight: 풀스크린
 	// 라이팅 { 프레임, G-buffer }. Pass_Ssao / Pass_SsaoBlur: 풀스크린 { SSAO }.
 	enum PassId : uint32_t
 	{
@@ -904,12 +904,13 @@ private:
 	BufferHandle m_shadowsCB;             // b6 Shadows (프레임에 한 번)
 
 	// 갱신 빈도별 레이아웃 (LayoutId 순서). 선언 사본(m_layoutDescs)은 패스별 바인딩 대조가 씀.
-	//   Layout_Frame     b0 (VS|PS), b2 (PS), t8 그림자 맵, s4 비교 샘플러, t9 스카이박스, s5, t10~t12 IBL (모두 PS), b5 그림자 패스 행렬 (VS), b6 그림자 뷰 배열 (PS), t14 CSM, t15 조명 구조체 버퍼
-	//   Layout_Object    b1 (VS)
+	//   Layout_Frame     b0 (VS|PS), b2 (PS), t8 그림자 맵, s4 비교 샘플러, t9 스카이박스, s5, t10~t12 IBL (모두 PS), b5 그림자 패스 행렬 (VS), b6 그림자 뷰 배열 (PS), t14 CSM, t15 조명 구조체 버퍼, t30·t31 클러스터 (모두 PS)
+	//   Layout_Object    b1, b7 스킨 팔레트, b13 지난 팔레트 (VS), b9 바다 (VS|PS)
 	//   Layout_Material  b3 (VS|PS), t0 알베도, t1 노멀, t2 금속성/거칠기, t3 AO, t4 발광, t5 반사 세기, t6 반사 색, t16~t18 클리어코트, t19 투과, s0 (모두 PS)
 	//   Layout_Post      b0, b4, t13, s6, t20 가중치 (모두 PS)
 	//   Layout_BlurCompute b4, t13 입력, u0 출력, t20 가중치 (모두 CS)
 	//   Layout_BlurWeights b4, u0 가중치 버퍼 (모두 CS)
+	//   나머지 (파티클·G-buffer·SSAO·시간·클러스터 비닝·UI) 는 CreateLayouts 에 적음. 모두 Layout_Count = 19 개.
 	BindingLayoutHandle m_layouts[Layout_Count];
 	BindingLayoutDesc m_layoutDescs[Layout_Count];
 	ResourceSetHandle m_frameSet;

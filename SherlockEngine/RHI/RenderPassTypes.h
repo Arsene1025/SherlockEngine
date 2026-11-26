@@ -69,10 +69,11 @@ struct RenderPassDesc
 
 // 리소스 상태 (D3D12_RESOURCE_STATES 의 부분집합).
 //
-// D3D11은 드라이버가 상태를 추적하므로 Barrier 는 빈 함수임. 그래도 호출을 지금부터
-// 넣는 이유: 그림자 맵처럼 "DSV로 쓰고 → SRV로 읽는" 전이가 있는 리소스가 어디서
+// D3D11은 드라이버가 상태를 추적하므로 Barrier 는 상태를 기록만 함 (예외: UAV 상태에 드나들 때 겹치는 SRV·UAV
+// 바인딩을 풂 — D3D11CommandList::Barrier). 그래도 호출을 넣는 이유: 그림자 맵처럼 "DSV로 쓰고 → SRV로 읽는" 전이가 있는 리소스가 어디서
 // 상태를 바꾸는지 코드에 적혀 있어야 D3D12 백엔드가 그 자리에 ResourceBarrier 를 넣을 수 있음.
-// D3D11 백엔드는 Debug 빌드에서 before 가 추적 중인 상태와 다르면 경고해 실수를 미리 잡음.
+// Barrier 는 after 만 받고 before 는 리소스가 기억함. 두 백엔드는 바인딩·드로우 때 추적 상태가 맞지 않으면
+// (예: SRV 로 읽는데 UnorderedAccess 상태) 에러 로그를 남겨 실수를 미리 잡음.
 enum class ResourceState : uint8_t
 {
 	Common,

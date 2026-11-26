@@ -14,7 +14,7 @@
 // docs/plan/deferred-clustered-ssao-record.html.
 //
 // 디퍼드 프레임의 씬 패스 (RenderDeferredScene):
-//   1. GBuffer        view.hdr (발광) + GB0~GB3 + 깊이에 deferred 항목을 그림. 조명은 계산하지 않음
+//   1. GBuffer        view.hdr (발광) + GB0~GB3 + 속도 + 깊이에 deferred 항목을 그림. 조명은 계산하지 않음
 //   2. (배리어)        G-buffer → ShaderResource, 깊이 → DepthRead (라이팅·SSAO 가 SRV 로 읽음)
 //   3. Ssao           (켜져 있으면) 깊이·노멀 → ssaoRaw → 블러 → ssaoBlur  (RendererSsao.cpp)
 //   4. DeferredLight  풀스크린 삼각형 하나. 픽셀마다 G-buffer → SurfaceData → 포워드와 같은 조명 함수 → view.hdr 에 가산
@@ -28,7 +28,8 @@
 
 namespace
 {
-	// G-buffer 포맷 (Shaders/GBuffer.hlsli 의 배치 표와 같아야 함). [0] 은 view.hdr (발광).
+	// G-buffer 포맷 (Shaders/GBuffer.hlsli 의 배치 표와 같아야 함). 이 배열은 MRT [1]~[4] (GB0~GB3) — MRT [0] 은
+	// view.hdr (발광), [5] 는 view.velocity (kVelocityFormat).
 	constexpr Format kGBufferFormats[4] = {
 		Format::R8G8B8A8_UNORM_SRGB,   // GB0 albedo + AO
 		Format::R16G16B16A16_FLOAT,    // GB1 옥타헤드럴 노멀 둘
@@ -123,7 +124,7 @@ void Renderer::RenderDeferredScene(RHI::CommandList& cmd, const Scene& scene, Vi
 {
 	const std::string base = debugName ? debugName : "View";
 
-	// ---- 1. G-buffer 패스: MRT 5장 + 깊이. 전부 지우고 시작 ----
+	// ---- 1. G-buffer 패스: MRT 6장 (hdr·GB0~GB3·속도) + 깊이. 전부 지우고 시작 ----
 	// 발광 타깃(view.hdr)은 클리어 색으로 지움 — 라이팅이 깊이 1 픽셀을 버리므로 하늘이 없는 씬은 이 색이 배경으로 남음.
 	// G-buffer 의 클리어 값은 의미가 없음 (배경 픽셀은 라이팅이 읽지 않음).
 	cmd.Barrier(view.hdr, ResourceState::RenderTarget);
@@ -238,7 +239,7 @@ PipelineHandle Renderer::GetGBufferPipelineFor(const Material& material, VertexF
 	desc.rasterizer.frontCounterClockwise = mirrored ? !desc.rasterizer.frontCounterClockwise : desc.rasterizer.frontCounterClockwise;
 	desc.rasterizer.fill = wireframe ? FillMode::Wireframe : FillMode::Solid;
 	desc.rasterizer.cull = cullBack ? CullMode::Back : CullMode::None;
-	// MRT 5장의 포맷을 모두 적음 (D3D12 PSO 는 렌더 타깃 포맷을 알아야 함. 기본값은 [0] 만 있음).
+	// MRT 6장의 포맷을 모두 적음 (D3D12 PSO 는 렌더 타깃 포맷을 알아야 함. 기본값은 [0] 만 있음).
 	desc.rtvFormats[0] = Format::R16G16B16A16_FLOAT;
 	for (uint32_t i = 0; i < 4; ++i)
 	{

@@ -13,7 +13,7 @@
 //   u0 particlesRW      파티클 capacity 개
 //   u1 particleDead     사망 목록: 비어 있는 슬롯 번호. [0, 카운터 Dead) 가 유효
 //   u2 particleAliveIn  지난 프레임 생존 목록 (시뮬레이션이 읽음)
-//   u3 particleAliveOut 이번 프레임 생존 목록 (시뮬레이션·생성이 씀, VS 가 t22 로 읽음). 프레임마다 u2 와 바뀜
+//   u3 particleAliveOut 이번 프레임 생존 목록 (시뮬레이션·생성이 씀, 가산 이미터는 VS 가 t22 로 읽음 — 알파 이미터는 정렬 목록). 프레임마다 u2 와 바뀜
 //   u4 particleCounters 개수들 (Particle.hlsli 의 kCounter*)
 //   u5 particleArgs     간접 인자 (raw). 바이트 0: 그리기 {6, 생존 수, 0, 0}, 바이트 16: 시뮬레이션 디스패치 {그룹 수, 1, 1}
 RWStructuredBuffer<Particle> particlesRW : register(u0);

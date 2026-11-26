@@ -2,17 +2,22 @@
 // 나머지는 C++ 바인딩 셋 (Graphics/Renderer.cpp 의 CreateLayouts, Layout_*) 단위로 나눈 헤더에 있음 — 셋 하나의 선언은
 // 그 셋의 헤더에만 두고, 셰이더 하나만 쓰는 슬롯은 그 셰이더 파일에 둠:
 //   Lighting.hlsli      Layout_Frame 의 나머지 (조명·그림자·환경·IBL)
-//   Mesh.hlsli          Layout_Object (b1, b7) 와 메시 정점 입출력
+//   Mesh.hlsli          Layout_Object 의 b1·b7·b13 (오브젝트·스킨 팔레트·지난 팔레트) 와 메시 정점 입출력
+//   Ocean.hlsli         Layout_Object 의 b9 (바다 파도) 와 Gerstner 합
 //   Material.hlsli      Layout_Material
 //   Post.hlsli          Layout_Post · Layout_BlurCompute · Layout_BlurWeights 공용 (b4, t20)
 //   Sky.hlsli           스카이박스 VS → PS
 //   Particle.hlsli      파티클 공용 (b8, t23, Particle) · ParticleSim.hlsli 시뮬레이션 셋 · ParticleSort.hlsli 정렬 셋
 //   Shading.hlsli       표면 조명 계산 (SurfaceData, 환경광, 조명 루프, 그림자) — 포워드·디퍼드 공용. 셋 선언 없음
 //   Clusters.hlsli      Layout_Frame 의 클러스터 버퍼 (t30, t31) 와 픽셀 → 클러스터 계산
+//   ClusterBin.hlsli    Layout_ClusterBin (b13, t7, u0~u5) — GPU 클러스터 비닝 컴퓨트
 //   MaterialSurface.hlsli  재질 셋 → SurfaceData (포워드 BasicPS · G-buffer PS)
 //   GBuffer.hlsli       Layout_GBuffer (t23 깊이, t25~t28 G-buffer, t29 SSAO) 와 G-buffer → SurfaceData
-// 깊이 → 뷰 z·월드 위치·뷰 위치 복원과 옥타헤드럴 노멀 인코딩은 디퍼드 라이팅·SSAO 가 함께 쓰므로 이 파일에 둠.
 //   Ssao.hlsli          Layout_Ssao (b12, t23, t26, t29)
+//   Temporal.hlsli      Layout_Temporal (t23 깊이, t7 속도, t24 히스토리 + Post.hlsli 의 b4·t13·s6) — 속도 디버그·모션 블러·TAA
+//   Velocity.hlsli      속도 버퍼 값 계산 (셋 선언 없음)
+//   UI.hlsli            게임 UI 셋 (Layout_UICommon·Layout_UITexture). 이 파일을 include 하지 않음
+// 깊이 → 뷰 z·월드 위치·뷰 위치 복원과 옥타헤드럴 노멀 인코딩은 디퍼드 라이팅·SSAO 가 함께 쓰므로 이 파일에 둠.
 // 셰이더가 include 하는 헤더는 (재귀로) .cso 신선도 검사와 핫리로드 감시 대상 (ShaderCompiler::ListIncludeFiles).
 //
 // 상수버퍼 레이아웃은 Graphics/ShaderConstants.h 와 바이트 단위로 같아야 함.

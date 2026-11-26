@@ -771,10 +771,11 @@ void D3D11CommandList::Barrier(TextureHandle handle, ResourceState after)
 		return;
 	}
 	// D3D11 은 드라이버가 상태를 추적하므로 할 일이 없음. D3D12 와 같은 값을 기록만 해 둠 (디버그 표시용).
-	// 통계는 D3D12 와 같게 실제로 상태가 바뀐 것만 셈.
+	// 전이 통계는 D3D12 와 같게 실제로 상태가 바뀐 것만 셈 (UavBarrier 는 D3D12 만 barriers 에 셈 — D3D11 은 할 일이 없음).
 	if (texture->state == after) return;
-	// 예외: UAV 상태에 드나들 때는 겹치는 바인딩을 풂. 그대로 두면 런타임이 "still bound" 경고와 함께 다음 바인딩
-	// 쪽을 NULL 로 만들어 셰이더가 0 을 읽음 (블러 핑퐁: 세로 패스의 UAV hdr 가 PS t13 에 남아 있는 경우 등).
+	// 예외: UAV 상태에 드나들 때는 겹치는 바인딩을 풂 — UAV 로 들어가면 그 리소스의 SRV 슬롯을, UAV 에서 나가면 CS UAV
+	// 슬롯을. 그대로 두면 런타임이 "still bound" 경고와 함께 한쪽을 NULL 로 만듦 (Microsoft 문서상 SRV 쪽. 예: 세로 패스가
+	// UAV 로 쓴 hdr 가 CS u0 에 남은 채 다음 단계가 t13 으로 꽂으면 그 SRV 가 NULL 이 되어 셰이더가 0 을 읽음).
 	if (after == ResourceState::UnorderedAccess)
 	{
 		UnbindShaderResourcesOf(handle);

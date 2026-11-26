@@ -74,8 +74,8 @@ bool Renderer::CreateShadowResources()
 	};
 	m_shadowMap = m_device->CreateTexture(desc);
 
-	// 방향광 CSM 전용 아틀라스. 캐스케이드마다 해상도가 달라서 Texture2DArray 대신 한 장에 칸을 나눠 씀
-	// (배치는 CsmRect).
+	// 방향광 CSM 전용 아틀라스. Texture2DArray 대신 한 장에 칸을 나눠 씀 — 캐스케이드 2~4 개면 1024² 칸 넷,
+	// 단일 뷰면 2048² 전체 (배치는 CsmRect·CsmSingleRect).
 	const TextureDesc csmDesc{
 		.width = kCsmAtlasWidth,
 		.height = kCsmAtlasHeight,
@@ -325,7 +325,7 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, 
 		//조각을 감싸는 구를 만듬.
 		//구를 만드는 이유 -> 크기가 회전에 따라 변하지 않음
 		//꼭짓점 8개에 딱 맞는 상자를 쓰면 카메라가 돌 때 마다 광원 쪽에서 본 모양이 달라져셔 크기가 메 프레임 바뀜
-		//크기가 바뀌면 텍셀 크기(상자폭 % 1024)도 바뀌고 그림자 가장자리가 흔들림
+		//크기가 바뀌면 텍셀 크기(상자폭 / 1024)도 바뀌고 그림자 가장자리가 흔들림
 		//구석 공간이 남아서 낭비되는 해상도를 감안 하고서라도 텍셀 크기를 일정하게 유지하는 것이 중요
 
 		// 3) 광원 뷰: 눈 = 구 중심에서 빛의 반대로 (r + back). 직교 상자 한 변 2r, 깊이 0 .. 2r + back.
@@ -346,8 +346,8 @@ uint32_t Renderer::AddCascadeViews(const Camera& camera, const GpuLight& light, 
 		*/
 
 		// 4) 텍셀 스냅: 월드 원점이 광원 클립에서 놓이는 위치를 텍셀 격자에 맞춤. 카메라가 움직여도 그림자
-		//    텍셀이 월드에 붙어 있어 가장자리가 반짝이지 않음. 격자는 이 캐스케이드의 해상도(캐스케이드마다
-		//    다름) 기준이어야 함.
+		//    텍셀이 월드에 붙어 있어 가장자리가 반짝이지 않음. 격자는 이 캐스케이드 칸의 해상도(CsmRect 의
+		//    크기, 지금은 모두 1024) 기준이어야 함.
 		// 카메라가 움직이면 구 중심도 연속적으로 움직이고 그림자 맵 격자도 텍셀의 소수 단위만큼 미끄러짐
 		// 그러면 같은 벽 모서리가 프레임마다 텍셀 경계의 다른 위치에 걸려서 그림자 가장자리가 꿈틀거림
 		// 따라서 정수 텍셀 단위로만 움직이도록 변경

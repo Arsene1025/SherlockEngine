@@ -28,7 +28,7 @@ namespace
 	constexpr uint32_t kParticleGroupSize = 64;   // 파티클 CS 의 [numthreads(64, 1, 1)] (Args 만 1)
 	constexpr float kMaxParticleStep = 0.1f;      // 실제 시간 모드에서 한 프레임에 진행하는 최대 시간 (멈췄다 돌아올 때 튀지 않게)
 	constexpr uint64_t kEmittersPerObject = 16;   // 키 = 오브젝트 ID × 16 + 순번
-	constexpr float kCollisionThickness = 0.3f;   // 깊이 표면 뒤 이 거리(m) 안이면 충돌 (얇은 물체 뒤로 지나가는 파티클은 통과)
+	constexpr float kCollisionThickness = 0.3f;   // 깊이 표면의 접평면 뒤 법선 방향으로 이 거리(m) 안이면 충돌 (뷰 z 차이는 × kGrazingDepthScale 까지). 이보다 얇은 물체 바로 뒤를 지나는 파티클도 부딪히고, 한 스텝에 이 거리를 넘게 들어가면 뚫고 지나감
 }
 
 void Renderer::CollectEmitter(const GameObject& object, const XMMATRIX& world)

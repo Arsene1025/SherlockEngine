@@ -1,11 +1,14 @@
 #include "Temporal.hlsli"
 
 // 모션 블러 (2단계, docs/plan/velocity-motionblur-taa-plan.html). 입력 = 시간 셋 (t13 hdr, t23 깊이, t7 속도), 출력 = 스크래치.
-// 속도 버퍼를 따라 픽셀 양쪽으로 샘플을 늘어놓고 McGuire 2012 ("A Reconstruction Filter for Plausible Motion Blur") 의 샘플별
-// 가중치로 섞음. 가중치가 깊이 앞뒤와 각 샘플의 자기 속도를 보므로, 움직이는 전경은 배경 위로 번지지만 정지한 배경이
-// 전경 위로 번지지는 않음 (실루엣 바깥으로 번지는 타일 최대 속도는 넣지 않음 — 계획 2-3).
+// 이 픽셀의 속도 벡터를 따라 양쪽으로 반씩 샘플 blur.z 개를 늘어놓고 (픽셀마다 지터), McGuire 2012 ("A Reconstruction Filter
+// for Plausible Motion Blur") 의 샘플별 가중치로 섞음: 가운데는 1 / |v|, 샘플은 앞뒤(SoftFront) × 원뿔 (앞에 있는 쪽의 속도
+// 길이로) + 두 속도의 원기둥 곱 × 2. 이웃 타일의 최대 속도는 쓰지 않고 이 픽셀의 속도만 보므로 (계획 2-3) 0.5 픽셀보다
+// 덜 움직이는 픽셀은 그대로 나감 — 움직이는 물체는 자기 실루엣 안에서만 번지고 (가장자리에 뒤 배경이 비침), 정지한 배경
+// 위로 번져 나가지는 않음.
 //
-// b4 PostParams 칸: blur.x = 셔터 배율, blur.y = 최대 길이 (픽셀, 출력 높이 반영), blur.z = 샘플 수.
+// b4 PostParams 칸 (RendererPost.cpp): blur.x = 셔터 배율 = 세기 (≤ 1) × 기준 fps 보정 1 / (motionBlurTargetFps × dt) (기준
+// fps 가 0 이면 1), blur.y = 최대 길이 (픽셀, 720p 기준 값 × 출력 높이 / 720), blur.z = 샘플 수 (4~32).
 
 // 이 픽셀의 번지는 벡터 (픽셀). 한 프레임 이동량 × 셔터 배율을 최대 길이로 자름.
 float2 BlurVector(int2 pixel)

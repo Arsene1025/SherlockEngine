@@ -30,9 +30,12 @@
 //
 // 레지스터 배정. D3D11의 t#/s# 는 스테이지마다 번호 공간이 하나뿐이므로 셋끼리 겹치지 않게 나눔.
 // D3D12 에서는 이 구간이 그대로 디스크립터 테이블 범위가 됨.
-//   재질 셋:   t0..t7   s0..s3   (알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 재질 샘플러 s0)
-//   프레임 셋: t8..t15  s4..s7   (그림자 맵 t8, 비교 샘플러 s4, 스카이박스 t9, 환경 샘플러 s5,
-//                                 IBL 확산 조도 t10, IBL 반사 프리필터 t11, BRDF LUT t12)
+//   재질 셋:   t0..t6, t16..t19   s0   (알베도 t0, 노멀 t1, 금속성/거칠기 t2, AO t3, 발광 t4, 반사 t5·t6,
+//                                       클리어코트 t16~t18, 투과 t19, 재질 샘플러 s0)
+//   프레임 셋: t8..t12, t14, t15, t30, t31   s4, s5   (그림자 맵 t8, 비교 샘플러 s4, 스카이박스 t9, 환경 샘플러 s5,
+//                                 IBL 확산 조도 t10, IBL 반사 프리필터 t11, BRDF LUT t12, CSM t14, 조명 t15, 클러스터 t30·t31)
+//   그 밖의 셋(후처리 t13·s6·t20, 파티클, G-buffer, SSAO, 시간 셋·비닝 셋의 t7 등)은 아래 상수마다 적음. 한 패스에 같이
+//   묶이지 않는 셋끼리는 번호를 같이 씀 (t7·t23·t24, b4·b9·b13).
 
 constexpr uint32_t kCBSlotPerFrame = 0;
 constexpr uint32_t kCBSlotPerObject = 1;
@@ -45,7 +48,7 @@ constexpr uint32_t kSRVSlotOcclusion = 3;             // t3 (재질, R = AO)
 constexpr uint32_t kSRVSlotEmissive = 4;              // t4 (재질, sRGB)
 constexpr uint32_t kSRVSlotSpecular = 5;              // t5 (재질, A = KHR_materials_specular 의 specularFactor 에 곱함)
 constexpr uint32_t kSRVSlotSpecularColor = 6;         // t6 (재질, sRGB. KHR_materials_specular 의 specularColor 에 곱함)
-constexpr uint32_t kSRVSlotClearcoat = 16;            // t16 (재질, R = KHR_materials_clearcoat 의 clearcoatFactor 에 곱함). 재질 셋은 t0~t6 에 이어 프레임 셋(t8~t15)을 피해 t16 부터 씀
+constexpr uint32_t kSRVSlotClearcoat = 16;            // t16 (재질, R = KHR_materials_clearcoat 의 clearcoatFactor 에 곱함). 재질 셋은 t0~t6 에 이어 t7(시간 셋의 속도·비닝 셋의 조명 경계 구)과 t8~t15(프레임 셋, t13 은 후처리 입력)를 피해 t16 부터 씀
 constexpr uint32_t kSRVSlotClearcoatRoughness = 17;   // t17 (재질, G = clearcoatRoughness 에 곱함)
 constexpr uint32_t kSRVSlotClearcoatNormal = 18;      // t18 (재질, 코팅 노멀 맵. 선형)
 constexpr uint32_t kSRVSlotTransmission = 19;         // t19 (재질, R = KHR_materials_transmission 의 transmissionFactor 에 곱함)
@@ -218,10 +221,11 @@ struct alignas(16) PerFrameConstants
 // 갱신되지 않은 Dynamic CB" 경고가 나지 않음.
 struct alignas(16) PostParamsConstants
 {
-	// x = 모드 (PS_Post: 1 블러, 2 블룸 밝기 추출+축소, 3 축소, 4 확대), y,z = 블러 방향 (텍셀 단위, 가로
+	// x = 모드 (PS_Post: 0 복사, 1 블러, 2 블룸 밝기 추출+축소, 3 축소, 4 확대), y,z = 블러 방향 (텍셀 단위, 가로
 	// (1,0) / 세로 (0,1)), w = 미사용
 	DirectX::XMFLOAT4 pass;
-	// x = 시그마(픽셀), y = 반경(픽셀, 정수로 읽음), zw = 미사용
+	// 블러: x = 시그마(픽셀), y = 반경(픽셀, 정수로 읽음). 모션 블러: x = 셔터 배율, y = 최대 길이(픽셀), z = 샘플 수.
+	// TAA: x = 이번 프레임을 섞는 비율. 그 밖의 칸은 미사용
 	DirectX::XMFLOAT4 blur;
 	// x = 임계값, y = knee, z = 확대 결과에 곱할 배율 (축적 확대는 1, 마지막 합성은 intensity), w = 미사용
 	DirectX::XMFLOAT4 bloom;

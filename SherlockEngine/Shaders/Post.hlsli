@@ -12,7 +12,7 @@
 cbuffer PostParams : register(b4)
 {
     float4 postPass;          // x = 모드 (1 블러, 2 블룸 밝기 추출+축소, 3 축소, 4 확대), y,z = 블러 방향 (텍셀 단위)
-    float4 postBlur;          // x = 시그마(픽셀), y = 반경(픽셀)
+    float4 postBlur;          // 블러: x = 시그마(픽셀), y = 반경(픽셀). 모션 블러(xyz)·TAA(x)는 다른 뜻으로 씀 — 각 셰이더 머리말
     float4 postBloom;         // x = 임계값, y = knee, z = 확대 결과 배율
     float4 postView;          // xy = 입력 크기, zw = 출력 크기 (픽셀)
     float4 postGrade;         // x = GreyScale 양, y = 1 이면 색 효과를 건너뜀

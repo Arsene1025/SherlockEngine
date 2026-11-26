@@ -12,7 +12,7 @@
 
 using namespace DirectX;   // 이 파일 안에서만
 
-// HDR 구간 후처리 (블러 → 블룸). Renderer 의 멤버 함수를 파일만 나눠 구현함 — Renderer.cpp 가 너무 길어지지 않게.
+// HDR 구간 후처리 (TAA → 모션 블러 → 가우시안 블러 → 블룸. 디버그 뷰 16·17 이면 속도 표시만 그리고 나머지는 건너뜀). Renderer 의 멤버 함수를 파일만 나눠 구현함 — Renderer.cpp 가 너무 길어지지 않게.
 //
 // 순서는 고정임 (사용자가 바꿀 수 없음): 선형 HDR 값에서 해야 1 을 넘는 밝기가 살아 있으므로 톤매핑 앞에 둠.
 // 효과 하나를 추가할 때: PostProcessSettings 에 필드 → 여기 ApplyHdrEffects 에 호출 하나 → (새 모드가
@@ -39,12 +39,12 @@ PipelineHandle Renderer::GetPostPipeline(bool additive)
 void Renderer::DispatchBlurCompute(RHI::CommandList& cmd, ComputePipelineHandle pipeline, ResourceSetHandle set, TextureHandle output, uint32_t width, uint32_t height)
 {
 	// 출력 → UnorderedAccess. 입력(셋의 t13)은 앞 단계가 남긴 ShaderResource 상태 그대로임. D3D11 에서는 이 전이가
-	// 출력 텍스처를 SRV 슬롯(PS t13 · CS t13)에서 풀어 줌 — 안 풀면 런타임이 UAV 쪽을 NULL 로 만들어 아무것도 안 써짐.
+	// 출력 텍스처를 SRV 슬롯(PS t13 · CS t13)에서 풀어 줌 — 안 풀면 런타임이 "still bound" 경고와 함께 한쪽(문서상 SRV 쪽)을 NULL 로 만듦.
 	cmd.Barrier(output, ResourceState::UnorderedAccess);
 	cmd.SetComputePipeline(pipeline);
 	cmd.SetComputeResourceSet(kSetBlurCompute, set);      // PostParams 를 올린 뒤에 꽂아야 D3D12 루트 CBV 가 새 주소를 가리킴
 	cmd.Dispatch((width + 7) / 8, (height + 7) / 8, 1);   // BlurComputeShader 의 [numthreads(8, 8, 1)]
-	// 다음 단계(세로 패스의 입력, 블룸, 톤 패스)가 SRV 로 읽음. D3D11 에서는 CS UAV 슬롯에서도 풀어 줌.
+	// 다음 단계(세로 패스의 입력, 블룸, 톤 패스)가 SRV 로 읽음. D3D11 에서는 CS UAV 슬롯에서 풀어 줌 (UAV 에 남은 채 SRV 로 꽂으면 그 SRV 가 NULL 이 됨).
 	cmd.Barrier(output, ResourceState::ShaderResource);
 	++m_stats.pipelineSwitches;
 }
@@ -52,7 +52,7 @@ void Renderer::DispatchBlurCompute(RHI::CommandList& cmd, ComputePipelineHandle 
 void Renderer::DispatchBlurWeights(RHI::CommandList& cmd, ComputePipelineHandle pipeline, uint32_t radius)
 {
 	// 쓰기 전 UnorderedAccess. D3D11 에서는 이 전이가 PS t20 · CS t20 의 SRV 바인딩을 풀어 줌 (같은 버퍼가 SRV 와 UAV 에
-	// 동시에 꽂히면 런타임이 UAV 쪽을 NULL 로 만듦).
+	// 동시에 꽂히면 런타임이 경고와 함께 한쪽을 NULL 로 만듦. 문서상 SRV 쪽).
 	cmd.Barrier(m_blurWeights, ResourceState::UnorderedAccess);
 	cmd.SetComputePipeline(pipeline);
 	cmd.SetComputeResourceSet(kSetBlurWeights, m_blurWeightsSet);   // PostParams 를 올린 뒤 (D3D12 루트 CBV 주소)

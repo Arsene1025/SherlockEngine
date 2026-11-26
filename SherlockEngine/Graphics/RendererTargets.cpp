@@ -38,8 +38,8 @@ bool Renderer::CreateViewTarget(ViewTarget& view, uint32_t width, uint32_t heigh
 		view.color = m_device->CreateTexture(color);
 	}
 
-	// 깊이도 셰이더에서 읽을 수 있게 만듦 (TYPELESS 리소스 + DSV + SRV). 지금 읽는 패스는 없지만, 깊이를
-	// 입력으로 쓰는 패스(SSAO, 디퍼드 라이팅, 소프트 파티클)가 텍스처를 다시 만들지 않고 붙을 수 있음.
+	// 깊이도 셰이더에서 읽을 수 있게 만듦 (TYPELESS 리소스 + DSV + SRV). 디퍼드 라이팅, SSAO, 소프트 파티클·파티클
+	// 충돌, 모션 블러·TAA 가 이 텍스처를 SRV 로 읽음.
 	const TextureDesc depth{
 		.width = width,
 		.height = height,
@@ -62,7 +62,7 @@ bool Renderer::CreateViewTarget(ViewTarget& view, uint32_t width, uint32_t heigh
 			.layout = m_layouts[Layout_ParticleCollide], .bindings = { { .buffer = m_particleCollisionCB }, { .texture = view.depth } }, .debugName = "Set_ParticleCollide" });
 	}
 
-	// 씬 패스가 그리는 FP16 텍스처와, 톤 패스·후처리가 그것을 읽는 셋 (Layout_Post: b0, b4, t13, s6).
+	// 씬 패스가 그리는 FP16 텍스처와, 톤 패스·후처리가 그것을 읽는 셋 (Layout_Post: b0, b4, t13, s6, t20).
 	const TextureDesc hdr{
 		.width = width,
 		.height = height,
