@@ -88,7 +88,7 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
   <p>CSM 과 glTF 스키닝·애니메이션 이후에 구현할 렌더링 기능 여섯 단계의 순서, 범위, 검증 방법입니다.</p>
   <p>2026-11-13 작성. 기준: 커밋 2a67489 + 작업 트리. <span class="tag p">제안</span> 표시가 붙은 부분은 코드에 아직 없는 설계 권고입니다. <b>이 문서를 쓴 시점에는 코드를 고치지 않았고, 빌드나 실행으로 확인한 것도 없습니다.</b> 코드 근거는 키워드 검색과 해당 줄 주변을 읽은 것입니다.</p>
   <p class="foot">코드 위치의 행 번호는 이 시점의 참고용입니다. 앞 단계를 구현하면 뒤 단계의 행 번호는 밀립니다. 경로는 <code>SherlockEngine/</code> 프로젝트 폴더 기준입니다. 체크박스는 표시용이며 저장되지 않습니다. 기존 계획 문서(<code>rhi-roadmap-plan.html</code>, <code>multi-light-shadow-plan.html</code>)는 고치지 않았습니다.</p>
-  <div class="box ok"><p><b>진행 상황 (2026-11-21).</b> 1단계(반투명·빌보드, 파티클은 4단계의 GPU 파티클로 대체)와 4단계(컴퓨트 RHI → GPU 파티클, <a href="vfx-gpu-particles-record.html">VFX 구현 기록</a>)가 끝났고, 2·3·5단계(디퍼드, 조명 컬링 + CPU 클러스터드 라이팅, SSAO)가 2026-11-18 에 끝났습니다 — <a href="deferred-clustered-ssao-record.html">디퍼드·클러스터드·SSAO 구현 기록</a>(커밋 <code>855139b</code>). 3단계가 남겨 둔 "CPU 비닝을 컴퓨트로 옮기기"(4단계의 선택 항목)는 2026-11-21 에 2단계 비닝으로 끝났습니다 — <a href="gpu-cluster-binning-record.html">GPU 클러스터 비닝 구현 기록</a>, <a href="gpu-cluster-binning-test.html">측정</a>. 남은 것은 6단계 VSM(선택)입니다. 아래 본문은 계획 당시 그대로이고, 구현에서 달라진 점은 구현 기록에 있습니다.</p>
+  <div class="box ok"><p><b>진행 상황 (2026-11-21).</b> 1단계(반투명·빌보드, 파티클은 4단계의 GPU 파티클로 대체)와 4단계(컴퓨트 RHI → GPU 파티클, <a href="vfx-gpu-particles-record.html">VFX 구현 기록</a>)가 끝났고, 2·3·5단계(디퍼드, 조명 컬링 + CPU 클러스터드 라이팅, SSAO)가 2026-11-18 에 끝났습니다 — <a href="deferred-clustered-ssao-record.html">디퍼드·클러스터드·SSAO 구현 기록</a>(커밋 <code>855139b</code>). 3단계가 남겨 둔 "CPU 비닝을 컴퓨트로 옮기기"(4단계의 선택 항목)는 2026-11-21 에 2단계 비닝으로 끝났습니다 — <a href="gpu-cluster-binning-record.html">GPU 클러스터 비닝 구현 기록</a>, <a href="gpu-cluster-binning-test.html">측정</a>. <span class="sub">(2026-11-26 기준: 지금은 컴퓨트 비닝(<code>Graphics/RendererClusterBin.cpp</code> 의 <code>DispatchClusterBinning</code>)이 기본이고, CPU 비닝은 <code>--cluster-gpu=0</code> 이나 에디터의 "GPU clustering" 체크를 끌 때 결과 비교용으로 씁니다.)</span> 남은 것은 6단계 VSM(선택)입니다. 아래 본문은 계획 당시 그대로이고, 구현에서 달라진 점은 구현 기록에 있습니다.</p>
   <p><b>속도 버퍼·모션 블러·TAA (2026-11-23 구현).</b> 속도 버퍼 → 모션 블러(기준 fps 보정) → TAA 세 단계를 구현했습니다 — <a href="velocity-motionblur-taa-plan.html">속도 버퍼·모션 블러·TAA 구현 계획</a>(맨 위 "구현하면서 바뀐 점" 참고).</p></div>
   <div class="box"><p><b>Gerstner 바다 (2026-11-23 계획·구현).</b> 멈춰 있는 배 주변의 잔잔한 배경 바다 — <a href="ocean-gerstner-plan.html">Gerstner 바다 구현 계획</a>(맨 위 "구현하면서 바뀐 점" 참고). 1~3단계(정점 변위, 수평선까지 넓은 평면과 거리 감쇠, 픽셀 단위 노멀과 대역 제한)를 구현했습니다 — <a href="ocean-gerstner-record.html">Gerstner 바다 구현 기록</a>.</p></div>
   <div class="box"><p><b>게임 UI (2026-11-24 계획·구현).</b> 유니티 uGUI 식 런타임 UI 8단계를 모두 구현했습니다 — <a href="ui-canvas-plan.html">게임 UI(캔버스) 구현 계획</a>(10장 구현 결과, 테스트 씬 <code>UiShowcase.json</code>). 렌더링 쪽은 톤매핑 뒤 UI 패스와 RHI 텍스처 부분 갱신(<code>UpdateTexture</code>)입니다.</p></div>
@@ -125,7 +125,7 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
 
 <h3>1-2 클러스터드를 컴퓨트 의존에서 끊은 이유</h3>
 <ul>
-<li>클러스터 비닝은 CPU 로 충분합니다. 16×9×24 격자면 클러스터가 3,456개이고, 조명 수백 개까지는 CPU 에서 부담이 없습니다.</li>
+<li>클러스터 비닝은 CPU 로 충분합니다. 16×9×24 격자면 클러스터가 3,456개이고, 조명 수백 개까지는 CPU 에서 부담이 없습니다. <span class="sub">(2026-11-26 기준: 지금은 컴퓨트 비닝(<code>Graphics/RendererClusterBin.cpp</code> 의 <code>DispatchClusterBinning</code>)이 기본이고, CPU 비닝은 <code>--cluster-gpu=0</code> 이나 에디터의 "GPU clustering" 체크를 끌 때 결과 비교용으로 씁니다.)</span></li>
 <li>결과는 구조체 버퍼 두 개로 올리면 되고, RHI 에 <code>BufferResource</code> 바인딩이 이미 있어 확장이 필요 없습니다.</li>
 <li>나중에 컴퓨트로 이식하면 CPU 결과가 정답 기준이 되어, 컴퓨트 검증 과제로 쓸 수 있습니다.</li>
 <li>타일드는 생략합니다. 클러스터드는 깊이 버퍼 없이 동작해 반투명 포워드 경로도 같은 목록을 읽을 수 있습니다.</li>
@@ -181,7 +181,7 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
 <tr><td>깊이를 읽는 셰이더</td><td>찾지 못함. 후처리는 <code>postInput</code>(t13)만 읽음</td><td>t23 으로 읽음: 디퍼드 라이팅(위치 복원), SSAO, 소프트 파티클 PS, 파티클 깊이 충돌 CS</td><td><code>Shaders/GBuffer.hlsli:22</code>, <code>Shaders/Ssao.hlsli:29</code>, <code>Shaders/Particle.hlsli:45</code></td></tr>
 <tr><td>조명 데이터</td><td><code>StructuredBuffer&lt;LightData&gt;</code>(t15) + 개수는 상수버퍼. 용량이 모자라면 두 배로 다시 만듦</td><td>그대로. <code>StructuredBuffer&lt;LightData&gt;</code>(t15) + b2 의 개수, 모자라면 두 배로 다시 만듦</td><td><code>Shaders/Lighting.hlsli:43</code>, <code>:50</code>, <code>Graphics/Renderer.cpp:203</code>, <code>:1435-1437</code></td></tr>
 <tr><td>조명 루프</td><td>픽셀 셰이더가 모든 조명을 순회</td><td>클러스터드 라이팅을 켜면 픽셀이 속한 클러스터의 조명만 순회. 끄면 전부 순회(정답 경로)</td><td><code>Shaders/Shading.hlsli:424</code>, <code>:489</code>, <code>:508</code></td></tr>
-<tr><td>조명 컬링</td><td>카메라 프러스텀 기준 조명 컬링 없음. 섀도 뷰별 <code>cullSphere</code> 만 있음</td><td>메인 카메라 절두체로 지역광을 거르고, 16×9×24 클러스터에 비닝(CPU 또는 컴퓨트). 섀도 뷰별 <code>cullSphere</code> 도 그대로</td><td><code>Graphics/RendererClusters.cpp:98</code>, <code>:161</code>, <code>Graphics/RendererClusterBin.cpp:223</code>, <code>Graphics/RendererShadow.cpp:418</code></td></tr>
+<tr><td>조명 컬링</td><td>카메라 프러스텀 기준 조명 컬링 없음. 섀도 뷰별 <code>cullSphere</code> 만 있음</td><td>메인 카메라 절두체로 지역광을 거르고, 16×9×24 클러스터에 비닝(기본은 컴퓨트 <code>DispatchClusterBinning</code>, <code>--cluster-gpu=0</code> 이면 CPU). 섀도 뷰별 <code>cullSphere</code> 도 그대로</td><td><code>Graphics/RendererClusters.cpp:98</code>, <code>:161</code>, <code>Graphics/RendererClusterBin.cpp:223</code>, <code>Graphics/RendererShadow.cpp:418</code></td></tr>
 <tr><td>섀도 뷰 상한</td><td><code>MAX_SHADOW_VIEWS = 20</code></td><td>그대로. <code>MAX_SHADOW_VIEWS = 20</code></td><td><code>Shaders/Lighting.hlsli:12</code></td></tr>
 <tr><td>스키닝</td><td>스킨 전용 VS 와 패스(MainSkin, ShadowSkin), 조인트 256개 팔레트 상수버퍼</td><td>MainSkin, ShadowSkin 에 GBufferSkin 추가. 팔레트는 그대로 256 조인트</td><td><code>Graphics/Renderer.h:403-420</code>, <code>Shaders/Mesh.hlsli:18-22</code></td></tr>
 </tbody>
@@ -516,7 +516,7 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
 <li><b>클러스터 격자 크기와 CPU 비닝 비용.</b> 16×9×24 와 "조명 수백 개까지 부담 없음"은 일반적인 경험치이고, 이 엔진에서 측정한 값이 아닙니다. <span class="tag v">2026-11-18 측정: Debug 빌드, 조명 256 개에서 약 5 ms. Release 는 재지 않았습니다.</span></li>
 <li><b>G-buffer 에 필요한 포맷이 RHI 에 있는지.</b> 배치를 정한 뒤 변환표를 확인해야 합니다. <span class="tag v">2026-11-18 확인: 필요한 네 포맷(<code>R8G8B8A8_UNORM_SRGB</code>, <code>R16G16B16A16_FLOAT</code>, <code>R8G8B8A8_UNORM</code>, SSAO 의 <code>R8_UNORM</code>)이 모두 있었습니다.</span></li>
 </ul>
-<p class="foot">2026-11-13 작성 · 기준 커밋 2a67489 + 작업 트리 · 이 문서는 계획이며 구현되지 않았습니다. 관련 문서: <code>docs/plan/rhi-roadmap-plan.html</code>(컴퓨트·IBL·Deferred 세부 절차), <code>docs/plan/multi-light-shadow-plan.html</code>(섀도 아틀라스·RHI 제약), <code>docs/plan/post-process-record.html</code>(후처리 인프라).</p>
+<p class="foot">2026-11-13 작성 · 기준 커밋 2a67489 + 작업 트리 · 이 문서는 계획이며 구현되지 않았습니다. <span class="sub">(2026-11-26 기준: 지금은 1~5단계가 구현되었고 6단계 VSM(선택)만 남았습니다 — 머리말의 진행 상황 참고.)</span> 관련 문서: <code>docs/plan/rhi-roadmap-plan.html</code>(컴퓨트·IBL·Deferred 세부 절차), <code>docs/plan/multi-light-shadow-plan.html</code>(섀도 아틀라스·RHI 제약), <code>docs/plan/post-process-record.html</code>(후처리 인프라).</p>
 </section>
 
 </main>

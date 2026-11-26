@@ -30,7 +30,7 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <header>
   <h1>캐릭터 엔진 로드맵</h1>
   <p>스켈레탈 애니메이션 · 스키닝 · IK · 캐릭터 물리 — 공부 순서와 참고 자료</p>
-  <p class="foot">작성 2026-11-09. 기준: 커밋 64c02b9. 코드 상태는 이 시점에 확인한 내용입니다.</p>
+  <p class="foot">작성 2026-11-09. 기준: 커밋 64c02b9. 2026-11-26 기준으로 1장 "현재 코드 상태"와 4장·9장의 진행 상황을 지금 코드에 맞게 고쳤습니다. 2~3장의 공부 순서는 그대로입니다.</p>
   <div class="box"><b>범위.</b> "캐릭터 엔진"을 <b>애니메이션 시스템 + 캐릭터 물리 + 엔진 통합</b>으로 잡았습니다. 피부·머리카락·천 같은 캐릭터 렌더링은 8장에 선택 갈래로 따로 두었습니다.</div>
   <div class="box warn"><b>링크 표기.</b> 검색으로 실제 존재를 확인한 링크만 URL을 달았습니다. 확인하지 못한 자료는 제목과 저자만 적었으니, 필요하면 직접 검색해 주세요.</div>
 </header>
@@ -39,9 +39,10 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <section id="now">
 <h2>1. 현재 코드 상태</h2>
 <ul>
-<li><code>SherlockEngine/Graphics/Model.cpp</code>에 <b>cgltf 기반 glTF 로더</b>가 이미 있습니다(<code>vcpkg.json</code>에도 <code>cgltf</code> 등록).</li>
-<li>스킨, 본, 스켈레톤, 애니메이션 클립 코드는 <b>없습니다</b>. 그래서 시작점은 "glTF의 skin과 animation 데이터를 읽는 것"입니다.</li>
-<li>스킨 메시는 정점 속성이 늘어납니다(joint 인덱스, weight). 그러면 <b>input layout과 PSO 변형이 따로 필요</b>합니다. 최종 목표인 RHI/PSO 공부와 바로 이어지는 부분입니다.</li>
+<li>glTF 는 직접 만든 임포터(<code>Graphics/Import/GltfImporter.cpp</code> 의 <code>ModelLoader::LoadGltf</code>)가 읽습니다. 작성 당시의 cgltf 로더는 빠졌습니다.</li>
+<li>0~3단계의 기반은 구현되어 있습니다. <code>LoadSkins</code>·<code>BuildSkinHierarchy</code>·<code>LoadAnimations</code> 가 skin 과 클립(<code>Graphics/Model.h</code> 의 <code>ModelSkin</code>·<code>AnimationClip</code>)을 읽고, <code>Scene/Animator.cpp</code> 의 <code>Animator</code> 가 클립 하나를 재생하며, <code>Scene/SkinPose.cpp</code> 의 <code>BuildSkinPalette</code> 가 본 팔레트를 만듭니다. 스키닝은 버텍스 셰이더(<code>BasicSkinVertexShader.hlsl</code> 의 <code>VS_MainSkin</code>, 팔레트는 <code>Mesh.hlsli</code> 의 <code>cbuffer Skin : register(b7)</code>)에서 LBS 로 합니다. 정리는 <a href="skinning-study.html">스키닝 공부 문서</a>에 있습니다.</li>
+<li>스킨 메시는 정점 속성이 늘어납니다(joint 인덱스, weight). 그래서 <code>VERTEX_SKINNED</code> 정점 형식과 <code>Pass_*Skin</code> PSO 변형이 따로 있습니다. 최종 목표인 RHI/PSO 공부와 바로 이어지는 부분입니다.</li>
+<li>4단계 이후(클립 블렌딩, 상태 머신, IK)는 아직 없습니다. <code>Animator</code> 는 클립 이름·<code>loop</code>·<code>speed</code> 만 가집니다.</li>
 </ul>
 </section>
 
@@ -88,14 +89,14 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <h2>4. 우리 엔진 로드맵과 연결할 지점</h2>
 <ul>
 <li>CPU 스키닝은 <b>언제든</b> 시작할 수 있습니다.</li>
-<li>GPU 컴퓨트 스키닝은 <b>컴퓨트(RHI 확장) 단계 이후</b>에 맞습니다. 순서는 CSM → CPU 라이트 컬링 → 디퍼드 → SSAO → 컴퓨트 → 클러스터드 입니다.</li>
-<li>스킨 메시를 넣을 때 통합해야 할 곳:
+<li>GPU 컴퓨트 스키닝은 <b>컴퓨트(RHI 확장) 단계 이후</b>에 맞습니다. 순서는 CSM → CPU 라이트 컬링 → 디퍼드 → SSAO → 컴퓨트 → 클러스터드 입니다. <span class="sub">(2026-11-26 기준: 이 순서는 모두 구현됐고, 스키닝은 컴퓨트가 아니라 버텍스 셰이더에서 합니다.)</span></li>
+<li>스킨 메시를 넣을 때 통합해야 할 곳 <span class="sub">(2026-11-26 기준 처리 방법을 괄호에 적었습니다)</span>:
   <ul>
-  <li>애니메이션에 따라 갱신되는 <b>바운딩 볼륨</b>(CPU 라이트 컬링이 쓰는 값)</li>
-  <li><b>CSM 그림자 패스</b>의 스킨 경로(그림자도 같은 포즈로 그려야 함)</li>
-  <li>모션 벡터용 <b>이전 프레임 본 행렬</b></li>
+  <li>애니메이션에 따라 갱신되는 <b>바운딩 볼륨</b>(CPU 라이트 컬링이 쓰는 값) <span class="sub">(지금은 <code>Renderer::BuildDrawList</code> 가 스킨 메시의 경계 구 반지름을 1e9 로 두어 컬링하지 않습니다)</span></li>
+  <li><b>CSM 그림자 패스</b>의 스킨 경로(그림자도 같은 포즈로 그려야 함) <span class="sub">(<code>ShadowSkinVertexShader.hlsl</code> 의 <code>VS_ShadowSkin</code>)</span></li>
+  <li>모션 벡터용 <b>이전 프레임 본 행렬</b> <span class="sub">(<code>cbuffer PrevSkin</code> b13, <code>MotionHistory::palettes</code>)</span></li>
   <li>업데이트 순서 고정: 애니메이션 → 물리 → 렌더</li>
-  <li>스킨용 <b>input layout / PSO 변형</b></li>
+  <li>스킨용 <b>input layout / PSO 변형</b> <span class="sub">(<code>MakeVertexLayoutPCNTTSkin</code>, <code>Pass_*Skin</code>)</span></li>
   </ul></li>
 </ul>
 </section>
@@ -147,7 +148,7 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <section id="plan">
 <h2>9. 추천 진행</h2>
 <ol>
-<li><b>0~3단계</b>를 먼저 진행합니다. glTF 스킨 로딩, CPU 스키닝, 버텍스 셰이더 스키닝 순입니다. 이 구간에서 PSO 변형 구조를 결정하게 됩니다.</li>
+<li><b>0~3단계</b>를 먼저 진행합니다. glTF 스킨 로딩, CPU 스키닝, 버텍스 셰이더 스키닝 순입니다. 이 구간에서 PSO 변형 구조를 결정하게 됩니다. <span class="sub">(2026-11-26 기준: glTF 스킨 로딩과 버텍스 셰이더 스키닝까지 끝났습니다. 위 1장 참고)</span></li>
 <li><b>4~5단계</b>로 블렌딩과 상태 머신을 붙입니다.</li>
 <li><b>6단계</b>에서 발 IK 하나를 만들어 봅니다.</li>
 <li>컴퓨트 단계에 들어가면 GPU 스키닝으로 옮깁니다.</li>

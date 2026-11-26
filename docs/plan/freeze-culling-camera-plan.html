@@ -133,7 +133,7 @@ ul.todo > li > input[type=checkbox] { position: absolute; left: 0; top: 6px; }
 <li>셰이더의 조명 루프(<code>Shaders/Shading.hlsli</code> <code>ShadeLights</code>)는 b0 <code>clusterParams.x</code> 로 둘 중 하나를 고릅니다. 클러스터드가 켜져 있으면(<code>RenderSettings::clustered</code>, 기본 켬) <code>ShadeClusteredLights</code> 가 t30·t31 클러스터 목록을, 꺼져 있으면 <code>ShadeAllLights</code> 가 t15 조명 전부를 돕니다. 뒤쪽은 경계 구를 보지 않습니다.</li>
 <li><code>m_lightBounds</code> 를 읽는 곳은 <code>CullLights</code>, CPU <code>BuildClusters</code>, GPU 비닝 업로드(<code>UploadLightBounds</code>, <code>UploadClusterBinConstants</code>)뿐입니다. 메인·미리보기 두 뷰가 같은 배열(GPU 는 같은 <code>SB_LightBounds</code>)을 씁니다.</li>
 <li>에디터 쪽: 체크박스(<code>Editor.cpp</code> <code>Editor::DrawRenderSettings</code>)는 <code>cascadeEnabled || IsCascadeFrozen()</code> 일 때만 보입니다. 오버레이 <code>Editor::DrawCascadeFrustums</code> 는 편집 모드에서 고정 중이고 캐스케이드가 1 개 이상일 때만 그립니다. 고정을 푸는 곳은 체크박스뿐이라 씬을 바꾸거나 재생을 시작해도 고정이 남습니다.</li>
-<li>자동화 <code>--freeze-cascades=N</code>(<code>EditorAutomation.cpp</code>)은 N 프레임째 고정하고 다음 프레임에 <code>--cam-look</code> 으로 카메라를 옮깁니다. 문서는 <code>docs/study/csm-study.html</code> 에서만 씁니다.</li>
+<li>자동화 <code>--freeze-cascades=N</code>(<code>EditorAutomation.cpp</code>)은 N 프레임째 고정하고 다음 프레임에 <code>--cam-look</code> 으로 카메라를 옮깁니다. 문서는 <code>docs/study/csm-study.html</code> 에서만 씁니다. <span class="sub">(2026-11-26 기준: 지금은 <code>--freeze-culling=N</code> 이 있으면 그것이 먼저이고 <code>--freeze-cascades</code> 는 캐스케이드만 고정하는 예전 동작입니다. <code>"--cam-look=ex,ey,ez;tx,ty,tz"</code> 는 고정 다음 프레임(고정이 없으면 3 프레임째, <code>--event-frame</code> 이 있으면 그 프레임)에 에디터 카메라를 <code>Camera::SetLookAt</code> 으로 옮깁니다 — <code>Editor/EditorAutomation.cpp</code>. <code>--freeze-cascades</code> 는 <code>culling-study.html</code>·<code>rendering-analysis.html</code> 에도 나옵니다.)</span></li>
 <li>로그의 "자동 검증: 렌더 통계" 줄에는 <code>lightsVisible</code>·<code>lightsCulled</code> 는 있지만 오브젝트 <code>culled</code> 는 없습니다.</li>
 </ul>
 </section>
@@ -315,7 +315,7 @@ const Camera&amp; CullCamera(const Camera&amp; drawCamera, bool part) const
 <li><b>먼 far 의 와이어.</b> OceanHorizon 처럼 far 5000 인 카메라는 절두체 뒷면이 아주 멀어 선이 화면을 가로지름. 거슬리면 표시용 far 를 줄일지 3단계 화면을 보고 정함.</li>
 <li><b>재생 중 고정.</b> 재생 중에는 고정을 막을지(체크박스 비활성), 허용할지. 지금 제안은 시작·정지 때 풀기만 함.</li>
 <li><b>디퍼드·포워드 전환 인자.</b> <span class="tag v">확인</span> <code>--deferred=0|1</code>(<code>App/AppBase.cpp</code>).</li>
-<li><b>각 씬의 <code>--cam-look</code> 값.</b> <span class="tag v">확인</span> FreezeCulling <code>-81.49,76.35,-27.92;-21.5,26.9,34.8</code>(원본 CascadeBigScene 카메라 자리), ManyLights64 <code>-6,7,0;12,0,0</code>(위층 회랑에서 고정 카메라 쪽을 봄).</li>
+<li><b>각 씬의 <code>--cam-look</code> 값.</b> <span class="tag v">확인</span> FreezeCulling <code>-81.49,76.35,-27.92;-21.5,26.9,34.8</code>(원본 CascadeBigScene 카메라 자리 <span class="sub">(2026-11-26 기준: 2026-11-24 의 CascadeBigScene 카메라입니다. 2026-11-25 에 사용자가 CascadeBigScene 을 고쳐 지금 카메라는 (−77.22, 61.54, −48.78) 이고 오브젝트는 120 개에서 119 개(<code>Building 1 L</code> 빠짐)가 되었습니다. <code>FreezeCulling.json</code> 은 그 전 판에서 만들어 120 개 그대로입니다.)</span>), ManyLights64 <code>-6,7,0;12,0,0</code>(위층 회랑에서 고정 카메라 쪽을 봄).</li>
 <li><b>고정 시 TAA.</b> 고정은 b0 를 건드리지 않으니 히스토리에 영향이 없어야 하지만, 메시가 한 프레임에 사라지는 순간 히스토리 클리핑으로 잔상이 남는지 TAA 켠 씬에서 한 번 봄.</li>
 </ul>
 </section>
@@ -332,7 +332,7 @@ const Camera&amp; CullCamera(const Camera&amp; drawCamera, bool part) const
 <h2>9. 구현 결과 (2026-11-24)</h2>
 <h3 id="r-changes">계획과 달라진 점</h3>
 <ul>
-<li><b>테스트 씬을 하나 만듦.</b> CascadeBigScene 은 전체를 내려다보는 기본 시점이라 <code>culled = 0</code> 이어서 고정해도 빠지는 메시가 없음. 카메라만 기둥 길 안쪽 (0, 3, 20) 으로 옮긴 복사본 <code>Projects/SherlockTestScenes/Assets/Scenes/FreezeCulling.json</code> 을 생성기 <code>Scripts/Tests/make_freeze_culling_test_scene.py</code> 로 만듦(기본 시점 <code>culled = 24</code>). Ocean 은 파도가 실제 시간으로 움직여 <code>--ocean-time=5</code> 로 비교함.</li>
+<li><b>테스트 씬을 하나 만듦.</b> CascadeBigScene 은 전체를 내려다보는 기본 시점이라 <code>culled = 0</code> 이어서 고정해도 빠지는 메시가 없음. 카메라만 기둥 길 안쪽 (0, 3, 20) 으로 옮긴 복사본 <code>Projects/SherlockTestScenes/Assets/Scenes/FreezeCulling.json</code> 을 생성기 <code>Scripts/Tests/make_freeze_culling_test_scene.py</code> 로 만듦 <span class="sub">(2026-11-26 기준: 생성기는 <code>CascadeBigScene.json</code> 을 읽어 카메라만 바꾸므로, 지금 다시 돌리면 2026-11-25 에 바뀐 CascadeBigScene(오브젝트 119 개)을 따라갑니다. 저장된 <code>FreezeCulling.json</code> 은 다시 만들지 않아 120 개이고, 아래 숫자는 그 판의 것입니다.)</span>(기본 시점 <code>culled = 24</code>). Ocean 은 파도가 실제 시간으로 움직여 <code>--ocean-time=5</code> 로 비교함.</li>
 <li><b><code>--freeze-parts=col</code> 추가.</b> 글자 c·o·l 로 캐스케이드·오브젝트·조명을 고름(없으면 셋 다). 미리보기 검증(Objects 만)과 조명만 고정한 비교에 씀. <code>--freeze-culling</code> 과 <code>--freeze-cascades</code> 를 둘 다 주면 <code>--freeze-culling</code>.</li>
 <li><b>오버레이 변을 잘라 그림.</b> 고정 카메라의 먼 변은 에디터 카메라 뒤로 지나가는 일이 흔해서, 끝점 하나가 뒤면 변을 통째로 버리던 방식으로는 실내 시점에서 흰 절두체가 하나도 안 보였음. <code>Editor.cpp</code> <code>ProjectSegmentToView</code> 가 클립 공간에서 w = 0.001 근처로 잘라 앞쪽 몫을 그림. 캐스케이드 색 와이어도 같은 함수를 씀(<code>csm-study.html</code> 명령 스크린샷은 그대로 — 아래 표).</li>
 <li><b>고정 해제 자리.</b> 씬 교체는 <code>EditorApp::ResetHistory</code> 안에서 함께 풂(새 씬·불러오기·프로젝트 전환 때마다 불리는 함수). 재생은 <code>StartPlay</code>·<code>StopPlay</code>. 풀 때 로그 <code>컬링 고정 해제: 씬 교체 / 재생 시작 / 재생 정지</code>. 항목 선택은 남김.</li>

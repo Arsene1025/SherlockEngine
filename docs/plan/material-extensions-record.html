@@ -69,7 +69,7 @@ F90     = lerp( specularWeight,  1,  metallic )          // specularWeight = spe
 <ul>
   <li>코팅은 F0 0.04 의 두 번째 GGX 로브입니다. 직접광마다 코팅 노멀로 <code>D · G · F / (4 · NdotL · NdotV)</code> 를 더하고, 기본 층은 <code>1 − clearcoat · Fc</code> 만큼 줄입니다. IBL 은 같은 split-sum 을 코팅 노멀·코팅 거칠기로 한 번 더 계산합니다 (<code>EnvironmentClearcoat</code>).</li>
   <li>코팅 노멀 맵이 없으면 평평한 노멀이 꽂혀 기하 노멀과 같아집니다. glTF 규격대로 코팅은 기본 층의 노멀 맵을 따르지 않습니다.</li>
-  <li>텍스처 3장(세기 R, 거칠기 G, 코팅 노멀)은 재질 셋의 t0~t7 이 차서 t16~t18 에 둡니다. SRV 레지스터 상한은 32 이고 프레임 셋이 t8~t15 를 씁니다.</li>
+  <li>텍스처 3장(세기 R, 거칠기 G, 코팅 노멀)은 재질 셋의 t0~t7 이 차서 t16~t18 에 둡니다. SRV 레지스터 상한은 32 이고 프레임 셋이 t8~t15 를 씁니다. (2026-11-26 기준: 재질 텍스처는 t0~t6 만 쓰고, t7 은 지금 다른 셋의 속도 버퍼 <code>kSRVSlotVelocity</code>·조명 경계 구 <code>kSRVSlotLightBounds</code> 가 씁니다. 번호는 <code>Graphics/ShaderConstants.h</code> 의 <code>kSRVSlot*</code> 입니다.)</li>
   <li>셰이더에서 분기 안에서 샘플하지 않고 항상 샘플합니다 (그래디언트 계산은 균일한 흐름에서만 안전).</li>
 </ul>
 
@@ -91,9 +91,9 @@ F90     = lerp( specularWeight,  1,  metallic )          // specularWeight = spe
 <tr><td><code>Graphics/Import/GltfImporter.cpp</code></td><td><code>KHR_materials_ior / specular / clearcoat / transmission</code> 파싱. BLEND 는 <code>alphaBlend = true</code>.</td></tr>
 <tr><td><code>Scene/SceneSerializer.cpp</code></td><td>새 필드를 <code>j.value(key, 기본값)</code> 로 읽고 씁니다. 옛 씬은 그대로 열립니다.</td></tr>
 <tr><td><code>Editor/GameBuilder.cpp</code></td><td>텍스처 키 목록에 새 슬롯 6개 추가. 빠지면 배포본에서 텍스처가 조용히 사라집니다.</td></tr>
-<tr><td><code>Graphics/ShaderConstants.h</code>, <code>Shaders/Common.hlsli</code></td><td>재질 cbuffer 64 → 112 바이트(<code>static_assert</code> 와 D3DReflect 대조로 C++/HLSL 일치 확인). 텍스처 슬롯 t5, t6, t16~t19.</td></tr>
-<tr><td><code>Shaders/BasicPixelShader.hlsl</code></td><td>F0/F90, 클리어코트(직접광·IBL), 투과, 블렌딩 출력. 디버그 뷰 9 "Specular F0", 10 "Clearcoat".</td></tr>
-<tr><td><code>Graphics/Renderer.h / .cpp</code></td><td>재질 레이아웃에 슬롯 7개 추가(D3D11·D3D12 공통), GpuMaterial 바인딩·이름 비교, 상수 업로드, 블렌드 PSO, 블렌딩 패스.</td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code>, <code>Shaders/Common.hlsli</code></td><td>재질 cbuffer 64 → 112 바이트(<code>static_assert</code> 와 D3DReflect 대조로 C++/HLSL 일치 확인). 텍스처 슬롯 t5, t6, t16~t19. (2026-11-26 기준: 셰이더 헤더를 나눈 뒤 cbuffer <code>Material</code>(b3)과 재질 텍스처 선언은 <code>Shaders/Material.hlsli</code> 에 있습니다. 슬롯 번호는 그대로입니다.)</td></tr>
+<tr><td><code>Shaders/BasicPixelShader.hlsl</code></td><td>F0/F90, 클리어코트(직접광·IBL), 투과, 블렌딩 출력. 디버그 뷰 9 "Specular F0", 10 "Clearcoat". (2026-11-26 기준: F0/F90·클리어코트·투과 값 계산은 <code>Shaders/MaterialSurface.hlsli</code>, 클리어코트 조명(<code>EnvironmentClearcoat</code> 등)은 <code>Shaders/Shading.hlsli</code> 에 있고, <code>BasicPixelShader.hlsl</code> 에는 블렌딩 출력이 남아 있습니다.)</td></tr>
+<tr><td><code>Graphics/Renderer.h / .cpp</code></td><td>재질 레이아웃에 슬롯 7개 추가(D3D11·D3D12 공통), GpuMaterial 바인딩·이름 비교(2026-11-26 기준: <code>Renderer::GetOrCreateGpuMaterial</code> 가 텍스처 이름 11 개를 비교), 상수 업로드, 블렌드 PSO, 블렌딩 패스.</td></tr>
 <tr><td><code>Editor/Editor.cpp</code>, <code>DebugUI.cpp</code></td><td>IOR, Specular, Specular color, Clearcoat, Clearcoat roughness, Transmission 슬라이더와 Alpha blend 체크박스. "All materials" 편집 반영. 텍스처 임포트 설정 슬롯 추가.</td></tr>
 </table>
 </section>
@@ -124,7 +124,7 @@ F90     = lerp( specularWeight,  1,  metallic )          // specularWeight = spe
   <li><b>IOR 슬라이더 범위는 1~3</b> 이라 Hornet 의 1000 을 드래그하면 3 으로 잘립니다. Ctrl+클릭으로 직접 입력하거나 범위를 넓혀야 합니다.</li>
   <li><b>투과는 근사입니다.</b> 굴절·거칠기에 따른 흐림·틴트·볼륨(<code>KHR_materials_volume</code>)이 없습니다. 제대로 하려면 불투명 씬 컬러의 복사본(밉 포함)을 만들어 읽어야 하는데, RHI 에 텍스처 복사·밉 생성 명령이 없어 양쪽 백엔드에 추가가 필요합니다.</li>
   <li><b>블렌딩 정렬은 오브젝트 단위</b> 입니다. 한 오브젝트 안의 반투명 삼각형끼리는 정렬하지 않습니다.</li>
-  <li><b>디퍼드와의 관계.</b> 다음 순서가 디퍼드라서, clearcoat 는 G-buffer 채널이 더 필요하고 transmission·블렌딩 재질은 포워드로 남겨야 합니다. 이 때문에 디퍼드를 만들 때 이 기록의 클리어코트 부분을 다시 손봐야 합니다.</li>
+  <li><b>디퍼드와의 관계.</b> 다음 순서가 디퍼드라서, clearcoat 는 G-buffer 채널이 더 필요하고 transmission·블렌딩 재질은 포워드로 남겨야 합니다. 이 때문에 디퍼드를 만들 때 이 기록의 클리어코트 부분을 다시 손봐야 합니다. (2026-11-26 기준: 디퍼드가 들어가 클리어코트 세기·코팅 거칠기는 G-buffer GB3 의 b·a 에 담기고(<code>Shaders/GBuffer.hlsli</code>), <code>IsBlended</code> 재질과 unlit 재질은 <code>Renderer::CanUseDeferred</code> 가 걸러 포워드로 그립니다.)</li>
   <li>아직 읽지 않는 확장이 더 있습니다: <code>KHR_materials_volume</code>, <code>sheen</code>, <code>anisotropy</code>, <code>iridescence</code> 등. 지금 모델들에는 쓰이지 않습니다.</li>
 </ul>
 <p class="foot">이 문서는 다른 문서를 고치지 않았습니다. <code>docs/index.html</code> 에는 아직 링크를 걸지 않았습니다.</p>

@@ -241,12 +241,13 @@ band           = 1 − smoothstep(0.1, 0.25, cyclesPerPixel)     <span class="c"
 <table>
 <thead><tr><th>곡선 (10 km, 512 정점)</th><th>원점</th><th>80 m 안 최대</th><th>150 m</th><th>300 m</th><th>가장자리</th></tr></thead>
 <tbody>
-<tr><td>|t|⁵, g 0.93</td><td class="n">1.37 m</td><td class="n">1.58 m</td><td></td><td class="n">6.42 m</td><td class="n">92 m</td></tr>
+<tr><td>|t|⁵, g 0.93</td><td class="n">1.37 m</td><td class="n">1.58 m</td><td></td><td class="n">6.58 m</td><td class="n">92 m</td></tr>
 <tr><td>|t|⁵, g 0.95</td><td class="n">0.98 m</td><td class="n">1.56 m</td><td></td><td class="n">7.40 m</td><td class="n">93 m</td></tr>
 <tr><td><b>|t|⁷, g 0.93 (채택)</b></td><td class="n">1.37 m</td><td class="n">1.39 m</td><td class="n">1.92 m</td><td class="n">5.99 m</td><td class="n">127 m</td></tr>
 <tr><td>|t|⁹, g 0.93</td><td class="n">1.37 m</td><td class="n">1.37 m</td><td class="n">1.54 m</td><td class="n">5.65 m</td><td class="n">163 m</td></tr>
 </tbody>
 </table>
+<p>(2026-11-26 정정: |t|⁵, g 0.93 행의 300 m 칸은 처음에 6.42 m 로 적었으나, 이는 300 m 바로 앞에서 끝나는 칸의 간격입니다. 다른 행처럼 300 m 를 포함하는 칸으로 위 식(512 정점, 한 변 10 km)을 다시 계산하면 6.58 m 입니다. 나머지 칸은 다시 계산한 값과 반올림 범위에서 같습니다.)</p>
 <ul>
 <li><b>감쇠.</b> <code>fadeStart</code>~<code>fadeEnd</code>(기본 80~300 m)에서 진폭과 경사를 함께 0 으로. 성긴 격자가 짧은 파도를 담지 못해 생기는 계단을 막고, 먼 바다는 평평하게 하늘을 비춥니다.</li>
 <li><b>수평선.</b> <code>OceanHorizon.json</code> 은 바다 한 변 10 km, 씬 카메라·게임 카메라 far 5000 m 입니다. 바다는 far 에서 잘리고, 갑판 8 m 에서 그 자리는 수평선보다 약 0.09° 아래(씬 뷰에서 1 픽셀 미만)입니다. 수평선 바로 아래 행의 밝기는 164, 하늘 194, 조금 앞 바다 174~180 으로 틈은 없습니다.</li>

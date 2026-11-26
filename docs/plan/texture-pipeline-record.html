@@ -62,7 +62,7 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
    └ 없음 + 에디터         → 변환해 캐시에 쓰고 읽음</code></pre>
 <table>
 <tr><th>항목</th><th>내용</th></tr>
-<tr><td>캐시 위치</td><td><code>&lt;프로젝트&gt;\Library\TextureCache\&lt;해시&gt;.dds</code> (프로젝트가 없으면 <code>&lt;exe&gt;\TextureCache\</code>). <code>.gitignore</code> 에 <code>Projects/*/Library/</code> 를 추가했습니다.</td></tr>
+<tr><td>캐시 위치</td><td><code>&lt;프로젝트&gt;\Library\TextureCache\&lt;해시&gt;.dds</code> (프로젝트가 없으면 <code>&lt;exe&gt;\TextureCache\</code>). (2026-11-26 기준: <code>TextureImporter::GetCacheDir</code> 는 프로젝트가 있고 엔진 루트가 소스 트리일 때만 <code>&lt;프로젝트&gt;\Library\TextureCache\</code> 를 쓰고, 그 밖에는 프로젝트가 있는 배포본도 <code>&lt;exe&gt;\TextureCache\</code> 를 씁니다.) <code>.gitignore</code> 에 <code>Projects/*/Library/</code> 를 추가했습니다.</td></tr>
 <tr><td>캐시 키</td><td>원본 바이트의 FNV-1a 64비트 + sRGB 여부 + 설정 + 변환기 버전. 같은 원본을 색과 데이터로 쓰면 파일이 둘이 됩니다. 원본이나 설정이 바뀌면 다른 파일이 되어 자동으로 새로 만들어집니다(옛 파일은 남음).</td></tr>
 <tr><td>변환</td><td>WIC 로 읽기 → RGBA8 → 전체 밉 체인(sRGB 는 선형에서 평균) → 설정에 맞게 위쪽 단계 건너뛰기·자르기 → BC7. 임시 파일에 쓴 뒤 이름을 바꾸므로 쓰다 중단돼도 깨진 캐시가 남지 않습니다.</td></tr>
 <tr><td>인코더</td><td>DirectXTex GPU BC7(임시 D3D11 장치, D3D12 백엔드에서도 동일). 실패하면 CPU <code>BC7_QUICK</code>. 4096² 한 장 기준 CPU 약 7초, GPU 포함 전체 약 2.8초. 2048² 는 0.6~1초.</td></tr>

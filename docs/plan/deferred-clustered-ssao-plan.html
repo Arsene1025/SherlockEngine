@@ -183,7 +183,7 @@ svg .arh { fill: var(--ink2); }
 <tbody>
 <tr><td>2 디퍼드 기본</td><td>불투명 물체를 G-buffer(MRT 5장)에 그리고 풀스크린 라이팅 패스가 조명을 계산. 조명 루프는 지금의 "모든 조명 순회"를 그대로 씀</td><td>없음 (포맷·MRT·읽기 전용 깊이가 이미 있음)</td><td>없음</td><td>같은 씬의 포워드/디퍼드 픽셀 차이가 몇 레벨 이내, 두 백엔드 일치, D3D12 Debug Layer 메시지 0건</td></tr>
 <tr><td>3a 조명 컬링·섀도 우선순위</td><td>화면에 영향 없는 조명은 섀도 뷰를 만들지 않고, 남은 조명에 점수 순으로 타일 배정</td><td>없음</td><td>없음 (포워드만으로 검증 가능)</td><td>조명 많은 씬에서 보이는 조명이 그림자를 받음. 조명이 타일 수 이하인 씬은 화면이 전과 같음</td></tr>
-<tr><td>3b 클러스터드 라이팅</td><td>CPU 가 뷰마다 16×9×24 클러스터별 조명 목록을 만들어 올리고, 라이팅이 그 목록만 순회</td><td>없음 (구조체 버퍼 2개 추가)</td><td>2단계의 "모든 조명 순회" 라이팅이 정답 화면</td><td>전체 순회와 클러스터드의 픽셀 차이 1~2 레벨 이내, 조명 많은 씬에서 라이팅 GPU 시간 감소</td></tr>
+<tr><td>3b 클러스터드 라이팅</td><td>CPU 가 뷰마다 16×9×24 클러스터별 조명 목록을 만들어 올리고, 라이팅이 그 목록만 순회 <span class="sub">(2026-11-26 기준: 지금은 컴퓨트 비닝(<code>Graphics/RendererClusterBin.cpp</code> 의 <code>DispatchClusterBinning</code>)이 기본이고, CPU 비닝은 <code>--cluster-gpu=0</code> 이나 에디터의 "GPU clustering" 체크를 끌 때 결과 비교용으로 씁니다.)</span></td><td>없음 (구조체 버퍼 2개 추가)</td><td>2단계의 "모든 조명 순회" 라이팅이 정답 화면</td><td>전체 순회와 클러스터드의 픽셀 차이 1~2 레벨 이내, 조명 많은 씬에서 라이팅 GPU 시간 감소</td></tr>
 <tr><td>5 SSAO</td><td>깊이·노멀로 화면 공간 AO 를 계산하고 블러한 뒤 환경광(IBL) 항에만 곱함</td><td>없음</td><td>2단계의 G-buffer 와 위치 복원 함수</td><td>AO 디버그 뷰가 구석·접촉부만 어둡고, 끄면 3단계 화면과 같음</td></tr>
 </tbody>
 </table>
@@ -640,16 +640,16 @@ bias  = −S · log2(n) / log2(f / n)</code></pre>
 <table>
 <thead><tr><th>요소</th><th>하는 일</th><th>이 계획의 선택 <span class="tag p">제안</span></th></tr></thead>
 <tbody>
-<tr><td>샘플 커널</td><td>탄젠트 공간 반구 안의 점 N 개. 가까운 쪽에 더 몰리게 길이를 scale = lerp(0.1, 1, (i/N)²) 로 줄임</td><td>N = 16 (설정으로 8~32). CPU 가 고정 시드로 한 번 만들어 b12 에 올림 (결정적 스크린샷)</td></tr>
+<tr><td>샘플 커널</td><td>탄젠트 공간 반구 안의 점 N 개. 가까운 쪽에 더 몰리게 길이를 scale = lerp(0.1, 1, (i/N)²) 로 줄임</td><td>N = 16 (설정으로 8~32). CPU 가 고정 시드로 한 번 만들어 b12 에 올림 (결정적 스크린샷) <span class="sub">(2026-11-26 기준: 지금은 <code>SsaoSettings::sampleCount</code> 가 1..32 정수이고, 길이는 lerp(0.2, 1, (i + u)/N) 의 층화 배치입니다. 원래 식은 평균 길이가 반경의 약 16% 라 반경 끝까지 닿지 않았습니다 — <code>Graphics/RendererSsao.cpp</code> 의 <code>UploadSsaoConstants</code>.)</span></td></tr>
 <tr><td>회전 노이즈</td><td>모든 픽셀이 같은 커널을 쓰면 띠가 생김. 픽셀마다 커널을 노멀 축으로 돌림</td><td>텍스처 없이 픽셀 좌표의 4×4 패턴으로 16 가지 각도 (Bayer 순서). 4×4 블러가 패턴을 정확히 지움</td></tr>
 <tr><td>범위 검사</td><td>멀리 떨어진 앞 물체가 가림으로 세지는 것(후광)을 막음</td><td>smoothstep(0, 1, radius / |P.z − 장면 z|)</td></tr>
 <tr><td>바이어스</td><td>깊이 정밀도 때문에 평면이 자기를 가리는 것(얼룩) 방지</td><td>뷰 공간 거리 bias (기본 0.025 m)</td></tr>
-<tr><td>블러</td><td>16 샘플의 노이즈를 지움</td><td>4×4 상자 블러, 깊이 차이가 큰 이웃은 가중치를 낮춤(경계 번짐 방지)</td></tr>
+<tr><td>블러</td><td>16 샘플의 노이즈를 지움</td><td>4×4 상자 블러, 깊이 차이가 큰 이웃은 가중치를 낮춤(경계 번짐 방지) <span class="sub">(2026-11-26 기준: 지금은 가중치가 0 또는 1 입니다. 중심과의 뷰 z 차가 "중심 z × 5% + bias" 이하인 이웃만 평균합니다 — <code>Shaders/SsaoBlurPixelShader.hlsl</code> 의 <code>PS_SsaoBlur</code>.)</span></td></tr>
 <tr><td>어디에 곱하나</td><td>AO 는 간접광(환경광)의 가림</td><td><b>환경광(IBL 확산 + 반사) 항에만</b>. 직접광에는 곱하지 않음 (지금 재질 AO 와 같은 자리)</td></tr>
 <tr><td>재질 AO 와 합치기</td><td>둘 다 가림이라 곱하면 같은 홈이 두 번 어두워질 수 있음</td><td>기본 <b>최솟값</b> min(재질 AO, SSAO), 비교용으로 곱하기 선택지</td></tr>
 </tbody>
 </table>
-<p>공간은 <b>월드 공간</b>으로 계산합니다. G-buffer 노멀이 월드 공간이고, b0 에 <code>viewProj</code>(샘플 투영), <code>view</code>(뷰 z), 새 <code>invViewProj</code>(복원)가 다 있어서 행렬을 더 늘리지 않습니다. 비교는 뷰 공간 z 로 합니다(장면 깊이는 <code>LinearViewDepth</code>, 샘플 점은 <code>mul(S, view).z</code>).</p>
+<p><span class="sub">(2026-11-26 기준: 지금은 뷰 공간에서 계산합니다. <code>ViewPositionFromDevice</code> 로 뷰 공간 위치를 복원하고, G-buffer 의 월드 노멀을 <code>view</code> 로 돌린 뒤 샘플을 <code>proj</code> 로 투영합니다 — <code>Shaders/SsaoPixelShader.hlsl</code> 의 <code>PS_Ssao</code>. <a href="#s5-pass">5단계-1</a> 의 <code>PS_Ssao</code>·<code>PS_SsaoBlur</code> 코드 조각도 계획 당시의 월드 공간 판입니다.)</span> 공간은 <b>월드 공간</b>으로 계산합니다. G-buffer 노멀이 월드 공간이고, b0 에 <code>viewProj</code>(샘플 투영), <code>view</code>(뷰 z), 새 <code>invViewProj</code>(복원)가 다 있어서 행렬을 더 늘리지 않습니다. 비교는 뷰 공간 z 로 합니다(장면 깊이는 <code>LinearViewDepth</code>, 샘플 점은 <code>mul(S, view).z</code>).</p>
 
 <h3 id="c-ssao-limits">4.3 한계 (처음부터 알고 가는 것)</h3>
 <ul>
@@ -1035,6 +1035,7 @@ float ShadowScore(const LightBounds&amp; b, const GpuLight&amp; l, XMVECTOR came
 
 <h3 id="s3b">3b. 클러스터드 라이팅</h3>
 <h4 id="s3b-cpu">CPU 쪽 흐름</h4>
+<p><span class="sub">(2026-11-26 기준: 지금은 컴퓨트 비닝(<code>Graphics/RendererClusterBin.cpp</code> 의 <code>DispatchClusterBinning</code>)이 기본이고, CPU 비닝은 <code>--cluster-gpu=0</code> 이나 에디터의 "GPU clustering" 체크를 끌 때 결과 비교용으로 씁니다.)</span></p>
 <figure>
 <svg viewBox="0 0 900 250" role="img" aria-label="클러스터 비닝 CPU 흐름">
   <rect x="10" y="30" width="150" height="76" rx="6" class="bx"/><text x="85" y="56" text-anchor="middle">조명 정렬</text><text x="85" y="74" text-anchor="middle" class="s">방향광 먼저, 지역광 뒤</text><text x="85" y="90" text-anchor="middle" class="s">BuildGpuLights (프레임 1 번)</text>
@@ -1244,7 +1245,7 @@ for (uint32_t i = 0; i &lt; n; ++i)
     XMStoreFloat4(&amp;kernel[i], v);
 }
 }</code></pre>
-<p>길이 배율을 <code>i / n</code> 으로 두어야 샘플 수와 상관없이 마지막 샘플이 반경 끝까지 닿습니다. 설정 UI 는 8/16/32 중에서 고르고, 바뀌면 <code>BuildSsaoKernel</code> 을 다시 불러 b12 에 올립니다 <span class="tag p">제안</span>.</p>
+<p><span class="sub">(2026-11-26 기준: 지금 코드의 길이는 <code>0.2 + 0.8 × (i + u) / n</code> 입니다. 균등 난수 × lerp(0.1, 1, (i/n)²) 는 두 번 몰려 실효 반경이 너무 작았습니다 — <code>UploadSsaoConstants</code>.)</span> 길이 배율을 <code>i / n</code> 으로 두어야 샘플 수와 상관없이 마지막 샘플이 반경 끝까지 닿습니다. 설정 UI 는 8/16/32 중에서 고르고, 바뀌면 <code>BuildSsaoKernel</code> 을 다시 불러 b12 에 올립니다 <span class="tag p">제안</span>.</p>
 
 <h4><code>PS_Ssao</code></h4>
 <pre><code>float PS_Ssao(float4 svPos : SV_POSITION) : SV_TARGET
@@ -1318,12 +1319,12 @@ if (aoParams.x &gt; 0.5f)
 <table>
 <thead><tr><th>자리</th><th>추가</th></tr></thead>
 <tbody>
-<tr><td><code>Scene/Scene.h</code> 의 <code>SceneEnvironment</code></td><td><code>SsaoSettings ssao</code> { enabled, radius, bias, intensity, power, sampleCount, combineMultiply }. 기본 꺼짐(옛 씬 파일 화면이 바뀌지 않게)</td></tr>
+<tr><td><code>Scene/Scene.h</code> 의 <code>SceneEnvironment</code></td><td><code>SsaoSettings ssao</code> { enabled, radius, bias, intensity, power, sampleCount, combineMultiply } <span class="sub">(2026-11-26 기준: 지금 이름은 <code>multiply</code> 이고, 정의는 <code>Scene/SsaoSettings.h</code>)</span>. 기본 꺼짐(옛 씬 파일 화면이 바뀌지 않게)</td></tr>
 <tr><td><code>Scene/SceneSerializer.cpp</code></td><td><code>environment.ssao</code> 객체 읽기·쓰기 (<code>postProcess</code> 와 같은 방식, 없으면 기본값)</td></tr>
 <tr><td>에디터 Environment 패널</td><td>SSAO 묶음: 체크박스·슬라이더. 되돌리기(undo)는 <code>postProcess</code> 편집과 같은 경로</td></tr>
 <tr><td><code>ShaderConstants.h</code></td><td><code>SsaoConstants</code> (544 B) + <code>static_assert</code>, <code>kConstantBuffers</code> 에 <code>SsaoParams</code></td></tr>
-<tr><td><code>Renderer.h</code> 열거형·표</td><td><code>Shader_SsaoPS</code>, <code>Shader_SsaoBlurPS</code>, <code>Layout_Ssao</code> { b0, b12, t23, t26, t13 }, <code>Pass_Ssao</code>, <code>Pass_SsaoBlur</code> (레이아웃 하나를 같이 씀; AO 패스는 t13 에 흰 텍스처, 블러 패스는 t13 에 ssaoRaw)</td></tr>
-<tr><td><code>RendererTargets.cpp</code></td><td><code>EnsureGBuffer</code> 안에서 SSAO 텍스처 2장(R8_UNORM, RT | SRV)과 셋 2개를 같이 만듦. SSAO 를 켜야 만들게 할지는 메모리(1080p 2 MiB × 2)가 작아 같이 만듦</td></tr>
+<tr><td><code>Renderer.h</code> 열거형·표</td><td><code>Shader_SsaoPS</code>, <code>Shader_SsaoBlurPS</code>, <code>Layout_Ssao</code> { b0, b12, t23, t26, t13 }, <code>Pass_Ssao</code>, <code>Pass_SsaoBlur</code> (레이아웃 하나를 같이 씀; AO 패스는 t13 에 흰 텍스처, 블러 패스는 t13 에 ssaoRaw) <span class="sub">(2026-11-26 기준: 지금은 입력 AO 가 t13 이 아니라 t29 입니다 — <code>Layout_Ssao</code> { b0, b12, t23, t26, t29 }, <code>Shaders/Ssao.hlsli</code>)</span></td></tr>
+<tr><td><code>RendererTargets.cpp</code></td><td><code>EnsureGBuffer</code> 안에서 SSAO 텍스처 2장(R8_UNORM, RT | SRV)과 셋 2개를 같이 만듦 <span class="sub">(2026-11-26 기준: 지금은 <code>Graphics/RendererDeferred.cpp</code> 의 <code>CreateGBuffer</code> 가 <code>Graphics/RendererSsao.cpp</code> 의 <code>CreateSsaoTargets</code> 를 부르고, 디퍼드 패스 안의 자리는 <code>RenderDeferredScene</code> 입니다)</span>. SSAO 를 켜야 만들게 할지는 메모리(1080p 2 MiB × 2)가 작아 같이 만듦</td></tr>
 <tr><td><code>RendererSsao.cpp</code> (새)</td><td><code>UploadSsaoConstants</code>(설정이 바뀔 때만이 아니라 매 프레임 — Dynamic 규칙), <code>RenderSsao(cmd, view)</code></td></tr>
 <tr><td><code>Renderer::RenderScenePass</code></td><td>디퍼드 경로의 ② 자리에서 <code>RenderSsao</code>. 배리어: ssaoRaw·ssao RenderTarget → ShaderResource</td></tr>
 <tr><td>실행 인자</td><td><code>--ssao=1|0</code> 은 씬 설정을 덮어씀 (검증용; 씬 파일에는 저장하지 않음)</td></tr>

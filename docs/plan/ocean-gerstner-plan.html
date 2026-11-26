@@ -157,7 +157,7 @@ G-buffer 패스 ─ <b>OceanVS</b> + GBufferPS  → 디퍼드 조명이 IBL 반�
 
 <section id="concept">
 <h2>2. 개념: Gerstner 파도</h2>
-<p>수면의 점을 위아래로만 움직이는 사인파와 달리, Gerstner 파도는 점을 원을 그리며 움직입니다. 마루 쪽으로 점이 모여 마루가 뾰족해지고 골은 넓어집니다. 실제 물결과 비슷한 모양이 수식 몇 줄로 나오고, 노멀도 해석적으로 구해집니다. 파도 여러 개를 더해 씁니다.</p>
+<p>수면의 점을 위아래로만 움직이는 사인파와 달리, Gerstner 파도는 점을 원을 그리며 움직입니다. <span class="sub">(2026-11-26 기준: 이 엔진은 아래 식처럼 경사 <code>sᵢ</code> 와 진폭 <code>Aᵢ</code> 를 따로 두므로 궤적은 수평 반지름 <code>sᵢ/kᵢ</code>, 수직 반지름 <code>Aᵢ</code> 의 타원이고, <code>sᵢ = kᵢAᵢ</code> 일 때만 원입니다. 기본값(파도 6 개, <code>sᵢ</code> = 0.4/6 ≈ 0.067, <code>kᵢAᵢ</code> ≈ 0.049)이면 수평 반지름이 수직의 약 1.36 배입니다 — <code>Scene/Ocean.cpp</code> 의 <code>Ocean::BuildWaves</code>, <code>Shaders/Ocean.hlsli</code>.)</span> 마루 쪽으로 점이 모여 마루가 뾰족해지고 골은 넓어집니다. 실제 물결과 비슷한 모양이 수식 몇 줄로 나오고, 노멀도 해석적으로 구해집니다. 파도 여러 개를 더해 씁니다.</p>
 <p>평면 위 원래 위치를 <code>x₀ = (x, z)</code>, 파도 i 의 방향(단위 2D 벡터)을 <code>Dᵢ</code>, 파장을 <code>Lᵢ</code>, 진폭을 <code>Aᵢ</code>, 경사를 <code>sᵢ</code>(0 이상, 차원 없음)라고 하면 (Y 가 위):</p>
 <pre><code>kᵢ = 2π / Lᵢ                        <span class="c">// 파수</span>
 ωᵢ = sqrt(g · kᵢ) · speed           <span class="c">// 깊은 물의 분산 관계 (g = 9.81). 긴 파도가 더 빠름</span>
@@ -222,7 +222,7 @@ T = normalize( ∂P/∂x )                <span class="c">// 탄젠트 (노멀 �
 <tr><td><code>steepness</code></td><td>0.4</td><td><code>Σ sᵢ</code>. [0, 1] 로 자르고 파도마다 같은 몫으로 나눔</td></tr>
 <tr><td><code>speed</code></td><td>1.0</td><td>ω 배율. 0 이면 파도가 멈춤(검증용)</td></tr>
 <tr><td><code>seed</code></td><td>1</td><td>방향 퍼짐·초기 위상 난수 시드</td></tr>
-<tr><td><code>fadeStart</code> / <code>fadeEnd</code></td><td>80 / 300</td><td>(2단계) 바다 오브젝트 원점에서 이 거리(m) 사이에서 진폭을 1 → 0 으로 줄임</td></tr>
+<tr><td><code>fadeStart</code> / <code>fadeEnd</code></td><td>80 / 300</td><td>(2단계) 바다 오브젝트 원점에서 이 거리(m) 사이에서 진폭을 1 → 0 으로 줄임 <span class="sub">(2026-11-26 기준: 진폭과 경사에 같은 감쇠(1 − smoothstep)를 곱합니다. 2단계 절의 서술과 같고, 코드는 <code>Shaders/Ocean.hlsli</code> 의 <code>OceanFade</code>)</span></td></tr>
 </tbody>
 </table>
 <p>파도 생성은 C++ 함수 하나(<code>Ocean::BuildWaves</code> 또는 렌더러 쪽 헬퍼)로 두고, 같은 입력이면 같은 파도가 나오게 합니다(난수는 시드로 만든 작은 LCG, <code>std::rand</code> 금지). 렌더러는 값이 바뀐 프레임에만 다시 만들어도 되지만, 8개라 매 프레임 만들어도 됩니다.</p>

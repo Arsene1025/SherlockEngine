@@ -32,9 +32,18 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <header>
   <h1>후처리(PostProcess) 구현 기록</h1>
 <div class="box warn"><p><b>경로 표기</b> — 이 문서에 적힌 <code>App/…</code> 경로는 작성 당시 값입니다. 지금은 에디터 코드가 <code>SherlockEngine/Editor/</code> 에, <code>Rigidbody</code> · <code>FollowTarget</code> 이 <code>SherlockEngine/Scene/</code> 에 있습니다. 이 문서는 기록이라 본문은 고치지 않았습니다.</p></div>
+<div class="box warn"><p><b>이름 표기 (2026-11-26 기준)</b> — 코드 조각과 본문의 멤버·함수 이름도 작성 당시 값입니다. 지금 코드에서는 다음과 같습니다.</p>
+<ul>
+<li><code>m_hdrColor</code>·<code>m_hdrPostSet</code>·<code>m_hdrWidth</code>/<code>m_hdrHeight</code>·<code>m_sceneColor</code> → <code>m_mainView</code>(<code>Renderer::ViewTarget</code>)의 <code>hdr</code>·<code>hdrSet</code>·<code>width</code>/<code>height</code>·<code>color</code>. <code>m_previewHdr</code>·<code>m_previewHdrPostSet</code>·<code>m_previewWidth</code>/<code>m_previewHeight</code> → <code>m_previewView</code> 의 같은 멤버. <code>m_postMain</code>·<code>m_postPreview</code> → 각 뷰의 <code>post</code>(<code>PostScratch</code>).</li>
+<li><code>m_hdrColorState</code>·<code>m_previewHdrState</code>·<code>m_sceneColorState</code>·<code>m_stageThumbStates</code> → 없음. 텍스처 상태는 백엔드가 추적합니다(<code>CommandList::Barrier</code>). 썸네일은 <code>m_stageThumbs</code>(<code>PostStageThumb</code>).</li>
+<li><code>EnsureHdrTargets</code>/<code>DestroyHdrTargets</code> → <code>CreateViewTarget</code>/<code>DestroyViewTarget</code>(<code>Graphics/RendererTargets.cpp</code>). 후처리 셋 이름 <code>Set_Post_HDR</code>·<code>Set_Post_PreviewHDR</code> → <code>"Set_Post_" + 뷰 이름</code>(<code>Set_Post_SceneView</code>, <code>Set_Post_CameraPreview</code>, <code>Set_Post_Game</code>).</li>
+<li><code>m_postLayout</code> → <code>m_layouts[Layout_Post]</code>. <code>m_tonemapDesc</code>·<code>m_postDesc</code> → <code>m_passDesc[Pass_Tonemap]</code>·<code>m_passDesc[Pass_Post]</code>(가산 블렌드판은 <code>m_postAddDesc</code>). <code>m_postPs</code>·<code>kPostPixelShaderFile</code> → <code>m_shaders[Shader_PostPS]</code> 와 <code>Renderer::kShaders</code> 표의 <code>PostPixelShader.hlsl</code> 줄.</li>
+<li><code>ApplyHdrEffects</code> 인자 → <code>(cmd, view, capture)</code>. <code>RenderTonemapPass</code> 인자 → <code>(cmd, hdrSet, output, outputAfter, debugName, srcW, srcH, dstW, dstH, skipGrade)</code>.</li>
+<li><code>cbuffer PostParams</code> → <code>Shaders/Post.hlsli</code>(<code>PostPixelShader.hlsl</code>·<code>TonemapPixelShader.hlsl</code> 가 include).</li>
+</ul></div>
 
   <p>2026-10-23 · HDR 타깃·톤매핑 위에 <b>가우시안 블러, 블룸, GreyScale</b>를 올리고, 단계마다 결과를 보여 주는 <b>Post Stages 썸네일 창</b>까지 구현한 내용을 코드와 함께 정리한 기록입니다. 이 문서는 새로 만든 것이며 다른 문서를 고치지 않았습니다.</p>
-  <p class="foot">기준: 커밋 e716094 + 작업 트리(2026-10-23, <b>아직 커밋하지 않음</b>). 코드 조각은 문서를 만들 때 실제 소스 파일에서 그대로 읽어 옵니다. 위치는 "파일 + 함수 이름"이 기준입니다. 앞 단계(HDR 타깃, 톤 패스)는 <a href="hdr-tonemapping-record.html">hdr-tonemapping-implementation.html</a> 에 있습니다.</p>
+  <p class="foot">기준: 커밋 e716094 + 작업 트리(2026-10-23, <b>아직 커밋하지 않음</b>). 코드 조각은 문서를 만들 때 실제 소스 파일에서 그대로 읽어 옵니다. 위치는 "파일 + 함수 이름"이 기준입니다. 앞 단계(HDR 타깃, 톤 패스)는 <a href="hdr-tonemapping-record.html">hdr-tonemapping-record.html</a> 에 있습니다.</p>
 </header>
 <nav><a href="#summary">1. 요약</a><a href="#design">2. 설계</a><a href="#settings">3. 설정 데이터</a><a href="#binding">4. 상수·바인딩</a><a href="#pass">5. 공통 패스</a><a href="#grade">6. GreyScale</a><a href="#blur">7. 블러</a><a href="#bloom">8. 블룸</a><a href="#pso">9. PSO·셰이더 등록</a><a href="#scratch">10. 스크래치·호출 지점</a><a href="#stages">11. 단계별 썸네일</a><a href="#notes">12. 설계 결정·함정</a><a href="#verify">13. 검증</a><a href="#extend">14. 효과 추가하는 법</a><a href="#files">15. 파일 목록</a></nav>
 

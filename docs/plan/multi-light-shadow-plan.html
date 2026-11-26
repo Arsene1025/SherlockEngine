@@ -523,7 +523,7 @@ m_device-&gt;UpdateBuffer(m_lightCB, &amp;lights, sizeof(lights));</code></pre>
 
 <section id="s4">
 <h2><span class="step">4</span>4096 섀도 아틀라스와 영역 배치</h2>
-<div class="meta"><b>목표</b><span>섀도 맵을 4096² 아틀라스로 키우고 방향광을 왼쪽 위 2048 영역에 그린다. 지역광 타일 12개의 자리를 정한다. 화면은 단계 3과 같아야 한다.</span>
+<div class="meta"><b>목표</b><span>섀도 맵을 4096² 아틀라스로 키우고 방향광을 왼쪽 위 2048 영역에 그린다. 지역광 타일 12개의 자리를 정한다. 화면은 단계 3과 같아야 한다. <span class="sub">(2026-11-26 기준: 지금 상수는 <code>kShadowAtlasSize = 2048</code>, <code>kShadowTileSize = 512</code>, <code>kShadowLocalTileCount = 16</code> 이고 <code>kShadowDirectionalRegion</code> 은 없습니다. 방향광은 CSM 아틀라스(<code>kCsmAtlasWidth</code>·<code>kCsmAtlasHeight</code> 2048, 칸 <code>kCsmCascadeSize</code> 네 개 모두 1024)에 그립니다 — <code>Graphics/Renderer.h</code>. 지역광 타일 16 개라 그림자를 받는 지역광은 스팟만이면 16 개, 포인트만이면 2 개(6 타일씩)까지입니다.)</span></span>
 <b>파일</b><span>수정: <code>Graphics/Renderer.h</code>, <code>Graphics/Renderer.cpp</code> (<code>CreateShadowResources</code>, <code>BuildShadowViews</code>, 익명 namespace 도우미), <code>App/DebugUI.cpp</code> (<code>DrawShadowPanel</code>)</span>
 <b>만드는 것</b><span>상수 <code>kShadowDirectionalRegion = 2048</code>, <code>kShadowTileSize = 1024</code>, <code>kShadowLocalTileCount = 12</code>. 도우미 <code>DirectionalRect</code>, <code>LocalTileRect</code>. 멤버 <code>m_usedLocalTiles</code>와 <code>GetUsedLocalTiles()</code></span></div>
 <ul class="todo">
@@ -649,8 +649,8 @@ ImGui::Text("views %u / %u   local tiles %u / %u   skipped lights %u", …);</co
 </table>
 <p>D3D 큐브맵 면 순서(+X, −X, +Y, −Y, +Z, −Z)와 같게 둡니다. 우리는 큐브 텍스처를 쓰지 않으므로 up은 면마다 시야만 맞으면 어떤 것이어도 되지만, 관례를 따르면 나중에 큐브 섀도 맵으로 옮기기 쉽습니다. 뷰는 <code>XMMatrixLookToLH(position, look, up)</code>입니다.</p>
 <p><b>시야각은 90°가 아니라 조금 넓게</b> 잡습니다. PCF가 타일 가장자리 3텍셀 안쪽으로 clamp되므로, 그 안쪽 영역이 정확히 90°를 덮도록 넓힙니다.</p>
-<pre><code>tanHalf = kShadowTileSize / (kShadowTileSize - 2 · kShadowPcfBorder)   // 1024 / 1018 ≈ 1.0059
-fov     = 2 · atan(tanHalf)                                            // ≈ 90.34°
+<pre><code>tanHalf = kShadowTileSize / (kShadowTileSize - 2 · kShadowPcfBorder)   // 1024 / 1018 ≈ 1.0059  (2026-11-26 기준: 타일 512 라 512 / 506 ≈ 1.0119)
+fov     = 2 · atan(tanHalf)                                            // ≈ 90.34°          (지금은 ≈ 90.68°)
 proj    = XMMatrixPerspectiveFovLH(fov, 1.0f, 0.05f, max(range, 0.06f))
 params  = (0, 2 · tanHalf / kShadowTileSize, 1, 0),  cullSphere = (position, range)</code></pre>
 <ul class="todo">
@@ -737,6 +737,7 @@ else if (light.type == LIGHT_POINT)
               offset = (round(o) − o) · (2 / tile)
               proj.r[3] += (offset.x, offset.y, 0, 0)
   5) 사각형 = DirectionalRect(c, N),  tile = kShadowTileSize
+     (2026-11-26 기준: 지금은 사각형 = CsmRect(c), tile = 그 칸의 크기 rect.size = 1024 — RendererShadow.cpp 의 AddCascadeViews)
      params = ( shadow.bias · (2·distance + orthoSize) / (2r + back),   ← 단일 뷰와 같은 "월드 거리" 바이어스로 환산
                 2r / tile, 0, 0 )
   6) 첫 캐스케이드의 뷰 번호가 그 조명의 shadowIndex

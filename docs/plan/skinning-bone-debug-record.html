@@ -61,7 +61,7 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
 <h2>3. 셰이더와 렌더러</h2>
 <table>
 <tr><th>항목</th><th>내용</th></tr>
-<tr><td>셰이더</td><td><code>BasicSkinVertexShader.hlsl</code>(VS_MainSkin), <code>ShadowSkinVertexShader.hlsl</code>(VS_ShadowSkin). <code>Common.hlsli</code> 에 cbuffer <code>Skin</code>(b7, <code>matrix joints[256]</code> 16KB).</td></tr>
+<tr><td>셰이더</td><td><code>BasicSkinVertexShader.hlsl</code>(VS_MainSkin), <code>ShadowSkinVertexShader.hlsl</code>(VS_ShadowSkin). <code>Common.hlsli</code> 에 cbuffer <code>Skin</code>(b7, <code>matrix joints[256]</code> 16KB). (2026-11-26 기준: 셰이더 헤더를 바인딩 셋 단위로 나눈 뒤 <code>Skin</code>(b7)과 지난 프레임 팔레트 <code>PrevSkin</code>(b13)은 <code>Shaders/Mesh.hlsli</code> 에 있습니다.)</td></tr>
 <tr><td>패스</td><td><code>Pass_MainSkin / Pass_ShadowSkin</code>. 정점 포맷이 스킨이면 자동 선택. PS·레이아웃은 기존과 같습니다.</td></tr>
 <tr><td>상수 버퍼</td><td>오브젝트 셋에 b7 을 추가. 팔레트가 비면 단위행렬 256개를 올립니다. (이후 편집 모드에서는 기본 자세 팔레트가 채워져서, 단위행렬은 모델 정보를 못 찾았을 때만 올립니다. 2절 끝의 상자 참고.)</td></tr>
 <tr><td>컬링</td><td>스킨 메시는 반지름 1e9 로 컬링하지 않습니다.</td></tr>

@@ -33,6 +33,16 @@ nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:
   <h1>HDR 타깃 · 톤매핑 구현 기록</h1>
   <p>2026-10-23 · <code>hdr-tonemapping-plan.html</code> 계획의 단계 2~7을 실제로 구현한 내용과 프레임 흐름을 정리한 기록입니다. 이 문서는 계획서를 고치지 않고 따로 만든 것입니다.</p>
   <p class="foot">기준: 커밋 2b0f6a4 + 작업 트리(2026-10-23). 코드 위치는 "파일 + 함수 이름"이 기준입니다. <b>Debug x64 빌드는 통과(경고 0, 오류 0)했고, D3D11 에디터를 자동 검증 모드로 한 번 실행해 스크린샷을 확인했습니다.</b> 나머지 확인은 7장의 체크리스트로 해야 합니다.</p>
+<div class="box warn"><p><b>이름 표기 (2026-11-26 기준)</b> — 이 문서의 멤버·함수 이름은 작성 당시 값입니다. 기록이라 본문은 고치지 않았고, 지금 코드의 이름은 아래와 같습니다.</p>
+<ul>
+<li><code>m_hdrColor</code>·<code>m_hdrPostSet</code>·<code>m_hdrWidth</code>/<code>m_hdrHeight</code>·<code>m_sceneColor</code>·<code>m_sceneDepth</code> → 메인 뷰 <code>m_mainView</code>(<code>Renderer::ViewTarget</code>)의 <code>hdr</code>·<code>hdrSet</code>·<code>width</code>/<code>height</code>·<code>color</code>·<code>depth</code>. <code>m_previewHdr</code>·<code>m_previewHdrPostSet</code>·<code>m_previewColor</code> → <code>m_previewView</code> 의 같은 멤버.</li>
+<li><code>m_hdrColorState</code>·<code>m_previewHdrState</code> → 없음. 텍스처 상태는 백엔드가 텍스처마다 추적하고, 호출 쪽은 <code>CommandList::Barrier(texture, after)</code> 로 다음 상태만 말합니다.</li>
+<li><code>EnsureHdrTargets</code>/<code>DestroyHdrTargets</code> → <code>CreateViewTarget</code>/<code>DestroyViewTarget</code>(<code>Graphics/RendererTargets.cpp</code>). <code>SetSceneTarget</code>·<code>SetPreviewTarget</code>·<code>EnsureGameTarget</code> 이 부르고, HDR 텍스처 이름은 뷰 이름 + <code>_HDR</code>(<code>SceneView_HDR</code>, <code>CameraPreview_HDR</code>, <code>Game_HDR</code>)입니다.</li>
+<li><code>RenderMainPass</code>·<code>RenderPreviewPass</code> → 두 뷰가 같이 쓰는 <code>RenderScenePass</code>.</li>
+<li><code>m_postLayout</code> → <code>m_layouts[Layout_Post]</code>(지금 b0, b4, t13, s6, t20). <code>m_tonemapDesc</code> → <code>m_passDesc[Pass_Tonemap]</code>. <code>m_screenVs</code>·<code>m_toneMapPs</code> → <code>m_shaders[Shader_ScreenVS]</code>·<code>m_shaders[Shader_TonemapPS]</code>(파일·진입점은 <code>Renderer::kShaders</code> 표).</li>
+<li><code>RenderTonemapPass</code> 인자 → <code>(cmd, hdrSet, output, outputAfter, debugName, srcW, srcH, dstW, dstH, skipGrade)</code>.</li>
+<li><code>ApplyExposureToneMap</code> → <code>Shaders/Post.hlsli</code>(<code>TonemapPixelShader.hlsl</code> 가 include). D3D11 의 PS SRV 배열 <code>m_psSrv</code> 는 <code>kMaxSrvRegister</code>(32) 칸입니다.</li>
+</ul></div>
 </header>
 <nav><a href="#summary">1. 요약</a><a href="#flow">2. 프레임 흐름</a><a href="#s2">3. 단계 2~3</a><a href="#s4">4. 단계 4</a><a href="#s5">5. 단계 5·6·7</a><a href="#decisions">6. 설계 결정</a><a href="#verify">7. 검증</a><a href="#files">8. 파일 목록</a></nav>
 

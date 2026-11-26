@@ -1141,20 +1141,22 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <section class="am-panel" id="panel-F">
 <header class="am-panel-head"><span class="am-panel-id">F</span><h2>6. HDR과 톤매핑</h2></header>
 <div class="am-panel-body"><div class="am-md"><p>IBL 큐브는 부동소수점이라 태양 픽셀이 300을 넘습니다. 엔진은 이를 <code>R16G16B16A16_FLOAT</code>(half float)로 읽습니다. 8비트로 읽으면 태양이 하얀 원판이 되고 금속 반사가 1에서 잘립니다.</p>
-<p>화면은 [0, 1]만 표현하므로 마지막에 <code>ApplyExposureToneMap</code>을 부릅니다.</p>
+<p>조명 계산의 결과도 1을 넘을 수 있습니다. 그래서 메인 패스의 픽셀 셰이더(<code>BasicPixelShader.hlsl</code>의 <code>ShadeForward</code>, 디퍼드면 조명 패스)는 선형 HDR 값을 그대로 <code>R16G16B16A16_FLOAT</code> 씬 타깃에 씁니다. 블러·블룸 같은 HDR 구간 후처리도 이 FP16 텍스처 위에서 합니다.</p>
+<p>화면은 [0, 1]만 표현하므로 마지막 톤 패스(<code>RendererPost.cpp</code>의 <code>Renderer::RenderTonemapPass</code>, 셰이더 <code>TonemapPixelShader.hlsl</code>)가 <code>Post.hlsli</code>의 <code>ApplyExposureToneMap</code>을 부릅니다.</p>
 <ol>
 <li><code>environment.exposure</code>를 곱합니다.</li>
 <li><code>toneMapping</code>이 켜져 있으면 ACES 근사(Narkowicz 2016)로 [0, 1]에 누릅니다.</li>
 </ol>
+<p>결과는 선형 값입니다. sRGB 인코딩은 톤 패스의 출력 뷰(sRGB RTV, <code>RenderSettings::srgbOutput</code>)에서만 합니다.</p>
 <p>기본값은 노출 1, 톤매핑 끔입니다. 환경이 없는 옛 씬의 색을 지키기 위해서입니다.</p>
 <blockquote>
-<p>알려진 한계: 아직 HDR 렌더 타깃이 없습니다. 톤매핑을 셰이더 끝에서 합니다. 후처리 단계에서 별도 패스로 옮길 계획입니다.</p>
+<p>예전에는 HDR 렌더 타깃이 없어 톤매핑을 메인 픽셀 셰이더 끝에서 했습니다. 지금은 위처럼 FP16 씬 타깃과 별도 톤 패스로 나뉘었습니다. 자세한 흐름은 <a href="hdr-tonemapping-study.html">HDR·톤매핑 공부 문서</a>와 <a href="../plan/hdr-tonemapping-record.html">HDR·톤매핑 구현 기록</a>에 있습니다.</p>
 </blockquote>
 </div></div>
 </section>
 <section class="am-panel" id="panel-G">
 <header class="am-panel-head"><span class="am-panel-id">G</span><h2>7. 픽셀 셰이더의 전체 순서</h2></header>
-<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 1369 134" width="1369" height="134" role="img" aria-label="Flowchart: 표면색, 알파 컷아웃, unlit?, 알베도 출력, PBR 입력, 노멀 매핑, 뷰 벡터·그림자, 환경광 + 발광" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am3-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M93,67 L104.5,67 Q116,67 127.5,67 L139,67" marker-end="url(#am3-arrow)"/></g><g data-step="1"><path class="am-edge" d="M235.9,67 L247.4,67 Q258.9,67 270.4,67 L281.9,67" marker-end="url(#am3-arrow)"/></g><g data-step="2"><path class="am-edge" d="M357.2,77.9 L389.4,90.2 Q421.6,102.5 444.8,102.5 L467.9,102.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="410.9" y="93.5" width="21.5" height="18" rx="3"/><text x="421.6" y="102.5" text-anchor="middle" dominant-baseline="central">예</text></g></g><g data-step="3"><path class="am-edge" d="M357.2,56.1 L389.4,43.8 Q421.6,31.5 447.9,31.5 L474.1,31.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="399.4" y="22.5" width="44.5" height="18" rx="3"/><text x="421.6" y="31.5" text-anchor="middle" dominant-baseline="central">아니오</text></g></g><g data-step="4"><path class="am-edge" d="M558.5,31.5 L573.2,31.5 Q587.8,31.5 599.3,31.5 L610.8,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="5"><path class="am-edge" d="M694.7,31.5 L706.2,31.5 Q717.7,31.5 729.2,31.5 L740.7,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="6"><path class="am-edge" d="M857.9,31.5 L869.4,31.5 Q880.9,31.5 892.4,31.5 L903.9,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="7"><path class="am-edge" d="M1011.9,31.5 L1023.4,31.5 Q1034.9,31.5 1046.4,31.5 L1057.9,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="8"><path class="am-edge" d="M1195.9,31.5 L1207.4,31.5 Q1218.9,31.5 1230.4,31.5 L1241.9,31.5" marker-end="url(#am3-arrow)"/></g></g><g><g class="am-node am-node--round" data-key="표면색" data-step="0"><rect class="am-node-shape" x="14" y="49.5" width="79" height="35" rx="17.5"/><text x="53.5" y="67" text-anchor="middle" dominant-baseline="central">표면색</text></g><g class="am-node am-node--rect" data-key="알파 컷아웃" data-step="0"><rect class="am-node-shape" x="139" y="49.5" width="96.9" height="35" rx="3"/><text x="187.5" y="67" text-anchor="middle" dominant-baseline="central">알파 컷아웃</text></g><g class="am-node am-node--diamond" data-key="unlit?" data-step="1"><polygon class="am-node-shape" points="328.6,39 375.4,67 328.6,95 281.9,67"/><text x="328.6" y="67" text-anchor="middle" dominant-baseline="central">unlit?</text></g><g class="am-node am-node--rect" data-key="알베도 출력" data-step="2"><rect class="am-node-shape" x="467.9" y="85" width="96.9" height="35" rx="3"/><text x="516.3" y="102.5" text-anchor="middle" dominant-baseline="central">알베도 출력</text></g><g class="am-node am-node--rect" data-key="PBR 입력" data-step="3"><rect class="am-node-shape" x="474.1" y="14" width="84.4" height="35" rx="3"/><text x="516.3" y="31.5" text-anchor="middle" dominant-baseline="central">PBR 입력</text></g><g class="am-node am-node--rect" data-key="노멀 매핑" data-step="4"><rect class="am-node-shape" x="610.8" y="14" width="83.9" height="35" rx="3"/><text x="652.7" y="31.5" text-anchor="middle" dominant-baseline="central">노멀 매핑</text></g><g class="am-node am-node--rect" data-key="뷰 벡터·그림자" data-step="5"><rect class="am-node-shape" x="740.7" y="14" width="117.2" height="35" rx="3"/><text x="799.3" y="31.5" text-anchor="middle" dominant-baseline="central">뷰 벡터·그림자</text></g><g class="am-node am-node--rect" data-key="환경광 + 발광" data-step="6"><rect class="am-node-shape" x="903.9" y="14" width="108.1" height="35" rx="3"/><text x="957.9" y="31.5" text-anchor="middle" dominant-baseline="central">환경광 + 발광</text></g><g class="am-node am-node--rect" data-key="조명 루프 최대 8개" data-step="7"><rect class="am-node-shape" x="1057.9" y="14" width="138" height="35" rx="3"/><text x="1126.9" y="31.5" text-anchor="middle" dominant-baseline="central">조명 루프 최대 8개</text></g><g class="am-node am-node--round" data-key="노출·톤매핑" data-step="8"><rect class="am-node-shape" x="1241.9" y="14" width="112.3" height="35" rx="17.5"/><text x="1298.1" y="31.5" text-anchor="middle" dominant-baseline="central">노출·톤매핑</text></g></g></svg></figure>
+<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 1369 134" width="1369" height="134" role="img" aria-label="Flowchart: 표면색, 알파 컷아웃, unlit?, 알베도 출력, PBR 입력, 노멀 매핑, 뷰 벡터·그림자, 환경광 + 발광" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am3-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M93,67 L104.5,67 Q116,67 127.5,67 L139,67" marker-end="url(#am3-arrow)"/></g><g data-step="1"><path class="am-edge" d="M235.9,67 L247.4,67 Q258.9,67 270.4,67 L281.9,67" marker-end="url(#am3-arrow)"/></g><g data-step="2"><path class="am-edge" d="M357.2,77.9 L389.4,90.2 Q421.6,102.5 444.8,102.5 L467.9,102.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="410.9" y="93.5" width="21.5" height="18" rx="3"/><text x="421.6" y="102.5" text-anchor="middle" dominant-baseline="central">예</text></g></g><g data-step="3"><path class="am-edge" d="M357.2,56.1 L389.4,43.8 Q421.6,31.5 447.9,31.5 L474.1,31.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="399.4" y="22.5" width="44.5" height="18" rx="3"/><text x="421.6" y="31.5" text-anchor="middle" dominant-baseline="central">아니오</text></g></g><g data-step="4"><path class="am-edge" d="M558.5,31.5 L573.2,31.5 Q587.8,31.5 599.3,31.5 L610.8,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="5"><path class="am-edge" d="M694.7,31.5 L706.2,31.5 Q717.7,31.5 729.2,31.5 L740.7,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="6"><path class="am-edge" d="M857.9,31.5 L869.4,31.5 Q880.9,31.5 892.4,31.5 L903.9,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="7"><path class="am-edge" d="M1011.9,31.5 L1023.4,31.5 Q1034.9,31.5 1046.4,31.5 L1057.9,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="8"><path class="am-edge" d="M1195.9,31.5 L1207.4,31.5 Q1218.9,31.5 1230.4,31.5 L1241.9,31.5" marker-end="url(#am3-arrow)"/></g></g><g><g class="am-node am-node--round" data-key="표면색" data-step="0"><rect class="am-node-shape" x="14" y="49.5" width="79" height="35" rx="17.5"/><text x="53.5" y="67" text-anchor="middle" dominant-baseline="central">표면색</text></g><g class="am-node am-node--rect" data-key="알파 컷아웃" data-step="0"><rect class="am-node-shape" x="139" y="49.5" width="96.9" height="35" rx="3"/><text x="187.5" y="67" text-anchor="middle" dominant-baseline="central">알파 컷아웃</text></g><g class="am-node am-node--diamond" data-key="unlit?" data-step="1"><polygon class="am-node-shape" points="328.6,39 375.4,67 328.6,95 281.9,67"/><text x="328.6" y="67" text-anchor="middle" dominant-baseline="central">unlit?</text></g><g class="am-node am-node--rect" data-key="알베도 출력" data-step="2"><rect class="am-node-shape" x="467.9" y="85" width="96.9" height="35" rx="3"/><text x="516.3" y="102.5" text-anchor="middle" dominant-baseline="central">알베도 출력</text></g><g class="am-node am-node--rect" data-key="PBR 입력" data-step="3"><rect class="am-node-shape" x="474.1" y="14" width="84.4" height="35" rx="3"/><text x="516.3" y="31.5" text-anchor="middle" dominant-baseline="central">PBR 입력</text></g><g class="am-node am-node--rect" data-key="노멀 매핑" data-step="4"><rect class="am-node-shape" x="610.8" y="14" width="83.9" height="35" rx="3"/><text x="652.7" y="31.5" text-anchor="middle" dominant-baseline="central">노멀 매핑</text></g><g class="am-node am-node--rect" data-key="뷰 벡터·그림자" data-step="5"><rect class="am-node-shape" x="740.7" y="14" width="117.2" height="35" rx="3"/><text x="799.3" y="31.5" text-anchor="middle" dominant-baseline="central">뷰 벡터·그림자</text></g><g class="am-node am-node--rect" data-key="환경광 + 발광" data-step="6"><rect class="am-node-shape" x="903.9" y="14" width="108.1" height="35" rx="3"/><text x="957.9" y="31.5" text-anchor="middle" dominant-baseline="central">환경광 + 발광</text></g><g class="am-node am-node--rect" data-key="조명 루프" data-step="7"><rect class="am-node-shape" x="1057.9" y="14" width="138" height="35" rx="3"/><text x="1126.9" y="31.5" text-anchor="middle" dominant-baseline="central">조명 루프</text></g><g class="am-node am-node--round" data-key="FP16 출력" data-step="8"><rect class="am-node-shape" x="1241.9" y="14" width="112.3" height="35" rx="17.5"/><text x="1298.1" y="31.5" text-anchor="middle" dominant-baseline="central">FP16 출력</text></g></g></svg></figure>
 <div class="am-md"><ul>
 <li>색공간: 알베도는 sRGB로 읽어 샘플링 시 선형으로 바뀝니다. 금속성/거칠기, AO, 노멀 맵은 선형입니다. 조명 계산은 전부 선형 공간입니다.</li>
 <li>방어 코드: 모든 정규화는 <code>SafeNormalize</code>를 거칩니다. 분모와 range는 <code>EPSILON</code> 이상입니다.</li>
@@ -1195,7 +1197,7 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 </section>
 <section class="am-panel am-panel--bare" id="panel-I">
 <div class="am-panel-body"><div class="am-md"><ul>
-<li>엔진 문서: <code>docs/rendering-analysis.html</code>의 11.6, 12.14, 20.15</li>
+<li>엔진 문서: <code>docs/overview/rendering-analysis.html</code>의 11.6, 12.14, 20.15</li>
 <li>Karis, <em>Real Shading in Unreal Engine 4</em> (2013)</li>
 <li>LearnOpenGL, <em>PBR</em> 시리즈</li>
 </ul>
@@ -1422,14 +1424,18 @@ Blinn-Phong의 `(N·H)^shininess`도 L과 V를 받아 값을 돌려주므로 넓
 ## 6. HDR과 톤매핑
 IBL 큐브는 부동소수점이라 태양 픽셀이 300을 넘습니다. 엔진은 이를 `R16G16B16A16_FLOAT`(half float)로 읽습니다. 8비트로 읽으면 태양이 하얀 원판이 되고 금속 반사가 1에서 잘립니다.
 
-화면은 [0, 1]만 표현하므로 마지막에 `ApplyExposureToneMap`을 부릅니다.
+조명 계산의 결과도 1을 넘을 수 있습니다. 그래서 메인 패스의 픽셀 셰이더(`BasicPixelShader.hlsl`의 `ShadeForward`, 디퍼드면 조명 패스)는 선형 HDR 값을 그대로 `R16G16B16A16_FLOAT` 씬 타깃에 씁니다. 블러·블룸 같은 HDR 구간 후처리도 이 FP16 텍스처 위에서 합니다.
+
+화면은 [0, 1]만 표현하므로 마지막 톤 패스(`RendererPost.cpp`의 `Renderer::RenderTonemapPass`, 셰이더 `TonemapPixelShader.hlsl`)가 `Post.hlsli`의 `ApplyExposureToneMap`을 부릅니다.
 
 1. `environment.exposure`를 곱합니다.
 2. `toneMapping`이 켜져 있으면 ACES 근사(Narkowicz 2016)로 [0, 1]에 누릅니다.
 
+결과는 선형 값입니다. sRGB 인코딩은 톤 패스의 출력 뷰(sRGB RTV, `RenderSettings::srgbOutput`)에서만 합니다.
+
 기본값은 노출 1, 톤매핑 끔입니다. 환경이 없는 옛 씬의 색을 지키기 위해서입니다.
 
-&gt; 알려진 한계: 아직 HDR 렌더 타깃이 없습니다. 톤매핑을 셰이더 끝에서 합니다. 후처리 단계에서 별도 패스로 옮길 계획입니다.
+&gt; 예전에는 HDR 렌더 타깃이 없어 톤매핑을 메인 픽셀 셰이더 끝에서 했습니다. 지금은 위처럼 FP16 씬 타깃과 별도 톤 패스로 나뉘었습니다. 자세한 흐름은 [HDR·톤매핑 공부 문서](hdr-tonemapping-study.html)와 [HDR·톤매핑 구현 기록](../plan/hdr-tonemapping-record.html)에 있습니다.
 
 ## 7. 픽셀 셰이더의 전체 순서
 ```flow LR
@@ -1440,8 +1446,8 @@ IBL 큐브는 부동소수점이라 태양 픽셀이 300을 넘습니다. 엔진
 [PBR 입력] -&gt; [노멀 매핑]
 [노멀 매핑] -&gt; [뷰 벡터·그림자]
 [뷰 벡터·그림자] -&gt; [환경광 + 발광]
-[환경광 + 발광] -&gt; [조명 루프 최대 8개]
-[조명 루프 최대 8개] -&gt; (노출·톤매핑)
+[환경광 + 발광] -&gt; [조명 루프]
+[조명 루프] -&gt; (FP16 출력)
 ```
 
 - 색공간: 알베도는 sRGB로 읽어 샘플링 시 선형으로 바뀝니다. 금속성/거칠기, AO, 노멀 맵은 선형입니다. 조명 계산은 전부 선형 공간입니다.
@@ -1457,7 +1463,7 @@ IBL 큐브는 부동소수점이라 태양 픽셀이 300을 넘습니다. 엔진
 | 헬멧 바이저가 검음 | PBR 탓이 아니라 glTF Z 반사 뒤의 삼각형 감기 순서 버그였음 |
 
 ## 더 읽을 것 {bare}
-- 엔진 문서: `docs/rendering-analysis.html`의 11.6, 12.14, 20.15
+- 엔진 문서: `docs/overview/rendering-analysis.html`의 11.6, 12.14, 20.15
 - Karis, *Real Shading in Unreal Engine 4* (2013)
 - LearnOpenGL, *PBR* 시리즈
 </textarea>
