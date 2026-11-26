@@ -74,7 +74,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td><code>PipelineStateDesc::bindingLayouts</code> (<code>RHI/PipelineTypes.h</code>)</td><td>PSO 하나가 쓰는 레이아웃 배열. 배열 인덱스가 곧 셋 인덱스. 최대 <code>kMaxBindingSets</code> = 4</td><td>레이아웃 조합 → 루트 시그니처</td><td>쓰지 않음</td></tr>
 <tr><td><code>CommandList::SetResourceSet(setIndex, set)</code></td><td>셋 인덱스 자리에 셋을 꽂음. 컴퓨트는 <code>SetComputeResourceSet</code>으로 따로</td><td>기억만 하고 드로우 직전에 바인딩</td><td>그 자리에서 슬롯별 호출</td></tr>
 </table>
-<p>렌더러는 레이아웃 19개(<code>Renderer::LayoutId</code>의 <code>Layout_Frame</code>~<code>Layout_UITexture</code>)를 <code>Renderer::CreateLayouts</code>에서 한 번 만들고, 선언 사본을 <code>m_layoutDescs</code>에 남깁니다. 패스는 <code>Renderer.cpp</code>의 표 두 개가 정합니다. 그래픽스 패스 표 <code>kPasses</code>는 (VS, PS, 레이아웃 목록), 컴퓨트 패스 표 <code>kComputePasses</code>는 (CS, 레이아웃 목록)입니다. 목록의 순서가 셋 인덱스이고, <code>Renderer.h</code>의 <code>kSet*</code> 상수가 그 번호에 이름을 붙입니다.</p>
+<p>렌더러는 레이아웃 20개(<code>Renderer::LayoutId</code>의 <code>Layout_Frame</code>~<code>Layout_Rain</code>)를 <code>Renderer::CreateLayouts</code>에서 한 번 만들고, 선언 사본을 <code>m_layoutDescs</code>에 남깁니다. 패스는 <code>Renderer.cpp</code>의 표 두 개가 정합니다. 그래픽스 패스 표 <code>kPasses</code>는 (VS, PS, 레이아웃 목록), 컴퓨트 패스 표 <code>kComputePasses</code>는 (CS, 레이아웃 목록)입니다. 목록의 순서가 셋 인덱스이고, <code>Renderer.h</code>의 <code>kSet*</code> 상수가 그 번호에 이름을 붙입니다.</p>
 <table>
 <tr><th>패스</th><th>셋 0</th><th>셋 1</th><th>셋 2</th></tr>
 <tr><td>Main, MainSkin, GBuffer, GBufferSkin, Ocean, GBufferOcean, ShadowAlpha, ShadowAlphaSkin</td><td><code>Layout_Frame</code> (<code>kSetFrame</code>)</td><td><code>Layout_Object</code> (<code>kSetObject</code>)</td><td><code>Layout_Material</code> (<code>kSetMaterial</code>)</td></tr>
@@ -131,7 +131,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <p>크기는 <code>Graphics/ShaderConstants.h</code>의 <code>static_assert</code> 값입니다.</p>
 <table>
 <tr><th>레지스터</th><th>cbuffer (HLSL 헤더)</th><th>크기</th><th>셋</th><th>올리는 빈도</th></tr>
-<tr><td><code>b0</code></td><td><code>PerFrame</code> (<code>Common.hlsli</code>)</td><td>576 B</td><td>프레임·후처리·SSAO·시간</td><td>뷰마다 (미리보기 카메라는 다시 올림)</td></tr>
+<tr><td><code>b0</code></td><td><code>PerFrame</code> (<code>Common.hlsli</code>)</td><td>640 B</td><td>프레임·후처리·SSAO·시간</td><td>뷰마다 (미리보기 카메라는 다시 올림)</td></tr>
 <tr><td><code>b1</code></td><td><code>PerObject</code> (<code>Mesh.hlsli</code>, VS·PS)</td><td>256 B</td><td>오브젝트</td><td>드로우마다</td></tr>
 <tr><td><code>b2</code></td><td><code>Lights</code> (<code>Lighting.hlsli</code>)</td><td>32 B</td><td>프레임</td><td>프레임마다</td></tr>
 <tr><td><code>b3</code></td><td><code>Material</code> (<code>Material.hlsli</code>)</td><td>112 B</td><td>재질</td><td>재질마다 프레임에 한 번</td></tr>
@@ -139,6 +139,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td><code>b5</code> / <code>b6</code></td><td><code>ShadowPass</code> / <code>Shadows</code> (<code>Lighting.hlsli</code>)</td><td>64 B / 2000 B</td><td>프레임</td><td>그림자 뷰마다 / 프레임마다</td></tr>
 <tr><td><code>b7</code> / <code>b13</code></td><td><code>Skin</code> / <code>PrevSkin</code> (<code>Mesh.hlsli</code>)</td><td>각 16,384 B (64 B × 256 조인트)</td><td>오브젝트</td><td>스키닝 드로우마다 + 프레임마다 단위행렬 한 번</td></tr>
 <tr><td><code>b8</code></td><td><code>ParticleEmitter</code> (<code>Particle.hlsli</code>)</td><td>144 B</td><td>파티클 시뮬레이션·정렬·그리기</td><td>이미터마다 프레임에 한 번</td></tr>
+<tr><td><code>b8</code></td><td><code>Rain</code> (<code>Rain.hlsli</code>, <code>RAIN_DRAW</code>)</td><td>96 B</td><td>빗줄기·튐 (<code>Layout_Rain</code>)</td><td>비가 있는 프레임에 한 번</td></tr>
 <tr><td><code>b9</code></td><td><code>Ocean</code> (<code>Ocean.hlsli</code>) / <code>ParticleCollision</code> (<code>ParticleSim.hlsli</code>)</td><td>288 B / 160 B</td><td>오브젝트 / 충돌</td><td>프레임마다</td></tr>
 <tr><td><code>b10</code>·<code>b11</code>·<code>b12</code></td><td><code>ParticleSortView</code> · <code>ParticleSortStep</code> · <code>SsaoParams</code></td><td>64 · 256 · 544 B</td><td>정렬 · 정렬 단계 · SSAO</td><td>뷰마다 · 처음 한 번 · 프레임마다</td></tr>
 <tr><td><code>b13</code> (컴퓨트)</td><td><code>ClusterBin</code> (<code>ClusterBin.hlsli</code>)</td><td>224 B</td><td>클러스터 비닝</td><td>뷰마다 프레임에 한 번 (<code>kCBSlotClusterBin</code> 주석)</td></tr>
@@ -259,7 +260,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <p>D3D12 테이블은 칸 전체가 유효한 디스크립터여야 하고, <code>CreateResourceSet</code>은 빈 핸들을 받지 않습니다. 그래서 "없음"도 실제 리소스로 꽂습니다. 셰이더가 안 쓰는 슬롯도 항상 유효한 뷰가 꽂혀 있어 D3D12에서 안전하다는 것이 <code>Layout_Post</code>를 모든 후처리 패스가 함께 쓰는 근거입니다(<code>CreateLayouts</code>의 주석).</p>
 <table>
 <tr><th>기본 리소스</th><th>만드는 곳</th><th>꽂히는 자리</th><th>결과</th></tr>
-<tr><td><code>builtin:white</code> 1×1 (255, 255, 255, 255)</td><td><code>TextureCache::Initialize</code></td><td>텍스처 없는 재질 칸(알베도·AO·투과 등, 계수가 그대로 쓰임), 환경이 없을 때의 BRDF LUT <code>t12</code>, SSAO 셋의 <code>t29</code>, TAA가 아닌 시간 셋의 <code>t24</code></td><td>곱해도 값이 변하지 않음</td></tr>
+<tr><td><code>builtin:white</code> 1×1 (255, 255, 255, 255)</td><td><code>TextureCache::Initialize</code></td><td>텍스처 없는 재질 칸(알베도·AO·투과 등, 계수가 그대로 쓰임), 환경이 없을 때의 BRDF LUT <code>t12</code>, SSAO 셋의 <code>t29</code>, TAA가 아닌 시간 셋의 <code>t24</code>, 비가 없을 때 프레임 셋의 <code>t24</code>(비 차폐 맵 자리)</td><td>곱해도 값이 변하지 않음</td></tr>
 <tr><td><code>builtin:flatnormal</code></td><td>같음</td><td>노멀 맵이 없는 <code>t1</code>, 코팅 노멀 <code>t18</code> (<code>GetOrCreateGpuMaterial</code>)</td><td>탄젠트 공간 (0, 0, 1)</td></tr>
 <tr><td><code>builtin:noise</code> 256² 타일링 노이즈</td><td><code>TextureCache::Load2D</code> (처음 쓸 때)</td><td>디졸브 노이즈가 비어 있는 재질의 <code>t20</code> (<code>GetOrCreateGpuMaterial</code>)</td><td>디졸브 기본 노이즈. 진행도 0 이면 결과에 영향 없음</td></tr>
 <tr><td><code>builtin:black</code> 1×1 큐브</td><td><code>TextureCache::LoadCube</code></td><td>환경이 없을 때 <code>t9</code>~<code>t11</code> (<code>Renderer::ResolveEnvironment</code>)</td><td>환경광 0</td></tr>
@@ -275,7 +276,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td>셋 수 상한</td><td><code>RHI/PipelineTypes.h</code> 의 <code>kMaxBindingSets</code>, <code>PipelineStateDesc::bindingLayouts</code></td><td>PSO 하나에 레이아웃 4개까지</td></tr>
 <tr><td>레지스터 번호</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>kCBSlot*</code>·<code>kSRVSlot*</code>·<code>kSamplerSlot*</code>·<code>kUAVSlot*</code></td><td>C++ 쪽 번호. HLSL 헤더의 <code>register()</code>와 같아야 함</td></tr>
 <tr><td>셰이더 쪽 선언</td><td><code>Shaders/Common.hlsli</code>(b0), <code>Lighting.hlsli</code>, <code>Mesh.hlsli</code>, <code>Material.hlsli</code>, <code>Post.hlsli</code>, <code>GBuffer.hlsli</code>, <code>Ssao.hlsli</code>, <code>Clusters.hlsli</code> 등</td><td>셋 하나의 선언은 그 셋의 헤더에만 둠 (<code>Common.hlsli</code> 머리 주석)</td></tr>
-<tr><td>레이아웃·패스 표</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::CreateLayouts</code>, <code>kPasses</code>, <code>kComputePasses</code>; <code>Renderer.h</code> 의 <code>LayoutId</code>, <code>kSet*</code></td><td>레이아웃 19개, 셋 인덱스</td></tr>
+<tr><td>레이아웃·패스 표</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::CreateLayouts</code>, <code>kPasses</code>, <code>kComputePasses</code>; <code>Renderer.h</code> 의 <code>LayoutId</code>, <code>kSet*</code></td><td>레이아웃 20개, 셋 인덱스</td></tr>
 <tr><td>셋 만들기</td><td><code>Renderer::Initialize</code>(오브젝트·UI 공통·블러 가중치), <code>Renderer::UpdateFrameSet</code>, <code>Renderer::GetOrCreateGpuMaterial</code>, <code>RendererTargets.cpp</code>·<code>RendererDeferred.cpp</code>·<code>RendererSsao.cpp</code>·<code>RendererPost.cpp</code>·<code>RendererParticles.cpp</code>·<code>RendererClusterBin.cpp</code>·<code>RendererUI.cpp</code></td><td>bindings 순서 = 레이아웃 <code>Add</code> 순서</td></tr>
 <tr><td>대조 검사</td><td><code>Renderer::LoadShaders</code>, <code>Renderer::ValidateBindings</code>, <code>RHI/DXBC/ShaderCompiler.cpp</code> 의 <code>ReflectBindings</code>·<code>ReflectConstantBuffers</code></td><td>"바인딩 대조"·"cbuffer 크기 일치" 로그</td></tr>
 <tr><td>D3D12 루트 시그니처</td><td><code>RHI/D3D12/D3D12Device.cpp</code> 의 <code>GetOrCreateRootLayout</code></td><td>루트 CBV·SRV, 테이블, 예산, 캐시</td></tr>

@@ -13,6 +13,7 @@
 
 #include "Lighting.hlsli"
 #include "Clusters.hlsli"
+#include "Rain.hlsli"      // 비: 차폐 맵 t24·젖음 (재질 PS 의 ApplyWetness, 디버그 뷰 18)
 
 // 재질 입력을 조명에 필요한 형태로 푼 것. 모든 벡터는 월드 공간, 색은 선형.
 struct SurfaceData
@@ -479,6 +480,12 @@ bool SurfaceDebugColor(int debugView, SurfaceData s, float3 worldPosition, out f
     else if (debugView == 11) color = frac(worldPosition);
     // 12: 기하 노멀 (노말맵 전). G-buffer 의 두 번째 옥타헤드럴 노멀이 맞게 디코딩되는지 봄.
     else if (debugView == 12) color = s.geometricNormal * 0.5f + 0.5f;
+    // 18: 비 (Rain.hlsli). R = 비를 맞는 정도 (차폐 맵), G = 젖음, B = 웅덩이. 비가 없으면 R = 1 (맵 없음 = 다 맞음), G = B = 0.
+    else if (debugView == 18)
+    {
+        const float wet = RainWetAmount(worldPosition, s.geometricNormal);
+        color = float3(RainExposure(worldPosition, s.geometricNormal), wet, RainPuddle(worldPosition, s.geometricNormal.y, wet));
+    }
     else handled = false;
     return handled;
 }

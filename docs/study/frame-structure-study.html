@@ -158,12 +158,12 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td>3</td><td><code>BuildShadowViews</code>, <code>UploadShadowConstants</code></td><td>조명마다 아틀라스 타일 배정, <code>shadowIndex</code> 채움, 그림자 뷰 행렬(b6, b5)</td><td><a href="../study/shadow-atlas-study.html">그림자 아틀라스</a>, <a href="../study/csm-study.html">CSM</a></td></tr>
 <tr><td>4</td><td><code>BeginResourceUploads</code></td><td>업로드 구간 시작. 이 구간에서 새로 만드는 버퍼·텍스처의 초기 복사를 묶어 한 번에 제출</td><td></td></tr>
 <tr><td>5</td><td><code>ResolveEnvironment</code></td><td>스카이박스·IBL 텍스처, 노출·톤매핑 값, 후처리 설정(<code>m_postSettings = environment.post</code>)</td><td><a href="../study/hdr-tonemapping-study.html">HDR·톤매핑</a></td></tr>
-<tr><td>6</td><td><code>UploadPerFrameConstants</code> (메인)</td><td>b0 576 B: 카메라 행렬(TAA 지터 포함), 그림자·디버그·환경·클러스터·SSAO 파라미터, 지터 없는 이번·지난 viewProj</td><td><a href="../study/taa-study.html">TAA</a>, <a href="../study/velocity-buffer-study.html">속도 버퍼</a></td></tr>
+<tr><td>6</td><td><code>UploadPerFrameConstants</code> (메인)</td><td>b0 640 B: 카메라 행렬(TAA 지터 포함), 그림자·디버그·환경·클러스터·SSAO 파라미터, 지터 없는 이번·지난 viewProj, 비 칸 넷. 바로 앞에서 <code>PrepareRain</code> 이 비 값(차폐 맵 위치·젖음)을 정함</td><td><a href="../study/taa-study.html">TAA</a>, <a href="../study/velocity-buffer-study.html">속도 버퍼</a></td></tr>
 <tr><td>7</td><td><code>UploadLights</code></td><td>b2와 t15 조명 배열</td><td></td></tr>
 <tr><td>8</td><td>클러스터</td><td>GPU 비닝이면 입력(경계 구, 뷰마다 b13 <code>ClusterBinConstants</code>, CS 전용 비닝 셋)만 올림. CPU 비닝이면 메인과 미리보기를 지금 둘 다 만들고 용량을 한 번에 맞춤</td><td><a href="../study/clustered-lighting-study.html">클러스터드</a></td></tr>
 <tr><td>9</td><td><code>UploadSsaoConstants</code></td><td>b12 (두 뷰가 같은 값)</td><td><a href="../study/ssao-study.html">SSAO</a></td></tr>
 <tr><td>10</td><td><code>BuildDrawList</code></td><td>6장</td><td></td></tr>
-<tr><td>11</td><td>그 밖의 업로드</td><td>디버그 선 정점, 파티클 이미터 버퍼·b8(<code>UpdateParticleEmitters</code>), 바다 b9(<code>UploadOceanConstants</code>), 게임 UI 정점·텍스처(<code>UploadUI</code>)</td><td><a href="../study/gpu-particles-study.html">파티클</a>, <a href="../study/ocean-gerstner-study.html">바다</a>, <a href="../study/ui-canvas-study.html">UI 캔버스</a></td></tr>
+<tr><td>11</td><td>그 밖의 업로드</td><td>디버그 선 정점, 파티클 이미터 버퍼·b8(<code>UpdateParticleEmitters</code>), 바다 b9(<code>UploadOceanConstants</code>), 비 b8(<code>UploadRainConstants</code>, 비가 있을 때만), 게임 UI 정점·텍스처(<code>UploadUI</code>)</td><td><a href="../study/gpu-particles-study.html">파티클</a>, <a href="../study/ocean-gerstner-study.html">바다</a>, <a href="../study/ui-canvas-study.html">UI 캔버스</a></td></tr>
 <tr><td>12</td><td><code>EndResourceUploads</code>, <code>UpdateFrameSet</code></td><td>업로드 제출. 프레임 셋(b0, b2, t8 그림자, t9~t12 환경 …)을 꽂힌 텍스처가 바뀌거나 GPU 비닝 켜짐·꺼짐이 바뀔 때(t30·t31이 가리킬 버퍼가 달라짐, <code>m_frameSetClusterGpu</code>)만 다시 만듦</td><td><a href="../study/binding-study.html">바인딩</a></td></tr>
 </table>
 <p>CPU 프로파일러에서는 1~9가 <code>Prepare</code>, 10이 <code>BuildDrawList</code>로 보입니다(<code>BuildClusters</code>는 <code>Prepare</code> 안). 이 구조의 규칙은 코드 주석 그대로 "드로우 루프 안에서는 아무것도 만들지 않음"입니다. D3D12에서 리소스마다 GPU를 기다리지 않으려는 것이 기록된 이유입니다.</p>
@@ -240,12 +240,13 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><th>패스</th><th>코드</th><th>요약</th><th>문서</th></tr>
 <tr><td>ClusterBin</td><td><code>DispatchClusterBinning</code></td><td>GPU 비닝이 켜져 있으면 렌더 패스 밖에서 컴퓨트로 클러스터별 조명 목록(t30·t31)을 만듦. 미리보기는 같은 버퍼에 미리보기 카메라로 다시 비닝(<code>PreviewClusterBin</code>)</td><td><a href="../study/clustered-lighting-study.html">클러스터드</a></td></tr>
 <tr><td>ShadowPass, CsmShadowPass</td><td><code>RenderShadowPass</code> → <code>RenderShadowAtlasPass(0/1)</code></td><td>아틀라스 텍스처마다 패스 하나. 전체를 한 번 클리어하고 뷰마다 뷰포트를 바꿔 그림. 그릴 뷰가 없는 아틀라스는 패스를 열지 않고 SRV 상태만 맞춤</td><td><a href="../study/shadow-map-study.html">그림자 맵</a>, <a href="../study/shadow-atlas-study.html">아틀라스</a>, <a href="../study/csm-study.html">CSM</a></td></tr>
+<tr><td>RainOcclusion</td><td><code>RenderRainOcclusionPass</code></td><td>씬에 <code>Rain</code> 이 있을 때만. 카메라 위에서 바로 아래로 내려다본 직교 깊이를 차폐 맵(t24)에 그림. 그림자 뷰와 같은 <code>DrawDepthView</code> 로 그리고, PSO 는 그림자 PSO 의 바이어스 없는 변형</td><td><a href="../plan/rain-record.html">비 구현 기록</a></td></tr>
 <tr><td>GBuffer</td><td><code>RenderDeferredScene</code> 1단계</td><td>MRT 6장(hdr 발광, GB0~GB3, 속도) + 깊이를 지우고 디퍼드 불투명을 그림. 조명 계산 없음</td><td><a href="../study/deferred-gbuffer-study.html">디퍼드 G-buffer</a></td></tr>
 <tr><td>Ssao</td><td><code>RenderSsao</code></td><td>깊이·노멀 → <code>ssaoRaw</code> → 블러 → <code>ssaoBlur</code>. 풀스크린 패스 두 개</td><td><a href="../study/ssao-study.html">SSAO</a></td></tr>
 <tr><td>DeferredLight</td><td><code>RenderDeferredScene</code> 4단계</td><td>풀스크린 삼각형 하나. 픽셀마다 G-buffer에서 표면을 복원해 포워드와 같은 조명 함수로 hdr에 가산</td><td><a href="../study/deferred-gbuffer-study.html">디퍼드 G-buffer</a></td></tr>
 <tr><td>Forward / MainPass</td><td><code>DrawItems(ForwardRest / All)</code></td><td>6-2의 표. 포워드 경로는 이 패스 하나가 hdr·속도·깊이를 지우고 전부 그림</td><td><a href="../study/pbr-study.html">PBR</a></td></tr>
 <tr><td>ParticleSim, ParticleSort</td><td><code>SimulateParticles</code>, <code>SortParticles</code></td><td>시뮬레이션은 메인 뷰에서 프레임에 한 번(이번 프레임 불투명 깊이로 충돌). 알파 이미터 정렬은 뷰마다 그 카메라로</td><td><a href="../study/gpu-particles-study.html">GPU 파티클</a></td></tr>
-<tr><td>Effects</td><td><code>RenderScenePass</code> 두 번째 패스</td><td>깊이를 읽기 전용 DSV로 묶어 깊이 테스트와 SRV 읽기(소프트 파티클)를 같이 함. 파티클 → 디버그 선. 그릴 것이 없으면 패스를 열지 않음</td><td><a href="../study/gpu-particles-study.html">GPU 파티클</a></td></tr>
+<tr><td>Effects</td><td><code>RenderScenePass</code> 두 번째 패스</td><td>깊이를 읽기 전용 DSV로 묶어 깊이 테스트와 SRV 읽기(소프트 파티클)를 같이 함. 파티클 → 빗줄기·튐(<code>DrawRain</code>) → 디버그 선. 그릴 것이 없으면 패스를 열지 않음</td><td><a href="../study/gpu-particles-study.html">GPU 파티클</a>, <a href="../plan/rain-record.html">비</a></td></tr>
 <tr><td>TaaPass</td><td><code>ApplyHdrEffects</code></td><td>hdr + history[1−cur] → history[cur], 그다음 hdr로 복사</td><td><a href="../study/taa-study.html">TAA</a></td></tr>
 <tr><td>MotionBlurPass</td><td><code>ApplyHdrEffects</code></td><td>hdr·깊이·속도 → temp → hdr. TAA 뒤라 지터가 정리된 이미지를 번지게 함</td><td><a href="../study/motion-blur-study.html">모션 블러</a></td></tr>
 <tr><td>BlurPass, BloomPass</td><td><code>ApplyHdrEffects</code></td><td>가우시안 블러(PS 또는 컴퓨트), 블룸 축소·확대 체인 후 hdr에 가산</td><td><a href="../study/post-process-study.html">후처리</a>, <a href="../study/compute-uav-study.html">컴퓨트·UAV</a></td></tr>
@@ -269,7 +270,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <ul>
 <li>조명 배치·조명 컬링(<code>CullLights</code>)</li>
 <li>그림자 뷰 배정·그림자 패스(아틀라스 두 장)</li>
-<li>b2 조명, b12 SSAO, b8 파티클, b9 바다</li>
+<li>b2 조명, b12 SSAO, b8 파티클·비, b9 바다</li>
 <li><code>BuildDrawList</code>(목록·<code>ObjectData</code>·PSO 고르기)</li>
 <li>CPU 클러스터 비닝(두 뷰를 같이 만들고 올리기만 뷰마다)</li>
 <li>파티클 시뮬레이션(메인 뷰 깊이로 충돌)</li>
@@ -340,7 +341,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td>그림자</td><td><code>Graphics/RendererShadow.cpp</code> 의 <code>BuildShadowViews</code>, <code>RenderShadowPass</code>, <code>RenderShadowAtlasPass</code></td><td>그림자 뷰 배정과 아틀라스 패스</td></tr>
 <tr><td>후처리·톤</td><td><code>Graphics/RendererPost.cpp</code> 의 <code>ApplyHdrEffects</code>, <code>RenderTonemapPass</code>, <code>EnsurePostScratch</code>, <code>EnsureTaaTargets</code></td><td>TAA → 모션 블러 → 블러 → 블룸, 톤 패스</td></tr>
 <tr><td>게임 UI</td><td><code>Graphics/RendererUI.cpp</code> 의 <code>RenderCanvasPass</code>, <code>UploadUI</code></td><td>World → Overlay 캔버스</td></tr>
-<tr><td>카메라 상수</td><td><code>Renderer::UploadPerFrameConstants</code>, <code>Graphics/ShaderConstants.h</code> 의 <code>PerFrameConstants</code></td><td>b0 576 B, 지터, <code>TemporalState</code> 갱신</td></tr>
+<tr><td>카메라 상수</td><td><code>Renderer::UploadPerFrameConstants</code>, <code>Graphics/ShaderConstants.h</code> 의 <code>PerFrameConstants</code></td><td>b0 640 B, 지터, <code>TemporalState</code> 갱신</td></tr>
 <tr><td>프로파일러</td><td><code>Core/Profiler.h</code> 의 <code>ProfileScope</code>, <code>GpuProfileScope</code>, <code>RHI/GraphicsConfig.h</code> 의 <code>kMaxTimestamps</code></td><td>CPU·GPU 구간</td></tr>
 <tr><td>자동화</td><td><code>Editor/EditorAutomation.cpp</code>, <code>AppBase::ApplyRenderPathOptions</code></td><td>10장</td></tr>
 </table>

@@ -618,9 +618,7 @@ void Renderer::RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas)
 	};
 	cmd.BeginRenderPass(pass);   // 아틀라스 전체를 한 번 클리어. 뷰포트는 뷰마다 아래에서 바꿈
 
-	PipelineHandle lastPipeline;
-	const GpuMesh* lastMesh = nullptr;
-	const GpuMaterial* lastMaterial = nullptr;   // 알파 테스트 변형만 재질 셋을 묶음 (PS 없는 변형의 PSO 는 셋이 둘이라 꽂혀 있어도 무시됨)
+	DepthDrawState state;   // 알파 테스트 변형만 재질 셋을 묶음 (PS 없는 변형의 PSO 는 셋이 둘이라 꽂혀 있어도 무시됨)
 	for (uint32_t v = 0; v < m_shadowViewCount; ++v)
 	{
 		const ShadowView& view = m_shadowViews[v];
@@ -628,69 +626,76 @@ void Renderer::RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas)
 
 		// ① 이 뷰의 아틀라스 사각형으로 뷰포트(D3D12 는 시저도) 제한
 		cmd.SetViewport(Viewport{ .x = static_cast<float>(view.x), .y = static_cast<float>(view.y), .width = static_cast<float>(view.size), .height = static_cast<float>(view.size) });
-		// ② b5 에 이 뷰의 행렬 (전치). 드로우 직전에 D3D12 가 루트 CBV 를 다시 바인딩하므로 프레임 셋을 다시
-		// 꽂을 필요 없음.
-		ShadowPassConstants passConstants = {};
-		XMStoreFloat4x4(&passConstants.shadowViewProj, XMMatrixTranspose(XMLoadFloat4x4(&view.viewProj)));
-		m_device->UpdateBuffer(m_shadowPassCB, &passConstants, sizeof(passConstants));
-
-		// ③ 이 뷰의 절두체. 원근 뷰(스팟·포인트 면, params.z = 1)는 평면 여섯 개를 다 봄. 직교 뷰(방향광·
-		// 캐스케이드)는 near 평면을 빼서, 광원 쪽으로 더 물러나 있는 캐스터를 보수적으로 남김.
-		const bool perspective = view.params.z == 1.0f;
-		const Frustum frustum = Frustum::FromViewProj(XMLoadFloat4x4(&view.viewProj), !perspective);
-
-		// ④ 드로우 루프
-		for (const DrawItem& item : m_drawList)
-		{
-			if (!item.shadowPipeline.IsValid()) continue;   // unlit 재질 (BuildDrawList 가 빈 핸들로 둠)
-
-			const XMFLOAT4& sphere = m_objects[item.object].sphere;
-			// 지역광(cullSphere.w > 0): 광원 범위 구와 겹치지 않는 물체는 이 뷰에 그림자를 드리울 수 없음.
-			// 방향광·캐스케이드는 w = 0 이라 이 검사는 하지 않음.
-			if (view.cullSphere.w > 0.0f)
-			{
-				const float dx = sphere.x - view.cullSphere.x, dy = sphere.y - view.cullSphere.y, dz = sphere.z - view.cullSphere.z;
-				const float reach = sphere.w + view.cullSphere.w;
-				if (dx * dx + dy * dy + dz * dz > reach * reach)
-				{
-					++m_stats.shadowCulled;
-					continue;
-				}
-			}
-			// 뷰 절두체 밖: 포인트 광원의 반대쪽 면, 캐스케이드 상자 옆으로 벗어난 물체 등.
-			if (!frustum.Intersects(sphere))
-			{
-				++m_stats.shadowCulled;
-				continue;
-			}
-
-			if (item.shadowPipeline != lastPipeline)
-			{
-				cmd.SetPipelineState(item.shadowPipeline);
-				lastPipeline = item.shadowPipeline;
-				++m_stats.pipelineSwitches;
-			}
-			if (item.shadowAlpha && item.gpuMaterial != lastMaterial)
-			{
-				cmd.SetResourceSet(kSetMaterial, item.gpuMaterial->set);   // 알베도 알파(t0)·노이즈(t20)·b3
-				lastMaterial = item.gpuMaterial;
-				++m_stats.resourceSetSwitches;
-			}
-			if (item.gpuMesh != lastMesh)
-			{
-				cmd.SetVertexBuffer(item.gpuMesh->vertexBuffer);
-				cmd.SetIndexBuffer(item.gpuMesh->indexBuffer, item.gpuMesh->indexFormat);
-				lastMesh = item.gpuMesh;
-				++m_stats.meshSwitches;
-			}
-			UploadObjectConstants(item.object, false);   // 그림자는 속도를 쓰지 않음 (b13 업로드 생략)
-			cmd.DrawIndexed(item.indexCount, item.indexStart, 0);
-			++m_stats.shadowDraws;
-		}
+		// ② ~ ④ b5 · 절두체 · 드로우 루프. 원근 뷰(스팟·포인트 면, params.z = 1)는 평면 여섯 개를 다 봄.
+		DrawDepthView(cmd, view.viewProj, view.cullSphere, view.params.z == 1.0f, false, state, m_stats.shadowDraws, m_stats.shadowCulled);
 	}
 
 	cmd.EndRenderPass();
 
 	// DepthWrite → ShaderResource. 메인 패스가 t8 / t14 로 읽음.
 	cmd.Barrier(map, ResourceState::ShaderResource);
+}
+
+void Renderer::DrawDepthView(RHI::CommandList& cmd, const XMFLOAT4X4& viewProj, const XMFLOAT4& cullSphere, bool perspective, bool occluder,
+							 DepthDrawState& state, uint32_t& draws, uint32_t& culled)
+{
+	// ② b5 에 이 뷰의 행렬 (전치). 드로우 직전에 D3D12 가 루트 CBV 를 다시 바인딩하므로 프레임 셋을 다시
+	// 꽂을 필요 없음.
+	ShadowPassConstants passConstants = {};
+	XMStoreFloat4x4(&passConstants.shadowViewProj, XMMatrixTranspose(XMLoadFloat4x4(&viewProj)));
+	m_device->UpdateBuffer(m_shadowPassCB, &passConstants, sizeof(passConstants));
+
+	// ③ 이 뷰의 절두체. 직교 뷰(방향광·캐스케이드·비 차폐 맵)는 near 평면을 빼서, 광원 쪽으로 더 물러나 있는 캐스터를 보수적으로
+	// 남김 (비 차폐 맵은 near 위의 물체가 어차피 잘리므로 상관없음).
+	const Frustum frustum = Frustum::FromViewProj(XMLoadFloat4x4(&viewProj), !perspective);
+
+	// ④ 드로우 루프
+	for (const DrawItem& item : m_drawList)
+	{
+		const PipelineHandle pipeline = occluder ? item.occluderPipeline : item.shadowPipeline;
+		if (!pipeline.IsValid()) continue;   // unlit 재질 (BuildDrawList 가 빈 핸들로 둠)
+
+		const XMFLOAT4& sphere = m_objects[item.object].sphere;
+		// 지역광(cullSphere.w > 0): 광원 범위 구와 겹치지 않는 물체는 이 뷰에 그림자를 드리울 수 없음.
+		// 방향광·캐스케이드·비 차폐 맵은 w = 0 이라 이 검사는 하지 않음.
+		if (cullSphere.w > 0.0f)
+		{
+			const float dx = sphere.x - cullSphere.x, dy = sphere.y - cullSphere.y, dz = sphere.z - cullSphere.z;
+			const float reach = sphere.w + cullSphere.w;
+			if (dx * dx + dy * dy + dz * dz > reach * reach)
+			{
+				++culled;
+				continue;
+			}
+		}
+		// 뷰 절두체 밖: 포인트 광원의 반대쪽 면, 캐스케이드 상자 옆으로 벗어난 물체 등.
+		if (!frustum.Intersects(sphere))
+		{
+			++culled;
+			continue;
+		}
+
+		if (pipeline != state.pipeline)
+		{
+			cmd.SetPipelineState(pipeline);
+			state.pipeline = pipeline;
+			++m_stats.pipelineSwitches;
+		}
+		if (item.shadowAlpha && item.gpuMaterial != state.material)
+		{
+			cmd.SetResourceSet(kSetMaterial, item.gpuMaterial->set);   // 알베도 알파(t0)·노이즈(t20)·b3
+			state.material = item.gpuMaterial;
+			++m_stats.resourceSetSwitches;
+		}
+		if (item.gpuMesh != state.mesh)
+		{
+			cmd.SetVertexBuffer(item.gpuMesh->vertexBuffer);
+			cmd.SetIndexBuffer(item.gpuMesh->indexBuffer, item.gpuMesh->indexFormat);
+			state.mesh = item.gpuMesh;
+			++m_stats.meshSwitches;
+		}
+		UploadObjectConstants(item.object, false);   // 깊이 전용 뷰는 속도를 쓰지 않음 (b13 업로드 생략)
+		cmd.DrawIndexed(item.indexCount, item.indexStart, 0);
+		++draws;
+	}
 }

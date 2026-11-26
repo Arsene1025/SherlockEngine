@@ -87,6 +87,11 @@ const Renderer::ShaderInfo Renderer::kShaders[Renderer::Shader_Count] = {
 	{ L"ShadowAlphaVertexShader.hlsl", "VS_ShadowAlpha", ShaderStage::Vertex, "ShadowAlphaVS" },
 	{ L"ShadowAlphaSkinVertexShader.hlsl", "VS_ShadowAlphaSkin", ShaderStage::Vertex, "ShadowAlphaSkinVS" },
 	{ L"ShadowAlphaPixelShader.hlsl", "PS_ShadowAlpha", ShaderStage::Pixel, "ShadowAlphaPS" },
+	// 비 (docs/plan/rain-plan.html, Shaders/Rain.hlsli). 정점 버퍼 없이 SV_VertexID 로 빗방울·튐 위치를 계산 (상태 없는 절차적 파티클)
+	{ L"RainVertexShader.hlsl", "VS_Rain", ShaderStage::Vertex, "RainVS" },
+	{ L"RainPixelShader.hlsl", "PS_Rain", ShaderStage::Pixel, "RainPS" },
+	{ L"RainSplashVertexShader.hlsl", "VS_RainSplash", ShaderStage::Vertex, "RainSplashVS" },
+	{ L"RainSplashPixelShader.hlsl", "PS_RainSplash", ShaderStage::Pixel, "RainSplashPS" },
 };
 
 struct Renderer::PassInfo
@@ -122,6 +127,8 @@ const Renderer::PassInfo Renderer::kPasses[Renderer::Pass_Count] = {
 	{ "UIWorld", Shader_UIVS, Shader_UIPS, { Layout_UICommon, Layout_UITexture }, 2 },   // World 캔버스: 같은 셰이더 + 읽기 전용 깊이
 	{ "ShadowAlpha", Shader_ShadowAlphaVS, Shader_ShadowAlphaPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },   // 그림자 + 알파 테스트 (재질 셋의 알베도 알파·노이즈)
 	{ "ShadowAlphaSkin", Shader_ShadowAlphaSkinVS, Shader_ShadowAlphaPS, { Layout_Frame, Layout_Object, Layout_Material }, 3 },
+	{ "Rain", Shader_RainVS, Shader_RainPS, { Layout_Frame, Layout_Rain, Layout_ParticleDepth }, 3 },   // 셋 번호가 파티클 패스와 같음 (kSetParticle·kSetParticleDepth)
+	{ "RainSplash", Shader_RainSplashVS, Shader_RainSplashPS, { Layout_Frame, Layout_Rain, Layout_ParticleDepth }, 3 },
 };
 
 struct Renderer::ComputePassInfo
@@ -189,6 +196,7 @@ namespace
 		{ "ClusterBin", sizeof(ClusterBinConstants) },
 		{ "Ocean", sizeof(OceanConstants) },
 		{ "UIConstants", sizeof(UIConstants) },
+		{ "Rain", sizeof(RainConstants) },
 	};
 
 	// 레지스터 문자. 텍스처와 구조체 버퍼는 같은 t# 공간을 씀.
@@ -238,6 +246,7 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_skinCB = makeCB(sizeof(SkinConstants), "CB_Skin");               // b7
 	m_prevSkinCB = makeCB(sizeof(PrevSkinConstants), "CB_PrevSkin");   // b13 (속도 버퍼: 지난 프레임 팔레트)
 	m_oceanCB = makeCB(sizeof(OceanConstants), "CB_Ocean");            // b9 (바다 파도, 프레임에 한 번)
+	m_rainCB = makeCB(sizeof(RainConstants), "CB_Rain");               // b8 비 셋 (빗줄기·튐, 비가 있는 프레임에 한 번)
 	m_skinScratch.resize(kMaxSkinJoints);
 	m_debugLineVB = m_device->CreateBuffer(BufferDesc{ .size = DebugDraw::kMaxVertices * static_cast<uint32_t>(sizeof(DebugLineVertex)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_Vertex, .stride = sizeof(DebugLineVertex), .debugName = "VB_DebugLines" });
 	m_lightCB = makeCB(sizeof(LightConstants), "CB_Lights");
@@ -258,7 +267,7 @@ bool Renderer::Initialize(RHI::Device* device)
 	m_clusterIndexCapacity = kInitialClusterLightRefs;
 	m_clusterIndexBuffer = m_device->CreateBuffer(BufferDesc{ .size = m_clusterIndexCapacity * static_cast<uint32_t>(sizeof(uint32_t)), .usage = BufferUsage::Dynamic, .bindFlags = BufferBind_ShaderResource, .stride = sizeof(uint32_t), .debugName = "SB_ClusterLights" });
 	if (!m_perFrameCB.IsValid() || !m_perObjectCB.IsValid() || !m_skinCB.IsValid() || !m_prevSkinCB.IsValid() || !m_oceanCB.IsValid() || !m_debugLineVB.IsValid() || !m_lightCB.IsValid() || !m_lightBuffer.IsValid() || !m_postParamsCB.IsValid() ||
-		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid() || !m_blurWeights.IsValid() || !m_ssaoCB.IsValid() || !m_clusterGridBuffer.IsValid() || !m_clusterIndexBuffer.IsValid() || !m_uiCB.IsValid())
+		!m_shadowPassCB.IsValid() || !m_shadowsCB.IsValid() || !m_blurWeights.IsValid() || !m_ssaoCB.IsValid() || !m_clusterGridBuffer.IsValid() || !m_clusterIndexBuffer.IsValid() || !m_uiCB.IsValid() || !m_rainCB.IsValid())
 	{
 		Log::Error("Renderer::Initialize : 상수버퍼 생성 실패.");
 		return false;
@@ -295,7 +304,13 @@ bool Renderer::Initialize(RHI::Device* device)
 		.debugName = "Set_UICommon",
 	});
 
-	if (!m_frameSet.IsValid() || !m_objectSet.IsValid() || !m_blurWeightsSet.IsValid() || !m_uiCommonSet.IsValid())
+	m_rainSet = m_device->CreateResourceSet(ResourceSetDesc{
+		.layout = m_layouts[Layout_Rain],
+		.bindings = { { .buffer = m_rainCB } },   // b8
+		.debugName = "Set_Rain",
+	});
+
+	if (!m_frameSet.IsValid() || !m_objectSet.IsValid() || !m_blurWeightsSet.IsValid() || !m_uiCommonSet.IsValid() || !m_rainSet.IsValid())
 	{
 		Log::Error("Renderer::Initialize : ResourceSet 생성 실패.");
 		return false;
@@ -357,6 +372,8 @@ bool Renderer::CreateLayouts()
 	// 클러스터 (3b): 상자마다 (시작, 개수) t30, 조명 번호 목록 t31. 둘 다 구조체 버퍼 → D3D12 루트 SRV (2 DWORD 씩).
 	frameLayout.Add(BindingType::BufferResource, ShaderStageMask_Pixel, kSRVSlotClusterGrid);     // t30
 	frameLayout.Add(BindingType::BufferResource, ShaderStageMask_Pixel, kSRVSlotClusterLights);   // t31
+	// 비 차폐 맵 t24 (docs/plan/rain-plan.html). 빗줄기 VS 가 빗방울을, 재질 PS 가 젖음을 판정하므로 VS·PS. 비가 없으면 흰 텍스처.
+	frameLayout.Add(BindingType::ShaderResource, ShaderStageMask_Vertex | ShaderStageMask_Pixel, kSRVSlotRainOcclusion);
 
 	BindingLayoutDesc& objectLayout = m_layoutDescs[Layout_Object];
 	objectLayout = BindingLayoutDesc{};
@@ -538,6 +555,12 @@ bool Renderer::CreateLayouts()
 	uiTextureLayout.debugName = "Layout_UITexture";
 	uiTextureLayout.Add(BindingType::ShaderResource, ShaderStageMask_Pixel, kSRVSlotUITexture);   // t0
 
+	// 비 셋 (빗줄기·튐 패스의 셋 1): b8 RainConstants. 프레임 셋(b0, t24)·파티클 깊이 셋(t23)과 같이 묶임.
+	BindingLayoutDesc& rainLayout = m_layoutDescs[Layout_Rain];
+	rainLayout = BindingLayoutDesc{};
+	rainLayout.debugName = "Layout_Rain";
+	rainLayout.Add(BindingType::ConstantBuffer, ShaderStageMask_Vertex | ShaderStageMask_Pixel, kCBSlotRain);   // b8
+
 	for (uint32_t i = 0; i < Layout_Count; ++i)
 	{
 		m_layouts[i] = m_device->CreateBindingLayout(m_layoutDescs[i]);
@@ -625,6 +648,20 @@ void Renderer::BuildPassDescs()
 		particle.rtvFormats[0] = Format::R16G16B16A16_FLOAT;   // 메인 패스와 같은 타깃 (FP16 HDR + D24S8)
 		particle.rtvCount = 1;
 		particle.dsvFormat = Format::D24_UNORM_S8_UINT;
+		// 비 (빗줄기·튐): 파티클과 같은 상태 — 정점 입력 없음, 컬링 없음, 깊이 테스트만, 알파 0 을 내보내는 가산. 셰이더·셋만 다름.
+		for (PassId id : { Pass_Rain, Pass_RainSplash })
+		{
+			PipelineStateDesc& rain = m_passDesc[id];
+			const PipelineStateDesc fixed = rain;   // 표에서 온 셰이더·레이아웃
+			rain = particle;
+			rain.vs = fixed.vs;
+			rain.ps = fixed.ps;
+			for (uint32_t i = 0; i < kMaxBindingSets; ++i)
+			{
+				rain.bindingLayouts[i] = fixed.bindingLayouts[i];
+			}
+			rain.bindingLayoutCount = fixed.bindingLayoutCount;
+		}
 	}
 
 	// 톤 패스와 블러·블룸: 풀스크린 삼각형, 깊이 없음 (dsvFormat 이 Unknown 이어야 깊이 없는 패스에 쓸 수 있음).
@@ -719,6 +756,8 @@ void Renderer::BuildPassDescs()
 	m_skyPipeline = PipelineHandle{};
 	m_debugLinePipeline = PipelineHandle{};
 	m_particlePipeline = PipelineHandle{};
+	m_rainPipeline = PipelineHandle{};
+	m_rainSplashPipeline = PipelineHandle{};
 	for (PipelineHandle& handle : m_tonemapPipelines)
 	{
 		handle = PipelineHandle{};
@@ -859,14 +898,16 @@ void Renderer::ResolveEnvironment(const SceneEnvironment& environment)
 
 bool Renderer::UpdateFrameSet()
 {
-	if (m_frameSet.IsValid() && m_environment.SameTextures(m_boundEnvironment) && m_frameSetClusterGpu == m_clusterGpuThisFrame) return true;
+	// t24 비 차폐 맵: 비가 있으면 맵, 없으면 흰 텍스처 (D3D12 테이블에는 유효한 뷰가 있어야 함. 셰이더는 rainParams.z 로 쓸지 정함).
+	const TextureHandle rainMap = (m_frameRain.active && m_rainMap.IsValid()) ? m_rainMap : m_textures.GetWhite();
+	if (m_frameSet.IsValid() && m_environment.SameTextures(m_boundEnvironment) && m_frameSetClusterGpu == m_clusterGpuThisFrame && m_frameSetRainMap == rainMap) return true;
 
 	// ResourceSet 은 값 객체라 슬롯 하나만 바꾸는 기능이 없음 — 재질 셋과 같이 통째로 다시 만듦 (D3D12
 	// 디스크립터 테이블도 다시 씀). 이전 셋은 D3D12 에서 지연 해제되므로, 이미 기록된 드로우가 그 테이블을
 	// 읽어도 안전함.
 	m_device->DestroyResourceSet(m_frameSet);
 	// bindings[i] 는 CreateLayouts 의 frameLayout.Add(...) i 번째 슬롯과 짝임: b0, b2, t8, s4, t9, s5, t10, t11,
-	// t12, b5, b6, t14, t15, t30, t31. 환경 샘플러는 재질 프리셋의 LinearClamp 를 함께 씀 (큐브 샘플은 면 경계를 하드웨어가
+	// t12, b5, b6, t14, t15, t30, t31, t24. 환경 샘플러는 재질 프리셋의 LinearClamp 를 함께 씀 (큐브 샘플은 면 경계를 하드웨어가
 	// 이어 주고, LUT 는 가장자리에서 반복되면 안 됨).
 	const ResourceSetDesc frameSet{
 		.layout = m_layouts[Layout_Frame],
@@ -887,12 +928,14 @@ bool Renderer::UpdateFrameSet()
 			// t30·t31: CPU 비닝이면 Dynamic 버퍼 (뷰마다 올림), GPU 비닝이면 컴퓨트가 쓰는 Default 버퍼
 			{ .buffer = m_clusterGpuThisFrame ? m_clusterGridGpu : m_clusterGridBuffer },
 			{ .buffer = m_clusterGpuThisFrame ? m_clusterIndexGpu : m_clusterIndexBuffer },
+			{ .texture = rainMap },   // t24 비 차폐 맵
 		},
 		.debugName = "Set_Frame",
 	};
 	m_frameSet = m_device->CreateResourceSet(frameSet);
 	m_boundEnvironment = m_environment;
 	m_frameSetClusterGpu = m_clusterGpuThisFrame;
+	m_frameSetRainMap = rainMap;
 	if (!m_frameSet.IsValid())
 	{
 		Log::Error("Renderer : 프레임 ResourceSet 생성 실패.");
@@ -1226,6 +1269,7 @@ void Renderer::Shutdown()
 	m_sceneWidth = m_sceneHeight = 0;
 	m_outputWidth = m_outputHeight = 0;
 	m_previewCamera = nullptr;
+	DestroyRainResources();   // 비 차폐 맵·비 셋 (RendererRain.cpp)
 	m_device->DestroyTexture(m_shadowMap);
 	m_device->DestroyTexture(m_csmMap);
 	m_device->DestroySampler(m_shadowSampler);
@@ -1249,7 +1293,7 @@ void Renderer::Shutdown()
 		m_device->DestroyBindingLayout(layout);
 		layout = BindingLayoutHandle{};
 	}
-	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_prevSkinCB, &m_oceanCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB, &m_blurWeights,
+	for (BufferHandle* buffer : { &m_perFrameCB, &m_perObjectCB, &m_skinCB, &m_prevSkinCB, &m_oceanCB, &m_rainCB, &m_debugLineVB, &m_lightCB, &m_lightBuffer, &m_postParamsCB, &m_shadowPassCB, &m_shadowsCB, &m_blurWeights,
 								  &m_ssaoCB, &m_clusterGridBuffer, &m_clusterIndexBuffer })
 	{
 		m_device->DestroyBuffer(*buffer);
@@ -1307,6 +1351,7 @@ void Renderer::ResetTemporalHistory()
 		history.palettes.clear();
 	}
 	m_oceanHasPrev = false;   // 바다: 다음 프레임은 지난 위상 = 이번 위상 (속도 0)
+	m_rainSnapWetness = true; // 비: 씬 불러오기·재생 시작/정지 직후는 젖음을 바로 목표값으로 (천천히 젖어 가는 연출은 같은 씬 안에서만)
 }
 
 void Renderer::InvalidateScene(const Scene& scene, bool releaseTextures)
@@ -1406,6 +1451,8 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	// ---- b0 PerFrame (메인 뷰) ----
 	// 이번 프레임 메인 뷰가 디퍼드인가·SSAO 결과가 있는가 — b0 aoParams 가 이것을 씀.
 	const bool mainSsao = UseDeferred(m_mainView) && m_ssaoSettings.enabled && m_mainView.HasSsao();
+	// 비: 첫 번째 Rain → 차폐 맵 위치·젖음 보간·빗방울 수 (b0 의 rain* 칸이 이 값을 씀). 차폐 맵 텍스처도 여기서 맞춤 (업로드 구간 안)
+	PrepareRain(scene, camera, totalTime);
 	UploadPerFrameConstants(camera, m_mainView, totalTime, mainSsao);
 
 	// ---- b2 Lights + t15 조명 배열 ----
@@ -1468,6 +1515,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	UploadDebugLines(debugDraw);                 // 디버그 선(DebugDraw 가 모은 것)을 동적 정점 버퍼에 올림. 프레임마다 한 번은 써야 함
 	UpdateParticleEmitters(totalTime, camera);   // BuildDrawList 가 모은 이미터의 버퍼·셋을 맞추고 b8 을 올림 (업로드 구간 안)
 	UploadOceanConstants(totalTime);             // b9: BuildDrawList 가 모은 바다의 파도·위상 (없으면 파도 0 개). 그림자 패스를 포함한 모든 드로우 전
+	UploadRainConstants();                       // b8 비 셋 (비가 있을 때만 — 비 셋은 비 패스만 묶음)
 	UploadUI(scene);                             // 게임 UI: 텍스처 셋 + 정점·인덱스·캔버스 행렬 (목록이 비면 아무것도 안 올림)
 
 	m_device->EndResourceUploads();
@@ -1487,6 +1535,10 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		GpuProfileScope gpuScope(cmd, "ClusterBin");
 		DispatchClusterBinning(cmd, 0);
 	}
+	if (m_frameRain.active && m_rainMap.IsValid())
+	{
+		cmd.Barrier(m_rainMap, ResourceState::ShaderResource);   // 프레임 셋 t24 (새로 만든 맵·지난 프레임 끝 상태 그대로면 아무 일도 없음)
+	}
 	cmd.SetResourceSet(kSetFrame, m_frameSet);
 	cmd.SetResourceSet(kSetObject, m_objectSet);
 
@@ -1501,6 +1553,13 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 		// 그림자 패스가 없는 프레임에도 프레임 셋은 t8 / t14 를 SRV 로 가리킴. 상태를 맞춰 둠 (이미 그 상태면 아무 일도 없음).
 		cmd.Barrier(m_shadowMap, ResourceState::ShaderResource);
 		cmd.Barrier(m_csmMap, ResourceState::ShaderResource);
+	}
+	if (m_frameRain.active)
+	{
+		// 비 차폐 맵 (docs/plan/rain-plan.html): 위에서 내려다본 깊이. 끝나면 맵은 ShaderResource (프레임 셋 t24).
+		GpuProfileScope gpuScope(cmd, "RainOcclusion");
+		ProfileScope cpuScope("RainOcclusion");
+		RenderRainOcclusionPass(cmd);
 	}
 	{
 		GpuProfileScope gpuScope(cmd, "MainPass");
@@ -1774,6 +1833,11 @@ void Renderer::BuildDrawList(const Scene& scene)
 			// 컷아웃 재질과 디졸브 중인 오브젝트는 알파 테스트 그림자 (PS 가 같은 알파·노이즈로 구멍을 냄). 나머지는 PS 없는 빠른 경로.
 			item.shadowAlpha = material->alphaCutoff > 0.0f || dissolving;
 			item.shadowPipeline = (material->unlit || item.blended || ocean) ? PipelineHandle{} : GetShadowPipelineFor(*material, mesh->GetVertexFormat(), mirrored, item.shadowAlpha);
+			// 비 차폐 맵: 그림자를 만드는 항목과 같은 것 (바이어스 없는 변형). 비가 없는 프레임에는 만들지 않음 (PSO 생성을 늘리지 않게).
+			if (m_frameRain.active && item.shadowPipeline.IsValid())
+			{
+				item.occluderPipeline = GetShadowPipelineFor(*material, mesh->GetVertexFormat(), mirrored, item.shadowAlpha, true);
+			}
 			// 디퍼드 (2단계): G-buffer 에 담을 수 있는 재질이면 G-buffer PSO 도 만들어 둠. 디퍼드를 꺼도 만들어 두는 이유: 토글할 때
 			// 드로우 목록을 다시 만들지 않으려고 (PSO 는 캐시라 한 번만 생성). 실패하면 포워드로 그림.
 			item.deferred = CanUseDeferred(*material);
@@ -1947,7 +2011,8 @@ void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTa
 	// 두 번째 패스: 파티클과 디버그 선. 깊이를 "읽기만" 함 — 읽기 전용 DSV 로 깊이 테스트를 하면서 같은 깊이를
 	// 셰이더가 SRV 로 읽을 수 있음 (소프트 파티클·깊이 충돌). 그릴 것이 없으면 패스를 열지 않음 (이전과 같은 패스 수).
 	const bool drawParticles = !m_activeEmitterKeys.empty();
-	if (drawParticles || m_debugLineCount > 0)
+	const bool drawRain = m_frameRain.drawRain;
+	if (drawParticles || drawRain || m_debugLineCount > 0)
 	{
 		cmd.Barrier(view.depth, ResourceState::DepthRead);
 		if (viewIndex == 0 && drawParticles)
@@ -1977,6 +2042,13 @@ void Renderer::RenderScenePass(RHI::CommandList& cmd, const Scene& scene, ViewTa
 		{
 			// 셋 1 을 파티클 셋으로 바꾸므로 끝나면 오브젝트 셋을 되돌림 (다음 패스가 셋 1 = 오브젝트 셋을 전제할 수 있음).
 			DrawParticles(cmd, view, viewIndex);
+			cmd.SetResourceSet(kSetObject, m_objectSet);
+		}
+		if (drawRain)
+		{
+			// 빗줄기·튐 (RendererRain.cpp). 셋 1 을 비 셋으로 바꾸므로 끝나면 오브젝트 셋을 되돌림.
+			GpuProfileScope gpuScope(cmd, "Rain");
+			DrawRain(cmd, view);
 			cmd.SetResourceSet(kSetObject, m_objectSet);
 		}
 		DrawDebugLines(cmd);   // 깊이 테스트가 없으므로 항상 위에 그려짐
@@ -2202,6 +2274,11 @@ void Renderer::UploadPerFrameConstants(const Camera& camera, ViewTarget& target,
 	perFrame.clusterDepth = ClusterDepthParams(camera);
 	// SSAO: 이 뷰에 결과가 있으면 라이팅이 t29 를 읽음. 합치는 방식은 씬 설정.
 	perFrame.aoParams = XMFLOAT4(ssaoReady ? 1.0f : 0.0f, m_ssaoSettings.multiply ? 1.0f : 0.0f, 0.0f, 0.0f);
+	// 비 (PrepareRain 이 이번 프레임에 정함. 비가 없으면 0 — 젖음·디버그 뷰 18 이 아무것도 하지 않음). 두 뷰가 같은 값.
+	perFrame.rainParams = m_frameRain.rainParams;
+	perFrame.rainMapXZ = m_frameRain.rainMapXZ;
+	perFrame.rainMapY = m_frameRain.rainMapY;
+	perFrame.rainSurface = m_frameRain.rainSurface;
 
 	// ---- 속도 버퍼·TAA: 지터 없는 이번·지난 viewProj. 이 뷰를 그린 카메라가 바뀌었으면 (미리보기 대상 변경·재생 전환)
 	// 지난 프레임이 없는 것으로 봄 → 이전 = 이번 (속도 0) ----
@@ -2490,11 +2567,11 @@ PipelineHandle Renderer::GetPipelineFor(const Material& material, VertexFormat v
 	return handle;
 }
 
-PipelineHandle Renderer::GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored, bool alphaTest)
+PipelineHandle Renderer::GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored, bool alphaTest, bool noBias)
 {
 	// 그림자는 항상 솔리드로 그림 (와이어프레임 재질도 실체는 있음). 양면 재질은 컬링 없이 그림.
 	// 알파 테스트(컷아웃·디졸브)는 PS 가 있는 변형 — 셋도 재질 셋까지 셋이라 루트 시그니처가 다름 (비트 10).
-	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (material.doubleSided ? 1u << 9 : 0u) | (alphaTest ? 1u << 10 : 0u);
+	const uint32_t key = static_cast<uint32_t>(vertexFormat) | (mirrored ? 1u << 8 : 0u) | (material.doubleSided ? 1u << 9 : 0u) | (alphaTest ? 1u << 10 : 0u) | (noBias ? 1u << 11 : 0u);
 	auto found = m_shadowPipelines.find(key);
 	if (found != m_shadowPipelines.end()) return found->second;
 
@@ -2503,6 +2580,12 @@ PipelineHandle Renderer::GetShadowPipelineFor(const Material& material, VertexFo
 	desc.vertexLayout = GetVertexLayout(vertexFormat);
 	desc.rasterizer.frontCounterClockwise = mirrored ? !desc.rasterizer.frontCounterClockwise : desc.rasterizer.frontCounterClockwise;
 	desc.rasterizer.cull = material.doubleSided ? CullMode::None : CullMode::Back;
+	if (noBias)
+	{
+		desc.rasterizer.depthBias = 0;
+		desc.rasterizer.depthBiasClamp = 0.0f;
+		desc.rasterizer.slopeScaledDepthBias = 0.0f;
+	}
 	const PipelineHandle handle = m_device->CreatePipeline(desc);
 	if (handle.IsValid())
 	{

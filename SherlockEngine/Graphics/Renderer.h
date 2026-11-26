@@ -15,6 +15,7 @@
 #include "Scene/Camera.h"   // 컬링 고정용 카메라 사본 (m_cullFreezeCamera)
 #include "Scene/Light.h"
 #include "Scene/Ocean.h"   // OceanWave (m_frameOcean)
+#include "Graphics/ShaderConstants.h"   // RainConstants (m_frameRain)
 #include "Scene/PostProcessSettings.h"
 #include "Scene/ShadowSettings.h"
 #include "Scene/SsaoSettings.h"
@@ -91,9 +92,12 @@ struct RenderSettings
 	bool taaJitter = true;
 	// 바다 파도 시간 고정 (초, 음수 = 실제 시간). 스크린샷이 실행마다 같아지고 바다 속도가 카메라 속도만 남음 (뷰 17 검정) — --ocean-time=.
 	float oceanTimeOverride = -1.0f;
+	// 비 시간 고정 (초, 음수 = 실제 시간). 빗줄기·튐·물결이 실행마다 같고 젖음은 바로 목표값 — --rain-time= (docs/plan/rain-plan.html).
+	float rainTimeOverride = -1.0f;
 
 	// 디버그 뷰 (0 조명, 1 알베도, 2 월드 노멀, 3 깊이, 4 그림자 계수, 5 UV, 6 금속성/거칠기, 7 AO, 8 캐스케이드, 9 F0,
-	// 10 클리어코트, 11 월드 위치, 12 기하 노멀, 13 SSAO, 14 클러스터 조명 수, 15 클러스터 슬라이스, 16 속도, 17 속도 오차) 와 깊이 뷰의 범위(월드 단위)
+	// 10 클리어코트, 11 월드 위치, 12 기하 노멀, 13 SSAO, 14 클러스터 조명 수, 15 클러스터 슬라이스, 16 속도, 17 속도 오차,
+	// 18 비: R = 비를 맞음, G = 젖음, B = 웅덩이) 와 깊이 뷰의 범위(월드 단위)
 	int debugView = 0;
 	float debugDepthRange = 60.0f;
 
@@ -150,6 +154,13 @@ public:
 		uint32_t particleEmitters = 0;   // 이번 프레임에 시뮬레이션한 이미터 수
 		uint32_t particleCapacity = 0;   // 그 이미터들의 버퍼 원소 합 (용량. 그리는 쿼드는 간접 드로우라 생존 수만큼)
 		uint32_t particlesSpawned = 0;   // 이번 프레임에 생성을 요청한 수 (spawnCount 합. 사망 목록이 모자라면 실제로는 덜 태어남)
+		// ---- 비 (docs/plan/rain-plan.html) ----
+		bool rainActive = false;            // 이번 프레임에 Rain 이 있음
+		uint32_t rainDrops = 0;             // 그린 빗방울 수 (뷰 하나 기준. 차폐 판정으로 접힌 것 포함)
+		uint32_t rainSplashes = 0;          // 그린 튐 수 (뷰 하나 기준)
+		uint32_t rainOcclusionDraws = 0;    // 차폐 맵 패스 드로우 수
+		uint32_t rainOcclusionCulled = 0;   // 차폐 맵 상자 밖이라 건너뛴 드로우 수
+		float rainWetness = 0.0f;           // b0 에 올린 젖음 (보간된 값)
 		// ---- 디퍼드·클러스터드·SSAO (메인 뷰 기준) ----
 		bool deferredPath = false;         // 이번 프레임 메인 뷰가 디퍼드로 그려졌는가
 		uint32_t gbufferDraws = 0;         // G-buffer 패스 드로우 수
@@ -411,6 +422,7 @@ private:
 	{
 		PipelineHandle pipeline;          // 메인 패스 PSO (정렬 키)
 		PipelineHandle shadowPipeline;    // 그림자 패스 PSO. unlit 재질은 빈 핸들 (그림자를 만들지 않음)
+		PipelineHandle occluderPipeline;  // 비 차폐 맵 PSO (그림자 PSO 의 바이어스 없는 변형). 비가 없는 프레임·그림자를 만들지 않는 항목은 빈 핸들
 		bool shadowAlpha = false;         // 그림자가 알파 테스트 변형 (컷아웃 재질 또는 디졸브 중) — 그림자 패스가 재질 셋도 묶음
 		const Material* material;         // 정렬 키
 		const Mesh* mesh;                 // 정렬 키
@@ -475,6 +487,10 @@ private:
 		Shader_ShadowAlphaVS,       // 알파 테스트 그림자 (컷아웃·디졸브, Shaders/ShadowAlpha.hlsli)
 		Shader_ShadowAlphaSkinVS,
 		Shader_ShadowAlphaPS,
+		Shader_RainVS,              // 비 (docs/plan/rain-plan.html, Shaders/Rain.hlsli)
+		Shader_RainPS,
+		Shader_RainSplashVS,
+		Shader_RainSplashPS,
 		Shader_Count
 	};
 	enum LayoutId : uint32_t
@@ -498,6 +514,7 @@ private:
 		Layout_ClusterBin,
 		Layout_UICommon,    // b4 UI 상수 + s0 (UI 패스에 하나)
 		Layout_UITexture,   // t0 (텍스처마다 하나)
+		Layout_Rain,        // b8 비 상수 (빗줄기·튐 패스의 셋 1)
 		Layout_Count
 	};
 	// 패스 = (VS, PS, 레이아웃 목록). PSO Desc 의 셰이더·bindingLayouts 가 이 표에서 나오고, 바인딩 대조도 패스
@@ -530,6 +547,8 @@ private:
 		Pass_UIWorld,        // World 캔버스: Pass_UI + 읽기 전용 깊이 검사 (LessEqual, 쓰기 없음)
 		Pass_ShadowAlpha,       // ShadowAlphaVS + ShadowAlphaPS (프레임·오브젝트·재질 셋). 컷아웃 재질·디졸브 중인 오브젝트의 그림자
 		Pass_ShadowAlphaSkin,   // ShadowAlphaSkinVS + ShadowAlphaPS
+		Pass_Rain,              // RainVS + RainPS { 프레임, 비, 파티클 깊이 } — 가산, 깊이 테스트만
+		Pass_RainSplash,        // RainSplashVS + RainSplashPS (같은 셋)
 		Pass_Count
 	};
 	// 셋 인덱스 = 그 패스의 PipelineStateDesc::bindingLayouts 인덱스 (CommandList::SetResourceSet 의 첫 인자).
@@ -599,6 +618,17 @@ private:
 	void UploadPerFrameConstants(const Camera& camera, ViewTarget& target, float totalTime, bool ssaoReady);
 	void RenderShadowPass(RHI::CommandList& cmd);
 	void RenderShadowAtlasPass(RHI::CommandList& cmd, uint32_t atlas);   // atlas 0 = 메인(m_shadowMap), 1 = CSM(m_csmMap). 그 아틀라스의 뷰만 그림
+	// 깊이 전용 뷰 하나 (그림자 뷰·비 차폐 맵 공용): b5 에 viewProj 를 올리고 절두체(와 cullSphere.w > 0 이면 범위 구)로 컬링한 뒤
+	// m_drawList 를 그림. 뷰포트와 렌더 패스는 호출 쪽이 엶. occluder = 참이면 item.occluderPipeline, 아니면 item.shadowPipeline.
+	// state 는 같은 렌더 패스 안의 뷰끼리 "직전 PSO·메시·재질" 을 이어 씀. draws·culled 에 개수를 더함.
+	struct DepthDrawState
+	{
+		PipelineHandle pipeline;
+		const GpuMesh* mesh = nullptr;
+		const GpuMaterial* material = nullptr;
+	};
+	void DrawDepthView(RHI::CommandList& cmd, const DirectX::XMFLOAT4X4& viewProj, const DirectX::XMFLOAT4& cullSphere, bool perspective, bool occluder,
+					   DepthDrawState& state, uint32_t& draws, uint32_t& culled);
 	// 뷰 하나의 씬 패스 (메인·미리보기 공통): view.hdr + view.depth 에 불투명 드로우와 스카이박스를 그림.
 	// b0 는 호출 전에 그 카메라로 올려 둘 것. 끝나면 view.hdr 는 ShaderResource 상태.
 	// 패스 두 개: (1) 불투명·하늘·블렌딩 항목 (깊이 씀) (2) 파티클·디버그 선 (깊이 읽기 전용 — 셰이더가 깊이를 SRV 로도
@@ -706,6 +736,17 @@ private:
 	// 그 뒤 UploadOceanConstants 가 b9 에 위상을 올림 — 바다가 없어도 프레임마다 한 번 (파도 0 개).
 	bool CollectOcean(const GameObject& object, const DirectX::XMMATRIX& world);
 	void UploadOceanConstants(float totalTime);
+
+	// ---- 비 (RendererRain.cpp, docs/plan/rain-plan.html) ----
+	// PrepareRain: 첫 번째 Rain 을 찾아 이번 프레임 값 (빗방울 수, 차폐 맵 위치, 젖음 보간) 을 정하고 차폐 맵을 맞춤. b0 를 올리기 전에
+	// (UploadPerFrameConstants 가 m_frameRain 의 b0 칸을 씀). UploadRainConstants: b8 (비가 있을 때만). RenderRainOcclusionPass:
+	// 그림자 패스 다음에 위에서 내려다본 깊이. DrawRain: 씬 패스의 두 번째 패스 (깊이 읽기 전용) 안에서 빗줄기와 튐.
+	void PrepareRain(const Scene& scene, const Camera& camera, float totalTime);
+	void UploadRainConstants();
+	void RenderRainOcclusionPass(RHI::CommandList& cmd);
+	void DrawRain(RHI::CommandList& cmd, const ViewTarget& view);
+	PipelineHandle GetRainPipeline(bool splash);
+	void DestroyRainResources();
 	struct GpuEmitter;
 	void DestroyGpuEmitter(GpuEmitter& gpu, bool includeConstants);   // includeConstants = false: 크기 변경 (b8 버퍼는 다시 씀)
 	void DrawSkybox(RHI::CommandList& cmd);                           // 전체 화면 삼각형 하나 (Draw(3), 정점 버퍼 없음)
@@ -892,7 +933,8 @@ private:
 	// ocean: Gerstner 바다 드로우 (Pass_Ocean·Pass_GBufferOcean 에서 시작, 키 비트 12). 스킨 정점 포맷이면 무시함.
 	PipelineHandle GetPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored = false, bool ocean = false);
 	// alphaTest: 알파 테스트 변형 (Pass_ShadowAlpha·Pass_ShadowAlphaSkin, 키 비트 10). 컷아웃 재질이나 디졸브 중인 오브젝트.
-	PipelineHandle GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored = false, bool alphaTest = false);
+	// noBias: 깊이 바이어스 없는 변형 (키 비트 11) — 비 차폐 맵. 그림자의 기울기 바이어스는 위에서 본 경사 지붕을 수십 cm 아래로 밀어냄.
+	PipelineHandle GetShadowPipelineFor(const Material& material, VertexFormat vertexFormat, bool mirrored = false, bool alphaTest = false, bool noBias = false);
 	PipelineHandle GetSkyPipeline();   // 정점 속성 0개, 깊이 LessEqual + 쓰기 끔, 컬링 없음
 	PipelineHandle GetTonemapPipeline();
 	SamplerHandle GetSampler(SamplerPreset preset) const;
@@ -926,7 +968,7 @@ private:
 	//   Layout_Post      b0, b4, t13, s6, t20 가중치 (모두 PS)
 	//   Layout_BlurCompute b4, t13 입력, u0 출력, t20 가중치 (모두 CS)
 	//   Layout_BlurWeights b4, u0 가중치 버퍼 (모두 CS)
-	//   나머지 (파티클·G-buffer·SSAO·시간·클러스터 비닝·UI) 는 CreateLayouts 에 적음. 모두 Layout_Count = 19 개.
+	//   나머지 (파티클·G-buffer·SSAO·시간·클러스터 비닝·UI) 는 CreateLayouts 에 적음. 모두 Layout_Count = 20 개.
 	BindingLayoutHandle m_layouts[Layout_Count];
 	BindingLayoutDesc m_layoutDescs[Layout_Count];
 	ResourceSetHandle m_frameSet;
@@ -1063,6 +1105,34 @@ private:
 	uint64_t m_oceanPrevObject = 0;                   // 그 바다 오브젝트 id. 다르면 (바다가 바뀜) 지난 위상 = 이번 위상
 	bool m_oceanHasPrev = false;                      // ResetTemporalHistory·바다가 없는 프레임에서 거짓
 	bool m_oceanExtraWarned = false;                  // 두 번째 바다 경고 (한 번만)
+	// 비: 이번 프레임의 첫 번째 Rain (PrepareRain). b0 칸 (rainParams …) 과 b8 값을 여기서 만들어 둠.
+	struct FrameRain
+	{
+		bool active = false;
+		bool drawRain = false;             // 빗줄기·튐을 그림 (세기 > 0)
+		uint64_t objectId = 0;
+		DirectX::XMFLOAT4 rainParams = {};   // b0 (ShaderConstants.h 의 PerFrameConstants 와 같은 뜻)
+		DirectX::XMFLOAT4 rainMapXZ = {};
+		DirectX::XMFLOAT4 rainMapY = {};
+		DirectX::XMFLOAT4 rainSurface = {};
+		DirectX::XMFLOAT4X4 mapViewProj = {};   // 차폐 맵 직교 viewProj (행 우선, 올릴 때 전치)
+		DirectX::XMFLOAT3 mapCenter = {};       // 컬링 상자 중심 (맵 가운데, 높이는 범위 가운데)
+		DirectX::XMFLOAT3 mapHalfExtent = {};
+		RainConstants constants = {};           // b8
+	};
+	FrameRain m_frameRain;
+	BufferHandle m_rainCB;                 // b8 Dynamic (RainConstants). 비가 있는 프레임에 한 번
+	ResourceSetHandle m_rainSet;           // Layout_Rain { b8 }
+	TextureHandle m_rainMap;               // 차폐 맵 (D32, DSV + SRV). 비가 처음 생길 때·해상도가 바뀔 때 만듦
+	uint32_t m_rainMapResolution = 0;
+	TextureHandle m_frameSetRainMap;       // 프레임 셋 t24 에 지금 꽂힌 텍스처 (바뀌면 UpdateFrameSet 이 셋을 다시 만듦)
+	PipelineHandle m_rainPipeline;
+	PipelineHandle m_rainSplashPipeline;
+	float m_rainWetness = 0.0f;            // 보간된 젖음 (0..1)
+	float m_rainLastTime = 0.0f;           // 지난 프레임의 totalTime (젖음 보간의 dt)
+	uint64_t m_rainPrevObject = 0;         // 지난 프레임의 Rain 오브젝트 id. 다르면 (새로 생김·바뀜) 젖음을 바로 목표값으로
+	bool m_rainSnapWetness = true;         // 다음 프레임 젖음을 바로 목표값으로 (ResetTemporalHistory·처음)
+	bool m_rainExtraWarned = false;        // 두 번째 Rain 경고 (한 번만)
 	BufferHandle m_debugLineVB;                       // 동적 정점 버퍼 (DebugDraw::kMaxVertices 개)
 	// 게임 UI (RendererUI.cpp)
 	const UIDrawList* m_uiDrawList = nullptr;

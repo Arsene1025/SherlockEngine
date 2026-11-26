@@ -123,6 +123,13 @@ constexpr uint32_t kMaxOceanWaves = 8;   // Shaders/Ocean.hlsli 의 MAX_OCEAN_WA
 // 같이 묶이지 않음 (b9·b13 공유와 같은 규칙). 샘플러를 텍스처 셋에서 뺀 이유: D3D12 는 샘플러가 든 셋마다 샘플러 힙 칸을 따로 씀.
 constexpr uint32_t kCBSlotUI = 4;
 constexpr uint32_t kSRVSlotUITexture = 0;
+
+// ---- 비 (docs/plan/rain-plan.html) ----
+// t24 (프레임 셋, VS·PS): 차폐 맵 (위에서 내려다본 깊이, D32 의 R32 뷰). 빗줄기 VS 가 빗방울을, 재질 PS 가 젖음을 판정함.
+// t24 는 TAA 히스토리(시간 셋)·파티클 정렬 개수(정렬 셋, CS)와 같은 번호지만 두 셋은 프레임 셋과 한 패스에 같이 묶이지 않음.
+// b8 (비 셋 Layout_Rain, VS·PS): 빗줄기·튐 상수. 파티클 이미터 b8 과 같은 번호, 같은 패스에 묶이지 않음 (b9·b13 공유와 같은 규칙).
+constexpr uint32_t kSRVSlotRainOcclusion = 24;
+constexpr uint32_t kCBSlotRain = 8;
 constexpr uint32_t kSamplerSlotUI = 0;
 constexpr uint32_t kMaxUICanvases = 32;   // Shaders/UI.hlsli 의 MAX_UI_CANVASES, UI/UIDrawList.h 의 kUIMaxCanvases 와 같아야 함
 
@@ -215,6 +222,37 @@ struct alignas(16) PerFrameConstants
 	DirectX::XMFLOAT4X4 prevUnjitteredViewProj;
 	// x, y = 이번 지터 (NDC), z = 이 뷰의 TAA 히스토리가 유효(1)/아님(0), w = 지터 위상 (0~7)
 	DirectX::XMFLOAT4 temporalParams;
+	// ---- 비 (docs/plan/rain-plan.html, Shaders/Rain.hlsli). 비가 없으면 모두 0 → 젖음·디버그 뷰 18 이 아무것도 하지 않음 ----
+	// x = 빗줄기 세기 0..1, y = 젖음 (보간된 값) 0..1, z = 차폐 맵 있음(1)/없음(0), w = 비 시간 (초, 1000 s 로 감음. 물결)
+	DirectX::XMFLOAT4 rainParams;
+	// 차폐 맵의 xz: x, y = 맵 최소 모서리의 월드 x, z, z = 1 / 한 변 (1/m), w = 텍셀 크기 (m)
+	DirectX::XMFLOAT4 rainMapXZ;
+	// 차폐 맵의 높이: x = 맵 윗면 y (직교 카메라 위치), y = 깊이 범위 (m, 깊이 1 = 윗면 − 범위), z = 높이 비교 여유 (m), w = 해상도 (텍셀)
+	DirectX::XMFLOAT4 rainMapY;
+	// 젖은 표면 (3단계): x = 물결 세기 (0 = 끔), y = 웅덩이 양 0..1, zw = 미사용
+	DirectX::XMFLOAT4 rainSurface;
+};
+
+// b8 Rain — 빗줄기·튐 (Shaders/Rain.hlsli 의 cbuffer Rain, Layout_Rain). 프레임에 한 번 올림 (비가 있을 때만 — 비 셋은 비 패스만
+// 묶음). 뷰마다 다른 값 (카메라 위치·픽셀 크기) 은 넣지 않고 셰이더가 뷰마다 다시 올라오는 b0 에서 구함.
+struct alignas(16) RainConstants
+{
+	DirectX::XMFLOAT3 fallOffset;   // 축마다 fmod(velocity_i × t, boxSize_i) (CPU 가 double 로). 빗방울 궤적의 시간 몫
+	float boxBelow;                 // 상자에서 카메라 아래 몫 (0..1). 상자 중심 y = 카메라 y + (0.5 − boxBelow) × 높이
+	DirectX::XMFLOAT3 boxSize;      // 상자 크기 (m): 가로 2 × areaRadius, 높이 areaHeight
+	uint32_t dropCount;             // 이번 프레임 그릴 빗방울 수 (= Draw 정점 수 / 6)
+	DirectX::XMFLOAT3 velocity;     // 빗방울 속도 (m/s): (wind.x, −fallSpeed, wind.z)
+	float streakLength;             // 빗줄기 길이 (m)
+	DirectX::XMFLOAT3 color;        // color × brightness (선형 HDR)
+	float streakWidth;              // 빗줄기 폭 (m)
+	float nearFade;                 // 카메라 근접 페이드 거리 (m)
+	float softDistance;             // 장면 깊이와 가까우면 흐려지는 거리 (m)
+	uint32_t seed;                  // 빗방울 해시 씨앗
+	uint32_t splashCount;           // 이번 프레임 그릴 튐 수 (3단계)
+	float splashTime;               // 튐 시간 (초, 튐 주기의 배수로 감음)
+	float splashRadius;             // 튐이 생기는 원의 반지름 (m, 카메라 xz 중심)
+	float splashPeriod;             // 튐 하나의 수명 (초)
+	float splashSize;               // 튐 크기 (m)
 };
 
 // 후처리 패스 파라미터 (b4). 패스마다 올림 — 업로드 링을 쓰므로 프레임 안에서 여러 번 올려도 됨 (b0 가
@@ -480,7 +518,12 @@ static_assert(IsValidConstantBufferSize(sizeof(ShadowConstants)), "ShadowConstan
 static_assert(sizeof(PostParamsConstants) == 80, "PostParamsConstants: 16 * 5");
 
 // lightViewProj 삭제 후: view/proj/viewProj(64*3) + 16 * 6
-static_assert(sizeof(PerFrameConstants) == 576, "PerFrameConstants: 64*3 + 16 * 7 + 64 + 16 * 4 + 64 * 2 + 16");
+static_assert(sizeof(PerFrameConstants) == 640, "PerFrameConstants: 64*3 + 16 * 7 + 64 + 16 * 4 + 64 * 2 + 16 + 16 * 4 (비)");
+static_assert(offsetof(PerFrameConstants, rainParams) == 576, "PerFrameConstants.rainParams");
+static_assert(offsetof(PerFrameConstants, rainSurface) == 624, "PerFrameConstants.rainSurface");
+static_assert(sizeof(RainConstants) == 96, "RainConstants: 16 * 6");
+static_assert(offsetof(RainConstants, nearFade) == 64, "RainConstants.nearFade");
+static_assert(offsetof(RainConstants, splashTime) == 80, "RainConstants.splashTime");
 static_assert(offsetof(PerFrameConstants, unjitteredViewProj) == 432, "PerFrameConstants.unjitteredViewProj");
 static_assert(offsetof(PerFrameConstants, prevUnjitteredViewProj) == 496, "PerFrameConstants.prevUnjitteredViewProj");
 static_assert(offsetof(PerFrameConstants, temporalParams) == 560, "PerFrameConstants.temporalParams");

@@ -64,6 +64,8 @@ li span{display:block;color:var(--ink-2);font-size:14px}
   <li><a href="plan/freeze-culling-camera-plan.html">계획 · 컬링 카메라 고정 계획</a><span>캐스케이드 고정을 오브젝트·조명 컬링으로 넓혀 자유 시점에서 컬링 결과를 보는 디버그 기능 — 카메라 분리, 컬링된 조명 끄기, UI·오버레이 3단계.</span></li>
   <li><a href="plan/ui-canvas-plan.html">계획 · 게임 UI(캔버스) 구현 계획</a><span>유니티 uGUI 식 런타임 UI — Canvas·RectTransform·Image·Text(한글)·Button·위젯·레이아웃·스크롤·내비게이션·Rect 툴·World Space 8단계. 구현 결과·검증 숫자는 10장, 테스트 씬은 UiShowcase.</span></li>
   <li><a href="plan/object-highlight-record.html">계획 · 오브젝트별 강조·디졸브 구현 기록</a><span>Highlight 컴포넌트 — 색 섞기·발광 번쩍임·가장자리 빛을 b1 PerObject 로. Dissolve 컴포넌트 — 진행도는 b1, 노이즈는 재질 셋 t20(비면 builtin:noise), 그림자 알파 테스트 변형(컷아웃 그림자도 구멍). 계층 상속, 검증 숫자.</span></li>
+  <li><a href="plan/rain-record.html">계획 · 비 구현 기록</a><span>차폐 맵(위에서 내려다본 직교 깊이, t24) 카메라·패스·읽기, 상태 없는 빗줄기, 젖음·웅덩이·물결·튐, b0 640 B·b8, 네 조합·회귀·GPU 시간 검증, 막힌 것.</span></li>
+  <li><a href="plan/rain-plan.html">계획 · 비 구현 계획</a><span>위에서 내려다본 차폐 맵 하나를 같이 쓰는 빗줄기(정점 셰이더가 위치를 계산하는 절차적 파티클)와 젖은 표면 — 차폐 맵·빗줄기, 젖음, 튐·물결(선택) 3단계와 부하 예상.</span></li>
 </ul>
 
 <h2>보고서<small>report/</small></h2>

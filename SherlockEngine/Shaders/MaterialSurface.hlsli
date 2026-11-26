@@ -39,6 +39,40 @@ float3 HighlightEmission(float3 geometricNormal, float3 worldPosition)
     return highlightFlash.rgb + highlightRim.rgb * rim;
 }
 
+#ifndef RAIN_NO_WETNESS
+// 젖음 (Lagarde, "Water drop 2a — Dynamic rain and its effects"). 다공성 면은 물이 스며 확산이 어두워지고, 표면에 얇은 물막이 생겨
+// 거칠기가 내려감. 금속은 스며들지 않으므로 어두워지지 않음. 웅덩이는 물이 표면을 덮은 것 — 아주 매끈한 유전체 (물 F0 ≈ 0.02).
+// SurfaceData 가 다 채워지기 전에 부르므로 (F0 전) 칸을 따로 받음. wet = puddle = 0 이면 그대로.
+void ApplyWetness(inout float3 albedo, inout float metallicValue, inout float roughnessValue, float wet, float puddle)
+{
+    const float porous = 1.0f - metallicValue;
+    albedo *= lerp(1.0f, 0.45f, wet * porous);
+    roughnessValue = lerp(roughnessValue, min(roughnessValue, 0.12f), wet * 0.85f);
+    // 웅덩이: 물이 바닥색을 더 어둡게 덮고 (반사가 대부분), 금속성도 덮음
+    albedo *= lerp(1.0f, 0.6f, puddle);
+    metallicValue = lerp(metallicValue, 0.0f, puddle);
+    roughnessValue = lerp(roughnessValue, 0.03f, puddle);
+}
+
+float3 ApplyWetNormal(float3 normal, float3 geometricNormal, float3 worldPosition, float wet, float puddle)
+{
+    float3 n = normal;
+    if (wet > 0.0f)
+    {
+        n = SafeNormalize(lerp(normal, geometricNormal, puddle), geometricNormal);
+        // 물결: 위를 보는 젖은 면 (웅덩이에서 가장 셈). 기울기를 월드 xz 에 더함
+        const float up = saturate((geometricNormal.y - 0.7f) / 0.3f);
+        const float weight = up * saturate(wet * 2.0f - 1.0f) * lerp(0.4f, 1.0f, puddle);
+        if (weight > 0.0f)
+        {
+            const float2 slope = RainRipple(worldPosition) * weight;
+            n = SafeNormalize(n + float3(slope.x, 0.0f, slope.y), geometricNormal);
+        }
+    }
+    return n;
+}
+#endif
+
 // baseColorAlpha = MaterialBaseColor 의 결과. isFrontFace = SV_IsFrontFace (양면 재질의 뒷면 노멀을 뒤집음).
 SurfaceData EvaluateMaterialSurface(VSOutput input, bool isFrontFace, float4 baseColorAlpha)
 {
@@ -52,6 +86,15 @@ SurfaceData EvaluateMaterialSurface(VSOutput input, bool isFrontFace, float4 bas
     s.metallic = saturate(metallic * metalRough.b);
     s.roughness = clamp(roughness * metalRough.g, 0.03f, 1.0f);
     s.ao = lerp(1.0f, occlusionTexture.Sample(albedoSampler, input.uv).r, occlusionStrength);
+#ifndef RAIN_NO_WETNESS
+    // 비 (Rain.hlsli): 비를 맞는 면은 어두워지고 매끈해짐, 위를 보는 면에는 웅덩이. F0 를 만들기 전에 바꿔야 금속의 F0 도 따라감.
+    // 비가 없으면 (rainParams.y = 0) wet = puddle = 0 이라 아무것도 바뀌지 않음.
+    const float3 rainNormal = (isFrontFace ? 1.0f : -1.0f) * SafeNormalize(input.normal, float3(0.0f, 1.0f, 0.0f));
+    const float rainWet = RainWetAmount(input.worldPosition, rainNormal);
+    // 컷아웃 재질 (잎·철망) 에는 물이 고이지 않음. 디버그 뷰 18 의 B 는 재질을 모르므로 이런 면에도 웅덩이 자리를 보여 줌.
+    const float rainPuddle = alphaCutoff > 0.0f ? 0.0f : RainPuddle(input.worldPosition, rainNormal.y, rainWet);
+    ApplyWetness(s.albedo, s.metallic, s.roughness, rainWet, rainPuddle);
+#endif
     s.emission = emissive * emissiveTexture.Sample(albedoSampler, input.uv).rgb;
     // F0: 수직으로 볼 때의 반사율. 유전체는 굴절률에서 나온 값(ior 1.5 → 4%)에 반사 색·세기를 곱한 것, 금속은
     // 자기 색. F90: 스치는 각도의 반사율 — 유전체는 specularFactor, 금속은 1. 금속은 확산이 없음(kd 의 1 − metallic).
@@ -74,6 +117,10 @@ SurfaceData EvaluateMaterialSurface(VSOutput input, bool isFrontFace, float4 bas
     float3 tangentNormal = normalTexture.Sample(albedoSampler, input.uv).xyz * 2.0f - 1.0f;
     tangentNormal.xy *= normalStrength;
     s.normal = SafeNormalize(tangentNormal.x * T + tangentNormal.y * B + tangentNormal.z * s.geometricNormal, s.geometricNormal);
+#ifndef RAIN_NO_WETNESS
+    // 웅덩이는 물이 표면 요철을 덮어 평평 (기하 노멀 쪽으로), 젖은 위쪽 면에는 빗방울 물결.
+    s.normal = ApplyWetNormal(s.normal, s.geometricNormal, input.worldPosition, rainWet, rainPuddle);
+#endif
 
     // 클리어코트 (KHR_materials_clearcoat). 텍스처가 없으면 흰색이라 계수가 그대로 쓰임. 코팅 노멀 맵이 없으면 평평한
     // 노멀이 꽂혀 기하 노멀과 같아짐 — 코팅은 기본 층의 노멀 맵을 따르지 않는다는 glTF 규칙. 분기 안에서 샘플하지 않고

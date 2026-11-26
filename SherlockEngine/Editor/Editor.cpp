@@ -3359,7 +3359,7 @@ void Editor::DrawRenderSettings(Engine& engine)
 	// 5 (UV) 는 G-buffer 에 UV 가 없어 그 프레임을 포워드로 그림.
 	const char* views[] = { "Lit", "Albedo", "World normal", "Depth", "Shadow factor", "UV", "Metal(B)/Rough(G)", "Occlusion", "Shadow cascade", "Specular F0", "Clearcoat",
 							"World position (frac)", "Geometric normal", "SSAO", "Cluster light count", "Cluster depth slice",
-							"Velocity", "Velocity error" };
+							"Velocity", "Velocity error", "Rain exposure/wet/puddle" };
 	ImGui::Combo("Debug view", &settings.debugView, views, IM_ARRAYSIZE(views));
 	if (settings.debugView == 3)
 	{
@@ -3415,6 +3415,10 @@ void Editor::DrawStats(Engine& engine, const char* sceneName, const ModelStats& 
 	if (stats.particleEmitters > 0)
 	{
 		ImGui::TextWrapped("particles: emitters %u   capacity %u (only alive ones are drawn)   spawn requested this frame %u", stats.particleEmitters, stats.particleCapacity, stats.particlesSpawned);
+	}
+	if (stats.rainActive)
+	{
+		ImGui::TextWrapped("rain: drops %u   splashes %u   wetness %.2f   occlusion map draws %u (culled %u)", stats.rainDrops, stats.rainSplashes, stats.rainWetness, stats.rainOcclusionDraws, stats.rainOcclusionCulled);
 	}
 	DebugUI::DrawModelPanel(sceneName, modelStats, engine.GetScene().GetImageCount(), engine.GetScene().GetObjects().size());
 	DebugUI::DrawProfilerPanel();

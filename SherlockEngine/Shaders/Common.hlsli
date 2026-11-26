@@ -4,6 +4,7 @@
 //   Lighting.hlsli      Layout_Frame 의 나머지 (조명·그림자·환경·IBL)
 //   Mesh.hlsli          Layout_Object 의 b1·b7·b13 (오브젝트·스킨 팔레트·지난 팔레트) 와 메시 정점 입출력
 //   Ocean.hlsli         Layout_Object 의 b9 (바다 파도) 와 Gerstner 합
+//   Rain.hlsli          Layout_Frame 의 t24 (비 차폐 맵) 와 젖음 · 비 셋 (Layout_Rain 의 b8) 은 RAIN_DRAW 를 정의한 빗줄기·튐 셰이더만
 //   Material.hlsli      Layout_Material
 //   Post.hlsli          Layout_Post · Layout_BlurCompute · Layout_BlurWeights 공용 (b4, t20)
 //   Sky.hlsli           스카이박스 VS → PS
@@ -31,7 +32,7 @@
 static const float EPSILON = 0.0001f;
 static const float PI = 3.14159265f;
 
-// b0: 프레임에 한 번 (뷰마다 — 미리보기 패스가 다른 카메라로 다시 올림). VS와 PS 모두 읽음. (576바이트)
+// b0: 프레임에 한 번 (뷰마다 — 미리보기 패스가 다른 카메라로 다시 올림). VS와 PS 모두 읽음. (640바이트)
 cbuffer PerFrame : register(b0)
 {
     matrix view;
@@ -40,7 +41,7 @@ cbuffer PerFrame : register(b0)
     float3 cameraPosition;
     float time;
     float4 shadowParams;      // x = 1/맵 크기, y = 깊이 바이어스, z = 세기(0..1), w = 사용 여부
-    float4 debugParams;       // x = 디버그 뷰 (0 조명, 1 알베도, 2 노멀, 3 깊이, 4 그림자, 5 UV, 6 금속성/거칠기, 7 AO … 15), y = 깊이 범위
+    float4 debugParams;       // x = 디버그 뷰 (0 조명, 1 알베도, 2 노멀, 3 깊이, 4 그림자, 5 UV, 6 금속성/거칠기, 7 AO … 18 비. 목록은 Renderer.h RenderSettings::debugView), y = 깊이 범위
     float4 environmentParams; // x = IBL 세기, y = 반사 큐브 밉 수, z = 확산 조도를 읽을 밉, w = 환경 있음
     float4 outputParams;      // x = 노출, y = 톤매핑, z = BRDF LUT 있음
     float4 shadowExtra;       // x = 노말 섀도 오프셋 (노말맵이 그림자 UV 를 미는 배율)
@@ -54,6 +55,11 @@ cbuffer PerFrame : register(b0)
     matrix unjitteredViewProj;      // 이번 프레임, 지터 없음
     matrix prevUnjitteredViewProj;  // 지난 프레임, 지터 없음 (이 뷰에 지난 프레임이 없으면 unjitteredViewProj 와 같음)
     float4 temporalParams;          // xy = 이번 지터 (NDC), z = TAA 히스토리 유효, w = 지터 위상 (0~7)
+    // 비 (Rain.hlsli, docs/plan/rain-plan.html). 비가 없으면 모두 0
+    float4 rainParams;    // x = 빗줄기 세기, y = 젖음, z = 차폐 맵 있음, w = 비 시간 (초, 감음)
+    float4 rainMapXZ;     // xy = 차폐 맵 최소 모서리 월드 xz, z = 1 / 한 변, w = 텍셀 크기 (m)
+    float4 rainMapY;      // x = 맵 윗면 y, y = 깊이 범위 (m), z = 높이 비교 여유 (m), w = 해상도
+    float4 rainSurface;   // x = 물결 세기, y = 웅덩이 양
 }
 
 // 깊이 버퍼 값(0..1) → 뷰 공간 z (카메라 앞쪽 거리). LH 투영: 원근 d = (P22 · z + P32) / z, 직교 d = P22 · z + P32.

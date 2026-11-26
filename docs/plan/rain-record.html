@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>기록 · 비 구현 기록 — SherlockEngine</title>
+<style>
+:root {
+  --bg: #f6f5f1; --paper: #ffffff; --ink: #1d1f24; --ink2: #4a505c; --ink3: #8a909c;
+  --line: #d9dce3; --fill: #f1f3f7; --accent: #1d5fbf; --accent-bg: #e4ecf8;
+  --ok: #1f7a3d; --ok-bg: #e5f4ea; --warn: #a8620a; --warn-bg: #fdf3e2; --err: #c62828; --err-bg: #fbeaea;
+  --code-bg: #14171c; --code-fg: #e6e9ef;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101216; --paper: #181b21; --ink: #e8eaee; --ink2: #aab0bb; --ink3: #6f7683;
+    --line: #2b303a; --fill: #1f232b; --accent: #6ea8ff; --accent-bg: #16305a;
+    --ok: #5fcf85; --ok-bg: #12301f; --warn: #f0b14a; --warn-bg: #3a2a10; --err: #ff7070; --err-bg: #3b1620;
+    --code-bg: #0b0d10; --code-fg: #dfe3ea;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15.5px/1.75 -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", Roboto, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 80px; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 28px; }
+nav { position: sticky; top: 16px; align-self: start; font-size: 13.5px; line-height: 1.5; max-height: calc(100vh - 32px); overflow: auto; }
+nav b { display: block; margin: 12px 0 4px; color: var(--ink3); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
+nav a { display: block; padding: 3px 8px; color: var(--ink2); text-decoration: none; border-left: 2px solid var(--line); }
+nav a.sub { padding-left: 20px; font-size: 12.5px; }
+nav a:hover { color: var(--accent); border-left-color: var(--accent); }
+main { min-width: 0; }
+header.top { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+header.top h1 { margin: 0 0 6px; font-size: 26px; line-height: 1.3; }
+header.top p { margin: 4px 0; color: var(--ink2); }
+section { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 22px 26px; margin-bottom: 20px; }
+h2 { margin: 0 0 12px; font-size: 21px; line-height: 1.35; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+h3 { margin: 28px 0 8px; font-size: 17.5px; line-height: 1.4; }
+p { margin: 8px 0; }
+ul, ol { margin: 8px 0; padding-left: 22px; }
+li { margin: 3px 0; }
+code { font: 13.5px/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--fill); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--code-bg); color: var(--code-fg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font: 13px/1.6 ui-monospace, "Cascadia Mono", Consolas, monospace; margin: 10px 0; }
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+pre .c { color: #8b95a7; }
+table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; line-height: 1.55; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+th { background: var(--fill); white-space: nowrap; }
+td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.box { border-left: 4px solid var(--accent); background: var(--accent-bg); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+.box.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.box.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+.box p:first-child { margin-top: 0; } .box p:last-child { margin-bottom: 0; }
+.tag { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--accent-bg); color: var(--accent); white-space: nowrap; }
+.tag.v { background: var(--ok-bg); color: var(--ok); }
+.tag.p { background: var(--warn-bg); color: var(--warn); }
+.foot { color: var(--ink3); font-size: 13px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } nav { position: static; max-height: none; } section, header.top { padding: 16px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="목차">
+  <b>시작</b>
+  <a href="#summary">1. 요약</a>
+  <a href="#diff">2. 계획과 달라진 점</a>
+  <b>구조</b>
+  <a href="#flow">3. 프레임 흐름과 코드 위치</a>
+  <a href="#occlusion">4. 차폐 맵</a>
+  <a class="sub" href="#occ-camera">4.1 위에서 내려다보는 카메라</a>
+  <a class="sub" href="#occ-pass">4.2 패스와 PSO</a>
+  <a class="sub" href="#occ-read">4.3 셰이더에서 읽기</a>
+  <a class="sub" href="#occ-hazard">4.4 쓰면서 묶여 있는 맵</a>
+  <a href="#drops">5. 빗줄기</a>
+  <a href="#wetness">6. 젖은 표면</a>
+  <a href="#stage3">7. 튐·물결·웅덩이</a>
+  <a href="#binding">8. 상수·바인딩</a>
+  <b>검증</b>
+  <a href="#verify">9. 검증</a>
+  <a class="sub" href="#v-matrix">9.1 백엔드·경로 네 조합</a>
+  <a class="sub" href="#v-wet">9.2 젖음 값</a>
+  <a class="sub" href="#v-live">9.3 실제 시간·TAA·게임 모드</a>
+  <a class="sub" href="#v-reg">9.4 회귀</a>
+  <a class="sub" href="#v-gbv">9.5 GPU 기반 검증</a>
+  <a class="sub" href="#v-perf">9.6 GPU 시간</a>
+  <a class="sub" href="#v-none">9.7 확인하지 못한 것</a>
+  <a href="#debug">10. 구현 중에 막힌 것</a>
+  <b>마무리</b>
+  <a href="#limits">11. 한계와 남은 일</a>
+  <a href="#tools">12. 테스트 씬과 도구</a>
+  <a href="#read">13. 코드 읽는 순서</a>
+  <a href="#files">14. 파일 목록</a>
+</nav>
+<main>
+<header class="top">
+  <h1>비 구현 기록 — 차폐 맵 하나로 빗줄기와 젖은 표면을 같이</h1>
+  <p>2026-11-26 · <a href="rain-plan.html">비 구현 계획</a>의 1~3단계를 한 번에 구현한 기록입니다. 카메라 주변에 빗줄기가 내리고, 비를 맞는 표면이 젖어 어두워지고 매끈해지며, 지붕·회랑 아래는 빗줄기도 젖음도 없습니다. 3단계로 지붕·바닥에서 튀는 물방울, 젖은 바닥의 물결, 평평한 바닥의 웅덩이까지 넣었습니다.</p>
+  <p>계획 문서는 계획 당시 그대로 두고 맨 위에 "구현하면서 바뀐 점" 상자만 덧붙였습니다. 이 문서는 지금 코드가 어떻게 되어 있는지, 무엇을 어떻게 확인했는지를 다룹니다.</p>
+  <p class="foot">기준: 커밋 <code>36ef141</code> 위의 작업 트리(이 기록을 쓸 때 아직 커밋 전). 코드 위치는 "파일 + 함수/타입 이름"으로 적었고, 경로는 <code>SherlockEngine/</code> 프로젝트 폴더 기준입니다. 숫자는 에디터 자동화(<code>--screenshot</code>, <code>--exit-after</code>)로 실행해 얻은 값이고, 화면은 에디터 씬 뷰(732×445) 기준입니다.</p>
+</header>
+
+<section id="summary">
+<h2>1. 요약</h2>
+<table>
+<thead><tr><th>단계</th><th>무엇을</th><th>결과</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>Rain</code> 컴포넌트, 위에서 내려다본 차폐 맵(D32, 기본 1024², 80 m 정사각형, 프레임 셋 t24), <code>RenderRainOcclusionPass</code>, 빗줄기 <code>RainVS</code>·<code>RainPS</code>(b8 <code>RainConstants</code>), <code>Pass_Rain</code>, <code>--rain-time</code></td><td>회랑·상자 지붕 아래에 빗줄기가 없음. 빗방울은 월드에 고정되어 카메라가 움직여도 미끄러지지 않음. D3D11 = D3D12</td></tr>
+<tr><td>2</td><td>재질 PS 의 <code>ApplyWetness</code>: 비를 맞는 정도 × 젖음 × 면 방향으로 알베도를 어둡게, 거칠기를 낮게. 젖음은 <code>wetTime</code>·<code>dryTime</code> 으로 보간. 디버그 뷰 18</td><td>안뜰 바닥 알베도 약 0.45 배, 거칠기 0.95 → 0.24. 지붕 아래와 잎 판 그늘은 마름</td></tr>
+<tr><td>3</td><td>튐 <code>RainSplashVS</code>·<code>RainSplashPS</code>(<code>Pass_RainSplash</code>), 물결 <code>RainRipple</code>, 웅덩이 <code>RainPuddle</code></td><td>지붕 윗면·바닥에서 튐, 젖은 바닥에 동심원 물결, 평평한 바닥 약 1/4 에 웅덩이</td></tr>
+</tbody>
+</table>
+<pre><code><span class="c">// 프레임 안에서 비가 지나는 길 (Renderer::Render)</span>
+Prepare        ─ PrepareRain: 첫 번째 Rain → 젖음 보간 · 차폐 맵 위치(텍셀 스냅) · 빗방울 수 → m_frameRain
+               └ UploadPerFrameConstants: b0 의 rain* 칸 넷
+BuildDrawList  ─ 그림자를 만드는 항목마다 occluderPipeline (그림자 PSO 의 바이어스 없는 변형)
+업로드          ─ UploadRainConstants: b8 (비가 있을 때만)
+ShadowPass 다음 ─ RenderRainOcclusionPass: 위에서 내려다본 깊이 → m_rainMap (DrawDepthView 공용)
+G-buffer/포워드 ─ 재질 PS: ApplyWetness (알베도·거칠기·금속성) → ApplyWetNormal (웅덩이 평평하게 + 물결)
+Effects 패스   ─ DrawParticles → DrawRain (빗줄기 Draw(6 × 빗방울 수), 튐 Draw(6 × 튐 수)) → 디버그 선</code></pre>
+</section>
+
+<section id="diff">
+<h2>2. 계획과 달라진 점</h2>
+<table>
+<thead><tr><th>항목</th><th>계획</th><th>구현</th><th>이유</th></tr></thead>
+<tbody>
+<tr><td>진행</td><td>단계마다 검증 후 다음 단계, 3단계는 필요할 때만</td><td>1~3단계를 한 번에</td><td>사용자 요청("계획대로 끝까지")</td></tr>
+<tr><td>테스트 씬</td><td><code>RainRoof.json</code>, <code>RainSponza.json</code> 두 개</td><td><code>Rain.json</code> 하나(Sponza + 상자 지붕 + 잎 판)</td><td>사용자 요청. Sponza 회랑이 지붕 노릇을 해 두 씬의 검사가 한 장에 다 들어감(<a href="#tools">12장</a>)</td></tr>
+<tr><td>b0 비 칸</td><td>3개(<code>rainParams</code>, <code>rainMapXZ</code>, <code>rainMapY</code>)</td><td>4개, 640 B. 3단계용 <code>rainSurface</code>(x 물결 세기, y 웅덩이 양) 추가</td><td>물결·웅덩이는 재질 PS 에서 계산하므로 b8 이 아니라 b0 에 있어야 함</td></tr>
+<tr><td>b8</td><td>빗줄기 값</td><td>튐 칸까지 96 B(<code>splashCount</code>·<code>splashTime</code>·<code>splashRadius</code>·<code>splashPeriod</code>·<code>splashSize</code>)</td><td>빗줄기와 튐이 같은 비 셋을 씀</td></tr>
+<tr><td>그림자 루프</td><td>"그림자 뷰 본문을 함수로 뺌"</td><td><code>Renderer::DrawDepthView</code>(<code>RendererShadow.cpp</code>)와 <code>DepthDrawState</code></td><td>계획대로. 통계 카운터는 인자로 받아 그림자(<code>shadowDraws</code>·<code>shadowCulled</code>)와 차폐 맵(<code>rainOcclusionDraws</code>·<code>rainOcclusionCulled</code>)을 따로 셈</td></tr>
+<tr><td>차폐 맵 PSO</td><td>그림자 PSO 재사용</td><td>바이어스 없는 변형(<code>GetShadowPipelineFor</code> 의 <code>noBias</code>, 키 비트 11)</td><td>그림자의 기울기 바이어스(2.0)가 위에서 본 경사 지붕을 수십 cm 아래로 밀어 지붕 위 빗방울까지 잘라냄</td></tr>
+<tr><td><code>brightness</code> 기본값</td><td>0.25</td><td>1.0, <code>streakLength</code> 0.3 → 0.4</td><td>4 mm 줄이 1 픽셀로 넓어지며 폭 비율(약 0.4)만큼 어두워지고 IBL 세기(Sponza 0.5)까지 곱해져 거의 보이지 않았음</td></tr>
+<tr><td>웅덩이 범위</td><td>위를 보는 면</td><td>기울기 약 18° 이하(<code>up</code> &gt; 0.95), 컷아웃 재질 제외. 문턱 <code>lerp(0.85, 0.3, puddles)</code></td><td>0.85 에서는 Sponza 경사 지붕에 웅덩이가 생겼고, 평평한 잎 판 위 웅덩이는 하늘을 거울처럼 비춰 하얗게 보였음(<a href="#debug">10장</a>)</td></tr>
+<tr><td>디버그 뷰 18</td><td>비를 맞는 정도·젖음</td><td>R 비를 맞는 정도, G 젖음, B 웅덩이. 에디터 이름 "Rain exposure/wet/puddle"</td><td>3단계 확인용으로 B 를 씀</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="flow">
+<h2>3. 프레임 흐름과 코드 위치</h2>
+<table>
+<thead><tr><th>단계</th><th>코드</th><th>하는 일</th></tr></thead>
+<tbody>
+<tr><td>컴포넌트</td><td><code>Scene/Rain.h/.cpp</code> 의 <code>Rain</code></td><td>값만 들고 있음(<code>Update</code> 없음 — 편집 모드에서도 비가 내림). 오브젝트 위치는 쓰지 않음. 씬에 하나: 첫 번째만 쓰고 둘째부터는 경고 한 번</td></tr>
+<tr><td>준비</td><td><code>Graphics/RendererRain.cpp</code> 의 <code>Renderer::PrepareRain</code>, <code>Render</code> 에서 <code>UploadPerFrameConstants</code> 바로 앞</td><td>b0 이 <code>BuildDrawList</code> 보다 먼저 올라가므로 <code>scene.GetObjects()</code> 를 직접 훑어 첫 <code>Rain</code> 을 찾음. 젖음 보간, 차폐 맵 위치·텍스처(해상도가 바뀌면 다시 만듦), b0 칸, b8 값</td></tr>
+<tr><td>드로우 목록</td><td><code>Renderer.cpp</code> 의 <code>BuildDrawList</code></td><td>비가 있는 프레임에만, 그림자 PSO 가 있는 항목에 <code>DrawItem::occluderPipeline</code></td></tr>
+<tr><td>상수</td><td><code>Renderer::UploadPerFrameConstants</code>, <code>RendererRain.cpp</code> 의 <code>UploadRainConstants</code></td><td>b0 칸 넷은 두 뷰가 같은 값. b8 은 그릴 것이 있을 때만(비 셋은 비 패스만 묶음)</td></tr>
+<tr><td>프레임 셋</td><td><code>Renderer::UpdateFrameSet</code>, <code>m_frameSetRainMap</code></td><td>t24 에 차폐 맵, 비가 없으면 흰 텍스처. 꽂을 텍스처가 바뀌면 셋을 다시 만듦</td></tr>
+<tr><td>차폐 맵 패스</td><td><code>RendererRain.cpp</code> 의 <code>RenderRainOcclusionPass</code>, <code>RendererShadow.cpp</code> 의 <code>DrawDepthView</code></td><td>그림자 패스 다음, GPU 구간 <code>RainOcclusion</code>(<a href="#occlusion">4장</a>)</td></tr>
+<tr><td>젖음</td><td><code>Shaders/MaterialSurface.hlsli</code> 의 <code>EvaluateMaterialSurface</code>, <code>ApplyWetness</code>, <code>ApplyWetNormal</code></td><td><a href="#wetness">6장</a>. 바다 PS 는 <code>RAIN_NO_WETNESS</code> 로 뺌</td></tr>
+<tr><td>그리기</td><td><code>RendererRain.cpp</code> 의 <code>DrawRain</code>, <code>RenderScenePass</code> 의 두 번째 패스</td><td>GPU 구간 <code>Rain</code>. 셋 1 을 비 셋으로 바꾸므로 끝나면 오브젝트 셋을 되돌림</td></tr>
+<tr><td>리셋</td><td><code>Renderer::ResetTemporalHistory</code></td><td><code>m_rainSnapWetness = true</code> — 씬 불러오기·재생 전환 직후 젖음을 바로 목표값으로</td></tr>
+<tr><td>설정·통계</td><td><code>RenderSettings::rainTimeOverride</code>, <code>AppBase::ApplyRenderPathOptions</code> 의 <code>--rain-time=</code>, <code>Renderer::Stats</code> 의 <code>rain*</code>, <code>Editor.cpp</code> 통계 줄</td><td>시간 고정이면 젖음도 바로 목표값. 에디터 Stats 창에 빗방울·튐 수, 젖음, 차폐 맵 드로우 수</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="occlusion">
+<h2>4. 차폐 맵</h2>
+<p>빗줄기와 젖음이 같은 질문을 합니다: "이 점 위에 비를 막는 것이 있는가". 그 답을 위에서 바로 아래로 내려다본 깊이 텍스처 하나에 담았습니다. 텍셀 하나가 "이 xz 에서 비가 처음 닿는 높이"입니다.</p>
+
+<h3 id="occ-camera">4.1 위에서 내려다보는 카메라</h3>
+<ul>
+<li>중심: 카메라 xz 를 텍셀 크기(<code>occlusionSize / 해상도</code>, 기본 80/1024 ≈ 7.8 cm)로 반올림. 카메라가 움직여도 텍셀 격자가 월드에 고정되어 지붕 가장자리가 지글거리지 않음(CSM 텍셀 스냅과 같은 생각).</li>
+<li>윗면: <code>floor(카메라 y) + 100 m</code>, 깊이 범위 200 m(<code>kMapHeightAbove</code>, <code>kMapDepthRange</code>). 윗면보다 높은 물체는 차폐로 보지 않음.</li>
+<li>행렬: <code>XMMatrixLookToLH(eye, −Y, up = +Z)</code> × <code>XMMatrixOrthographicLH(size, size, 0, 200)</code>. 뷰의 +x 는 월드 +X, 뷰의 +y 는 월드 +Z 이므로 텍스처 좌표는 <code>u = (x − minX)/size</code>, <code>v = 1 − (z − minZ)/size</code> 입니다.</li>
+<li>깊이는 직교라 선형: <code>월드 y = 윗면 − depth × 200</code>. 지운 값 1 은 "아무것도 없음 = 열린 하늘". 맵 밖도 열린 하늘.</li>
+<li>해상도는 512·1024·2048 중 가까운 것으로 자름(<code>SnapResolution</code>). 텍스처는 비가 처음 생길 때와 해상도가 바뀔 때만 만듦.</li>
+</ul>
+
+<h3 id="occ-pass">4.2 패스와 PSO</h3>
+<p><code>RenderRainOcclusionPass</code> 는 맵을 DepthWrite 로 바꾸고 1 로 지운 뒤, 뷰포트를 맵 전체로 잡고 <code>DrawDepthView(viewProj, cullSphere = 0, perspective = false, occluder = true)</code> 를 부릅니다. 끝나면 ShaderResource 로 돌립니다.</p>
+<ul>
+<li><b>무엇을 그리나:</b> 그림자를 만드는 항목과 같음 — unlit·블렌딩·바다는 빠짐. <code>m_drawList</code> 는 메인 카메라로 미리 컬링되어 있지 않으므로(컬링은 그릴 때) 카메라 뒤·위의 지붕도 맵에 들어감. 컬링은 맵 직교 상자의 절두체로만 함(near 평면은 뺌).</li>
+<li><b>알파 테스트:</b> 컷아웃 재질과 디졸브 중인 오브젝트는 그림자의 알파 테스트 변형(<code>Pass_ShadowAlpha</code>)이라 잎 무늬대로 비가 샘.</li>
+<li><b>컬링 모드:</b> 단면 재질은 뒷면 컬링이라 위에서 보면 판의 뒷면이 빠질 수 있음. 테스트 씬의 지붕을 판이 아니라 상자로 둔 이유. 양면 재질은 컬링 없음.</li>
+<li><b>바이어스:</b> 그림자 PSO 의 깊이 바이어스 2000·기울기 2.0·클램프 0.01 을 모두 0 으로 둔 변형(키 비트 11). <code>DrawItem::occluderPipeline</code> 은 비가 있는 프레임에만 채워서 비가 없는 씬의 PSO 수는 그대로.</li>
+</ul>
+<p><code>DrawDepthView</code> 는 원래 <code>RenderShadowAtlasPass</code> 의 뷰 하나 본문(b5 올리기 → 절두체 → 범위 구 → 드로우 루프)을 그대로 옮긴 것입니다. 다른 점은 PSO 를 <code>occluder</code> 인자로 고르는 것과 통계 카운터를 인자로 받는 것뿐이고, "직전 PSO·메시·재질"은 <code>DepthDrawState</code> 로 같은 렌더 패스 안의 뷰끼리 이어 씁니다.</p>
+
+<h3 id="occ-read">4.3 셰이더에서 읽기 (<code>Rain.hlsli</code>)</h3>
+<p>맵은 <code>Load</code> 로만 읽습니다(샘플러 없음). VS 에서도 읽고, 분기 안에서 읽어도 안전합니다.</p>
+<table>
+<thead><tr><th>함수</th><th>하는 일</th><th>쓰는 곳</th></tr></thead>
+<tbody>
+<tr><td><code>RainOccluderHeightAt(texel)</code></td><td>텍셀 하나의 높이. 맵 밖·깊이 1 이면 −10³⁰</td><td>아래 함수들</td></tr>
+<tr><td><code>RainOccluderHeight(xz)</code></td><td>점 하나. 맵이 없으면(<code>rainParams.z = 0</code>) −10³⁰</td><td>튐의 높이</td></tr>
+<tr><td><code>RainExposed(p)</code></td><td><code>p.y ≥ 높이 − 여유</code>. 딱 끊김</td><td>빗방울 컬링</td></tr>
+<tr><td><code>RainExposure(p, n)</code></td><td>법선 쪽으로 텍셀 1.5 개 옮긴 점에서 이웃 네 텍셀 판정을 쌍선형으로 섞음. 0..1</td><td>젖음, 디버그 뷰 18</td></tr>
+</tbody>
+</table>
+<ul>
+<li><b>여유</b>(<code>rainMapY.z</code>)는 텍셀 두 개 + 5 cm(기본 약 21 cm). 경사 지붕은 텍셀 안에서도 높이가 바뀜.</li>
+<li><b>법선 쪽으로 옮기는 이유:</b> 벽 위의 점은 맵에서 벽 꼭대기보다 아래라 늘 "가려짐"이 됨. 벽 바깥 땅의 높이와 비교해야 맞음. 처마 밑 벽은 처마 높이와 비교되어 마름.</li>
+</ul>
+
+<h3 id="occ-hazard">4.4 쓰면서 묶여 있는 맵</h3>
+<p>프레임 셋(t24 = 맵)은 패스 시작 전에 묶이고, 차폐 맵 패스가 같은 텍스처를 DSV 로 씁니다. 두 백엔드에서 문제가 되지 않는 이유는 이렇습니다.</p>
+<ul>
+<li>D3D11: <code>BeginRenderPass</code> 가 쓰기 깊이 타깃의 SRV 바인딩을 풂(<code>UnbindShaderResourcesOf</code>). 다음 씬 패스의 <code>DrawItems</code> 가 프레임 셋을 다시 묶음 — 그림자 맵 t8 과 같은 길.</li>
+<li>D3D12: 맵은 DepthWrite ↔ ShaderResource 배리어로 오감. 차폐 맵 패스 동안 테이블이 DepthWrite 상태의 맵을 가리키지만, 그림자 VS·알파 테스트 PS 는 t24 를 읽지 않음.</li>
+<li>새로 만든 맵은 Common 상태라 <code>Render</code> 가 프레임 셋을 묶기 전에 ShaderResource 로 돌려 둠. 맵을 다시 만들면 <code>m_frameSetRainMap</code> 을 비워 핸들 값이 재사용되어도 셋을 다시 만들게 함.</li>
+</ul>
+</section>
+
+<section id="drops">
+<h2>5. 빗줄기 (<code>RainVertexShader.hlsl</code>, <code>RainPixelShader.hlsl</code>)</h2>
+<p>빗방울은 종단 속도로 떨어지므로 위치 = 시작점 + 속도 × 시간입니다. 그래서 시뮬레이션 패스·버퍼 없이 정점 셰이더가 위치를 계산하는 상태 없는 절차적 파티클로 그렸습니다. <code>Draw(빗방울 수 × 6)</code>, 정점 버퍼 없음. <code>SV_VertexID / 6</code> 이 빗방울 번호, <code>% 6</code> 이 쿼드 모서리입니다.</p>
+<ol>
+<li><b>상자:</b> 카메라 중심, 가로 <code>2 × areaRadius</code>, 세로 <code>areaHeight</code>(카메라 아래 1/3).</li>
+<li><b>시작점:</b> <code>RainHash3(번호, seed) × 상자 크기</code> — 월드에 고정된 격자(상자 크기 주기).</li>
+<li><b>감기:</b> <code>local = frac((시작점 + fallOffset − 상자 최소) / 상자 크기)</code>. 카메라가 움직여도 빗방울은 월드에 남고, 상자 가장자리에서만 반대편으로 넘어감. 가장자리 10% 에서 흐려져 넘어가는 순간이 보이지 않음.</li>
+<li><b>시간:</b> <code>fallOffset</code> 은 CPU 가 double 로 축마다 <code>fmod(velocity_i × t, 상자 크기_i)</code>. 시간 하나를 "높이 / 낙하 속력"으로 감으면 바람이 있는 xz 에서 감는 순간 모든 빗방울이 옆으로 뜀.</li>
+<li><b>차폐:</b> 머리가 <code>RainExposed</code> 가 아니면 클립 공간 밖(z = −1)으로 보내 그리지 않음.</li>
+<li><b>모양:</b> 머리에서 속도 반대쪽으로 <code>streakLength</code> 만큼 늘인 선을 화면을 향한 쿼드로 폄. 폭은 <code>max(streakWidth, 픽셀 하나의 월드 크기)</code> 이고 키운 만큼 <code>streakWidth / 폭</code> 으로 어둡게 함 — 화면에 들어가는 빛의 양을 유지해 먼 빗줄기가 굵고 밝게 뜨지 않음.</li>
+<li><b>색:</b> <code>color × brightness × 환경광 세기(environmentParams.x, 환경이 없으면 1)</code> × 가장자리·가까운 거리(<code>nearFade</code>) 페이드. PS 는 가로 포물선 × 머리가 밝은 세로 기울기 × 소프트 페이드(t23, 0.3 m).</li>
+<li><b>블렌드:</b> 파티클과 같은 PSO 상태(One / InvSrcAlpha, 알파 0 을 내보냄 = 가산), 깊이 테스트만, 컬링 없음. 정렬이 필요 없음.</li>
+</ol>
+</section>
+
+<section id="wetness">
+<h2>6. 젖은 표면</h2>
+<p>젖음은 재질 PS 의 <code>EvaluateMaterialSurface</code> 안에서 계산하므로 포워드·G-buffer 두 경로가 같은 값을 씁니다. 식은 Lagarde 의 "Water drop 2a"를 단순화했습니다.</p>
+<pre><code>wet    = rainParams.y(보간된 젖음) × RainExposure(p, n) × lerp(0.35, 1, saturate(n.y))   <span class="c">// 벽·아래를 보는 면 0.35</span>
+albedo *= lerp(1, 0.45, wet × (1 − metallic))        <span class="c">// 금속은 스며들지 않음</span>
+rough   = lerp(rough, min(rough, 0.12), wet × 0.85)
+<span class="c">// 웅덩이 (7장)</span>
+albedo *= lerp(1, 0.6, puddle);  metallic = lerp(metallic, 0, puddle);  rough = lerp(rough, 0.03, puddle)</code></pre>
+<ul>
+<li><b>순서:</b> 거칠기 다음, F0 전. 금속의 F0 = 알베도이므로 F0 를 만들기 전에 바꿔야 함. 이 시점에는 <code>s.geometricNormal</code> 이 아직 없어서 <code>input.normal</code> 과 <code>isFrontFace</code> 로 기하 노멀을 따로 구함. <code>SurfaceData</code> 가 다 채워지기 전이라 <code>ApplyWetness</code> 는 칸 셋을 따로 받음(<code>inout SurfaceData</code> 는 FXC 가 거부, <a href="#debug">10장</a>).</li>
+<li><b>비가 없으면</b> <code>rainParams.y = 0</code> 이라 <code>wet = 0</code>, 모든 lerp 가 그대로 — 화면이 바뀌지 않음(<a href="#v-reg">9.4</a>).</li>
+<li><b>보간:</b> <code>PrepareRain</code> 이 <code>wetness × intensity</code> 를 목표로 지수 보간(<code>1 − exp(−dt/τ)</code>, 젖을 때 <code>wetTime</code> 20 s, 마를 때 <code>dryTime</code> 60 s, dt 는 0.25 s 로 자름). 씬 불러오기·재생 전환(<code>ResetTemporalHistory</code>)·Rain 이 새로 생김·<code>--rain-time</code> 이면 바로 목표값.</li>
+<li><b>바다:</b> <code>OceanPixelShader.hlsl</code>·<code>OceanGBufferPixelShader.hlsl</code> 이 include 앞에 <code>RAIN_NO_WETNESS</code> 를 정의해 젖음·웅덩이·물결을 뺌.</li>
+</ul>
+</section>
+
+<section id="stage3">
+<h2>7. 튐·물결·웅덩이</h2>
+<h3 id="s3-splash">7.1 튐 (<code>RainSplashVertexShader.hlsl</code>, <code>RainSplashPixelShader.hlsl</code>)</h3>
+<ul>
+<li>빗줄기처럼 상태 없음. <code>Draw(튐 수 × 6)</code>, 기본 2000 × 세기. 차폐 맵이 없으면 0.</li>
+<li>튐마다 주기 0.35 s(<code>kSplashPeriod</code>). 시작 위상은 해시라 한꺼번에 태어나지 않음. 주기 번호를 해시에 섞어 태어날 때마다 새 자리.</li>
+<li>xz: 한 변 <code>2 × 0.8 × areaRadius</code> 의 카메라 중심 정사각형 안, 빗방울과 같은 월드 고정 감기. 한 주기 동안은 카메라가 움직여도 그 자리. 원 밖으로 갈수록 흐려짐.</li>
+<li>y: 그 xz 의 차폐 맵 높이 = 비가 처음 닿는 면(지붕 윗면·잎 판·열린 바닥). 맵 밖·빈 곳·빗줄기 상자보다 멀리 위아래면 그리지 않음.</li>
+<li>쿼드는 세로축이 월드 +y 이고 카메라 쪽을 보는 원통형 빌보드(아래 끝이 면 위 1 cm). PS 가 진행도에 따라 커지는 왕관 고리(가시 <code>cos 6θ</code>, <code>(1 − u)²</code> 로 사라짐)를 그림. 소프트 페이드 거리는 빗줄기의 0.15 배 — 면에 붙어 있으므로.</li>
+</ul>
+<h3 id="s3-ripple">7.2 물결 (<code>RainRipple</code>)</h3>
+<p>0.35 m 격자 칸마다 해시로 중심과 시작 시각을 정하고(칸마다 1.3 Hz), 칸 두 겹을 엇갈려 겹칩니다. 링 단면의 기울기를 노멀의 xz 에 더합니다. 위를 보는 젖은 면에서 웅덩이일수록 세고, 카메라에서 25 m 밖은 0(멀면 픽셀보다 작아 반짝이기만 함). 비가 그치면(<code>rainParams.x = 0</code>) 물결도 없습니다.</p>
+<h3 id="s3-puddle">7.3 웅덩이 (<code>RainPuddle</code>)</h3>
+<p>값 노이즈 두 옥타브(0.35·1.1 회/m)를 문턱 <code>lerp(0.85, 0.3, puddles)</code> 와 비교합니다(기본 0.5 → 0.575, 평평한 바닥의 약 1/4). 젖음이 0.5 를 넘은 뒤부터 자라고, 기울기 약 18° 이하인 면에만, 컷아웃 재질이 아닐 때만 생깁니다. 웅덩이는 노멀을 기하 노멀 쪽으로 평평하게 만듭니다(<code>ApplyWetNormal</code>).</p>
+</section>
+
+<section id="binding">
+<h2>8. 상수·바인딩</h2>
+<table>
+<thead><tr><th>자리</th><th>내용</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td>b0 576~639</td><td><code>rainParams</code>(세기, 젖음, 맵 있음, 시간), <code>rainMapXZ</code>(최소 xz, 1/한 변, 텍셀 크기), <code>rainMapY</code>(윗면, 범위, 여유, 해상도), <code>rainSurface</code>(물결, 웅덩이)</td><td>b0 576 → 640 B. D3D12 는 루트 CBV 를 256 단위로 떼므로 업로드 링 사용량은 768 B 로 그대로. <code>static_assert</code> 로 오프셋 고정</td></tr>
+<tr><td>b8 <code>RainConstants</code></td><td>96 B. <code>fallOffset</code>, <code>boxBelow</code>, <code>boxSize</code>, <code>dropCount</code>, <code>velocity</code>, <code>streakLength</code>, <code>color</code>, <code>streakWidth</code>, <code>nearFade</code>, <code>softDistance</code>, <code>seed</code>, <code>splashCount</code>, 튐 넷</td><td>파티클 이미터 b8 과 번호를 나눠 씀(한 패스에 같이 묶이지 않음). <code>Rain.hlsli</code> 는 <code>RAIN_DRAW</code> 를 정의한 셰이더에서만 선언</td></tr>
+<tr><td>t24</td><td>차폐 맵. 프레임 셋 마지막 슬롯, VS|PS</td><td>비가 없으면 흰 텍스처(D3D12 테이블에 유효한 뷰가 필요). 프레임 셋의 SRV 테이블 가시성이 PIXEL 에서 ALL 로 바뀜(테이블 가시성 = 슬롯 스테이지의 합). 루트 파라미터 수는 그대로 16</td></tr>
+<tr><td><code>Layout_Rain</code></td><td><code>{ b8 }</code>, 셋 <code>m_rainSet</code></td><td>레이아웃 19 → 20개</td></tr>
+<tr><td><code>Pass_Rain</code>, <code>Pass_RainSplash</code></td><td><code>{ Layout_Frame, Layout_Rain, Layout_ParticleDepth }</code></td><td>셋 번호가 파티클 패스와 같음(<code>kSetParticle</code>·<code>kSetParticleDepth</code>). 상태는 <code>BuildPassDescs</code> 에서 파티클 desc 를 복사하고 셰이더·레이아웃만 바꿈</td></tr>
+<tr><td>셰이더</td><td><code>RainVS</code>, <code>RainPS</code>, <code>RainSplashVS</code>, <code>RainSplashPS</code></td><td>42 → 46개. <code>ValidateBindings</code> 가 넷 모두 b0·b8 크기 일치와 바인딩 OK 로 대조</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="verify">
+<h2>9. 검증</h2>
+<p>모두 Debug 빌드, <code>Rain.json</code>, 별말이 없으면 <code>--rain-time=10</code>. Release 빌드도 됨.</p>
+
+<h3 id="v-matrix">9.1 백엔드·경로 네 조합</h3>
+<p>D3D11·D3D12 × 디퍼드·포워드(<code>--deferred=1|0 --taa=0</code>)로 조명 화면과 디버그 뷰 18 을 찍었습니다. 씬 뷰 영역에서 D3D11 디퍼드 기준 최대 차는 3/255(평균 0.25), D3D12 디퍼드와는 1/255 입니다. 디버그 뷰 18 도 같습니다. 회랑·홀·상자 지붕 아래는 R = 0, 잎 판 아래 바닥은 잎 무늬대로 0 과 1 이 섞입니다.</p>
+
+<h3 id="v-wet">9.2 젖음 값</h3>
+<p>같은 카메라(<code>--cam-look=7.5,2.8,0.8;-4,0.5,-0.3</code>)로 <code>Rain.json</code> 과 비가 없는 <code>Sponza.json</code> 의 디버그 뷰 1·6 을 비교했습니다.</p>
+<table>
+<thead><tr><th>안뜰 바닥 픽셀</th><th>Sponza (마름)</th><th>Rain (젖음)</th></tr></thead>
+<tbody>
+<tr><td>알베도 sRGB</td><td>(139~153, 126~142, 101~119)</td><td>(97~110, 87~100, 72~82) — 선형으로 약 0.45 배</td></tr>
+<tr><td>거칠기(G) sRGB</td><td>241~247 (≈ 0.95)</td><td>133~176 (≈ 0.24~0.43)</td></tr>
+</tbody>
+</table>
+<p>조명 화면에서는 마른 바닥과의 밝기 차가 생각보다 작습니다. 스치는 각도에서 거칠기가 낮아진 만큼 밝은 하늘 IBL 반사가 늘기 때문입니다. 화면 공간 반사가 없어 반사는 흐린 큐브맵뿐입니다(<a href="#limits">11장</a>).</p>
+
+<h3 id="v-live">9.3 실제 시간·TAA·게임 모드</h3>
+<ul>
+<li><code>--rain-time</code> 없이 40·90 프레임에서 찍은 두 장(D3D12)은 약 12,170 픽셀(최대 168/255)이 다름 — 편집 모드에서도 빗줄기·튐이 움직임.</li>
+<li><code>--taa=1 --motion-blur=1</code> 에서도 빗줄기가 남음. 빗줄기는 속도 버퍼에 쓰지 않으므로 TAA 가 1 픽셀 줄을 약간 흐리게 할 뿐.</li>
+<li>게임 모드: <code>SherlockTestScenes.sherlock</code> 의 <code>startScene</code> 을 잠깐 <code>Rain.json</code> 으로 바꿔 <code>SherlockGame.exe</code> 를 D3D11·D3D12 로 실행, 오류 없이 그려짐을 확인하고 되돌림.</li>
+</ul>
+
+<h3 id="v-reg">9.4 회귀 (비가 없는 씬)</h3>
+<p>변경을 잠시 <code>git stash</code> 해서 빌드한 기준 바이너리와 지금 바이너리로 7개 씬 × 두 백엔드를 찍어 비교했습니다(실행마다 달라지는 세로 띠 x 270~300 은 가림).</p>
+<table>
+<thead><tr><th>씬</th><th>D3D11 (최대 차 / 8 넘는 픽셀)</th><th>D3D12</th></tr></thead>
+<tbody>
+<tr><td>MotionBlur</td><td class="n">0 / 0</td><td class="n">0 / 0</td></tr>
+<tr><td>TaaEdges</td><td class="n">4 / 0</td><td class="n">21 / 1</td></tr>
+<tr><td>ManyLights64</td><td class="n">8 / 0</td><td class="n">0 / 0</td></tr>
+<tr><td>CascadeBigScene</td><td class="n">19 / 4</td><td class="n">25 / 8</td></tr>
+<tr><td>Ocean (<code>--ocean-time=5</code>)</td><td class="n">0 / 0</td><td class="n">0 / 0</td></tr>
+<tr><td>Dissolve</td><td class="n">0 / 0</td><td class="n">0 / 0</td></tr>
+<tr><td>Sponza</td><td class="n">17 / 1</td><td class="n">0 / 0</td></tr>
+</tbody>
+</table>
+<p>차이가 난 네 경우를 지금 바이너리로 한 번 더 찍어 보니 같은 바이너리끼리도 같은 크기(CascadeBigScene 5~7 픽셀, TaaEdges 1 픽셀)로 달랐습니다. 잡음 수준이고, 그림자 루프를 함수로 뺀 뒤에도 그림자가 같습니다. Ocean 이 0 이라 <code>RAIN_NO_WETNESS</code> 경로도 그대로입니다.</p>
+
+<h3 id="v-gbv">9.5 D3D12 GPU 기반 검증</h3>
+<p><code>--gpu-validation=1</code> 로 다섯 번 돌렸습니다. 다시 빌드한 직후 첫 실행에서만 <code>builtin:flatnormal</code> 이 <code>LEGACY_COPY_DEST</code> 레이아웃으로 PS 에서 읽혔다는 <code>[실패]</code> 40 줄(루트 파라미터 14 = 재질 SRV 테이블의 t1, 같은 드로우 번호)이 나왔습니다. 같은 명령을 스크린샷 포함·미포함으로 다시 돌리면 나오지 않았고, <code>Rain</code> 을 뺀 같은 씬·Sponza·floor_cube 에서도 나오지 않았습니다. 비 코드는 이 텍스처를 건드리지 않습니다. 원인은 찾지 못했습니다.</p>
+
+<h3 id="v-perf">9.6 GPU 시간</h3>
+<table>
+<thead><tr><th>구간 (ms)</th><th>D3D11 디퍼드</th><th>D3D12 디퍼드</th><th>D3D11 포워드</th><th>D3D12 포워드</th></tr></thead>
+<tbody>
+<tr><td><code>RainOcclusion</code></td><td class="n">0.054</td><td class="n">0.055</td><td class="n">0.053</td><td class="n">0.054</td></tr>
+<tr><td><code>Rain</code> (빗줄기 + 튐)</td><td class="n">0.003</td><td class="n">0.020</td><td class="n">0.002</td><td class="n">0.019</td></tr>
+<tr><td><code>ShadowPass</code> (참고)</td><td class="n">0.864</td><td class="n">0.228</td><td class="n">1.155</td><td class="n">0.233</td></tr>
+<tr><td><code>MainPass</code> (참고)</td><td class="n">0.321</td><td class="n">0.333</td><td class="n">0.749</td><td class="n">0.654</td></tr>
+</tbody>
+</table>
+<p>D3D11 의 <code>Rain</code> 구간은 빗방울 2만 개의 정점 12만 개를 처리하는 것에 비해 너무 작아 믿기 어렵습니다. D3D12 값(약 0.02 ms)을 기준으로 봅니다. 계획의 예상대로 차폐 맵 패스가 비 비용의 대부분이고, 그 크기는 그림자 뷰 하나 수준입니다. 비가 없는 같은 카메라의 <code>Sponza.json</code> 은 D3D12 <code>MainPass</code> 0.324 ms 로, 젖음 계산이 메인 패스에 더하는 비용은 측정 잡음 안입니다.</p>
+
+<h3 id="v-none">9.7 확인하지 못한 것</h3>
+<ul>
+<li>1080p 측정(계획 4장). 위 숫자는 에디터 씬 뷰 732×445.</li>
+<li>세기를 바꿀 때 젖음이 <code>wetTime</code>·<code>dryTime</code> 을 따라 천천히 바뀌는 과정. 씬을 불러온 첫 프레임은 바로 목표값이라 고정 스크린샷으로는 보이지 않음.</li>
+<li>스킨 메시가 차폐 맵에 들어가는지(코드상 스킨 그림자 PSO 를 그대로 쓰지만 테스트 씬에 스킨이 없음).</li>
+</ul>
+</section>
+
+<section id="debug">
+<h2>10. 구현 중에 막힌 것</h2>
+<table>
+<thead><tr><th>증상</th><th>원인</th><th>처리</th></tr></thead>
+<tbody>
+<tr><td>FXC <code>X3508: output parameter 's' not completely initialized</code></td><td><code>ApplyWetness(inout SurfaceData s, …)</code> 를 <code>s</code> 가 다 채워지기 전(F0 앞)에 부름</td><td>알베도·금속성·거칠기 칸을 따로 <code>inout</code> 으로 받음</td></tr>
+<tr><td>FXC <code>X4000: use of potentially uninitialized variable</code> 경고 여럿</td><td>분기 안의 조기 <code>return</code></td><td>결과 변수 하나에 담고 끝에서 한 번만 <code>return</code></td></tr>
+<tr><td>C2084 <code>GetTypeName</code> 본문 중복</td><td><code>SHERLOCK_BEHAVIOUR</code> 매크로가 <code>GetTypeName</code> 을 정의함</td><td><code>Rain.cpp</code> 의 직접 정의를 지움</td></tr>
+<tr><td>디버그 뷰 18 이 화면 전체 검정, 빗줄기도 없음</td><td>처음 카메라(x = 10)가 안뜰 밖 동쪽 홀 안이었음. 디버그 뷰에 맵 깊이를 그대로 찍어 보니 0.46 → 높이 약 11 m = Sponza 지붕(재질 24, y 10.2~11.4). 판정은 맞았음</td><td>위에서 내려다본 디버그 뷰(<code>--cam-look=0,30,0.1;0,0,0</code>)로 안뜰 범위(x −9~8, z −2~2 m)를 확인하고 카메라를 안뜰 안으로</td></tr>
+<tr><td>빗줄기가 거의 안 보임</td><td>4 mm 줄이 1 픽셀로 넓어지며 약 0.4 배, PS 단면·기울기로 약 0.4 배, IBL 세기 0.5 배 → 밝기 0.25 면 HDR 0.01 수준</td><td><code>brightness</code> 1.0, <code>streakLength</code> 0.4</td></tr>
+<tr><td>경사 지붕에 웅덩이</td><td>웅덩이 조건 <code>up</code> &gt; 0.85 (약 32°)</td><td>0.95 (약 18°)</td></tr>
+<tr><td>잎 판이 하얀 조각으로 보임</td><td>평평한 잎 판 위에 웅덩이(거칠기 0.03)가 생겨 하늘을 거울처럼 비춤. 알베도는 정상(디버그 뷰 1)</td><td>컷아웃 재질은 웅덩이 없음. 젖은 광택 때문에 비스듬히 보면 여전히 밝음</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="limits">
+<h2>11. 한계와 남은 일</h2>
+<ul>
+<li><b>반사:</b> 젖은 바닥·웅덩이의 반사는 IBL 큐브맵뿐. 주변 기둥·깃발이 비치지 않아 "젖은 느낌"이 약함. 화면 공간 반사(SSR)나 평면 반사가 있어야 함.</li>
+<li><b>차폐 맵 범위:</b> 카메라 중심 80 m 밖은 열린 하늘로 봄. 큰 지붕이 80 m 를 넘으면 가장자리에서 비가 샘. <code>occlusionSize</code> 를 키우면 텍셀이 굵어짐.</li>
+<li><b>빗줄기 조명:</b> 환경광 세기만 곱함. 지역광·그림자에 따라 밝기가 바뀌지 않음(가로등 아래 빗줄기가 빛나지 않음).</li>
+<li><b>튐 모양:</b> 원통형 빌보드라 바로 위에서 보면 선이 됨. 면의 재질(물·흙)을 구분하지 않음.</li>
+<li><b>디버그 뷰 18 의 B:</b> 재질을 모르므로 컷아웃 면에도 웅덩이 자리를 보여 줌.</li>
+<li><b>여러 비:</b> 첫 번째 <code>Rain</code> 만. 구역별로 다른 비는 없음.</li>
+<li><b>CPU:</b> 차폐 맵 패스가 드로우 목록 전체를 한 번 더 돎. 드로우가 많은 씬에서는 GPU 보다 CPU 제출이 먼저 늚(계획 4장 예상).</li>
+</ul>
+</section>
+
+<section id="tools">
+<h2>12. 테스트 씬과 도구</h2>
+<table>
+<thead><tr><th>파일</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td><code>Projects/SherlockTestScenes/Assets/Scenes/Rain.json</code></td><td><code>Sponza.json</code> 복사본. 안뜰 서쪽 x = −3 m 에 3 × 0.2 × 3 m 상자 지붕(윗면 2.6 m)과 기둥 넷, 동쪽 x = 3 m 높이 1.8 m 에 3 × 3 m 잎 판(Sponza 잎 텍스처, 양면 컷아웃), <code>Rain</code> 오브젝트(기본값). 카메라 (7.5, 2.8, 0.8) → (−4, 0.5, −0.3)</td></tr>
+<tr><td><code>Projects/SherlockTestScenes/Scripts/Tests/make_rain_test_scene.py</code></td><td>위 씬 생성기. 기존 씬은 고치지 않음</td></tr>
+</tbody>
+</table>
+<pre><code>SherlockEditor.exe --project=Projects/SherlockTestScenes/SherlockTestScenes.sherlock --scene=Rain.json ^
+    --rain-time=10 --exit-after=40 --screenshot=out.png [--backend=d3d12] [--deferred=0] [--debug-view=18]
+<span class="c">// 위에서 내려다보기: --cam-look=0,30,0.1;0,0,0 --debug-view=18</span></code></pre>
+</section>
+
+<section id="read">
+<h2>13. 코드 읽는 순서</h2>
+<ol>
+<li><code>Scene/Rain.h</code> — 필드와 기본값.</li>
+<li><code>Graphics/RendererRain.cpp</code> 의 <code>PrepareRain</code> — 차폐 맵 행렬, 젖음 보간, b0·b8 값.</li>
+<li><code>Graphics/RendererShadow.cpp</code> 의 <code>DrawDepthView</code>, <code>RendererRain.cpp</code> 의 <code>RenderRainOcclusionPass</code>.</li>
+<li><code>Shaders/Rain.hlsli</code> — 맵 읽기, 젖음, 웅덩이, 물결, <code>RAIN_DRAW</code> 구역.</li>
+<li><code>Shaders/MaterialSurface.hlsli</code> 의 <code>ApplyWetness</code>·<code>ApplyWetNormal</code> 과 호출 자리.</li>
+<li><code>Shaders/RainVertexShader.hlsl</code> → <code>RainPixelShader.hlsl</code> → 튐 셰이더 둘.</li>
+<li><code>Graphics/Renderer.cpp</code> 의 <code>Render</code>(호출 순서), <code>UpdateFrameSet</code>(t24), <code>RenderScenePass</code>(Effects 패스).</li>
+</ol>
+</section>
+
+<section id="files">
+<h2>14. 파일 목록</h2>
+<table>
+<thead><tr><th>파일</th><th>단계</th><th>변경</th></tr></thead>
+<tbody>
+<tr><td><code>Scene/Rain.h</code>, <code>Scene/Rain.cpp</code> <span class="tag v">새</span></td><td>1~3</td><td>컴포넌트와 리플렉션</td></tr>
+<tr><td><code>Graphics/RendererRain.cpp</code> <span class="tag v">새</span></td><td>1~3</td><td><code>PrepareRain</code>, <code>UploadRainConstants</code>, <code>RenderRainOcclusionPass</code>, <code>DrawRain</code>, <code>GetRainPipeline</code>, <code>DestroyRainResources</code></td></tr>
+<tr><td><code>Shaders/Rain.hlsli</code> <span class="tag v">새</span></td><td>1~3</td><td>차폐 판정, 젖음, 웅덩이, 물결, 비 셋 선언</td></tr>
+<tr><td><code>Shaders/RainVertexShader.hlsl</code>, <code>RainPixelShader.hlsl</code> <span class="tag v">새</span></td><td>1</td><td>빗줄기</td></tr>
+<tr><td><code>Shaders/RainSplashVertexShader.hlsl</code>, <code>RainSplashPixelShader.hlsl</code> <span class="tag v">새</span></td><td>3</td><td>튐</td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code>, <code>Shaders/Common.hlsli</code></td><td>1~3</td><td><code>kSRVSlotRainOcclusion</code>(t24), <code>kCBSlotRain</code>(b8), b0 비 칸 넷, <code>RainConstants</code></td></tr>
+<tr><td><code>Graphics/Renderer.h</code>, <code>Renderer.cpp</code></td><td>1~3</td><td>셰이더·패스·cbuffer 표, <code>Layout_Rain</code>, 프레임 셋 t24, 렌더 순서, <code>occluderPipeline</code>, 그림자 PSO 키 비트 11, 통계, 리셋</td></tr>
+<tr><td><code>Graphics/RendererShadow.cpp</code></td><td>1</td><td><code>DrawDepthView</code> 로 뷰 본문 분리</td></tr>
+<tr><td><code>Shaders/MaterialSurface.hlsli</code>, <code>Shading.hlsli</code></td><td>2, 3</td><td>젖음·웅덩이·물결, <code>Rain.hlsli</code> include, 디버그 뷰 18</td></tr>
+<tr><td><code>Shaders/OceanPixelShader.hlsl</code>, <code>OceanGBufferPixelShader.hlsl</code></td><td>2</td><td><code>RAIN_NO_WETNESS</code></td></tr>
+<tr><td><code>App/AppBase.cpp</code>, <code>Editor/Editor.cpp</code></td><td>1</td><td><code>--rain-time=</code>, 디버그 뷰 이름, 통계 줄</td></tr>
+<tr><td><code>SherlockEngine.vcxproj</code>, <code>.filters</code></td><td>1~3</td><td>새 소스·셰이더 항목</td></tr>
+<tr><td><code>Projects/SherlockTestScenes/…</code></td><td>1</td><td><code>Rain.json</code>, 생성기</td></tr>
+</tbody>
+</table>
+</section>
+</main>
+</div>
+</body>
+</html>

@@ -103,6 +103,11 @@ void AppBase::ApplyRenderPathOptions(RenderSettings& settings)
 	{
 		settings.oceanTimeOverride = static_cast<float>(_wtof(oceanTime.c_str()));
 	}
+	const std::wstring rainTime = GetCommandLineOption(L"rain-time");     // 비 시간 고정 + 젖음 바로 목표값 (검증용, 초)
+	if (!rainTime.empty())
+	{
+		settings.rainTimeOverride = static_cast<float>(_wtof(rainTime.c_str()));
+	}
 }
 
 std::wstring AppBase::GetCommandLineOption(const wchar_t* name)

@@ -212,6 +212,9 @@
     <ClCompile Include="UI\UIEvent.cpp">
       <Filter>UI</Filter>
     </ClCompile>
+    <ClCompile Include="Graphics\RendererRain.cpp">
+      <Filter>Graphics</Filter>
+    </ClCompile>
     <ClCompile Include="Graphics\RendererOcean.cpp">
       <Filter>Graphics</Filter>
     </ClCompile>
@@ -264,6 +267,9 @@
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Highlight.cpp">
+      <Filter>Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Rain.cpp">
       <Filter>Scene</Filter>
     </ClCompile>
     <ClCompile Include="Scene\Ocean.cpp">
@@ -548,6 +554,9 @@
     <ClInclude Include="Scene\Dissolve.h">
       <Filter>Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Scene\Rain.h">
+      <Filter>Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Scene\Highlight.h">
       <Filter>Scene</Filter>
     </ClInclude>
@@ -667,6 +676,18 @@
     <FxCompile Include="Shaders\ClusterFillComputeShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="Shaders\RainVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\RainPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\RainSplashVertexShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\RainSplashPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\ParticleVertexShader.hlsl">
       <Filter>Shaders\Particle</Filter>
     </FxCompile>
@@ -748,6 +769,9 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Sky.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Shaders\Rain.hlsli">
       <Filter>Shaders</Filter>
     </None>
     <None Include="Shaders\Particle.hlsli">

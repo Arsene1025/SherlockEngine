@@ -244,6 +244,7 @@
     <ClInclude Include="Scene\Dissolve.h" />
     <ClInclude Include="Scene\Highlight.h" />
     <ClInclude Include="Scene\Ocean.h" />
+    <ClInclude Include="Scene\Rain.h" />
     <ClInclude Include="UI\UITypes.h" />
     <ClInclude Include="UI\UIDrawList.h" />
     <ClInclude Include="UI\UIComponents.h" />
@@ -308,6 +309,7 @@
     <ClCompile Include="Graphics\RendererPost.cpp" />
     <ClCompile Include="Graphics\RendererParticles.cpp" />
     <ClCompile Include="Graphics\RendererOcean.cpp" />
+    <ClCompile Include="Graphics\RendererRain.cpp" />
     <ClCompile Include="Graphics\RendererUI.cpp" />
     <ClCompile Include="Graphics\RendererShadow.cpp" />
     <ClCompile Include="Graphics\RendererSsao.cpp" />
@@ -327,6 +329,7 @@
     <ClCompile Include="Scene\Dissolve.cpp" />
     <ClCompile Include="Scene\Highlight.cpp" />
     <ClCompile Include="Scene\Ocean.cpp" />
+    <ClCompile Include="Scene\Rain.cpp" />
     <ClCompile Include="UI\UIComponents.cpp" />
     <ClCompile Include="UI\UISystem.cpp" />
     <ClCompile Include="UI\Font.cpp" />
@@ -611,6 +614,38 @@
       <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
       <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
     </FxCompile>
+    <FxCompile Include="Shaders\RainVertexShader.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>VS_Rain</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\RainPixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>PS_Rain</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\RainSplashVertexShader.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>VS_RainSplash</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
+    <FxCompile Include="Shaders\RainSplashPixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>PS_RainSplash</EntryPointName>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)'=='Debug'">true</EnableDebuggingInformation>
+      <DisableOptimizations Condition="'$(Configuration)'=='Debug'">true</DisableOptimizations>
+    </FxCompile>
     <FxCompile Include="Shaders\ParticleVertexShader.hlsl">
       <ShaderType>Vertex</ShaderType>
       <ShaderModel>5.0</ShaderModel>
@@ -695,6 +730,7 @@
     <None Include="Shaders\Lighting.hlsli" />
     <None Include="Shaders\Mesh.hlsli" />
     <None Include="Shaders\Ocean.hlsli" />
+    <None Include="Shaders\Rain.hlsli" />
     <None Include="Shaders\Dissolve.hlsli" />
     <None Include="Shaders\ShadowAlpha.hlsli" />
     <None Include="Shaders\UI.hlsli" />
