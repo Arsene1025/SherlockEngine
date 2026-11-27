@@ -41,7 +41,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <h1>CSM 학습 문서</h1>
   <p>Cascaded Shadow Maps — 이론, 우리 엔진의 구현, 디버그 도구, 실험</p>
   <p>2026-10-29 · <code>multi-light-shadow-plan.html</code>의 9장(공부할 개념)과 10장(참고 문서) 중 CSM에 해당하는 부분을 따로 떼어, 이론 설명과 우리 코드의 대응, 그리고 방금 넣은 CSM 디버그 기능(카메라 고정 + 절두체 오버레이 + 큰 씬)으로 직접 확인해 볼 실험까지 붙여 확장한 문서입니다. 계획 문서는 고치지 않았습니다.</p>
-  <p class="foot">기준: 커밋 cd5f680 + 작업 트리(2026-11-03, 아직 커밋 안 함). 2026-11-03 변경 반영: CSM 전용 아틀라스(t14, 방향광은 항상 여기), 균등 1024² 칸, 메인 아틀라스 2048² · 지역광 512² 타일 16개, 경계 블렌딩, <code>cascadeDistance</code> 기본값 200. 코드 위치는 "파일:행"과 함수 이름을 같이 적었고, 행 번호는 이 시점의 참고용입니다.</p>
+  <p class="foot">기준: 커밋 cd5f680 + 작업 트리(2026-11-03, 아직 커밋 안 함). 2026-11-03 변경 반영: CSM 전용 아틀라스(t14, 방향광은 항상 여기), 균등 1024² 칸, 메인 아틀라스 2048² · 지역광 512² 타일 16개, 경계 블렌딩, <code>cascadeDistance</code> 기본값 200. 코드 위치는 파일과 함수·타입 이름으로 적었습니다(예전에는 "파일:행"도 적었지만, 줄 번호는 코드가 바뀌면 어긋나서 함수 이름만 남겼습니다).</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1~3장은 "CSM이 왜 필요하고 어떻게 만드는가"(이론), 4장은 그 이론이 우리 코드 어디에 있는지, 5장은 디버그 도구 사용법, 6장은 직접 해 보는 실험, 7장은 흔한 함정, 8장은 공부할 개념 표, 9장은 참고 문서입니다. 코드를 먼저 보고 싶다면 4장부터, 이미지 속 색 띠가 무엇인지부터 알고 싶다면 5장부터 읽으면 됩니다.</div>
   <div class="box warn"><b>이 문서의 숫자에 대해.</b> 분할 거리와 캐스케이드별 텍셀 크기는 <b>식으로 직접 계산한 값</b>입니다(카메라 near 0.1, fov 45°, 가로세로비 732/445=1.645 가정). 실제 에디터 창 크기나 카메라 near가 다르면 조금 달라집니다. 스크린샷으로 <b>실제 확인한 것</b>과 <b>예상일 뿐 아직 돌려 보지 않은 것</b>은 6장의 각 실험에 따로 표시했습니다.</div>
 </header>
@@ -59,7 +59,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <div class="box"><b>핵심 아이디어.</b> 카메라 절두체를 거리 기준으로 N조각으로 자르고, <b>조각마다 따로 섀도 맵을 한 장씩</b> 만듭니다. 가까운 조각은 좁은 범위를 같은 해상도로 덮으니 텍셀이 작고, 먼 조각은 넓은 범위를 덮으니 텍셀이 큽니다. 화면 픽셀의 크기가 거리에 따라 커지는 것과 텍셀 크기가 거리 조각에 따라 커지는 것이 맞아떨어지게 하는 것이 목표입니다.</div>
 
 <h3>1-2. 수치로 보면: 우리 큰 씬 <code>CascadeBigScene</code></h3>
-<p>방향광 직교 맵 한 장(2048², 범위 100m)이면 텍셀 한 개가 100/2048 ≈ <b>4.9cm</b>입니다. 반면 캐스케이드 4개(칸 1024², 분할 거리 150m, λ=0.7)는 아래와 같이 계산됩니다. (이 표는 <code>CascadeBigScene</code> 파일에 저장된 150m 기준입니다. 새 씬의 <code>cascadeDistance</code> 기본값은 200m이고, 200m이면 마지막 구간의 반지름이 더 커져 텍셀이 더 거칠어집니다.)</p>
+<p>방향광 직교 맵 한 장(2048², 범위 100m)이면 텍셀 한 개가 100/2048 ≈ <b>4.9cm</b>입니다. 반면 캐스케이드 4개(칸 1024², 분할 거리 150m, λ=0.7)는 아래와 같이 계산됩니다. (이 표는 <code>CascadeBigScene</code>을 처음 만들 때 저장한 150m 기준입니다. 지금 씬 파일과 새 씬의 <code>cascadeDistance</code> 기본값은 200m이고, 200m이면 마지막 구간의 반지름이 더 커져 텍셀이 더 거칠어집니다.)</p>
 <table>
 <tr><th>캐스케이드</th><th>색</th><th>카메라 앞 거리 구간(m)</th><th>경계 구 반지름(m)</th><th>텍셀 1개의 월드 크기</th></tr>
 <tr><td>0</td><td><span class="sw c0"></span>빨강</td><td>0.1 ~ 11.7</td><td>11.00</td><td>약 2.15cm</td></tr>
@@ -89,7 +89,7 @@ practical: s[i] = λ * log[i] + (1 - λ) * uniform[i]       // 우리 코드. λ
 <tr><td>log (λ=1)</td><td>0.62</td><td>3.87</td><td>24.1</td><td>150.0</td><td>첫 두 조각이 거의 화면에 안 보임, 마지막 조각이 너무 큼</td></tr>
 <tr><td>practical (λ=0.7)</td><td>11.7</td><td>25.2</td><td>50.6</td><td>150.0</td><td>둘의 절충. 우리 기본값</td></tr>
 </table>
-<p>λ는 정답이 있는 값이 아니라 씬과 카메라 near에 따라 손으로 고르는 값입니다. near가 작을수록 log 쪽이 첫 조각을 심하게 얇게 만들기 때문에 λ를 낮추는 쪽이 안전합니다. 에디터에서는 Shadow 패널의 <code>Cascade lambda</code> 슬라이더(캐스케이드 2개 이상일 때만 보임)로 바꿀 수 있습니다.</p>
+<p>λ는 정답이 있는 값이 아니라 씬과 카메라 near에 따라 손으로 고르는 값입니다. near가 작을수록 log 쪽이 첫 조각을 심하게 얇게 만들기 때문에 λ를 낮추는 쪽이 안전합니다. 에디터에서는 Shadow 패널의 <code>Cascade lambda</code> 슬라이더(CSM 체크박스가 켜져 있을 때만 보임)로 바꿀 수 있습니다.</p>
 
 <figure>
 <svg viewBox="0 0 640 230" role="img" aria-label="카메라 절두체를 거리로 4조각 나눈 위에서 본 개념도">
@@ -148,7 +148,7 @@ corner(d, sx, sy) = center(d) + R * (sx * w) + U * (sy * h)     // sx, sy ∈ {-
 <pre><code>lightEye = 구중심 - 광원방향 * (r + back)           // back = shadow.distance
 view     = LookToLH(lightEye, 광원방향, up)
 proj     = OrthographicLH(2r, 2r, 0, 2r + back)        // near=0, far=2r+back</code></pre>
-<p>눈을 구 중심에서 빛의 반대 방향으로 r + back만큼 물립니다. back을 두는 이유는 <b>조각 밖, 광원 쪽에 있는 물체도 그림자를 드리울 수 있기 때문</b>입니다. 예를 들어 카메라 바로 앞 조각 위쪽 높은 건물이 조각 안 바닥에 그림자를 떨어뜨립니다. back이 작으면 그런 캐스터가 near 평면 앞에 놓여 잘려 나가 <b>그림자가 사라집니다</b>(6장 실험 E7). 그렇다고 너무 크면 깊이 정밀도가 줄어듭니다. 이 설정이 Shadow 패널의 <code>Distance</code>입니다.</p>
+<p>눈을 구 중심에서 빛의 반대 방향으로 r + back만큼 물립니다. back을 두는 이유는 <b>조각 밖, 광원 쪽에 있는 물체도 그림자를 드리울 수 있기 때문</b>입니다. 예를 들어 카메라 바로 앞 조각 위쪽 높은 건물이 조각 안 바닥에 그림자를 떨어뜨립니다. back이 작으면 그런 캐스터가 near 평면 앞에 놓여 잘려 나가 <b>그림자가 사라집니다</b>(6장 실험 E7). 그렇다고 너무 크면 깊이 정밀도가 줄어듭니다. 이 설정이 Shadow 패널의 <code>Light distance</code>입니다.</p>
 
 <h3>2-5. 텍셀 스냅 (안정화의 핵심)</h3>
 <p>광원 뷰가 카메라를 따라 조금씩 움직이면, 같은 월드 점이 맵의 텍셀 경계 위에서 매 프레임 다른 위치에 떨어져 가장자리가 <b>반짝입니다(shimmering)</b>. 해결책은 상자의 움직임을 텍셀 크기의 정수 배로만 허용하는 것입니다.</p>
@@ -163,8 +163,8 @@ proj.r[3].xy += offset.xy                     // 투영 행렬의 평행이동 �
 <p>방향광의 맵은 캐스케이드 수와 상관없이, 지역광(스팟·포인트)이 쓰는 메인 아틀라스(t8, 2048², 512² 타일 16개)가 아니라 <b>CSM 전용 아틀라스 텍스처</b>(<code>m_csmMap</code>, 2048², D32 약 16MB, 셰이더 t14)에 그립니다. 단일 뷰(CSM 끔)는 이 아틀라스 전체(2048²)를 한 뷰가 씁니다. 메인 아틀라스에는 방향광 영역이 없습니다(2026-11-03에 방향광 영역을 없애고 4096²에서 2048²로 줄임). 두 아틀라스는 같은 비교 샘플러(s4)를 공유하고, 뷰마다 어느 쪽을 읽을지가 <code>ShadowViewData.params.w</code>(0 = 메인, 1 = CSM)에 들어 있습니다.</p>
 <table>
 <tr><th>Cascades</th><th>칸 크기</th><th>어느 아틀라스, 배치</th></tr>
-<tr><td>CSM 끔</td><td>2048² (단일 맵)</td><td>CSM 전용 아틀라스(t14) 전체 (<code>CsmSingleRect</code>, Renderer.cpp)</td></tr>
-<tr><td>2 ~ 4</td><td>1024² 칸 (<code>kCsmCascadeSize</code>)</td><td>CSM 전용 아틀라스(t14, 2048²)에 2×2 격자: 0 = 왼쪽 위, 1 = 오른쪽 위, 2 = 왼쪽 아래, 3 = 오른쪽 아래 (<code>CsmRect</code>, Renderer.cpp)</td></tr>
+<tr><td>CSM 끔</td><td>2048² (단일 맵)</td><td>CSM 전용 아틀라스(t14) 전체 (<code>CsmSingleRect</code>, RendererShadow.cpp)</td></tr>
+<tr><td>2 ~ 4</td><td>1024² 칸 (<code>kCsmCascadeSize</code>)</td><td>CSM 전용 아틀라스(t14, 2048²)에 2×2 격자: 0 = 왼쪽 위, 1 = 오른쪽 위, 2 = 왼쪽 아래, 3 = 오른쪽 아래 (<code>CsmRect</code>, RendererShadow.cpp)</td></tr>
 </table>
 <p><b>대가</b>: 캐스케이드 2개만 써도 칸이 1024²로 줄어서 단일 맵(2048²)보다 칸당 해상도가 1/4입니다. 그래서 작은 씬에서는 CSM이 오히려 이득이 작거나 손해일 수 있어 Shadow 패널에 CSM 체크박스(<code>cascadeEnabled</code>)를 두었고, 끄면 방향광 단일 뷰(2048² 한 장)로 돌아갑니다. 기본값은 <b>켬 + 4단</b>입니다(2026-11-03). 아틀라스에서는 PCF 5×5 샘플이 이웃 칸을 읽지 않게 칸 안쪽으로 clamp하는 <b>여백 3텍셀</b>(<code>kShadowPcfBorder</code>)을 둡니다(PS의 <code>SampleShadowView</code>).</p>
 <p><b>왜 칸 크기를 모두 같게 두는가 (2026-11-03에 시도하고 되돌린 것).</b> 근거리 선명도를 올리려고 칸 크기를 2048/1024/512/512, 1024/512/512/256처럼 다르게 해 봤습니다. 그런데 2-1의 practical split은 <b>칸 해상도가 모두 같다</b>는 전제로 화면 픽셀당 텍셀 밀도를 맞추는 식이라, 먼 쪽 칸을 줄이면 이중으로 손해입니다. 1-2 표의 경계 구 반지름(11.00 / 21.25 / 42.38 / 129.56m)으로 계산하면 1024/512/512/256에서 텍셀은 2.15 / 8.3 / 16.6 / 101cm가 되어, 균등 1024²(2.15 / 4.15 / 8.28 / 25.3cm)보다 가까운 구간을 빼고 모두 2~4배 거칩니다. 특히 파랑(2)에서 노랑(3)으로 넘어갈 때 텍셀이 6배 뛰어 경계가 눈에 띕니다. 그래서 지금은 균등 1024²이고, 해상도를 바꾸려면 <code>kCsmCascadeSize</code>와 <code>CsmRect</code>의 배치를 같이 고칩니다. <span class="tag chk">계산값</span></p>
@@ -201,7 +201,7 @@ params.x     = bias * singleRange / (2r + back)            // 캐스케이드의
 월드 바이어스 = params.x * (2r + back) = bias * singleRange   // r 이 지워져 모든 캐스케이드에서 같음</code></pre>
 <p>CascadeBigScene(distance 80, orthoSize 100 → singleRange 260)에서는 단일 뷰 0.0015, 캐스케이드 0(r 11.00, 범위 102 m) 0.00382, 캐스케이드 3(r 129.56, 범위 339 m) 0.00115이고, 월드 바이어스는 모두 약 0.39 m입니다. <span class="tag chk">계산값</span></p>
 <p><b>노멀 오프셋은 캐스케이드에 쓰지 않습니다.</b> <code>AddCascadeViews</code>는 <code>params.y = 2r / 칸크기</code>(텍셀 1개의 월드 크기)도 채우지만, 셰이더 <code>SampleShadowViewCoverage</code>는 기하 노멀 방향 오프셋을 원근 뷰(스팟·포인트, <code>localNormalBias</code>)에만 적용하고 직교 뷰에는 0을 곱합니다. 그래서 CSM에서 캐스케이드마다 달라지는 바이어스는 <code>params.x</code> 하나입니다. (예전 설명은 "텍셀이 큰 먼 캐스케이드일수록 노멀 오프셋이 커진다"고 했는데 코드와 달라 2026-11-25에 고쳤습니다.)</p>
-<p>그림자 패스의 래스터라이저 바이어스(<code>Renderer.cpp</code>의 <code>Pass_Shadow</code>: <code>depthBias</code> 2000, <code>slopeScaledDepthBias</code> 2.0, <code>depthBiasClamp</code> 0.01)는 모든 캐스케이드에 같은 값입니다. 다만 기울기 항은 맵 텍셀당 깊이 기울기에 곱해지므로 텍셀이 큰 먼 캐스케이드에서 저절로 커집니다. 바이어스 이론(shadow acne, peter panning, 기울기 바이어스)은 <a href="../overview/rendering-analysis.html#c11-8">rendering-analysis 11.8</a>, W2, Luna 책 21.4(DX11) / 20.4(DX12) 절에 있습니다.</p>
+<p>그림자 패스의 래스터라이저 바이어스(<code>Renderer.cpp</code>의 <code>Pass_Shadow</code>·<code>Pass_ShadowSkin</code>·<code>Pass_ShadowAlpha</code>·<code>Pass_ShadowAlphaSkin</code>: <code>depthBias</code> 2000, <code>slopeScaledDepthBias</code> 2.0, <code>depthBiasClamp</code> 0.01)는 모든 캐스케이드에 같은 값입니다. 다만 기울기 항은 맵 텍셀당 깊이 기울기에 곱해지므로 텍셀이 큰 먼 캐스케이드에서 저절로 커집니다. 바이어스 이론(shadow acne, peter panning, 기울기 바이어스)은 <a href="../overview/rendering-analysis.html#c11-8">rendering-analysis 11.8</a>, W2, Luna 책 21.4(DX11) / 20.4(DX12) 절에 있습니다.</p>
 </section>
 
 <section id="code">
@@ -213,7 +213,7 @@ params.x     = bias * singleRange / (2r + back)            // 캐스케이드의
 <tr><td>캐스케이드 계산 본체</td><td><code>RendererShadow.cpp</code> <code>Renderer::AddCascadeViews</code></td><td>2장의 5단계가 주석 번호 1~5로 그대로 있음. 끝에서 분할·원점·전방을 멤버에 저장하고 꼭짓점 8개를 <code>m_cascadeCorners</code>에 저장</td></tr>
 <tr><td>아틀라스 칸</td><td><code>RendererShadow.cpp</code> <code>CsmRect</code>, <code>CsmSingleRect</code>, <code>LocalTileRect</code></td><td><code>CsmRect(index)</code> → CSM 전용 아틀라스의 칸(크기는 <code>Renderer.h</code>의 <code>kCsmCascadeSize</code>). <code>CsmSingleRect()</code>는 단일 뷰(CSM 끔)의 CSM 아틀라스 전체, <code>LocalTileRect(n)</code>은 지역광의 메인 아틀라스 타일(512², 4×4 격자)</td></tr>
 <tr><td><b>신규</b> CSM 전용 아틀라스</td><td><code>RendererShadow.cpp</code> <code>CreateShadowResources</code>, <code>Renderer.cpp</code> <code>UpdateFrameSet</code></td><td><code>m_csmMap</code>(2048², D32)을 프레임 셋 t14에 꽂음. <code>ShadowView.atlas</code>(0 메인, 1 CSM)가 b6의 <code>params.w</code>로 올라가고, <code>UploadShadowConstants</code>가 아틀라스별 크기로 UV 사각형을 환산함. b6의 <code>csmAtlasParams</code>는 PCF 여백 clamp용 1/크기</td></tr>
-<tr><td>그림자 패스</td><td><code>RendererShadow.cpp</code> <code>RenderShadowPass</code>, <code>RenderShadowAtlasPass</code></td><td>깊이 텍스처가 둘이라 아틀라스별로 렌더 패스를 한 번씩 엶(뷰가 없는 쪽은 건너뜀). 패스 안에서는 뷰마다 <code>SetViewport</code> + b5(그 뷰의 행렬) 갱신 + 드로우. 캐스케이드 4개면 CSM 패스에서 4번 그림</td></tr>
+<tr><td>그림자 패스</td><td><code>RendererShadow.cpp</code> <code>RenderShadowPass</code>, <code>RenderShadowAtlasPass</code></td><td>깊이 텍스처가 둘이라 아틀라스별로 렌더 패스를 한 번씩 엶(뷰가 없는 쪽은 건너뜀). 패스 안에서는 뷰마다 <code>SetViewport</code> 후 <code>DrawDepthView</code>(b5 갱신 · 뷰 절두체 컬링 · 드로우, <code>DepthDrawState</code>로 바뀐 상태만 다시 꽂음)를 부름. 비 차폐 맵 패스(<code>RenderRainOcclusionPass</code>)도 같은 함수를 씀. 캐스케이드 4개면 CSM 패스에서 4번 그림</td></tr>
 <tr><td>PS용 상수 올리기</td><td><code>RendererShadow.cpp</code> <code>Renderer::UploadShadowConstants</code></td><td>b6의 <code>cascadeSplits</code>/<code>cascadeOrigin</code>(w = 캐스케이드 수)/<code>cascadeForward</code></td></tr>
 <tr><td>캐스케이드 선택</td><td><code>Shading.hlsli</code> <code>SelectCascade</code></td><td>interval 선택. 3-1의 depth &lt; 0 처리 포함</td></tr>
 <tr><td>그림자 샘플링</td><td><code>Shading.hlsli</code> <code>SampleShadowViewCoverage</code>/<code>SampleShadowView</code>, <code>ShadowForLight</code></td><td>PCF 5×5, 노멀 오프셋, 칸 안 clamp, 뷰의 아틀라스(t8/t14) 선택. 방향광이면 <code>SelectCascade</code>로 뷰 번호를 정하고 3-2의 경계 블렌딩을 적용</td></tr>
@@ -237,12 +237,12 @@ params.x     = bias * singleRange / (2r + back)            // 캐스케이드의
 <tr><th>보이는 것</th><th>뜻</th></tr>
 <tr><td><span class="sw c0"></span><span class="sw c1"></span><span class="sw c2"></span><span class="sw c3"></span> 색 띠</td><td>고정 카메라의 앞 방향(<code>cascadeForward</code>)으로 잰 거리 구간. 바닥에 가로 띠로 보임 (판 모양 슬래브)</td></tr>
 <tr><td>어두운 회색</td><td>마지막 캐스케이드 너머, 또는 고정 카메라 <b>뒤쪽</b>(depth &lt; 0)</td></tr>
-<tr><td>색 와이어 박스</td><td>캐스케이드별 절두체 조각 꼭짓점 8개로 만든 12개 변. 카메라 뒤를 지나는 변은 생략</td></tr>
+<tr><td>색 와이어 박스</td><td>캐스케이드별 절두체 조각 꼭짓점 8개로 만든 12개 변. 예전에는 카메라 뒤를 지나는 변을 생략했지만, 지금은 <code>ProjectSegmentToView</code>가 카메라 앞쪽 몫만 그림</td></tr>
 <tr><td>띠 안인데 그림자가 없는 구역</td><td>띠는 depth만 보지만 그림자 맵은 경계 구 상자라서, 띠 가장자리(좌우로 한참 벗어난 곳)는 <b>맵 범위 밖이라 그림자가 안 그려짐</b>. 고정한 카메라 시야 밖이라 평소에는 화면에 나올 일이 없어 정상 동작입니다(7장)</td></tr>
 </table>
 <h3>5-2. 에디터에서</h3>
 <ol>
-<li>File에서 <code>CascadeBigScene.json</code>을 엽니다 (프로젝트 <code>SherlockTestScenes</code>). 이 씬은 이미 Cascades 4, 거리 150, λ 0.7입니다.</li>
+<li>File에서 <code>CascadeBigScene.json</code>을 엽니다 (프로젝트 <code>SherlockTestScenes</code>). 이 씬은 Cascades 4, λ 0.7입니다. 거리는 처음에 150이었고 지금 씬 파일은 200이라, 1-2·2-1의 표와 맞춰 보려면 <code>Cascade distance</code>를 150으로 바꿉니다.</li>
 <li>Render Settings 패널에서 Debug view를 <b>Shadow cascade</b>로 바꿉니다.</li>
 <li>같은 패널의 <b>Freeze culling camera</b>를 체크합니다(처음 이름은 Freeze cascade camera, CSM이 켜져 있을 때만 나타났음). 캐스케이드만 보려면 아래 항목에서 <b>Objects</b>·<b>Lights</b>를 끕니다.</li>
 <li>WASD와 마우스 오른쪽 버튼 드래그로 에디터 카메라를 뒤쪽 위로 빼서 내려다봅니다. 이미지처럼 색 띠와 절두체가 보입니다.</li>
@@ -294,7 +294,7 @@ params.x     = bias * singleRange / (2r + back)            // 캐스케이드의
 <p>코드를 고치는 실험입니다. <code>AddCascadeViews</code>의 "4) 텍셀 스냅" 블록의 마지막 줄(<code>proj.r[3] = ... + offset</code>)을 주석 처리하고 빌드합니다. 에디터에서 Lit, 고정 끔 상태로 카메라를 천천히 평행이동·회전해 가까운 기둥 그림자 가장자리를 봅니다. <b>예상</b>: 스냅이 있을 때는 가장자리가 안정적이고, 없을 때는 이동 중 가장자리가 계단처럼 꿈틀대며 반짝임. <b>이 현상은 정지 화면 스크린샷으로는 확인하기 어렵고 실시간 이동을 눈으로 봐야 해서 내가 아직 확인하지 못했습니다.</b></p>
 
 <h3>E7. 광원 뒤 거리(<code>Distance</code>)를 너무 작게 <span class="tag chk">예상</span></h3>
-<p>Shadow 패널의 <code>Distance</code>를 80에서 3 정도로 줄입니다. <b>예상</b>: 기둥·건물 그림자 중 "조각 뒤(광원 쪽)에 있던 높은 물체의 그림자"가 near 평면에 잘려 중간부터 사라지거나 일부만 남음. 값을 다시 올리면 복구. 2-4의 설명을 눈으로 확인하는 실험.</p>
+<p>Shadow 패널의 <code>Light distance</code>를 80에서 최솟값 5로 줄입니다(슬라이더 범위 5~120). <b>예상</b>: 기둥·건물 그림자 중 "조각 뒤(광원 쪽)에 있던 높은 물체의 그림자"가 near 평면에 잘려 중간부터 사라지거나 일부만 남음. 값을 다시 올리면 복구. 2-4의 설명을 눈으로 확인하는 실험.</p>
 
 <h3>E8. 경계 구의 낭비 보기 <span class="tag chk">계산값</span></h3>
 <p>1-2의 표를 5-2의 에디터 화면(Freeze + 디버그 뷰 8)과 같이 봅니다. 노랑 와이어 박스(마지막 캐스케이드)는 깊이가 약 100m인데 맵은 반지름 129.6m짜리 구에 접하는 정사각형이라 와이어 박스보다 훨씬 큽니다. 그 차이만큼 텍셀이 낭비됩니다. 이것이 7장 함정 2번의 근거입니다.</p>
@@ -309,8 +309,8 @@ params.x     = bias * singleRange / (2r + back)            // 캐스케이드의
 <li><b>고정 카메라 뒤쪽 처리.</b> 3-1에서 고친 것. 카메라를 고정하지 않으면 드러나지 않았던 버그입니다.</li>
 <li><b>마지막 캐스케이드가 너무 거칠다.</b> 길쭉한 조각을 구로 감싸니 반지름이 깊이의 절반 이상이 됩니다(1-2의 표: 25cm). 대책 후보: ① 카메라 far를 줄이거나 cascadeDistance를 줄이기, ② 캐스케이드 수를 늘림(이미 최대 4), ③ AABB 맞춤으로 바꾸고 별도 안정화 기법 쓰기, ④ 마지막 캐스케이드만 칸을 크게 쓰기(CSM 전용 아틀라스라 <code>kCsmCascadeSize</code>와 <code>CsmRect</code>만 고치면 되지만 아틀라스 크기도 같이 키워야 함. 반대로 먼 칸을 줄이는 방향은 2-6에서 설명했듯이 더 나쁨).</li>
 <li><b>띠 가장자리(옆)의 그림자 없음.</b> 고정 상태에서만 보이는 현상이고, 띠는 depth만 보지만 맵은 구 상자라 좌우로 먼 곳은 범위 밖입니다. PS의 <code>SampleShadowView</code>가 "뷰 안인가" 검사에서 1(그림자 없음)을 돌려줍니다. 평소(고정 끔)에는 카메라 절두체 안만 그리므로 문제가 되지 않습니다.</li>
-<li><b>모델 하나가 서브메시 100개인 씬(Sponza)은 컬링이 안 됨.</b> 그림자 패스의 지역광 컬링은 메시 단위 경계를 쓰기 때문입니다. 방향광 캐스케이드는 컬링을 하지 않으므로 4번 전부 그립니다(Debug 빌드에서는 드로우가 4배).</li>
-<li><b>캐스케이드 2~4개면 칸이 1024².</b> 작은 씬에서는 단일 2048² 맵이 더 선명할 수 있습니다(기본값이 1인 이유). 이득은 씬이 크고 카메라 범위가 넓을 때 나옵니다(Sponza 기본 설정에서는 이득이 작았음: 최대 채널 차이 약 35/255).</li>
+<li><b>모델 하나가 서브메시 100개인 씬(Sponza)은 컬링이 거의 안 됨.</b> 그림자 패스의 컬링은 오브젝트 하나의 경계 구(<code>m_objects[…].sphere</code>)를 쓰기 때문입니다. 예전에는 방향광 캐스케이드를 컬링하지 않았지만, 지금은 <code>DrawDepthView</code>가 캐스케이드 상자 절두체(near 평면 뺌) 밖의 물체를 뺍니다. 다만 Sponza처럼 구 하나가 씬 전체를 덮으면 네 캐스케이드에 모두 그려집니다(Debug 빌드에서는 드로우가 4배).</li>
+<li><b>캐스케이드 2~4개면 칸이 1024².</b> 작은 씬에서는 단일 2048² 맵이 더 선명할 수 있습니다(CSM 체크박스를 두는 이유. 기본값은 켬 + 4단). 이득은 씬이 크고 카메라 범위가 넓을 때 나옵니다(Sponza 기본 설정에서는 이득이 작았음: 최대 채널 차이 약 35/255).</li>
 <li><b>직교 카메라는 CSM을 쓰지 않음.</b> 절두체 조각 계산이 원근 전제라서 <code>BuildShadowViews</code>가 단일 뷰로 대신합니다.</li>
 <li><b>블렌딩의 한계.</b> 3-2. 다음 캐스케이드의 구 밖인 점은 섞지 않아서 그 가장자리에는 이음새가 남을 수 있고, 마지막 캐스케이드 끝(<code>cascadeDistance</code>)에서는 그림자가 사라지는 구간이 생깁니다. 구간 폭은 <code>Cascade blend</code>로 조절합니다.</li>
 <li><b>가로세로비·시야각을 바꾸면 반지름이 달라짐.</b> 창 크기를 바꾸면 반지름과 텍셀 격자가 다시 계산되어 그 순간 한 번은 가장자리가 튈 수 있습니다. 스냅은 같은 크기의 상자에서만 유효합니다.</li>
@@ -334,7 +334,7 @@ params.x     = bias * singleRange / (2r + back)            // 캐스케이드의
 <tr><td>섀도 아틀라스와 PCF 여백</td><td>칸 경계에서 이웃 칸을 읽지 않게</td><td>2-6</td><td>하면서</td><td>L11-5, L12-5, W1</td></tr>
 <tr><td>캐스케이드 선택: interval vs map 기반, 블렌딩</td><td>PS의 <code>SelectCascade</code>, <code>ShadowForLight</code>의 경계 블렌딩</td><td>3-1, 3-2</td><td>하면서</td><td>W1, W7, W9</td></tr>
 <tr><td>shadow acne, peter panning, 기울기 바이어스, 노멀 오프셋</td><td>캐스케이드마다 깊이 범위가 달라 바이어스를 환산해야 함</td><td>3-3</td><td>먼저 읽기</td><td>L11-4, L12-4, W2, W5</td></tr>
-<tr><td>경계 구 컬링</td><td>캐스케이드마다 그리는 양을 줄이는 방법(아직 방향광에는 안 씀)</td><td>7장 4번</td><td>하면서</td><td>L11-9, L12-9</td></tr>
+<tr><td>경계 구 컬링</td><td>캐스케이드마다 그리는 양을 줄이는 방법(<code>DrawDepthView</code>가 캐스케이드 상자 절두체로 물체 경계 구를 거름)</td><td>7장 4번</td><td>하면서</td><td>L11-9, L12-9</td></tr>
 <tr><td>ImGui 오버레이와 월드 → 화면 투영 (w ≤ 0 거르기)</td><td>디버그 절두체 와이어. 카메라 뒤의 점을 그리면 선이 엉뚱한 곳으로 뻗음</td><td>4장</td><td>하면서</td><td><code>Editor.cpp</code> <code>ProjectToView</code>, 이 저장소 <code>DrawLightIcons</code></td></tr>
 </table>
 </section>
@@ -380,8 +380,8 @@ params.x     = bias * singleRange / (2r + back)            // 캐스케이드의
 <h3>9-D. 그 밖의 책과 저장소 문서</h3>
 <ul>
 <li>Akenine-Möller 외, <i>Real-Time Rendering</i> 4판, 7장 "Shadows": 7.4 섀도 맵과 그 안의 캐스케이드 부분(소절 번호는 목차로 확인). 개념을 넓게 정리할 때.</li>
-<li>이 저장소의 <code>docs/multi-light-shadow-plan.html</code>: 단계 7(CSM) 절에 구현 순서와 셰이더 코드가 있음. 이 문서는 그 단계의 "왜"와 도구, 실험을 따로 정리한 것.</li>
-<li>이 저장소의 <code>docs/rendering-analysis.html</code>: 11.8 그림자 매핑(기존 구조), 7.11·8.9(D3D12 바인딩과 업로드).</li>
+<li>이 저장소의 <a href="../plan/multi-light-shadow-plan.html"><code>docs/plan/multi-light-shadow-plan.html</code></a>: 단계 7(CSM) 절에 구현 순서와 셰이더 코드가 있음. 이 문서는 그 단계의 "왜"와 도구, 실험을 따로 정리한 것.</li>
+<li>이 저장소의 <a href="../overview/rendering-analysis.html#c11-8"><code>docs/overview/rendering-analysis.html</code></a>: 11.8 그림자 매핑(기존 구조), 7.11·8.9(D3D12 바인딩과 업로드).</li>
 </ul>
 </section>
 

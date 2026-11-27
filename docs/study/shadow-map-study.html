@@ -1147,7 +1147,7 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <button class="am-btn" type="button" data-am="copy" data-done="Copied ✓">Copy source</button>
 </div>
 <main class="am-doc">
-<header class="am-head"><h1>그림자 맵 면접 대비 정리</h1><p class="am-sub">2패스 원리부터 acne·Peter Panning·한계까지, SherlockEngine 코드로 설명하기</p><p class="am-sub"><b>스냅샷 안내 (2026-11-03):</b> 이 문서의 코드와 숫자는 2026-10-27 시점의 "그림자 맵 한 장(2048², 직교 영역 60, 3×3 PCF), 0번 방향광만" 구조 기준입니다. 이후 다중 광원 아틀라스, CSM, 5×5 PCF가 들어와 현재 구조와 다릅니다(원리·바이어스 설명은 그대로 유효). 현재 구조는 <code>csm-study-guide.html</code>과 <code>rendering-analysis.html</code> 11.8절을 보세요. 본문의 "CSM은 앞으로 할 일" 서술도 이 시점의 것입니다.</p><div class="am-head-meta"><span><b>source</b>BasicPixelShader.hlsl · ShadowVertexShader.hlsl · Renderer.cpp</span></div><div class="am-intro am-md"><div class="am-md"><p>그림자 맵은 &quot;광원에서 본 깊이 이미지&quot;를 한 장 만들어 두고, 카메라 패스에서 각 픽셀이 그보다 <strong>뒤에 있는지</strong> 비교하는 기법입니다. 면접의 단골 주제는 원리, 좌표 변환, 바이어스, 앨리어싱 네 가지입니다.</p>
+<header class="am-head"><h1>그림자 맵 면접 대비 정리</h1><p class="am-sub">2패스 원리부터 acne·Peter Panning·한계까지, SherlockEngine 코드로 설명하기</p><p class="am-sub"><b>갱신 안내 (2026-11-27):</b> 처음 쓸 때(2026-10-27)는 "그림자 맵 한 장(2048², 직교 영역 60, 3×3 PCF), 0번 방향광만" 구조 기준이었습니다. 지금은 본문과 코드 인용을 현재 코드에 맞췄습니다. 이 문서는 그림자 맵 한 장의 원리를 다루고, 숫자는 CSM을 끈 단일 뷰 기준입니다. 기본값인 CSM과 다중 광원 아틀라스는 <a href="csm-study.html">CSM 공부 문서</a>, <a href="shadow-atlas-study.html">섀도 아틀라스 공부 문서</a>, <a href="../overview/rendering-analysis.html#c11-8">rendering-analysis 11.8절</a>을 보세요.</p><div class="am-head-meta"><span><b>source</b>Shading.hlsli · ShadowVertexShader.hlsl · RendererShadow.cpp · Renderer.cpp</span></div><div class="am-intro am-md"><div class="am-md"><p>그림자 맵은 &quot;광원에서 본 깊이 이미지&quot;를 한 장 만들어 두고, 카메라 패스에서 각 픽셀이 그보다 <strong>뒤에 있는지</strong> 비교하는 기법입니다. 면접의 단골 주제는 원리, 좌표 변환, 바이어스, 앨리어싱 네 가지입니다.</p>
 </div></div></header>
 <div class="am-doc-layout">
 <nav class="am-toc" aria-label="Contents"><a href="#panel-A">A · 한 줄 답변</a><a href="#panel-B">B · 1. 전체 흐름</a><a href="#panel-C">C · 2. 1패스: 광원 시점 깊이</a><a href="#panel-D">D · 3. 2패스: 좌표 변환과 비교</a><a href="#panel-E">E · 4. 바이어스: acne와 Peter Panning</a><a href="#panel-F">F · 5. 앨리어싱과 해상도</a><a href="#panel-G">G · 6. 한계와 개선 방향</a><a href="#panel-H">H · 7. 예상 면접 질문</a><a href="#panel-I">I · 8. 참고자료</a></nav><div class="am-doc-body">
@@ -1158,34 +1158,34 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 </section>
 <section class="am-panel" id="panel-B">
 <header class="am-panel-head"><span class="am-panel-id">B</span><h2>1. 전체 흐름</h2></header>
-<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 1618 80" width="1618" height="80" role="img" aria-label="Flowchart: 프레임 시작, ComputeLightViewProj, ShadowPass, Barrier 쓰기→읽기, MainPass, VS shadowPosition, PS ComputeShadowFactor, 방향광 세기 × shadowFactor" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M122.9,40 L148.5,40 Q174.1,40 199.7,40 L225.3,40" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="146.9" y="31" width="54.4" height="18" rx="3"/><text x="174.1" y="40" text-anchor="middle" dominant-baseline="central">방향광 0</text></g></g><g data-step="1"><path class="am-edge" d="M394.2,40 L427.2,40 Q460.1,40 493.1,40 L526,40" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="418.2" y="31" width="83.8" height="18" rx="3"/><text x="460.1" y="40" text-anchor="middle" dominant-baseline="central">깊이만, 2048²</text></g></g><g data-step="2"><path class="am-edge" d="M633.9,40 L645.4,40 Q656.9,40 668.4,40 L679.9,40" marker-end="url(#am1-arrow)"/></g><g data-step="3"><path class="am-edge" d="M811.1,40 L822.6,40 Q834.1,40 845.6,40 L857.1,40" marker-end="url(#am1-arrow)"/></g><g data-step="4"><path class="am-edge" d="M945.7,40 L979.1,40 Q1012.6,40 1046.1,40 L1079.6,40" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="969.7" y="31" width="85.9" height="18" rx="3"/><text x="1012.6" y="40" text-anchor="middle" dominant-baseline="central">광원 클립 좌표</text></g></g><g data-step="5"><path class="am-edge" d="M1227.2,40 L1238.7,40 Q1250.2,40 1261.7,40 L1273.2,40" marker-end="url(#am1-arrow)"/></g><g data-step="6"><path class="am-edge" d="M1442.6,40 L1454.1,40 Q1465.6,40 1477.1,40 L1488.6,40" marker-end="url(#am1-arrow)"/></g></g><g><g class="am-node am-node--round" data-key="프레임 시작" data-step="0"><rect class="am-node-shape" x="14" y="22.5" width="108.9" height="35" rx="17.5"/><text x="68.5" y="40" text-anchor="middle" dominant-baseline="central">프레임 시작</text></g><g class="am-node am-node--rect" data-key="ComputeLightViewProj" data-step="0"><rect class="am-node-shape" x="225.3" y="22.5" width="168.9" height="35" rx="3"/><text x="309.8" y="40" text-anchor="middle" dominant-baseline="central">ComputeLightViewProj</text></g><g class="am-node am-node--rect am-node--hi" data-key="ShadowPass" data-step="1"><rect class="am-node-shape" x="526" y="22.5" width="107.8" height="35" rx="3"/><text x="580" y="40" text-anchor="middle" dominant-baseline="central">ShadowPass</text></g><g class="am-node am-node--rect" data-key="Barrier 쓰기→읽기" data-step="2"><rect class="am-node-shape" x="679.9" y="22.5" width="131.2" height="35" rx="3"/><text x="745.5" y="40" text-anchor="middle" dominant-baseline="central">Barrier 쓰기→읽기</text></g><g class="am-node am-node--rect" data-key="MainPass" data-step="3"><rect class="am-node-shape" x="857.1" y="22.5" width="88.6" height="35" rx="3"/><text x="901.4" y="40" text-anchor="middle" dominant-baseline="central">MainPass</text></g><g class="am-node am-node--rect" data-key="VS shadowPosition" data-step="4"><rect class="am-node-shape" x="1079.6" y="22.5" width="147.6" height="35" rx="3"/><text x="1153.4" y="40" text-anchor="middle" dominant-baseline="central">VS shadowPosition</text></g><g class="am-node am-node--rect" data-key="PS ComputeShadowFactor" data-step="5"><rect class="am-node-shape" x="1273.2" y="14" width="169.4" height="52" rx="3"/><text x="1357.9" y="31.5" text-anchor="middle" dominant-baseline="central">PS</text><text x="1357.9" y="48.5" text-anchor="middle" dominant-baseline="central">ComputeShadowFactor</text></g><g class="am-node am-node--rect" data-key="방향광 세기 × shadowFactor" data-step="6"><rect class="am-node-shape" x="1488.6" y="14" width="114.6" height="52" rx="3"/><text x="1545.9" y="31.5" text-anchor="middle" dominant-baseline="central">방향광 세기 ×</text><text x="1545.9" y="48.5" text-anchor="middle" dominant-baseline="central">shadowFactor</text></g></g></svg></figure>
-<div class="am-md"><p>핵심 연결 고리는 <strong>두 패스가 같은 <code>lightViewProj</code> 행렬을 쓴다</strong>는 점입니다. 값이 다르면 그림자가 엉뚱한 곳에 생깁니다.</p>
+<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 1618 80" width="1618" height="80" role="img" aria-label="Flowchart: 프레임 시작, BuildShadowViews, ShadowPass, Barrier 쓰기→읽기, MainPass, PS viewProj 곱, PS SampleShadowView, 조명 세기 × 그림자 계수" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am1-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M122.9,40 L148.5,40 Q174.1,40 199.7,40 L225.3,40" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="146.9" y="31" width="54.4" height="18" rx="3"/><text x="174.1" y="40" text-anchor="middle" dominant-baseline="central">조명마다</text></g></g><g data-step="1"><path class="am-edge" d="M394.2,40 L427.2,40 Q460.1,40 493.1,40 L526,40" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="418.2" y="31" width="83.8" height="18" rx="3"/><text x="460.1" y="40" text-anchor="middle" dominant-baseline="central">깊이만, 아틀라스</text></g></g><g data-step="2"><path class="am-edge" d="M633.9,40 L645.4,40 Q656.9,40 668.4,40 L679.9,40" marker-end="url(#am1-arrow)"/></g><g data-step="3"><path class="am-edge" d="M811.1,40 L822.6,40 Q834.1,40 845.6,40 L857.1,40" marker-end="url(#am1-arrow)"/></g><g data-step="4"><path class="am-edge" d="M945.7,40 L979.1,40 Q1012.6,40 1046.1,40 L1079.6,40" marker-end="url(#am1-arrow)"/><g class="am-edge-label"><rect x="969.7" y="31" width="85.9" height="18" rx="3"/><text x="1012.6" y="40" text-anchor="middle" dominant-baseline="central">광원 클립 좌표</text></g></g><g data-step="5"><path class="am-edge" d="M1227.2,40 L1238.7,40 Q1250.2,40 1261.7,40 L1273.2,40" marker-end="url(#am1-arrow)"/></g><g data-step="6"><path class="am-edge" d="M1442.6,40 L1454.1,40 Q1465.6,40 1477.1,40 L1488.6,40" marker-end="url(#am1-arrow)"/></g></g><g><g class="am-node am-node--round" data-key="프레임 시작" data-step="0"><rect class="am-node-shape" x="14" y="22.5" width="108.9" height="35" rx="17.5"/><text x="68.5" y="40" text-anchor="middle" dominant-baseline="central">프레임 시작</text></g><g class="am-node am-node--rect" data-key="BuildShadowViews" data-step="0"><rect class="am-node-shape" x="225.3" y="22.5" width="168.9" height="35" rx="3"/><text x="309.8" y="40" text-anchor="middle" dominant-baseline="central">BuildShadowViews</text></g><g class="am-node am-node--rect am-node--hi" data-key="ShadowPass" data-step="1"><rect class="am-node-shape" x="526" y="22.5" width="107.8" height="35" rx="3"/><text x="580" y="40" text-anchor="middle" dominant-baseline="central">ShadowPass</text></g><g class="am-node am-node--rect" data-key="Barrier 쓰기→읽기" data-step="2"><rect class="am-node-shape" x="679.9" y="22.5" width="131.2" height="35" rx="3"/><text x="745.5" y="40" text-anchor="middle" dominant-baseline="central">Barrier 쓰기→읽기</text></g><g class="am-node am-node--rect" data-key="MainPass" data-step="3"><rect class="am-node-shape" x="857.1" y="22.5" width="88.6" height="35" rx="3"/><text x="901.4" y="40" text-anchor="middle" dominant-baseline="central">MainPass</text></g><g class="am-node am-node--rect" data-key="PS viewProj 곱" data-step="4"><rect class="am-node-shape" x="1079.6" y="22.5" width="147.6" height="35" rx="3"/><text x="1153.4" y="40" text-anchor="middle" dominant-baseline="central">PS viewProj 곱</text></g><g class="am-node am-node--rect" data-key="PS SampleShadowView" data-step="5"><rect class="am-node-shape" x="1273.2" y="14" width="169.4" height="52" rx="3"/><text x="1357.9" y="31.5" text-anchor="middle" dominant-baseline="central">PS</text><text x="1357.9" y="48.5" text-anchor="middle" dominant-baseline="central">SampleShadowView</text></g><g class="am-node am-node--rect" data-key="조명 세기 × 그림자 계수" data-step="6"><rect class="am-node-shape" x="1488.6" y="14" width="114.6" height="52" rx="3"/><text x="1545.9" y="31.5" text-anchor="middle" dominant-baseline="central">조명 세기 ×</text><text x="1545.9" y="48.5" text-anchor="middle" dominant-baseline="central">그림자 계수</text></g></g></svg></figure>
+<div class="am-md"><p>핵심 연결 고리는 <strong>두 패스가 같은 뷰 행렬을 쓴다</strong>는 점입니다. 그림자 뷰 하나의 <code>viewProj</code>가 그림자 패스에는 b5 <code>shadowViewProj</code>로, 메인 패스에는 b6 <code>shadowViews[]</code>로 올라갑니다(예전 이름은 <code>lightViewProj</code> 하나였습니다). 값이 다르면 그림자가 엉뚱한 곳에 생깁니다.</p>
 </div></div>
 </section>
 <section class="am-panel am-span-wide" id="panel-C">
 <header class="am-panel-head"><span class="am-panel-id">C</span><h2>2. 1패스: 광원 시점 깊이</h2></header>
-<div class="am-panel-body"><div class="am-md"><p>방향광에는 위치가 없으므로 직교 투영을 씁니다. 씬 중심에서 빛의 반대 방향으로 물러난 곳에 눈을 두고, 한 변이 <code>shadowOrthoSize</code>인 정사각형 영역을 봅니다.</p>
+<div class="am-panel-body"><div class="am-md"><p>방향광에는 위치가 없으므로 직교 투영을 씁니다. 씬 중심에서 빛의 반대 방향으로 물러난 곳에 눈을 두고, 한 변이 <code>ShadowSettings::orthoSize</code>(기본 60)인 정사각형 영역을 봅니다(<code>RendererShadow.cpp</code>의 <code>ComputeLightViewProj</code>). 이것은 CSM을 끈 단일 뷰입니다. 기본값은 CSM이고, 카메라 절두체를 나눈 조각마다 경계 구에 맞춘 직교 상자를 씁니다(<code>AddCascadeViews</code>, <a href="csm-study.html">CSM 공부 문서</a>).</p>
 </div>
-<figure class="am-codeblock" data-am-src="SherlockEngine/Graphics/Renderer.cpp" data-am-lines="920-940"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Graphics/Renderer.cpp:920-940</span><span class="am-code-lang">cpp</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="cpp"><span class="am-ln" data-n="920">XMMATRIX Renderer::ComputeLightViewProj(const LightData&amp; light) const</span><span class="am-ln" data-n="921">{</span><span class="am-ln" data-n="922">	// 방향광은 위치가 없음. 씬 중심에서 빛의 반대 방향으로 distance 만큼 물러난 곳에 눈을 두고,</span><span class="am-ln" data-n="923">	// 직교 투영으로 orthoSize × orthoSize 영역을 봄. 씬 경계를 알게 되면 그 AABB 에 맞추는 것이 다음 단계임.</span><span class="am-ln" data-n="924">	XMVECTOR direction = XMLoadFloat3(&amp;light.direction);</span><span class="am-ln" data-n="925">	if (XMVectorGetX(XMVector3LengthSq(direction)) &lt; 0.000001f)</span><span class="am-ln" data-n="926">	{</span><span class="am-ln" data-n="927">		direction = XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);</span><span class="am-ln" data-n="928">	}</span><span class="am-ln" data-n="929">	direction = XMVector3Normalize(direction);</span><span class="am-ln" data-n="930"></span><span class="am-ln am-ln--hl" data-n="931">	const XMVECTOR center = XMVectorSet(0.0f, 2.0f, 0.0f, 1.0f);</span><span class="am-ln am-ln--hl" data-n="932">	const XMVECTOR eye = XMVectorSubtract(center, XMVectorScale(direction, m_settings.shadowDistance));</span><span class="am-ln" data-n="933">	// 빛이 거의 수직이면 up = +Y 가 시선과 평행해져 LookAt 이 깨짐. 그때는 +Z 를 up 으로 씀.</span><span class="am-ln" data-n="934">	const XMVECTOR up = (fabsf(XMVectorGetY(direction)) &gt; 0.99f) ? XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);</span><span class="am-ln" data-n="935"></span><span class="am-ln am-ln--hl" data-n="936">	const XMMATRIX view = XMMatrixLookAtLH(eye, center, up);</span><span class="am-ln" data-n="937">	const float size = m_settings.shadowOrthoSize;</span><span class="am-ln am-ln--hl" data-n="938">	const XMMATRIX proj = XMMatrixOrthographicLH(size, size, 0.1f, m_settings.shadowDistance * 2.0f + size);</span><span class="am-ln" data-n="939">	return view * proj;</span><span class="am-ln" data-n="940">}</span></code></pre></figure>
-<div class="am-md"><p>깊이 전용 VS는 위치만 변환합니다. 픽셀 셰이더가 없으므로 래스터라이저가 쓰는 깊이가 곧 결과입니다.</p>
+<figure class="am-codeblock" data-am-src="SherlockEngine/Graphics/RendererShadow.cpp" data-am-lines="115-135"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Graphics/RendererShadow.cpp:115-135</span><span class="am-code-lang">cpp</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="cpp"><span class="am-ln" data-n="115">XMMATRIX Renderer::ComputeLightViewProj(const GpuLight&amp; light) const</span><span class="am-ln" data-n="116">{</span><span class="am-ln" data-n="117">	// 방향광은 위치가 없음. 씬 중심에서 빛의 반대 방향으로 distance 만큼 물러난 곳에 눈을 두고,</span><span class="am-ln" data-n="118">	// 직교 투영으로 orthoSize × orthoSize 영역을 봄. 씬 경계를 알게 되면 그 AABB 에 맞추는 것이 다음 단계임.</span><span class="am-ln" data-n="119">	XMVECTOR direction = XMLoadFloat3(&amp;light.direction);</span><span class="am-ln" data-n="120">	if (XMVectorGetX(XMVector3LengthSq(direction)) &lt; 0.000001f)</span><span class="am-ln" data-n="121">	{</span><span class="am-ln" data-n="122">		direction = XMVectorSet(0.0f, -1.0f, 0.0f, 0.0f);</span><span class="am-ln" data-n="123">	}</span><span class="am-ln" data-n="124">	direction = XMVector3Normalize(direction);</span><span class="am-ln" data-n="125"></span><span class="am-ln am-ln--hl" data-n="126">	const XMVECTOR center = XMVectorSet(0.0f, 2.0f, 0.0f, 1.0f);</span><span class="am-ln am-ln--hl" data-n="127">	const XMVECTOR eye = XMVectorSubtract(center, XMVectorScale(direction, m_shadowSettings.distance));</span><span class="am-ln" data-n="128">	// 빛이 거의 수직이면 up = +Y 가 시선과 평행해져 LookAt 이 깨짐. 그때는 +Z 를 up 으로 씀.</span><span class="am-ln" data-n="129">	const XMVECTOR up = (fabsf(XMVectorGetY(direction)) &gt; 0.99f) ? XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f) : XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);</span><span class="am-ln" data-n="130"></span><span class="am-ln am-ln--hl" data-n="131">	const XMMATRIX view = XMMatrixLookAtLH(eye, center, up);</span><span class="am-ln" data-n="132">	const float size = m_shadowSettings.orthoSize;</span><span class="am-ln am-ln--hl" data-n="133">	const XMMATRIX proj = XMMatrixOrthographicLH(size, size, 0.1f, m_shadowSettings.distance * 2.0f + size);</span><span class="am-ln" data-n="134">	return view * proj;</span><span class="am-ln" data-n="135">}</span></code></pre></figure>
+<div class="am-md"><p>기본 그림자 PSO(<code>Pass_Shadow</code>)의 깊이 전용 VS는 위치만 변환합니다. 픽셀 셰이더가 없으므로 래스터라이저가 쓰는 깊이가 곧 결과입니다. 예전에는 모든 재질이 이 경로였습니다. 지금은 알파 컷아웃 재질과 디졸브 중인 오브젝트만 <code>Pass_ShadowAlpha</code>로 그립니다. 이 변형의 <code>PS_ShadowAlpha</code>(<code>ShadowAlphaPixelShader.hlsl</code>)는 색을 내지 않고, 알베도 알파와 디졸브 노이즈로 <code>clip</code>해 구멍 난 자리의 깊이를 버립니다. 고르는 곳은 <code>Renderer.cpp</code>의 드로우 목록 구성(<code>item.shadowAlpha</code>)입니다.</p>
 </div>
-<figure class="am-codeblock" data-am-src="SherlockEngine/Shaders/ShadowVertexShader.hlsl" data-am-lines="10-14"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Shaders/ShadowVertexShader.hlsl:10-14</span><span class="am-code-lang">hlsl</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="hlsl"><span class="am-ln" data-n="10"></span><span class="am-ln" data-n="11">float4 VS_Shadow(ShadowVSInput input) : SV_POSITION</span><span class="am-ln" data-n="12">{</span><span class="am-ln" data-n="13">    const float4 worldPosition = mul(float4(input.position, 1.0f), world);</span><span class="am-ln" data-n="14">    return mul(worldPosition, lightViewProj);</span></code></pre></figure>
-<div class="am-md"><p>패스 구성은 렌더 타깃 0개와 D32_FLOAT 깊이 하나입니다. 이 텍스처는 나중에 셰이더가 읽어야 하므로 TYPELESS 리소스에 DSV(D32)와 SRV(R32)를 둘 다 만듭니다. 패스 앞뒤로 상태 전이(Barrier)를 기록합니다.</p>
+<figure class="am-codeblock" data-am-src="SherlockEngine/Shaders/ShadowVertexShader.hlsl" data-am-lines="12-16"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Shaders/ShadowVertexShader.hlsl:12-16</span><span class="am-code-lang">hlsl</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="hlsl"><span class="am-ln" data-n="12">float4 VS_Shadow(ShadowVSInput input) : SV_POSITION</span><span class="am-ln" data-n="13">{</span><span class="am-ln" data-n="14">    const float4 worldPosition = mul(float4(input.position, 1.0f), world);</span><span class="am-ln" data-n="15">    return mul(worldPosition, shadowViewProj);   // b5: 지금 그리는 그림자 뷰</span><span class="am-ln" data-n="16">}</span></code></pre></figure>
+<div class="am-md"><p>패스 구성은 렌더 타깃 0개와 D32_FLOAT 깊이 하나입니다. 지금은 깊이 텍스처가 둘(지역광 아틀라스, 방향광 CSM 아틀라스)이라 같은 구성의 패스를 아틀라스마다 한 번씩 열고, 뷰마다 뷰포트를 바꿉니다(<code>RenderShadowAtlasPass</code>, <a href="shadow-atlas-study.html">섀도 아틀라스 공부 문서</a>). 이 텍스처는 나중에 셰이더가 읽어야 하므로 TYPELESS 리소스에 DSV(D32)와 SRV(R32)를 둘 다 만듭니다. 패스 앞뒤로 상태 전이(Barrier)를 기록합니다. 이전 상태는 RHI가 텍스처마다 기억하므로 목표 상태만 넘깁니다.</p>
 </div>
-<figure class="am-codeblock" data-am-src="SherlockEngine/Graphics/Renderer.cpp" data-am-lines="1073-1084"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Graphics/Renderer.cpp:1073-1084</span><span class="am-code-lang">cpp</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="cpp"><span class="am-ln" data-n="1073">void Renderer::RenderShadowPass(RHI::CommandList&amp; cmd)</span><span class="am-ln" data-n="1074">{</span><span class="am-ln" data-n="1075">	// 그림자 맵: ShaderResource(또는 Common) → DepthWrite. D3D11 에서는 상태 추적만 하고, D3D12 에서는 실제 배리어를 기록함.</span><span class="am-ln" data-n="1076">	cmd.Barrier(m_shadowMap, m_shadowMapState, ResourceState::DepthWrite);</span><span class="am-ln" data-n="1077">	m_shadowMapState = ResourceState::DepthWrite;</span><span class="am-ln" data-n="1078"></span><span class="am-ln" data-n="1079">	// RenderPassDesc 도 지정 초기화 — Vulkan 의 VkRenderingInfo 나 D3D12 의 BeginRenderPass 인자와 같은 모양이 됨.</span><span class="am-ln" data-n="1080">	const RenderPassDesc pass{</span><span class="am-ln" data-n="1081">		.colorCount = 0,</span><span class="am-ln" data-n="1082">		.depth = { .texture = m_shadowMap, .load = LoadOp::Clear, .clearDepth = 1.0f },</span><span class="am-ln" data-n="1083">		.debugName = &quot;ShadowPass&quot;,</span><span class="am-ln" data-n="1084">	};</span></code></pre></figure></div>
+<figure class="am-codeblock" data-am-src="SherlockEngine/Graphics/RendererShadow.cpp" data-am-lines="609-619"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Graphics/RendererShadow.cpp:609-619</span><span class="am-code-lang">cpp</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="cpp"><span class="am-ln" data-n="609">	// 그림자 맵: ShaderResource(또는 Common) → DepthWrite. D3D11 에서는 상태 기록만 하고, D3D12 에서는 실제</span><span class="am-ln" data-n="610">	// 배리어를 기록함. &quot;지금 상태&quot;는 RHI 가 텍스처마다 기억함.</span><span class="am-ln" data-n="611">	cmd.Barrier(map, ResourceState::DepthWrite);</span><span class="am-ln" data-n="612"></span><span class="am-ln" data-n="613">	// RenderPassDesc 도 지정 초기화 — Vulkan 의 VkRenderingInfo 나 D3D12 의 BeginRenderPass 인자와 같은 모양이 됨.</span><span class="am-ln" data-n="614">	const RenderPassDesc pass{</span><span class="am-ln" data-n="615">		.colorCount = 0,</span><span class="am-ln" data-n="616">		.depth = { .texture = map, .load = LoadOp::Clear, .clearDepth = 1.0f },</span><span class="am-ln" data-n="617">		.debugName = (atlas == 1) ? &quot;CsmShadowPass&quot; : &quot;ShadowPass&quot;,</span><span class="am-ln" data-n="618">	};</span><span class="am-ln" data-n="619">	cmd.BeginRenderPass(pass);   // 아틀라스 전체를 한 번 클리어. 뷰포트는 뷰마다 아래에서 바꿈</span></code></pre></figure></div>
 </section>
 <section class="am-panel am-span-wide" id="panel-D">
 <header class="am-panel-head"><span class="am-panel-id">D</span><h2>3. 2패스: 좌표 변환과 비교</h2></header>
-<div class="am-panel-body"><figure class="am-codeblock" data-am-src="SherlockEngine/Shaders/BasicPixelShader.hlsl" data-am-lines="18-30"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Shaders/BasicPixelShader.hlsl:18-30</span><span class="am-code-lang">hlsl</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="hlsl"><span class="am-ln" data-n="18">float ComputeShadowFactor(float4 shadowPosition)</span><span class="am-ln" data-n="19">{</span><span class="am-ln" data-n="20">    // 단일 반환 구조: 조기 반환이 섞이면 fxc 가 -Od(디버그) 에서 X4000 오경고를 냄.</span><span class="am-ln" data-n="21">    float result = 1.0f;</span><span class="am-ln" data-n="22">    // 직교 투영이라 w = 1 이지만 관례대로 나눔.</span><span class="am-ln am-ln--hl" data-n="23">    const float3 p = shadowPosition.xyz / shadowPosition.w;</span><span class="am-ln" data-n="24">    // NDC x,y ∈ [−1, 1] → UV. D3D 텍스처 공간은 v 가 아래쪽으로 증가하므로 y 부호를 뒤집음.</span><span class="am-ln am-ln--hl" data-n="25">    const float2 uv = float2(p.x * 0.5f + 0.5f, -p.y * 0.5f + 0.5f);</span><span class="am-ln" data-n="26">    // 그림자가 꺼져 있거나 광원 far 밖이면 result = 1 그대로.</span><span class="am-ln am-ln--hl" data-n="27">    if (shadowParams.w &gt;= 0.5f &amp;&amp; p.z &lt;= 1.0f)</span><span class="am-ln" data-n="28">    {</span><span class="am-ln am-ln--hl" data-n="29">        const float depth = p.z - shadowParams.y;   // 수신자 깊이에서 바이어스를 뺌(자기 그림자 방지)</span><span class="am-ln" data-n="30"></span></code></pre></figure>
-<div class="am-md"><p>변환 단계는 다음과 같습니다.</p>
+<div class="am-panel-body"><figure class="am-codeblock" data-am-src="SherlockEngine/Shaders/Shading.hlsli" data-am-lines="66-89"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Shaders/Shading.hlsli:66-89</span><span class="am-code-lang">hlsl</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="hlsl"><span class="am-ln" data-n="66">    // (2) 월드 → 이 뷰의 클립 → NDC → 타일 안 UV (0..1). D3D 텍스처 공간은 v 가 아래쪽으로 증가하므로 y 부호를 뒤집음.</span><span class="am-ln" data-n="67">    const float4 clip = mul(float4(p, 1.0f), view.viewProj);</span><span class="am-ln am-ln--hl" data-n="68">    const float3 ndc = clip.xyz / clip.w;</span><span class="am-ln am-ln--hl" data-n="69">    float2 local = float2(ndc.x * 0.5f + 0.5f, -ndc.y * 0.5f + 0.5f);</span><span class="am-ln" data-n="70"></span><span class="am-ln" data-n="71">    // (3) 노말 섀도: 노멀 차이를 같은 행렬의 방향(w = 0)으로 옮겨 UV 에 더함. shadowExtra.x(에디터의 Normal</span><span class="am-ln" data-n="72">    // offset)로 조절함.</span><span class="am-ln" data-n="73">    //     직교면 w = 1 이라 예전 계산과 같음.</span><span class="am-ln" data-n="74">    const float4 deltaClip = mul(float4(normalDelta, 0.0f), view.viewProj);</span><span class="am-ln" data-n="75">    local += deltaClip.xy / clip.w * float2(0.5f, -0.5f) * shadowExtra.x;</span><span class="am-ln" data-n="76"></span><span class="am-ln" data-n="77">    // (4) 이 뷰 밖이면 result = 1 그대로. 원근 뷰는 광원 뒤(w ≤ 0)와 near 앞(z &lt; 0)도 밖.</span><span class="am-ln am-ln--hl" data-n="78">    const bool inside = clip.w &gt; 0.0f &amp;&amp; all(local &gt;= 0.0f) &amp;&amp; all(local &lt;= 1.0f) &amp;&amp; ndc.z &lt;= 1.0f &amp;&amp; (!perspective || ndc.z &gt;= 0.0f);</span><span class="am-ln" data-n="79">    coverage = inside ? 1.0f : 0.0f;</span><span class="am-ln" data-n="80">    if (shadowParams.w &gt;= 0.5f &amp;&amp; inside)</span><span class="am-ln" data-n="81">    {</span><span class="am-ln" data-n="82">        // (5) 타일 UV → 아틀라스 UV. PCF 커널이 옆 타일을 읽지 않도록 여백(텍셀)만큼 안쪽으로 clamp.</span><span class="am-ln" data-n="83">        //     params.w == 1 이면 CSM 전용 아틀라스(t14, 가로·세로가 다를 수 있음), 아니면 메인 아틀라스(t8).</span><span class="am-ln" data-n="84">        const bool csm = view.params.w &gt; 0.5f;</span><span class="am-ln" data-n="85">        float2 uv = view.atlasRect.xy + local * view.atlasRect.zw;</span><span class="am-ln" data-n="86">        const float2 texel = csm ? csmAtlasParams.xy : shadowAtlasParams.xx;   // 아틀라스 텍셀 크기 (UV)</span><span class="am-ln" data-n="87">        const float2 border = shadowAtlasParams.y * texel;</span><span class="am-ln" data-n="88">        uv = clamp(uv, view.atlasRect.xy + border, view.atlasRect.xy + view.atlasRect.zw - border);</span><span class="am-ln am-ln--hl" data-n="89">        const float depth = ndc.z - view.params.x;   // 수신자 깊이에서 바이어스를 뺌(자기 그림자 방지)</span></code></pre></figure>
+<div class="am-md"><p>인용한 범위에는 노멀 맵 UV 이동 (3)과 타일 안쪽 clamp (5)도 들어 있습니다. 이 둘은 <a href="pcf-study.html">PCF</a>와 <a href="shadow-atlas-study.html">섀도 아틀라스</a> 문서에서 다룹니다. 변환 단계는 다음과 같습니다.</p>
 <ol>
-<li>월드 좌표 → 광원 클립 좌표(<code>shadowPosition</code>, VS가 계산).</li>
+<li>월드 좌표 → 광원 클립 좌표. 픽셀 셰이더가 월드 위치에 그림자 뷰 행렬을 곱합니다(<code>Shading.hlsli</code>의 <code>SampleShadowViewCoverage</code>). 예전에는 VS가 <code>shadowPosition</code>으로 넘겼지만, 조명마다 뷰가 여럿이 되면서 PS로 옮겼습니다.</li>
 <li><math dir="ltr" data-am-tex="$w$"><mi>w</mi></math>로 나눠 NDC를 얻습니다. 직교 투영이라 <math dir="ltr" data-am-tex="$w=1$"><mrow><mi>w</mi><mo>=</mo></mrow><mrow><mn>1</mn></mrow></math>이지만 관례대로 나눕니다.</li>
 <li>NDC <math dir="ltr" data-am-tex="$x,y\in[-1,1]$"><mrow><mi>x</mi><mo separator="true">,</mo></mrow><mrow><mi>y</mi><mo>∈</mo></mrow><mrow><mrow><mo fence="true" form="prefix" stretchy="false">[</mo><mo form="prefix" stretchy="false">−</mo><mn>1,1</mn><mo fence="true" form="postfix" stretchy="false">]</mo></mrow></mrow></math> → UV <math dir="ltr" data-am-tex="$[0,1]$"><mrow><mo fence="true" form="prefix" stretchy="false">[</mo><mn>0,1</mn><mo fence="true" form="postfix" stretchy="false">]</mo></mrow></math>. D3D 텍스처는 v가 아래로 증가하므로 <strong>y 부호를 뒤집습니다</strong>.</li>
-<li><math dir="ltr" data-am-tex="$z$"><mi>z</mi></math>는 [0,1] 깊이 그대로 비교값입니다. 바이어스를 빼서 비교합니다.</li>
+<li><math dir="ltr" data-am-tex="$z$"><mi>z</mi></math>는 [0,1] 깊이 그대로 비교값입니다. 뷰마다 정한 바이어스(<code>params.x</code>)를 빼서 비교합니다. CSM은 같은 월드 거리가 되도록 캐스케이드 깊이 범위에 맞춰 환산합니다.</li>
 <li><math dir="ltr" data-am-tex="$z&gt;1$"><mrow><mi>z</mi><mo>&gt;</mo></mrow><mrow><mn>1</mn></mrow></math>이면 광원의 far 밖이므로 그림자가 없다고 봅니다.</li>
 </ol>
-<p>비교 결과는 <code>SampleCmpLevelZero</code>가 돌려줍니다. 샘플러는 <code>LessEqual</code> 비교에 Border 주소 모드(색 1)입니다. 맵 밖은 <strong>빛을 받는 것</strong>으로 처리합니다.</p>
+<p>비교 결과는 <code>SampleCmpLevelZero</code>가 돌려줍니다. 샘플러는 <code>LessEqual</code> 비교에 Border 주소 모드(색 1)입니다. 맵 밖은 <strong>빛을 받는 것</strong>으로 처리합니다. 예전에는 이 Border가 그 일을 맡았습니다. 지금은 한 장에 여러 뷰가 들어가 옆 타일이 있으므로, 픽셀 셰이더가 뷰 밖인지 직접 판정하고(<code>inside</code>) PCF가 옆 타일을 읽지 않도록 UV를 타일 안쪽으로 clamp합니다. Border는 아틀라스 전체 밖의 안전장치입니다.</p>
 </div></div>
 </section>
 <section class="am-panel am-span-wide" id="panel-E">
@@ -1207,28 +1207,28 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 </tr>
 <tr>
 <td>2패스 셰이더</td>
-<td><code>shadowBias</code> 0.0015</td>
+<td><code>ShadowSettings::bias</code> 0.0015 (CSM은 깊이 범위 비로 환산)</td>
 <td>비교하는 수신자 깊이에서 뺌</td>
 </tr>
 </tbody></table></div>
 </div>
-<figure class="am-codeblock" data-am-src="SherlockEngine/Graphics/Renderer.cpp" data-am-lines="182-191"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Graphics/Renderer.cpp:182-191</span><span class="am-code-lang">cpp</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="cpp"><span class="am-ln" data-n="182">	// 그림자 패스: VS 만(ps 는 빈 핸들), 렌더 타깃 없음, 깊이 D32_FLOAT. 래스터라이저 깊이 바이어스로 자기 그림자(acne)를 줄임.</span><span class="am-ln" data-n="183">	// D32_FLOAT 에서 DepthBias 단위는 2^(지수−23) — z ≈ 0.5 면 한 단위가 6e-8 임.</span><span class="am-ln" data-n="184">	m_shadowDesc = PipelineStateDesc{</span><span class="am-ln" data-n="185">		.vs = m_shadowVs,</span><span class="am-ln" data-n="186">		.bindingLayouts = { m_frameLayout, m_objectLayout },</span><span class="am-ln" data-n="187">		.bindingLayoutCount = 2,</span><span class="am-ln am-ln--hl" data-n="188">		.rasterizer = { .depthBias = 2000, .depthBiasClamp = 0.01f, .slopeScaledDepthBias = 2.0f },</span><span class="am-ln" data-n="189">		.rtvCount = 0,</span><span class="am-ln" data-n="190">		.dsvFormat = Format::D32_FLOAT,</span><span class="am-ln" data-n="191">	};</span></code></pre></figure>
+<figure class="am-codeblock" data-am-src="SherlockEngine/Graphics/Renderer.cpp" data-am-lines="596-606"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Graphics/Renderer.cpp:596-606</span><span class="am-code-lang">cpp</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="cpp"><span class="am-ln" data-n="596">	// 그림자 패스: VS 만(ps 는 빈 핸들. 알파 테스트 변형 Pass_ShadowAlpha* 만 PS 가 있음), 렌더 타깃 없음, 깊이 D32_FLOAT. 래스터라이저 깊이 바이어스로 자기</span><span class="am-ln" data-n="597">	// 그림자(acne)를 줄임. D32_FLOAT 에서 DepthBias 단위는 2^(지수−23) — z ≈ 0.5 면 한 단위가 6e-8 임.</span><span class="am-ln" data-n="598">	for (PassId id : { Pass_Shadow, Pass_ShadowSkin, Pass_ShadowAlpha, Pass_ShadowAlphaSkin })</span><span class="am-ln" data-n="599">	{</span><span class="am-ln" data-n="600">		PipelineStateDesc&amp; shadow = m_passDesc[id];</span><span class="am-ln am-ln--hl" data-n="601">		shadow.rasterizer.depthBias = 2000;</span><span class="am-ln am-ln--hl" data-n="602">		shadow.rasterizer.depthBiasClamp = 0.01f;</span><span class="am-ln am-ln--hl" data-n="603">		shadow.rasterizer.slopeScaledDepthBias = 2.0f;</span><span class="am-ln" data-n="604">		shadow.rtvCount = 0;</span><span class="am-ln" data-n="605">		shadow.dsvFormat = Format::D32_FLOAT;</span><span class="am-ln" data-n="606">	}</span></code></pre></figure>
 <div class="am-md"><p><strong>단위 감각</strong>을 잡아 두면 좋습니다.</p>
 <ul>
 <li>D32_FLOAT에서 <code>depthBias</code> 1단위는 <math dir="ltr" data-am-tex="$2^{e-23}$"><msup><mn>2</mn><mrow><mi>e</mi><mo>−</mo><mn>23</mn></mrow></msup></math>입니다. <math dir="ltr" data-am-tex="$z\approx0.5$"><mrow><mi>z</mi><mo>≈</mo></mrow><mrow><mn>0.5</mn></mrow></math>면 약 <math dir="ltr" data-am-tex="$6\times10^{-8}$"><mrow><mn>6</mn><mo>×</mo></mrow><mrow><msup><mn>10</mn><mrow><mo form="prefix" stretchy="false" lspace="0em" rspace="0em">−</mo><mn>8</mn></mrow></msup></mrow></math>이므로 2000단위는 약 <math dir="ltr" data-am-tex="$1.2\times10^{-4}$"><mrow><mn>1.2</mn><mo>×</mo></mrow><mrow><msup><mn>10</mn><mrow><mo form="prefix" stretchy="false" lspace="0em" rspace="0em">−</mo><mn>4</mn></mrow></msup></mrow></math>입니다.</li>
 <li>직교 투영은 깊이가 선형입니다. 광원 깊이 범위가 약 140 월드 단위(near 0.1, far = 거리×2 + 크기)이므로 셰이더 바이어스 0.0015는 약 <strong>0.2 월드 단위</strong>입니다.</li>
-<li>씬 크기가 바뀌면 같은 숫자의 의미가 바뀝니다. 그래서 <code>shadowBias</code>는 씬마다 다시 정합니다.</li>
+<li>씬 크기가 바뀌면 같은 숫자의 의미가 바뀝니다. 그래서 <code>bias</code>는 씬 파일마다 따로 저장합니다.</li>
 </ul>
-<p>더 나은 방법도 있습니다. 노멀 방향 오프셋(normal offset), 수신자 평면 깊이 바이어스(receiver plane depth bias), 앞면 대신 뒷면을 그리는 방법(얇은 물체에서 깨짐).</p>
+<p>더 나은 방법도 있습니다. 노멀 방향 오프셋(normal offset, 이 엔진은 스포트·포인트 뷰에만 적용, <code>ShadowSettings::localNormalBias</code> 텍셀 단위), 수신자 평면 깊이 바이어스(receiver plane depth bias), 앞면 대신 뒷면을 그리는 방법(얇은 물체에서 깨짐).</p>
 </div></div>
 </section>
 <section class="am-panel" id="panel-F">
 <header class="am-panel-head"><span class="am-panel-id">F</span><h2>5. 앨리어싱과 해상도</h2></header>
 <div class="am-panel-body"><div class="am-md"><p>맵은 해상도가 유한하므로 경계가 계단집니다. 이 엔진의 수치는 다음과 같습니다.</p>
 <ul>
-<li>맵 2048², 직교 영역 60 월드 단위 → 텍셀 하나가 약 <strong>0.029 월드 단위</strong>입니다.</li>
-<li>카메라에 가까운 물체도 먼 물체도 같은 해상도를 씁니다. 가까이서 보면 계단이 보입니다(투영 앨리어싱).</li>
-<li>경계를 흐리는 일은 PCF가 맡습니다. 자세한 내용은 별도 문서 <code>pcf-interview.html</code>에 있습니다.</li>
+<li>CSM을 끈 단일 뷰는 맵 2048², 직교 영역 60 월드 단위 → 텍셀 하나가 약 <strong>0.029 월드 단위</strong>입니다.</li>
+<li>이 뷰는 카메라에 가까운 물체도 먼 물체도 같은 해상도를 씁니다. 기본값인 CSM은 1024² 칸 네 개를 카메라 거리별로 나눠 가까운 쪽에 해상도를 몰아줍니다. 가까이서 보면 계단이 보입니다(투영 앨리어싱).</li>
+<li>경계를 흐리는 일은 PCF(5×5)가 맡습니다. 자세한 내용은 <a href="pcf-study.html">PCF 공부 문서</a>에 있습니다.</li>
 </ul>
 </div></div>
 </section>
@@ -1243,24 +1243,24 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 </tr>
 </thead>
 <tbody><tr>
-<td>방향광 하나(0번)만</td>
-<td>점·스포트 그림자 없음</td>
-<td>큐브 섀도맵(점), 원근 맵(스포트)</td>
+<td>그림자를 받는 방향광은 하나(첫 castShadows)</td>
+<td>두 번째 방향광은 그림자 없음</td>
+<td>(점·스포트는 구현됨) 스포트는 원근 맵 1타일, 포인트는 아틀라스 타일 6장으로 큐브 면을 대신함(<a href="shadow-atlas-study.html">섀도 아틀라스 공부 문서</a>)</td>
 </tr>
 <tr>
 <td>고정된 직교 영역</td>
 <td>넓은 씬에서 해상도 부족</td>
-<td>캐스케이드 섀도맵(CSM), 카메라 절두체에 맞춘 타이트 투영</td>
+<td>(구현됨, 기본 켬) CSM, 조각마다 경계 구에 맞춘 직교 상자(<a href="csm-study.html">CSM 공부 문서</a>). CSM을 끈 단일 뷰는 지금도 고정 영역</td>
 </tr>
 <tr>
 <td>광원 이동 시 경계 떨림</td>
 <td>카메라 이동 때 그림자가 자글거림</td>
-<td>텍셀 스냅(광원 공간 이동량을 텍셀 단위로 양자화)</td>
+<td>(구현됨) CSM은 투영을 텍셀 단위로 스냅함(<code>AddCascadeViews</code>). 단일 뷰는 중심이 고정이라 카메라 이동에 흔들리지 않음</td>
 </tr>
 <tr>
 <td>깊이 전용 VS만</td>
 <td>알파 컷아웃 재질이 사각형 그대로 그림자를 만듦</td>
-<td>알파 테스트용 PS 추가</td>
+<td>(구현됨) 컷아웃·디졸브는 알파 테스트 그림자 PS(<code>Pass_ShadowAlpha</code>)</td>
 </tr>
 <tr>
 <td>고정 폭 필터</td>
@@ -1270,7 +1270,7 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <tr>
 <td>바이어스 수동</td>
 <td>씬마다 재조정</td>
-<td>노멀 오프셋, 수신자 평면 바이어스</td>
+<td>노멀 오프셋(지역광만 구현). 방향광 노멀 오프셋·수신자 평면 바이어스는 아직 없음</td>
 </tr>
 </tbody></table></div>
 </div></div>
@@ -1285,7 +1285,7 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <p><strong>Q6. 깊이 텍스처를 DSV로 쓰고 SRV로도 읽으려면?</strong> TYPELESS 포맷으로 리소스를 만들고, DSV는 D32_FLOAT, SRV는 R32_FLOAT로 뷰를 만듭니다. 쓰기와 읽기가 겹치지 않게 <code>DepthWrite → ShaderResource</code> 배리어를 둡니다.</p>
 <p><strong>Q7. 가까운 곳의 해상도를 높이려면?</strong> 캐스케이드 섀도맵입니다. 카메라 절두체를 거리로 나눠 구간마다 따로 맵을 만들고, 가까운 구간에 더 촘촘한 텍셀을 줍니다.</p>
 <p><strong>Q8. 카메라를 움직일 때 그림자가 반짝이는 이유는?</strong> 광원 투영 영역이 이동하면 텍셀 격자와 월드의 대응이 달라져 경계가 다른 텍셀에 걸립니다. 영역 이동을 텍셀 크기의 정수배로 스냅하면 안정됩니다.</p>
-<p><strong>Q9. 이 엔진에서 가장 먼저 개선할 것은?</strong> 씬 AABB에 맞춘 타이트 투영과 텍셀 스냅입니다. 코드 주석도 &quot;씬 경계를 알게 되면 그 AABB에 맞추는 것이 다음 단계&quot;라고 적고 있습니다. 다음으로 CSM과 노멀 오프셋을 넣습니다.</p>
+<p><strong>Q9. 이 엔진에서 다음으로 개선할 것은?</strong> 예전에는 타이트 투영·텍셀 스냅·CSM이 1순위였고 지금은 모두 들어갔습니다. 남은 것은 CSM을 끈 단일 뷰를 씬 AABB에 맞추기(코드 주석도 &quot;씬 경계를 알게 되면 그 AABB 에 맞추는 것이 다음 단계&quot;라고 적고 있습니다), 방향광의 노멀 오프셋·수신자 평면 바이어스, 접촉 거리에 따라 경계 폭이 바뀌는 PCSS, 두 번째 방향광 그림자입니다.</p>
 </div></div>
 </section>
 <section class="am-panel am-span-wide" id="panel-I">
@@ -1297,7 +1297,7 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <li>Microsoft Learn, <em>Cascaded Shadow Maps</em> — <a href="https://learn.microsoft.com/en-us/windows/win32/dxtecharts/cascaded-shadow-maps">링크</a></li>
 <li>NVIDIA GPU Gems 3, ch.10 <em>Parallel-Split Shadow Maps on Programmable GPUs</em> — <a href="https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-10-parallel-split-shadow-maps-programmable-gpus">링크</a></li>
 <li>LearnOpenGL, <em>Shadow Mapping</em> — <a href="https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping">learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping</a></li>
-<li>이 프로젝트: <code>docs/rendering-analysis.html</code> 11.8</li>
+<li>이 프로젝트: <a href="../overview/rendering-analysis.html#c11-8">rendering-analysis 11.8절 그림자 매핑</a>. 이어서 읽기: <a href="pcf-study.html">PCF</a> → <a href="csm-study.html">CSM</a> → <a href="shadow-atlas-study.html">섀도 아틀라스</a></li>
 </ul>
 </div></div>
 </section>
@@ -1326,7 +1326,7 @@ theme: paper
 lang: ko
 title: 그림자 맵 면접 대비 정리
 subtitle: 2패스 원리부터 acne·Peter Panning·한계까지, SherlockEngine 코드로 설명하기
-source: BasicPixelShader.hlsl · ShadowVertexShader.hlsl · Renderer.cpp
+source: Shading.hlsli · ShadowVertexShader.hlsl · RendererShadow.cpp · Renderer.cpp
 ---
 그림자 맵은 &quot;광원에서 본 깊이 이미지&quot;를 한 장 만들어 두고, 카메라 패스에서 각 픽셀이 그보다 **뒤에 있는지** 비교하는 기법입니다. 면접의 단골 주제는 원리, 좌표 변환, 바이어스, 앨리어싱 네 가지입니다.
 
@@ -1337,44 +1337,44 @@ source: BasicPixelShader.hlsl · ShadowVertexShader.hlsl · Renderer.cpp
 
 ## 1. 전체 흐름
 ```flow LR
-(프레임 시작) -&gt; [ComputeLightViewProj]: 방향광 0
-[ComputeLightViewProj] -&gt; *[ShadowPass]: 깊이만, 2048²
+(프레임 시작) -&gt; [BuildShadowViews]: 조명마다
+[BuildShadowViews] -&gt; *[ShadowPass]: 깊이만, 아틀라스
 [ShadowPass] -&gt; [Barrier 쓰기→읽기]
 [Barrier 쓰기→읽기] -&gt; [MainPass]
-[MainPass] -&gt; [VS shadowPosition]: 광원 클립 좌표
-[VS shadowPosition] -&gt; [PS ComputeShadowFactor]
-[PS ComputeShadowFactor] -&gt; [방향광 세기 × shadowFactor]
+[MainPass] -&gt; [PS viewProj 곱]: 광원 클립 좌표
+[PS viewProj 곱] -&gt; [PS SampleShadowView]
+[PS SampleShadowView] -&gt; [조명 세기 × 그림자 계수]
 ```
-핵심 연결 고리는 **두 패스가 같은 `lightViewProj` 행렬을 쓴다**는 점입니다. 값이 다르면 그림자가 엉뚱한 곳에 생깁니다.
+핵심 연결 고리는 **두 패스가 같은 뷰 행렬을 쓴다**는 점입니다. 그림자 뷰 하나의 `viewProj`가 그림자 패스에는 b5 `shadowViewProj`로, 메인 패스에는 b6 `shadowViews[]`로 올라갑니다(예전 이름은 `lightViewProj` 하나였습니다). 값이 다르면 그림자가 엉뚱한 곳에 생깁니다.
 
 ## 2. 1패스: 광원 시점 깊이 {span=2}
-방향광에는 위치가 없으므로 직교 투영을 씁니다. 씬 중심에서 빛의 반대 방향으로 물러난 곳에 눈을 두고, 한 변이 `shadowOrthoSize`인 정사각형 영역을 봅니다.
+방향광에는 위치가 없으므로 직교 투영을 씁니다. 씬 중심에서 빛의 반대 방향으로 물러난 곳에 눈을 두고, 한 변이 `ShadowSettings::orthoSize`(기본 60)인 정사각형 영역을 봅니다(`RendererShadow.cpp`의 `ComputeLightViewProj`). 이것은 CSM을 끈 단일 뷰입니다. 기본값은 CSM이고, 카메라 절두체를 나눈 조각마다 경계 구에 맞춘 직교 상자를 씁니다(`AddCascadeViews`, [CSM 공부 문서](csm-study.html)).
 
-```cpp src=SherlockEngine/Graphics/Renderer.cpp lines=920-940 hl=931,932,936,938
+```cpp src=SherlockEngine/Graphics/RendererShadow.cpp lines=115-135 hl=126-127,131,133
 ```
 
-깊이 전용 VS는 위치만 변환합니다. 픽셀 셰이더가 없으므로 래스터라이저가 쓰는 깊이가 곧 결과입니다.
+기본 그림자 PSO(`Pass_Shadow`)의 깊이 전용 VS는 위치만 변환합니다. 픽셀 셰이더가 없으므로 래스터라이저가 쓰는 깊이가 곧 결과입니다. 예전에는 모든 재질이 이 경로였습니다. 지금은 알파 컷아웃 재질과 디졸브 중인 오브젝트만 `Pass_ShadowAlpha`로 그립니다. 이 변형의 `PS_ShadowAlpha`(`ShadowAlphaPixelShader.hlsl`)는 색을 내지 않고, 알베도 알파와 디졸브 노이즈로 `clip`해 구멍 난 자리의 깊이를 버립니다. 고르는 곳은 `Renderer.cpp`의 드로우 목록 구성(`item.shadowAlpha`)입니다.
 
-```hlsl src=SherlockEngine/Shaders/ShadowVertexShader.hlsl lines=10-14
+```hlsl src=SherlockEngine/Shaders/ShadowVertexShader.hlsl lines=12-16
 ```
 
-패스 구성은 렌더 타깃 0개와 D32_FLOAT 깊이 하나입니다. 이 텍스처는 나중에 셰이더가 읽어야 하므로 TYPELESS 리소스에 DSV(D32)와 SRV(R32)를 둘 다 만듭니다. 패스 앞뒤로 상태 전이(Barrier)를 기록합니다.
+패스 구성은 렌더 타깃 0개와 D32_FLOAT 깊이 하나입니다. 지금은 깊이 텍스처가 둘(지역광 아틀라스, 방향광 CSM 아틀라스)이라 같은 구성의 패스를 아틀라스마다 한 번씩 열고, 뷰마다 뷰포트를 바꿉니다(`RenderShadowAtlasPass`, [섀도 아틀라스 공부 문서](shadow-atlas-study.html)). 이 텍스처는 나중에 셰이더가 읽어야 하므로 TYPELESS 리소스에 DSV(D32)와 SRV(R32)를 둘 다 만듭니다. 패스 앞뒤로 상태 전이(Barrier)를 기록합니다. 이전 상태는 RHI가 텍스처마다 기억하므로 목표 상태만 넘깁니다.
 
-```cpp src=SherlockEngine/Graphics/Renderer.cpp lines=1073-1084
+```cpp src=SherlockEngine/Graphics/RendererShadow.cpp lines=609-619
 ```
 
 ## 3. 2패스: 좌표 변환과 비교 {span=2}
-```hlsl src=SherlockEngine/Shaders/BasicPixelShader.hlsl lines=18-30 hl=23,25,27,29
+```hlsl src=SherlockEngine/Shaders/Shading.hlsli lines=66-89 hl=68-69,78,89
 ```
 
-변환 단계는 다음과 같습니다.
-1. 월드 좌표 → 광원 클립 좌표(`shadowPosition`, VS가 계산).
+인용한 범위에는 노멀 맵 UV 이동 (3)과 타일 안쪽 clamp (5)도 들어 있습니다. 이 둘은 [PCF](pcf-study.html)와 [섀도 아틀라스](shadow-atlas-study.html) 문서에서 다룹니다. 변환 단계는 다음과 같습니다.
+1. 월드 좌표 → 광원 클립 좌표. 픽셀 셰이더가 월드 위치에 그림자 뷰 행렬을 곱합니다(`Shading.hlsli`의 `SampleShadowViewCoverage`). 예전에는 VS가 `shadowPosition`으로 넘겼지만, 조명마다 뷰가 여럿이 되면서 PS로 옮겼습니다.
 2. $w$로 나눠 NDC를 얻습니다. 직교 투영이라 $w=1$이지만 관례대로 나눕니다.
 3. NDC $x,y\in[-1,1]$ → UV $[0,1]$. D3D 텍스처는 v가 아래로 증가하므로 **y 부호를 뒤집습니다**.
-4. $z$는 [0,1] 깊이 그대로 비교값입니다. 바이어스를 빼서 비교합니다.
+4. $z$는 [0,1] 깊이 그대로 비교값입니다. 뷰마다 정한 바이어스(`params.x`)를 빼서 비교합니다. CSM은 같은 월드 거리가 되도록 캐스케이드 깊이 범위에 맞춰 환산합니다.
 5. $z&gt;1$이면 광원의 far 밖이므로 그림자가 없다고 봅니다.
 
-비교 결과는 `SampleCmpLevelZero`가 돌려줍니다. 샘플러는 `LessEqual` 비교에 Border 주소 모드(색 1)입니다. 맵 밖은 **빛을 받는 것**으로 처리합니다.
+비교 결과는 `SampleCmpLevelZero`가 돌려줍니다. 샘플러는 `LessEqual` 비교에 Border 주소 모드(색 1)입니다. 맵 밖은 **빛을 받는 것**으로 처리합니다. 예전에는 이 Border가 그 일을 맡았습니다. 지금은 한 장에 여러 뷰가 들어가 옆 타일이 있으므로, 픽셀 셰이더가 뷰 밖인지 직접 판정하고(`inside`) PCF가 옆 타일을 읽지 않도록 UV를 타일 안쪽으로 clamp합니다. Border는 아틀라스 전체 밖의 안전장치입니다.
 
 ## 4. 바이어스: acne와 Peter Panning {span=2}
 텍셀 하나는 깊이 값 하나만 저장하지만, 그 텍셀이 덮는 면은 기울어 있어 실제 깊이가 텍셀 안에서 변합니다. 같은 면의 픽셀이 &quot;저장된 깊이보다 약간 멀다&quot;고 판정되면 줄무늬 **acne**가 생깁니다. 바이어스를 크게 주면 그림자가 물체에서 떨어져 보이는 **Peter Panning**이 생깁니다.
@@ -1384,33 +1384,33 @@ source: BasicPixelShader.hlsl · ShadowVertexShader.hlsl · Renderer.cpp
 | 위치 | 값 | 하는 일 |
 |---|---|---|
 | 1패스 래스터라이저 | `depthBias` 2000, `slopeScaledDepthBias` 2.0, `depthBiasClamp` 0.01 | 저장되는 깊이를 밀어 놓음. 기울기 항이 비스듬한 면일수록 더 밀어 줌 |
-| 2패스 셰이더 | `shadowBias` 0.0015 | 비교하는 수신자 깊이에서 뺌 |
+| 2패스 셰이더 | `ShadowSettings::bias` 0.0015 (CSM은 깊이 범위 비로 환산) | 비교하는 수신자 깊이에서 뺌 |
 
-```cpp src=SherlockEngine/Graphics/Renderer.cpp lines=182-191 hl=188
+```cpp src=SherlockEngine/Graphics/Renderer.cpp lines=596-606 hl=601-603
 ```
 
 **단위 감각**을 잡아 두면 좋습니다.
 - D32_FLOAT에서 `depthBias` 1단위는 $2^{e-23}$입니다. $z\approx0.5$면 약 $6\times10^{-8}$이므로 2000단위는 약 $1.2\times10^{-4}$입니다.
 - 직교 투영은 깊이가 선형입니다. 광원 깊이 범위가 약 140 월드 단위(near 0.1, far = 거리×2 + 크기)이므로 셰이더 바이어스 0.0015는 약 **0.2 월드 단위**입니다.
-- 씬 크기가 바뀌면 같은 숫자의 의미가 바뀝니다. 그래서 `shadowBias`는 씬마다 다시 정합니다.
+- 씬 크기가 바뀌면 같은 숫자의 의미가 바뀝니다. 그래서 `bias`는 씬 파일마다 따로 저장합니다.
 
-더 나은 방법도 있습니다. 노멀 방향 오프셋(normal offset), 수신자 평면 깊이 바이어스(receiver plane depth bias), 앞면 대신 뒷면을 그리는 방법(얇은 물체에서 깨짐).
+더 나은 방법도 있습니다. 노멀 방향 오프셋(normal offset, 이 엔진은 스포트·포인트 뷰에만 적용, `ShadowSettings::localNormalBias` 텍셀 단위), 수신자 평면 깊이 바이어스(receiver plane depth bias), 앞면 대신 뒷면을 그리는 방법(얇은 물체에서 깨짐).
 
 ## 5. 앨리어싱과 해상도
 맵은 해상도가 유한하므로 경계가 계단집니다. 이 엔진의 수치는 다음과 같습니다.
-- 맵 2048², 직교 영역 60 월드 단위 → 텍셀 하나가 약 **0.029 월드 단위**입니다.
-- 카메라에 가까운 물체도 먼 물체도 같은 해상도를 씁니다. 가까이서 보면 계단이 보입니다(투영 앨리어싱).
-- 경계를 흐리는 일은 PCF가 맡습니다. 자세한 내용은 별도 문서 `pcf-interview.html`에 있습니다.
+- CSM을 끈 단일 뷰는 맵 2048², 직교 영역 60 월드 단위 → 텍셀 하나가 약 **0.029 월드 단위**입니다.
+- 이 뷰는 카메라에 가까운 물체도 먼 물체도 같은 해상도를 씁니다. 기본값인 CSM은 1024² 칸 네 개를 카메라 거리별로 나눠 가까운 쪽에 해상도를 몰아줍니다. 가까이서 보면 계단이 보입니다(투영 앨리어싱).
+- 경계를 흐리는 일은 PCF(5×5)가 맡습니다. 자세한 내용은 [PCF 공부 문서](pcf-study.html)에 있습니다.
 
 ## 6. 한계와 개선 방향 {span=2}
 | 한계 | 증상 | 개선 |
 |---|---|---|
-| 방향광 하나(0번)만 | 점·스포트 그림자 없음 | 큐브 섀도맵(점), 원근 맵(스포트) |
-| 고정된 직교 영역 | 넓은 씬에서 해상도 부족 | 캐스케이드 섀도맵(CSM), 카메라 절두체에 맞춘 타이트 투영 |
-| 광원 이동 시 경계 떨림 | 카메라 이동 때 그림자가 자글거림 | 텍셀 스냅(광원 공간 이동량을 텍셀 단위로 양자화) |
-| 깊이 전용 VS만 | 알파 컷아웃 재질이 사각형 그대로 그림자를 만듦 | 알파 테스트용 PS 추가 |
+| 그림자를 받는 방향광은 하나(첫 castShadows) | 두 번째 방향광은 그림자 없음 | (점·스포트는 구현됨) 스포트는 원근 맵 1타일, 포인트는 아틀라스 타일 6장으로 큐브 면을 대신함([섀도 아틀라스 공부 문서](shadow-atlas-study.html)) |
+| 고정된 직교 영역 | 넓은 씬에서 해상도 부족 | (구현됨, 기본 켬) CSM, 조각마다 경계 구에 맞춘 직교 상자([CSM 공부 문서](csm-study.html)). CSM을 끈 단일 뷰는 지금도 고정 영역 |
+| 광원 이동 시 경계 떨림 | 카메라 이동 때 그림자가 자글거림 | (구현됨) CSM은 투영을 텍셀 단위로 스냅함(`AddCascadeViews`). 단일 뷰는 중심이 고정이라 카메라 이동에 흔들리지 않음 |
+| 깊이 전용 VS만 | 알파 컷아웃 재질이 사각형 그대로 그림자를 만듦 | (구현됨) 컷아웃·디졸브는 알파 테스트 그림자 PS(`Pass_ShadowAlpha`) |
 | 고정 폭 필터 | 접촉 그림자와 먼 그림자의 경계 폭이 같음 | PCSS |
-| 바이어스 수동 | 씬마다 재조정 | 노멀 오프셋, 수신자 평면 바이어스 |
+| 바이어스 수동 | 씬마다 재조정 | 노멀 오프셋(지역광만 구현). 방향광 노멀 오프셋·수신자 평면 바이어스는 아직 없음 |
 
 ## 7. 예상 면접 질문 {span=2}
 **Q1. 그림자 맵 알고리즘을 설명해 보세요.** 광원 시점의 깊이 맵을 만들고(1패스), 카메라 패스에서 픽셀을 광원 공간으로 변환해 저장된 깊이와 비교합니다(2패스). 수신자가 저장된 깊이보다 멀면 그림자입니다.
@@ -1429,7 +1429,7 @@ source: BasicPixelShader.hlsl · ShadowVertexShader.hlsl · Renderer.cpp
 
 **Q8. 카메라를 움직일 때 그림자가 반짝이는 이유는?** 광원 투영 영역이 이동하면 텍셀 격자와 월드의 대응이 달라져 경계가 다른 텍셀에 걸립니다. 영역 이동을 텍셀 크기의 정수배로 스냅하면 안정됩니다.
 
-**Q9. 이 엔진에서 가장 먼저 개선할 것은?** 씬 AABB에 맞춘 타이트 투영과 텍셀 스냅입니다. 코드 주석도 &quot;씬 경계를 알게 되면 그 AABB에 맞추는 것이 다음 단계&quot;라고 적고 있습니다. 다음으로 CSM과 노멀 오프셋을 넣습니다.
+**Q9. 이 엔진에서 다음으로 개선할 것은?** 예전에는 타이트 투영·텍셀 스냅·CSM이 1순위였고 지금은 모두 들어갔습니다. 남은 것은 CSM을 끈 단일 뷰를 씬 AABB에 맞추기(코드 주석도 &quot;씬 경계를 알게 되면 그 AABB 에 맞추는 것이 다음 단계&quot;라고 적고 있습니다), 방향광의 노멀 오프셋·수신자 평면 바이어스, 접촉 거리에 따라 경계 폭이 바뀌는 PCSS, 두 번째 방향광 그림자입니다.
 
 ## 8. 참고자료 {span=2}
 - Williams, *Casting Curved Shadows on Curved Surfaces*, SIGGRAPH 1978 — 그림자 맵의 원전. [doi:10.1145/965139.807402](https://doi.org/10.1145/965139.807402)
@@ -1438,7 +1438,7 @@ source: BasicPixelShader.hlsl · ShadowVertexShader.hlsl · Renderer.cpp
 - Microsoft Learn, *Cascaded Shadow Maps* — [링크](https://learn.microsoft.com/en-us/windows/win32/dxtecharts/cascaded-shadow-maps)
 - NVIDIA GPU Gems 3, ch.10 *Parallel-Split Shadow Maps on Programmable GPUs* — [링크](https://developer.nvidia.com/gpugems/gpugems3/part-ii-light-and-shadows/chapter-10-parallel-split-shadow-maps-programmable-gpus)
 - LearnOpenGL, *Shadow Mapping* — [learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping](https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping)
-- 이 프로젝트: `docs/rendering-analysis.html` 11.8
+- 이 프로젝트: [rendering-analysis 11.8절 그림자 매핑](../overview/rendering-analysis.html#c11-8). 이어서 읽기: [PCF](pcf-study.html) → [CSM](csm-study.html) → [섀도 아틀라스](shadow-atlas-study.html)
 </textarea>
 <script>
 (() => {

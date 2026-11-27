@@ -163,7 +163,10 @@ namespace Profiler
 	{
 		State& s = S();
 		if (!s.enabled) return;
-		if (s.gpuNextSlot + 2 > kMaxTimestamps)
+		// 이 구간의 시작·끝 2 칸에 더해, 이미 열려 있는 구간(gpuDepth 개)의 끝 슬롯도 남겨 둠. 그러지 않으면 바깥
+		// 구간의 EndGpu 가 kMaxTimestamps 이상의 슬롯을 받아 결과를 읽을 때 ticks 배열 밖을 읽음.
+		// (EndGpu 는 슬롯 하나를 쓰고 gpuDepth 를 하나 줄이므로 gpuNextSlot + gpuDepth ≤ kMaxTimestamps 가 늘 유지됨.)
+		if (s.gpuNextSlot + 2 + s.gpuDepth > kMaxTimestamps)
 		{
 			static bool warned = false;
 			if (!warned)

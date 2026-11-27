@@ -41,7 +41,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <h1>가시성 컬링 학습 문서</h1>
   <p>절두체 평면, 경계 구, 평면 검사, 그리고 컬링 카메라 고정: 우리 엔진은 무엇을 언제 버리고, 그 결과를 어떻게 눈으로 확인하는가</p>
   <p>2026-11-25 · 컬링 이야기는 지금까지 <a href="../overview/rendering-analysis.html#c14-6">rendering-analysis 14.6</a>(드로우 목록은 컬링하지 않는다), <a href="../overview/rendering-analysis.html#c14-7">14.7</a>(드로우 루프와 통계), <a href="../overview/rendering-analysis.html#c20-30">20.30 적용 기록</a>, <a href="../plan/freeze-culling-camera-plan.html">컬링 카메라 고정 계획</a>, <a href="csm-study.html#debug">CSM 학습 5장</a>(캐스케이드 고정)에 나뉘어 있었습니다. 이 문서는 원리부터 다시 설명하고 지금 코드에 맞춰 한곳에 모읍니다. 기존 문서는 그대로 두었습니다.</p>
-  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다. 2026-11-27: 강조·디졸브·비(36ef141~0e20f6c)에 맞춰 그림자 뷰 그리기의 <code>DrawDepthView</code>·<code>DepthDrawState</code> 분리, 비 차폐 맵 뷰의 컬링과 통계, <code>drawItems</code> 주석, 디졸브가 끝난 오브젝트의 비용을 고쳤습니다.</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(왜 버리는가, 평면을 어떻게 뽑고 구를 어떻게 검사하는가), 3장은 경계 구를 만드는 법, 4장은 한 프레임에서 컬링이 일어나는 자리, 5~6장은 그림자 뷰와 조명 컬링, 7장은 통계, 8장은 컬링 카메라 고정, 9장은 코드 지도, 10장은 실험, 11장은 함정과 한계, 12장은 공부할 개념과 참고 문서입니다. 클러스터 상자 단위의 조명 컬링은 <a href="clustered-lighting-study.html">클러스터드 라이팅 학습</a>에서 다룹니다.</div>
   <div class="box warn"><b>숫자에 대해.</b> 각도·반지름 같은 값은 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 드로우 수·컬링 수·픽셀 차이는 <a href="../plan/freeze-culling-camera-plan.html#r-verify">고정 계획 9장</a>에 2026-11-24 기록된 측정을 옮겼습니다 <span class="tag ok">확인함</span>. 그 측정에 쓴 <code>CascadeBigScene.json</code> 은 작업 트리에서 카메라·환경·재질·오브젝트가 바뀌었으므로, 같은 숫자를 다시 보려면 10장의 주의를 먼저 읽습니다.</div>
 </header>
@@ -151,15 +151,16 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 
 <section id="flow">
 <h2>4. 한 프레임에서 컬링이 일어나는 자리</h2>
-<p>순서는 "목록을 한 번 만들고 정렬 → 뷰마다 돌면서 거르기"입니다. 드로우 목록 단계에서는 아무것도 버리지 않습니다(<a href="../overview/rendering-analysis.html#c14-6">rendering-analysis 14.6</a>). 뷰가 여럿(그림자 뷰 최대 20 개, 메인, 미리보기)이라, 목록을 뷰마다 다시 만드는 대신 목록 하나를 두고 각 루프가 자기 절두체로 건너뜁니다.</p>
+<p>순서는 "목록을 한 번 만들고 정렬 → 뷰마다 돌면서 거르기"입니다. 드로우 목록 단계에서는 아무것도 버리지 않습니다(<a href="../overview/rendering-analysis.html#c14-6">rendering-analysis 14.6</a>). 뷰가 여럿(그림자 뷰 최대 20 개, 비 차폐 맵, 메인, 미리보기)이라, 목록을 뷰마다 다시 만드는 대신 목록 하나를 두고 각 루프가 자기 절두체로 건너뜁니다.</p>
 <table>
 <tr><th>순서</th><th>단계</th><th>쓰는 카메라·절두체</th><th>거르는 것</th><th>코드</th></tr>
 <tr><td>1</td><td>조명 컬링과 그림자 후보 점수</td><td>메인 카메라 (고정 중 lights 항목이면 사본)</td><td>지역광 경계 구</td><td><code>Renderer::CullLights</code> (<code>Renderer::Render</code> 의 Prepare 구간)</td></tr>
 <tr><td>2</td><td>그림자 뷰 만들기</td><td>캐스케이드는 메인 카메라 (고정 중 cascades 항목이면 사본)</td><td>타일이 모자라면 점수 낮은 조명이 그림자를 못 받음</td><td><code>Renderer::BuildShadowViews</code></td></tr>
 <tr><td>3</td><td>드로우 목록과 정렬</td><td>없음</td><td>없음. 서브메시마다 <code>DrawItem</code> 하나, 경계 구는 오브젝트마다</td><td><code>Renderer::BuildDrawList</code></td></tr>
-<tr><td>4</td><td>그림자 패스</td><td>그 그림자 뷰의 <code>viewProj</code></td><td>광원 범위 밖, 뷰 절두체 밖 (5장)</td><td><code>RendererShadow.cpp</code> 의 그림자 패스 드로우 루프</td></tr>
-<tr><td>5</td><td>메인 뷰 (포워드 한 번, 디퍼드는 G-buffer와 나머지 두 번)</td><td><code>ObjectCullCamera(camera, 0)</code></td><td>카메라 절두체 밖 <code>DrawItem</code></td><td><code>Renderer::DrawItems</code>, <code>RenderDeferredScene</code></td></tr>
-<tr><td>6</td><td>카메라 미리보기 뷰</td><td>미리보기 카메라 자신</td><td>같은 방식</td><td><code>Renderer::DrawItems</code> (viewIndex 1)</td></tr>
+<tr><td>4</td><td>그림자 패스</td><td>그 그림자 뷰의 <code>viewProj</code></td><td>광원 범위 밖, 뷰 절두체 밖 (5장)</td><td><code>RendererShadow.cpp</code> 의 <code>RenderShadowAtlasPass</code> → <code>DrawDepthView</code></td></tr>
+<tr><td>5</td><td>비 차폐 맵 (비가 있을 때)</td><td><code>Render</code> 에 넘어온 카메라의 xz 위에서 바로 아래를 보는 직교 <code>mapViewProj</code>. 프레임에 한 번 만들고 미리보기 뷰도 같은 맵을 씀</td><td>맵 상자 밖 (5장 끝)</td><td><code>RendererRain.cpp</code> 의 <code>RenderRainOcclusionPass</code> → <code>DrawDepthView</code></td></tr>
+<tr><td>6</td><td>메인 뷰 (포워드 한 번, 디퍼드는 G-buffer와 나머지 두 번)</td><td><code>ObjectCullCamera(camera, 0)</code></td><td>카메라 절두체 밖 <code>DrawItem</code></td><td><code>Renderer::DrawItems</code>, <code>RenderDeferredScene</code></td></tr>
+<tr><td>7</td><td>카메라 미리보기 뷰</td><td>미리보기 카메라 자신</td><td>같은 방식</td><td><code>Renderer::DrawItems</code> (viewIndex 1)</td></tr>
 </table>
 <h3>4-1. 정렬은 컬링 전에, 반투명만 컬링 뒤에</h3>
 <p><code>BuildDrawList</code> 끝의 <code>std::sort</code> 는 블렌딩 여부(불투명이 앞) → PSO 번호 → 재질 → 메시 → <code>indexStart</code> 순입니다. 같은 상태가 이어지면 <code>DrawItems</code> 가 바인딩을 건너뜁니다. 컬링은 이 정렬된 목록에서 항목을 빼기만 하므로 순서가 깨지지 않고, 빠진 항목 때문에 상태 전환이 늘어나는 일도 없습니다. 정렬을 컬링 뒤로 미루면 뷰마다 다시 정렬해야 합니다.</p>
@@ -177,8 +178,9 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td>스팟 (타일 1)</td><td><code>(position, range)</code> 구와 겹치지 않으면 버림</td><td>원근. 여섯 평면</td></tr>
 <tr><td>포인트 (면 6 개, 연속 타일 6)</td><td>같은 구, 면마다 검사</td><td>원근. 면마다 여섯 평면. 반대쪽 면에 있는 물체가 여기서 빠짐</td></tr>
 </table>
-<p>직교 뷰에서 near 평면을 빼는 이유는 <code>Frustum.h</code> 와 그림자 루프 주석에 적혀 있습니다. 광원 쪽으로 near 평면보다 더 물러나 있는 캐스터도 그림자를 드리울 수 있으므로 보수적으로 남깁니다. 캐스케이드 상자를 어떻게 잡는지는 <a href="csm-study.html">CSM 학습</a>, 아틀라스 타일 배정은 <a href="shadow-atlas-study.html">그림자 아틀라스 학습</a>에서 다룹니다.</p>
+<p>직교 뷰에서 near 평면을 빼는 이유는 <code>Frustum.h</code> 와 <code>DrawDepthView</code> 주석에 적혀 있습니다. 광원 쪽으로 near 평면보다 더 물러나 있는 캐스터도 그림자를 드리울 수 있으므로 보수적으로 남깁니다. 캐스케이드 상자를 어떻게 잡는지는 <a href="csm-study.html">CSM 학습</a>, 아틀라스 타일 배정은 <a href="shadow-atlas-study.html">그림자 아틀라스 학습</a>에서 다룹니다.</p>
 <p>그림자 패스에 들어가지 않는 항목도 있습니다. unlit 재질, 블렌딩 재질, 바다는 <code>BuildDrawList</code> 가 <code>shadowPipeline</code> 을 빈 핸들로 두어 루프 맨 앞에서 건너뜁니다. 이것은 컬링 통계(<code>shadowCulled</code>)에 세지 않습니다.</p>
+<p>그림자 뷰 하나의 본문(b5 행렬 업로드, 절두체 만들기, 범위 구·절두체 검사, 드로우)은 <code>Renderer::DrawDepthView</code> 하나로 빠져 있고, 같은 렌더 패스 안 뷰끼리 직전 PSO·메시·재질을 <code>DepthDrawState</code> 로 이어 씁니다. 비 차폐 맵도 이 함수를 씁니다. 차폐 맵은 직교 뷰라 near 평면을 뺀 다섯 평면으로 검사하고, 범위 구는 없습니다(<code>cullSphere.w = 0</code>). 그리는 항목은 <code>item.occluderPipeline</code>(그림자 PSO 의 바이어스 없는 변형)이 있는 것, 곧 그림자를 만드는 항목과 같습니다. 개수는 <code>rainOcclusionDraws</code>·<code>rainOcclusionCulled</code> 에 따로 셉니다. 비 자체는 <a href="rain-study.html">비 학습</a>을 봅니다.</p>
 </section>
 
 <section id="lights">
@@ -209,8 +211,9 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td><code>draws</code>, <code>shadowDraws</code></td><td>실제로 기록한 드로우</td><td><code>draws</code> 에는 하늘·디버그 선·톤 패스·UI 같은 패스 드로우도 들어감</td></tr>
 <tr><td><code>lightsVisible</code>, <code>lightsCulled</code></td><td>절두체에 걸친 / 밖인 지역광</td><td>방향광 제외. lights 항목을 고정 중일 때만 고정 시점 값(<code>Renderer::Render</code> 가 <code>m_cullFrozen &amp;&amp; m_cullFreezeParts.lights</code> 이면 사본으로 <code>CullLights</code> 를 부름)</td></tr>
 <tr><td><code>shadowViewsOffscreen</code></td><td>화면에 빛이 닿지 않는 조명에 간 그림자 타일</td><td><code>shadowPriority</code> 를 끄면(<code>--shadow-priority=0</code>) 늘어날 수 있음</td></tr>
+<tr><td><code>rainOcclusionDraws</code>, <code>rainOcclusionCulled</code></td><td>비 차폐 맵 패스에서 그린 / 맵 상자 밖이라 건너뛴 드로우</td><td>비가 있을 때만. 에디터 표기 "occlusion map draws … (culled …)". <code>draws</code>·<code>shadowDraws</code> 에는 들어가지 않음</td></tr>
 </table>
-<p><code>Renderer.h</code> 의 <code>drawItems</code> 주석은 "메인 패스 draws + culled 와 같음"이라고 적고 있는데, <code>stats.draws</code> 필드와 <code>stats.culled</code> 필드로 계산하면 위 두 줄의 주의 때문에 그대로는 맞지 않습니다. 오브젝트 컬링이 제대로 되는지 볼 때는 <code>culled</code> 를 미리보기를 끈 상태에서 보는 편이 안전합니다.</p>
+<p><code>Renderer.h</code> 의 <code>drawItems</code> 주석도 "draws·culled 는 미리보기 뷰와 풀스크린·파티클·UI 드로우까지 세므로 draws + culled 와 같지 않음"이라고 적고 있습니다. 오브젝트 컬링이 제대로 되는지 볼 때는 <code>culled</code> 를 미리보기를 끈 상태에서 보는 편이 안전합니다.</p>
 </section>
 
 <section id="freeze">
@@ -267,7 +270,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td><code>objects</code></td><td><code>DrawItems</code> (<code>ObjectCullCamera</code>)</td><td>메인 뷰(viewIndex 0)만</td><td>사본 절두체 밖 메시가 사라짐. 흰 절두체 와이어</td></tr>
 <tr><td><code>lights</code></td><td><code>CullLights</code> (<code>Render</code> 에서 카메라를 고름)</td><td>프레임 공용</td><td>컬링된 지역광이 꺼짐(<code>m_lightBounds[i].w = 0</code>), 아이콘이 회색 X. 클러스터드를 끈 <code>ShadeAllLights</code> 경로에는 효과 없음</td></tr>
 </table>
-<p>사본으로 바꾸는 것은 절두체와 눈 위치(그림자 점수)뿐입니다. <code>b0</code> 카메라 상수, 클러스터 상자, 반투명 정렬, 파티클, SSAO·TAA·모션 블러는 늘 그리는 카메라를 씁니다. 클러스터 상자는 그리는 화면의 픽셀을 나눈 것이라 사본으로 만들면 픽셀과 맞지 않기 때문입니다(<a href="../plan/freeze-culling-camera-plan.html#concept">고정 계획 2장</a>). 오브젝트 항목을 미리보기에 걸지 않은 이유도 계획 문서에 있습니다. 미리보기는 게임 카메라가 보는 것을 확인하는 창이라 메시가 빠지면 안 되고, 캐스케이드·그림자 타일은 프레임에 한 벌뿐이라 뷰별로 나누려면 그림자 패스가 두 배가 됩니다(<a href="../plan/freeze-culling-camera-plan.html#d-table">3.2 결정 표</a>).</p>
+<p>사본으로 바꾸는 것은 절두체와 눈 위치(그림자 점수)뿐입니다. <code>b0</code> 카메라 상수, 클러스터 상자, 반투명 정렬, 파티클, 비 차폐 맵, SSAO·TAA·모션 블러는 늘 그리는 카메라를 씁니다. 클러스터 상자는 그리는 화면의 픽셀을 나눈 것이라 사본으로 만들면 픽셀과 맞지 않기 때문입니다(<a href="../plan/freeze-culling-camera-plan.html#concept">고정 계획 2장</a>). 오브젝트 항목을 미리보기에 걸지 않은 이유도 계획 문서에 있습니다. 미리보기는 게임 카메라가 보는 것을 확인하는 창이라 메시가 빠지면 안 되고, 캐스케이드·그림자 타일은 프레임에 한 벌뿐이라 뷰별로 나누려면 그림자 패스가 두 배가 됩니다(<a href="../plan/freeze-culling-camera-plan.html#d-table">3.2 결정 표</a>).</p>
 
 <h3>8-3. 켜고 끄는 곳</h3>
 <ul>
@@ -298,7 +301,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td>바다 변위 상한</td><td><code>Scene/Ocean.cpp</code> 의 <code>Ocean::MaxDisplacement</code></td><td>Σ|A| + Σ s/k</td></tr>
 <tr><td>드로우 목록 정렬</td><td><code>Renderer::BuildDrawList</code> 끝의 <code>std::sort</code></td><td>블렌딩 → PSO → 재질 → 메시 → 인덱스 시작</td></tr>
 <tr><td>오브젝트 컬링</td><td><code>Renderer::DrawItems</code>, <code>Renderer::ObjectCullCamera</code> (<code>Renderer.h</code>)</td><td>맡은 항목만 검사, <code>culled</code> 셈, 반투명은 그리는 눈 기준으로 다시 정렬</td></tr>
-<tr><td>그림자 컬링</td><td><code>Graphics/RendererShadow.cpp</code> 의 그림자 패스 루프, <code>AddShadowView</code>, <code>BuildShadowViews</code></td><td><code>cullSphere</code> 범위 검사, 직교는 near 제외, <code>shadowCulled</code></td></tr>
+<tr><td>그림자 컬링</td><td><code>Graphics/RendererShadow.cpp</code> 의 <code>RenderShadowAtlasPass</code>·<code>DrawDepthView</code>(<code>DepthDrawState</code>), <code>AddShadowView</code>, <code>BuildShadowViews</code>; <code>Graphics/RendererRain.cpp</code> 의 <code>RenderRainOcclusionPass</code></td><td><code>cullSphere</code> 범위 검사, 직교는 near 제외, <code>shadowCulled</code>·<code>rainOcclusionCulled</code></td></tr>
 <tr><td>조명 컬링</td><td><code>Graphics/RendererClusters.cpp</code> 의 <code>Renderer::CullLights</code>, <code>ComputeLightBounds</code>, <code>IsLightCulledByFreeze</code></td><td>지역광 경계 구, 그림자 점수 순서, 고정 중 <code>w = 0</code></td></tr>
 <tr><td>고정 API</td><td><code>Graphics/Renderer.h</code> 의 <code>CullFreezeParts</code>, <code>SetCullFreeze</code>(<code>RendererShadow.cpp</code>), <code>SetCullFreezeParts</code>, <code>IsCascadeFrozen</code></td><td>사본 카메라와 항목</td></tr>
 <tr><td>에디터 UI·오버레이</td><td><code>Editor/Editor.cpp</code> 의 <code>Editor::DrawFreezeOverlay</code>, <code>ProjectSegmentToView</code>, <code>Editor::DrawLightIcons</code>, 렌더 설정 패널</td><td>흰·색 절두체, 회색 X 아이콘, 체크박스와 통계 줄</td></tr>
@@ -344,9 +347,10 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td>화면 가장자리에서 메시가 갑자기 사라짐</td><td>경계 구가 정점 셰이더 변위를 덮지 못함</td><td>스키닝은 1e9, 바다는 <code>MaxDisplacement</code> 로 막음. 새 정점 변위(바람에 흔들리는 풀 등)를 넣으면 같은 처리가 필요함</td></tr>
 <tr><td>절두체 밖인데 그려짐</td><td>평면별 구 검사의 모서리 몫, 길쭉한 물체의 헐렁한 구</td><td>의도된 손해 (2-3, 3-1)</td></tr>
 <tr><td>다른 물체 뒤에 완전히 가려진 것도 그림</td><td>가림(occlusion) 컬링 없음</td><td>포워드용 깊이 프리패스, Hi-Z, 가림 쿼리 모두 없음. 깊이 테스트가 픽셀 셰이딩만 줄임</td></tr>
-<tr><td>오브젝트 수에 비례해 CPU 시간이 늘어남</td><td>계층 구조(BVH·옥트리) 없이 목록 전체를 선형으로 검사</td><td>그림자 뷰 최대 20 개 + 메인 + 미리보기가 각각 전체 목록을 돎. 같은 오브젝트의 서브메시마다 같은 구를 다시 검사함</td></tr>
+<tr><td>오브젝트 수에 비례해 CPU 시간이 늘어남</td><td>계층 구조(BVH·옥트리) 없이 목록 전체를 선형으로 검사</td><td>그림자 뷰 최대 20 개 + 비 차폐 맵 + 메인 + 미리보기가 각각 전체 목록을 돎. 같은 오브젝트의 서브메시마다 같은 구를 다시 검사함</td></tr>
 <tr><td>큰 메시의 일부만 보여도 전체를 그림</td><td>오브젝트(서브메시) 단위 컬링, 메시렛·클러스터 단위 없음</td><td>Sponza처럼 한 오브젝트인 씬은 오브젝트 전체가 절두체 밖일 때만 컬링됨(고정 계획의 ManyLights64 관찰)</td></tr>
 <tr><td>스키닝 캐릭터는 화면 밖에서도 그림자 뷰마다 그려짐</td><td>반지름 1e9</td><td>포즈별 경계가 생기기 전까지의 한계</td></tr>
+<tr><td>디졸브가 끝나 보이지 않는 오브젝트도 비용을 냄</td><td><code>Dissolve::amount</code> 1 이어도 <code>BuildDrawList</code> 가 드로우 목록에서 빼지 않음</td><td>PS 가 모든 픽셀을 버리고, 그림자·비 차폐 맵도 알파 테스트 변형으로 그림. 비용을 없애려면 스크립트가 오브젝트를 끄거나 지워야 함(<a href="object-highlight-dissolve-study.html">강조·디졸브 학습</a>)</td></tr>
 <tr><td>고정을 켰는데 미리보기 그림자나 빛도 바뀜</td><td>cascades·lights 항목은 프레임 공용</td><td>의도된 선택, UI 툴팁에 적혀 있음 (8-2)</td></tr>
 <tr><td>Lights 고정을 켰는데 빛이 안 꺼짐</td><td>클러스터드를 끈 <code>ShadeAllLights</code> 경로는 경계 구를 보지 않음</td><td>정답 비교용 경로라 게이트를 넣지 않음 (<a href="../plan/freeze-culling-camera-plan.html#d-table">결정 표</a>)</td></tr>
 <tr><td><code>drawItems</code> 와 <code>draws + culled</code> 가 안 맞음</td><td><code>draws</code> 에 패스 드로우가 섞이고 <code>culled</code> 에 미리보기가 섞임</td><td>7장</td></tr>

@@ -41,7 +41,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <h1>HDR·톤매핑 학습 문서</h1>
   <p>FP16 선형 HDR 타깃, 노출, ACES 근사 — 씬이 1을 넘는 밝기를 어디에 담고 어디서 화면 범위로 접는가</p>
   <p>2026-11-25 · 렌더러 공부 순서 중 "색 파이프라인과 컴퓨트 기초" 묶음의 두 번째 문서입니다. 이 주제는 지금까지 <a href="../plan/hdr-tonemapping-plan.html">HDR 계획</a>(2026-10-16), <a href="../plan/hdr-tonemapping-record.html">HDR 구현 기록</a>(2026-10-23), <a href="../overview/rendering-analysis.html#c12-14">rendering-analysis 12.14</a>, <a href="pbr-study.html#panel-F">PBR 학습 6장</a>에 나뉘어 있었습니다. PBR 학습 6장은 톤매핑이 무엇인지만 짧게 다루므로, 이 문서는 우리 구현의 구조와 숫자를 깊게 봅니다. sRGB 인코딩은 <a href="color-space-study.html#flow">색공간 학습 3장</a>에서 다루었으므로 여기서는 다시 설명하지 않습니다.</p>
-  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다. 2026-11-27: 강조·디졸브·비(36ef141~0e20f6c)에 맞춰 디버그 뷰 범위(1~18, 5-3)와 FP16 타깃에 그리는 패스·PSO 목록의 비(3장 표, 7장)를 고쳤습니다.</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1장은 HDR 타깃이 왜 필요한가와 2026-10-23 전에 무엇이 잘렸는가, 2장은 노출과 톤 곡선의 원리, 3장은 한 프레임에서 HDR 값이 지나는 패스, 4장은 FP16 타깃과 HDR 환경맵, 5장은 톤 패스 안쪽, 6장은 설정과 기본값, 7장은 코드 지도, 8장은 실험, 9장은 함정과 한계, 10장은 공부할 개념과 참고 문서입니다.</div>
   <div class="box warn"><b>숫자에 대해.</b> 톤 곡선 값, FP16 범위·정밀도, 메모리 크기는 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 실행해서 확인한 것은 구현 기록에 남은 2026-10-23·10-24 실행뿐이며 <span class="tag ok">확인함</span>으로 표시했습니다. 화면 측정값은 새로 만들지 않았습니다.</div>
 </header>
@@ -184,7 +184,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <p>순서는 <code>Graphics/Renderer.cpp</code>의 <code>Renderer::Render</code> 끝부분에 있습니다. <code>RenderScenePass</code>(메인 뷰) → <code>ApplyHdrEffects</code> → <code>RenderTonemapPass</code> → <code>RenderCanvasPass</code>(게임 UI) 다음, 카메라 미리보기가 켜져 있으면 미리보기 카메라로 b0를 다시 올리고 같은 네 단계를 미리보기 뷰(<code>m_previewView</code>)에 한 번 더 합니다.</p>
 <table>
 <tr><th>단계</th><th>타깃</th><th>값</th><th>코드</th></tr>
-<tr><td>씬 패스 (포워드·디퍼드 라이팅·스카이·파티클·바다)</td><td><code>ViewTarget::hdr</code>, <code>R16G16B16A16_FLOAT</code></td><td>선형, 1을 넘어도 그대로</td><td>PSO <code>rtvFormats[0] = R16G16B16A16_FLOAT</code>: <code>GetPipelineFor</code>, <code>GetSkyPipeline</code>, <code>GetDebugLinePipeline</code>, 파티클 PSO, <code>RendererDeferred.cpp</code></td></tr>
+<tr><td>씬 패스 (포워드·디퍼드 라이팅·스카이·파티클·비·바다)</td><td><code>ViewTarget::hdr</code>, <code>R16G16B16A16_FLOAT</code></td><td>선형, 1을 넘어도 그대로</td><td>PSO <code>rtvFormats[0] = R16G16B16A16_FLOAT</code>: <code>GetPipelineFor</code>, <code>GetSkyPipeline</code>, <code>GetDebugLinePipeline</code>, 파티클 PSO(빗줄기·튐 PSO 도 이것을 복사), <code>RendererDeferred.cpp</code></td></tr>
 <tr><td>HDR 후처리</td><td>같은 <code>hdr</code>에 제자리로</td><td>선형</td><td><code>Renderer::ApplyHdrEffects</code>. 순서 TAA → 모션 블러 → 블러 → 블룸 고정</td></tr>
 <tr><td>톤 패스</td><td>에디터 <code>m_mainView.color</code>, 게임 <code>GetBackBuffer()</code></td><td>노출·ACES·GreyScale 뒤 선형 0~1, RTV가 sRGB로</td><td><code>Renderer::RenderTonemapPass</code>, <code>GetTonemapPipeline</code></td></tr>
 <tr><td>UI</td><td>같은 출력의 UNORM 뷰</td><td>인코딩된 값</td><td><code>RenderCanvasPass</code>, <code>BeginUIPass</code> (<a href="color-space-study.html#flow">색공간 3장</a>)</td></tr>
@@ -234,12 +234,12 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <p>구조에서 따라 나오는 결과도 있습니다. 반투명·가산 파티클·바다가 HDR 값끼리 섞이고, 픽셀마다 한 번만 곡선을 지나므로 겹쳐 그린 픽셀도 곡선을 두 번 지나지 않습니다. 대가는 화면 크기 FP16 텍스처 하나(1080p 15.8 MiB <span class="tag chk">계산값</span>)와 전체 화면 삼각형 패스 하나입니다.</p>
 
 <h3>5-3. 디버그 뷰는 톤매핑을 건너뛴다</h3>
-<p>알베도·노멀·깊이 같은 디버그 뷰(<code>RenderSettings::debugView</code> 1~17)는 조명 결과가 아니라 0~1로 정한 색이므로, 노출을 곱하거나 곡선을 지나면 값을 읽을 수 없습니다. 톤 PS 주석은 "기존에도 톤매핑 전에 반환했음"이라고 적고 있어, PS 끝에서 톤매핑하던 시절의 의미를 그대로 지킨 것입니다. HDR 후처리 쪽도 디버그 뷰를 따로 다룹니다.</p>
+<p>알베도·노멀·깊이 같은 디버그 뷰(<code>RenderSettings::debugView</code> 1~18)는 조명 결과가 아니라 0~1로 정한 색이므로, 노출을 곱하거나 곡선을 지나면 값을 읽을 수 없습니다. 톤 PS 주석은 "기존에도 톤매핑 전에 반환했음"이라고 적고 있어, PS 끝에서 톤매핑하던 시절의 의미를 그대로 지킨 것입니다. HDR 후처리 쪽도 디버그 뷰를 따로 다룹니다.</p>
 <ul>
 <li>TAA: <code>Renderer::TaaActive</code>가 <code>debugView == 0</code>일 때만 켭니다.</li>
 <li>모션 블러: <code>ApplyHdrEffects</code>가 <code>debugView == 0</code>일 때만 켭니다.</li>
 <li>뷰 16·17(속도): 속도 버퍼를 <code>hdr</code>에 그리고 다른 효과를 모두 건너뛴 채 반환합니다.</li>
-<li>블러·블룸: 조건에 <code>debugView</code>가 없습니다. 켜 두면 디버그 뷰 1~15에도 적용됩니다.</li>
+<li>블러·블룸: 조건에 <code>debugView</code>가 없습니다. 켜 두면 디버그 뷰 1~15와 18(비)에도 적용됩니다.</li>
 </ul>
 
 <h3>5-4. 출력이 넷, 셰이더는 하나</h3>
@@ -282,7 +282,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td>HDR 타깃</td><td><code>Graphics/RendererTargets.cpp</code> 의 <code>Renderer::CreateViewTarget</code>, <code>SetSceneTarget</code>, <code>EnsureGameTarget</code>, <code>SetPreviewTarget</code></td><td>뷰마다 <code>hdr</code>(FP16, RT·SRV·UAV)와 <code>hdrSet</code>(<code>Layout_Post</code>)</td></tr>
 <tr><td>톤 패스 호출</td><td><code>Graphics/RendererPost.cpp</code> 의 <code>Renderer::RenderTonemapPass</code></td><td>b4 올림, <code>srgbView = m_settings.srgbOutput</code>, <code>LoadOp::DontCare</code></td></tr>
 <tr><td>톤 PSO</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::GetTonemapPipeline</code></td><td><code>m_tonemapPipelines[2]</code>, RTV 포맷만 다름</td></tr>
-<tr><td>씬 PSO 포맷</td><td><code>Renderer::GetPipelineFor</code>, <code>GetSkyPipeline</code>, <code>GetDebugLinePipeline</code>, <code>Graphics/RendererDeferred.cpp</code>, 파티클 PSO</td><td>항상 <code>R16G16B16A16_FLOAT</code></td></tr>
+<tr><td>씬 PSO 포맷</td><td><code>Renderer::GetPipelineFor</code>, <code>GetSkyPipeline</code>, <code>GetDebugLinePipeline</code>, <code>Graphics/RendererDeferred.cpp</code>, 파티클·비 PSO</td><td>항상 <code>R16G16B16A16_FLOAT</code></td></tr>
 <tr><td>HDR 후처리</td><td><code>Renderer::ApplyHdrEffects</code></td><td>TAA → 모션 블러 → 블러 → 블룸, 결과는 <code>hdr</code> 제자리</td></tr>
 <tr><td>단계 썸네일</td><td><code>Renderer::EnsureStageThumbs</code>, <code>CapturePostStage</code>, <code>RequestPostCapture</code></td><td>폭 min(384, HDR 폭) UNORM 6장, 톤 패스로 축소해 그림</td></tr>
 <tr><td>설정 값 → b0</td><td><code>Renderer::ResolveEnvironment</code>, <code>UploadPerFrameConstants</code></td><td><code>m_environment.exposure</code>·<code>toneMapping</code> → <code>outputParams</code></td></tr>

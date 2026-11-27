@@ -14,7 +14,8 @@ namespace RHI
 // CPU: QueryPerformanceCounter 로 잰 중첩 구간. ProfileScope RAII 로 감쌈. 프레임마다 목록을 만들고
 //      BeginFrame 에서 "직전 프레임" 결과로 넘김(패널은 항상 완성된 프레임을 봄).
 // GPU: RHI CommandList::WriteTimestamp 로 슬롯 두 개(시작·끝)를 기록하고, 결과는 Device 가 몇 프레임 뒤에
-//      돌려줌 (D3D11: 쿼리 GetData, D3D12: 펜스 뒤 리드백). 그래서 GPU 결과는 CPU 결과보다 2~3 프레임 늦고,
+//      돌려줌 (D3D11: 쿼리 GetData, D3D12: 펜스 뒤 리드백). 그래서 GPU 결과는 CPU 결과보다 늦고 (D3D12 는 kFrameCount = 2
+//      프레임, D3D11 은 쿼리 세트 kTimestampSets = 6 개를 돌려 써서 6 프레임),
 //      어느 프레임의 결과인지는 frameNumber 로 알 수 있음. 슬롯 번호는 프레임 안에서 0 부터 순서대로 배정함.
 //
 // Log 처럼 namespace 자유 함수 + 파일 지역 상태. 스레드는 하나(렌더 스레드)라고 가정함.
@@ -41,7 +42,8 @@ namespace Profiler
 	void BeginCpu(const char* name);
 	void EndCpu();
 
-	// GPU 구간. 시작·끝 슬롯을 하나씩 소비함 (kMaxTimestamps / 2 구간까지).
+	// GPU 구간. 시작·끝 슬롯을 하나씩 소비함 (kMaxTimestamps / 2 구간까지). 열려 있는 구간들의 끝 슬롯을
+	// 남겨 둘 수 없으면 새 구간은 건너뜀 (경고 한 번).
 	void BeginGpu(RHI::CommandList& cmd, const char* name);
 	void EndGpu(RHI::CommandList& cmd);
 

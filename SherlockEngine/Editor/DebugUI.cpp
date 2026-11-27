@@ -400,7 +400,7 @@ void DebugUI::DrawPostStagesWindow(Renderer& renderer, RHI::Device& device)
 		}
 		else
 		{
-			// 창 폭에 맞춰 4칸을 같은 크기로 나눔 (칸 사이 여백 제외). 창을 키우면 이미지도 같이 커짐
+			// 창 폭에 맞춰 kPostStageCount 칸(6)을 같은 크기로 나눔 (칸 사이 여백 제외). 창을 키우면 이미지도 같이 커짐
 			const float spacing = ImGui::GetStyle().ItemSpacing.x;
 			const float cell = (std::max)(16.0f, (ImGui::GetContentRegionAvail().x - spacing * (Renderer::kPostStageCount - 1)) / Renderer::kPostStageCount);
 			const ImVec2 size(cell, cell * static_cast<float>(sourceH) / static_cast<float>(sourceW));

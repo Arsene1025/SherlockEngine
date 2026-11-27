@@ -858,12 +858,12 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <td>강도 1</td>
 </tr>
 </tbody></table></div>
-<p>glTF 텍스처는 <strong>G 채널이 거칠기, B 채널이 금속성</strong>, AO는 R 채널입니다. 셰이더는 거칠기를 0.03 아래로 올리지 않습니다. 0이면 GGX 분포가 발산해 NaN이 생깁니다.</p>
+<p>glTF 텍스처는 <strong>G 채널이 거칠기, B 채널이 금속성</strong>, AO는 R 채널입니다. 셰이더(<code>MaterialSurface.hlsli</code>의 <code>EvaluateMaterialSurface</code>)는 거칠기를 [0.03, 1]로 자릅니다. 0이면 GGX 분포가 발산해 NaN이 생깁니다. 디퍼드는 <code>GBuffer.hlsli</code>의 <code>LoadGBufferSurface</code>가 G-buffer에서 읽을 때 한 번 더 자릅니다.</p>
 <h3>F0: 정면에서 본 반사율</h3>
 <p>F0는 표면을 수직으로 볼 때 반사되는 빛의 비율입니다.</p>
 </div>
-<figure class="am-codeblock"><figcaption class="am-code-head"><span class="am-code-title"></span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code"><code><span class="am-ln">F0 = lerp(0.04, baseColor, metallic)</span></code></pre></figure>
-<div class="am-md"><p>유전체는 대부분 2~5%라서 4%로 고정합니다. 금속은 기본색이 곧 F0입니다. 금이 노란 반사를 내는 이유입니다.</p>
+<figure class="am-codeblock"><figcaption class="am-code-head"><span class="am-code-title"></span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code"><code><span class="am-ln">F0 = lerp(0.04, baseColor, metallic)   (기본값일 때)</span></code></pre></figure>
+<div class="am-md"><p>유전체는 대부분 2~5%라서 기본값을 4%로 둡니다. 금속은 기본색이 곧 F0입니다. 금이 노란 반사를 내는 이유입니다. 예전에는 유전체 F0를 4%로 고정했습니다. 지금은 <code>EvaluateMaterialSurface</code>가 굴절률과 반사 색·세기(KHR_materials_ior·specular)로 유전체 F0 = <code>min(((ior−1)/(ior+1))² · specularColor, 1) · specularFactor</code>를 만들고, 스치는 각의 반사율 <code>F90</code>(유전체는 specularFactor, 금속은 1)도 함께 정합니다. 기본값(ior 1.5, specular 1, 흰색)이면 F0 = 0.04, F90 = 1로 위 식과 같습니다. 오브젝트별 강조 색(<code>HighlightAlbedo</code>)과 비의 젖음(<code>ApplyWetness</code>)은 F0를 만들기 전에 알베도·금속성·거칠기를 바꿉니다. 자세한 내용은 <a href="material-extensions-study.html">재질 확장 공부 문서</a>에 있습니다.</p>
 </div></div>
 </section>
 <section class="am-panel" id="panel-D">
@@ -916,7 +916,7 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <td>빛을 비스듬히 받을수록 같은 면적이 받는 빛이 줄어든다</td>
 </tr>
 </tbody></table></div>
-<p>묶어서 읽으면 <code>(표면이 반응하는 방식) × (광원 색 × 세기) × (거리 감쇠) × (각도)</code>입니다. 셰이더에서는 뒤의 세 곱을 <code>irradiance = color × intensity × attenuation × N·L</code>로 먼저 만들고, 앞의 괄호 <code>kd·albedo + specular·π</code>에 곱합니다. specular에만 π가 붙는 이유는 아래 &quot;왜 π를 곱하나&quot;에 있습니다.</p>
+<p>묶어서 읽으면 <code>(표면이 반응하는 방식) × (광원 색 × 세기) × (거리 감쇠) × (각도)</code>입니다. 셰이더(<code>Shading.hlsli</code>의 <code>ShadeLight</code>)는 <code>radiance = color × intensity × attenuation</code>(그림자 계수가 들어간 감쇠)를 먼저 만들고, 앞의 괄호 <code>kd·albedo + specular·π</code>에 <code>radiance</code>와 <code>N·L</code>을 차례로 곱합니다. specular에만 π가 붙는 이유는 아래 &quot;왜 π를 곱하나&quot;에 있습니다.</p>
 <p>먼저 네 벡터를 정합니다. 모두 표면의 점 P에서 <strong>바깥으로</strong> 나가는 단위 벡터입니다.</p>
 <div class="am-table-wrap"><table>
 <thead>
@@ -1053,7 +1053,7 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <tr>
 <td>F 프레넬</td>
 <td>그 조각이 빛을 얼마나 반사하나</td>
-<td>F0 + (1−F0)(1−V·H)⁵</td>
+<td>F0 + (F90−F0)(1−V·H)⁵ (F90은 보통 1)</td>
 </tr>
 </tbody></table></div>
 <ul>
@@ -1069,7 +1069,7 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <ul>
 <li>점광과 스포트광: <code>(1 − d/range)² / (kc + kl·d + kq·d²)</code>. range에서 정확히 0이 됩니다.</li>
 <li>스포트: 축과 <code>−L</code>의 코사인으로 안쪽 콘 1, 바깥 콘 밖 0, 사이는 선형입니다.</li>
-<li>그림자 맵은 0번 방향광 하나에만 적용됩니다.</li>
+<li>예전에는 그림자 맵이 0번 방향광 하나에만 적용됐습니다. 지금은 그림자를 가진 조명(<code>shadowIndex</code> ≥ 0)마다 <code>Shading.hlsli</code>의 <code>ShadowForLight</code>가 그림자 계수를 구해 감쇠에 곱합니다. 방향광은 CSM, 스포트광은 뷰 하나, 점광은 아틀라스 타일 여섯 장으로 큐브 면을 대신합니다. 자세한 내용은 <a href="csm-study.html">CSM 공부 문서</a>와 <a href="shadow-atlas-study.html">섀도 아틀라스 공부 문서</a>에 있습니다.</li>
 </ul>
 </div></div>
 </section>
@@ -1098,16 +1098,16 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 </tr>
 <tr>
 <td>t12 BRDF LUT</td>
-<td>F0에 곱할 값 A와 더할 값 B의 2D 표</td>
-<td><code>F0·A + B</code></td>
+<td>F0에 곱할 값 A와 F90에 곱할 값 B의 2D 표</td>
+<td><code>F0·A + F90·B</code></td>
 </tr>
 </tbody></table></div>
 </div>
-<figure class="am-codeblock"><figcaption class="am-code-head"><span class="am-code-title"></span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code"><code><span class="am-ln">환경광 = (kd · albedo · irradiance + prefiltered · (F0 · brdf.x + brdf.y)) × IBL 세기 × ao</span></code></pre></figure>
+<figure class="am-codeblock"><figcaption class="am-code-head"><span class="am-code-title"></span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code"><code><span class="am-ln">환경광 = (kd · albedo · irradiance + prefiltered · (F0 · brdf.x + F90 · brdf.y)) × IBL 세기 × ao</span></code></pre></figure>
 <div class="am-md"><ul>
-<li>프레넬은 <code>FresnelSchlickRoughness</code>를 씁니다. 거칠수록 스치는 각의 반사 상한이 1 − rough로 내려갑니다.</li>
+<li>프레넬은 <code>FresnelSchlickRoughness</code>를 씁니다. 거칠수록 스치는 각의 반사 상한이 (1 − rough) · F90으로 내려갑니다(F0보다 낮아지지는 않습니다). irradiance와 prefiltered에는 <code>iblTint</code>가 곱해져 있습니다.</li>
 <li>LUT가 없으면 Karis의 모바일 근사식 <code>EnvBRDFApprox</code>가 대신합니다.</li>
-<li>AO는 환경광에만 곱합니다. 직접광에는 곱하지 않습니다.</li>
+<li>AO는 환경광에만 곱합니다. 직접광에는 곱하지 않습니다. 디퍼드 경로는 <code>PS_DeferredLighting</code>에서 재질 AO와 SSAO를 합쳐(기본은 작은 값, 설정하면 곱) 곱하고, 포워드 경로(<code>ShadeForward</code>)는 재질 AO만 곱합니다. 자세한 내용은 <a href="ssao-study.html">SSAO 공부 문서</a>에 있습니다.</li>
 <li>환경광은 그림자의 영향을 받지 않습니다.</li>
 </ul>
 <h3>맵이 없을 때의 대체</h3>
@@ -1135,7 +1135,7 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <td>흰 2D + <code>EnvBRDFApprox</code></td>
 </tr>
 </tbody></table></div>
-<p>셋 다 없으면 <code>ambientColor</code> 하나로 대신합니다. 유전체에서는 예전 주변광과 거의 같은 밝기입니다.</p>
+<p>조도 맵, 반사 맵, 스카이박스가 모두 없으면 두 조도를 <code>ambientColor</code> 하나로 대신합니다. LUT가 있는지와는 상관없습니다. 유전체에서는 예전 주변광과 거의 같은 밝기입니다.</p>
 </div></div>
 </section>
 <section class="am-panel" id="panel-F">
@@ -1156,10 +1156,11 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 </section>
 <section class="am-panel" id="panel-G">
 <header class="am-panel-head"><span class="am-panel-id">G</span><h2>7. 픽셀 셰이더의 전체 순서</h2></header>
-<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 1369 134" width="1369" height="134" role="img" aria-label="Flowchart: 표면색, 알파 컷아웃, unlit?, 알베도 출력, PBR 입력, 노멀 매핑, 뷰 벡터·그림자, 환경광 + 발광" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am3-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M93,67 L104.5,67 Q116,67 127.5,67 L139,67" marker-end="url(#am3-arrow)"/></g><g data-step="1"><path class="am-edge" d="M235.9,67 L247.4,67 Q258.9,67 270.4,67 L281.9,67" marker-end="url(#am3-arrow)"/></g><g data-step="2"><path class="am-edge" d="M357.2,77.9 L389.4,90.2 Q421.6,102.5 444.8,102.5 L467.9,102.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="410.9" y="93.5" width="21.5" height="18" rx="3"/><text x="421.6" y="102.5" text-anchor="middle" dominant-baseline="central">예</text></g></g><g data-step="3"><path class="am-edge" d="M357.2,56.1 L389.4,43.8 Q421.6,31.5 447.9,31.5 L474.1,31.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="399.4" y="22.5" width="44.5" height="18" rx="3"/><text x="421.6" y="31.5" text-anchor="middle" dominant-baseline="central">아니오</text></g></g><g data-step="4"><path class="am-edge" d="M558.5,31.5 L573.2,31.5 Q587.8,31.5 599.3,31.5 L610.8,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="5"><path class="am-edge" d="M694.7,31.5 L706.2,31.5 Q717.7,31.5 729.2,31.5 L740.7,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="6"><path class="am-edge" d="M857.9,31.5 L869.4,31.5 Q880.9,31.5 892.4,31.5 L903.9,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="7"><path class="am-edge" d="M1011.9,31.5 L1023.4,31.5 Q1034.9,31.5 1046.4,31.5 L1057.9,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="8"><path class="am-edge" d="M1195.9,31.5 L1207.4,31.5 Q1218.9,31.5 1230.4,31.5 L1241.9,31.5" marker-end="url(#am3-arrow)"/></g></g><g><g class="am-node am-node--round" data-key="표면색" data-step="0"><rect class="am-node-shape" x="14" y="49.5" width="79" height="35" rx="17.5"/><text x="53.5" y="67" text-anchor="middle" dominant-baseline="central">표면색</text></g><g class="am-node am-node--rect" data-key="알파 컷아웃" data-step="0"><rect class="am-node-shape" x="139" y="49.5" width="96.9" height="35" rx="3"/><text x="187.5" y="67" text-anchor="middle" dominant-baseline="central">알파 컷아웃</text></g><g class="am-node am-node--diamond" data-key="unlit?" data-step="1"><polygon class="am-node-shape" points="328.6,39 375.4,67 328.6,95 281.9,67"/><text x="328.6" y="67" text-anchor="middle" dominant-baseline="central">unlit?</text></g><g class="am-node am-node--rect" data-key="알베도 출력" data-step="2"><rect class="am-node-shape" x="467.9" y="85" width="96.9" height="35" rx="3"/><text x="516.3" y="102.5" text-anchor="middle" dominant-baseline="central">알베도 출력</text></g><g class="am-node am-node--rect" data-key="PBR 입력" data-step="3"><rect class="am-node-shape" x="474.1" y="14" width="84.4" height="35" rx="3"/><text x="516.3" y="31.5" text-anchor="middle" dominant-baseline="central">PBR 입력</text></g><g class="am-node am-node--rect" data-key="노멀 매핑" data-step="4"><rect class="am-node-shape" x="610.8" y="14" width="83.9" height="35" rx="3"/><text x="652.7" y="31.5" text-anchor="middle" dominant-baseline="central">노멀 매핑</text></g><g class="am-node am-node--rect" data-key="뷰 벡터·그림자" data-step="5"><rect class="am-node-shape" x="740.7" y="14" width="117.2" height="35" rx="3"/><text x="799.3" y="31.5" text-anchor="middle" dominant-baseline="central">뷰 벡터·그림자</text></g><g class="am-node am-node--rect" data-key="환경광 + 발광" data-step="6"><rect class="am-node-shape" x="903.9" y="14" width="108.1" height="35" rx="3"/><text x="957.9" y="31.5" text-anchor="middle" dominant-baseline="central">환경광 + 발광</text></g><g class="am-node am-node--rect" data-key="조명 루프" data-step="7"><rect class="am-node-shape" x="1057.9" y="14" width="138" height="35" rx="3"/><text x="1126.9" y="31.5" text-anchor="middle" dominant-baseline="central">조명 루프</text></g><g class="am-node am-node--round" data-key="FP16 출력" data-step="8"><rect class="am-node-shape" x="1241.9" y="14" width="112.3" height="35" rx="17.5"/><text x="1298.1" y="31.5" text-anchor="middle" dominant-baseline="central">FP16 출력</text></g></g></svg></figure>
+<div class="am-panel-body"><figure class="am-diagram am-flow"><svg viewBox="0 0 1369 134" width="1369" height="134" role="img" aria-label="Flowchart: 표면색, 알파 컷아웃, unlit?, 알베도 출력, PBR 입력, 노멀 매핑, 뷰 벡터·디버그, 환경광 + 발광" xmlns="http://www.w3.org/2000/svg"><defs><marker id="am3-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="am-arrow" d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g><g><g data-step="0"><path class="am-edge" d="M93,67 L104.5,67 Q116,67 127.5,67 L139,67" marker-end="url(#am3-arrow)"/></g><g data-step="1"><path class="am-edge" d="M235.9,67 L247.4,67 Q258.9,67 270.4,67 L281.9,67" marker-end="url(#am3-arrow)"/></g><g data-step="2"><path class="am-edge" d="M357.2,77.9 L389.4,90.2 Q421.6,102.5 444.8,102.5 L467.9,102.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="410.9" y="93.5" width="21.5" height="18" rx="3"/><text x="421.6" y="102.5" text-anchor="middle" dominant-baseline="central">예</text></g></g><g data-step="3"><path class="am-edge" d="M357.2,56.1 L389.4,43.8 Q421.6,31.5 447.9,31.5 L474.1,31.5" marker-end="url(#am3-arrow)"/><g class="am-edge-label"><rect x="399.4" y="22.5" width="44.5" height="18" rx="3"/><text x="421.6" y="31.5" text-anchor="middle" dominant-baseline="central">아니오</text></g></g><g data-step="4"><path class="am-edge" d="M558.5,31.5 L573.2,31.5 Q587.8,31.5 599.3,31.5 L610.8,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="5"><path class="am-edge" d="M694.7,31.5 L706.2,31.5 Q717.7,31.5 729.2,31.5 L740.7,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="6"><path class="am-edge" d="M857.9,31.5 L869.4,31.5 Q880.9,31.5 892.4,31.5 L903.9,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="7"><path class="am-edge" d="M1011.9,31.5 L1023.4,31.5 Q1034.9,31.5 1046.4,31.5 L1057.9,31.5" marker-end="url(#am3-arrow)"/></g><g data-step="8"><path class="am-edge" d="M1195.9,31.5 L1207.4,31.5 Q1218.9,31.5 1230.4,31.5 L1241.9,31.5" marker-end="url(#am3-arrow)"/></g></g><g><g class="am-node am-node--round" data-key="표면색" data-step="0"><rect class="am-node-shape" x="14" y="49.5" width="79" height="35" rx="17.5"/><text x="53.5" y="67" text-anchor="middle" dominant-baseline="central">표면색</text></g><g class="am-node am-node--rect" data-key="알파 컷아웃" data-step="0"><rect class="am-node-shape" x="139" y="49.5" width="96.9" height="35" rx="3"/><text x="187.5" y="67" text-anchor="middle" dominant-baseline="central">알파 컷아웃</text></g><g class="am-node am-node--diamond" data-key="unlit?" data-step="1"><polygon class="am-node-shape" points="328.6,39 375.4,67 328.6,95 281.9,67"/><text x="328.6" y="67" text-anchor="middle" dominant-baseline="central">unlit?</text></g><g class="am-node am-node--rect" data-key="알베도 출력" data-step="2"><rect class="am-node-shape" x="467.9" y="85" width="96.9" height="35" rx="3"/><text x="516.3" y="102.5" text-anchor="middle" dominant-baseline="central">알베도 출력</text></g><g class="am-node am-node--rect" data-key="PBR 입력" data-step="3"><rect class="am-node-shape" x="474.1" y="14" width="84.4" height="35" rx="3"/><text x="516.3" y="31.5" text-anchor="middle" dominant-baseline="central">PBR 입력</text></g><g class="am-node am-node--rect" data-key="노멀 매핑" data-step="4"><rect class="am-node-shape" x="610.8" y="14" width="83.9" height="35" rx="3"/><text x="652.7" y="31.5" text-anchor="middle" dominant-baseline="central">노멀 매핑</text></g><g class="am-node am-node--rect" data-key="뷰 벡터·디버그" data-step="5"><rect class="am-node-shape" x="740.7" y="14" width="117.2" height="35" rx="3"/><text x="799.3" y="31.5" text-anchor="middle" dominant-baseline="central">뷰 벡터·디버그</text></g><g class="am-node am-node--rect" data-key="환경광 + 발광" data-step="6"><rect class="am-node-shape" x="903.9" y="14" width="108.1" height="35" rx="3"/><text x="957.9" y="31.5" text-anchor="middle" dominant-baseline="central">환경광 + 발광</text></g><g class="am-node am-node--rect" data-key="조명 루프·그림자" data-step="7"><rect class="am-node-shape" x="1057.9" y="14" width="138" height="35" rx="3"/><text x="1126.9" y="31.5" text-anchor="middle" dominant-baseline="central">조명 루프·그림자</text></g><g class="am-node am-node--round" data-key="FP16 출력" data-step="8"><rect class="am-node-shape" x="1241.9" y="14" width="112.3" height="35" rx="17.5"/><text x="1298.1" y="31.5" text-anchor="middle" dominant-baseline="central">FP16 출력</text></g></g></svg></figure>
 <div class="am-md"><ul>
 <li>색공간: 알베도는 sRGB로 읽어 샘플링 시 선형으로 바뀝니다. 금속성/거칠기, AO, 노멀 맵은 선형입니다. 조명 계산은 전부 선형 공간입니다.</li>
-<li>방어 코드: 모든 정규화는 <code>SafeNormalize</code>를 거칩니다. 분모와 range는 <code>EPSILON</code> 이상입니다.</li>
+<li>위 순서는 포워드 경로(<code>BasicPixelShader.hlsl</code>의 <code>ShadeForward</code>)입니다. 알파 컷아웃 다음에 디졸브(<code>DissolveClip</code>)도 픽셀을 버리고, unlit이면 강조 색·발광을 더해 내보냅니다. 그림자는 조명 루프(<code>ShadeLights</code>) 안에서 조명마다 구합니다. 디퍼드 경로는 <code>GBufferPixelShader.hlsl</code>의 <code>PS_GBuffer</code>가 같은 <code>EvaluateMaterialSurface</code>로 재질을 읽어 G-buffer와 발광을 쓰고, <code>DeferredLightingPixelShader.hlsl</code>의 <code>PS_DeferredLighting</code>이 같은 <code>ShadeEnvironment</code>·<code>ShadeLights</code>로 환경광과 조명을 더합니다(<a href="deferred-gbuffer-study.html">디퍼드 G-buffer 공부 문서</a>, <a href="clustered-lighting-study.html">클러스터드 라이팅 공부 문서</a>).</li>
+<li>방어 코드: 셰이딩 쪽 정규화는 <code>SafeNormalize</code>를 거칩니다. G-buffer 노멀 복원(<code>Common.hlsli</code>의 <code>DecodeOct</code>)만 길이가 0이 될 수 없어서 그냥 <code>normalize</code>를 씁니다. 분모와 range는 <code>EPSILON</code> 이상입니다.</li>
 </ul>
 </div></div>
 </section>
@@ -1272,16 +1273,16 @@ PBR은 &quot;표면이 빛을 어떻게 받아 어떻게 돌려주는가&quot;�
 | emissive | 스스로 내는 빛 (조명과 무관) | 0 |
 | AO 텍스처 | 환경광이 닿기 어려운 구석을 어둡게 | 강도 1 |
 
-glTF 텍스처는 **G 채널이 거칠기, B 채널이 금속성**, AO는 R 채널입니다. 셰이더는 거칠기를 0.03 아래로 올리지 않습니다. 0이면 GGX 분포가 발산해 NaN이 생깁니다.
+glTF 텍스처는 **G 채널이 거칠기, B 채널이 금속성**, AO는 R 채널입니다. 셰이더(`MaterialSurface.hlsli`의 `EvaluateMaterialSurface`)는 거칠기를 [0.03, 1]로 자릅니다. 0이면 GGX 분포가 발산해 NaN이 생깁니다. 디퍼드는 `GBuffer.hlsli`의 `LoadGBufferSurface`가 G-buffer에서 읽을 때 한 번 더 자릅니다.
 
 ### F0: 정면에서 본 반사율
 F0는 표면을 수직으로 볼 때 반사되는 빛의 비율입니다.
 
 ```
-F0 = lerp(0.04, baseColor, metallic)
+F0 = lerp(0.04, baseColor, metallic)   (기본값일 때)
 ```
 
-유전체는 대부분 2~5%라서 4%로 고정합니다. 금속은 기본색이 곧 F0입니다. 금이 노란 반사를 내는 이유입니다.
+유전체는 대부분 2~5%라서 기본값을 4%로 둡니다. 금속은 기본색이 곧 F0입니다. 금이 노란 반사를 내는 이유입니다. 예전에는 유전체 F0를 4%로 고정했습니다. 지금은 `EvaluateMaterialSurface`가 굴절률과 반사 색·세기(KHR_materials_ior·specular)로 유전체 F0 = `min(((ior−1)/(ior+1))² · specularColor, 1) · specularFactor`를 만들고, 스치는 각의 반사율 `F90`(유전체는 specularFactor, 금속은 1)도 함께 정합니다. 기본값(ior 1.5, specular 1, 흰색)이면 F0 = 0.04, F90 = 1로 위 식과 같습니다. 오브젝트별 강조 색(`HighlightAlbedo`)과 비의 젖음(`ApplyWetness`)은 F0를 만들기 전에 알베도·금속성·거칠기를 바꿉니다. 자세한 내용은 [재질 확장 공부 문서](material-extensions-study.html)에 있습니다.
 
 ## 4. 직접광: Cook-Torrance
 조명 하나가 주는 빛은 다음과 같습니다.
@@ -1301,7 +1302,7 @@ F0 = lerp(0.04, baseColor, metallic)
 | attenuation | 거리·스포트 콘에 따른 감쇠 | 멀수록 어두워진다 |
 | N·L | 노멀과 빛 방향의 코사인 | 빛을 비스듬히 받을수록 같은 면적이 받는 빛이 줄어든다 |
 
-묶어서 읽으면 `(표면이 반응하는 방식) × (광원 색 × 세기) × (거리 감쇠) × (각도)`입니다. 셰이더에서는 뒤의 세 곱을 `irradiance = color × intensity × attenuation × N·L`로 먼저 만들고, 앞의 괄호 `kd·albedo + specular·π`에 곱합니다. specular에만 π가 붙는 이유는 아래 "왜 π를 곱하나"에 있습니다.
+묶어서 읽으면 `(표면이 반응하는 방식) × (광원 색 × 세기) × (거리 감쇠) × (각도)`입니다. 셰이더(`Shading.hlsli`의 `ShadeLight`)는 `radiance = color × intensity × attenuation`(그림자 계수가 들어간 감쇠)를 먼저 만들고, 앞의 괄호 `kd·albedo + specular·π`에 `radiance`와 `N·L`을 차례로 곱합니다. specular에만 π가 붙는 이유는 아래 "왜 π를 곱하나"에 있습니다.
 
 먼저 네 벡터를 정합니다. 모두 표면의 점 P에서 **바깥으로** 나가는 단위 벡터입니다.
 
@@ -1367,7 +1368,7 @@ Blinn-Phong의 `(N·H)^shininess`도 L과 V를 받아 값을 돌려주므로 넓
 |---|---|---|
 | D 분포 | 노멀이 H인 조각이 얼마나 많은가 | GGX: α² / (π((N·H)²(α²−1)+1)²), α = roughness² |
 | G 가림 | 그 조각이 이웃에 가려지지 않을 확률 | Smith-Schlick: G₁(N·L)·G₁(N·V), k = (rough+1)²/8 |
-| F 프레넬 | 그 조각이 빛을 얼마나 반사하나 | F0 + (1−F0)(1−V·H)⁵ |
+| F 프레넬 | 그 조각이 빛을 얼마나 반사하나 | F0 + (F90−F0)(1−V·H)⁵ (F90은 보통 1) |
 
 - 거칠수록 D가 넓고 낮아져 하이라이트가 퍼집니다.
 - 스치듯 볼수록 F가 1에 가까워집니다. 호수 표면이 멀리서 거울처럼 보이는 이유입니다.
@@ -1382,7 +1383,7 @@ Blinn-Phong의 `(N·H)^shininess`도 L과 V를 받아 값을 돌려주므로 넓
 ### 감쇠와 스포트
 - 점광과 스포트광: `(1 − d/range)² / (kc + kl·d + kq·d²)`. range에서 정확히 0이 됩니다.
 - 스포트: 축과 `−L`의 코사인으로 안쪽 콘 1, 바깥 콘 밖 0, 사이는 선형입니다.
-- 그림자 맵은 0번 방향광 하나에만 적용됩니다.
+- 예전에는 그림자 맵이 0번 방향광 하나에만 적용됐습니다. 지금은 그림자를 가진 조명(`shadowIndex` ≥ 0)마다 `Shading.hlsli`의 `ShadowForLight`가 그림자 계수를 구해 감쇠에 곱합니다. 방향광은 CSM, 스포트광은 뷰 하나, 점광은 아틀라스 타일 여섯 장으로 큐브 면을 대신합니다. 자세한 내용은 [CSM 공부 문서](csm-study.html)와 [섀도 아틀라스 공부 문서](shadow-atlas-study.html)에 있습니다.
 
 ## 5. 환경광: split-sum IBL
 하늘 전체에서 오는 빛은 반구 적분이라 픽셀마다 풀 수 없습니다. Karis(2013)의 split-sum은 적분을 둘로 쪼개 **미리 구운 텍스처**로 바꿉니다.
@@ -1401,15 +1402,15 @@ Blinn-Phong의 `(N·H)^shininess`도 L과 V를 받아 값을 돌려주므로 넓
 |---|---|---|
 | t10 확산 조도 | 노멀 방향 반구의 코사인 가중 평균 | `kd · albedo · irradiance` |
 | t11 반사 프리필터 | 반사 방향을 GGX로 미리 흐린 큐브, 밉마다 거칠기가 다름 | `prefiltered` |
-| t12 BRDF LUT | F0에 곱할 값 A와 더할 값 B의 2D 표 | `F0·A + B` |
+| t12 BRDF LUT | F0에 곱할 값 A와 F90에 곱할 값 B의 2D 표 | `F0·A + F90·B` |
 
 ```
-환경광 = (kd · albedo · irradiance + prefiltered · (F0 · brdf.x + brdf.y)) × IBL 세기 × ao
+환경광 = (kd · albedo · irradiance + prefiltered · (F0 · brdf.x + F90 · brdf.y)) × IBL 세기 × ao
 ```
 
-- 프레넬은 `FresnelSchlickRoughness`를 씁니다. 거칠수록 스치는 각의 반사 상한이 1 − rough로 내려갑니다.
+- 프레넬은 `FresnelSchlickRoughness`를 씁니다. 거칠수록 스치는 각의 반사 상한이 (1 − rough) · F90으로 내려갑니다(F0보다 낮아지지는 않습니다). irradiance와 prefiltered에는 `iblTint`가 곱해져 있습니다.
 - LUT가 없으면 Karis의 모바일 근사식 `EnvBRDFApprox`가 대신합니다.
-- AO는 환경광에만 곱합니다. 직접광에는 곱하지 않습니다.
+- AO는 환경광에만 곱합니다. 직접광에는 곱하지 않습니다. 디퍼드 경로는 `PS_DeferredLighting`에서 재질 AO와 SSAO를 합쳐(기본은 작은 값, 설정하면 곱) 곱하고, 포워드 경로(`ShadeForward`)는 재질 AO만 곱합니다. 자세한 내용은 [SSAO 공부 문서](ssao-study.html)에 있습니다.
 - 환경광은 그림자의 영향을 받지 않습니다.
 
 ### 맵이 없을 때의 대체
@@ -1419,7 +1420,7 @@ Blinn-Phong의 `(N·H)^shininess`도 L과 V를 받아 값을 돌려주므로 넓
 | t10 조도 | irradiance 맵 | t11 큐브의 끝에서 두 번째 밉(2×2) → 검은 큐브 |
 | t12 LUT | brdfLut | 흰 2D + `EnvBRDFApprox` |
 
-셋 다 없으면 `ambientColor` 하나로 대신합니다. 유전체에서는 예전 주변광과 거의 같은 밝기입니다.
+조도 맵, 반사 맵, 스카이박스가 모두 없으면 두 조도를 `ambientColor` 하나로 대신합니다. LUT가 있는지와는 상관없습니다. 유전체에서는 예전 주변광과 거의 같은 밝기입니다.
 
 ## 6. HDR과 톤매핑
 IBL 큐브는 부동소수점이라 태양 픽셀이 300을 넘습니다. 엔진은 이를 `R16G16B16A16_FLOAT`(half float)로 읽습니다. 8비트로 읽으면 태양이 하얀 원판이 되고 금속 반사가 1에서 잘립니다.
@@ -1444,14 +1445,15 @@ IBL 큐브는 부동소수점이라 태양 픽셀이 300을 넘습니다. 엔진
 {unlit?} -&gt; [알베도 출력]: 예
 {unlit?} -&gt; [PBR 입력]: 아니오
 [PBR 입력] -&gt; [노멀 매핑]
-[노멀 매핑] -&gt; [뷰 벡터·그림자]
-[뷰 벡터·그림자] -&gt; [환경광 + 발광]
-[환경광 + 발광] -&gt; [조명 루프]
-[조명 루프] -&gt; (FP16 출력)
+[노멀 매핑] -&gt; [뷰 벡터·디버그]
+[뷰 벡터·디버그] -&gt; [환경광 + 발광]
+[환경광 + 발광] -&gt; [조명 루프·그림자]
+[조명 루프·그림자] -&gt; (FP16 출력)
 ```
 
 - 색공간: 알베도는 sRGB로 읽어 샘플링 시 선형으로 바뀝니다. 금속성/거칠기, AO, 노멀 맵은 선형입니다. 조명 계산은 전부 선형 공간입니다.
-- 방어 코드: 모든 정규화는 `SafeNormalize`를 거칩니다. 분모와 range는 `EPSILON` 이상입니다.
+- 위 순서는 포워드 경로(`BasicPixelShader.hlsl`의 `ShadeForward`)입니다. 알파 컷아웃 다음에 디졸브(`DissolveClip`)도 픽셀을 버리고, unlit이면 강조 색·발광을 더해 내보냅니다. 그림자는 조명 루프(`ShadeLights`) 안에서 조명마다 구합니다. 디퍼드 경로는 `GBufferPixelShader.hlsl`의 `PS_GBuffer`가 같은 `EvaluateMaterialSurface`로 재질을 읽어 G-buffer와 발광을 쓰고, `DeferredLightingPixelShader.hlsl`의 `PS_DeferredLighting`이 같은 `ShadeEnvironment`·`ShadeLights`로 환경광과 조명을 더합니다([디퍼드 G-buffer 공부 문서](deferred-gbuffer-study.html), [클러스터드 라이팅 공부 문서](clustered-lighting-study.html)).
+- 방어 코드: 셰이딩 쪽 정규화는 `SafeNormalize`를 거칩니다. G-buffer 노멀 복원(`Common.hlsli`의 `DecodeOct`)만 길이가 0이 될 수 없어서 그냥 `normalize`를 씁니다. 분모와 range는 `EPSILON` 이상입니다.
 
 ## 8. 구현 중에 내린 판단
 | 문제 | 판단 |

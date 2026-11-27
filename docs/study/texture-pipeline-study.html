@@ -41,7 +41,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <h1>텍스처 파이프라인 학습 문서</h1>
   <p>파일에서 GPU까지 — 디코딩, 밉 체인, BC7 압축, 디스크 변환 캐시, 런타임 캐시, 업로드, 샘플링</p>
   <p>2026-11-25 · 텍스처가 어떤 단계를 거쳐 셰이더에 닿는지는 지금까지 <a href="../plan/texture-pipeline-record.html">텍스처 파이프라인 구현 기록</a>(BC 직접 업로드, 임포트 변환 캐시, 게임 패키지)과 <a href="../overview/rendering-analysis.html#c12">rendering-analysis 12장</a>에 나뉘어 있었습니다. 이 문서는 밉맵과 블록 압축의 원리부터 설명하고, 지금 코드의 경로를 한 줄로 이어 정리합니다. 색공간은 <a href="color-space-study.html">색공간 학습</a>, glTF의 텍스처 참조는 <a href="gltf-study.html#material">glTF 학습</a>, 환경 큐브와 프리필터는 <a href="ibl-study.html">IBL 학습</a>에서 다루므로 여기서는 연결만 합니다.</p>
-  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다. 2026-11-27: 강조·디졸브·비(36ef141~0e20f6c)에 맞춰 게임 패키지의 재질 텍스처 칸 12개(디졸브 노이즈 포함), WIC 포맷 주석, <code>Evict</code>의 세대 번호 조건, 코드 지도의 <code>CreateTileableNoise</code>를 고쳤습니다.</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 왜 변환이 필요한가와 밉·블록 압축의 원리, 3장은 한 장의 텍스처가 지나는 전체 흐름, 4장은 에디터의 임포트 변환과 디스크 캐시, 5장은 로더가 포맷을 고르는 규칙, 6장은 런타임 캐시와 대체 텍스처, 7장은 GPU 업로드, 8장은 샘플러와 노멀 맵 해석, 9장은 메모리 계산, 10장은 코드 지도, 11장은 실험, 12장은 함정, 13장은 공부할 개념과 참고 문서입니다.</div>
   <div class="box warn"><b>숫자에 대해.</b> 텍스처 크기와 메모리는 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 변환 시간과 DamagedHelmet·패키지 용량은 <a href="../plan/texture-pipeline-record.html">구현 기록</a>에 적힌 측정이며 <span class="tag ok">확인함</span>으로 표시했습니다. 변환 시간은 GPU·CPU에 따라 달라집니다. 메모리 값은 로더가 넘기는 서브리소스 크기의 합이라 드라이버가 보고하는 실제 사용량과는 정렬만큼 차이가 납니다.</div>
 </header>
@@ -194,7 +194,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 </table>
 <p>키가 이름이 아니라 내용이라서, 파일 이름을 바꿔도 같은 캐시를 찾고, 같은 이름의 파일을 덮어쓰면 새로 변환합니다. 같은 원본을 색과 데이터로 둘 다 쓰면 sRGB 비트가 달라 캐시 파일이 둘 생깁니다. 대가는 로드마다 원본 바이트를 전부 읽어 해시하는 비용입니다. 게임 패키지가 목록(<code>manifest.json</code>)을 따로 두는 이유가 이것입니다.</p>
 <h3>4-4. 게임 패키지</h3>
-<p><code>Editor/GameBuilder.cpp</code>는 씬·프리팹이 쓰는 (텍스처 이름, sRGB) 쌍마다 <code>TextureImporter::CookForBuild</code>를 부릅니다. 이 함수는 <code>ResolveCached</code>와 같지만, 256 미만의 작은 텍스처도 압축 없이 RGBA8 + 밉 DDS로 만듭니다. 쓰인 DDS와 <code>{"version":1,"textures":{"이름":{"srgb":"…","linear":"…"}}}</code> 목록만 싣고 원본 PNG/JPG는 뺍니다. 게임에서는 <code>FindCooked</code>가 목록에서 DDS 경로를 바로 찾고, <code>GltfImporter</code>는 <code>HasCooked</code>인 이미지의 바이트를 읽지 않습니다. 요청한 색공간 변환본이 없으면 다른 쪽을 경고와 함께 씁니다. 에셋 전부 패키지에서 변환본 270개(DDS 261파일, 465 MB)가 실렸고, 예전 방식이면 캐시 폴더 전체 2.5 GB가 실렸을 것이라고 기록은 적습니다 <span class="tag ok">확인함 (2026-11-22)</span> (<a href="../plan/texture-pipeline-record.html">기록</a> 4장).</p>
+<p><code>Editor/GameBuilder.cpp</code>는 씬·프리팹이 쓰는 (텍스처 이름, sRGB) 쌍마다 <code>TextureImporter::CookForBuild</code>를 부릅니다. 재질 쪽은 <code>kTextureSlots</code>의 텍스처 칸 12개(t20 <code>dissolveNoiseTexture</code>까지, 색공간은 <code>GetOrCreateGpuMaterial</code>과 같음)를 훑고, 빈 이름과 <code>builtin:</code> 이름은 싣지 않습니다. 디졸브 칸이 비면 런타임에 <code>builtin:noise</code>가 꽂히므로 패키지에 실을 것이 없습니다. 이 함수는 <code>ResolveCached</code>와 같지만, 256 미만의 작은 텍스처도 압축 없이 RGBA8 + 밉 DDS로 만듭니다. 쓰인 DDS와 <code>{"version":1,"textures":{"이름":{"srgb":"…","linear":"…"}}}</code> 목록만 싣고 원본 PNG/JPG는 뺍니다. 게임에서는 <code>FindCooked</code>가 목록에서 DDS 경로를 바로 찾고, <code>GltfImporter</code>는 <code>HasCooked</code>인 이미지의 바이트를 읽지 않습니다. 요청한 색공간 변환본이 없으면 다른 쪽을 경고와 함께 씁니다. 에셋 전부 패키지에서 변환본 270개(DDS 261파일, 465 MB)가 실렸고, 예전 방식이면 캐시 폴더 전체 2.5 GB가 실렸을 것이라고 기록은 적습니다 <span class="tag ok">확인함 (2026-11-22)</span> (<a href="../plan/texture-pipeline-record.html">기록</a> 4장).</p>
 </section>
 
 <section id="loader">
@@ -202,7 +202,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <h3>5-1. 읽을 수 있는 원본</h3>
 <table>
 <tr><th>원본</th><th>읽는 함수</th><th>비고</th></tr>
-<tr><td>PNG, JPG, BMP (TIFF, GIF)</td><td><code>LoadFromWICFile</code> / <code>LoadFromWICMemory</code></td><td><code>WIC_FLAGS_FORCE_RGB | WIC_FLAGS_IGNORE_SRGB</code>. 헤더는 PNG·JPG·BMP를, cpp 주석은 TIFF·GIF까지 적음</td></tr>
+<tr><td>PNG, JPG, BMP (TIFF, GIF)</td><td><code>LoadFromWICFile</code> / <code>LoadFromWICMemory</code></td><td><code>WIC_FLAGS_FORCE_RGB | WIC_FLAGS_IGNORE_SRGB</code>. 헤더(<code>TextureLoader.h</code>)와 cpp 주석 모두 TIFF·GIF까지 적음</td></tr>
 <tr><td>DDS (2D, 큐브, BC, float)</td><td><code>LoadFromDDSFile</code> / <code>LoadFromDDSMemory</code></td><td>확장자 <code>.dds</code> 또는 바이트 <code>"DDS "</code>로 판단</td></tr>
 <tr><td>큐브 면 이미지 6장</td><td><code>LoadCubeFromFile</code>(폴더)</td><td><code>px/nx/…</code>, <code>posx/…</code>, <code>right/left/…</code> 규칙. 8비트만</td></tr>
 <tr><td>HDR, EXR, KTX2, TGA</td><td>없음</td><td>코드에 로더가 없습니다. HDR 환경은 float DDS로 넣어야 함</td></tr>
@@ -235,7 +235,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <h3>6-3. 수명</h3>
 <ul>
 <li><code>ReleaseLoaded</code>: <code>Renderer::InvalidateScene(scene, releaseTextures = true)</code>에서 불려 <code>builtin:</code>이 아닌 2D·큐브를 모두 파괴하고 세대 번호(<code>m_generation</code>)를 올립니다.</li>
-<li><code>Evict(name)</code>: 이름 하나의 sRGB·선형 항목만 파괴하고 세대 번호를 올립니다. 임포트 설정을 바꾼 텍스처를 다시 읽게 할 때 씁니다.</li>
+<li><code>Evict(name)</code>: 이름 하나의 sRGB·선형 항목만 파괴하고, 실제로 지운 항목이 있을 때만 세대 번호를 올립니다(<code>builtin:</code> 이름은 무시). 임포트 설정을 바꾼 텍스처를 다시 읽게 할 때 씁니다.</li>
 <li>대체 핸들(흰색·평평한 노멀·검은 큐브)은 여러 항목이 공유하므로 파괴할 때 건너뛰고, <code>Shutdown</code>에서 한 번만 지웁니다.</li>
 <li><code>Renderer::GetOrCreateGpuMaterial</code>은 재질 셋을 만들 때의 세대 번호·텍스처 이름·샘플러를 기억해 두고, 모두 같으면 이름 → 핸들 조회를 건너뜁니다. 대부분의 프레임이 이 경로입니다. 핸들이 실제로 바뀐 경우에만 <code>ResourceSet</code>을 다시 만듭니다.</li>
 </ul>
@@ -302,7 +302,7 @@ s.normal = SafeNormalize(tangentNormal.x * T + tangentNormal.y * B + tangentNorm
 <tr><td>임포트 설정</td><td><code>TextureImportSettings</code>, <code>TextureImporter::GetSettings</code>·<code>SetSettings</code>, <code>Editor/DebugUI.cpp</code> 의 <code>DebugUI::DrawTextureImportSettings</code></td><td><code>Assets\TextureSettings.json</code>, Apply → <code>Renderer::ReloadTexture</code></td></tr>
 <tr><td>패키지 변환본</td><td><code>TextureImporter::CookForBuild</code>·<code>WriteManifest</code>·<code>FindCooked</code>·<code>HasCooked</code>, <code>Editor/GameBuilder.cpp</code></td><td>쓰이는 DDS와 <code>manifest.json</code>만 실음</td></tr>
 <tr><td>디코딩·포맷 결정</td><td><code>Graphics/TextureLoader.cpp</code> 의 <code>FinishImage</code>·<code>CompressedGpuFormat</code>·<code>LoadScratchFromFile</code>·<code>FromScratchImage</code></td><td>BC1/3/7 직접, 나머지는 풀기, HDR은 FP16, 밉 생성</td></tr>
-<tr><td>큐브·절차적 텍스처</td><td><code>TextureLoader::LoadCubeFromFile</code>·<code>CreateCube</code>·<code>CreateSolid</code>·<code>CreateChecker</code>·<code>CreateRoundedRect</code></td><td>스카이·면 판별 큐브, 흰색·노멀·회색·체커·UI 패널</td></tr>
+<tr><td>큐브·절차적 텍스처</td><td><code>TextureLoader::LoadCubeFromFile</code>·<code>CreateCube</code>·<code>CreateSolid</code>·<code>CreateChecker</code>·<code>CreateRoundedRect</code>·<code>CreateTileableNoise</code></td><td>스카이·면 판별 큐브, 흰색·노멀·회색·체커·UI 패널·디졸브 노이즈</td></tr>
 <tr><td>BC 포맷 목록</td><td><code>RHI/PipelineTypes.h</code> 의 <code>Format</code>, <code>IsBlockCompressed</code></td><td>BC1/BC3/BC7 (UNORM, UNORM_SRGB)</td></tr>
 <tr><td>서브리소스 계약</td><td><code>RHI/ResourceDesc.h</code> 의 <code>TextureDesc</code>·<code>TextureSubresource</code>·<code>SamplerDesc</code></td><td>순서 규칙, <code>maxLod</code>, LOD 바이어스 필드 없음</td></tr>
 <tr><td>업로드</td><td><code>D3D11Device::CreateTexture</code>·<code>UpdateTexture</code>, <code>D3D12Device::CreateTexture</code>·<code>UpdateTexture</code>·<code>RecordUpload</code>·<code>FlushUploads</code></td><td>초기 데이터, 업로드 힙, 부분 갱신</td></tr>

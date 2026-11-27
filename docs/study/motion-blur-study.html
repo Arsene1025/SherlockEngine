@@ -41,7 +41,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <h1>모션 블러 학습 문서</h1>
   <p>속도 버퍼를 따라 픽셀마다 번지게 하는 후처리 — 재구성 필터의 가중치, 기준 fps 보정, 높은 fps 에서 마우스 회전이 번쩍이던 문제와 <code>LookSmoother</code></p>
   <p>2026-11-25 · 모션 블러 이야기는 지금까지 <a href="../plan/velocity-motionblur-taa-plan.html#s2">속도 버퍼·모션 블러·TAA 계획 2단계</a>와 그 문서 맨 위 "구현하면서 바뀐 점", <a href="../overview/rendering-analysis.html#c20-28">rendering-analysis 20.28</a>, 커밋 be1ef76(마우스 회전 번쩍임 수정) 메시지에 흩어져 있었습니다. 속도 버퍼 자체는 <a href="../study/velocity-buffer-study.html">속도 버퍼 학습</a>, TAA 는 <a href="../study/taa-study.html">TAA 학습</a>, 후처리 체인 전체는 <a href="../study/post-process-study.html">후처리 학습</a>에 있고 여기서는 되풀이하지 않습니다.</p>
-  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다. 2026-11-27: 강조·디졸브·비(36ef141~0e20f6c)와 주석 정리(1fc0e12)에 맞춰 속도를 쓰지 않는 것에 빗줄기·튐을 넣고(9장 표), 고쳐진 셰이더·LookSmoother 주석에 대한 9장 상자를 고쳤습니다.</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1장은 카메라 셔터와 게임이 블러를 흉내 내는 이유, 2장은 재구성 필터의 원리(샘플 배치와 깊이 가중치), 3장은 우리 엔진에서 패스가 도는 자리, 4장은 길이 계산(셔터·기준 fps·상한), 5장은 마우스 회전 번쩍임과 <code>LookSmoother</code>, 6장은 설정과 실행 인자, 7장은 코드 지도, 8장은 실험, 9장은 함정, 10장은 공부할 개념과 참고 문서입니다.</div>
   <div class="box warn"><b>숫자에 대해.</b> 가중치 예와 마우스 시뮬레이션은 셰이더 식과 <code>LookSmoother</code> 식을 그대로 옮긴 파이썬으로 계산했습니다 <span class="tag chk">계산값</span>. 2026-11-23 구현 때 기록된 측정은 <span class="tag ok">확인함</span>으로 출처와 함께 적었습니다. 커밋 be1ef76 과 <code>Core/LookSmoother.h</code> 주석에 있는 각속도 배율은 화면 측정이 아니라 당시 시뮬레이션 결과입니다.</div>
 </header>
@@ -375,13 +375,13 @@ Consume(dt):        k = 1 − exp(−dt / τ)           // τ ≤ 0 이거나 dt
 <tr><td>물리 물체가 고프레임에서 어떤 프레임만 길게 번짐</td><td>Rigidbody 는 고정 스텝에서만 움직이고 렌더 보간이 없음</td><td>남은 과제(<a href="../overview/rendering-analysis.html#c22-4">22.4</a>)</td></tr>
 <tr><td>빠른 물체 뒤로 꼬리가 생기지 않음</td><td>정지한 배경 픽셀은 조기 반환, 샘플은 가운데 속도 선 위에만</td><td>TileMax·NeighborMax 없음(2-4, <a href="../plan/velocity-motionblur-taa-plan.html#s2-risk">계획 2단계-5</a>)</td></tr>
 <tr><td>번진 전경 뒤로 보이는 배경이 정확하지 않음</td><td>한 장의 화면에는 가려진 뒤쪽 색이 없음. 둘째 항은 샘플 자리의 색(배경이 보이는 곳)만 끌어옴</td><td>재구성 필터 공통 한계. 전경이 화면 가장자리나 다른 전경에 붙으면 더 틀림</td></tr>
-<tr><td>반투명 물체·파티클·디버그 선이 뒤 표면 속도로 번짐</td><td>속도를 쓰지 않음</td><td>반투명 PSO 의 <code>rt[1].writeMask = 0</code>(<code>GetPipelineFor</code>), 파티클·본 디버그 선은 Effects 패스(<a href="../plan/velocity-motionblur-taa-plan.html#unknown">계획 7.8</a>, 22.4)</td></tr>
+<tr><td>반투명 물체·파티클·빗줄기·디버그 선이 뒤 표면 속도로 번짐</td><td>속도를 쓰지 않음</td><td>반투명 PSO 의 <code>rt[1].writeMask = 0</code>(<code>GetPipelineFor</code>), 파티클·빗줄기·튐·본 디버그 선은 RT 1장짜리 Effects 패스(<code>DrawParticles</code> → <code>DrawRain</code> → <code>DrawDebugLines</code>, <a href="../plan/velocity-motionblur-taa-plan.html#unknown">계획 7.8</a>, 22.4)</td></tr>
 <tr><td>화면 가장자리에서 번짐이 끊기거나 가장자리 색이 늘어남</td><td>화면 밖 샘플을 가장자리 픽셀로 자름</td><td><code>PS_MotionBlur</code> 의 <code>clamp(…, maxPixel)</code>, <code>LoadVelocityPixels</code>·<code>LoadDeviceDepth</code> 도 같은 자르기</td></tr>
 <tr><td>번진 자리에 고정된 잡음 무늬</td><td>IGN 은 픽셀 좌표만 써서 프레임마다 같고, TAA 가 모션 블러 앞이라 평균되지 않음</td><td>샘플 수를 늘리거나 상한을 줄임(4-3 표)</td></tr>
 <tr><td>순간이동·씬 교체 직후 한 프레임 화면이 크게 번짐</td><td>지난 위치가 다른 상태의 것</td><td><code>ResetTemporalHistory</code> 가 씬 교체·되돌리기·카메라 컷에서 지난 값을 버림. 게임 코드의 순간이동은 감지하지 않아 직접 불러야 함(22.4). 남은 경우도 상한이 길이를 자름</td></tr>
 <tr><td>에디터에서 기즈모로 끌거나 카메라를 움직이면 번짐</td><td>실제 움직임이라 맞는 동작</td><td>편집 모드 끔 옵션은 없음(<a href="../plan/velocity-motionblur-taa-plan.html#s2-risk">계획 2단계-5</a>)</td></tr>
 </table>
-<div class="box warn"><b>낡은 서술 주의.</b> <a href="../plan/velocity-motionblur-taa-plan.html#s2-settings">계획 2단계-1</a>은 "프레임 시간 정규화(목표 FPS 기준으로 길이를 맞추기)는 넣지 않습니다"라고 적혀 있지만 지금 코드에는 <code>motionBlurTargetFps</code> 가 있습니다. <a href="../plan/velocity-motionblur-taa-plan.html#s2-verify">2단계-4</a> 검증 표는 <code>MotionBlur.json</code> 을 Sponza 복사본이라고 적었지만 실제로는 DamagedHelmet 복사본입니다. 두 곳 모두 같은 문서 맨 위 "구현하면서 바뀐 점"에는 바로잡혀 있습니다. 셰이더 머리 주석의 "움직이는 전경은 배경 위로 번지지만"은 배경 픽셀도 움직일 때(카메라 이동)에만 맞습니다(2-4). <code>Core/LookSmoother.h</code> 머리 주석의 "fps 와 무관하게 같은 반응"은 한 단계에서만 정확하고, 두 단계를 한 프레임 안에 잇는 지금 코드에서는 60 fps 가 480 fps 보다 조금 빨리 내보냅니다(5-2).</div>
+<div class="box warn"><b>낡은 서술 주의.</b> <a href="../plan/velocity-motionblur-taa-plan.html#s2-settings">계획 2단계-1</a>은 "프레임 시간 정규화(목표 FPS 기준으로 길이를 맞추기)는 넣지 않습니다"라고 적혀 있지만 지금 코드에는 <code>motionBlurTargetFps</code> 가 있습니다. <a href="../plan/velocity-motionblur-taa-plan.html#s2-verify">2단계-4</a> 검증 표는 <code>MotionBlur.json</code> 을 Sponza 복사본이라고 적었지만 실제로는 DamagedHelmet 복사본입니다. 두 곳 모두 같은 문서 맨 위 "구현하면서 바뀐 점"에는 바로잡혀 있습니다. 셰이더 머리 주석과 <code>Core/LookSmoother.h</code> 머리 주석에 있던 낡은 서술("움직이는 전경은 배경 위로 번지지만", "fps 와 무관하게 같은 반응")은 2026-11-26 주석 정리(1fc0e12)에서 고쳐졌습니다. 지금 셰이더 주석은 "움직이는 물체는 자기 실루엣 안에서만 번지고, 정지한 배경 위로 번져 나가지는 않음"(2-4)이고, LookSmoother 주석은 낮은 fps 에서 조금 빨리 따라온다는 것과 5-2 와 같은 몫(60 fps 0.77, 480 fps 0.65, 4800 fps 0.62)을 적습니다.</div>
 </section>
 
 <section id="study">

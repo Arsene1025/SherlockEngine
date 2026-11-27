@@ -41,7 +41,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <h1>색공간 학습 문서</h1>
   <p>선형·sRGB·감마 — 왜 구분하는가, 우리 엔진에서 색 값이 어떤 공간을 거쳐 화면에 나가는가, 직접 확인하는 실험</p>
   <p>2026-11-25 · 렌더러 공부 순서 중 "색 파이프라인과 컴퓨트 기초" 묶음의 첫 문서입니다. 색공간 이야기는 지금까지 <a href="../overview/rendering-analysis.html#c12">rendering-analysis 12장</a>, <a href="../plan/texture-pipeline-record.html">텍스처 파이프라인 기록</a>, <a href="../plan/hdr-tonemapping-record.html">HDR 기록</a>에 흩어져 있었습니다. 이 문서는 원리부터 다시 설명하고, 2026-10-23 HDR 전환 뒤의 현재 코드에 맞춰 정리합니다. 기존 rendering-analysis와 기록 문서의 설명은 그대로 두었습니다.</p>
-  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다. 2026-11-27: 강조·디졸브·비(36ef141~0e20f6c)에 맞춰 4장 텍스처 표와 6장 코드 지도의 내장 텍스처에 디졸브 노이즈(선형)를 더했습니다.</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(왜 선형으로 계산하는가, sRGB 곡선), 3장은 한 프레임에서 색 값이 거치는 공간, 4장은 텍스처마다 어떤 공간으로 읽는가, 5장은 포맷과 뷰, 6장은 코드 지도, 7장은 실험, 8장은 함정, 9장은 공부할 개념과 참고 문서입니다. 주제마다 "무슨 문제를 푸는가 → 왜 이 방법인가 → 코드 어디인가 → 한계" 순서로 썼습니다.</div>
   <div class="box warn"><b>숫자에 대해.</b> sRGB 변환 값은 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 화면에서 측정한 값은 <span class="tag ok">확인함</span>으로 표시했습니다. 측정은 2026-09-23(HDR 전환 전)에 했기 때문에, 지금 같은 결과를 보려면 톤매핑을 끄고 노출 1에서 해야 합니다(7장 E1).</div>
 </header>
@@ -183,7 +183,7 @@ encode (선형 l → sRGB):  l ≤ 0.0031308 이면 l × 12.92,   아니면 1.05
 <tr><td>발광(emissive)</td><td>sRGB</td><td>색</td></tr>
 <tr><td>반사 색(specularColor, KHR_materials_specular)</td><td>sRGB</td><td>색</td></tr>
 <tr><td>노멀, 코팅 노멀</td><td>선형</td><td>방향 벡터</td></tr>
-<tr><td>금속성·거칠기, AO, specular(A 채널), 클리어코트 세기·거칠기, 투과</td><td>선형</td><td>비율</td></tr>
+<tr><td>금속성·거칠기, AO, specular(A 채널), 클리어코트 세기·거칠기, 투과, 디졸브 노이즈</td><td>선형</td><td>비율. 디졸브 노이즈(<code>Material::dissolveNoiseTexture</code>, 비면 <code>builtin:noise</code>)는 진행도와 비교하는 문턱값 (<a href="object-highlight-dissolve-study.html">강조·디졸브 학습</a>)</td></tr>
 <tr><td>8비트 큐브맵(스카이박스)</td><td>sRGB</td><td>색. <code>TextureCache::LoadCube</code> 가 <code>LoadCubeFromFile(path, true, true, …)</code> 로 읽음 (<a href="../overview/rendering-analysis.html#c12-14">rendering-analysis 12.14</a>)</td></tr>
 <tr><td>float DDS, BC6H (HDR 환경맵)</td><td>선형, <code>R16G16B16A16_FLOAT</code></td><td>부동소수점 데이터는 이미 선형. 라벨을 붙이지 않음</td></tr>
 <tr><td>BRDF LUT</td><td>선형</td><td>데이터. <code>Renderer.cpp</code> 의 환경 바인딩이 <code>Load2D(environment.brdfLut, false, …)</code></td></tr>
@@ -237,7 +237,7 @@ encode (선형 l → sRGB):  l ≤ 0.0031308 이면 l × 12.92,   아니면 1.05
 <table>
 <tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
 <tr><td>재질 칸별 색공간</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::GetOrCreateGpuMaterial</code></td><td>텍스처 칸마다 <code>Load2D(이름, srgb)</code>. 4장 표의 근거</td></tr>
-<tr><td>색공간별 캐시</td><td><code>Graphics/TextureCache.cpp</code> 의 <code>TextureCache::Load2D</code></td><td><code>m_2d[srgb]</code> 두 맵. 내장 <code>builtin:gray128</code>(감마 검증)·체커·흰색</td></tr>
+<tr><td>색공간별 캐시</td><td><code>Graphics/TextureCache.cpp</code> 의 <code>TextureCache::Load2D</code></td><td><code>m_2d[srgb]</code> 두 맵. 내장 <code>builtin:gray128</code>(감마 검증)·체커·흰색·<code>builtin:noise</code>(디졸브, 선형)</td></tr>
 <tr><td>라벨 붙이기·밉</td><td><code>Graphics/TextureLoader.cpp</code> 의 <code>FinishImage</code></td><td>바이트 그대로, 라벨만. <code>TEX_FILTER_SRGB</code> 밉. HDR은 FP16, BC는 압축 그대로</td></tr>
 <tr><td>BC7 변환본</td><td><code>Graphics/TextureImporter.cpp</code> 의 <code>Build</code></td><td><code>BC7_UNORM(_SRGB)</code>, <code>TEX_COMPRESS_SRGB_IN</code></td></tr>
 <tr><td>glTF 색공간</td><td><code>Graphics/Import/GltfImporter.cpp</code></td><td><code>albedoSrgb = true</code>, 계수는 선형 그대로</td></tr>

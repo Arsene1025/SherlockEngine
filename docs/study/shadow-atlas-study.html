@@ -293,6 +293,7 @@ for 뷰 v (v.atlas == 이 아틀라스):
     ④ for 드로우 항목: 지역광이면 광원 범위 구와 겹치는지, 뷰 절두체와 겹치는지 → 그리기
 EndRenderPass
 Barrier(map, ShaderResource)                         메인 패스가 t8 / t14 로 읽음</code></pre>
+<p>②~④는 <code>Renderer::DrawDepthView</code> 한 함수에 있고, 그림자 패스 다음의 비 차폐 맵 패스(<code>RenderRainOcclusionPass</code>)도 같은 함수를 <code>occluder</code> = 참으로 불러 <code>occluderPipeline</code>(바이어스 없는 변형)으로 그립니다.</p>
 <p>타일마다 렌더 패스를 여는 대신 뷰포트만 바꾸는 것은 계획의 결정 D2입니다. 패스와 통계가 늘지 않고 Load/Clear를 타일마다 관리하지 않아도 되며, D3D12의 <code>RSSetViewports</code>·<code>RSSetScissorRects</code>와 1:1로 대응합니다. D3D12 백엔드는 <code>D3D12CommandList::ApplyViewport</code>에서 뷰포트와 같은 시저를 같이 걸어 다른 타일로 래스터가 새지 않게 합니다.</p>
 <p>직교 뷰(방향광·캐스케이드)는 near 평면을 빼고 컬링합니다. 광원 쪽으로 더 물러나 있는 캐스터도 그림자를 드리울 수 있기 때문입니다. 원근 뷰는 평면 여섯 개를 다 쓰고, 그 앞에 <code>cullSphere</code>(광원 위치, 범위)와 물체 경계 구가 겹치는지를 봅니다. 두 검사에서 빠진 (뷰, 드로우) 쌍은 <code>Stats::shadowCulled</code>로 셉니다. 포인트 광원 한 면의 반대쪽 물체가 대부분 여기서 빠집니다.</p>
 <p>그리는 대상은 <code>m_drawList</code> 전체입니다. 메인 카메라 절두체 컬링은 <code>DrawItems</code>가 그릴 때 따로 하므로, 화면 밖 물체도 화면 안으로 그림자를 드리울 수 있습니다.</p>
@@ -301,7 +302,7 @@ Barrier(map, ShaderResource)                         메인 패스가 t8 / t14 �
 <tr><th>항목</th><th>값</th><th>위치</th></tr>
 <tr><td>셰이더</td><td>VS만 (<code>VS_Shadow</code>, 스킨 메시는 <code>VS_ShadowSkin</code>), PS 없음, RTV 0개, DSV D32_FLOAT. 알파 컷아웃 재질·디졸브 중인 오브젝트는 알파 테스트 변형(<code>VS_ShadowAlpha</code>·<code>VS_ShadowAlphaSkin</code> + <code>PS_ShadowAlpha</code>, 재질 셋까지 묶음)</td><td><code>Renderer.cpp</code>의 <code>Pass_Shadow</code>·<code>Pass_ShadowSkin</code>·<code>Pass_ShadowAlpha</code>·<code>Pass_ShadowAlphaSkin</code> 설정</td></tr>
 <tr><td>래스터 깊이 바이어스</td><td><code>depthBias</code> 2000, <code>slopeScaledDepthBias</code> 2.0, <code>depthBiasClamp</code> 0.01</td><td>같은 곳</td></tr>
-<tr><td>컬링</td><td>뒷면 컬링, <code>doubleSided</code> 재질은 없음. 반사 행렬이면 앞면 정의를 뒤집음</td><td><code>Renderer::GetShadowPipelineFor</code> (키: 정점 포맷 · 반사 · 양면 · 알파 테스트)</td></tr>
+<tr><td>컬링</td><td>뒷면 컬링, <code>doubleSided</code> 재질은 없음. 반사 행렬이면 앞면 정의를 뒤집음</td><td><code>Renderer::GetShadowPipelineFor</code> (키: 정점 포맷 · 반사(비트 8) · 양면(9) · 알파 테스트(10) · 바이어스 없음(11). 비트 11은 비 차폐 맵 전용 <code>DrawItem::occluderPipeline</code>이고, 그림자 뷰는 쓰지 않음)</td></tr>
 <tr><td>그림자를 만들지 않는 것</td><td>unlit, 블렌딩·투과 재질(<code>IsBlended</code>: <code>alphaBlend</code> 또는 <code>transmissionFactor</code> &gt; 0), 바다</td><td><code>BuildDrawList</code>가 <code>shadowPipeline</code>을 빈 핸들로 둠</td></tr>
 </table>
 <p>D32_FLOAT에서 <code>depthBias</code> 한 단위는 2^(지수 − 23)입니다. 깊이가 0.5~1이면 2^−24라서 2000단위는 약 1.2 × 10⁻⁴입니다 <span class="tag chk">계산값</span>. 스킨 메시의 그림자 VS는 메인 패스와 같은 b7 조인트 팔레트로 위치만 스킨합니다. <code>UploadObjectConstants(item.object, false)</code>가 b1과 b7을 올리고, 그림자는 속도를 쓰지 않으므로 b13(지난 프레임 팔레트)은 건너뜁니다.</p>
@@ -320,9 +321,9 @@ Barrier(map, ShaderResource)                         메인 패스가 t8 / t14 �
 <tr><td>배정</td><td><code>Renderer::BuildShadowViews</code>, <code>Renderer::AddShadowView</code></td><td>방향광 → 점수 순 지역광, 타일·뷰 부족이면 건너뜀, 히스테리시스 기록</td></tr>
 <tr><td>뷰 행렬</td><td><code>ComputeLightViewProj</code>, <code>ComputeSpotViewProj</code>, <code>ComputePointFaceViewProj</code>, <code>AddCascadeViews</code></td><td>직교 단일 · 스팟 원근 · 포인트 90.68° · 캐스케이드</td></tr>
 <tr><td>업로드</td><td><code>Renderer::UploadShadowConstants</code>, <code>Graphics/ShaderConstants.h</code>의 <code>ShadowViewData</code>·<code>ShadowConstants</code></td><td>b6 2000 B (전치, UV 사각형, 아틀라스 번호), b5 단위 행렬</td></tr>
-<tr><td>패스</td><td><code>Renderer::RenderShadowPass</code>, <code>RenderShadowAtlasPass</code></td><td>아틀라스마다 클리어 1번, 뷰마다 뷰포트·b5·컬링·드로우</td></tr>
-<tr><td>PSO</td><td><code>Renderer.cpp</code>의 <code>Pass_Shadow</code> 설정, <code>Renderer::GetShadowPipelineFor</code></td><td>래스터 바이어스, 컬링 모드</td></tr>
-<tr><td>그림자 VS</td><td><code>Shaders/ShadowVertexShader.hlsl</code>, <code>ShadowSkinVertexShader.hlsl</code></td><td>월드 × b5 행렬, 스킨은 b7 팔레트 먼저</td></tr>
+<tr><td>패스</td><td><code>Renderer::RenderShadowPass</code>, <code>RenderShadowAtlasPass</code>, <code>DrawDepthView</code>·<code>DepthDrawState</code></td><td>아틀라스마다 클리어 1번, 뷰마다 뷰포트·b5·컬링·드로우</td></tr>
+<tr><td>PSO</td><td><code>Renderer.cpp</code>의 <code>Pass_Shadow</code>·<code>Pass_ShadowSkin</code>·<code>Pass_ShadowAlpha</code>·<code>Pass_ShadowAlphaSkin</code> 설정, <code>Renderer::GetShadowPipelineFor</code></td><td>래스터 바이어스, 컬링 모드</td></tr>
+<tr><td>그림자 VS</td><td><code>Shaders/ShadowVertexShader.hlsl</code>, <code>ShadowSkinVertexShader.hlsl</code>, 알파 테스트 변형 <code>ShadowAlphaVertexShader.hlsl</code>·<code>ShadowAlphaSkinVertexShader.hlsl</code>·<code>ShadowAlphaPixelShader.hlsl</code>(<code>ShadowAlpha.hlsli</code>)</td><td>월드 × b5 행렬, 스킨은 b7 팔레트 먼저</td></tr>
 <tr><td>샘플링</td><td><code>Shaders/Shading.hlsli</code>의 <code>SampleShadowViewCoverage</code>, <code>PointFace</code>, <code>ShadowForLight</code></td><td>원근 노멀 오프셋, 타일 UV, 여백 clamp, PCF 5×5, 면 선택</td></tr>
 <tr><td>설정</td><td><code>Scene/ShadowSettings.h</code>, <code>RenderSettings::shadows</code>·<code>shadowPriority</code></td><td>씬에 저장되는 바이어스·<code>localNormalBias</code>, 렌더러 스위치(F8, <code>--shadow-priority</code>)</td></tr>
 <tr><td>에디터 표시</td><td><code>Editor/DebugUI.cpp</code>의 <code>DebugUI::DrawShadowPanel</code> ("Shadow atlas"·"CSM atlas" 트리)</td><td>아틀라스를 R 채널로 보여 주고 뷰 사각형과 L번호, views·tiles·skipped</td></tr>
@@ -375,7 +376,7 @@ Barrier(map, ShaderResource)                         메인 패스가 t8 / t14 �
 <li><b>포인트 비용.</b> 포인트 하나는 캐스터마다 최대 6번 그립니다. 지오메트리 셰이더나 인스턴싱으로 한 번에 여섯 면을 그리는 경로는 없고, 범위 구·면 절두체 컬링(8-1)이 그 수를 줄입니다. 포인트 그림자는 동시에 2개까지입니다.</li>
 <li><b>뷰 상한이 상수버퍼 크기에 묶임.</b> 타일을 늘리면 <code>MAX_SHADOW_VIEWS</code>, b6 크기, HLSL 상수를 같이 바꿔야 합니다.</li>
 </ul>
-<div class="box warn"><b>낡은 서술 주의.</b> <a href="../plan/multi-light-shadow-plan.html">다중 광원 그림자 계획</a>의 4096² 아틀라스, 지역광 타일 1024², 포인트 시야각 90.34°, "조명 번호 순 선착순"(D10), <code>m_itemSpheres</code>는 계획 당시의 내용입니다. 지금은 2048² 두 장, 512² 타일, 90.68°, 점수 순 배정, <code>m_objects[…].sphere</code>입니다. 또 <code>Lighting.hlsli</code>의 t14 주석, <code>CreateShadowResources</code>의 주석, 에디터 CSM 트리의 주석은 "캐스케이드마다 해상도가 다르다"고 적혀 있지만 <code>kCsmCascadeSize</code>는 네 칸 모두 1024입니다.</div>
+<div class="box warn"><b>낡은 서술 주의.</b> <a href="../plan/multi-light-shadow-plan.html">다중 광원 그림자 계획</a>의 4096² 아틀라스, 지역광 타일 1024², 포인트 시야각 90.34°, "조명 번호 순 선착순"(D10), <code>m_itemSpheres</code>는 계획 당시의 내용입니다. 지금은 2048² 두 장, 512² 타일, 90.68°, 점수 순 배정, <code>m_objects[…].sphere</code>입니다. 예전에는 <code>Lighting.hlsli</code>의 t14 주석, <code>CreateShadowResources</code>의 주석, 에디터 CSM 트리의 주석도 "캐스케이드마다 해상도가 다르다"고 적혀 있었지만, 지금은 세 곳 모두 "칸은 모두 1024²"로 고쳐져 있습니다(<code>kCsmCascadeSize</code>는 네 칸 모두 1024).</div>
 </section>
 
 <section id="study">

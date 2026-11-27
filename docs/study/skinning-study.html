@@ -41,7 +41,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <h1>스키닝 학습 문서</h1>
   <p>조인트·역바인드 행렬·스킨 팔레트·선형 블렌드 스키닝 — 뼈대 애니메이션이 정점 셰이더에서 어떻게 그려지는가</p>
   <p>2026-11-25 · 스키닝 이야기는 지금까지 <a href="../plan/skinning-bone-debug-record.html">스키닝 · 본 디버그 구현 기록</a>(2026-11-12)과 <a href="../plan/velocity-motionblur-taa-plan.html#d-cb">속도 버퍼 계획</a>(지난 프레임 팔레트), 공부 순서를 적은 <a href="character-engine-study.html">캐릭터 엔진 로드맵</a>에 흩어져 있었습니다. 이 문서는 렌더러가 하는 일을 중심으로 원리부터 다시 설명하고 현재 코드에 맞춰 정리합니다. glTF 파일 형식(<code>skins</code>·<code>accessors</code>)은 <a href="gltf-study.html">glTF 학습</a>에 맡겼습니다.</p>
-  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다. 2026-11-27: 강조·디졸브·비(36ef141~0e20f6c)에 맞춰 그림자 드로우 루프 이름(<code>DrawDepthView</code>)과 비 차폐 맵에서 한 번 더 그리는 것, 셰이더 표의 <code>VS_ShadowAlphaSkin</code>을 고쳤습니다.</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(왜 정점마다 행렬을 섞는가, 역바인드 행렬), 3장은 한 프레임의 흐름, 4장은 팔레트 식과 메시 노드 관례, 5장은 정점 셰이더와 상수 버퍼, 6장은 속도·그림자·디퍼드 경로, 7장은 애니메이션 샘플링(짧게), 8장은 본 디버그 표시, 9장은 코드 지도, 10장은 실험, 11장은 함정과 한계, 12장은 공부할 개념과 참고 문서입니다.</div>
   <div class="box warn"><b>숫자에 대해.</b> 바이트 수와 LBS 수축 비율은 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 테스트 모델의 조인트 수 중 마스터치프 값은 구현 기록에 적힌 값이고 <span class="tag ok">확인함 (2026-11-12)</span>, 나머지 모델은 이 문서를 쓰면서 glTF 파일의 <code>skins[].joints</code> 길이를 센 값입니다. 실험 결과는 기록된 측정이 없어서 모두 <span class="tag chk">예상</span>입니다.</div>
 </header>
@@ -117,7 +117,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td>2'</td><td>포즈 (편집 모드)</td><td><code>Scene/SkinPose.cpp</code> 의 <code>ApplyRestSkinPoses</code>(<code>Engine::Render</code> 가 매 프레임 부름)</td><td>팔레트가 빈 스킨 오브젝트만 기본 자세로 채움. Animator 값이 있으면 건드리지 않음</td></tr>
 <tr><td>3</td><td>오브젝트 수집</td><td><code>Renderer::BuildDrawList</code></td><td><code>ObjectData::skinPalette</code> 포인터, 경계 구 반지름 1e9, 이번 팔레트를 다음 프레임용으로 <code>MotionHistory::palettes</code> 에 복사하고, 지난 프레임 팔레트 위치(<code>prevPaletteOffset</code>)를 찾음</td></tr>
 <tr><td>4</td><td>드로우마다 업로드</td><td><code>Renderer::UploadObjectConstants</code></td><td>b1 PerObject, b7 Skin(전치), 속도를 쓰는 패스면 b13 PrevSkin</td></tr>
-<tr><td>5</td><td>정점 셰이더</td><td><code>Shaders/BasicSkinVertexShader.hlsl</code> 의 <code>VS_MainSkin</code>, <code>Shaders/ShadowSkinVertexShader.hlsl</code> 의 <code>VS_ShadowSkin</code></td><td>스킨 → world → viewProj. 픽셀 셰이더는 스킨이 아닌 메시와 같음</td></tr>
+<tr><td>5</td><td>정점 셰이더</td><td><code>Shaders/BasicSkinVertexShader.hlsl</code> 의 <code>VS_MainSkin</code>, <code>Shaders/ShadowSkinVertexShader.hlsl</code> 의 <code>VS_ShadowSkin</code>, <code>Shaders/ShadowAlphaSkinVertexShader.hlsl</code> 의 <code>VS_ShadowAlphaSkin</code></td><td>스킨 → world → viewProj. 픽셀 셰이더는 스킨이 아닌 메시와 같음</td></tr>
 </table>
 <p>마스터치프 모델은 메시 4개(Arms·Chest·Helmet·Legs)가 스킨 하나를 같이 씁니다. Animator 는 모델 루트 오브젝트에 하나만 붙이고, 자손의 스킨 메시 오브젝트를 모아 노드 월드는 한 번만 구하고 팔레트만 메시마다 만듭니다(<code>Animator::UpdateSkin</code> 의 <code>evaluated</code> 비교). 자기 Animator 를 가진 자손 아래는 그 Animator 가 맡습니다.</p>
 </section>
@@ -180,7 +180,7 @@ pose.jointToObject[j] = jointWorld[j] · inverse(meshRest)   // 본 디버그용
 <li>b7 을 32 KB 로 늘려 두 팔레트를 한 버퍼에 넣는 안은 스킨이 아닌 드로우에도 크기가 따라와서 쓰지 않았습니다(<a href="../plan/velocity-motionblur-taa-plan.html#d-table">속도 버퍼 계획 3.2 결정 표</a>).</li>
 </ul>
 <h3>6-2. 그림자 패스</h3>
-<p>그림자도 같은 포즈로 그려야 몸과 그림자가 어긋나지 않습니다. <code>VS_ShadowSkin</code> 은 위치만 스킨해서 <code>world</code> → <code>shadowViewProj</code>(b5) 로 보냅니다. 입력 레이아웃은 메인 패스와 같은 84 B 정점을 쓰고 셰이더가 필요한 세 속성만 읽습니다. <code>Renderer::RenderShadowAtlasPass</code> 는 <code>UploadObjectConstants(item.object, false)</code> 로 불러서 b13 업로드를 건너뜁니다. 컷아웃 재질이나 디졸브 중인 스킨 메시는 <code>VS_ShadowAlphaSkin</code> 이 UV·정점 색까지 넘기고 <code>PS_ShadowAlpha</code> 가 <code>clip</code> 합니다(2026-11-26). 캐스케이드·스팟·포인트 면마다 드로우가 따로 있으므로 b7 업로드도 그 수만큼 반복됩니다. 그림자 쪽 원리는 <a href="shadow-map-study.html">그림자 맵 학습</a>, <a href="csm-study.html">CSM 학습</a>에 있습니다.</p>
+<p>그림자도 같은 포즈로 그려야 몸과 그림자가 어긋나지 않습니다. <code>VS_ShadowSkin</code> 은 위치만 스킨해서 <code>world</code> → <code>shadowViewProj</code>(b5) 로 보냅니다. 입력 레이아웃은 메인 패스와 같은 84 B 정점을 쓰고 셰이더가 필요한 세 속성만 읽습니다. 그림자 뷰와 비 차폐 맵이 같이 쓰는 깊이 전용 드로우 루프 <code>Renderer::DrawDepthView</code> 는 <code>UploadObjectConstants(item.object, false)</code> 로 불러서 b13 업로드를 건너뜁니다. 컷아웃 재질이나 디졸브 중인 스킨 메시는 <code>VS_ShadowAlphaSkin</code> 이 UV·정점 색까지 넘기고 <code>PS_ShadowAlpha</code> 가 <code>clip</code> 합니다(2026-11-26). 캐스케이드·스팟·포인트 면마다 드로우가 따로 있으므로 b7 업로드도 그 수만큼 반복됩니다. 비가 오는 프레임에는 <code>RenderRainOcclusionPass</code> 가 같은 스킨 그림자 VS 의 바이어스 없는 PSO(<code>DrawItem::occluderPipeline</code>)로 한 번 더 그립니다. 그림자 쪽 원리는 <a href="shadow-map-study.html">그림자 맵 학습</a>, <a href="csm-study.html">CSM 학습</a>에 있습니다.</p>
 <h3>6-3. 디퍼드 G-buffer</h3>
 <p><code>Pass_GBufferSkin</code> 은 <code>BasicSkinVS</code> 와 <code>GBufferPS</code> 를 묶은 것입니다. 스킨 VS 의 출력이 일반 VS 와 같아서 G-buffer 쪽은 바꿀 것이 없습니다(<a href="deferred-gbuffer-study.html">디퍼드 G-buffer 학습</a>).</p>
 <h3>6-4. 컬링하지 않음</h3>
@@ -231,7 +231,7 @@ pose.jointToObject[j] = jointWorld[j] · inverse(meshRest)   // 본 디버그용
 <tr><td>팔레트 보관</td><td><code>Scene/GameObject.h</code> 의 <code>SetSkinPalette</code>·<code>SetSkeletonPose</code></td><td>오브젝트가 소유, 렌더러는 포인터로 읽음</td></tr>
 <tr><td>수집·업로드</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::BuildDrawList</code>·<code>UploadObjectConstants</code>·<code>GetOrCreateGpuMesh</code></td><td>컬링 제외, 지난 팔레트 보관, b7·b13 전치 업로드</td></tr>
 <tr><td>상수 배치</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>SkinConstants</code>·<code>PrevSkinConstants</code>·<code>kCBSlotSkin</code>·<code>kCBSlotPrevSkin</code>·<code>kMaxSkinJoints</code></td><td>b7·b13, 16384 B</td></tr>
-<tr><td>셰이더</td><td><code>Shaders/Mesh.hlsli</code> 의 <code>SkinMatrix</code>·<code>PrevSkinMatrix</code>, <code>BasicSkinVertexShader.hlsl</code> 의 <code>VS_MainSkin</code>, <code>ShadowSkinVertexShader.hlsl</code> 의 <code>VS_ShadowSkin</code></td><td>LBS, 속도용 이전 위치, 그림자 위치</td></tr>
+<tr><td>셰이더</td><td><code>Shaders/Mesh.hlsli</code> 의 <code>SkinMatrix</code>·<code>PrevSkinMatrix</code>, <code>BasicSkinVertexShader.hlsl</code> 의 <code>VS_MainSkin</code>, <code>ShadowSkinVertexShader.hlsl</code> 의 <code>VS_ShadowSkin</code>, <code>ShadowAlphaSkinVertexShader.hlsl</code> 의 <code>VS_ShadowAlphaSkin</code></td><td>LBS, 속도용 이전 위치, 그림자 위치(알파 테스트 그림자는 UV·정점 색도)</td></tr>
 <tr><td>PSO 선택</td><td><code>Renderer::GetPipelineFor</code>·<code>GetShadowPipelineFor</code>, <code>Graphics/RendererDeferred.cpp</code> 의 <code>GetGBufferPipelineFor</code></td><td>정점 포맷이 스킨이면 <code>Pass_*Skin</code></td></tr>
 <tr><td>본 표시</td><td><code>Scene/SkeletonDebug.cpp</code> 의 <code>DrawSkeletonDebug</code>, <code>Graphics/DebugDraw.h</code></td><td>본·관절·축 선</td></tr>
 </table>

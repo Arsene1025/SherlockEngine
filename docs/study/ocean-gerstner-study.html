@@ -41,7 +41,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <h1>Gerstner 바다 학습 문서</h1>
   <p>정점을 궤도로 움직이는 파도 — 사인 높이장과 무엇이 다른가, 파도 여러 개를 값 몇 개로 만드는 법, 먼 바다의 반짝임을 줄이는 대역 제한, 우리 엔진의 코드 위치</p>
   <p>2026-11-25 · 바다 이야기는 지금까지 <a href="../plan/ocean-gerstner-plan.html">Gerstner 바다 구현 계획</a>, <a href="../plan/ocean-gerstner-record.html">Gerstner 바다 구현 기록</a>, <a href="../overview/rendering-analysis.html#c20-29">rendering-analysis 20.29</a>에 있었습니다. 이 문서는 수식부터 다시 설명하고, 지금 코드에 맞춰 정리합니다. 기존 문서는 그대로 두었습니다.</p>
-  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다. 2026-11-27: 강조·디졸브·비(36ef141~0e20f6c)에 맞춰 바다가 비 차폐 맵에서도 빠지는 것, 바다 PS 의 <code>RAIN_NO_WETNESS</code>(8장 표에 행 추가)를 고쳤습니다.</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(왜 Gerstner 인가, 한 파도의 식, 꼬임 조건, 분산 관계), 3장은 한 프레임에서 바다가 지나는 길, 4장은 파도 만들기, 5장은 상수 버퍼와 시간, 6장은 셰이더와 대역 제한, 7장은 넓은 평면과 수평선, 8장은 렌더러에 끼워 넣은 자리, 9장은 코드 지도, 10장은 실험, 11장은 함정, 12장은 공부할 개념과 참고 문서입니다.</div>
   <div class="box warn"><b>숫자에 대해.</b> 파도 표와 정밀도 값은 <code>Ocean::BuildWaves</code> 와 같은 식을 Python 으로 옮겨 계산한 값입니다 <span class="tag chk">계산값</span>. 화면에서 잰 값은 2026-11-23 구현 때 기록 문서에 남은 것이고 <span class="tag ok">확인함</span>으로 표시했습니다. 화면 좌표는 에디터 씬 뷰(732×445) 기준입니다.</div>
 </header>
@@ -136,7 +136,7 @@ N     = normalize( cross(∂P/∂z, ∂P/∂x) )    // 평평할 때 (0, 1, 0)</
 <h2>3. 한 프레임에서 바다가 지나는 길</h2>
 <table>
 <tr><th>순서</th><th>어디서</th><th>무엇을</th></tr>
-<tr><td>1</td><td><code>Renderer::BuildDrawList</code> → <code>Renderer::CollectOcean</code></td><td>켜진 <code>Ocean</code> 컴포넌트가 있는 첫 오브젝트를 이번 프레임의 바다로 정하고 <code>BuildWaves</code> 로 파도를 만듦. 그 드로우만 바다 PSO, 그림자 PSO 없음, 경계 구 + <code>Ocean::MaxDisplacement</code></td></tr>
+<tr><td>1</td><td><code>Renderer::BuildDrawList</code> → <code>Renderer::CollectOcean</code></td><td>켜진 <code>Ocean</code> 컴포넌트가 있는 첫 오브젝트를 이번 프레임의 바다로 정하고 <code>BuildWaves</code> 로 파도를 만듦. 그 드로우만 바다 PSO, 그림자 PSO·비 차폐 맵 PSO 없음, 경계 구 + <code>Ocean::MaxDisplacement</code></td></tr>
 <tr><td>2</td><td><code>Renderer::UploadOceanConstants</code></td><td>b9 에 파도, 이번·지난 위상, 감쇠 거리, 원점. 바다가 없어도 파도 0 개로 올림. 모든 드로우(그림자 패스 포함) 전</td></tr>
 <tr><td>3</td><td>G-buffer 패스 (디퍼드)</td><td><code>OceanVS</code> + <code>OceanGBufferPS</code>. 디퍼드 조명이 IBL 반사·그림자를 다른 불투명 표면과 똑같이 적용</td></tr>
 <tr><td>3′</td><td>메인 패스 (포워드)</td><td><code>OceanVS</code> + <code>OceanPS</code>. 디퍼드를 끈 경우</td></tr>
@@ -311,7 +311,8 @@ band           = 1 − smoothstep(0.1, 0.25, cyclesPerPixel)
 <table>
 <tr><th>항목</th><th>이 엔진에서</th><th>더 읽을 곳</th></tr>
 <tr><td>PSO 분기</td><td><code>GetPipelineFor</code>·<code>GetGBufferPipelineFor</code> 의 인자 <code>ocean</code>, 키 비트 12(바다 VS). 켜지면 <code>Pass_Ocean</code>·<code>Pass_GBufferOcean</code> 의 desc 에서 시작하고 미러·와이어프레임·컬링은 기존 비트(8~10)를 그대로 탐. 스킨 정점 포맷이면 무시</td><td><a href="rhi-pso-study.html">RHI·PSO 학습</a></td></tr>
-<tr><td>그림자</td><td>받기만 함. <code>BuildDrawList</code> 에서 바다면 <code>shadowPipeline</code> 을 비워 그림자 패스에 들어가지 않음. 받는 쪽은 변위된 월드 위치(포워드)·깊이 복원 위치(디퍼드)로 그대로</td><td><a href="shadow-map-study.html">그림자 맵 학습</a></td></tr>
+<tr><td>그림자</td><td>받기만 함. <code>BuildDrawList</code> 에서 바다면 <code>shadowPipeline</code> 을 비워 그림자 패스에 들어가지 않음. 받는 쪽은 변위된 월드 위치(포워드)·깊이 복원 위치(디퍼드)로 그대로. 비 차폐 맵 PSO(<code>DrawItem::occluderPipeline</code>)도 그림자 PSO 가 있는 항목에만 만들므로 바다는 비를 가리지 않음</td><td><a href="shadow-map-study.html">그림자 맵 학습</a></td></tr>
+<tr><td>비 젖음</td><td>없음. <code>OceanPixelShader.hlsl</code>·<code>OceanGBufferPixelShader.hlsl</code> 이 <code>RAIN_NO_WETNESS</code> 를 정의해 <code>MaterialSurface.hlsli</code> 의 <code>ApplyWetness</code>·<code>ApplyWetNormal</code>(젖음·웅덩이·물결)을 뺌</td><td><a href="rain-study.html">비 학습</a></td></tr>
 <tr><td>컬링</td><td>경계 구 반지름에 <code>Ocean::MaxDisplacement</code> 를 더해 화면 가장자리에서 마루가 잘리지 않게 함</td><td><a href="culling-study.html">컬링 학습</a></td></tr>
 <tr><td>바다 개수</td><td>씬에 하나. 둘째부터는 일반 평면으로 그리고 <code>"Ocean: 바다가 둘 이상임…"</code> 경고를 한 번(<code>m_oceanExtraWarned</code>)</td><td></td></tr>
 <tr><td>루트 시그니처</td><td>b9 를 <code>Layout_Object</code> 에 붙여 메인 패스 26 → 28/64 DWORD <span class="tag ok">확인함 (2026-11-23)</span></td><td><a href="../plan/ocean-gerstner-record.html#binding">기록 8장</a></td></tr>
@@ -325,10 +326,10 @@ band           = 1 − smoothstep(0.1, 0.25, cyclesPerPixel)
 <tr><th>무엇</th><th>위치</th><th>하는 일</th></tr>
 <tr><td>컴포넌트</td><td><code>Scene/Ocean.h</code>·<code>Scene/Ocean.cpp</code> 의 <code>Ocean</code>, <code>OceanWave</code></td><td>값 11 개(Reflect 키 = 씬 파일 키), <code>BuildWaves</code>, <code>MaxDisplacement</code>, <code>Lcg</code></td></tr>
 <tr><td>프레임 수집·업로드</td><td><code>Graphics/RendererOcean.cpp</code> 의 <code>Renderer::CollectOcean</code>, <code>Renderer::UploadOceanConstants</code></td><td>첫 바다 선택·경고, 위상 double <code>fmod</code>, 지난 위상 규칙</td></tr>
-<tr><td>드로우 분기</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::BuildDrawList</code>, <code>Renderer::GetPipelineFor</code>, <code>Graphics/RendererDeferred.cpp</code> 의 <code>Renderer::GetGBufferPipelineFor</code></td><td>경계 구 패딩, 그림자 제외, 키 비트 12</td></tr>
+<tr><td>드로우 분기</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::BuildDrawList</code>, <code>Renderer::GetPipelineFor</code>, <code>Graphics/RendererDeferred.cpp</code> 의 <code>Renderer::GetGBufferPipelineFor</code></td><td>경계 구 패딩, 그림자·비 차폐 맵 제외, 키 비트 12</td></tr>
 <tr><td>상수 버퍼</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>OceanConstants</code>, <code>kCBSlotOcean</code>, <code>kMaxOceanWaves</code></td><td>288 B 배치와 <code>static_assert</code></td></tr>
 <tr><td>파도 함수</td><td><code>Shaders/Ocean.hlsli</code></td><td><code>OceanFade</code>, <code>GerstnerPosition</code>, <code>GerstnerSampleFiltered</code>, <code>OceanBandLimit</code>, <code>OceanSurfaceTangent</code>, <code>OceanPixelInput</code></td></tr>
-<tr><td>셰이더 진입점</td><td><code>Shaders/OceanVertexShader.hlsl</code> 의 <code>VS_Ocean</code>, <code>OceanPixelShader.hlsl</code> 의 <code>PS_Ocean</code>, <code>OceanGBufferPixelShader.hlsl</code> 의 <code>PS_OceanGBuffer</code></td><td>변위·이전 위치, 픽셀 노멀로 기존 PS 호출</td></tr>
+<tr><td>셰이더 진입점</td><td><code>Shaders/OceanVertexShader.hlsl</code> 의 <code>VS_Ocean</code>, <code>OceanPixelShader.hlsl</code> 의 <code>PS_Ocean</code>, <code>OceanGBufferPixelShader.hlsl</code> 의 <code>PS_OceanGBuffer</code></td><td>변위·이전 위치, 픽셀 노멀로 기존 PS 호출. 두 PS 는 <code>RAIN_NO_WETNESS</code> 로 젖음을 뺌</td></tr>
 <tr><td>평면 메시</td><td><code>Graphics/Mesh.cpp</code> 의 <code>Mesh::CreatePlane</code>, <code>Scene/Scene.cpp</code> 의 <code>MeshSource::Plane</code></td><td>간격 증가 g, |t|⁷ 곡선</td></tr>
 <tr><td>far 저장</td><td><code>Scene/SceneSerializer.cpp</code></td><td><code>camera.farZ</code> 는 1000 이 아닐 때만 씀</td></tr>
 <tr><td>시간 고정</td><td><code>App/AppBase.cpp</code>(<code>--ocean-time</code>), <code>Graphics/Renderer.h</code> 의 <code>RenderSettings::oceanTimeOverride</code></td><td>음수면 실제 시간</td></tr>

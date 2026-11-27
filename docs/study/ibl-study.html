@@ -1214,16 +1214,16 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 </section>
 <section class="am-panel am-span-wide" id="panel-E">
 <header class="am-panel-head"><span class="am-panel-id">E</span><h2>4. 엔진의 구현</h2></header>
-<div class="am-panel-body"><div class="am-md"><p><code>EnvironmentLighting</code>이 위 수식을 그대로 옮긴 함수입니다.</p>
+<div class="am-panel-body"><div class="am-md"><p><code>EnvironmentLighting</code>이 위 수식을 그대로 옮긴 함수입니다. 포워드·디퍼드 PS는 이 함수를 직접 부르지 않고 <code>ShadeEnvironment</code>를 부릅니다. <code>ShadeEnvironment</code>는 클리어코트가 있으면 <code>EnvironmentClearcoat</code>로 코팅 층의 반사를 같은 split-sum으로 한 번 더 구해 섞습니다.</p>
 </div>
-<figure class="am-codeblock" data-am-src="SherlockEngine/Shaders/Shading.hlsli" data-am-lines="274-298"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Shaders/Shading.hlsli:274-298</span><span class="am-code-lang">hlsl</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="hlsl"><span class="am-ln" data-n="274">// 환경광(IBL, split-sum). 확산 = (1 − F) · (1 − metallic) · albedo · 확산 조도(N),</span><span class="am-ln" data-n="275">// 반사 = 프리필터(R, 거칠기 밉) · (F0 · A + F90 · B), (A, B) = BRDF LUT(N·V, 1 − roughness).</span><span class="am-ln" data-n="276">// 환경 큐브가 없으면 두 조도를 ambientColor 하나로 대신함 — PBR 이전의 albedo · ambientColor 와 거의 같은 밝기.</span><span class="am-ln" data-n="277">float3 EnvironmentLighting(float3 albedo, float3 F0, float F90, float metallic, float roughness, float3 N, float3 V, float ao)</span><span class="am-ln" data-n="278">{</span><span class="am-ln" data-n="279">    const float NdotV = max(dot(N, V), 0.0f);</span><span class="am-ln am-ln--hl" data-n="280">    const float3 F = FresnelSchlickRoughness(F0, F90, NdotV, roughness);</span><span class="am-ln am-ln--hl" data-n="281">    const float3 kd = (1.0f - F) * (1.0f - metallic);</span><span class="am-ln" data-n="282"></span><span class="am-ln" data-n="283">    float3 irradiance = ambientColor;</span><span class="am-ln" data-n="284">    float3 prefiltered = ambientColor;</span><span class="am-ln" data-n="285">    float intensity = 1.0f;</span><span class="am-ln" data-n="286">    if (environmentParams.w &gt; 0.5f)</span><span class="am-ln" data-n="287">    {</span><span class="am-ln am-ln--hl" data-n="288">        irradiance = irradianceMap.SampleLevel(environmentSampler, N, environmentParams.z).rgb * iblTint.rgb;</span><span class="am-ln" data-n="289">        const float maxLod = max(environmentParams.y - 1.0f, 0.0f);</span><span class="am-ln am-ln--hl" data-n="290">        prefiltered = prefilteredMap.SampleLevel(environmentSampler, reflect(-V, N), roughness * maxLod).rgb * iblTint.rgb;</span><span class="am-ln" data-n="291">        intensity = environmentParams.x;</span><span class="am-ln" data-n="292">    }</span><span class="am-ln am-ln--hl" data-n="293">    const float2 brdf = outputParams.z &gt; 0.5f</span><span class="am-ln am-ln--hl" data-n="294">        ? brdfLut.SampleLevel(environmentSampler, float2(NdotV, 1.0f - roughness), 0.0f).rg</span><span class="am-ln am-ln--hl" data-n="295">        : EnvBRDFApprox(roughness, NdotV);</span><span class="am-ln" data-n="296"></span><span class="am-ln am-ln--hl" data-n="297">    return (kd * albedo * irradiance + prefiltered * (F0 * brdf.x + F90 * brdf.y)) * intensity * ao;</span><span class="am-ln" data-n="298">}</span></code></pre></figure>
+<figure class="am-codeblock" data-am-src="SherlockEngine/Shaders/Shading.hlsli" data-am-lines="275-299"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Shaders/Shading.hlsli:275-299</span><span class="am-code-lang">hlsl</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="hlsl"><span class="am-ln" data-n="275">// 환경광(IBL, split-sum). 확산 = (1 − F) · (1 − metallic) · albedo · 확산 조도(N),</span><span class="am-ln" data-n="276">// 반사 = 프리필터(R, 거칠기 밉) · (F0 · A + F90 · B), (A, B) = BRDF LUT(N·V, 1 − roughness).</span><span class="am-ln" data-n="277">// 환경 큐브가 없으면 두 조도를 ambientColor 하나로 대신함 — PBR 이전의 albedo · ambientColor 와 거의 같은 밝기.</span><span class="am-ln" data-n="278">float3 EnvironmentLighting(float3 albedo, float3 F0, float F90, float metallic, float roughness, float3 N, float3 V, float ao)</span><span class="am-ln" data-n="279">{</span><span class="am-ln" data-n="280">    const float NdotV = max(dot(N, V), 0.0f);</span><span class="am-ln am-ln--hl" data-n="281">    const float3 F = FresnelSchlickRoughness(F0, F90, NdotV, roughness);</span><span class="am-ln am-ln--hl" data-n="282">    const float3 kd = (1.0f - F) * (1.0f - metallic);</span><span class="am-ln" data-n="283"></span><span class="am-ln" data-n="284">    float3 irradiance = ambientColor;</span><span class="am-ln" data-n="285">    float3 prefiltered = ambientColor;</span><span class="am-ln" data-n="286">    float intensity = 1.0f;</span><span class="am-ln" data-n="287">    if (environmentParams.w &gt; 0.5f)</span><span class="am-ln" data-n="288">    {</span><span class="am-ln am-ln--hl" data-n="289">        irradiance = irradianceMap.SampleLevel(environmentSampler, N, environmentParams.z).rgb * iblTint.rgb;</span><span class="am-ln" data-n="290">        const float maxLod = max(environmentParams.y - 1.0f, 0.0f);</span><span class="am-ln am-ln--hl" data-n="291">        prefiltered = prefilteredMap.SampleLevel(environmentSampler, reflect(-V, N), roughness * maxLod).rgb * iblTint.rgb;</span><span class="am-ln" data-n="292">        intensity = environmentParams.x;</span><span class="am-ln" data-n="293">    }</span><span class="am-ln am-ln--hl" data-n="294">    const float2 brdf = outputParams.z &gt; 0.5f</span><span class="am-ln am-ln--hl" data-n="295">        ? brdfLut.SampleLevel(environmentSampler, float2(NdotV, 1.0f - roughness), 0.0f).rg</span><span class="am-ln am-ln--hl" data-n="296">        : EnvBRDFApprox(roughness, NdotV);</span><span class="am-ln" data-n="297"></span><span class="am-ln am-ln--hl" data-n="298">    return (kd * albedo * irradiance + prefiltered * (F0 * brdf.x + F90 * brdf.y)) * intensity * ao;</span><span class="am-ln" data-n="299">}</span></code></pre></figure>
 <div class="am-md"><p>읽는 순서는 다음과 같습니다.</p>
 <ol>
 <li><code>FresnelSchlickRoughness</code>로 F를 구합니다. 거칠수록 스치는 각도 반사의 상한을 <code>(1 − roughness)·F90</code>으로 낮춥니다.</li>
 <li><code>kd = (1 − F)(1 − metallic)</code>으로 확산 몫을 정합니다. 반사된 몫과 금속은 확산이 없다는 <strong>에너지 보존</strong>입니다.</li>
 <li><code>irradianceMap</code>을 노멀로, <code>prefilteredMap</code>을 <code>reflect(-V, N)</code>과 밉 <code>roughness × maxLod</code>로 읽습니다.</li>
 <li>BRDF LUT(없으면 <code>EnvBRDFApprox</code>)에서 (A, B)를 읽어 <code>F0·A + F90·B</code>를 곱합니다. <code>F90</code>은 KHR_materials_specular 가 없으면 1이라 <code>F0·A + B</code>와 같습니다.</li>
-<li>IBL 세기와 AO를 곱합니다.</li>
+<li>IBL 세기와 AO를 곱합니다. AO 값은 호출하는 쪽이 정합니다. 디퍼드 라이팅 PS(<code>PS_DeferredLighting</code>)는 재질 AO와 SSAO 결과(t29)를 합쳐서 넘깁니다. 기본은 둘 중 작은 값이고, 설정(<code>aoParams.y</code>)에 따라 곱을 씁니다. 포워드 PS(<code>ShadeForward</code>)는 재질 AO만 넘깁니다.</li>
 </ol>
 </div></div>
 </section>
@@ -1231,7 +1231,7 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <header class="am-panel-head"><span class="am-panel-id">F</span><h2>5. 에셋이 없을 때의 폴백</h2></header>
 <div class="am-panel-body"><div class="am-md"><p><code>ResolveEnvironment</code>는 IBL 맵이 없어도 씬이 깨지지 않게 단계적으로 대체합니다.</p>
 </div>
-<figure class="am-codeblock" data-am-src="SherlockEngine/Graphics/Renderer.cpp" data-am-lines="684-707"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Graphics/Renderer.cpp:684-707</span><span class="am-code-lang">cpp</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="cpp"><span class="am-ln" data-n="684">	// 반사: 프리필터 큐브 → 없으면 스카이박스의 밉 체인으로 근사(박스 필터라 GGX 로 거른 것보다 거칠기 모양이 덜 맞음).</span><span class="am-ln" data-n="685">	if (specular.IsValid())</span><span class="am-ln" data-n="686">	{</span><span class="am-ln" data-n="687">		binding.specular = specular;</span><span class="am-ln" data-n="688">		binding.specularMips = specularMips;</span><span class="am-ln" data-n="689">	}</span><span class="am-ln" data-n="690">	else if (sky.IsValid())</span><span class="am-ln" data-n="691">	{</span><span class="am-ln" data-n="692">		binding.specular = sky;</span><span class="am-ln" data-n="693">		binding.specularMips = skyMips;</span><span class="am-ln" data-n="694">	}</span><span class="am-ln" data-n="695">	// 확산: 조도 큐브 → 없으면 스카이박스(또는 반사 큐브)의 끝에서 두 번째 밉. 면당 2×2 라 위·아래·옆의 밝기</span><span class="am-ln" data-n="696">	// 차이 정도만 남음.</span><span class="am-ln" data-n="697">	if (irradiance.IsValid())</span><span class="am-ln" data-n="698">	{</span><span class="am-ln" data-n="699">		binding.irradiance = irradiance;</span><span class="am-ln" data-n="700">		binding.irradianceLod = 0.0f;</span><span class="am-ln" data-n="701">	}</span><span class="am-ln" data-n="702">	else if (binding.specular != m_textures.GetBlackCube())</span><span class="am-ln" data-n="703">	{</span><span class="am-ln" data-n="704">		binding.irradiance = binding.specular;</span><span class="am-ln" data-n="705">		binding.irradianceLod = static_cast&lt;float&gt;(binding.specularMips &gt;= 2 ? binding.specularMips - 2 : 0);</span><span class="am-ln" data-n="706">	}</span><span class="am-ln" data-n="707">	binding.hasEnvironment = irradiance.IsValid() || binding.specular != m_textures.GetBlackCube();</span></code></pre></figure>
+<figure class="am-codeblock" data-am-src="SherlockEngine/Graphics/Renderer.cpp" data-am-lines="843-866"><figcaption class="am-code-head"><span class="am-code-title">SherlockEngine/Graphics/Renderer.cpp:843-866</span><span class="am-code-lang">cpp</span><button class="am-code-copy" type="button" data-am="copy-code" data-done="Copied ✓">Copy</button></figcaption><pre class="am-code am-code--num"><code data-lang="cpp"><span class="am-ln" data-n="843">	// 반사: 프리필터 큐브 → 없으면 스카이박스의 밉 체인으로 근사(박스 필터라 GGX 로 거른 것보다 거칠기 모양이 덜 맞음).</span><span class="am-ln" data-n="844">	if (specular.IsValid())</span><span class="am-ln" data-n="845">	{</span><span class="am-ln" data-n="846">		binding.specular = specular;</span><span class="am-ln" data-n="847">		binding.specularMips = specularMips;</span><span class="am-ln" data-n="848">	}</span><span class="am-ln" data-n="849">	else if (sky.IsValid())</span><span class="am-ln" data-n="850">	{</span><span class="am-ln" data-n="851">		binding.specular = sky;</span><span class="am-ln" data-n="852">		binding.specularMips = skyMips;</span><span class="am-ln" data-n="853">	}</span><span class="am-ln" data-n="854">	// 확산: 조도 큐브 → 없으면 스카이박스(또는 반사 큐브)의 끝에서 두 번째 밉. 면당 2×2 라 위·아래·옆의 밝기</span><span class="am-ln" data-n="855">	// 차이 정도만 남음.</span><span class="am-ln" data-n="856">	if (irradiance.IsValid())</span><span class="am-ln" data-n="857">	{</span><span class="am-ln" data-n="858">		binding.irradiance = irradiance;</span><span class="am-ln" data-n="859">		binding.irradianceLod = 0.0f;</span><span class="am-ln" data-n="860">	}</span><span class="am-ln" data-n="861">	else if (binding.specular != m_textures.GetBlackCube())</span><span class="am-ln" data-n="862">	{</span><span class="am-ln" data-n="863">		binding.irradiance = binding.specular;</span><span class="am-ln" data-n="864">		binding.irradianceLod = static_cast&lt;float&gt;(binding.specularMips &gt;= 2 ? binding.specularMips - 2 : 0);</span><span class="am-ln" data-n="865">	}</span><span class="am-ln" data-n="866">	binding.hasEnvironment = irradiance.IsValid() || binding.specular != m_textures.GetBlackCube();</span></code></pre></figure>
 <div class="am-md"><ul>
 <li>반사 큐브가 없으면 스카이박스의 밉 체인으로 대신합니다. 박스 필터라 GGX보다 모양이 덜 맞습니다.</li>
 <li>irradiance 큐브가 없으면 반사 큐브의 <strong>끝에서 두 번째 밉</strong>(면당 2×2)으로 대신합니다. 위·아래·옆의 밝기 차이만 남습니다.</li>
@@ -1268,9 +1268,9 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <td>리플렉션 프로브 + 시차 보정(parallax-corrected cubemap)</td>
 </tr>
 <tr>
-<td>환경 가림 없음</td>
-<td>구석에도 하늘빛이 그대로 들어와 뜬 느낌</td>
-<td>SSAO/베이크 AO, specular occlusion</td>
+<td>환경 가림이 거침</td>
+<td>예전에는 가림이 전혀 없었습니다. 지금은 디퍼드 경로에서 SSAO와 재질 AO를 합친 값을 환경광 전체에 곱합니다. 포워드(반투명) 물체는 재질 AO만 받고, 반사에도 확산과 같은 AO를 곱합니다</td>
+<td>반사 전용 가림(specular occlusion), 베이크 AO·벤트 노멀</td>
 </tr>
 <tr>
 <td>N = V = R 가정</td>
@@ -1297,9 +1297,9 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <p><strong>Q3. 거칠기를 왜 밉 레벨로 매핑하나요?</strong> 거칠수록 반사 로브가 넓어 환경을 더 흐리게 봐야 합니다. 밉 체인은 이미 해상도가 줄어드는 구조라 &quot;흐린 정도&quot;를 저장하기에 자연스럽습니다. 이 엔진은 <code>roughness × (밉 수 − 1)</code>로 선형 매핑합니다. 실제 흐림은 GGX로 구운 값이므로 밉 간 삼선형 보간이 중간 거칠기를 채웁니다.</p>
 <p><strong>Q4. irradiance 맵은 왜 해상도가 작아도 되나요?</strong> 코사인 가중 적분은 강한 저주파 필터입니다. 방향에 따라 부드럽게 변하므로 32² 이하로 충분하고, 구면 조화 9계수로도 수 % 이내 오차로 표현됩니다(Ramamoorthi 2001).</p>
 <p><strong>Q5. 확산에 왜 <code>(1 − F)</code>와 <code>(1 − metallic)</code>을 곱하나요?</strong> 에너지 보존입니다. 표면에서 반사된 빛(F)은 속으로 들어가지 않으므로 확산에서 뺍니다. 금속은 빛이 흡수되어 확산이 없습니다.</p>
-<p><strong>Q6. <code>FresnelSchlickRoughness</code>는 왜 따로 있나요?</strong> 환경광은 한 방향이 아니라 반구 전체를 적분한 값이라, 거친 표면의 스치는 각도 반사가 과하게 밝아지기 쉽습니다. 최대값을 <code>1 − roughness</code>로 눌러 막습니다(Lagarde).</p>
+<p><strong>Q6. <code>FresnelSchlickRoughness</code>는 왜 따로 있나요?</strong> 환경광은 한 방향이 아니라 반구 전체를 적분한 값이라, 거친 표면의 스치는 각도 반사가 과하게 밝아지기 쉽습니다. 최대값을 <code>(1 − roughness)·F90</code>으로 누르고(F0보다는 낮추지 않음) 이것을 막습니다(Lagarde).</p>
 <p><strong>Q7. BRDF LUT 좌표의 v가 왜 <code>1 − roughness</code>인가요?</strong> 이 엔진의 LUT 배치 규칙입니다(셰이더 주석: u = N·V, v = 1 − roughness). 빼먹으면 거칠기가 거꾸로 적용되니, LUT를 새로 구울 때 가장 먼저 확인합니다.</p>
-<p><strong>Q8. 한계는요?</strong> 위치 무관, 가림 없음, N=V=R 가정, 동적 환경 불가입니다. 프로브 + 시차 보정, specular occlusion, SSR로 보완합니다.</p>
+<p><strong>Q8. 한계는요?</strong> 위치 무관, 가림이 거침(디퍼드 경로는 SSAO를 환경광에 곱하지만 반사 전용 가림은 없음), N=V=R 가정, 동적 환경 불가입니다. 프로브 + 시차 보정, specular occlusion, SSR로 보완합니다.</p>
 <p><strong>Q9. HDR이 왜 필요한가요?</strong> 하늘과 태양은 1.0을 훨씬 넘습니다. LDR로 구우면 밝은 광원이 잘려 반사 하이라이트가 사라집니다. 그래서 환경 <code>.dds</code>도 부동소수점이고, 최종에 노출과 ACES 톤매핑을 거칩니다.</p>
 </div></div>
 </section>
@@ -1313,7 +1313,7 @@ html[data-theme="paper"] .am-md table { font-family: var(--font-sans); }
 <li>LearnOpenGL, <em>Specular IBL</em> — <a href="https://learnopengl.com/PBR/IBL/Specular-IBL">learnopengl.com/PBR/IBL/Specular-IBL</a></li>
 <li>Google Filament, <em>Physically Based Rendering in Filament</em> — IBL 전 과정과 식. <a href="https://google.github.io/filament/Filament.html">Filament.html</a></li>
 <li>Lagarde, <em>Image based lighting approaches and parallax-corrected cubemap</em>, 2012 — <a href="https://seblagarde.wordpress.com/2012/09/29/image-based-lighting-approaches-and-parallax-corrected-cubemap/">블로그</a></li>
-<li>이 프로젝트: <code>docs/pbr-guide.html</code> 5장, <code>docs/rendering-analysis.html</code> 11.6 · 12.14</li>
+<li>이 프로젝트: <a href="pbr-study.html">PBR 공부 문서</a> 5장, <a href="../overview/rendering-analysis.html#c11-6">렌더링 분석 11.6</a> · <a href="../overview/rendering-analysis.html#c12-14">12.14</a>, <a href="ssao-study.html">SSAO 공부 문서</a></li>
 </ul>
 </div></div>
 </section>
@@ -1386,9 +1386,9 @@ prefiltered 큐브는 **N = V = R**이라고 가정하고 구웠습니다. 그�
 | BRDF LUT | t12 | (N·V, 1 − roughness) | RG = (A, B) | 환경과 무관, 한 번만 |
 
 ## 4. 엔진의 구현 {span=2}
-`EnvironmentLighting`이 위 수식을 그대로 옮긴 함수입니다.
+`EnvironmentLighting`이 위 수식을 그대로 옮긴 함수입니다. 포워드·디퍼드 PS는 이 함수를 직접 부르지 않고 `ShadeEnvironment`를 부릅니다. `ShadeEnvironment`는 클리어코트가 있으면 `EnvironmentClearcoat`로 코팅 층의 반사를 같은 split-sum으로 한 번 더 구해 섞습니다.
 
-```hlsl src=SherlockEngine/Shaders/Shading.hlsli lines=274-298 hl=280-281,288,290,293-295,297
+```hlsl src=SherlockEngine/Shaders/Shading.hlsli lines=275-299 hl=281-282,289,291,294-296,298
 ```
 
 읽는 순서는 다음과 같습니다.
@@ -1396,12 +1396,12 @@ prefiltered 큐브는 **N = V = R**이라고 가정하고 구웠습니다. 그�
 2. `kd = (1 − F)(1 − metallic)`으로 확산 몫을 정합니다. 반사된 몫과 금속은 확산이 없다는 **에너지 보존**입니다.
 3. `irradianceMap`을 노멀로, `prefilteredMap`을 `reflect(-V, N)`과 밉 `roughness × maxLod`로 읽습니다.
 4. BRDF LUT(없으면 `EnvBRDFApprox`)에서 (A, B)를 읽어 `F0·A + F90·B`를 곱합니다. `F90`은 KHR_materials_specular 가 없으면 1이라 `F0·A + B`와 같습니다.
-5. IBL 세기와 AO를 곱합니다.
+5. IBL 세기와 AO를 곱합니다. AO 값은 호출하는 쪽이 정합니다. 디퍼드 라이팅 PS(`PS_DeferredLighting`)는 재질 AO와 SSAO 결과(t29)를 합쳐서 넘깁니다. 기본은 둘 중 작은 값이고, 설정(`aoParams.y`)에 따라 곱을 씁니다. 포워드 PS(`ShadeForward`)는 재질 AO만 넘깁니다.
 
 ## 5. 에셋이 없을 때의 폴백 {span=2}
 `ResolveEnvironment`는 IBL 맵이 없어도 씬이 깨지지 않게 단계적으로 대체합니다.
 
-```cpp src=SherlockEngine/Graphics/Renderer.cpp lines=684-707
+```cpp src=SherlockEngine/Graphics/Renderer.cpp lines=843-866
 ```
 
 - 반사 큐브가 없으면 스카이박스의 밉 체인으로 대신합니다. 박스 필터라 GGX보다 모양이 덜 맞습니다.
@@ -1428,7 +1428,7 @@ prefiltered 큐브는 **N = V = R**이라고 가정하고 구웠습니다. 그�
 | 한계 | 증상 | 개선 |
 |---|---|---|
 | 위치 무관 큐브 하나 | 실내·실외 구분 없이 같은 환경이 비침 | 리플렉션 프로브 + 시차 보정(parallax-corrected cubemap) |
-| 환경 가림 없음 | 구석에도 하늘빛이 그대로 들어와 뜬 느낌 | SSAO/베이크 AO, specular occlusion |
+| 환경 가림이 거침 | 예전에는 가림이 전혀 없었습니다. 지금은 디퍼드 경로에서 SSAO와 재질 AO를 합친 값을 환경광 전체에 곱합니다. 포워드(반투명) 물체는 재질 AO만 받고, 반사에도 확산과 같은 AO를 곱합니다 | 반사 전용 가림(specular occlusion), 베이크 AO·벤트 노멀 |
 | N = V = R 가정 | 스치는 각도 반사 부정확 | 다중 산란 보정, 비등방 근사 |
 | 동적 환경 불가 | 오브젝트가 움직여도 반사 불변 | 런타임 프로브 갱신, SSR 병행 |
 | 엔진 내 베이커 없음 | 에셋 준비를 외부에 의존 | 컴퓨트 기반 에디터 베이커 |
@@ -1447,11 +1447,11 @@ prefiltered 큐브는 **N = V = R**이라고 가정하고 구웠습니다. 그�
 
 **Q5. 확산에 왜 `(1 − F)`와 `(1 − metallic)`을 곱하나요?** 에너지 보존입니다. 표면에서 반사된 빛(F)은 속으로 들어가지 않으므로 확산에서 뺍니다. 금속은 빛이 흡수되어 확산이 없습니다.
 
-**Q6. `FresnelSchlickRoughness`는 왜 따로 있나요?** 환경광은 한 방향이 아니라 반구 전체를 적분한 값이라, 거친 표면의 스치는 각도 반사가 과하게 밝아지기 쉽습니다. 최대값을 `1 − roughness`로 눌러 막습니다(Lagarde).
+**Q6. `FresnelSchlickRoughness`는 왜 따로 있나요?** 환경광은 한 방향이 아니라 반구 전체를 적분한 값이라, 거친 표면의 스치는 각도 반사가 과하게 밝아지기 쉽습니다. 최대값을 `(1 − roughness)·F90`으로 누르고(F0보다는 낮추지 않음) 이것을 막습니다(Lagarde).
 
 **Q7. BRDF LUT 좌표의 v가 왜 `1 − roughness`인가요?** 이 엔진의 LUT 배치 규칙입니다(셰이더 주석: u = N·V, v = 1 − roughness). 빼먹으면 거칠기가 거꾸로 적용되니, LUT를 새로 구울 때 가장 먼저 확인합니다.
 
-**Q8. 한계는요?** 위치 무관, 가림 없음, N=V=R 가정, 동적 환경 불가입니다. 프로브 + 시차 보정, specular occlusion, SSR로 보완합니다.
+**Q8. 한계는요?** 위치 무관, 가림이 거침(디퍼드 경로는 SSAO를 환경광에 곱하지만 반사 전용 가림은 없음), N=V=R 가정, 동적 환경 불가입니다. 프로브 + 시차 보정, specular occlusion, SSR로 보완합니다.
 
 **Q9. HDR이 왜 필요한가요?** 하늘과 태양은 1.0을 훨씬 넘습니다. LDR로 구우면 밝은 광원이 잘려 반사 하이라이트가 사라집니다. 그래서 환경 `.dds`도 부동소수점이고, 최종에 노출과 ACES 톤매핑을 거칩니다.
 
@@ -1463,7 +1463,7 @@ prefiltered 큐브는 **N = V = R**이라고 가정하고 구웠습니다. 그�
 - LearnOpenGL, *Specular IBL* — [learnopengl.com/PBR/IBL/Specular-IBL](https://learnopengl.com/PBR/IBL/Specular-IBL)
 - Google Filament, *Physically Based Rendering in Filament* — IBL 전 과정과 식. [Filament.html](https://google.github.io/filament/Filament.html)
 - Lagarde, *Image based lighting approaches and parallax-corrected cubemap*, 2012 — [블로그](https://seblagarde.wordpress.com/2012/09/29/image-based-lighting-approaches-and-parallax-corrected-cubemap/)
-- 이 프로젝트: `docs/pbr-guide.html` 5장, `docs/rendering-analysis.html` 11.6 · 12.14
+- 이 프로젝트: [PBR 공부 문서](pbr-study.html) 5장, [렌더링 분석 11.6](../overview/rendering-analysis.html#c11-6) · [12.14](../overview/rendering-analysis.html#c12-14), [SSAO 공부 문서](ssao-study.html)
 </textarea>
 <script>
 (() => {

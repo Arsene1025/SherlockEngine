@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 오브젝트 강조·디졸브 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>오브젝트 강조·디졸브 학습 문서</h1>
+  <p>재질을 공유한 채 오브젝트 하나만 색을 바꾸거나 태워 없애는 법 — 값을 드로우마다 올리는 b1 에 싣는 이유, 256 바이트 경계, F0 전 색 섞기와 기하 노멀 가장자리 빛, 노이즈 문턱과 고른 분포, 그림자의 알파 테스트 변형, 우리 엔진의 코드 위치</p>
+  <p>2026-11-27 · 이 주제는 지금까지 <a href="../plan/object-highlight-record.html">오브젝트별 강조·디졸브 구현 기록</a>(강조 1~6장, 디졸브 7장)과 <a href="../overview/rendering-analysis.html#c10-6">rendering-analysis 10.6</a>(b1 배치), <a href="../overview/rendering-analysis.html#c4-8">4.8</a>·<a href="../overview/rendering-analysis.html#c14-5">14.5</a>·<a href="../overview/rendering-analysis.html#c14-7">14.7</a>(그림자 패스의 알파 테스트 변형), <a href="../overview/rendering-analysis.html#c7-7">7.7</a>(재질 셋 t20)에 흩어져 있었습니다. 계획 문서는 따로 없습니다. 이 문서는 설계 이유부터 다시 설명하고 지금 코드에 맞춰 정리합니다. 기존 문서는 그대로 두었습니다.</p>
+  <p class="foot">기준: 커밋 0e20f6c(2026-11-26). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1장은 왜 이 방식인가(다른 방법과 비교), 2장은 원리(강조 세 가지, 디졸브 문턱, 노이즈 분포), 3장은 한 프레임에서 값이 지나는 길과 계층 상속, 4장은 b1·b3·t20 배치와 256 바이트, 5장은 셰이더, 6장은 그림자의 알파 테스트 변형, 7장은 렌더러의 다른 기능과 만나는 자리(디퍼드·포워드, 속도 버퍼·TAA, 비), 8장은 코드 지도, 9장은 실험, 10장은 함정, 11장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 노이즈 분포와 면적 비율은 <code>TextureLoader::CreateTileableNoise</code> 를 Python(float64)으로 옮겨 계산한 값이고, 가장자리 빛 곡선과 업로드 링 드로우 수도 코드의 식을 옮겨 계산했습니다 <span class="tag chk">계산값</span>. 화면에서 잰 픽셀 수는 2026-11-26 구현 때 기록 문서에 남은 것이고 <span class="tag ok">확인함 (2026-11-26)</span>으로 표시했습니다. 이번 작업에서는 엔진을 실행하지 않았고, 돌려 보지 않은 실험은 <span class="tag chk">예상</span>으로 적었습니다.</div>
+</header>
+<nav><a href="#why">1. 왜 b1 인가</a><a href="#principle">2. 원리</a><a href="#flow">3. 한 프레임의 흐름</a><a href="#layout">4. b1 과 256 B</a><a href="#shaders">5. 셰이더</a><a href="#shadow">6. 그림자 변형</a><a href="#pipeline">7. 렌더러에 끼운 자리</a><a href="#code">8. 우리 코드</a><a href="#lab">9. 실험</a><a href="#pitfalls">10. 함정</a><a href="#study">11. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 재질도 셰이더 변형도 아니고 b1 인가</h2>
+<h3>1-1. 풀려는 문제</h3>
+<p>피격된 적이 붉게 번쩍이거나, 선택된 물체의 테두리가 빛나거나, 죽은 캐릭터가 타 들어가듯 사라지는 연출입니다. 효과는 오브젝트 하나에만 걸리고, 그 오브젝트는 다른 오브젝트와 재질을 공유하며, 값은 매 프레임 바뀝니다(예제 스크립트 기본값으로 <code>HitFlash</code> 번쩍임 0.15 초, <code>DissolveOut</code> 디졸브 1.5 초). 모델은 루트 아래에 자식 메시 여러 개로 들어오므로 루트 하나에 붙이면 몸 전체가 같이 바뀌어야 합니다(<a href="../plan/object-highlight-record.html#use">기록 2장</a>).</p>
+<h3>1-2. 오브젝트별 값을 둘 수 있는 자리</h3>
+<table>
+<tr><th>방법</th><th>무엇이 늘어나나</th><th>이 엔진에서의 문제</th></tr>
+<tr><td>재질 값을 바꿈</td><td>없음</td><td><code>Renderer::GetOrCreateGpuMaterial</code> 은 GPU 재질을 <code>Material</code> 포인터로 캐시하고 b3 를 재질당 프레임에 한 번 올립니다. 재질 색을 바꾸면 그 재질을 쓰는 모든 오브젝트가 같이 바뀝니다</td></tr>
+<tr><td>오브젝트마다 재질 복사본</td><td>GPU 재질, 재질 셋(<code>ResourceSet</code>, b3 + 텍스처 12 칸 + 샘플러), b3 업로드</td><td>드로우 정렬이 PSO → 재질 순이라 복사본마다 재질 셋 전환이 생기고, 원본 재질을 고쳐도 복사본에 반영되지 않습니다</td></tr>
+<tr><td>셰이더 변형 (PSO 키 비트 하나)</td><td>메인·G-buffer PSO 캐시가 두 배</td><td>메인 키는 이미 정점 형식·미러·와이어프레임·뒷면 컬링·블렌드·바다 비트로 갈립니다(<code>Renderer::GetPipelineFor</code>). 번쩍임이 켜지고 꺼질 때마다 PSO 가 바뀌고, 처음 쓰는 조합은 그 프레임에 PSO 를 만듭니다</td></tr>
+<tr><td>화면 공간 후처리 (스텐실·ID 버퍼 외곽선)</td><td>스텐실 쓰기나 오브젝트 ID 타깃, 후처리 패스</td><td>외곽선에는 맞지만 표면 색 섞기·디졸브 구멍은 만들 수 없습니다. 디퍼드 라이팅 패스는 픽셀이 어느 오브젝트인지 모릅니다</td></tr>
+<tr><td>b1 <code>PerObject</code> 에 칸 추가 (채택)</td><td>b1 64 바이트, 드로우마다 memcpy 64 바이트</td><td>b1 은 이미 드로우마다 <code>UpdateBuffer</code> 로 올리므로 재질과 PSO 는 그대로 공유됩니다. 256 바이트를 넘지 않아야 한다는 제약이 있습니다(4장)</td></tr>
+</table>
+<p>상용 엔진도 같은 자리를 씁니다. 유니티의 <code>MaterialPropertyBlock</code>, 언리얼의 Custom Primitive Data 는 "재질은 공유하고 인스턴스별 값만 드로우와 같이 넘긴다"는 생각입니다(<a href="#refs">참고 문서</a>). 바인딩 빈도로 보면 b1 은 오브젝트 셋(<code>Layout_Object</code>)에 있고, 오브젝트 셋은 이미 드로우마다 내용이 바뀌는 유일한 셋입니다(<a href="binding-study.html#sets">바인딩 학습 4장</a>).</p>
+<h3>1-3. 오브젝트를 사라지게 하는 방법들</h3>
+<table>
+<tr><th>방법</th><th>원리</th><th>장단점</th></tr>
+<tr><td>알파 블렌드 페이드</td><td>알파를 1 → 0</td><td>반투명이 되면 블렌딩 패스로 가야 하고(정렬, 깊이 안 씀), 디퍼드 G-buffer 에 담을 수 없으며(<code>Renderer::CanUseDeferred</code>), 그림자 맵은 블렌딩 재질을 그리지 않습니다. 자기 몸끼리 겹친 면이 비쳐 보입니다</td></tr>
+<tr><td>디더(스크린 도어) 투명</td><td>화면 좌표의 베이어 행렬과 알파를 비교해 <code>clip</code></td><td>불투명 경로 그대로라 디퍼드·그림자에 맞지만 무늬가 화면에 고정되어 카메라를 돌리면 미끄러집니다. TAA 가 있으면 섞여서 반투명처럼 보입니다</td></tr>
+<tr><td>노이즈 문턱 <code>clip</code> (채택)</td><td>표면에 붙은 노이즈 값 &lt; 문턱이면 버림. 문턱 바로 위에 발광 띠</td><td>불투명 경로 그대로이고 무늬가 표면(UV)에 붙어 움직입니다. 그림자도 같은 무늬로 뚫으려면 그림자 패스에 PS 가 필요합니다(6장). UV 섬 경계에서 무늬가 끊깁니다</td></tr>
+<tr><td>지오메트리 분해</td><td>삼각형을 조각으로 날림 (지오메트리 셰이더·컴퓨트)</td><td>가장 화려하지만 정점 단계를 새로 짜야 합니다. 범위 밖</td></tr>
+</table>
+<p>노이즈 문턱 방식은 알파 컷아웃(glTF MASK)과 같은 연산입니다. 메인 PS 와 G-buffer PS 에는 이미 컷아웃 <code>clip</code> 이 있었으므로, 같은 자리에 <code>clip</code> 하나를 더 두면 디퍼드·포워드 어느 쪽에서도 불투명 표면으로 남습니다(<a href="material-extensions-study.html#alpha">재질 확장 학습 5장</a>). 노이즈 좌표로 메시 UV 를 쓴 것은 사용자가 고른 방식입니다(<a href="../plan/object-highlight-record.html#dissolve-shader">기록 7.3</a>).</p>
+</section>
+
+<section id="principle">
+<h2>2. 원리</h2>
+<h3>2-1. "값이 0 이면 원래 화면" 원칙</h3>
+<p>강조가 없는 오브젝트도 같은 셰이더를 탑니다. 그래서 모든 효과는 값이 0 일 때 결과가 바뀌기 전과 같도록 짰습니다(화면 비교에서 다른 픽셀 0 개).</p>
+<pre><code>albedo'   = lerp(albedo, tint.rgb, tint.a)          // tint.a = 0 → albedo 그대로
+emission' = emission + flash.rgb + rim.rgb · r      // flash = rim = 0 → + 0
+dissolve  : a = 0 이면 clip 도 경계 빛도 건너뜀</code></pre>
+<p>b1 칸은 C++ 쪽 <code>ObjectData</code> 의 <code>= {}</code> 초기화로 0 이고, 컴포넌트가 없거나 꺼졌으면 채우지 않습니다. 기록에서 값이 0 인 Highlight 를 모든 메시에 붙인 씬은 컴포넌트가 없는 씬과 세 경로 모두 다른 픽셀이 0 개였습니다 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/object-highlight-record.html#verify">기록 5장</a>. 디졸브 <code>amount</code> = 0 도 같았습니다(<a href="../plan/object-highlight-record.html#dissolve-verify">기록 7.6</a>).</p>
+
+<h3>2-2. 색 섞기: F0 를 만들기 전에</h3>
+<p>메탈릭 워크플로에서 F0 는 금속성으로 섞습니다(<code>MaterialSurface.hlsli</code> 의 <code>EvaluateMaterialSurface</code>).</p>
+<pre><code>F0  = lerp(dielectricF0, albedo, metallic)     // 유전체 ≈ 0.04, 금속 = 자기 색
+kd  = (1 − F) · (1 − metallic)                 // 금속은 확산이 없음</code></pre>
+<p>금속(metallic = 1)의 색은 전부 F0, 곧 반사 색에서 나옵니다. 색 섞기를 F0 를 만든 뒤에 알베도에만 하면 금속은 확산이 0 이라 색이 바뀌지 않습니다. 그래서 <code>HighlightAlbedo</code> 를 <code>s.albedo</code> 를 정하는 첫 줄에서 부르고, 그 값이 아래의 F0 계산과 G-buffer gb0 로 그대로 흘러가게 했습니다. 기록에서 금속 상자(D_Metal)가 갈색에서 검붉은색으로 바뀌는 것으로 확인했습니다 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/object-highlight-record.html#shader">기록 4장</a>.</p>
+<table>
+<tr><th>섞는 자리</th><th>유전체</th><th>금속</th><th>디퍼드에서</th></tr>
+<tr><td>F0 전 알베도 (채택)</td><td>확산 색이 바뀜, 반사는 흰색 유지</td><td>반사 색이 바뀜</td><td>gb0·gb2 에 이미 섞인 값이 들어감</td></tr>
+<tr><td>F0 뒤 알베도</td><td>같음</td><td>바뀌지 않음</td><td>같음</td></tr>
+<tr><td>조명 결과에 곱하기</td><td>반사 하이라이트까지 물듦</td><td>바뀜</td><td>라이팅 패스가 오브젝트를 모르므로 G-buffer 칸이 하나 더 필요</td></tr>
+</table>
+<p>섞인 색은 조명을 받은 색이 됩니다. 어두운 곳에서는 붉게 섞어도 어둡게 보이므로, 조명과 상관없이 눈에 띄어야 하면 번쩍임을 같이 씁니다. 이 순서는 비의 젖음(<code>ApplyWetness</code>)과 같은 이유입니다. 젖음도 F0 전에 알베도·금속성·거칠기를 바꿔서 금속의 F0 가 따라가게 합니다(<a href="pbr-study.html">PBR 학습</a>).</p>
+
+<h3>2-3. 발광 번쩍임</h3>
+<p>번쩍임은 발광에 색 × 세기를 더합니다. 발광은 조명 계산의 바깥에 있어서 그림자 속에서도 같은 밝기로 보이고, HDR 이라 1 을 넘으면 블룸이 번집니다. 포워드는 <code>ShadeLights</code> 의 시작값(<code>environment + s.emission</code>)으로 더하고, 디퍼드는 G-buffer 패스가 발광 칸(<code>view.hdr</code>, SV_Target0)에 써 두면 라이팅 패스가 그 위에 환경광과 직접광을 더합니다(<a href="deferred-gbuffer-study.html#meet">디퍼드 G-buffer 학습 3-1</a>). 발광 칸은 원래 있던 것이라 G-buffer 배치를 바꾸지 않았습니다.</p>
+
+<h3>2-4. 가장자리 빛: 기하 노멀의 1 − N·V</h3>
+<p>림 라이트는 시선과 노멀이 직각에 가까운 곳, 곧 화면에서 실루엣 근처를 밝힙니다. <code>HighlightEmission</code> 의 식입니다.</p>
+<pre><code>V   = normalize(cameraPosition − worldPosition)
+rim = pow(saturate(1 − saturate(dot(Ng, V))), max(p, 0.1))
+emission += flash.rgb + rim.rgb · rim</code></pre>
+<p>Ng 는 노말맵을 적용하기 전의 보간된 정점 노멀(양면 재질의 뒷면이면 뒤집은 것, <code>s.geometricNormal</code>)입니다. 노말맵 노멀을 쓰면 표면의 잔무늬마다 N·V 가 흔들려 가운데에도 반짝이는 점이 생깁니다. 이 효과가 따라야 할 것은 물체의 외형이고, 외형은 정점 노멀이 담고 있습니다. 디퍼드에서도 G-buffer PS 에서 계산합니다. 라이팅 패스는 GB1 의 기하 노멀을 갖고 있지만 그 픽셀의 강조 값을 모르기 때문입니다.</p>
+<figure>
+<svg viewBox="0 0 640 330" role="img" aria-label="구의 중심에서 가장자리까지 가장자리 빛 세기">
+  <line class="ln" x1="70" y1="240" x2="590" y2="240"/><line class="ln" x1="70" y1="240" x2="70" y2="30"/>
+  <polyline points="70.0,240.0 75.2,240.0 80.4,240.0 85.6,239.9 90.8,239.8 96.0,239.7 101.2,239.6 106.4,239.5 111.6,239.4 116.8,239.2 122.0,239.0 127.2,238.8 132.4,238.6 137.6,238.3 142.8,238.0 148.0,237.7 153.2,237.4 158.4,237.1 163.6,236.7 168.8,236.4 174.0,236.0 179.2,235.5 184.4,235.1 189.6,234.6 194.8,234.2 200.0,233.6 205.2,233.1 210.4,232.6 215.6,232.0 220.8,231.4 226.0,230.8 231.2,230.1 236.4,229.5 241.6,228.8 246.8,228.1 252.0,227.3 257.2,226.6 262.4,225.8 267.6,225.0 272.8,224.2 278.0,223.3 283.2,222.4 288.4,221.5 293.6,220.6 298.8,219.6 304.0,218.6 309.2,217.6 314.4,216.5 319.6,215.5 324.8,214.3 330.0,213.2 335.2,212.0 340.4,210.8 345.6,209.6 350.8,208.3 356.0,207.0 361.2,205.7 366.4,204.3 371.6,202.9 376.8,201.5 382.0,200.0 387.2,198.5 392.4,196.9 397.6,195.3 402.8,193.7 408.0,192.0 413.2,190.3 418.4,188.5 423.6,186.6 428.8,184.8 434.0,182.8 439.2,180.8 444.4,178.8 449.6,176.7 454.8,174.5 460.0,172.3 465.2,170.0 470.4,167.6 475.6,165.2 480.8,162.6 486.0,160.0 491.2,157.3 496.4,154.5 501.6,151.6 506.8,148.5 512.0,145.4 517.2,142.1 522.4,138.6 527.6,135.0 532.8,131.2 538.0,127.2 543.2,122.9 548.4,118.4 553.6,113.5 558.8,108.2 564.0,102.4 569.2,96.0 574.4,88.6 579.6,79.8 584.8,68.2 590.0,40.0" style="fill:none;stroke:var(--ink3);stroke-width:1.5;stroke-dasharray:5 4"/>
+  <polyline points="70.0,240.0 75.2,240.0 80.4,240.0 85.6,240.0 90.8,240.0 96.0,240.0 101.2,240.0 106.4,240.0 111.6,240.0 116.8,240.0 122.0,240.0 127.2,240.0 132.4,240.0 137.6,240.0 142.8,240.0 148.0,240.0 153.2,240.0 158.4,240.0 163.6,240.0 168.8,240.0 174.0,240.0 179.2,240.0 184.4,240.0 189.6,240.0 194.8,240.0 200.0,240.0 205.2,240.0 210.4,240.0 215.6,240.0 220.8,240.0 226.0,240.0 231.2,240.0 236.4,240.0 241.6,240.0 246.8,240.0 252.0,239.9 257.2,239.9 262.4,239.9 267.6,239.9 272.8,239.9 278.0,239.9 283.2,239.9 288.4,239.8 293.6,239.8 298.8,239.8 304.0,239.8 309.2,239.7 314.4,239.7 319.6,239.6 324.8,239.6 330.0,239.5 335.2,239.5 340.4,239.4 345.6,239.3 350.8,239.2 356.0,239.1 361.2,239.0 366.4,238.9 371.6,238.7 376.8,238.6 382.0,238.4 387.2,238.2 392.4,238.0 397.6,237.8 402.8,237.5 408.0,237.2 413.2,236.9 418.4,236.6 423.6,236.2 428.8,235.8 434.0,235.3 439.2,234.8 444.4,234.3 449.6,233.7 454.8,233.0 460.0,232.2 465.2,231.4 470.4,230.5 475.6,229.5 480.8,228.4 486.0,227.2 491.2,225.9 496.4,224.4 501.6,222.7 506.8,220.9 512.0,218.8 517.2,216.5 522.4,213.9 527.6,211.1 532.8,207.8 538.0,204.1 543.2,199.9 548.4,195.0 553.6,189.4 558.8,182.8 564.0,174.9 569.2,165.4 574.4,153.3 579.6,137.2 584.8,113.3 590.0,40.0" style="fill:none;stroke:var(--accent);stroke-width:2.2"/>
+  <polyline points="70.0,240.0 75.2,240.0 80.4,240.0 85.6,240.0 90.8,240.0 96.0,240.0 101.2,240.0 106.4,240.0 111.6,240.0 116.8,240.0 122.0,240.0 127.2,240.0 132.4,240.0 137.6,240.0 142.8,240.0 148.0,240.0 153.2,240.0 158.4,240.0 163.6,240.0 168.8,240.0 174.0,240.0 179.2,240.0 184.4,240.0 189.6,240.0 194.8,240.0 200.0,240.0 205.2,240.0 210.4,240.0 215.6,240.0 220.8,240.0 226.0,240.0 231.2,240.0 236.4,240.0 241.6,240.0 246.8,240.0 252.0,240.0 257.2,240.0 262.4,240.0 267.6,240.0 272.8,240.0 278.0,240.0 283.2,240.0 288.4,240.0 293.6,240.0 298.8,240.0 304.0,240.0 309.2,240.0 314.4,240.0 319.6,240.0 324.8,240.0 330.0,240.0 335.2,240.0 340.4,240.0 345.6,240.0 350.8,240.0 356.0,240.0 361.2,240.0 366.4,240.0 371.6,240.0 376.8,240.0 382.0,240.0 387.2,240.0 392.4,240.0 397.6,240.0 402.8,240.0 408.0,240.0 413.2,240.0 418.4,240.0 423.6,240.0 428.8,240.0 434.0,240.0 439.2,240.0 444.4,240.0 449.6,240.0 454.8,240.0 460.0,240.0 465.2,240.0 470.4,239.9 475.6,239.9 480.8,239.9 486.0,239.9 491.2,239.8 496.4,239.8 501.6,239.7 506.8,239.6 512.0,239.5 517.2,239.3 522.4,239.1 527.6,238.8 532.8,238.5 538.0,237.9 543.2,237.2 548.4,236.3 553.6,234.9 558.8,232.9 564.0,230.0 569.2,225.6 574.4,218.5 579.6,206.1 584.8,180.7 590.0,40.0" style="fill:none;stroke:var(--warn);stroke-width:1.6"/>
+  <text x="70" y="258" text-anchor="middle">0</text><text x="330" y="258" text-anchor="middle">0.5</text><text x="538" y="258" text-anchor="middle">0.9</text><text x="590" y="258" text-anchor="middle">1</text>
+  <line x1="538" y1="240" x2="538" y2="40" style="stroke:var(--ink3);stroke-dasharray:2 3"/>
+  <text x="62" y="44" text-anchor="end">1</text><text x="62" y="244" text-anchor="end">0</text>
+  <text x="330" y="280" text-anchor="middle">화면에서 구 중심으로부터의 거리 r (1 = 실루엣)</text>
+  <line x1="110" y1="310" x2="146" y2="310" style="stroke:var(--ink3);stroke-width:1.5;stroke-dasharray:5 4"/><text x="154" y="314">p = 1</text>
+  <line x1="260" y1="310" x2="296" y2="310" style="stroke:var(--accent);stroke-width:2.2"/><text x="304" y="314">p = 3 (기본값)</text>
+  <line x1="440" y1="310" x2="476" y2="310" style="stroke:var(--warn);stroke-width:1.6"/><text x="484" y="314">p = 8</text>
+</svg>
+<figcaption>그림 1. 멀리서 본 구(정사영 근사, N·V = √(1 − r²))의 가장자리 빛 세기. 기본 지수 3 에서 r = 0.9 는 0.18, r = 0.99 는 0.63 이고, 세기가 0.5 를 넘는 띠는 원판 면적의 4.3 % 입니다. p = 1 이면 25 %, p = 8 이면 0.7 % 로 얇아집니다. <span class="tag chk">계산값</span></figcaption>
+</figure>
+<p>지수 하한 0.1 은 C++(<code>Renderer::BuildDrawList</code> 의 <code>addObject</code>)와 셰이더(<code>max(highlightRim.a, 0.1)</code>) 양쪽에 있습니다. HLSL 의 <code>pow(x, y)</code> 는 exp2(y · log2 x) 로 계산되는데, x = 0 이고 y = 0 이면 0 × (−∞) 라 NaN 이 나옵니다. NaN 에 색 0 을 곱해도 NaN 이라, 강조가 없는 오브젝트의 정면 픽셀(1 − N·V = 0)에서 블룸·TAA 로 번질 수 있습니다. 강조가 없는 오브젝트는 b1 칸이 0 이므로 셰이더 쪽 <code>max</code> 가 실제로 이 경우를 막습니다.</p>
+
+<h3>2-5. 디졸브: 노이즈 문턱과 경계 띠</h3>
+<p>진행도 a ∈ [0, 1], 경계 폭 w ≥ 0, 픽셀의 노이즈 값 n ∈ [0, 1] 일 때 <code>Shaders/Dissolve.hlsli</code> 의 규칙은 이렇습니다.</p>
+<pre><code>t = a · (1 + w) − w                          // 문턱. a = 0 → −w, a = 1 → 1
+n &lt; t + 0.0001            → clip (버림)
+t ≤ n &lt; t + w             → 경계 빛 = edge.rgb · (1 − (n − t) / w)   // 문턱에서 1, 띠 끝에서 0
+그 밖                      → 원래 표면</code></pre>
+<p>문턱을 a 가 아니라 a(1 + w) − w 로 둔 이유는 띠의 양 끝입니다. a 가 0 보다 조금 클 때 t 는 −w 근처라 버리는 픽셀은 거의 없고 노이즈 값이 가장 작은 곳에 띠만 먼저 나타납니다. a = 1 이면 t = 1 이라 띠까지 모두 사라집니다. 문턱을 그냥 a 로 두면 a = 1 에서도 1 − w 위의 띠가 남습니다. <code>clip</code> 의 0.0001 여유는 노이즈 값이 정확히 1(255)인 픽셀도 a = 1 에서 버리기 위한 것입니다.</p>
+<p>이 식에서 버려지는 면적은 t 입니다. 균일 분포에서 버린 면적 = a(1 + w) − w, 버린 면적 + 띠 = a(1 + w) 이고, 두 값과 a 의 차이는 w 보다 작습니다. 기본 w = 0.05 에서 a = 0.5 면 버린 면적은 47.5 %, 띠까지 52.5 % 입니다 <span class="tag chk">계산값</span>. 코드 주석의 "진행도가 사라진 면적의 비율과 거의 같다"는 이 정도의 차이를 뜻합니다.</p>
+
+<h3>2-6. 노이즈: 타일링되고 값이 고르게 퍼져야 하는 이유</h3>
+<p>진행도 a 가 "몸의 몇 %가 사라졌나"와 맞으려면 노이즈 값의 분포가 [0, 1] 에서 균일해야 합니다. 2-5 의 면적이 곧 노이즈의 누적 분포 함수 F(t) 이기 때문입니다. 분포가 가운데로 몰려 있으면 F 가 가운데에서 가팔라져 a = 0.5 근처의 짧은 시간에 몸의 대부분이 한꺼번에 사라지고, 처음과 끝은 아무 일도 없는 것처럼 보입니다.</p>
+<p>fBm(옥타브를 겹친 값 노이즈)은 가운데로 몰립니다. 옥타브마다 독립에 가까운 값을 진폭 1, ½, ¼, ⅛ 로 더하므로 중심 극한 정리처럼 합이 종 모양에 가까워집니다. <code>TextureLoader::CreateTileableNoise</code> 는 이것을 순위로 다시 매겨 폅니다. 값이 k 번째로 작은 픽셀을 k / (N − 1) 로 바꾸면(히스토그램 평탄화) 공간 무늬는 그대로이고 분포만 균일해집니다.</p>
+<table>
+<tr><th>노이즈 값 구간</th><th>0~0.1</th><th>0.1~0.2</th><th>0.2~0.3</th><th>0.3~0.4</th><th>0.4~0.5</th><th>0.5~0.6</th><th>0.6~0.7</th><th>0.7~0.8</th><th>0.8~0.9</th><th>0.9~1</th></tr>
+<tr><td>fBm 원래 값을 [최소, 최대]로 늘인 것</td><td>0.9 %</td><td>4.2 %</td><td>10.7 %</td><td>16.6 %</td><td>16.9 %</td><td>21.8 %</td><td>16.9 %</td><td>9.3 %</td><td>2.2 %</td><td>0.3 %</td></tr>
+<tr><td>순위로 다시 매긴 값 (<code>builtin:noise</code>)</td><td>10.0 %</td><td>9.8 %</td><td>10.2 %</td><td>9.8 %</td><td>10.2 %</td><td>10.2 %</td><td>9.8 %</td><td>9.8 %</td><td>10.2 %</td><td>10.0 %</td></tr>
+</table>
+<figure>
+<svg viewBox="0 0 640 330" role="img" aria-label="진행도에 따른 사라진 면적 비율">
+  <line class="ln" x1="70" y1="240" x2="590" y2="240"/><line class="ln" x1="70" y1="240" x2="70" y2="30"/>
+  <line x1="70" y1="240" x2="590" y2="40" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <polyline points="70.0,240.0 75.2,240.0 80.4,240.0 85.6,240.0 90.8,240.0 96.0,239.6 101.2,237.3 106.4,234.9 111.6,233.3 116.8,231.0 122.0,228.6 127.2,227.1 132.4,224.7 137.6,222.4 142.8,220.8 148.0,218.4 153.2,216.1 158.4,214.5 163.6,212.2 168.8,209.8 174.0,208.2 179.2,205.9 184.4,203.5 189.6,202.0 194.8,199.6 200.0,197.3 205.2,195.7 210.4,193.3 215.6,191.0 220.8,189.4 226.0,187.1 231.2,184.7 236.4,183.1 241.6,180.8 246.8,178.4 252.0,176.9 257.2,174.5 262.4,172.2 267.6,169.8 272.8,168.2 278.0,165.9 283.2,163.5 288.4,162.0 293.6,159.6 298.8,157.3 304.0,155.7 309.2,153.3 314.4,151.0 319.6,149.4 324.8,147.1 330.0,144.7 335.2,143.1 340.4,140.8 345.6,138.4 350.8,136.9 356.0,134.5 361.2,132.2 366.4,130.6 371.6,128.2 376.8,125.9 382.0,124.3 387.2,122.0 392.4,119.6 397.6,118.0 402.8,115.7 408.0,113.3 413.2,111.8 418.4,109.4 423.6,107.1 428.8,104.7 434.0,103.1 439.2,100.8 444.4,98.4 449.6,96.9 454.8,94.5 460.0,92.2 465.2,90.6 470.4,88.2 475.6,85.9 480.8,84.3 486.0,82.0 491.2,79.6 496.4,78.0 501.6,75.7 506.8,73.3 512.0,71.8 517.2,69.4 522.4,67.1 527.6,65.5 532.8,63.1 538.0,60.8 543.2,59.2 548.4,56.9 553.6,54.5 558.8,52.9 564.0,50.6 569.2,48.2 574.4,46.7 579.6,44.3 584.8,42.0 590.0,40.0" style="fill:none;stroke:var(--accent);stroke-width:2.2"/>
+  <polyline points="70.0,240.0 75.2,240.0 80.4,240.0 85.6,240.0 90.8,240.0 96.0,240.0 101.2,239.9 106.4,239.8 111.6,239.7 116.8,239.6 122.0,239.5 127.2,239.3 132.4,239.0 137.6,238.6 142.8,238.2 148.0,237.8 153.2,237.3 158.4,236.8 163.6,236.1 168.8,235.4 174.0,234.5 179.2,233.4 184.4,232.2 189.6,230.8 194.8,229.3 200.0,227.4 205.2,225.4 210.4,223.5 215.6,221.3 220.8,219.0 226.0,216.7 231.2,214.5 236.4,211.8 241.6,209.1 246.8,206.2 252.0,203.2 257.2,199.9 262.4,196.3 267.6,192.7 272.8,189.0 278.0,185.2 283.2,181.3 288.4,177.8 293.6,174.5 298.8,171.3 304.0,168.2 309.2,165.3 314.4,162.1 319.6,158.5 324.8,154.7 330.0,150.8 335.2,146.8 340.4,142.7 345.6,138.5 350.8,134.2 356.0,129.6 361.2,125.0 366.4,120.3 371.6,115.4 376.8,110.8 382.0,106.1 387.2,101.5 392.4,97.2 397.6,93.0 402.8,89.2 408.0,85.7 413.2,82.1 418.4,78.5 423.6,74.9 428.8,71.5 434.0,68.3 439.2,65.1 444.4,61.9 449.6,59.1 454.8,56.4 460.0,54.0 465.2,52.0 470.4,50.1 475.6,48.5 480.8,47.1 486.0,45.9 491.2,45.0 496.4,44.1 501.6,43.4 506.8,42.7 512.0,42.1 517.2,41.7 522.4,41.4 527.6,41.2 532.8,40.9 538.0,40.7 543.2,40.5 548.4,40.3 553.6,40.2 558.8,40.1 564.0,40.1 569.2,40.1 574.4,40.1 579.6,40.0 584.8,40.0 590.0,40.0" style="fill:none;stroke:var(--warn);stroke-width:1.6;stroke-dasharray:6 4"/>
+  <text x="70" y="258" text-anchor="middle">0</text><text x="330" y="258" text-anchor="middle">0.5</text><text x="590" y="258" text-anchor="middle">1</text>
+  <text x="62" y="44" text-anchor="end">100 %</text><text x="62" y="144" text-anchor="end">50 %</text><text x="62" y="244" text-anchor="end">0</text>
+  <text x="330" y="280" text-anchor="middle">진행도 amount (w = 0.05)</text>
+  <line x1="90" y1="310" x2="126" y2="310" style="stroke:var(--accent);stroke-width:2.2"/><text x="134" y="314">순위로 편 노이즈 (채택)</text>
+  <line x1="330" y1="310" x2="366" y2="310" style="stroke:var(--warn);stroke-width:1.6;stroke-dasharray:6 4"/><text x="374" y="314">fBm 을 선형으로 늘인 것</text>
+</svg>
+<figcaption>그림 2. 진행도에 따라 버려지는 텍셀의 비율(밉 0, 256² 전체). 점선 대각선은 면적 = a. 순위로 편 노이즈는 대각선 바로 아래(w 만큼의 차이)를 거의 직선으로 지나고, 선형으로 늘인 fBm 은 a = 0.25 에서 6 %, 0.75 에서 93 % 라 가운데 0.1 구간에서만 19 %가 사라집니다. <span class="tag chk">계산값</span></figcaption>
+</figure>
+<table>
+<tr><th>amount</th><th>문턱 t</th><th>순위로 편 노이즈: 버린 면적 / 경계 띠</th><th>선형으로 늘인 fBm: 버린 면적</th></tr>
+<tr><td>0.1</td><td>0.055</td><td>5.7 % / 4.7 %</td><td>0.3 %</td></tr>
+<tr><td>0.25</td><td>0.2125</td><td>21.4 % / 4.7 %</td><td>6.3 %</td></tr>
+<tr><td>0.5</td><td>0.475</td><td>47.7 % / 4.7 %</td><td>44.6 %</td></tr>
+<tr><td>0.75</td><td>0.7375</td><td>73.9 % / 4.7 %</td><td>93.0 %</td></tr>
+<tr><td>0.9</td><td>0.895</td><td>89.6 % / 4.7 %</td><td>99.7 %</td></tr>
+</table>
+<p>표와 그림은 <code>CreateTileableNoise(256, 8, 4, 1)</code>(<code>TextureCache</code> 의 <code>builtin:noise</code>)를 옮겨 계산한 값입니다 <span class="tag chk">계산값</span>. 순위 값은 255 단계로 양자화되므로 버린 면적이 t 보다 0.1~0.2 %p 큽니다.</p>
+<p>타일링은 격자 좌표를 <code>cells</code> 로 감아서(<code>x1 = (x0 + 1) % cells</code>) 얻습니다. 오른쪽 끝 픽셀은 왼쪽 끝 격자점과 보간되므로 가장자리가 이어집니다. 이음매가 없어야 하는 이유는 두 가지입니다. 메시 UV 가 [0, 1] 을 넘어 반복되는 모델이 흔하고, 재질의 <code>uvScale</code> 과 <code>dissolveNoiseScale</code> 이 UV 를 다시 곱하기 때문입니다. 첫 옥타브가 8 칸이라 한 장 안에서 큰 덩어리 8×8 개가 보이고, 마지막 옥타브는 64 칸(칸당 4 텍셀)입니다. 격자점 값은 (시드, 옥타브, x, y) 를 섞은 정수 해시이고 <code>std::rand</code> 같은 전역 상태를 쓰지 않아 같은 시드면 항상 같은 텍스처가 나옵니다.</p>
+<p>재질 칸이 비었을 때 흰색(1) 대신 이 노이즈를 쓰는 이유도 분포입니다. 흰색이면 F(t) 가 t &lt; 1 에서 0, t ≥ 1 에서 1 인 계단이라 a = 1 이 될 때까지 아무것도 사라지지 않다가 한 번에 사라집니다. 기본 노이즈 덕분에 재질이 넷인 마스터치프도 칸을 하나도 채우지 않고 사라집니다(<a href="../plan/object-highlight-record.html#dissolve-split">기록 7.1</a>).</p>
+</section>
+
+<section id="flow">
+<h2>3. 한 프레임에서 값이 지나는 길</h2>
+<table>
+<tr><th>순서</th><th>어디서</th><th>무엇을</th></tr>
+<tr><td>1</td><td>스크립트 (예: <code>HitFlash</code>, <code>DissolveOut</code>)</td><td>컴포넌트 값을 시간에 따라 바꿈. <code>Highlight</code>·<code>Dissolve</code> 는 값만 들고 있고 <code>Update</code> 가 없음</td></tr>
+<tr><td>2</td><td><code>Renderer::BuildDrawList</code></td><td>루트에서 children 을 따라 내려가며 <code>ResolveInherited&lt;Highlight&gt;</code>·<code>ResolveInherited&lt;Dissolve&gt;</code> 로 이 오브젝트에 걸리는 컴포넌트를 정하고 <code>HierarchyFrame</code> 으로 자식에게 넘김</td></tr>
+<tr><td>3</td><td><code>addObject</code> (<code>BuildDrawList</code> 안의 람다)</td><td>범위를 자르고 색 × 세기를 미리 곱해 <code>ObjectData</code> 의 네 칸에 저장. 디졸브 중(amount &gt; 0)이거나 컷아웃 재질이면 <code>DrawItem::shadowAlpha</code> 를 켜고 그림자·비 차폐 PSO 를 알파 테스트 변형으로 고름</td></tr>
+<tr><td>4</td><td><code>Renderer::RenderShadowPass</code> → <code>RenderShadowAtlasPass</code> → <code>DrawDepthView</code></td><td>그림자 뷰마다. <code>shadowAlpha</code> 항목은 재질 셋을 꽂고 <code>PS_ShadowAlpha</code> 가 컷아웃·디졸브 <code>clip</code></td></tr>
+<tr><td>5</td><td><code>Renderer::RenderRainOcclusionPass</code> → <code>DrawDepthView</code></td><td>비가 있는 프레임만. 같은 루프라 차폐 맵에도 같은 구멍이 남 (7장)</td></tr>
+<tr><td>6</td><td>G-buffer 패스 (디퍼드)</td><td><code>PS_GBuffer</code>: 컷아웃 → <code>DissolveClip</code> → <code>EvaluateMaterialSurface</code>(색 섞기, 발광 += 번쩍임 + 가장자리 빛 + 경계 빛) → gb0 와 발광 칸</td></tr>
+<tr><td>6′</td><td>메인 패스 (포워드·블렌드·unlit)</td><td><code>PS_Main</code> 의 <code>ShadeForward</code>: 같은 순서. unlit 분기는 세 함수를 직접 부름</td></tr>
+<tr><td>7</td><td>디퍼드 라이팅</td><td>발광 칸 위에 환경광·직접광을 더함. 오브젝트를 모르지만 이미 섞인 알베도와 발광을 읽으므로 따로 할 일이 없음</td></tr>
+</table>
+<p>b1 자체는 <code>Renderer::UploadObjectConstants</code> 가 그리기 직전에 올립니다. 그림자·비 차폐 뷰도 같은 함수를 <code>withHistory = false</code> 로 부르고(<code>prevWorld</code> = <code>world</code>), 강조·디졸브 네 칸도 함께 채웁니다. <code>PerObjectConstants perObject;</code> 는 초기화하지 않은 지역 변수라 칸을 비워 두면 쓰레기 값이 올라가기 때문이고, 디졸브 칸은 그림자 알파 PS 가 실제로 읽습니다.</p>
+
+<h3>3-1. 계층 상속 규칙</h3>
+<p><code>ResolveInherited&lt;T&gt;(object, inherited)</code> 는 오브젝트의 Behaviour 목록에서 켜진(<code>enabled</code>) 첫 T 를 찾고, 없으면 부모에게서 받은 포인터를 그대로 돌려줍니다. 결과가 자식의 <code>inherited</code> 가 되므로 가장 가까운 조상의 것이 이깁니다.</p>
+<table>
+<tr><th>경우</th><th>결과</th></tr>
+<tr><td>루트에만 Highlight</td><td>모든 자손이 루트의 값을 씀</td></tr>
+<tr><td>자식이 값이 모두 0 인 Highlight 를 가짐</td><td>그 자식과 그 아래는 강조 없음 (가까운 쪽이 이김). 기록의 HighlightHierarchy 에서 01.Arms 만 원래 녹색 <span class="tag ok">확인함 (2026-11-26)</span></td></tr>
+<tr><td>자식의 Highlight 가 꺼짐</td><td>없는 것으로 보고 부모의 것을 물려받음</td></tr>
+<tr><td>자식은 가장자리 빛만, 부모는 색 섞기만</td><td>섞이지 않음. 포인터 하나를 고르는 규칙이라 자식의 컴포넌트 전체가 부모의 것을 대신함 (자식의 색 섞기 = 0)</td></tr>
+<tr><td>자식은 자기 Highlight, 부모는 Dissolve</td><td>Highlight 와 Dissolve 는 따로 풀리므로 자식은 자기 강조 + 부모의 디졸브</td></tr>
+</table>
+<p>한 오브젝트에 같은 종류를 둘 붙이면 목록에서 먼저 나오는 켜진 것 하나만 씁니다. 재생 중에 스크립트가 <code>AddBehaviour</code> 로 Dissolve 를 붙여도 다음 <code>BuildDrawList</code> 가 목록을 다시 보므로 그 프레임부터 그려집니다(<a href="../plan/object-highlight-record.html#dissolve-use">기록 7.2</a>). 순회 자체는 월드 행렬을 오브젝트당 한 번 구하는 기존 스택 순회에 포인터 두 개를 얹은 것이라 비용이 거의 늘지 않습니다(<a href="frame-structure-study.html#drawlist">프레임 구조 학습 6장</a>).</p>
+<p><code>addObject</code> 에서는 Highlight 블록이 <code>highlightFlash</code> 를 통째로 쓰면서 a 를 0 으로 두고, 그 뒤 Dissolve 블록이 <code>highlightFlash.w</code> 에 경계 폭을 씁니다. 두 블록의 순서를 바꾸면 강조가 경계 폭을 0 으로 덮습니다.</p>
+</section>
+
+<section id="layout">
+<h2>4. b1·b3·t20 배치와 256 바이트</h2>
+<h3>4-1. b1 <code>PerObjectConstants</code> (256 B)</h3>
+<table>
+<tr><th>오프셋</th><th>필드</th><th>내용</th><th>읽는 단계</th></tr>
+<tr><td>0</td><td><code>world</code></td><td>월드 행렬 (전치)</td><td>VS</td></tr>
+<tr><td>64</td><td><code>worldInvTranspose</code></td><td>노멀 변환</td><td>VS</td></tr>
+<tr><td>128</td><td><code>prevWorld</code></td><td>지난 프레임 World. 그림자 뷰는 <code>world</code> 와 같음</td><td>VS</td></tr>
+<tr><td>192</td><td><code>highlightTint</code></td><td>rgb 섞을 색(선형), a 섞는 양 [0, 1]</td><td>PS</td></tr>
+<tr><td>208</td><td><code>highlightFlash</code></td><td>rgb 번쩍임 색 × 세기, a 디졸브 경계 폭 w</td><td>PS</td></tr>
+<tr><td>224</td><td><code>highlightRim</code></td><td>rgb 가장자리 빛 색 × 세기, a 지수 (≥ 0.1)</td><td>PS</td></tr>
+<tr><td>240</td><td><code>dissolveEdge</code></td><td>rgb 경계 빛 색 × 세기, a 진행도 (0 = 끔)</td><td>PS (그림자 알파 PS 포함)</td></tr>
+</table>
+<p><code>Graphics/ShaderConstants.h</code> 의 <code>PerObjectConstants</code> 와 <code>Shaders/Mesh.hlsli</code> 의 <code>cbuffer PerObject</code> 가 같은 배치이고 크기 256 과 오프셋을 <code>static_assert</code> 로 고정합니다. 색에 세기를 CPU 에서 미리 곱해 넘기므로 셰이더는 곱셈 하나를 덜 하고, 칸도 색 하나에 float4 하나로 끝납니다.</p>
+<p>행렬은 VS, 뒤의 네 칸은 PS 가 읽으므로 <code>Renderer::CreateLayouts</code> 는 b1 을 <code>ShaderStageMask_Vertex | ShaderStageMask_Pixel</code> 로 선언합니다. D3D11 백엔드는 마스크의 Pixel 비트를 보고 <code>PSSetConstantBuffers</code> 도 부르고(<code>D3D11CommandList.cpp</code>), D3D12 백엔드는 루트 CBV 의 가시성을 <code>D3D12_SHADER_VISIBILITY_ALL</code> 로 줍니다(<code>D3D12Device.cpp</code> 의 <code>VisibilityOf</code>). 바인딩 구조는 그대로이고 보이는 단계만 늘었습니다(<a href="binding-study.html#regmap">바인딩 학습 3장</a>).</p>
+
+<h3>4-2. 정확히 256 바이트로 맞춘 이유</h3>
+<p>D3D12 에서 b1 은 Dynamic 상수 버퍼라 리소스가 없고, <code>UpdateBuffer</code> 를 부를 때마다 프레임 업로드 링에서 새 조각을 떼어 그 GPU 주소를 루트 CBV 로 넘깁니다. 코드에는 256 정렬이 두 군데 있습니다.</p>
+<pre><code>// D3D12Device::CreateBuffer — 상수 버퍼 크기를 256 의 배수로 올림
+buffer.desc.size = (buffer.desc.size + 255) &amp; ~255u;
+// D3D12Device::UpdateBuffer → AllocateUpload(buffer-&gt;desc.size, …) — 시작 오프셋도 256 정렬
+const uint64_t aligned = (ring.offset + 255) &amp; ~255ull;</code></pre>
+<p>루트 CBV 주소는 256 바이트 정렬이어야 한다는 D3D12 규칙(<code>D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT</code>) 때문입니다. 떼는 크기가 실제로 쓴 바이트가 아니라 올림한 <code>desc.size</code> 이므로, 구조체가 256 을 1 바이트라도 넘으면 드로우마다 512 바이트를 씁니다.</p>
+<figure>
+<svg viewBox="0 0 900 300" role="img" aria-label="b1 의 256 바이트 배치와 업로드 링 조각">
+  <text x="66" y="30">b1 PerObjectConstants (1 칸 = 16 B)</text>
+  <rect x="66" y="40" width="192" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="162" y="65" text-anchor="middle">world</text>
+  <rect x="258" y="40" width="192" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="354" y="65" text-anchor="middle">worldInvTranspose</text>
+  <rect x="450" y="40" width="192" height="40" style="fill:var(--accent-bg);stroke:var(--accent)"/><text x="546" y="65" text-anchor="middle">prevWorld</text>
+  <rect x="642" y="40" width="48" height="40" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="666" y="65" text-anchor="middle">tint</text>
+  <rect x="690" y="40" width="48" height="40" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="714" y="65" text-anchor="middle">flash</text>
+  <rect x="738" y="40" width="48" height="40" style="fill:var(--warn-bg);stroke:var(--warn)"/><text x="762" y="65" text-anchor="middle">rim</text>
+  <rect x="786" y="40" width="48" height="40" style="fill:var(--ok-bg);stroke:var(--ok)"/><text x="810" y="65" text-anchor="middle">diss.</text>
+  <text x="66" y="98">0</text><text x="642" y="98" text-anchor="middle">192</text><text x="834" y="98" text-anchor="end">256</text>
+  <text x="714" y="116" text-anchor="middle">a = 경계 폭</text>
+  <text x="66" y="160">D3D12 업로드 링 (1 px ≈ 1.33 B)</text>
+  <rect x="66" y="170" width="192" height="30" style="fill:var(--accent-bg);stroke:var(--accent)"/><rect x="258" y="170" width="192" height="30" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <rect x="450" y="170" width="192" height="30" style="fill:var(--accent-bg);stroke:var(--accent)"/><rect x="642" y="170" width="192" height="30" style="fill:var(--accent-bg);stroke:var(--accent)"/>
+  <text x="162" y="190" text-anchor="middle">드로우 1</text><text x="354" y="190" text-anchor="middle">드로우 2</text><text x="546" y="190" text-anchor="middle">드로우 3</text><text x="738" y="190" text-anchor="middle">드로우 4</text>
+  <text x="846" y="190">256 B</text>
+  <rect x="66" y="220" width="204" height="30" style="fill:var(--warn-bg);stroke:var(--warn)"/><rect x="270" y="220" width="180" height="30" style="fill:var(--fill);stroke:var(--ink3);stroke-dasharray:4 3"/>
+  <rect x="450" y="220" width="204" height="30" style="fill:var(--warn-bg);stroke:var(--warn)"/><rect x="654" y="220" width="180" height="30" style="fill:var(--fill);stroke:var(--ink3);stroke-dasharray:4 3"/>
+  <text x="168" y="240" text-anchor="middle">드로우 1 (272 B)</text><text x="360" y="240" text-anchor="middle">빈 240 B</text>
+  <text x="552" y="240" text-anchor="middle">드로우 2 (272 B)</text><text x="744" y="240" text-anchor="middle">빈 240 B</text>
+  <text x="846" y="240">272 B</text>
+  <text x="450" y="285" text-anchor="middle">같은 1 KB 에 256 B 구조체는 드로우 4 개, 272 B 구조체는 2 개</text>
+</svg>
+<figcaption>그림 3. 위: 지금의 b1 배치. 행렬 셋이 192 B 를 쓰고 남은 64 B 에 float4 넷이 들어갑니다. 아래: 업로드 링에서 드로우마다 떼는 조각. 272 B 면 조각이 512 B 가 됩니다.</figcaption>
+</figure>
+<p>링은 프레임 슬롯마다 <code>kUploadRingSize</code> = 8 MB 입니다. b1 만으로 셈하면 256 B 조각은 프레임당 최대 32,768 번, 512 B 조각은 16,384 번입니다 <span class="tag chk">계산값</span>. 실제 상한은 이보다 낮습니다. 같은 링을 b0·b3·b5(그림자 뷰마다)·b9 와 스킨 드로우의 b7 이 같이 쓰는데, b7 은 앞의 n 개 조인트만 복사해도 <code>desc.size</code> 인 16,384 B 를 통째로 뗍니다. 드로우 수에는 그림자 뷰마다 다시 그리는 드로우도 들어갑니다. 링이 차면 <code>AllocateUpload</code> 가 에러를 한 번 남기고 그 갱신을 버리므로, 그 드로우는 지난 조각의 값으로 그려집니다.</p>
+<p>처음 구현은 디졸브에 float4 두 칸을 더해 272 B 였습니다. 다섯 값(진행도, 폭, 경계 색 셋) 중 넷을 <code>dissolveEdge</code> 하나에 넣고, 폭은 번쩍임의 쓰지 않던 a 에 넣어 256 B 로 되돌렸습니다. 셰이더는 <code>DissolveAmount()</code>·<code>DissolveWidth()</code> 로만 읽으므로 칸 배치를 아는 곳은 <code>Dissolve.hlsli</code> 와 <code>addObject</code> 두 곳입니다. 접기 전과 뒤의 디졸브 화면은 픽셀이 같았습니다 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/object-highlight-record.html#dissolve-verify">기록 7.6</a>. D3D11 은 <code>Map(WRITE_DISCARD)</code> 로 드라이버가 메모리를 바꿔 주므로 이 제약이 없고, 16 바이트 배수만 지키면 됩니다. 다음에 칸이 더 필요하면 b1 을 512 B 로 키우는 비용(드로우 상한 절반)과 구조화 버퍼·인스턴스 데이터로 옮기는 비용을 비교해야 합니다.</p>
+
+<h3>4-3. 재질 쪽: b3 <code>dissolveNoiseScale</code> 과 t20</h3>
+<table>
+<tr><th>값</th><th>자리</th><th>이유</th></tr>
+<tr><td>노이즈 텍스처</td><td><code>Material::dissolveNoiseTexture</code> → 재질 셋 t20 (<code>kSRVSlotDissolveNoise</code>). 비면 <code>builtin:noise</code></td><td>텍스처는 상수 버퍼에 못 넣습니다. 재질 셋은 재질마다 이미 있으므로 칸 하나만 늘리면 됩니다</td></tr>
+<tr><td>노이즈 UV 배율</td><td><code>Material::dissolveNoiseScale</code> → b3 <code>MaterialConstants</code> 오프셋 100 (예전 <code>padding1</code>)</td><td>무늬 크기는 노이즈와 짝이라 재질에 둡니다. b3 크기 112 B 는 그대로</td></tr>
+<tr><td>진행도·경계</td><td>오브젝트 (b1)</td><td>오브젝트마다 다르고 매 프레임 바뀜</td></tr>
+</table>
+<p>"무늬는 재질, 진행은 인스턴스"로 나누는 것이 1-2 의 원칙을 디졸브에 적용한 결과입니다. t20 은 후처리 셋의 <code>kSRVSlotBlurWeights</code> 와 번호가 같지만 두 셋이 한 패스에 같이 묶이지 않고, 엔진 시작 때 바인딩 대조가 패스마다 레이아웃과 셰이더를 맞춰 봅니다(<a href="../overview/rendering-analysis.html#c7-7">rendering-analysis 7.7</a>, <a href="rhi-pso-study.html#shaders">RHI·PSO 학습 8장</a>). 노이즈는 선형으로 읽고 R 채널만 씁니다. 패키지 빌드(<code>GameBuilder</code>)는 이 칸의 파일을 모아 선형으로 변환해 싣고, 빈 칸(<code>builtin:noise</code>)은 엔진이 만드므로 실을 파일이 없습니다.</p>
+</section>
+
+<section id="shaders">
+<h2>5. 셰이더</h2>
+<h3>5-1. 강조 함수 (<code>MaterialSurface.hlsli</code>)</h3>
+<pre><code>float3 HighlightAlbedo(float3 albedo)
+{
+    return lerp(albedo, highlightTint.rgb, saturate(highlightTint.a));
+}
+float3 HighlightEmission(float3 geometricNormal, float3 worldPosition)
+{
+    const float3 viewDirection = SafeNormalize(cameraPosition - worldPosition, float3(0.0f, 0.0f, -1.0f));
+    const float rim = pow(saturate(1.0f - saturate(dot(geometricNormal, viewDirection))), max(highlightRim.a, 0.1f));
+    return highlightFlash.rgb + highlightRim.rgb * rim;
+}</code></pre>
+<p><code>EvaluateMaterialSurface</code> 는 첫 줄에서 <code>s.albedo = HighlightAlbedo(baseColorAlpha.rgb)</code>, 마지막 줄에서 <code>s.emission += HighlightEmission(s.geometricNormal, input.worldPosition) + DissolveEdgeEmission(DissolveNoise(input.uv))</code> 를 합니다. 포워드 <code>PS_Main</code> 과 G-buffer <code>PS_GBuffer</code> 가 이 함수를 같이 쓰므로 두 경로가 같은 값을 만듭니다(<a href="deferred-gbuffer-study.html#shared">디퍼드 G-buffer 학습 3-2</a>). 시선 방향은 포워드 조명과 같은 식이고, <code>SafeNormalize</code> 는 카메라가 표면 위에 있을 때의 0 나눗셈을 막습니다.</p>
+
+<h3>5-2. 디졸브 함수 (<code>Dissolve.hlsli</code>)</h3>
+<pre><code>float DissolveNoise(float2 uv)   { return dissolveNoiseTexture.Sample(albedoSampler, uv * dissolveNoiseScale).r; }
+float DissolveAmount()           { return dissolveEdge.a; }
+float DissolveWidth()            { return max(highlightFlash.a, 0.0f); }
+float DissolveThreshold()        { return DissolveAmount() * (1.0f + DissolveWidth()) - DissolveWidth(); }
+void  DissolveClip(float noise)  { if (DissolveAmount() &gt; 0.0f) clip(noise - DissolveThreshold() - 0.0001f); }
+float3 DissolveEdgeEmission(float noise)   // a &gt; 0 이고 w &gt; 0 일 때만
+{ … dissolveEdge.rgb * (1.0f - saturate((noise - DissolveThreshold()) / DissolveWidth())); }</code></pre>
+<p>실제 파일은 같은 식을 <code>if</code> 블록과 반환문 하나로 씁니다. <code>uv</code> 는 VS 가 이미 재질의 <code>uvScale</code> 을 곱한 값이고, 샘플러는 재질의 <code>albedoSampler</code>(s0)입니다.</p>
+<table>
+<tr><th>PS</th><th>디졸브를 부르는 자리</th></tr>
+<tr><td><code>BasicPixelShader.hlsl</code> 의 <code>ShadeForward</code> (포워드·블렌드·unlit·바다 포워드)</td><td>알파 컷아웃 <code>clip</code> 바로 뒤에 <code>DissolveClip</code>. unlit 분기는 <code>HighlightAlbedo</code> + <code>HighlightEmission</code> + <code>DissolveEdgeEmission</code> 을 직접 더함</td></tr>
+<tr><td><code>GBufferPixelShader.hlsl</code> 의 <code>PS_GBuffer</code> (디퍼드·바다 디퍼드)</td><td>같은 자리에 <code>DissolveClip</code>. 버린 픽셀은 깊이·G-buffer·속도를 모두 쓰지 않음</td></tr>
+<tr><td><code>ShadowAlphaPixelShader.hlsl</code> 의 <code>PS_ShadowAlpha</code></td><td>컷아웃 <code>clip</code> 뒤 <code>DissolveClip(DissolveNoise(input.uv))</code>. 색 출력 없음 (6장)</td></tr>
+</table>
+
+<h3>5-3. 변형 없이 분기 하나로 둔 비용</h3>
+<p>강조에는 분기가 없습니다. <code>lerp</code>, 정규화, 내적, <code>pow</code> 몇 개가 모든 메시 픽셀에서 돌고, 값이 0 이면 결과에 0 을 더합니다. 디졸브의 분기 <code>DissolveAmount() &gt; 0</code> 은 상수 버퍼 값이라 한 드로우의 모든 픽셀이 같은 쪽으로 갑니다. 이런 균일 분기는 웨이브 안에서 갈라지지 않아 분기 비용이 거의 없습니다.</p>
+<p>노이즈 샘플은 분기 밖에서 늘 합니다. <code>Sample</code> 은 밉을 고르려고 이웃 픽셀과의 UV 차이(암묵적 ddx·ddy)를 쓰는데, 이 값은 웨이브 안의 픽셀이 모두 같은 흐름을 탈 때만 정의됩니다. 클리어코트 텍스처를 분기 밖에서 샘플하는 것과 같은 이유입니다(<code>Dissolve.hlsli</code> 주석). 그래서 디졸브가 없는 모든 메시 픽셀도 256² 노이즈를 한 번 읽습니다. G-buffer·포워드 PS 는 <code>DissolveClip</code> 용과 <code>EvaluateMaterialSurface</code> 안의 경계 빛용으로 같은 좌표를 두 번 부르는데, 컴파일러가 하나로 합쳤는지는 확인하지 않았습니다.</p>
+<p>그림자 패스에서는 반대로 변형을 만들었습니다. 그림자 패스는 PS 가 아예 없는 경로라, 분기 하나를 넣으려면 모든 그림자 드로우에 PS 를 붙여야 하기 때문입니다(6장). 메인·G-buffer PS 에는 원래 컷아웃 <code>clip</code> 이 있었으므로 <code>clip</code> 하나를 더해도 셰이더의 성질(깊이를 PS 뒤에 확정하는지)은 바뀌지 않습니다(<a href="../plan/object-highlight-record.html#dissolve-shader">기록 7.3</a>).</p>
+</section>
+
+<section id="shadow">
+<h2>6. 그림자: 알파 테스트 변형</h2>
+<h3>6-1. 깊이만 쓰는 패스에서는 구멍이 뚫리지 않는다</h3>
+<p>그림자 패스(<code>Pass_Shadow</code>·<code>Pass_ShadowSkin</code>)는 VS 만 있고 렌더 타깃이 없습니다. 깊이는 래스터라이저가 보간한 값이 그대로 깊이 버퍼에 들어가므로 색을 계산할 PS 가 필요 없고, PS 가 없으면 GPU 는 깊이 쓰기만 하는 빠른 경로를 탑니다(<a href="shadow-map-study.html">그림자 맵 학습</a>, <a href="../overview/rendering-analysis.html#c11-8">rendering-analysis 11.8</a>). 그 대신 <code>clip</code> 을 실행할 곳이 없습니다. 몸이 사라져도 그림자는 남고, 나뭇잎 같은 컷아웃 재질은 폴리곤 모양 그대로 꽉 찬 그림자를 드리웠습니다.</p>
+<h3>6-2. 변형의 구성</h3>
+<pre><code>Pass_ShadowAlpha      VS_ShadowAlpha     + PS_ShadowAlpha   셋: { Layout_Frame, Layout_Object, Layout_Material }
+Pass_ShadowAlphaSkin  VS_ShadowAlphaSkin + PS_ShadowAlpha   (같은 셋)
+Pass_Shadow           ShadowVS           (PS 없음)          셋: { Layout_Frame, Layout_Object }
+
+BuildDrawList:   item.shadowAlpha    = material-&gt;alphaCutoff &gt; 0 || dissolving   // dissolving = amount &gt; 0
+                 item.shadowPipeline = GetShadowPipelineFor(재질, 정점 형식, mirrored, item.shadowAlpha)
+DrawDepthView:   item.shadowAlpha 이고 재질이 바뀌면 cmd.SetResourceSet(kSetMaterial, gpuMaterial-&gt;set)</code></pre>
+<p>VS 는 기존 그림자 VS 의 변환(<code>world</code> → b5 <code>shadowViewProj</code>)에 정점 색과 <code>uv × uvScale</code> 을 더 넘깁니다. PS 는 메인 패스의 <code>MaterialBaseColor</code> 와 같은 식으로 알파를 구합니다.</p>
+<pre><code>alpha = 정점 색.a × baseColor.a × 알베도 텍스처.a
+if (alphaCutoff &gt; 0) clip(alpha − alphaCutoff);
+DissolveClip(DissolveNoise(uv));       // 메인 PS 와 같은 노이즈·문턱 → 몸과 그림자가 같은 무늬로 뚫림</code></pre>
+<p>깊이 바이어스·D32 포맷·렌더 타깃 0 개는 <code>Renderer::BuildPassDescs</code> 의 한 반복문이 네 패스(<code>Pass_Shadow</code>, <code>Pass_ShadowSkin</code>, <code>Pass_ShadowAlpha</code>, <code>Pass_ShadowAlphaSkin</code>)에 같이 넣으므로 변형끼리 그림자 모양이 어긋나지 않습니다.</p>
+
+<h3>6-3. 왜 셋이 셋이고, 왜 키 비트가 따로인가</h3>
+<p>PS 가 알베도 알파(t0), 노이즈(t20), <code>baseColor</code>·<code>alphaCutoff</code>·<code>uvScale</code>(b3)을 읽어야 하므로 재질 셋이 필요합니다. 셋 목록이 달라지면 D3D12 에서는 루트 시그니처가 달라집니다. <code>D3D12Device::GetOrCreateRootLayout</code> 이 루트 레이아웃을 셋 레이아웃 목록의 해시로 캐시하기 때문입니다. 알파 변형의 목록은 메인 패스와 같은 { 프레임, 오브젝트, 재질 } 이라 메인 패스의 루트 시그니처를 같이 쓰고, PS 없는 그림자 PSO 와는 다릅니다(<a href="binding-study.html#d3d12">바인딩 학습 5장</a>).</p>
+<p>그림자 루프 안에서 두 종류가 섞여 나오면 루트 시그니처가 바뀝니다. <code>D3D12CommandList::SetPipelineState</code> 는 루트가 바뀔 때 꽂힌 셋을 모두 다시 묶을 대상으로 표시하고, 드로우 직전의 <code>ApplyBindings</code> 는 현재 루트 레이아웃의 셋 수만큼만 돌기 때문에, PS 없는 변형으로 돌아갔을 때 셋 2 에 남은 재질 셋은 무시됩니다. 그래서 <code>DrawDepthView</code> 는 PSO 를 고른 뒤 재질 셋을 꽂고, 재질이 바뀔 때만 다시 꽂습니다(<code>DepthDrawState</code>).</p>
+<p>PSO 는 <code>Renderer::GetShadowPipelineFor</code> 의 키로 갈립니다. 이 키는 메인 패스 키와 다른 캐시(<code>m_shadowPipelines</code>)라 비트 뜻도 다릅니다. 메인 키(<code>GetPipelineFor</code>)의 비트 10 은 뒷면 컬링입니다.</p>
+<table>
+<tr><th>그림자 키 비트</th><th>뜻</th></tr>
+<tr><td>0~7</td><td>정점 형식 (스킨이면 <code>Pass_ShadowSkin</code>·<code>Pass_ShadowAlphaSkin</code>)</td></tr>
+<tr><td>8</td><td>미러 (감김 순서 뒤집기)</td></tr>
+<tr><td>9</td><td>양면 재질 (컬링 없음)</td></tr>
+<tr><td>10</td><td>알파 테스트 변형 (2026-11-26)</td></tr>
+<tr><td>11</td><td>바이어스 없음 (비 차폐 맵, 2026-11-26 비 작업)</td></tr>
+</table>
+
+<h3>6-4. 누구에게만 변형을 주는가</h3>
+<p>모든 그림자 드로우에 알파 PS 를 붙이면 코드는 단순해지지만, 그림자 뷰마다(CSM 캐스케이드 최대 넷, 스팟, 포인트 큐브 여섯 면) 모든 그림자 텍셀에서 PS 가 돌고 텍스처 둘을 읽습니다. PS 에 <code>clip</code> 이 있으면 깊이 쓰기를 PS 가 끝날 때까지 미뤄야 하므로 깊이 전용 패스의 빠른 경로도 잃습니다. 그래서 <code>shadowAlpha</code> 는 컷아웃 재질과 디졸브 중(amount &gt; 0)인 오브젝트에만 켜고, 나머지 불투명 재질과 amount = 0 인 Dissolve 는 PS 없는 경로에 남깁니다. 진행도가 0 에서 커지는 프레임에 PSO 가 바뀌고, 그 조합을 처음 쓰면 그때 PSO 를 만듭니다. 이 비용과 컷아웃이 많은 씬의 그림자 시간은 기록에서도 재지 않았습니다(<a href="../plan/object-highlight-record.html#todo">기록 6장</a>. Sponza 는 재질 26 개 중 3 개가 컷아웃).</p>
+
+<h3>6-5. 같이 고쳐진 것: 컷아웃 그림자</h3>
+<p>변형의 조건에 <code>alphaCutoff &gt; 0</code> 이 들어 있어서 디졸브와 상관없이 컷아웃 재질의 그림자도 잎 모양대로 뚫리게 되었습니다. 기능 추가가 기존 화면을 바꾼 유일한 곳이라 기록은 따로 쟀습니다 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/object-highlight-record.html#dissolve-verify">기록 7.6</a>.</p>
+<table>
+<tr><th>씬</th><th>다른 픽셀 (8 초과, 최대)</th><th>읽은 것</th></tr>
+<tr><td>Sponza.json</td><td>2,480 (211, 45). 포워드 2,461. 잡음 기준 1</td><td>화분 식물·사슬 주변의 그림자가 잎·고리 모양으로 뚫림</td></tr>
+<tr><td>SponzaCascades.json</td><td>1,622 (284, 34). 잡음 기준 0</td><td>같음</td></tr>
+<tr><td>DeferredMaterials.json 의 D_Cutout</td><td>0</td><td>알베도 텍스처가 없어 알파가 어디나 1. PSO 만 변형으로 바뀜</td></tr>
+<tr><td>DissolveGone vs DissolveNoHelmet, 그림자 디버그 뷰 포함</td><td>0</td><td>amount = 1 이면 몸과 그림자가 모두 사라져 헬멧이 없는 씬과 같음</td></tr>
+</table>
+</section>
+
+<section id="pipeline">
+<h2>7. 렌더러에 끼워 넣은 자리</h2>
+<table>
+<tr><th>항목</th><th>이 엔진에서</th><th>더 읽을 곳</th></tr>
+<tr><td>디퍼드</td><td>G-buffer PS 에서 색 섞기(gb0, F0 는 gb2), 발광 칸에 번쩍임·가장자리 빛·경계 빛. 라이팅 패스는 바뀐 것이 없음. 디퍼드 대 포워드 차이는 강조로 바뀐 픽셀 안에서 최대 18, 평균 1.08 로 기준끼리의 차이(최대 22) 안 <span class="tag ok">확인함 (2026-11-26)</span></td><td><a href="deferred-gbuffer-study.html#layout">디퍼드 G-buffer 학습 4장</a></td></tr>
+<tr><td>포워드·블렌드·unlit</td><td><code>ShadeForward</code>. unlit 은 조명이 없으므로 섞은 색 + 발광을 그대로 냄. 블렌드 재질도 <code>DissolveClip</code> 을 타지만 그림자는 원래 만들지 않음</td><td><a href="material-extensions-study.html#alpha">재질 확장 학습 5장</a></td></tr>
+<tr><td>바다</td><td>바다 PS 는 <code>BasicPixelShader.hlsl</code>·<code>GBufferPixelShader.hlsl</code> 을 include 해서 따로 고칠 것이 없음. 가장자리 빛은 픽셀에서 다시 구한 파도 노멀을 따름. 화면으로 확인하지 않음</td><td><a href="ocean-gerstner-study.html#shaders">Gerstner 바다 학습 6장</a></td></tr>
+<tr><td>스킨 메시</td><td>b1 은 같음. 그림자는 <code>Pass_ShadowAlphaSkin</code>. 기록의 DissolveHierarchy(마스터치프)에서 돎</td><td><a href="skinning-study.html#passes">스키닝 학습 6장</a></td></tr>
+<tr><td>그림자</td><td>강조는 그림자에 영향이 없음(색만 바꿈). 디졸브는 알파 테스트 변형 (6장)</td><td><a href="shadow-atlas-study.html#pass">그림자 아틀라스 학습 8장</a></td></tr>
+<tr><td>비 차폐 맵</td><td><code>occluderPipeline</code> 도 <code>GetShadowPipelineFor(…, item.shadowAlpha, true)</code>(그림자 키 비트 11)이고 <code>RenderRainOcclusionPass</code> 가 같은 <code>DrawDepthView</code> 를 부르므로, 알파 테스트 변형의 구멍이 차폐 맵에도 남아 비가 통과함. 컷아웃 쪽은 비 기록에서 잎 판 아래 바닥이 잎 무늬대로 젖는 것을 확인함 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/rain-record.html#v-matrix">비 기록 9.1</a>. 디졸브 쪽은 같은 코드 경로이지만 화면으로 본 적이 없고, 강조·디졸브 기록에는 없음(비 작업이 뒤) <span class="tag chk">예상</span></td><td><a href="../plan/rain-record.html#occ-pass">비 기록 차폐 맵 패스</a></td></tr>
+<tr><td>속도 버퍼</td><td>강조·디졸브는 위치를 바꾸지 않으므로 속도에 손대지 않음. <code>clip</code> 된 픽셀은 속도도 쓰지 않아 그 자리에는 뒤에 보이는 표면의 속도가 남음. 노이즈가 UV 에 붙어 있어 물체가 움직여도 무늬가 미끄러지지 않음</td><td><a href="velocity-buffer-study.html#sources">속도 버퍼 학습 4장</a></td></tr>
+<tr><td>TAA</td><td>따로 처리하지 않음. 사라지며 드러난 배경은 가려졌다 드러난 곳과 같아서 3×3 YCoCg 클리핑이 지난 색을 잘라 낼 것이고, 아주 밝은 번쩍임·경계 빛은 1/(1 + 밝기) 가중치 때문에 첫 프레임이 덜 밝게 들어올 수 있음. TAA 를 켜고 확인한 적은 없음 <span class="tag chk">예상</span></td><td><a href="taa-study.html#resolve">TAA 학습 5장</a></td></tr>
+<tr><td>블룸</td><td>번쩍임·경계 빛은 HDR 발광이라 1 을 넘으면 블룸이 번짐 (경계 세기 기본 4) <span class="tag chk">예상</span></td><td><a href="post-process-study.html">후처리 학습</a></td></tr>
+<tr><td>디버그 뷰</td><td>G-buffer 경로는 디버그 뷰가 켜지면 발광을 0 으로 쓰고, <code>SurfaceDebugColor</code> 에는 발광을 보여 주는 뷰가 없음. 그래서 번쩍임·가장자리 빛·경계 빛은 뷰 0 에서만 보이고, 색 섞기는 알베도 뷰(1)에도, 디졸브 구멍은 모든 뷰에 보임</td><td><a href="frame-structure-study.html#debug">프레임 구조 학습 9장</a></td></tr>
+<tr><td>에디터·저장·패키지</td><td>컴포넌트는 Reflect 키가 곧 씬 파일 키(Highlight 7 개, Dissolve 4 개). 재질의 두 칸은 <code>DebugUI::DrawDissolveNoiseFields</code>(인스펙터 재질 칸과 Materials 탭 공용), <code>SceneSerializer</code> 는 기본값이 아닐 때만 키를 씀, <code>GameBuilder</code> 가 노이즈 파일을 선형으로 실음</td><td><a href="texture-pipeline-study.html#cache">텍스처 파이프라인 학습 6장</a></td></tr>
+</table>
+</section>
+
+<section id="code">
+<h2>8. 우리 코드 지도</h2>
+<table>
+<tr><th>파일</th><th>함수·타입</th><th>하는 일</th></tr>
+<tr><td><code>Scene/Highlight.h</code>·<code>.cpp</code></td><td><code>Highlight</code></td><td>색 섞기·번쩍임·가장자리 빛 값 7 개. <code>Update</code> 없음</td></tr>
+<tr><td><code>Scene/Dissolve.h</code>·<code>.cpp</code></td><td><code>Dissolve</code></td><td><code>amount</code>·<code>edgeWidth</code>·<code>edgeColor</code>·<code>edgeIntensity</code></td></tr>
+<tr><td><code>Scene/Material.h</code></td><td><code>Material::dissolveNoiseTexture</code>, <code>dissolveNoiseScale</code></td><td>재질별 노이즈 무늬와 배율</td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code></td><td><code>PerObjectConstants</code>, <code>MaterialConstants::dissolveNoiseScale</code>, <code>kSRVSlotDissolveNoise</code></td><td>b1 256 B 와 오프셋 <code>static_assert</code>, b3 오프셋 100, t20</td></tr>
+<tr><td><code>Graphics/Renderer.cpp</code></td><td><code>ResolveInherited&lt;T&gt;</code>, <code>Renderer::BuildDrawList</code>(<code>addObject</code>), <code>Renderer::UploadObjectConstants</code></td><td>계층 상속, 범위 자르기와 미리 곱하기, <code>shadowAlpha</code> 결정, b1 업로드</td></tr>
+<tr><td><code>Graphics/Renderer.cpp</code></td><td><code>Renderer::CreateLayouts</code>, <code>Renderer::BuildPassDescs</code>, <code>Renderer::GetShadowPipelineFor</code>, <code>Renderer::GetOrCreateGpuMaterial</code></td><td>b1 VS|PS, 재질 레이아웃의 t20, 그림자 네 패스의 바이어스, 키 비트 10, 노이즈 로드(<code>builtin:noise</code> 대체)</td></tr>
+<tr><td><code>Graphics/Renderer.h</code></td><td><code>ObjectData</code>, <code>DrawItem::shadowAlpha</code>, <code>HierarchyFrame</code>, <code>Pass_ShadowAlpha</code>·<code>Pass_ShadowAlphaSkin</code></td><td>오브젝트별 네 칸, 그림자 변형 표시, 상속 포인터</td></tr>
+<tr><td><code>Graphics/RendererShadow.cpp</code></td><td><code>Renderer::RenderShadowPass</code>, <code>Renderer::DrawDepthView</code>, <code>DepthDrawState</code></td><td>알파 항목만 재질 셋을 꽂음 (그림자·비 차폐 공용 루프)</td></tr>
+<tr><td><code>Graphics/TextureLoader.cpp</code>, <code>Graphics/TextureCache.cpp</code></td><td><code>TextureLoader::CreateTileableNoise</code>, <code>builtin:noise</code></td><td>256², 격자 8 → 64, 4 옥타브, 순위 재매김, 선형, 밉</td></tr>
+<tr><td><code>Shaders/Mesh.hlsli</code>, <code>Shaders/Material.hlsli</code></td><td><code>cbuffer PerObject</code>, <code>dissolveNoiseTexture</code>(t20), <code>dissolveNoiseScale</code></td><td>C++ 와 같은 배치</td></tr>
+<tr><td><code>Shaders/MaterialSurface.hlsli</code></td><td><code>HighlightAlbedo</code>, <code>HighlightEmission</code>, <code>EvaluateMaterialSurface</code></td><td>F0 전 색 섞기, 발광에 더하기</td></tr>
+<tr><td><code>Shaders/Dissolve.hlsli</code></td><td><code>DissolveNoise</code>, <code>DissolveThreshold</code>, <code>DissolveClip</code>, <code>DissolveEdgeEmission</code></td><td>문턱 식과 경계 띠</td></tr>
+<tr><td><code>Shaders/BasicPixelShader.hlsl</code>, <code>Shaders/GBufferPixelShader.hlsl</code></td><td><code>ShadeForward</code>, <code>PS_GBuffer</code></td><td>컷아웃 뒤 <code>DissolveClip</code>, unlit 분기의 강조</td></tr>
+<tr><td><code>Shaders/ShadowAlpha.hlsli</code>, <code>ShadowAlphaVertexShader.hlsl</code>, <code>ShadowAlphaSkinVertexShader.hlsl</code>, <code>ShadowAlphaPixelShader.hlsl</code></td><td><code>VS_ShadowAlpha</code>, <code>VS_ShadowAlphaSkin</code>, <code>PS_ShadowAlpha</code></td><td>알파 테스트 그림자</td></tr>
+<tr><td><code>RHI/D3D12/D3D12Device.cpp</code></td><td><code>D3D12Device::CreateBuffer</code>, <code>UpdateBuffer</code>, <code>AllocateUpload</code>, <code>GetOrCreateRootLayout</code></td><td>256 올림, 링 조각, 셋 목록별 루트 시그니처</td></tr>
+<tr><td><code>RHI/D3D12/D3D12CommandList.cpp</code></td><td><code>D3D12CommandList::SetPipelineState</code>, <code>ApplyBindings</code></td><td>루트가 바뀌면 셋을 다시 묶음, 루트의 셋 수만큼만 바인딩</td></tr>
+<tr><td><code>Graphics/RendererRain.cpp</code></td><td><code>Renderer::RenderRainOcclusionPass</code></td><td>비 차폐 맵도 <code>DrawDepthView</code> 로 그려 알파 변형을 같이 씀</td></tr>
+<tr><td><code>Editor/DebugUI.cpp</code>, <code>Editor/Editor.cpp</code>, <code>Scene/SceneSerializer.cpp</code>, <code>Editor/GameBuilder.cpp</code></td><td><code>DebugUI::DrawDissolveNoiseFields</code>, 재질 저장·읽기, 패키지 텍스처 목록</td><td>재질 칸 편집·저장·패키지</td></tr>
+<tr><td><code>Projects/SherlockTestScenes/Scripts/Tests/</code></td><td><code>HitFlash</code>, <code>DissolveOut</code>, <code>make_highlight_test_scenes.py</code>, <code>make_dissolve_test_scenes.py</code></td><td>연출 예제와 테스트 씬 생성기</td></tr>
+</table>
+</section>
+
+<section id="lab">
+<h2>9. 실험</h2>
+<p>에디터 공통 인자는 <code>--project=…/SherlockTestScenes.sherlock --scene=씬.json</code> 이고, 자동 비교는 <code>--exit-after=40 --screenshot=파일</code> 로 찍습니다. 백엔드는 <code>--backend=d3d11|d3d12</code>, 경로는 <code>--deferred=0</code>, 재생은 <code>--play=1</code> 입니다.</p>
+<h3>E1. 값이 0 이면 원래 화면 <span class="tag ok">확인함 (2026-11-26)</span></h3>
+<p><code>HighlightZero.json</code> 을 <code>DeferredMaterials.json</code> 과, <code>DissolveZero.json</code> 을 <code>DamagedHelmet.json</code> 과 비교합니다. 기록에서 D3D11 디퍼드·D3D12 디퍼드·D3D11 포워드 모두 다른 픽셀 0 이었습니다(<a href="../plan/object-highlight-record.html#verify">기록 5장</a>, <a href="../plan/object-highlight-record.html#dissolve-verify">7.6</a>). 2-1 의 원칙을 확인하는 실험입니다.</p>
+<h3>E2. 백엔드와 경로 <span class="tag ok">확인함 (2026-11-26)</span></h3>
+<p><code>Highlight.json</code> 은 D3D11 대 D3D12 가 3 픽셀(최대 1), <code>Dissolve.json</code> 은 0 픽셀이었습니다. 디퍼드 대 포워드는 <code>Dissolve.json</code> 이 최대 8, 8 초과 0 으로 기준 씬(<code>DamagedHelmet</code>, 최대 11)보다 작았습니다. b1 가시성을 바꾼 뒤 <code>--gpu-validation=1</code> 로 D3D12 GPU 기반 검증을 돌려 오류가 없었습니다.</p>
+<h3>E3. 계층 <span class="tag ok">확인함 (2026-11-26)</span></h3>
+<p><code>HighlightHierarchy.json</code>(마스터치프 루트에 빨강 + 가장자리, 01.Arms 에 0 값)은 <code>MasterChiefWalk.json</code> 과 10,924 픽셀이 달랐고 01.Arms 만 원래 색이었습니다. <code>DissolveHierarchy.json</code> 은 8,665 픽셀로, 노이즈 칸을 비운 재질 넷이 모두 사라졌습니다. 3-1 표의 "자식 Highlight 를 끄면 물려받음"은 확인하지 않았습니다. Inspector 에서 01.Arms 의 Highlight 를 끄면 팔도 빨개질 것입니다 <span class="tag chk">예상</span>.</p>
+<h3>E4. 그림자 구멍 <span class="tag ok">확인함 (2026-11-26)</span></h3>
+<p><code>Dissolve.json</code> 을 <code>--debug-view=4</code>(그림자 계수)로 찍으면 바닥 그림자가 헬멧과 같은 무늬로 뚫립니다. <code>DissolveGone</code> 대 <code>DissolveNoHelmet</code> 은 조명 화면과 그림자 뷰 모두 0 픽셀이었습니다. 6-5 표가 컷아웃 쪽 결과입니다.</p>
+<h3>E5. 노이즈 분포 <span class="tag chk">계산값</span></h3>
+<p><code>CreateTileableNoise</code> 의 해시·smoothstep 보간·옥타브 합·순위 재매김을 Python 으로 옮기면 2-6 의 표와 그림 2 가 나옵니다. 순위 재매김 줄을 빼고 [최소, 최대] 로 늘이기만 하면 a = 0.45 → 0.55 사이에 19 %가 사라지고, 순위로 펴면 10.6 %입니다. 엔진에서 보려면 <code>Dissolve.json</code> 의 <code>amount</code> 를 Inspector 에서 0.1 씩 올리며 헬멧 면적을 비교합니다 <span class="tag chk">예상</span>.</p>
+<h3>E6. 짧은 번쩍임과 TAA <span class="tag chk">예상</span></h3>
+<p><code>HighlightHitFlash.json</code> 을 <code>--play=1 --taa=1</code> 로 돌려 번쩍임 첫 몇 프레임을 TAA 끈 화면과 비교합니다. <code>duration</code> 기본 0.15 초는 60 fps 에서 약 9 프레임이라 크게 흐려지지 않겠지만, 첫 프레임은 1/(1 + 밝기) 가중치 때문에 덜 밝게 들어올 것입니다. <code>duration</code> 을 0.03 초(약 2 프레임)로 줄이면 차이가 더 커질 것입니다.</p>
+<h3>E7. b1 을 272 B 로 <span class="tag chk">예상</span></h3>
+<p><code>PerObjectConstants</code> 끝에 float4 하나를 더하고 셰이더도 맞추면(HLSL cbuffer 와 <code>static_assert</code> 를 같이 고쳐야 로드가 됨) D3D12 에서 드로우당 링 사용이 두 배가 됩니다. 링 최고 사용량(<code>UploadRing::peak</code>)은 로그로 나오지 않으므로, 드로우가 많은 씬에서 "프레임 업로드 링이 가득 참" 에러가 나는지로 봅니다. D3D11 화면은 바뀌지 않을 것입니다. 확인한 뒤 되돌립니다.</p>
+<h3>E8. 비와 디졸브 <span class="tag chk">예상</span></h3>
+<p><code>Rain.json</code> 의 상자 지붕(<code>RainTest/Roof</code>)에 Dissolve 를 붙여 <code>amount</code> 0.5 로 두고 디버그 뷰 18(R = 비를 맞음)로 봅니다. 차폐 맵에도 노이즈 구멍이 나므로 지붕 아래 바닥에 같은 무늬로 젖은 점이 생길 것입니다. 지붕 상자가 컷아웃이 아니라도 디졸브 중이면 알파 변형으로 가기 때문입니다.</p>
+<h3>E9. 가장자리 지수 <span class="tag chk">예상</span></h3>
+<p><code>Highlight.json</code> 에서 가장자리 빛을 켠 오브젝트의 <code>rimPower</code> 를 1, 3, 8 로 바꿉니다. 그림 1 대로 1 이면 원판의 4 분의 1 이 반 이상 밝고, 8 이면 실루엣 한두 픽셀만 남을 것입니다. 노말맵이 강한 재질(<code>F_ClearcoatNormal</code>)에서도 테두리가 매끈하면 2-4 의 기하 노멀 선택이 맞게 동작한 것입니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>10. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>디졸브 무늬가 메시 경계에서 끊김</td><td>노이즈 좌표가 메시 UV</td><td>UV 섬 경계·UV 없는 메시·UV 가 겹친 모델은 무늬가 이상함. 오브젝트 공간(트라이플래너) 방식은 하지 않음</td></tr>
+<tr><td>노이즈가 반복되지 않고 늘어짐</td><td><code>DissolveNoise</code> 가 재질의 <code>albedoSampler</code> 를 씀</td><td>재질 샘플러가 Clamp 프리셋이면 노이즈도 타일링되지 않음</td></tr>
+<tr><td>먼 물체는 시작이 늦고 가운데서 빨리 사라짐</td><td>밉이 노이즈를 평균해 값이 가운데로 모임</td><td>256² 에서 밉 3(32²)까지는 거의 같고, 밉 4(16²)에서 a = 0.1 의 면적이 5.7 → 1.6 %, 밉 5(8²)에서 a = 0.25 가 4.7 % (상자 필터 근사) <span class="tag chk">계산값</span></td></tr>
+<tr><td>진행도와 사라진 면적이 조금 다름</td><td>문턱이 a(1 + w) − w</td><td>차이는 w 미만 (2-5)</td></tr>
+<tr><td>화면에서 경계 띠 두께가 들쭉날쭉</td><td><code>edgeWidth</code> 는 노이즈 값 단위</td><td>화면 두께는 노이즈 기울기와 UV 밀도, <code>dissolveNoiseScale</code> 에 따라 달라짐</td></tr>
+<tr><td>자식의 강조가 부모 값과 섞이지 않음</td><td>컴포넌트 포인터 하나를 고르는 상속</td><td>필드 단위 병합 없음 (3-1)</td></tr>
+<tr><td>강조를 켜니 디졸브 경계가 사라짐</td><td><code>highlightFlash.a</code> 를 두 기능이 나눠 씀</td><td><code>addObject</code> 에서 Dissolve 블록이 Highlight 블록 뒤에 있어야 함</td></tr>
+<tr><td>b1 에 값을 하나 더 넣었더니 D3D12 에서 일부 드로우가 엉뚱한 행렬·색으로 그려짐</td><td>256 B 를 넘으면 링 조각이 512 B 라 링이 빨리 참. 찬 뒤의 갱신은 버려져 지난 조각의 값으로 그려짐</td><td><code>static_assert(sizeof(PerObjectConstants) == 256)</code> 이 막음 (4-2)</td></tr>
+<tr><td>정면 픽셀이 NaN 으로 번짐</td><td><code>pow(0, 0)</code></td><td>지수 0.1 하한을 C++·셰이더 양쪽에</td></tr>
+<tr><td>디버그 뷰에서 번쩍임이 안 보임</td><td>디버그 뷰는 발광을 쓰지 않음</td><td>뷰 0 에서 볼 것 (7장)</td></tr>
+<tr><td>한두 프레임 번쩍임이 흐림</td><td>TAA 히스토리와 섞임</td><td>확인하지 않음 (E6)</td></tr>
+<tr><td>컷아웃이 많은 씬의 그림자 패스가 느려짐</td><td>알파 변형은 PS·텍스처 둘·재질 셋 바인딩</td><td>시간은 재지 않음 (6-4)</td></tr>
+<tr><td>디졸브 중인 지붕 아래가 젖음</td><td>비 차폐 맵이 같은 알파 변형을 씀</td><td>컷아웃 잎은 확인함, 디졸브는 확인하지 않음 (7장, E8)</td></tr>
+<tr><td>파티클·UI 가 강조·디졸브를 안 받음</td><td>b1 <code>PerObject</code> 를 읽는 것은 메시 셰이더뿐</td><td>범위 밖</td></tr>
+</table>
+<p>남은 일은 기록 6장에 있습니다: 트라이플래너 노이즈, TAA 를 켠 상태의 경계·번쩍임 확인, 알파 변형 그림자의 비용 측정(<a href="../plan/object-highlight-record.html#todo">기록 6장</a>).</p>
+</section>
+
+<section id="study">
+<h2>11. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>인스턴스별 셰이더 값</td><td>재질 공유와 드로우마다 바뀌는 값의 분리, 바인딩 빈도별 셋</td><td>1-2, 4-1</td></tr>
+<tr><td>상수 버퍼 정렬과 업로드 링</td><td>루트 CBV 256 B 정렬, 동적 상수 버퍼의 링 할당, D3D11 의 WRITE_DISCARD</td><td>4-2</td></tr>
+<tr><td>메탈릭 워크플로의 F0</td><td>금속은 반사 색 = 알베도, 확산 0</td><td>2-2</td></tr>
+<tr><td>림 라이트와 프레넬</td><td>1 − N·V, 지수로 띠 두께 조절, 기하 노멀 대 셰이딩 노멀</td><td>2-4</td></tr>
+<tr><td>알파 테스트 (<code>clip</code>/<code>discard</code>)</td><td>early-Z 와 깊이 쓰기 시점, 깊이 전용 패스의 빠른 경로</td><td>5-3, 6-4</td></tr>
+<tr><td>fBm 과 히스토그램 평탄화</td><td>옥타브 합의 분포, 누적 분포 함수로 펴기, 타일링되는 격자</td><td>2-6</td></tr>
+<tr><td>균일 분기와 암묵적 미분</td><td>상수 버퍼 분기의 비용, 분기 안 <code>Sample</code> 의 문제</td><td>5-3</td></tr>
+<tr><td>루트 시그니처와 셋 목록</td><td>레이아웃 조합이 바뀌면 루트가 바뀌고 셋을 다시 묶음</td><td>6-3</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Unity 스크립팅 API 문서의 <code>MaterialPropertyBlock</code> — 재질을 복사하지 않고 렌더러별 값을 넘기는 API. 1-2</li>
+<li>Unreal Engine 문서의 Custom Primitive Data 항목 — 프리미티브별 float 값을 재질이 읽는 방식. 1-2</li>
+<li>Microsoft, Direct3D 12 문서의 상수 버퍼 뷰와 <code>D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT</code>(256) — 4-2</li>
+<li>Ken Perlin, "An Image Synthesizer" (SIGGRAPH 1985), Ebert 외, <i>Texturing &amp; Modeling: A Procedural Approach</i> 의 fBm 장 — 값 노이즈·옥타브 합. 2-6</li>
+<li>Gonzalez, Woods, <i>Digital Image Processing</i> 의 히스토그램 평탄화 — 순위로 분포를 펴는 방법. 2-6</li>
+<li>Chris Wyman, Morgan McGuire, "Hashed Alpha Testing" (I3D 2017) — 알파 테스트·디더 투명의 깜빡임과 대안. 1-3</li>
+<li>Brian Karis, "High Quality Temporal Supersampling" (SIGGRAPH 2014 코스) — 1/(1 + 밝기) 가중치와 이웃 클리핑. 7장</li>
+<li>Akenine-Möller 외, <i>Real-Time Rendering</i> 4판의 알파 테스트·early-Z 절 — 5-3, 6-4</li>
+<li>우리 문서: <a href="../plan/object-highlight-record.html">오브젝트별 강조·디졸브 구현 기록</a>(검증 숫자), <a href="../overview/rendering-analysis.html#c10-6">rendering-analysis 10.6</a>, <a href="../overview/rendering-analysis.html#c14-5">14.5</a>, <a href="binding-study.html">바인딩 학습</a>, <a href="rhi-pso-study.html">RHI·PSO 학습</a>, <a href="shadow-map-study.html">그림자 맵 학습</a>, <a href="deferred-gbuffer-study.html">디퍼드 G-buffer 학습</a>, <a href="pbr-study.html">PBR 학습</a>, <a href="material-extensions-study.html">재질 확장 학습</a>, <a href="velocity-buffer-study.html">속도 버퍼 학습</a>, <a href="taa-study.html">TAA 학습</a></li>
+</ul>
+</section>
+</main>
+</body>
+</html>

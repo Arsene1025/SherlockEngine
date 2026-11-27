@@ -41,7 +41,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <h1>SSAO 학습 문서</h1>
   <p>화면 공간 앰비언트 오클루전 — 무엇을 근사하는가, 깊이 버퍼로 가림을 세는 방법, 우리 엔진의 두 패스와 적용 자리, 한계</p>
   <p>2026-11-25 · SSAO 이야기는 지금까지 <a href="../plan/deferred-clustered-ssao-plan.html#c-ssao">디퍼드·클러스터드·SSAO 계획 4장</a>과 <a href="../plan/deferred-clustered-ssao-record.html#c-ssao">구현 기록 2.9</a>, <a href="../overview/rendering-analysis.html#c8-2">rendering-analysis 8.2</a>의 패스 목록에 나뉘어 있었습니다. 이 문서는 원리부터 다시 설명하고 지금 코드에 맞춰 정리합니다. 계획 문서와 코드가 다른 곳은 코드를 따랐고 9장 끝에 모아 두었습니다.</p>
-  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다. 2026-11-27: 강조·디졸브·비(36ef141~0e20f6c)와 1fc0e12 주석 정리에 맞춰 3장 표의 G-buffer 패스 출력을 MRT 6장(발광·GB0~GB3·속도)으로, 9장의 <code>GBuffer.hlsli</code> t29 주석 설명을 고쳤습니다.</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(AO가 무엇이고 왜 화면 공간에서 구하는가, 반구 샘플링), 3장은 한 프레임에서 SSAO가 끼는 자리, 4장은 셰이더 세부(위치 복원, 커널, 회전, 비교와 범위 검사, 블러), 5장은 결과를 어디에 곱하는가, 6장은 설정, 7장은 코드 지도, 8장은 실험, 9장은 함정과 한계, 10장은 공부할 개념과 참고 문서입니다. 깊이에서 위치를 복원하는 기초는 <a href="../study/deferred-gbuffer-study.html">디퍼드·G-buffer 학습</a>에 있습니다.</div>
   <div class="box warn"><b>숫자에 대해.</b> 식으로 계산한 값은 <span class="tag chk">계산값</span>, 해 보지 않은 실험의 결과는 <span class="tag chk">예상</span>으로 표시했습니다. 화면 비교와 시간 측정은 2026-11-18 구현 기록에서 가져왔고 <span class="tag ok">확인함</span>으로 표시했습니다. SSAO 값을 레이 트레이싱 AO 같은 정답과 비교한 적은 없습니다. 모양만 눈으로 확인했습니다.</div>
 </header>
@@ -131,7 +131,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 </figure>
 <table>
 <tr><th>순서</th><th>패스</th><th>읽음</th><th>씀</th><th>코드</th></tr>
-<tr><td>1</td><td>GBuffer</td><td>메시·재질</td><td>GB0~GB3, 깊이 <code>D24_UNORM_S8_UINT</code></td><td><code>RenderDeferredScene</code> 1단계</td></tr>
+<tr><td>1</td><td>GBuffer</td><td>메시·재질</td><td>MRT 6장(<code>view.hdr</code> 발광, GB0~GB3, 속도), 깊이 <code>D24_UNORM_S8_UINT</code></td><td><code>RenderDeferredScene</code> 1단계</td></tr>
 <tr><td>2</td><td>배리어</td><td>—</td><td>G-buffer → ShaderResource, 깊이 → DepthRead</td><td>같은 함수 2단계</td></tr>
 <tr><td>3a</td><td>SsaoRaw</td><td>b0, b12, t23 깊이, t26 GB1 노멀, t29 흰색</td><td><code>view.ssaoRaw</code> (R8)</td><td><code>Renderer::RenderSsao</code>, <code>PS_Ssao</code></td></tr>
 <tr><td>3b</td><td>SsaoBlur</td><td>같은 레이아웃의 <code>ssaoBlurSet</code>, t29 = <code>ssaoRaw</code></td><td><code>view.ssaoBlur</code> (R8)</td><td><code>RenderSsao</code>, <code>PS_SsaoBlur</code></td></tr>
@@ -352,7 +352,7 @@ color = ShadeLights(s, ..., environment)                    // 직접광은 ao �
 <li>커널 길이: 계획은 <code>lerp(0.1, 1, (i/N)²)</code>, 코드는 층화 <code>0.2 + 0.8 × (i + u)/n</code> (구현 기록에 고친 이력이 있음).</li>
 <li>샘플 수 범위: 계획은 8~32, 에디터 슬라이더는 4~32, 코드의 자르기는 1~32.</li>
 <li>디버그 뷰 7: 계획은 "합친 뒤 값", 코드는 재질 AO만.</li>
-<li>꺼졌을 때 t29: 계획(과 <code>GBuffer.hlsli</code> 주석)은 흰 텍스처, 코드는 <code>ssaoBlur</code>를 그대로 꽂고 <code>aoParams.x</code>로 읽기를 막음. 흰 텍스처는 타깃 생성에 실패했을 때만.</li>
+<li>꺼졌을 때 t29: 계획은 흰 텍스처, 코드는 <code>ssaoBlur</code>를 그대로 꽂고 <code>aoParams.x</code>로 읽기를 막음. 흰 텍스처는 타깃 생성에 실패했을 때만. <code>GBuffer.hlsli</code> 주석도 지금은 이렇게 적음(1fc0e12).</li>
 </ul></div>
 </section>
 

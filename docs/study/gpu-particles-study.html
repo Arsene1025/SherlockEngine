@@ -41,7 +41,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <h1>GPU 파티클 학습 문서</h1>
   <p>파티클 풀·생존/사망 목록·간접 인자 — CPU가 파티클 하나하나를 모르는 채로 시뮬레이션하고 정렬해서 그리는 방법</p>
   <p>2026-11-25 · 렌더러 공부 문서 묶음 중 하나입니다. GPU 파티클 이야기는 지금까지 <a href="../plan/vfx-gpu-particles-record.html">VFX GPU 파티클 구현 기록</a>(1~3단계, 2026-11-17)과 그 <a href="../plan/vfx-gpu-particles-record.html#arch">12장 구조 설명</a>, <a href="../overview/rendering-analysis.html#c20-24">rendering-analysis 20.24 적용 기록</a>, <a href="../overview/glossary.html#compute">용어집 4장 "GPU 컴퓨트·파티클"</a>에 있었습니다. 이 문서는 원리부터 다시 설명하고 현재 코드에 맞춰 정리합니다. 컴퓨트 셰이더·UAV·배리어의 기초는 <a href="../study/compute-uav-study.html">컴퓨트·UAV 학습 문서</a>에 있으므로 여기서는 다시 설명하지 않습니다.</p>
-  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다. 2026-11-27: 강조·디졸브·비(36ef141~0e20f6c)에 맞춰 b8·t24 번호 공유, Effects 패스의 비 그리기, 통계 문구(1fc0e12)를 고치고, 1fc0e12 에서 코드 주석이 바로잡혀 낡은 주석 상자를 지웠습니다.</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1장은 왜 GPU에서 하는가, 2장은 버퍼 배치, 3장은 한 프레임의 호출 순서, 4장은 시뮬레이션 커널 넷과 원자 연산, 5장은 간접 인자, 6장은 깊이를 읽는 두 기능(소프트 파티클·충돌), 7장은 알파 정렬, 8장은 그리기와 속도 버퍼·TAA와의 관계, 9장은 이미터 설정·저장·결정성, 10장은 코드 지도, 11장은 실험, 12장은 함정과 한계, 13장은 공부할 개념과 참고 문서입니다.</div>
   <div class="box warn"><b>숫자에 대해.</b> 버퍼 크기·디스패치 수·정상 상태 파티클 수는 코드의 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 기록 문서의 측정은 모두 2026-11-17의 픽셀 비교 검증(스크린샷 차이 픽셀 수와 최대 단계)이고 <span class="tag ok">확인함</span>으로 표시했습니다. CPU 시뮬레이션과 GPU 시뮬레이션의 시간을 비교한 측정은 기록에 없습니다. 측정에 쓴 씬 중 <code>ParticleTest.json</code>·<code>ParticleExhaust.json</code>·<code>ParticleDepth.json</code>·<code>ParticleDepthOff.json</code>·<code>ParticleAlpha.json</code>·<code>ParticleSpawnAlpha.json</code>은 지금 저장소에 없습니다. 실험(11장)은 남아 있는 <code>ParticleAll</code>·<code>ParticleAlphaSort</code>·<code>ParticleOrtho</code>로 짰습니다.</div>
 </header>
@@ -71,9 +71,9 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td><code>SB_Particles</code></td><td>capacity × 32 B</td><td>u0 / t21</td><td>파티클 풀. <code>struct Particle</code> = <code>float3 position, float age, float3 velocity, float lifetime</code> (<code>kParticleStride</code> 32). <code>age &gt;= lifetime</code>이면 죽은 칸</td></tr>
 <tr><td><code>SB_ParticleDead</code></td><td>capacity × 4 B</td><td>u1</td><td>사망 목록. 비어 있는 슬롯 번호를 쌓는 스택. [0, <code>Dead</code>)가 유효</td></tr>
 <tr><td><code>SB_ParticleAlive0</code>, <code>Alive1</code></td><td>capacity × 4 B 두 개</td><td>u2 입력 / u3 출력 / t22</td><td>생존 목록. 지난 프레임 목록을 읽고 이번 프레임 목록에 씀. 프레임마다 역할이 바뀜(핑퐁)</td></tr>
-<tr><td><code>SB_ParticleCounters</code></td><td>8 × 4 B</td><td>u4 / 정렬 셋 t24</td><td>개수 6칸: <code>Alive</code>, <code>Dead</code>, <code>SimCount</code>, <code>EmitCount</code>, <code>EmitDeadBase</code>, <code>EmitAliveBase</code> (<code>Particle.hlsli</code>의 <code>kCounter*</code>)</td></tr>
+<tr><td><code>SB_ParticleCounters</code></td><td>8 × 4 B</td><td>u4 / 정렬 셋 t24</td><td>개수 6칸: <code>Alive</code>, <code>Dead</code>, <code>SimCount</code>, <code>EmitCount</code>, <code>EmitDeadBase</code>, <code>EmitAliveBase</code> (<code>Particle.hlsli</code>의 <code>kCounter*</code>). t24는 프레임 셋의 비 차폐 맵(VS·PS), 시간 셋의 TAA 히스토리와 번호가 같지만 정렬 셋은 CS 전용이라 한 패스에 같이 묶이지 않음</td></tr>
 <tr><td><code>RB_ParticleArgs</code></td><td>32 B (raw)</td><td>u5 / 간접 인자</td><td>바이트 0: 그리기 인자, 바이트 16: 시뮬레이션 디스패치 인자(5장)</td></tr>
-<tr><td><code>CB_ParticleEmitter</code></td><td>144 B (Dynamic)</td><td>b8</td><td>이미터 설정·dt·씨앗·생성 수. 시뮬레이션·정렬·그리기 셋이 같은 버퍼를 꽂음</td></tr>
+<tr><td><code>CB_ParticleEmitter</code></td><td>144 B (Dynamic)</td><td>b8</td><td>이미터 설정·dt·씨앗·생성 수. 시뮬레이션·정렬·그리기 셋이 같은 버퍼를 꽂음. 비 셋(<code>Layout_Rain</code>)의 b8 <code>RainConstants</code>와 번호가 같지만 두 셋은 같은 드로우에 묶이지 않음(<code>ShaderConstants.h</code> <code>kCBSlotRain</code> 주석)</td></tr>
 <tr><td><code>SB_ParticleSortKeys</code>, <code>SortIndices</code></td><td>N × 4 B 두 개, 뷰마다</td><td>정렬 셋 u0·u1 / t22</td><td>알파 이미터만. N = <code>ParticleSortCount(capacity)</code>(7장)</td></tr>
 </table>
 <p>버퍼 크기는 정렬 버퍼와 144 B 상수 버퍼를 빼면 이미터마다 44 × capacity + 64 바이트입니다. 기본값 4,096이면 180,288 B(약 176 KB), 상한 262,144면 약 11 MB입니다. 알파 이미터는 뷰 2개 × 8 B × N이 더 붙습니다(N 1,024면 16 KB, 262,144면 4 MB). <span class="tag chk">계산값</span></p>
@@ -122,7 +122,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 </ul>
 <p>생성 수는 <code>spawnRate × dt + spawnCarry</code>의 정수 부분이고, 소수 부분은 <code>spawnCarry</code>로 다음 프레임에 넘깁니다. 60 fps에서 <code>spawnRate</code> 1,500인 분수는 프레임마다 25개, 8인 바닥 안개는 7~8 프레임에 한 개 꼴입니다. <span class="tag chk">계산값</span></p>
 <h3>3-2. GPU 쪽</h3>
-<p><code>Renderer::RenderScenePass</code>는 첫 번째 패스(포워드 또는 디퍼드. 불투명 → 하늘 → 반투명)를 끝낸 뒤, 파티클이나 디버그 선이 있을 때만 두 번째 패스를 엽니다. 깊이를 <code>DepthRead</code>로 바꾸고, 메인 뷰(<code>viewIndex == 0</code>)에서만 <code>SimulateParticles</code>를, 뷰마다 <code>SortParticles</code>를 렌더 패스 밖에서 돌린 다음, hdr을 Load하고 깊이를 읽기 전용으로 붙인 Effects 패스에서 <code>DrawParticles</code>와 <code>DrawDebugLines</code>를 부릅니다.</p>
+<p><code>Renderer::RenderScenePass</code>는 첫 번째 패스(포워드 또는 디퍼드. 불투명 → 하늘 → 반투명)를 끝낸 뒤, 파티클·비·디버그 선 중 하나라도 있을 때만 두 번째 패스를 엽니다. 깊이를 <code>DepthRead</code>로 바꾸고, 메인 뷰(<code>viewIndex == 0</code>)에서만 <code>SimulateParticles</code>를, 뷰마다 <code>SortParticles</code>를 렌더 패스 밖에서 돌린 다음, hdr을 Load하고 깊이를 읽기 전용으로 붙인 Effects 패스에서 <code>DrawParticles</code>, <code>DrawRain</code>(비가 있을 때), <code>DrawDebugLines</code> 순서로 부릅니다. 빗줄기는 GPU 버퍼에 상태를 두지 않고 정점 셰이더가 해시와 시간으로 매 프레임 위치를 다시 계산하는 절차적 파티클이라, 이 문서의 시뮬레이션·정렬 단계가 없습니다(<a href="rain-study.html">비 학습 문서</a>).</p>
 <figure>
 <svg viewBox="0 0 900 280" role="img" aria-label="파티클이 있는 프레임에서 메인 뷰와 미리보기 뷰의 호출 순서">
   <defs><marker id="gp-ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" style="fill:var(--ink3)"/></marker></defs>
@@ -338,7 +338,7 @@ particleAliveOut[slot] = index;</code></pre>
 </table>
 <p>정렬을 끄면 차이가 커지는 것은 알파 블렌딩이 목록 순서에 민감하기 때문이고, 정렬하면 순서가 키로 정해져 다시 작아집니다.</p>
 <h3>9-4. 통계와 디버그</h3>
-<p><code>Renderer::Stats</code>의 <code>particleEmitters</code>·<code>particleCapacity</code>·<code>particlesSpawned</code>가 <code>Editor::DrawStats</code>에 한 줄로 나옵니다. <code>particlesSpawned</code>는 CPU가 원한 수라 사망 목록이 모자라 실제로 덜 태어났는지는 알 수 없습니다. 이 줄의 문구는 "buffer %u (drawn as quads, dead included)"이고, <code>Renderer.h</code>의 <code>Stats::particleCapacity</code> 주석은 "(= 그리는 쿼드 수. 죽은 것 포함)"입니다. 둘 다 버퍼 전체를 그리던 1단계 설명입니다. 지금은 간접 그리기라 생존 수만큼만 그립니다. <code>--particle-sort=0</code>은 알파 이미터를 정렬하지 않고 생존 목록 순서로 그리는 비교용 인자입니다.</p>
+<p><code>Renderer::Stats</code>의 <code>particleEmitters</code>·<code>particleCapacity</code>·<code>particlesSpawned</code>가 <code>Editor::DrawStats</code>에 한 줄로 나옵니다. <code>particlesSpawned</code>는 CPU가 원한 수라 사망 목록이 모자라 실제로 덜 태어났는지는 알 수 없습니다. 이 줄의 문구는 "capacity %u (only alive ones are drawn)   spawn requested this frame %u"입니다. <code>particleCapacity</code>는 버퍼 칸 수의 합이고, 간접 그리기라 실제로 그리는 쿼드는 생존 수만큼입니다(<code>Renderer.h</code>의 <code>Stats</code> 주석). <code>--particle-sort=0</code>은 알파 이미터를 정렬하지 않고 생존 목록 순서로 그리는 비교용 인자입니다.</p>
 </section>
 
 <section id="code">
@@ -372,7 +372,7 @@ particleAliveOut[slot] = index;</code></pre>
 <h3>E3. 충돌 두께 <span class="tag ok">확인함 (2026-11-17)</span></h3>
 <p><code>ParticleOrtho</code>를 게임 모드로 돌리고 분수의 <code>collide</code>를 끈 것·켠 것을 비교합니다. 화면 아래 20%의 밝은 픽셀이 기록에서는 10,516 → 106이었습니다(6-2). 코드에서 <code>Collide</code>의 법선 방향 검사(<code>dot(p.position − center, n) &lt; −collisionThickness</code>)를 잠시 빼면 뷰 z 두께만 남아 다시 새기 시작할 것입니다 <span class="tag chk">예상</span>.</p>
 <h3>E4. 사망 목록 고갈 <span class="tag chk">예상</span></h3>
-<p><code>ParticleAll</code> 복사본에서 <code>Fountain</code>의 <code>maxParticles</code>를 1,024로 줄입니다. 원하는 수가 프레임당 25개라 41 프레임쯤에 다 차고, 첫 파티클이 죽는 1.8초(108 프레임) 무렵까지 생성이 멈춥니다. 분수는 <a href="../plan/vfx-gpu-particles-record.html#s2-flow">기록</a>의 그림 4처럼 덩어리로 끊겨 나와야 하고, 통계 줄의 <code>spawned this frame</code>은 모든 이미터의 합이라, 그동안에도 분수 몫 25가 빠지지 않고 들어 있을 것입니다(CPU는 고갈을 모름).</p>
+<p><code>ParticleAll</code> 복사본에서 <code>Fountain</code>의 <code>maxParticles</code>를 1,024로 줄입니다. 원하는 수가 프레임당 25개라 41 프레임쯤에 다 차고, 첫 파티클이 죽는 1.8초(108 프레임) 무렵까지 생성이 멈춥니다. 분수는 <a href="../plan/vfx-gpu-particles-record.html#s2-flow">기록</a>의 그림 4처럼 덩어리로 끊겨 나와야 하고, 통계 줄의 <code>spawn requested this frame</code>은 모든 이미터의 합이라, 그동안에도 분수 몫 25가 빠지지 않고 들어 있을 것입니다(CPU는 고갈을 모름).</p>
 <h3>E5. 소프트 파티클 <span class="tag chk">예상</span></h3>
 <p><code>ParticleAll</code> 복사본에서 <code>GroundFog</code>의 <code>softness</code>를 0.6 → 0으로 바꿔 비교합니다. 차이는 안개 쿼드가 바닥과 만나는 띠에만 생겨야 합니다. 기록의 같은 비교(지금 없는 <code>ParticleDepthOff</code>/<code>ParticleDepth</code>)는 최대 30 단계였습니다.</p>
 <h3>E6. 정렬 비용 보기 <span class="tag chk">예상</span></h3>
@@ -394,7 +394,6 @@ particleAliveOut[slot] = index;</code></pre>
 <tr><td>TAA·모션 블러 뒤 파티클 잔상 가능성</td><td>파티클은 속도를 쓰지 않음</td><td>뒤 표면 속도로 재투영. 측정 기록 없음(8-3)</td></tr>
 <tr><td>파티클이 조명·그림자와 어울리지 않음</td><td>조명 계산 없음</td><td>이미터 상수 색뿐, 텍스처·플립북·그림자 없음</td></tr>
 </table>
-<div class="box warn"><b>낡은 주석.</b> 코드 몇 곳은 알파 모드가 생기기 전 설명으로 남아 있습니다. <code>Pass_Particle</code> 설정 바로 위 주석은 "가산 블렌딩 — … 정렬하지 않음"이라고 적혀 있지만 블록 안 주석과 실제 값은 프리멀티플라이드 두 모드입니다. <code>CS_ParticleSim</code> 머리 주석의 "가산 블렌딩이라 그림은 같고"도 가산 이미터에만 맞습니다. <code>Stats::particleCapacity</code> 주석 "(= 그리는 쿼드 수. 죽은 것 포함)"과 <code>DrawStats</code> 문구 "drawn as quads, dead included"는 1단계 설명입니다(9-4).</div>
 </section>
 
 <section id="study">

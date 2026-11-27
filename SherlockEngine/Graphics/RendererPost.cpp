@@ -384,7 +384,7 @@ void Renderer::CapturePostStage(RHI::CommandList& cmd, uint32_t stage, const cha
 	PostStageThumb& thumb = m_stageThumbs[stage];
 	if (!thumb.texture.IsValid() || m_thumbWidth == 0) return;
 	// 지금까지의 HDR 결과를 노출·ACES 로 톤매핑해 작은 텍스처에 그림 (톤 패스의 셰이더가 입력/출력 크기 비로
-	// 읽음 = 최근접 축소). 단계 0~2 는 색 효과를 건너뜀 — "이 효과가 한 일"만 보이게. 마지막 Final 만 색
+	// 읽음 = 최근접 축소). 단계 0~4 (Scene·TAA·Motion·Blur·Bloom) 는 색 효과를 건너뜀 — "이 효과가 한 일"만 보이게. 마지막 Final 만 색
 	// 효과까지 포함.
 	RenderTonemapPass(cmd, hdrSet, thumb.texture, ResourceState::ShaderResource, name, hdrWidth, hdrHeight, m_thumbWidth, m_thumbHeight, skipGrade);
 	thumb.active = true;

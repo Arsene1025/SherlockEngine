@@ -41,7 +41,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
   <h1>재질 확장 학습 문서</h1>
   <p>metallic-roughness 너머 — 발광 세기·반사 세기와 색(F0·F90)·클리어코트·투과·알파 모드를 우리 엔진이 어떻게 읽고, 어떤 셰이더 경로로 그리고, 디퍼드에서 어디로 보내는가</p>
   <p>2026-11-25 · 재질 확장 이야기는 지금까지 <a href="../plan/material-extensions-record.html">재질 확장 구현 기록</a>(2026-11-16, 디퍼드 전), <a href="../plan/deferred-clustered-ssao-record.html#c-gbuffer">디퍼드 기록 2.1 G-buffer 배치</a>, <a href="../study/gltf-study.html#skip">glTF 학습 문서의 "읽지 않는 것"</a>에 나뉘어 있었습니다. 이 문서는 확장마다 원리를 짧게 설명하고, 디퍼드 도입 뒤 셰이더가 <code>MaterialSurface.hlsli</code>·<code>Shading.hlsli</code>로 나뉜 지금 코드에 맞춰 정리합니다. 기본 PBR(Cook-Torrance, F0, 금속성·거칠기)은 <a href="../study/pbr-study.html">PBR 학습 문서</a>, 환경광은 <a href="../study/ibl-study.html">IBL 학습 문서</a>에 있으므로 되풀이하지 않습니다.</p>
-  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <p class="foot">기준: 커밋 f3a337e + 작업 트리(2026-11-25). 코드 위치는 파일과 함수·타입 이름으로 적었습니다. 2026-11-27: 강조·디졸브·비(36ef141~0e20f6c)에 맞춰 MASK 행의 디졸브 clip·알파 테스트 그림자 변형, 블렌딩 재질과 비 차폐 맵, 코드 지도의 표면 값(강조 색 섞기·강조 발광·디졸브 경계 빛)·그림자 PSO·인스펙터 디졸브 노이즈 칸·배포 텍스처 키 12개를 고쳤습니다.</p>
   <div class="box"><b>이 문서를 읽는 법.</b> 1장은 확장 전체를 한 표로 묶은 지도, 2~5장은 확장별 원리와 코드(반사 세기·색, 클리어코트, 투과와 블렌딩, 알파·양면·unlit·발광), 6장은 디퍼드에서 어느 재질이 G-buffer로 가고 GB3에 무엇이 담기는가, 7장은 코드 지도, 8장은 실험, 9장은 함정과 지원하지 않는 확장, 10장은 공부할 개념과 참고 문서입니다.</div>
   <div class="box warn"><b>숫자에 대해.</b> 프레넬·F0·양자화 값은 식으로 계산한 값입니다 <span class="tag chk">계산값</span>. 화면 측정은 기록 문서에 적힌 것만 옮기고 <span class="tag ok">확인함</span>으로 표시했습니다. 클리어코트 화면 비교(8장 E2)는 디퍼드가 들어오기 전(2026-11-16, 포워드만 있던 때)에 잰 값입니다.</div>
 </header>
@@ -72,7 +72,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <tr><td><code>doubleSided</code></td><td><code>doubleSided</code></td><td>—</td><td>둘 다 (PSO 컬링만 다름)</td></tr>
 <tr><td><code>KHR_materials_unlit</code></td><td>읽지 않음. 엔진 자체 플래그 <code>unlit</code>은 있음</td><td>—</td><td><code>unlit</code>이면 포워드</td></tr>
 </table>
-<p>레지스터가 t6에서 t16으로 건너뛰는 것은 t8~t15를 프레임 셋(그림자 맵·IBL 큐브·BRDF LUT·조명 버퍼)이 쓰기 때문입니다(<code>Graphics/ShaderConstants.h</code>의 <code>kSRVSlotClearcoat</code> 주석). t7은 재질·프레임 셋에서 쓰지 않습니다(후처리 셋의 속도 <code>kSRVSlotVelocity</code>, 비닝 셋의 조명 경계 <code>kSRVSlotLightBounds</code>가 이 번호를 씀). 텍스처의 색공간 규칙 자체(색 텍스처만 sRGB)는 <a href="../study/color-space-study.html#textures">색공간 문서 4장</a>을 보세요.</p>
+<p>레지스터가 t6에서 t16으로 건너뛰는 것은 t8~t15를 프레임 셋(그림자 맵·IBL 큐브·BRDF LUT·조명 버퍼. t13은 후처리 셋의 입력)이 쓰기 때문입니다(<code>Graphics/ShaderConstants.h</code>의 <code>kSRVSlotClearcoat</code> 주석). t7은 재질·프레임 셋에서 쓰지 않습니다(시간 셋 <code>Layout_Temporal</code>의 속도 <code>kSRVSlotVelocity</code>, 비닝 셋의 조명 경계 <code>kSRVSlotLightBounds</code>가 이 번호를 씀). 텍스처의 색공간 규칙 자체(색 텍스처만 sRGB)는 <a href="../study/color-space-study.html#textures">색공간 문서 4장</a>을 보세요.</p>
 </section>
 
 <section id="specular">
@@ -84,7 +84,7 @@ svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3
 <li><code>specularColor</code>: F0에 색을 곱함 (비금속 반사에 색이 끼는 표현)</li>
 <li><code>specularFactor</code>: F0와 F90 둘 다에 곱하는 세기. 0이면 비금속 반사가 모든 각도에서 사라짐</li>
 </ul>
-<p>금속은 이 값들을 쓰지 않습니다(F0 = 기본색, F90 = 1). 확장의 기본값(ior 1.5, factor 1, 흰색)이면 F0 = 0.04, F90 = 1이라 확장 전과 같은 식이 됩니다.</p>
+<p>금속은 이 값들을 쓰지 않습니다(F0 = 기본색, F90 = 1). 다만 비가 오면 웅덩이 자리는 <code>ApplyWetness</code>가 금속성을 0 쪽으로 내려 유전체처럼 됩니다. 확장의 기본값(ior 1.5, factor 1, 흰색)이면 F0 = 0.04, F90 = 1이라 확장 전과 같은 식이 됩니다.</p>
 <pre><code>// Shaders/MaterialSurface.hlsli — EvaluateMaterialSurface
 specularWeight = saturate(specularFactor * specularTexture.a)
 specularTint   = specularColor * specularColorTexture.rgb
@@ -184,7 +184,7 @@ output      = float4(finalColor · alpha, opacity)     // 블렌드: One, InvSrc
 <li><code>IsBlended(material)</code> = <code>alphaBlend || transmissionFactor &gt; 0</code>. glTF가 OPAQUE라도 투과가 있으면 블렌딩 패스로 갑니다.</li>
 <li>PSO(<code>Renderer::GetPipelineFor</code>, 키 비트 11): 블렌드 One / InvSrcAlpha, 깊이는 테스트만 하고 쓰지 않음, RT 1(속도)의 쓰기 마스크 0. 반투명은 속도를 남기지 않아 뒤 표면의 속도가 쓰입니다(<a href="../study/taa-study.html">TAA 문서</a>와 관련).</li>
 <li>순서(<code>Renderer::DrawItems</code>): 불투명 → 하늘 → 블렌딩 항목을 오브젝트 경계 구 중심이 카메라에서 먼 것부터. 한 오브젝트 안의 삼각형끼리는 정렬하지 않습니다.</li>
-<li><code>BuildDrawList</code>가 블렌딩 재질에는 그림자 PSO를 만들지 않습니다(빈 핸들). 그림자 맵은 차폐 여부만 담아서 반투명 물체가 통째로 그림자를 드리우게 되기 때문입니다.</li>
+<li><code>BuildDrawList</code>가 블렌딩 재질에는 그림자 PSO를 만들지 않습니다(빈 핸들). 그림자 맵은 차폐 여부만 담아서 반투명 물체가 통째로 그림자를 드리우게 되기 때문입니다. 비 차폐 맵 PSO(<code>DrawItem::occluderPipeline</code>)도 그림자 PSO가 있는 항목에만 만들므로 블렌딩 재질은 비도 가리지 않습니다.</li>
 </ul>
 </section>
 
@@ -192,10 +192,10 @@ output      = float4(finalColor · alpha, opacity)     // 블렌드: One, InvSrc
 <h2>5. 알파 모드·양면·unlit·발광</h2>
 <table>
 <tr><th>기능</th><th>읽기 (임포터)</th><th>셰이더·PSO</th></tr>
-<tr><td>MASK</td><td><code>alphaCutoff</code>(기본 0.5, 0 이하면 0.5). 엔진에서 0은 "끔"이라 glTF의 cutoff 0은 표현하지 못함</td><td><code>ShadeForward</code>·<code>PS_GBuffer</code> 모두 <code>clip(alpha − alphaCutoff)</code>. 구멍 난 픽셀은 깊이와 G-buffer를 쓰지 않음</td></tr>
+<tr><td>MASK</td><td><code>alphaCutoff</code>(기본 0.5, 0 이하면 0.5). 엔진에서 0은 "끔"이라 glTF의 cutoff 0은 표현하지 못함</td><td><code>ShadeForward</code>·<code>PS_GBuffer</code> 모두 <code>clip(alpha − alphaCutoff)</code>(바로 뒤에 디졸브의 <code>DissolveClip</code>). 구멍 난 픽셀은 깊이와 G-buffer를 쓰지 않음. 그림자는 알파 테스트 변형(<code>Pass_ShadowAlpha</code>·<code>Pass_ShadowAlphaSkin</code>, 그림자 PSO 키 비트 10)의 <code>PS_ShadowAlpha</code>가 같은 식으로 구멍을 냄</td></tr>
 <tr><td>BLEND</td><td><code>alphaBlend = true</code></td><td>4-3의 블렌딩 패스</td></tr>
 <tr><td>doubleSided</td><td>불리언 그대로</td><td>메인·G-buffer·그림자 PSO 모두 컬링 끔. <code>EvaluateMaterialSurface</code>가 <code>SV_IsFrontFace</code>로 뒷면의 기하 노멀을 뒤집고, 탄젠트 B는 그 노멀로 다시 만들어 함께 뒤집힘</td></tr>
-<tr><td>unlit</td><td><code>KHR_materials_unlit</code>은 읽지 않음. <code>Material::unlit</code>은 에디터·씬 JSON에서만 켬</td><td>조명 없이 기본색만 출력(발광도 더하지 않음). 그림자를 만들지 않고, 디퍼드에서는 포워드</td></tr>
+<tr><td>unlit</td><td><code>KHR_materials_unlit</code>은 읽지 않음. <code>Material::unlit</code>은 에디터·씬 JSON에서만 켬</td><td>조명 없이 기본색을 출력(재질 발광은 더하지 않음. 오브젝트별 강조의 색 섞기·번쩍임·가장자리 빛과 디졸브 경계 빛만 더함). 그림자를 만들지 않고, 디퍼드에서는 포워드</td></tr>
 <tr><td>발광 세기</td><td><code>emissiveFactor × emissiveStrength</code>를 <code>emissive</code> 하나에 넣음</td><td><code>emissive × emissiveTexture(t4, sRGB)</code>. 조명·그림자·AO와 무관하게 더함</td></tr>
 </table>
 <p>발광은 선형 HDR 값이라 1을 넘어도 FP16 타깃에서 잘리지 않고, 노출·톤매핑에서 처리됩니다(<a href="../study/hdr-tonemapping-study.html">HDR·톤매핑 문서</a>). 에디터의 Emissive 색 편집기도 HDR 플래그(<code>ImGuiColorEditFlags_HDR</code>)라 1을 넘는 값을 넣을 수 있습니다. emissive_strength를 쓰는 모델이 없어서, 1을 넘는 발광이 임포트에서 끝까지 이어지는지는 화면으로 확인하지 않았습니다 <span class="tag chk">예상</span>. 세기를 곱해서 저장하므로 씬 JSON과 인스펙터에는 원래의 factor와 strength가 아니라 그 곱이 보입니다.</p>
@@ -253,13 +253,13 @@ output      = float4(finalColor · alpha, opacity)     // 블렌드: One, InvSrc
 <tr><td>상수버퍼 배치</td><td><code>Graphics/ShaderConstants.h</code> 의 <code>MaterialConstants</code>, <code>Shaders/Material.hlsli</code> 의 <code>cbuffer Material</code></td><td>b3, 112바이트, 바이트 단위로 같아야 함. 텍스처 레지스터 t0~t6, t16~t20 (t20은 디졸브 노이즈, 그 배율은 오프셋 100의 <code>dissolveNoiseScale</code>)</td></tr>
 <tr><td>GPU 재질</td><td><code>Graphics/Renderer.cpp</code> 의 <code>Renderer::GetOrCreateGpuMaterial</code></td><td>칸마다 <code>Load2D(이름, srgb)</code>(albedo는 <code>albedoSrgb</code>(기본 sRGB), emissive·specularColor는 항상 sRGB, 나머지는 선형), 상수를 프레임에 한 번 올림. 이름·핸들이 바뀔 때만 ResourceSet 재생성</td></tr>
 <tr><td>재질 레이아웃</td><td><code>Renderer.cpp</code> 의 <code>Renderer::CreateLayouts</code> (<code>materialLayout.Add</code>)</td><td>슬롯 순서. <code>ResourceSetDesc</code> 바인딩 순서와 같아야 함</td></tr>
-<tr><td>표면 값</td><td><code>Shaders/MaterialSurface.hlsli</code> 의 <code>MaterialBaseColor</code>, <code>EvaluateMaterialSurface</code></td><td>F0·F90, 노멀·뒷면 뒤집기, 코팅 값·코팅 노멀, 투과. 포워드와 G-buffer가 같이 씀</td></tr>
+<tr><td>표면 값</td><td><code>Shaders/MaterialSurface.hlsli</code> 의 <code>MaterialBaseColor</code>, <code>EvaluateMaterialSurface</code></td><td>F0·F90, 노멀·뒷면 뒤집기, 코팅 값·코팅 노멀, 투과. 맨 앞에서 기본색에 강조 색을 섞고(<code>HighlightAlbedo</code>), 맨 끝에 강조 발광(<code>HighlightEmission</code>)과 디졸브 경계 빛(<code>DissolveEdgeEmission</code>)을 발광에 더함. 비가 오면 F0 전에 <code>ApplyWetness</code>(알베도 ×0.45, 거칠기 → 0.12, 웅덩이는 금속성 0·거칠기 0.03), 노멀 매핑 뒤에 <code>ApplyWetNormal</code>(웅덩이 평탄화·물결). 바다 PS는 <code>RAIN_NO_WETNESS</code>로 뺌. 포워드와 G-buffer가 같이 씀</td></tr>
 <tr><td>조명</td><td><code>Shaders/Shading.hlsli</code> 의 <code>ShadeLight</code>, <code>EnvironmentLighting</code>, <code>EnvironmentClearcoat</code>, <code>ShadeEnvironment</code>, <code>DiffuseAlbedo</code>, <code>FresnelSchlick(Roughness)</code></td><td>F90 프레넬, 코팅 로브, 기본 층 감쇠, 투과 확산 감소</td></tr>
 <tr><td>포워드 출력</td><td><code>Shaders/BasicPixelShader.hlsl</code> 의 <code>ShadeForward</code></td><td>컷아웃, unlit, 블렌딩 재질의 미리 곱한 알파와 투과 불투명도</td></tr>
 <tr><td>G-buffer</td><td><code>Shaders/GBufferPixelShader.hlsl</code> 의 <code>PS_GBuffer</code>, <code>Shaders/GBuffer.hlsli</code> 의 <code>LoadGBufferSurface</code></td><td>GB3 = 금속성·F90·코팅·코팅 거칠기</td></tr>
-<tr><td>경로 판정·PSO</td><td><code>Graphics/RendererDeferred.cpp</code> 의 <code>CanUseDeferred</code>, <code>Renderer.cpp</code> 의 <code>GetPipelineFor</code>, <code>BuildDrawList</code>, <code>DrawItems</code></td><td>6-1 판정, 블렌드 PSO, 그림자 제외, 먼 것부터 정렬</td></tr>
-<tr><td>인스펙터</td><td><code>Editor/Editor.cpp</code> 의 <code>DrawMaterialFields</code>, <code>ApplyChangedFields</code>; <code>Editor/DebugUI.cpp</code></td><td>IOR(1~3)·Specular·Specular color·Clearcoat·Clearcoat roughness·Transmission·Alpha cutoff·Alpha blend·Unlit·Double sided·Emissive(HDR). 코팅 노멀 배율 슬라이더는 없음. 텍스처 칸별 임포트 설정은 <code>DebugUI::DrawTextureImportSettings</code></td></tr>
-<tr><td>저장·배포</td><td><code>Scene/SceneSerializer.cpp</code>, <code>Editor/GameBuilder.cpp</code></td><td>새 필드를 <code>j.value(키, 기본값)</code>로 읽어 옛 씬도 열림. 배포본에 텍스처 키 목록을 넘김</td></tr>
+<tr><td>경로 판정·PSO</td><td><code>Graphics/RendererDeferred.cpp</code> 의 <code>CanUseDeferred</code>, <code>Renderer.cpp</code> 의 <code>GetPipelineFor</code>, <code>GetShadowPipelineFor</code>, <code>BuildDrawList</code>, <code>DrawItems</code></td><td>6-1 판정, 블렌드 PSO, 그림자 제외(unlit·블렌딩·바다)와 알파 테스트 그림자 변형(컷아웃·디졸브 중), 먼 것부터 정렬</td></tr>
+<tr><td>인스펙터</td><td><code>Editor/Editor.cpp</code> 의 <code>DrawMaterialFields</code>, <code>ApplyChangedFields</code>; <code>Editor/DebugUI.cpp</code></td><td>IOR(1~3)·Specular·Specular color·Clearcoat·Clearcoat roughness·Transmission·Alpha cutoff·Dissolve noise·Dissolve noise scale(<code>DebugUI::DrawDissolveNoiseFields</code>)·Alpha blend·Unlit·Double sided·Emissive(HDR). 코팅 노멀 배율 슬라이더는 없음. 텍스처 칸별 임포트 설정은 <code>DebugUI::DrawTextureImportSettings</code></td></tr>
+<tr><td>저장·배포</td><td><code>Scene/SceneSerializer.cpp</code>, <code>Editor/GameBuilder.cpp</code></td><td>새 필드를 <code>j.value(키, 기본값)</code>로 읽어 옛 씬도 열림. 배포본에 텍스처 키 목록(<code>dissolveNoiseTexture</code>까지 12개, <code>builtin:</code> 이름은 싣지 않음)을 넘김</td></tr>
 <tr><td>디버그 뷰</td><td><code>Shading.hlsli</code> 의 <code>SurfaceDebugColor</code></td><td>9 "Specular F0" = 유효 F0, 10 "Clearcoat" = (세기, 코팅 거칠기, 0)</td></tr>
 </table>
 </section>

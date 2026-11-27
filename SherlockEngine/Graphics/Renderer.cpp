@@ -1569,7 +1569,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, float totalTime,
 	// 모든 후처리 셋이 t20 에 가중치 버퍼를 꽂음. 버퍼 상태는 프레임마다 Common 으로 돌아가므로 첫 후처리 패스 전에
 	// ShaderResource 로 둠 (블러가 꺼진 프레임에도 — 톤 패스가 같은 셋 레이아웃을 바인딩함).
 	cmd.Barrier(m_blurWeights, ResourceState::ShaderResource);
-	// HDR 구간 후처리 (블러 → 블룸). 결과는 hdr 에 제자리로 남아 톤 패스가 그대로 읽음.
+	// HDR 구간 후처리 (TAA → 모션 블러 → 블러 → 블룸). 결과는 hdr 에 제자리로 남아 톤 패스가 그대로 읽음.
 	ApplyHdrEffects(cmd, m_mainView, m_postCapture);
 	{
 		// HDR: HDR 씬 → 노출·ACES·sRGB → 최종 출력. 에디터는 씬 뷰 텍스처, 게임은 백버퍼.
@@ -2398,7 +2398,7 @@ const Renderer::GpuMaterial* Renderer::GetOrCreateGpuMaterial(const Material& ma
 		gpuMaterial = &m_gpuMaterials.emplace(&material, created).first->second;
 	}
 
-	// 셋에 들어가는 입력(텍스처 이름 열하나·알베도 색공간·샘플러)이 셋을 만들 때와 같고 텍스처 캐시 세대
+	// 셋에 들어가는 입력(텍스처 이름 열둘·알베도 색공간·샘플러)이 셋을 만들 때와 같고 텍스처 캐시 세대
 	// (GetGeneration — ReleaseLoaded·Evict 가 올림)가 그 뒤로 그대로면, 이름 → 핸들 조회를 건너뜀. 대부분의 프레임이 이 경로임 — 재질 편집(ImGui), 샘플러
 	// 덮어쓰기, 텍스처 다시 읽기(Evict), 씬 교체 때만 아래로 내려감.
 	const SamplerPreset preset = (m_settings.samplerOverride >= 0 && m_settings.samplerOverride < static_cast<int>(kSamplerPresetCount))

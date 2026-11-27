@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>공부 · 비 학습 — SherlockEngine</title>
+<style>
+:root { --bg:#f6f5f1; --paper:#fff; --ink:#1d1f24; --ink2:#4a505c; --ink3:#8a909c; --line:#d9dce3; --fill:#f1f3f7; --accent:#1d5fbf; --accent-bg:#e4ecf8; --warn:#a8620a; --warn-bg:#fdf3e2; --ok:#1f7a3d; --ok-bg:#e5f4ea; --code-bg:#14171c; --code-fg:#e6e9ef; --c0:#e03c3c; --c1:#2fae3f; --c2:#3d62e6; --c3:#d9b800; }
+@media (prefers-color-scheme: dark) { :root { --bg:#101216; --paper:#181b21; --ink:#e8eaee; --ink2:#aab0bb; --ink3:#6f7683; --line:#2b303a; --fill:#1f232b; --accent:#6ea8ff; --accent-bg:#16305a; --warn:#f0b14a; --warn-bg:#3a2a10; --ok:#5fcf85; --ok-bg:#12301f; --code-bg:#0b0d10; --code-fg:#dfe3ea; --c0:#ff6b6b; --c1:#5fd46c; --c2:#7f9bff; --c3:#f2d633; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15.5px/1.75 -apple-system,"Segoe UI","Malgun Gothic",Roboto,sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+header, section { background:var(--paper); border:1px solid var(--line); border-radius:10px; padding:22px 26px; margin-bottom:18px; }
+h1 { margin:0 0 6px; font-size:26px; line-height:1.3; } h2 { margin:0 0 12px; font-size:21px; padding-bottom:8px; border-bottom:1px solid var(--line); } h3 { margin:24px 0 6px; font-size:16.5px; } h4 { margin:16px 0 4px; font-size:15px; color:var(--ink2); }
+p { margin:8px 0; } ul, ol { padding-left:22px; } li { margin:4px 0; }
+code { font:13.5px/1.5 ui-monospace,Consolas,monospace; background:var(--fill); padding:1px 5px; border-radius:4px; }
+pre { background:var(--code-bg); color:var(--code-fg); padding:12px 14px; border-radius:8px; overflow-x:auto; font:13px/1.6 ui-monospace,Consolas,monospace; }
+pre code { background:none; padding:0; color:inherit; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:14px; display:block; overflow-x:auto; }
+th,td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; } th { background:var(--fill); white-space:nowrap; }
+td.blank { min-width:70px; }
+.box { border-left:4px solid var(--accent); background:var(--accent-bg); padding:8px 14px; border-radius:0 8px 8px 0; margin:12px 0; }
+.box.warn { border-left-color:var(--warn); background:var(--warn-bg); }
+.box.ok { border-left-color:var(--ok); background:var(--ok-bg); }
+.num { display:inline-block; min-width:28px; text-align:center; background:var(--accent); color:#fff; border-radius:6px; padding:0 8px; margin-right:8px; font-size:15px; }
+.tag { display:inline-block; font-size:12px; border-radius:10px; padding:0 8px; margin-left:4px; border:1px solid var(--line); color:var(--ink2); }
+.tag.ok { border-color:var(--ok); color:var(--ok); } .tag.chk { border-color:var(--warn); color:var(--warn); }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; }
+.c0 { background:var(--c0); } .c1 { background:var(--c1); } .c2 { background:var(--c2); } .c3 { background:var(--c3); }
+nav { margin-bottom:18px; font-size:14px; line-height:2; } nav a { margin-right:12px; color:var(--accent); text-decoration:none; white-space:nowrap; }
+.foot { color:var(--ink3); font-size:13px; }
+figure { margin:14px 0; } figcaption { color:var(--ink2); font-size:13.5px; margin-top:4px; }
+svg { max-width:100%; height:auto; background:var(--fill); border-radius:8px; border:1px solid var(--line); }
+svg text { fill:var(--ink2); font:12px sans-serif; } svg .ln { stroke:var(--ink3); fill:none; stroke-width:1.2; }
+@media (max-width:700px) { header, section { padding:16px; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>비 학습 문서</h1>
+  <p>버퍼 없이 정점 셰이더가 위치를 계산하는 빗줄기, 위에서 내려다본 깊이 맵 하나로 정하는 "비를 맞는 자리", 젖은 표면의 재질 변화와 물결·튐, 우리 엔진의 코드 위치</p>
+  <p>2026-11-27 · 비 이야기는 지금까지 <a href="../plan/rain-plan.html">비 구현 계획</a>, <a href="../plan/rain-record.html">비 구현 기록</a>, 그리고 <a href="../overview/rendering-analysis.html">rendering-analysis</a>의 바인딩 표(<a href="../overview/rendering-analysis.html#c7-7">7.7</a>, <a href="../overview/rendering-analysis.html#c10-1">10.1</a>, <a href="../overview/rendering-analysis.html#c10-6">10.6</a>)에 흩어져 있었습니다. rendering-analysis 에는 비만 다루는 절이 없습니다. 이 문서는 방법을 고른 이유와 식부터 다시 설명하고, 지금 코드에 맞춰 정리합니다. 기존 문서는 그대로 두었습니다.</p>
+  <p class="foot">기준: 커밋 0e20f6c(2026-11-26). 코드 위치는 파일과 함수·타입 이름으로 적었습니다.</p>
+  <div class="box"><b>이 문서를 읽는 법.</b> 1~2장은 이론(왜 상태 없는 파티클인가, GPU 파티클과의 비교, 월드 고정 격자와 시간 감기, 차폐 맵이 그림자 맵과 같은 이유, 젖은 표면의 물리), 3장은 한 프레임에서 비가 지나는 길, 4장은 차폐 맵 만들기, 5장은 상수 버퍼와 레지스터, 6장은 빗줄기 셰이더, 7장은 젖은 표면, 8장은 빗방울이 닿는 자리(물결·튐), 9장은 렌더러에 끼워 넣은 자리와 비용, 10장은 코드 지도, 11장은 실험, 12장은 함정, 13장은 공부할 개념과 참고 문서입니다.</div>
+  <div class="box warn"><b>숫자에 대해.</b> 기본값에서 나오는 크기(텍셀, 튐 칸 수, 정밀도, 링 크기 등)는 <code>Renderer::PrepareRain</code> 과 <code>Shaders/Rain.hlsli</code> 의 식을 Python 으로 옮겨 계산한 값입니다 <span class="tag chk">계산값</span>. 화면과 GPU 시간에서 잰 값은 2026-11-26 구현 때 기록 문서에 남은 것이고 <span class="tag ok">확인함</span>으로 표시했습니다. 화면 좌표와 시간은 에디터 씬 뷰(732×445) 기준입니다. 이번 작업에서는 엔진을 실행하지 않았습니다.</div>
+</header>
+<nav><a href="#why">1. 왜 이 방법인가</a><a href="#principle">2. 원리</a><a href="#flow">3. 한 프레임의 흐름</a><a href="#occlusion">4. 차폐 맵</a><a href="#cb">5. b0·b8 과 레지스터</a><a href="#streaks">6. 빗줄기 셰이더</a><a href="#wet">7. 젖은 표면</a><a href="#impact">8. 물결과 튐</a><a href="#pipeline">9. 렌더러에 끼운 자리</a><a href="#code">10. 우리 코드</a><a href="#lab">11. 실험</a><a href="#pitfalls">12. 함정</a><a href="#study">13. 공부할 개념·참고</a></nav>
+
+<section id="why">
+<h2>1. 왜 이 방법인가</h2>
+<h3>1-1. 풀려는 문제</h3>
+<p>사용자와 정한 것은 "GPU 파티클 방식의 빗줄기 + 젖은 표면, 두 효과가 차폐 맵을 같이 씀" 하나입니다(<a href="../plan/rain-plan.html#d-table">계획 3.2</a>). 이 요구에서 나오는 조건은 이렇습니다.</p>
+<ul>
+<li>빗줄기는 카메라 주변에만 있으면 됩니다. 카메라가 걸어가도 비가 계속 내려야 하고, 빗방울이 카메라를 따라 미끄러져 보이면 안 됩니다.</li>
+<li>지붕·회랑·처마 아래에는 빗줄기가 없어야 하고 바닥도 말라 있어야 합니다. 이 판정이 화면에 보이는지와 상관없이 맞아야 합니다(머리 위 지붕은 화면 밖에 있습니다).</li>
+<li>비를 맞는 표면은 어두워지고 매끈해지며, 평평한 바닥에는 웅덩이와 물결이 생깁니다. 포워드와 디퍼드 두 경로에서 결과가 같아야 합니다.</li>
+</ul>
+<p>그리고 비가 없는 씬은 화면·드로우 수·패스 수가 그대로여야 한다는 규칙이 모든 단계에 걸려 있습니다(<a href="../plan/rain-plan.html#d-rules">계획 3.1</a>).</p>
+
+<h3>1-2. 빗줄기를 그리는 방법들</h3>
+<table>
+<tr><th>방법</th><th>빗방울 위치를 어디에 두나</th><th>장점</th><th>이 엔진에서의 문제</th></tr>
+<tr><td>기존 GPU 파티클 확장 (<code>ParticleEmitter</code>)</td><td>파티클 버퍼, 컴퓨트로 적분</td><td>힘·수명·충돌을 마음대로</td><td>생성 영역이 구뿐, 카메라 따라가기·속도 방향 빗줄기 없음, 충돌은 메인 카메라 깊이만 봄(화면 밖 지붕을 못 봄). 모든 이미터에 회귀 위험(<a href="../plan/rain-plan.html#now">계획 1장</a>)</td></tr>
+<tr><td>비 전용 컴퓨트 시뮬레이션</td><td>비 전용 버퍼</td><td>파티클 시스템을 건드리지 않음</td><td>빗방울은 등속이라 적분할 것이 없는데 버퍼·디스패치만 듦</td></tr>
+<tr><td>카메라를 감싼 원뿔·판에 스크롤하는 비 텍스처</td><td>텍스처 속 그림</td><td>아주 쌈. 텍스처 몇 장이면 됨</td><td>지붕 아래에서 빗줄기를 개별로 끊을 수 없고, 시차가 없어 카메라 이동 때 "그림"처럼 보임</td></tr>
+<tr><td>상태 없는 절차적 파티클 (이 엔진)</td><td>어디에도 저장하지 않음. 정점 셰이더가 번호·시간으로 매번 계산</td><td>버퍼·컴퓨트·정렬·원자 연산 없음, 실행마다 같은 그림</td><td>운동이 식 하나로 쓰일 때만 됨(등속 낙하는 됨)</td></tr>
+</table>
+<p>빗방울은 지름 수 mm 이고 금방 종단 속도(약 9 m/s)에 이릅니다. 그래서 위치를 "시작점 + 속도 × 시간"으로 바로 쓸 수 있고, 프레임마다 적분해 상태를 들고 다닐 이유가 없습니다(<a href="../plan/rain-plan.html#concept">계획 2장</a>). 화면에 보이는 "줄"은 빗방울이 노출 시간 동안 움직인 자취(9 m/s × 1/30 s ≈ 0.3 m)이고, 엔진 기본 <code>streakLength</code> 는 0.4 m 입니다.</p>
+
+<h3>1-3. GPU 파티클과 비교</h3>
+<p>같은 "GPU 가 위치를 정하는 입자"지만 들고 있는 것이 전혀 다릅니다. GPU 파티클 쪽 내용은 <a href="gpu-particles-study.html">GPU 파티클 학습</a>을 기준으로 했습니다.</p>
+<table>
+<tr><th>항목</th><th>GPU 파티클 (<code>ParticleEmitter</code>)</th><th>비 (<code>Rain</code>)</th></tr>
+<tr><td>GPU 에 남는 상태</td><td>파티클 풀 32 B × capacity, 사망 목록, 생존 목록 두 개(핑퐁), 개수 버퍼, 간접 인자(<a href="gpu-particles-study.html#data">2장</a>)</td><td>없음. 프레임마다 b8 <code>RainConstants</code> 96 B 만 올림</td></tr>
+<tr><td>시뮬레이션</td><td>컴퓨트 <code>CS_ParticleEmit</code>·<code>CS_ParticleSim</code>·<code>CS_ParticleArgs</code> 등, 원자 연산으로 목록 관리(<a href="gpu-particles-study.html#sim">4장</a>)</td><td>없음. <code>VS_Rain</code> 이 정점마다 위치를 계산</td></tr>
+<tr><td>그리기 호출</td><td><code>DrawInstancedIndirect</code>. 그릴 수는 GPU 가 센 생존 수(<a href="gpu-particles-study.html#indirect">5장</a>)</td><td><code>Draw(dropCount × 6)</code>. 그릴 수를 CPU 가 앎, 정점 버퍼 없음</td></tr>
+<tr><td>생성과 사망</td><td>사망 목록에서 꺼내 생성, 수명이 다하면 반납</td><td>없음. 상자 경계를 넘으면 <code>frac</code> 으로 반대편에 다시 나타남</td></tr>
+<tr><td>운동</td><td>힘·끌림·충돌 반사 등 아무 식이나 적분</td><td>모든 빗방울이 같은 등속 <code>velocity</code> = (wind.x, −fallSpeed, wind.z)</td></tr>
+<tr><td>장면과의 충돌</td><td>메인 카메라의 이번 프레임 깊이, 두께 0.3 m(<code>kCollisionThickness</code>, <a href="gpu-particles-study.html#depth">6장</a>). 화면 밖에서는 못 부딪힘</td><td>위에서 내려다본 차폐 맵. 화면과 무관하게 지붕 밑의 빗방울을 지움(튕기지는 않음)</td></tr>
+<tr><td>정렬</td><td>알파 이미터는 뷰마다 깊이 정렬(<a href="gpu-particles-study.html#sort">7장</a>)</td><td>없음. 가산만 씀</td></tr>
+<tr><td>카메라를 따라가나</td><td>아니오. 이미터가 월드에 있음</td><td>예. 카메라 중심 상자, 빗방울은 월드 고정 격자(2-2)</td></tr>
+<tr><td>결정성</td><td>생존 목록 순서가 실행마다 조금 다름</td><td><code>--rain-time</code> 이면 실행마다 같은 그림</td></tr>
+<tr><td>같이 쓰는 것</td><td colspan="2">파이프라인 상태(정점 입력 없음, 컬링 없음, 깊이 테스트만, 프리멀티플라이드 블렌드), 셋 번호(<code>kSetParticle</code>·<code>kSetParticleDepth</code>), 씬 패스의 두 번째 패스(깊이 읽기 전용), t23 깊이로 하는 소프트 페이드</td></tr>
+</table>
+<p>비는 GPU 파티클에서 버퍼에 남는 상태를 모두 덜어낸 형태이고, 그만큼 표현할 수 있는 운동이 줄어듭니다. 빗방울 하나가 지붕에 맞고 튀어 오르는 식의 개별 사건은 표현할 수 없고, 그래서 튐은 빗줄기와 따로 "칸마다 일정한 빈도로 떨어진다"는 통계로 만듭니다(8장).</p>
+</section>
+
+<section id="principle">
+<h2>2. 원리</h2>
+<h3>2-1. 상태 없는 절차적 파티클</h3>
+<p>정점 버퍼를 꽂지 않고 <code>Draw(N × 6)</code> 을 부르면 정점 셰이더는 <code>SV_VertexID</code> 0 … 6N−1 만 받습니다. <code>VS_Rain</code> 은 이것을 빗방울 번호와 쿼드 모서리로 나눕니다.</p>
+<pre><code>drop   = vertexId / 6                      // 빗방울 번호
+corner = kStreakCorners[vertexId % 6]      // 삼각형 둘 = 쿼드 하나
+anchor = RainHash3(drop, rainSeed) × rainBoxSize              // [0, boxSize)³, 빗방울마다 고정
+boxMin = cameraPosition − (½ boxSize.x, boxBelow × boxSize.y, ½ boxSize.z)
+local  = frac((anchor + rainFallOffset − boxMin) / rainBoxSize)  // 상자 안 0..1
+head   = boxMin + local × rainBoxSize                         // 빗줄기 머리</code></pre>
+<p>입력은 번호와 시간(<code>rainFallOffset</code>)뿐이라 같은 입력이면 같은 위치가 나옵니다. 해시는 PCG(<code>RainHash</code>, Jarzynski &amp; Olano 2020)이고 <code>Particle.hlsli</code> 의 <code>PcgHash</code> 와 같은 식입니다. <code>Particle.hlsli</code> 를 include 하지 않은 이유는 그 파일이 같은 b8 에 이미터 상수를 선언하기 때문입니다(<code>Rain.hlsli</code> 주석). 상자는 카메라 아래 1/3(<code>boxBelow</code>), 위 2/3 이고 기본값으로 30 × 12 × 30 m 입니다.</p>
+
+<h3>2-2. 월드 고정 격자와 <code>frac</code> 감기</h3>
+<p>위 식에서 <code>anchor + fallOffset</code> 은 카메라와 상관없는 월드 위치입니다. <code>frac</code> 으로 상자 크기마다 접으므로, 빗방울 하나는 사실 월드 전체에 상자 크기 간격으로 놓인 무한한 복제의 집합이고, 그중 지금 카메라 상자 안에 든 하나만 그려집니다.</p>
+<figure>
+<svg viewBox="0 0 900 320" role="img" aria-label="월드에 고정된 격자와 카메라 상자로 감기">
+  <line class="ln" x1="30" y1="40" x2="30" y2="240" style="stroke-dasharray:2 4"/>
+  <line class="ln" x1="130" y1="40" x2="130" y2="240" style="stroke-dasharray:2 4"/>
+  <line class="ln" x1="230" y1="40" x2="230" y2="240" style="stroke-dasharray:2 4"/>
+  <line class="ln" x1="330" y1="40" x2="330" y2="240" style="stroke-dasharray:2 4"/>
+  <line class="ln" x1="430" y1="40" x2="430" y2="240" style="stroke-dasharray:2 4"/>
+  <line class="ln" x1="530" y1="40" x2="530" y2="240" style="stroke-dasharray:2 4"/>
+  <line class="ln" x1="630" y1="40" x2="630" y2="240" style="stroke-dasharray:2 4"/>
+  <line class="ln" x1="30" y1="40" x2="630" y2="40" style="stroke-dasharray:2 4"/>
+  <line class="ln" x1="30" y1="140" x2="630" y2="140" style="stroke-dasharray:2 4"/>
+  <line class="ln" x1="30" y1="240" x2="630" y2="240" style="stroke-dasharray:2 4"/>
+  <rect x="205.0" y="90.0" width="100" height="100" style="fill:var(--accent-bg);stroke:var(--accent);stroke-width:2;fill-opacity:0.6"/>
+  <rect x="285.0" y="90.0" width="100" height="100" style="fill:none;stroke:var(--warn);stroke-width:2;stroke-dasharray:6 4"/>
+  <circle cx="62.4" cy="55.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="95.1" cy="47.2" r="2" style="fill:var(--ink3)"/>
+  <circle cx="83.6" cy="76.6" r="2" style="fill:var(--ink3)"/>
+  <circle cx="35.8" cy="90.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="33.7" cy="83.4" r="2" style="fill:var(--ink3)"/>
+  <circle cx="37.0" cy="49.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="72.5" cy="122.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="42.4" cy="62.3" r="2" style="fill:var(--ink3)"/>
+  <circle cx="92.7" cy="134.8" r="2" style="fill:var(--ink3)"/>
+  <circle cx="62.4" cy="155.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="95.1" cy="147.2" r="2" style="fill:var(--ink3)"/>
+  <circle cx="83.6" cy="176.6" r="2" style="fill:var(--ink3)"/>
+  <circle cx="35.8" cy="190.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="33.7" cy="183.4" r="2" style="fill:var(--ink3)"/>
+  <circle cx="37.0" cy="149.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="72.5" cy="222.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="42.4" cy="162.3" r="2" style="fill:var(--ink3)"/>
+  <circle cx="92.7" cy="234.8" r="2" style="fill:var(--ink3)"/>
+  <circle cx="162.4" cy="55.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="195.1" cy="47.2" r="2" style="fill:var(--ink3)"/>
+  <circle cx="183.6" cy="76.6" r="2" style="fill:var(--ink3)"/>
+  <circle cx="135.8" cy="90.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="133.7" cy="83.4" r="2" style="fill:var(--ink3)"/>
+  <circle cx="137.0" cy="49.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="172.5" cy="122.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="142.4" cy="62.3" r="2" style="fill:var(--ink3)"/>
+  <circle cx="192.7" cy="134.8" r="2" style="fill:var(--ink3)"/>
+  <circle cx="162.4" cy="155.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="195.1" cy="147.2" r="2" style="fill:var(--ink3)"/>
+  <circle cx="183.6" cy="176.6" r="2" style="fill:var(--ink3)"/>
+  <circle cx="135.8" cy="190.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="133.7" cy="183.4" r="2" style="fill:var(--ink3)"/>
+  <circle cx="137.0" cy="149.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="172.5" cy="222.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="142.4" cy="162.3" r="2" style="fill:var(--ink3)"/>
+  <circle cx="192.7" cy="234.8" r="2" style="fill:var(--ink3)"/>
+  <circle cx="262.4" cy="55.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="295.1" cy="47.2" r="2" style="fill:var(--ink3)"/>
+  <circle cx="283.6" cy="76.6" r="2" style="fill:var(--ink3)"/>
+  <circle cx="235.8" cy="90.7" r="3.5" style="fill:var(--accent)"/>
+  <circle cx="233.7" cy="83.4" r="2" style="fill:var(--ink3)"/>
+  <circle cx="237.0" cy="49.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="272.5" cy="122.7" r="3.5" style="fill:var(--accent)"/>
+  <circle cx="242.4" cy="62.3" r="2" style="fill:var(--ink3)"/>
+  <circle cx="292.7" cy="134.8" r="3.5" style="fill:var(--accent)"/>
+  <circle cx="292.7" cy="134.8" r="6" style="fill:none;stroke:var(--warn);stroke-width:1.5"/>
+  <circle cx="262.4" cy="155.1" r="3.5" style="fill:var(--accent)"/>
+  <circle cx="295.1" cy="147.2" r="3.5" style="fill:var(--accent)"/>
+  <circle cx="295.1" cy="147.2" r="6" style="fill:none;stroke:var(--warn);stroke-width:1.5"/>
+  <circle cx="283.6" cy="176.6" r="3.5" style="fill:var(--accent)"/>
+  <circle cx="235.8" cy="190.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="233.7" cy="183.4" r="3.5" style="fill:var(--accent)"/>
+  <circle cx="237.0" cy="149.1" r="3.5" style="fill:var(--accent)"/>
+  <circle cx="272.5" cy="222.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="242.4" cy="162.3" r="3.5" style="fill:var(--accent)"/>
+  <circle cx="292.7" cy="234.8" r="2" style="fill:var(--ink3)"/>
+  <circle cx="362.4" cy="55.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="395.1" cy="47.2" r="2" style="fill:var(--ink3)"/>
+  <circle cx="383.6" cy="76.6" r="2" style="fill:var(--ink3)"/>
+  <circle cx="335.8" cy="90.7" r="6" style="fill:none;stroke:var(--warn);stroke-width:1.5"/>
+  <circle cx="333.7" cy="83.4" r="2" style="fill:var(--ink3)"/>
+  <circle cx="337.0" cy="49.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="372.5" cy="122.7" r="6" style="fill:none;stroke:var(--warn);stroke-width:1.5"/>
+  <circle cx="342.4" cy="62.3" r="2" style="fill:var(--ink3)"/>
+  <circle cx="392.7" cy="134.8" r="2" style="fill:var(--ink3)"/>
+  <circle cx="362.4" cy="155.1" r="6" style="fill:none;stroke:var(--warn);stroke-width:1.5"/>
+  <circle cx="395.1" cy="147.2" r="2" style="fill:var(--ink3)"/>
+  <circle cx="383.6" cy="176.6" r="6" style="fill:none;stroke:var(--warn);stroke-width:1.5"/>
+  <circle cx="335.8" cy="190.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="333.7" cy="183.4" r="6" style="fill:none;stroke:var(--warn);stroke-width:1.5"/>
+  <circle cx="337.0" cy="149.1" r="6" style="fill:none;stroke:var(--warn);stroke-width:1.5"/>
+  <circle cx="372.5" cy="222.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="342.4" cy="162.3" r="6" style="fill:none;stroke:var(--warn);stroke-width:1.5"/>
+  <circle cx="392.7" cy="234.8" r="2" style="fill:var(--ink3)"/>
+  <circle cx="462.4" cy="55.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="495.1" cy="47.2" r="2" style="fill:var(--ink3)"/>
+  <circle cx="483.6" cy="76.6" r="2" style="fill:var(--ink3)"/>
+  <circle cx="435.8" cy="90.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="433.7" cy="83.4" r="2" style="fill:var(--ink3)"/>
+  <circle cx="437.0" cy="49.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="472.5" cy="122.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="442.4" cy="62.3" r="2" style="fill:var(--ink3)"/>
+  <circle cx="492.7" cy="134.8" r="2" style="fill:var(--ink3)"/>
+  <circle cx="462.4" cy="155.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="495.1" cy="147.2" r="2" style="fill:var(--ink3)"/>
+  <circle cx="483.6" cy="176.6" r="2" style="fill:var(--ink3)"/>
+  <circle cx="435.8" cy="190.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="433.7" cy="183.4" r="2" style="fill:var(--ink3)"/>
+  <circle cx="437.0" cy="149.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="472.5" cy="222.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="442.4" cy="162.3" r="2" style="fill:var(--ink3)"/>
+  <circle cx="492.7" cy="234.8" r="2" style="fill:var(--ink3)"/>
+  <circle cx="562.4" cy="55.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="595.1" cy="47.2" r="2" style="fill:var(--ink3)"/>
+  <circle cx="583.6" cy="76.6" r="2" style="fill:var(--ink3)"/>
+  <circle cx="535.8" cy="90.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="533.7" cy="83.4" r="2" style="fill:var(--ink3)"/>
+  <circle cx="537.0" cy="49.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="572.5" cy="122.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="542.4" cy="62.3" r="2" style="fill:var(--ink3)"/>
+  <circle cx="592.7" cy="134.8" r="2" style="fill:var(--ink3)"/>
+  <circle cx="562.4" cy="155.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="595.1" cy="147.2" r="2" style="fill:var(--ink3)"/>
+  <circle cx="583.6" cy="176.6" r="2" style="fill:var(--ink3)"/>
+  <circle cx="535.8" cy="190.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="533.7" cy="183.4" r="2" style="fill:var(--ink3)"/>
+  <circle cx="537.0" cy="149.1" r="2" style="fill:var(--ink3)"/>
+  <circle cx="572.5" cy="222.7" r="2" style="fill:var(--ink3)"/>
+  <circle cx="542.4" cy="162.3" r="2" style="fill:var(--ink3)"/>
+  <circle cx="592.7" cy="234.8" r="2" style="fill:var(--ink3)"/>
+  <path d="M249,140 L261,140 M255,134 L255,146" style="stroke:var(--accent);stroke-width:2"/>
+  <path d="M329,140 L341,140 M335,134 L335,146" style="stroke:var(--warn);stroke-width:2"/>
+  <text x="255" y="262" text-anchor="middle">A 의 상자</text>
+  <text x="355" y="30" text-anchor="middle">B 의 상자 (오른쪽으로 0.8 칸 이동)</text>
+  <text x="30" y="286">점선 칸 하나 = 상자 크기 (boxSize). 모든 칸에 같은 무늬 = RainHash3(번호, seed) × boxSize + fallOffset</text>
+  <circle cx="660" cy="70" r="3.5" style="fill:var(--accent)"/><text x="674" y="74">A 에서 그리는 빗방울</text>
+  <circle cx="660" cy="100" r="6" style="fill:none;stroke:var(--warn);stroke-width:1.5"/><text x="674" y="104">B 에서 그리는 빗방울</text>
+  <circle cx="660" cy="130" r="3.5" style="fill:var(--accent)"/><circle cx="660" cy="130" r="6" style="fill:none;stroke:var(--warn);stroke-width:1.5"/><text x="674" y="134">두 상자에 다 듦 = 같은 자리</text>
+  <circle cx="660" cy="160" r="2" style="fill:var(--ink3)"/><text x="674" y="164">격자의 다른 복제 (안 그림)</text>
+  <text x="654" y="200">빗방울 하나 = 격자 전체에</text>
+  <text x="654" y="218">같은 무늬로 놓인 복제 중</text>
+  <text x="654" y="236">상자 안에 든 하나 (frac)</text>
+</svg>
+<figcaption>그림 1. 위에서 본 xz 평면. 점선 칸이 상자 크기이고, 칸마다 같은 무늬로 빗방울이 놓여 있습니다(실제로는 3차원 격자). 카메라가 A 에서 B 로 움직이면 상자만 옮겨 가고, 두 상자에 다 드는 빗방울은 월드의 같은 자리에 그대로 있습니다. 상자에서 빠져나간 몫만큼 반대편에서 다른 복제가 나타납니다.</figcaption>
+</figure>
+<p>그래서 카메라가 움직여도 빗방울은 땅에 대해 미끄러지지 않습니다. 계획에서 검토한 다른 안은 "카메라 로컬 좌표에서 생성"이었는데, 그러면 옆으로 걸을 때 비 전체가 같이 따라와 화면에 붙은 무늬처럼 보입니다(<a href="../plan/rain-plan.html#d-table">계획 3.2</a> 카메라 따라가기 행). 대신 상자 경계에서 빗방울이 순간 이동합니다. 이것은 두 가지로 가립니다.</p>
+<ul>
+<li>머리 한 점만 접고 꼬리는 머리에서 다시 만듭니다(<code>tail = head − direction × streakLength</code>). 꼬리를 따로 접으면 경계에 걸린 줄이 상자를 가로지르는 긴 쿼드가 됩니다(<a href="../plan/rain-plan.html#d-drops">계획 3.5</a>).</li>
+<li>상자 가장자리 10% 에서 밝기를 줄입니다(<code>edge = saturate(min(local, 1 − local) / 0.1)</code>, 세 축의 곱). 위아래 가장자리도 같으므로 빗방울은 상자 위에서 서서히 나타나 아래에서 사라집니다.</li>
+</ul>
+
+<h3>2-3. 시간을 CPU 가 축마다 double 로 감는 이유</h3>
+<p>셰이더는 <code>velocity × t</code> 를 곱하지 않습니다. <code>Renderer::PrepareRain</code> 이 축마다 <code>fallOffset_i = fmod(velocity_i × t, boxSize_i)</code> 를 double 로 구해 넘깁니다. 위치는 상자 크기 주기의 <code>frac</code> 안에서만 쓰이므로, 한 축의 시간 몫을 그 축의 상자 크기만큼 빼도 <code>frac</code> 결과가 같고 움직임이 이어집니다.</p>
+<p>감는 주기는 축마다 그 축의 상자 크기여야 합니다. 시간 하나를 "상자 높이 / 낙하 속력"(12 / 9 ≈ 1.33 s) 주기로 감으면 y 는 이어지지만, 그 순간 x 는 1.5 m/s × 1.33 s = 2 m, z 는 0.67 m 만큼 뒤로 돌아가 모든 빗방울이 옆으로 한꺼번에 뜁니다 <span class="tag chk">계산값</span>. 2 m 는 x 상자 크기(30 m)의 배수가 아니라 <code>frac</code> 이 가려 주지 못합니다(<code>PrepareRain</code> 주석, <a href="../plan/rain-plan.html#d-drops">계획 3.5</a>).</p>
+<table>
+<tr><th>값 (낙하 9 m/s)</th><th>크기</th><th>float 한 칸</th></tr>
+<tr><td>감지 않은 y 몫, 실행 1 시간</td><td>32,400 m</td><td>0.002 m</td></tr>
+<tr><td>감지 않은 y 몫, 실행 하루</td><td>777,600 m</td><td>0.0625 m (빗줄기 길이 0.4 m 의 1/6)</td></tr>
+<tr><td>감은 y 몫 (상자 높이 12 m 안)</td><td>&lt; 12 m</td><td>0.000001 m</td></tr>
+<tr><td>입력 <code>totalTime</code> 자체, 하루</td><td>86,400 s</td><td>7.8 ms → 낙하로 0.07 m</td></tr>
+</table>
+<p>표는 계산값입니다 <span class="tag chk">계산값</span>. 감지 않으면 큰 시간 몫에 <code>anchor</code>(0~30 m)를 더하는 순간 빗방울끼리의 상대 위치까지 그 칸 크기로 뭉개집니다. 감으면 셰이더의 덧셈은 늘 상자 크기 안의 작은 수끼리 합니다. 다만 <a href="ocean-gerstner-study.html#time">바다 학습 5-2</a>와 같은 한계가 있습니다. <code>PrepareRain</code> 은 float <code>totalTime</code> 을 double 로 바꿔 쓰므로, 실행이 아주 길어지면 입력 해상도가 먼저 떨어지고 double 감기는 그것을 되돌리지 못합니다. <code>--rain-time=T</code> 면 t 대신 T 를 씁니다(<code>RenderSettings::rainTimeOverride</code>).</p>
+<p>남은 큰 수는 <code>cameraPosition</code> 입니다. <code>boxMin</code> 을 카메라 위치에서 빼서 만들므로, 원점에서 수 km 떨어진 곳에서는 카메라 좌표의 float 칸이 빗방울 위치에 그대로 들어갑니다. 테스트 씬처럼 원점 근처에서는 문제가 되지 않습니다.</p>
+
+<h3>2-4. 차폐 맵은 그림자 맵과 같은 원리</h3>
+<p>그림자 맵은 "빛에서 처음 보이는 깊이"를 담습니다. 비는 위에서 내려오므로 빛 대신 비의 방향(여기서는 바로 아래)으로 같은 것을 만들면, 텍셀 하나가 "이 xz 에서 비가 처음 닿는 높이"가 됩니다(<a href="../plan/rain-plan.html#concept">계획 2장</a>, <a href="shadow-map-study.html">그림자 맵 학습</a>). 방향광 그림자와 똑같이 직교 투영이라 깊이가 선형이고, 깊이에서 높이로 바로 바뀝니다.</p>
+<pre><code>height(texel) = rainMapY.x − depth × rainMapY.y     // 윗면 y − depth × 200 m
+depth = 1 (지운 값) 또는 맵 밖  →  −10³⁰ (열린 하늘)
+RainExposed(p) = p.y ≥ height(p.xz) − rainMapY.z      // 여유 = 텍셀 2 개 + 5 cm</code></pre>
+<figure>
+<svg viewBox="0 0 900 340" role="img" aria-label="위에서 내려다본 차폐 맵의 옆모습">
+  <line x1="40" y1="36" x2="760" y2="36" style="stroke:var(--ink2);stroke-width:1.5"/>
+  <text x="44" y="26">맵 윗면 = floor(카메라 y) + 100 m, 깊이 0 (그림은 축척 아님)</text>
+  <line x1="40" y1="270" x2="760" y2="270" style="stroke:var(--ink2);stroke-width:1.5"/>
+  <text x="700" y="288">바닥</text>
+  <line x1="60" y1="36" x2="60" y2="270" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="100" y1="36" x2="100" y2="270" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="140" y1="36" x2="140" y2="150" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="180" y1="36" x2="180" y2="150" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="220" y1="36" x2="220" y2="150" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="260" y1="36" x2="260" y2="150" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="300" y1="36" x2="300" y2="270" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="340" y1="36" x2="340" y2="270" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="380" y1="36" x2="380" y2="270" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="420" y1="36" x2="420" y2="170.0" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="460" y1="36" x2="460" y2="148.1818181818182" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="500" y1="36" x2="500" y2="126.36363636363636" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="540" y1="36" x2="540" y2="115.45454545454545" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="580" y1="36" x2="580" y2="137.27272727272728" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="620" y1="36" x2="620" y2="159.0909090909091" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="660" y1="36" x2="660" y2="270" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="700" y1="36" x2="700" y2="270" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <line x1="740" y1="36" x2="740" y2="270" style="stroke:var(--ink3);stroke-width:1;stroke-dasharray:2 3"/>
+  <rect x="120" y="150" width="160" height="14" style="fill:var(--fill);stroke:var(--ink2);stroke-width:1.5"/>
+  <line x1="130" y1="164" x2="130" y2="270" style="stroke:var(--ink2);stroke-width:3"/><line x1="270" y1="164" x2="270" y2="270" style="stroke:var(--ink2);stroke-width:3"/>
+  <path d="M420,170 L530,110 L640,170 L640,178 L530,118 L420,178 z" style="fill:var(--fill);stroke:var(--ink2);stroke-width:1.5"/>
+  <rect x="452" y="160" width="156" height="110" style="fill:none;stroke:var(--ink2);stroke-width:1.5"/>
+  <polyline points="40,270.0 60,270.0 60,270.0 80,270.0 80,270.0 100,270.0 100,270.0 120,270.0 120,150.0 140,150.0 140,150.0 160,150.0 160,150.0 180,150.0 180,150.0 200,150.0 200,150.0 220,150.0 220,150.0 240,150.0 240,150.0 260,150.0 260,150.0 280,150.0 280,270.0 300,270.0 300,270.0 320,270.0 320,270.0 340,270.0 340,270.0 360,270.0 360,270.0 380,270.0 380,270.0 400,270.0 400,270.0 420,270.0 420,164.5 440,164.5 440,153.6 460,153.6 460,142.7 480,142.7 480,131.8 500,131.8 500,120.9 520,120.9 520,110.0 540,110.0 540,120.9 560,120.9 560,131.8 580,131.8 580,142.7 600,142.7 600,153.6 620,153.6 620,164.5 640,164.5 640,270.0 660,270.0 660,270.0 680,270.0 680,270.0 700,270.0 700,270.0 720,270.0 720,270.0 740,270.0 740,270.0 760,270.0" style="fill:none;stroke:var(--accent);stroke-width:2.2"/>
+  <polyline points="420,180.5 440,180.5 440,169.6 460,169.6 460,158.7 480,158.7 480,147.8 500,147.8 500,136.9 520,136.9 520,126.0 540,126.0 540,136.9 560,136.9 560,147.8 580,147.8 580,158.7 600,158.7 600,169.6 620,169.6 620,180.5 640,180.5" style="fill:none;stroke:var(--warn);stroke-width:1.6;stroke-dasharray:5 3"/>
+  <line x1="352" y1="186" x2="346" y2="206" style="stroke:var(--accent);stroke-width:2"/><text x="360" y="200">빗방울 그림</text>
+  <line x1="206" y1="196" x2="200" y2="216" style="stroke:var(--ink3);stroke-width:2;stroke-dasharray:3 2"/><text x="150" y="236">지붕 밑: 잘림</text>
+  <circle cx="200" cy="270" r="4" style="fill:var(--ink3)"/><text x="160" y="288">마른 바닥</text>
+  <circle cx="340" cy="270" r="4" style="fill:var(--accent)"/><text x="310" y="288">젖은 바닥</text>
+  <circle cx="608" cy="230" r="4" style="fill:var(--ink2)"/>
+  <line x1="608" y1="230" x2="632" y2="230" style="stroke:var(--ink2);stroke-width:1.5" marker-end="url(#rain-ar)"/>
+  <circle cx="636" cy="230" r="4" style="fill:none;stroke:var(--ink2);stroke-width:1.5"/>
+  <text x="646" y="226">q = p + n × 1.5 텍셀</text><text x="646" y="244">→ 처마 높이와 비교 → 마름</text>
+  <defs><marker id="rain-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink2)"/></marker></defs>
+  <text x="530" y="200" text-anchor="middle">경사 지붕 (건물)</text>
+  <text x="200" y="182" text-anchor="middle">상자 지붕</text>
+  <line x1="60" y1="312" x2="96" y2="312" style="stroke:var(--accent);stroke-width:2.2"/><text x="104" y="316">맵에 담긴 높이 (텍셀마다 한 값)</text>
+  <line x1="330" y1="312" x2="366" y2="312" style="stroke:var(--warn);stroke-width:1.6;stroke-dasharray:5 3"/><text x="374" y="316">그림자 PSO 그대로 그렸을 때 (바이어스로 아래로 밀림)</text>
+</svg>
+<figcaption>그림 2. 차폐 맵의 옆모습(축척 아님). 위에서 바로 아래로 쏜 직교 광선이 처음 닿은 높이가 텍셀마다 하나씩 담깁니다(파란 계단선). 상자 지붕 밑의 빗방울과 바닥은 이 높이보다 아래라 가려집니다. 벽 위의 점은 법선 쪽으로 텍셀 1.5 개 옮긴 점(q)으로 판정해, 처마가 있으면 처마 높이와 비교되어 마릅니다(4-5). 주황 점선은 그림자 PSO 의 깊이 바이어스를 그대로 쓰면 경사 지붕이 맵에서 아래로 밀려 담기는 모습입니다(4-2).</figcaption>
+</figure>
+<p>그림자 맵과 같은 원리라 같은 문제와 같은 해법이 따라옵니다.</p>
+<table>
+<tr><th>그림자 맵에서</th><th>차폐 맵에서</th><th>이 엔진</th></tr>
+<tr><td>CSM 텍셀 스냅: 카메라가 움직일 때 그림자 가장자리가 지글거리지 않게 광원 상자를 텍셀 격자에 맞춤(<a href="csm-study.html#theory">CSM 학습 2장</a>)</td><td>카메라가 움직일 때 지붕 가장자리 아래 마른 선과 빗줄기 끊기는 선이 떨리지 않게</td><td>맵 중심 xz 를 텍셀 크기(80/1024 ≈ 7.8 cm)로 반올림 <span class="tag chk">계산값</span></td></tr>
+<tr><td>깊이 바이어스: 받는 면이 자기 자신에게 가려지는 여드름을 막음(<a href="csm-study.html#bias">CSM 학습 3-3</a>)</td><td>필요 없음. 오히려 지붕 높이를 틀리게 만듦</td><td>바이어스 0 인 그림자 PSO 변형(4-2), 비교 여유는 셰이더의 <code>rainMapY.z</code></td></tr>
+<tr><td>PCF: 맵 해상도의 계단을 부드럽게(<a href="pcf-study.html">PCF 학습</a>)</td><td>지붕 가장자리 아래 바닥의 7.8 cm 계단</td><td>젖음은 이웃 네 텍셀 판정을 쌍선형으로 섞음(<code>RainExposure</code>)</td></tr>
+<tr><td>알파 테스트 그림자: 잎 무늬대로 빛이 샘</td><td>잎 판 사이로 비가 샘</td><td>그림자의 알파 테스트 변형(<code>Pass_ShadowAlpha</code>)을 그대로 씀</td></tr>
+<tr><td>그림자를 만들지 않는 재질(unlit·블렌딩·바다)</td><td>비를 막지 않음</td><td>그림자 PSO 가 있는 항목만 차폐 맵에 들어감</td></tr>
+</table>
+<p>방향을 바로 아래로 고정한 것은 b0 칸 몇 개로 "xz → uv, 깊이 → y" 가 끝나게 하려는 선택입니다. 바람에 기운 비를 맞추려면 4×4 행렬이 필요해 b0 가 64 B 커지는데, 차이는 처마 끝 수십 cm 라 후속 작업으로 남겼습니다(<a href="../plan/rain-plan.html#d-table">계획 3.2</a> 차폐 방향 행).</p>
+
+<h3>2-5. 젖은 표면의 물리</h3>
+<p>물에 젖은 흙·콘크리트·천이 어두워지는 이유로 그래픽스와 광학 문헌이 드는 설명은 아래와 같습니다(<a href="#refs">참고 문서</a>).</p>
+<ul>
+<li>다공성 재질의 틈을 물이 채우면 입자와 주변의 굴절률 차가 공기일 때(약 1.5 대 1)보다 물일 때(1.5 대 1.33) 훨씬 작아집니다. 빛이 표면 가까이에서 덜 꺾여 되돌아 나오지 못하고 더 깊이 들어가며, 그 길에서 흡수가 늘어 확산 반사(알베도)가 줄어듭니다. Jensen 외(1999)는 이것을 표면 아래 산란으로 다뤘습니다.</li>
+<li>표면을 덮은 얇은 물막 안에서는 빠져나가려던 빛 일부가 물–공기 경계에서 전반사되어 다시 표면으로 돌아가고, 돌아갈 때마다 또 흡수됩니다. Lekner &amp; Dorf(1988)가 Ångström 의 모형을 이어 이 경로로 계산했습니다.</li>
+</ul>
+<p>물막은 또 표면의 미세한 요철을 덮어 매끈한 거울처럼 만듭니다. 그래서 거칠기가 내려가고, 물이 고이면 반사가 대부분인 아주 매끈한 유전체(물의 F0 ≈ 0.02)가 됩니다. 금속은 물을 머금지 않아 어두워지지 않고 거칠기만 내려갑니다. 위를 보는 면에는 물이 머물고 벽에서는 흘러내리므로 벽은 덜 젖습니다. 우리 엔진은 이것을 Lagarde 의 "Water drop" 연재를 따라 알베도 배율·거칠기 lerp 몇 개로 근사합니다(7장, <a href="pbr-study.html">PBR 학습</a>).</p>
+</section>
+
+<section id="flow">
+<h2>3. 한 프레임에서 비가 지나는 길</h2>
+<table>
+<tr><th>순서</th><th>어디서</th><th>무엇을</th></tr>
+<tr><td>1</td><td><code>Renderer::Render</code> → <code>Renderer::PrepareRain</code> (<code>UploadPerFrameConstants</code> 바로 앞)</td><td><code>scene.GetObjects()</code> 를 직접 훑어 켜진 첫 <code>Rain</code> 을 고름(b0 가 <code>BuildDrawList</code> 보다 먼저 올라가므로). 젖음 보간, 차폐 맵 위치·행렬(텍셀 스냅), 맵 텍스처(해상도가 바뀌면 다시 만듦), b0 칸 넷, b8 값, 통계</td></tr>
+<tr><td>2</td><td><code>Renderer::UploadPerFrameConstants</code></td><td>b0 의 <code>rainParams</code>·<code>rainMapXZ</code>·<code>rainMapY</code>·<code>rainSurface</code>. 비가 없으면 모두 0. 미리보기 뷰도 같은 값</td></tr>
+<tr><td>3</td><td><code>Renderer::BuildDrawList</code></td><td>비가 있는 프레임에만, 그림자 PSO 가 있는 항목에 <code>DrawItem::occluderPipeline</code>(바이어스 없는 변형)</td></tr>
+<tr><td>4</td><td><code>Renderer::UploadRainConstants</code></td><td>b8 <code>RainConstants</code>. 그릴 것이 있을 때만(비 셋은 비 패스만 묶음)</td></tr>
+<tr><td>5</td><td><code>Renderer::UpdateFrameSet</code></td><td>프레임 셋 t24 에 차폐 맵, 비가 없으면 흰 텍스처. 꽂을 텍스처가 바뀌면 셋을 다시 만듦(<code>m_frameSetRainMap</code>)</td></tr>
+<tr><td>6</td><td>그림자 패스 다음 <code>Renderer::RenderRainOcclusionPass</code></td><td>GPU 구간 <code>RainOcclusion</code>. 위에서 내려다본 깊이 → <code>m_rainMap</code>. 끝나면 ShaderResource</td></tr>
+<tr><td>7</td><td>G-buffer 패스 또는 포워드 메인 패스</td><td>재질 PS 의 <code>EvaluateMaterialSurface</code> 가 <code>ApplyWetness</code> → <code>ApplyWetNormal</code>(t24, b0 의 비 칸)</td></tr>
+<tr><td>8</td><td><code>RenderScenePass</code> 의 두 번째 패스(깊이 읽기 전용) → <code>Renderer::DrawRain</code></td><td>GPU 구간 <code>Rain</code>. 파티클 다음에 빗줄기(<code>Pass_Rain</code>)와 튐(<code>Pass_RainSplash</code>). 그릴 것이 있으면 이 패스가 열림</td></tr>
+</table>
+<p>젖음은 디퍼드 조명 패스에서 하지 않고 재질 PS 에서 합니다. 포워드 재질도 젖어야 하고, F0 가 젖은 알베도를 따라가야 금속 재질이 맞습니다. 디퍼드 조명 패스에서 G-buffer 값을 고치면 F0 가 이미 구워져 있습니다(<a href="../plan/rain-plan.html#d-table">계획 3.2</a> 젖음 적용 위치 행, <a href="deferred-gbuffer-study.html#shared">디퍼드 G-buffer 학습 3-2</a>). 프레임 전체 순서는 <a href="frame-structure-study.html#passes">프레임 구조 학습</a>에 있습니다.</p>
+</section>
+
+<section id="occlusion">
+<h2>4. 차폐 맵 만들기</h2>
+<h3>4-1. 위에서 내려다보는 카메라</h3>
+<table>
+<tr><th>값</th><th>코드 (<code>PrepareRain</code>)</th><th>기본값</th></tr>
+<tr><td>한 변</td><td><code>max(occlusionSize, 4)</code></td><td>80 m</td></tr>
+<tr><td>해상도</td><td><code>SnapResolution</code>: 512·1024·2048 중 가까운 것</td><td>1024² (텍셀 7.8 cm) <span class="tag chk">계산값</span></td></tr>
+<tr><td>중심</td><td><code>round(eye.xz / texel) × texel</code></td><td>카메라 xz 를 텍셀로 스냅</td></tr>
+<tr><td>윗면</td><td><code>floor(eye.y) + kMapHeightAbove</code></td><td>카메라 위 100 m (1 m 로 내림)</td></tr>
+<tr><td>깊이 범위</td><td><code>kMapDepthRange</code></td><td>200 m. 그 아래는 열린 하늘</td></tr>
+<tr><td>행렬</td><td><code>XMMatrixLookToLH(중심, −Y, up = +Z) × XMMatrixOrthographicLH(size, size, 0, 200)</code></td><td>뷰 +x = 월드 +X, 뷰 +y = 월드 +Z → u = (x − minX)/size, v = 1 − (z − minZ)/size</td></tr>
+<tr><td>텍스처</td><td><code>D32_FLOAT</code>, DSV + SRV, <code>"RainOcclusionMap"</code></td><td>비가 처음 생길 때와 해상도가 바뀔 때만 만듦</td></tr>
+</table>
+<p>윗면 높이를 1 m 로 내리는 것도 스냅입니다. 카메라가 위아래로 움직일 때 깊이 0 의 자리가 흔들리지 않게 합니다. 계획에는 카메라 위 50 m 였고 코드는 100 m 입니다(<a href="../plan/rain-plan.html#d-table">계획 3.2</a>). 텍셀 스냅이 왜 떨림을 없애는지는 CSM 과 같습니다. 중심이 텍셀 격자에 앉으면 격자 전체가 월드에 고정되고, 카메라가 움직여도 같은 지붕 가장자리는 같은 텍셀에 떨어집니다. 상자 크기가 고정이라는 전제가 필요한데, 차폐 맵은 크기가 컴포넌트 값 하나라 저절로 지켜집니다(<a href="csm-study.html#theory">CSM 학습 2장</a>).</p>
+
+<h3>4-2. 바이어스 없는 변형 (키 비트 11)</h3>
+<p>그림자 PSO 의 래스터라이저는 깊이 바이어스 2000, 기울기 바이어스 2.0, 클램프 0.01 을 씁니다(<code>BuildPassDescs</code> 의 <code>Pass_Shadow</code> 계열). <code>GetShadowPipelineFor(…, noBias = true)</code> 는 같은 desc 에서 이 셋을 0 으로 두고 키에 비트 11 을 더한 변형을 만듭니다.</p>
+<p>D3D 의 바이어스는 래스터라이저가 기록하는 깊이에 더해지는 값입니다. 차폐 맵에서 깊이가 커지면 높이(<code>top − depth × 200</code>)는 낮아집니다. 기울기 항은 2.0 × (텍셀 하나를 지날 때의 깊이 변화)이므로 위에서 본 경사 지붕이라면 높이로 2 × 텍셀 × tan θ 입니다.</p>
+<table>
+<tr><th>지붕 기울기 θ</th><th>기울기 항</th><th>상수 항 (깊이 0.25~0.5)</th><th>합</th></tr>
+<tr><td>0° (평지붕)</td><td>0</td><td>약 0.01 m</td><td>약 0.01 m</td></tr>
+<tr><td>30°</td><td>0.09 m</td><td>약 0.01 m</td><td>약 0.10 m</td></tr>
+<tr><td>45°</td><td>0.16 m</td><td>약 0.01 m</td><td>약 0.17 m</td></tr>
+<tr><td>60°</td><td>0.27 m</td><td>약 0.01 m</td><td>약 0.28 m</td></tr>
+</table>
+<p>표는 계산값입니다 <span class="tag chk">계산값</span>(D32 의 상수 바이어스 단위는 2^(지수 − 23), 텍셀 7.8 cm, 클램프 0.01 은 높이로 2 m 라 걸리지 않음). 그림자 맵에서는 이 오프셋이 받는 면을 자기 그림자에서 꺼내 주지만, 차폐 맵에서는 경사 지붕을 실제보다 10~30 cm 낮게 담습니다. 이 높이를 쓰는 쪽에서 무엇이 틀어지는지 코드로 따라가면 이렇습니다.</p>
+<ul>
+<li>튐: <code>VS_RainSplash</code> 는 튐의 바닥을 <code>RainOccluderHeight(xz) + 0.01</code> 에 둡니다. 맵 높이가 지붕면보다 낮으면 튐이 지붕 속에 묻혀 깊이 테스트에서 가려집니다. 경사 지붕 위의 튐이 사라집니다.</li>
+<li>빗줄기와 젖음: 판정은 <code>p.y ≥ height − 여유</code> 라, 높이가 낮아지면 지붕 바로 밑의 점까지 "비를 맞음"이 됩니다. 얇은 지붕이나 처마 바로 밑으로 비가 새고 그 자리가 젖습니다.</li>
+</ul>
+<p>기록은 증상을 "그림자의 기울기 바이어스(2.0)가 위에서 본 경사 지붕을 수십 cm 아래로 밀어 지붕 위 빗방울까지 잘라냄"이라고 적었습니다(<a href="../plan/rain-record.html#diff">기록 2장</a>). "수십 cm 아래로 민다"는 크기는 위 계산과 맞습니다. 다만 맵이 낮아지면 판정은 빗방울을 덜 자르는 쪽으로 움직이므로, 코드로 보면 눈에 띄는 증상은 지붕 위 튐이 묻히는 것과 처마 밑으로 새는 것입니다. 이 문서는 코드에서 나오는 쪽으로 적었습니다.</p>
+<p>바이어스를 빼도 여드름 걱정은 없습니다. 차폐 맵은 "받는 면"이 맵을 그린 면과 같은 경우(지붕 자신의 젖음)에만 같은 깊이를 비교하는데, 그 비교 여유를 래스터라이저 대신 셰이더의 <code>rainMapY.z</code>(텍셀 두 개 + 5 cm ≈ 21 cm) <span class="tag chk">계산값</span>와 법선 쪽 오프셋(4-5)으로 줍니다. <code>DrawItem::occluderPipeline</code> 은 비가 있는 프레임에만 채우므로 비가 없는 씬의 PSO 수는 그대로입니다(PSO 캐시 키는 <a href="rhi-pso-study.html#cache">RHI·PSO 학습</a>).</p>
+
+<h3>4-3. 그림자 패스와 같은 본문 (<code>DrawDepthView</code>)</h3>
+<p><code>Renderer::DrawDepthView</code>(<code>Graphics/RendererShadow.cpp</code>)는 원래 <code>RenderShadowAtlasPass</code> 의 뷰 하나 본문을 함수로 뺀 것입니다. b5 에 viewProj 를 올리고, 절두체(직교 뷰는 near 평면을 뺌)와 범위 구(cullSphere.w &gt; 0 일 때만)로 컬링한 뒤 <code>m_drawList</code> 를 그립니다. 다른 점은 PSO 를 <code>occluder</code> 인자로 고르는 것과 통계 카운터를 인자로 받는 것입니다. 같은 렌더 패스 안의 "직전 PSO·메시·재질"은 <code>DepthDrawState</code> 로 이어 씁니다.</p>
+<p><code>RenderRainOcclusionPass</code> 는 맵을 DepthWrite 로 바꾸고 1 로 지운 뒤 뷰포트를 맵 전체로 잡고 <code>DrawDepthView(viewProj, cullSphere = 0, perspective = false, occluder = true)</code> 를 부릅니다. <code>m_drawList</code> 는 메인 카메라로 미리 컬링되지 않은 목록이라 화면 밖 머리 위의 지붕도 맵에 들어갑니다. 그림자 아틀라스의 칸으로 넣지 않고 전용 텍스처·전용 패스로 둔 이유는, 그림자를 만드는 조명이 없는 씬에서는 그림자 패스 자체가 돌지 않고(<code>m_shadowViewCount</code>), b6 의 그림자 뷰 칸도 차지하기 때문입니다(<a href="../plan/rain-plan.html#d-table">계획 3.2</a>).</p>
+<p>같은 텍스처가 프레임 셋 t24 로 묶인 채로 DSV 로 쓰이는 점은 그림자 맵 t8 과 같은 길로 해결합니다. D3D11 은 <code>BeginRenderPass</code> 가 쓰기 깊이 타깃의 SRV 바인딩을 풀고 다음 씬 패스가 셋을 다시 꽂습니다. D3D12 는 DepthWrite ↔ ShaderResource 배리어로 오가고, 그 사이 테이블이 가리키는 맵은 그림자 VS·알파 PS 가 읽지 않습니다(<a href="../plan/rain-record.html#occ-hazard">기록 4.4</a>, <a href="binding-study.html#sets">바인딩 학습</a>).</p>
+
+<h3>4-4. 비가 없으면 흰 텍스처</h3>
+<p>D3D12 디스크립터 테이블에는 유효한 뷰가 있어야 하므로 t24 를 비워 둘 수 없습니다. <code>UpdateFrameSet</code> 은 비가 없으면 <code>m_textures.GetWhite()</code> 를 꽂습니다. 흰색 = 깊이 1 = "아무것도 없음 = 열린 하늘"이라 혹시 읽어도 결과가 맞는 값입니다. 실제로는 <code>rainParams.z</code>(맵 있음)가 0 이라 셰이더가 맵을 읽지 않고, <code>rainParams.y</code>(젖음)가 0 이라 젖음의 lerp 가 모두 그대로입니다. 두 값이 모두 0 이므로 비가 없는 씬의 화면은 바뀌지 않습니다. 기록의 회귀 비교에서 7개 씬 × 두 백엔드의 차이는 같은 바이너리끼리 찍어도 나는 잡음 수준이었습니다 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/rain-record.html#v-reg">기록 9.4</a>.</p>
+
+<h3>4-5. 셰이더에서 읽기 — 점 판정과 면 판정</h3>
+<p>맵은 <code>Load</code> 로만 읽습니다. 샘플러가 없어 VS 에서도, 분기 안에서도 안전합니다.</p>
+<table>
+<tr><th>함수 (<code>Rain.hlsli</code>)</th><th>하는 일</th><th>쓰는 곳</th></tr>
+<tr><td><code>RainOccluderHeightAt(texel)</code></td><td>텍셀 하나의 높이. 맵 밖·깊이 1 이면 −10³⁰</td><td>아래 함수들</td></tr>
+<tr><td><code>RainOccluderHeight(xz)</code></td><td>점 하나. 맵이 없으면 −10³⁰</td><td>튐의 바닥 높이</td></tr>
+<tr><td><code>RainExposed(p)</code></td><td>텍셀 하나, 딱 끊김</td><td>빗줄기 머리</td></tr>
+<tr><td><code>RainExposure(p, n)</code></td><td>법선 쪽으로 텍셀 1.5 개(약 12 cm) 옮긴 점 q 에서 이웃 네 텍셀 판정을 쌍선형으로 섞음, 0..1</td><td>젖음, 디버그 뷰 18 의 R</td></tr>
+</table>
+<p>빗줄기는 공중의 점이라 한 텍셀 판정이면 됩니다. 빗줄기 꼬리가 지붕 밑으로 조금 들어가는 것은 PS 의 소프트 페이드가 가립니다. 표면은 사정이 다릅니다. 벽 위의 점은 맵에서 늘 벽 꼭대기보다 아래라 그대로 비교하면 모든 벽이 "가려짐"이 됩니다. 법선 쪽으로 옮기면 벽 바깥 땅 위의 높이와 비교되고, 처마 밑 벽은 처마 높이와 비교되어 마릅니다(그림 2). 쌍선형 섞기는 PCF 와 같은 생각으로, 지붕 가장자리 아래 바닥의 7.8 cm 계단을 젖음의 기울기로 바꿉니다. 계획은 한 점 판정에서 시작해 "거슬리면 2×2 비교"를 남겨 두었고, 구현에서 넣었습니다(<a href="../plan/rain-plan.html#d-wet">계획 3.6</a>).</p>
+</section>
+
+<section id="cb">
+<h2>5. b0·b8 과 레지스터 배치</h2>
+<h3>5-1. b0 <code>PerFrameConstants</code> 의 비 칸 (576 ~ 639)</h3>
+<table>
+<tr><th>오프셋</th><th>필드</th><th>x</th><th>y</th><th>z</th><th>w</th></tr>
+<tr><td>576</td><td><code>rainParams</code></td><td>빗줄기 세기</td><td>젖음 (보간된 값)</td><td>차폐 맵 있음 1/0</td><td>비 시간 (1000 s 로 감음)</td></tr>
+<tr><td>592</td><td><code>rainMapXZ</code></td><td colspan="2">맵 최소 모서리 월드 x, z</td><td>1 / 한 변</td><td>텍셀 크기</td></tr>
+<tr><td>608</td><td><code>rainMapY</code></td><td>맵 윗면 y</td><td>깊이 범위 200</td><td>비교 여유</td><td>해상도</td></tr>
+<tr><td>624</td><td><code>rainSurface</code></td><td>물결 켬 1/0</td><td>웅덩이 양</td><td>빗방울이 떨어지는 칸 비율</td><td>미사용</td></tr>
+</table>
+<p>젖음·웅덩이·물결은 모든 불투명 재질 PS 가 읽으므로 b8 이 아니라 b0 에 있어야 합니다. b0 는 576 → 640 B 가 되었고, D3D12 는 루트 CBV 를 256 B 단위로 떼므로 업로드 링 사용량은 768 B 로 같습니다(<a href="../plan/rain-record.html#binding">기록 8장</a>). <code>Graphics/ShaderConstants.h</code> 의 <code>static_assert</code> 가 <code>rainParams</code> = 576, <code>rainSurface</code> = 624 를 고정하고, HLSL 쪽은 <code>Shaders/Common.hlsli</code> 의 <code>cbuffer PerFrame</code> 끝입니다(<a href="../overview/rendering-analysis.html#c10-6">rendering-analysis 10.6</a>).</p>
+
+<h3>5-2. b8 <code>RainConstants</code> (96 B)</h3>
+<table>
+<tr><th>오프셋</th><th>필드</th><th>내용</th></tr>
+<tr><td>0</td><td><code>fallOffset</code>, <code>boxBelow</code></td><td>축마다 fmod(velocity × t, boxSize) (2-3), 상자에서 카메라 아래 몫 1/3</td></tr>
+<tr><td>16</td><td><code>boxSize</code>, <code>dropCount</code></td><td>(2 × areaRadius, areaHeight, 2 × areaRadius), 이번 프레임 빗방울 수</td></tr>
+<tr><td>32</td><td><code>velocity</code>, <code>streakLength</code></td><td>(wind.x, −fallSpeed, wind.z), 빗줄기 길이</td></tr>
+<tr><td>48</td><td><code>color</code>, <code>streakWidth</code></td><td>color × brightness, 빗줄기 폭</td></tr>
+<tr><td>64</td><td><code>nearFade</code>, <code>softDistance</code>, <code>seed</code>, <code>splashCount</code></td><td>근접 페이드, 소프트 페이드 0.3 m, 해시 씨앗, 튐 칸 수 = 2 × splashGrid²</td></tr>
+<tr><td>80</td><td><code>splashGrid</code>, <code>splashRadius</code>, <code>splashPeriod</code>, <code>splashSize</code></td><td>튐 격자 한 변 칸 수, 0.8 × areaRadius, 0.35 s, 0.12 m</td></tr>
+</table>
+<p>뷰마다 다른 값(카메라 위치, 픽셀 크기)은 b8 에 넣지 않습니다. b8 은 프레임에 한 번 올리고, <code>VS_Rain</code> 이 뷰마다 다시 올라오는 b0 의 <code>cameraPosition</code>·<code>proj</code>·<code>screenParams</code> 로 구합니다. 그래서 미리보기 카메라도 자기 주변에 비를 그립니다(차폐 맵은 메인 카메라 것 하나를 같이 씀). b8 은 파티클 이미터(<code>Layout_ParticleDraw</code>)와 번호가 같지만 두 셋은 같은 PSO 에 묶이지 않습니다. 이 규칙과 t24 를 TAA 히스토리·정렬 개수와 나눠 쓰는 규칙은 <a href="binding-study.html#regmap">바인딩 학습</a>에 있습니다.</p>
+
+<h3>5-3. 셋과 슬롯</h3>
+<table>
+<tr><th>자리</th><th>내용</th><th>단계</th></tr>
+<tr><td>t24 (<code>kSRVSlotRainOcclusion</code>)</td><td>프레임 셋 마지막 슬롯. 차폐 맵 또는 흰 텍스처</td><td>VS|PS. 프레임 셋에 VS 가 읽는 SRV 가 처음 생겨 D3D12 테이블 가시성이 PIXEL 에서 ALL 로 바뀜</td></tr>
+<tr><td>b8 (<code>kCBSlotRain</code>), <code>Layout_Rain</code></td><td>셋 <code>m_rainSet</code> = { <code>m_rainCB</code> }</td><td>VS|PS. 레이아웃 19 → 20 개</td></tr>
+<tr><td>t23</td><td>이 뷰의 깊이(<code>Layout_ParticleDepth</code>, <code>view.particleDepthSet</code>)</td><td>소프트 페이드</td></tr>
+<tr><td><code>Pass_Rain</code>, <code>Pass_RainSplash</code></td><td>셋 { <code>Layout_Frame</code>, <code>Layout_Rain</code>, <code>Layout_ParticleDepth</code> }. 셋 번호가 파티클 패스와 같음</td><td>상태는 <code>BuildPassDescs</code> 가 파티클 desc 를 복사하고 셰이더·레이아웃만 바꿈</td></tr>
+</table>
+<p><code>Rain.hlsli</code> 는 <code>RAIN_DRAW</code> 를 정의한 빗줄기·튐 셰이더에서만 b8 과 t23 을 선언합니다. 재질 PS 는 이 매크로 없이 t24 와 젖음 함수만 씁니다. <code>Shading.hlsli</code> 가 <code>Rain.hlsli</code> 를 include 하므로 모든 재질 PS 가 따라옵니다(<a href="../overview/rendering-analysis.html#c10-1">rendering-analysis 10.1</a>).</p>
+</section>
+
+<section id="streaks">
+<h2>6. 빗줄기 셰이더</h2>
+<h3>6-1. <code>VS_Rain</code> 의 순서</h3>
+<ol>
+<li>번호와 모서리, 상자 안 머리 위치(2-1). 머리가 <code>RainExposed</code> 가 아니면 <code>CulledRain</code>(클립 공간 z = −1) — 삼각형이 잘려 PS 가 돌지 않음.</li>
+<li>가장자리 10% 페이드(2-2).</li>
+<li>꼬리 = 머리 − normalize(velocity) × streakLength. 머리·꼬리를 뷰 공간으로 옮기고, 더 가까운 쪽 z 가 0.02 이하면 버림.</li>
+<li>화면에서 선에 수직인 방향: 머리·꼬리를 원근 나눗셈한 xy 의 차를 정규화하고 90° 돌림. 선이 화면을 정면으로 뚫으면(바로 위·아래를 볼 때) 아무 방향.</li>
+<li>폭을 최소 1 픽셀로 키우고 키운 만큼 어둡게(6-2), 근접 페이드(6-3).</li>
+<li>뷰 공간에서 머리–꼬리를 lerp 하고 옆으로 폭의 절반을 더해 투영. 화면을 향한 축 고정 빌보드입니다.</li>
+</ol>
+<p>원근 나눗셈한 좌표로 방향을 잡는 이유는 빗줄기가 화면에서 실제로 그려지는 방향에 수직인 폭을 주려는 것입니다. 계획에서는 월드에서 <code>cross(velocity, p − cameraPosition)</code> 로 잡는 안이었는데, 코드는 화면 공간에서 정합니다(<a href="../plan/rain-plan.html#d-drops">계획 3.5</a>).</p>
+
+<h3>6-2. 1 픽셀 폭과 밝기 보정</h3>
+<pre><code>pixel      = RainPixelWorldSize(viewZ) = viewZ × 2 / (proj[1][1] × 화면 높이)
+width      = max(streakWidth, pixel)
+widthScale = streakWidth / width      // 키운 만큼 어둡게 — 화면에 들어가는 빛의 양을 유지</code></pre>
+<p>폭 4 mm 의 빗줄기는 몇 m 만 떨어져도 픽셀보다 가늘어집니다. 그대로 그리면 래스터라이저가 픽셀 중심을 지날 때만 칠해 줄이 끊기고 깜빡입니다. 폭을 1 픽셀로 키우고 밝기를 그만큼 나누면 "가는 선이 픽셀을 일부만 덮는" 것을 면적 비율로 근사하게 됩니다. 가는 선 그리기의 흔한 방법입니다.</p>
+<table>
+<tr><th>거리 (세로 시야각 45°, 높이 445 px 가정)</th><th>픽셀 하나의 월드 크기</th><th><code>widthScale</code></th></tr>
+<tr><td>1 m</td><td>1.9 mm</td><td>1 (4 mm 그대로)</td></tr>
+<tr><td>2.15 m</td><td>4.0 mm</td><td>1 (경계)</td></tr>
+<tr><td>5 m</td><td>9.3 mm</td><td>0.43</td></tr>
+<tr><td>15 m (상자 가장자리)</td><td>28 mm</td><td>0.14</td></tr>
+</table>
+<p>표는 <code>Camera::SetLens</code> 기본 시야각 45° 를 가정한 계산값입니다 <span class="tag chk">계산값</span>. 이 보정 때문에 계획의 <code>brightness</code> 0.25 로는 빗줄기가 거의 보이지 않았습니다. 기록은 폭 비율 약 0.4, PS 단면·기울기 약 0.4, IBL 세기(Sponza 0.5)가 겹쳐 HDR 0.01 수준이었다고 적고 기본값을 1.0, <code>streakLength</code> 를 0.4 로 올렸습니다(<a href="../plan/rain-record.html#debug">기록 10장</a>).</p>
+
+<h3>6-3. 페이드 셋과 PS</h3>
+<table>
+<tr><th>페이드</th><th>식</th><th>막는 것</th></tr>
+<tr><td>상자 가장자리</td><td><code>saturate(min(local, 1 − local) / 0.1)</code>, 세 축 곱</td><td>감기는 순간의 순간 이동</td></tr>
+<tr><td>근접</td><td><code>smoothstep(0, nearFade, viewZ − 0.05)</code>, 기본 0.5 m</td><td>카메라 바로 앞의 굵은 줄이 화면을 덮음</td></tr>
+<tr><td>소프트 (PS)</td><td><code>saturate((sceneZ − viewZ) / softDistance)</code>, 0.3 m, t23 깊이</td><td>빗줄기가 바닥·벽과 만나는 자리의 딱 끊긴 선, 지붕 밑으로 들어간 꼬리</td></tr>
+<tr><td>환경광</td><td><code>environmentParams.x</code>(환경 맵이 없으면 1)</td><td>어두운 실내 씬에서 빗줄기만 밝게 뜸</td></tr>
+</table>
+<p>소프트 페이드는 GPU 파티클의 소프트 파티클과 같은 식입니다(<a href="gpu-particles-study.html#depth">GPU 파티클 학습 6장</a>). <code>PS_Rain</code> 은 가로 단면 <code>1 − x²</code>(가운데가 밝은 포물선)과 세로 <code>lerp(1, 0.2, y)</code>(머리가 밝고 꼬리로 흐려짐)를 곱합니다.</p>
+
+<h3>6-4. 블렌드: 정렬이 필요 없는 가산</h3>
+<p>빗줄기·튐 PSO 는 파티클 PSO 를 그대로 복사합니다. 블렌드는 <code>src × One + dst × InvSrcAlpha</code> 이고 PS 가 알파 0 을 내보내므로 <code>dst + src</code>, 곧 가산입니다. 더하기는 순서와 무관해서 빗방울 2만 개를 정렬하지 않아도 됩니다. 깊이는 테스트만 하고 쓰지 않으며, 속도 버퍼에도 쓰지 않습니다(두 번째 패스는 HDR 색 타깃 하나). 그래서 TAA 를 켜면 1 픽셀 줄이 조금 흐려질 뿐 남아 있습니다 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/rain-record.html#v-live">기록 9.3</a>. 조명은 받지 않습니다. 실제 물방울은 굴절로 주변 빛을 모아 보여 주지만 여기서는 환경광 세기를 곱한 색으로 근사합니다.</p>
+</section>
+
+<section id="wet">
+<h2>7. 젖은 표면</h2>
+<h3>7-1. 얼마나 젖었나 — <code>RainWetAmount</code></h3>
+<pre><code>wet = rainParams.y × RainExposure(p, n) × lerp(0.35, 1, saturate(n.y))</code></pre>
+<p>세 몫의 곱입니다. 보간된 비의 젖음(7-4), 비를 맞는 정도(4-5), 면 방향(위를 보는 면 1, 벽과 아래를 보는 면 0.35). n 은 노멀 맵 전의 기하 노멀이고, 양면 재질의 뒷면이면 뒤집습니다(<code>EvaluateMaterialSurface</code> 의 <code>rainNormal</code>). 이 시점에는 <code>s.geometricNormal</code> 이 아직 없어서 같은 식으로 따로 구합니다.</p>
+
+<h3>7-2. 재질 값 바꾸기 — <code>ApplyWetness</code></h3>
+<pre><code>porous    = 1 − metallic
+albedo   *= lerp(1, 0.45, wet × porous)            // 스며든 물의 흡수 (2-5)
+roughness = lerp(roughness, min(roughness, 0.12), wet × 0.85)   // 물막
+// 웅덩이 (7-3)
+albedo   *= lerp(1, 0.6, puddle)
+metallic  = lerp(metallic, 0, puddle)
+roughness = lerp(roughness, 0.03, puddle)</code></pre>
+<p>부르는 자리는 거칠기를 정한 뒤, F0 를 만들기 전입니다. 금속의 F0 는 알베도이므로 F0 가 젖은 값을 따라가야 합니다. 함수가 <code>SurfaceData</code> 를 통째로 받지 않고 칸 셋을 따로 받는 것은 FXC 가 다 채워지지 않은 <code>inout</code> 구조체를 거부하기 때문입니다(X3508, <a href="../plan/rain-record.html#debug">기록 10장</a>).</p>
+<table>
+<tr><th>면 (거칠기 0.95 유전체, 완전히 젖음)</th><th>wet</th><th>알베도 배율</th><th>거칠기</th></tr>
+<tr><td>열린 바닥</td><td>1</td><td>0.45</td><td>0.24</td></tr>
+<tr><td>열린 바닥 + 웅덩이</td><td>1</td><td>0.27</td><td>0.03</td></tr>
+<tr><td>벽 (비를 맞는 쪽)</td><td>0.35</td><td>0.81</td><td>0.70</td></tr>
+<tr><td>금속 바닥 (metallic 1)</td><td>1</td><td>1 (어두워지지 않음)</td><td>min(r, 0.12) 쪽으로 85%</td></tr>
+<tr><td>지붕 밑 바닥</td><td>0</td><td>1</td><td>0.95</td></tr>
+</table>
+<p>표는 계산값입니다 <span class="tag chk">계산값</span>. 기록에서 안뜰 바닥은 알베도가 선형으로 약 0.45 배, 거칠기가 0.95 에서 0.24~0.43 으로 내려갔습니다 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/rain-record.html#v-wet">기록 9.2</a>. 0.43 쪽은 바닥 텍스처 자체의 거칠기 편차와 쌍선형 경계에서 wet 이 1 보다 작은 자리로 보입니다. 거칠기를 0.12 로 바로 두지 않고 <code>min(r, 0.12)</code> 쪽으로 85% 만 가는 것은, 원래 매끈한 재질은 더 거칠어지지 않게 하고 젖어도 원래 재질의 결이 조금 남게 하려는 것입니다. 계획의 식(알베도 0.55, porous 에 거칠기 항, 거칠기 lerp 100%)에서 바뀐 값입니다(<a href="../plan/rain-plan.html#d-wet">계획 3.6</a>).</p>
+<p>조명 화면에서는 마른 바닥과의 밝기 차가 생각보다 작다고 기록은 적었습니다. 스치는 각도에서 거칠기가 낮아진 만큼 밝은 하늘의 IBL 반사가 늘기 때문입니다(<a href="../plan/rain-record.html#v-wet">기록 9.2</a>, <a href="ibl-study.html">IBL 학습</a>). 젖은 바닥이 "젖어 보이는" 데에는 주변 물체가 비치는 반사가 크게 기여하는데, 이 엔진에는 화면 공간 반사가 없어 반사가 흐린 큐브맵뿐입니다(12장).</p>
+
+<h3>7-3. 웅덩이 — <code>RainPuddle</code></h3>
+<pre><code>조건  : 웅덩이 양 > 0, wet > 0.5, n.y > 0.95 (기울기 약 18° 이하)
+noise = 0.65 × ValueNoise(xz × 0.35) + 0.35 × ValueNoise(xz × 1.1 + 17)
+문턱  = lerp(0.85, 0.3, puddles)          // 기본 0.5 → 0.575
+puddle = smoothstep(문턱, 문턱 + 0.08, noise) × saturate((wet − 0.5) / 0.3) × saturate((n.y − 0.95) / 0.04)</code></pre>
+<p>월드 xz 의 저주파 값 노이즈라 웅덩이 자리는 월드에 고정되고 텍스처가 필요 없습니다. 젖음이 0.5 를 넘은 뒤부터 0.8 까지 자라므로 비가 오기 시작하면 바닥이 먼저 어두워지고 웅덩이는 나중에 생깁니다. 기울기 조건은 처음 0.85(약 32°)였는데 Sponza 경사 지붕에 웅덩이가 생겨 0.95 로 올렸고, 컷아웃 재질(잎·철망)은 <code>EvaluateMaterialSurface</code> 가 <code>alphaCutoff &gt; 0</code> 이면 웅덩이를 0 으로 둡니다. 평평한 잎 판 위 웅덩이가 하늘을 거울처럼 비춰 하얗게 보였기 때문입니다(<a href="../plan/rain-record.html#debug">기록 10장</a>). 웅덩이 안에서는 <code>ApplyWetNormal</code> 이 노멀을 기하 노멀 쪽으로 펴서 노멀 맵의 요철을 물이 덮은 것처럼 만듭니다. 웅덩이가 아닌 젖은 면은 노멀 맵 굴곡을 그대로 둡니다.</p>
+
+<h3>7-4. 젖음 보간 — <code>wetTime</code>·<code>dryTime</code></h3>
+<pre><code>목표 = clamp(wetness) × clamp(intensity)
+τ    = 목표 > 지금 ? wetTime (20 s) : dryTime (60 s)
+지금 += (목표 − 지금) × (1 − exp(−dt / τ))        // dt 는 [0, 0.25] s 로 자름</code></pre>
+<p>지수 보간이라 τ 초마다 남은 차이의 63% 를 따라갑니다. 기본값이면 젖는 데 95% 까지 약 60 s, 마르는 데 약 180 s 입니다 <span class="tag chk">계산값</span>. <code>1 − exp(−dt/τ)</code> 를 쓰는 이유는 프레임률과 무관하게 같은 시간에 같은 만큼 가게 하려는 것입니다. 고정 비율(예: 프레임마다 1%)을 쓰면 144 Hz 에서 60 Hz 보다 두 배 넘게 빨리 젖습니다. dt 를 0.25 s 로 자르는 것은 긴 멈춤(디버거, 창 이동) 뒤 한 프레임에 확 마르는 것을 막고, 일시정지면 dt = 0 이라 멈춥니다.</p>
+<p>다음 경우에는 보간하지 않고 바로 목표값입니다: <code>--rain-time</code> 으로 시간을 고정했을 때(스크린샷이 실행마다 같게), <code>Renderer::ResetTemporalHistory</code> 뒤(씬 불러오기·재생 시작/정지, <code>m_rainSnapWetness</code>), <code>Rain</code> 오브젝트가 새로 생기거나 바뀐 프레임(<code>m_rainPrevObject</code>). 천천히 젖고 마르는 연출은 같은 <code>Rain</code> 의 세기를 바꿀 때만 일어납니다. 게임 스크립트가 <code>GetBehaviour&lt;Rain&gt;()</code> 로 <code>intensity</code> 를 바꾸면 빗줄기는 바로, 젖음은 이 식을 따라 천천히 바뀝니다. 이 과정은 기록에서도 화면으로 확인하지 못한 항목입니다(<a href="../plan/rain-record.html#v-none">기록 9.7</a>).</p>
+</section>
+
+<section id="impact">
+<h2>8. 빗방울이 닿는 자리 — 물결과 튐</h2>
+<h3>8-1. 공용 함수 <code>RainImpactInCell</code></h3>
+<p>빗줄기 셰이더는 상태가 없어서 "이 빗방울이 지금 바닥에 닿았다"는 사건을 다른 셰이더에 알려 줄 수 없습니다. 그래서 바닥에 닿는 빗방울은 빗줄기와 따로, 통계로 만듭니다. 위를 보는 면을 0.35 m 칸으로 나누고 칸마다 1.3 Hz 로 빗방울이 하나씩 떨어진다고 정합니다.</p>
+<pre><code>h             = RainHash2i(cell, 101 + layer)
+cyclePosition = rainParams.w × 1.3 + RainHash01(h ^ …)     // 칸마다 시작 시각이 다름
+cycle         = floor(cyclePosition)
+hc            = RainHash(h ^ RainHash(cycle))               // 주기마다 새 해시
+xz     = (cell + hash2(hc) × 0.5 + 0.25 − layerOffset) × 0.35   // 칸 가운데 절반 안의 자리
+phase  = cyclePosition − cycle                               // 떨어진 뒤 지난 몫 0..1
+active = RainHash01(hc ^ …) &lt; rainSurface.z                 // 이번 주기에 떨어지나</code></pre>
+<p>칸 두 겹을 (0.5, 0.37) 칸만큼 어긋나게 겹쳐 격자 무늬가 덜 보이게 합니다. 주기 번호를 해시에 섞으므로 떨어질 때마다 칸 안의 자리와 떨어지는지 여부가 새로 정해집니다. 시간은 두 셰이더 모두 b0 <code>rainParams.w</code> 하나입니다.</p>
+<figure>
+<svg viewBox="0 0 900 330" role="img" aria-label="칸 하나에서 빗방울이 떨어지는 주기와 튐·물결">
+  <line class="ln" x1="70" y1="230" x2="608.0" y2="230"/><line class="ln" x1="70" y1="230" x2="70" y2="70"/>
+  <line x1="70.0" y1="60" x2="70.0" y2="230" style="stroke:var(--ink3);stroke-dasharray:2 3"/>
+  <text x="70.0" y="248" text-anchor="middle">0.00 s</text>
+  <rect x="70.0" y="40" width="115.5" height="12" rx="3" style="fill:var(--c1)"/>
+  <line x1="323.8" y1="60" x2="323.8" y2="230" style="stroke:var(--ink3);stroke-dasharray:2 3"/>
+  <text x="323.8" y="248" text-anchor="middle">0.77 s</text>
+  <rect x="323.8" y="40" width="115.5" height="12" rx="3" style="fill:var(--c1)"/>
+  <line x1="577.7" y1="60" x2="577.7" y2="230" style="stroke:var(--ink3);stroke-dasharray:2 3"/>
+  <text x="577.7" y="248" text-anchor="middle">1.54 s</text>
+  <rect x="577.7" y="40" width="20.3" height="12" rx="3" style="fill:var(--c1)"/>
+  <text x="185.5" y="34" text-anchor="middle">0.35 s</text>
+  <polyline points="70.0,230.0 71.7,229.0 73.3,228.1 75.0,227.1 76.6,226.1 78.2,225.1 79.9,224.2 81.5,223.2 83.2,222.2 84.8,221.2 86.5,220.2 88.2,219.3 89.8,218.3 91.5,217.3 93.1,216.3 94.8,215.4 96.4,214.4 98.0,213.4 99.7,212.4 101.3,211.5 103.0,210.5 104.7,209.5 106.3,208.5 108.0,207.6 109.6,206.6 111.2,205.6 112.9,204.7 114.6,203.7 116.2,202.7 117.9,201.7 119.5,200.8 121.2,199.8 122.8,198.8 124.5,197.8 126.1,196.8 127.8,195.9 129.4,194.9 131.1,193.9 132.7,192.9 134.4,192.0 136.0,191.0 137.7,190.0 139.3,189.0 140.9,188.1 142.6,187.1 144.2,186.1 145.9,185.1 147.6,184.2 149.2,183.2 150.9,182.2 152.5,181.2 154.2,180.3 155.8,179.3 157.4,178.3 159.1,177.3 160.8,176.4 162.4,175.4 164.1,174.4 165.7,173.4 167.4,172.5 169.0,171.5 170.7,170.5 172.3,169.6 174.0,168.6 175.6,167.6 177.2,166.6 178.9,165.6 180.6,164.7 182.2,163.7 183.9,162.7 185.5,161.8 187.2,160.8 188.8,159.8 190.5,158.8 192.1,157.8 193.8,156.9 195.4,155.9 197.1,154.9 198.7,153.9 200.3,153.0 202.0,152.0 203.6,151.0 205.3,150.0 207.0,149.1 208.6,148.1 210.2,147.1 211.9,146.1 213.6,145.2 215.2,144.2 216.8,143.2 218.5,142.2 220.1,141.3 221.8,140.3 223.5,139.3 225.1,138.3 226.8,137.4 228.4,136.4 230.1,135.4 231.7,134.4 233.3,133.5 235.0,132.5 236.7,131.5 238.3,130.6 240.0,129.6 241.6,128.6 243.2,127.6 244.9,126.6 246.6,125.7 248.2,124.7 249.9,123.7 251.5,122.7 253.2,121.8 254.8,120.8 256.5,119.8 258.1,118.8 259.8,117.9 261.4,116.9 263.1,115.9 264.7,114.9 266.4,114.0 268.0,113.0 269.7,112.0 271.3,111.0 272.9,110.1 274.6,109.1 276.2,108.1 277.9,107.1 279.6,106.2 281.2,105.2 282.9,104.2 284.5,103.2 286.1,102.3 287.8,101.3 289.5,100.3 291.1,99.3 292.8,98.4 294.4,97.4 296.1,96.4 297.7,95.4 299.4,94.5 301.0,93.5 302.7,92.5 304.3,91.5 306.0,90.6 307.6,89.6 309.2,88.6 310.9,87.6 312.6,86.7 314.2,85.7 315.9,84.7 317.5,83.8 319.2,82.8 320.8,81.8 322.5,80.8 324.1,229.8 325.8,228.9 327.4,227.9 329.1,226.9 330.7,225.9 332.4,225.0 334.0,224.0 335.7,223.0 337.3,222.1 339.0,221.1 340.6,220.1 342.2,219.1 343.9,218.1 345.6,217.2 347.2,216.2 348.9,215.2 350.5,214.2 352.2,213.3 353.8,212.3 355.4,211.3 357.1,210.3 358.8,209.4 360.4,208.4 362.1,207.4 363.7,206.4 365.4,205.5 367.0,204.5 368.7,203.5 370.3,202.5 371.9,201.6 373.6,200.6 375.2,199.6 376.9,198.6 378.5,197.7 380.2,196.7 381.9,195.7 383.5,194.8 385.2,193.8 386.8,192.8 388.5,191.8 390.1,190.8 391.8,189.9 393.4,188.9 395.1,187.9 396.7,186.9 398.4,186.0 400.0,185.0 401.7,184.0 403.3,183.0 405.0,182.1 406.6,181.1 408.2,180.1 409.9,179.1 411.6,178.2 413.2,177.2 414.9,176.2 416.5,175.2 418.2,174.3 419.8,173.3 421.4,172.3 423.1,171.3 424.8,170.4 426.4,169.4 428.1,168.4 429.7,167.4 431.4,166.5 433.0,165.5 434.6,164.5 436.3,163.5 437.9,162.6 439.6,161.6 441.2,160.6 442.9,159.6 444.6,158.7 446.2,157.7 447.9,156.7 449.5,155.8 451.2,154.8 452.8,153.8 454.4,152.8 456.1,151.8 457.8,150.9 459.4,149.9 461.1,148.9 462.7,147.9 464.4,147.0 466.0,146.0 467.7,145.0 469.3,144.0 471.0,143.1 472.6,142.1 474.3,141.1 475.9,140.1 477.6,139.2 479.2,138.2 480.9,137.2 482.5,136.2 484.2,135.3 485.8,134.3 487.5,133.3 489.1,132.3 490.7,131.4 492.4,130.4 494.1,129.4 495.7,128.4 497.4,127.5 499.0,126.5 500.7,125.5 502.3,124.5 503.9,123.6 505.6,122.6 507.2,121.6 508.9,120.6 510.6,119.7 512.2,118.7 513.9,117.7 515.5,116.7 517.1,115.8 518.8,114.8 520.5,113.8 522.1,112.8 523.8,111.9 525.4,110.9 527.1,109.9 528.7,108.9 530.4,108.0 532.0,107.0 533.7,106.0 535.3,105.0 537.0,104.1 538.6,103.1 540.2,102.1 541.9,101.1 543.5,100.2 545.2,99.2 546.9,98.2 548.5,97.2 550.2,96.3 551.8,95.3 553.5,94.3 555.1,93.3 556.8,92.4 558.4,91.4 560.0,90.4 561.7,89.4 563.4,88.5 565.0,87.5 566.7,86.5 568.3,85.5 570.0,84.6 571.6,83.6 573.2,82.6 574.9,81.6 576.6,80.7 578.2,229.7 579.9,228.7 581.5,227.7 583.2,226.8 584.8,225.8 586.4,224.8 588.1,223.8 589.8,222.9 591.4,221.9 593.1,220.9 594.7,219.9 596.4,219.0 598.0,218.0" style="fill:none;stroke:var(--accent);stroke-width:2"/>
+  <polyline points="70.0,80.0 71.7,81.9 73.3,83.9 75.0,85.8 76.6,87.7 78.2,89.6 79.9,91.5 81.5,93.3 83.2,95.2 84.8,97.0 86.5,98.9 88.2,100.7 89.8,102.5 91.5,104.3 93.1,106.1 94.8,107.8 96.4,109.6 98.0,111.3 99.7,113.0 101.3,114.8 103.0,116.5 104.7,118.2 106.3,119.8 108.0,121.5 109.6,123.1 111.2,124.8 112.9,126.4 114.6,128.0 116.2,129.6 117.9,131.2 119.5,132.8 121.2,134.4 122.8,135.9 124.5,137.4 126.1,139.0 127.8,140.5 129.4,142.0 131.1,143.5 132.7,144.9 134.4,146.4 136.0,147.9 137.7,149.3 139.3,150.7 140.9,152.1 142.6,153.5 144.2,154.9 145.9,156.3 147.6,157.7 149.2,159.0 150.9,160.3 152.5,161.7 154.2,163.0 155.8,164.3 157.4,165.5 159.1,166.8 160.8,168.1 162.4,169.3 164.1,170.6 165.7,171.8 167.4,173.0 169.0,174.2 170.7,175.4 172.3,176.5 174.0,177.7 175.6,178.8 177.2,180.0 178.9,181.1 180.6,182.2 182.2,183.3 183.9,184.4 185.5,185.4 187.2,186.5 188.8,187.5 190.5,188.6 192.1,189.6 193.8,190.6 195.4,191.6 197.1,192.6 198.7,193.5 200.3,194.5 202.0,195.4 203.6,196.4 205.3,197.3 207.0,198.2 208.6,199.1 210.2,200.0 211.9,200.8 213.6,201.7 215.2,202.5 216.8,203.4 218.5,204.2 220.1,205.0 221.8,205.8 223.5,206.5 225.1,207.3 226.8,208.1 228.4,208.8 230.1,209.5 231.7,210.2 233.3,210.9 235.0,211.6 236.7,212.3 238.3,213.0 240.0,213.6 241.6,214.3 243.2,214.9 244.9,215.5 246.6,216.1 248.2,216.7 249.9,217.3 251.5,217.8 253.2,218.4 254.8,218.9 256.5,219.4 258.1,219.9 259.8,220.4 261.4,220.9 263.1,221.4 264.7,221.9 266.4,222.3 268.0,222.7 269.7,223.2 271.3,223.6 272.9,224.0 274.6,224.4 276.2,224.7 277.9,225.1 279.6,225.4 281.2,225.8 282.9,226.1 284.5,226.4 286.1,226.7 287.8,227.0 289.5,227.2 291.1,227.5 292.8,227.7 294.4,228.0 296.1,228.2 297.7,228.4 299.4,228.6 301.0,228.8 302.7,229.0 304.3,229.1 306.0,229.3 307.6,229.4 309.2,229.5 310.9,229.6 312.6,229.7 314.2,229.8 315.9,229.9 317.5,229.9 319.2,229.9 320.8,230.0 322.5,230.0 324.1,80.3 325.8,82.2 327.4,84.2 329.1,86.1 330.7,88.0 332.4,89.9 334.0,91.8 335.7,93.6 337.3,95.5 339.0,97.3 340.6,99.1 342.2,101.0 343.9,102.8 345.6,104.6 347.2,106.3 348.9,108.1 350.5,109.8 352.2,111.6 353.8,113.3 355.4,115.0 357.1,116.7 358.8,118.4 360.4,120.1 362.1,121.8 363.7,123.4 365.4,125.0 367.0,126.7 368.7,128.3 370.3,129.9 371.9,131.5 373.6,133.0 375.2,134.6 376.9,136.1 378.5,137.7 380.2,139.2 381.9,140.7 383.5,142.2 385.2,143.7 386.8,145.2 388.5,146.6 390.1,148.1 391.8,149.5 393.4,150.9 395.1,152.3 396.7,153.7 398.4,155.1 400.0,156.5 401.7,157.9 403.3,159.2 405.0,160.5 406.6,161.9 408.2,163.2 409.9,164.5 411.6,165.7 413.2,167.0 414.9,168.3 416.5,169.5 418.2,170.7 419.8,172.0 421.4,173.2 423.1,174.4 424.8,175.5 426.4,176.7 428.1,177.9 429.7,179.0 431.4,180.1 433.0,181.3 434.6,182.4 436.3,183.5 437.9,184.5 439.6,185.6 441.2,186.7 442.9,187.7 444.6,188.7 446.2,189.8 447.9,190.8 449.5,191.7 451.2,192.7 452.8,193.7 454.4,194.6 456.1,195.6 457.8,196.5 459.4,197.4 461.1,198.3 462.7,199.2 464.4,200.1 466.0,201.0 467.7,201.8 469.3,202.7 471.0,203.5 472.6,204.3 474.3,205.1 475.9,205.9 477.6,206.7 479.2,207.4 480.9,208.2 482.5,208.9 484.2,209.6 485.8,210.3 487.5,211.0 489.1,211.7 490.7,212.4 492.4,213.1 494.1,213.7 495.7,214.4 497.4,215.0 499.0,215.6 500.7,216.2 502.3,216.8 503.9,217.3 505.6,217.9 507.2,218.4 508.9,219.0 510.6,219.5 512.2,220.0 513.9,220.5 515.5,221.0 517.1,221.5 518.8,221.9 520.5,222.4 522.1,222.8 523.8,223.2 525.4,223.6 527.1,224.0 528.7,224.4 530.4,224.8 532.0,225.1 533.7,225.5 535.3,225.8 537.0,226.1 538.6,226.4 540.2,226.7 541.9,227.0 543.5,227.3 545.2,227.5 546.9,227.8 548.5,228.0 550.2,228.2 551.8,228.4 553.5,228.6 555.1,228.8 556.8,229.0 558.4,229.1 560.0,229.3 561.7,229.4 563.4,229.5 565.0,229.6 566.7,229.7 568.3,229.8 570.0,229.9 571.6,229.9 573.2,230.0 574.9,230.0 576.6,230.0 578.2,80.6 579.9,82.5 581.5,84.5 583.2,86.4 584.8,88.3 586.4,90.2 588.1,92.0 589.8,93.9 591.4,95.8 593.1,97.6 594.7,99.4 596.4,101.2 598.0,103.0" style="fill:none;stroke:var(--warn);stroke-width:1.6;stroke-dasharray:6 4"/>
+  <text x="62" y="84" text-anchor="end">1</text><text x="62" y="234" text-anchor="end">0</text>
+  <rect x="618.0" y="40" width="24" height="12" rx="3" style="fill:var(--c1)"/>
+  <text x="650.0" y="50">튐 (RainSplashVS 가 그리는 구간)</text>
+  <line x1="618.0" y1="96" x2="642.0" y2="96" style="stroke:var(--accent);stroke-width:2"/>
+  <text x="650.0" y="100">물결 반지름 / 0.0875 m</text>
+  <text x="650.0" y="120">(phase × 0.25 칸)</text>
+  <line x1="618.0" y1="146" x2="642.0" y2="146" style="stroke:var(--warn);stroke-width:1.6;stroke-dasharray:6 4"/>
+  <text x="650.0" y="150">물결 세기 (1 − phase)²</text>
+  <text x="618.0" y="190">세로 점선 = 빗방울이 떨어지는 순간.</text>
+  <text x="618.0" y="208">칸 안 자리와 "이번에 떨어지나" 를</text>
+  <text x="618.0" y="226">주기 번호로 다시 해시함</text>
+  <text x="334" y="274" text-anchor="middle">시간 (b0 rainParams.w). 한 주기 = 1 / 1.3 Hz ≈ 0.77 s, 시작 시각은 칸마다 해시</text>
+</svg>
+<figcaption>그림 3. 칸 하나의 시간표. 빗방울이 떨어지는 순간 튐이 0.35 s 동안 그려지고, 같은 자리에서 물결 링이 한 주기(0.77 s) 동안 칸의 1/4(0.0875 m)까지 퍼지며 (1 − phase)² 로 사라집니다. 다음 주기에는 칸 안의 다른 자리에서 다시 시작합니다. <span class="tag chk">계산값</span></figcaption>
+</figure>
+<p>물결(재질 PS)과 튐(<code>VS_RainSplash</code>)은 같은 함수를 부릅니다. 둘이 같은 칸·같은 해시·같은 시간을 보므로 튐이 터진 자리에서 같은 순간 물결 링이 퍼지기 시작합니다. 처음 구현에서는 튐이 자기 해시로 카메라 주변에 따로 흩뿌려져 물결과 자리가 맞지 않았고, 물결은 칸 중심이 고정이라 같은 점에서 1.3 Hz 로 링이 계속 생겼습니다. 0e20f6c 에서 둘을 이 함수로 합쳤고, 물결 세기를 잠시 8 배로 키워 겹쳐 보니 튐마다 발밑에 링이 있었습니다 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/rain-record.html#s3-impact">기록 7.1</a>. 튐이 없는 링은 튐(0.35 s)이 끝난 뒤에도 계속 퍼지는 링입니다.</p>
+<p>짝을 이루는 것은 물결과 튐이고, 공중의 빗줄기는 이 칸과 무관합니다. 빗줄기 하나가 떨어진 자리에 튐이 생기는 것은 아닙니다. 대신 빈도는 비슷하게 맞습니다. 기본값에서 빗방울 2만 개가 30 × 12 × 30 m 상자에 있으면 밀도 1.85 개/m³, 낙하 9 m/s 로 바닥에 닿는 수는 약 16.7 개/m²·s 이고, 칸 격자는 두 겹 × 1.3 Hz / 0.35² ≈ 21.2 개/m²·s 입니다 <span class="tag chk">계산값</span>.</p>
+
+<h3>8-2. 물결 링 노멀 — <code>RainRipple</code></h3>
+<pre><code>// 겹마다: 이 픽셀이 든 칸의 떨어진 자리 → 칸 단위 거리 d
+radius = phase × 0.25                     // 칸의 1/4 까지 퍼짐
+x      = (d − radius) × 24                // 링 단면, −π..π 가 링 하나
+slope += (offset / d) × cos(x / 2) × sin(x) × (1 − phase)²   // |x| &lt; π, active 일 때
+slope *= 0.35 × rainSurface.x × saturate(1 − 거리 / 25 m)
+// ApplyWetNormal: n = normalize(n + (slope.x, 0, slope.y) × weight)</code></pre>
+<p>코드 주석은 출처로 Lagarde 연재의 2b 를 적었습니다. 이 엔진은 링을 텍스처 없이 계산합니다. 링 단면 높이장의 기울기를 해석적으로 써서 노멀의 xz 에 더하므로 텍스처도 렌더 타깃도 없습니다. 링 반폭은 π/24 칸 ≈ 4.6 cm 입니다 <span class="tag chk">계산값</span>. 두 겹이라 픽셀마다 칸 두 개만 보면 되고, 비용은 해시 몇 번과 삼각함수 두 번입니다.</p>
+<p>세기 <code>weight</code> 는 <code>ApplyWetNormal</code> 이 정합니다: 위를 보는 정도 <code>saturate((n.y − 0.7) / 0.3)</code>(약 46° 보다 가파르면 0), 젖음 <code>saturate(wet × 2 − 1)</code>(젖음 0.5 넘어서부터), 웅덩이일수록 셈(<code>lerp(0.4, 1, puddle)</code>). 카메라에서 25 m 밖은 0 입니다. 멀리서는 링이 픽셀보다 작아 노멀이 픽셀마다 들쭉날쭉해지고, 해 반사가 점으로 반짝이기만 합니다. <a href="ocean-gerstner-study.html#shaders">바다 학습 6-3</a>의 대역 제한과 같은 문제를 거리로 거칠게 자른 것입니다.</p>
+
+<h3>8-3. 튐 — <code>VS_RainSplash</code>·<code>PS_RainSplash</code></h3>
+<p>튐도 상태가 없습니다. 튐 하나 = 카메라 주변 격자의 칸 하나입니다.</p>
+<pre><code>splashRadius = 0.8 × areaRadius                           // 12 m
+splashGrid   = min(⌈2 × splashRadius / 0.35⌉ + 2, 256)    // 71
+splashCount  = 2 × splashGrid²                            // 두 겹, 10,082
+// VS: 번호 → (겹, 칸). 카메라 xz 가 든 칸이 가운데 — 칸은 월드에 고정
+//     RainImpactInCell → active 아님, 떨어진 지 0.35 s 넘음, 원 밖이면 버림
+//     바닥 y = RainOccluderHeight(xz) + 0.01 (지붕 위·잎 판·열린 바닥)</code></pre>
+<p>그리는 수는 늘 칸 수(10,082)이고 대부분은 VS 에서 버려집니다. 실제로 보이는 튐은 원 안 칸 약 7,386 × 비율 × (0.35 × 1.3) ≈ 3,360 개 정도이고, 바깥 1/4 반지름의 거리 페이드까지 치면 화면 기여는 그 약 77% 입니다 <span class="tag chk">계산값</span>. 버리는 정점이 많아도 정점 6 개짜리 쿼드라 VS 비용만 들고 PS 는 돌지 않습니다. 에디터 통계 줄의 <code>splash cells</code> 는 그린 칸 수입니다.</p>
+<p>튐의 바닥 높이는 차폐 맵에서 읽습니다. 차폐 맵은 "위에서 처음 닿는 면"이라 튐은 지붕 윗면이나 열린 바닥에만 생기고 회랑 안에는 생기지 않습니다. 충돌 이벤트가 필요 없습니다. 쿼드는 세로축이 월드 +y 이고 카메라 쪽을 보는 원통형 빌보드이며, PS 가 진행도 u 에 따라 반지름 <code>0.25 + 0.65√u</code> 로 커지는 왕관 고리(가시 <code>cos 6θ</code>, <code>(1 − u)²</code> 로 사라짐)를 그립니다. 소프트 페이드 거리는 빗줄기의 0.15 배입니다. 튐은 면에 붙어 있어 0.3 m 로 흐리면 통째로 사라집니다.</p>
+
+<h3>8-4. 빗방울 수·세기와 물결·튐의 양 (b30fed8)</h3>
+<pre><code>dropCount     = round(clamp(maxDrops, 0, 100000) × intensity)       // 빗줄기
+dropRatio     = clamp(maxDrops / 20000, 0, 1)                       // kReferenceDrops
+rainSurface.z = dropRatio × intensity                                // 떨어지는 칸의 비율</code></pre>
+<p>바닥을 때리는 빗방울 수는 공중의 빗방울 수에 비례해야 합니다. 상자 크기와 낙하 속력이 같다면 플럭스(개/m²·s)는 <code>maxDrops × intensity</code> 에 비례하므로, 칸 비율에 같은 두 몫을 곱하면 빗줄기와 물결·튐의 양이 같이 움직입니다. 세기는 링의 높이가 아니라 링의 수로 들어갑니다. 빗방울 하나가 만드는 링의 크기는 비가 약해도 같기 때문입니다. b30fed8 이전에는 모든 칸에 링이 있고 세기만 <code>intensity</code> 배여서 <code>maxDrops</code> 를 줄여도 물결이 그대로였고, 바꾼 뒤 <code>maxDrops</code> 20000 → 5000 에서 물결로 바뀌는 픽셀이 577 → 69 로 줄었습니다 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/rain-record.html#s3-ripple">기록 7.3</a>(튐과 칸을 합치기 전 측정). 칸 비율이 1 에서 잘리므로 20000 개 넘게 늘려도 물결·튐은 더 늘지 않고, 상자 크기·낙하 속력은 비율에 들어가지 않습니다(12장).</p>
+</section>
+
+<section id="pipeline">
+<h2>9. 렌더러에 끼워 넣은 자리</h2>
+<table>
+<tr><th>항목</th><th>이 엔진에서</th><th>더 읽을 곳</th></tr>
+<tr><td>컴포넌트</td><td><code>Rain</code> 은 값만 들고 있음(<code>Update</code> 없음 — 편집 모드에서도 비가 내림). 오브젝트 위치는 쓰지 않음. 씬에 하나, 둘째부터는 경고 한 번(<code>m_rainExtraWarned</code>)</td><td><a href="../plan/rain-plan.html#d-component">계획 3.3</a></td></tr>
+<tr><td>패스</td><td>그림자 패스 다음 <code>RainOcclusion</code>, 씬 패스 두 번째 패스 안 <code>Rain</code>. 비가 없으면 둘 다 없음</td><td><a href="frame-structure-study.html#passes">프레임 구조 학습</a></td></tr>
+<tr><td>PSO</td><td>차폐 맵은 그림자 PSO 의 변형(키 비트 11), 빗줄기·튐은 파티클 PSO 복사본 두 개(<code>GetRainPipeline</code>)</td><td><a href="rhi-pso-study.html#cache">RHI·PSO 학습</a></td></tr>
+<tr><td>바다</td><td><code>OceanPixelShader.hlsl</code>·<code>OceanGBufferPixelShader.hlsl</code> 이 include 앞에 <code>RAIN_NO_WETNESS</code> 를 정의. 물은 젖지 않음. 바다는 그림자 PSO 가 없어 비도 막지 않음</td><td><a href="ocean-gerstner-study.html#pipeline">바다 학습 8장</a></td></tr>
+<tr><td>미리보기 뷰</td><td>빗줄기·튐은 미리보기 카메라 주변에 따로 그림(b0 기준), 차폐 맵·젖음은 메인 카메라 것</td><td><a href="../plan/rain-plan.html#d-table">계획 3.2</a></td></tr>
+<tr><td>시간 고정</td><td><code>--rain-time=초</code>(<code>AppBase::ApplyRenderPathOptions</code> → <code>RenderSettings::rainTimeOverride</code>). 빗줄기·튐·물결이 고정되고 젖음은 바로 목표값</td><td></td></tr>
+<tr><td>디버그 뷰 18</td><td>R = 비를 맞는 정도(<code>RainExposure</code>), G = 젖음, B = 웅덩이. 비가 없으면 R = 1, G = B = 0. 계산은 <code>Shading.hlsli</code>, 에디터 디버그 뷰 목록의 이름은 "Rain exposure/wet/puddle"(<code>Editor/Editor.cpp</code>)</td><td></td></tr>
+<tr><td>통계</td><td>에디터 Stats 창 <code>rain: drops … splash cells … wetness … occlusion map draws … (culled …)</code>(<code>Renderer::Stats</code> 의 <code>rain*</code>)</td><td></td></tr>
+</table>
+<h3>9-1. 비용</h3>
+<p>계획은 차폐 맵 패스를 가장 큰 변수로 보았습니다. 씬을 위에서 한 번 더 그리는 것이라 그림자 뷰 하나 수준이고, 빗줄기 위치와 젖음 계산은 거의 공짜라는 예상이었습니다(<a href="../plan/rain-plan.html#perf">계획 4장</a>). 기록의 GPU 시간은 이렇습니다(<code>Rain.json</code>, 에디터 씬 뷰 732×445) <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/rain-record.html#v-perf">기록 9.6</a>.</p>
+<table>
+<tr><th>구간 (ms)</th><th>D3D11 디퍼드</th><th>D3D12 디퍼드</th><th>D3D11 포워드</th><th>D3D12 포워드</th></tr>
+<tr><td><code>RainOcclusion</code></td><td>0.054</td><td>0.055</td><td>0.053</td><td>0.054</td></tr>
+<tr><td><code>Rain</code> (빗줄기 + 튐)</td><td>0.003</td><td>0.020</td><td>0.002</td><td>0.019</td></tr>
+<tr><td><code>ShadowPass</code> (참고)</td><td>0.864</td><td>0.228</td><td>1.155</td><td>0.233</td></tr>
+<tr><td><code>MainPass</code> (참고)</td><td>0.321</td><td>0.333</td><td>0.749</td><td>0.654</td></tr>
+</table>
+<ul>
+<li>기록은 D3D11 의 <code>Rain</code> 값이 정점 12만 개를 처리하는 것에 비해 너무 작아 믿기 어렵다고 보고 D3D12 값을 기준으로 삼았습니다.</li>
+<li>이 표는 튐을 칸 격자로 바꾸기 전 값입니다. 0e20f6c 의 커밋 메시지에는 바꾼 뒤 D3D12 <code>Rain</code> 구간이 0.020 → 0.023 ms 로 적혀 있습니다. 기록 9.6 표는 고치지 않았습니다.</li>
+<li>비가 없는 같은 카메라의 <code>Sponza.json</code> 은 D3D12 <code>MainPass</code> 0.324 ms 라, 젖음이 메인 패스에 더하는 비용은 측정 잡음 안이었습니다.</li>
+<li>1080p 측정은 하지 않았습니다(<a href="../plan/rain-record.html#v-none">기록 9.7</a>). CPU 쪽에서는 차폐 맵 패스가 드로우 목록 전체를 한 번 더 돌아, 드로우가 많은 씬에서는 GPU 보다 CPU 제출이 먼저 늡니다.</li>
+</ul>
+</section>
+
+<section id="code">
+<h2>10. 우리 코드 지도</h2>
+<table>
+<tr><th>파일</th><th>함수 / 타입</th><th>하는 일</th></tr>
+<tr><td><code>Scene/Rain.h</code>·<code>Scene/Rain.cpp</code></td><td><code>Rain</code>, <code>Rain::Reflect</code></td><td>필드 20 개와 기본값(Reflect 키 = 씬 파일 키), <code>SHERLOCK_BEHAVIOUR</code></td></tr>
+<tr><td><code>Graphics/RendererRain.cpp</code></td><td><code>Renderer::PrepareRain</code>, <code>SnapResolution</code>, 상수 <code>kMapHeightAbove</code>·<code>kMapDepthRange</code>·<code>kImpactCell</code>·<code>kReferenceDrops</code>·<code>kRainTimeWrap</code></td><td>첫 Rain 선택, 젖음 보간, 차폐 맵 행렬·텍셀 스냅·텍스처, b0 칸, b8 값(fallOffset 감기, 튐 격자)</td></tr>
+<tr><td><code>Graphics/RendererRain.cpp</code></td><td><code>Renderer::UploadRainConstants</code>, <code>RenderRainOcclusionPass</code>, <code>DrawRain</code>, <code>GetRainPipeline</code>, <code>DestroyRainResources</code></td><td>b8 업로드, 차폐 맵 패스, 빗줄기·튐 <code>Draw</code></td></tr>
+<tr><td><code>Graphics/RendererShadow.cpp</code></td><td><code>Renderer::DrawDepthView</code>, <code>Renderer::DepthDrawState</code>(<code>Renderer.h</code>)</td><td>그림자 뷰·차폐 맵 공용 깊이 그리기</td></tr>
+<tr><td><code>Graphics/Renderer.cpp</code></td><td><code>Renderer::Render</code>, <code>BuildDrawList</code>, <code>GetShadowPipelineFor</code>(<code>noBias</code>), <code>UpdateFrameSet</code>, <code>RenderScenePass</code>, <code>BuildPassDescs</code>, <code>ResetTemporalHistory</code></td><td>호출 순서, <code>occluderPipeline</code>, 키 비트 11, t24, 두 번째 패스, 파티클 desc 복사, 젖음 바로 목표값</td></tr>
+<tr><td><code>Graphics/Renderer.h</code></td><td><code>FrameRain</code>, <code>DrawItem::occluderPipeline</code>, <code>RenderSettings::rainTimeOverride</code>, <code>Stats</code> 의 <code>rain*</code></td><td>프레임 값, 설정, 통계</td></tr>
+<tr><td><code>Graphics/ShaderConstants.h</code></td><td><code>PerFrameConstants</code> 의 <code>rain*</code>, <code>RainConstants</code>, <code>kSRVSlotRainOcclusion</code>, <code>kCBSlotRain</code></td><td>배치와 <code>static_assert</code></td></tr>
+<tr><td><code>Shaders/Rain.hlsli</code></td><td><code>RainHash</code>, <code>RainOccluderHeight</code>, <code>RainExposed</code>, <code>RainExposure</code>, <code>RainWetAmount</code>, <code>RainPuddle</code>, <code>RainImpactInCell</code>, <code>RainRipple</code>, <code>RAIN_DRAW</code> 구역(<code>cbuffer Rain</code>, <code>RainSoftFade</code>, <code>RainPixelWorldSize</code>)</td><td>차폐 판정, 젖음, 웅덩이, 빗방울이 닿는 자리, 물결</td></tr>
+<tr><td><code>Shaders/RainVertexShader.hlsl</code>·<code>RainPixelShader.hlsl</code></td><td><code>VS_Rain</code>, <code>PS_Rain</code></td><td>빗줄기</td></tr>
+<tr><td><code>Shaders/RainSplashVertexShader.hlsl</code>·<code>RainSplashPixelShader.hlsl</code></td><td><code>VS_RainSplash</code>, <code>PS_RainSplash</code></td><td>튐</td></tr>
+<tr><td><code>Shaders/MaterialSurface.hlsli</code></td><td><code>EvaluateMaterialSurface</code>, <code>ApplyWetness</code>, <code>ApplyWetNormal</code></td><td>젖음을 F0 전에, 웅덩이·물결 노멀을 노멀 맵 뒤에</td></tr>
+<tr><td><code>Shaders/Shading.hlsli</code>·<code>Shaders/Common.hlsli</code></td><td>디버그 뷰 18, <code>cbuffer PerFrame</code> 의 비 칸</td><td><code>Rain.hlsli</code> include, b0 미러</td></tr>
+<tr><td><code>Shaders/OceanPixelShader.hlsl</code>·<code>OceanGBufferPixelShader.hlsl</code></td><td><code>RAIN_NO_WETNESS</code></td><td>바다는 젖지 않음</td></tr>
+<tr><td><code>App/AppBase.cpp</code>, <code>Editor/Editor.cpp</code></td><td><code>AppBase::ApplyRenderPathOptions</code>(<code>--rain-time</code>), 통계 줄, 디버그 뷰 이름</td><td>검증 도구</td></tr>
+<tr><td>테스트 씬·도구</td><td><code>Projects/SherlockTestScenes/Assets/Scenes/Rain.json</code>, <code>Scripts/Tests/make_rain_test_scene.py</code></td><td>Sponza + 안뜰 서쪽 상자 지붕(윗면 2.6 m) + 동쪽 잎 판(1.8 m, 양면 컷아웃) + Rain(기본값)</td></tr>
+</table>
+<p>읽는 순서는 기록이 권하는 대로 <code>Rain.h</code> → <code>PrepareRain</code> → <code>DrawDepthView</code>·<code>RenderRainOcclusionPass</code> → <code>Rain.hlsli</code> → <code>MaterialSurface.hlsli</code> → 빗줄기·튐 셰이더가 좋습니다(<a href="../plan/rain-record.html#read">기록 13장</a>).</p>
+</section>
+
+<section id="lab">
+<h2>11. 실험</h2>
+<p>에디터 공통 인자는 <code>--project=Projects/SherlockTestScenes/SherlockTestScenes.sherlock --scene=Rain.json --rain-time=10 --exit-after=40 --screenshot=out.png</code> 입니다(<a href="../plan/rain-record.html#tools">기록 12장</a>). E1~E3 은 실행 인자, E4·E5 는 코드 수정(확인한 뒤 되돌림), E6·E7 은 Inspector, E8 은 씬 뷰 카메라 조작으로 합니다.</p>
+<h3>E1. 위에서 내려다본 디버그 뷰 18</h3>
+<p><code>--cam-look=0,30,0.1;0,0,0 --debug-view=18</code> 로 안뜰을 위에서 봅니다. 회랑·홀·상자 지붕 아래는 R = 0(검정 쪽), 잎 판 아래 바닥은 잎 무늬대로 0 과 1 이 섞이고, 네 조합(D3D11·D3D12 × 디퍼드·포워드)의 디버그 뷰 18 이 같았습니다 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/rain-record.html#v-matrix">기록 9.1</a>. 열린 바닥은 R·G 가 1 쪽이고 웅덩이 자리에 B 가 섞일 것입니다 <span class="tag chk">예상</span>. 처음 카메라가 동쪽 홀 안이라 화면이 다 검게 나왔던 일도 이 방법으로 풀었습니다(<a href="../plan/rain-record.html#debug">기록 10장</a>).</p>
+<h3>E2. 백엔드와 경로 비교 <span class="tag ok">확인함 (2026-11-26)</span></h3>
+<p><code>--backend=d3d11|d3d12</code> 와 <code>--deferred=1|0 --taa=0</code> 을 바꿔 조명 화면을 찍습니다. 기록에서 D3D11 디퍼드 기준 최대 차는 3/255(평균 0.25), D3D12 디퍼드와는 1/255 였습니다(<a href="../plan/rain-record.html#v-matrix">기록 9.1</a>). 젖음이 재질 PS 안에 있어 두 경로가 같은 값을 쓴다는 확인입니다.</p>
+<h3>E3. 젖은 바닥의 알베도와 거칠기 <span class="tag ok">확인함 (2026-11-26)</span></h3>
+<p><code>--cam-look=7.5,2.8,0.8;-4,0.5,-0.3</code> 로 <code>Rain.json</code> 과 비가 없는 <code>Sponza.json</code> 의 디버그 뷰 1(알베도)·6(금속성 B·거칠기 G)을 비교합니다. 7-2 표의 "열린 바닥" 줄처럼 알베도 약 0.45 배, 거칠기 0.95 → 0.24 근처가 나와야 합니다(<a href="../plan/rain-record.html#v-wet">기록 9.2</a>).</p>
+<h3>E4. 차폐 맵에 바이어스 되돌리기 <span class="tag chk">예상</span></h3>
+<p><code>GetShadowPipelineFor</code> 의 <code>if (noBias)</code> 블록을 잠깐 막고 Sponza 의 경사 지붕이 보이는 카메라로 찍습니다. 4-2 의 계산대로라면 경사 지붕 위의 튐이 지붕 속에 묻혀 줄고, 디버그 뷰 18 에서 얇은 처마 바로 밑의 R 이 1 쪽으로 번질 것입니다. 평지붕(상자 지붕) 위의 튐은 거의 그대로일 것입니다(상수 항 약 1 cm, 튐은 면 위 1 cm).</p>
+<h3>E5. 시간 하나로 감기 <span class="tag chk">예상</span></h3>
+<p><code>PrepareRain</code> 의 <code>fallOffset</code> 을 <code>velocity × fmod(time, boxSize.y / fallSpeed)</code> 로 바꾸고 <code>--rain-time</code> 없이 몇 초 봅니다. 약 1.33 s 마다 모든 빗방울이 x 로 2 m, z 로 0.67 m 한꺼번에 뛰는 것이 보일 것입니다(2-3).</p>
+<h3>E6. 빗방울 수와 물결·튐 <span class="tag chk">예상</span></h3>
+<p>Inspector 에서 <code>maxDrops</code> 를 20000 → 5000 으로 줄입니다. 통계 줄의 <code>drops</code> 는 5000, <code>splash cells</code> 는 10,082 그대로이고(그리는 칸 수), 화면의 튐과 물결 링은 1/4 로 드물어질 것입니다. 물결만 본 측정은 기록에 577 → 69 픽셀로 남아 있습니다 <span class="tag ok">확인함 (2026-11-26)</span> <a href="../plan/rain-record.html#s3-ripple">기록 7.3</a>. 40000 으로 늘리면 빗줄기만 늘고 물결·튐은 그대로일 것입니다(비율이 1 에서 잘림).</p>
+<h3>E7. 젖고 마르는 과정 <span class="tag chk">예상</span></h3>
+<p><code>--rain-time</code> 없이 에디터를 띄우고 Inspector 에서 <code>intensity</code> 를 1 → 0 으로 바꾼 뒤 통계 줄의 <code>wetness</code> 를 봅니다. 빗줄기는 바로 사라지고, 젖음은 60 s 뒤 약 0.37, 180 s 뒤 약 0.05 로 내려갈 것입니다(7-4 의 식, <code>dryTime</code> 60). 다시 1 로 올리면 20 s 에 약 0.63 까지 젖을 것입니다. 기록에서 확인하지 못한 항목입니다(<a href="../plan/rain-record.html#v-none">기록 9.7</a>).</p>
+<h3>E8. 카메라를 움직여도 빗방울이 남는가 <span class="tag chk">예상</span></h3>
+<p><code>--rain-time=10</code> 으로 시간을 고정한 채 씬 뷰 카메라를 옆으로 천천히 움직입니다. 빗줄기는 땅에 대해 제자리에 서 있고, 상자 가장자리 쪽에서만 흐려지며 나타나고 사라질 것입니다(2-2). 기록 1장 요약도 "빗방울은 월드에 고정되어 카메라가 움직여도 미끄러지지 않음"이라고 적었습니다.</p>
+</section>
+
+<section id="pitfalls">
+<h2>12. 함정과 알려진 한계</h2>
+<table>
+<tr><th>증상</th><th>원인</th><th>이 엔진에서</th></tr>
+<tr><td>경사 지붕 위 튐이 사라지고 처마 밑으로 비가 샘</td><td>그림자 PSO 의 깊이 바이어스가 지붕을 10~30 cm 낮게 담음</td><td>바이어스 없는 변형(4-2)</td></tr>
+<tr><td>모든 벽이 마름</td><td>벽 위의 점은 맵에서 늘 벽 꼭대기 아래</td><td>법선 쪽으로 텍셀 1.5 개 옮겨 판정(4-5)</td></tr>
+<tr><td>지붕 가장자리 아래 바닥에 계단</td><td>텍셀 7.8 cm 한 점 판정</td><td>젖음은 네 텍셀 쌍선형. 빗줄기는 한 점 판정 그대로</td></tr>
+<tr><td>카메라를 움직이면 마른 선이 지글거림</td><td>맵 격자가 카메라와 같이 움직임</td><td>텍셀 스냅(4-1)</td></tr>
+<tr><td>판 하나로 만든 지붕 아래에 비가 옴</td><td>단면 재질은 뒷면 컬링이라 위에서 본 판의 뒷면이 빠질 수 있음</td><td>테스트 씬 지붕은 상자. 판이면 양면 재질로</td></tr>
+<tr><td>먼 빗줄기가 끊기고 깜빡임</td><td>폭이 픽셀보다 가늚</td><td>최소 1 픽셀 + 밝기 보정(6-2)</td></tr>
+<tr><td>상자 경계에서 빗방울이 튐</td><td><code>frac</code> 감기의 순간 이동</td><td>가장자리 10% 페이드, 꼬리는 머리에서 만듦(2-2)</td></tr>
+<tr><td>바람이 있으면 주기마다 비가 옆으로 뜀</td><td>시간 하나로 감음</td><td>축마다 상자 크기로 감음(2-3)</td></tr>
+<tr><td>아주 오래 켜 두면 빗줄기 움직임이 거칠어짐</td><td><code>totalTime</code> 이 float</td><td>하루에 약 8 ms 단위. double 감기로 되돌리지 못함(2-3)</td></tr>
+<tr><td>1000 s 마다 한 번 물결·튐 자리가 한꺼번에 바뀜</td><td><code>rainParams.w</code> 를 1000 s 로 감으면 phase 는 이어지지만(1000 × 1.3 이 정수) 주기 번호가 바뀌어 모든 칸의 해시가 새로 뽑힘</td><td>코드에서 읽은 것. 퍼지던 링이 한 프레임에 다른 자리로 옮겨 갈 것으로 봄 <span class="tag chk">계산값</span></td></tr>
+<tr><td>물결 링 바깥쪽이 칸 경계에서 잘림</td><td>떨어진 자리는 칸 경계에서 0.25 칸 안쪽인데 링 반지름(최대 0.25 칸) + 반폭(0.13 칸)이 그보다 큼. 픽셀은 자기 칸만 봄</td><td>잘리는 것은 phase 0.48 이후라 세기가 처음의 27% 이하 <span class="tag chk">계산값</span>. 코드 주석의 "링이 칸을 넘지 않음"은 대략적인 말</td></tr>
+<tr><td>빗줄기가 떨어진 자리에 튐이 없음</td><td>빗줄기와 튐·물결은 서로 독립(8-1)</td><td>빈도만 비슷하게 맞춤</td></tr>
+<tr><td>상자·낙하 속력을 바꾸면 빗줄기와 튐의 양이 어긋남</td><td>칸 비율이 <code>maxDrops / 20000</code> 과 세기만 봄</td><td>상자 크기·<code>fallSpeed</code> 는 바닥 플럭스를 바꾸지만 비율에 들어가지 않음 <span class="tag chk">계산값</span></td></tr>
+<tr><td>젖은 바닥이 덜 젖어 보임</td><td>반사가 IBL 큐브맵뿐</td><td>화면 공간 반사·평면 반사 없음(<a href="../plan/rain-record.html#limits">기록 11장</a>)</td></tr>
+<tr><td>가로등 아래 빗줄기가 빛나지 않음</td><td>빗줄기는 환경광 세기만 곱함</td><td>지역광·그림자에 따라 밝기가 바뀌지 않음</td></tr>
+<tr><td>큰 지붕 가장자리에서 비가 샘</td><td>차폐 맵 밖(카메라 중심 80 m)은 열린 하늘. 맵 윗면(카메라 위 100 m)보다 높은 것도 무시</td><td><code>occlusionSize</code> 를 키우면 텍셀이 굵어짐</td></tr>
+<tr><td>미리보기 카메라 주변이 젖지 않거나 지붕 밑에 비</td><td>차폐 맵은 메인 카메라 것 하나</td><td>미리보기 카메라가 80 m 넘게 떨어지면 그 주변은 열린 하늘</td></tr>
+<tr><td>바로 위에서 보면 튐이 선</td><td>원통형 빌보드</td><td>면의 재질(물·흙)도 구분하지 않음</td></tr>
+<tr><td>디버그 뷰 18 의 B 가 잎 판에도 보임</td><td>디버그 뷰는 재질을 모름</td><td>실제 재질 PS 는 컷아웃이면 웅덩이 0</td></tr>
+<tr><td>스킨 메시 위의 비</td><td>코드상 스킨 그림자 PSO 를 그대로 쓰지만 테스트 씬에 스킨이 없음</td><td>확인하지 못함(<a href="../plan/rain-record.html#v-none">기록 9.7</a>)</td></tr>
+</table>
+<p>범위 밖으로 남긴 것: 비 방향으로 기운 차폐 맵, 조명을 받는 빗방울, 화면 공간 반사, 구역별로 다른 비(첫 번째 <code>Rain</code> 만 씀), 차폐 맵 갱신 주기 줄이기(<a href="../plan/rain-record.html#limits">기록 11장</a>, <a href="../plan/rain-plan.html#perf">계획 4장</a>).</p>
+</section>
+
+<section id="study">
+<h2>13. 공부할 개념과 참고 문서</h2>
+<table>
+<tr><th>개념</th><th>알아야 할 것</th><th>이 문서</th></tr>
+<tr><td>상태 없는 절차적 파티클</td><td><code>SV_VertexID</code> 로 그리기, 해시로 정한 시작점, 운동이 닫힌 식일 때만 되는 이유</td><td>1-3, 2-1</td></tr>
+<tr><td>월드 고정 격자와 <code>frac</code> 감기</td><td>카메라를 따라가되 미끄러지지 않는 방법, 경계 처리</td><td>2-2</td></tr>
+<tr><td>시간 감기와 float 정밀도</td><td>축마다 주기로 감아야 하는 이유, 입력 해상도의 한계</td><td>2-3</td></tr>
+<tr><td>차폐 맵 = 위에서 본 그림자 맵</td><td>직교 투영 깊이 → 높이, 텍셀 스냅, 바이어스가 필요 없는 이유</td><td>2-4, 4장</td></tr>
+<tr><td>법선 오프셋과 쌍선형 판정</td><td>벽 젖음, 가장자리 계단</td><td>4-5</td></tr>
+<tr><td>가는 선 그리기</td><td>최소 1 픽셀 + 면적 비율로 밝기 보정</td><td>6-2</td></tr>
+<tr><td>젖은 재질의 광학</td><td>굴절률 차가 줄어 흡수가 느는 이유, 물막과 거칠기</td><td>2-5, 7-2</td></tr>
+<tr><td>프레임률과 무관한 지수 보간</td><td><code>1 − exp(−dt/τ)</code></td><td>7-4</td></tr>
+<tr><td>절차적 물결 노멀</td><td>링 단면 기울기를 해석적으로, 거리 감쇠와 에일리어싱</td><td>8-2</td></tr>
+<tr><td>공유 해시로 사건 맞추기</td><td>다른 셰이더 단계가 같은 칸·시간 해시로 같은 사건을 봄</td><td>8-1, 8-3</td></tr>
+</table>
+<h3 id="refs">참고 문서</h3>
+<ul>
+<li>Natalya Tatarchuk, "Artist-Directable Real-Time Rain Rendering in City Environments", SIGGRAPH 2006 코스(ATI ToyShop 데모) — 카메라를 감싸는 비, 젖은 표면, 튐, 웅덩이 물결. 1-2</li>
+<li>Sarah Tariq, "Rain", NVIDIA Direct3D 10 SDK 화이트페이퍼 (2007) — GPU 에서 카메라 주변 상자 안의 빗방울을 감아 쓰는 방식, 빗줄기 모양. 2-2</li>
+<li>Kshitiz Garg, Shree K. Nayar, "Photorealistic Rendering of Rain Streaks", SIGGRAPH 2006 — 빗방울 크기·속도와 빗줄기 모양. 1-2</li>
+<li>Sébastien Lagarde, "Water drop" 블로그 연재 (2012~2013) — 2a·2b "Dynamic rain and its effects"(차폐 맵, 물결), 3a·3b "Physically based wet surfaces"(젖은 재질의 알베도·거칠기). 코드 주석은 <code>ApplyWetness</code> 에 2a, <code>RainRipple</code> 에 2b 를 적었습니다. 2-5, 7장, 8-2</li>
+<li>John Lekner, Michael C. Dorf, "Why some things are darker when wet", Applied Optics 27권 7호 (1988), 1278–1280쪽 — 거친 면 위 물막 안의 전반사와 흡수로 젖은 면이 어두워지는 모형(Ångström 의 모형을 보완). 2-5</li>
+<li>Henrik Wann Jensen, Justin Legakis, Julie Dorsey, "Rendering of Wet Materials", Rendering Techniques '99 (Eurographics Workshop on Rendering, 1999), 273–282쪽 — 표면의 물 반사 모형과 표면 아래 산란을 합쳐 젖은 재질을 그림. 2-5</li>
+<li>Mark Jarzynski, Marc Olano, "Hash Functions for GPU Rendering", JCGT (2020) — PCG 해시(<code>RainHash</code>). 2-1</li>
+<li>우리 문서: <a href="../plan/rain-plan.html">비 구현 계획</a>(결정 표·부하 예상), <a href="../plan/rain-record.html">비 구현 기록</a>(검증 숫자·한계), <a href="gpu-particles-study.html">GPU 파티클 학습</a>, <a href="shadow-map-study.html">그림자 맵 학습</a>, <a href="csm-study.html">CSM 학습</a>, <a href="pcf-study.html">PCF 학습</a>, <a href="pbr-study.html">PBR 학습</a>, <a href="ibl-study.html">IBL 학습</a>, <a href="deferred-gbuffer-study.html">디퍼드 G-buffer 학습</a>, <a href="binding-study.html">바인딩 학습</a>, <a href="rhi-pso-study.html">RHI·PSO 학습</a>, <a href="frame-structure-study.html">프레임 구조 학습</a>, <a href="ocean-gerstner-study.html">Gerstner 바다 학습</a>, <a href="../overview/glossary.html">용어집</a>(비 차폐 맵, 젖은 표면 · 웅덩이, 상태 없는 절차적 파티클)</li>
+</ul>
+</section>
+</main>
+</body>
+</html>
